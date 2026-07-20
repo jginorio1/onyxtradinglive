@@ -18,9 +18,14 @@ export default function KeysPage() {
 
   async function create() {
     setLoading(true); setNewKey('');
-    const r = await fetch('/api/keys', { method: 'POST', body: JSON.stringify({ label: 'Mi cuenta MT' }) });
-    const j = await r.json();
-    if (j.key) setNewKey(j.key);
+    try {
+      const r = await fetch('/api/keys', { method: 'POST', body: JSON.stringify({ label: 'Mi cuenta MT' }) });
+      const j = await r.json();
+      if (j.key) setNewKey(j.key);
+      else alert('No se pudo crear la key: ' + (j.error || 'error desconocido'));
+    } catch (e: any) {
+      alert('Error de red: ' + (e?.message || e));
+    }
     await load(); setLoading(false);
   }
   async function revoke(id: string) {
