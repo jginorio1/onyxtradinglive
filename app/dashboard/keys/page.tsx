@@ -70,9 +70,15 @@ export default function KeysPage() {
 
         {/* Paso 2: instrucciones */}
         <div className="card" style={{ marginBottom: 18 }}>
-          <h3>2 · Instala el Onyx Connector (pasos)</h3>
+          <h3>2 · Descarga el Onyx Connector</h3>
+          <div style={{ display: 'flex', gap: 10, margin: '12px 0', flexWrap: 'wrap' }}>
+            <a className="btn btn-primary" href="/OnyxConnector_MT5.mq5" download>⬇ Descargar para MT5</a>
+            <a className="btn btn-primary" href="/OnyxConnector_MT4.mq4" download>⬇ Descargar para MT4</a>
+          </div>
+          <p className="muted" style={{ fontSize: 13 }}>Ya viene con la URL de tu servidor configurada. Solo tendrás que pegar tu API key.</p>
+          <h3 style={{ marginTop: 18 }}>3 · Instálalo (pasos)</h3>
           <ol style={{ margin: '12px 0 0 18px', lineHeight: 2, color: '#d6d9e0', fontSize: 15 }}>
-            <li>Descarga el connector de tu plataforma: <b>MT5 → OnyxConnector_MT5.mq5</b> · <b>MT4 → OnyxConnector_MT4.mq4</b>.</li>
+            <li>Descarga el connector de tu plataforma con los botones de arriba (MT5 o MT4).</li>
             <li>En MetaTrader: <b>Archivo → Abrir carpeta de datos</b> → copia el archivo en la carpeta <span className="code">MQL5/Experts</span> (o <span className="code">MQL4/Experts</span> en MT4).</li>
             <li>Abre <b>MetaEditor</b> (tecla F4), abre el connector y pulsa <b>Compilar (F7)</b>.</li>
             <li>En MetaTrader, abre el <b>Navegador</b> → Asesores Expertos → <b>arrastra el Onyx Connector</b> a cualquier gráfico.</li>
