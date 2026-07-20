@@ -1,12 +1,60 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 
 type Lang = 'es' | 'en';
 
+/* ─────────────────────────────────────────────────────────────
+   ⚠️  EDITA ESTOS NÚMEROS CON TUS DATOS REALES.
+   No inventes cifras: si un usuario descubre que son falsas,
+   pierdes su confianza (y legalmente no puedes afirmar datos falsos).
+   Cuando aún no tengas usuarios, usa datos verdaderos del producto
+   (los de abajo lo son) y ve subiendo los reales con el tiempo.
+   ───────────────────────────────────────────────────────────── */
+const STATS = [
+  { to: 100, suffix: '%', es: 'Conexión solo lectura', en: 'Read-only connection' },
+  { to: 15, prefix: '+', es: 'Métricas profesionales', en: 'Pro metrics' },
+  { to: 2, suffix: '', es: 'Plataformas · MT4 y MT5', en: 'Platforms · MT4 & MT5' },
+  { to: 4, prefix: '+', es: 'Prop firms compatibles', en: 'Compatible prop firms' },
+];
+
+/* Marcas para el carrusel (broker/prop firm + plataformas) */
+const LOGOS = [
+  { n: 'FTMO', m: 'F', c: '#2f6bff' }, { n: 'FundedNext', m: 'N', c: '#16c98d' },
+  { n: 'The5ers', m: '5', c: '#ff8a3d' }, { n: 'FundingPips', m: 'P', c: '#8b5cff' },
+  { n: 'MetaTrader 4', m: 'M4', c: '#f0a020' }, { n: 'MetaTrader 5', m: 'M5', c: '#2f6bff' },
+  { n: 'IC Markets', m: 'IC', c: '#e23b55' }, { n: 'Pepperstone', m: 'P', c: '#e2531f' },
+  { n: 'Exness', m: 'E', c: '#ffcf5c' }, { n: 'Darwinex', m: 'D', c: '#12b981' },
+];
+
+function Counter({ to, prefix = '', suffix = '' }: { to: number; prefix?: string; suffix?: string }) {
+  const [n, setN] = useState(0);
+  const ref = useRef<HTMLDivElement>(null);
+  const done = useRef(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const io = new IntersectionObserver((ents) => {
+      if (ents[0].isIntersecting && !done.current) {
+        done.current = true;
+        const dur = 1200, t0 = performance.now();
+        const tick = (t: number) => {
+          const p = Math.min(1, (t - t0) / dur);
+          setN(Math.round((1 - Math.pow(1 - p, 3)) * to));
+          if (p < 1) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      }
+    }, { threshold: 0.4 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [to]);
+  return <div ref={ref} style={{ fontSize: 44, fontWeight: 800, letterSpacing: '-1px', background: 'var(--grad)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>{prefix}{n.toLocaleString()}{suffix}</div>;
+}
+
 const dict = {
   es: {
-    nav: { features: 'Funciones', how: 'Cómo funciona', pricing: 'Precios', faq: 'FAQ', login: 'Entrar', cta: 'Empieza gratis' },
+    nav: { features: 'Funciones', how: 'Cómo funciona', fondeo: 'Fondeo', pricing: 'Precios', faq: 'FAQ', login: 'Entrar', cta: 'Empieza gratis' },
     hero: {
       badge: '🔗 Conecta MT4 y MT5 · Sincronización automática',
       h1a: 'Tu diario de trading', h1b: 'inteligente y automático',
@@ -14,6 +62,11 @@ const dict = {
       cta1: 'Empieza gratis →', cta2: 'Ver precios', note: 'Sin tarjeta para empezar · Cancela cuando quieras',
     },
     trust: ['✅ Compatible con MT4 y MT5', '🔒 Conexión de solo lectura', '💳 Pagos seguros con Stripe'],
+    logosT: 'Compatible con tu bróker y tu prop firm',
+    videoBadge: '▶ En acción',
+    videoT: 'Mira Onyx por dentro',
+    videoS: 'Un recorrido por el dashboard: portafolio, calendario, curva de equity y estadísticas en tiempo real.',
+    videoNote: 'Demo en video · sin audio',
     probT: 'Deja de operar a ciegas',
     probS: 'La mayoría de traders no sabe qué le hace ganar y qué le hace perder. Onyx convierte tu historial en información clara para que mejores de verdad.',
     featT: 'Todo lo que necesitas para mejorar',
@@ -39,6 +92,21 @@ const dict = {
       { i: '🏦', t: 'Trader de fondeo', d: 'Controla las reglas de FTMO y otras prop firms sin romperlas.' },
       { i: '🤖', t: 'Trader algorítmico', d: 'Analiza el rendimiento real de tus bots y estrategias.' },
     ],
+    prop: {
+      badge: '🏆 Hecho para cuentas de fondeo',
+      t: 'Compatible con tu prop firm',
+      s: 'Tu cuenta de fondeo es una cuenta de MetaTrader. Onyx se conecta igual que a cualquier broker: instalas el connector, pegas tu API key y listo. Elige tu firma para ver los detalles:',
+      onyx: '✓ Compatible con Onyx',
+      plats: 'Plataformas disponibles',
+      sizes: 'Tamaños de cuenta',
+      note: '¿Tu firma no está en la lista? Si te da una cuenta MT4 o MT5, Onyx funciona igual.',
+      tTitle: '📊 Seguimiento de fondeo en vivo',
+      tSub: 'Mueve el control y mira cómo Onyx vigila tus reglas en tiempo real. Ejemplo con cuenta de $50.000.',
+      tPnl: 'Tu P&L actual',
+      tTarget: 'Objetivo de profit  ·  +$5.000',
+      tLoss: 'Pérdida máxima  ·  −$5.000',
+      st: { ok: '✓ En regla — sigue así', near: '⚠ Cuidado: cerca del límite de pérdida', broke: '✗ Regla rota — cuenta perdida', passed: '🎉 ¡Objetivo logrado! Fase superada' },
+    },
     cmpT: 'Onyx vs lo de siempre',
     cmp: {
       head: ['', 'Excel a mano', 'Onyx'],
@@ -71,7 +139,7 @@ const dict = {
     footer: { terms: 'Términos', privacy: 'Privacidad', rights: '© 2026 Onyx Trading Live' },
   },
   en: {
-    nav: { features: 'Features', how: 'How it works', pricing: 'Pricing', faq: 'FAQ', login: 'Log in', cta: 'Start free' },
+    nav: { features: 'Features', how: 'How it works', fondeo: 'Prop firms', pricing: 'Pricing', faq: 'FAQ', login: 'Log in', cta: 'Start free' },
     hero: {
       badge: '🔗 Connect MT4 & MT5 · Automatic sync',
       h1a: 'Your trading journal,', h1b: 'smart and automatic',
@@ -79,6 +147,11 @@ const dict = {
       cta1: 'Start free →', cta2: 'See pricing', note: 'No card to start · Cancel anytime',
     },
     trust: ['✅ Works with MT4 & MT5', '🔒 Read-only connection', '💳 Secure payments with Stripe'],
+    logosT: 'Works with your broker and prop firm',
+    videoBadge: '▶ In action',
+    videoT: 'See Onyx from the inside',
+    videoS: 'A walkthrough of the dashboard: portfolio, calendar, equity curve and real-time stats.',
+    videoNote: 'Video demo · no audio',
     probT: 'Stop trading blind',
     probS: 'Most traders don\'t know what makes them win or lose. Onyx turns your history into clear insights so you actually improve.',
     featT: 'Everything you need to improve',
@@ -104,6 +177,21 @@ const dict = {
       { i: '🏦', t: 'Funded trader', d: 'Stay within FTMO and other prop-firm rules with ease.' },
       { i: '🤖', t: 'Algo trader', d: 'Analyze the real performance of your bots and strategies.' },
     ],
+    prop: {
+      badge: '🏆 Built for funded accounts',
+      t: 'Works with your prop firm',
+      s: 'Your funded account is a MetaTrader account. Onyx connects just like any broker: install the connector, paste your API key, done. Pick your firm to see the details:',
+      onyx: '✓ Works with Onyx',
+      plats: 'Available platforms',
+      sizes: 'Account sizes',
+      note: 'Your firm not listed? If it gives you an MT4 or MT5 account, Onyx works too.',
+      tTitle: '📊 Live funding tracker',
+      tSub: 'Drag the control and watch Onyx guard your rules in real time. Example with a $50,000 account.',
+      tPnl: 'Your current P&L',
+      tTarget: 'Profit target  ·  +$5,000',
+      tLoss: 'Max loss  ·  −$5,000',
+      st: { ok: '✓ Within rules — keep going', near: '⚠ Careful: near the loss limit', broke: '✗ Rule broken — account lost', passed: '🎉 Target reached! Phase passed' },
+    },
     cmpT: 'Onyx vs the usual',
     cmp: {
       head: ['', 'Manual Excel', 'Onyx'],
@@ -137,10 +225,30 @@ const dict = {
   },
 } as const;
 
+const FIRMS = [
+  { name: 'FTMO', mono: 'F', color: '#2f6bff', plats: ['MT4', 'MT5', 'cTrader', 'DXtrade'], sizes: ['10K', '25K', '50K', '100K', '200K'],
+    es: 'El estándar de la industria. Evaluación en dos fases y cuentas de hasta $200K.', en: 'The industry standard. Two-step evaluation and accounts up to $200K.' },
+  { name: 'FundedNext', mono: 'N', color: '#16c98d', plats: ['MT4', 'MT5'], sizes: ['6K', '15K', '25K', '50K', '100K', '200K'],
+    es: 'Reparto de hasta 95% y modelos flexibles. Cuentas MT4 y MT5.', en: 'Up to 95% profit split and flexible models. MT4 and MT5 accounts.' },
+  { name: 'The5ers', mono: '5', color: '#ff8a3d', plats: ['MT5', 'cTrader'], sizes: ['5K', '20K', '60K', '100K'],
+    es: 'Programas de bajo drawdown y escalado rápido de capital.', en: 'Low-drawdown programs with fast capital scaling.' },
+  { name: 'FundingPips', mono: 'P', color: '#8b5cff', plats: ['MT5', 'cTrader', 'MatchTrader'], sizes: ['5K', '10K', '25K', '50K', '100K', '200K'],
+    es: 'Precios agresivos y evaluación flexible de una o dos fases.', en: 'Aggressive pricing and flexible one- or two-step evaluations.' },
+];
+
 export default function Home() {
   const [lang, setLang] = useState<Lang>('es');
   const [annual, setAnnual] = useState(false);
+  const [firm, setFirm] = useState(0);
+  const [pnl, setPnl] = useState(1800);
+  const [vidErr, setVidErr] = useState(false);
   const t = dict[lang];
+  const f = FIRMS[firm];
+  const target = 5000, maxLoss = 5000;
+  const targetPct = Math.max(0, Math.min(100, (pnl / target) * 100));
+  const lossPct = pnl < 0 ? Math.min(100, (-pnl / maxLoss) * 100) : 0;
+  const st = pnl <= -maxLoss ? t.prop.st.broke : pnl >= target ? t.prop.st.passed : (pnl < 0 && -pnl > maxLoss * 0.7) ? t.prop.st.near : t.prop.st.ok;
+  const stColor = pnl <= -maxLoss ? '#ff6b7d' : pnl >= target ? '#34e2a0' : (pnl < 0 && -pnl > maxLoss * 0.7) ? '#ffcf5c' : '#7c8cff';
   const grad = { background: 'var(--grad)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' } as any;
 
   return (
@@ -148,7 +256,7 @@ export default function Home() {
       {/* NAV */}
       <div className="topbar"><div className="wrap">
         <div className="logo"><span className="mark">◆</span> Onyx Trading Live</div>
-        <div className="navl"><a href="#features">{t.nav.features}</a><a href="#how">{t.nav.how}</a><a href="#pricing">{t.nav.pricing}</a><a href="#faq">{t.nav.faq}</a></div>
+        <div className="navl"><a href="#features">{t.nav.features}</a><a href="#how">{t.nav.how}</a><a href="#fondeo">{t.nav.fondeo}</a><a href="#pricing">{t.nav.pricing}</a><a href="#faq">{t.nav.faq}</a></div>
         <div className="row">
           <button className="btn btn-ghost" style={{ padding: '6px 10px' }} onClick={() => setLang(lang === 'es' ? 'en' : 'es')}>{lang === 'es' ? '🇬🇧 EN' : '🇪🇸 ES'}</button>
           <Link className="btn btn-ghost" href="/login">{t.nav.login}</Link>
@@ -190,6 +298,30 @@ export default function Home() {
         </div>
       </div>
 
+      {/* STATS (prueba social) */}
+      <div className="wrap section" style={{ paddingTop: 10 }}>
+        <div className="grid g4" style={{ textAlign: 'center' }}>
+          {STATS.map((s, i) => (
+            <div key={i} className="card" style={{ padding: '26px 16px' }}>
+              <Counter to={s.to} prefix={s.prefix} suffix={s.suffix} />
+              <div className="muted" style={{ fontSize: 14, marginTop: 6 }}>{lang === 'es' ? s.es : s.en}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* LOGOS marquee */}
+      <div className="wrap" style={{ padding: '6px 22px 24px' }}>
+        <p className="muted" style={{ textAlign: 'center', fontSize: 14, marginBottom: 16 }}>{t.logosT}</p>
+        <div className="marquee">
+          <div className="marquee-track">
+            {[...LOGOS, ...LOGOS].map((l, i) => (
+              <div key={i} className="chip"><span className="mono" style={{ background: l.c }}>{l.m}</span>{l.n}</div>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* PROBLEM */}
       <div className="wrap section" style={{ textAlign: 'center', maxWidth: 720 }}>
         <h2>{t.probT}</h2><p className="muted" style={{ fontSize: 17, marginTop: 10 }}>{t.probS}</p>
@@ -215,6 +347,37 @@ export default function Home() {
         </div>
       </div>
 
+      {/* VIDEO */}
+      <div className="wrap section" style={{ textAlign: 'center' }}>
+        <span className="pill green">{t.videoBadge}</span>
+        <h2 style={{ margin: '16px 0 10px' }}>{t.videoT}</h2>
+        <p className="muted" style={{ fontSize: 17, maxWidth: 620, margin: '0 auto 26px' }}>{t.videoS}</p>
+        <div className="vframe" style={{ maxWidth: 940, margin: '0 auto' }}>
+          <div className="row" style={{ gap: 7, padding: '11px 14px', borderBottom: '1px solid var(--line)', background: 'var(--bg)' }}>
+            <span className="vdot" style={{ background: '#ff6b7d' }} /><span className="vdot" style={{ background: '#ffc04d' }} /><span className="vdot" style={{ background: '#34e2a0' }} />
+            <span className="muted" style={{ fontSize: 12, marginLeft: 8 }}>onyxtradinglive.vercel.app/dashboard</span>
+          </div>
+          {!vidErr ? (
+            <video autoPlay muted loop playsInline onError={() => setVidErr(true)} style={{ background: 'var(--bg2)' }}>
+              <source src="/dashboard-demo.mp4" type="video/mp4" />
+            </video>
+          ) : (
+            <svg viewBox="0 0 940 460" width="100%" xmlns="http://www.w3.org/2000/svg" fontFamily="Segoe UI,sans-serif">
+              <rect x="0" y="0" width="940" height="460" fill="#0f131e" />
+              {[['Neto', '+$8,240', '#34e2a0'], ['Win rate', '63%', '#f2f5fb'], ['Profit factor', '1.94', '#f2f5fb'], ['Expectancy', '+$42', '#7c8cff'], ['Drawdown', '4.1%', '#ff6b7d']].map((c, i) => (
+                <g key={i}><rect x={22 + i * 182} y="22" width="168" height="76" rx="10" fill="#151a28" /><text x={38 + i * 182} y="50" fill="#9aa6bd" fontSize="12">{c[0]}</text><text x={38 + i * 182} y="80" fill={c[2] as string} fontSize="23" fontWeight="800">{c[1]}</text></g>
+              ))}
+              <rect x="22" y="112" width="560" height="326" rx="10" fill="#151a28" /><text x="40" y="140" fill="#f2f5fb" fontSize="13" fontWeight="700">Curva de equity</text>
+              <polyline points="44,392 130,378 216,398 302,340 388,352 474,286 540,300 582,232" fill="none" stroke="#7c8cff" strokeWidth="3" />
+              <polygon points="44,392 130,378 216,398 302,340 388,352 474,286 540,300 582,232 582,420 44,420" fill="#7c8cff" opacity="0.12" />
+              <rect x="598" y="112" width="320" height="326" rx="10" fill="#151a28" /><text x="616" y="140" fill="#f2f5fb" fontSize="13" fontWeight="700">Calendario</text>
+              {Array.from({ length: 25 }).map((_, i) => { const g = (i * 7) % 3 !== 0; return <rect key={i} x={616 + (i % 5) * 60} y={156 + Math.floor(i / 5) * 52} width="52" height="44" rx="6" fill={g ? 'rgba(52,226,160,0.42)' : 'rgba(255,107,125,0.42)'} />; })}
+            </svg>
+          )}
+        </div>
+        <p className="muted" style={{ fontSize: 13, marginTop: 12 }}>{t.videoNote}</p>
+      </div>
+
       {/* HOW */}
       <div id="how" className="wrap section">
         <h2 style={{ textAlign: 'center', marginBottom: 34 }}>{t.howT}</h2>
@@ -231,6 +394,80 @@ export default function Home() {
         <div className="grid g3">
           {t.who.map((w, i) => (<div key={i} className="card"><div style={{ fontSize: 26, marginBottom: 8 }}>{w.i}</div><h3>{w.t}</h3><p className="muted" style={{ marginTop: 6 }}>{w.d}</p></div>))}
         </div>
+      </div>
+
+      {/* PROP FIRMS */}
+      <div id="fondeo" className="wrap section">
+        <div style={{ textAlign: 'center', marginBottom: 30 }}>
+          <span className="pill green">{t.prop.badge}</span>
+          <h2 style={{ margin: '16px 0 10px' }}>{t.prop.t}</h2>
+          <p className="muted" style={{ fontSize: 17, maxWidth: 660, margin: '0 auto' }}>{t.prop.s}</p>
+        </div>
+
+        {/* selector de firma */}
+        <div className="row" style={{ justifyContent: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 22 }}>
+          {FIRMS.map((fm, i) => (
+            <button key={i} onClick={() => setFirm(i)} style={{
+              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderRadius: 12,
+              border: i === firm ? `2px solid ${fm.color}` : '1px solid var(--line)',
+              background: i === firm ? 'var(--bg2)' : 'transparent', color: 'inherit', transition: 'all .2s' }}>
+              <span style={{ width: 30, height: 30, borderRadius: 8, background: fm.color, color: '#fff', fontWeight: 800, display: 'grid', placeItems: 'center', fontSize: 15 }}>{fm.mono}</span>
+              <b style={{ fontSize: 15 }}>{fm.name}</b>
+            </button>
+          ))}
+        </div>
+
+        {/* detalle + tracker */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(300px,1fr))', gap: 20 }}>
+          {/* detalle de la firma */}
+          <div className="card" style={{ borderTop: `3px solid ${f.color}` }}>
+            <div className="row" style={{ gap: 12, marginBottom: 14, alignItems: 'center' }}>
+              <span style={{ width: 46, height: 46, borderRadius: 12, background: f.color, color: '#fff', fontWeight: 800, display: 'grid', placeItems: 'center', fontSize: 22 }}>{f.mono}</span>
+              <div><h3 style={{ margin: 0 }}>{f.name}</h3><span className="pill green" style={{ marginTop: 4, display: 'inline-block' }}>{t.prop.onyx}</span></div>
+            </div>
+            <p className="muted" style={{ fontSize: 15, marginBottom: 16 }}>{lang === 'es' ? f.es : f.en}</p>
+            <div style={{ fontSize: 13, color: 'var(--mut)', marginBottom: 7 }}>{t.prop.plats}</div>
+            <div className="row" style={{ gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+              {f.plats.map((p, j) => {
+                const ok = p.indexOf('MT') === 0;
+                return <span key={j} style={{ padding: '5px 11px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+                  background: ok ? 'rgba(52,226,160,0.14)' : 'var(--bg2)', color: ok ? '#34e2a0' : 'var(--mut)',
+                  border: ok ? '1px solid rgba(52,226,160,0.45)' : '1px solid var(--line)' }}>{ok ? '✓ ' : ''}{p}</span>;
+              })}
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--mut)', marginBottom: 7 }}>{t.prop.sizes}</div>
+            <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+              {f.sizes.map((s, j) => <span key={j} style={{ padding: '5px 11px', borderRadius: 8, fontSize: 13, background: 'var(--bg2)', border: '1px solid var(--line)' }}>${s}</span>)}
+            </div>
+          </div>
+
+          {/* tracker en vivo */}
+          <div className="card">
+            <h3 style={{ marginBottom: 4 }}>{t.prop.tTitle}</h3>
+            <p className="muted" style={{ fontSize: 14, marginBottom: 18 }}>{t.prop.tSub}</p>
+
+            <div className="row between" style={{ marginBottom: 6 }}>
+              <span className="muted" style={{ fontSize: 14 }}>{t.prop.tPnl}</span>
+              <b style={{ color: pnl >= 0 ? '#34e2a0' : '#ff6b7d', fontSize: 19 }}>{pnl >= 0 ? '+' : '−'}${Math.abs(pnl).toLocaleString()}</b>
+            </div>
+            <input type="range" min={-6000} max={6500} step={100} value={pnl} onChange={(e) => setPnl(parseInt(e.target.value))}
+              style={{ width: '100%', accentColor: stColor, marginBottom: 20 }} />
+
+            <div className="row between" style={{ fontSize: 13, marginBottom: 5 }}><span className="muted">{t.prop.tTarget}</span><span style={{ fontWeight: 700 }}>{Math.round(targetPct)}%</span></div>
+            <div style={{ height: 10, background: 'var(--bg2)', borderRadius: 6, overflow: 'hidden', marginBottom: 16 }}>
+              <div style={{ width: targetPct + '%', height: '100%', background: '#34e2a0', transition: 'width .12s' }} />
+            </div>
+
+            <div className="row between" style={{ fontSize: 13, marginBottom: 5 }}><span className="muted">{t.prop.tLoss}</span><span style={{ fontWeight: 700 }}>{Math.round(lossPct)}%</span></div>
+            <div style={{ height: 10, background: 'var(--bg2)', borderRadius: 6, overflow: 'hidden', marginBottom: 20 }}>
+              <div style={{ width: lossPct + '%', height: '100%', background: lossPct > 70 ? '#ff6b7d' : '#ffcf5c', transition: 'width .12s' }} />
+            </div>
+
+            <div style={{ textAlign: 'center', padding: '11px', borderRadius: 10, background: 'var(--bg2)', border: '1px solid ' + stColor, color: stColor, fontWeight: 700 }}>{st}</div>
+          </div>
+        </div>
+
+        <p className="muted" style={{ textAlign: 'center', fontSize: 14, marginTop: 20 }}>{t.prop.note}</p>
       </div>
 
       {/* COMPARISON */}
