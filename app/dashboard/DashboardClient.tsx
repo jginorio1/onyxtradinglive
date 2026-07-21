@@ -8,6 +8,8 @@ import AccountExtras from './AccountExtras';
 import CompareAccounts from './CompareAccounts';
 import { typeMeta } from '@/lib/accountMeta';
 import { Ring, MiniArea, MiniDonut, MiniBars, MiniHeat, RadarChart, Bubbles, healthScore } from './Modern';
+import MarketHours from './MarketHours';
+import Achievements from './Achievements';
 
 // Genera operaciones de ejemplo variadas (modo demo)
 function genDemo(accId: string): TT[] {
@@ -68,7 +70,7 @@ const D = {
     accCard: 'Cuentas y portafolio', balTotal: 'Balance total', accounts: 'Cuentas', opsTotal: 'Operaciones', th_acc: 'Cuenta', th_broker: 'Bróker', th_bal: 'Balance', th_net: 'Neto', th_win: 'Win', nickPh: 'Ej: FTMO 50K', nameBtn: '✏️ Nombre',
     fundTitle: '🏆 Reglas de fondeo', fundEdit: '⚙️ Configurar reglas', fundHide: 'Ocultar', fundTarget: 'Objetivo de profit ($)', fundMaxDaily: 'Pérdida diaria máx ($)', fundMaxTotal: 'Pérdida total máx ($)', fundStart: 'Balance inicial ($)', fundSave: 'Guardar reglas', fundProfitBar: 'Progreso al objetivo', fundDDBar: 'Uso de pérdida máxima',
     ranges: { d1: 'Hoy', d7: '7d', d30: '30d', mo: 'Mes', yr: 'Año', all: 'Todo' },
-    radarTitle: 'Perfil del trader', bubbleTitle: 'Pares · volumen y resultado', rWR: 'Win rate', rPF: 'P. factor', rPayoff: 'Payoff', rConsist: 'Consistencia', rRisk: 'Riesgo', demo: 'Demo', demoOn: '🎬 Viendo datos de ejemplo (no reales)',
+    radarTitle: 'Perfil del trader', bubbleTitle: 'Pares · volumen y resultado', rWR: 'Win rate', rPF: 'P. factor', rPayoff: 'Payoff', rConsist: 'Consistencia', rRisk: 'Riesgo', demo: 'Demo', demoOn: '🎬 Viendo datos de ejemplo (no reales)', customRange: 'Rango de fechas', from: 'Desde', to: 'Hasta',
   },
   en: {
     nav_dash: 'Dashboard', nav_connect: 'Connect account', nav_plan: 'Plan', signout: 'Sign out',
@@ -90,7 +92,7 @@ const D = {
     accCard: 'Accounts & portfolio', balTotal: 'Total balance', accounts: 'Accounts', opsTotal: 'Trades', th_acc: 'Account', th_broker: 'Broker', th_bal: 'Balance', th_net: 'Net', th_win: 'Win', nickPh: 'e.g. FTMO 50K', nameBtn: '✏️ Name',
     fundTitle: '🏆 Prop-firm rules', fundEdit: '⚙️ Set rules', fundHide: 'Hide', fundTarget: 'Profit target ($)', fundMaxDaily: 'Max daily loss ($)', fundMaxTotal: 'Max total loss ($)', fundStart: 'Starting balance ($)', fundSave: 'Save rules', fundProfitBar: 'Progress to target', fundDDBar: 'Max loss used',
     ranges: { d1: 'Today', d7: '7d', d30: '30d', mo: 'Month', yr: 'Year', all: 'All' },
-    radarTitle: 'Trader profile', bubbleTitle: 'Pairs · volume and result', rWR: 'Win rate', rPF: 'P. factor', rPayoff: 'Payoff', rConsist: 'Consistency', rRisk: 'Risk', demo: 'Demo', demoOn: '🎬 Viewing example data (not real)',
+    radarTitle: 'Trader profile', bubbleTitle: 'Pairs · volume and result', rWR: 'Win rate', rPF: 'P. factor', rPayoff: 'Payoff', rConsist: 'Consistency', rRisk: 'Risk', demo: 'Demo', demoOn: '🎬 Viewing example data (not real)', customRange: 'Date range', from: 'From', to: 'To',
   },
 } as const;
 
@@ -177,7 +179,9 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
   const [tradesS, setTradesS] = useState<TT[]>(trades || []);
   const [sel, setSel] = useState<string>('all');
   const [view, setView] = useState<View>('hub');
-  const [range, setRange] = useState<keyof typeof D['es']['ranges']>('all');
+  const [range, setRange] = useState<string>('all');
+  const [cFrom, setCFrom] = useState('');
+  const [cTo, setCTo] = useState('');
   const [demo, setDemo] = useState(false);
   const demoTrades = useMemo(() => genDemo(accs0[0]?.id || 'demo'), []);
   const [editing, setEditing] = useState<string>('');
@@ -213,6 +217,7 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
     const src = demo ? demoTrades : tradesS;
     return src.filter((x) => {
       const dt = new Date(x.close_time); const d = dt.getTime();
+      if (range === 'custom') { const ds = x.close_time.slice(0, 10); if (cFrom && ds < cFrom) return false; if (cTo && ds > cTo) return false; return true; }
       if (range === 'd1') return d >= now - 864e5;
       if (range === 'd7') return d >= now - 7 * 864e5;
       if (range === 'd30') return d >= now - 30 * 864e5;
@@ -220,7 +225,7 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
       if (range === 'yr') return dt.getUTCFullYear() === new Date().getUTCFullYear();
       return true;
     });
-  }, [tradesS, demo, demoTrades, range]);
+  }, [tradesS, demo, demoTrades, range, cFrom, cTo]);
 
   const filtered = useMemo(() => (sel === 'all' ? ranged : ranged.filter((t) => t.account_id === sel)), [ranged, sel]);
   const a = useMemo(() => analyze(filtered), [filtered]);
@@ -296,6 +301,15 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
     return arr.sort((a2, b2) => b2.vol - a2.vol).slice(0, 8).map((x) => ({ label: x.label, size: x.vol / mx, net: x.net }));
   }, [filtered]);
 
+  const fundAlert = (() => {
+    if (sel === 'all' || !cur) return null;
+    const maxTotal = Number(cur.fund_max_total) || 0, target = Number(cur.fund_target) || 0;
+    const es = lang === 'es';
+    if (maxTotal > 0 && a.maxDD / maxTotal >= 0.8) return { type: 'danger', txt: es ? `⚠ Cuidado: has usado el ${Math.round(a.maxDD / maxTotal * 100)}% de tu pérdida máxima en ${accName(cur)}.` : `⚠ Careful: you've used ${Math.round(a.maxDD / maxTotal * 100)}% of your max loss on ${accName(cur)}.` };
+    if (target > 0 && a.net / target >= 1) return { type: 'ok', txt: es ? `🎉 ¡Objetivo alcanzado en ${accName(cur)}! (${money2(a.net)})` : `🎉 Target reached on ${accName(cur)}! (${money2(a.net)})` };
+    return null;
+  })();
+
   // Insights "Onyx te dice"
   const insights = useMemo(() => {
     const out: { icon: string; txt: string }[] = [];
@@ -351,6 +365,8 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
           <Link className="btn btn-ghost" href="/dashboard/keys">{L.connectBtn}</Link>
         </div>
 
+        <div style={{ marginBottom: 16 }}><MarketHours lang={lang} /></div>
+
         {!hasAccounts ? (
           <div className="card"><h3>{L.empty1_t}</h3><p className="muted" style={{ margin: '8px 0 14px' }}>{L.empty1_d}</p><Link className="btn btn-primary" href="/dashboard/keys">{L.empty1_cta}</Link></div>
         ) : !hasTrades ? (
@@ -365,10 +381,20 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
               </div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {(['d1', 'd7', 'd30', 'mo', 'yr', 'all'] as const).map((r) => <button key={r} className={'btn ' + (range === r ? 'btn-primary' : 'btn-ghost')} style={{ padding: '7px 12px' }} onClick={() => setRange(r)}>{L.ranges[r]}</button>)}
+                <button className={'btn ' + (range === 'custom' ? 'btn-primary' : 'btn-ghost')} style={{ padding: '7px 12px' }} onClick={() => setRange('custom')} title={L.customRange}>📅</button>
                 <button className={'btn ' + (demo ? 'btn-primary' : 'btn-ghost')} style={{ padding: '7px 12px' }} onClick={() => setDemo(!demo)}>🎬 {L.demo}</button>
               </div>
             </div>
+            {range === 'custom' && (
+              <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignSelf: 'flex-start' }}>
+                <span className="muted" style={{ fontSize: 13 }}>{L.from}</span>
+                <input type="date" value={cFrom} onChange={(e) => setCFrom(e.target.value)} style={{ margin: 0, width: 'auto', padding: '7px 9px' }} />
+                <span className="muted" style={{ fontSize: 13 }}>{L.to}</span>
+                <input type="date" value={cTo} onChange={(e) => setCTo(e.target.value)} style={{ margin: 0, width: 'auto', padding: '7px 9px' }} />
+              </div>
+            )}
             {demo && <div style={{ background: 'rgba(255,192,77,.12)', border: '1px solid var(--amber)', color: 'var(--amber)', borderRadius: 10, padding: '8px 14px', fontSize: 13, alignSelf: 'flex-start' }}>{L.demoOn}</div>}
+            {fundAlert && <div style={{ background: fundAlert.type === 'danger' ? 'rgba(255,107,125,.12)' : 'rgba(52,226,160,.12)', border: '1px solid ' + (fundAlert.type === 'danger' ? 'var(--red)' : 'var(--green)'), color: fundAlert.type === 'danger' ? 'var(--red)' : 'var(--green)', borderRadius: 10, padding: '10px 14px', fontSize: 14, fontWeight: 600 }}>{fundAlert.txt}</div>}
 
             {view === 'hub' && (<>
               {/* Onyx te dice */}
@@ -408,6 +434,8 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
                   </button>
                 ))}
               </div>
+
+              <Achievements a={a} accounts={accounts} lang={lang} />
             </>)}
 
             {view !== 'hub' && <button className="btn btn-ghost" style={{ alignSelf: 'flex-start' }} onClick={() => setView('hub')}>{L.back}</button>}
