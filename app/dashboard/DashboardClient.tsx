@@ -2,14 +2,18 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { analyze, bestOf, worstOf, topPairs, fmtDur, type T, type Bucket } from '@/lib/analytics';
+import Journal from './Journal';
 
-type TT = T & { account_id: string };
-type Acc = { id: string; login: number; nickname: string | null; broker: string; platform: string; balance: number; currency: string };
+type TT = T & { account_id: string; id: string };
+type Acc = { id: string; login: number; nickname: string | null; broker: string; platform: string; balance: number; currency: string; fund_target?: number | null; fund_max_daily?: number | null; fund_max_total?: number | null; fund_start?: number | null };
 type Lang = 'es' | 'en';
 
 function money(n: number, dec = 0) {
   const s = Math.abs(n).toLocaleString('en-US', { maximumFractionDigits: dec });
   return (n >= 0 ? '+$' : '-$') + s;
+}
+function money2(n: number) {
+  return (n >= 0 ? '+$' : '-$') + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 const GREEN = '#34e2a0', RED = '#ff6b7d', BLUE = '#7c8cff', PURPLE = '#b98bff', GOLD = '#ffd45e', CYAN = '#3ad0ff';
 
@@ -40,6 +44,9 @@ const D = {
     distTitle: 'Distribución de resultados', noData: 'Sin datos.',
     topPairsT: 'Top 5 mejores pares', botPairsT: 'Top 5 peores pares', noPos: 'Sin pares en positivo.', noNeg: 'Sin pares en negativo.',
     byWeekday: 'Por día de la semana', bySession: 'Por sesión', byHour: 'Por hora del día', byMonth: 'Por mes',
+    fundTitle: '🏆 Reglas de fondeo', fundEdit: '⚙️ Configurar reglas', fundHide: 'Ocultar',
+    fundTarget: 'Objetivo de profit ($)', fundMaxDaily: 'Pérdida diaria máx ($)', fundMaxTotal: 'Pérdida total máx ($)', fundStart: 'Balance inicial ($)',
+    fundSave: 'Guardar reglas', fundProfitBar: 'Progreso al objetivo', fundDDBar: 'Uso de pérdida máxima', fundNoRules: 'Selecciona una cuenta y configura sus reglas para ver el seguimiento.',
   },
   en: {
     nav_dash: 'Dashboard', nav_connect: 'Connect account', nav_plan: 'Plan', signout: 'Sign out',
@@ -61,6 +68,9 @@ const D = {
     distTitle: 'Results distribution', noData: 'No data.',
     topPairsT: 'Top 5 best pairs', botPairsT: 'Top 5 worst pairs', noPos: 'No pairs in profit.', noNeg: 'No pairs in loss.',
     byWeekday: 'By weekday', bySession: 'By session', byHour: 'By hour of day', byMonth: 'By month',
+    fundTitle: '🏆 Prop-firm rules', fundEdit: '⚙️ Set rules', fundHide: 'Hide',
+    fundTarget: 'Profit target ($)', fundMaxDaily: 'Max daily loss ($)', fundMaxTotal: 'Max total loss ($)', fundStart: 'Starting balance ($)',
+    fundSave: 'Save rules', fundProfitBar: 'Progress to target', fundDDBar: 'Max loss used', fundNoRules: 'Select an account and set its rules to see the tracker.',
   },
 } as const;
 
@@ -111,6 +121,48 @@ function Donut({ win, loss, be, L }: { win: number; loss: number; be: number; L:
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function FundCard({ acc, net, maxDD, L, onSave }: { acc: Acc; net: number; maxDD: number; L: any; onSave: (f: any) => void }) {
+  const hasRules = !!(acc.fund_target || acc.fund_max_total);
+  const [edit, setEdit] = useState(!hasRules);
+  const [f, setF] = useState<any>({ fund_target: acc.fund_target ?? '', fund_max_daily: acc.fund_max_daily ?? '', fund_max_total: acc.fund_max_total ?? '', fund_start: acc.fund_start ?? '' });
+  const [saving, setSaving] = useState(false);
+  const set = (k: string, v: any) => setF({ ...f, [k]: v });
+  async function save() { setSaving(true); await fetch('/api/accounts', { method: 'PATCH', body: JSON.stringify({ id: acc.id, ...f }) }); setSaving(false); onSave(f); setEdit(false); }
+
+  const target = Number(acc.fund_target) || 0, maxTotal = Number(acc.fund_max_total) || 0;
+  const tp = target > 0 ? Math.max(0, Math.min(100, (net / target) * 100)) : 0;
+  const dd = maxTotal > 0 ? Math.min(100, (maxDD / maxTotal) * 100) : 0;
+  const lbl = { fontSize: 12, color: 'var(--mut)', margin: '8px 0 4px', display: 'block' } as any;
+
+  return (
+    <div className="card">
+      <div className="row between" style={{ marginBottom: 12 }}>
+        <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{L.fundTitle}</h3>
+        <button className="btn btn-ghost" onClick={() => setEdit(!edit)}>{edit ? L.fundHide : L.fundEdit}</button>
+      </div>
+      {hasRules && (
+        <>
+          <div className="row between" style={{ fontSize: 13, marginBottom: 4 }}><span className="muted">{L.fundProfitBar}</span><span style={{ fontWeight: 700 }}>{Math.round(tp)}%</span></div>
+          <div style={{ height: 10, background: 'var(--bg2)', borderRadius: 6, overflow: 'hidden', marginBottom: 14 }}><div style={{ width: tp + '%', height: '100%', background: '#34e2a0' }} /></div>
+          <div className="row between" style={{ fontSize: 13, marginBottom: 4 }}><span className="muted">{L.fundDDBar}</span><span style={{ fontWeight: 700 }}>{Math.round(dd)}%</span></div>
+          <div style={{ height: 10, background: 'var(--bg2)', borderRadius: 6, overflow: 'hidden' }}><div style={{ width: dd + '%', height: '100%', background: dd > 70 ? '#ff6b7d' : '#ffcf5c' }} /></div>
+        </>
+      )}
+      {edit && (
+        <div style={{ marginTop: hasRules ? 16 : 0 }}>
+          <div className="grid g2">
+            <div><span style={lbl}>{L.fundTarget}</span><input type="number" value={f.fund_target} onChange={(e) => set('fund_target', e.target.value)} style={{ margin: 0 }} /></div>
+            <div><span style={lbl}>{L.fundMaxTotal}</span><input type="number" value={f.fund_max_total} onChange={(e) => set('fund_max_total', e.target.value)} style={{ margin: 0 }} /></div>
+            <div><span style={lbl}>{L.fundMaxDaily}</span><input type="number" value={f.fund_max_daily} onChange={(e) => set('fund_max_daily', e.target.value)} style={{ margin: 0 }} /></div>
+            <div><span style={lbl}>{L.fundStart}</span><input type="number" value={f.fund_start} onChange={(e) => set('fund_start', e.target.value)} style={{ margin: 0 }} /></div>
+          </div>
+          <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={save} disabled={saving}>{saving ? '...' : L.fundSave}</button>
+        </div>
+      )}
     </div>
   );
 }
@@ -250,6 +302,8 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
 
             <p className="muted" style={{ fontSize: 14, margin: '2px 0 -6px' }}>{L.viewing} <b style={{ color: 'var(--tx)' }}>{curName}</b></p>
 
+            {sel !== 'all' && cur && <FundCard acc={cur} net={a.net} maxDD={a.maxDD} L={L} onSave={(fields) => { const toNum = (v: any) => (v === '' || v == null ? null : Number(v)); setAccounts(accounts.map((x) => (x.id === cur.id ? { ...x, fund_target: toNum(fields.fund_target), fund_max_daily: toNum(fields.fund_max_daily), fund_max_total: toNum(fields.fund_max_total), fund_start: toNum(fields.fund_start) } : x))); }} />}
+
             {/* KPIs principales */}
             <div className="grid g4">
               <div className="card kpi"><div className="lbl">{L.kNet}</div><div className={'val ' + (a.net >= 0 ? 'pos' : 'neg')}>{money(a.net)}</div></div>
@@ -298,7 +352,7 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
                     return (<div key={i} onClick={() => b && setSelDay(key === selDay ? null : key)} style={{ background: bg, border: key === selDay ? '2px solid ' + BLUE : '1px solid var(--line)', borderRadius: 8, minHeight: 54, padding: 6, cursor: b ? 'pointer' : 'default' }}><div style={{ fontSize: 11, color: 'var(--mut)' }}>{d}</div>{b && <div style={{ fontSize: 12, fontWeight: 800, marginTop: 4, color: net >= 0 ? '#04150d' : '#1a0509' }}>{money(net)}</div>}{b && <div style={{ fontSize: 10, color: net >= 0 ? '#04150d' : '#1a0509', opacity: .75 }}>{b.count} {L.ops}</div>}</div>);
                   })}
                 </div>
-                {selDay && (<div style={{ marginTop: 14, borderTop: '1px solid var(--line)', paddingTop: 12 }}><b>{L.dayOps} {selDay}</b><table style={{ marginTop: 8 }}><tbody>{dayTrades.map((t, i) => (<tr key={i}><td>{t.symbol}</td><td className="muted">{t.side}</td><td className="muted">{new Date(t.close_time).toUTCString().slice(17, 22)}</td><td style={{ textAlign: 'right' }} className={+t.net_profit >= 0 ? 'pos' : 'neg'}>{money(+t.net_profit)}</td></tr>))}</tbody></table></div>)}
+                {selDay && (<div style={{ marginTop: 14, borderTop: '1px solid var(--line)', paddingTop: 12 }}><b>{L.dayOps} {selDay}</b><table style={{ marginTop: 8 }}><tbody>{dayTrades.map((t, i) => (<tr key={i}><td>{t.symbol}</td><td className="muted">{t.side}</td><td className="muted" style={{ textAlign: 'right' }}>{(+t.volume).toFixed(2)}</td><td className="muted">{new Date(t.close_time).toUTCString().slice(17, 22)}</td><td style={{ textAlign: 'right' }} className={+t.net_profit >= 0 ? 'pos' : 'neg'}>{money2(+t.net_profit)}</td></tr>))}</tbody></table></div>)}
               </>) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
                   {MOL[lang].map((m, i) => { const key = `${calY}-${String(i + 1).padStart(2, '0')}`; const b = a.byMonth[key]; const net = b?.net || 0;
@@ -357,6 +411,8 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
             </div>
             <Card title={L.byHour} icon="⏰">{hourData.length ? hourData.map((d, i) => <BarRow key={i} label={d.label} b={d.b} max={maxH} ops={L.ops} />) : <p className="muted">{L.noData}</p>}</Card>
             <Card title={L.byMonth} icon="🗓️">{monthData.length ? monthData.map((d, i) => <BarRow key={i} label={d.label} b={d.b} max={maxM} ops={L.ops} />) : <p className="muted">{L.noData}</p>}</Card>
+
+            <Journal trades={filtered} lang={lang} />
           </div>
         )}
       </div>
