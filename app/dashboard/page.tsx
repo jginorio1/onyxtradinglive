@@ -10,7 +10,7 @@ export default async function Dashboard() {
   if (!user) redirect('/login');
 
   const { data: profile } = await sb.from('profiles').select('plan').eq('id', user.id).single();
-  const { data: accounts } = await sb.from('trading_accounts').select('id,login,nickname,broker,platform,balance,currency,fund_target,fund_max_daily,fund_max_total,fund_start').eq('user_id', user.id);
+  const { data: accounts } = await sb.from('trading_accounts').select('id,login,nickname,broker,platform,balance,currency,fund_target,fund_max_daily,fund_max_total,fund_start,acc_type,challenge_status,challenge_cost').eq('user_id', user.id);
   const accIds = (accounts || []).map((a: any) => a.id);
 
   let trades: any[] = [];

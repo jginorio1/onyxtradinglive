@@ -11,7 +11,8 @@ export async function PATCH(req: Request) {
   const b = await req.json();
   const fields: any = {};
   if (b.nickname !== undefined) fields.nickname = (b.nickname || '').slice(0, 40);
-  ['fund_target', 'fund_max_daily', 'fund_max_total', 'fund_start'].forEach((k) => {
+  ['acc_type', 'challenge_status'].forEach((k) => { if (b[k] !== undefined) fields[k] = b[k] || null; });
+  ['fund_target', 'fund_max_daily', 'fund_max_total', 'fund_start', 'challenge_cost'].forEach((k) => {
     if (b[k] !== undefined) fields[k] = b[k] === '' || b[k] === null ? null : Number(b[k]);
   });
   if (!Object.keys(fields).length) return NextResponse.json({ error: 'nada que actualizar' }, { status: 400 });

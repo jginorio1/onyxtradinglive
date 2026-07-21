@@ -3,6 +3,9 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { analyze, bestOf, worstOf, topPairs, fmtDur, type T, type Bucket } from '@/lib/analytics';
 import Journal from './Journal';
+import AccountExtras from './AccountExtras';
+import CompareAccounts from './CompareAccounts';
+import { typeMeta } from '@/lib/accountMeta';
 
 type TT = T & { account_id: string; id: string };
 type Acc = { id: string; login: number; nickname: string | null; broker: string; platform: string; balance: number; currency: string; fund_target?: number | null; fund_max_daily?: number | null; fund_max_total?: number | null; fund_start?: number | null };
@@ -290,7 +293,7 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
               <table><thead><tr><th>{L.th_acc}</th><th>{L.th_broker}</th><th style={{ textAlign: 'right' }}>{L.th_bal}</th><th style={{ textAlign: 'right' }}>{L.th_net}</th><th style={{ textAlign: 'right' }}>{L.th_win}</th><th></th></tr></thead>
                 <tbody>{accounts.map((x) => { const st = accStats(x.id); return (
                   <tr key={x.id}>
-                    <td>{editing === x.id ? (<span style={{ display: 'flex', gap: 6 }}><input value={nick} onChange={(e) => setNick(e.target.value)} placeholder={L.nickPh} style={{ width: 140, marginTop: 0, padding: '6px 8px' }} /><button className="btn btn-primary" onClick={() => saveNick(x.id)}>✓</button><button className="btn btn-ghost" onClick={() => setEditing('')}>✕</button></span>) : (<span>{accName(x)} <span className="muted" style={{ fontSize: 12 }}>· {x.platform} · #{x.login}</span></span>)}</td>
+                    <td>{editing === x.id ? (<span style={{ display: 'flex', gap: 6 }}><input value={nick} onChange={(e) => setNick(e.target.value)} placeholder={L.nickPh} style={{ width: 140, marginTop: 0, padding: '6px 8px' }} /><button className="btn btn-primary" onClick={() => saveNick(x.id)}>✓</button><button className="btn btn-ghost" onClick={() => setEditing('')}>✕</button></span>) : (<span>{accName(x)} {typeMeta(x.acc_type) && <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 10, background: typeMeta(x.acc_type)!.color + '22', color: typeMeta(x.acc_type)!.color }}>{lang === 'es' ? typeMeta(x.acc_type)!.es : typeMeta(x.acc_type)!.en}</span>} <span className="muted" style={{ fontSize: 12 }}>· {x.platform} · #{x.login}</span></span>)}</td>
                     <td className="muted">{x.broker}</td>
                     <td style={{ textAlign: 'right' }}>${Number(x.balance || 0).toLocaleString()}</td>
                     <td style={{ textAlign: 'right' }} className={st.net >= 0 ? 'pos' : 'neg'}>{money(st.net)}</td>
@@ -300,9 +303,13 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
               </table>
             </Card>
 
+            {accounts.length >= 2 && <CompareAccounts accounts={accounts} trades={trades} lang={lang} />}
+
             <p className="muted" style={{ fontSize: 14, margin: '2px 0 -6px' }}>{L.viewing} <b style={{ color: 'var(--tx)' }}>{curName}</b></p>
 
             {sel !== 'all' && cur && <FundCard acc={cur} net={a.net} maxDD={a.maxDD} L={L} onSave={(fields) => { const toNum = (v: any) => (v === '' || v == null ? null : Number(v)); setAccounts(accounts.map((x) => (x.id === cur.id ? { ...x, fund_target: toNum(fields.fund_target), fund_max_daily: toNum(fields.fund_max_daily), fund_max_total: toNum(fields.fund_max_total), fund_start: toNum(fields.fund_start) } : x))); }} />}
+
+            {sel !== 'all' && cur && <AccountExtras acc={cur} net={a.net} lang={lang} onSaved={(fields) => setAccounts(accounts.map((x) => (x.id === cur.id ? { ...x, acc_type: fields.acc_type || null, challenge_status: fields.challenge_status || null, challenge_cost: fields.challenge_cost === '' ? null : Number(fields.challenge_cost) } : x)))} />}
 
             {/* KPIs principales */}
             <div className="grid g4">
