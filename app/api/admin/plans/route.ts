@@ -23,13 +23,18 @@ export async function POST(req: Request) {
   const row = {
     id: String(b.id).toLowerCase().replace(/[^a-z0-9_-]/g, ''),
     name: b.name,
+    name_en: b.name_en || b.name,
+    desc_es: b.desc_es || null,
+    desc_en: b.desc_en || null,
     price_month: Number(b.price_month) || 0,
     price_year: Number(b.price_year) || 0,
     stripe_price_id: b.stripe_price_id || null,
     stripe_price_id_year: b.stripe_price_id_year || null,
     max_accounts: Number(b.max_accounts) || 1,
     features: Array.isArray(b.features) ? b.features : [],
+    features_en: Array.isArray(b.features_en) ? b.features_en : [],
     badge: b.badge || null,
+    badge_en: b.badge_en || null,
     active: b.active !== false,
     sort: Number(b.sort) || 0,
   };
@@ -46,9 +51,10 @@ export async function PATCH(req: Request) {
   const b = await req.json();
   if (!b.id) return NextResponse.json({ error: 'falta id' }, { status: 400 });
   const fields: any = { updated_at: new Date().toISOString() };
-  ['name', 'stripe_price_id', 'stripe_price_id_year', 'badge'].forEach((k) => { if (b[k] !== undefined) fields[k] = b[k]; });
+  ['name', 'name_en', 'desc_es', 'desc_en', 'stripe_price_id', 'stripe_price_id_year', 'badge', 'badge_en'].forEach((k) => { if (b[k] !== undefined) fields[k] = b[k]; });
   ['price_month', 'price_year', 'max_accounts', 'sort'].forEach((k) => { if (b[k] !== undefined) fields[k] = Number(b[k]) || 0; });
   if (b.features !== undefined) fields.features = Array.isArray(b.features) ? b.features : [];
+  if (b.features_en !== undefined) fields.features_en = Array.isArray(b.features_en) ? b.features_en : [];
   if (b.active !== undefined) fields.active = !!b.active;
   const { error } = await supabaseAdmin.from('plans').update(fields).eq('id', b.id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

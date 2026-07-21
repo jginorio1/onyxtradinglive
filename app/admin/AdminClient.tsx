@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 
-type Plan = { id: string; name: string; price_month: number; price_year: number; stripe_price_id: string | null; stripe_price_id_year: string | null; max_accounts: number; features: string[]; badge: string | null; active: boolean; sort: number };
+type Plan = { id: string; name: string; name_en: string; desc_es: string | null; desc_en: string | null; price_month: number; price_year: number; stripe_price_id: string | null; stripe_price_id_year: string | null; max_accounts: number; features: string[]; features_en: string[]; badge: string | null; badge_en: string | null; active: boolean; sort: number };
 type User = { id: string; email: string; plan: string; subscription_status: string | null; banned: boolean; is_admin: boolean; created_at: string; accounts: number; lastSync: string | null };
 
 export default function AdminClient({ meEmail, accounts, trades }: { meEmail: string; accounts: number; trades: number }) {
@@ -128,7 +128,7 @@ function PlansTab({ plans, reload }: { plans: Plan[]; reload: () => void }) {
         <h3>Planes ({plans.length})</h3>
         <button className="btn btn-primary" onClick={() => setCreating(true)}>+ Nuevo plan</button>
       </div>
-      {creating && <PlanCard plan={{ id: '', name: '', price_month: 0, price_year: 0, stripe_price_id: '', stripe_price_id_year: '', max_accounts: 1, features: [], badge: '', active: true, sort: plans.length } as any} isNew reload={() => { setCreating(false); reload(); }} onCancel={() => setCreating(false)} />}
+      {creating && <PlanCard plan={{ id: '', name: '', name_en: '', desc_es: '', desc_en: '', price_month: 0, price_year: 0, stripe_price_id: '', stripe_price_id_year: '', max_accounts: 1, features: [], features_en: [], badge: '', badge_en: '', active: true, sort: plans.length } as any} isNew reload={() => { setCreating(false); reload(); }} onCancel={() => setCreating(false)} />}
       <div className="grid g3">
         {plans.map((p) => <PlanCard key={p.id} plan={p} reload={reload} />)}
       </div>
@@ -141,9 +141,10 @@ function PlanCard({ plan, isNew, reload, onCancel }: { plan: Plan; isNew?: boole
   const [saving, setSaving] = useState(false);
   const set = (k: keyof Plan, v: any) => setP({ ...p, [k]: v });
 
+  const norm = (f: any) => (Array.isArray(f) ? f : String(f || '').split('\n')).map((s) => String(s).trim()).filter(Boolean);
   async function save() {
     setSaving(true);
-    const body = { ...p, features: (Array.isArray(p.features) ? p.features : String(p.features).split('\n')).map((s) => String(s).trim()).filter(Boolean) };
+    const body = { ...p, features: norm(p.features), features_en: norm(p.features_en) };
     const r = await fetch('/api/admin/plans', { method: isNew ? 'POST' : 'PATCH', body: JSON.stringify(body) });
     const j = await r.json();
     setSaving(false);
@@ -156,29 +157,40 @@ function PlanCard({ plan, isNew, reload, onCancel }: { plan: Plan; isNew?: boole
     const j = await r.json(); if (!r.ok) { alert(j.error || 'error'); return; } reload();
   }
 
-  const featText = Array.isArray(p.features) ? p.features.join('\n') : (p.features as any);
+  const featES = Array.isArray(p.features) ? p.features.join('\n') : (p.features as any);
+  const featEN = Array.isArray(p.features_en) ? p.features_en.join('\n') : (p.features_en as any);
   const lbl = { fontSize: 12, color: 'var(--mut)', marginTop: 8, display: 'block' } as any;
+  const ta = { width: '100%', marginTop: 4, padding: '10px 12px', background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, color: 'var(--tx)', fontSize: 14, fontFamily: 'inherit' } as any;
+  const flag = { fontSize: 12, fontWeight: 700, letterSpacing: '.5px', color: 'var(--brand)', margin: '14px 0 2px', display: 'block' } as any;
 
   return (
     <div className="card" style={p.active ? {} : { opacity: .6 }}>
       <div className="row" style={{ gap: 8 }}>
         <input placeholder="id (pro)" value={p.id} disabled={!isNew} onChange={(e) => set('id', e.target.value)} style={{ margin: 0, width: 90 }} />
-        <input placeholder="Nombre" value={p.name} onChange={(e) => set('name', e.target.value)} style={{ margin: 0 }} />
-      </div>
-      <div className="row" style={{ gap: 8, marginTop: 8 }}>
         <div style={{ flex: 1 }}><span style={lbl}>$ / mes</span><input type="number" value={p.price_month} onChange={(e) => set('price_month', e.target.value)} style={{ margin: '4px 0 0' }} /></div>
         <div style={{ flex: 1 }}><span style={lbl}>$ / año</span><input type="number" value={p.price_year} onChange={(e) => set('price_year', e.target.value)} style={{ margin: '4px 0 0' }} /></div>
-        <div style={{ width: 80 }}><span style={lbl}>Cuentas</span><input type="number" value={p.max_accounts} onChange={(e) => set('max_accounts', e.target.value)} style={{ margin: '4px 0 0' }} /></div>
+        <div style={{ width: 76 }}><span style={lbl}>Cuentas</span><input type="number" value={p.max_accounts} onChange={(e) => set('max_accounts', e.target.value)} style={{ margin: '4px 0 0' }} /></div>
       </div>
-      <span style={lbl}>Stripe Price ID (mensual)</span>
-      <input placeholder="price_..." value={p.stripe_price_id || ''} onChange={(e) => set('stripe_price_id', e.target.value)} style={{ margin: '4px 0 0' }} />
-      <span style={lbl}>Stripe Price ID (anual)</span>
-      <input placeholder="price_..." value={p.stripe_price_id_year || ''} onChange={(e) => set('stripe_price_id_year', e.target.value)} style={{ margin: '4px 0 0' }} />
-      <span style={lbl}>Etiqueta (badge)</span>
-      <input placeholder="Más popular" value={p.badge || ''} onChange={(e) => set('badge', e.target.value)} style={{ margin: '4px 0 0' }} />
+
+      <span style={flag}>🇪🇸 ESPAÑOL</span>
+      <input placeholder="Nombre" value={p.name} onChange={(e) => set('name', e.target.value)} style={{ margin: '4px 0 0' }} />
+      <input placeholder="Descripción corta" value={p.desc_es || ''} onChange={(e) => set('desc_es', e.target.value)} style={{ margin: '8px 0 0' }} />
+      <input placeholder="Etiqueta (ej. Más popular)" value={p.badge || ''} onChange={(e) => set('badge', e.target.value)} style={{ margin: '8px 0 0' }} />
       <span style={lbl}>Funciones (una por línea)</span>
-      <textarea value={featText} onChange={(e) => set('features', e.target.value.split('\n') as any)} rows={5} style={{ width: '100%', marginTop: 4, padding: '10px 12px', background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, color: 'var(--tx)', fontSize: 14, fontFamily: 'inherit' }} />
-      <label className="row" style={{ gap: 8, marginTop: 10, cursor: 'pointer' }}><input type="checkbox" checked={p.active} onChange={(e) => set('active', e.target.checked)} style={{ width: 'auto', margin: 0 }} /> Activo (visible en /pricing)</label>
+      <textarea value={featES} onChange={(e) => set('features', e.target.value.split('\n') as any)} rows={5} style={ta} />
+
+      <span style={flag}>🇬🇧 ENGLISH</span>
+      <input placeholder="Name" value={p.name_en || ''} onChange={(e) => set('name_en', e.target.value)} style={{ margin: '4px 0 0' }} />
+      <input placeholder="Short description" value={p.desc_en || ''} onChange={(e) => set('desc_en', e.target.value)} style={{ margin: '8px 0 0' }} />
+      <input placeholder="Badge (e.g. Most popular)" value={p.badge_en || ''} onChange={(e) => set('badge_en', e.target.value)} style={{ margin: '8px 0 0' }} />
+      <span style={lbl}>Features (one per line)</span>
+      <textarea value={featEN} onChange={(e) => set('features_en', e.target.value.split('\n') as any)} rows={5} style={ta} />
+
+      <span style={flag}>💳 STRIPE</span>
+      <input placeholder="Price ID mensual (price_...)" value={p.stripe_price_id || ''} onChange={(e) => set('stripe_price_id', e.target.value)} style={{ margin: '4px 0 0' }} />
+      <input placeholder="Price ID anual (price_...)" value={p.stripe_price_id_year || ''} onChange={(e) => set('stripe_price_id_year', e.target.value)} style={{ margin: '8px 0 0' }} />
+
+      <label className="row" style={{ gap: 8, marginTop: 12, cursor: 'pointer' }}><input type="checkbox" checked={p.active} onChange={(e) => set('active', e.target.checked)} style={{ width: 'auto', margin: 0 }} /> Activo (visible en el landing y /pricing)</label>
       <div className="row" style={{ gap: 8, marginTop: 12 }}>
         <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? '...' : (isNew ? 'Crear plan' : 'Guardar')}</button>
         {isNew ? <button className="btn btn-ghost" onClick={onCancel}>Cancelar</button> : (p.id !== 'free' && <button className="btn btn-danger" onClick={del}>Borrar</button>)}

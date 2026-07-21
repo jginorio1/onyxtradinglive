@@ -242,7 +242,18 @@ export default function Home() {
   const [firm, setFirm] = useState(0);
   const [pnl, setPnl] = useState(1800);
   const [vidErr, setVidErr] = useState(false);
+  const [dbPlans, setDbPlans] = useState<any[]>([]);
   const t = dict[lang];
+
+  useEffect(() => {
+    try {
+      const s = localStorage.getItem('onyx_lang');
+      if (s === 'en' || s === 'es') setLang(s as Lang);
+      else if (typeof navigator !== 'undefined' && navigator.language?.toLowerCase().startsWith('en')) setLang('en');
+    } catch {}
+    fetch('/api/admin/plans').then((r) => r.json()).then((j) => setDbPlans(j.plans || [])).catch(() => {});
+  }, []);
+  function switchLang(l: Lang) { setLang(l); try { localStorage.setItem('onyx_lang', l); } catch {} }
   const f = FIRMS[firm];
   const target = 5000, maxLoss = 5000;
   const targetPct = Math.max(0, Math.min(100, (pnl / target) * 100));
@@ -258,7 +269,7 @@ export default function Home() {
         <div className="logo"><span className="mark">◆</span> Onyx Trading Live</div>
         <div className="navl"><a href="#features">{t.nav.features}</a><a href="#how">{t.nav.how}</a><a href="#fondeo">{t.nav.fondeo}</a><a href="#pricing">{t.nav.pricing}</a><a href="#faq">{t.nav.faq}</a></div>
         <div className="row">
-          <button className="btn btn-ghost" style={{ padding: '6px 10px' }} onClick={() => setLang(lang === 'es' ? 'en' : 'es')}>{lang === 'es' ? '🇬🇧 EN' : '🇪🇸 ES'}</button>
+          <button className="btn btn-ghost" style={{ padding: '6px 10px' }} onClick={() => switchLang(lang === 'es' ? 'en' : 'es')}>{lang === 'es' ? '🇬🇧 EN' : '🇪🇸 ES'}</button>
           <Link className="btn btn-ghost" href="/login">{t.nav.login}</Link>
           <Link className="btn btn-primary" href="/login?mode=signup">{t.nav.cta}</Link>
         </div>
@@ -496,15 +507,24 @@ export default function Home() {
           <button className={'btn ' + (annual ? 'btn-primary' : 'btn-ghost')} onClick={() => setAnnual(true)}>{t.annual}</button>
         </div>
         <div className="grid g3">
-          {t.plans.map((p, i) => (
-            <div key={i} className="card" style={p.pop ? { border: '2px solid var(--brand)' } : {}}>
-              {p.pop && <span className="pill green" style={{ marginBottom: 8, display: 'inline-block' }}>★ {lang === 'es' ? 'Más popular' : 'Most popular'}</span>}
-              <h3>{p.n}</h3>
-              <div style={{ fontSize: 42, fontWeight: 800, margin: '6px 0 2px' }}>${annual ? p.p * 10 : p.p}<span className="muted" style={{ fontSize: 15, fontWeight: 500 }}>/{annual ? (lang === 'es' ? 'año' : 'yr') : (lang === 'es' ? 'mes' : 'mo')}</span></div>
-              <ul style={{ listStyle: 'none', margin: '16px 0' }}>{p.items.map((it, j) => <li key={j} style={{ padding: '7px 0', color: '#d6dae6' }}>✓ {it}</li>)}</ul>
-              <Link className={'btn ' + (p.pop ? 'btn-primary' : 'btn-ghost')} href="/login?mode=signup" style={{ display: 'block', textAlign: 'center' }}>{p.cta}</Link>
-            </div>
-          ))}
+          {dbPlans.map((p) => {
+            const price = annual ? p.price_year : p.price_month;
+            const name = lang === 'es' ? p.name : (p.name_en || p.name);
+            const desc = lang === 'es' ? p.desc_es : (p.desc_en || p.desc_es);
+            const feats = (lang === 'es' ? p.features : (p.features_en?.length ? p.features_en : p.features)) || [];
+            const badge = lang === 'es' ? p.badge : (p.badge_en || p.badge);
+            const pop = !!badge;
+            return (
+              <div key={p.id} className="card" style={pop ? { border: '2px solid var(--brand)' } : {}}>
+                {badge && <span className="pill green" style={{ marginBottom: 8, display: 'inline-block' }}>★ {badge}</span>}
+                <h3>{name}</h3>
+                {desc && <p className="muted" style={{ fontSize: 13, marginTop: 4 }}>{desc}</p>}
+                <div style={{ fontSize: 42, fontWeight: 800, margin: '8px 0 2px' }}>${price}<span className="muted" style={{ fontSize: 15, fontWeight: 500 }}>/{annual ? (lang === 'es' ? 'año' : 'yr') : (lang === 'es' ? 'mes' : 'mo')}</span></div>
+                <ul style={{ listStyle: 'none', margin: '16px 0' }}>{feats.map((it: string, j: number) => <li key={j} style={{ padding: '7px 0', color: '#d6dae6' }}>✓ {it}</li>)}</ul>
+                <Link className={'btn ' + (pop ? 'btn-primary' : 'btn-ghost')} href="/login?mode=signup" style={{ display: 'block', textAlign: 'center' }}>{price === 0 ? (lang === 'es' ? 'Empezar gratis' : 'Start free') : (lang === 'es' ? 'Elegir ' : 'Choose ') + name}</Link>
+              </div>
+            );
+          })}
         </div>
       </div>
 
