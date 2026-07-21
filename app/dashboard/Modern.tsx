@@ -81,6 +81,39 @@ export function MiniRadar({ vals, size = 92, color = '#7c8cff' }: { vals: number
   );
 }
 
+const m2 = (n: number) => (n >= 0 ? '+$' : '-$') + Math.abs(n).toLocaleString('en-US', { maximumFractionDigits: 0 });
+
+// Radar con ejes etiquetados (valores 0..1)
+export function RadarChart({ axes, size = 230, color = '#7c8cff' }: { axes: { label: string; val: number }[]; size?: number; color?: string }) {
+  const n = axes.length, c = size / 2, R = size / 2 - 38;
+  const pt = (i: number, r: number) => { const ang = -Math.PI / 2 + (i / n) * 2 * Math.PI; return [c + Math.cos(ang) * r, c + Math.sin(ang) * r]; };
+  const str = (a: number[][]) => a.map((p) => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+  const grid = (f: number) => axes.map((_, i) => pt(i, R * f));
+  const poly = axes.map((ax, i) => pt(i, R * Math.max(0.04, Math.min(1, ax.val))));
+  return (
+    <svg width="100%" height={size} viewBox={`0 0 ${size} ${size}`} style={{ maxWidth: size, margin: '0 auto', display: 'block' }}>
+      {[1, 0.66, 0.33].map((f, k) => <polygon key={k} points={str(grid(f))} fill="none" stroke="#2f3a52" strokeWidth={k === 0 ? 1 : 0.5} />)}
+      {axes.map((_, i) => { const p = pt(i, R); return <line key={i} x1={c} y1={c} x2={p[0]} y2={p[1]} stroke="#2f3a52" strokeWidth="0.5" />; })}
+      <polygon points={str(poly)} fill={color + '44'} stroke={color} strokeWidth="2" />
+      {poly.map((p, i) => <circle key={i} cx={p[0]} cy={p[1]} r="3" fill={color} />)}
+      {axes.map((ax, i) => { const p = pt(i, R + 18); return <text key={i} x={p[0]} y={p[1]} textAnchor="middle" fill="#9aa6bd" fontSize="11" dominantBaseline="middle">{ax.label}</text>; })}
+    </svg>
+  );
+}
+
+// Burbujas: tamaño = volumen, color = resultado
+export function Bubbles({ items }: { items: { label: string; size: number; net: number }[] }) {
+  if (!items.length) return <p className="muted">—</p>;
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', justifyContent: 'center', padding: '10px 0' }}>
+      {items.map((it, i) => { const r = 20 + it.size * 34; const col = it.net >= 0 ? '#34e2a0' : '#ff6b7d'; return (
+        <div key={i} title={`${it.label} · ${m2(it.net)}`} style={{ width: r * 2, height: r * 2, borderRadius: '50%', background: col + '22', border: '2px solid ' + col, display: 'grid', placeItems: 'center', textAlign: 'center' }}>
+          <div><div style={{ fontSize: Math.max(10, r * 0.3), fontWeight: 800, color: '#f2f5fb' }}>{it.label}</div><div style={{ fontSize: 10, color: col }}>{m2(it.net)}</div></div>
+        </div>); })}
+    </div>
+  );
+}
+
 // Puntuación de salud 0-100 a partir del análisis
 export function healthScore(a: { winRate: number; profitFactor: number; payoff: number }) {
   const wr = a.winRate;

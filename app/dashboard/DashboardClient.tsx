@@ -7,7 +7,30 @@ import Costs from './Costs';
 import AccountExtras from './AccountExtras';
 import CompareAccounts from './CompareAccounts';
 import { typeMeta } from '@/lib/accountMeta';
-import { Ring, MiniArea, MiniDonut, MiniBars, MiniHeat, healthScore } from './Modern';
+import { Ring, MiniArea, MiniDonut, MiniBars, MiniHeat, RadarChart, Bubbles, healthScore } from './Modern';
+
+// Genera operaciones de ejemplo variadas (modo demo)
+function genDemo(accId: string): TT[] {
+  const syms = ['US100', 'EURUSD', 'GBPUSD', 'XAUUSD', 'GER40'];
+  const out: TT[] = []; let t = Date.now() - 90 * 864e5;
+  for (let i = 0; i < 165; i++) {
+    t += Math.random() * 11 * 3600 * 1000;
+    const sym = syms[Math.floor(Math.random() * syms.length)];
+    const side = Math.random() < 0.5 ? 'buy' : 'sell';
+    const vol = Math.round((0.1 + Math.random() * 1.9) * 100) / 100;
+    const win = Math.random() < 0.58;
+    const big = sym === 'US100' || sym === 'GER40' || sym === 'XAUUSD';
+    const mag = (big ? 60 + Math.random() * 320 : 20 + Math.random() * 180);
+    const gross = win ? mag : -mag * (0.65 + Math.random() * 0.6);
+    const comm = -vol * 3.2;
+    const swap = Math.random() < 0.28 ? -(Math.random() * 4) : (Math.random() < 0.1 ? Math.random() * 2 : 0);
+    const openT = new Date(t); openT.setUTCHours(6 + Math.floor(Math.random() * 14), Math.floor(Math.random() * 60));
+    const closeT = new Date(openT.getTime() + (5 + Math.random() * 240) * 60000);
+    const r2 = (n: number) => Math.round(n * 100) / 100;
+    out.push({ id: 'demo' + i, account_id: accId, symbol: sym, side, volume: vol, open_time: openT.toISOString(), close_time: closeT.toISOString(), profit: r2(gross), commission: r2(comm), swap: r2(swap), net_profit: r2(gross + comm + swap) } as TT);
+  }
+  return out.sort((a, b) => b.close_time.localeCompare(a.close_time));
+}
 
 type TT = T & { account_id: string; id: string; commission?: number; swap?: number; profit?: number };
 type Acc = { id: string; login: number; nickname: string | null; broker: string; platform: string; balance: number; currency: string; fund_target?: number | null; fund_max_daily?: number | null; fund_max_total?: number | null; fund_start?: number | null; acc_type?: string | null; challenge_status?: string | null; challenge_cost?: number | null };
@@ -45,6 +68,7 @@ const D = {
     accCard: 'Cuentas y portafolio', balTotal: 'Balance total', accounts: 'Cuentas', opsTotal: 'Operaciones', th_acc: 'Cuenta', th_broker: 'Bróker', th_bal: 'Balance', th_net: 'Neto', th_win: 'Win', nickPh: 'Ej: FTMO 50K', nameBtn: '✏️ Nombre',
     fundTitle: '🏆 Reglas de fondeo', fundEdit: '⚙️ Configurar reglas', fundHide: 'Ocultar', fundTarget: 'Objetivo de profit ($)', fundMaxDaily: 'Pérdida diaria máx ($)', fundMaxTotal: 'Pérdida total máx ($)', fundStart: 'Balance inicial ($)', fundSave: 'Guardar reglas', fundProfitBar: 'Progreso al objetivo', fundDDBar: 'Uso de pérdida máxima',
     ranges: { d1: 'Hoy', d7: '7d', d30: '30d', mo: 'Mes', yr: 'Año', all: 'Todo' },
+    radarTitle: 'Perfil del trader', bubbleTitle: 'Pares · volumen y resultado', rWR: 'Win rate', rPF: 'P. factor', rPayoff: 'Payoff', rConsist: 'Consistencia', rRisk: 'Riesgo', demo: 'Demo', demoOn: '🎬 Viendo datos de ejemplo (no reales)',
   },
   en: {
     nav_dash: 'Dashboard', nav_connect: 'Connect account', nav_plan: 'Plan', signout: 'Sign out',
@@ -66,6 +90,7 @@ const D = {
     accCard: 'Accounts & portfolio', balTotal: 'Total balance', accounts: 'Accounts', opsTotal: 'Trades', th_acc: 'Account', th_broker: 'Broker', th_bal: 'Balance', th_net: 'Net', th_win: 'Win', nickPh: 'e.g. FTMO 50K', nameBtn: '✏️ Name',
     fundTitle: '🏆 Prop-firm rules', fundEdit: '⚙️ Set rules', fundHide: 'Hide', fundTarget: 'Profit target ($)', fundMaxDaily: 'Max daily loss ($)', fundMaxTotal: 'Max total loss ($)', fundStart: 'Starting balance ($)', fundSave: 'Save rules', fundProfitBar: 'Progress to target', fundDDBar: 'Max loss used',
     ranges: { d1: 'Today', d7: '7d', d30: '30d', mo: 'Month', yr: 'Year', all: 'All' },
+    radarTitle: 'Trader profile', bubbleTitle: 'Pairs · volume and result', rWR: 'Win rate', rPF: 'P. factor', rPayoff: 'Payoff', rConsist: 'Consistency', rRisk: 'Risk', demo: 'Demo', demoOn: '🎬 Viewing example data (not real)',
   },
 } as const;
 
@@ -153,6 +178,8 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
   const [sel, setSel] = useState<string>('all');
   const [view, setView] = useState<View>('hub');
   const [range, setRange] = useState<keyof typeof D['es']['ranges']>('all');
+  const [demo, setDemo] = useState(false);
+  const demoTrades = useMemo(() => genDemo(accs0[0]?.id || 'demo'), []);
   const [editing, setEditing] = useState<string>('');
   const [nick, setNick] = useState('');
   const [lastUpdate, setLastUpdate] = useState<number>(Date.now());
@@ -183,7 +210,8 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
   // filtro de tiempo
   const ranged = useMemo(() => {
     const now = Date.now();
-    return tradesS.filter((x) => {
+    const src = demo ? demoTrades : tradesS;
+    return src.filter((x) => {
       const dt = new Date(x.close_time); const d = dt.getTime();
       if (range === 'd1') return d >= now - 864e5;
       if (range === 'd7') return d >= now - 7 * 864e5;
@@ -192,7 +220,7 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
       if (range === 'yr') return dt.getUTCFullYear() === new Date().getUTCFullYear();
       return true;
     });
-  }, [tradesS, range]);
+  }, [tradesS, demo, demoTrades, range]);
 
   const filtered = useMemo(() => (sel === 'all' ? ranged : ranged.filter((t) => t.account_id === sel)), [ranged, sel]);
   const a = useMemo(() => analyze(filtered), [filtered]);
@@ -249,8 +277,24 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
   const curName = sel === 'all' ? L.portfolio : (cur ? accName(cur) : '');
 
   const hasAccounts = accounts.length > 0;
-  const hasTrades = tradesS.length > 0;
+  const hasTrades = (demo ? demoTrades.length : tradesS.length) > 0;
   const hs = healthScore(a);
+
+  // Perfil (radar) y burbujas de pares
+  const radarAxes = [
+    { label: L.rWR, val: a.winRate / 100 },
+    { label: L.rPF, val: Math.min(a.profitFactor, 3) / 3 },
+    { label: L.rPayoff, val: Math.min(a.payoff, 2) / 2 },
+    { label: L.rConsist, val: a.n ? Math.max(0, 1 - (a.maxLoss / Math.max(3, a.n)) * 2) : 0 },
+    { label: L.rRisk, val: Math.max(0, 1 - Math.min(1, a.maxDD / (Math.abs(a.net) + a.maxDD + 1))) },
+  ];
+  const bubbleData = useMemo(() => {
+    const m: Record<string, { vol: number; net: number }> = {};
+    for (const x of filtered) { const s = x.symbol; if (!m[s]) m[s] = { vol: 0, net: 0 }; m[s].vol += Math.abs(+x.volume || 0); m[s].net += +x.net_profit || 0; }
+    const arr = Object.entries(m).map(([label, v]) => ({ label, vol: v.vol, net: v.net }));
+    const mx = Math.max(1, ...arr.map((x) => x.vol));
+    return arr.sort((a2, b2) => b2.vol - a2.vol).slice(0, 8).map((x) => ({ label: x.label, size: x.vol / mx, net: x.net }));
+  }, [filtered]);
 
   // Insights "Onyx te dice"
   const insights = useMemo(() => {
@@ -321,8 +365,10 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
               </div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {(['d1', 'd7', 'd30', 'mo', 'yr', 'all'] as const).map((r) => <button key={r} className={'btn ' + (range === r ? 'btn-primary' : 'btn-ghost')} style={{ padding: '7px 12px' }} onClick={() => setRange(r)}>{L.ranges[r]}</button>)}
+                <button className={'btn ' + (demo ? 'btn-primary' : 'btn-ghost')} style={{ padding: '7px 12px' }} onClick={() => setDemo(!demo)}>🎬 {L.demo}</button>
               </div>
             </div>
+            {demo && <div style={{ background: 'rgba(255,192,77,.12)', border: '1px solid var(--amber)', color: 'var(--amber)', borderRadius: 10, padding: '8px 14px', fontSize: 13, alignSelf: 'flex-start' }}>{L.demoOn}</div>}
 
             {view === 'hub' && (<>
               {/* Onyx te dice */}
@@ -370,6 +416,10 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
               <div className="grid g4">{kpi(L.kNet, money2(a.net), a.net >= 0 ? 'pos' : 'neg')}{kpi(L.kWR, `${a.winRate.toFixed(0)}%`)}{kpi(L.kPF, a.profitFactor.toFixed(2))}{kpi(L.kExp, money2(a.expectancy), a.expectancy >= 0 ? 'pos' : 'neg')}</div>
               <div className="grid g4">{kpi(L.kAvgW, money(a.avgWin), 'pos')}{kpi(L.kAvgL, money(-a.avgLoss), 'neg')}{kpi(L.kPayoff, a.payoff.toFixed(2))}<div className="card kpi"><div className="lbl">{L.kDur}</div><div className="val" style={{ fontSize: 20 }}>{a.avgDurMin ? fmtDur(a.avgDurMin) : '—'}</div></div></div>
               <div className="grid g4">{kpi(L.kOps, String(a.n))}{kpi(L.kBest, money(a.best), 'pos')}{kpi(L.kWorst, money(a.worst), 'neg')}<div className="card kpi"><div className="lbl">{L.kBE}</div><div className="val" style={{ color: GOLD }}>{a.catBE} · {a.n ? Math.round(100 * a.catBE / a.n) : 0}%</div></div></div>
+              <div className="grid g2">
+                <Card title={L.radarTitle} icon="🕸️"><RadarChart axes={radarAxes} color={BLUE} /></Card>
+                <Card title={L.bubbleTitle} icon="🫧"><Bubbles items={bubbleData} /></Card>
+              </div>
               <div className="grid g2">
                 <Card title={L.equity} icon="📈">
                   {a.equity.length > 1 ? (<svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H}><defs><linearGradient id="eq" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={BLUE} stopOpacity="0.35" /><stop offset="100%" stopColor={BLUE} stopOpacity="0" /></linearGradient></defs><path d={`${path} L${W},${H} L0,${H} Z`} fill="url(#eq)" /><path d={path} fill="none" stroke={BLUE} strokeWidth="2.5" /></svg>) : <p className="muted">{L.notEnough}</p>}
