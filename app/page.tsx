@@ -20,13 +20,11 @@ const STATS = [
 
 /* Marcas para el carrusel (broker/prop firm + plataformas) */
 const LOGOS = [
-  { n: 'FTMO', src: '/logos/ftmo.png' },
-  { n: 'FundedNext', src: '/logos/fundednext.png' },
-  { n: 'FundingPips', src: '/logos/fundingpips.png' },
-  { n: 'The5ers', src: '/logos/the5ers.png' },
-  { n: 'MetaTrader 4', src: '/logos/mt4.png' },
-  { n: 'MetaTrader 5', src: '/logos/mt5.png' },
-  { n: 'Axi', src: '/logos/axi.png' },
+  { n: 'FTMO', c: '#2f6bff' }, { n: 'FundedNext', c: '#16c98d' },
+  { n: 'FundingPips', c: '#8b5cff' }, { n: 'The5%ers', c: '#ffce00' },
+  { n: 'MetaTrader 4', c: '#f0a020' }, { n: 'MetaTrader 5', c: '#2f6bff' },
+  { n: 'Axi', c: '#ff4757' }, { n: 'IC Markets', c: '#e23b55' },
+  { n: 'Pepperstone', c: '#e2531f' }, { n: 'Exness', c: '#ffcf5c' },
 ];
 
 function Counter({ to, prefix = '', suffix = '' }: { to: number; prefix?: string; suffix?: string }) {
@@ -352,17 +350,15 @@ export default function Home() {
         </div>
       </div>
 
-      {/* LOGOS marquee */}
-      <div className="wrap" style={{ padding: '6px 22px 24px' }}>
-        <p className="muted" style={{ textAlign: 'center', fontSize: 14, marginBottom: 16 }}>{t.logosT}</p>
-        <div className="marquee">
-          <div className="marquee-track">
-            {[...LOGOS, ...LOGOS].map((l, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 60, minWidth: 160, padding: '0 22px', borderRadius: 12, background: '#fff' }}>
-                <img src={l.src} alt={l.n} title={l.n} style={{ maxHeight: 34, maxWidth: 128, objectFit: 'contain' }} />
-              </div>
-            ))}
-          </div>
+      {/* LOGOS marquee (borde a borde) */}
+      <div className="wrap" style={{ padding: '6px 22px 14px' }}>
+        <p className="muted" style={{ textAlign: 'center', fontSize: 14 }}>{t.logosT}</p>
+      </div>
+      <div className="marquee fullbleed" style={{ paddingBottom: 26 }}>
+        <div className="marquee-track">
+          {[...LOGOS, ...LOGOS].map((l, i) => (
+            <div key={i} className="chip"><span className="dot" style={{ background: l.c }} /><span style={{ color: l.c, fontWeight: 800 }}>{l.n}</span></div>
+          ))}
         </div>
       </div>
 
@@ -455,8 +451,8 @@ export default function Home() {
               cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderRadius: 12,
               border: i === firm ? `2px solid ${fm.color}` : '1px solid var(--line)',
               background: i === firm ? 'var(--bg2)' : 'transparent', color: 'inherit', transition: 'all .2s' }}>
-              <span style={{ width: 34, height: 34, borderRadius: 8, background: '#fff', display: 'grid', placeItems: 'center', overflow: 'hidden' }}><img src={fm.logo} alt={fm.name} style={{ maxWidth: 26, maxHeight: 26, objectFit: 'contain' }} /></span>
-              <b style={{ fontSize: 15 }}>{fm.name}</b>
+              <span style={{ width: 12, height: 12, borderRadius: '50%', background: fm.color, flex: 'none' }} />
+              <b style={{ fontSize: 15, color: fm.color }}>{fm.name}</b>
             </button>
           ))}
         </div>
@@ -466,8 +462,8 @@ export default function Home() {
           {/* detalle de la firma */}
           <div className="card" style={{ borderTop: `3px solid ${f.color}` }}>
             <div className="row" style={{ gap: 12, marginBottom: 14, alignItems: 'center' }}>
-              <span style={{ width: 52, height: 52, borderRadius: 12, background: '#fff', display: 'grid', placeItems: 'center', overflow: 'hidden' }}><img src={f.logo} alt={f.name} style={{ maxWidth: 40, maxHeight: 40, objectFit: 'contain' }} /></span>
-              <div><h3 style={{ margin: 0 }}>{f.name}</h3><span className="pill green" style={{ marginTop: 4, display: 'inline-block' }}>{t.prop.onyx}</span></div>
+              <span style={{ width: 46, height: 46, borderRadius: 12, background: f.color + '22', display: 'grid', placeItems: 'center', flex: 'none' }}><span style={{ width: 16, height: 16, borderRadius: '50%', background: f.color }} /></span>
+              <div><h3 style={{ margin: 0, color: f.color }}>{f.name}</h3><span className="pill green" style={{ marginTop: 4, display: 'inline-block' }}>{t.prop.onyx}</span></div>
             </div>
             <p className="muted" style={{ fontSize: 15, marginBottom: 16 }}>{lang === 'es' ? f.es : f.en}</p>
             <div style={{ fontSize: 13, color: 'var(--mut)', marginBottom: 7 }}>{t.prop.plats}</div>
