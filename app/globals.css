@@ -54,7 +54,7 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
 @keyframes scrollx{from{transform:translateX(0);}to{transform:translateX(-50%);}}
 .chip{display:flex;align-items:center;gap:10px;padding:12px 20px;border-radius:12px;background:var(--card);border:1px solid var(--line);white-space:nowrap;font-weight:600;font-size:15px;}
 .chip .mono{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:#fff;font-weight:800;font-size:15px;}
-/* apariciÃ³n al hacer scroll */
+/* aparición al hacer scroll */
 .reveal{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease;}
 .reveal.in{opacity:1;transform:none;}
 /* video frame */

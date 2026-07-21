@@ -1,17 +1,29 @@
 import Stripe from 'stripe';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
   apiVersion: '2024-06-20',
 });
 
-export const PLANS: Record<string, { name: string; priceId: string; maxAccounts: number }> = {
-  pro:   { name: 'Pro',   priceId: process.env.STRIPE_PRICE_PRO   || '', maxAccounts: 5 },
-  elite: { name: 'Elite', priceId: process.env.STRIPE_PRICE_ELITE || '', maxAccounts: 999 },
-};
+// Devuelve el Price ID de Stripe de un plan, leyéndolo de la tabla `plans`.
+// annual=true usa el precio anual si está configurado.
+export async function priceIdForPlan(planId: string, annual = false): Promise<string> {
+  const { data } = await supabaseAdmin
+    .from('plans')
+    .select('stripe_price_id, stripe_price_id_year')
+    .eq('id', planId)
+    .single();
+  if (!data) return '';
+  return (annual ? data.stripe_price_id_year : data.stripe_price_id) || '';
+}
 
-// Dado un priceId de Stripe, devuelve el nombre del plan (para el webhook).
-export function planFromPriceId(priceId?: string): string {
-  if (priceId && priceId === PLANS.pro.priceId) return 'pro';
-  if (priceId && priceId === PLANS.elite.priceId) return 'elite';
-  return 'free';
+// Dado un priceId de Stripe, devuelve el id del plan (para el webhook).
+export async function planFromPriceId(priceId?: string): Promise<string> {
+  if (!priceId) return 'free';
+  const { data } = await supabaseAdmin
+    .from('plans')
+    .select('id')
+    .or(`stripe_price_id.eq.${priceId},stripe_price_id_year.eq.${priceId}`)
+    .maybeSingle();
+  return data?.id || 'free';
 }

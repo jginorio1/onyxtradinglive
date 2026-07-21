@@ -25,7 +25,7 @@ export async function POST(req: Request) {
         const sub: any = await stripe.subscriptions.retrieve(s.subscription);
         const priceId = sub.items.data[0]?.price?.id;
         await setByCustomer(s.customer, {
-          plan: planFromPriceId(priceId),
+          plan: await planFromPriceId(priceId),
           subscription_status: sub.status,
           stripe_subscription_id: sub.id,
         });
@@ -35,7 +35,7 @@ export async function POST(req: Request) {
       const priceId = sub.items.data[0]?.price?.id;
       const active = sub.status === 'active' || sub.status === 'trialing';
       await setByCustomer(sub.customer, {
-        plan: active ? planFromPriceId(priceId) : 'free',
+        plan: active ? await planFromPriceId(priceId) : 'free',
         subscription_status: sub.status,
         stripe_subscription_id: sub.id,
       });

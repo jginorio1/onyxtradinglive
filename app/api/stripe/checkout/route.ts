@@ -1,16 +1,16 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { stripe, PLANS } from '@/lib/stripe';
+import { stripe, priceIdForPlan } from '@/lib/stripe';
 
 export async function POST(req: Request) {
   const sb = createSupabaseServer();
   const { data: { user } } = await sb.auth.getUser();
   if (!user) return NextResponse.json({ error: 'no autorizado' }, { status: 401 });
 
-  const { plan } = await req.json();
-  const p = PLANS[plan];
-  if (!p || !p.priceId) return NextResponse.json({ error: 'plan inválido o precio no configurado' }, { status: 400 });
+  const { plan, annual } = await req.json();
+  const priceId = await priceIdForPlan(plan, !!annual);
+  if (!priceId) return NextResponse.json({ error: 'plan inválido o precio no configurado en Stripe' }, { status: 400 });
 
   // cliente de Stripe (crear si no existe)
   const { data: prof } = await supabaseAdmin.from('profiles').select('stripe_customer_id').eq('id', user.id).single();
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
   const session = await stripe.checkout.sessions.create({
     mode: 'subscription',
     customer,
-    line_items: [{ price: p.priceId, quantity: 1 }],
+    line_items: [{ price: priceId, quantity: 1 }],
     success_url: `${base}/dashboard?checkout=success`,
     cancel_url: `${base}/pricing?checkout=cancel`,
     metadata: { userId: user.id },
