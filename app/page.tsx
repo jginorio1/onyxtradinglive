@@ -274,7 +274,7 @@ export default function Home() {
     <>
       {/* NAV */}
       <div className="topbar"><div className="wrap">
-        <div className="logo"><span className="mark">◆</span> Onyx Trading Live</div>
+        <Link className="logo" href="/"><span className="mark">◆</span> Onyx Trading Live</Link>
         <div className="navl"><a href="#features">{t.nav.features}</a><a href="#how">{t.nav.how}</a><a href="#fondeo">{t.nav.fondeo}</a><a href="#pricing">{t.nav.pricing}</a><a href="#faq">{t.nav.faq}</a></div>
         <div className="row">
           <button className="btn btn-ghost" style={{ padding: '6px 10px' }} onClick={() => switchLang(lang === 'es' ? 'en' : 'es')}>{lang === 'es' ? '🇬🇧 EN' : '🇪🇸 ES'}</button>

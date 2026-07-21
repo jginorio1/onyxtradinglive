@@ -50,7 +50,7 @@ export default function AdminClient({ meEmail, accounts, trades }: { meEmail: st
   return (
     <>
       <div className="topbar"><div className="wrap-wide">
-        <div className="logo"><span className="mark">◆</span> Onyx · Súper-Admin</div>
+        <Link className="logo" href="/dashboard"><span className="mark">◆</span> Onyx · Súper-Admin</Link>
         <div className="row"><span className="muted" style={{ fontSize: 13 }}>{meEmail}</span><Link className="btn btn-ghost" href="/dashboard">Mi cuenta</Link></div>
       </div></div>
 

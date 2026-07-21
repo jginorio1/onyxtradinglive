@@ -348,7 +348,7 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
   return (
     <>
       <div className="topbar"><div className="wrap-wide">
-        <div className="logo"><span className="mark">◆</span> Onyx</div>
+        <Link className="logo" href="/dashboard"><span className="mark">◆</span> Onyx</Link>
         <div className="navl"><Link href="/dashboard">{L.nav_dash}</Link><Link href="/dashboard/keys">{L.nav_connect}</Link><Link href="/pricing">{L.nav_plan}</Link></div>
         <div className="row">
           <button className="btn btn-ghost" style={{ padding: '6px 10px' }} onClick={() => switchLang(lang === 'es' ? 'en' : 'es')}>{lang === 'es' ? '🇬🇧 EN' : '🇪🇸 ES'}</button>
