@@ -3,11 +3,12 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { analyze, bestOf, worstOf, topPairs, fmtDur, type T, type Bucket } from '@/lib/analytics';
 import Journal from './Journal';
+import Costs from './Costs';
 import AccountExtras from './AccountExtras';
 import CompareAccounts from './CompareAccounts';
 import { typeMeta } from '@/lib/accountMeta';
 
-type TT = T & { account_id: string; id: string };
+type TT = T & { account_id: string; id: string; commission?: number; swap?: number; profit?: number };
 type Acc = { id: string; login: number; nickname: string | null; broker: string; platform: string; balance: number; currency: string; fund_target?: number | null; fund_max_daily?: number | null; fund_max_total?: number | null; fund_start?: number | null };
 type Lang = 'es' | 'en';
 
@@ -419,6 +420,7 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
             <Card title={L.byHour} icon="⏰">{hourData.length ? hourData.map((d, i) => <BarRow key={i} label={d.label} b={d.b} max={maxH} ops={L.ops} />) : <p className="muted">{L.noData}</p>}</Card>
             <Card title={L.byMonth} icon="🗓️">{monthData.length ? monthData.map((d, i) => <BarRow key={i} label={d.label} b={d.b} max={maxM} ops={L.ops} />) : <p className="muted">{L.noData}</p>}</Card>
 
+            <Costs trades={filtered} lang={lang} />
             <Journal trades={filtered} lang={lang} />
           </div>
         )}

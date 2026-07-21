@@ -3,8 +3,8 @@ import { Fragment, useEffect, useMemo, useState } from 'react';
 import { typeMeta, money2, type Lang } from '@/lib/accountMeta';
 
 const C = {
-  es: { title: '🗂️ Comparar cuentas', note: 'Verde = la mejor de cada fila', type: 'Tipo', net: 'Neto', wr: 'Win rate', ops: 'Operaciones', lots: 'Lotaje total', paid: 'Total cobrado', cost: 'Coste challenge', benefit: 'Beneficio real', dd: 'Drawdown máx', none: '—' },
-  en: { title: '🗂️ Compare accounts', note: 'Green = best in each row', type: 'Type', net: 'Net', wr: 'Win rate', ops: 'Trades', lots: 'Total lots', paid: 'Total paid', cost: 'Challenge cost', benefit: 'Real benefit', dd: 'Max drawdown', none: '—' },
+  es: { title: '🗂️ Comparar cuentas', note: 'Verde = la mejor de cada fila', type: 'Tipo', net: 'Neto', wr: 'Win rate', ops: 'Operaciones', lots: 'Lotaje total', costTotal: 'Coste operativo', costLot: 'Coste / lote', paid: 'Total cobrado', cost: 'Coste challenge', benefit: 'Beneficio real', dd: 'Drawdown máx', none: '—' },
+  en: { title: '🗂️ Compare accounts', note: 'Green = best in each row', type: 'Type', net: 'Net', wr: 'Win rate', ops: 'Trades', lots: 'Total lots', costTotal: 'Trading cost', costLot: 'Cost / lot', paid: 'Total paid', cost: 'Challenge cost', benefit: 'Real benefit', dd: 'Max drawdown', none: '—' },
 };
 
 export default function CompareAccounts({ accounts, trades, lang }: { accounts: any[]; trades: any[]; lang: Lang }) {
@@ -21,13 +21,13 @@ export default function CompareAccounts({ accounts, trades, lang }: { accounts: 
 
   const stats = useMemo(() => accounts.map((acc) => {
     const ts = trades.filter((x) => x.account_id === acc.id);
-    let net = 0, wins = 0, lots = 0;
-    for (const x of ts) { const p = +x.net_profit || 0; net += p; if (p >= 0) wins++; lots += Math.abs(+x.volume || 0); }
+    let net = 0, wins = 0, lots = 0, tcost = 0;
+    for (const x of ts) { const p = +x.net_profit || 0; net += p; if (p >= 0) wins++; lots += Math.abs(+x.volume || 0); tcost += (+x.commission || 0) + (+x.swap || 0); }
     const sorted = [...ts].sort((a, b) => a.close_time.localeCompare(b.close_time));
     let run = 0, peak = 0, maxDD = 0;
     for (const x of sorted) { run += +x.net_profit || 0; if (run > peak) peak = run; if (peak - run > maxDD) maxDD = peak - run; }
     const paid = payouts[acc.id] || 0; const cost = Number(acc.challenge_cost) || 0;
-    return { acc, net, wr: ts.length ? Math.round(100 * wins / ts.length) : 0, ops: ts.length, lots, paid, cost, benefit: paid - cost, maxDD };
+    return { acc, net, wr: ts.length ? Math.round(100 * wins / ts.length) : 0, ops: ts.length, lots, tcost, costLot: lots > 0 ? tcost / lots : 0, paid, cost, benefit: paid - cost, maxDD };
   }), [accounts, trades, payouts]);
 
   // filas: valor, formato, mejor = alto/bajo
@@ -36,6 +36,8 @@ export default function CompareAccounts({ accounts, trades, lang }: { accounts: 
     { label: t.wr, get: (s) => s.wr, fmt: (s) => s.wr + '%', hi: 'high' },
     { label: t.ops, get: (s) => s.ops, fmt: (s) => s.ops, hi: 'none' },
     { label: t.lots, get: (s) => s.lots, fmt: (s) => s.lots.toFixed(2), hi: 'none' },
+    { label: t.costTotal, get: (s) => s.tcost, fmt: (s) => <span className={s.tcost >= 0 ? 'pos' : 'neg'}>{money2(s.tcost)}</span>, hi: 'high' },
+    { label: t.costLot, get: (s) => s.costLot, fmt: (s) => <span className={s.costLot >= 0 ? 'pos' : 'neg'}>{money2(s.costLot)}</span>, hi: 'high' },
     { label: t.paid, get: (s) => s.paid, fmt: (s) => <span className="pos">{money2(s.paid)}</span>, hi: 'high' },
     { label: t.cost, get: (s) => s.cost, fmt: (s) => (s.cost ? money2(-s.cost) : t.none), hi: 'low' },
     { label: t.benefit, get: (s) => s.benefit, fmt: (s) => <span className={s.benefit >= 0 ? 'pos' : 'neg'}>{money2(s.benefit)}</span>, hi: 'high' },

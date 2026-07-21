@@ -1,7 +1,7 @@
 'use client';
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 
-type TT = { id: string; account_id: string; symbol: string; side: string; volume: number; open_time: string | null; close_time: string; net_profit: number };
+type TT = { id: string; account_id: string; symbol: string; side: string; volume: number; open_time: string | null; close_time: string; net_profit: number; commission?: number; swap?: number };
 type Entry = { trade_id: string; notes: string | null; tags: string[] | null; emotion: string | null; image_url: string | null };
 type Lang = 'es' | 'en';
 
@@ -19,7 +19,7 @@ const J = {
     trades: '📋 Operaciones', filters: 'Filtros', all: 'Todos', longs: 'Largos', shorts: 'Cortos', wins: 'Ganadoras', losses: 'Perdedoras',
     from: 'Desde', to: 'Hasta', pair: 'Par', side: 'Lado', result: 'Resultado', tag: 'Etiqueta', clear: 'Limpiar', export: '⬇ Exportar CSV',
     thDate: 'Fecha', thPair: 'Par', thSide: 'Lado', thLots: 'Lotes', thNet: 'Neto', thNote: 'Diario', noTrades: 'Sin operaciones con esos filtros.', showing: 'Mostrando',
-    mTitle: 'Operación', mLots: 'Lotaje', mOpen: 'Apertura', mClose: 'Cierre', mNet: 'Neto',
+    mTitle: 'Operación', mLots: 'Lotaje', mOpen: 'Apertura', mClose: 'Cierre', mNet: 'Neto', mComm: 'Comisión', mSwap: 'Swap',
     photo: 'Foto de la operación', upload: '⬆ Subir foto', uploading: 'Subiendo…', replace: 'Cambiar foto', notes: 'Notas', notesPh: '¿Qué pasó en este trade? ¿Por qué entraste? ¿Qué aprendiste?',
     strat: 'Estrategia / setup', emotion: 'Emoción', save: 'Guardar', saved: '✓ Guardado', close: 'Cerrar', hasNote: '📝',
     emotions: ['Disciplinado', 'FOMO', 'Revancha', 'Miedo', 'Confiado', 'Impaciente', 'Dudas'],
@@ -30,7 +30,7 @@ const J = {
     trades: '📋 Trades', filters: 'Filters', all: 'All', longs: 'Longs', shorts: 'Shorts', wins: 'Winners', losses: 'Losers',
     from: 'From', to: 'To', pair: 'Pair', side: 'Side', result: 'Result', tag: 'Tag', clear: 'Clear', export: '⬇ Export CSV',
     thDate: 'Date', thPair: 'Pair', thSide: 'Side', thLots: 'Lots', thNet: 'Net', thNote: 'Journal', noTrades: 'No trades with those filters.', showing: 'Showing',
-    mTitle: 'Trade', mLots: 'Lot size', mOpen: 'Open', mClose: 'Close', mNet: 'Net',
+    mTitle: 'Trade', mLots: 'Lot size', mOpen: 'Open', mClose: 'Close', mNet: 'Net', mComm: 'Commission', mSwap: 'Swap',
     photo: 'Trade screenshot', upload: '⬆ Upload photo', uploading: 'Uploading…', replace: 'Replace photo', notes: 'Notes', notesPh: 'What happened in this trade? Why did you enter? What did you learn?',
     strat: 'Strategy / setup', emotion: 'Emotion', save: 'Save', saved: '✓ Saved', close: 'Close', hasNote: '📝',
     emotions: ['Disciplined', 'FOMO', 'Revenge', 'Fear', 'Confident', 'Impatient', 'Doubt'],
@@ -243,6 +243,8 @@ function TradeModal({ trade, entry, lang, onClose, onSaved }: { trade: TT; entry
         <div className="grid g4" style={{ marginBottom: 6 }}>
           <div><div className="muted" style={{ fontSize: 11 }}>{t.mLots}</div><b>{(+trade.volume).toFixed(2)}</b></div>
           <div><div className="muted" style={{ fontSize: 11 }}>{t.mNet}</div><b className={+trade.net_profit >= 0 ? 'pos' : 'neg'}>{money2(+trade.net_profit)}</b></div>
+          <div><div className="muted" style={{ fontSize: 11 }}>{t.mComm}</div><b className={+(trade.commission || 0) >= 0 ? 'pos' : 'neg'}>{money2(+(trade.commission || 0))}</b></div>
+          <div><div className="muted" style={{ fontSize: 11 }}>{t.mSwap}</div><b className={+(trade.swap || 0) >= 0 ? 'pos' : 'neg'}>{money2(+(trade.swap || 0))}</b></div>
           <div><div className="muted" style={{ fontSize: 11 }}>{t.mOpen}</div><b style={{ fontSize: 12 }}>{(trade.open_time || '').slice(0, 16).replace('T', ' ') || '—'}</b></div>
           <div><div className="muted" style={{ fontSize: 11 }}>{t.mClose}</div><b style={{ fontSize: 12 }}>{trade.close_time.slice(0, 16).replace('T', ' ')}</b></div>
         </div>

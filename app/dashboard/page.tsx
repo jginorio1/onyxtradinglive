@@ -16,7 +16,7 @@ export default async function Dashboard() {
   let trades: any[] = [];
   if (accIds.length) {
     const { data } = await sb.from('trades')
-      .select('id,account_id,symbol,side,volume,open_time,close_time,net_profit')
+      .select('id,account_id,symbol,side,volume,open_time,close_time,net_profit,profit,commission,swap')
       .in('account_id', accIds).order('close_time', { ascending: false }).limit(5000);
     trades = data || [];
   }
