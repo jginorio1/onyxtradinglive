@@ -9,8 +9,8 @@ const SES = [
   { n: { es: 'Nueva York', en: 'New York' }, flag: '🇺🇸', o: 13, c: 22, col: '#34e2a0' },
 ];
 const T = {
-  es: { title: '🕐 Sesiones del mercado', now: 'Ahora', open: '● ABIERTA', closed: 'cerrada', none: 'Mercado tranquilo', localTz: 'tu hora local', legend: 'Línea = tu hora actual · verde/amarillo/rojo = volumen típico', expand: 'Ver detalle', collapse: 'Ocultar' },
-  en: { title: '🕐 Market sessions', now: 'Now', open: '● OPEN', closed: 'closed', none: 'Quiet market', localTz: 'your local time', legend: 'Line = your current time · green/amber/red = typical volume', expand: 'Details', collapse: 'Hide' },
+  es: { title: '🕐 Sesiones del mercado', now: 'Ahora', open: '● ABIERTA', closed: 'cerrada', none: 'Mercado tranquilo', localTz: 'tu hora local', legend: 'Línea = tu hora actual · verde/amarillo/rojo = volumen típico', expand: 'Ver detalle', collapse: 'Ocultar', opensIn: 'abre en', closesIn: 'cierra en', next: 'Próximo' },
+  en: { title: '🕐 Market sessions', now: 'Now', open: '● OPEN', closed: 'closed', none: 'Quiet market', localTz: 'your local time', legend: 'Line = your current time · green/amber/red = typical volume', expand: 'Details', collapse: 'Hide', opensIn: 'opens in', closesIn: 'closes in', next: 'Next' },
 };
 
 export default function MarketHours({ lang }: { lang: Lang }) {
@@ -30,6 +30,12 @@ export default function MarketHours({ lang }: { lang: Lang }) {
   const clock = now.toLocaleTimeString(lang === 'es' ? 'es-ES' : 'en-US', { hour: '2-digit', minute: '2-digit' });
   const np = hLoc / 24 * 100;
 
+  // contadores en tiempo real: cuánto falta para abrir/cerrar cada sesión
+  const nextAt = (hour: number) => { const d = new Date(now); d.setUTCHours(hour, 0, 0, 0); if (d.getTime() <= now.getTime()) d.setUTCDate(d.getUTCDate() + 1); return d.getTime(); };
+  const fmtDur = (ms: number) => { const s = Math.max(0, Math.floor(ms / 1000)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60; return (h > 0 ? h + 'h ' : '') + m + 'm ' + (h > 0 ? '' : ss + 's'); };
+  const events = SES.map((s) => { const on = isActive(s); const target = on ? nextAt(s.c) : nextAt(s.o); return { on, rem: target - now.getTime(), evt: on ? t.closesIn : t.opensIn }; });
+  const soonest = events.map((e, i) => ({ ...e, s: SES[i] })).sort((x, y) => x.rem - y.rem)[0];
+
   const nowLabel = activeList.length ? activeList.map((s) => `${s.flag} ${s.n[lang]}`).join('  +  ') : t.none;
 
   return (
@@ -40,6 +46,7 @@ export default function MarketHours({ lang }: { lang: Lang }) {
           <span style={{ fontSize: 14, fontWeight: 700 }}>{t.title}</span>
           <span className="muted" style={{ fontSize: 13 }}>{t.now}:</span>
           <b style={{ fontSize: 14 }}>{nowLabel}</b>
+          {soonest && <span className="muted" style={{ fontSize: 12 }}>· {t.next}: {soonest.s.flag} {soonest.s.n[lang]} {soonest.evt} <b style={{ color: 'var(--tx)' }}>{fmtDur(soonest.rem)}</b></span>}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ fontSize: 15, fontWeight: 800 }}>{clock} <span className="muted" style={{ fontSize: 11, fontWeight: 400 }}>{t.localTz}</span></span>
@@ -61,10 +68,11 @@ export default function MarketHours({ lang }: { lang: Lang }) {
           <div style={{ display: 'grid', gridTemplateColumns: '128px 1fr', gap: 0 }}>
             <div>
               <div style={{ height: 22 }} />
-              {SES.map((s, i) => { const on = isActive(s); return (
-                <div key={i} style={{ height: 40, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+              {SES.map((s, i) => { const on = isActive(s); const ev = events[i]; return (
+                <div key={i} style={{ height: 40, display: 'flex', flexDirection: 'column', justifyContent: 'center', lineHeight: 1.2 }}>
                   <b style={{ fontSize: 13 }}>{s.flag} {s.n[lang]}</b>
                   <span style={{ fontSize: 10, fontWeight: 700, color: on ? s.col : 'var(--mut)' }}>{on ? t.open : t.closed}</span>
+                  <span style={{ fontSize: 10, color: 'var(--mut)' }}>{ev.evt} {fmtDur(ev.rem)}</span>
                 </div>); })}
             </div>
             <div style={{ position: 'relative' }}>
