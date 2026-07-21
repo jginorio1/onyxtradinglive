@@ -57,8 +57,8 @@ const dict = {
     nav: { features: 'Funciones', how: 'Cómo funciona', fondeo: 'Fondeo', pricing: 'Precios', faq: 'FAQ', login: 'Entrar', cta: 'Empieza gratis' },
     hero: {
       badge: '🔗 Conecta MT4 y MT5 · Sincronización automática',
-      h1a: 'Tu diario de trading', h1b: 'inteligente y automático',
-      sub: 'Conecta tus cuentas de MetaTrader y deja que Onyx registre y analice cada operación. Descubre qué funciona y opera con datos, no con memoria.',
+      h1a: 'Opera con datos,', h1b: 'no con memoria',
+      sub: 'Conecta tu cuenta de MetaTrader o de fondeo y deja que Onyx analice cada operación: sesiones y noticias en vivo, costes, calendario y reglas de fondeo. Todo en un panel.',
       cta1: 'Empieza gratis →', cta2: 'Ver precios', note: 'Sin tarjeta para empezar · Cancela cuando quieras',
     },
     trust: ['✅ Compatible con MT4 y MT5', '🔒 Conexión de solo lectura', '💳 Pagos seguros con Stripe'],
@@ -129,9 +129,13 @@ const dict = {
     ],
     faqT: 'Preguntas frecuentes',
     faqs: [
-      ['¿Es seguro conectar mi cuenta?', 'Sí. La conexión es de solo lectura: Onyx lee tu historial pero nunca puede operar ni retirar fondos.'],
+      ['¿Con qué brokers y prop firms funciona?', 'Con cualquier cuenta MT4 o MT5: FTMO, FundedNext, The5ers, FundingPips y tu bróker de siempre. Tu cuenta de fondeo es una cuenta de MetaTrader, así que se conecta igual.'],
+      ['¿Es seguro conectar mi cuenta?', 'Sí. La conexión es de solo lectura: Onyx lee tu historial pero nunca puede operar, retirar ni mover tus fondos.'],
+      ['¿Necesito saber programar?', 'No. Instalas el connector, pegas tu API key y listo. Te guiamos paso a paso; no hay que tocar código.'],
+      ['¿Cuántas cuentas puedo conectar?', 'Depende de tu plan: desde 1 cuenta en el plan gratis hasta cuentas ilimitadas. Ves todas juntas en tu portafolio.'],
+      ['¿Funciona en el móvil?', 'Sí. El panel se adapta a móvil, tablet y monitores grandes, así que lo revisas desde cualquier dispositivo.'],
+      ['¿En qué se diferencia de un Excel?', 'Onyx sincroniza solo, calcula 15+ métricas, tiene calendario, sesiones y noticias en vivo, costes, fondeo y gráficas modernas. Un Excel no hace nada de eso.'],
       ['¿Funciona con MT4 y MT5?', 'Sí, con las dos. Solo cambias el archivo del connector según tu plataforma; la misma API key sirve para ambas.'],
-      ['¿Sirve para cuentas de fondeo (FTMO)?', 'Sí. Puedes seguir tu drawdown, objetivo y días operados en tiempo real.'],
       ['¿Puedo cancelar cuando quiera?', 'Claro. Gestionas tu suscripción desde tu panel y cancelas o cambias de plan en cualquier momento.'],
       ['¿Qué formas de pago aceptan?', 'Pago seguro con tarjeta a través de Stripe. Tus datos de pago nunca pasan por nuestros servidores.'],
     ],
@@ -142,8 +146,8 @@ const dict = {
     nav: { features: 'Features', how: 'How it works', fondeo: 'Prop firms', pricing: 'Pricing', faq: 'FAQ', login: 'Log in', cta: 'Start free' },
     hero: {
       badge: '🔗 Connect MT4 & MT5 · Automatic sync',
-      h1a: 'Your trading journal,', h1b: 'smart and automatic',
-      sub: 'Connect your MetaTrader accounts and let Onyx log and analyze every trade. Find out what works and trade with data, not memory.',
+      h1a: 'Trade with data,', h1b: 'not memory',
+      sub: 'Connect your MetaTrader or funded account and let Onyx analyze every trade: live sessions and news, costs, calendar and prop-firm rules. All in one panel.',
       cta1: 'Start free →', cta2: 'See pricing', note: 'No card to start · Cancel anytime',
     },
     trust: ['✅ Works with MT4 & MT5', '🔒 Read-only connection', '💳 Secure payments with Stripe'],
@@ -214,9 +218,13 @@ const dict = {
     ],
     faqT: 'Frequently asked questions',
     faqs: [
-      ['Is it safe to connect my account?', 'Yes. The connection is read-only: Onyx reads your history but can never trade or withdraw funds.'],
+      ['Which brokers and prop firms does it work with?', 'Any MT4 or MT5 account: FTMO, FundedNext, The5ers, FundingPips and your usual broker. Your funded account is a MetaTrader account, so it connects the same way.'],
+      ['Is it safe to connect my account?', 'Yes. The connection is read-only: Onyx reads your history but can never trade, withdraw or move your funds.'],
+      ['Do I need to know how to code?', 'No. Install the connector, paste your API key and you\'re done. We guide you step by step — no code required.'],
+      ['How many accounts can I connect?', 'Depends on your plan: from 1 account on Free to unlimited accounts. You see them all combined in your portfolio.'],
+      ['Does it work on mobile?', 'Yes. The dashboard adapts to phone, tablet and large monitors, so you can check it from any device.'],
+      ['How is it different from a spreadsheet?', 'Onyx syncs automatically, computes 15+ metrics, and has a calendar, live sessions and news, costs, prop-firm tracking and modern charts. A spreadsheet does none of that.'],
       ['Does it work with MT4 and MT5?', 'Yes, both. You just use the connector file for your platform; the same API key works for both.'],
-      ['Does it work with funded accounts (FTMO)?', 'Yes. You can track your drawdown, target and trading days in real time.'],
       ['Can I cancel anytime?', 'Of course. Manage your subscription from your panel and cancel or change plan anytime.'],
       ['What payment methods do you accept?', 'Secure card payments through Stripe. Your payment data never touches our servers.'],
     ],
@@ -286,19 +294,42 @@ export default function Home() {
         </div>
         <p className="muted" style={{ fontSize: 13, marginTop: 14 }}>{t.hero.note}</p>
 
-        {/* dashboard mockup */}
-        <div className="card" style={{ maxWidth: 900, margin: '46px auto 0', padding: 14 }}>
-          <svg viewBox="0 0 880 380" width="100%" xmlns="http://www.w3.org/2000/svg" fontFamily="Segoe UI,sans-serif">
-            <rect x="0" y="0" width="880" height="380" rx="12" fill="#0f131e" />
-            {[['Neto', '+$8,240', '#34e2a0'], ['Win rate', '63%', '#f2f5fb'], ['Profit factor', '1.94', '#f2f5fb'], ['Expectancy', '+$42', '#7c8cff']].map((c, i) => (
-              <g key={i}><rect x={20 + i * 212} y="20" width="196" height="74" rx="10" fill="#151a28" /><text x={36 + i * 212} y="46" fill="#9aa6bd" fontSize="12">{c[0]}</text><text x={36 + i * 212} y="76" fill={c[2] as string} fontSize="24" fontWeight="800">{c[1]}</text></g>
-            ))}
-            <rect x="20" y="106" width="520" height="254" rx="10" fill="#151a28" /><text x="38" y="132" fill="#f2f5fb" fontSize="13" fontWeight="700">Curva de equity</text>
-            <polyline points="40,320 110,310 180,322 250,288 320,296 390,250 460,262 520,212" fill="none" stroke="#7c8cff" strokeWidth="3" />
-            <polygon points="40,320 110,310 180,322 250,288 320,296 390,250 460,262 520,212 520,346 40,346" fill="#7c8cff" opacity="0.12" />
-            <rect x="556" y="106" width="304" height="254" rx="10" fill="#151a28" /><text x="574" y="132" fill="#f2f5fb" fontSize="13" fontWeight="700">Calendario</text>
-            {Array.from({ length: 20 }).map((_, i) => { const g = (i * 7) % 3 !== 0; return <rect key={i} x={574 + (i % 5) * 56} y={146 + Math.floor(i / 5) * 50} width="48" height="42" rx="6" fill={g ? 'rgba(52,226,160,0.4)' : 'rgba(255,107,125,0.4)'} />; })}
-          </svg>
+        {/* vista previa moderna del dashboard (cabina) */}
+        <div className="card" style={{ maxWidth: 940, margin: '46px auto 0', padding: 16, background: '#0b0f18' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr 160px', gap: 10, textAlign: 'left' }} className="heroPreview">
+            {/* sesiones */}
+            <div style={{ background: '#151a28', borderRadius: 12, padding: 12, fontSize: 11 }}>
+              <div style={{ fontWeight: 700, marginBottom: 8 }}>🕐 Sesiones</div>
+              {[['🇬🇧 Londres', '#34e2a0', 'OPEN'], ['🇺🇸 N.York', '#34e2a0', 'OPEN'], ['🇯🇵 Tokio', '#9aa6bd', '3h'], ['🇦🇺 Sídney', '#9aa6bd', '6h']].map((s, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', margin: '6px 0', color: '#9aa6bd' }}><span>{s[0]}</span><b style={{ color: s[1] as string }}>{s[2]}</b></div>
+              ))}
+            </div>
+            {/* panel */}
+            <div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 8 }}>
+                {[['Health', '78', '#34e2a0', 0.78], ['Win', '63%', '#7c8cff', 0.63], ['P.factor', '1.94', '#b98bff', 0.65]].map((r, i) => {
+                  const C = 2 * Math.PI * 15, d = (r[3] as number) * C;
+                  return (<div key={i} style={{ background: '#151a28', borderRadius: 10, padding: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <svg width="40" height="40" viewBox="0 0 40 40"><circle cx="20" cy="20" r="15" fill="none" stroke="#3a4a68" strokeWidth="5" /><circle cx="20" cy="20" r="15" fill="none" stroke={r[2] as string} strokeWidth="5" strokeLinecap="round" strokeDasharray={`${d} ${C - d}`} transform="rotate(-90 20 20)" /><text x="20" y="24" textAnchor="middle" fill="#f2f5fb" fontSize="10" fontWeight="800">{r[1]}</text></svg>
+                    <span style={{ fontSize: 10, color: '#9aa6bd' }}>{r[0]}</span>
+                  </div>);
+                })}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8 }}>
+                {[['🎯 Rendimiento', '#7c8cff', '+$8,240', '#34e2a0'], ['🗓️ Calendario', '#34e2a0', '18 verdes', '#f2f5fb'], ['📋 Operaciones', '#b98bff', '142', '#f2f5fb'], ['💸 Costes', '#ffd45e', '-$412', '#ff6b7d']].map((b, i) => (
+                  <div key={i} style={{ background: '#151a28', borderTop: `2px solid ${b[1]}`, borderRadius: 10, padding: 10 }}><b style={{ fontSize: 12, color: '#fff' }}>{b[0]}</b><div style={{ fontSize: 15, fontWeight: 800, color: b[3] as string, marginTop: 4 }}>{b[2]}</div></div>
+                ))}
+              </div>
+            </div>
+            {/* noticias */}
+            <div style={{ background: '#151a28', borderRadius: 12, padding: 12, fontSize: 11 }}>
+              <div style={{ fontWeight: 700, marginBottom: 8 }}>📰 Noticias</div>
+              <div style={{ background: 'rgba(124,140,255,.12)', border: '1px solid #7c8cff', borderRadius: 8, padding: 8 }}>
+                <div style={{ color: '#a9b4ff', fontWeight: 700, fontSize: 9 }}>🇺🇸 NFP <span style={{ color: '#ff6b7d' }}>●●●</span></div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: '#a9b4ff' }}>2h 14m</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
