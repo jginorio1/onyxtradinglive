@@ -52,7 +52,7 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
 /* Layout cabina: sesiones izquierda · panel centro (se estira) · noticias derecha */
 .cockpit{display:flex;flex-direction:column;gap:16px;}
 .cockpit .center{min-width:0;}
-@media(min-width:1500px){
+@media(min-width:1280px){
   .cockpit{flex-direction:row;align-items:flex-start;}
   .cockpit .rail-left{flex:0 0 250px;order:1;position:sticky;top:80px;max-height:calc(100vh - 96px);overflow:auto;}
   .cockpit .center{flex:1 1 0;order:2;min-width:0;}
