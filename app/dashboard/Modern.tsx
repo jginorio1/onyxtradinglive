@@ -1,7 +1,7 @@
 'use client';
 import React from 'react';
 
-const TRACK = '#232a3d';
+const TRACK = '#3a4a68';
 
 // Anillo / gauge circular con texto central
 export function Ring({ pct, color, value, size = 92, stroke = 10 }: { pct: number; color: string; value: string; size?: number; stroke?: number }) {

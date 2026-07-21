@@ -255,13 +255,17 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
   // Insights "Onyx te dice"
   const insights = useMemo(() => {
     const out: { icon: string; txt: string }[] = [];
-    if (bS) out.push({ icon: '🌍', txt: lang === 'es' ? `Tu mejor sesión es ${sessName(bS[0])} (${money2(bS[1].net)})` : `Your best session is ${sessName(bS[0])} (${money2(bS[1].net)})` });
-    if (wWD && wWD[1].net < 0) out.push({ icon: '📉', txt: lang === 'es' ? `Pierdes más los ${WDL[lang][+wWD[0]]}` : `You lose most on ${WDL[lang][+wWD[0]]}` });
-    if (a.profitFactor >= 1.3) out.push({ icon: '⚖️', txt: lang === 'es' ? `Ganas $${a.profitFactor.toFixed(2)} por cada $1 arriesgado` : `You make $${a.profitFactor.toFixed(2)} per $1 risked` });
+    const es = lang === 'es';
+    if (a.n > 0 && a.n < 8) out.push({ icon: '🌱', txt: es ? 'Aún tienes pocas operaciones: las estadísticas se afinan con más datos.' : 'Few trades yet: stats sharpen with more data.' });
+    if (bS && bS[1].net > 0) out.push({ icon: '🌍', txt: es ? `Tu mejor sesión es ${sessName(bS[0])} (${money2(bS[1].net)})` : `Your best session is ${sessName(bS[0])} (${money2(bS[1].net)})` });
+    if (wWD && wWD[1].net < 0) out.push({ icon: '📉', txt: es ? `Donde más pierdes: ${WDL[lang][+wWD[0]]}` : `Where you lose most: ${WDL[lang][+wWD[0]]}` });
+    if (a.profitFactor >= 1.3) out.push({ icon: '⚖️', txt: es ? `Ganas $${a.profitFactor.toFixed(2)} por cada $1 arriesgado` : `You make $${a.profitFactor.toFixed(2)} per $1 risked` });
+    else if (a.n >= 3 && a.net < 0) out.push({ icon: '⚠️', txt: es ? `Vas en pérdida: ganas en el ${Math.round(a.winRate)}% de tus operaciones.` : `You're at a loss: ${Math.round(a.winRate)}% of your trades are winners.` });
     const gross = filtered.reduce((s, x) => s + (+(x.profit ?? x.net_profit) || 0), 0);
     const cost = filtered.reduce((s, x) => s + ((+(x.commission || 0)) + (+(x.swap || 0))), 0);
-    if (gross > 0 && cost < 0) out.push({ icon: '💸', txt: lang === 'es' ? `Los costes se comieron el ${Math.round(Math.abs(cost) / gross * 100)}% de tu ganancia bruta` : `Costs ate ${Math.round(Math.abs(cost) / gross * 100)}% of your gross profit` });
-    if (bH) out.push({ icon: '⏰', txt: lang === 'es' ? `Tu mejor hora es las ${bH[0]}:00` : `Your best hour is ${bH[0]}:00` });
+    if (gross > 0 && cost < 0) out.push({ icon: '💸', txt: es ? `Los costes se comieron el ${Math.round(Math.abs(cost) / gross * 100)}% de tu ganancia bruta` : `Costs ate ${Math.round(Math.abs(cost) / gross * 100)}% of your gross profit` });
+    if (bH && bH[1].net > 0) out.push({ icon: '⏰', txt: es ? `Tu mejor hora es las ${bH[0]}:00` : `Your best hour is ${bH[0]}:00` });
+    if (!out.length) out.push({ icon: '📊', txt: es ? 'Opera y cierra posiciones para ver aquí tus patrones.' : 'Trade and close positions to see your patterns here.' });
     return out.slice(0, 4);
   }, [a, filtered, lang]);
 
