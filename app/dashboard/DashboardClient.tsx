@@ -9,6 +9,7 @@ import CompareAccounts from './CompareAccounts';
 import { typeMeta } from '@/lib/accountMeta';
 import { Ring, MiniArea, MiniDonut, MiniBars, MiniHeat, RadarChart, Bubbles, healthScore } from './Modern';
 import MarketHours from './MarketHours';
+import News from './News';
 import Achievements from './Achievements';
 
 // Genera operaciones de ejemplo variadas (modo demo)
@@ -365,7 +366,7 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
           <Link className="btn btn-ghost" href="/dashboard/keys">{L.connectBtn}</Link>
         </div>
 
-        <div style={{ marginBottom: 16 }}><MarketHours lang={lang} /></div>
+        <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 16 }}><MarketHours lang={lang} /><News lang={lang} /></div>
 
         {!hasAccounts ? (
           <div className="card"><h3>{L.empty1_t}</h3><p className="muted" style={{ margin: '8px 0 14px' }}>{L.empty1_d}</p><Link className="btn btn-primary" href="/dashboard/keys">{L.empty1_cta}</Link></div>
@@ -492,7 +493,7 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
                 {vw === 'mes' ? (<>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 6 }}>
                     {DAYH[lang].map((d, i) => <div key={i} style={{ textAlign: 'center', fontSize: 11, color: 'var(--mut)' }}>{d}</div>)}
-                    {cells.map((d, i) => { if (d === null) return <div key={i} />; const b = a.daily[dayKey(d)]; const net = b?.net || 0; const inten = b ? Math.min(1, Math.abs(net) / maxDay) : 0; const bg = !b ? 'var(--bg2)' : net >= 0 ? `rgba(52,226,160,${.2 + inten * .6})` : `rgba(255,107,125,${.2 + inten * .6})`; const key = dayKey(d); return (<div key={i} onClick={() => b && setSelDay(key === selDay ? null : key)} style={{ background: bg, border: key === selDay ? '2px solid ' + BLUE : '1px solid var(--line)', borderRadius: 8, minHeight: 54, padding: 6, cursor: b ? 'pointer' : 'default' }}><div style={{ fontSize: 11, color: 'var(--mut)' }}>{d}</div>{b && <div style={{ fontSize: 12, fontWeight: 800, marginTop: 4, color: net >= 0 ? '#04150d' : '#1a0509' }}>{money(net)}</div>}{b && <div style={{ fontSize: 10, color: net >= 0 ? '#04150d' : '#1a0509', opacity: .75 }}>{b.count} {L.ops}</div>}</div>); })}
+                    {cells.map((d, i) => { if (d === null) return <div key={i} />; const b = a.daily[dayKey(d)]; const net = b?.net || 0; const inten = b ? Math.min(1, Math.abs(net) / maxDay) : 0; const bg = !b ? 'var(--bg2)' : net >= 0 ? `rgba(52,226,160,${.2 + inten * .6})` : `rgba(255,107,125,${.2 + inten * .6})`; const key = dayKey(d); return (<div key={i} onClick={() => b && setSelDay(key === selDay ? null : key)} style={{ background: bg, border: key === selDay ? '2px solid ' + BLUE : '1px solid var(--line)', borderRadius: 8, minHeight: 54, padding: 6, cursor: b ? 'pointer' : 'default' }}><div style={{ fontSize: 11, color: 'var(--mut)' }}>{d}</div>{b && <div style={{ fontSize: 11, fontWeight: 800, marginTop: 4, color: net >= 0 ? '#04150d' : '#1a0509' }}>{money2(net)}</div>}{b && <div style={{ fontSize: 10, color: net >= 0 ? '#04150d' : '#1a0509', opacity: .75 }}>{b.count} {L.ops}</div>}</div>); })}
                   </div>
                   {selDay && (<div style={{ marginTop: 14, borderTop: '1px solid var(--line)', paddingTop: 12 }}><b>{L.dayOps} {selDay}</b><table style={{ marginTop: 8 }}><tbody>{dayTrades.map((t, i) => (<tr key={i}><td>{t.symbol}</td><td className="muted">{t.side}</td><td className="muted" style={{ textAlign: 'right' }}>{(+t.volume).toFixed(2)}</td><td className="muted">{new Date(t.close_time).toUTCString().slice(17, 22)}</td><td style={{ textAlign: 'right' }} className={+t.net_profit >= 0 ? 'pos' : 'neg'}>{money2(+t.net_profit)}</td></tr>))}</tbody></table></div>)}
                 </>) : (

@@ -27,7 +27,7 @@ export default function MarketHours({ lang }: { lang: Lang }) {
   const locOC = (s: typeof SES[0]) => [(s.o + offset + 24) % 24, (s.c + offset + 24) % 24];
   const seg = (o: number, c: number) => (o < c ? [[o, c]] : [[o, 24], [0, c]]);
   const activeList = SES.filter(isActive);
-  const clock = now.toLocaleTimeString(lang === 'es' ? 'es-ES' : 'en-US', { hour: '2-digit', minute: '2-digit' });
+  const clock = now.toLocaleTimeString(lang === 'es' ? 'es-ES' : 'en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   const np = hLoc / 24 * 100;
 
   // contadores en tiempo real: cuánto falta para abrir/cerrar cada sesión
