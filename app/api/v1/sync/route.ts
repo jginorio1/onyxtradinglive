@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
       }));
       await supabaseAdmin
         .from('trades')
-        .upsert(rows, { onConflict: 'account_id,ticket', ignoreDuplicates: true });
+        .upsert(rows, { onConflict: 'account_id,ticket' });
     }
 
     // --- Posiciones abiertas (reemplazamos la foto actual) ---

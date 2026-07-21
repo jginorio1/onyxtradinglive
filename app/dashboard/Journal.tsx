@@ -1,7 +1,7 @@
 'use client';
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 
-type TT = { id: string; account_id: string; symbol: string; side: string; volume: number; open_time: string | null; close_time: string; net_profit: number; commission?: number; swap?: number };
+type TT = { id: string; account_id: string; symbol: string; side: string; volume: number; open_time: string | null; close_time: string; net_profit: number; commission?: number; swap?: number; profit?: number };
 type Entry = { trade_id: string; notes: string | null; tags: string[] | null; emotion: string | null; image_url: string | null };
 type Lang = 'es' | 'en';
 
@@ -18,7 +18,7 @@ const J = {
     heat: '🔥 Mapa de calor (día × hora)', heatNote: 'Verde = ganancia · Rojo = pérdida · intensidad = tamaño',
     trades: '📋 Operaciones', filters: 'Filtros', all: 'Todos', longs: 'Largos', shorts: 'Cortos', wins: 'Ganadoras', losses: 'Perdedoras',
     from: 'Desde', to: 'Hasta', pair: 'Par', side: 'Lado', result: 'Resultado', tag: 'Etiqueta', clear: 'Limpiar', export: '⬇ Exportar CSV',
-    thDate: 'Fecha', thPair: 'Par', thSide: 'Lado', thLots: 'Lotes', thNet: 'Neto', thNote: 'Diario', noTrades: 'Sin operaciones con esos filtros.', showing: 'Mostrando',
+    thDate: 'Fecha', thPair: 'Par', thSide: 'Lado', thLots: 'Lotes', thGross: 'Bruto', thNet: 'Neto', thNote: 'Diario', noTrades: 'Sin operaciones con esos filtros.', showing: 'Mostrando',
     mTitle: 'Operación', mLots: 'Lotaje', mOpen: 'Apertura', mClose: 'Cierre', mNet: 'Neto', mComm: 'Comisión', mSwap: 'Swap',
     photo: 'Foto de la operación', upload: '⬆ Subir foto', uploading: 'Subiendo…', replace: 'Cambiar foto', notes: 'Notas', notesPh: '¿Qué pasó en este trade? ¿Por qué entraste? ¿Qué aprendiste?',
     strat: 'Estrategia / setup', emotion: 'Emoción', save: 'Guardar', saved: '✓ Guardado', close: 'Cerrar', hasNote: '📝',
@@ -29,7 +29,7 @@ const J = {
     heat: '🔥 Heatmap (day × hour)', heatNote: 'Green = profit · Red = loss · intensity = size',
     trades: '📋 Trades', filters: 'Filters', all: 'All', longs: 'Longs', shorts: 'Shorts', wins: 'Winners', losses: 'Losers',
     from: 'From', to: 'To', pair: 'Pair', side: 'Side', result: 'Result', tag: 'Tag', clear: 'Clear', export: '⬇ Export CSV',
-    thDate: 'Date', thPair: 'Pair', thSide: 'Side', thLots: 'Lots', thNet: 'Net', thNote: 'Journal', noTrades: 'No trades with those filters.', showing: 'Showing',
+    thDate: 'Date', thPair: 'Pair', thSide: 'Side', thLots: 'Lots', thGross: 'Gross', thNet: 'Net', thNote: 'Journal', noTrades: 'No trades with those filters.', showing: 'Showing',
     mTitle: 'Trade', mLots: 'Lot size', mOpen: 'Open', mClose: 'Close', mNet: 'Net', mComm: 'Commission', mSwap: 'Swap',
     photo: 'Trade screenshot', upload: '⬆ Upload photo', uploading: 'Uploading…', replace: 'Replace photo', notes: 'Notes', notesPh: 'What happened in this trade? Why did you enter? What did you learn?',
     strat: 'Strategy / setup', emotion: 'Emotion', save: 'Save', saved: '✓ Saved', close: 'Close', hasNote: '📝',
@@ -179,7 +179,7 @@ export default function Journal({ trades, lang }: { trades: TT[]; lang: Lang }) 
         {view.length ? (
           <div style={{ overflowX: 'auto' }}>
             <table>
-              <thead><tr><th>{t.thDate}</th><th>{t.thPair}</th><th>{t.thSide}</th><th style={{ textAlign: 'right' }}>{t.thLots}</th><th style={{ textAlign: 'right' }}>{t.thNet}</th><th style={{ textAlign: 'center' }}>{t.thNote}</th></tr></thead>
+              <thead><tr><th>{t.thDate}</th><th>{t.thPair}</th><th>{t.thSide}</th><th style={{ textAlign: 'right' }}>{t.thLots}</th><th style={{ textAlign: 'right' }}>{t.thGross}</th><th style={{ textAlign: 'right' }}>{t.thNet}</th><th style={{ textAlign: 'center' }}>{t.thNote}</th></tr></thead>
               <tbody>
                 {view.slice(0, 300).map((x) => { const e = entries[x.id]; const has = e && (e.notes || e.image_url || (e.tags && e.tags.length)); return (
                   <tr key={x.id} onClick={() => setOpen(x)} style={{ cursor: 'pointer' }}>
@@ -187,6 +187,7 @@ export default function Journal({ trades, lang }: { trades: TT[]; lang: Lang }) 
                     <td>{x.symbol}</td>
                     <td className="muted">{x.side}</td>
                     <td style={{ textAlign: 'right' }}>{(+x.volume).toFixed(2)}</td>
+                    <td style={{ textAlign: 'right' }} className={+(x.profit ?? x.net_profit) >= 0 ? 'pos' : 'neg'}>{money2(+(x.profit ?? x.net_profit))}</td>
                     <td style={{ textAlign: 'right' }} className={+x.net_profit >= 0 ? 'pos' : 'neg'}>{money2(+x.net_profit)}</td>
                     <td style={{ textAlign: 'center' }}>{has ? (e.image_url ? '🖼️' : t.hasNote) : ''}</td>
                   </tr>); })}
