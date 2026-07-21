@@ -20,11 +20,13 @@ const STATS = [
 
 /* Marcas para el carrusel (broker/prop firm + plataformas) */
 const LOGOS = [
-  { n: 'FTMO', m: 'F', c: '#2f6bff' }, { n: 'FundedNext', m: 'N', c: '#16c98d' },
-  { n: 'The5ers', m: '5', c: '#ff8a3d' }, { n: 'FundingPips', m: 'P', c: '#8b5cff' },
-  { n: 'MetaTrader 4', m: 'M4', c: '#f0a020' }, { n: 'MetaTrader 5', m: 'M5', c: '#2f6bff' },
-  { n: 'IC Markets', m: 'IC', c: '#e23b55' }, { n: 'Pepperstone', m: 'P', c: '#e2531f' },
-  { n: 'Exness', m: 'E', c: '#ffcf5c' }, { n: 'Darwinex', m: 'D', c: '#12b981' },
+  { n: 'FTMO', src: '/logos/ftmo.png' },
+  { n: 'FundedNext', src: '/logos/fundednext.png' },
+  { n: 'FundingPips', src: '/logos/fundingpips.png' },
+  { n: 'The5ers', src: '/logos/the5ers.png' },
+  { n: 'MetaTrader 4', src: '/logos/mt4.png' },
+  { n: 'MetaTrader 5', src: '/logos/mt5.png' },
+  { n: 'Axi', src: '/logos/axi.png' },
 ];
 
 function Counter({ to, prefix = '', suffix = '' }: { to: number; prefix?: string; suffix?: string }) {
@@ -32,22 +34,20 @@ function Counter({ to, prefix = '', suffix = '' }: { to: number; prefix?: string
   const ref = useRef<HTMLDivElement>(null);
   const done = useRef(false);
   useEffect(() => {
+    const run = () => {
+      if (done.current) return; done.current = true;
+      const dur = 1200, t0 = performance.now();
+      const tick = (t: number) => { const p = Math.min(1, (t - t0) / dur); setN(Math.round((1 - Math.pow(1 - p, 3)) * to)); if (p < 1) requestAnimationFrame(tick); };
+      requestAnimationFrame(tick);
+    };
     const el = ref.current;
-    if (!el) return;
-    const io = new IntersectionObserver((ents) => {
-      if (ents[0].isIntersecting && !done.current) {
-        done.current = true;
-        const dur = 1200, t0 = performance.now();
-        const tick = (t: number) => {
-          const p = Math.min(1, (t - t0) / dur);
-          setN(Math.round((1 - Math.pow(1 - p, 3)) * to));
-          if (p < 1) requestAnimationFrame(tick);
-        };
-        requestAnimationFrame(tick);
-      }
-    }, { threshold: 0.4 });
-    io.observe(el);
-    return () => io.disconnect();
+    let io: IntersectionObserver | null = null;
+    if (el && typeof IntersectionObserver !== 'undefined') {
+      io = new IntersectionObserver((ents) => { if (ents[0].isIntersecting) run(); }, { threshold: 0.3 });
+      io.observe(el);
+    }
+    const timer = setTimeout(run, 1500); // respaldo: anima aunque el observer no dispare
+    return () => { if (io) io.disconnect(); clearTimeout(timer); };
   }, [to]);
   return <div ref={ref} style={{ fontSize: 44, fontWeight: 800, letterSpacing: '-1px', background: 'var(--grad)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>{prefix}{n.toLocaleString()}{suffix}</div>;
 }
@@ -226,13 +226,13 @@ const dict = {
 } as const;
 
 const FIRMS = [
-  { name: 'FTMO', mono: 'F', color: '#2f6bff', plats: ['MT4', 'MT5', 'cTrader', 'DXtrade'], sizes: ['10K', '25K', '50K', '100K', '200K'],
+  { name: 'FTMO', mono: 'F', color: '#2f6bff', logo: '/logos/ftmo.png', plats: ['MT4', 'MT5', 'cTrader', 'DXtrade'], sizes: ['10K', '25K', '50K', '100K', '200K'],
     es: 'El estándar de la industria. Evaluación en dos fases y cuentas de hasta $200K.', en: 'The industry standard. Two-step evaluation and accounts up to $200K.' },
-  { name: 'FundedNext', mono: 'N', color: '#16c98d', plats: ['MT4', 'MT5'], sizes: ['6K', '15K', '25K', '50K', '100K', '200K'],
+  { name: 'FundedNext', mono: 'N', color: '#16c98d', logo: '/logos/fundednext.png', plats: ['MT4', 'MT5'], sizes: ['6K', '15K', '25K', '50K', '100K', '200K'],
     es: 'Reparto de hasta 95% y modelos flexibles. Cuentas MT4 y MT5.', en: 'Up to 95% profit split and flexible models. MT4 and MT5 accounts.' },
-  { name: 'The5ers', mono: '5', color: '#ff8a3d', plats: ['MT5', 'cTrader'], sizes: ['5K', '20K', '60K', '100K'],
+  { name: 'The5ers', mono: '5', color: '#ff8a3d', logo: '/logos/the5ers.png', plats: ['MT5', 'cTrader'], sizes: ['5K', '20K', '60K', '100K'],
     es: 'Programas de bajo drawdown y escalado rápido de capital.', en: 'Low-drawdown programs with fast capital scaling.' },
-  { name: 'FundingPips', mono: 'P', color: '#8b5cff', plats: ['MT5', 'cTrader', 'MatchTrader'], sizes: ['5K', '10K', '25K', '50K', '100K', '200K'],
+  { name: 'FundingPips', mono: 'P', color: '#8b5cff', logo: '/logos/fundingpips.png', plats: ['MT5', 'cTrader', 'MatchTrader'], sizes: ['5K', '10K', '25K', '50K', '100K', '200K'],
     es: 'Precios agresivos y evaluación flexible de una o dos fases.', en: 'Aggressive pricing and flexible one- or two-step evaluations.' },
 ];
 
@@ -327,7 +327,9 @@ export default function Home() {
         <div className="marquee">
           <div className="marquee-track">
             {[...LOGOS, ...LOGOS].map((l, i) => (
-              <div key={i} className="chip"><span className="mono" style={{ background: l.c }}>{l.m}</span>{l.n}</div>
+              <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 60, minWidth: 160, padding: '0 22px', borderRadius: 12, background: '#fff' }}>
+                <img src={l.src} alt={l.n} title={l.n} style={{ maxHeight: 34, maxWidth: 128, objectFit: 'contain' }} />
+              </div>
             ))}
           </div>
         </div>
@@ -422,7 +424,7 @@ export default function Home() {
               cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderRadius: 12,
               border: i === firm ? `2px solid ${fm.color}` : '1px solid var(--line)',
               background: i === firm ? 'var(--bg2)' : 'transparent', color: 'inherit', transition: 'all .2s' }}>
-              <span style={{ width: 30, height: 30, borderRadius: 8, background: fm.color, color: '#fff', fontWeight: 800, display: 'grid', placeItems: 'center', fontSize: 15 }}>{fm.mono}</span>
+              <span style={{ width: 34, height: 34, borderRadius: 8, background: '#fff', display: 'grid', placeItems: 'center', overflow: 'hidden' }}><img src={fm.logo} alt={fm.name} style={{ maxWidth: 26, maxHeight: 26, objectFit: 'contain' }} /></span>
               <b style={{ fontSize: 15 }}>{fm.name}</b>
             </button>
           ))}
@@ -433,7 +435,7 @@ export default function Home() {
           {/* detalle de la firma */}
           <div className="card" style={{ borderTop: `3px solid ${f.color}` }}>
             <div className="row" style={{ gap: 12, marginBottom: 14, alignItems: 'center' }}>
-              <span style={{ width: 46, height: 46, borderRadius: 12, background: f.color, color: '#fff', fontWeight: 800, display: 'grid', placeItems: 'center', fontSize: 22 }}>{f.mono}</span>
+              <span style={{ width: 52, height: 52, borderRadius: 12, background: '#fff', display: 'grid', placeItems: 'center', overflow: 'hidden' }}><img src={f.logo} alt={f.name} style={{ maxWidth: 40, maxHeight: 40, objectFit: 'contain' }} /></span>
               <div><h3 style={{ margin: 0 }}>{f.name}</h3><span className="pill green" style={{ marginTop: 4, display: 'inline-block' }}>{t.prop.onyx}</span></div>
             </div>
             <p className="muted" style={{ fontSize: 15, marginBottom: 16 }}>{lang === 'es' ? f.es : f.en}</p>
