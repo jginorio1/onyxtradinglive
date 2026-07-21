@@ -357,7 +357,7 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
         </div>
       </div></div>
 
-      <div className="wrap" style={{ padding: '24px 22px' }}>
+      <div className="wrap-wide" style={{ padding: '24px 24px' }}>
         <div className="row between" style={{ marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
           <div>
             <h1 style={{ marginBottom: 2 }}>📊 {L.analytics}</h1>
@@ -366,8 +366,10 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
           <Link className="btn btn-ghost" href="/dashboard/keys">{L.connectBtn}</Link>
         </div>
 
-        <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 16 }}><MarketHours lang={lang} /><News lang={lang} /></div>
-
+        <div className="cockpit">
+          <div className="rail-left"><MarketHours lang={lang} compact /></div>
+          <div className="rail-right"><News lang={lang} /></div>
+          <div className="center">
         {!hasAccounts ? (
           <div className="card"><h3>{L.empty1_t}</h3><p className="muted" style={{ margin: '8px 0 14px' }}>{L.empty1_d}</p><Link className="btn btn-primary" href="/dashboard/keys">{L.empty1_cta}</Link></div>
         ) : !hasTrades ? (
@@ -533,6 +535,8 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
             </>)}
           </div>
         )}
+          </div>
+        </div>
       </div>
     </>
   );

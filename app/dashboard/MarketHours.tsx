@@ -13,7 +13,7 @@ const T = {
   en: { title: '🕐 Market sessions', now: 'Now', open: '● OPEN', closed: 'closed', none: 'Quiet market', localTz: 'your local time', legend: 'Line = your current time · green/amber/red = typical volume', expand: 'Details', collapse: 'Hide', opensIn: 'opens in', closesIn: 'closes in', next: 'Next' },
 };
 
-export default function MarketHours({ lang }: { lang: Lang }) {
+export default function MarketHours({ lang, compact }: { lang: Lang; compact?: boolean }) {
   const t = T[lang];
   const [now, setNow] = useState<Date | null>(null);
   const [open, setOpen] = useState(false);
@@ -37,6 +37,26 @@ export default function MarketHours({ lang }: { lang: Lang }) {
   const soonest = events.map((e, i) => ({ ...e, s: SES[i] })).sort((x, y) => x.rem - y.rem)[0];
 
   const nowLabel = activeList.length ? activeList.map((s) => `${s.flag} ${s.n[lang]}`).join('  +  ') : t.none;
+
+  if (compact) return (
+    <div className="card" style={{ padding: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <span style={{ fontSize: 14, fontWeight: 700 }}>{t.title}</span>
+        <span style={{ fontSize: 13, fontWeight: 800 }}>{clock}</span>
+      </div>
+      <div style={{ position: 'relative', height: 8, background: 'var(--bg2)', borderRadius: 5, overflow: 'hidden', marginBottom: 12 }}>
+        {SES.map((s, i) => { const [lo, lc] = locOC(s); const on = isActive(s); return seg(lo, lc).map((g, j) => <div key={i + '-' + j} style={{ position: 'absolute', left: g[0] / 24 * 100 + '%', width: (g[1] - g[0]) / 24 * 100 + '%', top: 0, height: '100%', background: on ? s.col : s.col + '44' }} />); })}
+        <div style={{ position: 'absolute', top: -2, bottom: -2, left: np + '%', width: 2, background: '#a06bff' }} />
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {SES.map((s, i) => { const on = isActive(s); const ev = events[i]; return (
+          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 13 }}>{s.flag} {s.n[lang]}</span>
+            <span style={{ fontSize: 11, textAlign: 'right', lineHeight: 1.3 }}><span style={{ fontWeight: 700, color: on ? s.col : 'var(--mut)' }}>{on ? t.open : t.closed}</span><br /><span style={{ color: 'var(--mut)', fontSize: 10 }}>{ev.evt} {fmtDur(ev.rem)}</span></span>
+          </div>); })}
+      </div>
+    </div>
+  );
 
   return (
     <div className="card" style={{ padding: 14 }}>
