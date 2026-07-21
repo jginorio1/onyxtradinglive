@@ -276,12 +276,12 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
   const costAll = filtered.reduce((s, x) => s + ((+(x.commission || 0)) + (+(x.swap || 0))), 0);
   const eaten = grossAll > 0 ? Math.round(Math.min(100, Math.abs(costAll) / grossAll * 100)) : 0;
 
-  const SECTIONS: { key: View; icon: string; label: string; sub: string; viz: any }[] = [
-    { key: 'rendimiento', icon: '🎯', label: L.secPerf, sub: L.secPerfSub, viz: <MiniArea points={eqVals.length > 1 ? eqVals : [0, 0]} color={a.net >= 0 ? GREEN : RED} /> },
-    { key: 'calendario', icon: '🗓️', label: L.secCal, sub: L.secCalSub, viz: <MiniHeat cells={heatCells} /> },
-    { key: 'operaciones', icon: '📋', label: L.secOps, sub: L.secOpsSub, viz: <div style={{ display: 'grid', placeItems: 'center' }}><MiniDonut size={70} segs={[{ v: a.catWin, c: GREEN }, { v: a.catLoss, c: RED }, { v: a.catBE, c: GOLD }]} /></div> },
-    { key: 'costes', icon: '💸', label: L.secCost, sub: L.secCostSub, viz: <div style={{ display: 'grid', placeItems: 'center' }}><Ring size={70} pct={eaten / 100} color={GOLD} value={eaten + '%'} /></div> },
-    { key: 'cuentas', icon: '🗂️', label: L.secAcc, sub: L.secAccSub, viz: <MiniBars vals={accounts.length ? accounts.map((x) => accStats(x.id).net) : [1, 1]} colors={accounts.map((x) => (accStats(x.id).net >= 0 ? GREEN : RED))} /> },
+  const SECTIONS: { key: View; icon: string; label: string; sub: string; color: string; metric: string; mc: string; viz: any }[] = [
+    { key: 'rendimiento', icon: '🎯', label: L.secPerf, sub: L.secPerfSub, color: BLUE, metric: money2(a.net), mc: a.net >= 0 ? GREEN : RED, viz: <div style={{ width: 110 }}><MiniArea points={eqVals.length > 1 ? eqVals : [0, 0]} color={a.net >= 0 ? GREEN : RED} h={44} /></div> },
+    { key: 'calendario', icon: '🗓️', label: L.secCal, sub: L.secCalSub, color: GREEN, metric: `${a.n} ${L.ops}`, mc: '#f2f5fb', viz: <div style={{ width: 110 }}><MiniHeat cells={heatCells} /></div> },
+    { key: 'operaciones', icon: '📋', label: L.secOps, sub: L.secOpsSub, color: PURPLE, metric: String(a.n), mc: '#f2f5fb', viz: <MiniDonut size={46} segs={[{ v: a.catWin, c: GREEN }, { v: a.catLoss, c: RED }, { v: a.catBE, c: GOLD }]} /> },
+    { key: 'costes', icon: '💸', label: L.secCost, sub: L.secCostSub, color: GOLD, metric: money2(costAll), mc: costAll >= 0 ? GREEN : RED, viz: <Ring size={46} pct={eaten / 100} color={GOLD} value={eaten + '%'} /> },
+    { key: 'cuentas', icon: '🗂️', label: L.secAcc, sub: L.secAccSub, color: CYAN, metric: String(accounts.length), mc: '#f2f5fb', viz: <div style={{ width: 100 }}><MiniBars vals={accounts.length ? accounts.map((x) => accStats(x.id).net) : [1, 1]} colors={accounts.length ? accounts.map((x) => (accStats(x.id).net >= 0 ? GREEN : RED)) : [BLUE]} h={44} /></div> },
   ];
 
   const kpi = (lbl: string, val: string, cls = '') => <div className="card kpi"><div className="lbl">{lbl}</div><div className={'val ' + cls}>{val}</div></div>;
@@ -349,9 +349,16 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
               {/* Botones grandes */}
               <div className="grid g3">
                 {SECTIONS.map((s) => (
-                  <button key={s.key} onClick={() => setView(s.key)} className="card" style={{ cursor: 'pointer', textAlign: 'left', border: '1px solid var(--line)', transition: '.15s' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}><span style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--bg2)', display: 'grid', placeItems: 'center', fontSize: 18 }}>{s.icon}</span><div><div style={{ fontWeight: 700, fontSize: 15 }}>{s.label}</div><div className="muted" style={{ fontSize: 12 }}>{s.sub}</div></div></div>
-                    <div style={{ height: 60, display: 'flex', alignItems: 'center' }}>{s.viz}</div>
+                  <button key={s.key} onClick={() => setView(s.key)} className="card" style={{ cursor: 'pointer', textAlign: 'left', borderTop: '3px solid ' + s.color }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                      <span style={{ width: 38, height: 38, borderRadius: 11, background: s.color + '22', color: s.color, display: 'grid', placeItems: 'center', fontSize: 20 }}>{s.icon}</span>
+                      <div style={{ flex: 1 }}><div style={{ fontWeight: 800, fontSize: 17, color: '#fff' }}>{s.label}</div><div className="muted" style={{ fontSize: 12 }}>{s.sub}</div></div>
+                      <span style={{ color: 'var(--mut)', fontSize: 18 }}>→</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                      <div style={{ fontSize: 19, fontWeight: 800, color: s.mc, whiteSpace: 'nowrap' }}>{s.metric}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>{s.viz}</div>
+                    </div>
                   </button>
                 ))}
               </div>
