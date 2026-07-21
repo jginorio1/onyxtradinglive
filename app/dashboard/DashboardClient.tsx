@@ -347,7 +347,7 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
 
   return (
     <>
-      <div className="topbar"><div className="wrap">
+      <div className="topbar"><div className="wrap-wide">
         <div className="logo"><span className="mark">◆</span> Onyx</div>
         <div className="navl"><Link href="/dashboard">{L.nav_dash}</Link><Link href="/dashboard/keys">{L.nav_connect}</Link><Link href="/pricing">{L.nav_plan}</Link></div>
         <div className="row">
@@ -357,7 +357,7 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
         </div>
       </div></div>
 
-      <div className="wrap-wide" style={{ padding: '24px 24px' }}>
+      <div className="wrap-wide" style={{ padding: '24px 0' }}>
         <div className="row between" style={{ marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
           <div>
             <h1 style={{ marginBottom: 2 }}>📊 {L.analytics}</h1>

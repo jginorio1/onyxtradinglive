@@ -49,12 +49,12 @@ export default function AdminClient({ meEmail, accounts, trades }: { meEmail: st
 
   return (
     <>
-      <div className="topbar"><div className="wrap">
+      <div className="topbar"><div className="wrap-wide">
         <div className="logo"><span className="mark">◆</span> Onyx · Súper-Admin</div>
         <div className="row"><span className="muted" style={{ fontSize: 13 }}>{meEmail}</span><Link className="btn btn-ghost" href="/dashboard">Mi cuenta</Link></div>
       </div></div>
 
-      <div className="wrap-wide" style={{ padding: '24px 22px' }}>
+      <div className="wrap-wide" style={{ padding: '24px 0' }}>
         <div className="row" style={{ gap: 8, marginBottom: 22, flexWrap: 'wrap' }}>
           {([['resumen', '📊 Resumen'], ['usuarios', '👥 Usuarios'], ['planes', '💳 Planes']] as const).map(([k, label]) => (
             <button key={k} className={'btn ' + (tab === k ? 'btn-primary' : 'btn-ghost')} onClick={() => setTab(k as any)}>{label}</button>
