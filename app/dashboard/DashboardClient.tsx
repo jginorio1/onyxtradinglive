@@ -351,7 +351,7 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
             <Card title={L.calTitle} icon="🗓️" right={<div className="row"><button className={'btn ' + (vw === 'mes' ? 'btn-primary' : 'btn-ghost')} onClick={() => setVw('mes')}>{L.month}</button><button className={'btn ' + (vw === 'ano' ? 'btn-primary' : 'btn-ghost')} onClick={() => setVw('ano')}>{L.year}</button></div>}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <div className="row"><button className="btn btn-ghost" onClick={prevM}>‹</button><b style={{ minWidth: 130, textAlign: 'center' }}>{MOL[lang][calM]} {calY}</b><button className="btn btn-ghost" onClick={nextM}>›</button></div>
-                <span style={{ fontSize: 14 }}>{L.monthTotal} <b className={monthTotal >= 0 ? 'pos' : 'neg'}>{money(monthTotal)}</b> <span className="muted">({monthTrades} {L.ops})</span></span>
+                <span style={{ fontSize: 14 }}>{L.monthTotal} <b className={monthTotal >= 0 ? 'pos' : 'neg'}>{money2(monthTotal)}</b> <span className="muted">({monthTrades} {L.ops})</span></span>
               </div>
               {vw === 'mes' ? (<>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 6 }}>
@@ -364,7 +364,7 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
               </>) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
                   {MOL[lang].map((m, i) => { const key = `${calY}-${String(i + 1).padStart(2, '0')}`; const b = a.byMonth[key]; const net = b?.net || 0;
-                    return (<div key={i} style={{ background: 'var(--bg2)', borderRadius: 10, padding: 12, borderLeft: '3px solid ' + (b ? (net >= 0 ? GREEN : RED) : 'var(--line)') }}><div className="muted" style={{ fontSize: 12 }}>{m}</div><div style={{ fontWeight: 800, fontSize: 16, color: b ? (net >= 0 ? GREEN : RED) : 'var(--mut)' }}>{b ? money(net) : '—'}</div>{b && <div className="muted" style={{ fontSize: 11 }}>{b.count} {L.ops} · {Math.round(100 * b.wins / b.count)}%</div>}</div>);
+                    return (<div key={i} style={{ background: 'var(--bg2)', borderRadius: 10, padding: 12, borderLeft: '3px solid ' + (b ? (net >= 0 ? GREEN : RED) : 'var(--line)') }}><div className="muted" style={{ fontSize: 12 }}>{m}</div><div style={{ fontWeight: 800, fontSize: 15, color: b ? (net >= 0 ? GREEN : RED) : 'var(--mut)' }}>{b ? money2(net) : '—'}</div>{b && <div className="muted" style={{ fontSize: 11 }}>{b.count} {L.ops} · {Math.round(100 * b.wins / b.count)}%</div>}</div>);
                   })}
                 </div>
               )}
