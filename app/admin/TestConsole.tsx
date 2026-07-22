@@ -23,8 +23,8 @@ export default function TestConsole({ meEmail }: { meEmail: string }) {
       if (j.keys?.[0]) { setKey(j.keys[0].key); setLogin(String(j.keys[0].account_login || '')); }
     } catch {}
     try {
-      const r = await fetch('/api/admin/users'); const j = await r.json();
-      setMe((j.users || []).find((u: any) => u.email === meEmail) || null);
+      const r = await fetch('/api/account'); const j = await r.json();
+      setMe(j.profile || null);
     } catch {}
     try {
       const r = await fetch('/api/admin/plans'); const j = await r.json();
@@ -79,11 +79,15 @@ export default function TestConsole({ meEmail }: { meEmail: string }) {
 
   // Cambiar mi propio plan para probar los candados
   async function setMyPlan(planId: string) {
-    if (!me) return;
+    if (!me?.id) { setOut('No pude leer tu perfil. Recarga la pagina e intentalo de nuevo.'); return; }
     setBusy('plan');
-    await fetch('/api/admin/users', { method: 'PATCH', body: JSON.stringify({ id: me.id, action: 'plan', value: planId }) });
+    try {
+      const r = await fetch('/api/admin/users', { method: 'PATCH', body: JSON.stringify({ id: me.id, action: 'plan', value: planId }) });
+      const txt = await r.text();
+      if (!r.ok) { setOut('No se pudo cambiar el plan:\n' + txt); setBusy(''); return; }
+      setOut(`Listo. Tu plan ahora es "${planId}". Recarga el dashboard para ver los cambios.`);
+    } catch (e: any) { setOut('Error: ' + (e?.message || e)); }
     setBusy(''); load();
-    setOut(`Tu plan ahora es "${planId}". Recarga el dashboard para ver los cambios.`);
   }
 
   const box = { background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: 12 } as any;
