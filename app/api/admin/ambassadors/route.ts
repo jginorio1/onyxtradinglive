@@ -42,7 +42,7 @@ export async function GET() {
       list.push({ ...a, email: prof?.email || '', rate, tier, active, clicks: clicks || 0, signups: signups || 0, balances: bal });
     }
 
-    const { data: payouts } = await supabaseAdmin.from('payouts').select('*').eq('status', 'requested').order('requested_at', { ascending: true });
+    const { data: payouts } = await supabaseAdmin.from('ambassador_payouts').select('*').eq('status', 'requested').order('requested_at', { ascending: true });
     return NextResponse.json({ ambassadors: list, payouts: payouts || [], settings });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
@@ -94,16 +94,16 @@ export async function PATCH(req: Request) {
 
     // Marcar un pago como realizado: las comisiones de ese pago pasan a 'paid'
     if (b.action === 'pay') {
-      const { data: pay } = await supabaseAdmin.from('payouts').select('*').eq('id', b.id).single();
+      const { data: pay } = await supabaseAdmin.from('ambassador_payouts').select('*').eq('id', b.id).single();
       if (!pay) return NextResponse.json({ error: 'payout not found' }, { status: 404 });
-      await supabaseAdmin.from('payouts').update({ status: 'paid', paid_at: new Date().toISOString(), note: b.note || null }).eq('id', pay.id);
+      await supabaseAdmin.from('ambassador_payouts').update({ status: 'paid', paid_at: new Date().toISOString(), note: b.note || null }).eq('id', pay.id);
       await supabaseAdmin.from('commissions').update({ status: 'paid' }).eq('payout_id', pay.id);
       await logAdmin(user.email, 'amb_payout_paid', pay.id, { amount: pay.amount });
       return NextResponse.json({ ok: true });
     }
 
     if (b.action === 'reject_payout') {
-      await supabaseAdmin.from('payouts').update({ status: 'rejected', note: b.note || null }).eq('id', b.id);
+      await supabaseAdmin.from('ambassador_payouts').update({ status: 'rejected', note: b.note || null }).eq('id', b.id);
       await supabaseAdmin.from('commissions').update({ payout_id: null }).eq('payout_id', b.id);
       return NextResponse.json({ ok: true });
     }

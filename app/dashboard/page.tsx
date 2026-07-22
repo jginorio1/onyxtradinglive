@@ -1,21 +1,29 @@
 import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '@/lib/supabaseServer';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import DashboardClient from './DashboardClient';
 
 export const dynamic = 'force-dynamic';
 
 export default async function Dashboard() {
+  // La sesión decide QUIÉN eres; los datos se leen con la clave de servidor
+  // filtrando siempre por tu id, para no depender de las políticas de la base.
   const sb = createSupabaseServer();
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect('/login');
 
-  const { data: profile } = await sb.from('profiles').select('plan').eq('id', user.id).single();
-  const { data: accounts } = await sb.from('trading_accounts').select('id,login,nickname,broker,platform,balance,currency,fund_target,fund_max_daily,fund_max_total,fund_start,acc_type,challenge_status,challenge_cost').eq('user_id', user.id);
+  const { data: profile } = await supabaseAdmin.from('profiles').select('plan').eq('id', user.id).maybeSingle();
+
+  const { data: accounts } = await supabaseAdmin
+    .from('trading_accounts')
+    .select('id,login,nickname,broker,platform,balance,currency,fund_target,fund_max_daily,fund_max_total,fund_start,acc_type,challenge_status,challenge_cost')
+    .eq('user_id', user.id);
+
   const accIds = (accounts || []).map((a: any) => a.id);
 
   let trades: any[] = [];
   if (accIds.length) {
-    const { data } = await sb.from('trades')
+    const { data } = await supabaseAdmin.from('trades')
       .select('id,account_id,symbol,side,volume,open_time,close_time,net_profit,profit,commission,swap')
       .in('account_id', accIds).order('close_time', { ascending: false }).limit(5000);
     trades = data || [];

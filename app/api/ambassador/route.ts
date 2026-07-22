@@ -22,7 +22,7 @@ export async function GET() {
 
     const { count: clicks } = await supabaseAdmin.from('ref_clicks').select('*', { count: 'exact', head: true }).eq('code', amb.code);
     const { count: signups } = await supabaseAdmin.from('referrals').select('*', { count: 'exact', head: true }).eq('ambassador_id', amb.id);
-    const { data: pays } = await supabaseAdmin.from('payouts').select('id,amount,method,status,requested_at,paid_at').eq('ambassador_id', amb.id).order('requested_at', { ascending: false }).limit(20);
+    const { data: pays } = await supabaseAdmin.from('ambassador_payouts').select('id,amount,method,status,requested_at,paid_at').eq('ambassador_id', amb.id).order('requested_at', { ascending: false }).limit(20);
     const { data: recent } = await supabaseAdmin.from('commissions').select('amount,currency,status,created_at,available_at').eq('ambassador_id', amb.id).order('created_at', { ascending: false }).limit(20);
 
     return NextResponse.json({

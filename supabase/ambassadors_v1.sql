@@ -66,8 +66,8 @@ create table if not exists commissions (
   created_at timestamptz default now()
 );
 
--- Solicitudes de pago
-create table if not exists payouts (
+-- Solicitudes de pago de embajadores (ojo: 'payouts' ya existe para retiros de fondeo)
+create table if not exists ambassador_payouts (
   id uuid primary key default uuid_generate_v4(),
   ambassador_id uuid not null references ambassadors(id) on delete cascade,
   amount numeric not null,

@@ -25,10 +25,10 @@ export async function POST() {
     if (!amb.payout_details) {
       return NextResponse.json({ error: 'Missing payout details.', code: 'no_payout_details' }, { status: 400 });
     }
-    const { data: openPay } = await supabaseAdmin.from('payouts').select('id').eq('ambassador_id', amb.id).eq('status', 'requested').maybeSingle();
+    const { data: openPay } = await supabaseAdmin.from('ambassador_payouts').select('id').eq('ambassador_id', amb.id).eq('status', 'requested').maybeSingle();
     if (openPay) return NextResponse.json({ error: 'Payout already requested.', code: 'payout_pending' }, { status: 400 });
 
-    const { data: pay, error } = await supabaseAdmin.from('payouts').insert({
+    const { data: pay, error } = await supabaseAdmin.from('ambassador_payouts').insert({
       ambassador_id: amb.id, amount: bal.available, method: amb.payout_method, details: amb.payout_details, status: 'requested',
     }).select('id').single();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
