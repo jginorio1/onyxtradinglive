@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { accountLimit } from '@/lib/settings';
+import { forEA } from '@/lib/manager';
 
 export const runtime = 'nodejs';
 
@@ -157,7 +158,53 @@ export async function POST(req: NextRequest) {
       .update({ last_used_at: new Date().toISOString() })
       .eq('id', keyRow.id);
 
-    return NextResponse.json({ ok: true, received: closed.length, accountId });
+    // --- Datos que reporta el EA sobre sí mismo ---
+    const eaPatch: any = {};
+    if (body.serverOffset !== undefined) eaPatch.server_offset = Number(body.serverOffset) || 0;
+    if (body.eaVersion) eaPatch.ea_version = String(body.eaVersion).slice(0, 20);
+    if (Object.keys(eaPatch).length) await supabaseAdmin.from('trading_accounts').update(eaPatch).eq('id', accountId);
+
+    // --- Eventos que nos manda el EA (lo que hizo y por qué) ---
+    if (Array.isArray(body.events) && body.events.length) {
+      const rows = body.events.slice(0, 50).map((e: any) => ({
+        user_id: userId,
+        account_id: accountId,
+        kind: ['breakeven', 'trailing', 'partial', 'close_all', 'blocked', 'info'].includes(e.kind) ? e.kind : 'info',
+        detail: e.detail ? String(e.detail).slice(0, 300) : null,
+        symbol: e.symbol ? String(e.symbol).slice(0, 20) : null,
+        ticket: e.ticket ? Number(e.ticket) : null,
+        amount: e.amount != null ? Number(e.amount) : null,
+      }));
+      await supabaseAdmin.from('manager_events').insert(rows);
+    }
+
+    // --- Confirmación de comandos ejecutados ---
+    if (Array.isArray(body.doneCommands) && body.doneCommands.length) {
+      await supabaseAdmin.from('manager_commands')
+        .update({ status: 'done', done_at: new Date().toISOString() })
+        .in('id', body.doneCommands.slice(0, 20));
+    }
+
+    // --- Configuración vigente del gestor + órdenes pendientes ---
+    let managerCfg: any = null;
+    let commands: any[] = [];
+    try {
+      const { data: prof } = await supabaseAdmin.from('profiles').select('plan').eq('id', userId).single();
+      const { data: planRow } = await supabaseAdmin.from('plans').select('capabilities').eq('id', prof?.plan || 'free').maybeSingle();
+      const caps = planRow?.capabilities || {};
+
+      if (caps.manager) {
+        const { data: cfgRow } = await supabaseAdmin.from('manager_configs').select('*').eq('account_id', accountId).maybeSingle();
+        managerCfg = forEA(cfgRow, caps);
+
+        const { data: cmds } = await supabaseAdmin.from('manager_commands')
+          .select('id,command,params').eq('account_id', accountId).eq('status', 'pending')
+          .order('created_at', { ascending: true }).limit(5);
+        commands = cmds || [];
+      }
+    } catch { /* si algo falla aquí, el sync de datos no debe romperse */ }
+
+    return NextResponse.json({ ok: true, received: closed.length, accountId, config: managerCfg, commands });
   } catch (e: any) {
     console.error('sync error', e);
     return NextResponse.json({ ok: false, error: e?.message || 'server error' }, { status: 500 });

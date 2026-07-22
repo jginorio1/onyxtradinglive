@@ -53,7 +53,7 @@ const SESS: Record<string, { es: string; en: string }> = { 'Londres': { es: 'Lon
 
 const D = {
   es: {
-    nav_dash: 'Panel', nav_connect: 'Conectar cuenta', nav_plan: 'Plan', nav_account: 'Mi cuenta', signout: 'Salir',
+    nav_dash: 'Panel', nav_connect: 'Conectar cuenta', nav_plan: 'Plan', nav_account: 'Mi cuenta', nav_manager: 'Gestor', signout: 'Salir',
     ambT: '¿Tienes comunidad? Gana con Onyx', ambD: 'Cobra una comisión recurrente por cada persona que se suscriba con tu enlace, y dale un descuento a tu gente.', ambCta: 'Ver el programa →', ambHide: 'Ocultar',
     analytics: 'Tu panel', accountsWord: 'cuenta(s)', balance: 'Balance', connectBtn: '+ Conectar cuenta',
     empty1_t: 'Conecta tu primera cuenta', empty1_d: 'Instala el Onyx Connector (MT4/MT5), genera una API key y en segundos verás aquí todas tus estadísticas.', empty1_cta: 'Conectar cuenta →',
@@ -77,7 +77,7 @@ const D = {
     proLockT: 'Función Pro', proLockD: 'Mejora tu plan para desbloquear esta sección.', proLockCta: 'Ver planes →', histCap: '🔒 En el plan Free ves solo los últimos 30 días. Desbloquea tu historial completo con Pro.', available: 'Disponible en', upgradeTo: 'Mejorar a', perMo: 'mes', dLock1: 'Diario con fotos, notas y etiquetas por operación.', dLock2: 'Compara tus cuentas lado a lado.', dLock3: 'Reglas de fondeo, retiros y documentos de la cuenta.',
   },
   en: {
-    nav_dash: 'Dashboard', nav_connect: 'Connect account', nav_plan: 'Plan', nav_account: 'My account', signout: 'Sign out',
+    nav_dash: 'Dashboard', nav_connect: 'Connect account', nav_plan: 'Plan', nav_account: 'My account', nav_manager: 'Manager', signout: 'Sign out',
     ambT: 'Got a community? Earn with Onyx', ambD: 'Earn a recurring commission for everyone who subscribes through your link, and give your people a discount.', ambCta: 'See the program →', ambHide: 'Hide',
     analytics: 'Your dashboard', accountsWord: 'account(s)', balance: 'Balance', connectBtn: '+ Connect account',
     empty1_t: 'Connect your first account', empty1_d: 'Install the Onyx Connector (MT4/MT5), generate an API key and in seconds all your stats will show up here.', empty1_cta: 'Connect account →',
@@ -452,7 +452,7 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
     <>
       <div className="topbar"><div className="wrap-wide">
         <Link className="logo" href="/dashboard"><img src="/onyx-symbol.png" alt="Onyx" style={{ width: 28, height: 28, objectFit: 'contain' }} /> Onyx</Link>
-        <div className="navl"><Link href="/dashboard">{L.nav_dash}</Link><Link href="/dashboard/keys">{L.nav_connect}</Link><Link href="/pricing">{L.nav_plan}</Link><Link href="/account">{L.nav_account}</Link></div>
+        <div className="navl"><Link href="/dashboard">{L.nav_dash}</Link><Link href="/dashboard/keys">{L.nav_connect}</Link><Link href="/dashboard/manager">{L.nav_manager}</Link><Link href="/pricing">{L.nav_plan}</Link><Link href="/account">{L.nav_account}</Link></div>
         <div className="row">
           <button className="btn btn-ghost" style={{ padding: '6px 10px' }} onClick={() => switchLang(lang === 'es' ? 'en' : 'es')}>{lang === 'es' ? '🇬🇧 EN' : '🇪🇸 ES'}</button>
           <span className="pill green">{plan}</span>

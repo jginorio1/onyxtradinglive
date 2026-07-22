@@ -17,6 +17,8 @@ const CAPS: [string, string][] = [
   ['export', 'Exportar CSV'],
   ['reports', 'Informes automáticos'],
   ['telegram', 'Alertas por Telegram'],
+  ['manager', 'Gestor: break even y trailing'],
+  ['manager_advanced', 'Gestor avanzado: TP parciales'],
   ['ea_risk', 'EA control de riesgo (Elite)'],
 ];
 
