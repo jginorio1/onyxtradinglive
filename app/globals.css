@@ -66,8 +66,17 @@ th{color:var(--mut);font-weight:600;}
 section[id],div[id]{scroll-margin-top:120px;}
 
 /* --- Barra de navegacion unica (app/TopBar.tsx) --- */
-.navlink{color:var(--mut);font-size:14px;padding:7px 11px;border-radius:8px;transition:.15s;}
+.navlink{color:var(--mut);font-size:14px;padding:7px 11px;border-radius:8px;transition:.15s;white-space:nowrap;}
 .navlink:hover{color:#fff;background:var(--card2);}
+/* La pagina en la que estas, marcada. Antes no habia forma de saberlo. */
+.navlink.on{color:var(--tx);background:var(--card2);}
+
+/* Hamburguesa: oculta en pantalla ancha, aparece cuando los enlaces no caben */
+.navburger-wrap{display:none;position:relative;}
+.navburger{width:34px;height:32px;border-radius:8px;border:1px solid var(--line);background:transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:0;transition:.15s;}
+.navburger:hover{border-color:var(--brand);}
+.navburger span{display:block;width:15px;height:1.5px;background:var(--tx);border-radius:2px;}
+.menu-item.on{background:var(--card2);color:var(--tx);}
 
 .planpill{font-size:11px;padding:4px 10px;border-radius:20px;background:rgba(52,226,160,.14);color:#7fe9c0;border:1px solid rgba(52,226,160,.3);transition:.15s;}
 .planpill:hover{background:rgba(52,226,160,.22);}
@@ -109,7 +118,10 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
 
 /* Responsive por tamaño de pantalla */
 @media(max-width:1024px){ .g4{grid-template-columns:repeat(2,1fr);} .g3{grid-template-columns:repeat(2,1fr);} }
-@media(max-width:900px){ .navl{display:none;} }
+/* Cuando los enlaces no caben se recogen en el menú de la hamburguesa.
+   Antes se ocultaban sin nada que los sustituyera y te quedabas sin
+   navegación en cuanto la ventana era algo estrecha. */
+@media(max-width:900px){ .navl{display:none;} .navburger-wrap{display:block;} }
 @media(max-width:640px){ .g4,.g3,.g2{grid-template-columns:1fr;} h1{font-size:26px;} .wrap,.wrap-wide{padding:0 15px;} .card{padding:16px;} }
 @media(max-width:760px){ .heroPreview{grid-template-columns:1fr!important;} }
 

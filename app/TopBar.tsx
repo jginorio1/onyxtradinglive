@@ -5,6 +5,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NAV_T, Lang } from '@/lib/navText';
 import TopBarMenu from './TopBarMenu';
 import LangToggle from './LangToggle';
+import MainNav from './MainNav';
 
 // ============================================================
 // Barra de navegación única, en el layout raíz.
@@ -51,22 +52,37 @@ export default async function TopBar() {
 
   const initial = (user?.email || '?').slice(0, 1).toUpperCase();
 
+  // Enlaces según haya sesión o no. "Planes" también va dentro: si no,
+  // un usuario con sesión solo llega a precios por la píldora del plan.
+  const navItems = user
+    ? [
+        { href: '/dashboard', label: t.dashboard },
+        { href: '/dashboard/keys', label: t.accounts },
+        { href: '/dashboard/manager', label: t.manager },
+        { href: '/pricing', label: t.plans },
+        ...(isAdmin ? [{ href: '/admin', label: t.admin }] : []),
+      ]
+    : [
+        // "Inicio" explícito: el logo también lleva ahí, pero mucha gente no
+        // sabe que un logo se puede pulsar, y desde Planes o Embajadores no
+        // había ninguna otra forma de volver al landing.
+        { href: '/', label: t.home },
+        { href: '/pricing', label: t.plans },
+        { href: '/embajadores', label: t.ambassadors },
+      ];
+
   return (
     <div className="topbar">
       <div className="wrap-wide">
-        <Link className="logo" href={user ? '/dashboard' : '/'}>
+        {/* El logo siempre vuelve al inicio. Para el panel ya está "Panel". */}
+        <Link className="logo" href="/">
           <img src="/onyx-symbol.png" alt="Onyx" style={{ width: 28, height: 28, objectFit: 'contain' }} />
           Onyx Trading Live
         </Link>
 
         {user ? (
           <div className="row" style={{ gap: 4 }}>
-            <div className="navl" style={{ gap: 2, marginRight: 8 }}>
-              <Link className="navlink" href="/dashboard">{t.dashboard}</Link>
-              <Link className="navlink" href="/dashboard/keys">{t.accounts}</Link>
-              <Link className="navlink" href="/dashboard/manager">{t.manager}</Link>
-              {isAdmin && <Link className="navlink" href="/admin">{t.admin}</Link>}
-            </div>
+            <MainNav items={navItems} />
 
             {eaLive !== null && (
               <span className="ea-dot" title={eaLive ? t.eaOnTitle : t.eaOffTitle}>
@@ -81,13 +97,10 @@ export default async function TopBar() {
           </div>
         ) : (
           <div className="row" style={{ gap: 6 }}>
-            <div className="navl" style={{ gap: 2, marginRight: 6 }}>
-              <Link className="navlink" href="/pricing">{t.plans}</Link>
-              <Link className="navlink" href="/embajadores">{t.ambassadors}</Link>
-            </div>
+            <MainNav items={navItems} />
             {/* Sin sesión el selector va visible: un visitante nuevo debe encontrarlo rápido */}
             <LangToggle compact />
-            <Link className="btn btn-ghost" href="/login">{t.login}</Link>
+            <Link className="btn btn-ghost btn-login" href="/login">{t.login}</Link>
             <Link className="btn btn-primary" href="/login?mode=signup">{t.signup}</Link>
           </div>
         )}
