@@ -20,11 +20,8 @@ export default function TestConsole({ meEmail }: { meEmail: string }) {
     try {
       const r = await fetch('/api/keys'); const j = await r.json();
       setKeys(j.keys || []);
+      setMe(j.usage || null);           // usage.planId = mi plan actual
       if (j.keys?.[0]) { setKey(j.keys[0].key); setLogin(String(j.keys[0].account_login || '')); }
-    } catch {}
-    try {
-      const r = await fetch('/api/account'); const j = await r.json();
-      setMe(j.profile || null);
     } catch {}
     try {
       const r = await fetch('/api/admin/plans'); const j = await r.json();
@@ -79,10 +76,9 @@ export default function TestConsole({ meEmail }: { meEmail: string }) {
 
   // Cambiar mi propio plan para probar los candados
   async function setMyPlan(planId: string) {
-    if (!me?.id) { setOut('No pude leer tu perfil. Recarga la pagina e intentalo de nuevo.'); return; }
     setBusy('plan');
     try {
-      const r = await fetch('/api/admin/users', { method: 'PATCH', body: JSON.stringify({ id: me.id, action: 'plan', value: planId }) });
+      const r = await fetch('/api/admin/users', { method: 'PATCH', body: JSON.stringify({ action: 'self_plan', value: planId }) });
       const txt = await r.text();
       if (!r.ok) { setOut('No se pudo cambiar el plan:\n' + txt); setBusy(''); return; }
       setOut(`Listo. Tu plan ahora es "${planId}". Recarga el dashboard para ver los cambios.`);
@@ -111,13 +107,13 @@ export default function TestConsole({ meEmail }: { meEmail: string }) {
         </p>
         <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
           {plans.map((p) => (
-            <button key={p.id} className={'btn ' + (me?.plan === p.id ? 'btn-primary' : 'btn-ghost')}
+            <button key={p.id} className={'btn ' + (me?.planId === p.id ? 'btn-primary' : 'btn-ghost')}
               onClick={() => setMyPlan(p.id)} disabled={busy === 'plan'}>
               {p.name}
             </button>
           ))}
         </div>
-        {me && <div className="muted" style={{ fontSize: 12, marginTop: 10 }}>Plan actual: <b>{me.plan}</b></div>}
+        {me && <div className="muted" style={{ fontSize: 12, marginTop: 10 }}>Plan actual: <b>{me.planName || me.planId}</b> · {me.used} de {me.unlimited ? 'ilimitadas' : me.max} cuenta(s)</div>}
       </div>
 
       {/* Simulador */}

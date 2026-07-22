@@ -36,9 +36,18 @@ export async function PATCH(req: Request) {
   if (!isAdmin) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
 
   const { id, action, value } = await req.json();
-  if (!id || !action) return NextResponse.json({ error: 'faltan datos' }, { status: 400 });
+  if (!action) return NextResponse.json({ error: 'faltan datos' }, { status: 400 });
 
   try {
+    // Cambiar MI PROPIO plan (para pruebas). No hace falta id: lo saca de la sesion.
+    if (action === 'self_plan') {
+      await supabaseAdmin.from('profiles').update({ plan: value }).eq('id', user.id);
+      await logAdmin(user.email, 'self_plan', user.email, { plan: value });
+      return NextResponse.json({ ok: true, plan: value });
+    }
+
+    if (!id) return NextResponse.json({ error: 'falta id' }, { status: 400 });
+
     if (action === 'plan') {
       await supabaseAdmin.from('profiles').update({ plan: value }).eq('id', id);
     } else if (action === 'ban') {
