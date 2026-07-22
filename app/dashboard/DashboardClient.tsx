@@ -53,6 +53,7 @@ const SESS: Record<string, { es: string; en: string }> = { 'Londres': { es: 'Lon
 const D = {
   es: {
     nav_dash: 'Panel', nav_connect: 'Conectar cuenta', nav_plan: 'Plan', nav_account: 'Mi cuenta', signout: 'Salir',
+    ambT: '¿Tienes comunidad? Gana con Onyx', ambD: 'Cobra una comisión recurrente por cada persona que se suscriba con tu enlace, y dale un descuento a tu gente.', ambCta: 'Ver el programa →', ambHide: 'Ocultar',
     analytics: 'Tu panel', accountsWord: 'cuenta(s)', balance: 'Balance', connectBtn: '+ Conectar cuenta',
     empty1_t: 'Conecta tu primera cuenta', empty1_d: 'Instala el Onyx Connector (MT4/MT5), genera una API key y en segundos verás aquí todas tus estadísticas.', empty1_cta: 'Conectar cuenta →',
     empty2: 'Cuenta conectada. En cuanto cierres operaciones, aparecerán aquí tus analíticas.',
@@ -76,6 +77,7 @@ const D = {
   },
   en: {
     nav_dash: 'Dashboard', nav_connect: 'Connect account', nav_plan: 'Plan', nav_account: 'My account', signout: 'Sign out',
+    ambT: 'Got a community? Earn with Onyx', ambD: 'Earn a recurring commission for everyone who subscribes through your link, and give your people a discount.', ambCta: 'See the program →', ambHide: 'Hide',
     analytics: 'Your dashboard', accountsWord: 'account(s)', balance: 'Balance', connectBtn: '+ Connect account',
     empty1_t: 'Connect your first account', empty1_d: 'Install the Onyx Connector (MT4/MT5), generate an API key and in seconds all your stats will show up here.', empty1_cta: 'Connect account →',
     empty2: 'Account connected. As soon as you close trades, your analytics will appear here.',
@@ -209,6 +211,7 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
   const [lastUpdate, setLastUpdate] = useState<number>(Date.now());
   const [, setTick] = useState(0);
   const [plans, setPlans] = useState<any[]>([]);
+  const [hideAmb, setHideAmb] = useState(true);
   const L = D[lang];
   const proPrice = plans.find((p: any) => p.id === 'pro')?.price_month || 0;
 
@@ -226,6 +229,9 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
     return { name: t?.name || 'Pro', price: t?.price_month || proPrice };
   };
   const upJ = upsell('journal'), upC = upsell('compare'), upF = upsell('funding');
+
+  // La invitación al programa se puede ocultar y no vuelve a salir
+  useEffect(() => { try { setHideAmb(localStorage.getItem('onyx_hide_amb') === '1'); } catch { setHideAmb(false); } }, []);
 
   // Ata al usuario con el embajador que lo trajo (si viene de un enlace)
   useEffect(() => { fetch('/api/ref', { method: 'POST' }).catch(() => {}); }, []);
@@ -483,6 +489,21 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
               </div>
 
               <Achievements a={a} accounts={accounts} lang={lang} />
+
+              {!hideAmb && (
+                <div className="card" style={{ border: '1px solid #a06bff', background: 'linear-gradient(135deg,rgba(160,107,255,.12),transparent)' }}>
+                  <div className="row between" style={{ flexWrap: 'wrap', gap: 12 }}>
+                    <div style={{ flex: 1, minWidth: 220 }}>
+                      <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 4 }}>🎁 {L.ambT}</div>
+                      <div className="muted" style={{ fontSize: 13 }}>{L.ambD}</div>
+                    </div>
+                    <div className="row" style={{ gap: 8 }}>
+                      <Link className="btn btn-primary" href="/embajadores">{L.ambCta}</Link>
+                      <button className="btn btn-ghost" style={{ padding: '6px 10px', fontSize: 12 }} onClick={() => { setHideAmb(true); try { localStorage.setItem('onyx_hide_amb', '1'); } catch {} }}>{L.ambHide}</button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </>)}
 
             {view !== 'hub' && <button className="btn btn-ghost" style={{ alignSelf: 'flex-start' }} onClick={() => setView('hub')}>{L.back}</button>}

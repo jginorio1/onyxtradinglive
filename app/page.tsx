@@ -52,7 +52,7 @@ function Counter({ to, prefix = '', suffix = '' }: { to: number; prefix?: string
 
 const dict = {
   es: {
-    nav: { features: 'Funciones', how: 'Cómo funciona', fondeo: 'Fondeo', pricing: 'Precios', faq: 'FAQ', login: 'Entrar', cta: 'Empieza gratis' },
+    nav: { features: 'Funciones', how: 'Cómo funciona', fondeo: 'Fondeo', pricing: 'Precios', amb: 'Embajadores', faq: 'FAQ', login: 'Entrar', cta: 'Empieza gratis' },
     hero: {
       badge: '🔗 Conecta MT4 y MT5 · Sincronización automática',
       h1a: 'Opera con datos,', h1b: 'no con memoria',
@@ -125,12 +125,19 @@ const dict = {
       { n: 'Pro', p: 19, items: ['5 cuentas MT', 'Todas las estadísticas', 'Historial ilimitado', 'Calendario y gráficas', 'Reglas de fondeo'], cta: 'Elegir Pro', pop: true },
       { n: 'Elite', p: 39, items: ['Cuentas ilimitadas', 'Todo lo de Pro', 'Informes automáticos', 'Alertas por Telegram', 'Soporte prioritario'], cta: 'Elegir Elite', pop: false },
     ],
+    amb: {
+      t: '¿Tienes una comunidad de trading?',
+      d: 'Recomienda Onyx a tus seguidores y cobra una comisión recurrente cada mes, mientras sigan suscritos. Ellos entran con descuento, tú cobras siempre.',
+      k1: 'recurrente', k2: 'Sin límite', k2s: 'de ganancias', k3: 'para tu gente', k3s: 'con tu código',
+      cta: 'Ver el programa →',
+    },
     faqT: 'Preguntas frecuentes',
     faqs: [
       ['¿Con qué brokers y prop firms funciona?', 'Con cualquier cuenta MT4 o MT5: FTMO, FundedNext, The5ers, FundingPips y tu bróker de siempre. Tu cuenta de fondeo es una cuenta de MetaTrader, así que se conecta igual.'],
       ['¿Es seguro conectar mi cuenta?', 'Sí. La conexión es de solo lectura: Onyx lee tu historial pero nunca puede operar, retirar ni mover tus fondos.'],
       ['¿Necesito saber programar?', 'No. Instalas el connector, pegas tu API key y listo. Te guiamos paso a paso; no hay que tocar código.'],
       ['¿Cuántas cuentas puedo conectar?', 'Depende de tu plan: desde 1 cuenta en el plan gratis hasta cuentas ilimitadas. Ves todas juntas en tu portafolio.'],
+      ['¿Tienen programa de afiliados o embajadores?', 'Sí. Si tienes comunidad, canal o seguidores, cobras una comisión recurrente por cada persona que se suscriba con tu enlace, mientras siga pagando. Además tu audiencia entra con descuento usando tu código. Míralo en la página de Embajadores.'],
       ['¿Funciona en el móvil?', 'Sí. El panel se adapta a móvil, tablet y monitores grandes, así que lo revisas desde cualquier dispositivo.'],
       ['¿En qué se diferencia de un Excel?', 'Onyx sincroniza solo, calcula 15+ métricas, tiene calendario, sesiones y noticias en vivo, costes, fondeo y gráficas modernas. Un Excel no hace nada de eso.'],
       ['¿Funciona con MT4 y MT5?', 'Sí, con las dos. Solo cambias el archivo del connector según tu plataforma; la misma API key sirve para ambas.'],
@@ -141,7 +148,7 @@ const dict = {
     footer: { terms: 'Términos', privacy: 'Privacidad', amb: 'Embajadores', rights: '© 2026 Onyx Trading Live' },
   },
   en: {
-    nav: { features: 'Features', how: 'How it works', fondeo: 'Prop firms', pricing: 'Pricing', faq: 'FAQ', login: 'Log in', cta: 'Start free' },
+    nav: { features: 'Features', how: 'How it works', fondeo: 'Prop firms', pricing: 'Pricing', amb: 'Ambassadors', faq: 'FAQ', login: 'Log in', cta: 'Start free' },
     hero: {
       badge: '🔗 Connect MT4 & MT5 · Automatic sync',
       h1a: 'Trade with data,', h1b: 'not memory',
@@ -214,12 +221,19 @@ const dict = {
       { n: 'Pro', p: 19, items: ['5 MT accounts', 'All stats', 'Unlimited history', 'Calendar & charts', 'Prop-firm rules'], cta: 'Choose Pro', pop: true },
       { n: 'Elite', p: 39, items: ['Unlimited accounts', 'Everything in Pro', 'Automatic reports', 'Telegram alerts', 'Priority support'], cta: 'Choose Elite', pop: false },
     ],
+    amb: {
+      t: 'Do you have a trading community?',
+      d: 'Recommend Onyx to your followers and earn a recurring commission every month, for as long as they stay subscribed. They join with a discount, you get paid every time.',
+      k1: 'recurring', k2: 'No cap', k2s: 'on earnings', k3: 'for your people', k3s: 'with your code',
+      cta: 'See the program →',
+    },
     faqT: 'Frequently asked questions',
     faqs: [
       ['Which brokers and prop firms does it work with?', 'Any MT4 or MT5 account: FTMO, FundedNext, The5ers, FundingPips and your usual broker. Your funded account is a MetaTrader account, so it connects the same way.'],
       ['Is it safe to connect my account?', 'Yes. The connection is read-only: Onyx reads your history but can never trade, withdraw or move your funds.'],
       ['Do I need to know how to code?', 'No. Install the connector, paste your API key and you\'re done. We guide you step by step — no code required.'],
       ['How many accounts can I connect?', 'Depends on your plan: from 1 account on Free to unlimited accounts. You see them all combined in your portfolio.'],
+      ['Do you have an affiliate or ambassador program?', 'Yes. If you have a community, channel or followers, you earn a recurring commission for every person who subscribes through your link, for as long as they keep paying. Your audience also gets a discount with your code. Check the Ambassadors page.'],
       ['Does it work on mobile?', 'Yes. The dashboard adapts to phone, tablet and large monitors, so you can check it from any device.'],
       ['How is it different from a spreadsheet?', 'Onyx syncs automatically, computes 15+ metrics, and has a calendar, live sessions and news, costs, prop-firm tracking and modern charts. A spreadsheet does none of that.'],
       ['Does it work with MT4 and MT5?', 'Yes, both. You just use the connector file for your platform; the same API key works for both.'],
@@ -288,7 +302,7 @@ export default function Home() {
       {/* NAV */}
       <div className="topbar"><div className="wrap">
         <Link className="logo" href="/"><img src="/onyx-symbol.png" alt="Onyx" style={{ width: 30, height: 30, objectFit: 'contain' }} /> Onyx Trading Live</Link>
-        <div className="navl"><a href="#features">{t.nav.features}</a><a href="#how">{t.nav.how}</a><a href="#fondeo">{t.nav.fondeo}</a><a href="#pricing">{t.nav.pricing}</a><a href="#faq">{t.nav.faq}</a></div>
+        <div className="navl"><a href="#features">{t.nav.features}</a><a href="#how">{t.nav.how}</a><a href="#fondeo">{t.nav.fondeo}</a><a href="#pricing">{t.nav.pricing}</a><a href="#embajadores">{t.nav.amb}</a><a href="#faq">{t.nav.faq}</a></div>
         <div className="row">
           <button className="btn btn-ghost" style={{ padding: '6px 10px' }} onClick={() => switchLang(lang === 'es' ? 'en' : 'es')}>{lang === 'es' ? '🇬🇧 EN' : '🇪🇸 ES'}</button>
           <Link className="btn btn-ghost" href="/login">{t.nav.login}</Link>
@@ -597,6 +611,20 @@ export default function Home() {
             </div>
           );
         })()}
+      </div>
+
+      {/* Embajadores */}
+      <div id="embajadores" className="wrap section">
+        <div className="card" style={{ border: '1px solid var(--brand)', background: 'linear-gradient(135deg,rgba(124,140,255,.14),rgba(160,107,255,.06))', textAlign: 'center', padding: '34px 22px' }}>
+          <h2 style={{ marginBottom: 10 }}>{t.amb.t}</h2>
+          <p className="muted" style={{ maxWidth: 620, margin: '0 auto 22px', fontSize: 16 }}>{t.amb.d}</p>
+          <div className="grid g3" style={{ maxWidth: 640, margin: '0 auto 24px' }}>
+            <div><div style={{ fontSize: 32, fontWeight: 800, background: 'var(--grad)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>30%</div><div className="muted" style={{ fontSize: 13 }}>{t.amb.k1}</div></div>
+            <div><div style={{ fontSize: 32, fontWeight: 800, color: 'var(--green)' }}>{t.amb.k2}</div><div className="muted" style={{ fontSize: 13 }}>{t.amb.k2s}</div></div>
+            <div><div style={{ fontSize: 32, fontWeight: 800, color: 'var(--gold)' }}>-20%</div><div className="muted" style={{ fontSize: 13 }}>{t.amb.k3} {t.amb.k3s}</div></div>
+          </div>
+          <Link className="btn btn-primary" href="/embajadores" style={{ padding: '12px 26px', fontSize: 16 }}>{t.amb.cta}</Link>
+        </div>
       </div>
 
       {/* FAQ */}
