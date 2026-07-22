@@ -227,6 +227,9 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
   };
   const upJ = upsell('journal'), upC = upsell('compare'), upF = upsell('funding');
 
+  // Ata al usuario con el embajador que lo trajo (si viene de un enlace)
+  useEffect(() => { fetch('/api/ref', { method: 'POST' }).catch(() => {}); }, []);
+
   useEffect(() => { fetch('/api/admin/plans').then((r) => r.json()).then((j) => setPlans(j.plans || [])).catch(() => {}); }, []);
 
   useEffect(() => {

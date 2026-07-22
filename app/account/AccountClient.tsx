@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { errMsg, planName } from '@/lib/i18nErrors';
+import Ambassador from './Ambassador';
 
 type Lang = 'es' | 'en';
 type Tab = 'plan' | 'perfil' | 'facturas' | 'cuentas' | 'avisos' | 'seguridad' | 'referidos';
@@ -243,13 +244,7 @@ export default function AccountClient({ email }: { email: string }) {
 
             {data && tab === 'seguridad' && <Security L={L} lang={lang} />}
 
-            {data && tab === 'referidos' && (
-              <div className="card" style={{ maxWidth: 560 }}>
-                <h3 style={{ marginBottom: 8 }}>{L.refT}</h3>
-                <p className="muted" style={{ fontSize: 14, marginBottom: 12 }}>{L.refTxt}</p>
-                <span className="pill" style={{ color: '#c9a9ff', background: 'rgba(160,107,255,.18)', border: '1px solid #a06bff' }}>{L.soon}</span>
-              </div>
-            )}
+            {data && tab === 'referidos' && <Ambassador lang={lang} />}
           </div>
         </div>
       </div>

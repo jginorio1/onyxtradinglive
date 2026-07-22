@@ -31,6 +31,7 @@ export async function POST(req: Request) {
       mode: 'subscription',
       customer,
       line_items: [{ price: priceId, quantity: 1 }],
+      allow_promotion_codes: true, // deja usar el cupón del embajador
       success_url: `${base}/dashboard?checkout=success`,
       cancel_url: `${base}/pricing?checkout=cancel`,
       metadata: { userId: user.id },

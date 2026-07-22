@@ -1,11 +1,12 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import Ambassadors from './Ambassadors';
 
 type Plan = { id: string; name: string; name_en: string; desc_es: string | null; desc_en: string | null; price_month: number; price_year: number; stripe_price_id: string | null; stripe_price_id_year: string | null; max_accounts: number; features: string[]; features_en: string[]; badge: string | null; badge_en: string | null; active: boolean; sort: number; capabilities: any };
 type User = { id: string; email: string; plan: string; subscription_status: string | null; banned: boolean; is_admin: boolean; created_at: string; accounts: number; lastSync: string | null };
 type Team = { id: string; email: string; role: string | null; is_admin: boolean };
-type Tab = 'resumen' | 'usuarios' | 'planes' | 'equipo' | 'modulos' | 'ajustes';
+type Tab = 'resumen' | 'usuarios' | 'planes' | 'equipo' | 'embajadores' | 'modulos' | 'ajustes';
 
 const CAPS: [string, string][] = [
   ['journal', 'Diario con fotos y notas'],
@@ -45,7 +46,7 @@ export default function AdminClient({ meEmail, role, accounts, trades }: { meEma
   async function resetPass(u: User) { setBusy(u.id + 'rst'); const r = await fetch('/api/admin/reset-password', { method: 'POST', body: JSON.stringify({ email: u.email }) }); const j = await r.json(); setBusy(''); if (!r.ok) { alert(j.error || 'error'); return; } if (j.link) { navigator.clipboard.writeText(j.link); alert('Enlace de recuperación copiado:\n\n' + j.link); } else alert('Email de recuperación enviado.'); }
 
   const filtered = users.filter((u) => u.email?.toLowerCase().includes(q.toLowerCase()));
-  const NAV: [Tab, string][] = [['resumen', '📊 Resumen'], ['usuarios', '👥 Usuarios'], ['planes', '💳 Planes'], ['equipo', '🛡️ Equipo'], ['modulos', '🧩 Módulos'], ['ajustes', '⚙️ Ajustes']];
+  const NAV: [Tab, string][] = [['resumen', '📊 Resumen'], ['usuarios', '👥 Usuarios'], ['planes', '💳 Planes'], ['equipo', '🛡️ Equipo'], ['embajadores', '🎁 Embajadores'], ['modulos', '🧩 Módulos'], ['ajustes', '⚙️ Ajustes']];
 
   return (
     <>
@@ -109,6 +110,7 @@ export default function AdminClient({ meEmail, role, accounts, trades }: { meEma
 
             {tab === 'planes' && <PlansTab plans={plans} reload={loadPlans} />}
             {tab === 'equipo' && <Equipo team={team} role={role} meEmail={meEmail} reload={loadTeam} />}
+            {tab === 'embajadores' && <Ambassadors />}
 
             {tab === 'modulos' && (
               <div className="grid g2">

@@ -138,7 +138,7 @@ const dict = {
       ['¿Qué formas de pago aceptan?', 'Pago seguro con tarjeta a través de Stripe. Tus datos de pago nunca pasan por nuestros servidores.'],
     ],
     finalT: 'Empieza a operar con datos, no con memoria', finalCta: 'Crear cuenta gratis',
-    footer: { terms: 'Términos', privacy: 'Privacidad', rights: '© 2026 Onyx Trading Live' },
+    footer: { terms: 'Términos', privacy: 'Privacidad', amb: 'Embajadores', rights: '© 2026 Onyx Trading Live' },
   },
   en: {
     nav: { features: 'Features', how: 'How it works', fondeo: 'Prop firms', pricing: 'Pricing', faq: 'FAQ', login: 'Log in', cta: 'Start free' },
@@ -227,7 +227,7 @@ const dict = {
       ['What payment methods do you accept?', 'Secure card payments through Stripe. Your payment data never touches our servers.'],
     ],
     finalT: 'Trade with data, not memory', finalCta: 'Create free account',
-    footer: { terms: 'Terms', privacy: 'Privacy', rights: '© 2026 Onyx Trading Live' },
+    footer: { terms: 'Terms', privacy: 'Privacy', amb: 'Ambassadors', rights: '© 2026 Onyx Trading Live' },
   },
 } as const;
 
@@ -623,6 +623,7 @@ export default function Home() {
         <div className="wrap row between" style={{ flexWrap: 'wrap', gap: 16, color: 'var(--mut)', fontSize: 14 }}>
           <div className="logo" style={{ fontSize: 16 }}><img src="/onyx-symbol.png" alt="Onyx" style={{ width: 24, height: 24, objectFit: 'contain' }} /> Onyx Trading Live</div>
           <div className="row" style={{ gap: 20 }}>
+            <Link href="/embajadores">{t.footer.amb}</Link>
             <Link href="/terms">{t.footer.terms}</Link>
             <Link href="/privacy">{t.footer.privacy}</Link>
             <span>{t.footer.rights}</span>
