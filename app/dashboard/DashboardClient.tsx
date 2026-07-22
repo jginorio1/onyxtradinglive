@@ -212,6 +212,21 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
   const L = D[lang];
   const proPrice = plans.find((p: any) => p.id === 'pro')?.price_month || 0;
 
+  // Capacidades del plan actual (controladas 100% desde el panel). Antes de cargar, cae al comportamiento por defecto (free vs pago).
+  const myPlan = plans.find((p: any) => p.id === (plan || 'free'));
+  const caps = myPlan?.capabilities && typeof myPlan.capabilities === 'object' ? myPlan.capabilities : null;
+  const histDays = caps ? (Number(caps.history_days) || 0) : (isFree ? 30 : 0); // 0 = ilimitado
+  const canJournal = caps ? !!caps.journal : !isFree;
+  const canCompare = caps ? !!caps.compare : !isFree;
+  const canFunding = caps ? !!caps.funding : !isFree;
+  // Plan más barato (distinto al actual) que desbloquea una capacidad → para el candado y su precio.
+  const upsell = (capKey: string) => {
+    const cands = plans.filter((p: any) => p.id !== (plan || 'free') && p.capabilities?.[capKey] && p.active !== false).sort((x: any, y: any) => (x.price_month || 0) - (y.price_month || 0));
+    const t = cands[0] || plans.find((p: any) => p.id === 'pro');
+    return { name: t?.name || 'Pro', price: t?.price_month || proPrice };
+  };
+  const upJ = upsell('journal'), upC = upsell('compare'), upF = upsell('funding');
+
   useEffect(() => { fetch('/api/admin/plans').then((r) => r.json()).then((j) => setPlans(j.plans || [])).catch(() => {}); }, []);
 
   useEffect(() => {
@@ -239,10 +254,10 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
   const ranged = useMemo(() => {
     const now = Date.now();
     const src = demo ? demoTrades : tradesS;
-    const freeCap = isFree && !demo ? now - 30 * 864e5 : -Infinity; // Free: solo últimos 30 días
+    const histCap = histDays > 0 && !demo ? now - histDays * 864e5 : -Infinity; // límite de historial según el plan
     return src.filter((x) => {
       const dt = new Date(x.close_time); const d = dt.getTime();
-      if (d < freeCap) return false;
+      if (d < histCap) return false;
       if (range === 'custom') { const ds = x.close_time.slice(0, 10); if (cFrom && ds < cFrom) return false; if (cTo && ds > cTo) return false; return true; }
       if (range === 'd1') return d >= now - 864e5;
       if (range === 'd7') return d >= now - 7 * 864e5;
@@ -251,7 +266,7 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
       if (range === 'yr') return dt.getUTCFullYear() === new Date().getUTCFullYear();
       return true;
     });
-  }, [tradesS, demo, demoTrades, range, cFrom, cTo, isFree]);
+  }, [tradesS, demo, demoTrades, range, cFrom, cTo, histDays]);
 
   const filtered = useMemo(() => (sel === 'all' ? ranged : ranged.filter((t) => t.account_id === sel)), [ranged, sel]);
   const a = useMemo(() => analyze(filtered), [filtered]);
@@ -423,7 +438,7 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
             )}
             {demo && <div style={{ background: 'rgba(255,192,77,.12)', border: '1px solid var(--amber)', color: 'var(--amber)', borderRadius: 10, padding: '8px 14px', fontSize: 13, alignSelf: 'flex-start' }}>{L.demoOn}</div>}
             {fundAlert && <div style={{ background: fundAlert.type === 'danger' ? 'rgba(255,107,125,.12)' : 'rgba(52,226,160,.12)', border: '1px solid ' + (fundAlert.type === 'danger' ? 'var(--red)' : 'var(--green)'), color: fundAlert.type === 'danger' ? 'var(--red)' : 'var(--green)', borderRadius: 10, padding: '10px 14px', fontSize: 14, fontWeight: 600 }}>{fundAlert.txt}</div>}
-            {isFree && <div style={{ background: 'rgba(124,140,255,.10)', border: '1px solid #7c8cff', color: '#a9b4ff', borderRadius: 10, padding: '9px 14px', fontSize: 13, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>{L.histCap} <Link href="/pricing" style={{ color: '#fff', fontWeight: 700 }}>{L.proLockCta}</Link></div>}
+            {histDays > 0 && <div style={{ background: 'rgba(124,140,255,.10)', border: '1px solid #7c8cff', color: '#a9b4ff', borderRadius: 10, padding: '9px 14px', fontSize: 13, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>{L.histCap} <Link href="/pricing" style={{ color: '#fff', fontWeight: 700 }}>{L.proLockCta}</Link></div>}
 
             {view === 'hub' && (<>
               {/* Onyx te dice */}
@@ -450,11 +465,11 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
               {/* Botones grandes */}
               <div className="grid g3">
                 {SECTIONS.map((s) => (
-                  <button key={s.key} onClick={() => setView(s.key)} className="card" style={{ cursor: 'pointer', textAlign: 'left', borderTop: '3px solid ' + s.color, opacity: isFree && s.pro ? 0.9 : 1 }}>
+                  <button key={s.key} onClick={() => setView(s.key)} className="card" style={{ cursor: 'pointer', textAlign: 'left', borderTop: '3px solid ' + s.color, opacity: s.pro && !canJournal ? 0.9 : 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                       <span style={{ width: 38, height: 38, borderRadius: 11, background: s.color + '22', color: s.color, display: 'grid', placeItems: 'center', fontSize: 20 }}>{s.icon}</span>
                       <div style={{ flex: 1 }}><div style={{ fontWeight: 800, fontSize: 17, color: '#fff' }}>{s.label}</div><div className="muted" style={{ fontSize: 12 }}>{s.sub}</div></div>
-                      {isFree && s.pro ? <PlanBadge plan="Pro" /> : <span style={{ color: 'var(--mut)', fontSize: 18 }}>→</span>}
+                      {s.pro && !canJournal ? <PlanBadge plan={upJ.name} /> : <span style={{ color: 'var(--mut)', fontSize: 18 }}>→</span>}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                       <div style={{ fontSize: 19, fontWeight: 800, color: s.mc, whiteSpace: 'nowrap' }}>{s.metric}</div>
@@ -532,7 +547,7 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
               </Card>
             )}
 
-            {view === 'operaciones' && (isFree ? <ProLock L={L} plan="Pro" desc={L.dLock1} price={proPrice} /> : <Journal trades={filtered} lang={lang} />)}
+            {view === 'operaciones' && (!canJournal ? <ProLock L={L} plan={upJ.name} desc={L.dLock1} price={upJ.price} /> : <Journal trades={filtered} lang={lang} />)}
             {view === 'costes' && <Costs trades={filtered} lang={lang} />}
 
             {view === 'cuentas' && (<>
@@ -554,10 +569,10 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
                     </tr>); })}</tbody>
                 </table>
               </Card>
-              {accounts.length >= 2 && (isFree ? <ProLock L={L} plan="Pro" desc={L.dLock2} price={proPrice} /> : <CompareAccounts accounts={accounts} trades={ranged} lang={lang} />)}
-              {sel !== 'all' && cur && isFree && <ProLock L={L} plan="Pro" desc={L.dLock3} price={proPrice} />}
-              {sel !== 'all' && cur && !isFree && <FundCard acc={cur} net={a.net} maxDD={a.maxDD} L={L} onSave={(fields) => { const toNum = (v: any) => (v === '' || v == null ? null : Number(v)); setAccounts(accounts.map((x) => (x.id === cur.id ? { ...x, fund_target: toNum(fields.fund_target), fund_max_daily: toNum(fields.fund_max_daily), fund_max_total: toNum(fields.fund_max_total), fund_start: toNum(fields.fund_start) } : x))); }} />}
-              {sel !== 'all' && cur && !isFree && <AccountExtras acc={cur} net={a.net} lang={lang} onSaved={(fields) => setAccounts(accounts.map((x) => (x.id === cur.id ? { ...x, acc_type: fields.acc_type || null, challenge_status: fields.challenge_status || null, challenge_cost: fields.challenge_cost === '' ? null : Number(fields.challenge_cost) } : x)))} />}
+              {accounts.length >= 2 && (!canCompare ? <ProLock L={L} plan={upC.name} desc={L.dLock2} price={upC.price} /> : <CompareAccounts accounts={accounts} trades={ranged} lang={lang} />)}
+              {sel !== 'all' && cur && !canFunding && <ProLock L={L} plan={upF.name} desc={L.dLock3} price={upF.price} />}
+              {sel !== 'all' && cur && canFunding && <FundCard acc={cur} net={a.net} maxDD={a.maxDD} L={L} onSave={(fields) => { const toNum = (v: any) => (v === '' || v == null ? null : Number(v)); setAccounts(accounts.map((x) => (x.id === cur.id ? { ...x, fund_target: toNum(fields.fund_target), fund_max_daily: toNum(fields.fund_max_daily), fund_max_total: toNum(fields.fund_max_total), fund_start: toNum(fields.fund_start) } : x))); }} />}
+              {sel !== 'all' && cur && canFunding && <AccountExtras acc={cur} net={a.net} lang={lang} onSaved={(fields) => setAccounts(accounts.map((x) => (x.id === cur.id ? { ...x, acc_type: fields.acc_type || null, challenge_status: fields.challenge_status || null, challenge_cost: fields.challenge_cost === '' ? null : Number(fields.challenge_cost) } : x)))} />}
               {sel === 'all' && <p className="muted" style={{ fontSize: 13 }}>{lang === 'es' ? 'Elige una cuenta arriba para ver su fondeo, retiros y documentos.' : 'Pick an account above to see its funding, payouts and documents.'}</p>}
             </>)}
           </div>

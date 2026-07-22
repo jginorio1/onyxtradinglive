@@ -37,6 +37,7 @@ export async function POST(req: Request) {
     badge_en: b.badge_en || null,
     active: b.active !== false,
     sort: Number(b.sort) || 0,
+    capabilities: b.capabilities && typeof b.capabilities === 'object' ? b.capabilities : {},
   };
   const { error } = await supabaseAdmin.from('plans').insert(row);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -55,6 +56,7 @@ export async function PATCH(req: Request) {
   ['price_month', 'price_year', 'max_accounts', 'sort'].forEach((k) => { if (b[k] !== undefined) fields[k] = Number(b[k]) || 0; });
   if (b.features !== undefined) fields.features = Array.isArray(b.features) ? b.features : [];
   if (b.features_en !== undefined) fields.features_en = Array.isArray(b.features_en) ? b.features_en : [];
+  if (b.capabilities !== undefined) fields.capabilities = (b.capabilities && typeof b.capabilities === 'object') ? b.capabilities : {};
   if (b.active !== undefined) fields.active = !!b.active;
   const { error } = await supabaseAdmin.from('plans').update(fields).eq('id', b.id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

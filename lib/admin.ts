@@ -10,13 +10,13 @@ export async function getAdmin() {
 
   const envAdmins = (process.env.ADMIN_EMAILS || '')
     .split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
-  let isAdmin = envAdmins.includes((user.email || '').toLowerCase());
+  const isEnvOwner = envAdmins.includes((user.email || '').toLowerCase());
 
-  if (!isAdmin) {
-    const { data } = await supabaseAdmin.from('profiles').select('is_admin').eq('id', user.id).single();
-    isAdmin = !!data?.is_admin;
-  }
-  return { user, isAdmin };
+  const { data } = await supabaseAdmin.from('profiles').select('is_admin,role').eq('id', user.id).single();
+  const isAdmin = isEnvOwner || !!data?.is_admin;
+  // rol: el de la BD; si viene de ADMIN_EMAILS se considera owner
+  const role: 'owner' | 'admin' | 'support' | null = (data?.role as any) || (isEnvOwner ? 'owner' : (data?.is_admin ? 'admin' : null));
+  return { user, isAdmin, role };
 }
 
 // Guarda una acción del admin para auditoría (nunca lanza error).
