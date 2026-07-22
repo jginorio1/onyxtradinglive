@@ -39,6 +39,16 @@ export default function Pricing() {
   }, []);
   function switchLang(l: Lang) { setLang(l); try { localStorage.setItem('onyx_lang', l); } catch {} }
 
+  // Al volver desde Stripe con el botón "atrás", el navegador restaura la página congelada:
+  // reactivamos los botones para que no queden en "cargando".
+  useEffect(() => {
+    const reset = () => setLoading('');
+    window.addEventListener('pageshow', reset);
+    window.addEventListener('focus', reset);
+    document.addEventListener('visibilitychange', reset);
+    return () => { window.removeEventListener('pageshow', reset); window.removeEventListener('focus', reset); document.removeEventListener('visibilitychange', reset); };
+  }, []);
+
   async function subscribe(plan: string, price: number) {
     if (plan === 'free' || price === 0) { window.location.href = '/login?mode=signup'; return; }
     setLoading(plan);
