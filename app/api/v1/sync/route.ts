@@ -2,6 +2,7 @@
 // POST /api/v1/sync   ·   Authorization: Bearer <API_KEY>
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { accountLimit } from '@/lib/settings';
 
 export const runtime = 'nodejs';
 
@@ -60,12 +61,12 @@ export async function POST(req: NextRequest) {
 
     if (!existingAcc) {
       // cuenta nueva: comprobar el límite del plan
-      const { data: prof } = await supabaseAdmin.from('profiles').select('plan').eq('id', userId).single();
-      const planId = prof?.plan || 'free';
-      const { data: planRow } = await supabaseAdmin.from('plans').select('max_accounts,name').eq('id', planId).maybeSingle();
-      const maxAccounts = planRow?.max_accounts ?? 1;
+      const lim = await accountLimit(userId);
+      const planRow = { name: lim.planName };
+      const planId = lim.planId;
+      const maxAccounts = lim.max;
       const { count } = await supabaseAdmin.from('trading_accounts').select('*', { count: 'exact', head: true }).eq('user_id', userId);
-      if ((count || 0) >= maxAccounts) {
+      if (!lim.unlimited && (count || 0) >= maxAccounts) {
         return NextResponse.json({
           ok: false,
           error: `Limite del plan ${planRow?.name || planId}: ${maxAccounts} cuenta(s). Mejora tu plan para conectar mas. | ${planRow?.name || planId} plan limit: ${maxAccounts} account(s). Upgrade your plan to connect more.`,

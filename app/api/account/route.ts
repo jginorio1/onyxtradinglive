@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { stripe } from '@/lib/stripe';
+import { accountLimit, addonSettings, retentionSettings } from '@/lib/settings';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -36,7 +37,12 @@ export async function GET() {
       } catch { /* la suscripción pudo borrarse en Stripe */ }
     }
 
+    const limit = await accountLimit(user.id);
+    const addons = await addonSettings();
+    const retention = await retentionSettings();
+
     return NextResponse.json({
+      limit, addons, retention,
       profile: prof || null,
       plans: plans || [],
       accounts: accounts || [],

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { accountLimit } from '@/lib/settings';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -14,12 +15,9 @@ function genKey() {
 
 // Cupos del plan: 1 clave activa = 1 cuenta
 async function usage(userId: string) {
-  const { data: prof } = await supabaseAdmin.from('profiles').select('plan').eq('id', userId).single();
-  const planId = prof?.plan || 'free';
-  const { data: planRow } = await supabaseAdmin.from('plans').select('id,name,name_en,max_accounts,price_month').eq('id', planId).maybeSingle();
-  const max = Number(planRow?.max_accounts ?? 1);
+  const lim = await accountLimit(userId);
   const { count } = await supabaseAdmin.from('api_keys').select('*', { count: 'exact', head: true }).eq('user_id', userId).eq('revoked', false);
-  return { planId, planName: planRow?.name || planId, planNameEn: planRow?.name_en || planRow?.name || planId, max, used: count || 0, unlimited: max >= 999 };
+  return { ...lim, used: count || 0 };
 }
 
 // GET · claves del usuario + cupos + estado de sincronización

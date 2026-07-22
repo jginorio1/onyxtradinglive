@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { errMsg, planName } from '@/lib/i18nErrors';
 import Ambassador from './Ambassador';
+import CancelFlow from './CancelFlow';
 
 type Lang = 'es' | 'en';
 type Tab = 'plan' | 'perfil' | 'facturas' | 'cuentas' | 'avisos' | 'seguridad' | 'referidos';
@@ -22,6 +23,8 @@ const D: any = {
     nTitle: 'Qué avisos quieres recibir', nEmail: 'Correos de la cuenta y pagos', nWeek: 'Resumen semanal de tu operativa', nFund: 'Alertas de reglas de fondeo', nMkt: 'Novedades y ofertas',
     pwT: 'Cambiar contraseña', pwNew: 'Nueva contraseña', pwRep: 'Repetir contraseña', pwBtn: 'Actualizar contraseña', pwShort: 'Mínimo 8 caracteres.', pwDiff: 'Las contraseñas no coinciden.', pwOk: 'Contraseña actualizada.',
     dTitle: 'Eliminar mi cuenta', dTxt: 'Se borrarán tus cuentas, operaciones y notas para siempre, y se cancelará tu suscripción. Esto no se puede deshacer.', dType: 'Escribe ELIMINAR para confirmar', dBtn: 'Eliminar mi cuenta',
+    addT: '¿Necesitas más cuentas?', addD: 'Añade cuentas sueltas a tu plan por ${p} al mes cada una.',
+    addTotal: 'Total', addAcc: 'cuentas', addSave: 'Guardar cambios', addSaved: 'Actualizado',
     refT: 'Programa de referidos', refTxt: 'Muy pronto podrás invitar amigos y ganar créditos, o convertirte en embajador y cobrar una comisión mensual por cada suscriptor que traigas.', soon: 'Próximamente',
   },
   en: {
@@ -38,6 +41,8 @@ const D: any = {
     nTitle: 'Which alerts you want', nEmail: 'Account and billing emails', nWeek: 'Weekly performance recap', nFund: 'Prop-firm rule alerts', nMkt: 'News and offers',
     pwT: 'Change password', pwNew: 'New password', pwRep: 'Repeat password', pwBtn: 'Update password', pwShort: 'At least 8 characters.', pwDiff: 'Passwords do not match.', pwOk: 'Password updated.',
     dTitle: 'Delete my account', dTxt: 'Your accounts, trades and notes will be erased forever and your subscription will be canceled. This cannot be undone.', dType: 'Type ELIMINAR to confirm', dBtn: 'Delete my account',
+    addT: 'Need more accounts?', addD: 'Add extra accounts to your plan for ${p}/month each.',
+    addTotal: 'Total', addAcc: 'accounts', addSave: 'Save changes', addSaved: 'Updated',
     refT: 'Referral program', refTxt: 'Soon you will be able to invite friends and earn credit, or become an ambassador and earn a monthly commission for every subscriber you bring.', soon: 'Coming soon',
   },
 };
@@ -53,6 +58,8 @@ export default function AccountClient({ email }: { email: string }) {
   const [p, setP] = useState<any>({});
   const [busy, setBusy] = useState('');
   const [msg, setMsg] = useState('');
+  const [extraQty, setExtraQty] = useState(0);
+  const setExtra = (n: number) => setExtraQty(Math.max(0, Math.min(50, n)));
   const L = D[lang];
 
   useEffect(() => {
@@ -60,7 +67,7 @@ export default function AccountClient({ email }: { email: string }) {
     load();
   }, []);
   async function load() {
-    try { const r = await fetch('/api/account'); const j = await r.json(); setData(j); setP(j.profile || {}); } catch {}
+    try { const r = await fetch('/api/account'); const j = await r.json(); setData(j); setP(j.profile || {}); setExtraQty(Number(j.limit?.extra || 0)); } catch {}
   }
   function switchLang(l: Lang) { setLang(l); try { localStorage.setItem('onyx_lang', l); } catch {} }
 
@@ -68,9 +75,10 @@ export default function AccountClient({ email }: { email: string }) {
   const accounts: any[] = data?.accounts || [];
   const sub = data?.subscription;
   const myPlan = plans.find((x) => x.id === (p.plan || 'free'));
-  const maxAcc = Number(myPlan?.max_accounts || 1);
+  const limit = data?.limit;
+  const maxAcc = limit ? Number(limit.max) : Number(myPlan?.max_accounts || 1);
   const used = accounts.length;
-  const isUnlimited = maxAcc >= 999;
+  const isUnlimited = limit ? !!limit.unlimited : maxAcc >= 999;
   const pct = isUnlimited ? 0 : Math.min(100, Math.round((used / Math.max(maxAcc, 1)) * 100));
   const barColor = pct >= 100 ? '#ff6b7d' : pct >= 75 ? '#ffc04d' : '#34e2a0';
   const upgrades = useMemo(() => plans.filter((x) => (x.price_month || 0) > (myPlan?.price_month || 0)), [plans, myPlan]);
@@ -84,6 +92,14 @@ export default function AccountClient({ email }: { email: string }) {
     setMsg(L.saved); setTimeout(() => setMsg(''), 2500);
   }
   function setField(k: string, v: any) { setP({ ...p, [k]: v }); }
+
+  async function saveExtra() {
+    setBusy('extra');
+    const r = await fetch('/api/account/addons', { method: 'POST', body: JSON.stringify({ qty: extraQty }) });
+    const j = await r.json(); setBusy('');
+    if (!r.ok) { alert(errMsg(j, lang)); return; }
+    setMsg(L.addSaved); setTimeout(() => setMsg(''), 2500); load();
+  }
 
   async function openPortal() {
     setBusy('portal');
@@ -165,6 +181,32 @@ export default function AccountClient({ email }: { email: string }) {
                     <Link className="btn btn-primary" href="/pricing">{L.upBtn} {planName(u, lang)} →</Link>
                   </div>
                 ))}
+                {data.addons?.extra_account_enabled && data.addons?.extra_account_price_id && sub && !isUnlimited && (
+                  <div className="card" style={card}>
+                    <div className="row between" style={{ flexWrap: 'wrap', gap: 12 }}>
+                      <div style={{ flex: 1, minWidth: 200 }}>
+                        <div style={{ fontWeight: 800, fontSize: 16 }}>{L.addT}</div>
+                        <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>{L.addD.replace('{p}', String(data.addons.extra_account_price))}</div>
+                      </div>
+                      <div className="row" style={{ gap: 8 }}>
+                        <button className="btn btn-ghost" style={{ width: 36, padding: '4px 0' }} onClick={() => setExtra(Math.max(0, extraQty - 1))}>−</button>
+                        <span style={{ fontSize: 19, fontWeight: 800, minWidth: 28, textAlign: 'center' }}>{extraQty}</span>
+                        <button className="btn btn-ghost" style={{ width: 36, padding: '4px 0' }} onClick={() => setExtra(extraQty + 1)}>+</button>
+                      </div>
+                    </div>
+                    <div className="row between" style={{ borderTop: '1px solid var(--line)', marginTop: 14, paddingTop: 12, flexWrap: 'wrap', gap: 10 }}>
+                      <span style={{ fontSize: 14 }}>{L.addTotal}: <b>{(limit?.base || 0) + extraQty} {L.addAcc}</b>{extraQty > 0 ? ` · +$${extraQty * Number(data.addons.extra_account_price)}/${L.perMo}` : ''}</span>
+                      {extraQty !== (limit?.extra || 0) && <button className="btn btn-primary" onClick={saveExtra} disabled={busy === 'extra'}>{busy === 'extra' ? L.saving : L.addSave}</button>}
+                    </div>
+                  </div>
+                )}
+
+                {sub && data.retention?.enabled && (
+                  <div className="card" style={card}>
+                    <CancelFlow lang={lang} canceling={!!sub.cancelAtPeriodEnd} planName={planName(myPlan, lang)} onDone={load} />
+                  </div>
+                )}
+
                 <Link className="muted" href="/pricing" style={{ fontSize: 13, textDecoration: 'underline' }}>{L.seePlans}</Link>
               </>
             )}
