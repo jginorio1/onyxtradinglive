@@ -1,5 +1,6 @@
 'use client';
 import { Suspense, useEffect, useState } from 'react';
+import { useLang } from '@/lib/lang';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
@@ -49,18 +50,9 @@ function LoginInner() {
   const [pass, setPass] = useState('');
   const [msg, setMsg] = useState('');
   const [loading, setLoading] = useState(false);
-  const [lang, setLang] = useState<Lang>('es');
+  const { lang } = useLang();
   const t = T[lang];
   const sb = supabaseBrowser();
-
-  useEffect(() => {
-    try {
-      const s = localStorage.getItem('onyx_lang');
-      if (s === 'en' || s === 'es') setLang(s as Lang);
-      else if (navigator.language?.toLowerCase().startsWith('en')) setLang('en');
-    } catch {}
-  }, []);
-  function switchLang(l: Lang) { setLang(l); try { localStorage.setItem('onyx_lang', l); } catch {} }
 
   // Validacion antes de llamar a Supabase, para dar el mensaje en su idioma
   const mailOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
@@ -89,9 +81,6 @@ function LoginInner() {
 
   return (
     <div className="center">
-      <div className="row" style={{ justifyContent: 'flex-end', marginBottom: 8 }}>
-        <button className="btn btn-ghost" style={{ padding: '6px 10px' }} onClick={() => switchLang(lang === 'es' ? 'en' : 'es')}>{lang === 'es' ? '🇬🇧 EN' : '🇪🇸 ES'}</button>
-      </div>
       <Link className="logo" href="/" style={{ justifyContent: 'center', marginBottom: 24 }}>
         <img src="/onyx-symbol.png" alt="Onyx" style={{ width: 30, height: 30, objectFit: 'contain' }} /> Onyx Trading Live
       </Link>

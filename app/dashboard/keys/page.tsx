@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { useLang } from '@/lib/lang';
 import Link from 'next/link';
 import { ACC_TYPES } from '@/lib/accountMeta';
 import { errMsg } from '@/lib/i18nErrors';
@@ -123,7 +124,7 @@ export default function KeysPage() {
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState('');
   const [origin, setOrigin] = useState('');
-  const [lang, setLang] = useState<Lang>('es');
+  const { lang, setLang } = useLang();
   const t = K[lang];
   const atLimit = !!usage && !usage.unlimited && usage.used >= usage.max;
 
@@ -135,13 +136,7 @@ export default function KeysPage() {
 
   useEffect(() => {
     setOrigin(window.location.origin);
-    try {
-      const s = localStorage.getItem('onyx_lang');
-      if (s === 'en' || s === 'es') setLang(s as Lang);
-      else if (navigator.language?.toLowerCase().startsWith('en')) setLang('en');
-    } catch {}
   }, []);
-  function switchLang(l: Lang) { setLang(l); try { localStorage.setItem('onyx_lang', l); } catch {} }
   const apiUrl = origin + '/api/v1/sync';
 
   // ---- Estado de los pasos de instalación ----
@@ -198,9 +193,6 @@ export default function KeysPage() {
 
   return (
     <>
-      <div className="pagebar"><div className="wrap-wide">
-        <button className="btn btn-ghost" style={{ padding: '5px 10px', fontSize: 13 }} onClick={() => switchLang(lang === 'es' ? 'en' : 'es')}>{lang === 'es' ? '\ud83c\uddec\ud83c\udde7 EN' : '\ud83c\uddea\ud83c\uddf8 ES'}</button>
-      </div></div>
 
       <div className="wrap" style={{ padding: '28px 22px', maxWidth: 860 }}>
         <h1>{t.h1}</h1>

@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import { useLang } from '@/lib/lang';
 import Link from 'next/link';
 import { errMsg } from '@/lib/i18nErrors';
 import { P2, PlanTab, LimitsTab, NewsTab, StateTab } from './Phase2';
@@ -88,7 +89,7 @@ function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
 }
 
 export default function ManagerClient() {
-  const [lang, setLang] = useState<Lang>('es');
+  const { lang, setLang } = useLang();
   const [d, setD] = useState<any>(null);
   const [sel, setSel] = useState('');
   const [cfg, setCfg] = useState<any>(null);
@@ -104,7 +105,6 @@ export default function ManagerClient() {
   const t2 = P2[lang];
 
   useEffect(() => {
-    try { const s = localStorage.getItem('onyx_lang'); if (s === 'en' || s === 'es') setLang(s as Lang); } catch {}
     load();
   }, []);
 
@@ -121,7 +121,6 @@ export default function ManagerClient() {
       }
     } catch { setD({ accounts: [], caps: {} }); }
   }
-  function switchLang(l: Lang) { setLang(l); try { localStorage.setItem('onyx_lang', l); } catch {} }
 
   const acc = useMemo(() => (d?.accounts || []).find((a: any) => a.id === sel), [d, sel]);
   const caps = d?.caps || {};
@@ -182,16 +181,10 @@ export default function ManagerClient() {
   const card = { marginBottom: 14 } as any;
   const num = { margin: 0, width: 100, padding: '7px 10px' } as any;
 
-  const Header = (
-    <div className="pagebar"><div className="wrap-wide">
-      <button className="btn btn-ghost" style={{ padding: '5px 10px', fontSize: 13 }} onClick={() => switchLang(lang === 'es' ? 'en' : 'es')}>{lang === 'es' ? '\ud83c\uddec\ud83c\udde7 EN' : '\ud83c\uddea\ud83c\uddf8 ES'}</button>
-    </div></div>
-  );
-
-  if (!d) return <>{Header}<div className="wrap" style={{ padding: 30 }}><p className="muted">…</p></div></>;
+  if (!d) return <><div className="wrap" style={{ padding: 30 }}><p className="muted">…</p></div></>;
 
   if (!caps.manager) return (
-    <>{Header}
+    <>
       <div className="wrap" style={{ padding: '40px 22px', maxWidth: 620 }}>
         <div className="card" style={{ textAlign: 'center', padding: '38px 22px', border: '1px solid #a06bff' }}>
           <div style={{ fontSize: 32, marginBottom: 8 }}>🔒</div>
@@ -204,7 +197,7 @@ export default function ManagerClient() {
   );
 
   if (!d.accounts?.length) return (
-    <>{Header}
+    <>
       <div className="wrap" style={{ padding: '40px 22px', maxWidth: 560 }}>
         <div className="card" style={{ textAlign: 'center' }}>
           <p className="muted" style={{ marginBottom: 14 }}>{t.noAcc}</p>
@@ -215,7 +208,7 @@ export default function ManagerClient() {
   );
 
   return (
-    <>{Header}
+    <>
       <div className="wrap" style={{ padding: '22px 22px 50px', maxWidth: 780 }}>
 
         {/* Cuenta */}

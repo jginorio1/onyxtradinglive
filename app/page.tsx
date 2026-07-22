@@ -1,6 +1,8 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
+import { useLang } from '@/lib/lang';
 import Link from 'next/link';
+import SectionNav from './SectionNav';
 
 type Lang = 'es' | 'en';
 
@@ -52,7 +54,22 @@ function Counter({ to, prefix = '', suffix = '' }: { to: number; prefix?: string
 
 const dict = {
   es: {
-    nav: { features: 'Funciones', how: 'Cómo funciona', fondeo: 'Fondeo', pricing: 'Precios', amb: 'Embajadores', faq: 'FAQ', login: 'Entrar', cta: 'Empieza gratis' },
+    mgr: {
+      badge: 'Incluido en Pro y Elite',
+      title: 'Un EA que te gestiona la operación y te frena cuando hace falta',
+      sub: 'Onyx nunca abre operaciones. Solo cuida las que abres tú, y hace cumplir el plan de trading que escribiste cuando estabas tranquilo.',
+      cards: [
+        { i: '🎯', t: 'Break even que sale a cero de verdad', d: 'Mueve el stop cuando la operación va a favor y suma la comisión y el swap que te cobró el bróker. Cero real, no cero de precio.' },
+        { i: '📐', t: 'Trailing y cierres por partes', d: 'Persigue al precio y cierra en varios niveles. Tú eliges si mides en pips, en R o en dinero.' },
+        { i: '⏰', t: 'Tu horario, respetado', d: 'Días y franjas en las que operas. Fuera de ahí, si abres una operación se cierra sola. Con la fricción que tú decidas.' },
+        { i: '🛡️', t: 'Límites de pérdida y de fondeo', d: 'Pérdida diaria y total, con margen de seguridad. Te para antes de llegar al tope, no cuando ya lo rompiste.' },
+        { i: '🔥', t: 'Freno de racha', d: 'Tras varias pérdidas seguidas, te para un rato. Es el antídoto contra la operación de venganza.' },
+        { i: '📰', t: 'Bloqueo por noticias', d: 'Evita operar alrededor de datos de alto impacto, los minutos que tú marques. Disponible en Elite.' },
+      ],
+      honestT: 'Lo que no hace, dicho claro',
+      honestD: 'MetaTrader no permite que un EA impida una orden antes de enviarse. Lo que Onyx hace es cerrarla en cuanto aparece, en uno o dos segundos, y eso te cuesta el spread de esa entrada. No es un fallo: es la fricción. Y sin MetaTrader abierto no protege nada — para uso serio, un VPS.',
+    },
+    nav: { features: 'Funciones', how: 'Cómo funciona', fondeo: 'Fondeo', gestor: 'Gestor', pricing: 'Precios', amb: 'Embajadores', faq: 'FAQ', login: 'Entrar', cta: 'Empieza gratis' },
     hero: {
       badge: '🔗 Conecta MT4 y MT5 · Sincronización automática',
       h1a: 'Opera con datos,', h1b: 'no con memoria',
@@ -148,7 +165,22 @@ const dict = {
     footer: { terms: 'Términos', privacy: 'Privacidad', amb: 'Embajadores', rights: '© 2026 Onyx Trading Live' },
   },
   en: {
-    nav: { features: 'Features', how: 'How it works', fondeo: 'Prop firms', pricing: 'Pricing', amb: 'Ambassadors', faq: 'FAQ', login: 'Log in', cta: 'Start free' },
+    mgr: {
+      badge: 'Included in Pro and Elite',
+      title: 'An EA that manages your trade and stops you when it matters',
+      sub: 'Onyx never opens trades. It only looks after the ones you open, and enforces the trading plan you wrote while you were calm.',
+      cards: [
+        { i: '🎯', t: 'Break even that really means zero', d: 'Moves the stop once the trade goes your way and adds the commission and swap your broker charged. Real zero, not price zero.' },
+        { i: '📐', t: 'Trailing and partial closes', d: 'Follows price and closes at several levels. You choose whether you measure in pips, R or money.' },
+        { i: '⏰', t: 'Your hours, respected', d: 'The days and windows you trade. Outside them, a trade you open gets closed. With whatever friction you set.' },
+        { i: '🛡️', t: 'Loss and funded-account limits', d: 'Daily and total loss, with a safety margin. It stops you before the cap, not after you broke it.' },
+        { i: '🔥', t: 'Losing-streak brake', d: 'After several losses in a row it stops you for a while. The antidote to revenge trading.' },
+        { i: '📰', t: 'News blackout', d: 'Avoids trading around high-impact releases, for the minutes you set. Available on Elite.' },
+      ],
+      honestT: 'What it does not do, said plainly',
+      honestD: 'MetaTrader does not let an EA block an order before it is sent. What Onyx does is close it as soon as it appears, within a second or two, and that costs you the spread on that entry. Not a bug: that is the friction. And with MetaTrader closed it protects nothing — for serious use, a VPS.',
+    },
+    nav: { features: 'Features', how: 'How it works', fondeo: 'Prop firms', gestor: 'Manager', pricing: 'Pricing', amb: 'Ambassadors', faq: 'FAQ', login: 'Log in', cta: 'Start free' },
     hero: {
       badge: '🔗 Connect MT4 & MT5 · Automatic sync',
       h1a: 'Trade with data,', h1b: 'not memory',
@@ -272,7 +304,7 @@ const PROWS: { es: string; en: string; v: (boolean | string)[] }[] = [
 ];
 
 export default function Home() {
-  const [lang, setLang] = useState<Lang>('es');
+  const { lang, setLang } = useLang();
   const [annual, setAnnual] = useState(false);
   const [firm, setFirm] = useState(0);
   const [pnl, setPnl] = useState(1800);
@@ -281,14 +313,8 @@ export default function Home() {
   const t = dict[lang];
 
   useEffect(() => {
-    try {
-      const s = localStorage.getItem('onyx_lang');
-      if (s === 'en' || s === 'es') setLang(s as Lang);
-      else if (typeof navigator !== 'undefined' && navigator.language?.toLowerCase().startsWith('en')) setLang('en');
-    } catch {}
     fetch('/api/admin/plans').then((r) => r.json()).then((j) => setDbPlans(j.plans || [])).catch(() => {});
   }, []);
-  function switchLang(l: Lang) { setLang(l); try { localStorage.setItem('onyx_lang', l); } catch {} }
   const f = FIRMS[firm];
   const target = 5000, maxLoss = 5000;
   const targetPct = Math.max(0, Math.min(100, (pnl / target) * 100));
@@ -297,12 +323,19 @@ export default function Home() {
   const stColor = pnl <= -maxLoss ? '#ff6b7d' : pnl >= target ? '#34e2a0' : (pnl < 0 && -pnl > maxLoss * 0.7) ? '#ffcf5c' : '#7c8cff';
   const grad = { background: 'var(--grad)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' } as any;
 
+  const SECTIONS = [
+    { id: 'features', label: t.nav.features },
+    { id: 'how', label: t.nav.how },
+    { id: 'fondeo', label: t.nav.fondeo },
+    { id: 'gestor', label: t.nav.gestor },
+    { id: 'pricing', label: t.nav.pricing },
+    { id: 'embajadores', label: t.nav.amb },
+    { id: 'faq', label: t.nav.faq },
+  ];
+
   return (
     <>
-      {/* NAV */}
-      <div className="pagebar"><div className="wrap-wide">
-        <button className="btn btn-ghost" style={{ padding: '5px 10px', fontSize: 13 }} onClick={() => switchLang(lang === 'es' ? 'en' : 'es')}>{lang === 'es' ? '\ud83c\uddec\ud83c\udde7 EN' : '\ud83c\uddea\ud83c\uddf8 ES'}</button>
-      </div></div>
+      <SectionNav items={SECTIONS} />
 
       {/* HERO */}
       <div className="wrap" style={{ textAlign: 'center', padding: '78px 22px 30px' }}>
@@ -541,6 +574,31 @@ export default function Home() {
             <thead><tr>{t.cmp.head.map((h, i) => <th key={i} style={{ textAlign: i === 0 ? 'left' : 'center', fontSize: 15 }}>{h}</th>)}</tr></thead>
             <tbody>{t.cmp.rows.map((r, i) => (<tr key={i}><td>{r[0]}</td><td style={{ textAlign: 'center' }} className="muted">{r[1]}</td><td style={{ textAlign: 'center' }}>{r[2]}</td></tr>))}</tbody>
           </table>
+        </div>
+      </div>
+
+      {/* GESTOR DE RIESGO — el EA que gestiona y frena, sin abrir nunca una operación */}
+      <div id="gestor" className="wrap section">
+        <div style={{ textAlign: 'center', marginBottom: 34 }}>
+          <span className="pill green">{t.mgr.badge}</span>
+          <h2 style={{ marginTop: 14 }}>{t.mgr.title}</h2>
+          <p className="muted" style={{ fontSize: 17, margin: '12px auto 0', maxWidth: 640 }}>{t.mgr.sub}</p>
+        </div>
+
+        <div className="grid g3" style={{ marginBottom: 24 }}>
+          {t.mgr.cards.map((c: any, i: number) => (
+            <div key={i} className="card">
+              <div style={{ fontSize: 26, marginBottom: 10 }}>{c.i}</div>
+              <h3 style={{ fontSize: 17, marginBottom: 6 }}>{c.t}</h3>
+              <p className="muted" style={{ fontSize: 14, lineHeight: 1.7 }}>{c.d}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Lo que NO hace importa tanto como lo que hace */}
+        <div className="card" style={{ border: '1px solid var(--amber)', maxWidth: 720, margin: '0 auto' }}>
+          <h3 style={{ color: 'var(--amber)', marginBottom: 8, fontSize: 16 }}>{t.mgr.honestT}</h3>
+          <p className="muted" style={{ fontSize: 14, lineHeight: 1.8 }}>{t.mgr.honestD}</p>
         </div>
       </div>
 

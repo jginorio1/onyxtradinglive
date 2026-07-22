@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { useLang } from '@/lib/lang';
 import Link from 'next/link';
 import { errMsg } from '@/lib/i18nErrors';
 
@@ -63,7 +64,7 @@ const T: any = {
 };
 
 export default function Embajadores() {
-  const [lang, setLang] = useState<Lang>('es');
+  const { lang, setLang } = useLang();
   const [s, setS] = useState<any>(null);
   const [state, setState] = useState<'loading' | 'guest' | 'form' | 'sent' | 'has'>('loading');
   const [f, setF] = useState<any>({ code: '', audience: '', followers: '', payout_method: 'paypal', payout_details: '' });
@@ -71,7 +72,6 @@ export default function Embajadores() {
   const t = T[lang];
 
   useEffect(() => {
-    try { const l = localStorage.getItem('onyx_lang'); if (l === 'en' || l === 'es') setLang(l as Lang); } catch {}
     fetch('/api/ambassador').then(async (r) => {
       if (r.status === 401) { setState('guest'); const j2 = await fetch('/api/admin/plans'); return; }
       const j = await r.json();
@@ -79,7 +79,6 @@ export default function Embajadores() {
       setState(j.ambassador ? 'has' : 'form');
     }).catch(() => setState('guest'));
   }, []);
-  function switchLang(l: Lang) { setLang(l); try { localStorage.setItem('onyx_lang', l); } catch {} }
 
   // Lo que falta por rellenar. El boton no se activa hasta que este todo.
   const missing: string[] = [];
@@ -103,9 +102,6 @@ export default function Embajadores() {
 
   return (
     <>
-      <div className="pagebar"><div className="wrap-wide">
-        <button className="btn btn-ghost" style={{ padding: '5px 10px', fontSize: 13 }} onClick={() => switchLang(lang === 'es' ? 'en' : 'es')}>{lang === 'es' ? '\ud83c\uddec\ud83c\udde7 EN' : '\ud83c\uddea\ud83c\uddf8 ES'}</button>
-      </div></div>
 
       <div className="wrap" style={{ padding: '52px 22px 60px' }}>
         <div style={{ textAlign: 'center', marginBottom: 40 }}>

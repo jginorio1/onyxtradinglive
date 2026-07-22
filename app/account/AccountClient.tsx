@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import { useLang } from '@/lib/lang';
 import Link from 'next/link';
 import { errMsg, planName } from '@/lib/i18nErrors';
 import Ambassador from './Ambassador';
@@ -62,7 +63,7 @@ function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
 }
 
 export default function AccountClient({ email }: { email: string }) {
-  const [lang, setLang] = useState<Lang>('es');
+  const { lang, setLang } = useLang();
   const [tab, setTab] = useState<Tab>('plan');
   const [data, setData] = useState<any>(null);
   const [p, setP] = useState<any>({});
@@ -73,13 +74,11 @@ export default function AccountClient({ email }: { email: string }) {
   const L = D[lang];
 
   useEffect(() => {
-    try { const s = localStorage.getItem('onyx_lang'); if (s === 'en' || s === 'es') setLang(s as Lang); } catch {}
     load();
   }, []);
   async function load() {
     try { const r = await fetch('/api/account'); const j = await r.json(); setData(j); setP(j.profile || {}); setExtraQty(Number(j.limit?.extra || 0)); } catch {}
   }
-  function switchLang(l: Lang) { setLang(l); try { localStorage.setItem('onyx_lang', l); } catch {} }
 
   const plans: any[] = data?.plans || [];
   const accounts: any[] = data?.accounts || [];
@@ -140,9 +139,6 @@ export default function AccountClient({ email }: { email: string }) {
 
   return (
     <>
-      <div className="pagebar"><div className="wrap-wide">
-        <button className="btn btn-ghost" style={{ padding: '5px 10px', fontSize: 13 }} onClick={() => switchLang(lang === 'es' ? 'en' : 'es')}>{lang === 'es' ? '\ud83c\uddec\ud83c\udde7 EN' : '\ud83c\uddea\ud83c\uddf8 ES'}</button>
-      </div></div>
 
       <div className="wrap-wide" style={{ padding: '22px 0' }}>
         <div className="adminlayout">

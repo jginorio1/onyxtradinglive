@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { useLang } from '@/lib/lang';
 import Link from 'next/link';
 import { errMsg } from '@/lib/i18nErrors';
 
@@ -31,14 +32,12 @@ export default function Pricing() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [annual, setAnnual] = useState(false);
   const [loading, setLoading] = useState('');
-  const [lang, setLang] = useState<Lang>('es');
+  const { lang, setLang } = useLang();
   const t = T[lang];
 
   useEffect(() => {
-    try { const s = localStorage.getItem('onyx_lang'); if (s === 'en' || s === 'es') setLang(s); } catch {}
     fetch('/api/admin/plans').then((r) => r.json()).then((j) => setPlans(j.plans || []));
   }, []);
-  function switchLang(l: Lang) { setLang(l); try { localStorage.setItem('onyx_lang', l); } catch {} }
 
   // Al volver desde Stripe con el botón "atrás", el navegador restaura la página congelada:
   // reactivamos los botones para que no queden en "cargando".
@@ -76,9 +75,6 @@ export default function Pricing() {
 
   return (
     <>
-      <div className="pagebar"><div className="wrap-wide">
-        <button className="btn btn-ghost" style={{ padding: '5px 10px', fontSize: 13 }} onClick={() => switchLang(lang === 'es' ? 'en' : 'es')}>{lang === 'es' ? '\ud83c\uddec\ud83c\udde7 EN' : '\ud83c\uddea\ud83c\uddf8 ES'}</button>
-      </div></div>
 
       <div className="wrap" style={{ padding: '48px 22px 60px', textAlign: 'center' }}>
         <h1 style={{ fontSize: 30 }}>{t.title}</h1>

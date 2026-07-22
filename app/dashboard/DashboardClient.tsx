@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import { useLang } from '@/lib/lang';
 import Link from 'next/link';
 import { analyze, bestOf, worstOf, topPairs, fmtDur, type T, type Bucket } from '@/lib/analytics';
 import Journal from './Journal';
@@ -243,7 +244,7 @@ function PlanBadge({ plan }: { plan: string }) {
 
 export default function DashboardClient({ email = '', plan = 'free', trades = [], accounts: accs0 = [] }: { email?: string; plan?: string; trades?: TT[]; accounts?: Acc[] }) {
   const isFree = (plan || 'free') === 'free';
-  const [lang, setLang] = useState<Lang>('es');
+  const { lang, setLang } = useLang();
   const [accounts, setAccounts] = useState<Acc[]>(accs0 || []);
   const [tradesS, setTradesS] = useState<TT[]>(trades || []);
   const [sel, setSel] = useState<string>('all');
@@ -286,9 +287,7 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
   useEffect(() => { fetch('/api/admin/plans').then((r) => r.json()).then((j) => setPlans(j.plans || [])).catch(() => {}); }, []);
 
   useEffect(() => {
-    try { const s = localStorage.getItem('onyx_lang'); if (s === 'en' || s === 'es') setLang(s as Lang); else if (typeof navigator !== 'undefined' && navigator.language?.toLowerCase().startsWith('en')) setLang('en'); } catch {}
   }, []);
-  function switchLang(l: Lang) { setLang(l); try { localStorage.setItem('onyx_lang', l); } catch {} }
 
   // Auto-refresco cada 30s + al volver a la pestaña
   useEffect(() => {
@@ -450,9 +449,6 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
 
   return (
     <>
-      <div className="pagebar"><div className="wrap-wide">
-        <button className="btn btn-ghost" style={{ padding: '5px 10px', fontSize: 13 }} onClick={() => switchLang(lang === 'es' ? 'en' : 'es')}>{lang === 'es' ? '\ud83c\uddec\ud83c\udde7 EN' : '\ud83c\uddea\ud83c\uddf8 ES'}</button>
-      </div></div>
 
       <div className="wrap-wide" style={{ padding: '24px 0' }}>
         <div className="row between" style={{ marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>

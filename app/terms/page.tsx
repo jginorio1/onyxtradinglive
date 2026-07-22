@@ -1,9 +1,9 @@
 'use client';
-import { useState } from 'react';
+import { useLang } from '@/lib/lang';
 import Link from 'next/link';
 
 export default function Terms() {
-  const [lang, setLang] = useState<'es' | 'en'>('es');
+  const { lang } = useLang();
   const es = (
     <>
       <h1>Términos y Condiciones</h1>
@@ -50,9 +50,6 @@ export default function Terms() {
   );
   return (
     <>
-      <div className="pagebar"><div className="wrap-wide">
-        <button className="btn btn-ghost" style={{ padding: '5px 10px', fontSize: 13 }} onClick={() => setLang(lang === 'es' ? 'en' : 'es')}>{lang === 'es' ? '\ud83c\uddec\ud83c\udde7 EN' : '\ud83c\uddea\ud83c\uddf8 ES'}</button>
-      </div></div>
       <div className="wrap" style={{ maxWidth: 760, padding: '40px 22px' }}>
         <div className="card" style={{ lineHeight: 1.8 }}>{lang === 'es' ? es : en}</div>
         <p style={{ marginTop: 20 }}><Link href="/" className="muted">← {lang === 'es' ? 'Volver al inicio' : 'Back home'}</Link></p>
