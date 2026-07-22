@@ -7,10 +7,10 @@ export async function POST() {
   try {
   const sb = createSupabaseServer();
   const { data: { user } } = await sb.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'no autorizado' }, { status: 401 });
+  if (!user) return NextResponse.json({ error: 'Not signed in.', code: 'no_auth' }, { status: 401 });
 
   const { data: prof } = await supabaseAdmin.from('profiles').select('stripe_customer_id').eq('id', user.id).single();
-  if (!prof?.stripe_customer_id) return NextResponse.json({ error: 'Todavía no tienes una suscripción activa.' }, { status: 400 });
+  if (!prof?.stripe_customer_id) return NextResponse.json({ error: 'No active subscription yet.', code: 'no_sub' }, { status: 400 });
 
   let base = (process.env.NEXT_PUBLIC_APP_URL || '').trim().replace(/\/+$/, '');
   if (!base) base = 'https://onyxtradinglive.com';
@@ -22,6 +22,6 @@ export async function POST() {
   });
   return NextResponse.json({ url: session.url });
   } catch (e: any) {
-    return NextResponse.json({ error: `Stripe: ${e?.message || 'error desconocido'}` }, { status: 500 });
+    return NextResponse.json({ error: `Stripe: ${e?.message || 'unknown error'}`, code: 'stripe' }, { status: 500 });
   }
 }

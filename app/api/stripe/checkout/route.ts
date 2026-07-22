@@ -7,11 +7,11 @@ export async function POST(req: Request) {
   try {
     const sb = createSupabaseServer();
     const { data: { user } } = await sb.auth.getUser();
-    if (!user) return NextResponse.json({ error: 'Debes iniciar sesión para suscribirte.' }, { status: 401 });
+    if (!user) return NextResponse.json({ error: 'You must sign in to subscribe.', code: 'no_auth' }, { status: 401 });
 
     const { plan, annual } = await req.json();
     const priceId = await priceIdForPlan(plan, !!annual);
-    if (!priceId) return NextResponse.json({ error: `El plan "${plan}" no tiene Price ID de Stripe configurado en el panel (${annual ? 'anual' : 'mensual'}).` }, { status: 400 });
+    if (!priceId) return NextResponse.json({ error: `Plan "${plan}" has no Stripe Price ID configured (${annual ? 'yearly' : 'monthly'}).`, code: 'no_price' }, { status: 400 });
 
     // La URL base debe ser absoluta; si falta o está mal, Stripe rechaza la sesión.
     let base = (process.env.NEXT_PUBLIC_APP_URL || '').trim().replace(/\/+$/, '');
@@ -38,6 +38,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ url: session.url });
   } catch (e: any) {
     console.error('checkout error', e);
-    return NextResponse.json({ error: `Stripe: ${e?.message || 'error desconocido'}` }, { status: 500 });
+    return NextResponse.json({ error: `Stripe: ${e?.message || 'unknown error'}`, code: 'stripe' }, { status: 500 });
   }
 }

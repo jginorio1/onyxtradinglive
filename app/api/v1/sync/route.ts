@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
       if (Number(keyRow.account_login) !== Number(acc.login)) {
         return NextResponse.json({
           ok: false,
-          error: `Esta clave pertenece a la cuenta ${keyRow.account_login} y el MetaTrader esta enviando la ${acc.login}. Crea una clave nueva para esa cuenta desde Conectar cuenta.`,
+          error: `Esta clave pertenece a la cuenta ${keyRow.account_login}, no a la ${acc.login}. Crea una clave nueva en Conectar cuenta. | This key belongs to account ${keyRow.account_login}, not ${acc.login}. Create a new key in Connect account.`,
         }, { status: 403 });
       }
     } else {
@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
       if ((count || 0) >= maxAccounts) {
         return NextResponse.json({
           ok: false,
-          error: `Limite del plan ${planRow?.name || planId}: permite ${maxAccounts} cuenta(s). Mejora tu plan para conectar mas.`,
+          error: `Limite del plan ${planRow?.name || planId}: ${maxAccounts} cuenta(s). Mejora tu plan para conectar mas. | ${planRow?.name || planId} plan limit: ${maxAccounts} account(s). Upgrade your plan to connect more.`,
         }, { status: 403 });
       }
     }

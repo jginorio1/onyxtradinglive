@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { errMsg, planName } from '@/lib/i18nErrors';
 
 type Lang = 'es' | 'en';
 type Tab = 'plan' | 'perfil' | 'facturas' | 'cuentas' | 'avisos' | 'seguridad' | 'referidos';
@@ -78,7 +79,7 @@ export default function AccountClient({ email }: { email: string }) {
     const body = { full_name: p.full_name, timezone: p.timezone, lang: p.lang, notify_email: p.notify_email, notify_weekly: p.notify_weekly, notify_funding: p.notify_funding, notify_marketing: p.notify_marketing, ...extra };
     const r = await fetch('/api/account', { method: 'PATCH', body: JSON.stringify(body) });
     const j = await r.json(); setBusy('');
-    if (!r.ok) { alert(j.error || 'error'); return; }
+    if (!r.ok) { alert(errMsg(j, lang)); return; }
     setMsg(L.saved); setTimeout(() => setMsg(''), 2500);
   }
   function setField(k: string, v: any) { setP({ ...p, [k]: v }); }
@@ -88,10 +89,10 @@ export default function AccountClient({ email }: { email: string }) {
     try {
       const r = await fetch('/api/stripe/portal', { method: 'POST' });
       const txt = await r.text(); let j: any = {};
-      try { j = JSON.parse(txt); } catch { j = { error: `Error ${r.status}` }; }
+      try { j = JSON.parse(txt); } catch { j = { code: 'generic' }; }
       if (j.url) { window.location.href = j.url; return; }
-      alert(j.error || 'error');
-    } catch (e: any) { alert(e?.message || 'error'); }
+      alert(errMsg(j, lang));
+    } catch (e: any) { alert(errMsg({ code: 'network' }, lang)); }
     setBusy('');
   }
 
@@ -127,7 +128,7 @@ export default function AccountClient({ email }: { email: string }) {
                   <div className="row between" style={{ flexWrap: 'wrap', gap: 12, marginBottom: 14 }}>
                     <div>
                       <div className="row" style={{ gap: 8 }}>
-                        <span style={{ fontSize: 20, fontWeight: 800 }}>{myPlan?.name || 'Free'}</span>
+                        <span style={{ fontSize: 20, fontWeight: 800 }}>{planName(myPlan, lang) || 'Free'}</span>
                         {sub ? (
                           <span className="pill" style={{ color: sub.cancelAtPeriodEnd ? '#ffc04d' : '#34e2a0', background: sub.cancelAtPeriodEnd ? 'rgba(255,192,77,.15)' : 'rgba(52,226,160,.15)' }}>{sub.cancelAtPeriodEnd ? L.canceling : L.active}</span>
                         ) : <span className="pill">{L.noSub}</span>}
@@ -153,14 +154,14 @@ export default function AccountClient({ email }: { email: string }) {
 
                 {upgrades.map((u) => (
                   <div key={u.id} className="card" style={{ ...card, border: '1px solid #7c8cff' }}>
-                    <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 4 }}>{L.upTitle} {u.name} · ${u.price_month}/{L.perMo}</div>
+                    <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 4 }}>{L.upTitle} {planName(u, lang)} · ${u.price_month}/{L.perMo}</div>
                     <div className="muted" style={{ fontSize: 14, marginBottom: 10 }}>{(lang === 'en' ? u.desc_en : u.desc_es) || ''}</div>
                     <div style={{ marginBottom: 12 }}>
                       {((lang === 'en' ? u.features_en : u.features) || []).slice(0, 4).map((f: string, i: number) => (
                         <div key={i} style={{ fontSize: 14, color: '#cfd7e6' }}>✓ {f}</div>
                       ))}
                     </div>
-                    <Link className="btn btn-primary" href="/pricing">{L.upBtn} {u.name} →</Link>
+                    <Link className="btn btn-primary" href="/pricing">{L.upBtn} {planName(u, lang)} →</Link>
                   </div>
                 ))}
                 <Link className="muted" href="/pricing" style={{ fontSize: 13, textDecoration: 'underline' }}>{L.seePlans}</Link>
@@ -240,7 +241,7 @@ export default function AccountClient({ email }: { email: string }) {
               </div>
             )}
 
-            {data && tab === 'seguridad' && <Security L={L} />}
+            {data && tab === 'seguridad' && <Security L={L} lang={lang} />}
 
             {data && tab === 'referidos' && (
               <div className="card" style={{ maxWidth: 560 }}>
@@ -256,7 +257,7 @@ export default function AccountClient({ email }: { email: string }) {
   );
 }
 
-function Security({ L }: { L: any }) {
+function Security({ L, lang }: { L: any; lang: Lang }) {
   const [pw1, setPw1] = useState(''); const [pw2, setPw2] = useState('');
   const [conf, setConf] = useState(''); const [busy, setBusy] = useState(''); const [ok, setOk] = useState('');
 
@@ -266,7 +267,7 @@ function Security({ L }: { L: any }) {
     setBusy('pw');
     const r = await fetch('/api/account/password', { method: 'POST', body: JSON.stringify({ password: pw1 }) });
     const j = await r.json(); setBusy('');
-    if (!r.ok) { alert(j.error || 'error'); return; }
+    if (!r.ok) { alert(errMsg(j, lang)); return; }
     setPw1(''); setPw2(''); setOk(L.pwOk); setTimeout(() => setOk(''), 3000);
   }
   async function delAcc() {
@@ -274,7 +275,7 @@ function Security({ L }: { L: any }) {
     setBusy('del');
     const r = await fetch('/api/account/delete', { method: 'POST', body: JSON.stringify({ confirm: conf }) });
     const j = await r.json(); setBusy('');
-    if (!r.ok) { alert(j.error || 'error'); return; }
+    if (!r.ok) { alert(errMsg(j, lang)); return; }
     window.location.href = '/';
   }
   const lbl = { fontSize: 12, color: 'var(--mut)', marginTop: 10, display: 'block' } as any;

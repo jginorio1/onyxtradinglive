@@ -11,11 +11,11 @@ export async function POST(req: Request) {
   try {
     const sb = createSupabaseServer();
     const { data: { user } } = await sb.auth.getUser();
-    if (!user) return NextResponse.json({ error: 'no autorizado' }, { status: 401 });
+    if (!user) return NextResponse.json({ error: 'Not signed in.', code: 'no_auth' }, { status: 401 });
 
     const { confirm } = await req.json();
     if (String(confirm || '').trim().toUpperCase() !== 'ELIMINAR') {
-      return NextResponse.json({ error: 'Escribe ELIMINAR para confirmar.' }, { status: 400 });
+      return NextResponse.json({ error: 'Type ELIMINAR to confirm.', code: 'confirm_required' }, { status: 400 });
     }
 
     const { data: prof } = await supabaseAdmin.from('profiles').select('stripe_subscription_id').eq('id', user.id).single();

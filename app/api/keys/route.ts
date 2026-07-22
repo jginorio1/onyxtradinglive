@@ -16,10 +16,10 @@ function genKey() {
 async function usage(userId: string) {
   const { data: prof } = await supabaseAdmin.from('profiles').select('plan').eq('id', userId).single();
   const planId = prof?.plan || 'free';
-  const { data: planRow } = await supabaseAdmin.from('plans').select('id,name,max_accounts,price_month').eq('id', planId).maybeSingle();
+  const { data: planRow } = await supabaseAdmin.from('plans').select('id,name,name_en,max_accounts,price_month').eq('id', planId).maybeSingle();
   const max = Number(planRow?.max_accounts ?? 1);
   const { count } = await supabaseAdmin.from('api_keys').select('*', { count: 'exact', head: true }).eq('user_id', userId).eq('revoked', false);
-  return { planId, planName: planRow?.name || planId, max, used: count || 0, unlimited: max >= 999 };
+  return { planId, planName: planRow?.name || planId, planNameEn: planRow?.name_en || planRow?.name || planId, max, used: count || 0, unlimited: max >= 999 };
 }
 
 // GET · claves del usuario + cupos + estado de sincronización
@@ -27,7 +27,7 @@ export async function GET() {
   try {
     const sb = createSupabaseServer();
     const { data: { user } } = await sb.auth.getUser();
-    if (!user) return NextResponse.json({ error: 'no autorizado' }, { status: 401 });
+    if (!user) return NextResponse.json({ error: 'Not signed in.', code: 'no_auth' }, { status: 401 });
 
     const { data: keys } = await supabaseAdmin
       .from('api_keys').select('id,key,label,revoked,created_at,last_used_at,account_login,broker,acc_type,acc_size,currency')
@@ -54,11 +54,11 @@ export async function POST(req: Request) {
   try {
     const sb = createSupabaseServer();
     const { data: { user } } = await sb.auth.getUser();
-    if (!user) return NextResponse.json({ error: 'no autorizado' }, { status: 401 });
+    if (!user) return NextResponse.json({ error: 'Not signed in.', code: 'no_auth' }, { status: 401 });
 
     const u = await usage(user.id);
     if (!u.unlimited && u.used >= u.max) {
-      return NextResponse.json({ error: `Tu plan ${u.planName} permite ${u.max} cuenta(s). Revoca una clave o mejora tu plan para conectar más.`, limit: true }, { status: 403 });
+      return NextResponse.json({ error: `Your ${u.planName} plan allows ${u.max} account(s).`, code: 'limit', max: u.max, planName: u.planName, limit: true }, { status: 403 });
     }
 
     const b = await req.json().catch(() => ({} as any));
@@ -67,7 +67,7 @@ export async function POST(req: Request) {
     // No permitir dos claves activas para el mismo número de cuenta
     if (login) {
       const { data: dup } = await supabaseAdmin.from('api_keys').select('id').eq('user_id', user.id).eq('account_login', login).eq('revoked', false).maybeSingle();
-      if (dup) return NextResponse.json({ error: `Ya tienes una clave activa para la cuenta ${login}.` }, { status: 400 });
+      if (dup) return NextResponse.json({ error: `You already have an active key for account ${login}.`, code: 'dup_account', login }, { status: 400 });
     }
 
     const type = ['challenge', 'funded', 'own', 'demo'].includes(b.acc_type) ? b.acc_type : 'own';
@@ -94,7 +94,7 @@ export async function PATCH(req: Request) {
   try {
     const sb = createSupabaseServer();
     const { data: { user } } = await sb.auth.getUser();
-    if (!user) return NextResponse.json({ error: 'no autorizado' }, { status: 401 });
+    if (!user) return NextResponse.json({ error: 'Not signed in.', code: 'no_auth' }, { status: 401 });
     const { id } = await req.json();
     const { error } = await supabaseAdmin.from('api_keys').update({ revoked: true }).eq('id', id).eq('user_id', user.id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });

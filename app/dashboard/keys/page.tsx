@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ACC_TYPES } from '@/lib/accountMeta';
+import { errMsg } from '@/lib/i18nErrors';
 
 type Lang = 'es' | 'en';
 
@@ -105,8 +106,8 @@ export default function KeysPage() {
       const r = await fetch('/api/keys', { method: 'POST', body: JSON.stringify(body) });
       const j = await r.json();
       if (j.key) { setNewKey(j.key); setF({ label: '', acc_type: 'own', broker: '', account_login: '', acc_size: '' }); }
-      else alert(t.errKey + (j.error || 'error'));
-    } catch (e: any) { alert(t.errNet + (e?.message || e)); }
+      else alert(errMsg(j, lang));
+    } catch { alert(errMsg({ code: 'network' }, lang)); }
     await load(); setLoading(false);
   }
   async function revoke(id: string) {
@@ -139,7 +140,7 @@ export default function KeysPage() {
           <div className="card" style={{ marginBottom: 14 }}>
             <div className="row between" style={{ flexWrap: 'wrap', gap: 10, marginBottom: 10 }}>
               <h3>{t.slots}</h3>
-              <span className="muted" style={{ fontSize: 13 }}>{usage.used} {t.of} {usage.unlimited ? t.unlimited : usage.max} · {usage.planName}</span>
+              <span className="muted" style={{ fontSize: 13 }}>{usage.used} {t.of} {usage.unlimited ? t.unlimited : usage.max} · {lang === 'en' ? (usage.planNameEn || usage.planName) : usage.planName}</span>
             </div>
             <div style={{ height: 6, background: 'var(--bg2)', borderRadius: 6, overflow: 'hidden' }}>
               <div style={{ width: (usage.unlimited ? 8 : Math.min(100, Math.round((usage.used / Math.max(usage.max, 1)) * 100))) + '%', height: '100%', background: atLimit ? '#ff6b7d' : usage.used / Math.max(usage.max, 1) >= .75 ? '#ffc04d' : '#34e2a0', transition: '.3s' }} />

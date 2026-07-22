@@ -1,5 +1,6 @@
 'use client';
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { errMsg } from '@/lib/i18nErrors';
 
 type TT = { id: string; account_id: string; symbol: string; side: string; volume: number; open_time: string | null; close_time: string; net_profit: number; commission?: number; swap?: number; profit?: number };
 type Entry = { trade_id: string; notes: string | null; tags: string[] | null; emotion: string | null; image_url: string | null };
@@ -220,14 +221,14 @@ function TradeModal({ trade, entry, lang, onClose, onSaved }: { trade: TT; entry
     const fd = new FormData(); fd.append('file', f); fd.append('trade_id', trade.id);
     const r = await fetch('/api/journal/upload', { method: 'POST', body: fd });
     const j = await r.json(); setUploading(false);
-    if (j.url) setImg(j.url); else alert(j.error || 'error');
+    if (j.url) setImg(j.url); else alert(errMsg(j, lang));
   }
   async function save() {
     setSaving(true);
     const body = { trade_id: trade.id, notes, tags, emotion, image_url: img };
     const r = await fetch('/api/journal', { method: 'POST', body: JSON.stringify(body) });
     setSaving(false);
-    if (!r.ok) { const j = await r.json(); alert(j.error || 'error'); return; }
+    if (!r.ok) { const j = await r.json(); alert(errMsg(j, lang)); return; }
     setOk(true); setTimeout(() => setOk(false), 1500);
     onSaved({ trade_id: trade.id, notes, tags, emotion, image_url: img });
   }

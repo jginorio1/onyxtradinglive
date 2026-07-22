@@ -11,12 +11,12 @@ const BUCKET = 'account-files';
 export async function POST(req: Request) {
   const sb = createSupabaseServer();
   const { data: { user } } = await sb.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'no autorizado' }, { status: 401 });
+  if (!user) return NextResponse.json({ error: 'Not signed in.', code: 'no_auth' }, { status: 401 });
 
   const form = await req.formData();
   const file = form.get('file') as File | null;
-  if (!file) return NextResponse.json({ error: 'falta archivo' }, { status: 400 });
-  if (file.size > 8 * 1024 * 1024) return NextResponse.json({ error: 'el archivo supera 8 MB' }, { status: 400 });
+  if (!file) return NextResponse.json({ error: 'File missing.', code: 'file_missing' }, { status: 400 });
+  if (file.size > 8 * 1024 * 1024) return NextResponse.json({ error: 'File is larger than 8 MB.', code: 'file_big' }, { status: 400 });
 
   try { await supabaseAdmin.storage.createBucket(BUCKET, { public: true }); } catch { /* ya existe */ }
 

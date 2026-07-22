@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { ACC_TYPES, CH_STATUS, typeMeta, money2, type Lang } from '@/lib/accountMeta';
+import { errMsg } from '@/lib/i18nErrors';
 
 const A = {
   es: {
@@ -58,7 +59,7 @@ export default function AccountExtras({ acc, net, lang, onSaved }: { acc: any; n
       let receipt = ''; const file = pFile.current?.files?.[0]; if (file) receipt = await uploadFile(file);
       await fetch('/api/payouts', { method: 'POST', body: JSON.stringify({ account_id: acc.id, amount: pAmt, date: pDate || null, note: pNote, receipt_url: receipt }) });
       setPAmt(''); setPDate(''); setPNote(''); if (pFile.current) pFile.current.value = ''; await loadPayouts();
-    } catch (e: any) { alert(e.message); }
+    } catch { alert(errMsg({ code: 'network' }, lang)); }
     setPBusy(false);
   }
   async function delPayout(id: string) { await fetch('/api/payouts', { method: 'DELETE', body: JSON.stringify({ id }) }); await loadPayouts(); }
@@ -69,7 +70,7 @@ export default function AccountExtras({ acc, net, lang, onSaved }: { acc: any; n
       const url = await uploadFile(file);
       await fetch('/api/documents', { method: 'POST', body: JSON.stringify({ account_id: acc.id, doc_type: dType, title: dTitle, image_url: url }) });
       setDTitle(''); if (dFile.current) dFile.current.value = ''; await loadDocs();
-    } catch (e: any) { alert(e.message); }
+    } catch { alert(errMsg({ code: 'network' }, lang)); }
     setDBusy(false);
   }
   async function delDoc(id: string) { await fetch('/api/documents', { method: 'DELETE', body: JSON.stringify({ id }) }); await loadDocs(); }

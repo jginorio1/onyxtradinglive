@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { errMsg } from '@/lib/i18nErrors';
 
 type Plan = { id: string; name: string; name_en: string; desc_es: string | null; desc_en: string | null; price_month: number; price_year: number; max_accounts: number; features: string[]; features_en: string[]; badge: string | null; badge_en: string | null };
 type Lang = 'es' | 'en';
@@ -56,12 +57,12 @@ export default function Pricing() {
       const r = await fetch('/api/stripe/checkout', { method: 'POST', body: JSON.stringify({ plan, annual }) });
       const txt = await r.text();
       let j: any = {};
-      try { j = JSON.parse(txt); } catch { j = { error: `Error ${r.status} del servidor` }; }
+      try { j = JSON.parse(txt); } catch { j = { code: 'generic' }; }
       if (j.url) { window.location.href = j.url; return; }
       if (r.status === 401) { window.location.href = '/login'; return; }
-      alert(j.error || t.login);
-    } catch (e: any) {
-      alert('No se pudo conectar con el pago: ' + (e?.message || e));
+      alert(errMsg(j, lang));
+    } catch {
+      alert(errMsg({ code: 'network' }, lang));
     }
     setLoading('');
   }

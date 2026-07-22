@@ -9,11 +9,11 @@ export async function POST(req: Request) {
   try {
     const sb = createSupabaseServer();
     const { data: { user } } = await sb.auth.getUser();
-    if (!user) return NextResponse.json({ error: 'no autorizado' }, { status: 401 });
+    if (!user) return NextResponse.json({ error: 'Not signed in.', code: 'no_auth' }, { status: 401 });
 
     const { password } = await req.json();
     if (!password || String(password).length < 8) {
-      return NextResponse.json({ error: 'La contraseña debe tener al menos 8 caracteres.' }, { status: 400 });
+      return NextResponse.json({ error: 'Password must be at least 8 characters.', code: 'pw_short' }, { status: 400 });
     }
     const { error } = await sb.auth.updateUser({ password: String(password) });
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });

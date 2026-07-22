@@ -1,8 +1,45 @@
 'use client';
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
+
+type Lang = 'es' | 'en';
+
+const T = {
+  es: {
+    signupT: 'Crear cuenta', loginT: 'Entrar', email: 'Email', pass: 'Contraseña',
+    haveAcc: '¿Ya tienes cuenta?', noAcc: '¿No tienes cuenta?', goLogin: 'Entrar', goSignup: 'Crear una',
+    back: '← Volver al inicio', loading: 'Cargando…',
+    created: 'Cuenta creada. Revisa tu email si te pide confirmación, o entra ya.',
+    errBad: 'Email o contraseña incorrectos.',
+    errExists: 'Ya existe una cuenta con ese email. Inicia sesión.',
+    errShort: 'La contraseña debe tener al menos 6 caracteres.',
+    errMail: 'Escribe un email válido.',
+    errGeneric: 'No pudimos completar la operación. Inténtalo de nuevo.',
+  },
+  en: {
+    signupT: 'Create account', loginT: 'Sign in', email: 'Email', pass: 'Password',
+    haveAcc: 'Already have an account?', noAcc: 'No account yet?', goLogin: 'Sign in', goSignup: 'Create one',
+    back: '← Back to home', loading: 'Loading…',
+    created: 'Account created. Check your email if confirmation is required, or sign in now.',
+    errBad: 'Wrong email or password.',
+    errExists: 'An account with that email already exists. Sign in instead.',
+    errShort: 'Password must be at least 6 characters.',
+    errMail: 'Enter a valid email address.',
+    errGeneric: 'We could not complete the request. Please try again.',
+  },
+};
+
+// Traduce los mensajes que devuelve Supabase (siempre vienen en inglés)
+function authMsg(raw: string, t: any) {
+  const m = (raw || '').toLowerCase();
+  if (m.includes('invalid login')) return t.errBad;
+  if (m.includes('already registered') || m.includes('already been registered')) return t.errExists;
+  if (m.includes('password') && m.includes('6')) return t.errShort;
+  if (m.includes('valid email') || m.includes('invalid email')) return t.errMail;
+  return raw || t.errGeneric;
+}
 
 function LoginInner() {
   const router = useRouter();
@@ -12,7 +49,18 @@ function LoginInner() {
   const [pass, setPass] = useState('');
   const [msg, setMsg] = useState('');
   const [loading, setLoading] = useState(false);
+  const [lang, setLang] = useState<Lang>('es');
+  const t = T[lang];
   const sb = supabaseBrowser();
+
+  useEffect(() => {
+    try {
+      const s = localStorage.getItem('onyx_lang');
+      if (s === 'en' || s === 'es') setLang(s as Lang);
+      else if (navigator.language?.toLowerCase().startsWith('en')) setLang('en');
+    } catch {}
+  }, []);
+  function switchLang(l: Lang) { setLang(l); try { localStorage.setItem('onyx_lang', l); } catch {} }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -21,45 +69,48 @@ function LoginInner() {
       if (signup) {
         const { error } = await sb.auth.signUp({ email, password: pass });
         if (error) throw error;
-        setMsg('Cuenta creada. Revisa tu email si te pide confirmación, o entra ya.');
+        setMsg(t.created);
       } else {
         const { error } = await sb.auth.signInWithPassword({ email, password: pass });
         if (error) throw error;
         router.push('/dashboard'); router.refresh();
       }
     } catch (e: any) {
-      setMsg(e.message || 'Error');
+      setMsg(authMsg(e?.message || '', t));
     } finally { setLoading(false); }
   }
 
   return (
     <div className="center">
-      <div className="logo" style={{ justifyContent: 'center', marginBottom: 24 }}>
-        <span className="mark">◆</span> Onyx Trading Live
+      <div className="row" style={{ justifyContent: 'flex-end', marginBottom: 8 }}>
+        <button className="btn btn-ghost" style={{ padding: '6px 10px' }} onClick={() => switchLang(lang === 'es' ? 'en' : 'es')}>{lang === 'es' ? '🇬🇧 EN' : '🇪🇸 ES'}</button>
       </div>
+      <Link className="logo" href="/" style={{ justifyContent: 'center', marginBottom: 24 }}>
+        <img src="/onyx-symbol.png" alt="Onyx" style={{ width: 30, height: 30, objectFit: 'contain' }} /> Onyx Trading Live
+      </Link>
       <div className="card">
-        <h2 style={{ marginBottom: 16 }}>{signup ? 'Crear cuenta' : 'Entrar'}</h2>
+        <h2 style={{ marginBottom: 16 }}>{signup ? t.signupT : t.loginT}</h2>
         <form onSubmit={submit}>
-          <label>Email</label>
+          <label>{t.email}</label>
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
           <div style={{ height: 12 }} />
-          <label>Contraseña</label>
+          <label>{t.pass}</label>
           <input type="password" value={pass} onChange={(e) => setPass(e.target.value)} required minLength={6} />
           <div style={{ height: 18 }} />
           <button className="btn btn-primary" style={{ width: '100%' }} disabled={loading}>
-            {loading ? '...' : signup ? 'Crear cuenta' : 'Entrar'}
+            {loading ? '...' : signup ? t.signupT : t.loginT}
           </button>
         </form>
         {msg && <p className="muted" style={{ marginTop: 14, fontSize: 14 }}>{msg}</p>}
         <p className="muted" style={{ marginTop: 18, fontSize: 14 }}>
-          {signup ? '¿Ya tienes cuenta?' : '¿No tienes cuenta?'}{' '}
+          {signup ? t.haveAcc : t.noAcc}{' '}
           <a style={{ color: 'var(--brand)', cursor: 'pointer' }} onClick={() => setSignup(!signup)}>
-            {signup ? 'Entrar' : 'Crear una'}
+            {signup ? t.goLogin : t.goSignup}
           </a>
         </p>
       </div>
       <p className="muted" style={{ textAlign: 'center', marginTop: 18, fontSize: 13 }}>
-        <Link href="/">← Volver al inicio</Link>
+        <Link href="/">{t.back}</Link>
       </p>
     </div>
   );
@@ -67,7 +118,7 @@ function LoginInner() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="center"><p className="muted">Cargando…</p></div>}>
+    <Suspense fallback={<div className="center"><p className="muted">…</p></div>}>
       <LoginInner />
     </Suspense>
   );
