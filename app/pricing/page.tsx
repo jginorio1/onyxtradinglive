@@ -42,10 +42,18 @@ export default function Pricing() {
   async function subscribe(plan: string, price: number) {
     if (plan === 'free' || price === 0) { window.location.href = '/login?mode=signup'; return; }
     setLoading(plan);
-    const r = await fetch('/api/stripe/checkout', { method: 'POST', body: JSON.stringify({ plan, annual }) });
-    const j = await r.json();
-    if (j.url) window.location.href = j.url;
-    else { alert(j.error || t.login); setLoading(''); }
+    try {
+      const r = await fetch('/api/stripe/checkout', { method: 'POST', body: JSON.stringify({ plan, annual }) });
+      const txt = await r.text();
+      let j: any = {};
+      try { j = JSON.parse(txt); } catch { j = { error: `Error ${r.status} del servidor` }; }
+      if (j.url) { window.location.href = j.url; return; }
+      if (r.status === 401) { window.location.href = '/login'; return; }
+      alert(j.error || t.login);
+    } catch (e: any) {
+      alert('No se pudo conectar con el pago: ' + (e?.message || e));
+    }
+    setLoading('');
   }
 
   const byId = (id: string) => plans.find((p) => p.id === id);
