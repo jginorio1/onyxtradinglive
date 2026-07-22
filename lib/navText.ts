@@ -10,7 +10,7 @@ export type Lang = 'es' | 'en';
 export const NAV_T: Record<Lang, Record<string, string>> = {
   es: {
     dashboard: 'Panel', accounts: 'Cuentas', manager: 'Gestor', admin: 'Admin',
-    home: 'Inicio', plans: 'Planes', ambassadors: 'Embajadores',
+    home: 'Inicio', plans: 'Planes', ambassadors: 'Embajadores', guide: 'Guía',
     login: 'Entrar', signup: 'Empezar gratis',
     myAccount: 'Mi cuenta', myPlan: 'Mi plan', referrals: 'Referidos', adminPanel: 'Panel de admin',
     signout: 'Cerrar sesión', language: 'Idioma',
@@ -19,7 +19,7 @@ export const NAV_T: Record<Lang, Record<string, string>> = {
   },
   en: {
     dashboard: 'Dashboard', accounts: 'Accounts', manager: 'Manager', admin: 'Admin',
-    home: 'Home', plans: 'Plans', ambassadors: 'Ambassadors',
+    home: 'Home', plans: 'Plans', ambassadors: 'Ambassadors', guide: 'Guide',
     login: 'Sign in', signup: 'Start free',
     myAccount: 'My account', myPlan: 'My plan', referrals: 'Referrals', adminPanel: 'Admin panel',
     signout: 'Sign out', language: 'Language',

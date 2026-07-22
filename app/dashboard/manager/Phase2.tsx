@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import Help from '@/app/Help';
 
 // ============================================================
 // Fase 2 del gestor: mi plan de trading, límites de la cuenta,
@@ -192,7 +193,7 @@ export function PlanTab({ cfg, set, setCfg, t, acc }: any) {
     <>
       <div className="card" style={{ marginBottom: 14 }}>
         <div className="row between" style={{ marginBottom: 4 }}>
-          <h3>{t.planT}</h3>
+          <h3>{t.planT}</h3><Help slug="plan-de-trading" />
           <Toggle on={!!p.on} onClick={() => set('plan.on', !p.on)} />
         </div>
         <p className="muted" style={{ fontSize: 13 }}>{t.planD}</p>
@@ -321,7 +322,7 @@ export function LimitsTab({ cfg, set, setCfg, t, firms, firmSel, setFirmSel, lan
     <>
       <div className="card" style={{ marginBottom: 14 }}>
         <div className="row between" style={{ marginBottom: 4 }}>
-          <h3>{t.limT}</h3>
+          <h3>{t.limT}</h3><Help slug="limites-cuenta" />
           <Toggle on={!!l.on} onClick={() => set('limits.on', !l.on)} />
         </div>
         <p className="muted" style={{ fontSize: 13 }}>{t.limD}</p>

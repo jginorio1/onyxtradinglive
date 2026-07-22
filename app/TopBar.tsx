@@ -69,6 +69,7 @@ export default async function TopBar() {
         { href: '/', label: t.home },
         { href: '/pricing', label: t.plans },
         { href: '/embajadores', label: t.ambassadors },
+        { href: '/guia', label: t.guide },
       ];
 
   return (

@@ -31,6 +31,7 @@ export default function TopBarMenu({ email, initial, isAdmin, t }:
           <Link className="menu-item" href="/account" onClick={() => setOpen(false)}>{t.myAccount}</Link>
           <Link className="menu-item" href="/pricing" onClick={() => setOpen(false)}>{t.myPlan}</Link>
           <Link className="menu-item" href="/account?tab=referidos" onClick={() => setOpen(false)}>{t.referrals}</Link>
+          <Link className="menu-item" href="/guia" onClick={() => setOpen(false)}>{t.guide}</Link>
           {isAdmin && <Link className="menu-item" href="/admin" onClick={() => setOpen(false)}>{t.adminPanel}</Link>}
 
           {/* Con sesión el idioma es un ajuste, y los ajustes viven en el menú */}

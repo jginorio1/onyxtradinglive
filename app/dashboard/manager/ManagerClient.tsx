@@ -4,6 +4,7 @@ import { useLang } from '@/lib/lang';
 import Link from 'next/link';
 import { errMsg } from '@/lib/i18nErrors';
 import { P2, PlanTab, LimitsTab, NewsTab, StateTab } from './Phase2';
+import Help from '@/app/Help';
 
 type Tab = 'trade' | 'plan' | 'limits' | 'news' | 'state';
 
@@ -253,7 +254,7 @@ export default function ManagerClient() {
         {tab === 'trade' && (<>
         {/* Unidades */}
         <div className="card" style={card}>
-          <span style={lbl}>{t.units}</span>
+          <div className="row" style={{ gap: 6 }}><span style={lbl}>{t.units}</span><Help slug="que-es-r" /></div>
           <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
             {([['pips', t.uPips], ['r', t.uR], ['money', t.uMoney]] as [string, string][]).map(([k, label]) => (
               <button key={k} className={'btn ' + (units === k ? 'btn-primary' : 'btn-ghost')} style={{ flex: 1, minWidth: 120 }} onClick={() => setUnits(k)}>{label}</button>
@@ -265,7 +266,7 @@ export default function ManagerClient() {
         {/* Break even */}
         <div className="card" style={card}>
           <div className="row between" style={{ marginBottom: 4 }}>
-            <h3>{t.beT}</h3>
+            <h3>{t.beT}</h3><Help slug="break-even" />
             <Toggle on={!!cfg?.breakeven?.on} onClick={() => set('breakeven.on', !cfg.breakeven.on)} />
           </div>
           <p className="muted" style={{ fontSize: 13, marginBottom: cfg?.breakeven?.on ? 14 : 0 }}>{t.beD}</p>
@@ -301,7 +302,7 @@ export default function ManagerClient() {
         {/* Trailing */}
         <div className="card" style={card}>
           <div className="row between" style={{ marginBottom: 4 }}>
-            <h3>{t.trT}</h3>
+            <h3>{t.trT}</h3><Help slug="trailing-stop" />
             <Toggle on={!!cfg?.trailing?.on} onClick={() => set('trailing.on', !cfg.trailing.on)} />
           </div>
           <p className="muted" style={{ fontSize: 13, marginBottom: cfg?.trailing?.on ? 14 : 0 }}>{t.trD}</p>
@@ -321,7 +322,7 @@ export default function ManagerClient() {
         <div className="card" style={{ ...card, opacity: advanced ? 1 : .75 }}>
           <div className="row between" style={{ marginBottom: 4, flexWrap: 'wrap', gap: 8 }}>
             <div className="row" style={{ gap: 8 }}>
-              <h3>{t.ptT}</h3>
+              <h3>{t.ptT}</h3><Help slug="parciales" />
               {!advanced && <span className="pill" style={{ color: '#7fe9c0', background: 'rgba(52,226,160,.15)', border: '1px solid #34e2a0' }}>🔒 {t.adv}</span>}
             </div>
             {advanced && <Toggle on={!!cfg?.partials?.on} onClick={() => set('partials.on', !cfg.partials.on)} />}
