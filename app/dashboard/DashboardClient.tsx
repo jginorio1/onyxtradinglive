@@ -11,6 +11,7 @@ import { Ring, MiniArea, MiniDonut, MiniBars, MiniHeat, RadarChart, Bubbles, hea
 import MarketHours from './MarketHours';
 import News from './News';
 import Achievements from './Achievements';
+import Nudge from './Nudge';
 
 // Genera operaciones de ejemplo variadas (modo demo)
 function genDemo(accId: string): TT[] {
@@ -178,14 +179,60 @@ function FundCard({ acc, net, maxDD, L, onSave }: { acc: Acc; net: number; maxDD
   );
 }
 
-function ProLock({ L, plan = 'Pro', desc, price }: { L: any; plan?: string; desc?: string; price?: number }) {
+// Candado con vista previa difuminada: se ve el valor de la función, no solo el cerrojo.
+function ProLock({ L, plan = 'Pro', desc, price, preview }: { L: any; plan?: string; desc?: string; price?: number; preview?: any }) {
   const col = plan === 'Elite' ? '#34e2a0' : '#a06bff';
   return (
-    <div className="card" style={{ textAlign: 'center', padding: '38px 22px' }}>
-      <div style={{ fontSize: 32, marginBottom: 6 }}>🔒</div>
-      <h3 style={{ marginBottom: 6 }}>{L.available} <span style={{ color: col }}>{plan}</span></h3>
-      <p className="muted" style={{ marginBottom: 16 }}>{desc || L.proLockD}</p>
-      <Link className="btn btn-primary" href="/pricing">{L.upgradeTo} {plan}{price ? ` · $${price}/${L.perMo}` : ''} →</Link>
+    <div className="card" style={{ padding: 22, position: 'relative', overflow: 'hidden' }}>
+      {preview && (
+        <div style={{ filter: 'blur(4px)', opacity: .45, pointerEvents: 'none', userSelect: 'none', marginBottom: 6 }} aria-hidden="true">
+          {preview}
+        </div>
+      )}
+      <div style={{ textAlign: 'center', paddingTop: preview ? 6 : 16, paddingBottom: preview ? 6 : 16 }}>
+        <div style={{ fontSize: 28, marginBottom: 6 }}>🔒</div>
+        <h3 style={{ marginBottom: 6 }}>{L.available} <span style={{ color: col }}>{plan}</span></h3>
+        <p className="muted" style={{ marginBottom: 16 }}>{desc || L.proLockD}</p>
+        <Link className="btn btn-primary" href="/pricing">{L.upgradeTo} {plan}{price ? ` · $${price}/${L.perMo}` : ''} →</Link>
+      </div>
+    </div>
+  );
+}
+
+// Muestras falsas (borrosas) para que se intuya qué hay detrás del candado
+function PreviewJournal() {
+  return (
+    <div>
+      {[['EURUSD', '+142.50', '#34e2a0'], ['US30', '-68.20', '#ff6b7d'], ['XAUUSD', '+310.00', '#34e2a0']].map(([s, v, c], i) => (
+        <div key={i} className="row between" style={{ borderBottom: '1px solid var(--line)', padding: '10px 0' }}>
+          <div className="row" style={{ gap: 10 }}>
+            <span style={{ width: 34, height: 34, borderRadius: 8, background: 'var(--card2)' }} />
+            <div><div style={{ fontWeight: 700 }}>{s}</div><div className="muted" style={{ fontSize: 12 }}>12:40 · 0.50 lotes</div></div>
+          </div>
+          <b style={{ color: c as string }}>{v}</b>
+        </div>
+      ))}
+    </div>
+  );
+}
+function PreviewCompare() {
+  return (
+    <div className="grid g3" style={{ gap: 12 }}>
+      {[['FTMO 100K', '+2,410', '#34e2a0'], ['The5ers', '-380', '#ff6b7d'], ['Axi real', '+915', '#34e2a0']].map(([n, v, c], i) => (
+        <div key={i}><div className="muted" style={{ fontSize: 12 }}>{n}</div><div style={{ fontSize: 20, fontWeight: 800, color: c as string }}>{v}</div><div style={{ height: 40, background: 'var(--card2)', borderRadius: 8, marginTop: 6 }} /></div>
+      ))}
+    </div>
+  );
+}
+function PreviewFunding() {
+  return (
+    <div>
+      {[['Objetivo', 72, '#34e2a0'], ['Pérdida diaria', 28, '#ffc04d'], ['Pérdida total', 41, '#7c8cff']].map(([n, p, c], i) => (
+        <div key={i} style={{ marginBottom: 10 }}>
+          <div className="row between" style={{ fontSize: 13, marginBottom: 4 }}><span>{n as string}</span><span className="muted">{p as number}%</span></div>
+          <div style={{ height: 7, background: 'var(--bg2)', borderRadius: 6, overflow: 'hidden' }}><div style={{ width: (p as number) + '%', height: '100%', background: c as string }} /></div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -211,7 +258,7 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
   const [lastUpdate, setLastUpdate] = useState<number>(Date.now());
   const [, setTick] = useState(0);
   const [plans, setPlans] = useState<any[]>([]);
-  const [hideAmb, setHideAmb] = useState(true);
+  const [limitInfo, setLimitInfo] = useState<any>(null);
   const L = D[lang];
   const proPrice = plans.find((p: any) => p.id === 'pro')?.price_month || 0;
 
@@ -230,11 +277,11 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
   };
   const upJ = upsell('journal'), upC = upsell('compare'), upF = upsell('funding');
 
-  // La invitación al programa se puede ocultar y no vuelve a salir
-  useEffect(() => { try { setHideAmb(localStorage.getItem('onyx_hide_amb') === '1'); } catch { setHideAmb(false); } }, []);
-
   // Ata al usuario con el embajador que lo trajo (si viene de un enlace)
   useEffect(() => { fetch('/api/ref', { method: 'POST' }).catch(() => {}); }, []);
+
+  // Límite real de cuentas (incluye las compradas como complemento)
+  useEffect(() => { fetch('/api/keys').then((r) => r.json()).then((j) => setLimitInfo(j.usage || null)).catch(() => {}); }, []);
 
   useEffect(() => { fetch('/api/admin/plans').then((r) => r.json()).then((j) => setPlans(j.plans || [])).catch(() => {}); }, []);
 
@@ -276,6 +323,13 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
       return true;
     });
   }, [tradesS, demo, demoTrades, range, cFrom, cTo, histDays]);
+
+  // Cuántas operaciones suyas quedan fuera por el límite de historial de su plan
+  const hiddenTrades = useMemo(() => {
+    if (!histDays || demo) return 0;
+    const cut = Date.now() - histDays * 864e5;
+    return tradesS.filter((x) => new Date(x.close_time).getTime() < cut).length;
+  }, [tradesS, histDays, demo]);
 
   const filtered = useMemo(() => (sel === 'all' ? ranged : ranged.filter((t) => t.account_id === sel)), [ranged, sel]);
   const a = useMemo(() => analyze(filtered), [filtered]);
@@ -490,20 +544,20 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
 
               <Achievements a={a} accounts={accounts} lang={lang} />
 
-              {!hideAmb && (
-                <div className="card" style={{ border: '1px solid #a06bff', background: 'linear-gradient(135deg,rgba(160,107,255,.12),transparent)' }}>
-                  <div className="row between" style={{ flexWrap: 'wrap', gap: 12 }}>
-                    <div style={{ flex: 1, minWidth: 220 }}>
-                      <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 4 }}>🎁 {L.ambT}</div>
-                      <div className="muted" style={{ fontSize: 13 }}>{L.ambD}</div>
-                    </div>
-                    <div className="row" style={{ gap: 8 }}>
-                      <Link className="btn btn-primary" href="/embajadores">{L.ambCta}</Link>
-                      <button className="btn btn-ghost" style={{ padding: '6px 10px', fontSize: 12 }} onClick={() => { setHideAmb(true); try { localStorage.setItem('onyx_hide_amb', '1'); } catch {} }}>{L.ambHide}</button>
-                    </div>
-                  </div>
-                </div>
-              )}
+              <Nudge
+                lang={lang}
+                plans={plans}
+                planId={plan || 'free'}
+                histDays={histDays}
+                canJournal={canJournal}
+                hiddenTrades={hiddenTrades}
+                totalTrades={tradesS.length}
+                used={accounts.length}
+                max={limitInfo ? Number(limitInfo.max) : Number(myPlan?.max_accounts || 1)}
+                unlimited={limitInfo ? !!limitInfo.unlimited : Number(myPlan?.max_accounts || 1) >= 999}
+                planLabel={myPlan?.name || plan}
+                onGoJournal={() => setView('operaciones')}
+              />
             </>)}
 
             {view !== 'hub' && <button className="btn btn-ghost" style={{ alignSelf: 'flex-start' }} onClick={() => setView('hub')}>{L.back}</button>}
@@ -571,7 +625,7 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
               </Card>
             )}
 
-            {view === 'operaciones' && (!canJournal ? <ProLock L={L} plan={upJ.name} desc={L.dLock1} price={upJ.price} /> : <Journal trades={filtered} lang={lang} />)}
+            {view === 'operaciones' && (!canJournal ? <ProLock L={L} plan={upJ.name} desc={L.dLock1} price={upJ.price} preview={<PreviewJournal />} /> : <Journal trades={filtered} lang={lang} />)}
             {view === 'costes' && <Costs trades={filtered} lang={lang} />}
 
             {view === 'cuentas' && (<>
@@ -593,8 +647,8 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
                     </tr>); })}</tbody>
                 </table>
               </Card>
-              {accounts.length >= 2 && (!canCompare ? <ProLock L={L} plan={upC.name} desc={L.dLock2} price={upC.price} /> : <CompareAccounts accounts={accounts} trades={ranged} lang={lang} />)}
-              {sel !== 'all' && cur && !canFunding && <ProLock L={L} plan={upF.name} desc={L.dLock3} price={upF.price} />}
+              {accounts.length >= 2 && (!canCompare ? <ProLock L={L} plan={upC.name} desc={L.dLock2} price={upC.price} preview={<PreviewCompare />} /> : <CompareAccounts accounts={accounts} trades={ranged} lang={lang} />)}
+              {sel !== 'all' && cur && !canFunding && <ProLock L={L} plan={upF.name} desc={L.dLock3} price={upF.price} preview={<PreviewFunding />} />}
               {sel !== 'all' && cur && canFunding && <FundCard acc={cur} net={a.net} maxDD={a.maxDD} L={L} onSave={(fields) => { const toNum = (v: any) => (v === '' || v == null ? null : Number(v)); setAccounts(accounts.map((x) => (x.id === cur.id ? { ...x, fund_target: toNum(fields.fund_target), fund_max_daily: toNum(fields.fund_max_daily), fund_max_total: toNum(fields.fund_max_total), fund_start: toNum(fields.fund_start) } : x))); }} />}
               {sel !== 'all' && cur && canFunding && <AccountExtras acc={cur} net={a.net} lang={lang} onSaved={(fields) => setAccounts(accounts.map((x) => (x.id === cur.id ? { ...x, acc_type: fields.acc_type || null, challenge_status: fields.challenge_status || null, challenge_cost: fields.challenge_cost === '' ? null : Number(fields.challenge_cost) } : x)))} />}
               {sel === 'all' && <p className="muted" style={{ fontSize: 13 }}>{lang === 'es' ? 'Elige una cuenta arriba para ver su fondeo, retiros y documentos.' : 'Pick an account above to see its funding, payouts and documents.'}</p>}
