@@ -350,14 +350,14 @@ export default function Home() {
         </div>
       </div>
 
-      {/* LOGOS marquee (borde a borde) */}
+      {/* LOGOS marquee · franja blanca de borde a borde */}
       <div className="wrap" style={{ padding: '6px 22px 14px' }}>
         <p className="muted" style={{ textAlign: 'center', fontSize: 14 }}>{t.logosT}</p>
       </div>
-      <div className="marquee fullbleed" style={{ paddingBottom: 26 }}>
-        <div className="marquee-track">
+      <div className="logostrip">
+        <div className="logostrip-track">
           {[...LOGOS, ...LOGOS].map((l, i) => (
-            <div key={i} className="chip"><span className="dot" style={{ background: l.c }} /><span style={{ color: l.c, fontWeight: 800 }}>{l.n}</span></div>
+            <span key={i} style={{ color: l.c, fontWeight: 800, fontSize: 20, whiteSpace: 'nowrap' }}>{l.n}</span>
           ))}
         </div>
       </div>

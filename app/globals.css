@@ -76,6 +76,11 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
 .chip .dot{width:10px;height:10px;border-radius:50%;flex:none;}
 /* romper el contenedor centrado para ir de borde a borde del monitor */
 .fullbleed{width:100vw;margin-left:calc(50% - 50vw);}
+
+/* Franja blanca de logos: borde a borde, continua, difuminada en las orillas */
+.logostrip{background:#fff;padding:20px 0;overflow:hidden;margin:0 0 22px;-webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);}
+.logostrip-track{display:flex;gap:48px;width:max-content;animation:scrollx 26s linear infinite;}
+.logostrip:hover .logostrip-track{animation-play-state:paused;}
 /* aparición al hacer scroll */
 .reveal{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease;}
 .reveal.in{opacity:1;transform:none;}
