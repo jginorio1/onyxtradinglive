@@ -4,6 +4,7 @@ import { useLang } from '@/lib/lang';
 import Link from 'next/link';
 import { ACC_TYPES } from '@/lib/accountMeta';
 import { errMsg } from '@/lib/i18nErrors';
+import InstallWizard, { WIZ } from './InstallWizard';
 
 type Lang = 'es' | 'en';
 
@@ -153,16 +154,7 @@ export default function KeysPage() {
     if (what === 'dl') { setDownloaded(true); try { localStorage.setItem('onyx_ea_dl', '1'); } catch {} }
   }
 
-  const eaLive = keys.some((k: any) => k.account?.last_sync_at);
 
-  function stepState(i: number): 'done' | 'now' | 'todo' {
-    // Si el EA ya reportó, todos los pasos están cumplidos por definición
-    if (eaLive) return 'done';
-    if (i === 0) return downloaded ? 'done' : 'now';
-    if (!downloaded) return 'todo';
-    // El primero pendiente después de la descarga es el que toca
-    return i === 1 ? 'now' : 'todo';
-  }
 
   async function load() {
     const r = await fetch('/api/keys');
@@ -331,53 +323,14 @@ export default function KeysPage() {
           </details>
         </div>
 
-        {/* Paso 3: instalación con estado */}
-        <div className="card" style={{ marginBottom: 18 }}>
-          <h3 style={{ marginBottom: 4 }}>{t.step3}</h3>
-          <p className="muted" style={{ fontSize: 13, marginBottom: 16 }}>{t.stepsD}</p>
-
-          {t.steps.map((s: any, i: number) => {
-            const state = stepState(i);
-            return (
-              <div key={i} className="row" style={{ gap: 12, alignItems: 'flex-start', marginBottom: 16 }}>
-                <div style={{
-                  width: 24, height: 24, borderRadius: '50%', flex: 'none', fontSize: 12,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  background: state === 'done' ? 'var(--green)' : state === 'now' ? 'var(--brand)' : 'transparent',
-                  border: state === 'todo' ? '1px solid var(--line)' : 'none',
-                  color: state === 'todo' ? 'var(--mut)' : '#111726',
-                }}>{state === 'done' ? '✓' : i + 1}</div>
-
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, color: state === 'todo' ? 'var(--mut)' : 'var(--tx)' }}>{s.t}</div>
-                  {s.d && <div className="muted" style={{ fontSize: 12, marginTop: 4, lineHeight: 1.6 }}>{s.d}</div>}
-
-                  {s.copy === 'folder' && (
-                    <CopyRow label="" value={t.folderPath} tag="folder" copy={copy} copied={copied} t={t} />
-                  )}
-                  {s.copy === 'url' && (
-                    <>
-                      <CopyRow label="ServidorUrl" value={apiUrl} tag="url" copy={copy} copied={copied} t={t} />
-                      <div className="row" style={{ gap: 8, marginTop: 6, fontSize: 12 }}>
-                        <span className="muted" style={{ width: 92, flex: 'none' }}>ApiKey</span>
-                        <span className="muted">{t.apiKeyHint}</span>
-                      </div>
-                    </>
-                  )}
-                  {s.copy === 'domain' && (
-                    <CopyRow label="" value={origin} tag="dom" copy={copy} copied={copied} t={t} />
-                  )}
-                </div>
-              </div>
-            );
-          })}
-
-          {eaLive && (
-            <div style={{ marginTop: 4, padding: '10px 12px', background: 'rgba(52,226,160,.08)', border: '1px solid var(--green)', borderRadius: 10 }}>
-              <b style={{ color: 'var(--green)', fontSize: 13 }}>✓ {t.allDone}</b>
-            </div>
-          )}
-        </div>
+        {/* Paso 3: asistente de instalación */}
+        <InstallWizard
+          t={t} w={WIZ[lang]}
+          apiUrl={apiUrl} origin={origin}
+          apiKey={newKey || keys[0]?.key || ''}
+          onDownload={() => markDone('dl')}
+          copy={copy} copied={copied}
+        />
 
         {/* Lista de keys */}
         <div className="card">
