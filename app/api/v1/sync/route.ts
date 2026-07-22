@@ -50,28 +50,22 @@ export async function POST(req: NextRequest) {
       await supabaseAdmin.from('api_keys').update({ account_login: Number(acc.login), broker: keyRow.broker || acc.broker || null }).eq('id', keyRow.id);
     }
 
-    // --- Límite de cuentas según el plan del usuario ---
-    // ¿esta cuenta (login) ya existe para el usuario?
-    const { data: existingAcc } = await supabaseAdmin
-      .from('trading_accounts')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('login', acc.login)
-      .limit(1)
-      .maybeSingle();
-
-    if (!existingAcc) {
-      // cuenta nueva: comprobar el límite del plan
+    // --- Limite de cuentas segun el plan del usuario ---
+    // El cupo se cuenta por CLAVES activas, que es lo mismo que mide la web.
+    // Si el plan baja, siguen valiendo las claves mas antiguas; las que sobran quedan fuera de cupo.
+    {
       const lim = await accountLimit(userId);
-      const planRow = { name: lim.planName };
-      const planId = lim.planId;
-      const maxAccounts = lim.max;
-      const { count } = await supabaseAdmin.from('trading_accounts').select('*', { count: 'exact', head: true }).eq('user_id', userId);
-      if (!lim.unlimited && (count || 0) >= maxAccounts) {
-        return NextResponse.json({
-          ok: false,
-          error: `Limite del plan ${planRow?.name || planId}: ${maxAccounts} cuenta(s). Mejora tu plan para conectar mas. | ${planRow?.name || planId} plan limit: ${maxAccounts} account(s). Upgrade your plan to connect more.`,
-        }, { status: 403 });
+      if (!lim.unlimited) {
+        const { data: myKeys } = await supabaseAdmin
+          .from('api_keys').select('id').eq('user_id', userId).eq('revoked', false)
+          .order('created_at', { ascending: true });
+        const rank = (myKeys || []).findIndex((k: any) => k.id === keyRow.id) + 1;   // 1 = la mas antigua
+        if (rank > lim.max) {
+          return NextResponse.json({
+            ok: false,
+            error: `Limite del plan ${lim.planName}: ${lim.max} cuenta(s). Mejora tu plan o revoca otra clave. | ${lim.planName} plan limit: ${lim.max} account(s). Upgrade your plan or revoke another key.`,
+          }, { status: 403 });
+        }
       }
     }
 

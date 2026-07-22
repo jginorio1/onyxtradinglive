@@ -32,7 +32,7 @@ export async function GET() {
       .eq('user_id', user.id).eq('revoked', false).order('created_at', { ascending: false });
 
     const { data: accounts } = await supabaseAdmin
-      .from('trading_accounts').select('login,balance,last_sync_at').eq('user_id', user.id);
+      .from('trading_accounts').select('id,login,balance,last_sync_at').eq('user_id', user.id);
 
     const byLogin: any = {};
     (accounts || []).forEach((a: any) => { byLogin[String(a.login)] = a; });

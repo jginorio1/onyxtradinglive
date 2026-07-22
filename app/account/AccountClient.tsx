@@ -23,6 +23,11 @@ const D: any = {
     nTitle: 'Qué avisos quieres recibir', nEmail: 'Correos de la cuenta y pagos', nWeek: 'Resumen semanal de tu operativa', nFund: 'Alertas de reglas de fondeo', nMkt: 'Novedades y ofertas',
     pwT: 'Cambiar contraseña', pwNew: 'Nueva contraseña', pwRep: 'Repetir contraseña', pwBtn: 'Actualizar contraseña', pwShort: 'Mínimo 8 caracteres.', pwDiff: 'Las contraseñas no coinciden.', pwOk: 'Contraseña actualizada.',
     dTitle: 'Eliminar mi cuenta', dTxt: 'Se borrarán tus cuentas, operaciones y notas para siempre, y se cancelará tu suscripción. Esto no se puede deshacer.', dType: 'Escribe ELIMINAR para confirmar', dBtn: 'Eliminar mi cuenta',
+    mtDisc: 'Desconectar', mtDel: 'Eliminar',
+    mtDiscQ: '¿Desconectar esta cuenta? Se libera el cupo y podrás usarlo en otra, pero tu historial se conserva.',
+    mtDelQ: '¿ELIMINAR esta cuenta y TODAS sus operaciones? Esto no se puede deshacer.',
+    mtDiscOk: 'Cuenta desconectada. El cupo ya está libre.', mtDelOk: 'Cuenta eliminada.',
+    mtHelp: 'Desconectar libera el cupo y conserva tu historial. Eliminar borra la cuenta y sus operaciones para siempre.',
     addT: '¿Necesitas más cuentas?', addD: 'Añade cuentas sueltas a tu plan por ${p} al mes cada una.',
     addTotal: 'Total', addAcc: 'cuentas', addSave: 'Guardar cambios', addSaved: 'Actualizado',
     refT: 'Programa de referidos', refTxt: 'Muy pronto podrás invitar amigos y ganar créditos, o convertirte en embajador y cobrar una comisión mensual por cada suscriptor que traigas.', soon: 'Próximamente',
@@ -41,6 +46,11 @@ const D: any = {
     nTitle: 'Which alerts you want', nEmail: 'Account and billing emails', nWeek: 'Weekly performance recap', nFund: 'Prop-firm rule alerts', nMkt: 'News and offers',
     pwT: 'Change password', pwNew: 'New password', pwRep: 'Repeat password', pwBtn: 'Update password', pwShort: 'At least 8 characters.', pwDiff: 'Passwords do not match.', pwOk: 'Password updated.',
     dTitle: 'Delete my account', dTxt: 'Your accounts, trades and notes will be erased forever and your subscription will be canceled. This cannot be undone.', dType: 'Type ELIMINAR to confirm', dBtn: 'Delete my account',
+    mtDisc: 'Disconnect', mtDel: 'Delete',
+    mtDiscQ: 'Disconnect this account? The slot is freed and you can use it elsewhere, but your history is kept.',
+    mtDelQ: 'DELETE this account and ALL its trades? This cannot be undone.',
+    mtDiscOk: 'Account disconnected. The slot is free now.', mtDelOk: 'Account deleted.',
+    mtHelp: 'Disconnect frees the slot and keeps your history. Delete erases the account and its trades forever.',
     addT: 'Need more accounts?', addD: 'Add extra accounts to your plan for ${p}/month each.',
     addTotal: 'Total', addAcc: 'accounts', addSave: 'Save changes', addSaved: 'Updated',
     refT: 'Referral program', refTxt: 'Soon you will be able to invite friends and earn credit, or become an ambassador and earn a monthly commission for every subscriber you bring.', soon: 'Coming soon',
@@ -92,6 +102,17 @@ export default function AccountClient({ email }: { email: string }) {
     setMsg(L.saved); setTimeout(() => setMsg(''), 2500);
   }
   function setField(k: string, v: any) { setP({ ...p, [k]: v }); }
+
+  async function mtAction(acc: any, mode: 'disconnect' | 'delete') {
+    const q = mode === 'delete' ? L.mtDelQ : L.mtDiscQ;
+    if (!confirm(q)) return;
+    setBusy('mt' + acc.id);
+    const r = await fetch('/api/account/mt', { method: 'POST', body: JSON.stringify({ account_id: acc.id, mode }) });
+    const j = await r.json(); setBusy('');
+    if (!r.ok) { alert(errMsg(j, lang)); return; }
+    setMsg(mode === 'delete' ? L.mtDelOk : L.mtDiscOk); setTimeout(() => setMsg(''), 3000);
+    load();
+  }
 
   async function saveExtra() {
     setBusy('extra');
@@ -245,13 +266,18 @@ export default function AccountClient({ email }: { email: string }) {
                     <Link className="btn btn-ghost" href="/dashboard">{L.accAdd}</Link>
                   </div>
                   {!accounts.length && <div className="muted" style={{ fontSize: 14 }}>{L.accNone}</div>}
+                  {!!accounts.length && <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{L.mtHelp}</div>}
                   {accounts.map((a) => (
                     <div key={a.id} className="row between" style={{ borderTop: '1px solid var(--line)', padding: '10px 0', flexWrap: 'wrap', gap: 8 }}>
                       <div>
                         <div style={{ fontWeight: 700 }}>{a.login} <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}>{a.broker || a.server || ''}</span></div>
                         <div className="muted" style={{ fontSize: 12 }}>{a.platform || 'MT5'} · {L.lastSync}: {a.last_sync_at ? new Date(a.last_sync_at).toLocaleString() : L.never}</div>
                       </div>
-                      <div style={{ fontWeight: 700 }}>{a.balance != null ? '$' + Number(a.balance).toLocaleString() : ''}</div>
+                      <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+                        <div style={{ fontWeight: 700 }}>{a.balance != null ? '$' + Number(a.balance).toLocaleString() : ''}</div>
+                        <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => mtAction(a, 'disconnect')} disabled={busy === 'mt' + a.id}>{L.mtDisc}</button>
+                        <button className="btn btn-danger" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => mtAction(a, 'delete')} disabled={busy === 'mt' + a.id}>{L.mtDel}</button>
+                      </div>
                     </div>
                   ))}
                 </div>
