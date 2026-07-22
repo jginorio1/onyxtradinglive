@@ -72,7 +72,7 @@ const D = {
     fundTitle: '🏆 Reglas de fondeo', fundEdit: '⚙️ Configurar reglas', fundHide: 'Ocultar', fundTarget: 'Objetivo de profit ($)', fundMaxDaily: 'Pérdida diaria máx ($)', fundMaxTotal: 'Pérdida total máx ($)', fundStart: 'Balance inicial ($)', fundSave: 'Guardar reglas', fundProfitBar: 'Progreso al objetivo', fundDDBar: 'Uso de pérdida máxima',
     ranges: { d1: 'Hoy', d7: '7d', d30: '30d', mo: 'Mes', yr: 'Año', all: 'Todo' },
     radarTitle: 'Perfil del trader', bubbleTitle: 'Pares · volumen y resultado', rWR: 'Win rate', rPF: 'P. factor', rPayoff: 'Payoff', rConsist: 'Consistencia', rRisk: 'Riesgo', demo: 'Demo', demoOn: '🎬 Viendo datos de ejemplo (no reales)', customRange: 'Rango de fechas', from: 'Desde', to: 'Hasta',
-    proLockT: 'Función Pro', proLockD: 'Mejora a Pro para desbloquear esta sección.', proLockCta: 'Ver planes →', histCap: '🔒 En el plan Free ves solo los últimos 30 días. Desbloquea tu historial completo con Pro.',
+    proLockT: 'Función Pro', proLockD: 'Mejora tu plan para desbloquear esta sección.', proLockCta: 'Ver planes →', histCap: '🔒 En el plan Free ves solo los últimos 30 días. Desbloquea tu historial completo con Pro.', available: 'Disponible en', upgradeTo: 'Mejorar a', dLock1: 'Diario con fotos, notas y etiquetas por operación.', dLock2: 'Compara tus cuentas lado a lado.', dLock3: 'Reglas de fondeo, retiros y documentos de la cuenta.',
   },
   en: {
     nav_dash: 'Dashboard', nav_connect: 'Connect account', nav_plan: 'Plan', signout: 'Sign out',
@@ -95,7 +95,7 @@ const D = {
     fundTitle: '🏆 Prop-firm rules', fundEdit: '⚙️ Set rules', fundHide: 'Hide', fundTarget: 'Profit target ($)', fundMaxDaily: 'Max daily loss ($)', fundMaxTotal: 'Max total loss ($)', fundStart: 'Starting balance ($)', fundSave: 'Save rules', fundProfitBar: 'Progress to target', fundDDBar: 'Max loss used',
     ranges: { d1: 'Today', d7: '7d', d30: '30d', mo: 'Month', yr: 'Year', all: 'All' },
     radarTitle: 'Trader profile', bubbleTitle: 'Pairs · volume and result', rWR: 'Win rate', rPF: 'P. factor', rPayoff: 'Payoff', rConsist: 'Consistency', rRisk: 'Risk', demo: 'Demo', demoOn: '🎬 Viewing example data (not real)', customRange: 'Date range', from: 'From', to: 'To',
-    proLockT: 'Pro feature', proLockD: 'Upgrade to Pro to unlock this section.', proLockCta: 'See plans →', histCap: '🔒 On the Free plan you see only the last 30 days. Unlock your full history with Pro.',
+    proLockT: 'Pro feature', proLockD: 'Upgrade your plan to unlock this section.', proLockCta: 'See plans →', histCap: '🔒 On the Free plan you see only the last 30 days. Unlock your full history with Pro.', available: 'Available in', upgradeTo: 'Upgrade to', dLock1: 'Trade journal with photos, notes and tags.', dLock2: 'Compare your accounts side by side.', dLock3: 'Funding rules, payouts and account documents.',
   },
 } as const;
 
@@ -176,15 +176,20 @@ function FundCard({ acc, net, maxDD, L, onSave }: { acc: Acc; net: number; maxDD
   );
 }
 
-function ProLock({ L }: { L: any }) {
+function ProLock({ L, plan = 'Pro', desc }: { L: any; plan?: string; desc?: string }) {
+  const col = plan === 'Elite' ? '#34e2a0' : '#a06bff';
   return (
-    <div className="card" style={{ textAlign: 'center', padding: '40px 22px' }}>
-      <div style={{ fontSize: 34, marginBottom: 8 }}>🔒</div>
-      <h3 style={{ marginBottom: 6 }}>{L.proLockT}</h3>
-      <p className="muted" style={{ marginBottom: 16 }}>{L.proLockD}</p>
-      <Link className="btn btn-primary" href="/pricing">{L.proLockCta}</Link>
+    <div className="card" style={{ textAlign: 'center', padding: '38px 22px' }}>
+      <div style={{ fontSize: 32, marginBottom: 6 }}>🔒</div>
+      <h3 style={{ marginBottom: 6 }}>{L.available} <span style={{ color: col }}>{plan}</span></h3>
+      <p className="muted" style={{ marginBottom: 16 }}>{desc || L.proLockD}</p>
+      <Link className="btn btn-primary" href="/pricing">{L.upgradeTo} {plan} →</Link>
     </div>
   );
+}
+function PlanBadge({ plan }: { plan: string }) {
+  const elite = plan === 'Elite';
+  return <span style={{ fontSize: 10, fontWeight: 800, background: elite ? 'rgba(52,226,160,.15)' : 'rgba(160,107,255,.2)', color: elite ? '#7fe9c0' : '#c9a9ff', border: '1px solid ' + (elite ? '#34e2a0' : '#a06bff'), borderRadius: 20, padding: '2px 8px', whiteSpace: 'nowrap' }}>🔒 {plan.toUpperCase()}</span>;
 }
 
 export default function DashboardClient({ email = '', plan = 'free', trades = [], accounts: accs0 = [] }: { email?: string; plan?: string; trades?: TT[]; accounts?: Acc[] }) {
@@ -351,10 +356,10 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
   const costAll = filtered.reduce((s, x) => s + ((+(x.commission || 0)) + (+(x.swap || 0))), 0);
   const eaten = grossAll > 0 ? Math.round(Math.min(100, Math.abs(costAll) / grossAll * 100)) : 0;
 
-  const SECTIONS: { key: View; icon: string; label: string; sub: string; color: string; metric: string; mc: string; viz: any }[] = [
+  const SECTIONS: { key: View; icon: string; label: string; sub: string; color: string; metric: string; mc: string; viz: any; pro?: boolean }[] = [
     { key: 'rendimiento', icon: '🎯', label: L.secPerf, sub: L.secPerfSub, color: BLUE, metric: money2(a.net), mc: a.net >= 0 ? GREEN : RED, viz: <div style={{ width: 110 }}><MiniArea points={eqVals.length > 1 ? eqVals : [0, 0]} color={a.net >= 0 ? GREEN : RED} h={44} /></div> },
     { key: 'calendario', icon: '🗓️', label: L.secCal, sub: L.secCalSub, color: GREEN, metric: `${a.n} ${L.ops}`, mc: '#f2f5fb', viz: <div style={{ width: 110 }}><MiniHeat cells={heatCells} /></div> },
-    { key: 'operaciones', icon: '📋', label: L.secOps, sub: L.secOpsSub, color: PURPLE, metric: String(a.n), mc: '#f2f5fb', viz: <MiniDonut size={46} segs={[{ v: a.catWin, c: GREEN }, { v: a.catLoss, c: RED }, { v: a.catBE, c: GOLD }]} /> },
+    { key: 'operaciones', icon: '📋', label: L.secOps, sub: L.secOpsSub, color: PURPLE, metric: String(a.n), mc: '#f2f5fb', viz: <MiniDonut size={46} segs={[{ v: a.catWin, c: GREEN }, { v: a.catLoss, c: RED }, { v: a.catBE, c: GOLD }]} />, pro: true },
     { key: 'costes', icon: '💸', label: L.secCost, sub: L.secCostSub, color: GOLD, metric: money2(costAll), mc: costAll >= 0 ? GREEN : RED, viz: <Ring size={46} pct={eaten / 100} color={GOLD} value={eaten + '%'} /> },
     { key: 'cuentas', icon: '🗂️', label: L.secAcc, sub: L.secAccSub, color: CYAN, metric: String(accounts.length), mc: '#f2f5fb', viz: <div style={{ width: 100 }}><MiniBars vals={accounts.length ? accounts.map((x) => accStats(x.id).net) : [1, 1]} colors={accounts.length ? accounts.map((x) => (accStats(x.id).net >= 0 ? GREEN : RED)) : [BLUE]} h={44} /></div> },
   ];
@@ -441,11 +446,11 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
               {/* Botones grandes */}
               <div className="grid g3">
                 {SECTIONS.map((s) => (
-                  <button key={s.key} onClick={() => setView(s.key)} className="card" style={{ cursor: 'pointer', textAlign: 'left', borderTop: '3px solid ' + s.color }}>
+                  <button key={s.key} onClick={() => setView(s.key)} className="card" style={{ cursor: 'pointer', textAlign: 'left', borderTop: '3px solid ' + s.color, opacity: isFree && s.pro ? 0.9 : 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                       <span style={{ width: 38, height: 38, borderRadius: 11, background: s.color + '22', color: s.color, display: 'grid', placeItems: 'center', fontSize: 20 }}>{s.icon}</span>
                       <div style={{ flex: 1 }}><div style={{ fontWeight: 800, fontSize: 17, color: '#fff' }}>{s.label}</div><div className="muted" style={{ fontSize: 12 }}>{s.sub}</div></div>
-                      <span style={{ color: 'var(--mut)', fontSize: 18 }}>→</span>
+                      {isFree && s.pro ? <PlanBadge plan="Pro" /> : <span style={{ color: 'var(--mut)', fontSize: 18 }}>→</span>}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                       <div style={{ fontSize: 19, fontWeight: 800, color: s.mc, whiteSpace: 'nowrap' }}>{s.metric}</div>
@@ -523,7 +528,7 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
               </Card>
             )}
 
-            {view === 'operaciones' && (isFree ? <ProLock L={L} /> : <Journal trades={filtered} lang={lang} />)}
+            {view === 'operaciones' && (isFree ? <ProLock L={L} plan="Pro" desc={L.dLock1} /> : <Journal trades={filtered} lang={lang} />)}
             {view === 'costes' && <Costs trades={filtered} lang={lang} />}
 
             {view === 'cuentas' && (<>
@@ -545,8 +550,8 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
                     </tr>); })}</tbody>
                 </table>
               </Card>
-              {accounts.length >= 2 && (isFree ? <ProLock L={L} /> : <CompareAccounts accounts={accounts} trades={ranged} lang={lang} />)}
-              {sel !== 'all' && cur && isFree && <ProLock L={L} />}
+              {accounts.length >= 2 && (isFree ? <ProLock L={L} plan="Pro" desc={L.dLock2} /> : <CompareAccounts accounts={accounts} trades={ranged} lang={lang} />)}
+              {sel !== 'all' && cur && isFree && <ProLock L={L} plan="Pro" desc={L.dLock3} />}
               {sel !== 'all' && cur && !isFree && <FundCard acc={cur} net={a.net} maxDD={a.maxDD} L={L} onSave={(fields) => { const toNum = (v: any) => (v === '' || v == null ? null : Number(v)); setAccounts(accounts.map((x) => (x.id === cur.id ? { ...x, fund_target: toNum(fields.fund_target), fund_max_daily: toNum(fields.fund_max_daily), fund_max_total: toNum(fields.fund_max_total), fund_start: toNum(fields.fund_start) } : x))); }} />}
               {sel !== 'all' && cur && !isFree && <AccountExtras acc={cur} net={a.net} lang={lang} onSaved={(fields) => setAccounts(accounts.map((x) => (x.id === cur.id ? { ...x, acc_type: fields.acc_type || null, challenge_status: fields.challenge_status || null, challenge_cost: fields.challenge_cost === '' ? null : Number(fields.challenge_cost) } : x)))} />}
               {sel === 'all' && <p className="muted" style={{ fontSize: 13 }}>{lang === 'es' ? 'Elige una cuenta arriba para ver su fondeo, retiros y documentos.' : 'Pick an account above to see its funding, payouts and documents.'}</p>}
