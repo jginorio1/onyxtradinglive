@@ -272,7 +272,7 @@ export default function Home() {
     <>
       {/* NAV */}
       <div className="topbar"><div className="wrap">
-        <Link className="logo" href="/"><span className="mark">◆</span> Onyx Trading Live</Link>
+        <Link className="logo" href="/"><img src="/onyx-symbol.png" alt="Onyx" style={{ width: 30, height: 30, objectFit: 'contain' }} /> Onyx Trading Live</Link>
         <div className="navl"><a href="#features">{t.nav.features}</a><a href="#how">{t.nav.how}</a><a href="#fondeo">{t.nav.fondeo}</a><a href="#pricing">{t.nav.pricing}</a><a href="#faq">{t.nav.faq}</a></div>
         <div className="row">
           <button className="btn btn-ghost" style={{ padding: '6px 10px' }} onClick={() => switchLang(lang === 'es' ? 'en' : 'es')}>{lang === 'es' ? '🇬🇧 EN' : '🇪🇸 ES'}</button>
@@ -448,11 +448,11 @@ export default function Home() {
         <div className="row" style={{ justifyContent: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 22 }}>
           {FIRMS.map((fm, i) => (
             <button key={i} onClick={() => setFirm(i)} style={{
-              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderRadius: 12,
-              border: i === firm ? `2px solid ${fm.color}` : '1px solid var(--line)',
-              background: i === firm ? 'var(--bg2)' : 'transparent', color: 'inherit', transition: 'all .2s' }}>
-              <span style={{ width: 12, height: 12, borderRadius: '50%', background: fm.color, flex: 'none' }} />
-              <b style={{ fontSize: 15, color: fm.color }}>{fm.name}</b>
+              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, padding: '11px 18px', borderRadius: 12,
+              border: i === firm ? `2px solid ${fm.color}` : `1px solid ${fm.color}55`,
+              background: i === firm ? fm.color + '2e' : fm.color + '14', color: 'inherit', transition: 'all .2s' }}>
+              <span style={{ width: 12, height: 12, borderRadius: '50%', background: fm.color, flex: 'none', boxShadow: i === firm ? `0 0 8px ${fm.color}` : 'none' }} />
+              <b style={{ fontSize: 15, color: i === firm ? '#fff' : fm.color }}>{fm.name}</b>
             </button>
           ))}
         </div>
@@ -579,7 +579,7 @@ export default function Home() {
       {/* FOOTER */}
       <div style={{ borderTop: '1px solid var(--line)', padding: '32px 0' }}>
         <div className="wrap row between" style={{ flexWrap: 'wrap', gap: 16, color: 'var(--mut)', fontSize: 14 }}>
-          <div className="logo" style={{ fontSize: 16 }}><span className="mark" style={{ width: 24, height: 24, fontSize: 13 }}>◆</span> Onyx Trading Live</div>
+          <div className="logo" style={{ fontSize: 16 }}><img src="/onyx-symbol.png" alt="Onyx" style={{ width: 24, height: 24, objectFit: 'contain' }} /> Onyx Trading Live</div>
           <div className="row" style={{ gap: 20 }}>
             <Link href="/terms">{t.footer.terms}</Link>
             <Link href="/privacy">{t.footer.privacy}</Link>
