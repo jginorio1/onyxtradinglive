@@ -72,6 +72,7 @@ const D = {
     fundTitle: '🏆 Reglas de fondeo', fundEdit: '⚙️ Configurar reglas', fundHide: 'Ocultar', fundTarget: 'Objetivo de profit ($)', fundMaxDaily: 'Pérdida diaria máx ($)', fundMaxTotal: 'Pérdida total máx ($)', fundStart: 'Balance inicial ($)', fundSave: 'Guardar reglas', fundProfitBar: 'Progreso al objetivo', fundDDBar: 'Uso de pérdida máxima',
     ranges: { d1: 'Hoy', d7: '7d', d30: '30d', mo: 'Mes', yr: 'Año', all: 'Todo' },
     radarTitle: 'Perfil del trader', bubbleTitle: 'Pares · volumen y resultado', rWR: 'Win rate', rPF: 'P. factor', rPayoff: 'Payoff', rConsist: 'Consistencia', rRisk: 'Riesgo', demo: 'Demo', demoOn: '🎬 Viendo datos de ejemplo (no reales)', customRange: 'Rango de fechas', from: 'Desde', to: 'Hasta',
+    proLockT: 'Función Pro', proLockD: 'Mejora a Pro para desbloquear esta sección.', proLockCta: 'Ver planes →', histCap: '🔒 En el plan Free ves solo los últimos 30 días. Desbloquea tu historial completo con Pro.',
   },
   en: {
     nav_dash: 'Dashboard', nav_connect: 'Connect account', nav_plan: 'Plan', signout: 'Sign out',
@@ -94,6 +95,7 @@ const D = {
     fundTitle: '🏆 Prop-firm rules', fundEdit: '⚙️ Set rules', fundHide: 'Hide', fundTarget: 'Profit target ($)', fundMaxDaily: 'Max daily loss ($)', fundMaxTotal: 'Max total loss ($)', fundStart: 'Starting balance ($)', fundSave: 'Save rules', fundProfitBar: 'Progress to target', fundDDBar: 'Max loss used',
     ranges: { d1: 'Today', d7: '7d', d30: '30d', mo: 'Month', yr: 'Year', all: 'All' },
     radarTitle: 'Trader profile', bubbleTitle: 'Pairs · volume and result', rWR: 'Win rate', rPF: 'P. factor', rPayoff: 'Payoff', rConsist: 'Consistency', rRisk: 'Risk', demo: 'Demo', demoOn: '🎬 Viewing example data (not real)', customRange: 'Date range', from: 'From', to: 'To',
+    proLockT: 'Pro feature', proLockD: 'Upgrade to Pro to unlock this section.', proLockCta: 'See plans →', histCap: '🔒 On the Free plan you see only the last 30 days. Unlock your full history with Pro.',
   },
 } as const;
 
@@ -174,7 +176,19 @@ function FundCard({ acc, net, maxDD, L, onSave }: { acc: Acc; net: number; maxDD
   );
 }
 
+function ProLock({ L }: { L: any }) {
+  return (
+    <div className="card" style={{ textAlign: 'center', padding: '40px 22px' }}>
+      <div style={{ fontSize: 34, marginBottom: 8 }}>🔒</div>
+      <h3 style={{ marginBottom: 6 }}>{L.proLockT}</h3>
+      <p className="muted" style={{ marginBottom: 16 }}>{L.proLockD}</p>
+      <Link className="btn btn-primary" href="/pricing">{L.proLockCta}</Link>
+    </div>
+  );
+}
+
 export default function DashboardClient({ email = '', plan = 'free', trades = [], accounts: accs0 = [] }: { email?: string; plan?: string; trades?: TT[]; accounts?: Acc[] }) {
+  const isFree = (plan || 'free') === 'free';
   const [lang, setLang] = useState<Lang>('es');
   const [accounts, setAccounts] = useState<Acc[]>(accs0 || []);
   const [tradesS, setTradesS] = useState<TT[]>(trades || []);
@@ -216,8 +230,10 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
   const ranged = useMemo(() => {
     const now = Date.now();
     const src = demo ? demoTrades : tradesS;
+    const freeCap = isFree && !demo ? now - 30 * 864e5 : -Infinity; // Free: solo últimos 30 días
     return src.filter((x) => {
       const dt = new Date(x.close_time); const d = dt.getTime();
+      if (d < freeCap) return false;
       if (range === 'custom') { const ds = x.close_time.slice(0, 10); if (cFrom && ds < cFrom) return false; if (cTo && ds > cTo) return false; return true; }
       if (range === 'd1') return d >= now - 864e5;
       if (range === 'd7') return d >= now - 7 * 864e5;
@@ -226,7 +242,7 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
       if (range === 'yr') return dt.getUTCFullYear() === new Date().getUTCFullYear();
       return true;
     });
-  }, [tradesS, demo, demoTrades, range, cFrom, cTo]);
+  }, [tradesS, demo, demoTrades, range, cFrom, cTo, isFree]);
 
   const filtered = useMemo(() => (sel === 'all' ? ranged : ranged.filter((t) => t.account_id === sel)), [ranged, sel]);
   const a = useMemo(() => analyze(filtered), [filtered]);
@@ -398,6 +414,7 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
             )}
             {demo && <div style={{ background: 'rgba(255,192,77,.12)', border: '1px solid var(--amber)', color: 'var(--amber)', borderRadius: 10, padding: '8px 14px', fontSize: 13, alignSelf: 'flex-start' }}>{L.demoOn}</div>}
             {fundAlert && <div style={{ background: fundAlert.type === 'danger' ? 'rgba(255,107,125,.12)' : 'rgba(52,226,160,.12)', border: '1px solid ' + (fundAlert.type === 'danger' ? 'var(--red)' : 'var(--green)'), color: fundAlert.type === 'danger' ? 'var(--red)' : 'var(--green)', borderRadius: 10, padding: '10px 14px', fontSize: 14, fontWeight: 600 }}>{fundAlert.txt}</div>}
+            {isFree && <div style={{ background: 'rgba(124,140,255,.10)', border: '1px solid #7c8cff', color: '#a9b4ff', borderRadius: 10, padding: '9px 14px', fontSize: 13, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>{L.histCap} <Link href="/pricing" style={{ color: '#fff', fontWeight: 700 }}>{L.proLockCta}</Link></div>}
 
             {view === 'hub' && (<>
               {/* Onyx te dice */}
@@ -506,7 +523,7 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
               </Card>
             )}
 
-            {view === 'operaciones' && <Journal trades={filtered} lang={lang} />}
+            {view === 'operaciones' && (isFree ? <ProLock L={L} /> : <Journal trades={filtered} lang={lang} />)}
             {view === 'costes' && <Costs trades={filtered} lang={lang} />}
 
             {view === 'cuentas' && (<>
@@ -528,9 +545,10 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
                     </tr>); })}</tbody>
                 </table>
               </Card>
-              {accounts.length >= 2 && <CompareAccounts accounts={accounts} trades={ranged} lang={lang} />}
-              {sel !== 'all' && cur && <FundCard acc={cur} net={a.net} maxDD={a.maxDD} L={L} onSave={(fields) => { const toNum = (v: any) => (v === '' || v == null ? null : Number(v)); setAccounts(accounts.map((x) => (x.id === cur.id ? { ...x, fund_target: toNum(fields.fund_target), fund_max_daily: toNum(fields.fund_max_daily), fund_max_total: toNum(fields.fund_max_total), fund_start: toNum(fields.fund_start) } : x))); }} />}
-              {sel !== 'all' && cur && <AccountExtras acc={cur} net={a.net} lang={lang} onSaved={(fields) => setAccounts(accounts.map((x) => (x.id === cur.id ? { ...x, acc_type: fields.acc_type || null, challenge_status: fields.challenge_status || null, challenge_cost: fields.challenge_cost === '' ? null : Number(fields.challenge_cost) } : x)))} />}
+              {accounts.length >= 2 && (isFree ? <ProLock L={L} /> : <CompareAccounts accounts={accounts} trades={ranged} lang={lang} />)}
+              {sel !== 'all' && cur && isFree && <ProLock L={L} />}
+              {sel !== 'all' && cur && !isFree && <FundCard acc={cur} net={a.net} maxDD={a.maxDD} L={L} onSave={(fields) => { const toNum = (v: any) => (v === '' || v == null ? null : Number(v)); setAccounts(accounts.map((x) => (x.id === cur.id ? { ...x, fund_target: toNum(fields.fund_target), fund_max_daily: toNum(fields.fund_max_daily), fund_max_total: toNum(fields.fund_max_total), fund_start: toNum(fields.fund_start) } : x))); }} />}
+              {sel !== 'all' && cur && !isFree && <AccountExtras acc={cur} net={a.net} lang={lang} onSaved={(fields) => setAccounts(accounts.map((x) => (x.id === cur.id ? { ...x, acc_type: fields.acc_type || null, challenge_status: fields.challenge_status || null, challenge_cost: fields.challenge_cost === '' ? null : Number(fields.challenge_cost) } : x)))} />}
               {sel === 'all' && <p className="muted" style={{ fontSize: 13 }}>{lang === 'es' ? 'Elige una cuenta arriba para ver su fondeo, retiros y documentos.' : 'Pick an account above to see its funding, payouts and documents.'}</p>}
             </>)}
           </div>

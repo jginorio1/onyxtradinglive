@@ -34,6 +34,31 @@ export async function POST(req: NextRequest) {
     if (!acc?.login)
       return NextResponse.json({ ok: false, error: 'missing account' }, { status: 400 });
 
+    // --- Límite de cuentas según el plan del usuario ---
+    // ¿esta cuenta (login) ya existe para el usuario?
+    const { data: existingAcc } = await supabaseAdmin
+      .from('trading_accounts')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('login', acc.login)
+      .limit(1)
+      .maybeSingle();
+
+    if (!existingAcc) {
+      // cuenta nueva: comprobar el límite del plan
+      const { data: prof } = await supabaseAdmin.from('profiles').select('plan').eq('id', userId).single();
+      const planId = prof?.plan || 'free';
+      const { data: planRow } = await supabaseAdmin.from('plans').select('max_accounts,name').eq('id', planId).maybeSingle();
+      const maxAccounts = planRow?.max_accounts ?? 1;
+      const { count } = await supabaseAdmin.from('trading_accounts').select('*', { count: 'exact', head: true }).eq('user_id', userId);
+      if ((count || 0) >= maxAccounts) {
+        return NextResponse.json({
+          ok: false,
+          error: `Limite del plan ${planRow?.name || planId}: permite ${maxAccounts} cuenta(s). Mejora tu plan para conectar mas.`,
+        }, { status: 403 });
+      }
+    }
+
     // --- Upsert de la cuenta de trading ---
     const { data: accountRow, error: accErr } = await supabaseAdmin
       .from('trading_accounts')
