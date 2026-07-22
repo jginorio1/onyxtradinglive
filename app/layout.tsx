@@ -1,5 +1,9 @@
 import './globals.css';
 import type { Metadata } from 'next';
+import TopBar from './TopBar';
+
+// La barra lee la sesión en cada petición, así que esta capa no se cachea.
+export const dynamic = 'force-dynamic';
 
 const url = process.env.NEXT_PUBLIC_APP_URL || 'https://onyxtradinglive.vercel.app';
 
@@ -28,7 +32,11 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es">
-      <body>{children}</body>
+      <body>
+        {/* @ts-expect-error componente de servidor asincrono */}
+        <TopBar />
+        {children}
+      </body>
     </html>
   );
 }

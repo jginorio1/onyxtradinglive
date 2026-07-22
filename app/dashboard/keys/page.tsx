@@ -9,8 +9,31 @@ type Lang = 'es' | 'en';
 const K = {
   es: {
     nav_dash: 'Panel', nav_connect: 'Conectar cuenta', nav_plan: 'Plan', signout: 'Salir',
-    h1: '🔗 Conectar tu cuenta MT4 / MT5',
-    intro: 'El mismo proceso y la misma API key sirven para MT4 y MT5. Solo cambia el archivo del connector según tu plataforma.',
+    h1: 'Instalar Onyx en MetaTrader',
+    intro: 'Un solo archivo por plataforma. Ya trae tu servidor configurado: solo tienes que pegar tu clave.',
+    step2: '2 · Elige tu archivo',
+    dlNote: 'Los dos hacen lo mismo. Solo cambia la plataforma para la que están escritos.',
+    eaMt5: 'Onyx EA · MT5', eaMt4: 'Onyx EA · MT4',
+    recommended: 'Más usado', newBadge: 'Nuevo',
+    mt5Does: ['Registra tus operaciones en el diario', 'Break even, trailing y cierres parciales', 'Tu plan de trading, límites y noticias'],
+    mt4Does: ['Registra tus operaciones en el diario', 'Break even, trailing y cierres parciales', 'Tu plan de trading, límites y noticias'],
+    mt4Note: 'En MT4, al cerrar parte de una operación el resto cambia de número. Está resuelto, pero avísanos si ves algo raro.',
+    oldT: 'Necesito el conector antiguo (solo diario)',
+    oldD: 'Solo envía operaciones al diario, sin gestionar nada. Únicamente si el EA nuevo te da problemas.',
+    dlMt5: 'Descargar para MT5', dlMt4: 'Descargar para MT4',
+    step3: '3 · Instalarlo',
+    stepsD: 'Los pasos se van marcando solos según avanzas.',
+    folderPath: 'MQL5/Experts  (o MQL4/Experts en MT4)',
+    allDone: 'Listo. Tu MetaTrader está reportando a Onyx.',
+    steps: [
+      { t: 'Descarga el archivo de tu plataforma', d: 'Con los botones de arriba.' },
+      { t: 'Cópialo a la carpeta de MetaTrader', d: 'En MetaTrader: Archivo → Abrir carpeta de datos. Desde ahí entra en la carpeta Experts.', copy: 'folder' },
+      { t: 'Compílalo', d: 'Abre MetaEditor (tecla F4), abre el archivo y pulsa Compilar (F7). Si sale algún error, cópialo y escríbenos.' },
+      { t: 'Arrástralo a un gráfico', d: 'Navegador → Asesores Expertos → arrastra Onyx a cualquier gráfico. Con uno basta: gestiona todas tus posiciones desde ahí.' },
+      { t: 'Rellena los dos campos de la ventana', d: 'Se abre al soltarlo en el gráfico.', copy: 'url' },
+      { t: 'Autoriza el envío', d: 'Herramientas → Opciones → Asesores Expertos → marca "Permitir WebRequest para las siguientes URL" y añade:', copy: 'domain' },
+      { t: 'Enciende AlgoTrading', d: 'El botón de arriba, que se pone verde. En unos segundos el panel del gráfico dirá "Conectado" y tus operaciones aparecerán en el dashboard.' },
+    ],
     step1: '1 · Conecta una cuenta', newKey: '+ Crear clave para esta cuenta', created: '✅ Clave creada. Cópiala y pégala en el connector:',
     slots: 'Cuentas conectadas', of: 'de', unlimited: 'ilimitadas', unlimitedTxt: 'Tu plan permite cuentas ilimitadas.',
     left: 'Te quedan', left2: 'cuenta(s) por conectar.', full: 'Has llegado al límite de tu plan.',
@@ -23,26 +46,36 @@ const K = {
     limitT: 'Llegaste al límite de tu plan', limitD: 'Revoca una clave para liberar un cupo, o mejora tu plan para conectar más cuentas.', limitCta: 'Ver planes →',
     waiting: 'esperando sync', acct: 'Cuenta', notBound: 'Sin atar todavía', lastSync: 'sync',
     copy: 'Copiar', copied: '✓ Copiado',
-    step2: '2 · Descarga el Onyx Connector', dlMt5: '⬇ Descargar para MT5', dlMt4: '⬇ Descargar para MT4',
-    dlNote: 'Ya viene con la URL de tu servidor configurada. Solo tendrás que pegar tu API key.',
-    step3: '3 · Instálalo (pasos)',
-    s: [
-      'Descarga el connector de tu plataforma con los botones de arriba (MT5 o MT4).',
-      'En MetaTrader: Archivo → Abrir carpeta de datos → copia el archivo en la carpeta MQL5/Experts (o MQL4/Experts en MT4).',
-      'Abre MetaEditor (tecla F4), abre el connector y pulsa Compilar (F7).',
-      'En MetaTrader, abre el Navegador → Asesores Expertos → arrastra el Onyx Connector a cualquier gráfico.',
-    ],
-    inputsIntro: 'En la ventana de inputs pon:',
-    apiKeyHint: 'tu API key (la de arriba, o una de la lista de abajo)',
-    s6: 'Autoriza el envío: Herramientas → Opciones → Asesores Expertos → marca “Permitir WebRequest para las siguientes URL” y añade:',
-    s7: 'Activa el botón AlgoTrading (verde). En segundos el panel del connector dirá “Sincronizado” y tus operaciones aparecerán en el dashboard.',
     yourKeys: 'Tus API keys', active: 'activa', revoked: 'revocada', revoke: 'Revocar', noKeys: 'Aún no tienes API keys. Genera una arriba.',
     errKey: 'No se pudo crear la key: ', errNet: 'Error de red: ', confirmRevoke: '¿Revocar esta API key? La cuenta MT que la use dejará de sincronizar.',
   },
   en: {
     nav_dash: 'Dashboard', nav_connect: 'Connect account', nav_plan: 'Plan', signout: 'Sign out',
-    h1: '🔗 Connect your MT4 / MT5 account',
-    intro: 'The same process and the same API key work for both MT4 and MT5. Just use the connector file for your platform.',
+    h1: 'Install Onyx in MetaTrader',
+    intro: 'One file per platform. It already has your server configured: you only paste your key.',
+    step2: '2 · Pick your file',
+    dlNote: 'Both do the same. Only the platform they are written for changes.',
+    eaMt5: 'Onyx EA · MT5', eaMt4: 'Onyx EA · MT4',
+    recommended: 'Most used', newBadge: 'New',
+    mt5Does: ['Logs your trades to the journal', 'Break even, trailing and partial closes', 'Your trading plan, limits and news'],
+    mt4Does: ['Logs your trades to the journal', 'Break even, trailing and partial closes', 'Your trading plan, limits and news'],
+    mt4Note: 'On MT4, closing part of a trade changes the ticket of the rest. It is handled, but tell us if you see anything odd.',
+    oldT: 'I need the old connector (journal only)',
+    oldD: 'It only sends trades to the journal, it manages nothing. Use it only if the new EA gives you trouble.',
+    dlMt5: 'Download for MT5', dlMt4: 'Download for MT4',
+    step3: '3 · Install it',
+    stepsD: 'Steps tick themselves off as you go.',
+    folderPath: 'MQL5/Experts  (or MQL4/Experts on MT4)',
+    allDone: 'Done. Your MetaTrader is reporting to Onyx.',
+    steps: [
+      { t: 'Download the file for your platform', d: 'Use the buttons above.' },
+      { t: 'Copy it into the MetaTrader folder', d: 'In MetaTrader: File → Open Data Folder. From there go into the Experts folder.', copy: 'folder' },
+      { t: 'Compile it', d: 'Open MetaEditor (F4), open the file and click Compile (F7). If any error shows up, copy it and send it to us.' },
+      { t: 'Drag it onto a chart', d: 'Navigator → Expert Advisors → drag Onyx onto any chart. One is enough: it manages all your positions from there.' },
+      { t: 'Fill the two fields in the window', d: 'It opens when you drop it on the chart.', copy: 'url' },
+      { t: 'Authorize sending', d: 'Tools → Options → Expert Advisors → check "Allow WebRequest for listed URL" and add:', copy: 'domain' },
+      { t: 'Turn on AlgoTrading', d: 'The button at the top, which turns green. In a few seconds the chart panel will say "Connected" and your trades will appear in the dashboard.' },
+    ],
     step1: '1 · Connect an account', newKey: '+ Create key for this account', created: '✅ Key created. Copy it and paste it into the connector:',
     slots: 'Connected accounts', of: 'of', unlimited: 'unlimited', unlimitedTxt: 'Your plan allows unlimited accounts.',
     left: 'You have', left2: 'account(s) left to connect.', full: 'You reached your plan limit.',
@@ -55,19 +88,6 @@ const K = {
     limitT: 'You reached your plan limit', limitD: 'Revoke a key to free a slot, or upgrade your plan to connect more accounts.', limitCta: 'See plans →',
     waiting: 'waiting for sync', acct: 'Account', notBound: 'Not bound yet', lastSync: 'sync',
     copy: 'Copy', copied: '✓ Copied',
-    step2: '2 · Download the Onyx Connector', dlMt5: '⬇ Download for MT5', dlMt4: '⬇ Download for MT4',
-    dlNote: 'It already has your server URL configured. You only need to paste your API key.',
-    step3: '3 · Install it (steps)',
-    s: [
-      'Download the connector for your platform with the buttons above (MT5 or MT4).',
-      'In MetaTrader: File → Open Data Folder → copy the file into the MQL5/Experts folder (or MQL4/Experts on MT4).',
-      'Open MetaEditor (F4 key), open the connector and click Compile (F7).',
-      'In MetaTrader, open the Navigator → Expert Advisors → drag the Onyx Connector onto any chart.',
-    ],
-    inputsIntro: 'In the inputs window set:',
-    apiKeyHint: 'your API key (the one above, or one from the list below)',
-    s6: 'Authorize sending: Tools → Options → Expert Advisors → check “Allow WebRequest for listed URL” and add:',
-    s7: 'Turn on the AlgoTrading button (green). In seconds the connector panel will say “Synced” and your trades will appear in the dashboard.',
     yourKeys: 'Your API keys', active: 'active', revoked: 'revoked', revoke: 'Revoke', noKeys: 'You have no API keys yet. Generate one above.',
     errKey: 'Could not create the key: ', errNet: 'Network error: ', confirmRevoke: 'Revoke this API key? The MT account using it will stop syncing.',
   },
@@ -82,6 +102,18 @@ const FIRMS = [
   'Admiral Markets', 'Darwinex', 'RoboForex', 'Eightcap', 'ThinkMarkets',
 ];
 const lbl = { fontSize: 12, color: 'var(--mut)', display: 'block' } as any;
+
+// Fila de "copiar al portapapeles" que se repite en varios pasos
+function CopyRow({ label, value, tag, copy, copied, t }: any) {
+  return (
+    <div className="row" style={{ gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+      {label && <span className="muted" style={{ fontSize: 12, width: 92, flex: 'none' }}>{label}</span>}
+      <code style={{ flex: 1, minWidth: 160, wordBreak: 'break-all' }}>{value || '...'}</code>
+      <button className="btn btn-ghost" style={{ padding: '5px 12px', fontSize: 12 }}
+        onClick={() => copy(value, tag)}>{copied === tag ? t.copied : t.copy}</button>
+    </div>
+  );
+}
 
 export default function KeysPage() {
   const [keys, setKeys] = useState<any[]>([]);
@@ -111,6 +143,29 @@ export default function KeysPage() {
   }, []);
   function switchLang(l: Lang) { setLang(l); try { localStorage.setItem('onyx_lang', l); } catch {} }
   const apiUrl = origin + '/api/v1/sync';
+
+  // ---- Estado de los pasos de instalación ----
+  // No adivinamos: solo marcamos lo que podemos comprobar de verdad.
+  //   · la descarga, porque la pulsó aquí (se recuerda en el navegador)
+  //   · el resto, cuando el EA sincroniza — eso demuestra que todo lo anterior salió bien
+  const [downloaded, setDownloaded] = useState(false);
+  useEffect(() => {
+    try { setDownloaded(localStorage.getItem('onyx_ea_dl') === '1'); } catch {}
+  }, []);
+  function markDone(what: string) {
+    if (what === 'dl') { setDownloaded(true); try { localStorage.setItem('onyx_ea_dl', '1'); } catch {} }
+  }
+
+  const eaLive = keys.some((k: any) => k.account?.last_sync_at);
+
+  function stepState(i: number): 'done' | 'now' | 'todo' {
+    // Si el EA ya reportó, todos los pasos están cumplidos por definición
+    if (eaLive) return 'done';
+    if (i === 0) return downloaded ? 'done' : 'now';
+    if (!downloaded) return 'todo';
+    // El primero pendiente después de la descarga es el que toca
+    return i === 1 ? 'now' : 'todo';
+  }
 
   async function load() {
     const r = await fetch('/api/keys');
@@ -143,13 +198,8 @@ export default function KeysPage() {
 
   return (
     <>
-      <div className="topbar"><div className="wrap">
-        <div className="logo"><span className="mark">◆</span> Onyx</div>
-        <div className="navl"><Link href="/dashboard">{t.nav_dash}</Link><Link href="/dashboard/keys">{t.nav_connect}</Link><Link href="/pricing">{t.nav_plan}</Link></div>
-        <div className="row">
-          <button className="btn btn-ghost" style={{ padding: '6px 10px' }} onClick={() => switchLang(lang === 'es' ? 'en' : 'es')}>{lang === 'es' ? '🇬🇧 EN' : '🇪🇸 ES'}</button>
-          <form action="/auth/signout" method="post"><button className="btn btn-ghost">{t.signout}</button></form>
-        </div>
+      <div className="pagebar"><div className="wrap-wide">
+        <button className="btn btn-ghost" style={{ padding: '5px 10px', fontSize: 13 }} onClick={() => switchLang(lang === 'es' ? 'en' : 'es')}>{lang === 'es' ? '\ud83c\uddec\ud83c\udde7 EN' : '\ud83c\uddea\ud83c\uddf8 ES'}</button>
       </div></div>
 
       <div className="wrap" style={{ padding: '28px 22px', maxWidth: 860 }}>
@@ -237,38 +287,102 @@ export default function KeysPage() {
           )}
         </div>
 
-        {/* Paso 2: instrucciones */}
+        {/* Paso 2: elegir el archivo */}
         <div className="card" style={{ marginBottom: 18 }}>
-          <h3>{t.step2}</h3>
-          <div style={{ display: 'flex', gap: 10, margin: '12px 0', flexWrap: 'wrap' }}>
-            <a className="btn btn-primary" href="/OnyxConnector_MT5.mq5" download>{t.dlMt5}</a>
-            <a className="btn btn-primary" href="/OnyxConnector_MT4.mq4" download>{t.dlMt4}</a>
+          <h3 style={{ marginBottom: 4 }}>{t.step2}</h3>
+          <p className="muted" style={{ fontSize: 13, marginBottom: 14 }}>{t.dlNote}</p>
+
+          <div className="grid g2" style={{ gap: 12 }}>
+            {/* MT5: el gestor completo */}
+            <div style={{ background: 'var(--bg2)', border: '2px solid var(--brand)', borderRadius: 12, padding: 14 }}>
+              <div className="row between" style={{ marginBottom: 8, gap: 8 }}>
+                <b style={{ fontSize: 15 }}>{t.eaMt5}</b>
+                <span className="pill" style={{ background: 'rgba(124,140,255,.16)', color: '#aeb7ff' }}>{t.recommended}</span>
+              </div>
+              <div style={{ fontSize: 12, lineHeight: 1.9, color: 'var(--mut)', marginBottom: 14 }}>
+                {t.mt5Does.map((x: string, i: number) => (
+                  <div key={i}><span style={{ color: 'var(--green)' }}>✓</span> {x}</div>
+                ))}
+              </div>
+              <a className="btn btn-primary" style={{ width: '100%' }} href="/OnyxManager_MT5.mq5" download
+                onClick={() => markDone('dl')}><span className="ic">↓</span>{t.dlMt5}</a>
+              <div className="muted" style={{ fontSize: 11, marginTop: 7, textAlign: 'center' }}>OnyxManager_MT5.mq5 · v2.0</div>
+            </div>
+
+            {/* MT4: lo mismo, portado a MQL4 */}
+            <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 12, padding: 14 }}>
+              <div className="row between" style={{ marginBottom: 8, gap: 8 }}>
+                <b style={{ fontSize: 15 }}>{t.eaMt4}</b>
+                <span className="pill">{t.newBadge}</span>
+              </div>
+              <div style={{ fontSize: 12, lineHeight: 1.9, color: 'var(--mut)', marginBottom: 14 }}>
+                {t.mt4Does.map((x: string, i: number) => (
+                  <div key={i}><span style={{ color: 'var(--green)' }}>✓</span> {x}</div>
+                ))}
+                <div style={{ color: 'var(--amber)' }}>! {t.mt4Note}</div>
+              </div>
+              <a className="btn btn-ghost" style={{ width: '100%' }} href="/OnyxManager_MT4.mq4" download
+                onClick={() => markDone('dl')}><span className="ic">↓</span>{t.dlMt4}</a>
+              <div className="muted" style={{ fontSize: 11, marginTop: 7, textAlign: 'center' }}>OnyxManager_MT4.mq4 · v2.0</div>
+            </div>
           </div>
-          <p className="muted" style={{ fontSize: 13 }}>{t.dlNote}</p>
-          <h3 style={{ marginTop: 18 }}>{t.step3}</h3>
-          <ol style={{ margin: '12px 0 0 18px', lineHeight: 2, color: '#d6d9e0', fontSize: 15 }}>
-            {t.s.map((step, i) => <li key={i}>{step}</li>)}
-            <li>{t.inputsIntro}
-              <div style={{ margin: '8px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <span className="muted" style={{ width: 90 }}>InpApiUrl</span>
-                  <code style={{ flex: 1, wordBreak: 'break-all' }}>{apiUrl || '...'}</code>
-                  <button className="btn btn-ghost" onClick={() => copy(apiUrl, 'url')}>{copied === 'url' ? '✓' : t.copy}</button>
-                </div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <span className="muted" style={{ width: 90 }}>InpApiKey</span>
-                  <span className="muted" style={{ flex: 1 }}>{t.apiKeyHint}</span>
+
+          <details style={{ marginTop: 14 }}>
+            <summary className="muted" style={{ fontSize: 12, cursor: 'pointer' }}>{t.oldT}</summary>
+            <div className="row" style={{ gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
+              <a className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: 12 }} href="/OnyxConnector_MT5.mq5" download>Conector MT5 (v1)</a>
+              <a className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: 12 }} href="/OnyxConnector_MT4.mq4" download>Conector MT4 (v1)</a>
+            </div>
+            <p className="muted" style={{ fontSize: 12, marginTop: 8 }}>{t.oldD}</p>
+          </details>
+        </div>
+
+        {/* Paso 3: instalación con estado */}
+        <div className="card" style={{ marginBottom: 18 }}>
+          <h3 style={{ marginBottom: 4 }}>{t.step3}</h3>
+          <p className="muted" style={{ fontSize: 13, marginBottom: 16 }}>{t.stepsD}</p>
+
+          {t.steps.map((s: any, i: number) => {
+            const state = stepState(i);
+            return (
+              <div key={i} className="row" style={{ gap: 12, alignItems: 'flex-start', marginBottom: 16 }}>
+                <div style={{
+                  width: 24, height: 24, borderRadius: '50%', flex: 'none', fontSize: 12,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: state === 'done' ? 'var(--green)' : state === 'now' ? 'var(--brand)' : 'transparent',
+                  border: state === 'todo' ? '1px solid var(--line)' : 'none',
+                  color: state === 'todo' ? 'var(--mut)' : '#111726',
+                }}>{state === 'done' ? '✓' : i + 1}</div>
+
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, color: state === 'todo' ? 'var(--mut)' : 'var(--tx)' }}>{s.t}</div>
+                  {s.d && <div className="muted" style={{ fontSize: 12, marginTop: 4, lineHeight: 1.6 }}>{s.d}</div>}
+
+                  {s.copy === 'folder' && (
+                    <CopyRow label="" value={t.folderPath} tag="folder" copy={copy} copied={copied} t={t} />
+                  )}
+                  {s.copy === 'url' && (
+                    <>
+                      <CopyRow label="ServidorUrl" value={apiUrl} tag="url" copy={copy} copied={copied} t={t} />
+                      <div className="row" style={{ gap: 8, marginTop: 6, fontSize: 12 }}>
+                        <span className="muted" style={{ width: 92, flex: 'none' }}>ApiKey</span>
+                        <span className="muted">{t.apiKeyHint}</span>
+                      </div>
+                    </>
+                  )}
+                  {s.copy === 'domain' && (
+                    <CopyRow label="" value={origin} tag="dom" copy={copy} copied={copied} t={t} />
+                  )}
                 </div>
               </div>
-            </li>
-            <li>{t.s6}
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', margin: '8px 0' }}>
-                <code style={{ flex: 1 }}>{origin || '...'}</code>
-                <button className="btn btn-ghost" onClick={() => copy(origin, 'dom')}>{copied === 'dom' ? '✓' : t.copy}</button>
-              </div>
-            </li>
-            <li>{t.s7}</li>
-          </ol>
+            );
+          })}
+
+          {eaLive && (
+            <div style={{ marginTop: 4, padding: '10px 12px', background: 'rgba(52,226,160,.08)', border: '1px solid var(--green)', borderRadius: 10 }}>
+              <b style={{ color: 'var(--green)', fontSize: 13 }}>✓ {t.allDone}</b>
+            </div>
+          )}
         </div>
 
         {/* Lista de keys */}

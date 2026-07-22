@@ -76,12 +76,8 @@ export default function Pricing() {
 
   return (
     <>
-      <div className="topbar"><div className="wrap">
-        <Link className="logo" href="/"><img src="/onyx-symbol.png" alt="Onyx" style={{ width: 28, height: 28, objectFit: 'contain' }} /> Onyx Trading Live</Link>
-        <div className="row">
-          <button className="btn btn-ghost" style={{ padding: '6px 10px' }} onClick={() => switchLang(lang === 'es' ? 'en' : 'es')}>{lang === 'es' ? '🇬🇧 EN' : '🇪🇸 ES'}</button>
-          <Link className="btn btn-ghost" href="/dashboard">{t.account}</Link>
-        </div>
+      <div className="pagebar"><div className="wrap-wide">
+        <button className="btn btn-ghost" style={{ padding: '5px 10px', fontSize: 13 }} onClick={() => switchLang(lang === 'es' ? 'en' : 'es')}>{lang === 'es' ? '\ud83c\uddec\ud83c\udde7 EN' : '\ud83c\uddea\ud83c\uddf8 ES'}</button>
       </div></div>
 
       <div className="wrap" style={{ padding: '48px 22px 60px', textAlign: 'center' }}>

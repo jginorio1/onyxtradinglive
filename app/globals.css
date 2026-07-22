@@ -15,12 +15,19 @@ a{color:inherit;text-decoration:none;}
 .between{justify-content:space-between;}
 .logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px;}
 .logo .mark{width:28px;height:28px;border-radius:8px;background:var(--grad);display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 4px 16px rgba(124,140,255,.4);}
-.btn{display:inline-block;padding:9px 16px;border-radius:10px;font-weight:600;font-size:14px;cursor:pointer;border:none;transition:.15s;}
-.btn-primary{background:var(--grad);color:#fff;box-shadow:0 6px 22px rgba(124,140,255,.35);}
-.btn-primary:hover{transform:translateY(-1px);filter:brightness(1.08);}
-.btn-ghost{color:var(--tx);border:1px solid var(--line);background:rgba(255,255,255,.02);}
-.btn-ghost:hover{background:var(--card2);border-color:#3a4560;}
-.btn-danger{color:#fff;background:var(--grad-red);}
+/* Botones. Peso 500 en vez de 600, sin sombras de colores y con un solo
+   nivel de elevacion. El primario destaca por color, no por brillo. */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:10px 16px;border-radius:10px;font-weight:500;font-size:14px;line-height:1;cursor:pointer;border:1px solid transparent;transition:background .15s,border-color .15s,opacity .15s;white-space:nowrap;}
+.btn:focus-visible{outline:2px solid var(--brand);outline-offset:2px;}
+.btn:disabled{cursor:not-allowed;opacity:.5;}
+.btn-primary{background:var(--brand);color:#111726;}
+.btn-primary:hover:not(:disabled){background:#8f9dff;}
+.btn-ghost{color:var(--tx);border-color:var(--line);background:transparent;}
+.btn-ghost:hover:not(:disabled){background:var(--card2);border-color:#3a4560;}
+.btn-danger{color:#fff;background:#b8384a;}
+.btn-danger:hover:not(:disabled){background:#c94259;}
+.btn-lg{padding:12px 20px;font-size:15px;}
+.btn .ic{font-size:16px;line-height:1;}
 .card{background:linear-gradient(180deg,rgba(255,255,255,.04),transparent),var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 8px 30px rgba(0,0,0,.35);}
 .grid{display:grid;gap:16px;}
 .g4{grid-template-columns:repeat(4,minmax(0,1fr));} .g3{grid-template-columns:repeat(3,minmax(0,1fr));} .g2{grid-template-columns:repeat(2,minmax(0,1fr));}
@@ -41,6 +48,35 @@ th{color:var(--mut);font-weight:600;}
 .topbar .wrap,.topbar .wrap-wide{height:64px;display:flex;align-items:center;justify-content:space-between;}
 .navl{display:flex;gap:22px;color:var(--mut);font-size:15px;}
 .navl a:hover{color:#fff;}
+
+/* Fila fina bajo la barra principal: solo lo propio de cada pagina
+   (por ahora, el cambio de idioma). No es una segunda barra fija. */
+.pagebar{border-bottom:1px solid var(--line);}
+.pagebar .wrap-wide{display:flex;justify-content:flex-end;padding:7px 0;}
+
+/* --- Barra de navegacion unica (app/TopBar.tsx) --- */
+.navlink{color:var(--mut);font-size:14px;padding:7px 11px;border-radius:8px;transition:.15s;}
+.navlink:hover{color:#fff;background:var(--card2);}
+
+.planpill{font-size:11px;padding:4px 10px;border-radius:20px;background:rgba(52,226,160,.14);color:#7fe9c0;border:1px solid rgba(52,226,160,.3);transition:.15s;}
+.planpill:hover{background:rgba(52,226,160,.22);}
+/* En Free la insignia invita a subir de plan, sin gritar */
+.planpill.free{background:var(--card2);color:var(--mut);border-color:var(--line);}
+.planpill.free:hover{color:#fff;border-color:var(--brand);}
+
+.ea-dot{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--mut);padding:4px 9px;border-radius:20px;background:var(--card2);}
+.ea-dot .dot{width:7px;height:7px;border-radius:50%;flex:none;}
+
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--card2);border:1px solid var(--line);color:var(--tx);font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:.15s;}
+.avatar:hover{border-color:var(--brand);}
+
+.menu{position:absolute;right:0;top:calc(100% + 8px);min-width:210px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:6px;z-index:60;box-shadow:0 12px 32px rgba(0,0,0,.5);}
+.menu-head{font-size:12px;color:var(--mut);padding:8px 10px 10px;border-bottom:1px solid var(--line);margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;}
+.menu-item{display:block;width:100%;text-align:left;padding:9px 10px;border-radius:8px;font-size:14px;color:var(--tx);background:none;border:none;cursor:pointer;transition:.15s;}
+.menu-item:hover{background:var(--card2);}
+.menu-item.danger{color:var(--red);}
+
+@media(max-width:760px){ .ea-dot-tx{display:none;} .ea-dot{padding:6px;} }
 .code{font-family:Consolas,monospace;background:#0a0d14;border:1px solid var(--line);border-radius:6px;padding:4px 8px;font-size:13px;color:#bcd6ff;}
 .center{max-width:420px;margin:8vh auto;padding:0 20px;}
 h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}

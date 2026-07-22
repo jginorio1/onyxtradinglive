@@ -55,10 +55,6 @@ export default function AdminClient({ meEmail, role, accounts, trades }: { meEma
 
   return (
     <>
-      <div className="topbar"><div className="wrap-wide">
-        <Link className="logo" href="/dashboard"><img src="/onyx-symbol.png" alt="Onyx" style={{ width: 28, height: 28, objectFit: 'contain' }} /> Onyx · Súper-Admin</Link>
-        <div className="row"><span className="pill" style={{ color: roleColor(role) }}>{role}</span><span className="muted" style={{ fontSize: 13 }}>{meEmail}</span><Link className="btn btn-ghost" href="/dashboard">Mi cuenta</Link></div>
-      </div></div>
 
       <div className="wrap-wide" style={{ padding: '22px 0' }}>
         <div className="adminlayout">

@@ -140,13 +140,8 @@ export default function AccountClient({ email }: { email: string }) {
 
   return (
     <>
-      <div className="topbar"><div className="wrap-wide">
-        <Link className="logo" href="/dashboard"><img src="/onyx-symbol.png" alt="Onyx" style={{ width: 28, height: 28, objectFit: 'contain' }} /> {L.title}</Link>
-        <div className="row">
-          <button className="btn btn-ghost" style={{ padding: '6px 10px' }} onClick={() => switchLang(lang === 'es' ? 'en' : 'es')}>{lang === 'es' ? '🇬🇧 EN' : '🇪🇸 ES'}</button>
-          <span className="muted" style={{ fontSize: 13 }}>{email}</span>
-          <Link className="btn btn-ghost" href="/dashboard">{L.back}</Link>
-        </div>
+      <div className="pagebar"><div className="wrap-wide">
+        <button className="btn btn-ghost" style={{ padding: '5px 10px', fontSize: 13 }} onClick={() => switchLang(lang === 'es' ? 'en' : 'es')}>{lang === 'es' ? '\ud83c\uddec\ud83c\udde7 EN' : '\ud83c\uddea\ud83c\uddf8 ES'}</button>
       </div></div>
 
       <div className="wrap-wide" style={{ padding: '22px 0' }}>

@@ -450,14 +450,8 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
 
   return (
     <>
-      <div className="topbar"><div className="wrap-wide">
-        <Link className="logo" href="/dashboard"><img src="/onyx-symbol.png" alt="Onyx" style={{ width: 28, height: 28, objectFit: 'contain' }} /> Onyx</Link>
-        <div className="navl"><Link href="/dashboard">{L.nav_dash}</Link><Link href="/dashboard/keys">{L.nav_connect}</Link><Link href="/dashboard/manager">{L.nav_manager}</Link><Link href="/pricing">{L.nav_plan}</Link><Link href="/account">{L.nav_account}</Link></div>
-        <div className="row">
-          <button className="btn btn-ghost" style={{ padding: '6px 10px' }} onClick={() => switchLang(lang === 'es' ? 'en' : 'es')}>{lang === 'es' ? '🇬🇧 EN' : '🇪🇸 ES'}</button>
-          <span className="pill green">{plan}</span>
-          <form action="/auth/signout" method="post"><button className="btn btn-ghost">{L.signout}</button></form>
-        </div>
+      <div className="pagebar"><div className="wrap-wide">
+        <button className="btn btn-ghost" style={{ padding: '5px 10px', fontSize: 13 }} onClick={() => switchLang(lang === 'es' ? 'en' : 'es')}>{lang === 'es' ? '\ud83c\uddec\ud83c\udde7 EN' : '\ud83c\uddea\ud83c\uddf8 ES'}</button>
       </div></div>
 
       <div className="wrap-wide" style={{ padding: '24px 0' }}>
