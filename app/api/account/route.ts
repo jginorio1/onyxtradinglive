@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { stripe } from '@/lib/stripe';
-import { accountLimit, addonSettings, retentionSettings } from '@/lib/settings';
+import { accountLimit, addonSettings, retentionSettings, ensureProfile } from '@/lib/settings';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -16,7 +16,8 @@ export async function GET() {
     const { data: { user } } = await sb.auth.getUser();
     if (!user) return NextResponse.json({ error: 'no autorizado' }, { status: 401 });
 
-    const { data: prof } = await supabaseAdmin.from('profiles').select(FIELDS).eq('id', user.id).single();
+    await ensureProfile(user.id, user.email);
+    const { data: prof } = await supabaseAdmin.from('profiles').select(FIELDS).eq('id', user.id).maybeSingle();
     const { data: plans } = await supabaseAdmin.from('plans').select('*').eq('active', true).order('sort', { ascending: true });
     const { data: accounts } = await supabaseAdmin.from('trading_accounts').select('id,login,broker,server,platform,balance,last_sync_at').eq('user_id', user.id).order('created_at', { ascending: true });
     const { data: keys } = await supabaseAdmin.from('api_keys').select('key,label,revoked,last_used_at').eq('user_id', user.id).eq('revoked', false).limit(1);

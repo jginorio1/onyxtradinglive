@@ -41,7 +41,12 @@ export async function PATCH(req: Request) {
   try {
     // Cambiar MI PROPIO plan (para pruebas). No hace falta id: lo saca de la sesion.
     if (action === 'self_plan') {
-      await supabaseAdmin.from('profiles').update({ plan: value }).eq('id', user.id);
+      // upsert: si la fila de perfil no existe, la crea
+      const { error: upErr } = await supabaseAdmin.from('profiles')
+        .upsert({ id: user.id, email: user.email, plan: value }, { onConflict: 'id' });
+      if (upErr) return NextResponse.json({ error: upErr.message }, { status: 500 });
+      const { data: check } = await supabaseAdmin.from('profiles').select('plan').eq('id', user.id).maybeSingle();
+      if (check?.plan !== value) return NextResponse.json({ error: 'No se guardo el plan.' }, { status: 500 });
       await logAdmin(user.email, 'self_plan', user.email, { plan: value });
       return NextResponse.json({ ok: true, plan: value });
     }

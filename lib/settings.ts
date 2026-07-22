@@ -31,3 +31,12 @@ export async function accountLimit(userId: string) {
     base, extra, unlimited, max: unlimited ? 9999 : base + extra,
   };
 }
+
+// Si el usuario no tiene fila en profiles, la crea. Evita que todo caiga a 'free'
+// cuando el disparador de registro no llego a ejecutarse.
+export async function ensureProfile(userId: string, email?: string | null) {
+  const { data } = await supabaseAdmin.from('profiles').select('id').eq('id', userId).maybeSingle();
+  if (data) return false;
+  await supabaseAdmin.from('profiles').insert({ id: userId, email: email || null, plan: 'free' });
+  return true;
+}
