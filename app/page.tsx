@@ -242,6 +242,21 @@ const FIRMS = [
     es: 'Precios agresivos y evaluación flexible de una o dos fases.', en: 'Aggressive pricing and flexible one- or two-step evaluations.' },
 ];
 
+const PROWS: { es: string; en: string; v: (boolean | string)[] }[] = [
+  { es: 'Historial', en: 'History', v: ['30 días', 'Ilimitado', 'Ilimitado'] },
+  { es: 'Sesiones y noticias en vivo', en: 'Live sessions & news', v: [true, true, true] },
+  { es: 'KPIs, gráficas y calendario', en: 'KPIs, charts & calendar', v: [true, true, true] },
+  { es: 'Perfil del trader (radar)', en: 'Trader profile (radar)', v: [true, true, true] },
+  { es: 'Diario con fotos y notas', en: 'Journal with photos & notes', v: [false, true, true] },
+  { es: 'Comparar cuentas', en: 'Compare accounts', v: [false, true, true] },
+  { es: 'Reglas de fondeo y retiros', en: 'Funding rules & payouts', v: [false, true, true] },
+  { es: 'Costes (comisión y swap)', en: 'Costs (commission & swap)', v: [false, true, true] },
+  { es: 'Exportar CSV', en: 'Export CSV', v: [false, true, true] },
+  { es: 'Informes automáticos', en: 'Automatic reports', v: [false, false, true] },
+  { es: 'Alertas por Telegram', en: 'Telegram alerts', v: [false, false, true] },
+  { es: 'Soporte prioritario', en: 'Priority support', v: [false, false, true] },
+];
+
 export default function Home() {
   const [lang, setLang] = useState<Lang>('es');
   const [annual, setAnnual] = useState(false);
@@ -531,30 +546,57 @@ export default function Home() {
       <div id="pricing" className="wrap section">
         <h2 style={{ textAlign: 'center' }}>{t.priceT}</h2>
         <p className="muted" style={{ textAlign: 'center', margin: '10px 0 20px' }}>{t.priceS}</p>
-        <div className="row" style={{ justifyContent: 'center', marginBottom: 26 }}>
-          <button className={'btn ' + (!annual ? 'btn-primary' : 'btn-ghost')} onClick={() => setAnnual(false)}>{t.monthly}</button>
-          <button className={'btn ' + (annual ? 'btn-primary' : 'btn-ghost')} onClick={() => setAnnual(true)}>{t.annual}</button>
+        <div className="row" style={{ justifyContent: 'center', marginBottom: 30 }}>
+          <button className={'btn ' + (!annual ? 'btn-primary' : 'btn-ghost')} onClick={() => setAnnual(false)}>{lang === 'es' ? 'Mensual' : 'Monthly'}</button>
+          <button className={'btn ' + (annual ? 'btn-primary' : 'btn-ghost')} onClick={() => setAnnual(true)}>{lang === 'es' ? 'Anual · ahorra 2 meses' : 'Annual · save 2 months'}</button>
         </div>
-        <div className="grid g3">
-          {dbPlans.map((p) => {
+        <div className="grid g3" style={{ alignItems: 'start' }}>
+          {dbPlans.map((p, i) => {
             const price = annual ? p.price_year : p.price_month;
             const name = lang === 'es' ? p.name : (p.name_en || p.name);
             const desc = lang === 'es' ? p.desc_es : (p.desc_en || p.desc_es);
             const feats = (lang === 'es' ? p.features : (p.features_en?.length ? p.features_en : p.features)) || [];
             const badge = lang === 'es' ? p.badge : (p.badge_en || p.badge);
             const pop = !!badge;
+            const prev = dbPlans[i - 1];
+            const prevName = prev ? (lang === 'es' ? prev.name : (prev.name_en || prev.name)) : '';
             return (
-              <div key={p.id} className="card" style={pop ? { border: '2px solid var(--brand)' } : {}}>
-                {badge && <span className="pill green" style={{ marginBottom: 8, display: 'inline-block' }}>★ {badge}</span>}
-                <h3>{name}</h3>
+              <div key={p.id} className="card" style={pop ? { border: '2px solid var(--brand)', boxShadow: '0 0 30px rgba(124,140,255,.25)', position: 'relative' } : { position: 'relative' }}>
+                {pop && <span style={{ position: 'absolute', top: -13, left: '50%', transform: 'translateX(-50%)', background: 'var(--grad)', color: '#fff', fontSize: 11, fontWeight: 800, padding: '4px 14px', borderRadius: 20, whiteSpace: 'nowrap' }}>★ {badge}</span>}
+                <h3 style={{ marginTop: pop ? 6 : 0 }}>{name}</h3>
                 {desc && <p className="muted" style={{ fontSize: 13, marginTop: 4 }}>{desc}</p>}
-                <div style={{ fontSize: 42, fontWeight: 800, margin: '8px 0 2px' }}>${price}<span className="muted" style={{ fontSize: 15, fontWeight: 500 }}>/{annual ? (lang === 'es' ? 'año' : 'yr') : (lang === 'es' ? 'mes' : 'mo')}</span></div>
-                <ul style={{ listStyle: 'none', margin: '16px 0' }}>{feats.map((it: string, j: number) => <li key={j} style={{ padding: '7px 0', color: '#d6dae6' }}>✓ {it}</li>)}</ul>
+                <div style={{ fontSize: 42, fontWeight: 800, margin: '10px 0 2px' }}>${price}<span className="muted" style={{ fontSize: 15, fontWeight: 500 }}>/{annual ? (lang === 'es' ? 'año' : 'yr') : (lang === 'es' ? 'mes' : 'mo')}</span></div>
+                <ul style={{ listStyle: 'none', margin: '16px 0' }}>
+                  {i > 0 && <li style={{ padding: '7px 0', color: 'var(--mut)', fontWeight: 700, fontSize: 13 }}>{lang === 'es' ? `Todo lo de ${prevName}, y además:` : `Everything in ${prevName}, and more:`}</li>}
+                  {feats.map((it: string, j: number) => <li key={j} style={{ padding: '7px 0', color: '#d6dae6' }}><span style={{ color: '#34e2a0' }}>✓</span> {it}</li>)}
+                </ul>
                 <Link className={'btn ' + (pop ? 'btn-primary' : 'btn-ghost')} href="/login?mode=signup" style={{ display: 'block', textAlign: 'center' }}>{price === 0 ? (lang === 'es' ? 'Empezar gratis' : 'Start free') : (lang === 'es' ? 'Elegir ' : 'Choose ') + name}</Link>
               </div>
             );
           })}
         </div>
+
+        {/* Tabla comparativa */}
+        {dbPlans.length > 0 && (() => {
+          const cols = ['free', 'pro', 'elite'];
+          const byId = (id: string) => dbPlans.find((p: any) => p.id === id);
+          const acc = (id: string) => { const p = byId(id); if (!p) return '—'; return p.max_accounts >= 999 ? (lang === 'es' ? 'Ilimitadas' : 'Unlimited') : String(p.max_accounts); };
+          const chk = (v: boolean | string) => typeof v === 'string' ? <span style={{ fontSize: 13 }}>{v}</span> : v ? <span style={{ color: '#34e2a0', fontSize: 16 }}>✓</span> : <span style={{ color: '#66708a', fontSize: 14 }}>🔒</span>;
+          return (
+            <div style={{ marginTop: 46 }}>
+              <h2 style={{ textAlign: 'center', marginBottom: 18 }}>{lang === 'es' ? 'Compara los planes' : 'Compare plans'}</h2>
+              <div className="card" style={{ overflowX: 'auto', padding: 0 }}>
+                <table style={{ minWidth: 520 }}>
+                  <thead><tr><th style={{ padding: '14px 16px' }}></th>{cols.map((id) => { const p = byId(id); const on = !!(p && (lang === 'es' ? p.badge : p.badge_en)); return <th key={id} style={{ textAlign: 'center', padding: '14px 16px', color: on ? 'var(--brand)' : 'var(--tx)', fontSize: 15 }}>{p ? (lang === 'es' ? p.name : (p.name_en || p.name)) : id}</th>; })}</tr></thead>
+                  <tbody>
+                    <tr><td style={{ padding: '12px 16px', color: 'var(--mut)' }}>{lang === 'es' ? 'Cuentas MT' : 'MT accounts'}</td>{cols.map((id) => <td key={id} style={{ textAlign: 'center', padding: '12px 16px', fontWeight: 700 }}>{acc(id)}</td>)}</tr>
+                    {PROWS.map((r, ri) => (<tr key={ri}><td style={{ padding: '12px 16px', color: 'var(--mut)' }}>{lang === 'es' ? r.es : r.en}</td>{r.v.map((v, ci) => <td key={ci} style={{ textAlign: 'center', padding: '12px 16px' }}>{chk(v)}</td>)}</tr>))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* FAQ */}
