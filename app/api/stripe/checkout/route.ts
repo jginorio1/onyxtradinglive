@@ -19,7 +19,7 @@ export async function POST(req: Request) {
     if (!/^https?:\/\//i.test(base)) base = 'https://' + base;
 
     // cliente de Stripe (crear si no existe)
-    const { data: prof } = await supabaseAdmin.from('profiles').select('stripe_customer_id').eq('id', user.id).single();
+    const { data: prof } = await supabaseAdmin.from('profiles').select('stripe_customer_id').eq('id', user.id).maybeSingle();
     let customer = prof?.stripe_customer_id;
     if (!customer) {
       const c = await stripe.customers.create({ email: user.email!, metadata: { userId: user.id } });

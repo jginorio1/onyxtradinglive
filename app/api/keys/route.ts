@@ -69,13 +69,22 @@ export async function POST(req: Request) {
     }
 
     const type = ['challenge', 'funded', 'own', 'demo'].includes(b.acc_type) ? b.acc_type : 'own';
+
+    // Datos obligatorios (el navegador ya los pide, pero no nos fiamos solo de el)
+    const label = String(b.label || '').trim();
+    const broker = String(b.broker || '').trim();
+    if (!label) return NextResponse.json({ error: 'Nickname required.', code: 'need_label' }, { status: 400 });
+    if (!broker) return NextResponse.json({ error: 'Broker required.', code: 'need_broker' }, { status: 400 });
+    if ((type === 'challenge' || type === 'funded') && !b.acc_size) {
+      return NextResponse.json({ error: 'Account size required.', code: 'need_size' }, { status: 400 });
+    }
     const key = genKey();
     const { error } = await supabaseAdmin.from('api_keys').insert({
       user_id: user.id,
       key,
-      label: String(b.label || 'Mi cuenta MT').slice(0, 60),
+      label: label.slice(0, 60),
       account_login: login,
-      broker: b.broker ? String(b.broker).slice(0, 60) : null,
+      broker: broker.slice(0, 60),
       acc_type: type,
       acc_size: b.acc_size ? Number(String(b.acc_size).replace(/[^\d.]/g, '')) || null : null,
       currency: (b.currency || 'USD').toUpperCase().slice(0, 6),

@@ -12,7 +12,7 @@ export async function getAdmin() {
     .split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
   const isEnvOwner = envAdmins.includes((user.email || '').toLowerCase());
 
-  const { data } = await supabaseAdmin.from('profiles').select('is_admin,role').eq('id', user.id).single();
+  const { data } = await supabaseAdmin.from('profiles').select('is_admin,role').eq('id', user.id).maybeSingle();
   const isAdmin = isEnvOwner || !!data?.is_admin;
   // rol: el de la BD; si viene de ADMIN_EMAILS se considera owner
   const role: 'owner' | 'admin' | 'support' | null = (data?.role as any) || (isEnvOwner ? 'owner' : (data?.is_admin ? 'admin' : null));

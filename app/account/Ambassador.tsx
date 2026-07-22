@@ -76,6 +76,8 @@ export default function Ambassador({ lang }: { lang: Lang }) {
   function copy(text: string, tag: string) { navigator.clipboard.writeText(text); setCopied(tag); setTimeout(() => setCopied(''), 1800); }
 
   async function savePayout() {
+    // Sin datos de cobro no podriamos pagarle, asi que no dejamos guardar vacio
+    if (String(pd || '').trim().length < 4) { alert(errMsg({ code: 'need_details' }, lang)); return; }
     setBusy('pay');
     const r = await fetch('/api/ambassador', { method: 'PATCH', body: JSON.stringify({ payout_method: pm, payout_details: pd }) });
     const j = await r.json(); setBusy('');
@@ -193,7 +195,8 @@ export default function Ambassador({ lang }: { lang: Lang }) {
         <span style={lbl}>{t.details}</span>
         <input value={pd} onChange={(e) => setPd(e.target.value)} style={{ margin: '4px 0 0', maxWidth: 380 }} />
         <div className="row" style={{ gap: 10, marginTop: 14 }}>
-          <button className="btn btn-primary" onClick={savePayout} disabled={busy === 'pay'}>{busy === 'pay' ? '...' : t.save}</button>
+          <button className="btn btn-primary" onClick={savePayout} disabled={busy === 'pay' || String(pd || '').trim().length < 4}
+            style={{ opacity: String(pd || '').trim().length < 4 ? .5 : 1 }}>{busy === 'pay' ? '...' : t.save}</button>
           {copied === 'saved' && <span style={{ color: 'var(--green)', fontSize: 13 }}>{t.saved}</span>}
         </div>
       </div>

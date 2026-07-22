@@ -18,7 +18,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Type ELIMINAR to confirm.', code: 'confirm_required' }, { status: 400 });
     }
 
-    const { data: prof } = await supabaseAdmin.from('profiles').select('stripe_subscription_id').eq('id', user.id).single();
+    const { data: prof } = await supabaseAdmin.from('profiles').select('stripe_subscription_id').eq('id', user.id).maybeSingle();
 
     // Cancelar la suscripción de Stripe para que no siga cobrando
     if (prof?.stripe_subscription_id) {

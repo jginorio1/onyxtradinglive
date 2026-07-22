@@ -66,8 +66,10 @@ export async function PATCH(req: Request) {
     }
 
     if (b.action === 'approve') {
-      const { data: amb } = await supabaseAdmin.from('ambassadors').select('code,promo_code_id').eq('id', b.id).single();
-      const promoId = amb?.promo_code_id || (await createPromo(amb!.code, settings));
+      if (!b.id) return NextResponse.json({ error: 'falta id' }, { status: 400 });
+      const { data: amb } = await supabaseAdmin.from('ambassadors').select('code,promo_code_id').eq('id', b.id).maybeSingle();
+      if (!amb) return NextResponse.json({ error: 'embajador no encontrado' }, { status: 404 });
+      const promoId = amb.promo_code_id || (await createPromo(amb.code, settings));
       await supabaseAdmin.from('ambassadors').update({ status: 'approved', approved_at: new Date().toISOString(), promo_code_id: promoId }).eq('id', b.id);
       await logAdmin(user.email, 'amb_approve', b.id, {});
       return NextResponse.json({ ok: true, promo: !!promoId });
@@ -94,7 +96,7 @@ export async function PATCH(req: Request) {
 
     // Marcar un pago como realizado: las comisiones de ese pago pasan a 'paid'
     if (b.action === 'pay') {
-      const { data: pay } = await supabaseAdmin.from('ambassador_payouts').select('*').eq('id', b.id).single();
+      const { data: pay } = await supabaseAdmin.from('ambassador_payouts').select('*').eq('id', b.id).maybeSingle();
       if (!pay) return NextResponse.json({ error: 'payout not found' }, { status: 404 });
       await supabaseAdmin.from('ambassador_payouts').update({ status: 'paid', paid_at: new Date().toISOString(), note: b.note || null }).eq('id', pay.id);
       await supabaseAdmin.from('commissions').update({ status: 'paid' }).eq('payout_id', pay.id);

@@ -62,16 +62,23 @@ function LoginInner() {
   }, []);
   function switchLang(l: Lang) { setLang(l); try { localStorage.setItem('onyx_lang', l); } catch {} }
 
+  // Validacion antes de llamar a Supabase, para dar el mensaje en su idioma
+  const mailOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
+  const passOk = pass.length >= 6;
+  const formOk = mailOk && passOk;
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (!mailOk) { setMsg(t.errMail); return; }
+    if (!passOk) { setMsg(t.errShort); return; }
     setLoading(true); setMsg('');
     try {
       if (signup) {
-        const { error } = await sb.auth.signUp({ email, password: pass });
+        const { error } = await sb.auth.signUp({ email: email.trim(), password: pass });
         if (error) throw error;
         setMsg(t.created);
       } else {
-        const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+        const { error } = await sb.auth.signInWithPassword({ email: email.trim(), password: pass });
         if (error) throw error;
         router.push('/dashboard'); router.refresh();
       }
@@ -97,7 +104,7 @@ function LoginInner() {
           <label>{t.pass}</label>
           <input type="password" value={pass} onChange={(e) => setPass(e.target.value)} required minLength={6} />
           <div style={{ height: 18 }} />
-          <button className="btn btn-primary" style={{ width: '100%' }} disabled={loading}>
+          <button className="btn btn-primary" style={{ width: '100%', opacity: formOk ? 1 : .5 }} disabled={loading || !formOk}>
             {loading ? '...' : signup ? t.signupT : t.loginT}
           </button>
         </form>

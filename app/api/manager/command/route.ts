@@ -14,7 +14,7 @@ export async function POST(req: Request) {
     const { data: { user } } = await sb.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Not signed in.', code: 'no_auth' }, { status: 401 });
 
-    const { data: prof } = await supabaseAdmin.from('profiles').select('plan').eq('id', user.id).single();
+    const { data: prof } = await supabaseAdmin.from('profiles').select('plan').eq('id', user.id).maybeSingle();
     const { data: plan } = await supabaseAdmin.from('plans').select('capabilities').eq('id', prof?.plan || 'free').maybeSingle();
     if (!plan?.capabilities?.manager) return NextResponse.json({ error: 'Manager not in your plan.', code: 'no_manager' }, { status: 403 });
 

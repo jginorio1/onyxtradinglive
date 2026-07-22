@@ -45,6 +45,22 @@ double   g_ptAt[4];
 double   g_ptClose[4];
 int      g_ptCount = 0;
 
+//---- Fase 2: mi plan de trading y limites -------------------------
+// El servidor decide; aqui solo guardamos su veredicto y lo aplicamos.
+bool     g_allowNew   = true;      // false = no deberia abrir operaciones ahora
+bool     g_forceClose = false;     // el servidor pide cerrar todo
+string   g_blockReason = "";       // schedule | daily_loss | ... (para el panel)
+string   g_blockMsg    = "";
+datetime g_blockSince  = 0;        // desde cuando esta bloqueado
+bool     g_guardOn     = false;    // hay plan o limites encendidos
+
+// Cierre de fin de semana
+bool     g_wkOn   = false;
+int      g_wkDay  = 5;             // 0 domingo ... 6 sabado
+int      g_wkHour = 20;
+int      g_wkMin  = 0;
+datetime g_wkDoneAt = 0;           // para no repetirlo el mismo dia
+
 datetime g_lastSyncOk = 0;
 string   g_lastError  = "";
 string   g_events     = "";
@@ -62,6 +78,8 @@ color COL_RED  = C'255,107,125';
 //==================== DECLARACIONES ADELANTADAS ===================
 void   RunCommand(string cmd);
 void   DrawPanel();
+void   EnforceGuard();
+void   WeekendCheck();
 
 //==================== TEXTOS BILINGUES ============================
 string T(string es, string en) { return (Idioma == ONYX_ES ? es : en); }
@@ -258,7 +276,7 @@ void DrawPanel()
    ObjectSetInteger(0, bg, OBJPROP_XDISTANCE, X);
    ObjectSetInteger(0, bg, OBJPROP_YDISTANCE, y - 10);
    ObjectSetInteger(0, bg, OBJPROP_XSIZE, W);
-   ObjectSetInteger(0, bg, OBJPROP_YSIZE, 268);
+   ObjectSetInteger(0, bg, OBJPROP_YSIZE, g_guardOn ? 312 : 268);
    ObjectSetInteger(0, bg, OBJPROP_BGCOLOR, COL_BG);
    ObjectSetInteger(0, bg, OBJPROP_BORDER_TYPE, BORDER_FLAT);
    ObjectSetInteger(0, bg, OBJPROP_COLOR, COL_LINE);
@@ -282,6 +300,37 @@ void DrawPanel()
       y += PY - 6;
    }
    else ObjectDelete(0, PREFIX + "err");
+
+   //---- Fase 2: estado de mi plan de trading ---------------------
+   if(g_guardOn)
+   {
+      PanelLabel("plan", T("Mi plan", "My plan"), X + 12, y, COL_MUT, 8);
+      y += PY - 2;
+
+      string ps;
+      color  pc;
+      if(g_allowNew) { ps = T("Puedes operar", "You may trade");        pc = COL_ON; }
+      else           { ps = T("BLOQUEADO", "BLOCKED");                  pc = COL_RED; }
+      PanelLabel("pst", ps, X + 12, y, pc, 9, true);
+      y += PY - 4;
+
+      if(!g_allowNew && g_blockMsg != "")
+      {
+         // el mensaje puede ser largo: lo partimos en dos lineas
+         string m = g_blockMsg;
+         PanelLabel("pms1", StringSubstr(m, 0, 34), X + 12, y, COL_MUT, 7);
+         y += 13;
+         if(StringLen(m) > 34) PanelLabel("pms2", StringSubstr(m, 34, 34), X + 12, y, COL_MUT, 7);
+         else                  ObjectDelete(0, PREFIX + "pms2");
+         y += 14;
+      }
+      else { ObjectDelete(0, PREFIX + "pms1"); ObjectDelete(0, PREFIX + "pms2"); y += 6; }
+   }
+   else
+   {
+      ObjectDelete(0, PREFIX + "plan"); ObjectDelete(0, PREFIX + "pst");
+      ObjectDelete(0, PREFIX + "pms1"); ObjectDelete(0, PREFIX + "pms2");
+   }
 
    PanelLabel("mods", T("Modulos", "Modules"), X + 12, y, COL_MUT, 8);
    y += PY - 2;
@@ -407,6 +456,8 @@ void ApplyConfig(string resp)
    {
       g_managerOn = false;
       g_beOn = false; g_trOn = false; g_ptOn = false;
+      g_guardOn = false; g_wkOn = false;
+      g_allowNew = true; g_forceClose = false; g_blockReason = ""; g_blockMsg = "";
       return;
    }
 
@@ -451,7 +502,127 @@ void ApplyConfig(string resp)
       g_ptOn = (g_ptCount > 0);
    }
 
+   //---- Fase 2: cierre de fin de semana -------------------------
+   // El resto de reglas las decide el servidor; esta la aplicamos aqui
+   // porque depende de la hora del broker y tiene que funcionar aunque
+   // la sincronizacion se retrase unos minutos.
+   string pl = JsonSection(cfg, "plan");
+   g_guardOn = JsonBool(pl, "on", false);
+   g_wkOn = false;
+   if(pl != "")
+   {
+      string wk = JsonSection(pl, "weekend_close");
+      if(wk != "")
+      {
+         g_wkOn  = JsonBool(wk, "on", false);
+         g_wkDay = (int)JsonNum(wk, "day", 5);
+         string hm = JsonStr(wk, "time", "20:00");
+         int c = StringFind(hm, ":");
+         if(c > 0)
+         {
+            g_wkHour = (int)StringToInteger(StringSubstr(hm, 0, c));
+            g_wkMin  = (int)StringToInteger(StringSubstr(hm, c + 1));
+         }
+      }
+   }
+   string li = JsonSection(cfg, "limits");
+   if(JsonBool(li, "on", false)) g_guardOn = true;
+
    Print("Onyx: ", T("configuracion actualizada v", "config updated v"), g_cfgVersion);
+}
+
+//==================== VEREDICTO DEL SERVIDOR ======================
+// El servidor nos dice si el trader puede abrir operaciones ahora mismo.
+// Nosotros no calculamos nada: solo obedecemos y lo enseniamos en pantalla.
+void ApplyVerdict(string resp)
+{
+   if(StringFind(resp, "\"verdict\":null") >= 0)
+   {
+      g_allowNew = true; g_forceClose = false;
+      g_blockReason = ""; g_blockMsg = ""; g_blockSince = 0;
+      return;
+   }
+
+   string v = JsonSection(resp, "verdict");
+   if(v == "") return;
+
+   bool allow = JsonBool(v, "allow_new", true);
+   g_forceClose  = JsonBool(v, "close_all", false);
+   g_blockReason = JsonStr(v, "reason", "");
+   g_blockMsg    = JsonStr(v, (Idioma == ONYX_ES ? "message_es" : "message_en"), "");
+
+   // Guardamos el momento del bloqueo: solo cerramos lo que se abra DESPUES.
+   // Lo que ya estaba abierto se respeta; cerrarlo por sorpresa seria peor.
+   if(!allow && g_allowNew) g_blockSince = TimeCurrent();
+   if(allow) g_blockSince = 0;
+   g_allowNew = allow;
+}
+
+//==================== APLICAR EL BLOQUEO ==========================
+// MetaTrader no deja a un EA vetar una orden manual antes de enviarse.
+// Lo que si podemos es cerrarla nada mas aparecer. No es elegante, y tiene
+// un coste (spread + comision), pero ese coste ES la friccion: recuerda
+// que estas operando fuera de tu propio plan.
+void EnforceGuard()
+{
+   if(!g_managerOn) return;
+
+   // El servidor pidio cerrar todo (limite de perdida, noticia, etc.)
+   if(g_forceClose)
+   {
+      if(PositionsTotal() > 0)
+      {
+         RunCommand("close_all");
+         LogEvent("limit", g_blockMsg != "" ? g_blockMsg : T("Cierre por limite", "Closed by limit"));
+      }
+      return;
+   }
+
+   if(g_allowNew || g_blockSince == 0) return;
+
+   // Cerrar solo lo abierto despues del bloqueo
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+   {
+      ulong ticket = PositionGetTicket(i);
+      if(ticket == 0) continue;
+      if(!PositionSelectByTicket(ticket)) continue;
+
+      datetime opened = (datetime)PositionGetInteger(POSITION_TIME);
+      if(opened < g_blockSince) continue;      // ya estaba abierta: no se toca
+
+      string sym = PositionGetString(POSITION_SYMBOL);
+      double vol = PositionGetDouble(POSITION_VOLUME);
+      if(trade.PositionClose(ticket))
+      {
+         LogEvent("blocked",
+                  T("Operacion fuera del plan cerrada: ", "Trade outside plan closed: ") +
+                  (g_blockReason != "" ? g_blockReason : "?"),
+                  sym, (long)ticket, vol);
+         Print("Onyx: ", T("cerrada por el plan de trading - ", "closed by trading plan - "), g_blockMsg);
+      }
+   }
+}
+
+//==================== CIERRE DE FIN DE SEMANA =====================
+void WeekendCheck()
+{
+   if(!g_managerOn || !g_wkOn) return;
+   if(PositionsTotal() == 0) return;
+
+   MqlDateTime now;
+   TimeToStruct(TimeCurrent(), now);
+   if(now.day_of_week != g_wkDay) return;
+
+   int mins    = now.hour * 60 + now.min;
+   int target  = g_wkHour * 60 + g_wkMin;
+   if(mins < target) return;
+
+   // una sola vez al dia
+   if(g_wkDoneAt > 0 && (TimeCurrent() - g_wkDoneAt) < 12 * 3600) return;
+   g_wkDoneAt = TimeCurrent();
+
+   RunCommand("close_all");
+   LogEvent("close_all", T("Cierre antes del fin de semana", "Closed before the weekend"));
 }
 
 void HandleCommands(string resp)
@@ -521,6 +692,7 @@ void Sync()
    g_events     = "";              // ya viajaron
 
    ApplyConfig(resp);
+   ApplyVerdict(resp);
    HandleCommands(resp);
 }
 
@@ -729,12 +901,15 @@ void OnDeinit(const int reason)
 void OnTimer()
 {
    Sync();
+   EnforceGuard();
+   WeekendCheck();
    ManageAll();
    DrawPanel();
 }
 
 void OnTick()
 {
+   EnforceGuard();       // si abre fuera de su plan, se cierra al instante
    ManageAll();          // reaccionar rapido entre sincronizaciones
 }
 

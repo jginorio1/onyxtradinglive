@@ -2,6 +2,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { errMsg } from '@/lib/i18nErrors';
+import { P2, PlanTab, LimitsTab, NewsTab, StateTab } from './Phase2';
+
+type Tab = 'trade' | 'plan' | 'limits' | 'news' | 'state';
 
 type Lang = 'es' | 'en';
 
@@ -94,7 +97,11 @@ export default function ManagerClient() {
   const [busy, setBusy] = useState('');
   const [msg, setMsg] = useState('');
   const [tplName, setTplName] = useState('');
+  const [tab, setTab] = useState<Tab>('trade');
+  const [firmSel, setFirmSel] = useState('');
+  const [warnings, setWarnings] = useState<string[]>([]);
   const t = T[lang];
+  const t2 = P2[lang];
 
   useEffect(() => {
     try { const s = localStorage.getItem('onyx_lang'); if (s === 'en' || s === 'es') setLang(s as Lang); } catch {}
@@ -108,7 +115,10 @@ export default function ManagerClient() {
       const j = await r.json();
       setD(j);
       const first = j.accounts?.[0];
-      if (first) { setSel(first.id); setCfg(first.manager.config); setUnits(first.manager.units); setEnabled(first.manager.enabled); }
+      if (first) {
+        setSel(first.id); setCfg(first.manager.config); setUnits(first.manager.units);
+        setEnabled(first.manager.enabled); setFirmSel(first.firm_template || '');
+      }
     } catch { setD({ accounts: [], caps: {} }); }
   }
   function switchLang(l: Lang) { setLang(l); try { localStorage.setItem('onyx_lang', l); } catch {} }
@@ -120,7 +130,8 @@ export default function ManagerClient() {
   function pick(id: string) {
     const a = (d?.accounts || []).find((x: any) => x.id === id);
     if (!a) return;
-    setSel(id); setCfg(a.manager.config); setUnits(a.manager.units); setEnabled(a.manager.enabled); setMsg('');
+    setSel(id); setCfg(a.manager.config); setUnits(a.manager.units); setEnabled(a.manager.enabled);
+    setFirmSel(a.firm_template || ''); setMsg(''); setWarnings([]);
   }
   const set = (path: string, value: any) => {
     const [g, k] = path.split('.');
@@ -134,9 +145,16 @@ export default function ManagerClient() {
 
   async function save() {
     setBusy('save'); setMsg('');
-    const r = await fetch('/api/manager', { method: 'POST', body: JSON.stringify({ account_id: sel, enabled, units, config: cfg }) });
+    // El navegador manda su desfase horario para que las franjas se entiendan bien
+    const tzOffset = -new Date().getTimezoneOffset();
+    const body = {
+      account_id: sel, enabled, units, lang, firm_template: firmSel,
+      config: { ...cfg, plan: { ...(cfg?.plan || {}), tz_offset_min: tzOffset } },
+    };
+    const r = await fetch('/api/manager', { method: 'POST', body: JSON.stringify(body) });
     const j = await r.json(); setBusy('');
     if (!r.ok) { alert(errMsg(j, lang)); return; }
+    setWarnings(j.warnings || []);
     setMsg(t.saved); setTimeout(() => setMsg(''), 3000); load();
   }
   async function command(cmd: string) {
@@ -224,6 +242,26 @@ export default function ManagerClient() {
           </div>
         </div>
 
+        {/* Pestañas */}
+        <div className="adminnav-items" style={{ flexDirection: 'row', overflowX: 'auto', gap: 6, marginBottom: 16 }}>
+          {([['trade', t2.tabTrade], ['plan', t2.tabPlan], ['limits', t2.tabLimits], ['news', t2.tabNews], ['state', t2.tabHist]] as [Tab, string][]).map(([k, label]) => (
+            <button key={k} className={'btn ' + (tab === k ? 'btn-primary' : 'btn-ghost')}
+              style={{ padding: '7px 14px', fontSize: 13, whiteSpace: 'nowrap' }} onClick={() => setTab(k)}>{label}</button>
+          ))}
+        </div>
+
+        {tab === 'state' && <StateTab t={t2} tMain={t} lang={lang} accountId={sel} />}
+
+        {tab === 'plan' && <PlanTab cfg={cfg} set={set} setCfg={setCfg} t={t2} acc={acc} />}
+
+        {tab === 'limits' && (
+          <LimitsTab cfg={cfg} set={set} setCfg={setCfg} t={t2} lang={lang}
+            firms={d.firms || []} firmSel={firmSel} setFirmSel={setFirmSel} />
+        )}
+
+        {tab === 'news' && <NewsTab cfg={cfg} set={set} t={t2} canNews={!!caps.manager_news} advLabel={t.adv} />}
+
+        {tab === 'trade' && (<>
         {/* Unidades */}
         <div className="card" style={card}>
           <span style={lbl}>{t.units}</span>
@@ -321,12 +359,27 @@ export default function ManagerClient() {
             </>
           )}
         </div>
+        </>)}
 
-        <div className="row" style={{ gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-          <button className="btn btn-primary" onClick={save} disabled={busy === 'save' || totalClose > 100}>{busy === 'save' ? t.saving : t.save}</button>
-          {msg && <span style={{ color: 'var(--green)', fontSize: 14 }}>{msg}</span>}
-        </div>
+        {/* Guardar: sirve para todas las pestañas de configuración */}
+        {tab !== 'state' && (
+          <div style={{ marginBottom: 20 }}>
+            <div className="row" style={{ gap: 12, flexWrap: 'wrap' }}>
+              <button className="btn btn-primary" onClick={save} disabled={busy === 'save' || totalClose > 100}>{busy === 'save' ? t.saving : t.save}</button>
+              {msg && <span style={{ color: 'var(--green)', fontSize: 14 }}>{msg}</span>}
+            </div>
+            {warnings.length > 0 && (
+              <div style={{ marginTop: 12, padding: '10px 12px', background: 'rgba(245,158,11,.08)', border: '1px solid var(--amber)', borderRadius: 10 }}>
+                <b style={{ color: 'var(--amber)', fontSize: 13 }}>{t.warnT}</b>
+                <ul style={{ margin: '6px 0 0 18px', padding: 0, fontSize: 13 }}>
+                  {warnings.map((w, i) => <li key={i} style={{ marginBottom: 4 }}>{w}</li>)}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
 
+        {tab === 'trade' && (<>
         {/* Acciones rápidas */}
         <div className="card" style={card}>
           <h3 style={{ marginBottom: 4 }}>{t.qaT}</h3>
@@ -359,17 +412,7 @@ export default function ManagerClient() {
           </div>
         </div>
 
-        {/* Historial */}
-        <div className="card" style={card}>
-          <h3 style={{ marginBottom: 10 }}>{t.evT}</h3>
-          {!d.events?.length && <p className="muted" style={{ fontSize: 14 }}>{t.evNone}</p>}
-          {(d.events || []).map((e: any) => (
-            <div key={e.id} className="row between" style={{ borderTop: '1px solid var(--line)', padding: '9px 0', fontSize: 13, flexWrap: 'wrap', gap: 8 }}>
-              <span><b>{t.kinds[e.kind] || e.kind}</b> {e.symbol ? `· ${e.symbol}` : ''} {e.detail ? `· ${e.detail}` : ''}</span>
-              <span className="muted" style={{ fontSize: 12 }}>{new Date(e.created_at).toLocaleString()}</span>
-            </div>
-          ))}
-        </div>
+        </>)}
 
         {/* Avisos honestos */}
         <div className="card" style={{ border: '1px solid var(--amber)' }}>

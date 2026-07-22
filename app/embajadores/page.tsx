@@ -21,6 +21,7 @@ const T: any = {
     fFol: 'Seguidores aproximados', fMethod: 'Cómo quieres cobrar', fDet: 'Datos de cobro', fDetPh: 'correo de PayPal o dirección USDT',
     paypal: 'PayPal', usdt: 'USDT', credit: 'Crédito en mi plan',
     send: 'Enviar solicitud', sending: 'Enviando...',
+    missT: 'Para enviar la solicitud te falta:', missAud: 'Contarnos dónde tienes tu comunidad (unas pocas palabras).', missDet: 'Tus datos de cobro.',
     okT: '¡Solicitud enviada!', okD: 'La revisaremos pronto. Te avisaremos por correo y verás el estado en Mi cuenta → Referidos.',
     needLogin: 'Crea tu cuenta gratis para solicitar', loginBtn: 'Crear cuenta o entrar →',
     already: 'Ya tienes una solicitud. Míralo en Mi cuenta → Referidos.', goPanel: 'Ir a mi panel →',
@@ -47,6 +48,7 @@ const T: any = {
     fFol: 'Approximate followers', fMethod: 'How you want to get paid', fDet: 'Payout details', fDetPh: 'PayPal email or USDT address',
     paypal: 'PayPal', usdt: 'USDT', credit: 'Credit on my plan',
     send: 'Send application', sending: 'Sending...',
+    missT: 'Before sending we still need:', missAud: 'A few words about where your community lives.', missDet: 'Your payout details.',
     okT: 'Application sent!', okD: 'We will review it soon. You will get an email and can track it in My account → Referrals.',
     needLogin: 'Create your free account to apply', loginBtn: 'Create account or sign in →',
     already: 'You already applied. Check My account → Referrals.', goPanel: 'Go to my panel →',
@@ -78,6 +80,11 @@ export default function Embajadores() {
     }).catch(() => setState('guest'));
   }, []);
   function switchLang(l: Lang) { setLang(l); try { localStorage.setItem('onyx_lang', l); } catch {} }
+
+  // Lo que falta por rellenar. El boton no se activa hasta que este todo.
+  const missing: string[] = [];
+  if (String(f.audience || '').trim().length < 10) missing.push(t.missAud);
+  if (String(f.payout_details || '').trim().length < 4) missing.push(t.missDet);
 
   async function send() {
     setBusy(true);
@@ -188,7 +195,15 @@ export default function Embajadores() {
               </select>
               <span style={lbl}>{t.fDet}</span>
               <input value={f.payout_details} onChange={(e) => setF({ ...f, payout_details: e.target.value })} placeholder={t.fDetPh} style={{ margin: '4px 0 0' }} />
-              <button className="btn btn-primary" style={{ width: '100%', marginTop: 18 }} onClick={send} disabled={busy || !f.audience}>{busy ? t.sending : t.send}</button>
+
+              {missing.length > 0 && (
+                <div style={{ marginTop: 14, padding: '10px 12px', background: 'rgba(245,158,11,.08)', border: '1px solid var(--amber)', borderRadius: 10, fontSize: 13 }}>
+                  <b style={{ color: 'var(--amber)' }}>{t.missT}</b>
+                  <ul style={{ margin: '6px 0 0 18px', padding: 0 }}>{missing.map((m) => <li key={m}>{m}</li>)}</ul>
+                </div>
+              )}
+              <button className="btn btn-primary" style={{ width: '100%', marginTop: 18, opacity: missing.length ? .5 : 1 }}
+                onClick={send} disabled={busy || missing.length > 0}>{busy ? t.sending : t.send}</button>
             </>
           )}
         </div>

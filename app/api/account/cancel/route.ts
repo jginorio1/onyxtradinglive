@@ -13,7 +13,7 @@ async function me() {
   const sb = createSupabaseServer();
   const { data: { user } } = await sb.auth.getUser();
   if (!user) return { user: null as any, prof: null as any };
-  const { data: prof } = await supabaseAdmin.from('profiles').select('id,email,plan,stripe_subscription_id,stripe_customer_id').eq('id', user.id).single();
+  const { data: prof } = await supabaseAdmin.from('profiles').select('id,email,plan,stripe_subscription_id,stripe_customer_id').eq('id', user.id).maybeSingle();
   return { user, prof };
 }
 
@@ -55,7 +55,7 @@ export async function POST(req: Request) {
         name: 'Retención Onyx',
       });
       await stripe.subscriptions.update(subId, { coupon: coupon.id } as any);
-      await close(b.id, 'saved_discount');
+      await close(b.id, 'saved_discount', user.id);
       return NextResponse.json({ ok: true, outcome: 'saved_discount' });
     }
 
@@ -64,7 +64,7 @@ export async function POST(req: Request) {
       const months = Number(s.pause_months) || 2;
       const resumes = Math.floor((Date.now() + months * 30 * 864e5) / 1000);
       await stripe.subscriptions.update(subId, { pause_collection: { behavior: 'void', resumes_at: resumes } } as any);
-      await close(b.id, 'saved_pause');
+      await close(b.id, 'saved_pause', user.id);
       return NextResponse.json({ ok: true, outcome: 'saved_pause', resumes: resumes * 1000 });
     }
 
@@ -84,14 +84,14 @@ export async function POST(req: Request) {
           proration_behavior: 'create_prorations',
         });
       }
-      await close(b.id, 'saved_downgrade');
+      await close(b.id, 'saved_downgrade', user.id);
       return NextResponse.json({ ok: true, outcome: 'saved_downgrade' });
     }
 
     // 5) Cancelar de verdad (mantiene el acceso hasta fin de periodo)
     if (b.action === 'cancel') {
       const sub: any = await stripe.subscriptions.update(subId, { cancel_at_period_end: true });
-      await close(b.id, 'canceled');
+      await close(b.id, 'canceled', user.id);
       await supabaseAdmin.from('profiles').update({ canceled_at: new Date().toISOString(), cancel_reason: b.reason || null }).eq('id', user.id);
       return NextResponse.json({ ok: true, outcome: 'canceled', endsAt: sub.current_period_end ? sub.current_period_end * 1000 : null });
     }
@@ -109,7 +109,11 @@ export async function POST(req: Request) {
   }
 }
 
-async function close(id: string | undefined, outcome: string) {
-  if (!id) return;
-  await supabaseAdmin.from('cancellations').update({ outcome, resolved_at: new Date().toISOString() }).eq('id', id);
+// Cierra el registro de cancelacion. Filtra por usuario para que nadie pueda
+// tocar el registro de otro pasando un id cualquiera.
+async function close(id: string | undefined, outcome: string, userId?: string) {
+  if (!id || !userId) return;
+  await supabaseAdmin.from('cancellations')
+    .update({ outcome, resolved_at: new Date().toISOString() })
+    .eq('id', id).eq('user_id', userId);
 }

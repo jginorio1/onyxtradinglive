@@ -38,6 +38,7 @@ export default function AccountExtras({ acc, net, lang, onSaved }: { acc: any; n
   // nuevo documento
   const [dType, setDType] = useState('certificate'); const [dTitle, setDTitle] = useState(''); const [dBusy, setDBusy] = useState(false);
   const dFile = useRef<HTMLInputElement>(null);
+  const [dHasFile, setDHasFile] = useState(false);
 
   async function loadPayouts() { const r = await fetch('/api/payouts'); const j = await r.json(); setPayouts((j.payouts || []).filter((x: any) => x.account_id === acc.id)); }
   async function loadDocs() { const r = await fetch('/api/documents'); const j = await r.json(); setDocs((j.documents || []).filter((x: any) => x.account_id === acc.id)); }
@@ -54,23 +55,31 @@ export default function AccountExtras({ acc, net, lang, onSaved }: { acc: any; n
     if (!j.url) throw new Error(j.error || 'error'); return j.url;
   }
   async function addPayout() {
+    // Importe y fecha son obligatorios; el servidor tambien lo comprueba
+    if (!(Number(pAmt) > 0)) { alert(errMsg({ code: 'need_amount' }, lang)); return; }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(pDate)) { alert(errMsg({ code: 'need_date' }, lang)); return; }
     setPBusy(true);
     try {
       let receipt = ''; const file = pFile.current?.files?.[0]; if (file) receipt = await uploadFile(file);
-      await fetch('/api/payouts', { method: 'POST', body: JSON.stringify({ account_id: acc.id, amount: pAmt, date: pDate || null, note: pNote, receipt_url: receipt }) });
+      const r = await fetch('/api/payouts', { method: 'POST', body: JSON.stringify({ account_id: acc.id, amount: pAmt, date: pDate, note: pNote, receipt_url: receipt }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { alert(errMsg(j, lang)); setPBusy(false); return; }
       setPAmt(''); setPDate(''); setPNote(''); if (pFile.current) pFile.current.value = ''; await loadPayouts();
     } catch { alert(errMsg({ code: 'network' }, lang)); }
     setPBusy(false);
   }
   async function delPayout(id: string) { await fetch('/api/payouts', { method: 'DELETE', body: JSON.stringify({ id }) }); await loadPayouts(); }
   async function addDoc() {
-    const file = dFile.current?.files?.[0]; if (!file) return;
+    const file = dFile.current?.files?.[0];
+    if (!file) { alert(errMsg({ code: 'file_missing' }, lang)); return; }
     setDBusy(true);
     try {
       const url = await uploadFile(file);
-      await fetch('/api/documents', { method: 'POST', body: JSON.stringify({ account_id: acc.id, doc_type: dType, title: dTitle, image_url: url }) });
-      setDTitle(''); if (dFile.current) dFile.current.value = ''; await loadDocs();
-    } catch { alert(errMsg({ code: 'network' }, lang)); }
+      const r = await fetch('/api/documents', { method: 'POST', body: JSON.stringify({ account_id: acc.id, doc_type: dType, title: dTitle, image_url: url }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { alert(errMsg(j, lang)); setDBusy(false); return; }
+      setDTitle(''); setDHasFile(false); if (dFile.current) dFile.current.value = ''; await loadDocs();
+    } catch (e: any) { alert(errMsg({ error: e?.message, code: 'network' }, lang)); }
     setDBusy(false);
   }
   async function delDoc(id: string) { await fetch('/api/documents', { method: 'DELETE', body: JSON.stringify({ id }) }); await loadDocs(); }
@@ -138,7 +147,8 @@ export default function AccountExtras({ acc, net, lang, onSaved }: { acc: any; n
           <input type="date" value={pDate} onChange={(e) => setPDate(e.target.value)} style={{ ...inp, width: 'auto' }} />
           <input placeholder={t.note} value={pNote} onChange={(e) => setPNote(e.target.value)} style={{ ...inp, width: 160 }} />
           <input ref={pFile} type="file" accept="image/*" style={{ fontSize: 12, width: 'auto', margin: 0, padding: 0, background: 'none', border: 'none' }} title={t.receipt} />
-          <button className="btn btn-primary" onClick={addPayout} disabled={pBusy || !pAmt}>{pBusy ? '...' : t.add}</button>
+          <button className="btn btn-primary" onClick={addPayout} disabled={pBusy || !(Number(pAmt) > 0) || !pDate}
+            style={{ opacity: (Number(pAmt) > 0 && pDate) ? 1 : .5 }}>{pBusy ? '...' : t.add}</button>
         </div>
       </div>
 
@@ -162,8 +172,9 @@ export default function AccountExtras({ acc, net, lang, onSaved }: { acc: any; n
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <select value={dType} onChange={(e) => setDType(e.target.value)} style={{ ...inp, width: 'auto' }}>{t.dtypes.map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
           <input placeholder={t.title} value={dTitle} onChange={(e) => setDTitle(e.target.value)} style={{ ...inp, width: 160 }} />
-          <input ref={dFile} type="file" accept="image/*" style={{ fontSize: 12, width: 'auto', margin: 0, padding: 0, background: 'none', border: 'none' }} />
-          <button className="btn btn-primary" onClick={addDoc} disabled={dBusy}>{dBusy ? t.uploading : t.upload}</button>
+          <input ref={dFile} type="file" accept="image/*,application/pdf" onChange={(e) => setDHasFile(!!e.target.files?.length)}
+            style={{ fontSize: 12, width: 'auto', margin: 0, padding: 0, background: 'none', border: 'none' }} />
+          <button className="btn btn-primary" onClick={addDoc} disabled={dBusy || !dHasFile} style={{ opacity: dHasFile ? 1 : .5 }}>{dBusy ? t.uploading : t.upload}</button>
         </div>
       </div>
     </>

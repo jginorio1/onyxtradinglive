@@ -20,7 +20,7 @@ export const addonSettings = () => getSetting<Addons>('addons', A);
 
 // Cuántas cuentas MT puede tener: las del plan + las compradas como complemento
 export async function accountLimit(userId: string) {
-  const { data: prof } = await supabaseAdmin.from('profiles').select('plan,extra_accounts').eq('id', userId).single();
+  const { data: prof } = await supabaseAdmin.from('profiles').select('plan,extra_accounts').eq('id', userId).maybeSingle();
   const planId = prof?.plan || 'free';
   const { data: planRow } = await supabaseAdmin.from('plans').select('id,name,name_en,max_accounts').eq('id', planId).maybeSingle();
   const base = Number(planRow?.max_accounts ?? 1);

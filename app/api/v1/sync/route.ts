@@ -3,7 +3,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { accountLimit } from '@/lib/settings';
-import { forEA } from '@/lib/manager';
+import { forEA, mergeConfig } from '@/lib/manager';
+import { evaluate, registerClosedTrades, newsNear } from '@/lib/managerGuard';
 
 export const runtime = 'nodejs';
 
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
       .from('api_keys')
       .select('id,user_id,revoked,account_login,acc_type,acc_size,broker')
       .eq('key', apiKey)
-      .single();
+      .maybeSingle();
 
     if (!keyRow || keyRow.revoked)
       return NextResponse.json({ ok: false, error: 'invalid api key' }, { status: 401 });
@@ -89,10 +90,11 @@ export async function POST(req: NextRequest) {
         { onConflict: 'user_id,login,server' }
       )
       .select('id')
-      .single();
+      .maybeSingle();
 
     if (accErr) throw accErr;
-    const accountId = accountRow!.id;
+    if (!accountRow?.id) return NextResponse.json({ ok: false, error: 'no se pudo guardar la cuenta' }, { status: 500 });
+    const accountId = accountRow.id;
 
     // Datos declarados al crear la clave (tipo y tamaño de la cuenta).
     // Solo se rellenan si el usuario aún no los ha puesto a mano en el panel.
@@ -163,7 +165,7 @@ export async function POST(req: NextRequest) {
       const rows = body.events.slice(0, 50).map((e: any) => ({
         user_id: userId,
         account_id: accountId,
-        kind: ['breakeven', 'trailing', 'partial', 'close_all', 'blocked', 'info'].includes(e.kind) ? e.kind : 'info',
+        kind: ['breakeven', 'trailing', 'partial', 'close_all', 'blocked', 'override', 'limit', 'news', 'schedule', 'tilt', 'info'].includes(e.kind) ? e.kind : 'info',
         detail: e.detail ? String(e.detail).slice(0, 300) : null,
         symbol: e.symbol ? String(e.symbol).slice(0, 20) : null,
         ticket: e.ticket ? Number(e.ticket) : null,
@@ -179,17 +181,50 @@ export async function POST(req: NextRequest) {
         .in('id', body.doneCommands.slice(0, 20));
     }
 
-    // --- Configuración vigente del gestor + órdenes pendientes ---
+    // --- Configuración vigente del gestor + veredicto + órdenes pendientes ---
     let managerCfg: any = null;
     let commands: any[] = [];
+    let verdict: any = null;
     try {
-      const { data: prof } = await supabaseAdmin.from('profiles').select('plan').eq('id', userId).single();
+      const { data: prof } = await supabaseAdmin.from('profiles').select('plan').eq('id', userId).maybeSingle();
       const { data: planRow } = await supabaseAdmin.from('plans').select('capabilities').eq('id', prof?.plan || 'free').maybeSingle();
       const caps = planRow?.capabilities || {};
 
       if (caps.manager) {
         const { data: cfgRow } = await supabaseAdmin.from('manager_configs').select('*').eq('account_id', accountId).maybeSingle();
         managerCfg = forEA(cfgRow, caps);
+
+        // Fase 2: contamos las operaciones cerradas y decidimos si puede seguir
+        if (cfgRow?.enabled) {
+          try {
+            await registerClosedTrades(accountId, closed);
+
+            // ¿Hay una noticia de alto impacto encima? Solo si su plan lo incluye.
+            let newsTitle: string | null = null;
+            const cfgMerged = mergeConfig(cfgRow.config);
+            if (caps.manager_news && cfgMerged.news.on) {
+              try {
+                const base = new URL(req.url);
+                const nr = await fetch(`${base.protocol}//${base.host}/api/news`, { next: { revalidate: 900 } } as any);
+                const nj = await nr.json();
+                newsTitle = newsNear(nj.events || [], cfgMerged);
+              } catch { /* si el calendario falla, no bloqueamos por noticias */ }
+            }
+
+            verdict = await evaluate({
+              userId,
+              accountId,
+              serverOffsetMin: Number(body.serverOffset || 0),
+              balance: Number(acc.balance || 0),
+              equity: Number(acc.equity || acc.balance || 0),
+              openCount: Array.isArray(body.openPositions) ? body.openPositions.length : 0,
+              rawConfig: cfgRow.config,
+              enabled: true,
+              newsBlocked: !!newsTitle,
+              newsTitle: newsTitle || undefined,
+            });
+          } catch (e) { console.error('guard error', e); }
+        }
 
         const { data: cmds } = await supabaseAdmin.from('manager_commands')
           .select('id,command,params').eq('account_id', accountId).eq('status', 'pending')
@@ -198,7 +233,7 @@ export async function POST(req: NextRequest) {
       }
     } catch { /* si algo falla aquí, el sync de datos no debe romperse */ }
 
-    return NextResponse.json({ ok: true, received: closed.length, accountId, config: managerCfg, commands });
+    return NextResponse.json({ ok: true, received: closed.length, accountId, config: managerCfg, verdict, commands });
   } catch (e: any) {
     console.error('sync error', e);
     return NextResponse.json({ ok: false, error: e?.message || 'server error' }, { status: 500 });

@@ -12,7 +12,7 @@ export async function priceIdForPlan(planId: string, annual = false): Promise<st
     .from('plans')
     .select('stripe_price_id, stripe_price_id_year')
     .eq('id', planId)
-    .single();
+    .maybeSingle();
   if (!data) return '';
   return (annual ? data.stripe_price_id_year : data.stripe_price_id) || '';
 }

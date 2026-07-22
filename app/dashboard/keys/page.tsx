@@ -16,6 +16,10 @@ const K = {
     left: 'Te quedan', left2: 'cuenta(s) por conectar.', full: 'Has llegado al límite de tu plan.',
     formHint: 'Cada clave pertenece a una sola cuenta. Si dejas el número vacío, se atará sola en la primera sincronización.',
     fNick: 'Apodo', fType: 'Tipo de cuenta', fFirm: 'Prop firm o bróker', fLogin: 'Número de cuenta', fLoginPh: 'opcional', fSize: 'Tamaño de la cuenta',
+    fFirmHint: '¿No está en la lista? Escríbelo tal cual, se guarda igual.',
+    fNickHint: 'Para reconocerla de un vistazo. Ej: FTMO 100K fase 1',
+    fSizeHint: 'El capital de la cuenta, sin puntos. Ej: 100000',
+    missT: 'Falta por rellenar:', missNick: 'el apodo', missFirm: 'la prop firm o bróker', missSize: 'el tamaño de la cuenta',
     limitT: 'Llegaste al límite de tu plan', limitD: 'Revoca una clave para liberar un cupo, o mejora tu plan para conectar más cuentas.', limitCta: 'Ver planes →',
     waiting: 'esperando sync', acct: 'Cuenta', notBound: 'Sin atar todavía', lastSync: 'sync',
     copy: 'Copiar', copied: '✓ Copiado',
@@ -44,6 +48,10 @@ const K = {
     left: 'You have', left2: 'account(s) left to connect.', full: 'You reached your plan limit.',
     formHint: 'Each key belongs to a single account. Leave the number empty and it will bind itself on the first sync.',
     fNick: 'Nickname', fType: 'Account type', fFirm: 'Prop firm or broker', fLogin: 'Account number', fLoginPh: 'optional', fSize: 'Account size',
+    fFirmHint: 'Not in the list? Just type it, it will be saved.',
+    fNickHint: 'So you recognise it at a glance. Eg: FTMO 100K phase 1',
+    fSizeHint: 'Account capital, no dots. Eg: 100000',
+    missT: 'Still missing:', missNick: 'the nickname', missFirm: 'the prop firm or broker', missSize: 'the account size',
     limitT: 'You reached your plan limit', limitD: 'Revoke a key to free a slot, or upgrade your plan to connect more accounts.', limitCta: 'See plans →',
     waiting: 'waiting for sync', acct: 'Account', notBound: 'Not bound yet', lastSync: 'sync',
     copy: 'Copy', copied: '✓ Copied',
@@ -65,7 +73,14 @@ const K = {
   },
 };
 
-const FIRMS = ['FTMO', 'The5ers', 'FundingPips', 'FundedNext', 'Alpha Capital', 'MyForexFunds', 'Axi', 'IC Markets', 'Pepperstone', 'Exness'];
+const FIRMS = [
+  // Prop firms
+  'FTMO', 'The5ers', 'FundingPips', 'FundedNext', 'Alpha Capital', 'MyFundedFX', 'E8 Markets',
+  'Funded Trading Plus', 'Blue Guardian', 'Goat Funded Trader', 'Maven', 'Apex Trader Funding',
+  // Brokers
+  'OANDA', 'Axi', 'IC Markets', 'Pepperstone', 'Exness', 'XM', 'FxPro', 'Vantage', 'Tickmill',
+  'Admiral Markets', 'Darwinex', 'RoboForex', 'Eightcap', 'ThinkMarkets',
+];
 const lbl = { fontSize: 12, color: 'var(--mut)', display: 'block' } as any;
 
 export default function KeysPage() {
@@ -79,6 +94,12 @@ export default function KeysPage() {
   const [lang, setLang] = useState<Lang>('es');
   const t = K[lang];
   const atLimit = !!usage && !usage.unlimited && usage.used >= usage.max;
+
+  // Campos obligatorios: sin ellos no dejamos crear la clave
+  const missing: string[] = [];
+  if (!String(f.label || '').trim()) missing.push(t.missNick);
+  if (!String(f.broker || '').trim()) missing.push(t.missFirm);
+  if ((f.acc_type === 'challenge' || f.acc_type === 'funded') && !String(f.acc_size || '').trim()) missing.push(t.missSize);
 
   useEffect(() => {
     setOrigin(window.location.origin);
@@ -168,6 +189,7 @@ export default function KeysPage() {
                 <div>
                   <span style={lbl}>{t.fNick}</span>
                   <input value={f.label} onChange={(e) => setF({ ...f, label: e.target.value })} placeholder="FTMO 100K" style={{ margin: '4px 0 0' }} />
+                  <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{t.fNickHint}</div>
                 </div>
                 <div>
                   <span style={lbl}>{t.fType}</span>
@@ -179,6 +201,7 @@ export default function KeysPage() {
                   <span style={lbl}>{t.fFirm}</span>
                   <input list="onyx-firms" value={f.broker} onChange={(e) => setF({ ...f, broker: e.target.value })} placeholder="FTMO" style={{ margin: '4px 0 0' }} />
                   <datalist id="onyx-firms">{FIRMS.map((x) => <option key={x} value={x} />)}</datalist>
+                  <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{t.fFirmHint}</div>
                 </div>
                 <div>
                   <span style={lbl}>{t.fLogin}</span>
@@ -188,10 +211,16 @@ export default function KeysPage() {
                   <div>
                     <span style={lbl}>{t.fSize}</span>
                     <input value={f.acc_size} onChange={(e) => setF({ ...f, acc_size: e.target.value })} placeholder="100000" style={{ margin: '4px 0 0' }} />
+                    <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{t.fSizeHint}</div>
                   </div>
                 )}
               </div>
-              <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={create} disabled={loading}>
+              {missing.length > 0 && (
+                <div className="muted" style={{ fontSize: 13, marginTop: 14, background: 'rgba(255,192,77,.10)', border: '1px solid var(--amber)', borderRadius: 10, padding: '9px 12px', color: 'var(--amber)' }}>
+                  {t.missT} {missing.join(', ')}.
+                </div>
+              )}
+              <button className="btn btn-primary" style={{ marginTop: 16, opacity: missing.length ? .5 : 1 }} onClick={create} disabled={loading || missing.length > 0}>
                 {loading ? '...' : t.newKey}
               </button>
             </>
