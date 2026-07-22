@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { ACC_TYPES } from '@/lib/accountMeta';
 
 type Lang = 'es' | 'en';
 
@@ -9,7 +10,13 @@ const K = {
     nav_dash: 'Panel', nav_connect: 'Conectar cuenta', nav_plan: 'Plan', signout: 'Salir',
     h1: '🔗 Conectar tu cuenta MT4 / MT5',
     intro: 'El mismo proceso y la misma API key sirven para MT4 y MT5. Solo cambia el archivo del connector según tu plataforma.',
-    step1: '1 · Genera tu API key', newKey: '+ Nueva API key', created: '✅ API key creada. Cópiala y pégala en el connector:',
+    step1: '1 · Conecta una cuenta', newKey: '+ Crear clave para esta cuenta', created: '✅ Clave creada. Cópiala y pégala en el connector:',
+    slots: 'Cuentas conectadas', of: 'de', unlimited: 'ilimitadas', unlimitedTxt: 'Tu plan permite cuentas ilimitadas.',
+    left: 'Te quedan', left2: 'cuenta(s) por conectar.', full: 'Has llegado al límite de tu plan.',
+    formHint: 'Cada clave pertenece a una sola cuenta. Si dejas el número vacío, se atará sola en la primera sincronización.',
+    fNick: 'Apodo', fType: 'Tipo de cuenta', fFirm: 'Prop firm o bróker', fLogin: 'Número de cuenta', fLoginPh: 'opcional', fSize: 'Tamaño de la cuenta',
+    limitT: 'Llegaste al límite de tu plan', limitD: 'Revoca una clave para liberar un cupo, o mejora tu plan para conectar más cuentas.', limitCta: 'Ver planes →',
+    waiting: 'esperando sync', acct: 'Cuenta', notBound: 'Sin atar todavía', lastSync: 'sync',
     copy: 'Copiar', copied: '✓ Copiado',
     step2: '2 · Descarga el Onyx Connector', dlMt5: '⬇ Descargar para MT5', dlMt4: '⬇ Descargar para MT4',
     dlNote: 'Ya viene con la URL de tu servidor configurada. Solo tendrás que pegar tu API key.',
@@ -31,7 +38,13 @@ const K = {
     nav_dash: 'Dashboard', nav_connect: 'Connect account', nav_plan: 'Plan', signout: 'Sign out',
     h1: '🔗 Connect your MT4 / MT5 account',
     intro: 'The same process and the same API key work for both MT4 and MT5. Just use the connector file for your platform.',
-    step1: '1 · Generate your API key', newKey: '+ New API key', created: '✅ API key created. Copy it and paste it into the connector:',
+    step1: '1 · Connect an account', newKey: '+ Create key for this account', created: '✅ Key created. Copy it and paste it into the connector:',
+    slots: 'Connected accounts', of: 'of', unlimited: 'unlimited', unlimitedTxt: 'Your plan allows unlimited accounts.',
+    left: 'You have', left2: 'account(s) left to connect.', full: 'You reached your plan limit.',
+    formHint: 'Each key belongs to a single account. Leave the number empty and it will bind itself on the first sync.',
+    fNick: 'Nickname', fType: 'Account type', fFirm: 'Prop firm or broker', fLogin: 'Account number', fLoginPh: 'optional', fSize: 'Account size',
+    limitT: 'You reached your plan limit', limitD: 'Revoke a key to free a slot, or upgrade your plan to connect more accounts.', limitCta: 'See plans →',
+    waiting: 'waiting for sync', acct: 'Account', notBound: 'Not bound yet', lastSync: 'sync',
     copy: 'Copy', copied: '✓ Copied',
     step2: '2 · Download the Onyx Connector', dlMt5: '⬇ Download for MT5', dlMt4: '⬇ Download for MT4',
     dlNote: 'It already has your server URL configured. You only need to paste your API key.',
@@ -51,14 +64,20 @@ const K = {
   },
 };
 
+const FIRMS = ['FTMO', 'The5ers', 'FundingPips', 'FundedNext', 'Alpha Capital', 'MyForexFunds', 'Axi', 'IC Markets', 'Pepperstone', 'Exness'];
+const lbl = { fontSize: 12, color: 'var(--mut)', display: 'block' } as any;
+
 export default function KeysPage() {
   const [keys, setKeys] = useState<any[]>([]);
+  const [usage, setUsage] = useState<any>(null);
+  const [f, setF] = useState<any>({ label: '', acc_type: 'own', broker: '', account_login: '', acc_size: '' });
   const [newKey, setNewKey] = useState('');
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState('');
   const [origin, setOrigin] = useState('');
   const [lang, setLang] = useState<Lang>('es');
   const t = K[lang];
+  const atLimit = !!usage && !usage.unlimited && usage.used >= usage.max;
 
   useEffect(() => {
     setOrigin(window.location.origin);
@@ -75,15 +94,17 @@ export default function KeysPage() {
     const r = await fetch('/api/keys');
     const j = await r.json();
     setKeys(j.keys || []);
+    setUsage(j.usage || null);
   }
   useEffect(() => { load(); }, []);
 
   async function create() {
     setLoading(true); setNewKey('');
     try {
-      const r = await fetch('/api/keys', { method: 'POST', body: JSON.stringify({ label: 'Mi cuenta MT' }) });
+      const body = { ...f, label: (f.label || '').trim() || (f.broker ? f.broker : 'Mi cuenta MT') };
+      const r = await fetch('/api/keys', { method: 'POST', body: JSON.stringify(body) });
       const j = await r.json();
-      if (j.key) setNewKey(j.key);
+      if (j.key) { setNewKey(j.key); setF({ label: '', acc_type: 'own', broker: '', account_login: '', acc_size: '' }); }
       else alert(t.errKey + (j.error || 'error'));
     } catch (e: any) { alert(t.errNet + (e?.message || e)); }
     await load(); setLoading(false);
@@ -113,17 +134,73 @@ export default function KeysPage() {
         <h1>{t.h1}</h1>
         <p className="muted" style={{ margin: '8px 0 22px' }}>{t.intro}</p>
 
-        {/* Paso 1: generar key */}
+        {/* Medidor de cupos del plan */}
+        {usage && (
+          <div className="card" style={{ marginBottom: 14 }}>
+            <div className="row between" style={{ flexWrap: 'wrap', gap: 10, marginBottom: 10 }}>
+              <h3>{t.slots}</h3>
+              <span className="muted" style={{ fontSize: 13 }}>{usage.used} {t.of} {usage.unlimited ? t.unlimited : usage.max} · {usage.planName}</span>
+            </div>
+            <div style={{ height: 6, background: 'var(--bg2)', borderRadius: 6, overflow: 'hidden' }}>
+              <div style={{ width: (usage.unlimited ? 8 : Math.min(100, Math.round((usage.used / Math.max(usage.max, 1)) * 100))) + '%', height: '100%', background: atLimit ? '#ff6b7d' : usage.used / Math.max(usage.max, 1) >= .75 ? '#ffc04d' : '#34e2a0', transition: '.3s' }} />
+            </div>
+            <div className="muted" style={{ fontSize: 13, marginTop: 8 }}>
+              {usage.unlimited ? t.unlimitedTxt : atLimit ? t.full : `${t.left} ${usage.max - usage.used} ${t.left2}`}
+            </div>
+          </div>
+        )}
+
+        {/* Paso 1: conectar una cuenta */}
         <div className="card" style={{ marginBottom: 18 }}>
-          <h3>{t.step1}</h3>
-          <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={create} disabled={loading}>
-            {loading ? '...' : t.newKey}
-          </button>
+          <h3 style={{ marginBottom: 4 }}>{t.step1}</h3>
+          <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{t.formHint}</p>
+
+          {atLimit ? (
+            <div style={{ background: 'rgba(124,140,255,.10)', border: '1px solid #7c8cff', borderRadius: 10, padding: 14 }}>
+              <div style={{ fontWeight: 800, marginBottom: 6 }}>🔒 {t.limitT}</div>
+              <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{t.limitD}</p>
+              <Link className="btn btn-primary" href="/pricing">{t.limitCta}</Link>
+            </div>
+          ) : (
+            <>
+              <div className="grid g2" style={{ gap: 12 }}>
+                <div>
+                  <span style={lbl}>{t.fNick}</span>
+                  <input value={f.label} onChange={(e) => setF({ ...f, label: e.target.value })} placeholder="FTMO 100K" style={{ margin: '4px 0 0' }} />
+                </div>
+                <div>
+                  <span style={lbl}>{t.fType}</span>
+                  <select value={f.acc_type} onChange={(e) => setF({ ...f, acc_type: e.target.value })} style={{ margin: '4px 0 0' }}>
+                    {ACC_TYPES.map((x) => <option key={x.key} value={x.key}>{lang === 'en' ? x.en : x.es}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <span style={lbl}>{t.fFirm}</span>
+                  <input list="onyx-firms" value={f.broker} onChange={(e) => setF({ ...f, broker: e.target.value })} placeholder="FTMO" style={{ margin: '4px 0 0' }} />
+                  <datalist id="onyx-firms">{FIRMS.map((x) => <option key={x} value={x} />)}</datalist>
+                </div>
+                <div>
+                  <span style={lbl}>{t.fLogin}</span>
+                  <input value={f.account_login} onChange={(e) => setF({ ...f, account_login: e.target.value })} placeholder={t.fLoginPh} style={{ margin: '4px 0 0' }} />
+                </div>
+                {(f.acc_type === 'challenge' || f.acc_type === 'funded') && (
+                  <div>
+                    <span style={lbl}>{t.fSize}</span>
+                    <input value={f.acc_size} onChange={(e) => setF({ ...f, acc_size: e.target.value })} placeholder="100000" style={{ margin: '4px 0 0' }} />
+                  </div>
+                )}
+              </div>
+              <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={create} disabled={loading}>
+                {loading ? '...' : t.newKey}
+              </button>
+            </>
+          )}
+
           {newKey && (
-            <div style={{ marginTop: 14, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: 14 }}>
+            <div style={{ marginTop: 14, background: 'var(--bg2)', border: '1px solid var(--green)', borderRadius: 10, padding: 14 }}>
               <p className="muted" style={{ fontSize: 13, marginBottom: 8 }}>{t.created}</p>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <code style={{ flex: 1, wordBreak: 'break-all', padding: '8px 10px' }}>{newKey}</code>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <code style={{ flex: 1, minWidth: 200, wordBreak: 'break-all', padding: '8px 10px' }}>{newKey}</code>
                 <button className="btn btn-ghost" onClick={() => copy(newKey, 'new')}>{copied === 'new' ? t.copied : t.copy}</button>
               </div>
             </div>
@@ -169,14 +246,32 @@ export default function KeysPage() {
           <h3 style={{ marginBottom: 12 }}>{t.yourKeys}</h3>
           {keys.length ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {keys.map((k) => (
-                <div key={k.id} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '10px 12px' }}>
-                  <code style={{ flex: 1, minWidth: 200, wordBreak: 'break-all', opacity: k.revoked ? .5 : 1 }}>{k.key}</code>
-                  {k.revoked ? <span className="pill">{t.revoked}</span> : <span className="pill green">{t.active}</span>}
-                  {!k.revoked && <button className="btn btn-ghost" onClick={() => copy(k.key, k.id)}>{copied === k.id ? t.copied : t.copy}</button>}
-                  {!k.revoked && <button className="btn btn-danger" onClick={() => revoke(k.id)}>{t.revoke}</button>}
-                </div>
-              ))}
+              {keys.map((k) => {
+                const tm = ACC_TYPES.find((x) => x.key === k.acc_type);
+                const synced = !!k.account?.last_sync_at;
+                return (
+                  <div key={k.id} style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '12px 14px' }}>
+                    <div className="row between" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+                      <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+                        <b>{k.label}</b>
+                        {tm && <span className="pill" style={{ color: tm.color, background: tm.color + '22', border: '1px solid ' + tm.color }}>{lang === 'en' ? tm.en : tm.es}</span>}
+                        {synced ? <span className="pill green">{t.active}</span> : <span className="pill" style={{ color: '#ffc04d', background: 'rgba(255,192,77,.15)' }}>{t.waiting}</span>}
+                      </div>
+                      <button className="btn btn-danger" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => revoke(k.id)}>{t.revoke}</button>
+                    </div>
+                    <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>
+                      {k.account_login ? `${t.acct} ${k.account_login}` : t.notBound}
+                      {k.broker ? ` · ${k.broker}` : ''}
+                      {k.acc_size ? ` · ${Number(k.acc_size).toLocaleString()} ${k.currency || 'USD'}` : ''}
+                      {synced ? ` · ${t.lastSync} ${new Date(k.account.last_sync_at).toLocaleString()}` : ''}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <code style={{ flex: 1, minWidth: 200, wordBreak: 'break-all' }}>{k.key}</code>
+                      <button className="btn btn-ghost" style={{ padding: '5px 10px', fontSize: 12 }} onClick={() => copy(k.key, k.id)}>{copied === k.id ? t.copied : t.copy}</button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           ) : <p className="muted">{t.noKeys}</p>}
         </div>

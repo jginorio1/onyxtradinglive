@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
 
     const { data: keyRow } = await supabaseAdmin
       .from('api_keys')
-      .select('id,user_id,revoked')
+      .select('id,user_id,revoked,account_login,acc_type,acc_size,broker')
       .eq('key', apiKey)
       .single();
 
@@ -33,6 +33,20 @@ export async function POST(req: NextRequest) {
     const acc = body.account;
     if (!acc?.login)
       return NextResponse.json({ ok: false, error: 'missing account' }, { status: 400 });
+
+    // --- Cada clave pertenece a UNA cuenta ---
+    // Si ya está atada y el numero no coincide, se rechaza.
+    // Si aun no lo esta (clave nueva o antigua), se ata a esta cuenta para siempre.
+    if (keyRow.account_login != null) {
+      if (Number(keyRow.account_login) !== Number(acc.login)) {
+        return NextResponse.json({
+          ok: false,
+          error: `Esta clave pertenece a la cuenta ${keyRow.account_login} y el MetaTrader esta enviando la ${acc.login}. Crea una clave nueva para esa cuenta desde Conectar cuenta.`,
+        }, { status: 403 });
+      }
+    } else {
+      await supabaseAdmin.from('api_keys').update({ account_login: Number(acc.login), broker: keyRow.broker || acc.broker || null }).eq('id', keyRow.id);
+    }
 
     // --- Límite de cuentas según el plan del usuario ---
     // ¿esta cuenta (login) ya existe para el usuario?
@@ -83,6 +97,16 @@ export async function POST(req: NextRequest) {
 
     if (accErr) throw accErr;
     const accountId = accountRow!.id;
+
+    // Datos declarados al crear la clave (tipo y tamaño de la cuenta).
+    // Solo se rellenan si el usuario aún no los ha puesto a mano en el panel.
+    if (keyRow.acc_type || keyRow.acc_size) {
+      const { data: cur } = await supabaseAdmin.from('trading_accounts').select('acc_type,acc_size').eq('id', accountId).maybeSingle();
+      const patch: any = {};
+      if (keyRow.acc_type && !cur?.acc_type) patch.acc_type = keyRow.acc_type;
+      if (keyRow.acc_size && !cur?.acc_size) patch.acc_size = keyRow.acc_size;
+      if (Object.keys(patch).length) await supabaseAdmin.from('trading_accounts').update(patch).eq('id', accountId);
+    }
 
     // --- Operaciones cerradas (idempotente por ticket) ---
     const closed = Array.isArray(body.closedTrades) ? body.closedTrades : [];
