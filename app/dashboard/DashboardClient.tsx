@@ -72,7 +72,7 @@ const D = {
     fundTitle: '🏆 Reglas de fondeo', fundEdit: '⚙️ Configurar reglas', fundHide: 'Ocultar', fundTarget: 'Objetivo de profit ($)', fundMaxDaily: 'Pérdida diaria máx ($)', fundMaxTotal: 'Pérdida total máx ($)', fundStart: 'Balance inicial ($)', fundSave: 'Guardar reglas', fundProfitBar: 'Progreso al objetivo', fundDDBar: 'Uso de pérdida máxima',
     ranges: { d1: 'Hoy', d7: '7d', d30: '30d', mo: 'Mes', yr: 'Año', all: 'Todo' },
     radarTitle: 'Perfil del trader', bubbleTitle: 'Pares · volumen y resultado', rWR: 'Win rate', rPF: 'P. factor', rPayoff: 'Payoff', rConsist: 'Consistencia', rRisk: 'Riesgo', demo: 'Demo', demoOn: '🎬 Viendo datos de ejemplo (no reales)', customRange: 'Rango de fechas', from: 'Desde', to: 'Hasta',
-    proLockT: 'Función Pro', proLockD: 'Mejora tu plan para desbloquear esta sección.', proLockCta: 'Ver planes →', histCap: '🔒 En el plan Free ves solo los últimos 30 días. Desbloquea tu historial completo con Pro.', available: 'Disponible en', upgradeTo: 'Mejorar a', dLock1: 'Diario con fotos, notas y etiquetas por operación.', dLock2: 'Compara tus cuentas lado a lado.', dLock3: 'Reglas de fondeo, retiros y documentos de la cuenta.',
+    proLockT: 'Función Pro', proLockD: 'Mejora tu plan para desbloquear esta sección.', proLockCta: 'Ver planes →', histCap: '🔒 En el plan Free ves solo los últimos 30 días. Desbloquea tu historial completo con Pro.', available: 'Disponible en', upgradeTo: 'Mejorar a', perMo: 'mes', dLock1: 'Diario con fotos, notas y etiquetas por operación.', dLock2: 'Compara tus cuentas lado a lado.', dLock3: 'Reglas de fondeo, retiros y documentos de la cuenta.',
   },
   en: {
     nav_dash: 'Dashboard', nav_connect: 'Connect account', nav_plan: 'Plan', signout: 'Sign out',
@@ -95,7 +95,7 @@ const D = {
     fundTitle: '🏆 Prop-firm rules', fundEdit: '⚙️ Set rules', fundHide: 'Hide', fundTarget: 'Profit target ($)', fundMaxDaily: 'Max daily loss ($)', fundMaxTotal: 'Max total loss ($)', fundStart: 'Starting balance ($)', fundSave: 'Save rules', fundProfitBar: 'Progress to target', fundDDBar: 'Max loss used',
     ranges: { d1: 'Today', d7: '7d', d30: '30d', mo: 'Month', yr: 'Year', all: 'All' },
     radarTitle: 'Trader profile', bubbleTitle: 'Pairs · volume and result', rWR: 'Win rate', rPF: 'P. factor', rPayoff: 'Payoff', rConsist: 'Consistency', rRisk: 'Risk', demo: 'Demo', demoOn: '🎬 Viewing example data (not real)', customRange: 'Date range', from: 'From', to: 'To',
-    proLockT: 'Pro feature', proLockD: 'Upgrade your plan to unlock this section.', proLockCta: 'See plans →', histCap: '🔒 On the Free plan you see only the last 30 days. Unlock your full history with Pro.', available: 'Available in', upgradeTo: 'Upgrade to', dLock1: 'Trade journal with photos, notes and tags.', dLock2: 'Compare your accounts side by side.', dLock3: 'Funding rules, payouts and account documents.',
+    proLockT: 'Pro feature', proLockD: 'Upgrade your plan to unlock this section.', proLockCta: 'See plans →', histCap: '🔒 On the Free plan you see only the last 30 days. Unlock your full history with Pro.', available: 'Available in', upgradeTo: 'Upgrade to', perMo: 'mo', dLock1: 'Trade journal with photos, notes and tags.', dLock2: 'Compare your accounts side by side.', dLock3: 'Funding rules, payouts and account documents.',
   },
 } as const;
 
@@ -176,14 +176,14 @@ function FundCard({ acc, net, maxDD, L, onSave }: { acc: Acc; net: number; maxDD
   );
 }
 
-function ProLock({ L, plan = 'Pro', desc }: { L: any; plan?: string; desc?: string }) {
+function ProLock({ L, plan = 'Pro', desc, price }: { L: any; plan?: string; desc?: string; price?: number }) {
   const col = plan === 'Elite' ? '#34e2a0' : '#a06bff';
   return (
     <div className="card" style={{ textAlign: 'center', padding: '38px 22px' }}>
       <div style={{ fontSize: 32, marginBottom: 6 }}>🔒</div>
       <h3 style={{ marginBottom: 6 }}>{L.available} <span style={{ color: col }}>{plan}</span></h3>
       <p className="muted" style={{ marginBottom: 16 }}>{desc || L.proLockD}</p>
-      <Link className="btn btn-primary" href="/pricing">{L.upgradeTo} {plan} →</Link>
+      <Link className="btn btn-primary" href="/pricing">{L.upgradeTo} {plan}{price ? ` · $${price}/${L.perMo}` : ''} →</Link>
     </div>
   );
 }
@@ -208,7 +208,11 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
   const [nick, setNick] = useState('');
   const [lastUpdate, setLastUpdate] = useState<number>(Date.now());
   const [, setTick] = useState(0);
+  const [plans, setPlans] = useState<any[]>([]);
   const L = D[lang];
+  const proPrice = plans.find((p: any) => p.id === 'pro')?.price_month || 0;
+
+  useEffect(() => { fetch('/api/admin/plans').then((r) => r.json()).then((j) => setPlans(j.plans || [])).catch(() => {}); }, []);
 
   useEffect(() => {
     try { const s = localStorage.getItem('onyx_lang'); if (s === 'en' || s === 'es') setLang(s as Lang); else if (typeof navigator !== 'undefined' && navigator.language?.toLowerCase().startsWith('en')) setLang('en'); } catch {}
@@ -528,7 +532,7 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
               </Card>
             )}
 
-            {view === 'operaciones' && (isFree ? <ProLock L={L} plan="Pro" desc={L.dLock1} /> : <Journal trades={filtered} lang={lang} />)}
+            {view === 'operaciones' && (isFree ? <ProLock L={L} plan="Pro" desc={L.dLock1} price={proPrice} /> : <Journal trades={filtered} lang={lang} />)}
             {view === 'costes' && <Costs trades={filtered} lang={lang} />}
 
             {view === 'cuentas' && (<>
@@ -550,8 +554,8 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
                     </tr>); })}</tbody>
                 </table>
               </Card>
-              {accounts.length >= 2 && (isFree ? <ProLock L={L} plan="Pro" desc={L.dLock2} /> : <CompareAccounts accounts={accounts} trades={ranged} lang={lang} />)}
-              {sel !== 'all' && cur && isFree && <ProLock L={L} plan="Pro" desc={L.dLock3} />}
+              {accounts.length >= 2 && (isFree ? <ProLock L={L} plan="Pro" desc={L.dLock2} price={proPrice} /> : <CompareAccounts accounts={accounts} trades={ranged} lang={lang} />)}
+              {sel !== 'all' && cur && isFree && <ProLock L={L} plan="Pro" desc={L.dLock3} price={proPrice} />}
               {sel !== 'all' && cur && !isFree && <FundCard acc={cur} net={a.net} maxDD={a.maxDD} L={L} onSave={(fields) => { const toNum = (v: any) => (v === '' || v == null ? null : Number(v)); setAccounts(accounts.map((x) => (x.id === cur.id ? { ...x, fund_target: toNum(fields.fund_target), fund_max_daily: toNum(fields.fund_max_daily), fund_max_total: toNum(fields.fund_max_total), fund_start: toNum(fields.fund_start) } : x))); }} />}
               {sel !== 'all' && cur && !isFree && <AccountExtras acc={cur} net={a.net} lang={lang} onSaved={(fields) => setAccounts(accounts.map((x) => (x.id === cur.id ? { ...x, acc_type: fields.acc_type || null, challenge_status: fields.challenge_status || null, challenge_cost: fields.challenge_cost === '' ? null : Number(fields.challenge_cost) } : x)))} />}
               {sel === 'all' && <p className="muted" style={{ fontSize: 13 }}>{lang === 'es' ? 'Elige una cuenta arriba para ver su fondeo, retiros y documentos.' : 'Pick an account above to see its funding, payouts and documents.'}</p>}
