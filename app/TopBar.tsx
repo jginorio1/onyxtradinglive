@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { NAV_T, Lang } from '@/lib/lang';
+import { NAV_T, Lang } from '@/lib/navText';
 import TopBarMenu from './TopBarMenu';
 import LangToggle from './LangToggle';
 

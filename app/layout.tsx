@@ -2,7 +2,8 @@ import './globals.css';
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import TopBar from './TopBar';
-import { LanguageProvider, Lang } from '@/lib/lang';
+import { LanguageProvider } from '@/lib/lang';
+import type { Lang } from '@/lib/navText';
 
 // La barra lee la sesión en cada petición, así que esta capa no se cachea.
 export const dynamic = 'force-dynamic';
@@ -39,7 +40,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang={lang}>
       <body>
         <LanguageProvider initial={lang}>
-          {/* @ts-expect-error componente de servidor asincrono */}
           <TopBar />
           {children}
         </LanguageProvider>

@@ -34,7 +34,7 @@ export async function POST(req: Request) {
 
     const { error } = await supabaseAdmin.from('profiles').update({ is_admin: true, role: newRole }).eq('id', prof.id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    await logAdmin(user.email, 'team_add', email, { role: newRole });
+    await logAdmin(user?.email || '', 'team_add', email, { role: newRole });
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error', code: 'generic' }, { status: 500 });
@@ -51,7 +51,7 @@ export async function PATCH(req: Request) {
     const newRole = ['admin', 'support', 'owner'].includes(b.role) ? b.role : 'admin';
     const { error } = await supabaseAdmin.from('profiles').update({ role: newRole }).eq('id', b.id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    await logAdmin(user.email, 'team_role', b.id, { role: newRole });
+    await logAdmin(user?.email || '', 'team_role', b.id, { role: newRole });
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error', code: 'generic' }, { status: 500 });
@@ -70,7 +70,7 @@ export async function DELETE(req: Request) {
     if (target?.role === 'owner') return NextResponse.json({ error: 'No se puede quitar a un Owner.' }, { status: 400 });
     const { error } = await supabaseAdmin.from('profiles').update({ is_admin: false, role: null }).eq('id', id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    await logAdmin(user.email, 'team_remove', id, {});
+    await logAdmin(user?.email || '', 'team_remove', id, {});
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error', code: 'generic' }, { status: 500 });
