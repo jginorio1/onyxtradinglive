@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import Help from '@/app/Help';
 
 // ============================================================
-// Fase 2 del gestor: mi plan de trading, límites de la cuenta,
+// Fase 2 de Onyx Guardian: mi plan de trading, límites de la cuenta,
 // noticias y el espejo de disciplina.
 //
 // Estas pantallas no gestionan la operación abierta: gestionan al trader.
@@ -16,7 +16,7 @@ export const P2: any = {
     tabTrade: 'Operación', tabPlan: 'Mi plan', tabLimits: 'Límites', tabNews: 'Noticias', tabHist: 'Historial',
 
     // --- Mi plan ---
-    planT: 'Mi plan de trading', planD: 'Decide ahora, con la cabeza fría, cuándo tienes permiso para operar. Después el gestor te lo recuerda aunque no quieras oírlo.',
+    planT: 'Mi plan de trading', planD: 'Decide ahora, con la cabeza fría, cuándo tienes permiso para operar. Después Onyx Guardian te lo recuerda aunque no quieras oírlo.',
     days: 'Días que opero', dayNames: ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'],
     windows: 'Franjas horarias', windowsD: 'En tu hora local. Abajo te decimos a qué hora del bróker corresponde.',
     wOn: 'Activa', wOff: 'Inactiva',
@@ -26,7 +26,7 @@ export const P2: any = {
     unitMin: 'min', unitTimes: 'veces', unitTrades: 'op.',
     maxTrades: 'Máximo de operaciones al día', maxTradesD: '0 = sin límite.',
     cooldown: 'Espera después de una pérdida', cooldownD: 'El mejor antídoto contra la operación de venganza.',
-    tiltT: 'Freno por racha de pérdidas', tiltD: 'Tras varias pérdidas seguidas, el gestor te para un rato.',
+    tiltT: 'Freno por racha de pérdidas', tiltD: 'Tras varias pérdidas seguidas, Onyx Guardian te para un rato.',
     tiltLosses: 'Pérdidas seguidas', tiltPause: 'Pausa (min)',
     rigidT: '¿Qué pasa si intento saltármelo?',
     rigSoft: 'Solo avísame', rigSoftD: 'Ves el aviso y decides tú. No bloquea nada.',
@@ -44,10 +44,10 @@ export const P2: any = {
     baseInit: 'Balance inicial de la cuenta', baseInitD: 'Fijo, no se mueve.',
     resetT: 'Hora de reinicio del día *', resetD: 'Hora del servidor de tu bróker a la que empieza un día nuevo. Muchas firmas no usan medianoche.',
     dLoss: 'Pérdida máxima del día', dTarget: 'Objetivo del día', tLoss: 'Pérdida máxima total',
-    targetD: 'Al llegar, el gestor te invita a parar. Puedes saltártelo.',
+    targetD: 'Al llegar, Onyx Guardian te invita a parar. Puedes saltártelo.',
     lossD: 'Al llegar, se acabó. Esto no se puede saltar.',
     pct: '%', money: '$',
-    margin: 'Margen de seguridad', marginD: 'Reserva un % del límite. Con 20%, el gestor te para al llegar al 80% del tope real.',
+    margin: 'Margen de seguridad', marginD: 'Reserva un % del límite. Con 20%, Onyx Guardian te para al llegar al 80% del tope real.',
     maxLots: 'Lotaje máximo por operación', maxOpen: 'Posiciones abiertas a la vez',
     breachT: 'Cuando se pasa el límite', bWarn: 'Solo avisar', bBlock: 'No dejar abrir más', bClose: 'Cerrar todo y bloquear',
     zero: '0 = sin límite',
@@ -61,7 +61,7 @@ export const P2: any = {
 
     // --- Estado / disciplina ---
     todayT: 'Hoy', discT: 'Disciplina (30 días)', discD: 'No es una nota. Es un espejo: cuántas veces te frenó y cuántas te lo saltaste.',
-    dRespect: 'Veces que paraste', dOverride: 'Veces que te lo saltaste', dSaved: 'Intervenciones del gestor',
+    dRespect: 'Veces que paraste', dOverride: 'Veces que te lo saltaste', dSaved: 'Intervenciones de Onyx Guardian',
     blockedNow: 'Ahora mismo estás bloqueado', notBlocked: 'Sin bloqueos activos',
     tradesUsed: 'Operaciones hoy', dayPnl: 'Resultado del día',
     overrideBtn: 'Quiero saltármelo', overrideWait: 'Espera activa', overrideCancel: 'Cancelar y seguir el plan',
@@ -81,7 +81,7 @@ export const P2: any = {
   en: {
     tabTrade: 'Trade', tabPlan: 'My plan', tabLimits: 'Limits', tabNews: 'News', tabHist: 'History',
 
-    planT: 'My trading plan', planD: 'Decide now, with a clear head, when you are allowed to trade. Later the manager reminds you, even when you would rather not hear it.',
+    planT: 'My trading plan', planD: 'Decide now, with a clear head, when you are allowed to trade. Later Onyx Guardian reminds you, even when you would rather not hear it.',
     days: 'Days I trade', dayNames: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
     windows: 'Time windows', windowsD: 'In your local time. Below we show the matching broker time.',
     wOn: 'On', wOff: 'Off',
@@ -91,7 +91,7 @@ export const P2: any = {
     unitMin: 'min', unitTimes: 'times', unitTrades: 'trades',
     maxTrades: 'Maximum trades per day', maxTradesD: '0 = no limit.',
     cooldown: 'Wait after a loss', cooldownD: 'The best antidote to revenge trading.',
-    tiltT: 'Losing-streak brake', tiltD: 'After several losses in a row, the manager stops you for a while.',
+    tiltT: 'Losing-streak brake', tiltD: 'After several losses in a row, Onyx Guardian stops you for a while.',
     tiltLosses: 'Losses in a row', tiltPause: 'Pause (min)',
     rigidT: 'What happens if I try to skip it?',
     rigSoft: 'Just warn me', rigSoftD: 'You see the warning and decide. Nothing is blocked.',
@@ -108,7 +108,7 @@ export const P2: any = {
     baseInit: 'Initial account balance', baseInitD: 'Fixed, never moves.',
     resetT: 'Daily reset hour *', resetD: 'Broker server hour when a new day starts. Many firms do not use midnight.',
     dLoss: 'Maximum daily loss', dTarget: 'Daily target', tLoss: 'Maximum total loss',
-    targetD: 'On reaching it the manager invites you to stop. You can override this.',
+    targetD: 'On reaching it Onyx Guardian invites you to stop. You can override this.',
     lossD: 'On reaching it, you are done. This cannot be overridden.',
     pct: '%', money: '$',
     margin: 'Safety margin', marginD: 'Reserve a % of the limit. At 20%, you are stopped at 80% of the real cap.',
