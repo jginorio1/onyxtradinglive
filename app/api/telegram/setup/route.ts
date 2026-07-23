@@ -26,7 +26,6 @@ export async function GET(req: Request) {
         url,
         secret_token: secret || undefined,
         allowed_updates: ['message'],
-        drop_pending_updates: true,
       }),
     });
     const j = await r.json();

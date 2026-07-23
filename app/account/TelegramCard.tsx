@@ -18,7 +18,10 @@ const T: any = {
     lockCta: 'Ver planes →',
     connect: 'Conectar Telegram', opening: 'Abriendo…',
     step: 'Se abrirá Telegram con el bot. Pulsa Start y vuelve aquí.',
-    waiting: 'Esperando a que pulses Start en Telegram…',
+    waiting: 'Esperando a que abras el bot en Telegram…',
+    plan_b_t: '¿No te pide pulsar Start?',
+    plan_b_d: 'Copia este código y pégalo como mensaje al bot:',
+    open_bot: 'Abrir el bot',
     connected: 'Conectado', as: 'como', unlink: 'Desconectar',
     prefsT: 'Qué avisos quieres aquí',
     prefs: {
@@ -39,7 +42,10 @@ const T: any = {
     lockCta: 'See plans →',
     connect: 'Connect Telegram', opening: 'Opening…',
     step: 'Telegram will open with the bot. Tap Start and come back here.',
-    waiting: 'Waiting for you to tap Start on Telegram…',
+    waiting: 'Waiting for you to open the bot on Telegram…',
+    plan_b_t: 'No Start button showing?',
+    plan_b_d: 'Copy this code and send it as a message to the bot:',
+    open_bot: 'Open the bot',
     connected: 'Connected', as: 'as', unlink: 'Disconnect',
     prefsT: 'Which alerts you want here',
     prefs: {
@@ -65,6 +71,8 @@ export default function TelegramCard({ lang }: { lang: 'es' | 'en' }) {
   const [busy, setBusy] = useState('');
   const [waiting, setWaiting] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [link, setLink] = useState<{ url: string; code: string } | null>(null);
+  const [copied, setCopied] = useState(false);
 
   async function load() {
     try { const r = await fetch('/api/account/telegram'); setD(await r.json()); } catch {}
@@ -86,7 +94,7 @@ export default function TelegramCard({ lang }: { lang: 'es' | 'en' }) {
     setBusy('link');
     const r = await fetch('/api/account/telegram', { method: 'POST', body: JSON.stringify({ action: 'link' }) });
     const j = await r.json(); setBusy('');
-    if (j.url) { window.open(j.url, '_blank'); setWaiting(true); }
+    if (j.url) { setLink({ url: j.url, code: j.code }); window.open(j.url, '_blank'); setWaiting(true); }
   }
   async function unlink() {
     setBusy('unlink');
@@ -145,10 +153,29 @@ export default function TelegramCard({ lang }: { lang: 'es' | 'en' }) {
           {saved && <span style={{ color: 'var(--green)', fontSize: 12 }}>{t.saved}</span>}
         </>
       ) : waiting ? (
-        <div className="row" style={{ gap: 10 }}>
-          <span className="spin" style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid var(--bg2)', borderTopColor: 'var(--brand)', flex: 'none' }} />
-          <span className="muted" style={{ fontSize: 13 }}>{t.waiting}</span>
-        </div>
+        <>
+          <div className="row" style={{ gap: 10, marginBottom: 14 }}>
+            <span className="spin" style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid var(--bg2)', borderTopColor: 'var(--brand)', flex: 'none' }} />
+            <span className="muted" style={{ fontSize: 13 }}>{t.waiting}</span>
+          </div>
+
+          {/* Plan B: si el bot ya estaba abierto, no aparece "Start".
+              El usuario pega este código en el chat y queda vinculado igual. */}
+          {link && (
+            <div style={{ padding: '12px 14px', background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10 }}>
+              <div style={{ fontSize: 13, marginBottom: 4 }}>{t.plan_b_t}</div>
+              <div className="muted" style={{ fontSize: 12, marginBottom: 10 }}>{t.plan_b_d}</div>
+              <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+                <code style={{ fontSize: 16, letterSpacing: 2, padding: '7px 12px', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 8 }}>{link.code}</code>
+                <button className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: 12 }}
+                  onClick={() => { navigator.clipboard.writeText(link.code); setCopied(true); setTimeout(() => setCopied(false), 1500); }}>
+                  {copied ? '✓' : (lang === 'es' ? 'Copiar' : 'Copy')}
+                </button>
+                <a className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: 12 }} href={link.url} target="_blank" rel="noreferrer">{t.open_bot}</a>
+              </div>
+            </div>
+          )}
+        </>
       ) : (
         <>
           <button className="btn btn-primary" onClick={connect} disabled={busy === 'link'}>

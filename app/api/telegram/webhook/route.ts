@@ -30,20 +30,32 @@ export async function POST(req: Request) {
 
     const username = msg?.from?.username ? '@' + msg.from.username : '';
 
-    // /start CODIGO  → vincular esta cuenta de Telegram con el usuario
-    if (text.startsWith('/start')) {
-      const code = text.split(/\s+/)[1]?.toUpperCase() || '';
-      if (!code) {
-        await sendMessage(chatId,
-          'Hola 👋 Soy Onyx Guardian.\nPara recibir avisos, entra en tu cuenta en onyxtradinglive.com → Avisos → Conectar Telegram, y pulsa el enlace desde ahí.');
-        return NextResponse.json({ ok: true });
-      }
+    // /stop  → desvincular desde el propio Telegram
+    if (text === '/stop') {
+      await supabaseAdmin.from('profiles')
+        .update({ telegram_chat_id: null, telegram_linked_at: null })
+        .eq('telegram_chat_id', chatId);
+      await sendMessage(chatId, 'Listo, no volverás a recibir avisos. Puedes reconectar cuando quieras desde tu cuenta.');
+      return NextResponse.json({ ok: true });
+    }
 
+    // Sacamos el código del mensaje. Vale de dos formas:
+    //   · "/start CODIGO"  — cuando Telegram muestra el botón Start
+    //   · "CODIGO" a secas  — cuando el chat ya existía y no aparece el Start,
+    //                         así que el usuario lo pega a mano
+    let code = '';
+    if (text.startsWith('/start')) {
+      code = text.split(/\s+/)[1]?.toUpperCase() || '';
+    } else if (/^[A-Z0-9]{6,10}$/i.test(text)) {
+      code = text.toUpperCase();
+    }
+
+    if (code) {
       const { data: prof } = await supabaseAdmin
         .from('profiles').select('id,telegram_chat_id').eq('telegram_link_code', code).maybeSingle();
 
       if (!prof) {
-        await sendMessage(chatId, 'Ese código no es válido o ya caducó. Genera uno nuevo desde tu cuenta.');
+        await sendMessage(chatId, 'Ese código no es válido o ya caducó. Genera uno nuevo desde tu cuenta → Avisos.');
         return NextResponse.json({ ok: true });
       }
 
@@ -64,17 +76,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true });
     }
 
-    // /stop  → desvincular desde el propio Telegram
-    if (text === '/stop') {
-      await supabaseAdmin.from('profiles')
-        .update({ telegram_chat_id: null, telegram_linked_at: null })
-        .eq('telegram_chat_id', chatId);
-      await sendMessage(chatId, 'Listo, no volverás a recibir avisos. Puedes reconectar cuando quieras desde tu cuenta.');
-      return NextResponse.json({ ok: true });
-    }
-
-    // Cualquier otra cosa: una ayuda breve
-    await sendMessage(chatId, 'Soy el bot de avisos de Onyx Guardian. Escribe /stop para dejar de recibir avisos.');
+    // /start sin código, o cualquier otra cosa: ayuda
+    await sendMessage(chatId,
+      'Hola 👋 Soy Onyx Guardian.\nPara conectarte, entra en onyxtradinglive.com → Mi cuenta → Avisos → Conectar Telegram, y pega aquí el código que te dé.\n\nPara dejar de recibir avisos escribe /stop.');
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     // Devolvemos 200 igualmente: si respondemos error, Telegram reintenta en bucle
