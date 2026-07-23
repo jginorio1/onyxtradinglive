@@ -98,7 +98,7 @@ function mmss(ms: number) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
-export default function InstallWizard({ t, w, apiUrl, origin, apiKey, onDownload, copy, copied }: any) {
+export default function InstallWizard({ t, w, lang, apiUrl, origin, apiKey, onDownload, copy, copied }: any) {
   const total = t.steps.length;
   const [step, setStep] = useState(0);
   const [mode, setMode] = useState<'wizard' | 'list'>('wizard');
@@ -204,7 +204,7 @@ export default function InstallWizard({ t, w, apiUrl, origin, apiKey, onDownload
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 14 }}>{s.t}</div>
               {s.d && <div className="muted" style={{ fontSize: 12, marginTop: 3, lineHeight: 1.6 }}>{s.d}</div>}
-              <StepVisual viz={s.viz} origin={origin} apiUrl={apiUrl} />
+              <StepVisual viz={s.viz} origin={origin} apiUrl={apiUrl} lang={lang} />
               <StepExtras s={s} t={t} w={w} apiUrl={apiUrl} origin={origin} apiKey={apiKey} copy={copy} copied={copied} />
             </div>
           </div>
@@ -261,7 +261,7 @@ export default function InstallWizard({ t, w, apiUrl, origin, apiKey, onDownload
           <div style={{ fontSize: 16, marginBottom: 6 }}>{w.waitT}</div>
           <p className="muted" style={{ fontSize: 13, lineHeight: 1.7, maxWidth: 420, margin: '0 auto' }}>{w.waitD}</p>
           <div style={{ maxWidth: 420, margin: '0 auto', textAlign: 'left' }}>
-            <StepVisual viz="algo" origin={origin} apiUrl={apiUrl} />
+            <StepVisual viz="algo" origin={origin} apiUrl={apiUrl} lang={lang} />
           </div>
           <div className="muted" style={{ fontSize: 12, marginTop: 12 }}>{w.checking} · {mmss(elapsed)}</div>
 
@@ -311,8 +311,9 @@ export default function InstallWizard({ t, w, apiUrl, origin, apiKey, onDownload
 
 // Ilustración simple por paso: rutas de menú con flechas y mini-ventanas,
 // para que cada paso se entienda de un vistazo (sin depender de capturas).
-function StepVisual({ viz, origin, apiUrl }: any) {
+function StepVisual({ viz, origin, apiUrl, lang }: any) {
   if (!viz) return null;
+  const p = (es: string, en: string) => (lang === 'en' ? en : es);
   const box = { border: '1px solid var(--line)', borderRadius: 10, background: 'var(--bg2)', padding: 12, marginTop: 12 } as any;
   const chip = { display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--card2)', border: '1px solid var(--line)', borderRadius: 8, padding: '5px 9px', fontSize: 12 } as any;
   const code = { fontSize: 11, background: 'var(--card2)', border: '1px solid var(--line)', borderRadius: 6, padding: '4px 7px', wordBreak: 'break-all' } as any;
@@ -320,67 +321,79 @@ function StepVisual({ viz, origin, apiUrl }: any) {
   const check = <span style={{ width: 16, height: 16, borderRadius: 4, background: '#34e2a0', color: '#04120c', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, flex: 'none' }}>✓</span>;
 
   switch (viz) {
+    case 'download':
+      return <div style={box}>
+        <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ color: 'var(--mut)', fontSize: 18 }}>↑</span>
+          <span className="muted" style={{ fontSize: 12 }}>{p('Usa uno de los botones de arriba:', 'Use one of the buttons above:')}</span>
+        </div>
+        <div className="row" style={{ gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+          <span style={{ ...chip, borderColor: 'var(--brand)', color: 'var(--tx)' }}>⬇️ {p('Descargar para MT5', 'Download for MT5')}</span>
+          <span style={chip}>⬇️ {p('Descargar para MT4', 'Download for MT4')}</span>
+        </div>
+        <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>{p('MT5 si usas MetaTrader 5 · MT4 si usas MetaTrader 4.', 'MT5 if you use MetaTrader 5 · MT4 if you use MetaTrader 4.')}</div>
+      </div>;
     case 'folder':
       return <div style={box}>
-        <div className="muted" style={{ fontSize: 11, marginBottom: 8 }}>En MetaTrader:</div>
+        <div className="muted" style={{ fontSize: 11, marginBottom: 8 }}>{p('En MetaTrader:', 'In MetaTrader:')}</div>
         <div className="row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-          <span style={chip}>Archivo</span>{arrow}<span style={chip}>Abrir carpeta de datos</span>{arrow}<span style={chip}>📁 MQL5</span>{arrow}<span style={chip}>📁 Experts</span>
+          <span style={chip}>{p('Archivo', 'File')}</span>{arrow}<span style={chip}>{p('Abrir carpeta de datos', 'Open Data Folder')}</span>{arrow}<span style={chip}>📁 MQL5</span>{arrow}<span style={chip}>📁 Experts</span>
         </div>
-        <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>Pega ahí el archivo Onyx que descargaste.</div>
+        <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>{p('Pega ahí el archivo Onyx que descargaste.', 'Paste the Onyx file you downloaded there.')}</div>
       </div>;
     case 'compile':
       return <div style={box}>
         <div className="row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
-          <span style={chip}>⌨️ Tecla F4</span><span className="muted" style={{ fontSize: 12 }}>abre MetaEditor (ya viene incluido)</span>
+          <span style={chip}>⌨️ {p('Tecla F4', 'F4 key')}</span><span className="muted" style={{ fontSize: 12 }}>{p('abre MetaEditor (ya viene incluido)', 'opens MetaEditor (built in)')}</span>
         </div>
         <div className="row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-          <span style={chip}>Abre el archivo Onyx</span>{arrow}<span style={chip}>▶️ Compilar (F7)</span>
+          <span style={chip}>{p('Abre el archivo Onyx', 'Open the Onyx file')}</span>{arrow}<span style={chip}>▶️ {p('Compilar (F7)', 'Compile (F7)')}</span>
         </div>
         <div style={{ marginTop: 8, display: 'inline-flex', gap: 6, alignItems: 'center', background: 'rgba(52,226,160,.10)', border: '1px solid var(--green)', borderRadius: 8, padding: '6px 10px' }}>
-          {check}<span style={{ fontSize: 12, color: 'var(--green)' }}>Debe decir: 0 errores, 0 advertencias</span>
+          {check}<span style={{ fontSize: 12, color: 'var(--green)' }}>{p('Debe decir: 0 errores, 0 advertencias', 'It should say: 0 errors, 0 warnings')}</span>
         </div>
       </div>;
     case 'drag':
       return <div style={box}>
         <div className="row" style={{ gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
           <div style={{ flex: 1, minWidth: 130, border: '1px solid var(--line)', borderRadius: 8, padding: 8, background: 'var(--card2)' }}>
-            <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>Navegador</div>
-            <div style={{ fontSize: 12 }}>📁 Asesores Expertos</div>
+            <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>{p('Navegador', 'Navigator')}</div>
+            <div style={{ fontSize: 12 }}>📁 {p('Asesores Expertos', 'Expert Advisors')}</div>
             <div style={{ fontSize: 12, color: 'var(--brand)', paddingLeft: 14 }}>🤖 OnyxManager</div>
           </div>
           {arrow}
-          <div style={{ flex: 1, minWidth: 130, border: '1px dashed var(--line)', borderRadius: 8, padding: 8, textAlign: 'center', color: 'var(--mut)', fontSize: 12 }}>📈 Suéltalo en un gráfico</div>
+          <div style={{ flex: 1, minWidth: 130, border: '1px dashed var(--line)', borderRadius: 8, padding: 8, textAlign: 'center', color: 'var(--mut)', fontSize: 12 }}>📈 {p('Suéltalo en un gráfico', 'Drop it on a chart')}</div>
         </div>
       </div>;
     case 'fields':
       return <div style={box}>
-        <div className="muted" style={{ fontSize: 11, marginBottom: 8 }}>En la ventana que se abre:</div>
-        <div className="row" style={{ gap: 8, alignItems: 'center', marginBottom: 10 }}>{check}<span style={{ fontSize: 12 }}>Marca «Permitir Algo Trading» (pestaña Común)</span></div>
+        <div className="muted" style={{ fontSize: 11, marginBottom: 8 }}>{p('En la ventana que se abre:', 'In the window that opens:')}</div>
+        <div className="row" style={{ gap: 8, alignItems: 'center', marginBottom: 10 }}>{check}<span style={{ fontSize: 12 }}>{p('Marca «Permitir Algo Trading» (pestaña Común)', 'Tick "Allow Algo Trading" (Common tab)')}</span></div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}><span className="muted" style={{ fontSize: 12, minWidth: 70 }}>ServidorUrl</span><code style={code}>{apiUrl}</code></div>
-          <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}><span className="muted" style={{ fontSize: 12, minWidth: 70 }}>ApiKey</span><code style={code}>tu clave copiada</code></div>
+          <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}><span className="muted" style={{ fontSize: 12, minWidth: 70 }}>ApiKey</span><code style={code}>{p('tu clave copiada', 'your copied key')}</code></div>
         </div>
       </div>;
     case 'webrequest':
       return <div style={box}>
         <div className="row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
-          <span style={chip}>Herramientas</span>{arrow}<span style={chip}>Opciones</span>{arrow}<span style={chip}>Asesores Expertos</span>
+          <span style={chip}>{p('Herramientas', 'Tools')}</span>{arrow}<span style={chip}>{p('Opciones', 'Options')}</span>{arrow}<span style={chip}>{p('Asesores Expertos', 'Expert Advisors')}</span>
         </div>
-        <div className="row" style={{ gap: 8, alignItems: 'flex-start', marginBottom: 8 }}>{check}<span style={{ fontSize: 12 }}>Marca «Permitir WebRequest para las siguientes direcciones»</span></div>
+        <div className="row" style={{ gap: 8, alignItems: 'flex-start', marginBottom: 8 }}>{check}<span style={{ fontSize: 12 }}>{p('Marca «Permitir WebRequest para las siguientes direcciones»', 'Tick "Allow WebRequest for listed URL"')}</span></div>
         <div className="row" style={{ gap: 6, alignItems: 'center', paddingLeft: 24 }}><span style={{ color: 'var(--green)' }}>＋</span><code style={code}>{origin}</code></div>
-        <div className="muted" style={{ fontSize: 11, marginTop: 8, paddingLeft: 24 }}>Escríbela, pulsa Enter y luego OK.</div>
+        <div className="muted" style={{ fontSize: 11, marginTop: 8, paddingLeft: 24 }}>{p('Escríbela, pulsa Enter y luego OK.', 'Type it, press Enter, then OK.')}</div>
       </div>;
     case 'algo':
       return <div style={box}>
         <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: 140, border: '1px solid var(--line)', borderRadius: 8, padding: 8, background: 'var(--card2)' }}>
-            <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>Barra de arriba</div>
-            <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', background: 'rgba(52,226,160,.12)', color: 'var(--green)', borderRadius: 6, padding: '5px 9px', fontSize: 12 }}>▶️ Algo Trading (verde)</span>
+            <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>{p('Barra de arriba', 'Top bar')}</div>
+            <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', background: 'rgba(52,226,160,.12)', color: 'var(--green)', borderRadius: 6, padding: '5px 9px', fontSize: 12 }}>▶️ {p('Algo Trading (verde)', 'Algo Trading (green)')}</span>
           </div>
           <div style={{ flex: 1, minWidth: 140, border: '1px solid var(--line)', borderRadius: 8, padding: 8, background: 'var(--card2)' }}>
-            <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>Esquina del gráfico</div>
-            <div style={{ fontSize: 12 }}><span style={{ color: 'var(--green)' }}>☺</span> = activo</div>
-            <div style={{ fontSize: 11, color: 'var(--red)' }}>✕ triste = revisa Algo Trading</div>
+            <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>{p('Esquina del gráfico', 'Chart corner')}</div>
+            <div style={{ fontSize: 12 }}><span style={{ color: 'var(--green)' }}>☺</span> = {p('activo', 'active')}</div>
+            <div style={{ fontSize: 11, color: 'var(--red)' }}>✕ {p('triste = revisa Algo Trading', 'sad = check Algo Trading')}</div>
           </div>
         </div>
       </div>;

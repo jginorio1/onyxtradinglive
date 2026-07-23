@@ -28,7 +28,7 @@ const K = {
     folderPath: 'MQL5/Experts  (o MQL4/Experts en MT4)',
     allDone: 'Listo. Tu MetaTrader está reportando a Onyx.',
     steps: [
-      { t: '1. Descarga el archivo Onyx', d: 'Usa el botón de arriba: MT5 si tu plataforma es MetaTrader 5, MT4 si es MetaTrader 4. Se guarda en tu carpeta de Descargas.' },
+      { t: '1. Descarga el archivo Onyx', d: 'Usa el botón de arriba: MT5 si tu plataforma es MetaTrader 5, MT4 si es MetaTrader 4. Se guarda en tu carpeta de Descargas.', viz: 'download' },
       { t: '2. Mételo en la carpeta Experts', d: 'Abre MetaTrader. Arriba: Archivo → Abrir carpeta de datos. Entra a MQL5 y luego a Experts, y pega ahí el archivo que descargaste.', copy: 'folder', viz: 'folder' },
       { t: '3. Compílalo (MetaEditor ya viene incluido)', d: 'No lo descargas aparte. Dentro de MetaTrader pulsa la tecla F4: se abre MetaEditor. Abre el archivo Onyx y pulsa Compilar (F7). Abajo debe decir "0 errores".', viz: 'compile' },
       { t: '4. Arrastra Onyx a un gráfico', d: 'En el panel Navegador (a la izquierda), abre Asesores Expertos, y arrastra OnyxManager sobre cualquier gráfico abierto. Con un solo gráfico basta.', viz: 'drag' },
@@ -71,7 +71,7 @@ const K = {
     folderPath: 'MQL5/Experts  (or MQL4/Experts on MT4)',
     allDone: 'Done. Your MetaTrader is reporting to Onyx.',
     steps: [
-      { t: '1. Download the Onyx file', d: 'Use the button above: MT5 if your platform is MetaTrader 5, MT4 if it is MetaTrader 4. It saves to your Downloads folder.' },
+      { t: '1. Download the Onyx file', d: 'Use the button above: MT5 if your platform is MetaTrader 5, MT4 if it is MetaTrader 4. It saves to your Downloads folder.', viz: 'download' },
       { t: '2. Put it in the Experts folder', d: 'Open MetaTrader. Top menu: File → Open Data Folder. Go into MQL5, then Experts, and paste the file you downloaded there.', copy: 'folder', viz: 'folder' },
       { t: '3. Compile it (MetaEditor is built in)', d: 'You do not download it separately. Inside MetaTrader press F4: MetaEditor opens. Open the Onyx file and click Compile (F7). It should say "0 errors".', viz: 'compile' },
       { t: '4. Drag Onyx onto a chart', d: 'In the Navigator panel (left side), open Expert Advisors and drag OnyxManager onto any open chart. One chart is enough.', viz: 'drag' },
@@ -325,7 +325,7 @@ export default function KeysPage() {
 
         {/* Paso 3: asistente de instalación */}
         <InstallWizard
-          t={t} w={WIZ[lang]}
+          t={t} w={WIZ[lang]} lang={lang}
           apiUrl={apiUrl} origin={origin}
           apiKey={newKey || keys[0]?.key || ''}
           onDownload={() => markDone('dl')}
