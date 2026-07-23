@@ -19,9 +19,9 @@ const CAPS: [string, string][] = [
   ['export', 'Exportar CSV'],
   ['reports', 'Informes automáticos'],
   ['telegram', 'Alertas por Telegram'],
-  ['manager', 'Gestor: break even y trailing'],
-  ['manager_advanced', 'Gestor avanzado: TP parciales'],
-  ['ea_risk', 'EA control de riesgo (Elite)'],
+  ['manager', 'Onyx Guardian: break even, trailing, plan y límites'],
+  ['manager_advanced', 'Guardian avanzado: TP parciales'],
+  ['manager_news', 'Guardian: bloqueo por noticias'],
 ];
 
 function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
@@ -116,13 +116,7 @@ export default function AdminClient({ meEmail, role, accounts, trades }: { meEma
             {tab === 'pruebas' && <TestConsole meEmail={meEmail} />}
             {tab === 'firms' && <Firms />}
 
-            {tab === 'modulos' && (
-              <div className="grid g2">
-                <div className="card"><div style={{ fontSize: 26, marginBottom: 8 }}>🛡️</div><h3>Control de riesgo (EA)</h3><p className="muted" style={{ fontSize: 14, margin: '8px 0 12px' }}>Un EA que fuerza límites de pérdida diaria/semanal en las cuentas Elite, controlado desde este panel.</p><span className="pill" style={{ color: '#c9a9ff', background: 'rgba(160,107,255,.18)', border: '1px solid #a06bff' }}>Próximamente · Elite</span></div>
-                <div className="card"><div style={{ fontSize: 26, marginBottom: 8 }}>📣</div><h3>Notificaciones Telegram</h3><p className="muted" style={{ fontSize: 14, margin: '8px 0 12px' }}>Envío automático de resúmenes y alertas a los usuarios por Telegram.</p><span className="pill" style={{ color: '#c9a9ff', background: 'rgba(160,107,255,.18)', border: '1px solid #a06bff' }}>Próximamente</span></div>
-                <div className="card"><div style={{ fontSize: 26, marginBottom: 8 }}>📄</div><h3>Informes automáticos</h3><p className="muted" style={{ fontSize: 14, margin: '8px 0 12px' }}>Informes PDF periódicos del rendimiento, enviados por email a los usuarios Elite.</p><span className="pill" style={{ color: '#c9a9ff', background: 'rgba(160,107,255,.18)', border: '1px solid #a06bff' }}>Próximamente</span></div>
-              </div>
-            )}
+            {tab === 'modulos' && <Modules />}
 
             {tab === 'ajustes' && (
               <div className="card" style={{ maxWidth: 620 }}>
@@ -136,6 +130,53 @@ export default function AdminClient({ meEmail, role, accounts, trades }: { meEma
         </div>
       </div>
     </>
+  );
+}
+
+// Estado real de los módulos, con métricas en vivo de la base de datos.
+function Modules() {
+  const [m, setM] = useState<any>(null);
+  useEffect(() => { fetch('/api/admin/modules').then((r) => r.json()).then(setM).catch(() => setM({})); }, []);
+
+  const Badge = ({ on, txt }: { on: boolean; txt: string }) => (
+    <span className="pill" style={on
+      ? { color: '#7fe9c0', background: 'rgba(52,226,160,.15)', border: '1px solid #34e2a0' }
+      : { color: '#c9a9ff', background: 'rgba(160,107,255,.18)', border: '1px solid #a06bff' }}>{txt}</span>
+  );
+  const Stat = ({ n, label }: { n: number; label: string }) => (
+    <div><div style={{ fontSize: 22, fontWeight: 800 }}>{Number(n || 0).toLocaleString()}</div><div className="muted" style={{ fontSize: 12 }}>{label}</div></div>
+  );
+
+  if (!m) return <div className="muted">…</div>;
+
+  return (
+    <div className="grid g2">
+      <div className="card">
+        <div style={{ fontSize: 26, marginBottom: 8 }}>🛡️</div>
+        <div className="row between" style={{ marginBottom: 8 }}><h3>Onyx Guardian</h3><Badge on txt="Activo" /></div>
+        <p className="muted" style={{ fontSize: 13, marginBottom: 14 }}>Gestión de riesgo por EA en MT4 y MT5: break even, trailing, plan de trading, límites y noticias.</p>
+        <div className="row" style={{ gap: 24, flexWrap: 'wrap' }}>
+          <Stat n={m.guardian?.accounts} label="cuentas con Guardian" />
+          <Stat n={m.guardian?.eaLive} label="reportando ahora" />
+          <Stat n={m.guardian?.blocks} label="bloqueos ejecutados" />
+        </div>
+      </div>
+
+      <div className="card">
+        <div style={{ fontSize: 26, marginBottom: 8 }}>📣</div>
+        <div className="row between" style={{ marginBottom: 8 }}><h3>Telegram</h3><Badge on={!!m.telegram?.active} txt={m.telegram?.active ? 'Activo' : 'Sin token'} /></div>
+        <p className="muted" style={{ fontSize: 13, marginBottom: 14 }}>Alertas del Guardian, límites de fondeo, EA caído y resumen del día. Comando /estado incluido.</p>
+        <div className="row" style={{ gap: 24 }}>
+          <Stat n={m.telegram?.linked} label="usuarios conectados" />
+        </div>
+      </div>
+
+      <div className="card">
+        <div style={{ fontSize: 26, marginBottom: 8 }}>📄</div>
+        <div className="row between" style={{ marginBottom: 8 }}><h3>Informes automáticos</h3><Badge on={false} txt="Próximamente" /></div>
+        <p className="muted" style={{ fontSize: 13 }}>Informes PDF periódicos del rendimiento, enviados por email a los usuarios Elite.</p>
+      </div>
+    </div>
   );
 }
 

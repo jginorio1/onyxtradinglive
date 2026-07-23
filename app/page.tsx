@@ -32,23 +32,39 @@ const LOGOS = [
 function Counter({ to, prefix = '', suffix = '' }: { to: number; prefix?: string; suffix?: string }) {
   const [n, setN] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
-  const done = useRef(false);
+  const seen = useRef(false);        // ¿ya entró en pantalla alguna vez?
+  const fromRef = useRef(0);         // desde qué valor animar
+
+  // Anima de `from` a `to`. Se vuelve a llamar cuando llegan los datos reales,
+  // así que un valor que empezó en 0 sube hasta la cifra real al cargar /api/stats.
   useEffect(() => {
-    const run = () => {
-      if (done.current) return; done.current = true;
+    if (!seen.current) return;
+    const from = fromRef.current, dur = 1000, t0 = performance.now();
+    const tick = (t: number) => {
+      const p = Math.min(1, (t - t0) / dur);
+      setN(Math.round(from + (to - from) * (1 - Math.pow(1 - p, 3))));
+      if (p < 1) requestAnimationFrame(tick); else fromRef.current = to;
+    };
+    requestAnimationFrame(tick);
+  }, [to]);
+
+  useEffect(() => {
+    const start = () => {
+      if (seen.current) return; seen.current = true;
       const dur = 1200, t0 = performance.now();
-      const tick = (t: number) => { const p = Math.min(1, (t - t0) / dur); setN(Math.round((1 - Math.pow(1 - p, 3)) * to)); if (p < 1) requestAnimationFrame(tick); };
+      const tick = (t: number) => { const p = Math.min(1, (t - t0) / dur); setN(Math.round((1 - Math.pow(1 - p, 3)) * to)); if (p < 1) requestAnimationFrame(tick); else fromRef.current = to; };
       requestAnimationFrame(tick);
     };
     const el = ref.current;
     let io: IntersectionObserver | null = null;
     if (el && typeof IntersectionObserver !== 'undefined') {
-      io = new IntersectionObserver((ents) => { if (ents[0].isIntersecting) run(); }, { threshold: 0.3 });
+      io = new IntersectionObserver((ents) => { if (ents[0].isIntersecting) start(); }, { threshold: 0.3 });
       io.observe(el);
     }
-    const timer = setTimeout(run, 1500); // respaldo: anima aunque el observer no dispare
+    const timer = setTimeout(start, 1500);
     return () => { if (io) io.disconnect(); clearTimeout(timer); };
-  }, [to]);
+  }, []);
+
   return <div ref={ref} style={{ fontSize: 44, fontWeight: 800, letterSpacing: '-1px', background: 'var(--grad)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>{prefix}{n.toLocaleString()}{suffix}</div>;
 }
 
@@ -321,10 +337,15 @@ export default function Home() {
   const [pnl, setPnl] = useState(1800);
   const [vidErr, setVidErr] = useState(false);
   const [dbPlans, setDbPlans] = useState<any[]>([]);
+  const [stats, setStats] = useState({ trades: 0, blocks: 0, accounts: 0 });
   const t = dict[lang];
 
   useEffect(() => {
     fetch('/api/admin/plans').then((r) => r.json()).then((j) => setDbPlans(j.plans || [])).catch(() => {});
+    // Cifras reales para la prueba social; crecen solas con el uso
+    fetch('/api/stats').then((r) => r.json()).then((j) => setStats({
+      trades: Number(j.trades || 0), blocks: Number(j.blocks || 0), accounts: Number(j.accounts || 0),
+    })).catch(() => {});
   }, []);
   const f = FIRMS[firm];
   const target = 5000, maxLoss = 5000;
@@ -405,15 +426,25 @@ export default function Home() {
         </div>
       </div>
 
-      {/* STATS (prueba social) */}
+      {/* STATS · números reales que crecen solos con el uso (de /api/stats) */}
       <div className="wrap section" style={{ paddingTop: 10 }}>
         <div className="grid g4" style={{ textAlign: 'center' }}>
-          {STATS.map((s, i) => (
-            <div key={i} className="card" style={{ padding: '26px 16px' }}>
-              <Counter to={s.to} prefix={s.prefix} suffix={s.suffix} />
-              <div className="muted" style={{ fontSize: 14, marginTop: 6 }}>{lang === 'es' ? s.es : s.en}</div>
-            </div>
-          ))}
+          <div className="card" style={{ padding: '26px 16px' }}>
+            <Counter to={stats.trades} suffix="+" />
+            <div className="muted" style={{ fontSize: 14, marginTop: 6 }}>{lang === 'es' ? 'Operaciones analizadas' : 'Trades analyzed'}</div>
+          </div>
+          <div className="card" style={{ padding: '26px 16px' }}>
+            <Counter to={stats.blocks} suffix="+" />
+            <div className="muted" style={{ fontSize: 14, marginTop: 6 }}>{lang === 'es' ? 'Frenos del Guardian' : 'Guardian stops'}</div>
+          </div>
+          <div className="card" style={{ padding: '26px 16px' }}>
+            <Counter to={2} />
+            <div className="muted" style={{ fontSize: 14, marginTop: 6 }}>{lang === 'es' ? 'Plataformas · MT4 y MT5' : 'Platforms · MT4 & MT5'}</div>
+          </div>
+          <div className="card" style={{ padding: '26px 16px' }}>
+            <Counter to={100} suffix="%" />
+            <div className="muted" style={{ fontSize: 14, marginTop: 6 }}>{lang === 'es' ? 'Conexión de solo lectura' : 'Read-only connection'}</div>
+          </div>
         </div>
       </div>
 

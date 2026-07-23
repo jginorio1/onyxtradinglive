@@ -35,7 +35,11 @@ const T: any = {
     },
     off: 'Los avisos generales están apagados. Enciéndelos arriba para recibir nada por Telegram.',
     saved: 'Guardado', test: 'Enviar prueba', testOk: 'Enviado ✓', testSending: '...',
-    cmds: 'En el bot puedes escribir /estado para un resumen rápido, o /stop para dejar de recibir.',
+    cmdsT: 'Comandos del bot',
+    cmdEstado: 'Resumen de tus últimas 24h, sin abrir la web.',
+    cmdStop: 'Deja de recibir avisos. Los reactivas desde aquí.',
+    cmdExample: 'ASÍ SE VE EN TELEGRAM',
+    cmdMsgT: 'Últimas 24h', cmdMsg1: 'Operaciones: 3', cmdMsg2: 'Resultado: +$182.40', cmdMsg3: 'El Guardian te frenó: 1 vez',
     unavailable: 'Los avisos por Telegram aún no están disponibles. Vuelve pronto.',
   },
   en: {
@@ -62,7 +66,11 @@ const T: any = {
     },
     off: 'General alerts are off. Turn them on above to receive anything on Telegram.',
     saved: 'Saved', test: 'Send a test', testOk: 'Sent ✓', testSending: '...',
-    cmds: 'In the bot you can type /status for a quick summary, or /stop to unsubscribe.',
+    cmdsT: 'Bot commands',
+    cmdEstado: 'A summary of your last 24h, without opening the web.',
+    cmdStop: 'Stop receiving alerts. Turn them back on here.',
+    cmdExample: 'THIS IS HOW IT LOOKS ON TELEGRAM',
+    cmdMsgT: 'Last 24h', cmdMsg1: 'Trades: 3', cmdMsg2: 'Result: +$182.40', cmdMsg3: 'The Guardian stopped you: 1 time',
     unavailable: 'Telegram alerts are not available yet. Check back soon.',
   },
 };
@@ -169,7 +177,33 @@ export default function TelegramCard({ lang }: { lang: 'es' | 'en' }) {
             </button>
             {saved && <span style={{ color: 'var(--green)', fontSize: 12 }}>{t.saved}</span>}
           </div>
-          <p className="muted" style={{ fontSize: 12, marginTop: 10 }}>{t.cmds}</p>
+
+          {/* Comandos del bot, con ejemplo visual de lo que verá en Telegram */}
+          <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid var(--line)' }}>
+            <div style={{ fontSize: 13, marginBottom: 10 }}>{t.cmdsT}</div>
+            <div className="row" style={{ gap: 8, marginBottom: 8, alignItems: 'flex-start' }}>
+              <code style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 7, padding: '3px 9px', color: '#aeb7ff', fontSize: 13, flex: 'none' }}>/estado</code>
+              <span className="muted" style={{ fontSize: 13 }}>{t.cmdEstado}</span>
+            </div>
+            <div className="row" style={{ gap: 8, marginBottom: 14, alignItems: 'flex-start' }}>
+              <code style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 7, padding: '3px 9px', color: '#aeb7ff', fontSize: 13, flex: 'none' }}>/stop</code>
+              <span className="muted" style={{ fontSize: 13 }}>{t.cmdStop}</span>
+            </div>
+
+            <div style={{ fontSize: 11, color: 'var(--mut)', marginBottom: 8, letterSpacing: '.03em' }}>{t.cmdExample}</div>
+            <div style={{ background: '#17212b', borderRadius: 12, padding: 12, maxWidth: 320 }}>
+              <div className="row" style={{ justifyContent: 'flex-end', marginBottom: 8 }}>
+                <span style={{ background: '#2b5278', color: '#fff', fontSize: 13, padding: '5px 11px', borderRadius: '13px 13px 3px 13px' }}>/estado</span>
+              </div>
+              <div className="row" style={{ gap: 8, alignItems: 'flex-start' }}>
+                <span style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--brand)', flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#111726' }}>O</span>
+                <div style={{ background: '#212d3b', borderRadius: '13px 13px 13px 3px', padding: '8px 11px', fontSize: 13, lineHeight: 1.7, color: '#e6ebf2' }}>
+                  📊 <b>{t.cmdMsgT}</b><br />
+                  {t.cmdMsg1}<br />{t.cmdMsg2}<br />{t.cmdMsg3}
+                </div>
+              </div>
+            </div>
+          </div>
         </>
       ) : waiting ? (
         <>
