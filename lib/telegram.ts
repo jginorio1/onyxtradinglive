@@ -35,14 +35,19 @@ export async function sendMessage(chatId: string, text: string) {
 
 // Alerta a un usuario respetando sus preferencias.
 // `kind` decide qué interruptor se comprueba antes de enviar.
-type Kind = 'blocks' | 'limits' | 'manager' | 'funding' | 'daily';
+type Kind = 'blocks' | 'limits' | 'manager' | 'funding' | 'daily' | 'offline' | 'goal';
+
+const PREF_COL: Record<Kind, string> = {
+  blocks: 'tg_blocks', limits: 'tg_limits', manager: 'tg_manager',
+  funding: 'tg_funding', daily: 'tg_daily', offline: 'tg_offline', goal: 'tg_goal',
+};
 
 export async function alertUser(userId: string, kind: Kind, text: string) {
   try {
     const { data: p } = await supabaseAdmin
       .from('profiles')
-      .select('telegram_chat_id,tg_alerts,tg_blocks,tg_limits,tg_manager,tg_funding,tg_daily,plan')
-      .eq('id', userId).maybeSingle();
+      .select('telegram_chat_id,tg_alerts,tg_blocks,tg_limits,tg_manager,tg_funding,tg_daily,tg_offline,tg_goal,plan')
+      .eq('id', userId).maybeSingle() as any;
 
     if (!p?.telegram_chat_id) return false;
     if (!p.tg_alerts) return false;                 // interruptor general apagado
@@ -50,15 +55,31 @@ export async function alertUser(userId: string, kind: Kind, text: string) {
     // Telegram es de Elite: si el plan cambió, dejamos de mandar
     const { data: plan } = await supabaseAdmin
       .from('plans').select('capabilities').eq('id', p.plan || 'free').maybeSingle();
-    if (!plan?.capabilities?.telegram) return false;
+    if (!(plan?.capabilities as any)?.telegram) return false;
 
-    const on: Record<Kind, boolean> = {
-      blocks: !!p.tg_blocks, limits: !!p.tg_limits, manager: !!p.tg_manager,
-      funding: !!p.tg_funding, daily: !!p.tg_daily,
-    };
-    if (!on[kind]) return false;
+    if (!p[PREF_COL[kind]]) return false;
 
     return await sendMessage(p.telegram_chat_id, text);
+  } catch { return false; }
+}
+
+// Alerta "una vez al día": para avisos que no queremos repetir en cada
+// heartbeat (cerca de un límite, EA caído…). `key` distingue el tipo y el día.
+export async function alertOncePerDay(userId: string, kind: Kind, key: string, text: string) {
+  try {
+    const { data: p } = await supabaseAdmin.from('profiles')
+      .select('tg_sent').eq('id', userId).maybeSingle() as any;
+    const sent = (p?.tg_sent as any) || {};
+    const today = new Date().toISOString().slice(0, 10);
+    const stamp = `${key}:${today}`;
+    if (sent[key] === today) return false;          // ya avisado hoy
+
+    const ok = await alertUser(userId, kind, text);
+    if (ok) {
+      sent[key] = today;
+      await supabaseAdmin.from('profiles').update({ tg_sent: sent }).eq('id', userId);
+    }
+    return ok;
   } catch { return false; }
 }
 

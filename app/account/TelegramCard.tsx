@@ -27,12 +27,15 @@ const T: any = {
     prefs: {
       tg_blocks: 'Cuando el Guardian te frena',
       tg_limits: 'Límites de pérdida y objetivo',
-      tg_manager: 'Break even, trailing y parciales',
       tg_funding: 'Cerca de una regla de fondeo',
+      tg_offline: 'Guardian sin señal (EA caído)',
+      tg_goal: 'Objetivo de fondeo alcanzado',
+      tg_manager: 'Break even, trailing y parciales',
       tg_daily: 'Resumen del día',
     },
     off: 'Los avisos generales están apagados. Enciéndelos arriba para recibir nada por Telegram.',
-    saved: 'Guardado',
+    saved: 'Guardado', test: 'Enviar prueba', testOk: 'Enviado ✓', testSending: '...',
+    cmds: 'En el bot puedes escribir /estado para un resumen rápido, o /stop para dejar de recibir.',
     unavailable: 'Los avisos por Telegram aún no están disponibles. Vuelve pronto.',
   },
   en: {
@@ -51,12 +54,15 @@ const T: any = {
     prefs: {
       tg_blocks: 'When the Guardian stops you',
       tg_limits: 'Loss and target limits',
-      tg_manager: 'Break even, trailing and partials',
       tg_funding: 'Close to a funding rule',
+      tg_offline: 'Guardian offline (EA down)',
+      tg_goal: 'Funding target reached',
+      tg_manager: 'Break even, trailing and partials',
       tg_daily: 'Daily summary',
     },
     off: 'General alerts are off. Turn them on above to receive anything on Telegram.',
-    saved: 'Saved',
+    saved: 'Saved', test: 'Send a test', testOk: 'Sent ✓', testSending: '...',
+    cmds: 'In the bot you can type /status for a quick summary, or /stop to unsubscribe.',
     unavailable: 'Telegram alerts are not available yet. Check back soon.',
   },
 };
@@ -106,6 +112,12 @@ export default function TelegramCard({ lang }: { lang: 'es' | 'en' }) {
     await fetch('/api/account/telegram', { method: 'POST', body: JSON.stringify({ action: 'prefs', [k]: v }) });
     setSaved(true); setTimeout(() => setSaved(false), 1500);
   }
+  const [tested, setTested] = useState('');
+  async function sendTest() {
+    setTested('sending');
+    const r = await fetch('/api/account/telegram', { method: 'POST', body: JSON.stringify({ action: 'test' }) });
+    setTested(r.ok ? 'ok' : ''); setTimeout(() => setTested(''), 2500);
+  }
 
   if (!d) return <div className="muted" style={{ fontSize: 13 }}>…</div>;
 
@@ -143,14 +155,21 @@ export default function TelegramCard({ lang }: { lang: 'es' | 'en' }) {
           </div>
 
           <div style={{ fontSize: 13, color: 'var(--mut)', marginBottom: 8 }}>{t.prefsT}</div>
-          {(['tg_blocks', 'tg_limits', 'tg_funding', 'tg_manager', 'tg_daily'] as string[]).map((k) => (
+          {(['tg_blocks', 'tg_limits', 'tg_funding', 'tg_offline', 'tg_goal', 'tg_manager', 'tg_daily'] as string[]).map((k) => (
             <div key={k} className="row between" style={{ padding: '8px 0', borderTop: '1px solid var(--line)' }}>
               <span style={{ fontSize: 14 }}>{t.prefs[k]}</span>
               <Toggle on={!!d.prefs[k]} onClick={() => setPref(k, !d.prefs[k])} />
             </div>
           ))}
           {!d.prefs.tg_alerts && <div className="muted" style={{ fontSize: 12, marginTop: 10 }}>{t.off}</div>}
-          {saved && <span style={{ color: 'var(--green)', fontSize: 12 }}>{t.saved}</span>}
+
+          <div className="row" style={{ gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
+            <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={sendTest} disabled={tested === 'sending'}>
+              {tested === 'ok' ? t.testOk : tested === 'sending' ? t.testSending : t.test}
+            </button>
+            {saved && <span style={{ color: 'var(--green)', fontSize: 12 }}>{t.saved}</span>}
+          </div>
+          <p className="muted" style={{ fontSize: 12, marginTop: 10 }}>{t.cmds}</p>
         </>
       ) : waiting ? (
         <>

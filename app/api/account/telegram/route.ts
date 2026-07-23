@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { makeLinkCode, BOT_USERNAME, telegramEnabled } from '@/lib/telegram';
+import { makeLinkCode, BOT_USERNAME, telegramEnabled, sendMessage } from '@/lib/telegram';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-const PREFS = ['tg_alerts', 'tg_blocks', 'tg_limits', 'tg_manager', 'tg_funding', 'tg_daily'];
+const PREFS = ['tg_alerts', 'tg_blocks', 'tg_limits', 'tg_manager', 'tg_funding', 'tg_daily', 'tg_offline', 'tg_goal'];
 
 // GET · estado del vínculo + preferencias, para pintar la pantalla
 export async function GET() {
@@ -16,7 +16,7 @@ export async function GET() {
     if (!user) return NextResponse.json({ error: 'Not signed in.', code: 'no_auth' }, { status: 401 });
 
     const { data: p } = await supabaseAdmin.from('profiles')
-      .select('telegram_chat_id,telegram_username,telegram_linked_at,plan,tg_alerts,tg_blocks,tg_limits,tg_manager,tg_funding,tg_daily')
+      .select('telegram_chat_id,telegram_username,telegram_linked_at,plan,tg_alerts,tg_blocks,tg_limits,tg_manager,tg_funding,tg_daily,tg_offline,tg_goal')
       .eq('id', user.id).maybeSingle() as any;
 
     const { data: plan } = await supabaseAdmin.from('plans')
@@ -61,6 +61,16 @@ export async function POST(req: Request) {
         .update({ telegram_chat_id: null, telegram_username: null, telegram_linked_at: null, telegram_link_code: null })
         .eq('id', user.id);
       return NextResponse.json({ ok: true });
+    }
+
+    // Enviar un mensaje de prueba, para confirmar que llega
+    if (b.action === 'test') {
+      const { data: p } = await supabaseAdmin.from('profiles')
+        .select('telegram_chat_id').eq('id', user.id).maybeSingle() as any;
+      if (!p?.telegram_chat_id) return NextResponse.json({ error: 'no vinculado', code: 'not_found' }, { status: 400 });
+      const ok = await sendMessage(p.telegram_chat_id,
+        '✅ Onyx Guardian\nEsto es un mensaje de prueba. Si lo ves, tus avisos están funcionando.');
+      return NextResponse.json({ ok });
     }
 
     // Guardar preferencias de alertas

@@ -1,6 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { mergeConfig, ManagerConfig } from '@/lib/manager';
-import { alertUser } from '@/lib/telegram';
+import { alertUser, alertOncePerDay } from '@/lib/telegram';
 
 // ============================================================
 // El guardián. Decide si el trader puede abrir una operación ahora mismo.
@@ -154,6 +154,12 @@ export async function evaluate(opts: {
           en: `You hit your daily loss limit (${fmt(-dayPnl)} of ${fmt(cap)}). Done for today.`,
         }, opts, st, cfg);
       }
+      // Aviso preventivo: te acercas al límite del día (una vez al día por cuenta)
+      if (dayPnl < 0 && v.usage.daily_loss_used_pct >= 75) {
+        const left = effective + dayPnl;   // cuánto queda hasta el tope real
+        alertOncePerDay(opts.userId, 'funding', `fund_day_${opts.accountId}`,
+          `⚠️ Onyx Guardian\nTe acercas a tu pérdida máxima del día: llevas ${fmt(-dayPnl)} de ${fmt(cap)}. Te quedan ${fmt(Math.max(0, left))} de margen.`).catch(() => {});
+      }
     }
 
     // pérdida total
@@ -168,6 +174,11 @@ export async function evaluate(opts: {
           es: `Has llegado a tu pérdida máxima total (${fmt(-totalPnl)} de ${fmt(cap)}).`,
           en: `You hit your maximum total loss (${fmt(-totalPnl)} of ${fmt(cap)}).`,
         }, opts, st, cfg);
+      }
+      if (totalPnl < 0 && v.usage.total_loss_used_pct >= 75) {
+        const left = effective + totalPnl;
+        alertOncePerDay(opts.userId, 'funding', `fund_total_${opts.accountId}`,
+          `⚠️ Onyx Guardian\nTe acercas a tu pérdida máxima total: llevas ${fmt(-totalPnl)} de ${fmt(cap)}. Te quedan ${fmt(Math.max(0, left))} de margen.`).catch(() => {});
       }
     }
 

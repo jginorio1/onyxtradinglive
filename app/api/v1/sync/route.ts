@@ -5,6 +5,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { accountLimit } from '@/lib/settings';
 import { forEA, mergeConfig } from '@/lib/manager';
 import { evaluate, registerClosedTrades, newsNear } from '@/lib/managerGuard';
+import { alertUser, alertOncePerDay } from '@/lib/telegram';
 
 export const runtime = 'nodejs';
 
@@ -162,7 +163,7 @@ export async function POST(req: NextRequest) {
 
     // --- Eventos que nos manda el EA (lo que hizo y por qué) ---
     if (Array.isArray(body.events) && body.events.length) {
-      const rows = body.events.slice(0, 50).map((e: any) => ({
+      const clean = body.events.slice(0, 50).map((e: any) => ({
         user_id: userId,
         account_id: accountId,
         kind: ['breakeven', 'trailing', 'partial', 'close_all', 'blocked', 'override', 'limit', 'news', 'schedule', 'tilt', 'info'].includes(e.kind) ? e.kind : 'info',
@@ -171,7 +172,20 @@ export async function POST(req: NextRequest) {
         ticket: e.ticket ? Number(e.ticket) : null,
         amount: e.amount != null ? Number(e.amount) : null,
       }));
-      await supabaseAdmin.from('manager_events').insert(rows);
+      await supabaseAdmin.from('manager_events').insert(clean);
+
+      // Avisos a Telegram por lo que hizo el gestor con la operación abierta.
+      // Solo los tres tipos que interesa notificar; el resto se queda en el historial.
+      for (const e of clean) {
+        if (e.kind === 'breakeven' || e.kind === 'trailing' || e.kind === 'partial') {
+          const icon = e.kind === 'partial' ? '💰' : '🎯';
+          const line = e.symbol ? `${e.detail} · ${e.symbol}` : e.detail;
+          alertUser(userId, 'manager', `${icon} Onyx Guardian\n${line}`).catch(() => {});
+        } else if (e.kind === 'override') {
+          // "Te saltaste una regla" — deja constancia
+          alertUser(userId, 'blocks', `⚠️ Onyx Guardian\n${e.detail || 'Te saltaste una regla del plan.'}`).catch(() => {});
+        }
+      }
     }
 
     // --- Confirmación de comandos ejecutados ---
@@ -180,6 +194,27 @@ export async function POST(req: NextRequest) {
         .update({ status: 'done', done_at: new Date().toISOString() })
         .in('id', body.doneCommands.slice(0, 20));
     }
+
+    // --- Objetivo de fondeo alcanzado / challenge pasado ---
+    // Usa los campos fund_* que el usuario metió en el dashboard. Se avisa
+    // una sola vez (marcamos goal_notified_at) para no felicitar en cada sync.
+    try {
+      const { data: fa } = await supabaseAdmin.from('trading_accounts')
+        .select('nickname,login,acc_type,fund_target,fund_start,goal_notified_at,balance,equity')
+        .eq('id', accountId).maybeSingle() as any;
+      const target = Number(fa?.fund_target || 0);
+      const start = Number(fa?.fund_start || 0);
+      if (target > 0 && start > 0 && !fa?.goal_notified_at) {
+        const pnl = Number(acc.equity ?? acc.balance ?? 0) - start;
+        if (pnl >= target) {
+          const name = fa.nickname || fa.login;
+          alertUser(userId, 'goal',
+            `🏆 Onyx Guardian\n¡Objetivo alcanzado en ${name}! Llevas +$${pnl.toFixed(0)} sobre tu inicio de $${start.toFixed(0)}.\nAhora protege lo conseguido: activa tus límites y no lo devuelvas.`).catch(() => {});
+          await supabaseAdmin.from('trading_accounts')
+            .update({ goal_notified_at: new Date().toISOString() }).eq('id', accountId);
+        }
+      }
+    } catch { /* si falla, no rompe el sync */ }
 
     // --- Configuración vigente del gestor + veredicto + órdenes pendientes ---
     let managerCfg: any = null;
