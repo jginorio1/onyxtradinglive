@@ -99,24 +99,10 @@ function mmss(ms: number) {
 }
 
 export default function InstallWizard({ t, w, lang, apiUrl, origin, apiKey, onDownload, copy, copied }: any) {
-  const total = t.steps.length;
-  const [step, setStep] = useState(0);
-  const [mode, setMode] = useState<'wizard' | 'list'>('wizard');
   const [status, setStatus] = useState<any>(null);
   const [elapsed, setElapsed] = useState(0);
   const [collapsed, setCollapsed] = useState(false);
   const startedAt = useRef(0);
-
-  // Retomar donde lo dejó: instalar un EA obliga a saltar entre el
-  // navegador y MetaTrader varias veces, y se pierde el hilo.
-  useEffect(() => {
-    try {
-      const s = Number(localStorage.getItem('onyx_wiz_step') || 0);
-      if (s > 0 && s < total) setStep(s);
-      if (localStorage.getItem('onyx_wiz_mode') === 'list') setMode('list');
-    } catch {}
-  }, [total]);
-  useEffect(() => { try { localStorage.setItem('onyx_wiz_step', String(step)); } catch {} }, [step]);
 
   const check = useCallback(async () => {
     try {
@@ -133,26 +119,22 @@ export default function InstallWizard({ t, w, lang, apiUrl, origin, apiKey, onDo
     check().then((j) => { if (j?.connected) setCollapsed(true); });
   }, [check]);
 
-  // En el último paso preguntamos al servidor hasta que llegue la señal.
-  // Esperamos a que esté VIVO (señal en 2 min), no a que haya conectado
-  // alguna vez — así no damos por bueno un EA que ya no está corriendo.
-  const waiting = step === total - 1 && !status?.live;
+  // Mientras no haya señal VIVA (últimos 2 min), preguntamos al servidor en
+  // bucle para ir refrescando el semáforo de conexión de abajo.
+  const live = !!status?.live;
   useEffect(() => {
-    if (!waiting) return;
+    if (live) return;
     if (!startedAt.current) startedAt.current = Date.now();
     const poll = setInterval(check, POLL_MS);
     const tick = setInterval(() => setElapsed(Date.now() - startedAt.current), 1000);
     return () => { clearInterval(poll); clearInterval(tick); };
-  }, [waiting, check]);
+  }, [live, check]);
 
-  const lbl = { fontSize: 12, color: 'var(--mut)', display: 'block', marginBottom: 4 } as any;
+  const stripNum = (s: string) => (s || '').replace(/^\s*\d+\.\s*/, '');
 
-  // ---- Ya configurado y plegado ----
-  // OJO: "connected" solo significa que la cuenta sincronizó ALGUNA vez.
-  // Para decir "conectado" en verde usamos "live" (señal en los últimos 2 min).
-  // Si no está viva, mostramos "sin señal ahora" en ámbar con la última hora.
+  // ---- Ya configurado y plegado ---- (banner compacto para quien vuelve)
+  // "connected" = sincronizó alguna vez; "live" = señal en los últimos 2 min.
   if (collapsed && status?.connected) {
-    const live = !!status.live;
     const mins = status.account?.lastSyncAt
       ? Math.max(0, Math.floor((Date.now() - new Date(status.account.lastSyncAt).getTime()) / 60000))
       : 0;
@@ -177,132 +159,79 @@ export default function InstallWizard({ t, w, lang, apiUrl, origin, apiKey, onDo
             </div>
           </div>
           <button className="btn btn-ghost" style={{ fontSize: 13 }}
-            onClick={() => { setCollapsed(false); setStep(0); }}>{w.expand}</button>
+            onClick={() => setCollapsed(false)}>{w.expand}</button>
         </div>
       </div>
     );
   }
 
-  // ---- Lista completa (para quien ya sabe) ----
-  if (mode === 'list') {
-    return (
-      <div className="card" style={{ marginBottom: 18 }}>
-        <div className="row between" style={{ marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
-          <h3>{t.step3}</h3>
-          <button className="btn btn-ghost" style={{ padding: '5px 12px', fontSize: 12 }}
-            onClick={() => { setMode('wizard'); try { localStorage.setItem('onyx_wiz_mode', 'wizard'); } catch {} }}>
-            {w.seeWizard}
-          </button>
-        </div>
+  // ---- Vista completa: todos los pasos + semáforo de conexión ----
+  const stuck = !live && elapsed > HELP_AFTER_MS;
+
+  return (
+    <div style={{ marginBottom: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+      {/* Fase 2 · todos los pasos, abiertos */}
+      <div className="card">
+        <h3 style={{ marginBottom: 2 }}>{t.step3}</h3>
+        <p className="muted" style={{ fontSize: 13, marginBottom: 18 }}>{lang === 'en' ? 'Follow the 7 steps in order.' : 'Sigue los 7 pasos en orden.'}</p>
         {t.steps.map((s: any, i: number) => (
-          <div key={i} className="row" style={{ gap: 12, alignItems: 'flex-start', marginBottom: 14 }}>
+          <div key={i} className="row" style={{ gap: 12, alignItems: 'flex-start', paddingTop: i ? 16 : 0, marginTop: i ? 16 : 0, borderTop: i ? '1px solid var(--line)' : 'none' }}>
             <div style={{
-              width: 22, height: 22, borderRadius: '50%', flex: 'none', fontSize: 11,
+              width: 28, height: 28, borderRadius: '50%', flex: 'none', fontSize: 13, fontWeight: 700,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              border: '1px solid var(--line)', color: 'var(--mut)',
+              background: 'var(--card2)', color: 'var(--tx)',
             }}>{i + 1}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 14 }}>{s.t}</div>
-              {s.d && <div className="muted" style={{ fontSize: 12, marginTop: 3, lineHeight: 1.6 }}>{s.d}</div>}
+              <div style={{ fontSize: 15, fontWeight: 600 }}>{stripNum(s.t)}</div>
+              {s.d && <div className="muted" style={{ fontSize: 13, marginTop: 3, lineHeight: 1.6 }}>{s.d}</div>}
               <StepVisual viz={s.viz} origin={origin} apiUrl={apiUrl} lang={lang} />
-              <StepExtras s={s} t={t} w={w} apiUrl={apiUrl} origin={origin} apiKey={apiKey} copy={copy} copied={copied} />
+              <StepExtras s={s} t={t} w={w} apiUrl={apiUrl} origin={origin} apiKey={apiKey}
+                copy={copy} copied={copied} onDownload={onDownload} first={i === 0} />
             </div>
           </div>
         ))}
       </div>
-    );
-  }
 
-  // ---- Éxito ---- solo si hay señal REAL ahora mismo (live), no si conectó antes
-  if (status?.live && step === total - 1) {
-    return (
-      <div className="card" style={{ marginBottom: 18, border: '1px solid var(--green)', textAlign: 'center', padding: 28 }}>
-        <div style={{
-          width: 46, height: 46, borderRadius: '50%', margin: '0 auto 14px',
-          background: 'rgba(52,226,160,.14)', color: 'var(--green)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24,
-        }}>✓</div>
-        <h3 style={{ color: 'var(--green)', fontSize: 20, marginBottom: 6 }}>{w.okT}</h3>
-        <p className="muted" style={{ fontSize: 13, marginBottom: 20 }}>
-          {w.connectedD(status.account?.login, status.account?.broker)}
-          {' · '}{status.trades > 0 ? w.okD(status.trades) : w.okNone}
-        </p>
-        <div className="row" style={{ gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
-          <Link className="btn btn-primary" href="/dashboard">{w.goDash}</Link>
-          <Link className="btn btn-ghost" href="/dashboard/manager">{w.goManager}</Link>
-        </div>
-      </div>
-    );
-  }
-
-  const s = t.steps[step];
-  const stuck = waiting && elapsed > HELP_AFTER_MS;
-
-  return (
-    <div className="card" style={{ marginBottom: 18, border: waiting ? '1px solid var(--brand)' : undefined }}>
-      {/* Progreso */}
-      <div className="row between" style={{ marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
-        <span className="muted" style={{ fontSize: 12 }}>{w.stepOf(step + 1, total)}</span>
-        <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }}
-          onClick={() => { setMode('list'); try { localStorage.setItem('onyx_wiz_mode', 'list'); } catch {} }}>
-          {w.seeAll}
-        </button>
-      </div>
-      <div style={{ height: 4, background: 'var(--bg2)', borderRadius: 4, overflow: 'hidden', marginBottom: 18 }}>
-        <div style={{ width: `${((step + 1) / total) * 100}%`, height: '100%', background: 'var(--brand)', transition: 'width .25s' }} />
-      </div>
-
-      {waiting ? (
-        <div style={{ textAlign: 'center', padding: '10px 0 6px' }}>
-          <div className="spin" style={{
-            width: 34, height: 34, borderRadius: '50%', margin: '0 auto 14px',
-            border: '3px solid var(--bg2)', borderTopColor: 'var(--brand)',
-          }} />
-          <div style={{ fontSize: 16, marginBottom: 6 }}>{w.waitT}</div>
-          <p className="muted" style={{ fontSize: 13, lineHeight: 1.7, maxWidth: 420, margin: '0 auto' }}>{w.waitD}</p>
-          <div style={{ maxWidth: 420, margin: '0 auto', textAlign: 'left' }}>
-            <StepVisual viz="algo" origin={origin} apiUrl={apiUrl} lang={lang} />
-          </div>
-          <div className="muted" style={{ fontSize: 12, marginTop: 12 }}>{w.checking} · {mmss(elapsed)}</div>
-
-          {stuck && (
-            <div style={{ marginTop: 20, textAlign: 'left', padding: '14px 16px', background: 'rgba(245,158,11,.06)', border: '1px solid var(--amber)', borderRadius: 10 }}>
-              <div style={{ color: 'var(--amber)', fontWeight: 600, marginBottom: 4 }}>{w.stuckT}</div>
-              <div className="muted" style={{ fontSize: 13, marginBottom: 10 }}>{w.stuckD}</div>
-              {w.stuck.map((x: any, i: number) => (
-                <div key={i} className="row" style={{ gap: 10, alignItems: 'flex-start', borderTop: '1px solid var(--line)', padding: '9px 0' }}>
-                  <span className="muted" style={{ fontSize: 12 }}>{i + 1}</span>
-                  <div>
-                    <div style={{ fontSize: 13 }}>{x.t}</div>
-                    <div className="muted" style={{ fontSize: 12 }}>{x.d}</div>
-                  </div>
-                </div>
-              ))}
-              <div className="row" style={{ gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-                <button className="btn btn-ghost" style={{ padding: '6px 13px', fontSize: 12 }} onClick={check}>{w.retry}</button>
-                <button className="btn btn-ghost" style={{ padding: '6px 13px', fontSize: 12 }}
-                  onClick={() => setStep(4)}>{w.backToFields}</button>
-              </div>
+      {/* Fase 3 · semáforo de conexión en vivo */}
+      <div className="card" style={{ border: '1px solid ' + (live ? 'var(--green)' : 'var(--amber)') }}>
+        {live ? (
+          <div style={{ textAlign: 'center', padding: '6px 0' }}>
+            <div style={{ width: 46, height: 46, borderRadius: '50%', margin: '0 auto 12px', background: 'rgba(52,226,160,.14)', color: 'var(--green)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>✓</div>
+            <h3 style={{ color: 'var(--green)', fontSize: 20, marginBottom: 6 }}>{w.okT}</h3>
+            <p className="muted" style={{ fontSize: 13, marginBottom: 18 }}>
+              {w.connectedD(status.account?.login, status.account?.broker)}
+              {' · '}{(status?.trades || 0) > 0 ? w.okD(status.trades) : w.okNone}
+            </p>
+            <div className="row" style={{ gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <Link className="btn btn-primary" href="/dashboard">{w.goDash}</Link>
+              <Link className="btn btn-ghost" href="/dashboard/manager">{w.goManager}</Link>
             </div>
-          )}
-        </div>
-      ) : (
-        <>
-          <div style={{ fontSize: 18, marginBottom: 8 }}>{s.t}</div>
-          {s.d && <p className="muted" style={{ fontSize: 13, lineHeight: 1.7, marginBottom: 14 }}>{s.d}</p>}
-          <StepVisual viz={s.viz} origin={origin} apiUrl={apiUrl} />
-          <StepExtras s={s} t={t} w={w} apiUrl={apiUrl} origin={origin} apiKey={apiKey}
-            copy={copy} copied={copied} onDownload={onDownload} first={step === 0} />
-        </>
-      )}
+          </div>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '6px 0' }}>
+            <div className="spin" style={{ width: 34, height: 34, borderRadius: '50%', margin: '0 auto 14px', border: '3px solid var(--bg2)', borderTopColor: 'var(--amber)' }} />
+            <div style={{ fontSize: 16, marginBottom: 6, color: 'var(--amber)' }}>{w.waitT}</div>
+            <p className="muted" style={{ fontSize: 13, lineHeight: 1.7, maxWidth: 420, margin: '0 auto' }}>{w.waitD}</p>
+            <div className="muted" style={{ fontSize: 12, marginTop: 12 }}>{w.checking} · {mmss(elapsed)}</div>
 
-      {/* Navegación */}
-      <div className="row between" style={{ marginTop: 20, paddingTop: 14, borderTop: '1px solid var(--line)', flexWrap: 'wrap', gap: 8 }}>
-        <button className="btn btn-ghost" disabled={step === 0}
-          style={{ opacity: step === 0 ? .4 : 1 }}
-          onClick={() => setStep(Math.max(0, step - 1))}>{w.back}</button>
-        {step < total - 1 && (
-          <button className="btn btn-primary" onClick={() => setStep(step + 1)}>{w.next} →</button>
+            {stuck && (
+              <div style={{ marginTop: 20, textAlign: 'left', padding: '14px 16px', background: 'rgba(245,158,11,.06)', border: '1px solid var(--amber)', borderRadius: 10 }}>
+                <div style={{ color: 'var(--amber)', fontWeight: 600, marginBottom: 4 }}>{w.stuckT}</div>
+                <div className="muted" style={{ fontSize: 13, marginBottom: 10 }}>{w.stuckD}</div>
+                {w.stuck.map((x: any, i: number) => (
+                  <div key={i} className="row" style={{ gap: 10, alignItems: 'flex-start', borderTop: '1px solid var(--line)', padding: '9px 0' }}>
+                    <span className="muted" style={{ fontSize: 12 }}>{i + 1}</span>
+                    <div>
+                      <div style={{ fontSize: 13 }}>{x.t}</div>
+                      <div className="muted" style={{ fontSize: 12 }}>{x.d}</div>
+                    </div>
+                  </div>
+                ))}
+                <button className="btn btn-ghost" style={{ padding: '6px 13px', fontSize: 12, marginTop: 12 }} onClick={check}>{w.retry}</button>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>

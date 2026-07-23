@@ -13,7 +13,7 @@ const K = {
     nav_dash: 'Panel', nav_connect: 'Conectar cuenta', nav_plan: 'Plan', signout: 'Salir',
     h1: 'Instalar Onyx en MetaTrader',
     intro: 'Un solo archivo por plataforma. Ya trae tu servidor configurado: solo tienes que pegar tu clave.',
-    step2: '2 · Elige tu archivo',
+    step2: 'Elige tu archivo',
     dlNote: 'Los dos hacen lo mismo. Solo cambia la plataforma para la que están escritos.',
     eaMt5: 'Onyx EA · MT5', eaMt4: 'Onyx EA · MT4',
     recommended: 'Más usado', newBadge: 'Nuevo',
@@ -23,7 +23,7 @@ const K = {
     oldT: 'Necesito el conector antiguo (solo diario)',
     oldD: 'Solo envía operaciones al diario, sin gestionar nada. Únicamente si el EA nuevo te da problemas.',
     dlMt5: 'Descargar para MT5', dlMt4: 'Descargar para MT4',
-    step3: '3 · Instalarlo',
+    step3: 'Instálalo paso a paso',
     stepsD: 'Los pasos se van marcando solos según avanzas.',
     folderPath: 'MQL5/Experts  (o MQL4/Experts en MT4)',
     allDone: 'Listo. Tu MetaTrader está reportando a Onyx.',
@@ -56,7 +56,7 @@ const K = {
     nav_dash: 'Dashboard', nav_connect: 'Connect account', nav_plan: 'Plan', signout: 'Sign out',
     h1: 'Install Onyx in MetaTrader',
     intro: 'One file per platform. It already has your server configured: you only paste your key.',
-    step2: '2 · Pick your file',
+    step2: 'Pick your file',
     dlNote: 'Both do the same. Only the platform they are written for changes.',
     eaMt5: 'Onyx EA · MT5', eaMt4: 'Onyx EA · MT4',
     recommended: 'Most used', newBadge: 'New',
@@ -66,7 +66,7 @@ const K = {
     oldT: 'I need the old connector (journal only)',
     oldD: 'It only sends trades to the journal, it manages nothing. Use it only if the new EA gives you trouble.',
     dlMt5: 'Download for MT5', dlMt4: 'Download for MT4',
-    step3: '3 · Install it',
+    step3: 'Install it step by step',
     stepsD: 'Steps tick themselves off as you go.',
     folderPath: 'MQL5/Experts  (or MQL4/Experts on MT4)',
     allDone: 'Done. Your MetaTrader is reporting to Onyx.',
@@ -147,6 +147,7 @@ export default function KeysPage() {
   //   · la descarga, porque la pulsó aquí (se recuerda en el navegador)
   //   · el resto, cuando el EA sincroniza — eso demuestra que todo lo anterior salió bien
   const [downloaded, setDownloaded] = useState(false);
+  const [addingKey, setAddingKey] = useState(false);   // fase 1: mostrar el formulario aunque ya haya clave
   useEffect(() => {
     try { setDownloaded(localStorage.getItem('onyx_ea_dl') === '1'); } catch {}
   }, []);
@@ -185,6 +186,18 @@ export default function KeysPage() {
     setCopied(tag); setTimeout(() => setCopied(''), 1500);
   }
 
+  const hasKey = keys.length > 0;
+  // Una fase del recorrido: hecho (verde) · actual (resaltada) · pendiente (gris)
+  const Phase = ({ n, done, active, label }: any) => (
+    <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+      <span style={{
+        width: 26, height: 26, borderRadius: '50%', flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700,
+        background: done ? '#34e2a0' : active ? 'var(--grad)' : 'var(--card2)', color: done || active ? '#fff' : 'var(--mut)',
+      }}>{done ? '✓' : n}</span>
+      <span style={{ fontSize: 13, fontWeight: active ? 700 : 500, color: done ? 'var(--green)' : active ? 'var(--tx)' : 'var(--mut)' }}>{label}</span>
+    </div>
+  );
+
   return (
     <>
 
@@ -208,7 +221,32 @@ export default function KeysPage() {
           </div>
         )}
 
-        {/* Paso 1: conectar una cuenta */}
+        {/* Recorrido en 3 fases */}
+        <div className="card" style={{ marginBottom: 14 }}>
+          <div className="row" style={{ alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <Phase n={1} done={hasKey} active={!hasKey} label={lang === 'en' ? 'Create your key' : 'Crea tu clave'} />
+            <div style={{ flex: 1, height: 2, minWidth: 16, background: hasKey ? '#34e2a0' : 'var(--line)' }} />
+            <Phase n={2} done={false} active={hasKey} label={lang === 'en' ? 'Install the EA' : 'Instala el EA'} />
+            <div style={{ flex: 1, height: 2, minWidth: 16, background: 'var(--line)' }} />
+            <Phase n={3} done={false} active={false} label={lang === 'en' ? 'Connect' : 'Conecta'} />
+          </div>
+        </div>
+
+        {/* Fase 1: crear la clave — colapsa a fila verde cuando ya existe */}
+        {(hasKey && !addingKey && !newKey) ? (
+          <div className="card" style={{ marginBottom: 18, border: '1px solid var(--green)' }}>
+            <div className="row between" style={{ flexWrap: 'wrap', gap: 10 }}>
+              <div className="row" style={{ gap: 10, alignItems: 'center' }}>
+                <span style={{ width: 28, height: 28, borderRadius: '50%', flex: 'none', background: 'rgba(52,226,160,.14)', color: 'var(--green)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15 }}>✓</span>
+                <div>
+                  <div style={{ fontWeight: 700 }}>{lang === 'en' ? 'Step 1 · your key is ready' : 'Paso 1 · tu clave está lista'}</div>
+                  <div className="muted" style={{ fontSize: 13 }}>{keys[0]?.label || keys[0]?.broker || (lang === 'en' ? 'Key created' : 'Clave creada')}</div>
+                </div>
+              </div>
+              <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => setAddingKey(true)}>{lang === 'en' ? 'Add another' : 'Crear otra'}</button>
+            </div>
+          </div>
+        ) : (
         <div className="card" style={{ marginBottom: 18 }}>
           <h3 style={{ marginBottom: 4 }}>{t.step1}</h3>
           <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{t.formHint}</p>
@@ -272,6 +310,7 @@ export default function KeysPage() {
             </div>
           )}
         </div>
+        )}
 
         {/* Paso 2: elegir el archivo */}
         <div className="card" style={{ marginBottom: 18 }}>
