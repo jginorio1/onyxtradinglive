@@ -39,6 +39,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true });
     }
 
+    // /informe  → informe semanal al momento
+    if (text === '/informe' || text === '/report') {
+      const { data: prof } = await supabaseAdmin.from('profiles')
+        .select('id').eq('telegram_chat_id', chatId).maybeSingle();
+      if (!prof) {
+        await sendMessage(chatId, 'No reconozco este chat. Conéctate primero desde tu cuenta → Avisos.');
+        return NextResponse.json({ ok: true });
+      }
+      const { buildWeeklyReport } = await import('@/lib/weeklyReport');
+      const rep = await buildWeeklyReport(prof.id);
+      await sendMessage(chatId, rep || 'Todavía no tienes operaciones esta semana.');
+      return NextResponse.json({ ok: true });
+    }
+
     // /estado  → resumen rápido del día, sin abrir la web
     if (text === '/estado' || text === '/status') {
       const { data: prof } = await supabaseAdmin.from('profiles')
@@ -104,7 +118,7 @@ export async function POST(req: Request) {
 
     // /start sin código, o cualquier otra cosa: ayuda
     await sendMessage(chatId,
-      'Hola 👋 Soy Onyx Guardian.\nPara conectarte, entra en onyxtradinglive.com → Mi cuenta → Avisos → Conectar Telegram, y pega aquí el código que te dé.\n\nComandos: /estado (resumen del día) · /stop (dejar de recibir).');
+      'Hola 👋 Soy Onyx Guardian.\nPara conectarte, entra en onyxtradinglive.com → Mi cuenta → Avisos → Conectar Telegram, y pega aquí el código que te dé.\n\nComandos: /estado (día) · /informe (semana) · /stop (dejar de recibir).');
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     // Devolvemos 200 igualmente: si respondemos error, Telegram reintenta en bucle

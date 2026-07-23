@@ -1,6 +1,7 @@
 {
   "crons": [
     { "path": "/api/cron/telegram?job=offline", "schedule": "*/10 * * * *" },
-    { "path": "/api/cron/telegram?job=daily", "schedule": "0 21 * * *" }
+    { "path": "/api/cron/telegram?job=daily", "schedule": "0 21 * * *" },
+    { "path": "/api/cron/telegram?job=weekly", "schedule": "0 18 * * 0" }
   ]
 }

@@ -6,7 +6,7 @@ import { makeLinkCode, BOT_USERNAME, telegramEnabled, sendMessage } from '@/lib/
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-const PREFS = ['tg_alerts', 'tg_blocks', 'tg_limits', 'tg_manager', 'tg_funding', 'tg_daily', 'tg_offline', 'tg_goal'];
+const PREFS = ['tg_alerts', 'tg_blocks', 'tg_limits', 'tg_manager', 'tg_funding', 'tg_daily', 'tg_offline', 'tg_goal', 'tg_weekly'];
 
 // GET · estado del vínculo + preferencias, para pintar la pantalla
 export async function GET() {
@@ -16,7 +16,7 @@ export async function GET() {
     if (!user) return NextResponse.json({ error: 'Not signed in.', code: 'no_auth' }, { status: 401 });
 
     const { data: p } = await supabaseAdmin.from('profiles')
-      .select('telegram_chat_id,telegram_username,telegram_linked_at,plan,tg_alerts,tg_blocks,tg_limits,tg_manager,tg_funding,tg_daily,tg_offline,tg_goal')
+      .select('telegram_chat_id,telegram_username,telegram_linked_at,plan,tg_alerts,tg_blocks,tg_limits,tg_manager,tg_funding,tg_daily,tg_offline,tg_goal,tg_weekly')
       .eq('id', user.id).maybeSingle() as any;
 
     const { data: plan } = await supabaseAdmin.from('plans')

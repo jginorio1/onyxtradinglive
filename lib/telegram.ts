@@ -35,18 +35,19 @@ export async function sendMessage(chatId: string, text: string) {
 
 // Alerta a un usuario respetando sus preferencias.
 // `kind` decide qué interruptor se comprueba antes de enviar.
-type Kind = 'blocks' | 'limits' | 'manager' | 'funding' | 'daily' | 'offline' | 'goal';
+type Kind = 'blocks' | 'limits' | 'manager' | 'funding' | 'daily' | 'offline' | 'goal' | 'weekly';
 
 const PREF_COL: Record<Kind, string> = {
   blocks: 'tg_blocks', limits: 'tg_limits', manager: 'tg_manager',
   funding: 'tg_funding', daily: 'tg_daily', offline: 'tg_offline', goal: 'tg_goal',
+  weekly: 'tg_weekly',
 };
 
 export async function alertUser(userId: string, kind: Kind, text: string) {
   try {
     const { data: p } = await supabaseAdmin
       .from('profiles')
-      .select('telegram_chat_id,tg_alerts,tg_blocks,tg_limits,tg_manager,tg_funding,tg_daily,tg_offline,tg_goal,plan')
+      .select('telegram_chat_id,tg_alerts,tg_blocks,tg_limits,tg_manager,tg_funding,tg_daily,tg_offline,tg_goal,tg_weekly,plan')
       .eq('id', userId).maybeSingle() as any;
 
     if (!p?.telegram_chat_id) return false;

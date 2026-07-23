@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { alertUser, alertOncePerDay } from '@/lib/telegram';
+import { sendWeeklyReports } from '@/lib/weeklyReport';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -27,7 +28,8 @@ export async function GET(req: Request) {
 
   if (job === 'offline') return offlineCheck();
   if (job === 'daily') return dailySummary();
-  return NextResponse.json({ error: 'job desconocido (offline | daily)' }, { status: 400 });
+  if (job === 'weekly') { const r = await sendWeeklyReports(); return NextResponse.json({ job: 'weekly', ...r }); }
+  return NextResponse.json({ error: 'job desconocido (offline | daily | weekly)' }, { status: 400 });
 }
 
 // ---- EA caído: el Guardian está activo pero la cuenta no reporta ----

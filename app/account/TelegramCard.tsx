@@ -32,11 +32,13 @@ const T: any = {
       tg_goal: 'Objetivo de fondeo alcanzado',
       tg_manager: 'Break even, trailing y parciales',
       tg_daily: 'Resumen del día',
+      tg_weekly: 'Informe semanal',
     },
     off: 'Los avisos generales están apagados. Enciéndelos arriba para recibir nada por Telegram.',
     saved: 'Guardado', test: 'Enviar prueba', testOk: 'Enviado ✓', testSending: '...',
     cmdsT: 'Comandos del bot',
     cmdEstado: 'Resumen de tus últimas 24h, sin abrir la web.',
+    cmdInforme: '/informe · tu resumen de la semana al momento.',
     cmdStop: 'Deja de recibir avisos. Los reactivas desde aquí.',
     cmdExample: 'ASÍ SE VE EN TELEGRAM',
     cmdMsgT: 'Últimas 24h', cmdMsg1: 'Operaciones: 3', cmdMsg2: 'Resultado: +$182.40', cmdMsg3: 'El Guardian te frenó: 1 vez',
@@ -63,11 +65,13 @@ const T: any = {
       tg_goal: 'Funding target reached',
       tg_manager: 'Break even, trailing and partials',
       tg_daily: 'Daily summary',
+      tg_weekly: 'Weekly report',
     },
     off: 'General alerts are off. Turn them on above to receive anything on Telegram.',
     saved: 'Saved', test: 'Send a test', testOk: 'Sent ✓', testSending: '...',
     cmdsT: 'Bot commands',
     cmdEstado: 'A summary of your last 24h, without opening the web.',
+    cmdInforme: '/report · your week summary on demand.',
     cmdStop: 'Stop receiving alerts. Turn them back on here.',
     cmdExample: 'THIS IS HOW IT LOOKS ON TELEGRAM',
     cmdMsgT: 'Last 24h', cmdMsg1: 'Trades: 3', cmdMsg2: 'Result: +$182.40', cmdMsg3: 'The Guardian stopped you: 1 time',
@@ -163,7 +167,7 @@ export default function TelegramCard({ lang }: { lang: 'es' | 'en' }) {
           </div>
 
           <div style={{ fontSize: 13, color: 'var(--mut)', marginBottom: 8 }}>{t.prefsT}</div>
-          {(['tg_blocks', 'tg_limits', 'tg_funding', 'tg_offline', 'tg_goal', 'tg_manager', 'tg_daily'] as string[]).map((k) => (
+          {(['tg_blocks', 'tg_limits', 'tg_funding', 'tg_offline', 'tg_goal', 'tg_manager', 'tg_daily', 'tg_weekly'] as string[]).map((k) => (
             <div key={k} className="row between" style={{ padding: '8px 0', borderTop: '1px solid var(--line)' }}>
               <span style={{ fontSize: 14 }}>{t.prefs[k]}</span>
               <Toggle on={!!d.prefs[k]} onClick={() => setPref(k, !d.prefs[k])} />
@@ -184,6 +188,10 @@ export default function TelegramCard({ lang }: { lang: 'es' | 'en' }) {
             <div className="row" style={{ gap: 8, marginBottom: 8, alignItems: 'flex-start' }}>
               <code style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 7, padding: '3px 9px', color: '#aeb7ff', fontSize: 13, flex: 'none' }}>/estado</code>
               <span className="muted" style={{ fontSize: 13 }}>{t.cmdEstado}</span>
+            </div>
+            <div className="row" style={{ gap: 8, marginBottom: 8, alignItems: 'flex-start' }}>
+              <code style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 7, padding: '3px 9px', color: '#aeb7ff', fontSize: 13, flex: 'none' }}>/informe</code>
+              <span className="muted" style={{ fontSize: 13 }}>{t.cmdInforme}</span>
             </div>
             <div className="row" style={{ gap: 8, marginBottom: 14, alignItems: 'flex-start' }}>
               <code style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 7, padding: '3px 9px', color: '#aeb7ff', fontSize: 13, flex: 'none' }}>/stop</code>
