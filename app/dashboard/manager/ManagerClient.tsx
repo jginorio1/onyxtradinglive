@@ -36,6 +36,7 @@ const T: any = {
     trFixed: 'Distancia fija', trSoon: 'Máximos/mínimos, media móvil y ATR llegan en la siguiente versión.',
 
     ptT: 'Take profits parciales', ptD: 'Cierra la posición por partes según avanza a tu favor.',
+    lvlOn: 'Activo', lvlOff: 'Inactivo',
     ptAt: 'Al llegar a', ptClose: 'Cierro', ptTotal: 'Total cerrado', ptOver: 'La suma no puede pasar de 100%.',
     ptMinLot: 'Ojo: si tu operación es de 0.01 lotes, el bróker no deja partirla. Los parciales se saltarán.',
 
@@ -76,6 +77,7 @@ const T: any = {
     trFixed: 'Fixed distance', trSoon: 'Highs/lows, moving average and ATR come in the next version.',
 
     ptT: 'Partial take profits', ptD: 'Closes the position in parts as it moves your way.',
+    lvlOn: 'On', lvlOff: 'Off',
     ptAt: 'When it reaches', ptClose: 'Close', ptTotal: 'Total closed', ptOver: 'The sum cannot exceed 100%.',
     ptMinLot: 'Heads up: with 0.01 lots your broker will not let it be split. Partials will be skipped.',
 
@@ -94,7 +96,12 @@ const T: any = {
 };
 
 function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
-  return <span className="toggle" onClick={onClick} style={{ background: on ? '#34e2a0' : 'var(--line)' }}><span className="knob" style={{ left: on ? 21 : 3 }} /></span>;
+  return <span className="toggle" onClick={onClick} style={{ background: on ? '#34e2a0' : '#556080', boxShadow: on ? 'none' : 'inset 0 0 0 1px rgba(255,255,255,.12)' }}><span className="knob" style={{ left: on ? 21 : 3 }} /></span>;
+}
+
+// Etiqueta corta del estado, para que se lea sin depender solo del color.
+function StateLabel({ on, on1, off1 }: { on: boolean; on1: string; off1: string }) {
+  return <span style={{ fontSize: 11, fontWeight: 600, color: on ? '#34e2a0' : 'var(--mut)', minWidth: 52 }}>{on ? on1 : off1}</span>;
 }
 
 // Punto de estado: verde encendido, gris apagado.
@@ -403,11 +410,14 @@ export default function ManagerClient() {
           {advanced && cfg?.partials?.on && (
             <div style={{ borderTop: '1px solid var(--line)', paddingTop: 14 }}>
               {cfg.partials.levels.map((l: any, i: number) => (
-                <div key={i} className="row" style={{ gap: 10, marginBottom: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-                  <span className="muted" style={{ fontSize: 13, width: 40 }}>TP{i + 1}</span>
+                <div key={i} className="row" style={{ gap: 12, marginBottom: 8, flexWrap: 'wrap', alignItems: 'center', border: '1px solid var(--line)', borderRadius: 10, padding: '8px 12px' }}>
+                  <div className="row" style={{ gap: 8, alignItems: 'center', minWidth: 120 }}>
+                    <Toggle on={!!l.on} onClick={() => setLevel(i, 'on', !l.on)} />
+                    <b style={{ fontSize: 13 }}>TP{i + 1}</b>
+                    <StateLabel on={!!l.on} on1={t.lvlOn} off1={t.lvlOff} />
+                  </div>
                   <div><span style={lbl}>{t.ptAt}</span><UnitInput value={l.at} onChange={(v) => setLevel(i, 'at', v)} unit={uShort} width={130} /></div>
                   <div><span style={lbl}>{t.ptClose}</span><UnitInput value={l.close} onChange={(v) => setLevel(i, 'close', v)} unit="%" width={110} /></div>
-                  <div style={{ paddingBottom: 4 }}><Toggle on={!!l.on} onClick={() => setLevel(i, 'on', !l.on)} /></div>
                 </div>
               ))}
               <div className="row between" style={{ borderTop: '1px solid var(--line)', paddingTop: 10, marginTop: 6 }}>

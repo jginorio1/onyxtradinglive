@@ -19,6 +19,7 @@ export const P2: any = {
     planT: 'Mi plan de trading', planD: 'Decide ahora, con la cabeza fría, cuándo tienes permiso para operar. Después el gestor te lo recuerda aunque no quieras oírlo.',
     days: 'Días que opero', dayNames: ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'],
     windows: 'Franjas horarias', windowsD: 'En tu hora local. Abajo te decimos a qué hora del bróker corresponde.',
+    wOn: 'Activa', wOff: 'Inactiva',
     from: 'Desde', to: 'Hasta', brokerTime: 'Hora del bróker ahora',
     wknd: 'Cerrar todo antes del fin de semana', wkndD: 'Evita el hueco del domingo y el swap del finde.',
     wkndDay: 'Día', wkndTime: 'Hora',
@@ -83,6 +84,7 @@ export const P2: any = {
     planT: 'My trading plan', planD: 'Decide now, with a clear head, when you are allowed to trade. Later the manager reminds you, even when you would rather not hear it.',
     days: 'Days I trade', dayNames: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
     windows: 'Time windows', windowsD: 'In your local time. Below we show the matching broker time.',
+    wOn: 'On', wOff: 'Off',
     from: 'From', to: 'To', brokerTime: 'Broker time now',
     wknd: 'Close everything before the weekend', wkndD: 'Avoids the Sunday gap and weekend swap.',
     wkndDay: 'Day', wkndTime: 'Time',
@@ -144,7 +146,12 @@ const lbl = { fontSize: 12, color: 'var(--mut)', display: 'block', marginBottom:
 const num = { margin: 0, width: 100, padding: '7px 10px' } as any;
 
 function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
-  return <span className="toggle" onClick={onClick} style={{ background: on ? '#34e2a0' : 'var(--line)' }}><span className="knob" style={{ left: on ? 21 : 3 }} /></span>;
+  return <span className="toggle" onClick={onClick} style={{ background: on ? '#34e2a0' : '#556080', boxShadow: on ? 'none' : 'inset 0 0 0 1px rgba(255,255,255,.12)' }}><span className="knob" style={{ left: on ? 21 : 3 }} /></span>;
+}
+
+// Etiqueta de estado en texto, para no depender solo del color.
+function StateLabel({ on, on1, off1 }: { on: boolean; on1: string; off1: string }) {
+  return <span style={{ fontSize: 11, fontWeight: 600, color: on ? '#34e2a0' : 'var(--mut)', minWidth: 52 }}>{on ? on1 : off1}</span>;
 }
 
 // Punto de estado verde/gris, para ver de un vistazo si la sección está activa.
@@ -234,8 +241,11 @@ export function PlanTab({ cfg, set, setCfg, t, acc }: any) {
               {t.windowsD} {brokerNow && <>· <b>{t.brokerTime}: {brokerNow}</b></>}
             </div>
             {p.windows.map((w: any, i: number) => (
-              <div key={i} className="row" style={{ gap: 10, marginBottom: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-                <div style={{ paddingBottom: 4 }}><Toggle on={!!w.on} onClick={() => setWin(i, 'on', !w.on)} /></div>
+              <div key={i} className="row" style={{ gap: 12, marginBottom: 8, flexWrap: 'wrap', alignItems: 'center', border: '1px solid var(--line)', borderRadius: 10, padding: '8px 12px' }}>
+                <div className="row" style={{ gap: 8, alignItems: 'center', minWidth: 110 }}>
+                  <Toggle on={!!w.on} onClick={() => setWin(i, 'on', !w.on)} />
+                  <StateLabel on={!!w.on} on1={t.wOn} off1={t.wOff} />
+                </div>
                 <div><span style={lbl}>{t.from}</span><input type="time" value={w.from} onChange={(e) => setWin(i, 'from', e.target.value)} style={{ ...num, width: 120 }} /></div>
                 <div><span style={lbl}>{t.to}</span><input type="time" value={w.to} onChange={(e) => setWin(i, 'to', e.target.value)} style={{ ...num, width: 120 }} /></div>
               </div>
