@@ -2,6 +2,8 @@ import './globals.css';
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import TopBar from './TopBar';
+import SupportWidget from './SupportWidget';
+import { createSupabaseServer } from '@/lib/supabaseServer';
 import { LanguageProvider } from '@/lib/lang';
 import type { Lang } from '@/lib/navText';
 
@@ -32,9 +34,17 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
   // El idioma se decide aquí, una sola vez, y baja a todo lo demás.
   const lang: Lang = (cookies().get('onyx_lang')?.value === 'en' ? 'en' : 'es');
+
+  // ¿Hay sesión? La burbuja de soporte se comporta distinto para trader o visitante.
+  let loggedIn = false;
+  try {
+    const sb = createSupabaseServer();
+    const { data: { user } } = await sb.auth.getUser();
+    loggedIn = !!user;
+  } catch { /* si falla, la tratamos como visitante */ }
 
   return (
     <html lang={lang}>
@@ -42,6 +52,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <LanguageProvider initial={lang}>
           <TopBar />
           {children}
+          <SupportWidget loggedIn={loggedIn} />
         </LanguageProvider>
       </body>
     </html>

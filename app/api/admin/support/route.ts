@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAdmin, logAdmin } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { sendEmail } from '@/lib/mail';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -15,7 +16,7 @@ export async function GET() {
 
     const { data: tickets } = await supabaseAdmin
       .from('support_tickets')
-      .select('id,user_id,email,subject,category,status,created_at,updated_at')
+      .select('id,user_id,email,subject,category,status,is_lead,created_at,updated_at')
       .order('updated_at', { ascending: false })
       .limit(200);
 
@@ -51,14 +52,25 @@ export async function PATCH(req: Request) {
     if (b.status && STATUSES.includes(String(b.status))) patch.status = String(b.status);
 
     const body = String(b.body || '').trim().slice(0, 4000);
+    let emailed = false;
     if (body) {
       await supabaseAdmin.from('support_messages').insert({ ticket_id: ticketId, sender: 'admin', body });
       if (!patch.status) patch.status = 'in_progress';   // responder pasa a "en curso" salvo que se indique otro
+
+      // Avisar al trader/lead por correo (si Resend está configurado)
+      const { data: tk } = await supabaseAdmin.from('support_tickets').select('email,subject').eq('id', ticketId).maybeSingle();
+      if (tk?.email) {
+        emailed = await sendEmail(
+          tk.email,
+          `Re: ${tk.subject || 'Tu consulta en Onyx'}`,
+          `${body}\n\n—\nEquipo de Onyx Trading Live\nResponde a este correo o entra a tu Centro de soporte para seguir la conversación.`,
+        );
+      }
     }
 
     await supabaseAdmin.from('support_tickets').update(patch).eq('id', ticketId);
-    await logAdmin(user?.email || '', 'support_reply', ticketId, { status: patch.status });
-    return NextResponse.json({ ok: true });
+    await logAdmin(user?.email || '', 'support_reply', ticketId, { status: patch.status, emailed });
+    return NextResponse.json({ ok: true, emailed });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
   }

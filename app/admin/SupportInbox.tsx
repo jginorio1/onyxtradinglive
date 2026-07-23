@@ -63,7 +63,10 @@ export default function SupportInbox() {
           <div key={tk.id} className="card" style={{ marginBottom: 10 }}>
             <div className="row between" style={{ gap: 8, flexWrap: 'wrap', cursor: 'pointer' }} onClick={() => setOpenId(open ? '' : tk.id)}>
               <div>
-                <div style={{ fontWeight: 700 }}>{tk.subject}</div>
+                <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span style={{ fontWeight: 700 }}>{tk.subject}</span>
+                  {tk.is_lead && <span className="pill" style={{ color: 'var(--brand)', background: 'rgba(124,140,255,.15)' }}>Lead (sin cuenta)</span>}
+                </div>
                 <div className="muted" style={{ fontSize: 12 }}>{tk.email || '—'} · {CATS[tk.category] || tk.category} · {new Date(tk.updated_at).toLocaleString()}</div>
               </div>
               <span className="pill" style={{ color: stColor[tk.status], background: stBg[tk.status] }}>{ST[tk.status]}</span>
