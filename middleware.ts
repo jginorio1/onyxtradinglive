@@ -22,7 +22,22 @@ export async function middleware(req: NextRequest) {
       },
     }
   );
-  await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  // Puerta única: todo lo que cuelga de estas rutas exige sesión. Así no
+  // dependemos de que cada página se acuerde de comprobarlo — que fue justo
+  // lo que falló con /dashboard/keys, que era 'use client' y no miraba nada.
+  const path = req.nextUrl.pathname;
+  const PROTECTED = ['/dashboard', '/account', '/admin'];
+  const needsAuth = PROTECTED.some((p) => path === p || path.startsWith(p + '/'));
+
+  if (needsAuth && !user) {
+    const url = req.nextUrl.clone();
+    url.pathname = '/login';
+    url.searchParams.set('next', path);   // para volver aquí tras entrar
+    return NextResponse.redirect(url);
+  }
+
   return res;
 }
 

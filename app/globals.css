@@ -97,6 +97,26 @@ section[id],div[id]{scroll-margin-top:120px;}
 .menu-item.danger{color:var(--red);}
 
 @media(max-width:760px){ .ea-dot-tx{display:none;} .ea-dot{padding:6px;} }
+
+/* Navegación entre artículos de la guía: lado a lado en ancho, apiladas en móvil */
+.artnav{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.artnav-card{display:flex;flex-direction:column;padding:12px 14px;background:var(--bg2);border:1px solid var(--line);border-radius:12px;transition:.15s;}
+.artnav-card:hover{border-color:var(--brand);}
+@media(max-width:560px){ .artnav{grid-template-columns:1fr;} .artnav-card,.artnav-card[style]{text-align:left!important;} }
+
+/* --- Barra en móvil: el logo no puede comerse el espacio del menú --- */
+@media(max-width:600px){
+  /* el nombre largo se esconde; queda el símbolo, que sí lleva al inicio */
+  .logo{font-size:0;gap:0;}
+  .logo img{width:26px!important;height:26px!important;}
+  .topbar .wrap-wide{padding:0 12px;}
+  .ea-dot{display:none;}          /* el estado del EA ya está en el dashboard */
+  .planpill{display:none;}        /* el plan vive en el menú del avatar */
+  .btn-login{display:none;}       /* desde "Empezar gratis" se puede ir a Entrar */
+  .btn{padding:9px 13px;}         /* botones algo más compactos */
+  /* el menú desplegable nunca se sale por el borde */
+  .menu{min-width:0;width:max-content;max-width:calc(100vw - 24px);right:0;}
+}
 .code{font-family:Consolas,monospace;background:#0a0d14;border:1px solid var(--line);border-radius:6px;padding:4px 8px;font-size:13px;color:#bcd6ff;}
 .center{max-width:420px;margin:8vh auto;padding:0 20px;}
 h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}

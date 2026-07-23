@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import { Article, Block, CATEGORIES, ARTICLES } from '@/lib/guide';
 
@@ -9,11 +9,13 @@ const T: any = {
     guide: 'Guía', back: '← Volver a la guía',
     helpful: '¿Te sirvió?', thanks: 'Gracias por decírnoslo.',
     next: 'Siguiente', prev: 'Anterior',
+    signup: 'Crea tu cuenta gratis',
   },
   en: {
     guide: 'Guide', back: '← Back to the guide',
     helpful: 'Was this useful?', thanks: 'Thanks for telling us.',
     next: 'Next', prev: 'Previous',
+    signup: 'Create your free account',
   },
 };
 
@@ -21,6 +23,13 @@ export default function ArticleView({ slug }: { slug: string }) {
   const { lang } = useLang();
   const t = T[lang];
   const [voted, setVoted] = useState(false);
+
+  // Si el CTA lleva a una zona con sesión y el visitante no la tiene,
+  // enviarlo a registrarse en vez de rebotar contra el login.
+  const [authed, setAuthed] = useState<boolean | null>(null);
+  useEffect(() => {
+    fetch('/api/install/status').then((r) => setAuthed(r.status !== 401)).catch(() => setAuthed(false));
+  }, []);
 
   const a = ARTICLES.find((x) => x.slug === slug);
   if (!a) return null;
@@ -46,17 +55,29 @@ export default function ArticleView({ slug }: { slug: string }) {
 
       {a.cta && (
         <div style={{ marginTop: 24, paddingTop: 18, borderTop: '1px solid var(--line)' }}>
-          <Link className="btn btn-primary" href={a.cta.href}>{a.cta.label[lang]}</Link>
+          {authed === false
+            ? <Link className="btn btn-primary" href="/login?mode=signup">{t.signup}</Link>
+            : <Link className="btn btn-primary" href={a.cta.href}>{a.cta.label[lang]}</Link>}
         </div>
       )}
 
-      {/* Navegación entre artículos de la misma categoría */}
+      {/* Navegación entre artículos de la misma categoría.
+          Dos tarjetas que se apilan bien en móvil, en vez de dos botones
+          con título largo que se montaban uno sobre otro. */}
       {(prev || next) && (
-        <div className="row between" style={{ marginTop: 22, gap: 10, flexWrap: 'wrap' }}>
-          {prev
-            ? <Link className="btn btn-ghost" style={{ fontSize: 13 }} href={`/guia/${prev.slug}`}>← {prev.title[lang]}</Link>
-            : <span />}
-          {next && <Link className="btn btn-ghost" style={{ fontSize: 13 }} href={`/guia/${next.slug}`}>{next.title[lang]} →</Link>}
+        <div className="artnav" style={{ marginTop: 24 }}>
+          {prev ? (
+            <Link href={`/guia/${prev.slug}`} className="artnav-card">
+              <span className="muted" style={{ fontSize: 12 }}>← {t.prev}</span>
+              <span style={{ fontSize: 14, marginTop: 3 }}>{prev.title[lang]}</span>
+            </Link>
+          ) : <span />}
+          {next && (
+            <Link href={`/guia/${next.slug}`} className="artnav-card" style={{ textAlign: 'right' }}>
+              <span className="muted" style={{ fontSize: 12 }}>{t.next} →</span>
+              <span style={{ fontSize: 14, marginTop: 3 }}>{next.title[lang]}</span>
+            </Link>
+          )}
         </div>
       )}
 

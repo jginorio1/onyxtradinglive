@@ -72,7 +72,10 @@ function LoginInner() {
       } else {
         const { error } = await sb.auth.signInWithPassword({ email: email.trim(), password: pass });
         if (error) throw error;
-        router.push('/dashboard'); router.refresh();
+        // Volver a donde el usuario intentaba entrar, si venía de una página protegida
+        const raw = params.get('next') || '/dashboard';
+        const dest = raw.startsWith('/') && !raw.startsWith('//') ? raw : '/dashboard';
+        router.push(dest); router.refresh();
       }
     } catch (e: any) {
       setMsg(authMsg(e?.message || '', t));
