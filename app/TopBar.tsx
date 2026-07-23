@@ -59,6 +59,7 @@ export default async function TopBar() {
         { href: '/dashboard', label: t.dashboard },
         { href: '/dashboard/keys', label: t.accounts },
         { href: '/dashboard/manager', label: t.manager },
+        { href: '/dashboard/soporte', label: t.support },
         { href: '/pricing', label: t.plans },
         ...(isAdmin ? [{ href: '/admin', label: t.admin }] : []),
       ]
