@@ -171,7 +171,7 @@ export default function KeysPage() {
       const body = { ...f, label: (f.label || '').trim() || (f.broker ? f.broker : 'Mi cuenta MT') };
       const r = await fetch('/api/keys', { method: 'POST', body: JSON.stringify(body) });
       const j = await r.json();
-      if (j.key) { setNewKey(j.key); setF({ label: '', acc_type: 'own', broker: '', account_login: '', acc_size: '' }); }
+      if (j.key) { setNewKey(j.key); setAddingKey(false); setF({ label: '', acc_type: 'own', broker: '', account_login: '', acc_size: '' }); }
       else alert(errMsg(j, lang));
     } catch { alert(errMsg({ code: 'network' }, lang)); }
     await load(); setLoading(false);
@@ -233,18 +233,27 @@ export default function KeysPage() {
         </div>
 
         {/* Fase 1: crear la clave — colapsa a fila verde cuando ya existe */}
-        {(hasKey && !addingKey && !newKey) ? (
+        {(hasKey && !addingKey) ? (
           <div className="card" style={{ marginBottom: 18, border: '1px solid var(--green)' }}>
             <div className="row between" style={{ flexWrap: 'wrap', gap: 10 }}>
               <div className="row" style={{ gap: 10, alignItems: 'center' }}>
                 <span style={{ width: 28, height: 28, borderRadius: '50%', flex: 'none', background: 'rgba(52,226,160,.14)', color: 'var(--green)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15 }}>✓</span>
                 <div>
-                  <div style={{ fontWeight: 700 }}>{lang === 'en' ? 'Step 1 · your key is ready' : 'Paso 1 · tu clave está lista'}</div>
+                  <div style={{ fontWeight: 700 }}>{newKey ? (lang === 'en' ? 'Step 1 · key created' : 'Paso 1 · clave creada') : (lang === 'en' ? 'Step 1 · your key is ready' : 'Paso 1 · tu clave está lista')}</div>
                   <div className="muted" style={{ fontSize: 13 }}>{keys[0]?.label || keys[0]?.broker || (lang === 'en' ? 'Key created' : 'Clave creada')}</div>
                 </div>
               </div>
-              <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => setAddingKey(true)}>{lang === 'en' ? 'Add another' : 'Crear otra'}</button>
+              <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => { setAddingKey(true); setNewKey(''); }}>{lang === 'en' ? 'Add another' : 'Crear otra'}</button>
             </div>
+            {newKey && (
+              <div style={{ marginTop: 14, background: 'var(--bg2)', border: '1px solid var(--green)', borderRadius: 10, padding: 14 }}>
+                <p className="muted" style={{ fontSize: 13, marginBottom: 8 }}>{t.created}</p>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <code style={{ flex: 1, minWidth: 200, wordBreak: 'break-all', padding: '8px 10px' }}>{newKey}</code>
+                  <button className="btn btn-ghost" onClick={() => copy(newKey, 'new')}>{copied === 'new' ? t.copied : t.copy}</button>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
         <div className="card" style={{ marginBottom: 18 }}>
@@ -298,16 +307,6 @@ export default function KeysPage() {
                 {loading ? '...' : t.newKey}
               </button>
             </>
-          )}
-
-          {newKey && (
-            <div style={{ marginTop: 14, background: 'var(--bg2)', border: '1px solid var(--green)', borderRadius: 10, padding: 14 }}>
-              <p className="muted" style={{ fontSize: 13, marginBottom: 8 }}>{t.created}</p>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <code style={{ flex: 1, minWidth: 200, wordBreak: 'break-all', padding: '8px 10px' }}>{newKey}</code>
-                <button className="btn btn-ghost" onClick={() => copy(newKey, 'new')}>{copied === 'new' ? t.copied : t.copy}</button>
-              </div>
-            </div>
           )}
         </div>
         )}

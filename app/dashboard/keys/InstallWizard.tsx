@@ -27,7 +27,8 @@ export const WIZ: any = {
     needKey: 'Antes de instalar, crea una clave arriba para tu cuenta.',
     keyLabel: 'Pega esto', srvNote: 'La dirección del servidor ya viene puesta en el EA. No la cambies.',
     accStatusT: 'Estado de tus cuentas', accLive: 'Conectada', accStale: 'Sin señal',
-    accNewHint: '¿Estás conectando una cuenta nueva? Aparecerá aquí en cuanto su EA reporte.',
+    accWaiting: 'Esperando su primera señal…', accWaitN: 'en espera',
+    accNewHint: 'Instala el EA en la cuenta nueva con su clave y se pondrá verde aquí sola.',
 
     waitT: 'Esperando la primera señal de tu MetaTrader…',
     waitD: 'Enciende AlgoTrading (el botón verde de arriba). Suele tardar menos de un minuto.',
@@ -66,7 +67,8 @@ export const WIZ: any = {
     needKey: 'Before installing, create a key above for your account.',
     keyLabel: 'Paste this', srvNote: 'The server address is already set in the EA. Do not change it.',
     accStatusT: 'Your accounts', accLive: 'Connected', accStale: 'No signal',
-    accNewHint: 'Connecting a new account? It shows up here as soon as its EA reports.',
+    accWaiting: 'Waiting for its first signal…', accWaitN: 'waiting',
+    accNewHint: 'Install the EA on the new account with its key and it turns green here on its own.',
 
     waitT: 'Waiting for the first signal from your MetaTrader…',
     waitD: 'Turn on AlgoTrading (the green button at the top). It usually takes under a minute.',
@@ -202,26 +204,48 @@ export default function InstallWizard({ t, w, lang, apiUrl, origin, apiKey, onDo
       {/* Fase 3 · estado de conexión de TODAS tus cuentas */}
       {(() => {
         const accts: any[] = status?.accounts || [];
+        const pend: any[] = status?.pending || [];
         const liveCount = accts.filter((a) => a.live).length;
         const anyLive = liveCount > 0;
+        const hasRows = accts.length + pend.length > 0;
         const border = anyLive ? 'var(--green)' : 'var(--amber)';
+
+        // Bloque de ayuda "no llega nada", que se reutiliza
+        const stuckBox = stuck ? (
+          <div style={{ marginTop: 16, textAlign: 'left', padding: '14px 16px', background: 'rgba(245,158,11,.06)', border: '1px solid var(--amber)', borderRadius: 10 }}>
+            <div style={{ color: 'var(--amber)', fontWeight: 600, marginBottom: 4 }}>{w.stuckT}</div>
+            <div className="muted" style={{ fontSize: 13, marginBottom: 10 }}>{w.stuckD}</div>
+            {w.stuck.map((x: any, i: number) => (
+              <div key={i} className="row" style={{ gap: 10, alignItems: 'flex-start', borderTop: '1px solid var(--line)', padding: '9px 0' }}>
+                <span className="muted" style={{ fontSize: 12 }}>{i + 1}</span>
+                <div><div style={{ fontSize: 13 }}>{x.t}</div><div className="muted" style={{ fontSize: 12 }}>{x.d}</div></div>
+              </div>
+            ))}
+            <button className="btn btn-ghost" style={{ padding: '6px 13px', fontSize: 12, marginTop: 12 }} onClick={check}>{w.retry}</button>
+          </div>
+        ) : null;
+
         return (
           <div className="card" style={{ border: '1px solid ' + border }}>
-            <div className="row between" style={{ marginBottom: accts.length ? 12 : 0, flexWrap: 'wrap', gap: 8 }}>
+            <div className="row between" style={{ marginBottom: hasRows ? 12 : 0, flexWrap: 'wrap', gap: 8 }}>
               <div className="row" style={{ gap: 8, alignItems: 'center' }}>
                 <span style={{ width: 10, height: 10, borderRadius: '50%', flex: 'none', background: anyLive ? '#34e2a0' : 'var(--amber)' }} />
                 <h3 style={{ fontSize: 16 }}>{w.accStatusT}</h3>
               </div>
-              {anyLive && <span className="pill" style={{ color: 'var(--green)', background: 'rgba(52,226,160,.15)' }}>{liveCount} {w.accLive.toLowerCase()}</span>}
+              {hasRows && (
+                <span className="pill" style={{ color: anyLive ? 'var(--green)' : 'var(--amber)', background: anyLive ? 'rgba(52,226,160,.15)' : 'rgba(245,158,11,.15)' }}>
+                  {[liveCount > 0 ? `${liveCount} ${w.accLive.toLowerCase()}` : '', pend.length > 0 ? `${pend.length} ${w.accWaitN}` : ''].filter(Boolean).join(' · ')}
+                </span>
+              )}
             </div>
 
-            {/* Lista de cuentas con su punto de estado */}
-            {accts.length > 0 && (
+            {/* Filas: cuentas conectadas + cuentas en espera */}
+            {hasRows && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {accts.map((a, i) => {
                   const mins = a.lastSyncAt ? Math.max(0, Math.floor((Date.now() - new Date(a.lastSyncAt).getTime()) / 60000)) : 0;
                   return (
-                    <div key={i} className="row between" style={{ gap: 10, flexWrap: 'wrap', border: '1px solid var(--line)', borderRadius: 10, padding: '9px 12px' }}>
+                    <div key={'a' + i} className="row between" style={{ gap: 10, flexWrap: 'wrap', border: '1px solid var(--line)', borderRadius: 10, padding: '9px 12px' }}>
                       <div className="row" style={{ gap: 10, alignItems: 'center' }}>
                         <span style={{ width: 9, height: 9, borderRadius: '50%', flex: 'none', background: a.live ? '#34e2a0' : 'var(--amber)' }} />
                         <div>
@@ -233,45 +257,51 @@ export default function InstallWizard({ t, w, lang, apiUrl, origin, apiKey, onDo
                     </div>
                   );
                 })}
+                {pend.map((k, i) => (
+                  <div key={'p' + i} className="row between" style={{ gap: 10, flexWrap: 'wrap', border: '1px solid rgba(245,158,11,.4)', borderRadius: 10, padding: '9px 12px' }}>
+                    <div className="row" style={{ gap: 10, alignItems: 'center' }}>
+                      <span style={{ width: 9, height: 9, borderRadius: '50%', flex: 'none', background: 'var(--amber)' }} />
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 600 }}>{k.label || k.broker || (lang === 'en' ? 'New account' : 'Cuenta nueva')}{k.broker && k.label ? ' · ' + k.broker : ''}</div>
+                        <div style={{ fontSize: 12, color: 'var(--amber)' }}>{w.accWaiting}</div>
+                      </div>
+                    </div>
+                    <div className="spin" style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid var(--bg2)', borderTopColor: 'var(--amber)' }} />
+                  </div>
+                ))}
               </div>
             )}
 
-            {/* Ninguna cuenta viva todavía: seguimos esperando señal */}
-            {!anyLive && (
-              <div style={{ textAlign: 'center', padding: accts.length ? '16px 0 4px' : '6px 0' }}>
+            {/* No hay ninguna cuenta ni clave todavía: gran spinner de espera */}
+            {!hasRows && (
+              <div style={{ textAlign: 'center', padding: '6px 0' }}>
                 <div className="spin" style={{ width: 34, height: 34, borderRadius: '50%', margin: '0 auto 14px', border: '3px solid var(--bg2)', borderTopColor: 'var(--amber)' }} />
                 <div style={{ fontSize: 16, marginBottom: 6, color: 'var(--amber)' }}>{w.waitT}</div>
                 <p className="muted" style={{ fontSize: 13, lineHeight: 1.7, maxWidth: 420, margin: '0 auto' }}>{w.waitD}</p>
                 <div className="muted" style={{ fontSize: 12, marginTop: 12 }}>{w.checking} · {mmss(elapsed)}</div>
-
-                {stuck && (
-                  <div style={{ marginTop: 20, textAlign: 'left', padding: '14px 16px', background: 'rgba(245,158,11,.06)', border: '1px solid var(--amber)', borderRadius: 10 }}>
-                    <div style={{ color: 'var(--amber)', fontWeight: 600, marginBottom: 4 }}>{w.stuckT}</div>
-                    <div className="muted" style={{ fontSize: 13, marginBottom: 10 }}>{w.stuckD}</div>
-                    {w.stuck.map((x: any, i: number) => (
-                      <div key={i} className="row" style={{ gap: 10, alignItems: 'flex-start', borderTop: '1px solid var(--line)', padding: '9px 0' }}>
-                        <span className="muted" style={{ fontSize: 12 }}>{i + 1}</span>
-                        <div>
-                          <div style={{ fontSize: 13 }}>{x.t}</div>
-                          <div className="muted" style={{ fontSize: 12 }}>{x.d}</div>
-                        </div>
-                      </div>
-                    ))}
-                    <button className="btn btn-ghost" style={{ padding: '6px 13px', fontSize: 12, marginTop: 12 }} onClick={check}>{w.retry}</button>
-                  </div>
-                )}
+                {stuckBox}
               </div>
             )}
 
-            {/* Al menos una viva: accesos + aviso de cuenta nueva */}
+            {/* Hay filas pero ninguna viva aún: temporizador + ayuda */}
+            {hasRows && !anyLive && (
+              <div style={{ marginTop: 12 }}>
+                <div className="muted" style={{ fontSize: 12, textAlign: 'center' }}>{w.checking} · {mmss(elapsed)}</div>
+                {stuckBox}
+              </div>
+            )}
+
+            {/* Al menos una viva: accesos al panel */}
             {anyLive && (
-              <>
-                <div className="row" style={{ gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginTop: 14 }}>
-                  <Link className="btn btn-primary" href="/dashboard">{w.goDash}</Link>
-                  <Link className="btn btn-ghost" href="/dashboard/manager">{w.goManager}</Link>
-                </div>
-                <div className="muted" style={{ fontSize: 12, marginTop: 12, textAlign: 'center' }}>{w.accNewHint}</div>
-              </>
+              <div className="row" style={{ gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginTop: 14 }}>
+                <Link className="btn btn-primary" href="/dashboard">{w.goDash}</Link>
+                <Link className="btn btn-ghost" href="/dashboard/manager">{w.goManager}</Link>
+              </div>
+            )}
+
+            {/* Si hay cuentas en espera, guiamos a instalar el EA en la nueva */}
+            {pend.length > 0 && (
+              <div className="muted" style={{ fontSize: 12, marginTop: 12, textAlign: 'center' }}>{w.accNewHint}</div>
             )}
           </div>
         );

@@ -45,12 +45,28 @@ export async function GET() {
       live: a.last_sync_at ? (now - new Date(a.last_sync_at).getTime()) < 120000 : false,
     }));
 
+    // Claves creadas que aún no tienen cuenta reportando: "en espera".
+    // Así el trader ve la cuenta nueva antes de que su EA envíe la primera señal.
+    const { data: keyRows } = await supabaseAdmin
+      .from('api_keys')
+      .select('label,broker,account_login,revoked')
+      .eq('user_id', user.id)
+      .eq('revoked', false);
+    const allLogins = new Set((accounts || []).map((a: any) => String(a.login)));
+    const pending = (keyRows || [])
+      .filter((k: any) => {
+        const login = String(k.account_login || '').trim();
+        return login === '' || !allLogins.has(login);
+      })
+      .map((k: any) => ({ label: k.label || '', broker: k.broker || '' }));
+
     return NextResponse.json({
       connected: !!latest,
       live,
       totalAccounts: (accounts || []).length,
       syncedAccounts: synced.length,
       accounts: list,
+      pending,
       account: latest ? {
         login: latest.login,
         broker: latest.broker || '',
