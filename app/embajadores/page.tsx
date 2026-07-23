@@ -174,13 +174,13 @@ export default function Embajadores() {
               <h3 style={{ marginBottom: 4 }}>{t.applyT}</h3>
               <p className="muted" style={{ fontSize: 13 }}>{t.applyD}</p>
               <span style={lbl}>{t.fCode}</span>
-              <input value={f.code} onChange={(e) => setF({ ...f, code: e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '') })} placeholder="carlosfx" style={{ margin: '4px 0 0' }} />
+              <input value={f.code} onChange={(e) => setF({ ...f, code: e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '') })} placeholder="Ej: carlosfx" style={{ margin: '4px 0 0' }} />
               <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{t.fCodeH}</div>
               <span style={lbl}>{t.fAud}</span>
               <textarea value={f.audience} onChange={(e) => setF({ ...f, audience: e.target.value })} rows={3} placeholder={t.fAudPh}
                 style={{ width: '100%', marginTop: 4, padding: '10px 12px', background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, color: 'var(--tx)', fontSize: 14, fontFamily: 'inherit' }} />
               <span style={lbl}>{t.fFol}</span>
-              <input value={f.followers} onChange={(e) => setF({ ...f, followers: e.target.value })} placeholder="4000" style={{ margin: '4px 0 0' }} />
+              <input value={f.followers} onChange={(e) => setF({ ...f, followers: e.target.value })} placeholder="Ej: 4000" style={{ margin: '4px 0 0' }} />
               <span style={lbl}>{t.fMethod}</span>
               <select value={f.payout_method} onChange={(e) => setF({ ...f, payout_method: e.target.value })} style={{ margin: '4px 0 0' }}>
                 <option value="paypal">{t.paypal}</option><option value="usdt">{t.usdt}</option><option value="credit">{t.credit}</option>
