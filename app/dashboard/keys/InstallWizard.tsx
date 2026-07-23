@@ -50,6 +50,10 @@ export const WIZ: any = {
     connectedT: 'Tu MetaTrader está conectado',
     connectedD: (l: any, b: string) => `Cuenta ${l}${b ? ' · ' + b : ''}`,
     expand: 'Conectar otra cuenta',
+    staleT: 'Configurada, pero sin señal ahora',
+    staleHint: 'Abre MetaTrader, pon el EA en un gráfico y activa AlgoTrading para que vuelva a sincronizar.',
+    since: (m: number) => m < 1 ? 'hace segundos' : m < 60 ? `hace ${m} min` : m < 1440 ? `hace ${Math.floor(m / 60)} h` : `hace ${Math.floor(m / 1440)} día(s)`,
+    lastSeen: 'Última señal',
   },
   en: {
     title: 'Install Onyx in MetaTrader',
@@ -82,6 +86,10 @@ export const WIZ: any = {
     connectedT: 'Your MetaTrader is connected',
     connectedD: (l: any, b: string) => `Account ${l}${b ? ' · ' + b : ''}`,
     expand: 'Connect another account',
+    staleT: 'Set up, but not reporting now',
+    staleHint: 'Open MetaTrader, put the EA on a chart and turn on AlgoTrading so it syncs again.',
+    since: (m: number) => m < 1 ? 'seconds ago' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.floor(m / 60)} h ago` : `${Math.floor(m / 1440)} day(s) ago`,
+    lastSeen: 'Last signal',
   },
 };
 
@@ -137,23 +145,33 @@ export default function InstallWizard({ t, w, apiUrl, origin, apiKey, onDownload
 
   const lbl = { fontSize: 12, color: 'var(--mut)', display: 'block', marginBottom: 4 } as any;
 
-  // ---- Ya conectado y plegado ----
+  // ---- Ya configurado y plegado ----
+  // OJO: "connected" solo significa que la cuenta sincronizó ALGUNA vez.
+  // Para decir "conectado" en verde usamos "live" (señal en los últimos 2 min).
+  // Si no está viva, mostramos "sin señal ahora" en ámbar con la última hora.
   if (collapsed && status?.connected) {
+    const live = !!status.live;
+    const mins = status.account?.lastSyncAt
+      ? Math.max(0, Math.floor((Date.now() - new Date(status.account.lastSyncAt).getTime()) / 60000))
+      : 0;
+    const col = live ? 'var(--green)' : 'var(--amber)';
     return (
-      <div className="card" style={{ marginBottom: 18, border: '1px solid var(--green)' }}>
+      <div className="card" style={{ marginBottom: 18, border: '1px solid ' + col }}>
         <div className="row between" style={{ flexWrap: 'wrap', gap: 10 }}>
           <div className="row" style={{ gap: 10 }}>
             <span style={{
               width: 30, height: 30, borderRadius: '50%', flex: 'none',
-              background: 'rgba(52,226,160,.14)', color: 'var(--green)',
+              background: live ? 'rgba(52,226,160,.14)' : 'rgba(245,158,11,.14)', color: col,
               display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16,
-            }}>✓</span>
+            }}>{live ? '✓' : '⚠'}</span>
             <div>
-              <div style={{ fontWeight: 700, color: 'var(--green)' }}>{w.connectedT}</div>
+              <div style={{ fontWeight: 700, color: col }}>{live ? w.connectedT : w.staleT}</div>
               <div className="muted" style={{ fontSize: 13 }}>
                 {w.connectedD(status.account?.login, status.account?.broker)}
                 {status.syncedAccounts > 1 && ` · ${status.syncedAccounts}`}
+                {!live && ` · ${w.lastSeen}: ${w.since(mins)}`}
               </div>
+              {!live && <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{w.staleHint}</div>}
             </div>
           </div>
           <button className="btn btn-ghost" style={{ fontSize: 13 }}
