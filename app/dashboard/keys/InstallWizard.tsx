@@ -133,8 +133,10 @@ export default function InstallWizard({ t, w, apiUrl, origin, apiKey, onDownload
     check().then((j) => { if (j?.connected) setCollapsed(true); });
   }, [check]);
 
-  // En el último paso preguntamos al servidor hasta que llegue la señal
-  const waiting = step === total - 1 && !status?.connected;
+  // En el último paso preguntamos al servidor hasta que llegue la señal.
+  // Esperamos a que esté VIVO (señal en 2 min), no a que haya conectado
+  // alguna vez — así no damos por bueno un EA que ya no está corriendo.
+  const waiting = step === total - 1 && !status?.live;
   useEffect(() => {
     if (!waiting) return;
     if (!startedAt.current) startedAt.current = Date.now();
@@ -202,6 +204,7 @@ export default function InstallWizard({ t, w, apiUrl, origin, apiKey, onDownload
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 14 }}>{s.t}</div>
               {s.d && <div className="muted" style={{ fontSize: 12, marginTop: 3, lineHeight: 1.6 }}>{s.d}</div>}
+              <StepVisual viz={s.viz} origin={origin} apiUrl={apiUrl} />
               <StepExtras s={s} t={t} w={w} apiUrl={apiUrl} origin={origin} apiKey={apiKey} copy={copy} copied={copied} />
             </div>
           </div>
@@ -210,8 +213,8 @@ export default function InstallWizard({ t, w, apiUrl, origin, apiKey, onDownload
     );
   }
 
-  // ---- Éxito ----
-  if (status?.connected && step === total - 1) {
+  // ---- Éxito ---- solo si hay señal REAL ahora mismo (live), no si conectó antes
+  if (status?.live && step === total - 1) {
     return (
       <div className="card" style={{ marginBottom: 18, border: '1px solid var(--green)', textAlign: 'center', padding: 28 }}>
         <div style={{
@@ -257,6 +260,9 @@ export default function InstallWizard({ t, w, apiUrl, origin, apiKey, onDownload
           }} />
           <div style={{ fontSize: 16, marginBottom: 6 }}>{w.waitT}</div>
           <p className="muted" style={{ fontSize: 13, lineHeight: 1.7, maxWidth: 420, margin: '0 auto' }}>{w.waitD}</p>
+          <div style={{ maxWidth: 420, margin: '0 auto', textAlign: 'left' }}>
+            <StepVisual viz="algo" origin={origin} apiUrl={apiUrl} />
+          </div>
           <div className="muted" style={{ fontSize: 12, marginTop: 12 }}>{w.checking} · {mmss(elapsed)}</div>
 
           {stuck && (
@@ -284,6 +290,7 @@ export default function InstallWizard({ t, w, apiUrl, origin, apiKey, onDownload
         <>
           <div style={{ fontSize: 18, marginBottom: 8 }}>{s.t}</div>
           {s.d && <p className="muted" style={{ fontSize: 13, lineHeight: 1.7, marginBottom: 14 }}>{s.d}</p>}
+          <StepVisual viz={s.viz} origin={origin} apiUrl={apiUrl} />
           <StepExtras s={s} t={t} w={w} apiUrl={apiUrl} origin={origin} apiKey={apiKey}
             copy={copy} copied={copied} onDownload={onDownload} first={step === 0} />
         </>
@@ -300,6 +307,85 @@ export default function InstallWizard({ t, w, apiUrl, origin, apiKey, onDownload
       </div>
     </div>
   );
+}
+
+// Ilustración simple por paso: rutas de menú con flechas y mini-ventanas,
+// para que cada paso se entienda de un vistazo (sin depender de capturas).
+function StepVisual({ viz, origin, apiUrl }: any) {
+  if (!viz) return null;
+  const box = { border: '1px solid var(--line)', borderRadius: 10, background: 'var(--bg2)', padding: 12, marginTop: 12 } as any;
+  const chip = { display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--card2)', border: '1px solid var(--line)', borderRadius: 8, padding: '5px 9px', fontSize: 12 } as any;
+  const code = { fontSize: 11, background: 'var(--card2)', border: '1px solid var(--line)', borderRadius: 6, padding: '4px 7px', wordBreak: 'break-all' } as any;
+  const arrow = <span style={{ color: 'var(--mut)' }}>→</span>;
+  const check = <span style={{ width: 16, height: 16, borderRadius: 4, background: '#34e2a0', color: '#04120c', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, flex: 'none' }}>✓</span>;
+
+  switch (viz) {
+    case 'folder':
+      return <div style={box}>
+        <div className="muted" style={{ fontSize: 11, marginBottom: 8 }}>En MetaTrader:</div>
+        <div className="row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={chip}>Archivo</span>{arrow}<span style={chip}>Abrir carpeta de datos</span>{arrow}<span style={chip}>📁 MQL5</span>{arrow}<span style={chip}>📁 Experts</span>
+        </div>
+        <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>Pega ahí el archivo Onyx que descargaste.</div>
+      </div>;
+    case 'compile':
+      return <div style={box}>
+        <div className="row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
+          <span style={chip}>⌨️ Tecla F4</span><span className="muted" style={{ fontSize: 12 }}>abre MetaEditor (ya viene incluido)</span>
+        </div>
+        <div className="row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={chip}>Abre el archivo Onyx</span>{arrow}<span style={chip}>▶️ Compilar (F7)</span>
+        </div>
+        <div style={{ marginTop: 8, display: 'inline-flex', gap: 6, alignItems: 'center', background: 'rgba(52,226,160,.10)', border: '1px solid var(--green)', borderRadius: 8, padding: '6px 10px' }}>
+          {check}<span style={{ fontSize: 12, color: 'var(--green)' }}>Debe decir: 0 errores, 0 advertencias</span>
+        </div>
+      </div>;
+    case 'drag':
+      return <div style={box}>
+        <div className="row" style={{ gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ flex: 1, minWidth: 130, border: '1px solid var(--line)', borderRadius: 8, padding: 8, background: 'var(--card2)' }}>
+            <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>Navegador</div>
+            <div style={{ fontSize: 12 }}>📁 Asesores Expertos</div>
+            <div style={{ fontSize: 12, color: 'var(--brand)', paddingLeft: 14 }}>🤖 OnyxManager</div>
+          </div>
+          {arrow}
+          <div style={{ flex: 1, minWidth: 130, border: '1px dashed var(--line)', borderRadius: 8, padding: 8, textAlign: 'center', color: 'var(--mut)', fontSize: 12 }}>📈 Suéltalo en un gráfico</div>
+        </div>
+      </div>;
+    case 'fields':
+      return <div style={box}>
+        <div className="muted" style={{ fontSize: 11, marginBottom: 8 }}>En la ventana que se abre:</div>
+        <div className="row" style={{ gap: 8, alignItems: 'center', marginBottom: 10 }}>{check}<span style={{ fontSize: 12 }}>Marca «Permitir Algo Trading» (pestaña Común)</span></div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}><span className="muted" style={{ fontSize: 12, minWidth: 70 }}>ServidorUrl</span><code style={code}>{apiUrl}</code></div>
+          <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}><span className="muted" style={{ fontSize: 12, minWidth: 70 }}>ApiKey</span><code style={code}>tu clave copiada</code></div>
+        </div>
+      </div>;
+    case 'webrequest':
+      return <div style={box}>
+        <div className="row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
+          <span style={chip}>Herramientas</span>{arrow}<span style={chip}>Opciones</span>{arrow}<span style={chip}>Asesores Expertos</span>
+        </div>
+        <div className="row" style={{ gap: 8, alignItems: 'flex-start', marginBottom: 8 }}>{check}<span style={{ fontSize: 12 }}>Marca «Permitir WebRequest para las siguientes direcciones»</span></div>
+        <div className="row" style={{ gap: 6, alignItems: 'center', paddingLeft: 24 }}><span style={{ color: 'var(--green)' }}>＋</span><code style={code}>{origin}</code></div>
+        <div className="muted" style={{ fontSize: 11, marginTop: 8, paddingLeft: 24 }}>Escríbela, pulsa Enter y luego OK.</div>
+      </div>;
+    case 'algo':
+      return <div style={box}>
+        <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 140, border: '1px solid var(--line)', borderRadius: 8, padding: 8, background: 'var(--card2)' }}>
+            <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>Barra de arriba</div>
+            <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', background: 'rgba(52,226,160,.12)', color: 'var(--green)', borderRadius: 6, padding: '5px 9px', fontSize: 12 }}>▶️ Algo Trading (verde)</span>
+          </div>
+          <div style={{ flex: 1, minWidth: 140, border: '1px solid var(--line)', borderRadius: 8, padding: 8, background: 'var(--card2)' }}>
+            <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>Esquina del gráfico</div>
+            <div style={{ fontSize: 12 }}><span style={{ color: 'var(--green)' }}>☺</span> = activo</div>
+            <div style={{ fontSize: 11, color: 'var(--red)' }}>✕ triste = revisa Algo Trading</div>
+          </div>
+        </div>
+      </div>;
+    default: return null;
+  }
 }
 
 // Lo que hay que copiar en cada paso concreto
