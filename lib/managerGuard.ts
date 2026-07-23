@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { mergeConfig, ManagerConfig } from '@/lib/manager';
+import { alertUser } from '@/lib/telegram';
 
 // ============================================================
 // El guardián. Decide si el trader puede abrir una operación ahora mismo.
@@ -314,6 +315,13 @@ async function finish(v: Verdict, r: {
       detail: r.es,
       meta: { reason: r.reason },
     });
+
+    // Aviso a Telegram, si lo tiene conectado. Es la primera vez que salta
+    // este bloqueo, así que no lo repetimos en cada heartbeat.
+    // Las pérdidas límite van como 'limits'; el resto como 'blocks'.
+    const kind = (r.reason === 'daily_loss' || r.reason === 'total_loss' || r.reason === 'target') ? 'limits' : 'blocks';
+    const head = kind === 'limits' ? '🛑 Onyx Guardian' : '⏸️ Onyx Guardian';
+    alertUser(opts.userId, kind, `${head}\n${r.es}`).catch(() => {});
   }
   return v;
 }

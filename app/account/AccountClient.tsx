@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { errMsg, planName } from '@/lib/i18nErrors';
 import Ambassador from './Ambassador';
 import CancelFlow from './CancelFlow';
+import TelegramCard from './TelegramCard';
 
 type Lang = 'es' | 'en';
 type Tab = 'plan' | 'perfil' | 'facturas' | 'cuentas' | 'avisos' | 'seguridad' | 'referidos';
@@ -297,6 +298,10 @@ export default function AccountClient({ email }: { email: string }) {
                 <div className="row" style={{ gap: 10, marginTop: 16 }}>
                   <button className="btn btn-primary" onClick={() => saveProfile()} disabled={busy === 'save'}>{busy === 'save' ? L.saving : L.save}</button>
                   {msg && <span style={{ color: 'var(--green)', fontSize: 13 }}>{msg}</span>}
+                </div>
+
+                <div style={{ marginTop: 22, paddingTop: 18, borderTop: '1px solid var(--line)' }}>
+                  <TelegramCard lang={lang} />
                 </div>
               </div>
             )}

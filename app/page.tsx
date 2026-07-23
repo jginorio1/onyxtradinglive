@@ -55,9 +55,9 @@ function Counter({ to, prefix = '', suffix = '' }: { to: number; prefix?: string
 const dict = {
   es: {
     mgr: {
-      badge: 'Incluido en Pro y Elite',
-      title: 'Un EA que te gestiona la operación y te frena cuando hace falta',
-      sub: 'Onyx nunca abre operaciones. Solo cuida las que abres tú, y hace cumplir el plan de trading que escribiste cuando estabas tranquilo.',
+      badge: 'Módulo activo · Pro y Elite',
+      title: 'Onyx Guardian — el gestor que te protege de ti mismo',
+      sub: 'Nunca abre operaciones. Solo cuida las que abres tú y hace cumplir el plan de trading que escribiste cuando estabas tranquilo. Ya funcionando en MT4 y MT5.',
       cards: [
         { i: '🎯', t: 'Break even que sale a cero de verdad', d: 'Mueve el stop cuando la operación va a favor y suma la comisión y el swap que te cobró el bróker. Cero real, no cero de precio.' },
         { i: '📐', t: 'Trailing y cierres por partes', d: 'Persigue al precio y cierra en varios niveles. Tú eliges si mides en pips, en R o en dinero.' },
@@ -69,7 +69,7 @@ const dict = {
       honestT: 'Lo que no hace, dicho claro',
       honestD: 'MetaTrader no permite que un EA impida una orden antes de enviarse. Lo que Onyx hace es cerrarla en cuanto aparece, en uno o dos segundos, y eso te cuesta el spread de esa entrada. No es un fallo: es la fricción. Y sin MetaTrader abierto no protege nada — para uso serio, un VPS.',
     },
-    nav: { features: 'Funciones', how: 'Cómo funciona', fondeo: 'Fondeo', gestor: 'Gestor', pricing: 'Precios', amb: 'Embajadores', faq: 'FAQ', login: 'Entrar', cta: 'Empieza gratis' },
+    nav: { features: 'Funciones', how: 'Cómo funciona', fondeo: 'Fondeo', gestor: 'Guardian', pricing: 'Precios', amb: 'Embajadores', faq: 'FAQ', login: 'Entrar', cta: 'Empieza gratis' },
     hero: {
       badge: '🔗 Conecta MT4 y MT5 · Sincronización automática',
       h1a: 'Opera con datos,', h1b: 'no con memoria',
@@ -166,9 +166,9 @@ const dict = {
   },
   en: {
     mgr: {
-      badge: 'Included in Pro and Elite',
-      title: 'An EA that manages your trade and stops you when it matters',
-      sub: 'Onyx never opens trades. It only looks after the ones you open, and enforces the trading plan you wrote while you were calm.',
+      badge: 'Live module · Pro and Elite',
+      title: 'Onyx Guardian — the manager that protects you from yourself',
+      sub: 'It never opens trades. It only looks after the ones you open and enforces the trading plan you wrote while you were calm. Already running on MT4 and MT5.',
       cards: [
         { i: '🎯', t: 'Break even that really means zero', d: 'Moves the stop once the trade goes your way and adds the commission and swap your broker charged. Real zero, not price zero.' },
         { i: '📐', t: 'Trailing and partial closes', d: 'Follows price and closes at several levels. You choose whether you measure in pips, R or money.' },
@@ -180,7 +180,7 @@ const dict = {
       honestT: 'What it does not do, said plainly',
       honestD: 'MetaTrader does not let an EA block an order before it is sent. What Onyx does is close it as soon as it appears, within a second or two, and that costs you the spread on that entry. Not a bug: that is the friction. And with MetaTrader closed it protects nothing — for serious use, a VPS.',
     },
-    nav: { features: 'Features', how: 'How it works', fondeo: 'Prop firms', gestor: 'Manager', pricing: 'Pricing', amb: 'Ambassadors', faq: 'FAQ', login: 'Log in', cta: 'Start free' },
+    nav: { features: 'Features', how: 'How it works', fondeo: 'Prop firms', gestor: 'Guardian', pricing: 'Pricing', amb: 'Ambassadors', faq: 'FAQ', login: 'Log in', cta: 'Start free' },
     hero: {
       badge: '🔗 Connect MT4 & MT5 · Automatic sync',
       h1a: 'Trade with data,', h1b: 'not memory',
@@ -288,7 +288,7 @@ const FIRMS = [
     es: 'Precios agresivos y evaluación flexible de una o dos fases.', en: 'Aggressive pricing and flexible one- or two-step evaluations.' },
 ];
 
-const PROWS: { es: string; en: string; v: (boolean | string)[] }[] = [
+const PROWS: { es: string; en: string; v: (boolean | string)[]; head?: boolean }[] = [
   { es: 'Historial', en: 'History', v: ['30 días', 'Ilimitado', 'Ilimitado'] },
   { es: 'Sesiones y noticias en vivo', en: 'Live sessions & news', v: [true, true, true] },
   { es: 'KPIs, gráficas y calendario', en: 'KPIs, charts & calendar', v: [true, true, true] },
@@ -298,8 +298,19 @@ const PROWS: { es: string; en: string; v: (boolean | string)[] }[] = [
   { es: 'Reglas de fondeo y retiros', en: 'Funding rules & payouts', v: [false, true, true] },
   { es: 'Costes (comisión y swap)', en: 'Costs (commission & swap)', v: [false, true, true] },
   { es: 'Exportar CSV', en: 'Export CSV', v: [false, true, true] },
-  { es: 'Informes automáticos', en: 'Automatic reports', v: [false, false, true] },
+
+  // Onyx Guardian — el módulo de gestión de riesgo, ya activo en MT4 y MT5
+  { es: 'Onyx Guardian', en: 'Onyx Guardian', v: ['', '', ''], head: true },
+  { es: 'Break even que cubre costes', en: 'Break even that covers costs', v: [false, true, true] },
+  { es: 'Trailing stop', en: 'Trailing stop', v: [false, true, true] },
+  { es: 'Mi plan de trading (horarios, rachas)', en: 'My trading plan (hours, streaks)', v: [false, true, true] },
+  { es: 'Límites con margen de seguridad', en: 'Limits with safety margin', v: [false, true, true] },
+  { es: 'Indicador de disciplina', en: 'Discipline indicator', v: [false, true, true] },
+  { es: 'Cierres parciales (varios TP)', en: 'Partial closes (multiple TPs)', v: [false, false, true] },
+  { es: 'Bloqueo por noticias', en: 'News blackout', v: [false, false, true] },
   { es: 'Alertas por Telegram', en: 'Telegram alerts', v: [false, false, true] },
+
+  { es: 'Informes automáticos', en: 'Automatic reports', v: [false, false, true] },
   { es: 'Soporte prioritario', en: 'Priority support', v: [false, false, true] },
 ];
 
@@ -656,7 +667,9 @@ export default function Home() {
                   <thead><tr><th style={{ padding: '14px 16px' }}></th>{cols.map((id) => { const p = byId(id); const on = !!(p && (lang === 'es' ? p.badge : p.badge_en)); return <th key={id} style={{ textAlign: 'center', padding: '14px 16px', color: on ? 'var(--brand)' : 'var(--tx)', fontSize: 15 }}>{p ? (lang === 'es' ? p.name : (p.name_en || p.name)) : id}</th>; })}</tr></thead>
                   <tbody>
                     <tr><td style={{ padding: '12px 16px', color: 'var(--mut)' }}>{lang === 'es' ? 'Cuentas MT' : 'MT accounts'}</td>{cols.map((id) => <td key={id} style={{ textAlign: 'center', padding: '12px 16px', fontWeight: 700 }}>{acc(id)}</td>)}</tr>
-                    {PROWS.map((r, ri) => (<tr key={ri}><td style={{ padding: '12px 16px', color: 'var(--mut)' }}>{lang === 'es' ? r.es : r.en}</td>{r.v.map((v, ci) => <td key={ci} style={{ textAlign: 'center', padding: '12px 16px' }}>{chk(v)}</td>)}</tr>))}
+                    {PROWS.map((r, ri) => r.head
+                      ? (<tr key={ri}><td colSpan={4} style={{ padding: '16px 16px 8px', color: 'var(--brand)', fontWeight: 700, fontSize: 13, letterSpacing: '.02em' }}>🛡️ {lang === 'es' ? r.es : r.en}</td></tr>)
+                      : (<tr key={ri}><td style={{ padding: '12px 16px', color: 'var(--mut)' }}>{lang === 'es' ? r.es : r.en}</td>{r.v.map((v, ci) => <td key={ci} style={{ textAlign: 'center', padding: '12px 16px' }}>{chk(v)}</td>)}</tr>))}
                   </tbody>
                 </table>
               </div>
