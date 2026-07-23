@@ -262,7 +262,7 @@ export default function KeysPage() {
               <div className="grid g2" style={{ gap: 12 }}>
                 <div>
                   <span style={lbl}>{t.fNick}</span>
-                  <input value={f.label} onChange={(e) => setF({ ...f, label: e.target.value })} placeholder="FTMO 100K" style={{ margin: '4px 0 0' }} />
+                  <input value={f.label} onChange={(e) => setF({ ...f, label: e.target.value })} placeholder="Ej: FTMO 100K" style={{ margin: '4px 0 0' }} />
                   <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{t.fNickHint}</div>
                 </div>
                 <div>
@@ -273,7 +273,7 @@ export default function KeysPage() {
                 </div>
                 <div>
                   <span style={lbl}>{t.fFirm}</span>
-                  <input list="onyx-firms" value={f.broker} onChange={(e) => setF({ ...f, broker: e.target.value })} placeholder="FTMO" style={{ margin: '4px 0 0' }} />
+                  <input list="onyx-firms" value={f.broker} onChange={(e) => setF({ ...f, broker: e.target.value })} placeholder="Ej: FTMO" style={{ margin: '4px 0 0' }} />
                   <datalist id="onyx-firms">{FIRMS.map((x) => <option key={x} value={x} />)}</datalist>
                   <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{t.fFirmHint}</div>
                 </div>
@@ -284,7 +284,7 @@ export default function KeysPage() {
                 {(f.acc_type === 'challenge' || f.acc_type === 'funded') && (
                   <div>
                     <span style={lbl}>{t.fSize}</span>
-                    <input value={f.acc_size} onChange={(e) => setF({ ...f, acc_size: e.target.value })} placeholder="100000" style={{ margin: '4px 0 0' }} />
+                    <input value={f.acc_size} onChange={(e) => setF({ ...f, acc_size: e.target.value })} placeholder="Ej: 100000" style={{ margin: '4px 0 0' }} />
                     <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{t.fSizeHint}</div>
                   </div>
                 )}

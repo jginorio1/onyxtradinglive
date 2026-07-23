@@ -340,10 +340,8 @@ function StepVisual({ viz, origin, apiUrl, lang }: any) {
       return <div style={box}>
         <div className="muted" style={{ fontSize: 11, marginBottom: 8 }}>{p('En la ventana que se abre:', 'In the window that opens:')}</div>
         <div className="row" style={{ gap: 8, alignItems: 'center', marginBottom: 10 }}>{check}<span style={{ fontSize: 12 }}>{p('Marca «Permitir Algo Trading» (pestaña Común)', 'Tick "Allow Algo Trading" (Common tab)')}</span></div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}><span style={{ fontSize: 12, minWidth: 70, color: 'var(--green)', fontWeight: 600 }}>ApiKey</span><code style={code}>{p('pega tu clave', 'paste your key')}</code><span style={{ fontSize: 11, color: 'var(--green)' }}>← {p('esto es lo único que pegas', 'the only thing you paste')}</span></div>
-          <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}><span className="muted" style={{ fontSize: 12, minWidth: 70 }}>ServidorUrl</span><code style={code}>{apiUrl}</code><span className="muted" style={{ fontSize: 11 }}>{p('(ya viene puesta)', '(already set)')}</span></div>
-        </div>
+        <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}><span style={{ fontSize: 12, minWidth: 70, color: 'var(--green)', fontWeight: 600 }}>ApiKey</span><code style={code}>{p('pega tu clave', 'paste your key')}</code><span style={{ fontSize: 11, color: 'var(--green)' }}>← {p('lo único que pegas', 'the only thing you paste')}</span></div>
+        <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>{p('No toques la dirección del servidor: ya viene puesta en el EA.', 'Do not touch the server address: it is already set in the EA.')}</div>
       </div>;
     case 'webrequest':
       return <div style={box}>
@@ -403,7 +401,6 @@ function StepExtras({ s, t, w, apiUrl, origin, apiKey, copy, copied, onDownload,
         {apiKey
           ? <Row label="ApiKey" value={apiKey} tag="wizkey" />
           : <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>{w.needKey}</div>}
-        <Row label="ServidorUrl" value={apiUrl} tag="url" />
         <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>ℹ️ {w.srvNote}</div>
       </>
     );
