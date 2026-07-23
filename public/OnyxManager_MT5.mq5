@@ -19,7 +19,7 @@ enum ENUM_ONYX_LANG { ONYX_ES = 0, ONYX_EN = 1 };
 
 input string           ApiKey       = "";                              // API key (onyxtradinglive.com)
 input ENUM_ONYX_LANG   Idioma       = ONYX_ES;                         // Idioma / Language
-input string           ServidorUrl  = "https://onyxtradinglive.com";   // Servidor / Server
+input string           ServidorUrl  = "https://www.onyxtradinglive.com"; // No lo cambies salvo que te lo pidamos
 
 //==================== CONSTANTES ==================================
 #define EA_VERSION "1.00"
@@ -874,7 +874,15 @@ void RunCommand(string cmd)
 //==================== CICLO DE VIDA ===============================
 int OnInit()
 {
-   g_url   = ServidorUrl + "/api/v1/sync";
+   // Normalizamos la URL: funciona si pegas el dominio base o la URL completa.
+   // Evita el 404 por ruta duplicada (.../api/v1/sync/api/v1/sync).
+   g_url = ServidorUrl;
+   if(StringFind(g_url, "/api/v1/sync") < 0)
+   {
+      if(StringLen(g_url) > 0 && StringSubstr(g_url, StringLen(g_url) - 1) == "/")
+         g_url = StringSubstr(g_url, 0, StringLen(g_url) - 1);
+      g_url = g_url + "/api/v1/sync";
+   }
    g_login = AccountInfoInteger(ACCOUNT_LOGIN);
    trade.SetAsyncMode(false);
    trade.SetDeviationInPoints(20);
