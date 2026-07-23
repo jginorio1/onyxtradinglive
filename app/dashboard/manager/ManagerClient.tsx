@@ -12,7 +12,11 @@ type Lang = 'es' | 'en';
 
 const T: any = {
   es: {
-    title: 'Gestor', back: 'Volver al panel', save: 'Guardar y enviar', saved: 'Enviado al MetaTrader', saving: '...',
+    title: 'Onyx Guardian', subtitle: 'Protege tus operaciones automáticamente', back: 'Volver al panel', save: 'Guardar y enviar', saved: 'Enviado al MetaTrader', saving: '...',
+    sumActive: 'Protecciones activas', sumOf: 'de',
+    unitsBigT: '¿En qué mido mis niveles?', unitsApplies: 'Se aplica a break even, trailing y parciales. Cámbialo aquí y todas las casillas se ajustan.',
+    unitsChosen: 'Elegiste', unitsChosen2: ': las casillas de esta pestaña usan esa unidad.',
+    uPipsD: 'Distancia del par', uRD: 'Múltiplos del stop', uMoneyD: 'En tu divisa',
     noAcc: 'Conecta una cuenta MT para usar el gestor.', connect: 'Conectar cuenta →',
     lockT: 'El gestor está en los planes de pago', lockD: 'Deja que Onyx mueva tus stops, aplique trailing y cierre por partes mientras tú te concentras en operar.', lockCta: 'Ver planes →',
     account: 'Cuenta', live: 'EA conectado', offline: 'EA sin señal', never: 'Nunca ha sincronizado',
@@ -48,7 +52,11 @@ const T: any = {
     adv: 'Disponible en Elite',
   },
   en: {
-    title: 'Manager', back: 'Back to dashboard', save: 'Save and send', saved: 'Sent to MetaTrader', saving: '...',
+    title: 'Onyx Guardian', subtitle: 'Protects your trades automatically', back: 'Back to dashboard', save: 'Save and send', saved: 'Sent to MetaTrader', saving: '...',
+    sumActive: 'Active protections', sumOf: 'of',
+    unitsBigT: 'How do I measure my levels?', unitsApplies: 'Applies to break even, trailing and partials. Change it here and every box adjusts.',
+    unitsChosen: 'You chose', unitsChosen2: ': the boxes on this tab use that unit.',
+    uPipsD: 'Pair distance', uRD: 'Stop multiples', uMoneyD: 'In your currency',
     noAcc: 'Connect an MT account to use the manager.', connect: 'Connect account →',
     lockT: 'The manager is on the paid plans', lockD: 'Let Onyx move your stops, run trailing and close in parts while you focus on trading.', lockCta: 'See plans →',
     account: 'Account', live: 'EA connected', offline: 'EA not reporting', never: 'Never synced',
@@ -89,6 +97,48 @@ function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
   return <span className="toggle" onClick={onClick} style={{ background: on ? '#34e2a0' : 'var(--line)' }}><span className="knob" style={{ left: on ? 21 : 3 }} /></span>;
 }
 
+// Punto de estado: verde encendido, gris apagado.
+function Dot({ on }: { on: boolean }) {
+  return <span style={{ width: 9, height: 9, borderRadius: '50%', flex: 'none', background: on ? '#34e2a0' : 'var(--line)' }} />;
+}
+
+// Etiqueta corta de la unidad elegida (pips / RR / divisa de la cuenta).
+function unitShort(units: string, currency?: string) {
+  if (units === 'r') return 'RR';
+  if (units === 'money') return currency || '$';
+  return 'pips';
+}
+
+// Casilla numérica con la unidad pegada a la derecha, para que se entienda al instante.
+function UnitInput({ value, onChange, unit, width = 200 }: { value: any; onChange: (v: number) => void; unit: string; width?: number }) {
+  return (
+    <div style={{ display: 'inline-flex', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden', maxWidth: width, width: '100%' }}>
+      <input type="number" value={value} onChange={(e) => onChange(Number(e.target.value))}
+        style={{ border: 'none', borderRadius: 0, margin: 0, flex: 1, minWidth: 0, padding: '7px 10px' }} />
+      <span style={{ display: 'flex', alignItems: 'center', padding: '0 12px', background: 'rgba(255,255,255,.05)', fontSize: 13, color: 'var(--mut)', borderLeft: '1px solid var(--line)', whiteSpace: 'nowrap' }}>{unit}</span>
+    </div>
+  );
+}
+
+// Cabecera de una protección: punto + emoji + nombre + descripción + interruptor.
+// Cuando está encendida, el borde de la tarjeta se pone verde.
+function ProtHeader({ icon, title, desc, on, onToggle, right }: any) {
+  return (
+    <div className="row between" style={{ marginBottom: on ? 12 : 0, gap: 10, alignItems: 'center' }}>
+      <div className="row" style={{ gap: 10, alignItems: 'center', flex: 1, minWidth: 0 }}>
+        <Dot on={on} />
+        <span style={{ fontSize: 20 }}>{icon}</span>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 600 }}>{title}</div>
+          {desc && <div className="muted" style={{ fontSize: 12 }}>{desc}</div>}
+        </div>
+      </div>
+      {right}
+      {onToggle && <Toggle on={on} onClick={onToggle} />}
+    </div>
+  );
+}
+
 export default function ManagerClient() {
   const { lang, setLang } = useLang();
   const [d, setD] = useState<any>(null);
@@ -126,6 +176,10 @@ export default function ManagerClient() {
   const acc = useMemo(() => (d?.accounts || []).find((a: any) => a.id === sel), [d, sel]);
   const caps = d?.caps || {};
   const advanced = !!caps.manager_advanced;
+  // Unidad visible en cada casilla de la pestaña Protección
+  const uShort = unitShort(units, acc?.currency);
+  // Borde verde cuando la protección está encendida
+  const protCard = (on: boolean) => ({ marginBottom: 14, border: '1px solid ' + (on ? 'rgba(52,226,160,.45)' : 'var(--line)') } as any);
 
   function pick(id: string) {
     const a = (d?.accounts || []).find((x: any) => x.id === id);
@@ -212,31 +266,52 @@ export default function ManagerClient() {
     <>
       <div className="wrap" style={{ padding: '22px 22px 50px', maxWidth: 780 }}>
 
-        {/* Cuenta */}
+        {/* Cabecera Onyx Guardian */}
         <div className="card" style={card}>
-          <span style={lbl}>{t.account}</span>
-          <select value={sel} onChange={(e) => pick(e.target.value)} style={{ margin: 0 }}>
-            {d.accounts.map((a: any) => <option key={a.id} value={a.id}>{a.nickname || a.login} · {a.broker || ''}</option>)}
-          </select>
-          {acc && (
-            <div className="row" style={{ gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-              {acc.last_sync_at
-                ? <span className="pill" style={{ color: acc.live ? 'var(--green)' : 'var(--amber)', background: acc.live ? 'rgba(52,226,160,.15)' : 'rgba(255,192,77,.15)' }}>{acc.live ? t.live : t.offline}</span>
-                : <span className="pill">{t.never}</span>}
-              {acc.ea_version && <span className="muted" style={{ fontSize: 12 }}>EA {acc.ea_version}</span>}
+          <div className="row" style={{ gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ width: 42, height: 42, borderRadius: 10, background: 'rgba(124,140,255,.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flex: 'none' }}>🛡️</div>
+            <div style={{ flex: 1, minWidth: 150 }}>
+              <div style={{ fontWeight: 700, fontSize: 17 }}>{t.title}</div>
+              <div className="muted" style={{ fontSize: 13 }}>{t.subtitle}</div>
             </div>
-          )}
-          <div className="row between" style={{ borderTop: '1px solid var(--line)', marginTop: 14, paddingTop: 14, flexWrap: 'wrap', gap: 10 }}>
-            <div><div style={{ fontWeight: 700 }}>{t.onoff}</div><div className="muted" style={{ fontSize: 13 }}>{t.onoffD}</div></div>
             <Toggle on={enabled} onClick={() => setEnabled(!enabled)} />
           </div>
+          <div className="row" style={{ gap: 10, alignItems: 'center', marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--line)', flexWrap: 'wrap' }}>
+            <select value={sel} onChange={(e) => pick(e.target.value)} style={{ margin: 0, width: 'auto', minWidth: 200 }}>
+              {d.accounts.map((a: any) => <option key={a.id} value={a.id}>{a.nickname || a.login} · {a.broker || ''}</option>)}
+            </select>
+            {acc && (acc.last_sync_at
+              ? <span className="pill" style={{ color: acc.live ? 'var(--green)' : 'var(--amber)', background: acc.live ? 'rgba(52,226,160,.15)' : 'rgba(255,192,77,.15)' }}>{acc.live ? t.live : t.offline}</span>
+              : <span className="pill">{t.never}</span>)}
+            {acc?.ea_version && <span className="muted" style={{ fontSize: 12 }}>EA {acc.ea_version}</span>}
+          </div>
+          <div className="muted" style={{ fontSize: 13, marginTop: 10 }}>{t.onoffD}</div>
         </div>
 
-        {/* Pestañas */}
+        {/* Resumen de protecciones activas */}
+        {cfg && (() => {
+          const prot = [
+            { k: 'be', name: t.beT, on: !!cfg?.breakeven?.on },
+            { k: 'tr', name: t.trT, on: !!cfg?.trailing?.on },
+            { k: 'pt', name: t.ptT, on: !!cfg?.partials?.on },
+            { k: 'plan', name: t2.tabPlan, on: !!cfg?.plan?.on },
+            { k: 'lim', name: t2.tabLimits, on: !!cfg?.limits?.on },
+            { k: 'news', name: t2.tabNews, on: !!cfg?.news?.on },
+          ];
+          const active = prot.filter((p) => p.on);
+          return (
+            <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
+              <span className="muted" style={{ fontSize: 13 }}>{t.sumActive}: {active.length} {t.sumOf} {prot.length}</span>
+              {active.map((p) => <span key={p.k} className="pill" style={{ color: 'var(--green)', background: 'rgba(52,226,160,.15)', fontSize: 12 }}>{p.name}</span>)}
+            </div>
+          );
+        })()}
+
+        {/* Pestañas con íconos */}
         <div className="adminnav-items" style={{ flexDirection: 'row', overflowX: 'auto', gap: 6, marginBottom: 16 }}>
-          {([['trade', t2.tabTrade], ['plan', t2.tabPlan], ['limits', t2.tabLimits], ['news', t2.tabNews], ['state', t2.tabHist]] as [Tab, string][]).map(([k, label]) => (
+          {([['trade', '🛡️', t2.tabTrade], ['plan', '📅', t2.tabPlan], ['limits', '🚧', t2.tabLimits], ['news', '📰', t2.tabNews], ['state', '🕑', t2.tabHist]] as [Tab, string, string][]).map(([k, icon, label]) => (
             <button key={k} className={'btn ' + (tab === k ? 'btn-primary' : 'btn-ghost')}
-              style={{ padding: '7px 14px', fontSize: 13, whiteSpace: 'nowrap' }} onClick={() => setTab(k)}>{label}</button>
+              style={{ padding: '7px 14px', fontSize: 13, whiteSpace: 'nowrap' }} onClick={() => setTab(k)}>{icon} {label}</button>
           ))}
         </div>
 
@@ -252,30 +327,34 @@ export default function ManagerClient() {
         {tab === 'news' && <NewsTab cfg={cfg} set={set} t={t2} canNews={!!caps.manager_news} advLabel={t.adv} />}
 
         {tab === 'trade' && (<>
-        {/* Unidades */}
+        {/* Selector de unidad, grande y explicado */}
         <div className="card" style={card}>
-          <div className="row" style={{ gap: 6 }}><span style={lbl}>{t.units}</span><Help slug="que-es-r" /></div>
-          <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-            {([['pips', t.uPips], ['r', t.uR], ['money', t.uMoney]] as [string, string][]).map(([k, label]) => (
-              <button key={k} className={'btn ' + (units === k ? 'btn-primary' : 'btn-ghost')} style={{ flex: 1, minWidth: 120 }} onClick={() => setUnits(k)}>{label}</button>
+          <div className="row" style={{ gap: 6, marginBottom: 2 }}><h3 style={{ fontSize: 16 }}>{t.unitsBigT}</h3><Help slug="que-es-r" /></div>
+          <p className="muted" style={{ fontSize: 12, marginBottom: 12 }}>{t.unitsApplies}</p>
+          <div className="grid g3" style={{ gap: 8 }}>
+            {([['pips', t.uPips, t.uPipsD], ['r', t.uR, t.uRD], ['money', t.uMoney, t.uMoneyD]] as [string, string, string][]).map(([k, label, desc]) => (
+              <div key={k} onClick={() => setUnits(k)} style={{ cursor: 'pointer', textAlign: 'center', padding: '12px', borderRadius: 10, border: '1px solid ' + (units === k ? 'var(--brand)' : 'var(--line)'), background: units === k ? 'rgba(124,140,255,.10)' : 'transparent' }}>
+                <div style={{ fontWeight: 600 }}>{label}</div>
+                <div className="muted" style={{ fontSize: 11 }}>{desc}</div>
+              </div>
             ))}
           </div>
-          <div className="muted" style={{ fontSize: 13, marginTop: 8 }}>{t.unitsHelp[units]}</div>
+          <div className="row" style={{ gap: 8, marginTop: 12, padding: '10px 12px', background: 'rgba(124,140,255,.10)', borderRadius: 8, alignItems: 'flex-start' }}>
+            <span>ℹ️</span>
+            <span style={{ fontSize: 12, color: 'var(--tx)' }}>{t.unitsChosen} <b>{uShort}</b>{t.unitsChosen2}</span>
+          </div>
         </div>
 
         {/* Break even */}
-        <div className="card" style={card}>
-          <div className="row between" style={{ marginBottom: 4 }}>
-            <h3>{t.beT}</h3><Help slug="break-even" />
-            <Toggle on={!!cfg?.breakeven?.on} onClick={() => set('breakeven.on', !cfg.breakeven.on)} />
-          </div>
-          <p className="muted" style={{ fontSize: 13, marginBottom: cfg?.breakeven?.on ? 14 : 0 }}>{t.beD}</p>
+        <div className="card" style={protCard(!!cfg?.breakeven?.on)}>
+          <ProtHeader icon="🎯" title={t.beT} desc={t.beD} on={!!cfg?.breakeven?.on}
+            onToggle={() => set('breakeven.on', !cfg.breakeven.on)} right={<Help slug="break-even" />} />
 
           {cfg?.breakeven?.on && (
-            <>
-              <div style={{ maxWidth: 220, marginBottom: 14 }}>
+            <div style={{ borderTop: '1px solid var(--line)', paddingTop: 14 }}>
+              <div style={{ marginBottom: 14 }}>
                 <span style={lbl}>{t.beTrigger}</span>
-                <input type="number" value={cfg.breakeven.trigger} onChange={(e) => set('breakeven.trigger', Number(e.target.value))} style={num} />
+                <UnitInput value={cfg.breakeven.trigger} onChange={(v) => set('breakeven.trigger', v)} unit={uShort} />
               </div>
 
               <span style={lbl}>{t.beMode}</span>
@@ -288,55 +367,46 @@ export default function ManagerClient() {
               ))}
 
               <div className="row" style={{ gap: 14, marginTop: 10, flexWrap: 'wrap' }}>
-                <div><span style={lbl}>{t.beOffset}</span><input type="number" value={cfg.breakeven.offset} onChange={(e) => set('breakeven.offset', Number(e.target.value))} style={num} /></div>
+                <div><span style={lbl}>{t.beOffset}</span><UnitInput value={cfg.breakeven.offset} onChange={(v) => set('breakeven.offset', v)} unit={uShort} width={160} /></div>
               </div>
 
               <div className="row between" style={{ borderTop: '1px solid var(--line)', marginTop: 14, paddingTop: 12, flexWrap: 'wrap', gap: 10 }}>
                 <div style={{ flex: 1, minWidth: 200 }}><div style={{ fontSize: 14 }}>{t.beCosts}</div><div className="muted" style={{ fontSize: 12 }}>{t.beCostsD}</div></div>
                 <Toggle on={!!cfg.breakeven.cover_costs} onClick={() => set('breakeven.cover_costs', !cfg.breakeven.cover_costs)} />
               </div>
-            </>
+            </div>
           )}
         </div>
 
         {/* Trailing */}
-        <div className="card" style={card}>
-          <div className="row between" style={{ marginBottom: 4 }}>
-            <h3>{t.trT}</h3><Help slug="trailing-stop" />
-            <Toggle on={!!cfg?.trailing?.on} onClick={() => set('trailing.on', !cfg.trailing.on)} />
-          </div>
-          <p className="muted" style={{ fontSize: 13, marginBottom: cfg?.trailing?.on ? 14 : 0 }}>{t.trD}</p>
+        <div className="card" style={protCard(!!cfg?.trailing?.on)}>
+          <ProtHeader icon="📈" title={t.trT} desc={t.trD} on={!!cfg?.trailing?.on}
+            onToggle={() => set('trailing.on', !cfg.trailing.on)} right={<Help slug="trailing-stop" />} />
           {cfg?.trailing?.on && (
-            <>
+            <div style={{ borderTop: '1px solid var(--line)', paddingTop: 14 }}>
               <div className="row" style={{ gap: 14, flexWrap: 'wrap' }}>
-                <div><span style={lbl}>{t.trStart}</span><input type="number" value={cfg.trailing.start} onChange={(e) => set('trailing.start', Number(e.target.value))} style={num} /></div>
-                <div><span style={lbl}>{t.trDist}</span><input type="number" value={cfg.trailing.distance} onChange={(e) => set('trailing.distance', Number(e.target.value))} style={num} /></div>
+                <div><span style={lbl}>{t.trStart}</span><UnitInput value={cfg.trailing.start} onChange={(v) => set('trailing.start', v)} unit={uShort} width={150} /></div>
+                <div><span style={lbl}>{t.trDist}</span><UnitInput value={cfg.trailing.distance} onChange={(v) => set('trailing.distance', v)} unit={uShort} width={150} /></div>
                 <div><span style={lbl}>{t.trType}</span><select value="fixed" disabled style={{ margin: 0, width: 160 }}><option value="fixed">{t.trFixed}</option></select></div>
               </div>
               <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>{t.trSoon}</div>
-            </>
+            </div>
           )}
         </div>
 
         {/* TP parciales */}
-        <div className="card" style={{ ...card, opacity: advanced ? 1 : .75 }}>
-          <div className="row between" style={{ marginBottom: 4, flexWrap: 'wrap', gap: 8 }}>
-            <div className="row" style={{ gap: 8 }}>
-              <h3>{t.ptT}</h3><Help slug="parciales" />
-              {!advanced && <span className="pill" style={{ color: '#7fe9c0', background: 'rgba(52,226,160,.15)', border: '1px solid #34e2a0' }}>🔒 {t.adv}</span>}
-            </div>
-            {advanced && <Toggle on={!!cfg?.partials?.on} onClick={() => set('partials.on', !cfg.partials.on)} />}
-          </div>
-          <p className="muted" style={{ fontSize: 13, marginBottom: advanced && cfg?.partials?.on ? 14 : 0 }}>{t.ptD}</p>
+        <div className="card" style={{ ...protCard(advanced && !!cfg?.partials?.on), opacity: advanced ? 1 : .75 }}>
+          <ProtHeader icon="🥧" title={t.ptT} desc={t.ptD} on={advanced && !!cfg?.partials?.on}
+            onToggle={advanced ? () => set('partials.on', !cfg.partials.on) : undefined}
+            right={<div className="row" style={{ gap: 8 }}><Help slug="parciales" />{!advanced && <span className="pill" style={{ color: '#7fe9c0', background: 'rgba(52,226,160,.15)', border: '1px solid #34e2a0' }}>🔒 {t.adv}</span>}</div>} />
 
           {advanced && cfg?.partials?.on && (
-            <>
+            <div style={{ borderTop: '1px solid var(--line)', paddingTop: 14 }}>
               {cfg.partials.levels.map((l: any, i: number) => (
                 <div key={i} className="row" style={{ gap: 10, marginBottom: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
                   <span className="muted" style={{ fontSize: 13, width: 40 }}>TP{i + 1}</span>
-                  <div><span style={lbl}>{t.ptAt}</span><input type="number" value={l.at} onChange={(e) => setLevel(i, 'at', Number(e.target.value))} style={num} /></div>
-                  <div><span style={lbl}>{t.ptClose}</span><input type="number" value={l.close} onChange={(e) => setLevel(i, 'close', Number(e.target.value))} style={{ ...num, width: 80 }} /></div>
-                  <span className="muted" style={{ fontSize: 13, paddingBottom: 8 }}>%</span>
+                  <div><span style={lbl}>{t.ptAt}</span><UnitInput value={l.at} onChange={(v) => setLevel(i, 'at', v)} unit={uShort} width={130} /></div>
+                  <div><span style={lbl}>{t.ptClose}</span><UnitInput value={l.close} onChange={(v) => setLevel(i, 'close', v)} unit="%" width={110} /></div>
                   <div style={{ paddingBottom: 4 }}><Toggle on={!!l.on} onClick={() => setLevel(i, 'on', !l.on)} /></div>
                 </div>
               ))}
@@ -346,7 +416,7 @@ export default function ManagerClient() {
               </div>
               {totalClose > 100 && <div style={{ color: 'var(--red)', fontSize: 13, marginTop: 6 }}>{t.ptOver}</div>}
               <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>{t.ptMinLot}</div>
-            </>
+            </div>
           )}
         </div>
         </>)}

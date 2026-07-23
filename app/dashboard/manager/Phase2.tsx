@@ -22,8 +22,9 @@ export const P2: any = {
     from: 'Desde', to: 'Hasta', brokerTime: 'Hora del bróker ahora',
     wknd: 'Cerrar todo antes del fin de semana', wkndD: 'Evita el hueco del domingo y el swap del finde.',
     wkndDay: 'Día', wkndTime: 'Hora',
+    unitMin: 'min', unitTimes: 'veces', unitTrades: 'op.',
     maxTrades: 'Máximo de operaciones al día', maxTradesD: '0 = sin límite.',
-    cooldown: 'Espera después de una pérdida (min)', cooldownD: 'El mejor antídoto contra la operación de venganza.',
+    cooldown: 'Espera después de una pérdida', cooldownD: 'El mejor antídoto contra la operación de venganza.',
     tiltT: 'Freno por racha de pérdidas', tiltD: 'Tras varias pérdidas seguidas, el gestor te para un rato.',
     tiltLosses: 'Pérdidas seguidas', tiltPause: 'Pausa (min)',
     rigidT: '¿Qué pasa si intento saltármelo?',
@@ -85,8 +86,9 @@ export const P2: any = {
     from: 'From', to: 'To', brokerTime: 'Broker time now',
     wknd: 'Close everything before the weekend', wkndD: 'Avoids the Sunday gap and weekend swap.',
     wkndDay: 'Day', wkndTime: 'Time',
+    unitMin: 'min', unitTimes: 'times', unitTrades: 'trades',
     maxTrades: 'Maximum trades per day', maxTradesD: '0 = no limit.',
-    cooldown: 'Wait after a loss (min)', cooldownD: 'The best antidote to revenge trading.',
+    cooldown: 'Wait after a loss', cooldownD: 'The best antidote to revenge trading.',
     tiltT: 'Losing-streak brake', tiltD: 'After several losses in a row, the manager stops you for a while.',
     tiltLosses: 'Losses in a row', tiltPause: 'Pause (min)',
     rigidT: 'What happens if I try to skip it?',
@@ -145,6 +147,22 @@ function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
   return <span className="toggle" onClick={onClick} style={{ background: on ? '#34e2a0' : 'var(--line)' }}><span className="knob" style={{ left: on ? 21 : 3 }} /></span>;
 }
 
+// Punto de estado verde/gris, para ver de un vistazo si la sección está activa.
+function Dot({ on }: { on: boolean }) {
+  return <span style={{ width: 9, height: 9, borderRadius: '50%', flex: 'none', background: on ? '#34e2a0' : 'var(--line)' }} />;
+}
+
+// Casilla numérica con una etiqueta de unidad pegada (min, veces, %…).
+function SuffixInput({ value, onChange, unit, min, max, step, width = 130 }: any) {
+  return (
+    <div style={{ display: 'inline-flex', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden', maxWidth: width }}>
+      <input type="number" value={value} min={min} max={max} step={step} onChange={onChange}
+        style={{ border: 'none', borderRadius: 0, margin: 0, flex: 1, minWidth: 0, padding: '7px 10px' }} />
+      <span style={{ display: 'flex', alignItems: 'center', padding: '0 10px', background: 'rgba(255,255,255,.05)', fontSize: 12, color: 'var(--mut)', borderLeft: '1px solid var(--line)', whiteSpace: 'nowrap' }}>{unit}</span>
+    </div>
+  );
+}
+
 // Tarjeta seleccionable con título y explicación
 function Choice({ on, title, desc, onClick }: any) {
   return (
@@ -191,9 +209,9 @@ export function PlanTab({ cfg, set, setCfg, t, acc }: any) {
 
   return (
     <>
-      <div className="card" style={{ marginBottom: 14 }}>
+      <div className="card" style={{ marginBottom: 14, border: '1px solid ' + (p.on ? 'rgba(52,226,160,.45)' : 'var(--line)') }}>
         <div className="row between" style={{ marginBottom: 4 }}>
-          <h3>{t.planT}</h3><Help slug="plan-de-trading" />
+          <div className="row" style={{ gap: 10, alignItems: 'center' }}><Dot on={!!p.on} /><span style={{ fontSize: 20 }}>📅</span><h3 style={{ margin: 0 }}>{t.planT}</h3><Help slug="plan-de-trading" /></div>
           <Toggle on={!!p.on} onClick={() => set('plan.on', !p.on)} />
         </div>
         <p className="muted" style={{ fontSize: 13 }}>{t.planD}</p>
@@ -251,12 +269,12 @@ export function PlanTab({ cfg, set, setCfg, t, acc }: any) {
             <div className="row" style={{ gap: 18, flexWrap: 'wrap', marginBottom: 16 }}>
               <div>
                 <span style={lbl}>{t.maxTrades}</span>
-                <input type="number" min={0} value={p.max_trades_day} onChange={(e) => set('plan.max_trades_day', Number(e.target.value))} style={num} />
+                <SuffixInput value={p.max_trades_day} min={0} unit={t.unitTrades} onChange={(e: any) => set('plan.max_trades_day', Number(e.target.value))} />
                 <div className="muted" style={{ fontSize: 11, marginTop: 3 }}>{t.maxTradesD}</div>
               </div>
               <div>
                 <span style={lbl}>{t.cooldown}</span>
-                <input type="number" min={0} value={p.cooldown_min} onChange={(e) => set('plan.cooldown_min', Number(e.target.value))} style={num} />
+                <SuffixInput value={p.cooldown_min} min={0} unit={t.unitMin} onChange={(e: any) => set('plan.cooldown_min', Number(e.target.value))} />
                 <div className="muted" style={{ fontSize: 11, marginTop: 3 }}>{t.cooldownD}</div>
               </div>
             </div>
@@ -270,8 +288,8 @@ export function PlanTab({ cfg, set, setCfg, t, acc }: any) {
             </div>
             {p.tilt?.on && (
               <div className="row" style={{ gap: 14, marginTop: 12, flexWrap: 'wrap' }}>
-                <div><span style={lbl}>{t.tiltLosses}</span><input type="number" min={2} value={p.tilt.losses} onChange={(e) => setTilt('losses', Number(e.target.value))} style={num} /></div>
-                <div><span style={lbl}>{t.tiltPause}</span><input type="number" min={5} value={p.tilt.pause_min} onChange={(e) => setTilt('pause_min', Number(e.target.value))} style={num} /></div>
+                <div><span style={lbl}>{t.tiltLosses}</span><SuffixInput value={p.tilt.losses} min={2} unit={t.unitTimes} onChange={(e: any) => setTilt('losses', Number(e.target.value))} /></div>
+                <div><span style={lbl}>{t.tiltPause}</span><SuffixInput value={p.tilt.pause_min} min={5} unit={t.unitMin} onChange={(e: any) => setTilt('pause_min', Number(e.target.value))} /></div>
               </div>
             )}
           </div>
@@ -285,7 +303,7 @@ export function PlanTab({ cfg, set, setCfg, t, acc }: any) {
             {p.rigidity === 'friction' && (
               <div style={{ marginTop: 10 }}>
                 <span style={lbl}>{t.friction}</span>
-                <input type="number" min={1} max={240} value={p.friction_min} onChange={(e) => set('plan.friction_min', Number(e.target.value))} style={num} />
+                <SuffixInput value={p.friction_min} min={1} max={240} unit={t.unitMin} onChange={(e: any) => set('plan.friction_min', Number(e.target.value))} />
               </div>
             )}
           </div>
@@ -320,9 +338,9 @@ export function LimitsTab({ cfg, set, setCfg, t, firms, firmSel, setFirmSel, lan
 
   return (
     <>
-      <div className="card" style={{ marginBottom: 14 }}>
+      <div className="card" style={{ marginBottom: 14, border: '1px solid ' + (l.on ? 'rgba(52,226,160,.45)' : 'var(--line)') }}>
         <div className="row between" style={{ marginBottom: 4 }}>
-          <h3>{t.limT}</h3><Help slug="limites-cuenta" />
+          <div className="row" style={{ gap: 10, alignItems: 'center' }}><Dot on={!!l.on} /><span style={{ fontSize: 20 }}>🚧</span><h3 style={{ margin: 0 }}>{t.limT}</h3><Help slug="limites-cuenta" /></div>
           <Toggle on={!!l.on} onClick={() => set('limits.on', !l.on)} />
         </div>
         <p className="muted" style={{ fontSize: 13 }}>{t.limD}</p>
@@ -424,10 +442,10 @@ export function LimitsTab({ cfg, set, setCfg, t, firms, firmSel, setFirmSel, lan
 export function NewsTab({ cfg, set, t, canNews, advLabel }: any) {
   const n = cfg?.news || {};
   return (
-    <div className="card" style={{ marginBottom: 14, opacity: canNews ? 1 : .75 }}>
+    <div className="card" style={{ marginBottom: 14, opacity: canNews ? 1 : .75, border: '1px solid ' + (canNews && n.on ? 'rgba(52,226,160,.45)' : 'var(--line)') }}>
       <div className="row between" style={{ marginBottom: 4, flexWrap: 'wrap', gap: 8 }}>
-        <div className="row" style={{ gap: 8 }}>
-          <h3>{t.newsT}</h3>
+        <div className="row" style={{ gap: 10, alignItems: 'center' }}>
+          <Dot on={canNews && !!n.on} /><span style={{ fontSize: 20 }}>📰</span><h3 style={{ margin: 0 }}>{t.newsT}</h3>
           {!canNews && <span className="pill" style={{ color: '#7fe9c0', background: 'rgba(52,226,160,.15)', border: '1px solid #34e2a0' }}>🔒 {advLabel}</span>}
         </div>
         {canNews && <Toggle on={!!n.on} onClick={() => set('news.on', !n.on)} />}
@@ -443,8 +461,8 @@ export function NewsTab({ cfg, set, t, canNews, advLabel }: any) {
           </div>
 
           <div className="row" style={{ gap: 18, flexWrap: 'wrap', marginBottom: 16 }}>
-            <div><span style={lbl}>{t.before}</span><input type="number" min={0} value={n.before_min} onChange={(e) => set('news.before_min', Number(e.target.value))} style={num} /></div>
-            <div><span style={lbl}>{t.after}</span><input type="number" min={0} value={n.after_min} onChange={(e) => set('news.after_min', Number(e.target.value))} style={num} /></div>
+            <div><span style={lbl}>{t.before}</span><SuffixInput value={n.before_min} min={0} unit={t.unitMin} onChange={(e: any) => set('news.before_min', Number(e.target.value))} /></div>
+            <div><span style={lbl}>{t.after}</span><SuffixInput value={n.after_min} min={0} unit={t.unitMin} onChange={(e: any) => set('news.after_min', Number(e.target.value))} /></div>
           </div>
 
           <div className="row between" style={{ borderTop: '1px solid var(--line)', paddingTop: 14, flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
