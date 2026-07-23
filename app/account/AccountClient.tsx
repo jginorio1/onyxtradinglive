@@ -26,7 +26,7 @@ const D: any = {
     tGoalO: [['pasar_challenge', 'Pasar mi challenge'], ['consistencia', 'Ser consistente'], ['crecer', 'Hacer crecer mi cuenta'], ['vivir', 'Vivir del trading']],
     invTitle: 'Tus facturas', invTxt: 'Todas tus facturas y recibos están en el portal seguro de Stripe. Desde ahí puedes descargarlas en PDF.', invBtn: 'Abrir mis facturas',
     accTitle: 'Cuentas conectadas', accNone: 'Todavía no has conectado ninguna cuenta MT.', accAdd: 'Conectar una cuenta', apiK: 'Tu clave API', apiTxt: 'Pégala en el conector del MetaTrader.', copy: 'Copiar', copied: 'Copiada',
-    lastSync: 'Últ. sync', never: 'nunca',
+    lastSync: 'Últ. sync', never: 'nunca', mtLive: 'Conectada', mtStale: 'Sin señal', mtNever: 'Sin conectar',
     nTitle: 'Qué avisos quieres recibir', nEmail: 'Correos de la cuenta y pagos', nWeek: 'Resumen semanal de tu operativa', nFund: 'Alertas de reglas de fondeo', nMkt: 'Novedades y ofertas',
     pwT: 'Cambiar contraseña', pwNew: 'Nueva contraseña', pwRep: 'Repetir contraseña', pwBtn: 'Actualizar contraseña', pwShort: 'Mínimo 8 caracteres.', pwDiff: 'Las contraseñas no coinciden.', pwOk: 'Contraseña actualizada.',
     dTitle: 'Eliminar mi cuenta', dTxt: 'Se borrarán tus cuentas, operaciones y notas para siempre, y se cancelará tu suscripción. Esto no se puede deshacer.', dType: 'Escribe ELIMINAR para confirmar', dBtn: 'Eliminar mi cuenta',
@@ -54,7 +54,7 @@ const D: any = {
     tGoalO: [['pasar_challenge', 'Pass my challenge'], ['consistencia', 'Be consistent'], ['crecer', 'Grow my account'], ['vivir', 'Trade for a living']],
     invTitle: 'Your invoices', invTxt: 'All your invoices and receipts live in the secure Stripe portal. You can download them as PDF there.', invBtn: 'Open my invoices',
     accTitle: 'Connected accounts', accNone: 'You have not connected any MT account yet.', accAdd: 'Connect an account', apiK: 'Your API key', apiTxt: 'Paste it into the MetaTrader connector.', copy: 'Copy', copied: 'Copied',
-    lastSync: 'Last sync', never: 'never',
+    lastSync: 'Last sync', never: 'never', mtLive: 'Connected', mtStale: 'No signal', mtNever: 'Not connected',
     nTitle: 'Which alerts you want', nEmail: 'Account and billing emails', nWeek: 'Weekly performance recap', nFund: 'Prop-firm rule alerts', nMkt: 'News and offers',
     pwT: 'Change password', pwNew: 'New password', pwRep: 'Repeat password', pwBtn: 'Update password', pwShort: 'At least 8 characters.', pwDiff: 'Passwords do not match.', pwOk: 'Password updated.',
     dTitle: 'Delete my account', dTxt: 'Your accounts, trades and notes will be erased forever and your subscription will be canceled. This cannot be undone.', dType: 'Type ELIMINAR to confirm', dBtn: 'Delete my account',
@@ -70,7 +70,7 @@ const D: any = {
 };
 
 function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
-  return <span className="toggle" onClick={onClick} style={{ background: on ? '#34e2a0' : 'var(--line)' }}><span className="knob" style={{ left: on ? 21 : 3 }} /></span>;
+  return <span className="toggle" onClick={onClick} style={{ background: on ? '#34e2a0' : '#556080', boxShadow: on ? 'none' : 'inset 0 0 0 1px rgba(255,255,255,.12)' }}><span className="knob" style={{ left: on ? 21 : 3 }} /></span>;
 }
 
 export default function AccountClient({ email }: { email: string }) {
@@ -296,7 +296,16 @@ export default function AccountClient({ email }: { email: string }) {
                   {accounts.map((a) => (
                     <div key={a.id} className="row between" style={{ borderTop: '1px solid var(--line)', padding: '10px 0', flexWrap: 'wrap', gap: 8 }}>
                       <div>
-                        <div style={{ fontWeight: 700 }}>{a.login} <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}>{a.broker || a.server || ''}</span></div>
+                        <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <span style={{ fontWeight: 700 }}>{a.login} <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}>{a.broker || a.server || ''}</span></span>
+                          {(() => {
+                            const live = a.last_sync_at && (Date.now() - new Date(a.last_sync_at).getTime()) < 120000;
+                            const st = !a.last_sync_at ? { txt: L.mtNever, col: 'var(--mut)', bg: 'var(--card2)' }
+                              : live ? { txt: L.mtLive, col: 'var(--green)', bg: 'rgba(52,226,160,.15)' }
+                              : { txt: L.mtStale, col: 'var(--amber)', bg: 'rgba(255,192,77,.15)' };
+                            return <span className="pill" style={{ color: st.col, background: st.bg }}>{st.txt}</span>;
+                          })()}
+                        </div>
                         <div className="muted" style={{ fontSize: 12 }}>{a.platform || 'MT5'} · {L.lastSync}: {a.last_sync_at ? new Date(a.last_sync_at).toLocaleString() : L.never}</div>
                       </div>
                       <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>

@@ -80,7 +80,7 @@ const T: any = {
 };
 
 function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
-  return <span className="toggle" onClick={onClick} style={{ background: on ? '#34e2a0' : 'var(--line)' }}><span className="knob" style={{ left: on ? 21 : 3 }} /></span>;
+  return <span className="toggle" onClick={onClick} style={{ background: on ? '#34e2a0' : '#556080', boxShadow: on ? 'none' : 'inset 0 0 0 1px rgba(255,255,255,.12)' }}><span className="knob" style={{ left: on ? 21 : 3 }} /></span>;
 }
 
 export default function TelegramCard({ lang }: { lang: 'es' | 'en' }) {

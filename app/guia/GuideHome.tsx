@@ -31,13 +31,13 @@ const NEXT: any = {
     guest:   { t: 'Empieza por aquí', d: 'Crea tu cuenta gratis y conecta tu MetaTrader. Se tarda unos minutos.', slug: 'conectar-cuenta' },
     noAcc:   { t: 'Conecta tu primera cuenta', d: 'Todavía no hay ninguna cuenta enviando datos. Es el paso que desbloquea todo lo demás.', slug: 'instalar-ea' },
     noMgr:   { t: 'Configura tu plan de trading', d: 'Ya tienes datos entrando. Ahora dile a Onyx cuándo tienes permiso para operar.', slug: 'plan-de-trading' },
-    ready:   { t: 'Entiende tus números', d: 'Tu cuenta está conectada y el gestor activo. Ahora saca partido a lo que ya estás midiendo.', slug: 'expectancy' },
+    ready:   { t: 'Entiende tus números', d: 'Tu cuenta está conectada y Onyx Guardian activo. Ahora saca partido a lo que ya estás midiendo.', slug: 'expectancy' },
   },
   en: {
     guest:   { t: 'Start here', d: 'Create your free account and connect your MetaTrader. It takes a few minutes.', slug: 'conectar-cuenta' },
     noAcc:   { t: 'Connect your first account', d: 'No account is sending data yet. This is the step that unlocks everything else.', slug: 'instalar-ea' },
     noMgr:   { t: 'Set up your trading plan', d: 'Data is coming in. Now tell Onyx when you are allowed to trade.', slug: 'plan-de-trading' },
-    ready:   { t: 'Understand your numbers', d: 'Your account is connected and the manager is on. Now get value from what you are already measuring.', slug: 'expectancy' },
+    ready:   { t: 'Understand your numbers', d: 'Your account is connected and Onyx Guardian is on. Now get value from what you are already measuring.', slug: 'expectancy' },
   },
 };
 

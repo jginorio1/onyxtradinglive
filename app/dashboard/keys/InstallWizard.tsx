@@ -38,7 +38,7 @@ export const WIZ: any = {
     okT: 'Conectado',
     okD: (n: number) => `${n} operación(es) importada(s)`,
     okNone: 'Todavía sin operaciones en el historial, pero la conexión funciona.',
-    goDash: 'Ver mi dashboard', goManager: 'Configurar el gestor',
+    goDash: 'Ver mi dashboard', goManager: 'Configurar Onyx Guardian',
     again: 'Conectar otra cuenta',
 
     stuckT: 'Todavía no llega nada',
@@ -78,7 +78,7 @@ export const WIZ: any = {
     okT: 'Connected',
     okD: (n: number) => `${n} trade(s) imported`,
     okNone: 'No trades in your history yet, but the connection works.',
-    goDash: 'Go to my dashboard', goManager: 'Set up the manager',
+    goDash: 'Go to my dashboard', goManager: 'Set up Onyx Guardian',
     again: 'Connect another account',
 
     stuckT: 'Nothing has arrived yet',

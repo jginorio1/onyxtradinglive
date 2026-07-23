@@ -95,7 +95,7 @@ export default function TestConsole({ meEmail }: { meEmail: string }) {
         <h3 style={{ marginBottom: 6, color: 'var(--amber)' }}>🧪 Consola de pruebas</h3>
         <p className="muted" style={{ fontSize: 13 }}>
           Simula exactamente lo que envía el EA, sin abrir MetaTrader. Sirve para comprobar que la clave funciona,
-          que los límites del plan se respetan y que la configuración del gestor llega bien.
+          que los límites del plan se respetan y que la configuración de Onyx Guardian llega bien.
         </p>
       </div>
 
@@ -103,7 +103,7 @@ export default function TestConsole({ meEmail }: { meEmail: string }) {
       <div className="card" style={{ marginBottom: 16 }}>
         <h3 style={{ marginBottom: 4 }}>Mi plan de prueba</h3>
         <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>
-          Cámbiate de plan para probar los candados y el gestor. Es tu propia cuenta ({meEmail}).
+          Cámbiate de plan para probar los candados y Onyx Guardian. Es tu propia cuenta ({meEmail}).
         </p>
         <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
           {plans.map((p) => (
@@ -154,12 +154,12 @@ export default function TestConsole({ meEmail }: { meEmail: string }) {
       {/* Respuesta */}
       <div className="card">
         <h3 style={{ marginBottom: 10 }}>Respuesta del servidor</h3>
-        {!out && <p className="muted" style={{ fontSize: 14 }}>Aquí verás lo que el servidor le contesta al EA: la configuración del gestor y los comandos pendientes.</p>}
+        {!out && <p className="muted" style={{ fontSize: 14 }}>Aquí verás lo que el servidor le contesta al EA: la configuración de Onyx Guardian y los comandos pendientes.</p>}
         {out && (
           <pre style={{ ...box, fontSize: 12, lineHeight: 1.5, overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 420, overflowY: 'auto', margin: 0 }}>{out}</pre>
         )}
         <div className="muted" style={{ fontSize: 12, marginTop: 10 }}>
-          Qué mirar: <b>config</b> debe traer tus ajustes del Gestor (si es <b>null</b>, o el gestor está apagado o tu plan no lo incluye).
+          Qué mirar: <b>config</b> debe traer tus ajustes de Onyx Guardian (si es <b>null</b>, o Onyx Guardian está apagado o tu plan no lo incluye).
           <b> commands</b> debe traer lo que hayas encolado.
         </div>
       </div>

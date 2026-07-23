@@ -25,7 +25,7 @@ const CAPS: [string, string][] = [
 ];
 
 function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
-  return <span className="toggle" onClick={onClick} style={{ background: on ? '#34e2a0' : 'var(--line)' }}><span className="knob" style={{ left: on ? 21 : 3 }} /></span>;
+  return <span className="toggle" onClick={onClick} style={{ background: on ? '#34e2a0' : '#556080', boxShadow: on ? 'none' : 'inset 0 0 0 1px rgba(255,255,255,.12)' }}><span className="knob" style={{ left: on ? 21 : 3 }} /></span>;
 }
 const roleColor = (r?: string | null) => (r === 'owner' ? '#a9b4ff' : r === 'support' ? '#ffd45e' : '#34e2a0');
 

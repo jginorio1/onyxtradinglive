@@ -31,7 +31,7 @@ export type Article = {
 export const CATEGORIES = [
   { id: 'start',   icon: '🔌', color: 'var(--green)',  name: { es: 'Primeros pasos',        en: 'Getting started' } },
   { id: 'numbers', icon: '📊', color: 'var(--brand)',  name: { es: 'Entender tus números',  en: 'Understanding your numbers' } },
-  { id: 'manager', icon: '🛡️', color: 'var(--amber)',  name: { es: 'El gestor',             en: 'The manager' } },
+  { id: 'manager', icon: '🛡️', color: 'var(--amber)',  name: { es: 'Onyx Guardian',             en: 'Onyx Guardian' } },
   { id: 'funded',  icon: '🏆', color: 'var(--purple)', name: { es: 'Cuentas de fondeo',     en: 'Funded accounts' } },
   { id: 'account', icon: '⚙️', color: 'var(--cyan)',   name: { es: 'Tu cuenta y tu plan',   en: 'Your account and plan' } },
 ];
@@ -146,7 +146,7 @@ export const ARTICLES: Article[] = [
           'No protege con MetaTrader cerrado. Sin el programa abierto no hay nadie vigilando.',
           'No garantiza nada. Un hueco de mercado se salta cualquier stop, el tuyo y el nuestro.',
         ] },
-        { warn: 'Cuando el gestor cierra una operación que abriste fuera de tu horario, esa entrada te ha costado el spread y la comisión. No es un fallo: es el precio de saltarte tu propio plan, y está puesto a propósito.' },
+        { warn: 'Cuando Onyx Guardian cierra una operación que abriste fuera de tu horario, esa entrada te ha costado el spread y la comisión. No es un fallo: es el precio de saltarte tu propio plan, y está puesto a propósito.' },
       ],
       en: [
         { h: 'What it does' },
@@ -163,7 +163,7 @@ export const ARTICLES: Article[] = [
           'It does not protect with MetaTrader closed. With the program shut, nobody is watching.',
           'It guarantees nothing. A market gap jumps over any stop, yours and ours.',
         ] },
-        { warn: 'When the manager closes a trade you opened outside your hours, that entry cost you the spread and commission. Not a bug: it is the price of breaking your own plan, and it is there on purpose.' },
+        { warn: 'When Onyx Guardian closes a trade you opened outside your hours, that entry cost you the spread and commission. Not a bug: it is the price of breaking your own plan, and it is there on purpose.' },
       ],
     },
   },
@@ -238,7 +238,7 @@ export const ARTICLES: Article[] = [
         { h: 'Por qué cambia las cosas' },
         { p: 'En dinero, una ganancia de $500 parece mejor que una de $300. Pero si la primera fue arriesgando $500 (1R) y la segunda arriesgando $60 (5R), la segunda operación fue muchísimo mejor. En R lo ves de inmediato; en dólares, no.' },
         { p: 'Además te quita la emoción del dinero. "Perdí 1R" duele menos que "perdí 400 euros", y te deja pensar con la cabeza en vez de con el estómago.' },
-        { p: 'En el gestor puedes configurar tus niveles en R. Así, el break even o el trailing se adaptan solos a cada operación sin que tengas que recalcular pips.' },
+        { p: 'En Onyx Guardian puedes configurar tus niveles en R. Así, el break even o el trailing se adaptan solos a cada operación sin que tengas que recalcular pips.' },
       ],
       en: [
         { p: '1R is what you risk on a trade: the distance between your entry and your stop loss, in money. If you enter risking $200, then 1R = $200 for that trade.' },
@@ -246,7 +246,7 @@ export const ARTICLES: Article[] = [
         { h: 'Why it changes things' },
         { p: 'In money, a $500 win looks better than a $300 one. But if the first risked $500 (1R) and the second risked $60 (5R), the second trade was far better. In R you see it instantly; in dollars you do not.' },
         { p: 'It also takes the emotion out of the money. "I lost 1R" hurts less than "I lost 400 euros", and lets you think with your head instead of your stomach.' },
-        { p: 'In the manager you can set your levels in R. That way break even or trailing adapt to each trade without you recalculating pips.' },
+        { p: 'In Onyx Guardian you can set your levels in R. That way break even or trailing adapt to each trade without you recalculating pips.' },
       ],
     },
   },
@@ -266,7 +266,7 @@ export const ARTICLES: Article[] = [
         { note: 'Pierdes 10% → necesitas +11% para volver\nPierdes 25% → necesitas +33%\nPierdes 50% → necesitas +100%\nPierdes 75% → necesitas +300%', title: 'Cuánto cuesta recuperarse' },
         { h: 'El drawdown que de verdad importa' },
         { p: 'No es el número: es si vas a seguir operando igual después de vivirlo. Casi nadie abandona por perder dinero; abandonan por perder la confianza. Un drawdown que te lleva a doblar el lotaje para recuperar es un drawdown que te va a costar la cuenta.' },
-        { p: 'Si estás en una cuenta de fondeo, además es una regla dura: la firma te cierra la cuenta al llegar al límite. Por eso el gestor te avisa antes, con margen.' },
+        { p: 'Si estás en una cuenta de fondeo, además es una regla dura: la firma te cierra la cuenta al llegar al límite. Por eso Onyx Guardian te avisa antes, con margen.' },
       ],
       en: [
         { p: 'Drawdown measures how far you have fallen from your highest point. If you reached $12,000 and dropped to $10,200, your drawdown is $1,800, or 15%.' },
@@ -275,7 +275,7 @@ export const ARTICLES: Article[] = [
         { note: 'Lose 10% → need +11% to get back\nLose 25% → need +33%\nLose 50% → need +100%\nLose 75% → need +300%', title: 'What recovery costs' },
         { h: 'The drawdown that really matters' },
         { p: 'It is not the number: it is whether you will keep trading the same way after living through it. Almost nobody quits from losing money; they quit from losing confidence. A drawdown that pushes you to double your lot size to recover is a drawdown that will cost you the account.' },
-        { p: 'On a funded account it is also a hard rule: the firm closes you when you hit the limit. That is why the manager warns you before, with margin.' },
+        { p: 'On a funded account it is also a hard rule: the firm closes you when you hit the limit. That is why Onyx Guardian warns you before, with margin.' },
       ],
     },
   },
@@ -294,7 +294,7 @@ export const ARTICLES: Article[] = [
         { h: 'El swap se acumula en silencio' },
         { p: 'En posiciones que aguantas semanas, el swap puede comerse buena parte de la ganancia. En algunos pares es positivo y te paga a ti, pero en la mayoría de las combinaciones que operan los minoristas, resta.' },
         { p: 'En la sección de Costes del dashboard tienes cuánto te llevaron entre comisiones y swap en el periodo que elijas. Es un número que suele sorprender la primera vez.' },
-        { p: 'Por eso el break even del gestor puede cubrir estos costes automáticamente: lee lo que te cobró el bróker en esa operación concreta y mueve el stop lo suficiente para que salir sea salir de verdad a cero.' },
+        { p: 'Por eso el break even de Onyx Guardian puede cubrir estos costes automáticamente: lee lo que te cobró el bróker en esa operación concreta y mueve el stop lo suficiente para que salir sea salir de verdad a cero.' },
       ],
       en: [
         { p: 'Every trade has three parts: the price result, the commission your broker charges, and swap if you held it overnight. Onyx stores all three separately and always shows you the net.' },
@@ -302,7 +302,7 @@ export const ARTICLES: Article[] = [
         { h: 'Swap builds up quietly' },
         { p: 'On positions you hold for weeks, swap can eat a good chunk of the profit. On some pairs it is positive and pays you, but on most combinations retail traders take, it subtracts.' },
         { p: 'In the Costs section of the dashboard you can see what commissions and swap took from you over any period. It is a number that usually surprises people the first time.' },
-        { p: 'That is why the manager\'s break even can cover these costs automatically: it reads what your broker charged on that specific trade and moves the stop far enough that exiting really means exiting at zero.' },
+        { p: 'That is why Onyx Guardian\'s break even can cover these costs automatically: it reads what your broker charged on that specific trade and moves the stop far enough that exiting really means exiting at zero.' },
       ],
     },
   },
@@ -329,7 +329,7 @@ export const ARTICLES: Article[] = [
         ] },
         { h: 'Cuándo se activa' },
         { p: 'Tú eliges cuánta ganancia hace falta antes de mover el stop. Ponerlo demasiado pronto es un error común: te saca de operaciones buenas que solo estaban respirando. Si te pasa a menudo, sube el disparador.' },
-        { warn: 'El gestor solo puede mover stops si MetaTrader está abierto, AlgoTrading encendido y hay conexión. Y un hueco de mercado se salta cualquier stop.' },
+        { warn: 'Onyx Guardian solo puede mover stops si MetaTrader está abierto, AlgoTrading encendido y hay conexión. Y un hueco de mercado se salta cualquier stop.' },
       ],
       en: [
         { p: 'Almost everyone moves the stop to the entry price and believes they can no longer lose. Not true: you still pay the commission and swap on that trade.' },
@@ -342,7 +342,7 @@ export const ARTICLES: Article[] = [
         ] },
         { h: 'When it triggers' },
         { p: 'You choose how much profit is needed before the stop moves. Setting it too early is a common mistake: it takes you out of good trades that were only breathing. If that happens often, raise the trigger.' },
-        { warn: 'The manager can only move stops with MetaTrader open, AlgoTrading on and a live connection. And a market gap jumps over any stop.' },
+        { warn: 'Onyx Guardian can only move stops with MetaTrader open, AlgoTrading on and a live connection. And a market gap jumps over any stop.' },
       ],
     },
   },
@@ -394,7 +394,7 @@ export const ARTICLES: Article[] = [
     body: {
       es: [
         { p: 'Casi nadie pierde dinero por no saber analizar un gráfico. Se pierde operando a deshora, doblando después de una pérdida, o entrando por aburrimiento un viernes por la tarde.' },
-        { p: 'Esta pantalla te deja escribir esas reglas cuando estás tranquilo. Después, el gestor te las recuerda aunque no quieras oírlas.' },
+        { p: 'Esta pantalla te deja escribir esas reglas cuando estás tranquilo. Después, Onyx Guardian te las recuerda aunque no quieras oírlas.' },
         { h: 'Lo que puedes fijar' },
         { list: [
           'Días y franjas horarias en las que operas, en tu hora local.',
@@ -414,7 +414,7 @@ export const ARTICLES: Article[] = [
       ],
       en: [
         { p: 'Almost nobody loses money because they cannot read a chart. People lose trading at the wrong hours, doubling up after a loss, or entering out of boredom on a Friday afternoon.' },
-        { p: 'This screen lets you write those rules while you are calm. Later, the manager reminds you even when you would rather not hear it.' },
+        { p: 'This screen lets you write those rules while you are calm. Later, Onyx Guardian reminds you even when you would rather not hear it.' },
         { h: 'What you can set' },
         { list: [
           'Days and time windows you trade, in your local time.',
@@ -452,7 +452,7 @@ export const ARTICLES: Article[] = [
         { h: 'Hora de reinicio' },
         { p: 'Es la hora del servidor de tu bróker a la que empieza un día nuevo. Muchas firmas no usan la medianoche. Si tu día empieza a las 17:00 y tú lo configuraste a las 00:00, tus pérdidas de la tarde se están contando en el día equivocado.' },
         { h: 'Margen de seguridad' },
-        { p: 'Onyx te deja reservar un porcentaje del límite. Si tu firma permite el 5% y reservas un 20%, el gestor te para al 4%. Llegar justo al límite ya es incumplirlo: entre el slippage y una vela mala, te lo saltas sin querer.' },
+        { p: 'Onyx te deja reservar un porcentaje del límite. Si tu firma permite el 5% y reservas un 20%, Onyx Guardian te para al 4%. Llegar justo al límite ya es incumplirlo: entre el slippage y una vela mala, te lo saltas sin querer.' },
         { warn: 'Las plantillas de prop firms que ves son un punto de partida, no la norma oficial. Cada firma cambia sus reglas y hay variantes por tipo de cuenta. Confirma los dos campos con tu contrato.' },
       ],
       en: [
@@ -463,7 +463,7 @@ export const ARTICLES: Article[] = [
         { h: 'Reset hour' },
         { p: 'It is the broker server hour when a new day starts. Many firms do not use midnight. If your day starts at 17:00 and you set it to 00:00, your afternoon losses are counting on the wrong day.' },
         { h: 'Safety margin' },
-        { p: 'Onyx lets you reserve a percentage of the limit. If your firm allows 5% and you reserve 20%, the manager stops you at 4%. Hitting the exact limit already breaks it: between slippage and one bad candle, you cross it by accident.' },
+        { p: 'Onyx lets you reserve a percentage of the limit. If your firm allows 5% and you reserve 20%, Onyx Guardian stops you at 4%. Hitting the exact limit already breaks it: between slippage and one bad candle, you cross it by accident.' },
         { warn: 'The prop firm templates you see are a starting point, not the official rule. Firms change their rules and there are variants per account type. Confirm both fields against your contract.' },
       ],
     },
@@ -511,16 +511,16 @@ export const ARTICLES: Article[] = [
       es: [
         { p: 'En cada cuenta puedes marcar si es un challenge, una cuenta fondeada o capital propio, y meter los números de tu contrato: objetivo, pérdida máxima diaria y pérdida máxima total.' },
         { p: 'Con eso, el dashboard te muestra en todo momento cuánto te queda de margen y cuánto te falta para el objetivo, sin que tengas que calcularlo a mano cada mañana.' },
-        { h: 'Y el gestor lo hace cumplir' },
-        { p: 'Si además activas los límites en el gestor, no solo te informa: te para. Con el margen de seguridad que hayas elegido, para que nunca llegues al borde real.' },
+        { h: 'Y Onyx Guardian lo hace cumplir' },
+        { p: 'Si además activas los límites en Onyx Guardian, no solo te informa: te para. Con el margen de seguridad que hayas elegido, para que nunca llegues al borde real.' },
         { note: 'La mayoría de cuentas de fondeo no se pierden por una mala racha, sino por una sola operación tomada con el límite ya casi tocado. Ahí es donde un freno automático vale lo que cuesta.', title: 'Dónde se pierden las cuentas' },
         { warn: 'Onyx no habla con tu prop firm. No sabemos tus reglas reales: usamos los números que tú metes. Si tu contrato cambia, tienes que actualizarlos aquí.' },
       ],
       en: [
         { p: 'On each account you can mark whether it is a challenge, a funded account or your own capital, and enter the numbers from your contract: target, maximum daily loss and maximum total loss.' },
         { p: 'With that, the dashboard shows at all times how much margin you have left and how far you are from the target, without you calculating it by hand every morning.' },
-        { h: 'And the manager enforces it' },
-        { p: 'If you also turn on limits in the manager, it does not just inform you: it stops you. With whatever safety margin you chose, so you never reach the real edge.' },
+        { h: 'And Onyx Guardian enforces it' },
+        { p: 'If you also turn on limits in Onyx Guardian, it does not just inform you: it stops you. With whatever safety margin you chose, so you never reach the real edge.' },
         { note: 'Most funded accounts are not lost to a bad streak, but to a single trade taken with the limit already nearly touched. That is where an automatic brake earns its keep.', title: 'Where accounts are lost' },
         { warn: 'Onyx does not talk to your prop firm. We do not know your real rules: we use the numbers you enter. If your contract changes, you have to update them here.' },
       ],
