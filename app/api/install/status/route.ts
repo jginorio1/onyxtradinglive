@@ -33,13 +33,24 @@ export async function GET() {
     }
 
     // ¿Sigue viva la conexión ahora mismo?
-    const live = latest ? (Date.now() - new Date(latest.last_sync_at).getTime()) < 120000 : false;
+    const now = Date.now();
+    const live = latest ? (now - new Date(latest.last_sync_at).getTime()) < 120000 : false;
+
+    // Lista de todas las cuentas con su estado (para la vista multi-cuenta)
+    const list = (accounts || []).map((a: any) => ({
+      login: a.login,
+      broker: a.broker || '',
+      platform: a.platform || '',
+      lastSyncAt: a.last_sync_at,
+      live: a.last_sync_at ? (now - new Date(a.last_sync_at).getTime()) < 120000 : false,
+    }));
 
     return NextResponse.json({
       connected: !!latest,
       live,
       totalAccounts: (accounts || []).length,
       syncedAccounts: synced.length,
+      accounts: list,
       account: latest ? {
         login: latest.login,
         broker: latest.broker || '',

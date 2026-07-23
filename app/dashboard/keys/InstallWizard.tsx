@@ -25,6 +25,9 @@ export const WIZ: any = {
     seeAll: 'Ver todos los pasos', seeWizard: 'Guíame paso a paso',
     back: 'Atrás', next: 'Ya lo hice', start: 'Empezar',
     needKey: 'Antes de instalar, crea una clave arriba para tu cuenta.',
+    keyLabel: 'Pega esto', srvNote: 'La dirección del servidor ya viene puesta en el EA. No la cambies.',
+    accStatusT: 'Estado de tus cuentas', accLive: 'Conectada', accStale: 'Sin señal',
+    accNewHint: '¿Estás conectando una cuenta nueva? Aparecerá aquí en cuanto su EA reporte.',
 
     waitT: 'Esperando la primera señal de tu MetaTrader…',
     waitD: 'Enciende AlgoTrading (el botón verde de arriba). Suele tardar menos de un minuto.',
@@ -61,6 +64,9 @@ export const WIZ: any = {
     seeAll: 'See all steps', seeWizard: 'Guide me step by step',
     back: 'Back', next: 'Done, next', start: 'Start',
     needKey: 'Before installing, create a key above for your account.',
+    keyLabel: 'Paste this', srvNote: 'The server address is already set in the EA. Do not change it.',
+    accStatusT: 'Your accounts', accLive: 'Connected', accStale: 'No signal',
+    accNewHint: 'Connecting a new account? It shows up here as soon as its EA reports.',
 
     waitT: 'Waiting for the first signal from your MetaTrader…',
     waitD: 'Turn on AlgoTrading (the green button at the top). It usually takes under a minute.',
@@ -193,47 +199,83 @@ export default function InstallWizard({ t, w, lang, apiUrl, origin, apiKey, onDo
         ))}
       </div>
 
-      {/* Fase 3 · semáforo de conexión en vivo */}
-      <div className="card" style={{ border: '1px solid ' + (live ? 'var(--green)' : 'var(--amber)') }}>
-        {live ? (
-          <div style={{ textAlign: 'center', padding: '6px 0' }}>
-            <div style={{ width: 46, height: 46, borderRadius: '50%', margin: '0 auto 12px', background: 'rgba(52,226,160,.14)', color: 'var(--green)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>✓</div>
-            <h3 style={{ color: 'var(--green)', fontSize: 20, marginBottom: 6 }}>{w.okT}</h3>
-            <p className="muted" style={{ fontSize: 13, marginBottom: 18 }}>
-              {w.connectedD(status.account?.login, status.account?.broker)}
-              {' · '}{(status?.trades || 0) > 0 ? w.okD(status.trades) : w.okNone}
-            </p>
-            <div className="row" style={{ gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <Link className="btn btn-primary" href="/dashboard">{w.goDash}</Link>
-              <Link className="btn btn-ghost" href="/dashboard/manager">{w.goManager}</Link>
+      {/* Fase 3 · estado de conexión de TODAS tus cuentas */}
+      {(() => {
+        const accts: any[] = status?.accounts || [];
+        const liveCount = accts.filter((a) => a.live).length;
+        const anyLive = liveCount > 0;
+        const border = anyLive ? 'var(--green)' : 'var(--amber)';
+        return (
+          <div className="card" style={{ border: '1px solid ' + border }}>
+            <div className="row between" style={{ marginBottom: accts.length ? 12 : 0, flexWrap: 'wrap', gap: 8 }}>
+              <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+                <span style={{ width: 10, height: 10, borderRadius: '50%', flex: 'none', background: anyLive ? '#34e2a0' : 'var(--amber)' }} />
+                <h3 style={{ fontSize: 16 }}>{w.accStatusT}</h3>
+              </div>
+              {anyLive && <span className="pill" style={{ color: 'var(--green)', background: 'rgba(52,226,160,.15)' }}>{liveCount} {w.accLive.toLowerCase()}</span>}
             </div>
-          </div>
-        ) : (
-          <div style={{ textAlign: 'center', padding: '6px 0' }}>
-            <div className="spin" style={{ width: 34, height: 34, borderRadius: '50%', margin: '0 auto 14px', border: '3px solid var(--bg2)', borderTopColor: 'var(--amber)' }} />
-            <div style={{ fontSize: 16, marginBottom: 6, color: 'var(--amber)' }}>{w.waitT}</div>
-            <p className="muted" style={{ fontSize: 13, lineHeight: 1.7, maxWidth: 420, margin: '0 auto' }}>{w.waitD}</p>
-            <div className="muted" style={{ fontSize: 12, marginTop: 12 }}>{w.checking} · {mmss(elapsed)}</div>
 
-            {stuck && (
-              <div style={{ marginTop: 20, textAlign: 'left', padding: '14px 16px', background: 'rgba(245,158,11,.06)', border: '1px solid var(--amber)', borderRadius: 10 }}>
-                <div style={{ color: 'var(--amber)', fontWeight: 600, marginBottom: 4 }}>{w.stuckT}</div>
-                <div className="muted" style={{ fontSize: 13, marginBottom: 10 }}>{w.stuckD}</div>
-                {w.stuck.map((x: any, i: number) => (
-                  <div key={i} className="row" style={{ gap: 10, alignItems: 'flex-start', borderTop: '1px solid var(--line)', padding: '9px 0' }}>
-                    <span className="muted" style={{ fontSize: 12 }}>{i + 1}</span>
-                    <div>
-                      <div style={{ fontSize: 13 }}>{x.t}</div>
-                      <div className="muted" style={{ fontSize: 12 }}>{x.d}</div>
+            {/* Lista de cuentas con su punto de estado */}
+            {accts.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {accts.map((a, i) => {
+                  const mins = a.lastSyncAt ? Math.max(0, Math.floor((Date.now() - new Date(a.lastSyncAt).getTime()) / 60000)) : 0;
+                  return (
+                    <div key={i} className="row between" style={{ gap: 10, flexWrap: 'wrap', border: '1px solid var(--line)', borderRadius: 10, padding: '9px 12px' }}>
+                      <div className="row" style={{ gap: 10, alignItems: 'center' }}>
+                        <span style={{ width: 9, height: 9, borderRadius: '50%', flex: 'none', background: a.live ? '#34e2a0' : 'var(--amber)' }} />
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 600 }}>{a.login}{a.broker ? ' · ' + a.broker : ''}</div>
+                          <div className="muted" style={{ fontSize: 12 }}>{a.live ? w.accLive : `${w.accStale} · ${w.lastSeen}: ${w.since(mins)}`}</div>
+                        </div>
+                      </div>
+                      <span style={{ fontSize: 14, color: a.live ? 'var(--green)' : 'var(--amber)' }}>{a.live ? '✓' : '⚠'}</span>
                     </div>
-                  </div>
-                ))}
-                <button className="btn btn-ghost" style={{ padding: '6px 13px', fontSize: 12, marginTop: 12 }} onClick={check}>{w.retry}</button>
+                  );
+                })}
               </div>
             )}
+
+            {/* Ninguna cuenta viva todavía: seguimos esperando señal */}
+            {!anyLive && (
+              <div style={{ textAlign: 'center', padding: accts.length ? '16px 0 4px' : '6px 0' }}>
+                <div className="spin" style={{ width: 34, height: 34, borderRadius: '50%', margin: '0 auto 14px', border: '3px solid var(--bg2)', borderTopColor: 'var(--amber)' }} />
+                <div style={{ fontSize: 16, marginBottom: 6, color: 'var(--amber)' }}>{w.waitT}</div>
+                <p className="muted" style={{ fontSize: 13, lineHeight: 1.7, maxWidth: 420, margin: '0 auto' }}>{w.waitD}</p>
+                <div className="muted" style={{ fontSize: 12, marginTop: 12 }}>{w.checking} · {mmss(elapsed)}</div>
+
+                {stuck && (
+                  <div style={{ marginTop: 20, textAlign: 'left', padding: '14px 16px', background: 'rgba(245,158,11,.06)', border: '1px solid var(--amber)', borderRadius: 10 }}>
+                    <div style={{ color: 'var(--amber)', fontWeight: 600, marginBottom: 4 }}>{w.stuckT}</div>
+                    <div className="muted" style={{ fontSize: 13, marginBottom: 10 }}>{w.stuckD}</div>
+                    {w.stuck.map((x: any, i: number) => (
+                      <div key={i} className="row" style={{ gap: 10, alignItems: 'flex-start', borderTop: '1px solid var(--line)', padding: '9px 0' }}>
+                        <span className="muted" style={{ fontSize: 12 }}>{i + 1}</span>
+                        <div>
+                          <div style={{ fontSize: 13 }}>{x.t}</div>
+                          <div className="muted" style={{ fontSize: 12 }}>{x.d}</div>
+                        </div>
+                      </div>
+                    ))}
+                    <button className="btn btn-ghost" style={{ padding: '6px 13px', fontSize: 12, marginTop: 12 }} onClick={check}>{w.retry}</button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Al menos una viva: accesos + aviso de cuenta nueva */}
+            {anyLive && (
+              <>
+                <div className="row" style={{ gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginTop: 14 }}>
+                  <Link className="btn btn-primary" href="/dashboard">{w.goDash}</Link>
+                  <Link className="btn btn-ghost" href="/dashboard/manager">{w.goManager}</Link>
+                </div>
+                <div className="muted" style={{ fontSize: 12, marginTop: 12, textAlign: 'center' }}>{w.accNewHint}</div>
+              </>
+            )}
           </div>
-        )}
-      </div>
+        );
+      })()}
     </div>
   );
 }
@@ -299,8 +341,8 @@ function StepVisual({ viz, origin, apiUrl, lang }: any) {
         <div className="muted" style={{ fontSize: 11, marginBottom: 8 }}>{p('En la ventana que se abre:', 'In the window that opens:')}</div>
         <div className="row" style={{ gap: 8, alignItems: 'center', marginBottom: 10 }}>{check}<span style={{ fontSize: 12 }}>{p('Marca «Permitir Algo Trading» (pestaña Común)', 'Tick "Allow Algo Trading" (Common tab)')}</span></div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}><span className="muted" style={{ fontSize: 12, minWidth: 70 }}>ServidorUrl</span><code style={code}>{apiUrl}</code></div>
-          <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}><span className="muted" style={{ fontSize: 12, minWidth: 70 }}>ApiKey</span><code style={code}>{p('tu clave copiada', 'your copied key')}</code></div>
+          <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}><span style={{ fontSize: 12, minWidth: 70, color: 'var(--green)', fontWeight: 600 }}>ApiKey</span><code style={code}>{p('pega tu clave', 'paste your key')}</code><span style={{ fontSize: 11, color: 'var(--green)' }}>← {p('esto es lo único que pegas', 'the only thing you paste')}</span></div>
+          <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}><span className="muted" style={{ fontSize: 12, minWidth: 70 }}>ServidorUrl</span><code style={code}>{apiUrl}</code><span className="muted" style={{ fontSize: 11 }}>{p('(ya viene puesta)', '(already set)')}</span></div>
         </div>
       </div>;
     case 'webrequest':
@@ -358,10 +400,11 @@ function StepExtras({ s, t, w, apiUrl, origin, apiKey, copy, copied, onDownload,
   if (s.copy === 'url') {
     return (
       <>
-        <Row label="ServidorUrl" value={apiUrl} tag="url" />
         {apiKey
           ? <Row label="ApiKey" value={apiKey} tag="wizkey" />
           : <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>{w.needKey}</div>}
+        <Row label="ServidorUrl" value={apiUrl} tag="url" />
+        <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>ℹ️ {w.srvNote}</div>
       </>
     );
   }
