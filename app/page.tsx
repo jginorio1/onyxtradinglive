@@ -326,7 +326,7 @@ const PROWS: { es: string; en: string; v: (boolean | string)[]; head?: boolean }
   { es: 'Bloqueo por noticias', en: 'News blackout', v: [false, false, true] },
   { es: 'Alertas por Telegram', en: 'Telegram alerts', v: [false, false, true] },
 
-  { es: 'Informes automáticos', en: 'Automatic reports', v: [false, false, true] },
+  { es: 'Informe semanal por Telegram', en: 'Weekly report on Telegram', v: [false, false, true] },
   { es: 'Soporte prioritario', en: 'Priority support', v: [false, false, true] },
 ];
 
@@ -701,6 +701,27 @@ export default function Home() {
                     {PROWS.map((r, ri) => r.head
                       ? (<tr key={ri}><td colSpan={4} style={{ padding: '16px 16px 8px', color: 'var(--brand)', fontWeight: 700, fontSize: 13, letterSpacing: '.02em' }}>🛡️ {lang === 'es' ? r.es : r.en}</td></tr>)
                       : (<tr key={ri}><td style={{ padding: '12px 16px', color: 'var(--mut)' }}>{lang === 'es' ? r.es : r.en}</td>{r.v.map((v, ci) => <td key={ci} style={{ textAlign: 'center', padding: '12px 16px' }}>{chk(v)}</td>)}</tr>))}
+
+                    {/* Botones de compra al final de la tabla, alineados con cada columna */}
+                    <tr>
+                      <td style={{ padding: '18px 16px 16px' }}>
+                        <div style={{ fontSize: 14, color: 'var(--tx)' }}>{lang === 'es' ? 'Elige tu plan' : 'Choose your plan'}</div>
+                        <div className="muted" style={{ fontSize: 12 }}>{lang === 'es' ? 'Cambia o cancela cuando quieras' : 'Switch or cancel anytime'}</div>
+                      </td>
+                      {cols.map((id) => {
+                        const p = byId(id);
+                        const isFree = id === 'free';
+                        const isPro = !!(p && (lang === 'es' ? p.badge : p.badge_en));
+                        const label = isFree ? (lang === 'es' ? 'Empezar gratis' : 'Start free')
+                          : (lang === 'es' ? 'Elegir ' : 'Choose ') + (p ? (lang === 'es' ? p.name : (p.name_en || p.name)) : id);
+                        return (
+                          <td key={id} style={{ textAlign: 'center', padding: '18px 12px 16px' }}>
+                            <Link className={'btn ' + (isPro ? 'btn-primary' : 'btn-ghost')} href="/login?mode=signup"
+                              style={{ fontSize: 13, padding: '8px 14px', whiteSpace: 'nowrap' }}>{label}</Link>
+                          </td>
+                        );
+                      })}
+                    </tr>
                   </tbody>
                 </table>
               </div>

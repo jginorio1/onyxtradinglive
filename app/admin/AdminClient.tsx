@@ -174,7 +174,7 @@ function Modules() {
       <div className="card">
         <div style={{ fontSize: 26, marginBottom: 8 }}>📄</div>
         <div className="row between" style={{ marginBottom: 8 }}><h3>Informe semanal</h3><Badge on txt="Activo" /></div>
-        <p className="muted" style={{ fontSize: 13 }}>Cada domingo, un informe del rendimiento de la semana por Telegram: resultado, aciertos, mejor par y disciplina. El PDF por email llegará más adelante.</p>
+        <p className="muted" style={{ fontSize: 13 }}>Cada domingo, un informe del rendimiento de la semana por Telegram: resultado, aciertos, mejor par y disciplina.</p>
       </div>
     </div>
   );
