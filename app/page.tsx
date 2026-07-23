@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useLang } from '@/lib/lang';
 import Link from 'next/link';
 import SectionNav from './SectionNav';
+import PlansCompareTable from './PlansCompareTable';
 
 type Lang = 'es' | 'en';
 
@@ -304,31 +305,6 @@ const FIRMS = [
     es: 'Precios agresivos y evaluación flexible de una o dos fases.', en: 'Aggressive pricing and flexible one- or two-step evaluations.' },
 ];
 
-const PROWS: { es: string; en: string; v: (boolean | string)[]; head?: boolean }[] = [
-  { es: 'Historial', en: 'History', v: ['30 días', 'Ilimitado', 'Ilimitado'] },
-  { es: 'Sesiones y noticias en vivo', en: 'Live sessions & news', v: [true, true, true] },
-  { es: 'KPIs, gráficas y calendario', en: 'KPIs, charts & calendar', v: [true, true, true] },
-  { es: 'Perfil del trader (radar)', en: 'Trader profile (radar)', v: [true, true, true] },
-  { es: 'Diario con fotos y notas', en: 'Journal with photos & notes', v: [false, true, true] },
-  { es: 'Comparar cuentas', en: 'Compare accounts', v: [false, true, true] },
-  { es: 'Reglas de fondeo y retiros', en: 'Funding rules & payouts', v: [false, true, true] },
-  { es: 'Costes (comisión y swap)', en: 'Costs (commission & swap)', v: [false, true, true] },
-  { es: 'Exportar CSV', en: 'Export CSV', v: [false, true, true] },
-
-  // Onyx Guardian — el módulo de gestión de riesgo, ya activo en MT4 y MT5
-  { es: 'Onyx Guardian', en: 'Onyx Guardian', v: ['', '', ''], head: true },
-  { es: 'Break even que cubre costes', en: 'Break even that covers costs', v: [false, true, true] },
-  { es: 'Trailing stop', en: 'Trailing stop', v: [false, true, true] },
-  { es: 'Mi plan de trading (horarios, rachas)', en: 'My trading plan (hours, streaks)', v: [false, true, true] },
-  { es: 'Límites con margen de seguridad', en: 'Limits with safety margin', v: [false, true, true] },
-  { es: 'Indicador de disciplina', en: 'Discipline indicator', v: [false, true, true] },
-  { es: 'Cierres parciales (varios TP)', en: 'Partial closes (multiple TPs)', v: [false, false, true] },
-  { es: 'Bloqueo por noticias', en: 'News blackout', v: [false, false, true] },
-  { es: 'Alertas por Telegram', en: 'Telegram alerts', v: [false, false, true] },
-
-  { es: 'Informe semanal por Telegram', en: 'Weekly report on Telegram', v: [false, false, true] },
-  { es: 'Soporte prioritario', en: 'Priority support', v: [false, false, true] },
-];
 
 export default function Home() {
   const { lang, setLang } = useLang();
@@ -684,50 +660,9 @@ export default function Home() {
           })}
         </div>
 
-        {/* Tabla comparativa */}
-        {dbPlans.length > 0 && (() => {
-          const cols = ['free', 'pro', 'elite'];
-          const byId = (id: string) => dbPlans.find((p: any) => p.id === id);
-          const acc = (id: string) => { const p = byId(id); if (!p) return '—'; return p.max_accounts >= 999 ? (lang === 'es' ? 'Ilimitadas' : 'Unlimited') : String(p.max_accounts); };
-          const chk = (v: boolean | string) => typeof v === 'string' ? <span style={{ fontSize: 13 }}>{v}</span> : v ? <span style={{ color: '#34e2a0', fontSize: 16 }}>✓</span> : <span style={{ color: '#66708a', fontSize: 14 }}>🔒</span>;
-          return (
-            <div style={{ marginTop: 46 }}>
-              <h2 style={{ textAlign: 'center', marginBottom: 18 }}>{lang === 'es' ? 'Compara los planes' : 'Compare plans'}</h2>
-              <div className="card" style={{ overflowX: 'auto', padding: 0 }}>
-                <table style={{ minWidth: 520 }}>
-                  <thead><tr><th style={{ padding: '14px 16px' }}></th>{cols.map((id) => { const p = byId(id); const on = !!(p && (lang === 'es' ? p.badge : p.badge_en)); return <th key={id} style={{ textAlign: 'center', padding: '14px 16px', color: on ? 'var(--brand)' : 'var(--tx)', fontSize: 15 }}>{p ? (lang === 'es' ? p.name : (p.name_en || p.name)) : id}</th>; })}</tr></thead>
-                  <tbody>
-                    <tr><td style={{ padding: '12px 16px', color: 'var(--mut)' }}>{lang === 'es' ? 'Cuentas MT' : 'MT accounts'}</td>{cols.map((id) => <td key={id} style={{ textAlign: 'center', padding: '12px 16px', fontWeight: 700 }}>{acc(id)}</td>)}</tr>
-                    {PROWS.map((r, ri) => r.head
-                      ? (<tr key={ri}><td colSpan={4} style={{ padding: '16px 16px 8px', color: 'var(--brand)', fontWeight: 700, fontSize: 13, letterSpacing: '.02em' }}>🛡️ {lang === 'es' ? r.es : r.en}</td></tr>)
-                      : (<tr key={ri}><td style={{ padding: '12px 16px', color: 'var(--mut)' }}>{lang === 'es' ? r.es : r.en}</td>{r.v.map((v, ci) => <td key={ci} style={{ textAlign: 'center', padding: '12px 16px' }}>{chk(v)}</td>)}</tr>))}
-
-                    {/* Botones de compra al final de la tabla, alineados con cada columna */}
-                    <tr>
-                      <td style={{ padding: '18px 16px 16px' }}>
-                        <div style={{ fontSize: 14, color: 'var(--tx)' }}>{lang === 'es' ? 'Elige tu plan' : 'Choose your plan'}</div>
-                        <div className="muted" style={{ fontSize: 12 }}>{lang === 'es' ? 'Cambia o cancela cuando quieras' : 'Switch or cancel anytime'}</div>
-                      </td>
-                      {cols.map((id) => {
-                        const p = byId(id);
-                        const isFree = id === 'free';
-                        const isPro = !!(p && (lang === 'es' ? p.badge : p.badge_en));
-                        const label = isFree ? (lang === 'es' ? 'Empezar gratis' : 'Start free')
-                          : (lang === 'es' ? 'Elegir ' : 'Choose ') + (p ? (lang === 'es' ? p.name : (p.name_en || p.name)) : id);
-                        return (
-                          <td key={id} style={{ textAlign: 'center', padding: '18px 12px 16px' }}>
-                            <Link className={'btn ' + (isPro ? 'btn-primary' : 'btn-ghost')} href="/login?mode=signup"
-                              style={{ fontSize: 13, padding: '8px 14px', whiteSpace: 'nowrap' }}>{label}</Link>
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          );
-        })()}
+        {/* Tabla comparativa (componente compartido con /pricing) */}
+        <PlansCompareTable plans={dbPlans} lang={lang} annual={false} loadingId=""
+          onChoose={() => { window.location.href = '/login?mode=signup'; }} />
       </div>
 
       {/* Embajadores */}
