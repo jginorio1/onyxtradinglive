@@ -15,7 +15,13 @@ export async function GET(req: Request) {
     const token = process.env.TELEGRAM_BOT_TOKEN;
     if (!token) return NextResponse.json({ error: 'Falta TELEGRAM_BOT_TOKEN en las variables de entorno.' }, { status: 400 });
 
-    const base = (process.env.NEXT_PUBLIC_APP_URL || new URL(req.url).origin).replace(/\/+$/, '');
+    // El webhook DEBE apuntar al dominio final (con www). Si apunta al
+    // apex (onyxtradinglive.com), este redirige a www con un 308 y Telegram,
+    // que no sigue redirecciones, descarta el mensaje. Forzamos el host bueno.
+    let base = (process.env.NEXT_PUBLIC_APP_URL || new URL(req.url).origin).replace(/\/+$/, '');
+    // Nuestro dominio canónico lleva www: lo garantizamos aquí.
+    base = base.replace(/^https?:\/\/onyxtradinglive\.com/i, 'https://www.onyxtradinglive.com');
+    if (!/^https?:\/\//i.test(base)) base = 'https://' + base;
     const url = `${base}/api/telegram/webhook`;
     const secret = process.env.TELEGRAM_WEBHOOK_SECRET || '';
 
