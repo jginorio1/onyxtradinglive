@@ -14,6 +14,16 @@ export default async function Dashboard() {
 
   const { data: profile } = await supabaseAdmin.from('profiles').select('plan').eq('id', user.id).maybeSingle();
 
+  // Onboarding: la primera vez lo mostramos una sola vez. Consulta aparte y
+  // tolerante — si la columna aún no existe (SQL sin correr), no rompe el panel.
+  // OJO: redirect() lanza una excepción interna, por eso va FUERA del try/catch.
+  let needsOnboarding = false;
+  try {
+    const { data: ob, error } = await supabaseAdmin.from('profiles').select('onboarded_at').eq('id', user.id).maybeSingle();
+    if (!error && ob && ob.onboarded_at === null) needsOnboarding = true;
+  } catch { /* columna aún no creada: ignorar hasta correr onboarding_v1.sql */ }
+  if (needsOnboarding) redirect('/onboarding');
+
   const { data: accounts } = await supabaseAdmin
     .from('trading_accounts')
     .select('id,login,nickname,broker,platform,balance,currency,fund_target,fund_max_daily,fund_max_total,fund_start,acc_type,challenge_status,challenge_cost')

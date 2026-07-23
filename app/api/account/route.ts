@@ -7,7 +7,9 @@ import { accountLimit, addonSettings, retentionSettings, ensureProfile } from '@
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-const FIELDS = 'id,email,plan,subscription_status,stripe_customer_id,stripe_subscription_id,full_name,timezone,lang,notify_email,notify_weekly,notify_funding,notify_marketing,created_at';
+const FIELDS = 'id,email,plan,subscription_status,stripe_customer_id,stripe_subscription_id,full_name,timezone,lang,country,experience,trade_style,platform,prop_firm,goal,notify_email,notify_weekly,notify_funding,notify_marketing,created_at';
+// Sin las columnas del perfil de trader, por si aún no se corrió onboarding_v1.sql
+const FIELDS_BASE = 'id,email,plan,subscription_status,stripe_customer_id,stripe_subscription_id,full_name,timezone,lang,notify_email,notify_weekly,notify_funding,notify_marketing,created_at';
 
 // GET · todo lo que necesita la página Mi cuenta
 export async function GET() {
@@ -17,7 +19,10 @@ export async function GET() {
     if (!user) return NextResponse.json({ error: 'no autorizado' }, { status: 401 });
 
     await ensureProfile(user.id, user.email);
-    const { data: prof } = await supabaseAdmin.from('profiles').select(FIELDS).eq('id', user.id).maybeSingle();
+    const first = await supabaseAdmin.from('profiles').select(FIELDS).eq('id', user.id).maybeSingle();
+    let prof: any = first.data;
+    // Si faltan las columnas nuevas (SQL sin correr), reintenta con las básicas
+    if (first.error) { const r = await supabaseAdmin.from('profiles').select(FIELDS_BASE).eq('id', user.id).maybeSingle(); prof = r.data; }
     const { data: plans } = await supabaseAdmin.from('plans').select('*').eq('active', true).order('sort', { ascending: true });
     const { data: accounts } = await supabaseAdmin.from('trading_accounts').select('id,login,broker,server,platform,balance,last_sync_at').eq('user_id', user.id).order('created_at', { ascending: true });
     const { data: keys } = await supabaseAdmin.from('api_keys').select('key,label,revoked,last_used_at').eq('user_id', user.id).eq('revoked', false).limit(1);
@@ -64,7 +69,15 @@ export async function PATCH(req: Request) {
 
     const b = await req.json();
     const fields: any = {};
-    ['full_name', 'timezone', 'lang'].forEach((k) => { if (b[k] !== undefined) fields[k] = String(b[k] || '').slice(0, 120); });
+    ['full_name', 'timezone', 'lang', 'country', 'prop_firm'].forEach((k) => { if (b[k] !== undefined) fields[k] = String(b[k] || '').slice(0, 120); });
+    // Campos de lista del perfil de trader: solo valores permitidos
+    const OPTS: Record<string, string[]> = {
+      experience: ['novato', 'intermedio', 'avanzado', 'pro'],
+      trade_style: ['scalping', 'day', 'swing', 'position'],
+      platform: ['mt4', 'mt5', 'ambas'],
+      goal: ['pasar_challenge', 'consistencia', 'crecer', 'vivir'],
+    };
+    Object.keys(OPTS).forEach((k) => { if (b[k] !== undefined && (b[k] === '' || OPTS[k].includes(String(b[k])))) fields[k] = b[k] ? String(b[k]) : null; });
     ['notify_email', 'notify_weekly', 'notify_funding', 'notify_marketing'].forEach((k) => { if (b[k] !== undefined) fields[k] = !!b[k]; });
     if (!Object.keys(fields).length) return NextResponse.json({ ok: true });
 

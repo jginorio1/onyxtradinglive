@@ -28,7 +28,7 @@ export async function middleware(req: NextRequest) {
   // dependemos de que cada página se acuerde de comprobarlo — que fue justo
   // lo que falló con /dashboard/keys, que era 'use client' y no miraba nada.
   const path = req.nextUrl.pathname;
-  const PROTECTED = ['/dashboard', '/account', '/admin'];
+  const PROTECTED = ['/dashboard', '/account', '/admin', '/onboarding'];
   const needsAuth = PROTECTED.some((p) => path === p || path.startsWith(p + '/'));
 
   if (needsAuth && !user) {

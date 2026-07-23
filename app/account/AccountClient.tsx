@@ -19,6 +19,11 @@ const D: any = {
     usage: 'Cuentas MT usadas', of: 'de', unlimited: 'ilimitadas', usageLeft: 'Te queda', usageLeft2: 'cuenta(s).', usageFull: 'Has llegado a tu límite.',
     upTitle: 'Mejorar a', upBtn: 'Mejorar a', andMore: 'y además:', seePlans: 'Ver todos los planes',
     name: 'Nombre', tz: 'Zona horaria', langL: 'Idioma', email: 'Correo', emailNote: 'El correo no se puede cambiar aquí.',
+    tProfTitle: 'Perfil de trader', tCountry: 'País', tExp: 'Experiencia', tStyle: 'Estilo', tPlat: 'Plataforma', tGoal: 'Meta principal', tProp: 'Prop firm', tChoose: 'Elige…',
+    tExpO: [['novato', 'Novato'], ['intermedio', 'Intermedio'], ['avanzado', 'Avanzado'], ['pro', 'Profesional']],
+    tStyleO: [['scalping', 'Scalping'], ['day', 'Day trading'], ['swing', 'Swing'], ['position', 'Position']],
+    tPlatO: [['mt5', 'MetaTrader 5'], ['mt4', 'MetaTrader 4'], ['ambas', 'Ambas']],
+    tGoalO: [['pasar_challenge', 'Pasar mi challenge'], ['consistencia', 'Ser consistente'], ['crecer', 'Hacer crecer mi cuenta'], ['vivir', 'Vivir del trading']],
     invTitle: 'Tus facturas', invTxt: 'Todas tus facturas y recibos están en el portal seguro de Stripe. Desde ahí puedes descargarlas en PDF.', invBtn: 'Abrir mis facturas',
     accTitle: 'Cuentas conectadas', accNone: 'Todavía no has conectado ninguna cuenta MT.', accAdd: 'Conectar una cuenta', apiK: 'Tu clave API', apiTxt: 'Pégala en el conector del MetaTrader.', copy: 'Copiar', copied: 'Copiada',
     lastSync: 'Últ. sync', never: 'nunca',
@@ -42,6 +47,11 @@ const D: any = {
     usage: 'MT accounts used', of: 'of', unlimited: 'unlimited', usageLeft: 'You have', usageLeft2: 'account(s) left.', usageFull: 'You reached your limit.',
     upTitle: 'Upgrade to', upBtn: 'Upgrade to', andMore: 'plus:', seePlans: 'See all plans',
     name: 'Name', tz: 'Time zone', langL: 'Language', email: 'Email', emailNote: 'Email cannot be changed here.',
+    tProfTitle: 'Trader profile', tCountry: 'Country', tExp: 'Experience', tStyle: 'Style', tPlat: 'Platform', tGoal: 'Main goal', tProp: 'Prop firm', tChoose: 'Choose…',
+    tExpO: [['novato', 'Beginner'], ['intermedio', 'Intermediate'], ['avanzado', 'Advanced'], ['pro', 'Professional']],
+    tStyleO: [['scalping', 'Scalping'], ['day', 'Day trading'], ['swing', 'Swing'], ['position', 'Position']],
+    tPlatO: [['mt5', 'MetaTrader 5'], ['mt4', 'MetaTrader 4'], ['ambas', 'Both']],
+    tGoalO: [['pasar_challenge', 'Pass my challenge'], ['consistencia', 'Be consistent'], ['crecer', 'Grow my account'], ['vivir', 'Trade for a living']],
     invTitle: 'Your invoices', invTxt: 'All your invoices and receipts live in the secure Stripe portal. You can download them as PDF there.', invBtn: 'Open my invoices',
     accTitle: 'Connected accounts', accNone: 'You have not connected any MT account yet.', accAdd: 'Connect an account', apiK: 'Your API key', apiTxt: 'Paste it into the MetaTrader connector.', copy: 'Copy', copied: 'Copied',
     lastSync: 'Last sync', never: 'never',
@@ -95,7 +105,7 @@ export default function AccountClient({ email }: { email: string }) {
 
   async function saveProfile(extra: any = {}) {
     setBusy('save'); setMsg('');
-    const body = { full_name: p.full_name, timezone: p.timezone, lang: p.lang, notify_email: p.notify_email, notify_weekly: p.notify_weekly, notify_funding: p.notify_funding, notify_marketing: p.notify_marketing, ...extra };
+    const body = { full_name: p.full_name, timezone: p.timezone, lang: p.lang, country: p.country, experience: p.experience, trade_style: p.trade_style, platform: p.platform, prop_firm: p.prop_firm, goal: p.goal, notify_email: p.notify_email, notify_weekly: p.notify_weekly, notify_funding: p.notify_funding, notify_marketing: p.notify_marketing, ...extra };
     const r = await fetch('/api/account', { method: 'PATCH', body: JSON.stringify(body) });
     const j = await r.json(); setBusy('');
     if (!r.ok) { alert(errMsg(j, lang)); return; }
@@ -235,6 +245,30 @@ export default function AccountClient({ email }: { email: string }) {
                 <input placeholder="America/New_York" value={p.timezone || ''} onChange={(e) => setField('timezone', e.target.value)} style={{ margin: '4px 0 0' }} />
                 <span style={lbl}>{L.langL}</span>
                 <select value={p.lang || 'es'} onChange={(e) => setField('lang', e.target.value)} style={{ margin: '4px 0 0' }}><option value="es">Español</option><option value="en">English</option></select>
+
+                <div style={{ borderTop: '1px solid var(--line)', margin: '20px 0 4px' }} />
+                <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{L.tProfTitle}</div>
+                <span style={lbl}>{L.tCountry}</span>
+                <input value={p.country || ''} onChange={(e) => setField('country', e.target.value)} style={{ margin: '4px 0 0' }} />
+                <span style={lbl}>{L.tExp}</span>
+                <select value={p.experience || ''} onChange={(e) => setField('experience', e.target.value)} style={{ margin: '4px 0 0' }}>
+                  <option value="">{L.tChoose}</option>{(L as any).tExpO.map(([v, l]: any) => <option key={v} value={v}>{l}</option>)}
+                </select>
+                <span style={lbl}>{L.tStyle}</span>
+                <select value={p.trade_style || ''} onChange={(e) => setField('trade_style', e.target.value)} style={{ margin: '4px 0 0' }}>
+                  <option value="">{L.tChoose}</option>{(L as any).tStyleO.map(([v, l]: any) => <option key={v} value={v}>{l}</option>)}
+                </select>
+                <span style={lbl}>{L.tPlat}</span>
+                <select value={p.platform || ''} onChange={(e) => setField('platform', e.target.value)} style={{ margin: '4px 0 0' }}>
+                  <option value="">{L.tChoose}</option>{(L as any).tPlatO.map(([v, l]: any) => <option key={v} value={v}>{l}</option>)}
+                </select>
+                <span style={lbl}>{L.tProp}</span>
+                <input value={p.prop_firm && p.prop_firm !== 'ninguna' ? p.prop_firm : ''} onChange={(e) => setField('prop_firm', e.target.value)} style={{ margin: '4px 0 0' }} />
+                <span style={lbl}>{L.tGoal}</span>
+                <select value={p.goal || ''} onChange={(e) => setField('goal', e.target.value)} style={{ margin: '4px 0 0' }}>
+                  <option value="">{L.tChoose}</option>{(L as any).tGoalO.map(([v, l]: any) => <option key={v} value={v}>{l}</option>)}
+                </select>
+
                 <div className="row" style={{ gap: 10, marginTop: 16 }}>
                   <button className="btn btn-primary" onClick={() => saveProfile()} disabled={busy === 'save'}>{busy === 'save' ? L.saving : L.save}</button>
                   {msg && <span style={{ color: 'var(--green)', fontSize: 13 }}>{msg}</span>}
