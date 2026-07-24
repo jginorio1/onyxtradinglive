@@ -74,7 +74,8 @@ export default function SupportClient() {
   async function loadTickets() {
     try { const r = await fetch('/api/support/tickets'); const j = await r.json(); setTickets(j.tickets || []); setMsgs(j.messages || []); } catch {}
   }
-  useEffect(() => { loadTickets(); }, []);
+  // Auto-refresco: si un agente responde, el trader lo ve en vivo sin recargar.
+  useEffect(() => { loadTickets(); const iv = setInterval(loadTickets, 6000); return () => clearInterval(iv); }, []);
 
   async function sendAI() {
     const q = ask.trim(); if (!q || aiBusy) return;

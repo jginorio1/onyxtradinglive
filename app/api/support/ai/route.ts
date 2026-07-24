@@ -29,8 +29,8 @@ export async function POST(req: Request) {
     if (!question) return NextResponse.json({ error: 'empty' }, { status: 400 });
 
     // Recupera los artículos más relevantes de la Guía
-    const found = searchArticles(question, lang).slice(0, 3);
-    const pool = found.length ? found : ARTICLES.slice(0, 3);
+    const found = searchArticles(question, lang).slice(0, 5);
+    const pool = found.length ? found : ARTICLES.slice(0, 5);
     const refs = pool.map((a) => ({ slug: a.slug, title: a.title[lang] }));
 
     const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -59,8 +59,37 @@ export async function POST(req: Request) {
       acctContext = `\n\n=== CONTEXTO ===\nEs un VISITANTE sin cuenta. Si encaja, invítale de forma natural a crear su cuenta gratis o a dejar su correo para que le respondamos. No seas insistente.`;
     }
 
+    // --- Contexto extra: precios reales (de la BD), embajadores y base editable ---
+    let extra = '';
+    try {
+      const { data: plans } = await supabaseAdmin.from('plans')
+        .select('name,name_en,price_month,price_year,max_accounts,features,features_en')
+        .eq('active', true).order('sort', { ascending: true });
+      if (plans?.length) {
+        const rows = plans.map((p: any) => {
+          const n = lang === 'en' ? (p.name_en || p.name) : p.name;
+          const acc = p.max_accounts >= 999 ? (lang === 'en' ? 'unlimited accounts' : 'cuentas ilimitadas') : `${p.max_accounts} ${lang === 'en' ? 'accounts' : 'cuentas'}`;
+          const feats = ((lang === 'en' ? p.features_en : p.features) || []).slice(0, 6).join(', ');
+          return `- ${n}: $${p.price_month}/${lang === 'en' ? 'mo' : 'mes'} · $${p.price_year}/${lang === 'en' ? 'yr' : 'año'} · ${acc}. ${feats}`;
+        }).join('\n');
+        extra += `\n\n=== ${lang === 'en' ? 'PRICES AND PLANS (current)' : 'PRECIOS Y PLANES (actuales)'} ===\n${rows}`;
+      }
+    } catch {}
+    extra += lang === 'en'
+      ? `\n\n=== AMBASSADORS ===\nOnyx has an ambassador program: up to 30% recurring commission for every subscriber you bring, and a discount for your audience. Anyone can apply from the Ambassadors page; we review applications in a few days.`
+      : `\n\n=== EMBAJADORES ===\nOnyx tiene programa de embajadores: hasta 30% de comisión recurrente por cada suscriptor que traigas, y descuento para tu comunidad. Cualquiera puede solicitarlo desde la página de Embajadores; revisamos en pocos días.`;
+    try {
+      const words = question.toLowerCase().split(/\s+/).filter((w) => w.length > 3);
+      const { data: kb } = await supabaseAdmin.from('kb_articles').select('title,body,tags').eq('published', true).limit(30);
+      const scored = (kb || []).map((a: any) => {
+        const hay = `${a.title} ${a.tags} ${a.body}`.toLowerCase();
+        return { a, score: words.reduce((s: number, w: string) => s + (hay.includes(w) ? 1 : 0), 0) };
+      }).sort((x, y) => y.score - x.score).slice(0, 3).filter((x) => x.score > 0);
+      if (scored.length) extra += `\n\n=== ${lang === 'en' ? 'KNOWLEDGE BASE' : 'BASE DE CONOCIMIENTO'} ===\n` + scored.map((x) => `# ${x.a.title}\n${x.a.body}`).join('\n\n');
+    } catch {}
+
     // --- Con IA: respuesta conversacional apoyada en la Guía ---
-    const context = pool.map((a) => articleText(a, lang)).join('\n\n---\n\n');
+    const context = pool.map((a) => articleText(a, lang)).join('\n\n---\n\n') + extra;
     const system = (lang === 'en'
       ? `You are Onyx AI, the support assistant for Onyx Trading Live (a trading journal with an MT4/MT5 Expert Advisor called Onyx Guardian). Answer ONLY from the help articles below, in English, briefly and warmly. If the answer is not in them, say you cannot be sure and suggest opening a ticket. Never invent features. Do not give financial advice.`
       : `Eres Onyx AI, el asistente de soporte de Onyx Trading Live (un diario de trading con un Expert Advisor para MT4/MT5 llamado Onyx Guardian). Responde SOLO con los artículos de ayuda de abajo, en español, breve y cercano. Si la respuesta no está en ellos, di que no puedes asegurarlo y sugiere abrir un ticket. No inventes funciones. No des consejo financiero.`)

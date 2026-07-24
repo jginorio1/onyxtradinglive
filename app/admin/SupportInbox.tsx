@@ -24,7 +24,7 @@ export default function SupportInbox() {
   async function load() {
     try { const r = await fetch('/api/admin/support'); const j = await r.json(); setTickets(j.tickets || []); setMsgs(j.messages || []); setParticipants(j.participants || []); setTeam(j.team || []); setCounts(j.counts || {}); } catch {}
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); const iv = setInterval(load, 8000); return () => clearInterval(iv); }, []);
 
   const emailOf = (id: string) => (team.find((t) => t.id === id) || {}).email || '—';
 

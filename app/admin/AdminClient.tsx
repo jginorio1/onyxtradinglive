@@ -7,12 +7,13 @@ import TestConsole from './TestConsole';
 import Firms from './Firms';
 import SupportInbox from './SupportInbox';
 import Diagnostics from './Diagnostics';
+import KbEditor from './KbEditor';
 import { AREAS } from '@/lib/perms';
 
 type Plan = { id: string; name: string; name_en: string; desc_es: string | null; desc_en: string | null; price_month: number; price_year: number; stripe_price_id: string | null; stripe_price_id_year: string | null; max_accounts: number; features: string[]; features_en: string[]; badge: string | null; badge_en: string | null; active: boolean; sort: number; capabilities: any };
 type User = { id: string; email: string; plan: string; subscription_status: string | null; banned: boolean; is_admin: boolean; created_at: string; accounts: number; lastSync: string | null };
 type Team = { id: string; email: string; role: string | null; is_admin: boolean; perms?: any; available?: boolean; last_active?: string | null };
-type Tab = 'resumen' | 'usuarios' | 'planes' | 'equipo' | 'embajadores' | 'retencion' | 'pruebas' | 'firms' | 'modulos' | 'soporte' | 'diag' | 'ajustes';
+type Tab = 'resumen' | 'usuarios' | 'planes' | 'equipo' | 'embajadores' | 'retencion' | 'pruebas' | 'firms' | 'modulos' | 'soporte' | 'kb' | 'diag' | 'ajustes';
 
 const CAPS: [string, string][] = [
   ['journal', 'Diario con fotos y notas'],
@@ -34,7 +35,7 @@ const roleColor = (r?: string | null) => (r === 'owner' ? '#a9b4ff' : r === 'sup
 
 export default function AdminClient({ meEmail, role, perms = {}, accounts, trades }: { meEmail: string; role: string; perms?: Record<string, string>; accounts: number; trades: number }) {
   // Qué áreas puede ver este admin (owner ve todo). Mapa tab → área de permiso.
-  const areaOf: Record<string, string> = { resumen: 'resumen', usuarios: 'usuarios', planes: 'planes', equipo: 'equipo', embajadores: 'embajadores', retencion: 'retencion', pruebas: 'diag', firms: 'firms', modulos: 'modulos', soporte: 'soporte', diag: 'diag', ajustes: 'ajustes' };
+  const areaOf: Record<string, string> = { resumen: 'resumen', usuarios: 'usuarios', planes: 'planes', equipo: 'equipo', embajadores: 'embajadores', retencion: 'retencion', pruebas: 'diag', firms: 'firms', modulos: 'modulos', soporte: 'soporte', kb: 'soporte', diag: 'diag', ajustes: 'ajustes' };
   const canSee = (k: string) => role === 'owner' || (perms[areaOf[k]] && perms[areaOf[k]] !== 'none');
   const [available, setAvailable] = useState(false);
   async function toggleAvail() { const next = !available; setAvailable(next); await fetch('/api/admin/team', { method: 'PATCH', body: JSON.stringify({ available: next }) }); }
@@ -59,7 +60,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
   async function resetPass(u: User) { setBusy(u.id + 'rst'); const r = await fetch('/api/admin/reset-password', { method: 'POST', body: JSON.stringify({ email: u.email }) }); const j = await r.json(); setBusy(''); if (!r.ok) { alert(j.error || 'error'); return; } if (j.link) { navigator.clipboard.writeText(j.link); alert('Enlace de recuperación copiado:\n\n' + j.link); } else alert('Email de recuperación enviado.'); }
 
   const filtered = users.filter((u) => u.email?.toLowerCase().includes(q.toLowerCase()));
-  const NAV_ALL: [Tab, string][] = [['resumen', '📊 Resumen'], ['usuarios', '👥 Usuarios'], ['planes', '💳 Planes'], ['equipo', '🛡️ Equipo'], ['embajadores', '🎁 Embajadores'], ['retencion', '🛟 Retención'], ['pruebas', '🧪 Pruebas'], ['firms', '🏛️ Prop firms'], ['modulos', '🧩 Módulos'], ['soporte', '🎫 Soporte'], ['diag', '🩺 Diagnóstico'], ['ajustes', '⚙️ Ajustes']];
+  const NAV_ALL: [Tab, string][] = [['resumen', '📊 Resumen'], ['usuarios', '👥 Usuarios'], ['planes', '💳 Planes'], ['equipo', '🛡️ Equipo'], ['embajadores', '🎁 Embajadores'], ['retencion', '🛟 Retención'], ['pruebas', '🧪 Pruebas'], ['firms', '🏛️ Prop firms'], ['modulos', '🧩 Módulos'], ['soporte', '🎫 Soporte'], ['kb', '🧠 Base IA'], ['diag', '🩺 Diagnóstico'], ['ajustes', '⚙️ Ajustes']];
   const NAV = NAV_ALL.filter(([k]) => canSee(k));
   useEffect(() => { if (NAV.length && !NAV.some(([k]) => k === tab)) setTab(NAV[0][0]); }, []);
 
@@ -135,6 +136,8 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
             {tab === 'modulos' && <Modules />}
 
             {tab === 'soporte' && <SupportInbox />}
+
+            {tab === 'kb' && <KbEditor />}
 
             {tab === 'diag' && <Diagnostics />}
 
