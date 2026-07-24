@@ -16,18 +16,7 @@ type User = { id: string; email: string; plan: string; subscription_status: stri
 type Team = { id: string; email: string; role: string | null; is_admin: boolean; perms?: any; available?: boolean; last_active?: string | null };
 type Tab = 'resumen' | 'usuarios' | 'planes' | 'equipo' | 'embajadores' | 'retencion' | 'pruebas' | 'firms' | 'modulos' | 'soporte' | 'kb' | 'diag' | 'ajustes';
 
-const CAPS: [string, string][] = [
-  ['journal', 'Diario con fotos y notas'],
-  ['compare', 'Comparar cuentas'],
-  ['funding', 'Reglas de fondeo y retiros'],
-  ['costs', 'Costes (comisión y swap)'],
-  ['export', 'Exportar CSV'],
-  ['reports', 'Informes automáticos'],
-  ['telegram', 'Alertas por Telegram'],
-  ['manager', 'Onyx Guardian: break even, trailing, plan y límites'],
-  ['manager_advanced', 'Guardian avanzado: TP parciales'],
-  ['manager_news', 'Guardian: bloqueo por noticias'],
-];
+const CAPS: string[] = ['journal', 'compare', 'funding', 'costs', 'export', 'reports', 'telegram', 'manager', 'manager_advanced', 'manager_news'];
 
 function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
   return <span className="toggle" onClick={onClick} style={{ background: on ? '#34e2a0' : '#556080', boxShadow: on ? 'none' : 'inset 0 0 0 1px rgba(255,255,255,.12)' }}><span className="knob" style={{ left: on ? 21 : 3 }} /></span>;
@@ -259,28 +248,28 @@ function Modules() {
     <div className="grid g2">
       <div className="card">
         <div style={{ fontSize: 26, marginBottom: 8 }}>🛡️</div>
-        <div className="row between" style={{ marginBottom: 8 }}><h3>Onyx Guardian</h3><Badge on txt="Activo" /></div>
-        <p className="muted" style={{ fontSize: 13, marginBottom: 14 }}>Gestión de riesgo por EA en MT4 y MT5: break even, trailing, plan de trading, límites y noticias.</p>
+        <div className="row between" style={{ marginBottom: 8 }}><h3>Onyx Guardian</h3><Badge on txt={t.mo_active} /></div>
+        <p className="muted" style={{ fontSize: 13, marginBottom: 14 }}>{t.mo_guardian_desc}</p>
         <div className="row" style={{ gap: 24, flexWrap: 'wrap' }}>
-          <Stat n={m.guardian?.accounts} label="cuentas con Guardian" />
-          <Stat n={m.guardian?.eaLive} label="reportando ahora" />
-          <Stat n={m.guardian?.blocks} label="bloqueos ejecutados" />
+          <Stat n={m.guardian?.accounts} label={t.mo_guardian_accounts} />
+          <Stat n={m.guardian?.eaLive} label={t.mo_guardian_live} />
+          <Stat n={m.guardian?.blocks} label={t.mo_guardian_blocks} />
         </div>
       </div>
 
       <div className="card">
         <div style={{ fontSize: 26, marginBottom: 8 }}>📣</div>
-        <div className="row between" style={{ marginBottom: 8 }}><h3>Telegram</h3><Badge on={!!m.telegram?.active} txt={m.telegram?.active ? 'Activo' : 'Sin token'} /></div>
-        <p className="muted" style={{ fontSize: 13, marginBottom: 14 }}>Alertas del Guardian, límites de fondeo, EA caído y resumen del día. Comando /estado incluido.</p>
+        <div className="row between" style={{ marginBottom: 8 }}><h3>Telegram</h3><Badge on={!!m.telegram?.active} txt={m.telegram?.active ? t.mo_active : t.mo_notoken} /></div>
+        <p className="muted" style={{ fontSize: 13, marginBottom: 14 }}>{t.mo_tg_desc}</p>
         <div className="row" style={{ gap: 24 }}>
-          <Stat n={m.telegram?.linked} label="usuarios conectados" />
+          <Stat n={m.telegram?.linked} label={t.mo_tg_linked} />
         </div>
       </div>
 
       <div className="card">
         <div style={{ fontSize: 26, marginBottom: 8 }}>📄</div>
-        <div className="row between" style={{ marginBottom: 8 }}><h3>Informe semanal</h3><Badge on txt="Activo" /></div>
-        <p className="muted" style={{ fontSize: 13 }}>Cada domingo, un informe del rendimiento de la semana por Telegram: resultado, aciertos, mejor par y disciplina.</p>
+        <div className="row between" style={{ marginBottom: 8 }}><h3>{t.mo_weekly_t}</h3><Badge on txt={t.mo_active} /></div>
+        <p className="muted" style={{ fontSize: 13 }}>{t.mo_weekly_desc}</p>
       </div>
     </div>
     </>
@@ -423,7 +412,7 @@ function PlansTab({ plans, reload }: { plans: Plan[]; reload: () => void }) {
     <>
       <div className="row between" style={{ flexWrap: 'wrap', gap: 8 }}>
         <Head ic="💳" t={t.h_planes_t} s={t.h_planes_s} />
-        <button className="btn btn-primary" onClick={() => setCreating(true)}>+ Nuevo plan</button>
+        <button className="btn btn-primary" onClick={() => setCreating(true)}>{t.pl_new}</button>
       </div>
       {creating && <PlanCard plan={{ id: '', name: '', name_en: '', desc_es: '', desc_en: '', price_month: 0, price_year: 0, stripe_price_id: '', stripe_price_id_year: '', max_accounts: 1, features: [], features_en: [], badge: '', badge_en: '', active: true, sort: plans.length, capabilities: {} } as any} isNew reload={() => { setCreating(false); reload(); }} onCancel={() => setCreating(false)} />}
       <div className="grid g3">{plans.map((p) => <PlanCard key={p.id} plan={p} reload={reload} />)}</div>
@@ -432,10 +421,10 @@ function PlansTab({ plans, reload }: { plans: Plan[]; reload: () => void }) {
 }
 
 function PlanCard({ plan, isNew, reload, onCancel }: { plan: Plan; isNew?: boolean; reload: () => void; onCancel?: () => void }) {
+  const t = useT();
   const [p, setP] = useState<Plan>({ ...plan, features: plan.features || [], features_en: plan.features_en || [], capabilities: plan.capabilities || {} });
   const [saving, setSaving] = useState(false);
   const set = (k: keyof Plan, v: any) => setP({ ...p, [k]: v });
-  const cap = (k: string) => p.capabilities?.[k] !== false && p.capabilities?.[k] !== undefined ? p.capabilities[k] : (p.capabilities?.[k] ?? false);
   const setCap = (k: string, v: any) => setP({ ...p, capabilities: { ...p.capabilities, [k]: v } });
   const norm = (f: any) => (Array.isArray(f) ? f : String(f || '').split('\n')).map((s: any) => String(s).trim()).filter(Boolean);
 
@@ -447,7 +436,7 @@ function PlanCard({ plan, isNew, reload, onCancel }: { plan: Plan; isNew?: boole
     const j = await r.json(); setSaving(false);
     if (!r.ok) { alert(j.error || 'error'); return; } reload();
   }
-  async function del() { if (!confirm(`¿Borrar el plan "${p.name}"?`)) return; const r = await fetch('/api/admin/plans', { method: 'DELETE', body: JSON.stringify({ id: p.id }) }); const j = await r.json(); if (!r.ok) { alert(j.error || 'error'); return; } reload(); }
+  async function del() { if (!confirm(`${t.pl_confirmDel} "${p.name}"?`)) return; const r = await fetch('/api/admin/plans', { method: 'DELETE', body: JSON.stringify({ id: p.id }) }); const j = await r.json(); if (!r.ok) { alert(j.error || 'error'); return; } reload(); }
 
   const featES = Array.isArray(p.features) ? p.features.join('\n') : (p.features as any);
   const featEN = Array.isArray(p.features_en) ? p.features_en.join('\n') : (p.features_en as any);
@@ -460,49 +449,49 @@ function PlanCard({ plan, isNew, reload, onCancel }: { plan: Plan; isNew?: boole
     <div className="card" style={{ ...(p.active ? {} : { opacity: .6 }), ...(popular ? { border: '2px solid var(--brand)' } : {}), position: 'relative' }}>
       {popular && <span className="pill brand" style={{ position: 'absolute', top: -11, left: 16 }}>★ {p.badge}</span>}
       <div className="row" style={{ gap: 8 }}>
-        <input placeholder="id (pro)" value={p.id} disabled={!isNew} onChange={(e) => set('id', e.target.value)} style={{ margin: 0, width: 90 }} />
-        <div style={{ flex: 1 }}><span style={lbl}>$ / mes</span><input type="number" value={p.price_month} onChange={(e) => set('price_month', e.target.value)} style={{ margin: '4px 0 0' }} /></div>
-        <div style={{ flex: 1 }}><span style={lbl}>$ / año</span><input type="number" value={p.price_year} onChange={(e) => set('price_year', e.target.value)} style={{ margin: '4px 0 0' }} /></div>
+        <input placeholder={t.pl_id} value={p.id} disabled={!isNew} onChange={(e) => set('id', e.target.value)} style={{ margin: 0, width: 90 }} />
+        <div style={{ flex: 1 }}><span style={lbl}>{t.pl_month}</span><input type="number" value={p.price_month} onChange={(e) => set('price_month', e.target.value)} style={{ margin: '4px 0 0' }} /></div>
+        <div style={{ flex: 1 }}><span style={lbl}>{t.pl_year}</span><input type="number" value={p.price_year} onChange={(e) => set('price_year', e.target.value)} style={{ margin: '4px 0 0' }} /></div>
       </div>
 
-      <span style={flag}>🇪🇸 ESPAÑOL</span>
-      <input placeholder="Nombre" value={p.name} onChange={(e) => set('name', e.target.value)} style={{ margin: '4px 0 0' }} />
-      <input placeholder="Descripción corta" value={p.desc_es || ''} onChange={(e) => set('desc_es', e.target.value)} style={{ margin: '8px 0 0' }} />
-      <input placeholder="Etiqueta (ej. Más popular)" value={p.badge || ''} onChange={(e) => set('badge', e.target.value)} style={{ margin: '8px 0 0' }} />
-      <span style={lbl}>Funciones (una por línea)</span>
+      <span style={flag}>{t.pl_es}</span>
+      <input placeholder={t.pl_name} value={p.name} onChange={(e) => set('name', e.target.value)} style={{ margin: '4px 0 0' }} />
+      <input placeholder={t.pl_desc} value={p.desc_es || ''} onChange={(e) => set('desc_es', e.target.value)} style={{ margin: '8px 0 0' }} />
+      <input placeholder={t.pl_badge} value={p.badge || ''} onChange={(e) => set('badge', e.target.value)} style={{ margin: '8px 0 0' }} />
+      <span style={lbl}>{t.pl_features}</span>
       <textarea value={featES} onChange={(e) => set('features', e.target.value.split('\n') as any)} rows={4} style={ta} />
 
-      <span style={flag}>🇬🇧 ENGLISH</span>
-      <input placeholder="Name" value={p.name_en || ''} onChange={(e) => set('name_en', e.target.value)} style={{ margin: '4px 0 0' }} />
-      <input placeholder="Short description" value={p.desc_en || ''} onChange={(e) => set('desc_en', e.target.value)} style={{ margin: '8px 0 0' }} />
-      <input placeholder="Badge (e.g. Most popular)" value={p.badge_en || ''} onChange={(e) => set('badge_en', e.target.value)} style={{ margin: '8px 0 0' }} />
-      <span style={lbl}>Features (one per line)</span>
+      <span style={flag}>{t.pl_en}</span>
+      <input placeholder={t.pl_nameEn} value={p.name_en || ''} onChange={(e) => set('name_en', e.target.value)} style={{ margin: '4px 0 0' }} />
+      <input placeholder={t.pl_descEn} value={p.desc_en || ''} onChange={(e) => set('desc_en', e.target.value)} style={{ margin: '8px 0 0' }} />
+      <input placeholder={t.pl_badgeEn} value={p.badge_en || ''} onChange={(e) => set('badge_en', e.target.value)} style={{ margin: '8px 0 0' }} />
+      <span style={lbl}>{t.pl_featuresEn}</span>
       <textarea value={featEN} onChange={(e) => set('features_en', e.target.value.split('\n') as any)} rows={4} style={ta} />
 
-      <span style={flag}>🎛️ CAPACIDADES (control real)</span>
+      <span style={flag}>{t.pl_caps}</span>
       <div className="row" style={{ gap: 10, alignItems: 'center', margin: '6px 0 8px' }}>
-        <span style={{ fontSize: 13, flex: 1 }}>Cuentas MT</span>
+        <span style={{ fontSize: 13, flex: 1 }}>{t.pl_mtAccounts}</span>
         <input type="number" value={p.max_accounts} onChange={(e) => set('max_accounts', Number(e.target.value) || 0)} style={{ margin: 0, width: 80, padding: '6px 8px' }} />
       </div>
       <div className="row" style={{ gap: 10, alignItems: 'center', margin: '0 0 10px' }}>
-        <span style={{ fontSize: 13, flex: 1 }}>Días de historial <span className="muted">(0 = ilimitado)</span></span>
+        <span style={{ fontSize: 13, flex: 1 }}>{t.pl_historyDays} <span className="muted">{t.pl_unlimited}</span></span>
         <input type="number" value={p.capabilities?.history_days ?? 0} onChange={(e) => setCap('history_days', Number(e.target.value) || 0)} style={{ margin: 0, width: 80, padding: '6px 8px' }} />
       </div>
-      {CAPS.map(([k, label]) => (
+      {CAPS.map((k) => (
         <div key={k} className="row" style={{ justifyContent: 'space-between', alignItems: 'center', padding: '6px 0' }}>
-          <span style={{ fontSize: 13 }}>{label}</span>
+          <span style={{ fontSize: 13 }}>{(t as any)['cap_' + k]}</span>
           <Toggle on={!!p.capabilities?.[k]} onClick={() => setCap(k, !p.capabilities?.[k])} />
         </div>
       ))}
 
-      <span style={flag}>💳 STRIPE</span>
-      <input placeholder="Price ID mensual (price_...)" value={p.stripe_price_id || ''} onChange={(e) => set('stripe_price_id', e.target.value)} style={{ margin: '4px 0 0' }} />
-      <input placeholder="Price ID anual (price_...)" value={p.stripe_price_id_year || ''} onChange={(e) => set('stripe_price_id_year', e.target.value)} style={{ margin: '8px 0 0' }} />
+      <span style={flag}>{t.pl_stripe}</span>
+      <input placeholder={t.pl_priceIdM} value={p.stripe_price_id || ''} onChange={(e) => set('stripe_price_id', e.target.value)} style={{ margin: '4px 0 0' }} />
+      <input placeholder={t.pl_priceIdY} value={p.stripe_price_id_year || ''} onChange={(e) => set('stripe_price_id_year', e.target.value)} style={{ margin: '8px 0 0' }} />
 
-      <label className="row" style={{ gap: 8, marginTop: 12, cursor: 'pointer' }}><input type="checkbox" checked={p.active} onChange={(e) => set('active', e.target.checked)} style={{ width: 'auto', margin: 0 }} /> Activo (visible en el landing y /pricing)</label>
+      <label className="row" style={{ gap: 8, marginTop: 12, cursor: 'pointer' }}><input type="checkbox" checked={p.active} onChange={(e) => set('active', e.target.checked)} style={{ width: 'auto', margin: 0 }} /> {t.pl_activeChk}</label>
       <div className="row" style={{ gap: 8, marginTop: 12 }}>
-        <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? '...' : (isNew ? 'Crear plan' : 'Guardar')}</button>
-        {isNew ? <button className="btn btn-ghost" onClick={onCancel}>Cancelar</button> : (p.id !== 'free' && <button className="btn btn-danger" onClick={del}>Borrar</button>)}
+        <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? '...' : (isNew ? t.pl_create : t.pl_save)}</button>
+        {isNew ? <button className="btn btn-ghost" onClick={onCancel}>{t.pl_cancel}</button> : (p.id !== 'free' && <button className="btn btn-danger" onClick={del}>{t.pl_delete}</button>)}
       </div>
     </div>
   );

@@ -2,16 +2,6 @@
 import { useEffect, useState } from 'react';
 import { useT } from '@/lib/adminText';
 
-// Guía fija de errores comunes: síntoma → causa → solución.
-const GUIDE = [
-  { t: 'La IA responde con un mensaje fijo (modo buscador)', d: 'Falta ANTHROPIC_API_KEY, no hiciste Redeploy en Vercel, o no hay saldo en Anthropic.' },
-  { t: 'El EA muestra HTTP 404', d: 'ServidorUrl con la ruta duplicada. Deja solo el dominio base: https://www.onyxtradinglive.com' },
-  { t: 'Telegram: 308 Permanent Redirect', d: 'El webhook apunta al dominio sin www. Vuelve a configurar con https://www.onyxtradinglive.com' },
-  { t: 'No llegan los correos de soporte', d: 'El dominio no está verificado en Resend, o falta RESEND_API_KEY. Añade los DNS y pulsa Verify.' },
-  { t: 'El EA dice "Sin señal"', d: 'MetaTrader cerrado, AlgoTrading apagado, o falta permitir la URL en Herramientas → Opciones → WebRequest.' },
-  { t: 'Una página da "Application error"', d: 'Casi siempre falta correr un SQL nuevo. Revisa arriba "Base de datos".' },
-];
-
 function dot(color: string) {
   return <span style={{ width: 10, height: 10, borderRadius: '50%', flex: 'none', background: color, display: 'inline-block' }} />;
 }
@@ -19,6 +9,10 @@ function statColor(s: any) { return s.ok && !s.warn ? '#34e2a0' : s.warn ? '#ffc
 
 export default function Diagnostics() {
   const t = useT();
+  const GUIDE = [
+    { t: t.dg1t, d: t.dg1d }, { t: t.dg2t, d: t.dg2d }, { t: t.dg3t, d: t.dg3d },
+    { t: t.dg4t, d: t.dg4d }, { t: t.dg5t, d: t.dg5d }, { t: t.dg6t, d: t.dg6d },
+  ];
   const [d, setD] = useState<any>(null);
   const [busy, setBusy] = useState('');
   const [test, setTest] = useState<any>({});

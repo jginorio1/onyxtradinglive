@@ -1,18 +1,19 @@
 'use client';
 import { useEffect, useState } from 'react';
-
-const REASON: any = {
-  price: 'Muy caro', unused: 'No lo usaba', missing: 'Le falta algo', stopped: 'Dejó de operar', other: 'Otro',
-};
-const OUTCOME: any = {
-  saved_discount: ['Rescatado · descuento', '#34e2a0'],
-  saved_pause: ['Rescatado · pausa', '#34e2a0'],
-  saved_downgrade: ['Rescatado · bajó plan', '#ffd45e'],
-  canceled: ['Canceló', '#ff6b7d'],
-  pending: ['Sin resolver', '#9aa6bd'],
-};
+import { useT } from '@/lib/adminText';
 
 export default function Retention() {
+  const t = useT();
+  const REASON: any = {
+    price: t.reason_price, unused: t.reason_unused, missing: t.reason_missing, stopped: t.reason_stopped, other: t.reason_other,
+  };
+  const OUTCOME: any = {
+    saved_discount: [t.out_discount, '#34e2a0'],
+    saved_pause: [t.out_pause, '#34e2a0'],
+    saved_downgrade: [t.out_downgrade, '#ffd45e'],
+    canceled: [t.out_canceled, '#ff6b7d'],
+    pending: [t.out_pending, '#9aa6bd'],
+  };
   const [d, setD] = useState<any>(null);
   const [r, setR] = useState<any>({});
   const [a, setA] = useState<any>({});
@@ -39,17 +40,17 @@ export default function Retention() {
 
   return (
     <>
-      <div className="tabhead"><div className="th-row"><span className="th-ic">🛟</span><span className="th-t">Retención</span></div><div className="th-s">Rescata a quien intenta irse y mide por qué.</div></div>
+      <div className="tabhead"><div className="th-row"><span className="th-ic">🛟</span><span className="th-t">{t.h_retencion_t}</span></div><div className="th-s">{t.h_retencion_s}</div></div>
       <div className="grid g4" style={{ marginBottom: 16 }}>
-        <div className="card kpi"><div className="lbl">Intentos de baja</div><div className="val">{d.total}</div></div>
-        <div className="card kpi"><div className="lbl">Rescatados</div><div className="val pos">{d.saved}</div></div>
-        <div className="card kpi"><div className="lbl">Perdidos</div><div className="val neg">{d.canceled}</div></div>
-        <div className="card kpi"><div className="lbl">Tasa de rescate</div><div className="val" style={{ color: d.saveRate >= 30 ? 'var(--green)' : 'var(--amber)' }}>{d.saveRate}%</div></div>
+        <div className="card kpi"><div className="lbl">{t.re_attempts}</div><div className="val">{d.total}</div></div>
+        <div className="card kpi"><div className="lbl">{t.re_saved}</div><div className="val pos">{d.saved}</div></div>
+        <div className="card kpi"><div className="lbl">{t.re_lost}</div><div className="val neg">{d.canceled}</div></div>
+        <div className="card kpi"><div className="lbl">{t.re_rate}</div><div className="val" style={{ color: d.saveRate >= 30 ? 'var(--green)' : 'var(--amber)' }}>{d.saveRate}%</div></div>
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
-        <h3 style={{ marginBottom: 12 }}>Por qué se quieren ir</h3>
-        {!total && <p className="muted" style={{ fontSize: 14 }}>Todavía nadie ha intentado cancelar.</p>}
+        <h3 style={{ marginBottom: 12 }}>{t.re_whyLeave}</h3>
+        {!total && <p className="muted" style={{ fontSize: 14 }}>{t.re_noneYet}</p>}
         {Object.keys(d.byReason || {}).sort((x, y) => d.byReason[y] - d.byReason[x]).map((k) => {
           const n = d.byReason[k];
           const pct = Math.round((n / Math.max(total, 1)) * 100);
@@ -65,37 +66,37 @@ export default function Retention() {
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
-        <h3 style={{ marginBottom: 12 }}>🛟 Ofertas de rescate</h3>
+        <h3 style={{ marginBottom: 12 }}>{t.re_offers}</h3>
         <div className="grid g4" style={{ gap: 12 }}>
-          <div><span style={lbl}>% de descuento</span><input type="number" value={r.discount_percent ?? 50} onChange={(e) => setR({ ...r, discount_percent: Number(e.target.value) })} style={num} /></div>
-          <div><span style={lbl}>Meses del descuento</span><input type="number" value={r.discount_months ?? 3} onChange={(e) => setR({ ...r, discount_months: Number(e.target.value) })} style={num} /></div>
-          <div><span style={lbl}>Meses de pausa</span><input type="number" value={r.pause_months ?? 2} onChange={(e) => setR({ ...r, pause_months: Number(e.target.value) })} style={num} /></div>
+          <div><span style={lbl}>{t.re_discPct}</span><input type="number" value={r.discount_percent ?? 50} onChange={(e) => setR({ ...r, discount_percent: Number(e.target.value) })} style={num} /></div>
+          <div><span style={lbl}>{t.re_discMonths}</span><input type="number" value={r.discount_months ?? 3} onChange={(e) => setR({ ...r, discount_months: Number(e.target.value) })} style={num} /></div>
+          <div><span style={lbl}>{t.re_pauseMonths}</span><input type="number" value={r.pause_months ?? 2} onChange={(e) => setR({ ...r, pause_months: Number(e.target.value) })} style={num} /></div>
         </div>
         <label className="row" style={{ gap: 8, marginTop: 12, cursor: 'pointer' }}>
-          <input type="checkbox" checked={r.allow_downgrade !== false} onChange={(e) => setR({ ...r, allow_downgrade: e.target.checked })} style={{ width: 'auto', margin: 0 }} /> Ofrecer bajar a un plan más barato
+          <input type="checkbox" checked={r.allow_downgrade !== false} onChange={(e) => setR({ ...r, allow_downgrade: e.target.checked })} style={{ width: 'auto', margin: 0 }} /> {t.re_allowDown}
         </label>
         <label className="row" style={{ gap: 8, marginTop: 8, cursor: 'pointer' }}>
-          <input type="checkbox" checked={r.enabled !== false} onChange={(e) => setR({ ...r, enabled: e.target.checked })} style={{ width: 'auto', margin: 0 }} /> Flujo de retención activo
+          <input type="checkbox" checked={r.enabled !== false} onChange={(e) => setR({ ...r, enabled: e.target.checked })} style={{ width: 'auto', margin: 0 }} /> {t.re_flowOn}
         </label>
-        <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={() => save('retention', r)} disabled={busy === 'retention'}>Guardar ofertas</button>
+        <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={() => save('retention', r)} disabled={busy === 'retention'}>{t.re_saveOffers}</button>
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
-        <h3 style={{ marginBottom: 4 }}>➕ Cuentas MT extra</h3>
-        <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>Crea en Stripe un precio recurrente mensual por unidad y pega aquí su Price ID. Sin él, el complemento no se muestra.</p>
+        <h3 style={{ marginBottom: 4 }}>{t.re_extra}</h3>
+        <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{t.re_extraDesc}</p>
         <div className="grid g2" style={{ gap: 12 }}>
-          <div><span style={lbl}>Precio por cuenta / mes ($)</span><input type="number" value={a.extra_account_price ?? 4} onChange={(e) => setA({ ...a, extra_account_price: Number(e.target.value) })} style={num} /></div>
-          <div><span style={lbl}>Stripe Price ID</span><input value={a.extra_account_price_id || ''} onChange={(e) => setA({ ...a, extra_account_price_id: e.target.value })} placeholder="price_..." style={{ margin: 0 }} /></div>
+          <div><span style={lbl}>{t.re_extraPrice}</span><input type="number" value={a.extra_account_price ?? 4} onChange={(e) => setA({ ...a, extra_account_price: Number(e.target.value) })} style={num} /></div>
+          <div><span style={lbl}>{t.re_extraId}</span><input value={a.extra_account_price_id || ''} onChange={(e) => setA({ ...a, extra_account_price_id: e.target.value })} placeholder="price_..." style={{ margin: 0 }} /></div>
         </div>
         <label className="row" style={{ gap: 8, marginTop: 12, cursor: 'pointer' }}>
-          <input type="checkbox" checked={a.extra_account_enabled !== false} onChange={(e) => setA({ ...a, extra_account_enabled: e.target.checked })} style={{ width: 'auto', margin: 0 }} /> Complemento activo
+          <input type="checkbox" checked={a.extra_account_enabled !== false} onChange={(e) => setA({ ...a, extra_account_enabled: e.target.checked })} style={{ width: 'auto', margin: 0 }} /> {t.re_addonOn}
         </label>
-        <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={() => save('addons', a)} disabled={busy === 'addons'}>Guardar complemento</button>
+        <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={() => save('addons', a)} disabled={busy === 'addons'}>{t.re_saveAddon}</button>
       </div>
 
       <div className="card">
-        <h3 style={{ marginBottom: 10 }}>Últimos intentos</h3>
-        {!d.recent?.length && <p className="muted" style={{ fontSize: 14 }}>Nada por ahora.</p>}
+        <h3 style={{ marginBottom: 10 }}>{t.re_recent}</h3>
+        {!d.recent?.length && <p className="muted" style={{ fontSize: 14 }}>{t.re_recentEmpty}</p>}
         {(d.recent || []).map((c: any) => {
           const [txt, col] = OUTCOME[c.outcome] || OUTCOME.pending;
           return (

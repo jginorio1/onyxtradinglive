@@ -1,11 +1,13 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useT } from '@/lib/adminText';
 
 // Consola de pruebas: simula lo que hace el EA, sin necesidad de MetaTrader.
 // Sirve para comprobar la cadena completa: clave → límites → configuración → comandos.
 
 export default function TestConsole({ meEmail }: { meEmail: string }) {
+  const t = useT();
   const [keys, setKeys] = useState<any[]>([]);
   const [key, setKey] = useState('');
   const [login, setLogin] = useState('');
@@ -95,9 +97,9 @@ export default function TestConsole({ meEmail }: { meEmail: string }) {
 
       {/* Mi plan */}
       <div className="card" style={{ marginBottom: 16 }}>
-        <h3 style={{ marginBottom: 4 }}>Mi plan de prueba</h3>
+        <h3 style={{ marginBottom: 4 }}>{t.tc_myPlan}</h3>
         <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>
-          Cámbiate de plan para probar los candados y Onyx Guardian. Es tu propia cuenta ({meEmail}).
+          {t.tc_myPlanDesc} ({meEmail}).
         </p>
         <div className="seg" style={{ flexWrap: 'wrap' }}>
           {plans.map((p) => (
@@ -107,54 +109,52 @@ export default function TestConsole({ meEmail }: { meEmail: string }) {
             </button>
           ))}
         </div>
-        {me && <div className="muted" style={{ fontSize: 12, marginTop: 10 }}>Plan actual: <b>{me.planName || me.planId}</b> · {me.used} de {me.unlimited ? 'ilimitadas' : me.max} cuenta(s)</div>}
+        {me && <div className="muted" style={{ fontSize: 12, marginTop: 10 }}>{t.tc_currentPlan}: <b>{me.planName || me.planId}</b> · {me.used} {t.tc_of} {me.unlimited ? t.tc_unlimited : me.max} {t.tc_accounts}</div>}
       </div>
 
       {/* Simulador */}
       <div className="card" style={{ marginBottom: 16 }}>
-        <h3 style={{ marginBottom: 12 }}>Simular una sincronización</h3>
+        <h3 style={{ marginBottom: 12 }}>{t.tc_simTitle}</h3>
 
-        <span style={lbl}>Clave API</span>
+        <span style={lbl}>{t.tc_apiKey}</span>
         {keys.length ? (
           <select value={key} onChange={(e) => { setKey(e.target.value); const k = keys.find((x) => x.key === e.target.value); setLogin(String(k?.account_login || '')); }} style={{ margin: 0, marginBottom: 12 }}>
-            {keys.map((k) => <option key={k.id} value={k.key}>{k.label} · {k.account_login || 'sin atar'}</option>)}
+            {keys.map((k) => <option key={k.id} value={k.key}>{k.label} · {k.account_login || t.tc_notLinked}</option>)}
           </select>
         ) : (
           <div style={{ ...box, marginBottom: 12 }}>
-            <p className="muted" style={{ fontSize: 13, marginBottom: 10 }}>Todavía no tienes ninguna clave. Créala primero.</p>
-            <Link className="btn btn-primary" href="/dashboard/keys">Crear una clave →</Link>
+            <p className="muted" style={{ fontSize: 13, marginBottom: 10 }}>{t.tc_noKeys}</p>
+            <Link className="btn btn-primary" href="/dashboard/keys">{t.tc_createKey}</Link>
           </div>
         )}
 
-        <span style={lbl}>Número de cuenta a simular</span>
+        <span style={lbl}>{t.tc_accNum}</span>
         <input value={login} onChange={(e) => setLogin(e.target.value)} placeholder="9999001" style={{ margin: '0 0 12px', maxWidth: 200 }} />
 
         <label className="row" style={{ gap: 8, marginBottom: 14, cursor: 'pointer' }}>
           <input type="checkbox" checked={withPos} onChange={(e) => setWithPos(e.target.checked)} style={{ width: 'auto', margin: 0 }} />
-          <span style={{ fontSize: 14 }}>Incluir una posición abierta de ejemplo (EURUSD 0.50)</span>
+          <span style={{ fontSize: 14 }}>{t.tc_withPos}</span>
         </label>
 
         <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-          <button className="btn btn-primary" onClick={simulate} disabled={!key || busy === 'sim'}>{busy === 'sim' ? '...' : 'Simular sync'}</button>
-          <button className="btn btn-ghost" onClick={() => queue('close_all')} disabled={!key || !!busy}>Encolar "cerrar todo"</button>
-          <button className="btn btn-ghost" onClick={() => queue('sl_to_be')} disabled={!key || !!busy}>Encolar "SL a BE"</button>
+          <button className="btn btn-primary" onClick={simulate} disabled={!key || busy === 'sim'}>{busy === 'sim' ? '...' : t.tc_simSync}</button>
+          <button className="btn btn-ghost" onClick={() => queue('close_all')} disabled={!key || !!busy}>{t.tc_queueClose}</button>
+          <button className="btn btn-ghost" onClick={() => queue('sl_to_be')} disabled={!key || !!busy}>{t.tc_queueBE}</button>
         </div>
 
-        <p className="muted" style={{ fontSize: 12, marginTop: 10 }}>
-          Ojo: simular crea o actualiza esa cuenta en tu base de datos, igual que haría el EA de verdad.
-        </p>
+        <p className="muted" style={{ fontSize: 12, marginTop: 10 }}>{t.tc_simNote}</p>
       </div>
 
       {/* Respuesta */}
       <div className="card">
-        <h3 style={{ marginBottom: 10 }}>Respuesta del servidor</h3>
-        {!out && <p className="muted" style={{ fontSize: 14 }}>Aquí verás lo que el servidor le contesta al EA: la configuración de Onyx Guardian y los comandos pendientes.</p>}
+        <h3 style={{ marginBottom: 10 }}>{t.tc_serverResp}</h3>
+        {!out && <p className="muted" style={{ fontSize: 14 }}>{t.tc_serverEmpty}</p>}
         {out && (
           <pre style={{ ...box, fontSize: 12, lineHeight: 1.5, overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 420, overflowY: 'auto', margin: 0 }}>{out}</pre>
         )}
         <div className="muted" style={{ fontSize: 12, marginTop: 10 }}>
-          Qué mirar: <b>config</b> debe traer tus ajustes de Onyx Guardian (si es <b>null</b>, o Onyx Guardian está apagado o tu plan no lo incluye).
-          <b> commands</b> debe traer lo que hayas encolado.
+          {t.tc_serverHint1} <b>config</b> {t.tc_serverHint2} <b>null</b>{t.tc_serverHint3}
+          <b> commands</b> {t.tc_serverHint4}
         </div>
       </div>
     </>
