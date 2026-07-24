@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { useT } from '@/lib/adminText';
 
 // Guía fija de errores comunes: síntoma → causa → solución.
 const GUIDE = [
@@ -17,6 +18,7 @@ function dot(color: string) {
 function statColor(s: any) { return s.ok && !s.warn ? '#34e2a0' : s.warn ? '#ffc04d' : s.ok ? '#34e2a0' : '#ff6b7d'; }
 
 export default function Diagnostics() {
+  const t = useT();
   const [d, setD] = useState<any>(null);
   const [busy, setBusy] = useState('');
   const [test, setTest] = useState<any>({});
@@ -36,14 +38,14 @@ export default function Diagnostics() {
     setBusy('');
   }
 
-  if (!d) return <p className="muted">Cargando diagnóstico…</p>;
+  if (!d) return <p className="muted">{t.d_loading}</p>;
   const missing = (d.migrations || []).filter((m: any) => !m.ok);
 
   return (
     <div>
       <div className="row between" style={{ flexWrap: 'wrap', gap: 8 }}>
-        <div className="tabhead" style={{ marginBottom: 12 }}><div className="th-row"><span className="th-ic">🩺</span><span className="th-t">Diagnóstico</span></div><div className="th-s">Salud del sistema y qué falta configurar.</div></div>
-        <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={load}>↻ Refrescar</button>
+        <div className="tabhead" style={{ marginBottom: 12 }}><div className="th-row"><span className="th-ic">🩺</span><span className="th-t">{t.h_diag_t}</span></div><div className="th-s">{t.h_diag_s}</div></div>
+        <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={load}>{t.d_refresh}</button>
       </div>
 
       {/* Semáforo */}
@@ -60,11 +62,11 @@ export default function Diagnostics() {
       </div>
 
       {/* Pruebas rápidas */}
-      <h3 style={{ marginBottom: 10 }}>⚡ Pruebas rápidas</h3>
+      <h3 style={{ marginBottom: 10 }}>{t.d_quickTests}</h3>
       <div className="row" style={{ gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-        <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => runTest('test_ai')} disabled={busy === 'test_ai'}>{busy === 'test_ai' ? '...' : '🤖 Probar IA'}</button>
-        <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => runTest('test_email')} disabled={busy === 'test_email'}>{busy === 'test_email' ? '...' : '📧 Enviar correo de prueba'}</button>
-        <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => runTest('test_telegram')} disabled={busy === 'test_telegram'}>{busy === 'test_telegram' ? '...' : '✈️ Probar Telegram'}</button>
+        <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => runTest('test_ai')} disabled={busy === 'test_ai'}>{busy === 'test_ai' ? '...' : t.d_testAI}</button>
+        <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => runTest('test_email')} disabled={busy === 'test_email'}>{busy === 'test_email' ? '...' : t.d_testEmail}</button>
+        <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => runTest('test_telegram')} disabled={busy === 'test_telegram'}>{busy === 'test_telegram' ? '...' : t.d_testTG}</button>
       </div>
       {['test_ai', 'test_email', 'test_telegram'].map((k) => test[k] && (
         <div key={k} style={{ background: 'var(--bg2)', borderRadius: 8, padding: '9px 12px', fontSize: 12, marginBottom: 6, color: test[k].ok ? 'var(--green)' : 'var(--amber)', border: '1px solid ' + (test[k].ok ? 'var(--green)' : 'var(--amber)') }}>
@@ -73,24 +75,24 @@ export default function Diagnostics() {
       ))}
 
       {/* Base de datos */}
-      <h3 style={{ margin: '20px 0 10px' }}>🗄️ Base de datos (¿corriste los SQL?)</h3>
+      <h3 style={{ margin: '20px 0 10px' }}>{t.d_db}</h3>
       <div className="card" style={{ padding: '4px 14px', marginBottom: missing.length ? 8 : 20 }}>
         {(d.migrations || []).map((m: any, i: number) => (
           <div key={m.id} className="row between" style={{ padding: '9px 0', borderTop: i ? '1px solid var(--line)' : 'none', fontSize: 13 }}>
             <span>{m.label} <span className="muted" style={{ fontSize: 11 }}>({m.id}.sql)</span></span>
-            {m.ok ? <span className="pill" style={{ color: 'var(--green)', background: 'rgba(52,226,160,.15)' }}>✓ aplicado</span> : <span className="pill red">✗ falta correr</span>}
+            {m.ok ? <span className="pill" style={{ color: 'var(--green)', background: 'rgba(52,226,160,.15)' }}>{t.d_applied}</span> : <span className="pill red">{t.d_missing}</span>}
           </div>
         ))}
       </div>
       {missing.length > 0 && (
         <div style={{ background: 'rgba(255,107,125,.08)', border: '1px solid var(--red)', borderRadius: 10, padding: '10px 12px', marginBottom: 20, fontSize: 13 }}>
-          Te falta correr en Supabase → SQL Editor: <b>{missing.map((m: any) => m.id + '.sql').join(', ')}</b>
+          {t.d_missingMsg}<b>{missing.map((m: any) => m.id + '.sql').join(', ')}</b>
         </div>
       )}
 
       {/* Errores recientes */}
-      <h3 style={{ marginBottom: 10 }}>🚨 Errores recientes</h3>
-      {!(d.errors || []).length && <p className="muted" style={{ fontSize: 14, marginBottom: 20 }}>Sin errores registrados. 🎉</p>}
+      <h3 style={{ marginBottom: 10 }}>{t.d_recentErrors}</h3>
+      {!(d.errors || []).length && <p className="muted" style={{ fontSize: 14, marginBottom: 20 }}>{t.d_noErrors}</p>}
       {!!(d.errors || []).length && (
         <div style={{ marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>
           {d.errors.map((e: any, i: number) => (
@@ -107,7 +109,7 @@ export default function Diagnostics() {
       )}
 
       {/* Guía de errores comunes */}
-      <h3 style={{ marginBottom: 10 }}>📖 Errores comunes explicados</h3>
+      <h3 style={{ marginBottom: 10 }}>{t.d_commonErrors}</h3>
       <div className="card" style={{ padding: '4px 14px' }}>
         {GUIDE.map((g, i) => (
           <div key={i} style={{ padding: '10px 0', borderTop: i ? '1px solid var(--line)' : 'none' }}>

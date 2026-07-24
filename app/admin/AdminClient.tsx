@@ -9,6 +9,7 @@ import SupportInbox from './SupportInbox';
 import Diagnostics from './Diagnostics';
 import KbEditor from './KbEditor';
 import { AREAS, effectivePerms } from '@/lib/perms';
+import { useT } from '@/lib/adminText';
 
 type Plan = { id: string; name: string; name_en: string; desc_es: string | null; desc_en: string | null; price_month: number; price_year: number; stripe_price_id: string | null; stripe_price_id_year: string | null; max_accounts: number; features: string[]; features_en: string[]; badge: string | null; badge_en: string | null; active: boolean; sort: number; capabilities: any };
 type User = { id: string; email: string; plan: string; subscription_status: string | null; banned: boolean; is_admin: boolean; created_at: string; accounts: number; lastSync: string | null };
@@ -40,6 +41,7 @@ function Head({ ic, t, s }: { ic: string; t: string; s: string }) {
 const initials = (email: string) => (email || '?').replace(/@.*/, '').slice(0, 2).toUpperCase();
 
 export default function AdminClient({ meEmail, role, perms = {}, accounts, trades }: { meEmail: string; role: string; perms?: Record<string, string>; accounts: number; trades: number }) {
+  const t = useT();
   // Qué áreas puede ver este admin (owner ve todo). Mapa tab → área de permiso.
   const areaOf: Record<string, string> = { resumen: 'resumen', usuarios: 'usuarios', planes: 'planes', equipo: 'equipo', embajadores: 'embajadores', retencion: 'retencion', pruebas: 'diag', firms: 'firms', modulos: 'modulos', soporte: 'soporte', kb: 'soporte', diag: 'diag', ajustes: 'ajustes' };
   const canSee = (k: string) => role === 'owner' || (perms[areaOf[k]] && perms[areaOf[k]] !== 'none');
@@ -76,10 +78,10 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
 
   const filtered = users.filter((u) => u.email?.toLowerCase().includes(q.toLowerCase()));
   const NAV_GROUPS: { g: string; items: [Tab, string, string][] }[] = [
-    { g: 'Operación', items: [['resumen', '📊', 'Resumen'], ['usuarios', '👥', 'Usuarios'], ['soporte', '🎫', 'Soporte'], ['equipo', '🛡️', 'Equipo']] },
-    { g: 'Producto', items: [['planes', '💳', 'Planes'], ['modulos', '🧩', 'Módulos'], ['firms', '🏛️', 'Prop firms']] },
-    { g: 'Crecimiento', items: [['embajadores', '🎁', 'Embajadores'], ['retencion', '🛟', 'Retención']] },
-    { g: 'Sistema', items: [['kb', '🧠', 'Base IA'], ['diag', '🩺', 'Diagnóstico'], ['pruebas', '🧪', 'Pruebas'], ['ajustes', '⚙️', 'Ajustes']] },
+    { g: t.g_op, items: [['resumen', '📊', t.nav_resumen], ['usuarios', '👥', t.nav_usuarios], ['soporte', '🎫', t.nav_soporte], ['equipo', '🛡️', t.nav_equipo]] },
+    { g: t.g_prod, items: [['planes', '💳', t.nav_planes], ['modulos', '🧩', t.nav_modulos], ['firms', '🏛️', t.nav_firms]] },
+    { g: t.g_growth, items: [['embajadores', '🎁', t.nav_embajadores], ['retencion', '🛟', t.nav_retencion]] },
+    { g: t.g_sys, items: [['kb', '🧠', t.nav_kb], ['diag', '🩺', t.nav_diag], ['pruebas', '🧪', t.nav_pruebas], ['ajustes', '⚙️', t.nav_ajustes]] },
   ];
   const groups = NAV_GROUPS.map((gr) => ({ ...gr, items: gr.items.filter(([k]) => canSee(k)) })).filter((gr) => gr.items.length);
   const flatNav = groups.flatMap((gr) => gr.items);
@@ -106,7 +108,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
             <div style={{ borderTop: '1px solid var(--line)', marginTop: 10, paddingTop: 10 }}>
               <button className={'availpill ' + (available ? 'on' : 'off')} onClick={toggleAvail}>
                 <span className="avdot" />
-                <span>{available ? 'Disponible' : 'Ausente'}</span>
+                <span>{available ? t.avail_on : t.avail_off}</span>
                 <span className="toggle" style={{ marginLeft: 'auto', background: available ? '#34e2a0' : '#556080' }}><span className="knob" style={{ left: available ? 21 : 3 }} /></span>
               </button>
             </div>
@@ -115,18 +117,18 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
           <div style={{ minWidth: 0 }}>
             {tab === 'resumen' && (
               <>
-              <Head ic="📊" t="Resumen" s="El pulso del negocio y lo que necesita tu atención." />
+              <Head ic="📊" t={t.h_resumen_t} s={t.h_resumen_s} />
               <div className="grid g3" style={{ marginBottom: 12 }}>
-                <div className="card kpi"><div className="lbl">MRR estimado</div><div className="val pos">${mrr.toLocaleString()}</div><div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{paid} de pago · {users.length ? Math.round((paid / users.length) * 100) : 0}% conversión</div></div>
-                <div className="card kpi"><div className="lbl">Usuarios</div><div className="val">{users.length}</div><div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{accounts} cuentas MT · {trades.toLocaleString()} operaciones</div></div>
-                <div className="card kpi"><div className="lbl">Equipo</div><div className="val">{team.length}</div><div style={{ fontSize: 12, marginTop: 4, color: availableCount ? 'var(--green)' : 'var(--mut)' }}>● {availableCount} disponible{availableCount === 1 ? '' : 's'} ahora</div></div>
+                <div className="card kpi"><div className="lbl">{t.r_mrr}</div><div className="val pos">${mrr.toLocaleString()}</div><div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{paid} {t.r_paying} · {users.length ? Math.round((paid / users.length) * 100) : 0}% {t.r_conversion}</div></div>
+                <div className="card kpi"><div className="lbl">{t.r_users}</div><div className="val">{users.length}</div><div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{accounts} {t.r_mtAccounts} · {trades.toLocaleString()} {t.r_trades}</div></div>
+                <div className="card kpi"><div className="lbl">{t.r_team}</div><div className="val">{team.length}</div><div style={{ fontSize: 12, marginTop: 4, color: availableCount ? 'var(--green)' : 'var(--mut)' }}>● {availableCount} {availableCount === 1 ? t.r_availableNow1 : t.r_availableNow}</div></div>
               </div>
 
               <div className="grid g4" style={{ marginBottom: 12 }}>
-                <div className="tile"><div className="muted" style={{ fontSize: 12 }}>Cuentas MT</div><div style={{ fontSize: 20, fontWeight: 700, marginTop: 2 }}>{accounts}</div></div>
-                <div className="tile"><div className="muted" style={{ fontSize: 12 }}>Operaciones</div><div style={{ fontSize: 20, fontWeight: 700, marginTop: 2 }}>{trades.toLocaleString()}</div></div>
-                <div className="tile"><div className="muted" style={{ fontSize: 12 }}>De pago</div><div style={{ fontSize: 20, fontWeight: 700, marginTop: 2, color: 'var(--green)' }}>{paid}</div></div>
-                <div className="tile"><div className="muted" style={{ fontSize: 12 }}>Baneados</div><div style={{ fontSize: 20, fontWeight: 700, marginTop: 2, color: bannedCount ? 'var(--red)' : 'var(--tx)' }}>{bannedCount}</div></div>
+                <div className="tile"><div className="muted" style={{ fontSize: 12 }}>{t.r_mtAccounts}</div><div style={{ fontSize: 20, fontWeight: 700, marginTop: 2 }}>{accounts}</div></div>
+                <div className="tile"><div className="muted" style={{ fontSize: 12 }}>{t.r_trades}</div><div style={{ fontSize: 20, fontWeight: 700, marginTop: 2 }}>{trades.toLocaleString()}</div></div>
+                <div className="tile"><div className="muted" style={{ fontSize: 12 }}>{t.r_paying}</div><div style={{ fontSize: 20, fontWeight: 700, marginTop: 2, color: 'var(--green)' }}>{paid}</div></div>
+                <div className="tile"><div className="muted" style={{ fontSize: 12 }}>{t.r_banned}</div><div style={{ fontSize: 20, fontWeight: 700, marginTop: 2, color: bannedCount ? 'var(--red)' : 'var(--tx)' }}>{bannedCount}</div></div>
               </div>
 
               {(() => {
@@ -134,21 +136,21 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                 const svc = (diag?.services || []).filter((s: any) => !s.ok);
                 const openT = supCounts?.open ?? null;
                 const items: { txt: string; go?: Tab; cta?: string }[] = [];
-                if (missing.length) items.push({ txt: `${missing.length} migración(es) SQL sin correr`, go: 'diag', cta: 'Ver Diagnóstico' });
-                if (openT) items.push({ txt: `${openT} ticket(s) de soporte abierto(s)`, go: 'soporte', cta: 'Abrir cola' });
-                if (svc.length) items.push({ txt: `${svc.length} servicio(s) por configurar (${svc.map((s: any) => s.name).slice(0, 3).join(', ')})`, go: 'diag', cta: 'Revisar' });
-                if (bannedCount) items.push({ txt: `${bannedCount} usuario(s) baneado(s)`, go: 'usuarios', cta: 'Ver usuarios' });
+                if (missing.length) items.push({ txt: `${missing.length} ${t.r_sqlMissing}`, go: 'diag', cta: t.r_seeDiag });
+                if (openT) items.push({ txt: `${openT} ${t.r_ticketsOpen}`, go: 'soporte', cta: t.r_openQueue });
+                if (svc.length) items.push({ txt: `${svc.length} ${t.r_svcConfig} (${svc.map((s: any) => s.name).slice(0, 3).join(', ')})`, go: 'diag', cta: t.r_review });
+                if (bannedCount) items.push({ txt: `${bannedCount} ${t.r_bannedUsers}`, go: 'usuarios', cta: t.r_seeUsers });
                 if (!diag && !supCounts) return null;
                 if (!items.length) return (
                   <div className="card" style={{ border: '1px solid rgba(52,226,160,.4)', background: 'rgba(52,226,160,.06)' }}>
-                    <b style={{ color: 'var(--green)' }}>✓ Todo en orden</b>
-                    <span className="muted" style={{ fontSize: 13 }}> — sin pendientes por ahora.</span>
+                    <b style={{ color: 'var(--green)' }}>✓ {t.r_allGood}</b>
+                    <span className="muted" style={{ fontSize: 13 }}>{t.r_noPending}</span>
                   </div>
                 );
                 return (
                   <div className="card" style={{ border: '1px solid var(--amber)', background: 'rgba(255,192,77,.06)' }}>
                     <div className="row between" style={{ marginBottom: 8 }}>
-                      <b style={{ color: 'var(--amber)' }}>Necesita tu atención</b>
+                      <b style={{ color: 'var(--amber)' }}>{t.r_needs}</b>
                       <span className="pill amber">{items.length}</span>
                     </div>
                     {items.map((it, i) => (
@@ -165,10 +167,10 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
 
             {tab === 'usuarios' && (
               <>
-              <Head ic="👥" t="Usuarios" s={`${filtered.length} registrados · busca y gestiona.`} />
+              <Head ic="👥" t={t.h_usuarios_t} s={`${filtered.length} ${t.h_usuarios_registered}`} />
               <div className="card">
                 <div className="row between" style={{ marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
-                  <input placeholder="Buscar por email…" value={q} onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 260, margin: 0, marginLeft: 'auto' }} />
+                  <input placeholder={t.u_search} value={q} onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 260, margin: 0, marginLeft: 'auto' }} />
                 </div>
                 <div style={{ overflowX: 'auto' }}>
                   <table>
@@ -176,15 +178,15 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                     <tbody>
                       {filtered.map((u) => (
                         <tr key={u.id}>
-                          <td><div className="row" style={{ gap: 9 }}><span className="avatar-init" style={{ width: 28, height: 28, fontSize: 11 }}>{initials(u.email)}</span><span>{u.email}{u.is_admin && <span className="pill brand" style={{ marginLeft: 6 }}>admin</span>}</span></div></td>
+                          <td><div className="row" style={{ gap: 9 }}><span className="avatar-init" style={{ width: 28, height: 28, fontSize: 11 }}>{initials(u.email)}</span><span>{u.email}{u.is_admin && <span className="pill brand" style={{ marginLeft: 6 }}>{t.u_admin}</span>}</span></div></td>
                           <td><select value={u.plan} onChange={(e) => userAction(u.id, 'plan', e.target.value)} style={{ margin: 0, padding: '5px 8px', width: 'auto' }}>{plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}{!plans.find((p) => p.id === u.plan) && <option value={u.plan}>{u.plan}</option>}</select></td>
-                          <td>{u.banned ? <span className="pill red">● baneado</span> : <span className="pill" style={{ color: 'var(--green)', background: 'rgba(52,226,160,.15)' }}>● {u.subscription_status || 'activo'}</span>}</td>
+                          <td>{u.banned ? <span className="pill red">● {t.u_banned}</span> : <span className="pill" style={{ color: 'var(--green)', background: 'rgba(52,226,160,.15)' }}>● {u.subscription_status || t.u_active}</span>}</td>
                           <td className="muted">{u.accounts}</td>
                           <td className="muted" style={{ fontSize: 12 }}>{u.lastSync ? new Date(u.lastSync).toLocaleDateString() : '—'}</td>
                           <td><div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
                             <button className="btn btn-ghost" style={{ padding: '5px 9px', fontSize: 12 }} onClick={() => resetPass(u)} disabled={busy === u.id + 'rst'}>🔑</button>
-                            {u.banned ? <button className="btn btn-ghost" style={{ padding: '5px 9px', fontSize: 12 }} onClick={() => userAction(u.id, 'unban')}>Desbanear</button> : <button className="btn btn-ghost" style={{ padding: '5px 9px', fontSize: 12 }} onClick={() => userAction(u.id, 'ban')}>🚫</button>}
-                            <button className="btn btn-ghost" style={{ padding: '5px 9px', fontSize: 12 }} onClick={() => userAction(u.id, 'admin', !u.is_admin)}>{u.is_admin ? 'Quitar admin' : 'Hacer admin'}</button>
+                            {u.banned ? <button className="btn btn-ghost" style={{ padding: '5px 9px', fontSize: 12 }} onClick={() => userAction(u.id, 'unban')}>{t.u_unban}</button> : <button className="btn btn-ghost" style={{ padding: '5px 9px', fontSize: 12 }} onClick={() => userAction(u.id, 'ban')}>🚫</button>}
+                            <button className="btn btn-ghost" style={{ padding: '5px 9px', fontSize: 12 }} onClick={() => userAction(u.id, 'admin', !u.is_admin)}>{u.is_admin ? t.u_removeAdmin : t.u_makeAdmin}</button>
                             {u.email !== meEmail && <button className="btn btn-danger" style={{ padding: '5px 9px', fontSize: 12 }} onClick={() => delUser(u)} disabled={busy === u.id + 'del'}>🗑</button>}
                           </div></td>
                         </tr>
@@ -213,17 +215,17 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
 
             {tab === 'ajustes' && (
               <div style={{ maxWidth: 640 }}>
-                <Head ic="⚙️" t="Ajustes" s="Tu rol, administradores y cómo se organiza el acceso." />
+                <Head ic="⚙️" t={t.h_ajustes_t} s={t.h_ajustes_s} />
                 <div className="card" style={{ marginBottom: 12 }}>
                   <div className="row between" style={{ flexWrap: 'wrap', gap: 8 }}>
-                    <span>Tu rol</span>
-                    <span className="pill" style={{ color: roleColor(role), background: 'rgba(124,140,255,.12)' }}>{ROLE_LABEL[role] || role}</span>
+                    <span>{t.a_yourRole}</span>
+                    <span className="pill" style={{ color: roleColor(role), background: 'rgba(124,140,255,.12)' }}>{(t as any)['role_' + role] || role}</span>
                   </div>
                 </div>
                 <div className="card">
-                  <h3 style={{ marginBottom: 6 }}>Cómo funcionan los roles</h3>
-                  <p className="muted" style={{ fontSize: 13.5, marginBottom: 8 }}>El <b>Owner</b> controla planes, usuarios y equipo. Los <b>Admin</b> gestionan usuarios y planes. El <b>Soporte</b> solo consulta y ayuda.</p>
-                  <p className="muted" style={{ fontSize: 13 }}>Los correos de <span className="code">ADMIN_EMAILS</span> en Vercel siempre entran como Owner. Puedes añadir más administradores desde la pestaña <b>Equipo</b>.</p>
+                  <h3 style={{ marginBottom: 6 }}>{t.a_rolesTitle}</h3>
+                  <p className="muted" style={{ fontSize: 13.5, marginBottom: 8 }}>{t.a_rolesBody}</p>
+                  <p className="muted" style={{ fontSize: 13 }}>{t.a_rolesEnv}</p>
                 </div>
               </div>
             )}
@@ -236,6 +238,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
 
 // Estado real de los módulos, con métricas en vivo de la base de datos.
 function Modules() {
+  const t = useT();
   const [m, setM] = useState<any>(null);
   useEffect(() => { fetch('/api/admin/modules').then((r) => r.json()).then(setM).catch(() => setM({})); }, []);
 
@@ -252,7 +255,7 @@ function Modules() {
 
   return (
     <>
-    <Head ic="🧩" t="Módulos" s="Estado en vivo de las capacidades del sistema." />
+    <Head ic="🧩" t={t.h_modulos_t} s={t.h_modulos_s} />
     <div className="grid g2">
       <div className="card">
         <div style={{ fontSize: 26, marginBottom: 8 }}>🛡️</div>
@@ -284,9 +287,6 @@ function Modules() {
   );
 }
 
-const ROLE_LABEL: any = { owner: 'Owner', admin: 'Admin', support: 'Soporte', marketing: 'Marketing', custom: 'Personalizado' };
-const LVL_LABEL: any = { none: 'Sin acceso', view: 'Ver', manage: 'Gestionar' };
-
 // Agrupa las acciones del registro por tema, para filtrarlo con botones.
 const LOG_TOPICS: [string, string, string][] = [['all', 'Todos', '🗂️'], ['equipo', 'Equipo', '🛡️'], ['soporte', 'Soporte', '🎫'], ['baseia', 'Base IA', '🧠'], ['usuarios', 'Usuarios', '👥'], ['planes', 'Planes', '💳']];
 function topicOf(action: string): string {
@@ -301,6 +301,7 @@ function topicOf(action: string): string {
 const topicIcon: any = { equipo: '🛡️', soporte: '🎫', baseia: '🧠', usuarios: '👥', planes: '💳', otros: '•' };
 
 function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role: string; meEmail: string; reload: () => void; canManage: boolean }) {
+  const t = useT();
   const [email, setEmail] = useState('');
   const [newRole, setNewRole] = useState('support');
   const [busy, setBusy] = useState(false);
@@ -318,7 +319,7 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
 
   return (
     <>
-      <Head ic="🛡️" t="Equipo y permisos" s={canManage ? 'Añade miembros, asigna un rol y afina permisos por área.' : 'Solo quien gestiona el equipo puede cambiar roles.'} />
+      <Head ic="🛡️" t={t.h_equipo_t} s={canManage ? t.h_equipo_s : t.h_equipo_s_ro} />
       <div className="card" style={{ marginBottom: 14 }}>
         {team.map((m, i) => (
           <div key={m.id} style={{ borderTop: i ? '1px solid var(--line)' : 'none', padding: '13px 0' }}>
@@ -329,24 +330,24 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
                   <span style={{ position: 'absolute', right: -1, bottom: -1, width: 11, height: 11, borderRadius: '50%', border: '2px solid var(--card)', background: m.available ? '#34e2a0' : 'var(--line)' }} title={m.available ? 'Disponible' : 'Ausente'} />
                 </span>
                 <div>
-                  <div style={{ fontWeight: 600 }}>{m.email}{m.email === meEmail && <span className="muted" style={{ fontSize: 12 }}> (tú)</span>}</div>
-                  <div className="muted" style={{ fontSize: 11 }}>{m.last_active ? 'Últ. actividad: ' + new Date(m.last_active).toLocaleString() : 'Sin actividad'}</div>
+                  <div style={{ fontWeight: 600 }}>{m.email}{m.email === meEmail && <span className="muted" style={{ fontSize: 12 }}>{t.t_you}</span>}</div>
+                  <div className="muted" style={{ fontSize: 11 }}>{m.last_active ? t.t_lastActivity + new Date(m.last_active).toLocaleString() : t.t_noActivity}</div>
                 </div>
               </div>
               <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 {canManage && m.role !== 'owner' ? (
                   <select value={m.role || 'support'} onChange={(e) => changeRole(m.id, e.target.value)} style={{ margin: 0, padding: '5px 8px', width: 'auto' }}>
-                    <option value="admin">Admin</option><option value="support">Soporte</option><option value="marketing">Marketing</option><option value="custom">Personalizado</option>
+                    <option value="admin">{t.role_admin}</option><option value="support">{t.role_support}</option><option value="marketing">{t.role_marketing}</option><option value="custom">{t.role_custom}</option>
                   </select>
-                ) : <span className="pill" style={{ color: roleColor(m.role), background: 'rgba(124,140,255,.12)' }}>{ROLE_LABEL[m.role || 'admin']}</span>}
-                {canManage && m.role !== 'owner' && <button className="btn btn-ghost" style={{ padding: '4px 9px', fontSize: 12 }} onClick={() => setEditId(editId === m.id ? '' : m.id)}>{editId === m.id ? 'Cerrar' : 'Permisos'}</button>}
-                {canManage && m.role !== 'owner' && m.email !== meEmail && <button className="btn btn-danger" style={{ padding: '4px 9px', fontSize: 12 }} onClick={() => remove(m.id)}>Quitar</button>}
+                ) : <span className="pill" style={{ color: roleColor(m.role), background: 'rgba(124,140,255,.12)' }}>{(t as any)['role_' + (m.role || 'admin')]}</span>}
+                {canManage && m.role !== 'owner' && <button className="btn btn-ghost" style={{ padding: '4px 9px', fontSize: 12 }} onClick={() => setEditId(editId === m.id ? '' : m.id)}>{editId === m.id ? t.t_close : t.t_perms}</button>}
+                {canManage && m.role !== 'owner' && m.email !== meEmail && <button className="btn btn-danger" style={{ padding: '4px 9px', fontSize: 12 }} onClick={() => remove(m.id)}>{t.t_remove}</button>}
               </div>
             </div>
 
             {editId === m.id && canManage && (
               <div style={{ marginTop: 12, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 12, padding: 12 }}>
-                <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>Permisos por área <span style={{ opacity: .7 }}>· el rol pone valores por defecto; aquí los afinas</span></div>
+                <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{t.t_permsByArea} <span style={{ opacity: .7 }}>{t.t_permsHint}</span></div>
                 {AREAS.map((a) => {
                   const eff = effectivePerms(m.role || 'support', m.perms || {});
                   const cur = (eff[a.id] as string) || 'none';
@@ -354,10 +355,10 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
                   return (
                     <div key={a.id} className="row" style={{ padding: '8px 0', borderTop: '1px solid var(--line)', gap: 10, flexWrap: 'wrap' }}>
                       <span style={{ width: 8, height: 8, borderRadius: '50%', background: dcol, flex: 'none' }} />
-                      <span style={{ fontSize: 13, flex: 1, minWidth: 120 }}>{a.label}</span>
+                      <span style={{ fontSize: 13, flex: 1, minWidth: 120 }}>{(t as any)['nav_' + a.id] || a.label}</span>
                       <div className="seg">
                         {(['none', 'view', 'manage'] as const).map((lv) => (
-                          <button key={lv} className={'segbtn' + (cur === lv ? ' on-' + lv : '')} onClick={() => savePerm(m.id, a.id, lv, m.perms)}>{LVL_LABEL[lv]}</button>
+                          <button key={lv} className={'segbtn' + (cur === lv ? ' on-' + lv : '')} onClick={() => savePerm(m.id, a.id, lv, m.perms)}>{(t as any)['lvl_' + lv]}</button>
                         ))}
                       </div>
                     </div>
@@ -370,13 +371,13 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
 
         {canManage && (
           <div style={{ borderTop: '1px solid var(--line)', paddingTop: 14, marginTop: 6 }}>
-            <div className="muted" style={{ fontSize: 13, marginBottom: 8 }}>Invitar miembro (debe estar registrado en la app)</div>
+            <div className="muted" style={{ fontSize: 13, marginBottom: 8 }}>{t.t_invite}</div>
             <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-              <input placeholder="email@ejemplo.com" value={email} onChange={(e) => setEmail(e.target.value)} style={{ margin: 0, maxWidth: 240 }} />
+              <input placeholder={t.t_invitePh} value={email} onChange={(e) => setEmail(e.target.value)} style={{ margin: 0, maxWidth: 240 }} />
               <select value={newRole} onChange={(e) => setNewRole(e.target.value)} style={{ margin: 0, width: 'auto' }}>
-                <option value="admin">Admin</option><option value="support">Soporte</option><option value="marketing">Marketing</option><option value="custom">Personalizado</option>
+                <option value="admin">{t.role_admin}</option><option value="support">{t.role_support}</option><option value="marketing">{t.role_marketing}</option><option value="custom">{t.role_custom}</option>
               </select>
-              <button className="btn btn-primary" onClick={add} disabled={busy || !email}>{busy ? '...' : '+ Invitar'}</button>
+              <button className="btn btn-primary" onClick={add} disabled={busy || !email}>{busy ? '...' : t.t_inviteBtn}</button>
             </div>
           </div>
         )}
@@ -384,22 +385,22 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
 
       {/* Registro de actividad: filtro por tema y por miembro */}
       <div className="card">
-        <h3 style={{ marginBottom: 10 }}>🕘 Registro de actividad</h3>
+        <h3 style={{ marginBottom: 10 }}>🕘 {t.t_activity}</h3>
         <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
           {LOG_TOPICS.map(([k, label, ic]) => {
             const n = k === 'all' ? log.length : log.filter((e) => topicOf(e.action) === k).length;
             if (k !== 'all' && !n) return null;
-            return <button key={k} className={'segbtn' + (logTopic === k ? ' on-view' : '')} style={{ background: logTopic === k ? undefined : 'var(--card2)', padding: '5px 11px', fontSize: 12 }} onClick={() => setLogTopic(k)}>{ic} {label}{k !== 'all' ? ` ${n}` : ''}</button>;
+            return <button key={k} className={'segbtn' + (logTopic === k ? ' on-view' : '')} style={{ background: logTopic === k ? undefined : 'var(--card2)', padding: '5px 11px', fontSize: 12 }} onClick={() => setLogTopic(k)}>{ic} {(t as any)['lt_' + k] || label}{k !== 'all' ? ` ${n}` : ''}</button>;
           })}
         </div>
         <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-          <span className="muted" style={{ fontSize: 12 }}>Miembro:</span>
-          <button className={'segbtn' + (!logMember ? ' on-view' : '')} style={{ background: !logMember ? undefined : 'var(--card2)', padding: '4px 10px', fontSize: 12 }} onClick={() => loadLog('')}>Todos</button>
+          <span className="muted" style={{ fontSize: 12 }}>{t.t_member}</span>
+          <button className={'segbtn' + (!logMember ? ' on-view' : '')} style={{ background: !logMember ? undefined : 'var(--card2)', padding: '4px 10px', fontSize: 12 }} onClick={() => loadLog('')}>{t.t_all}</button>
           {team.map((m) => <button key={m.id} className={'segbtn' + (logMember === m.email ? ' on-view' : '')} style={{ background: logMember === m.email ? undefined : 'var(--card2)', padding: '4px 10px', fontSize: 12 }} onClick={() => loadLog(m.email)}>{m.email.split('@')[0]}</button>)}
         </div>
         {(() => {
           const shown = log.filter((e) => logTopic === 'all' || topicOf(e.action) === logTopic);
-          if (!shown.length) return <p className="muted" style={{ fontSize: 14 }}>Sin actividad en este tema.</p>;
+          if (!shown.length) return <p className="muted" style={{ fontSize: 14 }}>{t.t_noActivityTopic}</p>;
           return shown.map((e, i) => {
             const tp = topicOf(e.action);
             return (
@@ -416,11 +417,12 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
 }
 
 function PlansTab({ plans, reload }: { plans: Plan[]; reload: () => void }) {
+  const t = useT();
   const [creating, setCreating] = useState(false);
   return (
     <>
       <div className="row between" style={{ flexWrap: 'wrap', gap: 8 }}>
-        <Head ic="💳" t="Planes" s="Precios, funciones y capacidades reales de cada plan." />
+        <Head ic="💳" t={t.h_planes_t} s={t.h_planes_s} />
         <button className="btn btn-primary" onClick={() => setCreating(true)}>+ Nuevo plan</button>
       </div>
       {creating && <PlanCard plan={{ id: '', name: '', name_en: '', desc_es: '', desc_en: '', price_month: 0, price_year: 0, stripe_price_id: '', stripe_price_id_year: '', max_accounts: 1, features: [], features_en: [], badge: '', badge_en: '', active: true, sort: plans.length, capabilities: {} } as any} isNew reload={() => { setCreating(false); reload(); }} onCancel={() => setCreating(false)} />}

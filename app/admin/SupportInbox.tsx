@@ -1,14 +1,16 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { useT } from '@/lib/adminText';
 
-const ST: any = { open: 'Abierto', in_progress: 'En curso', resolved: 'Resuelto' };
 const stColor: any = { open: 'var(--brand)', in_progress: 'var(--amber)', resolved: 'var(--green)' };
 const stBg: any = { open: 'rgba(124,140,255,.15)', in_progress: 'rgba(255,192,77,.15)', resolved: 'rgba(52,226,160,.15)' };
-const CATS: any = { general: 'General', conexion: 'Conexión', instalacion: 'Instalación', guardian: 'Onyx Guardian', facturacion: 'Facturación' };
-const CH: any = { ticket: 'Ticket', chat: 'Chat', lead: 'Lead', email: 'Email' };
 const initials = (email: string) => (email || '?').replace(/@.*/, '').slice(0, 2).toUpperCase();
 
 export default function SupportInbox() {
+  const t = useT();
+  const ST: any = { open: t.st_open, in_progress: t.st_inprogress, resolved: t.st_resolved };
+  const CATS: any = { general: t.cat_general, conexion: t.cat_conexion, instalacion: t.cat_instalacion, guardian: t.cat_guardian, facturacion: t.cat_facturacion };
+  const CH: any = { ticket: t.ch_ticket, chat: t.ch_chat, lead: t.ch_lead, email: t.ch_email };
   const [tickets, setTickets] = useState<any[]>([]);
   const [msgs, setMsgs] = useState<any[]>([]);
   const [participants, setParticipants] = useState<any[]>([]);
@@ -47,33 +49,33 @@ export default function SupportInbox() {
 
   return (
     <div>
-      <div className="tabhead"><div className="th-row"><span className="th-ic">🎫</span><span className="th-t">Soporte</span></div><div className="th-s">Cola compartida — toma, responde, invita a un compañero.</div></div>
+      <div className="tabhead"><div className="th-row"><span className="th-ic">🎫</span><span className="th-t">{t.h_soporte_t}</span></div><div className="th-s">{t.h_soporte_s}</div></div>
 
       <div className="row" style={{ gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-        {([['open', 'Abiertos'], ['in_progress', 'En curso'], ['resolved', 'Resueltos'], ['all', 'Todos']] as any).map(([k, l]: any) => (
+        {([['open', t.s_open], ['in_progress', t.s_inprogress], ['resolved', t.s_resolved], ['all', t.s_all]] as any).map(([k, l]: any) => (
           <button key={k} className={'segbtn' + (filter === k ? ' on-view' : '')} style={{ padding: '6px 12px', fontSize: 13, background: filter === k ? undefined : 'var(--card2)' }} onClick={() => setFilter(k)}>
             {l}{k !== 'all' && counts[k] != null ? ` (${counts[k]})` : ''}
           </button>
         ))}
-        <input placeholder="Buscar por correo o asunto…" value={q} onChange={(e) => setQ(e.target.value)} style={{ margin: 0, maxWidth: 260, marginLeft: 'auto' }} />
+        <input placeholder={t.s_search} value={q} onChange={(e) => setQ(e.target.value)} style={{ margin: 0, maxWidth: 260, marginLeft: 'auto' }} />
       </div>
 
       <div className="helpdesk">
         {/* Cola de conversaciones */}
         <div>
-          {!list.length && <p className="muted" style={{ fontSize: 14 }}>No hay conversaciones en esta vista.</p>}
-          {list.map((t) => {
-            const parts = participants.filter((p) => p.ticket_id === t.id);
+          {!list.length && <p className="muted" style={{ fontSize: 14 }}>{t.s_empty}</p>}
+          {list.map((it) => {
+            const parts = participants.filter((p) => p.ticket_id === it.id);
             return (
-              <div key={t.id} className={'hd-item' + (openId === t.id ? ' on' : '')} onClick={() => { setOpenId(t.id); setText(''); }}>
+              <div key={it.id} className={'hd-item' + (openId === it.id ? ' on' : '')} onClick={() => { setOpenId(it.id); setText(''); }}>
                 <div className="row between" style={{ gap: 8 }}>
-                  <b style={{ fontSize: 13 }}>{t.subject}</b>
-                  <span className="pill" style={{ color: stColor[t.status], background: stBg[t.status] }}>● {ST[t.status]}</span>
+                  <b style={{ fontSize: 13 }}>{it.subject}</b>
+                  <span className="pill" style={{ color: stColor[it.status], background: stBg[it.status] }}>● {ST[it.status]}</span>
                 </div>
-                <div className="muted" style={{ fontSize: 11.5, marginTop: 4 }}>{t.email || '—'} · {t.assignee_id ? 'asignado a ' + emailOf(t.assignee_id).split('@')[0] : 'sin asignar'}</div>
+                <div className="muted" style={{ fontSize: 11.5, marginTop: 4 }}>{it.email || '—'} · {it.assignee_id ? t.s_assignedTo + emailOf(it.assignee_id).split('@')[0] : t.s_unassigned}</div>
                 <div className="row" style={{ gap: 5, marginTop: 6, flexWrap: 'wrap' }}>
-                  {t.is_lead && <span className="pill brand">Lead</span>}
-                  <span className="pill gray">{CH[t.channel] || t.channel}</span>
+                  {it.is_lead && <span className="pill brand">Lead</span>}
+                  <span className="pill gray">{CH[it.channel] || it.channel}</span>
                   {parts.length > 0 && <span className="pill gray">👥 {parts.length}</span>}
                 </div>
               </div>
@@ -83,7 +85,7 @@ export default function SupportInbox() {
 
         {/* Conversación abierta */}
         <div className="card" style={{ minHeight: 260 }}>
-          {!tk && <div className="muted" style={{ display: 'flex', height: 220, alignItems: 'center', justifyContent: 'center', fontSize: 14, textAlign: 'center' }}>Elige una conversación de la izquierda para verla aquí.</div>}
+          {!tk && <div className="muted" style={{ display: 'flex', height: 220, alignItems: 'center', justifyContent: 'center', fontSize: 14, textAlign: 'center' }}>{t.s_pickOne}</div>}
           {tk && (() => {
             const tm = msgs.filter((m) => m.ticket_id === tk.id);
             const firstUser = tm.find((m) => m.sender === 'user')?.body || tk.subject;
@@ -95,7 +97,7 @@ export default function SupportInbox() {
                   <div className="row" style={{ gap: 10 }}>
                     <span className="avatar-init">{initials(tk.email || '?')}</span>
                     <div>
-                      <div style={{ fontWeight: 600 }}>{tk.email || 'Visitante'}</div>
+                      <div style={{ fontWeight: 600 }}>{tk.email || t.s_visitor}</div>
                       <div className="muted" style={{ fontSize: 11.5 }}>{CATS[tk.category] || tk.category} · {CH[tk.channel] || tk.channel}{tk.is_lead ? ' · Lead' : ''}</div>
                     </div>
                   </div>
@@ -112,38 +114,38 @@ export default function SupportInbox() {
                         : { background: 'rgba(124,140,255,.10)', border: '1px solid var(--brand)', borderRadius: 10 };
                     return (
                       <div key={m.id} style={{ padding: '8px 11px', fontSize: 13, lineHeight: 1.5, whiteSpace: 'pre-wrap', ...style }}>
-                        <div style={{ fontSize: 11, opacity: .8, marginBottom: 2, color: note ? 'var(--amber)' : undefined }}>{m.sender === 'user' ? 'Trader' : m.sender === 'ai' ? 'Onyx AI' : note ? '🔒 Nota interna' : 'Soporte'} · {new Date(m.created_at).toLocaleTimeString()}</div>
+                        <div style={{ fontSize: 11, opacity: .8, marginBottom: 2, color: note ? 'var(--amber)' : undefined }}>{m.sender === 'user' ? t.sender_trader : m.sender === 'ai' ? 'Onyx AI' : note ? t.sender_note : t.sender_support} · {new Date(m.created_at).toLocaleTimeString()}</div>
                         {m.body}
                       </div>
                     );
                   })}
                 </div>
 
-                {parts.length > 0 && <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>👥 En la conversación: {parts.map((p) => emailOf(p.user_id).split('@')[0]).join(', ')}</div>}
+                {parts.length > 0 && <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>👥 {t.s_inConvo}{parts.map((p) => emailOf(p.user_id).split('@')[0]).join(', ')}</div>}
 
                 {/* Redactar */}
                 <div className="row" style={{ gap: 6, marginBottom: 6 }}>
                   <div className="seg">
-                    <button className={'segbtn' + (mode === 'reply' ? ' on-view' : '')} onClick={() => setMode('reply')}>Responder</button>
-                    <button className={'segbtn' + (mode === 'note' ? ' on-view' : '')} onClick={() => setMode('note')}>🔒 Nota interna</button>
+                    <button className={'segbtn' + (mode === 'reply' ? ' on-view' : '')} onClick={() => setMode('reply')}>{t.s_reply}</button>
+                    <button className={'segbtn' + (mode === 'note' ? ' on-view' : '')} onClick={() => setMode('note')}>🔒 {t.s_note}</button>
                   </div>
                 </div>
-                <textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} placeholder={mode === 'note' ? 'Nota que solo ve el equipo…' : 'Respuesta para el trader (le llega por correo)…'} style={{ width: '100%', margin: '0 0 8px' }} />
+                <textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} placeholder={mode === 'note' ? t.s_notePh : t.s_replyPh} style={{ width: '100%', margin: '0 0 8px' }} />
 
                 <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
                   {mode === 'reply'
-                    ? <button className="btn btn-primary" onClick={() => act(tk.id, { body: text })} disabled={busy === tk.id || !text.trim()}>Enviar respuesta</button>
-                    : <button className="btn btn-primary" onClick={() => act(tk.id, { note: text })} disabled={busy === tk.id || !text.trim()}>Guardar nota</button>}
-                  <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => draft(tk.id, firstUser)} disabled={busy === 'ai' + tk.id}>{busy === 'ai' + tk.id ? '...' : '🤖 Borrador IA'}</button>
-                  {!tk.assignee_id && <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => act(tk.id, { take: true })}>Tomar</button>}
+                    ? <button className="btn btn-primary" onClick={() => act(tk.id, { body: text })} disabled={busy === tk.id || !text.trim()}>{t.s_sendReply}</button>
+                    : <button className="btn btn-primary" onClick={() => act(tk.id, { note: text })} disabled={busy === tk.id || !text.trim()}>{t.s_saveNote}</button>}
+                  <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => draft(tk.id, firstUser)} disabled={busy === 'ai' + tk.id}>{busy === 'ai' + tk.id ? '...' : '🤖 ' + t.s_aiDraft}</button>
+                  {!tk.assignee_id && <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => act(tk.id, { take: true })}>{t.s_take}</button>}
                   <span style={{ flex: 1 }} />
-                  {tk.status !== 'resolved' && <button className="btn btn-ghost" style={{ fontSize: 13, color: 'var(--green)' }} onClick={() => act(tk.id, { status: 'resolved' })}>Resolver</button>}
-                  {tk.status === 'resolved' && <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => act(tk.id, { status: 'open' })}>Reabrir</button>}
+                  {tk.status !== 'resolved' && <button className="btn btn-ghost" style={{ fontSize: 13, color: 'var(--green)' }} onClick={() => act(tk.id, { status: 'resolved' })}>{t.s_resolve}</button>}
+                  {tk.status === 'resolved' && <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => act(tk.id, { status: 'open' })}>{t.s_reopen}</button>}
                 </div>
 
                 <div className="row" style={{ gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
-                  <input placeholder="Invitar compañero (su email de equipo)" value={invite} onChange={(e) => setInvite(e.target.value)} style={{ margin: 0, maxWidth: 260, fontSize: 12 }} />
-                  <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => act(tk.id, { invite_email: invite })} disabled={!invite.trim()}>Invitar</button>
+                  <input placeholder={t.s_invitePh} value={invite} onChange={(e) => setInvite(e.target.value)} style={{ margin: 0, maxWidth: 260, fontSize: 12 }} />
+                  <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => act(tk.id, { invite_email: invite })} disabled={!invite.trim()}>{t.s_inviteBtn}</button>
                 </div>
               </>
             );
