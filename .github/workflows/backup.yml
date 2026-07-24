@@ -24,15 +24,15 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           set -euo pipefail
+          PGDUMP=$(ls -1 /usr/lib/postgresql/*/bin/pg_dump 2>/dev/null | sort -V | tail -n1)
+          PGDUMP=${PGDUMP:-pg_dump}
+          echo "Usando: $PGDUMP"; "$PGDUMP" --version
           STAMP=$(date +%Y%m%d-%H%M)
           FILE="onyx-backup-$STAMP.sql.gz"
-          pg_dump "$DATABASE_URL" --no-owner --no-privileges | gzip > "$FILE"
+          "$PGDUMP" "$DATABASE_URL" --no-owner --no-privileges | gzip > "$FILE"
           SIZE=$(stat -c%s "$FILE")
           echo "Tamaño del volcado: $SIZE bytes"
-          if [ "$SIZE" -lt 1000 ]; then
-            echo "::error::Volcado vacío ($SIZE bytes). Revisa DATABASE_URL y la contraseña."
-            exit 1
-          fi
+          if [ "$SIZE" -lt 1000 ]; then echo "::error::Volcado vacío"; exit 1; fi
           echo "FILE=$FILE" >> "$GITHUB_ENV"
           echo "SIZE=$SIZE" >> "$GITHUB_ENV"
 
