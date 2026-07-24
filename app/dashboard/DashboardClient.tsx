@@ -489,7 +489,7 @@ export default function DashboardClient({ email = '', plan = 'free', profile, tr
           </div>
           <Link className="btn btn-ghost" href="/dashboard/keys">{L.connectBtn}</Link>
         </div>
-        <p className="muted" style={{ fontSize: 13, margin: '-6px 0 14px' }}>{email} · {accounts.length} {L.accountsWord} · {L.balance} ${totalBalance.toLocaleString()} · <span style={{ color: GREEN }}>● {updatedTxt}</span></p>
+        <p className="muted" style={{ fontSize: 13, margin: '-6px 0 14px', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>{email} · {accounts.length} {L.accountsWord} · {L.balance} ${totalBalance.toLocaleString()} · <span className="livedot" style={{ width: 8, height: 8 }} /><span style={{ color: GREEN }}>{updatedTxt}</span></p>
 
         <div className="cockpit">
           <div className="rail-left"><MarketHours lang={lang} compact /></div>

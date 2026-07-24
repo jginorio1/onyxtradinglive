@@ -200,6 +200,14 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
 /* Tarjeta más ligera para mosaicos (diagnóstico, listas) */
 .tile{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px 13px;}
 
+/* Punto "en vivo": late para todo lo que esté en línea (EA, disponibilidad, en línea ahora) */
+@keyframes onyxLive{0%{transform:scale(.9);opacity:.85}70%{transform:scale(2.6);opacity:0}100%{opacity:0}}
+.livedot{position:relative;width:9px;height:9px;border-radius:50%;background:var(--green);flex:none;display:inline-block;}
+.livedot::after{content:'';position:absolute;inset:0;border-radius:50%;background:var(--green);animation:onyxLive 1.6s ease-out infinite;}
+/* La disponibilidad del equipo también late cuando está activa */
+.availpill.on .avdot{position:relative;box-shadow:none;}
+.availpill.on .avdot::after{content:'';position:absolute;inset:0;border-radius:50%;background:#34e2a0;animation:onyxLive 1.6s ease-out infinite;}
+
 /* Helpdesk a dos paneles */
 .helpdesk{display:grid;grid-template-columns:320px 1fr;gap:14px;align-items:start;}
 @media(max-width:900px){ .helpdesk{grid-template-columns:1fr;} }

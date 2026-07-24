@@ -231,53 +231,60 @@ function Modules() {
   const [m, setM] = useState<any>(null);
   useEffect(() => { fetch('/api/admin/modules').then((r) => r.json()).then(setM).catch(() => setM({})); }, []);
 
-  const Badge = ({ on, txt }: { on: boolean; txt: string }) => (
-    <span className="pill" style={on
-      ? { color: '#7fe9c0', background: 'rgba(52,226,160,.15)', border: '1px solid #34e2a0' }
-      : { color: '#c9a9ff', background: 'rgba(160,107,255,.18)', border: '1px solid #a06bff' }}>{txt}</span>
+  const StatusPill = ({ on, txt }: { on: boolean; txt: string }) => (
+    <span className="pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, ...(on ? { color: '#7fe9c0', background: 'rgba(52,226,160,.15)' } : { color: '#c9a9ff', background: 'rgba(160,107,255,.18)' }) }}>
+      {on ? <span className="livedot" /> : <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#c9a9ff' }} />}{txt}
+    </span>
   );
-  const Stat = ({ n, label }: { n: number; label: string }) => (
-    <div><div style={{ fontSize: 22, fontWeight: 800 }}>{Number(n || 0).toLocaleString()}</div><div className="muted" style={{ fontSize: 12 }}>{label}</div></div>
+  const Tile = ({ label, value, live, color }: { label: string; value: any; live?: boolean; color?: string }) => (
+    <div className="tile" style={live ? { boxShadow: 'inset 0 0 0 1px rgba(52,226,160,.35)' } : undefined}>
+      <div className="muted" style={{ fontSize: 11.5 }}>{label}</div>
+      <div className="row" style={{ gap: 7, marginTop: 3 }}>
+        <span style={{ fontSize: typeof value === 'number' ? 24 : 15, fontWeight: 800, lineHeight: 1, color: color || 'var(--tx)' }}>{typeof value === 'number' ? Number(value).toLocaleString() : value}</span>
+        {live && <span className="livedot" />}
+      </div>
+    </div>
   );
+  const Ic = ({ e }: { e: string }) => <span style={{ width: 34, height: 34, borderRadius: 10, background: 'rgba(124,140,255,.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flex: 'none' }}>{e}</span>;
 
   if (!m) return <div className="muted">…</div>;
+  const tiles = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(92px,1fr))', gap: 10 } as any;
+  const gLive = (m.guardian?.liveNow ?? 0) > 0;
+  const tgLive = (m.telegram?.linked ?? 0) > 0;
 
   return (
     <>
     <Head ic="🧩" t={t.h_modulos_t} s={t.h_modulos_s} />
     <div className="grid g2">
       <div className="card">
-        <div style={{ fontSize: 26, marginBottom: 8 }}>🛡️</div>
-        <div className="row between" style={{ marginBottom: 8 }}><h3>Onyx Guardian</h3><Badge on txt={t.mo_active} /></div>
+        <div className="row between" style={{ marginBottom: 12 }}><div className="row" style={{ gap: 10 }}><Ic e="🛡️" /><h3>Onyx Guardian</h3></div><StatusPill on txt={t.mo_active} /></div>
         <p className="muted" style={{ fontSize: 13, marginBottom: 14 }}>{t.mo_guardian_desc}</p>
-        <div className="row" style={{ gap: 24, flexWrap: 'wrap' }}>
-          <Stat n={m.guardian?.connected} label={t.mo_connected} />
-          <Stat n={m.guardian?.liveNow} label={t.mo_liveNow} />
-          <Stat n={m.guardian?.accounts} label={t.mo_withGuardian} />
-          <Stat n={m.guardian?.blocks} label={t.mo_blocks} />
+        <div style={tiles}>
+          <Tile label={t.mo_connected} value={m.guardian?.connected ?? 0} />
+          <Tile label={t.mo_liveNow} value={m.guardian?.liveNow ?? 0} live={gLive} color={gLive ? 'var(--green)' : undefined} />
+          <Tile label={t.mo_withGuardian} value={m.guardian?.accounts ?? 0} color="#c3ccff" />
+          <Tile label={t.mo_blocks} value={m.guardian?.blocks ?? 0} />
         </div>
       </div>
 
       <div className="card">
-        <div style={{ fontSize: 26, marginBottom: 8 }}>📣</div>
-        <div className="row between" style={{ marginBottom: 8 }}><h3>Telegram</h3><Badge on={!!m.telegram?.active} txt={m.telegram?.active ? t.mo_active : t.mo_notoken} /></div>
+        <div className="row between" style={{ marginBottom: 12 }}><div className="row" style={{ gap: 10 }}><Ic e="📣" /><h3>Telegram</h3></div><StatusPill on={!!m.telegram?.active} txt={m.telegram?.active ? t.mo_active : t.mo_notoken} /></div>
         <p className="muted" style={{ fontSize: 13, marginBottom: 14 }}>{t.mo_tg_desc}</p>
-        <div className="row" style={{ gap: 24, flexWrap: 'wrap' }}>
-          <Stat n={m.telegram?.linked} label={t.mo_tg_connected} />
-          <Stat n={m.telegram?.sent7d} label={t.mo_tg_sent7d} />
-          <Stat n={m.telegram?.status} label={t.mo_tg_status} />
-          <Stat n={m.telegram?.failed7d} label={t.mo_tg_failed} />
+        <div style={tiles}>
+          <Tile label={t.mo_tg_connected} value={m.telegram?.linked ?? 0} live={tgLive} color={tgLive ? 'var(--green)' : undefined} />
+          <Tile label={t.mo_tg_sent7d} value={m.telegram?.sent7d ?? 0} />
+          <Tile label={t.mo_tg_status} value={m.telegram?.status ?? 0} />
+          <Tile label={t.mo_tg_failed} value={m.telegram?.failed7d ?? 0} color={(m.telegram?.failed7d ?? 0) > 0 ? 'var(--amber)' : undefined} />
         </div>
       </div>
 
       <div className="card">
-        <div style={{ fontSize: 26, marginBottom: 8 }}>📄</div>
-        <div className="row between" style={{ marginBottom: 8 }}><h3>{t.mo_weekly_t}</h3><Badge on txt={t.mo_active} /></div>
+        <div className="row between" style={{ marginBottom: 12 }}><div className="row" style={{ gap: 10 }}><Ic e="📄" /><h3>{t.mo_weekly_t}</h3></div><StatusPill on txt={t.mo_active} /></div>
         <p className="muted" style={{ fontSize: 13, marginBottom: 14 }}>{t.mo_weekly_desc}</p>
-        <div className="row" style={{ gap: 24, flexWrap: 'wrap' }}>
-          <Stat n={m.reports?.sent} label={t.mo_rep_sent} />
-          <Stat n={m.reports?.eligible} label={t.mo_rep_eligible} />
-          <div><div style={{ fontSize: 15, fontWeight: 800 }}>{nextSunday()}</div><div className="muted" style={{ fontSize: 12 }}>{t.mo_rep_next}</div></div>
+        <div style={tiles}>
+          <Tile label={t.mo_rep_sent} value={m.reports?.sent ?? 0} />
+          <Tile label={t.mo_rep_eligible} value={m.reports?.eligible ?? 0} color="#c3ccff" />
+          <Tile label={t.mo_rep_next} value={nextSunday()} />
         </div>
       </div>
 

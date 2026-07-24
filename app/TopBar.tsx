@@ -88,7 +88,7 @@ export default async function TopBar() {
 
             {eaLive !== null && (
               <span className="ea-dot" title={eaLive ? t.eaOnTitle : t.eaOffTitle}>
-                <span className="dot" style={{ background: eaLive ? '#34e2a0' : 'var(--amber)' }} />
+                {eaLive ? <span className="livedot" style={{ width: 8, height: 8 }} /> : <span className="dot" style={{ background: 'var(--amber)' }} />}
                 <span className="ea-dot-tx">{eaLive ? t.eaOn : t.eaOff}</span>
               </span>
             )}
