@@ -45,6 +45,7 @@ export async function GET() {
       { id: 'diagnostics_v1', label: 'Registro de errores', ok: await tableCheck('app_errors') },
       { id: 'manager', label: 'Onyx Guardian (config)', ok: await tableCheck('manager_configs') },
       { id: 'telegram_v3', label: 'Telegram · informe semanal', ok: await tableCheck('profiles', 'tg_weekly') },
+      { id: 'telegram_log', label: 'Telegram · registro de envíos', ok: await tableCheck('telegram_log') },
     ];
 
     // --- EA en línea ahora ---

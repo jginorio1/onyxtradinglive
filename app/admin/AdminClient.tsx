@@ -251,9 +251,10 @@ function Modules() {
         <div className="row between" style={{ marginBottom: 8 }}><h3>Onyx Guardian</h3><Badge on txt={t.mo_active} /></div>
         <p className="muted" style={{ fontSize: 13, marginBottom: 14 }}>{t.mo_guardian_desc}</p>
         <div className="row" style={{ gap: 24, flexWrap: 'wrap' }}>
-          <Stat n={m.guardian?.accounts} label={t.mo_guardian_accounts} />
-          <Stat n={m.guardian?.eaLive} label={t.mo_guardian_live} />
-          <Stat n={m.guardian?.blocks} label={t.mo_guardian_blocks} />
+          <Stat n={m.guardian?.connected} label={t.mo_connected} />
+          <Stat n={m.guardian?.liveNow} label={t.mo_liveNow} />
+          <Stat n={m.guardian?.accounts} label={t.mo_withGuardian} />
+          <Stat n={m.guardian?.blocks} label={t.mo_blocks} />
         </div>
       </div>
 
@@ -261,16 +262,26 @@ function Modules() {
         <div style={{ fontSize: 26, marginBottom: 8 }}>📣</div>
         <div className="row between" style={{ marginBottom: 8 }}><h3>Telegram</h3><Badge on={!!m.telegram?.active} txt={m.telegram?.active ? t.mo_active : t.mo_notoken} /></div>
         <p className="muted" style={{ fontSize: 13, marginBottom: 14 }}>{t.mo_tg_desc}</p>
-        <div className="row" style={{ gap: 24 }}>
-          <Stat n={m.telegram?.linked} label={t.mo_tg_linked} />
+        <div className="row" style={{ gap: 24, flexWrap: 'wrap' }}>
+          <Stat n={m.telegram?.linked} label={t.mo_tg_connected} />
+          <Stat n={m.telegram?.sent7d} label={t.mo_tg_sent7d} />
+          <Stat n={m.telegram?.status} label={t.mo_tg_status} />
+          <Stat n={m.telegram?.failed7d} label={t.mo_tg_failed} />
         </div>
       </div>
 
       <div className="card">
         <div style={{ fontSize: 26, marginBottom: 8 }}>📄</div>
         <div className="row between" style={{ marginBottom: 8 }}><h3>{t.mo_weekly_t}</h3><Badge on txt={t.mo_active} /></div>
-        <p className="muted" style={{ fontSize: 13 }}>{t.mo_weekly_desc}</p>
+        <p className="muted" style={{ fontSize: 13, marginBottom: 14 }}>{t.mo_weekly_desc}</p>
+        <div className="row" style={{ gap: 24, flexWrap: 'wrap' }}>
+          <Stat n={m.reports?.sent} label={t.mo_rep_sent} />
+          <Stat n={m.reports?.eligible} label={t.mo_rep_eligible} />
+          <div><div style={{ fontSize: 15, fontWeight: 800 }}>{nextSunday()}</div><div className="muted" style={{ fontSize: 12 }}>{t.mo_rep_next}</div></div>
+        </div>
       </div>
+
+      <div className="muted" style={{ fontSize: 12, gridColumn: '1 / -1' }}>{t.mo_needLog}</div>
     </div>
     </>
   );
@@ -288,6 +299,14 @@ function topicOf(action: string): string {
   return 'otros';
 }
 const topicIcon: any = { equipo: '🛡️', soporte: '🎫', baseia: '🧠', usuarios: '👥', planes: '💳', otros: '•' };
+
+// Fecha del próximo domingo (el informe semanal sale los domingos a las 06:00).
+function nextSunday(): string {
+  const d = new Date();
+  const add = (7 - d.getDay()) % 7 || 7;
+  d.setDate(d.getDate() + add);
+  return d.toLocaleDateString(undefined, { day: '2-digit', month: '2-digit' }) + ' · 06:00';
+}
 
 function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role: string; meEmail: string; reload: () => void; canManage: boolean }) {
   const t = useT();

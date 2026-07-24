@@ -14,7 +14,7 @@ export type NavItem = { href: string; label: string };
 //
 // Además marca en qué página estás, que antes no se sabía.
 // ============================================================
-export default function MainNav({ items }: { items: NavItem[] }) {
+export default function MainNav({ items, authItems }: { items: NavItem[]; authItems?: NavItem[] }) {
   const pathname = usePathname() || '/';
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
@@ -56,6 +56,13 @@ export default function MainNav({ items }: { items: NavItem[] }) {
                 {i.label}
               </Link>
             ))}
+            {authItems && authItems.length > 0 && (
+              <div style={{ borderTop: '1px solid var(--line)', margin: '6px 0 0', paddingTop: 6 }}>
+                {authItems.map((i) => (
+                  <Link key={i.href} className="menu-item" href={i.href}>{i.label}</Link>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

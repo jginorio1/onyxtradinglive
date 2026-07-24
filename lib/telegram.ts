@@ -15,9 +15,17 @@ export const telegramEnabled = () => !!process.env.TELEGRAM_BOT_TOKEN;
 // t.me/<bot>?start=<codigo> abre Telegram con el /start ya rellenado.
 export const BOT_USERNAME = process.env.TELEGRAM_BOT_USERNAME || 'OnyxGuardianLive_bot';
 
+// Guarda una fila en el registro de envíos. Tolerante: si la tabla no existe
+// (telegram_log.sql sin correr), no hace nada y no rompe el envío.
+async function logSend(kind: string, ok: boolean, userId?: string | null, error?: string) {
+  try { await supabaseAdmin.from('telegram_log').insert({ kind, ok, user_id: userId || null, error: error || null }); } catch {}
+}
+
 // Envía un mensaje a un chat. Nunca lanza: si falla, lo registra y sigue.
-export async function sendMessage(chatId: string, text: string) {
+// `meta` (opcional) permite anotar el tipo de mensaje y a quién, para las métricas.
+export async function sendMessage(chatId: string, text: string, meta?: { kind?: string; userId?: string | null }) {
   if (!telegramEnabled() || !chatId) return false;
+  const kind = meta?.kind || 'message';
   try {
     const r = await fetch(API('sendMessage'), {
       method: 'POST',
@@ -29,8 +37,9 @@ export async function sendMessage(chatId: string, text: string) {
         disable_web_page_preview: true,
       }),
     });
+    await logSend(kind, r.ok, meta?.userId, r.ok ? undefined : `HTTP ${r.status}`);
     return r.ok;
-  } catch { return false; }
+  } catch (e: any) { await logSend(kind, false, meta?.userId, e?.message || 'network'); return false; }
 }
 
 // Alerta a un usuario respetando sus preferencias.
@@ -60,7 +69,7 @@ export async function alertUser(userId: string, kind: Kind, text: string) {
 
     if (!p[PREF_COL[kind]]) return false;
 
-    return await sendMessage(p.telegram_chat_id, text);
+    return await sendMessage(p.telegram_chat_id, text, { kind, userId });
   } catch { return false; }
 }
 

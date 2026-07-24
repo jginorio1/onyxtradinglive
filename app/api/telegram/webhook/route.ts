@@ -75,7 +75,8 @@ export async function POST(req: Request) {
         .select('*', { count: 'exact', head: true }).eq('user_id', prof.id).eq('kind', 'blocked').gte('created_at', since);
       const sign = net >= 0 ? '+' : '-';
       await sendMessage(chatId,
-        `📊 <b>Últimas 24h</b>\nOperaciones: ${n}\nResultado: ${sign}$${Math.abs(net).toFixed(2)}\nEl Guardian te frenó: ${blocks || 0} vez(ces)`);
+        `📊 <b>Últimas 24h</b>\nOperaciones: ${n}\nResultado: ${sign}$${Math.abs(net).toFixed(2)}\nEl Guardian te frenó: ${blocks || 0} vez(ces)`,
+        { kind: 'status', userId: prof.id });
       return NextResponse.json({ ok: true });
     }
 

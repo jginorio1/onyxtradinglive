@@ -99,7 +99,8 @@ export default async function TopBar() {
           </div>
         ) : (
           <div className="row" style={{ gap: 6 }}>
-            <MainNav items={navItems} />
+            {/* En móvil el botón "Entrar" se oculta; por eso va también dentro del menú */}
+            <MainNav items={navItems} authItems={[{ href: '/login', label: t.login }, { href: '/login?mode=signup', label: t.signup }]} />
             {/* Sin sesión el selector va visible: un visitante nuevo debe encontrarlo rápido */}
             <LangToggle compact />
             <Link className="btn btn-ghost btn-login" href="/login">{t.login}</Link>
