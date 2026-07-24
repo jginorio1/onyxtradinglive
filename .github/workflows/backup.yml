@@ -19,11 +19,18 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
+          set -euo pipefail
           STAMP=$(date +%Y%m%d-%H%M)
           FILE="onyx-backup-$STAMP.sql.gz"
           pg_dump "$DATABASE_URL" --no-owner --no-privileges | gzip > "$FILE"
+          SIZE=$(stat -c%s "$FILE")
+          echo "Tamaño del volcado: $SIZE bytes"
+          if [ "$SIZE" -lt 1000 ]; then
+            echo "::error::Volcado vacío ($SIZE bytes). Revisa DATABASE_URL (usa la Session pooler) y la contraseña."
+            exit 1
+          fi
           echo "FILE=$FILE" >> "$GITHUB_ENV"
-          echo "SIZE=$(stat -c%s "$FILE")" >> "$GITHUB_ENV"
+          echo "SIZE=$SIZE" >> "$GITHUB_ENV"
 
       - name: Subir a Backblaze B2
         env:
@@ -36,7 +43,6 @@ jobs:
             || b2 upload-file "${{ secrets.B2_BUCKET }}" "$FILE" "backups/$FILE"
 
       - name: Avisar a la app
-        if: always()
         env:
           APP_URL: ${{ secrets.APP_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
