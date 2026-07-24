@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getAdmin, logAdmin } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendEmail } from '@/lib/mail';
+import { logError } from '@/lib/errlog';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -34,6 +35,7 @@ export async function GET() {
     (tickets || []).forEach((t: any) => { counts[t.status] = (counts[t.status] || 0) + 1; });
     return NextResponse.json({ tickets: tickets || [], messages, counts });
   } catch (e: any) {
+    await logError('support_admin', e);
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
   }
 }
@@ -72,6 +74,7 @@ export async function PATCH(req: Request) {
     await logAdmin(user?.email || '', 'support_reply', ticketId, { status: patch.status, emailed });
     return NextResponse.json({ ok: true, emailed });
   } catch (e: any) {
+    await logError('support_admin', e);
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
   }
 }

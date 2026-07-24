@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { ARTICLES, searchArticles, type Article, type Lang } from '@/lib/guide';
+import { logError } from '@/lib/errlog';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -91,6 +92,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ answer, articles: refs, escalate: false, mode: 'ai' });
   } catch (e: any) {
+    await logError('support_ai', e);
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
   }
 }

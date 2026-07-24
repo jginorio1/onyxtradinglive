@@ -6,6 +6,7 @@ import { accountLimit } from '@/lib/settings';
 import { forEA, mergeConfig } from '@/lib/manager';
 import { evaluate, registerClosedTrades, newsNear } from '@/lib/managerGuard';
 import { alertUser, alertOncePerDay } from '@/lib/telegram';
+import { logError } from '@/lib/errlog';
 
 export const runtime = 'nodejs';
 
@@ -271,6 +272,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, received: closed.length, accountId, config: managerCfg, verdict, commands });
   } catch (e: any) {
     console.error('sync error', e);
+    await logError('ea_sync', e);
     return NextResponse.json({ ok: false, error: e?.message || 'server error' }, { status: 500 });
   }
 }

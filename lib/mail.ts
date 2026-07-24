@@ -1,3 +1,5 @@
+import { logError } from '@/lib/errlog';
+
 // Envío de correos transaccionales con Resend (API HTTP).
 // Si no hay RESEND_API_KEY configurada, no envía y no falla:
 // el soporte sigue funcionando dentro de la web.
@@ -11,8 +13,10 @@ export async function sendEmail(to: string, subject: string, text: string): Prom
       headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
       body: JSON.stringify({ from, to, subject, text }),
     });
+    if (!r.ok) { const t = await r.text().catch(() => ''); await logError('mail', `Resend ${r.status}: ${t.slice(0, 200)}`, { code: String(r.status) }); }
     return r.ok;
-  } catch {
+  } catch (e) {
+    await logError('mail', e);
     return false;
   }
 }
