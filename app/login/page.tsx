@@ -10,6 +10,7 @@ type Lang = 'es' | 'en';
 const T = {
   es: {
     signupT: 'Crear cuenta', loginT: 'Entrar', email: 'Email', pass: 'Contraseña',
+    name: 'Nombre', namePh: 'Jerry', errName: 'Escribe tu nombre.',
     haveAcc: '¿Ya tienes cuenta?', noAcc: '¿No tienes cuenta?', goLogin: 'Entrar', goSignup: 'Crear una',
     back: '← Volver al inicio', loading: 'Cargando…',
     errBad: 'Email o contraseña incorrectos.',
@@ -32,6 +33,7 @@ const T = {
   },
   en: {
     signupT: 'Create account', loginT: 'Sign in', email: 'Email', pass: 'Password',
+    name: 'Name', namePh: 'Jerry', errName: 'Enter your name.',
     haveAcc: 'Already have an account?', noAcc: 'No account yet?', goLogin: 'Sign in', goSignup: 'Create one',
     back: '← Back to home', loading: 'Loading…',
     errBad: 'Wrong email or password.',
@@ -78,6 +80,7 @@ function LoginInner() {
   const router = useRouter();
   const params = useSearchParams();
   const [signup, setSignup] = useState(params.get('mode') === 'signup');
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [pass, setPass] = useState('');
   const [terms, setTerms] = useState(false);
@@ -92,8 +95,9 @@ function LoginInner() {
   // Validación antes de llamar a Supabase, para dar el mensaje en su idioma
   const mailOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
   const passOk = pass.length >= 8;
+  const nameOk = name.trim().length >= 2;
   const score = scorePass(pass);
-  const formOk = mailOk && passOk && (!signup || terms);
+  const formOk = mailOk && passOk && (!signup || (terms && nameOk));
 
   // A dónde vuelve el usuario tras confirmar el email o tras entrar.
   const nextRaw = params.get('next') || '/dashboard';
@@ -101,6 +105,7 @@ function LoginInner() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (signup && !nameOk) { setMsg(t.errName); return; }
     if (!mailOk) { setMsg(t.errMail); return; }
     if (!passOk) { setMsg(t.errShort); return; }
     if (signup && !terms) { setMsg(t.errTerms); return; }
@@ -112,7 +117,7 @@ function LoginInner() {
         const emailRedirectTo = typeof window !== 'undefined'
           ? `${window.location.origin}/onboarding` : undefined;
         const { data, error } = await sb.auth.signUp({
-          email: email.trim(), password: pass, options: { emailRedirectTo },
+          email: email.trim(), password: pass, options: { emailRedirectTo, data: { full_name: name.trim() } },
         });
         if (error) throw error;
         // Si la confirmación de email está ACTIVADA, no hay sesión todavía →
@@ -176,6 +181,13 @@ function LoginInner() {
       <div className="card">
         <h2 style={{ marginBottom: 16 }}>{signup ? t.signupT : t.loginT}</h2>
         <form onSubmit={submit}>
+          {signup && (
+            <>
+              <label>{t.name}</label>
+              <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder={t.namePh} required autoComplete="given-name" />
+              <div style={{ height: 12 }} />
+            </>
+          )}
           <label>{t.email}</label>
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
           <div style={{ height: 12 }} />

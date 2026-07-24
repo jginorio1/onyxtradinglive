@@ -14,6 +14,20 @@ export default async function Dashboard() {
 
   const { data: profile } = await supabaseAdmin.from('profiles').select('plan').eq('id', user.id).maybeSingle();
 
+  // Perfil de trader (para el saludo personalizado). Tolerante si onboarding_v1.sql aún no corrió.
+  let tp: any = {};
+  try {
+    const { data } = await supabaseAdmin.from('profiles').select('full_name,trade_style,experience,platform,goal').eq('id', user!.id).maybeSingle();
+    tp = data || {};
+  } catch { /* columnas del perfil aún no creadas */ }
+  // Si el nombre no llegó a profiles pero sí está en los metadatos del registro, lo sincronizamos una vez.
+  let fullName: string = tp.full_name || '';
+  if (!fullName && (user!.user_metadata as any)?.full_name) {
+    fullName = String((user!.user_metadata as any).full_name);
+    try { await supabaseAdmin.from('profiles').update({ full_name: fullName }).eq('id', user!.id); } catch {}
+  }
+  const traderProfile = { full_name: fullName, trade_style: tp.trade_style || '', experience: tp.experience || '', platform: tp.platform || '', goal: tp.goal || '' };
+
   // Onboarding: la primera vez lo mostramos una sola vez. Consulta aparte y
   // tolerante — si la columna aún no existe (SQL sin correr), no rompe el panel.
   // OJO: redirect() lanza una excepción interna, por eso va FUERA del try/catch.
@@ -39,5 +53,5 @@ export default async function Dashboard() {
     trades = data || [];
   }
 
-  return <DashboardClient email={user.email || ''} plan={profile?.plan || 'free'} accounts={(accounts || []) as any} trades={trades as any} />;
+  return <DashboardClient email={user.email || ''} plan={profile?.plan || 'free'} profile={traderProfile} accounts={(accounts || []) as any} trades={trades as any} />;
 }

@@ -57,6 +57,11 @@ const D = {
     nav_dash: 'Panel', nav_connect: 'Conectar cuenta', nav_plan: 'Plan', nav_account: 'Mi cuenta', nav_manager: 'Onyx Guardian', signout: 'Salir',
     ambT: '¿Tienes comunidad? Gana con Onyx', ambD: 'Cobra una comisión recurrente por cada persona que se suscriba con tu enlace, y dale un descuento a tu gente.', ambCta: 'Ver el programa →', ambHide: 'Ocultar',
     analytics: 'Tu panel', accountsWord: 'cuenta(s)', balance: 'Balance', connectBtn: '+ Conectar cuenta',
+    greetM: 'Buenos días', greetA: 'Buenas tardes', greetE: 'Buenas noches', welcomeTrader: 'Bienvenido, trader', completeProfile: 'Completa tu perfil de trader →',
+    styleMap: { scalping: 'Scalper', day: 'Day Trader', swing: 'Swing Trader', position: 'Position Trader' } as Record<string, string>,
+    rankMap: { novato: 'Aprendiz', intermedio: 'Intermedio', avanzado: 'Avanzado', pro: 'Pro' } as Record<string, string>,
+    goalMap: { pasar_challenge: 'Pasar challenge', consistencia: 'Consistencia', crecer: 'Crecer la cuenta', vivir: 'Vivir del trading' } as Record<string, string>,
+    platMap: { mt5: 'MT5', mt4: 'MT4', ambas: 'MT4 + MT5' } as Record<string, string>,
     empty1_t: 'Conecta tu primera cuenta', empty1_d: 'Instala el Onyx Connector (MT4/MT5), genera una API key y en segundos verás aquí todas tus estadísticas.', empty1_cta: 'Conectar cuenta →',
     empty2: 'Cuenta conectada. En cuanto cierres operaciones, aparecerán aquí tus analíticas.',
     portfolio: 'Portafolio', updated: 'Actualizado hace', sAgo: 's', now: 'ahora mismo',
@@ -81,6 +86,11 @@ const D = {
     nav_dash: 'Dashboard', nav_connect: 'Connect account', nav_plan: 'Plan', nav_account: 'My account', nav_manager: 'Onyx Guardian', signout: 'Sign out',
     ambT: 'Got a community? Earn with Onyx', ambD: 'Earn a recurring commission for everyone who subscribes through your link, and give your people a discount.', ambCta: 'See the program →', ambHide: 'Hide',
     analytics: 'Your dashboard', accountsWord: 'account(s)', balance: 'Balance', connectBtn: '+ Connect account',
+    greetM: 'Good morning', greetA: 'Good afternoon', greetE: 'Good evening', welcomeTrader: 'Welcome, trader', completeProfile: 'Complete your trader profile →',
+    styleMap: { scalping: 'Scalper', day: 'Day Trader', swing: 'Swing Trader', position: 'Position Trader' } as Record<string, string>,
+    rankMap: { novato: 'Rookie', intermedio: 'Intermediate', avanzado: 'Advanced', pro: 'Pro' } as Record<string, string>,
+    goalMap: { pasar_challenge: 'Pass challenge', consistencia: 'Consistency', crecer: 'Grow account', vivir: 'Trade for a living' } as Record<string, string>,
+    platMap: { mt5: 'MT5', mt4: 'MT4', ambas: 'MT4 + MT5' } as Record<string, string>,
     empty1_t: 'Connect your first account', empty1_d: 'Install the Onyx Connector (MT4/MT5), generate an API key and in seconds all your stats will show up here.', empty1_cta: 'Connect account →',
     empty2: 'Account connected. As soon as you close trades, your analytics will appear here.',
     portfolio: 'Portfolio', updated: 'Updated', sAgo: 's ago', now: 'just now',
@@ -242,7 +252,7 @@ function PlanBadge({ plan }: { plan: string }) {
   return <span style={{ fontSize: 10, fontWeight: 800, background: elite ? 'rgba(52,226,160,.15)' : 'rgba(160,107,255,.2)', color: elite ? '#7fe9c0' : '#c9a9ff', border: '1px solid ' + (elite ? '#34e2a0' : '#a06bff'), borderRadius: 20, padding: '2px 8px', whiteSpace: 'nowrap' }}>🔒 {plan.toUpperCase()}</span>;
 }
 
-export default function DashboardClient({ email = '', plan = 'free', trades = [], accounts: accs0 = [] }: { email?: string; plan?: string; trades?: TT[]; accounts?: Acc[] }) {
+export default function DashboardClient({ email = '', plan = 'free', profile, trades = [], accounts: accs0 = [] }: { email?: string; plan?: string; profile?: { full_name?: string; trade_style?: string; experience?: string; platform?: string; goal?: string }; trades?: TT[]; accounts?: Acc[] }) {
   const isFree = (plan || 'free') === 'free';
   const { lang, setLang } = useLang();
   const [accounts, setAccounts] = useState<Acc[]>(accs0 || []);
@@ -447,17 +457,39 @@ export default function DashboardClient({ email = '', plan = 'free', trades = []
 
   const kpi = (lbl: string, val: string, cls = '') => <div className="card kpi"><div className="lbl">{lbl}</div><div className={'val ' + cls}>{val}</div></div>;
 
+  // Saludo personalizado + credencial de trader (usa el perfil del onboarding).
+  const firstName = (profile?.full_name || '').trim().split(/\s+/)[0] || '';
+  const greetWord = (() => { const h = new Date().getHours(); return h < 12 ? L.greetM : h < 19 ? L.greetA : L.greetE; })();
+  const heroTitle = firstName ? `${greetWord}, ${firstName}` : L.welcomeTrader;
+  const heroInitials = (firstName || email || '?').slice(0, 2).toUpperCase();
+  const STYLE_EMOJI: Record<string, string> = { scalping: '⚡', day: '📈', swing: '🌊', position: '🏔️' };
+  const heroChips: string[] = [];
+  if (profile?.trade_style && L.styleMap[profile.trade_style]) heroChips.push(`${STYLE_EMOJI[profile.trade_style] || ''} ${L.styleMap[profile.trade_style]}`.trim());
+  if (profile?.experience && L.rankMap[profile.experience]) heroChips.push(`🏅 ${L.rankMap[profile.experience]}`);
+  if (profile?.platform && L.platMap[profile.platform]) heroChips.push(`🖥️ ${L.platMap[profile.platform]}`);
+  if (profile?.goal && L.goalMap[profile.goal]) heroChips.push(`🎯 ${L.goalMap[profile.goal]}`);
+
   return (
     <>
 
       <div className="wrap-wide" style={{ padding: '24px 0' }}>
-        <div className="row between" style={{ marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
-          <div>
-            <h1 style={{ marginBottom: 2 }}>📊 {L.analytics}</h1>
-            <p className="muted" style={{ fontSize: 13 }}>{email} · {accounts.length} {L.accountsWord} · {L.balance} ${totalBalance.toLocaleString()} · <span style={{ color: GREEN }}>● {updatedTxt}</span></p>
+        <div className="row between" style={{ marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+          <div className="row" style={{ gap: 14, alignItems: 'center' }}>
+            <div style={{ width: 52, height: 52, borderRadius: 14, background: 'var(--grad)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 700, flex: 'none' }}>{heroInitials}</div>
+            <div>
+              <h1 style={{ marginBottom: 6, lineHeight: 1.15 }}>{heroTitle} <span style={{ fontSize: 22 }}>👋</span></h1>
+              {heroChips.length ? (
+                <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+                  {heroChips.map((c, i) => <span key={i} className="pill" style={{ background: 'rgba(124,140,255,.14)', color: '#c3ccff', fontWeight: 500 }}>{c}</span>)}
+                </div>
+              ) : (
+                <Link href="/onboarding" className="pill" style={{ background: 'rgba(124,140,255,.14)', color: '#c3ccff' }}>{L.completeProfile}</Link>
+              )}
+            </div>
           </div>
           <Link className="btn btn-ghost" href="/dashboard/keys">{L.connectBtn}</Link>
         </div>
+        <p className="muted" style={{ fontSize: 13, margin: '-6px 0 14px' }}>{email} · {accounts.length} {L.accountsWord} · {L.balance} ${totalBalance.toLocaleString()} · <span style={{ color: GREEN }}>● {updatedTxt}</span></p>
 
         <div className="cockpit">
           <div className="rail-left"><MarketHours lang={lang} compact /></div>
