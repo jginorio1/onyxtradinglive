@@ -12,9 +12,10 @@ const ES = {
   nav_resumen: 'Resumen', nav_usuarios: 'Usuarios', nav_soporte: 'Soporte', nav_equipo: 'Equipo',
   nav_planes: 'Planes', nav_modulos: 'Módulos', nav_firms: 'Prop firms',
   nav_embajadores: 'Embajadores', nav_retencion: 'Retención',
-  nav_kb: 'Base IA', nav_diag: 'Diagnóstico', nav_backups: 'Copias', nav_pruebas: 'Pruebas', nav_ajustes: 'Ajustes',
+  nav_kb: 'Base IA', nav_diag: 'Diagnóstico', nav_backups: 'Copias', nav_audit: 'Auditoría', nav_pruebas: 'Pruebas', nav_ajustes: 'Ajustes',
   avail_on: 'Disponible', avail_off: 'Ausente',
   h_backups_t: 'Copias de seguridad', h_backups_s: 'Protege los datos de los traders: exporta ahora o revisa el backup automático.',
+  h_audit_t: 'Auditoría', h_audit_s: 'Velocidad, calidad y botones — probado solo en cada despliegue.',
 
   // Cabeceras de pestaña
   h_resumen_t: 'Resumen', h_resumen_s: 'El pulso del negocio y lo que necesita tu atención.',
@@ -189,9 +190,10 @@ const EN: Dict = {
   nav_resumen: 'Overview', nav_usuarios: 'Users', nav_soporte: 'Support', nav_equipo: 'Team',
   nav_planes: 'Plans', nav_modulos: 'Modules', nav_firms: 'Prop firms',
   nav_embajadores: 'Ambassadors', nav_retencion: 'Retention',
-  nav_kb: 'AI Base', nav_diag: 'Diagnostics', nav_backups: 'Backups', nav_pruebas: 'Tests', nav_ajustes: 'Settings',
+  nav_kb: 'AI Base', nav_diag: 'Diagnostics', nav_backups: 'Backups', nav_audit: 'Audit', nav_pruebas: 'Tests', nav_ajustes: 'Settings',
   avail_on: 'Available', avail_off: 'Away',
   h_backups_t: 'Backups', h_backups_s: 'Protect trader data: export now or check the automatic backup.',
+  h_audit_t: 'Audit', h_audit_s: 'Speed, quality and buttons — tested automatically on every deploy.',
 
   h_resumen_t: 'Overview', h_resumen_s: 'Your business pulse and what needs attention.',
   h_usuarios_t: 'Users', h_usuarios_registered: 'registered · search and manage.',
