@@ -39,6 +39,7 @@ export default function Retention() {
 
   return (
     <>
+      <div className="tabhead"><div className="th-row"><span className="th-ic">🛟</span><span className="th-t">Retención</span></div><div className="th-s">Rescata a quien intenta irse y mide por qué.</div></div>
       <div className="grid g4" style={{ marginBottom: 16 }}>
         <div className="card kpi"><div className="lbl">Intentos de baja</div><div className="val">{d.total}</div></div>
         <div className="card kpi"><div className="lbl">Rescatados</div><div className="val pos">{d.saved}</div></div>

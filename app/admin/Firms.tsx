@@ -49,10 +49,12 @@ export default function Firms() {
   // Sin id o sin nombre no se puede guardar
   const bad = list.filter((f) => !String(f.id || '').trim() || !String(f.name || '').trim()).length;
 
+  const dotOf = (i: number) => ['#34e2a0', '#7c8cff', '#ffc04d', '#b98bff', '#3ad0ff', '#ff9aa6'][i % 6];
+
   return (
     <>
+      <div className="tabhead"><div className="th-row"><span className="th-ic">🏛️</span><span className="th-t">Prop firms</span></div><div className="th-s">Plantillas que ve el trader al configurar límites. Corrige aquí y todos las ven.</div></div>
       <div className="card" style={{ marginBottom: 16 }}>
-        <h3 style={{ marginBottom: 6 }}>Plantillas de prop firms</h3>
         <p className="muted" style={{ fontSize: 13 }}>
           Son el punto de partida que ve el trader al configurar sus límites. No son la norma
           oficial de ninguna firma: si una cambia sus reglas, corrígela aquí y todos los usuarios
@@ -68,6 +70,13 @@ export default function Firms() {
 
       {list.map((f, i) => (
         <div key={i} className="card" style={{ marginBottom: 12 }}>
+          <div className="row between" style={{ marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+            <div className="row" style={{ gap: 9 }}>
+              <span style={{ width: 9, height: 9, borderRadius: '50%', background: dotOf(i), flex: 'none' }} />
+              <b style={{ fontSize: 14 }}>{f.name || f.id || 'Nueva plantilla'}</b>
+            </div>
+            <span className="pill gray">{f.daily_loss || 0}% diaria · {f.total_loss || 0}% total</span>
+          </div>
           <div className="row" style={{ gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
             <div style={{ width: 130 }}>
               <span style={lbl}>Identificador</span>
@@ -87,20 +96,23 @@ export default function Firms() {
             </div>
           </div>
 
-          <div className="row" style={{ gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
-            <div style={{ width: 210 }}>
-              <span style={lbl}>Base de cálculo</span>
-              <select value={f.base} onChange={(e) => set(i, 'base', e.target.value)} style={{ ...inp, width: '100%' }}>
-                <option value="day_start_balance">Balance al empezar el día</option>
-                <option value="day_start_equity">Equity al empezar el día</option>
-                <option value="initial_balance">Balance inicial</option>
-              </select>
-            </div>
-            <div style={{ width: 130 }}>
-              <span style={lbl}>Hora de reinicio</span>
-              <select value={f.reset_hour} onChange={(e) => set(i, 'reset_hour', Number(e.target.value))} style={{ ...inp, width: '100%' }}>
-                {Array.from({ length: 24 }, (_, h) => <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>)}
-              </select>
+          <div style={{ background: 'rgba(255,192,77,.08)', border: '1px solid var(--amber)', borderRadius: 10, padding: '9px 11px', marginBottom: 10 }}>
+            <div style={{ fontSize: 11, color: 'var(--amber)', marginBottom: 7 }}>⚠ Los 2 campos que más se equivocan</div>
+            <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ width: 210 }}>
+                <span style={lbl}>Base de cálculo</span>
+                <select value={f.base} onChange={(e) => set(i, 'base', e.target.value)} style={{ ...inp, width: '100%' }}>
+                  <option value="day_start_balance">Balance al empezar el día</option>
+                  <option value="day_start_equity">Equity al empezar el día</option>
+                  <option value="initial_balance">Balance inicial</option>
+                </select>
+              </div>
+              <div style={{ width: 130 }}>
+                <span style={lbl}>Hora de reinicio</span>
+                <select value={f.reset_hour} onChange={(e) => set(i, 'reset_hour', Number(e.target.value))} style={{ ...inp, width: '100%' }}>
+                  {Array.from({ length: 24 }, (_, h) => <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>)}
+                </select>
+              </div>
             </div>
           </div>
 

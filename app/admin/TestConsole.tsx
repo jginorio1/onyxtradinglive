@@ -91,13 +91,7 @@ export default function TestConsole({ meEmail }: { meEmail: string }) {
 
   return (
     <>
-      <div className="card" style={{ marginBottom: 16, border: '1px solid var(--amber)' }}>
-        <h3 style={{ marginBottom: 6, color: 'var(--amber)' }}>🧪 Consola de pruebas</h3>
-        <p className="muted" style={{ fontSize: 13 }}>
-          Simula exactamente lo que envía el EA, sin abrir MetaTrader. Sirve para comprobar que la clave funciona,
-          que los límites del plan se respetan y que la configuración de Onyx Guardian llega bien.
-        </p>
-      </div>
+      <div className="tabhead"><div className="th-row"><span className="th-ic">🧪</span><span className="th-t">Consola de pruebas</span></div><div className="th-s">Simula lo que envía el EA, sin abrir MetaTrader: clave, límites y configuración de Onyx Guardian.</div></div>
 
       {/* Mi plan */}
       <div className="card" style={{ marginBottom: 16 }}>
@@ -105,9 +99,9 @@ export default function TestConsole({ meEmail }: { meEmail: string }) {
         <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>
           Cámbiate de plan para probar los candados y Onyx Guardian. Es tu propia cuenta ({meEmail}).
         </p>
-        <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+        <div className="seg" style={{ flexWrap: 'wrap' }}>
           {plans.map((p) => (
-            <button key={p.id} className={'btn ' + (me?.planId === p.id ? 'btn-primary' : 'btn-ghost')}
+            <button key={p.id} className={'segbtn' + (me?.planId === p.id ? ' on-view' : '')} style={{ padding: '7px 14px', fontSize: 13 }}
               onClick={() => setMyPlan(p.id)} disabled={busy === 'plan'}>
               {p.name}
             </button>

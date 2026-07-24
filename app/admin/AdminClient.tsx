@@ -208,6 +208,8 @@ function Modules() {
   if (!m) return <div className="muted">…</div>;
 
   return (
+    <>
+    <Head ic="🧩" t="Módulos" s="Estado en vivo de las capacidades del sistema." />
     <div className="grid g2">
       <div className="card">
         <div style={{ fontSize: 26, marginBottom: 8 }}>🛡️</div>
@@ -235,6 +237,7 @@ function Modules() {
         <p className="muted" style={{ fontSize: 13 }}>Cada domingo, un informe del rendimiento de la semana por Telegram: resultado, aciertos, mejor par y disciplina.</p>
       </div>
     </div>
+    </>
   );
 }
 
@@ -345,7 +348,10 @@ function PlansTab({ plans, reload }: { plans: Plan[]; reload: () => void }) {
   const [creating, setCreating] = useState(false);
   return (
     <>
-      <div className="row between" style={{ marginBottom: 16 }}><h3>Planes ({plans.length})</h3><button className="btn btn-primary" onClick={() => setCreating(true)}>+ Nuevo plan</button></div>
+      <div className="row between" style={{ flexWrap: 'wrap', gap: 8 }}>
+        <Head ic="💳" t="Planes" s="Precios, funciones y capacidades reales de cada plan." />
+        <button className="btn btn-primary" onClick={() => setCreating(true)}>+ Nuevo plan</button>
+      </div>
       {creating && <PlanCard plan={{ id: '', name: '', name_en: '', desc_es: '', desc_en: '', price_month: 0, price_year: 0, stripe_price_id: '', stripe_price_id_year: '', max_accounts: 1, features: [], features_en: [], badge: '', badge_en: '', active: true, sort: plans.length, capabilities: {} } as any} isNew reload={() => { setCreating(false); reload(); }} onCancel={() => setCreating(false)} />}
       <div className="grid g3">{plans.map((p) => <PlanCard key={p.id} plan={p} reload={reload} />)}</div>
     </>
@@ -376,8 +382,10 @@ function PlanCard({ plan, isNew, reload, onCancel }: { plan: Plan; isNew?: boole
   const ta = { width: '100%', marginTop: 4, padding: '10px 12px', background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, color: 'var(--tx)', fontSize: 14, fontFamily: 'inherit' } as any;
   const flag = { fontSize: 12, fontWeight: 700, letterSpacing: '.5px', color: 'var(--brand)', margin: '14px 0 2px', display: 'block' } as any;
 
+  const popular = !!(p.badge && p.badge.trim());
   return (
-    <div className="card" style={p.active ? {} : { opacity: .6 }}>
+    <div className="card" style={{ ...(p.active ? {} : { opacity: .6 }), ...(popular ? { border: '2px solid var(--brand)' } : {}), position: 'relative' }}>
+      {popular && <span className="pill brand" style={{ position: 'absolute', top: -11, left: 16 }}>★ {p.badge}</span>}
       <div className="row" style={{ gap: 8 }}>
         <input placeholder="id (pro)" value={p.id} disabled={!isNew} onChange={(e) => set('id', e.target.value)} style={{ margin: 0, width: 90 }} />
         <div style={{ flex: 1 }}><span style={lbl}>$ / mes</span><input type="number" value={p.price_month} onChange={(e) => set('price_month', e.target.value)} style={{ margin: '4px 0 0' }} /></div>

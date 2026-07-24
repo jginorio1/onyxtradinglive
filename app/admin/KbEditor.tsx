@@ -21,12 +21,12 @@ export default function KbEditor() {
   async function togglePub(a: any) { await fetch('/api/admin/kb', { method: 'PATCH', body: JSON.stringify({ id: a.id, published: !a.published }) }); await load(); }
 
   return (
+    <>
+    <div className="row between" style={{ flexWrap: 'wrap', gap: 8 }}>
+      <div className="tabhead"><div className="th-row"><span className="th-ic">🧠</span><span className="th-t">Base de conocimiento IA</span></div><div className="th-s">Lo que escribas aquí lo usa Onyx AI para responder, además de la Guía.</div></div>
+      <button className="btn btn-primary" onClick={() => setEdit({ title: '', body: '', tags: '', published: true })}>+ Nuevo artículo</button>
+    </div>
     <div className="card">
-      <div className="row between" style={{ marginBottom: 6, flexWrap: 'wrap', gap: 8 }}>
-        <h3>🧠 Base de conocimiento de Onyx AI</h3>
-        <button className="btn btn-primary" onClick={() => setEdit({ title: '', body: '', tags: '', published: true })}>+ Nuevo artículo</button>
-      </div>
-      <p className="muted" style={{ fontSize: 13, marginBottom: 16 }}>Lo que escribas aquí lo usa la IA para responder, además de la Guía. Ideal para precios, promociones, políticas o preguntas frecuentes que cambian.</p>
 
       {edit && (
         <div style={{ border: '1px solid var(--brand)', borderRadius: 12, padding: 14, marginBottom: 16 }}>
@@ -61,5 +61,6 @@ export default function KbEditor() {
         </div>
       ))}
     </div>
+    </>
   );
 }

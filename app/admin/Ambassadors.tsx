@@ -40,6 +40,7 @@ export default function Ambassadors() {
 
   return (
     <>
+      <div className="tabhead"><div className="th-row"><span className="th-ic">🎁</span><span className="th-t">Embajadores</span></div><div className="th-s">Programa de referidos, comisiones y pagos.</div></div>
       <div className="grid g4" style={{ marginBottom: 16 }}>
         <div className="card kpi"><div className="lbl">Embajadores</div><div className="val">{list.filter((a) => a.status === 'approved').length}</div></div>
         <div className="card kpi"><div className="lbl">Solicitudes</div><div className="val" style={{ color: pend.length ? 'var(--amber)' : undefined }}>{pend.length}</div></div>
