@@ -97,6 +97,7 @@ const ES = {
   mo_tg_connected: 'Conectados', mo_tg_sent7d: 'Enviados (7 d)', mo_tg_status: '/estado usados', mo_tg_failed: 'Fallidas',
   mo_rep_sent: 'Enviados', mo_rep_eligible: 'Elegibles', mo_rep_next: 'Próximo',
   mo_needLog: 'Algunas métricas necesitan la tabla telegram_log (corre el SQL). Empiezan en 0 y suben de verdad.',
+  mo_liveBadge: 'En vivo', d_liveBadge: 'En vivo',
   mo_weekly_t: 'Informe semanal', mo_weekly_desc: 'Cada domingo, un informe del rendimiento de la semana por Telegram: resultado, aciertos, mejor par y disciplina.',
 
   // Planes (tarjeta)
@@ -264,6 +265,7 @@ const EN: Dict = {
   mo_tg_connected: 'Connected', mo_tg_sent7d: 'Sent (7 d)', mo_tg_status: '/status used', mo_tg_failed: 'Failed',
   mo_rep_sent: 'Sent', mo_rep_eligible: 'Eligible', mo_rep_next: 'Next',
   mo_needLog: 'Some metrics need the telegram_log table (run the SQL). They start at 0 and grow for real.',
+  mo_liveBadge: 'Live', d_liveBadge: 'Live',
   mo_weekly_t: 'Weekly report', mo_weekly_desc: 'Every Sunday, a report of the week by Telegram: result, win rate, best pair and discipline.',
 
   pl_count: 'Plans', pl_new: '+ New plan', pl_month: '$ / month', pl_year: '$ / year',

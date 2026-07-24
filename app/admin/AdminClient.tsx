@@ -36,7 +36,12 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
   const canSee = (k: string) => role === 'owner' || (perms[areaOf[k]] && perms[areaOf[k]] !== 'none');
   const [available, setAvailable] = useState(false);
   async function toggleAvail() { const next = !available; setAvailable(next); await fetch('/api/admin/team', { method: 'PATCH', body: JSON.stringify({ available: next }) }); }
-  const [tab, setTab] = useState<Tab>('resumen');
+  // El tab vive en la URL (#soporte) para que el refresh te deje donde estabas.
+  const [tab, setTab] = useState<Tab>(() => {
+    if (typeof window !== 'undefined') { const h = window.location.hash.replace('#', ''); if (h) return h as Tab; }
+    return 'resumen';
+  });
+  useEffect(() => { try { window.history.replaceState(null, '', '#' + tab); } catch {} }, [tab]);
   const [users, setUsers] = useState<User[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [team, setTeam] = useState<Team[]>([]);
@@ -229,7 +234,12 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
 function Modules() {
   const t = useT();
   const [m, setM] = useState<any>(null);
-  useEffect(() => { fetch('/api/admin/modules').then((r) => r.json()).then(setM).catch(() => setM({})); }, []);
+  // Auto-refresco en vivo: los contadores suben solos sin pulsar Refrescar.
+  useEffect(() => {
+    const load = () => fetch('/api/admin/modules').then((r) => r.json()).then(setM).catch(() => setM((v: any) => v || {}));
+    load(); const iv = setInterval(load, 20000); return () => clearInterval(iv);
+  }, []);
+  const LiveBadge = () => <span className="pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#7fe9c0', background: 'rgba(52,226,160,.15)' }}><span className="livedot" />{t.mo_liveBadge}</span>;
 
   const StatusPill = ({ on, txt }: { on: boolean; txt: string }) => (
     <span className="pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, ...(on ? { color: '#7fe9c0', background: 'rgba(52,226,160,.15)' } : { color: '#c9a9ff', background: 'rgba(160,107,255,.18)' }) }}>
@@ -254,7 +264,10 @@ function Modules() {
 
   return (
     <>
-    <Head ic="🧩" t={t.h_modulos_t} s={t.h_modulos_s} />
+    <div className="row between" style={{ flexWrap: 'wrap', gap: 8 }}>
+      <Head ic="🧩" t={t.h_modulos_t} s={t.h_modulos_s} />
+      <LiveBadge />
+    </div>
     <div className="grid g2">
       <div className="card">
         <div className="row between" style={{ marginBottom: 12 }}><div className="row" style={{ gap: 10 }}><Ic e="🛡️" /><h3>Onyx Guardian</h3></div><StatusPill on txt={t.mo_active} /></div>

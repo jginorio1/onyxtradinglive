@@ -20,7 +20,8 @@ export default function Diagnostics() {
   async function load() {
     try { const r = await fetch('/api/admin/diag'); setD(await r.json()); } catch {}
   }
-  useEffect(() => { load(); }, []);
+  // Auto-refresco en vivo cada 20 s (además del botón Refrescar).
+  useEffect(() => { load(); const iv = setInterval(load, 20000); return () => clearInterval(iv); }, []);
 
   async function runTest(action: string) {
     setBusy(action); setTest({ ...test, [action]: null });
@@ -39,14 +40,17 @@ export default function Diagnostics() {
     <div>
       <div className="row between" style={{ flexWrap: 'wrap', gap: 8 }}>
         <div className="tabhead" style={{ marginBottom: 12 }}><div className="th-row"><span className="th-ic">🩺</span><span className="th-t">{t.h_diag_t}</span></div><div className="th-s">{t.h_diag_s}</div></div>
-        <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={load}>{t.d_refresh}</button>
+        <div className="row" style={{ gap: 8 }}>
+          <span className="pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#7fe9c0', background: 'rgba(52,226,160,.15)' }}><span className="livedot" />{t.d_liveBadge}</span>
+          <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={load}>{t.d_refresh}</button>
+        </div>
       </div>
 
       {/* Semáforo */}
       <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: 10, marginBottom: 20 }}>
         {(d.services || []).map((s: any) => (
           <div key={s.key} className="tile" style={{ display: 'flex', gap: 9, alignItems: 'center' }}>
-            {dot(statColor(s))}
+            {statColor(s) === '#34e2a0' ? <span className="livedot" /> : dot(statColor(s))}
             <div style={{ minWidth: 0 }}>
               <b style={{ fontSize: 13 }}>{s.name}</b>
               <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>{s.detail}</div>
