@@ -1,0 +1,47 @@
+name: Backup
+
+on:
+  schedule:
+    - cron: '0 6 * * 0'
+  workflow_dispatch: {}
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Instalar herramientas
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-client
+          pip install --quiet b2
+
+      - name: Volcado de la base de datos
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          STAMP=$(date +%Y%m%d-%H%M)
+          FILE="onyx-backup-$STAMP.sql.gz"
+          pg_dump "$DATABASE_URL" --no-owner --no-privileges | gzip > "$FILE"
+          echo "FILE=$FILE" >> "$GITHUB_ENV"
+          echo "SIZE=$(stat -c%s "$FILE")" >> "$GITHUB_ENV"
+
+      - name: Subir a Backblaze B2
+        env:
+          B2_APPLICATION_KEY_ID: ${{ secrets.B2_KEY_ID }}
+          B2_APPLICATION_KEY: ${{ secrets.B2_APP_KEY }}
+        run: |
+          b2 account authorize "$B2_APPLICATION_KEY_ID" "$B2_APPLICATION_KEY" \
+            || b2 authorize-account "$B2_APPLICATION_KEY_ID" "$B2_APPLICATION_KEY"
+          b2 file upload "${{ secrets.B2_BUCKET }}" "$FILE" "backups/$FILE" \
+            || b2 upload-file "${{ secrets.B2_BUCKET }}" "$FILE" "backups/$FILE"
+
+      - name: Avisar a la app
+        if: always()
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl -s -X POST "$APP_URL/api/admin/backup" \
+            -H "x-cron-secret: $CRON_SECRET" \
+            -H "content-type: application/json" \
+            -d "{\"size\": ${SIZE:-0}, \"dest\": \"Backblaze B2\"}" || true
