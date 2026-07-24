@@ -8,7 +8,7 @@ import Firms from './Firms';
 import SupportInbox from './SupportInbox';
 import Diagnostics from './Diagnostics';
 import KbEditor from './KbEditor';
-import { AREAS } from '@/lib/perms';
+import { AREAS, effectivePerms } from '@/lib/perms';
 
 type Plan = { id: string; name: string; name_en: string; desc_es: string | null; desc_en: string | null; price_month: number; price_year: number; stripe_price_id: string | null; stripe_price_id_year: string | null; max_accounts: number; features: string[]; features_en: string[]; badge: string | null; badge_en: string | null; active: boolean; sort: number; capabilities: any };
 type User = { id: string; email: string; plan: string; subscription_status: string | null; banned: boolean; is_admin: boolean; created_at: string; accounts: number; lastSync: string | null };
@@ -32,6 +32,12 @@ function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
   return <span className="toggle" onClick={onClick} style={{ background: on ? '#34e2a0' : '#556080', boxShadow: on ? 'none' : 'inset 0 0 0 1px rgba(255,255,255,.12)' }}><span className="knob" style={{ left: on ? 21 : 3 }} /></span>;
 }
 const roleColor = (r?: string | null) => (r === 'owner' ? '#a9b4ff' : r === 'support' ? '#ffd45e' : '#34e2a0');
+
+// Cabecera común de cada pestaña: icono + título + subtítulo.
+function Head({ ic, t, s }: { ic: string; t: string; s: string }) {
+  return <div className="tabhead"><div className="th-row"><span className="th-ic">{ic}</span><span className="th-t">{t}</span></div><div className="th-s">{s}</div></div>;
+}
+const initials = (email: string) => (email || '?').replace(/@.*/, '').slice(0, 2).toUpperCase();
 
 export default function AdminClient({ meEmail, role, perms = {}, accounts, trades }: { meEmail: string; role: string; perms?: Record<string, string>; accounts: number; trades: number }) {
   // Qué áreas puede ver este admin (owner ve todo). Mapa tab → área de permiso.
@@ -60,9 +66,15 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
   async function resetPass(u: User) { setBusy(u.id + 'rst'); const r = await fetch('/api/admin/reset-password', { method: 'POST', body: JSON.stringify({ email: u.email }) }); const j = await r.json(); setBusy(''); if (!r.ok) { alert(j.error || 'error'); return; } if (j.link) { navigator.clipboard.writeText(j.link); alert('Enlace de recuperación copiado:\n\n' + j.link); } else alert('Email de recuperación enviado.'); }
 
   const filtered = users.filter((u) => u.email?.toLowerCase().includes(q.toLowerCase()));
-  const NAV_ALL: [Tab, string][] = [['resumen', '📊 Resumen'], ['usuarios', '👥 Usuarios'], ['planes', '💳 Planes'], ['equipo', '🛡️ Equipo'], ['embajadores', '🎁 Embajadores'], ['retencion', '🛟 Retención'], ['pruebas', '🧪 Pruebas'], ['firms', '🏛️ Prop firms'], ['modulos', '🧩 Módulos'], ['soporte', '🎫 Soporte'], ['kb', '🧠 Base IA'], ['diag', '🩺 Diagnóstico'], ['ajustes', '⚙️ Ajustes']];
-  const NAV = NAV_ALL.filter(([k]) => canSee(k));
-  useEffect(() => { if (NAV.length && !NAV.some(([k]) => k === tab)) setTab(NAV[0][0]); }, []);
+  const NAV_GROUPS: { g: string; items: [Tab, string, string][] }[] = [
+    { g: 'Operación', items: [['resumen', '📊', 'Resumen'], ['usuarios', '👥', 'Usuarios'], ['soporte', '🎫', 'Soporte'], ['equipo', '🛡️', 'Equipo']] },
+    { g: 'Producto', items: [['planes', '💳', 'Planes'], ['modulos', '🧩', 'Módulos'], ['firms', '🏛️', 'Prop firms']] },
+    { g: 'Crecimiento', items: [['embajadores', '🎁', 'Embajadores'], ['retencion', '🛟', 'Retención']] },
+    { g: 'Sistema', items: [['kb', '🧠', 'Base IA'], ['diag', '🩺', 'Diagnóstico'], ['pruebas', '🧪', 'Pruebas'], ['ajustes', '⚙️', 'Ajustes']] },
+  ];
+  const groups = NAV_GROUPS.map((gr) => ({ ...gr, items: gr.items.filter(([k]) => canSee(k)) })).filter((gr) => gr.items.length);
+  const flatNav = groups.flatMap((gr) => gr.items);
+  useEffect(() => { if (flatNav.length && !flatNav.some(([k]) => k === tab)) setTab(flatNav[0][0]); }, []);
 
   return (
     <>
@@ -71,18 +83,30 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
         <div className="adminlayout">
           <div className="adminnav card" style={{ padding: 12 }}>
             <div className="adminnav-items">
-              {NAV.map(([k, label]) => <button key={k} className={'adminnav-item' + (tab === k ? ' on' : '')} onClick={() => setTab(k)}>{label}</button>)}
+              {groups.map((gr) => (
+                <div key={gr.g}>
+                  <div className="adminnav-group">{gr.g}</div>
+                  {gr.items.map(([k, ic, label]) => (
+                    <button key={k} className={'adminnav-item' + (tab === k ? ' on' : '')} onClick={() => setTab(k)}>
+                      <span style={{ fontSize: 15, width: 18, textAlign: 'center' }}>{ic}</span><span>{label}</span><span className="navdot" />
+                    </button>
+                  ))}
+                </div>
+              ))}
             </div>
-            <div style={{ borderTop: '1px solid var(--line)', marginTop: 8, paddingTop: 10 }}>
-              <button className="adminnav-item" onClick={toggleAvail} style={{ width: '100%' }}>
-                <span style={{ width: 9, height: 9, borderRadius: '50%', display: 'inline-block', marginRight: 8, background: available ? '#34e2a0' : 'var(--line)' }} />
-                {available ? 'Disponible (chat)' : 'Ausente'}
+            <div style={{ borderTop: '1px solid var(--line)', marginTop: 10, paddingTop: 10 }}>
+              <button className={'availpill ' + (available ? 'on' : 'off')} onClick={toggleAvail}>
+                <span className="avdot" />
+                <span>{available ? 'Disponible' : 'Ausente'}</span>
+                <span className="toggle" style={{ marginLeft: 'auto', width: 34, height: 19, background: available ? '#34e2a0' : '#556080' }}><span className="knob" style={{ left: available ? 17 : 3, width: 13, height: 13, top: 3 }} /></span>
               </button>
             </div>
           </div>
 
           <div style={{ minWidth: 0 }}>
             {tab === 'resumen' && (
+              <>
+              <Head ic="📊" t="Resumen" s="Vista rápida del negocio hoy." />
               <div className="grid g4">
                 <div className="card kpi"><div className="lbl">Usuarios</div><div className="val">{users.length}</div></div>
                 <div className="card kpi"><div className="lbl">De pago</div><div className="val pos">{paid}</div></div>
@@ -93,13 +117,15 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                 <div className="card kpi"><div className="lbl">Baneados</div><div className="val neg">{users.filter((u) => u.banned).length}</div></div>
                 <div className="card kpi"><div className="lbl">Administradores</div><div className="val">{team.length}</div></div>
               </div>
+              </>
             )}
 
             {tab === 'usuarios' && (
+              <>
+              <Head ic="👥" t="Usuarios" s={`${filtered.length} registrados · busca y gestiona.`} />
               <div className="card">
                 <div className="row between" style={{ marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
-                  <h3>Usuarios ({filtered.length})</h3>
-                  <input placeholder="Buscar por email…" value={q} onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 260, margin: 0 }} />
+                  <input placeholder="Buscar por email…" value={q} onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 260, margin: 0, marginLeft: 'auto' }} />
                 </div>
                 <div style={{ overflowX: 'auto' }}>
                   <table>
@@ -107,9 +133,9 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                     <tbody>
                       {filtered.map((u) => (
                         <tr key={u.id}>
-                          <td>{u.email}{u.is_admin && <span className="pill green" style={{ marginLeft: 6 }}>admin</span>}</td>
+                          <td><div className="row" style={{ gap: 9 }}><span className="avatar-init" style={{ width: 28, height: 28, fontSize: 11 }}>{initials(u.email)}</span><span>{u.email}{u.is_admin && <span className="pill brand" style={{ marginLeft: 6 }}>admin</span>}</span></div></td>
                           <td><select value={u.plan} onChange={(e) => userAction(u.id, 'plan', e.target.value)} style={{ margin: 0, padding: '5px 8px', width: 'auto' }}>{plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}{!plans.find((p) => p.id === u.plan) && <option value={u.plan}>{u.plan}</option>}</select></td>
-                          <td>{u.banned ? <span className="pill" style={{ color: 'var(--red)', background: 'rgba(255,107,125,.15)' }}>baneado</span> : <span className="muted">{u.subscription_status || 'activo'}</span>}</td>
+                          <td>{u.banned ? <span className="pill red">● baneado</span> : <span className="pill" style={{ color: 'var(--green)', background: 'rgba(52,226,160,.15)' }}>● {u.subscription_status || 'activo'}</span>}</td>
                           <td className="muted">{u.accounts}</td>
                           <td className="muted" style={{ fontSize: 12 }}>{u.lastSync ? new Date(u.lastSync).toLocaleDateString() : '—'}</td>
                           <td><div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
@@ -124,6 +150,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                   </table>
                 </div>
               </div>
+              </>
             )}
 
             {tab === 'planes' && <PlansTab plans={plans} reload={loadPlans} />}
@@ -142,11 +169,19 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
             {tab === 'diag' && <Diagnostics />}
 
             {tab === 'ajustes' && (
-              <div className="card" style={{ maxWidth: 620 }}>
-                <h3 style={{ marginBottom: 12 }}>Ajustes</h3>
-                <p style={{ marginBottom: 8 }}>Tu rol: <b style={{ color: roleColor(role) }}>{role}</b></p>
-                <p className="muted" style={{ fontSize: 14, marginBottom: 8 }}>El <b>Owner</b> controla planes, usuarios y equipo. Los <b>Admin</b> gestionan usuarios y planes. El <b>Soporte</b> solo consulta y ayuda.</p>
-                <p className="muted" style={{ fontSize: 13 }}>Los correos de <span className="code">ADMIN_EMAILS</span> en Vercel siempre entran como Owner. Puedes añadir más administradores desde la pestaña <b>Equipo</b>.</p>
+              <div style={{ maxWidth: 640 }}>
+                <Head ic="⚙️" t="Ajustes" s="Tu rol, administradores y cómo se organiza el acceso." />
+                <div className="card" style={{ marginBottom: 12 }}>
+                  <div className="row between" style={{ flexWrap: 'wrap', gap: 8 }}>
+                    <span>Tu rol</span>
+                    <span className="pill" style={{ color: roleColor(role), background: 'rgba(124,140,255,.12)' }}>{ROLE_LABEL[role] || role}</span>
+                  </div>
+                </div>
+                <div className="card">
+                  <h3 style={{ marginBottom: 6 }}>Cómo funcionan los roles</h3>
+                  <p className="muted" style={{ fontSize: 13.5, marginBottom: 8 }}>El <b>Owner</b> controla planes, usuarios y equipo. Los <b>Admin</b> gestionan usuarios y planes. El <b>Soporte</b> solo consulta y ayuda.</p>
+                  <p className="muted" style={{ fontSize: 13 }}>Los correos de <span className="code">ADMIN_EMAILS</span> en Vercel siempre entran como Owner. Puedes añadir más administradores desde la pestaña <b>Equipo</b>.</p>
+                </div>
               </div>
             )}
           </div>
@@ -223,15 +258,16 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
 
   return (
     <>
+      <Head ic="🛡️" t="Equipo y permisos" s={canManage ? 'Añade miembros, asigna un rol y afina permisos por área.' : 'Solo quien gestiona el equipo puede cambiar roles.'} />
       <div className="card" style={{ marginBottom: 14 }}>
-        <h3 style={{ marginBottom: 4 }}>🛡️ Equipo y permisos</h3>
-        <p className="muted" style={{ fontSize: 13, marginBottom: 16 }}>{canManage ? 'Añade miembros, asigna rol y ajusta permisos por área.' : 'Solo quien gestiona el equipo puede cambiar roles.'}</p>
-
-        {team.map((m) => (
-          <div key={m.id} style={{ borderTop: '1px solid var(--line)', padding: '12px 0' }}>
+        {team.map((m, i) => (
+          <div key={m.id} style={{ borderTop: i ? '1px solid var(--line)' : 'none', padding: '13px 0' }}>
             <div className="row between" style={{ flexWrap: 'wrap', gap: 8 }}>
-              <div className="row" style={{ gap: 10, alignItems: 'center' }}>
-                <span style={{ width: 9, height: 9, borderRadius: '50%', background: m.available ? '#34e2a0' : 'var(--line)' }} title={m.available ? 'Disponible' : 'Ausente'} />
+              <div className="row" style={{ gap: 11, alignItems: 'center' }}>
+                <span style={{ position: 'relative' }}>
+                  <span className="avatar-init">{initials(m.email)}</span>
+                  <span style={{ position: 'absolute', right: -1, bottom: -1, width: 11, height: 11, borderRadius: '50%', border: '2px solid var(--card)', background: m.available ? '#34e2a0' : 'var(--line)' }} title={m.available ? 'Disponible' : 'Ausente'} />
+                </span>
                 <div>
                   <div style={{ fontWeight: 600 }}>{m.email}{m.email === meEmail && <span className="muted" style={{ fontSize: 12 }}> (tú)</span>}</div>
                   <div className="muted" style={{ fontSize: 11 }}>{m.last_active ? 'Últ. actividad: ' + new Date(m.last_active).toLocaleString() : 'Sin actividad'}</div>
@@ -242,23 +278,26 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
                   <select value={m.role || 'support'} onChange={(e) => changeRole(m.id, e.target.value)} style={{ margin: 0, padding: '5px 8px', width: 'auto' }}>
                     <option value="admin">Admin</option><option value="support">Soporte</option><option value="marketing">Marketing</option><option value="custom">Personalizado</option>
                   </select>
-                ) : <span className="pill" style={{ color: roleColor(m.role) }}>{ROLE_LABEL[m.role || 'admin']}</span>}
-                {canManage && m.role !== 'owner' && <button className="btn btn-ghost" style={{ padding: '4px 9px', fontSize: 12 }} onClick={() => setEditId(editId === m.id ? '' : m.id)}>Permisos</button>}
+                ) : <span className="pill" style={{ color: roleColor(m.role), background: 'rgba(124,140,255,.12)' }}>{ROLE_LABEL[m.role || 'admin']}</span>}
+                {canManage && m.role !== 'owner' && <button className="btn btn-ghost" style={{ padding: '4px 9px', fontSize: 12 }} onClick={() => setEditId(editId === m.id ? '' : m.id)}>{editId === m.id ? 'Cerrar' : 'Permisos'}</button>}
                 {canManage && m.role !== 'owner' && m.email !== meEmail && <button className="btn btn-danger" style={{ padding: '4px 9px', fontSize: 12 }} onClick={() => remove(m.id)}>Quitar</button>}
               </div>
             </div>
 
             {editId === m.id && canManage && (
-              <div style={{ marginTop: 12, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: 12 }}>
-                <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>Permisos por área (el rol pone los valores por defecto; aquí los afinas)</div>
+              <div style={{ marginTop: 12, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 12, padding: 12 }}>
+                <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>Permisos por área <span style={{ opacity: .7 }}>· el rol pone valores por defecto; aquí los afinas</span></div>
                 {AREAS.map((a) => {
-                  const cur = (m.perms && m.perms[a.id]) || '';
+                  const eff = effectivePerms(m.role || 'support', m.perms || {});
+                  const cur = (eff[a.id] as string) || 'none';
+                  const dcol = cur === 'manage' ? '#34e2a0' : cur === 'view' ? '#7c8cff' : 'var(--line)';
                   return (
-                    <div key={a.id} className="row between" style={{ padding: '6px 0', borderTop: '1px solid var(--line)', flexWrap: 'wrap', gap: 8 }}>
-                      <span style={{ fontSize: 13 }}>{a.label}</span>
-                      <div className="row" style={{ gap: 4 }}>
+                    <div key={a.id} className="row" style={{ padding: '8px 0', borderTop: '1px solid var(--line)', gap: 10, flexWrap: 'wrap' }}>
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: dcol, flex: 'none' }} />
+                      <span style={{ fontSize: 13, flex: 1, minWidth: 120 }}>{a.label}</span>
+                      <div className="seg">
                         {(['none', 'view', 'manage'] as const).map((lv) => (
-                          <button key={lv} className={'btn ' + (cur === lv ? 'btn-primary' : 'btn-ghost')} style={{ padding: '3px 9px', fontSize: 11 }} onClick={() => savePerm(m.id, a.id, lv, m.perms)}>{LVL_LABEL[lv]}</button>
+                          <button key={lv} className={'segbtn' + (cur === lv ? ' on-' + lv : '')} onClick={() => savePerm(m.id, a.id, lv, m.perms)}>{LVL_LABEL[lv]}</button>
                         ))}
                       </div>
                     </div>

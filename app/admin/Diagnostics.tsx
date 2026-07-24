@@ -41,19 +41,20 @@ export default function Diagnostics() {
 
   return (
     <div>
-      <div className="row between" style={{ marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-        <h3>🩺 Salud del sistema</h3>
+      <div className="row between" style={{ flexWrap: 'wrap', gap: 8 }}>
+        <div className="tabhead" style={{ marginBottom: 12 }}><div className="th-row"><span className="th-ic">🩺</span><span className="th-t">Diagnóstico</span></div><div className="th-s">Salud del sistema y qué falta configurar.</div></div>
         <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={load}>↻ Refrescar</button>
       </div>
 
       {/* Semáforo */}
       <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: 10, marginBottom: 20 }}>
         {(d.services || []).map((s: any) => (
-          <div key={s.key} className="card" style={{ padding: '11px 12px' }}>
-            <div className="row between" style={{ alignItems: 'center' }}>
-              <b style={{ fontSize: 13 }}>{s.name}</b>{dot(statColor(s))}
+          <div key={s.key} className="tile" style={{ display: 'flex', gap: 9, alignItems: 'center' }}>
+            {dot(statColor(s))}
+            <div style={{ minWidth: 0 }}>
+              <b style={{ fontSize: 13 }}>{s.name}</b>
+              <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>{s.detail}</div>
             </div>
-            <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{s.detail}</div>
           </div>
         ))}
       </div>
@@ -77,7 +78,7 @@ export default function Diagnostics() {
         {(d.migrations || []).map((m: any, i: number) => (
           <div key={m.id} className="row between" style={{ padding: '9px 0', borderTop: i ? '1px solid var(--line)' : 'none', fontSize: 13 }}>
             <span>{m.label} <span className="muted" style={{ fontSize: 11 }}>({m.id}.sql)</span></span>
-            <span style={{ color: m.ok ? 'var(--green)' : 'var(--red)' }}>{m.ok ? '✓ aplicado' : '✗ falta correr'}</span>
+            {m.ok ? <span className="pill" style={{ color: 'var(--green)', background: 'rgba(52,226,160,.15)' }}>✓ aplicado</span> : <span className="pill red">✗ falta correr</span>}
           </div>
         ))}
       </div>
