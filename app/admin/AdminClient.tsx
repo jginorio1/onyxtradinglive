@@ -52,14 +52,23 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
   const [q, setQ] = useState('');
   const [busy, setBusy] = useState('');
 
+  const [diag, setDiag] = useState<any>(null);
+  const [supCounts, setSupCounts] = useState<any>(null);
   async function loadUsers() { const r = await fetch('/api/admin/users'); const j = await r.json(); setUsers(j.users || []); }
   async function loadPlans() { const r = await fetch('/api/admin/plans'); const j = await r.json(); setPlans(j.plans || []); }
-  async function loadTeam() { const r = await fetch('/api/admin/team'); const j = await r.json(); setTeam(j.team || []); }
+  async function loadTeam() { const r = await fetch('/api/admin/team'); const j = await r.json(); setTeam(j.team || []); const mine = (j.team || []).find((t: Team) => t.email === meEmail); if (mine) setAvailable(!!mine.available); }
   useEffect(() => { loadUsers(); loadPlans(); loadTeam(); }, []);
+  // Datos para el bloque "Necesita tu atención" del Resumen (silencioso si no hay permiso)
+  useEffect(() => {
+    fetch('/api/admin/diag').then((r) => r.ok ? r.json() : null).then((j) => j && setDiag(j)).catch(() => {});
+    fetch('/api/admin/support').then((r) => r.ok ? r.json() : null).then((j) => j && setSupCounts(j.counts || {})).catch(() => {});
+  }, []);
 
   const priceOf = useMemo(() => { const m: Record<string, number> = {}; plans.forEach((p) => (m[p.id] = p.price_month)); return m; }, [plans]);
   const paid = users.filter((u) => u.plan && u.plan !== 'free').length;
   const mrr = users.reduce((s, u) => s + (u.plan !== 'free' ? (priceOf[u.plan] || 0) : 0), 0);
+  const availableCount = team.filter((m) => m.available).length;
+  const bannedCount = users.filter((u) => u.banned).length;
 
   async function userAction(id: string, action: string, value?: any) { setBusy(id + action); const r = await fetch('/api/admin/users', { method: 'PATCH', body: JSON.stringify({ id, action, value }) }); const j = await r.json(); if (!r.ok) alert(j.error || 'error'); await loadUsers(); setBusy(''); }
   async function delUser(u: User) { if (!confirm(`¿Borrar a ${u.email} y TODOS sus datos?`)) return; setBusy(u.id + 'del'); const r = await fetch('/api/admin/users', { method: 'DELETE', body: JSON.stringify({ id: u.id }) }); const j = await r.json(); if (!r.ok) alert(j.error || 'error'); await loadUsers(); setBusy(''); }
@@ -98,7 +107,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
               <button className={'availpill ' + (available ? 'on' : 'off')} onClick={toggleAvail}>
                 <span className="avdot" />
                 <span>{available ? 'Disponible' : 'Ausente'}</span>
-                <span className="toggle" style={{ marginLeft: 'auto', width: 34, height: 19, background: available ? '#34e2a0' : '#556080' }}><span className="knob" style={{ left: available ? 17 : 3, width: 13, height: 13, top: 3 }} /></span>
+                <span className="toggle" style={{ marginLeft: 'auto', background: available ? '#34e2a0' : '#556080' }}><span className="knob" style={{ left: available ? 21 : 3 }} /></span>
               </button>
             </div>
           </div>
@@ -106,17 +115,51 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
           <div style={{ minWidth: 0 }}>
             {tab === 'resumen' && (
               <>
-              <Head ic="📊" t="Resumen" s="Vista rápida del negocio hoy." />
-              <div className="grid g4">
-                <div className="card kpi"><div className="lbl">Usuarios</div><div className="val">{users.length}</div></div>
-                <div className="card kpi"><div className="lbl">De pago</div><div className="val pos">{paid}</div></div>
-                <div className="card kpi"><div className="lbl">MRR estimado</div><div className="val pos">${mrr.toLocaleString()}</div></div>
-                <div className="card kpi"><div className="lbl">Conversión</div><div className="val">{users.length ? Math.round((paid / users.length) * 100) : 0}%</div></div>
-                <div className="card kpi"><div className="lbl">Cuentas MT</div><div className="val">{accounts}</div></div>
-                <div className="card kpi"><div className="lbl">Operaciones</div><div className="val">{trades.toLocaleString()}</div></div>
-                <div className="card kpi"><div className="lbl">Baneados</div><div className="val neg">{users.filter((u) => u.banned).length}</div></div>
-                <div className="card kpi"><div className="lbl">Administradores</div><div className="val">{team.length}</div></div>
+              <Head ic="📊" t="Resumen" s="El pulso del negocio y lo que necesita tu atención." />
+              <div className="grid g3" style={{ marginBottom: 12 }}>
+                <div className="card kpi"><div className="lbl">MRR estimado</div><div className="val pos">${mrr.toLocaleString()}</div><div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{paid} de pago · {users.length ? Math.round((paid / users.length) * 100) : 0}% conversión</div></div>
+                <div className="card kpi"><div className="lbl">Usuarios</div><div className="val">{users.length}</div><div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{accounts} cuentas MT · {trades.toLocaleString()} operaciones</div></div>
+                <div className="card kpi"><div className="lbl">Equipo</div><div className="val">{team.length}</div><div style={{ fontSize: 12, marginTop: 4, color: availableCount ? 'var(--green)' : 'var(--mut)' }}>● {availableCount} disponible{availableCount === 1 ? '' : 's'} ahora</div></div>
               </div>
+
+              <div className="grid g4" style={{ marginBottom: 12 }}>
+                <div className="tile"><div className="muted" style={{ fontSize: 12 }}>Cuentas MT</div><div style={{ fontSize: 20, fontWeight: 700, marginTop: 2 }}>{accounts}</div></div>
+                <div className="tile"><div className="muted" style={{ fontSize: 12 }}>Operaciones</div><div style={{ fontSize: 20, fontWeight: 700, marginTop: 2 }}>{trades.toLocaleString()}</div></div>
+                <div className="tile"><div className="muted" style={{ fontSize: 12 }}>De pago</div><div style={{ fontSize: 20, fontWeight: 700, marginTop: 2, color: 'var(--green)' }}>{paid}</div></div>
+                <div className="tile"><div className="muted" style={{ fontSize: 12 }}>Baneados</div><div style={{ fontSize: 20, fontWeight: 700, marginTop: 2, color: bannedCount ? 'var(--red)' : 'var(--tx)' }}>{bannedCount}</div></div>
+              </div>
+
+              {(() => {
+                const missing = (diag?.migrations || []).filter((m: any) => !m.ok);
+                const svc = (diag?.services || []).filter((s: any) => !s.ok);
+                const openT = supCounts?.open ?? null;
+                const items: { txt: string; go?: Tab; cta?: string }[] = [];
+                if (missing.length) items.push({ txt: `${missing.length} migración(es) SQL sin correr`, go: 'diag', cta: 'Ver Diagnóstico' });
+                if (openT) items.push({ txt: `${openT} ticket(s) de soporte abierto(s)`, go: 'soporte', cta: 'Abrir cola' });
+                if (svc.length) items.push({ txt: `${svc.length} servicio(s) por configurar (${svc.map((s: any) => s.name).slice(0, 3).join(', ')})`, go: 'diag', cta: 'Revisar' });
+                if (bannedCount) items.push({ txt: `${bannedCount} usuario(s) baneado(s)`, go: 'usuarios', cta: 'Ver usuarios' });
+                if (!diag && !supCounts) return null;
+                if (!items.length) return (
+                  <div className="card" style={{ border: '1px solid rgba(52,226,160,.4)', background: 'rgba(52,226,160,.06)' }}>
+                    <b style={{ color: 'var(--green)' }}>✓ Todo en orden</b>
+                    <span className="muted" style={{ fontSize: 13 }}> — sin pendientes por ahora.</span>
+                  </div>
+                );
+                return (
+                  <div className="card" style={{ border: '1px solid var(--amber)', background: 'rgba(255,192,77,.06)' }}>
+                    <div className="row between" style={{ marginBottom: 8 }}>
+                      <b style={{ color: 'var(--amber)' }}>Necesita tu atención</b>
+                      <span className="pill amber">{items.length}</span>
+                    </div>
+                    {items.map((it, i) => (
+                      <div key={i} className="row between" style={{ padding: '9px 0', borderTop: i ? '1px solid var(--line)' : 'none', gap: 8, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 13.5 }}>{it.txt}</span>
+                        {it.go && <button className="btn btn-ghost" style={{ padding: '4px 11px', fontSize: 12 }} onClick={() => setTab(it.go!)}>{it.cta} →</button>}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
               </>
             )}
 
@@ -244,6 +287,19 @@ function Modules() {
 const ROLE_LABEL: any = { owner: 'Owner', admin: 'Admin', support: 'Soporte', marketing: 'Marketing', custom: 'Personalizado' };
 const LVL_LABEL: any = { none: 'Sin acceso', view: 'Ver', manage: 'Gestionar' };
 
+// Agrupa las acciones del registro por tema, para filtrarlo con botones.
+const LOG_TOPICS: [string, string, string][] = [['all', 'Todos', '🗂️'], ['equipo', 'Equipo', '🛡️'], ['soporte', 'Soporte', '🎫'], ['baseia', 'Base IA', '🧠'], ['usuarios', 'Usuarios', '👥'], ['planes', 'Planes', '💳']];
+function topicOf(action: string): string {
+  const a = String(action || '').toLowerCase();
+  if (a.startsWith('team')) return 'equipo';
+  if (a.startsWith('support') || a.startsWith('ticket')) return 'soporte';
+  if (a.startsWith('kb')) return 'baseia';
+  if (a.includes('plan')) return 'planes';
+  if (['ban', 'admin', 'reset', 'user', 'delete'].some((x) => a.includes(x))) return 'usuarios';
+  return 'otros';
+}
+const topicIcon: any = { equipo: '🛡️', soporte: '🎫', baseia: '🧠', usuarios: '👥', planes: '💳', otros: '•' };
+
 function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role: string; meEmail: string; reload: () => void; canManage: boolean }) {
   const [email, setEmail] = useState('');
   const [newRole, setNewRole] = useState('support');
@@ -251,6 +307,7 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
   const [editId, setEditId] = useState('');
   const [log, setLog] = useState<any[]>([]);
   const [logMember, setLogMember] = useState('');
+  const [logTopic, setLogTopic] = useState('all');
 
   async function add() { if (!email) return; setBusy(true); const r = await fetch('/api/admin/team', { method: 'POST', body: JSON.stringify({ email, role: newRole }) }); const j = await r.json(); setBusy(false); if (!r.ok) { alert(j.error || 'error'); return; } setEmail(''); reload(); }
   async function changeRole(id: string, r2: string) { const r = await fetch('/api/admin/team', { method: 'PATCH', body: JSON.stringify({ id, role: r2 }) }); const j = await r.json(); if (!r.ok) { alert(j.error || 'error'); return; } reload(); }
@@ -325,20 +382,34 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
         )}
       </div>
 
-      {/* Registro de actividad por miembro */}
+      {/* Registro de actividad: filtro por tema y por miembro */}
       <div className="card">
         <h3 style={{ marginBottom: 10 }}>🕘 Registro de actividad</h3>
-        <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-          <button className={'btn ' + (!logMember ? 'btn-primary' : 'btn-ghost')} style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => loadLog('')}>Todos</button>
-          {team.map((m) => <button key={m.id} className={'btn ' + (logMember === m.email ? 'btn-primary' : 'btn-ghost')} style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => loadLog(m.email)}>{m.email.split('@')[0]}</button>)}
+        <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+          {LOG_TOPICS.map(([k, label, ic]) => {
+            const n = k === 'all' ? log.length : log.filter((e) => topicOf(e.action) === k).length;
+            if (k !== 'all' && !n) return null;
+            return <button key={k} className={'segbtn' + (logTopic === k ? ' on-view' : '')} style={{ background: logTopic === k ? undefined : 'var(--card2)', padding: '5px 11px', fontSize: 12 }} onClick={() => setLogTopic(k)}>{ic} {label}{k !== 'all' ? ` ${n}` : ''}</button>;
+          })}
         </div>
-        {!log.length && <p className="muted" style={{ fontSize: 14 }}>Sin actividad registrada.</p>}
-        {log.map((e, i) => (
-          <div key={i} className="row between" style={{ borderTop: '1px solid var(--line)', padding: '8px 0', fontSize: 13, flexWrap: 'wrap', gap: 6 }}>
-            <span><b>{e.admin_email?.split('@')[0]}</b> · {e.action} <span className="muted">{e.target ? String(e.target).slice(0, 24) : ''}</span></span>
-            <span className="muted" style={{ fontSize: 12 }}>{new Date(e.created_at).toLocaleString()}</span>
-          </div>
-        ))}
+        <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+          <span className="muted" style={{ fontSize: 12 }}>Miembro:</span>
+          <button className={'segbtn' + (!logMember ? ' on-view' : '')} style={{ background: !logMember ? undefined : 'var(--card2)', padding: '4px 10px', fontSize: 12 }} onClick={() => loadLog('')}>Todos</button>
+          {team.map((m) => <button key={m.id} className={'segbtn' + (logMember === m.email ? ' on-view' : '')} style={{ background: logMember === m.email ? undefined : 'var(--card2)', padding: '4px 10px', fontSize: 12 }} onClick={() => loadLog(m.email)}>{m.email.split('@')[0]}</button>)}
+        </div>
+        {(() => {
+          const shown = log.filter((e) => logTopic === 'all' || topicOf(e.action) === logTopic);
+          if (!shown.length) return <p className="muted" style={{ fontSize: 14 }}>Sin actividad en este tema.</p>;
+          return shown.map((e, i) => {
+            const tp = topicOf(e.action);
+            return (
+              <div key={i} className="row between" style={{ borderTop: i ? '1px solid var(--line)' : 'none', padding: '8px 0', fontSize: 13, flexWrap: 'wrap', gap: 6 }}>
+                <span className="row" style={{ gap: 8 }}><span style={{ width: 18, textAlign: 'center' }}>{topicIcon[tp]}</span><span><b>{e.admin_email?.split('@')[0]}</b> · {e.action} <span className="muted">{e.target ? String(e.target).slice(0, 24) : ''}</span></span></span>
+                <span className="muted" style={{ fontSize: 12 }}>{new Date(e.created_at).toLocaleString()}</span>
+              </div>
+            );
+          });
+        })()}
       </div>
     </>
   );

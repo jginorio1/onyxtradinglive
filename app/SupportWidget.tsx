@@ -6,6 +6,7 @@ import { useLang } from '@/lib/lang';
 const T: any = {
   es: {
     help: '¿Necesitas ayuda?', title: 'Onyx AI', online: 'En línea · responde al instante', offline: 'Te respondemos por correo',
+    humanTitle: 'Equipo Onyx', humanOnline: 'En línea · una persona te atiende', aiName: 'Onyx AI',
     hi: '¡Hola! ¿Sobre qué te ayudo?', topicsT: 'Temas frecuentes',
     ph: 'Escribe tu pregunta…', seeArt: 'Ver', center: 'Centro de soporte', openTicket: 'Abrir un ticket',
     emailT: 'Déjanos tu correo y te respondemos aunque cierres:', emailPh: 'tucorreo@email.com', send: 'Enviar',
@@ -17,6 +18,7 @@ const T: any = {
   },
   en: {
     help: 'Need help?', title: 'Onyx AI', online: 'Online · instant answers', offline: 'We reply by email',
+    humanTitle: 'Onyx team', humanOnline: 'Online · a person is here', aiName: 'Onyx AI',
     hi: 'Hi! How can I help?', topicsT: 'Popular topics',
     ph: 'Type your question…', seeArt: 'Open', center: 'Support center', openTicket: 'Open a ticket',
     emailT: 'Leave your email and we will reply even if you close this:', emailPh: 'you@email.com', send: 'Send',
@@ -32,7 +34,7 @@ export default function SupportWidget({ loggedIn = false }: { loggedIn?: boolean
   const { lang } = useLang();
   const t = T[lang];
   const [open, setOpen] = useState(false);
-  const [online, setOnline] = useState(false);
+  const [human, setHuman] = useState(false); // ¿hay una persona del equipo disponible? (la IA siempre está)
   const [chat, setChat] = useState<any[]>([]);
   const [ask, setAsk] = useState('');
   const [busy, setBusy] = useState(false);
@@ -44,7 +46,7 @@ export default function SupportWidget({ loggedIn = false }: { loggedIn?: boolean
   const end = useRef<HTMLDivElement>(null);
   const started = chat.length > 0;
 
-  useEffect(() => { fetch('/api/support/availability').then((r) => r.json()).then((j) => setOnline(!!j.online)).catch(() => {}); }, [open]);
+  useEffect(() => { fetch('/api/support/availability').then((r) => r.json()).then((j) => setHuman(!!j.online)).catch(() => {}); }, [open]);
   useEffect(() => { end.current?.scrollIntoView({ behavior: 'smooth' }); }, [chat, busy, showEmail, sent]);
 
   async function sendAI(q?: string) {
@@ -90,7 +92,7 @@ export default function SupportWidget({ loggedIn = false }: { loggedIn?: boolean
           style={{ position: 'fixed', right: 18, bottom: 18, zIndex: 60, display: 'flex', alignItems: 'center', gap: 8, border: 'none', background: 'none', cursor: 'pointer' }}>
           <span style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 20, padding: '7px 13px', fontSize: 13, color: 'var(--tx)', boxShadow: '0 6px 18px rgba(0,0,0,.3)' }}>{t.help}</span>
           <span style={{ position: 'relative', width: 54, height: 54, borderRadius: '50%', background: 'var(--grad)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, boxShadow: '0 8px 22px rgba(0,0,0,.35)' }}>💬
-            {online && <span className="onyx-pulse" style={{ position: 'absolute', top: 2, right: 2, width: 13, height: 13, borderRadius: '50%', background: '#34e2a0', border: '2px solid var(--bg)' }} />}
+            <span className="onyx-pulse" style={{ position: 'absolute', top: 2, right: 2, width: 13, height: 13, borderRadius: '50%', background: '#34e2a0', border: '2px solid var(--bg)' }} />
           </span>
         </button>
       )}
@@ -98,12 +100,12 @@ export default function SupportWidget({ loggedIn = false }: { loggedIn?: boolean
       {open && (
         <div className="onyx-panel" style={{ position: 'fixed', right: 18, bottom: 18, zIndex: 61, width: 344, maxWidth: 'calc(100vw - 24px)', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, boxShadow: '0 14px 40px rgba(0,0,0,.45)', overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 40px)' }}>
           <div style={{ background: 'var(--grad)', color: '#fff', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ width: 30, height: 30, borderRadius: 8, background: 'rgba(255,255,255,.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none', fontSize: 16 }}>🤖</span>
+            <span style={{ width: 30, height: 30, borderRadius: 8, background: 'rgba(255,255,255,.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none', fontSize: 16 }}>{human ? '🙋' : '🤖'}</span>
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, fontSize: 14 }}>{t.title}</div>
+              <div style={{ fontWeight: 700, fontSize: 14 }}>{human ? t.humanTitle : t.title}</div>
               <div style={{ fontSize: 11, opacity: .9, display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span className={online ? 'onyx-pulse' : ''} style={{ width: 8, height: 8, borderRadius: '50%', background: online ? '#34e2a0' : 'rgba(255,255,255,.5)' }} />
-                {online ? t.online : t.offline}
+                <span className="onyx-pulse" style={{ width: 8, height: 8, borderRadius: '50%', background: '#34e2a0' }} />
+                {human ? t.humanOnline : t.online}
               </div>
             </div>
             <button onClick={() => setOpen(false)} aria-label="close" style={{ background: 'none', border: 'none', color: '#fff', fontSize: 20, cursor: 'pointer', lineHeight: 1 }}>×</button>
