@@ -1,11 +1,9 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { cookies } from 'next/headers';
 import { ARTICLES, bySlug, Lang } from '@/lib/guide';
 import ArticleView from './ArticleView';
 import JsonLd from '../../JsonLd';
-
-const SITE = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.onyxtradinglive.com').replace(/\/$/, '');
+import { serverLang, localeAlternates, SITE } from '@/lib/locale';
 
 // Se generan en el build para que Google las lea sin ejecutar nada
 export function generateStaticParams() {
@@ -15,11 +13,11 @@ export function generateStaticParams() {
 export function generateMetadata({ params }: { params: { slug: string } }): Metadata {
   const a = bySlug(params.slug);
   if (!a) return { title: 'Guía de Onyx' };
-  const lang: Lang = (cookies().get('onyx_lang')?.value === 'en' ? 'en' : 'es');
+  const lang: Lang = serverLang();
   return {
     title: `${a.title[lang]} · Guía de Onyx`,
     description: a.summary[lang],
-    alternates: { canonical: `/guia/${a.slug}` },
+    alternates: localeAlternates(`/guia/${a.slug}`),
   };
 }
 
@@ -27,7 +25,7 @@ export default function ArticlePage({ params }: { params: { slug: string } }) {
   const a = bySlug(params.slug);
   if (!a) notFound();
   const art = a!;
-  const lang: Lang = (cookies().get('onyx_lang')?.value === 'en' ? 'en' : 'es');
+  const lang: Lang = serverLang();
   const ld = {
     '@context': 'https://schema.org', '@type': 'Article',
     headline: art.title[lang], description: art.summary[lang], inLanguage: lang,

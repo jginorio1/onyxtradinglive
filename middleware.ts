@@ -3,7 +3,32 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
 export async function middleware(req: NextRequest) {
-  const res = NextResponse.next({ request: { headers: req.headers } });
+  const rawPath = req.nextUrl.pathname;
+
+  // --- Idioma en la URL (SEO bilingüe) ------------------------------------
+  // El español canónico vive sin prefijo, así que /es/... redirige a /...
+  if (rawPath === '/es' || rawPath.startsWith('/es/')) {
+    const url = req.nextUrl.clone();
+    url.pathname = rawPath.slice(3) || '/';
+    return NextResponse.redirect(url, 308);
+  }
+  // /en/... se sirve reescribiendo a la ruta normal, pero marcando el idioma
+  // con una cabecera para que el servidor renderice en inglés.
+  const isEn = rawPath === '/en' || rawPath.startsWith('/en/');
+  const path = isEn ? (rawPath.slice(3) || '/') : rawPath;
+
+  const fwd = new Headers(req.headers);
+  if (isEn) fwd.set('x-onyx-lang', 'en');
+
+  let res: NextResponse;
+  if (isEn) {
+    const url = req.nextUrl.clone();
+    url.pathname = path;
+    res = NextResponse.rewrite(url, { request: { headers: fwd } });
+    res.cookies.set({ name: 'onyx_lang', value: 'en', path: '/', sameSite: 'lax', maxAge: 60 * 60 * 24 * 365 });
+  } else {
+    res = NextResponse.next({ request: { headers: fwd } });
+  }
 
   // Atribución de embajador: ?ref=codigo se guarda 60 días.
   // No se sobrescribe si ya hay uno (gana el primero que lo trajo).
@@ -27,7 +52,6 @@ export async function middleware(req: NextRequest) {
   // Puerta única: todo lo que cuelga de estas rutas exige sesión. Así no
   // dependemos de que cada página se acuerde de comprobarlo — que fue justo
   // lo que falló con /dashboard/keys, que era 'use client' y no miraba nada.
-  const path = req.nextUrl.pathname;
   const PROTECTED = ['/dashboard', '/account', '/admin', '/onboarding'];
   const needsAuth = PROTECTED.some((p) => path === p || path.startsWith(p + '/'));
 

@@ -1,14 +1,18 @@
 import type { Metadata } from 'next';
 import JsonLd from '../JsonLd';
+import { serverLang, localeAlternates, SITE as url } from '@/lib/locale';
 
-const url = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.onyxtradinglive.com').replace(/\/$/, '');
-
-export const metadata: Metadata = {
-  title: 'Planes y precios · Onyx Trading Live',
-  description: 'Compara los planes de Onyx Trading Live: Gratis, Pro y Elite. Diario de trading, estadísticas automáticas, control de fondeo y Onyx Guardian para MT4/MT5.',
-  alternates: { canonical: '/pricing' },
-  openGraph: { title: 'Planes y precios · Onyx Trading Live', description: 'Gratis, Pro y Elite. Elige cómo llevar tu trading al siguiente nivel.', url: `${url}/pricing`, type: 'website' },
-};
+export function generateMetadata(): Metadata {
+  const es = serverLang() === 'es';
+  return {
+    title: es ? 'Planes y precios · Onyx Trading Live' : 'Plans and pricing · Onyx Trading Live',
+    description: es
+      ? 'Compara los planes de Onyx Trading Live: Gratis, Pro y Elite. Diario de trading, estadísticas automáticas, control de fondeo y Onyx Guardian para MT4/MT5.'
+      : 'Compare Onyx Trading Live plans: Free, Pro and Elite. Trading journal, automatic stats, funding control and Onyx Guardian for MT4/MT5.',
+    alternates: localeAlternates('/pricing'),
+    openGraph: { title: es ? 'Planes y precios · Onyx Trading Live' : 'Plans and pricing · Onyx Trading Live', description: es ? 'Gratis, Pro y Elite.' : 'Free, Pro and Elite.', url: `${url}/pricing`, type: 'website' },
+  };
+}
 
 export default function PricingLayout({ children }: { children: React.ReactNode }) {
   const ld = {

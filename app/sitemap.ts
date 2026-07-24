@@ -14,7 +14,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { p: '/login', pr: 0.5, f: 'monthly' },
     { p: '/terms', pr: 0.3, f: 'yearly' as any },
   ];
-  const pages = staticPaths.map((s) => ({ url: `${url}${s.p}`, lastModified: now, changeFrequency: s.f, priority: s.pr }));
-  const articles = ARTICLES.map((a) => ({ url: `${url}/guia/${a.slug}`, lastModified: now, changeFrequency: 'monthly' as const, priority: 0.6 }));
+  const pages = staticPaths.map((s) => ({
+    url: `${url}${s.p}`, lastModified: now, changeFrequency: s.f, priority: s.pr,
+    alternates: { languages: { es: `${url}${s.p}`, en: `${url}/en${s.p}` } },
+  }));
+  const articles = ARTICLES.map((a) => ({
+    url: `${url}/guia/${a.slug}`, lastModified: now, changeFrequency: 'monthly' as const, priority: 0.6,
+    alternates: { languages: { es: `${url}/guia/${a.slug}`, en: `${url}/en/guia/${a.slug}` } },
+  }));
   return [...pages, ...articles];
 }

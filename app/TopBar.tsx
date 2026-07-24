@@ -1,8 +1,8 @@
 import Link from 'next/link';
-import { cookies } from 'next/headers';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NAV_T, Lang } from '@/lib/navText';
+import { serverLang } from '@/lib/locale';
 import TopBarMenu from './TopBarMenu';
 import LangToggle from './LangToggle';
 import MainNav from './MainNav';
@@ -16,7 +16,7 @@ import MainNav from './MainNav';
 // partes — landing incluido.
 // ============================================================
 export default async function TopBar() {
-  const lang: Lang = (cookies().get('onyx_lang')?.value === 'en' ? 'en' : 'es');
+  const lang: Lang = serverLang();
   const t = NAV_T[lang];
 
   let user: any = null;
