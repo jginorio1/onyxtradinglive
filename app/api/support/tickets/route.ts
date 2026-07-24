@@ -28,6 +28,7 @@ export async function GET() {
         .from('support_messages')
         .select('id,ticket_id,sender,body,created_at')
         .in('ticket_id', ids)
+        .neq('sender', 'note')   // las notas internas del equipo NO se muestran al trader
         .order('created_at', { ascending: true });
       messages = data || [];
     }

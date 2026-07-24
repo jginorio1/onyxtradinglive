@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAdmin, logAdmin } from '@/lib/admin';
+import { getAdmin, logAdmin, requirePerm } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 export const dynamic = 'force-dynamic';
@@ -9,6 +9,7 @@ export const runtime = 'nodejs';
 export async function GET() {
   const { isAdmin } = await getAdmin();
   if (!isAdmin) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+    const _p = await requirePerm('usuarios', 'view'); if (!_p.ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
 
   const { data: profiles } = await supabaseAdmin.from('profiles').select('*').order('created_at', { ascending: false });
   const { data: accts } = await supabaseAdmin.from('trading_accounts').select('user_id,last_sync_at');
@@ -34,6 +35,7 @@ export async function GET() {
 export async function PATCH(req: Request) {
   const { isAdmin, user } = await getAdmin();
   if (!isAdmin) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+    const _p = await requirePerm('usuarios', 'view'); if (!_p.ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
 
   const { id, action, value } = await req.json();
   if (!action) return NextResponse.json({ error: 'faltan datos' }, { status: 400 });
@@ -77,6 +79,7 @@ export async function PATCH(req: Request) {
 export async function DELETE(req: Request) {
   const { isAdmin, user } = await getAdmin();
   if (!isAdmin) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+    const _p = await requirePerm('usuarios', 'view'); if (!_p.ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
 
   const { id } = await req.json();
   if (!id) return NextResponse.json({ error: 'falta id' }, { status: 400 });

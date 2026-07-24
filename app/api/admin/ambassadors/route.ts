@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAdmin, logAdmin } from '@/lib/admin';
+import { getAdmin, logAdmin, requirePerm } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { stripe } from '@/lib/stripe';
 import { ambSettings, rateFor, balances } from '@/lib/ambassadors';
@@ -28,6 +28,7 @@ export async function GET() {
   try {
     const { isAdmin } = await getAdmin();
     if (!isAdmin) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+    const _p = await requirePerm('embajadores', 'view'); if (!_p.ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
 
     const settings = await ambSettings();
     const { data: rows } = await supabaseAdmin.from('ambassadors').select('*').order('created_at', { ascending: false });
@@ -54,6 +55,7 @@ export async function PATCH(req: Request) {
   try {
     const { isAdmin, user } = await getAdmin();
     if (!isAdmin) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+    const _p = await requirePerm('embajadores', 'view'); if (!_p.ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
     const b = await req.json();
     const settings = await ambSettings();
 

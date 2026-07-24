@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAdmin } from '@/lib/admin';
+import { getAdmin, requirePerm } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendEmail } from '@/lib/mail';
 
@@ -26,6 +26,7 @@ export async function GET() {
   try {
     const { isAdmin } = await getAdmin();
     if (!isAdmin) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+    const _p = await requirePerm('diag', 'view'); if (!_p.ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
 
     // --- Variables de entorno / claves ---
     const sk = process.env.STRIPE_SECRET_KEY || '';
@@ -104,6 +105,7 @@ export async function POST(req: Request) {
   try {
     const { user, isAdmin } = await getAdmin();
     if (!isAdmin) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+    const _p = await requirePerm('diag', 'view'); if (!_p.ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
     const { action } = await req.json().catch(() => ({}));
 
     if (action === 'test_ai') {

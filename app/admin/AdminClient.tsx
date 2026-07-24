@@ -7,10 +7,11 @@ import TestConsole from './TestConsole';
 import Firms from './Firms';
 import SupportInbox from './SupportInbox';
 import Diagnostics from './Diagnostics';
+import { AREAS } from '@/lib/perms';
 
 type Plan = { id: string; name: string; name_en: string; desc_es: string | null; desc_en: string | null; price_month: number; price_year: number; stripe_price_id: string | null; stripe_price_id_year: string | null; max_accounts: number; features: string[]; features_en: string[]; badge: string | null; badge_en: string | null; active: boolean; sort: number; capabilities: any };
 type User = { id: string; email: string; plan: string; subscription_status: string | null; banned: boolean; is_admin: boolean; created_at: string; accounts: number; lastSync: string | null };
-type Team = { id: string; email: string; role: string | null; is_admin: boolean };
+type Team = { id: string; email: string; role: string | null; is_admin: boolean; perms?: any; available?: boolean; last_active?: string | null };
 type Tab = 'resumen' | 'usuarios' | 'planes' | 'equipo' | 'embajadores' | 'retencion' | 'pruebas' | 'firms' | 'modulos' | 'soporte' | 'diag' | 'ajustes';
 
 const CAPS: [string, string][] = [
@@ -31,7 +32,12 @@ function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
 }
 const roleColor = (r?: string | null) => (r === 'owner' ? '#a9b4ff' : r === 'support' ? '#ffd45e' : '#34e2a0');
 
-export default function AdminClient({ meEmail, role, accounts, trades }: { meEmail: string; role: string; accounts: number; trades: number }) {
+export default function AdminClient({ meEmail, role, perms = {}, accounts, trades }: { meEmail: string; role: string; perms?: Record<string, string>; accounts: number; trades: number }) {
+  // Qué áreas puede ver este admin (owner ve todo). Mapa tab → área de permiso.
+  const areaOf: Record<string, string> = { resumen: 'resumen', usuarios: 'usuarios', planes: 'planes', equipo: 'equipo', embajadores: 'embajadores', retencion: 'retencion', pruebas: 'diag', firms: 'firms', modulos: 'modulos', soporte: 'soporte', diag: 'diag', ajustes: 'ajustes' };
+  const canSee = (k: string) => role === 'owner' || (perms[areaOf[k]] && perms[areaOf[k]] !== 'none');
+  const [available, setAvailable] = useState(false);
+  async function toggleAvail() { const next = !available; setAvailable(next); await fetch('/api/admin/team', { method: 'PATCH', body: JSON.stringify({ available: next }) }); }
   const [tab, setTab] = useState<Tab>('resumen');
   const [users, setUsers] = useState<User[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -53,7 +59,9 @@ export default function AdminClient({ meEmail, role, accounts, trades }: { meEma
   async function resetPass(u: User) { setBusy(u.id + 'rst'); const r = await fetch('/api/admin/reset-password', { method: 'POST', body: JSON.stringify({ email: u.email }) }); const j = await r.json(); setBusy(''); if (!r.ok) { alert(j.error || 'error'); return; } if (j.link) { navigator.clipboard.writeText(j.link); alert('Enlace de recuperación copiado:\n\n' + j.link); } else alert('Email de recuperación enviado.'); }
 
   const filtered = users.filter((u) => u.email?.toLowerCase().includes(q.toLowerCase()));
-  const NAV: [Tab, string][] = [['resumen', '📊 Resumen'], ['usuarios', '👥 Usuarios'], ['planes', '💳 Planes'], ['equipo', '🛡️ Equipo'], ['embajadores', '🎁 Embajadores'], ['retencion', '🛟 Retención'], ['pruebas', '🧪 Pruebas'], ['firms', '🏛️ Prop firms'], ['modulos', '🧩 Módulos'], ['soporte', '🎫 Soporte'], ['diag', '🩺 Diagnóstico'], ['ajustes', '⚙️ Ajustes']];
+  const NAV_ALL: [Tab, string][] = [['resumen', '📊 Resumen'], ['usuarios', '👥 Usuarios'], ['planes', '💳 Planes'], ['equipo', '🛡️ Equipo'], ['embajadores', '🎁 Embajadores'], ['retencion', '🛟 Retención'], ['pruebas', '🧪 Pruebas'], ['firms', '🏛️ Prop firms'], ['modulos', '🧩 Módulos'], ['soporte', '🎫 Soporte'], ['diag', '🩺 Diagnóstico'], ['ajustes', '⚙️ Ajustes']];
+  const NAV = NAV_ALL.filter(([k]) => canSee(k));
+  useEffect(() => { if (NAV.length && !NAV.some(([k]) => k === tab)) setTab(NAV[0][0]); }, []);
 
   return (
     <>
@@ -63,6 +71,12 @@ export default function AdminClient({ meEmail, role, accounts, trades }: { meEma
           <div className="adminnav card" style={{ padding: 12 }}>
             <div className="adminnav-items">
               {NAV.map(([k, label]) => <button key={k} className={'adminnav-item' + (tab === k ? ' on' : '')} onClick={() => setTab(k)}>{label}</button>)}
+            </div>
+            <div style={{ borderTop: '1px solid var(--line)', marginTop: 8, paddingTop: 10 }}>
+              <button className="adminnav-item" onClick={toggleAvail} style={{ width: '100%' }}>
+                <span style={{ width: 9, height: 9, borderRadius: '50%', display: 'inline-block', marginRight: 8, background: available ? '#34e2a0' : 'var(--line)' }} />
+                {available ? 'Disponible (chat)' : 'Ausente'}
+              </button>
             </div>
           </div>
 
@@ -112,7 +126,7 @@ export default function AdminClient({ meEmail, role, accounts, trades }: { meEma
             )}
 
             {tab === 'planes' && <PlansTab plans={plans} reload={loadPlans} />}
-            {tab === 'equipo' && <Equipo team={team} role={role} meEmail={meEmail} reload={loadTeam} />}
+            {tab === 'equipo' && <Equipo team={team} role={role} meEmail={meEmail} reload={loadTeam} canManage={role === 'owner' || perms.equipo === 'manage'} />}
             {tab === 'embajadores' && <Ambassadors />}
             {tab === 'retencion' && <Retention />}
             {tab === 'pruebas' && <TestConsole meEmail={meEmail} />}
@@ -186,45 +200,102 @@ function Modules() {
   );
 }
 
-function Equipo({ team, role, meEmail, reload }: { team: Team[]; role: string; meEmail: string; reload: () => void }) {
+const ROLE_LABEL: any = { owner: 'Owner', admin: 'Admin', support: 'Soporte', marketing: 'Marketing', custom: 'Personalizado' };
+const LVL_LABEL: any = { none: 'Sin acceso', view: 'Ver', manage: 'Gestionar' };
+
+function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role: string; meEmail: string; reload: () => void; canManage: boolean }) {
   const [email, setEmail] = useState('');
-  const [newRole, setNewRole] = useState('admin');
+  const [newRole, setNewRole] = useState('support');
   const [busy, setBusy] = useState(false);
-  const isOwner = role === 'owner';
+  const [editId, setEditId] = useState('');
+  const [log, setLog] = useState<any[]>([]);
+  const [logMember, setLogMember] = useState('');
 
   async function add() { if (!email) return; setBusy(true); const r = await fetch('/api/admin/team', { method: 'POST', body: JSON.stringify({ email, role: newRole }) }); const j = await r.json(); setBusy(false); if (!r.ok) { alert(j.error || 'error'); return; } setEmail(''); reload(); }
   async function changeRole(id: string, r2: string) { const r = await fetch('/api/admin/team', { method: 'PATCH', body: JSON.stringify({ id, role: r2 }) }); const j = await r.json(); if (!r.ok) { alert(j.error || 'error'); return; } reload(); }
+  async function savePerm(id: string, area: string, level: string, current: any) { const perms = { ...(current || {}), [area]: level }; const r = await fetch('/api/admin/team', { method: 'PATCH', body: JSON.stringify({ id, perms }) }); const j = await r.json(); if (!r.ok) { alert(j.error || 'error'); return; } reload(); }
   async function remove(id: string) { if (!confirm('¿Quitar acceso de administrador a esta persona?')) return; const r = await fetch('/api/admin/team', { method: 'DELETE', body: JSON.stringify({ id }) }); const j = await r.json(); if (!r.ok) { alert(j.error || 'error'); return; } reload(); }
+  async function loadLog(member = '') { setLogMember(member); const r = await fetch('/api/admin/activity' + (member ? '?member=' + encodeURIComponent(member) : '')); const j = await r.json(); setLog(j.log || []); }
+  useEffect(() => { loadLog(); }, []);
 
   return (
-    <div className="card">
-      <h3 style={{ marginBottom: 4 }}>🛡️ Equipo</h3>
-      <p className="muted" style={{ fontSize: 13, marginBottom: 16 }}>Administradores con acceso al panel. {isOwner ? 'Como Owner, puedes añadir, cambiar rol y quitar.' : 'Solo el Owner puede gestionar el equipo.'}</p>
+    <>
+      <div className="card" style={{ marginBottom: 14 }}>
+        <h3 style={{ marginBottom: 4 }}>🛡️ Equipo y permisos</h3>
+        <p className="muted" style={{ fontSize: 13, marginBottom: 16 }}>{canManage ? 'Añade miembros, asigna rol y ajusta permisos por área.' : 'Solo quien gestiona el equipo puede cambiar roles.'}</p>
 
-      <table style={{ marginBottom: 18 }}>
-        <thead><tr><th>Email</th><th>Rol</th><th></th></tr></thead>
-        <tbody>{team.map((m) => (
-          <tr key={m.id}>
-            <td>{m.email}{m.email === meEmail && <span className="muted" style={{ fontSize: 12 }}> (tú)</span>}</td>
-            <td>{isOwner && m.role !== 'owner' ? (
-              <select value={m.role || 'admin'} onChange={(e) => changeRole(m.id, e.target.value)} style={{ margin: 0, padding: '5px 8px', width: 'auto' }}><option value="admin">Admin</option><option value="support">Soporte</option></select>
-            ) : <span className="pill" style={{ color: roleColor(m.role) }}>{m.role || 'admin'}</span>}</td>
-            <td style={{ textAlign: 'right' }}>{isOwner && m.role !== 'owner' && m.email !== meEmail && <button className="btn btn-danger" style={{ padding: '4px 9px', fontSize: 12 }} onClick={() => remove(m.id)}>Quitar</button>}</td>
-          </tr>
-        ))}</tbody>
-      </table>
+        {team.map((m) => (
+          <div key={m.id} style={{ borderTop: '1px solid var(--line)', padding: '12px 0' }}>
+            <div className="row between" style={{ flexWrap: 'wrap', gap: 8 }}>
+              <div className="row" style={{ gap: 10, alignItems: 'center' }}>
+                <span style={{ width: 9, height: 9, borderRadius: '50%', background: m.available ? '#34e2a0' : 'var(--line)' }} title={m.available ? 'Disponible' : 'Ausente'} />
+                <div>
+                  <div style={{ fontWeight: 600 }}>{m.email}{m.email === meEmail && <span className="muted" style={{ fontSize: 12 }}> (tú)</span>}</div>
+                  <div className="muted" style={{ fontSize: 11 }}>{m.last_active ? 'Últ. actividad: ' + new Date(m.last_active).toLocaleString() : 'Sin actividad'}</div>
+                </div>
+              </div>
+              <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                {canManage && m.role !== 'owner' ? (
+                  <select value={m.role || 'support'} onChange={(e) => changeRole(m.id, e.target.value)} style={{ margin: 0, padding: '5px 8px', width: 'auto' }}>
+                    <option value="admin">Admin</option><option value="support">Soporte</option><option value="marketing">Marketing</option><option value="custom">Personalizado</option>
+                  </select>
+                ) : <span className="pill" style={{ color: roleColor(m.role) }}>{ROLE_LABEL[m.role || 'admin']}</span>}
+                {canManage && m.role !== 'owner' && <button className="btn btn-ghost" style={{ padding: '4px 9px', fontSize: 12 }} onClick={() => setEditId(editId === m.id ? '' : m.id)}>Permisos</button>}
+                {canManage && m.role !== 'owner' && m.email !== meEmail && <button className="btn btn-danger" style={{ padding: '4px 9px', fontSize: 12 }} onClick={() => remove(m.id)}>Quitar</button>}
+              </div>
+            </div>
 
-      {isOwner && (
-        <div style={{ borderTop: '1px solid var(--line)', paddingTop: 14 }}>
-          <div className="muted" style={{ fontSize: 13, marginBottom: 8 }}>Añadir administrador (debe estar registrado en la app)</div>
-          <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-            <input placeholder="email@ejemplo.com" value={email} onChange={(e) => setEmail(e.target.value)} style={{ margin: 0, maxWidth: 260 }} />
-            <select value={newRole} onChange={(e) => setNewRole(e.target.value)} style={{ margin: 0, width: 'auto' }}><option value="admin">Admin</option><option value="support">Soporte</option></select>
-            <button className="btn btn-primary" onClick={add} disabled={busy || !email}>{busy ? '...' : '+ Añadir'}</button>
+            {editId === m.id && canManage && (
+              <div style={{ marginTop: 12, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: 12 }}>
+                <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>Permisos por área (el rol pone los valores por defecto; aquí los afinas)</div>
+                {AREAS.map((a) => {
+                  const cur = (m.perms && m.perms[a.id]) || '';
+                  return (
+                    <div key={a.id} className="row between" style={{ padding: '6px 0', borderTop: '1px solid var(--line)', flexWrap: 'wrap', gap: 8 }}>
+                      <span style={{ fontSize: 13 }}>{a.label}</span>
+                      <div className="row" style={{ gap: 4 }}>
+                        {(['none', 'view', 'manage'] as const).map((lv) => (
+                          <button key={lv} className={'btn ' + (cur === lv ? 'btn-primary' : 'btn-ghost')} style={{ padding: '3px 9px', fontSize: 11 }} onClick={() => savePerm(m.id, a.id, lv, m.perms)}>{LVL_LABEL[lv]}</button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
+        ))}
+
+        {canManage && (
+          <div style={{ borderTop: '1px solid var(--line)', paddingTop: 14, marginTop: 6 }}>
+            <div className="muted" style={{ fontSize: 13, marginBottom: 8 }}>Invitar miembro (debe estar registrado en la app)</div>
+            <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+              <input placeholder="email@ejemplo.com" value={email} onChange={(e) => setEmail(e.target.value)} style={{ margin: 0, maxWidth: 240 }} />
+              <select value={newRole} onChange={(e) => setNewRole(e.target.value)} style={{ margin: 0, width: 'auto' }}>
+                <option value="admin">Admin</option><option value="support">Soporte</option><option value="marketing">Marketing</option><option value="custom">Personalizado</option>
+              </select>
+              <button className="btn btn-primary" onClick={add} disabled={busy || !email}>{busy ? '...' : '+ Invitar'}</button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Registro de actividad por miembro */}
+      <div className="card">
+        <h3 style={{ marginBottom: 10 }}>🕘 Registro de actividad</h3>
+        <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+          <button className={'btn ' + (!logMember ? 'btn-primary' : 'btn-ghost')} style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => loadLog('')}>Todos</button>
+          {team.map((m) => <button key={m.id} className={'btn ' + (logMember === m.email ? 'btn-primary' : 'btn-ghost')} style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => loadLog(m.email)}>{m.email.split('@')[0]}</button>)}
         </div>
-      )}
-    </div>
+        {!log.length && <p className="muted" style={{ fontSize: 14 }}>Sin actividad registrada.</p>}
+        {log.map((e, i) => (
+          <div key={i} className="row between" style={{ borderTop: '1px solid var(--line)', padding: '8px 0', fontSize: 13, flexWrap: 'wrap', gap: 6 }}>
+            <span><b>{e.admin_email?.split('@')[0]}</b> · {e.action} <span className="muted">{e.target ? String(e.target).slice(0, 24) : ''}</span></span>
+            <span className="muted" style={{ fontSize: 12 }}>{new Date(e.created_at).toLocaleString()}</span>
+          </div>
+        ))}
+      </div>
+    </>
   );
 }
 

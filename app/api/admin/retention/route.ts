@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAdmin, logAdmin } from '@/lib/admin';
+import { getAdmin, logAdmin, requirePerm } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { retentionSettings, addonSettings, saveSetting } from '@/lib/settings';
 
@@ -11,6 +11,7 @@ export async function GET() {
   try {
     const { isAdmin } = await getAdmin();
     if (!isAdmin) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+    const _p = await requirePerm('retencion', 'view'); if (!_p.ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
 
     const { data: rows } = await supabaseAdmin.from('cancellations').select('*').order('created_at', { ascending: false }).limit(500);
     const list = rows || [];
@@ -41,6 +42,7 @@ export async function PATCH(req: Request) {
   try {
     const { isAdmin, user } = await getAdmin();
     if (!isAdmin) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+    const _p = await requirePerm('retencion', 'view'); if (!_p.ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
     const b = await req.json();
     if (b.key !== 'retention' && b.key !== 'addons') return NextResponse.json({ error: 'clave desconocida' }, { status: 400 });
     const current = b.key === 'retention' ? await retentionSettings() : await addonSettings();

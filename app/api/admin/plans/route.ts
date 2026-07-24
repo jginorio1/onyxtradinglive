@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAdmin, logAdmin } from '@/lib/admin';
+import { getAdmin, logAdmin, requirePerm } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 export const dynamic = 'force-dynamic';
@@ -23,6 +23,7 @@ export async function POST(req: Request) {
   try {
     const { isAdmin, user } = await getAdmin();
     if (!isAdmin) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+    const _p = await requirePerm('planes', 'view'); if (!_p.ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
     const b = await req.json();
     if (!b.id || !b.name) return NextResponse.json({ error: 'id y nombre son obligatorios' }, { status: 400 });
     const row = {
@@ -58,6 +59,7 @@ export async function PATCH(req: Request) {
   try {
     const { isAdmin, user } = await getAdmin();
     if (!isAdmin) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+    const _p = await requirePerm('planes', 'view'); if (!_p.ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
     const b = await req.json();
     if (!b.id) return NextResponse.json({ error: 'falta id' }, { status: 400 });
     const fields: any = { updated_at: new Date().toISOString() };
@@ -81,6 +83,7 @@ export async function DELETE(req: Request) {
   try {
     const { isAdmin, user } = await getAdmin();
     if (!isAdmin) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+    const _p = await requirePerm('planes', 'view'); if (!_p.ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
     const { id } = await req.json();
     if (!id) return NextResponse.json({ error: 'falta id' }, { status: 400 });
     if (id === 'free') return NextResponse.json({ error: 'no se puede borrar el plan free' }, { status: 400 });

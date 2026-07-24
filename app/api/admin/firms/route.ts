@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAdmin, logAdmin } from '@/lib/admin';
+import { getAdmin, logAdmin, requirePerm } from '@/lib/admin';
 import { getSetting, saveSetting } from '@/lib/settings';
 import { PROP_TEMPLATES } from '@/lib/manager';
 
@@ -12,6 +12,7 @@ export async function GET() {
   try {
     const { isAdmin } = await getAdmin();
     if (!isAdmin) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+    const _p = await requirePerm('firms', 'view'); if (!_p.ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
     const s = await getSetting<{ list: any[] }>('prop_templates', { list: [] });
     return NextResponse.json({ list: s?.list?.length ? s.list : PROP_TEMPLATES, isDefault: !s?.list?.length });
   } catch (e: any) {
@@ -25,6 +26,7 @@ export async function POST(req: Request) {
   try {
     const { isAdmin, user } = await getAdmin();
     if (!isAdmin) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+    const _p = await requirePerm('firms', 'view'); if (!_p.ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
 
     const b = await req.json().catch(() => ({} as any));
     if (b.action === 'reset') {
