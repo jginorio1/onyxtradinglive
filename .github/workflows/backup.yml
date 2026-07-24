@@ -11,8 +11,12 @@ jobs:
     steps:
       - name: Instalar herramientas
         run: |
+          set -e
           sudo apt-get update -qq
-          sudo apt-get install -y postgresql-client
+          sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-client-17
           pip install --quiet b2
 
       - name: Volcado de la base de datos
@@ -26,7 +30,7 @@ jobs:
           SIZE=$(stat -c%s "$FILE")
           echo "Tamaño del volcado: $SIZE bytes"
           if [ "$SIZE" -lt 1000 ]; then
-            echo "::error::Volcado vacío ($SIZE bytes). Revisa DATABASE_URL (usa la Session pooler) y la contraseña."
+            echo "::error::Volcado vacío ($SIZE bytes). Revisa DATABASE_URL y la contraseña."
             exit 1
           fi
           echo "FILE=$FILE" >> "$GITHUB_ENV"
