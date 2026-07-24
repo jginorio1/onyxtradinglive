@@ -6,6 +6,7 @@ import GuideHome from './GuideHome';
 export const metadata: Metadata = {
   title: 'Guía de Onyx · Cómo sacarle partido a tu diario de trading',
   description: 'Instalación, métricas explicadas sin tecnicismos, gestión de riesgo y reglas de prop firms. La guía completa de Onyx Trading Live.',
+  alternates: { canonical: '/guia' },
 };
 
 export default function GuiaPage() {

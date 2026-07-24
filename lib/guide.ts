@@ -34,6 +34,7 @@ export const CATEGORIES = [
   { id: 'manager', icon: '🛡️', color: 'var(--amber)',  name: { es: 'Onyx Guardian',             en: 'Onyx Guardian' } },
   { id: 'funded',  icon: '🏆', color: 'var(--purple)', name: { es: 'Cuentas de fondeo',     en: 'Funded accounts' } },
   { id: 'account', icon: '⚙️', color: 'var(--cyan)',   name: { es: 'Tu cuenta y tu plan',   en: 'Your account and plan' } },
+  { id: 'alerts',  icon: '📣', color: 'var(--brand2)', name: { es: 'Avisos y soporte',      en: 'Alerts and support' } },
 ];
 
 export const ARTICLES: Article[] = [
@@ -627,6 +628,140 @@ export const ARTICLES: Article[] = [
         { h: 'Payments' },
         { p: 'Handled by Stripe. Your card details never pass through our servers and we do not store them.' },
         { note: 'The EA is only allowed to manage existing trades: move stops and close. It cannot open positions or touch funds.', title: 'What the EA can do' },
+      ],
+    },
+  },
+
+  // ---------- AVISOS Y SOPORTE ----------
+  {
+    slug: 'avisos-telegram',
+    cat: 'alerts', icon: '📣',
+    title: { es: 'Avisos por Telegram', en: 'Telegram alerts' },
+    summary: {
+      es: 'Recibe en el móvil lo importante: límites, EA caído, resumen del día e informe semanal.',
+      en: 'Get what matters on your phone: limits, EA down, daily summary and weekly report.',
+    },
+    cta: { href: '/account', label: { es: 'Conectar Telegram', en: 'Connect Telegram' } },
+    body: {
+      es: [
+        { p: 'Onyx puede avisarte por Telegram sin que tengas que abrir la web. Vinculas tu cuenta una vez y eliges qué avisos quieres recibir.' },
+        { h: 'Cómo se conecta' },
+        { steps: [
+          'Entra en Mi cuenta → Avisos → Conectar Telegram.',
+          'Se abre el bot con un código ya puesto: pulsa Iniciar.',
+          'Listo. El bot te confirma y empiezas a recibir lo que tengas activado.',
+        ] },
+        { h: 'Qué te puede avisar' },
+        { list: [
+          'Cuando Onyx Guardian te frena o cierra una operación por tu plan.',
+          'Cuando te acercas a un límite de fondeo, antes de tocarlo.',
+          'Si tu EA deja de reportar (MetaTrader cerrado o sin conexión).',
+          'Un resumen del día y un informe del rendimiento cada domingo.',
+        ] },
+        { h: 'Comandos' },
+        { list: [
+          '/estado — resumen rápido de las últimas 24 horas.',
+          '/informe — tu semana: resultado, aciertos, mejor par y disciplina.',
+          '/stop — dejar de recibir avisos (puedes reconectar cuando quieras).',
+        ] },
+        { note: 'Cada aviso respeta tus interruptores: enciendes solo los que quieres y apagas el resto desde Mi cuenta → Avisos.', title: 'Tú decides qué llega' },
+        { warn: 'Los avisos por Telegram forman parte del plan Elite. Si tu plan cambia, dejan de enviarse, pero tu vínculo se conserva por si vuelves.' },
+      ],
+      en: [
+        { p: 'Onyx can alert you on Telegram without you opening the web. You link your account once and choose which alerts you want.' },
+        { h: 'How to connect' },
+        { steps: [
+          'Go to My account → Alerts → Connect Telegram.',
+          'The bot opens with a code already filled in: tap Start.',
+          'Done. The bot confirms and you start getting whatever you turned on.',
+        ] },
+        { h: 'What it can alert you about' },
+        { list: [
+          'When Onyx Guardian stops or closes a trade because of your plan.',
+          'When you approach a funding limit, before you hit it.',
+          'If your EA stops reporting (MetaTrader closed or offline).',
+          'A daily summary and a performance report every Sunday.',
+        ] },
+        { h: 'Commands' },
+        { list: [
+          '/estado — quick summary of the last 24 hours.',
+          '/informe — your week: result, win rate, best pair and discipline.',
+          '/stop — stop receiving alerts (you can reconnect anytime).',
+        ] },
+        { note: 'Every alert respects your switches: turn on only the ones you want and turn off the rest from My account → Alerts.', title: 'You decide what arrives' },
+        { warn: 'Telegram alerts are part of the Elite plan. If your plan changes they stop, but your link is kept in case you come back.' },
+      ],
+    },
+  },
+  {
+    slug: 'soporte-onyx-ai',
+    cat: 'alerts', icon: '💬',
+    title: { es: 'Pedir ayuda: Onyx AI y soporte', en: 'Getting help: Onyx AI and support' },
+    summary: {
+      es: 'Respuestas al instante con la IA, y una persona del equipo cuando de verdad hace falta.',
+      en: 'Instant answers from the AI, and a real person when you actually need one.',
+    },
+    cta: { href: '/dashboard/soporte', label: { es: 'Abrir el soporte', en: 'Open support' } },
+    body: {
+      es: [
+        { p: 'En cualquier pantalla tienes la burbuja de ayuda abajo a la derecha. La abre y le preguntas en tu idioma; Onyx AI responde al instante usando esta misma guía.' },
+        { h: 'Onyx AI' },
+        { p: 'Es una IA que responde solo con lo que sabe de Onyx: cómo conectar, qué significa una métrica, cómo configurar el Guardian, precios y planes. No inventa: si algo no lo sabe, te lo dice y te pasa con una persona.' },
+        { h: 'Hablar con una persona' },
+        { p: 'Si prefieres a alguien del equipo, abres un ticket desde el Centro de soporte. Te respondemos por correo, y si hay alguien disponible en ese momento, el chat lo indica en vivo.' },
+        { note: 'Aunque no tengas cuenta todavía, puedes preguntar desde la burbuja y dejar tu correo: te contestamos igual.', title: 'También sin cuenta' },
+        { h: 'Antes de escribir' },
+        { p: 'Muchas dudas ya están resueltas aquí en la guía, con el buscador de arriba. Si tu problema es que el EA no sincroniza, mira primero el artículo de instalación: casi siempre es una de cuatro cosas.' },
+      ],
+      en: [
+        { p: 'On any screen you have the help bubble at the bottom right. Open it and ask in your language; Onyx AI answers instantly using this same guide.' },
+        { h: 'Onyx AI' },
+        { p: 'It is an AI that answers only with what it knows about Onyx: how to connect, what a metric means, how to set up the Guardian, prices and plans. It does not make things up: if it does not know, it tells you and hands you to a person.' },
+        { h: 'Talking to a person' },
+        { p: 'If you prefer someone from the team, open a ticket from the Support center. We reply by email, and if someone is available at that moment, the chat shows it live.' },
+        { note: 'Even without an account yet, you can ask from the bubble and leave your email: we reply all the same.', title: 'Also without an account' },
+        { h: 'Before you write' },
+        { p: 'Many questions are already answered here in the guide, with the search at the top. If your problem is the EA not syncing, check the install article first: it is almost always one of four things.' },
+      ],
+    },
+  },
+  {
+    slug: 'programa-embajadores',
+    cat: 'account', icon: '🎁',
+    title: { es: 'Programa de embajadores', en: 'Ambassador program' },
+    summary: {
+      es: 'Gana una comisión recurrente por cada persona que traigas, y dale un descuento a tu gente.',
+      en: 'Earn a recurring commission for everyone you bring, and give your people a discount.',
+    },
+    cta: { href: '/embajadores', label: { es: 'Ver el programa', en: 'See the program' } },
+    body: {
+      es: [
+        { p: 'Si tienes comunidad de traders, puedes convertirte en embajador de Onyx. Recibes un enlace y un cupón: quien se suscriba con él consigue un descuento, y tú cobras una comisión recurrente mientras siga siendo cliente.' },
+        { h: 'Cómo funciona' },
+        { list: [
+          'Solicitas entrar desde la página de embajadores y te aprobamos.',
+          'Compartes tu enlace o tu cupón con tu audiencia.',
+          'Ganas un porcentaje de cada suscripción activa que traigas, mes a mes.',
+        ] },
+        { h: 'Niveles' },
+        { p: 'Empiezas en el nivel base. Cuando superas cierto número de suscriptores activos, subes a Oro y tu porcentaje aumenta. Todo lo ves en tu panel de embajador: clics, registros, activos y cuánto llevas ganado.' },
+        { h: 'Cobros' },
+        { p: 'Las comisiones pasan por un periodo de retención (por si hay reembolsos) y luego quedan disponibles para retirar a partir de un mínimo. Eliges tu método de pago en tu panel.' },
+        { warn: 'Las comisiones se generan solo con suscripciones reales y activas. Los reembolsos y las bajas dentro del periodo de retención no cuentan.' },
+      ],
+      en: [
+        { p: 'If you have a trading community, you can become an Onyx ambassador. You get a link and a coupon: whoever subscribes with it gets a discount, and you earn a recurring commission for as long as they stay a customer.' },
+        { h: 'How it works' },
+        { list: [
+          'You apply from the ambassadors page and we approve you.',
+          'You share your link or coupon with your audience.',
+          'You earn a percentage of every active subscription you bring, month after month.',
+        ] },
+        { h: 'Tiers' },
+        { p: 'You start at the base tier. Once you pass a certain number of active subscribers you move up to Gold and your percentage increases. You see everything in your ambassador panel: clicks, signups, active users and how much you have earned.' },
+        { h: 'Payouts' },
+        { p: 'Commissions go through a hold period (in case of refunds) and then become available to withdraw above a minimum. You choose your payout method in your panel.' },
+        { warn: 'Commissions are generated only from real, active subscriptions. Refunds and cancellations within the hold period do not count.' },
       ],
     },
   },
