@@ -8,6 +8,10 @@ import { LanguageProvider } from '@/lib/lang';
 import { BetaProvider } from '@/lib/beta';
 import BetaBanner from './BetaBanner';
 import { serverBeta } from '@/lib/betaServer';
+import PromoBar from './PromoBar';
+import { getSetting } from '@/lib/settings';
+import { type Promo, PROMO0 } from '@/lib/promo';
+import { headers } from 'next/headers';
 import type { Lang } from '@/lib/navText';
 import { serverLang, localeAlternates } from '@/lib/locale';
 
@@ -49,6 +53,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const lang: Lang = serverLang();
   const beta = serverBeta();
 
+  // Barra de descuentos: solo en páginas públicas (no en dashboard/admin/cuenta).
+  const path = headers().get('x-onyx-path') || '/';
+  const isPublic = !/^\/(dashboard|admin|account|onboarding)/.test(path);
+  const promo = isPublic ? await getSetting<Promo>('promo', PROMO0) : PROMO0;
+  const promoLive = promo.on && (lang === 'es' ? promo.text_es : promo.text_en) && (!promo.endsAt || new Date(promo.endsAt).getTime() > Date.now());
+
   // ¿Hay sesión? La burbuja de soporte se comporta distinto para trader o visitante.
   let loggedIn = false;
   try {
@@ -85,6 +95,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <JsonLd data={graph} />
         <LanguageProvider initial={lang}>
           <BetaProvider initial={beta}>
+            {promoLive && (
+              <PromoBar
+                text={lang === 'es' ? promo.text_es : promo.text_en}
+                cta={lang === 'es' ? promo.cta_es : promo.cta_en}
+                link={promo.link} bg={promo.bg} fg={promo.fg} endsAt={promo.endsAt}
+              />
+            )}
             <BetaBanner />
             <TopBar />
             {children}

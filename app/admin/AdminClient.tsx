@@ -12,13 +12,14 @@ import Backups from './Backups';
 import Audit from './Audit';
 import Optimize from './Optimize';
 import AdminLock from './AdminLock';
+import Revenue from './Revenue';
 import { AREAS, effectivePerms } from '@/lib/perms';
 import { useT } from '@/lib/adminText';
 
 type Plan = { id: string; name: string; name_en: string; desc_es: string | null; desc_en: string | null; price_month: number; price_year: number; stripe_price_id: string | null; stripe_price_id_year: string | null; max_accounts: number; features: string[]; features_en: string[]; badge: string | null; badge_en: string | null; active: boolean; sort: number; capabilities: any };
 type User = { id: string; email: string; plan: string; subscription_status: string | null; banned: boolean; is_admin: boolean; created_at: string; accounts: number; lastSync: string | null };
 type Team = { id: string; email: string; role: string | null; is_admin: boolean; perms?: any; available?: boolean; last_active?: string | null };
-type Tab = 'resumen' | 'usuarios' | 'planes' | 'equipo' | 'embajadores' | 'retencion' | 'pruebas' | 'firms' | 'modulos' | 'soporte' | 'kb' | 'diag' | 'backups' | 'audit' | 'optim' | 'ajustes';
+type Tab = 'resumen' | 'ingresos' | 'usuarios' | 'planes' | 'equipo' | 'embajadores' | 'retencion' | 'pruebas' | 'firms' | 'modulos' | 'soporte' | 'kb' | 'diag' | 'backups' | 'audit' | 'optim' | 'ajustes';
 
 const CAPS: string[] = ['journal', 'compare', 'funding', 'costs', 'export', 'reports', 'telegram', 'manager', 'manager_advanced', 'manager_news'];
 
@@ -32,6 +33,63 @@ function Head({ ic, t, s }: { ic: string; t: string; s: string }) {
   return <div className="tabhead"><div className="th-row"><span className="th-ic">{ic}</span><span className="th-t">{t}</span></div><div className="th-s">{s}</div></div>;
 }
 const initials = (email: string) => (email || '?').replace(/@.*/, '').slice(0, 2).toUpperCase();
+
+// Barra de descuentos del landing: texto ES/EN, enlace, colores, contador.
+function PromoControl() {
+  const t = useT();
+  const [p, setP] = useState<any>(null);
+  const [msg, setMsg] = useState('');
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { fetch('/api/admin/promo').then((r) => r.json()).then((d) => setP(d.promo)).catch(() => {}); }, []);
+  const set = (k: string, v: any) => setP((o: any) => ({ ...o, [k]: v }));
+
+  async function save() {
+    setBusy(true); setMsg('');
+    try {
+      const r = await fetch('/api/admin/promo', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(p) });
+      const d = await r.json();
+      if (!r.ok) setMsg(d.error || 'Error'); else { setP(d.promo); setMsg(t.pr_saved); }
+    } finally { setBusy(false); }
+  }
+
+  if (!p) return null;
+  const inp = { padding: '8px 10px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', width: '100%', marginTop: 4 } as any;
+
+  return (
+    <div className="card" style={{ marginBottom: 12 }}>
+      <div className="row between" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 6 }}>
+        <h3 style={{ margin: 0 }}>📣 {t.pr_title}</h3>
+        <span className="row" style={{ gap: 8 }}>
+          <span className="pill" style={p.on ? { color: '#7fe9c0', background: 'rgba(52,226,160,.15)' } : { color: 'var(--mut)' }}>{p.on ? t.pr_on : t.pr_off}</span>
+          <Toggle on={!!p.on} onClick={() => set('on', !p.on)} />
+        </span>
+      </div>
+      <p className="muted" style={{ fontSize: 13, marginBottom: 10 }}>{t.pr_body}</p>
+
+      {/* Vista previa */}
+      <div style={{ background: p.bg || '#7c8cff', color: p.fg || '#0a0d14', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 600, marginBottom: 12, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+        {(p.text_es || t.pr_ph) + (p.cta_es ? '  ' + p.cta_es + ' →' : '')}
+      </div>
+
+      <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 10 }}>
+        <label className="muted" style={{ fontSize: 12 }}>{t.pr_textEs}<input value={p.text_es} onChange={(e) => set('text_es', e.target.value)} placeholder="−30% en el plan Pro por 48 h" style={inp} /></label>
+        <label className="muted" style={{ fontSize: 12 }}>{t.pr_textEn}<input value={p.text_en} onChange={(e) => set('text_en', e.target.value)} placeholder="−30% on Pro for 48 h" style={inp} /></label>
+        <label className="muted" style={{ fontSize: 12 }}>{t.pr_ctaEs}<input value={p.cta_es} onChange={(e) => set('cta_es', e.target.value)} placeholder="Aprovéchalo" style={inp} /></label>
+        <label className="muted" style={{ fontSize: 12 }}>{t.pr_ctaEn}<input value={p.cta_en} onChange={(e) => set('cta_en', e.target.value)} placeholder="Grab it" style={inp} /></label>
+        <label className="muted" style={{ fontSize: 12 }}>{t.pr_link}<input value={p.link} onChange={(e) => set('link', e.target.value)} placeholder="/pricing" style={inp} /></label>
+        <label className="muted" style={{ fontSize: 12 }}>{t.pr_ends}<input type="datetime-local" value={p.endsAt ? p.endsAt.slice(0, 16) : ''} onChange={(e) => set('endsAt', e.target.value ? new Date(e.target.value).toISOString() : '')} style={inp} /></label>
+        <label className="muted" style={{ fontSize: 12 }}>{t.pr_bg}<input type="color" value={p.bg || '#7c8cff'} onChange={(e) => set('bg', e.target.value)} style={{ ...inp, height: 38, padding: 3 }} /></label>
+        <label className="muted" style={{ fontSize: 12 }}>{t.pr_fg}<input type="color" value={p.fg || '#0a0d14'} onChange={(e) => set('fg', e.target.value)} style={{ ...inp, height: 38, padding: 3 }} /></label>
+      </div>
+
+      <div className="row" style={{ gap: 10, marginTop: 12, alignItems: 'center' }}>
+        <button className="btn btn-primary" onClick={save} disabled={busy}>{busy ? '…' : t.pr_save}</button>
+        {msg && <span style={{ fontSize: 12.5, color: '#7fe9c0' }}>{msg}</span>}
+      </div>
+      <p className="muted" style={{ fontSize: 11.5, marginTop: 10 }}>{t.pr_note}</p>
+    </div>
+  );
+}
 
 // Seguridad: cada admin fija su PIN de bloqueo por inactividad (6 dígitos).
 function SecurityControl({ idleMin }: { idleMin: number }) {
@@ -153,7 +211,7 @@ function BetaControl() {
 export default function AdminClient({ meEmail, role, perms = {}, accounts, trades, hasPin = false, idleMin = 20 }: { meEmail: string; role: string; perms?: Record<string, string>; accounts: number; trades: number; hasPin?: boolean; idleMin?: number }) {
   const t = useT();
   // Qué áreas puede ver este admin (owner ve todo). Mapa tab → área de permiso.
-  const areaOf: Record<string, string> = { resumen: 'resumen', usuarios: 'usuarios', planes: 'planes', equipo: 'equipo', embajadores: 'embajadores', retencion: 'retencion', pruebas: 'diag', firms: 'firms', modulos: 'modulos', soporte: 'soporte', kb: 'soporte', diag: 'diag', backups: 'ajustes', audit: 'ajustes', optim: 'ajustes', ajustes: 'ajustes' };
+  const areaOf: Record<string, string> = { resumen: 'resumen', ingresos: 'planes', usuarios: 'usuarios', planes: 'planes', equipo: 'equipo', embajadores: 'embajadores', retencion: 'retencion', pruebas: 'diag', firms: 'firms', modulos: 'modulos', soporte: 'soporte', kb: 'soporte', diag: 'diag', backups: 'ajustes', audit: 'ajustes', optim: 'ajustes', ajustes: 'ajustes' };
   const canSee = (k: string) => role === 'owner' || (perms[areaOf[k]] && perms[areaOf[k]] !== 'none');
   const [available, setAvailable] = useState(false);
   async function toggleAvail() { const next = !available; setAvailable(next); await fetch('/api/admin/team', { method: 'PATCH', body: JSON.stringify({ available: next }) }); }
@@ -193,7 +251,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
 
   const filtered = users.filter((u) => u.email?.toLowerCase().includes(q.toLowerCase()));
   const NAV_GROUPS: { g: string; items: [Tab, string, string][] }[] = [
-    { g: t.g_op, items: [['resumen', '📊', t.nav_resumen], ['usuarios', '👥', t.nav_usuarios], ['soporte', '🎫', t.nav_soporte], ['equipo', '🛡️', t.nav_equipo]] },
+    { g: t.g_op, items: [['resumen', '📊', t.nav_resumen], ['ingresos', '💰', t.nav_ingresos], ['usuarios', '👥', t.nav_usuarios], ['soporte', '🎫', t.nav_soporte], ['equipo', '🛡️', t.nav_equipo]] },
     { g: t.g_prod, items: [['planes', '💳', t.nav_planes], ['modulos', '🧩', t.nav_modulos], ['firms', '🏛️', t.nav_firms]] },
     { g: t.g_growth, items: [['embajadores', '🎁', t.nav_embajadores], ['retencion', '🛟', t.nav_retencion]] },
     { g: t.g_sys, items: [['kb', '🧠', t.nav_kb], ['diag', '🩺', t.nav_diag], ['backups', '🗄️', t.nav_backups], ['audit', '📈', t.nav_audit], ['optim', '🚀', t.nav_optim], ['pruebas', '🧪', t.nav_pruebas], ['ajustes', '⚙️', t.nav_ajustes]] },
@@ -321,6 +379,8 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
             {tab === 'pruebas' && <TestConsole meEmail={meEmail} />}
             {tab === 'firms' && <Firms />}
 
+            {tab === 'ingresos' && <Revenue />}
+
             {tab === 'modulos' && <Modules />}
 
             {tab === 'soporte' && <SupportInbox />}
@@ -349,6 +409,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                   <p className="muted" style={{ fontSize: 13.5, marginBottom: 8 }}>{t.a_rolesBody}</p>
                   <p className="muted" style={{ fontSize: 13 }}>{t.a_rolesEnv}</p>
                 </div>
+                <PromoControl />
                 <SecurityControl idleMin={idleMin} />
                 <BetaControl />
               </div>

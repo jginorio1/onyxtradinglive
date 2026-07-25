@@ -9,7 +9,8 @@ const ES = {
   // Menú lateral
   brand: 'Onyx Admin',
   g_op: 'Operación', g_prod: 'Producto', g_growth: 'Crecimiento', g_sys: 'Sistema',
-  nav_resumen: 'Resumen', nav_usuarios: 'Usuarios', nav_soporte: 'Soporte', nav_equipo: 'Equipo',
+  nav_resumen: 'Resumen', nav_ingresos: 'Ingresos', nav_usuarios: 'Usuarios', nav_soporte: 'Soporte', nav_equipo: 'Equipo',
+  h_ingresos_s: 'Tu dinero en vivo desde Stripe: MRR, cobros y pagos fallidos.',
   nav_planes: 'Planes', nav_modulos: 'Módulos', nav_firms: 'Prop firms',
   nav_embajadores: 'Embajadores', nav_retencion: 'Retención',
   nav_kb: 'Base IA', nav_diag: 'Diagnóstico', nav_backups: 'Copias', nav_audit: 'Auditoría', nav_optim: 'Optimización', nav_pruebas: 'Pruebas', nav_ajustes: 'Ajustes',
@@ -92,6 +93,15 @@ const ES = {
   a_yourRole: 'Tu rol', a_rolesTitle: 'Cómo funcionan los roles',
   a_rolesBody: 'El Owner controla planes, usuarios y equipo. Los Admin gestionan usuarios y planes. El Soporte solo consulta y ayuda.',
   a_rolesEnv: 'Los correos de ADMIN_EMAILS en Vercel siempre entran como Owner. Puedes añadir más administradores desde la pestaña Equipo.',
+
+  // Barra de descuentos (landing)
+  pr_title: 'Barra de descuentos', pr_on: 'Visible', pr_off: 'Oculta',
+  pr_body: 'Tira animada arriba del landing para anunciar promos. Con contador si pones fecha de fin.',
+  pr_ph: 'Tu anuncio aquí…',
+  pr_textEs: 'Texto (ES)', pr_textEn: 'Texto (EN)', pr_ctaEs: 'Botón (ES)', pr_ctaEn: 'Botón (EN)',
+  pr_link: 'Enlace al hacer clic', pr_ends: 'Termina (opcional, activa el contador)',
+  pr_bg: 'Color de fondo', pr_fg: 'Color del texto', pr_save: 'Guardar barra', pr_saved: 'Barra guardada.',
+  pr_note: 'Se muestra solo en páginas públicas, no en el panel ni el dashboard. Al pasar la fecha de fin desaparece sola.',
 
   // Seguridad (bloqueo por inactividad + PIN)
   sec_title: 'Bloqueo por inactividad', sec_on: 'PIN activo', sec_off: 'Sin PIN',
@@ -206,7 +216,8 @@ type Dict = typeof ES;
 const EN: Dict = {
   brand: 'Onyx Admin',
   g_op: 'Operations', g_prod: 'Product', g_growth: 'Growth', g_sys: 'System',
-  nav_resumen: 'Overview', nav_usuarios: 'Users', nav_soporte: 'Support', nav_equipo: 'Team',
+  nav_resumen: 'Overview', nav_ingresos: 'Revenue', nav_usuarios: 'Users', nav_soporte: 'Support', nav_equipo: 'Team',
+  h_ingresos_s: 'Your money live from Stripe: MRR, charges and failed payments.',
   nav_planes: 'Plans', nav_modulos: 'Modules', nav_firms: 'Prop firms',
   nav_embajadores: 'Ambassadors', nav_retencion: 'Retention',
   nav_kb: 'AI Base', nav_diag: 'Diagnostics', nav_backups: 'Backups', nav_audit: 'Audit', nav_optim: 'Optimization', nav_pruebas: 'Tests', nav_ajustes: 'Settings',
@@ -282,6 +293,15 @@ const EN: Dict = {
   a_yourRole: 'Your role', a_rolesTitle: 'How roles work',
   a_rolesBody: 'The Owner controls plans, users and team. Admins manage users and plans. Support only views and helps.',
   a_rolesEnv: 'Emails in ADMIN_EMAILS on Vercel always come in as Owner. You can add more admins from the Team tab.',
+
+  // Discount bar (landing)
+  pr_title: 'Discount bar', pr_on: 'Visible', pr_off: 'Hidden',
+  pr_body: 'Animated strip at the top of the landing to announce promos. With a countdown if you set an end date.',
+  pr_ph: 'Your announcement here…',
+  pr_textEs: 'Text (ES)', pr_textEn: 'Text (EN)', pr_ctaEs: 'Button (ES)', pr_ctaEn: 'Button (EN)',
+  pr_link: 'Link on click', pr_ends: 'Ends (optional, enables countdown)',
+  pr_bg: 'Background color', pr_fg: 'Text color', pr_save: 'Save bar', pr_saved: 'Bar saved.',
+  pr_note: 'Shows only on public pages, not in the panel or dashboard. It disappears on its own after the end date.',
 
   // Security (inactivity lock + PIN)
   sec_title: 'Inactivity lock', sec_on: 'PIN active', sec_off: 'No PIN',

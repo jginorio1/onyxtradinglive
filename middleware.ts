@@ -19,6 +19,7 @@ export async function middleware(req: NextRequest) {
 
   const fwd = new Headers(req.headers);
   if (isEn) fwd.set('x-onyx-lang', 'en');
+  fwd.set('x-onyx-path', path);   // para que el layout sepa en qué página está (barra de promo)
 
   let res: NextResponse;
   if (isEn) {
