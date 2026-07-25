@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { makeLinkCode, BOT_USERNAME, telegramEnabled, sendMessage } from '@/lib/telegram';
+import { makeLinkCode, BOT_USERNAME, telegramEnabled, sendMessage, sendPhoto, sendDocument } from '@/lib/telegram';
+import { computeTraderReport, traderCsv, traderChartUrl, traderPdf } from '@/lib/traderReport';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -72,6 +73,32 @@ export async function POST(req: Request) {
       const ok = await sendMessage(p.telegram_chat_id,
         '✅ Onyx Guardian\nEsto es un mensaje de prueba. Si lo ves, tus avisos están funcionando.');
       return NextResponse.json({ ok });
+    }
+
+    // Enviar un reporte de rendimiento de prueba (texto + gráfico + PDF + CSV)
+    if (b.action === 'report_test') {
+      const { data: p } = await supabaseAdmin.from('profiles')
+        .select('telegram_chat_id,full_name,plan').eq('id', user.id).maybeSingle() as any;
+      if (!p?.telegram_chat_id) return NextResponse.json({ error: 'Telegram no está vinculado.', code: 'not_linked' }, { status: 400 });
+      const { data: pl } = await supabaseAdmin.from('plans').select('capabilities').eq('id', p.plan || 'free').maybeSingle();
+      if (!pl?.capabilities?.telegram) return NextResponse.json({ error: 'Tu plan no incluye Telegram.', code: 'no_plan' }, { status: 403 });
+
+      const fromISO = new Date(Date.now() - 7 * 86400000).toISOString();
+      const toISO = new Date().toISOString();
+      const rep = await computeTraderReport(supabaseAdmin, user.id, fromISO, toISO);
+      const cur = rep.currency;
+      const okMsg = await sendMessage(p.telegram_chat_id,
+        `📊 <b>Reporte de prueba · últimos 7 días</b>\n\n`
+        + `Resultado neto: <b>${cur} ${rep.netTotal.toFixed(2)}</b>\n`
+        + `Operaciones: ${rep.total}\nAciertos: ${rep.winRate}%\nFactor de beneficio: ${rep.pf}`,
+        { kind: 'report', userId: user.id });
+      let photo = false, pdf = false, csv = false;
+      if (rep.total > 0) {
+        try { photo = await sendPhoto(p.telegram_chat_id, traderChartUrl(rep, true), 'Neto por instrumento'); } catch {}
+        try { const bytes = await traderPdf(rep, { name: p.full_name || '', from: fromISO.slice(0, 10), to: toISO.slice(0, 10), es: true }); pdf = await sendDocument(p.telegram_chat_id, 'onyx-reporte.pdf', bytes, 'application/pdf', 'Tu reporte en PDF'); } catch {}
+        try { csv = await sendDocument(p.telegram_chat_id, 'onyx-operaciones.csv', traderCsv(rep), 'text/csv', 'Tus operaciones (CSV)'); } catch {}
+      }
+      return NextResponse.json({ ok: okMsg, photo, pdf, csv, trades: rep.total });
     }
 
     // Guardar preferencias de alertas

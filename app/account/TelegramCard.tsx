@@ -39,9 +39,11 @@ const T: any = {
     reportHint: 'Recibe tu resumen, tu gráfico, tu PDF y tu CSV de operaciones directo en Telegram.',
     off: 'Los avisos generales están apagados. Enciéndelos arriba para recibir nada por Telegram.',
     saved: 'Guardado', test: 'Enviar prueba', testOk: 'Enviado ✓', testSending: '...',
+    rtestBtn: '📤 Enviarme un reporte de prueba ahora', rtestSending: 'Enviando…', rtestOk: '✓ Enviado a tu Telegram', rtestEmpty: 'Enviado, pero no tienes operaciones esta semana.',
     cmdsT: 'Comandos del bot',
     cmdEstado: 'Resumen de tus últimas 24h, sin abrir la web.',
-    cmdInforme: '/informe · tu resumen de la semana al momento.',
+    cmdInforme: 'Reporte de la semana con gráfico, PDF y CSV.',
+    cmdMes: 'Reporte del mes con gráfico, PDF y CSV.',
     cmdStop: 'Deja de recibir avisos. Los reactivas desde aquí.',
     cmdExample: 'ASÍ SE VE EN TELEGRAM',
     cmdMsgT: 'Últimas 24h', cmdMsg1: 'Operaciones: 3', cmdMsg2: 'Resultado: +$182.40', cmdMsg3: 'El Guardian te frenó: 1 vez',
@@ -75,9 +77,11 @@ const T: any = {
     reportHint: 'Get your summary, chart, PDF and trades CSV straight to Telegram.',
     off: 'General alerts are off. Turn them on above to receive anything on Telegram.',
     saved: 'Saved', test: 'Send a test', testOk: 'Sent ✓', testSending: '...',
+    rtestBtn: '📤 Send me a test report now', rtestSending: 'Sending…', rtestOk: '✓ Sent to your Telegram', rtestEmpty: 'Sent, but you have no trades this week.',
     cmdsT: 'Bot commands',
     cmdEstado: 'A summary of your last 24h, without opening the web.',
-    cmdInforme: '/report · your week summary on demand.',
+    cmdInforme: 'Week report with chart, PDF and CSV.',
+    cmdMes: 'Month report with chart, PDF and CSV.',
     cmdStop: 'Stop receiving alerts. Turn them back on here.',
     cmdExample: 'THIS IS HOW IT LOOKS ON TELEGRAM',
     cmdMsgT: 'Last 24h', cmdMsg1: 'Trades: 3', cmdMsg2: 'Result: +$182.40', cmdMsg3: 'The Guardian stopped you: 1 time',
@@ -141,6 +145,17 @@ export default function TelegramCard({ lang }: { lang: 'es' | 'en' }) {
     const r = await fetch('/api/account/telegram', { method: 'POST', body: JSON.stringify({ action: 'test' }) });
     setTested(r.ok ? 'ok' : ''); setTimeout(() => setTested(''), 2500);
   }
+  const [rtest, setRtest] = useState('');
+  async function sendReportTest() {
+    setRtest('sending');
+    try {
+      const r = await fetch('/api/account/telegram', { method: 'POST', body: JSON.stringify({ action: 'report_test' }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { setRtest('err:' + (j.error || 'Error')); return; }
+      setRtest(j.trades > 0 ? 'ok' : 'empty');
+    } catch { setRtest('err'); }
+    setTimeout(() => setRtest(''), 6000);
+  }
 
   if (!d) return <div className="muted" style={{ fontSize: 13 }}>…</div>;
 
@@ -196,6 +211,15 @@ export default function TelegramCard({ lang }: { lang: 'es' | 'en' }) {
           </div>
           <div className="muted" style={{ fontSize: 11.5, marginTop: 4 }}>{t.reportHint}</div>
 
+          <div style={{ marginTop: 12 }}>
+            <button className="btn btn-primary" style={{ fontSize: 13 }} onClick={sendReportTest} disabled={rtest === 'sending'}>
+              {rtest === 'sending' ? t.rtestSending : t.rtestBtn}
+            </button>
+            {rtest === 'ok' && <div style={{ color: 'var(--green)', fontSize: 12.5, marginTop: 8 }}>{t.rtestOk}</div>}
+            {rtest === 'empty' && <div className="muted" style={{ fontSize: 12.5, marginTop: 8 }}>{t.rtestEmpty}</div>}
+            {rtest.startsWith('err') && <div style={{ color: 'var(--red)', fontSize: 12.5, marginTop: 8 }}>{rtest.slice(4) || 'Error'}</div>}
+          </div>
+
           <div className="row" style={{ gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
             <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={sendTest} disabled={tested === 'sending'}>
               {tested === 'ok' ? t.testOk : tested === 'sending' ? t.testSending : t.test}
@@ -211,8 +235,12 @@ export default function TelegramCard({ lang }: { lang: 'es' | 'en' }) {
               <span className="muted" style={{ fontSize: 13 }}>{t.cmdEstado}</span>
             </div>
             <div className="row" style={{ gap: 8, marginBottom: 8, alignItems: 'flex-start' }}>
-              <code style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 7, padding: '3px 9px', color: '#aeb7ff', fontSize: 13, flex: 'none' }}>/informe</code>
+              <code style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 7, padding: '3px 9px', color: '#aeb7ff', fontSize: 13, flex: 'none' }}>/report</code>
               <span className="muted" style={{ fontSize: 13 }}>{t.cmdInforme}</span>
+            </div>
+            <div className="row" style={{ gap: 8, marginBottom: 8, alignItems: 'flex-start' }}>
+              <code style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 7, padding: '3px 9px', color: '#aeb7ff', fontSize: 13, flex: 'none' }}>/mes</code>
+              <span className="muted" style={{ fontSize: 13 }}>{t.cmdMes}</span>
             </div>
             <div className="row" style={{ gap: 8, marginBottom: 14, alignItems: 'flex-start' }}>
               <code style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 7, padding: '3px 9px', color: '#aeb7ff', fontSize: 13, flex: 'none' }}>/stop</code>
