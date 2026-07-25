@@ -421,6 +421,14 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
   const [log, setLog] = useState<any[]>([]);
   const [logMember, setLogMember] = useState('');
   const [logTopic, setLogTopic] = useState('all');
+  const [logFrom, setLogFrom] = useState('');
+  const [logTo, setLogTo] = useState('');
+  const [logAll, setLogAll] = useState(false);
+  function logQuick(days: number | null) {
+    if (days === null) { setLogFrom(''); setLogTo(''); return; }
+    setLogFrom(new Date(Date.now() - days * 86400000).toISOString().slice(0, 10));
+    setLogTo(new Date().toISOString().slice(0, 10));
+  }
 
   async function add() { if (!email) return; setBusy(true); const r = await fetch('/api/admin/team', { method: 'POST', body: JSON.stringify({ email, role: newRole }) }); const j = await r.json(); setBusy(false); if (!r.ok) { alert(j.error || 'error'); return; } setEmail(''); reload(); }
   async function changeRole(id: string, r2: string) { const r = await fetch('/api/admin/team', { method: 'PATCH', body: JSON.stringify({ id, role: r2 }) }); const j = await r.json(); if (!r.ok) { alert(j.error || 'error'); return; } reload(); }
@@ -495,9 +503,20 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
         )}
       </div>
 
-      {/* Registro de actividad: filtro por tema y por miembro */}
+      {/* Registro de actividad: filtro por fecha, tema y miembro */}
       <div className="card">
         <h3 style={{ marginBottom: 10 }}>🕘 {t.t_activity}</h3>
+        <div className="row" style={{ gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 10 }}>
+          <div><label className="muted" style={{ fontSize: 11.5, display: 'block' }}>{t.t_from}</label>
+            <input type="date" value={logFrom} onChange={(e) => { setLogFrom(e.target.value); setLogAll(true); }} style={{ width: 150, marginTop: 3 }} /></div>
+          <div><label className="muted" style={{ fontSize: 11.5, display: 'block' }}>{t.t_to}</label>
+            <input type="date" value={logTo} onChange={(e) => { setLogTo(e.target.value); setLogAll(true); }} style={{ width: 150, marginTop: 3 }} /></div>
+          <div className="row" style={{ gap: 6, marginLeft: 'auto' }}>
+            <button className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: 12 }} onClick={() => { logQuick(1); setLogAll(true); }}>{t.t_today}</button>
+            <button className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: 12 }} onClick={() => { logQuick(7); setLogAll(true); }}>{t.q7}</button>
+            <button className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: 12 }} onClick={() => { logQuick(null); setLogAll(false); }}>{t.qAll}</button>
+          </div>
+        </div>
         <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
           {LOG_TOPICS.map(([k, label, ic]) => {
             const n = k === 'all' ? log.length : log.filter((e) => topicOf(e.action) === k).length;
@@ -511,17 +530,34 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
           {team.map((m) => <button key={m.id} className={'segbtn' + (logMember === m.email ? ' on-view' : '')} style={{ background: logMember === m.email ? undefined : 'var(--card2)', padding: '4px 10px', fontSize: 12 }} onClick={() => loadLog(m.email)}>{m.email.split('@')[0]}</button>)}
         </div>
         {(() => {
-          const shown = log.filter((e) => logTopic === 'all' || topicOf(e.action) === logTopic);
-          if (!shown.length) return <p className="muted" style={{ fontSize: 14 }}>{t.t_noActivityTopic}</p>;
-          return shown.map((e, i) => {
-            const tp = topicOf(e.action);
-            return (
-              <div key={i} className="row between" style={{ borderTop: i ? '1px solid var(--line)' : 'none', padding: '8px 0', fontSize: 13, flexWrap: 'wrap', gap: 6 }}>
-                <span className="row" style={{ gap: 8 }}><span style={{ width: 18, textAlign: 'center' }}>{topicIcon[tp]}</span><span><b>{e.admin_email?.split('@')[0]}</b> · {e.action} <span className="muted">{e.target ? String(e.target).slice(0, 24) : ''}</span></span></span>
-                <span className="muted" style={{ fontSize: 12 }}>{new Date(e.created_at).toLocaleString()}</span>
-              </div>
-            );
+          const fromMs = logFrom ? new Date(logFrom + 'T00:00:00').getTime() : -Infinity;
+          const toMs = logTo ? new Date(logTo + 'T23:59:59').getTime() : Infinity;
+          const matched = log.filter((e) => {
+            if (logTopic !== 'all' && topicOf(e.action) !== logTopic) return false;
+            const m = new Date(e.created_at).getTime();
+            return m >= fromMs && m <= toMs;
           });
+          if (!matched.length) return <p className="muted" style={{ fontSize: 14 }}>{t.t_noActivityTopic}</p>;
+          const shown = logAll ? matched : matched.slice(0, 8);
+          const hidden = matched.length - shown.length;
+          return (
+            <>
+              {shown.map((e, i) => {
+                const tp = topicOf(e.action);
+                return (
+                  <div key={i} className="row between" style={{ borderTop: i ? '1px solid var(--line)' : 'none', padding: '8px 0', fontSize: 13, flexWrap: 'wrap', gap: 6 }}>
+                    <span className="row" style={{ gap: 8 }}><span style={{ width: 18, textAlign: 'center' }}>{topicIcon[tp]}</span><span><b>{e.admin_email?.split('@')[0]}</b> · {e.action} <span className="muted">{e.target ? String(e.target).slice(0, 24) : ''}</span></span></span>
+                    <span className="muted" style={{ fontSize: 12 }}>{new Date(e.created_at).toLocaleString()}</span>
+                  </div>
+                );
+              })}
+              {(hidden > 0 || (logAll && matched.length > 8)) && (
+                <button className="btn btn-ghost" style={{ width: '100%', marginTop: 10, fontSize: 12.5, color: 'var(--mut)' }} onClick={() => setLogAll(!logAll)}>
+                  {logAll ? `▲ ${t.t_showLess}` : `▼ ${t.t_showMore.replace('{n}', String(hidden))}`}
+                </button>
+              )}
+            </>
+          );
         })()}
       </div>
     </>
