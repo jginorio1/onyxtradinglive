@@ -11,30 +11,19 @@ jobs:
     steps:
       - name: Instalar herramientas
         run: |
-          set -e
           sudo apt-get update -qq
-          sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
-          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
-          sudo apt-get update -qq
-          sudo apt-get install -y postgresql-client-17
+          sudo apt-get install -y postgresql-client
           pip install --quiet b2
 
       - name: Volcado de la base de datos
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          set -euo pipefail
-          PGDUMP=$(ls -1 /usr/lib/postgresql/*/bin/pg_dump 2>/dev/null | sort -V | tail -n1)
-          PGDUMP=${PGDUMP:-pg_dump}
-          echo "Usando: $PGDUMP"; "$PGDUMP" --version
           STAMP=$(date +%Y%m%d-%H%M)
           FILE="onyx-backup-$STAMP.sql.gz"
-          "$PGDUMP" "$DATABASE_URL" --no-owner --no-privileges | gzip > "$FILE"
-          SIZE=$(stat -c%s "$FILE")
-          echo "Tamaño del volcado: $SIZE bytes"
-          if [ "$SIZE" -lt 1000 ]; then echo "::error::Volcado vacío"; exit 1; fi
+          pg_dump "$DATABASE_URL" --no-owner --no-privileges | gzip > "$FILE"
           echo "FILE=$FILE" >> "$GITHUB_ENV"
-          echo "SIZE=$SIZE" >> "$GITHUB_ENV"
+          echo "SIZE=$(stat -c%s "$FILE")" >> "$GITHUB_ENV"
 
       - name: Subir a Backblaze B2
         env:
@@ -46,7 +35,8 @@ jobs:
           b2 file upload "${{ secrets.B2_BUCKET }}" "$FILE" "backups/$FILE" \
             || b2 upload-file "${{ secrets.B2_BUCKET }}" "$FILE" "backups/$FILE"
 
-      - name: Avisar a la app
+      - name: Avisar a la app (estado en el panel)
+        if: always()
         env:
           APP_URL: ${{ secrets.APP_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
@@ -54,4 +44,4 @@ jobs:
           curl -s -X POST "$APP_URL/api/admin/backup" \
             -H "x-cron-secret: $CRON_SECRET" \
             -H "content-type: application/json" \
-            -d "{\"size\": ${SIZE:-0}, \"dest\": \"Backblaze B2\"}" || true
+            -d "{\"size\": ${SIZE:-0}, \"dest\": \"Backblaze B2\", \"file\": \"${FILE:-}\"}" || true
