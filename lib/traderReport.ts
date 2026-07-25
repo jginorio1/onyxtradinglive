@@ -78,11 +78,14 @@ export async function traderPdf(rep: TraderReport, opts: { name: string; from: s
   const dark = rgb(0.06, 0.075, 0.14);
   const gray = rgb(0.42, 0.45, 0.5);
   let y = 800;
-  const text = (s: string, x: number, size: number, f = font, color = dark) => { page.drawText(s, { x, y, size, font: f, color }); };
+  // La fuente estándar solo dibuja WinAnsi; limpiamos cualquier carácter fuera
+  // de ese rango (flechas, emojis…) para que nunca falle el PDF.
+  const clean = (s: string) => String(s).replace(/[^\x00-\xFF]/g, '-');
+  const text = (s: string, x: number, size: number, f = font, color = dark) => { page.drawText(clean(s), { x, y, size, font: f, color }); };
 
   text('Onyx Trading Live', 40, 14, bold, brand); y -= 26;
   text(es ? 'Reporte de rendimiento' : 'Performance report', 40, 20, bold); y -= 18;
-  text(`${es ? 'Período' : 'Period'}: ${opts.from} → ${opts.to}   ·   ${opts.name}`, 40, 10, font, gray); y -= 24;
+  text(`${es ? 'Periodo' : 'Period'}: ${opts.from} - ${opts.to}   ·   ${opts.name}`, 40, 10, font, gray); y -= 24;
   page.drawLine({ start: { x: 40, y }, end: { x: 555, y }, thickness: 1, color: brand }); y -= 24;
 
   const cur = rep.currency;
