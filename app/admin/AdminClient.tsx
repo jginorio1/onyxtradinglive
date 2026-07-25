@@ -212,7 +212,9 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
   const t = useT();
   // Qué áreas puede ver este admin (owner ve todo). Mapa tab → área de permiso.
   const areaOf: Record<string, string> = { resumen: 'resumen', ingresos: 'planes', usuarios: 'usuarios', planes: 'planes', equipo: 'equipo', embajadores: 'embajadores', retencion: 'retencion', pruebas: 'diag', firms: 'firms', modulos: 'modulos', soporte: 'soporte', kb: 'soporte', diag: 'diag', backups: 'ajustes', audit: 'ajustes', optim: 'ajustes', ajustes: 'ajustes' };
-  const canSee = (k: string) => role === 'owner' || (perms[areaOf[k]] && perms[areaOf[k]] !== 'none');
+  // Ajustes siempre visible: cada admin/empleado necesita entrar a fijar su PIN
+  // de bloqueo. Dentro, lo del Owner (roles, promo, beta) se muestra solo a él.
+  const canSee = (k: string) => k === 'ajustes' || role === 'owner' || (perms[areaOf[k]] && perms[areaOf[k]] !== 'none');
   const [available, setAvailable] = useState(false);
   async function toggleAvail() { const next = !available; setAvailable(next); await fetch('/api/admin/team', { method: 'PATCH', body: JSON.stringify({ available: next }) }); }
   // El tab vive en la URL (#soporte) para que el refresh te deje donde estabas.
@@ -404,14 +406,21 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                     <span className="pill" style={{ color: roleColor(role), background: 'rgba(124,140,255,.12)' }}>{(t as any)['role_' + role] || role}</span>
                   </div>
                 </div>
-                <div className="card" style={{ marginBottom: 12 }}>
-                  <h3 style={{ marginBottom: 6 }}>{t.a_rolesTitle}</h3>
-                  <p className="muted" style={{ fontSize: 13.5, marginBottom: 8 }}>{t.a_rolesBody}</p>
-                  <p className="muted" style={{ fontSize: 13 }}>{t.a_rolesEnv}</p>
-                </div>
-                <PromoControl />
+                {/* Tu seguridad personal: visible para todo admin/empleado. */}
                 <SecurityControl idleMin={idleMin} />
-                <BetaControl />
+
+                {/* Solo el Owner: roles, barra de descuentos y modo beta. */}
+                {role === 'owner' && (
+                  <>
+                    <div className="card" style={{ marginBottom: 12 }}>
+                      <h3 style={{ marginBottom: 6 }}>{t.a_rolesTitle}</h3>
+                      <p className="muted" style={{ fontSize: 13.5, marginBottom: 8 }}>{t.a_rolesBody}</p>
+                      <p className="muted" style={{ fontSize: 13 }}>{t.a_rolesEnv}</p>
+                    </div>
+                    <PromoControl />
+                    <BetaControl />
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -531,13 +540,23 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
   const [logFrom, setLogFrom] = useState('');
   const [logTo, setLogTo] = useState('');
   const [logAll, setLogAll] = useState(false);
+  const [secPins, setSecPins] = useState<string[]>([]);      // ids de miembros con PIN (owner)
+  const [pinEditId, setPinEditId] = useState('');
+  const [pinVal, setPinVal] = useState('');
+  const loadSec = () => fetch('/api/admin/security').then((r) => r.json()).then((d) => setSecPins(d.managed || [])).catch(() => {});
+  useEffect(() => { if (canManage) loadSec(); }, []);
+  async function assignPin(memberId: string, pin: string) {
+    const r = await fetch('/api/admin/security', { method: 'PATCH', body: JSON.stringify({ userId: memberId, pin }) });
+    const j = await r.json(); if (!r.ok) { alert(j.error || 'error'); return; }
+    setPinEditId(''); setPinVal(''); loadSec();
+  }
   function logQuick(days: number | null) {
     if (days === null) { setLogFrom(''); setLogTo(''); return; }
     setLogFrom(new Date(Date.now() - days * 86400000).toISOString().slice(0, 10));
     setLogTo(new Date().toISOString().slice(0, 10));
   }
 
-  async function add() { if (!email) return; setBusy(true); const r = await fetch('/api/admin/team', { method: 'POST', body: JSON.stringify({ email, role: newRole }) }); const j = await r.json(); setBusy(false); if (!r.ok) { alert(j.error || 'error'); return; } setEmail(''); reload(); }
+  async function add() { if (!email) return; setBusy(true); const r = await fetch('/api/admin/team', { method: 'POST', body: JSON.stringify({ email, role: newRole }) }); const j = await r.json(); setBusy(false); if (!r.ok) { alert(j.error || 'error'); return; } setEmail(''); reload(); loadSec(); if (j.tempPin) alert((j.emailed ? t.t_addedEmailed : t.t_addedNoMail).replace('{pin}', j.tempPin)); }
   async function changeRole(id: string, r2: string) { const r = await fetch('/api/admin/team', { method: 'PATCH', body: JSON.stringify({ id, role: r2 }) }); const j = await r.json(); if (!r.ok) { alert(j.error || 'error'); return; } reload(); }
   async function savePerm(id: string, area: string, level: string, current: any) { const perms = { ...(current || {}), [area]: level }; const r = await fetch('/api/admin/team', { method: 'PATCH', body: JSON.stringify({ id, perms }) }); const j = await r.json(); if (!r.ok) { alert(j.error || 'error'); return; } reload(); }
   async function remove(id: string) { if (!confirm('¿Quitar acceso de administrador a esta persona?')) return; const r = await fetch('/api/admin/team', { method: 'DELETE', body: JSON.stringify({ id }) }); const j = await r.json(); if (!r.ok) { alert(j.error || 'error'); return; } reload(); }
@@ -568,6 +587,7 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
                   </select>
                 ) : <span className="pill" style={{ color: roleColor(m.role), background: 'rgba(124,140,255,.12)' }}>{(t as any)['role_' + (m.role || 'admin')]}</span>}
                 {canManage && m.role !== 'owner' && <button className="btn btn-ghost" style={{ padding: '4px 9px', fontSize: 12 }} onClick={() => setEditId(editId === m.id ? '' : m.id)}>{editId === m.id ? t.t_close : t.t_perms}</button>}
+                {canManage && <button className="btn btn-ghost" style={{ padding: '4px 9px', fontSize: 12 }} onClick={() => { setPinEditId(pinEditId === m.id ? '' : m.id); setPinVal(''); }}>🔒 {secPins.includes(m.id) ? t.t_pinSet : t.t_pinAssign}</button>}
                 {canManage && m.role !== 'owner' && m.email !== meEmail && <button className="btn btn-danger" style={{ padding: '4px 9px', fontSize: 12 }} onClick={() => remove(m.id)}>{t.t_remove}</button>}
               </div>
             </div>
@@ -591,6 +611,19 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
                     </div>
                   );
                 })}
+              </div>
+            )}
+
+            {pinEditId === m.id && canManage && (
+              <div style={{ marginTop: 12, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 12, padding: 12 }}>
+                <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>🔒 {t.t_pinTitle} — {secPins.includes(m.id) ? <span style={{ color: '#7fe9c0' }}>{t.t_pinHas}</span> : t.t_pinNone}</div>
+                <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+                  <input value={pinVal} onChange={(e) => setPinVal(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="••••••" inputMode="numeric" maxLength={6}
+                    style={{ width: 120, letterSpacing: 4, textAlign: 'center', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--tx)' }} />
+                  <button className="btn btn-primary" style={{ padding: '6px 12px' }} disabled={pinVal.length !== 6} onClick={() => assignPin(m.id, pinVal)}>{t.t_pinAssignBtn}</button>
+                  {secPins.includes(m.id) && <button className="btn btn-ghost" style={{ padding: '6px 12px' }} onClick={() => assignPin(m.id, '')}>{t.t_pinReset}</button>}
+                </div>
+                <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>{t.t_pinHint}</div>
               </div>
             )}
           </div>

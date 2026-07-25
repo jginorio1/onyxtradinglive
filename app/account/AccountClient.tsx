@@ -359,6 +359,47 @@ export default function AccountClient({ email }: { email: string }) {
   );
 }
 
+// Tarjeta de PIN de bloqueo: se muestra solo si el usuario es admin/equipo
+// (si la API responde 403, se oculta sola). Aquí el empleado cambia su PIN.
+function LockPinCard({ lang }: { lang: Lang }) {
+  const es = lang === 'es';
+  const [show, setShow] = useState(false);
+  const [hasPin, setHasPin] = useState(false);
+  const [pin, setPin] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [ok, setOk] = useState('');
+  useEffect(() => {
+    fetch('/api/admin/security').then((r) => r.ok ? r.json() : null).then((d) => { if (d) { setShow(true); setHasPin(!!d.hasPin); } }).catch(() => {});
+  }, []);
+  async function save(clear = false) {
+    setBusy(true); setOk('');
+    try {
+      const r = await fetch('/api/admin/security', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pin: clear ? '' : pin }) });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok) { setPin(''); setHasPin(!clear); setOk(es ? 'PIN actualizado.' : 'PIN updated.'); setTimeout(() => setOk(''), 3000); }
+      else alert(d.error || 'Error');
+    } finally { setBusy(false); }
+  }
+  if (!show) return null;
+  const lbl = { fontSize: 12, color: 'var(--mut)', marginTop: 10, display: 'block' } as any;
+  return (
+    <div className="card" style={{ maxWidth: 480, marginBottom: 14 }}>
+      <div className="row between" style={{ flexWrap: 'wrap', gap: 8 }}>
+        <h3 style={{ margin: 0 }}>🔒 {es ? 'PIN de bloqueo del panel' : 'Panel lock PIN'}</h3>
+        <span className="pill" style={hasPin ? { color: '#7fe9c0', background: 'rgba(52,226,160,.15)' } : { color: 'var(--mut)' }}>{hasPin ? (es ? 'Activo' : 'Active') : (es ? 'Sin PIN' : 'No PIN')}</span>
+      </div>
+      <p className="muted" style={{ fontSize: 13, marginTop: 6 }}>{es ? 'Es el PIN de 6 dígitos con el que reentras al panel de administración tras un rato inactivo.' : 'The 6-digit PIN you use to re-enter the admin panel after being idle.'}</p>
+      <span style={lbl}>{es ? 'Nuevo PIN (6 dígitos)' : 'New PIN (6 digits)'}</span>
+      <input value={pin} inputMode="numeric" maxLength={6} onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="••••••" style={{ margin: '4px 0 0', letterSpacing: 4, maxWidth: 160 }} />
+      <div className="row" style={{ gap: 10, marginTop: 14 }}>
+        <button className="btn btn-primary" onClick={() => save(false)} disabled={busy || pin.length !== 6}>{busy ? '...' : (es ? 'Guardar PIN' : 'Save PIN')}</button>
+        {hasPin && <button className="btn btn-ghost" onClick={() => save(true)} disabled={busy}>{es ? 'Quitar' : 'Remove'}</button>}
+        {ok && <span style={{ color: 'var(--green)', fontSize: 13 }}>{ok}</span>}
+      </div>
+    </div>
+  );
+}
+
 function Security({ L, lang }: { L: any; lang: Lang }) {
   const [pw1, setPw1] = useState(''); const [pw2, setPw2] = useState('');
   const [conf, setConf] = useState(''); const [busy, setBusy] = useState(''); const [ok, setOk] = useState('');
@@ -395,6 +436,9 @@ function Security({ L, lang }: { L: any; lang: Lang }) {
           {ok && <span style={{ color: 'var(--green)', fontSize: 13 }}>{ok}</span>}
         </div>
       </div>
+
+      {/* Solo para admins/equipo: cambiar su PIN de bloqueo del panel. */}
+      <LockPinCard lang={lang} />
 
       <div className="card" style={{ maxWidth: 480, border: '1px solid var(--red)' }}>
         <h3 style={{ marginBottom: 6, color: 'var(--red)' }}>{L.dTitle}</h3>

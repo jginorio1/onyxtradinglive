@@ -1,9 +1,10 @@
 import { redirect } from 'next/navigation';
 import { getAdmin } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { serverLocked, userHasPin, IDLE_MIN } from '@/lib/adminSecurity';
+import { serverLocked, userHasPin, userPinIsTemp, IDLE_MIN } from '@/lib/adminSecurity';
 import AdminClient from './AdminClient';
 import LockScreen from './LockScreen';
+import ChangePin from './ChangePin';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,6 +16,12 @@ export default async function Admin() {
   }
 
   const hasPin = await userHasPin(user.id);
+
+  // Primer acceso con PIN provisional (lo asignó el Owner / llegó por correo):
+  // obligamos a cambiarlo por uno propio antes de entrar al panel.
+  if (hasPin && await userPinIsTemp(user.id)) {
+    return <ChangePin email={user.email || ''} />;
+  }
 
   // Si el panel está bloqueado por inactividad, no cargamos ni enviamos datos:
   // solo la pantalla de PIN. Así la información no llega al navegador bloqueado.

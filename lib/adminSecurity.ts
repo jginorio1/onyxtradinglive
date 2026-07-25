@@ -14,12 +14,17 @@ export const LOCK_COOKIE = 'onyx_lock';
 export const IDLE_MIN = 20;        // minutos de inactividad para admins/equipo
 export const MAX_TRIES = 5;        // intentos de PIN antes de cerrar sesión
 
-type Rec = { h: string; s: string; tries: number };
+type Rec = { h: string; s: string; tries: number; temp?: boolean };
 type Store = { users: Record<string, Rec> };
 const S0: Store = { users: {} };
 
 function hash(pin: string, salt: string) {
   return crypto.pbkdf2Sync(pin, salt, 100000, 32, 'sha256').toString('hex');
+}
+
+// Genera un PIN temporal de 6 dígitos (para enviar por correo al nuevo empleado).
+export function makeTempPin(): string {
+  return String(crypto.randomInt(0, 1000000)).padStart(6, '0');
 }
 
 export async function getStore(): Promise<Store> {
@@ -31,13 +36,20 @@ export async function userHasPin(userId: string): Promise<boolean> {
   return !!s.users[userId]?.h;
 }
 
-// Fija o cambia el PIN de un usuario (vacío = quitarlo).
-export async function setPin(userId: string, pin: string) {
+// ¿El PIN es temporal? (asignado por el Owner/sistema, debe cambiarlo al entrar)
+export async function userPinIsTemp(userId: string): Promise<boolean> {
+  const s = await getStore();
+  return !!s.users[userId]?.temp;
+}
+
+// Fija o cambia el PIN de un usuario (vacío = quitarlo). temp=true marca que
+// es provisional y hay que cambiarlo en el primer acceso.
+export async function setPin(userId: string, pin: string, temp = false) {
   const s = await getStore();
   if (!pin) { delete s.users[userId]; }
   else {
     const salt = crypto.randomBytes(16).toString('hex');
-    s.users[userId] = { h: hash(pin, salt), s: salt, tries: 0 };
+    s.users[userId] = { h: hash(pin, salt), s: salt, tries: 0, temp };
   }
   await saveSetting('admin_sec', s);
 }

@@ -1,28 +1,41 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { getAdmin } from '@/lib/admin';
-import { LOCK_COOKIE, IDLE_MIN, userHasPin, setPin, verifyPin } from '@/lib/adminSecurity';
+import { getAdmin, requirePerm } from '@/lib/admin';
+import { LOCK_COOKIE, IDLE_MIN, userHasPin, setPin, verifyPin, getStore } from '@/lib/adminSecurity';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-// GET · estado de seguridad del admin actual (para el panel y el temporizador).
+// GET · estado de seguridad del admin actual. Para el Owner, además la lista
+// de miembros que ya tienen PIN (para gestionarlos desde la pestaña Equipo).
 export async function GET() {
   const { user, isAdmin } = await getAdmin();
   if (!isAdmin) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
   const hasPin = await userHasPin(user.id);
   const locked = cookies().get(LOCK_COOKIE)?.value === '1';
-  return NextResponse.json({ hasPin, locked, idleMin: IDLE_MIN });
+  const isOwner = (await requirePerm('ajustes', 'manage')).ok;
+  let managed: string[] | undefined;
+  if (isOwner) managed = Object.keys((await getStore()).users);
+  return NextResponse.json({ hasPin, locked, idleMin: IDLE_MIN, managed });
 }
 
-// PATCH · el admin fija o cambia su propio PIN (6 dígitos; vacío = quitar).
+// PATCH · fija o cambia un PIN (6 dígitos; vacío = quitar).
+//   sin userId  → cambia el PIN propio (cualquier admin)
+//   con userId  → el Owner asigna/quita el PIN de un miembro del equipo
 export async function PATCH(req: Request) {
   const { user, isAdmin } = await getAdmin();
   if (!isAdmin) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
   const b = await req.json().catch(() => ({}));
   const pin = String(b.pin || '').trim();
   if (pin && !/^\d{6}$/.test(pin)) return NextResponse.json({ error: 'El PIN debe tener 6 dígitos.' }, { status: 400 });
-  await setPin(user.id, pin);
+
+  const targetId = b.userId && String(b.userId) !== user.id ? String(b.userId) : user.id;
+  if (targetId !== user.id) {
+    const { ok } = await requirePerm('ajustes', 'manage'); // solo el Owner asigna a otros
+    if (!ok) return NextResponse.json({ error: 'Solo el Owner puede asignar PIN a otros.' }, { status: 403 });
+  }
+  // PIN propio = definitivo; PIN asignado por el Owner = provisional (a cambiar).
+  await setPin(targetId, pin, targetId !== user.id);
   return NextResponse.json({ ok: true, hasPin: !!pin });
 }
 

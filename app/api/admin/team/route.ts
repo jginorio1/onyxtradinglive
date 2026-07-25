@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { getAdmin, requirePerm, logAdmin } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { ROLES } from '@/lib/perms';
+import { makeTempPin, setPin } from '@/lib/adminSecurity';
+import { sendEmail } from '@/lib/mail';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -38,7 +40,22 @@ export async function POST(req: Request) {
 
     await supabaseAdmin.from('profiles').update({ is_admin: true, role, perms: {} }).eq('id', prof.id);
     await logAdmin(user?.email || '', 'team_add', email, { role });
-    return NextResponse.json({ ok: true });
+
+    // PIN temporal de bloqueo: se genera, se guarda como provisional y se
+    // envía por correo. El empleado deberá cambiarlo al entrar al panel.
+    const tempPin = makeTempPin();
+    await setPin(prof.id, tempPin, true);
+    const emailed = await sendEmail(
+      email,
+      'Tu acceso de administrador · Onyx Trading Live',
+      `Hola,\n\nTe han dado acceso al panel de Onyx Trading Live como "${role}".\n\n`
+      + `Tu PIN temporal de bloqueo es: ${tempPin}\n\n`
+      + `Entra al panel en https://www.onyxtradinglive.com/admin con tu cuenta. `
+      + `La primera vez te pedirá cambiar este PIN por uno que solo tú sepas.\n\n`
+      + `El PIN protege el panel: tras unos minutos de inactividad se bloquea y se reentra con él.\n\n`
+      + `— Onyx Trading Live`,
+    );
+    return NextResponse.json({ ok: true, tempPin, emailed });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error', code: 'generic' }, { status: 500 });
   }
