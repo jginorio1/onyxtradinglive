@@ -22,6 +22,15 @@ const T: any = {
     ck3: 'Variables de entorno guardadas aparte',
     ck4: 'Restauración probada una vez',
     counts: 'Datos ahora', users: 'Usuarios', accounts: 'Cuentas', trades: 'Operaciones', tickets: 'Tickets',
+    history: 'Historial de copias', noHistory: 'Aún no hay copias registradas. Corre el backup una vez.',
+    retention: 'Se guardan las últimas 12. En Backblaze puedes poner una regla de ciclo de vida para borrar solas las más viejas.',
+    restore: 'Restaurar', restoreTitle: 'Cómo restaurar esta copia', close: 'Cerrar',
+    restoreSteps: [
+      'Descarga el archivo desde Backblaze → Browse Files → tu bucket → carpeta backups/.',
+      'Restáuralo PRIMERO en un proyecto Supabase de prueba, nunca directo en producción.',
+      'Descomprime y cárgalo con este comando (cambia la conexión por la de tu base de prueba):',
+    ],
+    restoreWarn: 'Restaurar sobre producción reemplaza los datos actuales. Hazlo solo con una copia verificada y sabiendo lo que haces.',
   },
   en: {
     exportNow: 'Export now', exportDesc: 'Download a manual copy of all data.',
@@ -41,6 +50,15 @@ const T: any = {
     ck3: 'Environment variables saved elsewhere',
     ck4: 'Restore tested once',
     counts: 'Data now', users: 'Users', accounts: 'Accounts', trades: 'Trades', tickets: 'Tickets',
+    history: 'Backup history', noHistory: 'No backups recorded yet. Run the backup once.',
+    retention: 'The last 12 are kept. In Backblaze you can set a lifecycle rule to auto-delete older ones.',
+    restore: 'Restore', restoreTitle: 'How to restore this backup', close: 'Close',
+    restoreSteps: [
+      'Download the file from Backblaze → Browse Files → your bucket → backups/ folder.',
+      'Restore it FIRST into a test Supabase project, never straight to production.',
+      'Unzip and load it with this command (swap the connection for your test database):',
+    ],
+    restoreWarn: 'Restoring over production replaces current data. Only do it with a verified backup and knowing what you are doing.',
   },
 };
 
@@ -53,6 +71,7 @@ export default function Backups() {
   const [d, setD] = useState<any>(null);
   const [busy, setBusy] = useState('');
   const [showSetup, setShowSetup] = useState(false);
+  const [restoreFile, setRestoreFile] = useState('');
 
   useEffect(() => { fetch('/api/admin/backup').then((r) => r.json()).then(setD).catch(() => setD({})); }, []);
 
@@ -105,6 +124,36 @@ export default function Backups() {
             {t.setupSteps.map((s: string, i: number) => <li key={i} style={{ marginBottom: 6 }}>{s}</li>)}
           </ol>
         )}
+      </div>
+
+      {/* Historial de copias */}
+      <div className="card" style={{ marginBottom: 12 }}>
+        <div className="row between" style={{ marginBottom: 6, flexWrap: 'wrap', gap: 8 }}>
+          <b style={{ fontSize: 14 }}>{t.history}</b>
+          <span className="pill" style={{ color: 'var(--mut)' }}>{(backup.history || []).length}/12</span>
+        </div>
+        {!(backup.history || []).length && <p className="muted" style={{ fontSize: 13 }}>{t.noHistory}</p>}
+        {(backup.history || []).map((c: any, i: number) => (
+          <div key={i} className="row between" style={{ padding: '9px 0', borderTop: '1px solid var(--line)', gap: 8, flexWrap: 'wrap', fontSize: 12.5 }}>
+            <span className="row" style={{ gap: 8 }}>{i === 0 && recent && <span className="livedot" />}{new Date(c.at).toLocaleString()}</span>
+            <span className="row" style={{ gap: 12 }}>
+              <span className="muted">{fmtSize(c.size)}</span>
+              <span className="muted">{c.dest}</span>
+              <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setRestoreFile(restoreFile === (c.file || String(i)) ? '' : (c.file || String(i)))}>↩ {t.restore}</button>
+            </span>
+            {restoreFile === (c.file || String(i)) && (
+              <div style={{ width: '100%', marginTop: 8, background: 'var(--bg2)', border: '1px solid var(--brand)', borderRadius: 10, padding: 12 }}>
+                <b style={{ fontSize: 13 }}>{t.restoreTitle}</b>
+                <ol style={{ margin: '8px 0', paddingLeft: 18, fontSize: 12.5, color: 'var(--mut)', lineHeight: 1.6 }}>
+                  {t.restoreSteps.map((s: string, k: number) => <li key={k} style={{ marginBottom: 4 }}>{s}</li>)}
+                </ol>
+                <pre style={{ background: '#0a0d14', border: '1px solid var(--line)', borderRadius: 8, padding: '9px 11px', fontSize: 11.5, overflowX: 'auto', margin: '0 0 8px', color: '#bcd6ff' }}>{`gunzip -c "${c.file || 'onyx-backup-XXXX.sql.gz'}" | psql "TU_CONEXION_DE_PRUEBA"`}</pre>
+                <div style={{ fontSize: 11.5, color: 'var(--amber)' }}>⚠ {t.restoreWarn}</div>
+              </div>
+            )}
+          </div>
+        ))}
+        <div className="muted" style={{ fontSize: 11.5, marginTop: 10 }}>{t.retention}</div>
       </div>
 
       {/* Datos ahora */}

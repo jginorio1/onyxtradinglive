@@ -5,6 +5,9 @@ import SupportWidget from './SupportWidget';
 import JsonLd from './JsonLd';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { LanguageProvider } from '@/lib/lang';
+import { BetaProvider } from '@/lib/beta';
+import BetaBanner from './BetaBanner';
+import { serverBeta } from '@/lib/betaServer';
 import type { Lang } from '@/lib/navText';
 import { serverLang, localeAlternates } from '@/lib/locale';
 
@@ -44,6 +47,7 @@ export function generateMetadata(): Metadata {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   // El idioma se decide aquí (cabecera /en del middleware o cookie) y baja a todo lo demás.
   const lang: Lang = serverLang();
+  const beta = serverBeta();
 
   // ¿Hay sesión? La burbuja de soporte se comporta distinto para trader o visitante.
   let loggedIn = false;
@@ -80,9 +84,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body>
         <JsonLd data={graph} />
         <LanguageProvider initial={lang}>
-          <TopBar />
-          {children}
-          <SupportWidget loggedIn={loggedIn} />
+          <BetaProvider initial={beta}>
+            <BetaBanner />
+            <TopBar />
+            {children}
+            <SupportWidget loggedIn={loggedIn} />
+          </BetaProvider>
         </LanguageProvider>
       </body>
     </html>

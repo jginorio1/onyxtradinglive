@@ -9,8 +9,9 @@ export const runtime = 'nodejs';
 // Tablas que entran en la exportación manual. Tolerante: si una no existe, se salta.
 const TABLES = ['profiles', 'trading_accounts', 'trades', 'api_keys', 'manager_configs', 'support_tickets', 'support_messages', 'kb_articles', 'app_settings', 'telegram_log'];
 
-type Backup = { last_at: string | null; size: number; dest: string };
-const BK0: Backup = { last_at: null, size: 0, dest: '' };
+type Copy = { at: string; size: number; file: string; dest: string };
+type Backup = { last_at: string | null; size: number; dest: string; history: Copy[] };
+const BK0: Backup = { last_at: null, size: 0, dest: '', history: [] };
 
 // Trae todas las filas de una tabla, por páginas (Supabase corta en 1000).
 async function dumpTable(table: string): Promise<any[]> {
@@ -78,6 +79,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'no autorizado' }, { status: 401 });
   }
   const b = await req.json().catch(() => ({}));
-  await saveSetting('backup', { last_at: new Date().toISOString(), size: Number(b.size) || 0, dest: String(b.dest || 'externo') });
+  const at = new Date().toISOString();
+  const size = Number(b.size) || 0;
+  const dest = String(b.dest || 'externo');
+  const file = String(b.file || '');
+  const prev = await getSetting<Backup>('backup', BK0);
+  const history = [{ at, size, file, dest }, ...(prev.history || [])].slice(0, 12); // últimas 12
+  await saveSetting('backup', { last_at: at, size, dest, history });
   return NextResponse.json({ ok: true });
 }

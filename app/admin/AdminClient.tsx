@@ -32,6 +32,80 @@ function Head({ ic, t, s }: { ic: string; t: string; s: string }) {
 }
 const initials = (email: string) => (email || '?').replace(/@.*/, '').slice(0, 2).toUpperCase();
 
+// Modo beta: el Owner fija un PIN de 6 dígitos y activa/desactiva la vista beta.
+function BetaControl() {
+  const t = useT();
+  const [st, setSt] = useState<{ hasPin: boolean; active: boolean } | null>(null);
+  const [pin, setPin] = useState('');
+  const [entry, setEntry] = useState('');
+  const [msg, setMsg] = useState('');
+  const [busy, setBusy] = useState('');
+  const load = () => fetch('/api/admin/beta').then((r) => r.json()).then(setSt).catch(() => {});
+  useEffect(() => { load(); }, []);
+
+  async function savePin() {
+    setBusy('pin'); setMsg('');
+    try {
+      const r = await fetch('/api/admin/beta', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pin }) });
+      const d = await r.json();
+      if (!r.ok) setMsg(d.error || 'Error');
+      else { setMsg(pin ? t.bt_pinSaved : t.bt_pinCleared); setPin(''); load(); }
+    } finally { setBusy(''); }
+  }
+  async function enter(off = false) {
+    setBusy(off ? 'off' : 'in'); setMsg('');
+    try {
+      const r = await fetch('/api/admin/beta', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(off ? { off: true } : { pin: entry }) });
+      const d = await r.json();
+      if (!r.ok) setMsg(d.error || 'Error');
+      else { setEntry(''); load(); if (typeof window !== 'undefined') window.location.reload(); }
+    } finally { setBusy(''); }
+  }
+
+  return (
+    <div className="card">
+      <div className="row between" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 6 }}>
+        <h3 style={{ margin: 0 }}>🧪 {t.bt_title}</h3>
+        <span className="pill" style={st?.active ? { color: '#0a0d14', background: '#ffd166' } : { color: 'var(--mut)' }}>
+          {st?.active ? t.bt_on : (st?.hasPin ? t.bt_ready : t.bt_noPin)}
+        </span>
+      </div>
+      <p className="muted" style={{ fontSize: 13.5, marginBottom: 10 }}>{t.bt_body}</p>
+
+      {/* Fijar / cambiar PIN (Owner) */}
+      <label className="muted" style={{ fontSize: 12.5 }}>{t.bt_setPin}</label>
+      <div className="row" style={{ gap: 8, margin: '4px 0 6px', flexWrap: 'wrap' }}>
+        <input value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+          placeholder="••••••" inputMode="numeric" maxLength={6}
+          style={{ width: 130, letterSpacing: 4, textAlign: 'center', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)' }} />
+        <button className="btn btn-primary" onClick={savePin} disabled={busy === 'pin'} style={{ padding: '8px 14px' }}>{busy === 'pin' ? '…' : t.bt_save}</button>
+        {st?.hasPin && <button className="btn btn-ghost" onClick={() => { setPin(''); savePin(); }} disabled={busy === 'pin'} style={{ padding: '8px 12px' }}>{t.bt_clear}</button>}
+      </div>
+      <p className="muted" style={{ fontSize: 11.5, marginBottom: 12 }}>{t.bt_hint}</p>
+
+      {/* Entrar / salir de la beta */}
+      {st?.hasPin && !st?.active && (
+        <div style={{ borderTop: '1px solid var(--line)', paddingTop: 12 }}>
+          <label className="muted" style={{ fontSize: 12.5 }}>{t.bt_enterLabel}</label>
+          <div className="row" style={{ gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
+            <input value={entry} onChange={(e) => setEntry(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="••••••" inputMode="numeric" maxLength={6}
+              style={{ width: 130, letterSpacing: 4, textAlign: 'center', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)' }} />
+            <button className="btn btn-primary" onClick={() => enter(false)} disabled={busy === 'in' || entry.length !== 6} style={{ padding: '8px 14px' }}>{busy === 'in' ? '…' : t.bt_enter}</button>
+          </div>
+        </div>
+      )}
+      {st?.active && (
+        <div style={{ borderTop: '1px solid var(--line)', paddingTop: 12 }}>
+          <button className="btn btn-ghost" onClick={() => enter(true)} disabled={busy === 'off'} style={{ padding: '8px 14px' }}>{busy === 'off' ? '…' : t.bt_exit}</button>
+        </div>
+      )}
+      {msg && <div style={{ marginTop: 10, fontSize: 12.5, color: '#7fe9c0' }}>{msg}</div>}
+      <p className="muted" style={{ fontSize: 11.5, marginTop: 12 }}>{t.bt_note}</p>
+    </div>
+  );
+}
+
 export default function AdminClient({ meEmail, role, perms = {}, accounts, trades }: { meEmail: string; role: string; perms?: Record<string, string>; accounts: number; trades: number }) {
   const t = useT();
   // Qué áreas puede ver este admin (owner ve todo). Mapa tab → área de permiso.
@@ -225,11 +299,12 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                     <span className="pill" style={{ color: roleColor(role), background: 'rgba(124,140,255,.12)' }}>{(t as any)['role_' + role] || role}</span>
                   </div>
                 </div>
-                <div className="card">
+                <div className="card" style={{ marginBottom: 12 }}>
                   <h3 style={{ marginBottom: 6 }}>{t.a_rolesTitle}</h3>
                   <p className="muted" style={{ fontSize: 13.5, marginBottom: 8 }}>{t.a_rolesBody}</p>
                   <p className="muted" style={{ fontSize: 13 }}>{t.a_rolesEnv}</p>
                 </div>
+                <BetaControl />
               </div>
             )}
           </div>

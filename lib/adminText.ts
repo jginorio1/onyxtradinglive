@@ -91,6 +91,15 @@ const ES = {
   a_rolesBody: 'El Owner controla planes, usuarios y equipo. Los Admin gestionan usuarios y planes. El Soporte solo consulta y ayuda.',
   a_rolesEnv: 'Los correos de ADMIN_EMAILS en Vercel siempre entran como Owner. Puedes añadir más administradores desde la pestaña Equipo.',
 
+  // Modo beta (PIN)
+  bt_title: 'Modo beta', bt_on: 'Activo', bt_ready: 'PIN listo', bt_noPin: 'Sin PIN',
+  bt_body: 'Muestra la versión de pruebas del sitio solo a quien tenga el PIN. El resto de visitantes sigue viendo la versión en producción.',
+  bt_setPin: 'PIN de 6 dígitos (solo el Owner)', bt_save: 'Guardar PIN', bt_clear: 'Quitar',
+  bt_hint: 'Deja el campo vacío y pulsa Quitar para desactivar el Modo beta por completo.',
+  bt_enterLabel: 'Entrar al Modo beta con el PIN', bt_enter: 'Entrar a la beta', bt_exit: 'Salir de la beta',
+  bt_pinSaved: 'PIN guardado. Ya puedes entrar al Modo beta.', bt_pinCleared: 'Modo beta desactivado.',
+  bt_note: 'Para una URL beta aparte (por ejemplo beta.onyxtradinglive.com) crea una rama "beta" en Vercel. El PIN de aquí controla la vista beta dentro del mismo sitio y dura 2 horas por dispositivo.',
+
   // Módulos (cuerpo)
   mo_guardian_desc: 'Gestión de riesgo por EA en MT4 y MT5: break even, trailing, plan de trading, límites y noticias.',
   mo_guardian_accounts: 'cuentas con Guardian', mo_guardian_live: 'reportando ahora', mo_guardian_blocks: 'bloqueos ejecutados',
@@ -262,6 +271,15 @@ const EN: Dict = {
   a_yourRole: 'Your role', a_rolesTitle: 'How roles work',
   a_rolesBody: 'The Owner controls plans, users and team. Admins manage users and plans. Support only views and helps.',
   a_rolesEnv: 'Emails in ADMIN_EMAILS on Vercel always come in as Owner. You can add more admins from the Team tab.',
+
+  // Beta mode (PIN)
+  bt_title: 'Beta mode', bt_on: 'Active', bt_ready: 'PIN ready', bt_noPin: 'No PIN',
+  bt_body: 'Shows the test version of the site only to people who have the PIN. Everyone else keeps seeing the production version.',
+  bt_setPin: '6-digit PIN (Owner only)', bt_save: 'Save PIN', bt_clear: 'Remove',
+  bt_hint: 'Leave the field empty and press Remove to turn Beta mode off entirely.',
+  bt_enterLabel: 'Enter Beta mode with the PIN', bt_enter: 'Enter beta', bt_exit: 'Exit beta',
+  bt_pinSaved: 'PIN saved. You can now enter Beta mode.', bt_pinCleared: 'Beta mode disabled.',
+  bt_note: 'For a separate beta URL (e.g. beta.onyxtradinglive.com) create a "beta" branch in Vercel. The PIN here controls the beta view inside the same site and lasts 2 hours per device.',
 
   mo_guardian_desc: 'EA risk management on MT4 and MT5: break even, trailing, trading plan, limits and news.',
   mo_guardian_accounts: 'accounts with Guardian', mo_guardian_live: 'reporting now', mo_guardian_blocks: 'blocks executed',
