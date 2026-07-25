@@ -2,7 +2,7 @@ name: Backup
 
 on:
   schedule:
-    - cron: '0 6 * * 0'
+    - cron: '0 6 * * *'
   workflow_dispatch: {}
 
 jobs:
@@ -11,10 +11,12 @@ jobs:
     steps:
       - name: Instalar herramientas
         run: |
-          set -e
           sudo apt-get update -qq
-          sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
-          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
+          sudo apt-get install -y curl ca-certificates gnupg lsb-release
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+            | sudo gpg --dearmor -o /usr/share/keyrings/pgdg.gpg
+          echo "deb [signed-by=/usr/share/keyrings/pgdg.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
           sudo apt-get update -qq
           sudo apt-get install -y postgresql-client-17
           pip install --quiet b2
@@ -24,15 +26,12 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           set -euo pipefail
-          PGDUMP=$(ls -1 /usr/lib/postgresql/*/bin/pg_dump 2>/dev/null | sort -V | tail -n1)
-          PGDUMP=${PGDUMP:-pg_dump}
-          echo "Usando: $PGDUMP"; "$PGDUMP" --version
+          PGDUMP=$(ls -1 /usr/lib/postgresql/*/bin/pg_dump | sort -V | tail -1)
           STAMP=$(date +%Y%m%d-%H%M)
           FILE="onyx-backup-$STAMP.sql.gz"
           "$PGDUMP" "$DATABASE_URL" --no-owner --no-privileges | gzip > "$FILE"
           SIZE=$(stat -c%s "$FILE")
-          echo "Tamaño del volcado: $SIZE bytes"
-          if [ "$SIZE" -lt 1000 ]; then echo "::error::Volcado vacío"; exit 1; fi
+          if [ "$SIZE" -lt 1000 ]; then echo "Volcado vacio o fallido ($SIZE bytes)"; exit 1; fi
           echo "FILE=$FILE" >> "$GITHUB_ENV"
           echo "SIZE=$SIZE" >> "$GITHUB_ENV"
 
@@ -46,7 +45,7 @@ jobs:
           b2 file upload "${{ secrets.B2_BUCKET }}" "$FILE" "backups/$FILE" \
             || b2 upload-file "${{ secrets.B2_BUCKET }}" "$FILE" "backups/$FILE"
 
-      - name: Avisar a la app
+      - name: Avisar a la app (estado en el panel)
         env:
           APP_URL: ${{ secrets.APP_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
@@ -54,4 +53,4 @@ jobs:
           curl -s -X POST "$APP_URL/api/admin/backup" \
             -H "x-cron-secret: $CRON_SECRET" \
             -H "content-type: application/json" \
-            -d "{\"size\": ${SIZE:-0}, \"dest\": \"Backblaze B2\"}" || true
+            -d "{\"size\": ${SIZE:-0}, \"dest\": \"Backblaze B2\", \"file\": \"${FILE:-}\"}" || true
