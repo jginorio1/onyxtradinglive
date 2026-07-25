@@ -1,0 +1,19 @@
+name: Optimize
+
+on:
+  schedule:
+    - cron: '0 5 * * 0'
+  workflow_dispatch: {}
+
+jobs:
+  optimize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ejecutar optimización
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl -s -X POST "$APP_URL/api/admin/optimize" \
+            -H "x-cron-secret: $CRON_SECRET" \
+            -H "content-type: application/json" -d '{}' || true
