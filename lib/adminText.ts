@@ -93,6 +93,13 @@ const ES = {
   a_rolesBody: 'El Owner controla planes, usuarios y equipo. Los Admin gestionan usuarios y planes. El Soporte solo consulta y ayuda.',
   a_rolesEnv: 'Los correos de ADMIN_EMAILS en Vercel siempre entran como Owner. Puedes añadir más administradores desde la pestaña Equipo.',
 
+  // Seguridad (bloqueo por inactividad + PIN)
+  sec_title: 'Bloqueo por inactividad', sec_on: 'PIN activo', sec_off: 'Sin PIN',
+  sec_body: 'Protege el panel: tras {n} minutos sin actividad se bloquea y hay que reentrar con tu PIN de 6 dígitos. Aplica a ti y a cada admin/empleado que fije su PIN.',
+  sec_setPin: 'Tu PIN de 6 dígitos', sec_save: 'Guardar PIN', sec_clear: 'Quitar',
+  sec_saved: 'PIN guardado. El bloqueo por inactividad está activo para tu cuenta.', sec_cleared: 'PIN quitado. Tu cuenta ya no se bloqueará por inactividad.',
+  sec_note: 'El PIN se guarda cifrado, nunca en texto plano. Tras 5 intentos fallidos se cierra la sesión y hay que entrar con tu contraseña. Cada persona del equipo fija el suyo.',
+
   // Modo beta (PIN)
   bt_title: 'Modo beta', bt_on: 'Activo', bt_ready: 'PIN listo', bt_noPin: 'Sin PIN',
   bt_body: 'Muestra la versión de pruebas del sitio solo a quien tenga el PIN. El resto de visitantes sigue viendo la versión en producción.',
@@ -275,6 +282,13 @@ const EN: Dict = {
   a_yourRole: 'Your role', a_rolesTitle: 'How roles work',
   a_rolesBody: 'The Owner controls plans, users and team. Admins manage users and plans. Support only views and helps.',
   a_rolesEnv: 'Emails in ADMIN_EMAILS on Vercel always come in as Owner. You can add more admins from the Team tab.',
+
+  // Security (inactivity lock + PIN)
+  sec_title: 'Inactivity lock', sec_on: 'PIN active', sec_off: 'No PIN',
+  sec_body: 'Protects the panel: after {n} minutes of inactivity it locks and you re-enter with your 6-digit PIN. Applies to you and each admin/employee who sets a PIN.',
+  sec_setPin: 'Your 6-digit PIN', sec_save: 'Save PIN', sec_clear: 'Remove',
+  sec_saved: 'PIN saved. Inactivity lock is active for your account.', sec_cleared: 'PIN removed. Your account will no longer lock on inactivity.',
+  sec_note: 'The PIN is stored encrypted, never in plain text. After 5 failed tries the session ends and you log in with your password. Each team member sets their own.',
 
   // Beta mode (PIN)
   bt_title: 'Beta mode', bt_on: 'Active', bt_ready: 'PIN ready', bt_noPin: 'No PIN',

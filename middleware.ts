@@ -62,6 +62,13 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Panel bloqueado por inactividad: mientras la cookie esté puesta, cortamos
+  // el acceso a las APIs de admin (menos la de seguridad, que sirve para
+  // desbloquear). Así los datos no salen aunque alguien llame la API directo.
+  if (path.startsWith('/api/admin/') && path !== '/api/admin/security' && req.cookies.get('onyx_lock')?.value === '1') {
+    return NextResponse.json({ error: 'Panel bloqueado. Desbloquea con tu PIN.' }, { status: 423 });
+  }
+
   return res;
 }
 

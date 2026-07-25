@@ -11,6 +11,7 @@ import KbEditor from './KbEditor';
 import Backups from './Backups';
 import Audit from './Audit';
 import Optimize from './Optimize';
+import AdminLock from './AdminLock';
 import { AREAS, effectivePerms } from '@/lib/perms';
 import { useT } from '@/lib/adminText';
 
@@ -31,6 +32,49 @@ function Head({ ic, t, s }: { ic: string; t: string; s: string }) {
   return <div className="tabhead"><div className="th-row"><span className="th-ic">{ic}</span><span className="th-t">{t}</span></div><div className="th-s">{s}</div></div>;
 }
 const initials = (email: string) => (email || '?').replace(/@.*/, '').slice(0, 2).toUpperCase();
+
+// Seguridad: cada admin fija su PIN de bloqueo por inactividad (6 dígitos).
+function SecurityControl({ idleMin }: { idleMin: number }) {
+  const t = useT();
+  const [hasPin, setHasPin] = useState<boolean | null>(null);
+  const [pin, setPin] = useState('');
+  const [msg, setMsg] = useState('');
+  const [busy, setBusy] = useState(false);
+  const load = () => fetch('/api/admin/security').then((r) => r.json()).then((d) => setHasPin(!!d.hasPin)).catch(() => {});
+  useEffect(() => { load(); }, []);
+
+  async function save(clear = false) {
+    setBusy(true); setMsg('');
+    try {
+      const r = await fetch('/api/admin/security', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pin: clear ? '' : pin }) });
+      const d = await r.json();
+      if (!r.ok) setMsg(d.error || 'Error');
+      else { setMsg(clear ? t.sec_cleared : t.sec_saved); setPin(''); load(); }
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <div className="card" style={{ marginBottom: 12 }}>
+      <div className="row between" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 6 }}>
+        <h3 style={{ margin: 0 }}>🔒 {t.sec_title}</h3>
+        <span className="pill" style={hasPin ? { color: '#7fe9c0', background: 'rgba(52,226,160,.15)' } : { color: 'var(--amber)', background: 'rgba(255,192,77,.16)' }}>
+          {hasPin === null ? '…' : hasPin ? t.sec_on : t.sec_off}
+        </span>
+      </div>
+      <p className="muted" style={{ fontSize: 13.5, marginBottom: 10 }}>{t.sec_body.replace('{n}', String(idleMin))}</p>
+      <label className="muted" style={{ fontSize: 12.5 }}>{t.sec_setPin}</label>
+      <div className="row" style={{ gap: 8, margin: '4px 0 6px', flexWrap: 'wrap' }}>
+        <input value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+          placeholder="••••••" inputMode="numeric" maxLength={6}
+          style={{ width: 130, letterSpacing: 4, textAlign: 'center', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)' }} />
+        <button className="btn btn-primary" onClick={() => save(false)} disabled={busy || pin.length !== 6} style={{ padding: '8px 14px' }}>{busy ? '…' : t.sec_save}</button>
+        {hasPin && <button className="btn btn-ghost" onClick={() => save(true)} disabled={busy} style={{ padding: '8px 12px' }}>{t.sec_clear}</button>}
+      </div>
+      {msg && <div style={{ marginTop: 8, fontSize: 12.5, color: '#7fe9c0' }}>{msg}</div>}
+      <p className="muted" style={{ fontSize: 11.5, marginTop: 10 }}>{t.sec_note}</p>
+    </div>
+  );
+}
 
 // Modo beta: el Owner fija un PIN de 6 dígitos y activa/desactiva la vista beta.
 function BetaControl() {
@@ -106,7 +150,7 @@ function BetaControl() {
   );
 }
 
-export default function AdminClient({ meEmail, role, perms = {}, accounts, trades }: { meEmail: string; role: string; perms?: Record<string, string>; accounts: number; trades: number }) {
+export default function AdminClient({ meEmail, role, perms = {}, accounts, trades, hasPin = false, idleMin = 20 }: { meEmail: string; role: string; perms?: Record<string, string>; accounts: number; trades: number; hasPin?: boolean; idleMin?: number }) {
   const t = useT();
   // Qué áreas puede ver este admin (owner ve todo). Mapa tab → área de permiso.
   const areaOf: Record<string, string> = { resumen: 'resumen', usuarios: 'usuarios', planes: 'planes', equipo: 'equipo', embajadores: 'embajadores', retencion: 'retencion', pruebas: 'diag', firms: 'firms', modulos: 'modulos', soporte: 'soporte', kb: 'soporte', diag: 'diag', backups: 'ajustes', audit: 'ajustes', optim: 'ajustes', ajustes: 'ajustes' };
@@ -160,6 +204,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
 
   return (
     <>
+      <AdminLock hasPin={hasPin} idleMin={idleMin} />
 
       <div className="wrap-wide" style={{ padding: '22px 0' }}>
         <div className="adminlayout">
@@ -304,6 +349,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                   <p className="muted" style={{ fontSize: 13.5, marginBottom: 8 }}>{t.a_rolesBody}</p>
                   <p className="muted" style={{ fontSize: 13 }}>{t.a_rolesEnv}</p>
                 </div>
+                <SecurityControl idleMin={idleMin} />
                 <BetaControl />
               </div>
             )}
