@@ -1,0 +1,19 @@
+name: Trader reports
+
+on:
+  schedule:
+    - cron: '30 6 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enviar reportes
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl -s -X POST "$APP_URL/api/cron/trader-reports" \
+            -H "x-cron-secret: $CRON_SECRET" \
+            -H "content-type: application/json" || true
