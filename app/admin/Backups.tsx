@@ -30,7 +30,14 @@ const T: any = {
       'Restáuralo PRIMERO en un proyecto Supabase de prueba, nunca directo en producción.',
       'Descomprime y cárgalo con este comando (cambia la conexión por la de tu base de prueba):',
     ],
-    restoreWarn: 'Restaurar sobre producción reemplaza los datos actuales. Hazlo solo con una copia verificada y sabiendo lo que haces.',
+    restoreWarn: 'Restaurar sobre producción reemplaza los datos actuales. Por eso por defecto va a la base de pruebas y pide confirmación escrita.',
+    download: 'Descargar', retaining: 'Reteniendo 12 · limpia las viejas', colDate: 'Fecha y hora',
+    emptyHint: 'Para que aparezca una fila ahora mismo, ve a GitHub → Actions → Backup → Run workflow. Al terminar, la copia se registra aquí.',
+    rcTitle: 'Restaurar una copia',
+    rc1t: '1 · Elige la copia', rc1s: 'del historial, por fecha/hora',
+    rc2t: '2 · Restaura en pruebas', rc2s: 'base de test, sin tocar producción',
+    rc3t: '3 · Verifica y aplica', rc3s: 'a producción solo si confirmas',
+    dlHelp: 'El botón Descargar trae el archivo .sql.gz desde Backblaze. Si te pide configurar llaves, añade B2_KEY_ID, B2_APP_KEY y B2_BUCKET en Vercel (las mismas de GitHub).',
   },
   en: {
     exportNow: 'Export now', exportDesc: 'Download a manual copy of all data.',
@@ -58,7 +65,14 @@ const T: any = {
       'Restore it FIRST into a test Supabase project, never straight to production.',
       'Unzip and load it with this command (swap the connection for your test database):',
     ],
-    restoreWarn: 'Restoring over production replaces current data. Only do it with a verified backup and knowing what you are doing.',
+    restoreWarn: 'Restoring over production replaces current data. That is why it defaults to the test database and asks for written confirmation.',
+    download: 'Download', retaining: 'Keeping 12 · cleans old ones', colDate: 'Date & time',
+    emptyHint: 'To make a row appear right now, go to GitHub → Actions → Backup → Run workflow. When it finishes, the copy is recorded here.',
+    rcTitle: 'Restore a copy',
+    rc1t: '1 · Pick the copy', rc1s: 'from history, by date/time',
+    rc2t: '2 · Restore to test', rc2s: 'test database, production untouched',
+    rc3t: '3 · Verify and apply', rc3s: 'to production only if you confirm',
+    dlHelp: 'The Download button pulls the .sql.gz file from Backblaze. If it asks you to configure keys, add B2_KEY_ID, B2_APP_KEY and B2_BUCKET in Vercel (the same ones from GitHub).',
   },
 };
 
@@ -128,21 +142,39 @@ export default function Backups() {
 
       {/* Historial de copias */}
       <div className="card" style={{ marginBottom: 12 }}>
-        <div className="row between" style={{ marginBottom: 6, flexWrap: 'wrap', gap: 8 }}>
+        <div className="row between" style={{ marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
           <b style={{ fontSize: 14 }}>{t.history}</b>
-          <span className="pill" style={{ color: 'var(--mut)' }}>{(backup.history || []).length}/12</span>
+          <span className="pill" style={{ color: 'var(--mut)' }}>{t.retaining}</span>
         </div>
-        {!(backup.history || []).length && <p className="muted" style={{ fontSize: 13 }}>{t.noHistory}</p>}
+
+        {/* Cabecera de columnas */}
+        <div className="row between" style={{ fontSize: 11, color: 'var(--mut)', padding: '0 0 6px' }}>
+          <span style={{ flex: 1 }}>{t.colDate}</span>
+          <span style={{ width: 70 }}>{t.size}</span>
+          <span style={{ width: 220 }}>{t.dest}</span>
+        </div>
+
+        {!(backup.history || []).length && (
+          <div style={{ padding: '10px 0', borderTop: '1px solid var(--line)' }}>
+            <p className="muted" style={{ fontSize: 13, margin: 0 }}>{t.noHistory}</p>
+            <p className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>{t.emptyHint}</p>
+          </div>
+        )}
+
         {(backup.history || []).map((c: any, i: number) => (
-          <div key={i} className="row between" style={{ padding: '9px 0', borderTop: '1px solid var(--line)', gap: 8, flexWrap: 'wrap', fontSize: 12.5 }}>
-            <span className="row" style={{ gap: 8 }}>{i === 0 && recent && <span className="livedot" />}{new Date(c.at).toLocaleString()}</span>
-            <span className="row" style={{ gap: 12 }}>
-              <span className="muted">{fmtSize(c.size)}</span>
-              <span className="muted">{c.dest}</span>
-              <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setRestoreFile(restoreFile === (c.file || String(i)) ? '' : (c.file || String(i)))}>↩ {t.restore}</button>
-            </span>
+          <div key={i} style={{ borderTop: '1px solid var(--line)', padding: '10px 0' }}>
+            <div className="row between" style={{ gap: 8, flexWrap: 'wrap', fontSize: 13 }}>
+              <span className="row" style={{ gap: 8, flex: 1, minWidth: 150 }}>{i === 0 && recent ? <span className="livedot" /> : <span style={{ width: 7 }} />}{new Date(c.at).toLocaleString()}</span>
+              <span className="muted" style={{ width: 70 }}>{fmtSize(c.size)}</span>
+              <span className="row" style={{ gap: 8 }}>
+                <span className="muted" style={{ width: 74 }}>{c.dest}</span>
+                <a className="btn btn-ghost" href={c.file ? `/api/admin/backup/download?file=${encodeURIComponent(c.file)}` : undefined}
+                   style={{ padding: '4px 10px', fontSize: 12, opacity: c.file ? 1 : .5, pointerEvents: c.file ? 'auto' : 'none' }}>⤓ {t.download}</a>
+                <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setRestoreFile(restoreFile === (c.file || String(i)) ? '' : (c.file || String(i)))}>↺ {t.restore}</button>
+              </span>
+            </div>
             {restoreFile === (c.file || String(i)) && (
-              <div style={{ width: '100%', marginTop: 8, background: 'var(--bg2)', border: '1px solid var(--brand)', borderRadius: 10, padding: 12 }}>
+              <div style={{ marginTop: 10, background: 'var(--bg2)', border: '1px solid var(--brand)', borderRadius: 10, padding: 12 }}>
                 <b style={{ fontSize: 13 }}>{t.restoreTitle}</b>
                 <ol style={{ margin: '8px 0', paddingLeft: 18, fontSize: 12.5, color: 'var(--mut)', lineHeight: 1.6 }}>
                   {t.restoreSteps.map((s: string, k: number) => <li key={k} style={{ marginBottom: 4 }}>{s}</li>)}
@@ -153,7 +185,24 @@ export default function Backups() {
             )}
           </div>
         ))}
-        <div className="muted" style={{ fontSize: 11.5, marginTop: 10 }}>{t.retention}</div>
+        <div className="muted" style={{ fontSize: 11.5, marginTop: 10 }}>{t.dlHelp}</div>
+      </div>
+
+      {/* Restaurar una copia (guía fija en 3 pasos) */}
+      <div className="card" style={{ marginBottom: 12 }}>
+        <div className="row" style={{ gap: 9, marginBottom: 10 }}>
+          <span style={{ width: 30, height: 30, borderRadius: 9, background: 'rgba(124,140,255,.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flex: 'none' }}>↩</span>
+          <b style={{ fontSize: 14 }}>{t.rcTitle}</b>
+        </div>
+        <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10 }}>
+          {[[t.rc1t, t.rc1s], [t.rc2t, t.rc2s], [t.rc3t, t.rc3s]].map((s, i) => (
+            <div key={i} style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '10px 12px' }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--brand)' }}>{s[0]}</div>
+              <div className="muted" style={{ fontSize: 11.5, marginTop: 3 }}>{s[1]}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ fontSize: 11.5, color: 'var(--amber)', marginTop: 10 }}>⚠ {t.restoreWarn}</div>
       </div>
 
       {/* Datos ahora */}
