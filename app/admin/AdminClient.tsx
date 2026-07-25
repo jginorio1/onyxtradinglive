@@ -13,8 +13,10 @@ import Audit from './Audit';
 import Optimize from './Optimize';
 import AdminLock from './AdminLock';
 import Revenue from './Revenue';
+import RangeBar, { type Range, defaultRange } from './RangeBar';
 import { AREAS, effectivePerms } from '@/lib/perms';
 import { useT } from '@/lib/adminText';
+import { useLang } from '@/lib/lang';
 
 type Plan = { id: string; name: string; name_en: string; desc_es: string | null; desc_en: string | null; price_month: number; price_year: number; stripe_price_id: string | null; stripe_price_id_year: string | null; max_accounts: number; features: string[]; features_en: string[]; badge: string | null; badge_en: string | null; active: boolean; sort: number; capabilities: any };
 type User = { id: string; email: string; plan: string; subscription_status: string | null; banned: boolean; is_admin: boolean; created_at: string; accounts: number; lastSync: string | null };
@@ -228,6 +230,8 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
   const [team, setTeam] = useState<Team[]>([]);
   const [q, setQ] = useState('');
   const [busy, setBusy] = useState('');
+  const [uRange, setURange] = useState<Range>(() => defaultRange('month'));
+  const { lang } = useLang();
 
   const [diag, setDiag] = useState<any>(null);
   const [supCounts, setSupCounts] = useState<any>(null);
@@ -344,6 +348,9 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
             {tab === 'usuarios' && (
               <>
               <Head ic="👥" t={t.h_usuarios_t} s={`${filtered.length} ${t.h_usuarios_registered}`} />
+              <RangeBar value={uRange} onChange={setURange}
+                pdfUrl={(f, tt) => `/api/admin/users/report?from=${f}&to=${tt}&lang=${lang}`}
+                csvUrl={(f, tt) => `/api/admin/users/report?export=csv&from=${f}&to=${tt}&lang=${lang}`} />
               <div className="card">
                 <div className="row between" style={{ marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
                   <input placeholder={t.u_search} value={q} onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 260, margin: 0, marginLeft: 'auto' }} />
@@ -530,6 +537,7 @@ function nextSunday(): string {
 
 function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role: string; meEmail: string; reload: () => void; canManage: boolean }) {
   const t = useT();
+  const { lang } = useLang();
   const [email, setEmail] = useState('');
   const [newRole, setNewRole] = useState('support');
   const [busy, setBusy] = useState(false);
@@ -645,7 +653,15 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
 
       {/* Registro de actividad: filtro por fecha, tema y miembro */}
       <div className="card">
-        <h3 style={{ marginBottom: 10 }}>🕘 {t.t_activity}</h3>
+        <div className="row between" style={{ marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
+          <h3 style={{ margin: 0 }}>🕘 {t.t_activity}</h3>
+          {(() => { const qp = `${logFrom ? `from=${logFrom}&` : ''}${logTo ? `to=${logTo}&` : ''}${logMember ? `member=${encodeURIComponent(logMember)}&` : ''}lang=${lang}`; return (
+            <span className="row" style={{ gap: 8 }}>
+              <a className="btn btn-ghost" href={`/api/admin/activity/report?${qp}`} target="_blank" rel="noreferrer" style={{ padding: '5px 11px', fontSize: 12 }}>🖨️ PDF</a>
+              <a className="btn btn-ghost" href={`/api/admin/activity/report?export=csv&${qp}`} style={{ padding: '5px 11px', fontSize: 12 }}>⤓ CSV</a>
+            </span>
+          ); })()}
+        </div>
         <div className="row" style={{ gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 10 }}>
           <div><label className="muted" style={{ fontSize: 11.5, display: 'block' }}>{t.t_from}</label>
             <input type="date" value={logFrom} onChange={(e) => { setLogFrom(e.target.value); setLogAll(true); }} style={{ width: 150, marginTop: 3 }} /></div>

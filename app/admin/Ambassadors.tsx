@@ -1,11 +1,15 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useT } from '@/lib/adminText';
+import { useLang } from '@/lib/lang';
+import RangeBar, { type Range, defaultRange } from './RangeBar';
 
 const METHOD: any = { paypal: 'PayPal', usdt: 'USDT', credit: 'Credit' };
 
 export default function Ambassadors() {
   const t = useT();
+  const { lang } = useLang();
+  const [range, setRange] = useState<Range>(() => defaultRange('month'));
   const ST: any = {
     pending: { t: t.st_pending, c: '#ffc04d' },
     approved: { t: t.st_approved, c: '#34e2a0' },
@@ -43,6 +47,9 @@ export default function Ambassadors() {
   return (
     <>
       <div className="tabhead"><div className="th-row"><span className="th-ic">🎁</span><span className="th-t">{t.h_embajadores_t}</span></div><div className="th-s">{t.h_embajadores_s}</div></div>
+      <RangeBar value={range} onChange={setRange}
+        pdfUrl={(f, tt) => `/api/admin/ambassadors/report?from=${f}&to=${tt}&lang=${lang}`}
+        csvUrl={(f, tt) => `/api/admin/ambassadors/report?export=csv&from=${f}&to=${tt}&lang=${lang}`} />
       <div className="grid g4" style={{ marginBottom: 16 }}>
         <div className="card kpi"><div className="lbl">{t.am_ambassadors}</div><div className="val">{list.filter((a) => a.status === 'approved').length}</div></div>
         <div className="card kpi"><div className="lbl">{t.am_requests}</div><div className="val" style={{ color: pend.length ? 'var(--amber)' : undefined }}>{pend.length}</div></div>
