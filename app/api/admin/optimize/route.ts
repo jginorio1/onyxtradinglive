@@ -6,6 +6,7 @@ import { getSetting, saveSetting } from '@/lib/settings';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
+type Run = { at: string; pruned_errors: number; pruned_tg: number; analyzed: boolean };
 type Optimize = {
   enabled: boolean;
   last_at: string | null;
@@ -13,21 +14,27 @@ type Optimize = {
   pruned_tg: number;
   analyzed: boolean;
   images: { count: number; saved_bytes: number };
+  history: Run[];
 };
-const O0: Optimize = { enabled: true, last_at: null, pruned_errors: 0, pruned_tg: 0, analyzed: false, images: { count: 0, saved_bytes: 0 } };
+const O0: Optimize = { enabled: true, last_at: null, pruned_errors: 0, pruned_tg: 0, analyzed: false, images: { count: 0, saved_bytes: 0 }, history: [] };
 
 const DAYS = 90;
 
-// GET · estado para el panel (owner)
+// GET · estado para el panel (owner): ajustes + tamaño de la base + tablas grandes
 export async function GET() {
   const { ok } = await requirePerm('ajustes', 'view');
   if (!ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
   const optimize = await getSetting<Optimize>('optimize', O0);
-  const counts: Record<string, number> = {};
-  for (const tabla of ['app_errors', 'telegram_log']) {
-    try { const { count } = await supabaseAdmin.from(tabla).select('*', { count: 'exact', head: true }); counts[tabla] = count || 0; } catch {}
-  }
-  return NextResponse.json({ optimize, counts });
+
+  let db_bytes = 0;
+  let tables: { name: string; bytes: number; rows: number }[] = [];
+  try { const { data } = await supabaseAdmin.rpc('db_total_size'); db_bytes = Number(data) || 0; } catch {}
+  try {
+    const { data } = await supabaseAdmin.rpc('db_table_sizes');
+    tables = (data || []).map((t: any) => ({ name: t.name, bytes: Number(t.bytes) || 0, rows: Number(t.rows) || 0 }));
+  } catch {}
+
+  return NextResponse.json({ optimize, db_bytes, tables });
 }
 
 // POST · ejecuta la optimización. Lo llama la tarea programada (CRON_SECRET)
@@ -54,7 +61,10 @@ export async function POST(req: Request) {
   let analyzed = false;
   try { const { error } = await supabaseAdmin.rpc('optimize_maintenance'); analyzed = !error; } catch {}
 
-  const next: Optimize = { ...prev, last_at: new Date().toISOString(), pruned_errors, pruned_tg, analyzed };
+  const at = new Date().toISOString();
+  const run: Run = { at, pruned_errors, pruned_tg, analyzed };
+  const history = [run, ...(prev.history || [])].slice(0, 8);   // guarda las últimas 8
+  const next: Optimize = { ...prev, last_at: at, pruned_errors, pruned_tg, analyzed, history };
   await saveSetting('optimize', next);
   return NextResponse.json({ ok: true, pruned_errors, pruned_tg, analyzed });
 }
