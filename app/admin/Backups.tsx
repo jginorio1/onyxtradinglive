@@ -7,7 +7,7 @@ const T: any = {
   es: {
     exportNow: 'Exportar ahora', exportDesc: 'Descarga una copia manual de todos los datos.',
     exportAll: 'Exportar todo (JSON)', exportCsv: 'Operaciones (CSV)',
-    auto: 'Backup automático', autoOn: 'Activo · semanal', autoOff: 'Sin ejecutar aún',
+    auto: 'Backup automático', autoOn: 'Activo · diario', autoOff: 'Sin ejecutar aún',
     last: 'Última copia', size: 'Tamaño', dest: 'Destino', never: 'Nunca', destNone: '—',
     autoNote: 'Corre en GitHub Actions cada domingo y sube el volcado a tu almacén externo. Aquí solo ves el estado; la configuración es un archivo con dos secretos.',
     setup: 'Cómo se configura', setupHide: 'Ocultar',
@@ -38,11 +38,15 @@ const T: any = {
     rc2t: '2 · Restaura en pruebas', rc2s: 'base de test, sin tocar producción',
     rc3t: '3 · Verifica y aplica', rc3s: 'a producción solo si confirmas',
     dlHelp: 'El botón Descargar trae el archivo .sql.gz desde Backblaze. Si te pide configurar llaves, añade B2_KEY_ID, B2_APP_KEY y B2_BUCKET en Vercel (las mismas de GitHub).',
+    healthOk: 'Al día', healthWarn: 'Atención', healthBad: 'Sin copia reciente', healthNone: 'Sin copias',
+    agoH: 'hace {n} h', agoD: 'hace {n} días', agoNow: 'hace un momento',
+    spaceUsed: 'Espacio usado', from: 'Desde', to: 'Hasta', q7: '7 días', q30: '30 días', qAll: 'Todo',
+    showMore: 'Ver {n} copias más', showLess: 'Ver menos', noMatch: 'No hay copias en ese rango de fechas.',
   },
   en: {
     exportNow: 'Export now', exportDesc: 'Download a manual copy of all data.',
     exportAll: 'Export all (JSON)', exportCsv: 'Trades (CSV)',
-    auto: 'Automatic backup', autoOn: 'Active · weekly', autoOff: 'Not run yet',
+    auto: 'Automatic backup', autoOn: 'Active · daily', autoOff: 'Not run yet',
     last: 'Last backup', size: 'Size', dest: 'Destination', never: 'Never', destNone: '—',
     autoNote: 'Runs in GitHub Actions every Sunday and uploads the dump to your external storage. Here you only see the status; setup is one file with two secrets.',
     setup: 'How to set it up', setupHide: 'Hide',
@@ -73,6 +77,10 @@ const T: any = {
     rc2t: '2 · Restore to test', rc2s: 'test database, production untouched',
     rc3t: '3 · Verify and apply', rc3s: 'to production only if you confirm',
     dlHelp: 'The Download button pulls the .sql.gz file from Backblaze. If it asks you to configure keys, add B2_KEY_ID, B2_APP_KEY and B2_BUCKET in Vercel (the same ones from GitHub).',
+    healthOk: 'Up to date', healthWarn: 'Heads up', healthBad: 'No recent copy', healthNone: 'No copies',
+    agoH: '{n} h ago', agoD: '{n} days ago', agoNow: 'just now',
+    spaceUsed: 'Space used', from: 'From', to: 'To', q7: '7 days', q30: '30 days', qAll: 'All',
+    showMore: 'Show {n} more copies', showLess: 'Show less', noMatch: 'No copies in that date range.',
   },
 };
 
@@ -86,8 +94,20 @@ export default function Backups() {
   const [busy, setBusy] = useState('');
   const [showSetup, setShowSetup] = useState(false);
   const [restoreFile, setRestoreFile] = useState('');
+  const [showAll, setShowAll] = useState(false);
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
 
   useEffect(() => { fetch('/api/admin/backup').then((r) => r.json()).then(setD).catch(() => setD({})); }, []);
+
+  // Atajos de rango: N días atrás → hoy (o Todo).
+  function quickRange(days: number | null) {
+    if (days === null) { setFrom(''); setTo(''); return; }
+    const end = new Date();
+    const start = new Date(Date.now() - days * 86400000);
+    setFrom(start.toISOString().slice(0, 10));
+    setTo(end.toISOString().slice(0, 10));
+  }
 
   function download(exp: string) {
     setBusy(exp);
@@ -95,9 +115,32 @@ export default function Backups() {
     setTimeout(() => setBusy(''), 2500);
   }
 
-  const backup = d?.backup || { last_at: null, size: 0, dest: '' };
+  const backup = d?.backup || { last_at: null, size: 0, dest: '', history: [] };
   const recent = backup.last_at && (Date.now() - new Date(backup.last_at).getTime()) < 8 * 86400000;
   const counts = d?.counts || {};
+
+  // Salud del respaldo: verde si la última copia es de hace <36 h, ámbar <3 días, rojo si más.
+  const ageMs = backup.last_at ? Date.now() - new Date(backup.last_at).getTime() : Infinity;
+  const agoTxt = (ms: number) => {
+    if (!isFinite(ms)) return '';
+    const h = Math.floor(ms / 3600000);
+    if (h < 1) return t.agoNow;
+    if (h < 48) return t.agoH.replace('{n}', String(h));
+    return t.agoD.replace('{n}', String(Math.floor(h / 24)));
+  };
+  const health = !backup.last_at ? { txt: t.healthNone, c: '#c9a9ff', bg: 'rgba(160,107,255,.18)' }
+    : ageMs < 36 * 3600000 ? { txt: t.healthOk, c: '#7fe9c0', bg: 'rgba(52,226,160,.15)' }
+    : ageMs < 3 * 86400000 ? { txt: t.healthWarn, c: '#ffcf7a', bg: 'rgba(255,192,77,.16)' }
+    : { txt: t.healthBad, c: '#ff9aa6', bg: 'rgba(255,107,125,.16)' };
+
+  // Historial filtrado por fecha + "ver últimas 5".
+  const allHist: any[] = backup.history || [];
+  const fromMs = from ? new Date(from + 'T00:00:00').getTime() : -Infinity;
+  const toMs = to ? new Date(to + 'T23:59:59').getTime() : Infinity;
+  const filtered = allHist.filter((c) => { const m = new Date(c.at).getTime(); return m >= fromMs && m <= toMs; });
+  const shown = showAll ? filtered : filtered.slice(0, 5);
+  const hidden = filtered.length - shown.length;
+  const spaceBytes = allHist.reduce((s, c) => s + (Number(c.size) || 0), 0);
   const tile = (label: string, value: any, color?: string, live?: boolean) => (
     <div className="tile"><div className="muted" style={{ fontSize: 11.5 }}>{label}</div>
       <div className="row" style={{ gap: 7, marginTop: 3 }}><span style={{ fontSize: 16, fontWeight: 700, color: color || 'var(--tx)' }}>{value}</span>{live && <span className="livedot" />}</div></div>
@@ -122,9 +165,16 @@ export default function Backups() {
       <div className="card" style={{ marginBottom: 12 }}>
         <div className="row between" style={{ marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
           <b style={{ fontSize: 14 }}>{t.auto}</b>
-          {recent
-            ? <span className="pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#7fe9c0', background: 'rgba(52,226,160,.15)' }}><span className="livedot" />{t.autoOn}</span>
-            : <span className="pill amber">{t.autoOff}</span>}
+          <span className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+            {/* Indicador de salud: verde/ámbar/rojo según cuándo fue la última copia */}
+            <span className="pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: health.c, background: health.bg }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: health.c }} className={ageMs < 36 * 3600000 ? 'livedot' : undefined} />
+              {health.txt}{backup.last_at ? ` · ${agoTxt(ageMs)}` : ''}
+            </span>
+            {recent
+              ? <span className="pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#7fe9c0', background: 'rgba(52,226,160,.15)' }}><span className="livedot" />{t.autoOn}</span>
+              : <span className="pill amber">{t.autoOff}</span>}
+          </span>
         </div>
         <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(120px,1fr))', gap: 10 }}>
           {tile(t.last, backup.last_at ? new Date(backup.last_at).toLocaleString() : t.never, undefined, recent)}
@@ -144,7 +194,23 @@ export default function Backups() {
       <div className="card" style={{ marginBottom: 12 }}>
         <div className="row between" style={{ marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
           <b style={{ fontSize: 14 }}>{t.history}</b>
-          <span className="pill" style={{ color: 'var(--mut)' }}>{t.retaining}</span>
+          <span className="row" style={{ gap: 8 }}>
+            <span className="pill" style={{ color: 'var(--mut)' }}>{t.spaceUsed}: {fmtSize(spaceBytes)}</span>
+            <span className="pill" style={{ color: 'var(--mut)' }}>{t.retaining}</span>
+          </span>
+        </div>
+
+        {/* Filtro por fechas */}
+        <div className="row" style={{ gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 12 }}>
+          <div><label className="muted" style={{ fontSize: 11.5, display: 'block' }}>{t.from}</label>
+            <input type="date" value={from} onChange={(e) => { setFrom(e.target.value); setShowAll(true); }} style={{ width: 150, marginTop: 3 }} /></div>
+          <div><label className="muted" style={{ fontSize: 11.5, display: 'block' }}>{t.to}</label>
+            <input type="date" value={to} onChange={(e) => { setTo(e.target.value); setShowAll(true); }} style={{ width: 150, marginTop: 3 }} /></div>
+          <div className="row" style={{ gap: 6, marginLeft: 'auto' }}>
+            <button className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: 12 }} onClick={() => { quickRange(7); setShowAll(true); }}>{t.q7}</button>
+            <button className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: 12 }} onClick={() => { quickRange(30); setShowAll(true); }}>{t.q30}</button>
+            <button className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: 12 }} onClick={() => { quickRange(null); setShowAll(false); }}>{t.qAll}</button>
+          </div>
         </div>
 
         {/* Cabecera de columnas */}
@@ -154,14 +220,19 @@ export default function Backups() {
           <span style={{ width: 220 }}>{t.dest}</span>
         </div>
 
-        {!(backup.history || []).length && (
+        {!allHist.length && (
           <div style={{ padding: '10px 0', borderTop: '1px solid var(--line)' }}>
             <p className="muted" style={{ fontSize: 13, margin: 0 }}>{t.noHistory}</p>
             <p className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>{t.emptyHint}</p>
           </div>
         )}
+        {allHist.length > 0 && !filtered.length && (
+          <div style={{ padding: '10px 0', borderTop: '1px solid var(--line)' }}>
+            <p className="muted" style={{ fontSize: 13, margin: 0 }}>{t.noMatch}</p>
+          </div>
+        )}
 
-        {(backup.history || []).map((c: any, i: number) => (
+        {shown.map((c: any, i: number) => (
           <div key={i} style={{ borderTop: '1px solid var(--line)', padding: '10px 0' }}>
             <div className="row between" style={{ gap: 8, flexWrap: 'wrap', fontSize: 13 }}>
               <span className="row" style={{ gap: 8, flex: 1, minWidth: 150 }}>{i === 0 && recent ? <span className="livedot" /> : <span style={{ width: 7 }} />}{new Date(c.at).toLocaleString()}</span>
@@ -185,6 +256,12 @@ export default function Backups() {
             )}
           </div>
         ))}
+        {(hidden > 0 || (showAll && filtered.length > 5)) && (
+          <button className="btn btn-ghost" style={{ width: '100%', marginTop: 10, fontSize: 12.5, color: 'var(--mut)' }}
+            onClick={() => setShowAll(!showAll)}>
+            {showAll ? `▲ ${t.showLess}` : `▼ ${t.showMore.replace('{n}', String(hidden))}`}
+          </button>
+        )}
         <div className="muted" style={{ fontSize: 11.5, marginTop: 10 }}>{t.dlHelp}</div>
       </div>
 
