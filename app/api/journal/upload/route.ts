@@ -1,11 +1,22 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { compressImage } from '@/lib/imageOptimize';
+import { getSetting, saveSetting } from '@/lib/settings';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 const BUCKET = 'trade-photos';
+
+// Suma al contador de optimización (para el panel). Tolerante.
+async function trackImage(saved: number) {
+  try {
+    const o: any = await getSetting('optimize', {});
+    const img = o.images || { count: 0, saved_bytes: 0 };
+    await saveSetting('optimize', { ...o, images: { count: (img.count || 0) + 1, saved_bytes: (img.saved_bytes || 0) + Math.max(0, saved) } });
+  } catch {}
+}
 
 // POST (multipart) · sube la foto de una operación a Supabase Storage y devuelve la URL pública.
 export async function POST(req: Request) {
@@ -22,14 +33,16 @@ export async function POST(req: Request) {
   // Crear el bucket si no existe (idempotente)
   try { await supabaseAdmin.storage.createBucket(BUCKET, { public: true }); } catch { /* ya existe */ }
 
-  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '');
-  const path = `${user.id}/${tradeId}-${Date.now()}.${ext}`;
-  const buf = Buffer.from(await file.arrayBuffer());
+  const raw = Buffer.from(await file.arrayBuffer());
+  // Optimización: comprime y redimensiona antes de guardar (menos espacio, más velocidad).
+  const opt = await compressImage(raw, file.type);
+  const path = `${user.id}/${tradeId}-${Date.now()}.${opt.ext}`;
 
-  const { error: upErr } = await supabaseAdmin.storage.from(BUCKET).upload(path, buf, {
-    contentType: file.type || 'image/jpeg', upsert: true,
+  const { error: upErr } = await supabaseAdmin.storage.from(BUCKET).upload(path, opt.buffer, {
+    contentType: opt.contentType, upsert: true,
   });
   if (upErr) return NextResponse.json({ error: upErr.message }, { status: 500 });
+  await trackImage(opt.saved);
 
   const { data: pub } = supabaseAdmin.storage.from(BUCKET).getPublicUrl(path);
   const url = pub.publicUrl;
