@@ -1,6 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useT } from '@/lib/adminText';
+import { useLang } from '@/lib/lang';
+import RangeBar, { type Range, defaultRange } from './RangeBar';
 
 const stColor: any = { open: 'var(--brand)', in_progress: 'var(--amber)', resolved: 'var(--green)' };
 const stBg: any = { open: 'rgba(124,140,255,.15)', in_progress: 'rgba(255,192,77,.15)', resolved: 'rgba(52,226,160,.15)' };
@@ -8,6 +10,8 @@ const initials = (email: string) => (email || '?').replace(/@.*/, '').slice(0, 2
 
 export default function SupportInbox() {
   const t = useT();
+  const { lang } = useLang();
+  const [range, setRange] = useState<Range>(() => defaultRange('month'));
   const ST: any = { open: t.st_open, in_progress: t.st_inprogress, resolved: t.st_resolved };
   const CATS: any = { general: t.cat_general, conexion: t.cat_conexion, instalacion: t.cat_instalacion, guardian: t.cat_guardian, facturacion: t.cat_facturacion };
   const CH: any = { ticket: t.ch_ticket, chat: t.ch_chat, lead: t.ch_lead, email: t.ch_email };
@@ -50,6 +54,9 @@ export default function SupportInbox() {
   return (
     <div>
       <div className="tabhead"><div className="th-row"><span className="th-ic">🎫</span><span className="th-t">{t.h_soporte_t}</span></div><div className="th-s">{t.h_soporte_s}</div></div>
+      <RangeBar value={range} onChange={setRange}
+        pdfUrl={(f, tt) => `/api/admin/support/report?from=${f}&to=${tt}&lang=${lang}`}
+        csvUrl={(f, tt) => `/api/admin/support/report?export=csv&from=${f}&to=${tt}&lang=${lang}`} />
 
       <div className="row" style={{ gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
         {([['open', t.s_open], ['in_progress', t.s_inprogress], ['resolved', t.s_resolved], ['all', t.s_all]] as any).map(([k, l]: any) => (

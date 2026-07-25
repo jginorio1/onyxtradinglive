@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import Link from 'next/link';
 import { analyze, bestOf, worstOf, topPairs, fmtDur, type T, type Bucket } from '@/lib/analytics';
+import RangeBar, { type Range, defaultRange } from '@/app/admin/RangeBar';
 import Journal from './Journal';
 import Costs from './Costs';
 import AccountExtras from './AccountExtras';
@@ -255,6 +256,7 @@ function PlanBadge({ plan }: { plan: string }) {
 export default function DashboardClient({ email = '', plan = 'free', profile, trades = [], accounts: accs0 = [] }: { email?: string; plan?: string; profile?: { full_name?: string; trade_style?: string; experience?: string; platform?: string; goal?: string }; trades?: TT[]; accounts?: Acc[] }) {
   const isFree = (plan || 'free') === 'free';
   const { lang, setLang } = useLang();
+  const [rRange, setRRange] = useState<Range>(() => defaultRange('month'));
   const [accounts, setAccounts] = useState<Acc[]>(accs0 || []);
   const [tradesS, setTradesS] = useState<TT[]>(trades || []);
   const [sel, setSel] = useState<string>('all');
@@ -490,6 +492,15 @@ export default function DashboardClient({ email = '', plan = 'free', profile, tr
           <Link className="btn btn-ghost" href="/dashboard/keys">{L.connectBtn}</Link>
         </div>
         <p className="muted" style={{ fontSize: 13, margin: '-6px 0 14px', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>{email} · {accounts.length} {L.accountsWord} · {L.balance} ${totalBalance.toLocaleString()} · <span className="livedot" style={{ width: 8, height: 8 }} /><span style={{ color: GREEN }}>{updatedTxt}</span></p>
+
+        {!isFree && (
+          <>
+            <div className="muted" style={{ fontSize: 12.5, marginBottom: 4 }}>{lang === 'es' ? '📄 Descarga tu reporte de rendimiento (para fondeo, impuestos o tu análisis)' : '📄 Download your performance report (for funding, taxes or your own analysis)'}</div>
+            <RangeBar value={rRange} onChange={setRRange}
+              pdfUrl={(f, tt) => `/api/dashboard/report?from=${f}&to=${tt}&lang=${lang}`}
+              csvUrl={(f, tt) => `/api/dashboard/report?export=csv&from=${f}&to=${tt}&lang=${lang}`} />
+          </>
+        )}
 
         <div className="cockpit">
           <div className="rail-left"><MarketHours lang={lang} compact /></div>

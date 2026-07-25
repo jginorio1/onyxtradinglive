@@ -1,6 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useT } from '@/lib/adminText';
+import { useLang } from '@/lib/lang';
+import RangeBar, { type Range, defaultRange } from './RangeBar';
 
 function dot(color: string) {
   return <span style={{ width: 10, height: 10, borderRadius: '50%', flex: 'none', background: color, display: 'inline-block' }} />;
@@ -9,6 +11,8 @@ function statColor(s: any) { return s.ok && !s.warn ? '#34e2a0' : s.warn ? '#ffc
 
 export default function Diagnostics() {
   const t = useT();
+  const { lang } = useLang();
+  const [range, setRange] = useState<Range>(() => defaultRange('d30'));
   const GUIDE = [
     { t: t.dg1t, d: t.dg1d }, { t: t.dg2t, d: t.dg2d }, { t: t.dg3t, d: t.dg3d },
     { t: t.dg4t, d: t.dg4d }, { t: t.dg5t, d: t.dg5d }, { t: t.dg6t, d: t.dg6d },
@@ -40,6 +44,9 @@ export default function Diagnostics() {
     <div>
       <div className="row between" style={{ flexWrap: 'wrap', gap: 8 }}>
         <div className="tabhead" style={{ marginBottom: 12 }}><div className="th-row"><span className="th-ic">🩺</span><span className="th-t">{t.h_diag_t}</span></div><div className="th-s">{t.h_diag_s}</div></div>
+        <RangeBar value={range} onChange={setRange} presets={['d7', 'd30', 'quarter', 'custom']}
+          pdfUrl={(f, tt) => `/api/admin/diag/report?from=${f}&to=${tt}&lang=${lang}`}
+          csvUrl={(f, tt) => `/api/admin/diag/report?export=csv&from=${f}&to=${tt}&lang=${lang}`} />
         <div className="row" style={{ gap: 8 }}>
           <span className="pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#7fe9c0', background: 'rgba(52,226,160,.15)' }}><span className="livedot" />{t.d_liveBadge}</span>
           <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={load}>{t.d_refresh}</button>

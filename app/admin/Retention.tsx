@@ -1,9 +1,13 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useT } from '@/lib/adminText';
+import { useLang } from '@/lib/lang';
+import RangeBar, { type Range, defaultRange } from './RangeBar';
 
 export default function Retention() {
   const t = useT();
+  const { lang } = useLang();
+  const [range, setRange] = useState<Range>(() => defaultRange('month'));
   const REASON: any = {
     price: t.reason_price, unused: t.reason_unused, missing: t.reason_missing, stopped: t.reason_stopped, other: t.reason_other,
   };
@@ -41,6 +45,9 @@ export default function Retention() {
   return (
     <>
       <div className="tabhead"><div className="th-row"><span className="th-ic">🛟</span><span className="th-t">{t.h_retencion_t}</span></div><div className="th-s">{t.h_retencion_s}</div></div>
+      <RangeBar value={range} onChange={setRange}
+        pdfUrl={(f, tt) => `/api/admin/retention/report?from=${f}&to=${tt}&lang=${lang}`}
+        csvUrl={(f, tt) => `/api/admin/retention/report?export=csv&from=${f}&to=${tt}&lang=${lang}`} />
       <div className="grid g4" style={{ marginBottom: 16 }}>
         <div className="card kpi"><div className="lbl">{t.re_attempts}</div><div className="val">{d.total}</div></div>
         <div className="card kpi"><div className="lbl">{t.re_saved}</div><div className="val pos">{d.saved}</div></div>
