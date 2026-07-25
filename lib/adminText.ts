@@ -99,6 +99,15 @@ const ES = {
   a_rolesBody: 'El Owner controla planes, usuarios y equipo. Los Admin gestionan usuarios y planes. El Soporte solo consulta y ayuda.',
   a_rolesEnv: 'Los correos de ADMIN_EMAILS en Vercel siempre entran como Owner. Puedes añadir más administradores desde la pestaña Equipo.',
 
+  // Alertas
+  al_title: 'Alertas', al_on: 'Activas', al_off: 'Apagadas',
+  al_body: 'Un vigilante revisa tus números cada día y te avisa por Telegram si algo cruza el límite.',
+  al_noTg: 'Telegram no está configurado; las alertas se guardan aquí pero no se envían.',
+  al_failed: 'Pagos fallidos (24 h) ≥', al_cancel: 'Cancelaciones (24 h) ≥', al_errors: 'Errores (24 h) ≥',
+  al_backup: 'Copia de seguridad con más de … días', al_mrr: 'MRR baja … % vs semana pasada',
+  al_save: 'Guardar alertas', al_saved: 'Alertas guardadas.', al_recent: 'Alertas recientes',
+  al_note: 'Corre con la tarea programada (alerts.yml). También toma una foto diaria de tus métricas para las alertas de tendencia.',
+
   // Barra de descuentos (landing)
   pr_title: 'Barra de descuentos', pr_on: 'Visible', pr_off: 'Oculta',
   pr_body: 'Tira animada arriba del landing para anunciar promos. Con contador si pones fecha de fin.',
@@ -303,6 +312,15 @@ const EN: Dict = {
   a_yourRole: 'Your role', a_rolesTitle: 'How roles work',
   a_rolesBody: 'The Owner controls plans, users and team. Admins manage users and plans. Support only views and helps.',
   a_rolesEnv: 'Emails in ADMIN_EMAILS on Vercel always come in as Owner. You can add more admins from the Team tab.',
+
+  // Alerts
+  al_title: 'Alerts', al_on: 'On', al_off: 'Off',
+  al_body: 'A watcher checks your numbers daily and pings you on Telegram if something crosses a limit.',
+  al_noTg: 'Telegram is not configured; alerts are saved here but not sent.',
+  al_failed: 'Failed payments (24 h) ≥', al_cancel: 'Cancellations (24 h) ≥', al_errors: 'Errors (24 h) ≥',
+  al_backup: 'Backup older than … days', al_mrr: 'MRR drops … % vs last week',
+  al_save: 'Save alerts', al_saved: 'Alerts saved.', al_recent: 'Recent alerts',
+  al_note: 'Runs via the scheduled task (alerts.yml). It also takes a daily snapshot of your metrics for trend alerts.',
 
   // Discount bar (landing)
   pr_title: 'Discount bar', pr_on: 'Visible', pr_off: 'Hidden',

@@ -136,6 +136,69 @@ function SecurityControl({ idleMin }: { idleMin: number }) {
   );
 }
 
+// Alertas: el Owner enciende el vigilante y ajusta los límites. Avisa por Telegram.
+function AlertsControl() {
+  const t = useT();
+  const [d, setD] = useState<any>(null);
+  const [msg, setMsg] = useState('');
+  const [busy, setBusy] = useState(false);
+  const load = () => fetch('/api/admin/alerts').then((r) => r.json()).then(setD).catch(() => {});
+  useEffect(() => { load(); }, []);
+  const setTh = (k: string, v: number) => setD((o: any) => ({ ...o, thresholds: { ...o.thresholds, [k]: v } }));
+
+  async function save() {
+    setBusy(true); setMsg('');
+    try {
+      const r = await fetch('/api/admin/alerts', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ enabled: d.enabled, thresholds: d.thresholds }) });
+      if (!r.ok) { const j = await r.json(); setMsg(j.error || 'Error'); } else setMsg(t.al_saved);
+    } finally { setBusy(false); }
+  }
+  if (!d) return null;
+  const rules: [string, string][] = [
+    ['failedPayments', t.al_failed], ['cancellationsDay', t.al_cancel], ['errorSpike', t.al_errors], ['backupStaleDays', t.al_backup], ['mrrDropPct', t.al_mrr],
+  ];
+  const inp = { width: 80, padding: '6px 8px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', textAlign: 'center' } as any;
+
+  return (
+    <div className="card" style={{ marginBottom: 12 }}>
+      <div className="row between" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 6 }}>
+        <h3 style={{ margin: 0 }}>🔔 {t.al_title}</h3>
+        <span className="row" style={{ gap: 8 }}>
+          <span className="pill" style={d.enabled ? { color: '#7fe9c0', background: 'rgba(52,226,160,.15)' } : { color: 'var(--mut)' }}>{d.enabled ? t.al_on : t.al_off}</span>
+          <Toggle on={!!d.enabled} onClick={() => setD((o: any) => ({ ...o, enabled: !o.enabled }))} />
+        </span>
+      </div>
+      <p className="muted" style={{ fontSize: 13, marginBottom: 4 }}>{t.al_body}</p>
+      {!d.telegram && <p style={{ fontSize: 12, color: 'var(--amber)', marginBottom: 8 }}>⚠ {t.al_noTg}</p>}
+
+      <div style={{ marginTop: 8 }}>
+        {rules.map(([k, label]) => (
+          <div key={k} className="row between" style={{ padding: '8px 0', borderTop: '1px solid var(--line)', gap: 10, flexWrap: 'wrap', fontSize: 13 }}>
+            <span style={{ flex: 1, minWidth: 160 }}>{label}</span>
+            <input type="number" min={0} value={d.thresholds[k]} onChange={(e) => setTh(k, Math.max(0, Number(e.target.value) || 0))} style={inp} />
+          </div>
+        ))}
+      </div>
+      <div className="row" style={{ gap: 10, marginTop: 12, alignItems: 'center' }}>
+        <button className="btn btn-primary" onClick={save} disabled={busy}>{busy ? '…' : t.al_save}</button>
+        {msg && <span style={{ fontSize: 12.5, color: '#7fe9c0' }}>{msg}</span>}
+      </div>
+
+      {!!(d.feed || []).length && (
+        <div style={{ marginTop: 14, borderTop: '1px solid var(--line)', paddingTop: 10 }}>
+          <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{t.al_recent}</div>
+          {d.feed.slice(0, 6).map((f: any, i: number) => (
+            <div key={i} className="row between" style={{ padding: '6px 0', fontSize: 12.5, gap: 8, flexWrap: 'wrap' }}>
+              <span>{f.text}</span><span className="muted">{new Date(f.at).toLocaleDateString()}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      <p className="muted" style={{ fontSize: 11.5, marginTop: 10 }}>{t.al_note}</p>
+    </div>
+  );
+}
+
 // Modo beta: el Owner fija un PIN de 6 dígitos y activa/desactiva la vista beta.
 function BetaControl() {
   const t = useT();
@@ -425,6 +488,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                       <p className="muted" style={{ fontSize: 13 }}>{t.a_rolesEnv}</p>
                     </div>
                     <PromoControl />
+                    <AlertsControl />
                     <BetaControl />
                   </>
                 )}
