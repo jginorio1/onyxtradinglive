@@ -1,0 +1,19 @@
+name: Alerts
+
+on:
+  schedule:
+    - cron: '0 7 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Revisar alertas
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl -s -X POST "$APP_URL/api/admin/alerts" \
+            -H "x-cron-secret: $CRON_SECRET" \
+            -H "content-type: application/json" || true
