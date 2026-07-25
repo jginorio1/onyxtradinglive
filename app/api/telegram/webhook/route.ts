@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { sendMessage, sendPhoto, sendDocument } from '@/lib/telegram';
-import { computeTraderReport, traderCsv, traderChartUrl, traderPdf } from '@/lib/traderReport';
+import { sendMessage, sendPhoto, sendPhotoFile, sendDocument } from '@/lib/telegram';
+import { computeTraderReport, traderCsv, traderChartUrl, traderCardPng, traderPdf } from '@/lib/traderReport';
 
 const APP = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.onyxtradinglive.com').replace(/\/$/, '');
 
@@ -19,7 +19,10 @@ async function sendFullReport(chatId: string, prof: any, days: number, label: st
     + `Factor de beneficio: ${rep.pf}\n\n`
     + `Reporte completo: ${APP}/dashboard`, { kind: 'report', userId: prof.id });
   if (rep.total > 0) {
-    try { await sendPhoto(chatId, traderChartUrl(rep, true), 'Neto por instrumento'); } catch {}
+    try {
+      const card = await traderCardPng(rep, { name: prof.full_name || '', from: fromISO.slice(0, 10), to: toISO.slice(0, 10), es: true });
+      if (card) await sendPhotoFile(chatId, card, 'Tu resumen en imagen'); else await sendPhoto(chatId, traderChartUrl(rep, true), 'Neto por instrumento');
+    } catch {}
     try { const pdf = await traderPdf(rep, { name: prof.full_name || '', from: fromISO.slice(0, 10), to: toISO.slice(0, 10), es: true }); await sendDocument(chatId, `onyx-reporte-${toISO.slice(0, 10)}.pdf`, pdf, 'application/pdf', 'Tu reporte en PDF'); } catch {}
     try { await sendDocument(chatId, `onyx-operaciones-${toISO.slice(0, 10)}.csv`, traderCsv(rep), 'text/csv', 'Tus operaciones (CSV)'); } catch {}
   } else {

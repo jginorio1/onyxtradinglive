@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { makeLinkCode, BOT_USERNAME, telegramEnabled, sendMessage, sendPhoto, sendDocument } from '@/lib/telegram';
-import { computeTraderReport, traderCsv, traderChartUrl, traderPdf } from '@/lib/traderReport';
+import { makeLinkCode, BOT_USERNAME, telegramEnabled, sendMessage, sendPhoto, sendPhotoFile, sendDocument } from '@/lib/telegram';
+import { computeTraderReport, traderCsv, traderChartUrl, traderCardPng, traderPdf } from '@/lib/traderReport';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -94,7 +94,10 @@ export async function POST(req: Request) {
         { kind: 'report', userId: user.id });
       let photo = false, pdf = false, csv = false;
       if (rep.total > 0) {
-        try { photo = await sendPhoto(p.telegram_chat_id, traderChartUrl(rep, true), 'Neto por instrumento'); } catch {}
+        try {
+          const card = await traderCardPng(rep, { name: p.full_name || '', from: fromISO.slice(0, 10), to: toISO.slice(0, 10), es: true });
+          photo = card ? await sendPhotoFile(p.telegram_chat_id, card, 'Tu resumen en imagen') : await sendPhoto(p.telegram_chat_id, traderChartUrl(rep, true), 'Neto por instrumento');
+        } catch {}
         try { const bytes = await traderPdf(rep, { name: p.full_name || '', from: fromISO.slice(0, 10), to: toISO.slice(0, 10), es: true }); pdf = await sendDocument(p.telegram_chat_id, 'onyx-reporte.pdf', bytes, 'application/pdf', 'Tu reporte en PDF'); } catch {}
         try { csv = await sendDocument(p.telegram_chat_id, 'onyx-operaciones.csv', traderCsv(rep), 'text/csv', 'Tus operaciones (CSV)'); } catch {}
       }

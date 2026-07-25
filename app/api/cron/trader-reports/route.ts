@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { sendMessage, sendPhoto, sendDocument, telegramEnabled } from '@/lib/telegram';
-import { computeTraderReport, traderCsv, traderChartUrl, traderPdf } from '@/lib/traderReport';
+import { sendMessage, sendPhoto, sendPhotoFile, sendDocument, telegramEnabled } from '@/lib/telegram';
+import { computeTraderReport, traderCsv, traderChartUrl, traderCardPng, traderPdf } from '@/lib/traderReport';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -59,7 +59,10 @@ export async function POST(req: Request) {
       await sendMessage(p.telegram_chat_id, txt, { kind: 'report', userId: p.id });
 
       if (rep.total > 0) {
-        try { await sendPhoto(p.telegram_chat_id, traderChartUrl(rep, es), es ? 'Neto por instrumento' : 'Net by instrument'); } catch {}
+        try {
+          const card = await traderCardPng(rep, { name: p.full_name || '', from: fromISO.slice(0, 10), to: toISO.slice(0, 10), es });
+          if (card) await sendPhotoFile(p.telegram_chat_id, card, es ? 'Tu resumen en imagen' : 'Your summary'); else await sendPhoto(p.telegram_chat_id, traderChartUrl(rep, es), es ? 'Neto por instrumento' : 'Net by instrument');
+        } catch {}
         try {
           const pdf = await traderPdf(rep, { name: p.full_name || '', from: fromISO.slice(0, 10), to: toISO.slice(0, 10), es });
           await sendDocument(p.telegram_chat_id, `onyx-reporte-${toISO.slice(0, 10)}.pdf`, pdf, 'application/pdf', es ? 'Tu reporte en PDF' : 'Your PDF report');

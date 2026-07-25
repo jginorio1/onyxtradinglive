@@ -55,6 +55,20 @@ export async function sendPhoto(chatId: string, photoUrl: string, caption?: stri
   } catch (e: any) { await logSend('photo', false, null, e?.message || 'network'); return false; }
 }
 
+// Envía una imagen (bytes PNG) como foto. Nunca lanza.
+export async function sendPhotoFile(chatId: string, bytes: Uint8Array, caption?: string) {
+  if (!telegramEnabled() || !chatId) return false;
+  try {
+    const form = new FormData();
+    form.append('chat_id', chatId);
+    if (caption) { form.append('caption', caption); form.append('parse_mode', 'HTML'); }
+    form.append('photo', new Blob([bytes as any], { type: 'image/png' }), 'report.png');
+    const r = await fetch(API('sendPhoto'), { method: 'POST', body: form as any });
+    await logSend('photo', r.ok, null, r.ok ? undefined : `HTTP ${r.status}`);
+    return r.ok;
+  } catch (e: any) { await logSend('photo', false, null, e?.message || 'network'); return false; }
+}
+
 // Envía un archivo (PDF, CSV…) como documento adjunto. Nunca lanza.
 export async function sendDocument(chatId: string, filename: string, content: Uint8Array | string, mime: string, caption?: string) {
   if (!telegramEnabled() || !chatId) return false;
