@@ -15,7 +15,8 @@
     "@supabase/supabase-js": "^2.45.4",
     "@supabase/ssr": "^0.5.1",
     "stripe": "^16.8.0",
-    "sharp": "^0.33.4"
+    "sharp": "^0.33.4",
+    "pdf-lib": "^1.17.1"
   },
   "devDependencies": {
     "typescript": "^5.5.4",

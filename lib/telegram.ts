@@ -42,6 +42,34 @@ export async function sendMessage(chatId: string, text: string, meta?: { kind?: 
   } catch (e: any) { await logSend(kind, false, meta?.userId, e?.message || 'network'); return false; }
 }
 
+// Envía una foto por URL (p. ej. un gráfico generado). Nunca lanza.
+export async function sendPhoto(chatId: string, photoUrl: string, caption?: string) {
+  if (!telegramEnabled() || !chatId || !photoUrl) return false;
+  try {
+    const r = await fetch(API('sendPhoto'), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, photo: photoUrl, caption: caption || '', parse_mode: 'HTML' }),
+    });
+    await logSend('photo', r.ok, null, r.ok ? undefined : `HTTP ${r.status}`);
+    return r.ok;
+  } catch (e: any) { await logSend('photo', false, null, e?.message || 'network'); return false; }
+}
+
+// Envía un archivo (PDF, CSV…) como documento adjunto. Nunca lanza.
+export async function sendDocument(chatId: string, filename: string, content: Uint8Array | string, mime: string, caption?: string) {
+  if (!telegramEnabled() || !chatId) return false;
+  try {
+    const bytes = typeof content === 'string' ? new TextEncoder().encode(content) : content;
+    const form = new FormData();
+    form.append('chat_id', chatId);
+    if (caption) { form.append('caption', caption); form.append('parse_mode', 'HTML'); }
+    form.append('document', new Blob([bytes as any], { type: mime }), filename);
+    const r = await fetch(API('sendDocument'), { method: 'POST', body: form as any });
+    await logSend('document', r.ok, null, r.ok ? undefined : `HTTP ${r.status}`);
+    return r.ok;
+  } catch (e: any) { await logSend('document', false, null, e?.message || 'network'); return false; }
+}
+
 // Alerta a un usuario respetando sus preferencias.
 // `kind` decide qué interruptor se comprueba antes de enviar.
 type Kind = 'blocks' | 'limits' | 'manager' | 'funding' | 'daily' | 'offline' | 'goal' | 'weekly';

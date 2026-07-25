@@ -16,7 +16,7 @@ export async function GET() {
     if (!user) return NextResponse.json({ error: 'Not signed in.', code: 'no_auth' }, { status: 401 });
 
     const { data: p } = await supabaseAdmin.from('profiles')
-      .select('telegram_chat_id,telegram_username,telegram_linked_at,plan,tg_alerts,tg_blocks,tg_limits,tg_manager,tg_funding,tg_daily,tg_offline,tg_goal,tg_weekly')
+      .select('telegram_chat_id,telegram_username,telegram_linked_at,plan,tg_alerts,tg_blocks,tg_limits,tg_manager,tg_funding,tg_daily,tg_offline,tg_goal,tg_weekly,tg_report')
       .eq('id', user.id).maybeSingle() as any;
 
     const { data: plan } = await supabaseAdmin.from('plans')
@@ -33,6 +33,7 @@ export async function GET() {
       linkedAt: p?.telegram_linked_at || null,
       bot: BOT_USERNAME,
       prefs,
+      report: (p as any)?.tg_report || 'off',
     });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error', code: 'generic' }, { status: 500 });
@@ -77,6 +78,7 @@ export async function POST(req: Request) {
     if (b.action === 'prefs') {
       const fields: any = {};
       PREFS.forEach((k) => { if (b[k] !== undefined) fields[k] = !!b[k]; });
+      if (['off', 'weekly', 'monthly'].includes(b.tg_report)) fields.tg_report = b.tg_report;
       if (Object.keys(fields).length) {
         await supabaseAdmin.from('profiles').update(fields).eq('id', user.id);
       }

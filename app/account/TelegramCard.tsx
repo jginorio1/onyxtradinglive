@@ -34,6 +34,9 @@ const T: any = {
       tg_daily: 'Resumen del día',
       tg_weekly: 'Informe semanal',
     },
+    reportT: 'Reporte de rendimiento (con PDF y gráfico)',
+    reportOff: 'No enviar', reportWeekly: 'Semanal (lunes)', reportMonthly: 'Mensual (día 1)',
+    reportHint: 'Recibe tu resumen, tu gráfico, tu PDF y tu CSV de operaciones directo en Telegram.',
     off: 'Los avisos generales están apagados. Enciéndelos arriba para recibir nada por Telegram.',
     saved: 'Guardado', test: 'Enviar prueba', testOk: 'Enviado ✓', testSending: '...',
     cmdsT: 'Comandos del bot',
@@ -67,6 +70,9 @@ const T: any = {
       tg_daily: 'Daily summary',
       tg_weekly: 'Weekly report',
     },
+    reportT: 'Performance report (with PDF and chart)',
+    reportOff: 'Do not send', reportWeekly: 'Weekly (Monday)', reportMonthly: 'Monthly (1st)',
+    reportHint: 'Get your summary, chart, PDF and trades CSV straight to Telegram.',
     off: 'General alerts are off. Turn them on above to receive anything on Telegram.',
     saved: 'Saved', test: 'Send a test', testOk: 'Sent ✓', testSending: '...',
     cmdsT: 'Bot commands',
@@ -124,6 +130,11 @@ export default function TelegramCard({ lang }: { lang: 'es' | 'en' }) {
     await fetch('/api/account/telegram', { method: 'POST', body: JSON.stringify({ action: 'prefs', [k]: v }) });
     setSaved(true); setTimeout(() => setSaved(false), 1500);
   }
+  async function setReport(v: string) {
+    setD({ ...d, report: v });
+    await fetch('/api/account/telegram', { method: 'POST', body: JSON.stringify({ action: 'prefs', tg_report: v }) });
+    setSaved(true); setTimeout(() => setSaved(false), 1500);
+  }
   const [tested, setTested] = useState('');
   async function sendTest() {
     setTested('sending');
@@ -174,6 +185,16 @@ export default function TelegramCard({ lang }: { lang: 'es' | 'en' }) {
             </div>
           ))}
           {!d.prefs.tg_alerts && <div className="muted" style={{ fontSize: 12, marginTop: 10 }}>{t.off}</div>}
+
+          <div className="row between" style={{ padding: '12px 0 2px', borderTop: '1px solid var(--line)', marginTop: 6, gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 14 }}>📊 {t.reportT}</span>
+            <select value={d.report || 'off'} onChange={(e) => setReport(e.target.value)} style={{ margin: 0, width: 'auto', padding: '6px 10px' }}>
+              <option value="off">{t.reportOff}</option>
+              <option value="weekly">{t.reportWeekly}</option>
+              <option value="monthly">{t.reportMonthly}</option>
+            </select>
+          </div>
+          <div className="muted" style={{ fontSize: 11.5, marginTop: 4 }}>{t.reportHint}</div>
 
           <div className="row" style={{ gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
             <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={sendTest} disabled={tested === 'sending'}>
