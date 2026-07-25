@@ -1,0 +1,66 @@
+name: Audit
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Instalar dependencias
+        run: npm install --no-audit --no-fund
+
+      - name: Type-check (TypeScript)
+        run: |
+          set +e
+          npx tsc --noEmit 2> tsc.txt
+          COUNT=$(grep -E "error TS" tsc.txt | grep -v node_modules | wc -l | tr -d ' ')
+          echo "TS_ERRORS=${COUNT:-0}" >> "$GITHUB_ENV"
+          echo "Errores TypeScript: ${COUNT:-0}"
+
+      - name: Dependencias inseguras (npm audit)
+        run: |
+          set +e
+          npm audit --omit=dev --json > audit.json 2>/dev/null
+          VULNS=$(node -e "try{const a=require('./audit.json');console.log(a.metadata?.vulnerabilities?.total||0)}catch{console.log(0)}")
+          echo "VULNS=${VULNS:-0}" >> "$GITHUB_ENV"
+          echo "Vulnerabilidades: ${VULNS:-0}"
+
+      - name: Botones y flujos (Playwright)
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+        run: |
+          set +e
+          npm install -D @playwright/test@1.47.2 --no-audit --no-fund
+          npx playwright install --with-deps chromium
+          APP_URL="$APP_URL" npx playwright test || true
+
+      - name: Velocidad y SEO (Lighthouse)
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+        run: |
+          set +e
+          npx --yes lighthouse@12 "$APP_URL" \
+            --only-categories=performance,accessibility,seo,best-practices \
+            --output=json --output-path=lh.json --quiet \
+            --chrome-flags="--headless=new --no-sandbox" || true
+
+      - name: Enviar informe al panel
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          node scripts/audit-report.mjs || true
+          if [ -f payload.json ]; then
+            curl -s -X POST "$APP_URL/api/admin/audit" \
+              -H "x-cron-secret: $CRON_SECRET" \
+              -H "content-type: application/json" \
+              --data-binary @payload.json || true
+          fi
