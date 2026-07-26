@@ -92,7 +92,15 @@ Para probar cualquiera al momento: **Actions → (nombre) → Run workflow**.
 
 La web ya está lista (Fase 2 incluida). Para que copie de verdad:
 
-1. Termina las EAs (MT5: `ea/OnyxCopyMaster.mq5` y `ea/OnyxCopySlave.mq5`; MT4: `ea/OnyxCopyMaster.mq4` y `ea/OnyxCopySlave.mq4`) — parseo JSON, ejecución, reintentos — y pruébalas en **demo**. Las esclavas ya traen las funciones de límites listas para conectar (`ApplyMaxLot`, `SpreadTooHigh`, `RiskStop`). Los 4 archivos ya están servidos en `public/ea/` para descarga desde el asistente (selector MT4/MT5).
+1. Las EAs ya están **completas** (MT5: `OnyxCopyMaster.mq5` / `OnyxCopySlave.mq5`; MT4: `OnyxCopyMaster.mq4` / `OnyxCopySlave.mq4`): la master envía las operaciones y la esclava parsea, resuelve el símbolo, calcula el lote, aplica los límites y abre/cierra. Los 4 están en `public/ea/` para descarga desde el asistente (selector MT4/MT5).
+
+   **Prueba obligatoria en DEMO antes de usar dinero real:**
+   - Abre 2 cuentas demo (una será master, otra esclava) y conéctalas en **Cuentas**.
+   - En **Onyx Copy**: genera la clave Copy de cada una (botón Instalar) y pon la EA correspondiente en un gráfico de cada cuenta (master en la master, esclava en la esclava).
+   - Autoriza `https://www.onyxtradinglive.com` en WebRequest y enciende Algo Trading en las dos.
+   - Crea el enlace master → esclava con el modo que quieras.
+   - Abre una operación pequeña en la master y comprueba que aparece en la esclava y en el log “Replicación en vivo”. Prueba también cerrarla.
+   - Verifica lotes, símbolos raros (oro, índices) y el spread antes de pasar a real.
 2. En MT5 → Opciones → Expert Advisors, permite **WebRequest** a `https://www.onyxtradinglive.com`.
 3. En cada EA, pega la **clave Copy** de esa cuenta (empieza por `onyx_copy_`). El trader la genera en **/dashboard/copy → Claves Copy → Instalar**. Son claves separadas de las del Guardian: revocar una no afecta a la otra.
 4. El trader crea sus enlaces master→esclava en **/dashboard/copy** y ahí mismo configura los **controles de riesgo** (lote máx, pérdida diaria, drawdown, spread, sesión, símbolos) sin tocar la EA.

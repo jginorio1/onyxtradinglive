@@ -11,6 +11,7 @@ const APP = 'https://www.onyxtradinglive.com';
 const T: any = {
   es: {
     title: 'Copy trading', sub: 'Replica de una cuenta master a tus esclavas. Tú eres dueño de todas.',
+    relNote: 'Las cuentas se conectan en “Cuentas”. Aquí, en Onyx Copy, configuras cómo se copian (modo, lote, riesgo).',
     lock: 'El copy trading está en el plan Elite.', lockCta: 'Ver planes →',
     warn: 'Copiar entre cuentas puede violar las reglas de tu prop firm. Eres responsable de cumplirlas.',
     howTitle: 'Cómo activar el copy trading', howHide: 'Ocultar', howShow: 'Ver guía',
@@ -77,6 +78,7 @@ const T: any = {
   },
   en: {
     title: 'Copy trading', sub: 'Replicate from one master to your slave accounts. You own them all.',
+    relNote: 'Accounts are connected under “Accounts”. Here, in Onyx Copy, you set how they copy (mode, lot, risk).',
     lock: 'Copy trading is on the Elite plan.', lockCta: 'See plans →',
     warn: 'Copying between accounts may violate your prop firm rules. You are responsible for compliance.',
     howTitle: 'How to activate copy trading', howHide: 'Hide', howShow: 'Show guide',
@@ -240,6 +242,7 @@ export default function CopyClient() {
     <div style={{ marginBottom: 14 }}>
       <h1 style={{ fontSize: 22, marginBottom: 2 }}>🔁 {t.title}</h1>
       <p className="muted" style={{ fontSize: 13.5, margin: 0 }}>{t.sub}</p>
+      <p className="muted" style={{ fontSize: 12, margin: '4px 0 0', opacity: .85 }}>ℹ️ {t.relNote}</p>
     </div>
   );
 

@@ -6,7 +6,10 @@
 //|                                                                  |
 //| Whitelist de WebRequest igual que el master.                     |
 //| Pega tu CLAVE COPY de esta cuenta (empieza por "onyx_copy_").    |
-//| Plantilla: falta parseo JSON robusto (usa una lib JSON de MQL4). |
+//|                                                                  |
+//| EJECUCION IMPLEMENTADA: parsea, resuelve símbolo, calcula lote,  |
+//| aplica límites y abre/cierra con OrderSend/OrderClose.           |
+//| IMPORTANTE: pruébala PRIMERO en cuenta DEMO antes de dinero real.|
 //+------------------------------------------------------------------+
 #property strict
 
@@ -148,27 +151,116 @@ bool   RiskStop(double dailyLossPct, double maxDdPct)
    return(false);
 }
 
+//============================================================
+// Mini-parser JSON para la forma conocida de nuestros comandos.
+//============================================================
+string JVal(string obj, string key)
+{
+   string pat = "\"" + key + "\"";
+   int p = StringFind(obj, pat); if(p < 0) return("");
+   p = StringFind(obj, ":", p + StringLen(pat)); if(p < 0) return("");
+   p++;
+   int n = StringLen(obj);
+   while(p < n && StringGetChar(obj, p) == ' ') p++;
+   if(p >= n) return("");
+   int c = StringGetChar(obj, p);
+   if(c == '"'){ int e = StringFind(obj, "\"", p + 1); if(e < 0) return(""); return(StringSubstr(obj, p + 1, e - (p + 1))); }
+   if(c == '{' || c == '['){
+      int op = c, cl = (c == '{') ? '}' : ']'; int depth = 0;
+      for(int i = p; i < n; i++){ int ch = StringGetChar(obj, i); if(ch == op) depth++; else if(ch == cl){ depth--; if(depth == 0) return(StringSubstr(obj, p, i - p + 1)); } }
+      return("");
+   }
+   int e2 = p; while(e2 < n){ int ch2 = StringGetChar(obj, e2); if(ch2 == ',' || ch2 == '}' || ch2 == ']') break; e2++; }
+   string v = StringSubstr(obj, p, e2 - p); StringTrimLeft(v); StringTrimRight(v); return(v);
+}
+double JNum(string obj, string key){ string v = JVal(obj, key); if(v == "" || v == "null") return(0.0); return(StringToDouble(v)); }
+
+int JSplit(string arr, string &out[])
+{
+   int cnt = 0, depth = 0, start = -1, n = StringLen(arr);
+   for(int i = 0; i < n; i++){
+      int ch = StringGetChar(arr, i);
+      if(ch == '{'){ if(depth == 0) start = i; depth++; }
+      else if(ch == '}'){ depth--; if(depth == 0 && start >= 0){ ArrayResize(out, cnt + 1); out[cnt] = StringSubstr(arr, start, i - start + 1); cnt++; start = -1; } }
+   }
+   return(cnt);
+}
+
+//--- Mapa master_ticket -> orden esclava (para poder cerrar lo que abrimos).
+long g_mMaster[]; int g_mSlave[]; int g_mN = 0;
+void MapAdd(long mt, int st){ ArrayResize(g_mMaster, g_mN + 1); ArrayResize(g_mSlave, g_mN + 1); g_mMaster[g_mN] = mt; g_mSlave[g_mN] = st; g_mN++; }
+int  MapGet(long mt){ for(int i = 0; i < g_mN; i++) if(g_mMaster[i] == mt) return(g_mSlave[i]); return(0); }
+
+#define ONYX_MAGIC 990201
+
+//--- Cierra la orden ligada al ticket de la master (por mapa o por comentario).
+bool CloseByMaster(long mt)
+{
+   int tk = MapGet(mt);
+   string want = "OC" + (string)mt;
+   for(int i = OrdersTotal() - 1; i >= 0; i--){
+      if(!OrderSelect(i, SELECT_BY_POS, MODE_TRADES)) continue;
+      if(OrderMagicNumber() != ONYX_MAGIC) continue;
+      if(OrderTicket() == tk || StringFind(OrderComment(), want) >= 0){
+         double px = (OrderType() == OP_BUY) ? MarketInfo(OrderSymbol(), MODE_BID) : MarketInfo(OrderSymbol(), MODE_ASK);
+         return(OrderClose(OrderTicket(), OrderLots(), px, Slippage, clrNONE));
+      }
+   }
+   return(false);
+}
+
 void OnTimer()
 {
    string body = GetCommands();
    DrawPanel();                       // refresca la tarjeta (borde por estado)
    if(body == "") return;
-   // Al conectar la ejecución, actualiza g_copied / g_skipped / g_lat / g_masterInfo aquí.
-   // TODO: parsear el JSON (array de comandos) con una librería JSON de MQL4.
-   //  Por cada comando { id, action, base_symbol, side, volume_hint, sl, tp, price,
-   //                     payload:{ mode, multiplier, risk_pct, pip_risk, masterBalance,
-   //                               limits:{ max_lot, max_spread, daily_loss_pct, max_drawdown_pct } } }:
-   //
-   //  if(action=="open"){
-   //     if(RiskStop(limits.daily_loss_pct, limits.max_drawdown_pct)){ Ack(id,false,"risk_stop",0,0); continue; }
-   //     string local = ResolveLocalSymbol(base_symbol);
-   //     if(local==""){ Ack(id,false,"symbol_not_found",0,0); continue; }
-   //     if(SpreadTooHigh(local, limits.max_spread)){ Ack(id,false,"spread_high",0,0); continue; }
-   //     double lot = ApplyMaxLot(CalcLot(local, mode, volume_hint, masterBalance, mult, riskPct, slPips), limits.max_lot);
-   //     int type = (side=="buy") ? OP_BUY : OP_SELL;
-   //     double px = (type==OP_BUY) ? MarketInfo(local,MODE_ASK) : MarketInfo(local,MODE_BID);
-   //     int tk = OrderSend(local, type, lot, px, Slippage, sl, tp, "OnyxCopy", 0, 0, clrNONE);
-   //     Ack(id, tk>0, tk>0?"":"open_fail", tk, lat);
-   //  }
-   //  if(action=="close"){ /* cerrar la orden ligada a master_ticket */ }
+
+   string arr = JVal(body, "commands");
+   if(arr == "" || arr == "[]") return;
+   string objs[]; int n = JSplit(arr, objs);
+
+   for(int i = 0; i < n; i++){
+      string o = objs[i];
+      string id     = JVal(o, "id");
+      string action = JVal(o, "action");
+      string bsym   = JVal(o, "base_symbol");
+      string side   = JVal(o, "side");
+      string mtk    = JVal(o, "master_ticket");
+      double vol    = JNum(o, "volume_hint");
+      double sl     = JNum(o, "sl");
+      double tp     = JNum(o, "tp");
+      string pl     = JVal(o, "payload");
+      string lim    = JVal(pl, "limits");
+      string mode   = JVal(pl, "mode");
+      double mult   = JNum(pl, "multiplier");
+      double riskPct= JNum(pl, "risk_pct");
+      double pip    = JNum(pl, "pip_risk");
+      double mBal   = JNum(pl, "masterBalance");
+      double maxLot = JNum(lim, "max_lot");
+      double maxSpr = JNum(lim, "max_spread");
+      double dLoss  = JNum(lim, "daily_loss_pct");
+      double mDD    = JNum(lim, "max_drawdown_pct");
+      long   mt     = StringToInteger(mtk);
+      int    t0     = (int)GetTickCount();
+
+      if(action == "open"){
+         if(RiskStop(dLoss, mDD)){ Ack(id, false, "risk_stop", 0, 0); g_skipped++; continue; }
+         string local = ResolveLocalSymbol(bsym);
+         if(local == ""){ Ack(id, false, "symbol_not_found", 0, 0); g_skipped++; continue; }
+         if(SpreadTooHigh(local, maxSpr)){ Ack(id, false, "spread_high", 0, 0); g_skipped++; continue; }
+         double lot = ApplyMaxLot(CalcLot(local, mode, vol, mBal, mult, riskPct, pip), maxLot);
+         int type = (side == "buy") ? OP_BUY : OP_SELL;
+         double px = (type == OP_BUY) ? MarketInfo(local, MODE_ASK) : MarketInfo(local, MODE_BID);
+         int tk = OrderSend(local, type, lot, px, Slippage, sl, tp, "OC" + mtk, ONYX_MAGIC, 0, clrNONE);
+         int lat = GetTickCount() - t0;
+         if(tk > 0){ MapAdd(mt, tk); g_copied++; g_lat = lat; g_masterInfo = "#" + mtk; Ack(id, true, "", tk, lat); }
+         else      { g_skipped++; Ack(id, false, "open_fail", 0, lat); }
+      }
+      else if(action == "close"){
+         int lat = GetTickCount() - t0;
+         bool done = CloseByMaster(mt);
+         Ack(id, done, done ? "" : "close_fail", MapGet(mt), lat);
+      }
+      // "modify" (ajustar SL/TP) se puede añadir aquí con OrderModify.
+   }
 }

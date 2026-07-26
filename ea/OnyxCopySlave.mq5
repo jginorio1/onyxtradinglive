@@ -6,9 +6,11 @@
 //|                                                                  |
 //| Whitelist de WebRequest igual que el master.                     |
 //| Pega tu CLAVE COPY de esta cuenta (empieza por "onyx_copy_").    |
-//| Plantilla: falta parseo JSON robusto (usa una lib JSON de MQL),  |
-//| reintentos y pruebas. El cálculo de lote, la resolución de       |
-//| símbolo y los límites de riesgo están abajo listos para adaptar. |
+//|                                                                  |
+//| EJECUCION IMPLEMENTADA: parsea los comandos, resuelve el         |
+//| símbolo, calcula el lote, aplica límites y abre/cierra.          |
+//| IMPORTANTE: pruébala PRIMERO en cuenta DEMO (master+esclava)     |
+//| antes de usar dinero real.                                       |
 //+------------------------------------------------------------------+
 #property strict
 #include <Trade/Trade.mqh>
@@ -180,28 +182,120 @@ bool RiskStop(double dailyLossPct, double maxDdPct)
    return false;
 }
 
+//============================================================
+// Mini-parser JSON para la forma conocida de nuestros comandos.
+//============================================================
+string JVal(string obj, string key)
+{
+   string pat = "\"" + key + "\"";
+   int p = StringFind(obj, pat); if(p < 0) return "";
+   p = StringFind(obj, ":", p + StringLen(pat)); if(p < 0) return "";
+   p++;
+   int n = StringLen(obj);
+   while(p < n && StringGetCharacter(obj, p) == ' ') p++;
+   if(p >= n) return "";
+   ushort c = StringGetCharacter(obj, p);
+   if(c == '"'){ int e = StringFind(obj, "\"", p + 1); if(e < 0) return ""; return StringSubstr(obj, p + 1, e - (p + 1)); }
+   if(c == '{' || c == '['){
+      ushort op = c, cl = (c == '{') ? '}' : ']'; int depth = 0;
+      for(int i = p; i < n; i++){ ushort ch = StringGetCharacter(obj, i); if(ch == op) depth++; else if(ch == cl){ depth--; if(depth == 0) return StringSubstr(obj, p, i - p + 1); } }
+      return "";
+   }
+   int e2 = p; while(e2 < n){ ushort ch = StringGetCharacter(obj, e2); if(ch == ',' || ch == '}' || ch == ']') break; e2++; }
+   string v = StringSubstr(obj, p, e2 - p); StringTrimLeft(v); StringTrimRight(v); return v;
+}
+double JNum(string obj, string key){ string v = JVal(obj, key); return (v == "" || v == "null") ? 0.0 : StringToDouble(v); }
+
+// Separa "[{..},{..}]" en objetos individuales.
+int JSplit(string arr, string &out[])
+{
+   int cnt = 0, depth = 0, start = -1, n = StringLen(arr);
+   for(int i = 0; i < n; i++){
+      ushort ch = StringGetCharacter(arr, i);
+      if(ch == '{'){ if(depth == 0) start = i; depth++; }
+      else if(ch == '}'){ depth--; if(depth == 0 && start >= 0){ ArrayResize(out, cnt + 1); out[cnt] = StringSubstr(arr, start, i - start + 1); cnt++; start = -1; } }
+   }
+   return cnt;
+}
+
+//--- Mapa master_ticket -> posicion esclava (para poder cerrar lo que abrimos).
+long  g_mMaster[]; ulong g_mSlave[]; int g_mN = 0;
+void  MapAdd(long mt, ulong st){ ArrayResize(g_mMaster, g_mN + 1); ArrayResize(g_mSlave, g_mN + 1); g_mMaster[g_mN] = mt; g_mSlave[g_mN] = st; g_mN++; }
+ulong MapGet(long mt){ for(int i = 0; i < g_mN; i++) if(g_mMaster[i] == mt) return g_mSlave[i]; return 0; }
+
+#define ONYX_MAGIC 990201
+
+//--- Ultima posicion nuestra de un simbolo (respaldo si ResultOrder devuelve 0).
+ulong PositionLastTicket(string sym){
+   for(int i = PositionsTotal() - 1; i >= 0; i--){ ulong tk = PositionGetTicket(i);
+      if(PositionSelectByTicket(tk) && PositionGetString(POSITION_SYMBOL) == sym && PositionGetInteger(POSITION_MAGIC) == ONYX_MAGIC) return tk; }
+   return 0;
+}
+//--- Cierra la posicion ligada al ticket de la master.
+bool CloseByMaster(long mt){
+   ulong st = MapGet(mt);
+   if(st != 0 && PositionSelectByTicket(st)){ trade.SetExpertMagicNumber(ONYX_MAGIC); return trade.PositionClose(st); }
+   string want = "OC" + (string)mt;   // respaldo por comentario
+   for(int i = PositionsTotal() - 1; i >= 0; i--){ ulong tk = PositionGetTicket(i);
+      if(PositionSelectByTicket(tk) && PositionGetInteger(POSITION_MAGIC) == ONYX_MAGIC && StringFind(PositionGetString(POSITION_COMMENT), want) >= 0){ trade.SetExpertMagicNumber(ONYX_MAGIC); return trade.PositionClose(tk); } }
+   return false;
+}
+
 void OnTimer()
 {
    string body = GetCommands();
    DrawPanel();                       // refresca la tarjeta (borde por estado)
    if(body == "") return;
-   // Cuando conectes la ejecución, actualiza g_copied / g_skipped / g_lat aquí
-   // (y g_masterInfo = master_ticket) para que el panel muestre datos reales.
-   // TODO: parsear el JSON (array de comandos) con una librería JSON de MQL5.
-   //       Por cada comando { id, action, base_symbol, side, volume_hint, sl, tp, price,
-   //                          payload:{ mode, multiplier, risk_pct, pip_risk, masterBalance,
-   //                                    limits:{ max_lot, max_spread, daily_loss_pct, max_drawdown_pct } } }:
-   //
-   //   if(action=="open") {
-   //      if(RiskStop(limits.daily_loss_pct, limits.max_drawdown_pct)) { Ack(id,false,"risk_stop",0,0); continue; }
-   //      string local = ResolveLocalSymbol(base_symbol);
-   //      if(local == "") { Ack(id,false,"symbol_not_found",0,0); continue; }
-   //      if(SpreadTooHigh(local, limits.max_spread)) { Ack(id,false,"spread_high",0,0); continue; }
-   //      double lot = CalcLot(local, mode, volume_hint, masterBalance, mult, riskPct, slPips);
-   //      lot = ApplyMaxLot(lot, limits.max_lot);
-   //      bool ok = (side=="buy") ? trade.Buy(lot,local,0,sl,tp) : trade.Sell(lot,local,0,sl,tp);
-   //      Ack(id, ok, ok?"":"open_fail", trade.ResultOrder(), lat);
-   //   }
-   //   if(action=="close") { /* cerrar la posición ligada a master_ticket */ }
-   //   if(action=="modify"){ /* ajustar SL/TP */ }
+
+   string arr = JVal(body, "commands");
+   if(arr == "" || arr == "[]") return;
+   string objs[]; int n = JSplit(arr, objs);
+
+   for(int i = 0; i < n; i++){
+      string o = objs[i];
+      string id     = JVal(o, "id");
+      string action = JVal(o, "action");
+      string bsym   = JVal(o, "base_symbol");
+      string side   = JVal(o, "side");
+      string mtk    = JVal(o, "master_ticket");
+      double vol    = JNum(o, "volume_hint");
+      double sl     = JNum(o, "sl");
+      double tp     = JNum(o, "tp");
+      string pl     = JVal(o, "payload");
+      string lim    = JVal(pl, "limits");
+      string mode   = JVal(pl, "mode");
+      double mult   = JNum(pl, "multiplier");
+      double riskPct= JNum(pl, "risk_pct");
+      double pip    = JNum(pl, "pip_risk");
+      double mBal   = JNum(pl, "masterBalance");
+      double maxLot = JNum(lim, "max_lot");
+      double maxSpr = JNum(lim, "max_spread");
+      double dLoss  = JNum(lim, "daily_loss_pct");
+      double mDD    = JNum(lim, "max_drawdown_pct");
+      long   mt     = (long)StringToInteger(mtk);
+      uint   t0     = GetTickCount();
+
+      if(action == "open"){
+         if(RiskStop(dLoss, mDD)){ Ack(id, false, "risk_stop", 0, 0); g_skipped++; continue; }
+         string local = ResolveLocalSymbol(bsym);
+         if(local == ""){ Ack(id, false, "symbol_not_found", 0, 0); g_skipped++; continue; }
+         if(SpreadTooHigh(local, maxSpr)){ Ack(id, false, "spread_high", 0, 0); g_skipped++; continue; }
+         double lot = ApplyMaxLot(CalcLot(local, mode, vol, mBal, mult, riskPct, pip), maxLot);
+         trade.SetExpertMagicNumber(ONYX_MAGIC);
+         trade.SetDeviationInPoints(20);
+         // SL/TP llegan como precios de la master (validos para el mismo instrumento).
+         bool ok = (side == "buy") ? trade.Buy(lot, local, 0.0, sl, tp, "OC" + mtk)
+                                   : trade.Sell(lot, local, 0.0, sl, tp, "OC" + mtk);
+         int lat = (int)(GetTickCount() - t0);
+         if(ok){ ulong st = trade.ResultOrder(); if(st == 0) st = PositionLastTicket(local);
+                 MapAdd(mt, st); g_copied++; g_lat = lat; g_masterInfo = "#" + mtk; Ack(id, true, "", st, lat); }
+         else  { g_skipped++; Ack(id, false, "open_fail", 0, lat); }
+      }
+      else if(action == "close"){
+         int lat = (int)(GetTickCount() - t0);
+         bool done = CloseByMaster(mt);
+         Ack(id, done, done ? "" : "close_fail", MapGet(mt), lat);
+      }
+      // "modify" (ajustar SL/TP) se puede añadir aquí igual que "open".
+   }
 }
