@@ -24,6 +24,7 @@ export default async function TopBar() {
   let planName = '';
   let isAdmin = false;
   let eaLive: boolean | null = null;
+  let caps: any = {};
 
   try {
     const sb = createSupabaseServer();
@@ -37,8 +38,9 @@ export default async function TopBar() {
       isAdmin = !!prof?.is_admin;
 
       const { data: planRow } = await supabaseAdmin
-        .from('plans').select('name,name_en').eq('id', plan).maybeSingle();
+        .from('plans').select('name,name_en,capabilities').eq('id', plan).maybeSingle();
       planName = (lang === 'en' ? (planRow?.name_en || planRow?.name) : planRow?.name) || plan;
+      caps = planRow?.capabilities || {};
 
       // ¿Está reportando algún MetaTrader? Verde si sincronizó hace menos de 2 min.
       const { data: accs } = await supabaseAdmin
@@ -58,7 +60,8 @@ export default async function TopBar() {
     ? [
         { href: '/dashboard', label: t.dashboard },
         { href: '/dashboard/keys', label: t.accounts },
-        { href: '/dashboard/manager', label: t.manager },
+        ...(caps.manager ? [{ href: '/dashboard/manager', label: t.manager }] : []),
+        ...(caps.copy ? [{ href: '/dashboard/copy', label: t.copy }] : []),
         { href: '/dashboard/soporte', label: t.support },
         { href: '/pricing', label: t.plans },
         ...(isAdmin ? [{ href: '/admin', label: t.admin }] : []),
