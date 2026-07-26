@@ -48,6 +48,19 @@ const T: any = {
     wzS3t: 'Arrástralo a un gráfico', wzS3d: 'Abre cualquier gráfico y arrastra la EA encima. Marca “Permitir operaciones automáticas”.',
     wzS4t: 'Pega esta dirección', wzS4d: 'Marca “Permitir WebRequest para las URL siguientes” y pega esta línea:',
     wzS5t: 'Pega tu clave Copy', wzS5d: 'En el recuadro ApiKey pega tu clave y pulsa Aceptar.',
+    wzCompT: 'Compílalo', wzCompD: 'Pulsa F4 (abre MetaEditor), abre el archivo Onyx y pulsa Compilar (F7). Debe decir 0 errores.',
+    wzAlgoT: 'Enciende Algo Trading', wzAlgoD: 'Pulsa el botón verde “Algo Trading” de la barra de arriba. En el gráfico debe salir una carita sonriente.',
+    wzMenuFile: 'Archivo', wzMenuData: 'Abrir carpeta de datos', wzMenuTools: 'Herramientas', wzMenuOpt: 'Opciones', wzMenuEA: 'Asesores Expertos',
+    wzDropChart: 'Suéltalo en un gráfico', wzNav: 'Navegador', wzOk0: 'Debe decir: 0 errores, 0 advertencias',
+    wzAllowAlgo: 'Marca “Permitir Algo Trading”', wzApiOnly: '← lo único que pegas', wzSrvNote: 'No toques la dirección del servidor: ya viene en la EA.',
+    wzStuckT: 'Todavía no llega nada', wzStuckD: 'Casi siempre es una de estas. Revísalas en orden:',
+    wzStuck: [
+      { t: 'El botón Algo Trading no está verde', d: 'Es lo que falla el 80% de las veces.' },
+      { t: 'Falta autorizar la dirección', d: 'Herramientas → Opciones → Asesores Expertos → “Permitir WebRequest”.' },
+      { t: 'No compilaste la EA', d: 'Ábrela en MetaEditor y pulsa F7 (0 errores).' },
+      { t: 'La clave se pegó mal', d: 'Copia otra vez tu clave Copy en el campo ApiKey.' },
+    ],
+    wzRetry: 'Comprobar ahora', wzChecking: 'Comprobando cada pocos segundos',
     links: 'Tus enlaces', newLink: 'Nuevo enlace', master: 'Master', slave: 'Esclava', mode: 'Modo',
     m_balance: 'Balance %', m_risk: 'Riesgo % (RR)', m_pips: 'Pips', m_fixed: 'Lote fijo ×',
     mult: 'Multiplicador', risk: 'Riesgo %', pip: 'Pips SL', maxLot: 'Lote máx', reverse: 'Invertir',
@@ -101,6 +114,19 @@ const T: any = {
     wzS3t: 'Drag it onto a chart', wzS3d: 'Open any chart and drag the EA onto it. Tick “Allow algo trading”.',
     wzS4t: 'Paste this address', wzS4d: 'Tick “Allow WebRequest for listed URL” and paste this line:',
     wzS5t: 'Paste your Copy key', wzS5d: 'In the ApiKey box paste your key and click OK.',
+    wzCompT: 'Compile it', wzCompD: 'Press F4 (opens MetaEditor), open the Onyx file and click Compile (F7). It must say 0 errors.',
+    wzAlgoT: 'Turn on Algo Trading', wzAlgoD: 'Press the green “Algo Trading” button in the top bar. A smiley should appear on the chart.',
+    wzMenuFile: 'File', wzMenuData: 'Open Data Folder', wzMenuTools: 'Tools', wzMenuOpt: 'Options', wzMenuEA: 'Expert Advisors',
+    wzDropChart: 'Drop it on a chart', wzNav: 'Navigator', wzOk0: 'It should say: 0 errors, 0 warnings',
+    wzAllowAlgo: 'Tick “Allow Algo Trading”', wzApiOnly: '← the only thing you paste', wzSrvNote: 'Do not touch the server address: it is already in the EA.',
+    wzStuckT: 'Nothing has arrived yet', wzStuckD: 'It is almost always one of these. Check them in order:',
+    wzStuck: [
+      { t: 'The Algo Trading button is not green', d: 'This fails 80% of the time.' },
+      { t: 'The address is not authorized', d: 'Tools → Options → Expert Advisors → “Allow WebRequest”.' },
+      { t: 'You did not compile the EA', d: 'Open it in MetaEditor and press F7 (0 errors).' },
+      { t: 'The key was pasted wrong', d: 'Copy your Copy key again into the ApiKey field.' },
+    ],
+    wzRetry: 'Check now', wzChecking: 'Checking every few seconds',
     links: 'Your links', newLink: 'New link', master: 'Master', slave: 'Slave', mode: 'Mode',
     m_balance: 'Balance %', m_risk: 'Risk % (RR)', m_pips: 'Pips', m_fixed: 'Fixed lot ×',
     mult: 'Multiplier', risk: 'Risk %', pip: 'SL pips', maxLot: 'Max lot', reverse: 'Reverse',
@@ -527,7 +553,7 @@ export default function CopyClient() {
       {wizard && (
         <Modal onClose={() => setWizard(null)} wide>
           <WizardBody t={t} wizard={wizard} app={APP} live={keyLive(keyOf(wizard.account.login))}
-            onCopy={(k: string) => copyTx(k, 'wiz')} copied={copiedId === 'wiz'} />
+            onCopy={(k: string) => copyTx(k, 'wiz')} copied={copiedId === 'wiz'} onCheck={loadKeys} />
           <div className="row" style={{ justifyContent: 'flex-end', marginTop: 12 }}>
             <button className="btn btn-ghost" onClick={() => setWizard(null)}>{t.wizClose}</button>
           </div>
@@ -599,8 +625,9 @@ function PinModal({ t, mode, clear, hasPin, onClose, onResume, onSetPin }: any) 
   );
 }
 
-function WizardBody({ t, wizard, app, live, onCopy, copied }: any) {
+function WizardBody({ t, wizard, app, live, onCopy, copied, onCheck }: any) {
   const [plat, setPlat] = useState<'mt5' | 'mt4'>('mt5');
+  const [elapsed, setElapsed] = useState(0);
   const isMaster = wizard.role === 'master' || wizard.role === 'both';
   const color = isMaster ? C_MASTER : C_SLAVE;
   const roleTx = isMaster ? t.role_master : t.role_slave;
@@ -608,12 +635,26 @@ function WizardBody({ t, wizard, app, live, onCopy, copied }: any) {
   const folder = plat === 'mt5' ? 'MQL5' : 'MQL4';
   const dlName = (isMaster ? 'OnyxCopyMaster.' : 'OnyxCopySlave.') + ext;
 
+  // Cuenta el tiempo esperando la señal → ayuda a los ~75 s si no conecta.
+  useEffect(() => {
+    if (live) return;
+    const iv = setInterval(() => setElapsed((e) => e + 1), 1000);
+    return () => clearInterval(iv);
+  }, [live]);
+  const stuck = !live && elapsed > 75;
+
+  // Piezas visuales (mismo estilo que el asistente de Guardian).
+  const chip: any = { display: 'inline-flex', alignItems: 'center', gap: 5, background: 'var(--card2,rgba(255,255,255,.05))', border: '1px solid var(--line)', borderRadius: 8, padding: '4px 8px', fontSize: 11.5 };
+  const box: any = { border: '1px solid var(--line)', borderRadius: 10, background: 'rgba(255,255,255,.02)', padding: 11, marginTop: 8 };
+  const arrow = <span style={{ color: 'var(--mut)' }}>→</span>;
+  const tick = <span style={{ width: 15, height: 15, borderRadius: 4, background: '#34e2a0', color: '#04120c', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, flex: 'none' }}>✓</span>;
+
   const platBtn = (p: 'mt5' | 'mt4', label: string) => (
     <button onClick={() => setPlat(p)} className="btn"
       style={{ flex: 1, fontSize: 13, padding: '9px 0', border: plat === p ? '2px solid var(--accent,#6c7bff)' : '1px solid var(--line)', background: plat === p ? 'rgba(108,123,255,.12)' : 'transparent', color: plat === p ? '#c3ccff' : 'var(--mut)' }}>{label}</button>
   );
-  const copyRow = (val: string, id: 'url' | 'key') => (
-    <div className="row between" style={{ gap: 8, background: 'rgba(255,255,255,.03)', border: '1px solid var(--line)', borderRadius: 8, padding: '7px 10px', flexWrap: 'wrap' }}>
+  const copyRow = (val: string) => (
+    <div className="row between" style={{ gap: 8, background: 'rgba(255,255,255,.03)', border: '1px solid var(--line)', borderRadius: 8, padding: '7px 10px', flexWrap: 'wrap', marginTop: 8 }}>
       <code style={{ fontSize: 12, wordBreak: 'break-all' }}>{val}</code>
       <button className="btn btn-ghost" style={{ padding: '2px 9px', fontSize: 11.5 }} onClick={() => onCopy(val)}>{copied ? t.copied : t.copyKey}</button>
     </div>
@@ -626,38 +667,110 @@ function WizardBody({ t, wizard, app, live, onCopy, copied }: any) {
         <div style={{ fontSize: 15, fontWeight: 600 }}>{t.wizTitle} {wizard.account.nickname || wizard.account.login}</div>
       </div>
 
-      {/* Paso 0: plataforma */}
+      {/* Paso 1: plataforma */}
       <div className="muted" style={{ fontSize: 12, margin: '10px 0 6px' }}>1 · {t.wzPlat}</div>
       <div className="row" style={{ gap: 8, marginBottom: 14 }}>{platBtn('mt5', t.wzMt5)}{platBtn('mt4', t.wzMt4)}</div>
 
+      {/* 2 · Descargar */}
       <Step n={2} title={t.wzS1t}>
         <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{t.wzS1d}</div>
         <a className="btn btn-primary" style={{ fontSize: 12.5, padding: '6px 13px' }} href={`/ea/${dlName}`} download>⬇ {t.wzDl} · {dlName}</a>
       </Step>
 
+      {/* 3 · Carpeta */}
       <Step n={3} title={t.wzS2t}>
         <div className="muted" style={{ fontSize: 12 }}>{t.wzS2d.replace('__F__', folder)}</div>
+        <div style={box}>
+          <div className="row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={chip}>{t.wzMenuFile}</span>{arrow}<span style={chip}>{t.wzMenuData}</span>{arrow}<span style={chip}>📁 {folder}</span>{arrow}<span style={chip}>📁 Experts</span>
+          </div>
+        </div>
       </Step>
 
-      <Step n={4} title={t.wzS3t}>
+      {/* 4 · Compilar (el paso que faltaba) */}
+      <Step n={4} title={t.wzCompT}>
+        <div className="muted" style={{ fontSize: 12 }}>{t.wzCompD}</div>
+        <div style={box}>
+          <div className="row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
+            <span style={chip}>⌨️ F4</span>{arrow}<span style={chip}>MetaEditor</span>{arrow}<span style={chip}>▶️ {plat === 'mt5' ? 'Compilar' : 'Compile'} (F7)</span>
+          </div>
+          <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center', background: 'rgba(52,226,160,.10)', border: '1px solid var(--green)', borderRadius: 8, padding: '5px 9px' }}>
+            {tick}<span style={{ fontSize: 11.5, color: 'var(--green)' }}>{t.wzOk0}</span>
+          </div>
+        </div>
+      </Step>
+
+      {/* 5 · Arrastrar al gráfico */}
+      <Step n={5} title={t.wzS3t}>
         <div className="muted" style={{ fontSize: 12 }}>{t.wzS3d}</div>
+        <div style={box}>
+          <div className="row" style={{ gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ flex: 1, minWidth: 130, border: '1px solid var(--line)', borderRadius: 8, padding: 8, background: 'var(--card2,rgba(255,255,255,.03))' }}>
+              <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>{t.wzNav}</div>
+              <div style={{ fontSize: 12 }}>📁 {t.wzMenuEA}</div>
+              <div style={{ fontSize: 12, color, paddingLeft: 12 }}>🤖 {dlName.replace('.' + ext, '')}</div>
+            </div>
+            {arrow}
+            <div style={{ flex: 1, minWidth: 130, border: '1px dashed var(--line)', borderRadius: 8, padding: 8, textAlign: 'center', color: 'var(--mut)', fontSize: 12 }}>📈 {t.wzDropChart}</div>
+          </div>
+          <div className="row" style={{ gap: 8, alignItems: 'center', marginTop: 8 }}>{tick}<span style={{ fontSize: 11.5 }}>{t.wzAllowAlgo}</span></div>
+        </div>
       </Step>
 
-      <Step n={5} title={t.wzS4t}>
-        <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{t.wzS4d}</div>
-        {copyRow(app, 'url')}
+      {/* 6 · WebRequest */}
+      <Step n={6} title={t.wzS4t}>
+        <div style={box}>
+          <div className="row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
+            <span style={chip}>{t.wzMenuTools}</span>{arrow}<span style={chip}>{t.wzMenuOpt}</span>{arrow}<span style={chip}>{t.wzMenuEA}</span>
+          </div>
+          <div className="row" style={{ gap: 8, alignItems: 'flex-start' }}>{tick}<span style={{ fontSize: 11.5 }}>{t.wzS4d}</span></div>
+          {copyRow(app)}
+        </div>
       </Step>
 
-      <Step n={6} title={t.wzS5t}>
-        <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{t.wzS5d}</div>
-        {wizard.key ? copyRow(wizard.key, 'key') : <div className="muted" style={{ fontSize: 12 }}>—</div>}
+      {/* 7 · Clave Copy */}
+      <Step n={7} title={t.wzS5t}>
+        <div className="muted" style={{ fontSize: 12 }}>{t.wzS5d}</div>
+        <div style={box}>
+          <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12, minWidth: 60, color: 'var(--green)', fontWeight: 600 }}>ApiKey</span>
+            <span style={{ fontSize: 11, color: 'var(--green)' }}>{t.wzApiOnly}</span>
+          </div>
+          {wizard.key ? copyRow(wizard.key) : <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>—</div>}
+          <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>ℹ️ {t.wzSrvNote}</div>
+        </div>
       </Step>
 
+      {/* 8 · Algo Trading */}
+      <Step n={8} title={t.wzAlgoT}>
+        <div className="muted" style={{ fontSize: 12 }}>{t.wzAlgoD}</div>
+        <div style={box}>
+          <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', background: 'rgba(52,226,160,.12)', color: 'var(--green)', borderRadius: 6, padding: '5px 9px', fontSize: 12 }}>▶️ Algo Trading</span>
+          <span style={{ fontSize: 12, marginLeft: 10 }}><span style={{ color: 'var(--green)' }}>☺</span> = {plat === 'mt5' ? 'activo' : 'active'}</span>
+        </div>
+      </Step>
+
+      {/* Confirmación en vivo */}
       <div style={{ marginTop: 12, borderRadius: 10, padding: 12, textAlign: 'center', background: live ? 'rgba(52,226,160,.1)' : 'rgba(255,192,77,.07)', border: `1px solid ${live ? 'var(--green)' : 'var(--amber)'}` }}>
         {live
           ? <span style={{ color: 'var(--green)', fontSize: 13.5, fontWeight: 600 }}>✓ {t.wizOk}</span>
-          : <span style={{ color: 'var(--amber)', fontSize: 13 }}>◔ {t.wizWait}</span>}
+          : <span style={{ color: 'var(--amber)', fontSize: 13 }}>◔ {t.wizWait} · {Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, '0')}</span>}
       </div>
+
+      {/* Ayuda cuando no llega nada */}
+      {stuck && (
+        <div style={{ marginTop: 12, padding: '13px 15px', background: 'rgba(245,158,11,.06)', border: '1px solid var(--amber)', borderRadius: 10 }}>
+          <div style={{ color: 'var(--amber)', fontWeight: 600, marginBottom: 3, fontSize: 13.5 }}>{t.wzStuckT}</div>
+          <div className="muted" style={{ fontSize: 12.5, marginBottom: 8 }}>{t.wzStuckD}</div>
+          {t.wzStuck.map((x: any, i: number) => (
+            <div key={i} className="row" style={{ gap: 10, alignItems: 'flex-start', borderTop: '1px solid var(--line)', padding: '8px 0' }}>
+              <span className="muted" style={{ fontSize: 12 }}>{i + 1}</span>
+              <div><div style={{ fontSize: 12.5 }}>{x.t}</div><div className="muted" style={{ fontSize: 11.5 }}>{x.d}</div></div>
+            </div>
+          ))}
+          <button className="btn btn-ghost" style={{ padding: '5px 12px', fontSize: 12, marginTop: 10 }} onClick={onCheck}>{t.wzRetry}</button>
+        </div>
+      )}
     </div>
   );
 }
