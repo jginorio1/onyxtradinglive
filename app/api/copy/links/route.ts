@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { addonSettings } from '@/lib/settings';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -10,24 +11,30 @@ async function me() {
   const { data: { user } } = await sb.auth.getUser();
   return user;
 }
+// Devuelve capacidades del plan + esclavas extra compradas.
 async function planCaps(userId: string) {
-  const { data: p } = await supabaseAdmin.from('profiles').select('plan').eq('id', userId).maybeSingle();
+  const { data: p } = await supabaseAdmin.from('profiles').select('plan,extra_slaves').eq('id', userId).maybeSingle();
   const { data: plan } = await supabaseAdmin.from('plans').select('capabilities').eq('id', p?.plan || 'free').maybeSingle();
-  return (plan?.capabilities || {}) as any;
+  const caps = (plan?.capabilities || {}) as any;
+  const extra = Number(p?.extra_slaves) || 0;
+  const base = Number(caps.copy_slaves) || 2;
+  return { caps, extra, base, max: base + extra };
 }
 
 // GET · cuentas del trader + sus enlaces + si el plan incluye copy.
 export async function GET() {
   const user = await me();
   if (!user) return NextResponse.json({ error: 'no auth' }, { status: 401 });
-  const caps = await planCaps(user.id);
+  const pc = await planCaps(user.id);
+  const s = await addonSettings();
   const { data: accounts } = await supabaseAdmin.from('trading_accounts')
     .select('id,login,nickname,broker,balance').eq('user_id', user.id).order('login');
   const { data: links } = await supabaseAdmin.from('copy_links')
     .select('*').eq('owner_id', user.id).order('created_at', { ascending: false });
   return NextResponse.json({
-    inPlan: !!caps.copy,
-    maxSlaves: Number(caps.copy_slaves) || 2,
+    inPlan: !!pc.caps.copy,
+    maxSlaves: pc.max, baseSlaves: pc.base, extraSlaves: pc.extra,
+    addon: { enabled: !!s.extra_slave_enabled && !!s.extra_slave_price_id, price: s.extra_slave_price },
     accounts: accounts || [], links: links || [],
   });
 }
@@ -36,8 +43,8 @@ export async function GET() {
 export async function POST(req: Request) {
   const user = await me();
   if (!user) return NextResponse.json({ error: 'no auth' }, { status: 401 });
-  const caps = await planCaps(user.id);
-  if (!caps.copy) return NextResponse.json({ error: 'Tu plan no incluye copy trading.', code: 'no_plan' }, { status: 403 });
+  const pc = await planCaps(user.id);
+  if (!pc.caps.copy) return NextResponse.json({ error: 'Tu plan no incluye copy trading.', code: 'no_plan' }, { status: 403 });
 
   const b = await req.json().catch(() => ({}));
   const master = String(b.master_account_id || ''), slave = String(b.slave_account_id || '');
@@ -64,10 +71,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  // Límite de esclavas del plan (Elite base + add-on).
+  // Límite de esclavas del plan (base) + esclavas extra compradas (add-on).
   const { count } = await supabaseAdmin.from('copy_links').select('*', { count: 'exact', head: true }).eq('owner_id', user.id);
-  const max = Number(caps.copy_slaves) || 2;
-  if ((count || 0) >= max) return NextResponse.json({ error: `Llegaste al máximo de ${max} enlaces. Añade cuentas esclava extra como add-on.`, code: 'limit' }, { status: 403 });
+  if ((count || 0) >= pc.max) return NextResponse.json({ error: `Llegaste al máximo de ${pc.max} enlaces. Añade cuentas esclava extra como add-on.`, code: 'limit' }, { status: 403 });
 
   const { error } = await supabaseAdmin.from('copy_links').insert(patch);
   if (error) return NextResponse.json({ error: error.message.includes('duplicate') ? 'Ese enlace ya existe.' : 'No se pudo crear.' }, { status: 400 });

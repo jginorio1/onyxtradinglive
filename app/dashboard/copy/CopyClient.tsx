@@ -14,6 +14,7 @@ const T: any = {
     add: 'Crear enlace', save: 'Guardar', del: 'Quitar', on: 'Activo', off: 'Pausado', pick: 'Elige…',
     noAcc: 'Necesitas al menos 2 cuentas MT conectadas para copiar.', log: 'Replicación en vivo', noLog: 'Sin actividad todavía.',
     kcopied: 'copiado', kskipped: 'saltado (símbolo)', kerror: 'error',
+    slots: 'Esclavas', used: 'usadas', of: 'de', extra: 'extra', buyMore: 'Comprar esclava extra', slaveMo: '/mes cada una',
   },
   en: {
     title: 'Copy trading', sub: 'Replicate from one master to your slave accounts. You own them all.',
@@ -25,6 +26,7 @@ const T: any = {
     add: 'Create link', save: 'Save', del: 'Remove', on: 'On', off: 'Paused', pick: 'Choose…',
     noAcc: 'You need at least 2 connected MT accounts to copy.', log: 'Live replication', noLog: 'No activity yet.',
     kcopied: 'copied', kskipped: 'skipped (symbol)', kerror: 'error',
+    slots: 'Slaves', used: 'used', of: 'of', extra: 'extra', buyMore: 'Buy extra slave', slaveMo: '/mo each',
   },
 };
 
@@ -53,6 +55,11 @@ export default function CopyClient() {
     finally { setBusy(false); }
   }
   async function del(id: string) { await fetch('/api/copy/links', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id }) }); load(); }
+  async function buyExtra(delta: number) {
+    const next = Math.max(0, (d.extraSlaves || 0) + delta);
+    const r = await fetch('/api/copy/addon', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ qty: next }) });
+    const j = await r.json(); if (!r.ok) alert(j.error || 'Error'); else load();
+  }
 
   if (!d) return <div className="muted">…</div>;
 
@@ -79,6 +86,20 @@ export default function CopyClient() {
     <div style={{ maxWidth: 860 }}>{head}
       <div className="card" style={{ marginBottom: 12, border: '1px solid var(--amber)', background: 'rgba(255,192,77,.06)' }}>
         <span style={{ fontSize: 12.5, color: 'var(--amber)' }}>⚠ {t.warn}</span>
+      </div>
+
+      {/* Cupo de esclavas + comprar extra */}
+      <div className="card" style={{ marginBottom: 12 }}>
+        <div className="row between" style={{ flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+          <span style={{ fontSize: 13 }}>{t.slots}: <b>{(d.links || []).length}</b> {t.used} {t.of} <b>{d.maxSlaves}</b>{d.extraSlaves ? <span className="muted"> ({d.baseSlaves}+{d.extraSlaves} {t.extra})</span> : ''}</span>
+          {d.addon?.enabled && (
+            <span className="row" style={{ gap: 8, alignItems: 'center' }}>
+              <button className="btn btn-ghost" style={{ padding: '4px 11px', fontSize: 13 }} onClick={() => buyExtra(-1)} disabled={!d.extraSlaves}>−</button>
+              <span style={{ minWidth: 16, textAlign: 'center' }}>{d.extraSlaves || 0}</span>
+              <button className="btn btn-primary" style={{ padding: '5px 12px', fontSize: 12 }} onClick={() => buyExtra(1)}>+ {t.buyMore} <span style={{ opacity: .85 }}>${d.addon.price}{t.slaveMo}</span></button>
+            </span>
+          )}
+        </div>
       </div>
 
       {accs.length < 2 && <div className="card" style={{ marginBottom: 12 }}><p className="muted" style={{ fontSize: 13, margin: 0 }}>{t.noAcc}</p></div>}

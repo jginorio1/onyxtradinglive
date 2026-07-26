@@ -53,5 +53,9 @@ create table if not exists public.copy_log (
 );
 create index if not exists copy_log_owner on public.copy_log(owner_id, created_at desc);
 
+-- Esclavas extra compradas como add-on (por encima del límite del plan).
+alter table if exists public.profiles
+  add column if not exists extra_slaves int not null default 0;
+
 -- RLS: el acceso a estas tablas va por el service role (supabaseAdmin) desde el backend,
 -- igual que el resto de tablas de Onyx. No se exponen directamente al cliente.

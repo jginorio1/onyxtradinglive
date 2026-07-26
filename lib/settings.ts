@@ -1,10 +1,16 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 export type Retention = { enabled: boolean; discount_percent: number; discount_months: number; pause_months: number; allow_downgrade: boolean };
-export type Addons = { extra_account_enabled: boolean; extra_account_price: number; extra_account_price_id: string };
+export type Addons = {
+  extra_account_enabled: boolean; extra_account_price: number; extra_account_price_id: string;
+  extra_slave_enabled: boolean; extra_slave_price: number; extra_slave_price_id: string;
+};
 
 const R: Retention = { enabled: true, discount_percent: 50, discount_months: 3, pause_months: 2, allow_downgrade: true };
-const A: Addons = { extra_account_enabled: true, extra_account_price: 4, extra_account_price_id: '' };
+const A: Addons = {
+  extra_account_enabled: true, extra_account_price: 4, extra_account_price_id: '',
+  extra_slave_enabled: false, extra_slave_price: 9, extra_slave_price_id: '',
+};
 
 export async function getSetting<T>(key: string, fallback: T): Promise<T> {
   try {

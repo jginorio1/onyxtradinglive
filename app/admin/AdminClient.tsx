@@ -23,7 +23,7 @@ type User = { id: string; email: string; plan: string; subscription_status: stri
 type Team = { id: string; email: string; role: string | null; is_admin: boolean; perms?: any; available?: boolean; last_active?: string | null };
 type Tab = 'resumen' | 'ingresos' | 'usuarios' | 'planes' | 'equipo' | 'embajadores' | 'retencion' | 'pruebas' | 'firms' | 'modulos' | 'soporte' | 'kb' | 'diag' | 'backups' | 'audit' | 'optim' | 'ajustes';
 
-const CAPS: string[] = ['journal', 'compare', 'funding', 'costs', 'export', 'reports', 'telegram', 'manager', 'manager_advanced', 'manager_news'];
+const CAPS: string[] = ['journal', 'compare', 'funding', 'costs', 'export', 'reports', 'telegram', 'manager', 'manager_advanced', 'manager_news', 'copy'];
 
 function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
   return <span className="toggle" onClick={onClick} style={{ background: on ? '#34e2a0' : '#556080', boxShadow: on ? 'none' : 'inset 0 0 0 1px rgba(255,255,255,.12)' }}><span className="knob" style={{ left: on ? 21 : 3 }} /></span>;
@@ -862,6 +862,12 @@ function PlanCard({ plan, isNew, reload, onCancel }: { plan: Plan; isNew?: boole
           <Toggle on={!!p.capabilities?.[k]} onClick={() => setCap(k, !p.capabilities?.[k])} />
         </div>
       ))}
+      {p.capabilities?.copy && (
+        <div className="row" style={{ gap: 10, alignItems: 'center', padding: '6px 0 2px' }}>
+          <span style={{ fontSize: 13, flex: 1 }}>{t.pl_copySlaves}</span>
+          <input type="number" value={p.capabilities?.copy_slaves ?? 2} onChange={(e) => setCap('copy_slaves', Number(e.target.value) || 0)} style={{ margin: 0, width: 80, padding: '6px 8px' }} />
+        </div>
+      )}
 
       <span style={flag}>{t.pl_stripe}</span>
       <input placeholder={t.pl_priceIdM} value={p.stripe_price_id || ''} onChange={(e) => set('stripe_price_id', e.target.value)} style={{ margin: '4px 0 0' }} />
