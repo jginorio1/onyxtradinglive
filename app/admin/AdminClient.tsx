@@ -863,10 +863,16 @@ function PlanCard({ plan, isNew, reload, onCancel }: { plan: Plan; isNew?: boole
         </div>
       ))}
       {p.capabilities?.copy && (
-        <div className="row" style={{ gap: 10, alignItems: 'center', padding: '6px 0 2px' }}>
-          <span style={{ fontSize: 13, flex: 1 }}>{t.pl_copySlaves}</span>
-          <input type="number" value={p.capabilities?.copy_slaves ?? 2} onChange={(e) => setCap('copy_slaves', Number(e.target.value) || 0)} style={{ margin: 0, width: 80, padding: '6px 8px' }} />
-        </div>
+        <>
+          <div className="row" style={{ gap: 10, alignItems: 'center', padding: '6px 0 2px' }}>
+            <span style={{ fontSize: 13, flex: 1 }}>{t.pl_copySlaves}</span>
+            <input type="number" value={p.capabilities?.copy_slaves ?? 2} onChange={(e) => setCap('copy_slaves', Number(e.target.value) || 0)} style={{ margin: 0, width: 80, padding: '6px 8px' }} />
+          </div>
+          <div className="row" style={{ gap: 10, alignItems: 'center', padding: '2px 0' }}>
+            <span style={{ fontSize: 13, flex: 1 }}>{t.pl_copyMasters}</span>
+            <input type="number" value={p.capabilities?.copy_masters ?? 1} onChange={(e) => setCap('copy_masters', Number(e.target.value) || 0)} style={{ margin: 0, width: 80, padding: '6px 8px' }} />
+          </div>
+        </>
       )}
 
       <span style={flag}>{t.pl_stripe}</span>

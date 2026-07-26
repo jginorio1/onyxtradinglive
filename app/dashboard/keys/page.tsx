@@ -46,6 +46,7 @@ const K = {
     fSizeHint: 'El capital de la cuenta, sin puntos. Ej: 100000',
     missT: 'Falta por rellenar:', missNick: 'el apodo', missFirm: 'la prop firm o bróker', missSize: 'el tamaño de la cuenta',
     limitT: 'Llegaste al límite de tu plan', limitD: 'Revoca una clave para liberar un cupo, o mejora tu plan para conectar más cuentas.', limitCta: 'Ver planes →',
+    addBuy: 'Añadir 1 cuenta extra', addMo: '/mes', addOr: 'o', addManage: 'Gestionar en Mi cuenta →',
     waiting: 'esperando sync', acct: 'Cuenta', notBound: 'Sin atar todavía', lastSync: 'sync',
     copy: 'Copiar', copied: '✓ Copiado',
     apiKeyHint: 'tu clave de arriba (o una de la lista de abajo)',
@@ -89,6 +90,7 @@ const K = {
     fSizeHint: 'Account capital, no dots. Eg: 100000',
     missT: 'Still missing:', missNick: 'the nickname', missFirm: 'the prop firm or broker', missSize: 'the account size',
     limitT: 'You reached your plan limit', limitD: 'Revoke a key to free a slot, or upgrade your plan to connect more accounts.', limitCta: 'See plans →',
+    addBuy: 'Add 1 extra account', addMo: '/mo', addOr: 'or', addManage: 'Manage in My account →',
     waiting: 'waiting for sync', acct: 'Account', notBound: 'Not bound yet', lastSync: 'sync',
     copy: 'Copy', copied: '✓ Copied',
     apiKeyHint: 'your key from above (or one from the list below)',
@@ -122,6 +124,7 @@ function CopyRow({ label, value, tag, copy, copied, t }: any) {
 export default function KeysPage() {
   const [keys, setKeys] = useState<any[]>([]);
   const [usage, setUsage] = useState<any>(null);
+  const [addon, setAddon] = useState<any>(null);
   const [f, setF] = useState<any>({ label: '', acc_type: 'own', broker: '', account_login: '', acc_size: '' });
   const [newKey, setNewKey] = useState('');
   const [loading, setLoading] = useState(false);
@@ -162,6 +165,7 @@ export default function KeysPage() {
     const j = await r.json();
     setKeys(j.keys || []);
     setUsage(j.usage || null);
+    setAddon(j.addon || null);
   }
   useEffect(() => { load(); }, []);
 
@@ -264,7 +268,15 @@ export default function KeysPage() {
             <div style={{ background: 'rgba(124,140,255,.10)', border: '1px solid #7c8cff', borderRadius: 10, padding: 14 }}>
               <div style={{ fontWeight: 800, marginBottom: 6 }}>🔒 {t.limitT}</div>
               <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{t.limitD}</p>
-              <Link className="btn btn-primary" href="/pricing">{t.limitCta}</Link>
+              {addon?.enabled ? (
+                <div className="row" style={{ gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <Link className="btn btn-primary" href="/account">➕ {t.addBuy} · ${addon.price}{t.addMo}</Link>
+                  <span className="muted" style={{ fontSize: 12.5 }}>{t.addOr}</span>
+                  <Link className="btn btn-ghost" href="/pricing">{t.limitCta}</Link>
+                </div>
+              ) : (
+                <Link className="btn btn-primary" href="/pricing">{t.limitCta}</Link>
+              )}
             </div>
           ) : (
             <>

@@ -24,6 +24,13 @@ export async function POST(req: Request) {
     const { data: prof } = await supabaseAdmin.from('profiles').select('stripe_subscription_id,plan,extra_slaves').eq('id', user.id).maybeSingle();
     if (!prof?.stripe_subscription_id) return NextResponse.json({ error: 'No active subscription.', code: 'no_sub' }, { status: 400 });
 
+    // Regla: para comprar esclavas extra hay que tener al menos 2 cuentas
+    // conectadas (una Master + una Esclava). Comprar capacidad sin cuentas no sirve.
+    if (want > (Number(prof.extra_slaves) || 0)) {
+      const { count: accs } = await supabaseAdmin.from('trading_accounts').select('*', { count: 'exact', head: true }).eq('user_id', user.id);
+      if ((accs || 0) < 2) return NextResponse.json({ error: 'Conecta al menos 2 cuentas (Master y Esclava) para comprar esclavas extra.', code: 'need_accounts' }, { status: 400 });
+    }
+
     // No bajar por debajo de los enlaces que ya tiene creados.
     const { data: plan } = await supabaseAdmin.from('plans').select('capabilities').eq('id', prof?.plan || 'free').maybeSingle();
     const base = Number((plan?.capabilities as any)?.copy_slaves) || 2;

@@ -34,6 +34,10 @@ alter table if exists public.profiles
   add column if not exists tg_copy_paused boolean not null default true,   -- copia pausada / reanudada
   add column if not exists tg_copy_error  boolean not null default true;   -- fallo al copiar (símbolo, spread, etc.)
 
+--    Cuentas Master extra compradas como add-on (por encima de la base del plan).
+alter table if exists public.profiles
+  add column if not exists extra_masters int not null default 0;
+
 -- 3) Controles de riesgo por enlace (se configuran desde el tab, no en la EA).
 --    El servidor aplica sesión y whitelist (no crea el comando); la EA esclava
 --    aplica lote/spread/pérdida diaria/drawdown en su lado.

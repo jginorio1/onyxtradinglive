@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { accountLimit } from '@/lib/settings';
+import { accountLimit, addonSettings } from '@/lib/settings';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -43,7 +43,11 @@ export async function GET() {
     const u = await usage(user.id);
     const { data: plans } = await supabaseAdmin.from('plans').select('id,name,max_accounts,price_month').eq('active', true).order('sort', { ascending: true });
 
-    return NextResponse.json({ keys: rows, usage: u, plans: plans || [] });
+    // Add-on de cuentas extra: para ofrecer la compra justo en el límite.
+    const s = await addonSettings();
+    const addon = { enabled: !!s.extra_account_enabled && !!s.extra_account_price_id, price: s.extra_account_price };
+
+    return NextResponse.json({ keys: rows, usage: u, plans: plans || [], addon });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
   }

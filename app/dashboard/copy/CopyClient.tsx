@@ -31,6 +31,9 @@ const T: any = {
     resumeAsk: '¿Reanudar la copia en vivo?', resumeBody: 'Volverá a copiar las operaciones al instante. Escribe tu PIN para confirmar.',
     resume: 'Reanudar',
     slots: 'Esclavas', used: 'usadas', of: 'de', extra: 'extra', buyMore: 'Comprar esclava extra', slaveMo: '/mes cada una',
+    addonNeed2: 'Conecta 2 cuentas (Master y Esclava) para copiar y poder comprar esclavas extra.',
+    masters: 'Masters', buyMaster: 'Comprar master extra', masterMo: '/mes cada una',
+    grpMaster: 'MASTER', ungrouped: 'Sin agrupar',
     dlTitle: 'Descargar la EA de copy', dlSub: 'Instálala en MetaTrader. Master en la cuenta que manda, Esclava en las que reciben.',
     dlMasterDesc: 'La que manda las operaciones.', dlSlaveDesc: 'La que recibe y replica.',
     dlHint: 'El asistente “Instalar” te guía paso a paso con tu clave.',
@@ -72,7 +75,7 @@ const T: any = {
     riskBlock: 'Controles de riesgo (opcional)', dailyLoss: 'Pérdida diaria máx %', maxDD: 'Drawdown máx %',
     maxSpread: 'Spread máx (pts)', sessFrom: 'Sesión desde (UTC)', sessTo: 'hasta', whitelist: 'Solo estos símbolos',
     whitelistPh: 'EURUSD, XAUUSD… (vacío = todos)', riskNote: 'La sesión y la lista de símbolos las aplica el servidor; el resto, la EA esclava.',
-    mpTitle: 'Vas a elegir la cuenta Master', mpBody: 'La cuenta Master es la que MANDA: sus operaciones se copian a las esclavas. Elige la cuenta desde la que operas tú.',
+    mpTitle: 'Vas a elegir la cuenta Master', mpBody: 'La cuenta Master es la que MANDA: sus operaciones se copian a las esclavas. Elige la cuenta desde la que operas tú. Puedes tener varias masters (cada master extra es un add-on), cada una con sus propias esclavas.',
     mpWarn: 'Si tus esclavas son de prop firm, copiar entre cuentas puede violar sus reglas. Eres responsable de cumplirlas.',
     mpOk: 'Sí, es mi Master', mpNo: 'Cancelar',
   },
@@ -98,6 +101,9 @@ const T: any = {
     resumeAsk: 'Resume live copying?', resumeBody: 'It will copy trades again instantly. Enter your PIN to confirm.',
     resume: 'Resume',
     slots: 'Slaves', used: 'used', of: 'of', extra: 'extra', buyMore: 'Buy extra slave', slaveMo: '/mo each',
+    addonNeed2: 'Connect 2 accounts (Master and Slave) to copy and to buy extra slaves.',
+    masters: 'Masters', buyMaster: 'Buy extra master', masterMo: '/mo each',
+    grpMaster: 'MASTER', ungrouped: 'Ungrouped',
     dlTitle: 'Download the copy EA', dlSub: 'Install it in MetaTrader. Master on the account that sends, Slave on those that receive.',
     dlMasterDesc: 'Sends the trades.', dlSlaveDesc: 'Receives and replicates.',
     dlHint: 'The “Install” wizard walks you through it with your key.',
@@ -139,7 +145,7 @@ const T: any = {
     riskBlock: 'Risk controls (optional)', dailyLoss: 'Max daily loss %', maxDD: 'Max drawdown %',
     maxSpread: 'Max spread (pts)', sessFrom: 'Session from (UTC)', sessTo: 'to', whitelist: 'Only these symbols',
     whitelistPh: 'EURUSD, XAUUSD… (empty = all)', riskNote: 'Session and symbol list are enforced by the server; the rest by the slave EA.',
-    mpTitle: 'You are choosing the Master account', mpBody: 'The Master account SENDS: its trades are copied to the slaves. Pick the account you trade from.',
+    mpTitle: 'You are choosing the Master account', mpBody: 'The Master account SENDS: its trades are copied to the slaves. Pick the account you trade from. You can run several masters (each extra master is an add-on), each with its own slaves.',
     mpWarn: 'If your slaves are prop-firm accounts, copying between accounts may break their rules. You are responsible for compliance.',
     mpOk: 'Yes, it’s my Master', mpNo: 'Cancel',
   },
@@ -207,6 +213,11 @@ export default function CopyClient() {
   async function buyExtra(delta: number) {
     const next = Math.max(0, (d.extraSlaves || 0) + delta);
     const r = await fetch('/api/copy/addon', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ qty: next }) });
+    const j = await r.json(); if (!r.ok) alert(j.error || 'Error'); else load();
+  }
+  async function buyMaster(delta: number) {
+    const next = Math.max(0, (d.extraMasters || 0) + delta);
+    const r = await fetch('/api/copy/master-addon', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ qty: next }) });
     const j = await r.json(); if (!r.ok) alert(j.error || 'Error'); else load();
   }
 
@@ -356,11 +367,12 @@ export default function CopyClient() {
       </div>
       )}
 
-      {/* Cupo de esclavas */}
+      {/* Cupo de esclavas y masters */}
       <div className="card" style={{ marginBottom: 12 }}>
+        {/* Esclavas */}
         <div className="row between" style={{ flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
           <span style={{ fontSize: 13 }}>{t.slots}: <b>{links.length}</b> {t.used} {t.of} <b>{d.maxSlaves}</b>{d.extraSlaves ? <span className="muted"> ({d.baseSlaves}+{d.extraSlaves} {t.extra})</span> : ''}</span>
-          {d.addon?.enabled && (
+          {d.addon?.enabled && accs.length >= 2 && (
             <span className="row" style={{ gap: 8, alignItems: 'center' }}>
               <button className="btn btn-ghost" style={{ padding: '4px 11px', fontSize: 13 }} onClick={() => buyExtra(-1)} disabled={!d.extraSlaves}>−</button>
               <span style={{ minWidth: 16, textAlign: 'center' }}>{d.extraSlaves || 0}</span>
@@ -368,6 +380,20 @@ export default function CopyClient() {
             </span>
           )}
         </div>
+        {/* Masters */}
+        <div className="row between" style={{ flexWrap: 'wrap', gap: 8, alignItems: 'center', marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--line)' }}>
+          <span style={{ fontSize: 13 }}><span className="pill" style={{ fontSize: 9, color: C_MASTER, background: C_MASTER + '22', marginRight: 6 }}>{t.grpMaster}</span>{t.masters}: <b>{d.usedMasters || 0}</b> {t.used} {t.of} <b>{d.maxMasters}</b>{d.extraMasters ? <span className="muted"> ({d.baseMasters}+{d.extraMasters} {t.extra})</span> : ''}</span>
+          {d.masterAddon?.enabled && accs.length >= 2 && (
+            <span className="row" style={{ gap: 8, alignItems: 'center' }}>
+              <button className="btn btn-ghost" style={{ padding: '4px 11px', fontSize: 13 }} onClick={() => buyMaster(-1)} disabled={!d.extraMasters}>−</button>
+              <span style={{ minWidth: 16, textAlign: 'center' }}>{d.extraMasters || 0}</span>
+              <button className="btn btn-primary" style={{ padding: '5px 12px', fontSize: 12, background: C_MASTER }} onClick={() => buyMaster(1)}>+ {t.buyMaster} <span style={{ opacity: .85 }}>${d.masterAddon.price}{t.masterMo}</span></button>
+            </span>
+          )}
+        </div>
+        {(d.addon?.enabled || d.masterAddon?.enabled) && accs.length < 2 && (
+          <div className="muted" style={{ fontSize: 11.5, marginTop: 8, color: 'var(--amber)' }}>🔒 {t.addonNeed2}</div>
+        )}
       </div>
 
       {accs.length < 2 && <div className="card" style={{ marginBottom: 12 }}><p className="muted" style={{ fontSize: 13, margin: 0 }}>{t.noAcc}</p></div>}
@@ -436,26 +462,40 @@ export default function CopyClient() {
       <div className="card" style={{ marginBottom: 12 }}>
         <b style={{ fontSize: 14 }}>{t.links}</b>
         {!links.length && <p className="muted" style={{ fontSize: 13, marginTop: 8 }}>—</p>}
-        {links.map((l: any) => (
-          <div key={l.id} className="row between" style={{ borderTop: '1px solid var(--line)', padding: '11px 0', gap: 10, flexWrap: 'wrap' }}>
-            <div style={{ fontSize: 13 }}>
-              <span className="pill" style={{ fontSize: 9, color: C_MASTER, background: C_MASTER + '22', marginRight: 4 }}>{t.role_master}</span>
-              <b>{label(l.master_account_id)}</b> <span className="muted">→</span>
-              <span className="pill" style={{ fontSize: 9, color: C_SLAVE, background: C_SLAVE + '22', margin: '0 4px' }}>{t.role_slave}</span>
-              <b>{label(l.slave_account_id)}</b>
-              <div className="muted" style={{ fontSize: 11.5, marginTop: 2 }}>{modeLabel(l.mode)}{l.reverse ? ' · ⇄' : ''} · máx {l.max_lot}
-                {l.daily_loss_pct ? ` · DL ${l.daily_loss_pct}%` : ''}{l.session_from && l.session_to ? ` · ${l.session_from}-${l.session_to}` : ''}{(l.symbol_whitelist || []).length ? ` · ${l.symbol_whitelist.length} símb.` : ''}</div>
+        {/* Agrupados por cuenta Master */}
+        {(() => {
+          const order: string[] = [];
+          const byMaster: Record<string, any[]> = {};
+          links.forEach((l: any) => { if (!byMaster[l.master_account_id]) { byMaster[l.master_account_id] = []; order.push(l.master_account_id); } byMaster[l.master_account_id].push(l); });
+          return order.map((mid, gi) => (
+            <div key={mid} style={{ borderTop: gi ? '1px solid var(--line)' : '1px solid var(--line)', paddingTop: 11, marginTop: gi ? 6 : 10 }}>
+              <div className="row" style={{ gap: 8, alignItems: 'center', marginBottom: 4 }}>
+                <span className="pill" style={{ fontSize: 9, color: C_MASTER, background: C_MASTER + '22' }}>{t.grpMaster}</span>
+                <b style={{ fontSize: 13.5 }}>{label(mid)}</b>
+                <span className="muted" style={{ fontSize: 11 }}>· {byMaster[mid].length}</span>
+              </div>
+              {byMaster[mid].map((l: any) => (
+                <div key={l.id} className="row between" style={{ padding: '8px 0 8px 16px', gap: 10, flexWrap: 'wrap' }}>
+                  <div style={{ fontSize: 13 }}>
+                    <span className="muted" style={{ marginRight: 4 }}>↳</span>
+                    <span className="pill" style={{ fontSize: 9, color: C_SLAVE, background: C_SLAVE + '22', marginRight: 4 }}>{t.role_slave}</span>
+                    <b>{label(l.slave_account_id)}</b>
+                    <div className="muted" style={{ fontSize: 11.5, marginTop: 2, marginLeft: 16 }}>{modeLabel(l.mode)}{l.reverse ? ' · ⇄' : ''} · máx {l.max_lot}
+                      {l.daily_loss_pct ? ` · DL ${l.daily_loss_pct}%` : ''}{l.session_from && l.session_to ? ` · ${l.session_from}-${l.session_to}` : ''}{(l.symbol_whitelist || []).length ? ` · ${l.symbol_whitelist.length} símb.` : ''}</div>
+                  </div>
+                  <div className="row" style={{ gap: 8 }}>
+                    <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => save({ ...linkPayload(l), enabled: !l.enabled })}>
+                      {l.enabled ? '⏸ ' + t.off : '▶ ' + t.on}
+                    </button>
+                    <span className="pill" style={l.enabled ? { color: '#7fe9c0', background: 'rgba(52,226,160,.15)' } : { color: 'var(--mut)' }}>{l.enabled ? t.on : t.off}</span>
+                    <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setEdit({ ...blankLink(), ...l, symbol_whitelist: l.symbol_whitelist || [], session_from: l.session_from || '', session_to: l.session_to || '' })}>{t.edit}</button>
+                    <button className="btn btn-danger" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => del(l.id)}>{t.del}</button>
+                  </div>
+                </div>
+              ))}
             </div>
-            <div className="row" style={{ gap: 8 }}>
-              <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => save({ ...linkPayload(l), enabled: !l.enabled })}>
-                {l.enabled ? '⏸ ' + t.off : '▶ ' + t.on}
-              </button>
-              <span className="pill" style={l.enabled ? { color: '#7fe9c0', background: 'rgba(52,226,160,.15)' } : { color: 'var(--mut)' }}>{l.enabled ? t.on : t.off}</span>
-              <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setEdit({ ...blankLink(), ...l, symbol_whitelist: l.symbol_whitelist || [], session_from: l.session_from || '', session_to: l.session_to || '' })}>{t.edit}</button>
-              <button className="btn btn-danger" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => del(l.id)}>{t.del}</button>
-            </div>
-          </div>
-        ))}
+          ));
+        })()}
       </div>
 
       {/* Nuevo enlace */}
@@ -472,7 +512,7 @@ export default function CopyClient() {
             </label>
             <label className="muted" style={{ fontSize: 12 }}><span style={{ color: C_SLAVE }}>● </span>{t.slave}
               <select value={nl.slave_account_id} onChange={(e) => setNl({ ...nl, slave_account_id: e.target.value })} style={{ marginTop: 3, borderColor: nl.slave_account_id ? C_SLAVE : undefined }}>
-                <option value="">{t.pick}</option>{accs.filter((a) => a.id !== nl.master_account_id).map((a) => <option key={a.id} value={a.id}>{a.nickname || a.login}</option>)}
+                <option value="">{t.pick}</option>{accs.filter((a) => a.id !== nl.master_account_id && !slaveIds.has(a.id) && !masterIds.has(a.id)).map((a) => <option key={a.id} value={a.id}>{a.nickname || a.login}</option>)}
               </select>
             </label>
             <label className="muted" style={{ fontSize: 12 }}>{t.mode}

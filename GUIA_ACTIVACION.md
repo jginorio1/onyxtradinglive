@@ -63,6 +63,7 @@ Para probar cualquiera al momento: **Actions → (nombre) → Run workflow**.
    **Admin → Planes** (cada plan, campo Price ID mensual/anual).
 2. Add-on cuentas MT extra: crea un precio recurrente por unidad → **Admin → Retención → Cuentas MT extra** (precio + Price ID).
 3. Add-on esclavas extra (copy trading): crea otro precio recurrente por unidad → **Admin → Retención → Copy trading: esclavas extra** (precio + Price ID + activar).
+4. Add-on master extra (copy trading): crea otro precio recurrente por unidad → **Admin → Retención → Copy trading: master extra** (precio + Price ID + activar). La base es 1 master; con esto el trader puede tener varias masters, cada una con sus esclavas.
 
 > Recuerda pasar de **modo test** a **live** en Stripe cuando vayas a cobrar de verdad.
 

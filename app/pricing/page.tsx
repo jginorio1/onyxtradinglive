@@ -9,8 +9,8 @@ type Plan = { id: string; name: string; name_en: string; desc_es: string | null;
 type Lang = 'es' | 'en';
 
 const T = {
-  es: { title: 'Planes para cada trader', sub: 'Empieza gratis · sin tarjeta · cancela cuando quieras', monthly: 'Mensual', annual: 'Anual', save: 'ahorra 2 meses', mo: 'mes', yr: 'año', free: 'Empezar gratis', choose: 'Elegir', account: 'Mi cuenta', login: 'Debes iniciar sesión primero', allOf: 'Todo lo de', andMore: 'y además:', popular: '★ Más popular', compareT: 'Compara los planes', accounts: 'Cuentas MT', unlimited: 'Ilimitadas' },
-  en: { title: 'Plans for every trader', sub: 'Start free · no card · cancel anytime', monthly: 'Monthly', annual: 'Annual', save: 'save 2 months', mo: 'mo', yr: 'yr', free: 'Start free', choose: 'Choose', account: 'My account', login: 'You must log in first', allOf: 'Everything in', andMore: 'and more:', popular: '★ Most popular', compareT: 'Compare plans', accounts: 'MT accounts', unlimited: 'Unlimited' },
+  es: { title: 'Planes para cada trader', sub: 'Empieza gratis · sin tarjeta · cancela cuando quieras', monthly: 'Mensual', annual: 'Anual', save: 'ahorra 2 meses', mo: 'mes', yr: 'año', free: 'Empezar gratis', choose: 'Elegir', account: 'Mi cuenta', login: 'Debes iniciar sesión primero', allOf: 'Todo lo de', andMore: 'y además:', popular: '★ Más popular', compareT: 'Compara los planes', accounts: 'Cuentas MT', unlimited: 'Ilimitadas', addonNote: 'Todos los planes de pago admiten cuentas MT extra y esclavas de copy adicionales como add-on, desde tu cuenta.' },
+  en: { title: 'Plans for every trader', sub: 'Start free · no card · cancel anytime', monthly: 'Monthly', annual: 'Annual', save: 'save 2 months', mo: 'mo', yr: 'yr', free: 'Start free', choose: 'Choose', account: 'My account', login: 'You must log in first', allOf: 'Everything in', andMore: 'and more:', popular: '★ Most popular', compareT: 'Compare plans', accounts: 'MT accounts', unlimited: 'Unlimited', addonNote: 'All paid plans support extra MT accounts and additional copy slaves as add-ons, from your account.' },
 };
 
 
@@ -92,6 +92,8 @@ export default function Pricing() {
             );
           })}
         </div>
+
+        <p className="muted" style={{ textAlign: 'center', fontSize: 12.5, margin: '14px auto 0', maxWidth: 620 }}>➕ {t.addonNote}</p>
 
         {/* Tabla comparativa (misma que el landing, componente compartido) */}
         <PlansCompareTable plans={plans as any} lang={lang} annual={annual} loadingId={loading}
