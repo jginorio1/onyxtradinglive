@@ -21,14 +21,50 @@ extern int    PollMs     = 800;
 int    g_open[];        // tickets que ya vimos abiertos
 int    g_openCount = 0;
 
+//==================== PANEL EN EL GRAFICO ====================
+// Igual que Onyx Guardian. Borde: verde=enviando · ambar=esperando · rojo=pausada.
+#define PFX "OnyxCopy_"
+color CP_BG=C'15,19,26', CP_TX=C'230,235,242', CP_MUT=C'138,151,165';
+color CP_ON=C'52,226,160', CP_AMBER=C'245,158,11', CP_RED=C'224,75,74';
+int    g_state=1;               // 0 pausada · 1 esperando · 2 enviando
+int    g_sent=0;
+
+void PLabel(string n,string tx,int x,int y,color c,int sz=8,bool bold=false){
+   string nm=PFX+n; if(ObjectFind(0,nm)<0) ObjectCreate(0,nm,OBJ_LABEL,0,0,0);
+   ObjectSetInteger(0,nm,OBJPROP_CORNER,CORNER_LEFT_UPPER);
+   ObjectSetInteger(0,nm,OBJPROP_XDISTANCE,x); ObjectSetInteger(0,nm,OBJPROP_YDISTANCE,y);
+   ObjectSetInteger(0,nm,OBJPROP_COLOR,c); ObjectSetInteger(0,nm,OBJPROP_FONTSIZE,sz);
+   ObjectSetString(0,nm,OBJPROP_FONT,bold?"Arial Bold":"Arial");
+   ObjectSetString(0,nm,OBJPROP_TEXT,tx); ObjectSetInteger(0,nm,OBJPROP_SELECTABLE,false);
+}
+void DrawPanel(){
+   int X=12,W=214,y=22;
+   string bg=PFX+"bg"; if(ObjectFind(0,bg)<0) ObjectCreate(0,bg,OBJ_RECTANGLE_LABEL,0,0,0);
+   ObjectSetInteger(0,bg,OBJPROP_CORNER,CORNER_LEFT_UPPER);
+   ObjectSetInteger(0,bg,OBJPROP_XDISTANCE,X); ObjectSetInteger(0,bg,OBJPROP_YDISTANCE,y-10);
+   ObjectSetInteger(0,bg,OBJPROP_XSIZE,W); ObjectSetInteger(0,bg,OBJPROP_YSIZE,96);
+   ObjectSetInteger(0,bg,OBJPROP_BGCOLOR,CP_BG); ObjectSetInteger(0,bg,OBJPROP_BORDER_TYPE,BORDER_FLAT);
+   ObjectSetInteger(0,bg,OBJPROP_BACK,false); ObjectSetInteger(0,bg,OBJPROP_SELECTABLE,false);
+   color bc = g_state==2?CP_ON : (g_state==0?CP_RED : CP_AMBER);
+   ObjectSetInteger(0,bg,OBJPROP_COLOR,bc);
+   PLabel("t","Onyx Copy   MASTER",X+12,y,CP_TX,9,true); y+=18;
+   string stx = g_state==2?"Enviando" : (g_state==0?"PAUSADA":"Esperando operaciones");
+   PLabel("st",stx,X+12,y,bc,8); y+=16;
+   PLabel("c","Enviadas: "+(string)g_sent,X+12,y,CP_TX,8); y+=16;
+   PLabel("a","Cuenta "+(string)AccountNumber(),X+12,y,CP_MUT,8);
+   ChartRedraw();
+}
+void DelPanel(){ ObjectsDeleteAll(0,PFX); }
+
 int OnInit()
 {
    if(StringFind(CopyApiKey, "onyx_copy_") != 0)
       Print("AVISO: CopyApiKey no parece una clave Copy (debe empezar por onyx_copy_).");
    EventSetMillisecondTimer(PollMs);
+   DrawPanel();
    return(INIT_SUCCEEDED);
 }
-void OnDeinit(const int reason){ EventKillTimer(); }
+void OnDeinit(const int reason){ EventKillTimer(); DelPanel(); }
 
 // POST JSON a Onyx.
 int PostJson(string path, string json)
@@ -38,7 +74,10 @@ int PostJson(string path, string json)
    string headers = "Content-Type: application/json\r\nx-onyx-key: " + CopyApiKey + "\r\n";
    ResetLastError();
    int code = WebRequest("POST", ApiBase + path, headers, 5000, post, result, rh);
-   if(code == -1) Print("WebRequest error ", GetLastError(), " (¿URL en la whitelist?)");
+   if(code == -1){ Print("WebRequest error ", GetLastError(), " (¿URL en la whitelist?)"); g_state=1; return(code); }
+   string body = CharArrayToString(result);
+   g_state = (StringFind(body, "\"paused\"") >= 0 && StringFind(body, "\"paused\":0") < 0) ? 0 : 2;
+   if(code == 200) g_sent++;
    return(code);
 }
 
@@ -88,4 +127,6 @@ void OnTimer()
    ArrayResize(g_open, nowCount);
    for(int m=0;m<nowCount;m++) g_open[m]=nowTickets[m];
    g_openCount = nowCount;
+
+   DrawPanel();                       // refresca la tarjeta (borde por estado)
 }

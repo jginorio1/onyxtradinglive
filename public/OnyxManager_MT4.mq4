@@ -312,6 +312,10 @@ void DrawPanel()
    PanelLabel("state", st, X + 12, y, alive ? COL_ON : COL_MUT, 8);
    y += PY;
 
+   // Borde del panel segun estado: verde conectado, ambar esperando, rojo si hay error/apagado.
+   color bordCol = (g_lastError != "" || !g_guardOn) ? COL_RED : (alive ? COL_ON : (color)C'245,158,11');
+   ObjectSetInteger(0, PREFIX + "bg", OBJPROP_COLOR, bordCol);
+
    if(g_lastError != "")
      {
       PanelLabel("err", StringSubstr(g_lastError, 0, 32), X + 12, y, COL_RED, 7);

@@ -68,7 +68,7 @@ export default async function TopBar() {
     ? [
         { href: '/dashboard', label: t.dashboard },
         { href: '/dashboard/keys', label: t.accounts },
-        ...(caps.manager ? [{ href: '/dashboard/manager', label: t.manager }] : []),
+        ...(caps.manager ? [{ href: '/dashboard/manager', label: t.manager, dot: (eaLive ? 'on' : 'off') as 'on' | 'off', dim: !eaLive }] : []),
         ...(caps.copy ? [{ href: '/dashboard/copy', label: t.copy, dot: (copyActive ? 'on' : 'off') as 'on' | 'off', dim: !copyActive }] : []),
         { href: '/dashboard/soporte', label: t.support },
         { href: '/pricing', label: t.plans },

@@ -20,7 +20,12 @@ export async function GET(req: Request) {
       .update({ status: 'taken', taken_at: new Date().toISOString() })
       .in('id', cmds.map((c) => c.id));
   }
-  return NextResponse.json({ commands: cmds || [] });
+
+  // Estado de pausa → el panel de la EA colorea el borde (rojo si está en pausa).
+  const { data: prof } = await supabaseAdmin.from('profiles').select('copy_paused').eq('id', a.userId).maybeSingle();
+  const paused = !!prof?.copy_paused || !!a.account.copy_paused;
+
+  return NextResponse.json({ commands: cmds || [], paused });
 }
 
 // POST · la EA esclava confirma el resultado de un comando. Escribe en el log.
