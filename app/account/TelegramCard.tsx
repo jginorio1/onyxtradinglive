@@ -33,6 +33,8 @@ const T: any = {
       tg_manager: 'Break even, trailing y parciales',
       tg_daily: 'Resumen del día',
       tg_weekly: 'Informe semanal',
+      tg_copy_paused: 'Copia pausada o reanudada',
+      tg_copy_error: 'Fallo al copiar (símbolo, spread…)',
     },
     reportT: 'Reporte de rendimiento (con PDF y gráfico)',
     reportOff: 'No enviar', reportWeekly: 'Semanal (lunes)', reportMonthly: 'Mensual (día 1)',
@@ -40,11 +42,14 @@ const T: any = {
     off: 'Los avisos generales están apagados. Enciéndelos arriba para recibir nada por Telegram.',
     saved: 'Guardado', test: 'Enviar prueba', testOk: 'Enviado ✓', testSending: '...',
     rtestBtn: '📤 Enviarme un reporte de prueba ahora', rtestSending: 'Enviando…', rtestOk: '✓ Enviado a tu Telegram', rtestEmpty: 'Enviado, pero no tienes operaciones esta semana.',
-    grpGuardian: 'Guardian', grpRisk: 'Riesgo y fondeo', grpSummary: 'Resúmenes',
+    grpGuardian: 'Guardian', grpRisk: 'Riesgo y fondeo', grpSummary: 'Resúmenes', grpCopy: 'Copy trading',
     cmdsT: 'Comandos del bot',
     cmdEstado: 'Resumen de tus últimas 24h, sin abrir la web.',
     cmdInforme: 'Reporte de la semana con gráfico, PDF y CSV.',
     cmdMes: 'Reporte del mes con gráfico, PDF y CSV.',
+    cmdCopy: 'Estado del copy: activo o pausado.',
+    cmdCopyOff: 'Pausar toda la copia al instante.',
+    cmdCopyOn: 'Reanudar la copia (pide tu PIN).',
     cmdStop: 'Deja de recibir avisos. Los reactivas desde aquí.',
     cmdExample: 'ASÍ SE VE EN TELEGRAM',
     cmdMsgT: 'Últimas 24h', cmdMsg1: 'Operaciones: 3', cmdMsg2: 'Resultado: +$182.40', cmdMsg3: 'El Guardian te frenó: 1 vez',
@@ -72,6 +77,8 @@ const T: any = {
       tg_manager: 'Break even, trailing and partials',
       tg_daily: 'Daily summary',
       tg_weekly: 'Weekly report',
+      tg_copy_paused: 'Copy paused or resumed',
+      tg_copy_error: 'Copy failed (symbol, spread…)',
     },
     reportT: 'Performance report (with PDF and chart)',
     reportOff: 'Do not send', reportWeekly: 'Weekly (Monday)', reportMonthly: 'Monthly (1st)',
@@ -79,11 +86,14 @@ const T: any = {
     off: 'General alerts are off. Turn them on above to receive anything on Telegram.',
     saved: 'Saved', test: 'Send a test', testOk: 'Sent ✓', testSending: '...',
     rtestBtn: '📤 Send me a test report now', rtestSending: 'Sending…', rtestOk: '✓ Sent to your Telegram', rtestEmpty: 'Sent, but you have no trades this week.',
-    grpGuardian: 'Guardian', grpRisk: 'Risk and funding', grpSummary: 'Summaries',
+    grpGuardian: 'Guardian', grpRisk: 'Risk and funding', grpSummary: 'Summaries', grpCopy: 'Copy trading',
     cmdsT: 'Bot commands',
     cmdEstado: 'A summary of your last 24h, without opening the web.',
     cmdInforme: 'Week report with chart, PDF and CSV.',
     cmdMes: 'Month report with chart, PDF and CSV.',
+    cmdCopy: 'Copy status: active or paused.',
+    cmdCopyOff: 'Pause all copying instantly.',
+    cmdCopyOn: 'Resume copying (asks your PIN).',
     cmdStop: 'Stop receiving alerts. Turn them back on here.',
     cmdExample: 'THIS IS HOW IT LOOKS ON TELEGRAM',
     cmdMsgT: 'Last 24h', cmdMsg1: 'Trades: 3', cmdMsg2: 'Result: +$182.40', cmdMsg3: 'The Guardian stopped you: 1 time',
@@ -195,7 +205,7 @@ export default function TelegramCard({ lang }: { lang: 'es' | 'en' }) {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 12 }}>
-            {([[t.grpGuardian, ['tg_blocks', 'tg_manager', 'tg_offline']], [t.grpRisk, ['tg_limits', 'tg_funding', 'tg_goal']], [t.grpSummary, ['tg_daily', 'tg_weekly']]] as [string, string[]][]).map(([grp, keys], gi) => (
+            {([[t.grpGuardian, ['tg_blocks', 'tg_manager', 'tg_offline']], [t.grpRisk, ['tg_limits', 'tg_funding', 'tg_goal']], [t.grpSummary, ['tg_daily', 'tg_weekly']], [t.grpCopy, ['tg_copy_paused', 'tg_copy_error']]] as [string, string[]][]).map(([grp, keys], gi) => (
               <div key={gi} style={{ background: 'var(--bg2)', borderRadius: 10, padding: '10px 12px' }}>
                 <div style={{ fontSize: 11, color: 'var(--mut)', letterSpacing: '.04em', textTransform: 'uppercase', marginBottom: 4 }}>{grp}</div>
                 {keys.map((k, i) => (
@@ -236,7 +246,7 @@ export default function TelegramCard({ lang }: { lang: 'es' | 'en' }) {
             {/* Comandos del bot */}
             <div>
               <div style={{ fontSize: 13, marginBottom: 10 }}>{t.cmdsT}</div>
-              {([['/estado', t.cmdEstado], ['/report', t.cmdInforme], ['/mes', t.cmdMes], ['/stop', t.cmdStop]] as [string, string][]).map(([cmd, desc]) => (
+              {([['/estado', t.cmdEstado], ['/report', t.cmdInforme], ['/mes', t.cmdMes], ['/copy', t.cmdCopy], ['/copyoff', t.cmdCopyOff], ['/copyon', t.cmdCopyOn], ['/stop', t.cmdStop]] as [string, string][]).map(([cmd, desc]) => (
                 <div key={cmd} className="row" style={{ gap: 8, marginBottom: 9, alignItems: 'flex-start' }}>
                   <code style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 7, padding: '3px 9px', color: '#aeb7ff', fontSize: 12.5, flex: 'none' }}>{cmd}</code>
                   <span className="muted" style={{ fontSize: 12.5 }}>{desc}</span>

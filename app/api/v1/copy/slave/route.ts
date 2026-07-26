@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { authAccount } from '@/lib/copyAuth';
+import { alertOncePerDay } from '@/lib/telegram';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -52,5 +53,16 @@ export async function POST(req: Request) {
     symbol: cmd.base_symbol, ok, latency_ms: Number(b.latency_ms) || null,
     detail: { slave_ticket: b.slave_ticket || null, error: b.error || null },
   });
+
+  // Aviso por Telegram cuando falla una copia (una vez al día por tipo de error,
+  // para no saturar). Solo si el trader tiene ese aviso encendido.
+  if (!ok) {
+    const err = String(b.error || 'fallo');
+    const label = err === 'symbol_not_found' ? 'símbolo no encontrado'
+      : err === 'spread_high' ? 'spread demasiado alto'
+      : err === 'risk_stop' ? 'límite de riesgo alcanzado' : err;
+    alertOncePerDay(a.userId, 'copy_error', 'copy_' + err,
+      `⚠ <b>No se copió una operación</b>\n${cmd.base_symbol || ''}: ${label}.\nRevisa tu Copy trading.`).catch(() => {});
+  }
   return NextResponse.json({ ok: true });
 }

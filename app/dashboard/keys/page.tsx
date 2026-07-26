@@ -351,14 +351,6 @@ export default function KeysPage() {
             </div>
           </div>
 
-          <details style={{ marginTop: 14 }}>
-            <summary className="muted" style={{ fontSize: 12, cursor: 'pointer' }}>{t.oldT}</summary>
-            <div className="row" style={{ gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
-              <a className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: 12 }} href="/OnyxConnector_MT5.mq5" download>Conector MT5 (v1)</a>
-              <a className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: 12 }} href="/OnyxConnector_MT4.mq4" download>Conector MT4 (v1)</a>
-            </div>
-            <p className="muted" style={{ fontSize: 12, marginTop: 8 }}>{t.oldD}</p>
-          </details>
         </div>
 
         {/* Paso 3: asistente de instalación */}

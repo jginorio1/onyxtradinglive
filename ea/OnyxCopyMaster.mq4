@@ -15,6 +15,9 @@
 extern string ApiBase    = "https://www.onyxtradinglive.com";
 extern string CopyApiKey = "PON_TU_CLAVE_COPY";   // onyx_copy_...
 extern int    PollMs     = 800;
+extern string PanelLang  = "EN";                  // Panel language: EN or ES
+
+string L(string en, string es){ return (StringFind(PanelLang, "ES") == 0) ? es : en; }
 
 // MQL4 no tiene OnTradeTransaction: llevamos nosotros la lista de tickets
 // abiertos y detectamos aperturas y cierres comparando en cada tick del timer.
@@ -48,10 +51,10 @@ void DrawPanel(){
    color bc = g_state==2?CP_ON : (g_state==0?CP_RED : CP_AMBER);
    ObjectSetInteger(0,bg,OBJPROP_COLOR,bc);
    PLabel("t","Onyx Copy   MASTER",X+12,y,CP_TX,9,true); y+=18;
-   string stx = g_state==2?"Enviando" : (g_state==0?"PAUSADA":"Esperando operaciones");
+   string stx = g_state==2?L("Sending","Enviando") : (g_state==0?L("PAUSED","PAUSADA"):L("Waiting for trades","Esperando operaciones"));
    PLabel("st",stx,X+12,y,bc,8); y+=16;
-   PLabel("c","Enviadas: "+(string)g_sent,X+12,y,CP_TX,8); y+=16;
-   PLabel("a","Cuenta "+(string)AccountNumber(),X+12,y,CP_MUT,8);
+   PLabel("c",L("Sent: ","Enviadas: ")+(string)g_sent,X+12,y,CP_TX,8); y+=16;
+   PLabel("a",L("Account ","Cuenta ")+(string)AccountNumber(),X+12,y,CP_MUT,8);
    ChartRedraw();
 }
 void DelPanel(){ ObjectsDeleteAll(0,PFX); }

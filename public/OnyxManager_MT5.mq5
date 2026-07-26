@@ -18,7 +18,7 @@
 enum ENUM_ONYX_LANG { ONYX_ES = 0, ONYX_EN = 1 };
 
 input string           ApiKey       = "";                              // API key (onyxtradinglive.com)
-input ENUM_ONYX_LANG   Idioma       = ONYX_ES;                         // Idioma / Language
+input ENUM_ONYX_LANG   Idioma       = ONYX_EN;                         // Language / Idioma
 input string           ServidorUrl  = "https://www.onyxtradinglive.com"; // No lo cambies salvo que te lo pidamos
 
 //==================== CONSTANTES ==================================

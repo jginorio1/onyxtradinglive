@@ -29,6 +29,11 @@ alter table if exists public.profiles
 alter table if exists public.trading_accounts
   add column if not exists copy_paused boolean not null default false;
 
+--    Preferencias de avisos por Telegram del copy trading.
+alter table if exists public.profiles
+  add column if not exists tg_copy_paused boolean not null default true,   -- copia pausada / reanudada
+  add column if not exists tg_copy_error  boolean not null default true;   -- fallo al copiar (símbolo, spread, etc.)
+
 -- 3) Controles de riesgo por enlace (se configuran desde el tab, no en la EA).
 --    El servidor aplica sesión y whitelist (no crea el comando); la EA esclava
 --    aplica lote/spread/pérdida diaria/drawdown en su lado.

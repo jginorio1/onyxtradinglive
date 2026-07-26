@@ -7,7 +7,7 @@ import { computeTraderReport, traderCsv, traderChartUrl, traderCardPng, traderPd
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-const PREFS = ['tg_alerts', 'tg_blocks', 'tg_limits', 'tg_manager', 'tg_funding', 'tg_daily', 'tg_offline', 'tg_goal', 'tg_weekly'];
+const PREFS = ['tg_alerts', 'tg_blocks', 'tg_limits', 'tg_manager', 'tg_funding', 'tg_daily', 'tg_offline', 'tg_goal', 'tg_weekly', 'tg_copy_paused', 'tg_copy_error'];
 
 // GET · estado del vínculo + preferencias, para pintar la pantalla
 export async function GET() {
@@ -17,14 +17,16 @@ export async function GET() {
     if (!user) return NextResponse.json({ error: 'Not signed in.', code: 'no_auth' }, { status: 401 });
 
     const { data: p } = await supabaseAdmin.from('profiles')
-      .select('telegram_chat_id,telegram_username,telegram_linked_at,plan,tg_alerts,tg_blocks,tg_limits,tg_manager,tg_funding,tg_daily,tg_offline,tg_goal,tg_weekly,tg_report')
+      .select('telegram_chat_id,telegram_username,telegram_linked_at,plan,tg_alerts,tg_blocks,tg_limits,tg_manager,tg_funding,tg_daily,tg_offline,tg_goal,tg_weekly,tg_copy_paused,tg_copy_error,tg_report')
       .eq('id', user.id).maybeSingle() as any;
 
     const { data: plan } = await supabaseAdmin.from('plans')
       .select('capabilities').eq('id', p?.plan || 'free').maybeSingle();
 
     const prefs: any = {};
-    PREFS.forEach((k) => { prefs[k] = (p as any)?.[k] ?? (k === 'tg_alerts'); });
+    // Por defecto ON: el interruptor general y los avisos de copy.
+    const onByDefault = ['tg_alerts', 'tg_copy_paused', 'tg_copy_error'];
+    PREFS.forEach((k) => { prefs[k] = (p as any)?.[k] ?? onByDefault.includes(k); });
 
     return NextResponse.json({
       available: telegramEnabled(),

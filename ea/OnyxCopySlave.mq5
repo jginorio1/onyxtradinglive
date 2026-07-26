@@ -19,6 +19,9 @@ CTrade trade;
 input string ApiBase    = "https://www.onyxtradinglive.com";
 input string CopyApiKey = "PON_TU_CLAVE_COPY";   // onyx_copy_...
 input int    PollMs     = 1000;
+input string PanelLang  = "EN";                  // Panel language: EN or ES
+
+string L(string en, string es){ return (StringFind(PanelLang, "ES") == 0) ? es : en; }
 
 //--- Equity de referencia del día (para la pérdida diaria / drawdown).
 double g_dayStartEquity = 0;
@@ -52,12 +55,12 @@ void DrawPanel(){
    ObjectSetInteger(0,bg,OBJPROP_BACK,false); ObjectSetInteger(0,bg,OBJPROP_SELECTABLE,false);
    color bc = g_state==2?CP_ON : (g_state==0?CP_RED : CP_AMBER);
    ObjectSetInteger(0,bg,OBJPROP_COLOR,bc);
-   PLabel("t","Onyx Copy   ESCLAVA",X+12,y,CP_TX,9,true); y+=18;
-   string stx = g_state==2?"Conectada" : (g_state==0?"PAUSADA":"Esperando senal");
+   PLabel("t",L("Onyx Copy   SLAVE","Onyx Copy   ESCLAVA"),X+12,y,CP_TX,9,true); y+=18;
+   string stx = g_state==2?L("Connected","Conectada") : (g_state==0?L("PAUSED","PAUSADA"):L("Waiting for signal","Esperando senal"));
    PLabel("st",stx,X+12,y,bc,8); y+=16;
-   PLabel("m","Copia de: "+g_masterInfo,X+12,y,CP_MUT,8); y+=16;
-   PLabel("c","Copiadas: "+(string)g_copied+"   Saltadas: "+(string)g_skipped,X+12,y,CP_TX,8); y+=16;
-   PLabel("l","Retraso: "+(string)g_lat+" ms",X+12,y,CP_MUT,8);
+   PLabel("m",L("Copying from: ","Copia de: ")+g_masterInfo,X+12,y,CP_MUT,8); y+=16;
+   PLabel("c",L("Copied: ","Copiadas: ")+(string)g_copied+L("   Skipped ","   Saltadas ")+(string)g_skipped,X+12,y,CP_TX,8); y+=16;
+   PLabel("l",L("Delay: ","Retraso: ")+(string)g_lat+" ms",X+12,y,CP_MUT,8);
    ChartRedraw();
 }
 void DelPanel(){ ObjectsDeleteAll(0,PFX); }

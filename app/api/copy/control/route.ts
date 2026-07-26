@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { copyPinCheck, copyPinHas } from '@/lib/copyPin';
+import { alertUser } from '@/lib/telegram';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -53,6 +54,7 @@ export async function POST(req: Request) {
       .update({ copy_paused: paused, copy_paused_at: paused ? new Date().toISOString() : null })
       .eq('id', user.id);
     await logControl(user.id, action, null);
+    alertUser(user.id, 'copy_paused', paused ? '⏸ <b>Copia PAUSADA</b>\nNo se replicará ninguna operación.' : '▶ <b>Copia ACTIVA</b>\nVolverá a replicar las operaciones de tu master.').catch(() => {});
     return NextResponse.json({ ok: true, paused });
   }
 
