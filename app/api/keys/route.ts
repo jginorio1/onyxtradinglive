@@ -16,7 +16,9 @@ function genKey() {
 // Cupos del plan: 1 clave activa = 1 cuenta
 async function usage(userId: string) {
   const lim = await accountLimit(userId);
-  const { count } = await supabaseAdmin.from('api_keys').select('*', { count: 'exact', head: true }).eq('user_id', userId).eq('revoked', false);
+  // El cupo de cuentas cuenta solo claves Guardian. Las de copy trading van aparte.
+  const { count } = await supabaseAdmin.from('api_keys').select('*', { count: 'exact', head: true })
+    .eq('user_id', userId).eq('revoked', false).neq('kind', 'copy');
   return { ...lim, used: count || 0 };
 }
 
@@ -29,7 +31,7 @@ export async function GET() {
 
     const { data: keys } = await supabaseAdmin
       .from('api_keys').select('id,key,label,revoked,created_at,last_used_at,account_login,broker,acc_type,acc_size,currency')
-      .eq('user_id', user.id).eq('revoked', false).order('created_at', { ascending: false });
+      .eq('user_id', user.id).eq('revoked', false).neq('kind', 'copy').order('created_at', { ascending: false });
 
     const { data: accounts } = await supabaseAdmin
       .from('trading_accounts').select('id,login,balance,last_sync_at').eq('user_id', user.id);
@@ -64,7 +66,7 @@ export async function POST(req: Request) {
 
     // No permitir dos claves activas para el mismo número de cuenta
     if (login) {
-      const { data: dup } = await supabaseAdmin.from('api_keys').select('id').eq('user_id', user.id).eq('account_login', login).eq('revoked', false).maybeSingle();
+      const { data: dup } = await supabaseAdmin.from('api_keys').select('id').eq('user_id', user.id).eq('account_login', login).eq('revoked', false).neq('kind', 'copy').maybeSingle();
       if (dup) return NextResponse.json({ error: `You already have an active key for account ${login}.`, code: 'dup_account', login }, { status: 400 });
     }
 

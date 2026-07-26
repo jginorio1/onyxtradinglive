@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendMessage, sendPhoto, sendPhotoFile, sendDocument } from '@/lib/telegram';
 import { computeTraderReport, traderCsv, traderChartUrl, traderCardPng, traderPdf } from '@/lib/traderReport';
+import { copyPinHas, copyPinCheck } from '@/lib/copyPin';
 
 const APP = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.onyxtradinglive.com').replace(/\/$/, '');
 
@@ -118,6 +119,57 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true });
     }
 
+    // ============================================================
+    // Control remoto del COPY TRADING desde Telegram (sin la computadora).
+    //   /copy            → estado + ayuda
+    //   /copyoff         → pausa TODO al instante (acción segura)
+    //   /copyon [PIN]    → reanuda; si hay PIN de copy, hay que ponerlo
+    // Solo el chat vinculado del propio trader puede hacerlo.
+    // ============================================================
+    const cmd0 = text.split(/\s+/)[0].toLowerCase();
+    if (cmd0 === '/copy' || cmd0 === '/copyoff' || cmd0 === '/copyon') {
+      const { data: prof } = await supabaseAdmin.from('profiles')
+        .select('id,plan,copy_paused').eq('telegram_chat_id', chatId).maybeSingle();
+      if (!prof) {
+        await sendMessage(chatId, 'No reconozco este chat. Conéctate primero desde tu cuenta → Avisos.');
+        return NextResponse.json({ ok: true });
+      }
+      let inPlan = false;
+      try { const { data: pl } = await supabaseAdmin.from('plans').select('capabilities').eq('id', (prof as any).plan || 'free').maybeSingle(); inPlan = !!(pl?.capabilities as any)?.copy; } catch {}
+      if (!inPlan) {
+        await sendMessage(chatId, 'El copy trading está en el plan Elite. Mejora tu plan para controlarlo desde aquí.');
+        return NextResponse.json({ ok: true });
+      }
+
+      if (cmd0 === '/copyoff') {
+        await supabaseAdmin.from('profiles').update({ copy_paused: true, copy_paused_at: new Date().toISOString() }).eq('id', prof.id);
+        await supabaseAdmin.from('copy_control_log').insert({ owner_id: prof.id, action: 'pause_all', target: null, source: 'telegram' });
+        await sendMessage(chatId, '⏸ <b>Copia PAUSADA</b>\nNo se replicará ninguna operación. Para reanudar: <code>/copyon</code>' + (await copyPinHas(prof.id) ? ' <code>tuPIN</code>' : ''), { kind: 'status', userId: prof.id });
+        return NextResponse.json({ ok: true });
+      }
+
+      if (cmd0 === '/copyon') {
+        const pin = text.split(/\s+/)[1] || '';
+        if (await copyPinHas(prof.id)) {
+          if (!pin) { await sendMessage(chatId, '🔒 Reanudar pide tu PIN de copy. Escribe: <code>/copyon TU_PIN</code>'); return NextResponse.json({ ok: true }); }
+          if (!(await copyPinCheck(prof.id, pin))) { await sendMessage(chatId, '❌ PIN incorrecto. Intenta de nuevo: <code>/copyon TU_PIN</code>'); return NextResponse.json({ ok: true }); }
+        }
+        await supabaseAdmin.from('profiles').update({ copy_paused: false, copy_paused_at: null }).eq('id', prof.id);
+        await supabaseAdmin.from('copy_control_log').insert({ owner_id: prof.id, action: 'resume_all', target: null, source: 'telegram' });
+        await sendMessage(chatId, '▶ <b>Copia ACTIVA</b>\nVolverá a replicar las operaciones de tu master.', { kind: 'status', userId: prof.id });
+        return NextResponse.json({ ok: true });
+      }
+
+      // /copy → estado
+      const { count: linkCount } = await supabaseAdmin.from('copy_links').select('*', { count: 'exact', head: true }).eq('owner_id', prof.id).eq('enabled', true);
+      await sendMessage(chatId,
+        `📡 <b>Copia: ${prof.copy_paused ? 'PAUSADA ⏸' : 'ACTIVA ▶'}</b>\n`
+        + `Enlaces activos: ${linkCount || 0}\n\n`
+        + `Comandos:\n<code>/copyoff</code> — pausar todo\n<code>/copyon</code> — reanudar`,
+        { kind: 'status', userId: prof.id });
+      return NextResponse.json({ ok: true });
+    }
+
     // Sacamos el código del mensaje. Vale de dos formas:
     //   · "/start CODIGO"  — cuando Telegram muestra el botón Start
     //   · "CODIGO" a secas  — cuando el chat ya existía y no aparece el Start,
@@ -157,7 +209,7 @@ export async function POST(req: Request) {
 
     // /start sin código, o cualquier otra cosa: ayuda
     await sendMessage(chatId,
-      'Hola 👋 Soy Onyx Guardian.\nPara conectarte, entra en onyxtradinglive.com → Mi cuenta → Avisos → Conectar Telegram, y pega aquí el código que te dé.\n\nComandos: /estado (día) · /report (semana, con PDF y gráfico) · /mes (mes, con PDF y gráfico) · /stop (dejar de recibir).');
+      'Hola 👋 Soy Onyx Guardian.\nPara conectarte, entra en onyxtradinglive.com → Mi cuenta → Avisos → Conectar Telegram, y pega aquí el código que te dé.\n\nComandos: /estado (día) · /report (semana, con PDF y gráfico) · /mes (mes) · /copy (control copy trading) · /copyoff · /copyon · /stop (dejar de recibir).');
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     // Devolvemos 200 igualmente: si respondemos error, Telegram reintenta en bucle

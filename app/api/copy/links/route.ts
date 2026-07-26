@@ -11,6 +11,12 @@ async function me() {
   const { data: { user } } = await sb.auth.getUser();
   return user;
 }
+
+// "HH:MM" válido (24h) o null. Evita guardar basura en la franja horaria.
+function cleanHHMM(v: any): string | null {
+  const s = String(v || '').trim();
+  return /^([01]\d|2[0-3]):[0-5]\d$/.test(s) ? s : null;
+}
 // Devuelve capacidades del plan + esclavas extra compradas.
 async function planCaps(userId: string) {
   const { data: p } = await supabaseAdmin.from('profiles').select('plan,extra_slaves').eq('id', userId).maybeSingle();
@@ -64,6 +70,15 @@ export async function POST(req: Request) {
     reverse: !!b.reverse,
     symbol_map: (b.symbol_map && typeof b.symbol_map === 'object') ? b.symbol_map : {},
     enabled: b.enabled !== false,
+    // Controles de riesgo (se configuran desde el tab, no en la EA):
+    daily_loss_pct: Math.max(0, Number(b.daily_loss_pct) || 0),
+    max_drawdown_pct: Math.max(0, Number(b.max_drawdown_pct) || 0),
+    max_spread: Math.max(0, Number(b.max_spread) || 0),
+    session_from: cleanHHMM(b.session_from),
+    session_to: cleanHHMM(b.session_to),
+    symbol_whitelist: Array.isArray(b.symbol_whitelist)
+      ? b.symbol_whitelist.map((s: any) => String(s).toUpperCase().trim()).filter(Boolean).slice(0, 40)
+      : [],
   };
 
   if (b.id) {

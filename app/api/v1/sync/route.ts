@@ -27,12 +27,17 @@ export async function POST(req: NextRequest) {
 
     const { data: keyRow } = await supabaseAdmin
       .from('api_keys')
-      .select('id,user_id,revoked,account_login,acc_type,acc_size,broker')
+      .select('id,user_id,revoked,account_login,acc_type,acc_size,broker,kind')
       .eq('key', apiKey)
       .maybeSingle();
 
     if (!keyRow || keyRow.revoked)
       return NextResponse.json({ ok: false, error: 'invalid api key' }, { status: 401 });
+
+    // El sync del Guardian solo acepta claves Guardian. Si aquí llega una clave
+    // de copy trading, se rechaza para no mezclar las dos EAs.
+    if (keyRow.kind === 'copy')
+      return NextResponse.json({ ok: false, error: 'Esta es una clave de Copy trading, no de Onyx Guardian. | This is a Copy trading key, not a Guardian key.' }, { status: 403 });
 
     const userId = keyRow.user_id;
     const acc = body.account;
