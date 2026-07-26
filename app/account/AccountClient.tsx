@@ -158,8 +158,15 @@ export default function AccountClient({ email }: { email: string }) {
       <div className="wrap-wide" style={{ padding: '22px 0' }}>
         <div className="adminlayout">
           <div className="adminnav card" style={{ padding: 12 }}>
+            <div className="row" style={{ gap: 10, alignItems: 'center', padding: '4px 4px 12px', borderBottom: '1px solid var(--line)', marginBottom: 8 }}>
+              <span style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--grad)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, flex: 'none' }}>{(p.full_name || email || '?').slice(0, 2).toUpperCase()}</span>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.full_name || (email || '').split('@')[0]}</div>
+                <span className="pill" style={{ fontSize: 10.5, background: 'rgba(160,107,255,.16)', color: '#c9a9ff', padding: '1px 8px' }}>{planName(myPlan, lang) || 'Free'}</span>
+              </div>
+            </div>
             <div className="adminnav-items">
-              {NAV.map(([k, icon]) => <button key={k} className={'adminnav-item' + (tab === k ? ' on' : '')} onClick={() => setTab(k)}>{icon} {L.nav[k]}</button>)}
+              {NAV.map(([k, icon]) => <button key={k} className={'adminnav-item' + (tab === k ? ' on' : '')} onClick={() => setTab(k)}><span style={{ fontSize: 15, width: 18, textAlign: 'center' }}>{icon}</span><span>{L.nav[k]}</span><span className="navdot" /></button>)}
             </div>
           </div>
 
@@ -334,7 +341,7 @@ export default function AccountClient({ email }: { email: string }) {
             )}
 
             {data && tab === 'avisos' && (
-              <div style={{ maxWidth: 560 }}>
+              <div style={{ maxWidth: 820 }}>
                 <div style={{ marginBottom: 14 }}>
                   <h2 style={{ fontSize: 20, marginBottom: 2 }}>{L.nav.avisos}</h2>
                   <p className="muted" style={{ fontSize: 13, margin: 0 }}>{L.nSub}</p>

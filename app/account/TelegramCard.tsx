@@ -194,66 +194,59 @@ export default function TelegramCard({ lang }: { lang: 'es' | 'en' }) {
             <button className="btn btn-ghost" style={{ padding: '5px 12px', fontSize: 12 }} onClick={unlink} disabled={busy === 'unlink'}>{t.unlink}</button>
           </div>
 
-          {([[t.grpGuardian, ['tg_blocks', 'tg_manager', 'tg_offline']], [t.grpRisk, ['tg_limits', 'tg_funding', 'tg_goal']], [t.grpSummary, ['tg_daily', 'tg_weekly']]] as [string, string[]][]).map(([grp, keys], gi) => (
-            <div key={gi} style={{ marginTop: gi ? 12 : 0 }}>
-              <div style={{ fontSize: 11, color: 'var(--mut)', letterSpacing: '.04em', textTransform: 'uppercase', marginBottom: 2 }}>{grp}</div>
-              {keys.map((k) => (
-                <div key={k} className="row between" style={{ padding: '8px 0', borderTop: '1px solid var(--line)' }}>
-                  <span style={{ fontSize: 14 }}>{t.prefs[k]}</span>
-                  <Toggle on={!!d.prefs[k]} onClick={() => setPref(k, !d.prefs[k])} />
-                </div>
-              ))}
-            </div>
-          ))}
-
-          {/* Reporte de rendimiento: bloque destacado */}
-          <div style={{ marginTop: 16, background: 'rgba(124,140,255,.08)', border: '1px solid rgba(124,140,255,.35)', borderRadius: 12, padding: 14 }}>
-            <div className="row between" style={{ gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: '#c3ccff' }}>📊 {t.reportT}</div>
-                <div className="muted" style={{ fontSize: 11.5, marginTop: 2 }}>{t.reportHint}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 12 }}>
+            {([[t.grpGuardian, ['tg_blocks', 'tg_manager', 'tg_offline']], [t.grpRisk, ['tg_limits', 'tg_funding', 'tg_goal']], [t.grpSummary, ['tg_daily', 'tg_weekly']]] as [string, string[]][]).map(([grp, keys], gi) => (
+              <div key={gi} style={{ background: 'var(--bg2)', borderRadius: 10, padding: '10px 12px' }}>
+                <div style={{ fontSize: 11, color: 'var(--mut)', letterSpacing: '.04em', textTransform: 'uppercase', marginBottom: 4 }}>{grp}</div>
+                {keys.map((k, i) => (
+                  <div key={k} className="row between" style={{ padding: '7px 0', borderTop: i ? '1px solid var(--line)' : 'none', gap: 8 }}>
+                    <span style={{ fontSize: 13 }}>{t.prefs[k]}</span>
+                    <Toggle on={!!d.prefs[k]} onClick={() => setPref(k, !d.prefs[k])} />
+                  </div>
+                ))}
               </div>
-              <select value={d.report || 'off'} onChange={(e) => setReport(e.target.value)} style={{ margin: 0, width: 'auto', padding: '6px 10px' }}>
+            ))}
+          </div>
+
+          {/* Reporte + comandos, en dos columnas (a lo ancho) */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(250px,1fr))', gap: 14, marginTop: 16, alignItems: 'start' }}>
+            {/* Reporte destacado */}
+            <div style={{ background: 'rgba(124,140,255,.08)', border: '1px solid rgba(124,140,255,.35)', borderRadius: 12, padding: 14 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#c3ccff' }}>📊 {t.reportT}</div>
+              <div className="muted" style={{ fontSize: 11.5, margin: '2px 0 10px' }}>{t.reportHint}</div>
+              <select value={d.report || 'off'} onChange={(e) => setReport(e.target.value)} style={{ margin: 0, width: '100%', padding: '7px 10px' }}>
                 <option value="off">{t.reportOff}</option>
                 <option value="weekly">{t.reportWeekly}</option>
                 <option value="monthly">{t.reportMonthly}</option>
               </select>
+              <button className="btn btn-primary" style={{ fontSize: 13, marginTop: 10, width: '100%' }} onClick={sendReportTest} disabled={rtest === 'sending'}>
+                {rtest === 'sending' ? t.rtestSending : t.rtestBtn}
+              </button>
+              {rtest === 'ok' && <div style={{ color: 'var(--green)', fontSize: 12.5, marginTop: 8 }}>{t.rtestOk}</div>}
+              {rtest === 'empty' && <div className="muted" style={{ fontSize: 12.5, marginTop: 8 }}>{t.rtestEmpty}</div>}
+              {rtest.startsWith('err') && <div style={{ color: 'var(--red)', fontSize: 12.5, marginTop: 8 }}>{rtest.slice(4) || 'Error'}</div>}
+              <div className="row" style={{ gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
+                <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={sendTest} disabled={tested === 'sending'}>
+                  {tested === 'ok' ? t.testOk : tested === 'sending' ? t.testSending : t.test}
+                </button>
+                {saved && <span style={{ color: 'var(--green)', fontSize: 12 }}>{t.saved}</span>}
+              </div>
             </div>
-            <button className="btn btn-primary" style={{ fontSize: 13, marginTop: 12 }} onClick={sendReportTest} disabled={rtest === 'sending'}>
-              {rtest === 'sending' ? t.rtestSending : t.rtestBtn}
-            </button>
-            {rtest === 'ok' && <div style={{ color: 'var(--green)', fontSize: 12.5, marginTop: 8 }}>{t.rtestOk}</div>}
-            {rtest === 'empty' && <div className="muted" style={{ fontSize: 12.5, marginTop: 8 }}>{t.rtestEmpty}</div>}
-            {rtest.startsWith('err') && <div style={{ color: 'var(--red)', fontSize: 12.5, marginTop: 8 }}>{rtest.slice(4) || 'Error'}</div>}
+
+            {/* Comandos del bot */}
+            <div>
+              <div style={{ fontSize: 13, marginBottom: 10 }}>{t.cmdsT}</div>
+              {([['/estado', t.cmdEstado], ['/report', t.cmdInforme], ['/mes', t.cmdMes], ['/stop', t.cmdStop]] as [string, string][]).map(([cmd, desc]) => (
+                <div key={cmd} className="row" style={{ gap: 8, marginBottom: 9, alignItems: 'flex-start' }}>
+                  <code style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 7, padding: '3px 9px', color: '#aeb7ff', fontSize: 12.5, flex: 'none' }}>{cmd}</code>
+                  <span className="muted" style={{ fontSize: 12.5 }}>{desc}</span>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <div className="row" style={{ gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
-            <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={sendTest} disabled={tested === 'sending'}>
-              {tested === 'ok' ? t.testOk : tested === 'sending' ? t.testSending : t.test}
-            </button>
-            {saved && <span style={{ color: 'var(--green)', fontSize: 12 }}>{t.saved}</span>}
-          </div>
-
-          {/* Comandos del bot, con ejemplo visual de lo que verá en Telegram */}
-          <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid var(--line)' }}>
-            <div style={{ fontSize: 13, marginBottom: 10 }}>{t.cmdsT}</div>
-            <div className="row" style={{ gap: 8, marginBottom: 8, alignItems: 'flex-start' }}>
-              <code style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 7, padding: '3px 9px', color: '#aeb7ff', fontSize: 13, flex: 'none' }}>/estado</code>
-              <span className="muted" style={{ fontSize: 13 }}>{t.cmdEstado}</span>
-            </div>
-            <div className="row" style={{ gap: 8, marginBottom: 8, alignItems: 'flex-start' }}>
-              <code style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 7, padding: '3px 9px', color: '#aeb7ff', fontSize: 13, flex: 'none' }}>/report</code>
-              <span className="muted" style={{ fontSize: 13 }}>{t.cmdInforme}</span>
-            </div>
-            <div className="row" style={{ gap: 8, marginBottom: 8, alignItems: 'flex-start' }}>
-              <code style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 7, padding: '3px 9px', color: '#aeb7ff', fontSize: 13, flex: 'none' }}>/mes</code>
-              <span className="muted" style={{ fontSize: 13 }}>{t.cmdMes}</span>
-            </div>
-            <div className="row" style={{ gap: 8, marginBottom: 14, alignItems: 'flex-start' }}>
-              <code style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 7, padding: '3px 9px', color: '#aeb7ff', fontSize: 13, flex: 'none' }}>/stop</code>
-              <span className="muted" style={{ fontSize: 13 }}>{t.cmdStop}</span>
-            </div>
-
+          {/* Vista previa, ancho completo */}
+          <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--line)' }}>
             <div style={{ fontSize: 11, color: 'var(--mut)', marginBottom: 8, letterSpacing: '.03em' }}>{t.cmdExample}</div>
             <div style={{ background: '#17212b', borderRadius: 12, padding: 12, maxWidth: 320 }}>
               <div className="row" style={{ justifyContent: 'flex-end', marginBottom: 8 }}>
