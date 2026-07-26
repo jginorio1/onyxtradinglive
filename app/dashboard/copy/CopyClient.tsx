@@ -13,6 +13,12 @@ const T: any = {
     title: 'Copy trading', sub: 'Replica de una cuenta master a tus esclavas. Tú eres dueño de todas.',
     lock: 'El copy trading está en el plan Elite.', lockCta: 'Ver planes →',
     warn: 'Copiar entre cuentas puede violar las reglas de tu prop firm. Eres responsable de cumplirlas.',
+    howTitle: 'Cómo activar el copy trading', howHide: 'Ocultar', howShow: 'Ver guía',
+    how1: 'Conecta al menos 2 cuentas MT', how1b: 'Una será la Master (manda) y las otras Esclavas (reciben). Se conectan en Cuentas.',
+    how1link: 'Ir a Cuentas →',
+    how2: 'Genera la clave Copy e instala la EA', how2b: 'Abajo, en “Claves Copy”, pulsa Instalar en cada cuenta: te abre el asistente con la EA, la URL y tu clave, y confirma en vivo cuando conecta.',
+    how3: 'Crea el enlace Master → Esclava', how3b: 'En “Nuevo enlace” eliges la master, la esclava y el modo. Desde ese momento se copia. Puedes pausar/reanudar arriba o por Telegram.',
+    needMore: 'Solo tienes 1 cuenta conectada. Conecta otra para poder crear un enlace de copia.',
     control: 'Control de copia', ctrlActive: 'Copia activa', ctrlPaused: 'Copia pausada',
     ctrlActiveSub: 'enlaces activos', ctrlPausedSub: 'nada se está replicando',
     pauseAll: 'Pausar todo', resumeAll: 'Reanudar', byAccount: 'Por cuenta',
@@ -51,6 +57,12 @@ const T: any = {
     title: 'Copy trading', sub: 'Replicate from one master to your slave accounts. You own them all.',
     lock: 'Copy trading is on the Elite plan.', lockCta: 'See plans →',
     warn: 'Copying between accounts may violate your prop firm rules. You are responsible for compliance.',
+    howTitle: 'How to activate copy trading', howHide: 'Hide', howShow: 'Show guide',
+    how1: 'Connect at least 2 MT accounts', how1b: 'One is the Master (sends), the others Slaves (receive). Connect them under Accounts.',
+    how1link: 'Go to Accounts →',
+    how2: 'Generate the Copy key and install the EA', how2b: 'Below, in “Copy keys”, click Install on each account: it opens the wizard with the EA, the URL and your key, and confirms live when it connects.',
+    how3: 'Create the Master → Slave link', how3b: 'In “New link” pick the master, the slave and the mode. From then on it copies. Pause/resume from the top or via Telegram.',
+    needMore: 'You only have 1 connected account. Connect another to create a copy link.',
     control: 'Copy control', ctrlActive: 'Copy active', ctrlPaused: 'Copy paused',
     ctrlActiveSub: 'active links', ctrlPausedSub: 'nothing is replicating',
     pauseAll: 'Pause all', resumeAll: 'Resume', byAccount: 'By account',
@@ -101,6 +113,7 @@ export default function CopyClient() {
   const [log, setLog] = useState<any[]>([]);
   const [nl, setNl] = useState<any>(blankLink());
   const [showRisk, setShowRisk] = useState(false);
+  const [showHow, setShowHow] = useState(true);
   const [busy, setBusy] = useState(false);
   const [edit, setEdit] = useState<any>(null);
   const [wizard, setWizard] = useState<any>(null);
@@ -177,7 +190,7 @@ export default function CopyClient() {
     setWizard({ account: acc, role: roleOf(acc.id) || 'slave', key: keyStr });
   }
 
-  if (!d) return <div className="muted">…</div>;
+  if (!d) return <div className="wrap" style={{ maxWidth: 880, margin: '0 auto', padding: '40px 22px' }}><div className="muted">…</div></div>;
 
   const head = (
     <div style={{ marginBottom: 14 }}>
@@ -187,7 +200,7 @@ export default function CopyClient() {
   );
 
   if (!d.inPlan) return (
-    <div style={{ maxWidth: 640 }}>{head}
+    <div className="wrap" style={{ maxWidth: 640, margin: '0 auto', padding: '22px 22px 50px' }}>{head}
       <div className="card"><p className="muted" style={{ fontSize: 14, marginBottom: 10 }}>{t.lock}</p><Link className="btn btn-ghost" href="/pricing">{t.lockCta}</Link></div>
     </div>
   );
@@ -218,9 +231,25 @@ export default function CopyClient() {
   );
 
   return (
-    <div style={{ maxWidth: 880 }}>{head}
+    <div className="wrap" style={{ maxWidth: 880, margin: '0 auto', padding: '22px 22px 50px' }}>{head}
       <div className="card" style={{ marginBottom: 12, border: '1px solid var(--amber)', background: 'rgba(255,192,77,.06)' }}>
         <span style={{ fontSize: 12.5, color: 'var(--amber)' }}>⚠ {t.warn}</span>
+      </div>
+
+      {/* CÓMO ACTIVAR / GUÍA DE INSTALACIÓN */}
+      <div className="card" style={{ marginBottom: 12, border: '1px solid var(--accent,#6c7bff)', background: 'linear-gradient(180deg,rgba(108,123,255,.08),transparent)' }}>
+        <div className="row between" style={{ alignItems: 'center', gap: 8 }}>
+          <b style={{ fontSize: 14 }}>🚀 {t.howTitle}</b>
+          <button className="btn btn-ghost" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => setShowHow(!showHow)}>{showHow ? t.howHide : t.howShow}</button>
+        </div>
+        {showHow && (
+          <div style={{ marginTop: 10 }}>
+            <HowStep n={1} title={t.how1} body={t.how1b} accs={accs.length} extra={<Link href="/dashboard/keys" style={{ fontSize: 12, color: 'var(--accent,#8a97ff)' }}>{t.how1link}</Link>} />
+            <HowStep n={2} title={t.how2} body={t.how2b} />
+            <HowStep n={3} title={t.how3} body={t.how3b} />
+            {accs.length === 1 && <div style={{ marginTop: 6, fontSize: 12, color: 'var(--amber)' }}>⚠ {t.needMore}</div>}
+          </div>
+        )}
       </div>
 
       {/* CONTROL REMOTO */}
@@ -563,6 +592,19 @@ function WizardBody({ t, wizard, app, live, onCopy, copied }: any) {
         {live
           ? <span style={{ color: 'var(--green)', fontSize: 13.5, fontWeight: 600 }}>✓ {t.wizOk}</span>
           : <span style={{ color: 'var(--amber)', fontSize: 13 }}>◔ {t.wizWait}</span>}
+      </div>
+    </div>
+  );
+}
+
+function HowStep({ n, title, body, extra, accs }: any) {
+  const done = n === 1 && accs >= 2;
+  return (
+    <div className="row" style={{ gap: 10, alignItems: 'flex-start', marginBottom: 9 }}>
+      <span style={{ flex: 'none', width: 22, height: 22, borderRadius: '50%', background: done ? 'var(--green)' : 'var(--accent,#6c7bff)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 600 }}>{done ? '✓' : n}</span>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: 13, fontWeight: 600 }}>{title}</div>
+        <div className="muted" style={{ fontSize: 12, marginTop: 1, lineHeight: 1.5 }}>{body} {extra}</div>
       </div>
     </div>
   );

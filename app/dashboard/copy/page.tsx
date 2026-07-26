@@ -8,5 +8,5 @@ export default async function CopyPage() {
   const sb = createSupabaseServer();
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect('/login');
-  return <div className="wrap-wide" style={{ padding: '22px 0' }}><CopyClient /></div>;
+  return <CopyClient />;
 }
