@@ -42,6 +42,12 @@ const T: any = {
     wizStep3: 'Pega tu clave Copy', wizStep3b: 'En la EA, en el campo ApiKey pega esta clave:',
     wizWait: 'Esperando la primera señal de tu EA…', wizOk: '¡Conectada! Ya puedes copiar.', wizClose: 'Cerrar',
     dlMaster: 'EA Master (.mq5)', dlSlave: 'EA Esclava (.mq5)',
+    wzPlat: '¿Tu MetaTrader es 4 o 5?', wzMt5: 'MetaTrader 5', wzMt4: 'MetaTrader 4',
+    wzS1t: 'Descarga el archivo', wzS1d: 'Pulsa el botón. Se baja la EA a tu computadora.', wzDl: 'Descargar EA',
+    wzS2t: 'Ponlo en MetaTrader', wzS2d: 'En MetaTrader: Archivo → Abrir carpeta de datos → __F__ → Experts. Pega ahí el archivo y reinicia MetaTrader.',
+    wzS3t: 'Arrástralo a un gráfico', wzS3d: 'Abre cualquier gráfico y arrastra la EA encima. Marca “Permitir operaciones automáticas”.',
+    wzS4t: 'Pega esta dirección', wzS4d: 'Marca “Permitir WebRequest para las URL siguientes” y pega esta línea:',
+    wzS5t: 'Pega tu clave Copy', wzS5d: 'En el recuadro ApiKey pega tu clave y pulsa Aceptar.',
     links: 'Tus enlaces', newLink: 'Nuevo enlace', master: 'Master', slave: 'Esclava', mode: 'Modo',
     m_balance: 'Balance %', m_risk: 'Riesgo % (RR)', m_pips: 'Pips', m_fixed: 'Lote fijo ×',
     mult: 'Multiplicador', risk: 'Riesgo %', pip: 'Pips SL', maxLot: 'Lote máx', reverse: 'Invertir',
@@ -89,6 +95,12 @@ const T: any = {
     wizStep3: 'Paste your Copy key', wizStep3b: 'In the EA ApiKey field, paste this key:',
     wizWait: 'Waiting for your EA’s first signal…', wizOk: 'Connected! You can copy now.', wizClose: 'Close',
     dlMaster: 'Master EA (.mq5)', dlSlave: 'Slave EA (.mq5)',
+    wzPlat: 'Is your MetaTrader 4 or 5?', wzMt5: 'MetaTrader 5', wzMt4: 'MetaTrader 4',
+    wzS1t: 'Download the file', wzS1d: 'Click the button. The EA downloads to your computer.', wzDl: 'Download EA',
+    wzS2t: 'Put it in MetaTrader', wzS2d: 'In MetaTrader: File → Open Data Folder → __F__ → Experts. Drop the file there and restart MetaTrader.',
+    wzS3t: 'Drag it onto a chart', wzS3d: 'Open any chart and drag the EA onto it. Tick “Allow algo trading”.',
+    wzS4t: 'Paste this address', wzS4d: 'Tick “Allow WebRequest for listed URL” and paste this line:',
+    wzS5t: 'Paste your Copy key', wzS5d: 'In the ApiKey box paste your key and click OK.',
     links: 'Your links', newLink: 'New link', master: 'Master', slave: 'Slave', mode: 'Mode',
     m_balance: 'Balance %', m_risk: 'Risk % (RR)', m_pips: 'Pips', m_fixed: 'Fixed lot ×',
     mult: 'Multiplier', risk: 'Risk %', pip: 'SL pips', maxLot: 'Max lot', reverse: 'Reverse',
@@ -258,7 +270,8 @@ export default function CopyClient() {
         )}
       </div>
 
-      {/* CONTROL REMOTO */}
+      {/* CONTROL REMOTO · solo cuando ya hay al menos un enlace que controlar */}
+      {links.length > 0 && (
       <div className="card" style={{ marginBottom: 12, border: `1px solid ${paused ? 'var(--red)' : 'var(--green)'}`, background: paused ? 'rgba(255,90,90,.05)' : 'linear-gradient(180deg,rgba(52,226,160,.06),transparent)' }}>
         <div className="row between" style={{ flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
           <div className="row" style={{ gap: 11, alignItems: 'center' }}>
@@ -296,8 +309,10 @@ export default function CopyClient() {
         )}
         <p className="muted" style={{ fontSize: 11, marginTop: 10, marginBottom: 0 }}>🔒 {t.remoteHint}</p>
       </div>
+      )}
 
-      {/* PIN de copy */}
+      {/* PIN de copy · solo tiene sentido cuando ya hay copia configurada */}
+      {links.length > 0 && (
       <div className="card" style={{ marginBottom: 12 }}>
         <div className="row between" style={{ flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
           <div>
@@ -310,6 +325,7 @@ export default function CopyClient() {
           </div>
         </div>
       </div>
+      )}
 
       {/* Cupo de esclavas */}
       <div className="card" style={{ marginBottom: 12 }}>
@@ -335,12 +351,18 @@ export default function CopyClient() {
           <div style={{ border: `1px solid ${C_MASTER}44`, borderRadius: 10, padding: 12 }}>
             <span className="pill" style={{ fontSize: 9.5, color: C_MASTER, background: C_MASTER + '22' }}>{t.role_master}</span>
             <div className="muted" style={{ fontSize: 12, margin: '7px 0 9px' }}>{t.dlMasterDesc}</div>
-            <a className="btn btn-ghost" style={{ fontSize: 12.5, padding: '6px 12px' }} href="/ea/OnyxCopyMaster.mq5" download>⬇ OnyxCopyMaster.mq5</a>
+            <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+              <a className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 11px' }} href="/ea/OnyxCopyMaster.mq5" download>⬇ MT5 (.mq5)</a>
+              <a className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 11px' }} href="/ea/OnyxCopyMaster.mq4" download>⬇ MT4 (.mq4)</a>
+            </div>
           </div>
           <div style={{ border: `1px solid ${C_SLAVE}44`, borderRadius: 10, padding: 12 }}>
             <span className="pill" style={{ fontSize: 9.5, color: C_SLAVE, background: C_SLAVE + '22' }}>{t.role_slave}</span>
             <div className="muted" style={{ fontSize: 12, margin: '7px 0 9px' }}>{t.dlSlaveDesc}</div>
-            <a className="btn btn-ghost" style={{ fontSize: 12.5, padding: '6px 12px' }} href="/ea/OnyxCopySlave.mq5" download>⬇ OnyxCopySlave.mq5</a>
+            <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+              <a className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 11px' }} href="/ea/OnyxCopySlave.mq5" download>⬇ MT5 (.mq5)</a>
+              <a className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 11px' }} href="/ea/OnyxCopySlave.mq4" download>⬇ MT4 (.mq4)</a>
+            </div>
           </div>
         </div>
         <p className="muted" style={{ fontSize: 11, marginTop: 9, marginBottom: 0 }}>💡 {t.dlHint}</p>
@@ -363,7 +385,6 @@ export default function CopyClient() {
                     : <span className="muted" style={{ fontSize: 11.5 }}>{t.noKey}</span>}
                 </span>
                 <div className="row" style={{ gap: 8 }}>
-                  {!k && <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => genKey(a.id)}>{t.genKey}</button>}
                   {k && <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => revokeKey(k.id)}>{t.revoke}</button>}
                   <button className="btn btn-primary" style={{ padding: '4px 12px', fontSize: 12 }} onClick={() => openWizard(a)}>⬇ {t.install}</button>
                 </div>
@@ -579,38 +600,57 @@ function PinModal({ t, mode, clear, hasPin, onClose, onResume, onSetPin }: any) 
 }
 
 function WizardBody({ t, wizard, app, live, onCopy, copied }: any) {
+  const [plat, setPlat] = useState<'mt5' | 'mt4'>('mt5');
   const isMaster = wizard.role === 'master' || wizard.role === 'both';
   const color = isMaster ? C_MASTER : C_SLAVE;
   const roleTx = isMaster ? t.role_master : t.role_slave;
-  const dlName = isMaster ? 'OnyxCopyMaster.mq5' : 'OnyxCopySlave.mq5';
+  const ext = plat === 'mt5' ? 'mq5' : 'mq4';
+  const folder = plat === 'mt5' ? 'MQL5' : 'MQL4';
+  const dlName = (isMaster ? 'OnyxCopyMaster.' : 'OnyxCopySlave.') + ext;
+
+  const platBtn = (p: 'mt5' | 'mt4', label: string) => (
+    <button onClick={() => setPlat(p)} className="btn"
+      style={{ flex: 1, fontSize: 13, padding: '9px 0', border: plat === p ? '2px solid var(--accent,#6c7bff)' : '1px solid var(--line)', background: plat === p ? 'rgba(108,123,255,.12)' : 'transparent', color: plat === p ? '#c3ccff' : 'var(--mut)' }}>{label}</button>
+  );
+  const copyRow = (val: string, id: 'url' | 'key') => (
+    <div className="row between" style={{ gap: 8, background: 'rgba(255,255,255,.03)', border: '1px solid var(--line)', borderRadius: 8, padding: '7px 10px', flexWrap: 'wrap' }}>
+      <code style={{ fontSize: 12, wordBreak: 'break-all' }}>{val}</code>
+      <button className="btn btn-ghost" style={{ padding: '2px 9px', fontSize: 11.5 }} onClick={() => onCopy(val)}>{copied ? t.copied : t.copyKey}</button>
+    </div>
+  );
+
   return (
     <div>
-      <div className="row" style={{ gap: 8, alignItems: 'center', marginBottom: 12 }}>
+      <div className="row" style={{ gap: 8, alignItems: 'center', marginBottom: 4 }}>
         <span className="pill" style={{ fontSize: 10, color, background: color + '22' }}>{roleTx}</span>
         <div style={{ fontSize: 15, fontWeight: 600 }}>{t.wizTitle} {wizard.account.nickname || wizard.account.login}</div>
       </div>
 
-      <Step n={1} title={t.wizStep1}>
-        <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{t.wizStep1b}</div>
-        <a className="btn btn-ghost" style={{ fontSize: 12.5, padding: '5px 12px' }} href={`/ea/${dlName}`} download>⬇ {isMaster ? t.dlMaster : t.dlSlave}</a>
+      {/* Paso 0: plataforma */}
+      <div className="muted" style={{ fontSize: 12, margin: '10px 0 6px' }}>1 · {t.wzPlat}</div>
+      <div className="row" style={{ gap: 8, marginBottom: 14 }}>{platBtn('mt5', t.wzMt5)}{platBtn('mt4', t.wzMt4)}</div>
+
+      <Step n={2} title={t.wzS1t}>
+        <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{t.wzS1d}</div>
+        <a className="btn btn-primary" style={{ fontSize: 12.5, padding: '6px 13px' }} href={`/ea/${dlName}`} download>⬇ {t.wzDl} · {dlName}</a>
       </Step>
 
-      <Step n={2} title={t.wizStep2}>
-        <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{t.wizStep2b}</div>
-        <div className="row between" style={{ gap: 8, background: 'rgba(255,255,255,.03)', border: '1px solid var(--line)', borderRadius: 8, padding: '7px 10px' }}>
-          <code style={{ fontSize: 12 }}>{app}</code>
-          <button className="btn btn-ghost" style={{ padding: '2px 9px', fontSize: 11.5 }} onClick={() => onCopy(app)}>{t.copyKey}</button>
-        </div>
+      <Step n={3} title={t.wzS2t}>
+        <div className="muted" style={{ fontSize: 12 }}>{t.wzS2d.replace('__F__', folder)}</div>
       </Step>
 
-      <Step n={3} title={t.wizStep3}>
-        <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{t.wizStep3b}</div>
-        {wizard.key ? (
-          <div className="row between" style={{ gap: 8, background: 'rgba(255,255,255,.03)', border: '1px dashed var(--line)', borderRadius: 8, padding: '7px 10px', flexWrap: 'wrap' }}>
-            <code style={{ fontSize: 12, wordBreak: 'break-all' }}>{wizard.key}</code>
-            <button className="btn btn-ghost" style={{ padding: '2px 9px', fontSize: 11.5 }} onClick={() => onCopy(wizard.key)}>{copied ? t.copied : t.copyKey}</button>
-          </div>
-        ) : <div className="muted" style={{ fontSize: 12 }}>—</div>}
+      <Step n={4} title={t.wzS3t}>
+        <div className="muted" style={{ fontSize: 12 }}>{t.wzS3d}</div>
+      </Step>
+
+      <Step n={5} title={t.wzS4t}>
+        <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{t.wzS4d}</div>
+        {copyRow(app, 'url')}
+      </Step>
+
+      <Step n={6} title={t.wzS5t}>
+        <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{t.wzS5d}</div>
+        {wizard.key ? copyRow(wizard.key, 'key') : <div className="muted" style={{ fontSize: 12 }}>—</div>}
       </Step>
 
       <div style={{ marginTop: 12, borderRadius: 10, padding: 12, textAlign: 'center', background: live ? 'rgba(52,226,160,.1)' : 'rgba(255,192,77,.07)', border: `1px solid ${live ? 'var(--green)' : 'var(--amber)'}` }}>

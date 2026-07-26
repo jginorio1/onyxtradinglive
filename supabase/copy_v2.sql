@@ -10,6 +10,14 @@ alter table if exists public.api_keys
   add column if not exists kind text not null default 'guardian';   -- guardian | copy
 create index if not exists api_keys_kind on public.api_keys(user_id, kind) where revoked = false;
 
+-- El índice único viejo era (user_id, account_login) y NO dejaba tener a la vez
+-- la clave Guardian y la clave Copy de la MISMA cuenta. Lo recreamos incluyendo
+-- 'kind' para permitir una de cada tipo por cuenta.
+drop index if exists api_keys_user_login_idx;
+create unique index if not exists api_keys_user_login_kind_idx
+  on public.api_keys (user_id, account_login, kind)
+  where account_login is not null and revoked = false;
+
 -- 2) Interruptores de copia (control remoto desde web/Telegram).
 --    Pausa GLOBAL del trader (kill switch) + PIN para reanudar.
 alter table if exists public.profiles
