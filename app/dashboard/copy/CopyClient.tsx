@@ -30,6 +30,9 @@ const T: any = {
     resumeAsk: '¿Reanudar la copia en vivo?', resumeBody: 'Volverá a copiar las operaciones al instante. Escribe tu PIN para confirmar.',
     resume: 'Reanudar',
     slots: 'Esclavas', used: 'usadas', of: 'de', extra: 'extra', buyMore: 'Comprar esclava extra', slaveMo: '/mes cada una',
+    dlTitle: 'Descargar la EA de copy', dlSub: 'Instálala en MetaTrader. Master en la cuenta que manda, Esclava en las que reciben.',
+    dlMasterDesc: 'La que manda las operaciones.', dlSlaveDesc: 'La que recibe y replica.',
+    dlHint: 'El asistente “Instalar” te guía paso a paso con tu clave.',
     keys: 'Claves Copy', keysSub: 'Cada cuenta en copy usa su propia clave Copy, separada del Guardian.',
     genKey: 'Generar clave', revoke: 'Revocar', copyKey: 'Copiar', copied: '¡Copiado!',
     keyReady: 'Clave lista', noKey: 'Sin clave Copy', install: 'Instalar', keyWarn: 'Guárdala: no se vuelve a mostrar entera.',
@@ -74,6 +77,9 @@ const T: any = {
     resumeAsk: 'Resume live copying?', resumeBody: 'It will copy trades again instantly. Enter your PIN to confirm.',
     resume: 'Resume',
     slots: 'Slaves', used: 'used', of: 'of', extra: 'extra', buyMore: 'Buy extra slave', slaveMo: '/mo each',
+    dlTitle: 'Download the copy EA', dlSub: 'Install it in MetaTrader. Master on the account that sends, Slave on those that receive.',
+    dlMasterDesc: 'Sends the trades.', dlSlaveDesc: 'Receives and replicates.',
+    dlHint: 'The “Install” wizard walks you through it with your key.',
     keys: 'Copy keys', keysSub: 'Each copy account uses its own Copy key, separate from Guardian.',
     genKey: 'Generate key', revoke: 'Revoke', copyKey: 'Copy', copied: 'Copied!',
     keyReady: 'Key ready', noKey: 'No Copy key', install: 'Install', keyWarn: 'Save it: it will not be shown in full again.',
@@ -320,6 +326,25 @@ export default function CopyClient() {
       </div>
 
       {accs.length < 2 && <div className="card" style={{ marginBottom: 12 }}><p className="muted" style={{ fontSize: 13, margin: 0 }}>{t.noAcc}</p></div>}
+
+      {/* DESCARGAR LA EA (siempre visible) */}
+      <div className="card" style={{ marginBottom: 12 }}>
+        <div className="row" style={{ gap: 8, alignItems: 'center' }}><span style={{ fontSize: 15 }}>⬇</span><b style={{ fontSize: 14 }}>{t.dlTitle}</b></div>
+        <p className="muted" style={{ fontSize: 12, marginTop: 2, marginBottom: 10 }}>{t.dlSub}</p>
+        <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(210px,1fr))', gap: 10 }}>
+          <div style={{ border: `1px solid ${C_MASTER}44`, borderRadius: 10, padding: 12 }}>
+            <span className="pill" style={{ fontSize: 9.5, color: C_MASTER, background: C_MASTER + '22' }}>{t.role_master}</span>
+            <div className="muted" style={{ fontSize: 12, margin: '7px 0 9px' }}>{t.dlMasterDesc}</div>
+            <a className="btn btn-ghost" style={{ fontSize: 12.5, padding: '6px 12px' }} href="/ea/OnyxCopyMaster.mq5" download>⬇ OnyxCopyMaster.mq5</a>
+          </div>
+          <div style={{ border: `1px solid ${C_SLAVE}44`, borderRadius: 10, padding: 12 }}>
+            <span className="pill" style={{ fontSize: 9.5, color: C_SLAVE, background: C_SLAVE + '22' }}>{t.role_slave}</span>
+            <div className="muted" style={{ fontSize: 12, margin: '7px 0 9px' }}>{t.dlSlaveDesc}</div>
+            <a className="btn btn-ghost" style={{ fontSize: 12.5, padding: '6px 12px' }} href="/ea/OnyxCopySlave.mq5" download>⬇ OnyxCopySlave.mq5</a>
+          </div>
+        </div>
+        <p className="muted" style={{ fontSize: 11, marginTop: 9, marginBottom: 0 }}>💡 {t.dlHint}</p>
+      </div>
 
       {/* CLAVES COPY + INSTALAR */}
       {accs.length > 0 && (

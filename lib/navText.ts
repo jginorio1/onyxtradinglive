@@ -9,7 +9,7 @@ export type Lang = 'es' | 'en';
 
 export const NAV_T: Record<Lang, Record<string, string>> = {
   es: {
-    dashboard: 'Panel', accounts: 'Cuentas', manager: 'Onyx Guardian', copy: 'Copy trading', support: 'Soporte', admin: 'Admin',
+    dashboard: 'Panel', accounts: 'Cuentas', manager: 'Onyx Guardian', copy: 'Onyx Copy', support: 'Soporte', admin: 'Admin',
     home: 'Inicio', plans: 'Planes', ambassadors: 'Embajadores', guide: 'Guía',
     login: 'Entrar', signup: 'Empezar gratis',
     myAccount: 'Mi cuenta', myPlan: 'Mi plan', referrals: 'Referidos', adminPanel: 'Panel de admin',
@@ -18,7 +18,7 @@ export const NAV_T: Record<Lang, Record<string, string>> = {
     eaOnTitle: 'MetaTrader conectado', eaOffTitle: 'MetaTrader sin señal',
   },
   en: {
-    dashboard: 'Dashboard', accounts: 'Accounts', manager: 'Onyx Guardian', copy: 'Copy trading', support: 'Support', admin: 'Admin',
+    dashboard: 'Dashboard', accounts: 'Accounts', manager: 'Onyx Guardian', copy: 'Onyx Copy', support: 'Support', admin: 'Admin',
     home: 'Home', plans: 'Plans', ambassadors: 'Ambassadors', guide: 'Guide',
     login: 'Sign in', signup: 'Start free',
     myAccount: 'My account', myPlan: 'My plan', referrals: 'Referrals', adminPanel: 'Admin panel',

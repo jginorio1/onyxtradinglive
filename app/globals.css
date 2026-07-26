@@ -70,6 +70,13 @@ section[id],div[id]{scroll-margin-top:120px;}
 .navlink:hover{color:#fff;background:var(--card2);}
 /* La pagina en la que estas, marcada. Antes no habia forma de saberlo. */
 .navlink.on{color:var(--tx);background:var(--card2);}
+/* Pestaña atenuada (ej. Onyx Copy sin actividad todavia). */
+.navlink.dim{opacity:.62;}
+.navlink.dim:hover{opacity:1;}
+/* Punto de estado dentro de una pestaña (activo verde / inactivo gris). */
+.navdotmini{display:inline-block;width:7px;height:7px;border-radius:50%;margin-left:6px;vertical-align:middle;flex:none;}
+.navdotmini.on{background:var(--green,#34e2a0);box-shadow:0 0 0 3px rgba(52,226,160,.16);}
+.navdotmini.off{background:var(--mut);}
 
 /* Hamburguesa: oculta en pantalla ancha, aparece cuando los enlaces no caben */
 .navburger-wrap{display:none;position:relative;}

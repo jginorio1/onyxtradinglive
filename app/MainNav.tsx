@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-export type NavItem = { href: string; label: string };
+export type NavItem = { href: string; label: string; dot?: 'on' | 'off'; dim?: boolean };
 
 // ============================================================
 // Enlaces de la barra.
@@ -39,8 +39,10 @@ export default function MainNav({ items, authItems }: { items: NavItem[]; authIt
     <>
       <div className="navl">
         {items.map((i) => (
-          <Link key={i.href} className={'navlink' + (isActive(i.href) ? ' on' : '')} href={i.href}>
+          <Link key={i.href} className={'navlink' + (isActive(i.href) ? ' on' : '') + (i.dim ? ' dim' : '')} href={i.href}
+            title={i.dot === 'on' ? 'Copia activa' : i.dot === 'off' ? 'Copia inactiva' : undefined}>
             {i.label}
+            {i.dot && <span className={'navdotmini ' + i.dot} />}
           </Link>
         ))}
       </div>
@@ -54,6 +56,7 @@ export default function MainNav({ items, authItems }: { items: NavItem[]; authIt
             {items.map((i) => (
               <Link key={i.href} className={'menu-item' + (isActive(i.href) ? ' on' : '')} href={i.href}>
                 {i.label}
+                {i.dot && <span className={'navdotmini ' + i.dot} style={{ marginLeft: 8 }} />}
               </Link>
             ))}
             {authItems && authItems.length > 0 && (

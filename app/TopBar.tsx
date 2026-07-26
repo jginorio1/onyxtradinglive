@@ -25,6 +25,7 @@ export default async function TopBar() {
   let isAdmin = false;
   let eaLive: boolean | null = null;
   let caps: any = {};
+  let copyActive = false;   // hay copia corriendo (enlace activo y sin pausa global)
 
   try {
     const sb = createSupabaseServer();
@@ -33,7 +34,7 @@ export default async function TopBar() {
 
     if (user) {
       const { data: prof } = await supabaseAdmin
-        .from('profiles').select('plan,is_admin').eq('id', user.id).maybeSingle();
+        .from('profiles').select('plan,is_admin,copy_paused').eq('id', user.id).maybeSingle();
       plan = prof?.plan || 'free';
       isAdmin = !!prof?.is_admin;
 
@@ -41,6 +42,13 @@ export default async function TopBar() {
         .from('plans').select('name,name_en,capabilities').eq('id', plan).maybeSingle();
       planName = (lang === 'en' ? (planRow?.name_en || planRow?.name) : planRow?.name) || plan;
       caps = planRow?.capabilities || {};
+
+      // ¿La copia está corriendo? Verde si hay al menos un enlace activo y no está en pausa global.
+      if (caps.copy && !prof?.copy_paused) {
+        const { count: activeLinks } = await supabaseAdmin
+          .from('copy_links').select('*', { count: 'exact', head: true }).eq('owner_id', user.id).eq('enabled', true);
+        copyActive = (activeLinks || 0) > 0;
+      }
 
       // ¿Está reportando algún MetaTrader? Verde si sincronizó hace menos de 2 min.
       const { data: accs } = await supabaseAdmin
@@ -61,7 +69,7 @@ export default async function TopBar() {
         { href: '/dashboard', label: t.dashboard },
         { href: '/dashboard/keys', label: t.accounts },
         ...(caps.manager ? [{ href: '/dashboard/manager', label: t.manager }] : []),
-        ...(caps.copy ? [{ href: '/dashboard/copy', label: t.copy }] : []),
+        ...(caps.copy ? [{ href: '/dashboard/copy', label: t.copy, dot: (copyActive ? 'on' : 'off') as 'on' | 'off', dim: !copyActive }] : []),
         { href: '/dashboard/soporte', label: t.support },
         { href: '/pricing', label: t.plans },
         ...(isAdmin ? [{ href: '/admin', label: t.admin }] : []),
