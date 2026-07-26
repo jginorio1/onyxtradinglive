@@ -4,6 +4,7 @@ import { useLang } from '@/lib/lang';
 import Link from 'next/link';
 import { errMsg } from '@/lib/i18nErrors';
 import PlansCompareTable from '@/app/PlansCompareTable';
+import EmbeddedCheckoutModal from '@/app/EmbeddedCheckoutModal';
 
 type Plan = { id: string; name: string; name_en: string; desc_es: string | null; desc_en: string | null; price_month: number; price_year: number; max_accounts: number; features: string[]; features_en: string[]; badge: string | null; badge_en: string | null };
 type Lang = 'es' | 'en';
@@ -35,21 +36,11 @@ export default function Pricing() {
     return () => { window.removeEventListener('pageshow', reset); window.removeEventListener('focus', reset); document.removeEventListener('visibilitychange', reset); };
   }, []);
 
+  // Checkout embebido: se abre dentro de Onyx (mismo diseño), sin redirigir a Stripe.
+  const [co, setCo] = useState<{ plan: string } | null>(null);
   async function subscribe(plan: string, price: number) {
     if (plan === 'free' || price === 0) { window.location.href = '/login?mode=signup'; return; }
-    setLoading(plan);
-    try {
-      const r = await fetch('/api/stripe/checkout', { method: 'POST', body: JSON.stringify({ plan, annual }) });
-      const txt = await r.text();
-      let j: any = {};
-      try { j = JSON.parse(txt); } catch { j = { code: 'generic' }; }
-      if (j.url) { window.location.href = j.url; return; }
-      if (r.status === 401) { window.location.href = '/login'; return; }
-      alert(errMsg(j, lang));
-    } catch {
-      alert(errMsg({ code: 'network' }, lang));
-    }
-    setLoading('');
+    setCo({ plan });
   }
 
   return (
@@ -99,6 +90,7 @@ export default function Pricing() {
         <PlansCompareTable plans={plans as any} lang={lang} annual={annual} loadingId={loading}
           onChoose={(id, price) => subscribe(id, price)} />
       </div>
+      {co && <EmbeddedCheckoutModal plan={co.plan} annual={annual} lang={lang} onClose={() => setCo(null)} />}
     </>
   );
 }

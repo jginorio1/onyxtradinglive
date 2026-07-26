@@ -37,6 +37,7 @@ Corre estos, en cualquier orden. Todos usan `if not exists`, así que es seguro 
 Ponlas ahí (nunca en el código). Tras añadirlas, **Redeploy**.
 
 - `STRIPE_SECRET_KEY`   — tu clave de Stripe (test o live)
+- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` — clave pública de Stripe (empieza por `pk_`). Necesaria para el cambio de tarjeta y el checkout embebido dentro de Onyx.
 - `RESEND_API_KEY`      — para correos (reportes, tickets)
 - `TELEGRAM_BOT_TOKEN`  — token del bot (revócalo en BotFather si se expuso)
 - `CRON_SECRET`         — un valor aleatorio propio (el mismo que usan las tareas)

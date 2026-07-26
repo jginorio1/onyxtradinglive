@@ -6,6 +6,7 @@ import { errMsg, planName } from '@/lib/i18nErrors';
 import Ambassador from './Ambassador';
 import CancelFlow from './CancelFlow';
 import TelegramCard from './TelegramCard';
+import BillingCard from './BillingCard';
 
 type Lang = 'es' | 'en';
 type Tab = 'plan' | 'perfil' | 'facturas' | 'cuentas' | 'avisos' | 'seguridad' | 'referidos';
@@ -24,7 +25,8 @@ const D: any = {
     tStyleO: [['scalping', 'Scalping'], ['day', 'Day trading'], ['swing', 'Swing'], ['position', 'Position']],
     tPlatO: [['mt5', 'MetaTrader 5'], ['mt4', 'MetaTrader 4'], ['ambas', 'Ambas']],
     tGoalO: [['pasar_challenge', 'Pasar mi challenge'], ['consistencia', 'Ser consistente'], ['crecer', 'Hacer crecer mi cuenta'], ['vivir', 'Vivir del trading']],
-    invTitle: 'Tus facturas', invTxt: 'Todas tus facturas y recibos están en el portal seguro de Stripe. Desde ahí puedes descargarlas en PDF.', invBtn: 'Abrir mis facturas',
+    invTitle: 'Tus facturas', invTxt: 'Aquí están todas tus facturas y recibos. Descárgalas en PDF.', invBtn: 'Abrir mis facturas',
+    invEmpty: 'Todavía no tienes facturas.', invDl: 'PDF', invPaid: 'Pagada', invOpen: 'Pendiente', invVoid: 'Anulada', invPortal: 'Ver en Stripe',
     accTitle: 'Cuentas conectadas', accNone: 'Todavía no has conectado ninguna cuenta MT.', accAdd: 'Conectar una cuenta', apiK: 'Tu clave API', apiTxt: 'Pégala en el conector del MetaTrader.', copy: 'Copiar', copied: 'Copiada',
     lastSync: 'Últ. sync', never: 'nunca', mtLive: 'Conectada', mtStale: 'Sin señal', mtNever: 'Sin conectar',
     nTitle: 'Qué avisos quieres recibir', nEmail: 'Correos de la cuenta y pagos', nWeek: 'Resumen semanal de tu operativa', nFund: 'Alertas de reglas de fondeo', nMkt: 'Novedades y ofertas',
@@ -54,7 +56,8 @@ const D: any = {
     tStyleO: [['scalping', 'Scalping'], ['day', 'Day trading'], ['swing', 'Swing'], ['position', 'Position']],
     tPlatO: [['mt5', 'MetaTrader 5'], ['mt4', 'MetaTrader 4'], ['ambas', 'Both']],
     tGoalO: [['pasar_challenge', 'Pass my challenge'], ['consistencia', 'Be consistent'], ['crecer', 'Grow my account'], ['vivir', 'Trade for a living']],
-    invTitle: 'Your invoices', invTxt: 'All your invoices and receipts live in the secure Stripe portal. You can download them as PDF there.', invBtn: 'Open my invoices',
+    invTitle: 'Your invoices', invTxt: 'Here are all your invoices and receipts. Download them as PDF.', invBtn: 'Open my invoices',
+    invEmpty: 'No invoices yet.', invDl: 'PDF', invPaid: 'Paid', invOpen: 'Due', invVoid: 'Void', invPortal: 'View on Stripe',
     accTitle: 'Connected accounts', accNone: 'You have not connected any MT account yet.', accAdd: 'Connect an account', apiK: 'Your API key', apiTxt: 'Paste it into the MetaTrader connector.', copy: 'Copy', copied: 'Copied',
     lastSync: 'Last sync', never: 'never', mtLive: 'Connected', mtStale: 'No signal', mtNever: 'Not connected',
     nTitle: 'Which alerts you want', nEmail: 'Account and billing emails', nWeek: 'Weekly performance recap', nFund: 'Prop-firm rule alerts', nMkt: 'News and offers',
@@ -79,13 +82,28 @@ function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
 
 export default function AccountClient({ email }: { email: string }) {
   const { lang, setLang } = useLang();
-  const [tab, setTab] = useState<Tab>('plan');
+  // El tab se guarda en el # de la URL, así al refrescar te quedas donde estabas.
+  const TABS = ['plan', 'perfil', 'facturas', 'cuentas', 'avisos', 'seguridad', 'referidos'];
+  const [tab, setTabState] = useState<Tab>('plan');
+  const setTab = (t: Tab) => { setTabState(t); if (typeof window !== 'undefined') history.replaceState(null, '', '#' + t); };
+  useEffect(() => {
+    const apply = () => { const h = window.location.hash.replace('#', ''); if (TABS.includes(h)) setTabState(h as Tab); };
+    apply();
+    window.addEventListener('hashchange', apply);
+    return () => window.removeEventListener('hashchange', apply);
+  }, []);
   const [data, setData] = useState<any>(null);
   const [p, setP] = useState<any>({});
   const [busy, setBusy] = useState('');
   const [msg, setMsg] = useState('');
   const [extraQty, setExtraQty] = useState(0);
   const setExtra = (n: number) => setExtraQty(Math.max(0, Math.min(50, n)));
+  const [invoices, setInvoices] = useState<any[] | null>(null);
+  useEffect(() => {
+    if (tab === 'facturas' && invoices === null) {
+      fetch('/api/stripe/invoices').then((r) => r.ok ? r.json() : null).then((j) => setInvoices(j?.invoices || [])).catch(() => setInvoices([]));
+    }
+  }, [tab, invoices]);
   const L = D[lang];
 
   useEffect(() => {
@@ -191,6 +209,8 @@ export default function AccountClient({ email }: { email: string }) {
                     <button className="btn btn-ghost" onClick={openPortal} disabled={busy === 'portal'}>{busy === 'portal' ? L.saving : L.manage}</button>
                   </div>
 
+                  {sub && <div style={{ borderTop: '1px solid var(--line)', paddingTop: 14, marginTop: 14 }}><BillingCard lang={lang} /></div>}
+
                   <div style={{ borderTop: '1px solid var(--line)', paddingTop: 14 }}>
                     <div className="row between" style={{ fontSize: 13, marginBottom: 6 }}>
                       <span className="muted">{L.usage}</span>
@@ -288,10 +308,27 @@ export default function AccountClient({ email }: { email: string }) {
             )}
 
             {data && tab === 'facturas' && (
-              <div className="card" style={{ maxWidth: 560 }}>
-                <h3 style={{ marginBottom: 8 }}>{L.invTitle}</h3>
-                <p className="muted" style={{ fontSize: 14, marginBottom: 14 }}>{L.invTxt}</p>
-                <button className="btn btn-primary" onClick={openPortal} disabled={busy === 'portal'}>{busy === 'portal' ? L.saving : L.invBtn}</button>
+              <div className="card" style={{ maxWidth: 640, margin: '0 auto' }}>
+                <h3 style={{ marginBottom: 4 }}>{L.invTitle}</h3>
+                <p className="muted" style={{ fontSize: 13.5, marginBottom: 14 }}>{L.invTxt}</p>
+                {invoices === null && <div className="muted" style={{ fontSize: 13 }}>…</div>}
+                {invoices !== null && !invoices.length && <div className="muted" style={{ fontSize: 13.5 }}>{L.invEmpty}</div>}
+                {invoices !== null && invoices.map((inv) => {
+                  const stColor = inv.status === 'paid' ? 'var(--green)' : inv.status === 'open' ? 'var(--amber)' : 'var(--mut)';
+                  const stTxt = inv.status === 'paid' ? L.invPaid : inv.status === 'open' ? L.invOpen : inv.status === 'void' ? L.invVoid : inv.status;
+                  return (
+                    <div key={inv.id} className="row between" style={{ borderTop: '1px solid var(--line)', padding: '11px 0', gap: 10, flexWrap: 'wrap' }}>
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 600 }}>{inv.currency} {inv.amount.toFixed(2)} <span className="pill" style={{ fontSize: 10, color: stColor, marginLeft: 6 }}>{stTxt}</span></div>
+                        <div className="muted" style={{ fontSize: 12 }}>#{inv.number}{inv.created ? ' · ' + new Date(inv.created).toLocaleDateString() : ''}</div>
+                      </div>
+                      <div className="row" style={{ gap: 8 }}>
+                        {inv.pdf && <a className="btn btn-ghost" style={{ padding: '5px 12px', fontSize: 12.5 }} href={inv.pdf} target="_blank" rel="noreferrer">⬇ {L.invDl}</a>}
+                        {inv.url && <a className="btn btn-ghost" style={{ padding: '5px 12px', fontSize: 12.5 }} href={inv.url} target="_blank" rel="noreferrer">{L.invPortal}</a>}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
 
@@ -341,8 +378,8 @@ export default function AccountClient({ email }: { email: string }) {
             )}
 
             {data && tab === 'avisos' && (
-              <div style={{ maxWidth: 820 }}>
-                <div style={{ marginBottom: 14 }}>
+              <div style={{ maxWidth: 820, margin: '0 auto' }}>
+                <div style={{ marginBottom: 14, textAlign: 'center' }}>
                   <h2 style={{ fontSize: 20, marginBottom: 2 }}>{L.nav.avisos}</h2>
                   <p className="muted" style={{ fontSize: 13, margin: 0 }}>{L.nSub}</p>
                 </div>
