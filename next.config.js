@@ -4,8 +4,11 @@ const nextConfig = {
   // No romper el deploy por errores de tipos/lint (MVP). Se pueden reactivar luego.
   typescript: { ignoreBuildErrors: true },
   eslint: { ignoreDuringBuilds: true },
-  // Asegura que las fuentes de la tarjeta de reporte viajen a las funciones serverless.
   experimental: {
+    // Librerías con binarios nativos: Next NO debe empaquetarlas (se cargan en
+    // tiempo de ejecución). Sin esto, el build falla al meter el archivo .node.
+    serverComponentsExternalPackages: ['@napi-rs/canvas', 'sharp', 'pdf-lib'],
+    // Asegura que las fuentes de la tarjeta de reporte viajen a las funciones serverless.
     outputFileTracingIncludes: {
       '/api/**': ['./assets/fonts/**'],
     },
