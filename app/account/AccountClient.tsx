@@ -167,6 +167,7 @@ export default function AccountClient({ email }: { email: string }) {
             </div>
             <div className="adminnav-items">
               {NAV.map(([k, icon]) => <button key={k} className={'adminnav-item' + (tab === k ? ' on' : '')} onClick={() => setTab(k)}><span style={{ fontSize: 15, width: 18, textAlign: 'center' }}>{icon}</span><span>{L.nav[k]}</span><span className="navdot" /></button>)}
+              <Link href="/dashboard/copy" className="adminnav-item"><span style={{ fontSize: 15, width: 18, textAlign: 'center' }}>🔁</span><span>Copy trading</span><span className="navdot" /></Link>
             </div>
           </div>
 
