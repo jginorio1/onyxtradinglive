@@ -65,7 +65,7 @@ export default function Pricing() {
         </div>
 
         {/* Tarjetas */}
-        <div className="grid g3" style={{ textAlign: 'left', alignItems: 'start' }}>
+        <div className="grid" style={{ textAlign: 'left', alignItems: 'start', gridTemplateColumns: 'repeat(auto-fit,minmax(210px,1fr))' }}>
           {plans.map((p, i) => {
             const price = annual ? p.price_year : p.price_month;
             const name = lang === 'es' ? p.name : (p.name_en || p.name);
@@ -77,7 +77,7 @@ export default function Pricing() {
             const prevName = prev ? (lang === 'es' ? prev.name : (prev.name_en || prev.name)) : '';
             return (
               <div key={p.id} className="card" style={pop ? { border: '2px solid var(--brand)', boxShadow: '0 0 30px rgba(124,140,255,.25)', position: 'relative' } : { position: 'relative' }}>
-                {pop && <span style={{ position: 'absolute', top: -13, left: '50%', transform: 'translateX(-50%)', background: 'var(--grad)', color: '#fff', fontSize: 11, fontWeight: 800, padding: '4px 14px', borderRadius: 20, whiteSpace: 'nowrap' }}>{t.popular}</span>}
+                {pop && <span style={{ position: 'absolute', top: -13, left: '50%', transform: 'translateX(-50%)', background: 'var(--grad)', color: '#fff', fontSize: 11, fontWeight: 800, padding: '4px 14px', borderRadius: 20, whiteSpace: 'nowrap' }}>★ {badge}</span>}
                 <h3 style={{ marginTop: pop ? 6 : 0 }}>{name}</h3>
                 {desc && <p className="muted" style={{ fontSize: 13, marginTop: 4 }}>{desc}</p>}
                 <div style={{ fontSize: 40, fontWeight: 800, margin: '10px 0 4px' }}>${price}<span className="muted" style={{ fontSize: 15, fontWeight: 500 }}>/{annual ? t.yr : t.mo}</span></div>

@@ -23,10 +23,16 @@ async function planCaps(userId: string) {
   const { data: plan } = await supabaseAdmin.from('plans').select('capabilities').eq('id', p?.plan || 'free').maybeSingle();
   const caps = (plan?.capabilities || {}) as any;
   const extra = Number(p?.extra_slaves) || 0;
-  const base = Number(caps.copy_slaves) || 2;
   const mExtra = Number(p?.extra_masters) || 0;
-  const mBase = Number(caps.copy_masters) || 1;                 // 1 master incluida por defecto
-  return { caps, extra, base, max: base + extra, mExtra, mBase, mMax: mBase + mExtra };
+  // Convención: copy_slaves / copy_masters == 0 → ILIMITADO (plan Black Onyx).
+  const unlimitedSlaves = caps.copy_slaves === 0;
+  const unlimitedMasters = caps.copy_masters === 0;
+  const base = unlimitedSlaves ? 999999 : (Number(caps.copy_slaves) || 2);
+  const mBase = unlimitedMasters ? 999999 : (Number(caps.copy_masters) || 1);   // 1 master por defecto
+  return {
+    caps, extra, base, max: base + extra, unlimitedSlaves,
+    mExtra, mBase, mMax: mBase + mExtra, unlimitedMasters,
+  };
 }
 
 // GET · cuentas del trader + sus enlaces + si el plan incluye copy.
@@ -42,8 +48,8 @@ export async function GET() {
   const usedMasters = new Set((links || []).map((l: any) => l.master_account_id)).size;
   return NextResponse.json({
     inPlan: !!pc.caps.copy,
-    maxSlaves: pc.max, baseSlaves: pc.base, extraSlaves: pc.extra,
-    maxMasters: pc.mMax, baseMasters: pc.mBase, extraMasters: pc.mExtra, usedMasters,
+    maxSlaves: pc.max, baseSlaves: pc.base, extraSlaves: pc.extra, unlimitedSlaves: pc.unlimitedSlaves,
+    maxMasters: pc.mMax, baseMasters: pc.mBase, extraMasters: pc.mExtra, usedMasters, unlimitedMasters: pc.unlimitedMasters,
     addon: { enabled: !!s.extra_slave_enabled && !!s.extra_slave_price_id, price: s.extra_slave_price },
     masterAddon: { enabled: !!s.extra_master_enabled && !!s.extra_master_price_id, price: s.extra_master_price },
     accounts: accounts || [], links: links || [],

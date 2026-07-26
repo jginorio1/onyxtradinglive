@@ -1,3 +1,4 @@
+-- (Para el plan tope "Black Onyx" corre además supabase/black_onyx.sql)
 -- Onyx Copy Trading · esquema Fase 2
 -- Añade: claves Copy identificadas (separadas de Guardian), interruptores de
 -- pausa (global / por cuenta / por enlace ya existe), PIN de copy para reanudar,

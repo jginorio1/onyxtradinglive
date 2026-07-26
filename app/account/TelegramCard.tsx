@@ -101,6 +101,27 @@ const T: any = {
   },
 };
 
+// Mini-chats de ejemplo por comando (lo que ve el trader en Telegram).
+function tgPreviews(lang: 'es' | 'en'): any[] {
+  const es = lang === 'es';
+  return [
+    { cmd: '/estado', tag: es ? 'texto' : 'text', title: es ? 'Últimas 24h' : 'Last 24h',
+      lines: es ? ['Operaciones: 3', 'Resultado: +$182.40', 'El Guardian te frenó: 1 vez'] : ['Trades: 3', 'Result: +$182.40', 'The Guardian stopped you: 1 time'] },
+    { cmd: '/report', tag: es ? 'con adjuntos' : 'with files', title: es ? 'Reporte semanal' : 'Weekly report',
+      lines: es ? ['Neto: +$540.20', 'Aciertos: 62%', 'Factor: 1.8'] : ['Net: +$540.20', 'Win rate: 62%', 'Profit factor: 1.8'],
+      attach: ['🖼️ ' + (es ? 'resumen.png' : 'summary.png'), '📄 ' + (es ? 'reporte.pdf' : 'report.pdf'), '📊 ' + (es ? 'operaciones.csv' : 'trades.csv')] },
+    { cmd: '/mes', tag: es ? 'con adjuntos' : 'with files', title: es ? 'Reporte mensual' : 'Monthly report',
+      lines: es ? ['Neto: +$2,110', 'Aciertos: 58%'] : ['Net: +$2,110', 'Win rate: 58%'],
+      attach: ['🖼️ ' + (es ? 'resumen.png' : 'summary.png'), '📄 ' + (es ? 'reporte.pdf' : 'report.pdf')] },
+    { cmd: '/copy', tag: es ? 'estado' : 'status', title: es ? 'Copia: ACTIVA ▶' : 'Copy: ACTIVE ▶',
+      lines: es ? ['Enlaces activos: 2', 'Última señal: 2 s'] : ['Active links: 2', 'Last signal: 2 s'] },
+    { cmd: '/copyoff', tag: es ? 'acción' : 'action', title: es ? 'Copia PAUSADA ⏸' : 'Copy PAUSED ⏸',
+      lines: es ? ['No se replicará ninguna operación.', 'Reanuda con /copyon'] : ['Nothing will be copied.', 'Resume with /copyon'] },
+    { cmd: '/copyon', tag: es ? 'pide PIN' : 'asks PIN', title: es ? 'Copia: ACTIVA ▶' : 'Copy: ACTIVE ▶',
+      lines: es ? ['Volverá a copiar tus operaciones.'] : ['It will copy your trades again.'] },
+  ];
+}
+
 function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
   return <span className="toggle" onClick={onClick} style={{ background: on ? '#34e2a0' : '#556080', boxShadow: on ? 'none' : 'inset 0 0 0 1px rgba(255,255,255,.12)' }}><span className="knob" style={{ left: on ? 21 : 3 }} /></span>;
 }
@@ -255,20 +276,25 @@ export default function TelegramCard({ lang }: { lang: 'es' | 'en' }) {
             </div>
           </div>
 
-          {/* Vista previa, ancho completo */}
+          {/* Vistas previas por comando, centradas */}
           <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--line)' }}>
-            <div style={{ fontSize: 11, color: 'var(--mut)', marginBottom: 8, letterSpacing: '.03em' }}>{t.cmdExample}</div>
-            <div style={{ background: '#17212b', borderRadius: 12, padding: 12, maxWidth: 320 }}>
-              <div className="row" style={{ justifyContent: 'flex-end', marginBottom: 8 }}>
-                <span style={{ background: '#2b5278', color: '#fff', fontSize: 13, padding: '5px 11px', borderRadius: '13px 13px 3px 13px' }}>/estado</span>
-              </div>
-              <div className="row" style={{ gap: 8, alignItems: 'flex-start' }}>
-                <span style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--brand)', flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#111726' }}>O</span>
-                <div style={{ background: '#212d3b', borderRadius: '13px 13px 13px 3px', padding: '8px 11px', fontSize: 13, lineHeight: 1.7, color: '#e6ebf2' }}>
-                  📊 <b>{t.cmdMsgT}</b><br />
-                  {t.cmdMsg1}<br />{t.cmdMsg2}<br />{t.cmdMsg3}
+            <div style={{ fontSize: 11, color: 'var(--mut)', marginBottom: 10, letterSpacing: '.03em', textAlign: 'center' }}>{t.cmdExample}</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(230px,1fr))', gap: 12, maxWidth: 720, margin: '0 auto' }}>
+              {tgPreviews(lang).map((x, i) => (
+                <div key={i} style={{ background: '#17212b', borderRadius: 12, padding: 11 }}>
+                  <div className="row between" style={{ alignItems: 'center', marginBottom: 8 }}>
+                    <span style={{ background: '#2b5278', color: '#fff', fontSize: 12.5, padding: '4px 10px', borderRadius: '12px 12px 3px 12px' }}>{x.cmd}</span>
+                    <span style={{ fontSize: 9.5, color: '#8a97a5', border: '0.5px solid #2a333d', borderRadius: 999, padding: '1px 7px' }}>{x.tag}</span>
+                  </div>
+                  <div className="row" style={{ gap: 7, alignItems: 'flex-start' }}>
+                    <span style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--brand)', flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#111726' }}>O</span>
+                    <div style={{ background: '#212d3b', borderRadius: '12px 12px 12px 3px', padding: '8px 10px', fontSize: 12.5, lineHeight: 1.6, color: '#e6ebf2', flex: 1 }}>
+                      📊 <b>{x.title}</b><br />{x.lines.map((ln: string, j: number) => <span key={j}>{ln}<br /></span>)}
+                      {x.attach && <span style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6 }}>{x.attach.map((a: string, j: number) => <span key={j} style={{ background: '#2a3646', borderRadius: 6, padding: '3px 8px', fontSize: 11, color: '#c7ced6' }}>{a}</span>)}</span>}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ))}
             </div>
           </div>
         </>

@@ -371,8 +371,8 @@ export default function CopyClient() {
       <div className="card" style={{ marginBottom: 12 }}>
         {/* Esclavas */}
         <div className="row between" style={{ flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-          <span style={{ fontSize: 13 }}>{t.slots}: <b>{links.length}</b> {t.used} {t.of} <b>{d.maxSlaves}</b>{d.extraSlaves ? <span className="muted"> ({d.baseSlaves}+{d.extraSlaves} {t.extra})</span> : ''}</span>
-          {d.addon?.enabled && accs.length >= 2 && (
+          <span style={{ fontSize: 13 }}>{t.slots}: <b>{links.length}</b> {t.used} {t.of} <b>{d.unlimitedSlaves ? '∞' : d.maxSlaves}</b>{!d.unlimitedSlaves && d.extraSlaves ? <span className="muted"> ({d.baseSlaves}+{d.extraSlaves} {t.extra})</span> : ''}</span>
+          {!d.unlimitedSlaves && d.addon?.enabled && accs.length >= 2 && (
             <span className="row" style={{ gap: 8, alignItems: 'center' }}>
               <button className="btn btn-ghost" style={{ padding: '4px 11px', fontSize: 13 }} onClick={() => buyExtra(-1)} disabled={!d.extraSlaves}>−</button>
               <span style={{ minWidth: 16, textAlign: 'center' }}>{d.extraSlaves || 0}</span>
@@ -382,8 +382,8 @@ export default function CopyClient() {
         </div>
         {/* Masters */}
         <div className="row between" style={{ flexWrap: 'wrap', gap: 8, alignItems: 'center', marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--line)' }}>
-          <span style={{ fontSize: 13 }}><span className="pill" style={{ fontSize: 9, color: C_MASTER, background: C_MASTER + '22', marginRight: 6 }}>{t.grpMaster}</span>{t.masters}: <b>{d.usedMasters || 0}</b> {t.used} {t.of} <b>{d.maxMasters}</b>{d.extraMasters ? <span className="muted"> ({d.baseMasters}+{d.extraMasters} {t.extra})</span> : ''}</span>
-          {d.masterAddon?.enabled && accs.length >= 2 && (
+          <span style={{ fontSize: 13 }}><span className="pill" style={{ fontSize: 9, color: C_MASTER, background: C_MASTER + '22', marginRight: 6 }}>{t.grpMaster}</span>{t.masters}: <b>{d.usedMasters || 0}</b> {t.used} {t.of} <b>{d.unlimitedMasters ? '∞' : d.maxMasters}</b>{!d.unlimitedMasters && d.extraMasters ? <span className="muted"> ({d.baseMasters}+{d.extraMasters} {t.extra})</span> : ''}</span>
+          {!d.unlimitedMasters && d.masterAddon?.enabled && accs.length >= 2 && (
             <span className="row" style={{ gap: 8, alignItems: 'center' }}>
               <button className="btn btn-ghost" style={{ padding: '4px 11px', fontSize: 13 }} onClick={() => buyMaster(-1)} disabled={!d.extraMasters}>−</button>
               <span style={{ minWidth: 16, textAlign: 'center' }}>{d.extraMasters || 0}</span>
@@ -391,7 +391,7 @@ export default function CopyClient() {
             </span>
           )}
         </div>
-        {(d.addon?.enabled || d.masterAddon?.enabled) && accs.length < 2 && (
+        {((!d.unlimitedSlaves && d.addon?.enabled) || (!d.unlimitedMasters && d.masterAddon?.enabled)) && accs.length < 2 && (
           <div className="muted" style={{ fontSize: 11.5, marginTop: 8, color: 'var(--amber)' }}>🔒 {t.addonNeed2}</div>
         )}
       </div>

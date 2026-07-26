@@ -28,6 +28,7 @@ Corre estos, en cualquier orden. Todos usan `if not exists`, así que es seguro 
 - `supabase/tg_report.sql`      → preferencia de reporte del trader
 - `supabase/copy_trading.sql`   → copy trading + columna `extra_slaves`
 - `supabase/copy_v2.sql`        → Fase 2: claves Copy identificadas, pausa remota, PIN de copy y controles de riesgo
+- `supabase/black_onyx.sql`     → plan tope "Black Onyx" (todo ilimitado, copy ilimitado). Ajusta el precio y crea su Price ID de Stripe en Admin → Planes.
 
 ---
 

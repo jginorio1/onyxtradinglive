@@ -22,7 +22,7 @@ export default function PlansCompareTable({
 }) {
   if (!plans.length) return null;
 
-  const cols = ['free', 'pro', 'elite'];
+  const cols = ['free', 'pro', 'elite', 'black'];
   const byId = (id: string) => plans.find((p) => p.id === id);
   const name = (p?: Plan, id?: string) => p ? (lang === 'es' ? p.name : (p.name_en || p.name)) : (id || '');
   const isPro = (p?: Plan) => !!(p && (lang === 'es' ? p.badge : p.badge_en));
@@ -38,7 +38,7 @@ export default function PlansCompareTable({
     <div style={{ marginTop: 46 }}>
       <h2 style={{ textAlign: 'center', marginBottom: 18 }}>{lang === 'es' ? 'Compara los planes' : 'Compare plans'}</h2>
       <div className="card" style={{ overflowX: 'auto', padding: 0 }}>
-        <table style={{ minWidth: 520 }}>
+        <table style={{ minWidth: 640 }}>
           <thead>
             <tr>
               <th style={{ textAlign: 'left', padding: '14px 16px' }}></th>
@@ -55,7 +55,7 @@ export default function PlansCompareTable({
             </tr>
 
             {PLAN_ROWS.map((r, ri) => r.head
-              ? (<tr key={ri}><td colSpan={4} style={{ padding: '16px 16px 8px', color: 'var(--brand)', fontWeight: 700, fontSize: 13, letterSpacing: '.02em' }}>🛡️ {lang === 'es' ? r.es : r.en}</td></tr>)
+              ? (<tr key={ri}><td colSpan={5} style={{ padding: '16px 16px 8px', color: 'var(--brand)', fontWeight: 700, fontSize: 13, letterSpacing: '.02em' }}>{(lang === 'es' ? r.es : r.en) === 'Copy trading' ? '🔁' : '🛡️'} {lang === 'es' ? r.es : r.en}</td></tr>)
               : (<tr key={ri}><td style={{ padding: '12px 16px', color: 'var(--mut)' }}>{lang === 'es' ? r.es : r.en}</td>{r.v.map((v, ci) => <td key={ci} style={{ textAlign: 'center', padding: '12px 16px' }}>{chk(v)}</td>)}</tr>))}
 
             {/* Botones de compra al final, alineados con cada columna */}
