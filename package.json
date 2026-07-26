@@ -16,7 +16,8 @@
     "@supabase/ssr": "^0.5.1",
     "stripe": "^16.8.0",
     "sharp": "^0.33.4",
-    "pdf-lib": "^1.17.1"
+    "pdf-lib": "^1.17.1",
+    "@napi-rs/canvas": "^0.1.52"
   },
   "devDependencies": {
     "typescript": "^5.5.4",

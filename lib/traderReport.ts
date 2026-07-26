@@ -118,13 +118,84 @@ export function traderCardSvg(rep: TraderReport, opts: { name?: string; from: st
 </svg>`;
 }
 
-// Rasteriza la tarjeta a PNG con sharp (dinámico). Si falla, devuelve null.
+let fontsReady = false;
+// Dibuja la tarjeta de reporte con canvas (fuente propia incrustada → texto nítido).
+// Si algo falla, devuelve null y el emisor cae al gráfico anterior.
 export async function traderCardPng(rep: TraderReport, opts: { name?: string; from: string; to: string; es?: boolean }): Promise<Uint8Array | null> {
   try {
     // @ts-ignore
-    const sharp = (await import('sharp')).default;
-    const svg = traderCardSvg(rep, opts);
-    const png = await sharp(Buffer.from(svg)).png().toBuffer();
+    const { createCanvas, GlobalFonts } = await import('@napi-rs/canvas');
+    if (!fontsReady) {
+      // @ts-ignore
+      const path = await import('path');
+      const dir = path.join(process.cwd(), 'assets', 'fonts');
+      try { GlobalFonts.registerFromPath(path.join(dir, 'DejaVuSans.ttf'), 'OnyxSans'); } catch {}
+      try { GlobalFonts.registerFromPath(path.join(dir, 'DejaVuSans-Bold.ttf'), 'OnyxSansB'); } catch {}
+      fontsReady = true;
+    }
+    const es = opts.es !== false;
+    const S = 2, W = 512, H = 384;
+    const cv = createCanvas(W * S, H * S);
+    const c: any = cv.getContext('2d');
+    c.scale(S, S);
+    const rr = (x: number, y: number, w: number, h: number, r: number) => { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); };
+    const T = (s: string, x: number, y: number, size: number, color: string, bold = false, align: any = 'left') => { c.font = `${size}px ${bold ? 'OnyxSansB' : 'OnyxSans'}`; c.fillStyle = color; c.textAlign = align; c.textBaseline = 'alphabetic'; c.fillText(s, x, y); };
+
+    // Fondo
+    rr(0, 0, W, H, 18); c.fillStyle = '#0e1220'; c.fill(); c.lineWidth = 1; c.strokeStyle = '#26304a'; c.stroke();
+    // Cabecera
+    rr(22, 20, 30, 30, 8); c.fillStyle = '#7c8cff'; c.fill();
+    T(es ? 'Tu semana en Onyx' : 'Your week on Onyx', 62, 35, 15, '#ffffff', true);
+    T(`${opts.from} – ${opts.to}${opts.name ? '   ·   ' + opts.name : ''}`, 62, 50, 11, '#8b96b0');
+    rr(430, 24, 60, 22, 11); c.fillStyle = '#133a2c'; c.fill();
+    T('Onyx', 460, 39, 11, '#7fe9c0', false, 'center');
+
+    // KPIs
+    const up = rep.netTotal >= 0;
+    const kpis: [string, string, string][] = [
+      [es ? 'Neto' : 'Net', money0(rep.netTotal), up ? '#34e2a0' : '#ff6b7d'],
+      [es ? 'Ops' : 'Trades', String(rep.total), '#ffffff'],
+      [es ? 'Aciertos' : 'Win %', rep.winRate + '%', '#ffffff'],
+      [es ? 'P. Factor' : 'P. Factor', String(rep.pf), '#ffffff'],
+    ];
+    kpis.forEach(([label, val, color], i) => { const x = 22 + i * 114; rr(x, 70, 104, 46, 10); c.fillStyle = '#161c2e'; c.fill(); T(label, x + 12, 88, 10, '#8b96b0'); T(val, x + 12, 108, 17, color, true); });
+
+    // Panel de curva
+    rr(22, 132, 468, 180, 12); c.fillStyle = 'rgba(18,23,38,0.55)'; c.fill();
+    T(es ? 'Curva de resultados' : 'Equity curve', 42, 156, 11, '#c3ccff');
+    const net = (t: any) => Number(t.net_profit ?? t.profit ?? 0) || 0;
+    const sorted = [...rep.trades].sort((a, b) => new Date(a.close_time || 0).getTime() - new Date(b.close_time || 0).getTime());
+    let cum = 0; const series = [0, ...sorted.map((t) => (cum += net(t)))];
+    const px0 = 42, px1 = 470, py0 = 190, py1 = 300;
+    const lo = Math.min(0, ...series), hi = Math.max(0, ...series), sp = hi - lo || 1;
+    const X = (i: number) => px0 + (series.length <= 1 ? 0 : (i / (series.length - 1)) * (px1 - px0));
+    const Y = (v: number) => py1 - ((v - lo) / sp) * (py1 - py0);
+    const line = up ? '#34e2a0' : '#ff6b7d';
+    // línea cero
+    c.setLineDash([3, 3]); c.strokeStyle = '#2a3450'; c.lineWidth = 1; c.beginPath(); c.moveTo(px0, Y(0)); c.lineTo(px1, Y(0)); c.stroke(); c.setLineDash([]);
+    if (series.length > 1) {
+      // área
+      c.beginPath(); c.moveTo(px0, py1); series.forEach((v, i) => c.lineTo(X(i), Y(v))); c.lineTo(px1, py1); c.closePath();
+      c.fillStyle = up ? 'rgba(52,226,160,0.14)' : 'rgba(255,107,125,0.14)'; c.fill();
+      // línea
+      c.beginPath(); series.forEach((v, i) => (i ? c.lineTo(X(i), Y(v)) : c.moveTo(X(i), Y(v)))); c.strokeStyle = line; c.lineWidth = 2.5; c.stroke();
+    }
+
+    // Mejor / peor
+    const best = rep.bySym[0]; const worst = rep.bySym[rep.bySym.length - 1];
+    const subTile = (x: number, w: number, label: string, name: string, val: string, color: string) => {
+      rr(x, 318, w, 46, 10); c.fillStyle = '#161c2e'; c.fill();
+      T(label, x + 12, 336, 10, '#8b96b0');
+      T(name + '  ', x + 12, 355, 13, '#ffffff', true);
+      c.font = '13px OnyxSansB'; const nw = c.measureText(name + '  ').width;
+      T(val, x + 12 + nw, 355, 13, color, true);
+    };
+    if (best) subTile(22, 230, es ? 'Mejor par' : 'Best', best.sym, money0(best.net), best.net >= 0 ? '#34e2a0' : '#ff6b7d');
+    if (worst && rep.bySym.length > 1) subTile(260, 230, es ? 'Peor par' : 'Worst', worst.sym, money0(worst.net), worst.net >= 0 ? '#34e2a0' : '#ff6b7d');
+
+    T('onyxtradinglive.com', 256, 378, 10, '#5f6a85', false, 'center');
+
+    const png = cv.toBuffer('image/png');
     return new Uint8Array(png);
   } catch { return null; }
 }

@@ -4,6 +4,12 @@ const nextConfig = {
   // No romper el deploy por errores de tipos/lint (MVP). Se pueden reactivar luego.
   typescript: { ignoreBuildErrors: true },
   eslint: { ignoreDuringBuilds: true },
+  // Asegura que las fuentes de la tarjeta de reporte viajen a las funciones serverless.
+  experimental: {
+    outputFileTracingIncludes: {
+      '/api/**': ['./assets/fonts/**'],
+    },
+  },
   // Optimización: cachear fuerte lo que no cambia (imágenes, íconos, fuentes),
   // para que la segunda visita sea casi instantánea. El HTML sigue dinámico.
   async headers() {

@@ -40,6 +40,7 @@ const T: any = {
     off: 'Los avisos generales están apagados. Enciéndelos arriba para recibir nada por Telegram.',
     saved: 'Guardado', test: 'Enviar prueba', testOk: 'Enviado ✓', testSending: '...',
     rtestBtn: '📤 Enviarme un reporte de prueba ahora', rtestSending: 'Enviando…', rtestOk: '✓ Enviado a tu Telegram', rtestEmpty: 'Enviado, pero no tienes operaciones esta semana.',
+    grpGuardian: 'Guardian', grpRisk: 'Riesgo y fondeo', grpSummary: 'Resúmenes',
     cmdsT: 'Comandos del bot',
     cmdEstado: 'Resumen de tus últimas 24h, sin abrir la web.',
     cmdInforme: 'Reporte de la semana con gráfico, PDF y CSV.',
@@ -78,6 +79,7 @@ const T: any = {
     off: 'General alerts are off. Turn them on above to receive anything on Telegram.',
     saved: 'Saved', test: 'Send a test', testOk: 'Sent ✓', testSending: '...',
     rtestBtn: '📤 Send me a test report now', rtestSending: 'Sending…', rtestOk: '✓ Sent to your Telegram', rtestEmpty: 'Sent, but you have no trades this week.',
+    grpGuardian: 'Guardian', grpRisk: 'Risk and funding', grpSummary: 'Summaries',
     cmdsT: 'Bot commands',
     cmdEstado: 'A summary of your last 24h, without opening the web.',
     cmdInforme: 'Week report with chart, PDF and CSV.',
@@ -192,27 +194,32 @@ export default function TelegramCard({ lang }: { lang: 'es' | 'en' }) {
             <button className="btn btn-ghost" style={{ padding: '5px 12px', fontSize: 12 }} onClick={unlink} disabled={busy === 'unlink'}>{t.unlink}</button>
           </div>
 
-          <div style={{ fontSize: 13, color: 'var(--mut)', marginBottom: 8 }}>{t.prefsT}</div>
-          {(['tg_blocks', 'tg_limits', 'tg_funding', 'tg_offline', 'tg_goal', 'tg_manager', 'tg_daily', 'tg_weekly'] as string[]).map((k) => (
-            <div key={k} className="row between" style={{ padding: '8px 0', borderTop: '1px solid var(--line)' }}>
-              <span style={{ fontSize: 14 }}>{t.prefs[k]}</span>
-              <Toggle on={!!d.prefs[k]} onClick={() => setPref(k, !d.prefs[k])} />
+          {([[t.grpGuardian, ['tg_blocks', 'tg_manager', 'tg_offline']], [t.grpRisk, ['tg_limits', 'tg_funding', 'tg_goal']], [t.grpSummary, ['tg_daily', 'tg_weekly']]] as [string, string[]][]).map(([grp, keys], gi) => (
+            <div key={gi} style={{ marginTop: gi ? 12 : 0 }}>
+              <div style={{ fontSize: 11, color: 'var(--mut)', letterSpacing: '.04em', textTransform: 'uppercase', marginBottom: 2 }}>{grp}</div>
+              {keys.map((k) => (
+                <div key={k} className="row between" style={{ padding: '8px 0', borderTop: '1px solid var(--line)' }}>
+                  <span style={{ fontSize: 14 }}>{t.prefs[k]}</span>
+                  <Toggle on={!!d.prefs[k]} onClick={() => setPref(k, !d.prefs[k])} />
+                </div>
+              ))}
             </div>
           ))}
-          {!d.prefs.tg_alerts && <div className="muted" style={{ fontSize: 12, marginTop: 10 }}>{t.off}</div>}
 
-          <div className="row between" style={{ padding: '12px 0 2px', borderTop: '1px solid var(--line)', marginTop: 6, gap: 8, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 14 }}>📊 {t.reportT}</span>
-            <select value={d.report || 'off'} onChange={(e) => setReport(e.target.value)} style={{ margin: 0, width: 'auto', padding: '6px 10px' }}>
-              <option value="off">{t.reportOff}</option>
-              <option value="weekly">{t.reportWeekly}</option>
-              <option value="monthly">{t.reportMonthly}</option>
-            </select>
-          </div>
-          <div className="muted" style={{ fontSize: 11.5, marginTop: 4 }}>{t.reportHint}</div>
-
-          <div style={{ marginTop: 12 }}>
-            <button className="btn btn-primary" style={{ fontSize: 13 }} onClick={sendReportTest} disabled={rtest === 'sending'}>
+          {/* Reporte de rendimiento: bloque destacado */}
+          <div style={{ marginTop: 16, background: 'rgba(124,140,255,.08)', border: '1px solid rgba(124,140,255,.35)', borderRadius: 12, padding: 14 }}>
+            <div className="row between" style={{ gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: '#c3ccff' }}>📊 {t.reportT}</div>
+                <div className="muted" style={{ fontSize: 11.5, marginTop: 2 }}>{t.reportHint}</div>
+              </div>
+              <select value={d.report || 'off'} onChange={(e) => setReport(e.target.value)} style={{ margin: 0, width: 'auto', padding: '6px 10px' }}>
+                <option value="off">{t.reportOff}</option>
+                <option value="weekly">{t.reportWeekly}</option>
+                <option value="monthly">{t.reportMonthly}</option>
+              </select>
+            </div>
+            <button className="btn btn-primary" style={{ fontSize: 13, marginTop: 12 }} onClick={sendReportTest} disabled={rtest === 'sending'}>
               {rtest === 'sending' ? t.rtestSending : t.rtestBtn}
             </button>
             {rtest === 'ok' && <div style={{ color: 'var(--green)', fontSize: 12.5, marginTop: 8 }}>{t.rtestOk}</div>}

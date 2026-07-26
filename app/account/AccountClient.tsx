@@ -28,6 +28,8 @@ const D: any = {
     accTitle: 'Cuentas conectadas', accNone: 'Todavía no has conectado ninguna cuenta MT.', accAdd: 'Conectar una cuenta', apiK: 'Tu clave API', apiTxt: 'Pégala en el conector del MetaTrader.', copy: 'Copiar', copied: 'Copiada',
     lastSync: 'Últ. sync', never: 'nunca', mtLive: 'Conectada', mtStale: 'Sin señal', mtNever: 'Sin conectar',
     nTitle: 'Qué avisos quieres recibir', nEmail: 'Correos de la cuenta y pagos', nWeek: 'Resumen semanal de tu operativa', nFund: 'Alertas de reglas de fondeo', nMkt: 'Novedades y ofertas',
+    nSub: 'Elige por dónde y de qué quieres enterarte.', nMailT: 'Correo',
+    nEmailS: 'Cobros, recibos y cambios de plan', nWeekS: 'Tu semana por email', nFundS: 'Cuando te acercas a un límite', nMktS: 'Promos y lanzamientos',
     pwT: 'Cambiar contraseña', pwNew: 'Nueva contraseña', pwRep: 'Repetir contraseña', pwBtn: 'Actualizar contraseña', pwShort: 'Mínimo 8 caracteres.', pwDiff: 'Las contraseñas no coinciden.', pwOk: 'Contraseña actualizada.',
     dTitle: 'Eliminar mi cuenta', dTxt: 'Se borrarán tus cuentas, operaciones y notas para siempre, y se cancelará tu suscripción. Esto no se puede deshacer.', dType: 'Escribe ELIMINAR para confirmar', dBtn: 'Eliminar mi cuenta',
     mtDisc: 'Desconectar', mtDel: 'Eliminar',
@@ -56,6 +58,8 @@ const D: any = {
     accTitle: 'Connected accounts', accNone: 'You have not connected any MT account yet.', accAdd: 'Connect an account', apiK: 'Your API key', apiTxt: 'Paste it into the MetaTrader connector.', copy: 'Copy', copied: 'Copied',
     lastSync: 'Last sync', never: 'never', mtLive: 'Connected', mtStale: 'No signal', mtNever: 'Not connected',
     nTitle: 'Which alerts you want', nEmail: 'Account and billing emails', nWeek: 'Weekly performance recap', nFund: 'Prop-firm rule alerts', nMkt: 'News and offers',
+    nSub: 'Choose where and what you want to hear about.', nMailT: 'Email',
+    nEmailS: 'Charges, receipts and plan changes', nWeekS: 'Your week by email', nFundS: 'When you get close to a limit', nMktS: 'Promos and launches',
     pwT: 'Change password', pwNew: 'New password', pwRep: 'Repeat password', pwBtn: 'Update password', pwShort: 'At least 8 characters.', pwDiff: 'Passwords do not match.', pwOk: 'Password updated.',
     dTitle: 'Delete my account', dTxt: 'Your accounts, trades and notes will be erased forever and your subscription will be canceled. This cannot be undone.', dType: 'Type ELIMINAR to confirm', dBtn: 'Delete my account',
     mtDisc: 'Disconnect', mtDel: 'Delete',
@@ -330,20 +334,30 @@ export default function AccountClient({ email }: { email: string }) {
             )}
 
             {data && tab === 'avisos' && (
-              <div className="card" style={{ maxWidth: 560 }}>
-                <h3 style={{ marginBottom: 12 }}>{L.nTitle}</h3>
-                {([['notify_email', L.nEmail], ['notify_weekly', L.nWeek], ['notify_funding', L.nFund], ['notify_marketing', L.nMkt]] as [string, string][]).map(([k, label]) => (
-                  <div key={k} className="row between" style={{ padding: '9px 0', borderTop: '1px solid var(--line)' }}>
-                    <span style={{ fontSize: 14 }}>{label}</span>
-                    <Toggle on={!!p[k]} onClick={() => setField(k, !p[k])} />
-                  </div>
-                ))}
-                <div className="row" style={{ gap: 10, marginTop: 16 }}>
-                  <button className="btn btn-primary" onClick={() => saveProfile()} disabled={busy === 'save'}>{busy === 'save' ? L.saving : L.save}</button>
-                  {msg && <span style={{ color: 'var(--green)', fontSize: 13 }}>{msg}</span>}
+              <div style={{ maxWidth: 560 }}>
+                <div style={{ marginBottom: 14 }}>
+                  <h2 style={{ fontSize: 20, marginBottom: 2 }}>{L.nav.avisos}</h2>
+                  <p className="muted" style={{ fontSize: 13, margin: 0 }}>{L.nSub}</p>
                 </div>
 
-                <div style={{ marginTop: 22, paddingTop: 18, borderTop: '1px solid var(--line)' }}>
+                <div className="card" style={{ marginBottom: 14 }}>
+                  <div className="row" style={{ gap: 9, marginBottom: 8, alignItems: 'center' }}>
+                    <span style={{ width: 30, height: 30, borderRadius: 9, background: 'rgba(124,140,255,.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>📧</span>
+                    <b style={{ fontSize: 15 }}>{L.nMailT}</b>
+                  </div>
+                  {([['notify_email', L.nEmail, L.nEmailS], ['notify_weekly', L.nWeek, L.nWeekS], ['notify_funding', L.nFund, L.nFundS], ['notify_marketing', L.nMkt, L.nMktS]] as [string, string, string][]).map(([k, label, sub], i) => (
+                    <div key={k} className="row between" style={{ padding: '11px 0', borderTop: i ? '1px solid var(--line)' : 'none', gap: 10 }}>
+                      <div><div style={{ fontSize: 14 }}>{label}</div><div className="muted" style={{ fontSize: 11.5 }}>{sub}</div></div>
+                      <Toggle on={!!p[k]} onClick={() => setField(k, !p[k])} />
+                    </div>
+                  ))}
+                  <div className="row" style={{ gap: 10, marginTop: 14 }}>
+                    <button className="btn btn-primary" onClick={() => saveProfile()} disabled={busy === 'save'}>{busy === 'save' ? L.saving : L.save}</button>
+                    {msg && <span style={{ color: 'var(--green)', fontSize: 13 }}>{msg}</span>}
+                  </div>
+                </div>
+
+                <div className="card">
                   <TelegramCard lang={lang} />
                 </div>
               </div>
