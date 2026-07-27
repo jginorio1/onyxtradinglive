@@ -1,6 +1,7 @@
 import './globals.css';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import TopBar from './TopBar';
+import PWARegister from './PWARegister';
 import SupportWidget from './SupportWidget';
 import { Toaster } from '@/lib/toast';
 import JsonLd from './JsonLd';
@@ -19,6 +20,11 @@ import { serverLang, localeAlternates } from '@/lib/locale';
 // La barra lee la sesión en cada petición, así que esta capa no se cachea.
 export const dynamic = 'force-dynamic';
 
+// Color de la barra del sistema cuando se instala como app (PWA).
+export const viewport: Viewport = {
+  themeColor: '#121829',
+};
+
 const url = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.onyxtradinglive.com').replace(/\/$/, '');
 
 export function generateMetadata(): Metadata {
@@ -33,7 +39,9 @@ export function generateMetadata(): Metadata {
       : 'Connect your MT4/MT5 accounts and analyze your trading automatically: stats, calendar, sessions, pairs and funding tracking. Start free.',
     keywords: ['trading journal', 'diario de trading', 'MT4', 'MT5', 'MetaTrader', 'estadísticas trading', 'trading stats', 'FTMO', 'prop firm', 'analytics'],
     alternates: localeAlternates('/'),
-    icons: { icon: '/onyx-symbol.png', apple: '/onyx-symbol.png' },
+    manifest: '/manifest.webmanifest',
+    appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'Onyx' },
+    icons: { icon: '/onyx-symbol.png', apple: '/apple-touch-icon.png' },
     openGraph: {
       title: es ? 'Onyx Trading Live · Tu diario de trading inteligente' : 'Onyx Trading Live · Your smart trading journal',
       description: es
@@ -108,6 +116,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             {children}
             <SupportWidget loggedIn={loggedIn} />
             <Toaster />
+            <PWARegister />
           </BetaProvider>
         </LanguageProvider>
       </body>
