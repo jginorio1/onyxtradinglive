@@ -1,6 +1,6 @@
 'use client';
 import { toast } from '@/lib/toast';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { errMsg } from '@/lib/i18nErrors';
 
 type Lang = 'es' | 'en';
@@ -44,8 +44,10 @@ const C: any = {
   },
 };
 
-export default function CancelFlow({ lang, canceling, planName, onDone }: { lang: Lang; canceling: boolean; planName: string; onDone: () => void }) {
+export default function CancelFlow({ lang, canceling, planName, onDone, openTick }: { lang: Lang; canceling: boolean; planName: string; onDone: () => void; openTick?: number }) {
   const [step, setStep] = useState<0 | 1 | 2 | 3>(0);
+  // Abrir el flujo desde fuera (p. ej. al elegir "bajar a Free" en Cambiar de plan).
+  useEffect(() => { if (openTick && !canceling) setStep(1); }, [openTick, canceling]);
   const [reason, setReason] = useState('');
   const [detail, setDetail] = useState('');
   const [id, setId] = useState('');

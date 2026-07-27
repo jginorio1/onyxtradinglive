@@ -162,6 +162,7 @@ export default function AccountClient({ email }: { email: string }) {
   const [chTarget, setChTarget] = useState<{ id: string; name: string; up: boolean } | null>(null);   // confirmación
   const [chDone, setChDone] = useState<{ name: string; up: boolean } | null>(null);                    // gracias
   const [chErr, setChErr] = useState('');
+  const [cancelTick, setCancelTick] = useState(0);   // abre el flujo de cancelación (bajar a Free)
   async function changePlan(planId: string, up: boolean, name: string) {
     setBusy('plan:' + planId); setChErr('');
     try {
@@ -315,7 +316,8 @@ export default function AccountClient({ email }: { email: string }) {
                   {sub && allPlans.length > 0 && (() => {
                     const myPlanId = p.plan || 'free';
                     const curPrice = Number(allPlans.find((pl: any) => pl.id === myPlanId)?.price_month ?? 0);
-                    const others = allPlans.filter((pl: any) => pl.id !== 'free' && pl.id !== myPlanId);
+                    // Incluimos Free (bajar a Free = cancelar al final del periodo, vía el flujo con ofertas).
+                    const others = allPlans.filter((pl: any) => pl.id !== myPlanId && (pl.id !== 'free' || !!data.retention?.enabled));
                     if (!others.length) return null;
                     return (
                       <div style={{ borderTop: '1px solid var(--line)', paddingTop: 14, marginTop: 14 }}>
@@ -329,7 +331,10 @@ export default function AccountClient({ email }: { email: string }) {
                                 <div style={{ fontSize: 13, fontWeight: 600 }}>{nm}</div>
                                 <div style={{ fontSize: 18, fontWeight: 800 }}>${p.price_month}<span className="muted" style={{ fontSize: 11, fontWeight: 400 }}>{L.chMo}</span></div>
                                 <button className={'btn ' + (up ? 'btn-primary' : 'btn-ghost')} style={{ width: '100%', marginTop: 8, fontSize: 12.5, padding: '6px 0' }}
-                                  onClick={() => { setChErr(''); setChTarget({ id: p.id, name: nm, up }); }}>
+                                  onClick={() => {
+                                    if (p.id === 'free') { setCancelTick((x) => x + 1); setTimeout(() => document.getElementById('cancel-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 60); return; }
+                                    setChErr(''); setChTarget({ id: p.id, name: nm, up });
+                                  }}>
                                   {up ? '↑ ' + L.chUp : '↓ ' + L.chDown}
                                 </button>
                               </div>
@@ -415,14 +420,10 @@ export default function AccountClient({ email }: { email: string }) {
                 )}
 
                 {sub && data.retention?.enabled && (
-                  <div className="card" style={card}>
-                    <CancelFlow lang={lang} canceling={!!sub.cancelAtPeriodEnd} planName={planName(myPlan, lang)} onDone={load} />
+                  <div id="cancel-card" className="card" style={card}>
+                    <CancelFlow lang={lang} canceling={!!sub.cancelAtPeriodEnd} planName={planName(myPlan, lang)} onDone={load} openTick={cancelTick} />
                   </div>
                 )}
-
-                <div style={{ textAlign: 'center', marginTop: 4 }}>
-                  <Link className="muted" href="/pricing" style={{ fontSize: 13, textDecoration: 'underline' }}>{L.seePlans}</Link>
-                </div>
               </Section>
             )}
 
