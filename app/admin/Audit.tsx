@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import { useT } from '@/lib/adminText';
 import { fmtDateTime } from '@/lib/fmtDate';
+import AuditHistory from './AuditHistory';
 
 const T: any = {
   es: {
@@ -158,6 +159,9 @@ export default function Audit() {
           {tile(t.vulns, a.code?.vulnerabilities ?? 0, (a.code?.vulnerabilities ?? 0) > 0 ? 'var(--red)' : 'var(--green)')}
         </div>
       </div>
+
+      {/* Historial: calendario + gráfico de tendencia + promedios */}
+      <AuditHistory />
 
       <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={() => setShowHow(!showHow)}>{showHow ? t.hide : t.howto}</button>
       {showHow && (

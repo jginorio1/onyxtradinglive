@@ -16,7 +16,7 @@ const ES = {
   nav_kb: 'Base IA', nav_diag: 'Diagnóstico', nav_backups: 'Copias', nav_audit: 'Auditoría', nav_optim: 'Optimización', nav_pruebas: 'Pruebas', nav_ajustes: 'Ajustes',
   avail_on: 'Disponible', avail_off: 'Ausente',
   h_backups_t: 'Copias de seguridad', h_backups_s: 'Protege los datos de los traders: exporta ahora o revisa el backup automático.',
-  h_audit_t: 'Auditoría', h_audit_s: 'Velocidad, calidad y botones — probado solo en cada despliegue.',
+  h_audit_t: 'Auditoría', h_audit_s: 'Velocidad, calidad, botones y seguridad — en cada despliegue, con historial y comparación.',
   h_optim_t: 'Optimización automática',
 
   // Cabeceras de pestaña
@@ -239,7 +239,7 @@ const EN: Dict = {
   nav_kb: 'AI Base', nav_diag: 'Diagnostics', nav_backups: 'Backups', nav_audit: 'Audit', nav_optim: 'Optimization', nav_pruebas: 'Tests', nav_ajustes: 'Settings',
   avail_on: 'Available', avail_off: 'Away',
   h_backups_t: 'Backups', h_backups_s: 'Protect trader data: export now or check the automatic backup.',
-  h_audit_t: 'Audit', h_audit_s: 'Speed, quality and buttons — tested automatically on every deploy.',
+  h_audit_t: 'Audit', h_audit_s: 'Speed, quality, buttons and security — on every deploy, with history and comparison.',
   h_optim_t: 'Automatic optimization',
 
   h_resumen_t: 'Overview', h_resumen_s: 'Your business pulse and what needs attention.',

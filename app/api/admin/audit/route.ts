@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { requirePerm } from '@/lib/admin';
 import { getSetting, saveSetting } from '@/lib/settings';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { coreSecurityItems, summarize } from '@/lib/securityAudit';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -38,5 +40,26 @@ export async function POST(req: Request) {
     code: { ts_errors: Number(b.code?.ts_errors) || 0, vulnerabilities: Number(b.code?.vulnerabilities) || 0 },
   };
   await saveSetting('audit', audit);
+
+  // Guardar en el historial (para calendario/gráfico/promedios), con una foto
+  // del estado de seguridad en ese momento.
+  try {
+    const sec = summarize(await coreSecurityItems());
+    await supabaseAdmin.from('audit_runs').insert({
+      at: audit.at,
+      url: audit.lighthouse?.url || null,
+      performance: audit.lighthouse?.performance ?? null,
+      accessibility: audit.lighthouse?.accessibility ?? null,
+      seo: audit.lighthouse?.seo ?? null,
+      best_practices: audit.lighthouse?.best_practices ?? null,
+      lcp: audit.vitals?.lcp ?? null,
+      inp: audit.vitals?.inp ?? null,
+      cls: audit.vitals?.cls ?? null,
+      ts_errors: audit.code.ts_errors,
+      vulnerabilities: audit.code.vulnerabilities,
+      sec_overall: sec.overall, sec_fails: sec.fails, sec_warns: sec.warns,
+    });
+  } catch { /* si no está la tabla aún, no rompemos el CI */ }
+
   return NextResponse.json({ ok: true });
 }
