@@ -179,6 +179,19 @@ Notas honestas: en **iPhone** el push solo funciona con la app **ya instalada** 
   4. Aparece la casilla en registro/login y Supabase verifica el token. Si no pones la Site Key, no se muestra y no bloquea nada.
 - **Recuerda:** mantén la **confirmación de correo activada** en Supabase — así los bots con correos falsos nunca se vuelven usuarios reales.
 
+## 8h. Correos: ficha de usuario, bandeja de salida y correo con tu dominio
+
+- **Correr SQL:** `supabase/email_log.sql` (registro de correos enviados).
+- **Ficha de usuario (Admin → Usuarios → 👁):** muestra quién cambió qué en su cuenta (del registro de admin), los correos que le envió el sistema, y un compositor para escribirle (se envía por Resend y queda registrado).
+- **Bandeja de salida (Admin → Correos):** listado de todos los correos que envió el sistema, con búsqueda.
+- **Los correos que Onyx ENVÍA** siguen por Resend (transaccional). Esto NO es un buzón para recibir; para conversar con clientes usa el sistema de Tickets/Soporte.
+
+**Buzón con tu dominio (recibir/responder como soporte@onyxtradinglive.com) — recomendado GRATIS con Cloudflare:**
+1. En Cloudflare (tu dominio) → **Email → Email Routing** → activa.
+2. Crea la dirección `soporte@onyxtradinglive.com` y **reenvíala a tu Gmail** (jerryx35@gmail.com). Confirma el correo de verificación que llega a tu Gmail.
+3. Para **responder como** soporte@: en Gmail → Configuración → Cuentas → "Enviar como" → añade soporte@onyxtradinglive.com (usa el SMTP de Resend o de un proveedor). Alternativa sin SMTP: usa **Zoho Mail (plan Free)** como buzón propio.
+4. Costo: **$0**. Cuando quieras Gmail nativo con tu dominio, pasa a **Google Workspace (~$7/usuario/mes)**.
+
 ## 9. Comprobación final
 
 - [ ] Deploy en verde en Vercel

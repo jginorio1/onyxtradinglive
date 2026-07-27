@@ -9,7 +9,8 @@ const ES = {
   // Menú lateral
   brand: 'Onyx Admin',
   g_op: 'Operación', g_prod: 'Producto', g_growth: 'Crecimiento', g_sys: 'Sistema',
-  nav_resumen: 'Resumen', nav_ingresos: 'Ingresos', nav_usuarios: 'Usuarios', nav_soporte: 'Soporte', nav_equipo: 'Equipo',
+  nav_resumen: 'Resumen', nav_ingresos: 'Ingresos', nav_usuarios: 'Usuarios', nav_correos: 'Correos', nav_soporte: 'Soporte', nav_equipo: 'Equipo',
+  h_correos_t: 'Correos enviados', h_correos_s: 'Todo lo que el sistema envió por email · bandeja de salida.', u_openCard: 'Ver ficha',
   h_ingresos_s: 'Tu dinero en vivo desde Stripe: MRR, cobros y pagos fallidos.',
   nav_planes: 'Planes', nav_modulos: 'Módulos', nav_firms: 'Prop firms',
   nav_embajadores: 'Embajadores', nav_retencion: 'Retención',
@@ -232,7 +233,8 @@ type Dict = typeof ES;
 const EN: Dict = {
   brand: 'Onyx Admin',
   g_op: 'Operations', g_prod: 'Product', g_growth: 'Growth', g_sys: 'System',
-  nav_resumen: 'Overview', nav_ingresos: 'Revenue', nav_usuarios: 'Users', nav_soporte: 'Support', nav_equipo: 'Team',
+  nav_resumen: 'Overview', nav_ingresos: 'Revenue', nav_usuarios: 'Users', nav_correos: 'Emails', nav_soporte: 'Support', nav_equipo: 'Team',
+  h_correos_t: 'Sent emails', h_correos_s: 'Everything the system emailed · outbox.', u_openCard: 'Open card',
   h_ingresos_s: 'Your money live from Stripe: MRR, charges and failed payments.',
   nav_planes: 'Plans', nav_modulos: 'Modules', nav_firms: 'Prop firms',
   nav_embajadores: 'Ambassadors', nav_retencion: 'Retention',
