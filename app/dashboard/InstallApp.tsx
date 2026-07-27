@@ -6,41 +6,54 @@ type Lang = 'es' | 'en';
 const T: any = {
   es: {
     t: 'Instala Onyx en tu teléfono', s: 'Ábrela como una app: ícono en tu pantalla de inicio, sin barra del navegador.',
-    btn: 'Instalar app', ios1: 'En tu iPhone:', ios2: 'Toca', share: 'Compartir', ios3: 'y luego', add: 'Añadir a pantalla de inicio', done: 'Ya está instalada. Ábrela desde tu pantalla de inicio.',
+    btn: 'Instalar app', how: 'Cómo instalar',
+    ios: 'En tu iPhone (Safari): toca Compartir ⬆️ abajo y luego “Añadir a pantalla de inicio”.',
+    macSafari: 'En Mac (Safari): menú Archivo → “Añadir al Dock”.',
+    desktop: 'En tu navegador: usa el ícono de instalar ⤓ en la barra de direcciones, o el menú (⋮) → “Instalar Onyx”.',
+    androidHint: 'Si no aparece el instalador, usa el menú (⋮) del navegador → “Instalar app / Añadir a pantalla de inicio”.',
   },
   en: {
     t: 'Install Onyx on your phone', s: 'Open it like an app: icon on your home screen, no browser bar.',
-    btn: 'Install app', ios1: 'On your iPhone:', ios2: 'Tap', share: 'Share', ios3: 'then', add: 'Add to Home Screen', done: 'Already installed. Open it from your home screen.',
+    btn: 'Install app', how: 'How to install',
+    ios: 'On your iPhone (Safari): tap Share ⬆️ below, then “Add to Home Screen”.',
+    macSafari: 'On Mac (Safari): File menu → “Add to Dock”.',
+    desktop: 'In your browser: use the install icon ⤓ in the address bar, or the menu (⋮) → “Install Onyx”.',
+    androidHint: 'If no installer shows, use the browser menu (⋮) → “Install app / Add to Home Screen”.',
   },
 };
 
 export default function InstallApp({ lang }: { lang: Lang }) {
   const L = T[lang];
   const [canInstall, setCanInstall] = useState(false);
-  const [isIOS, setIsIOS] = useState(false);
   const [standalone, setStandalone] = useState(false);
-  const [showIOS, setShowIOS] = useState(false);
+  const [show, setShow] = useState(false);
+  const [ua, setUa] = useState({ ios: false, macSafari: false });
 
   useEffect(() => {
-    const iOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const s = navigator.userAgent;
+    const ios = /iphone|ipad|ipod/i.test(s) || (/Macintosh/.test(s) && (navigator as any).maxTouchPoints > 1);
+    const isSafari = /^((?!chrome|chromium|crios|android|edg).)*safari/i.test(s);
+    const macSafari = /Macintosh/.test(s) && isSafari && !ios;
+    setUa({ ios, macSafari });
     const sa = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true;
-    setIsIOS(iOS); setStandalone(sa);
+    setStandalone(sa);
     setCanInstall(!!(window as any).__onyxInstall);
     const on = () => setCanInstall(!!(window as any).__onyxInstall);
-    const off = () => { setCanInstall(false); setStandalone(true); };
+    const off = () => setStandalone(true);
     window.addEventListener('onyx-installable', on);
     window.addEventListener('onyx-installed', off);
     return () => { window.removeEventListener('onyx-installable', on); window.removeEventListener('onyx-installed', off); };
   }, []);
 
-  if (standalone) return null;              // ya está instalada / abierta como app
-  if (!canInstall && !isIOS) return null;   // el navegador no permite instalar aquí
+  if (standalone) return null;   // ya está instalada / abierta como app
 
-  async function install() {
+  async function click() {
     const e = (window as any).__onyxInstall;
     if (e) { e.prompt(); try { await e.userChoice; } catch {} (window as any).__onyxInstall = null; setCanInstall(false); return; }
-    if (isIOS) setShowIOS((v) => !v);
+    setShow((v) => !v);   // sin instalador automático → mostramos los pasos
   }
+
+  const steps = ua.ios ? L.ios : ua.macSafari ? L.macSafari : canInstall ? L.androidHint : L.desktop;
 
   return (
     <div className="card" style={{ marginBottom: 14, border: '1px solid rgba(124,140,255,.35)', background: 'rgba(124,140,255,.06)' }}>
@@ -52,12 +65,10 @@ export default function InstallApp({ lang }: { lang: Lang }) {
             <div className="muted" style={{ fontSize: 12.5 }}>{L.s}</div>
           </div>
         </div>
-        <button className="btn btn-primary" onClick={install} style={{ whiteSpace: 'nowrap' }}>{L.btn}</button>
+        <button className="btn btn-primary" onClick={click} style={{ whiteSpace: 'nowrap' }}>{canInstall ? L.btn : L.how}</button>
       </div>
-      {showIOS && isIOS && (
-        <div style={{ marginTop: 12, borderTop: '1px solid var(--line)', paddingTop: 12, fontSize: 13, lineHeight: 1.7 }}>
-          <b>{L.ios1}</b> {L.ios2} <b>{L.share}</b> <span style={{ display: 'inline-block', transform: 'translateY(2px)' }}>⬆️</span> {L.ios3} <b>“{L.add}”</b>.
-        </div>
+      {(show || (!canInstall && (ua.ios || ua.macSafari))) && (
+        <div style={{ marginTop: 12, borderTop: '1px solid var(--line)', paddingTop: 12, fontSize: 13, lineHeight: 1.7 }}>{steps}</div>
       )}
     </div>
   );
