@@ -161,7 +161,14 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
 .adminnav-item.on{background:var(--grad);color:#fff;}
 .toggle{width:40px;height:22px;border-radius:20px;position:relative;cursor:pointer;flex:none;transition:.15s;}
 .toggle .knob{position:absolute;top:3px;width:16px;height:16px;background:#fff;border-radius:50%;transition:.15s;}
-@media(max-width:900px){ .adminlayout{grid-template-columns:1fr;} .adminnav{position:static;} .adminnav-items{flex-direction:row;overflow-x:auto;} }
+@media(max-width:900px){
+  .adminlayout{grid-template-columns:1fr;}
+  .adminnav{position:static;}
+  .adminnav-items{flex-direction:row;overflow-x:auto;gap:6px;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+  .adminnav-items::-webkit-scrollbar{display:none;}
+  .adminnav-item{width:auto;flex:none;white-space:nowrap;}
+  .adminnav-item .navdot{display:none;}
+}
 
 /* --- Panel admin rediseñado: menú agrupado, cabeceras, segmentos --- */
 /* Ítem activo con fondo suave (no bloque sólido) y un punto a la derecha */

@@ -16,6 +16,7 @@ const D: any = {
   es: {
     title: 'Mi cuenta', back: 'Ir al panel', save: 'Guardar', saved: 'Guardado', saving: '...',
     nav: { plan: 'Suscripción', perfil: 'Perfil', facturas: 'Facturas', cuentas: 'Cuentas MT', avisos: 'Notificaciones', seguridad: 'Seguridad', referidos: 'Referidos' },
+    planSub: 'Tu plan, tu facturación y cómo cambiarlo.', perfilSub: 'Tus datos y tu perfil de trader.', cuentasSub: 'Conecta y administra tus cuentas de MetaTrader.', segSub: 'Contraseña y opciones de tu cuenta.', refSub: 'Invita amigos y gana con Onyx.',
     planCur: 'Tu plan', active: 'Activo', canceling: 'Se cancela al final del periodo', noSub: 'Plan gratuito', renews: 'Se renueva el', ends: 'Termina el',
     perMo: 'mes', perYr: 'año', manage: 'Gestionar pago', manageSub: 'Cambiar tarjeta, ver facturas o cancelar en Stripe',
     changePlanT: 'Cambiar de plan', chUp: 'Subir', chDown: 'Bajar', chCurrent: 'Plan actual', chMo: '/mes',
@@ -56,6 +57,7 @@ const D: any = {
   en: {
     title: 'My account', back: 'Go to dashboard', save: 'Save', saved: 'Saved', saving: '...',
     nav: { plan: 'Subscription', perfil: 'Profile', facturas: 'Invoices', cuentas: 'MT accounts', avisos: 'Notifications', seguridad: 'Security', referidos: 'Referrals' },
+    planSub: 'Your plan, billing and how to change it.', perfilSub: 'Your details and trader profile.', cuentasSub: 'Connect and manage your MetaTrader accounts.', segSub: 'Password and account options.', refSub: 'Invite friends and earn with Onyx.',
     planCur: 'Your plan', active: 'Active', canceling: 'Cancels at period end', noSub: 'Free plan', renews: 'Renews on', ends: 'Ends on',
     perMo: 'month', perYr: 'year', manage: 'Manage billing', manageSub: 'Change card, view invoices or cancel on Stripe',
     changePlanT: 'Change plan', chUp: 'Upgrade', chDown: 'Downgrade', chCurrent: 'Current plan', chMo: '/mo',
@@ -97,6 +99,22 @@ const D: any = {
 
 function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
   return <span className="toggle" onClick={onClick} style={{ background: on ? '#34e2a0' : '#556080', boxShadow: on ? 'none' : 'inset 0 0 0 1px rgba(255,255,255,.12)' }}><span className="knob" style={{ left: on ? 21 : 3 }} /></span>;
+}
+
+// Envoltura común de cada tab: misma columna centrada y misma cabecera
+// (icono + título + subtítulo) para que TODOS los tabs se vean parejos,
+// igual que el de Notificaciones. Un solo estándar, imposible de desincronizar.
+function Section({ icon, title, subtitle, children }: { icon: string; title: string; subtitle?: string; children: any }) {
+  return (
+    <div style={{ maxWidth: 820, margin: '0 auto' }}>
+      <div style={{ marginBottom: 16, textAlign: 'center' }}>
+        <span style={{ display: 'inline-flex', width: 44, height: 44, borderRadius: 13, background: 'rgba(124,140,255,.16)', alignItems: 'center', justifyContent: 'center', fontSize: 21, marginBottom: 8 }}>{icon}</span>
+        <h2 style={{ fontSize: 20, marginBottom: 2 }}>{title}</h2>
+        {subtitle && <p className="muted" style={{ fontSize: 13, margin: '2px auto 0', maxWidth: 480 }}>{subtitle}</p>}
+      </div>
+      {children}
+    </div>
+  );
 }
 
 export default function AccountClient({ email }: { email: string }) {
@@ -225,7 +243,7 @@ export default function AccountClient({ email }: { email: string }) {
             {!data && <div className="card muted">…</div>}
 
             {data && tab === 'plan' && (
-              <>
+              <Section icon="💳" title={L.nav.plan} subtitle={L.planSub}>
                 <div className="card" style={card}>
                   <div className="row between" style={{ flexWrap: 'wrap', gap: 12, marginBottom: 14 }}>
                     <div>
@@ -337,12 +355,15 @@ export default function AccountClient({ email }: { email: string }) {
                   </div>
                 )}
 
-                <Link className="muted" href="/pricing" style={{ fontSize: 13, textDecoration: 'underline' }}>{L.seePlans}</Link>
-              </>
+                <div style={{ textAlign: 'center', marginTop: 4 }}>
+                  <Link className="muted" href="/pricing" style={{ fontSize: 13, textDecoration: 'underline' }}>{L.seePlans}</Link>
+                </div>
+              </Section>
             )}
 
             {data && tab === 'perfil' && (
-              <div className="card" style={{ maxWidth: 520 }}>
+              <Section icon="👤" title={L.nav.perfil} subtitle={L.perfilSub}>
+              <div className="card">
                 <span style={lbl}>{L.email}</span>
                 <input value={p.email || email} disabled style={{ margin: '4px 0 0', opacity: .6 }} />
                 <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{L.emailNote}</div>
@@ -381,12 +402,12 @@ export default function AccountClient({ email }: { email: string }) {
                   {msg && <span style={{ color: 'var(--green)', fontSize: 13 }}>{msg}</span>}
                 </div>
               </div>
+              </Section>
             )}
 
             {data && tab === 'facturas' && (
-              <div className="card" style={{ maxWidth: 640, margin: '0 auto' }}>
-                <h3 style={{ marginBottom: 4 }}>{L.invTitle}</h3>
-                <p className="muted" style={{ fontSize: 13.5, marginBottom: 14 }}>{L.invTxt}</p>
+              <Section icon="🧾" title={L.invTitle} subtitle={L.invTxt}>
+              <div className="card">
                 {invoices === null && <div className="muted" style={{ fontSize: 13 }}>…</div>}
                 {invoices !== null && !invoices.length && <div className="muted" style={{ fontSize: 13.5 }}>{L.invEmpty}</div>}
                 {invoices !== null && invoices.map((inv) => {
@@ -406,10 +427,11 @@ export default function AccountClient({ email }: { email: string }) {
                   );
                 })}
               </div>
+              </Section>
             )}
 
             {data && tab === 'cuentas' && (
-              <>
+              <Section icon="🔌" title={L.nav.cuentas} subtitle={L.cuentasSub}>
                 <div className="card" style={card}>
                   <div className="row between" style={{ marginBottom: 12, flexWrap: 'wrap', gap: 10 }}>
                     <h3>{L.accTitle} ({used}{isUnlimited ? '' : ' / ' + maxAcc})</h3>
@@ -450,16 +472,11 @@ export default function AccountClient({ email }: { email: string }) {
                     </div>
                   </div>
                 )}
-              </>
+              </Section>
             )}
 
             {data && tab === 'avisos' && (
-              <div style={{ maxWidth: 820, margin: '0 auto' }}>
-                <div style={{ marginBottom: 14, textAlign: 'center' }}>
-                  <h2 style={{ fontSize: 20, marginBottom: 2 }}>{L.nav.avisos}</h2>
-                  <p className="muted" style={{ fontSize: 13, margin: 0 }}>{L.nSub}</p>
-                </div>
-
+              <Section icon="🔔" title={L.nav.avisos} subtitle={L.nSub}>
                 <div className="card" style={{ marginBottom: 14 }}>
                   <div className="row" style={{ gap: 9, marginBottom: 8, alignItems: 'center' }}>
                     <span style={{ width: 30, height: 30, borderRadius: 9, background: 'rgba(124,140,255,.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>📧</span>
@@ -480,12 +497,16 @@ export default function AccountClient({ email }: { email: string }) {
                 <div className="card">
                   <TelegramCard lang={lang} />
                 </div>
-              </div>
+              </Section>
             )}
 
-            {data && tab === 'seguridad' && <Security L={L} lang={lang} />}
+            {data && tab === 'seguridad' && (
+              <Section icon="🔒" title={L.nav.seguridad} subtitle={L.segSub}><Security L={L} lang={lang} /></Section>
+            )}
 
-            {data && tab === 'referidos' && <Ambassador lang={lang} />}
+            {data && tab === 'referidos' && (
+              <Section icon="🎁" title={L.nav.referidos} subtitle={L.refSub}><Ambassador lang={lang} /></Section>
+            )}
           </div>
         </div>
       </div>
@@ -517,7 +538,7 @@ function LockPinCard({ lang }: { lang: Lang }) {
   if (!show) return null;
   const lbl = { fontSize: 12, color: 'var(--mut)', marginTop: 10, display: 'block' } as any;
   return (
-    <div className="card" style={{ maxWidth: 480, marginBottom: 14 }}>
+    <div className="card" style={{ marginBottom: 14 }}>
       <div className="row between" style={{ flexWrap: 'wrap', gap: 8 }}>
         <h3 style={{ margin: 0 }}>🔒 {es ? 'PIN de bloqueo del panel' : 'Panel lock PIN'}</h3>
         <span className="pill" style={hasPin ? { color: '#7fe9c0', background: 'rgba(52,226,160,.15)' } : { color: 'var(--mut)' }}>{hasPin ? (es ? 'Activo' : 'Active') : (es ? 'Sin PIN' : 'No PIN')}</span>
@@ -559,7 +580,7 @@ function Security({ L, lang }: { L: any; lang: Lang }) {
 
   return (
     <>
-      <div className="card" style={{ maxWidth: 480, marginBottom: 14 }}>
+      <div className="card" style={{ marginBottom: 14 }}>
         <h3 style={{ marginBottom: 4 }}>{L.pwT}</h3>
         <span style={lbl}>{L.pwNew}</span>
         <input type="password" value={pw1} onChange={(e) => setPw1(e.target.value)} style={{ margin: '4px 0 0' }} />
@@ -574,7 +595,7 @@ function Security({ L, lang }: { L: any; lang: Lang }) {
       {/* Solo para admins/equipo: cambiar su PIN de bloqueo del panel. */}
       <LockPinCard lang={lang} />
 
-      <div className="card" style={{ maxWidth: 480, border: '1px solid var(--red)' }}>
+      <div className="card" style={{ border: '1px solid var(--red)' }}>
         <h3 style={{ marginBottom: 6, color: 'var(--red)' }}>{L.dTitle}</h3>
         <p className="muted" style={{ fontSize: 13, marginBottom: 10 }}>{L.dTxt}</p>
         <input placeholder={L.dType} value={conf} onChange={(e) => setConf(e.target.value)} style={{ margin: 0 }} />
