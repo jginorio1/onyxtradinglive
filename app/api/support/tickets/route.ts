@@ -81,7 +81,7 @@ export async function PATCH(req: Request) {
     if (!own) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
 
     if (b.close) {
-      await supabaseAdmin.from('support_tickets').update({ status: 'resolved', updated_at: new Date().toISOString() }).eq('id', ticketId);
+      await supabaseAdmin.from('support_tickets').update({ status: 'resolved', updated_at: new Date().toISOString() }).eq('id', ticketId).eq('user_id', user.id);
       return NextResponse.json({ ok: true });
     }
 
