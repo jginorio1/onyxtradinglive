@@ -159,6 +159,15 @@ La web ya está lista (Fase 2 incluida). Para que copie de verdad:
 
 Notas honestas: en **iPhone** el push solo funciona con la app **ya instalada** (Compartir → Añadir a pantalla de inicio) y iOS 16.4+. Telegram ya cubre buena parte de los avisos; el push es un extra. Si no pones las claves, no pasa nada: el interruptor simplemente no se muestra.
 
+## 8f. Seguridad: 2FA y admin oculto
+
+- **`/admin` ahora responde 404** a quien no sea administrador (no revela que existe). El login sigue accesible para ti; el candado real es tu rol (`ADMIN_EMAILS` / `is_admin`).
+- **Cabeceras de seguridad** activas en todas las respuestas (anti-clickjacking, HTTPS forzado, etc.). Ya vienen en `next.config.js`.
+- **Verificación en dos pasos (2FA):**
+  - **IMPORTANTE, hazlo una vez:** en Supabase → Authentication → Providers/Settings → **habilita MFA (TOTP)**. Sin esto, el "Activar" del 2FA dará error.
+  - **Admin: es obligatorio.** La primera vez que entres a `/admin` tras desplegar, te pedirá activar el 2FA (escanear un QR con Google Authenticator/Authy). Después, cada login pedirá el código. Guarda bien tu app de autenticación: si la pierdes, tendrás que quitar el factor desde Supabase (tabla de MFA) para recuperar el acceso.
+  - **Usuarios: opcional.** Cada trader lo activa en Mi cuenta → Seguridad → "Verificación en dos pasos (2FA)".
+
 ## 9. Comprobación final
 
 - [ ] Deploy en verde en Vercel

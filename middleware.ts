@@ -57,6 +57,11 @@ export async function middleware(req: NextRequest) {
   const needsAuth = PROTECTED.some((p) => path === p || path.startsWith(p + '/'));
 
   if (needsAuth && !user) {
+    // El admin no debe ni "existir" para quien no ha entrado: en vez de
+    // mandar a /login (que confirma que la ruta existe), respondemos 404.
+    if (path === '/admin' || path.startsWith('/admin/')) {
+      return new NextResponse(null, { status: 404 });
+    }
     const url = req.nextUrl.clone();
     url.pathname = '/login';
     url.searchParams.set('next', path);   // para volver aquí tras entrar

@@ -10,6 +10,7 @@ import TelegramCard from './TelegramCard';
 import BillingCard from './BillingCard';
 import InstallApp from '@/app/dashboard/InstallApp';
 import PushToggle from './PushToggle';
+import TwoFactorCard from './TwoFactorCard';
 
 type Lang = 'es' | 'en';
 type Tab = 'plan' | 'perfil' | 'facturas' | 'cuentas' | 'avisos' | 'seguridad' | 'referidos';
@@ -683,6 +684,9 @@ function Security({ L, lang }: { L: any; lang: Lang }) {
           {ok && <span style={{ color: 'var(--green)', fontSize: 13 }}>{ok}</span>}
         </div>
       </div>
+
+      {/* Verificación en dos pasos (opcional para el usuario). */}
+      <TwoFactorCard lang={lang} />
 
       {/* Solo para admins/equipo: cambiar su PIN de bloqueo del panel. */}
       <LockPinCard lang={lang} />

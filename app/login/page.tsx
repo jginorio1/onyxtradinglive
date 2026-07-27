@@ -4,6 +4,7 @@ import { useLang } from '@/lib/lang';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
+import TwoFactor from '@/app/TwoFactor';
 
 type Lang = 'es' | 'en';
 
@@ -88,6 +89,7 @@ function LoginInner() {
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);       // se envió el correo de confirmación
   const [resent, setResent] = useState(false);
+  const [mfa, setMfa] = useState(false);          // pide el código de 2 pasos
   const { lang } = useLang();
   const t = T[lang];
   const sb = supabaseBrowser();
@@ -128,6 +130,12 @@ function LoginInner() {
       } else {
         const { error } = await sb.auth.signInWithPassword({ email: email.trim(), password: pass });
         if (error) throw error;
+        // ¿Tiene verificación en dos pasos? Si el nivel requerido es aal2 y aún
+        // no lo alcanzó, pedimos el código antes de entrar.
+        try {
+          const { data: aal } = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
+          if (aal && aal.nextLevel === 'aal2' && aal.currentLevel !== 'aal2') { setMfa(true); return; }
+        } catch { /* si falla la comprobación, seguimos */ }
         router.push(nextDest); router.refresh();
       }
     } catch (e: any) {
@@ -142,6 +150,20 @@ function LoginInner() {
       await sb.auth.resend({ type: 'signup', email: email.trim(), options: { emailRedirectTo } });
       setResent(true);
     } catch { setResent(true); }
+  }
+
+  // ── Pantalla de verificación en dos pasos ────────────────────
+  if (mfa) {
+    return (
+      <div className="center">
+        <Link className="logo" href="/" style={{ justifyContent: 'center', marginBottom: 24 }}>
+          <img src="/onyx-symbol.png" alt="Onyx" style={{ width: 30, height: 30, objectFit: 'contain' }} /> Onyx Trading Live
+        </Link>
+        <div className="card">
+          <TwoFactor mode="challenge" lang={lang} onDone={() => { router.push(nextDest); router.refresh(); }} />
+        </div>
+      </div>
+    );
   }
 
   // ── Pantalla "revisa tu correo" ──────────────────────────────
