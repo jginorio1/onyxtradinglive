@@ -140,6 +140,25 @@ La web ya está lista (Fase 2 incluida). Para que copie de verdad:
 - **EA:** las plantillas del Guardian (`public/OnyxManager_MT5.mq5` y `_MT4.mq4`) muestran el veredicto del reto. **Como todo cambio en el EA, pruébalo primero en una cuenta demo** antes de usarlo en real; el marcador que dibuja lo calcula el servidor, el EA solo lo pinta.
 - **Aviso honesto:** las reglas por firma (FTMO, The5ers, Topstep…) son un punto de partida, no la norma oficial. El trader debe confirmarlas con su contrato.
 
+## 8e. App móvil (PWA) + notificaciones push
+
+**Instalable como app (PWA):** ya viene lista, sin nada que configurar. Al desplegar, el trader puede instalar Onyx en su teléfono:
+- Android/Chrome: aviso "Instalar app" o menú ⋮ → Instalar. También hay un botón **"Instalar app"** dentro de Onyx (Mi cuenta → Notificaciones).
+- iPhone/Safari: botón Compartir → "Añadir a pantalla de inicio". El botón dentro de Onyx muestra el paso a paso.
+
+**Notificaciones push (opcional, requiere claves):** el interruptor "Notificaciones al teléfono" (Mi cuenta → Notificaciones) **solo aparece si configuras las claves VAPID**. Pasos:
+
+1. Genera las claves una vez (en tu compu, con Node): `npx web-push generate-vapid-keys`. Te da una **Public Key** y una **Private Key**.
+2. En Vercel → Settings → Environment Variables añade:
+   - `VAPID_PUBLIC_KEY` = la pública
+   - `NEXT_PUBLIC_VAPID_PUBLIC_KEY` = la MISMA pública (esta la usa el navegador)
+   - `VAPID_PRIVATE_KEY` = la privada (NO la compartas)
+   - `VAPID_SUBJECT` = `mailto:soporte@onyxtradinglive.com`
+3. Corre `supabase/push.sql` (tabla de suscripciones).
+4. Redespliega. La dependencia `web-push` se instala sola.
+
+Notas honestas: en **iPhone** el push solo funciona con la app **ya instalada** (Compartir → Añadir a pantalla de inicio) y iOS 16.4+. Telegram ya cubre buena parte de los avisos; el push es un extra. Si no pones las claves, no pasa nada: el interruptor simplemente no se muestra.
+
 ## 9. Comprobación final
 
 - [ ] Deploy en verde en Vercel

@@ -6,6 +6,7 @@ import { accountLimit } from '@/lib/settings';
 import { forEA, mergeConfig } from '@/lib/manager';
 import { evaluate, registerClosedTrades, newsNear } from '@/lib/managerGuard';
 import { loadChallenge } from '@/lib/challenge';
+import { sendPush } from '@/lib/push';
 import { alertUser, alertOncePerDay } from '@/lib/telegram';
 import { logError } from '@/lib/errlog';
 
@@ -292,7 +293,8 @@ export async function POST(req: NextRequest) {
             if (sb.verdict === 'watch' || sb.verdict === 'breach') {
               const near = sb.closest ? ` (${sb.closest.es} / ${sb.closest.en})` : '';
               const head = sb.verdict === 'breach' ? '❌ Regla del reto rota / Challenge rule broken' : '⚠️ Cerca de romper una regla / Close to breaking a rule';
-              await alertOncePerDay(userId, 'funding', 'challenge_' + sb.verdict, `🏁 Onyx · ${sb.name}\n${head}${near}.`).catch(() => {});
+              const fired = await alertOncePerDay(userId, 'funding', 'challenge_' + sb.verdict, `🏁 Onyx · ${sb.name}\n${head}${near}.`).catch(() => false);
+              if (fired) sendPush(userId, { title: `Onyx · ${sb.name}`, body: head, url: '/dashboard' }).catch(() => {});
             }
           }
         } catch { /* el marcador nunca rompe el sync */ }

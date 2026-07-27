@@ -44,3 +44,28 @@ self.addEventListener('fetch', (event) => {
     );
   }
 });
+
+// --- Notificaciones push ---
+self.addEventListener('push', (event) => {
+  let d = { title: 'Onyx Trading Live', body: '', url: '/dashboard' };
+  try { d = Object.assign(d, event.data ? event.data.json() : {}); } catch (e) { if (event.data) d.body = event.data.text(); }
+  event.waitUntil(
+    self.registration.showNotification(d.title, {
+      body: d.body,
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
+      data: { url: d.url || '/dashboard' },
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || '/dashboard';
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      for (const c of list) { if ('focus' in c) { c.navigate(target); return c.focus(); } }
+      if (self.clients.openWindow) return self.clients.openWindow(target);
+    })
+  );
+});

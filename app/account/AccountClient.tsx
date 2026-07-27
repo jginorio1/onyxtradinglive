@@ -8,6 +8,8 @@ import Ambassador from './Ambassador';
 import CancelFlow from './CancelFlow';
 import TelegramCard from './TelegramCard';
 import BillingCard from './BillingCard';
+import InstallApp from '@/app/dashboard/InstallApp';
+import PushToggle from './PushToggle';
 
 type Lang = 'es' | 'en';
 type Tab = 'plan' | 'perfil' | 'facturas' | 'cuentas' | 'avisos' | 'seguridad' | 'referidos';
@@ -565,6 +567,8 @@ export default function AccountClient({ email }: { email: string }) {
 
             {data && tab === 'avisos' && (
               <Section icon="🔔" title={L.nav.avisos} subtitle={L.nSub}>
+                <InstallApp lang={lang} />
+                <PushToggle lang={lang} />
                 <div className="card" style={{ marginBottom: 14 }}>
                   <div className="row" style={{ gap: 9, marginBottom: 8, alignItems: 'center' }}>
                     <span style={{ width: 30, height: 30, borderRadius: 9, background: 'rgba(124,140,255,.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>📧</span>
