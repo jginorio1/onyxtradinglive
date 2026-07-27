@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { analyze, bestOf, worstOf, topPairs, fmtDur, type T, type Bucket } from '@/lib/analytics';
 import RangeBar, { type Range, defaultRange } from '@/app/admin/RangeBar';
 import Journal from './Journal';
+import LotCalculator from './LotCalculator';
 import Costs from './Costs';
 import AccountExtras from './AccountExtras';
 import CompareAccounts from './CompareAccounts';
@@ -658,6 +659,7 @@ export default function DashboardClient({ email = '', plan = 'free', profile, tr
               </Card>
             )}
 
+            {view === 'operaciones' && <div style={{ marginBottom: 14 }}><LotCalculator lang={lang} balance={Number(cur?.balance) || totalBalance || undefined} /></div>}
             {view === 'operaciones' && (!canJournal ? <ProLock L={L} plan={upJ.name} desc={L.dLock1} price={upJ.price} preview={<PreviewJournal />} /> : <Journal trades={filtered} lang={lang} />)}
             {view === 'costes' && <Costs trades={filtered} lang={lang} />}
 
