@@ -1,6 +1,5 @@
 'use client';
 import { toast } from '@/lib/toast';
-import { fmtDate, fmtDateTime } from '@/lib/fmtDate';
 import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import Link from 'next/link';
@@ -398,7 +397,7 @@ export default function KeysPage() {
                       {k.account_login ? `${t.acct} ${k.account_login}` : t.notBound}
                       {k.broker ? ` · ${k.broker}` : ''}
                       {k.acc_size ? ` · ${Number(k.acc_size).toLocaleString()} ${k.currency || 'USD'}` : ''}
-                      {synced ? ` · ${t.lastSync} ${fmtDateTime(k.account.last_sync_at, lang)}` : ''}
+                      {synced ? ` · ${t.lastSync} ${new Date(k.account.last_sync_at).toLocaleString()}` : ''}
                     </div>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                       <code style={{ flex: 1, minWidth: 200, wordBreak: 'break-all' }}>{k.key}</code>

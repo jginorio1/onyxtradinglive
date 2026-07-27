@@ -1,6 +1,5 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { fmtDate, fmtDateTime } from '@/lib/fmtDate';
 import { useLang } from '@/lib/lang';
 import { useT } from '@/lib/adminText';
 
@@ -165,7 +164,7 @@ export default function Revenue() {
             {d.recent?.map((r: any, i: number) => (
               <div key={i} className="row between" style={{ borderTop: '1px solid var(--line)', padding: '9px 0', fontSize: 13, gap: 8, flexWrap: 'wrap' }}>
                 <span className="row" style={{ gap: 8 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: r.ok ? '#34e2a0' : '#ff6b7d' }} />{r.email || '—'}</span>
-                <span className="row" style={{ gap: 12 }}><span style={{ fontWeight: 700, color: r.ok ? 'var(--green)' : 'var(--red)' }}>{money(r.amount)}</span><span className="muted" style={{ fontSize: 12 }}>{fmtDate(r.at * 1000, lang)}</span></span>
+                <span className="row" style={{ gap: 12 }}><span style={{ fontWeight: 700, color: r.ok ? 'var(--green)' : 'var(--red)' }}>{money(r.amount)}</span><span className="muted" style={{ fontSize: 12 }}>{new Date(r.at * 1000).toLocaleDateString()}</span></span>
               </div>
             ))}
             <div className="muted" style={{ fontSize: 11.5, marginTop: 10 }}>{t.tip}</div>

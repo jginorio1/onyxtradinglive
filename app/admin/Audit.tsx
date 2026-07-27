@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import { useT } from '@/lib/adminText';
+import { fmtDateTime } from '@/lib/fmtDate';
 
 const T: any = {
   es: {
@@ -10,6 +11,7 @@ const T: any = {
     vitals: 'Core Web Vitals', lcp: 'LCP · carga', inp: 'INP · respuesta', cls: 'CLS · estabilidad',
     flows: 'Botones y flujos', noFlows: 'Aún no hay resultados de flujos.',
     code: 'Código y dependencias', ts: 'Errores de TypeScript', vulns: 'Dependencias inseguras',
+    sec: 'Seguridad', secSub: 'Se comprueba en vivo cada vez que abres esta pestaña.',
     howto: 'Cómo se configura', hide: 'Ocultar',
     steps: [
       'El archivo .github/workflows/audit.yml (incluido) corre en cada push a main y también a mano desde Actions.',
@@ -25,6 +27,7 @@ const T: any = {
     vitals: 'Core Web Vitals', lcp: 'LCP · load', inp: 'INP · response', cls: 'CLS · stability',
     flows: 'Buttons and flows', noFlows: 'No flow results yet.',
     code: 'Code and dependencies', ts: 'TypeScript errors', vulns: 'Insecure dependencies',
+    sec: 'Security', secSub: 'Checked live every time you open this tab.',
     howto: 'How to set it up', hide: 'Hide',
     steps: [
       'The file .github/workflows/audit.yml (included) runs on every push to main and manually from Actions.',
@@ -61,9 +64,13 @@ export default function Audit() {
   const t = T[lang];
   const gt = useT();
   const [d, setD] = useState<any>(null);
+  const [sec, setSec] = useState<any>(null);
   const [showHow, setShowHow] = useState(false);
 
   useEffect(() => { fetch('/api/admin/audit').then((r) => r.json()).then(setD).catch(() => setD({})); }, []);
+  useEffect(() => { fetch('/api/admin/security-audit').then((r) => r.json()).then(setSec).catch(() => setSec(null)); }, []);
+  const secCol = (s: string) => (s === 'ok' ? 'var(--green)' : s === 'warn' ? 'var(--amber)' : 'var(--red)');
+  const secIcon = (s: string) => (s === 'ok' ? '✓' : s === 'warn' ? '!' : '✗');
 
   const a = d?.audit || { at: null, lighthouse: null, vitals: null, flows: [], code: { ts_errors: 0, vulnerabilities: 0 } };
   const recent = a.at && (Date.now() - new Date(a.at).getTime()) < 8 * 86400000;
@@ -78,9 +85,31 @@ export default function Audit() {
       <div className="row between" style={{ flexWrap: 'wrap', gap: 8 }}>
         <div className="tabhead"><div className="th-row"><span className="th-ic">📈</span><span className="th-t">{gt.h_audit_t}</span></div><div className="th-s">{gt.h_audit_s}</div></div>
         {a.at
-          ? <span className="pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: recent ? '#7fe9c0' : 'var(--mut)', background: recent ? 'rgba(52,226,160,.15)' : 'var(--card2)' }}>{recent && <span className="livedot" />}{t.lastRun}: {new Date(a.at).toLocaleString()}</span>
+          ? <span className="pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: recent ? '#7fe9c0' : 'var(--mut)', background: recent ? 'rgba(52,226,160,.15)' : 'var(--card2)' }}>{recent && <span className="livedot" />}{t.lastRun}: {fmtDateTime(a.at, lang)}</span>
           : <span className="pill amber">{t.notRun}</span>}
       </div>
+
+      {/* Seguridad · se comprueba en vivo al abrir el tab (aparte de Lighthouse) */}
+      {sec?.items && (
+        <div className="card" style={{ marginBottom: 12, borderLeft: '3px solid ' + secCol(sec.overall) }}>
+          <div className="row between" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 4 }}>
+            <b style={{ fontSize: 14 }}>🔒 {t.sec}</b>
+            <span className="pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: secCol(sec.overall), background: 'var(--card2)' }}>{t.lastRun}: {fmtDateTime(sec.at, lang)}</span>
+          </div>
+          <div className="muted" style={{ fontSize: 11.5, marginBottom: 8 }}>{t.secSub}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(230px,1fr))', gap: '0 20px' }}>
+            {sec.items.map((it: any) => {
+              const hint = lang === 'es' ? it.hintEs : it.hintEn;
+              return (
+                <div key={it.key} className="row" style={{ gap: 9, padding: '8px 0', borderTop: '1px solid var(--line)', fontSize: 12.5, alignItems: 'flex-start' }}>
+                  <span style={{ color: secCol(it.status), fontWeight: 700, width: 12, textAlign: 'center' }}>{secIcon(it.status)}</span>
+                  <span>{lang === 'es' ? it.es : it.en}{it.status !== 'ok' && hint && <span className="muted" style={{ display: 'block', fontSize: 11 }}>{hint}</span>}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {!a.at && (
         <div className="card" style={{ border: '1px solid var(--amber)', background: 'rgba(255,192,77,.06)' }}>

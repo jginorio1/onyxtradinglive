@@ -1,6 +1,5 @@
 'use client';
 import { toast } from '@/lib/toast';
-import { fmtDate, fmtDateTime } from '@/lib/fmtDate';
 import { useEffect, useState } from 'react';
 import Help from '@/app/Help';
 
@@ -594,7 +593,7 @@ export function StateTab({ t, tMain, lang, accountId }: any) {
               <span style={{ color: isOverride ? 'var(--amber)' : undefined }}>
                 <b>{name}</b>{e.symbol ? ` · ${e.symbol}` : ''}{e.detail ? ` · ${e.detail}` : ''}
               </span>
-              <span className="muted" style={{ fontSize: 12 }}>{fmtDateTime(e.created_at, lang)}</span>
+              <span className="muted" style={{ fontSize: 12 }}>{new Date(e.created_at).toLocaleString()}</span>
             </div>
           );
         })}

@@ -1,6 +1,5 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { fmtDate, fmtDateTime } from '@/lib/fmtDate';
 import { useLang } from '@/lib/lang';
 import { useT } from '@/lib/adminText';
 
@@ -178,7 +177,7 @@ export default function Backups() {
           </span>
         </div>
         <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(120px,1fr))', gap: 10 }}>
-          {tile(t.last, backup.last_at ? fmtDateTime(backup.last_at, lang) : t.never, undefined, recent)}
+          {tile(t.last, backup.last_at ? new Date(backup.last_at).toLocaleString() : t.never, undefined, recent)}
           {tile(t.size, fmtSize(backup.size))}
           {tile(t.dest, backup.dest || t.destNone)}
         </div>
@@ -236,7 +235,7 @@ export default function Backups() {
         {shown.map((c: any, i: number) => (
           <div key={i} style={{ borderTop: '1px solid var(--line)', padding: '10px 0' }}>
             <div className="row between" style={{ gap: 8, flexWrap: 'wrap', fontSize: 13 }}>
-              <span className="row" style={{ gap: 8, flex: 1, minWidth: 150 }}>{i === 0 && recent ? <span className="livedot" /> : <span style={{ width: 7 }} />}{fmtDateTime(c.at, lang)}</span>
+              <span className="row" style={{ gap: 8, flex: 1, minWidth: 150 }}>{i === 0 && recent ? <span className="livedot" /> : <span style={{ width: 7 }} />}{new Date(c.at).toLocaleString()}</span>
               <span className="muted" style={{ width: 70 }}>{fmtSize(c.size)}</span>
               <span className="row" style={{ gap: 8 }}>
                 <span className="muted" style={{ width: 74 }}>{c.dest}</span>

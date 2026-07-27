@@ -1,6 +1,5 @@
 'use client';
 import { toast, toastErr } from '@/lib/toast';
-import { fmtDate, fmtDateTime } from '@/lib/fmtDate';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import Ambassadors from './Ambassadors';
@@ -143,7 +142,6 @@ function SecurityControl({ idleMin }: { idleMin: number }) {
 // Alertas: el Owner enciende el vigilante y ajusta los límites. Avisa por Telegram.
 function AlertsControl() {
   const t = useT();
-  const { lang } = useLang();
   const [d, setD] = useState<any>(null);
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
@@ -194,7 +192,7 @@ function AlertsControl() {
           <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{t.al_recent}</div>
           {d.feed.slice(0, 6).map((f: any, i: number) => (
             <div key={i} className="row between" style={{ padding: '6px 0', fontSize: 12.5, gap: 8, flexWrap: 'wrap' }}>
-              <span>{f.text}</span><span className="muted">{fmtDate(f.at, lang)}</span>
+              <span>{f.text}</span><span className="muted">{new Date(f.at).toLocaleDateString()}</span>
             </div>
           ))}
         </div>
@@ -434,7 +432,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                           <td><select value={u.plan} onChange={(e) => userAction(u.id, 'plan', e.target.value)} style={{ margin: 0, padding: '5px 8px', width: 'auto' }}>{plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}{!plans.find((p) => p.id === u.plan) && <option value={u.plan}>{u.plan}</option>}</select></td>
                           <td>{u.banned ? <span className="pill red">● {t.u_banned}</span> : <span className="pill" style={{ color: 'var(--green)', background: 'rgba(52,226,160,.15)' }}>● {u.subscription_status || t.u_active}</span>}</td>
                           <td className="muted">{u.accounts}</td>
-                          <td className="muted" style={{ fontSize: 12 }}>{u.lastSync ? fmtDate(u.lastSync, lang) : '—'}</td>
+                          <td className="muted" style={{ fontSize: 12 }}>{u.lastSync ? new Date(u.lastSync).toLocaleDateString() : '—'}</td>
                           <td><div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
                             <button className="btn btn-ghost" style={{ padding: '5px 9px', fontSize: 12 }} onClick={() => resetPass(u)} disabled={busy === u.id + 'rst'}>🔑</button>
                             {u.banned ? <button className="btn btn-ghost" style={{ padding: '5px 9px', fontSize: 12 }} onClick={() => userAction(u.id, 'unban')}>{t.u_unban}</button> : <button className="btn btn-ghost" style={{ padding: '5px 9px', fontSize: 12 }} onClick={() => userAction(u.id, 'ban')}>🚫</button>}
@@ -655,7 +653,7 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
                 </span>
                 <div>
                   <div style={{ fontWeight: 600 }}>{m.email}{m.email === meEmail && <span className="muted" style={{ fontSize: 12 }}>{t.t_you}</span>}</div>
-                  <div className="muted" style={{ fontSize: 11 }}>{m.last_active ? t.t_lastActivity + fmtDateTime(m.last_active, lang) : t.t_noActivity}</div>
+                  <div className="muted" style={{ fontSize: 11 }}>{m.last_active ? t.t_lastActivity + new Date(m.last_active).toLocaleString() : t.t_noActivity}</div>
                 </div>
               </div>
               <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -773,7 +771,7 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
                 return (
                   <div key={i} className="row between" style={{ borderTop: i ? '1px solid var(--line)' : 'none', padding: '8px 0', fontSize: 13, flexWrap: 'wrap', gap: 6 }}>
                     <span className="row" style={{ gap: 8 }}><span style={{ width: 18, textAlign: 'center' }}>{topicIcon[tp]}</span><span><b>{e.admin_email?.split('@')[0]}</b> · {e.action} <span className="muted">{e.target ? String(e.target).slice(0, 24) : ''}</span></span></span>
-                    <span className="muted" style={{ fontSize: 12 }}>{fmtDateTime(e.created_at, lang)}</span>
+                    <span className="muted" style={{ fontSize: 12 }}>{new Date(e.created_at).toLocaleString()}</span>
                   </div>
                 );
               })}

@@ -4,6 +4,7 @@
     { "path": "/api/cron/telegram?job=daily", "schedule": "0 21 * * *" },
     { "path": "/api/cron/telegram?job=weekly", "schedule": "0 18 * * 0" },
     { "path": "/api/cron/plan-reminders", "schedule": "0 15 * * *" },
-    { "path": "/api/cron/clean-signups", "schedule": "30 4 * * *" }
+    { "path": "/api/cron/clean-signups", "schedule": "30 4 * * *" },
+    { "path": "/api/cron/security-check", "schedule": "0 5 * * *" }
   ]
 }

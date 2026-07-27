@@ -1,6 +1,5 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { fmtDate, fmtDateTime } from '@/lib/fmtDate';
 import Link from 'next/link';
 import { useLang } from '@/lib/lang';
 
@@ -200,7 +199,7 @@ export default function SupportClient() {
               <div className="row between" style={{ gap: 8, flexWrap: 'wrap', cursor: 'pointer' }} onClick={() => setOpenId(open ? '' : tk.id)}>
                 <div>
                   <div style={{ fontWeight: 600 }}>{tk.subject}</div>
-                  <div className="muted" style={{ fontSize: 12 }}>{(t.cats.find((c: any) => c[0] === tk.category) || [])[1] || tk.category} · {fmtDateTime(tk.updated_at, lang)}</div>
+                  <div className="muted" style={{ fontSize: 12 }}>{(t.cats.find((c: any) => c[0] === tk.category) || [])[1] || tk.category} · {new Date(tk.updated_at).toLocaleString()}</div>
                 </div>
                 <span className="pill" style={{ color: stColor[tk.status], background: stBg[tk.status] }}>{t.st[tk.status]}</span>
               </div>

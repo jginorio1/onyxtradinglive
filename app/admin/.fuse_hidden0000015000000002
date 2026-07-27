@@ -1,6 +1,5 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { fmtDate, fmtDateTime } from '@/lib/fmtDate';
 import { useLang } from '@/lib/lang';
 import { useT } from '@/lib/adminText';
 
@@ -115,7 +114,7 @@ export default function Optimize() {
         </div>
         <div className="row between" style={{ fontSize: 12.5, padding: '8px 0', borderTop: '1px solid var(--line)' }}>
           <span className="muted">{t.last}</span>
-          <span>{o.last_at ? fmtDateTime(o.last_at, lang) : t.never} {o.last_at && <span className="muted">· {o.analyzed ? t.analyzedYes : t.analyzedNo}</span>}</span>
+          <span>{o.last_at ? new Date(o.last_at).toLocaleString() : t.never} {o.last_at && <span className="muted">· {o.analyzed ? t.analyzedYes : t.analyzedNo}</span>}</span>
         </div>
         <div className="muted" style={{ fontSize: 11.5, margin: '8px 0 4px' }}>{t.history}</div>
         {!(o.history?.length) && <p className="muted" style={{ fontSize: 12.5 }}>{t.noHistory}</p>}
@@ -123,7 +122,7 @@ export default function Optimize() {
           const total = (h.pruned_errors || 0) + (h.pruned_tg || 0);
           return (
             <div key={i} className="row between" style={{ fontSize: 12.5, padding: '7px 0', borderTop: '1px solid var(--line)' }}>
-              <span>{fmtDateTime(h.at, lang)}</span>
+              <span>{new Date(h.at).toLocaleString()}</span>
               <span className="muted">{total === 0 ? t.clean : total.toLocaleString() + ' ' + t.pruned}{h.analyzed ? ' · ' + t.analyzedYes : ''}</span>
             </div>
           );

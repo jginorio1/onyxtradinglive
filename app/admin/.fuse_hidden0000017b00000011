@@ -1,6 +1,5 @@
 'use client';
 import { toast, toastErr } from '@/lib/toast';
-import { fmtDate, fmtDateTime } from '@/lib/fmtDate';
 import { useEffect, useState } from 'react';
 import { useT } from '@/lib/adminText';
 import { useLang } from '@/lib/lang';
@@ -102,7 +101,7 @@ export default function Retention() {
                 </div>
                 <div className="row" style={{ gap: 8 }}>
                   <span className="pill" style={{ color: col, background: col + '22' }}>{txt}</span>
-                  <span className="muted" style={{ fontSize: 12 }}>{fmtDate(c.created_at, lang)}</span>
+                  <span className="muted" style={{ fontSize: 12 }}>{new Date(c.created_at).toLocaleDateString()}</span>
                 </div>
               </div>
               {c.detail && <div className="muted" style={{ fontSize: 13, background: 'var(--bg2)', borderRadius: 8, padding: '8px 10px', marginTop: 8 }}>“{c.detail}”</div>}
