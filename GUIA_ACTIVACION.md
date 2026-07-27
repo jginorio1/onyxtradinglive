@@ -168,6 +168,17 @@ Notas honestas: en **iPhone** el push solo funciona con la app **ya instalada** 
   - **Admin: es obligatorio.** La primera vez que entres a `/admin` tras desplegar, te pedirá activar el 2FA (escanear un QR con Google Authenticator/Authy). Después, cada login pedirá el código. Guarda bien tu app de autenticación: si la pierdes, tendrás que quitar el factor desde Supabase (tabla de MFA) para recuperar el acceso.
   - **Usuarios: opcional.** Cada trader lo activa en Mi cuenta → Seguridad → "Verificación en dos pasos (2FA)".
 
+## 8g. Anti-bots / spam en el registro
+
+- **Honeypot:** campo trampa invisible en el registro. Cero configuración; ya frena bots simples.
+- **Limpieza automática:** cada día (`/api/cron/clean-signups`, en `vercel.json`, 04:30 UTC) borra las cuentas creadas hace +7 días que **nunca confirmaron el correo** (bots / abandonadas). Usa tu `CRON_SECRET`. En **Admin → Usuarios** hay una tarjeta "Limpieza de registros basura" para forzarlo a mano y ver cuántas hay.
+- **CAPTCHA (Cloudflare Turnstile, gratis) — opcional pero es el que más frena bots:**
+  1. Crea cuenta en Cloudflare → Turnstile → añade tu sitio (`onyxtradinglive.com`). Te da **Site Key** y **Secret Key**.
+  2. En Supabase → Authentication → Attack Protection → **habilita CAPTCHA**, proveedor **Turnstile**, pega la **Secret Key**.
+  3. En Vercel añade `NEXT_PUBLIC_TURNSTILE_SITE_KEY` = tu Site Key. Redespliega.
+  4. Aparece la casilla en registro/login y Supabase verifica el token. Si no pones la Site Key, no se muestra y no bloquea nada.
+- **Recuerda:** mantén la **confirmación de correo activada** en Supabase — así los bots con correos falsos nunca se vuelven usuarios reales.
+
 ## 9. Comprobación final
 
 - [ ] Deploy en verde en Vercel

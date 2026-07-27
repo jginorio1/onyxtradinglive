@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Ambassadors from './Ambassadors';
 import Retention from './Retention';
 import Addons from './Addons';
+import CleanSignups from './CleanSignups';
 import TestConsole from './TestConsole';
 import Firms from './Firms';
 import SupportInbox from './SupportInbox';
@@ -416,6 +417,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
               <RangeBar value={uRange} onChange={setURange}
                 pdfUrl={(f, tt) => `/api/admin/users/report?from=${f}&to=${tt}&lang=${lang}`}
                 csvUrl={(f, tt) => `/api/admin/users/report?export=csv&from=${f}&to=${tt}&lang=${lang}`} />
+              <CleanSignups />
               <div className="card">
                 <div className="row between" style={{ marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
                   <input placeholder={t.u_search} value={q} onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 260, margin: 0, marginLeft: 'auto' }} />

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 import TwoFactor from '@/app/TwoFactor';
+import Turnstile, { TURNSTILE_KEY } from '@/app/Turnstile';
 
 type Lang = 'es' | 'en';
 
@@ -19,6 +20,7 @@ const T = {
     errShort: 'La contraseña debe tener al menos 8 caracteres.',
     errMail: 'Escribe un email válido.',
     errTerms: 'Debes aceptar los términos para crear la cuenta.',
+    errCaptcha: 'Completa la verificación de seguridad.',
     errGeneric: 'No pudimos completar la operación. Inténtalo de nuevo.',
     strength: ['Muy débil', 'Débil', 'Aceptable', 'Fuerte', 'Excelente'],
     strengthHint: 'Usa 8+ caracteres, con mayúsculas, números o símbolos.',
@@ -42,6 +44,7 @@ const T = {
     errShort: 'Password must be at least 8 characters.',
     errMail: 'Enter a valid email address.',
     errTerms: 'You must accept the terms to create an account.',
+    errCaptcha: 'Complete the security check.',
     errGeneric: 'We could not complete the request. Please try again.',
     strength: ['Very weak', 'Weak', 'Okay', 'Strong', 'Excellent'],
     strengthHint: 'Use 8+ characters, with uppercase, numbers or symbols.',
@@ -90,6 +93,8 @@ function LoginInner() {
   const [sent, setSent] = useState(false);       // se envió el correo de confirmación
   const [resent, setResent] = useState(false);
   const [mfa, setMfa] = useState(false);          // pide el código de 2 pasos
+  const [hp, setHp] = useState('');               // honeypot: humanos lo dejan vacío
+  const [captcha, setCaptcha] = useState('');     // token de Turnstile (si está activo)
   const { lang } = useLang();
   const t = T[lang];
   const sb = supabaseBrowser();
@@ -107,11 +112,14 @@ function LoginInner() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (hp) { setSent(true); return; }   // honeypot relleno → es un bot; fingimos éxito
     if (signup && !nameOk) { setMsg(t.errName); return; }
     if (!mailOk) { setMsg(t.errMail); return; }
     if (!passOk) { setMsg(t.errShort); return; }
     if (signup && !terms) { setMsg(t.errTerms); return; }
+    if (TURNSTILE_KEY && !captcha) { setMsg(t.errCaptcha); return; }
     setLoading(true); setMsg('');
+    const cap = captcha || undefined;
     try {
       if (signup) {
         // Tras confirmar el email, Supabase redirige aquí; el gate del dashboard
@@ -119,7 +127,7 @@ function LoginInner() {
         const emailRedirectTo = typeof window !== 'undefined'
           ? `${window.location.origin}/onboarding` : undefined;
         const { data, error } = await sb.auth.signUp({
-          email: email.trim(), password: pass, options: { emailRedirectTo, data: { full_name: name.trim() } },
+          email: email.trim(), password: pass, options: { emailRedirectTo, data: { full_name: name.trim() }, captchaToken: cap },
         });
         if (error) throw error;
         // Si la confirmación de email está ACTIVADA, no hay sesión todavía →
@@ -128,7 +136,7 @@ function LoginInner() {
         if (data.session) { router.push('/onboarding'); router.refresh(); }
         else { setSent(true); }
       } else {
-        const { error } = await sb.auth.signInWithPassword({ email: email.trim(), password: pass });
+        const { error } = await sb.auth.signInWithPassword({ email: email.trim(), password: pass, options: { captchaToken: cap } });
         if (error) throw error;
         // ¿Tiene verificación en dos pasos? Si el nivel requerido es aal2 y aún
         // no lo alcanzó, pedimos el código antes de entrar.
@@ -203,6 +211,9 @@ function LoginInner() {
       <div className="card">
         <h2 style={{ marginBottom: 16 }}>{signup ? t.signupT : t.loginT}</h2>
         <form onSubmit={submit}>
+          {/* Honeypot: invisible para humanos, los bots lo rellenan. */}
+          <input type="text" name="company" tabIndex={-1} autoComplete="off" value={hp} onChange={(e) => setHp(e.target.value)}
+            style={{ position: 'absolute', left: '-9999px', width: 1, height: 1, opacity: 0 }} aria-hidden="true" />
           {signup && (
             <>
               <label>{t.name}</label>
@@ -235,6 +246,8 @@ function LoginInner() {
               <span>{t.terms} <Link href="/terms" style={{ color: 'var(--brand)' }} target="_blank">{t.termsLink}</Link>.</span>
             </label>
           )}
+
+          <Turnstile onToken={setCaptcha} />
 
           <div style={{ height: 18 }} />
           <button className="btn btn-primary" style={{ width: '100%', opacity: formOk ? 1 : .5 }} disabled={loading || !formOk}>
