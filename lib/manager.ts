@@ -75,6 +75,21 @@ export const DEFAULT_CONFIG = {
     action: 'block_new',   // warn | block_new | close_and_block
     only_symbol: true,     // solo si la noticia afecta a la divisa del símbolo
   },
+
+  // ---- "Mi reto": marcador de reglas de prop firm (mide, no bloquea) ----
+  // Las reglas de pérdida (diaria/total) se toman de `limits`; aquí van las
+  // que faltaban: objetivo, días mínimos, consistencia y fin de semana.
+  challenge: {
+    on: false,
+    firm: 'custom',        // id de plantilla (solo etiqueta)
+    phase: '1',            // etiqueta de fase (1 | 2 | funded)
+    profit_target: 0,      // objetivo de ganancia
+    profit_target_pct: true,
+    min_days: 0,           // días mínimos de trading (0 = sin regla)
+    max_days: 0,           // días máximos (0 = sin límite)
+    consistency: 0,        // un día no puede ser más del X% de la ganancia total (0 = sin regla)
+    no_weekend_hold: false,// hay que estar plano el fin de semana
+  },
 };
 
 export type ManagerConfig = typeof DEFAULT_CONFIG;
@@ -87,17 +102,17 @@ export type ManagerConfig = typeof DEFAULT_CONFIG;
 // siempre visibles y son obligatorios.
 // ============================================================
 export const PROP_TEMPLATES = [
-  { id: 'custom',  name: 'A mi medida',   daily_loss: 0, total_loss: 0, base: 'day_start_balance', reset_hour: 0,
+  { id: 'custom',  name: 'A mi medida',   daily_loss: 0, total_loss: 0, base: 'day_start_balance', reset_hour: 0, profit_target: 0, min_days: 0, consistency: 0,
     note_es: 'Pon tus propios números.', note_en: 'Set your own numbers.' },
-  { id: 'ftmo',    name: 'FTMO',           daily_loss: 5, total_loss: 10, base: 'day_start_balance', reset_hour: 0,
-    note_es: 'Suele medir sobre el balance al inicio del día, hora CE(S)T.', note_en: 'Usually measured on day-start balance, CE(S)T.' },
-  { id: 'the5ers', name: 'The5ers',        daily_loss: 4, total_loss: 6,  base: 'day_start_balance', reset_hour: 0,
+  { id: 'ftmo',    name: 'FTMO',           daily_loss: 5, total_loss: 10, base: 'day_start_balance', reset_hour: 0, profit_target: 10, min_days: 0, consistency: 0,
+    note_es: 'Suele medir sobre el balance al inicio del día, hora CE(S)T. Objetivo 10% fase 1.', note_en: 'Usually measured on day-start balance, CE(S)T. 10% target phase 1.' },
+  { id: 'the5ers', name: 'The5ers',        daily_loss: 4, total_loss: 6,  base: 'day_start_balance', reset_hour: 0, profit_target: 6, min_days: 3, consistency: 0,
     note_es: 'Confirma si tu programa mide sobre balance o equity.', note_en: 'Check whether your program uses balance or equity.' },
-  { id: 'topstep', name: 'Topstep',        daily_loss: 3, total_loss: 6,  base: 'day_start_balance', reset_hour: 17,
-    note_es: 'Su día suele arrancar por la tarde (hora de Chicago). Verifícalo.', note_en: 'Their day usually starts in the afternoon (Chicago). Verify it.' },
-  { id: 'funded',  name: 'Otra fondeada',  daily_loss: 5, total_loss: 10, base: 'day_start_balance', reset_hour: 0,
+  { id: 'topstep', name: 'Topstep',        daily_loss: 3, total_loss: 6,  base: 'day_start_balance', reset_hour: 17, profit_target: 6, min_days: 2, consistency: 50,
+    note_es: 'Su día suele arrancar por la tarde (hora de Chicago). Tiene regla de consistencia.', note_en: 'Their day usually starts in the afternoon (Chicago). Has a consistency rule.' },
+  { id: 'funded',  name: 'Otra fondeada',  daily_loss: 5, total_loss: 10, base: 'day_start_balance', reset_hour: 0, profit_target: 8, min_days: 0, consistency: 0,
     note_es: 'Copia aquí los números de tu contrato.', note_en: 'Copy the numbers from your contract here.' },
-  { id: 'own',     name: 'Capital propio', daily_loss: 2, total_loss: 10, base: 'day_start_equity',  reset_hour: 0,
+  { id: 'own',     name: 'Capital propio', daily_loss: 2, total_loss: 10, base: 'day_start_equity',  reset_hour: 0, profit_target: 0, min_days: 0, consistency: 0,
     note_es: 'Sin norma externa: pon el límite que de verdad respetarías.', note_en: 'No external rule: set a limit you would actually respect.' },
 ];
 
@@ -131,6 +146,7 @@ export function mergeConfig(saved: any): ManagerConfig {
     },
     limits: { ...D.limits, ...(s.limits || {}) },
     news: { ...D.news, ...(s.news || {}) },
+    challenge: { ...D.challenge, ...(s.challenge || {}) },
   };
 }
 
@@ -222,6 +238,18 @@ export function sanitize(input: any): ManagerConfig {
   n.after_min = num(n.after_min, 0, 240, 15);
   n.action = BREACH.includes(n.action) ? n.action : 'block_new';
   n.only_symbol = !!n.only_symbol;
+
+  // --- reto (marcador) ---
+  const ch = c.challenge;
+  ch.on = !!ch.on;
+  ch.firm = String(ch.firm || 'custom').slice(0, 20);
+  ch.phase = ['1', '2', 'funded'].includes(String(ch.phase)) ? String(ch.phase) : '1';
+  ch.profit_target_pct = !!ch.profit_target_pct;
+  ch.profit_target = num(ch.profit_target, 0, ch.profit_target_pct ? 1000 : 1e9, 0);
+  ch.min_days = num(ch.min_days, 0, 60, 0);
+  ch.max_days = num(ch.max_days, 0, 365, 0);
+  ch.consistency = num(ch.consistency, 0, 100, 0);
+  ch.no_weekend_hold = !!ch.no_weekend_hold;
 
   return c;
 }

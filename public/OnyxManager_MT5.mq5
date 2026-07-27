@@ -66,6 +66,10 @@ string   g_lastError  = "";
 string   g_events     = "";
 string   g_doneCmds   = "";
 
+// "Mi reto": marcador que manda el servidor (solo se muestra)
+string   g_chVerdict  = "";   // on_track | watch | breach
+string   g_chLine     = "";   // primera linea del resumen
+
 int   PY = 22;
 color COL_BG   = C'26,33,51';
 color COL_LINE = C'56,69,95';
@@ -276,7 +280,7 @@ void DrawPanel()
    ObjectSetInteger(0, bg, OBJPROP_XDISTANCE, X);
    ObjectSetInteger(0, bg, OBJPROP_YDISTANCE, y - 10);
    ObjectSetInteger(0, bg, OBJPROP_XSIZE, W);
-   ObjectSetInteger(0, bg, OBJPROP_YSIZE, g_guardOn ? 312 : 268);
+   ObjectSetInteger(0, bg, OBJPROP_YSIZE, (g_guardOn ? 312 : 268) + (g_chVerdict != "" ? 34 : 0));
    ObjectSetInteger(0, bg, OBJPROP_BGCOLOR, COL_BG);
    ObjectSetInteger(0, bg, OBJPROP_BORDER_TYPE, BORDER_FLAT);
    ObjectSetInteger(0, bg, OBJPROP_COLOR, COL_LINE);
@@ -304,6 +308,20 @@ void DrawPanel()
       y += PY - 6;
    }
    else ObjectDelete(0, PREFIX + "err");
+
+   //---- "Mi reto": marcador (solo informativo, lo calcula el servidor) ----
+   if(g_chVerdict != "")
+   {
+      string cv; color cc;
+      if(g_chVerdict == "breach")      { cv = T("Reto: regla rota", "Challenge: rule broken"); cc = COL_RED; }
+      else if(g_chVerdict == "watch")  { cv = T("Reto: vigila", "Challenge: watch");            cc = (color)C'245,158,11'; }
+      else                             { cv = T("Reto: en camino", "Challenge: on track");      cc = COL_ON; }
+      PanelLabel("chv", cv, X + 12, y, cc, 8, true);
+      y += PY - 6;
+      if(g_chLine != "") { PanelLabel("chl", StringSubstr(g_chLine, 0, 34), X + 12, y, COL_MUT, 7); y += 14; }
+      else ObjectDelete(0, PREFIX + "chl");
+   }
+   else { ObjectDelete(0, PREFIX + "chv"); ObjectDelete(0, PREFIX + "chl"); }
 
    //---- Fase 2: estado de mi plan de trading ---------------------
    if(g_guardOn)
@@ -562,6 +580,20 @@ void ApplyVerdict(string resp)
    g_allowNew = allow;
 }
 
+//==================== "MI RETO": SOLO MOSTRAR =====================
+// El servidor calcula el marcador del reto y nos manda verdict + lineas.
+// El EA no decide nada con esto: solo lo pinta en el panel.
+void ParseChallenge(string resp)
+{
+   g_chVerdict = ""; g_chLine = "";
+   string cs = JsonSection(resp, "challenge");
+   if(cs == "") return;
+   g_chVerdict = JsonStr(cs, "verdict", "");
+   string arr = JsonArray(cs, "lines");
+   int a = StringFind(arr, "\"");
+   if(a >= 0) { int b = StringFind(arr, "\"", a + 1); if(b > a) g_chLine = StringSubstr(arr, a + 1, b - a - 1); }
+}
+
 //==================== APLICAR EL BLOQUEO ==========================
 // MetaTrader no deja a un EA vetar una orden manual antes de enviarse.
 // Lo que si podemos es cerrarla nada mas aparecer. No es elegante, y tiene
@@ -697,6 +729,7 @@ void Sync()
 
    ApplyConfig(resp);
    ApplyVerdict(resp);
+   ParseChallenge(resp);
    HandleCommands(resp);
 }
 

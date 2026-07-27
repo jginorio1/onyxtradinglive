@@ -6,6 +6,7 @@ import { analyze, bestOf, worstOf, topPairs, fmtDur, type T, type Bucket } from 
 import RangeBar, { type Range, defaultRange } from '@/app/admin/RangeBar';
 import Journal from './Journal';
 import LotCalculator from './LotCalculator';
+import Challenge from './Challenge';
 import Costs from './Costs';
 import AccountExtras from './AccountExtras';
 import CompareAccounts from './CompareAccounts';
@@ -42,7 +43,7 @@ function genDemo(accId: string): TT[] {
 type TT = T & { account_id: string; id: string; commission?: number; swap?: number; profit?: number };
 type Acc = { id: string; login: number; nickname: string | null; broker: string; platform: string; balance: number; currency: string; fund_target?: number | null; fund_max_daily?: number | null; fund_max_total?: number | null; fund_start?: number | null; acc_type?: string | null; challenge_status?: string | null; challenge_cost?: number | null };
 type Lang = 'es' | 'en';
-type View = 'hub' | 'rendimiento' | 'calendario' | 'operaciones' | 'costes' | 'cuentas';
+type View = 'hub' | 'rendimiento' | 'calendario' | 'operaciones' | 'costes' | 'cuentas' | 'reto';
 
 function money(n: number, dec = 0) { return (n >= 0 ? '+$' : '-$') + Math.abs(n).toLocaleString('en-US', { maximumFractionDigits: dec }); }
 function money2(n: number) { return (n >= 0 ? '+$' : '-$') + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
@@ -70,6 +71,7 @@ const D = {
     insights: '💡 Onyx te dice', health: 'Salud de la cuenta', back: '← Volver al panel',
     secPerf: 'Rendimiento', secPerfSub: 'KPIs, equity, pares y horas', secCal: 'Calendario', secCalSub: 'P&L por día y mes',
     secOps: 'Operaciones', secOpsSub: 'Diario, filtros y lotaje', secCost: 'Costes', secCostSub: 'Comisión y swap', secAcc: 'Cuentas', secAccSub: 'Fondeo, retiros y comparar',
+    secReto: 'Mi reto', secRetoSub: '¿Sigues pasando el challenge?',
     kNet: 'Ganancia neta', kWR: 'Win rate', kPF: 'Profit factor', kExp: 'Expectancy', kAvgW: 'Ganancia media', kAvgL: 'Pérdida media', kPayoff: 'Payoff', kDur: 'Duración media', kOps: 'Operaciones', kBest: 'Mejor trade', kWorst: 'Peor trade', kBE: 'Break even',
     equity: 'Curva de equity', notEnough: 'Aún no hay suficientes operaciones.', ddMax: 'Drawdown máx:', streakMax: 'Racha máx:',
     donutTitle: 'Resultado de operaciones', dWin: 'Ganadoras', dLoss: 'Perdedoras', dBE: 'Break even', dCenter: 'ganadoras',
@@ -99,6 +101,7 @@ const D = {
     insights: '💡 Onyx says', health: 'Account health', back: '← Back to dashboard',
     secPerf: 'Performance', secPerfSub: 'KPIs, equity, pairs and hours', secCal: 'Calendar', secCalSub: 'P&L by day and month',
     secOps: 'Trades', secOpsSub: 'Journal, filters and lots', secCost: 'Costs', secCostSub: 'Commission and swap', secAcc: 'Accounts', secAccSub: 'Funding, payouts and compare',
+    secReto: 'My challenge', secRetoSub: 'Are you still passing?',
     kNet: 'Net profit', kWR: 'Win rate', kPF: 'Profit factor', kExp: 'Expectancy', kAvgW: 'Avg win', kAvgL: 'Avg loss', kPayoff: 'Payoff', kDur: 'Avg duration', kOps: 'Trades', kBest: 'Best trade', kWorst: 'Worst trade', kBE: 'Break even',
     equity: 'Equity curve', notEnough: 'Not enough trades yet.', ddMax: 'Max drawdown:', streakMax: 'Max streak:',
     donutTitle: 'Trade outcome', dWin: 'Winners', dLoss: 'Losers', dBE: 'Break even', dCenter: 'winners',
@@ -456,6 +459,7 @@ export default function DashboardClient({ email = '', plan = 'free', profile, tr
     { key: 'operaciones', icon: '📋', label: L.secOps, sub: L.secOpsSub, color: PURPLE, metric: String(a.n), mc: '#f2f5fb', viz: <MiniDonut size={46} segs={[{ v: a.catWin, c: GREEN }, { v: a.catLoss, c: RED }, { v: a.catBE, c: GOLD }]} />, pro: true },
     { key: 'costes', icon: '💸', label: L.secCost, sub: L.secCostSub, color: GOLD, metric: money2(costAll), mc: costAll >= 0 ? GREEN : RED, viz: <Ring size={46} pct={eaten / 100} color={GOLD} value={eaten + '%'} /> },
     { key: 'cuentas', icon: '🗂️', label: L.secAcc, sub: L.secAccSub, color: CYAN, metric: String(accounts.length), mc: '#f2f5fb', viz: <div style={{ width: 100 }}><MiniBars vals={accounts.length ? accounts.map((x) => accStats(x.id).net) : [1, 1]} colors={accounts.length ? accounts.map((x) => (accStats(x.id).net >= 0 ? GREEN : RED)) : [BLUE]} h={44} /></div> },
+    { key: 'reto', icon: '🏁', label: L.secReto, sub: L.secRetoSub, color: GOLD, metric: '', mc: '#f2f5fb', viz: <div style={{ fontSize: 30, lineHeight: 1 }}>🏁</div> },
   ];
 
   const kpi = (lbl: string, val: string, cls = '') => <div className="card kpi"><div className="lbl">{lbl}</div><div className={'val ' + cls}>{val}</div></div>;
@@ -662,6 +666,7 @@ export default function DashboardClient({ email = '', plan = 'free', profile, tr
             {view === 'operaciones' && <div style={{ marginBottom: 14 }}><LotCalculator lang={lang} balance={Number(cur?.balance) || totalBalance || undefined} /></div>}
             {view === 'operaciones' && (!canJournal ? <ProLock L={L} plan={upJ.name} desc={L.dLock1} price={upJ.price} preview={<PreviewJournal />} /> : <Journal trades={filtered} lang={lang} />)}
             {view === 'costes' && <Costs trades={filtered} lang={lang} />}
+            {view === 'reto' && <Challenge lang={lang} />}
 
             {view === 'cuentas' && (<>
               <Card title={L.accCard} icon="🗂️">

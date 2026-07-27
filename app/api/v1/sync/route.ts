@@ -5,6 +5,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { accountLimit } from '@/lib/settings';
 import { forEA, mergeConfig } from '@/lib/manager';
 import { evaluate, registerClosedTrades, newsNear } from '@/lib/managerGuard';
+import { loadChallenge } from '@/lib/challenge';
 import { alertUser, alertOncePerDay } from '@/lib/telegram';
 import { logError } from '@/lib/errlog';
 
@@ -235,6 +236,7 @@ export async function POST(req: NextRequest) {
     let managerCfg: any = null;
     let commands: any[] = [];
     let verdict: any = null;
+    let challenge: any = null;
     try {
       const { data: prof } = await supabaseAdmin.from('profiles').select('plan').eq('id', userId).maybeSingle();
       const { data: planRow } = await supabaseAdmin.from('plans').select('capabilities').eq('id', prof?.plan || 'free').maybeSingle();
@@ -280,10 +282,24 @@ export async function POST(req: NextRequest) {
           .select('id,command,params').eq('account_id', accountId).eq('status', 'pending')
           .order('created_at', { ascending: true }).limit(5);
         commands = cmds || [];
+
+        // "Mi reto": marcador en vivo. Se lo pasamos al EA (compacto) y avisamos
+        // por Telegram una vez al día si una regla está en riesgo o rota.
+        try {
+          const sb = await loadChallenge(userId, accountId);
+          if (sb) {
+            challenge = { verdict: sb.verdict, title: sb.name, lines: sb.lines };
+            if (sb.verdict === 'watch' || sb.verdict === 'breach') {
+              const near = sb.closest ? ` (${sb.closest.es} / ${sb.closest.en})` : '';
+              const head = sb.verdict === 'breach' ? '❌ Regla del reto rota / Challenge rule broken' : '⚠️ Cerca de romper una regla / Close to breaking a rule';
+              await alertOncePerDay(userId, 'funding', 'challenge_' + sb.verdict, `🏁 Onyx · ${sb.name}\n${head}${near}.`).catch(() => {});
+            }
+          }
+        } catch { /* el marcador nunca rompe el sync */ }
       }
     } catch { /* si algo falla aquí, el sync de datos no debe romperse */ }
 
-    return NextResponse.json({ ok: true, received: closed.length, accountId, config: managerCfg, verdict, commands });
+    return NextResponse.json({ ok: true, received: closed.length, accountId, config: managerCfg, verdict, challenge, commands });
   } catch (e: any) {
     console.error('sync error', e);
     await logError('ea_sync', e);

@@ -132,6 +132,14 @@ La web ya está lista (Fase 2 incluida). Para que copie de verdad:
 - **Cron nuevo:** `/api/cron/plan-reminders` (ya en `vercel.json`, diario 15:00 UTC). Usa el mismo `CRON_SECRET`.
 - **Price IDs:** cada plan debe tener su Price ID en Admin → Planes para poder cambiar hacia él.
 
+## 8d. "Mi reto" (marcador de reglas de prop firm)
+
+- **Qué es:** una sección nueva en el dashboard (**Mi reto**) que muestra en vivo, por cada cuenta, cuánto margen queda antes de romper la pérdida diaria/total, el avance al objetivo, días operados y consistencia, con un veredicto: En camino / Vigila / Roto. **Solo mide** (para BLOQUEAR de verdad, el trader activa los límites en Onyx Guardian).
+- **Sin SQL nuevo:** las reglas se guardan en la config del gestor (JSON). Requiere el plan con Guardian (capability `manager`).
+- **Dónde:** dashboard → tarjeta "Mi reto"; el mismo veredicto aparece en el panel del EA dentro de MetaTrader; y avisa por Telegram (usa la alerta de fondeo, una vez al día) cuando una regla está en riesgo o rota.
+- **EA:** las plantillas del Guardian (`public/OnyxManager_MT5.mq5` y `_MT4.mq4`) muestran el veredicto del reto. **Como todo cambio en el EA, pruébalo primero en una cuenta demo** antes de usarlo en real; el marcador que dibuja lo calcula el servidor, el EA solo lo pinta.
+- **Aviso honesto:** las reglas por firma (FTMO, The5ers, Topstep…) son un punto de partida, no la norma oficial. El trader debe confirmarlas con su contrato.
+
 ## 9. Comprobación final
 
 - [ ] Deploy en verde en Vercel
