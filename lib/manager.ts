@@ -102,17 +102,17 @@ export type ManagerConfig = typeof DEFAULT_CONFIG;
 // siempre visibles y son obligatorios.
 // ============================================================
 export const PROP_TEMPLATES = [
-  { id: 'custom',  name: 'A mi medida',   daily_loss: 0, total_loss: 0, base: 'day_start_balance', reset_hour: 0, profit_target: 0, min_days: 0, consistency: 0,
+  { id: 'custom',  name: 'A mi medida',   name_en: 'Custom',       daily_loss: 0, total_loss: 0, base: 'day_start_balance', reset_hour: 0, profit_target: 0, min_days: 0, consistency: 0,
     note_es: 'Pon tus propios números.', note_en: 'Set your own numbers.' },
-  { id: 'ftmo',    name: 'FTMO',           daily_loss: 5, total_loss: 10, base: 'day_start_balance', reset_hour: 0, profit_target: 10, min_days: 0, consistency: 0,
+  { id: 'ftmo',    name: 'FTMO',           name_en: 'FTMO',         daily_loss: 5, total_loss: 10, base: 'day_start_balance', reset_hour: 0, profit_target: 10, min_days: 0, consistency: 0,
     note_es: 'Suele medir sobre el balance al inicio del día, hora CE(S)T. Objetivo 10% fase 1.', note_en: 'Usually measured on day-start balance, CE(S)T. 10% target phase 1.' },
-  { id: 'the5ers', name: 'The5ers',        daily_loss: 4, total_loss: 6,  base: 'day_start_balance', reset_hour: 0, profit_target: 6, min_days: 3, consistency: 0,
+  { id: 'the5ers', name: 'The5ers',        name_en: 'The5ers',      daily_loss: 4, total_loss: 6,  base: 'day_start_balance', reset_hour: 0, profit_target: 6, min_days: 3, consistency: 0,
     note_es: 'Confirma si tu programa mide sobre balance o equity.', note_en: 'Check whether your program uses balance or equity.' },
-  { id: 'topstep', name: 'Topstep',        daily_loss: 3, total_loss: 6,  base: 'day_start_balance', reset_hour: 17, profit_target: 6, min_days: 2, consistency: 50,
+  { id: 'topstep', name: 'Topstep',        name_en: 'Topstep',      daily_loss: 3, total_loss: 6,  base: 'day_start_balance', reset_hour: 17, profit_target: 6, min_days: 2, consistency: 50,
     note_es: 'Su día suele arrancar por la tarde (hora de Chicago). Tiene regla de consistencia.', note_en: 'Their day usually starts in the afternoon (Chicago). Has a consistency rule.' },
-  { id: 'funded',  name: 'Otra fondeada',  daily_loss: 5, total_loss: 10, base: 'day_start_balance', reset_hour: 0, profit_target: 8, min_days: 0, consistency: 0,
+  { id: 'funded',  name: 'Otra fondeada',  name_en: 'Other funded', daily_loss: 5, total_loss: 10, base: 'day_start_balance', reset_hour: 0, profit_target: 8, min_days: 0, consistency: 0,
     note_es: 'Copia aquí los números de tu contrato.', note_en: 'Copy the numbers from your contract here.' },
-  { id: 'own',     name: 'Capital propio', daily_loss: 2, total_loss: 10, base: 'day_start_equity',  reset_hour: 0, profit_target: 0, min_days: 0, consistency: 0,
+  { id: 'own',     name: 'Capital propio', name_en: 'Own capital',  daily_loss: 2, total_loss: 10, base: 'day_start_equity',  reset_hour: 0, profit_target: 0, min_days: 0, consistency: 0,
     note_es: 'Sin norma externa: pon el límite que de verdad respetarías.', note_en: 'No external rule: set a limit you would actually respect.' },
 ];
 

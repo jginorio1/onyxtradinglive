@@ -18,6 +18,19 @@ const T: any = {
     onTrack: 'En camino', watch: 'Vigila', breach: 'Regla rota',
     closest: 'Lo más cerca de romperse', note: 'Estimación según las reglas que cargaste. Confírmalas con tu contrato; no es la norma oficial de la firma. Para BLOQUEAR de verdad, activa los límites en Onyx Guardian.',
     editRules: 'Reglas del reto',
+    intro: 'Copia los datos de tu contrato. Elige tu firma y te ponemos un punto de partida; ajusta lo que haga falta.',
+    secFirm: 'DE QUÉ FIRMA ES', secNums: 'LOS NÚMEROS DE TU RETO',
+    hFirm: 'Al elegirla, rellenamos los números por ti.',
+    hPhase: 'Fase 1, 2 o ya fondeada. Cambia el objetivo.',
+    hBase: 'Base del cálculo. FTMO suele usar el balance al abrir el día.',
+    hDloss: 'Lo máximo que puedes perder en un día.',
+    hTloss: 'Lo máximo que puedes perder desde el inicio de la cuenta.',
+    hTarget: 'Cuánto debes ganar para pasar la fase (0 si ya estás fondeada).',
+    hMindays: 'Días que debes operar como mínimo. 0 = sin regla.',
+    hConsist: 'Un día no puede ser más de este % de tu ganancia total. 0 = sin regla.',
+    hReset: 'Hora del SERVIDOR de tu bróker en que la firma reinicia el día (FTMO 00:00, Topstep 17:00). No es tu hora local.',
+    hWeekend: 'Márcalo si tu firma exige no dejar posiciones abiertas el fin de semana.',
+    hUnit: '% del balance o dólares',
   },
   en: {
     title: 'My challenge', sub: 'See in real time whether you still meet your prop-firm rules.',
@@ -31,6 +44,19 @@ const T: any = {
     onTrack: 'On track', watch: 'Watch', breach: 'Rule broken',
     closest: 'Closest to breaking', note: 'Estimate based on the rules you entered. Confirm them with your contract; it is not the firm official rule. To actually BLOCK, enable limits in Onyx Guardian.',
     editRules: 'Challenge rules',
+    intro: 'Copy the numbers from your contract. Pick your firm and we prefill a starting point; adjust as needed.',
+    secFirm: 'WHICH FIRM IT IS', secNums: 'YOUR CHALLENGE NUMBERS',
+    hFirm: 'Picking it prefills the numbers for you.',
+    hPhase: 'Phase 1, 2 or funded. Changes the target.',
+    hBase: 'What the math is measured on. FTMO usually uses day-start balance.',
+    hDloss: 'The most you can lose in a single day.',
+    hTloss: 'The most you can lose since the account started.',
+    hTarget: 'How much you must gain to pass the phase (0 if already funded).',
+    hMindays: 'Minimum days you must trade. 0 = no rule.',
+    hConsist: 'A single day cannot be more than this % of your total profit. 0 = no rule.',
+    hReset: 'Your broker SERVER hour when the firm resets the day (FTMO 00:00, Topstep 17:00). Not your local time.',
+    hWeekend: 'Check it if your firm requires no open positions over the weekend.',
+    hUnit: '% of balance or dollars',
   },
 };
 
@@ -78,7 +104,9 @@ export default function Challenge({ lang }: { lang: Lang }) {
     return <div style={{ maxWidth: 820, margin: '0 auto' }}><div className="card muted" style={{ textAlign: 'center', padding: 28 }}>🔒 {L.locked}</div></div>;
   }
 
-  const lbl = { fontSize: 11.5, color: 'var(--mut)', display: 'block', marginBottom: 3 } as any;
+  const lbl = { fontSize: 12.5, color: 'var(--tx)', display: 'block', marginBottom: 3 } as any;
+  const hint = (txt: string) => <div style={{ fontSize: 11, color: 'var(--mut)', marginTop: 4, lineHeight: 1.35 }}>{txt}</div>;
+  const grp = { fontSize: 10.5, letterSpacing: '.4px', color: '#6f7c96', textTransform: 'uppercase', margin: '16px 0 8px' } as any;
   const unitSel = (id: string, key: string) => (
     <select value={draft[id]?.[key] ? '%' : '$'} onChange={(e) => setF(id, key, e.target.value === '%')} style={{ margin: 0, width: 58, padding: '6px 4px' }}>
       <option value="%">%</option><option value="$">$</option>
@@ -136,19 +164,23 @@ export default function Challenge({ lang }: { lang: Lang }) {
             {/* Editor de reglas */}
             {d.on && (
               <div style={{ borderTop: '1px solid var(--line)', marginTop: 12, paddingTop: 12 }}>
-                <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>{L.editRules}</div>
-                <div className="grid g3" style={{ gap: 10 }}>
+                <div style={{ background: 'rgba(124,140,255,.10)', border: '1px solid rgba(124,140,255,.25)', borderRadius: 8, padding: '9px 11px', fontSize: 12.5, color: '#c3ccff', lineHeight: 1.4 }}>ℹ️ {L.intro}</div>
+
+                <div style={grp}>{L.secFirm}</div>
+                <div className="grid g3" style={{ gap: 12 }}>
                   <div>
                     <span style={lbl}>{L.firm}</span>
                     <select value={d.firm || 'custom'} onChange={(e) => applyFirm(a.id, e.target.value)} style={{ margin: 0 }}>
-                      {(data.firms || []).map((f: any) => <option key={f.id} value={f.id}>{f.name}</option>)}
+                      {(data.firms || []).map((f: any) => <option key={f.id} value={f.id}>{lang === 'es' ? f.name : (f.name_en || f.name)}</option>)}
                     </select>
+                    {hint(L.hFirm)}
                   </div>
                   <div>
                     <span style={lbl}>{L.phase}</span>
                     <select value={d.phase || '1'} onChange={(e) => setF(a.id, 'phase', e.target.value)} style={{ margin: 0 }}>
                       <option value="1">{L.ph1}</option><option value="2">{L.ph2}</option><option value="funded">{L.phf}</option>
                     </select>
+                    {hint(L.hPhase)}
                   </div>
                   <div>
                     <span style={lbl}>{L.base}</span>
@@ -157,36 +189,51 @@ export default function Challenge({ lang }: { lang: Lang }) {
                       <option value="day_start_equity">{L.baseDSE}</option>
                       <option value="initial_balance">{L.baseInit}</option>
                     </select>
+                    {hint(L.hBase)}
                   </div>
+                </div>
+
+                <div style={grp}>{L.secNums}</div>
+                <div className="grid g3" style={{ gap: 12 }}>
                   <div>
                     <span style={lbl}>{L.dloss}</span>
                     <div className="row" style={{ gap: 6 }}><input type="number" value={d.daily_loss ?? 0} onChange={(e) => setF(a.id, 'daily_loss', Number(e.target.value))} style={{ margin: 0 }} />{unitSel(a.id, 'daily_loss_pct')}</div>
+                    {hint(L.hDloss)}
                   </div>
                   <div>
                     <span style={lbl}>{L.tloss}</span>
                     <div className="row" style={{ gap: 6 }}><input type="number" value={d.total_loss ?? 0} onChange={(e) => setF(a.id, 'total_loss', Number(e.target.value))} style={{ margin: 0 }} />{unitSel(a.id, 'total_loss_pct')}</div>
+                    {hint(L.hTloss)}
                   </div>
                   <div>
                     <span style={lbl}>{L.target}</span>
                     <div className="row" style={{ gap: 6 }}><input type="number" value={d.profit_target ?? 0} onChange={(e) => setF(a.id, 'profit_target', Number(e.target.value))} style={{ margin: 0 }} />{unitSel(a.id, 'profit_target_pct')}</div>
+                    {hint(L.hTarget)}
                   </div>
                   <div>
                     <span style={lbl}>{L.mindays}</span>
                     <input type="number" value={d.min_days ?? 0} onChange={(e) => setF(a.id, 'min_days', Number(e.target.value))} style={{ margin: 0 }} />
+                    {hint(L.hMindays)}
                   </div>
                   <div>
                     <span style={lbl}>{L.consist}</span>
                     <input type="number" value={d.consistency ?? 0} onChange={(e) => setF(a.id, 'consistency', Number(e.target.value))} style={{ margin: 0 }} />
+                    {hint(L.hConsist)}
                   </div>
                   <div>
                     <span style={lbl}>{L.reset}</span>
-                    <input type="number" value={d.reset_hour ?? 0} onChange={(e) => setF(a.id, 'reset_hour', Number(e.target.value))} style={{ margin: 0 }} />
+                    <select value={d.reset_hour ?? 0} onChange={(e) => setF(a.id, 'reset_hour', Number(e.target.value))} style={{ margin: 0 }}>
+                      {Array.from({ length: 24 }).map((_, h) => <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>)}
+                    </select>
+                    {hint(L.hReset)}
                   </div>
                 </div>
-                <label className="row" style={{ gap: 8, marginTop: 10, cursor: 'pointer', fontSize: 13 }}>
-                  <input type="checkbox" checked={!!d.no_weekend_hold} onChange={(e) => setF(a.id, 'no_weekend_hold', e.target.checked)} style={{ width: 'auto', margin: 0 }} /> {L.weekend}
+
+                <label className="row" style={{ gap: 8, marginTop: 12, cursor: 'pointer', fontSize: 13, alignItems: 'flex-start' }}>
+                  <input type="checkbox" checked={!!d.no_weekend_hold} onChange={(e) => setF(a.id, 'no_weekend_hold', e.target.checked)} style={{ width: 'auto', margin: '2px 0 0' }} />
+                  <span>{L.weekend}<span className="muted" style={{ display: 'block', fontSize: 11, marginTop: 1 }}>{L.hWeekend}</span></span>
                 </label>
-                <div className="row" style={{ marginTop: 12 }}>
+                <div className="row" style={{ marginTop: 14 }}>
                   <button className="btn btn-primary" onClick={() => save(a.id)} disabled={busy === a.id}>{busy === a.id ? '…' : L.save}</button>
                 </div>
               </div>
