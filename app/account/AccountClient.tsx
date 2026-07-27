@@ -20,6 +20,12 @@ const D: any = {
     changePlanT: 'Cambiar de plan', chUp: 'Subir', chDown: 'Bajar', chCurrent: 'Plan actual', chMo: '/mes',
     chNote: 'Subir es inmediato (se cobra la diferencia prorrateada). Bajar aplica en tu próximo cobro, sin perder nada hasta entonces.',
     chOkUp: '✓ Plan actualizado', chOkDown: '✓ El cambio aplicará en tu próximo cobro',
+    chCfUp: 'Vas a subir a', chCfDown: 'Vas a bajar a',
+    chCfUpNote: 'El cambio es inmediato y se cobra solo la diferencia prorrateada de lo que queda del mes.',
+    chCfDownNote: 'Se aplicará en tu próximo cobro. Conservas tu plan actual hasta entonces.',
+    chConfirm: 'Confirmar', chCancel: 'Cancelar',
+    chThanksT: 'Bienvenido a', chThanksBody: 'Tu plan ya está activo. ¡Gracias por confiar en Onyx Trading Live!', chThanksBtn: 'Entendido',
+    errSame: 'Ya estás en ese plan.', errNoPrice: 'Ese plan aún no tiene precio configurado. Escríbenos.', errChange: 'No se pudo cambiar el plan. Intenta de nuevo.',
     usage: 'Cuentas MT usadas', of: 'de', unlimited: 'ilimitadas', usageLeft: 'Te queda', usageLeft2: 'cuenta(s).', usageFull: 'Has llegado a tu límite.',
     upTitle: 'Mejorar a', upBtn: 'Mejorar a', andMore: 'y además:', seePlans: 'Ver todos los planes',
     name: 'Nombre', tz: 'Zona horaria', langL: 'Idioma', email: 'Correo', emailNote: 'El correo no se puede cambiar aquí.',
@@ -54,6 +60,12 @@ const D: any = {
     changePlanT: 'Change plan', chUp: 'Upgrade', chDown: 'Downgrade', chCurrent: 'Current plan', chMo: '/mo',
     chNote: 'Upgrade is immediate (the prorated difference is charged). Downgrade applies at your next renewal, keeping everything until then.',
     chOkUp: '✓ Plan updated', chOkDown: '✓ Change applies at your next renewal',
+    chCfUp: 'You are upgrading to', chCfDown: 'You are downgrading to',
+    chCfUpNote: 'The change is immediate and only the prorated difference for the rest of the month is charged.',
+    chCfDownNote: 'It will apply at your next renewal. You keep your current plan until then.',
+    chConfirm: 'Confirm', chCancel: 'Cancel',
+    chThanksT: 'Welcome to', chThanksBody: 'Your plan is now active. Thanks for choosing Onyx Trading Live!', chThanksBtn: 'Got it',
+    errSame: 'You are already on that plan.', errNoPrice: 'That plan has no price configured yet. Contact us.', errChange: 'Could not change the plan. Try again.',
     usage: 'MT accounts used', of: 'of', unlimited: 'unlimited', usageLeft: 'You have', usageLeft2: 'account(s) left.', usageFull: 'You reached your limit.',
     upTitle: 'Upgrade to', upBtn: 'Upgrade to', andMore: 'plus:', seePlans: 'See all plans',
     name: 'Name', tz: 'Time zone', langL: 'Language', email: 'Email', emailNote: 'Email cannot be changed here.',
@@ -112,13 +124,16 @@ export default function AccountClient({ email }: { email: string }) {
   }, [tab, invoices]);
   const [allPlans, setAllPlans] = useState<any[]>([]);
   useEffect(() => { fetch('/api/admin/plans').then((r) => r.ok ? r.json() : null).then((j) => setAllPlans(j?.plans || [])).catch(() => {}); }, []);
-  async function changePlan(planId: string) {
-    setBusy('plan:' + planId);
+  const [chTarget, setChTarget] = useState<{ id: string; name: string; up: boolean } | null>(null);   // confirmación
+  const [chDone, setChDone] = useState<{ name: string; up: boolean } | null>(null);                    // gracias
+  const [chErr, setChErr] = useState('');
+  async function changePlan(planId: string, up: boolean, name: string) {
+    setBusy('plan:' + planId); setChErr('');
     try {
       const r = await fetch('/api/stripe/change-plan', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ plan: planId, annual: false }) });
       const j = await r.json();
-      if (!r.ok) { alert(j.error || 'Error'); return; }
-      setMsg(j.upgrade ? L.chOkUp : L.chOkDown); load(); setTimeout(() => setMsg(''), 3500);
+      if (!r.ok) { setChErr(j.code === 'same' ? L.errSame : j.code === 'no_price' ? L.errNoPrice : L.errChange); return; }
+      setChTarget(null); setChDone({ name, up });     // muestra el mensaje de bienvenida
     } finally { setBusy(''); }
   }
   const L = D[lang];
@@ -244,8 +259,8 @@ export default function AccountClient({ email }: { email: string }) {
                                 <div style={{ fontSize: 13, fontWeight: 600 }}>{nm}</div>
                                 <div style={{ fontSize: 18, fontWeight: 800 }}>${p.price_month}<span className="muted" style={{ fontSize: 11, fontWeight: 400 }}>{L.chMo}</span></div>
                                 <button className={'btn ' + (up ? 'btn-primary' : 'btn-ghost')} style={{ width: '100%', marginTop: 8, fontSize: 12.5, padding: '6px 0' }}
-                                  disabled={busy === 'plan:' + p.id} onClick={() => changePlan(p.id)}>
-                                  {busy === 'plan:' + p.id ? '…' : (up ? '↑ ' + L.chUp : '↓ ' + L.chDown)}
+                                  onClick={() => { setChErr(''); setChTarget({ id: p.id, name: nm, up }); }}>
+                                  {up ? '↑ ' + L.chUp : '↓ ' + L.chDown}
                                 </button>
                               </div>
                             );
@@ -255,6 +270,33 @@ export default function AccountClient({ email }: { email: string }) {
                       </div>
                     );
                   })()}
+
+                  {/* Confirmación de cambio de plan */}
+                  {chTarget && (
+                    <div onClick={() => setChTarget(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 70, padding: 16 }}>
+                      <div onClick={(e) => e.stopPropagation()} className="card" style={{ maxWidth: 420, width: '100%' }}>
+                        <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>{(chTarget.up ? L.chCfUp : L.chCfDown)} <b>{chTarget.name}</b></div>
+                        <p className="muted" style={{ fontSize: 13, lineHeight: 1.6, margin: '0 0 14px' }}>{chTarget.up ? L.chCfUpNote : L.chCfDownNote}</p>
+                        {chErr && <div style={{ color: 'var(--red)', fontSize: 12.5, marginBottom: 10 }}>{chErr}</div>}
+                        <div className="row" style={{ gap: 8, justifyContent: 'flex-end' }}>
+                          <button className="btn btn-ghost" onClick={() => setChTarget(null)}>{L.chCancel}</button>
+                          <button className="btn btn-primary" disabled={busy === 'plan:' + chTarget.id} onClick={() => changePlan(chTarget.id, chTarget.up, chTarget.name)}>{busy === 'plan:' + chTarget.id ? '…' : L.chConfirm}</button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Bienvenida al nuevo plan → al cerrar, recarga para reflejar el cambio */}
+                  {chDone && (
+                    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 70, padding: 16 }}>
+                      <div className="card" style={{ maxWidth: 400, width: '100%', textAlign: 'center' }}>
+                        <div style={{ fontSize: 34, marginBottom: 6 }}>🎉</div>
+                        <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 6 }}>{L.chThanksT} {chDone.name}</div>
+                        <p className="muted" style={{ fontSize: 13.5, lineHeight: 1.6, marginBottom: 16 }}>{L.chThanksBody}</p>
+                        <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => window.location.reload()}>{L.chThanksBtn}</button>
+                      </div>
+                    </div>
+                  )}
 
                   <div style={{ borderTop: '1px solid var(--line)', paddingTop: 14 }}>
                     <div className="row between" style={{ fontSize: 13, marginBottom: 6 }}>
