@@ -53,7 +53,7 @@ export async function POST(req: Request) {
   const accountId = String(b.account_id || '');
   const { data: acc } = await supabaseAdmin.from('trading_accounts')
     .select('id,login,nickname').eq('id', accountId).eq('user_id', user.id).maybeSingle();
-  if (!acc) return NextResponse.json({ error: 'Cuenta no válida.' }, { status: 400 });
+  if (!acc) return NextResponse.json({ error: 'Cuenta no válida.', code: 'invalid' }, { status: 400 });
 
   // Una sola clave Copy activa por cuenta: si regenera, revoca la anterior.
   await supabaseAdmin.from('api_keys').update({ revoked: true })

@@ -1,5 +1,5 @@
 'use client';
-import { toast } from '@/lib/toast';
+import { toast, toastErr } from '@/lib/toast';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import Ambassadors from './Ambassadors';
@@ -315,9 +315,9 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
   const availableCount = team.filter((m) => m.available).length;
   const bannedCount = users.filter((u) => u.banned).length;
 
-  async function userAction(id: string, action: string, value?: any) { setBusy(id + action); const r = await fetch('/api/admin/users', { method: 'PATCH', body: JSON.stringify({ id, action, value }) }); const j = await r.json(); if (!r.ok) toast(j.error || 'error'); await loadUsers(); setBusy(''); }
-  async function delUser(u: User) { if (!confirm(`¿Borrar a ${u.email} y TODOS sus datos?`)) return; setBusy(u.id + 'del'); const r = await fetch('/api/admin/users', { method: 'DELETE', body: JSON.stringify({ id: u.id }) }); const j = await r.json(); if (!r.ok) toast(j.error || 'error'); await loadUsers(); setBusy(''); }
-  async function resetPass(u: User) { setBusy(u.id + 'rst'); const r = await fetch('/api/admin/reset-password', { method: 'POST', body: JSON.stringify({ email: u.email }) }); const j = await r.json(); setBusy(''); if (!r.ok) { toast(j.error || 'error'); return; } if (j.link) { navigator.clipboard.writeText(j.link); toast('Enlace de recuperación copiado:\n\n' + j.link); } else toast('Email de recuperación enviado.'); }
+  async function userAction(id: string, action: string, value?: any) { setBusy(id + action); const r = await fetch('/api/admin/users', { method: 'PATCH', body: JSON.stringify({ id, action, value }) }); const j = await r.json(); if (!r.ok) toastErr(j); await loadUsers(); setBusy(''); }
+  async function delUser(u: User) { if (!confirm(`¿Borrar a ${u.email} y TODOS sus datos?`)) return; setBusy(u.id + 'del'); const r = await fetch('/api/admin/users', { method: 'DELETE', body: JSON.stringify({ id: u.id }) }); const j = await r.json(); if (!r.ok) toastErr(j); await loadUsers(); setBusy(''); }
+  async function resetPass(u: User) { setBusy(u.id + 'rst'); const r = await fetch('/api/admin/reset-password', { method: 'POST', body: JSON.stringify({ email: u.email }) }); const j = await r.json(); setBusy(''); if (!r.ok) { toastErr(j); return; } if (j.link) { navigator.clipboard.writeText(j.link); toast('Enlace de recuperación copiado:\n\n' + j.link); } else toast('Email de recuperación enviado.'); }
 
   const filtered = users.filter((u) => u.email?.toLowerCase().includes(q.toLowerCase()));
   const NAV_GROUPS: { g: string; items: [Tab, string, string][] }[] = [
@@ -620,7 +620,7 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
   useEffect(() => { if (canManage) loadSec(); }, []);
   async function assignPin(memberId: string, pin: string) {
     const r = await fetch('/api/admin/security', { method: 'PATCH', body: JSON.stringify({ userId: memberId, pin }) });
-    const j = await r.json(); if (!r.ok) { toast(j.error || 'error'); return; }
+    const j = await r.json(); if (!r.ok) { toastErr(j); return; }
     setPinEditId(''); setPinVal(''); loadSec();
   }
   function logQuick(days: number | null) {
@@ -629,10 +629,10 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
     setLogTo(new Date().toISOString().slice(0, 10));
   }
 
-  async function add() { if (!email) return; setBusy(true); const r = await fetch('/api/admin/team', { method: 'POST', body: JSON.stringify({ email, role: newRole }) }); const j = await r.json(); setBusy(false); if (!r.ok) { toast(j.error || 'error'); return; } setEmail(''); reload(); loadSec(); if (j.tempPin) toast((j.emailed ? t.t_addedEmailed : t.t_addedNoMail).replace('{pin}', j.tempPin)); }
-  async function changeRole(id: string, r2: string) { const r = await fetch('/api/admin/team', { method: 'PATCH', body: JSON.stringify({ id, role: r2 }) }); const j = await r.json(); if (!r.ok) { toast(j.error || 'error'); return; } reload(); }
-  async function savePerm(id: string, area: string, level: string, current: any) { const perms = { ...(current || {}), [area]: level }; const r = await fetch('/api/admin/team', { method: 'PATCH', body: JSON.stringify({ id, perms }) }); const j = await r.json(); if (!r.ok) { toast(j.error || 'error'); return; } reload(); }
-  async function remove(id: string) { if (!confirm('¿Quitar acceso de administrador a esta persona?')) return; const r = await fetch('/api/admin/team', { method: 'DELETE', body: JSON.stringify({ id }) }); const j = await r.json(); if (!r.ok) { toast(j.error || 'error'); return; } reload(); }
+  async function add() { if (!email) return; setBusy(true); const r = await fetch('/api/admin/team', { method: 'POST', body: JSON.stringify({ email, role: newRole }) }); const j = await r.json(); setBusy(false); if (!r.ok) { toastErr(j); return; } setEmail(''); reload(); loadSec(); if (j.tempPin) toast((j.emailed ? t.t_addedEmailed : t.t_addedNoMail).replace('{pin}', j.tempPin)); }
+  async function changeRole(id: string, r2: string) { const r = await fetch('/api/admin/team', { method: 'PATCH', body: JSON.stringify({ id, role: r2 }) }); const j = await r.json(); if (!r.ok) { toastErr(j); return; } reload(); }
+  async function savePerm(id: string, area: string, level: string, current: any) { const perms = { ...(current || {}), [area]: level }; const r = await fetch('/api/admin/team', { method: 'PATCH', body: JSON.stringify({ id, perms }) }); const j = await r.json(); if (!r.ok) { toastErr(j); return; } reload(); }
+  async function remove(id: string) { if (!confirm('¿Quitar acceso de administrador a esta persona?')) return; const r = await fetch('/api/admin/team', { method: 'DELETE', body: JSON.stringify({ id }) }); const j = await r.json(); if (!r.ok) { toastErr(j); return; } reload(); }
   async function loadLog(member = '') { setLogMember(member); const r = await fetch('/api/admin/activity' + (member ? '?member=' + encodeURIComponent(member) : '')); const j = await r.json(); setLog(j.log || []); }
   useEffect(() => { loadLog(); }, []);
 
@@ -814,9 +814,9 @@ function PlanCard({ plan, isNew, reload, onCancel }: { plan: Plan; isNew?: boole
     const body = { ...p, features: norm(p.features), features_en: norm(p.features_en), capabilities: caps };
     const r = await fetch('/api/admin/plans', { method: isNew ? 'POST' : 'PATCH', body: JSON.stringify(body) });
     const j = await r.json(); setSaving(false);
-    if (!r.ok) { toast(j.error || 'error'); return; } reload();
+    if (!r.ok) { toastErr(j); return; } reload();
   }
-  async function del() { if (!confirm(`${t.pl_confirmDel} "${p.name}"?`)) return; const r = await fetch('/api/admin/plans', { method: 'DELETE', body: JSON.stringify({ id: p.id }) }); const j = await r.json(); if (!r.ok) { toast(j.error || 'error'); return; } reload(); }
+  async function del() { if (!confirm(`${t.pl_confirmDel} "${p.name}"?`)) return; const r = await fetch('/api/admin/plans', { method: 'DELETE', body: JSON.stringify({ id: p.id }) }); const j = await r.json(); if (!r.ok) { toastErr(j); return; } reload(); }
 
   const featES = Array.isArray(p.features) ? p.features.join('\n') : (p.features as any);
   const featEN = Array.isArray(p.features_en) ? p.features_en.join('\n') : (p.features_en as any);

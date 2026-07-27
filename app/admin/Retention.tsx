@@ -1,5 +1,5 @@
 'use client';
-import { toast } from '@/lib/toast';
+import { toast, toastErr } from '@/lib/toast';
 import { useEffect, useState } from 'react';
 import { useT } from '@/lib/adminText';
 import { useLang } from '@/lib/lang';
@@ -34,7 +34,7 @@ export default function Retention() {
     setBusy(key);
     const res = await fetch('/api/admin/retention', { method: 'PATCH', body: JSON.stringify({ key, value }) });
     const j = await res.json(); setBusy('');
-    if (!res.ok) { toast(j.error || 'error'); return; }
+    if (!res.ok) { toastErr(j); return; }
     load();
   }
 

@@ -311,18 +311,6 @@ export default function AccountClient({ email }: { email: string }) {
                   </div>
                 </div>
 
-                {upgrades.map((u) => (
-                  <div key={u.id} className="card" style={{ ...card, border: '1px solid #7c8cff' }}>
-                    <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 4 }}>{L.upTitle} {planName(u, lang)} · ${u.price_month}/{L.perMo}</div>
-                    <div className="muted" style={{ fontSize: 14, marginBottom: 10 }}>{(lang === 'en' ? u.desc_en : u.desc_es) || ''}</div>
-                    <div style={{ marginBottom: 12 }}>
-                      {((lang === 'en' ? u.features_en : u.features) || []).slice(0, 4).map((f: string, i: number) => (
-                        <div key={i} style={{ fontSize: 14, color: '#cfd7e6' }}>✓ {f}</div>
-                      ))}
-                    </div>
-                    <Link className="btn btn-primary" href="/pricing">{L.upBtn} {planName(u, lang)} →</Link>
-                  </div>
-                ))}
                 {data.addons?.extra_account_enabled && data.addons?.extra_account_price_id && sub && !isUnlimited && (
                   <div className="card" style={card}>
                     <div className="row between" style={{ flexWrap: 'wrap', gap: 12 }}>

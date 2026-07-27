@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
+import { errMsg } from '@/lib/i18nErrors';
 
 // ============================================================
 // Avisos (toasts) globales, con estilo Onyx y bilingües.
@@ -13,7 +14,7 @@ import { useLang } from '@/lib/lang';
 // El <Toaster/> vive una sola vez en el layout raíz y los pinta.
 // ============================================================
 
-export type ToastMsg = string | { es: string; en: string };
+export type ToastMsg = string | { es: string; en: string } | { api: any };
 type Kind = 'error' | 'ok' | 'info';
 type Item = { id: number; msg: ToastMsg; kind: Kind };
 
@@ -29,6 +30,12 @@ export function toast(msg: ToastMsg, kind: Kind = 'error') {
   setTimeout(() => { items = items.filter((i) => i.id !== id); emit(); }, 4500);
 }
 
+// Aviso a partir de la respuesta de una API: traduce por `code` según el idioma
+// (el propio Toaster resuelve el idioma). No hace falta pasar lang aquí.
+export function toastErr(apiJson: any, kind: Kind = 'error') {
+  toast({ api: apiJson } as ToastMsg, kind);
+}
+
 export function Toaster() {
   const { lang } = useLang();
   const [, force] = useState(0);
@@ -38,7 +45,11 @@ export function Toaster() {
     return () => { subs = subs.filter((s) => s !== f); };
   }, []);
 
-  const resolve = (m: ToastMsg) => typeof m === 'string' ? m : (lang === 'es' ? m.es : m.en);
+  const resolve = (m: ToastMsg) => {
+    if (typeof m === 'string') return m;
+    if ('api' in m) return errMsg(m.api, lang);
+    return lang === 'es' ? m.es : m.en;
+  };
   const color = (k: Kind) => k === 'ok' ? '#34e2a0' : k === 'error' ? '#ff6b7d' : '#7c8cff';
   const dismiss = (id: number) => { items = items.filter((i) => i.id !== id); emit(); };
 

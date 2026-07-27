@@ -65,11 +65,11 @@ export async function POST(req: Request) {
 
   const b = await req.json().catch(() => ({}));
   const master = String(b.master_account_id || ''), slave = String(b.slave_account_id || '');
-  if (!master || !slave || master === slave) return NextResponse.json({ error: 'Elige una master y una esclava distintas.' }, { status: 400 });
+  if (!master || !slave || master === slave) return NextResponse.json({ error: 'Elige una master y una esclava distintas.', code: 'invalid' }, { status: 400 });
 
   // Ambas cuentas deben ser del usuario.
   const { data: accs } = await supabaseAdmin.from('trading_accounts').select('id').eq('user_id', user.id).in('id', [master, slave]);
-  if ((accs || []).length !== 2) return NextResponse.json({ error: 'Cuenta no válida.' }, { status: 400 });
+  if ((accs || []).length !== 2) return NextResponse.json({ error: 'Cuenta no válida.', code: 'invalid' }, { status: 400 });
 
   const patch: any = {
     owner_id: user.id, master_account_id: master, slave_account_id: slave,
@@ -121,7 +121,7 @@ export async function POST(req: Request) {
   if (rows.length >= pc.max) return NextResponse.json({ error: `Llegaste al máximo de ${pc.max} enlaces. Añade cuentas esclava extra como add-on.`, code: 'limit' }, { status: 403 });
 
   const { error } = await supabaseAdmin.from('copy_links').insert(patch);
-  if (error) return NextResponse.json({ error: error.message.includes('duplicate') ? 'Ese enlace ya existe.' : 'No se pudo crear.' }, { status: 400 });
+  if (error) return NextResponse.json({ error: error.message.includes('duplicate') ? 'Ese enlace ya existe.' : 'No se pudo crear.', code: 'invalid' }, { status: 400 });
   return NextResponse.json({ ok: true });
 }
 
