@@ -2,11 +2,41 @@ import { NextResponse } from 'next/server';
 import { stripe, planFromPriceId } from '@/lib/stripe';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { ambSettings, rateFor } from '@/lib/ambassadors';
+import { enforcePlanLimits, notifyPlanChange, planRank } from '@/lib/planNotify';
 
 export const runtime = 'nodejs';
 
 async function setByCustomer(customerId: string, fields: any) {
   await supabaseAdmin.from('profiles').update(fields).eq('stripe_customer_id', customerId);
+}
+
+// Cuando el plan efectivo cambia, decidimos si es el corte de un downgrade
+// programado (o cualquier bajada) para pausar lo que sobra y avisar al trader.
+async function applyPlanTransition(customerId: string, newPlan: string) {
+  const { data: prof } = await supabaseAdmin.from('profiles')
+    .select('id,plan,pending_plan').eq('stripe_customer_id', customerId).maybeSingle() as any;
+  if (!prof) { await setByCustomer(customerId, { plan: newPlan }); return; }
+
+  const oldPlan = prof.plan;
+  const rank = await planRank();
+  const isDown = (rank[newPlan] ?? 0) < (rank[oldPlan] ?? 0);
+
+  // Guardar el plan nuevo y, si era un downgrade programado que ya llegó, limpiar.
+  const fields: any = { plan: newPlan };
+  if (prof.pending_plan === newPlan) {
+    Object.assign(fields, { pending_plan: null, pending_plan_at: null, pending_schedule_id: null, pending_notified_3d: false, pending_keep: null });
+  }
+  await supabaseAdmin.from('profiles').update(fields).eq('id', prof.id);
+
+  if (isDown && oldPlan !== newPlan) {
+    await enforcePlanLimits(prof.id, newPlan);
+    const { data: pl } = await supabaseAdmin.from('plans').select('name,name_en').eq('id', newPlan).maybeSingle();
+    const nm = { es: (pl as any)?.name || newPlan, en: (pl as any)?.name_en || (pl as any)?.name || newPlan };
+    await notifyPlanChange(prof.id,
+      { es: `Tu plan cambió a ${nm.es}`, en: `Your plan changed to ${nm.en}` },
+      { es: `Tu plan ahora es ${nm.es}. Si alguna función quedó pausada por el nuevo límite, vuelve a estar disponible en cuanto subas de plan.`,
+        en: `Your plan is now ${nm.en}. If any feature was paused by the new limit, it becomes available again as soon as you upgrade.` });
+  }
 }
 
 // Acredita la comisión del embajador cuando el cliente paga una factura.
@@ -100,15 +130,24 @@ export async function POST(req: Request) {
     } else if (event.type === 'charge.refunded') {
       const ch: any = event.data.object;
       await reverseCommission(ch.invoice);
+    } else if (event.type === 'invoice.payment_failed') {
+      // El cobro falló (tarjeta vencida, sin fondos…). Avisamos "plan en riesgo"
+      // pero NO quitamos funciones: Stripe reintenta (dunning) antes de cancelar.
+      const inv: any = event.data.object;
+      const { data: prof } = await supabaseAdmin.from('profiles').select('id').eq('stripe_customer_id', inv.customer).maybeSingle() as any;
+      if (prof?.id) {
+        await notifyPlanChange(prof.id,
+          { es: 'Tu plan está en riesgo: no pudimos cobrar', en: 'Your plan is at risk: payment failed' },
+          { es: 'No pudimos procesar tu pago. Actualiza tu tarjeta en Mi cuenta → Suscripción para no perder tu plan. Volveremos a intentarlo automáticamente.',
+            en: 'We could not process your payment. Update your card in My account → Subscription to keep your plan. We will retry automatically.' });
+      }
     } else if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.deleted') {
       const sub: any = event.data.object;
       const priceId = sub.items.data[0]?.price?.id;
       const active = sub.status === 'active' || sub.status === 'trialing';
-      await setByCustomer(sub.customer, {
-        plan: active ? await planFromPriceId(priceId) : 'free',
-        subscription_status: sub.status,
-        stripe_subscription_id: sub.id,
-      });
+      const newPlan = active ? await planFromPriceId(priceId) : 'free';
+      await setByCustomer(sub.customer, { subscription_status: sub.status, stripe_subscription_id: sub.id });
+      await applyPlanTransition(sub.customer, newPlan);
     }
   } catch (e: any) {
     console.error('webhook handler error', e);

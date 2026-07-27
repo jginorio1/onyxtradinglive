@@ -103,6 +103,15 @@ export async function POST(req: NextRequest) {
     if (!accountRow?.id) return NextResponse.json({ ok: false, error: 'no se pudo guardar la cuenta' }, { status: 500 });
     const accountId = accountRow.id;
 
+    // Cuenta pausada por el límite del plan (tras un downgrade): sigue "conectada"
+    // pero NO se gestiona (ni Guardian, ni manager, ni copy). Se reactiva al subir de plan.
+    {
+      const { data: pp } = await supabaseAdmin.from('trading_accounts').select('plan_paused').eq('id', accountId).maybeSingle();
+      if ((pp as any)?.plan_paused) {
+        return NextResponse.json({ ok: true, paused: true, reason: 'plan_limit', message: 'Cuenta pausada por el límite de tu plan. | Account paused by your plan limit.' });
+      }
+    }
+
     // Datos declarados al crear la clave (tipo y tamaño de la cuenta).
     // Solo se rellenan si el usuario aún no los ha puesto a mano en el panel.
     if (keyRow.acc_type || keyRow.acc_size) {

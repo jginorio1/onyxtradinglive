@@ -118,9 +118,19 @@ La web ya está lista (Fase 2 incluida). Para que copie de verdad:
 
 ## 8b. Stripe · webhook y cambio de plan
 
-- **Webhook (importante):** en Stripe (modo correcto: Test o Live) → Developers → Webhooks, el endpoint debe apuntar a `https://www.onyxtradinglive.com/api/stripe/webhook` (con `www`; sin www da 308 y falla). Eventos: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.paid`, `charge.refunded`. El `STRIPE_WEBHOOK_SECRET` en Vercel debe ser el de ese endpoint y del mismo modo.
+- **Webhook (importante):** en Stripe (modo correcto: Test o Live) → Developers → Webhooks, el endpoint debe apuntar a `https://www.onyxtradinglive.com/api/stripe/webhook` (con `www`; sin www da 308 y falla). Eventos: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.paid`, `invoice.payment_failed`, `charge.refunded`. El `STRIPE_WEBHOOK_SECRET` en Vercel debe ser el de ese endpoint y del mismo modo.
 - **Precios:** en modo live, cada precio debe ser ≥ $0.50 (mínimo de Stripe). Para pruebas usa modo test con la tarjeta `4242 4242 4242 4242`.
-- **Cambio de plan:** el trader sube/baja de plan desde Mi cuenta → Suscripción (usa `/api/stripe/change-plan`). Requiere que cada plan tenga su Price ID en Admin → Planes. Subir es inmediato (prorrateo); bajar aplica al próximo cobro.
+
+## 8c. Cambio de plan (subir / bajar) — comportamiento
+
+- **Correr SQL:** `supabase/plan_change.sql` (una vez). Añade el estado del cambio pendiente y `plan_paused` a las cuentas.
+- **Subir de plan:** inmediato, cobra la diferencia prorrateada. Si el plan nuevo ya incluye add-ons (p. ej. Black Onyx ilimitado), esos add-ons pagados se **quitan automáticamente** para no cobrar doble.
+- **Bajar de plan:** **no quita nada al instante.** Se programa con un *Subscription Schedule* para el final del periodo ya pagado; el trader conserva su plan actual y todas sus funciones hasta esa fecha. En el corte, Stripe cambia al plan menor, el webhook aplica los límites (pausa —sin borrar— el copy y las cuentas que sobren) y avisa al trader.
+- **Elegir cuentas:** si el plan menor permite menos cuentas MT, el trader elige en Mi cuenta → Cuentas cuáles conservar; las demás se pausan (no se borran) y se reactivan al subir.
+- **Cancelar un cambio programado:** botón "Cancelar cambio" en Mi cuenta → Suscripción (libera el schedule).
+- **Avisos:** al programar el cambio, 3 días antes (cron), y el día del corte → por correo y Telegram. Pago fallido → aviso "plan en riesgo" (no se quita nada hasta que Stripe cancele).
+- **Cron nuevo:** `/api/cron/plan-reminders` (ya en `vercel.json`, diario 15:00 UTC). Usa el mismo `CRON_SECRET`.
+- **Price IDs:** cada plan debe tener su Price ID en Admin → Planes para poder cambiar hacia él.
 
 ## 9. Comprobación final
 

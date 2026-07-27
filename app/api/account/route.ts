@@ -7,7 +7,7 @@ import { accountLimit, addonSettings, retentionSettings, ensureProfile } from '@
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-const FIELDS = 'id,email,plan,subscription_status,stripe_customer_id,stripe_subscription_id,full_name,timezone,lang,country,experience,trade_style,platform,prop_firm,goal,notify_email,notify_weekly,notify_funding,notify_marketing,created_at';
+const FIELDS = 'id,email,plan,subscription_status,stripe_customer_id,stripe_subscription_id,full_name,timezone,lang,country,experience,trade_style,platform,prop_firm,goal,notify_email,notify_weekly,notify_funding,notify_marketing,created_at,pending_plan,pending_plan_at,pending_keep';
 // Sin las columnas del perfil de trader, por si aún no se corrió onboarding_v1.sql
 const FIELDS_BASE = 'id,email,plan,subscription_status,stripe_customer_id,stripe_subscription_id,full_name,timezone,lang,notify_email,notify_weekly,notify_funding,notify_marketing,created_at';
 
@@ -24,7 +24,12 @@ export async function GET() {
     // Si faltan las columnas nuevas (SQL sin correr), reintenta con las básicas
     if (first.error) { const r = await supabaseAdmin.from('profiles').select(FIELDS_BASE).eq('id', user.id).maybeSingle(); prof = r.data; }
     const { data: plans } = await supabaseAdmin.from('plans').select('*').eq('active', true).order('sort', { ascending: true });
-    const { data: accounts } = await supabaseAdmin.from('trading_accounts').select('id,login,broker,server,platform,balance,last_sync_at').eq('user_id', user.id).order('created_at', { ascending: true });
+    let accounts: any[] = [];
+    {
+      const r = await supabaseAdmin.from('trading_accounts').select('id,login,broker,server,platform,balance,last_sync_at,plan_paused').eq('user_id', user.id).order('created_at', { ascending: true });
+      if (r.error) { const r2 = await supabaseAdmin.from('trading_accounts').select('id,login,broker,server,platform,balance,last_sync_at').eq('user_id', user.id).order('created_at', { ascending: true }); accounts = r2.data || []; }
+      else accounts = r.data || [];
+    }
     const { data: keys } = await supabaseAdmin.from('api_keys').select('key,label,revoked,last_used_at').eq('user_id', user.id).eq('revoked', false).limit(1);
 
     // Datos de la suscripción en Stripe (si tiene)
@@ -47,11 +52,30 @@ export async function GET() {
     const addons = await addonSettings();
     const retention = await retentionSettings();
 
+    // Cambio de plan programado (downgrade diferido): qué, cuándo y qué implica.
+    let pending: any = null;
+    if (prof?.pending_plan) {
+      const pRow: any = (plans || []).find((x: any) => x.id === prof.pending_plan);
+      const base = Number(pRow?.max_accounts ?? 1);
+      const unlimited = base >= 999;
+      const losesCopy = !(pRow?.capabilities as any)?.copy;
+      pending = {
+        plan: prof.pending_plan,
+        planName: pRow?.name || prof.pending_plan,
+        planNameEn: pRow?.name_en || pRow?.name || prof.pending_plan,
+        at: prof.pending_plan_at,
+        newMax: unlimited ? null : base,
+        overBy: unlimited ? 0 : Math.max(0, accounts.length - base),
+        losesCopy,
+        keep: Array.isArray(prof.pending_keep) ? prof.pending_keep : [],
+      };
+    }
+
     return NextResponse.json({
-      limit, addons, retention,
+      limit, addons, retention, pending,
       profile: prof || null,
       plans: plans || [],
-      accounts: accounts || [],
+      accounts,
       apiKey: keys?.[0]?.key || null,
       subscription: sub,
     });
@@ -79,6 +103,13 @@ export async function PATCH(req: Request) {
     };
     Object.keys(OPTS).forEach((k) => { if (b[k] !== undefined && (b[k] === '' || OPTS[k].includes(String(b[k])))) fields[k] = b[k] ? String(b[k]) : null; });
     ['notify_email', 'notify_weekly', 'notify_funding', 'notify_marketing'].forEach((k) => { if (b[k] !== undefined) fields[k] = !!b[k]; });
+    // Cuentas a conservar cuando aplique un downgrade (solo ids propias, sanea)
+    if (b.pending_keep !== undefined) {
+      const ids = Array.isArray(b.pending_keep) ? b.pending_keep.map((x: any) => String(x)).slice(0, 100) : [];
+      const { data: own } = await supabaseAdmin.from('trading_accounts').select('id').eq('user_id', user.id);
+      const ownSet = new Set((own || []).map((a: any) => String(a.id)));
+      fields.pending_keep = ids.filter((id: string) => ownSet.has(id));
+    }
     if (!Object.keys(fields).length) return NextResponse.json({ ok: true });
 
     const { error } = await supabaseAdmin.from('profiles').update(fields).eq('id', user.id);

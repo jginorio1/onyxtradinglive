@@ -28,6 +28,14 @@ const D: any = {
     chConfirm: 'Confirmar', chCancel: 'Cancelar',
     chThanksT: 'Bienvenido a', chThanksBody: 'Tu plan ya está activo. ¡Gracias por confiar en Onyx Trading Live!', chThanksBtn: 'Entendido',
     errSame: 'Ya estás en ese plan.', errNoPrice: 'Ese plan aún no tiene precio configurado. Escríbenos.', errChange: 'No se pudo cambiar el plan. Intenta de nuevo.',
+    pendT: 'Cambio de plan programado', pendTo: 'Bajarás a', pendOn: 'el', pendKeep: 'Conservas tu plan actual y todas sus funciones hasta esa fecha.',
+    pendCancel: 'Cancelar cambio', pendCanceling: 'Cancelando…', pendCanceled: 'Cambio cancelado. Sigues en tu plan actual.',
+    pendLoseCopy: 'En esa fecha se pausará tu copy trading (no se borra; vuelve al subir de plan).',
+    pendOver: 'Tu plan nuevo permite {n} cuenta(s) y tienes {m}. En la fecha del cambio pausaremos las que sobren.',
+    keepT: 'Elige qué cuentas conservar', keepSub: 'Tu plan nuevo permite {n}. Marca las que quieres mantener activas; el resto se pausará (no se borra).',
+    keepSave: 'Guardar selección', keepSaved: 'Selección guardada', keepMax: 'Ya elegiste el máximo permitido.',
+    accPaused: 'Pausada por plan', pausedNote: 'Pausada por el límite de tu plan. Sube de plan para reactivarla.',
+    dgDate: 'Se aplicará el', dgLoseCopy: 'Perderás copy trading (se pausa, no se borra).', dgLoseAcc: 'Se pausarán {n} cuenta(s) que exceden el nuevo límite.',
     usage: 'Cuentas MT usadas', of: 'de', unlimited: 'ilimitadas', usageLeft: 'Te queda', usageLeft2: 'cuenta(s).', usageFull: 'Has llegado a tu límite.',
     upTitle: 'Mejorar a', upBtn: 'Mejorar a', andMore: 'y además:', seePlans: 'Ver todos los planes',
     name: 'Nombre', tz: 'Zona horaria', langL: 'Idioma', email: 'Correo', emailNote: 'El correo no se puede cambiar aquí.',
@@ -69,6 +77,14 @@ const D: any = {
     chConfirm: 'Confirm', chCancel: 'Cancel',
     chThanksT: 'Welcome to', chThanksBody: 'Your plan is now active. Thanks for choosing Onyx Trading Live!', chThanksBtn: 'Got it',
     errSame: 'You are already on that plan.', errNoPrice: 'That plan has no price configured yet. Contact us.', errChange: 'Could not change the plan. Try again.',
+    pendT: 'Scheduled plan change', pendTo: 'You will move to', pendOn: 'on', pendKeep: 'You keep your current plan and all its features until that date.',
+    pendCancel: 'Cancel change', pendCanceling: 'Canceling…', pendCanceled: 'Change canceled. You stay on your current plan.',
+    pendLoseCopy: 'On that date your copy trading will be paused (not deleted; it returns when you upgrade).',
+    pendOver: 'Your new plan allows {n} account(s) and you have {m}. On the change date we will pause the extra ones.',
+    keepT: 'Choose which accounts to keep', keepSub: 'Your new plan allows {n}. Check the ones you want to keep active; the rest will be paused (not deleted).',
+    keepSave: 'Save selection', keepSaved: 'Selection saved', keepMax: 'You already picked the maximum allowed.',
+    accPaused: 'Paused by plan', pausedNote: 'Paused by your plan limit. Upgrade to reactivate it.',
+    dgDate: 'Applies on', dgLoseCopy: 'You will lose copy trading (paused, not deleted).', dgLoseAcc: 'We will pause {n} account(s) that exceed the new limit.',
     usage: 'MT accounts used', of: 'of', unlimited: 'unlimited', usageLeft: 'You have', usageLeft2: 'account(s) left.', usageFull: 'You reached your limit.',
     upTitle: 'Upgrade to', upBtn: 'Upgrade to', andMore: 'plus:', seePlans: 'See all plans',
     name: 'Name', tz: 'Time zone', langL: 'Language', email: 'Email', emailNote: 'Email cannot be changed here.',
@@ -152,10 +168,30 @@ export default function AccountClient({ email }: { email: string }) {
       const r = await fetch('/api/stripe/change-plan', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ plan: planId, annual: false }) });
       const j = await r.json();
       if (!r.ok) { setChErr(j.code === 'same' ? L.errSame : j.code === 'no_price' ? L.errNoPrice : L.errChange); return; }
-      setChTarget(null); setChDone({ name, up });     // muestra el mensaje de bienvenida
+      if (up) { setChTarget(null); setChDone({ name, up }); }   // subir → bienvenida + reload
+      else { setChTarget(null); toast({ es: `Cambio programado. Bajarás a ${name} al final del periodo.`, en: `Change scheduled. You will move to ${name} at period end.` }, 'ok'); load(); }
     } finally { setBusy(''); }
   }
+  async function cancelChange() {
+    setBusy('cancel');
+    try {
+      const r = await fetch('/api/stripe/change-plan', { method: 'DELETE' });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { toast(errMsg(j, lang)); return; }
+      toast(L.pendCanceled, 'ok'); load();
+    } finally { setBusy(''); }
+  }
+  const [keepSel, setKeepSel] = useState<string[]>([]);
+  useEffect(() => { const k = data?.pending?.keep; if (Array.isArray(k)) setKeepSel(k.map(String)); }, [data?.pending]);
+  async function saveKeep() {
+    setBusy('keep');
+    const r = await fetch('/api/account', { method: 'PATCH', body: JSON.stringify({ pending_keep: keepSel }) });
+    const j = await r.json().catch(() => ({})); setBusy('');
+    if (!r.ok) { toast(errMsg(j, lang)); return; }
+    toast(L.keepSaved, 'ok'); load();
+  }
   const L = D[lang];
+  const pending = data?.pending || null;
 
   useEffect(() => {
     load();
@@ -244,6 +280,20 @@ export default function AccountClient({ email }: { email: string }) {
 
             {data && tab === 'plan' && (
               <Section icon="💳" title={L.nav.plan} subtitle={L.planSub}>
+                {pending && (
+                  <div className="card" style={{ marginBottom: 14, border: '1px solid var(--amber)', background: 'rgba(255,192,77,.06)' }}>
+                    <div className="row between" style={{ flexWrap: 'wrap', gap: 10, alignItems: 'flex-start' }}>
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: 15 }}>⏳ {L.pendT}</div>
+                        <div style={{ fontSize: 13.5, marginTop: 4 }}>{L.pendTo} <b>{lang === 'es' ? pending.planName : pending.planNameEn}</b> {L.pendOn} <b>{pending.at ? new Date(pending.at).toLocaleDateString() : '—'}</b>.</div>
+                        <div className="muted" style={{ fontSize: 12.5, marginTop: 4 }}>{L.pendKeep}</div>
+                        {pending.losesCopy && <div style={{ fontSize: 12.5, marginTop: 4, color: 'var(--amber)' }}>• {L.pendLoseCopy}</div>}
+                        {pending.overBy > 0 && <div style={{ fontSize: 12.5, marginTop: 4, color: 'var(--amber)' }}>• {L.pendOver.replace('{n}', String(pending.newMax)).replace('{m}', String(used))} <a onClick={() => setTab('cuentas')} style={{ textDecoration: 'underline', cursor: 'pointer' }}>{L.keepT}</a></div>}
+                      </div>
+                      <button className="btn btn-ghost" onClick={cancelChange} disabled={busy === 'cancel'}>{busy === 'cancel' ? L.pendCanceling : L.pendCancel}</button>
+                    </div>
+                  </div>
+                )}
                 <div className="card" style={card}>
                   <div className="row between" style={{ flexWrap: 'wrap', gap: 12, marginBottom: 14 }}>
                     <div>
@@ -263,8 +313,9 @@ export default function AccountClient({ email }: { email: string }) {
 
                   {/* Cambiar de plan (upgrade / downgrade) sobre la misma suscripción */}
                   {sub && allPlans.length > 0 && (() => {
-                    const curPrice = Number(allPlans.find((p: any) => p.id === myPlan)?.price_month ?? 0);
-                    const others = allPlans.filter((p: any) => p.id !== 'free' && p.id !== myPlan);
+                    const myPlanId = p.plan || 'free';
+                    const curPrice = Number(allPlans.find((pl: any) => pl.id === myPlanId)?.price_month ?? 0);
+                    const others = allPlans.filter((pl: any) => pl.id !== 'free' && pl.id !== myPlanId);
                     if (!others.length) return null;
                     return (
                       <div style={{ borderTop: '1px solid var(--line)', paddingTop: 14, marginTop: 14 }}>
@@ -295,7 +346,21 @@ export default function AccountClient({ email }: { email: string }) {
                     <div onClick={() => setChTarget(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 70, padding: 16 }}>
                       <div onClick={(e) => e.stopPropagation()} className="card" style={{ maxWidth: 420, width: '100%' }}>
                         <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>{(chTarget.up ? L.chCfUp : L.chCfDown)} <b>{chTarget.name}</b></div>
-                        <p className="muted" style={{ fontSize: 13, lineHeight: 1.6, margin: '0 0 14px' }}>{chTarget.up ? L.chCfUpNote : L.chCfDownNote}</p>
+                        <p className="muted" style={{ fontSize: 13, lineHeight: 1.6, margin: '0 0 10px' }}>{chTarget.up ? L.chCfUpNote : L.chCfDownNote}</p>
+                        {!chTarget.up && (() => {
+                          const tp: any = allPlans.find((x: any) => x.id === chTarget.id);
+                          const tBase = Number(tp?.max_accounts ?? 1); const tUnl = tBase >= 999;
+                          const tLosesCopy = !(tp?.capabilities as any)?.copy;
+                          const tOver = tUnl ? 0 : Math.max(0, used - tBase);
+                          const endD = sub?.currentPeriodEnd ? new Date(sub.currentPeriodEnd).toLocaleDateString() : null;
+                          return (
+                            <div style={{ background: 'var(--bg2)', borderRadius: 8, padding: '10px 12px', margin: '0 0 14px', fontSize: 12.5, lineHeight: 1.7 }}>
+                              {endD && <div>📅 {L.dgDate} <b>{endD}</b></div>}
+                              {tLosesCopy && <div style={{ color: 'var(--amber)' }}>• {L.dgLoseCopy}</div>}
+                              {tOver > 0 && <div style={{ color: 'var(--amber)' }}>• {L.dgLoseAcc.replace('{n}', String(tOver))}</div>}
+                            </div>
+                          );
+                        })()}
                         {chErr && <div style={{ color: 'var(--red)', fontSize: 12.5, marginBottom: 10 }}>{chErr}</div>}
                         <div className="row" style={{ gap: 8, justifyContent: 'flex-end' }}>
                           <button className="btn btn-ghost" onClick={() => setChTarget(null)}>{L.chCancel}</button>
@@ -451,8 +516,10 @@ export default function AccountClient({ email }: { email: string }) {
                               : { txt: L.mtStale, col: 'var(--amber)', bg: 'rgba(255,192,77,.15)' };
                             return <span className="pill" style={{ color: st.col, background: st.bg }}>{st.txt}</span>;
                           })()}
+                          {a.plan_paused && <span className="pill" style={{ color: 'var(--amber)', background: 'rgba(255,192,77,.15)' }}>⏸ {L.accPaused}</span>}
                         </div>
                         <div className="muted" style={{ fontSize: 12 }}>{a.platform || 'MT5'} · {L.lastSync}: {a.last_sync_at ? new Date(a.last_sync_at).toLocaleString() : L.never}</div>
+                        {a.plan_paused && <div style={{ fontSize: 11.5, color: 'var(--amber)', marginTop: 2 }}>{L.pausedNote}</div>}
                       </div>
                       <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
                         <div style={{ fontWeight: 700 }}>{a.balance != null ? '$' + Number(a.balance).toLocaleString() : ''}</div>
@@ -462,6 +529,26 @@ export default function AccountClient({ email }: { email: string }) {
                     </div>
                   ))}
                 </div>
+                {pending && pending.overBy > 0 && pending.newMax != null && (
+                  <div className="card" style={{ ...card, border: '1px solid var(--amber)' }}>
+                    <h3 style={{ marginBottom: 4 }}>{L.keepT}</h3>
+                    <p className="muted" style={{ fontSize: 13, marginBottom: 10 }}>{L.keepSub.replace('{n}', String(pending.newMax))}</p>
+                    {accounts.map((a) => {
+                      const checked = keepSel.includes(String(a.id));
+                      const atMax = keepSel.length >= pending.newMax;
+                      return (
+                        <label key={a.id} className="row between" style={{ padding: '9px 0', borderTop: '1px solid var(--line)', cursor: 'pointer', gap: 10 }}>
+                          <span style={{ fontSize: 14 }}>{a.login} <span className="muted" style={{ fontSize: 12 }}>{a.broker || a.server || ''}</span></span>
+                          <input type="checkbox" checked={checked} disabled={!checked && atMax} onChange={(e) => setKeepSel(e.target.checked ? [...keepSel, String(a.id)] : keepSel.filter((x) => x !== String(a.id)))} style={{ width: 'auto', margin: 0 }} />
+                        </label>
+                      );
+                    })}
+                    <div className="row" style={{ gap: 10, marginTop: 14, alignItems: 'center' }}>
+                      <button className="btn btn-primary" onClick={saveKeep} disabled={busy === 'keep'}>{busy === 'keep' ? L.saving : L.keepSave}</button>
+                      <span className="muted" style={{ fontSize: 12 }}>{keepSel.length}/{pending.newMax}</span>
+                    </div>
+                  </div>
+                )}
                 {data.apiKey && (
                   <div className="card">
                     <h3 style={{ marginBottom: 6 }}>{L.apiK}</h3>
