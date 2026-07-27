@@ -206,7 +206,6 @@ export default function AccountClient({ email }: { email: string }) {
                         {sub ? `${sub.cancelAtPeriodEnd ? L.ends : L.renews} ${sub.currentPeriodEnd ? new Date(sub.currentPeriodEnd).toLocaleDateString() : '—'} · ${sub.amount} ${sub.currency}/${sub.interval === 'year' ? L.perYr : L.perMo}` : '$0'}
                       </div>
                     </div>
-                    <button className="btn btn-ghost" onClick={openPortal} disabled={busy === 'portal'}>{busy === 'portal' ? L.saving : L.manage}</button>
                   </div>
 
                   {sub && <div style={{ borderTop: '1px solid var(--line)', paddingTop: 14, marginTop: 14 }}><BillingCard lang={lang} /></div>}
