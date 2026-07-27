@@ -64,15 +64,15 @@ export default async function TopBar() {
 
   // Enlaces según haya sesión o no. "Planes" también va dentro: si no,
   // un usuario con sesión solo llega a precios por la píldora del plan.
+  // Arriba solo las 4 herramientas del día a día (con icono). Soporte y Planes
+  // viven en el menú del avatar para no saturar. Admin sigue arriba para el owner.
   const navItems = user
     ? [
-        { href: '/dashboard', label: t.dashboard },
-        { href: '/dashboard/keys', label: t.accounts },
-        ...(caps.manager ? [{ href: '/dashboard/manager', label: t.manager, dot: (eaLive ? 'on' : 'off') as 'on' | 'off', dim: !eaLive }] : []),
-        ...(caps.copy ? [{ href: '/dashboard/copy', label: t.copy, dot: (copyActive ? 'on' : 'off') as 'on' | 'off', dim: !copyActive }] : []),
-        { href: '/dashboard/soporte', label: t.support },
-        { href: '/pricing', label: t.plans },
-        ...(isAdmin ? [{ href: '/admin', label: t.admin }] : []),
+        { href: '/dashboard', label: t.dashboard, icon: '📊' },
+        { href: '/dashboard/keys', label: t.accounts, icon: '🔌' },
+        ...(caps.manager ? [{ href: '/dashboard/manager', label: t.manager, icon: '🛡️', dot: (eaLive ? 'on' : 'off') as 'on' | 'off', dim: !eaLive, dotTitle: eaLive ? t.eaOn : t.eaOff }] : []),
+        ...(caps.copy ? [{ href: '/dashboard/copy', label: t.copy, icon: '🔁', dot: (copyActive ? 'on' : 'off') as 'on' | 'off', dim: !copyActive, dotTitle: (copyActive ? (lang === 'es' ? 'Copia activa' : 'Copy on') : (lang === 'es' ? 'Copia inactiva' : 'Copy off')) }] : []),
+        ...(isAdmin ? [{ href: '/admin', label: t.admin, icon: '🛠️' }] : []),
       ]
     : [
         // "Inicio" explícito: el logo también lleva ahí, pero mucha gente no

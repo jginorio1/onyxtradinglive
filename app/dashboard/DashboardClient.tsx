@@ -508,7 +508,7 @@ export default function DashboardClient({ email = '', plan = 'free', profile, tr
         )}
 
         <div className="cockpit">
-          <div className="rail-left"><MarketHours lang={lang} compact /></div>
+          <div className="rail-left"><MarketHours lang={lang} compact /><div style={{ marginTop: 12 }}><LotCalculator lang={lang} balance={Number(cur?.balance) || totalBalance || undefined} /></div></div>
           <div className="rail-right"><News lang={lang} /></div>
           <div className="center">
         {!hasAccounts ? (
@@ -663,7 +663,6 @@ export default function DashboardClient({ email = '', plan = 'free', profile, tr
               </Card>
             )}
 
-            {view === 'operaciones' && <div style={{ marginBottom: 14 }}><LotCalculator lang={lang} balance={Number(cur?.balance) || totalBalance || undefined} /></div>}
             {view === 'operaciones' && (!canJournal ? <ProLock L={L} plan={upJ.name} desc={L.dLock1} price={upJ.price} preview={<PreviewJournal />} /> : <Journal trades={filtered} lang={lang} />)}
             {view === 'costes' && <Costs trades={filtered} lang={lang} />}
             {view === 'reto' && <Challenge lang={lang} />}
