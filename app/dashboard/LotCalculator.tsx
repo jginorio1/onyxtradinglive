@@ -13,32 +13,56 @@ type Lang = 'es' | 'en';
 const T: any = {
   es: {
     t: 'Calculadora de lote', s: 'Cuántos lotes arriesgar según tu cuenta, sin cálculos a mano.',
-    bal: 'Balance de la cuenta', risk: 'Riesgo por operación (%)', stop: 'Stop loss (pips)', inst: 'Instrumento',
+    bal: 'Balance de la cuenta', risk: 'Riesgo por operación (%)', stop: 'Stop loss (pips / puntos)', inst: 'Instrumento',
     res: 'Tamaño sugerido', lots: 'lotes', atRisk: 'Arriesgas', perPip: 'Valor por pip', money: 'en dinero',
-    note: 'Estimación orientativa. El valor por pip real depende de tu bróker, el par y la moneda de la cuenta. Confírmalo antes de operar.',
-    custom: 'Otro (valor por pip por lote)', pipVal: 'Valor del pip por lote ($)',
+    note: 'Estimación orientativa. En JPY, metales e índices el valor por pip/punto depende de tu bróker y del precio. Confírmalo antes de operar; usa "Otro" para el valor exacto.',
+    custom: 'Otro (valor por pip por lote)', pipVal: 'Valor del pip/punto por lote ($)',
+    gFx: 'Forex', gMetal: 'Metales', gIdx: 'Índices (valor por punto)', gOther: 'Manual',
     fill: 'Completa balance, riesgo y stop para ver el resultado.',
     hiRisk: '⚠ Arriesgar más del 2% por operación es agresivo.',
     hiLot: '⚠ Sale un lotaje muy alto para ese stop; revisa los datos.',
   },
   en: {
     t: 'Lot size calculator', s: 'How many lots to risk based on your account, no manual math.',
-    bal: 'Account balance', risk: 'Risk per trade (%)', stop: 'Stop loss (pips)', inst: 'Instrument',
+    bal: 'Account balance', risk: 'Risk per trade (%)', stop: 'Stop loss (pips / points)', inst: 'Instrument',
     res: 'Suggested size', lots: 'lots', atRisk: 'You risk', perPip: 'Pip value', money: 'in money',
-    note: 'Rough estimate. Real pip value depends on your broker, the pair and the account currency. Confirm before trading.',
-    custom: 'Other (pip value per lot)', pipVal: 'Pip value per lot ($)',
+    note: 'Rough estimate. For JPY, metals and indices the pip/point value depends on your broker and the price. Confirm before trading; use "Other" for the exact value.',
+    custom: 'Other (pip value per lot)', pipVal: 'Pip/point value per lot ($)',
+    gFx: 'Forex', gMetal: 'Metals', gIdx: 'Indices (value per point)', gOther: 'Manual',
     fill: 'Fill in balance, risk and stop to see the result.',
     hiRisk: '⚠ Risking more than 2% per trade is aggressive.',
     hiLot: '⚠ That is a very high lot size for that stop; check the numbers.',
   },
 };
 
-// valor en dinero de 1 pip por 1.0 lote (aprox., cuenta en USD)
-const INSTRUMENTS: { id: string; es: string; en: string; pip: number | null }[] = [
-  { id: 'usd', es: 'Forex · par en USD (EURUSD, GBPUSD…)', en: 'Forex · USD pair (EURUSD, GBPUSD…)', pip: 10 },
-  { id: 'jpy', es: 'Forex · par en JPY (USDJPY, EURJPY…)', en: 'Forex · JPY pair (USDJPY, EURJPY…)', pip: 9.1 },
-  { id: 'xau', es: 'Oro · XAUUSD', en: 'Gold · XAUUSD', pip: 10 },
-  { id: 'custom', es: 'Otro (valor por pip por lote)', en: 'Other (pip value per lot)', pip: null },
+// valor en dinero de 1 pip/punto por 1.0 lote (aprox., cuenta en USD).
+// Los índices, metales y pares con USD de base varían por bróker → estimación.
+type Inst = { id: string; label: string; pip: number | null; g: string };
+const INSTRUMENTS: Inst[] = [
+  // Forex · el pip vale exactamente 10 cuando USD es la moneda cotizada
+  { id: 'eurusd', label: 'EUR/USD', pip: 10, g: 'fx' },
+  { id: 'gbpusd', label: 'GBP/USD', pip: 10, g: 'fx' },
+  { id: 'audusd', label: 'AUD/USD', pip: 10, g: 'fx' },
+  { id: 'nzdusd', label: 'NZD/USD', pip: 10, g: 'fx' },
+  { id: 'eurgbp', label: 'EUR/GBP', pip: 12.6, g: 'fx' },
+  // Pares con USD de base o cruces JPY → aproximado (cambia con el precio)
+  { id: 'usdjpy', label: 'USD/JPY', pip: 6.7, g: 'fx' },
+  { id: 'usdcad', label: 'USD/CAD', pip: 7.3, g: 'fx' },
+  { id: 'usdchf', label: 'USD/CHF', pip: 11, g: 'fx' },
+  { id: 'eurjpy', label: 'EUR/JPY', pip: 6.7, g: 'fx' },
+  { id: 'gbpjpy', label: 'GBP/JPY', pip: 6.7, g: 'fx' },
+  // Metales
+  { id: 'xauusd', label: 'XAU/USD (oro / gold)', pip: 10, g: 'metal' },
+  { id: 'xagusd', label: 'XAG/USD (plata / silver)', pip: 50, g: 'metal' },
+  // Índices (valor por punto · muy variable por bróker)
+  { id: 'us30',   label: 'US30 · Dow', pip: 1, g: 'idx' },
+  { id: 'nas100', label: 'NAS100 · Nasdaq', pip: 1, g: 'idx' },
+  { id: 'us500',  label: 'US500 · S&P 500', pip: 1, g: 'idx' },
+  { id: 'ger40',  label: 'GER40 · DAX', pip: 1, g: 'idx' },
+  { id: 'uk100',  label: 'UK100 · FTSE', pip: 1, g: 'idx' },
+  { id: 'jp225',  label: 'JP225 · Nikkei', pip: 1, g: 'idx' },
+  // Manual
+  { id: 'custom', label: '', pip: null, g: 'other' },
 ];
 
 export default function LotCalculator({ lang, balance }: { lang: Lang; balance?: number }) {
@@ -46,7 +70,7 @@ export default function LotCalculator({ lang, balance }: { lang: Lang; balance?:
   const [bal, setBal] = useState<string>(balance ? String(Math.round(balance)) : '');
   const [risk, setRisk] = useState<string>('1');
   const [stop, setStop] = useState<string>('');
-  const [inst, setInst] = useState<string>('usd');
+  const [inst, setInst] = useState<string>('eurusd');
   const [customPip, setCustomPip] = useState<string>('10');
 
   const pipValue = useMemo(() => {
@@ -90,7 +114,11 @@ export default function LotCalculator({ lang, balance }: { lang: Lang; balance?:
         <div>
           <span style={lbl}>{L.inst}</span>
           <select value={inst} onChange={(e) => setInst(e.target.value)} style={{ margin: '4px 0 0' }}>
-            {INSTRUMENTS.map((i) => <option key={i.id} value={i.id}>{lang === 'es' ? i.es : i.en}</option>)}
+            {([['fx', L.gFx], ['metal', L.gMetal], ['idx', L.gIdx], ['other', L.gOther]] as [string, string][]).map(([g, label]) => (
+              <optgroup key={g} label={label}>
+                {INSTRUMENTS.filter((i) => i.g === g).map((i) => <option key={i.id} value={i.id}>{i.id === 'custom' ? L.custom : i.label}</option>)}
+              </optgroup>
+            ))}
           </select>
         </div>
         {inst === 'custom' && (
