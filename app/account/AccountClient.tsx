@@ -17,6 +17,9 @@ const D: any = {
     nav: { plan: 'Suscripción', perfil: 'Perfil', facturas: 'Facturas', cuentas: 'Cuentas MT', avisos: 'Notificaciones', seguridad: 'Seguridad', referidos: 'Referidos' },
     planCur: 'Tu plan', active: 'Activo', canceling: 'Se cancela al final del periodo', noSub: 'Plan gratuito', renews: 'Se renueva el', ends: 'Termina el',
     perMo: 'mes', perYr: 'año', manage: 'Gestionar pago', manageSub: 'Cambiar tarjeta, ver facturas o cancelar en Stripe',
+    changePlanT: 'Cambiar de plan', chUp: 'Subir', chDown: 'Bajar', chCurrent: 'Plan actual', chMo: '/mes',
+    chNote: 'Subir es inmediato (se cobra la diferencia prorrateada). Bajar aplica en tu próximo cobro, sin perder nada hasta entonces.',
+    chOkUp: '✓ Plan actualizado', chOkDown: '✓ El cambio aplicará en tu próximo cobro',
     usage: 'Cuentas MT usadas', of: 'de', unlimited: 'ilimitadas', usageLeft: 'Te queda', usageLeft2: 'cuenta(s).', usageFull: 'Has llegado a tu límite.',
     upTitle: 'Mejorar a', upBtn: 'Mejorar a', andMore: 'y además:', seePlans: 'Ver todos los planes',
     name: 'Nombre', tz: 'Zona horaria', langL: 'Idioma', email: 'Correo', emailNote: 'El correo no se puede cambiar aquí.',
@@ -48,6 +51,9 @@ const D: any = {
     nav: { plan: 'Subscription', perfil: 'Profile', facturas: 'Invoices', cuentas: 'MT accounts', avisos: 'Notifications', seguridad: 'Security', referidos: 'Referrals' },
     planCur: 'Your plan', active: 'Active', canceling: 'Cancels at period end', noSub: 'Free plan', renews: 'Renews on', ends: 'Ends on',
     perMo: 'month', perYr: 'year', manage: 'Manage billing', manageSub: 'Change card, view invoices or cancel on Stripe',
+    changePlanT: 'Change plan', chUp: 'Upgrade', chDown: 'Downgrade', chCurrent: 'Current plan', chMo: '/mo',
+    chNote: 'Upgrade is immediate (the prorated difference is charged). Downgrade applies at your next renewal, keeping everything until then.',
+    chOkUp: '✓ Plan updated', chOkDown: '✓ Change applies at your next renewal',
     usage: 'MT accounts used', of: 'of', unlimited: 'unlimited', usageLeft: 'You have', usageLeft2: 'account(s) left.', usageFull: 'You reached your limit.',
     upTitle: 'Upgrade to', upBtn: 'Upgrade to', andMore: 'plus:', seePlans: 'See all plans',
     name: 'Name', tz: 'Time zone', langL: 'Language', email: 'Email', emailNote: 'Email cannot be changed here.',
@@ -104,6 +110,17 @@ export default function AccountClient({ email }: { email: string }) {
       fetch('/api/stripe/invoices').then((r) => r.ok ? r.json() : null).then((j) => setInvoices(j?.invoices || [])).catch(() => setInvoices([]));
     }
   }, [tab, invoices]);
+  const [allPlans, setAllPlans] = useState<any[]>([]);
+  useEffect(() => { fetch('/api/admin/plans').then((r) => r.ok ? r.json() : null).then((j) => setAllPlans(j?.plans || [])).catch(() => {}); }, []);
+  async function changePlan(planId: string) {
+    setBusy('plan:' + planId);
+    try {
+      const r = await fetch('/api/stripe/change-plan', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ plan: planId, annual: false }) });
+      const j = await r.json();
+      if (!r.ok) { alert(j.error || 'Error'); return; }
+      setMsg(j.upgrade ? L.chOkUp : L.chOkDown); load(); setTimeout(() => setMsg(''), 3500);
+    } finally { setBusy(''); }
+  }
   const L = D[lang];
 
   useEffect(() => {
@@ -209,6 +226,35 @@ export default function AccountClient({ email }: { email: string }) {
                   </div>
 
                   {sub && <div style={{ borderTop: '1px solid var(--line)', paddingTop: 14, marginTop: 14 }}><BillingCard lang={lang} /></div>}
+
+                  {/* Cambiar de plan (upgrade / downgrade) sobre la misma suscripción */}
+                  {sub && allPlans.length > 0 && (() => {
+                    const curPrice = Number(allPlans.find((p: any) => p.id === myPlan)?.price_month ?? 0);
+                    const others = allPlans.filter((p: any) => p.id !== 'free' && p.id !== myPlan);
+                    if (!others.length) return null;
+                    return (
+                      <div style={{ borderTop: '1px solid var(--line)', paddingTop: 14, marginTop: 14 }}>
+                        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>{L.changePlanT}</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10 }}>
+                          {others.map((p: any) => {
+                            const up = Number(p.price_month) > curPrice;
+                            const nm = lang === 'es' ? p.name : (p.name_en || p.name);
+                            return (
+                              <div key={p.id} style={{ border: '0.5px solid var(--line)', borderRadius: 10, padding: 12 }}>
+                                <div style={{ fontSize: 13, fontWeight: 600 }}>{nm}</div>
+                                <div style={{ fontSize: 18, fontWeight: 800 }}>${p.price_month}<span className="muted" style={{ fontSize: 11, fontWeight: 400 }}>{L.chMo}</span></div>
+                                <button className={'btn ' + (up ? 'btn-primary' : 'btn-ghost')} style={{ width: '100%', marginTop: 8, fontSize: 12.5, padding: '6px 0' }}
+                                  disabled={busy === 'plan:' + p.id} onClick={() => changePlan(p.id)}>
+                                  {busy === 'plan:' + p.id ? '…' : (up ? '↑ ' + L.chUp : '↓ ' + L.chDown)}
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <p className="muted" style={{ fontSize: 11.5, marginTop: 10 }}>ℹ️ {L.chNote}</p>
+                      </div>
+                    );
+                  })()}
 
                   <div style={{ borderTop: '1px solid var(--line)', paddingTop: 14 }}>
                     <div className="row between" style={{ fontSize: 13, marginBottom: 6 }}>

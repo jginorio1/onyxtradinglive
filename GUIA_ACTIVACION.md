@@ -116,6 +116,12 @@ La web ya está lista (Fase 2 incluida). Para que copie de verdad:
 
 ---
 
+## 8b. Stripe · webhook y cambio de plan
+
+- **Webhook (importante):** en Stripe (modo correcto: Test o Live) → Developers → Webhooks, el endpoint debe apuntar a `https://www.onyxtradinglive.com/api/stripe/webhook` (con `www`; sin www da 308 y falla). Eventos: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.paid`, `charge.refunded`. El `STRIPE_WEBHOOK_SECRET` en Vercel debe ser el de ese endpoint y del mismo modo.
+- **Precios:** en modo live, cada precio debe ser ≥ $0.50 (mínimo de Stripe). Para pruebas usa modo test con la tarjeta `4242 4242 4242 4242`.
+- **Cambio de plan:** el trader sube/baja de plan desde Mi cuenta → Suscripción (usa `/api/stripe/change-plan`). Requiere que cada plan tenga su Price ID en Admin → Planes. Subir es inmediato (prorrateo); bajar aplica al próximo cobro.
+
 ## 9. Comprobación final
 
 - [ ] Deploy en verde en Vercel
