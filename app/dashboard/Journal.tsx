@@ -1,4 +1,5 @@
 'use client';
+import { toast } from '@/lib/toast';
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { errMsg } from '@/lib/i18nErrors';
 
@@ -221,14 +222,14 @@ function TradeModal({ trade, entry, lang, onClose, onSaved }: { trade: TT; entry
     const fd = new FormData(); fd.append('file', f); fd.append('trade_id', trade.id);
     const r = await fetch('/api/journal/upload', { method: 'POST', body: fd });
     const j = await r.json(); setUploading(false);
-    if (j.url) setImg(j.url); else alert(errMsg(j, lang));
+    if (j.url) setImg(j.url); else toast(errMsg(j, lang));
   }
   async function save() {
     setSaving(true);
     const body = { trade_id: trade.id, notes, tags, emotion, image_url: img };
     const r = await fetch('/api/journal', { method: 'POST', body: JSON.stringify(body) });
     setSaving(false);
-    if (!r.ok) { const j = await r.json(); alert(errMsg(j, lang)); return; }
+    if (!r.ok) { const j = await r.json(); toast(errMsg(j, lang)); return; }
     setOk(true); setTimeout(() => setOk(false), 1500);
     onSaved({ trade_id: trade.id, notes, tags, emotion, image_url: img });
   }

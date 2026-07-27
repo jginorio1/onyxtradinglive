@@ -1,4 +1,5 @@
 'use client';
+import { toast } from '@/lib/toast';
 import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import Link from 'next/link';
@@ -176,8 +177,8 @@ export default function KeysPage() {
       const r = await fetch('/api/keys', { method: 'POST', body: JSON.stringify(body) });
       const j = await r.json();
       if (j.key) { setNewKey(j.key); setAddingKey(false); setF({ label: '', acc_type: 'own', broker: '', account_login: '', acc_size: '' }); }
-      else alert(errMsg(j, lang));
-    } catch { alert(errMsg({ code: 'network' }, lang)); }
+      else toast(errMsg(j, lang));
+    } catch { toast(errMsg({ code: 'network' }, lang)); }
     await load(); setLoading(false);
   }
   async function revoke(id: string) {

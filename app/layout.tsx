@@ -2,6 +2,7 @@ import './globals.css';
 import type { Metadata } from 'next';
 import TopBar from './TopBar';
 import SupportWidget from './SupportWidget';
+import { Toaster } from '@/lib/toast';
 import JsonLd from './JsonLd';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { LanguageProvider } from '@/lib/lang';
@@ -106,6 +107,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <TopBar />
             {children}
             <SupportWidget loggedIn={loggedIn} />
+            <Toaster />
           </BetaProvider>
         </LanguageProvider>
       </body>

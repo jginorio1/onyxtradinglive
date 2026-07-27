@@ -1,4 +1,5 @@
 'use client';
+import { toast } from '@/lib/toast';
 import { useEffect, useState } from 'react';
 import { useT } from '@/lib/adminText';
 
@@ -33,7 +34,7 @@ export default function Firms() {
     setBusy('save'); setMsg('');
     const r = await fetch('/api/admin/firms', { method: 'POST', body: JSON.stringify({ list }) });
     const j = await r.json(); setBusy('');
-    if (!r.ok) { alert(j.error || 'error'); return; }
+    if (!r.ok) { toast(j.error || 'error'); return; }
     setList(j.list || []); setIsDefault(false);
     setMsg(t.fi_saved); setTimeout(() => setMsg(''), 2500);
   }

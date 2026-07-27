@@ -1,4 +1,5 @@
 'use client';
+import { toast } from '@/lib/toast';
 import { useEffect, useRef, useState } from 'react';
 import { ACC_TYPES, CH_STATUS, typeMeta, money2, type Lang } from '@/lib/accountMeta';
 import { errMsg } from '@/lib/i18nErrors';
@@ -56,30 +57,30 @@ export default function AccountExtras({ acc, net, lang, onSaved }: { acc: any; n
   }
   async function addPayout() {
     // Importe y fecha son obligatorios; el servidor tambien lo comprueba
-    if (!(Number(pAmt) > 0)) { alert(errMsg({ code: 'need_amount' }, lang)); return; }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(pDate)) { alert(errMsg({ code: 'need_date' }, lang)); return; }
+    if (!(Number(pAmt) > 0)) { toast(errMsg({ code: 'need_amount' }, lang)); return; }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(pDate)) { toast(errMsg({ code: 'need_date' }, lang)); return; }
     setPBusy(true);
     try {
       let receipt = ''; const file = pFile.current?.files?.[0]; if (file) receipt = await uploadFile(file);
       const r = await fetch('/api/payouts', { method: 'POST', body: JSON.stringify({ account_id: acc.id, amount: pAmt, date: pDate, note: pNote, receipt_url: receipt }) });
       const j = await r.json().catch(() => ({}));
-      if (!r.ok) { alert(errMsg(j, lang)); setPBusy(false); return; }
+      if (!r.ok) { toast(errMsg(j, lang)); setPBusy(false); return; }
       setPAmt(''); setPDate(''); setPNote(''); if (pFile.current) pFile.current.value = ''; await loadPayouts();
-    } catch { alert(errMsg({ code: 'network' }, lang)); }
+    } catch { toast(errMsg({ code: 'network' }, lang)); }
     setPBusy(false);
   }
   async function delPayout(id: string) { await fetch('/api/payouts', { method: 'DELETE', body: JSON.stringify({ id }) }); await loadPayouts(); }
   async function addDoc() {
     const file = dFile.current?.files?.[0];
-    if (!file) { alert(errMsg({ code: 'file_missing' }, lang)); return; }
+    if (!file) { toast(errMsg({ code: 'file_missing' }, lang)); return; }
     setDBusy(true);
     try {
       const url = await uploadFile(file);
       const r = await fetch('/api/documents', { method: 'POST', body: JSON.stringify({ account_id: acc.id, doc_type: dType, title: dTitle, image_url: url }) });
       const j = await r.json().catch(() => ({}));
-      if (!r.ok) { alert(errMsg(j, lang)); setDBusy(false); return; }
+      if (!r.ok) { toast(errMsg(j, lang)); setDBusy(false); return; }
       setDTitle(''); setDHasFile(false); if (dFile.current) dFile.current.value = ''; await loadDocs();
-    } catch (e: any) { alert(errMsg({ error: e?.message, code: 'network' }, lang)); }
+    } catch (e: any) { toast(errMsg({ error: e?.message, code: 'network' }, lang)); }
     setDBusy(false);
   }
   async function delDoc(id: string) { await fetch('/api/documents', { method: 'DELETE', body: JSON.stringify({ id }) }); await loadDocs(); }

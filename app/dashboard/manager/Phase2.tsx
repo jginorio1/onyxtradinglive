@@ -1,4 +1,5 @@
 'use client';
+import { toast } from '@/lib/toast';
 import { useEffect, useState } from 'react';
 import Help from '@/app/Help';
 
@@ -519,11 +520,11 @@ export function StateTab({ t, tMain, lang, accountId }: any) {
       const r = await fetch('/api/manager/state', { method: 'POST', body: JSON.stringify({ account_id: accountId, action }) });
       const j = await r.json();
       if (!r.ok) {
-        alert(j.code === 'override_forbidden' ? t.overrideNo : j.code === 'override_locked' ? t.overrideHard : (j.error || ''));
+        toast(j.code === 'override_forbidden' ? t.overrideNo : j.code === 'override_locked' ? t.overrideHard : (j.error || ''));
       } else if (j.state === 'granted') {
-        alert(t.overrideOk);
+        toast(t.overrideOk);
       } else if (j.state === 'waiting') {
-        alert(t.overrideWaitD(j.remaining_min ?? j.wait_min ?? 0));
+        toast(t.overrideWaitD(j.remaining_min ?? j.wait_min ?? 0));
       }
       await load();
     } catch { /* sin conexión */ }

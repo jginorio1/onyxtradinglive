@@ -1,4 +1,5 @@
 'use client';
+import { toast } from '@/lib/toast';
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useLang } from '@/lib/lang';
@@ -205,7 +206,7 @@ export default function CopyClient() {
     try {
       const r = await fetch('/api/copy/links', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
       const j = await r.json();
-      if (!r.ok) alert(j.error || 'Error');
+      if (!r.ok) toast(j.error || 'Error');
       else { load(); if (!payload.id) { setNl(blankLink()); setShowRisk(false); } setEdit(null); }
     } finally { setBusy(false); }
   }
@@ -213,18 +214,18 @@ export default function CopyClient() {
   async function buyExtra(delta: number) {
     const next = Math.max(0, (d.extraSlaves || 0) + delta);
     const r = await fetch('/api/copy/addon', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ qty: next }) });
-    const j = await r.json(); if (!r.ok) alert(j.error || 'Error'); else load();
+    const j = await r.json(); if (!r.ok) toast(j.error || 'Error'); else load();
   }
   async function buyMaster(delta: number) {
     const next = Math.max(0, (d.extraMasters || 0) + delta);
     const r = await fetch('/api/copy/master-addon', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ qty: next }) });
-    const j = await r.json(); if (!r.ok) alert(j.error || 'Error'); else load();
+    const j = await r.json(); if (!r.ok) toast(j.error || 'Error'); else load();
   }
 
   async function control(action: string, opts: any = {}) {
     const r = await fetch('/api/copy/control', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action, ...opts }) });
     const j = await r.json();
-    if (!r.ok) { if (j.code === 'bad_pin') return false; alert(j.error || 'Error'); return false; }
+    if (!r.ok) { if (j.code === 'bad_pin') return false; toast(j.error || 'Error'); return false; }
     loadControl(); return true;
   }
   function doPause(action: string, opts: any = {}) { control(action, opts); }
@@ -235,7 +236,7 @@ export default function CopyClient() {
 
   async function genKey(accountId: string) {
     const r = await fetch('/api/copy/keys', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ account_id: accountId }) });
-    const j = await r.json(); if (!r.ok) { alert(j.error || 'Error'); return null; }
+    const j = await r.json(); if (!r.ok) { toast(j.error || 'Error'); return null; }
     setRevealKey(j.key); loadKeys(); return j.key;
   }
   async function revokeKey(id: string) { await fetch('/api/copy/keys', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id }) }); loadKeys(); }

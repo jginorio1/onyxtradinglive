@@ -1,4 +1,5 @@
 'use client';
+import { toast } from '@/lib/toast';
 import { useEffect, useMemo, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import Link from 'next/link';
@@ -214,7 +215,7 @@ export default function ManagerClient() {
     };
     const r = await fetch('/api/manager', { method: 'POST', body: JSON.stringify(body) });
     const j = await r.json(); setBusy('');
-    if (!r.ok) { alert(errMsg(j, lang)); return; }
+    if (!r.ok) { toast(errMsg(j, lang)); return; }
     setWarnings(j.warnings || []);
     setMsg(t.saved); setTimeout(() => setMsg(''), 3000); load();
   }
@@ -223,15 +224,15 @@ export default function ManagerClient() {
     setBusy(cmd);
     const r = await fetch('/api/manager/command', { method: 'POST', body: JSON.stringify({ account_id: sel, command: cmd }) });
     const j = await r.json(); setBusy('');
-    if (!r.ok) { alert(errMsg(j, lang)); return; }
-    alert(t.qaSent);
+    if (!r.ok) { toast(errMsg(j, lang)); return; }
+    toast(t.qaSent);
   }
   async function saveTemplate() {
     if (!tplName.trim()) return;
     setBusy('tpl');
     const r = await fetch('/api/manager', { method: 'PUT', body: JSON.stringify({ name: tplName, units, config: cfg }) });
     const j = await r.json(); setBusy('');
-    if (!r.ok) { alert(errMsg(j, lang)); return; }
+    if (!r.ok) { toast(errMsg(j, lang)); return; }
     setTplName(''); load();
   }
   async function delTemplate(id: string) {

@@ -1,4 +1,5 @@
 'use client';
+import { toast } from '@/lib/toast';
 import { useEffect, useState } from 'react';
 import { useT } from '@/lib/adminText';
 
@@ -13,7 +14,7 @@ export default function KbEditor() {
   useEffect(() => { load(); }, []);
 
   async function save() {
-    if (!edit?.title?.trim() || !edit?.body?.trim()) { alert(t.kb_emptyEdit); return; }
+    if (!edit?.title?.trim() || !edit?.body?.trim()) { toast(t.kb_emptyEdit); return; }
     setBusy(true);
     const method = edit.id ? 'PATCH' : 'POST';
     await fetch('/api/admin/kb', { method, body: JSON.stringify(edit) });

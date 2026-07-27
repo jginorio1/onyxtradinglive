@@ -1,4 +1,5 @@
 'use client';
+import { toast } from '@/lib/toast';
 import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import Link from 'next/link';
@@ -90,9 +91,9 @@ export default function Embajadores() {
     try {
       const r = await fetch('/api/ambassador', { method: 'POST', body: JSON.stringify(f) });
       const j = await r.json();
-      if (!r.ok) { alert(errMsg(j, lang)); setBusy(false); return; }
+      if (!r.ok) { toast(errMsg(j, lang)); setBusy(false); return; }
       setState('sent');
-    } catch { alert(errMsg({ code: 'network' }, lang)); }
+    } catch { toast(errMsg({ code: 'network' }, lang)); }
     setBusy(false);
   }
 

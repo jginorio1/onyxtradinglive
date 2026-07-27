@@ -1,4 +1,5 @@
 'use client';
+import { toast } from '@/lib/toast';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { errMsg } from '@/lib/i18nErrors';
@@ -77,19 +78,19 @@ export default function Ambassador({ lang }: { lang: Lang }) {
 
   async function savePayout() {
     // Sin datos de cobro no podriamos pagarle, asi que no dejamos guardar vacio
-    if (String(pd || '').trim().length < 4) { alert(errMsg({ code: 'need_details' }, lang)); return; }
+    if (String(pd || '').trim().length < 4) { toast(errMsg({ code: 'need_details' }, lang)); return; }
     setBusy('pay');
     const r = await fetch('/api/ambassador', { method: 'PATCH', body: JSON.stringify({ payout_method: pm, payout_details: pd }) });
     const j = await r.json(); setBusy('');
-    if (!r.ok) { alert(errMsg(j, lang)); return; }
+    if (!r.ok) { toast(errMsg(j, lang)); return; }
     setCopied('saved'); setTimeout(() => setCopied(''), 2000);
   }
   async function requestPayout() {
     setBusy('req');
     const r = await fetch('/api/ambassador/payout', { method: 'POST' });
     const j = await r.json(); setBusy('');
-    if (!r.ok) { alert(errMsg(j, lang)); return; }
-    alert(t.reqOk); load();
+    if (!r.ok) { toast(errMsg(j, lang)); return; }
+    toast(t.reqOk); load();
   }
 
   if (!d) return <div className="card muted">…</div>;

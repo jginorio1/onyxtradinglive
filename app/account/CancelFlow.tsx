@@ -1,4 +1,5 @@
 'use client';
+import { toast } from '@/lib/toast';
 import { useState } from 'react';
 import { errMsg } from '@/lib/i18nErrors';
 
@@ -59,7 +60,7 @@ export default function CancelFlow({ lang, canceling, planName, onDone }: { lang
     setBusy(body.action);
     const r = await fetch('/api/account/cancel', { method: 'POST', body: JSON.stringify(body) });
     const j = await r.json(); setBusy('');
-    if (!r.ok) { alert(errMsg(j, lang)); return null; }
+    if (!r.ok) { toast(errMsg(j, lang)); return null; }
     return j;
   }
 
@@ -79,7 +80,7 @@ export default function CancelFlow({ lang, canceling, planName, onDone }: { lang
   async function resume() {
     const j = await call({ action: 'resume' });
     if (!j) return;
-    alert(t.resumeOk); onDone();
+    toast(t.resumeOk); onDone();
   }
 
   // Ya está cancelando: solo ofrecemos reactivar

@@ -1,4 +1,5 @@
 'use client';
+import { toast } from '@/lib/toast';
 import { useEffect, useMemo, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import Link from 'next/link';
@@ -162,7 +163,7 @@ export default function AccountClient({ email }: { email: string }) {
     const body = { full_name: p.full_name, timezone: p.timezone, lang: p.lang, country: p.country, experience: p.experience, trade_style: p.trade_style, platform: p.platform, prop_firm: p.prop_firm, goal: p.goal, notify_email: p.notify_email, notify_weekly: p.notify_weekly, notify_funding: p.notify_funding, notify_marketing: p.notify_marketing, ...extra };
     const r = await fetch('/api/account', { method: 'PATCH', body: JSON.stringify(body) });
     const j = await r.json(); setBusy('');
-    if (!r.ok) { alert(errMsg(j, lang)); return; }
+    if (!r.ok) { toast(errMsg(j, lang)); return; }
     setMsg(L.saved); setTimeout(() => setMsg(''), 2500);
   }
   function setField(k: string, v: any) { setP({ ...p, [k]: v }); }
@@ -173,7 +174,7 @@ export default function AccountClient({ email }: { email: string }) {
     setBusy('mt' + acc.id);
     const r = await fetch('/api/account/mt', { method: 'POST', body: JSON.stringify({ account_id: acc.id, mode }) });
     const j = await r.json(); setBusy('');
-    if (!r.ok) { alert(errMsg(j, lang)); return; }
+    if (!r.ok) { toast(errMsg(j, lang)); return; }
     setMsg(mode === 'delete' ? L.mtDelOk : L.mtDiscOk); setTimeout(() => setMsg(''), 3000);
     load();
   }
@@ -182,7 +183,7 @@ export default function AccountClient({ email }: { email: string }) {
     setBusy('extra');
     const r = await fetch('/api/account/addons', { method: 'POST', body: JSON.stringify({ qty: extraQty }) });
     const j = await r.json(); setBusy('');
-    if (!r.ok) { alert(errMsg(j, lang)); return; }
+    if (!r.ok) { toast(errMsg(j, lang)); return; }
     setMsg(L.addSaved); setTimeout(() => setMsg(''), 2500); load();
   }
 
@@ -193,8 +194,8 @@ export default function AccountClient({ email }: { email: string }) {
       const txt = await r.text(); let j: any = {};
       try { j = JSON.parse(txt); } catch { j = { code: 'generic' }; }
       if (j.url) { window.location.href = j.url; return; }
-      alert(errMsg(j, lang));
-    } catch (e: any) { alert(errMsg({ code: 'network' }, lang)); }
+      toast(errMsg(j, lang));
+    } catch (e: any) { toast(errMsg({ code: 'network' }, lang)); }
     setBusy('');
   }
 
@@ -522,7 +523,7 @@ function LockPinCard({ lang }: { lang: Lang }) {
       const r = await fetch('/api/admin/security', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pin: clear ? '' : pin }) });
       const d = await r.json().catch(() => ({}));
       if (r.ok) { setPin(''); setHasPin(!clear); setOk(es ? 'PIN actualizado.' : 'PIN updated.'); setTimeout(() => setOk(''), 3000); }
-      else alert(d.error || 'Error');
+      else toast(d.error || 'Error');
     } finally { setBusy(false); }
   }
   if (!show) return null;
@@ -550,12 +551,12 @@ function Security({ L, lang }: { L: any; lang: Lang }) {
   const [conf, setConf] = useState(''); const [busy, setBusy] = useState(''); const [ok, setOk] = useState('');
 
   async function changePw() {
-    if (pw1.length < 8) { alert(L.pwShort); return; }
-    if (pw1 !== pw2) { alert(L.pwDiff); return; }
+    if (pw1.length < 8) { toast(L.pwShort); return; }
+    if (pw1 !== pw2) { toast(L.pwDiff); return; }
     setBusy('pw');
     const r = await fetch('/api/account/password', { method: 'POST', body: JSON.stringify({ password: pw1 }) });
     const j = await r.json(); setBusy('');
-    if (!r.ok) { alert(errMsg(j, lang)); return; }
+    if (!r.ok) { toast(errMsg(j, lang)); return; }
     setPw1(''); setPw2(''); setOk(L.pwOk); setTimeout(() => setOk(''), 3000);
   }
   async function delAcc() {
@@ -563,7 +564,7 @@ function Security({ L, lang }: { L: any; lang: Lang }) {
     setBusy('del');
     const r = await fetch('/api/account/delete', { method: 'POST', body: JSON.stringify({ confirm: conf }) });
     const j = await r.json(); setBusy('');
-    if (!r.ok) { alert(errMsg(j, lang)); return; }
+    if (!r.ok) { toast(errMsg(j, lang)); return; }
     window.location.href = '/';
   }
   const lbl = { fontSize: 12, color: 'var(--mut)', marginTop: 10, display: 'block' } as any;

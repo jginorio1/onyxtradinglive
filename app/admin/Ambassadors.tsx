@@ -1,4 +1,5 @@
 'use client';
+import { toast } from '@/lib/toast';
 import { useEffect, useState } from 'react';
 import { useT } from '@/lib/adminText';
 import { useLang } from '@/lib/lang';
@@ -30,8 +31,8 @@ export default function Ambassadors() {
     setBusy(String(id || action));
     const r = await fetch('/api/admin/ambassadors', { method: 'PATCH', body: JSON.stringify({ action, id, value, note }) });
     const j = await r.json(); setBusy('');
-    if (!r.ok) { alert(j.error || 'error'); return; }
-    if (action === 'approve' && j.promo === false) alert(t.am_promoFail);
+    if (!r.ok) { toast(j.error || 'error'); return; }
+    if (action === 'approve' && j.promo === false) toast(t.am_promoFail);
     load();
   }
 
