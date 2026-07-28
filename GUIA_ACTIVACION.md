@@ -352,3 +352,28 @@ ya funciona con lo del MVP.
 Pendiente (a propósito, por seguridad): el **freno por bot** (pausar/cerrar un
 magic desde la web) requiere tocar el bucle de comandos del Guardian, que protege
 dinero real. Lo dejo para una pasada enfocada y probada, no a ciegas.
+
+---
+
+## 8n · Módulo de bots como ADD-ON ($15/mes) + incluido en Black
+
+El módulo de bots se puede tener de dos formas: **incluido en el plan** (capacidad
+`algo`) o **comprado como add-on** de $15/mes.
+
+Configurar (una vez):
+1. Re-corre `supabase/bots.sql` (añade `addon_algo` en profiles).
+2. En Stripe crea un **precio recurrente** de $15/mes para el add-on y copia su `price_...`.
+3. Admin → Planes → sección Add-ons → **🤖 Módulo de bots**: pega el `price_id`,
+   pon el precio (15) y déjalo **activado**.
+4. Incluirlo GRATIS en Black: Admin → Planes → Black Onyx → Capacidades →
+   "Módulo de bots" ON. (Así los de Black lo tienen sin pagar aparte.)
+
+Cómo se vende:
+- Cuando un usuario sin acceso entra a **🤖 Bots**, ve la pantalla con el botón
+  **"Añadir por $15/mes"** (checkout del add-on, se prorratea en su suscripción)
+  y la nota "o incluido en Black Onyx".
+- Necesita un plan de pago activo para añadir el add-on (si es free, se le manda a Planes).
+
+Nota honesta: dar de baja el add-on hoy se hace desde **Gestionar pago** (portal de
+Stripe), que quita el item. Un toggle de "quitar" dentro de Mi cuenta se puede
+añadir después; no lo puse para no tocar pantallas grandes sin necesidad.

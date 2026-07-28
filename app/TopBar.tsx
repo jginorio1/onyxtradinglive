@@ -26,6 +26,7 @@ export default async function TopBar() {
   let isAdmin = false;
   let eaLive: boolean | null = null;
   let caps: any = {};
+  let addonAlgo = false;
   let copyActive = false;   // hay copia corriendo (enlace activo y sin pausa global)
 
   try {
@@ -35,9 +36,10 @@ export default async function TopBar() {
 
     if (user) {
       const { data: prof } = await supabaseAdmin
-        .from('profiles').select('plan,is_admin,copy_paused').eq('id', user.id).maybeSingle();
+        .from('profiles').select('plan,is_admin,copy_paused,addon_algo').eq('id', user.id).maybeSingle();
       plan = prof?.plan || 'free';
       isAdmin = !!prof?.is_admin;
+      addonAlgo = !!(prof as any)?.addon_algo;
 
       const { data: planRow } = await supabaseAdmin
         .from('plans').select('name,name_en,capabilities').eq('id', plan).maybeSingle();
@@ -73,7 +75,7 @@ export default async function TopBar() {
         { href: '/dashboard/keys', label: t.accounts, icon: '🔌' },
         ...(caps.manager ? [{ href: '/dashboard/manager', label: t.manager, icon: '🛡️', dot: (eaLive ? 'on' : 'off') as 'on' | 'off', dim: !eaLive, dotTitle: eaLive ? t.eaOn : t.eaOff }] : []),
         ...(caps.copy ? [{ href: '/dashboard/copy', label: t.copy, icon: '🔁', dot: (copyActive ? 'on' : 'off') as 'on' | 'off', dim: !copyActive, dotTitle: (copyActive ? (lang === 'es' ? 'Copia activa' : 'Copy on') : (lang === 'es' ? 'Copia inactiva' : 'Copy off')) }] : []),
-        ...(caps.algo ? [{ href: '/dashboard/bots', label: (t as any).bots, icon: '🤖' }] : []),
+        ...((caps.algo || addonAlgo) ? [{ href: '/dashboard/bots', label: (t as any).bots, icon: '🤖' }] : []),
         ...(isAdmin ? [{ href: '/admin', label: t.admin, icon: '🛠️' }] : []),
       ]
     : [

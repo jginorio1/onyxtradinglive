@@ -29,5 +29,8 @@ create table if not exists bots (
 -- Perfil esperado del backtest, para comparar el vivo vs el backtest (Fase 3).
 alter table bots add column if not exists backtest jsonb not null default '{}'::jsonb;
 
+-- Add-on: el módulo de bots también se puede comprar suelto (no solo por plan).
+alter table profiles add column if not exists addon_algo boolean not null default false;
+
 -- Solo el backend (service role) accede; bloqueamos el acceso público.
 alter table bots enable row level security;

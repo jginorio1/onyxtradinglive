@@ -19,7 +19,8 @@ const T: any = {
     divOk: '✓ en línea con el backtest', divWatch: '~ algo por debajo del backtest', divBad: '⚠ divergencia — revisa sobreajuste',
     portT: 'Portafolio en vivo', portSub: 'Correlación entre tus bots (baja = diversifican; alta = bajan juntos) y curva combinada.', combined: 'Curva combinada',
     emptyT: 'Aún no vemos bots', emptyD: 'Cuando un EA opere en una cuenta conectada, aquí aparecerá por su magic number. Reinstala el Onyx Connector o el Guardian si es una versión vieja (ahora reportan el magic).',
-    lockT: 'Módulo de bots', lockD: 'Evalúa tus estrategias algorítmicas: KPIs por bot, pruebas vs vivo y criterios de graduación. Disponible en planes superiores.', lockCta: 'Ver planes',
+    lockT: 'Módulo de bots', lockD: 'Evalúa tus estrategias algorítmicas: KPIs por bot, pruebas vs vivo, criterios de graduación, backtest vs vivo y correlación de portafolio.', lockCta: 'Ver planes',
+    addBtn: 'Añadir por $%/mes', addOr: 'o incluido en Black Onyx', addNeedSub: 'Necesitas un plan de pago activo para añadir el módulo. Elige uno abajo.',
   },
   en: {
     title: 'Bots', sub: 'Performance per strategy. Split the ones in testing from the ones already live.',
@@ -34,7 +35,8 @@ const T: any = {
     divOk: '✓ in line with backtest', divWatch: '~ a bit below backtest', divBad: '⚠ diverging — check overfitting',
     portT: 'Live portfolio', portSub: 'Correlation between your bots (low = they diversify; high = they drop together) and combined curve.', combined: 'Combined curve',
     emptyT: 'No bots yet', emptyD: 'When an EA trades on a connected account it appears here by its magic number. Reinstall the Onyx Connector or Guardian if it is an old version (they now report the magic).',
-    lockT: 'Bots module', lockD: 'Evaluate your algorithmic strategies: per-bot KPIs, testing vs live and graduation criteria. Available on higher plans.', lockCta: 'See plans',
+    lockT: 'Bots module', lockD: 'Evaluate your algorithmic strategies: per-bot KPIs, testing vs live, graduation criteria, backtest vs live and portfolio correlation.', lockCta: 'See plans',
+    addBtn: 'Add for $%/mo', addOr: 'or included in Black Onyx', addNeedSub: 'You need an active paid plan to add the module. Pick one below.',
   },
 };
 
@@ -73,6 +75,15 @@ export default function Bots() {
   function openEdit(b: any) {
     setEdit(b.magic); setDetail(null);
     setForm({ name: b.name, mode: 'auto', ...b.criteria, btPf: b.backtest?.pf ?? '', btWin: b.backtest?.winRate ?? '', btDd: b.backtest?.maxDD ?? '' });
+  }
+  async function buyAddon() {
+    setBusy(true);
+    try {
+      const r = await fetch('/api/account/addon-algo', { method: 'POST', body: JSON.stringify({ on: true }) });
+      const j = await r.json();
+      if (r.ok) { toast(t.saved, 'ok'); await load(); }
+      else toast(j.code === 'no_sub' ? t.addNeedSub : (j.error || 'error'));
+    } finally { setBusy(false); }
   }
 
   const bots: any[] = d?.bots || [];
@@ -185,7 +196,15 @@ export default function Bots() {
           <div style={{ fontSize: 34, marginBottom: 8 }}>🤖</div>
           <h3 style={{ marginBottom: 6 }}>{t.lockT}</h3>
           <p className="muted" style={{ fontSize: 14, maxWidth: 460, margin: '0 auto 14px' }}>{t.lockD}</p>
-          <Link className="btn btn-primary" href="/pricing">{t.lockCta}</Link>
+          {d.addon?.enabled ? (
+            <>
+              <button className="btn btn-primary" onClick={buyAddon} disabled={busy} style={{ marginBottom: 8 }}>{(t.addBtn as string).replace('%', String(d.addon.price))}</button>
+              <div className="muted" style={{ fontSize: 12, marginBottom: 12 }}>{t.addOr}</div>
+              <Link className="btn btn-ghost" href="/pricing">{t.lockCta}</Link>
+            </>
+          ) : (
+            <Link className="btn btn-primary" href="/pricing">{t.lockCta}</Link>
+          )}
         </div>
       )}
 

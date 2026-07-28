@@ -2,16 +2,11 @@ import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { loadBots, loadPortfolio } from '@/lib/bots';
+import { hasAlgo, addonSettings } from '@/lib/settings';
 import { logError } from '@/lib/errlog';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
-
-async function caps(userId: string) {
-  const { data: prof } = await supabaseAdmin.from('profiles').select('plan').eq('id', userId).maybeSingle();
-  const { data: plan } = await supabaseAdmin.from('plans').select('capabilities').eq('id', (prof as any)?.plan || 'free').maybeSingle();
-  return (plan?.capabilities as any) || {};
-}
 
 // GET · lista de bots con KPIs; ?view=portfolio → matriz de correlación + curva
 export async function GET(req: Request) {
@@ -20,8 +15,10 @@ export async function GET(req: Request) {
     const { data: { user } } = await sb.auth.getUser();
     if (!user) return NextResponse.json({ error: 'no autorizado' }, { status: 401 });
 
-    const c = await caps(user.id);
-    if (!c.algo) return NextResponse.json({ locked: true, bots: [] });
+    if (!(await hasAlgo(user.id))) {
+      const s = await addonSettings();
+      return NextResponse.json({ locked: true, bots: [], addon: { enabled: s.algo_enabled && !!s.algo_price_id, price: s.algo_price } });
+    }
 
     const view = new URL(req.url).searchParams.get('view');
     if (view === 'portfolio') return NextResponse.json({ locked: false, ...(await loadPortfolio(user.id)) });
@@ -41,8 +38,7 @@ export async function PATCH(req: Request) {
     const { data: { user } } = await sb.auth.getUser();
     if (!user) return NextResponse.json({ error: 'no autorizado' }, { status: 401 });
 
-    const c = await caps(user.id);
-    if (!c.algo) return NextResponse.json({ error: 'plan' }, { status: 403 });
+    if (!(await hasAlgo(user.id))) return NextResponse.json({ error: 'plan' }, { status: 403 });
 
     const b = await req.json().catch(() => ({} as any));
     const magic = Number(b.magic);

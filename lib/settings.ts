@@ -5,6 +5,7 @@ export type Addons = {
   extra_account_enabled: boolean; extra_account_price: number; extra_account_price_id: string;
   extra_slave_enabled: boolean; extra_slave_price: number; extra_slave_price_id: string;
   extra_master_enabled: boolean; extra_master_price: number; extra_master_price_id: string;
+  algo_enabled: boolean; algo_price: number; algo_price_id: string;
 };
 
 const R: Retention = { enabled: true, discount_percent: 50, discount_months: 3, pause_months: 2, allow_downgrade: true };
@@ -12,7 +13,16 @@ const A: Addons = {
   extra_account_enabled: true, extra_account_price: 4, extra_account_price_id: '',
   extra_slave_enabled: false, extra_slave_price: 9, extra_slave_price_id: '',
   extra_master_enabled: false, extra_master_price: 15, extra_master_price_id: '',
+  algo_enabled: true, algo_price: 15, algo_price_id: '',
 };
+
+// ¿El usuario tiene el módulo de bots? Por plan (capabilities.algo) o por add-on.
+export async function hasAlgo(userId: string): Promise<boolean> {
+  const { data: prof } = await supabaseAdmin.from('profiles').select('plan,addon_algo').eq('id', userId).maybeSingle();
+  if ((prof as any)?.addon_algo) return true;
+  const { data: plan } = await supabaseAdmin.from('plans').select('capabilities').eq('id', (prof as any)?.plan || 'free').maybeSingle();
+  return !!(plan?.capabilities as any)?.algo;
+}
 
 export async function getSetting<T>(key: string, fallback: T): Promise<T> {
   try {
