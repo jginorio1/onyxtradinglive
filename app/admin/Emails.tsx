@@ -12,6 +12,8 @@ export default function Emails() {
   const [q, setQ] = useState('');
 
   useEffect(() => { const id = setTimeout(load, 250); return () => clearTimeout(id); }, [q]);
+  // Auto-refresco: la bandeja de salida se actualiza sola cada 10s.
+  useEffect(() => { const iv = setInterval(load, 10000); return () => clearInterval(iv); }, [q]);
   async function load() {
     try { const r = await fetch('/api/admin/emails' + (q ? '?q=' + encodeURIComponent(q) : '')); setD(await r.json()); } catch { setD({ emails: [] }); }
   }

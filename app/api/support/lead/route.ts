@@ -15,11 +15,15 @@ export async function POST(req: Request) {
     const email = String(b.email || '').trim().toLowerCase().slice(0, 160);
     const message = String(b.message || '').trim().slice(0, 4000);
     const lang = b.lang === 'en' ? 'en' : 'es';
+    // Conversación completa con la IA (para dar contexto al equipo)
+    const history: any[] = Array.isArray(b.history) ? b.history.slice(-20) : [];
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
       return NextResponse.json({ error: 'email inválido', code: 'email' }, { status: 400 });
     }
 
-    const subject = (message || (lang === 'en' ? 'Question from the website' : 'Consulta desde la web')).slice(0, 120);
+    // Asunto: la primera pregunta del visitante, o el último mensaje, o genérico
+    const firstUserMsg = history.find((m) => m?.role === 'user' && m?.content)?.content || message;
+    const subject = (firstUserMsg || (lang === 'en' ? 'Question from the website' : 'Consulta desde la web')).slice(0, 120);
 
     const { data: ticket, error } = await supabaseAdmin
       .from('support_tickets')
@@ -27,8 +31,23 @@ export async function POST(req: Request) {
       .select('id').single();
     if (error || !ticket) return NextResponse.json({ error: error?.message || 'error' }, { status: 500 });
 
-    if (message) {
+    // Guardamos TODA la conversación con la IA en el hilo del ticket. Así el
+    // equipo ve exactamente qué preguntó y qué respondió Onyx AI.
+    const rows = history
+      .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && String(m.content || '').trim())
+      .map((m) => ({ ticket_id: ticket.id, sender: m.role === 'assistant' ? 'ai' : 'user', body: String(m.content).slice(0, 4000) }));
+
+    if (rows.length) {
+      await supabaseAdmin.from('support_messages').insert(rows);
+    } else if (message) {
       await supabaseAdmin.from('support_messages').insert({ ticket_id: ticket.id, sender: 'user', body: message });
+    } else {
+      // Ni conversación ni mensaje: dejó su correo sin escribir. No dejamos el
+      // hilo vacío, para que el equipo sepa qué pasó.
+      await supabaseAdmin.from('support_messages').insert({
+        ticket_id: ticket.id, sender: 'note',
+        body: lang === 'en' ? 'The visitor left their email from the widget without writing a question.' : 'El visitante dejó su correo desde el widget sin escribir una pregunta.',
+      });
     }
 
     // Avisar al equipo por Telegram (no bloquea la respuesta al visitante)

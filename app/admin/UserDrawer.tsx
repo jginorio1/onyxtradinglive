@@ -25,7 +25,13 @@ export default function UserDrawer({ userId, email, onClose }: { userId: string;
   const [body, setBody] = useState('');
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => { load(); const esc = (e: KeyboardEvent) => e.key === 'Escape' && onClose(); document.addEventListener('keydown', esc); return () => document.removeEventListener('keydown', esc); }, []);
+  useEffect(() => {
+    load();
+    const iv = setInterval(load, 10000); // auto-refresco de actividad y correos
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    document.addEventListener('keydown', esc);
+    return () => { clearInterval(iv); document.removeEventListener('keydown', esc); };
+  }, []);
   async function load() { try { const r = await fetch('/api/admin/user-activity?id=' + userId); setD(await r.json()); } catch { setD({ activity: [], emails: [] }); } }
 
   async function send() {

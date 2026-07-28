@@ -68,7 +68,10 @@ export default function SupportWidget({ loggedIn = false }: { loggedIn?: boolean
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e)) { setErr(t.errMail); return; }
     setErr(''); setBusy(true);
     const lastQ = [...chat].reverse().find((m) => m.role === 'user')?.content || '';
-    await fetch('/api/support/lead', { method: 'POST', body: JSON.stringify({ email: e, message: lastQ, lang }) });
+    // Enviamos TODA la conversación con la IA, no solo la última pregunta,
+    // para que el equipo vea el contexto completo en el ticket.
+    const history = chat.filter((m) => m.role === 'user' || m.role === 'assistant').map((m) => ({ role: m.role, content: m.content }));
+    await fetch('/api/support/lead', { method: 'POST', body: JSON.stringify({ email: e, message: lastQ, history, lang }) });
     setBusy(false); setSent(true); setShowEmail(false);
   }
 
