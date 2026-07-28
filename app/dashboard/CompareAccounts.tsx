@@ -51,7 +51,7 @@ export default function CompareAccounts({ accounts, trades, lang }: { accounts: 
     return bi;
   };
   const cols = `130px repeat(${accounts.length}, 1fr)`;
-  const cell = { padding: '11px 10px', textAlign: 'center' as const, borderTop: '1px solid #1c2434', borderLeft: '1px solid var(--line)' };
+  const cell = { padding: '11px 10px', textAlign: 'center' as const, borderTop: '1px solid var(--line)', borderLeft: '1px solid var(--line)' };
   const best = { background: 'rgba(52,226,160,.12)', fontWeight: 800 as const };
 
   return (
@@ -68,7 +68,7 @@ export default function CompareAccounts({ accounts, trades, lang }: { accounts: 
             </div>); })}
           {rows.map((r, ri) => { const bi = bestIdx(r); return (
             <Fragment key={ri}>
-              <div style={{ padding: '11px 10px', color: 'var(--mut)', borderTop: '1px solid #1c2434' }}>{r.label}</div>
+              <div style={{ padding: '11px 10px', color: 'var(--mut)', borderTop: '1px solid var(--line)' }}>{r.label}</div>
               {stats.map((s, ci) => <div key={ri + '-' + ci} style={{ ...cell, ...(ci === bi ? best : {}) }}>{r.fmt(s)}</div>)}
             </Fragment>
           ); })}

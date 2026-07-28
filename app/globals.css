@@ -6,6 +6,9 @@
   --grad:linear-gradient(120deg,#7c8cff,#a06bff);
   --grad-green:linear-gradient(120deg,#34e2a0,#12b981);
   --grad-red:linear-gradient(120deg,#ff6b7d,#e23b55);
+  /* Tonos "suaves" (texto claro sobre oscuro). Valor oscuro = el actual, para
+     que el modo oscuro NO cambie; en claro pasan a un tono legible. */
+  --soft-brand:#c3ccff; --soft-brand2:#a9b4ff; --soft-green:#7fe9c0; --soft-purple:#c9a9ff;
 }
 /* ============ TEMA CLARO ============
    Redefine las mismas variables. Se aplica de dos formas:
@@ -18,6 +21,7 @@ html[data-theme="light"]{
   --brand:#5b6cff; --brand2:#8b5cff;
   --green:#12a97a; --green2:#0e9268; --red:#e23b55; --red2:#c62f47; --amber:#c9860a; --cyan:#0b93c9; --gold:#c98b17; --purple:#8b5cff;
   --grad:linear-gradient(120deg,#6b7bff,#8b5cff);
+  --soft-brand:#4a57c9; --soft-brand2:#4550b0; --soft-green:#0e8a63; --soft-purple:#7b4fd0;
 }
 @media (prefers-color-scheme: light){
   :root:not([data-theme="dark"]):not([data-theme="light"]){
@@ -26,6 +30,7 @@ html[data-theme="light"]{
     --brand:#5b6cff; --brand2:#8b5cff;
     --green:#12a97a; --green2:#0e9268; --red:#e23b55; --red2:#c62f47; --amber:#c9860a; --cyan:#0b93c9; --gold:#c98b17; --purple:#8b5cff;
     --grad:linear-gradient(120deg,#6b7bff,#8b5cff);
+    --soft-brand:#4a57c9; --soft-brand2:#4550b0; --soft-green:#0e8a63; --soft-purple:#7b4fd0;
   }
 }
 

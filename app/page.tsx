@@ -26,7 +26,7 @@ const LOGOS = [
   { n: 'FTMO', c: '#2f6bff' }, { n: 'FundedNext', c: '#16c98d' },
   { n: 'FundingPips', c: '#8b5cff' }, { n: 'The5%ers', c: '#ffce00' },
   { n: 'MetaTrader 4', c: '#f0a020' }, { n: 'MetaTrader 5', c: '#2f6bff' },
-  { n: 'Axi', c: '#ff4757' }, { n: 'IC Markets', c: '#e23b55' },
+  { n: 'Axi', c: '#ff4757' }, { n: 'IC Markets', c: 'var(--red2)' },
   { n: 'Pepperstone', c: '#e2531f' }, { n: 'Exness', c: '#ffcf5c' },
 ];
 
@@ -328,7 +328,7 @@ export default function Home() {
   const targetPct = Math.max(0, Math.min(100, (pnl / target) * 100));
   const lossPct = pnl < 0 ? Math.min(100, (-pnl / maxLoss) * 100) : 0;
   const st = pnl <= -maxLoss ? t.prop.st.broke : pnl >= target ? t.prop.st.passed : (pnl < 0 && -pnl > maxLoss * 0.7) ? t.prop.st.near : t.prop.st.ok;
-  const stColor = pnl <= -maxLoss ? '#ff6b7d' : pnl >= target ? '#34e2a0' : (pnl < 0 && -pnl > maxLoss * 0.7) ? '#ffcf5c' : '#7c8cff';
+  const stColor = pnl <= -maxLoss ? 'var(--red)' : pnl >= target ? 'var(--green)' : (pnl < 0 && -pnl > maxLoss * 0.7) ? '#ffcf5c' : 'var(--brand)';
   const grad = { background: 'var(--grad)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' } as any;
 
   const SECTIONS = [
@@ -362,23 +362,23 @@ export default function Home() {
             {/* sesiones */}
             <div style={{ background: '#151a28', borderRadius: 12, padding: 12, fontSize: 11 }}>
               <div style={{ fontWeight: 700, marginBottom: 8 }}>🕐 Sesiones</div>
-              {[['🇬🇧 Londres', '#34e2a0', 'OPEN'], ['🇺🇸 N.York', '#34e2a0', 'OPEN'], ['🇯🇵 Tokio', '#9aa6bd', '3h'], ['🇦🇺 Sídney', '#9aa6bd', '6h']].map((s, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', margin: '6px 0', color: '#9aa6bd' }}><span>{s[0]}</span><b style={{ color: s[1] as string }}>{s[2]}</b></div>
+              {[['🇬🇧 Londres', 'var(--green)', 'OPEN'], ['🇺🇸 N.York', 'var(--green)', 'OPEN'], ['🇯🇵 Tokio', 'var(--mut)', '3h'], ['🇦🇺 Sídney', 'var(--mut)', '6h']].map((s, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', margin: '6px 0', color: 'var(--mut)' }}><span>{s[0]}</span><b style={{ color: s[1] as string }}>{s[2]}</b></div>
               ))}
             </div>
             {/* panel */}
             <div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 8 }}>
-                {[['Health', '78', '#34e2a0', 0.78], ['Win', '63%', '#7c8cff', 0.63], ['P.factor', '1.94', '#b98bff', 0.65]].map((r, i) => {
+                {[['Health', '78', 'var(--green)', 0.78], ['Win', '63%', 'var(--brand)', 0.63], ['P.factor', '1.94', 'var(--purple)', 0.65]].map((r, i) => {
                   const C = 2 * Math.PI * 15, d = (r[3] as number) * C;
                   return (<div key={i} style={{ background: '#151a28', borderRadius: 10, padding: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <svg width="40" height="40" viewBox="0 0 40 40"><circle cx="20" cy="20" r="15" fill="none" stroke="#3a4a68" strokeWidth="5" /><circle cx="20" cy="20" r="15" fill="none" stroke={r[2] as string} strokeWidth="5" strokeLinecap="round" strokeDasharray={`${d} ${C - d}`} transform="rotate(-90 20 20)" /><text x="20" y="24" textAnchor="middle" fill="#f2f5fb" fontSize="10" fontWeight="800">{r[1]}</text></svg>
-                    <span style={{ fontSize: 10, color: '#9aa6bd' }}>{r[0]}</span>
+                    <svg width="40" height="40" viewBox="0 0 40 40"><circle cx="20" cy="20" r="15" fill="none" stroke="var(--line)" strokeWidth="5" /><circle cx="20" cy="20" r="15" fill="none" stroke={r[2] as string} strokeWidth="5" strokeLinecap="round" strokeDasharray={`${d} ${C - d}`} transform="rotate(-90 20 20)" /><text x="20" y="24" textAnchor="middle" fill="var(--tx)" fontSize="10" fontWeight="800">{r[1]}</text></svg>
+                    <span style={{ fontSize: 10, color: 'var(--mut)' }}>{r[0]}</span>
                   </div>);
                 })}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8 }}>
-                {[['🎯 Rendimiento', '#7c8cff', '+$8,240', '#34e2a0'], ['🗓️ Calendario', '#34e2a0', '18 verdes', '#f2f5fb'], ['📋 Operaciones', '#b98bff', '142', '#f2f5fb'], ['💸 Costes', '#ffd45e', '-$412', '#ff6b7d']].map((b, i) => (
+                {[['🎯 Rendimiento', 'var(--brand)', '+$8,240', 'var(--green)'], ['🗓️ Calendario', 'var(--green)', '18 verdes', 'var(--tx)'], ['📋 Operaciones', 'var(--purple)', '142', 'var(--tx)'], ['💸 Costes', 'var(--gold)', '-$412', 'var(--red)']].map((b, i) => (
                   <div key={i} style={{ background: '#151a28', borderTop: `2px solid ${b[1]}`, borderRadius: 10, padding: 10 }}><b style={{ fontSize: 12, color: '#fff' }}>{b[0]}</b><div style={{ fontSize: 15, fontWeight: 800, color: b[3] as string, marginTop: 4 }}>{b[2]}</div></div>
                 ))}
               </div>
@@ -386,9 +386,9 @@ export default function Home() {
             {/* noticias */}
             <div style={{ background: '#151a28', borderRadius: 12, padding: 12, fontSize: 11 }}>
               <div style={{ fontWeight: 700, marginBottom: 8 }}>📰 Noticias</div>
-              <div style={{ background: 'rgba(124,140,255,.12)', border: '1px solid #7c8cff', borderRadius: 8, padding: 8 }}>
-                <div style={{ color: '#a9b4ff', fontWeight: 700, fontSize: 9 }}>🇺🇸 NFP <span style={{ color: '#ff6b7d' }}>●●●</span></div>
-                <div style={{ fontSize: 14, fontWeight: 800, color: '#a9b4ff' }}>2h 14m</div>
+              <div style={{ background: 'rgba(124,140,255,.12)', border: '1px solid var(--brand)', borderRadius: 8, padding: 8 }}>
+                <div style={{ color: 'var(--soft-brand2)', fontWeight: 700, fontSize: 9 }}>🇺🇸 NFP <span style={{ color: 'var(--red)' }}>●●●</span></div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--soft-brand2)' }}>2h 14m</div>
               </div>
             </div>
           </div>
@@ -468,7 +468,7 @@ export default function Home() {
         <p className="muted" style={{ fontSize: 17, maxWidth: 620, margin: '0 auto 26px' }}>{t.videoS}</p>
         <div className="vframe" style={{ maxWidth: 940, margin: '0 auto' }}>
           <div className="row" style={{ gap: 7, padding: '11px 14px', borderBottom: '1px solid var(--line)', background: 'var(--bg)' }}>
-            <span className="vdot" style={{ background: '#ff6b7d' }} /><span className="vdot" style={{ background: '#ffc04d' }} /><span className="vdot" style={{ background: '#34e2a0' }} />
+            <span className="vdot" style={{ background: 'var(--red)' }} /><span className="vdot" style={{ background: 'var(--amber)' }} /><span className="vdot" style={{ background: 'var(--green)' }} />
             <span className="muted" style={{ fontSize: 12, marginLeft: 8 }}>onyxtradinglive.vercel.app/dashboard</span>
           </div>
           {!vidErr ? (
@@ -478,13 +478,13 @@ export default function Home() {
           ) : (
             <svg viewBox="0 0 940 460" width="100%" xmlns="http://www.w3.org/2000/svg" fontFamily="Segoe UI,sans-serif">
               <rect x="0" y="0" width="940" height="460" fill="#0f131e" />
-              {[['Neto', '+$8,240', '#34e2a0'], ['Win rate', '63%', '#f2f5fb'], ['Profit factor', '1.94', '#f2f5fb'], ['Expectancy', '+$42', '#7c8cff'], ['Drawdown', '4.1%', '#ff6b7d']].map((c, i) => (
-                <g key={i}><rect x={22 + i * 182} y="22" width="168" height="76" rx="10" fill="#151a28" /><text x={38 + i * 182} y="50" fill="#9aa6bd" fontSize="12">{c[0]}</text><text x={38 + i * 182} y="80" fill={c[2] as string} fontSize="23" fontWeight="800">{c[1]}</text></g>
+              {[['Neto', '+$8,240', 'var(--green)'], ['Win rate', '63%', 'var(--tx)'], ['Profit factor', '1.94', 'var(--tx)'], ['Expectancy', '+$42', 'var(--brand)'], ['Drawdown', '4.1%', 'var(--red)']].map((c, i) => (
+                <g key={i}><rect x={22 + i * 182} y="22" width="168" height="76" rx="10" fill="#151a28" /><text x={38 + i * 182} y="50" fill="var(--mut)" fontSize="12">{c[0]}</text><text x={38 + i * 182} y="80" fill={c[2] as string} fontSize="23" fontWeight="800">{c[1]}</text></g>
               ))}
-              <rect x="22" y="112" width="560" height="326" rx="10" fill="#151a28" /><text x="40" y="140" fill="#f2f5fb" fontSize="13" fontWeight="700">Curva de equity</text>
-              <polyline points="44,392 130,378 216,398 302,340 388,352 474,286 540,300 582,232" fill="none" stroke="#7c8cff" strokeWidth="3" />
-              <polygon points="44,392 130,378 216,398 302,340 388,352 474,286 540,300 582,232 582,420 44,420" fill="#7c8cff" opacity="0.12" />
-              <rect x="598" y="112" width="320" height="326" rx="10" fill="#151a28" /><text x="616" y="140" fill="#f2f5fb" fontSize="13" fontWeight="700">Calendario</text>
+              <rect x="22" y="112" width="560" height="326" rx="10" fill="#151a28" /><text x="40" y="140" fill="var(--tx)" fontSize="13" fontWeight="700">Curva de equity</text>
+              <polyline points="44,392 130,378 216,398 302,340 388,352 474,286 540,300 582,232" fill="none" stroke="var(--brand)" strokeWidth="3" />
+              <polygon points="44,392 130,378 216,398 302,340 388,352 474,286 540,300 582,232 582,420 44,420" fill="var(--brand)" opacity="0.12" />
+              <rect x="598" y="112" width="320" height="326" rx="10" fill="#151a28" /><text x="616" y="140" fill="var(--tx)" fontSize="13" fontWeight="700">Calendario</text>
               {Array.from({ length: 25 }).map((_, i) => { const g = (i * 7) % 3 !== 0; return <rect key={i} x={616 + (i % 5) * 60} y={156 + Math.floor(i / 5) * 52} width="52" height="44" rx="6" fill={g ? 'rgba(52,226,160,0.42)' : 'rgba(255,107,125,0.42)'} />; })}
             </svg>
           )}
@@ -545,7 +545,7 @@ export default function Home() {
               {f.plats.map((p, j) => {
                 const ok = p.indexOf('MT') === 0;
                 return <span key={j} style={{ padding: '5px 11px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-                  background: ok ? 'rgba(52,226,160,0.14)' : 'var(--bg2)', color: ok ? '#34e2a0' : 'var(--mut)',
+                  background: ok ? 'rgba(52,226,160,0.14)' : 'var(--bg2)', color: ok ? 'var(--green)' : 'var(--mut)',
                   border: ok ? '1px solid rgba(52,226,160,0.45)' : '1px solid var(--line)' }}>{ok ? '✓ ' : ''}{p}</span>;
               })}
             </div>
@@ -562,19 +562,19 @@ export default function Home() {
 
             <div className="row between" style={{ marginBottom: 6 }}>
               <span className="muted" style={{ fontSize: 14 }}>{t.prop.tPnl}</span>
-              <b style={{ color: pnl >= 0 ? '#34e2a0' : '#ff6b7d', fontSize: 19 }}>{pnl >= 0 ? '+' : '−'}${Math.abs(pnl).toLocaleString()}</b>
+              <b style={{ color: pnl >= 0 ? 'var(--green)' : 'var(--red)', fontSize: 19 }}>{pnl >= 0 ? '+' : '−'}${Math.abs(pnl).toLocaleString()}</b>
             </div>
             <input type="range" min={-6000} max={6500} step={100} value={pnl} onChange={(e) => setPnl(parseInt(e.target.value))}
               style={{ width: '100%', accentColor: stColor, marginBottom: 20 }} />
 
             <div className="row between" style={{ fontSize: 13, marginBottom: 5 }}><span className="muted">{t.prop.tTarget}</span><span style={{ fontWeight: 700 }}>{Math.round(targetPct)}%</span></div>
             <div style={{ height: 10, background: 'var(--bg2)', borderRadius: 6, overflow: 'hidden', marginBottom: 16 }}>
-              <div style={{ width: targetPct + '%', height: '100%', background: '#34e2a0', transition: 'width .12s' }} />
+              <div style={{ width: targetPct + '%', height: '100%', background: 'var(--green)', transition: 'width .12s' }} />
             </div>
 
             <div className="row between" style={{ fontSize: 13, marginBottom: 5 }}><span className="muted">{t.prop.tLoss}</span><span style={{ fontWeight: 700 }}>{Math.round(lossPct)}%</span></div>
             <div style={{ height: 10, background: 'var(--bg2)', borderRadius: 6, overflow: 'hidden', marginBottom: 20 }}>
-              <div style={{ width: lossPct + '%', height: '100%', background: lossPct > 70 ? '#ff6b7d' : '#ffcf5c', transition: 'width .12s' }} />
+              <div style={{ width: lossPct + '%', height: '100%', background: lossPct > 70 ? 'var(--red)' : '#ffcf5c', transition: 'width .12s' }} />
             </div>
 
             <div style={{ textAlign: 'center', padding: '11px', borderRadius: 10, background: 'var(--bg2)', border: '1px solid ' + stColor, color: stColor, fontWeight: 700 }}>{st}</div>
@@ -652,7 +652,7 @@ export default function Home() {
                 <div style={{ fontSize: 42, fontWeight: 800, margin: '10px 0 2px' }}>${price}<span className="muted" style={{ fontSize: 15, fontWeight: 500 }}>/{annual ? (lang === 'es' ? 'año' : 'yr') : (lang === 'es' ? 'mes' : 'mo')}</span></div>
                 <ul style={{ listStyle: 'none', margin: '16px 0' }}>
                   {i > 0 && <li style={{ padding: '7px 0', color: 'var(--mut)', fontWeight: 700, fontSize: 13 }}>{lang === 'es' ? `Todo lo de ${prevName}, y además:` : `Everything in ${prevName}, and more:`}</li>}
-                  {feats.map((it: string, j: number) => <li key={j} style={{ padding: '7px 0', color: '#d6dae6' }}><span style={{ color: '#34e2a0' }}>✓</span> {it}</li>)}
+                  {feats.map((it: string, j: number) => <li key={j} style={{ padding: '7px 0', color: '#d6dae6' }}><span style={{ color: 'var(--green)' }}>✓</span> {it}</li>)}
                 </ul>
                 <Link className={'btn ' + (pop ? 'btn-primary' : 'btn-ghost')} href="/login?mode=signup" style={{ display: 'block', textAlign: 'center' }}>{price === 0 ? (lang === 'es' ? 'Empezar gratis' : 'Start free') : (lang === 'es' ? 'Elegir ' : 'Choose ') + name}</Link>
               </div>
