@@ -528,3 +528,84 @@ Debajo siguen las plantillas estáticas por si no hay IA configurada.
 
 Nota: la IA **redacta**, no busca creadores por su cuenta (no navega la web).
 Los prospectos los añades tú. Nunca inventa funciones ni promete ganancias.
+
+---
+
+## 13 · Entornos: Beta separado de Producción (+ cómo volver al estable)
+
+Idea clave: **Beta y Producción son dos webs distintas, con dos bases de datos
+distintas.** Así puedes romper lo que quieras en Beta sin tocar a un cliente real.
+El botón de "cambiar" solo te lleva de una URL a la otra — el aislamiento vive en
+la infraestructura, no en un interruptor.
+
+### A) Montar el entorno Beta (una vez)
+
+1. **Rama en tu repo:** crea una rama `beta` (en GitHub, botón de ramas → New
+   branch `beta`). Vercel la desplegará sola.
+2. **Segunda base de datos:** en Supabase → New project → "onyx-beta". Copia su
+   URL y sus claves. (Es una base VACÍA de pruebas, aparte de la real.)
+3. **Stripe en modo prueba:** en Stripe, activa "Test mode" (interruptor arriba a
+   la derecha) y usa esas claves `sk_test_...` / `pk_test_...` para Beta.
+4. **En Vercel → Settings → Environment Variables**, usa el selector de entorno:
+   - Para **Preview/beta** pon las claves de la base beta + Stripe test, y además:
+     `NEXT_PUBLIC_APP_ENV=beta`, `NEXT_PUBLIC_BETA_URL=<url de beta>`,
+     `NEXT_PUBLIC_PROD_URL=https://www.onyxtradinglive.com`, `BETA_SWITCH_PIN=<un pin>`.
+   - Para **Production** deja las claves reales y `NEXT_PUBLIC_APP_ENV=production`
+     (o vacío), más las mismas `NEXT_PUBLIC_BETA_URL` / `NEXT_PUBLIC_PROD_URL` / `BETA_SWITCH_PIN`.
+5. (Opcional) Un dominio bonito: en Vercel → Domains, apunta `beta.onyxtradinglive.com`
+   a la rama `beta`.
+
+Con eso, la web beta muestra sola la franja morada "ENTORNO DE PRUEBAS", y en
+**Admin → Ajustes → Entorno** tienes el botón para saltar (pide PIN + alerta).
+
+### B) Cómo paso un cambio de un estado a otro (promover)
+
+El cambio siempre baja por el tubo, nunca al revés:
+
+1. Trabajas/pruebas en la rama **`beta`** (se despliega solo en la web beta).
+2. Cuando funciona, **fusionas `beta` → `main`** (en GitHub: Pull request de
+   `beta` a `main` → Merge). Eso, y solo eso, actualiza **Producción**.
+
+Nunca edites producción a mano: todo pasa primero por beta.
+
+### C) SI PRODUCCIÓN FALLA — cómo vuelvo al estable (esto es lo importante)
+
+Vercel guarda **todos** los despliegues anteriores. Volver a la última versión
+buena tarda ~15 segundos y no borra nada:
+
+1. Vercel → tu proyecto → pestaña **Deployments**.
+2. Busca el último despliegue que **sí funcionaba** (marca verde "Ready", el de
+   antes del que rompió).
+3. En sus tres puntos **⋯ → "Promote to Production"** (o "Instant Rollback").
+4. Confirma. En segundos, producción vuelve a esa versión estable. Tus usuarios
+   dejan de ver el fallo.
+
+Eso es tu botón de "deshacer". La base de datos no se toca con un rollback de
+código; si además tocaste datos, para eso tienes los **backups de Supabase** y tu
+copia en Drive.
+
+Resumen del ciclo seguro: **beta (rompes) → merge a main (produces) → si algo
+sale mal, Promote al despliegue anterior (vuelves al estable).**
+
+---
+
+## 14 · Balance real (gastos operacionales vs ganancias) · Pro+
+
+Nueva sección en el dashboard del trader: apunta sus gastos (retos de fondeo, VPS,
+software, internet, suscripciones…) y ve su **neto real** = ganancia de trading −
+gastos. Disponible en **Pro y superiores** (capacidad `expenses`). Bilingüe.
+
+**Activar:**
+1. Corre `supabase/expenses.sql` (tabla `expenses`).
+2. Enciende la capacidad **"Balance real"** (`expenses`) en **Admin → Planes** →
+   Capacidades, para **Pro, Elite y Black Onyx**. (Igual que hiciste con el módulo
+   de bots.) También puedes correr el UPDATE que viene comentado en el .sql.
+
+Cuando está activa, al trader le aparece **🧮 Balance real** en el menú. Ahí:
+- Tarjetas Ganancia bruta / Gastos / **Neto real** por mes (‹ mes ›).
+- Añadir gasto con lista predefinida (o "Otro…" manual) y check **Mensual**
+  (los recurrentes cuentan cada mes solos).
+- Desglose por categoría y lista de gastos, con borrar.
+
+El bruto de trading sale de sus operaciones cerradas del mes; los gastos, de lo
+que apunte. Nada se envía a ningún lado — es su registro privado.

@@ -9,6 +9,7 @@ import { createSupabaseServer } from '@/lib/supabaseServer';
 import { LanguageProvider } from '@/lib/lang';
 import { BetaProvider } from '@/lib/beta';
 import BetaBanner from './BetaBanner';
+import EnvBanner from './EnvBanner';
 import { serverBeta } from '@/lib/betaServer';
 import PromoBar from './PromoBar';
 import { getSetting } from '@/lib/settings';
@@ -104,6 +105,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang={lang} data-theme={theme || undefined} suppressHydrationWarning>
       <body>
         <JsonLd data={graph} />
+        <EnvBanner />
         <LanguageProvider initial={lang}>
           <BetaProvider initial={beta}>
             {promoLive && (

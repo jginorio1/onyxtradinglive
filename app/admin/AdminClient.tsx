@@ -20,6 +20,7 @@ import Audit from './Audit';
 import Optimize from './Optimize';
 import AdminLock from './AdminLock';
 import Revenue from './Revenue';
+import EnvSwitch from './EnvSwitch';
 import RangeBar, { type Range, defaultRange } from './RangeBar';
 import { AREAS, effectivePerms } from '@/lib/perms';
 import { useT } from '@/lib/adminText';
@@ -30,7 +31,7 @@ type User = { id: string; email: string; plan: string; subscription_status: stri
 type Team = { id: string; email: string; role: string | null; is_admin: boolean; perms?: any; available?: boolean; last_active?: string | null };
 type Tab = 'resumen' | 'ingresos' | 'usuarios' | 'correos' | 'campanas' | 'planes' | 'equipo' | 'embajadores' | 'retencion' | 'pruebas' | 'firms' | 'modulos' | 'soporte' | 'kb' | 'diag' | 'backups' | 'audit' | 'optim' | 'ajustes';
 
-const CAPS: string[] = ['journal', 'compare', 'funding', 'costs', 'export', 'reports', 'telegram', 'manager', 'manager_advanced', 'manager_news', 'copy', 'algo'];
+const CAPS: string[] = ['journal', 'compare', 'funding', 'costs', 'export', 'reports', 'telegram', 'manager', 'manager_advanced', 'manager_news', 'copy', 'algo', 'expenses'];
 
 function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
   return <span className="toggle" onClick={onClick} style={{ background: on ? 'var(--green)' : '#556080', boxShadow: on ? 'none' : 'inset 0 0 0 1px rgba(255,255,255,.12)' }}><span className="knob" style={{ left: on ? 21 : 3 }} /></span>;
@@ -509,6 +510,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                       <p className="muted" style={{ fontSize: 13.5, marginBottom: 8 }}>{t.a_rolesBody}</p>
                       <p className="muted" style={{ fontSize: 13 }}>{t.a_rolesEnv}</p>
                     </div>
+                    <EnvSwitch />
                     <PromoControl />
                     <AlertsControl />
                     <BetaControl />
