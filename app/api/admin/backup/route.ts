@@ -26,6 +26,15 @@ async function dumpTable(table: string): Promise<any[]> {
   return rows;
 }
 
+// Oculta valores sensibles antes de exportar (nunca salen del sistema en claro):
+// secretos, tokens, contraseñas, hashes, PINs y claves API.
+const SENSITIVE_COL = /(secret|token|password|passwd|hash|private|^key$|_key$|apikey|pin)/i;
+function redactRow(row: any): any {
+  const out: any = {};
+  for (const k of Object.keys(row)) out[k] = SENSITIVE_COL.test(k) ? '***REDACTED***' : row[k];
+  return out;
+}
+
 function toCsv(rows: any[]): string {
   if (!rows.length) return '';
   const cols = Object.keys(rows[0]);
@@ -43,18 +52,25 @@ export async function GET(req: Request) {
   const day = new Date().toISOString().slice(0, 10);
 
   if (exp) {
-    // Exportar TODOS los datos: solo el Owner (ajustes: gestionar).
-    const { ok } = await requirePerm('ajustes', 'manage');
-    if (!ok) return NextResponse.json({ error: 'Solo el Owner puede exportar todos los datos.' }, { status: 403 });
+    // Autorización: el Owner con sesión, O una tarea automática con secreto
+    // (BACKUP_SECRET o CRON_SECRET). Esto permite que un Google Apps Script
+    // baje la copia y la guarde en tu Drive sin iniciar sesión.
+    const secret = req.headers.get('x-cron-secret') || searchParams.get('key') || searchParams.get('secret') || '';
+    const secretOk = (!!process.env.BACKUP_SECRET && secret === process.env.BACKUP_SECRET)
+      || (!!process.env.CRON_SECRET && secret === process.env.CRON_SECRET);
+    let authed = secretOk;
+    if (!authed) { const { ok } = await requirePerm('ajustes', 'manage'); authed = ok; }
+    if (!authed) return NextResponse.json({ error: 'Solo el Owner (o la tarea automática con secreto) puede exportar todos los datos.' }, { status: 403 });
 
     if (exp === 'csv') {
       const rows = await dumpTable('trades');
-      return new NextResponse(toCsv(rows), {
+      return new NextResponse(toCsv(rows.map(redactRow)), {
         headers: { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': `attachment; filename="onyx-operaciones-${day}.csv"` },
       });
     }
+    // Volcado JSON, siempre con los campos sensibles ocultos (nunca salen secretos/tokens/PINs).
     const out: any = { app: 'Onyx Trading Live', exported_at: new Date().toISOString(), tables: {} };
-    for (const t of TABLES) { try { out.tables[t] = await dumpTable(t); } catch { /* tabla ausente */ } }
+    for (const t of TABLES) { try { out.tables[t] = (await dumpTable(t)).map(redactRow); } catch { /* tabla ausente */ } }
     return new NextResponse(JSON.stringify(out, null, 2), {
       headers: { 'content-type': 'application/json; charset=utf-8', 'content-disposition': `attachment; filename="onyx-backup-${day}.json"` },
     });
@@ -74,10 +90,10 @@ export async function GET(req: Request) {
 // POST · lo llama la tarea automática (GitHub Actions) tras subir el volcado.
 // No usa sesión: se valida con CRON_SECRET.
 export async function POST(req: Request) {
-  const secret = req.headers.get('x-cron-secret') || new URL(req.url).searchParams.get('secret');
-  if (!process.env.CRON_SECRET || secret !== process.env.CRON_SECRET) {
-    return NextResponse.json({ error: 'no autorizado' }, { status: 401 });
-  }
+  const secret = req.headers.get('x-cron-secret') || new URL(req.url).searchParams.get('secret') || '';
+  const ok = (!!process.env.BACKUP_SECRET && secret === process.env.BACKUP_SECRET)
+    || (!!process.env.CRON_SECRET && secret === process.env.CRON_SECRET);
+  if (!ok) return NextResponse.json({ error: 'no autorizado' }, { status: 401 });
   const b = await req.json().catch(() => ({}));
   const at = new Date().toISOString();
   const size = Number(b.size) || 0;

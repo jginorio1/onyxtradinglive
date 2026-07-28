@@ -446,3 +446,32 @@ además de "Enviar ahora" hay "🕒 O prográmala": eliges fecha/hora y queda en
 - NOTA: en Vercel plan **Hobby** los cron corren como mucho 1 vez al día, así que
   las programadas saldrían en la corrida diaria, no a la hora exacta. Con Vercel
   **Pro** sí corre cada hora. (Los secretos van solo en variables de entorno.)
+
+---
+
+## 10 · Backups automáticos a tu Google Drive (Apps Script)
+
+Copia diaria de tu base de datos en el Drive de tu Gmail, gratis y sin llaves de
+Google en el servidor. El script corre en TU cuenta de Google.
+
+**En el código (ya hecho):** el export del backup (`/api/admin/backup?export=json`)
+ahora acepta un secreto además de la sesión, y **oculta los campos sensibles**
+(secretos, tokens, hashes, PINs, claves API) — nunca salen en claro.
+
+**Pasos:**
+1. En Vercel, decide el secreto: usa el `CRON_SECRET` que ya tienes, o crea uno
+   nuevo `BACKUP_SECRET` (Settings → Environment Variables) con un valor largo al azar.
+2. Abre `backups/onyx-drive-backup.gs` (viene en el ZIP). Copia TODO su contenido.
+3. Ve a https://script.google.com → **Nuevo proyecto** → borra lo que haya y **pega**.
+4. Rellena el bloque `CONFIG`: tu `SITE`, el `SECRET` (el mismo del paso 1),
+   el nombre de carpeta y cuántas copias conservar (KEEP).
+5. Ejecuta la función **`backupNow`** una vez (acepta los permisos). Debe crear el
+   primer `onyx-backup-*.json` en tu Drive → compruébalo.
+6. Ejecuta **`instalarDisparadorDiario`** una vez → a partir de ahí corre solo cada día.
+
+Lo verás también en **Admin → Backups** (el script avisa al panel para el historial).
+
+**Recuerda (importante):** esta copia en Drive es tu **segunda** red de seguridad.
+La principal deben ser los **backups automáticos de Supabase** (plan Pro: copias
+diarias + recuperación a un punto en el tiempo). Actívalos en Supabase → Database →
+Backups. Mantén la carpeta de Drive **privada** (contiene datos de usuarios).
