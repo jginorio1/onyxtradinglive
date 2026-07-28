@@ -344,7 +344,15 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
       <div className="wrap-wide" style={{ padding: '22px 0' }}>
         <div className="adminlayout">
           <div className="adminnav card" style={{ padding: 12 }}>
-            <div className="adminnav-items">
+            {/* Móvil: selector agrupado (se adapta como el menú de arriba) */}
+            <select className="adminnav-mobile" value={tab} onChange={(e) => setTab(e.target.value)} style={{ margin: 0, width: '100%' }}>
+              {groups.map((gr) => (
+                <optgroup key={gr.g} label={gr.g}>
+                  {gr.items.map(([k, ic, label]) => <option key={k} value={k}>{`${ic}  ${label}`}</option>)}
+                </optgroup>
+              ))}
+            </select>
+            <div className="adminnav-items adminnav-grouped">
               {groups.map((gr) => (
                 <div key={gr.g}>
                   <div className="adminnav-group">{gr.g}</div>

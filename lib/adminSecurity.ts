@@ -10,7 +10,8 @@ import { getSetting, saveSetting } from '@/lib/settings';
 // El PIN se guarda CIFRADO (hash pbkdf2 + salt) en app_settings, nunca en claro.
 // ============================================================
 
-export const LOCK_COOKIE = 'onyx_lock';
+export const LOCK_COOKIE = 'onyx_lock';   // (heredado, ya no se usa)
+export const SEEN_COOKIE = 'onyx_seen';   // marca de tiempo de última actividad del admin
 export const IDLE_MIN = 20;        // minutos de inactividad para admins/equipo
 export const MAX_TRIES = 5;        // intentos de PIN antes de cerrar sesión
 
@@ -69,7 +70,18 @@ export async function verifyPin(userId: string, pin: string): Promise<'ok' | 'ba
   return locked ? 'locked' : 'bad';
 }
 
-// ¿El panel está bloqueado ahora mismo? (cookie httpOnly)
+// ¿El panel está bloqueado ahora mismo?
+// Se basa en la MARCA DE TIEMPO de la última actividad (cookie onyx_seen), no en
+// un temporizador de JavaScript. Así el bloqueo es determinista: si pasan más de
+// IDLE_MIN minutos sin actividad, la marca queda "vieja" y el servidor bloquea —
+// aunque el móvil haya congelado el JS de la pestaña en segundo plano.
+// Si no hay marca (primer acceso), no está bloqueado; el cliente la crea al entrar.
 export function serverLocked(): boolean {
-  try { return cookies().get(LOCK_COOKIE)?.value === '1'; } catch { return false; }
+  try {
+    const v = cookies().get(SEEN_COOKIE)?.value;
+    if (!v) return false;
+    const t = parseInt(v, 10);
+    if (!t || Number.isNaN(t)) return false;
+    return Date.now() - t > IDLE_MIN * 60 * 1000;
+  } catch { return false; }
 }

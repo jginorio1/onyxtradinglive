@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getAdmin, requirePerm } from '@/lib/admin';
-import { LOCK_COOKIE, IDLE_MIN, userHasPin, setPin, verifyPin, getStore } from '@/lib/adminSecurity';
+import { SEEN_COOKIE, IDLE_MIN, userHasPin, setPin, verifyPin, getStore, serverLocked } from '@/lib/adminSecurity';
+
+const SEEN_TTL = 60 * 60 * 8; // la cookie vive 8h; lo que bloquea es su antigüedad
+function touch(fresh = true) {
+  const t = fresh ? Date.now() : Date.now() - (IDLE_MIN * 60 * 1000) - 60000; // fresco o "viejo" (bloquea ya)
+  cookies().set(SEEN_COOKIE, String(t), { path: '/', maxAge: SEEN_TTL, httpOnly: true, sameSite: 'lax', secure: true });
+}
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -12,7 +18,7 @@ export async function GET() {
   const { user, isAdmin } = await getAdmin();
   if (!isAdmin) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
   const hasPin = await userHasPin(user.id);
-  const locked = cookies().get(LOCK_COOKIE)?.value === '1';
+  const locked = hasPin && serverLocked();
   const isOwner = (await requirePerm('ajustes', 'manage')).ok;
   let managed: string[] | undefined;
   if (isOwner) managed = Object.keys((await getStore()).users);
@@ -39,29 +45,33 @@ export async function PATCH(req: Request) {
   return NextResponse.json({ ok: true, hasPin: !!pin });
 }
 
-// POST · bloquear o desbloquear el panel.
-//   { action: 'lock' }            → marca la cookie (lo llama el temporizador de inactividad)
-//   { action: 'unlock', pin }     → verifica el PIN y quita la cookie
+// POST · mantener viva la sesión, bloquear o desbloquear el panel.
+//   { action: 'ping' }            → renueva la marca de actividad (lo llama el cliente en cada actividad real)
+//   { action: 'lock' }            → bloquea ahora mismo (marca la actividad como vieja)
+//   { action: 'unlock', pin }     → verifica el PIN y deja la marca fresca
 export async function POST(req: Request) {
   const { user, isAdmin } = await getAdmin();
   if (!isAdmin) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
   const b = await req.json().catch(() => ({}));
 
-  if (b.action === 'lock') {
-    // Solo bloqueamos a quien tenga PIN (si no, no podría reentrar).
+  if (b.action === 'ping') {
+    // Solo tiene sentido para quien tenga PIN (si no, no hay bloqueo).
     if (!(await userHasPin(user.id))) return NextResponse.json({ ok: true, skipped: true });
-    cookies().set(LOCK_COOKIE, '1', { path: '/', httpOnly: true, sameSite: 'lax', secure: true });
+    touch(true);
+    return NextResponse.json({ ok: true });
+  }
+
+  if (b.action === 'lock') {
+    if (!(await userHasPin(user.id))) return NextResponse.json({ ok: true, skipped: true });
+    touch(false); // marca vieja → bloqueado en el próximo render
     return NextResponse.json({ ok: true, locked: true });
   }
 
   if (b.action === 'unlock') {
     const r = await verifyPin(user.id, String(b.pin || '').trim());
-    if (r === 'ok') {
-      cookies().set(LOCK_COOKIE, '', { path: '/', maxAge: 0 });
-      return NextResponse.json({ ok: true });
-    }
+    if (r === 'ok') { touch(true); return NextResponse.json({ ok: true }); }
     if (r === 'locked') return NextResponse.json({ error: 'Demasiados intentos.', forceLogout: true }, { status: 423 });
-    if (r === 'nopin') { cookies().set(LOCK_COOKIE, '', { path: '/', maxAge: 0 }); return NextResponse.json({ ok: true }); }
+    if (r === 'nopin') { touch(true); return NextResponse.json({ ok: true }); }
     return NextResponse.json({ error: 'PIN incorrecto.' }, { status: 401 });
   }
 
