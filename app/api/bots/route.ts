@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { loadBots } from '@/lib/bots';
+import { loadBots, loadPortfolio } from '@/lib/bots';
 import { logError } from '@/lib/errlog';
 
 export const dynamic = 'force-dynamic';
@@ -13,8 +13,8 @@ async function caps(userId: string) {
   return (plan?.capabilities as any) || {};
 }
 
-// GET · lista de bots del usuario con sus KPIs (o bloqueado si el plan no lo incluye)
-export async function GET() {
+// GET · lista de bots con KPIs; ?view=portfolio → matriz de correlación + curva
+export async function GET(req: Request) {
   try {
     const sb = createSupabaseServer();
     const { data: { user } } = await sb.auth.getUser();
@@ -22,6 +22,9 @@ export async function GET() {
 
     const c = await caps(user.id);
     if (!c.algo) return NextResponse.json({ locked: true, bots: [] });
+
+    const view = new URL(req.url).searchParams.get('view');
+    if (view === 'portfolio') return NextResponse.json({ locked: false, ...(await loadPortfolio(user.id)) });
 
     const r = await loadBots(user.id);
     return NextResponse.json({ locked: false, ...r });
@@ -55,6 +58,15 @@ export async function PATCH(req: Request) {
         minTrades: Math.max(0, Number(cr.minTrades) || 0),
         pf: Math.max(0, Number(cr.pf) || 0),
         maxDD: Math.max(0, Number(cr.maxDD) || 0),
+      };
+    }
+    if (b.backtest && typeof b.backtest === 'object') {
+      const bt = b.backtest;
+      patch.backtest = {
+        pf: bt.pf ? Number(bt.pf) : null,
+        winRate: bt.winRate ? Number(bt.winRate) : null,
+        maxDD: bt.maxDD ? Number(bt.maxDD) : null,
+        note: bt.note ? String(bt.note).slice(0, 120) : null,
       };
     }
 

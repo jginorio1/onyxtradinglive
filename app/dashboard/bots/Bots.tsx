@@ -10,23 +10,31 @@ const T: any = {
     title: 'Bots', sub: 'Rendimiento por estrategia. Separa las que están en pruebas de las que ya operan en vivo.',
     testing: 'En pruebas', live: 'En vivo', running: 'activo', idle: 'inactivo',
     net: 'Neto', pf: 'PF', dd: 'DD', win: 'Aciertos', ops: 'Ops', exp: 'Exp', rec: 'Recovery', opsDay: 'Ops/día',
-    ready: 'Listo para vivo', promote: 'Promover a vivo', config: 'Configurar', save: 'Guardar', saved: 'Guardado',
+    ready: 'Listo para vivo', promote: 'Promover a vivo', config: 'Config', detail: 'Métricas', save: 'Guardar', saved: 'Guardado',
     name: 'Nombre del bot', mode: 'Modo', mAuto: 'Automático', mTest: 'Forzar pruebas', mLive: 'Forzar vivo',
     crit: 'Criterios para graduar a vivo', cDays: 'Días mín.', cTrades: 'Ops mín.', cPf: 'PF mín.', cDd: 'DD máx. %',
-    emptyT: 'Aún no vemos bots', emptyD: 'Cuando un EA opere en una cuenta conectada, aquí aparecerá por su magic number. Asegúrate de tener el Onyx Connector instalado y reinstálalo si es una versión vieja (ahora reporta el magic).',
+    metrics: 'Métricas avanzadas', sharpe: 'Sharpe', sortino: 'Sortino', mar: 'MAR/Calmar', sqn: 'SQN', payoff: 'Payoff',
+    ddDur: 'DD (días)', maxLoss: 'Máx. pérdidas seg.', monthsPos: '% meses +', exposure: 'Exposición', annual: 'Anualizado', avgWin: 'Gan. media', avgLoss: 'Pérd. media',
+    btT: 'Backtest esperado (para comparar el vivo)', btPf: 'PF esperado', btWin: 'Win % esperado', btDd: 'DD % esperado', btHint: 'Copia los números del reporte del Strategy Tester.',
+    divOk: '✓ en línea con el backtest', divWatch: '~ algo por debajo del backtest', divBad: '⚠ divergencia — revisa sobreajuste',
+    portT: 'Portafolio en vivo', portSub: 'Correlación entre tus bots (baja = diversifican; alta = bajan juntos) y curva combinada.', combined: 'Curva combinada',
+    emptyT: 'Aún no vemos bots', emptyD: 'Cuando un EA opere en una cuenta conectada, aquí aparecerá por su magic number. Reinstala el Onyx Connector o el Guardian si es una versión vieja (ahora reportan el magic).',
     lockT: 'Módulo de bots', lockD: 'Evalúa tus estrategias algorítmicas: KPIs por bot, pruebas vs vivo y criterios de graduación. Disponible en planes superiores.', lockCta: 'Ver planes',
-    soon: 'vs backtest · pronto',
   },
   en: {
     title: 'Bots', sub: 'Performance per strategy. Split the ones in testing from the ones already live.',
     testing: 'Testing', live: 'Live', running: 'active', idle: 'idle',
     net: 'Net', pf: 'PF', dd: 'DD', win: 'Win', ops: 'Trades', exp: 'Exp', rec: 'Recovery', opsDay: 'Trades/day',
-    ready: 'Ready for live', promote: 'Promote to live', config: 'Configure', save: 'Save', saved: 'Saved',
+    ready: 'Ready for live', promote: 'Promote to live', config: 'Config', detail: 'Metrics', save: 'Save', saved: 'Saved',
     name: 'Bot name', mode: 'Mode', mAuto: 'Automatic', mTest: 'Force testing', mLive: 'Force live',
     crit: 'Criteria to graduate to live', cDays: 'Min days', cTrades: 'Min trades', cPf: 'Min PF', cDd: 'Max DD %',
-    emptyT: 'No bots yet', emptyD: 'When an EA trades on a connected account, it will appear here by its magic number. Make sure the Onyx Connector is installed and reinstall it if it is an old version (it now reports the magic).',
+    metrics: 'Advanced metrics', sharpe: 'Sharpe', sortino: 'Sortino', mar: 'MAR/Calmar', sqn: 'SQN', payoff: 'Payoff',
+    ddDur: 'DD (days)', maxLoss: 'Max consec. losses', monthsPos: '% months +', exposure: 'Exposure', annual: 'Annualized', avgWin: 'Avg win', avgLoss: 'Avg loss',
+    btT: 'Expected backtest (to compare live)', btPf: 'Expected PF', btWin: 'Expected win %', btDd: 'Expected DD %', btHint: 'Copy the numbers from your Strategy Tester report.',
+    divOk: '✓ in line with backtest', divWatch: '~ a bit below backtest', divBad: '⚠ diverging — check overfitting',
+    portT: 'Live portfolio', portSub: 'Correlation between your bots (low = they diversify; high = they drop together) and combined curve.', combined: 'Combined curve',
+    emptyT: 'No bots yet', emptyD: 'When an EA trades on a connected account it appears here by its magic number. Reinstall the Onyx Connector or Guardian if it is an old version (they now report the magic).',
     lockT: 'Bots module', lockD: 'Evaluate your algorithmic strategies: per-bot KPIs, testing vs live and graduation criteria. Available on higher plans.', lockCta: 'See plans',
-    soon: 'vs backtest · soon',
   },
 };
 
@@ -43,14 +51,17 @@ export default function Bots() {
   const { lang } = useLang() as { lang: Lang };
   const t = T[lang];
   const [d, setD] = useState<any>(null);
+  const [port, setPort] = useState<any>(null);
   const [edit, setEdit] = useState<number | null>(null);
+  const [detail, setDetail] = useState<number | null>(null);
   const [form, setForm] = useState<any>({});
   const [busy, setBusy] = useState(false);
 
   async function load() {
     try { const r = await fetch('/api/bots'); setD(await r.json()); } catch { setD({ bots: [] }); }
+    try { const r = await fetch('/api/bots?view=portfolio'); setPort(await r.json()); } catch {}
   }
-  useEffect(() => { load(); const iv = setInterval(load, 15000); return () => clearInterval(iv); }, []);
+  useEffect(() => { load(); const iv = setInterval(load, 20000); return () => clearInterval(iv); }, []);
 
   async function save(magic: number, patch: any) {
     setBusy(true);
@@ -60,30 +71,32 @@ export default function Bots() {
     } finally { setBusy(false); }
   }
   function openEdit(b: any) {
-    setEdit(b.magic);
-    setForm({ name: b.name, mode: 'auto', ...b.criteria });
+    setEdit(b.magic); setDetail(null);
+    setForm({ name: b.name, mode: 'auto', ...b.criteria, btPf: b.backtest?.pf ?? '', btWin: b.backtest?.winRate ?? '', btDd: b.backtest?.maxDD ?? '' });
   }
 
   const bots: any[] = d?.bots || [];
   const testing = bots.filter((b) => b.mode === 'testing');
   const live = bots.filter((b) => b.mode === 'live');
 
+  const Metric = ({ k, v }: { k: string; v: any }) => (
+    <div style={{ background: 'var(--bg2)', borderRadius: 8, padding: '6px 8px' }}>
+      <div className="muted" style={{ fontSize: 10 }}>{k}</div>
+      <div style={{ fontSize: 12.5, fontWeight: 600 }}>{v}</div>
+    </div>
+  );
+
   const Card = ({ b }: { b: any }) => {
-    const up = b.net >= 0;
+    const up = b.net >= 0; const m = b.metrics || {};
+    const dv = b.divergence;
     return (
       <div className="card" style={{ padding: 12, marginBottom: 8 }}>
         <div className="row between" style={{ gap: 8 }}>
-          <div className="row" style={{ gap: 7, minWidth: 0 }}>
-            <b style={{ fontSize: 13.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name}</b>
-          </div>
-          <span style={{ fontSize: 11, color: b.running ? 'var(--green)' : 'var(--mut)', whiteSpace: 'nowrap' }}>
-            {b.running ? '● ' + t.running : '○ ' + t.idle}
-          </span>
+          <b style={{ fontSize: 13.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name}</b>
+          <span style={{ fontSize: 11, color: b.running ? 'var(--green)' : 'var(--mut)', whiteSpace: 'nowrap' }}>{b.running ? '● ' + t.running : '○ ' + t.idle}</span>
         </div>
         <div className="muted" style={{ fontSize: 10.5 }}>#{b.magic}</div>
-
         <Spark pts={b.spark} color={up ? 'var(--green)' : 'var(--red)'} />
-
         <div className="row" style={{ gap: 12, flexWrap: 'wrap', fontSize: 11.5 }}>
           <span className="muted">{t.net} <b style={{ color: up ? 'var(--green)' : 'var(--red)' }}>{money(b.net)}</b></span>
           <span className="muted">{t.pf} <b style={{ color: 'var(--tx)' }}>{b.pf}</b></span>
@@ -101,16 +114,31 @@ export default function Bots() {
             <div style={{ height: 6, borderRadius: 6, background: 'var(--bg2)', overflow: 'hidden' }}>
               <div style={{ width: `${(b.passed / b.total) * 100}%`, height: '100%', background: b.passed === b.total ? 'var(--green)' : 'var(--amber)' }} />
             </div>
-            {b.passed === b.total && (
-              <button className="btn btn-primary" style={{ width: '100%', marginTop: 8, fontSize: 12.5 }} onClick={() => save(b.magic, { mode: 'live' })} disabled={busy}>↗ {t.promote}</button>
-            )}
+            {b.passed === b.total && <button className="btn btn-primary" style={{ width: '100%', marginTop: 8, fontSize: 12.5 }} onClick={() => save(b.magic, { mode: 'live' })} disabled={busy}>↗ {t.promote}</button>}
           </div>
         )}
-        {b.mode === 'live' && (
-          <div className="muted" style={{ fontSize: 11, marginTop: 6 }}>{t.exp} <b style={{ color: 'var(--tx)' }}>{money(b.expectancy)}</b> · {t.rec} <b style={{ color: 'var(--tx)' }}>{b.recovery}</b> · <span style={{ opacity: .7 }}>{t.soon}</span></div>
+        {b.mode === 'live' && dv && (
+          <div style={{ marginTop: 6, fontSize: 11.5, color: dv.status === 'diverge' ? 'var(--red)' : dv.status === 'watch' ? 'var(--amber)' : 'var(--green)' }}>
+            {dv.status === 'diverge' ? t.divBad : dv.status === 'watch' ? t.divWatch : t.divOk} {dv.deltaPct != null && `(PF ${dv.deltaPct > 0 ? '+' : ''}${dv.deltaPct}%)`}
+          </div>
         )}
 
-        <button className="btn btn-ghost" style={{ fontSize: 11.5, marginTop: 8, padding: '5px 10px' }} onClick={() => (edit === b.magic ? setEdit(null) : openEdit(b))}>⚙️ {t.config}</button>
+        <div className="row" style={{ gap: 6, marginTop: 8 }}>
+          <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '5px 10px' }} onClick={() => { setDetail(detail === b.magic ? null : b.magic); setEdit(null); }}>📊 {t.detail}</button>
+          <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '5px 10px' }} onClick={() => (edit === b.magic ? setEdit(null) : openEdit(b))}>⚙️ {t.config}</button>
+        </div>
+
+        {detail === b.magic && (
+          <div style={{ marginTop: 8, borderTop: '1px solid var(--line)', paddingTop: 10 }}>
+            <div className="muted" style={{ fontSize: 11, marginBottom: 6 }}>{t.metrics}</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6 }}>
+              <Metric k={t.sharpe} v={m.sharpe} /><Metric k={t.sortino} v={m.sortino} /><Metric k={t.mar} v={m.mar} />
+              <Metric k={t.sqn} v={m.sqn} /><Metric k={t.payoff} v={m.payoff} /><Metric k={t.ddDur} v={m.ddDur} />
+              <Metric k={t.maxLoss} v={m.maxConsecLoss} /><Metric k={t.monthsPos} v={m.monthsPos + '%'} /><Metric k={t.exposure} v={m.exposure + '%'} />
+              <Metric k={t.annual} v={money(m.annualNet)} /><Metric k={t.avgWin} v={money(m.avgWin)} /><Metric k={t.avgLoss} v={money(-m.avgLoss)} />
+            </div>
+          </div>
+        )}
 
         {edit === b.magic && (
           <div style={{ marginTop: 8, borderTop: '1px solid var(--line)', paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -123,20 +151,28 @@ export default function Bots() {
             <div className="muted" style={{ fontSize: 11 }}>{t.crit}</div>
             <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
               {[['minDays', t.cDays], ['minTrades', t.cTrades], ['pf', t.cPf], ['maxDD', t.cDd]].map(([k, lab]: any) => (
-                <div key={k} style={{ flex: '1 1 44%' }}><span className="muted" style={{ fontSize: 10.5 }}>{lab}</span>
-                  <input type="number" value={form[k] ?? ''} onChange={(e) => setForm({ ...form, [k]: e.target.value })} style={{ margin: '2px 0 0', fontSize: 13 }} /></div>
+                <div key={k} style={{ flex: '1 1 44%' }}><span className="muted" style={{ fontSize: 10.5 }}>{lab}</span><input type="number" value={form[k] ?? ''} onChange={(e) => setForm({ ...form, [k]: e.target.value })} style={{ margin: '2px 0 0', fontSize: 13 }} /></div>
               ))}
             </div>
+            <div className="muted" style={{ fontSize: 11 }}>{t.btT}</div>
+            <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+              {[['btPf', t.btPf], ['btWin', t.btWin], ['btDd', t.btDd]].map(([k, lab]: any) => (
+                <div key={k} style={{ flex: '1 1 30%' }}><span className="muted" style={{ fontSize: 10.5 }}>{lab}</span><input type="number" value={form[k] ?? ''} onChange={(e) => setForm({ ...form, [k]: e.target.value })} style={{ margin: '2px 0 0', fontSize: 13 }} /></div>
+              ))}
+            </div>
+            <div className="muted" style={{ fontSize: 10.5 }}>{t.btHint}</div>
             <button className="btn btn-primary" style={{ fontSize: 12.5 }} disabled={busy}
-              onClick={() => save(b.magic, { name: form.name, mode: form.mode, criteria: { minDays: form.minDays, minTrades: form.minTrades, pf: form.pf, maxDD: form.maxDD } })}>{t.save}</button>
+              onClick={() => save(b.magic, { name: form.name, mode: form.mode, criteria: { minDays: form.minDays, minTrades: form.minTrades, pf: form.pf, maxDD: form.maxDD }, backtest: { pf: form.btPf, winRate: form.btWin, maxDD: form.btDd } })}>{t.save}</button>
           </div>
         )}
       </div>
     );
   };
 
+  const corrColor = (v: number) => v >= 0.7 ? 'rgba(255,107,125,.28)' : v >= 0.3 ? 'rgba(255,192,77,.25)' : 'rgba(52,226,160,.22)';
+
   return (
-    <div className="wrap" style={{ padding: '24px 0 60px', maxWidth: 900 }}>
+    <div className="wrap" style={{ padding: '24px 0 60px', maxWidth: 920 }}>
       <div style={{ padding: '0 4px', marginBottom: 16 }}>
         <h1 style={{ fontSize: 24 }}>🤖 {t.title}</h1>
         <p className="muted" style={{ marginTop: 6 }}>{t.sub}</p>
@@ -162,24 +198,48 @@ export default function Bots() {
       )}
 
       {d && !d.locked && !!bots.length && (
-        <div className="grid g2" style={{ gap: 14, alignItems: 'start' }}>
-          <div>
-            <div className="row" style={{ gap: 6, marginBottom: 8 }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--amber)' }} />
-              <b style={{ fontSize: 13 }}>{t.testing}</b><span className="muted" style={{ fontSize: 12 }}>{testing.length}</span>
+        <>
+          <div className="grid g2" style={{ gap: 14, alignItems: 'start' }}>
+            <div>
+              <div className="row" style={{ gap: 6, marginBottom: 8 }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--amber)' }} />
+                <b style={{ fontSize: 13 }}>{t.testing}</b><span className="muted" style={{ fontSize: 12 }}>{testing.length}</span>
+              </div>
+              {testing.map((b) => <Card key={b.magic} b={b} />)}
+              {!testing.length && <div className="muted" style={{ fontSize: 12.5, padding: 4 }}>—</div>}
             </div>
-            {testing.map((b) => <Card key={b.magic} b={b} />)}
-            {!testing.length && <div className="muted" style={{ fontSize: 12.5, padding: 4 }}>—</div>}
-          </div>
-          <div>
-            <div className="row" style={{ gap: 6, marginBottom: 8 }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--green)' }} />
-              <b style={{ fontSize: 13 }}>{t.live}</b><span className="muted" style={{ fontSize: 12 }}>{live.length}</span>
+            <div>
+              <div className="row" style={{ gap: 6, marginBottom: 8 }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--green)' }} />
+                <b style={{ fontSize: 13 }}>{t.live}</b><span className="muted" style={{ fontSize: 12 }}>{live.length}</span>
+              </div>
+              {live.map((b) => <Card key={b.magic} b={b} />)}
+              {!live.length && <div className="muted" style={{ fontSize: 12.5, padding: 4 }}>—</div>}
             </div>
-            {live.map((b) => <Card key={b.magic} b={b} />)}
-            {!live.length && <div className="muted" style={{ fontSize: 12.5, padding: 4 }}>—</div>}
           </div>
-        </div>
+
+          {port && port.bots && port.bots.length >= 2 && (
+            <div className="card" style={{ marginTop: 16 }}>
+              <h3 style={{ marginBottom: 4 }}>🧩 {t.portT}</h3>
+              <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{t.portSub}</p>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ fontSize: 11.5, borderCollapse: 'collapse' }}>
+                  <thead><tr><th></th>{port.bots.map((b: any) => <th key={b.magic} style={{ padding: '4px 8px', color: 'var(--mut)', fontWeight: 500, whiteSpace: 'nowrap' }}>{b.name.slice(0, 10)}</th>)}</tr></thead>
+                  <tbody>
+                    {port.matrix.map((row: number[], i: number) => (
+                      <tr key={i}>
+                        <td style={{ padding: '4px 8px', color: 'var(--mut)', whiteSpace: 'nowrap' }}>{port.bots[i].name.slice(0, 10)}</td>
+                        {row.map((v, j) => <td key={j} style={{ padding: '6px 8px', textAlign: 'center', background: i === j ? 'transparent' : corrColor(v), borderRadius: 6 }}>{i === j ? '—' : v}</td>)}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="muted" style={{ fontSize: 11.5, marginTop: 12, marginBottom: 2 }}>{t.combined}</div>
+              <Spark pts={port.curve} color="var(--brand)" />
+            </div>
+          )}
+        </>
       )}
     </div>
   );

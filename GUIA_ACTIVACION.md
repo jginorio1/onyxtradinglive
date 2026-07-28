@@ -324,3 +324,31 @@ Fase 3 (pendiente, lo más pesado, para cuando el MVP valide interés):
 - Import del reporte del Strategy Tester y **overlay vivo vs backtest** con alarma de sobreajuste.
 - **Freno por bot** vía Guardian (pausar un magic si rompe su DD).
 - Alertas (Telegram/push): bot parado, ruptura de DD, divergencia vs backtest.
+
+---
+
+## 8m · Bots Fase 3 (métricas avanzadas, backtest, portafolio, alertas)
+
+Requisitos: re-corre `supabase/bots.sql` (añade la columna `backtest`). Lo demás
+ya funciona con lo del MVP.
+
+1. **Métricas avanzadas por bot** — en cada bot, botón "📊 Métricas": Sharpe,
+   Sortino, MAR/Calmar (retorno anualizado sobre drawdown), SQN, Payoff,
+   duración del drawdown (días), máx. pérdidas seguidas, % meses positivos,
+   exposición, anualizado, y ganancia/pérdida media.
+
+2. **Vivo vs backtest** — en "⚙️ Config" de cada bot puedes meter el PF, win% y
+   DD% **esperados** (cópialos del reporte del Strategy Tester). Los bots en vivo
+   muestran un aviso: "en línea", "algo por debajo" o "⚠ divergencia — revisa
+   sobreoptimización" según cuánto se aleja el PF real del esperado.
+
+3. **Portafolio + correlación** — abajo, matriz de correlación entre tus bots en
+   vivo (baja/verde = diversifican; alta/rojo = bajan juntos) y curva combinada.
+
+4. **Alertas automáticas** — un cron cada 6h (`/api/cron/bots-check`, ya en
+   vercel.json, protegido con CRON_SECRET) avisa por Telegram/push, una vez al
+   día, cuando un bot en vivo rompe su DD máximo o diverge del backtest.
+
+Pendiente (a propósito, por seguridad): el **freno por bot** (pausar/cerrar un
+magic desde la web) requiere tocar el bucle de comandos del Guardian, que protege
+dinero real. Lo dejo para una pasada enfocada y probada, no a ciegas.

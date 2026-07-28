@@ -26,5 +26,8 @@ create table if not exists bots (
   unique (user_id, magic)
 );
 
+-- Perfil esperado del backtest, para comparar el vivo vs el backtest (Fase 3).
+alter table bots add column if not exists backtest jsonb not null default '{}'::jsonb;
+
 -- Solo el backend (service role) accede; bloqueamos el acceso público.
 alter table bots enable row level security;
