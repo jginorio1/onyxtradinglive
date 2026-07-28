@@ -1,0 +1,41 @@
+import { NextResponse } from 'next/server';
+import { createSupabaseServer } from '@/lib/supabaseServer';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { ambSettings } from '@/lib/ambassadors';
+import { draftPost } from '@/lib/ambassadorAI';
+
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+const SITE = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.onyxtradinglive.com').replace(/\/$/, '');
+
+// POST · el embajador aprobado genera una publicación con AI para una plataforma.
+export async function POST(req: Request) {
+  try {
+    const sb = createSupabaseServer();
+    const { data: { user } } = await sb.auth.getUser();
+    if (!user) return NextResponse.json({ error: 'no autorizado' }, { status: 401 });
+
+    const { data: amb } = await supabaseAdmin.from('ambassadors').select('code,status').eq('user_id', user.id).maybeSingle();
+    if (!amb || (amb as any).status !== 'approved') return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+
+    const b = await req.json().catch(() => ({} as any));
+    const lang = b.lang === 'en' ? 'en' : 'es';
+    const platform = String(b.platform || 'instagram');
+    const niche = String(b.niche || 'prop');
+    const s = await ambSettings();
+    const code = (amb as any).code;
+    const link = `${SITE}/?ref=${code}`;
+
+    const r = await draftPost({ platform, link, code: code.toUpperCase(), couponPct: Number(s.coupon_percent || 20), niche, lang });
+    if (!r.ok) {
+      const msg = r.reason === 'no_key'
+        ? (lang === 'en' ? 'AI not set up yet. Use the ready-made templates below for now.' : 'IA no configurada aún. Usa las plantillas de abajo por ahora.')
+        : (lang === 'en' ? "Couldn't generate. Try again." : 'No se pudo generar. Inténtalo otra vez.');
+      return NextResponse.json({ error: msg, reason: r.reason }, { status: 400 });
+    }
+    return NextResponse.json({ ok: true, text: r.text });
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
+  }
+}

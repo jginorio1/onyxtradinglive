@@ -1,0 +1,53 @@
+import { NextResponse } from 'next/server';
+import { requirePerm, logAdmin } from '@/lib/admin';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { ambSettings } from '@/lib/ambassadors';
+import { draftInvite } from '@/lib/ambassadorAI';
+import { sendEmail } from '@/lib/mail';
+import { logError } from '@/lib/errlog';
+
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+// POST · redacta con AI la invitación a un creador, o la envía por correo.
+// body: { action:'draft'|'send', ... }
+export async function POST(req: Request) {
+  const p = await requirePerm('embajadores', 'manage');
+  if (!p.ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+  try {
+    const b = await req.json().catch(() => ({} as any));
+    const lang = b.lang === 'en' ? 'en' : 'es';
+    const s = await ambSettings();
+    const rate = Number(s.tier_rate || 30);
+    const couponPct = Number(s.coupon_percent || 20);
+
+    if (b.action === 'draft') {
+      if (!String(b.name || '').trim()) return NextResponse.json({ error: lang === 'en' ? 'Add the creator name.' : 'Añade el nombre del creador.' }, { status: 400 });
+      const r = await draftInvite({ name: b.name, platform: b.platform || 'youtube', niche: b.niche || 'prop', lang, rate, couponPct });
+      if (!r.ok) {
+        const msg = r.reason === 'no_key'
+          ? (lang === 'en' ? 'AI not set up: missing ANTHROPIC_API_KEY.' : 'IA no configurada: falta ANTHROPIC_API_KEY.')
+          : (lang === 'en' ? "AI couldn't draft it. Try again." : 'La IA no pudo redactarlo. Inténtalo de nuevo.');
+        return NextResponse.json({ error: msg, reason: r.reason }, { status: 400 });
+      }
+      return NextResponse.json({ ok: true, subject: r.subject, body: r.body });
+    }
+
+    // Enviar
+    const to = String(b.email || '').trim();
+    if (!to) return NextResponse.json({ error: lang === 'en' ? 'No email for this prospect.' : 'Este prospecto no tiene correo.' }, { status: 400 });
+    const subject = String(b.subject || '').trim() || (lang === 'en' ? 'Partnership with Onyx Trading Live' : 'Colaboración con Onyx Trading Live');
+    const body = String(b.body || '').trim();
+    if (!body) return NextResponse.json({ error: lang === 'en' ? 'Empty message.' : 'Mensaje vacío.' }, { status: 400 });
+
+    const ok = await sendEmail(to, subject, body, { kind: 'ambassador_invite' });
+    if (!ok) return NextResponse.json({ error: lang === 'en' ? 'Could not send (check RESEND_API_KEY).' : 'No se pudo enviar (revisa RESEND_API_KEY).' }, { status: 500 });
+
+    if (b.prospectId) await supabaseAdmin.from('ambassador_prospects').update({ status: 'contacted', updated_at: new Date().toISOString() }).eq('id', b.prospectId);
+    await logAdmin(p.user?.email || '', 'ambassador_invite_sent', to);
+    return NextResponse.json({ ok: true, sent: true });
+  } catch (e: any) {
+    await logError('amb_invite', e);
+    return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
+  }
+}

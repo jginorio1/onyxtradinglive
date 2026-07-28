@@ -24,6 +24,8 @@ const A: any = {
     paypal: 'PayPal', usdt: 'USDT', credit: 'Crédito en mi plan',
     hist: 'Historial de pagos', noHist: 'Todavía no has solicitado ningún pago.',
     stReq: 'solicitado', stPaid: 'pagado', stRej: 'rechazado',
+    aiKitT: 'Generar publicaciones con AI', aiKitD: 'Elige tu plataforma y la IA te crea un post listo, con tu enlace y código ya puestos.',
+    aiGen: 'Generar', aiAgain: 'Otra versión', banners: 'Banners + logos', aiEmpty: 'Pulsa Generar para crear tu publicación.',
     kitT: 'Kit de materiales', kitD: 'Copia estos textos y adáptalos a tu estilo. Cambia el enlace por el tuyo.',
     kIg: 'Para Instagram o X', kTg: 'Para Telegram o WhatsApp', kVid: 'Guion de video (30 segundos)',
     txtIg: 'Dejé de anotar mis operaciones en Excel. Conecto MT4/MT5 a Onyx y veo mi win rate, mis horas buenas y mis errores automáticamente. Pruébalo gratis con mi enlace y llévate descuento:',
@@ -47,6 +49,8 @@ const A: any = {
     paypal: 'PayPal', usdt: 'USDT', credit: 'Credit on my plan',
     hist: 'Payout history', noHist: 'You have not requested any payout yet.',
     stReq: 'requested', stPaid: 'paid', stRej: 'rejected',
+    aiKitT: 'Generate posts with AI', aiKitD: 'Pick your platform and AI writes a ready-to-post caption, with your link and code already in it.',
+    aiGen: 'Generate', aiAgain: 'Another version', banners: 'Banners + logos', aiEmpty: 'Hit Generate to create your post.',
     kitT: 'Marketing kit', kitD: 'Copy these texts and make them your own. Swap the link for yours.',
     kIg: 'For Instagram or X', kTg: 'For Telegram or WhatsApp', kVid: 'Video script (30 seconds)',
     txtIg: 'I stopped tracking my trades in a spreadsheet. I connect MT4/MT5 to Onyx and it shows my win rate, my best hours and my mistakes automatically. Try it free with my link and get a discount:',
@@ -62,7 +66,19 @@ export default function Ambassador({ lang }: { lang: Lang }) {
   const [pm, setPm] = useState('paypal');
   const [pd, setPd] = useState('');
   const [origin, setOrigin] = useState('');
+  const [plat, setPlat] = useState('instagram');
+  const [aiText, setAiText] = useState('');
   const t = A[lang];
+
+  async function genPost() {
+    setBusy('ai');
+    try {
+      const r = await fetch('/api/ambassador/posts', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ platform: plat, lang, niche: 'prop' }) });
+      const j = await r.json();
+      if (!r.ok) { toast(j.error || 'Error'); return; }
+      setAiText(j.text || '');
+    } finally { setBusy(''); }
+  }
 
   useEffect(() => { setOrigin(window.location.origin); load(); }, []);
   async function load() {
@@ -214,6 +230,28 @@ export default function Ambassador({ lang }: { lang: Lang }) {
             </span>
           </div>
         ))}
+      </div>
+
+      {/* Generar publicaciones con AI */}
+      <div className="card" style={{ marginBottom: 14 }}>
+        <div className="row between" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 4 }}>
+          <h3 style={{ margin: 0 }}>✨ {t.aiKitT}</h3>
+          <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+            {['youtube', 'instagram', 'tiktok', 'telegram'].map((pf) => (
+              <button key={pf} className="pill" onClick={() => setPlat(pf)}
+                style={{ cursor: 'pointer', textTransform: 'capitalize', ...(plat === pf ? { color: 'var(--soft-brand)', background: 'rgba(124,140,255,.18)' } : { color: 'var(--mut)', background: 'var(--bg2)' }) }}>{pf}</button>
+            ))}
+          </div>
+        </div>
+        <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{t.aiKitD}</p>
+        <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: 12, fontSize: 14, lineHeight: 1.6, minHeight: 64, whiteSpace: 'pre-wrap' }}>
+          {aiText || <span className="muted">{t.aiEmpty}</span>}
+        </div>
+        <div className="row" style={{ gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+          <button className="btn btn-primary" onClick={genPost} disabled={busy === 'ai'}>{busy === 'ai' ? '…' : (aiText ? '↻ ' + t.aiAgain : '✨ ' + t.aiGen)}</button>
+          {aiText && <button className="btn btn-ghost" onClick={() => copy(aiText, 'ai')}>{copied === 'ai' ? t.copied : t.copy}</button>}
+          <a className="btn btn-ghost" href={`/api/ambassador/banner?lang=${lang}`} style={{ marginLeft: 'auto' }}>⤓ {t.banners}</a>
+        </div>
       </div>
 
       {/* Kit de materiales */}

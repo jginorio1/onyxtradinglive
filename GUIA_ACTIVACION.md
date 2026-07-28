@@ -500,3 +500,31 @@ caída TOTAL del sitio (si Vercel se cae, el cron también). Para eso:
    - En **Alert Contacts** pon tu correo (y/o Telegram/SMS).
    Si el sitio deja de responder, te escriben en minutos. Es la única pieza que el
    diagnóstico interno no puede cubrir por diseño.
+
+---
+
+## 12 · Kit de reclutamiento de embajadores con AI (bilingüe)
+
+Dos superficies nuevas, ambas en ES/EN, reusando el cerebro de Onyx (ONYX_BRIEF).
+
+**Lado admin — Admin → Embajadores → "Reclutar":** mini-CRM de prospectos
+(Nuevo → Contactado → Respondió → Se unió → Descartado). Añades un creador
+(nombre, plataforma, nicho, correo), pulsas **✨ Generar** y la IA redacta la
+invitación personalizada (con el ángulo prop-firm, tu comisión y el cupón); la
+editas y la **envías por correo** (Resend). Al enviar, el prospecto pasa a
+"Contactado" solo. Permiso: área **Embajadores** (marketing/owner).
+
+**Lado embajador — Mi cuenta → Embajador → "Generar publicaciones con AI":**
+el creador aprobado elige plataforma (YouTube/Instagram/TikTok/Telegram) y la IA
+le crea un post listo con **su enlace y código ya insertados**; puede pedir otra
+versión, copiar, y **descargar un banner** con su código (`/api/ambassador/banner`).
+Debajo siguen las plantillas estáticas por si no hay IA configurada.
+
+**Activar:**
+1. Corre `supabase/ambassador_kit.sql` (tabla `ambassador_prospects`).
+2. Requiere `ANTHROPIC_API_KEY` (el mismo que ya usas) para redactar, y
+   `RESEND_API_KEY` para enviar invitaciones. Sin IA, las plantillas estáticas
+   siguen funcionando.
+
+Nota: la IA **redacta**, no busca creadores por su cuenta (no navega la web).
+Los prospectos los añades tú. Nunca inventa funciones ni promete ganancias.

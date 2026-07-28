@@ -7,6 +7,115 @@ import RangeBar, { type Range, defaultRange } from './RangeBar';
 
 const METHOD: any = { paypal: 'PayPal', usdt: 'USDT', credit: 'Credit' };
 
+// ---- Reclutar: mini-CRM de prospectos + invitación con AI ----
+const PLATFORMS = ['youtube', 'instagram', 'tiktok', 'telegram', 'x', 'other'];
+function Recruit({ lang }: { lang: 'es' | 'en' }) {
+  const L = (es: string, en: string) => (lang === 'en' ? en : es);
+  const NICHES: [string, string][] = [['prop', L('Prop firms', 'Prop firms')], ['beginners', L('Principiantes', 'Beginners')], ['signals', L('Señales', 'Signals')], ['forex', 'Forex'], ['crypto', L('Cripto', 'Crypto')], ['other', L('Otro', 'Other')]];
+  const STAT: Record<string, [string, string]> = {
+    new: [L('Nuevo', 'New'), 'var(--mut)'], contacted: [L('Contactado', 'Contacted'), 'var(--amber)'],
+    replied: [L('Respondió', 'Replied'), 'var(--soft-brand)'], joined: [L('Se unió', 'Joined'), 'var(--green)'], passed: [L('Descartado', 'Passed'), 'var(--red)'],
+  };
+  const [list, setList] = useState<any[]>([]);
+  const [form, setForm] = useState({ name: '', platform: 'youtube', niche: 'prop', email: '' });
+  const [sel, setSel] = useState<any>(null);
+  const [draft, setDraft] = useState({ subject: '', body: '' });
+  const [busy, setBusy] = useState('');
+
+  async function load() { const r = await fetch('/api/admin/ambassadors/prospects'); const j = await r.json(); setList(j.prospects || []); }
+  useEffect(() => { load(); }, []);
+
+  async function add() {
+    if (!form.name.trim()) { toast(L('Falta el nombre.', 'Name is required.')); return; }
+    setBusy('add');
+    try { const r = await fetch('/api/admin/ambassadors/prospects', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(form) }); if (!r.ok) { toastErr(await r.json()); return; } setForm({ name: '', platform: 'youtube', niche: 'prop', email: '' }); load(); } finally { setBusy(''); }
+  }
+  async function setStatus(id: string, status: string) { await fetch('/api/admin/ambassadors/prospects', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, status }) }); load(); }
+  async function del(id: string) { if (!confirm(L('¿Quitar prospecto?', 'Remove prospect?'))) return; await fetch('/api/admin/ambassadors/prospects', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id }) }); load(); if (sel?.id === id) { setSel(null); setDraft({ subject: '', body: '' }); } }
+
+  function pick(p: any) { setSel(p); setDraft({ subject: '', body: '' }); }
+  async function generate() {
+    const p = sel || form;
+    if (!p.name) { toast(L('Elige o escribe un creador.', 'Pick or type a creator.')); return; }
+    setBusy('gen');
+    try {
+      const r = await fetch('/api/admin/ambassadors/invite', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'draft', name: p.name, platform: p.platform, niche: p.niche, lang }) });
+      const j = await r.json(); if (!r.ok) { toastErr(j); return; }
+      setDraft({ subject: j.subject || '', body: j.body || '' });
+    } finally { setBusy(''); }
+  }
+  async function send() {
+    const email = sel?.email || form.email;
+    if (!email) { toast(L('Este prospecto no tiene correo.', 'This prospect has no email.')); return; }
+    if (!draft.body) { toast(L('Genera o escribe el mensaje.', 'Generate or write the message.')); return; }
+    setBusy('send');
+    try {
+      const r = await fetch('/api/admin/ambassadors/invite', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'send', prospectId: sel?.id, email, subject: draft.subject, body: draft.body, lang }) });
+      const j = await r.json(); if (!r.ok) { toastErr(j); return; }
+      toast(L('Invitación enviada ✓', 'Invitation sent ✓'), 'ok'); setDraft({ subject: '', body: '' }); setSel(null); load();
+    } finally { setBusy(''); }
+  }
+
+  const inp = { width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)' } as any;
+  const ta = { ...inp, minHeight: 120, fontFamily: 'inherit', fontSize: 13.5, resize: 'vertical' } as any;
+
+  return (
+    <div className="card" style={{ marginBottom: 16 }}>
+      <h3 style={{ marginBottom: 4 }}>🧲 {L('Reclutar embajadores', 'Recruit ambassadors')}</h3>
+      <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{L('Añade creadores, la IA redacta la invitación personalizada y la envías por correo.', 'Add creators, AI drafts a personalized invite, and you send it by email.')}</p>
+
+      <div className="grid" style={{ gridTemplateColumns: 'minmax(0,0.9fr) minmax(0,1.1fr)', gap: 14 }}>
+        {/* Pipeline */}
+        <div>
+          <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{L('Pipeline de prospectos', 'Prospect pipeline')}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
+            {!list.length && <div className="muted" style={{ fontSize: 13 }}>{L('Aún no hay prospectos.', 'No prospects yet.')}</div>}
+            {list.map((p) => { const st = STAT[p.status] || STAT.new; return (
+              <div key={p.id} style={{ background: sel?.id === p.id ? 'rgba(124,140,255,.12)' : 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 8, padding: '8px 10px' }}>
+                <div className="row between" style={{ gap: 6, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, cursor: 'pointer' }} onClick={() => pick(p)}>{p.name} <span className="muted" style={{ fontWeight: 400, textTransform: 'capitalize' }}>· {p.platform}</span></span>
+                  <span className="pill" style={{ color: st[1], background: st[1] + '22', fontSize: 11 }}>{st[0]}</span>
+                </div>
+                <div className="row" style={{ gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+                  <select value={p.status} onChange={(e) => setStatus(p.id, e.target.value)} style={{ margin: 0, padding: '3px 6px', fontSize: 12, width: 'auto' }}>
+                    {Object.keys(STAT).map((k) => <option key={k} value={k}>{STAT[k][0]}</option>)}
+                  </select>
+                  <button className="btn btn-ghost" style={{ padding: '3px 8px', fontSize: 11.5 }} onClick={() => pick(p)}>✨ {L('Invitar', 'Invite')}</button>
+                  <button className="btn btn-ghost" style={{ padding: '3px 8px', fontSize: 11.5, marginLeft: 'auto' }} onClick={() => del(p.id)}>✕</button>
+                </div>
+              </div>
+            ); })}
+          </div>
+          {/* Añadir prospecto */}
+          <div style={{ borderTop: '1px solid var(--line)', paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder={L('Nombre / @handle', 'Name / @handle')} style={inp} />
+            <div className="row" style={{ gap: 6 }}>
+              <select value={form.platform} onChange={(e) => setForm({ ...form, platform: e.target.value })} style={{ ...inp, textTransform: 'capitalize' }}>{PLATFORMS.map((p) => <option key={p} value={p}>{p}</option>)}</select>
+              <select value={form.niche} onChange={(e) => setForm({ ...form, niche: e.target.value })} style={inp}>{NICHES.map(([k, lb]) => <option key={k} value={k}>{lb}</option>)}</select>
+            </div>
+            <input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder={L('Correo (para enviarle)', 'Email (to reach them)')} style={inp} />
+            <button className="btn btn-ghost" onClick={add} disabled={busy === 'add'}>＋ {L('Añadir prospecto', 'Add prospect')}</button>
+          </div>
+        </div>
+
+        {/* Invitación AI */}
+        <div>
+          <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>✨ {L('Invitación con AI', 'AI invitation')} {sel && <b style={{ color: 'var(--tx)' }}>· {sel.name}</b>}</div>
+          <div className="row" style={{ gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+            <input value={draft.subject} onChange={(e) => setDraft({ ...draft, subject: e.target.value })} placeholder={L('Asunto', 'Subject')} style={{ ...inp, flex: 1, minWidth: 160 }} />
+            <button className="btn btn-ghost" onClick={generate} disabled={busy === 'gen'}>{busy === 'gen' ? '…' : '✨ ' + L('Generar', 'Generate')}</button>
+          </div>
+          <textarea value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })} placeholder={L('El mensaje aparecerá aquí. Elige un prospecto y pulsa Generar.', 'The message appears here. Pick a prospect and hit Generate.')} style={ta} />
+          <div className="row" style={{ gap: 8, marginTop: 10 }}>
+            <button className="btn btn-primary" onClick={send} disabled={busy === 'send'} style={{ marginLeft: 'auto' }}>{busy === 'send' ? '…' : '✉️ ' + L('Enviar invitación', 'Send invitation')}</button>
+          </div>
+          <p className="muted" style={{ fontSize: 11.5, marginTop: 8 }}>{L('El AI usa el cerebro de Onyx (no inventa) y propone tu comisión y cupón.', 'AI uses the Onyx brain (no made-up features) and pitches your commission and coupon.')}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Ambassadors() {
   const t = useT();
   const { lang } = useLang();
@@ -98,6 +207,9 @@ export default function Ambassadors() {
         <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={() => act('settings', undefined, s)} disabled={busy === 'settings'}>{t.am_saveRules}</button>
         <p className="muted" style={{ fontSize: 12, marginTop: 8 }}>{t.am_couponNote}</p>
       </div>
+
+      {/* Reclutar (mini-CRM + invitación con AI) */}
+      <Recruit lang={lang as 'es' | 'en'} />
 
       {/* Lista */}
       <h3 style={{ marginBottom: 12 }}>{t.am_list} ({list.length})</h3>
