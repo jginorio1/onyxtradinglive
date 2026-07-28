@@ -305,9 +305,7 @@ Pasos para activarlo:
    `magic`/`ea_comment` a trades y open_positions, y la tabla `bots` (config por bot).
    El sync es tolerante: si no corres esto todavía, no se rompe nada (solo no verás bots).
 
-2. **Reinstala el Onyx Connector (EA)** en tus MetaTrader. La versión nueva reporta el
-   magic number y el comentario de cada operación. Sin esto, no hay datos por bot.
-   (Los EA están en Instalación / en public: OnyxConnector_MT5.mq5 y _MT4.mq4.)
+2. **Reinstala el EA que uses** en tus MetaTrader — sirve tanto el Onyx Connector como el Onyx Guardian: los DOS (MT4 y MT5) ya reportan el magic number. Sin reinstalar, no hay datos por bot.
 
 3. **Activa la capacidad `algo`** en los planes que quieras (Admin → Planes → Capacidades →
    "Módulo de bots"). Recomendado: Elite y Black Onyx (o como add-on). Sin la capacidad,

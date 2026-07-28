@@ -447,7 +447,9 @@ string BuildBody()
       s += "\"openPrice\":" + DoubleToString(OrderOpenPrice(), 5) + ",";
       s += "\"sl\":"        + DoubleToString(OrderStopLoss(), 5) + ",";
       s += "\"tp\":"        + DoubleToString(OrderTakeProfit(), 5) + ",";
-      s += "\"profit\":"    + DoubleToString(OrderProfit(), 2);
+      s += "\"profit\":"    + DoubleToString(OrderProfit(), 2) + ",";
+      s += "\"magic\":"     + IntegerToString(OrderMagicNumber()) + ",";
+      s += "\"comment\":\"" + Esc(OrderComment()) + "\"";
       s += "}";
      }
    s += "],";
@@ -479,7 +481,9 @@ string BuildBody()
       s += "\"profit\":"     + DoubleToString(prof, 2) + ",";
       s += "\"commission\":" + DoubleToString(comm, 2) + ",";
       s += "\"swap\":"       + DoubleToString(sw, 2) + ",";
-      s += "\"netProfit\":"  + DoubleToString(prof + comm + sw, 2);
+      s += "\"netProfit\":"  + DoubleToString(prof + comm + sw, 2) + ",";
+      s += "\"magic\":"      + IntegerToString(OrderMagicNumber()) + ",";
+      s += "\"comment\":\""  + Esc(OrderComment()) + "\"";
       s += "}";
      }
    s += "],";

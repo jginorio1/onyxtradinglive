@@ -421,7 +421,7 @@ string BuildBody()
       ulong tk = PositionGetTicket(i);
       if(tk == 0) continue;
       if(n > 0) s += ",";
-      s += StringFormat("{\"ticket\":%I64u,\"symbol\":\"%s\",\"side\":\"%s\",\"volume\":%.2f,\"openTime\":%I64d,\"openPrice\":%.5f,\"sl\":%.5f,\"tp\":%.5f,\"profit\":%.2f}",
+      s += StringFormat("{\"ticket\":%I64u,\"symbol\":\"%s\",\"side\":\"%s\",\"volume\":%.2f,\"openTime\":%I64d,\"openPrice\":%.5f,\"sl\":%.5f,\"tp\":%.5f,\"profit\":%.2f,\"magic\":%I64d}",
             tk,
             PositionGetString(POSITION_SYMBOL),
             (PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY ? "buy" : "sell"),
@@ -430,7 +430,8 @@ string BuildBody()
             PositionGetDouble(POSITION_PRICE_OPEN),
             PositionGetDouble(POSITION_SL),
             PositionGetDouble(POSITION_TP),
-            PositionGetDouble(POSITION_PROFIT));
+            PositionGetDouble(POSITION_PROFIT),
+            (long)PositionGetInteger(POSITION_MAGIC));
       n++;
    }
    s += "],";
@@ -450,14 +451,15 @@ string BuildBody()
          double comm = HistoryDealGetDouble(dt, DEAL_COMMISSION);
          double swap = HistoryDealGetDouble(dt, DEAL_SWAP);
          double prof = HistoryDealGetDouble(dt, DEAL_PROFIT);
-         s += StringFormat("{\"ticket\":%I64u,\"symbol\":\"%s\",\"side\":\"%s\",\"volume\":%.2f,\"closeTime\":%I64d,\"closePrice\":%.5f,\"profit\":%.2f,\"commission\":%.2f,\"swap\":%.2f,\"netProfit\":%.2f}",
+         s += StringFormat("{\"ticket\":%I64u,\"symbol\":\"%s\",\"side\":\"%s\",\"volume\":%.2f,\"closeTime\":%I64d,\"closePrice\":%.5f,\"profit\":%.2f,\"commission\":%.2f,\"swap\":%.2f,\"netProfit\":%.2f,\"magic\":%I64d}",
                dt,
                HistoryDealGetString(dt, DEAL_SYMBOL),
                (HistoryDealGetInteger(dt, DEAL_TYPE) == DEAL_TYPE_SELL ? "buy" : "sell"),
                HistoryDealGetDouble(dt, DEAL_VOLUME),
                (long)HistoryDealGetInteger(dt, DEAL_TIME),
                HistoryDealGetDouble(dt, DEAL_PRICE),
-               prof, comm, swap, prof + comm + swap);
+               prof, comm, swap, prof + comm + swap,
+               (long)HistoryDealGetInteger(dt, DEAL_MAGIC));
          m++;
          if(m >= 300) break;
       }
