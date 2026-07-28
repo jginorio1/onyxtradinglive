@@ -56,10 +56,39 @@ export async function aiAnswer(question: string, lang: Lang, sensitive = false):
   if (!apiKey || sensitive) return { answer: '', confident: false, articles };
 
   const context = pool.map((a) => articleText(a, lang)).join('\n\n---\n\n');
+
+  // Contexto extra: precios y planes REALES (de la BD) + base de conocimiento.
+  // Es lo mismo que usa el chat de la web, para que preguntas de precios se
+  // respondan solas y con datos correctos (no "no sé").
+  let extra = '';
+  try {
+    const { data: plans } = await supabaseAdmin.from('plans')
+      .select('name,name_en,price_month,price_year,max_accounts,features,features_en')
+      .eq('active', true).order('sort', { ascending: true });
+    if (plans?.length) {
+      const rows = plans.map((p: any) => {
+        const n = lang === 'en' ? (p.name_en || p.name) : p.name;
+        const acc = p.max_accounts >= 999 ? (lang === 'en' ? 'unlimited accounts' : 'cuentas ilimitadas') : `${p.max_accounts} ${lang === 'en' ? 'accounts' : 'cuentas'}`;
+        const feats = ((lang === 'en' ? p.features_en : p.features) || []).slice(0, 6).join(', ');
+        return `- ${n}: $${p.price_month}/${lang === 'en' ? 'mo' : 'mes'} · $${p.price_year}/${lang === 'en' ? 'yr' : 'año'} · ${acc}. ${feats}`;
+      }).join('\n');
+      extra += `\n\n=== ${lang === 'en' ? 'PRICES AND PLANS (current)' : 'PRECIOS Y PLANES (actuales)'} ===\n${rows}`;
+    }
+  } catch {}
+  try {
+    const words = question.toLowerCase().split(/\s+/).filter((w) => w.length > 3);
+    const { data: kb } = await supabaseAdmin.from('kb_articles').select('title,body,tags').eq('published', true).limit(30);
+    const scored = (kb || []).map((a: any) => {
+      const hay = `${a.title} ${a.tags} ${a.body}`.toLowerCase();
+      return { a, score: words.reduce((s: number, w: string) => s + (hay.includes(w) ? 1 : 0), 0) };
+    }).sort((x, y) => y.score - x.score).slice(0, 3).filter((x) => x.score > 0);
+    if (scored.length) extra += `\n\n=== ${lang === 'en' ? 'KNOWLEDGE BASE' : 'BASE DE CONOCIMIENTO'} ===\n` + scored.map((x) => `# ${x.a.title}\n${x.a.body}`).join('\n\n');
+  } catch {}
+
   const system = (lang === 'en'
-    ? `You are Onyx AI, support for Onyx Trading Live (a trading journal with an MT4/MT5 Expert Advisor called Onyx Guardian). Reply to the user's message ONLY from the help articles below, in English, briefly, warmly and helpfully, as if you were a support agent. Sign as "Onyx Trading Live team". If the answer is NOT clearly in the articles, reply exactly with the token NO_ANSWER and nothing else. Never invent features. Never give financial advice.`
-    : `Eres Onyx AI, soporte de Onyx Trading Live (un diario de trading con un Expert Advisor para MT4/MT5 llamado Onyx Guardian). Responde al mensaje del usuario SOLO con los artículos de ayuda de abajo, en español, breve, cercano y resolutivo, como un agente de soporte. Firma como "Equipo de Onyx Trading Live". Si la respuesta NO está claramente en los artículos, responde exactamente con el token NO_ANSWER y nada más. No inventes funciones. No des consejo financiero.`)
-    + `\n\n=== ARTÍCULOS DE AYUDA ===\n${context}`;
+    ? `You are Onyx AI, support for Onyx Trading Live (a trading journal with an MT4/MT5 Expert Advisor called Onyx Guardian). Reply to the user's message ONLY from the help info below (help articles, current prices/plans, and knowledge base), in English, briefly, warmly and helpfully, as if you were a support agent. Prices and plans below are authoritative — use them for any pricing question. Sign as "Onyx Trading Live team". If the answer is NOT clearly in the info below, reply exactly with the token NO_ANSWER and nothing else. Never invent features. Never give financial advice.`
+    : `Eres Onyx AI, soporte de Onyx Trading Live (un diario de trading con un Expert Advisor para MT4/MT5 llamado Onyx Guardian). Responde al mensaje del usuario SOLO con la información de abajo (artículos de ayuda, precios/planes actuales y base de conocimiento), en español, breve, cercano y resolutivo, como un agente de soporte. Los precios y planes de abajo son la fuente oficial — úsalos para cualquier pregunta de precios. Firma como "Equipo de Onyx Trading Live". Si la respuesta NO está claramente en la información de abajo, responde exactamente con el token NO_ANSWER y nada más. No inventes funciones. No des consejo financiero.`)
+    + `\n\n=== ARTÍCULOS DE AYUDA ===\n${context}` + extra;
 
   try {
     const model = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5';
