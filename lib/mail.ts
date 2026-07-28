@@ -32,15 +32,18 @@ function bodyToHtml(text: string) {
   return html;
 }
 
+const SITE = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.onyxtradinglive.com').replace(/\/$/, '');
+const LOGO = process.env.EMAIL_LOGO_URL || `${SITE}/onyx-symbol.png`;
+
 function renderEmailHtml(text: string) {
   const body = bodyToHtml(text);
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;background:#eef0f4;padding:24px 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
 <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e3e6ec;">
-<tr><td style="background:#121829;padding:18px 28px;">
-<span style="color:#ffffff;font-size:18px;font-weight:700;letter-spacing:.3px;">Onyx Trading Live</span>
-<span style="font-size:16px;">&nbsp;🖤</span>
+<tr><td style="background:#121829;padding:16px 28px;">
+<img src="${LOGO}" alt="Onyx Trading Live" width="26" height="26" style="vertical-align:middle;border:0;display:inline-block;">
+<span style="color:#ffffff;font-size:18px;font-weight:700;letter-spacing:.3px;vertical-align:middle;margin-left:9px;">Onyx Trading Live</span>
 </td></tr>
 <tr><td style="padding:26px 28px;font-size:15px;color:#1a1d24;">${body}</td></tr>
 <tr><td style="background:#f6f7f9;padding:16px 28px;color:#8a90a0;font-size:12px;border-top:1px solid #eceef2;line-height:1.5;">
