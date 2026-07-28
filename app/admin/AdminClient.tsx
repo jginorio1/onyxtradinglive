@@ -324,8 +324,8 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
   const bannedCount = users.filter((u) => u.banned).length;
 
   async function userAction(id: string, action: string, value?: any) { setBusy(id + action); const r = await fetch('/api/admin/users', { method: 'PATCH', body: JSON.stringify({ id, action, value }) }); const j = await r.json(); if (!r.ok) toastErr(j); await loadUsers(); setBusy(''); }
-  async function delUser(u: User) { if (!confirm(`¿Borrar a ${u.email} y TODOS sus datos?`)) return; setBusy(u.id + 'del'); const r = await fetch('/api/admin/users', { method: 'DELETE', body: JSON.stringify({ id: u.id }) }); const j = await r.json(); if (!r.ok) toastErr(j); await loadUsers(); setBusy(''); }
-  async function resetPass(u: User) { setBusy(u.id + 'rst'); const r = await fetch('/api/admin/reset-password', { method: 'POST', body: JSON.stringify({ email: u.email }) }); const j = await r.json(); setBusy(''); if (!r.ok) { toastErr(j); return; } if (j.link) { navigator.clipboard.writeText(j.link); toast('Enlace de recuperación copiado:\n\n' + j.link); } else toast('Email de recuperación enviado.'); }
+  async function delUser(u: User) { if (!confirm(lang === 'en' ? `Delete ${u.email} and ALL their data?` : `¿Borrar a ${u.email} y TODOS sus datos?`)) return; setBusy(u.id + 'del'); const r = await fetch('/api/admin/users', { method: 'DELETE', body: JSON.stringify({ id: u.id }) }); const j = await r.json(); if (!r.ok) toastErr(j); await loadUsers(); setBusy(''); }
+  async function resetPass(u: User) { setBusy(u.id + 'rst'); const r = await fetch('/api/admin/reset-password', { method: 'POST', body: JSON.stringify({ email: u.email }) }); const j = await r.json(); setBusy(''); if (!r.ok) { toastErr(j); return; } if (j.link) { navigator.clipboard.writeText(j.link); toast((lang === 'en' ? 'Recovery link copied:\n\n' : 'Enlace de recuperación copiado:\n\n') + j.link); } else toast(lang === 'en' ? 'Recovery email sent.' : 'Email de recuperación enviado.'); }
 
   const filtered = users.filter((u) => u.email?.toLowerCase().includes(q.toLowerCase()));
   const NAV_GROUPS: { g: string; items: [Tab, string, string][] }[] = [
@@ -438,7 +438,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                 </div>
                 <div style={{ overflowX: 'auto' }}>
                   <table>
-                    <thead><tr><th>Email</th><th>Plan</th><th>Estado</th><th>Cuentas</th><th>Últ. sync</th><th style={{ minWidth: 260 }}>Acciones</th></tr></thead>
+                    <thead><tr><th>Email</th><th>Plan</th><th>{lang === 'en' ? 'Status' : 'Estado'}</th><th>{lang === 'en' ? 'Accounts' : 'Cuentas'}</th><th>{lang === 'en' ? 'Last sync' : 'Últ. sync'}</th><th style={{ minWidth: 260 }}>{lang === 'en' ? 'Actions' : 'Acciones'}</th></tr></thead>
                     <tbody>
                       {filtered.map((u) => (
                         <tr key={u.id}>
@@ -654,7 +654,7 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
   async function add() { if (!email) return; setBusy(true); const r = await fetch('/api/admin/team', { method: 'POST', body: JSON.stringify({ email, role: newRole }) }); const j = await r.json(); setBusy(false); if (!r.ok) { toastErr(j); return; } setEmail(''); reload(); loadSec(); if (j.tempPin) toast((j.emailed ? t.t_addedEmailed : t.t_addedNoMail).replace('{pin}', j.tempPin)); }
   async function changeRole(id: string, r2: string) { const r = await fetch('/api/admin/team', { method: 'PATCH', body: JSON.stringify({ id, role: r2 }) }); const j = await r.json(); if (!r.ok) { toastErr(j); return; } reload(); }
   async function savePerm(id: string, area: string, level: string, current: any) { const perms = { ...(current || {}), [area]: level }; const r = await fetch('/api/admin/team', { method: 'PATCH', body: JSON.stringify({ id, perms }) }); const j = await r.json(); if (!r.ok) { toastErr(j); return; } reload(); }
-  async function remove(id: string) { if (!confirm('¿Quitar acceso de administrador a esta persona?')) return; const r = await fetch('/api/admin/team', { method: 'DELETE', body: JSON.stringify({ id }) }); const j = await r.json(); if (!r.ok) { toastErr(j); return; } reload(); }
+  async function remove(id: string) { if (!confirm(lang === 'en' ? 'Remove admin access from this person?' : '¿Quitar acceso de administrador a esta persona?')) return; const r = await fetch('/api/admin/team', { method: 'DELETE', body: JSON.stringify({ id }) }); const j = await r.json(); if (!r.ok) { toastErr(j); return; } reload(); }
   async function loadLog(member = '') { setLogMember(member); const r = await fetch('/api/admin/activity' + (member ? '?member=' + encodeURIComponent(member) : '')); const j = await r.json(); setLog(j.log || []); }
   useEffect(() => { loadLog(); }, []);
 

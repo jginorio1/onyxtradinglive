@@ -2,12 +2,14 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useT } from '@/lib/adminText';
+import { useLang } from '@/lib/lang';
 
 // Consola de pruebas: simula lo que hace el EA, sin necesidad de MetaTrader.
 // Sirve para comprobar la cadena completa: clave → límites → configuración → comandos.
 
 export default function TestConsole({ meEmail }: { meEmail: string }) {
   const t = useT();
+  const { lang } = useLang();
   const [keys, setKeys] = useState<any[]>([]);
   const [key, setKey] = useState('');
   const [login, setLogin] = useState('');
@@ -93,7 +95,7 @@ export default function TestConsole({ meEmail }: { meEmail: string }) {
 
   return (
     <>
-      <div className="tabhead"><div className="th-row"><span className="th-ic">🧪</span><span className="th-t">Consola de pruebas</span></div><div className="th-s">Simula lo que envía el EA, sin abrir MetaTrader: clave, límites y configuración de Onyx Guardian.</div></div>
+      <div className="tabhead"><div className="th-row"><span className="th-ic">🧪</span><span className="th-t">{lang === 'en' ? 'Test console' : 'Consola de pruebas'}</span></div><div className="th-s">{lang === 'en' ? 'Simulate what the EA sends, without opening MetaTrader: key, limits and Onyx Guardian config.' : 'Simula lo que envía el EA, sin abrir MetaTrader: clave, límites y configuración de Onyx Guardian.'}</div></div>
 
       {/* Mi plan */}
       <div className="card" style={{ marginBottom: 16 }}>

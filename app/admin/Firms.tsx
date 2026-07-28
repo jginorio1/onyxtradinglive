@@ -2,11 +2,13 @@
 import { toast, toastErr } from '@/lib/toast';
 import { useEffect, useState } from 'react';
 import { useT } from '@/lib/adminText';
+import { useLang } from '@/lib/lang';
 
 // Plantillas de prop firm. Se editan aquí para poder corregirlas cuando una
 // firma cambie sus reglas, sin tener que volver a subir la web.
 export default function Firms() {
   const t = useT();
+  const { lang } = useLang();
   const [list, setList] = useState<any[]>([]);
   const [isDefault, setIsDefault] = useState(true);
   const [busy, setBusy] = useState('');
@@ -56,7 +58,7 @@ export default function Firms() {
 
   return (
     <>
-      <div className="tabhead"><div className="th-row"><span className="th-ic">🏛️</span><span className="th-t">Prop firms</span></div><div className="th-s">Plantillas que ve el trader al configurar límites. Corrige aquí y todos las ven.</div></div>
+      <div className="tabhead"><div className="th-row"><span className="th-ic">🏛️</span><span className="th-t">Prop firms</span></div><div className="th-s">{lang === 'en' ? 'Templates the trader sees when setting limits. Fix them here and everyone gets them.' : 'Plantillas que ve el trader al configurar límites. Corrige aquí y todos las ven.'}</div></div>
       <div className="card" style={{ marginBottom: 16 }}>
         <p className="muted" style={{ fontSize: 13 }}>{t.fi_intro}</p>
         {isDefault && (
