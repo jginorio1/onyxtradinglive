@@ -26,12 +26,31 @@ async function dumpTable(table: string): Promise<any[]> {
   return rows;
 }
 
-// Oculta valores sensibles antes de exportar (nunca salen del sistema en claro):
-// secretos, tokens, contraseñas, hashes, PINs y claves API.
-const SENSITIVE_COL = /(secret|token|password|passwd|hash|private|^key$|_key$|apikey|pin)/i;
-function redactRow(row: any): any {
+// Oculta valores sensibles antes de exportar (nunca salen del sistema en claro).
+// - Columnas de nivel superior: secretos, tokens, contraseñas, hashes, claves.
+//   Ojo: 'key' es sensible en api_keys (es la clave API) pero NO en app_settings
+//   (ahí 'key' es el nombre del ajuste), así que se trata por tabla.
+// - Además baja de forma recursiva dentro de los JSON (jsonb) y oculta claves
+//   sensibles anidadas como 'pin', 'salt', etc.
+const TOP_SENSITIVE = /(secret|token|password|passwd|hash|private|_key$|apikey)/i;
+const NESTED_SENSITIVE = /^(pin|secret|token|password|passwd|hash|salt|apikey|private_key)$/i;
+
+function deepRedact(v: any): any {
+  if (Array.isArray(v)) return v.map(deepRedact);
+  if (v && typeof v === 'object') {
+    const o: any = {};
+    for (const k of Object.keys(v)) o[k] = NESTED_SENSITIVE.test(k) ? '***REDACTED***' : deepRedact(v[k]);
+    return o;
+  }
+  return v;
+}
+
+function redactRow(table: string, row: any): any {
   const out: any = {};
-  for (const k of Object.keys(row)) out[k] = SENSITIVE_COL.test(k) ? '***REDACTED***' : row[k];
+  for (const k of Object.keys(row)) {
+    const topSensitive = TOP_SENSITIVE.test(k) || (table === 'api_keys' && k === 'key');
+    out[k] = topSensitive ? '***REDACTED***' : deepRedact(row[k]);
+  }
   return out;
 }
 
@@ -64,13 +83,13 @@ export async function GET(req: Request) {
 
     if (exp === 'csv') {
       const rows = await dumpTable('trades');
-      return new NextResponse(toCsv(rows.map(redactRow)), {
+      return new NextResponse(toCsv(rows.map((r) => redactRow('trades', r))), {
         headers: { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': `attachment; filename="onyx-operaciones-${day}.csv"` },
       });
     }
     // Volcado JSON, siempre con los campos sensibles ocultos (nunca salen secretos/tokens/PINs).
     const out: any = { app: 'Onyx Trading Live', exported_at: new Date().toISOString(), tables: {} };
-    for (const t of TABLES) { try { out.tables[t] = (await dumpTable(t)).map(redactRow); } catch { /* tabla ausente */ } }
+    for (const t of TABLES) { try { out.tables[t] = (await dumpTable(t)).map((r) => redactRow(t, r)); } catch { /* tabla ausente */ } }
     return new NextResponse(JSON.stringify(out, null, 2), {
       headers: { 'content-type': 'application/json; charset=utf-8', 'content-disposition': `attachment; filename="onyx-backup-${day}.json"` },
     });
