@@ -1,5 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { sendEmail } from '@/lib/mail';
+import { sendEmailId } from '@/lib/mail';
 import { resolveSegment, type Recipient } from '@/lib/segments';
 
 // ============================================================
@@ -18,7 +18,7 @@ const SCHEDULED_INTERVAL_DAYS = 6; // "semanal" con margen
 export type CampaignRow = {
   id: string; key: string | null; name: string; kind: 'trigger' | 'scheduled' | 'manual';
   segment: string; subject_es: string; body_es: string; subject_en: string; body_en: string;
-  enabled: boolean; trigger: any; schedule: string; last_run_at: string | null;
+  enabled: boolean; trigger: any; schedule: string; scheduled_at: string | null; last_run_at: string | null;
 };
 
 // --- Plantillas por defecto de las campañas automáticas. Se crean la primera
@@ -87,14 +87,22 @@ async function unsubUrl(r: Recipient): Promise<string> {
 // Envía UN correo de campaña a un destinatario y lo registra (dedupe/analítica).
 async function sendOne(c: { id?: string; key?: string | null; kind: string }, r: Recipient, subject: string, body: string) {
   const unsub = await unsubUrl(r);
-  const ok = await sendEmail(r.email, renderTemplate(subject, r), renderTemplate(body, r), {
+  const { ok, id } = await sendEmailId(r.email, renderTemplate(subject, r), renderTemplate(body, r), {
     kind: 'campaign', userId: r.id, unsub, meta: { campaign: c.key || c.id },
   });
   try {
     await supabaseAdmin.from('campaign_sends').insert({
-      campaign_id: c.id || null, campaign_key: c.key || null, user_id: r.id, email: r.email, status: ok ? 'sent' : 'failed',
+      campaign_id: c.id || null, campaign_key: c.key || null, user_id: r.id, email: r.email,
+      status: ok ? 'sent' : 'failed', resend_id: id,
     });
-  } catch {}
+  } catch {
+    // Reintento tolerante por si aún no existe la columna resend_id.
+    try {
+      await supabaseAdmin.from('campaign_sends').insert({
+        campaign_id: c.id || null, campaign_key: c.key || null, user_id: r.id, email: r.email, status: ok ? 'sent' : 'failed',
+      });
+    } catch {}
+  }
   return ok;
 }
 
@@ -146,6 +154,31 @@ export async function runCampaigns(dryRun = false): Promise<{ sent: number; deta
     if (!dryRun) await supabaseAdmin.from('campaigns').update({ last_run_at: new Date().toISOString() }).eq('id', c.id);
     detail.push({ campaign: c.key || c.name, sent });
   }
+
+  // Promos PROGRAMADAS (manuales con scheduled_at ya vencida). Salen una vez y se
+  // limpia scheduled_at para no repetir.
+  try {
+    const nowIso = new Date().toISOString();
+    const { data: due } = await supabaseAdmin
+      .from('campaigns').select('*').eq('kind', 'manual').eq('enabled', true)
+      .not('scheduled_at', 'is', null).lte('scheduled_at', nowIso);
+    for (const c of (due || []) as CampaignRow[]) {
+      if (budget <= 0) break;
+      const recips = (await resolveSegment(c.segment, {})).slice(0, budget);
+      let sent = 0;
+      for (const r of recips) {
+        const subject = r.lang === 'en' ? (c.subject_en || c.subject_es) : c.subject_es;
+        const body = r.lang === 'en' ? (c.body_en || c.body_es) : c.body_es;
+        if (!subject || !body) continue;
+        if (!dryRun) { const ok = await sendOne({ id: c.id, key: c.key, kind: 'manual' }, r, subject, body); if (ok) sent++; }
+        else sent++;
+      }
+      budget -= sent; total += sent;
+      if (!dryRun) await supabaseAdmin.from('campaigns').update({ scheduled_at: null, enabled: false, last_run_at: new Date().toISOString() }).eq('id', c.id);
+      detail.push({ campaign: c.name, sent });
+    }
+  } catch {}
+
   return { sent: total, detail };
 }
 
@@ -181,14 +214,36 @@ export async function sendManual(opts: {
   return { count: recips.length, sent };
 }
 
-// Métricas simples de los últimos 30 días (para el panel).
-export async function campaignStats(): Promise<{ sent30: number; failed30: number; byKind: Record<string, number> }> {
+export type PerKey = { sent: number; opened: number; clicked: number; failed: number };
+
+// Métricas de los últimos 30 días: totales + desglose por campaña, con
+// aperturas y clics reales (los rellena el webhook de Resend).
+export async function campaignStats(): Promise<{
+  sent30: number; failed30: number; opened30: number; clicked30: number;
+  byKey: Record<string, PerKey>;
+}> {
   const since = new Date(Date.now() - 30 * 86400000).toISOString();
-  const { data } = await supabaseAdmin.from('campaign_sends').select('status,campaign_key,created_at').gte('created_at', since).limit(50000);
-  let sent30 = 0, failed30 = 0; const byKind: Record<string, number> = {};
-  for (const s of (data || []) as any[]) {
-    if (s.status === 'failed') failed30++; else sent30++;
-    const k = s.campaign_key || 'manual'; byKind[k] = (byKind[k] || 0) + 1;
+  let data: any[] = [];
+  try {
+    const r = await supabaseAdmin.from('campaign_sends')
+      .select('status,campaign_key,opened_at,clicked_at,created_at').gte('created_at', since).limit(50000);
+    data = (r.data || []) as any[];
+  } catch {
+    // Sin las columnas de tracking todavía: solo totales de enviados/fallidos.
+    const r = await supabaseAdmin.from('campaign_sends').select('status,campaign_key,created_at').gte('created_at', since).limit(50000);
+    data = (r.data || []) as any[];
   }
-  return { sent30, failed30, byKind };
+
+  let sent30 = 0, failed30 = 0, opened30 = 0, clicked30 = 0;
+  const byKey: Record<string, PerKey> = {};
+  for (const s of data) {
+    const k = s.campaign_key || 'manual';
+    if (!byKey[k]) byKey[k] = { sent: 0, opened: 0, clicked: 0, failed: 0 };
+    const bad = s.status === 'failed' || s.status === 'bounced';
+    if (bad) { failed30++; byKey[k].failed++; }
+    else { sent30++; byKey[k].sent++; }
+    if (s.opened_at) { opened30++; byKey[k].opened++; }
+    if (s.clicked_at) { clicked30++; byKey[k].clicked++; }
+  }
+  return { sent30, failed30, opened30, clicked30, byKey };
 }

@@ -18,6 +18,7 @@ create table if not exists public.campaigns (
   enabled boolean not null default false,   -- las automáticas empiezan apagadas
   trigger jsonb default '{}'::jsonb,        -- { days: 3 } etc. para las 'trigger'
   schedule text default '',                 -- cron para las 'scheduled' (informativo)
+  scheduled_at timestamptz,                 -- promo programada: sale a esta fecha/hora y se limpia
   last_run_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -31,9 +32,14 @@ create table if not exists public.campaign_sends (
   campaign_key text,                        -- copia estable por si se borra la campaña
   user_id uuid,
   email text not null,
-  status text default 'sent',               -- sent | failed
+  status text default 'sent',               -- sent | failed | bounced | complained
+  resend_id text,                           -- id del mensaje en Resend (para correlacionar el webhook)
+  delivered_at timestamptz,
+  opened_at timestamptz,                     -- primera apertura
+  clicked_at timestamptz,                    -- primer clic
   created_at timestamptz not null default now()
 );
+create index if not exists campaign_sends_rid on public.campaign_sends (resend_id);
 create index if not exists campaign_sends_cam on public.campaign_sends (campaign_id, created_at desc);
 create index if not exists campaign_sends_user on public.campaign_sends (user_id, campaign_key);
 create index if not exists campaign_sends_at on public.campaign_sends (created_at desc);

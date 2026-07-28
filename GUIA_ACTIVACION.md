@@ -414,3 +414,35 @@ Cómo funciona:
 Seguridad/anti-spam: tope de 200 envíos por corrida del cron, nunca repite una
 campaña de disparo al mismo usuario, y respeta la baja. Los secretos van solo en
 variables de entorno de Vercel, nunca en el código.
+
+---
+
+## 9b · Aperturas/clics reales (webhook Resend) + programar promos
+
+Dos añadidos al módulo de campañas:
+
+**A) Métricas reales de apertura y clic.** El panel muestra tasa de apertura y de
+clic por campaña, con datos reales de Resend (no estimados).
+1. Corre otra vez `supabase/campaigns.sql` (añade `resend_id`, `opened_at`,
+   `clicked_at`, `delivered_at` en `campaign_sends` y `scheduled_at` en `campaigns`).
+   Es idempotente: puedes correrlo sin miedo.
+2. En Resend → **Webhooks** → *Add endpoint*: URL
+   `https://www.onyxtradinglive.com/api/webhooks/resend`. Marca los eventos
+   `email.delivered`, `email.opened`, `email.clicked`, `email.bounced`,
+   `email.complained`.
+3. Copia el **Signing secret** (empieza por `whsec_`) y ponlo en Vercel como
+   `RESEND_WEBHOOK_SECRET`. (Si no lo pones, el webhook igual funciona pero sin
+   verificar firma; para producción, ponlo.)
+4. Activa el *open tracking* y *click tracking* en tu dominio de Resend.
+
+Extra: si un correo rebota o marca spam, el sistema pone `marketing_emails=false`
+a ese usuario automáticamente (higiene de lista).
+
+**B) Programar una promo a fecha/hora.** En **Admin → Campañas → Envío manual**,
+además de "Enviar ahora" hay "🕒 O prográmala": eliges fecha/hora y queda en
+**Promos programadas**, donde puedes editarla o cancelarla antes de que salga.
+- El cron `/api/cron/campaigns` ahora corre **cada hora** (en `vercel.json`) para
+  entregar las programadas cerca de su hora.
+- NOTA: en Vercel plan **Hobby** los cron corren como mucho 1 vez al día, así que
+  las programadas saldrían en la corrida diaria, no a la hora exacta. Con Vercel
+  **Pro** sí corre cada hora. (Los secretos van solo en variables de entorno.)

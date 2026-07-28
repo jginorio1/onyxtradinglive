@@ -23,25 +23,33 @@ export async function GET() {
   }
 }
 
-// POST · crear una campaña manual (promo/noticia) nueva.
+// POST · crear una campaña manual (promo/noticia). Si trae scheduled_at (fecha
+// futura), queda PROGRAMADA y activa: el cron la envía al llegar la hora.
 export async function POST(req: Request) {
   const p = await requirePerm('usuarios', 'manage');
   if (!p.ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
   try {
     const b = await req.json().catch(() => ({} as any));
+    let schedIso: string | null = null;
+    if (b.scheduled_at) {
+      const d = new Date(b.scheduled_at);
+      if (!isNaN(d.getTime())) schedIso = d.toISOString();
+      if (schedIso && d.getTime() < Date.now() - 60000) return NextResponse.json({ error: 'La fecha de programación ya pasó.' }, { status: 400 });
+    }
     const row = {
-      name: String(b.name || 'Nueva campaña').slice(0, 120),
+      name: String(b.name || 'Promo programada').slice(0, 120),
       kind: 'manual',
       segment: String(b.segment || 'all'),
       subject_es: String(b.subject_es || '').slice(0, 200),
       body_es: String(b.body_es || '').slice(0, 4000),
       subject_en: String(b.subject_en || '').slice(0, 200),
       body_en: String(b.body_en || '').slice(0, 4000),
-      enabled: false,
+      scheduled_at: schedIso,
+      enabled: !!schedIso,   // programada => activa para que el cron la tome
     };
     const { data, error } = await supabaseAdmin.from('campaigns').insert(row).select('id').maybeSingle();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    await logAdmin(p.user?.email || '', 'campaign_create', (data as any)?.id || '');
+    await logAdmin(p.user?.email || '', schedIso ? 'campaign_schedule' : 'campaign_create', (data as any)?.id || '');
     return NextResponse.json({ ok: true, id: (data as any)?.id });
   } catch (e: any) {
     await logError('campaigns_post', e);
@@ -61,6 +69,10 @@ export async function PATCH(req: Request) {
       if (b[k] !== undefined) patch[k] = typeof b[k] === 'string' ? b[k].slice(0, 4000) : b[k];
     }
     if (b.enabled !== undefined) patch.enabled = !!b.enabled;
+    if (b.scheduled_at !== undefined) {
+      if (!b.scheduled_at) { patch.scheduled_at = null; }
+      else { const d = new Date(b.scheduled_at); if (!isNaN(d.getTime())) { patch.scheduled_at = d.toISOString(); patch.enabled = true; } }
+    }
     if (b.trigger && typeof b.trigger === 'object') {
       patch.trigger = { days: Math.max(0, Number(b.trigger.days) || 0), maxDays: Math.max(0, Number(b.trigger.maxDays) || 0) };
     }

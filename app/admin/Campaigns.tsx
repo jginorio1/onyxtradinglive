@@ -12,7 +12,7 @@ import { useLang } from '@/lib/lang';
 type Campaign = {
   id: string; key: string | null; name: string; kind: 'trigger' | 'scheduled' | 'manual';
   segment: string; subject_es: string; body_es: string; subject_en: string; body_en: string;
-  enabled: boolean; trigger: any; schedule: string; last_run_at: string | null;
+  enabled: boolean; trigger: any; schedule: string; scheduled_at: string | null; last_run_at: string | null;
 };
 type Seg = { id: string; es: string; en: string; auto?: boolean };
 
@@ -39,6 +39,17 @@ export default function Campaigns() {
 
   const autos = camps.filter((c) => c.kind !== 'manual');
   const manuals = camps.filter((c) => c.kind === 'manual');
+  const scheduled = manuals.filter((c) => c.scheduled_at);
+  const pct = (n: number, d: number) => d > 0 ? Math.round((n / d) * 100) : 0;
+  const openRate = pct(stats?.opened30 ?? 0, stats?.sent30 ?? 0);
+  const clickRate = pct(stats?.clicked30 ?? 0, stats?.sent30 ?? 0);
+
+  async function cancelSchedule(c: Campaign) {
+    if (!confirm(L('¿Cancelar esta promo programada?', 'Cancel this scheduled promo?'))) return;
+    await fetch('/api/admin/campaigns', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: c.id }) });
+    load();
+  }
+  const fmtWhen = (iso: string | null) => iso ? new Date(iso).toLocaleString(lang === 'en' ? 'en-US' : 'es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
 
   const kindBadge = (k: string) => k === 'scheduled'
     ? <span className="pill" style={{ color: 'var(--soft-brand)', background: 'rgba(124,140,255,.15)' }}>{L('Programada', 'Scheduled')}</span>
@@ -49,11 +60,12 @@ export default function Campaigns() {
       <div className="tabhead"><div className="th-row"><span className="th-ic">📣</span><span className="th-t">{L('Campañas', 'Campaigns')}</span></div>
         <div className="th-s">{L('Correos de seguimiento automáticos a tus traders + envíos manuales de promos y noticias.', 'Automated follow-up emails to your traders + manual promos and news.')}</div></div>
 
-      {/* Métricas 30 días */}
-      <div className="grid g3" style={{ marginBottom: 14 }}>
+      {/* Métricas 30 días (aperturas/clics reales del webhook de Resend) */}
+      <div className="grid g4" style={{ marginBottom: 14 }}>
         <div className="tile"><div className="muted" style={{ fontSize: 12 }}>{L('Enviados (30d)', 'Sent (30d)')}</div><div style={{ fontSize: 22, fontWeight: 800, marginTop: 2 }}>{(stats?.sent30 ?? 0).toLocaleString()}</div></div>
-        <div className="tile"><div className="muted" style={{ fontSize: 12 }}>{L('Fallidos (30d)', 'Failed (30d)')}</div><div style={{ fontSize: 22, fontWeight: 800, marginTop: 2, color: (stats?.failed30 ?? 0) > 0 ? 'var(--amber)' : 'var(--tx)' }}>{(stats?.failed30 ?? 0).toLocaleString()}</div></div>
-        <div className="tile"><div className="muted" style={{ fontSize: 12 }}>{L('Campañas activas', 'Active campaigns')}</div><div style={{ fontSize: 22, fontWeight: 800, marginTop: 2, color: 'var(--green)' }}>{camps.filter((c) => c.enabled).length}</div></div>
+        <div className="tile"><div className="muted" style={{ fontSize: 12 }}>{L('Tasa de apertura', 'Open rate')}</div><div style={{ fontSize: 22, fontWeight: 800, marginTop: 2, color: 'var(--soft-brand)' }}>{openRate}%</div><div className="muted" style={{ fontSize: 11 }}>{(stats?.opened30 ?? 0).toLocaleString()} {L('aperturas', 'opens')}</div></div>
+        <div className="tile"><div className="muted" style={{ fontSize: 12 }}>{L('Tasa de clic', 'Click rate')}</div><div style={{ fontSize: 22, fontWeight: 800, marginTop: 2, color: 'var(--green)' }}>{clickRate}%</div><div className="muted" style={{ fontSize: 11 }}>{(stats?.clicked30 ?? 0).toLocaleString()} {L('clics', 'clicks')}</div></div>
+        <div className="tile"><div className="muted" style={{ fontSize: 12 }}>{L('Activas', 'Active')}</div><div style={{ fontSize: 22, fontWeight: 800, marginTop: 2 }}>{camps.filter((c) => c.enabled).length}</div></div>
       </div>
 
       {/* Automáticas */}
@@ -71,6 +83,9 @@ export default function Campaigns() {
                 {c.kind === 'trigger' && c.trigger?.days ? ` · ${L('tras', 'after')} ${c.trigger.days} ${L('días', 'days')}` : ''}
                 {c.kind === 'scheduled' ? ` · ${L('semanal', 'weekly')}` : ''}
               </div>
+              {(() => { const k = stats?.byKey?.[c.key || '']; if (!k || !k.sent) return null; return (
+                <div className="muted" style={{ fontSize: 11.5, marginTop: 3 }}>📬 {k.sent} · 👁 {pct(k.opened, k.sent)}% · 🖱 {pct(k.clicked, k.sent)}% <span style={{ opacity: .6 }}>({L('30d', '30d')})</span></div>
+              ); })()}
             </div>
             <div className="row" style={{ gap: 8 }}>
               <button className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: 12.5 }} onClick={() => setEditing(c)}>✏️ {L('Editar', 'Edit')}</button>
@@ -79,6 +94,26 @@ export default function Campaigns() {
           </div>
         ))}
       </div>
+
+      {/* Cola de programación */}
+      {scheduled.length > 0 && (
+        <div className="card" style={{ marginBottom: 14 }}>
+          <h3 style={{ marginBottom: 4 }}>🕒 {L('Promos programadas', 'Scheduled promos')}</h3>
+          <p className="muted" style={{ fontSize: 13, marginBottom: 10 }}>{L('Saldrán solas a su fecha y hora. Puedes editarlas o cancelarlas antes.', 'They go out on their own at the set date/time. You can edit or cancel before then.')}</p>
+          {scheduled.map((c, i) => (
+            <div key={c.id} className="row between" style={{ borderTop: i ? '1px solid var(--line)' : 'none', padding: '11px 0', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ minWidth: 200 }}>
+                <b>{c.name}</b>
+                <div className="muted" style={{ fontSize: 12, marginTop: 3 }}>🕒 {fmtWhen(c.scheduled_at)} · {segLabel(c.segment)}</div>
+              </div>
+              <div className="row" style={{ gap: 8 }}>
+                <button className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: 12.5 }} onClick={() => setEditing(c)}>✏️ {L('Editar', 'Edit')}</button>
+                <button className="btn btn-danger" style={{ padding: '6px 12px', fontSize: 12.5 }} onClick={() => cancelSchedule(c)}>{L('Cancelar', 'Cancel')}</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Envío manual */}
       <ManualComposer segs={segs} manuals={manuals} L={L} lang={lang} segLabel={segLabel} reload={load} onEdit={setEditing} />
@@ -95,6 +130,7 @@ function ManualComposer({ segs, manuals, L, lang, segLabel, reload, onEdit }: an
   const [f, setF] = useState({ subject_es: '', body_es: '', subject_en: '', body_en: '' });
   const [busy, setBusy] = useState('');
   const [count, setCount] = useState<number | null>(null);
+  const [when, setWhen] = useState('');
   const set = (k: string, v: string) => setF((o) => ({ ...o, [k]: v }));
 
   async function draft() {
@@ -122,6 +158,19 @@ function ManualComposer({ segs, manuals, L, lang, segLabel, reload, onEdit }: an
     if (!confirm(L(`¿Enviar esta campaña ahora a ${n} traders del segmento "${segLabel(seg)}"?`, `Send this campaign now to ${n} traders in "${segLabel(seg)}"?`))) return;
     setBusy('send');
     try { const r = await fetch('/api/admin/campaigns/send', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'send', segment: seg, ...f }) }); const j = await r.json(); if (!r.ok) toastErr(j); else { toast(L(`Enviado a ${j.sent} traders.`, `Sent to ${j.sent} traders.`), 'ok'); reload(); } } finally { setBusy(''); }
+  }
+  async function schedule() {
+    if (!f.subject_es && !f.subject_en) { toast(L('Falta el asunto.', 'Subject is missing.')); return; }
+    if (!when) { toast(L('Elige fecha y hora.', 'Pick a date and time.')); return; }
+    if (new Date(when).getTime() < Date.now()) { toast(L('Esa fecha ya pasó.', 'That date is in the past.')); return; }
+    setBusy('sched');
+    try {
+      const name = (f.subject_es || f.subject_en).slice(0, 60);
+      const r = await fetch('/api/admin/campaigns', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, segment: seg, scheduled_at: new Date(when).toISOString(), ...f }) });
+      const j = await r.json();
+      if (!r.ok) toastErr(j);
+      else { toast(L('Promo programada ✓', 'Promo scheduled ✓'), 'ok'); setWhen(''); setF({ subject_es: '', body_es: '', subject_en: '', body_en: '' }); reload(); }
+    } finally { setBusy(''); }
   }
 
   const ta = { width: '100%', minHeight: 90, padding: '9px 11px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', marginTop: 4, fontFamily: 'inherit', fontSize: 13.5, resize: 'vertical' } as any;
@@ -163,6 +212,13 @@ function ManualComposer({ segs, manuals, L, lang, segLabel, reload, onEdit }: an
         {count !== null && <span className="pill" style={{ color: 'var(--soft-brand)', background: 'rgba(124,140,255,.15)' }}>{count.toLocaleString()} {L('destinatarios', 'recipients')}</span>}
         <button className="btn btn-ghost" onClick={test} disabled={busy === 'test'}>{busy === 'test' ? '…' : '📧 ' + L('Prueba', 'Test')}</button>
         <button className="btn btn-primary" onClick={send} disabled={busy === 'send'} style={{ marginLeft: 'auto' }}>{busy === 'send' ? '…' : '🚀 ' + L('Enviar ahora', 'Send now')}</button>
+      </div>
+
+      {/* Programar para más tarde */}
+      <div className="row" style={{ gap: 10, marginTop: 12, alignItems: 'center', flexWrap: 'wrap', borderTop: '1px solid var(--line)', paddingTop: 12 }}>
+        <span className="muted" style={{ fontSize: 12.5 }}>🕒 {L('O prográmala:', 'Or schedule it:')}</span>
+        <input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} style={{ ...inp, width: 'auto', marginTop: 0 }} />
+        <button className="btn btn-ghost" onClick={schedule} disabled={busy === 'sched'}>{busy === 'sched' ? '…' : L('Programar', 'Schedule')}</button>
       </div>
     </div>
   );

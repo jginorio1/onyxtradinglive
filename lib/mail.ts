@@ -71,8 +71,14 @@ async function logMail(to: string, subject: string, ok: boolean, opts?: MailOpts
 // Si no hay RESEND_API_KEY configurada, no envía y no falla:
 // el soporte sigue funcionando dentro de la web.
 export async function sendEmail(to: string, subject: string, text: string, opts?: MailOpts): Promise<boolean> {
+  return (await sendEmailId(to, subject, text, opts)).ok;
+}
+
+// Igual que sendEmail pero devuelve además el id del mensaje de Resend, para
+// poder correlacionar aperturas/clics del webhook con quién lo recibió.
+export async function sendEmailId(to: string, subject: string, text: string, opts?: MailOpts): Promise<{ ok: boolean; id: string | null }> {
   const key = process.env.RESEND_API_KEY;
-  if (!key || !to) return false;
+  if (!key || !to) return { ok: false, id: null };
   const from = process.env.SUPPORT_FROM_EMAIL || 'Onyx Trading Live <no-reply@onyxtradinglive.com>';
   // Versión de texto plano (sin markdown) como respaldo, y versión HTML con marca.
   const plain = String(text || '').replace(/\*\*(.+?)\*\*/g, '$1') + (opts?.unsub ? `\n\n—\nDarte de baja / Unsubscribe: ${opts.unsub}` : '');
@@ -83,13 +89,15 @@ export async function sendEmail(to: string, subject: string, text: string, opts?
       headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
       body: JSON.stringify({ from, to, subject, text: plain, html }),
     });
-    if (!r.ok) { const t = await r.text().catch(() => ''); await logError('mail', `Resend ${r.status}: ${t.slice(0, 200)}`, { code: String(r.status) }); }
+    let id: string | null = null;
+    if (r.ok) { try { const j = await r.json(); id = j?.id || j?.data?.id || null; } catch {} }
+    else { const t = await r.text().catch(() => ''); await logError('mail', `Resend ${r.status}: ${t.slice(0, 200)}`, { code: String(r.status) }); }
     await logMail(to, subject, r.ok, opts);
-    return r.ok;
+    return { ok: r.ok, id };
   } catch (e) {
     await logError('mail', e);
     await logMail(to, subject, false, opts);
-    return false;
+    return { ok: false, id: null };
   }
 }
 
