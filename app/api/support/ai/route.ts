@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { ARTICLES, searchArticles, type Article, type Lang } from '@/lib/guide';
+import { ONYX_BRIEF } from '@/lib/supportAI';
 import { logError } from '@/lib/errlog';
 
 export const dynamic = 'force-dynamic';
@@ -94,6 +95,7 @@ export async function POST(req: Request) {
       ? `You are Onyx AI, the support assistant for Onyx Trading Live (a trading journal with an MT4/MT5 Expert Advisor called Onyx Guardian). Answer ONLY from the help articles below, in English, briefly and warmly. If the answer is not in them, say you cannot be sure and suggest opening a ticket. Never invent features. Do not give financial advice.`
       : `Eres Onyx AI, el asistente de soporte de Onyx Trading Live (un diario de trading con un Expert Advisor para MT4/MT5 llamado Onyx Guardian). Responde SOLO con los artículos de ayuda de abajo, en español, breve y cercano. Si la respuesta no está en ellos, di que no puedes asegurarlo y sugiere abrir un ticket. No inventes funciones. No des consejo financiero.`)
       + acctContext
+      + `\n\n=== ${lang === 'en' ? 'ONYX KNOWLEDGE' : 'CONOCIMIENTO DE ONYX'} ===\n${ONYX_BRIEF[lang]}`
       + `\n\n=== ARTÍCULOS DE AYUDA ===\n${context}`;
 
     const messages = [

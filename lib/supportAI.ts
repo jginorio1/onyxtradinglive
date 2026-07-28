@@ -42,18 +42,64 @@ function articleText(a: Article, lang: Lang): string {
   return `# ${a.title[lang]}\n${a.summary[lang]}\n${parts.filter(Boolean).join('\n')}`;
 }
 
-export type AiAnswer = { answer: string; confident: boolean; articles: Array<{ slug: string; title: string }> };
+// Resumen COMPLETO de Onyx: el "cerebro" que la IA siempre tiene, sin depender
+// de que la Guía tenga un artículo para cada tema. Incluye todo lo que hemos
+// añadido (copy, Mi reto, app, push, Telegram, planes, embajadores…).
+export const ONYX_BRIEF: Record<Lang, string> = {
+  es: `Onyx Trading Live es un diario de trading para MetaTrader (MT4 y MT5) con un Expert Advisor (EA) llamado Onyx Guardian.
 
-// Redacta una respuesta apoyada SOLO en la Guía. `confident` es true únicamente
-// cuando el modelo devolvió una respuesta real (no un fallback) y el tema no es
-// sensible. Si no hay clave del proveedor, confident = false (no auto-responder).
+CONECTAR: El trader instala el EA de Onyx dentro de su MetaTrader; el EA envía sus operaciones a Onyx. Onyx NUNCA tiene la contraseña ni puede mover dinero. Se conecta creando una clave API desde "Cuentas", pegándola en el EA; al primer envío la clave queda atada a ese número de cuenta. Una clave por cuenta; el plan decide cuántas cuentas activas puedes tener.
+
+ONYX GUARDIAN (gestor de riesgo): hace respetar reglas — límite de pérdida diaria, límite de pérdida total, protección/bloqueo de ganancias, aviso antes de noticias de alto impacto y controles de riesgo. "Mi reto" es un marcador para cuentas de fondeo/prop firm que compara tu progreso con las reglas del reto (objetivo, pérdida diaria/total, días mínimos, consistencia). Hay una calculadora de lotaje/riesgo. Cumplir las reglas de la prop firm es responsabilidad del trader.
+
+COPY TRADING: copia operaciones entre las cuentas del propio trader (una maestra a una o varias esclavas) con PIN y controles de riesgo por enlace. Es un gestor multicuenta legítimo.
+
+FONDEO / PROP FIRMS: Onyx sirve para challenges y cuentas fondeadas.
+
+ALERTAS: por Telegram (planes Elite y superiores) — fondeo, gestor, noticias, EA caído, meta, resumen diario/semanal.
+
+APP MÓVIL: Onyx es instalable como app (PWA) en iPhone y Android desde el navegador (en iPhone: Compartir → Añadir a inicio; en Android: botón instalar). Con notificaciones push.
+
+PLANES: Free, Pro, Elite y Black Onyx. Se empieza gratis. Pago mensual o anual (el anual sale más barato). Los precios exactos están en la sección PRECIOS de abajo. Cambiar de plan desde Mi cuenta → Suscripción: subir es inmediato, bajar se aplica al final del periodo pagado (conservas las funciones hasta que termine).
+
+EMBAJADORES: comisión recurrente por cada suscriptor que traigas y descuento para tu comunidad; se solicita desde la página de Embajadores.
+
+SOPORTE: Onyx AI responde al instante; si hace falta, una persona contesta por correo o en el Centro de soporte.`,
+  en: `Onyx Trading Live is a trading journal for MetaTrader (MT4 and MT5) with an Expert Advisor (EA) called Onyx Guardian.
+
+CONNECT: The trader installs the Onyx EA inside their MetaTrader; the EA sends their trades to Onyx. Onyx NEVER has the password and cannot move money. You connect by creating an API key from "Accounts" and pasting it into the EA; on the first sync the key is bound to that account number. One key per account; the plan decides how many active accounts you can have.
+
+ONYX GUARDIAN (risk manager): enforces rules — daily loss limit, total loss limit, profit protection/lock, warning before high-impact news, and risk controls. "My challenge" is a scoreboard for funded/prop-firm accounts that compares your progress with the challenge rules (target, daily/total loss, minimum days, consistency). There is a lot-size/risk calculator. Following prop-firm rules is the trader's responsibility.
+
+COPY TRADING: copies trades between the trader's own accounts (one master to one or more slaves) with a PIN and per-link risk controls. It is a legitimate multi-account manager.
+
+FUNDED / PROP FIRMS: Onyx works for challenges and funded accounts.
+
+ALERTS: via Telegram (Elite plan and above) — funding, manager, news, EA down, goal, daily/weekly summary.
+
+MOBILE APP: Onyx installs as an app (PWA) on iPhone and Android from the browser (iPhone: Share → Add to Home Screen; Android: install button). With push notifications.
+
+PLANS: Free, Pro, Elite and Black Onyx. You can start free. Monthly or yearly billing (yearly is cheaper). Exact prices are in the PRICES section below. Change plan from My account → Subscription: upgrading is immediate, downgrading applies at the end of the paid period (you keep features until it ends).
+
+AMBASSADORS: recurring commission for every subscriber you bring and a discount for your community; apply from the Ambassadors page.
+
+SUPPORT: Onyx AI answers instantly; if needed, a person replies by email or in the Support Center.`,
+};
+
+export type AiReason = 'ok' | 'no_key' | 'sensitive' | 'declined' | 'error';
+export type AiAnswer = { answer: string; confident: boolean; articles: Array<{ slug: string; title: string }>; reason: AiReason };
+
+// Redacta una respuesta con el cerebro de Onyx + precios reales + base de
+// conocimiento + Guía. Solo escala (NO_ANSWER) cuando necesita datos PRIVADOS de
+// la cuenta del usuario que no puede ver. `reason` dice qué pasó exactamente.
 export async function aiAnswer(question: string, lang: Lang, sensitive = false): Promise<AiAnswer> {
   const found = searchArticles(question, lang).slice(0, 4);
   const pool = found.length ? found : ARTICLES.slice(0, 4);
   const articles = pool.map((a) => ({ slug: a.slug, title: a.title[lang] }));
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey || sensitive) return { answer: '', confident: false, articles };
+  if (!apiKey) return { answer: '', confident: false, articles, reason: 'no_key' };
+  if (sensitive) return { answer: '', confident: false, articles, reason: 'sensitive' };
 
   const context = pool.map((a) => articleText(a, lang)).join('\n\n---\n\n');
 
@@ -86,9 +132,10 @@ export async function aiAnswer(question: string, lang: Lang, sensitive = false):
   } catch {}
 
   const system = (lang === 'en'
-    ? `You are Onyx AI, support for Onyx Trading Live (a trading journal with an MT4/MT5 Expert Advisor called Onyx Guardian). Reply to the user's message ONLY from the help info below (help articles, current prices/plans, and knowledge base), in English, briefly, warmly and helpfully, as if you were a support agent. You may use a few tasteful emojis and bullet points for readability. Prices and plans below are authoritative — use them for any pricing question. Do NOT add a signature or sign-off (no "Onyx Trading Live team" line) — that is added automatically. If the answer is NOT clearly in the info below, reply exactly with the token NO_ANSWER and nothing else. Never invent features. Never give financial advice.`
-    : `Eres Onyx AI, soporte de Onyx Trading Live (un diario de trading con un Expert Advisor para MT4/MT5 llamado Onyx Guardian). Responde al mensaje del usuario SOLO con la información de abajo (artículos de ayuda, precios/planes actuales y base de conocimiento), en español, breve, cercano y resolutivo, como un agente de soporte. Puedes usar algunos emojis con criterio y viñetas para que sea legible. Los precios y planes de abajo son la fuente oficial — úsalos para cualquier pregunta de precios. NO añadas firma ni despedida (nada de "Equipo de Onyx Trading Live") — eso se agrega automáticamente. Si la respuesta NO está claramente en la información de abajo, responde exactamente con el token NO_ANSWER y nada más. No inventes funciones. No des consejo financiero.`)
-    + `\n\n=== ARTÍCULOS DE AYUDA ===\n${context}` + extra;
+    ? `You are Onyx AI, the support agent for Onyx Trading Live. Answer the user's message helpfully and accurately using the ONYX KNOWLEDGE, current PRICES and KNOWLEDGE BASE below. Be brief, warm and clear, like a great support agent. Use a few tasteful emojis and bullet points for readability. Prices below are authoritative for any pricing question. Do NOT add a signature or sign-off — it is added automatically. Never invent features or give financial advice. Answer general product, pricing, how-to and feature questions confidently. ONLY reply with the exact token NO_ANSWER (and nothing else) when the question requires the user's PRIVATE account data that you cannot see — for example "why was I charged X", "is MY account blocked", "what is MY balance", a specific bug tied to their account. For everything else, give a helpful answer.`
+    : `Eres Onyx AI, el agente de soporte de Onyx Trading Live. Responde al mensaje del usuario de forma útil y correcta usando el CONOCIMIENTO DE ONYX, los PRECIOS actuales y la BASE DE CONOCIMIENTO de abajo. Sé breve, cercano y claro, como un gran agente de soporte. Usa algunos emojis con criterio y viñetas para que sea legible. Los precios de abajo son la fuente oficial para cualquier pregunta de precios. NO añadas firma ni despedida — se agrega automáticamente. No inventes funciones ni des consejo financiero. Responde con seguridad las preguntas generales de producto, precios, cómo hacer algo y funciones. SOLO responde con el token exacto NO_ANSWER (y nada más) cuando la pregunta necesite datos PRIVADOS de la cuenta del usuario que no puedes ver — por ejemplo "por qué me cobraron X", "está bloqueada MI cuenta", "cuál es MI saldo", o un fallo concreto atado a su cuenta. Para todo lo demás, da una respuesta útil.`)
+    + `\n\n=== ${lang === 'en' ? 'ONYX KNOWLEDGE' : 'CONOCIMIENTO DE ONYX'} ===\n${ONYX_BRIEF[lang]}`
+    + `\n\n=== ${lang === 'en' ? 'HELP ARTICLES' : 'ARTÍCULOS DE AYUDA'} ===\n${context}` + extra;
 
   try {
     const model = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5';
@@ -97,14 +144,14 @@ export async function aiAnswer(question: string, lang: Lang, sensitive = false):
       headers: { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({ model, max_tokens: 600, system, messages: [{ role: 'user', content: question.slice(0, 2000) }] }),
     });
-    if (!r.ok) return { answer: '', confident: false, articles };
+    if (!r.ok) return { answer: '', confident: false, articles, reason: 'error' };
     const data = await r.json();
     const answer = (data?.content || []).map((c: any) => c.text || '').join('\n').trim();
-    // El modelo declara que no sabe → no auto-respondemos
-    if (!answer || /NO_ANSWER/i.test(answer)) return { answer: '', confident: false, articles };
-    return { answer, confident: true, articles };
+    // El modelo declara que necesita datos privados → a un humano
+    if (!answer || /NO_ANSWER/i.test(answer)) return { answer: '', confident: false, articles, reason: 'declined' };
+    return { answer, confident: true, articles, reason: 'ok' };
   } catch {
-    return { answer: '', confident: false, articles };
+    return { answer: '', confident: false, articles, reason: 'error' };
   }
 }
 
@@ -149,7 +196,12 @@ export async function autoHandleTicket(opts: { ticketId: string; question: strin
       await addNote(ticketId, (lang === 'en' ? '🤖 Auto-answered by Onyx AI. Review if it needs follow-up.' : '🤖 Respondido automáticamente por Onyx AI. Revisa si necesita seguimiento.'));
       return { answered: true };
     }
-    await addNote(ticketId, (lang === 'en' ? 'AI could not resolve it confidently: needs a human.' : 'La IA no pudo resolverlo con seguridad: requiere un humano.') + (ai.articles.length ? (lang === 'en' ? ' Suggested: ' : ' Sugerencia: ') + ai.articles.map((a) => a.title).join(', ') : ''));
+    // Nota clara según el motivo real de la escalada
+    let why: string;
+    if (ai.reason === 'no_key') why = lang === 'en' ? '⚠️ AI not configured: ANTHROPIC_API_KEY is missing in Vercel. Add it so the AI can answer.' : '⚠️ IA no configurada: falta ANTHROPIC_API_KEY en Vercel. Agrégala para que la IA responda.';
+    else if (ai.reason === 'error') why = lang === 'en' ? '⚠️ The AI had a temporary error. This ticket needs a human for now.' : '⚠️ La IA tuvo un error temporal. Este ticket necesita un humano por ahora.';
+    else why = (lang === 'en' ? 'The AI escalated: the question needs private account data it cannot see. Needs a human.' : 'La IA escaló: la pregunta necesita datos privados de la cuenta que no puede ver. Requiere un humano.') + (ai.articles.length ? (lang === 'en' ? ' Suggested: ' : ' Sugerencia: ') + ai.articles.map((a) => a.title).join(', ') : '');
+    await addNote(ticketId, why);
     return { answered: false };
   } catch { return { answered: false }; }
 }
