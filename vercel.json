@@ -8,6 +8,7 @@
     { "path": "/api/cron/security-check", "schedule": "0 5 * * *" },
     { "path": "/api/cron/onboarding-emails", "schedule": "0 16 * * *" },
     { "path": "/api/cron/bots-check", "schedule": "0 */6 * * *" },
-    { "path": "/api/cron/campaigns", "schedule": "0 * * * *" }
+    { "path": "/api/cron/campaigns", "schedule": "0 * * * *" },
+    { "path": "/api/cron/selftest", "schedule": "0 8 * * *" }
   ]
 }

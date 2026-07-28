@@ -475,3 +475,28 @@ Lo verás también en **Admin → Backups** (el script avisa al panel para el hi
 La principal deben ser los **backups automáticos de Supabase** (plan Pro: copias
 diarias + recuperación a un punto en el tiempo). Actívalos en Supabase → Database →
 Backups. Mantén la carpeta de Drive **privada** (contiene datos de usuarios).
+
+---
+
+## 11 · Diagnóstico reforzado (auto-test + monitor externo)
+
+Tres mejoras al diagnóstico:
+
+**1. Puesto al día.** Admin → Diagnóstico ahora vigila también: `RESEND_WEBHOOK_SECRET`
+(webhook de aperturas/clics), la **frescura del último backup** (avisa si tiene
+más de 2 días), y las tablas nuevas (campañas, tracking, bots). Si falta algo,
+sale en el semáforo.
+
+**2. Auto-test diario.** Nuevo cron `/api/cron/selftest` (ya en `vercel.json`,
+diario 08:00 UTC). Ejecuta solo las pruebas — BD, Onyx AI, Telegram, presencia de
+Resend/Stripe, backup fresco — y **solo te avisa por correo + Telegram si algo
+falla**. Si todo va bien, no molesta. Usa `CRON_SECRET` (ya lo tienes).
+
+**3. Monitor externo (lo activas tú, gratis).** El auto-test no puede detectar una
+caída TOTAL del sitio (si Vercel se cae, el cron también). Para eso:
+   - Entra a **uptimerobot.com**, crea cuenta gratis.
+   - **Add New Monitor** → tipo **HTTPS** → URL `https://www.onyxtradinglive.com`
+     → intervalo 5 min.
+   - En **Alert Contacts** pon tu correo (y/o Telegram/SMS).
+   Si el sitio deja de responder, te escriben en minutos. Es la única pieza que el
+   diagnóstico interno no puede cubrir por diseño.

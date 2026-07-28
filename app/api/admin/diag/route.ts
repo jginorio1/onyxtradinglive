@@ -46,7 +46,23 @@ export async function GET() {
       { id: 'manager', label: 'Onyx Guardian (config)', ok: await tableCheck('manager_configs') },
       { id: 'telegram_v3', label: 'Telegram · informe semanal', ok: await tableCheck('profiles', 'tg_weekly') },
       { id: 'telegram_log', label: 'Telegram · registro de envíos', ok: await tableCheck('telegram_log') },
+      { id: 'campaigns_v1', label: 'Campañas · tablas', ok: await tableCheck('campaigns') },
+      { id: 'campaigns_tracking', label: 'Campañas · tracking (aperturas/clics)', ok: await tableCheck('campaign_sends', 'opened_at') },
+      { id: 'bots_v1', label: 'Bots · tabla', ok: await tableCheck('bots') },
     ];
+
+    // --- Freshness del último backup (para avisar si se quedó viejo) ---
+    let backupOk = false, backupWarn = false, backupDetail = 'Sin copias registradas';
+    try {
+      const { data: bk } = await supabaseAdmin.from('app_settings').select('value').eq('key', 'backup').maybeSingle();
+      const lastAt = (bk as any)?.value?.last_at;
+      if (lastAt) {
+        const ageDays = (Date.now() - new Date(lastAt).getTime()) / 86400000;
+        backupWarn = ageDays > 2;                 // más de 2 días sin copia → aviso
+        backupOk = !backupWarn;
+        backupDetail = `Última: hace ${ageDays < 1 ? Math.round(ageDays * 24) + ' h' : Math.round(ageDays) + ' d'}`;
+      }
+    } catch {}
 
     // --- EA en línea ahora ---
     let eaLive = 0;
@@ -79,6 +95,8 @@ export async function GET() {
       { key: 'cron', name: 'Cron', ok: has(process.env.CRON_SECRET), warn: false, detail: has(process.env.CRON_SECRET) ? '3 tareas · secreto puesto' : 'Falta CRON_SECRET' },
       { key: 'ea', name: 'EA / sync', ok: true, warn: eaLive === 0, detail: `${eaLive} en línea ahora` },
       { key: 'news', name: 'Noticias', ok: newsOk, warn: false, detail: newsOk ? 'Feed accesible' : 'Feed no responde' },
+      { key: 'resend_webhook', name: 'Webhook de correos', ok: has(process.env.RESEND_WEBHOOK_SECRET), warn: false, detail: has(process.env.RESEND_WEBHOOK_SECRET) ? 'Secreto puesto · aperturas/clics' : 'Sin RESEND_WEBHOOK_SECRET: no llegan aperturas/clics' },
+      { key: 'backup', name: 'Backups', ok: backupOk, warn: backupWarn, detail: backupDetail },
     ];
 
     return NextResponse.json({
@@ -91,7 +109,9 @@ export async function GET() {
         TELEGRAM_BOT_TOKEN: has(process.env.TELEGRAM_BOT_TOKEN),
         STRIPE_SECRET_KEY: has(process.env.STRIPE_SECRET_KEY),
         STRIPE_WEBHOOK_SECRET: has(process.env.STRIPE_WEBHOOK_SECRET),
+        RESEND_WEBHOOK_SECRET: has(process.env.RESEND_WEBHOOK_SECRET),
         CRON_SECRET: has(process.env.CRON_SECRET),
+        BACKUP_SECRET: has(process.env.BACKUP_SECRET),
         SUPABASE_SERVICE_ROLE_KEY: has(process.env.SUPABASE_SERVICE_ROLE_KEY),
       },
       telegram: { username: me?.result?.username || null, webhook: wh?.result?.url || null, lastError: wh?.result?.last_error_message || null },
