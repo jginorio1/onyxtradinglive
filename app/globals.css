@@ -7,8 +7,50 @@
   --grad-green:linear-gradient(120deg,#34e2a0,#12b981);
   --grad-red:linear-gradient(120deg,#ff6b7d,#e23b55);
 }
+/* ============ TEMA CLARO ============
+   Redefine las mismas variables. Se aplica de dos formas:
+   1) html[data-theme="light"]  → cuando el usuario lo elige (cookie).
+   2) prefers-color-scheme:light → cuando NO ha elegido (sigue el sistema).
+   Así no hace falta JavaScript y no hay parpadeo al cargar. */
+html[data-theme="light"]{
+  --bg:#f4f6fb; --bg2:#eef1f7; --card:#ffffff; --card2:#eef2f9; --line:#e3e7f0;
+  --tx:#111826; --mut:#5b6576;
+  --brand:#5b6cff; --brand2:#8b5cff;
+  --green:#12a97a; --green2:#0e9268; --red:#e23b55; --red2:#c62f47; --amber:#c9860a; --cyan:#0b93c9; --gold:#c98b17; --purple:#8b5cff;
+  --grad:linear-gradient(120deg,#6b7bff,#8b5cff);
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]):not([data-theme="light"]){
+    --bg:#f4f6fb; --bg2:#eef1f7; --card:#ffffff; --card2:#eef2f9; --line:#e3e7f0;
+    --tx:#111826; --mut:#5b6576;
+    --brand:#5b6cff; --brand2:#8b5cff;
+    --green:#12a97a; --green2:#0e9268; --red:#e23b55; --red2:#c62f47; --amber:#c9860a; --cyan:#0b93c9; --gold:#c98b17; --purple:#8b5cff;
+    --grad:linear-gradient(120deg,#6b7bff,#8b5cff);
+  }
+}
+
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:radial-gradient(1200px 600px at 50% -200px, rgba(124,140,255,.10), transparent 60%), var(--bg);color:var(--tx);font-family:"Segoe UI",system-ui,-apple-system,Arial,sans-serif;line-height:1.6;}
+
+/* Interruptor sol/luna */
+.themetoggle{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--tx);cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;transition:.15s;flex:none;}
+.themetoggle:hover{background:var(--card2);}
+
+/* Ajustes finos para que el tema claro se vea limpio (sombras y contrastes) */
+html[data-theme="light"] .card{box-shadow:0 6px 20px rgba(20,30,60,.06);}
+html[data-theme="light"] .btn-primary{color:#fff;}
+html[data-theme="light"] .topbar{background:rgba(255,255,255,.78);}
+html[data-theme="light"] .code{background:#eef2f9;color:#274690;}
+html[data-theme="light"] .adminnav-item:hover{color:var(--tx);background:var(--card2);}
+html[data-theme="light"] .adminnav-item.on{color:#3b46b8;background:rgba(91,108,255,.12);}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]) .card{box-shadow:0 6px 20px rgba(20,30,60,.06);}
+  :root:not([data-theme="dark"]) .btn-primary{color:#fff;}
+  :root:not([data-theme="dark"]) .topbar{background:rgba(255,255,255,.78);}
+  :root:not([data-theme="dark"]) .code{background:#eef2f9;color:#274690;}
+  :root:not([data-theme="dark"]) .adminnav-item:hover{color:var(--tx);background:var(--card2);}
+  :root:not([data-theme="dark"]) .adminnav-item.on{color:#3b46b8;background:rgba(91,108,255,.12);}
+}
 a{color:inherit;text-decoration:none;}
 .wrap{max-width:1140px;margin:0 auto;padding:0 22px;}
 .row{display:flex;align-items:center;gap:12px;}

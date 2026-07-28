@@ -16,6 +16,7 @@ import { type Promo, PROMO0 } from '@/lib/promo';
 import { headers } from 'next/headers';
 import type { Lang } from '@/lib/navText';
 import { serverLang, localeAlternates } from '@/lib/locale';
+import { serverTheme } from '@/lib/theme';
 
 // La barra lee la sesión en cada petición, así que esta capa no se cachea.
 export const dynamic = 'force-dynamic';
@@ -61,6 +62,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // El idioma se decide aquí (cabecera /en del middleware o cookie) y baja a todo lo demás.
   const lang: Lang = serverLang();
   const beta = serverBeta();
+  const theme = serverTheme(); // 'light' | 'dark' | null (null = sigue el sistema)
 
   // Barra de descuentos: solo en páginas públicas (no en dashboard/admin/cuenta).
   const path = headers().get('x-onyx-path') || '/';
@@ -99,7 +101,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   };
 
   return (
-    <html lang={lang}>
+    <html lang={lang} data-theme={theme || undefined} suppressHydrationWarning>
       <body>
         <JsonLd data={graph} />
         <LanguageProvider initial={lang}>

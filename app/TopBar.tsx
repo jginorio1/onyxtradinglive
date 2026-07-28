@@ -5,6 +5,7 @@ import { NAV_T, Lang } from '@/lib/navText';
 import { serverLang } from '@/lib/locale';
 import TopBarMenu from './TopBarMenu';
 import LangToggle from './LangToggle';
+import ThemeToggle from './ThemeToggle';
 import MainNav from './MainNav';
 
 // ============================================================
@@ -106,6 +107,7 @@ export default async function TopBar() {
 
             <Link className={'planpill' + (plan === 'free' ? ' free' : '')} href="/pricing">{planName}</Link>
 
+            <ThemeToggle />
             <TopBarMenu email={user.email || ''} initial={initial} isAdmin={isAdmin} t={t} />
           </div>
         ) : (
@@ -113,6 +115,7 @@ export default async function TopBar() {
             {/* En móvil el botón "Entrar" se oculta; por eso va también dentro del menú */}
             <MainNav items={navItems} authItems={[{ href: '/login', label: t.login }, { href: '/login?mode=signup', label: t.signup }]} />
             {/* Sin sesión el selector va visible: un visitante nuevo debe encontrarlo rápido */}
+            <ThemeToggle />
             <LangToggle compact />
             <Link className="btn btn-ghost btn-login" href="/login">{t.login}</Link>
             <Link className="btn btn-primary" href="/login?mode=signup">{t.signup}</Link>
