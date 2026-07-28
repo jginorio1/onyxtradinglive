@@ -275,6 +275,10 @@ export default function AccountClient({ email }: { email: string }) {
                 <span className="pill" style={{ fontSize: 10.5, background: 'rgba(160,107,255,.16)', color: '#c9a9ff', padding: '1px 8px' }}>{planName(myPlan, lang) || 'Free'}</span>
               </div>
             </div>
+            {/* Móvil: selector (se adapta como el menú de arriba) */}
+            <select className="adminnav-mobile" value={tab} onChange={(e) => setTab(e.target.value as Tab)} style={{ margin: 0, width: '100%' }}>
+              {NAV.map(([k, icon]) => <option key={k} value={k}>{`${icon}  ${L.nav[k]}`}</option>)}
+            </select>
             <div className="adminnav-items">
               {NAV.map(([k, icon]) => <button key={k} className={'adminnav-item' + (tab === k ? ' on' : '')} onClick={() => setTab(k)}><span style={{ fontSize: 15, width: 18, textAlign: 'center' }}>{icon}</span><span>{L.nav[k]}</span><span className="navdot" /></button>)}
             </div>
