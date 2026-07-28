@@ -2,15 +2,40 @@
 import { useEffect, useState } from 'react';
 import { useT } from '@/lib/adminText';
 import { useLang } from '@/lib/lang';
+import { fmtDate, fmtDateTime } from '@/lib/fmtDate';
 import RangeBar, { type Range, defaultRange } from './RangeBar';
 
 const stColor: any = { open: 'var(--brand)', in_progress: 'var(--amber)', resolved: 'var(--green)' };
 const stBg: any = { open: 'rgba(124,140,255,.15)', in_progress: 'rgba(255,192,77,.15)', resolved: 'rgba(52,226,160,.15)' };
+const prioColor: any = { high: 'var(--red)', normal: 'var(--mut)', low: 'var(--line)' };
 const initials = (email: string) => (email || '?').replace(/@.*/, '').slice(0, 2).toUpperCase();
+
+// Textos nuevos del helpdesk (los ya existentes siguen viniendo de useT())
+const L: any = {
+  es: {
+    fMine: 'Mías', fUnassigned: 'Sin asignar', needsReply: 'Espera respuesta',
+    ctxTitle: 'Ficha del trader', ctxLead: 'Visitante sin cuenta (lead)', ctxNoUser: 'No tiene cuenta en Onyx todavía.',
+    plan: 'Plan', member: 'Miembro desde', accounts: 'Cuentas MT', funded: 'de fondeo', prior: 'Tickets antes',
+    langF: 'Idioma', country: 'País', firm: 'Prop firm', firstSeen: 'Primer contacto', none: '—',
+    canned: 'Respuesta guardada', cannedNew: 'Nueva respuesta guardada', cTitle: 'Título corto',
+    cBody: 'Texto de la respuesta', cSave: 'Guardar', cManage: 'Guardadas', cEmpty: 'Aún no tienes respuestas guardadas.',
+    cDel: 'Borrar', prio: 'Prioridad', pHigh: 'Alta', pNormal: 'Normal', pLow: 'Baja', insert: 'Usar',
+  },
+  en: {
+    fMine: 'Mine', fUnassigned: 'Unassigned', needsReply: 'Awaiting reply',
+    ctxTitle: 'Trader profile', ctxLead: 'Visitor without account (lead)', ctxNoUser: 'No Onyx account yet.',
+    plan: 'Plan', member: 'Member since', accounts: 'MT accounts', funded: 'funded', prior: 'Prior tickets',
+    langF: 'Language', country: 'Country', firm: 'Prop firm', firstSeen: 'First contact', none: '—',
+    canned: 'Saved reply', cannedNew: 'New saved reply', cTitle: 'Short title',
+    cBody: 'Reply text', cSave: 'Save', cManage: 'Saved replies', cEmpty: 'No saved replies yet.',
+    cDel: 'Delete', prio: 'Priority', pHigh: 'High', pNormal: 'Normal', pLow: 'Low', insert: 'Use',
+  },
+};
 
 export default function SupportInbox() {
   const t = useT();
   const { lang } = useLang();
+  const l = L[lang] || L.es;
   const [range, setRange] = useState<Range>(() => defaultRange('month'));
   const ST: any = { open: t.st_open, in_progress: t.st_inprogress, resolved: t.st_resolved };
   const CATS: any = { general: t.cat_general, conexion: t.cat_conexion, instalacion: t.cat_instalacion, guardian: t.cat_guardian, facturacion: t.cat_facturacion };
@@ -20,67 +45,118 @@ export default function SupportInbox() {
   const [participants, setParticipants] = useState<any[]>([]);
   const [team, setTeam] = useState<any[]>([]);
   const [counts, setCounts] = useState<any>({});
-  const [filter, setFilter] = useState<'all' | 'open' | 'in_progress' | 'resolved'>('open');
+  const [me, setMe] = useState<string>('');
+  const [filter, setFilter] = useState<'all' | 'open' | 'in_progress' | 'resolved' | 'mine' | 'unassigned'>('open');
   const [q, setQ] = useState('');
   const [openId, setOpenId] = useState('');
   const [text, setText] = useState('');
   const [mode, setMode] = useState<'reply' | 'note'>('reply');
   const [invite, setInvite] = useState('');
   const [busy, setBusy] = useState('');
+  // Ficha del trader
+  const [ctx, setCtx] = useState<any>(null);
+  const [ctxLoading, setCtxLoading] = useState(false);
+  // Respuestas guardadas
+  const [canned, setCanned] = useState<any[]>([]);
+  const [showCanned, setShowCanned] = useState(false);
+  const [newC, setNewC] = useState<{ title: string; body: string } | null>(null);
 
   async function load() {
-    try { const r = await fetch('/api/admin/support'); const j = await r.json(); setTickets(j.tickets || []); setMsgs(j.messages || []); setParticipants(j.participants || []); setTeam(j.team || []); setCounts(j.counts || {}); } catch {}
+    try {
+      const r = await fetch('/api/admin/support'); const j = await r.json();
+      setTickets(j.tickets || []); setMsgs(j.messages || []); setParticipants(j.participants || []);
+      setTeam(j.team || []); setCounts(j.counts || {}); setMe(j.me || '');
+    } catch {}
   }
-  useEffect(() => { load(); const iv = setInterval(load, 8000); return () => clearInterval(iv); }, []);
+  async function loadCanned() { try { const r = await fetch('/api/admin/support/canned'); const j = await r.json(); setCanned(j.canned || []); } catch {} }
+  useEffect(() => { load(); loadCanned(); const iv = setInterval(load, 8000); return () => clearInterval(iv); }, []);
 
-  const emailOf = (id: string) => (team.find((t) => t.id === id) || {}).email || '—';
+  // Al abrir un ticket, traer la ficha del trader
+  useEffect(() => {
+    if (!openId) { setCtx(null); return; }
+    setCtxLoading(true); setCtx(null);
+    fetch('/api/admin/support/context?ticket_id=' + openId)
+      .then((r) => r.json()).then((j) => setCtx(j)).catch(() => setCtx(null))
+      .finally(() => setCtxLoading(false));
+  }, [openId]);
+
+  const emailOf = (id: string) => (team.find((tm) => tm.id === id) || {}).email || '—';
+
+  // ¿el último mensaje del ticket es del trader? → espera respuesta del equipo
+  const lastSender: Record<string, string> = {};
+  for (const m of msgs) lastSender[m.ticket_id] = m.sender;
+  const needsReply = (id: string) => lastSender[id] === 'user';
 
   async function act(id: string, patch: any) {
     setBusy(id);
     await fetch('/api/admin/support', { method: 'PATCH', body: JSON.stringify({ ticket_id: id, ...patch }) });
-    setText(''); setInvite(''); setBusy(''); await load();
+    if (patch.body !== undefined || patch.note !== undefined) setText('');
+    setInvite(''); setBusy(''); await load();
   }
   async function draft(id: string, firstUserMsg: string) {
     setBusy('ai' + id);
-    try { const r = await fetch('/api/support/ai', { method: 'POST', body: JSON.stringify({ question: firstUserMsg, lang: 'es' }) }); const j = await r.json(); setText(j.answer || ''); setMode('reply'); } catch {}
+    try { const r = await fetch('/api/support/ai', { method: 'POST', body: JSON.stringify({ question: firstUserMsg, lang }) }); const j = await r.json(); setText(j.answer || ''); setMode('reply'); } catch {}
     setBusy('');
   }
+  async function saveCanned() {
+    if (!newC || !newC.title.trim() || !newC.body.trim()) return;
+    await fetch('/api/admin/support/canned', { method: 'POST', body: JSON.stringify({ ...newC, lang }) });
+    setNewC(null); await loadCanned();
+  }
+  async function delCanned(id: string) { await fetch('/api/admin/support/canned?id=' + id, { method: 'DELETE' }); await loadCanned(); }
 
-  let list = tickets.filter((t) => filter === 'all' || t.status === filter);
-  if (q.trim()) { const s = q.toLowerCase(); list = list.filter((t) => (t.email || '').toLowerCase().includes(s) || (t.subject || '').toLowerCase().includes(s)); }
+  let list = tickets.filter((it) => {
+    if (filter === 'mine') return it.assignee_id === me;
+    if (filter === 'unassigned') return !it.assignee_id;
+    if (filter === 'all') return true;
+    return it.status === filter;
+  });
+  if (q.trim()) { const s = q.toLowerCase(); list = list.filter((it) => (it.email || '').toLowerCase().includes(s) || (it.subject || '').toLowerCase().includes(s)); }
 
-  const tk = tickets.find((t) => t.id === openId);
+  const mineCount = tickets.filter((it) => it.assignee_id === me && it.status !== 'resolved').length;
+  const unassignedCount = tickets.filter((it) => !it.assignee_id && it.status !== 'resolved').length;
+  const tk = tickets.find((it) => it.id === openId);
 
   return (
     <div>
+      <style>{`
+        .hd3{display:grid;grid-template-columns:220px minmax(0,1fr) 210px;gap:12px;align-items:start}
+        @media(max-width:1100px){.hd3{grid-template-columns:200px minmax(0,1fr)}.hd-ctx{display:none}}
+        @media(max-width:720px){.hd3{grid-template-columns:1fr}}
+      `}</style>
       <div className="tabhead"><div className="th-row"><span className="th-ic">🎫</span><span className="th-t">{t.h_soporte_t}</span></div><div className="th-s">{t.h_soporte_s}</div></div>
       <RangeBar value={range} onChange={setRange}
         pdfUrl={(f, tt) => `/api/admin/support/report?from=${f}&to=${tt}&lang=${lang}`}
         csvUrl={(f, tt) => `/api/admin/support/report?export=csv&from=${f}&to=${tt}&lang=${lang}`} />
 
       <div className="row" style={{ gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-        {([['open', t.s_open], ['in_progress', t.s_inprogress], ['resolved', t.s_resolved], ['all', t.s_all]] as any).map(([k, l]: any) => (
+        {([['mine', l.fMine, mineCount], ['unassigned', l.fUnassigned, unassignedCount], ['open', t.s_open, counts.open], ['in_progress', t.s_inprogress, counts.in_progress], ['resolved', t.s_resolved, counts.resolved], ['all', t.s_all, null]] as any).map(([k, lab, c]: any) => (
           <button key={k} className={'segbtn' + (filter === k ? ' on-view' : '')} style={{ padding: '6px 12px', fontSize: 13, background: filter === k ? undefined : 'var(--card2)' }} onClick={() => setFilter(k)}>
-            {l}{k !== 'all' && counts[k] != null ? ` (${counts[k]})` : ''}
+            {lab}{c != null ? ` (${c})` : ''}
           </button>
         ))}
-        <input placeholder={t.s_search} value={q} onChange={(e) => setQ(e.target.value)} style={{ margin: 0, maxWidth: 260, marginLeft: 'auto' }} />
+        <input placeholder={t.s_search} value={q} onChange={(e) => setQ(e.target.value)} style={{ margin: 0, maxWidth: 240, marginLeft: 'auto' }} />
       </div>
 
-      <div className="helpdesk">
+      <div className="hd3">
         {/* Cola de conversaciones */}
         <div>
           {!list.length && <p className="muted" style={{ fontSize: 14 }}>{t.s_empty}</p>}
           {list.map((it) => {
             const parts = participants.filter((p) => p.ticket_id === it.id);
+            const nr = needsReply(it.id);
             return (
-              <div key={it.id} className={'hd-item' + (openId === it.id ? ' on' : '')} onClick={() => { setOpenId(it.id); setText(''); }}>
+              <div key={it.id} className={'hd-item' + (openId === it.id ? ' on' : '')} onClick={() => { setOpenId(it.id); setText(''); setShowCanned(false); }}>
                 <div className="row between" style={{ gap: 8 }}>
-                  <b style={{ fontSize: 13 }}>{it.subject}</b>
-                  <span className="pill" style={{ color: stColor[it.status], background: stBg[it.status] }}>● {ST[it.status]}</span>
+                  <div className="row" style={{ gap: 6, minWidth: 0 }}>
+                    {it.priority && it.priority !== 'normal' && <span title={it.priority} style={{ width: 7, height: 7, borderRadius: '50%', background: prioColor[it.priority], flex: 'none', marginTop: 5 }} />}
+                    <b style={{ fontSize: 13, fontWeight: nr ? 700 : 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.subject}</b>
+                  </div>
+                  <span className="pill" style={{ color: stColor[it.status], background: stBg[it.status], flex: 'none' }}>● {ST[it.status]}</span>
                 </div>
                 <div className="muted" style={{ fontSize: 11.5, marginTop: 4 }}>{it.email || '—'} · {it.assignee_id ? t.s_assignedTo + emailOf(it.assignee_id).split('@')[0] : t.s_unassigned}</div>
                 <div className="row" style={{ gap: 5, marginTop: 6, flexWrap: 'wrap' }}>
+                  {nr && <span className="pill" style={{ color: 'var(--amber)', background: 'rgba(255,192,77,.15)' }}>↩ {l.needsReply}</span>}
                   {it.is_lead && <span className="pill brand">Lead</span>}
                   <span className="pill gray">{CH[it.channel] || it.channel}</span>
                   {parts.length > 0 && <span className="pill gray">👥 {parts.length}</span>}
@@ -97,9 +173,11 @@ export default function SupportInbox() {
             const tm = msgs.filter((m) => m.ticket_id === tk.id);
             const firstUser = tm.find((m) => m.sender === 'user')?.body || tk.subject;
             const parts = participants.filter((p) => p.ticket_id === tk.id);
+            const cannedForLang = canned.filter((c) => c.lang === lang);
+            const cannedList = cannedForLang.length ? cannedForLang : canned;
             return (
               <>
-                {/* Ficha del trader */}
+                {/* Cabecera: trader + estado + prioridad */}
                 <div className="row between" style={{ flexWrap: 'wrap', gap: 8, paddingBottom: 12, borderBottom: '1px solid var(--line)' }}>
                   <div className="row" style={{ gap: 10 }}>
                     <span className="avatar-init">{initials(tk.email || '?')}</span>
@@ -108,7 +186,14 @@ export default function SupportInbox() {
                       <div className="muted" style={{ fontSize: 11.5 }}>{CATS[tk.category] || tk.category} · {CH[tk.channel] || tk.channel}{tk.is_lead ? ' · Lead' : ''}</div>
                     </div>
                   </div>
-                  <span className="pill" style={{ color: stColor[tk.status], background: stBg[tk.status] }}>● {ST[tk.status]}</span>
+                  <div className="row" style={{ gap: 6 }}>
+                    <select value={tk.priority || 'normal'} onChange={(e) => act(tk.id, { priority: e.target.value })} style={{ margin: 0, fontSize: 12, padding: '5px 8px' }} title={l.prio}>
+                      <option value="high">🔴 {l.pHigh}</option>
+                      <option value="normal">⚪ {l.pNormal}</option>
+                      <option value="low">⚫ {l.pLow}</option>
+                    </select>
+                    <span className="pill" style={{ color: stColor[tk.status], background: stBg[tk.status] }}>● {ST[tk.status]}</span>
+                  </div>
                 </div>
 
                 {/* Hilo */}
@@ -121,7 +206,7 @@ export default function SupportInbox() {
                         : { background: 'rgba(124,140,255,.10)', border: '1px solid var(--brand)', borderRadius: 10 };
                     return (
                       <div key={m.id} style={{ padding: '8px 11px', fontSize: 13, lineHeight: 1.5, whiteSpace: 'pre-wrap', ...style }}>
-                        <div style={{ fontSize: 11, opacity: .8, marginBottom: 2, color: note ? 'var(--amber)' : undefined }}>{m.sender === 'user' ? t.sender_trader : m.sender === 'ai' ? 'Onyx AI' : note ? t.sender_note : t.sender_support} · {new Date(m.created_at).toLocaleTimeString()}</div>
+                        <div style={{ fontSize: 11, opacity: .8, marginBottom: 2, color: note ? 'var(--amber)' : undefined }}>{m.sender === 'user' ? t.sender_trader : m.sender === 'ai' ? 'Onyx AI' : note ? t.sender_note : t.sender_support} · {fmtDateTime(m.created_at, lang)}</div>
                         {m.body}
                       </div>
                     );
@@ -131,12 +216,50 @@ export default function SupportInbox() {
                 {parts.length > 0 && <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>👥 {t.s_inConvo}{parts.map((p) => emailOf(p.user_id).split('@')[0]).join(', ')}</div>}
 
                 {/* Redactar */}
-                <div className="row" style={{ gap: 6, marginBottom: 6 }}>
+                <div className="row between" style={{ gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
                   <div className="seg">
                     <button className={'segbtn' + (mode === 'reply' ? ' on-view' : '')} onClick={() => setMode('reply')}>{t.s_reply}</button>
                     <button className={'segbtn' + (mode === 'note' ? ' on-view' : '')} onClick={() => setMode('note')}>🔒 {t.s_note}</button>
                   </div>
+                  {mode === 'reply' && <button className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 10px' }} onClick={() => setShowCanned((v) => !v)}>💬 {l.canned}</button>}
                 </div>
+
+                {/* Panel de respuestas guardadas */}
+                {showCanned && mode === 'reply' && (
+                  <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: 10, marginBottom: 8 }}>
+                    {!newC && (
+                      <>
+                        {!cannedList.length && <div className="muted" style={{ fontSize: 12.5, marginBottom: 8 }}>{l.cEmpty}</div>}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 180, overflowY: 'auto' }}>
+                          {cannedList.map((c) => (
+                            <div key={c.id} className="row between" style={{ gap: 8, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 8, padding: '7px 9px' }}>
+                              <div style={{ minWidth: 0 }}>
+                                <div style={{ fontSize: 12.5, fontWeight: 600 }}>{c.title}</div>
+                                <div className="muted" style={{ fontSize: 11.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.body}</div>
+                              </div>
+                              <div className="row" style={{ gap: 4, flex: 'none' }}>
+                                <button className="btn btn-primary" style={{ fontSize: 11.5, padding: '4px 10px' }} onClick={() => { setText(c.body); setShowCanned(false); }}>{l.insert}</button>
+                                <button className="btn btn-ghost" style={{ fontSize: 12, padding: '4px 8px', color: 'var(--red)' }} title={l.cDel} onClick={() => delCanned(c.id)}>🗑</button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        <button className="btn btn-ghost" style={{ fontSize: 12, marginTop: 8 }} onClick={() => setNewC({ title: '', body: '' })}>＋ {l.cannedNew}</button>
+                      </>
+                    )}
+                    {newC && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <input placeholder={l.cTitle} value={newC.title} onChange={(e) => setNewC({ ...newC, title: e.target.value })} style={{ margin: 0, fontSize: 13 }} />
+                        <textarea placeholder={l.cBody} value={newC.body} onChange={(e) => setNewC({ ...newC, body: e.target.value })} rows={3} style={{ width: '100%', margin: 0 }} />
+                        <div className="row" style={{ gap: 6 }}>
+                          <button className="btn btn-primary" style={{ fontSize: 12.5 }} onClick={saveCanned} disabled={!newC.title.trim() || !newC.body.trim()}>{l.cSave}</button>
+                          <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={() => setNewC(null)}>✕</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} placeholder={mode === 'note' ? t.s_notePh : t.s_replyPh} style={{ width: '100%', margin: '0 0 8px' }} />
 
                 <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
@@ -158,7 +281,49 @@ export default function SupportInbox() {
             );
           })()}
         </div>
+
+        {/* Ficha del trader */}
+        <div className="hd-ctx">
+          {tk && (
+            <div className="card" style={{ padding: 12 }}>
+              <div style={{ fontSize: 12, color: 'var(--mut)', marginBottom: 10 }}>{l.ctxTitle}</div>
+              {ctxLoading && <div className="muted" style={{ fontSize: 13 }}>…</div>}
+              {!ctxLoading && ctx && (
+                <>
+                  <div className="row" style={{ gap: 10, marginBottom: 10 }}>
+                    <span className="avatar-init">{initials(ctx.email || tk.email || '?')}</span>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: 13 }}>{ctx.name || (tk.email || '').split('@')[0] || t.s_visitor}</div>
+                      <div className="muted" style={{ fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis' }}>{ctx.email || '—'}</div>
+                    </div>
+                  </div>
+                  {ctx.is_lead && <div className="pill brand" style={{ marginBottom: 10 }}>{l.ctxLead}</div>}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 7, fontSize: 12.5, borderTop: '1px solid var(--line)', paddingTop: 10 }}>
+                    {ctx.plan && <Row k={l.plan} v={String(ctx.plan).toUpperCase()} />}
+                    {ctx.member_since && <Row k={l.member} v={fmtDate(ctx.member_since, lang)} />}
+                    {ctx.plan != null && <Row k={l.accounts} v={`${ctx.accounts || 0}${ctx.funded ? ` · ${ctx.funded} ${l.funded}` : ''}`} />}
+                    <Row k={l.prior} v={String(ctx.prior_tickets || 0)} />
+                    {ctx.firm && <Row k={l.firm} v={ctx.firm} />}
+                    {ctx.country && <Row k={l.country} v={ctx.country} />}
+                    {ctx.lang && <Row k={l.langF} v={String(ctx.lang).toUpperCase()} />}
+                    {ctx.first_seen && <Row k={l.firstSeen} v={fmtDate(ctx.first_seen, lang)} />}
+                    {!ctx.plan && !ctx.is_lead && <div className="muted" style={{ fontSize: 12 }}>{l.ctxNoUser}</div>}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </div>
+    </div>
+  );
+}
+
+function Row({ k, v }: { k: string; v: string }) {
+  return (
+    <div className="row between" style={{ gap: 8 }}>
+      <span className="muted">{k}</span>
+      <span style={{ textAlign: 'right' }}>{v}</span>
     </div>
   );
 }

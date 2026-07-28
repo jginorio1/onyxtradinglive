@@ -12,16 +12,31 @@ const STATUSES = ['open', 'in_progress', 'resolved'];
 // GET · bandeja compartida: tickets + mensajes (incluidas notas internas) + equipo
 export async function GET() {
   try {
-    const { ok } = await requirePerm('soporte', 'view');
-    if (!ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+    const g = await requirePerm('soporte', 'view');
+    if (!g.ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
 
-    const { data: tickets } = await supabaseAdmin
-      .from('support_tickets')
-      .select('id,user_id,email,subject,category,status,is_lead,channel,assignee_id,created_at,updated_at')
-      .order('updated_at', { ascending: false })
-      .limit(300);
+    // La columna priority puede no existir aún (support_helpdesk.sql sin correr):
+    // intentamos con ella y, si falla, repetimos sin ella para no romper la bandeja.
+    let tickets: any[] = [];
+    {
+      const r = await supabaseAdmin
+        .from('support_tickets')
+        .select('id,user_id,email,subject,category,status,is_lead,channel,assignee_id,priority,created_at,updated_at')
+        .order('updated_at', { ascending: false })
+        .limit(300);
+      if (r.error) {
+        const r2 = await supabaseAdmin
+          .from('support_tickets')
+          .select('id,user_id,email,subject,category,status,is_lead,channel,assignee_id,created_at,updated_at')
+          .order('updated_at', { ascending: false })
+          .limit(300);
+        tickets = r2.data || [];
+      } else {
+        tickets = r.data || [];
+      }
+    }
 
-    const ids = (tickets || []).map((t: any) => t.id);
+    const ids = tickets.map((t: any) => t.id);
     let messages: any[] = [];
     let participants: any[] = [];
     if (ids.length) {
@@ -36,8 +51,8 @@ export async function GET() {
     const { data: team } = await supabaseAdmin.from('profiles').select('id,email,available').eq('is_admin', true);
 
     const counts = { open: 0, in_progress: 0, resolved: 0 } as any;
-    (tickets || []).forEach((t: any) => { counts[t.status] = (counts[t.status] || 0) + 1; });
-    return NextResponse.json({ tickets: tickets || [], messages, participants, team: team || [], counts });
+    tickets.forEach((t: any) => { counts[t.status] = (counts[t.status] || 0) + 1; });
+    return NextResponse.json({ tickets, messages, participants, team: team || [], counts, me: g.user?.id || null });
   } catch (e: any) {
     await logError('support_admin', e);
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
@@ -57,6 +72,7 @@ export async function PATCH(req: Request) {
 
     const patch: any = { updated_at: new Date().toISOString() };
     if (b.status && STATUSES.includes(String(b.status))) patch.status = String(b.status);
+    if (b.priority && ['low', 'normal', 'high'].includes(String(b.priority))) patch.priority = String(b.priority);
 
     // Tomar / asignar
     if (b.take) patch.assignee_id = user.id;

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendEmail } from '@/lib/mail';
 import { logError } from '@/lib/errlog';
+import { notifyNewTicket } from '@/lib/supportNotify';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -29,6 +30,9 @@ export async function POST(req: Request) {
     if (message) {
       await supabaseAdmin.from('support_messages').insert({ ticket_id: ticket.id, sender: 'user', body: message });
     }
+
+    // Avisar al equipo por Telegram (no bloquea la respuesta al visitante)
+    await notifyNewTicket({ email, subject, isLead: true });
 
     // Acuse de recibo al visitante (si Resend está configurado)
     await sendEmail(

@@ -201,3 +201,33 @@ Notas honestas: en **iPhone** el push solo funciona con la app **ya instalada** 
 - [ ] Backup con una fila real (~47 KB) y botón Descargar activo
 - [ ] Plan Elite con Copy trading activado
 - [ ] Add-ons con Price ID puestos
+
+---
+
+## 8i · Helpdesk de soporte (ficha del trader, respuestas guardadas, prioridad, aviso al equipo)
+
+Mejoras en Admin → Soporte para que un equipo atienda rápido:
+
+1. **Correr la migración** `supabase/support_helpdesk.sql` en Supabase → SQL Editor.
+   Agrega la columna `priority` en `support_tickets` y la tabla `support_canned`
+   (respuestas guardadas). Es idempotente: se puede correr sin miedo.
+
+2. **Nada más que configurar.** Todo lo demás funciona con lo que ya tienes:
+   - **Ficha del trader** (panel derecho): plan, cuentas MT, si es de fondeo,
+     miembro desde, tickets previos, idioma, país y prop firm. Se arma solo con
+     los datos del perfil.
+   - **Respuestas guardadas**: en la conversación, botón "💬 Respuesta guardada".
+     Crea plantillas una vez y reutilízalas en 1 clic. Se guardan por idioma.
+   - **Filtros de equipo**: "Mías" (asignadas a ti) y "Sin asignar", además de
+     Abiertas / En proceso / Resueltas / Todas. Punto de color = prioridad.
+     "Espera respuesta" marca los tickets donde el último mensaje es del trader.
+   - **Prioridad**: selector en la cabecera de cada ticket (Alta / Normal / Baja).
+
+3. **Aviso al equipo por Telegram (opcional).** Si tienes `TELEGRAM_BOT_TOKEN`
+   configurado y los admins vincularon su Telegram, cada ticket nuevo (de trader
+   o lead) le llega al equipo por Telegram. Si no usas Telegram, no pasa nada:
+   simplemente no se envía y no rompe nada.
+
+Nota: el correo entrante (respuestas por email que vuelven al hilo del ticket)
+NO está montado. Los traders con cuenta responden dentro de la app; las
+respuestas por email de los leads llegan a tu buzón de Zoho.

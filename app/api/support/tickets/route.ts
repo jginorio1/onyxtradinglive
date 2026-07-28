@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { notifyNewTicket } from '@/lib/supportNotify';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -58,6 +59,7 @@ export async function POST(req: Request) {
     if (error || !ticket) return NextResponse.json({ error: error?.message || 'error' }, { status: 500 });
 
     await supabaseAdmin.from('support_messages').insert({ ticket_id: ticket.id, sender: 'user', body });
+    await notifyNewTicket({ email: user.email || '', subject, isLead: false });
     return NextResponse.json({ ok: true, id: ticket.id });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
