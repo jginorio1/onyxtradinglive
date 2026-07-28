@@ -1,7 +1,7 @@
 import { logError } from '@/lib/errlog';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
-type MailOpts = { kind?: string; userId?: string | null; meta?: any };
+type MailOpts = { kind?: string; userId?: string | null; meta?: any; unsub?: string | null };
 
 // --- Formato de correo: convierte el texto (con markdown básico) a HTML
 // limpio y profesional, con la marca Onyx. Compatible con clientes de correo
@@ -35,8 +35,11 @@ function bodyToHtml(text: string) {
 const SITE = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.onyxtradinglive.com').replace(/\/$/, '');
 const LOGO = process.env.EMAIL_LOGO_URL || `${SITE}/onyx-symbol.png`;
 
-function renderEmailHtml(text: string) {
+function renderEmailHtml(text: string, unsub?: string | null) {
   const body = bodyToHtml(text);
+  const unsubRow = unsub
+    ? `<br><a href="${unsub}" style="color:#8a90a0;text-decoration:underline;">Darte de baja de estos correos / Unsubscribe</a>`
+    : '';
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;background:#eef0f4;padding:24px 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
@@ -48,7 +51,7 @@ function renderEmailHtml(text: string) {
 <tr><td style="padding:26px 28px;font-size:15px;color:#1a1d24;">${body}</td></tr>
 <tr><td style="background:#f6f7f9;padding:16px 28px;color:#8a90a0;font-size:12px;border-top:1px solid #eceef2;line-height:1.5;">
 ✉️ Puedes responder a este correo y te contestamos.<br>
-Onyx Trading Live · <a href="https://www.onyxtradinglive.com" style="color:#5b6cff;text-decoration:none;">onyxtradinglive.com</a>
+Onyx Trading Live · <a href="https://www.onyxtradinglive.com" style="color:#5b6cff;text-decoration:none;">onyxtradinglive.com</a>${unsubRow}
 </td></tr>
 </table></td></tr></table></body></html>`;
 }
@@ -72,8 +75,8 @@ export async function sendEmail(to: string, subject: string, text: string, opts?
   if (!key || !to) return false;
   const from = process.env.SUPPORT_FROM_EMAIL || 'Onyx Trading Live <no-reply@onyxtradinglive.com>';
   // Versión de texto plano (sin markdown) como respaldo, y versión HTML con marca.
-  const plain = String(text || '').replace(/\*\*(.+?)\*\*/g, '$1');
-  const html = renderEmailHtml(text);
+  const plain = String(text || '').replace(/\*\*(.+?)\*\*/g, '$1') + (opts?.unsub ? `\n\n—\nDarte de baja / Unsubscribe: ${opts.unsub}` : '');
+  const html = renderEmailHtml(text, opts?.unsub);
   try {
     const r = await fetch('https://api.resend.com/emails', {
       method: 'POST',

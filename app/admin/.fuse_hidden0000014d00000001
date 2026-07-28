@@ -1,15 +1,11 @@
 'use client';
 import { toast, toastErr } from '@/lib/toast';
-import { fmtDate, fmtDateTime } from '@/lib/fmtDate';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import Ambassadors from './Ambassadors';
 import Retention from './Retention';
 import Addons from './Addons';
 import CleanSignups from './CleanSignups';
-import UserDrawer from './UserDrawer';
-import Emails from './Emails';
-import Campaigns from './Campaigns';
 import TestConsole from './TestConsole';
 import Firms from './Firms';
 import SupportInbox from './SupportInbox';
@@ -28,14 +24,14 @@ import { useLang } from '@/lib/lang';
 type Plan = { id: string; name: string; name_en: string; desc_es: string | null; desc_en: string | null; price_month: number; price_year: number; stripe_price_id: string | null; stripe_price_id_year: string | null; max_accounts: number; features: string[]; features_en: string[]; badge: string | null; badge_en: string | null; active: boolean; sort: number; capabilities: any };
 type User = { id: string; email: string; plan: string; subscription_status: string | null; banned: boolean; is_admin: boolean; created_at: string; accounts: number; lastSync: string | null };
 type Team = { id: string; email: string; role: string | null; is_admin: boolean; perms?: any; available?: boolean; last_active?: string | null };
-type Tab = 'resumen' | 'ingresos' | 'usuarios' | 'correos' | 'campanas' | 'planes' | 'equipo' | 'embajadores' | 'retencion' | 'pruebas' | 'firms' | 'modulos' | 'soporte' | 'kb' | 'diag' | 'backups' | 'audit' | 'optim' | 'ajustes';
+type Tab = 'resumen' | 'ingresos' | 'usuarios' | 'planes' | 'equipo' | 'embajadores' | 'retencion' | 'pruebas' | 'firms' | 'modulos' | 'soporte' | 'kb' | 'diag' | 'backups' | 'audit' | 'optim' | 'ajustes';
 
-const CAPS: string[] = ['journal', 'compare', 'funding', 'costs', 'export', 'reports', 'telegram', 'manager', 'manager_advanced', 'manager_news', 'copy', 'algo'];
+const CAPS: string[] = ['journal', 'compare', 'funding', 'costs', 'export', 'reports', 'telegram', 'manager', 'manager_advanced', 'manager_news', 'copy'];
 
 function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
-  return <span className="toggle" onClick={onClick} style={{ background: on ? 'var(--green)' : '#556080', boxShadow: on ? 'none' : 'inset 0 0 0 1px rgba(255,255,255,.12)' }}><span className="knob" style={{ left: on ? 21 : 3 }} /></span>;
+  return <span className="toggle" onClick={onClick} style={{ background: on ? '#34e2a0' : '#556080', boxShadow: on ? 'none' : 'inset 0 0 0 1px rgba(255,255,255,.12)' }}><span className="knob" style={{ left: on ? 21 : 3 }} /></span>;
 }
-const roleColor = (r?: string | null) => (r === 'owner' ? 'var(--soft-brand2)' : r === 'support' ? 'var(--gold)' : 'var(--green)');
+const roleColor = (r?: string | null) => (r === 'owner' ? '#a9b4ff' : r === 'support' ? '#ffd45e' : '#34e2a0');
 
 // Cabecera común de cada pestaña: icono + título + subtítulo.
 function Head({ ic, t, s }: { ic: string; t: string; s: string }) {
@@ -69,14 +65,14 @@ function PromoControl() {
       <div className="row between" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 6 }}>
         <h3 style={{ margin: 0 }}>📣 {t.pr_title}</h3>
         <span className="row" style={{ gap: 8 }}>
-          <span className="pill" style={p.on ? { color: 'var(--soft-green)', background: 'rgba(52,226,160,.15)' } : { color: 'var(--mut)' }}>{p.on ? t.pr_on : t.pr_off}</span>
+          <span className="pill" style={p.on ? { color: '#7fe9c0', background: 'rgba(52,226,160,.15)' } : { color: 'var(--mut)' }}>{p.on ? t.pr_on : t.pr_off}</span>
           <Toggle on={!!p.on} onClick={() => set('on', !p.on)} />
         </span>
       </div>
       <p className="muted" style={{ fontSize: 13, marginBottom: 10 }}>{t.pr_body}</p>
 
       {/* Vista previa */}
-      <div style={{ background: p.bg || 'var(--brand)', color: p.fg || '#0a0d14', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 600, marginBottom: 12, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+      <div style={{ background: p.bg || '#7c8cff', color: p.fg || '#0a0d14', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 600, marginBottom: 12, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
         {(p.text_es || t.pr_ph) + (p.cta_es ? '  ' + p.cta_es + ' →' : '')}
       </div>
 
@@ -87,13 +83,13 @@ function PromoControl() {
         <label className="muted" style={{ fontSize: 12 }}>{t.pr_ctaEn}<input value={p.cta_en} onChange={(e) => set('cta_en', e.target.value)} placeholder="Grab it" style={inp} /></label>
         <label className="muted" style={{ fontSize: 12 }}>{t.pr_link}<input value={p.link} onChange={(e) => set('link', e.target.value)} placeholder="/pricing" style={inp} /></label>
         <label className="muted" style={{ fontSize: 12 }}>{t.pr_ends}<input type="datetime-local" value={p.endsAt ? p.endsAt.slice(0, 16) : ''} onChange={(e) => set('endsAt', e.target.value ? new Date(e.target.value).toISOString() : '')} style={inp} /></label>
-        <label className="muted" style={{ fontSize: 12 }}>{t.pr_bg}<input type="color" value={p.bg || 'var(--brand)'} onChange={(e) => set('bg', e.target.value)} style={{ ...inp, height: 38, padding: 3 }} /></label>
+        <label className="muted" style={{ fontSize: 12 }}>{t.pr_bg}<input type="color" value={p.bg || '#7c8cff'} onChange={(e) => set('bg', e.target.value)} style={{ ...inp, height: 38, padding: 3 }} /></label>
         <label className="muted" style={{ fontSize: 12 }}>{t.pr_fg}<input type="color" value={p.fg || '#0a0d14'} onChange={(e) => set('fg', e.target.value)} style={{ ...inp, height: 38, padding: 3 }} /></label>
       </div>
 
       <div className="row" style={{ gap: 10, marginTop: 12, alignItems: 'center' }}>
         <button className="btn btn-primary" onClick={save} disabled={busy}>{busy ? '…' : t.pr_save}</button>
-        {msg && <span style={{ fontSize: 12.5, color: 'var(--soft-green)' }}>{msg}</span>}
+        {msg && <span style={{ fontSize: 12.5, color: '#7fe9c0' }}>{msg}</span>}
       </div>
       <p className="muted" style={{ fontSize: 11.5, marginTop: 10 }}>{t.pr_note}</p>
     </div>
@@ -124,7 +120,7 @@ function SecurityControl({ idleMin }: { idleMin: number }) {
     <div className="card" style={{ marginBottom: 12 }}>
       <div className="row between" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 6 }}>
         <h3 style={{ margin: 0 }}>🔒 {t.sec_title}</h3>
-        <span className="pill" style={hasPin ? { color: 'var(--soft-green)', background: 'rgba(52,226,160,.15)' } : { color: 'var(--amber)', background: 'rgba(255,192,77,.16)' }}>
+        <span className="pill" style={hasPin ? { color: '#7fe9c0', background: 'rgba(52,226,160,.15)' } : { color: 'var(--amber)', background: 'rgba(255,192,77,.16)' }}>
           {hasPin === null ? '…' : hasPin ? t.sec_on : t.sec_off}
         </span>
       </div>
@@ -137,7 +133,7 @@ function SecurityControl({ idleMin }: { idleMin: number }) {
         <button className="btn btn-primary" onClick={() => save(false)} disabled={busy || pin.length !== 6} style={{ padding: '8px 14px' }}>{busy ? '…' : t.sec_save}</button>
         {hasPin && <button className="btn btn-ghost" onClick={() => save(true)} disabled={busy} style={{ padding: '8px 12px' }}>{t.sec_clear}</button>}
       </div>
-      {msg && <div style={{ marginTop: 8, fontSize: 12.5, color: 'var(--soft-green)' }}>{msg}</div>}
+      {msg && <div style={{ marginTop: 8, fontSize: 12.5, color: '#7fe9c0' }}>{msg}</div>}
       <p className="muted" style={{ fontSize: 11.5, marginTop: 10 }}>{t.sec_note}</p>
     </div>
   );
@@ -146,7 +142,6 @@ function SecurityControl({ idleMin }: { idleMin: number }) {
 // Alertas: el Owner enciende el vigilante y ajusta los límites. Avisa por Telegram.
 function AlertsControl() {
   const t = useT();
-  const { lang } = useLang();
   const [d, setD] = useState<any>(null);
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
@@ -172,7 +167,7 @@ function AlertsControl() {
       <div className="row between" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 6 }}>
         <h3 style={{ margin: 0 }}>🔔 {t.al_title}</h3>
         <span className="row" style={{ gap: 8 }}>
-          <span className="pill" style={d.enabled ? { color: 'var(--soft-green)', background: 'rgba(52,226,160,.15)' } : { color: 'var(--mut)' }}>{d.enabled ? t.al_on : t.al_off}</span>
+          <span className="pill" style={d.enabled ? { color: '#7fe9c0', background: 'rgba(52,226,160,.15)' } : { color: 'var(--mut)' }}>{d.enabled ? t.al_on : t.al_off}</span>
           <Toggle on={!!d.enabled} onClick={() => setD((o: any) => ({ ...o, enabled: !o.enabled }))} />
         </span>
       </div>
@@ -189,7 +184,7 @@ function AlertsControl() {
       </div>
       <div className="row" style={{ gap: 10, marginTop: 12, alignItems: 'center' }}>
         <button className="btn btn-primary" onClick={save} disabled={busy}>{busy ? '…' : t.al_save}</button>
-        {msg && <span style={{ fontSize: 12.5, color: 'var(--soft-green)' }}>{msg}</span>}
+        {msg && <span style={{ fontSize: 12.5, color: '#7fe9c0' }}>{msg}</span>}
       </div>
 
       {!!(d.feed || []).length && (
@@ -197,7 +192,7 @@ function AlertsControl() {
           <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{t.al_recent}</div>
           {d.feed.slice(0, 6).map((f: any, i: number) => (
             <div key={i} className="row between" style={{ padding: '6px 0', fontSize: 12.5, gap: 8, flexWrap: 'wrap' }}>
-              <span>{f.text}</span><span className="muted">{fmtDate(f.at, lang)}</span>
+              <span>{f.text}</span><span className="muted">{new Date(f.at).toLocaleDateString()}</span>
             </div>
           ))}
         </div>
@@ -275,7 +270,7 @@ function BetaControl() {
           <button className="btn btn-ghost" onClick={() => enter(true)} disabled={busy === 'off'} style={{ padding: '8px 14px' }}>{busy === 'off' ? '…' : t.bt_exit}</button>
         </div>
       )}
-      {msg && <div style={{ marginTop: 10, fontSize: 12.5, color: 'var(--soft-green)' }}>{msg}</div>}
+      {msg && <div style={{ marginTop: 10, fontSize: 12.5, color: '#7fe9c0' }}>{msg}</div>}
       <p className="muted" style={{ fontSize: 11.5, marginTop: 12 }}>{t.bt_note}</p>
     </div>
   );
@@ -284,7 +279,7 @@ function BetaControl() {
 export default function AdminClient({ meEmail, role, perms = {}, accounts, trades, hasPin = false, idleMin = 20 }: { meEmail: string; role: string; perms?: Record<string, string>; accounts: number; trades: number; hasPin?: boolean; idleMin?: number }) {
   const t = useT();
   // Qué áreas puede ver este admin (owner ve todo). Mapa tab → área de permiso.
-  const areaOf: Record<string, string> = { resumen: 'resumen', ingresos: 'planes', usuarios: 'usuarios', correos: 'usuarios', campanas: 'usuarios', planes: 'planes', equipo: 'equipo', embajadores: 'embajadores', retencion: 'retencion', pruebas: 'diag', firms: 'firms', modulos: 'modulos', soporte: 'soporte', kb: 'soporte', diag: 'diag', backups: 'ajustes', audit: 'ajustes', optim: 'ajustes', ajustes: 'ajustes' };
+  const areaOf: Record<string, string> = { resumen: 'resumen', ingresos: 'planes', usuarios: 'usuarios', planes: 'planes', equipo: 'equipo', embajadores: 'embajadores', retencion: 'retencion', pruebas: 'diag', firms: 'firms', modulos: 'modulos', soporte: 'soporte', kb: 'soporte', diag: 'diag', backups: 'ajustes', audit: 'ajustes', optim: 'ajustes', ajustes: 'ajustes' };
   // Ajustes siempre visible: cada admin/empleado necesita entrar a fijar su PIN
   // de bloqueo. Dentro, lo del Owner (roles, promo, beta) se muestra solo a él.
   const canSee = (k: string) => k === 'ajustes' || role === 'owner' || (perms[areaOf[k]] && perms[areaOf[k]] !== 'none');
@@ -302,7 +297,6 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
   const [q, setQ] = useState('');
   const [busy, setBusy] = useState('');
   const [uRange, setURange] = useState<Range>(() => defaultRange('month'));
-  const [uDrawer, setUDrawer] = useState<{ id: string; email: string } | null>(null);
   const { lang } = useLang();
 
   const [diag, setDiag] = useState<any>(null);
@@ -329,9 +323,9 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
 
   const filtered = users.filter((u) => u.email?.toLowerCase().includes(q.toLowerCase()));
   const NAV_GROUPS: { g: string; items: [Tab, string, string][] }[] = [
-    { g: t.g_op, items: [['resumen', '📊', t.nav_resumen], ['ingresos', '💰', t.nav_ingresos], ['usuarios', '👥', t.nav_usuarios], ['correos', '✉️', t.nav_correos], ['soporte', '🎫', t.nav_soporte], ['equipo', '🛡️', t.nav_equipo]] },
+    { g: t.g_op, items: [['resumen', '📊', t.nav_resumen], ['ingresos', '💰', t.nav_ingresos], ['usuarios', '👥', t.nav_usuarios], ['soporte', '🎫', t.nav_soporte], ['equipo', '🛡️', t.nav_equipo]] },
     { g: t.g_prod, items: [['planes', '💳', t.nav_planes], ['modulos', '🧩', t.nav_modulos], ['firms', '🏛️', t.nav_firms]] },
-    { g: t.g_growth, items: [['campanas', '📣', lang === 'en' ? 'Campaigns' : 'Campañas'], ['embajadores', '🎁', t.nav_embajadores], ['retencion', '🛟', t.nav_retencion]] },
+    { g: t.g_growth, items: [['embajadores', '🎁', t.nav_embajadores], ['retencion', '🛟', t.nav_retencion]] },
     { g: t.g_sys, items: [['kb', '🧠', t.nav_kb], ['diag', '🩺', t.nav_diag], ['backups', '🗄️', t.nav_backups], ['audit', '📈', t.nav_audit], ['optim', '🚀', t.nav_optim], ['pruebas', '🧪', t.nav_pruebas], ['ajustes', '⚙️', t.nav_ajustes]] },
   ];
   const groups = NAV_GROUPS.map((gr) => ({ ...gr, items: gr.items.filter(([k]) => canSee(k)) })).filter((gr) => gr.items.length);
@@ -345,15 +339,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
       <div className="wrap-wide" style={{ padding: '22px 0' }}>
         <div className="adminlayout">
           <div className="adminnav card" style={{ padding: 12 }}>
-            {/* Móvil: selector agrupado (se adapta como el menú de arriba) */}
-            <select className="adminnav-mobile" value={tab} onChange={(e) => setTab(e.target.value)} style={{ margin: 0, width: '100%' }}>
-              {groups.map((gr) => (
-                <optgroup key={gr.g} label={gr.g}>
-                  {gr.items.map(([k, ic, label]) => <option key={k} value={k}>{`${ic}  ${label}`}</option>)}
-                </optgroup>
-              ))}
-            </select>
-            <div className="adminnav-items adminnav-grouped">
+            <div className="adminnav-items">
               {groups.map((gr) => (
                 <div key={gr.g}>
                   <div className="adminnav-group">{gr.g}</div>
@@ -369,7 +355,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
               <button className={'availpill ' + (available ? 'on' : 'off')} onClick={toggleAvail}>
                 <span className="avdot" />
                 <span>{available ? t.avail_on : t.avail_off}</span>
-                <span className="toggle" style={{ marginLeft: 'auto', background: available ? 'var(--green)' : '#556080' }}><span className="knob" style={{ left: available ? 21 : 3 }} /></span>
+                <span className="toggle" style={{ marginLeft: 'auto', background: available ? '#34e2a0' : '#556080' }}><span className="knob" style={{ left: available ? 21 : 3 }} /></span>
               </button>
             </div>
           </div>
@@ -446,9 +432,8 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                           <td><select value={u.plan} onChange={(e) => userAction(u.id, 'plan', e.target.value)} style={{ margin: 0, padding: '5px 8px', width: 'auto' }}>{plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}{!plans.find((p) => p.id === u.plan) && <option value={u.plan}>{u.plan}</option>}</select></td>
                           <td>{u.banned ? <span className="pill red">● {t.u_banned}</span> : <span className="pill" style={{ color: 'var(--green)', background: 'rgba(52,226,160,.15)' }}>● {u.subscription_status || t.u_active}</span>}</td>
                           <td className="muted">{u.accounts}</td>
-                          <td className="muted" style={{ fontSize: 12 }}>{u.lastSync ? fmtDate(u.lastSync, lang) : '—'}</td>
+                          <td className="muted" style={{ fontSize: 12 }}>{u.lastSync ? new Date(u.lastSync).toLocaleDateString() : '—'}</td>
                           <td><div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-                            <button className="btn btn-ghost" style={{ padding: '5px 9px', fontSize: 12 }} title={t.u_openCard} onClick={() => setUDrawer({ id: u.id, email: u.email })}>👁</button>
                             <button className="btn btn-ghost" style={{ padding: '5px 9px', fontSize: 12 }} onClick={() => resetPass(u)} disabled={busy === u.id + 'rst'}>🔑</button>
                             {u.banned ? <button className="btn btn-ghost" style={{ padding: '5px 9px', fontSize: 12 }} onClick={() => userAction(u.id, 'unban')}>{t.u_unban}</button> : <button className="btn btn-ghost" style={{ padding: '5px 9px', fontSize: 12 }} onClick={() => userAction(u.id, 'ban')}>🚫</button>}
                             <button className="btn btn-ghost" style={{ padding: '5px 9px', fontSize: 12 }} onClick={() => userAction(u.id, 'admin', !u.is_admin)}>{u.is_admin ? t.u_removeAdmin : t.u_makeAdmin}</button>
@@ -463,9 +448,6 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
               </>
             )}
 
-            {tab === 'correos' && <Emails />}
-            {tab === 'campanas' && <Campaigns />}
-            {uDrawer && <UserDrawer userId={uDrawer.id} email={uDrawer.email} onClose={() => setUDrawer(null)} />}
             {tab === 'planes' && <PlansTab plans={plans} reload={loadPlans} />}
             {tab === 'equipo' && <Equipo team={team} role={role} meEmail={meEmail} reload={loadTeam} canManage={role === 'owner' || perms.equipo === 'manage'} />}
             {tab === 'embajadores' && <Ambassadors />}
@@ -532,11 +514,11 @@ function Modules() {
     const load = () => fetch('/api/admin/modules').then((r) => r.json()).then(setM).catch(() => setM((v: any) => v || {}));
     load(); const iv = setInterval(load, 20000); return () => clearInterval(iv);
   }, []);
-  const LiveBadge = () => <span className="pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--soft-green)', background: 'rgba(52,226,160,.15)' }}><span className="livedot" />{t.mo_liveBadge}</span>;
+  const LiveBadge = () => <span className="pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#7fe9c0', background: 'rgba(52,226,160,.15)' }}><span className="livedot" />{t.mo_liveBadge}</span>;
 
   const StatusPill = ({ on, txt }: { on: boolean; txt: string }) => (
-    <span className="pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, ...(on ? { color: 'var(--soft-green)', background: 'rgba(52,226,160,.15)' } : { color: 'var(--soft-purple)', background: 'rgba(160,107,255,.18)' }) }}>
-      {on ? <span className="livedot" /> : <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--soft-purple)' }} />}{txt}
+    <span className="pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, ...(on ? { color: '#7fe9c0', background: 'rgba(52,226,160,.15)' } : { color: '#c9a9ff', background: 'rgba(160,107,255,.18)' }) }}>
+      {on ? <span className="livedot" /> : <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#c9a9ff' }} />}{txt}
     </span>
   );
   const Tile = ({ label, value, live, color }: { label: string; value: any; live?: boolean; color?: string }) => (
@@ -568,7 +550,7 @@ function Modules() {
         <div style={tiles}>
           <Tile label={t.mo_connected} value={m.guardian?.connected ?? 0} />
           <Tile label={t.mo_liveNow} value={m.guardian?.liveNow ?? 0} live={gLive} color={gLive ? 'var(--green)' : undefined} />
-          <Tile label={t.mo_withGuardian} value={m.guardian?.accounts ?? 0} color="var(--soft-brand)" />
+          <Tile label={t.mo_withGuardian} value={m.guardian?.accounts ?? 0} color="#c3ccff" />
           <Tile label={t.mo_blocks} value={m.guardian?.blocks ?? 0} />
         </div>
       </div>
@@ -589,7 +571,7 @@ function Modules() {
         <p className="muted" style={{ fontSize: 13, marginBottom: 14 }}>{t.mo_weekly_desc}</p>
         <div style={tiles}>
           <Tile label={t.mo_rep_sent} value={m.reports?.sent ?? 0} />
-          <Tile label={t.mo_rep_eligible} value={m.reports?.eligible ?? 0} color="var(--soft-brand)" />
+          <Tile label={t.mo_rep_eligible} value={m.reports?.eligible ?? 0} color="#c3ccff" />
           <Tile label={t.mo_rep_next} value={nextSunday()} />
         </div>
       </div>
@@ -667,11 +649,11 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
               <div className="row" style={{ gap: 11, alignItems: 'center' }}>
                 <span style={{ position: 'relative' }}>
                   <span className="avatar-init">{initials(m.email)}</span>
-                  <span style={{ position: 'absolute', right: -1, bottom: -1, width: 11, height: 11, borderRadius: '50%', border: '2px solid var(--card)', background: m.available ? 'var(--green)' : 'var(--line)' }} title={m.available ? 'Disponible' : 'Ausente'} />
+                  <span style={{ position: 'absolute', right: -1, bottom: -1, width: 11, height: 11, borderRadius: '50%', border: '2px solid var(--card)', background: m.available ? '#34e2a0' : 'var(--line)' }} title={m.available ? 'Disponible' : 'Ausente'} />
                 </span>
                 <div>
                   <div style={{ fontWeight: 600 }}>{m.email}{m.email === meEmail && <span className="muted" style={{ fontSize: 12 }}>{t.t_you}</span>}</div>
-                  <div className="muted" style={{ fontSize: 11 }}>{m.last_active ? t.t_lastActivity + fmtDateTime(m.last_active, lang) : t.t_noActivity}</div>
+                  <div className="muted" style={{ fontSize: 11 }}>{m.last_active ? t.t_lastActivity + new Date(m.last_active).toLocaleString() : t.t_noActivity}</div>
                 </div>
               </div>
               <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -692,7 +674,7 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
                 {AREAS.map((a) => {
                   const eff = effectivePerms(m.role || 'support', m.perms || {});
                   const cur = (eff[a.id] as string) || 'none';
-                  const dcol = cur === 'manage' ? 'var(--green)' : cur === 'view' ? 'var(--brand)' : 'var(--line)';
+                  const dcol = cur === 'manage' ? '#34e2a0' : cur === 'view' ? '#7c8cff' : 'var(--line)';
                   return (
                     <div key={a.id} className="row" style={{ padding: '8px 0', borderTop: '1px solid var(--line)', gap: 10, flexWrap: 'wrap' }}>
                       <span style={{ width: 8, height: 8, borderRadius: '50%', background: dcol, flex: 'none' }} />
@@ -710,7 +692,7 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
 
             {pinEditId === m.id && canManage && (
               <div style={{ marginTop: 12, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 12, padding: 12 }}>
-                <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>🔒 {t.t_pinTitle} — {secPins.includes(m.id) ? <span style={{ color: 'var(--soft-green)' }}>{t.t_pinHas}</span> : t.t_pinNone}</div>
+                <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>🔒 {t.t_pinTitle} — {secPins.includes(m.id) ? <span style={{ color: '#7fe9c0' }}>{t.t_pinHas}</span> : t.t_pinNone}</div>
                 <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
                   <input value={pinVal} onChange={(e) => setPinVal(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="••••••" inputMode="numeric" maxLength={6}
                     style={{ width: 120, letterSpacing: 4, textAlign: 'center', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--tx)' }} />
@@ -789,7 +771,7 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
                 return (
                   <div key={i} className="row between" style={{ borderTop: i ? '1px solid var(--line)' : 'none', padding: '8px 0', fontSize: 13, flexWrap: 'wrap', gap: 6 }}>
                     <span className="row" style={{ gap: 8 }}><span style={{ width: 18, textAlign: 'center' }}>{topicIcon[tp]}</span><span><b>{e.admin_email?.split('@')[0]}</b> · {e.action} <span className="muted">{e.target ? String(e.target).slice(0, 24) : ''}</span></span></span>
-                    <span className="muted" style={{ fontSize: 12 }}>{fmtDateTime(e.created_at, lang)}</span>
+                    <span className="muted" style={{ fontSize: 12 }}>{new Date(e.created_at).toLocaleString()}</span>
                   </div>
                 );
               })}

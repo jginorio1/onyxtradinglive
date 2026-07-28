@@ -377,3 +377,40 @@ Cómo se vende:
 Nota honesta: dar de baja el add-on hoy se hace desde **Gestionar pago** (portal de
 Stripe), que quita el item. Un toggle de "quitar" dentro de Mi cuenta se puede
 añadir después; no lo puse para no tocar pantallas grandes sin necesidad.
+
+---
+
+## 9 · Campañas de correo (seguimiento automático + envíos manuales)
+
+Sistema de campañas montado sobre Resend (el mismo que ya envías). Correos de
+seguimiento automáticos a tu base de traders + un compositor para mandar promos
+y noticias a mano, con plantillas editables y borrador con IA. Panel en
+**Admin → Campañas** (grupo Crecimiento).
+
+Configurar (una vez):
+1. Corre `supabase/campaigns.sql` en Supabase (crea `campaigns`, `campaign_sends`
+   y añade `marketing_emails` + `unsub_token` en `profiles`).
+2. Ya está en `vercel.json` el cron `"/api/cron/campaigns"` (diario 17:00 UTC).
+   Requiere `CRON_SECRET` (el mismo que ya usas; nunca lo publiques).
+3. Para el borrador con IA: `ANTHROPIC_API_KEY` en Vercel (el mismo del soporte).
+4. Para que salgan correos: `RESEND_API_KEY` + `SUPPORT_FROM_EMAIL` (ya los tienes).
+
+Cómo funciona:
+- **Automáticas** (se crean solas la 1ª vez, empiezan APAGADAS): "No conectó su
+  cuenta", "Trader inactivo", "Prueba por expirar", "Newsletter semanal". Las
+  enciendes con el interruptor y editas el texto (ES/EN) con ✏️ Editar. El cron
+  las envía al segmento correcto; cada trader recibe cada campaña de disparo una
+  sola vez (dedupe en `campaign_sends`); el boletín programado sale como mucho una
+  vez cada ~6 días.
+- **Envío manual (promos y noticias)**: eliges segmento, escribes o pulsas
+  ✨ Borrador (la IA redacta ES/EN con el cerebro de Onyx), 👁 Ver cuántos lo
+  recibirán, 📧 Prueba a tu correo, y 🚀 Enviar ahora.
+- **Segmentos dinámicos** (se calculan en vivo): todos, gratis, de pago, Black,
+  con cuenta conectada, sin conectar, inactivos, prueba por expirar.
+- **Baja**: cada correo lleva enlace de baja de un clic (`/unsub`). Apaga solo el
+  marketing (`marketing_emails=false`); los transaccionales (facturación, soporte)
+  siguen. El opt-out se respeta en todos los segmentos.
+
+Seguridad/anti-spam: tope de 200 envíos por corrida del cron, nunca repite una
+campaña de disparo al mismo usuario, y respeta la baja. Los secretos van solo en
+variables de entorno de Vercel, nunca en el código.
