@@ -141,10 +141,18 @@ export async function POST(req: NextRequest) {
         commission: t.commission,
         swap: t.swap,
         net_profit: t.netProfit,
+        magic: t.magic != null ? Number(t.magic) : null,
+        ea_comment: t.comment ? String(t.comment).slice(0, 120) : null,
       }));
-      await supabaseAdmin
+      const up = await supabaseAdmin
         .from('trades')
         .upsert(rows, { onConflict: 'account_id,ticket' });
+      // Tolerante: si aún no existen las columnas magic/ea_comment (bots.sql sin
+      // correr), reintentamos sin ellas para no perder ninguna operación.
+      if (up.error) {
+        const bare = rows.map(({ magic, ea_comment, ...r }: any) => r);
+        await supabaseAdmin.from('trades').upsert(bare, { onConflict: 'account_id,ticket' });
+      }
     }
 
     // --- Posiciones abiertas (reemplazamos la foto actual) ---
@@ -162,8 +170,14 @@ export async function POST(req: NextRequest) {
         sl: p.sl,
         tp: p.tp,
         profit: p.profit,
+        magic: p.magic != null ? Number(p.magic) : null,
+        ea_comment: p.comment ? String(p.comment).slice(0, 120) : null,
       }));
-      await supabaseAdmin.from('open_positions').insert(rows);
+      const ins = await supabaseAdmin.from('open_positions').insert(rows);
+      if (ins.error) {
+        const bare = rows.map(({ magic, ea_comment, ...r }: any) => r);
+        await supabaseAdmin.from('open_positions').insert(bare);
+      }
     }
 
     // --- Marca la key como usada ---

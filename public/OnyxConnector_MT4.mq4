@@ -128,6 +128,8 @@ string ClosedTradesJson(datetime fromT, datetime &maxClose, int &count)
       arr+="\"profit\":"+JNum(prof)+",";
       arr+="\"commission\":"+JNum(comm)+",";
       arr+="\"swap\":"+JNum(sw)+",";
+      arr+="\"magic\":"+IntegerToString(OrderMagicNumber())+",";
+      arr+="\"comment\":\""+JEsc(OrderComment())+"\",";
       arr+="\"netProfit\":"+JNum(prof+comm+sw);
       arr+="}";
       count++;
@@ -157,7 +159,9 @@ string OpenPositionsJson()
       arr+="\"openPrice\":"+JNum(OrderOpenPrice(),5)+",";
       arr+="\"sl\":"+JNum(OrderStopLoss(),5)+",";
       arr+="\"tp\":"+JNum(OrderTakeProfit(),5)+",";
-      arr+="\"profit\":"+JNum(OrderProfit());
+      arr+="\"profit\":"+JNum(OrderProfit())+",";
+      arr+="\"magic\":"+IntegerToString(OrderMagicNumber())+",";
+      arr+="\"comment\":\""+JEsc(OrderComment())+"\"";
       arr+="}";
      }
    arr+="]";

@@ -290,3 +290,39 @@ Añadido en esta entrega:
    sola con el uso real.
 
 Requisito: la Base IA usa la tabla kb_articles (ya creada con kb_v1.sql).
+
+---
+
+## 8l · Módulo de Bots (traders algorítmicos) — MVP
+
+Evalúa el rendimiento de cada bot por separado, dividido en "En pruebas" (demo/forward)
+y "En vivo" (real/fondeo). Se apoya en las operaciones que ya sincroniza el Guardian;
+lo nuevo es etiquetar cada operación con el **magic number** del EA que la abrió.
+
+Pasos para activarlo:
+
+1. **Corre `supabase/bots.sql`** en Supabase → SQL Editor. Añade las columnas
+   `magic`/`ea_comment` a trades y open_positions, y la tabla `bots` (config por bot).
+   El sync es tolerante: si no corres esto todavía, no se rompe nada (solo no verás bots).
+
+2. **Reinstala el Onyx Connector (EA)** en tus MetaTrader. La versión nueva reporta el
+   magic number y el comentario de cada operación. Sin esto, no hay datos por bot.
+   (Los EA están en Instalación / en public: OnyxConnector_MT5.mq5 y _MT4.mq4.)
+
+3. **Activa la capacidad `algo`** en los planes que quieras (Admin → Planes → Capacidades →
+   "Módulo de bots"). Recomendado: Elite y Black Onyx (o como add-on). Sin la capacidad,
+   el trader ve la pantalla de bots con un aviso para mejorar de plan.
+
+Qué incluye el MVP:
+- Agrupa operaciones por magic → KPIs por bot: neto, PF, drawdown %, win rate, ops,
+  expectancy, recovery, ops/día, y curva mini.
+- Split **En pruebas / En vivo** (auto por tipo de cuenta; se puede forzar por bot).
+- **Criterios de graduación** (días, ops, PF, DD máx.) con medidor "listo para vivo" y
+  botón **Promover a vivo**.
+- Estado **activo/inactivo** (si el bot tiene posición abierta).
+- Enlace "🤖 Bots" en la barra de arriba (solo si el plan tiene la capacidad).
+
+Fase 3 (pendiente, lo más pesado, para cuando el MVP valide interés):
+- Import del reporte del Strategy Tester y **overlay vivo vs backtest** con alarma de sobreajuste.
+- **Freno por bot** vía Guardian (pausar un magic si rompe su DD).
+- Alertas (Telegram/push): bot parado, ruptura de DD, divergencia vs backtest.

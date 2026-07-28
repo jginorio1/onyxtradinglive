@@ -1,0 +1,68 @@
+import { NextResponse } from 'next/server';
+import { createSupabaseServer } from '@/lib/supabaseServer';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { loadBots } from '@/lib/bots';
+import { logError } from '@/lib/errlog';
+
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+async function caps(userId: string) {
+  const { data: prof } = await supabaseAdmin.from('profiles').select('plan').eq('id', userId).maybeSingle();
+  const { data: plan } = await supabaseAdmin.from('plans').select('capabilities').eq('id', (prof as any)?.plan || 'free').maybeSingle();
+  return (plan?.capabilities as any) || {};
+}
+
+// GET · lista de bots del usuario con sus KPIs (o bloqueado si el plan no lo incluye)
+export async function GET() {
+  try {
+    const sb = createSupabaseServer();
+    const { data: { user } } = await sb.auth.getUser();
+    if (!user) return NextResponse.json({ error: 'no autorizado' }, { status: 401 });
+
+    const c = await caps(user.id);
+    if (!c.algo) return NextResponse.json({ locked: true, bots: [] });
+
+    const r = await loadBots(user.id);
+    return NextResponse.json({ locked: false, ...r });
+  } catch (e: any) {
+    await logError('bots_get', e);
+    return NextResponse.json({ error: e?.message || 'error', bots: [] }, { status: 500 });
+  }
+}
+
+// PATCH · configurar un bot: nombre, modo (auto/testing/live) y criterios de graduación
+export async function PATCH(req: Request) {
+  try {
+    const sb = createSupabaseServer();
+    const { data: { user } } = await sb.auth.getUser();
+    if (!user) return NextResponse.json({ error: 'no autorizado' }, { status: 401 });
+
+    const c = await caps(user.id);
+    if (!c.algo) return NextResponse.json({ error: 'plan' }, { status: 403 });
+
+    const b = await req.json().catch(() => ({} as any));
+    const magic = Number(b.magic);
+    if (!magic && magic !== 0) return NextResponse.json({ error: 'falta magic', code: 'missing' }, { status: 400 });
+
+    const patch: any = { user_id: user.id, magic };
+    if (b.name !== undefined) patch.name = String(b.name).slice(0, 80);
+    if (b.mode && ['auto', 'testing', 'live'].includes(String(b.mode))) patch.mode = String(b.mode);
+    if (b.criteria && typeof b.criteria === 'object') {
+      const cr = b.criteria;
+      patch.criteria = {
+        minDays: Math.max(0, Number(cr.minDays) || 0),
+        minTrades: Math.max(0, Number(cr.minTrades) || 0),
+        pf: Math.max(0, Number(cr.pf) || 0),
+        maxDD: Math.max(0, Number(cr.maxDD) || 0),
+      };
+    }
+
+    const { error } = await supabaseAdmin.from('bots').upsert(patch, { onConflict: 'user_id,magic' });
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  } catch (e: any) {
+    await logError('bots_patch', e);
+    return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
+  }
+}

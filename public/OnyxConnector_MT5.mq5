@@ -121,6 +121,7 @@ string ClosedTradesJson(datetime fromT, datetime &maxClose, int &count)
    ulong    pid[];   string psym[];  int pdir[];   double pvol[];
    datetime potime[];double poprice[];datetime pctime[];double pcprice[];
    double   pprofit[];double pcomm[]; double pswap[]; bool pclosed[]; double psl[]; double ptp[];
+   long     pmagic[]; string pcmt[];
 
    for(int i=0;i<total;i++)
      {
@@ -135,9 +136,10 @@ string ClosedTradesJson(datetime fromT, datetime &maxClose, int &count)
          ArrayResize(pid,at+1); ArrayResize(psym,at+1); ArrayResize(pdir,at+1); ArrayResize(pvol,at+1);
          ArrayResize(potime,at+1); ArrayResize(poprice,at+1); ArrayResize(pctime,at+1); ArrayResize(pcprice,at+1);
          ArrayResize(pprofit,at+1); ArrayResize(pcomm,at+1); ArrayResize(pswap,at+1); ArrayResize(pclosed,at+1);
-         ArrayResize(psl,at+1); ArrayResize(ptp,at+1);
+         ArrayResize(psl,at+1); ArrayResize(ptp,at+1); ArrayResize(pmagic,at+1); ArrayResize(pcmt,at+1);
          pid[at]=posid; psym[at]=""; pdir[at]=0; pvol[at]=0; potime[at]=0; poprice[at]=0;
          pctime[at]=0; pcprice[at]=0; pprofit[at]=0; pcomm[at]=0; pswap[at]=0; pclosed[at]=false; psl[at]=0; ptp[at]=0;
+         pmagic[at]=0; pcmt[at]="";
         }
       double price=HistoryDealGetDouble(tk,DEAL_PRICE);
       datetime dtime=(datetime)HistoryDealGetInteger(tk,DEAL_TIME);
@@ -147,6 +149,8 @@ string ClosedTradesJson(datetime fromT, datetime &maxClose, int &count)
          pdir[at]=(HistoryDealGetInteger(tk,DEAL_TYPE)==DEAL_TYPE_BUY)?1:-1;
          pvol[at]=HistoryDealGetDouble(tk,DEAL_VOLUME);
          potime[at]=dtime; poprice[at]=price;
+         pmagic[at]=(long)HistoryDealGetInteger(tk,DEAL_MAGIC);
+         pcmt[at]=HistoryDealGetString(tk,DEAL_COMMENT);
         }
       else if(entry==DEAL_ENTRY_OUT || entry==DEAL_ENTRY_OUT_BY)
         {
@@ -180,6 +184,8 @@ string ClosedTradesJson(datetime fromT, datetime &maxClose, int &count)
       arr+="\"profit\":"+JNum(pprofit[k])+",";
       arr+="\"commission\":"+JNum(pcomm[k])+",";
       arr+="\"swap\":"+JNum(pswap[k])+",";
+      arr+="\"magic\":"+(string)pmagic[k]+",";
+      arr+="\"comment\":\""+JEsc(pcmt[k])+"\",";
       arr+="\"netProfit\":"+JNum(pprofit[k]+pcomm[k]+pswap[k]);
       arr+="}";
       count++;
@@ -208,7 +214,9 @@ string OpenPositionsJson()
       arr+="\"openPrice\":"+JNum(PositionGetDouble(POSITION_PRICE_OPEN),5)+",";
       arr+="\"sl\":"+JNum(PositionGetDouble(POSITION_SL),5)+",";
       arr+="\"tp\":"+JNum(PositionGetDouble(POSITION_TP),5)+",";
-      arr+="\"profit\":"+JNum(PositionGetDouble(POSITION_PROFIT));
+      arr+="\"profit\":"+JNum(PositionGetDouble(POSITION_PROFIT))+",";
+      arr+="\"magic\":"+(string)PositionGetInteger(POSITION_MAGIC)+",";
+      arr+="\"comment\":\""+JEsc(PositionGetString(POSITION_COMMENT))+"\"";
       arr+="}";
      }
    arr+="]";
