@@ -9,7 +9,7 @@ const ES = {
   // Menú lateral
   brand: 'Onyx Admin',
   g_op: 'Operación', g_prod: 'Producto', g_growth: 'Crecimiento', g_sys: 'Sistema',
-  nav_resumen: 'Resumen', nav_ingresos: 'Ingresos', nav_usuarios: 'Usuarios', nav_correos: 'Correos', nav_soporte: 'Soporte', nav_equipo: 'Equipo',
+  nav_resumen: 'Resumen', nav_ingresos: 'Ingresos', nav_usuarios: 'Usuarios', nav_correos: 'Correos', nav_campanas: 'Campañas', nav_soporte: 'Soporte', nav_equipo: 'Equipo',
   h_correos_t: 'Correos enviados', h_correos_s: 'Todo lo que el sistema envió por email · bandeja de salida.', u_openCard: 'Ver ficha',
   h_ingresos_s: 'Tu dinero en vivo desde Stripe: MRR, cobros y pagos fallidos.',
   nav_planes: 'Planes', nav_modulos: 'Módulos', nav_firms: 'Prop firms',
@@ -194,6 +194,7 @@ const ES = {
   re_extra: '➕ Cuentas MT extra', re_extraDesc: 'Crea en Stripe un precio recurrente mensual por unidad y pega aquí su Price ID. Sin él, el complemento no se muestra.',
   re_slaveTitle: 'Copy trading: esclavas extra', re_slaveDesc: 'Precio mensual por cada cuenta esclava adicional (por encima del límite del plan). Crea el Price ID recurrente en Stripe.',
   re_masterTitle: 'Copy trading: master extra', re_masterDesc: 'Precio mensual por cada cuenta Master adicional (la base es 1). Deja al trader tener varias masters, cada una con sus esclavas. Crea el Price ID recurrente en Stripe.',
+  re_algoTitle: 'Módulo de bots', re_algoDesc: 'Add-on de $/mes para traders algorítmicos. Va incluido en los planes con la capacidad "algo". Crea el Price ID recurrente en Stripe.',
   re_extraPrice: 'Precio por cuenta / mes ($)', re_extraId: 'Stripe Price ID', re_addonOn: 'Complemento activo', re_saveAddon: 'Guardar complemento',
   re_recent: 'Últimos intentos', re_recentEmpty: 'Nada por ahora.',
   reason_price: 'Muy caro', reason_unused: 'No lo usaba', reason_missing: 'Le falta algo', reason_stopped: 'Dejó de operar', reason_other: 'Otro',
@@ -233,7 +234,7 @@ type Dict = typeof ES;
 const EN: Dict = {
   brand: 'Onyx Admin',
   g_op: 'Operations', g_prod: 'Product', g_growth: 'Growth', g_sys: 'System',
-  nav_resumen: 'Overview', nav_ingresos: 'Revenue', nav_usuarios: 'Users', nav_correos: 'Emails', nav_soporte: 'Support', nav_equipo: 'Team',
+  nav_resumen: 'Overview', nav_ingresos: 'Revenue', nav_usuarios: 'Users', nav_correos: 'Emails', nav_campanas: 'Campaigns', nav_soporte: 'Support', nav_equipo: 'Team',
   h_correos_t: 'Sent emails', h_correos_s: 'Everything the system emailed · outbox.', u_openCard: 'Open card',
   h_ingresos_s: 'Your money live from Stripe: MRR, charges and failed payments.',
   nav_planes: 'Plans', nav_modulos: 'Modules', nav_firms: 'Prop firms',
@@ -406,6 +407,7 @@ const EN: Dict = {
   re_extra: '➕ Extra MT accounts', re_extraDesc: 'Create a monthly recurring price per unit in Stripe and paste its Price ID here. Without it, the add-on is hidden.',
   re_slaveTitle: 'Copy trading: extra slaves', re_slaveDesc: 'Monthly price per extra slave account (above the plan limit). Create the recurring Price ID in Stripe.',
   re_masterTitle: 'Copy trading: extra master', re_masterDesc: 'Monthly price per extra Master account (base is 1). Lets the trader run several masters, each with its own slaves. Create the recurring Price ID in Stripe.',
+  re_algoTitle: 'Bots module', re_algoDesc: 'Monthly add-on for algorithmic traders. Included in plans with the "algo" capability. Create the recurring Price ID in Stripe.',
   re_extraPrice: 'Price per account / month ($)', re_extraId: 'Stripe Price ID', re_addonOn: 'Add-on active', re_saveAddon: 'Save add-on',
   re_recent: 'Recent attempts', re_recentEmpty: 'Nothing yet.',
   reason_price: 'Too expensive', reason_unused: 'Wasn’t using it', reason_missing: 'Missing something', reason_stopped: 'Stopped trading', reason_other: 'Other',

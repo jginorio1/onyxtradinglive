@@ -60,8 +60,8 @@ export default function Diagnostics() {
           <div key={s.key} className="tile" style={{ display: 'flex', gap: 9, alignItems: 'center' }}>
             {statColor(s) === 'var(--green)' ? <span className="livedot" /> : dot(statColor(s))}
             <div style={{ minWidth: 0 }}>
-              <b style={{ fontSize: 13 }}>{s.name}</b>
-              <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>{s.detail}</div>
+              <b style={{ fontSize: 13 }}>{lang === 'en' ? (s.name_en || s.name) : s.name}</b>
+              <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>{lang === 'en' ? (s.detail_en || s.detail) : s.detail}</div>
             </div>
           </div>
         ))}
@@ -85,7 +85,7 @@ export default function Diagnostics() {
       <div className="card" style={{ padding: '4px 14px', marginBottom: missing.length ? 8 : 20 }}>
         {(d.migrations || []).map((m: any, i: number) => (
           <div key={m.id} className="row between" style={{ padding: '9px 0', borderTop: i ? '1px solid var(--line)' : 'none', fontSize: 13 }}>
-            <span>{m.label} <span className="muted" style={{ fontSize: 11 }}>({m.id}.sql)</span></span>
+            <span>{lang === 'en' ? (m.label_en || m.label) : m.label} <span className="muted" style={{ fontSize: 11 }}>({m.id}.sql)</span></span>
             {m.ok ? <span className="pill" style={{ color: 'var(--green)', background: 'rgba(52,226,160,.15)' }}>{t.d_applied}</span> : <span className="pill red">{t.d_missing}</span>}
           </div>
         ))}

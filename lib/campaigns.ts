@@ -81,7 +81,7 @@ async function unsubUrl(r: Recipient): Promise<string> {
       await supabaseAdmin.from('profiles').update({ unsub_token: token }).eq('id', r.id);
     }
   } catch {}
-  return `${SITE}/unsub?u=${encodeURIComponent(token)}`;
+  return `${SITE}/unsub?u=${encodeURIComponent(token)}${r.lang === 'en' ? '&lang=en' : ''}`;
 }
 
 // Envía UN correo de campaña a un destinatario y lo registra (dedupe/analítica).

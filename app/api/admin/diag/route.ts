@@ -39,20 +39,20 @@ export async function GET() {
     // --- Base de datos + migraciones ---
     const dbOk = await tableCheck('profiles');
     const migrations = [
-      { id: 'support_v1', label: 'Soporte · tickets', ok: await tableCheck('support_tickets') },
-      { id: 'support_v2', label: 'Soporte · leads', ok: await tableCheck('support_tickets', 'is_lead') },
-      { id: 'onboarding_v1', label: 'Perfil del trader', ok: await tableCheck('profiles', 'onboarded_at') },
-      { id: 'diagnostics_v1', label: 'Registro de errores', ok: await tableCheck('app_errors') },
-      { id: 'manager', label: 'Onyx Guardian (config)', ok: await tableCheck('manager_configs') },
-      { id: 'telegram_v3', label: 'Telegram · informe semanal', ok: await tableCheck('profiles', 'tg_weekly') },
-      { id: 'telegram_log', label: 'Telegram · registro de envíos', ok: await tableCheck('telegram_log') },
-      { id: 'campaigns_v1', label: 'Campañas · tablas', ok: await tableCheck('campaigns') },
-      { id: 'campaigns_tracking', label: 'Campañas · tracking (aperturas/clics)', ok: await tableCheck('campaign_sends', 'opened_at') },
-      { id: 'bots_v1', label: 'Bots · tabla', ok: await tableCheck('bots') },
+      { id: 'support_v1', label: 'Soporte · tickets', label_en: 'Support · tickets', ok: await tableCheck('support_tickets') },
+      { id: 'support_v2', label: 'Soporte · leads', label_en: 'Support · leads', ok: await tableCheck('support_tickets', 'is_lead') },
+      { id: 'onboarding_v1', label: 'Perfil del trader', label_en: 'Trader profile', ok: await tableCheck('profiles', 'onboarded_at') },
+      { id: 'diagnostics_v1', label: 'Registro de errores', label_en: 'Error log', ok: await tableCheck('app_errors') },
+      { id: 'manager', label: 'Onyx Guardian (config)', label_en: 'Onyx Guardian (config)', ok: await tableCheck('manager_configs') },
+      { id: 'telegram_v3', label: 'Telegram · informe semanal', label_en: 'Telegram · weekly report', ok: await tableCheck('profiles', 'tg_weekly') },
+      { id: 'telegram_log', label: 'Telegram · registro de envíos', label_en: 'Telegram · send log', ok: await tableCheck('telegram_log') },
+      { id: 'campaigns_v1', label: 'Campañas · tablas', label_en: 'Campaigns · tables', ok: await tableCheck('campaigns') },
+      { id: 'campaigns_tracking', label: 'Campañas · tracking (aperturas/clics)', label_en: 'Campaigns · tracking (opens/clicks)', ok: await tableCheck('campaign_sends', 'opened_at') },
+      { id: 'bots_v1', label: 'Bots · tabla', label_en: 'Bots · table', ok: await tableCheck('bots') },
     ];
 
     // --- Freshness del último backup (para avisar si se quedó viejo) ---
-    let backupOk = false, backupWarn = false, backupDetail = 'Sin copias registradas';
+    let backupOk = false, backupWarn = false, backupDetail = 'Sin copias registradas', backupDetailEn = 'No backups recorded';
     try {
       const { data: bk } = await supabaseAdmin.from('app_settings').select('value').eq('key', 'backup').maybeSingle();
       const lastAt = (bk as any)?.value?.last_at;
@@ -60,7 +60,9 @@ export async function GET() {
         const ageDays = (Date.now() - new Date(lastAt).getTime()) / 86400000;
         backupWarn = ageDays > 2;                 // más de 2 días sin copia → aviso
         backupOk = !backupWarn;
-        backupDetail = `Última: hace ${ageDays < 1 ? Math.round(ageDays * 24) + ' h' : Math.round(ageDays) + ' d'}`;
+        const ago = ageDays < 1 ? Math.round(ageDays * 24) + ' h' : Math.round(ageDays) + ' d';
+        backupDetail = `Última: hace ${ago}`;
+        backupDetailEn = `Last: ${ago} ago`;
       }
     } catch {}
 
@@ -86,17 +88,34 @@ export async function GET() {
       errors = data || [];
     } catch {}
 
+    const aiModel = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5';
+    const tgErr = wh?.result?.last_error_message;
     const services = [
-      { key: 'ai', name: 'Onyx AI', ok: has(process.env.ANTHROPIC_API_KEY), warn: false, detail: has(process.env.ANTHROPIC_API_KEY) ? `Conectada · ${process.env.ONYX_AI_MODEL || 'claude-haiku-4-5'}` : 'Sin clave (modo buscador)' },
-      { key: 'mail', name: 'Correo (Resend)', ok: has(process.env.RESEND_API_KEY), warn: false, detail: has(process.env.RESEND_API_KEY) ? 'Clave puesta · prueba el envío' : 'Sin clave: no envía correos' },
-      { key: 'telegram', name: 'Telegram', ok: !!me?.ok, warn: !!(wh?.result?.last_error_message), detail: !me?.ok ? 'Sin token o token inválido' : wh?.result?.last_error_message ? `Último error: ${wh.result.last_error_message}` : (wh?.result?.url ? 'Webhook OK · sin errores' : 'Sin webhook') },
-      { key: 'stripe', name: 'Stripe', ok: stripeMode !== 'missing', warn: stripeMode === 'test', detail: stripeMode === 'live' ? 'Modo LIVE' : stripeMode === 'test' ? 'Modo prueba' : 'Sin clave' },
-      { key: 'db', name: 'Base de datos', ok: dbOk, warn: false, detail: dbOk ? 'Conectada' : 'No responde' },
-      { key: 'cron', name: 'Cron', ok: has(process.env.CRON_SECRET), warn: false, detail: has(process.env.CRON_SECRET) ? '3 tareas · secreto puesto' : 'Falta CRON_SECRET' },
-      { key: 'ea', name: 'EA / sync', ok: true, warn: eaLive === 0, detail: `${eaLive} en línea ahora` },
-      { key: 'news', name: 'Noticias', ok: newsOk, warn: false, detail: newsOk ? 'Feed accesible' : 'Feed no responde' },
-      { key: 'resend_webhook', name: 'Webhook de correos', ok: has(process.env.RESEND_WEBHOOK_SECRET), warn: false, detail: has(process.env.RESEND_WEBHOOK_SECRET) ? 'Secreto puesto · aperturas/clics' : 'Sin RESEND_WEBHOOK_SECRET: no llegan aperturas/clics' },
-      { key: 'backup', name: 'Backups', ok: backupOk, warn: backupWarn, detail: backupDetail },
+      { key: 'ai', name: 'Onyx AI', name_en: 'Onyx AI', ok: has(process.env.ANTHROPIC_API_KEY), warn: false,
+        detail: has(process.env.ANTHROPIC_API_KEY) ? `Conectada · ${aiModel}` : 'Sin clave (modo buscador)',
+        detail_en: has(process.env.ANTHROPIC_API_KEY) ? `Connected · ${aiModel}` : 'No key (search mode)' },
+      { key: 'mail', name: 'Correo (Resend)', name_en: 'Email (Resend)', ok: has(process.env.RESEND_API_KEY), warn: false,
+        detail: has(process.env.RESEND_API_KEY) ? 'Clave puesta · prueba el envío' : 'Sin clave: no envía correos',
+        detail_en: has(process.env.RESEND_API_KEY) ? 'Key set · test sending' : 'No key: emails are not sent' },
+      { key: 'telegram', name: 'Telegram', name_en: 'Telegram', ok: !!me?.ok, warn: !!tgErr,
+        detail: !me?.ok ? 'Sin token o token inválido' : tgErr ? `Último error: ${tgErr}` : (wh?.result?.url ? 'Webhook OK · sin errores' : 'Sin webhook'),
+        detail_en: !me?.ok ? 'Missing or invalid token' : tgErr ? `Last error: ${tgErr}` : (wh?.result?.url ? 'Webhook OK · no errors' : 'No webhook') },
+      { key: 'stripe', name: 'Stripe', name_en: 'Stripe', ok: stripeMode !== 'missing', warn: stripeMode === 'test',
+        detail: stripeMode === 'live' ? 'Modo LIVE' : stripeMode === 'test' ? 'Modo prueba' : 'Sin clave',
+        detail_en: stripeMode === 'live' ? 'LIVE mode' : stripeMode === 'test' ? 'Test mode' : 'No key' },
+      { key: 'db', name: 'Base de datos', name_en: 'Database', ok: dbOk, warn: false,
+        detail: dbOk ? 'Conectada' : 'No responde', detail_en: dbOk ? 'Connected' : 'Not responding' },
+      { key: 'cron', name: 'Cron', name_en: 'Cron', ok: has(process.env.CRON_SECRET), warn: false,
+        detail: has(process.env.CRON_SECRET) ? 'Tareas programadas · secreto puesto' : 'Falta CRON_SECRET',
+        detail_en: has(process.env.CRON_SECRET) ? 'Scheduled tasks · secret set' : 'Missing CRON_SECRET' },
+      { key: 'ea', name: 'EA / sync', name_en: 'EA / sync', ok: true, warn: eaLive === 0,
+        detail: `${eaLive} en línea ahora`, detail_en: `${eaLive} online now` },
+      { key: 'news', name: 'Noticias', name_en: 'News', ok: newsOk, warn: false,
+        detail: newsOk ? 'Feed accesible' : 'Feed no responde', detail_en: newsOk ? 'Feed reachable' : 'Feed not responding' },
+      { key: 'resend_webhook', name: 'Webhook de correos', name_en: 'Email webhook', ok: has(process.env.RESEND_WEBHOOK_SECRET), warn: false,
+        detail: has(process.env.RESEND_WEBHOOK_SECRET) ? 'Secreto puesto · aperturas/clics' : 'Sin RESEND_WEBHOOK_SECRET: no llegan aperturas/clics',
+        detail_en: has(process.env.RESEND_WEBHOOK_SECRET) ? 'Secret set · opens/clicks' : "No RESEND_WEBHOOK_SECRET: opens/clicks won't arrive" },
+      { key: 'backup', name: 'Backups', name_en: 'Backups', ok: backupOk, warn: backupWarn, detail: backupDetail, detail_en: backupDetailEn },
     ];
 
     return NextResponse.json({
