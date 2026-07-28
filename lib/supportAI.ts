@@ -86,8 +86,8 @@ export async function aiAnswer(question: string, lang: Lang, sensitive = false):
   } catch {}
 
   const system = (lang === 'en'
-    ? `You are Onyx AI, support for Onyx Trading Live (a trading journal with an MT4/MT5 Expert Advisor called Onyx Guardian). Reply to the user's message ONLY from the help info below (help articles, current prices/plans, and knowledge base), in English, briefly, warmly and helpfully, as if you were a support agent. Prices and plans below are authoritative — use them for any pricing question. Sign as "Onyx Trading Live team". If the answer is NOT clearly in the info below, reply exactly with the token NO_ANSWER and nothing else. Never invent features. Never give financial advice.`
-    : `Eres Onyx AI, soporte de Onyx Trading Live (un diario de trading con un Expert Advisor para MT4/MT5 llamado Onyx Guardian). Responde al mensaje del usuario SOLO con la información de abajo (artículos de ayuda, precios/planes actuales y base de conocimiento), en español, breve, cercano y resolutivo, como un agente de soporte. Los precios y planes de abajo son la fuente oficial — úsalos para cualquier pregunta de precios. Firma como "Equipo de Onyx Trading Live". Si la respuesta NO está claramente en la información de abajo, responde exactamente con el token NO_ANSWER y nada más. No inventes funciones. No des consejo financiero.`)
+    ? `You are Onyx AI, support for Onyx Trading Live (a trading journal with an MT4/MT5 Expert Advisor called Onyx Guardian). Reply to the user's message ONLY from the help info below (help articles, current prices/plans, and knowledge base), in English, briefly, warmly and helpfully, as if you were a support agent. You may use a few tasteful emojis and bullet points for readability. Prices and plans below are authoritative — use them for any pricing question. Do NOT add a signature or sign-off (no "Onyx Trading Live team" line) — that is added automatically. If the answer is NOT clearly in the info below, reply exactly with the token NO_ANSWER and nothing else. Never invent features. Never give financial advice.`
+    : `Eres Onyx AI, soporte de Onyx Trading Live (un diario de trading con un Expert Advisor para MT4/MT5 llamado Onyx Guardian). Responde al mensaje del usuario SOLO con la información de abajo (artículos de ayuda, precios/planes actuales y base de conocimiento), en español, breve, cercano y resolutivo, como un agente de soporte. Puedes usar algunos emojis con criterio y viñetas para que sea legible. Los precios y planes de abajo son la fuente oficial — úsalos para cualquier pregunta de precios. NO añadas firma ni despedida (nada de "Equipo de Onyx Trading Live") — eso se agrega automáticamente. Si la respuesta NO está claramente en la información de abajo, responde exactamente con el token NO_ANSWER y nada más. No inventes funciones. No des consejo financiero.`)
     + `\n\n=== ARTÍCULOS DE AYUDA ===\n${context}` + extra;
 
   try {
@@ -142,7 +142,7 @@ export async function autoHandleTicket(opts: { ticketId: string; question: strin
         await sendEmail(
           email,
           `Re: ${subj}`,
-          `${ai.answer}\n\n—\n${lang === 'en' ? 'Onyx Trading Live team' : 'Equipo de Onyx Trading Live'}\n${lang === 'en' ? 'Reply to this email or open your Support Center if you need more help.' : 'Responde a este correo o entra a tu Centro de soporte si necesitas más ayuda.'}`,
+          `${ai.answer}\n\n—\n${lang === 'en' ? 'Onyx Trading Live team' : 'Equipo de Onyx Trading Live'}`,
           { kind: 'support' },
         );
       }
