@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { requirePerm, logAdmin } from '@/lib/admin';
 import { sendManual, renderTemplate } from '@/lib/campaigns';
-import { sendEmail } from '@/lib/mail';
+import { sendEmailId } from '@/lib/mail';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { logError } from '@/lib/errlog';
 
 export const dynamic = 'force-dynamic';
@@ -25,7 +26,10 @@ export async function POST(req: Request) {
       const subject = lang === 'en' ? (b.subject_en || b.subject_es) : b.subject_es;
       const body = lang === 'en' ? (b.body_en || b.body_es) : b.body_es;
       if (!subject || !body) return NextResponse.json({ error: 'falta asunto o cuerpo' }, { status: 400 });
-      const ok = await sendEmail(to, '[PRUEBA] ' + renderTemplate(subject, r), renderTemplate(body, r), { kind: 'campaign', unsub: null });
+      const { ok, id } = await sendEmailId(to, '[PRUEBA] ' + renderTemplate(subject, r), renderTemplate(body, r), { kind: 'campaign', unsub: null });
+      // Registramos la prueba como rastreable (clave '__test__', excluida de las
+      // métricas reales) para poder verificar que el webhook capta aperturas/clics.
+      try { await supabaseAdmin.from('campaign_sends').insert({ campaign_key: '__test__', email: to, status: ok ? 'sent' : 'failed', resend_id: id }); } catch {}
       return NextResponse.json({ ok, test: true });
     }
 

@@ -29,7 +29,8 @@ export default function Campaigns() {
     const r = await fetch('/api/admin/campaigns'); const j = await r.json();
     setCamps(j.campaigns || []); setSegs(j.segments || []); setStats(j.stats || null);
   }
-  useEffect(() => { load(); }, []);
+  // Auto-refresco: los números (aperturas/clics) suben solos sin pulsar nada.
+  useEffect(() => { load(); const iv = setInterval(load, 15000); return () => clearInterval(iv); }, []);
 
   async function toggle(c: Campaign) {
     const r = await fetch('/api/admin/campaigns', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: c.id, enabled: !c.enabled }) });
@@ -67,6 +68,17 @@ export default function Campaigns() {
         <div className="tile"><div className="muted" style={{ fontSize: 12 }}>{L('Tasa de clic', 'Click rate')}</div><div style={{ fontSize: 22, fontWeight: 800, marginTop: 2, color: 'var(--green)' }}>{clickRate}%</div><div className="muted" style={{ fontSize: 11 }}>{(stats?.clicked30 ?? 0).toLocaleString()} {L('clics', 'clicks')}</div></div>
         <div className="tile"><div className="muted" style={{ fontSize: 12 }}>{L('Activas', 'Active')}</div><div style={{ fontSize: 22, fontWeight: 800, marginTop: 2 }}>{camps.filter((c) => c.enabled).length}</div></div>
       </div>
+
+      {/* Estado del webhook de Resend (prueba de que llegan las aperturas) */}
+      {stats && (
+        <div className="row" style={{ gap: 8, marginBottom: 14, fontSize: 12.5, alignItems: 'center', flexWrap: 'wrap' }}>
+          {stats.lastOpenAt
+            ? <span className="pill" style={{ color: 'var(--soft-green)', background: 'rgba(52,226,160,.15)' }}>✓ {L('Webhook recibiendo aperturas', 'Webhook receiving opens')}</span>
+            : <span className="pill" style={{ color: 'var(--amber)', background: 'rgba(255,192,77,.16)' }}>⚠ {L('Aún sin aperturas registradas', 'No opens recorded yet')}</span>}
+          <span className="muted">{stats.lastOpenAt ? `${L('última', 'last')}: ${fmtWhen(stats.lastOpenAt)}` : L('Manda una Prueba, ábrela y espera ~1 min. Si no sube, revisa el webhook de Resend + el open tracking.', 'Send a Test, open it and wait ~1 min. If it stays at zero, check the Resend webhook + open tracking.')}</span>
+          <span className="muted" style={{ marginLeft: 'auto', opacity: .7 }}>↻ {L('auto', 'auto')}</span>
+        </div>
+      )}
 
       {/* Automáticas */}
       <div className="card" style={{ marginBottom: 14 }}>

@@ -39,6 +39,15 @@ create table if not exists public.campaign_sends (
   clicked_at timestamptz,                    -- primer clic
   created_at timestamptz not null default now()
 );
+
+-- Por si las tablas YA existían de una corrida anterior: añade las columnas
+-- nuevas (create table if not exists no las agrega a una tabla existente).
+alter table public.campaigns      add column if not exists scheduled_at timestamptz;
+alter table public.campaign_sends add column if not exists resend_id    text;
+alter table public.campaign_sends add column if not exists delivered_at timestamptz;
+alter table public.campaign_sends add column if not exists opened_at    timestamptz;
+alter table public.campaign_sends add column if not exists clicked_at   timestamptz;
+
 create index if not exists campaign_sends_rid on public.campaign_sends (resend_id);
 create index if not exists campaign_sends_cam on public.campaign_sends (campaign_id, created_at desc);
 create index if not exists campaign_sends_user on public.campaign_sends (user_id, campaign_key);

@@ -220,7 +220,7 @@ export type PerKey = { sent: number; opened: number; clicked: number; failed: nu
 // aperturas y clics reales (los rellena el webhook de Resend).
 export async function campaignStats(): Promise<{
   sent30: number; failed30: number; opened30: number; clicked30: number;
-  byKey: Record<string, PerKey>;
+  byKey: Record<string, PerKey>; lastOpenAt: string | null; testOpened: boolean;
 }> {
   const since = new Date(Date.now() - 30 * 86400000).toISOString();
   let data: any[] = [];
@@ -235,8 +235,14 @@ export async function campaignStats(): Promise<{
   }
 
   let sent30 = 0, failed30 = 0, opened30 = 0, clicked30 = 0;
+  let lastOpenAt: string | null = null, testOpened = false;
   const byKey: Record<string, PerKey> = {};
   for (const s of data) {
+    // La apertura más reciente de CUALQUIER envío (incl. pruebas): prueba de que
+    // el webhook funciona.
+    if (s.opened_at && (!lastOpenAt || new Date(s.opened_at) > new Date(lastOpenAt))) lastOpenAt = s.opened_at;
+    if (s.campaign_key === '__test__') { if (s.opened_at) testOpened = true; continue; } // pruebas fuera de métricas reales
+
     const k = s.campaign_key || 'manual';
     if (!byKey[k]) byKey[k] = { sent: 0, opened: 0, clicked: 0, failed: 0 };
     const bad = s.status === 'failed' || s.status === 'bounced';
@@ -245,5 +251,5 @@ export async function campaignStats(): Promise<{
     if (s.opened_at) { opened30++; byKey[k].opened++; }
     if (s.clicked_at) { clicked30++; byKey[k].clicked++; }
   }
-  return { sent30, failed30, opened30, clicked30, byKey };
+  return { sent30, failed30, opened30, clicked30, byKey, lastOpenAt, testOpened };
 }
