@@ -5,6 +5,7 @@ export const AREAS: { id: string; label: string }[] = [
   { id: 'resumen', label: 'Resumen' },
   { id: 'usuarios', label: 'Usuarios' },
   { id: 'planes', label: 'Planes / Facturación' },
+  { id: 'campanas', label: 'Campañas' },
   { id: 'embajadores', label: 'Embajadores' },
   { id: 'retencion', label: 'Retención' },
   { id: 'firms', label: 'Prop firms' },
@@ -25,7 +26,8 @@ export function roleDefaults(role?: string | null): Record<string, PermLevel> {
   if (role === 'owner') return all('manage');
   if (role === 'admin') return { ...all('manage'), equipo: 'none', ajustes: 'view' };
   if (role === 'support') return { ...all('none'), resumen: 'view', soporte: 'manage', diag: 'view' };
-  if (role === 'marketing') return { ...all('none'), resumen: 'view', usuarios: 'view', embajadores: 'manage' };
+  // Marketing: crecimiento. Gestiona Campañas, Embajadores y Retención; ve Resumen y Usuarios.
+  if (role === 'marketing') return { ...all('none'), resumen: 'view', usuarios: 'view', campanas: 'manage', embajadores: 'manage', retencion: 'manage' };
   return all('none'); // custom / sin rol: parte de cero y se define a mano
 }
 

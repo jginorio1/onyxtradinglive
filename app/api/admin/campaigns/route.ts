@@ -10,7 +10,7 @@ export const runtime = 'nodejs';
 
 // GET · lista de campañas + segmentos disponibles + métricas 30d.
 export async function GET() {
-  const p = await requirePerm('usuarios', 'view');
+  const p = await requirePerm('campanas', 'view');
   if (!p.ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
   try {
     await ensureDefaultCampaigns();
@@ -26,7 +26,7 @@ export async function GET() {
 // POST · crear una campaña manual (promo/noticia). Si trae scheduled_at (fecha
 // futura), queda PROGRAMADA y activa: el cron la envía al llegar la hora.
 export async function POST(req: Request) {
-  const p = await requirePerm('usuarios', 'manage');
+  const p = await requirePerm('campanas', 'manage');
   if (!p.ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
   try {
     const b = await req.json().catch(() => ({} as any));
@@ -59,7 +59,7 @@ export async function POST(req: Request) {
 
 // PATCH · editar campaña (textos, segmento, disparador, on/off).
 export async function PATCH(req: Request) {
-  const p = await requirePerm('usuarios', 'manage');
+  const p = await requirePerm('campanas', 'manage');
   if (!p.ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
   try {
     const b = await req.json().catch(() => ({} as any));
@@ -88,7 +88,7 @@ export async function PATCH(req: Request) {
 
 // DELETE · borrar una campaña (solo manuales; las automáticas tienen `key`).
 export async function DELETE(req: Request) {
-  const p = await requirePerm('usuarios', 'manage');
+  const p = await requirePerm('campanas', 'manage');
   if (!p.ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
   try {
     const b = await req.json().catch(() => ({} as any));

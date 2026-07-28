@@ -8,7 +8,7 @@ export const runtime = 'nodejs';
 
 // POST · pide a la IA un borrador de correo (asunto + cuerpo, ES/EN).
 export async function POST(req: Request) {
-  const p = await requirePerm('usuarios', 'manage');
+  const p = await requirePerm('campanas', 'manage');
   if (!p.ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
   try {
     const b = await req.json().catch(() => ({} as any));

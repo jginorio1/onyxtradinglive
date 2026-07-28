@@ -284,7 +284,7 @@ function BetaControl() {
 export default function AdminClient({ meEmail, role, perms = {}, accounts, trades, hasPin = false, idleMin = 20 }: { meEmail: string; role: string; perms?: Record<string, string>; accounts: number; trades: number; hasPin?: boolean; idleMin?: number }) {
   const t = useT();
   // Qué áreas puede ver este admin (owner ve todo). Mapa tab → área de permiso.
-  const areaOf: Record<string, string> = { resumen: 'resumen', ingresos: 'planes', usuarios: 'usuarios', correos: 'usuarios', campanas: 'usuarios', planes: 'planes', equipo: 'equipo', embajadores: 'embajadores', retencion: 'retencion', pruebas: 'diag', firms: 'firms', modulos: 'modulos', soporte: 'soporte', kb: 'soporte', diag: 'diag', backups: 'ajustes', audit: 'ajustes', optim: 'ajustes', ajustes: 'ajustes' };
+  const areaOf: Record<string, string> = { resumen: 'resumen', ingresos: 'planes', usuarios: 'usuarios', correos: 'usuarios', campanas: 'campanas', planes: 'planes', equipo: 'equipo', embajadores: 'embajadores', retencion: 'retencion', pruebas: 'diag', firms: 'firms', modulos: 'modulos', soporte: 'soporte', kb: 'soporte', diag: 'diag', backups: 'ajustes', audit: 'ajustes', optim: 'ajustes', ajustes: 'ajustes' };
   // Ajustes siempre visible: cada admin/empleado necesita entrar a fijar su PIN
   // de bloqueo. Dentro, lo del Owner (roles, promo, beta) se muestra solo a él.
   const canSee = (k: string) => k === 'ajustes' || role === 'owner' || (perms[areaOf[k]] && perms[areaOf[k]] !== 'none');
@@ -601,17 +601,18 @@ function Modules() {
 }
 
 // Agrupa las acciones del registro por tema, para filtrarlo con botones.
-const LOG_TOPICS: [string, string, string][] = [['all', 'Todos', '🗂️'], ['equipo', 'Equipo', '🛡️'], ['soporte', 'Soporte', '🎫'], ['baseia', 'Base IA', '🧠'], ['usuarios', 'Usuarios', '👥'], ['planes', 'Planes', '💳']];
+const LOG_TOPICS: [string, string, string][] = [['all', 'Todos', '🗂️'], ['equipo', 'Equipo', '🛡️'], ['soporte', 'Soporte', '🎫'], ['campanas', 'Campañas', '📣'], ['baseia', 'Base IA', '🧠'], ['usuarios', 'Usuarios', '👥'], ['planes', 'Planes', '💳']];
 function topicOf(action: string): string {
   const a = String(action || '').toLowerCase();
   if (a.startsWith('team')) return 'equipo';
+  if (a.startsWith('campaign')) return 'campanas';   // antes de 'delete'/'plan' para no clasificarse mal
   if (a.startsWith('support') || a.startsWith('ticket')) return 'soporte';
   if (a.startsWith('kb')) return 'baseia';
   if (a.includes('plan')) return 'planes';
   if (['ban', 'admin', 'reset', 'user', 'delete'].some((x) => a.includes(x))) return 'usuarios';
   return 'otros';
 }
-const topicIcon: any = { equipo: '🛡️', soporte: '🎫', baseia: '🧠', usuarios: '👥', planes: '💳', otros: '•' };
+const topicIcon: any = { equipo: '🛡️', soporte: '🎫', campanas: '📣', baseia: '🧠', usuarios: '👥', planes: '💳', otros: '•' };
 
 // Fecha del próximo domingo (el informe semanal sale los domingos a las 06:00).
 function nextSunday(): string {
