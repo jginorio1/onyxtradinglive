@@ -20,6 +20,7 @@ const L: any = {
     canned: 'Respuesta guardada', cannedNew: 'Nueva respuesta guardada', cTitle: 'Título corto',
     cBody: 'Texto de la respuesta', cSave: 'Guardar', cManage: 'Guardadas', cEmpty: 'Aún no tienes respuestas guardadas.',
     cDel: 'Borrar', prio: 'Prioridad', pHigh: 'Alta', pNormal: 'Normal', pLow: 'Baja', insert: 'Usar',
+    aiAuto: 'Auto-respuesta IA', aiAutoOn: 'La IA responde sola los tickets fáciles (nunca temas de dinero).', aiAutoOff: 'Apagada: todos los tickets esperan a una persona.',
   },
   en: {
     fMine: 'Mine', fUnassigned: 'Unassigned', needsReply: 'Awaiting reply',
@@ -29,6 +30,7 @@ const L: any = {
     canned: 'Saved reply', cannedNew: 'New saved reply', cTitle: 'Short title',
     cBody: 'Reply text', cSave: 'Save', cManage: 'Saved replies', cEmpty: 'No saved replies yet.',
     cDel: 'Delete', prio: 'Priority', pHigh: 'High', pNormal: 'Normal', pLow: 'Low', insert: 'Use',
+    aiAuto: 'AI auto-reply', aiAutoOn: 'AI answers easy tickets on its own (never money topics).', aiAutoOff: 'Off: every ticket waits for a person.',
   },
 };
 
@@ -60,6 +62,10 @@ export default function SupportInbox() {
   const [canned, setCanned] = useState<any[]>([]);
   const [showCanned, setShowCanned] = useState(false);
   const [newC, setNewC] = useState<{ title: string; body: string } | null>(null);
+  // Auto-respuesta IA
+  const [aiOn, setAiOn] = useState<boolean | null>(null);
+  async function loadAi() { try { const r = await fetch('/api/admin/support/settings'); const j = await r.json(); setAiOn(!!j.enabled); } catch {} }
+  async function toggleAi() { const next = !aiOn; setAiOn(next); try { await fetch('/api/admin/support/settings', { method: 'POST', body: JSON.stringify({ enabled: next }) }); } catch {} }
 
   async function load() {
     try {
@@ -69,7 +75,7 @@ export default function SupportInbox() {
     } catch {}
   }
   async function loadCanned() { try { const r = await fetch('/api/admin/support/canned'); const j = await r.json(); setCanned(j.canned || []); } catch {} }
-  useEffect(() => { load(); loadCanned(); const iv = setInterval(load, 8000); return () => clearInterval(iv); }, []);
+  useEffect(() => { load(); loadCanned(); loadAi(); const iv = setInterval(load, 8000); return () => clearInterval(iv); }, []);
 
   // Al abrir un ticket, traer la ficha del trader
   useEffect(() => {
@@ -128,6 +134,18 @@ export default function SupportInbox() {
       <RangeBar value={range} onChange={setRange}
         pdfUrl={(f, tt) => `/api/admin/support/report?from=${f}&to=${tt}&lang=${lang}`}
         csvUrl={(f, tt) => `/api/admin/support/report?export=csv&from=${f}&to=${tt}&lang=${lang}`} />
+
+      {/* Interruptor de auto-respuesta IA */}
+      <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', marginBottom: 12, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 18 }}>🤖</span>
+        <div style={{ flex: 1, minWidth: 180 }}>
+          <div style={{ fontWeight: 600, fontSize: 13 }}>{l.aiAuto}</div>
+          <div className="muted" style={{ fontSize: 12 }}>{aiOn === false ? l.aiAutoOff : l.aiAutoOn}</div>
+        </div>
+        <button className={'btn ' + (aiOn ? 'btn-primary' : 'btn-ghost')} style={{ fontSize: 13, minWidth: 64 }} onClick={toggleAi} disabled={aiOn === null}>
+          {aiOn === null ? '…' : aiOn ? 'ON' : 'OFF'}
+        </button>
+      </div>
 
       <div className="row" style={{ gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
         {([['mine', l.fMine, mineCount], ['unassigned', l.fUnassigned, unassignedCount], ['open', t.s_open, counts.open], ['in_progress', t.s_inprogress, counts.in_progress], ['resolved', t.s_resolved, counts.resolved], ['all', t.s_all, null]] as any).map(([k, lab, c]: any) => (

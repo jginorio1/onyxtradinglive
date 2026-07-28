@@ -11,6 +11,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { p: '/pricing', pr: 0.9, f: 'weekly' },
     { p: '/embajadores', pr: 0.7, f: 'monthly' },
     { p: '/guia', pr: 0.8, f: 'weekly' },
+    { p: '/contacto', pr: 0.6, f: 'monthly' },
     { p: '/login', pr: 0.5, f: 'monthly' },
     { p: '/terms', pr: 0.3, f: 'yearly' as any },
   ];

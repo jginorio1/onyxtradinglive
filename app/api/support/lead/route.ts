@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendEmail } from '@/lib/mail';
 import { logError } from '@/lib/errlog';
 import { notifyNewTicket } from '@/lib/supportNotify';
+import { autoHandleTicket } from '@/lib/supportAI';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -53,16 +54,22 @@ export async function POST(req: Request) {
     // Avisar al equipo por Telegram (no bloquea la respuesta al visitante)
     await notifyNewTicket({ email, subject, isLead: true });
 
-    // Acuse de recibo al visitante (si Resend está configurado)
-    await sendEmail(
-      email,
-      lang === 'en' ? 'We got your message · Onyx Trading Live' : 'Recibimos tu mensaje · Onyx Trading Live',
-      lang === 'en'
-        ? `Thanks for writing to Onyx Trading Live. A person will get back to you soon at this address.\n\n${message ? `Your message:\n${message}\n\n` : ''}— Onyx Trading Live`
-        : `Gracias por escribir a Onyx Trading Live. Una persona te responderá pronto a este correo.\n\n${message ? `Tu mensaje:\n${message}\n\n` : ''}— Onyx Trading Live`,
-    );
+    // Triage + auto-respuesta con IA (si está activada y el tema no es sensible)
+    const { answered } = await autoHandleTicket({ ticketId: ticket.id, question: firstUserMsg || message, lang, email, subject });
 
-    return NextResponse.json({ ok: true });
+    // Si la IA ya respondió, esa respuesta salió por correo y no duplicamos el
+    // acuse. Si no respondió, mandamos el acuse "recibimos tu mensaje".
+    if (!answered) {
+      await sendEmail(
+        email,
+        lang === 'en' ? 'We got your message · Onyx Trading Live' : 'Recibimos tu mensaje · Onyx Trading Live',
+        lang === 'en'
+          ? `Thanks for writing to Onyx Trading Live. A person will get back to you soon at this address.\n\n${message ? `Your message:\n${message}\n\n` : ''}— Onyx Trading Live`
+          : `Gracias por escribir a Onyx Trading Live. Una persona te responderá pronto a este correo.\n\n${message ? `Tu mensaje:\n${message}\n\n` : ''}— Onyx Trading Live`,
+      );
+    }
+
+    return NextResponse.json({ ok: true, answered });
   } catch (e: any) {
     await logError('support_lead', e);
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });

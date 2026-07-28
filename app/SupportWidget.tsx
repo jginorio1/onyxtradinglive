@@ -10,8 +10,9 @@ const T: any = {
     hi: '¡Hola! ¿Sobre qué te ayudo?', topicsT: 'Temas frecuentes',
     ph: 'Escribe tu pregunta…', seeArt: 'Ver', center: 'Centro de soporte', openTicket: 'Abrir un ticket',
     emailT: 'Déjanos tu correo y te respondemos aunque cierres:', emailPh: 'tucorreo@email.com', send: 'Enviar',
+    msgT: 'Cuéntanos en qué te ayudamos:', msgPh: 'Escribe tu mensaje…',
     sentT: '¡Recibido!', sentD: 'Te responderemos a tu correo muy pronto.', createAcc: 'Crear cuenta gratis',
-    errMail: 'Escribe un correo válido.',
+    errMail: 'Escribe un correo válido.', errMsg: 'Escribe tu mensaje.',
     topicsA: [['¿Cuáles son los precios y planes?', '💳 Precios'], ['¿Cómo me hago embajador?', '🎁 Embajador'], ['¿Cómo conecto mi cuenta de MetaTrader?', '🔌 Conectar'], ['¿Qué hace Onyx Guardian?', '🛡️ Guardian'], ['¿Sirve para cuentas de fondeo?', '🏆 Fondeo']],
     topicsU: [['¿Cómo conecto mi cuenta de MetaTrader?', '🔌 Conectar'], ['¿Qué hace Onyx Guardian?', '🛡️ Guardian'], ['¿Sirve para cuentas de fondeo?', '🏆 Fondeo'], ['¿Cómo cambio de plan?', '💳 Mi plan']],
     human: '🙋 Hablar con una persona',
@@ -22,8 +23,9 @@ const T: any = {
     hi: 'Hi! How can I help?', topicsT: 'Popular topics',
     ph: 'Type your question…', seeArt: 'Open', center: 'Support center', openTicket: 'Open a ticket',
     emailT: 'Leave your email and we will reply even if you close this:', emailPh: 'you@email.com', send: 'Send',
+    msgT: 'Tell us how we can help:', msgPh: 'Type your message…',
     sentT: 'Got it!', sentD: 'We will reply to your email very soon.', createAcc: 'Create free account',
-    errMail: 'Enter a valid email.',
+    errMail: 'Enter a valid email.', errMsg: 'Type your message.',
     topicsA: [['What are the prices and plans?', '💳 Pricing'], ['How do I become an ambassador?', '🎁 Ambassador'], ['How do I connect my MetaTrader account?', '🔌 Connect'], ['What does Onyx Guardian do?', '🛡️ Guardian'], ['Does it work for funded accounts?', '🏆 Funded']],
     topicsU: [['How do I connect my MetaTrader account?', '🔌 Connect'], ['What does Onyx Guardian do?', '🛡️ Guardian'], ['Does it work for funded accounts?', '🏆 Funded'], ['How do I change my plan?', '💳 My plan']],
     human: '🙋 Talk to a person',
@@ -41,8 +43,18 @@ export default function SupportWidget({ loggedIn = false }: { loggedIn?: boolean
   const [refs, setRefs] = useState<any[]>([]);
   const [showEmail, setShowEmail] = useState(false);
   const [email, setEmail] = useState('');
+  const [leadMsg, setLeadMsg] = useState('');
   const [sent, setSent] = useState(false);
   const [err, setErr] = useState('');
+
+  // Abre la captura de contacto y precarga el mensaje con la última pregunta,
+  // para que el visitante no tenga que reescribirla.
+  function openEmail() {
+    const lastQ = [...chat].reverse().find((m) => m.role === 'user')?.content || '';
+    setLeadMsg((prev) => prev || lastQ);
+    setErr('');
+    setShowEmail(true);
+  }
   const end = useRef<HTMLDivElement>(null);
   const started = chat.length > 0;
 
@@ -58,7 +70,7 @@ export default function SupportWidget({ loggedIn = false }: { loggedIn?: boolean
       const j = await r.json();
       setChat([...next, { role: 'assistant', content: j.answer || '…' }]);
       setRefs(j.articles || []);
-      if (!loggedIn && j.escalate) setShowEmail(true);
+      if (!loggedIn && j.escalate) openEmail();
     } catch { setChat([...next, { role: 'assistant', content: '…' }]); }
     setBusy(false);
   }
@@ -66,12 +78,13 @@ export default function SupportWidget({ loggedIn = false }: { loggedIn?: boolean
   async function sendLead() {
     const e = email.trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e)) { setErr(t.errMail); return; }
+    const msg = leadMsg.trim();
+    if (!msg) { setErr(t.errMsg); return; }
     setErr(''); setBusy(true);
-    const lastQ = [...chat].reverse().find((m) => m.role === 'user')?.content || '';
-    // Enviamos TODA la conversación con la IA, no solo la última pregunta,
+    // Enviamos el mensaje que escribió + TODA la conversación con la IA,
     // para que el equipo vea el contexto completo en el ticket.
     const history = chat.filter((m) => m.role === 'user' || m.role === 'assistant').map((m) => ({ role: m.role, content: m.content }));
-    await fetch('/api/support/lead', { method: 'POST', body: JSON.stringify({ email: e, message: lastQ, history, lang }) });
+    await fetch('/api/support/lead', { method: 'POST', body: JSON.stringify({ email: e, message: msg, history, lang }) });
     setBusy(false); setSent(true); setShowEmail(false);
   }
 
@@ -123,7 +136,7 @@ export default function SupportWidget({ loggedIn = false }: { loggedIn?: boolean
                   {topics.map(([q, label]: any) => (
                     <button key={label} className="btn btn-ghost" style={{ padding: '8px 10px', fontSize: 12, textAlign: 'left' }} onClick={() => sendAI(q)}>{label}</button>
                   ))}
-                  {!loggedIn && <button className="btn btn-ghost" style={{ padding: '8px 10px', fontSize: 12, textAlign: 'left', gridColumn: '1 / -1' }} onClick={() => setShowEmail(true)}>{t.human}</button>}
+                  {!loggedIn && <button className="btn btn-ghost" style={{ padding: '8px 10px', fontSize: 12, textAlign: 'left', gridColumn: '1 / -1' }} onClick={openEmail}>{t.human}</button>}
                 </div>
               </div>
             )}
@@ -144,6 +157,8 @@ export default function SupportWidget({ loggedIn = false }: { loggedIn?: boolean
             )}
             {showEmail && !sent && (
               <div style={{ background: 'rgba(124,140,255,.10)', border: '1px solid var(--brand)', borderRadius: 10, padding: 10, marginTop: 4 }}>
+                <div style={{ fontSize: 12, color: 'var(--tx)', marginBottom: 6 }}>💬 {t.msgT}</div>
+                <textarea value={leadMsg} onChange={(e) => setLeadMsg(e.target.value)} placeholder={t.msgPh} rows={3} style={{ width: '100%', margin: '0 0 8px', fontSize: 13, resize: 'vertical' }} />
                 <div style={{ fontSize: 12, color: 'var(--tx)', marginBottom: 6 }}>📧 {t.emailT}</div>
                 <div className="row" style={{ gap: 6 }}>
                   <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t.emailPh} style={{ flex: 1, margin: 0, fontSize: 13 }} />

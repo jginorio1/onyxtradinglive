@@ -231,3 +231,39 @@ Mejoras en Admin → Soporte para que un equipo atienda rápido:
 Nota: el correo entrante (respuestas por email que vuelven al hilo del ticket)
 NO está montado. Los traders con cuenta responden dentro de la app; las
 respuestas por email de los leads llegan a tu buzón de Zoho.
+
+---
+
+## 8j · Automatización con IA (auto-respuesta, triage, /contacto, onboarding)
+
+Objetivo: que la mayoría del soporte y del contacto se resuelva solo.
+
+**Requisito para la IA:** la variable `ANTHROPIC_API_KEY` debe estar en Vercel
+(la misma que ya usa el chat Onyx AI). Si falta, la IA no auto-responde — no pasa
+nada malo, todos los tickets simplemente esperan a un humano.
+
+1. **Re-corre `supabase/support_helpdesk.sql`.** Ahora también agrega la columna
+   `onboarding_emails` en profiles. Es idempotente (seguro correrlo otra vez).
+
+2. **Auto-respuesta con IA (tickets).** Cuando entra un ticket o un lead:
+   - **Triage automático**: la IA le pone categoría y prioridad al instante.
+   - **Auto-respuesta**: si el tema NO es sensible (nunca dinero, cobros, legal,
+     cuentas) y la IA tiene una respuesta clara de la Guía, responde sola por el
+     hilo y por correo, y deja una nota "🤖 Respondido por Onyx AI". Si no está
+     segura, lo deja para una persona con una nota y el artículo sugerido.
+   - **Interruptor**: en Admin → Soporte, arriba, el botón "🤖 Auto-respuesta IA"
+     ON/OFF. Viene encendido. Apágalo cuando quieras que todo pase por humano.
+
+3. **Página /contacto.** Nueva página pública (`/contacto`, y `/en/contacto`) con
+   un formulario que crea un ticket (no un email suelto) y dispara la auto-respuesta.
+   Ya está en el sitemap para SEO. El chat flotante sigue estando en toda la web.
+
+4. **Onboarding por correo (automático).** Un cron diario (16:00 UTC) manda una
+   secuencia a los usuarios nuevos: bienvenida (día 0‑3), recordatorio de conectar
+   la cuenta si aún no la conectan (día 2‑12) y un tip de Guardian (día 5‑16). Cada
+   usuario recibe como mucho un correo por día y nunca el mismo dos veces. Respeta
+   el opt‑out (`notify_email`). Ya está en `vercel.json`; solo despliega. Protegido
+   con `CRON_SECRET`.
+
+Regla de oro que dejamos programada: **la IA nunca responde sola temas de dinero,
+facturación, legal o de cuenta** — esos siempre van a una persona.

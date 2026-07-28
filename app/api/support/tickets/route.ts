@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { notifyNewTicket } from '@/lib/supportNotify';
+import { autoHandleTicket } from '@/lib/supportAI';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -60,6 +61,12 @@ export async function POST(req: Request) {
 
     await supabaseAdmin.from('support_messages').insert({ ticket_id: ticket.id, sender: 'user', body });
     await notifyNewTicket({ email: user.email || '', subject, isLead: false });
+
+    // Triage + auto-respuesta con IA, en el idioma del trader
+    const { data: prof } = await supabaseAdmin.from('profiles').select('lang').eq('id', user.id).maybeSingle();
+    const lang = (prof as any)?.lang === 'en' ? 'en' : 'es';
+    await autoHandleTicket({ ticketId: ticket.id, question: body, lang, email: user.email, subject });
+
     return NextResponse.json({ ok: true, id: ticket.id });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });

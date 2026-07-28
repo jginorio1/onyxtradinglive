@@ -23,3 +23,7 @@ alter table support_canned enable row level security;
 
 -- Índice para ordenar por más recientes
 create index if not exists support_canned_created_idx on support_canned (created_at desc);
+
+-- 3) Onboarding por correo: registra qué pasos de la secuencia ya recibió cada
+--    usuario, para no repetirlos. Ej: {"welcome":"2026-07-27","connect":"..."}
+alter table profiles add column if not exists onboarding_emails jsonb not null default '{}'::jsonb;
