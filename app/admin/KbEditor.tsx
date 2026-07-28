@@ -2,16 +2,34 @@
 import { toast } from '@/lib/toast';
 import { useEffect, useState } from 'react';
 import { useT } from '@/lib/adminText';
+import { useLang } from '@/lib/lang';
 
 // Base de conocimiento editable: lo que escribas aquí lo lee Onyx AI.
 export default function KbEditor() {
   const t = useT();
+  const { lang } = useLang();
+  const es = lang !== 'en';
   const [items, setItems] = useState<any[]>([]);
   const [edit, setEdit] = useState<any>(null); // artículo en edición (o nuevo)
   const [busy, setBusy] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   async function load() { try { const r = await fetch('/api/admin/kb'); const j = await r.json(); setItems(j.articles || []); } catch {} }
   useEffect(() => { load(); }, []);
+
+  // Importa toda la Guía a la Base IA (idempotente). Así la IA la tiene aquí y
+  // puedes editarla desde el panel sin desplegar.
+  async function importGuide() {
+    if (!confirm(es ? 'Importar todos los artículos de la Guía a la Base IA? Reemplaza los importados anteriormente.' : 'Import all Guide articles into the Knowledge Base? Replaces previously imported ones.')) return;
+    setImporting(true);
+    try {
+      const r = await fetch('/api/admin/kb/import-guide', { method: 'POST' });
+      const j = await r.json();
+      if (r.ok) toast(es ? `Guía importada: ${j.count} entradas.` : `Guide imported: ${j.count} entries.`);
+      else toast(es ? 'No se pudo importar.' : 'Could not import.');
+    } catch { toast(es ? 'No se pudo importar.' : 'Could not import.'); }
+    setImporting(false); await load();
+  }
 
   async function save() {
     if (!edit?.title?.trim() || !edit?.body?.trim()) { toast(t.kb_emptyEdit); return; }
@@ -27,7 +45,10 @@ export default function KbEditor() {
     <>
     <div className="row between" style={{ flexWrap: 'wrap', gap: 8 }}>
       <div className="tabhead"><div className="th-row"><span className="th-ic">🧠</span><span className="th-t">{t.h_kb_t}</span></div><div className="th-s">{t.h_kb_s}</div></div>
-      <button className="btn btn-primary" onClick={() => setEdit({ title: '', body: '', tags: '', published: true })}>{t.kb_new}</button>
+      <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+        <button className="btn btn-ghost" onClick={importGuide} disabled={importing}>{importing ? '…' : (es ? '📥 Importar Guía' : '📥 Import Guide')}</button>
+        <button className="btn btn-primary" onClick={() => setEdit({ title: '', body: '', tags: '', published: true })}>{t.kb_new}</button>
+      </div>
     </div>
     <div className="card">
       <p className="muted" style={{ fontSize: 13, marginBottom: 16 }}>{t.kb_intro}</p>

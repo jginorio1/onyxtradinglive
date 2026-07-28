@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { toast } from '@/lib/toast';
 import { useT } from '@/lib/adminText';
 import { useLang } from '@/lib/lang';
 import { fmtDate, fmtDateTime } from '@/lib/fmtDate';
@@ -22,6 +23,7 @@ const L: any = {
     cDel: 'Borrar', prio: 'Prioridad', pHigh: 'Alta', pNormal: 'Normal', pLow: 'Baja', insert: 'Usar',
     aiAuto: 'Auto-respuesta IA', aiAutoOn: 'La IA responde sola los tickets fáciles (nunca temas de dinero).', aiAutoOff: 'Apagada: todos los tickets esperan a una persona.',
     invTitle: 'Invitar a un compañero', online: 'En línea', lastSeen: 'Última vez', never: 'Sin actividad aún', allIn: 'Todo el equipo ya está en esta conversación.',
+    saveKb: 'Guardar como conocimiento', saveKbOk: 'Guardado en la Base IA. La IA lo reutilizará.', saveKbNone: 'No hay una respuesta que guardar todavía.',
   },
   en: {
     fMine: 'Mine', fUnassigned: 'Unassigned', needsReply: 'Awaiting reply',
@@ -32,6 +34,8 @@ const L: any = {
     cBody: 'Reply text', cSave: 'Save', cManage: 'Saved replies', cEmpty: 'No saved replies yet.',
     cDel: 'Delete', prio: 'Priority', pHigh: 'High', pNormal: 'Normal', pLow: 'Low', insert: 'Use',
     aiAuto: 'AI auto-reply', aiAutoOn: 'AI answers easy tickets on its own (never money topics).', aiAutoOff: 'Off: every ticket waits for a person.',
+    invTitle: 'Invite a teammate', online: 'Online', lastSeen: 'Last seen', never: 'No activity yet', allIn: 'The whole team is already in this conversation.',
+    saveKb: 'Save as knowledge', saveKbOk: 'Saved to the Knowledge Base. The AI will reuse it.', saveKbNone: 'There is no answer to save yet.',
   },
 };
 
@@ -110,6 +114,17 @@ export default function SupportInbox() {
     setNewC(null); await loadCanned();
   }
   async function delCanned(id: string) { await fetch('/api/admin/support/canned?id=' + id, { method: 'DELETE' }); await loadCanned(); }
+
+  // Guarda la mejor respuesta del ticket en la Base IA, para que la IA la
+  // reutilice en futuros tickets parecidos (aprende del uso real).
+  async function saveKnowledge(subject: string, tm: any[]) {
+    const best = [...tm].reverse().find((m) => m.sender === 'admin' || m.sender === 'ai');
+    if (!best || !String(best.body || '').trim()) { toast(l.saveKbNone); return; }
+    try {
+      await fetch('/api/admin/kb', { method: 'POST', body: JSON.stringify({ title: String(subject || 'Onyx').slice(0, 120), body: best.body, tags: 'soporte', published: true }) });
+      toast(l.saveKbOk);
+    } catch { }
+  }
 
   let list = tickets.filter((it) => {
     if (filter === 'mine') return it.assignee_id === me;
@@ -286,6 +301,7 @@ export default function SupportInbox() {
                     : <button className="btn btn-primary" onClick={() => act(tk.id, { note: text })} disabled={busy === tk.id || !text.trim()}>{t.s_saveNote}</button>}
                   <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => draft(tk.id, firstUser)} disabled={busy === 'ai' + tk.id}>{busy === 'ai' + tk.id ? '...' : '🤖 ' + t.s_aiDraft}</button>
                   {!tk.assignee_id && <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => act(tk.id, { take: true })}>{t.s_take}</button>}
+                  <button className="btn btn-ghost" style={{ fontSize: 13 }} title={l.saveKb} onClick={() => saveKnowledge(tk.subject, tm)}>💡 {l.saveKb}</button>
                   <span style={{ flex: 1 }} />
                   {tk.status !== 'resolved' && <button className="btn btn-ghost" style={{ fontSize: 13, color: 'var(--green)' }} onClick={() => act(tk.id, { status: 'resolved' })}>{t.s_resolve}</button>}
                   {tk.status === 'resolved' && <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => act(tk.id, { status: 'open' })}>{t.s_reopen}</button>}

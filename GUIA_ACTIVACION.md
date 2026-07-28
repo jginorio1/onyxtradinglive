@@ -267,3 +267,26 @@ nada malo, todos los tickets simplemente esperan a un humano.
 
 Regla de oro que dejamos programada: **la IA nunca responde sola temas de dinero,
 facturación, legal o de cuenta** — esos siempre van a una persona.
+
+---
+
+## 8k · La IA se alimenta sola (auto-aprendizaje)
+
+La IA no se re-entrena: lee el conocimiento EN VIVO en cada pregunta. Por eso ya
+aprende solo de dos fuentes, sin desplegar:
+- **Precios/planes** (Admin → Planes): cambias un precio y la IA lo usa al instante.
+- **Base de conocimiento** (Admin → Base IA): añades/editas un artículo y la IA lo sabe al momento.
+
+Añadido en esta entrega:
+
+1. **Importar la Guía a la Base IA.** En Admin → Base IA hay un botón "📥 Importar
+   Guía" que vuelca todos los artículos de la Guía (ES + EN) a la Base IA. A partir
+   de ahí puedes editarlos desde el panel SIN desplegar. Es idempotente (puedes
+   volver a importar cuando cambie la Guía; reemplaza los importados anteriores).
+
+2. **Aprender de los tickets resueltos.** En cada ticket, botón "💡 Guardar como
+   conocimiento": guarda la mejor respuesta (del equipo o de la IA) en la Base IA,
+   con el asunto como título. La IA la reutilizará en tickets parecidos. Así mejora
+   sola con el uso real.
+
+Requisito: la Base IA usa la tabla kb_articles (ya creada con kb_v1.sql).
