@@ -765,6 +765,52 @@ export const ARTICLES: Article[] = [
       ],
     },
   },
+  {
+    slug: 'precios-planes',
+    cat: 'account', icon: '💳',
+    title: { es: 'Precios y planes', en: 'Pricing and plans' },
+    summary: {
+      es: 'Qué incluye cada plan, mensual o anual, y cómo cambiar de plan.',
+      en: 'What each plan includes, monthly or yearly, and how to change plans.',
+    },
+    cta: { href: '/pricing', label: { es: 'Ver precios', en: 'See pricing' } },
+    body: {
+      es: [
+        { p: 'Onyx tiene varios planes para que pagues solo por lo que necesitas. El precio siempre actualizado está en la página de precios; ahí ves cada plan con su importe y lo que incluye.' },
+        { h: 'Qué cambia entre planes' },
+        { list: [
+          'Cuántas cuentas de MetaTrader puedes conectar a la vez.',
+          'Qué funciones de Onyx Guardian tienes (límites, protección de ganancias, aviso de noticias).',
+          'Copy trading entre tus cuentas y cuántas maestras/esclavas.',
+          'Alertas por Telegram y otros extras.',
+        ] },
+        { h: 'Mensual o anual' },
+        { p: 'Puedes pagar mes a mes o de forma anual. El plan anual sale más barato que pagar 12 meses sueltos.' },
+        { h: 'Empezar gratis' },
+        { p: 'Puedes crear tu cuenta gratis y probar Onyx antes de suscribirte. Cuando quieras más cuentas o más funciones, subes de plan.' },
+        { h: 'Cambiar de plan' },
+        { p: 'Se hace desde Mi cuenta → Suscripción. Subir de plan es inmediato. Bajar de plan se aplica al final del periodo que ya pagaste: no pierdes lo que pagaste y conservas las funciones hasta que termine.' },
+        { warn: 'Los precios pueden cambiar con el tiempo. El importe que manda siempre es el que ves en la página de precios.' },
+      ],
+      en: [
+        { p: 'Onyx has several plans so you pay only for what you need. The always‑current price is on the pricing page; there you see each plan with its amount and what it includes.' },
+        { h: 'What changes between plans' },
+        { list: [
+          'How many MetaTrader accounts you can connect at once.',
+          'Which Onyx Guardian features you get (limits, profit protection, news warning).',
+          'Copy trading between your accounts and how many masters/slaves.',
+          'Telegram alerts and other extras.',
+        ] },
+        { h: 'Monthly or yearly' },
+        { p: 'You can pay month to month or yearly. The yearly plan is cheaper than paying 12 separate months.' },
+        { h: 'Start free' },
+        { p: 'You can create your account for free and try Onyx before subscribing. When you want more accounts or features, you upgrade.' },
+        { h: 'Changing plans' },
+        { p: 'You do it from My account → Subscription. Upgrading is immediate. Downgrading applies at the end of the period you already paid: you do not lose what you paid and you keep the features until it ends.' },
+        { warn: 'Prices can change over time. The amount that always applies is the one you see on the pricing page.' },
+      ],
+    },
+  },
 ];
 
 // Búsqueda simple sobre título, resumen y texto

@@ -21,6 +21,7 @@ const L: any = {
     cBody: 'Texto de la respuesta', cSave: 'Guardar', cManage: 'Guardadas', cEmpty: 'Aún no tienes respuestas guardadas.',
     cDel: 'Borrar', prio: 'Prioridad', pHigh: 'Alta', pNormal: 'Normal', pLow: 'Baja', insert: 'Usar',
     aiAuto: 'Auto-respuesta IA', aiAutoOn: 'La IA responde sola los tickets fáciles (nunca temas de dinero).', aiAutoOff: 'Apagada: todos los tickets esperan a una persona.',
+    invTitle: 'Invitar a un compañero', online: 'En línea', lastSeen: 'Última vez', never: 'Sin actividad aún', allIn: 'Todo el equipo ya está en esta conversación.',
   },
   en: {
     fMine: 'Mine', fUnassigned: 'Unassigned', needsReply: 'Awaiting reply',
@@ -53,7 +54,6 @@ export default function SupportInbox() {
   const [openId, setOpenId] = useState('');
   const [text, setText] = useState('');
   const [mode, setMode] = useState<'reply' | 'note'>('reply');
-  const [invite, setInvite] = useState('');
   const [busy, setBusy] = useState('');
   // Ficha del trader
   const [ctx, setCtx] = useState<any>(null);
@@ -97,7 +97,7 @@ export default function SupportInbox() {
     setBusy(id);
     await fetch('/api/admin/support', { method: 'PATCH', body: JSON.stringify({ ticket_id: id, ...patch }) });
     if (patch.body !== undefined || patch.note !== undefined) setText('');
-    setInvite(''); setBusy(''); await load();
+    setBusy(''); await load();
   }
   async function draft(id: string, firstUserMsg: string) {
     setBusy('ai' + id);
@@ -291,9 +291,34 @@ export default function SupportInbox() {
                   {tk.status === 'resolved' && <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => act(tk.id, { status: 'open' })}>{t.s_reopen}</button>}
                 </div>
 
-                <div className="row" style={{ gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
-                  <input placeholder={t.s_invitePh} value={invite} onChange={(e) => setInvite(e.target.value)} style={{ margin: 0, maxWidth: 260, fontSize: 12 }} />
-                  <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => act(tk.id, { invite_email: invite })} disabled={!invite.trim()}>{t.s_inviteBtn}</button>
+                {/* Invitar a un compañero: lista del equipo con estado en línea + última vez */}
+                <div style={{ marginTop: 12, borderTop: '1px solid var(--line)', paddingTop: 10 }}>
+                  <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{l.invTitle}</div>
+                  {(() => {
+                    const inConvo = new Set([tk.assignee_id, me, ...parts.map((p) => p.user_id)].filter(Boolean));
+                    const cands = team.filter((tm) => !inConvo.has(tm.id));
+                    if (!cands.length) return <div className="muted" style={{ fontSize: 12 }}>{l.allIn}</div>;
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {cands.map((tm) => {
+                          // En línea = activo en los últimos 5 minutos (automático, no depende del interruptor).
+                          const online = tm.last_active && (Date.now() - new Date(tm.last_active).getTime()) < 5 * 60 * 1000;
+                          return (
+                            <div key={tm.id} className="row between" style={{ gap: 8, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 8, padding: '6px 9px' }}>
+                              <div className="row" style={{ gap: 8, minWidth: 0 }}>
+                                <span title={online ? l.online : l.lastSeen} style={{ width: 8, height: 8, borderRadius: '50%', background: online ? 'var(--green)' : 'var(--mut)', flex: 'none' }} />
+                                <div style={{ minWidth: 0 }}>
+                                  <div style={{ fontSize: 12.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tm.email}</div>
+                                  <div className="muted" style={{ fontSize: 11 }}>{online ? '🟢 ' + l.online : (tm.last_active ? l.lastSeen + ' ' + fmtDateTime(tm.last_active, lang) : l.never)}</div>
+                                </div>
+                              </div>
+                              <button className="btn btn-ghost" style={{ fontSize: 12, padding: '4px 10px', flex: 'none' }} onClick={() => act(tk.id, { invite_email: tm.email })} disabled={busy === tk.id}>{t.s_inviteBtn}</button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
                 </div>
               </>
             );

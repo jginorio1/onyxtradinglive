@@ -47,8 +47,11 @@ export async function GET() {
       messages = m.data || [];
       participants = p.data || [];
     }
-    // Equipo (para mostrar quién tiene asignado / disponible)
-    const { data: team } = await supabaseAdmin.from('profiles').select('id,email,available').eq('is_admin', true);
+    // Marca presencia: el admin que carga la bandeja está activo ahora.
+    if (g.user?.id) { try { await supabaseAdmin.from('profiles').update({ last_active: new Date().toISOString() }).eq('id', g.user.id); } catch {} }
+
+    // Equipo (para mostrar quién tiene asignado / disponible / última vez)
+    const { data: team } = await supabaseAdmin.from('profiles').select('id,email,available,last_active').eq('is_admin', true);
 
     const counts = { open: 0, in_progress: 0, resolved: 0 } as any;
     tickets.forEach((t: any) => { counts[t.status] = (counts[t.status] || 0) + 1; });
