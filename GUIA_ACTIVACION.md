@@ -983,3 +983,24 @@ claro y oscuro. Sin cambios de datos ni de API.
 - Todo con variables de tema + `color-mix`, así que **se ve bien en claro y oscuro**
   (nada de blancos fijos). Estilos nuevos en `globals.css`: `.statcard`,
   `.statcard-ic`, `.statbar`, `.card-ic`. Componente `StatCard` en `HubVitals.tsx`.
+
+### 25 · Finanzas de Onyx (P&L del negocio) — admin
+
+Nueva sección del panel admin (grupo "Producto/Facturación") para ver ingresos vs
+gastos del negocio. **Solo el dueño la ve por defecto** (área de permiso `finanzas`);
+puedes concederla a cualquier miembro desde **Equipo** en nivel "ver" (solo mira) o
+"gestionar" (registra gastos). Ni el rol `admin` la ve sin que se la concedas.
+
+Qué trae:
+- KPIs iluminados: beneficio neto del mes, margen %, gasto fijo mensual (burn) con
+  su peso sobre el MRR, y runway (meses = caja / burn).
+- Gráfico de ingresos vs gastos por mes con la línea de beneficio.
+- Desglose de gastos del mes por categoría (recurrente + puntual).
+- Registro de gastos: recurrentes (mensual/anual) y puntuales, por categoría,
+  con pausar/editar/borrar. Campo de caja para el runway.
+- Interruptor de ingresos: "Cobrado real" (dinero cobrado en Stripe) o "MRR".
+
+**SQL (ejecutar en Supabase):** `supabase/onyx_finanzas.sql` (tabla
+`onyx_expenses`). La caja se guarda en `app_settings` (clave `onyx_cash`), sin
+tabla extra. Los ingresos usan Stripe (ya configurado con `STRIPE_SECRET_KEY`).
+APIs: `GET/POST/PUT /api/admin/finanzas` (gateadas por el permiso `finanzas`).

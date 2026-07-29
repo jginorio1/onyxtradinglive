@@ -5,6 +5,7 @@ export const AREAS: { id: string; label: string }[] = [
   { id: 'resumen', label: 'Resumen' },
   { id: 'usuarios', label: 'Usuarios' },
   { id: 'planes', label: 'Planes / Facturación' },
+  { id: 'finanzas', label: 'Finanzas Onyx (P&L)' },
   { id: 'campanas', label: 'Campañas' },
   { id: 'embajadores', label: 'Embajadores' },
   { id: 'retencion', label: 'Retención' },
@@ -25,7 +26,8 @@ export const ROLES = ['owner', 'admin', 'support', 'marketing', 'custom'] as con
 export function roleDefaults(role?: string | null): Record<string, PermLevel> {
   const all = (lvl: PermLevel) => Object.fromEntries(AREAS.map((a) => [a.id, lvl])) as Record<string, PermLevel>;
   if (role === 'owner') return all('manage');
-  if (role === 'admin') return { ...all('manage'), equipo: 'none', ajustes: 'view' };
+  // Finanzas Onyx es del dueño: ni el rol admin la ve por defecto (se concede a mano).
+  if (role === 'admin') return { ...all('manage'), equipo: 'none', ajustes: 'view', finanzas: 'none' };
   if (role === 'support') return { ...all('none'), resumen: 'view', soporte: 'manage', chat: 'manage', diag: 'view' };
   // Marketing: crecimiento. Gestiona Campañas, Embajadores y Retención; ve Resumen y Usuarios.
   if (role === 'marketing') return { ...all('none'), resumen: 'view', usuarios: 'view', campanas: 'manage', embajadores: 'manage', retencion: 'manage', chat: 'manage' };
