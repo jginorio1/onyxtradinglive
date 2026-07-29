@@ -81,6 +81,25 @@ a{color:inherit;text-decoration:none;}
 .kpi{position:relative;overflow:hidden;}
 .kpi .lbl{color:var(--mut);font-size:13px;}
 .kpi .val{font-size:26px;font-weight:800;margin-top:4px;letter-spacing:-.5px;}
+
+/* Tarjetas de estadística modernas (interior iluminado). Usan solo variables de
+   tema + color-mix, así que se ven bien en claro y oscuro. --ac = color de acento. */
+.statcard{position:relative;background:var(--card);border:1px solid var(--line);border-top:2px solid var(--ac,var(--brand));
+  border-radius:15px;padding:14px 15px;box-shadow:0 6px 20px rgba(0,0,0,.14);transition:box-shadow .18s,transform .12s;}
+.statcard:hover{box-shadow:0 0 0 1px var(--ac,var(--brand)),0 0 22px -6px color-mix(in srgb,var(--ac,var(--brand)) 55%,transparent);transform:translateY(-2px);}
+.statcard-ic{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;font-size:16px;flex:none;
+  color:var(--ac,var(--brand));background:color-mix(in srgb,var(--ac,var(--brand)) 16%,transparent);
+  filter:drop-shadow(0 0 5px color-mix(in srgb,var(--ac,var(--brand)) 45%,transparent));}
+.statcard .sc-lbl{color:var(--mut);font-size:12px;margin-top:9px;}
+.statcard .sc-val{font-size:23px;font-weight:800;letter-spacing:-.5px;margin-top:2px;}
+.statcard .sc-sub{font-size:11.5px;color:var(--mut);margin-top:2px;}
+.statbar{height:5px;border-radius:5px;background:var(--bg2);margin-top:10px;overflow:hidden;}
+.statbar>i{display:block;height:100%;border-radius:5px;background:var(--ac,var(--brand));
+  box-shadow:0 0 8px color-mix(in srgb,var(--ac,var(--brand)) 65%,transparent);}
+/* Icono de cabecera de las tarjetas de gráfico, en pastilla con glow suave. */
+.card-ic{width:28px;height:28px;border-radius:8px;display:inline-grid;place-items:center;font-size:15px;vertical-align:middle;
+  color:var(--brand);background:color-mix(in srgb,var(--brand) 16%,transparent);
+  filter:drop-shadow(0 0 5px color-mix(in srgb,var(--brand) 45%,transparent));}
 .pos{color:var(--green);} .neg{color:var(--red);}
 .muted{color:var(--mut);}
 input,select{width:100%;padding:11px 13px;border-radius:10px;background:var(--bg2);border:1px solid var(--line);color:var(--tx);font-size:15px;margin-top:6px;}

@@ -9,6 +9,25 @@ import React from 'react';
 // ============================================================
 
 export type Vital = { pct: number; color: string; value: string; label: string };
+
+// Tarjeta de estadística moderna: icono en pastilla iluminada, número grande con
+// color, subtítulo opcional y una mini-barra opcional. Usa clases de globals.css
+// (tema claro/oscuro seguro). accent = color de acento (una var de tema).
+export function StatCard({ icon, label, value, color, accent, sub, bar }: {
+  icon: React.ReactNode; label: string; value: string; color?: string; accent: string; sub?: string; bar?: number;
+}) {
+  return (
+    <div className="statcard" style={{ ['--ac' as any]: accent }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <span className="statcard-ic">{icon}</span>
+      </div>
+      <div className="sc-lbl">{label}</div>
+      <div className="sc-val" style={{ color: color || 'var(--tx)' }}>{value}</div>
+      {sub ? <div className="sc-sub">{sub}</div> : null}
+      {bar != null ? <div className="statbar"><i style={{ width: Math.max(2, Math.min(100, bar * 100)) + '%' }} /></div> : null}
+    </div>
+  );
+}
 export type Tile = { key: string; icon: string; label: string; metric?: string; mc?: string; color: string; onClick: () => void; badge?: React.ReactNode };
 
 function GlowRing({ v }: { v: Vital }) {

@@ -16,7 +16,7 @@ import MarketHours from './MarketHours';
 import ReferralBanner from './ReferralBanner';
 import PlanHabits from './PlanHabits';
 import DailyCheckinPopup from './DailyCheckinPopup';
-import HubVitals, { type Vital, type Tile } from './HubVitals';
+import HubVitals, { StatCard, type Vital, type Tile } from './HubVitals';
 import News from './News';
 import NetRealCard from './NetRealCard';
 import CoachCard from './CoachCard';
@@ -143,7 +143,7 @@ function Card({ title, icon, children, right }: any) {
   return (
     <div className="card">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-        <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{icon} {title}</h3>{right}
+        <h3 style={{ display: 'flex', alignItems: 'center', gap: 9 }}>{icon ? <span className="card-ic">{icon}</span> : null} {title}</h3>{right}
       </div>{children}
     </div>
   );
@@ -613,10 +613,30 @@ export default function DashboardClient({ email = '', plan = 'free', profile, tr
 
             {view !== 'hub' && <button className="btn btn-ghost" style={{ alignSelf: 'flex-start' }} onClick={() => setView('hub')}>{L.back}</button>}
 
-            {view === 'rendimiento' && (<>
-              <div className="grid g4">{kpi(L.kNet, money2(a.net), a.net >= 0 ? 'pos' : 'neg')}{kpi(L.kWR, `${a.winRate.toFixed(0)}%`)}{kpi(L.kPF, a.profitFactor.toFixed(2))}{kpi(L.kExp, money2(a.expectancy), a.expectancy >= 0 ? 'pos' : 'neg')}</div>
-              <div className="grid g4">{kpi(L.kAvgW, money(a.avgWin), 'pos')}{kpi(L.kAvgL, money(-a.avgLoss), 'neg')}{kpi(L.kPayoff, a.payoff.toFixed(2))}<div className="card kpi"><div className="lbl">{L.kDur}</div><div className="val" style={{ fontSize: 20 }}>{a.avgDurMin ? fmtDur(a.avgDurMin) : '—'}</div></div></div>
-              <div className="grid g4">{kpi(L.kOps, String(a.n))}{kpi(L.kBest, money(a.best), 'pos')}{kpi(L.kWorst, money(a.worst), 'neg')}<div className="card kpi"><div className="lbl">{L.kBE}</div><div className="val" style={{ color: GOLD }}>{a.catBE} · {a.n ? Math.round(100 * a.catBE / a.n) : 0}%</div></div></div>
+            {view === 'rendimiento' && (() => {
+              const sWR = a.winRate >= 50 ? GREEN : a.winRate >= 40 ? GOLD : RED;
+              const sPF = a.profitFactor >= 1.3 ? GREEN : a.profitFactor >= 1 ? GOLD : RED;
+              const sPO = a.payoff >= 1.5 ? GREEN : a.payoff >= 1 ? GOLD : RED;
+              const bePct = a.n ? Math.round(100 * a.catBE / a.n) : 0;
+              return (<>
+              <div className="grid g4">
+                <StatCard icon="💰" label={L.kNet} value={money2(a.net)} accent={a.net >= 0 ? GREEN : RED} color={a.net >= 0 ? GREEN : RED} />
+                <StatCard icon="🎯" label={L.kWR} value={`${a.winRate.toFixed(0)}%`} accent={sWR} color={sWR} bar={a.winRate / 100} />
+                <StatCard icon="⚖️" label={L.kPF} value={a.profitFactor.toFixed(2)} accent={sPF} color={sPF} bar={Math.min(a.profitFactor, 3) / 3} />
+                <StatCard icon="📐" label={L.kExp} value={money2(a.expectancy)} accent={a.expectancy >= 0 ? GREEN : RED} color={a.expectancy >= 0 ? GREEN : RED} />
+              </div>
+              <div className="grid g4">
+                <StatCard icon="🟢" label={L.kAvgW} value={money(a.avgWin)} accent={GREEN} color={GREEN} />
+                <StatCard icon="🔻" label={L.kAvgL} value={money(-a.avgLoss)} accent={RED} color={RED} />
+                <StatCard icon="🔁" label={L.kPayoff} value={a.payoff.toFixed(2)} accent={sPO} color={sPO} bar={Math.min(a.payoff, 2) / 2} />
+                <StatCard icon="⏱️" label={L.kDur} value={a.avgDurMin ? fmtDur(a.avgDurMin) : '—'} accent={BLUE} />
+              </div>
+              <div className="grid g4">
+                <StatCard icon="📊" label={L.kOps} value={String(a.n)} accent={BLUE} />
+                <StatCard icon="🏆" label={L.kBest} value={money(a.best)} accent={GREEN} color={GREEN} />
+                <StatCard icon="💀" label={L.kWorst} value={money(a.worst)} accent={RED} color={RED} />
+                <StatCard icon="⚪" label={L.kBE} value={`${a.catBE} · ${bePct}%`} accent={GOLD} color={GOLD} bar={bePct / 100} />
+              </div>
               <div className="grid g2">
                 <Card title={L.radarTitle} icon="🕸️"><RadarChart axes={radarAxes} color={BLUE} /></Card>
                 <Card title={L.bubbleTitle} icon="🫧"><Bubbles items={bubbleData} /></Card>
@@ -629,16 +649,16 @@ export default function DashboardClient({ email = '', plan = 'free', profile, tr
                 <Card title={L.donutTitle} icon="🍩"><Donut win={a.catWin} loss={a.catLoss} be={a.catBE} L={L} /></Card>
               </div>
               <div className="grid g4">
-                <div className="card kpi" style={{ borderLeft: '3px solid ' + GREEN }}><div className="lbl">📅 {L.bestDay}</div><div className="val pos" style={{ fontSize: 18 }}>{bWD ? WDL[lang][+bWD[0]] : '—'}</div><div className="muted" style={{ fontSize: 12 }}>{bWD ? money(bWD[1].net) : ''}</div></div>
-                <div className="card kpi" style={{ borderLeft: '3px solid ' + GREEN }}><div className="lbl">⏰ {L.bestHour}</div><div className="val pos" style={{ fontSize: 18 }}>{bH ? `${bH[0]}:00` : '—'}</div><div className="muted" style={{ fontSize: 12 }}>{bH ? money(bH[1].net) : ''}</div></div>
-                <div className="card kpi" style={{ borderLeft: '3px solid ' + GREEN }}><div className="lbl">🌍 {L.bestSess}</div><div className="val pos" style={{ fontSize: 18 }}>{bS ? sessName(bS[0]) : '—'}</div><div className="muted" style={{ fontSize: 12 }}>{bS ? money(bS[1].net) : ''}</div></div>
-                <div className="card kpi" style={{ borderLeft: '3px solid ' + GREEN }}><div className="lbl">💱 {L.bestPair}</div><div className="val pos" style={{ fontSize: 18 }}>{bSym ? bSym[0] : '—'}</div><div className="muted" style={{ fontSize: 12 }}>{bSym ? money(bSym[1].net) : ''}</div></div>
+                <StatCard icon="📅" label={L.bestDay} value={bWD ? WDL[lang][+bWD[0]] : '—'} accent={GREEN} color={GREEN} sub={bWD ? money(bWD[1].net) : ''} />
+                <StatCard icon="⏰" label={L.bestHour} value={bH ? `${bH[0]}:00` : '—'} accent={GREEN} color={GREEN} sub={bH ? money(bH[1].net) : ''} />
+                <StatCard icon="🌍" label={L.bestSess} value={bS ? sessName(bS[0]) : '—'} accent={GREEN} color={GREEN} sub={bS ? money(bS[1].net) : ''} />
+                <StatCard icon="💱" label={L.bestPair} value={bSym ? bSym[0] : '—'} accent={GREEN} color={GREEN} sub={bSym ? money(bSym[1].net) : ''} />
               </div>
               <div className="grid g4">
-                <div className="card kpi" style={{ borderLeft: '3px solid ' + RED }}><div className="lbl">📅 {L.worstDay}</div><div className="val neg" style={{ fontSize: 18 }}>{wWD ? WDL[lang][+wWD[0]] : '—'}</div><div className="muted" style={{ fontSize: 12 }}>{wWD ? money(wWD[1].net) : ''}</div></div>
-                <div className="card kpi" style={{ borderLeft: '3px solid ' + RED }}><div className="lbl">⏰ {L.worstHour}</div><div className="val neg" style={{ fontSize: 18 }}>{wH ? `${wH[0]}:00` : '—'}</div><div className="muted" style={{ fontSize: 12 }}>{wH ? money(wH[1].net) : ''}</div></div>
-                <div className="card kpi" style={{ borderLeft: '3px solid ' + RED }}><div className="lbl">🌍 {L.worstSess}</div><div className="val neg" style={{ fontSize: 18 }}>{wS ? sessName(wS[0]) : '—'}</div><div className="muted" style={{ fontSize: 12 }}>{wS ? money(wS[1].net) : ''}</div></div>
-                <div className="card kpi" style={{ borderLeft: '3px solid ' + RED }}><div className="lbl">💱 {L.worstPair}</div><div className="val neg" style={{ fontSize: 18 }}>{wSym ? wSym[0] : '—'}</div><div className="muted" style={{ fontSize: 12 }}>{wSym ? money(wSym[1].net) : ''}</div></div>
+                <StatCard icon="📅" label={L.worstDay} value={wWD ? WDL[lang][+wWD[0]] : '—'} accent={RED} color={RED} sub={wWD ? money(wWD[1].net) : ''} />
+                <StatCard icon="⏰" label={L.worstHour} value={wH ? `${wH[0]}:00` : '—'} accent={RED} color={RED} sub={wH ? money(wH[1].net) : ''} />
+                <StatCard icon="🌍" label={L.worstSess} value={wS ? sessName(wS[0]) : '—'} accent={RED} color={RED} sub={wS ? money(wS[1].net) : ''} />
+                <StatCard icon="💱" label={L.worstPair} value={wSym ? wSym[0] : '—'} accent={RED} color={RED} sub={wSym ? money(wSym[1].net) : ''} />
               </div>
               <div className="grid g2">
                 <Card title={L.lsTitle} icon="🔀"><BarRow label={L.longs} b={buy} max={maxLS} ops={L.ops} /><BarRow label={L.shorts} b={sell} max={maxLS} ops={L.ops} /></Card>
@@ -654,7 +674,7 @@ export default function DashboardClient({ email = '', plan = 'free', profile, tr
               </div>
               <Card title={L.byHour} icon="⏰">{hourData.length ? hourData.map((d, i) => <BarRow key={i} label={d.label} b={d.b} max={maxH} ops={L.ops} />) : <p className="muted">{L.noData}</p>}</Card>
               <Card title={L.byMonth} icon="🗓️">{monthData.length ? monthData.map((d, i) => <BarRow key={i} label={d.label} b={d.b} max={maxM} ops={L.ops} />) : <p className="muted">{L.noData}</p>}</Card>
-            </>)}
+            </>); })()}
 
             {view === 'calendario' && (
               <Card title={L.calTitle} icon="🗓️" right={<div className="row"><button className={'btn ' + (vw === 'mes' ? 'btn-primary' : 'btn-ghost')} onClick={() => setVw('mes')}>{L.month}</button><button className={'btn ' + (vw === 'ano' ? 'btn-primary' : 'btn-ghost')} onClick={() => setVw('ano')}>{L.year}</button></div>}>

@@ -968,3 +968,18 @@ Cabecera del hub rehecha (componente `HubVitals`):
 
 Todo con las variables de tema y `color-mix` para el glow, así que funciona en
 claro y oscuro. Sin cambios de datos ni de API.
+
+### 24.7 · Interior de las tarjetas modernizado (Rendimiento)
+
+- Los cuadros de KPI ya no son etiqueta + número plano: ahora son `StatCard` con
+  **icono en pastilla iluminada**, número grande con **color semáforo** (verde/
+  ámbar/rojo según el valor) y una **mini-barra** de progreso donde tiene sentido
+  (aciertos, profit factor, payoff, break even). Se elevan e iluminan al pasar el
+  ratón.
+- Las tarjetas de **mejores/peores** (día, hora, sesión, par) usan el mismo estilo
+  con acento verde/rojo.
+- Las **cabeceras de los gráficos** (curva de capital, radar, dona, histograma,
+  barras) llevan el icono en pastilla con glow suave.
+- Todo con variables de tema + `color-mix`, así que **se ve bien en claro y oscuro**
+  (nada de blancos fijos). Estilos nuevos en `globals.css`: `.statcard`,
+  `.statcard-ic`, `.statbar`, `.card-ic`. Componente `StatCard` en `HubVitals.tsx`.
