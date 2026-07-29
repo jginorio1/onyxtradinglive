@@ -744,3 +744,17 @@ ajustas en Equipo → permisos).
   leyó), se pueden **adjuntar** archivos, y ves cuándo el cliente **está
   escribiendo**. Se conservan las respuestas guardadas, el borrador con IA, las
   notas internas y la invitación de compañeros.
+
+### 19.4 · Resumen diario del turno (Onyx AI)
+
+Cada día, Onyx AI publica un **resumen del turno** en el canal del equipo:
+pendientes que esperan respuesta (del más viejo), leads nuevos (24h), tickets
+nuevos, sin asignar y sin resolver por categoría. Ideal para el cambio de turno.
+
+- Ya está programado en `vercel.json`: `/api/cron/team-digest` a las **12:00 UTC**
+  cada día. Cambia la hora ahí si quieres (es hora UTC).
+- Se publica en el **canal abierto** (por defecto `#general`). Para elegir otro,
+  guarda en Ajustes el valor `team_digest_channel` con el id del canal. El idioma
+  se controla con `team_digest_lang` (`es`/`en`, por defecto español).
+- Usa `CRON_SECRET` como los demás crons. No hay SQL nuevo (usa las tablas del
+  chat de equipo de 19.1).

@@ -10,6 +10,64 @@ const H = 3600 * 1000;
 
 function nameOf(p: any) { return (p?.full_name || (p?.email || '').split('@')[0] || 'cliente'); }
 
+const CAT_ES: any = { general: 'General', conexion: 'Conexión', instalacion: 'Instalación', guardian: 'Guardian', facturacion: 'Facturación' };
+const CAT_EN: any = { general: 'General', conexion: 'Connection', instalacion: 'Install', guardian: 'Guardian', facturacion: 'Billing' };
+
+// Resumen diario del turno (determinista, sin modelo → siempre sale y es barato).
+// Pendientes de anoche, leads nuevos, lo que espera respuesta, sin asignar.
+export async function teamDigest(lang: Lang): Promise<string> {
+  const en = lang === 'en';
+  const { data: tickets } = await supabaseAdmin.from('support_tickets')
+    .select('id,email,subject,category,status,is_lead,priority,assignee_id,created_at,updated_at')
+    .order('updated_at', { ascending: false }).limit(200);
+  const rows = (tickets || []) as any[];
+  const ids = rows.map((t) => t.id);
+  const lastSender: Record<string, string> = {};
+  const lastAt: Record<string, string> = {};
+  if (ids.length) {
+    const { data: msgs } = await supabaseAdmin.from('support_messages')
+      .select('ticket_id,sender,created_at').in('ticket_id', ids).order('created_at', { ascending: true });
+    for (const m of (msgs || []) as any[]) { lastSender[m.ticket_id] = m.sender; lastAt[m.ticket_id] = m.created_at; }
+  }
+  const dayAgo = Date.now() - 24 * H;
+  const waiting: any[] = [];
+  const newLeads: any[] = [];
+  let newTickets = 0, unassigned = 0;
+  const byCat: Record<string, number> = {};
+  for (const t of rows) {
+    const created = new Date(t.created_at).getTime();
+    if (created > dayAgo) { newTickets++; if (t.is_lead) newLeads.push(t); }
+    if (t.status !== 'resolved') {
+      byCat[t.category || 'general'] = (byCat[t.category || 'general'] || 0) + 1;
+      if (!t.assignee_id) unassigned++;
+      if (lastSender[t.id] === 'user') {
+        const hrs = Math.round((Date.now() - new Date(lastAt[t.id] || t.updated_at).getTime()) / H);
+        waiting.push({ subject: t.subject, email: t.email, hrs, priority: t.priority });
+      }
+    }
+  }
+  waiting.sort((a, b) => b.hrs - a.hrs);
+  const CAT = en ? CAT_EN : CAT_ES;
+  const date = new Date().toLocaleDateString(en ? 'en-US' : 'es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+
+  const lines: string[] = [];
+  lines.push(en ? `☀️ Shift digest — ${date}` : `☀️ Resumen del turno — ${date}`);
+  lines.push('');
+  lines.push(en ? `🕒 Awaiting our reply: ${waiting.length}` : `🕒 Esperan nuestra respuesta: ${waiting.length}`);
+  waiting.slice(0, 8).forEach((w) => lines.push(`   • "${(w.subject || '').slice(0, 50)}" · ${w.email || '—'} · ${w.hrs}h${w.priority === 'high' ? (en ? ' · HIGH' : ' · ALTA') : ''}`));
+  lines.push('');
+  lines.push(en ? `🆕 New leads (24h): ${newLeads.length}` : `🆕 Leads nuevos (24h): ${newLeads.length}`);
+  newLeads.slice(0, 8).forEach((t) => lines.push(`   • ${t.email || '—'} — "${(t.subject || '').slice(0, 50)}"`));
+  lines.push('');
+  lines.push(en ? `📨 New tickets (24h): ${newTickets}` : `📨 Tickets nuevos (24h): ${newTickets}`);
+  lines.push(en ? `🗂️ Unassigned: ${unassigned}` : `🗂️ Sin asignar: ${unassigned}`);
+  const catStr = Object.entries(byCat).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${CAT[k] || k}=${v}`).join(' · ');
+  lines.push((en ? `📊 Open by category: ` : `📊 Sin resolver por categoría: `) + (catStr || '—'));
+  lines.push('');
+  lines.push(en ? 'Have a great shift 💪' : 'Buen turno 💪');
+  return lines.join('\n');
+}
+
 // Arma una foto compacta del estado del soporte + (si se menciona un correo) el
 // historial de ese cliente, y se la pasa al modelo para que responda con datos.
 export async function onyxTeamAnswer(opts: { question: string; lang: Lang }): Promise<string> {
