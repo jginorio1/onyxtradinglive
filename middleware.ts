@@ -68,11 +68,16 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Panel bloqueado por inactividad: mientras la cookie esté puesta, cortamos
-  // el acceso a las APIs de admin (menos la de seguridad, que sirve para
-  // desbloquear). Así los datos no salen aunque alguien llame la API directo.
-  if (path.startsWith('/api/admin/') && path !== '/api/admin/security' && req.cookies.get('onyx_lock')?.value === '1') {
-    return NextResponse.json({ error: 'Panel bloqueado. Desbloquea con tu PIN.' }, { status: 423 });
+  // Panel bloqueado por inactividad: si la marca de actividad (onyx_seen) está
+  // vieja, cortamos las APIs de admin (menos la de seguridad, que desbloquea).
+  // Así los datos NO salen aunque alguien llame la API directo con la sesión viva.
+  // La marca solo existe para quien tiene PIN, así que a los demás no les afecta.
+  if (path.startsWith('/api/admin/') && path !== '/api/admin/security') {
+    const seen = req.cookies.get('onyx_seen')?.value;
+    const t = seen ? parseInt(seen, 10) : 0;
+    if (t && !Number.isNaN(t) && Date.now() - t > 20 * 60 * 1000) {   // 20 min de inactividad
+      return NextResponse.json({ error: 'Panel bloqueado. Desbloquea con tu PIN.' }, { status: 423 });
+    }
   }
 
   return res;

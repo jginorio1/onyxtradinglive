@@ -45,7 +45,7 @@ export default function LockScreen({ email }: { email: string }) {
         <p className="muted" style={{ fontSize: 12, marginBottom: 18 }}>{email}</p>
 
         <input
-          autoFocus inputMode="numeric" maxLength={6} value={pin}
+          autoFocus type="password" inputMode="numeric" autoComplete="off" maxLength={6} value={pin}
           onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
           onKeyDown={(e) => e.key === 'Enter' && unlock()}
           placeholder="••••••"

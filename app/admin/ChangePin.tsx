@@ -39,11 +39,11 @@ export default function ChangePin({ email }: { email: string }) {
         </p>
         <p className="muted" style={{ fontSize: 12, marginBottom: 18 }}>{email}</p>
 
-        <input autoFocus inputMode="numeric" maxLength={6} value={pin}
+        <input autoFocus type="password" inputMode="numeric" autoComplete="new-password" maxLength={6} value={pin}
           onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
           placeholder={es ? 'Nuevo PIN' : 'New PIN'}
           style={{ width: 220, textAlign: 'center', letterSpacing: 6, fontSize: 20, padding: '11px 14px', margin: '0 auto 10px', display: 'block', borderRadius: 12, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)' }} />
-        <input inputMode="numeric" maxLength={6} value={pin2}
+        <input type="password" inputMode="numeric" autoComplete="new-password" maxLength={6} value={pin2}
           onChange={(e) => setPin2(e.target.value.replace(/\D/g, '').slice(0, 6))}
           onKeyDown={(e) => e.key === 'Enter' && save()}
           placeholder={es ? 'Repite el PIN' : 'Repeat PIN'}

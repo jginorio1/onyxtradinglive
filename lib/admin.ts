@@ -1,6 +1,17 @@
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { effectivePerms, meets, type PermLevel } from '@/lib/perms';
+import { serverLocked } from '@/lib/adminSecurity';
+
+// ¿La sesión superó el 2FA (AAL2) en este dispositivo? Si el usuario tiene un
+// factor activo pero no lo verificó en esta sesión, currentLevel es aal1 y hay
+// que exigir el código antes de dejar tocar nada sensible del backend.
+async function needs2FA(sb: ReturnType<typeof createSupabaseServer>): Promise<boolean> {
+  try {
+    const { data: aal } = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
+    return !!aal && aal.nextLevel === 'aal2' && aal.currentLevel !== 'aal2';
+  } catch { return false; }  // ante un fallo transitorio no cortamos el panel
+}
 
 // Devuelve el usuario actual, si es administrador, su rol y sus permisos efectivos.
 // Es admin si su email está en ADMIN_EMAILS  O  si tiene profiles.is_admin = true.
@@ -23,10 +34,18 @@ export async function getAdmin() {
 }
 
 // Comprueba si el admin actual cumple un permiso de área. Owner siempre pasa.
+// Además exige, en el backend (no solo en la pantalla): (1) que el panel NO esté
+// bloqueado por inactividad, y (2) que la sesión haya superado el 2FA (AAL2).
+// Devuelve `reason` para que la ruta pueda distinguir el motivo si quiere.
 export async function requirePerm(area: string, need: PermLevel = 'view') {
   const a = await getAdmin();
-  const ok = a.isAdmin && (a.role === 'owner' || meets(a.perms[area], need));
-  return { ...a, ok };
+  let ok = a.isAdmin && (a.role === 'owner' || meets(a.perms[area], need));
+  let reason: '' | 'locked' | '2fa' = '';
+  if (ok) {
+    if (serverLocked()) { ok = false; reason = 'locked'; }          // bloqueo por inactividad
+    else if (await needs2FA(createSupabaseServer())) { ok = false; reason = '2fa'; }  // 2FA no verificado
+  }
+  return { ...a, ok, reason };
 }
 
 // Guarda una acción del admin para auditoría (nunca lanza error).
