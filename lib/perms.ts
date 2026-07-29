@@ -11,6 +11,7 @@ export const AREAS: { id: string; label: string }[] = [
   { id: 'firms', label: 'Prop firms' },
   { id: 'modulos', label: 'Módulos' },
   { id: 'soporte', label: 'Soporte / Chat' },
+  { id: 'chat', label: 'Chat de equipo' },
   { id: 'diag', label: 'Diagnóstico' },
   { id: 'equipo', label: 'Equipo' },
   { id: 'ajustes', label: 'Ajustes' },
@@ -25,9 +26,9 @@ export function roleDefaults(role?: string | null): Record<string, PermLevel> {
   const all = (lvl: PermLevel) => Object.fromEntries(AREAS.map((a) => [a.id, lvl])) as Record<string, PermLevel>;
   if (role === 'owner') return all('manage');
   if (role === 'admin') return { ...all('manage'), equipo: 'none', ajustes: 'view' };
-  if (role === 'support') return { ...all('none'), resumen: 'view', soporte: 'manage', diag: 'view' };
+  if (role === 'support') return { ...all('none'), resumen: 'view', soporte: 'manage', chat: 'manage', diag: 'view' };
   // Marketing: crecimiento. Gestiona Campañas, Embajadores y Retención; ve Resumen y Usuarios.
-  if (role === 'marketing') return { ...all('none'), resumen: 'view', usuarios: 'view', campanas: 'manage', embajadores: 'manage', retencion: 'manage' };
+  if (role === 'marketing') return { ...all('none'), resumen: 'view', usuarios: 'view', campanas: 'manage', embajadores: 'manage', retencion: 'manage', chat: 'manage' };
   return all('none'); // custom / sin rol: parte de cero y se define a mano
 }
 

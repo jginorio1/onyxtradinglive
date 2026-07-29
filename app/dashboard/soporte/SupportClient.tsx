@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from 'react';
 import { fmtDate, fmtDateTime } from '@/lib/fmtDate';
 import Link from 'next/link';
 import { useLang } from '@/lib/lang';
+import ChatThread, { type ChatMsg, type Att } from '@/app/components/ChatThread';
+import { useChatRealtime } from '@/lib/chatRealtime';
 
 type Lang = 'es' | 'en';
 
@@ -92,6 +94,11 @@ export default function SupportClient() {
     }
   }, [tickets]);
 
+  // Tiempo real del ticket abierto: refresca al instante y comparte "escribiendo…".
+  const meRt = openId ? { id: 'trader-' + openId, name: lang === 'en' ? 'Client' : 'Cliente' } : null;
+  const { typing, ping, sendTyping } = useChatRealtime(openId ? `support:${openId}` : null, meRt, loadTickets);
+  useEffect(() => { if (openId) markRead(openId); }, [openId, msgs.length]);
+
   async function sendAI() {
     const q = ask.trim(); if (!q || aiBusy) return;
     const next = [...chat, { role: 'user', content: q }];
@@ -119,6 +126,16 @@ export default function SupportClient() {
     setBusy('r' + id);
     await fetch('/api/support/tickets', { method: 'PATCH', body: JSON.stringify({ ticket_id: id, body }) });
     setReplyTxt(''); setBusy(''); await loadTickets();
+  }
+
+  // Enviar desde el chat (texto + adjuntos), avisar en tiempo real y refrescar.
+  async function replyWith(id: string, body: string, attachments: Att[]) {
+    await fetch('/api/support/tickets', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ticket_id: id, body, attachments }) });
+    await loadTickets(); ping();
+  }
+  // Marcar como leídos los mensajes del equipo/IA al abrir el ticket.
+  async function markRead(id: string) {
+    try { await fetch('/api/support/tickets', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ticket_id: id, read: true }) }); } catch {}
   }
   async function closeTicket(id: string) {
     setBusy('c' + id);
@@ -221,19 +238,24 @@ export default function SupportClient() {
 
               {open && (
                 <div style={{ marginTop: 12 }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
-                    {tm.map((m) => (
-                      <div key={m.id} style={{ maxWidth: '85%', padding: '8px 11px', fontSize: 13, lineHeight: 1.5, whiteSpace: 'pre-wrap', ...bubble(m.sender === 'user' ? 'user' : 'assistant') }}>
-                        <div style={{ fontSize: 11, opacity: .7, marginBottom: 2 }}>{m.sender === 'user' ? t.me : m.sender === 'ai' ? t.ai : t.team}</div>
-                        {m.body}
-                      </div>
-                    ))}
-                  </div>
+                  <ChatThread
+                    lang={lang}
+                    messages={tm.map((m): ChatMsg => ({
+                      id: m.id, mine: m.sender === 'user',
+                      authorName: m.sender === 'admin' ? t.team : m.sender === 'ai' ? t.ai : t.me,
+                      authorKind: m.sender === 'ai' ? 'ai' : m.sender === 'note' ? 'note' : m.sender === 'admin' ? 'admin' : 'user',
+                      body: m.body, attachments: m.attachments || [], createdAt: m.created_at, readAt: m.read_at,
+                    }))}
+                    onSend={(text, att) => replyWith(tk.id, text, att)}
+                    onTyping={sendTyping}
+                    canReply={tk.status !== 'resolved'}
+                    typingLabel={typing.length ? `${t.team} ${lang === 'en' ? 'is typing…' : 'está escribiendo…'}` : ''}
+                    placeholder={t.replyPh}
+                    height={320}
+                  />
                   {tk.status !== 'resolved' && (
-                    <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-                      <input value={openId === tk.id ? replyTxt : ''} onChange={(e) => setReplyTxt(e.target.value)} placeholder={t.replyPh} style={{ flex: 1, minWidth: 160, margin: 0 }} />
-                      <button className="btn btn-primary" onClick={() => reply(tk.id)} disabled={busy === 'r' + tk.id || !replyTxt.trim()}>{t.send2}</button>
-                      <button className="btn btn-ghost" onClick={() => closeTicket(tk.id)} disabled={busy === 'c' + tk.id}>{t.markDone}</button>
+                    <div className="row" style={{ gap: 8, marginTop: 8 }}>
+                      <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => closeTicket(tk.id)} disabled={busy === 'c' + tk.id}>✓ {t.markDone}</button>
                     </div>
                   )}
                 </div>

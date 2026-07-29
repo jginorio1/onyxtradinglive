@@ -22,6 +22,7 @@ import AdminLock from './AdminLock';
 import Revenue from './Revenue';
 import EnvSwitch from './EnvSwitch';
 import AdminLeadAlert from './AdminLeadAlert';
+import TeamChat from './TeamChat';
 import RangeBar, { type Range, defaultRange } from './RangeBar';
 import { AREAS, effectivePerms } from '@/lib/perms';
 import { useT } from '@/lib/adminText';
@@ -30,7 +31,7 @@ import { useLang } from '@/lib/lang';
 type Plan = { id: string; name: string; name_en: string; desc_es: string | null; desc_en: string | null; price_month: number; price_year: number; stripe_price_id: string | null; stripe_price_id_year: string | null; max_accounts: number; features: string[]; features_en: string[]; badge: string | null; badge_en: string | null; active: boolean; sort: number; capabilities: any };
 type User = { id: string; email: string; plan: string; subscription_status: string | null; banned: boolean; is_admin: boolean; created_at: string; accounts: number; lastSync: string | null };
 type Team = { id: string; email: string; role: string | null; is_admin: boolean; perms?: any; available?: boolean; last_active?: string | null };
-type Tab = 'resumen' | 'ingresos' | 'usuarios' | 'correos' | 'campanas' | 'planes' | 'equipo' | 'embajadores' | 'retencion' | 'pruebas' | 'firms' | 'modulos' | 'soporte' | 'kb' | 'diag' | 'backups' | 'audit' | 'optim' | 'ajustes';
+type Tab = 'resumen' | 'ingresos' | 'usuarios' | 'correos' | 'campanas' | 'planes' | 'equipo' | 'embajadores' | 'retencion' | 'pruebas' | 'firms' | 'modulos' | 'soporte' | 'chat' | 'kb' | 'diag' | 'backups' | 'audit' | 'optim' | 'ajustes';
 
 const CAPS: string[] = ['journal', 'compare', 'funding', 'costs', 'export', 'reports', 'telegram', 'manager', 'manager_advanced', 'manager_news', 'copy', 'algo', 'expenses', 'coach'];
 
@@ -286,7 +287,7 @@ function BetaControl() {
 export default function AdminClient({ meEmail, role, perms = {}, accounts, trades, hasPin = false, idleMin = 20 }: { meEmail: string; role: string; perms?: Record<string, string>; accounts: number; trades: number; hasPin?: boolean; idleMin?: number }) {
   const t = useT();
   // Qué áreas puede ver este admin (owner ve todo). Mapa tab → área de permiso.
-  const areaOf: Record<string, string> = { resumen: 'resumen', ingresos: 'planes', usuarios: 'usuarios', correos: 'usuarios', campanas: 'campanas', planes: 'planes', equipo: 'equipo', embajadores: 'embajadores', retencion: 'retencion', pruebas: 'diag', firms: 'firms', modulos: 'modulos', soporte: 'soporte', kb: 'soporte', diag: 'diag', backups: 'ajustes', audit: 'ajustes', optim: 'ajustes', ajustes: 'ajustes' };
+  const areaOf: Record<string, string> = { resumen: 'resumen', ingresos: 'planes', usuarios: 'usuarios', correos: 'usuarios', campanas: 'campanas', planes: 'planes', equipo: 'equipo', embajadores: 'embajadores', retencion: 'retencion', pruebas: 'diag', firms: 'firms', modulos: 'modulos', soporte: 'soporte', chat: 'chat', kb: 'soporte', diag: 'diag', backups: 'ajustes', audit: 'ajustes', optim: 'ajustes', ajustes: 'ajustes' };
   // Ajustes siempre visible: cada admin/empleado necesita entrar a fijar su PIN
   // de bloqueo. Dentro, lo del Owner (roles, promo, beta) se muestra solo a él.
   const canSee = (k: string) => k === 'ajustes' || role === 'owner' || (perms[areaOf[k]] && perms[areaOf[k]] !== 'none');
@@ -331,7 +332,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
 
   const filtered = users.filter((u) => u.email?.toLowerCase().includes(q.toLowerCase()));
   const NAV_GROUPS: { g: string; items: [Tab, string, string][] }[] = [
-    { g: t.g_op, items: [['resumen', '📊', t.nav_resumen], ['ingresos', '💰', t.nav_ingresos], ['usuarios', '👥', t.nav_usuarios], ['correos', '✉️', t.nav_correos], ['soporte', '🎫', t.nav_soporte], ['equipo', '🛡️', t.nav_equipo]] },
+    { g: t.g_op, items: [['resumen', '📊', t.nav_resumen], ['ingresos', '💰', t.nav_ingresos], ['usuarios', '👥', t.nav_usuarios], ['correos', '✉️', t.nav_correos], ['soporte', '🎫', t.nav_soporte], ['chat', '💬', lang === 'en' ? 'Team chat' : 'Chat equipo'], ['equipo', '🛡️', t.nav_equipo]] },
     { g: t.g_prod, items: [['planes', '💳', t.nav_planes], ['modulos', '🧩', t.nav_modulos], ['firms', '🏛️', t.nav_firms]] },
     { g: t.g_growth, items: [['campanas', '📣', lang === 'en' ? 'Campaigns' : 'Campañas'], ['embajadores', '🎁', t.nav_embajadores], ['retencion', '🛟', t.nav_retencion]] },
     { g: t.g_sys, items: [['kb', '🧠', t.nav_kb], ['diag', '🩺', t.nav_diag], ['backups', '🗄️', t.nav_backups], ['audit', '📈', t.nav_audit], ['optim', '🚀', t.nav_optim], ['pruebas', '🧪', t.nav_pruebas], ['ajustes', '⚙️', t.nav_ajustes]] },
@@ -481,6 +482,8 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
             {tab === 'modulos' && <Modules />}
 
             {tab === 'soporte' && <SupportInbox />}
+
+            {tab === 'chat' && <TeamChat />}
 
             {tab === 'kb' && <KbEditor />}
 

@@ -42,7 +42,7 @@ export async function GET() {
     let participants: any[] = [];
     if (ids.length) {
       const [m, p] = await Promise.all([
-        supabaseAdmin.from('support_messages').select('id,ticket_id,sender,body,created_at').in('ticket_id', ids).order('created_at', { ascending: true }),
+        supabaseAdmin.from('support_messages').select('id,ticket_id,sender,sender_id,body,attachments,read_at,created_at').in('ticket_id', ids).order('created_at', { ascending: true }),
         supabaseAdmin.from('ticket_participants').select('ticket_id,user_id').in('ticket_id', ids),
       ]);
       messages = m.data || [];
@@ -74,6 +74,13 @@ export async function PATCH(req: Request) {
     const ticketId = String(b.ticket_id || '');
     if (!ticketId) return NextResponse.json({ error: 'falta ticket', code: 'missing' }, { status: 400 });
 
+    // Marcar como leídos los mensajes del cliente (palomitas para el trader)
+    if (b.read) {
+      await supabaseAdmin.from('support_messages').update({ read_at: new Date().toISOString() })
+        .eq('ticket_id', ticketId).eq('sender', 'user').is('read_at', null);
+      return NextResponse.json({ ok: true });
+    }
+
     const patch: any = { updated_at: new Date().toISOString() };
     if (b.status && STATUSES.includes(String(b.status))) patch.status = String(b.status);
     if (b.priority && ['low', 'normal', 'high'].includes(String(b.priority))) patch.priority = String(b.priority);
@@ -98,16 +105,17 @@ export async function PATCH(req: Request) {
 
     // Respuesta al trader (+ correo)
     const body = String(b.body || '').trim().slice(0, 4000);
+    const attachments = Array.isArray(b.attachments) ? b.attachments.slice(0, 5) : [];
     let emailed = false;
-    if (body) {
-      await supabaseAdmin.from('support_messages').insert({ ticket_id: ticketId, sender: 'admin', body });
+    if (body || attachments.length) {
+      await supabaseAdmin.from('support_messages').insert({ ticket_id: ticketId, sender: 'admin', sender_id: user.id, body, attachments });
       if (!patch.status) patch.status = 'in_progress';
       const { data: tk } = await supabaseAdmin.from('support_tickets').select('email,subject,user_id').eq('id', ticketId).maybeSingle();
-      if (tk?.email) {
+      if (tk?.email && body) {
         emailed = await sendEmail(
           tk.email,
           `Re: ${tk.subject || 'Tu consulta en Onyx'}`,
-          `${body}\n\n—\nEquipo de Onyx Trading Live\nResponde a este correo o entra a tu Centro de soporte para seguir la conversación.`,
+          `${body}${attachments.length ? `\n\n(${attachments.length} ${attachments.length === 1 ? 'archivo adjunto' : 'archivos adjuntos'} en tu Centro de soporte)` : ''}\n\n—\nEquipo de Onyx Trading Live\nResponde a este correo o entra a tu Centro de soporte para seguir la conversación.`,
         );
       }
       // Notificación dentro de la app (campana) para el trader con cuenta.

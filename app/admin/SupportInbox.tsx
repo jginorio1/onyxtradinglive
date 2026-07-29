@@ -6,6 +6,10 @@ import { useLang } from '@/lib/lang';
 import { fmtDate, fmtDateTime } from '@/lib/fmtDate';
 import RangeBar, { type Range, defaultRange } from './RangeBar';
 import UserDrawer from './UserDrawer';
+import { useChatRealtime } from '@/lib/chatRealtime';
+import type { Att } from '@/app/components/ChatThread';
+
+const kb = (n?: number) => (!n ? '' : n < 1024 ? `${n} B` : n < 1048576 ? `${Math.round(n / 1024)} KB` : `${(n / 1048576).toFixed(1)} MB`);
 
 const stColor: any = { open: 'var(--brand)', in_progress: 'var(--amber)', resolved: 'var(--green)' };
 const stBg: any = { open: 'rgba(124,140,255,.15)', in_progress: 'rgba(255,192,77,.15)', resolved: 'rgba(52,226,160,.15)' };
@@ -71,6 +75,7 @@ export default function SupportInbox() {
   const [q, setQ] = useState('');
   const [openId, setOpenId] = useState('');
   const [text, setText] = useState('');
+  const [atts, setAtts] = useState<Att[]>([]);
   const [mode, setMode] = useState<'reply' | 'note'>('reply');
   const [busy, setBusy] = useState('');
   // Ficha del trader
@@ -109,6 +114,29 @@ export default function SupportInbox() {
       .finally(() => setCtxLoading(false));
   }, [openId]);
 
+  // Tiempo real de la conversación abierta + marcar leídos los mensajes del cliente.
+  const meRt = openId ? { id: me || 'admin', name: t.sender_support || 'Soporte' } : null;
+  const { typing, ping, sendTyping } = useChatRealtime(openId ? `support:${openId}` : null, meRt, load);
+  useEffect(() => {
+    if (!openId) return;
+    fetch('/api/admin/support', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ticket_id: openId, read: true }) }).catch(() => {});
+    setAtts([]);
+  }, [openId, msgs.length]);
+
+  // Subir foto/documento adjunto a la respuesta.
+  async function uploadAtt(files: FileList) {
+    for (const f of Array.from(files).slice(0, 5)) {
+      if (f.size > 8 * 1024 * 1024) { toast(es ? 'Máximo 8 MB por archivo.' : 'Max 8 MB per file.'); continue; }
+      const b64: string = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = rej; r.readAsDataURL(f); });
+      try {
+        const r = await fetch('/api/chat/upload', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: f.name, type: f.type, data: b64 }) });
+        const j = await r.json();
+        if (j.url) setAtts((a) => [...a, { name: f.name, url: j.url, type: f.type, size: f.size }]);
+        else toast(j.error || 'Error');
+      } catch { toast('Error'); }
+    }
+  }
+
   const emailOf = (id: string) => (team.find((tm) => tm.id === id) || {}).email || '—';
 
   // ¿el último mensaje del ticket es del trader? → espera respuesta del equipo
@@ -121,6 +149,7 @@ export default function SupportInbox() {
     await fetch('/api/admin/support', { method: 'PATCH', body: JSON.stringify({ ticket_id: id, ...patch }) });
     if (patch.body !== undefined || patch.note !== undefined) setText('');
     setBusy(''); await load();
+    if (patch.body !== undefined) { setAtts([]); ping(); }
   }
   async function draft(id: string, firstUserMsg: string) {
     setBusy('ai' + id);
@@ -270,10 +299,19 @@ export default function SupportInbox() {
                       : m.sender === 'user' ? { background: 'var(--bg2)', border: '1px solid var(--line)' }
                         : { background: 'rgba(124,140,255,.12)', border: '1px solid rgba(124,140,255,.35)' };
                     const label = m.sender === 'user' ? t.sender_trader : m.sender === 'ai' ? '🤖 Onyx AI' : note ? '🔒 ' + t.sender_note : t.sender_support;
+                    const outgoing = m.sender === 'admin' || m.sender === 'ai';   // nuestros mensajes → palomitas
                     return (
                       <div key={m.id} className="hd-bub" style={style}>
                         <div style={{ fontSize: 11, opacity: .85, marginBottom: 3, color: note ? 'var(--amber)' : m.sender === 'user' ? 'var(--mut)' : 'var(--brand)', fontWeight: 500 }}>{label} · {fmtDateTime(m.created_at, lang)}</div>
                         {m.body}
+                        {!!(m.attachments && m.attachments.length) && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: m.body ? 6 : 0 }}>
+                            {m.attachments.map((a: any, i: number) => a.type?.startsWith('image/')
+                              ? <a key={i} href={a.url} target="_blank" rel="noreferrer"><img src={a.url} alt={a.name} style={{ maxWidth: 200, maxHeight: 180, borderRadius: 8, display: 'block' }} /></a>
+                              : <a key={i} href={a.url} target="_blank" rel="noreferrer" style={{ display: 'flex', gap: 8, alignItems: 'center', textDecoration: 'none', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 8, padding: '6px 9px', color: 'var(--tx)' }}><span style={{ fontSize: 18 }}>📄</span><span style={{ fontSize: 12 }}>{a.name}<span className="muted" style={{ fontSize: 10, display: 'block' }}>{kb(a.size)}</span></span></a>)}
+                          </div>
+                        )}
+                        {outgoing && !note && <div style={{ textAlign: 'right', marginTop: 2 }}><span style={{ fontSize: 12, letterSpacing: -3, color: m.read_at ? 'var(--soft-green, #34e2a0)' : 'var(--mut)' }}>✓✓</span></div>}
                       </div>
                     );
                   })}
@@ -291,6 +329,9 @@ export default function SupportInbox() {
                     <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
                       <button className="hd-chip" onClick={() => setShowCanned((v) => !v)}>＋ {l.canned}</button>
                       <button className="hd-chip" onClick={() => draft(tk.id, firstUser)} disabled={busy === 'ai' + tk.id}>🤖 {busy === 'ai' + tk.id ? '…' : t.s_aiDraft}</button>
+                      <label className="hd-chip" style={{ cursor: 'pointer' }}>📎 {es ? 'Adjuntar' : 'Attach'}
+                        <input type="file" multiple accept="image/*,application/pdf,.doc,.docx,.csv,.xlsx,.txt" style={{ display: 'none' }} onChange={(e) => { if (e.target.files) uploadAtt(e.target.files); e.currentTarget.value = ''; }} />
+                      </label>
                     </div>
                   )}
                 </div>
@@ -331,11 +372,24 @@ export default function SupportInbox() {
                   </div>
                 )}
 
-                <textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} placeholder={mode === 'note' ? t.s_notePh : t.s_replyPh} style={{ width: '100%', margin: '0 0 8px' }} />
+                {mode === 'reply' && typing.length > 0 && <div className="muted" style={{ fontSize: 11.5, marginBottom: 6 }}>✍️ {t.sender_trader} {es ? 'está escribiendo…' : 'is typing…'}</div>}
+
+                {mode === 'reply' && !!atts.length && (
+                  <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
+                    {atts.map((a, i) => (
+                      <span key={i} style={{ display: 'inline-flex', gap: 6, alignItems: 'center', background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 8, padding: '4px 8px', fontSize: 12 }}>
+                        {a.type.startsWith('image/') ? '🖼️' : '📄'} {a.name.slice(0, 24)}
+                        <button onClick={() => setAtts((x) => x.filter((_, j) => j !== i))} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--mut)' }}>✕</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <textarea value={text} onChange={(e) => { setText(e.target.value); if (mode === 'reply') sendTyping(); }} rows={4} placeholder={mode === 'note' ? t.s_notePh : t.s_replyPh} style={{ width: '100%', margin: '0 0 8px' }} />
 
                 <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
                   {mode === 'reply'
-                    ? <button className="btn btn-primary" onClick={() => act(tk.id, { body: text })} disabled={busy === tk.id || !text.trim()}>{t.s_sendReply}</button>
+                    ? <button className="btn btn-primary" onClick={() => act(tk.id, { body: text, attachments: atts })} disabled={busy === tk.id || (!text.trim() && !atts.length)}>{t.s_sendReply}</button>
                     : <button className="btn btn-primary" onClick={() => act(tk.id, { note: text })} disabled={busy === tk.id || !text.trim()}>{t.s_saveNote}</button>}
                   {!tk.assignee_id && <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => act(tk.id, { take: true })}>{t.s_take}</button>}
                   <button className="btn btn-ghost" style={{ fontSize: 13 }} title={l.saveKb} onClick={() => saveKnowledge(tk.subject, tm)}>💡 {l.saveKb}</button>

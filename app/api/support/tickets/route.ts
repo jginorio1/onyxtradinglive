@@ -28,7 +28,7 @@ export async function GET() {
     if (ids.length) {
       const { data } = await supabaseAdmin
         .from('support_messages')
-        .select('id,ticket_id,sender,body,created_at')
+        .select('id,ticket_id,sender,sender_id,body,attachments,read_at,created_at')
         .in('ticket_id', ids)
         .neq('sender', 'note')   // las notas internas del equipo NO se muestran al trader
         .order('created_at', { ascending: true });
@@ -94,9 +94,17 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ ok: true });
     }
 
+    // Marcar como leídos los mensajes del equipo/IA (palomitas para el admin)
+    if (b.read) {
+      await supabaseAdmin.from('support_messages').update({ read_at: new Date().toISOString() })
+        .eq('ticket_id', ticketId).neq('sender', 'user').is('read_at', null);
+      return NextResponse.json({ ok: true });
+    }
+
     const body = String(b.body || '').trim().slice(0, 4000);
-    if (!body) return NextResponse.json({ error: 'vacío', code: 'missing' }, { status: 400 });
-    await supabaseAdmin.from('support_messages').insert({ ticket_id: ticketId, sender: 'user', body });
+    const attachments = Array.isArray(b.attachments) ? b.attachments.slice(0, 5) : [];
+    if (!body && !attachments.length) return NextResponse.json({ error: 'vacío', code: 'missing' }, { status: 400 });
+    await supabaseAdmin.from('support_messages').insert({ ticket_id: ticketId, sender: 'user', body, attachments });
     // Reabrir si estaba resuelto y marcar actividad
     await supabaseAdmin.from('support_tickets').update({ status: 'open', updated_at: new Date().toISOString() }).eq('id', ticketId);
     return NextResponse.json({ ok: true });

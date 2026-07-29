@@ -684,3 +684,61 @@ se disparan las alertas.
 nota **desde el borde derecho, centrada vertical**, solo a empleados marcados
 "Disponible". Botones Abrir / Visto / Siguiente; con → se oculta al borde como
 pestañita con contador; con 📌 se fija. No necesita nada extra: lee los tickets.
+
+---
+
+## 19 · Chat estilo WhatsApp: soporte + chat de equipo
+
+Un solo motor de chat (burbujas, avatar, separadores por día, **palomitas de
+leído**, "escribiendo…", **adjuntos** de foto/documento, **emojis** y
+**@menciones**) sirve para: el Centro de soporte del trader, la bandeja del admin,
+y el nuevo **Chat de equipo**.
+
+### 19.1 · Pasos de activación (una sola vez)
+
+1. **SQL.** En Supabase → SQL Editor, corre `supabase/chat.sql`. Añade las
+   palomitas y adjuntos al soporte y crea las tablas del chat de equipo
+   (`chat_channels`, `chat_members`, `chat_messages`, `chat_reads`). Es
+   idempotente: se puede correr varias veces.
+
+2. **Bucket de Storage.** En Supabase → Storage → **New bucket**:
+   - Nombre exacto: `chat-uploads`
+   - **Public**: ON
+   Sin esto, subir fotos/documentos dará error (la API lo avisa).
+
+3. **Realtime.** Ya viene activo en Supabase. El chat usa *broadcast* y
+   *presence* (efímeros, no tocan la base de datos), así que **no** hay que
+   configurar RLS ni "replication". Si algún día no ves el "en línea" o el
+   "escribiendo…", revisa que Realtime esté habilitado en el proyecto.
+
+No hay variables nuevas en Vercel.
+
+### 19.2 · Chat de equipo (empleados)
+
+Nuevo tab **💬 Chat equipo** en el panel (grupo *Operación*). Permiso nuevo
+`Chat de equipo`: activo por defecto para Owner, Admin, Soporte y Marketing (lo
+ajustas en Equipo → permisos).
+
+- **Canales** abiertos a todo el equipo (`#general` se crea solo) y **mensajes
+  directos** (doble clic sobre un compañero en la lista *Equipo*).
+- **@menciones**: escribe `@` para etiquetar a un **compañero**, un **cliente** o
+  un **ticket**. Al mencionar a alguien le llega aviso en su campana.
+- **@Onyx AI**: escribe `@Onyx` y la IA responde en el canal (usa la misma base de
+  conocimiento del soporte; nunca da datos privados de un cliente).
+- **Adjuntar** fotos y documentos (📎) y **emojis** (😊).
+- **Buscar por día**: el selector de fecha filtra los mensajes de esa jornada
+  (los chats quedan guardados por día).
+- **Añadir a un compañero** a la conversación con **＋ Añadir**; se ve el
+  **nombre y el rol** de cada miembro.
+- **Varios chats a la vez**: con ⧉ (o *Ventana*) abres la conversación como una
+  **ventana acoplada** abajo a la derecha; puedes tener hasta 3 abiertas.
+
+### 19.3 · Soporte con look WhatsApp
+
+- **Trader** (Centro de soporte): el ticket abierto es ahora un chat con
+  burbujas, adjuntos, emojis y palomitas. Al abrirlo se marcan como leídos los
+  mensajes del equipo (el admin ve ✓✓).
+- **Admin** (bandeja): las respuestas muestran ✓✓ (verde cuando el cliente las
+  leyó), se pueden **adjuntar** archivos, y ves cuándo el cliente **está
+  escribiendo**. Se conservan las respuestas guardadas, el borrador con IA, las
+  notas internas y la invitación de compañeros.
