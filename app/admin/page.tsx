@@ -3,7 +3,7 @@ import { getAdmin } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { serverLang } from '@/lib/locale';
-import { serverLocked, userHasPin, userPinIsTemp, IDLE_MIN } from '@/lib/adminSecurity';
+import { serverLocked, userHasPin, userPinIsTemp, has2faOk, IDLE_MIN } from '@/lib/adminSecurity';
 import AdminClient from './AdminClient';
 import LockScreen from './LockScreen';
 import ChangePin from './ChangePin';
@@ -28,7 +28,8 @@ export default async function Admin() {
       const hasVerified = (factors?.totp || []).some((f: any) => f.status === 'verified');
       if (!hasVerified) return <TwoFactorGate mode="enroll" lang={lang} />;
       const { data: aal } = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
-      if (aal && aal.currentLevel !== 'aal2') return <TwoFactorGate mode="challenge" lang={lang} />;
+      // Un código de respaldo usado hace poco (cookie firmada) también sirve.
+      if (aal && aal.currentLevel !== 'aal2' && !has2faOk(user.id)) return <TwoFactorGate mode="challenge" lang={lang} />;
     } catch { /* si la comprobación falla, no bloqueamos el panel por un fallo transitorio */ }
   }
 

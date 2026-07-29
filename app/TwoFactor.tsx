@@ -10,12 +10,18 @@ const T: any = {
     manual: 'O escribe esta clave a mano en tu app:', code: 'Código de 6 dígitos', verify: 'Verificar y activar',
     challT: 'Verificación en dos pasos', challH: 'Escribe el código de 6 dígitos de tu app de autenticación.', confirm: 'Confirmar',
     bad: 'Código incorrecto. Intenta de nuevo.', err: 'Algo salió mal. Recarga e intenta de nuevo.', loading: '…',
+    bkT: 'Guarda tus códigos de respaldo', bkH: 'Si pierdes el teléfono, entra con uno de estos códigos (cada uno se usa una sola vez). Guárdalos en un lugar seguro; no volverán a mostrarse.',
+    bkContinue: 'Ya los guardé, continuar', bkUse: '¿Perdiste el teléfono? Usa un código de respaldo', bkBack: '← Volver al código de la app',
+    bkCode: 'Código de respaldo', bkVerify: 'Entrar con código', bkCopy: 'Copiar todos',
   },
   en: {
     setupT: 'Enable two-step verification', setupH: 'Scan the QR with Google Authenticator or Authy, then enter the 6-digit code it shows.',
     manual: 'Or type this key into your app manually:', code: '6-digit code', verify: 'Verify and enable',
     challT: 'Two-step verification', challH: 'Enter the 6-digit code from your authenticator app.', confirm: 'Confirm',
     bad: 'Wrong code. Try again.', err: 'Something went wrong. Reload and try again.', loading: '…',
+    bkT: 'Save your backup codes', bkH: 'If you lose your phone, sign in with one of these codes (each works once). Store them somewhere safe; they will not be shown again.',
+    bkContinue: 'I saved them, continue', bkUse: 'Lost your phone? Use a backup code', bkBack: '← Back to app code',
+    bkCode: 'Backup code', bkVerify: 'Sign in with code', bkCopy: 'Copy all',
   },
 };
 
@@ -29,6 +35,9 @@ export default function TwoFactor({ mode, lang, onDone }: { mode: 'enroll' | 'ch
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const [ready, setReady] = useState(false);
+  const [backupCodes, setBackupCodes] = useState<string[] | null>(null);  // mostrados 1 vez tras activar
+  const [useBackup, setUseBackup] = useState(false);                       // en el challenge: usar código de respaldo
+  const [bcode, setBcode] = useState('');
 
   useEffect(() => { (mode === 'enroll' ? startEnroll() : startChallenge()); }, []);
 
@@ -62,6 +71,21 @@ export default function TwoFactor({ mode, lang, onDone }: { mode: 'enroll' | 'ch
       if (ce || !ch) { setMsg(L.err); return; }
       const { error } = await sb.auth.mfa.verify({ factorId, challengeId: ch.id, code });
       if (error) { setMsg(L.bad); setCode(''); return; }
+      // Al ACTIVAR el 2FA, generamos y mostramos los códigos de respaldo una vez.
+      if (mode === 'enroll') {
+        try { const r = await fetch('/api/admin/2fa-backup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'generate' }) }); const j = await r.json(); if (j.codes?.length) { setBackupCodes(j.codes); return; } } catch {}
+      }
+      onDone();
+    } catch { setMsg(L.err); } finally { setBusy(false); }
+  }
+
+  // Entrar con un código de respaldo (cuando no tienes el teléfono a mano).
+  async function submitBackup() {
+    if (!bcode.trim()) return;
+    setBusy(true); setMsg('');
+    try {
+      const r = await fetch('/api/admin/2fa-backup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'verify', code: bcode }) });
+      if (!r.ok) { setMsg(L.bad); setBcode(''); return; }
       onDone();
     } catch { setMsg(L.err); } finally { setBusy(false); }
   }
@@ -73,6 +97,21 @@ export default function TwoFactor({ mode, lang, onDone }: { mode: 'enroll' | 'ch
       onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
       placeholder="••••••" style={{ letterSpacing: 8, textAlign: 'center', fontSize: 20, margin: '6px 0 0' }} />
   );
+
+  // Pantalla de códigos de respaldo (tras activar el 2FA). Se muestran una vez.
+  if (backupCodes) {
+    return (
+      <div style={box}>
+        <h3 style={{ marginBottom: 4 }}>🗝️ {L.bkT}</h3>
+        <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{L.bkH}</p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 12, padding: 12 }}>
+          {backupCodes.map((c) => <div key={c} className="code" style={{ textAlign: 'center', letterSpacing: 2, fontSize: 14 }}>{c}</div>)}
+        </div>
+        <button className="btn btn-ghost" style={{ width: '100%', marginTop: 10, fontSize: 13 }} onClick={() => { try { navigator.clipboard.writeText(backupCodes.join('\n')); } catch {} }}>📋 {L.bkCopy}</button>
+        <button className="btn btn-primary" style={{ width: '100%', marginTop: 10 }} onClick={onDone}>{L.bkContinue}</button>
+      </div>
+    );
+  }
 
   if (mode === 'enroll') {
     return (
@@ -98,10 +137,27 @@ export default function TwoFactor({ mode, lang, onDone }: { mode: 'enroll' | 'ch
   return (
     <div style={box}>
       <h3 style={{ marginBottom: 4 }}>🔐 {L.challT}</h3>
-      <p className="muted" style={{ fontSize: 13, marginBottom: 14 }}>{L.challH}</p>
-      <span className="muted" style={{ fontSize: 12 }}>{L.code}</span>{input}
-      {msg && <div style={{ color: 'var(--red)', fontSize: 13, marginTop: 8 }}>{msg}</div>}
-      <button className="btn btn-primary" style={{ width: '100%', marginTop: 14 }} disabled={busy || code.length !== 6} onClick={submit}>{busy ? L.loading : L.confirm}</button>
+      {!useBackup ? (
+        <>
+          <p className="muted" style={{ fontSize: 13, marginBottom: 14 }}>{L.challH}</p>
+          <span className="muted" style={{ fontSize: 12 }}>{L.code}</span>{input}
+          {msg && <div style={{ color: 'var(--red)', fontSize: 13, marginTop: 8 }}>{msg}</div>}
+          <button className="btn btn-primary" style={{ width: '100%', marginTop: 14 }} disabled={busy || code.length !== 6} onClick={submit}>{busy ? L.loading : L.confirm}</button>
+          <button className="btn btn-ghost" style={{ width: '100%', marginTop: 8, fontSize: 12.5 }} onClick={() => { setUseBackup(true); setMsg(''); }}>{L.bkUse}</button>
+        </>
+      ) : (
+        <>
+          <p className="muted" style={{ fontSize: 13, marginBottom: 14 }}>{L.bkH}</p>
+          <span className="muted" style={{ fontSize: 12 }}>{L.bkCode}</span>
+          <input value={bcode} autoFocus autoComplete="off" maxLength={12}
+            onChange={(e) => setBcode(e.target.value.replace(/[^a-fA-F0-9]/g, '').toLowerCase().slice(0, 12))}
+            onKeyDown={(e) => { if (e.key === 'Enter') submitBackup(); }}
+            placeholder="a1b2c3d4e5" style={{ letterSpacing: 3, textAlign: 'center', fontSize: 18, margin: '6px 0 0' }} />
+          {msg && <div style={{ color: 'var(--red)', fontSize: 13, marginTop: 8 }}>{msg}</div>}
+          <button className="btn btn-primary" style={{ width: '100%', marginTop: 14 }} disabled={busy || !bcode.trim()} onClick={submitBackup}>{busy ? L.loading : L.bkVerify}</button>
+          <button className="btn btn-ghost" style={{ width: '100%', marginTop: 8, fontSize: 12.5 }} onClick={() => { setUseBackup(false); setMsg(''); }}>{L.bkBack}</button>
+        </>
+      )}
     </div>
   );
 }

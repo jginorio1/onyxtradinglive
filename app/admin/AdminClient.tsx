@@ -23,6 +23,7 @@ import Revenue from './Revenue';
 import EnvSwitch from './EnvSwitch';
 import AdminLeadAlert from './AdminLeadAlert';
 import TeamChat from './TeamChat';
+import BackupCodes from './BackupCodes';
 import RangeBar, { type Range, defaultRange } from './RangeBar';
 import { AREAS, effectivePerms } from '@/lib/perms';
 import { useT } from '@/lib/adminText';
@@ -506,6 +507,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                 </div>
                 {/* Tu seguridad personal: visible para todo admin/empleado. */}
                 <SecurityControl idleMin={idleMin} />
+                <BackupCodes />
 
                 {/* Solo el Owner: roles, barra de descuentos y modo beta. */}
                 {role === 'owner' && (

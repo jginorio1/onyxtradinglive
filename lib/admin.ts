@@ -1,12 +1,14 @@
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { effectivePerms, meets, type PermLevel } from '@/lib/perms';
-import { serverLocked } from '@/lib/adminSecurity';
+import { serverLocked, has2faOk } from '@/lib/adminSecurity';
 
 // ¿La sesión superó el 2FA (AAL2) en este dispositivo? Si el usuario tiene un
 // factor activo pero no lo verificó en esta sesión, currentLevel es aal1 y hay
-// que exigir el código antes de dejar tocar nada sensible del backend.
-async function needs2FA(sb: ReturnType<typeof createSupabaseServer>): Promise<boolean> {
+// que exigir el código antes de dejar tocar nada sensible del backend. Un código
+// de respaldo válido (cookie firmada) también cuenta como 2FA satisfecho.
+async function needs2FA(sb: ReturnType<typeof createSupabaseServer>, userId: string): Promise<boolean> {
+  if (has2faOk(userId)) return false;
   try {
     const { data: aal } = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
     return !!aal && aal.nextLevel === 'aal2' && aal.currentLevel !== 'aal2';
@@ -43,7 +45,7 @@ export async function requirePerm(area: string, need: PermLevel = 'view') {
   let reason: '' | 'locked' | '2fa' = '';
   if (ok) {
     if (serverLocked()) { ok = false; reason = 'locked'; }          // bloqueo por inactividad
-    else if (await needs2FA(createSupabaseServer())) { ok = false; reason = '2fa'; }  // 2FA no verificado
+    else if (await needs2FA(createSupabaseServer(), a.user.id)) { ok = false; reason = '2fa'; }  // 2FA no verificado
   }
   return { ...a, ok, reason };
 }

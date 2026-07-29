@@ -758,3 +758,24 @@ nuevos, sin asignar y sin resolver por categoría. Ideal para el cambio de turno
   se controla con `team_digest_lang` (`es`/`en`, por defecto español).
 - Usa `CRON_SECRET` como los demás crons. No hay SQL nuevo (usa las tablas del
   chat de equipo de 19.1).
+
+---
+
+## 20 · Seguridad reforzada del panel (PIN + 2FA)
+
+- **PIN enmascarado** al escribirlo (bloqueo y "crear PIN").
+- **Bloqueo por inactividad efectivo**: si el panel lleva +20 min inactivo, el
+  middleware corta las APIs de admin (423) y `requirePerm` también las niega
+  aunque se llamen directo con la sesión viva. Cubre admin, chat de equipo y copy.
+- **2FA exigido en el backend (AAL2)**, no solo en la pantalla. Si tu sesión no
+  pasó el 2FA, las acciones sensibles responden "no autorizado" hasta verificarlo.
+- **Registro + alerta de intentos fallidos**: cada fallo de PIN queda en el
+  activity log; al agotar intentos, llega un **correo de aviso** a tu email y al
+  Owner (ADMIN_EMAILS).
+- **Códigos de respaldo del 2FA**: al activar el 2FA se muestran 8 códigos de un
+  solo uso (guárdalos). Si ya tenías 2FA, genéralos en **Ajustes → Códigos de
+  respaldo**. Si pierdes el teléfono, en la pantalla de 2FA elige "usar un código
+  de respaldo". Se guardan cifrados; regenerarlos invalida los anteriores.
+
+No hay SQL nuevo. Reutiliza `CRON_SECRET`/service role para firmar la cookie de
+respaldo y `ADMIN_EMAILS` para el aviso.

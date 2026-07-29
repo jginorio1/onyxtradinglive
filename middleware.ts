@@ -72,7 +72,7 @@ export async function middleware(req: NextRequest) {
   // vieja, cortamos las APIs de admin (menos la de seguridad, que desbloquea).
   // Así los datos NO salen aunque alguien llame la API directo con la sesión viva.
   // La marca solo existe para quien tiene PIN, así que a los demás no les afecta.
-  if (path.startsWith('/api/admin/') && path !== '/api/admin/security') {
+  if (path.startsWith('/api/admin/') && path !== '/api/admin/security' && path !== '/api/admin/2fa-backup') {
     const seen = req.cookies.get('onyx_seen')?.value;
     const t = seen ? parseInt(seen, 10) : 0;
     if (t && !Number.isNaN(t) && Date.now() - t > 20 * 60 * 1000) {   // 20 min de inactividad

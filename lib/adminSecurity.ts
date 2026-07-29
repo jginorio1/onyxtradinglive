@@ -70,6 +70,66 @@ export async function verifyPin(userId: string, pin: string): Promise<'ok' | 'ba
   return locked ? 'locked' : 'bad';
 }
 
+// ============================================================
+// Códigos de respaldo del 2FA (por si pierdes el teléfono) + prueba de que la
+// sesión ya superó el 2FA por esa vía (cookie firmada, corta y httpOnly).
+// ============================================================
+const TFA_COOKIE = 'onyx_2fa';
+const TFA_TTL_MS = 8 * 60 * 60 * 1000;   // 8 h, como la sesión de trabajo
+function tfaSecret() { return process.env.CRON_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || 'onyx-2fa'; }
+
+// Marca esta sesión como "2FA satisfecho" (tras usar un código de respaldo).
+export function set2faOk(userId: string) {
+  const exp = Date.now() + TFA_TTL_MS;
+  const sig = crypto.createHmac('sha256', tfaSecret()).update(`${userId}.${exp}`).digest('hex');
+  cookies().set(TFA_COOKIE, `${exp}.${sig}`, { path: '/', maxAge: Math.floor(TFA_TTL_MS / 1000), httpOnly: true, sameSite: 'lax', secure: true });
+}
+// ¿La sesión ya pasó el 2FA por código de respaldo (y no ha caducado)?
+export function has2faOk(userId: string): boolean {
+  try {
+    const v = cookies().get(TFA_COOKIE)?.value; if (!v) return false;
+    const [expS, sig] = v.split('.'); const exp = parseInt(expS, 10);
+    if (!exp || Number.isNaN(exp) || Date.now() > exp) return false;
+    const good = crypto.createHmac('sha256', tfaSecret()).update(`${userId}.${exp}`).digest('hex');
+    return sig.length === good.length && crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(good));
+  } catch { return false; }
+}
+
+type Backup = { codes: { h: string; s: string }[] };
+type BackupStore = { users: Record<string, Backup> };
+
+// Genera 8 códigos de un solo uso, los guarda CIFRADOS y devuelve el texto plano
+// UNA vez para mostrarlos. Al regenerar se reemplazan los anteriores.
+export async function genBackupCodes(userId: string): Promise<string[]> {
+  const store = await getSetting<BackupStore>('admin_2fa_backup', { users: {} });
+  const plain: string[] = []; const codes: { h: string; s: string }[] = [];
+  for (let i = 0; i < 8; i++) {
+    const c = crypto.randomBytes(5).toString('hex'); // 10 caracteres
+    const salt = crypto.randomBytes(16).toString('hex');
+    plain.push(c); codes.push({ h: hash(c, salt), s: salt });
+  }
+  store.users[userId] = { codes };
+  await saveSetting('admin_2fa_backup', store);
+  return plain;
+}
+export async function backupCodesLeft(userId: string): Promise<number> {
+  const store = await getSetting<BackupStore>('admin_2fa_backup', { users: {} });
+  return store.users[userId]?.codes?.length || 0;
+}
+// Verifica y CONSUME un código de respaldo (uno solo se puede usar una vez).
+export async function verifyBackupCode(userId: string, code: string): Promise<boolean> {
+  const clean = String(code || '').trim().toLowerCase().replace(/\s+/g, '');
+  if (!clean) return false;
+  const store = await getSetting<BackupStore>('admin_2fa_backup', { users: {} });
+  const rec = store.users[userId]; if (!rec?.codes?.length) return false;
+  const idx = rec.codes.findIndex((c) => {
+    try { return crypto.timingSafeEqual(Buffer.from(hash(clean, c.s), 'hex'), Buffer.from(c.h, 'hex')); } catch { return false; }
+  });
+  if (idx < 0) return false;
+  rec.codes.splice(idx, 1); await saveSetting('admin_2fa_backup', store);
+  return true;
+}
+
 // ¿El panel está bloqueado ahora mismo?
 // Se basa en la MARCA DE TIEMPO de la última actividad (cookie onyx_seen), no en
 // un temporizador de JavaScript. Así el bloqueo es determinista: si pasan más de

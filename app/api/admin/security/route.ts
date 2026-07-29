@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { getAdmin, requirePerm } from '@/lib/admin';
+import { getAdmin, requirePerm, logAdmin } from '@/lib/admin';
 import { SEEN_COOKIE, IDLE_MIN, userHasPin, setPin, verifyPin, getStore, serverLocked } from '@/lib/adminSecurity';
+import { sendEmail } from '@/lib/mail';
 
 const SEEN_TTL = 60 * 60 * 8; // la cookie vive 8h; lo que bloquea es su antigüedad
 function touch(fresh = true) {
@@ -70,8 +71,20 @@ export async function POST(req: Request) {
   if (b.action === 'unlock') {
     const r = await verifyPin(user.id, String(b.pin || '').trim());
     if (r === 'ok') { touch(true); return NextResponse.json({ ok: true }); }
-    if (r === 'locked') return NextResponse.json({ error: 'Demasiados intentos.', forceLogout: true }, { status: 423 });
     if (r === 'nopin') { touch(true); return NextResponse.json({ ok: true }); }
+    // Intento fallido: se registra para auditoría; al agotar intentos, avisamos por correo.
+    await logAdmin(user.email || '', r === 'locked' ? 'pin_lockout' : 'pin_fail', user.id, {});
+    if (r === 'locked') {
+      try {
+        const owners = (process.env.ADMIN_EMAILS || '').split(',').map((s) => s.trim()).filter(Boolean);
+        const to = Array.from(new Set([user.email, ...owners].filter(Boolean))) as string[];
+        for (const addr of to) {
+          await sendEmail(addr, '⚠️ Onyx · Cuenta bloqueada por PIN',
+            `Se bloqueó el acceso al panel de ${user.email} tras varios intentos fallidos de PIN (${new Date().toLocaleString()}). Si no fuiste tú, cambia tu contraseña y revisa tu 2FA.`);
+        }
+      } catch {}
+      return NextResponse.json({ error: 'Demasiados intentos.', forceLogout: true }, { status: 423 });
+    }
     return NextResponse.json({ error: 'PIN incorrecto.' }, { status: 401 });
   }
 
