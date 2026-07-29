@@ -14,7 +14,7 @@ const HAB: Record<string, [string, string]> = {
   respected_sessions: ['Operé solo en mis sesiones', 'Traded only in my sessions'],
 };
 const SESS: Record<string, [string, string]> = { asia: ['Asia', 'Asia'], london: ['Londres', 'London'], ny: ['Nueva York', 'New York'] };
-const STYLES: Record<string, [string, string]> = { day: ['Day trader', 'Day trader'], scalper: ['Scalper', 'Scalper'], swing: ['Swing', 'Swing'], funded: ['Fondeo (prop)', 'Funded (prop)'], crypto: ['Cripto', 'Crypto'], custom: ['Personalizado', 'Custom'] };
+const STYLES: Record<string, [string, string]> = { day: ['Day trader', 'Day trader'], scalper: ['Scalper', 'Scalper'], swing: ['Swing', 'Swing'], funded: ['Fondeo (prop)', 'Funded (prop)'], crypto: ['Cripto', 'Crypto'], algo: ['Algorítmico (bots)', 'Algorithmic (bots)'], custom: ['Personalizado', 'Custom'] };
 
 // Plantillas por tipo de trader (las reglas se rellenan en el idioma actual).
 const PRESETS: Record<string, any> = {
@@ -23,6 +23,7 @@ const PRESETS: Record<string, any> = {
   swing: { risk_per_trade: 1, max_daily_loss_pct: 5, max_trades_day: 1, sessions: ['asia', 'london', 'ny'], habits: ['defined_risk', 'followed_plan', 'journaled', 'no_revenge'], rules_es: ['Confirmar en H4/D1', 'Máx. 1 operación por par', 'Sin revisar cada vela'], rules_en: ['Confirm on H4/D1', 'Max 1 trade per pair', 'Do not check every candle'] },
   funded: { risk_per_trade: 0.5, max_daily_loss_pct: 4, max_trades_day: 3, sessions: ['london', 'ny'], habits: ['reviewed_calendar', 'defined_risk', 'followed_plan', 'stopped_at_limit', 'no_revenge'], rules_es: ['Respetar el drawdown de la firma', 'No operar en noticias rojas', 'Parar al llegar al objetivo del día'], rules_en: ['Respect the firm drawdown', 'No trading on red news', 'Stop when the daily target is hit'] },
   crypto: { risk_per_trade: 1, max_daily_loss_pct: 5, max_trades_day: 4, sessions: ['asia', 'london', 'ny'], habits: ['defined_risk', 'followed_plan', 'journaled', 'no_revenge'], rules_es: ['Solo BTC/ETH de alta liquidez', 'Apalancamiento máx. 5x', 'Nada de FOMO en velas verdes'], rules_en: ['Only high-liquidity BTC/ETH', 'Max 5x leverage', 'No FOMO on green candles'] },
+  algo: { risk_per_trade: 0.5, max_daily_loss_pct: 4, max_trades_day: 0, sessions: ['asia', 'london', 'ny'], habits: ['defined_risk', 'stopped_at_limit', 'no_revenge', 'journaled'], rules_es: ['Revisar cada día que los bots estén activos', 'No intervenir a mano en una operación del bot', 'Frenar un bot si rompe su drawdown máximo', 'Comparar el rendimiento vivo con el backtest'], rules_en: ['Check daily that the bots are running', 'Do not manually override a bot trade', 'Stop a bot if it breaks its max drawdown', 'Compare live performance with the backtest'] },
 };
 
 const T: any = {

@@ -868,3 +868,15 @@ Convive con el Guardian (que impone las reglas duras en el EA).
      tu conducta y te dice dónde rompes tus reglas y qué corregir mañana.
 
 Sin variables nuevas (la IA usa `ANTHROPIC_API_KEY`, que ya tienes).
+
+### 24.1 · Trader algorítmico + recordatorio + adherencia semanal
+
+- **Trader algorítmico (bots)** ya aparece como estilo en el onboarding, en el hero
+  del dashboard y en "Mi plan y hábitos" (con su plantilla: reglas para vigilar los
+  bots, no intervenir a mano, frenar por drawdown, comparar con backtest).
+- **Recordatorio diario del check-in**: cron `/api/cron/checkin-reminder`
+  (ya en `vercel.json`, 21:30 UTC). A quien usa el plan y no hizo el check-in de
+  hoy le llega un aviso en la campana y, si tiene Telegram vinculado y las alertas
+  diarias activas, también por Telegram. Usa `CRON_SECRET`.
+- **Adherencia en el informe semanal de Telegram**: se añade una línea
+  "🎯 Adherencia al plan: X% · racha Y días" a quien usa "Mi plan y hábitos".

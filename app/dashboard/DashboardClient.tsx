@@ -65,7 +65,7 @@ const D = {
     ambT: '¿Tienes comunidad? Gana con Onyx', ambD: 'Cobra una comisión recurrente por cada persona que se suscriba con tu enlace, y dale un descuento a tu gente.', ambCta: 'Ver el programa →', ambHide: 'Ocultar',
     analytics: 'Tu panel', accountsWord: 'cuenta(s)', balance: 'Balance', connectBtn: '+ Conectar cuenta',
     greetM: 'Buenos días', greetA: 'Buenas tardes', greetE: 'Buenas noches', welcomeTrader: 'Bienvenido, trader', completeProfile: 'Completa tu perfil de trader →',
-    styleMap: { scalping: 'Scalper', day: 'Day Trader', swing: 'Swing Trader', position: 'Position Trader' } as Record<string, string>,
+    styleMap: { scalping: 'Scalper', day: 'Day Trader', swing: 'Swing Trader', position: 'Position Trader', algo: 'Algo Trader' } as Record<string, string>,
     rankMap: { novato: 'Aprendiz', intermedio: 'Intermedio', avanzado: 'Avanzado', pro: 'Pro' } as Record<string, string>,
     goalMap: { pasar_challenge: 'Pasar challenge', consistencia: 'Consistencia', crecer: 'Crecer la cuenta', vivir: 'Vivir del trading' } as Record<string, string>,
     platMap: { mt5: 'MT5', mt4: 'MT4', ambas: 'MT4 + MT5' } as Record<string, string>,
@@ -95,7 +95,7 @@ const D = {
     ambT: 'Got a community? Earn with Onyx', ambD: 'Earn a recurring commission for everyone who subscribes through your link, and give your people a discount.', ambCta: 'See the program →', ambHide: 'Hide',
     analytics: 'Your dashboard', accountsWord: 'account(s)', balance: 'Balance', connectBtn: '+ Connect account',
     greetM: 'Good morning', greetA: 'Good afternoon', greetE: 'Good evening', welcomeTrader: 'Welcome, trader', completeProfile: 'Complete your trader profile →',
-    styleMap: { scalping: 'Scalper', day: 'Day Trader', swing: 'Swing Trader', position: 'Position Trader' } as Record<string, string>,
+    styleMap: { scalping: 'Scalper', day: 'Day Trader', swing: 'Swing Trader', position: 'Position Trader', algo: 'Algo Trader' } as Record<string, string>,
     rankMap: { novato: 'Rookie', intermedio: 'Intermediate', avanzado: 'Advanced', pro: 'Pro' } as Record<string, string>,
     goalMap: { pasar_challenge: 'Pass challenge', consistencia: 'Consistency', crecer: 'Grow account', vivir: 'Trade for a living' } as Record<string, string>,
     platMap: { mt5: 'MT5', mt4: 'MT4', ambas: 'MT4 + MT5' } as Record<string, string>,
@@ -473,7 +473,7 @@ export default function DashboardClient({ email = '', plan = 'free', profile, tr
   const greetWord = (() => { const h = new Date().getHours(); return h < 12 ? L.greetM : h < 19 ? L.greetA : L.greetE; })();
   const heroTitle = firstName ? `${greetWord}, ${firstName}` : L.welcomeTrader;
   const heroInitials = (firstName || email || '?').slice(0, 2).toUpperCase();
-  const STYLE_EMOJI: Record<string, string> = { scalping: '⚡', day: '📈', swing: '🌊', position: '🏔️' };
+  const STYLE_EMOJI: Record<string, string> = { scalping: '⚡', day: '📈', swing: '🌊', position: '🏔️', algo: '🤖' };
   const heroChips: string[] = [];
   if (profile?.trade_style && L.styleMap[profile.trade_style]) heroChips.push(`${STYLE_EMOJI[profile.trade_style] || ''} ${L.styleMap[profile.trade_style]}`.trim());
   if (profile?.experience && L.rankMap[profile.experience]) heroChips.push(`🏅 ${L.rankMap[profile.experience]}`);

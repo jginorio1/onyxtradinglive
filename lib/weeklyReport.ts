@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { computeStats } from '@/lib/stats';
 import { alertUser } from '@/lib/telegram';
+import { getPlan, computeStats as planStats } from '@/lib/tradingPlan';
 
 // ============================================================
 // Informe semanal por Telegram.
@@ -67,6 +68,16 @@ export async function buildWeeklyReport(userId: string): Promise<string | null> 
     if (overrides) msg += ` · te lo saltaste ${overrides}`;
     msg += `\n`;
   }
+
+  // Adherencia al plan (solo si el trader usa "Mi plan y hábitos")
+  try {
+    const { data: hasPlan } = await supabaseAdmin.from('trading_plans').select('user_id').eq('user_id', userId).maybeSingle();
+    if (hasPlan) {
+      const plan = await getPlan(userId);
+      const ps = await planStats(userId, plan);
+      msg += `\n🎯 Adherencia al plan: <b>${ps.adherence}%</b> · racha ${ps.streak} días\n`;
+    }
+  } catch { /* silencioso */ }
 
   // Un cierre honesto según cómo fue la semana, sin exagerar
   if (s.net > 0 && s.expectancy > 0) msg += `\nSemana en verde. Mantén el mismo plan.`;
