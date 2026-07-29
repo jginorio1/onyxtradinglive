@@ -942,3 +942,11 @@ Detección de roles: se lee de `copy_links` (master/esclava activas). El umbral 
   vez al día**: recuerda el día en `localStorage` (`onyx_checkin_day`), así detecta
   el día nuevo sin depender del servidor. No molesta a quien todavía no configuró su
   plan. `GET /api/plan` ahora devuelve `hasPlan`.
+
+### 24.5 · Tira persistente si saltas el check-in
+
+Si el trader pulsa "Ahora no" en el popup diario, ya no desaparece del todo: queda
+una **tira fija arriba** (⏳ "Aún no revisaste tu plan hoy" + botón "Revisar ahora")
+hasta que complete el check-in del día. Presente pero no bloqueante. Estados en
+`localStorage`: `onyx_checkin_done` (hecho hoy → nada), `onyx_checkin_skip`
+(saltado hoy → tira). Al guardar se limpia y no vuelve hasta el día siguiente.

@@ -19,12 +19,14 @@ const T: any = {
     adherence: 'Adherencia', streak: 'Racha', ddl: 'Tu tope de pérdida hoy',
     save: 'Guardar mi check-in', saved: '¡Listo por hoy! 💪', later: 'Ahora no',
     seePlan: 'Ver mi plan completo', reminder: 'Recuerda tu regla de oro:',
+    barText: 'Aún no revisaste tu plan hoy', barCta: 'Revisar ahora',
   },
   en: {
     title: 'Before trading today', sub: 'One minute to review your plan and tick your habits. That keeps your streak alive.',
     adherence: 'Adherence', streak: 'Streak', ddl: 'Your loss limit today',
     save: 'Save my check-in', saved: 'Done for today! 💪', later: 'Not now',
     seePlan: 'See my full plan', reminder: 'Remember your golden rule:',
+    barText: 'You haven’t reviewed your plan today', barCta: 'Review now',
   },
 };
 
@@ -34,7 +36,7 @@ export default function DailyCheckinPopup({ lang }: { lang: Lang }) {
   const t = T[lang]; const i = lang === 'en' ? 1 : 0;
   const [d, setD] = useState<any>(null);
   const [items, setItems] = useState<Record<string, boolean>>({});
-  const [open, setOpen] = useState(false);
+  const [phase, setPhase] = useState<'hidden' | 'popup' | 'bar'>('hidden');
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -42,17 +44,20 @@ export default function DailyCheckinPopup({ lang }: { lang: Lang }) {
     (async () => {
       try {
         const today = todayLocal();
-        if (localStorage.getItem('onyx_checkin_day') === today) return; // ya visto/hecho hoy
+        // Si ya lo GUARDÓ hoy → nada.
+        if (localStorage.getItem('onyx_checkin_done') === today) return;
         const r = await fetch('/api/plan'); const j = await r.json();
         if (!j || !j.hasPlan) return; // solo a quien ya usa el plan
         const done = j.checkin?.items && Object.values(j.checkin.items).some(Boolean);
-        if (done) { localStorage.setItem('onyx_checkin_day', today); return; } // ya lo hizo por otra vía
-        setD(j); setItems(j.checkin?.items || {}); setOpen(true);
+        if (done) { localStorage.setItem('onyx_checkin_done', today); return; }
+        setD(j); setItems(j.checkin?.items || {});
+        // Si ya lo saltó hoy → mostramos solo la tira; si no, el popup.
+        setPhase(localStorage.getItem('onyx_checkin_skip') === today ? 'bar' : 'popup');
       } catch { /* silencioso */ }
     })();
   }, []);
 
-  if (!open || !d || !d.plan) return null;
+  if (phase === 'hidden' || !d || !d.plan) return null;
   const p = d.plan; const s = d.stats || {}; const g = d.guardian || {};
   const allHabits: { id: string; label: string }[] = [
     ...(p.habits || []).map((k: string) => ({ id: k, label: HAB[k]?.[i] || k })),
@@ -61,15 +66,29 @@ export default function DailyCheckinPopup({ lang }: { lang: Lang }) {
   const adColor = s.adherence >= 75 ? 'var(--green)' : s.adherence >= 50 ? 'var(--amber)' : 'var(--red)';
   const goldenRule = (p.rules && p.rules[0]) ? p.rules[0] : '';
 
-  function dismiss() { try { localStorage.setItem('onyx_checkin_day', todayLocal()); } catch {} setOpen(false); }
+  // Saltar: cierra el popup pero deja la tira arriba hasta que lo haga.
+  function dismiss() { try { localStorage.setItem('onyx_checkin_skip', todayLocal()); } catch {} setPhase('bar'); }
   async function save() {
     setBusy(true);
     try {
       await fetch('/api/plan', { method: 'POST', body: JSON.stringify({ items, note: '' }) });
-      try { localStorage.setItem('onyx_checkin_day', todayLocal()); } catch {}
+      try { localStorage.setItem('onyx_checkin_done', todayLocal()); } catch {}
       setSaved(true);
-      setTimeout(() => setOpen(false), 1100);
+      setTimeout(() => setPhase('hidden'), 1100);
     } catch {} finally { setBusy(false); }
+  }
+
+  // ---- Tira fija arriba: aparece si saltó el popup, hasta que haga el check-in ----
+  if (phase === 'bar') {
+    return (
+      <div style={{ position: 'sticky', top: 0, zIndex: 60, background: 'rgba(255,192,77,.14)', borderBottom: '1px solid var(--amber)', backdropFilter: 'blur(6px)' }}>
+        <div className="wrap-wide" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 16 }}>⏳</span>
+          <span style={{ fontSize: 13.5, flex: 1, minWidth: 160, color: 'var(--amber)', fontWeight: 600 }}>{t.barText}</span>
+          <button className="btn btn-primary" style={{ fontSize: 12.5, padding: '5px 14px' }} onClick={() => setPhase('popup')}>🎯 {t.barCta}</button>
+        </div>
+      </div>
+    );
   }
 
   const overlay: React.CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: 16 };
