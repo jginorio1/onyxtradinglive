@@ -63,13 +63,21 @@ export async function POST(req: Request) {
       if (!elig.eligible) {
         return NextResponse.json({ error: 'No elegible para descuento ahora.', code: 'not_eligible', reason: elig.reason, nextEligibleAt: elig.nextEligibleAt || null }, { status: 403 });
       }
-      const coupon = await stripe.coupons.create({
-        percent_off: elig.percent,
-        duration: 'repeating',
-        duration_in_months: elig.months,
-        name: `Retención Onyx (${elig.percent}%)`,
-      });
-      await stripe.subscriptions.update(subId, { coupon: coupon.id } as any);
+      // Cupón REUTILIZABLE por combinación %/meses (mismo id → no se acumulan en
+      // Stripe). Si no existe todavía, se crea una sola vez; luego se reusa.
+      const couponId = `onyx_ret_${elig.percent}p_${elig.months}m`;
+      try {
+        await stripe.coupons.retrieve(couponId);
+      } catch {
+        await stripe.coupons.create({
+          id: couponId,
+          percent_off: elig.percent,
+          duration: 'repeating',
+          duration_in_months: elig.months,
+          name: `Retención Onyx (${elig.percent}% · ${elig.months}m)`,
+        } as any);
+      }
+      await stripe.subscriptions.update(subId, { coupon: couponId } as any);
       await recordGrant(user.id, prof?.email || user.email, elig.tier, elig.percent, elig.months);
       await close(b.id, 'saved_discount', user.id);
       return NextResponse.json({ ok: true, outcome: 'saved_discount', percent: elig.percent, months: elig.months });

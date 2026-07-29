@@ -804,3 +804,31 @@ comunidad se coordine para ello).
    llega un correo a `ADMIN_EMAILS`.
 
 No hay variables nuevas en Vercel.
+
+---
+
+## 22 · "Invita y gana" · referidos del usuario común
+
+Programa self-serve para TODOS los usuarios (no solo embajadores). Recompensa en
+CRÉDITO de cuenta (no efectivo). Convive con Embajadores.
+
+1. **SQL.** Corre `supabase/referral_v1.sql` (columnas `ref_code` + `member_ref_by`
+   en profiles; tabla `member_rewards`). Idempotente.
+2. **Cómo funciona**:
+   - Cada usuario tiene su enlace `…/?ref=SUCODIGO` (se genera solo) en
+     **Mi cuenta → Referidos**, con copiar/compartir y su medidor.
+   - Cuando el amigo se suscribe y **pasa la ventana anti-reembolso** (por defecto
+     21 días), se aplica el crédito automáticamente al **saldo de Stripe** de cada
+     uno (invitador y amigo) — reduce su próxima factura. No hay códigos que teclear.
+   - Si el amigo pide reembolso dentro de la ventana, el crédito **se anula**.
+   - Al juntar N referidos que pagan (umbral configurable), al usuario le llega la
+     invitación a **hacerse Embajador** (comisión en efectivo).
+3. **Ajustes** (Admin → Embajadores → "Invita y gana"): crédito al invitador y al
+   amigo, ventana de días, umbral a Embajador, y topes (por mes / de por vida, 0 =
+   sin tope).
+4. **Cron**: `/api/cron/member-rewards` cada 6 h (ya en `vercel.json`) aplica los
+   créditos vencidos. Usa `CRON_SECRET`.
+
+Sin cambios en Stripe ni variables nuevas: el crédito se da con la API
+(customer balance). El código de referido de un usuario común no colisiona con los
+de embajador (empiezan con `x`).

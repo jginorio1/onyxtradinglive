@@ -48,6 +48,22 @@ export async function saveSetting(key: string, value: any) {
 export const retentionSettings = () => getSetting<Retention>('retention', R);
 export const addonSettings = () => getSetting<Addons>('addons', A);
 
+// "Invita y gana" — referidos del usuario común (recompensa en crédito de cuenta)
+export type MemberReferral = {
+  enabled: boolean;
+  referrer_credit: number;   // crédito para quien invita (por cada amigo que paga)
+  friend_credit: number;     // crédito para el amigo en su primer pago
+  hold_days: number;         // ventana anti-reembolso antes de aplicar el crédito
+  max_per_month: number;     // tope de recompensas por invitador al mes (0 = sin tope)
+  max_lifetime: number;      // tope de recompensas por invitador de por vida (0 = sin tope)
+  bridge_threshold: number;  // referidos que pagan para invitar a ser Embajador
+};
+const MR: MemberReferral = {
+  enabled: true, referrer_credit: 10, friend_credit: 10, hold_days: 21,
+  max_per_month: 0, max_lifetime: 0, bridge_threshold: 5,
+};
+export const memberReferralSettings = () => getSetting<MemberReferral>('member_referral', MR);
+
 // Cuántas cuentas MT puede tener: las del plan + las compradas como complemento
 export async function accountLimit(userId: string) {
   const { data: prof } = await supabaseAdmin.from('profiles').select('plan,extra_accounts').eq('id', userId).maybeSingle();

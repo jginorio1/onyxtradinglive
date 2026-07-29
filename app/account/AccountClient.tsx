@@ -6,6 +6,7 @@ import { useLang } from '@/lib/lang';
 import Link from 'next/link';
 import { errMsg, planName } from '@/lib/i18nErrors';
 import Ambassador from './Ambassador';
+import ReferralCard from './ReferralCard';
 import CancelFlow from './CancelFlow';
 import TelegramCard from './TelegramCard';
 import BillingCard from './BillingCard';
@@ -603,7 +604,10 @@ export default function AccountClient({ email }: { email: string }) {
             )}
 
             {data && tab === 'referidos' && (
-              <Section icon="🎁" title={L.nav.referidos} subtitle={L.refSub}><Ambassador lang={lang} /></Section>
+              <Section icon="🎁" title={L.nav.referidos} subtitle={L.refSub}>
+                <ReferralCard />
+                <Ambassador lang={lang} />
+              </Section>
             )}
           </div>
         </div>

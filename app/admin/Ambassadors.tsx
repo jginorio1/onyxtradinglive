@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useT } from '@/lib/adminText';
 import { useLang } from '@/lib/lang';
 import RangeBar, { type Range, defaultRange } from './RangeBar';
+import MemberReferralSettings from './MemberReferralSettings';
 
 const METHOD: any = { paypal: 'PayPal', usdt: 'USDT', credit: 'Credit' };
 
@@ -160,6 +161,7 @@ export default function Ambassadors() {
       <RangeBar value={range} onChange={setRange}
         pdfUrl={(f, tt) => `/api/admin/ambassadors/report?from=${f}&to=${tt}&lang=${lang}`}
         csvUrl={(f, tt) => `/api/admin/ambassadors/report?export=csv&from=${f}&to=${tt}&lang=${lang}`} />
+      <MemberReferralSettings />
       <div className="grid g4" style={{ marginBottom: 16 }}>
         <div className="card kpi"><div className="lbl">{t.am_ambassadors}</div><div className="val">{list.filter((a) => a.status === 'approved').length}</div></div>
         <div className="card kpi"><div className="lbl">{t.am_requests}</div><div className="val" style={{ color: pend.length ? 'var(--amber)' : undefined }}>{pend.length}</div></div>

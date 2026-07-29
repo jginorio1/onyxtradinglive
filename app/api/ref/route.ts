@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { linkMemberByCode } from '@/lib/memberReferral';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -22,15 +23,17 @@ export async function POST() {
     if (prev) return NextResponse.json({ ok: true, linked: false });
 
     const { data: amb } = await supabaseAdmin.from('ambassadors').select('id,user_id,status').eq('code', code.toLowerCase()).maybeSingle();
-    if (!amb || amb.status !== 'approved') return NextResponse.json({ ok: true, linked: false });
 
-    // nadie se refiere a sí mismo
-    if (amb.user_id === user.id) return NextResponse.json({ ok: true, linked: false });
+    // 1) Embajador aprobado → atribución en efectivo (sistema existente)
+    if (amb && amb.status === 'approved' && amb.user_id !== user.id) {
+      await supabaseAdmin.from('referrals').insert({ ambassador_id: amb.id, user_id: user.id, source: 'link' });
+      await supabaseAdmin.from('profiles').update({ referred_by: amb.id }).eq('id', user.id);
+      return NextResponse.json({ ok: true, linked: true, kind: 'ambassador' });
+    }
 
-    await supabaseAdmin.from('referrals').insert({ ambassador_id: amb.id, user_id: user.id, source: 'link' });
-    await supabaseAdmin.from('profiles').update({ referred_by: amb.id }).eq('id', user.id);
-
-    return NextResponse.json({ ok: true, linked: true });
+    // 2) Código de un usuario común → "Invita y gana" (crédito)
+    const member = await linkMemberByCode(user.id, code);
+    return NextResponse.json({ ok: true, linked: member, kind: member ? 'member' : null });
   } catch {
     return NextResponse.json({ ok: true, linked: false });
   }

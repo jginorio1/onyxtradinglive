@@ -3,6 +3,7 @@ import { stripe, planFromPriceId } from '@/lib/stripe';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { ambSettings, rateFor } from '@/lib/ambassadors';
 import { enforcePlanLimits, notifyPlanChange, planRank } from '@/lib/planNotify';
+import { qualifyOnPaid, reverseMemberRewards } from '@/lib/memberReferral';
 
 export const runtime = 'nodejs';
 
@@ -126,10 +127,12 @@ export async function POST(req: Request) {
         });
       }
     } else if (event.type === 'invoice.paid' || event.type === 'invoice.payment_succeeded') {
-      await creditCommission(event.data.object as any);
+      await creditCommission(event.data.object as any);       // comisión de embajador (efectivo)
+      await qualifyOnPaid(event.data.object as any);           // "Invita y gana" del miembro (crédito)
     } else if (event.type === 'charge.refunded') {
       const ch: any = event.data.object;
       await reverseCommission(ch.invoice);
+      await reverseMemberRewards(ch.invoice);
     } else if (event.type === 'invoice.payment_failed') {
       // El cobro falló (tarjeta vencida, sin fondos…). Avisamos "plan en riesgo"
       // pero NO quitamos funciones: Stripe reintenta (dunning) antes de cancelar.
