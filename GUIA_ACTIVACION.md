@@ -903,3 +903,28 @@ riesgo por operación es tu objetivo propio (el Guardian no dimensiona posicione
 lo que escribas aparece en tu check-in de cada día (con la etiqueta "mío") y cuenta
 para tu racha y adherencia. Se guardan en `trading_plans.data.custom_habits`
 (sin cambio de SQL). El check-in acepta esos ids además de los 7 predefinidos.
+
+### 24.3 · Mi plan con varias cuentas y copy trading (versión potente)
+
+**El problema que resuelve:** con varias cuentas (challenge, fondeada, propia) y
+copy trading, una misma decisión se copiaba a varias cuentas y se contaba varias
+veces → la adherencia y el "sobre-operar" salían inflados; y aplicar un solo número
+a todas por igual pisaba las reglas distintas de cada cuenta.
+
+- **Panel por cuenta** en Mi plan: cada cuenta con su tipo (challenge/fondeada/
+  propia/demo), su rol de copy (📡 master / 📄 copia) y sus límites reales del
+  Guardian. Lo que ves es lo que se aplica.
+- **Alcance del plan** (`plan.scope`, sin SQL nuevo): "🎯 Mi cuenta principal" (mide
+  UNA cuenta; auto-elige el master si hay copy, o la eliges) o "🗂️ Todas (sin
+  duplicar copias)". En "todas", las cuentas **esclavas se excluyen** del conteo de
+  disciplina porque son espejo del master → el copy ya no cuenta doble.
+- **Sincronizar con alcance**: el popup pregunta "¿a qué cuentas lo aplico?" — solo
+  esta cuenta, todas, o solo las de un tipo (p. ej. challenge). Así un challenge a
+  -5% y tu cuenta propia a -2% conviven sin pisarse. (`POST /api/plan/guardian`
+  admite `mode` = all|account|type con `account_id`/`acc_type`.)
+- **Avisos de protección**: si una cuenta esclava recibe copias pero no tiene
+  pérdida diaria máxima, sale un aviso con botón "🛡️ Proteger" que abre el popup ya
+  apuntando a esa cuenta.
+
+Detección de roles: se lee de `copy_links` (master/esclava activas). El umbral de
+"máx operaciones/día" para medir disciplina sale de las cuentas del alcance.

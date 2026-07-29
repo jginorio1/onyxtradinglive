@@ -25,6 +25,8 @@ export type Plan = {
   rules: string[];           // reglas propias (texto libre)
   habits: string[];          // claves de hábitos predefinidos que quiere seguir
   custom_habits: CustomHabit[]; // hábitos propios que el trader escribe
+  scope: 'primary' | 'all';  // el plan mide UNA cuenta principal, o TODAS (sin duplicar copias)
+  primary_account_id: string | null; // cuál es la cuenta principal (para scope=primary)
 };
 
 // Hábitos disponibles (claves estables; las etiquetas bilingües viven en la UI).
@@ -35,6 +37,8 @@ export const DEFAULT_PLAN: Plan = {
   sessions: ['london', 'ny'], pairs: '', goal: '', rules: [],
   habits: ['reviewed_calendar', 'defined_risk', 'followed_plan', 'journaled', 'no_revenge'],
   custom_habits: [],
+  scope: 'primary',
+  primary_account_id: null,
 };
 
 // Todas las claves de hábito activas hoy: predefinidos elegidos + propios.
@@ -42,40 +46,83 @@ export function planHabitIds(plan: Plan): string[] {
   return [...(plan.habits || []), ...((plan.custom_habits || []).map((h) => h.id))];
 }
 
-// ---- Guardian: leer la regla más estricta que hay activa en las cuentas ----
+// ---- Guardian: estado por cuenta (con tipo y rol de copy) + regla más estricta ----
+export type CopyRole = 'master' | 'slave' | null;
+export type GAccount = {
+  id: string; name: string; login: any;
+  acc_type: string | null;         // challenge | funded | own | demo
+  copy_role: CopyRole;             // master (envía copias) | slave (recibe) | null
+  daily_loss_pct: number | null;   // pérdida diaria máx (%) que aplica el Guardian, o null
+  max_trades_day: number | null;   // máx ops/día que aplica el Guardian (>0), o null
+  limits_on: boolean;
+};
+export type GuardianWarning = { account_id: string; name: string; kind: 'slave_no_limit' };
 export type GuardianSummary = {
-  hasAccounts: boolean;        // ¿el trader tiene cuentas conectadas?
-  linked: boolean;            // ¿hay algún Guardian con límites encendidos?
-  daily_loss_pct: number | null; // pérdida diaria máx (%) más estricta, o null
-  max_trades_day: number | null; // máx ops/día más estricto (>0), o null
-  accounts: { id: string; name: string; login: any; daily_loss_pct: number | null; max_trades_day: number | null; limits_on: boolean }[];
+  hasAccounts: boolean;
+  linked: boolean;
+  daily_loss_pct: number | null;   // la más estricta (menor) entre las cuentas
+  max_trades_day: number | null;   // el más estricto (menor >0)
+  accounts: GAccount[];
+  warnings: GuardianWarning[];
 };
 
 export async function guardianSummary(userId: string): Promise<GuardianSummary> {
-  const { data: accs } = await supabaseAdmin.from('trading_accounts')
-    .select('id,login,nickname,broker').eq('user_id', userId).order('created_at', { ascending: true });
-  const { data: cfgs } = await supabaseAdmin.from('manager_configs').select('account_id,enabled,config').eq('user_id', userId);
+  const [{ data: accs }, { data: cfgs }, { data: links }] = await Promise.all([
+    supabaseAdmin.from('trading_accounts').select('id,login,nickname,broker,acc_type').eq('user_id', userId).order('created_at', { ascending: true }),
+    supabaseAdmin.from('manager_configs').select('account_id,enabled,config').eq('user_id', userId),
+    supabaseAdmin.from('copy_links').select('master_account_id,slave_account_id,enabled').eq('owner_id', userId),
+  ]);
   const byAcc: Record<string, any> = {};
   (cfgs || []).forEach((c: any) => { byAcc[c.account_id] = c; });
+  const masters = new Set<string>(); const slaves = new Set<string>();
+  (links || []).forEach((l: any) => { if (l.enabled) { masters.add(l.master_account_id); slaves.add(l.slave_account_id); } });
 
-  const accounts = (accs || []).map((a: any) => {
+  const accounts: GAccount[] = (accs || []).map((a: any) => {
     const c = byAcc[a.id];
     const cfg = mergeConfig(c?.config);
     const limitsOn = !!(c?.enabled && cfg.limits.on);
     const dl = limitsOn && cfg.limits.daily_loss_pct && cfg.limits.daily_loss > 0 ? Number(cfg.limits.daily_loss) : null;
     const mt = !!(c?.enabled && cfg.plan.on) && cfg.plan.max_trades_day > 0 ? Number(cfg.plan.max_trades_day) : null;
-    return { id: a.id, name: a.nickname || a.broker || ('#' + a.login), login: a.login, daily_loss_pct: dl, max_trades_day: mt, limits_on: limitsOn };
+    const role: CopyRole = slaves.has(a.id) ? 'slave' : (masters.has(a.id) ? 'master' : null);
+    return { id: a.id, name: a.nickname || a.broker || ('#' + a.login), login: a.login, acc_type: a.acc_type || null, copy_role: role, daily_loss_pct: dl, max_trades_day: mt, limits_on: limitsOn };
   });
+
+  // Aviso: cuentas esclavas (reciben copias) sin pérdida diaria máx configurada.
+  const warnings: GuardianWarning[] = accounts
+    .filter((a) => a.copy_role === 'slave' && a.daily_loss_pct == null)
+    .map((a) => ({ account_id: a.id, name: a.name, kind: 'slave_no_limit' as const }));
 
   const dls = accounts.map((a) => a.daily_loss_pct).filter((n): n is number => n != null);
   const mts = accounts.map((a) => a.max_trades_day).filter((n): n is number => n != null);
   return {
     hasAccounts: accounts.length > 0,
     linked: dls.length > 0 || mts.length > 0,
-    daily_loss_pct: dls.length ? Math.min(...dls) : null,   // el más estricto = el menor
+    daily_loss_pct: dls.length ? Math.min(...dls) : null,
     max_trades_day: mts.length ? Math.min(...mts) : null,
     accounts,
+    warnings,
   };
+}
+
+// ---- Alcance: qué cuentas mide el plan (deduplicando el copy) + umbral de ops ----
+// - scope 'primary': una sola cuenta principal (la elegida, o auto: master → no-esclava → primera).
+// - scope 'all': todas MENOS las esclavas activas (sus operaciones son espejo del master).
+export function resolveMeasured(plan: Plan, summary: GuardianSummary): { ids: string[]; threshold: number; primaryId: string | null } {
+  const accounts = summary.accounts;
+  let ids: string[]; let primaryId: string | null = null;
+  if (plan.scope === 'all') {
+    ids = accounts.filter((a) => a.copy_role !== 'slave').map((a) => a.id);
+  } else {
+    let primary = accounts.find((a) => a.id === plan.primary_account_id)
+      || accounts.find((a) => a.copy_role === 'master')
+      || accounts.find((a) => a.copy_role !== 'slave')
+      || accounts[0];
+    primaryId = primary ? primary.id : null;
+    ids = primary ? [primary.id] : [];
+  }
+  const mts = accounts.filter((a) => ids.includes(a.id)).map((a) => a.max_trades_day).filter((n): n is number => n != null);
+  const threshold = mts.length ? Math.min(...mts) : (plan.max_trades_day || 0);
+  return { ids, threshold, primaryId };
 }
 
 const DAY = 864e5;
@@ -112,6 +159,8 @@ export async function savePlan(userId: string, plan: Partial<Plan>) {
           .filter((h: CustomHabit) => h.id && h.label)
           .slice(0, 12)
       : cur.custom_habits,
+    scope: plan.scope === 'all' || plan.scope === 'primary' ? plan.scope : cur.scope,
+    primary_account_id: plan.primary_account_id === undefined ? cur.primary_account_id : (plan.primary_account_id ? String(plan.primary_account_id) : null),
   };
   await supabaseAdmin.from('trading_plans').upsert({ user_id: userId, data: next, updated_at: new Date().toISOString() });
   return next;
@@ -123,14 +172,21 @@ function sanitizeHabitId(v: any): string {
   return base ? 'c_' + base : '';
 }
 
-// ---- Aplicar al Guardian: escribe pérdida diaria y máx ops en TODAS las cuentas
-// del trader, para que el número del plan sea el que de verdad se aplica. Solo
+// ---- Aplicar al Guardian: escribe pérdida diaria y máx ops en las cuentas del
+// ALCANCE elegido, para que el número del plan sea el que de verdad se aplica. Solo
 // toca esos dos campos; el resto de la config del Guardian se conserva. ----
-export async function applyGuardian(userId: string, dailyLossPct: number, maxTrades: number): Promise<{ updated: string[] }> {
+export type ApplyTarget = { mode: 'all' | 'account' | 'type'; accountId?: string; accType?: string };
+export async function applyGuardian(userId: string, dailyLossPct: number, maxTrades: number, target: ApplyTarget = { mode: 'all' }): Promise<{ updated: string[] }> {
   const dl = clamp(Number(dailyLossPct), 0, 100);
   const mt = clamp(Math.round(Number(maxTrades)), 0, 500);
-  const { data: accs } = await supabaseAdmin.from('trading_accounts').select('id').eq('user_id', userId);
-  const ids = (accs || []).map((a: any) => a.id);
+  const { data: accs } = await supabaseAdmin.from('trading_accounts').select('id,acc_type').eq('user_id', userId);
+  let ids = (accs || []).map((a: any) => a.id);
+  if (target.mode === 'account' && target.accountId) {
+    ids = ids.filter((id: string) => id === target.accountId);
+  } else if (target.mode === 'type' && target.accType) {
+    const okIds = new Set((accs || []).filter((a: any) => (a.acc_type || '') === target.accType).map((a: any) => a.id));
+    ids = ids.filter((id: string) => okIds.has(id));
+  }
   if (!ids.length) return { updated: [] };
   const { data: cfgs } = await supabaseAdmin.from('manager_configs').select('account_id,version,config,enabled,units').eq('user_id', userId);
   const byAcc: Record<string, any> = {}; (cfgs || []).forEach((c: any) => { byAcc[c.account_id] = c; });
@@ -211,8 +267,12 @@ export async function computeStats(userId: string, plan: Plan): Promise<PlanStat
   }
 
   // --- Disciplina real por operaciones (últimos 21 días) ---
+  // Medimos SOLO las cuentas del alcance (una principal o todas sin las esclavas),
+  // así el copy no cuenta la misma decisión varias veces. El umbral de ops sale de
+  // esas mismas cuentas del Guardian.
   let tradeDiscipline = 1, overtradingDays = 0, winRateRespect: number | null = null, winRateBroken: number | null = null, tradingDays = 0;
-  const ids = await accountIds(userId);
+  const summary = await guardianSummary(userId);
+  const { ids, threshold } = resolveMeasured(plan, summary);
   if (ids.length) {
     const since = new Date(Date.now() - 21 * DAY).toISOString();
     const { data: trades } = await supabaseAdmin.from('trades').select('net_profit,close_time').in('account_id', ids).gte('close_time', since).limit(20000);
@@ -225,11 +285,11 @@ export async function computeStats(userId: string, plan: Plan): Promise<PlanStat
     }
     const dayKeys = Object.keys(perDay);
     tradingDays = dayKeys.length;
-    if (tradingDays && plan.max_trades_day > 0) {
+    if (tradingDays && threshold > 0) {
       let respected = 0, rW = 0, rN = 0, bW = 0, bN = 0;
       for (const k of dayKeys) {
         const { n, wins } = perDay[k];
-        if (n <= plan.max_trades_day) { respected++; rW += wins; rN += n; }
+        if (n <= threshold) { respected++; rW += wins; rN += n; }
         else { overtradingDays++; bW += wins; bN += n; }
       }
       tradeDiscipline = respected / tradingDays;

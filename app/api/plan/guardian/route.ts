@@ -31,7 +31,10 @@ export async function POST(req: Request) {
   const mt = Math.max(0, Math.min(500, Math.round(Number(b.max_trades_day))));
   if (!Number.isFinite(dl) || !Number.isFinite(mt)) return NextResponse.json({ error: 'bad_values' }, { status: 400 });
 
-  const { updated } = await applyGuardian(user.id, dl, mt);
+  // Alcance: a qué cuentas se aplica (una / todas / por tipo).
+  const mode = ['all', 'account', 'type'].includes(b.mode) ? b.mode : 'all';
+  const target = { mode, accountId: b.account_id ? String(b.account_id) : undefined, accType: b.acc_type ? String(b.acc_type) : undefined };
+  const { updated } = await applyGuardian(user.id, dl, mt, target as any);
   const guardian = await guardianSummary(user.id);
   const plan = await getPlan(user.id);
   const stats = await computeStats(user.id, plan);

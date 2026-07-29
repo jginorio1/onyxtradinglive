@@ -52,6 +52,16 @@ const T: any = {
     myHabits: 'Mis hábitos propios', addHabitPh: 'Escribe un hábito tuyo…', add: 'Añadir',
     customHint: 'Lo que añadas aparece en tu check-in de cada día y cuenta para tu racha.',
     yours: 'mío',
+    // Multicuenta / copy / alcance
+    accountsT: 'Tus cuentas y sus límites', scopeT: '¿Qué cuenta mide el plan?',
+    scopePrimary: 'Mi cuenta principal', scopeAll: 'Todas (sin duplicar copias)',
+    scopeHint: 'Con copy, una misma decisión se copia a varias cuentas. El plan la cuenta UNA vez para que tu racha sea real.',
+    primaryPick: 'Cuenta principal:',
+    roleMaster: 'master', roleSlave: 'copia',
+    typeChallenge: 'challenge', typeFunded: 'fondeada', typeOwn: 'propia', typeDemo: 'demo',
+    warnSlave: 'recibe copias pero no tiene pérdida diaria máxima.', protect: 'Proteger',
+    colAcc: 'Cuenta', colLoss: 'Pérdida/día', colMax: 'Máx ops',
+    syncScopeT: '¿A qué cuentas lo aplico?', scOne: 'Solo a esta cuenta', scAllA: 'A todas mis cuentas', scType: 'Solo a las de tipo',
   },
   en: { title: 'My plan and habits', sub: 'Your rules, your daily check-in, and how well you follow them.',
     adherence: 'Plan adherence', streak: 'Day streak', checkin: 'Today check-in',
@@ -76,8 +86,19 @@ const T: any = {
     myHabits: 'My own habits', addHabitPh: 'Type your own habit…', add: 'Add',
     customHint: 'What you add shows in your daily check-in and counts toward your streak.',
     yours: 'mine',
+    accountsT: 'Your accounts and their limits', scopeT: 'Which account does the plan track?',
+    scopePrimary: 'My main account', scopeAll: 'All (no copy double-count)',
+    scopeHint: 'With copy, one decision is mirrored to several accounts. The plan counts it ONCE so your streak is real.',
+    primaryPick: 'Main account:',
+    roleMaster: 'master', roleSlave: 'copy',
+    typeChallenge: 'challenge', typeFunded: 'funded', typeOwn: 'own', typeDemo: 'demo',
+    warnSlave: 'receives copies but has no max daily loss.', protect: 'Protect',
+    colAcc: 'Account', colLoss: 'Loss/day', colMax: 'Max trades',
+    syncScopeT: 'Apply to which accounts?', scOne: 'Only this account', scAllA: 'All my accounts', scType: 'Only accounts of type',
   },
 };
+
+const TYPE_LABEL: Record<string, [string, string]> = { challenge: ['challenge', 'challenge'], funded: ['fondeada', 'funded'], own: ['propia', 'own'], demo: ['demo', 'demo'] };
 
 export default function PlanHabits({ lang, onGoGuardian }: { lang: Lang; onGoGuardian?: () => void }) {
   const t = T[lang]; const i = lang === 'en' ? 1 : 0;
@@ -150,16 +171,35 @@ export default function PlanHabits({ lang, onGoGuardian }: { lang: Lang; onGoGua
     const j = await r.json(); setBusy('');
     if (j.review) setReview(j.review);
   }
+  // ---- Guardar el alcance del plan (qué cuenta mide) ----
+  async function saveScope(next: { scope?: string; primary_account_id?: string | null }) {
+    const payload = { ...p, ...next };
+    setD({ ...d, plan: payload }); // optimista
+    const r = await fetch('/api/plan', { method: 'PATCH', body: JSON.stringify({ plan: payload }) });
+    const j = await r.json();
+    if (j.ok) setD({ ...d, plan: j.plan, stats: j.stats });
+  }
   // ---- Sincronización con el Guardian ----
-  function openSync() {
+  // target opcional: { accountId } para proteger/ajustar una cuenta concreta.
+  function openSync(target?: { accountId?: string }) {
     if (!g.hasAccounts) { setSyncDone('no_acc'); return; }
     setSyncDone(null);
-    setSync({ dl: g.daily_loss_pct != null ? g.daily_loss_pct : (p.max_daily_loss_pct || 3), mt: g.max_trades_day != null ? g.max_trades_day : (p.max_trades_day || 0) });
+    const acc = target?.accountId ? g.accounts.find((a: any) => a.id === target.accountId) : null;
+    setSync({
+      dl: acc?.daily_loss_pct != null ? acc.daily_loss_pct : (g.daily_loss_pct != null ? g.daily_loss_pct : (p.max_daily_loss_pct || 3)),
+      mt: acc?.max_trades_day != null ? acc.max_trades_day : (g.max_trades_day != null ? g.max_trades_day : (p.max_trades_day || 0)),
+      mode: target?.accountId ? 'account' : (g.accounts.length > 1 ? 'account' : 'all'),
+      accountId: target?.accountId || (g.accounts[0]?.id || ''),
+      accType: 'challenge',
+    });
   }
   async function applySync() {
     setSyncBusy(true);
     try {
-      const r = await fetch('/api/plan/guardian', { method: 'POST', body: JSON.stringify({ daily_loss_pct: Number(sync.dl), max_trades_day: Number(sync.mt) }) });
+      const body: any = { daily_loss_pct: Number(sync.dl), max_trades_day: Number(sync.mt), mode: sync.mode };
+      if (sync.mode === 'account') body.account_id = sync.accountId;
+      if (sync.mode === 'type') body.acc_type = sync.accType;
+      const r = await fetch('/api/plan/guardian', { method: 'POST', body: JSON.stringify(body) });
       if (r.status === 403) { setSync(null); setSyncDone('no_mgr'); return; }
       if (r.status === 400) { setSync(null); setSyncDone('no_acc'); return; }
       const j = await r.json();
@@ -228,9 +268,58 @@ export default function PlanHabits({ lang, onGoGuardian }: { lang: Lang; onGoGua
                 <span className="muted">{g.hasAccounts ? t.gBox : t.gSetup}</span>
               </div>
               <div className="row" style={{ gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-                <button className="btn btn-primary" style={{ fontSize: 12.5 }} onClick={openSync}>⚙️ {t.gAdjust}</button>
+                <button className="btn btn-primary" style={{ fontSize: 12.5 }} onClick={() => openSync()}>⚙️ {t.gAdjust}</button>
                 <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={goGuardian}>🛡️ {t.gOpen}</button>
               </div>
+
+              {/* Avisos: esclavas sin límite */}
+              {(g.warnings || []).map((w: any) => (
+                <div key={w.account_id} style={{ marginTop: 10, fontSize: 12.5, background: 'rgba(255,192,77,.10)', border: '1px solid var(--amber)', borderRadius: 10, padding: '9px 11px', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span>⚠️</span>
+                  <span style={{ flex: 1, minWidth: 140 }}><b>{w.name}</b> {t.warnSlave}</span>
+                  <button className="btn btn-primary" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => openSync({ accountId: w.account_id })}>🛡️ {t.protect}</button>
+                </div>
+              ))}
+
+              {/* Panel por cuenta (si hay más de una, o hay copy) */}
+              {g.hasAccounts && g.accounts.length > 0 && (
+                <div style={{ marginTop: 12 }}>
+                  <div className="muted" style={{ fontSize: 12, marginBottom: 5 }}>{t.accountsT}</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1.5fr .8fr .7fr', gap: 6, fontSize: 10.5, color: 'var(--mut)', padding: '0 8px' }}>
+                    <span>{t.colAcc}</span><span>{t.colLoss}</span><span>{t.colMax}</span>
+                  </div>
+                  {g.accounts.map((a: any) => (
+                    <div key={a.id} style={{ display: 'grid', gridTemplateColumns: '1.5fr .8fr .7fr', gap: 6, alignItems: 'center', background: 'var(--bg2)', borderRadius: 8, padding: '7px 8px', marginTop: 4, fontSize: 12.5 }}>
+                      <span style={{ display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'wrap' }}>
+                        {a.name}
+                        {a.acc_type && TYPE_LABEL[a.acc_type] && <span className="pill" style={{ fontSize: 9, background: 'rgba(255,192,77,.15)', color: 'var(--amber)' }}>{TYPE_LABEL[a.acc_type][i]}</span>}
+                        {a.copy_role === 'master' && <span className="pill" style={{ fontSize: 9, background: 'rgba(124,140,255,.15)', color: 'var(--soft-brand)' }}>📡 {t.roleMaster}</span>}
+                        {a.copy_role === 'slave' && <span className="pill" style={{ fontSize: 9, background: 'rgba(52,226,160,.15)', color: 'var(--soft-green)' }}>📄 {t.roleSlave}</span>}
+                      </span>
+                      <span style={{ fontWeight: 700, color: a.daily_loss_pct == null ? 'var(--red)' : undefined }}>{a.daily_loss_pct != null ? `-${a.daily_loss_pct}%` : t.gNotSet}</span>
+                      <span style={{ fontWeight: 700 }}>{a.max_trades_day != null ? a.max_trades_day : '—'}</span>
+                    </div>
+                  ))}
+
+                  {/* Alcance: qué mide el plan */}
+                  <div style={{ marginTop: 12 }}>
+                    <div className="muted" style={{ fontSize: 12, marginBottom: 5 }}>{t.scopeT}</div>
+                    <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+                      <button className={'btn ' + (p.scope !== 'all' ? 'btn-primary' : 'btn-ghost')} style={{ fontSize: 12, padding: '5px 10px' }} onClick={() => saveScope({ scope: 'primary' })}>🎯 {t.scopePrimary}</button>
+                      <button className={'btn ' + (p.scope === 'all' ? 'btn-primary' : 'btn-ghost')} style={{ fontSize: 12, padding: '5px 10px' }} onClick={() => saveScope({ scope: 'all' })}>🗂️ {t.scopeAll}</button>
+                    </div>
+                    {p.scope !== 'all' && g.accounts.length > 1 && (
+                      <div className="row" style={{ gap: 6, marginTop: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <span className="muted" style={{ fontSize: 12 }}>{t.primaryPick}</span>
+                        <select value={p.primary_account_id || (g.accounts.find((a: any) => a.copy_role === 'master')?.id || g.accounts[0]?.id || '')} onChange={(e) => saveScope({ primary_account_id: e.target.value })} style={{ margin: 0, width: 'auto', minWidth: 160, fontSize: 12.5 }}>
+                          {g.accounts.map((a: any) => <option key={a.id} value={a.id}>{a.name}{a.copy_role === 'master' ? ' (master)' : ''}</option>)}
+                        </select>
+                      </div>
+                    )}
+                    <div className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>{t.scopeHint}</div>
+                  </div>
+                </div>
+              )}
 
               {p.goal && <div style={{ marginTop: 12, fontSize: 13, background: 'var(--bg2)', borderRadius: 8, padding: '8px 10px' }}>🎯 {p.goal}</div>}
               {!!p.rules.length && (
@@ -363,6 +452,35 @@ export default function PlanHabits({ lang, onGoGuardian }: { lang: Lang; onGoGua
               <input type="number" step="1" value={sync.mt} onChange={(e) => setSync({ ...sync, mt: e.target.value })} style={bigInput} />
               <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{t.syncMTh}</div>
             </div>
+
+            {/* Alcance: a qué cuentas se aplica (solo si hay más de una) */}
+            {g.accounts.length > 1 && (
+              <div style={{ background: 'var(--bg2)', borderRadius: 12, padding: 14, marginBottom: 14 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 600, marginBottom: 8 }}>🎯 {t.syncScopeT}</div>
+                <label className="row" style={{ gap: 8, fontSize: 13, cursor: 'pointer', padding: '3px 0' }}>
+                  <input type="radio" checked={sync.mode === 'account'} onChange={() => setSync({ ...sync, mode: 'account' })} style={{ width: 'auto', margin: 0 }} />
+                  <span>{t.scOne}</span>
+                  {sync.mode === 'account' && (
+                    <select value={sync.accountId} onChange={(e) => setSync({ ...sync, accountId: e.target.value })} style={{ margin: 0, width: 'auto', minWidth: 130, fontSize: 12.5, marginLeft: 'auto' }}>
+                      {g.accounts.map((a: any) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                    </select>
+                  )}
+                </label>
+                <label className="row" style={{ gap: 8, fontSize: 13, cursor: 'pointer', padding: '3px 0' }}>
+                  <input type="radio" checked={sync.mode === 'all'} onChange={() => setSync({ ...sync, mode: 'all' })} style={{ width: 'auto', margin: 0 }} />
+                  <span>{t.scAllA}</span>
+                </label>
+                <label className="row" style={{ gap: 8, fontSize: 13, cursor: 'pointer', padding: '3px 0' }}>
+                  <input type="radio" checked={sync.mode === 'type'} onChange={() => setSync({ ...sync, mode: 'type' })} style={{ width: 'auto', margin: 0 }} />
+                  <span>{t.scType}</span>
+                  {sync.mode === 'type' && (
+                    <select value={sync.accType} onChange={(e) => setSync({ ...sync, accType: e.target.value })} style={{ margin: 0, width: 'auto', fontSize: 12.5, marginLeft: 'auto' }}>
+                      {['challenge', 'funded', 'own', 'demo'].map((tp) => <option key={tp} value={tp}>{TYPE_LABEL[tp][i]}</option>)}
+                    </select>
+                  )}
+                </label>
+              </div>
+            )}
 
             <div className="row" style={{ gap: 8 }}>
               <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setSync(null)} disabled={syncBusy}>{t.syncCancel}</button>
