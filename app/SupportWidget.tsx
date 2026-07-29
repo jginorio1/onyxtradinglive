@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useLang } from '@/lib/lang';
 
@@ -35,6 +36,12 @@ const T: any = {
 export default function SupportWidget({ loggedIn = false }: { loggedIn?: boolean }) {
   const { lang } = useLang();
   const t = T[lang];
+  // Guardia del lado del cliente: la burbuja de usuario nunca aparece en el
+  // panel de admin, sin importar el idioma. El guard del layout depende de una
+  // cabecera del servidor que queda obsoleta al cambiar de idioma con
+  // router.refresh() (no navega), así que aquí lo resolvemos con la ruta viva.
+  const pathname = usePathname() || '';
+  const inAdmin = pathname === '/admin' || pathname.startsWith('/admin/') || pathname === '/en/admin' || pathname.startsWith('/en/admin/');
   const [open, setOpen] = useState(false);
   const [human, setHuman] = useState(false); // ¿hay una persona del equipo disponible? (la IA siempre está)
   const [chat, setChat] = useState<any[]>([]);
@@ -92,6 +99,8 @@ export default function SupportWidget({ loggedIn = false }: { loggedIn?: boolean
     ? { alignSelf: 'flex-end', background: 'var(--grad)', color: '#fff', borderRadius: '12px 12px 2px 12px' }
     : { alignSelf: 'flex-start', background: 'var(--card2)', border: '1px solid var(--line)', borderRadius: '12px 12px 12px 2px' };
   const topics = loggedIn ? t.topicsU : t.topicsA;
+
+  if (inAdmin) return null;   // en el panel de admin no se muestra la burbuja de usuario
 
   return (
     <>
