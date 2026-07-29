@@ -97,7 +97,7 @@ export async function PATCH(req: Request) {
     // Campos de lista del perfil de trader: solo valores permitidos
     const OPTS: Record<string, string[]> = {
       experience: ['novato', 'intermedio', 'avanzado', 'pro'],
-      trade_style: ['scalping', 'day', 'swing', 'position'],
+      trade_style: ['scalping', 'day', 'swing', 'position', 'algo'],
       platform: ['mt4', 'mt5', 'ambas'],
       goal: ['pasar_challenge', 'consistencia', 'crecer', 'vivir'],
     };

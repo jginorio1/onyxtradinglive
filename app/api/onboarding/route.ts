@@ -9,7 +9,7 @@ export const runtime = 'nodejs';
 // Valores permitidos, para no guardar basura que venga del cliente.
 const ALLOW: Record<string, string[]> = {
   experience: ['novato', 'intermedio', 'avanzado', 'pro'],
-  trade_style: ['scalping', 'day', 'swing', 'position'],
+  trade_style: ['scalping', 'day', 'swing', 'position', 'algo'],
   platform: ['mt4', 'mt5', 'ambas'],
   goal: ['pasar_challenge', 'consistencia', 'crecer', 'vivir'],
 };
