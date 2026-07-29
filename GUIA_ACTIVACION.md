@@ -928,3 +928,17 @@ a todas por igual pisaba las reglas distintas de cada cuenta.
 
 Detección de roles: se lee de `copy_links` (master/esclava activas). El umbral de
 "máx operaciones/día" para medir disciplina sale de las cuentas del alcance.
+
+### 24.4 · Tarjeta iluminada + recordatorio de plan al abrir el día
+
+- La caja "tu pérdida diaria y máx ops las vigila el Guardian" ahora está
+  **iluminada** (borde y resplandor azul con una animación suave) para que el
+  trader la vea a la primera.
+- **Popup diario de check-in** (`DailyCheckinPopup`, montado en el dashboard): al
+  primer acceso de un día nuevo, si el trader YA usa el plan (`hasPlan`) y aún no
+  hizo el check-in de hoy, se abre un popup con un mini-resumen (adherencia, racha,
+  tu tope de pérdida), tu regla de oro y la lista de hábitos para marcar. Botón
+  "Guardar mi check-in" o "Ahora no" (saltable, no bloquea). Se muestra **una sola
+  vez al día**: recuerda el día en `localStorage` (`onyx_checkin_day`), así detecta
+  el día nuevo sin depender del servidor. No molesta a quien todavía no configuró su
+  plan. `GET /api/plan` ahora devuelve `hasPlan`.

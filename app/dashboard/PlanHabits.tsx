@@ -262,10 +262,11 @@ export default function PlanHabits({ lang, onGoGuardian }: { lang: Lang; onGoGua
               <PlanRow k={t.sessions} v={p.sessions.map((x: string) => SESS[x]?.[i] || x).join(', ') || '—'} />
               {p.pairs && <PlanRow k={t.pairs} v={p.pairs} />}
 
-              {/* Caja explicativa + botones de acción hacia el Guardian */}
-              <div style={{ marginTop: 12, fontSize: 12.5, background: 'var(--bg2)', borderRadius: 10, padding: '10px 12px', display: 'flex', gap: 8 }}>
-                <span style={{ flex: 'none' }}>🛡️</span>
-                <span className="muted">{g.hasAccounts ? t.gBox : t.gSetup}</span>
+              {/* Caja explicativa iluminada + botones de acción hacia el Guardian */}
+              <style>{`@keyframes onyxGlow{0%,100%{box-shadow:0 0 0 1px rgba(124,140,255,.55),0 0 14px rgba(124,140,255,.28)}50%{box-shadow:0 0 0 1px rgba(124,140,255,.8),0 0 26px rgba(124,140,255,.55)}}`}</style>
+              <div style={{ marginTop: 12, fontSize: 12.5, background: 'rgba(124,140,255,.08)', border: '1px solid var(--brand)', borderRadius: 10, padding: '11px 13px', display: 'flex', gap: 9, alignItems: 'center', animation: 'onyxGlow 2.6s ease-in-out infinite' }}>
+                <span style={{ flex: 'none', fontSize: 17 }}>🛡️</span>
+                <span style={{ color: 'var(--soft-brand2, var(--soft-brand))' }}>{g.hasAccounts ? t.gBox : t.gSetup}</span>
               </div>
               <div className="row" style={{ gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
                 <button className="btn btn-primary" style={{ fontSize: 12.5 }} onClick={() => openSync()}>⚙️ {t.gAdjust}</button>

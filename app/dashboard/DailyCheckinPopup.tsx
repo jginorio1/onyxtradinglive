@@ -1,0 +1,130 @@
+'use client';
+import { useEffect, useState } from 'react';
+
+type Lang = 'es' | 'en';
+
+const HAB: Record<string, [string, string]> = {
+  reviewed_calendar: ['Revisé el calendario económico', 'Reviewed the economic calendar'],
+  defined_risk: ['Definí mi riesgo antes de entrar', 'Defined my risk before entering'],
+  followed_plan: ['Seguí mi plan de entrada', 'Followed my entry plan'],
+  journaled: ['Registré mis operaciones', 'Journaled my trades'],
+  stopped_at_limit: ['Cerré al llegar a mi límite', 'Closed at my limit'],
+  no_revenge: ['No operé por venganza', 'No revenge trading'],
+  respected_sessions: ['Operé solo en mis sesiones', 'Traded only in my sessions'],
+};
+
+const T: any = {
+  es: {
+    title: 'Antes de operar hoy', sub: 'Un minuto para repasar tu plan y marcar tus hábitos. Así cuidas tu racha.',
+    adherence: 'Adherencia', streak: 'Racha', ddl: 'Tu tope de pérdida hoy',
+    save: 'Guardar mi check-in', saved: '¡Listo por hoy! 💪', later: 'Ahora no',
+    seePlan: 'Ver mi plan completo', reminder: 'Recuerda tu regla de oro:',
+  },
+  en: {
+    title: 'Before trading today', sub: 'One minute to review your plan and tick your habits. That keeps your streak alive.',
+    adherence: 'Adherence', streak: 'Streak', ddl: 'Your loss limit today',
+    save: 'Save my check-in', saved: 'Done for today! 💪', later: 'Not now',
+    seePlan: 'See my full plan', reminder: 'Remember your golden rule:',
+  },
+};
+
+function todayLocal() { return new Date().toLocaleDateString('en-CA'); } // YYYY-MM-DD local
+
+export default function DailyCheckinPopup({ lang }: { lang: Lang }) {
+  const t = T[lang]; const i = lang === 'en' ? 1 : 0;
+  const [d, setD] = useState<any>(null);
+  const [items, setItems] = useState<Record<string, boolean>>({});
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const today = todayLocal();
+        if (localStorage.getItem('onyx_checkin_day') === today) return; // ya visto/hecho hoy
+        const r = await fetch('/api/plan'); const j = await r.json();
+        if (!j || !j.hasPlan) return; // solo a quien ya usa el plan
+        const done = j.checkin?.items && Object.values(j.checkin.items).some(Boolean);
+        if (done) { localStorage.setItem('onyx_checkin_day', today); return; } // ya lo hizo por otra vía
+        setD(j); setItems(j.checkin?.items || {}); setOpen(true);
+      } catch { /* silencioso */ }
+    })();
+  }, []);
+
+  if (!open || !d || !d.plan) return null;
+  const p = d.plan; const s = d.stats || {}; const g = d.guardian || {};
+  const allHabits: { id: string; label: string }[] = [
+    ...(p.habits || []).map((k: string) => ({ id: k, label: HAB[k]?.[i] || k })),
+    ...((p.custom_habits || []) as any[]).map((h) => ({ id: h.id, label: h.label })),
+  ];
+  const adColor = s.adherence >= 75 ? 'var(--green)' : s.adherence >= 50 ? 'var(--amber)' : 'var(--red)';
+  const goldenRule = (p.rules && p.rules[0]) ? p.rules[0] : '';
+
+  function dismiss() { try { localStorage.setItem('onyx_checkin_day', todayLocal()); } catch {} setOpen(false); }
+  async function save() {
+    setBusy(true);
+    try {
+      await fetch('/api/plan', { method: 'POST', body: JSON.stringify({ items, note: '' }) });
+      try { localStorage.setItem('onyx_checkin_day', todayLocal()); } catch {}
+      setSaved(true);
+      setTimeout(() => setOpen(false), 1100);
+    } catch {} finally { setBusy(false); }
+  }
+
+  const overlay: React.CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: 16 };
+  const modal: React.CSSProperties = { background: 'var(--card)', border: '1px solid var(--brand)', borderRadius: 18, maxWidth: 440, width: '100%', padding: 22, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 0 0 1px rgba(124,140,255,.5), 0 0 40px rgba(124,140,255,.35)' };
+
+  return (
+    <div style={overlay} onClick={dismiss}>
+      <div style={modal} onClick={(e) => e.stopPropagation()}>
+        <div style={{ fontSize: 19, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>🎯 {t.title}</div>
+        <p className="muted" style={{ fontSize: 13, margin: '6px 0 14px' }}>{t.sub}</p>
+
+        {/* Mini resumen del plan */}
+        <div className="row" style={{ gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 90, textAlign: 'center', background: 'var(--bg2)', borderRadius: 12, padding: '10px 6px' }}>
+            <div style={{ width: 46, height: 46, borderRadius: '50%', margin: '0 auto 6px', background: `conic-gradient(${adColor} 0 ${s.adherence || 0}%, var(--line) ${s.adherence || 0}% 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--card)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700 }}>{s.adherence || 0}%</div>
+            </div>
+            <div className="muted" style={{ fontSize: 11 }}>{t.adherence}</div>
+          </div>
+          <div style={{ flex: 1, minWidth: 90, textAlign: 'center', background: 'var(--bg2)', borderRadius: 12, padding: '10px 6px' }}>
+            <div style={{ fontSize: 24 }}>🔥</div>
+            <div style={{ fontSize: 18, fontWeight: 700 }}>{s.streak || 0}</div>
+            <div className="muted" style={{ fontSize: 11 }}>{t.streak}</div>
+          </div>
+          {g.daily_loss_pct != null && (
+            <div style={{ flex: 1, minWidth: 90, textAlign: 'center', background: 'var(--bg2)', borderRadius: 12, padding: '10px 6px' }}>
+              <div style={{ fontSize: 22 }}>🛡️</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--soft-green)' }}>-{g.daily_loss_pct}%</div>
+              <div className="muted" style={{ fontSize: 11 }}>{t.ddl}</div>
+            </div>
+          )}
+        </div>
+
+        {goldenRule && (
+          <div style={{ background: 'rgba(124,140,255,.10)', border: '1px solid var(--brand)', borderRadius: 10, padding: '9px 11px', marginBottom: 12, fontSize: 12.5 }}>
+            <span className="muted">{t.reminder}</span> <b>{goldenRule}</b>
+          </div>
+        )}
+
+        {/* Checklist */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginBottom: 14 }}>
+          {allHabits.map((h) => (
+            <label key={h.id} className="row" style={{ gap: 9, fontSize: 13.5, cursor: 'pointer' }}>
+              <input type="checkbox" checked={!!items[h.id]} onChange={(e) => setItems({ ...items, [h.id]: e.target.checked })} style={{ width: 'auto', margin: 0 }} />
+              <span style={{ opacity: items[h.id] ? 1 : .85 }}>{h.label}</span>
+            </label>
+          ))}
+        </div>
+
+        <button className="btn btn-primary" onClick={save} disabled={busy || saved} style={{ width: '100%', marginBottom: 8 }}>{saved ? t.saved : busy ? '…' : t.save}</button>
+        <div className="row between" style={{ alignItems: 'center' }}>
+          <a href="/dashboard?view=plan" className="muted" style={{ fontSize: 12.5, textDecoration: 'underline' }}>{t.seePlan}</a>
+          <button className="btn btn-ghost" style={{ fontSize: 12.5, padding: '5px 12px' }} onClick={dismiss}>{t.later}</button>
+        </div>
+      </div>
+    </div>
+  );
+}

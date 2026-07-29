@@ -15,6 +15,7 @@ import { Ring, MiniArea, MiniDonut, MiniBars, MiniHeat, RadarChart, Bubbles, hea
 import MarketHours from './MarketHours';
 import ReferralBanner from './ReferralBanner';
 import PlanHabits from './PlanHabits';
+import DailyCheckinPopup from './DailyCheckinPopup';
 import News from './News';
 import NetRealCard from './NetRealCard';
 import CoachCard from './CoachCard';
@@ -490,6 +491,7 @@ export default function DashboardClient({ email = '', plan = 'free', profile, tr
 
   return (
     <>
+      <DailyCheckinPopup lang={lang} />
 
       <div className="wrap-wide" style={{ padding: '24px 0' }}>
         <div className="row between" style={{ marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>

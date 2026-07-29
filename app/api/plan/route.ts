@@ -22,8 +22,11 @@ export async function GET() {
   const user = await me();
   if (!user) return NextResponse.json({ error: 'no autorizado' }, { status: 401 });
   const plan = await getPlan(user.id);
-  const [checkin, stats, ai, guardian] = await Promise.all([getCheckin(user.id), computeStats(user.id, plan), aiEnabled(user.id), guardianSummary(user.id)]);
-  return NextResponse.json({ plan, checkin, stats, aiEnabled: ai, habitKeys: HABIT_KEYS, guardian });
+  const [checkin, stats, ai, guardian, planRow] = await Promise.all([
+    getCheckin(user.id), computeStats(user.id, plan), aiEnabled(user.id), guardianSummary(user.id),
+    supabaseAdmin.from('trading_plans').select('user_id').eq('user_id', user.id).maybeSingle(),
+  ]);
+  return NextResponse.json({ plan, checkin, stats, aiEnabled: ai, habitKeys: HABIT_KEYS, guardian, hasPlan: !!(planRow as any)?.data });
 }
 
 // PATCH · guardar el plan.
