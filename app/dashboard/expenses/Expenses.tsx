@@ -32,6 +32,50 @@ export default function Expenses() {
   const [busy, setBusy] = useState(false);
   const [f, setF] = useState<any>(emptyForm(monthNow()));
   const set = (k: string, v: any) => setF((o: any) => ({ ...o, [k]: v }));
+  const [rcpt, setRcpt] = useState('');
+  const [coach, setCoach] = useState('');
+  const [cOpen, setCOpen] = useState(true);
+  const [cMsg, setCMsg] = useState('');
+
+  // Lee un recibo con AI y prellena el formulario.
+  async function readReceipt() {
+    if (rcpt.trim().length < 10) { toast(L('Pega el texto del recibo.', 'Paste the receipt text.')); return; }
+    setBusy(true);
+    try {
+      const r = await fetch('/api/expenses/read', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: rcpt, lang }) });
+      const j = await r.json();
+      if (!r.ok) { toastErr(j); return; }
+      const dat = j.data || {};
+      setF((o: any) => ({
+        ...o,
+        category: dat.category || o.category,
+        amount: dat.amount !== undefined ? String(dat.amount) : o.amount,
+        provider: dat.provider || o.provider,
+        firm: dat.firm ? (FIRMS.includes(dat.firm) ? dat.firm : 'Otra') : o.firm,
+        firmOther: dat.firm && !FIRMS.includes(dat.firm) ? dat.firm : o.firmOther,
+        acc_size: dat.acc_size !== undefined ? String(dat.acc_size) : o.acc_size,
+        phase: dat.phase || o.phase,
+        refundable: dat.refundable !== undefined ? dat.refundable : o.refundable,
+        recovered: dat.recovered !== undefined ? String(dat.recovered) : o.recovered,
+        recurring: dat.recurring !== undefined ? dat.recurring : o.recurring,
+      }));
+      setRcpt('');
+      toast(L('Leído — revisa los campos y guarda.', 'Read — review the fields and save.'), 'ok');
+    } finally { setBusy(false); }
+  }
+
+  // Coach de gasto: lectura honesta del dinero.
+  async function genCoach() {
+    setBusy(true); setCMsg(''); setCoach('');
+    try {
+      const r = await fetch('/api/expenses/coach?lang=' + lang);
+      const j = await r.json();
+      if (j.locked) { setCMsg(L('No disponible.', 'Not available.')); return; }
+      if (j.empty) { setCMsg(L('Apunta algún gasto para tu lectura.', 'Log an expense for your read.')); return; }
+      if (!j.ok) { setCMsg(L('No se pudo generar. Inténtalo otra vez.', "Couldn't generate. Try again.")); return; }
+      setCoach(j.review || ''); setCOpen(true);
+    } finally { setBusy(false); }
+  }
 
   async function load() { const r = await fetch('/api/expenses?month=' + month); setD(await r.json()); }
   useEffect(() => { load(); }, [month]);
@@ -109,6 +153,17 @@ export default function Expenses() {
       {/* Añadir / editar gasto */}
       <div className="card" style={{ marginBottom: 16 }}>
         <h3 style={{ marginBottom: 10 }}>{f.id ? L('Editar gasto', 'Edit expense') : L('Añadir gasto', 'Add expense')}</h3>
+
+        {/* Lector de recibos con AI */}
+        {!f.id && (
+          <div style={{ marginBottom: 12, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: 12 }}>
+            <div className="muted" style={{ fontSize: 12.5, marginBottom: 6 }}>✨ {L('Pega tu recibo o correo y lo apunto con AI', 'Paste your receipt or email and I log it with AI')}</div>
+            <textarea value={rcpt} onChange={(e) => setRcpt(e.target.value)} placeholder={L('Ej: correo de compra de un reto FTMO, cargo del banco, renovación de suscripción…', 'e.g. FTMO challenge purchase email, bank charge, subscription renewal…')}
+              style={{ width: '100%', minHeight: 60, padding: '9px 11px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--tx)', fontSize: 13, fontFamily: 'inherit', resize: 'vertical' }} />
+            <button className="btn btn-ghost" style={{ marginTop: 8 }} onClick={readReceipt} disabled={busy}>{busy ? '…' : '✨ ' + L('Leer con AI', 'Read with AI')}</button>
+          </div>
+        )}
+
         <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10 }}>
           <div><span style={lbl}>{L('Categoría', 'Category')}</span><select value={f.category} onChange={(e) => set('category', e.target.value)} style={{ ...inp, margin: 0 }}>{Object.keys(CAT_LABEL).map((k) => <option key={k} value={k}>{cat(k)}</option>)}</select></div>
           <div><span style={lbl}>{L('Monto', 'Amount')}</span><input value={f.amount} onChange={(e) => set('amount', e.target.value.replace(/[^\d.]/g, ''))} placeholder="$ 0" inputMode="decimal" style={{ ...inp, margin: 0 }} /></div>
@@ -160,6 +215,23 @@ export default function Expenses() {
           <p className="muted" style={{ fontSize: 11, marginTop: 8 }}>{L('El "ganado" solo cuenta si vinculaste el reto a una cuenta MT.', 'Earned only counts if you linked the challenge to an MT account.')}</p>
         </div>
       )}
+
+      {/* Coach de gasto */}
+      <div className="card" style={{ marginBottom: 16, border: '1px solid rgba(124,140,255,.3)' }}>
+        <div className="row between" style={{ flexWrap: 'wrap', gap: 8, marginBottom: coach && cOpen ? 10 : 0 }}>
+          <div className="row" style={{ gap: 10, alignItems: 'center' }}>
+            <span style={{ fontSize: 20 }}>🧠</span>
+            <div><b style={{ fontSize: 14.5 }}>{L('Coach de gasto', 'Spending coach')}</b>
+              <div className="muted" style={{ fontSize: 12 }}>{L('Una lectura honesta de tu dinero.', 'An honest read of your money.')}</div></div>
+          </div>
+          <div className="row" style={{ gap: 8 }}>
+            {coach && <button className="btn btn-ghost" onClick={() => setCOpen((o) => !o)}>{cOpen ? '▲ ' + L('Ocultar', 'Hide') : '▼ ' + L('Ver', 'Show')}</button>}
+            <button className="btn btn-primary" onClick={genCoach} disabled={busy}>{busy && !coach ? '…' : (coach ? '↻ ' + L('Otra vez', 'Again') : '✨ ' + L('Generar lectura', 'Generate read'))}</button>
+          </div>
+        </div>
+        {cMsg && <div className="muted" style={{ fontSize: 13 }}>{cMsg}</div>}
+        {coach && cOpen && <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '12px 14px', fontSize: 14, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{coach}</div>}
+      </div>
 
       {/* Por categoría */}
       {!!cats.length && (

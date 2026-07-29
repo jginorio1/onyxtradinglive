@@ -66,6 +66,43 @@ export async function analyzeStatement(text: string, lang: Lang): Promise<{ ok: 
   } catch { return { ok: false, reason: 'parse' }; }
 }
 
+// ---- Lector de recibos de gasto ----
+export type Receipt = { category?: string; amount?: number; provider?: string; firm?: string; acc_size?: number; phase?: string; refundable?: boolean; recovered?: number; recurring?: boolean };
+export async function parseReceipt(text: string, lang: Lang): Promise<{ ok: boolean; data?: Receipt; reason?: string }> {
+  if (!process.env.ANTHROPIC_API_KEY) return { ok: false, reason: 'no_key' };
+  if (!text || text.trim().length < 10) return { ok: false, reason: 'short' };
+  const system = `You extract ONE trading expense from pasted text (a purchase email, bank charge or subscription receipt, any language). Return ONLY a JSON object, omitting any field you can't determine:
+{"category":"funding|vps|software|data|internet|journal|education|fees|other","amount":number,"provider":"vendor or firm name","firm":"prop firm name if it's a funded-account challenge","acc_size":number,"phase":"p1|p2|funded|reset","refundable":true|false,"recurring":true|false,"recovered":number}
+Rules: a prop-firm challenge fee → category "funding" and set firm, acc_size, phase, and refundable if the text says the fee is refundable. A monthly subscription → recurring true. Do not invent values.`;
+  const raw = await ai(system, text, 400);
+  if (!raw) return { ok: false, reason: 'error' };
+  try {
+    const j = JSON.parse(raw.replace(/```json/gi, '').replace(/```/g, '').trim());
+    const CATS = ['funding', 'vps', 'software', 'data', 'internet', 'journal', 'education', 'fees', 'other'];
+    const num = (v: any) => (v === undefined || v === null || isNaN(Number(v)) ? undefined : Number(v));
+    const data: Receipt = {
+      category: CATS.includes(j.category) ? j.category : undefined,
+      amount: num(j.amount), provider: j.provider ? String(j.provider).slice(0, 60) : undefined,
+      firm: j.firm ? String(j.firm).slice(0, 40) : undefined, acc_size: num(j.acc_size),
+      phase: ['p1', 'p2', 'funded', 'reset'].includes(j.phase) ? j.phase : undefined,
+      refundable: typeof j.refundable === 'boolean' ? j.refundable : undefined,
+      recovered: num(j.recovered), recurring: typeof j.recurring === 'boolean' ? j.recurring : undefined,
+    };
+    if (data.amount === undefined && !data.provider && !data.firm) return { ok: false, reason: 'empty' };
+    return { ok: true, data };
+  } catch { return { ok: false, reason: 'parse' }; }
+}
+
+// ---- Coach de gasto: lectura honesta del dinero ----
+export async function spendingReview(summary: any, lang: Lang): Promise<{ ok: boolean; text?: string; reason?: string }> {
+  if (!process.env.ANTHROPIC_API_KEY) return { ok: false, reason: 'no_key' };
+  const system = (lang === 'en'
+    ? `You are Onyx Coach reviewing a trader's MONEY (not their trades). Read the spending summary and write a short, honest read (max ~140 words) in plain language: where the money goes, whether prop-firm challenge spending is paying off (ROI), and one concrete money habit. Be supportive, never harsh, a couple of tasteful emojis. ${NO_ADVICE.en}`
+    : `Eres Onyx Coach revisando el DINERO del trader (no sus operaciones). Lee el resumen de gastos y escribe una lectura corta y honesta (máx ~140 palabras) en lenguaje claro: dónde se va el dinero, si el gasto en retos de prop firm se está pagando (ROI), y un hábito concreto de dinero. De apoyo, nunca duro, un par de emojis con criterio. ${NO_ADVICE.es}`);
+  const text = await ai(system, JSON.stringify(summary), 500);
+  return text ? { ok: true, text } : { ok: false, reason: 'error' };
+}
+
 // ---- Lector de reglas de prop firm ----
 export type Rules = { profit_target?: number; profit_target_pct?: boolean; daily_loss?: number; daily_loss_pct?: boolean; total_loss?: number; total_loss_pct?: boolean; min_days?: number; max_days?: number; consistency?: number; firm?: string };
 export async function parseRules(text: string, lang: Lang): Promise<{ ok: boolean; rules?: Rules; reason?: string }> {

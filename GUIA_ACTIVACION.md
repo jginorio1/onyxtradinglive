@@ -651,3 +651,18 @@ Novedades para el trader:
   → "¿qué firma me sale a cuenta?". El "ganado" cuenta si vinculó el reto a su cuenta MT.
 - **Punto de equilibrio**: "te faltan $X de ganancia para cubrir los gastos del mes".
 - Campo **proveedor/detalle** en toda categoría, **fecha exacta**, y **editar** un gasto.
+
+---
+
+## 17 · Capa AI de Balance real (lector de recibos + coach de gasto)
+
+Dos usos de AI dentro de Balance real (Pro+, misma capacidad `expenses`, tu
+`ANTHROPIC_API_KEY`). No requiere SQL nuevo.
+
+- **Lector de recibos:** en "Añadir gasto", caja "Pega tu recibo y lo apunto con AI".
+  Pegas el correo de compra del reto / cargo / renovación y ✨ "Leer con AI" rellena
+  categoría, prop firm, tamaño, tipo, monto, reembolsable y proveedor. Revisas y guardas.
+- **Coach de gasto:** tarjeta 🧠 con "Generar lectura" — el AI cruza tus gastos con
+  tu trading (del año) y te dice dónde se va el dinero y si los retos se pagan (ROI).
+
+Ambos respetan la línea roja: analizan tu gasto, no predicen el mercado.
