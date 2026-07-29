@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requirePerm, logAdmin } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { aiAnswer } from '@/lib/supportAI';
+import { onyxTeamAnswer } from '@/lib/teamAI';
 import { notify } from '@/lib/notify';
 
 export const dynamic = 'force-dynamic';
@@ -76,8 +76,8 @@ export async function POST(req: Request) {
     if (askedAI) {
       const question = body.replace(/@onyx( ai)?/ig, '').trim() || body;
       const lang = (prof as any)?.lang === 'en' ? 'en' : 'es';
-      const res = await aiAnswer(question, lang as any, false);
-      const answer = res.answer || (lang === 'en' ? 'I can help with product, pricing and how-to questions. For a client’s private data, open their ticket.' : 'Puedo ayudar con dudas de producto, precios y cómo hacer algo. Para datos privados de un cliente, abre su ticket.');
+      // Onyx interno: responde con datos de conjunto (tickets, pendientes, historial de un cliente).
+      const answer = await onyxTeamAnswer({ question, lang: lang as any });
       const { data: aiMsg } = await supabaseAdmin.from('chat_messages')
         .insert({ channel_id: channel, sender_id: null, sender_name: 'Onyx AI', body: answer, attachments: [], mentions: [] })
         .select('id,created_at,sender_id,sender_name,body,attachments,mentions,channel_id').single();

@@ -724,6 +724,8 @@ ajustas en Equipo → permisos).
 - **@menciones**: escribe `@` para etiquetar a un **compañero**, un **cliente** o
   un **ticket**. Al mencionar a alguien le llega aviso en su campana.
 - **@Onyx AI**: escribe `@Onyx` y la IA responde en el canal (usa la misma base de
+
+- **@Onyx interno (equipo):** ahora responde preguntas **de conjunto** con datos reales — «¿cuántas consultas de fondeo hay?», «¿qué tickets llevan más de 24h esperando?», «historial de cliente@correo.com». Solo lee tickets/clientes del equipo; nunca revela secretos ni da consejo financiero.
   conocimiento del soporte; nunca da datos privados de un cliente).
 - **Adjuntar** fotos y documentos (📎) y **emojis** (😊).
 - **Buscar por día**: el selector de fecha filtra los mensajes de esa jornada

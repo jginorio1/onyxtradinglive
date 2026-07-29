@@ -117,13 +117,22 @@ export default function TeamChat() {
   function closeDock(id: string) { setDocks((d) => d.filter((x) => x !== id)); }
 
   return (
-    <div>
+    <div style={{ maxWidth: 1140, margin: '0 auto' }}>
       <div className="row between" style={{ marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
         <div>
           <h2 style={{ margin: 0 }}>💬 {L('Chat del equipo', 'Team chat')}</h2>
           <div className="muted" style={{ fontSize: 13 }}>{L('Habla con tu equipo, etiqueta clientes y tickets, y pregunta a @Onyx AI.', 'Talk to your team, tag clients and tickets, and ask @Onyx AI.')}</div>
         </div>
         <span className="pill" style={{ fontSize: 12, color: 'var(--soft-green)', background: 'rgba(52,226,160,.15)' }}>● {online.length} {L('en línea', 'online')}</span>
+      </div>
+
+      {/* Qué puede hacer el Onyx interno */}
+      <div className="card" style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '10px 14px', marginBottom: 12 }}>
+        <span style={{ fontSize: 18 }}>🤖</span>
+        <div style={{ fontSize: 12.5, lineHeight: 1.5 }}>
+          <b>{L('Escribe @Onyx para preguntar de conjunto:', 'Type @Onyx to ask across everything:')}</b>{' '}
+          <span className="muted">{L('«¿cuántas consultas de fondeo hay?», «¿qué tickets llevan más de 24h esperando?», «historial de juan@correo.com». Solo lee tickets/clientes del equipo; nunca da secretos ni consejo financiero.', '“how many funding tickets are there?”, “which tickets have waited over 24h?”, “history of juan@email.com”. It only reads team tickets/clients; never secrets or financial advice.')}</span>
+        </div>
       </div>
 
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
