@@ -1,5 +1,6 @@
 'use client';
 import { toast } from '@/lib/toast';
+import OnyxIcon from '@/app/components/OnyxIcon';
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useLang } from '@/lib/lang';
@@ -253,9 +254,9 @@ export default function CopyClient() {
 
   const head = (
     <div style={{ marginBottom: 14 }}>
-      <h1 style={{ fontSize: 22, marginBottom: 2 }}>🔁 {t.title}</h1>
+      <h1 style={{ fontSize: 22, marginBottom: 2 }}><OnyxIcon emoji="🔁" size={16} /> {t.title}</h1>
       <p className="muted" style={{ fontSize: 13.5, margin: 0 }}>{t.sub}</p>
-      <p className="muted" style={{ fontSize: 12, margin: '4px 0 0', opacity: .85 }}>ℹ️ {t.relNote}</p>
+      <p className="muted" style={{ fontSize: 12, margin: '4px 0 0', opacity: .85 }}><OnyxIcon emoji="ℹ" size={16} /> {t.relNote}</p>
     </div>
   );
 
@@ -293,13 +294,13 @@ export default function CopyClient() {
   return (
     <div className="wrap" style={{ maxWidth: 880, margin: '0 auto', padding: '22px 22px 50px' }}>{head}
       <div className="card" style={{ marginBottom: 12, border: '1px solid var(--amber)', background: 'rgba(255,192,77,.06)' }}>
-        <span style={{ fontSize: 12.5, color: 'var(--amber)' }}>⚠ {t.warn}</span>
+        <span style={{ fontSize: 12.5, color: 'var(--amber)' }}><OnyxIcon emoji="⚠" size={16} /> {t.warn}</span>
       </div>
 
       {/* CÓMO ACTIVAR / GUÍA DE INSTALACIÓN */}
       <div className="card" style={{ marginBottom: 12, border: '1px solid var(--accent,#6c7bff)', background: 'linear-gradient(180deg,rgba(108,123,255,.08),transparent)' }}>
         <div className="row between" style={{ alignItems: 'center', gap: 8 }}>
-          <b style={{ fontSize: 14 }}>🚀 {t.howTitle}</b>
+          <b style={{ fontSize: 14 }}><OnyxIcon emoji="🚀" size={16} /> {t.howTitle}</b>
           <button className="btn btn-ghost" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => setShowHow(!showHow)}>{showHow ? t.howHide : t.howShow}</button>
         </div>
         {showHow && (
@@ -307,7 +308,7 @@ export default function CopyClient() {
             <HowStep n={1} title={t.how1} body={t.how1b} accs={accs.length} extra={<Link href="/dashboard/keys" style={{ fontSize: 12, color: 'var(--accent,#8a97ff)' }}>{t.how1link}</Link>} />
             <HowStep n={2} title={t.how2} body={t.how2b} />
             <HowStep n={3} title={t.how3} body={t.how3b} />
-            {accs.length === 1 && <div style={{ marginTop: 6, fontSize: 12, color: 'var(--amber)' }}>⚠ {t.needMore}</div>}
+            {accs.length === 1 && <div style={{ marginTop: 6, fontSize: 12, color: 'var(--amber)' }}><OnyxIcon emoji="⚠" size={16} /> {t.needMore}</div>}
           </div>
         )}
       </div>
@@ -325,7 +326,7 @@ export default function CopyClient() {
           </div>
           {paused
             ? <button className="btn btn-primary" onClick={() => doResume('resume_all')}>▶ {t.resumeAll}</button>
-            : <button className="btn btn-danger" onClick={() => doPause('pause_all')}>✋ {t.pauseAll}</button>}
+            : <button className="btn btn-danger" onClick={() => doPause('pause_all')}><OnyxIcon emoji="✋" size={16} /> {t.pauseAll}</button>}
         </div>
 
         {copyAccs.length > 0 && (
@@ -349,7 +350,7 @@ export default function CopyClient() {
             })}
           </div>
         )}
-        <p className="muted" style={{ fontSize: 11, marginTop: 10, marginBottom: 0 }}>🔒 {t.remoteHint}</p>
+        <p className="muted" style={{ fontSize: 11, marginTop: 10, marginBottom: 0 }}><OnyxIcon emoji="🔒" size={16} /> {t.remoteHint}</p>
       </div>
       )}
 
@@ -358,7 +359,7 @@ export default function CopyClient() {
       <div className="card" style={{ marginBottom: 12 }}>
         <div className="row between" style={{ flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
           <div>
-            <b style={{ fontSize: 13.5 }}>🔐 {t.pinTitle}</b>
+            <b style={{ fontSize: 13.5 }}><OnyxIcon emoji="🔐" size={16} /> {t.pinTitle}</b>
             <div className="muted" style={{ fontSize: 11.5 }}>{ctrl?.hasPin ? t.pinSet : t.pinNone}</div>
           </div>
           <div className="row" style={{ gap: 8 }}>
@@ -394,7 +395,7 @@ export default function CopyClient() {
           )}
         </div>
         {((!d.unlimitedSlaves && d.addon?.enabled) || (!d.unlimitedMasters && d.masterAddon?.enabled)) && accs.length < 2 && (
-          <div className="muted" style={{ fontSize: 11.5, marginTop: 8, color: 'var(--amber)' }}>🔒 {t.addonNeed2}</div>
+          <div className="muted" style={{ fontSize: 11.5, marginTop: 8, color: 'var(--amber)' }}><OnyxIcon emoji="🔒" size={16} /> {t.addonNeed2}</div>
         )}
       </div>
 
@@ -402,27 +403,27 @@ export default function CopyClient() {
 
       {/* DESCARGAR LA EA (siempre visible) */}
       <div className="card" style={{ marginBottom: 12 }}>
-        <div className="row" style={{ gap: 8, alignItems: 'center' }}><span style={{ fontSize: 15 }}>⬇</span><b style={{ fontSize: 14 }}>{t.dlTitle}</b></div>
+        <div className="row" style={{ gap: 8, alignItems: 'center' }}><span style={{ fontSize: 15 }}><OnyxIcon emoji="⬇" size={16} /></span><b style={{ fontSize: 14 }}>{t.dlTitle}</b></div>
         <p className="muted" style={{ fontSize: 12, marginTop: 2, marginBottom: 10 }}>{t.dlSub}</p>
         <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(210px,1fr))', gap: 10 }}>
           <div style={{ border: `1px solid ${C_MASTER}44`, borderRadius: 10, padding: 12 }}>
             <span className="pill" style={{ fontSize: 9.5, color: C_MASTER, background: C_MASTER + '22' }}>{t.role_master}</span>
             <div className="muted" style={{ fontSize: 12, margin: '7px 0 9px' }}>{t.dlMasterDesc}</div>
             <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-              <a className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 11px' }} href="/ea/OnyxCopyMaster.mq5" download>⬇ MT5 (.mq5)</a>
-              <a className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 11px' }} href="/ea/OnyxCopyMaster.mq4" download>⬇ MT4 (.mq4)</a>
+              <a className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 11px' }} href="/ea/OnyxCopyMaster.mq5" download><OnyxIcon emoji="⬇" size={16} /> MT5 (.mq5)</a>
+              <a className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 11px' }} href="/ea/OnyxCopyMaster.mq4" download><OnyxIcon emoji="⬇" size={16} /> MT4 (.mq4)</a>
             </div>
           </div>
           <div style={{ border: `1px solid ${C_SLAVE}44`, borderRadius: 10, padding: 12 }}>
             <span className="pill" style={{ fontSize: 9.5, color: C_SLAVE, background: C_SLAVE + '22' }}>{t.role_slave}</span>
             <div className="muted" style={{ fontSize: 12, margin: '7px 0 9px' }}>{t.dlSlaveDesc}</div>
             <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-              <a className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 11px' }} href="/ea/OnyxCopySlave.mq5" download>⬇ MT5 (.mq5)</a>
-              <a className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 11px' }} href="/ea/OnyxCopySlave.mq4" download>⬇ MT4 (.mq4)</a>
+              <a className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 11px' }} href="/ea/OnyxCopySlave.mq5" download><OnyxIcon emoji="⬇" size={16} /> MT5 (.mq5)</a>
+              <a className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 11px' }} href="/ea/OnyxCopySlave.mq4" download><OnyxIcon emoji="⬇" size={16} /> MT4 (.mq4)</a>
             </div>
           </div>
         </div>
-        <p className="muted" style={{ fontSize: 11, marginTop: 9, marginBottom: 0 }}>💡 {t.dlHint}</p>
+        <p className="muted" style={{ fontSize: 11, marginTop: 9, marginBottom: 0 }}><OnyxIcon emoji="💡" size={16} /> {t.dlHint}</p>
       </div>
 
       {/* CLAVES COPY + INSTALAR */}
@@ -443,7 +444,7 @@ export default function CopyClient() {
                 </span>
                 <div className="row" style={{ gap: 8 }}>
                   {k && <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => revokeKey(k.id)}>{t.revoke}</button>}
-                  <button className="btn btn-primary" style={{ padding: '4px 12px', fontSize: 12 }} onClick={() => openWizard(a)}>⬇ {t.install}</button>
+                  <button className="btn btn-primary" style={{ padding: '4px 12px', fontSize: 12 }} onClick={() => openWizard(a)}><OnyxIcon emoji="⬇" size={16} /> {t.install}</button>
                 </div>
               </div>
             );
@@ -553,7 +554,7 @@ export default function CopyClient() {
         <Modal onClose={() => setMasterPopup(null)}>
           <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6, color: C_MASTER }}>● {t.mpTitle}</div>
           <p className="muted" style={{ fontSize: 13, lineHeight: 1.6, margin: '0 0 10px' }}>{t.mpBody}</p>
-          <div style={{ background: 'rgba(255,192,77,.08)', border: '1px solid var(--amber)', borderRadius: 8, padding: 10, fontSize: 12, color: 'var(--amber)', marginBottom: 14 }}>⚠ {t.mpWarn}</div>
+          <div style={{ background: 'rgba(255,192,77,.08)', border: '1px solid var(--amber)', borderRadius: 8, padding: 10, fontSize: 12, color: 'var(--amber)', marginBottom: 14 }}><OnyxIcon emoji="⚠" size={16} /> {t.mpWarn}</div>
           <div className="row" style={{ gap: 8, justifyContent: 'flex-end' }}>
             <button className="btn btn-ghost" onClick={() => setMasterPopup(null)}>{t.mpNo}</button>
             <button className="btn btn-primary" onClick={masterPopup.onConfirm}>{t.mpOk}</button>
@@ -656,7 +657,7 @@ function PinModal({ t, mode, clear, hasPin, onClose, onResume, onSetPin }: any) 
         </>
       ) : (
         <>
-          <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 10 }}>🔐 {clear ? t.removePin : (hasPin ? t.changePin : t.setPin)}</div>
+          <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 10 }}><OnyxIcon emoji="🔐" size={16} /> {clear ? t.removePin : (hasPin ? t.changePin : t.setPin)}</div>
           {hasPin && <label className="muted" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>{t.pinCur}<input type="password" inputMode="numeric" value={cur} onChange={(e) => setCur(e.target.value)} style={{ marginTop: 3 }} /></label>}
           {!clear && <label className="muted" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>{t.pinNew}<input type="password" inputMode="numeric" value={pin} onChange={(e) => setPin(e.target.value)} style={{ marginTop: 3 }} /></label>}
         </>
@@ -719,7 +720,7 @@ function WizardBody({ t, wizard, app, live, onCopy, copied, onCheck }: any) {
       {/* 2 · Descargar */}
       <Step n={2} title={t.wzS1t}>
         <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{t.wzS1d}</div>
-        <a className="btn btn-primary" style={{ fontSize: 12.5, padding: '6px 13px' }} href={`/ea/${dlName}`} download>⬇ {t.wzDl} · {dlName}</a>
+        <a className="btn btn-primary" style={{ fontSize: 12.5, padding: '6px 13px' }} href={`/ea/${dlName}`} download><OnyxIcon emoji="⬇" size={16} /> {t.wzDl} · {dlName}</a>
       </Step>
 
       {/* 3 · Carpeta */}
@@ -727,7 +728,7 @@ function WizardBody({ t, wizard, app, live, onCopy, copied, onCheck }: any) {
         <div className="muted" style={{ fontSize: 12 }}>{t.wzS2d.replace('__F__', folder)}</div>
         <div style={box}>
           <div className="row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-            <span style={chip}>{t.wzMenuFile}</span>{arrow}<span style={chip}>{t.wzMenuData}</span>{arrow}<span style={chip}>📁 {folder}</span>{arrow}<span style={chip}>📁 Experts</span>
+            <span style={chip}>{t.wzMenuFile}</span>{arrow}<span style={chip}>{t.wzMenuData}</span>{arrow}<span style={chip}><OnyxIcon emoji="📁" size={16} /> {folder}</span>{arrow}<span style={chip}><OnyxIcon emoji="📁" size={16} /> Experts</span>
           </div>
         </div>
       </Step>
@@ -752,11 +753,11 @@ function WizardBody({ t, wizard, app, live, onCopy, copied, onCheck }: any) {
           <div className="row" style={{ gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
             <div style={{ flex: 1, minWidth: 130, border: '1px solid var(--line)', borderRadius: 8, padding: 8, background: 'var(--card2,rgba(255,255,255,.03))' }}>
               <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>{t.wzNav}</div>
-              <div style={{ fontSize: 12 }}>📁 {t.wzMenuEA}</div>
-              <div style={{ fontSize: 12, color, paddingLeft: 12 }}>🤖 {dlName.replace('.' + ext, '')}</div>
+              <div style={{ fontSize: 12 }}><OnyxIcon emoji="📁" size={16} /> {t.wzMenuEA}</div>
+              <div style={{ fontSize: 12, color, paddingLeft: 12 }}><OnyxIcon emoji="🤖" size={16} /> {dlName.replace('.' + ext, '')}</div>
             </div>
             {arrow}
-            <div style={{ flex: 1, minWidth: 130, border: '1px dashed var(--line)', borderRadius: 8, padding: 8, textAlign: 'center', color: 'var(--mut)', fontSize: 12 }}>📈 {t.wzDropChart}</div>
+            <div style={{ flex: 1, minWidth: 130, border: '1px dashed var(--line)', borderRadius: 8, padding: 8, textAlign: 'center', color: 'var(--mut)', fontSize: 12 }}><OnyxIcon emoji="📈" size={16} /> {t.wzDropChart}</div>
           </div>
           <div className="row" style={{ gap: 8, alignItems: 'center', marginTop: 8 }}>{tick}<span style={{ fontSize: 11.5 }}>{t.wzAllowAlgo}</span></div>
         </div>
@@ -782,7 +783,7 @@ function WizardBody({ t, wizard, app, live, onCopy, copied, onCheck }: any) {
             <span style={{ fontSize: 11, color: 'var(--green)' }}>{t.wzApiOnly}</span>
           </div>
           {wizard.key ? copyRow(wizard.key) : <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>—</div>}
-          <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>ℹ️ {t.wzSrvNote}</div>
+          <div className="muted" style={{ fontSize: 11, marginTop: 8 }}><OnyxIcon emoji="ℹ" size={16} /> {t.wzSrvNote}</div>
         </div>
       </Step>
 
@@ -791,7 +792,7 @@ function WizardBody({ t, wizard, app, live, onCopy, copied, onCheck }: any) {
         <div className="muted" style={{ fontSize: 12 }}>{t.wzAlgoD}</div>
         <div style={box}>
           <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', background: 'rgba(52,226,160,.12)', color: 'var(--green)', borderRadius: 6, padding: '5px 9px', fontSize: 12 }}>▶️ Algo Trading</span>
-          <span style={{ fontSize: 12, marginLeft: 10 }}><span style={{ color: 'var(--green)' }}>☺</span> = {plat === 'mt5' ? 'activo' : 'active'}</span>
+          <span style={{ fontSize: 12, marginLeft: 10 }}><span style={{ color: 'var(--green)' }}><OnyxIcon emoji="☺" size={16} /></span> = {plat === 'mt5' ? 'activo' : 'active'}</span>
         </div>
       </Step>
 

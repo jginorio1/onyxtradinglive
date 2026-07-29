@@ -1,5 +1,6 @@
 'use client';
 import { toast } from '@/lib/toast';
+import OnyxIcon from '@/app/components/OnyxIcon';
 import { fmtDate, fmtDateTime } from '@/lib/fmtDate';
 import { useEffect, useState } from 'react';
 import Help from '@/app/Help';
@@ -220,7 +221,7 @@ export function PlanTab({ cfg, set, setCfg, t, acc }: any) {
     <>
       <div className="card" style={{ marginBottom: 14, border: '1px solid ' + (p.on ? 'rgba(52,226,160,.45)' : 'var(--line)') }}>
         <div className="row between" style={{ marginBottom: 4 }}>
-          <div className="row" style={{ gap: 10, alignItems: 'center' }}><Dot on={!!p.on} /><span style={{ fontSize: 20 }}>📅</span><h3 style={{ margin: 0 }}>{t.planT}</h3><Help slug="plan-de-trading" /></div>
+          <div className="row" style={{ gap: 10, alignItems: 'center' }}><Dot on={!!p.on} /><span style={{ fontSize: 20 }}><OnyxIcon emoji="📅" size={16} /></span><h3 style={{ margin: 0 }}>{t.planT}</h3><Help slug="plan-de-trading" /></div>
           <Toggle on={!!p.on} onClick={() => set('plan.on', !p.on)} />
         </div>
         <p className="muted" style={{ fontSize: 13 }}>{t.planD}</p>
@@ -352,7 +353,7 @@ export function LimitsTab({ cfg, set, setCfg, t, firms, firmSel, setFirmSel, lan
     <>
       <div className="card" style={{ marginBottom: 14, border: '1px solid ' + (l.on ? 'rgba(52,226,160,.45)' : 'var(--line)') }}>
         <div className="row between" style={{ marginBottom: 4 }}>
-          <div className="row" style={{ gap: 10, alignItems: 'center' }}><Dot on={!!l.on} /><span style={{ fontSize: 20 }}>🚧</span><h3 style={{ margin: 0 }}>{t.limT}</h3><Help slug="limites-cuenta" /></div>
+          <div className="row" style={{ gap: 10, alignItems: 'center' }}><Dot on={!!l.on} /><span style={{ fontSize: 20 }}><OnyxIcon emoji="🚧" size={16} /></span><h3 style={{ margin: 0 }}>{t.limT}</h3><Help slug="limites-cuenta" /></div>
           <Toggle on={!!l.on} onClick={() => set('limits.on', !l.on)} />
         </div>
         <p className="muted" style={{ fontSize: 13 }}>{t.limD}</p>
@@ -457,8 +458,8 @@ export function NewsTab({ cfg, set, t, canNews, advLabel }: any) {
     <div className="card" style={{ marginBottom: 14, opacity: canNews ? 1 : .75, border: '1px solid ' + (canNews && n.on ? 'rgba(52,226,160,.45)' : 'var(--line)') }}>
       <div className="row between" style={{ marginBottom: 4, flexWrap: 'wrap', gap: 8 }}>
         <div className="row" style={{ gap: 10, alignItems: 'center' }}>
-          <Dot on={canNews && !!n.on} /><span style={{ fontSize: 20 }}>📰</span><h3 style={{ margin: 0 }}>{t.newsT}</h3>
-          {!canNews && <span className="pill" style={{ color: 'var(--soft-green)', background: 'rgba(52,226,160,.15)', border: '1px solid var(--green)' }}>🔒 {advLabel}</span>}
+          <Dot on={canNews && !!n.on} /><span style={{ fontSize: 20 }}><OnyxIcon emoji="📰" size={16} /></span><h3 style={{ margin: 0 }}>{t.newsT}</h3>
+          {!canNews && <span className="pill" style={{ color: 'var(--soft-green)', background: 'rgba(52,226,160,.15)', border: '1px solid var(--green)' }}><OnyxIcon emoji="🔒" size={16} /> {advLabel}</span>}
         </div>
         {canNews && <Toggle on={!!n.on} onClick={() => set('news.on', !n.on)} />}
       </div>
@@ -545,7 +546,7 @@ export function StateTab({ t, tMain, lang, accountId }: any) {
         {st?.blocked ? (
           <>
             <div style={{ color: 'var(--amber)', fontWeight: 700, marginBottom: 4 }}>
-              🔒 {t.blockedNow} · {t.reasons[st.blocked_reason] || st.blocked_reason}
+              <OnyxIcon emoji="🔒" size={16} /> {t.blockedNow} · {t.reasons[st.blocked_reason] || st.blocked_reason}
             </div>
             <div className="row" style={{ gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
               {waiting

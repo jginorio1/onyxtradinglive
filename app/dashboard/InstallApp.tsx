@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import OnyxIcon from '@/app/components/OnyxIcon';
 import QrPop from '@/app/components/QrPop';
 
 type Lang = 'es' | 'en';

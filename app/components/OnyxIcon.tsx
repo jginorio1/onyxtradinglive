@@ -85,6 +85,9 @@ const EMOJI: Record<string, string> = {
   '⚠': 'bell', '🏅': 'trophy', '🖥': 'modules', '🎬': 'trades', '🔒': 'guardian',
   '👤': 'users', '🧾': 'card', '🔐': 'guardian', '⭐': 'trophy', '📝': 'coach', '✍': 'coach',
   '⏳': 'duration', '⏰': 'duration', '💪': 'trophy', '🟢': 'up', '🎁': 'gift',
+  '⚡': 'up', '🌊': 'performance', '🏔': 'performance', '✈': 'telegram', '🚧': 'settings',
+  '🥧': 'finance', '🎉': 'trophy', '📧': 'mail', '📁': 'accounts', 'ℹ': 'ai', '✋': 'guardian',
+  '📡': 'sessions', '🕑': 'duration', '🕐': 'duration', '☺': 'users', '🖨': 'install', '〽': 'up',
 };
 
 const strip = (s: string) => (s || '').replace(/️/g, '').trim();

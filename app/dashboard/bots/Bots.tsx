@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import OnyxIcon from '@/app/components/OnyxIcon';
 import Link from 'next/link';
 import { useLang } from '@/lib/lang';
 import { toast } from '@/lib/toast';
@@ -135,8 +136,8 @@ export default function Bots() {
         )}
 
         <div className="row" style={{ gap: 6, marginTop: 8 }}>
-          <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '5px 10px' }} onClick={() => { setDetail(detail === b.magic ? null : b.magic); setEdit(null); }}>📊 {t.detail}</button>
-          <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '5px 10px' }} onClick={() => (edit === b.magic ? setEdit(null) : openEdit(b))}>⚙️ {t.config}</button>
+          <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '5px 10px' }} onClick={() => { setDetail(detail === b.magic ? null : b.magic); setEdit(null); }}><OnyxIcon emoji="📊" size={16} /> {t.detail}</button>
+          <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '5px 10px' }} onClick={() => (edit === b.magic ? setEdit(null) : openEdit(b))}><OnyxIcon emoji="⚙" size={16} /> {t.config}</button>
         </div>
 
         {detail === b.magic && (
@@ -185,7 +186,7 @@ export default function Bots() {
   return (
     <div className="wrap" style={{ padding: '24px 0 60px', maxWidth: 920 }}>
       <div style={{ padding: '0 4px', marginBottom: 16 }}>
-        <h1 style={{ fontSize: 24 }}>🤖 {t.title}</h1>
+        <h1 style={{ fontSize: 24 }}><OnyxIcon emoji="🤖" size={16} /> {t.title}</h1>
         <p className="muted" style={{ marginTop: 6 }}>{t.sub}</p>
       </div>
 
@@ -193,7 +194,7 @@ export default function Bots() {
 
       {d?.locked && (
         <div className="card" style={{ textAlign: 'center', padding: 28 }}>
-          <div style={{ fontSize: 34, marginBottom: 8 }}>🤖</div>
+          <div style={{ fontSize: 34, marginBottom: 8 }}><OnyxIcon emoji="🤖" size={16} /></div>
           <h3 style={{ marginBottom: 6 }}>{t.lockT}</h3>
           <p className="muted" style={{ fontSize: 14, maxWidth: 460, margin: '0 auto 14px' }}>{t.lockD}</p>
           {d.addon?.enabled ? (
@@ -210,7 +211,7 @@ export default function Bots() {
 
       {d && !d.locked && !bots.length && (
         <div className="card" style={{ textAlign: 'center', padding: 28 }}>
-          <div style={{ fontSize: 34, marginBottom: 8 }}>📡</div>
+          <div style={{ fontSize: 34, marginBottom: 8 }}><OnyxIcon emoji="📡" size={16} /></div>
           <h3 style={{ marginBottom: 6 }}>{t.emptyT}</h3>
           <p className="muted" style={{ fontSize: 14, maxWidth: 520, margin: '0 auto' }}>{t.emptyD}</p>
         </div>
@@ -239,7 +240,7 @@ export default function Bots() {
 
           {port && port.bots && port.bots.length >= 2 && (
             <div className="card" style={{ marginTop: 16 }}>
-              <h3 style={{ marginBottom: 4 }}>🧩 {t.portT}</h3>
+              <h3 style={{ marginBottom: 4 }}><OnyxIcon emoji="🧩" size={16} /> {t.portT}</h3>
               <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{t.portSub}</p>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ fontSize: 11.5, borderCollapse: 'collapse' }}>

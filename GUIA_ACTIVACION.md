@@ -1073,3 +1073,11 @@ Ampliado el mapa emoji→icono (🔌 🛠 🔧 💡 🌱 ⚠ 🏅 🖥 🎬 🔒
 - Al pasar el ratón o pulsar el elemento clicable que los contiene (enlaces,
   botones, mosaicos, items de nav, summary/label), el brillo se intensifica y el
   icono da un pequeño rebote (clase `.onyx-ic` + reglas en globals.css).
+
+### 26.3 · Barrido masivo de emojis restantes → OnyxIcon
+
+Convertidos: chips del saludo (estilo/rango/plataforma/meta), botones de rango
+(calendario/Demo), y un barrido automático de los emojis en Guardian
+(ManagerClient/Phase2), Copy (CopyClient), Bots, y Mi cuenta con sus
+sub-componentes (Referidos, 2FA, PIN, notificaciones push, embajador, Telegram).
+Ampliado el mapa (⚡🌊🏔 ✈️ 🚧 🥧 🎉 📧 📁 ℹ ✋ 📡 🕑 🖨 〽 …).

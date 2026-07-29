@@ -295,7 +295,7 @@ export default function AccountClient({ email }: { email: string }) {
                   <div className="card" style={{ marginBottom: 14, border: '1px solid var(--amber)', background: 'rgba(255,192,77,.06)' }}>
                     <div className="row between" style={{ flexWrap: 'wrap', gap: 10, alignItems: 'flex-start' }}>
                       <div>
-                        <div style={{ fontWeight: 700, fontSize: 15 }}>⏳ {L.pendT}</div>
+                        <div style={{ fontWeight: 700, fontSize: 15 }}><OnyxIcon emoji="⏳" size={16} /> {L.pendT}</div>
                         <div style={{ fontSize: 13.5, marginTop: 4 }}>{L.pendTo} <b>{lang === 'es' ? pending.planName : pending.planNameEn}</b> {L.pendOn} <b>{pending.at ? fmtDate(pending.at, lang) : '—'}</b>.</div>
                         <div className="muted" style={{ fontSize: 12.5, marginTop: 4 }}>{L.pendKeep}</div>
                         {pending.losesCopy && <div style={{ fontSize: 12.5, marginTop: 4, color: 'var(--amber)' }}>• {L.pendLoseCopy}</div>}
@@ -351,7 +351,7 @@ export default function AccountClient({ email }: { email: string }) {
                             );
                           })}
                         </div>
-                        <p className="muted" style={{ fontSize: 11.5, marginTop: 10 }}>ℹ️ {L.chNote}</p>
+                        <p className="muted" style={{ fontSize: 11.5, marginTop: 10 }}><OnyxIcon emoji="ℹ" size={16} /> {L.chNote}</p>
                       </div>
                     );
                   })()}
@@ -370,7 +370,7 @@ export default function AccountClient({ email }: { email: string }) {
                           const endD = sub?.currentPeriodEnd ? fmtDate(sub.currentPeriodEnd, lang) : null;
                           return (
                             <div style={{ background: 'var(--bg2)', borderRadius: 8, padding: '10px 12px', margin: '0 0 14px', fontSize: 12.5, lineHeight: 1.7 }}>
-                              {endD && <div>📅 {L.dgDate} <b>{endD}</b></div>}
+                              {endD && <div><OnyxIcon emoji="📅" size={16} /> {L.dgDate} <b>{endD}</b></div>}
                               {tLosesCopy && <div style={{ color: 'var(--amber)' }}>• {L.dgLoseCopy}</div>}
                               {tOver > 0 && <div style={{ color: 'var(--amber)' }}>• {L.dgLoseAcc.replace('{n}', String(tOver))}</div>}
                             </div>
@@ -389,7 +389,7 @@ export default function AccountClient({ email }: { email: string }) {
                   {chDone && (
                     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 70, padding: 16 }}>
                       <div className="card" style={{ maxWidth: 400, width: '100%', textAlign: 'center' }}>
-                        <div style={{ fontSize: 34, marginBottom: 6 }}>🎉</div>
+                        <div style={{ fontSize: 34, marginBottom: 6 }}><OnyxIcon emoji="🎉" size={16} /></div>
                         <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 6 }}>{L.chThanksT} {chDone.name}</div>
                         <p className="muted" style={{ fontSize: 13.5, lineHeight: 1.6, marginBottom: 16 }}>{L.chThanksBody}</p>
                         <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => window.location.reload()}>{L.chThanksBtn}</button>
@@ -496,7 +496,7 @@ export default function AccountClient({ email }: { email: string }) {
                         <div className="muted" style={{ fontSize: 12 }}>#{inv.number}{inv.created ? ' · ' + fmtDate(inv.created, lang) : ''}</div>
                       </div>
                       <div className="row" style={{ gap: 8 }}>
-                        {inv.pdf && <a className="btn btn-ghost" style={{ padding: '5px 12px', fontSize: 12.5 }} href={inv.pdf} target="_blank" rel="noreferrer">⬇ {L.invDl}</a>}
+                        {inv.pdf && <a className="btn btn-ghost" style={{ padding: '5px 12px', fontSize: 12.5 }} href={inv.pdf} target="_blank" rel="noreferrer"><OnyxIcon emoji="⬇" size={16} /> {L.invDl}</a>}
                         {inv.url && <a className="btn btn-ghost" style={{ padding: '5px 12px', fontSize: 12.5 }} href={inv.url} target="_blank" rel="noreferrer">{L.invPortal}</a>}
                       </div>
                     </div>
@@ -579,7 +579,7 @@ export default function AccountClient({ email }: { email: string }) {
                 <PushToggle lang={lang} />
                 <div className="card" style={{ marginBottom: 14 }}>
                   <div className="row" style={{ gap: 9, marginBottom: 8, alignItems: 'center' }}>
-                    <span style={{ width: 30, height: 30, borderRadius: 9, background: 'rgba(124,140,255,.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>📧</span>
+                    <span style={{ width: 30, height: 30, borderRadius: 9, background: 'rgba(124,140,255,.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}><OnyxIcon emoji="📧" size={16} /></span>
                     <b style={{ fontSize: 15 }}>{L.nMailT}</b>
                   </div>
                   {([['notify_email', L.nEmail, L.nEmailS], ['notify_weekly', L.nWeek, L.nWeekS], ['notify_funding', L.nFund, L.nFundS], ['notify_marketing', L.nMkt, L.nMktS]] as [string, string, string][]).map(([k, label, sub], i) => (
@@ -643,7 +643,7 @@ function LockPinCard({ lang }: { lang: Lang }) {
   return (
     <div className="card" style={{ marginBottom: 14 }}>
       <div className="row between" style={{ flexWrap: 'wrap', gap: 8 }}>
-        <h3 style={{ margin: 0 }}>🔒 {es ? 'PIN de bloqueo del panel' : 'Panel lock PIN'}</h3>
+        <h3 style={{ margin: 0 }}><OnyxIcon emoji="🔒" size={16} /> {es ? 'PIN de bloqueo del panel' : 'Panel lock PIN'}</h3>
         <span className="pill" style={hasPin ? { color: 'var(--soft-green)', background: 'rgba(52,226,160,.15)' } : { color: 'var(--mut)' }}>{hasPin ? (es ? 'Activo' : 'Active') : (es ? 'Sin PIN' : 'No PIN')}</span>
       </div>
       <p className="muted" style={{ fontSize: 13, marginTop: 6 }}>{es ? 'Es el PIN de 6 dígitos con el que reentras al panel de administración tras un rato inactivo.' : 'The 6-digit PIN you use to re-enter the admin panel after being idle.'}</p>

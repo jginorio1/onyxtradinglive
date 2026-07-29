@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import OnyxIcon from '@/app/components/OnyxIcon';
 import { useLang } from '@/lib/lang';
 import QrPop from '@/app/components/QrPop';
 
@@ -31,7 +32,7 @@ export default function ReferralCard() {
   return (
     <div className="card" id="referidos" style={{ marginTop: 16 }}>
       <div className="row between" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 6 }}>
-        <b style={{ fontSize: 15 }}>🎁 {es ? 'Invita y gana' : 'Invite & earn'}</b>
+        <b style={{ fontSize: 15 }}><OnyxIcon emoji="🎁" size={16} /> {es ? 'Invita y gana' : 'Invite & earn'}</b>
         {(d.pending > 0 || d.applied > 0) && (
           <span className="pill" style={{ color: 'var(--soft-green)', background: 'rgba(52,226,160,.15)' }}>
             ${d.applied} {es ? 'en crédito' : 'credit'}{d.pending > 0 ? ` · $${d.pending} ${es ? 'en camino' : 'coming'}` : ''}
@@ -49,8 +50,8 @@ export default function ReferralCard() {
         <button className="btn btn-primary" onClick={copy} style={{ minWidth: 96 }}>{copied ? (es ? '¡Copiado!' : 'Copied!') : (es ? 'Copiar' : 'Copy')}</button>
       </div>
       <div className="row" style={{ gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
-        <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => share('wa')}>🟢 WhatsApp</button>
-        <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => share('tg')}>✈️ Telegram</button>
+        <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => share('wa')}><OnyxIcon emoji="🟢" size={16} /> WhatsApp</button>
+        <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => share('tg')}><OnyxIcon emoji="✈" size={16} /> Telegram</button>
         <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => share('x')}>𝕏</button>
         <QrPop data={link} poster="referral" label={es ? 'QR / Póster' : 'QR / Poster'} title={es ? 'Únete y ganamos los dos' : 'Join and we both win'} />
       </div>
@@ -73,7 +74,7 @@ export default function ReferralCard() {
             </>
           ) : (
             <div className="row between" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--soft-brand)' }}>🚀 {es ? '¡Ya puedes ser Embajador y cobrar en efectivo!' : 'You can become an Ambassador and earn cash!'}</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--soft-brand)' }}><OnyxIcon emoji="🚀" size={16} /> {es ? '¡Ya puedes ser Embajador y cobrar en efectivo!' : 'You can become an Ambassador and earn cash!'}</span>
               <a className="btn btn-primary" href="/embajadores" style={{ fontSize: 13 }}>{es ? 'Hacerme Embajador' : 'Become Ambassador'}</a>
             </div>
           )}

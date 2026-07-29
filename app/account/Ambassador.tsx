@@ -1,5 +1,6 @@
 'use client';
 import { toast } from '@/lib/toast';
+import OnyxIcon from '@/app/components/OnyxIcon';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { errMsg } from '@/lib/i18nErrors';
@@ -117,7 +118,7 @@ export default function Ambassador({ lang }: { lang: Lang }) {
 
   if (!a) return (
     <div className="card" style={{ maxWidth: 560 }}>
-      <div style={{ fontSize: 26, marginBottom: 8 }}>🎁</div>
+      <div style={{ fontSize: 26, marginBottom: 8 }}><OnyxIcon emoji="🎁" size={16} /></div>
       <h3 style={{ marginBottom: 8 }}>{t.joinT}</h3>
       <p className="muted" style={{ fontSize: 14, marginBottom: 14 }}>{t.joinD}</p>
       <Link className="btn btn-primary" href="/embajadores">{t.joinBtn}</Link>
@@ -237,7 +238,7 @@ export default function Ambassador({ lang }: { lang: Lang }) {
       {/* Generar publicaciones con AI */}
       <div className="card" style={{ marginBottom: 14 }}>
         <div className="row between" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 4 }}>
-          <h3 style={{ margin: 0 }}>✨ {t.aiKitT}</h3>
+          <h3 style={{ margin: 0 }}><OnyxIcon emoji="✨" size={16} /> {t.aiKitT}</h3>
           <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
             {['youtube', 'instagram', 'tiktok', 'telegram'].map((pf) => (
               <button key={pf} className="pill" onClick={() => setPlat(pf)}

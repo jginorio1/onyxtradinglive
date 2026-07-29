@@ -1,5 +1,6 @@
 'use client';
 import { toast } from '@/lib/toast';
+import OnyxIcon from '@/app/components/OnyxIcon';
 import { useEffect, useState } from 'react';
 import { errMsg } from '@/lib/i18nErrors';
 

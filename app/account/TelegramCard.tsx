@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import OnyxIcon from '@/app/components/OnyxIcon';
 import Link from 'next/link';
 import QrPop from '@/app/components/QrPop';
 
@@ -244,7 +245,7 @@ export default function TelegramCard({ lang }: { lang: 'es' | 'en' }) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(250px,1fr))', gap: 14, marginTop: 16, alignItems: 'start' }}>
             {/* Reporte destacado */}
             <div style={{ background: 'rgba(124,140,255,.08)', border: '1px solid rgba(124,140,255,.35)', borderRadius: 12, padding: 14 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--soft-brand)' }}>📊 {t.reportT}</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--soft-brand)' }}><OnyxIcon emoji="📊" size={16} /> {t.reportT}</div>
               <div className="muted" style={{ fontSize: 11.5, margin: '2px 0 10px' }}>{t.reportHint}</div>
               <select value={d.report || 'off'} onChange={(e) => setReport(e.target.value)} style={{ margin: 0, width: '100%', padding: '7px 10px' }}>
                 <option value="off">{t.reportOff}</option>
@@ -290,7 +291,7 @@ export default function TelegramCard({ lang }: { lang: 'es' | 'en' }) {
                   <div className="row" style={{ gap: 7, alignItems: 'flex-start' }}>
                     <span style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--brand)', flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#111726' }}>O</span>
                     <div style={{ background: '#212d3b', borderRadius: '12px 12px 12px 3px', padding: '8px 10px', fontSize: 12.5, lineHeight: 1.6, color: '#e6ebf2', flex: 1 }}>
-                      📊 <b>{x.title}</b><br />{x.lines.map((ln: string, j: number) => <span key={j}>{ln}<br /></span>)}
+                      <OnyxIcon emoji="📊" size={16} /> <b>{x.title}</b><br />{x.lines.map((ln: string, j: number) => <span key={j}>{ln}<br /></span>)}
                       {x.attach && <span style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6 }}>{x.attach.map((a: string, j: number) => <span key={j} style={{ background: '#2a3646', borderRadius: 6, padding: '3px 8px', fontSize: 11, color: '#c7ced6' }}>{a}</span>)}</span>}
                     </div>
                   </div>

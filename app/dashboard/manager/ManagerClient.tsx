@@ -1,5 +1,6 @@
 'use client';
 import { toast } from '@/lib/toast';
+import OnyxIcon from '@/app/components/OnyxIcon';
 import { useEffect, useMemo, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import Link from 'next/link';
@@ -250,7 +251,7 @@ export default function ManagerClient() {
     <>
       <div className="wrap" style={{ padding: '40px 22px', maxWidth: 620 }}>
         <div className="card" style={{ textAlign: 'center', padding: '38px 22px', border: '1px solid var(--brand2)' }}>
-          <div style={{ fontSize: 32, marginBottom: 8 }}>🔒</div>
+          <div style={{ fontSize: 32, marginBottom: 8 }}><OnyxIcon emoji="🔒" size={16} /></div>
           <h2 style={{ marginBottom: 8 }}>{t.lockT}</h2>
           <p className="muted" style={{ marginBottom: 18 }}>{t.lockD}</p>
           <Link className="btn btn-primary" href="/pricing">{t.lockCta}</Link>
@@ -277,7 +278,7 @@ export default function ManagerClient() {
         {/* Cabecera Onyx Guardian */}
         <div className="card" style={card}>
           <div className="row" style={{ gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            <div style={{ width: 42, height: 42, borderRadius: 10, background: 'rgba(124,140,255,.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flex: 'none' }}>🛡️</div>
+            <div style={{ width: 42, height: 42, borderRadius: 10, background: 'rgba(124,140,255,.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flex: 'none' }}><OnyxIcon emoji="🛡" size={16} /></div>
             <div style={{ flex: 1, minWidth: 150 }}>
               <div style={{ fontWeight: 700, fontSize: 17 }}>{t.title}</div>
               <div className="muted" style={{ fontSize: 13 }}>{t.subtitle}</div>
@@ -349,7 +350,7 @@ export default function ManagerClient() {
             ))}
           </div>
           <div className="row" style={{ gap: 8, marginTop: 12, padding: '10px 12px', background: 'rgba(124,140,255,.10)', borderRadius: 8, alignItems: 'flex-start' }}>
-            <span>ℹ️</span>
+            <span><OnyxIcon emoji="ℹ" size={16} /></span>
             <span style={{ fontSize: 12, color: 'var(--tx)' }}>{t.unitsChosen} <b>{uShort}</b>{t.unitsChosen2}</span>
           </div>
         </div>
@@ -407,7 +408,7 @@ export default function ManagerClient() {
         <div className="card" style={{ ...protCard(advanced && !!cfg?.partials?.on), opacity: advanced ? 1 : .75 }}>
           <ProtHeader icon="🥧" title={t.ptT} desc={t.ptD} on={advanced && !!cfg?.partials?.on}
             onToggle={advanced ? () => set('partials.on', !cfg.partials.on) : undefined}
-            right={<div className="row" style={{ gap: 8 }}><Help slug="parciales" />{!advanced && <span className="pill" style={{ color: 'var(--soft-green)', background: 'rgba(52,226,160,.15)', border: '1px solid var(--green)' }}>🔒 {t.adv}</span>}</div>} />
+            right={<div className="row" style={{ gap: 8 }}><Help slug="parciales" />{!advanced && <span className="pill" style={{ color: 'var(--soft-green)', background: 'rgba(52,226,160,.15)', border: '1px solid var(--green)' }}><OnyxIcon emoji="🔒" size={16} /> {t.adv}</span>}</div>} />
 
           {advanced && cfg?.partials?.on && (
             <div style={{ borderTop: '1px solid var(--line)', paddingTop: 14 }}>

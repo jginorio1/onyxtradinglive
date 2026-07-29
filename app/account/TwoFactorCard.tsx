@@ -1,5 +1,6 @@
 'use client';
 import { toast } from '@/lib/toast';
+import OnyxIcon from '@/app/components/OnyxIcon';
 import { useEffect, useState } from 'react';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 import TwoFactor from '@/app/TwoFactor';
@@ -44,7 +45,7 @@ export default function TwoFactorCard({ lang }: { lang: Lang }) {
   return (
     <div className="card" style={{ marginBottom: 14 }}>
       <div className="row between" style={{ flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-        <h3 style={{ margin: 0 }}>🔐 {L.t}</h3>
+        <h3 style={{ margin: 0 }}><OnyxIcon emoji="🔐" size={16} /> {L.t}</h3>
         <span className="pill" style={has ? { color: 'var(--soft-green)', background: 'rgba(52,226,160,.15)' } : { color: 'var(--mut)' }}>{has ? L.on : L.off}</span>
       </div>
       <p className="muted" style={{ fontSize: 13, marginTop: 6 }}>{L.desc}</p>

@@ -1,5 +1,6 @@
 'use client';
 import { toast } from '@/lib/toast';
+import OnyxIcon from '@/app/components/OnyxIcon';
 import { useEffect, useState } from 'react';
 
 type Lang = 'es' | 'en';
@@ -85,7 +86,7 @@ export default function PushToggle({ lang }: { lang: Lang }) {
     <div className="card" style={{ marginBottom: 14 }}>
       <div className="row between" style={{ flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
         <div className="row" style={{ gap: 10, alignItems: 'center' }}>
-          <span style={{ width: 38, height: 38, borderRadius: 11, background: 'rgba(52,226,160,.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19 }}>🔔</span>
+          <span style={{ width: 38, height: 38, borderRadius: 11, background: 'rgba(52,226,160,.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19 }}><OnyxIcon emoji="🔔" size={16} /></span>
           <div>
             <div style={{ fontSize: 14.5, fontWeight: 700 }}>{L.t}</div>
             <div className="muted" style={{ fontSize: 12.5 }}>{L.s}</div>
@@ -98,7 +99,7 @@ export default function PushToggle({ lang }: { lang: Lang }) {
             : <button className="btn btn-primary" onClick={turnOn} disabled={busy || iosBlocked}>{L.on}</button>}
         </div>
       </div>
-      {iosBlocked && <div className="muted" style={{ fontSize: 12, marginTop: 10, borderTop: '1px solid var(--line)', paddingTop: 10 }}>ℹ️ {L.iosHint}</div>}
+      {iosBlocked && <div className="muted" style={{ fontSize: 12, marginTop: 10, borderTop: '1px solid var(--line)', paddingTop: 10 }}><OnyxIcon emoji="ℹ" size={16} /> {L.iosHint}</div>}
     </div>
   );
 }

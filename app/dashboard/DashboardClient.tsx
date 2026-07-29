@@ -485,11 +485,11 @@ export default function DashboardClient({ email = '', plan = 'free', profile, tr
   const heroTitle = firstName ? `${greetWord}, ${firstName}` : L.welcomeTrader;
   const heroInitials = (firstName || email || '?').slice(0, 2).toUpperCase();
   const STYLE_EMOJI: Record<string, string> = { scalping: '⚡', day: '📈', swing: '🌊', position: '🏔️', algo: '🤖' };
-  const heroChips: string[] = [];
-  if (profile?.trade_style && L.styleMap[profile.trade_style]) heroChips.push(`${STYLE_EMOJI[profile.trade_style] || ''} ${L.styleMap[profile.trade_style]}`.trim());
-  if (profile?.experience && L.rankMap[profile.experience]) heroChips.push(`🏅 ${L.rankMap[profile.experience]}`);
-  if (profile?.platform && L.platMap[profile.platform]) heroChips.push(`🖥️ ${L.platMap[profile.platform]}`);
-  if (profile?.goal && L.goalMap[profile.goal]) heroChips.push(`🎯 ${L.goalMap[profile.goal]}`);
+  const heroChips: { icon: string; label: string }[] = [];
+  if (profile?.trade_style && L.styleMap[profile.trade_style]) heroChips.push({ icon: STYLE_EMOJI[profile.trade_style] || '📈', label: L.styleMap[profile.trade_style] });
+  if (profile?.experience && L.rankMap[profile.experience]) heroChips.push({ icon: '🏅', label: L.rankMap[profile.experience] });
+  if (profile?.platform && L.platMap[profile.platform]) heroChips.push({ icon: '🖥️', label: L.platMap[profile.platform] });
+  if (profile?.goal && L.goalMap[profile.goal]) heroChips.push({ icon: '🎯', label: L.goalMap[profile.goal] });
 
   return (
     <>
@@ -503,7 +503,7 @@ export default function DashboardClient({ email = '', plan = 'free', profile, tr
               <h1 style={{ marginBottom: 6, lineHeight: 1.15 }}>{heroTitle} <span style={{ fontSize: 22 }}>👋</span></h1>
               {heroChips.length ? (
                 <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-                  {heroChips.map((c, i) => <span key={i} className="pill" style={{ background: 'rgba(124,140,255,.14)', color: 'var(--soft-brand)', fontWeight: 500 }}>{c}</span>)}
+                  {heroChips.map((c, i) => <span key={i} className="pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(124,140,255,.14)', color: 'var(--soft-brand)', fontWeight: 500 }}><OnyxIcon emoji={c.icon} size={13} /> {c.label}</span>)}
                 </div>
               ) : (
                 <Link href="/onboarding" className="pill" style={{ background: 'rgba(124,140,255,.14)', color: 'var(--soft-brand)' }}>{L.completeProfile}</Link>
@@ -544,8 +544,8 @@ export default function DashboardClient({ email = '', plan = 'free', profile, tr
               </div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {(['d1', 'd7', 'd30', 'mo', 'yr', 'all'] as const).map((r) => <button key={r} className={'btn ' + (range === r ? 'btn-primary' : 'btn-ghost')} style={{ padding: '7px 12px' }} onClick={() => setRange(r)}>{L.ranges[r]}</button>)}
-                <button className={'btn ' + (range === 'custom' ? 'btn-primary' : 'btn-ghost')} style={{ padding: '7px 12px' }} onClick={() => setRange('custom')} title={L.customRange}>📅</button>
-                <button className={'btn ' + (demo ? 'btn-primary' : 'btn-ghost')} style={{ padding: '7px 12px' }} onClick={() => setDemo(!demo)}>🎬 {L.demo}</button>
+                <button className={'btn ' + (range === 'custom' ? 'btn-primary' : 'btn-ghost')} style={{ padding: '7px 12px', display: 'inline-flex', alignItems: 'center' }} onClick={() => setRange('custom')} title={L.customRange}><OnyxIcon emoji="📅" size={15} /></button>
+                <button className={'btn ' + (demo ? 'btn-primary' : 'btn-ghost')} style={{ padding: '7px 12px', display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={() => setDemo(!demo)}><OnyxIcon emoji="🎬" size={15} /> {L.demo}</button>
               </div>
             </div>
             {range === 'custom' && (
