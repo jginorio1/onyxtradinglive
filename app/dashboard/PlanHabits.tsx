@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 type Lang = 'es' | 'en';
 
@@ -219,7 +220,7 @@ export default function PlanHabits({ lang, onGoGuardian }: { lang: Lang; onGoGua
     <div style={{ maxWidth: 940, margin: '0 auto' }}>
       <div style={{ marginBottom: 14, display: 'flex', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap' }}>
         <div style={{ flex: 1, minWidth: 220 }}>
-          <h2 style={{ margin: 0 }}>🎯 {t.title}</h2>
+          <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 9 }}><span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon emoji="🎯" size={22} /></span> {t.title}</h2>
           <div className="muted" style={{ fontSize: 13 }}>{t.sub}</div>
         </div>
         <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={goGuardian}>🛡️ {t.gOpen} →</button>
@@ -234,7 +235,7 @@ export default function PlanHabits({ lang, onGoGuardian }: { lang: Lang; onGoGua
           <div className="muted" style={{ fontSize: 12 }}>{t.adherence}</div>
         </div>
         <div className="card" style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 28 }}>🔥</div>
+          <div style={{ display: 'flex', justifyContent: 'center', color: 'var(--amber)' }}><OnyxIcon emoji="🔥" size={28} /></div>
           <div style={{ fontSize: 24, fontWeight: 700 }}>{s.streak || 0}</div>
           <div className="muted" style={{ fontSize: 12 }}>{t.streak}</div>
         </div>

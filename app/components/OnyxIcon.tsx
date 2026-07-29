@@ -83,6 +83,8 @@ const EMOJI: Record<string, string> = {
   // Barra superior y varios
   '🔌': 'accounts', '🛠': 'settings', '🔧': 'settings', '💡': 'ai', '🌱': 'up',
   '⚠': 'bell', '🏅': 'trophy', '🖥': 'modules', '🎬': 'trades', '🔒': 'guardian',
+  '👤': 'users', '🧾': 'card', '🔐': 'guardian', '⭐': 'trophy', '📝': 'coach', '✍': 'coach',
+  '⏳': 'duration', '⏰': 'duration', '💪': 'trophy', '🟢': 'up', '🎁': 'gift',
 };
 
 const strip = (s: string) => (s || '').replace(/️/g, '').trim();

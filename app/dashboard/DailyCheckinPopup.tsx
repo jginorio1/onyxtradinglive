@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 type Lang = 'es' | 'en';
 
@@ -83,9 +84,9 @@ export default function DailyCheckinPopup({ lang }: { lang: Lang }) {
     return (
       <div style={{ position: 'sticky', top: 0, zIndex: 60, background: 'rgba(255,192,77,.14)', borderBottom: '1px solid var(--amber)', backdropFilter: 'blur(6px)' }}>
         <div className="wrap-wide" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 16 }}>⏳</span>
+          <span style={{ display: 'inline-flex', color: 'var(--amber)' }}><OnyxIcon emoji="⏳" size={16} /></span>
           <span style={{ fontSize: 13.5, flex: 1, minWidth: 160, color: 'var(--amber)', fontWeight: 600 }}>{t.barText}</span>
-          <button className="btn btn-primary" style={{ fontSize: 12.5, padding: '5px 14px' }} onClick={() => setPhase('popup')}>🎯 {t.barCta}</button>
+          <button className="btn btn-primary" style={{ fontSize: 12.5, padding: '5px 14px', display: 'inline-flex', alignItems: 'center', gap: 7 }} onClick={() => setPhase('popup')}><OnyxIcon emoji="🎯" size={14} /> {t.barCta}</button>
         </div>
       </div>
     );
@@ -97,7 +98,7 @@ export default function DailyCheckinPopup({ lang }: { lang: Lang }) {
   return (
     <div style={overlay} onClick={dismiss}>
       <div style={modal} onClick={(e) => e.stopPropagation()}>
-        <div style={{ fontSize: 19, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>🎯 {t.title}</div>
+        <div style={{ fontSize: 19, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ display: 'inline-flex', color: 'var(--brand)' }}><OnyxIcon emoji="🎯" size={20} /></span> {t.title}</div>
         <p className="muted" style={{ fontSize: 13, margin: '6px 0 14px' }}>{t.sub}</p>
 
         {/* Mini resumen del plan */}
@@ -109,13 +110,13 @@ export default function DailyCheckinPopup({ lang }: { lang: Lang }) {
             <div className="muted" style={{ fontSize: 11 }}>{t.adherence}</div>
           </div>
           <div style={{ flex: 1, minWidth: 90, textAlign: 'center', background: 'var(--bg2)', borderRadius: 12, padding: '10px 6px' }}>
-            <div style={{ fontSize: 24 }}>🔥</div>
+            <div style={{ display: 'flex', justifyContent: 'center', color: 'var(--amber)' }}><OnyxIcon emoji="🔥" size={24} /></div>
             <div style={{ fontSize: 18, fontWeight: 700 }}>{s.streak || 0}</div>
             <div className="muted" style={{ fontSize: 11 }}>{t.streak}</div>
           </div>
           {g.daily_loss_pct != null && (
             <div style={{ flex: 1, minWidth: 90, textAlign: 'center', background: 'var(--bg2)', borderRadius: 12, padding: '10px 6px' }}>
-              <div style={{ fontSize: 22 }}>🛡️</div>
+              <div style={{ display: 'flex', justifyContent: 'center', color: 'var(--soft-green)' }}><OnyxIcon emoji="🛡️" size={22} /></div>
               <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--soft-green)' }}>-{g.daily_loss_pct}%</div>
               <div className="muted" style={{ fontSize: 11 }}>{t.ddl}</div>
             </div>

@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import OnyxIcon from '@/app/components/OnyxIcon';
 import { Ring } from './Modern';
 
 type Lang = 'es' | 'en';
@@ -53,12 +54,12 @@ export default function Achievements({ a, accounts, lang }: { a: any; accounts: 
     <div className="card">
       <h3 style={{ marginBottom: 14 }}>{t.title}</h3>
       <div className="grid g3" style={{ marginBottom: 14 }}>
-        <div style={{ ...box, borderLeft: '3px solid #ff8a3d' }}><div className="muted" style={{ fontSize: 12 }}>{t.streak}</div><div style={{ fontSize: 24, fontWeight: 800 }}>🔥 {streak} <span style={{ fontSize: 14, fontWeight: 500 }} className="muted">{t.days}</span></div></div>
+        <div style={{ ...box, borderLeft: '3px solid #ff8a3d' }}><div className="muted" style={{ fontSize: 12 }}>{t.streak}</div><div style={{ fontSize: 24, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ display: 'inline-flex', color: 'var(--amber)' }}><OnyxIcon emoji="🔥" size={22} /></span> {streak} <span style={{ fontSize: 14, fontWeight: 500 }} className="muted">{t.days}</span></div></div>
         <div style={{ ...box, borderLeft: '3px solid var(--green)' }}><div className="muted" style={{ fontSize: 12 }}>{t.bestMonth}</div><div style={{ fontSize: 18, fontWeight: 800 }}>{bmLabel}</div><div className="pos" style={{ fontSize: 13 }}>{bestMonthNet > -Infinity ? money(bestMonthNet) : ''}</div></div>
         <div style={{ ...box, borderLeft: '3px solid var(--brand)' }}><div className="muted" style={{ fontSize: 12 }}>{t.bestDay}</div><div style={{ fontSize: 18, fontWeight: 800 }}>{bestDayKey || '—'}</div><div className="pos" style={{ fontSize: 13 }}>{bestDayNet > -Infinity ? money(bestDayNet) : ''}</div></div>
       </div>
 
-      {(passed > 0 || funded > 0) && <div style={{ marginBottom: 14, fontSize: 14 }}><span className="muted">{t.trophies}: </span>{passed > 0 && <b>🏅 {passed} {t.challengesPassed}</b>}{passed > 0 && funded > 0 && ' · '}{funded > 0 && <b>💰 {funded} {t.funded}</b>}</div>}
+      {(passed > 0 || funded > 0) && <div style={{ marginBottom: 14, fontSize: 14 }}><span className="muted">{t.trophies}: </span>{passed > 0 && <b><span style={{ display: "inline-flex", verticalAlign: "-3px", color: "var(--gold)" }}><OnyxIcon emoji="🏅" size={16} /></span> {passed} {t.challengesPassed}</b>}{passed > 0 && funded > 0 && ' · '}{funded > 0 && <b><span style={{ display: "inline-flex", verticalAlign: "-3px", color: "var(--green)" }}><OnyxIcon emoji="💰" size={16} /></span> {funded} {t.funded}</b>}</div>}
 
       {badges.length > 0 && (<div style={{ marginBottom: 16 }}><div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>{t.badges}</div><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{badges.map((b, i) => <span key={i} style={{ padding: '5px 11px', borderRadius: 20, background: 'var(--card2)', fontSize: 13, fontWeight: 600 }}>{b}</span>)}</div></div>)}
 

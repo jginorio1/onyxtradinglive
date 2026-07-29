@@ -4,6 +4,7 @@ import { fmtDate, fmtDateTime } from '@/lib/fmtDate';
 import { useEffect, useMemo, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import Link from 'next/link';
+import OnyxIcon from '@/app/components/OnyxIcon';
 import { errMsg, planName } from '@/lib/i18nErrors';
 import Ambassador from './Ambassador';
 import ReferralCard from './ReferralCard';
@@ -129,7 +130,7 @@ function Section({ icon, title, subtitle, children }: { icon: string; title: str
   return (
     <div style={{ maxWidth: 820, margin: '0 auto' }}>
       <div style={{ marginBottom: 16, textAlign: 'center' }}>
-        <span style={{ display: 'inline-flex', width: 44, height: 44, borderRadius: 13, background: 'rgba(124,140,255,.16)', alignItems: 'center', justifyContent: 'center', fontSize: 21, marginBottom: 8 }}>{icon}</span>
+        <span style={{ display: 'inline-flex', width: 44, height: 44, borderRadius: 13, background: 'rgba(124,140,255,.16)', color: 'var(--brand)', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>{typeof icon === 'string' ? <OnyxIcon emoji={icon} size={22} /> : icon}</span>
         <h2 style={{ fontSize: 20, marginBottom: 2 }}>{title}</h2>
         {subtitle && <p className="muted" style={{ fontSize: 13, margin: '2px auto 0', maxWidth: 480 }}>{subtitle}</p>}
       </div>
@@ -281,7 +282,7 @@ export default function AccountClient({ email }: { email: string }) {
               {NAV.map(([k, icon]) => <option key={k} value={k}>{`${icon}  ${L.nav[k]}`}</option>)}
             </select>
             <div className="adminnav-items">
-              {NAV.map(([k, icon]) => <button key={k} className={'adminnav-item' + (tab === k ? ' on' : '')} onClick={() => setTab(k)}><span style={{ fontSize: 15, width: 18, textAlign: 'center' }}>{icon}</span><span>{L.nav[k]}</span><span className="navdot" /></button>)}
+              {NAV.map(([k, icon]) => <button key={k} className={'adminnav-item' + (tab === k ? ' on' : '')} onClick={() => setTab(k)}><span style={{ width: 18, display: 'inline-flex', justifyContent: 'center' }}><OnyxIcon emoji={icon} size={16} /></span><span>{L.nav[k]}</span><span className="navdot" /></button>)}
             </div>
           </div>
 
