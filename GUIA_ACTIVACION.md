@@ -1016,3 +1016,11 @@ APIs: `GET/POST/PUT /api/admin/finanzas` (gateadas por el permiso `finanzas`).
   chips de color, filas que se iluminan al pasar el ratón, cabecera fija y filtros
   en forma de pastilla. Estilos nuevos en `globals.css` (`.jtbl/.jrow/.jside/.jchip`),
   todos con variables de tema (claro y oscuro).
+
+### 25.2 · Calendario y Cuentas modernizados
+
+- Calendario de resultados: celdas redondeadas que se iluminan según la ganancia/
+  pérdida del día (glow verde/rojo); la lista de "Operaciones del día" usa pastillas
+  de lado y chips de resultado; la vista Año usa tarjetas con acento y glow.
+- Cuentas: las 3 métricas superiores pasan a StatCard iluminadas y la tabla usa el
+  estilo moderno (cabecera fija, filas iluminadas, chip de neto).
