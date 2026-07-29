@@ -176,8 +176,8 @@ export default function Challenge({ lang }: { lang: Lang }) {
                       <span>{lang === 'es' ? r.es : r.en}</span>
                       <span style={{ color: STCOL[r.status] }}>{lang === 'es' ? r.valEs : r.valEn}</span>
                     </div>
-                    <div style={{ height: 7, background: 'var(--bg2)', borderRadius: 20, overflow: 'hidden' }}>
-                      <div style={{ width: Math.max(0, Math.min(100, r.pct)) + '%', height: '100%', background: STCOL[r.status], borderRadius: 20 }} />
+                    <div style={{ height: 8, background: 'var(--bg2)', borderRadius: 20, overflow: 'hidden' }}>
+                      <div style={{ width: Math.max(0, Math.min(100, r.pct)) + '%', height: '100%', background: STCOL[r.status], borderRadius: 20, boxShadow: `0 0 10px -2px color-mix(in srgb, ${STCOL[r.status]} 70%, transparent)` }} />
                     </div>
                   </div>
                 ))}

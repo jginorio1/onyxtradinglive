@@ -534,7 +534,7 @@ export default function DashboardClient({ email = '', plan = 'free', profile, tr
         ) : !hasTrades ? (
           <div className="card"><p className="muted">{L.empty2}</p></div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%', maxWidth: view === 'hub' ? undefined : 1160, margin: view === 'hub' ? undefined : '0 auto' }}>
             {/* controles: cuentas + filtro de tiempo */}
             <div className="row between" style={{ flexWrap: 'wrap', gap: 10 }}>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

@@ -1033,3 +1033,12 @@ APIs: `GET/POST/PUT /api/admin/finanzas` (gateadas por el permiso `finanzas`).
   ahora llevan glow y esquinas redondeadas.
 - "Real account benefit": las 4 cifras pasan a StatCard iluminadas.
 - "Prop-firm rules": las barras de progreso y drawdown llevan glow.
+
+### 25.4 · Costes y Mi reto modernizados + secciones centradas
+
+- Costes: contenedor centrado, cabeceras con icono en pastilla, tabla con estilo
+  moderno (cabecera fija, filas iluminadas, chip en el coste total) y barras con glow.
+- Mi reto: barras del marcador con glow.
+- Todas las vistas de sección (Rendimiento, Calendario, Operaciones, Costes,
+  Cuentas, Reto, Plan) quedan centradas con un ancho máximo (~1160px); el hub sigue
+  a lo ancho.
