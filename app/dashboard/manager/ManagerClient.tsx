@@ -136,7 +136,7 @@ function ProtHeader({ icon, title, desc, on, onToggle, right }: any) {
     <div className="row between" style={{ marginBottom: on ? 12 : 0, gap: 10, alignItems: 'center' }}>
       <div className="row" style={{ gap: 10, alignItems: 'center', flex: 1, minWidth: 0 }}>
         <Dot on={on} />
-        <span style={{ fontSize: 20 }}>{icon}</span>
+        <span style={{ display: 'inline-flex', color: 'var(--brand)' }}>{typeof icon === 'string' ? <OnyxIcon emoji={icon} size={20} /> : icon}</span>
         <div style={{ minWidth: 0 }}>
           <div style={{ fontWeight: 600 }}>{title}</div>
           {desc && <div className="muted" style={{ fontSize: 12 }}>{desc}</div>}
@@ -283,7 +283,7 @@ export default function ManagerClient() {
               <div style={{ fontWeight: 700, fontSize: 17 }}>{t.title}</div>
               <div className="muted" style={{ fontSize: 13 }}>{t.subtitle}</div>
             </div>
-            <Link href="/dashboard?view=plan" className="btn btn-ghost" style={{ fontSize: 12.5, flex: 'none' }}>{t.planLink} →</Link>
+            <Link href="/dashboard?view=plan" className="btn btn-ghost" style={{ fontSize: 12.5, flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 7 }}><OnyxIcon emoji="🎯" size={14} /> {t.planLink.replace('🎯 ', '')} →</Link>
             <Toggle on={enabled} onClick={() => setEnabled(!enabled)} />
           </div>
           <div className="row" style={{ gap: 10, alignItems: 'center', marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--line)', flexWrap: 'wrap' }}>
@@ -321,7 +321,7 @@ export default function ManagerClient() {
         <div className="adminnav-items" style={{ flexDirection: 'row', overflowX: 'auto', gap: 6, marginBottom: 16 }}>
           {([['trade', '🛡️', t2.tabTrade], ['plan', '📅', t2.tabPlan], ['limits', '🚧', t2.tabLimits], ['news', '📰', t2.tabNews], ['state', '🕑', t2.tabHist]] as [Tab, string, string][]).map(([k, icon, label]) => (
             <button key={k} className={'btn ' + (tab === k ? 'btn-primary' : 'btn-ghost')}
-              style={{ padding: '7px 14px', fontSize: 13, whiteSpace: 'nowrap' }} onClick={() => setTab(k)}>{icon} {label}</button>
+              style={{ padding: '7px 14px', fontSize: 13, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 7 }} onClick={() => setTab(k)}><OnyxIcon emoji={icon} size={15} /> {label}</button>
           ))}
         </div>
 
