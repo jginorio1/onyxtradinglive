@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getAdmin, requirePerm, logAdmin } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendEmail } from '@/lib/mail';
+import { notify } from '@/lib/notify';
 import { logError } from '@/lib/errlog';
 
 export const dynamic = 'force-dynamic';
@@ -101,7 +102,7 @@ export async function PATCH(req: Request) {
     if (body) {
       await supabaseAdmin.from('support_messages').insert({ ticket_id: ticketId, sender: 'admin', body });
       if (!patch.status) patch.status = 'in_progress';
-      const { data: tk } = await supabaseAdmin.from('support_tickets').select('email,subject').eq('id', ticketId).maybeSingle();
+      const { data: tk } = await supabaseAdmin.from('support_tickets').select('email,subject,user_id').eq('id', ticketId).maybeSingle();
       if (tk?.email) {
         emailed = await sendEmail(
           tk.email,
@@ -109,6 +110,8 @@ export async function PATCH(req: Request) {
           `${body}\n\n—\nEquipo de Onyx Trading Live\nResponde a este correo o entra a tu Centro de soporte para seguir la conversación.`,
         );
       }
+      // Notificación dentro de la app (campana) para el trader con cuenta.
+      if ((tk as any)?.user_id) await notify((tk as any).user_id, { kind: 'support', title: 'Respondimos tu consulta', body: `${tk?.subject ? tk.subject + ': ' : ''}${body.slice(0, 90)}`, url: '/dashboard/soporte' });
       await logAdmin(user?.email || '', 'support_reply', ticketId, { emailed });
     }
 

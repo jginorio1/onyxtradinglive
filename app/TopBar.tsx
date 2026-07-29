@@ -6,6 +6,7 @@ import { serverLang } from '@/lib/locale';
 import TopBarMenu from './TopBarMenu';
 import LangToggle from './LangToggle';
 import ThemeToggle from './ThemeToggle';
+import NotifBell from './NotifBell';
 import MainNav from './MainNav';
 
 // ============================================================
@@ -112,6 +113,7 @@ export default async function TopBar() {
 
             <Link className={'planpill' + (plan === 'free' ? ' free' : '')} href="/pricing">{planName}</Link>
 
+            <NotifBell />
             <ThemeToggle />
             <TopBarMenu email={user.email || ''} initial={initial} isAdmin={isAdmin} t={t} />
           </div>

@@ -666,3 +666,21 @@ Dos usos de AI dentro de Balance real (Pro+, misma capacidad `expenses`, tu
   tu trading (del año) y te dice dónde se va el dinero y si los retos se pagan (ROI).
 
 Ambos respetan la línea roja: analizan tu gasto, no predicen el mercado.
+
+---
+
+## 18 · Centro de mensajes (trader) + aviso sticky de leads (admin)
+
+1. Corre `supabase/notifications.sql` (tabla `notifications`).
+
+**Trader — campana 🔔** en la barra: badge con no leídas y una nota sticky con
+pin (se queda fija) y "Marcar todo leído". Por ahora la alimenta la **respuesta
+de soporte**: cuando el equipo responde el ticket de un trader con cuenta, le
+llega el mensaje a su campana (además del correo). El helper `notify(userId,…)`
+en `lib/notify.ts` permite sumar más eventos (fondeo, EA caído, meta) donde ya
+se disparan las alertas.
+
+**Admin — aviso de leads:** cuando entra una consulta de cliente/lead, salta una
+nota **desde el borde derecho, centrada vertical**, solo a empleados marcados
+"Disponible". Botones Abrir / Visto / Siguiente; con → se oculta al borde como
+pestañita con contador; con 📌 se fija. No necesita nada extra: lee los tickets.

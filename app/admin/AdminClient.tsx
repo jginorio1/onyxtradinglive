@@ -21,6 +21,7 @@ import Optimize from './Optimize';
 import AdminLock from './AdminLock';
 import Revenue from './Revenue';
 import EnvSwitch from './EnvSwitch';
+import AdminLeadAlert from './AdminLeadAlert';
 import RangeBar, { type Range, defaultRange } from './RangeBar';
 import { AREAS, effectivePerms } from '@/lib/perms';
 import { useT } from '@/lib/adminText';
@@ -342,6 +343,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
   return (
     <>
       <AdminLock hasPin={hasPin} idleMin={idleMin} />
+      <AdminLeadAlert available={available} />
 
       <div className="wrap-wide" style={{ padding: '22px 0' }}>
         <div className="adminlayout">
