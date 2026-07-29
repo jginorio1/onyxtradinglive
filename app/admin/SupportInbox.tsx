@@ -7,14 +7,13 @@ import { fmtDate, fmtDateTime } from '@/lib/fmtDate';
 import RangeBar, { type Range, defaultRange } from './RangeBar';
 import UserDrawer from './UserDrawer';
 import { useChatRealtime } from '@/lib/chatRealtime';
-import type { Att } from '@/app/components/ChatThread';
-
-const kb = (n?: number) => (!n ? '' : n < 1024 ? `${n} B` : n < 1048576 ? `${Math.round(n / 1024)} KB` : `${(n / 1048576).toFixed(1)} MB`);
+import ChatThread, { type Att, type ChatMsg } from '@/app/components/ChatThread';
 
 const stColor: any = { open: 'var(--brand)', in_progress: 'var(--amber)', resolved: 'var(--green)' };
 const stBg: any = { open: 'rgba(124,140,255,.15)', in_progress: 'rgba(255,192,77,.15)', resolved: 'rgba(52,226,160,.15)' };
 const prioColor: any = { high: 'var(--red)', normal: 'var(--mut)', low: 'var(--line)' };
 const initials = (email: string) => (email || '?').replace(/@.*/, '').slice(0, 2).toUpperCase();
+const EMO = ['👍', '🙏', '✅', '🔥', '🎉', '😀', '😅', '😎', '🤝', '👌', '💪', '🚀', '💰', '📈', '🛡️', '🤖', '❤️', '👀', '⏳', '⚠️'];
 
 // Tiempo relativo corto: "hace 5m", "hace 2h", "ayer"…
 function ago(ts: any, es: boolean): string {
@@ -27,7 +26,6 @@ function ago(ts: any, es: boolean): string {
   return es ? `hace ${d}d` : `${d}d ago`;
 }
 
-// Textos nuevos del helpdesk (los ya existentes siguen viniendo de useT())
 const L: any = {
   es: {
     fMine: 'Mías', fUnassigned: 'Sin asignar', needsReply: 'Espera respuesta',
@@ -40,6 +38,7 @@ const L: any = {
     aiAuto: 'Auto-respuesta IA', aiAutoOn: 'La IA responde sola los tickets fáciles (nunca temas de dinero).', aiAutoOff: 'Apagada: todos los tickets esperan a una persona.',
     invTitle: 'Invitar a un compañero', online: 'En línea', lastSeen: 'Última vez', never: 'Sin actividad aún', allIn: 'Todo el equipo ya está en esta conversación.',
     saveKb: 'Guardar como conocimiento', saveKbOk: 'Guardado en la Base IA. La IA lo reutilizará.', saveKbNone: 'No hay una respuesta que guardar todavía.',
+    online5: 'en línea', ficha: 'Ficha', online2: 'activo ahora', typing: 'está escribiendo…', attach: 'Adjuntar', emoji: 'Emojis',
   },
   en: {
     fMine: 'Mine', fUnassigned: 'Unassigned', needsReply: 'Awaiting reply',
@@ -52,8 +51,11 @@ const L: any = {
     aiAuto: 'AI auto-reply', aiAutoOn: 'AI answers easy tickets on its own (never money topics).', aiAutoOff: 'Off: every ticket waits for a person.',
     invTitle: 'Invite a teammate', online: 'Online', lastSeen: 'Last seen', never: 'No activity yet', allIn: 'The whole team is already in this conversation.',
     saveKb: 'Save as knowledge', saveKbOk: 'Saved to the Knowledge Base. The AI will reuse it.', saveKbNone: 'There is no answer to save yet.',
+    online5: 'online', ficha: 'Profile', online2: 'active now', typing: 'is typing…', attach: 'Attach', emoji: 'Emojis',
   },
 };
+
+const kb = (n?: number) => (!n ? '' : n < 1024 ? `${n} B` : n < 1048576 ? `${Math.round(n / 1024)} KB` : `${(n / 1048576).toFixed(1)} MB`);
 
 export default function SupportInbox() {
   const t = useT();
@@ -77,6 +79,8 @@ export default function SupportInbox() {
   const [text, setText] = useState('');
   const [atts, setAtts] = useState<Att[]>([]);
   const [mode, setMode] = useState<'reply' | 'note'>('reply');
+  const [showEmoji, setShowEmoji] = useState(false);
+  const [showInvite, setShowInvite] = useState(false);
   const [busy, setBusy] = useState('');
   // Ficha del trader
   const [ctx, setCtx] = useState<any>(null);
@@ -105,8 +109,9 @@ export default function SupportInbox() {
     if (id) { setFilter('all'); setOpenId(id); }
   }, []);
 
-  // Al abrir un ticket, traer la ficha del trader
+  // Al abrir un ticket, traer la ficha del trader y limpiar el compositor
   useEffect(() => {
+    setShowInvite(false); setShowEmoji(false); setShowCanned(false); setText(''); setMode('reply');
     if (!openId) { setCtx(null); return; }
     setCtxLoading(true); setCtx(null);
     fetch('/api/admin/support/context?ticket_id=' + openId)
@@ -141,7 +146,8 @@ export default function SupportInbox() {
 
   // ¿el último mensaje del ticket es del trader? → espera respuesta del equipo
   const lastSender: Record<string, string> = {};
-  for (const m of msgs) lastSender[m.ticket_id] = m.sender;
+  const lastMsgOf: Record<string, any> = {};
+  for (const m of msgs) { lastSender[m.ticket_id] = m.sender; lastMsgOf[m.ticket_id] = m; }
   const needsReply = (id: string) => lastSender[id] === 'user';
 
   async function act(id: string, patch: any) {
@@ -163,8 +169,6 @@ export default function SupportInbox() {
   }
   async function delCanned(id: string) { await fetch('/api/admin/support/canned?id=' + id, { method: 'DELETE' }); await loadCanned(); }
 
-  // Guarda la mejor respuesta del ticket en la Base IA, para que la IA la
-  // reutilice en futuros tickets parecidos (aprende del uso real).
   async function saveKnowledge(subject: string, tm: any[]) {
     const best = [...tm].reverse().find((m) => m.sender === 'admin' || m.sender === 'ai');
     if (!best || !String(best.body || '').trim()) { toast(l.saveKbNone); return; }
@@ -186,24 +190,29 @@ export default function SupportInbox() {
   const unassignedCount = tickets.filter((it) => !it.assignee_id && it.status !== 'resolved').length;
   const tk = tickets.find((it) => it.id === openId);
 
+  // ¿el trader está en línea? (usamos su presencia en el canal de tiempo real)
+  const traderTyping = typing.length > 0;
+
   return (
-    <div>
+    <div style={{ maxWidth: 1140, margin: '0 auto' }}>
       <style>{`
-        .hd3{display:grid;grid-template-columns:236px minmax(0,1fr) 224px;gap:12px;align-items:start}
-        @media(max-width:1100px){.hd3{grid-template-columns:210px minmax(0,1fr)}.hd-ctx{display:none}}
-        @media(max-width:720px){.hd3{grid-template-columns:1fr}}
-        .hd-panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px}
-        .hd-tk{border:1px solid transparent;border-radius:12px;padding:9px 11px;cursor:pointer;margin-bottom:4px;transition:background .12s,border-color .12s}
-        .hd-tk:hover{background:var(--bg2)}
-        .hd-tk.on{background:var(--bg2);border-color:var(--line)}
-        .hd-fil{font-size:12.5px;padding:6px 13px;border-radius:20px;border:1px solid var(--line);background:var(--card2);color:var(--mut);cursor:pointer;transition:all .12s}
-        .hd-fil:hover{color:var(--tx)}
-        .hd-fil.on{background:var(--brand);border-color:var(--brand);color:#fff}
-        .hd-bub{border-radius:12px;padding:9px 12px;font-size:13px;line-height:1.55;white-space:pre-wrap}
-        .hd-chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:6px 11px;border-radius:20px;border:1px solid var(--line);background:var(--card2);color:var(--tx);cursor:pointer}
-        .hd-chip:hover{border-color:var(--brand)}
-        .hd-av{width:40px;height:40px;border-radius:50%;background:rgba(124,140,255,.18);color:var(--brand);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;flex:none}
-        .hd-row{display:flex;justify-content:space-between;gap:8px;font-size:12.5px}
+        .wa-fil{font-size:12.5px;padding:6px 13px;border-radius:20px;border:1px solid var(--line);background:var(--card2);color:var(--mut);cursor:pointer;transition:all .12s}
+        .wa-fil:hover{color:var(--tx)} .wa-fil.on{background:var(--brand);border-color:var(--brand);color:#fff}
+        .wa2{display:grid;grid-template-columns:300px minmax(0,1fr);gap:14px;align-items:stretch}
+        @media(max-width:860px){.wa2{grid-template-columns:1fr}.wa-list{max-height:340px}}
+        .wa-list{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:6px;max-height:640px;overflow-y:auto}
+        .wa-item{display:flex;gap:10px;align-items:flex-start;padding:9px 10px;border-radius:12px;cursor:pointer;border-left:3px solid transparent}
+        .wa-item:hover{background:var(--bg2)} .wa-item.on{background:var(--bg2);border-left-color:var(--brand)}
+        .wa-chat{background:var(--card);border:1px solid var(--line);border-radius:14px;min-height:600px;display:flex;flex-direction:column;overflow:hidden}
+        .wa-head{display:flex;gap:10px;align-items:center;padding:11px 14px;border-bottom:1px solid var(--line);background:var(--bg2);flex-wrap:wrap}
+        .wa-body{flex:1;min-height:0;padding:6px 14px;display:flex;flex-direction:column}
+        .wa-comp{border-top:1px solid var(--line);padding:10px 12px;position:relative}
+        .wa-chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:6px 11px;border-radius:20px;border:1px solid var(--line);background:var(--card2);color:var(--tx);cursor:pointer}
+        .wa-chip:hover{border-color:var(--brand)}
+        .wa-av{width:40px;height:40px;border-radius:50%;background:rgba(124,140,255,.18);color:var(--brand);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;flex:none}
+        .wa-avs{width:38px;height:38px;border-radius:50%;background:rgba(124,140,255,.18);color:var(--brand);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex:none}
+        .wa-hb{background:transparent;border:none;cursor:pointer;color:var(--mut);font-size:16px;padding:4px 6px;border-radius:8px}
+        .wa-hb:hover{background:var(--card);color:var(--tx)}
       `}</style>
       <div className="tabhead"><div className="th-row"><span className="th-ic">🎫</span><span className="th-t">{t.h_soporte_t}</span></div><div className="th-s">{t.h_soporte_s}</div></div>
       <RangeBar value={range} onChange={setRange}
@@ -224,264 +233,209 @@ export default function SupportInbox() {
 
       <div className="row" style={{ gap: 7, marginBottom: 12, flexWrap: 'wrap' }}>
         {([['mine', l.fMine, mineCount], ['unassigned', l.fUnassigned, unassignedCount], ['open', t.s_open, counts.open], ['in_progress', t.s_inprogress, counts.in_progress], ['resolved', t.s_resolved, counts.resolved], ['all', t.s_all, null]] as any).map(([k, lab, c]: any) => (
-          <button key={k} className={'hd-fil' + (filter === k ? ' on' : '')} onClick={() => setFilter(k)}>
-            {lab}{c != null ? ` ${c}` : ''}
-          </button>
+          <button key={k} className={'wa-fil' + (filter === k ? ' on' : '')} onClick={() => setFilter(k)}>{lab}{c != null ? ` ${c}` : ''}</button>
         ))}
         <input placeholder={t.s_search} value={q} onChange={(e) => setQ(e.target.value)} style={{ margin: 0, maxWidth: 240, marginLeft: 'auto' }} />
       </div>
 
-      <div className="hd3">
-        {/* Cola de conversaciones */}
-        <div className="hd-panel">
-          {!list.length && <p className="muted" style={{ fontSize: 13, padding: '8px 4px' }}>{t.s_empty}</p>}
+      <div className="wa2">
+        {/* Lista de conversaciones estilo WhatsApp */}
+        <div className="wa-list">
+          {!list.length && <p className="muted" style={{ fontSize: 13, padding: '10px 8px' }}>{t.s_empty}</p>}
           {list.map((it) => {
             const parts = participants.filter((p) => p.ticket_id === it.id);
             const nr = needsReply(it.id);
             const who = (it.email || '—').split('@')[0];
+            const lm = lastMsgOf[it.id];
+            const preview = lm ? ((lm.sender === 'note' ? '📝 ' : lm.sender === 'user' ? '' : '✓ ') + (lm.body || (lm.attachments?.length ? '📎 ' + (es ? 'archivo' : 'file') : ''))) : (it.subject || '');
             return (
-              <div key={it.id} className={'hd-tk' + (openId === it.id ? ' on' : '')} onClick={() => { setOpenId(it.id); setText(''); setShowCanned(false); }}>
-                <div className="row between" style={{ gap: 8 }}>
-                  <div className="row" style={{ gap: 6, minWidth: 0 }}>
-                    {it.priority && it.priority !== 'normal' && <span title={it.priority} style={{ width: 7, height: 7, borderRadius: '50%', background: prioColor[it.priority], flex: 'none', marginTop: 5 }} />}
-                    <b style={{ fontSize: 13, fontWeight: nr ? 700 : 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.subject}</b>
+              <div key={it.id} className={'wa-item' + (openId === it.id ? ' on' : '')} onClick={() => setOpenId(it.id)}>
+                <span className="wa-avs">{initials(it.email || '?')}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="row between" style={{ gap: 6 }}>
+                    <b style={{ fontSize: 13, fontWeight: nr ? 700 : 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.subject || who}</b>
+                    <span className="muted" style={{ fontSize: 10.5, flex: 'none' }}>{ago(it.updated_at, es)}</span>
                   </div>
-                  <span className="pill" style={{ color: stColor[it.status], background: stBg[it.status], flex: 'none' }}>● {ST[it.status]}</span>
-                </div>
-                <div className="muted" style={{ fontSize: 11.5, marginTop: 4 }}>{who} · {it.assignee_id ? emailOf(it.assignee_id).split('@')[0] : t.s_unassigned} · {ago(it.updated_at, es)}</div>
-                <div className="row" style={{ gap: 5, marginTop: 6, flexWrap: 'wrap' }}>
-                  {nr && <span className="pill" style={{ color: 'var(--amber)', background: 'rgba(255,192,77,.15)' }}>↩ {l.needsReply}</span>}
-                  {it.is_lead && <span className="pill brand">Lead</span>}
-                  <span className="pill gray">{CH[it.channel] || it.channel}</span>
-                  {parts.length > 0 && <span className="pill gray">👥 {parts.length}</span>}
+                  <div className="muted" style={{ fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 }}>{preview || who}</div>
+                  <div className="row" style={{ gap: 5, marginTop: 5, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <span className="pill" style={{ color: stColor[it.status], background: stBg[it.status], fontSize: 10.5 }}>● {ST[it.status]}</span>
+                    {it.is_lead && <span className="pill brand" style={{ fontSize: 10.5 }}>Lead</span>}
+                    {it.priority && it.priority !== 'normal' && <span title={it.priority} style={{ width: 7, height: 7, borderRadius: '50%', background: prioColor[it.priority] }} />}
+                    {parts.length > 0 && <span className="pill gray" style={{ fontSize: 10.5 }}>👥 {parts.length}</span>}
+                    {nr && <span style={{ marginLeft: 'auto', background: 'var(--amber)', color: '#3a2a00', fontSize: 10, fontWeight: 700, borderRadius: 10, padding: '1px 7px' }}>↩</span>}
+                  </div>
                 </div>
               </div>
             );
           })}
         </div>
 
-        {/* Conversación abierta */}
-        <div className="hd-panel" style={{ minHeight: 260 }}>
-          {!tk && <div className="muted" style={{ display: 'flex', height: 220, alignItems: 'center', justifyContent: 'center', fontSize: 14, textAlign: 'center' }}>{t.s_pickOne}</div>}
+        {/* Panel de conversación */}
+        <div className="wa-chat">
+          {!tk && <div className="muted" style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', fontSize: 14, textAlign: 'center', padding: 20 }}>{t.s_pickOne}</div>}
           {tk && (() => {
             const tm = msgs.filter((m) => m.ticket_id === tk.id);
             const firstUser = tm.find((m) => m.sender === 'user')?.body || tk.subject;
             const parts = participants.filter((p) => p.ticket_id === tk.id);
             const cannedForLang = canned.filter((c) => c.lang === lang);
             const cannedList = cannedForLang.length ? cannedForLang : canned;
+            const chatMsgs: ChatMsg[] = tm.map((m) => ({
+              id: m.id,
+              mine: m.sender === 'admin' || m.sender === 'ai',
+              authorName: m.sender === 'user' ? (tk.email || t.s_visitor).split('@')[0] : m.sender === 'ai' ? 'Onyx AI' : t.sender_support,
+              authorKind: m.sender === 'ai' ? 'ai' : m.sender === 'note' ? 'note' : m.sender === 'admin' ? 'admin' : 'user',
+              body: m.body, attachments: m.attachments || [], createdAt: m.created_at, readAt: m.read_at,
+            }));
+            const inConvo = new Set([tk.assignee_id, me, ...parts.map((p) => p.user_id)].filter(Boolean));
+            const cands = team.filter((tm2) => !inConvo.has(tm2.id));
             return (
               <>
-                {/* Cabecera: trader + estado + prioridad */}
-                <div className="row between" style={{ flexWrap: 'wrap', gap: 8, paddingBottom: 12, borderBottom: '1px solid var(--line)' }}>
-                  <div className="row" style={{ gap: 10 }}>
-                    <span className="hd-av">{initials(tk.email || '?')}</span>
-                    <div>
-                      <div style={{ fontWeight: 600 }}>{tk.email || t.s_visitor}</div>
-                      <div className="muted" style={{ fontSize: 11.5 }}>{CATS[tk.category] || tk.category} · {CH[tk.channel] || tk.channel}{tk.is_lead ? ' · Lead' : ''}</div>
+                {/* Cabecera WhatsApp */}
+                <div className="wa-head">
+                  <span className="wa-av">{initials(tk.email || '?')}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tk.email || t.s_visitor}</div>
+                    <div className="muted" style={{ fontSize: 11.5 }}>
+                      {CATS[tk.category] || tk.category} · {CH[tk.channel] || tk.channel}{tk.is_lead ? ' · Lead' : ''}
+                      {traderTyping && <span style={{ color: 'var(--soft-green)' }}> · ✍️ {l.typing}</span>}
                     </div>
                   </div>
-                  <div className="row" style={{ gap: 6 }}>
-                    <select value={tk.priority || 'normal'} onChange={(e) => act(tk.id, { priority: e.target.value })} style={{ margin: 0, fontSize: 12, padding: '5px 8px' }} title={l.prio}>
-                      <option value="high">🔴 {l.pHigh}</option>
-                      <option value="normal">⚪ {l.pNormal}</option>
-                      <option value="low">⚫ {l.pLow}</option>
-                    </select>
-                    <span className="pill" style={{ color: stColor[tk.status], background: stBg[tk.status] }}>● {ST[tk.status]}</span>
-                  </div>
+                  <select value={tk.priority || 'normal'} onChange={(e) => act(tk.id, { priority: e.target.value })} style={{ margin: 0, fontSize: 12, padding: '5px 8px' }} title={l.prio}>
+                    <option value="high">🔴 {l.pHigh}</option>
+                    <option value="normal">⚪ {l.pNormal}</option>
+                    <option value="low">⚫ {l.pLow}</option>
+                  </select>
+                  {!tk.assignee_id && <button className="wa-hb" title={t.s_take} onClick={() => act(tk.id, { take: true })}>🙋</button>}
+                  <button className="wa-hb" title={l.invTitle} onClick={() => setShowInvite((v) => !v)}>👥</button>
+                  {ctx?.user_id && <button className="wa-hb" title={l.ficha} onClick={() => setDrawerUser({ id: ctx.user_id, email: ctx.email || tk.email || '' })}>ℹ️</button>}
+                  {tk.status !== 'resolved'
+                    ? <button className="wa-hb" title={t.s_resolve} style={{ color: 'var(--green)' }} onClick={() => act(tk.id, { status: 'resolved' })}>✓</button>
+                    : <button className="wa-hb" title={t.s_reopen} onClick={() => act(tk.id, { status: 'open' })}>↺</button>}
                 </div>
 
-                {/* Hilo */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, margin: '12px 0' }}>
-                  {tm.map((m) => {
-                    const note = m.sender === 'note';
-                    const style = note
-                      ? { background: 'rgba(255,192,77,.10)', border: '1px dashed var(--amber)' }
-                      : m.sender === 'user' ? { background: 'var(--bg2)', border: '1px solid var(--line)' }
-                        : { background: 'rgba(124,140,255,.12)', border: '1px solid rgba(124,140,255,.35)' };
-                    const label = m.sender === 'user' ? t.sender_trader : m.sender === 'ai' ? '🤖 Onyx AI' : note ? '🔒 ' + t.sender_note : t.sender_support;
-                    const outgoing = m.sender === 'admin' || m.sender === 'ai';   // nuestros mensajes → palomitas
-                    return (
-                      <div key={m.id} className="hd-bub" style={style}>
-                        <div style={{ fontSize: 11, opacity: .85, marginBottom: 3, color: note ? 'var(--amber)' : m.sender === 'user' ? 'var(--mut)' : 'var(--brand)', fontWeight: 500 }}>{label} · {fmtDateTime(m.created_at, lang)}</div>
-                        {m.body}
-                        {!!(m.attachments && m.attachments.length) && (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: m.body ? 6 : 0 }}>
-                            {m.attachments.map((a: any, i: number) => a.type?.startsWith('image/')
-                              ? <a key={i} href={a.url} target="_blank" rel="noreferrer"><img src={a.url} alt={a.name} style={{ maxWidth: 200, maxHeight: 180, borderRadius: 8, display: 'block' }} /></a>
-                              : <a key={i} href={a.url} target="_blank" rel="noreferrer" style={{ display: 'flex', gap: 8, alignItems: 'center', textDecoration: 'none', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 8, padding: '6px 9px', color: 'var(--tx)' }}><span style={{ fontSize: 18 }}>📄</span><span style={{ fontSize: 12 }}>{a.name}<span className="muted" style={{ fontSize: 10, display: 'block' }}>{kb(a.size)}</span></span></a>)}
-                          </div>
-                        )}
-                        {outgoing && !note && <div style={{ textAlign: 'right', marginTop: 2 }}><span style={{ fontSize: 12, letterSpacing: -3, color: m.read_at ? 'var(--soft-green, #34e2a0)' : 'var(--mut)' }}>✓✓</span></div>}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {parts.length > 0 && <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>👥 {t.s_inConvo}{parts.map((p) => emailOf(p.user_id).split('@')[0]).join(', ')}</div>}
-
-                {/* Redactar */}
-                <div className="row between" style={{ gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-                  <div className="seg">
-                    <button className={'segbtn' + (mode === 'reply' ? ' on-view' : '')} onClick={() => setMode('reply')}>{t.s_reply}</button>
-                    <button className={'segbtn' + (mode === 'note' ? ' on-view' : '')} onClick={() => setMode('note')}>🔒 {t.s_note}</button>
-                  </div>
-                  {mode === 'reply' && (
-                    <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-                      <button className="hd-chip" onClick={() => setShowCanned((v) => !v)}>＋ {l.canned}</button>
-                      <button className="hd-chip" onClick={() => draft(tk.id, firstUser)} disabled={busy === 'ai' + tk.id}>🤖 {busy === 'ai' + tk.id ? '…' : t.s_aiDraft}</button>
-                      <label className="hd-chip" style={{ cursor: 'pointer' }}>📎 {es ? 'Adjuntar' : 'Attach'}
-                        <input type="file" multiple accept="image/*,application/pdf,.doc,.docx,.csv,.xlsx,.txt" style={{ display: 'none' }} onChange={(e) => { if (e.target.files) uploadAtt(e.target.files); e.currentTarget.value = ''; }} />
-                      </label>
-                    </div>
-                  )}
-                </div>
-
-                {/* Panel de respuestas guardadas */}
-                {showCanned && mode === 'reply' && (
-                  <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: 10, marginBottom: 8 }}>
-                    {!newC && (
-                      <>
-                        {!cannedList.length && <div className="muted" style={{ fontSize: 12.5, marginBottom: 8 }}>{l.cEmpty}</div>}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 180, overflowY: 'auto' }}>
-                          {cannedList.map((c) => (
-                            <div key={c.id} className="row between" style={{ gap: 8, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 8, padding: '7px 9px' }}>
-                              <div style={{ minWidth: 0 }}>
-                                <div style={{ fontSize: 12.5, fontWeight: 600 }}>{c.title}</div>
-                                <div className="muted" style={{ fontSize: 11.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.body}</div>
-                              </div>
-                              <div className="row" style={{ gap: 4, flex: 'none' }}>
-                                <button className="btn btn-primary" style={{ fontSize: 11.5, padding: '4px 10px' }} onClick={() => { setText(c.body); setShowCanned(false); }}>{l.insert}</button>
-                                <button className="btn btn-ghost" style={{ fontSize: 12, padding: '4px 8px', color: 'var(--red)' }} title={l.cDel} onClick={() => delCanned(c.id)}>🗑</button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                        <button className="btn btn-ghost" style={{ fontSize: 12, marginTop: 8 }} onClick={() => setNewC({ title: '', body: '' })}>＋ {l.cannedNew}</button>
-                      </>
-                    )}
-                    {newC && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        <input placeholder={l.cTitle} value={newC.title} onChange={(e) => setNewC({ ...newC, title: e.target.value })} style={{ margin: 0, fontSize: 13 }} />
-                        <textarea placeholder={l.cBody} value={newC.body} onChange={(e) => setNewC({ ...newC, body: e.target.value })} rows={3} style={{ width: '100%', margin: 0 }} />
-                        <div className="row" style={{ gap: 6 }}>
-                          <button className="btn btn-primary" style={{ fontSize: 12.5 }} onClick={saveCanned} disabled={!newC.title.trim() || !newC.body.trim()}>{l.cSave}</button>
-                          <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={() => setNewC(null)}>✕</button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {mode === 'reply' && typing.length > 0 && <div className="muted" style={{ fontSize: 11.5, marginBottom: 6 }}>✍️ {t.sender_trader} {es ? 'está escribiendo…' : 'is typing…'}</div>}
-
-                {mode === 'reply' && !!atts.length && (
-                  <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
-                    {atts.map((a, i) => (
-                      <span key={i} style={{ display: 'inline-flex', gap: 6, alignItems: 'center', background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 8, padding: '4px 8px', fontSize: 12 }}>
-                        {a.type.startsWith('image/') ? '🖼️' : '📄'} {a.name.slice(0, 24)}
-                        <button onClick={() => setAtts((x) => x.filter((_, j) => j !== i))} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--mut)' }}>✕</button>
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-                <textarea value={text} onChange={(e) => { setText(e.target.value); if (mode === 'reply') sendTyping(); }} rows={4} placeholder={mode === 'note' ? t.s_notePh : t.s_replyPh} style={{ width: '100%', margin: '0 0 8px' }} />
-
-                <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-                  {mode === 'reply'
-                    ? <button className="btn btn-primary" onClick={() => act(tk.id, { body: text, attachments: atts })} disabled={busy === tk.id || (!text.trim() && !atts.length)}>{t.s_sendReply}</button>
-                    : <button className="btn btn-primary" onClick={() => act(tk.id, { note: text })} disabled={busy === tk.id || !text.trim()}>{t.s_saveNote}</button>}
-                  {!tk.assignee_id && <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => act(tk.id, { take: true })}>{t.s_take}</button>}
-                  <button className="btn btn-ghost" style={{ fontSize: 13 }} title={l.saveKb} onClick={() => saveKnowledge(tk.subject, tm)}>💡 {l.saveKb}</button>
-                  <span style={{ flex: 1 }} />
-                  {tk.status !== 'resolved' && <button className="btn btn-ghost" style={{ fontSize: 13, color: 'var(--green)' }} onClick={() => act(tk.id, { status: 'resolved' })}>{t.s_resolve}</button>}
-                  {tk.status === 'resolved' && <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => act(tk.id, { status: 'open' })}>{t.s_reopen}</button>}
-                </div>
-
-                {/* Invitar a un compañero: lista del equipo con estado en línea + última vez */}
-                <div style={{ marginTop: 12, borderTop: '1px solid var(--line)', paddingTop: 10 }}>
-                  <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{l.invTitle}</div>
-                  {(() => {
-                    const inConvo = new Set([tk.assignee_id, me, ...parts.map((p) => p.user_id)].filter(Boolean));
-                    const cands = team.filter((tm) => !inConvo.has(tm.id));
-                    if (!cands.length) return <div className="muted" style={{ fontSize: 12 }}>{l.allIn}</div>;
-                    return (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        {cands.map((tm) => {
-                          // En línea = activo en los últimos 5 minutos (automático, no depende del interruptor).
-                          const online = tm.last_active && (Date.now() - new Date(tm.last_active).getTime()) < 5 * 60 * 1000;
+                {/* Invitar (desplegable) */}
+                {showInvite && (
+                  <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--line)', background: 'var(--bg2)' }}>
+                    <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{l.invTitle}</div>
+                    {!cands.length ? <div className="muted" style={{ fontSize: 12 }}>{l.allIn}</div> : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 160, overflowY: 'auto' }}>
+                        {cands.map((tm2) => {
+                          const online = tm2.last_active && (Date.now() - new Date(tm2.last_active).getTime()) < 5 * 60 * 1000;
                           return (
-                            <div key={tm.id} className="row between" style={{ gap: 8, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 8, padding: '6px 9px' }}>
+                            <div key={tm2.id} className="row between" style={{ gap: 8, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 8, padding: '6px 9px' }}>
                               <div className="row" style={{ gap: 8, minWidth: 0 }}>
-                                <span title={online ? l.online : l.lastSeen} style={{ width: 8, height: 8, borderRadius: '50%', background: online ? 'var(--green)' : 'var(--mut)', flex: 'none' }} />
-                                <div style={{ minWidth: 0 }}>
-                                  <div style={{ fontSize: 12.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tm.email}</div>
-                                  <div className="muted" style={{ fontSize: 11 }}>{online ? '🟢 ' + l.online : (tm.last_active ? l.lastSeen + ' ' + fmtDateTime(tm.last_active, lang) : l.never)}</div>
-                                </div>
+                                <span style={{ width: 8, height: 8, borderRadius: '50%', background: online ? 'var(--green)' : 'var(--mut)', flex: 'none' }} />
+                                <span style={{ fontSize: 12.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tm2.email}</span>
                               </div>
-                              <button className="btn btn-ghost" style={{ fontSize: 12, padding: '4px 10px', flex: 'none' }} onClick={() => act(tk.id, { invite_email: tm.email })} disabled={busy === tk.id}>{t.s_inviteBtn}</button>
+                              <button className="btn btn-ghost" style={{ fontSize: 12, padding: '4px 10px', flex: 'none' }} onClick={() => { act(tk.id, { invite_email: tm2.email }); setShowInvite(false); }} disabled={busy === tk.id}>{t.s_inviteBtn}</button>
                             </div>
                           );
                         })}
                       </div>
-                    );
-                  })()}
+                    )}
+                  </div>
+                )}
+
+                {/* Hilo estilo WhatsApp (burbujas izq/der, palomitas, adjuntos) */}
+                <div className="wa-body">
+                  <ChatThread messages={chatMsgs} lang={lang as any} onSend={() => {}} canReply={false} showAuthors
+                    typingLabel={traderTyping ? `${t.sender_trader} ${l.typing}` : ''} height={430} />
+                </div>
+
+                {/* Compositor */}
+                <div className="wa-comp">
+                  <div className="row between" style={{ gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+                    <div className="seg">
+                      <button className={'segbtn' + (mode === 'reply' ? ' on-view' : '')} onClick={() => setMode('reply')}>{t.s_reply}</button>
+                      <button className={'segbtn' + (mode === 'note' ? ' on-view' : '')} onClick={() => setMode('note')}>🔒 {t.s_note}</button>
+                    </div>
+                    {mode === 'reply' && (
+                      <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+                        <button className="wa-chip" onClick={() => setShowCanned((v) => !v)}>＋ {l.canned}</button>
+                        <button className="wa-chip" onClick={() => draft(tk.id, firstUser)} disabled={busy === 'ai' + tk.id}>🤖 {busy === 'ai' + tk.id ? '…' : t.s_aiDraft}</button>
+                        <button className="wa-chip" title={l.saveKb} onClick={() => saveKnowledge(tk.subject, tm)}>💡</button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Respuestas guardadas */}
+                  {showCanned && mode === 'reply' && (
+                    <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: 10, marginBottom: 8 }}>
+                      {!newC && (
+                        <>
+                          {!cannedList.length && <div className="muted" style={{ fontSize: 12.5, marginBottom: 8 }}>{l.cEmpty}</div>}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 170, overflowY: 'auto' }}>
+                            {cannedList.map((c) => (
+                              <div key={c.id} className="row between" style={{ gap: 8, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 8, padding: '7px 9px' }}>
+                                <div style={{ minWidth: 0 }}>
+                                  <div style={{ fontSize: 12.5, fontWeight: 600 }}>{c.title}</div>
+                                  <div className="muted" style={{ fontSize: 11.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.body}</div>
+                                </div>
+                                <div className="row" style={{ gap: 4, flex: 'none' }}>
+                                  <button className="btn btn-primary" style={{ fontSize: 11.5, padding: '4px 10px' }} onClick={() => { setText(c.body); setShowCanned(false); }}>{l.insert}</button>
+                                  <button className="btn btn-ghost" style={{ fontSize: 12, padding: '4px 8px', color: 'var(--red)' }} title={l.cDel} onClick={() => delCanned(c.id)}>🗑</button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          <button className="btn btn-ghost" style={{ fontSize: 12, marginTop: 8 }} onClick={() => setNewC({ title: '', body: '' })}>＋ {l.cannedNew}</button>
+                        </>
+                      )}
+                      {newC && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          <input placeholder={l.cTitle} value={newC.title} onChange={(e) => setNewC({ ...newC, title: e.target.value })} style={{ margin: 0, fontSize: 13 }} />
+                          <textarea placeholder={l.cBody} value={newC.body} onChange={(e) => setNewC({ ...newC, body: e.target.value })} rows={3} style={{ width: '100%', margin: 0 }} />
+                          <div className="row" style={{ gap: 6 }}>
+                            <button className="btn btn-primary" style={{ fontSize: 12.5 }} onClick={saveCanned} disabled={!newC.title.trim() || !newC.body.trim()}>{l.cSave}</button>
+                            <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={() => setNewC(null)}>✕</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Chips de adjuntos por enviar */}
+                  {mode === 'reply' && !!atts.length && (
+                    <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
+                      {atts.map((a, i) => (
+                        <span key={i} style={{ display: 'inline-flex', gap: 6, alignItems: 'center', background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 8, padding: '4px 8px', fontSize: 12 }}>
+                          {a.type.startsWith('image/') ? '🖼️' : '📄'} {a.name.slice(0, 24)}
+                          <button onClick={() => setAtts((x) => x.filter((_, j) => j !== i))} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--mut)' }}>✕</button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Emojis */}
+                  {showEmoji && mode === 'reply' && (
+                    <div style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 8, marginBottom: 6, display: 'grid', gridTemplateColumns: 'repeat(10,1fr)', gap: 3 }}>
+                      {EMO.map((e) => <button key={e} onClick={() => { setText((v) => v + e); setShowEmoji(false); }} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 18, padding: 3 }}>{e}</button>)}
+                    </div>
+                  )}
+
+                  {/* Fila de entrada estilo WhatsApp */}
+                  <div className="row" style={{ gap: 6, alignItems: 'flex-end' }}>
+                    {mode === 'reply' && <>
+                      <button className="wa-hb" title={l.emoji} onClick={() => setShowEmoji((v) => !v)}>😊</button>
+                      <label className="wa-hb" title={l.attach} style={{ cursor: 'pointer' }}>📎
+                        <input type="file" multiple accept="image/*,application/pdf,.doc,.docx,.csv,.xlsx,.txt" style={{ display: 'none' }} onChange={(e) => { if (e.target.files) uploadAtt(e.target.files); e.currentTarget.value = ''; }} />
+                      </label>
+                    </>}
+                    <textarea value={text} onChange={(e) => { setText(e.target.value); if (mode === 'reply') sendTyping(); }}
+                      onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (mode === 'reply') { if (text.trim() || atts.length) act(tk.id, { body: text, attachments: atts }); } else if (text.trim()) act(tk.id, { note: text }); } }}
+                      rows={1} placeholder={mode === 'note' ? t.s_notePh : t.s_replyPh} style={{ flex: 1, margin: 0, resize: 'none', minHeight: 40, maxHeight: 120, padding: '10px 12px', borderRadius: 18 }} />
+                    {mode === 'reply'
+                      ? <button className="btn btn-primary" style={{ borderRadius: 20, padding: '9px 15px' }} onClick={() => act(tk.id, { body: text, attachments: atts })} disabled={busy === tk.id || (!text.trim() && !atts.length)}>{t.s_sendReply}</button>
+                      : <button className="btn btn-primary" style={{ borderRadius: 20, padding: '9px 15px' }} onClick={() => act(tk.id, { note: text })} disabled={busy === tk.id || !text.trim()}>{t.s_saveNote}</button>}
+                  </div>
                 </div>
               </>
             );
           })()}
         </div>
-
-        {/* Ficha del trader */}
-        <div className="hd-ctx">
-          {tk && (
-            <div className="hd-panel">
-              <div style={{ fontSize: 12, color: 'var(--mut)', marginBottom: 10 }}>{l.ctxTitle}</div>
-              {ctxLoading && <div className="muted" style={{ fontSize: 13 }}>…</div>}
-              {!ctxLoading && ctx && (
-                <>
-                  <div className="row" style={{ gap: 10, marginBottom: 12 }}>
-                    <span className="hd-av">{initials(ctx.email || tk.email || '?')}</span>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 600, fontSize: 13.5 }}>{ctx.name || (tk.email || '').split('@')[0] || t.s_visitor}</div>
-                      <div className="muted" style={{ fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis' }}>{ctx.email || '—'}</div>
-                    </div>
-                  </div>
-                  {ctx.is_lead && <div className="pill brand" style={{ marginBottom: 10 }}>{l.ctxLead}</div>}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 9, borderTop: '1px solid var(--line)', paddingTop: 12 }}>
-                    {ctx.plan && <Row k={l.plan} v={String(ctx.plan).toUpperCase()} />}
-                    {ctx.member_since && <Row k={l.member} v={fmtDate(ctx.member_since, lang)} />}
-                    {ctx.plan != null && <Row k={l.accounts} v={`${ctx.accounts || 0}${ctx.funded ? ` · ${ctx.funded} ${l.funded}` : ''}`} />}
-                    <Row k={l.prior} v={String(ctx.prior_tickets || 0)} />
-                    {ctx.firm && <Row k={l.firm} v={ctx.firm} />}
-                    {ctx.country && <Row k={l.country} v={ctx.country} />}
-                    {ctx.lang && <Row k={l.langF} v={String(ctx.lang).toUpperCase()} />}
-                    {ctx.first_seen && <Row k={l.firstSeen} v={fmtDate(ctx.first_seen, lang)} />}
-                    {!ctx.plan && !ctx.is_lead && <div className="muted" style={{ fontSize: 12 }}>{l.ctxNoUser}</div>}
-                  </div>
-                  {ctx.user_id && (
-                    <button className="btn btn-ghost" style={{ width: '100%', marginTop: 12, fontSize: 12.5 }}
-                      onClick={() => setDrawerUser({ id: ctx.user_id, email: ctx.email || tk.email || '' })}>
-                      {es ? 'Abrir ficha completa' : 'Open full profile'}
-                    </button>
-                  )}
-                </>
-              )}
-            </div>
-          )}
-        </div>
       </div>
 
       {drawerUser && <UserDrawer userId={drawerUser.id} email={drawerUser.email} onClose={() => setDrawerUser(null)} />}
-    </div>
-  );
-}
-
-function Row({ k, v }: { k: string; v: string }) {
-  return (
-    <div className="row between" style={{ gap: 8 }}>
-      <span className="muted">{k}</span>
-      <span style={{ textAlign: 'right' }}>{v}</span>
     </div>
   );
 }
