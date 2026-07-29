@@ -1004,3 +1004,15 @@ Qué trae:
 `onyx_expenses`). La caja se guarda en `app_settings` (clave `onyx_cash`), sin
 tabla extra. Los ingresos usan Stripe (ya configurado con `STRIPE_SECRET_KEY`).
 APIs: `GET/POST/PUT /api/admin/finanzas` (gateadas por el permiso `finanzas`).
+
+### 25.1 · Operaciones (Journal) modernizado
+
+- Estadística de lotes: 4 tarjetas `StatCard` iluminadas (icono en pastilla, acento
+  de color) en vez de los cuadros planos.
+- Volumen por par: barras con glow y el valor dentro de la barra.
+- Heatmap: celdas redondeadas que se iluminan según la intensidad (verde ganancia /
+  rojo pérdida), con resplandor en las más marcadas.
+- Tabla de operaciones: lado como pastilla (buy azul / sell verde), Gross y Net como
+  chips de color, filas que se iluminan al pasar el ratón, cabecera fija y filtros
+  en forma de pastilla. Estilos nuevos en `globals.css` (`.jtbl/.jrow/.jside/.jchip`),
+  todos con variables de tema (claro y oscuro).

@@ -2,6 +2,7 @@
 import { toast } from '@/lib/toast';
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { errMsg } from '@/lib/i18nErrors';
+import { StatCard } from './HubVitals';
 
 type TT = { id: string; account_id: string; symbol: string; side: string; volume: number; open_time: string | null; close_time: string; net_profit: number; commission?: number; swap?: number; profit?: number };
 type Entry = { trade_id: string; notes: string | null; tags: string[] | null; emotion: string | null; image_url: string | null };
@@ -129,25 +130,29 @@ export default function Journal({ trades, lang }: { trades: TT[]; lang: Lang }) 
     <>
       {/* Lotaje */}
       <div className="card">
-        <h3 style={{ marginBottom: 14 }}>{t.lotTitle}</h3>
-        <div className="grid g4" style={{ marginBottom: 8 }}>
-          {[[t.volToday, lot.today], [t.volWeek, lot.week], [t.volMonth, lot.month], [t.volYear, lot.year]].map(([l, v], i) => (
-            <div key={i} style={box}><div className="muted" style={{ fontSize: 12 }}>{l as string}</div><div style={{ fontSize: 22, fontWeight: 800 }}>{(v as number).toFixed(2)}</div><div className="muted" style={{ fontSize: 11 }}>{t.lots}</div></div>
+        <h3 style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic">📦</span> {t.lotTitle.replace('📦 ', '')}</h3>
+        <div className="grid g4" style={{ marginBottom: 14 }}>
+          {([[t.volToday, lot.today, '📅', 'var(--brand)'], [t.volWeek, lot.week, '🗓️', GREEN], [t.volMonth, lot.month, '📆', 'var(--gold)'], [t.volYear, lot.year, '🎯', 'var(--cyan)']] as const).map(([l, v, ic, ac], i) => (
+            <StatCard key={i} icon={ic} label={l as string} value={(v as number).toFixed(2)} accent={ac as string} sub={t.lots} />
           ))}
         </div>
-        <div className="muted" style={{ fontSize: 12, margin: '14px 0 8px' }}>{t.byPair} · {t.volTotal}: <b style={{ color: 'var(--tx)' }}>{lot.total.toFixed(2)} {t.lots}</b></div>
-        {lot.pairs.map(([sym, v]) => (
-          <div key={sym} style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '6px 0' }}>
+        <div className="muted" style={{ fontSize: 12, margin: '4px 0 8px' }}>{t.byPair} · {t.volTotal}: <b style={{ color: 'var(--tx)' }}>{lot.total.toFixed(2)} {t.lots}</b></div>
+        {lot.pairs.map(([sym, v]) => { const pct = Math.max(6, (v / lot.maxP) * 100); return (
+          <div key={sym} style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '7px 0' }}>
             <div style={{ width: 84, fontSize: 13 }}>{sym}</div>
-            <div style={{ flex: 1, background: 'var(--bg2)', borderRadius: 6, height: 18, overflow: 'hidden' }}><div style={{ width: `${Math.max(4, (v / lot.maxP) * 100)}%`, height: '100%', background: 'linear-gradient(90deg,var(--brand),var(--purple))' }} /></div>
-            <div style={{ width: 70, textAlign: 'right', fontSize: 12, color: 'var(--mut)' }}>{v.toFixed(2)}</div>
+            <div style={{ flex: 1, background: 'var(--bg2)', borderRadius: 8, height: 16, overflow: 'hidden' }}>
+              <div style={{ width: `${pct}%`, height: '100%', borderRadius: 8, background: 'linear-gradient(90deg,var(--brand),var(--purple))', boxShadow: '0 0 12px -2px var(--purple)', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: 8 }}>
+                {pct > 20 && <span style={{ fontSize: 10, fontWeight: 700, color: '#0e1220' }}>{v.toFixed(2)}</span>}
+              </div>
+            </div>
+            {pct <= 20 && <div style={{ width: 54, textAlign: 'right', fontSize: 12, color: 'var(--mut)' }}>{v.toFixed(2)}</div>}
           </div>
-        ))}
+        ); })}
       </div>
 
       {/* Heatmap */}
       <div className="card">
-        <div className="row between" style={{ marginBottom: 6 }}><h3>{t.heat}</h3></div>
+        <div className="row between" style={{ marginBottom: 6 }}><h3 style={{ display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic">🔥</span> {t.heat.replace('🔥 ', '')}</h3></div>
         <p className="muted" style={{ fontSize: 12, marginBottom: 12 }}>{t.heatNote}</p>
         <div style={{ overflowX: 'auto' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '38px repeat(24, 1fr)', gap: 3, minWidth: 640 }}>
@@ -156,7 +161,7 @@ export default function Journal({ trades, lang }: { trades: TT[]; lang: Lang }) 
             {WD.map((wd, wi) => (
               <Fragment key={wi}>
                 <div style={{ fontSize: 11, color: 'var(--mut)', display: 'flex', alignItems: 'center' }}>{wd}</div>
-                {Array.from({ length: 24 }, (_, h) => { const c = heat.g[wi + '-' + h]; const net = c?.net || 0; const inten = c ? Math.min(1, Math.abs(net) / heat.max) : 0; const bg = !c ? 'var(--bg2)' : net >= 0 ? `rgba(52,226,160,${.15 + inten * .7})` : `rgba(255,107,125,${.15 + inten * .7})`; return <div key={wi + '-' + h} title={c ? `${wd} ${h}:00 · ${money2(net)} · ${c.count}` : ''} style={{ height: 20, borderRadius: 3, background: bg }} />; })}
+                {Array.from({ length: 24 }, (_, h) => { const c = heat.g[wi + '-' + h]; const net = c?.net || 0; const inten = c ? Math.min(1, Math.abs(net) / heat.max) : 0; const glowC = net >= 0 ? '52,226,160' : '255,107,125'; const bg = !c ? 'var(--bg2)' : `rgba(${glowC},${.18 + inten * .72})`; return <div key={wi + '-' + h} title={c ? `${wd} ${h}:00 · ${money2(net)} · ${c.count}` : ''} style={{ height: 20, borderRadius: 5, background: bg, boxShadow: c && inten > 0.25 ? `0 0 9px -1px rgba(${glowC},${0.4 + inten * 0.4})` : 'none' }} />; })}
               </Fragment>
             ))}
           </div>
@@ -166,31 +171,31 @@ export default function Journal({ trades, lang }: { trades: TT[]; lang: Lang }) 
       {/* Operaciones + filtros */}
       <div className="card">
         <div className="row between" style={{ marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-          <h3>{t.trades} <span className="muted" style={{ fontSize: 13, fontWeight: 400 }}>· {t.showing} {view.length}</span></h3>
-          <button className="btn btn-ghost" onClick={exportCSV}>{t.export}</button>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic">📋</span> {t.trades.replace('📋 ', '')} <span className="muted" style={{ fontSize: 13, fontWeight: 400 }}>· {t.showing} {view.length}</span></h3>
+          <button className="btn btn-ghost" onClick={exportCSV}>⬇ {t.export}</button>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
-          <select value={fSym} onChange={(e) => setFSym(e.target.value)} style={inp}><option value="all">{t.pair}: {t.all}</option>{symbols.map((s) => <option key={s} value={s}>{s}</option>)}</select>
-          <select value={fSide} onChange={(e) => setFSide(e.target.value)} style={inp}><option value="all">{t.side}: {t.all}</option><option value="buy">{t.longs}</option><option value="sell">{t.shorts}</option></select>
-          <select value={fRes} onChange={(e) => setFRes(e.target.value)} style={inp}><option value="all">{t.result}: {t.all}</option><option value="win">{t.wins}</option><option value="loss">{t.losses}</option></select>
-          {allTags.length > 0 && <select value={fTag} onChange={(e) => setFTag(e.target.value)} style={inp}><option value="all">{t.tag}: {t.all}</option>{allTags.map((s) => <option key={s} value={s}>{s}</option>)}</select>}
-          <input type="date" value={fFrom} onChange={(e) => setFFrom(e.target.value)} style={inp} title={t.from} />
-          <input type="date" value={fTo} onChange={(e) => setFTo(e.target.value)} style={inp} title={t.to} />
+          <select value={fSym} onChange={(e) => setFSym(e.target.value)} className="jfilter"><option value="all">{t.pair}: {t.all}</option>{symbols.map((s) => <option key={s} value={s}>{s}</option>)}</select>
+          <select value={fSide} onChange={(e) => setFSide(e.target.value)} className="jfilter"><option value="all">{t.side}: {t.all}</option><option value="buy">{t.longs}</option><option value="sell">{t.shorts}</option></select>
+          <select value={fRes} onChange={(e) => setFRes(e.target.value)} className="jfilter"><option value="all">{t.result}: {t.all}</option><option value="win">{t.wins}</option><option value="loss">{t.losses}</option></select>
+          {allTags.length > 0 && <select value={fTag} onChange={(e) => setFTag(e.target.value)} className="jfilter"><option value="all">{t.tag}: {t.all}</option>{allTags.map((s) => <option key={s} value={s}>{s}</option>)}</select>}
+          <input type="date" value={fFrom} onChange={(e) => setFFrom(e.target.value)} className="jfilter" title={t.from} />
+          <input type="date" value={fTo} onChange={(e) => setFTo(e.target.value)} className="jfilter" title={t.to} />
           <button className="btn btn-ghost" style={inp} onClick={() => { setFSym('all'); setFSide('all'); setFRes('all'); setFTag('all'); setFFrom(''); setFTo(''); }}>{t.clear}</button>
         </div>
         {view.length ? (
-          <div style={{ overflowX: 'auto' }}>
-            <table>
+          <div style={{ overflowX: 'auto', maxHeight: 520, borderRadius: 12 }}>
+            <table className="jtbl">
               <thead><tr><th>{t.thDate}</th><th>{t.thPair}</th><th>{t.thSide}</th><th style={{ textAlign: 'right' }}>{t.thLots}</th><th style={{ textAlign: 'right' }}>{t.thGross}</th><th style={{ textAlign: 'right' }}>{t.thNet}</th><th style={{ textAlign: 'center' }}>{t.thNote}</th></tr></thead>
               <tbody>
-                {view.slice(0, 300).map((x) => { const e = entries[x.id]; const has = e && (e.notes || e.image_url || (e.tags && e.tags.length)); return (
-                  <tr key={x.id} onClick={() => setOpen(x)} style={{ cursor: 'pointer' }}>
-                    <td className="muted" style={{ fontSize: 13 }}>{x.close_time.slice(0, 16).replace('T', ' ')}</td>
-                    <td>{x.symbol}</td>
-                    <td className="muted">{x.side}</td>
+                {view.slice(0, 300).map((x) => { const e = entries[x.id]; const has = e && (e.notes || e.image_url || (e.tags && e.tags.length)); const gross = +(x.profit ?? x.net_profit); const net = +x.net_profit; const isBuy = x.side === 'buy'; return (
+                  <tr key={x.id} className="jrow" onClick={() => setOpen(x)}>
+                    <td className="muted" style={{ fontSize: 13, whiteSpace: 'nowrap' }}>{x.close_time.slice(0, 16).replace('T', ' ')}</td>
+                    <td style={{ fontWeight: 600 }}>{x.symbol}</td>
+                    <td><span className={'jside ' + (isBuy ? 'buy' : 'sell')}>{x.side}</span></td>
                     <td style={{ textAlign: 'right' }}>{(+x.volume).toFixed(2)}</td>
-                    <td style={{ textAlign: 'right' }} className={+(x.profit ?? x.net_profit) >= 0 ? 'pos' : 'neg'}>{money2(+(x.profit ?? x.net_profit))}</td>
-                    <td style={{ textAlign: 'right' }} className={+x.net_profit >= 0 ? 'pos' : 'neg'}>{money2(+x.net_profit)}</td>
+                    <td style={{ textAlign: 'right' }}><span className={'jchip ' + (gross >= 0 ? 'pos' : 'neg')}>{money2(gross)}</span></td>
+                    <td style={{ textAlign: 'right' }}><span className={'jchip ' + (net >= 0 ? 'pos' : 'neg')}>{money2(net)}</span></td>
                     <td style={{ textAlign: 'center' }}>{has ? (e.image_url ? '🖼️' : t.hasNote) : ''}</td>
                   </tr>); })}
               </tbody>
