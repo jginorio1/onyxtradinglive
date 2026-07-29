@@ -14,6 +14,7 @@ import { typeMeta } from '@/lib/accountMeta';
 import { Ring, MiniArea, MiniDonut, MiniBars, MiniHeat, RadarChart, Bubbles, healthScore } from './Modern';
 import MarketHours from './MarketHours';
 import ReferralBanner from './ReferralBanner';
+import PlanHabits from './PlanHabits';
 import News from './News';
 import NetRealCard from './NetRealCard';
 import CoachCard from './CoachCard';
@@ -46,7 +47,7 @@ function genDemo(accId: string): TT[] {
 type TT = T & { account_id: string; id: string; commission?: number; swap?: number; profit?: number };
 type Acc = { id: string; login: number; nickname: string | null; broker: string; platform: string; balance: number; currency: string; fund_target?: number | null; fund_max_daily?: number | null; fund_max_total?: number | null; fund_start?: number | null; acc_type?: string | null; challenge_status?: string | null; challenge_cost?: number | null };
 type Lang = 'es' | 'en';
-type View = 'hub' | 'rendimiento' | 'calendario' | 'operaciones' | 'costes' | 'cuentas' | 'reto';
+type View = 'hub' | 'rendimiento' | 'calendario' | 'operaciones' | 'costes' | 'cuentas' | 'reto' | 'plan';
 
 function money(n: number, dec = 0) { return (n >= 0 ? '+$' : '-$') + Math.abs(n).toLocaleString('en-US', { maximumFractionDigits: dec }); }
 function money2(n: number) { return (n >= 0 ? '+$' : '-$') + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
@@ -587,6 +588,12 @@ export default function DashboardClient({ email = '', plan = 'free', profile, tr
                 ))}
               </div>
 
+              <button onClick={() => setView('plan')} className="card" style={{ cursor: 'pointer', textAlign: 'left', borderTop: '3px solid var(--brand)', display: 'flex', alignItems: 'center', gap: 12, width: '100%' }}>
+                <span style={{ width: 38, height: 38, borderRadius: 11, background: 'rgba(124,140,255,.15)', color: 'var(--brand)', display: 'grid', placeItems: 'center', fontSize: 20 }}>🎯</span>
+                <div style={{ flex: 1 }}><div style={{ fontWeight: 800, fontSize: 16, color: '#fff' }}>{lang === 'en' ? 'My plan and habits' : 'Mi plan y hábitos'}</div><div className="muted" style={{ fontSize: 12 }}>{lang === 'en' ? 'Rules, daily check-in and discipline score' : 'Reglas, check-in diario y puntuación de disciplina'}</div></div>
+                <span style={{ color: 'var(--mut)', fontSize: 18 }}>→</span>
+              </button>
+
               <Achievements a={a} accounts={accounts} lang={lang} />
 
               <Nudge
@@ -673,6 +680,7 @@ export default function DashboardClient({ email = '', plan = 'free', profile, tr
             {view === 'operaciones' && (!canJournal ? <ProLock L={L} plan={upJ.name} desc={L.dLock1} price={upJ.price} preview={<PreviewJournal />} /> : <Journal trades={filtered} lang={lang} />)}
             {view === 'costes' && <Costs trades={filtered} lang={lang} />}
             {view === 'reto' && <Challenge lang={lang} />}
+            {view === 'plan' && <PlanHabits lang={lang} />}
 
             {view === 'cuentas' && (<>
               <Card title={L.accCard} icon="🗂️">

@@ -1,0 +1,31 @@
+import { NextResponse } from 'next/server';
+import { createSupabaseServer } from '@/lib/supabaseServer';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { getPlan, computeStats, planReview } from '@/lib/tradingPlan';
+import { logError } from '@/lib/errlog';
+
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+// POST · repaso de disciplina por Onyx AI. Gateado por capacidad "coach" (Pro+).
+export async function POST(req: Request) {
+  try {
+    const sb = createSupabaseServer();
+    const { data: { user } } = await sb.auth.getUser();
+    if (!user) return NextResponse.json({ error: 'no autorizado' }, { status: 401 });
+
+    const { data: prof } = await supabaseAdmin.from('profiles').select('plan').eq('id', user.id).maybeSingle();
+    const { data: pl } = await supabaseAdmin.from('plans').select('capabilities').eq('id', (prof as any)?.plan || 'free').maybeSingle();
+    if (!(pl?.capabilities as any)?.coach) return NextResponse.json({ locked: true });
+
+    const b = await req.json().catch(() => ({}));
+    const lang = b.lang === 'en' ? 'en' : 'es';
+    const plan = await getPlan(user.id);
+    const stats = await computeStats(user.id, plan);
+    const review = await planReview(plan, stats, lang as any);
+    return NextResponse.json({ review });
+  } catch (e: any) {
+    await logError('plan_ai', e);
+    return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
+  }
+}

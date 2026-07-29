@@ -847,3 +847,24 @@ para descargar). Ya integrado en:
 
 Requiere la dependencia **`qrcode`** (ya añadida a `package.json`): al desplegar,
 Vercel la instala solo con `npm install`. No hay SQL ni variables nuevas.
+
+---
+
+## 24 · Mi plan y hábitos
+
+Plan de trading escrito por el trader + check-in diario + puntuación de adherencia.
+Convive con el Guardian (que impone las reglas duras en el EA).
+
+1. **SQL.** Corre `supabase/plan_v1.sql` (tablas `trading_plans`, `plan_checkins`).
+2. **Dónde:** Dashboard → tarjeta "Mi plan y hábitos" (o el botón del hub).
+3. **Qué hace:**
+   - El trader escribe su plan: estilo (day/scalper/swing/fondeo/cripto), riesgo,
+     pérdida diaria, máx. operaciones, sesiones, pares, objetivo y reglas propias.
+     Hay **plantillas por tipo de trader** que autocompletan.
+   - **Check-in diario** de hábitos → racha y % de adherencia.
+   - La **adherencia** mezcla el cumplimiento de hábitos con la disciplina real
+     (respetar el máx. de operaciones, según tus trades).
+   - **Repaso con Onyx AI** (gateado a Pro, capacidad `coach`): cruza tu plan con
+     tu conducta y te dice dónde rompes tus reglas y qué corregir mañana.
+
+Sin variables nuevas (la IA usa `ANTHROPIC_API_KEY`, que ya tienes).
