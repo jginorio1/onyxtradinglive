@@ -633,3 +633,21 @@ objetivo, días, consistencia); él revisa y guarda. Requiere el plan con Guardi
 **Activar:** solo necesita `ANTHROPIC_API_KEY` (el mismo que ya usas). Para el
 Coach, enciende la capacidad `coach` en los planes de pago. Sin IA, el analizador
 y el lector avisan con elegancia y el resto sigue funcionando.
+
+---
+
+## 16 · Balance real v2 (prop firm, reembolso, ROI por firma)
+
+Amplía el control de gastos pensando como trader de prop firms.
+1. Corre `supabase/expenses_v2.sql` (DESPUÉS de `expenses.sql`): añade columnas
+   firm, tamaño, tipo, cuenta vinculada, reembolsable, recuperado y proveedor.
+2. No necesita nada más — usa la misma capacidad `expenses`.
+
+Novedades para el trader:
+- Al elegir "Cuenta de fondeo" se abren campos: **prop firm, tamaño, tipo
+  (Reto F1/F2, Fondeada, Reset), cuenta MT vinculada** y **Reembolsable** + cuánto
+  recuperó. El **neto** ahora usa el **costo real** (pagado − recuperado).
+- **ROI por prop firm** (este año): gastado vs. recuperado vs. ganado con esa firma
+  → "¿qué firma me sale a cuenta?". El "ganado" cuenta si vinculó el reto a su cuenta MT.
+- **Punto de equilibrio**: "te faltan $X de ganancia para cubrir los gastos del mes".
+- Campo **proveedor/detalle** en toda categoría, **fecha exacta**, y **editar** un gasto.
