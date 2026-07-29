@@ -131,8 +131,8 @@ function BarRow({ label, b, max, ops }: { label: string; b: Bucket; max: number;
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '7px 0' }}>
       <div style={{ width: 74, fontSize: 13, color: 'var(--mut)' }}>{label}</div>
-      <div style={{ flex: 1, background: 'var(--bg2)', borderRadius: 6, height: 22, position: 'relative', overflow: 'hidden' }}>
-        <div style={{ width: `${Math.max(4, pct * 100)}%`, height: '100%', background: grad, borderRadius: 6 }} />
+      <div style={{ flex: 1, background: 'var(--bg2)', borderRadius: 8, height: 22, position: 'relative', overflow: 'hidden' }}>
+        <div style={{ width: `${Math.max(4, pct * 100)}%`, height: '100%', background: grad, borderRadius: 8, boxShadow: b.net >= 0 ? '0 0 12px -2px rgba(52,226,160,.65)' : '0 0 12px -2px rgba(255,107,125,.65)' }} />
         <span style={{ position: 'absolute', right: 8, top: 3, fontSize: 12, fontWeight: 700, color: '#fff' }}>{money(b.net)}</span>
       </div>
       <div style={{ width: 82, fontSize: 12, color: 'var(--mut)', textAlign: 'right' }}>{b.count} {ops} · {wr}%</div>
@@ -184,9 +184,9 @@ function FundCard({ acc, net, maxDD, L, onSave }: { acc: Acc; net: number; maxDD
       <div className="row between" style={{ marginBottom: 12 }}><h3>{L.fundTitle}</h3><button className="btn btn-ghost" onClick={() => setEdit(!edit)}>{edit ? L.fundHide : L.fundEdit}</button></div>
       {hasRules && (<>
         <div className="row between" style={{ fontSize: 13, marginBottom: 4 }}><span className="muted">{L.fundProfitBar}</span><span style={{ fontWeight: 700 }}>{Math.round(tp)}%</span></div>
-        <div style={{ height: 10, background: 'var(--bg2)', borderRadius: 6, overflow: 'hidden', marginBottom: 14 }}><div style={{ width: tp + '%', height: '100%', background: 'var(--green)' }} /></div>
+        <div style={{ height: 10, background: 'var(--bg2)', borderRadius: 8, overflow: 'hidden', marginBottom: 14 }}><div style={{ width: tp + '%', height: '100%', borderRadius: 8, background: 'var(--green)', boxShadow: '0 0 12px -2px rgba(52,226,160,.7)' }} /></div>
         <div className="row between" style={{ fontSize: 13, marginBottom: 4 }}><span className="muted">{L.fundDDBar}</span><span style={{ fontWeight: 700 }}>{Math.round(dd)}%</span></div>
-        <div style={{ height: 10, background: 'var(--bg2)', borderRadius: 6, overflow: 'hidden' }}><div style={{ width: dd + '%', height: '100%', background: dd > 70 ? 'var(--red)' : '#ffcf5c' }} /></div>
+        <div style={{ height: 10, background: 'var(--bg2)', borderRadius: 8, overflow: 'hidden' }}><div style={{ width: dd + '%', height: '100%', borderRadius: 8, background: dd > 70 ? 'var(--red)' : '#ffcf5c', boxShadow: dd > 70 ? '0 0 12px -2px rgba(255,107,125,.7)' : '0 0 12px -2px rgba(255,207,92,.6)' }} /></div>
       </>)}
       {edit && (<div style={{ marginTop: hasRules ? 16 : 0 }}>
         <div className="grid g2">

@@ -102,13 +102,20 @@ export function RadarChart({ axes, size = 230, color = 'var(--brand)' }: { axes:
 }
 
 // Burbujas: tamaño = volumen, color = resultado
+// Pares por volumen y resultado: una lista de barras clara (largo = volumen,
+// color = resultado). Más legible que burbujas apiladas.
 export function Bubbles({ items }: { items: { label: string; size: number; net: number }[] }) {
   if (!items.length) return <p className="muted">—</p>;
+  const maxSize = Math.max(0.0001, ...items.map((i) => i.size));
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', justifyContent: 'center', padding: '10px 0' }}>
-      {items.map((it, i) => { const r = 20 + it.size * 34; const col = it.net >= 0 ? 'var(--green)' : 'var(--red)'; return (
-        <div key={i} title={`${it.label} · ${m2(it.net)}`} style={{ width: r * 2, height: r * 2, borderRadius: '50%', background: col + '22', border: '2px solid ' + col, display: 'grid', placeItems: 'center', textAlign: 'center' }}>
-          <div><div style={{ fontSize: Math.max(10, r * 0.3), fontWeight: 800, color: 'var(--tx)' }}>{it.label}</div><div style={{ fontSize: 10, color: col }}>{m2(it.net)}</div></div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '4px 0' }}>
+      {items.map((it, i) => { const col = it.net >= 0 ? 'var(--green)' : 'var(--red)'; const rgb = it.net >= 0 ? '52,226,160' : '255,107,125'; const pct = Math.max(8, (it.size / maxSize) * 100); return (
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }} title={`${it.label} · ${m2(it.net)}`}>
+          <div style={{ width: 96, fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.label}</div>
+          <div style={{ flex: 1, height: 16, borderRadius: 8, background: 'var(--bg2)', overflow: 'hidden' }}>
+            <div style={{ width: pct + '%', height: '100%', borderRadius: 8, background: col, boxShadow: `0 0 12px -2px rgba(${rgb},.7)` }} />
+          </div>
+          <div style={{ width: 80, textAlign: 'right', fontSize: 12.5, fontWeight: 700, color: col }}>{m2(it.net)}</div>
         </div>); })}
     </div>
   );

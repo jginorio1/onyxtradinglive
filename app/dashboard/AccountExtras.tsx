@@ -3,6 +3,7 @@ import { toast } from '@/lib/toast';
 import { useEffect, useRef, useState } from 'react';
 import { ACC_TYPES, CH_STATUS, typeMeta, money2, type Lang } from '@/lib/accountMeta';
 import { errMsg } from '@/lib/i18nErrors';
+import { StatCard } from './HubVitals';
 
 const A = {
   es: {
@@ -120,10 +121,10 @@ export default function AccountExtras({ acc, net, lang, onSaved }: { acc: any; n
       <div className="card">
         <h3 style={{ marginBottom: 12 }}>{t.benefit}</h3>
         <div className="grid g4">
-          <div style={kpi}><div className="muted" style={{ fontSize: 12 }}>{t.profit}</div><div className={net >= 0 ? 'pos' : 'neg'} style={{ fontSize: 20, fontWeight: 800 }}>{money2(net)}</div></div>
-          <div style={kpi}><div className="muted" style={{ fontSize: 12 }}>{t.totalPaid}</div><div className="pos" style={{ fontSize: 20, fontWeight: 800 }}>{money2(totalPaid)}</div></div>
-          <div style={kpi}><div className="muted" style={{ fontSize: 12 }}>{t.chCost}</div><div style={{ fontSize: 20, fontWeight: 800, color: chCost ? 'var(--red)' : 'var(--mut)' }}>{chCost ? money2(-chCost) : '—'}</div></div>
-          <div style={{ ...kpi, border: '1px solid ' + (realBenefit >= 0 ? 'var(--green)' : 'var(--red)') }}><div className="muted" style={{ fontSize: 12 }}>{t.realBenefit}</div><div className={realBenefit >= 0 ? 'pos' : 'neg'} style={{ fontSize: 20, fontWeight: 800 }}>{money2(realBenefit)}</div></div>
+          <StatCard icon="📊" label={t.profit} value={money2(net)} accent={net >= 0 ? 'var(--green)' : 'var(--red)'} color={net >= 0 ? 'var(--green)' : 'var(--red)'} />
+          <StatCard icon="💵" label={t.totalPaid} value={money2(totalPaid)} accent="var(--green)" color="var(--green)" />
+          <StatCard icon="🎟️" label={t.chCost} value={chCost ? money2(-chCost) : '—'} accent={chCost ? 'var(--red)' : 'var(--line)'} color={chCost ? 'var(--red)' : 'var(--mut)'} />
+          <StatCard icon="🏆" label={t.realBenefit} value={money2(realBenefit)} accent={realBenefit >= 0 ? 'var(--green)' : 'var(--red)'} color={realBenefit >= 0 ? 'var(--green)' : 'var(--red)'} />
         </div>
         <p className="muted" style={{ fontSize: 12, marginTop: 10 }}>{t.roiNote}</p>
       </div>

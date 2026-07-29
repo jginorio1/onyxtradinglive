@@ -1024,3 +1024,12 @@ APIs: `GET/POST/PUT /api/admin/finanzas` (gateadas por el permiso `finanzas`).
   de lado y chips de resultado; la vista Año usa tarjetas con acento y glow.
 - Cuentas: las 3 métricas superiores pasan a StatCard iluminadas y la tabla usa el
   estilo moderno (cabecera fija, filas iluminadas, chip de neto).
+
+### 25.3 · Barras con glow, gráfico de pares y beneficio real
+
+- "Pairs · volume and result": rediseñado de burbujas apiladas (que se veían mal) a
+  una lista de barras clara — largo = volumen, color = resultado (verde/rojo) con glow.
+- Todas las barras de análisis (Longs vs Shorts, Top pares, Por día/sesión/hora/mes)
+  ahora llevan glow y esquinas redondeadas.
+- "Real account benefit": las 4 cifras pasan a StatCard iluminadas.
+- "Prop-firm rules": las barras de progreso y drawdown llevan glow.
