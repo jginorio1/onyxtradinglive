@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { ACC_TYPES } from '@/lib/accountMeta';
 import { errMsg } from '@/lib/i18nErrors';
 import InstallWizard, { WIZ } from './InstallWizard';
+import QrPop from '@/app/components/QrPop';
 
 type Lang = 'es' | 'en';
 
@@ -208,7 +209,10 @@ export default function KeysPage() {
     <>
 
       <div className="wrap" style={{ padding: '28px 22px', maxWidth: 860 }}>
-        <h1>{t.h1}</h1>
+        <div className="row between" style={{ gap: 10, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+          <h1>{t.h1}</h1>
+          {typeof window !== 'undefined' && <QrPop data={window.location.origin + '/dashboard/keys'} label={lang === 'es' ? 'Abrir en el móvil' : 'Open on phone'} />}
+        </div>
         <p className="muted" style={{ margin: '8px 0 22px' }}>{t.intro}</p>
 
         {/* Medidor de cupos del plan */}

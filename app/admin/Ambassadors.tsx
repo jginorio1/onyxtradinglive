@@ -5,6 +5,7 @@ import { useT } from '@/lib/adminText';
 import { useLang } from '@/lib/lang';
 import RangeBar, { type Range, defaultRange } from './RangeBar';
 import MemberReferralSettings from './MemberReferralSettings';
+import QrPop from '@/app/components/QrPop';
 
 const METHOD: any = { paypal: 'PayPal', usdt: 'USDT', credit: 'Credit' };
 
@@ -182,6 +183,7 @@ export default function Ambassadors() {
                   <div className="muted" style={{ fontSize: 12 }}>{p.details}</div>
                 </div>
                 <div className="row" style={{ gap: 6 }}>
+                  {p.method === 'usdt' && p.details && <QrPop data={p.details} label={lang === 'en' ? 'USDT QR' : 'QR USDT'} />}
                   <button className="btn btn-primary" style={{ padding: '5px 10px', fontSize: 12 }} onClick={() => { if (confirm(`${t.am_confirmPaid} $${p.amount}?`)) act('pay', p.id); }} disabled={busy === p.id}>{t.am_markPaid}</button>
                   <button className="btn btn-ghost" style={{ padding: '5px 10px', fontSize: 12 }} onClick={() => { const n = prompt(t.am_rejectReason) || ''; act('reject_payout', p.id, null, n); }}>{t.am_reject}</button>
                 </div>
