@@ -1,6 +1,15 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
-export type Retention = { enabled: boolean; discount_percent: number; discount_months: number; pause_months: number; allow_downgrade: boolean };
+export type Retention = {
+  enabled: boolean; discount_percent: number; discount_months: number; pause_months: number; allow_downgrade: boolean;
+  // --- Anti-abuso ---
+  repeat_percent: number;    // % de la 2ª+ vez (oferta decreciente)
+  repeat_months: number;     // meses de la 2ª+ vez
+  cooldown_months: number;   // no repetir descuento antes de N meses
+  max_grants: number;        // veces de descuento por usuario de por vida (0 = sin tope)
+  min_tenure_months: number; // antigüedad mínima pagando para poder recibir descuento
+  monthly_cap: number;       // tope GLOBAL de descuentos por mes natural (0 = sin tope)
+};
 export type Addons = {
   extra_account_enabled: boolean; extra_account_price: number; extra_account_price_id: string;
   extra_slave_enabled: boolean; extra_slave_price: number; extra_slave_price_id: string;
@@ -8,7 +17,10 @@ export type Addons = {
   algo_enabled: boolean; algo_price: number; algo_price_id: string;
 };
 
-const R: Retention = { enabled: true, discount_percent: 50, discount_months: 3, pause_months: 2, allow_downgrade: true };
+const R: Retention = {
+  enabled: true, discount_percent: 50, discount_months: 3, pause_months: 2, allow_downgrade: true,
+  repeat_percent: 20, repeat_months: 1, cooldown_months: 12, max_grants: 2, min_tenure_months: 1, monthly_cap: 0,
+};
 const A: Addons = {
   extra_account_enabled: true, extra_account_price: 4, extra_account_price_id: '',
   extra_slave_enabled: false, extra_slave_price: 9, extra_slave_price_id: '',

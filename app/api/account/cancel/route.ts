@@ -3,11 +3,19 @@ import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { stripe } from '@/lib/stripe';
 import { retentionSettings } from '@/lib/settings';
+import { discountEligibility, recordGrant, penalizeIfAbuse } from '@/lib/retention';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 const REASONS = ['price', 'unused', 'missing', 'stopped', 'other'];
+const MONTH = 30 * 864e5;
+
+// Meses que lleva pagando (por la fecha de alta de la suscripción en Stripe).
+async function tenureMonths(subId?: string | null): Promise<number> {
+  if (!subId) return 0;
+  try { const sub: any = await stripe.subscriptions.retrieve(subId); return sub?.created ? (Date.now() - sub.created * 1000) / MONTH : 0; } catch { return 0; }
+}
 
 async function me() {
   const sb = createSupabaseServer();
@@ -41,22 +49,30 @@ export async function POST(req: Request) {
         const cur = (plans || []).find((p: any) => p.id === prof?.plan);
         downgrades = (plans || []).filter((p: any) => (p.price_month || 0) < (cur?.price_month || 0));
       }
-      return NextResponse.json({ ok: true, id: row?.id, settings: s, downgrades });
+      // ¿Le toca descuento? (antigüedad, cooldown, tope de veces, tope global, bloqueo)
+      const discount = subId ? await discountEligibility(user.id, await tenureMonths(subId)) : { eligible: false, percent: 0, months: 0, tier: 0, reason: 'new' as const };
+      return NextResponse.json({ ok: true, id: row?.id, settings: s, downgrades, discount });
     }
 
     if (!subId) return NextResponse.json({ error: 'No active subscription.', code: 'no_sub' }, { status: 400 });
 
-    // 2) Se queda con descuento
+    // 2) Se queda con descuento — SIEMPRE se re-verifica en el servidor (no se
+    //    confía en el cliente). Corta el bucle de farmear el descuento.
     if (b.action === 'discount') {
+      const elig = await discountEligibility(user.id, await tenureMonths(subId));
+      if (!elig.eligible) {
+        return NextResponse.json({ error: 'No elegible para descuento ahora.', code: 'not_eligible', reason: elig.reason, nextEligibleAt: elig.nextEligibleAt || null }, { status: 403 });
+      }
       const coupon = await stripe.coupons.create({
-        percent_off: Number(s.discount_percent) || 50,
+        percent_off: elig.percent,
         duration: 'repeating',
-        duration_in_months: Number(s.discount_months) || 3,
-        name: 'Retención Onyx',
+        duration_in_months: elig.months,
+        name: `Retención Onyx (${elig.percent}%)`,
       });
       await stripe.subscriptions.update(subId, { coupon: coupon.id } as any);
+      await recordGrant(user.id, prof?.email || user.email, elig.tier, elig.percent, elig.months);
       await close(b.id, 'saved_discount', user.id);
-      return NextResponse.json({ ok: true, outcome: 'saved_discount' });
+      return NextResponse.json({ ok: true, outcome: 'saved_discount', percent: elig.percent, months: elig.months });
     }
 
     // 3) Se queda pero pausa el cobro
@@ -93,6 +109,8 @@ export async function POST(req: Request) {
       const sub: any = await stripe.subscriptions.update(subId, { cancel_at_period_end: true });
       await close(b.id, 'canceled', user.id);
       await supabaseAdmin.from('profiles').update({ canceled_at: new Date().toISOString(), cancel_reason: b.reason || null }).eq('id', user.id);
+      // Si tomó el descuento y ahora se va dentro de la ventana, queda inelegible a futuro.
+      await penalizeIfAbuse(user.id);
       return NextResponse.json({ ok: true, outcome: 'canceled', endsAt: sub.current_period_end ? sub.current_period_end * 1000 : null });
     }
 

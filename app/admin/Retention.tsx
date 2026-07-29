@@ -80,6 +80,21 @@ export default function Retention() {
           <div><span style={lbl}>{t.re_discMonths}</span><input type="number" value={r.discount_months ?? 3} onChange={(e) => setR({ ...r, discount_months: Number(e.target.value) })} style={num} /></div>
           <div><span style={lbl}>{t.re_pauseMonths}</span><input type="number" value={r.pause_months ?? 2} onChange={(e) => setR({ ...r, pause_months: Number(e.target.value) })} style={num} /></div>
         </div>
+        {/* Anti-abuso: evita que cancelen cada 3 meses para farmear el descuento */}
+        <div style={{ borderTop: '1px solid var(--line)', marginTop: 14, paddingTop: 12 }}>
+          <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 2 }}>🛡️ {lang === 'en' ? 'Anti-abuse' : 'Anti-abuso'}</div>
+          <div className="muted" style={{ fontSize: 12, marginBottom: 10 }}>{lang === 'en' ? 'Stops users (or coordinated communities) from cancelling repeatedly just to farm the discount.' : 'Evita que usuarios (o comunidades coordinadas) cancelen una y otra vez solo para farmear el descuento.'}</div>
+          <div className="grid g4" style={{ gap: 12 }}>
+            <div><span style={lbl}>{lang === 'en' ? 'Repeat %' : '% repetido'}</span><input type="number" value={r.repeat_percent ?? 20} onChange={(e) => setR({ ...r, repeat_percent: Number(e.target.value) })} style={num} /></div>
+            <div><span style={lbl}>{lang === 'en' ? 'Repeat months' : 'Meses repetido'}</span><input type="number" value={r.repeat_months ?? 1} onChange={(e) => setR({ ...r, repeat_months: Number(e.target.value) })} style={num} /></div>
+            <div><span style={lbl}>{lang === 'en' ? 'Cooldown (months)' : 'Cooldown (meses)'}</span><input type="number" value={r.cooldown_months ?? 12} onChange={(e) => setR({ ...r, cooldown_months: Number(e.target.value) })} style={num} /></div>
+            <div><span style={lbl}>{lang === 'en' ? 'Max times / user' : 'Máx. veces / usuario'}</span><input type="number" value={r.max_grants ?? 2} onChange={(e) => setR({ ...r, max_grants: Number(e.target.value) })} style={num} /></div>
+            <div><span style={lbl}>{lang === 'en' ? 'Min. tenure (months)' : 'Antigüedad mín. (meses)'}</span><input type="number" value={r.min_tenure_months ?? 1} onChange={(e) => setR({ ...r, min_tenure_months: Number(e.target.value) })} style={num} /></div>
+            <div><span style={lbl}>{lang === 'en' ? 'Monthly cap (global)' : 'Tope mensual (global)'}</span><input type="number" value={r.monthly_cap ?? 0} onChange={(e) => setR({ ...r, monthly_cap: Number(e.target.value) })} style={num} /></div>
+          </div>
+          <div className="muted" style={{ fontSize: 11.5, marginTop: 8 }}>{lang === 'en' ? '0 = no limit. Repeat offer applies from the 2nd time; after "max times" there is no % discount.' : '0 = sin límite. La oferta repetida se usa desde la 2ª vez; pasado el "máx. veces" ya no hay descuento en %.'}</div>
+        </div>
+
         <label className="row" style={{ gap: 8, marginTop: 12, cursor: 'pointer' }}>
           <input type="checkbox" checked={r.allow_downgrade !== false} onChange={(e) => setR({ ...r, allow_downgrade: e.target.checked })} style={{ width: 'auto', margin: 0 }} /> {t.re_allowDown}
         </label>

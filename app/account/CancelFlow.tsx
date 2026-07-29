@@ -16,6 +16,7 @@ const C: any = {
     pT: 'Pausa {m} meses', pD: 'No te cobramos durante ese tiempo y tus datos se quedan intactos. Vuelve cuando quieras operar de nuevo.', pBtn: 'Pausar mi plan',
     gT: 'Baja a {n}', gD: 'Pagas menos y sigues teniendo lo esencial.', gBtn: 'Cambiar a {n}',
     anyway: 'Cancelar igualmente',
+    noElig: 'Ya usaste tu descuento de rescate hace poco. Mira estas otras opciones para quedarte.',
     okD: '¡Listo! Tu descuento ya está aplicado. Lo verás en tu próxima factura.',
     okP: 'Tu plan está en pausa. No te cobraremos hasta que vuelva a activarse.',
     okG: 'Plan cambiado. El ajuste se refleja en tu próxima factura.',
@@ -34,6 +35,7 @@ const C: any = {
     pT: 'Pause for {m} months', pD: 'We stop charging you and your data stays intact. Come back whenever you trade again.', pBtn: 'Pause my plan',
     gT: 'Switch to {n}', gD: 'You pay less and keep the essentials.', gBtn: 'Switch to {n}',
     anyway: 'Cancel anyway',
+    noElig: 'You already used your retention discount recently. Here are other ways to stay.',
     okD: 'Done! Your discount is applied. You will see it on your next invoice.',
     okP: 'Your plan is paused. We will not charge you until it resumes.',
     okG: 'Plan changed. The adjustment shows on your next invoice.',
@@ -52,6 +54,7 @@ export default function CancelFlow({ lang, canceling, planName, onDone, openTick
   const [detail, setDetail] = useState('');
   const [id, setId] = useState('');
   const [s, setS] = useState<any>({});
+  const [disc, setDisc] = useState<any>(null);   // elegibilidad de descuento (anti-abuso)
   const [downs, setDowns] = useState<any[]>([]);
   const [busy, setBusy] = useState('');
   const [done, setDone] = useState('');
@@ -70,7 +73,7 @@ export default function CancelFlow({ lang, canceling, planName, onDone, openTick
     if (!reason) return;
     const j = await call({ action: 'reason', reason, detail });
     if (!j) return;
-    setId(j.id); setS(j.settings || {}); setDowns(j.downgrades || []);
+    setId(j.id); setS(j.settings || {}); setDowns(j.downgrades || []); setDisc(j.discount || null);
     setStep(2);
   }
   async function accept(action: string, plan?: string) {
@@ -132,12 +135,18 @@ export default function CancelFlow({ lang, canceling, planName, onDone, openTick
         <>
           <div style={{ fontWeight: 800, marginBottom: 12 }}>{t.offT}</div>
 
-          {(reason === 'price' || reason === 'other') && Number(s.discount_percent) > 0 && (
+          {/* El descuento solo se ofrece si el usuario es ELEGIBLE (anti-abuso):
+              antigüedad, cooldown, tope de veces, tope global. El % puede ser
+              menor a partir de la 2ª vez (oferta decreciente). */}
+          {(reason === 'price' || reason === 'other') && disc?.eligible && (
             <div className="card" style={{ marginBottom: 10, border: '1px solid var(--brand)' }}>
-              <div style={{ fontWeight: 700 }}>{fill(t.dT, { p: s.discount_percent })}</div>
-              <p className="muted" style={{ fontSize: 13, margin: '6px 0 10px' }}>{fill(t.dD, { m: s.discount_months })}</p>
+              <div style={{ fontWeight: 700 }}>{fill(t.dT, { p: disc.percent })}</div>
+              <p className="muted" style={{ fontSize: 13, margin: '6px 0 10px' }}>{fill(t.dD, { m: disc.months })}</p>
               <button className="btn btn-primary" onClick={() => accept('discount')} disabled={busy === 'discount'}>{busy === 'discount' ? '...' : t.dBtn}</button>
             </div>
+          )}
+          {(reason === 'price' || reason === 'other') && disc && !disc.eligible && (disc.reason === 'cooldown' || disc.reason === 'max' || disc.reason === 'blocked') && (
+            <div className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>{t.noElig}</div>
           )}
 
           {(reason === 'unused' || reason === 'stopped' || reason === 'missing' || reason === 'other') && Number(s.pause_months) > 0 && (

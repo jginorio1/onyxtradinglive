@@ -779,3 +779,28 @@ nuevos, sin asignar y sin resolver por categoría. Ideal para el cambio de turno
 
 No hay SQL nuevo. Reutiliza `CRON_SECRET`/service role para firmar la cookie de
 respaldo y `ADMIN_EMAILS` para el aviso.
+
+---
+
+## 21 · Retención anti-abuso (descuento de rescate)
+
+Evita que un usuario cancele cada 3 meses para farmear el descuento (o que una
+comunidad se coordine para ello).
+
+1. **SQL.** Corre `supabase/retention_v2.sql` (tabla `retention_grants` +
+   columna `profiles.retention_blocked`). Idempotente.
+2. **Config** (Admin → Retención → Anti-abuso): 
+   - `% repetido` / `Meses repetido`: la oferta de la 2ª vez en adelante (menor).
+   - `Cooldown (meses)`: no repetir descuento antes de N meses (por defecto 12).
+   - `Máx. veces / usuario`: tope de descuentos de por vida (por defecto 2).
+   - `Antigüedad mín.`: solo a quien lleva pagando ≥ N meses.
+   - `Tope mensual (global)`: máximo de descuentos concedidos al mes (0 = sin tope).
+     Al alcanzarlo, deja de ofrecerse solo y te llega un aviso por correo.
+3. **Cómo actúa**: el backend re-verifica SIEMPRE la elegibilidad antes de crear
+   el cupón (no se fía del navegador). Si no es elegible, el trader ve pausa /
+   bajar de plan / cancelar, pero no el %. Si toma el descuento y cancela dentro
+   de su ventana, queda **bloqueado** para futuros descuentos.
+4. **Alertas**: si hay un pico de descuentos en 24 h o se toca el tope mensual,
+   llega un correo a `ADMIN_EMAILS`.
+
+No hay variables nuevas en Vercel.
