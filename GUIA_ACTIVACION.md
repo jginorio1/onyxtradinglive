@@ -950,3 +950,21 @@ una **tira fija arriba** (⏳ "Aún no revisaste tu plan hoy" + botón "Revisar 
 hasta que complete el check-in del día. Presente pero no bloqueante. Estados en
 `localStorage`: `onyx_checkin_done` (hecho hoy → nada), `onyx_checkin_skip`
 (saltado hoy → tira). Al guardar se limpia y no vuelve hasta el día siguiente.
+
+### 24.6 · Rediseño del dashboard: anillos neón + mosaicos
+
+Cabecera del hub rehecha (componente `HubVitals`):
+- **Titular grande** con tu resultado del periodo (verde/rojo, con resplandor).
+- **4 anillos encendidos** con color semáforo: Salud de la cuenta, Aciertos,
+  Profit factor y Payoff. Verde = bien, ámbar = ojo, rojo = riesgo. Glow neón.
+- **Cuadrícula de mosaicos** para las secciones (Rendimiento, Calendario,
+  Operaciones, Costes, Cuentas, Mi reto, Mi plan): icono con acento de color,
+  etiqueta y número clave; se iluminan al pasar el ratón. Se escanean y se tocan
+  mucho más rápido que las barras largas anteriores.
+- **"Onyx dice"** ahora es una tira compacta de chips en una sola fila (antes eran
+  4 cajas grandes).
+- **Calculadora de lotes** movida a un desplegable en el rail (ocupa nada hasta que
+  la abres).
+
+Todo con las variables de tema y `color-mix` para el glow, así que funciona en
+claro y oscuro. Sin cambios de datos ni de API.

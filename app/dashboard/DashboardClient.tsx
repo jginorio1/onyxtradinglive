@@ -16,6 +16,7 @@ import MarketHours from './MarketHours';
 import ReferralBanner from './ReferralBanner';
 import PlanHabits from './PlanHabits';
 import DailyCheckinPopup from './DailyCheckinPopup';
+import HubVitals, { type Vital, type Tile } from './HubVitals';
 import News from './News';
 import NetRealCard from './NetRealCard';
 import CoachCard from './CoachCard';
@@ -525,7 +526,7 @@ export default function DashboardClient({ email = '', plan = 'free', profile, tr
         )}
 
         <div className="cockpit">
-          <div className="rail-left"><MarketHours lang={lang} compact /><div style={{ marginTop: 12 }}><LotCalculator lang={lang} balance={Number(cur?.balance) || totalBalance || undefined} /></div></div>
+          <div className="rail-left"><MarketHours lang={lang} compact /><details style={{ marginTop: 12 }}><summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 700, color: 'var(--tx)', padding: '10px 12px', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, listStyle: 'none' }}>🧮 {lang === 'en' ? 'Lot size calculator' : 'Calculadora de lotes'}</summary><div style={{ marginTop: 10 }}><LotCalculator lang={lang} balance={Number(cur?.balance) || totalBalance || undefined} /></div></details></div>
           <div className="rail-right"><News lang={lang} /></div>
           <div className="center">
         {!hasAccounts ? (
@@ -560,49 +561,37 @@ export default function DashboardClient({ email = '', plan = 'free', profile, tr
 
             {view === 'hub' && (<>
               <ReferralBanner />
-              {/* Onyx te dice */}
+              {/* Onyx te dice — tira compacta de consejos (una sola fila que hace scroll) */}
               {insights.length > 0 && (
-                <div className="card">
-                  <h3 style={{ marginBottom: 12 }}>{L.insights}</h3>
-                  <div className="grid g2">
-                    {insights.map((x, i) => <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'center', background: 'var(--bg2)', borderRadius: 10, padding: '10px 12px' }}><span style={{ fontSize: 20 }}>{x.icon}</span><span style={{ fontSize: 14 }}>{x.txt}</span></div>)}
-                  </div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'nowrap', overflowX: 'auto', paddingBottom: 2 }}>
+                  <span className="muted" style={{ fontSize: 12, fontWeight: 700, flex: 'none' }}>💡 {L.insights}</span>
+                  {insights.map((x, i) => (
+                    <span key={i} style={{ display: 'inline-flex', gap: 7, alignItems: 'center', background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 999, padding: '6px 12px', fontSize: 12.5, whiteSpace: 'nowrap', flex: 'none' }}>
+                      <span>{x.icon}</span>{x.txt}
+                    </span>
+                  ))}
                 </div>
               )}
 
-              {/* Hero: health + anillos */}
-              <div className="grid g4">
-                <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 14, border: '1px solid ' + hs.color + '55' }}>
-                  <Ring pct={hs.score / 100} color={hs.color} value={String(hs.score)} />
-                  <div><div className="muted" style={{ fontSize: 13 }}>{L.health}</div><div style={{ fontSize: 15, fontWeight: 700, color: hs.color }}>/ 100</div></div>
-                </div>
-                <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 14 }}><Ring pct={a.winRate / 100} color={GREEN} value={`${Math.round(a.winRate)}%`} /><div className="muted" style={{ fontSize: 13 }}>{L.kWR}</div></div>
-                <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 14 }}><Ring pct={Math.min(a.profitFactor, 3) / 3} color={PURPLE} value={a.profitFactor.toFixed(2)} /><div className="muted" style={{ fontSize: 13 }}>{L.kPF}</div></div>
-                <div className="card kpi"><div className="lbl">{L.kNet}</div><div className={'val ' + (a.net >= 0 ? 'pos' : 'neg')}>{money2(a.net)}</div><MiniArea points={eqVals.length > 1 ? eqVals : [0, 0]} color={a.net >= 0 ? GREEN : RED} h={34} /></div>
-              </div>
-
-              {/* Botones grandes */}
-              <div className="grid g3">
-                {SECTIONS.map((s) => (
-                  <button key={s.key} onClick={() => setView(s.key)} className="card" style={{ cursor: 'pointer', textAlign: 'left', borderTop: '3px solid ' + s.color, opacity: s.pro && !canJournal ? 0.9 : 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                      <span style={{ width: 38, height: 38, borderRadius: 11, background: s.color + '22', color: s.color, display: 'grid', placeItems: 'center', fontSize: 20 }}>{s.icon}</span>
-                      <div style={{ flex: 1 }}><div style={{ fontWeight: 800, fontSize: 17, color: '#fff' }}>{s.label}</div><div className="muted" style={{ fontSize: 12 }}>{s.sub}</div></div>
-                      {s.pro && !canJournal ? <PlanBadge plan={upJ.name} /> : <span style={{ color: 'var(--mut)', fontSize: 18 }}>→</span>}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                      <div style={{ fontSize: 19, fontWeight: 800, color: s.mc, whiteSpace: 'nowrap' }}>{s.metric}</div>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>{s.viz}</div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-
-              <button onClick={() => setView('plan')} className="card" style={{ cursor: 'pointer', textAlign: 'left', borderTop: '3px solid var(--brand)', display: 'flex', alignItems: 'center', gap: 12, width: '100%' }}>
-                <span style={{ width: 38, height: 38, borderRadius: 11, background: 'rgba(124,140,255,.15)', color: 'var(--brand)', display: 'grid', placeItems: 'center', fontSize: 20 }}>🎯</span>
-                <div style={{ flex: 1 }}><div style={{ fontWeight: 800, fontSize: 16, color: '#fff' }}>{lang === 'en' ? 'My plan and habits' : 'Mi plan y hábitos'}</div><div className="muted" style={{ fontSize: 12 }}>{lang === 'en' ? 'Rules, daily check-in and discipline score' : 'Reglas, check-in diario y puntuación de disciplina'}</div></div>
-                <span style={{ color: 'var(--mut)', fontSize: 18 }}>→</span>
-              </button>
+              {/* Cabecera vital: anillos encendidos + mosaicos de navegación */}
+              {(() => {
+                const semWR = a.winRate >= 50 ? GREEN : a.winRate >= 40 ? GOLD : RED;
+                const semPF = a.profitFactor >= 1.3 ? GREEN : a.profitFactor >= 1 ? GOLD : RED;
+                const semPO = a.payoff >= 1.5 ? GREEN : a.payoff >= 1 ? GOLD : RED;
+                const vitals: Vital[] = [
+                  { pct: hs.score / 100, color: hs.color, value: String(hs.score), label: L.health },
+                  { pct: a.winRate / 100, color: semWR, value: `${Math.round(a.winRate)}%`, label: L.kWR },
+                  { pct: Math.min(a.profitFactor, 3) / 3, color: semPF, value: a.profitFactor.toFixed(2), label: L.kPF },
+                  { pct: Math.min(a.payoff, 2) / 2, color: semPO, value: a.payoff.toFixed(2), label: L.rPayoff },
+                ];
+                const tiles: Tile[] = SECTIONS.map((s) => ({
+                  key: s.key, icon: s.icon, label: s.label, metric: s.metric, mc: s.mc, color: s.color,
+                  onClick: () => setView(s.key),
+                  badge: s.pro && !canJournal ? <PlanBadge plan={upJ.name} /> : undefined,
+                }));
+                tiles.push({ key: 'plan', icon: '🎯', label: lang === 'en' ? 'My plan' : 'Mi plan', metric: lang === 'en' ? 'Habits' : 'Hábitos', mc: 'var(--soft-brand)', color: PURPLE, onClick: () => setView('plan') });
+                return <HubVitals net={money2(a.net)} netPos={a.net >= 0} netLabel={L.kNet} vitals={vitals} tiles={tiles} />;
+              })()}
 
               <Achievements a={a} accounts={accounts} lang={lang} />
 
