@@ -56,10 +56,16 @@ export default function AdminLeadAlert({ available }: { available: boolean }) {
             <span className="pill" style={{ fontSize: 10.5, color: 'var(--mut)', background: 'var(--bg2)' }}>{catMap[l.category] || l.category}</span>
           </div>
           <div className="muted" style={{ fontSize: 12, marginBottom: 5 }}>{l.email || '—'} · {ago(l.created_at)}</div>
-          <div style={{ fontSize: 13.5, lineHeight: 1.5, background: 'var(--bg2)', borderRadius: 10, padding: '10px 12px', maxHeight: 120, overflow: 'auto' }}>{l.message}</div>
+          <div style={{ fontSize: 13.5, lineHeight: 1.5, background: 'var(--bg2)', borderRadius: 10, padding: '10px 12px', maxHeight: 110, overflow: 'auto' }}>{l.message}</div>
+          {l.aiReply && (
+            <div style={{ marginTop: 8, background: 'rgba(52,226,160,.08)', border: '1px solid rgba(52,226,160,.35)', borderRadius: 10, padding: '9px 11px' }}>
+              <div style={{ fontSize: 11.5, color: 'var(--soft-green)', fontWeight: 600, marginBottom: 3 }}>🤖 {L('Onyx AI ya respondió', 'Onyx AI already replied')}</div>
+              <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.45, maxHeight: 66, overflow: 'hidden' }}>{l.aiReply}</div>
+            </div>
+          )}
         </div>
         <div className="row" style={{ gap: 8, padding: '11px 14px', borderTop: '1px solid var(--line)', flexWrap: 'wrap' }}>
-          <a className="btn btn-primary" href="/admin#soporte" style={{ padding: '6px 12px', fontSize: 13 }} onClick={() => markSeen(l.id)}>{L('Abrir', 'Open')}</a>
+          <a className="btn btn-primary" href={`/admin?ticket=${l.id}#soporte`} style={{ padding: '6px 12px', fontSize: 13 }} onClick={() => markSeen(l.id)}>{L('Abrir', 'Open')}</a>
           <button className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: 13 }} onClick={() => markSeen(l.id)}>{L('Visto', 'Seen')}</button>
           {unseen.length > 1 && <button className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: 13, marginLeft: 'auto' }} onClick={() => markSeen(l.id)}>{L('Siguiente', 'Next')} ({unseen.length - 1})</button>}
         </div>

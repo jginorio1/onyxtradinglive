@@ -94,6 +94,11 @@ export default function SupportInbox() {
   }
   async function loadCanned() { try { const r = await fetch('/api/admin/support/canned'); const j = await r.json(); setCanned(j.canned || []); } catch {} }
   useEffect(() => { load(); loadCanned(); loadAi(); const iv = setInterval(load, 8000); return () => clearInterval(iv); }, []);
+  // Si llega con ?ticket=ID (desde el aviso sticky), abre esa conversación.
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get('ticket');
+    if (id) { setFilter('all'); setOpenId(id); }
+  }, []);
 
   // Al abrir un ticket, traer la ficha del trader
   useEffect(() => {

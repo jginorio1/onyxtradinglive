@@ -118,7 +118,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <BetaBanner />
             <TopBar />
             {children}
-            <SupportWidget loggedIn={loggedIn} />
+            {!path.startsWith('/admin') && <SupportWidget loggedIn={loggedIn} />}
             <Toaster />
             <PWARegister />
           </BetaProvider>

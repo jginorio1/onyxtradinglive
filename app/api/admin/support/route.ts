@@ -111,7 +111,7 @@ export async function PATCH(req: Request) {
         );
       }
       // Notificación dentro de la app (campana) para el trader con cuenta.
-      if ((tk as any)?.user_id) await notify((tk as any).user_id, { kind: 'support', title: 'Respondimos tu consulta', body: `${tk?.subject ? tk.subject + ': ' : ''}${body.slice(0, 90)}`, url: '/dashboard/soporte' });
+      if ((tk as any)?.user_id) await notify((tk as any).user_id, { kind: 'support', title: 'Respondimos tu consulta', body: `${tk?.subject ? tk.subject + ': ' : ''}${body.slice(0, 90)}`, url: `/dashboard/soporte?ticket=${ticketId}` });
       await logAdmin(user?.email || '', 'support_reply', ticketId, { emailed });
     }
 

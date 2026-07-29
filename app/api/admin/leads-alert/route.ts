@@ -25,12 +25,16 @@ export async function GET() {
     }
     const ids = rows.map((t) => t.id);
     const firstMsg: Record<string, string> = {};
+    const aiMsg: Record<string, string> = {};   // última respuesta del AI por ticket
     if (ids.length) {
       const { data: msgs } = await supabaseAdmin.from('support_messages').select('ticket_id,sender,body,created_at')
-        .in('ticket_id', ids).eq('sender', 'user').order('created_at', { ascending: true });
-      for (const m of (msgs || []) as any[]) if (!firstMsg[m.ticket_id]) firstMsg[m.ticket_id] = m.body;
+        .in('ticket_id', ids).order('created_at', { ascending: true });
+      for (const m of (msgs || []) as any[]) {
+        if (m.sender === 'user' && !firstMsg[m.ticket_id]) firstMsg[m.ticket_id] = m.body;
+        if (m.sender === 'ai') aiMsg[m.ticket_id] = m.body; // se queda con la más reciente
+      }
     }
-    const tickets = rows.map((t) => ({ id: t.id, email: t.email, subject: t.subject, category: t.category, priority: t.priority || 'normal', created_at: t.created_at, message: firstMsg[t.id] || t.subject || '' }));
+    const tickets = rows.map((t) => ({ id: t.id, email: t.email, subject: t.subject, category: t.category, priority: t.priority || 'normal', created_at: t.created_at, message: firstMsg[t.id] || t.subject || '', aiReply: aiMsg[t.id] || null }));
     return NextResponse.json({ tickets });
   } catch {
     return NextResponse.json({ tickets: [] });
