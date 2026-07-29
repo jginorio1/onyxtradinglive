@@ -70,6 +70,7 @@ export default function Expenses() {
 
   return (
     <div className="wrap-wide" style={{ padding: '22px 0' }}>
+      <Link href="/dashboard" className="btn btn-ghost" style={{ padding: '5px 12px', fontSize: 13, marginBottom: 12, display: 'inline-flex' }}>← {L('Dashboard', 'Dashboard')}</Link>
       <div className="row between" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
         <div className="row" style={{ gap: 10, alignItems: 'center' }}>
           <span style={{ fontSize: 22 }}>🧮</span>

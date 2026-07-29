@@ -20,7 +20,7 @@ export default function NetRealCard() {
 
   return (
     <Link href="/dashboard/expenses" style={{ textDecoration: 'none' }}>
-      <div className="card" style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', border: '1px solid rgba(124,140,255,.3)' }}>
+      <div className="card" style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', border: '1px solid rgba(124,140,255,.3)', maxWidth: 560 }}>
         <span style={{ fontSize: 22 }}>🧮</span>
         <div>
           <div className="muted" style={{ fontSize: 12.5 }}>{L('Neto real este mes', 'True net this month')}</div>
