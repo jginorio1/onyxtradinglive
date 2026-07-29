@@ -13,6 +13,7 @@ import CompareAccounts from './CompareAccounts';
 import { typeMeta } from '@/lib/accountMeta';
 import { Ring, MiniArea, MiniDonut, MiniBars, MiniHeat, RadarChart, Bubbles, healthScore } from './Modern';
 import MarketHours from './MarketHours';
+import ReferralBanner from './ReferralBanner';
 import News from './News';
 import NetRealCard from './NetRealCard';
 import CoachCard from './CoachCard';
@@ -547,6 +548,7 @@ export default function DashboardClient({ email = '', plan = 'free', profile, tr
             {histDays > 0 && <div style={{ background: 'rgba(124,140,255,.10)', border: '1px solid var(--brand)', color: 'var(--soft-brand2)', borderRadius: 10, padding: '9px 14px', fontSize: 13, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>{L.histCap} <Link href="/pricing" style={{ color: '#fff', fontWeight: 700 }}>{L.proLockCta}</Link></div>}
 
             {view === 'hub' && (<>
+              <ReferralBanner />
               {/* Onyx te dice */}
               {insights.length > 0 && (
                 <div className="card">
