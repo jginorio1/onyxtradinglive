@@ -125,7 +125,9 @@ export default function ChatThread({
   let lastDay = '';
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, height, padding: '4px 2px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+      {/* Alto MÁXIMO con scroll: si no, en un contenedor flex el hilo crecería sin
+          fin con conversaciones largas (usar height+flex se anulan entre sí). */}
+      <div style={{ overflowY: 'auto', maxHeight: height, minHeight: 60, padding: '4px 2px', display: 'flex', flexDirection: 'column', gap: 4 }}>
         {!messages.length && <div className="muted" style={{ fontSize: 13, textAlign: 'center', margin: 'auto' }}>{emptyText || L('Aún no hay mensajes.', 'No messages yet.')}</div>}
         {messages.map((m) => {
           const dl = dayLabel(m.createdAt, lang);
