@@ -1,0 +1,38 @@
+import { NextResponse } from 'next/server';
+import { createSupabaseServer } from '@/lib/supabaseServer';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { parseRules } from '@/lib/coachAI';
+import { logError } from '@/lib/errlog';
+
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+// POST · lee con AI las reglas de una prop firm pegadas y devuelve los números
+// para prellenar "Mi reto". No guarda nada: el trader confirma antes.
+export async function POST(req: Request) {
+  try {
+    const sb = createSupabaseServer();
+    const { data: { user } } = await sb.auth.getUser();
+    if (!user) return NextResponse.json({ error: 'no autorizado' }, { status: 401 });
+    const { data: prof } = await supabaseAdmin.from('profiles').select('plan').eq('id', user.id).maybeSingle();
+    const { data: plan } = await supabaseAdmin.from('plans').select('capabilities').eq('id', (prof as any)?.plan || 'free').maybeSingle();
+    if (!(plan?.capabilities as any)?.manager) return NextResponse.json({ error: 'plan' }, { status: 403 });
+
+    const b = await req.json().catch(() => ({} as any));
+    const lang = b.lang === 'en' ? 'en' : 'es';
+    const text = String(b.text || '').slice(0, 6000);
+    const r = await parseRules(text, lang);
+    if (!r.ok) {
+      const msg = r.reason === 'no_key'
+        ? (lang === 'en' ? 'AI not set up (ANTHROPIC_API_KEY).' : 'IA no configurada (ANTHROPIC_API_KEY).')
+        : r.reason === 'short'
+          ? (lang === 'en' ? 'Paste the rules text.' : 'Pega el texto de las reglas.')
+          : (lang === 'en' ? "Couldn't read the rules. Paste the limits section." : 'No se pudieron leer las reglas. Pega la sección de límites.');
+      return NextResponse.json({ error: msg }, { status: 400 });
+    }
+    return NextResponse.json({ ok: true, rules: r.rules });
+  } catch (e: any) {
+    await logError('challenge_parse', e);
+    return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
+  }
+}

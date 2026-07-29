@@ -609,3 +609,27 @@ Cuando está activa, al trader le aparece **🧮 Balance real** en el menú. Ah�
 
 El bruto de trading sale de sus operaciones cerradas del mes; los gastos, de lo
 que apunte. Nada se envía a ningún lado — es su registro privado.
+
+---
+
+## 15 · AI de cara al trader: Coach + Analizador + Lector de reglas
+
+Tres integraciones de AI, todas reusando el cerebro de Onyx y con la LÍNEA ROJA:
+nunca predicen el mercado, dan señales ni prometen ganancias.
+
+**1. Coach AI (repaso del rendimiento)** — Pro+. Tarjeta 🧠 en el dashboard: el
+trader pulsa "Generar repaso" y el AI le escribe qué hace bien/mal y un hábito a
+corregir, leyendo sus últimos ~90 días. Gateado por la capacidad **`coach`**
+(actívala en Admin → Planes → Capacidades para Pro/Elite/Black).
+
+**2. Analiza tu cuenta gratis (imán de leads)** — público, `/analiza` (enlace en
+el menú de invitado). El visitante pega su reporte/operaciones, el AI le da 3
+hallazgos y lo invita a crear cuenta. Sin registro para probar.
+
+**3. Lector de reglas de prop firm** — dentro de "Mi reto". El trader pega las
+reglas de su firma y ✨ "Leer con AI" prellena los campos (pérdida diaria/total,
+objetivo, días, consistencia); él revisa y guarda. Requiere el plan con Guardian.
+
+**Activar:** solo necesita `ANTHROPIC_API_KEY` (el mismo que ya usas). Para el
+Coach, enciende la capacidad `coach` en los planes de pago. Sin IA, el analizador
+y el lector avisan con elegancia y el resto sigue funcionando.

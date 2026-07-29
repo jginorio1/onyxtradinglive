@@ -84,6 +84,7 @@ export default async function TopBar() {
         // sabe que un logo se puede pulsar, y desde Planes o Embajadores no
         // había ninguna otra forma de volver al landing.
         { href: '/', label: t.home },
+        { href: '/analiza', label: lang === 'en' ? 'Free analysis' : 'Analiza gratis' },
         { href: '/pricing', label: t.plans },
         { href: '/embajadores', label: t.ambassadors },
         { href: '/guia', label: t.guide },

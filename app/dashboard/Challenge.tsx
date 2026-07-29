@@ -17,6 +17,7 @@ const T: any = {
     baseDSB: 'Balance al inicio del día', baseDSE: 'Equity al inicio del día', baseInit: 'Balance inicial',
     onTrack: 'En camino', watch: 'Vigila', breach: 'Regla rota',
     closest: 'Lo más cerca de romperse', note: 'Estimación según las reglas que cargaste. Confírmalas con tu contrato; no es la norma oficial de la firma. Para BLOQUEAR de verdad, activa los límites en Onyx Guardian.',
+    aiRead: 'Pega las reglas y las leo con AI', aiPlaceholder: 'Pega aquí las reglas de tu prop firm (del contrato o de su web) y las convierto en números…', aiBtn: 'Leer con AI', aiDone: 'Reglas leídas — revisa y guarda.',
     editRules: 'Reglas del reto',
     intro: 'Copia los datos de tu contrato. Elige tu firma y te ponemos un punto de partida; ajusta lo que haga falta.',
     secFirm: 'DE QUÉ FIRMA ES', secNums: 'LOS NÚMEROS DE TU RETO',
@@ -43,6 +44,7 @@ const T: any = {
     baseDSB: 'Day-start balance', baseDSE: 'Day-start equity', baseInit: 'Initial balance',
     onTrack: 'On track', watch: 'Watch', breach: 'Rule broken',
     closest: 'Closest to breaking', note: 'Estimate based on the rules you entered. Confirm them with your contract; it is not the firm official rule. To actually BLOCK, enable limits in Onyx Guardian.',
+    aiRead: 'Paste the rules and I read them with AI', aiPlaceholder: 'Paste your prop firm rules here (from the contract or their site) and I turn them into numbers…', aiBtn: 'Read with AI', aiDone: 'Rules read — review and save.',
     editRules: 'Challenge rules',
     intro: 'Copy the numbers from your contract. Pick your firm and we prefill a starting point; adjust as needed.',
     secFirm: 'WHICH FIRM IT IS', secNums: 'YOUR CHALLENGE NUMBERS',
@@ -67,8 +69,32 @@ export default function Challenge({ lang }: { lang: Lang }) {
   const [data, setData] = useState<any>(null);
   const [busy, setBusy] = useState('');
   const [draft, setDraft] = useState<any>({});   // account_id -> rules en edición
+  const [aiText, setAiText] = useState<any>({});  // account_id -> texto de reglas para el lector AI
 
   useEffect(() => { load(); }, []);
+
+  // Lee las reglas pegadas con AI y prellena los campos (el trader confirma y guarda).
+  async function readRules(id: string) {
+    const text = String(aiText[id] || '');
+    if (text.trim().length < 15) { toast(L.aiPlaceholder); return; }
+    setBusy('ai' + id);
+    try {
+      const r = await fetch('/api/challenge/parse', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text, lang }) });
+      const j = await r.json();
+      if (!r.ok) { toast(j.error || 'Error'); return; }
+      const ru = j.rules || {};
+      setDraft((p: any) => {
+        const cur = { ...p[id] };
+        const set = (k: string, v: any) => { if (v !== undefined) cur[k] = v; };
+        set('daily_loss', ru.daily_loss); set('daily_loss_pct', ru.daily_loss_pct);
+        set('total_loss', ru.total_loss); set('total_loss_pct', ru.total_loss_pct);
+        set('profit_target', ru.profit_target); set('profit_target_pct', ru.profit_target_pct);
+        set('min_days', ru.min_days); set('consistency', ru.consistency);
+        return { ...p, [id]: cur };
+      });
+      toast(L.aiDone, 'ok');
+    } finally { setBusy(''); }
+  }
   async function load() {
     try {
       const r = await fetch('/api/challenge'); const j = await r.json();
@@ -165,6 +191,14 @@ export default function Challenge({ lang }: { lang: Lang }) {
             {d.on && (
               <div style={{ borderTop: '1px solid var(--line)', marginTop: 12, paddingTop: 12 }}>
                 <div style={{ background: 'rgba(124,140,255,.10)', border: '1px solid rgba(124,140,255,.25)', borderRadius: 8, padding: '9px 11px', fontSize: 12.5, color: 'var(--soft-brand)', lineHeight: 1.4 }}>ℹ️ {L.intro}</div>
+
+                {/* Lector de reglas con AI */}
+                <div style={{ marginTop: 12, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: 12 }}>
+                  <div className="muted" style={{ fontSize: 12.5, marginBottom: 6 }}>✨ {L.aiRead}</div>
+                  <textarea value={aiText[a.id] || ''} onChange={(e) => setAiText((p: any) => ({ ...p, [a.id]: e.target.value }))} placeholder={L.aiPlaceholder}
+                    style={{ width: '100%', minHeight: 70, padding: '9px 11px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--tx)', fontSize: 13, fontFamily: 'inherit', resize: 'vertical' }} />
+                  <button className="btn btn-ghost" style={{ marginTop: 8 }} onClick={() => readRules(a.id)} disabled={busy === 'ai' + a.id}>{busy === 'ai' + a.id ? '…' : '✨ ' + L.aiBtn}</button>
+                </div>
 
                 <div style={grp}>{L.secFirm}</div>
                 <div className="grid g3" style={{ gap: 12 }}>

@@ -15,6 +15,7 @@ import { Ring, MiniArea, MiniDonut, MiniBars, MiniHeat, RadarChart, Bubbles, hea
 import MarketHours from './MarketHours';
 import News from './News';
 import NetRealCard from './NetRealCard';
+import CoachCard from './CoachCard';
 import Achievements from './Achievements';
 import Nudge from './Nudge';
 
@@ -500,6 +501,7 @@ export default function DashboardClient({ email = '', plan = 'free', profile, tr
         <p className="muted" style={{ fontSize: 13, margin: '-6px 0 14px', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>{email} · {accounts.length} {L.accountsWord} · {L.balance} ${totalBalance.toLocaleString()} · <span className="livedot" style={{ width: 8, height: 8 }} /><span style={{ color: GREEN }}>{updatedTxt}</span></p>
 
         {caps?.expenses ? <NetRealCard /> : null}
+        {caps?.coach ? <CoachCard /> : null}
 
         {!isFree && (
           <>
