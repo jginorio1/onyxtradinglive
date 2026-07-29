@@ -80,19 +80,25 @@ const EMOJI: Record<string, string> = {
   '🎁': 'gift', '🛟': 'retention', '🩺': 'diag', '🗄': 'backups', '🚀': 'optim', '🧪': 'tests',
   '⚙': 'settings', '👥': 'users', '✉': 'mail', '🎫': 'ticket', '💬': 'chat', '🔔': 'bell',
   '📥': 'install', '⬇': 'install', '📖': 'book', '📚': 'book',
+  // Barra superior y varios
+  '🔌': 'accounts', '🛠': 'settings', '🔧': 'settings', '💡': 'ai', '🌱': 'up',
+  '⚠': 'bell', '🏅': 'trophy', '🖥': 'modules', '🎬': 'trades', '🔒': 'guardian',
 };
 
 const strip = (s: string) => (s || '').replace(/️/g, '').trim();
 
-export default function OnyxIcon({ name, emoji, size = 18, className, style }: {
-  name?: string; emoji?: string; size?: number; className?: string; style?: React.CSSProperties;
+export default function OnyxIcon({ name, emoji, size = 18, glow = true, className, style }: {
+  name?: string; emoji?: string; size?: number; glow?: boolean; className?: string; style?: React.CSSProperties;
 }) {
   const key = name || (emoji ? EMOJI[strip(emoji)] : undefined);
   const glyph = key ? G[key] : undefined;
   if (!glyph) return <span className={className} style={style}>{emoji || null}</span>; // fallback seguro
+  // Resplandor en su propio color (currentColor), proporcional al tamaño.
+  const r = Math.max(2, Math.round(size / 5));
+  const filter = glow ? `drop-shadow(0 0 ${r}px currentColor) drop-shadow(0 0 ${r * 2}px currentColor)` : undefined;
   return (
-    <svg viewBox="0 0 24 24" width={size} height={size} className={className}
-      style={{ display: 'block', ...style }} fill="none" stroke="currentColor"
+    <svg viewBox="0 0 24 24" width={size} height={size} className={'onyx-ic' + (className ? ' ' + className : '')}
+      style={{ display: 'block', filter, transition: 'filter .15s, transform .12s', ...style }} fill="none" stroke="currentColor"
       strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       {glyph}
     </svg>

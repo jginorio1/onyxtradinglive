@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useLang } from '@/lib/lang';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Banner compacto de "Invita y gana" para el dashboard: una línea, copiar enlace
 // y acceso a la sección completa. Discreto, no intrusivo.
@@ -18,7 +19,7 @@ export default function ReferralBanner() {
 
   return (
     <div className="card" style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', borderLeft: '3px solid var(--brand)' }}>
-      <span style={{ fontSize: 22 }}>🎁</span>
+      <span style={{ display: 'inline-flex', color: 'var(--gold)' }}><OnyxIcon emoji="🎁" size={22} /></span>
       <div style={{ flex: 1, minWidth: 180 }}>
         <div style={{ fontWeight: 700, fontSize: 14 }}>{es ? `Invita y gana $${d.referrerCredit} en crédito` : `Invite & earn $${d.referrerCredit} credit`}</div>
         <div className="muted" style={{ fontSize: 12.5 }}>

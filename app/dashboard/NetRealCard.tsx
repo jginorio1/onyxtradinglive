@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useLang } from '@/lib/lang';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Tarjeta compacta del "Neto real" del mes en el hero del dashboard.
 // Solo aparece si el plan tiene la capacidad expenses (si no, la API responde
@@ -21,7 +22,7 @@ export default function NetRealCard() {
   return (
     <Link href="/dashboard/expenses" style={{ textDecoration: 'none', display: 'block' }}>
       <div className="card" style={{ margin: '0 auto 14px', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', border: '1px solid rgba(124,140,255,.3)', maxWidth: 560 }}>
-        <span style={{ fontSize: 22 }}>🧮</span>
+        <span style={{ display: "inline-flex", color: "var(--brand)" }}><OnyxIcon emoji="🧮" size={22} /></span>
         <div>
           <div className="muted" style={{ fontSize: 12.5 }}>{L('Neto real este mes', 'True net this month')}</div>
           <div style={{ fontSize: 24, fontWeight: 800, color: netColor }}>{d.net >= 0 ? '' : '−'}${Math.abs(d.net).toLocaleString()}</div>

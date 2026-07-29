@@ -116,6 +116,17 @@ a{color:inherit;text-decoration:none;}
 .jchip.pos{color:var(--soft-green);background:color-mix(in srgb,var(--green) 14%,transparent);}
 .jchip.neg{color:var(--soft-red,#ff8fa3);background:color-mix(in srgb,var(--red) 14%,transparent);}
 .jfilter{margin:0;padding:7px 11px;width:auto;font-size:13px;border-radius:20px;background:var(--bg2);border:1px solid var(--line);}
+
+/* Iconos Onyx: al pasar el ratón o pulsar el elemento clicable que los contiene,
+   el brillo se intensifica y dan un pequeño rebote. */
+a:hover .onyx-ic, button:hover .onyx-ic, .navtile:hover .onyx-ic, .adminnav-item:hover .onyx-ic,
+summary:hover .onyx-ic, label:hover .onyx-ic, .adminnav-item.on .onyx-ic, .navlink.on .onyx-ic{
+  filter:drop-shadow(0 0 5px currentColor) drop-shadow(0 0 12px currentColor) !important; transform:scale(1.1);
+}
+a:active .onyx-ic, button:active .onyx-ic, .navtile:active .onyx-ic, .adminnav-item:active .onyx-ic{
+  transform:scale(.92);
+  filter:drop-shadow(0 0 7px currentColor) drop-shadow(0 0 16px currentColor) !important;
+}
 .pos{color:var(--green);} .neg{color:var(--red);}
 .muted{color:var(--mut);}
 input,select{width:100%;padding:11px 13px;border-radius:10px;background:var(--bg2);border:1px solid var(--line);color:var(--tx);font-size:15px;margin-top:6px;}

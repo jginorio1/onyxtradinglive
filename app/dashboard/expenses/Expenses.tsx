@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { toast, toastErr } from '@/lib/toast';
 import { useLang } from '@/lib/lang';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Balance real (robusto): gastos operacionales con reembolso, prop firm, cuenta
 // vinculada y ROI por firma. Bruto trading − costo real = neto.
@@ -123,7 +124,7 @@ export default function Expenses() {
   if (d.locked) return (
     <div style={{ maxWidth: 900, margin: '0 auto', padding: '22px 18px' }}>
       <div className="card" style={{ maxWidth: 520, textAlign: 'center', margin: '0 auto' }}>
-        <div style={{ fontSize: 30, marginBottom: 8 }}>🧮</div>
+        <div style={{ marginBottom: 8, display: "flex", justifyContent: "center", color: "var(--brand)" }}><OnyxIcon emoji="🧮" size={30} /></div>
         <h3 style={{ marginBottom: 8 }}>{L('Balance real', 'True P&L')}</h3>
         <p className="muted" style={{ fontSize: 14, marginBottom: 14 }}>{L('Lleva tus gastos (retos, VPS, software…) y ve lo que de verdad te quedó. Disponible en Pro y superiores.', 'Track your costs (challenges, VPS, software…) and see what you truly netted. Available on Pro and above.')}</p>
         <Link className="btn btn-primary" href="/pricing">{L('Ver planes', 'See plans')}</Link>
@@ -139,7 +140,7 @@ export default function Expenses() {
       <Link href="/dashboard" className="btn btn-ghost" style={{ padding: '5px 12px', fontSize: 13, marginBottom: 12, display: 'inline-flex' }}>← {L('Dashboard', 'Dashboard')}</Link>
       <div className="row between" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
         <div className="row" style={{ gap: 10, alignItems: 'center' }}>
-          <span style={{ fontSize: 22 }}>🧮</span>
+          <span style={{ display: "inline-flex", color: "var(--brand)" }}><OnyxIcon emoji="🧮" size={22} /></span>
           <div><h2 style={{ margin: 0, fontSize: 20 }}>{L('Balance real', 'True P&L')}</h2>
             <div className="muted" style={{ fontSize: 13 }}>{L('Lo que de verdad te quedó, después de tus gastos.', 'What you truly kept, after your costs.')}</div></div>
         </div>
@@ -233,7 +234,7 @@ export default function Expenses() {
       <div className="card" style={{ marginBottom: 16, border: '1px solid rgba(124,140,255,.3)' }}>
         <div className="row between" style={{ flexWrap: 'wrap', gap: 8, marginBottom: coach && cOpen ? 10 : 0 }}>
           <div className="row" style={{ gap: 10, alignItems: 'center' }}>
-            <span style={{ fontSize: 20 }}>🧠</span>
+            <span style={{ display: "inline-flex", color: "var(--purple)" }}><OnyxIcon emoji="🧠" size={20} /></span>
             <div><b style={{ fontSize: 14.5 }}>{L('Coach de gasto', 'Spending coach')}</b>
               <div className="muted" style={{ fontSize: 12 }}>{L('Una lectura honesta de tu dinero.', 'An honest read of your money.')}</div></div>
           </div>

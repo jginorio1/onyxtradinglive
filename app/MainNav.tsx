@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 export type NavItem = { href: string; label: string; dot?: 'on' | 'off'; dim?: boolean; icon?: string; dotTitle?: string };
 
@@ -42,7 +43,7 @@ export default function MainNav({ items, authItems }: { items: NavItem[]; authIt
           const dt = i.dot ? (i.dotTitle || (i.dot === 'on' ? 'activo' : 'inactivo')) : undefined;
           return (
             <Link key={i.href} className={'navlink' + (isActive(i.href) ? ' on' : '') + (i.dim ? ' dim' : '')} href={i.href} title={dt}>
-              {i.icon && <span aria-hidden="true" style={{ marginRight: 6 }}>{i.icon}</span>}
+              {i.icon && <span aria-hidden="true" style={{ marginRight: 6, display: 'inline-flex', verticalAlign: '-3px' }}><OnyxIcon emoji={i.icon} size={16} /></span>}
               {i.label}
               {i.dot && <span className={'navdotmini ' + i.dot} role="img" aria-label={dt} />}
             </Link>
@@ -58,7 +59,7 @@ export default function MainNav({ items, authItems }: { items: NavItem[]; authIt
           <div className="menu" style={{ minWidth: 180 }}>
             {items.map((i) => (
               <Link key={i.href} className={'menu-item' + (isActive(i.href) ? ' on' : '')} href={i.href}>
-                {i.icon && <span aria-hidden="true" style={{ marginRight: 8 }}>{i.icon}</span>}
+                {i.icon && <span aria-hidden="true" style={{ marginRight: 8, display: 'inline-flex', verticalAlign: '-3px' }}><OnyxIcon emoji={i.icon} size={16} /></span>}
                 {i.label}
                 {i.dot && <span className={'navdotmini ' + i.dot} style={{ marginLeft: 8 }} />}
               </Link>

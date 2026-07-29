@@ -527,7 +527,7 @@ export default function DashboardClient({ email = '', plan = 'free', profile, tr
         )}
 
         <div className="cockpit">
-          <div className="rail-left"><MarketHours lang={lang} compact /><details style={{ marginTop: 12 }}><summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 700, color: 'var(--tx)', padding: '10px 12px', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, listStyle: 'none' }}>🧮 {lang === 'en' ? 'Lot size calculator' : 'Calculadora de lotes'}</summary><div style={{ marginTop: 10 }}><LotCalculator lang={lang} balance={Number(cur?.balance) || totalBalance || undefined} /></div></details></div>
+          <div className="rail-left"><MarketHours lang={lang} compact /><details style={{ marginTop: 12 }}><summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 700, color: 'var(--tx)', padding: '10px 12px', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, listStyle: 'none', display: 'flex', alignItems: 'center', gap: 8 }}><OnyxIcon emoji="🧮" size={16} /> {lang === 'en' ? 'Lot size calculator' : 'Calculadora de lotes'}</summary><div style={{ marginTop: 10 }}><LotCalculator lang={lang} balance={Number(cur?.balance) || totalBalance || undefined} /></div></details></div>
           <div className="rail-right"><News lang={lang} /></div>
           <div className="center">
         {!hasAccounts ? (
@@ -539,7 +539,7 @@ export default function DashboardClient({ email = '', plan = 'free', profile, tr
             {/* controles: cuentas + filtro de tiempo */}
             <div className="row between" style={{ flexWrap: 'wrap', gap: 10 }}>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <button className={'btn ' + (sel === 'all' ? 'btn-primary' : 'btn-ghost')} onClick={() => setSel('all')}>📊 {L.portfolio}</button>
+                <button className={'btn ' + (sel === 'all' ? 'btn-primary' : 'btn-ghost')} onClick={() => setSel('all')} style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}><OnyxIcon emoji="📊" size={15} /> {L.portfolio}</button>
                 {accounts.map((x) => <button key={x.id} className={'btn ' + (sel === x.id ? 'btn-primary' : 'btn-ghost')} onClick={() => setSel(x.id)}>{accName(x)}</button>)}
               </div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -565,10 +565,10 @@ export default function DashboardClient({ email = '', plan = 'free', profile, tr
               {/* Onyx te dice — tira compacta de consejos (una sola fila que hace scroll) */}
               {insights.length > 0 && (
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'nowrap', overflowX: 'auto', paddingBottom: 2 }}>
-                  <span className="muted" style={{ fontSize: 12, fontWeight: 700, flex: 'none' }}>💡 {L.insights}</span>
+                  <span className="muted" style={{ fontSize: 12, fontWeight: 700, flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--brand)' }}><OnyxIcon emoji="💡" size={15} /> {L.insights}</span>
                   {insights.map((x, i) => (
                     <span key={i} style={{ display: 'inline-flex', gap: 7, alignItems: 'center', background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 999, padding: '6px 12px', fontSize: 12.5, whiteSpace: 'nowrap', flex: 'none' }}>
-                      <span>{x.icon}</span>{x.txt}
+                      <span style={{ display: 'inline-flex', color: 'var(--brand)' }}><OnyxIcon emoji={x.icon} size={14} /></span>{x.txt}
                     </span>
                   ))}
                 </div>

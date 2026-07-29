@@ -1055,3 +1055,21 @@ centralizada mediante un mapa emoji→icono, así que se aplicó en:
 - Cabeceras inline de Operaciones (Journal) y Costes.
 - Navegación y KPIs del panel admin (AdminClient, Finanzas).
 Si un emoji no tiene glifo aún, cae de vuelta al emoji (nada se rompe).
+
+### 26.1 · Iconos: 2ª pasada (auditoría de emojis restantes)
+
+Convertidos a OnyxIcon los que quedaban visibles:
+- Barra de navegación superior (MainNav): Dashboard, MT accounts, Guardian, Copy,
+  Bots, True P&L, Admin.
+- "Invita y gana" (ReferralBanner), tira "Onyx dice" (💡 + chips de consejos),
+  botón Portfolio y el desplegable de la calculadora de lotes.
+- Cabeceras de Balance real / True P&L (Expenses y NetRealCard) y su lector de IA.
+Ampliado el mapa emoji→icono (🔌 🛠 🔧 💡 🌱 ⚠ 🏅 🖥 🎬 🔒).
+
+### 26.2 · Iconos con luz (glow) + realce al pulsar
+
+- Todos los OnyxIcon llevan ahora resplandor propio (doble drop-shadow en su color
+  vía currentColor), así que se ven "encendidos" en todas partes.
+- Al pasar el ratón o pulsar el elemento clicable que los contiene (enlaces,
+  botones, mosaicos, items de nav, summary/label), el brillo se intensifica y el
+  icono da un pequeño rebote (clase `.onyx-ic` + reglas en globals.css).
