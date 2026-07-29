@@ -832,3 +832,18 @@ CRÉDITO de cuenta (no efectivo). Convive con Embajadores.
 Sin cambios en Stripe ni variables nuevas: el crédito se da con la API
 (customer balance). El código de referido de un usuario común no colisiona con los
 de embajador (empiezan con `x`).
+
+---
+
+## 23 · Códigos QR
+
+Generador reutilizable en `/api/qr?data=...` (SVG para mostrar, `&fmt=png&download=1`
+para descargar). Ya integrado en:
+- **Invita y gana** (Mi cuenta → Referidos): botón "QR / Póster" — QR del enlace y
+  un póster de marca para historias (se arma en el navegador, descarga PNG).
+- **Embajador**: QR + póster de su enlace.
+- **Telegram**: botón "Escanear" junto a vincular el bot (abre el bot en el móvil).
+- **Instalar app**: "Escanear" para abrir Onyx en el teléfono.
+
+Requiere la dependencia **`qrcode`** (ya añadida a `package.json`): al desplegar,
+Vercel la instala solo con `npm install`. No hay SQL ni variables nuevas.

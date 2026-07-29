@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
+import QrPop from '@/app/components/QrPop';
 
 // "Invita y gana": el enlace propio del usuario común + sus estadísticas y el
 // puente para hacerse Embajador. La recompensa es CRÉDITO en su cuenta.
@@ -51,6 +52,7 @@ export default function ReferralCard() {
         <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => share('wa')}>🟢 WhatsApp</button>
         <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => share('tg')}>✈️ Telegram</button>
         <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => share('x')}>𝕏</button>
+        <QrPop data={link} poster="referral" label={es ? 'QR / Póster' : 'QR / Poster'} title={es ? 'Únete y ganamos los dos' : 'Join and we both win'} />
       </div>
 
       <div className="grid g3" style={{ gap: 10, marginBottom: 14 }}>

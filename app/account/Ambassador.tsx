@@ -3,6 +3,7 @@ import { toast } from '@/lib/toast';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { errMsg } from '@/lib/i18nErrors';
+import QrPop from '@/app/components/QrPop';
 
 type Lang = 'es' | 'en';
 
@@ -166,6 +167,7 @@ export default function Ambassador({ lang }: { lang: Lang }) {
         <div style={{ ...box, marginTop: 4 }}>
           <code style={{ flex: 1, minWidth: 180, wordBreak: 'break-all' }}>{link}</code>
           <button className="btn btn-ghost" style={{ padding: '5px 10px', fontSize: 12 }} onClick={() => copy(link, 'link')}>{copied === 'link' ? t.copied : t.copy}</button>
+          <QrPop data={link} poster="ambassador" handle={'@' + a.code} label="QR / Póster" title={lang === 'en' ? 'Join with my link' : 'Únete con mi enlace'} />
         </div>
         {Number(s.coupon_percent) > 0 && (
           <>

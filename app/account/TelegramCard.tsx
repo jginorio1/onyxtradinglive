@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import QrPop from '@/app/components/QrPop';
 
 // ============================================================
 // Conectar Telegram, desde Mi cuenta → Avisos.
@@ -318,6 +319,7 @@ export default function TelegramCard({ lang }: { lang: 'es' | 'en' }) {
                   {copied ? '✓' : (lang === 'es' ? 'Copiar' : 'Copy')}
                 </button>
                 <a className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: 12 }} href={link.url} target="_blank" rel="noreferrer">{t.open_bot}</a>
+                <QrPop data={link.url} label={lang === 'es' ? 'Escanear' : 'Scan'} />
               </div>
             </div>
           )}

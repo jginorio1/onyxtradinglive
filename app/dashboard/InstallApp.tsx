@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import QrPop from '@/app/components/QrPop';
 
 type Lang = 'es' | 'en';
 
@@ -65,7 +66,10 @@ export default function InstallApp({ lang }: { lang: Lang }) {
             <div className="muted" style={{ fontSize: 12.5 }}>{L.s}</div>
           </div>
         </div>
-        <button className="btn btn-primary" onClick={click} style={{ whiteSpace: 'nowrap' }}>{canInstall ? L.btn : L.how}</button>
+        <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+          <button className="btn btn-primary" onClick={click} style={{ whiteSpace: 'nowrap' }}>{canInstall ? L.btn : L.how}</button>
+          {typeof window !== 'undefined' && <QrPop data={window.location.origin} label={lang === 'es' ? 'Escanear' : 'Scan'} />}
+        </div>
       </div>
       {(show || (!canInstall && (ua.ios || ua.macSafari))) && (
         <div style={{ marginTop: 12, borderTop: '1px solid var(--line)', paddingTop: 12, fontSize: 13, lineHeight: 1.7 }}>{steps}</div>
