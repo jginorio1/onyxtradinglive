@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 type TT = { symbol: string; volume: number; close_time: string; net_profit: number; profit?: number; commission?: number; swap?: number };
 type Lang = 'es' | 'en';
 
+import OnyxIcon from '@/app/components/OnyxIcon';
 const money2 = (n: number) => (n >= 0 ? '+$' : '-$') + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const C = {
@@ -65,7 +66,7 @@ export default function Costs({ trades, lang }: { trades: TT[]; lang: Lang }) {
   return (
     <div style={{ maxWidth: 1040, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div className="card">
-        <h3 style={{ marginBottom: 4, display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic">{ic}</span> {titleTx}</h3>
+        <h3 style={{ marginBottom: 4, display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic"><OnyxIcon emoji={ic} size={16} /></span> {titleTx}</h3>
         <p className="muted" style={{ fontSize: 12, marginBottom: 12 }}>{t.note}</p>
         <div style={{ overflowX: 'auto' }}>
           <table className="jtbl" style={{ minWidth: 460 }}>
@@ -82,7 +83,7 @@ export default function Costs({ trades, lang }: { trades: TT[]; lang: Lang }) {
 
       <div className="grid g2">
         <div className="card">
-          <h3 style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic">{icV}</span> {vsTx}</h3>
+          <h3 style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic"><OnyxIcon emoji={icV} size={16} /></span> {vsTx}</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 14 }}>
             <div className="row between"><span className="muted">{t.gross}</span><b className={cls(data.gross)}>{money2(data.gross)}</b></div>
             <div className="row between"><span className="muted">{t.costs}</span><b className={cls(data.netCost)}>{money2(data.netCost)}</b></div>
@@ -92,7 +93,7 @@ export default function Costs({ trades, lang }: { trades: TT[]; lang: Lang }) {
           </div>
         </div>
         <div className="card">
-          <h3 style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic">💱</span> {t.byPair}</h3>
+          <h3 style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic"><OnyxIcon emoji="💱" size={16} /></span> {t.byPair}</h3>
           {data.pairs.length ? data.pairs.map(([sym, v]) => (
             <div key={sym} style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '7px 0' }}>
               <div style={{ width: 84, fontSize: 13 }}>{sym}</div>

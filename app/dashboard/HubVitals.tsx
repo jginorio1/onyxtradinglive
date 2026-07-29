@@ -1,5 +1,11 @@
 'use client';
 import React from 'react';
+import OnyxIcon from '@/app/components/OnyxIcon';
+
+// Pinta un icono: si es texto (emoji) usa el set OnyxIcon; si ya es un nodo, lo deja.
+function Ic({ icon, size = 18 }: { icon: React.ReactNode; size?: number }) {
+  return typeof icon === 'string' ? <OnyxIcon emoji={icon} size={size} /> : <>{icon}</>;
+}
 
 // ============================================================
 // HubVitals — cabecera del dashboard rediseñada.
@@ -19,7 +25,7 @@ export function StatCard({ icon, label, value, color, accent, sub, bar }: {
   return (
     <div className="statcard" style={{ ['--ac' as any]: accent }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-        <span className="statcard-ic">{icon}</span>
+        <span className="statcard-ic"><Ic icon={icon} size={17} /></span>
       </div>
       <div className="sc-lbl">{label}</div>
       <div className="sc-val" style={{ color: color || 'var(--tx)' }}>{value}</div>
@@ -82,7 +88,7 @@ export default function HubVitals({ net, netPos, netLabel, vitals, tiles }: {
         {tiles.map((t) => (
           <button key={t.key} onClick={t.onClick} className="navtile" style={{ ['--tc' as any]: t.color }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span className="navtile-ic">{t.icon}</span>
+              <span className="navtile-ic"><Ic icon={t.icon} size={19} /></span>
               {t.badge ? t.badge : <span style={{ color: 'var(--mut)', fontSize: 15 }}>→</span>}
             </div>
             <div style={{ fontSize: 13.5, color: 'var(--tx)', marginTop: 9, fontWeight: 600 }}>{t.label}</div>

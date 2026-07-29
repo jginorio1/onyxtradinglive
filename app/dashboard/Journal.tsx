@@ -3,6 +3,7 @@ import { toast } from '@/lib/toast';
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { errMsg } from '@/lib/i18nErrors';
 import { StatCard } from './HubVitals';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 type TT = { id: string; account_id: string; symbol: string; side: string; volume: number; open_time: string | null; close_time: string; net_profit: number; commission?: number; swap?: number; profit?: number };
 type Entry = { trade_id: string; notes: string | null; tags: string[] | null; emotion: string | null; image_url: string | null };
@@ -130,7 +131,7 @@ export default function Journal({ trades, lang }: { trades: TT[]; lang: Lang }) 
     <>
       {/* Lotaje */}
       <div className="card">
-        <h3 style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic">📦</span> {t.lotTitle.replace('📦 ', '')}</h3>
+        <h3 style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic"><OnyxIcon emoji="📦" size={16} /></span> {t.lotTitle.replace('📦 ', '')}</h3>
         <div className="grid g4" style={{ marginBottom: 14 }}>
           {([[t.volToday, lot.today, '📅', 'var(--brand)'], [t.volWeek, lot.week, '🗓️', GREEN], [t.volMonth, lot.month, '📆', 'var(--gold)'], [t.volYear, lot.year, '🎯', 'var(--cyan)']] as const).map(([l, v, ic, ac], i) => (
             <StatCard key={i} icon={ic} label={l as string} value={(v as number).toFixed(2)} accent={ac as string} sub={t.lots} />
@@ -152,7 +153,7 @@ export default function Journal({ trades, lang }: { trades: TT[]; lang: Lang }) 
 
       {/* Heatmap */}
       <div className="card">
-        <div className="row between" style={{ marginBottom: 6 }}><h3 style={{ display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic">🔥</span> {t.heat.replace('🔥 ', '')}</h3></div>
+        <div className="row between" style={{ marginBottom: 6 }}><h3 style={{ display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic"><OnyxIcon emoji="🔥" size={16} /></span> {t.heat.replace('🔥 ', '')}</h3></div>
         <p className="muted" style={{ fontSize: 12, marginBottom: 12 }}>{t.heatNote}</p>
         <div style={{ overflowX: 'auto' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '38px repeat(24, 1fr)', gap: 3, minWidth: 640 }}>
@@ -171,7 +172,7 @@ export default function Journal({ trades, lang }: { trades: TT[]; lang: Lang }) 
       {/* Operaciones + filtros */}
       <div className="card">
         <div className="row between" style={{ marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-          <h3 style={{ display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic">📋</span> {t.trades.replace('📋 ', '')} <span className="muted" style={{ fontSize: 13, fontWeight: 400 }}>· {t.showing} {view.length}</span></h3>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic"><OnyxIcon emoji="📋" size={16} /></span> {t.trades.replace('📋 ', '')} <span className="muted" style={{ fontSize: 13, fontWeight: 400 }}>· {t.showing} {view.length}</span></h3>
           <button className="btn btn-ghost" onClick={exportCSV}>⬇ {t.export}</button>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>

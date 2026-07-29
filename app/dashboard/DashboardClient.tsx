@@ -17,6 +17,7 @@ import ReferralBanner from './ReferralBanner';
 import PlanHabits from './PlanHabits';
 import DailyCheckinPopup from './DailyCheckinPopup';
 import HubVitals, { StatCard, type Vital, type Tile } from './HubVitals';
+import OnyxIcon from '@/app/components/OnyxIcon';
 import News from './News';
 import NetRealCard from './NetRealCard';
 import CoachCard from './CoachCard';
@@ -143,7 +144,7 @@ function Card({ title, icon, children, right }: any) {
   return (
     <div className="card">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-        <h3 style={{ display: 'flex', alignItems: 'center', gap: 9 }}>{icon ? <span className="card-ic">{icon}</span> : null} {title}</h3>{right}
+        <h3 style={{ display: 'flex', alignItems: 'center', gap: 9 }}>{icon ? <span className="card-ic">{typeof icon === 'string' ? <OnyxIcon emoji={icon} size={16} /> : icon}</span> : null} {title}</h3>{right}
       </div>{children}
     </div>
   );
@@ -468,7 +469,7 @@ export default function DashboardClient({ email = '', plan = 'free', profile, tr
   const eaten = grossAll > 0 ? Math.round(Math.min(100, Math.abs(costAll) / grossAll * 100)) : 0;
 
   const SECTIONS: { key: View; icon: string; label: string; sub: string; color: string; metric: string; mc: string; viz: any; pro?: boolean }[] = [
-    { key: 'rendimiento', icon: '🎯', label: L.secPerf, sub: L.secPerfSub, color: BLUE, metric: money2(a.net), mc: a.net >= 0 ? GREEN : RED, viz: <div style={{ width: 110 }}><MiniArea points={eqVals.length > 1 ? eqVals : [0, 0]} color={a.net >= 0 ? GREEN : RED} h={44} /></div> },
+    { key: 'rendimiento', icon: '📈', label: L.secPerf, sub: L.secPerfSub, color: BLUE, metric: money2(a.net), mc: a.net >= 0 ? GREEN : RED, viz: <div style={{ width: 110 }}><MiniArea points={eqVals.length > 1 ? eqVals : [0, 0]} color={a.net >= 0 ? GREEN : RED} h={44} /></div> },
     { key: 'calendario', icon: '🗓️', label: L.secCal, sub: L.secCalSub, color: GREEN, metric: `${a.n} ${L.ops}`, mc: 'var(--tx)', viz: <div style={{ width: 110 }}><MiniHeat cells={heatCells} /></div> },
     { key: 'operaciones', icon: '📋', label: L.secOps, sub: L.secOpsSub, color: PURPLE, metric: String(a.n), mc: 'var(--tx)', viz: <MiniDonut size={46} segs={[{ v: a.catWin, c: GREEN }, { v: a.catLoss, c: RED }, { v: a.catBE, c: GOLD }]} />, pro: true },
     { key: 'costes', icon: '💸', label: L.secCost, sub: L.secCostSub, color: GOLD, metric: money2(costAll), mc: costAll >= 0 ? GREEN : RED, viz: <Ring size={46} pct={eaten / 100} color={GOLD} value={eaten + '%'} /> },

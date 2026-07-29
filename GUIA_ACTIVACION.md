@@ -1042,3 +1042,16 @@ APIs: `GET/POST/PUT /api/admin/finanzas` (gateadas por el permiso `finanzas`).
 - Todas las vistas de sección (Rendimiento, Calendario, Operaciones, Costes,
   Cuentas, Reto, Plan) quedan centradas con un ancho máximo (~1160px); el hub sigue
   a lo ancho.
+
+### 26 · Set de iconos propio (OnyxIcon)
+
+Nuevo componente `app/components/OnyxIcon.tsx`: iconos SVG de línea (2px, 24px),
+con la gema hexagonal Onyx en los de marca (Onyx AI, Guardian) y metáforas de
+trading en el resto. Heredan el color por `currentColor` (toman el acento de su
+pastilla) y funcionan en claro/oscuro. Reemplazan a los emojis de forma
+centralizada mediante un mapa emoji→icono, así que se aplicó en:
+- Mosaicos del hub (tiles), tarjetas de estadística (StatCard) y cabeceras de
+  gráficos (componente Card) del dashboard del trader.
+- Cabeceras inline de Operaciones (Journal) y Costes.
+- Navegación y KPIs del panel admin (AdminClient, Finanzas).
+Si un emoji no tiene glifo aún, cae de vuelta al emoji (nada se rompe).

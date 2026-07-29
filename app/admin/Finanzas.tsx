@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Finanzas de Onyx (P&L del negocio). Ingresos de Stripe vs gastos registrados.
 // Solo la ve quien tenga el permiso 'finanzas'. canManage = puede registrar gastos.
@@ -78,7 +79,7 @@ export default function Finanzas({ canManage = false }: { canManage?: boolean })
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div className="row between" style={{ flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
         <div>
-          <h3 style={{ display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic">📊</span> {L('Finanzas de Onyx', 'Onyx finances')}</h3>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic"><OnyxIcon emoji="📊" size={16} /></span> {L('Finanzas de Onyx', 'Onyx finances')}</h3>
           <div className="muted" style={{ fontSize: 13 }}>{L('Ingresos de Stripe menos tus gastos del negocio.', 'Stripe revenue minus your business expenses.')}</div>
         </div>
         <div className="row" style={{ gap: 6 }}>
@@ -90,25 +91,25 @@ export default function Finanzas({ canManage = false }: { canManage?: boolean })
       {/* KPIs */}
       <div className="grid g4">
         <div className="statcard" style={{ ['--ac' as any]: netColor }}>
-          <span className="statcard-ic">💵</span>
+          <span className="statcard-ic"><OnyxIcon emoji="💰" size={17} /></span>
           <div className="sc-lbl">{L('Beneficio neto (mes)', 'Net profit (month)')}</div>
           <div className="sc-val" style={{ color: netColor }}>{fmt(tm.net)}</div>
           <div className="sc-sub">{L('Ingresos', 'Income')} {fmt(tm.income)} · {L('Gastos', 'Expenses')} {fmt(tm.expense)}</div>
         </div>
         <div className="statcard" style={{ ['--ac' as any]: marginColor }}>
-          <span className="statcard-ic">📈</span>
+          <span className="statcard-ic"><OnyxIcon emoji="📈" size={17} /></span>
           <div className="sc-lbl">{L('Margen', 'Margin')}</div>
           <div className="sc-val" style={{ color: marginColor }}>{tm.margin == null ? '—' : tm.margin + '%'}</div>
           {tm.margin != null ? <div className="statbar"><i style={{ width: Math.max(2, Math.min(100, tm.margin)) + '%' }} /></div> : null}
         </div>
         <div className="statcard" style={{ ['--ac' as any]: GOLD }}>
-          <span className="statcard-ic">🔁</span>
+          <span className="statcard-ic"><OnyxIcon emoji="🔁" size={17} /></span>
           <div className="sc-lbl">{L('Gasto fijo / mes', 'Fixed cost / month')}</div>
           <div className="sc-val" style={{ color: GOLD }}>{fmt(d.burn)}</div>
           <div className="sc-sub">{d.mrr > 0 ? L('Pesa el', 'It is') + ' ' + Math.round((d.burn / d.mrr) * 100) + '% ' + L('de tu MRR', 'of your MRR') : L('sin MRR aún', 'no MRR yet')}</div>
         </div>
         <div className="statcard" style={{ ['--ac' as any]: d.runway == null ? 'var(--mut)' : d.runway >= 6 ? GREEN : RED }}>
-          <span className="statcard-ic">🛟</span>
+          <span className="statcard-ic"><OnyxIcon emoji="🛟" size={17} /></span>
           <div className="sc-lbl">Runway</div>
           <div className="sc-val" style={{ color: d.runway == null ? 'var(--tx)' : d.runway >= 6 ? GREEN : RED }}>{d.runway == null ? '—' : d.runway + ' ' + L('meses', 'mo')}</div>
           <div className="sc-sub">{L('Caja', 'Cash')} {fmt(d.cash)}</div>
@@ -117,7 +118,7 @@ export default function Finanzas({ canManage = false }: { canManage?: boolean })
 
       {/* Gráfico ingresos vs gastos + beneficio */}
       <div className="card">
-        <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 12 }}><span className="card-ic">📉</span> {L('Ingresos vs gastos · beneficio', 'Income vs expenses · profit')}</h3>
+        <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 12 }}><span className="card-ic"><OnyxIcon emoji="📊" size={16} /></span> {L('Ingresos vs gastos · beneficio', 'Income vs expenses · profit')}</h3>
         <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} style={{ overflow: 'visible' }}>
           <line x1="0" y1={H - 18} x2={W} y2={H - 18} stroke="var(--line)" strokeWidth="1" />
           {s.map((m: any, i: number) => {
@@ -146,7 +147,7 @@ export default function Finanzas({ canManage = false }: { canManage?: boolean })
       <div className="grid g2">
         {/* Desglose por categoría */}
         <div className="card">
-          <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 12 }}><span className="card-ic">🧩</span> {L('Gastos por categoría (mes)', 'Expenses by category (month)')}</h3>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 12 }}><span className="card-ic"><OnyxIcon emoji="🧩" size={16} /></span> {L('Gastos por categoría (mes)', 'Expenses by category (month)')}</h3>
           {(d.categories || []).length === 0 ? <p className="muted">{L('Sin gastos este mes.', 'No expenses this month.')}</p> : (d.categories || []).map((c: any) => (
             <div key={c.category} style={{ marginBottom: 10 }}>
               <div className="row between" style={{ fontSize: 13, marginBottom: 4 }}>
@@ -172,7 +173,7 @@ export default function Finanzas({ canManage = false }: { canManage?: boolean })
 
         {/* Registrar / lista de gastos */}
         <div className="card">
-          <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 12 }}><span className="card-ic">🧾</span> {L('Gastos', 'Expenses')}</h3>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 12 }}><span className="card-ic"><OnyxIcon emoji="💸" size={16} /></span> {L('Gastos', 'Expenses')}</h3>
           {canManage && (
             <div style={{ background: 'var(--bg2)', borderRadius: 12, padding: 12, marginBottom: 12 }}>
               <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>{editId ? L('Editar gasto', 'Edit expense') : L('Añadir gasto', 'Add expense')}</div>

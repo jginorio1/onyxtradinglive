@@ -21,6 +21,7 @@ import Optimize from './Optimize';
 import AdminLock from './AdminLock';
 import Revenue from './Revenue';
 import Finanzas from './Finanzas';
+import OnyxIcon from '@/app/components/OnyxIcon';
 import EnvSwitch from './EnvSwitch';
 import AdminLeadAlert from './AdminLeadAlert';
 import TeamChat from './TeamChat';
@@ -365,7 +366,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                   <div className="adminnav-group">{gr.g}</div>
                   {gr.items.map(([k, ic, label]) => (
                     <button key={k} className={'adminnav-item' + (tab === k ? ' on' : '')} onClick={() => setTab(k)}>
-                      <span style={{ fontSize: 15, width: 18, textAlign: 'center' }}>{ic}</span><span>{label}</span><span className="navdot" />
+                      <span style={{ width: 18, display: 'inline-flex', justifyContent: 'center' }}><OnyxIcon emoji={ic} size={16} /></span><span>{label}</span><span className="navdot" />
                     </button>
                   ))}
                 </div>
