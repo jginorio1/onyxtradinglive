@@ -78,10 +78,19 @@ export default function SupportClient() {
   // Auto-refresco: si un agente responde, el trader lo ve en vivo sin recargar.
   useEffect(() => { loadTickets(); const iv = setInterval(loadTickets, 6000); return () => clearInterval(iv); }, []);
   // Si llega con ?ticket=ID (desde la campana), abre ese ticket con el chat desplegado.
+  // Espera a que los tickets carguen (llegan tras el montaje) y cotejamos el id.
+  // Solo se dispara una vez para que el trader pueda cerrar el chat después.
+  const didDeepLink = useRef(false);
   useEffect(() => {
+    if (didDeepLink.current) return;
     const id = new URLSearchParams(window.location.search).get('ticket');
-    if (id) { setOpenId(id); setTimeout(() => document.getElementById('onyx-tickets')?.scrollIntoView({ behavior: 'smooth' }), 500); }
-  }, []);
+    if (!id) { didDeepLink.current = true; return; }
+    if (tickets.some((tk) => String(tk.id) === String(id))) {
+      didDeepLink.current = true;
+      setOpenId(id);
+      setTimeout(() => document.getElementById('onyx-tickets')?.scrollIntoView({ behavior: 'smooth' }), 250);
+    }
+  }, [tickets]);
 
   async function sendAI() {
     const q = ask.trim(); if (!q || aiBusy) return;
