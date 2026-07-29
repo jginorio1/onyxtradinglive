@@ -13,6 +13,7 @@ const T: any = {
     bkT: 'Guarda tus códigos de respaldo', bkH: 'Si pierdes el teléfono, entra con uno de estos códigos (cada uno se usa una sola vez). Guárdalos en un lugar seguro; no volverán a mostrarse.',
     bkContinue: 'Ya los guardé, continuar', bkUse: '¿Perdiste el teléfono? Usa un código de respaldo', bkBack: '← Volver al código de la app',
     bkCode: 'Código de respaldo', bkVerify: 'Entrar con código', bkCopy: 'Copiar todos',
+    enlarge: 'Toca para ampliar', copyKey: 'Copiar clave', copied: '¡Copiado!',
   },
   en: {
     setupT: 'Enable two-step verification', setupH: 'Scan the QR with Google Authenticator or Authy, then enter the 6-digit code it shows.',
@@ -22,6 +23,7 @@ const T: any = {
     bkT: 'Save your backup codes', bkH: 'If you lose your phone, sign in with one of these codes (each works once). Store them somewhere safe; they will not be shown again.',
     bkContinue: 'I saved them, continue', bkUse: 'Lost your phone? Use a backup code', bkBack: '← Back to app code',
     bkCode: 'Backup code', bkVerify: 'Sign in with code', bkCopy: 'Copy all',
+    enlarge: 'Tap to enlarge', copyKey: 'Copy key', copied: 'Copied!',
   },
 };
 
@@ -38,6 +40,8 @@ export default function TwoFactor({ mode, lang, onDone }: { mode: 'enroll' | 'ch
   const [backupCodes, setBackupCodes] = useState<string[] | null>(null);  // mostrados 1 vez tras activar
   const [useBackup, setUseBackup] = useState(false);                       // en el challenge: usar código de respaldo
   const [bcode, setBcode] = useState('');
+  const [zoom, setZoom] = useState(false);       // ampliar el QR (para escanear desde otro móvil)
+  const [copiedSec, setCopiedSec] = useState(false);
 
   useEffect(() => { (mode === 'enroll' ? startEnroll() : startChallenge()); }, []);
 
@@ -121,10 +125,26 @@ export default function TwoFactor({ mode, lang, onDone }: { mode: 'enroll' | 'ch
         {!ready && <div className="muted">{L.loading}</div>}
         {ready && (
           <>
-            <div style={{ background: '#fff', borderRadius: 12, padding: 12, width: 200, height: 200, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div title={L.enlarge} onClick={() => setZoom(true)} style={{ background: '#fff', borderRadius: 12, padding: 12, width: 200, height: 200, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'zoom-in' }}>
               {qr.startsWith('<svg') ? <span style={{ width: '100%', height: '100%' }} dangerouslySetInnerHTML={{ __html: qr }} /> : <img src={qr} alt="QR" style={{ width: '100%', height: '100%' }} />}
             </div>
-            {secret && <div style={{ marginTop: 12, fontSize: 12 }}><span className="muted">{L.manual}</span><div className="code" style={{ marginTop: 4, wordBreak: 'break-all' }}>{secret}</div></div>}
+            <div className="muted" style={{ fontSize: 11.5, textAlign: 'center', marginTop: 6 }}>🔍 {L.enlarge}</div>
+            {secret && (
+              <div style={{ marginTop: 12, fontSize: 12 }}>
+                <span className="muted">{L.manual}</span>
+                <div className="row" style={{ gap: 8, marginTop: 4, alignItems: 'center' }}>
+                  <div className="code" style={{ flex: 1, wordBreak: 'break-all' }}>{secret}</div>
+                  <button className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 10px', flex: 'none' }} onClick={() => { try { navigator.clipboard.writeText(secret); setCopiedSec(true); setTimeout(() => setCopiedSec(false), 1500); } catch {} }}>{copiedSec ? '✓' : '📋'} {copiedSec ? L.copied : L.copyKey}</button>
+                </div>
+              </div>
+            )}
+            {zoom && (
+              <div onClick={() => setZoom(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.65)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+                <div style={{ background: '#fff', borderRadius: 16, padding: 20, width: 320, height: 320, maxWidth: '90vw', maxHeight: '90vw', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {qr.startsWith('<svg') ? <span style={{ width: '100%', height: '100%' }} dangerouslySetInnerHTML={{ __html: qr }} /> : <img src={qr} alt="QR" style={{ width: '100%', height: '100%' }} />}
+                </div>
+              </div>
+            )}
             <div style={{ marginTop: 14 }}><span className="muted" style={{ fontSize: 12 }}>{L.code}</span>{input}</div>
             {msg && <div style={{ color: 'var(--red)', fontSize: 13, marginTop: 8 }}>{msg}</div>}
             <button className="btn btn-primary" style={{ width: '100%', marginTop: 14 }} disabled={busy || code.length !== 6} onClick={submit}>{busy ? L.loading : L.verify}</button>
