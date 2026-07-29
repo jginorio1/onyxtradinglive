@@ -4,7 +4,7 @@
 // día. Reusa el motor ChatThread del soporte, con tiempo real por broadcast.
 // Extras: añadir compañeros a la conversación, ver nombre + rol de cada miembro,
 // y tener VARIOS chats abiertos a la vez (ventanas acopladas abajo).
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Component, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useLang } from '@/lib/lang';
 import ChatThread, { type ChatMsg, type Att, type MentionItem } from '@/app/components/ChatThread';
 import { useChatRealtime, type Presence } from '@/lib/chatRealtime';
@@ -39,7 +39,28 @@ async function postMessage(channel: string, text: string, attachments: Att[]) {
   return r.json().catch(() => ({}));
 }
 
+// Muro de contención: si algo del chat falla, no tumba TODO el panel de admin;
+// muestra el error para poder diagnosticarlo.
+class ChatBoundary extends Component<{ children: ReactNode }, { err: string }> {
+  constructor(p: any) { super(p); this.state = { err: '' }; }
+  static getDerivedStateFromError(e: any) { return { err: String(e?.message || e) }; }
+  render() {
+    if (this.state.err) return (
+      <div className="card" style={{ padding: 20 }}>
+        <b>💬 {'Chat del equipo'}</b>
+        <p className="muted" style={{ fontSize: 13, marginTop: 8 }}>No se pudo cargar el chat en este momento. Recarga la página. Si sigue, avísanos con este detalle:</p>
+        <pre style={{ fontSize: 12, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 8, padding: 10, overflowX: 'auto' }}>{this.state.err}</pre>
+      </div>
+    );
+    return this.props.children;
+  }
+}
+
 export default function TeamChat() {
+  return <ChatBoundary><TeamChatInner /></ChatBoundary>;
+}
+
+function TeamChatInner() {
   const { lang } = useLang();
   const en = lang === 'en';
   const L = (es: string, e: string) => (en ? e : es);
@@ -62,8 +83,10 @@ export default function TeamChat() {
   async function loadChannels() {
     try {
       const r = await fetch('/api/team/chat'); const j = await r.json();
-      setChannels(j.channels || []); setTeam(j.team || []); setMe(j.me || '');
-      if (!loadedOnce.current && (j.channels || []).length) { setActive(j.channels[0].id); loadedOnce.current = true; }
+      // Normalizamos: members SIEMPRE es arreglo (evita crashes al abrir ventanas/DMs).
+      const chs = (j.channels || []).map((c: any) => ({ ...c, members: Array.isArray(c.members) ? c.members : [] }));
+      setChannels(chs); setTeam(j.team || []); setMe(j.me || '');
+      if (!loadedOnce.current && chs.length) { setActive(chs[0].id); loadedOnce.current = true; }
     } catch {}
   }
   async function loadMsgs(ch = active, d = date) {
