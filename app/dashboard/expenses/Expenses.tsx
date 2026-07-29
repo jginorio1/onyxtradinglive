@@ -37,12 +37,20 @@ export default function Expenses() {
   const [cOpen, setCOpen] = useState(true);
   const [cMsg, setCMsg] = useState('');
 
-  // Lee un recibo con AI y prellena el formulario.
-  async function readReceipt() {
-    if (rcpt.trim().length < 10) { toast(L('Pega el texto del recibo.', 'Paste the receipt text.')); return; }
+  function fileToB64(file: File): Promise<string> {
+    return new Promise((res) => { const rd = new FileReader(); rd.onload = () => res(String(rd.result).split(',')[1] || ''); rd.readAsDataURL(file); });
+  }
+  // Lee un recibo con AI (archivo adjunto o texto pegado) y prellena el formulario.
+  async function readReceipt(file?: File) {
+    if (!file && rcpt.trim().length < 10) { toast(L('Adjunta un recibo o pega su texto.', 'Attach a receipt or paste its text.')); return; }
     setBusy(true);
     try {
-      const r = await fetch('/api/expenses/read', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: rcpt, lang }) });
+      const body: any = { text: rcpt, lang };
+      if (file) {
+        if (file.size > 6_000_000) { toast(L('Archivo muy grande (máx ~6 MB).', 'File too large (max ~6 MB).')); return; }
+        body.file = { media_type: file.type || 'application/octet-stream', data: await fileToB64(file) };
+      }
+      const r = await fetch('/api/expenses/read', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
       const j = await r.json();
       if (!r.ok) { toastErr(j); return; }
       const dat = j.data || {};
@@ -157,10 +165,15 @@ export default function Expenses() {
         {/* Lector de recibos con AI */}
         {!f.id && (
           <div style={{ marginBottom: 12, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: 12 }}>
-            <div className="muted" style={{ fontSize: 12.5, marginBottom: 6 }}>✨ {L('Pega tu recibo o correo y lo apunto con AI', 'Paste your receipt or email and I log it with AI')}</div>
+            <div className="muted" style={{ fontSize: 12.5, marginBottom: 8 }}>✨ {L('Adjunta el recibo (PDF o foto) o pega el texto — lo apunto con AI', 'Attach the receipt (PDF or photo) or paste the text — I log it with AI')}</div>
+            <label className="btn btn-primary" style={{ display: 'inline-flex', cursor: 'pointer', marginBottom: 8 }}>
+              📎 {L('Adjuntar recibo', 'Attach receipt')}
+              <input type="file" accept="application/pdf,image/*" style={{ display: 'none' }} onChange={(e) => { const file = e.target.files?.[0]; if (file) readReceipt(file); e.currentTarget.value = ''; }} disabled={busy} />
+            </label>
+            <div className="muted" style={{ fontSize: 11.5, margin: '0 0 6px' }}>{L('— o pega el texto —', '— or paste the text —')}</div>
             <textarea value={rcpt} onChange={(e) => setRcpt(e.target.value)} placeholder={L('Ej: correo de compra de un reto FTMO, cargo del banco, renovación de suscripción…', 'e.g. FTMO challenge purchase email, bank charge, subscription renewal…')}
-              style={{ width: '100%', minHeight: 60, padding: '9px 11px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--tx)', fontSize: 13, fontFamily: 'inherit', resize: 'vertical' }} />
-            <button className="btn btn-ghost" style={{ marginTop: 8 }} onClick={readReceipt} disabled={busy}>{busy ? '…' : '✨ ' + L('Leer con AI', 'Read with AI')}</button>
+              style={{ width: '100%', minHeight: 54, padding: '9px 11px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--tx)', fontSize: 13, fontFamily: 'inherit', resize: 'vertical' }} />
+            <button className="btn btn-ghost" style={{ marginTop: 8 }} onClick={() => readReceipt()} disabled={busy}>{busy ? '…' : '✨ ' + L('Leer texto con AI', 'Read text with AI')}</button>
           </div>
         )}
 

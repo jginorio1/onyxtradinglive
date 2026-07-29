@@ -10,20 +10,25 @@ import { ONYX_BRIEF } from '@/lib/supportAI';
 
 type Lang = 'es' | 'en';
 
-async function ai(system: string, user: string, maxTokens = 700): Promise<string | null> {
+// Llamada base: contenido como texto o como bloques (imagen/PDF).
+async function aiRaw(system: string, content: any, maxTokens: number, beta?: string): Promise<string | null> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return null;
   try {
     const model = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5';
+    const headers: any = { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' };
+    if (beta) headers['anthropic-beta'] = beta;
     const r = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model, max_tokens: maxTokens, system, messages: [{ role: 'user', content: user.slice(0, 6000) }] }),
+      method: 'POST', headers,
+      body: JSON.stringify({ model, max_tokens: maxTokens, system, messages: [{ role: 'user', content }] }),
     });
     if (!r.ok) return null;
     const d = await r.json();
     return (d?.content || []).map((c: any) => c.text || '').join('\n').trim() || null;
   } catch { return null; }
+}
+async function ai(system: string, user: string, maxTokens = 700): Promise<string | null> {
+  return aiRaw(system, user.slice(0, 6000), maxTokens);
 }
 
 const NO_ADVICE = {
@@ -68,13 +73,27 @@ export async function analyzeStatement(text: string, lang: Lang): Promise<{ ok: 
 
 // ---- Lector de recibos de gasto ----
 export type Receipt = { category?: string; amount?: number; provider?: string; firm?: string; acc_size?: number; phase?: string; refundable?: boolean; recovered?: number; recurring?: boolean };
-export async function parseReceipt(text: string, lang: Lang): Promise<{ ok: boolean; data?: Receipt; reason?: string }> {
+export type ReceiptInput = { text?: string; file?: { media_type: string; data: string } };
+export async function parseReceipt(input: string | ReceiptInput, lang: Lang): Promise<{ ok: boolean; data?: Receipt; reason?: string }> {
   if (!process.env.ANTHROPIC_API_KEY) return { ok: false, reason: 'no_key' };
-  if (!text || text.trim().length < 10) return { ok: false, reason: 'short' };
-  const system = `You extract ONE trading expense from pasted text (a purchase email, bank charge or subscription receipt, any language). Return ONLY a JSON object, omitting any field you can't determine:
+  const inp: ReceiptInput = typeof input === 'string' ? { text: input } : (input || {});
+  if (!inp.file && (!inp.text || inp.text.trim().length < 10)) return { ok: false, reason: 'short' };
+  const system = `You extract ONE trading expense from a receipt (a purchase email, bank charge, invoice PDF, subscription receipt or a photo of one, any language). Return ONLY a JSON object, omitting any field you can't determine:
 {"category":"funding|vps|software|data|internet|journal|education|fees|other","amount":number,"provider":"vendor or firm name","firm":"prop firm name if it's a funded-account challenge","acc_size":number,"phase":"p1|p2|funded|reset","refundable":true|false,"recurring":true|false,"recovered":number}
-Rules: a prop-firm challenge fee → category "funding" and set firm, acc_size, phase, and refundable if the text says the fee is refundable. A monthly subscription → recurring true. Do not invent values.`;
-  const raw = await ai(system, text, 400);
+Rules: a prop-firm challenge fee → category "funding" and set firm, acc_size, phase, and refundable if it says the fee is refundable. A monthly subscription → recurring true. Do not invent values.`;
+
+  let raw: string | null;
+  if (inp.file) {
+    const instr = lang === 'en' ? 'Extract the expense from this receipt.' : 'Extrae el gasto de este recibo.';
+    const isPdf = inp.file.media_type === 'application/pdf';
+    const block = isPdf
+      ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: inp.file.data } }
+      : { type: 'image', source: { type: 'base64', media_type: inp.file.media_type, data: inp.file.data } };
+    const content: any[] = [block, { type: 'text', text: instr + (inp.text ? `\n${inp.text}` : '') }];
+    raw = await aiRaw(system, content, 400, isPdf ? 'pdfs-2024-09-25' : undefined);
+  } else {
+    raw = await ai(system, inp.text || '', 400);
+  }
   if (!raw) return { ok: false, reason: 'error' };
   try {
     const j = JSON.parse(raw.replace(/```json/gi, '').replace(/```/g, '').trim());

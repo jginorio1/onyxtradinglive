@@ -22,11 +22,22 @@ export async function POST(req: Request) {
     if (!(await hasExpenses(user.id))) return NextResponse.json({ error: 'plan' }, { status: 403 });
     const b = await req.json().catch(() => ({} as any));
     const lang = b.lang === 'en' ? 'en' : 'es';
-    const r = await parseReceipt(String(b.text || '').slice(0, 4000), lang);
+
+    // Archivo adjunto (imagen o PDF) o texto pegado.
+    const allowed = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+    let input: any = String(b.text || '').slice(0, 4000);
+    if (b.file && b.file.data && allowed.includes(b.file.media_type)) {
+      if (String(b.file.data).length > 9_000_000) { // ~6-7 MB de archivo
+        return NextResponse.json({ error: lang === 'en' ? 'File too large (max ~6 MB).' : 'Archivo muy grande (máx ~6 MB).' }, { status: 400 });
+      }
+      input = { text: String(b.text || '').slice(0, 2000), file: { media_type: b.file.media_type, data: String(b.file.data) } };
+    }
+
+    const r = await parseReceipt(input, lang);
     if (!r.ok) {
       const msg = r.reason === 'no_key' ? (lang === 'en' ? 'AI not set up.' : 'IA no configurada.')
-        : r.reason === 'short' ? (lang === 'en' ? 'Paste the receipt text.' : 'Pega el texto del recibo.')
-          : (lang === 'en' ? "Couldn't read that receipt." : 'No se pudo leer ese recibo.');
+        : r.reason === 'short' ? (lang === 'en' ? 'Attach a receipt or paste its text.' : 'Adjunta un recibo o pega su texto.')
+          : (lang === 'en' ? "Couldn't read that receipt. Try a clearer file or paste the text." : 'No se pudo leer ese recibo. Prueba un archivo más claro o pega el texto.');
       return NextResponse.json({ error: msg }, { status: 400 });
     }
     return NextResponse.json({ ok: true, data: r.data });
