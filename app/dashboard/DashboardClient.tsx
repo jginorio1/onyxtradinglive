@@ -269,6 +269,14 @@ export default function DashboardClient({ email = '', plan = 'free', profile, tr
   const [tradesS, setTradesS] = useState<TT[]>(trades || []);
   const [sel, setSel] = useState<string>('all');
   const [view, setView] = useState<View>('hub');
+  // Deep-link: /dashboard?view=plan abre directo esa vista (p.ej. desde el Guardian).
+  useEffect(() => {
+    try {
+      const v = new URLSearchParams(window.location.search).get('view');
+      const ok: View[] = ['hub', 'rendimiento', 'calendario', 'operaciones', 'costes', 'cuentas', 'reto', 'plan'];
+      if (v && (ok as string[]).includes(v)) setView(v as View);
+    } catch {}
+  }, []);
   const [range, setRange] = useState<string>('all');
   const [cFrom, setCFrom] = useState('');
   const [cTo, setCTo] = useState('');

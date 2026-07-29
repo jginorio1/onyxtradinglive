@@ -1,6 +1,5 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { useLang } from '@/lib/lang';
 
 type Lang = 'es' | 'en';
 
@@ -29,25 +28,58 @@ const PRESETS: Record<string, any> = {
 const T: any = {
   es: { title: 'Mi plan y hábitos', sub: 'Tus reglas, tu check-in diario, y qué tan bien las cumples.',
     adherence: 'Adherencia al plan', streak: 'Días de racha', checkin: 'Check-in de hoy',
-    myPlan: 'Mi plan', edit: 'Editar', save: 'Guardar', cancel: 'Cancelar', use: 'Usar plantilla',
+    myPlan: 'Mi plan', edit: 'Editar', save: 'Guardar', cancel: 'Cancelar',
     style: 'Estilo', risk: 'Riesgo por operación', ddl: 'Pérdida diaria máx.', maxt: 'Máx. operaciones/día', sessions: 'Sesiones', pairs: 'Pares/mercados', goal: 'Mi objetivo', rules: 'Mis reglas', addRule: 'Añadir regla', habitsSel: 'Hábitos que quiero seguir',
     checkinT: 'Check-in de hoy', saveCheck: 'Guardar check-in', savedCheck: 'Check-in guardado', note: 'Nota del día (opcional)',
     aiT: 'Repaso de Onyx AI', aiBtn: 'Repasar mi disciplina', aiBusy: 'Analizando…',
     lockT: 'Repaso con IA (Pro)', lockD: 'La IA cruza tu plan con tu conducta real y te dice dónde rompes tus reglas. Disponible en Pro.', upgrade: 'Ver planes',
     noPairs: 'Ej: EURUSD, XAUUSD, US30', winR: 'Win rate respetando el límite', winB: 'rompiéndolo', overtr: 'Días de sobre-operar',
+    // Guardian
+    gTag: 'Guardian', gOwn: 'objetivo propio',
+    gBox: 'La pérdida diaria y el máximo de operaciones los vigila el Onyx Guardian en tu cuenta. Aquí ves el número REAL que se está aplicando.',
+    gOpen: 'Abrir el Guardian', gAdjust: 'Ajustar estos límites', gNotSet: 'sin configurar',
+    gSetup: 'Aún no le has puesto límites al Guardian. Ponlos una vez y aquí aparecerán solos.',
+    // Popup sync
+    syncTitle: 'Ajustar mis límites', syncSub: 'Pon dos números. Los guardamos en el Guardian y se aplican en TODAS tus cuentas al instante.',
+    syncDL: '¿Cuánto es lo máximo que aceptas perder en un día?', syncDLh: 'En % de tu cuenta. Ejemplo: 3 = si pierdes el 3% en el día, el Guardian te frena.',
+    syncMT: '¿Cuántas operaciones como máximo al día?', syncMTh: 'Escribe 0 si no quieres tope. Ejemplo: 3 = a la 4ª el Guardian no te deja abrir.',
+    syncApply: 'Guardar en el Guardian', syncApplying: 'Guardando…', syncCancel: 'Cancelar',
+    syncOkT: '¡Listo! Ya está sincronizado', syncOkB: 'Estos números ya se aplican en tus cuentas:', syncClose: 'Entendido',
+    syncNoAcc: 'Primero conecta una cuenta para que el Guardian pueda cuidarla.', syncGoConnect: 'Conectar una cuenta',
+    syncNoMgr: 'El Onyx Guardian está en los planes Pro y superiores. Mejóralo para que cuide tus cuentas solo.', syncSeePlans: 'Ver planes',
+    accsUpd: 'cuenta(s) actualizada(s)', off: 'apagado',
+    // Custom habits
+    myHabits: 'Mis hábitos propios', addHabitPh: 'Escribe un hábito tuyo…', add: 'Añadir',
+    customHint: 'Lo que añadas aparece en tu check-in de cada día y cuenta para tu racha.',
+    yours: 'mío',
   },
   en: { title: 'My plan and habits', sub: 'Your rules, your daily check-in, and how well you follow them.',
     adherence: 'Plan adherence', streak: 'Day streak', checkin: 'Today check-in',
-    myPlan: 'My plan', edit: 'Edit', save: 'Save', cancel: 'Cancel', use: 'Use template',
+    myPlan: 'My plan', edit: 'Edit', save: 'Save', cancel: 'Cancel',
     style: 'Style', risk: 'Risk per trade', ddl: 'Max daily loss', maxt: 'Max trades/day', sessions: 'Sessions', pairs: 'Pairs/markets', goal: 'My goal', rules: 'My rules', addRule: 'Add rule', habitsSel: 'Habits I want to track',
     checkinT: 'Today check-in', saveCheck: 'Save check-in', savedCheck: 'Check-in saved', note: 'Day note (optional)',
     aiT: 'Onyx AI review', aiBtn: 'Review my discipline', aiBusy: 'Analyzing…',
     lockT: 'AI review (Pro)', lockD: 'The AI compares your plan with your real behavior and shows where you break your rules. Available on Pro.', upgrade: 'See plans',
     noPairs: 'e.g. EURUSD, XAUUSD, US30', winR: 'Win rate respecting the limit', winB: 'breaking it', overtr: 'Overtrading days',
+    gTag: 'Guardian', gOwn: 'your target',
+    gBox: 'Your daily loss and max trades are watched by Onyx Guardian on your account. Here you see the REAL number being enforced.',
+    gOpen: 'Open Guardian', gAdjust: 'Adjust these limits', gNotSet: 'not set',
+    gSetup: 'You haven’t set Guardian limits yet. Set them once and they’ll show up here automatically.',
+    syncTitle: 'Adjust my limits', syncSub: 'Enter two numbers. We save them in Guardian and apply them to ALL your accounts instantly.',
+    syncDL: 'What’s the most you’re willing to lose in one day?', syncDLh: 'As % of your account. Example: 3 = if you lose 3% in a day, Guardian stops you.',
+    syncMT: 'How many trades per day, at most?', syncMTh: 'Type 0 for no cap. Example: 3 = on the 4th, Guardian won’t let you open.',
+    syncApply: 'Save in Guardian', syncApplying: 'Saving…', syncCancel: 'Cancel',
+    syncOkT: 'Done! It’s synced', syncOkB: 'These numbers now apply on your accounts:', syncClose: 'Got it',
+    syncNoAcc: 'Connect an account first so Guardian can protect it.', syncGoConnect: 'Connect an account',
+    syncNoMgr: 'Onyx Guardian is on Pro plans and up. Upgrade so it protects your accounts on its own.', syncSeePlans: 'See plans',
+    accsUpd: 'account(s) updated', off: 'off',
+    myHabits: 'My own habits', addHabitPh: 'Type your own habit…', add: 'Add',
+    customHint: 'What you add shows in your daily check-in and counts toward your streak.',
+    yours: 'mine',
   },
 };
 
-export default function PlanHabits({ lang }: { lang: Lang }) {
+export default function PlanHabits({ lang, onGoGuardian }: { lang: Lang; onGoGuardian?: () => void }) {
   const t = T[lang]; const i = lang === 'en' ? 1 : 0;
   const [d, setD] = useState<any>(null);
   const [items, setItems] = useState<Record<string, boolean>>({});
@@ -55,8 +87,13 @@ export default function PlanHabits({ lang }: { lang: Lang }) {
   const [savedCk, setSavedCk] = useState(false);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<any>(null);
+  const [newHabit, setNewHabit] = useState('');
   const [busy, setBusy] = useState('');
   const [review, setReview] = useState('');
+  // Popup de sincronización con el Guardian
+  const [sync, setSync] = useState<any>(null); // { dl, mt } abierto | null
+  const [syncBusy, setSyncBusy] = useState(false);
+  const [syncDone, setSyncDone] = useState<any>(null); // { count, accounts } | 'no_acc' | 'no_mgr'
 
   useEffect(() => { load(); }, []);
   async function load() {
@@ -65,8 +102,19 @@ export default function PlanHabits({ lang }: { lang: Lang }) {
       setD(j); setItems(j.checkin?.items || {}); setNote(j.checkin?.note || '');
     } catch {}
   }
+  function goGuardian() { if (onGoGuardian) onGoGuardian(); else window.location.href = '/dashboard/manager'; }
+
   if (!d || !d.plan) return <div className="card muted">…</div>;
-  const p = d.plan; const s = d.stats || {};
+  const p = d.plan; const s = d.stats || {}; const g = d.guardian || { linked: false, hasAccounts: false, accounts: [] };
+
+  // Lista unificada de hábitos para el check-in: predefinidos elegidos + propios.
+  const allHabits: { id: string; label: string; custom: boolean }[] = [
+    ...(p.habits || []).map((k: string) => ({ id: k, label: HAB[k]?.[i] || k, custom: false })),
+    ...((p.custom_habits || []) as any[]).map((h) => ({ id: h.id, label: h.label, custom: true })),
+  ];
+  const enabled = allHabits.length || 1;
+  const doneToday = allHabits.filter((h) => items[h.id]).length;
+  const adColor = s.adherence >= 75 ? 'var(--green)' : s.adherence >= 50 ? 'var(--amber)' : 'var(--red)';
 
   async function saveCheckin() {
     setBusy('ck');
@@ -74,14 +122,25 @@ export default function PlanHabits({ lang }: { lang: Lang }) {
     const j = await r.json(); setBusy('');
     if (j.ok) { setD({ ...d, stats: j.stats }); setSavedCk(true); setTimeout(() => setSavedCk(false), 1500); }
   }
-  function startEdit() { setForm(JSON.parse(JSON.stringify(p))); setEditing(true); }
+  function startEdit() {
+    const clone = JSON.parse(JSON.stringify(p));
+    if (!Array.isArray(clone.custom_habits)) clone.custom_habits = [];
+    setForm(clone); setNewHabit(''); setEditing(true);
+  }
   function applyPreset(style: string) {
     const pr = PRESETS[style]; if (!pr) { setForm({ ...form, style }); return; }
-    setForm({ ...form, style, risk_per_trade: pr.risk_per_trade, max_daily_loss_pct: pr.max_daily_loss_pct, max_trades_day: pr.max_trades_day, sessions: [...pr.sessions], habits: [...pr.habits], rules: [...(lang === 'en' ? pr.rules_en : pr.rules_es)] });
+    setForm({ ...form, style, risk_per_trade: pr.risk_per_trade, sessions: [...pr.sessions], habits: [...pr.habits], rules: [...(lang === 'en' ? pr.rules_en : pr.rules_es)] });
+  }
+  function addCustomHabit() {
+    const label = newHabit.trim(); if (!label) return;
+    setForm({ ...form, custom_habits: [...(form.custom_habits || []), { id: '', label }] });
+    setNewHabit('');
   }
   async function savePlan() {
     setBusy('plan');
-    const r = await fetch('/api/plan', { method: 'PATCH', body: JSON.stringify({ plan: form }) });
+    // No mandamos los dos campos del Guardian desde aquí: son suyos.
+    const payload = { ...form };
+    const r = await fetch('/api/plan', { method: 'PATCH', body: JSON.stringify({ plan: payload }) });
     const j = await r.json(); setBusy('');
     if (j.ok) { setD({ ...d, plan: j.plan, stats: j.stats }); setEditing(false); }
   }
@@ -91,16 +150,39 @@ export default function PlanHabits({ lang }: { lang: Lang }) {
     const j = await r.json(); setBusy('');
     if (j.review) setReview(j.review);
   }
+  // ---- Sincronización con el Guardian ----
+  function openSync() {
+    if (!g.hasAccounts) { setSyncDone('no_acc'); return; }
+    setSyncDone(null);
+    setSync({ dl: g.daily_loss_pct != null ? g.daily_loss_pct : (p.max_daily_loss_pct || 3), mt: g.max_trades_day != null ? g.max_trades_day : (p.max_trades_day || 0) });
+  }
+  async function applySync() {
+    setSyncBusy(true);
+    try {
+      const r = await fetch('/api/plan/guardian', { method: 'POST', body: JSON.stringify({ daily_loss_pct: Number(sync.dl), max_trades_day: Number(sync.mt) }) });
+      if (r.status === 403) { setSync(null); setSyncDone('no_mgr'); return; }
+      if (r.status === 400) { setSync(null); setSyncDone('no_acc'); return; }
+      const j = await r.json();
+      if (j.ok) {
+        setD({ ...d, plan: j.plan, stats: j.stats, guardian: j.guardian });
+        setSync(null);
+        setSyncDone({ count: j.updated, accounts: (j.guardian?.accounts || []) });
+      }
+    } catch {} finally { setSyncBusy(false); }
+  }
 
-  const enabled = p.habits.length || 1;
-  const doneToday = p.habits.filter((h: string) => items[h]).length;
-  const adColor = s.adherence >= 75 ? 'var(--green)' : s.adherence >= 50 ? 'var(--amber)' : 'var(--red)';
+  const overlay: React.CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 };
+  const modal: React.CSSProperties = { background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, maxWidth: 460, width: '100%', padding: 20, maxHeight: '90vh', overflowY: 'auto' };
+  const bigInput: React.CSSProperties = { width: '100%', fontSize: 22, fontWeight: 700, textAlign: 'center', padding: '10px 0', margin: '6px 0 0' };
 
   return (
     <div style={{ maxWidth: 940, margin: '0 auto' }}>
-      <div style={{ marginBottom: 14 }}>
-        <h2 style={{ margin: 0 }}>🎯 {t.title}</h2>
-        <div className="muted" style={{ fontSize: 13 }}>{t.sub}</div>
+      <div style={{ marginBottom: 14, display: 'flex', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap' }}>
+        <div style={{ flex: 1, minWidth: 220 }}>
+          <h2 style={{ margin: 0 }}>🎯 {t.title}</h2>
+          <div className="muted" style={{ fontSize: 13 }}>{t.sub}</div>
+        </div>
+        <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={goGuardian}>🛡️ {t.gOpen} →</button>
       </div>
 
       {/* Métricas */}
@@ -134,12 +216,23 @@ export default function PlanHabits({ lang }: { lang: Lang }) {
           {!editing ? (
             <>
               <PlanRow k={t.style} v={STYLES[p.style]?.[i] || p.style} />
-              <PlanRow k={t.risk} v={`${p.risk_per_trade}%`} tag="Guardian" />
-              <PlanRow k={t.ddl} v={`-${p.max_daily_loss_pct}%`} tag="Guardian" />
-              <PlanRow k={t.maxt} v={p.max_trades_day > 0 ? String(p.max_trades_day) : '—'} tag="Guardian" />
+              <PlanRow k={t.risk} v={`${p.risk_per_trade}%`} tag={t.gOwn} tagKind="own" />
+              <PlanRow k={t.ddl} v={g.daily_loss_pct != null ? `-${g.daily_loss_pct}%` : t.gNotSet} tag={t.gTag} tagKind={g.daily_loss_pct != null ? 'guardian' : 'off'} />
+              <PlanRow k={t.maxt} v={g.max_trades_day != null ? String(g.max_trades_day) : (g.linked ? t.off : t.gNotSet)} tag={t.gTag} tagKind={g.max_trades_day != null ? 'guardian' : 'off'} />
               <PlanRow k={t.sessions} v={p.sessions.map((x: string) => SESS[x]?.[i] || x).join(', ') || '—'} />
               {p.pairs && <PlanRow k={t.pairs} v={p.pairs} />}
-              {p.goal && <div style={{ marginTop: 8, fontSize: 13, background: 'var(--bg2)', borderRadius: 8, padding: '8px 10px' }}>🎯 {p.goal}</div>}
+
+              {/* Caja explicativa + botones de acción hacia el Guardian */}
+              <div style={{ marginTop: 12, fontSize: 12.5, background: 'var(--bg2)', borderRadius: 10, padding: '10px 12px', display: 'flex', gap: 8 }}>
+                <span style={{ flex: 'none' }}>🛡️</span>
+                <span className="muted">{g.hasAccounts ? t.gBox : t.gSetup}</span>
+              </div>
+              <div className="row" style={{ gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                <button className="btn btn-primary" style={{ fontSize: 12.5 }} onClick={openSync}>⚙️ {t.gAdjust}</button>
+                <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={goGuardian}>🛡️ {t.gOpen}</button>
+              </div>
+
+              {p.goal && <div style={{ marginTop: 12, fontSize: 13, background: 'var(--bg2)', borderRadius: 8, padding: '8px 10px' }}>🎯 {p.goal}</div>}
               {!!p.rules.length && (
                 <div style={{ marginTop: 10 }}>
                   <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{t.rules}</div>
@@ -155,10 +248,15 @@ export default function PlanHabits({ lang }: { lang: Lang }) {
                   {Object.keys(STYLES).map((st) => <button key={st} onClick={() => applyPreset(st)} className={'btn ' + (form.style === st ? 'btn-primary' : 'btn-ghost')} style={{ fontSize: 12, padding: '5px 10px' }}>{STYLES[st][i]}</button>)}
                 </div>
               </div>
-              <div className="grid g3" style={{ gap: 8 }}>
-                <div><span className="muted" style={{ fontSize: 12 }}>{t.risk} %</span><input type="number" step="0.1" value={form.risk_per_trade} onChange={(e) => setForm({ ...form, risk_per_trade: Number(e.target.value) })} style={{ margin: '4px 0 0' }} /></div>
-                <div><span className="muted" style={{ fontSize: 12 }}>{t.ddl} %</span><input type="number" value={form.max_daily_loss_pct} onChange={(e) => setForm({ ...form, max_daily_loss_pct: Number(e.target.value) })} style={{ margin: '4px 0 0' }} /></div>
-                <div><span className="muted" style={{ fontSize: 12 }}>{t.maxt}</span><input type="number" value={form.max_trades_day} onChange={(e) => setForm({ ...form, max_trades_day: Number(e.target.value) })} style={{ margin: '4px 0 0' }} /></div>
+              <div>
+                <span className="muted" style={{ fontSize: 12 }}>{t.risk} % <span style={{ opacity: .7 }}>· {t.gOwn}</span></span>
+                <input type="number" step="0.1" value={form.risk_per_trade} onChange={(e) => setForm({ ...form, risk_per_trade: Number(e.target.value) })} style={{ margin: '4px 0 0' }} />
+              </div>
+              {/* Pérdida diaria y máx ops NO se editan aquí: son del Guardian */}
+              <div style={{ fontSize: 12, background: 'var(--bg2)', borderRadius: 10, padding: '9px 11px', display: 'flex', gap: 8, alignItems: 'center' }}>
+                <span>🛡️</span>
+                <span className="muted" style={{ flex: 1 }}>{lang === 'en' ? 'Daily loss and max trades live in Guardian.' : 'La pérdida diaria y el máx. de operaciones viven en el Guardian.'}</span>
+                <button className="btn btn-ghost" style={{ fontSize: 12, padding: '4px 9px' }} onClick={() => { setEditing(false); openSync(); }}>⚙️ {t.gAdjust}</button>
               </div>
               <div>
                 <span className="muted" style={{ fontSize: 12 }}>{t.sessions}</span>
@@ -186,6 +284,22 @@ export default function PlanHabits({ lang }: { lang: Lang }) {
                   ); })}
                 </div>
               </div>
+              {/* Hábitos propios */}
+              <div>
+                <span className="muted" style={{ fontSize: 12 }}>{t.myHabits}</span>
+                {(form.custom_habits || []).map((h: any, k: number) => (
+                  <div key={k} className="row" style={{ gap: 6, marginTop: 4 }}>
+                    <span style={{ color: 'var(--brand)' }}>✚</span>
+                    <input value={h.label} onChange={(e) => { const cc = [...form.custom_habits]; cc[k] = { ...cc[k], label: e.target.value }; setForm({ ...form, custom_habits: cc }); }} style={{ flex: 1, margin: 0, fontSize: 13 }} />
+                    <button className="btn btn-ghost" style={{ padding: '4px 9px', color: 'var(--red)' }} onClick={() => setForm({ ...form, custom_habits: form.custom_habits.filter((_: any, j: number) => j !== k) })}>✕</button>
+                  </div>
+                ))}
+                <div className="row" style={{ gap: 6, marginTop: 6 }}>
+                  <input value={newHabit} onChange={(e) => setNewHabit(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomHabit(); } }} placeholder={t.addHabitPh} style={{ flex: 1, margin: 0, fontSize: 13 }} />
+                  <button className="btn btn-primary" style={{ fontSize: 12, padding: '5px 12px' }} onClick={addCustomHabit}>＋ {t.add}</button>
+                </div>
+                <div className="muted" style={{ fontSize: 11.5, marginTop: 5 }}>{t.customHint}</div>
+              </div>
               <div className="row" style={{ gap: 8, marginTop: 6 }}>
                 <button className="btn btn-primary" onClick={savePlan} disabled={busy === 'plan'}>{busy === 'plan' ? '…' : t.save}</button>
                 <button className="btn btn-ghost" onClick={() => setEditing(false)}>{t.cancel}</button>
@@ -198,10 +312,11 @@ export default function PlanHabits({ lang }: { lang: Lang }) {
         <div className="card">
           <b style={{ fontSize: 14 }}>{t.checkinT}</b>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, margin: '10px 0' }}>
-            {p.habits.map((hk: string) => (
-              <label key={hk} className="row" style={{ gap: 9, fontSize: 13.5, cursor: 'pointer' }}>
-                <input type="checkbox" checked={!!items[hk]} onChange={(e) => setItems({ ...items, [hk]: e.target.checked })} style={{ width: 'auto', margin: 0 }} />
-                <span style={{ textDecoration: items[hk] ? 'none' : 'none', opacity: items[hk] ? 1 : .85 }}>{HAB[hk]?.[i] || hk}</span>
+            {allHabits.map((h) => (
+              <label key={h.id} className="row" style={{ gap: 9, fontSize: 13.5, cursor: 'pointer' }}>
+                <input type="checkbox" checked={!!items[h.id]} onChange={(e) => setItems({ ...items, [h.id]: e.target.checked })} style={{ width: 'auto', margin: 0 }} />
+                <span style={{ opacity: items[h.id] ? 1 : .85 }}>{h.label}</span>
+                {h.custom && <span className="pill" style={{ fontSize: 9.5, marginLeft: 'auto', color: 'var(--soft-brand)', background: 'rgba(124,140,255,.15)' }}>{t.yours}</span>}
               </label>
             ))}
           </div>
@@ -226,15 +341,91 @@ export default function PlanHabits({ lang }: { lang: Lang }) {
         )}
         {review && <div style={{ fontSize: 13.5, lineHeight: 1.6, whiteSpace: 'pre-wrap', background: 'var(--bg2)', borderRadius: 10, padding: '11px 13px' }}>{review}</div>}
       </div>
+
+      {/* ===== Popup: ajustar límites (sincroniza con el Guardian) ===== */}
+      {sync && (
+        <div style={overlay} onClick={() => !syncBusy && setSync(null)}>
+          <div style={modal} onClick={(e) => e.stopPropagation()}>
+            <div style={{ fontSize: 17, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>🛡️ {t.syncTitle}</div>
+            <p className="muted" style={{ fontSize: 13, margin: '6px 0 14px' }}>{t.syncSub}</p>
+
+            <div style={{ background: 'var(--bg2)', borderRadius: 12, padding: 14, marginBottom: 12 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 600 }}>💸 {t.syncDL}</div>
+              <div style={{ position: 'relative' }}>
+                <input type="number" step="0.5" value={sync.dl} onChange={(e) => setSync({ ...sync, dl: e.target.value })} style={bigInput} />
+                <span style={{ position: 'absolute', right: 14, top: 16, fontSize: 18, fontWeight: 700, color: 'var(--mut)' }}>%</span>
+              </div>
+              <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{t.syncDLh}</div>
+            </div>
+
+            <div style={{ background: 'var(--bg2)', borderRadius: 12, padding: 14, marginBottom: 14 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 600 }}>🔢 {t.syncMT}</div>
+              <input type="number" step="1" value={sync.mt} onChange={(e) => setSync({ ...sync, mt: e.target.value })} style={bigInput} />
+              <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{t.syncMTh}</div>
+            </div>
+
+            <div className="row" style={{ gap: 8 }}>
+              <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setSync(null)} disabled={syncBusy}>{t.syncCancel}</button>
+              <button className="btn btn-primary" style={{ flex: 2 }} onClick={applySync} disabled={syncBusy}>{syncBusy ? t.syncApplying : '🛡️ ' + t.syncApply}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== Popup de resultado ===== */}
+      {syncDone && (
+        <div style={overlay} onClick={() => setSyncDone(null)}>
+          <div style={modal} onClick={(e) => e.stopPropagation()}>
+            {syncDone === 'no_acc' ? (
+              <>
+                <div style={{ fontSize: 17, fontWeight: 800 }}>🔌 {lang === 'en' ? 'One step first' : 'Un paso antes'}</div>
+                <p className="muted" style={{ fontSize: 13.5, margin: '8px 0 14px' }}>{t.syncNoAcc}</p>
+                <div className="row" style={{ gap: 8 }}>
+                  <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setSyncDone(null)}>{t.syncCancel}</button>
+                  <button className="btn btn-primary" style={{ flex: 2 }} onClick={goGuardian}>{t.syncGoConnect}</button>
+                </div>
+              </>
+            ) : syncDone === 'no_mgr' ? (
+              <>
+                <div style={{ fontSize: 17, fontWeight: 800 }}>🛡️ Onyx Guardian</div>
+                <p className="muted" style={{ fontSize: 13.5, margin: '8px 0 14px' }}>{t.syncNoMgr}</p>
+                <div className="row" style={{ gap: 8 }}>
+                  <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setSyncDone(null)}>{t.syncCancel}</button>
+                  <a className="btn btn-primary" style={{ flex: 2, textAlign: 'center' }} href="/pricing">{t.syncSeePlans}</a>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 18, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>✅ {t.syncOkT}</div>
+                <p className="muted" style={{ fontSize: 13.5, margin: '8px 0 12px' }}>{t.syncOkB}</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+                  {(syncDone.accounts || []).map((a: any) => (
+                    <div key={a.id} className="row between" style={{ background: 'var(--bg2)', borderRadius: 8, padding: '8px 11px', fontSize: 13 }}>
+                      <span>🛡️ {a.name}</span>
+                      <span style={{ fontWeight: 700 }}>-{a.daily_loss_pct ?? '—'}% · {a.max_trades_day != null ? a.max_trades_day : t.off}</span>
+                    </div>
+                  ))}
+                </div>
+                <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => setSyncDone(null)}>{t.syncClose}</button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function PlanRow({ k, v, tag }: { k: string; v: string; tag?: string }) {
+function PlanRow({ k, v, tag, tagKind }: { k: string; v: string; tag?: string; tagKind?: 'guardian' | 'own' | 'off' }) {
+  const styleFor = tagKind === 'guardian'
+    ? { color: 'var(--soft-green)', background: 'rgba(52,226,160,.15)' }
+    : tagKind === 'off'
+      ? { color: 'var(--mut)', background: 'var(--bg2)' }
+      : { color: 'var(--soft-brand)', background: 'rgba(124,140,255,.15)' };
   return (
     <div className="row between" style={{ padding: '8px 0', borderTop: '1px solid var(--line)', fontSize: 13.5 }}>
       <span className="muted">{k}</span>
-      <span className="row" style={{ gap: 6, alignItems: 'center' }}><b>{v}</b>{tag && <span className="pill" style={{ fontSize: 10, color: 'var(--soft-brand)', background: 'rgba(124,140,255,.15)' }}>{tag}</span>}</span>
+      <span className="row" style={{ gap: 6, alignItems: 'center' }}><b>{v}</b>{tag && <span className="pill" style={{ fontSize: 10, ...styleFor }}>{tagKind === 'guardian' ? '🔒 ' : ''}{tag}</span>}</span>
     </div>
   );
 }

@@ -13,7 +13,7 @@ type Lang = 'es' | 'en';
 
 const T: any = {
   es: {
-    title: 'Onyx Guardian', subtitle: 'Protege tus operaciones automáticamente', back: 'Volver al panel', save: 'Guardar y enviar', saved: 'Enviado al MetaTrader', saving: '...',
+    title: 'Onyx Guardian', subtitle: 'Protege tus operaciones automáticamente', back: 'Volver al panel', save: 'Guardar y enviar', saved: 'Enviado al MetaTrader', saving: '...', planLink: '🎯 Mi plan y hábitos',
     sumActive: 'Protecciones activas', sumOf: 'de',
     unitsBigT: '¿En qué mido mis niveles?', unitsApplies: 'Se aplica a break even, trailing y parciales. Cámbialo aquí y todas las casillas se ajustan.',
     unitsChosen: 'Elegiste', unitsChosen2: ': las casillas de esta pestaña usan esa unidad.',
@@ -54,7 +54,7 @@ const T: any = {
     adv: 'Disponible en Elite',
   },
   en: {
-    title: 'Onyx Guardian', subtitle: 'Protects your trades automatically', back: 'Back to dashboard', save: 'Save and send', saved: 'Sent to MetaTrader', saving: '...',
+    title: 'Onyx Guardian', subtitle: 'Protects your trades automatically', back: 'Back to dashboard', save: 'Save and send', saved: 'Sent to MetaTrader', saving: '...', planLink: '🎯 My plan and habits',
     sumActive: 'Active protections', sumOf: 'of',
     unitsBigT: 'How do I measure my levels?', unitsApplies: 'Applies to break even, trailing and partials. Change it here and every box adjusts.',
     unitsChosen: 'You chose', unitsChosen2: ': the boxes on this tab use that unit.',
@@ -282,6 +282,7 @@ export default function ManagerClient() {
               <div style={{ fontWeight: 700, fontSize: 17 }}>{t.title}</div>
               <div className="muted" style={{ fontSize: 13 }}>{t.subtitle}</div>
             </div>
+            <Link href="/dashboard?view=plan" className="btn btn-ghost" style={{ fontSize: 12.5, flex: 'none' }}>{t.planLink} →</Link>
             <Toggle on={enabled} onClick={() => setEnabled(!enabled)} />
           </div>
           <div className="row" style={{ gap: 10, alignItems: 'center', marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--line)', flexWrap: 'wrap' }}>

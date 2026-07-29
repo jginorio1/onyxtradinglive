@@ -880,3 +880,26 @@ Sin variables nuevas (la IA usa `ANTHROPIC_API_KEY`, que ya tienes).
   diarias activas, también por Telegram. Usa `CRON_SECRET`.
 - **Adherencia en el informe semanal de Telegram**: se añade una línea
   "🎯 Adherencia al plan: X% · racha Y días" a quien usa "Mi plan y hábitos".
+
+### 24.2 · Mi plan ↔ Onyx Guardian: sincronización perfecta + hábitos propios
+
+**Ya no hay dos números distintos.** La pérdida diaria máxima y el máximo de
+operaciones/día se LEEN del Guardian (`manager_configs`) y se muestran en Mi plan
+con el candado verde 🔒 Guardian = el número REAL que se aplica en tu cuenta. El
+riesgo por operación es tu objetivo propio (el Guardian no dimensiona posiciones).
+
+- Botón **⚙️ Ajustar estos límites** abre un popup con dos preguntas en lenguaje
+  simple. Al guardar, se escribe en el Guardian de TODAS tus cuentas y aparece un
+  popup de confirmación con la lista de cuentas actualizadas. (Ruta nueva
+  `POST /api/plan/guardian`, protegida por sesión; requiere el Guardian en el plan
+  `caps.manager`. No toca el resto de la config del Guardian, solo esos dos campos,
+  y sube la versión para que el EA la recoja.)
+- Botón **🛡️ Abrir el Guardian** lleva a `/dashboard/manager`. Desde el Guardian,
+  el botón **🎯 Mi plan y hábitos** vuelve directo a `/dashboard?view=plan`.
+- Casos guiados: sin cuenta conectada → popup que invita a conectarla; sin Guardian
+  en el plan → popup que ofrece mejorar.
+
+**Hábitos propios.** En el editor de Mi plan hay un campo "Mis hábitos propios":
+lo que escribas aparece en tu check-in de cada día (con la etiqueta "mío") y cuenta
+para tu racha y adherencia. Se guardan en `trading_plans.data.custom_habits`
+(sin cambio de SQL). El check-in acepta esos ids además de los 7 predefinidos.
