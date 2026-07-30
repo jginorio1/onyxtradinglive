@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { ensureMentor, getMentor, updateMentor, getContent, saveModule, deleteModule, saveLesson, deleteLesson, roster, listPosts, addPost, deletePost, applyTemplate, listEvents, saveEvent, deleteEvent } from '@/lib/academy';
+import { listCollaborators, addCollaborator, removeCollaborator } from '@/lib/academyCollab';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -21,8 +22,8 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: 'no autorizado' }, { status: 401 });
   if (!caps?.academy) return NextResponse.json({ error: 'no_academy', code: 'no_academy' }, { status: 403 });
   const mentor = await ensureMentor(user.id);
-  const [content, rost, feed, events] = await Promise.all([getContent(mentor.user_id, false), roster(mentor.user_id), listPosts(mentor.user_id, undefined, true), listEvents(mentor.user_id)]);
-  return NextResponse.json({ mentor, content, roster: rost, feed, events });
+  const [content, rost, feed, events, collaborators] = await Promise.all([getContent(mentor.user_id, false), roster(mentor.user_id), listPosts(mentor.user_id, undefined, true), listEvents(mentor.user_id), listCollaborators(mentor.user_id)]);
+  return NextResponse.json({ mentor, content, roster: rost, feed, events, collaborators });
 }
 
 // POST · gestión del contenido y la comunidad (solo el mentor).
@@ -46,6 +47,8 @@ export async function POST(req: Request) {
       case 'template': return NextResponse.json({ ok: true, ...(await applyTemplate(mid, !!b.force, b.lang === 'en' ? 'en' : 'es')) });
       case 'event': return NextResponse.json({ ok: true, ...(await saveEvent(mid, b)) });
       case 'event_delete': await deleteEvent(mid, String(b.id)); return NextResponse.json({ ok: true });
+      case 'collab_add': return NextResponse.json(await addCollaborator(mid, String(b.user_id), String(b.role || 'Colaborador'), b.perms || {}));
+      case 'collab_remove': await removeCollaborator(mid, String(b.user_id)); return NextResponse.json({ ok: true });
       default: return NextResponse.json({ error: 'bad_action' }, { status: 400 });
     }
   } catch (e: any) { return NextResponse.json({ error: e?.message || 'error' }, { status: 500 }); }

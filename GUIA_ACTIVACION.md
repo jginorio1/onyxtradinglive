@@ -1519,3 +1519,35 @@ pasa por la moderación AI existente.
 programadas, detalle del evento en el calendario móvil, **chat privado con roles** (solo
 mentor↔alumno / colaboradores), **colaboradores con permisos y etiqueta de rol**, más
 reportes en Cobros (activos, cancelados, MRR), y más Onyx AI en la academia.
+
+### 42 · Onyx Academy — Fase 9 (colaboradores, chat privado, QR, reportes, +)
+
+**SQL (Supabase, tras academy_v11.sql):** `supabase/academy_v12.sql`
+- `academy_collaborators` (mentor_id, user_id, role, perms).
+
+**Colaboradores con roles y permisos:** en **Alumnos → Colaboradores** el mentor suma a un
+miembro, le pone una **etiqueta de rol** (Moderador, Coach…) y **permisos** (aprobar logros,
+publicar, chatear con alumnos, programar clases). La etiqueta se ve en Miembros y en el chat.
+
+**Chat privado con roles:** un alumno solo puede escribir al **equipo** (mentor y
+colaboradores). El equipo puede escribir a cualquiera. Alumno↔alumno queda bloqueado
+(backend y UI).
+
+**QR para unirse:** en el panel del mentor (junto al enlace de inscripción) aparece un **QR**
+que los alumnos escanean para entrar. Usa la dependencia `qrcode` (ya en package.json).
+
+**Reportes en Cobros:** además de Ventas/Bruto/Comisión/Neto, ahora **Suscripciones activas**,
+**Cancelados** y **MRR estimado**.
+
+**Correos: editar campañas programadas.** En Correos, cada campaña **programada** tiene un ✎
+para editar asunto, texto, público y fecha/hora antes de que se envíe.
+
+**Calendario en móvil:** los eventos dentro de la cuadrícula ahora se leen (antes salían como
+una línea violeta); las celdas son más altas y el detalle completo sigue debajo.
+
+**Más AI:** el copiloto (títulos, about, pitch, posts, lecciones), la auditoría del alumno y la
+moderación de imágenes ya cubren la academia. (Ideas futuras: resumen semanal AI de la
+comunidad, respuestas AI a preguntas de alumnos con la Guía del mentor.)
+
+**Requisitos:** el SQL v12. `qrcode` se instala solo en el build de Vercel. `ANTHROPIC_API_KEY`
+para el AI; `RESEND_API_KEY` para correos.

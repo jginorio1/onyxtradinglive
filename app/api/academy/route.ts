@@ -6,6 +6,7 @@ import { listProducts, accessibleModules, studentPurchases, perksFor, membership
 import { myReferralStats } from '@/lib/academyExtras';
 import { auditAddon, hasAuditAddon, auditConsent, planVerified } from '@/lib/academyAudit';
 import { listWins, pendingCount } from '@/lib/academyWins';
+import { roleMap, permsFor, staffIds } from '@/lib/academyCollab';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -70,6 +71,7 @@ export async function GET(req: Request) {
       listWins(m, user.id),
       iAmMentorHere ? pendingCount(m) : Promise.resolve(0),
     ]);
+    const [roles, myPerms, staff] = await Promise.all([roleMap(m), permsFor(m, user.id), staffIds(m)]);
     // Un módulo se bloquea SOLO si la academia vende niveles y el alumno no tiene
     // acceso. Si no hay niveles activos, es una academia gratis → todo abierto.
     // El mentor siempre ve todo desbloqueado.
@@ -89,6 +91,7 @@ export async function GET(req: Request) {
       referral: refStats, affiliateReward: (mrow2.data as any)?.affiliate_reward_cents || 0, affiliateCurrency: (mrow2.data as any)?.affiliate_currency || 'usd',
       audit: { addon, hasAddon, consent, verified },
       wins, winsPending,
+      roles, myPerms, staffIds: staff,
     };
   }
   return NextResponse.json(out);

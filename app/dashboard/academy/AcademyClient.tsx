@@ -5,6 +5,7 @@ import OnyxIcon from '@/app/components/OnyxIcon';
 import BrandIcon, { BRAND_COLOR } from '@/app/components/BrandIcon';
 import LangToggle from '@/app/LangToggle';
 import { COUNTRIES, flagOf, countryName } from '@/app/components/countries';
+import JoinQR from '@/app/components/JoinQR';
 
 // Onyx Academy v2 — comunidad estilo Skool: feed, aulas con secciones y progreso,
 // calendario con clase en vivo (countdown + EN VIVO), miembros, ranking, perfil,
@@ -391,7 +392,7 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
       <LiveBanner ev={active.live} lang={lang} />
 
       {tab === 'profile' ? <ProfileView mentorId={active.mentor_id} userId={viewUser || active.myUserId} me={active.myUserId} lang={lang} onDm={openDm} onBack={() => setTab('members')} />
-      : tab === 'chat' ? <ChatView mentorId={active.mentor_id} lang={lang} initialWith={dmWith} members={active.members || []} myUserId={active.myUserId} />
+      : tab === 'chat' ? <ChatView mentorId={active.mentor_id} lang={lang} initialWith={dmWith} members={active.members || []} myUserId={active.myUserId} staffIds={active.staffIds || []} iAmStaff={!!active.myPerms?.isCollab} roles={active.roles || {}} />
       : (
       <div className="sk-grid">
         <div>
@@ -462,7 +463,7 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
                   </span>
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ fontWeight: 600, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }} onClick={() => openProfile(mem.user_id)}>
-                      {mem.country && <span title={countryName(mem.country)}>{flagOf(mem.country)}</span>}{mem.name}{mem.is_mentor && <span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--gold) 18%,transparent)', color: 'var(--gold)' }}>{L('Mentor', 'Mentor')}</span>}
+                      {mem.country && <span title={countryName(mem.country)}>{flagOf(mem.country)}</span>}{mem.name}{mem.is_mentor ? <span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--gold) 18%,transparent)', color: 'var(--gold)' }}>{L('Mentor', 'Mentor')}</span> : (active.roles?.[mem.user_id] && <span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--brand) 18%,transparent)', color: 'var(--soft-brand, var(--brand))' }}>{active.roles[mem.user_id]}</span>)}
                     </div>
                     <div className="muted" style={{ fontSize: 12 }}>{L('Nivel', 'Level')} {mem.level} · {mem.points} {L('pts', 'pts')}{mem.joined_at ? ' · ' + new Date(mem.joined_at).toLocaleDateString(es ? 'es-ES' : 'en-US', { month: 'short', year: 'numeric' }) : ''}</div>
                   </div>
@@ -846,7 +847,7 @@ function ProfileView({ mentorId, userId, me, lang, onDm, onBack }: any) {
   );
 }
 
-function ChatView({ mentorId, lang, initialWith, members, myUserId }: any) {
+function ChatView({ mentorId, lang, initialWith, members, myUserId, staffIds = [], iAmStaff = false, roles = {} }: any) {
   const L = (a: string, b: string) => (lang === 'en' ? b : a);
   const [threads, setThreads] = useState<any[]>([]);
   const [withId, setWithId] = useState<string | null>(initialWith || null);
@@ -866,7 +867,10 @@ function ChatView({ mentorId, lang, initialWith, members, myUserId }: any) {
     await fetch('/api/academy/dm', { method: 'POST', body: JSON.stringify({ m: mentorId, to: withId, body: text, image_url: img }) });
     setText(''); setImg(''); loadConv(withId); loadThreads();
   }
-  const others = (members || []).filter((mem: any) => mem.user_id !== myUserId);
+  // Chat privado: un alumno solo puede escribir al equipo (mentor/colaboradores).
+  // El equipo puede escribir a cualquiera.
+  const staffSet = new Set(staffIds);
+  const others = (members || []).filter((mem: any) => mem.user_id !== myUserId && (iAmStaff || staffSet.has(mem.user_id)));
 
   if (withId && conv) {
     return (
@@ -1210,10 +1214,16 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
 
       <div className="sk-card">
         <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>🔑 {L('Enlace de inscripción (compártelo con tus alumnos)', 'Enrollment link (share with your students)')}</div>
-        <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-          <input readOnly value={link} style={{ margin: 0, flex: 1, minWidth: 200 }} />
-          <button className="btn btn-ghost" onClick={() => { navigator.clipboard.writeText(link); setToast(L('Copiado', 'Copied')); setTimeout(() => setToast(''), 1500); }}>{L('Copiar', 'Copy')}</button>
-          <span className="sk-chip">{L('Código', 'Code')}: {d.mentor.code}</span>
+        <div className="row" style={{ gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+              <input readOnly value={link} style={{ margin: 0, flex: 1, minWidth: 160 }} />
+              <button className="btn btn-ghost" onClick={() => { navigator.clipboard.writeText(link); setToast(L('Copiado', 'Copied')); setTimeout(() => setToast(''), 1500); }}>{L('Copiar', 'Copy')}</button>
+              <span className="sk-chip">{L('Código', 'Code')}: {d.mentor.code}</span>
+            </div>
+            <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>{L('O que escaneen este QR para unirse:', 'Or have them scan this QR to join:')}</div>
+          </div>
+          <JoinQR url={link} size={128} />
         </div>
       </div>
 
@@ -1284,6 +1294,8 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
       </>)}
 
       {tab === 'cobros' && <MentorPayments modules={d.content || []} L={L} />}
+
+      {tab === 'alumnos' && <CollabManager d={d} api={api} L={L} />}
 
       {tab === 'alumnos' && (
         <div className="sk-card">
@@ -1517,6 +1529,7 @@ function MentorEmails({ lang, L }: { lang: string; L: (a: string, b: string) => 
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState('');
   const [autos, setAutos] = useState<any>(null);
+  const [editing, setEditing] = useState<string | null>(null);
 
   async function load() { const r = await fetch('/api/academy/emails'); const j = await r.json(); setD(j); setAutos(j.automations || null); }
   useEffect(() => { load(); }, []);
@@ -1532,6 +1545,15 @@ function MentorEmails({ lang, L }: { lang: string; L: (a: string, b: string) => 
     else alert(j.error === 'fecha_invalida' ? L('Elige una fecha futura.', 'Pick a future date.') : L('No se pudo. ¿Configuraste Resend?', 'Failed. Is Resend configured?'));
   }
   async function del(id: string) { await fetch('/api/academy/emails', { method: 'POST', body: JSON.stringify({ action: 'delete', id }) }); load(); }
+  function startEdit(k: any) { setEditing(k.id); setSubject(k.subject || ''); setBody(k.body || ''); setAudience(k.audience || 'all'); setWhen(k.scheduled_at ? new Date(k.scheduled_at).toISOString().slice(0, 16) : ''); if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' }); }
+  function cancelEdit() { setEditing(null); setSubject(''); setBody(''); setWhen(''); setAudience('all'); }
+  async function saveEdit() {
+    if (!editing) return; setBusy(true);
+    const r = await fetch('/api/academy/emails', { method: 'POST', body: JSON.stringify({ action: 'edit', id: editing, subject, body, audience, scheduled_at: when }) });
+    const j = await r.json(); setBusy(false);
+    if (j.ok) { flash(L('Campaña actualizada', 'Campaign updated')); cancelEdit(); load(); }
+    else alert(j.error === 'fecha_invalida' ? L('Elige una fecha futura.', 'Pick a future date.') : L('No se pudo editar.', 'Could not edit.'));
+  }
   async function saveAutos() { await fetch('/api/academy/emails', { method: 'POST', body: JSON.stringify({ action: 'automations', automations: autos }) }); flash(L('Automáticos guardados', 'Automations saved')); load(); }
 
   if (!d) return <div className="sk-card muted">…</div>;
@@ -1555,12 +1577,21 @@ function MentorEmails({ lang, L }: { lang: string; L: (a: string, b: string) => 
           <span className="muted" style={{ fontSize: 12 }}>{L('Enviar a', 'Send to')}:</span>
           {AUD.map(([k, lbl, n]) => <button key={k} className={'btn ' + (audience === k ? 'btn-primary' : 'btn-ghost')} style={{ fontSize: 12.5, padding: '5px 10px' }} onClick={() => setAudience(k)}>{lbl} ({n ?? 0})</button>)}
         </div>
-        <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <button className="btn btn-primary" disabled={busy || !subject.trim() || !body.trim()} onClick={() => send(false)}>{busy ? '…' : L('Enviar ahora', 'Send now')}</button>
-          <span className="muted" style={{ fontSize: 12 }}>{L('o programar:', 'or schedule:')}</span>
-          <input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} style={{ margin: 0, width: 210 }} />
-          <button className="btn btn-ghost" disabled={busy || !when || !subject.trim() || !body.trim()} onClick={() => send(true)}>{L('Programar', 'Schedule')}</button>
-        </div>
+        {editing ? (
+          <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--gold) 16%,transparent)', color: 'var(--gold)' }}>{L('Editando programada', 'Editing scheduled')}</span>
+            <input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} style={{ margin: 0, width: 210 }} />
+            <button className="btn btn-primary" disabled={busy || !when || !subject.trim() || !body.trim()} onClick={saveEdit}>{busy ? '…' : L('Guardar cambios', 'Save changes')}</button>
+            <button className="btn btn-ghost" onClick={cancelEdit}>{L('Cancelar', 'Cancel')}</button>
+          </div>
+        ) : (
+          <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <button className="btn btn-primary" disabled={busy || !subject.trim() || !body.trim()} onClick={() => send(false)}>{busy ? '…' : L('Enviar ahora', 'Send now')}</button>
+            <span className="muted" style={{ fontSize: 12 }}>{L('o programar:', 'or schedule:')}</span>
+            <input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} style={{ margin: 0, width: 210 }} />
+            <button className="btn btn-ghost" disabled={busy || !when || !subject.trim() || !body.trim()} onClick={() => send(true)}>{L('Programar', 'Schedule')}</button>
+          </div>
+        )}
       </div>
 
       {/* Automatizaciones editables */}
@@ -1608,11 +1639,78 @@ function MentorEmails({ lang, L }: { lang: string; L: (a: string, b: string) => 
                   {k.status === 'sent' ? `✓ ${L('enviada', 'sent')} · ${k.sent_count} ${L('correos', 'emails')}` : k.status === 'scheduled' ? `⏱ ${L('programada', 'scheduled')} ${fmt(k.scheduled_at)}` : k.status} · {k.audience}
                 </div>
               </div>
-              <button className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 11, color: 'var(--red)' }} onClick={() => del(k.id)}>✕</button>
+              <div className="row" style={{ gap: 4 }}>
+                {k.status === 'scheduled' && <button className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 11 }} onClick={() => startEdit(k)}>✎</button>}
+                <button className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 11, color: 'var(--red)' }} onClick={() => del(k.id)}>✕</button>
+              </div>
             </div>
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+// Colaboradores: el mentor asigna rol (etiqueta) y permisos a un alumno.
+function CollabManager({ d, api, L }: any) {
+  const [open, setOpen] = useState(false);
+  const [pick, setPick] = useState('');
+  const [role, setRole] = useState('');
+  const [perms, setPerms] = useState<any>({ moderate: false, post: false, message: true, events: false });
+  const collabs = d.collaborators || [];
+  const collabIds = new Set(collabs.map((c: any) => c.user_id));
+  const candidates = (d.roster?.students || []).filter((s: any) => !collabIds.has(s.id));
+  const PERMS: [string, string, string][] = [
+    ['moderate', L('Aprobar logros', 'Approve wins'), 'trophy'],
+    ['post', L('Publicar / fijar', 'Post / pin'), 'chat'],
+    ['message', L('Chatear con alumnos', 'Message students'), 'mail'],
+    ['events', L('Programar clases', 'Schedule classes'), 'calendar'],
+  ];
+  function add() {
+    if (!pick) return;
+    api({ action: 'collab_add', user_id: pick, role: role || L('Colaborador', 'Collaborator'), perms }, L('Colaborador añadido', 'Collaborator added'));
+    setOpen(false); setPick(''); setRole(''); setPerms({ moderate: false, post: false, message: true, events: false });
+  }
+  return (
+    <div className="sk-card">
+      <div className="row between" style={{ marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
+        <h3 style={{ display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic"><OnyxIcon name="guardian" size={16} /></span> {L('Colaboradores', 'Collaborators')}</h3>
+        <button className="btn btn-primary" style={{ fontSize: 12.5 }} onClick={() => setOpen((v) => !v)}>＋ {L('Añadir', 'Add')}</button>
+      </div>
+      <p className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>{L('Suma a tu equipo: dales un rol visible y permisos (moderar logros, publicar, chatear con alumnos, programar clases).', 'Build your team: give them a visible role and permissions (moderate wins, post, message students, schedule classes).')}</p>
+      {collabs.length === 0 ? <p className="muted" style={{ fontSize: 12.5 }}>{L('Aún no tienes colaboradores.', 'No collaborators yet.')}</p> : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {collabs.map((c: any) => (
+            <div key={c.user_id} className="row between" style={{ background: 'var(--bg2)', borderRadius: 8, padding: '9px 12px', fontSize: 13, alignItems: 'center' }}>
+              <div className="row" style={{ gap: 8, alignItems: 'center', minWidth: 0 }}><Avatar name={c.name} size={26} /><span>{c.name}</span><span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--brand) 16%,transparent)', color: 'var(--soft-brand,var(--brand))' }}>{c.role}</span></div>
+              <div className="row" style={{ gap: 4, alignItems: 'center' }}>
+                {c.perms?.moderate && <span title={L('Modera', 'Moderates')}><OnyxIcon name="trophy" size={13} /></span>}
+                {c.perms?.post && <span title={L('Publica', 'Posts')}><OnyxIcon name="chat" size={13} /></span>}
+                {c.perms?.message && <span title={L('Chatea', 'Messages')}><OnyxIcon name="mail" size={13} /></span>}
+                {c.perms?.events && <span title={L('Clases', 'Classes')}><OnyxIcon name="calendar" size={13} /></span>}
+                <button className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 11, color: 'var(--red)' }} onClick={() => api({ action: 'collab_remove', user_id: c.user_id })}>✕</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {open && (
+        <div style={{ border: '1px solid var(--brand)', borderRadius: 10, padding: 12, marginTop: 10 }}>
+          <select value={pick} onChange={(e) => setPick(e.target.value)} style={{ margin: '0 0 8px' }}>
+            <option value="">{L('— Elige un alumno —', '— Pick a student —')}</option>
+            {candidates.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+          <input value={role} onChange={(e) => setRole(e.target.value)} placeholder={L('Rol / etiqueta (ej: Moderador, Coach)', 'Role / tag (e.g. Moderator, Coach)')} style={{ margin: '0 0 8px' }} />
+          <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{L('Permisos', 'Permissions')}</div>
+          {PERMS.map(([k, lbl]) => (
+            <label key={k} className="row" style={{ gap: 8, fontSize: 13, marginBottom: 4 }}><input type="checkbox" checked={!!perms[k]} onChange={(e) => setPerms({ ...perms, [k]: e.target.checked })} style={{ width: 'auto', margin: 0 }} /> {lbl}</label>
+          ))}
+          <div className="row" style={{ gap: 8, marginTop: 10 }}>
+            <button className="btn btn-primary" onClick={add} disabled={!pick}>{L('Añadir colaborador', 'Add collaborator')}</button>
+            <button className="btn btn-ghost" onClick={() => setOpen(false)}>{L('Cancelar', 'Cancel')}</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1784,6 +1882,7 @@ function MentorPayments({ modules, L }: { modules: any[]; L: (a: string, b: stri
   const [conn, setConn] = useState<any>(null);
   const [prods, setProds] = useState<any[]>([]);
   const [earn, setEarn] = useState<any>(null);
+  const [subs, setSubs] = useState<any>(null);
   const [ents, setEnts] = useState<any[]>([]);
   const [aff, setAff] = useState<any[]>([]);
   const [affReward, setAffReward] = useState('');
@@ -1792,7 +1891,7 @@ function MentorPayments({ modules, L }: { modules: any[]; L: (a: string, b: stri
 
   async function load() {
     const [c, p] = await Promise.all([fetch('/api/academy/connect').then((r) => r.json()).catch(() => ({})), fetch('/api/academy/products').then((r) => r.json()).catch(() => ({}))]);
-    setConn(c); setProds(p.products || []); setEarn(p.earnings || null); setEnts(p.entitlements || []);
+    setConn(c); setProds(p.products || []); setEarn(p.earnings || null); setSubs(p.subStats || null); setEnts(p.entitlements || []);
     setAff(p.affiliates || []); setAffReward(((p.affiliate_reward_cents || 0) / 100).toString());
   }
   useEffect(() => { load(); }, []);
@@ -1816,6 +1915,13 @@ function MentorPayments({ modules, L }: { modules: any[]; L: (a: string, b: stri
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 10, margin: '12px 0' }}>
           {[[L('Ventas', 'Sales'), String(earn.sales || 0), 'cart'], [L('Bruto', 'Gross'), money(earn.grossCents), 'coins'], [L('Comisión Onyx', 'Onyx fee'), money(earn.feeCents), 'gem'], [L('Tu neto', 'Your net'), money(earn.netCents), 'money']].map(([lbl, val, ic]) => (
             <div key={lbl} className="statcard"><div className="statcard-ic"><OnyxIcon name={ic as any} /></div><div><div className="sc-lbl">{lbl}</div><div className="sc-val">{val}</div></div></div>
+          ))}
+        </div>
+      )}
+      {subs && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 10, margin: '0 0 12px' }}>
+          {[[L('Suscripciones activas', 'Active subs'), String(subs.activeMembers || 0), 'users', 'var(--soft-green)'], [L('Cancelados', 'Canceled'), String(subs.canceled || 0), 'lock', 'var(--red)'], [L('MRR estimado', 'Est. MRR'), money(subs.mrrCents), 'coins', 'var(--gold)']].map(([lbl, val, ic, col]) => (
+            <div key={lbl} className="statcard"><div className="statcard-ic" style={{ color: col }}><OnyxIcon name={ic as any} /></div><div><div className="sc-lbl">{lbl}</div><div className="sc-val">{val}</div></div></div>
           ))}
         </div>
       )}

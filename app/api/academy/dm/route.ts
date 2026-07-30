@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { getMentor, isEnrolled, dmThreads, dmWith, dmSend } from '@/lib/academy';
+import { isStaff } from '@/lib/academyCollab';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -34,6 +35,10 @@ export async function POST(req: Request) {
   if (to === user.id) return NextResponse.json({ error: 'self' }, { status: 400 });
   // El destinatario debe ser miembro de la comunidad.
   if (!(await guard(m, to))) return NextResponse.json({ error: 'no_member' }, { status: 400 });
+  // Chat PRIVADO: un alumno solo puede escribir al equipo (mentor/colaboradores).
+  // El equipo puede escribir a cualquiera. (Alumno↔alumno no está permitido.)
+  const senderStaff = await isStaff(m, user.id);
+  if (!senderStaff && !(await isStaff(m, to))) return NextResponse.json({ error: 'only_staff' }, { status: 403 });
   const msg = await dmSend(m, user.id, to, String(b.body || ''), b.image_url ? String(b.image_url) : undefined);
   return NextResponse.json({ ok: true, message: msg });
 }

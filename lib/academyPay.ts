@@ -167,6 +167,35 @@ export async function setPurchaseStatus(subId: string, status: string, periodEnd
   if (sid) await syncGuardianGrant(sid);
 }
 
+// Reportes de suscripciones del mentor: activos, cancelados, MRR estimado.
+export async function mentorSubStats(mentorId: string) {
+  const [{ data: mem }, { data: buys }, { data: prods }] = await Promise.all([
+    supabaseAdmin.from('academy_memberships').select('status,current_period_end').eq('mentor_id', mentorId),
+    supabaseAdmin.from('academy_purchases').select('status,product_id,kind').eq('mentor_id', mentorId),
+    supabaseAdmin.from('mentors').select('membership_price_cents,membership_interval,membership_currency').eq('user_id', mentorId).maybeSingle(),
+  ]);
+  const memRows = (mem || []) as any[];
+  const activeMem = memRows.filter((r) => r.status === 'active').length;
+  const canceledMem = memRows.filter((r) => r.status === 'canceled').length;
+  const buyRows = (buys || []) as any[];
+  const activeBuys = buyRows.filter((b) => b.status === 'active');
+  const canceledBuys = buyRows.filter((b) => b.status === 'canceled').length;
+  // MRR ≈ membresías activas × precio mensual + niveles/suscripción activos × precio mensual.
+  const price = (prods as any)?.membership_price_cents || 0;
+  const memMonthly = (prods as any)?.membership_interval === 'year' ? price / 12 : price;
+  let mrr = activeMem * memMonthly;
+  const pIds = Array.from(new Set(activeBuys.filter((b) => b.kind !== 'one_time').map((b) => b.product_id)));
+  if (pIds.length) {
+    const { data: pr } = await supabaseAdmin.from('academy_products').select('id,price_cents,interval,kind').in('id', pIds);
+    const pm = new Map((pr || []).map((p: any) => [p.id, p]));
+    for (const b of activeBuys) {
+      const p = pm.get(b.product_id); if (!p || p.kind === 'one_time') continue;
+      mrr += p.interval === 'year' ? (p.price_cents || 0) / 12 : (p.price_cents || 0);
+    }
+  }
+  return { activeMembers: activeMem + activeBuys.length, canceled: canceledMem + canceledBuys, mrrCents: Math.round(mrr) };
+}
+
 // Ingresos del mentor (bruto) y comisión de Onyx, a partir del libro de comisiones.
 export async function mentorEarnings(mentorId: string) {
   const { data } = await supabaseAdmin.from('onyx_commissions').select('gross_cents,fee_cents').eq('mentor_id', mentorId);

@@ -56,6 +56,18 @@ export async function POST(req: Request) {
       await supabaseAdmin.from('academy_emails').delete().eq('id', String(b.id)).eq('mentor_id', mid);
       return NextResponse.json({ ok: true });
     }
+    // Editar una campaña que sigue PROGRAMADA (aún no enviada).
+    if (b.action === 'edit' && b.id) {
+      const { data: c } = await supabaseAdmin.from('academy_emails').select('status').eq('id', String(b.id)).eq('mentor_id', mid).maybeSingle();
+      if (!c || (c as any).status !== 'scheduled') return NextResponse.json({ error: 'no_editable' }, { status: 400 });
+      const patch: any = {};
+      if (b.subject !== undefined) patch.subject = String(b.subject).slice(0, 200);
+      if (b.body !== undefined) patch.body = String(b.body).slice(0, 8000);
+      if (b.audience !== undefined && ['all', 'active', 'inactive', 'expiring'].includes(b.audience)) patch.audience = b.audience;
+      if (b.scheduled_at !== undefined) { const w = new Date(b.scheduled_at); if (isNaN(w.getTime()) || w.getTime() <= Date.now()) return NextResponse.json({ error: 'fecha_invalida' }, { status: 400 }); patch.scheduled_at = w.toISOString(); }
+      await supabaseAdmin.from('academy_emails').update(patch).eq('id', String(b.id)).eq('mentor_id', mid);
+      return NextResponse.json({ ok: true });
+    }
     // Crear campaña
     const subject = String(b.subject || '').slice(0, 200);
     const body = String(b.body || '').slice(0, 8000);
