@@ -380,8 +380,19 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
 .sk-tier-card{transition:transform .15s, box-shadow .15s, border-color .15s;}
 .sk-tier-card:hover{transform:translateY(-3px);box-shadow:0 12px 34px color-mix(in srgb,var(--gold) 22%,transparent);border-color:color-mix(in srgb,var(--gold) 55%,transparent);}
 /* Tarjeta destacada (ej. Plan audit) — resalta y palpita suave */
-.sk-featured{border:1px solid color-mix(in srgb,var(--green) 55%,transparent)!important;box-shadow:0 0 0 1px color-mix(in srgb,var(--green) 35%,transparent),0 10px 34px color-mix(in srgb,var(--green) 20%,transparent);animation:skGlow 2.4s ease-in-out infinite;}
-@keyframes skGlow{0%,100%{box-shadow:0 0 0 1px color-mix(in srgb,var(--green) 30%,transparent),0 8px 26px color-mix(in srgb,var(--green) 14%,transparent);}50%{box-shadow:0 0 0 1px color-mix(in srgb,var(--green) 55%,transparent),0 12px 40px color-mix(in srgb,var(--green) 30%,transparent);}}
+.sk-featured{position:relative;border:2px solid color-mix(in srgb,var(--green) 70%,transparent)!important;animation:skGlow 2s ease-in-out infinite;}
+@keyframes skGlow{0%,100%{box-shadow:0 0 0 1px color-mix(in srgb,var(--green) 45%,transparent),0 0 22px -2px color-mix(in srgb,var(--green) 40%,transparent);}50%{box-shadow:0 0 0 2px color-mix(in srgb,var(--green) 75%,transparent),0 0 42px 2px color-mix(in srgb,var(--green) 60%,transparent);}}
+/* QR con marco blanco y halo de marca */
+.sk-qr-frame{background:#fff;border-radius:14px;padding:8px;display:grid;place-items:center;box-shadow:0 0 0 2px color-mix(in srgb,var(--brand) 55%,transparent),0 0 28px -2px color-mix(in srgb,var(--brand) 55%,transparent);}
+/* Botón de copiar "encendido" */
+.btn.sk-glow{border-color:var(--brand)!important;color:var(--soft-brand,var(--brand))!important;box-shadow:0 0 14px -2px color-mix(in srgb,var(--brand) 60%,transparent);}
+.btn.sk-glow:hover{box-shadow:0 0 20px 0 color-mix(in srgb,var(--brand) 70%,transparent);}
+/* Chip de código destacado */
+.sk-code{background:color-mix(in srgb,var(--brand) 18%,transparent);color:var(--soft-brand,var(--brand));font-weight:800;letter-spacing:.06em;padding:6px 12px;border-radius:9px;font-size:13px;box-shadow:0 0 12px -3px color-mix(in srgb,var(--brand) 55%,transparent);}
+/* Botones de compartir a redes */
+.sk-share{display:flex;gap:8px;flex-wrap:wrap;}
+.sk-share a{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:var(--bg2);border:1px solid var(--line);transition:.15s;}
+.sk-share a:hover{transform:translateY(-2px);background:var(--card2);}
 /* Aislar el contenido del tab en móvil: solo se ve el tab activo, sin hero ni sidebar */
 @media(max-width:720px){
   .sk-wrap[data-tab]:not([data-tab="community"]) .sk-hero{display:none;}
@@ -453,11 +464,17 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
   .sk-cal-ev{font-size:9.5px;line-height:1.15;padding:2px 4px;height:auto;border-radius:5px;white-space:normal;overflow:hidden;}
 }
 
-/* Onyx Academy · calendario más vivo/grande + inputs más grandes */
-.sk-cal-cell{min-height:92px;}
-.sk-cal-ev{font-size:11.5px;font-weight:600;background:var(--grad);color:#fff;padding:3px 7px;border-radius:6px;box-shadow:0 2px 8px -2px color-mix(in srgb,var(--brand) 70%,transparent);}
+/* Onyx Academy · calendario más vivo/grande + hover + inputs más grandes */
+.sk-cal-cell{min-height:92px;transition:transform .12s, box-shadow .12s, border-color .12s;}
+.sk-cal-cell:not(.dim):hover{border-color:var(--brand);transform:translateY(-1px);box-shadow:0 0 0 1px var(--brand),0 8px 20px -8px color-mix(in srgb,var(--brand) 55%,transparent);cursor:pointer;}
+.sk-cal-ev{display:block;font-size:11.5px;font-weight:600;background:var(--grad);color:#fff;padding:3px 7px;border-radius:6px;box-shadow:0 2px 8px -2px color-mix(in srgb,var(--brand) 70%,transparent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;}
+.sk-cal-ev b{font-weight:800;margin-right:3px;}
 .sk-cal-ev.live{background:linear-gradient(120deg,#ff5a6a,#e23b55);color:#fff;font-weight:800;box-shadow:0 0 10px -1px color-mix(in srgb,var(--red) 80%,transparent);}
-@media(max-width:640px){.sk-cal-cell{min-height:60px;}.sk-cal-ev{height:auto;font-size:9.5px;padding:2px 4px;white-space:normal;}}
+/* Móvil: la celda es angosta, pero la HORA siempre se lee (el título se recorta). */
+@media(max-width:640px){
+  .sk-cal-cell{min-height:66px;padding:4px;}
+  .sk-cal-ev{font-size:9px;padding:2px 4px;min-height:15px;border-radius:5px;}
+}
 /* Campos de escritura de la academia: más grandes y cómodos */
 .sk-wrap textarea{min-height:70px;font-size:15px;padding:12px 14px;line-height:1.5;}
 .sk-wrap input[type="text"],.sk-wrap input:not([type]){font-size:15px;padding:12px 14px;}

@@ -166,6 +166,25 @@ function SocialRow({ socials }: { socials: any }) {
     </div>
   );
 }
+// Botones para compartir el enlace de la academia a redes (share nativo del móvil + directos).
+function ShareRow({ link, message, L }: { link: string; message: string; L: (a: string, b: string) => string }) {
+  const enc = encodeURIComponent; const msg = enc(message + ' ' + link);
+  const items: { key: string; color: string; href: string }[] = [
+    { key: 'whatsapp', color: BRAND_COLOR.whatsapp, href: `https://wa.me/?text=${msg}` },
+    { key: 'telegram', color: BRAND_COLOR.telegram, href: `https://t.me/share/url?url=${enc(link)}&text=${enc(message)}` },
+    { key: 'facebook', color: BRAND_COLOR.facebook, href: `https://www.facebook.com/sharer/sharer.php?u=${enc(link)}` },
+    { key: 'x', color: BRAND_COLOR.x, href: `https://twitter.com/intent/tweet?text=${enc(message)}&url=${enc(link)}` },
+  ];
+  const nativeShare = () => { try { (navigator as any).share?.({ title: 'Onyx Academy', text: message, url: link }); } catch {} };
+  const hasNative = typeof navigator !== 'undefined' && !!(navigator as any).share;
+  return (
+    <div className="sk-share">
+      {hasNative && <a role="button" tabIndex={0} onClick={nativeShare} title={L('Compartir', 'Share')} style={{ color: 'var(--brand)', cursor: 'pointer' }}><OnyxIcon emoji="🔗" size={16} /></a>}
+      {items.map((s) => <a key={s.key} href={s.href} target="_blank" rel="noreferrer" title={s.key} style={{ color: s.color }}><BrandIcon name={s.key} size={17} /></a>)}
+      <a href={`mailto:?subject=${enc(message)}&body=${enc(message + '\n\n' + link)}`} title={L('Correo', 'Email')} style={{ color: 'var(--tx)' }}><OnyxIcon name="mail" size={16} /></a>
+    </div>
+  );
+}
 // Overlay modal para formularios (siempre visible al abrir, evita el bug de "no pasa nada").
 function Modal({ onClose, children }: { onClose: () => void; children: any }) {
   return <div className="sk-modal-ov" onClick={onClose}><div className="sk-modal" onClick={(e) => e.stopPropagation()}>{children}</div></div>;
@@ -509,7 +528,7 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
             );
           })()}
           {active.audit && (active.audit.hasAddon || active.audit.addon || active.audit.verified) && (
-            <div className="sk-side-card" style={{ border: '1px solid color-mix(in srgb,var(--green) 32%,transparent)' }}>
+            <div className={'sk-side-card' + ((active.audit.addon && !active.audit.hasAddon) ? ' sk-featured' : '')} style={{ border: '1px solid color-mix(in srgb,var(--green) 32%,transparent)' }}>
               <div className="row between" style={{ marginBottom: 6 }}><b style={{ fontSize: 14 }}>{L('Auditoría de tu plan', 'Your plan audit')}</b><OnyxIcon name="guardian" size={15} /></div>
               {active.audit.verified && <div className="sk-chip" style={{ background: 'color-mix(in srgb,var(--green) 15%,transparent)', color: 'var(--soft-green)', marginBottom: 8, display: 'inline-flex' }}>✓ {L('Plan verificado por tu mentor', 'Plan verified by your mentor')}</div>}
               {active.audit.hasAddon ? (
@@ -618,7 +637,7 @@ function MonthCalendar({ events, lang }: any) {
               <div className="sk-cal-day">{c.date.getDate()}</div>
               {evs.slice(0, 3).map((e: any) => {
                 const start = new Date(e.starts_at).getTime(); const end = start + (e.duration_min || 60) * 60000; const live = now >= start && now < end;
-                return <div key={e.id} className={'sk-cal-ev' + (live ? ' live' : '')} title={`${hhmm(e.starts_at)} · ${e.title}`} onClick={() => e.join_url && window.open(e.join_url, '_blank')}>{live ? '● ' : ''}{hhmm(e.starts_at)} {e.title}</div>;
+                return <div key={e.id} className={'sk-cal-ev' + (live ? ' live' : '')} title={`${hhmm(e.starts_at)} · ${e.title}`} onClick={() => e.join_url && window.open(e.join_url, '_blank')}>{live ? '● ' : ''}<b>{hhmm(e.starts_at)}</b>{e.title}</div>;
               })}
               {evs.length > 3 && <div className="muted" style={{ fontSize: 10 }}>+{evs.length - 3}</div>}
             </div>
@@ -1258,17 +1277,19 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
       {empty && <SetupWizard d={d} L={L} api={api} setModForm={setModForm} setEvForm={setEvForm} goTab={setTab} />}
 
       <div className="sk-card">
-        <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>🔑 {L('Enlace de inscripción (compártelo con tus alumnos)', 'Enrollment link (share with your students)')}</div>
-        <div className="row" style={{ gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-          <div style={{ flex: 1, minWidth: 200 }}>
-            <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-              <input readOnly value={link} style={{ margin: 0, flex: 1, minWidth: 160 }} />
-              <button className="btn btn-ghost" onClick={() => { navigator.clipboard.writeText(link); setToast(L('Copiado', 'Copied')); setTimeout(() => setToast(''), 1500); }}>{L('Copiar', 'Copy')}</button>
-              <span className="sk-chip">{L('Código', 'Code')}: {d.mentor.code}</span>
+        <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>🔑 {L('Enlace de inscripción (compártelo con tus alumnos)', 'Enrollment link (share with your students)')}</div>
+        <div className="row" style={{ gap: 14, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+          <div style={{ flex: 1, minWidth: 220 }}>
+            <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              <input readOnly value={link} style={{ margin: 0, flex: 1, minWidth: 160 }} onFocus={(e) => e.currentTarget.select()} />
+              <button className="btn sk-glow" onClick={() => { navigator.clipboard.writeText(link); setToast(L('Enlace copiado', 'Link copied')); setTimeout(() => setToast(''), 1500); }}><OnyxIcon name="card" size={14} glow={false} /> {L('Copiar', 'Copy')}</button>
+              <button className="sk-code" onClick={() => { navigator.clipboard.writeText(d.mentor.code); setToast(L('Código copiado', 'Code copied')); setTimeout(() => setToast(''), 1500); }} style={{ border: 'none', cursor: 'pointer' }}>{d.mentor.code}</button>
             </div>
-            <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>{L('O que escaneen este QR para unirse:', 'Or have them scan this QR to join:')}</div>
+            <div className="muted" style={{ fontSize: 12, margin: '12px 0 8px' }}>{L('Compártelo por:', 'Share it via:')}</div>
+            <ShareRow link={link} message={L(`Únete a mi academia de trading en Onyx: ${d.mentor.academy_name}`, `Join my trading academy on Onyx: ${d.mentor.academy_name}`)} L={L} />
+            <div className="muted" style={{ fontSize: 12, marginTop: 12 }}>{L('O que escaneen este QR para unirse:', 'Or have them scan this QR to join:')}</div>
           </div>
-          <JoinQR url={link} size={128} />
+          <JoinQR url={link} size={150} actions L={L} />
         </div>
       </div>
 

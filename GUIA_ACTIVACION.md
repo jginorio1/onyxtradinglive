@@ -1568,3 +1568,16 @@ comunidad y preguntan; el AI responde **usando solo esa guía** (no inventa; si 
 les dice que te pregunten). Sin señales ni promesas de ganancias.
 
 **Requisitos:** el SQL v13 + `ANTHROPIC_API_KEY` para ambas funciones AI.
+
+### 44 · Onyx Academy — Cabecera de compartir + calendario + brillos (Fase 11)
+
+Sin SQL nuevo. Cambios de UI/CSS:
+- **Cabecera de inscripción rediseñada**: enlace + botón **Copiar encendido** + **código en pastilla
+  brillante** (clic para copiar), fila de **compartir a redes** (WhatsApp, Telegram, Facebook, X,
+  correo y "Compartir…" nativo del móvil), y **QR más grande con halo** y botones **Descargar** y
+  **Copiar** imagen.
+- **Calendario en móvil**: la **hora se lee** dentro de la celda (antes salía una línea violeta);
+  hora en negrita, título recortado. Las celdas **se iluminan y elevan al pasar el cursor**.
+- **Tarjeta del add-on de auditoría** ("Your plan audit"): ahora **palpita/brilla** para llamar la
+  atención (borde verde + halo animado).
+- **Países**: se añadieron los que faltaban — **Puerto Rico**, Hong Kong, Kosovo, Macao.
