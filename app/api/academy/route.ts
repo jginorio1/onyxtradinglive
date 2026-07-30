@@ -5,6 +5,7 @@ import { getMentor, myAcademies, getContent, progressSet, markLesson, isEnrolled
 import { listProducts, accessibleModules, studentPurchases, perksFor, membershipInfo, hasMembership } from '@/lib/academyPay';
 import { myReferralStats } from '@/lib/academyExtras';
 import { auditAddon, hasAuditAddon, auditConsent, planVerified } from '@/lib/academyAudit';
+import { listWins, pendingCount } from '@/lib/academyWins';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -35,7 +36,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ leaderboard: await leaderboard(m, range, 50) });
   }
   const [mine, mentorRow] = await Promise.all([myAcademies(user.id), getMentor(user.id)]);
-  const out: any = { canMentor: !!caps?.academy, isMentor: !!mentorRow, mentorCode: mentorRow?.code || null, myMentorId: mentorRow?.user_id || null, myAcademyName: mentorRow?.academy_name || null, academies: mine };
+  const out: any = { canMentor: !!caps?.academy, isMentor: !!mentorRow, mentorCode: mentorRow?.code || null, myMentorId: mentorRow?.user_id || null, myAcademyName: mentorRow?.academy_name || null, myLogoUrl: mentorRow?.logo_url || null, academies: mine };
   const enrolledHere = m ? await isEnrolled(m, user.id) : false;
   const iAmMentorHere = m && mentorRow && mentorRow.user_id === m;
   // Comunidad de pago: si no es el mentor y no tiene membresía activa → paywall.
@@ -57,13 +58,17 @@ export async function GET(req: Request) {
       listEvents(m), nextEvent(m), dmUnread(m, user.id),
     ]);
     const myPerks = iAmMentorHere ? { copy: true, guardian: true } : await perksFor(user.id, m);
-    const [refStats, mrow2, addon, hasAddon, consent, verified] = await Promise.all([
+    // Marca "en línea" (para el puntito verde de miembros).
+    supabaseAdmin.from('profiles').update({ last_seen_at: new Date().toISOString() }).eq('id', user.id).then(() => {});
+    const [refStats, mrow2, addon, hasAddon, consent, verified, wins, winsPending] = await Promise.all([
       myReferralStats(user.id, m),
       supabaseAdmin.from('mentors').select('affiliate_reward_cents,affiliate_currency').eq('user_id', m).maybeSingle(),
       auditAddon(m),
       iAmMentorHere ? Promise.resolve(false) : hasAuditAddon(user.id, m),
       iAmMentorHere ? Promise.resolve(false) : auditConsent(m, user.id),
       iAmMentorHere ? Promise.resolve(false) : planVerified(m, user.id),
+      listWins(m, user.id),
+      iAmMentorHere ? pendingCount(m) : Promise.resolve(0),
     ]);
     // Un módulo se bloquea SOLO si la academia vende niveles y el alumno no tiene
     // acceso. Si no hay niveles activos, es una academia gratis → todo abierto.
@@ -83,6 +88,7 @@ export async function GET(req: Request) {
       events, live, dmUnread: unread, myUserId: user.id, myPerks,
       referral: refStats, affiliateReward: (mrow2.data as any)?.affiliate_reward_cents || 0, affiliateCurrency: (mrow2.data as any)?.affiliate_currency || 'usd',
       audit: { addon, hasAddon, consent, verified },
+      wins, winsPending,
     };
   }
   return NextResponse.json(out);

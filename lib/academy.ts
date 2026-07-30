@@ -231,19 +231,22 @@ export async function membersList(mentorId: string) {
   ids.add(mentorId); // el mentor también es miembro
   const idArr = Array.from(ids);
   const [{ data: profs }, { data: pts }] = await Promise.all([
-    supabaseAdmin.from('profiles').select('id,full_name,email').in('id', idArr),
+    supabaseAdmin.from('profiles').select('id,full_name,email,country,last_seen_at').in('id', idArr),
     supabaseAdmin.from('academy_points').select('user_id,points').eq('mentor_id', mentorId).in('user_id', idArr),
   ]);
   const ptOf: Record<string, number> = {}; (pts || []).forEach((r: any) => { ptOf[r.user_id] = r.points; });
   const joinOf: Record<string, string> = {}; (enr || []).forEach((e: any) => { joinOf[e.student_id] = e.joined_at; });
+  const ONLINE_MS = 5 * 60 * 1000; // "en línea" = actividad en los últimos 5 min
   return (profs || []).map((p: any) => {
     const points = ptOf[p.id] || 0;
+    const online = p.last_seen_at ? (Date.now() - new Date(p.last_seen_at).getTime()) < ONLINE_MS : false;
     return {
       user_id: p.id, name: p.full_name || (p.email || '').split('@')[0] || 'Trader',
       points, level: levelFor(points).level, joined_at: joinOf[p.id] || null,
+      country: p.country || null, online,
       is_mentor: p.id === mentorId,
     };
-  }).sort((a, b) => (b.is_mentor ? 1 : 0) - (a.is_mentor ? 1 : 0) || b.points - a.points);
+  }).sort((a, b) => (b.is_mentor ? 1 : 0) - (a.is_mentor ? 1 : 0) || (b.online ? 1 : 0) - (a.online ? 1 : 0) || b.points - a.points);
 }
 
 // ---- Comunidad ----
@@ -495,7 +498,7 @@ export async function tradersBoard(mentorId: string, limit = 30) {
 // ============================================================
 export async function memberProfile(mentorId: string, userId: string, self = false) {
   const [{ data: prof }, { data: pts }, { data: posts }, { data: comments }] = await Promise.all([
-    supabaseAdmin.from('profiles').select('full_name,email,created_at').eq('id', userId).maybeSingle(),
+    supabaseAdmin.from('profiles').select('full_name,email,created_at,country').eq('id', userId).maybeSingle(),
     supabaseAdmin.from('academy_points').select('points').eq('mentor_id', mentorId).eq('user_id', userId).maybeSingle(),
     supabaseAdmin.from('academy_posts').select('created_at').eq('mentor_id', mentorId).eq('author_id', userId),
     supabaseAdmin.from('academy_comments').select('created_at,post_id').eq('author_id', userId),

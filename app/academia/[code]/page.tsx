@@ -111,46 +111,6 @@ export default function AcademiaPublic() {
       {a.pitch && <div className="card" style={{ marginTop: 24, whiteSpace: 'pre-wrap', fontSize: 15, lineHeight: 1.65 }}>{a.pitch}</div>}
       {a.about && !a.pitch && <div className="card" style={{ marginTop: 24, whiteSpace: 'pre-wrap', fontSize: 15, lineHeight: 1.65 }}>{a.about}</div>}
 
-      {/* Niveles / upsells */}
-      {(a.products || []).length > 0 && (
-        <>
-          <h2 style={{ margin: '28px 0 12px', display: 'flex', alignItems: 'center', gap: 9 }}><span style={{ color: 'var(--gold)', display: 'inline-flex' }}><OnyxIcon name="gem" size={20} /></span> {L('Elige tu nivel', 'Choose your tier')}</h2>
-          <div className="grid g3">
-            {a.products.map((p: any) => (
-              <div key={p.id} className="card">
-                <div style={{ fontWeight: 800, fontSize: 16 }}>{p.name}</div>
-                {p.description && <p className="muted" style={{ fontSize: 13, margin: '6px 0 10px' }}>{p.description}</p>}
-                <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--gold)', margin: '8px 0 12px' }}>{tierPrice(p)}</div>
-                {(p.perks?.copy || p.perks?.guardian) && <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 10 }}>{p.perks?.copy && <span style={{ fontSize: 12, color: 'var(--soft-green)' }}>✓ Copy trading</span>}{p.perks?.guardian && <span style={{ fontSize: 12, color: 'var(--soft-green)' }}>✓ Onyx Guardian</span>}</div>}
-                <Link className="btn btn-primary" href={join} style={{ width: '100%', textAlign: 'center' }}>{L('Empezar', 'Get started')}</Link>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      {/* Vitrina de contenido */}
-      {(a.modules || []).length > 0 && (
-        <>
-          <h2 style={{ margin: '28px 0 4px' }}>{L('Contenido', 'Content')}{totalFree > 0 && <span className="muted" style={{ fontSize: 14, fontWeight: 400 }}> · {totalFree} {L('lecciones gratis', 'free lessons')}</span>}</h2>
-          {a.modules.map((m: any) => (
-            <div key={m.id} className="card" style={{ marginTop: 12 }}>
-              <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: m.description ? 4 : 10 }}><span className="card-ic"><OnyxIcon name="modules" size={16} /></span> {m.title}</h3>
-              {m.description && <p className="muted" style={{ fontSize: 13, marginBottom: 10 }}>{m.description}</p>}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                {m.lessons.map((l: any) => (
-                  <div key={l.id} className="row" style={{ gap: 10, alignItems: 'center', fontSize: 13.5 }}>
-                    <span style={{ color: l.is_free ? 'var(--green)' : 'var(--mut)', display: 'inline-flex' }}>{l.is_free ? '▷' : <OnyxIcon name="guardian" size={13} />}</span>
-                    <span style={{ flex: 1 }}>{l.title}</span>
-                    {l.is_free && <span className="pill" style={{ fontSize: 10, color: 'var(--soft-green)', background: 'rgba(52,226,160,.15)' }}>{L('gratis', 'free')}</span>}
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </>
-      )}
-
       <div style={{ textAlign: 'center', marginTop: 30 }}>
         <Link className="btn btn-primary" href={join} style={{ fontSize: 16, padding: '12px 28px' }}>{paid ? L('Unirme por ', 'Join for ') + priceLabel : L('Unirme gratis', 'Join free')}</Link>
       </div>

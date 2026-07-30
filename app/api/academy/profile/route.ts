@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { getMentor, isEnrolled, memberProfile, setShareStats } from '@/lib/academy';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -26,6 +27,9 @@ export async function POST(req: Request) {
   const { data: { user } } = await sb.auth.getUser();
   if (!user) return NextResponse.json({ error: 'no autorizado' }, { status: 401 });
   const b = await req.json().catch(() => ({}));
-  const on = await setShareStats(user.id, !!b.share);
-  return NextResponse.json({ ok: true, share: on });
+  const patch: any = {};
+  if (b.share !== undefined) await setShareStats(user.id, !!b.share);
+  if (b.country !== undefined) patch.country = b.country ? String(b.country).slice(0, 2).toUpperCase() : null;
+  if (Object.keys(patch).length) await supabaseAdmin.from('profiles').update(patch).eq('id', user.id);
+  return NextResponse.json({ ok: true });
 }

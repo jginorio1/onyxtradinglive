@@ -1488,3 +1488,34 @@ Sin SQL nuevo. Cambios:
   plantillas de bienvenida/recordatorio/expira salen en inglés.
 Nota: el nombre, "sobre", lemas y textos que escribe el mentor (o genera el AI) quedan en
 el idioma en que se escribieron; eso es contenido, no interfaz.
+
+### 41 · Onyx Academy — Muro de Logros + pulido de comunidad (Fase 8)
+
+**SQL (Supabase, tras academy_v10.sql):** `supabase/academy_v11.sql`
+- `academy_wins` (logros de alumnos), `academy_win_likes`, `profiles.last_seen_at`.
+
+**Muro de Logros (nueva pestaña "Logros"):** los alumnos suben pruebas de retiros,
+retos superados, certificados o metas (con imagen y monto opcional). Pasa por la **cola de
+aprobación del mentor** antes de publicarse; el mentor aprueba, aprueba+verifica (sello) o
+rechaza. Reacciones "🔥 Felicitar", filtros por tipo, +10 puntos al ranking por logro
+aprobado. Aviso fijo: "Logros reales de miembros. No son promesa de resultados". La imagen
+pasa por la moderación AI existente.
+
+**Pulido de comunidad:**
+- **Miembros**: puntito verde "en línea" (últimos 5 min), **bandera del país** y mes/año en
+  que se unió. El alumno **elige su país** de la lista completa del mundo en su Perfil.
+- **Precios de niveles**: centrados y "encendidos" (glow), crecen al pasar el cursor. La
+  tarjeta del **add-on de auditoría** queda **destacada** (borde verde que palpita).
+- **Contraste**: se corrigieron textos oscuros/azules sobre fondo oscuro; el ícono de "Mi
+  comunidad" ahora usa tu **logo** (o ícono blanco), no el gorro azul.
+- **Landing**: se quitaron las secciones "Elige tu nivel" y "Contenido" (queda más limpia:
+  video/portada, pitch y unirse).
+- **Móvil**: dentro de un tab (Aulas, Calendario, Miembros, Ranking, Logros) solo se ve el
+  contenido de ese tab; se ocultan el hero y la barra lateral.
+
+**Requisitos:** solo el SQL. `ANTHROPIC_API_KEY` únicamente para la moderación de imágenes.
+
+**Pendiente para la próxima ronda (Fase 9, propuesto):** QR para unirse, editar campañas ya
+programadas, detalle del evento en el calendario móvil, **chat privado con roles** (solo
+mentor↔alumno / colaboradores), **colaboradores con permisos y etiqueta de rol**, más
+reportes en Cobros (activos, cancelados, MRR), y más Onyx AI en la academia.

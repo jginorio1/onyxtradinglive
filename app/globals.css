@@ -373,6 +373,21 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
 .sk-modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:120;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;overflow-y:auto;}
 .sk-modal{width:100%;max-width:560px;margin:auto;}
 .sk-modal .sk-card{margin:0;box-shadow:0 20px 60px rgba(0,0,0,.4);}
+/* Puntito "en línea" (verde brillante) sobre el avatar */
+.sk-online{position:absolute;right:-1px;bottom:-1px;width:12px;height:12px;border-radius:50%;background:#1fd18a;border:2px solid var(--card);box-shadow:0 0 8px rgba(31,209,138,.9);}
+/* Precios centrados y "encendidos" en las tarjetas de nivel */
+.sk-price{text-align:center;font-size:24px;font-weight:900;color:var(--gold);text-shadow:0 0 16px color-mix(in srgb,var(--gold) 55%,transparent);letter-spacing:-.5px;}
+.sk-tier-card{transition:transform .15s, box-shadow .15s, border-color .15s;}
+.sk-tier-card:hover{transform:translateY(-3px);box-shadow:0 12px 34px color-mix(in srgb,var(--gold) 22%,transparent);border-color:color-mix(in srgb,var(--gold) 55%,transparent);}
+/* Tarjeta destacada (ej. Plan audit) — resalta y palpita suave */
+.sk-featured{border:1px solid color-mix(in srgb,var(--green) 55%,transparent)!important;box-shadow:0 0 0 1px color-mix(in srgb,var(--green) 35%,transparent),0 10px 34px color-mix(in srgb,var(--green) 20%,transparent);animation:skGlow 2.4s ease-in-out infinite;}
+@keyframes skGlow{0%,100%{box-shadow:0 0 0 1px color-mix(in srgb,var(--green) 30%,transparent),0 8px 26px color-mix(in srgb,var(--green) 14%,transparent);}50%{box-shadow:0 0 0 1px color-mix(in srgb,var(--green) 55%,transparent),0 12px 40px color-mix(in srgb,var(--green) 30%,transparent);}}
+/* Aislar el contenido del tab en móvil: solo se ve el tab activo, sin hero ni sidebar */
+@media(max-width:720px){
+  .sk-wrap[data-tab]:not([data-tab="community"]) .sk-hero{display:none;}
+  .sk-wrap[data-tab]:not([data-tab="community"]) .sk-side{display:none;}
+  .sk-wrap[data-tab] .sk-grid{grid-template-columns:1fr;}
+}
 .sk-tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:14px 0 16px;overflow-x:auto;}
 .sk-tab{padding:10px 14px;font-size:14px;font-weight:600;color:var(--mut);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap;transition:.15s;display:flex;align-items:center;gap:7px;}
 .sk-tab:hover{color:var(--tx);}

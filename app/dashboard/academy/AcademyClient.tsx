@@ -4,6 +4,7 @@ import { useLang } from '@/lib/lang';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import BrandIcon, { BRAND_COLOR } from '@/app/components/BrandIcon';
 import LangToggle from '@/app/LangToggle';
+import { COUNTRIES, flagOf, countryName } from '@/app/components/countries';
 
 // Onyx Academy v2 — comunidad estilo Skool: feed, aulas con secciones y progreso,
 // calendario con clase en vivo (countdown + EN VIVO), miembros, ranking, perfil,
@@ -227,10 +228,10 @@ export default function AcademyClient() {
         <div>
           <div className="sk-sec-title">{L('Mi comunidad', 'My community')}</div>
           <button className="sk-course" style={{ maxWidth: 280 }} onClick={() => openAcademy(d.myMentorId)}>
-            <div className="sk-course-cover" style={{ background: 'var(--grad)' }}><OnyxIcon name="graduation" size={30} /></div>
+            <div className="sk-course-cover" style={d.myLogoUrl ? { backgroundImage: `url(${d.myLogoUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : { background: 'var(--grad)' }}>{!d.myLogoUrl && <span style={{ color: 'rgba(255,255,255,.92)', display: 'inline-flex' }}><OnyxIcon name="graduation" size={30} glow={false} /></span>}</div>
             <div className="sk-course-body">
-              <div style={{ fontWeight: 700, fontSize: 15 }}>{d.myAcademyName || 'Onyx Academy'}</div>
-              <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>{L('Entrar como mentor →', 'Enter as mentor →')}</div>
+              <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--tx)' }}>{d.myAcademyName || 'Onyx Academy'}</div>
+              <div style={{ fontSize: 12.5, marginTop: 2, color: 'var(--brand)' }}>{L('Entrar como mentor →', 'Enter as mentor →')}</div>
             </div>
           </button>
         </div>
@@ -325,7 +326,7 @@ function Paywall({ pw, lang, onBack }: any) {
 function Community({ active, lang, reload, onExit, toMentor }: any) {
   const L = (a: string, b: string) => (lang === 'en' ? b : a);
   const es = lang !== 'en';
-  const [tab, setTab] = useState<'community' | 'classroom' | 'calendar' | 'members' | 'leaderboard' | 'profile' | 'chat'>('community');
+  const [tab, setTab] = useState<'community' | 'classroom' | 'calendar' | 'members' | 'leaderboard' | 'logros' | 'profile' | 'chat'>('community');
   const [openMod, setOpenMod] = useState<any>(null);
   const [lesson, setLesson] = useState<any>(null);
   const [post, setPost] = useState('');
@@ -357,10 +358,11 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
     ['calendar', 'calendar', L('Calendario', 'Calendar')],
     ['members', 'users', L('Miembros', 'Members')],
     ['leaderboard', 'trophy', L('Ranking', 'Leaderboard')],
+    ['logros', 'trophy', L('Logros', 'Wins')],
   ];
 
   return (
-    <div className="sk-wrap" style={{ paddingTop: 4 }}>
+    <div className="sk-wrap" data-tab={tab} style={{ paddingTop: 4 }}>
       <div className="sk-hero">
         <div className="sk-hero-cover" style={active.cover_url ? { backgroundImage: `url(${active.cover_url})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined} />
         <div className="sk-hero-body">
@@ -454,12 +456,15 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
             <div className="sk-grid-members">
               {(active.members || []).map((mem: any) => (
                 <div key={mem.user_id} className="sk-member">
-                  <Avatar name={mem.name} level={mem.level} size={44} onClick={() => openProfile(mem.user_id)} />
+                  <span style={{ position: 'relative', flex: 'none' }}>
+                    <Avatar name={mem.name} level={mem.level} size={44} onClick={() => openProfile(mem.user_id)} />
+                    {mem.online && <i className="sk-online" title={L('En línea', 'Online')} />}
+                  </span>
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ fontWeight: 600, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }} onClick={() => openProfile(mem.user_id)}>
-                      {mem.name}{mem.is_mentor && <span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--gold) 18%,transparent)', color: 'var(--gold)' }}>{L('Mentor', 'Mentor')}</span>}
+                      {mem.country && <span title={countryName(mem.country)}>{flagOf(mem.country)}</span>}{mem.name}{mem.is_mentor && <span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--gold) 18%,transparent)', color: 'var(--gold)' }}>{L('Mentor', 'Mentor')}</span>}
                     </div>
-                    <div className="muted" style={{ fontSize: 12 }}>{L('Nivel', 'Level')} {mem.level} · {mem.points} {L('pts', 'pts')}</div>
+                    <div className="muted" style={{ fontSize: 12 }}>{L('Nivel', 'Level')} {mem.level} · {mem.points} {L('pts', 'pts')}{mem.joined_at ? ' · ' + new Date(mem.joined_at).toLocaleDateString(es ? 'es-ES' : 'en-US', { month: 'short', year: 'numeric' }) : ''}</div>
                   </div>
                   {mem.user_id !== active.myUserId && <button className="btn btn-ghost" style={{ padding: '4px 8px' }} onClick={() => openDm(mem.user_id)}><OnyxIcon name="chat" size={14} /></button>}
                 </div>
@@ -468,6 +473,8 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
           )}
 
           {tab === 'leaderboard' && <Leaderboard mentorId={active.mentor_id} initial={active.leaderboard || []} L={L} />}
+
+          {tab === 'logros' && <WinsWall active={active} lang={lang} reload={reload} L={L} />}
         </div>
 
         <div className="sk-side">
@@ -736,6 +743,7 @@ function ProfileView({ mentorId, userId, me, lang, onDm, onBack }: any) {
   function reloadP() { fetch(`/api/academy/profile?m=${mentorId}&u=${userId}`).then((r) => r.json()).then((j) => setP(j.profile)); }
   useEffect(() => { setP(null); reloadP(); }, [mentorId, userId]);
   async function toggleShare(on: boolean) { await fetch('/api/academy/profile', { method: 'POST', body: JSON.stringify({ share: on }) }); reloadP(); }
+  async function saveCountry(code: string) { await fetch('/api/academy/profile', { method: 'POST', body: JSON.stringify({ country: code }) }); reloadP(); }
   if (!p) return <div className="sk-card muted">…</div>;
   const v = p.verified || {};
   const isSelf = userId === me;
@@ -764,6 +772,15 @@ function ProfileView({ mentorId, userId, me, lang, onDm, onBack }: any) {
           <div><div style={{ fontWeight: 800, fontSize: 18 }}>{p.contributions}</div><div className="muted" style={{ fontSize: 11 }}>{L('Contribuciones', 'Contributions')}</div></div>
           <div><div style={{ fontWeight: 800, fontSize: 18 }}>{p.points}</div><div className="muted" style={{ fontSize: 11 }}>{L('Puntos', 'Points')}</div></div>
         </div>
+        {isSelf ? (
+          <div style={{ marginTop: 14 }}>
+            <span className="muted" style={{ fontSize: 12 }}>{L('Tu país', 'Your country')}</span>
+            <select value={p.country || ''} onChange={(e) => saveCountry(e.target.value)} style={{ margin: '4px auto 0', display: 'block', maxWidth: 260 }}>
+              <option value="">{L('— Elige tu país —', '— Choose your country —')}</option>
+              {COUNTRIES.map((c) => <option key={c[0]} value={c[0]}>{flagOf(c[0])} {c[1]}</option>)}
+            </select>
+          </div>
+        ) : (p.country && <div className="muted" style={{ fontSize: 13, marginTop: 10 }}>{flagOf(p.country)} {countryName(p.country)}</div>)}
       </div>
       {/* Trader verificado — track record real (opt-in, sin promesas) */}
       {(v.hasData || isSelf) && (
@@ -942,6 +959,132 @@ function PostCard({ p, onLike, onComment, onProfile, L, es }: any) {
   );
 }
 
+// =================== Muro de Logros ===================
+const WIN_KINDS: Record<string, { es: string; en: string; color: string; icon: string }> = {
+  payout: { es: 'Retiro', en: 'Payout', color: '#1D9E75', icon: 'money' },
+  challenge: { es: 'Reto superado', en: 'Challenge passed', color: '#7F77DD', icon: 'trophy' },
+  certificate: { es: 'Certificado', en: 'Certificate', color: '#EF9F27', icon: 'graduation' },
+  goal: { es: 'Meta', en: 'Goal', color: '#378ADD', icon: 'star' },
+};
+function winMoney(cents: number, cur: string) {
+  if (!cents) return '';
+  const c = (cur || 'usd').toUpperCase(); const sym = c === 'USD' ? '$' : c === 'EUR' ? '€' : '';
+  const amt = Math.round(cents / 100).toLocaleString();
+  return sym ? sym + amt : amt + ' ' + c;
+}
+function WinsWall({ active, lang, reload, L }: any) {
+  const mentorId = active.mentor_id;
+  const [filter, setFilter] = useState('all');
+  const [form, setForm] = useState<any>(null);
+  const [pending, setPending] = useState<any[]>([]);
+  const [busy, setBusy] = useState(false);
+  const isMentor = !!active.isMentorHere;
+
+  async function loadPending() { if (!isMentor) return; const r = await fetch(`/api/academy/wins?m=${mentorId}&pending=1`); const j = await r.json(); setPending(j.pending || []); }
+  useEffect(() => { loadPending(); }, []);
+
+  async function submit() {
+    if (busy) return; setBusy(true);
+    const body: any = { action: 'add', mentor_id: mentorId, kind: form.kind, title: form.title, prop_firm: form.prop_firm, image_url: form.image_url, currency: form.currency || 'usd' };
+    if (form.amount) body.amount_cents = Math.round(Number(form.amount) * 100);
+    await fetch('/api/academy/wins', { method: 'POST', body: JSON.stringify(body) });
+    setBusy(false); setForm(null);
+    alert(L('¡Enviado! Tu logro aparecerá cuando tu mentor lo apruebe.', 'Sent! Your win will show once your mentor approves it.'));
+  }
+  async function like(id: string) { await fetch('/api/academy/wins', { method: 'POST', body: JSON.stringify({ action: 'like', mentor_id: mentorId, win_id: id }) }); reload(); }
+  async function review(id: string, decision: string, verified = false) { await fetch('/api/academy/wins', { method: 'POST', body: JSON.stringify({ action: 'review', mentor_id: mentorId, win_id: id, decision, verified }) }); loadPending(); reload(); }
+  async function delWin(id: string) { if (!confirm(L('¿Quitar este logro?', 'Remove this win?'))) return; await fetch('/api/academy/wins', { method: 'POST', body: JSON.stringify({ action: 'delete', mentor_id: mentorId, win_id: id }) }); reload(); }
+
+  const wins = (active.wins || []).filter((w: any) => filter === 'all' || w.kind === filter);
+  return (
+    <div>
+      <div className="row between" style={{ marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
+        <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ color: 'var(--gold)', display: 'inline-flex' }}><OnyxIcon name="trophy" size={18} /></span> {L('Muro de logros', 'Wins wall')}</h3>
+        <button className="btn btn-primary" onClick={() => setForm({ kind: 'payout', title: '', amount: '', currency: 'usd', prop_firm: '', image_url: '' })}>＋ {L('Subir mi logro', 'Share my win')}</button>
+      </div>
+      <div className="row" style={{ gap: 8, alignItems: 'center', padding: '8px 11px', borderRadius: 8, background: 'color-mix(in srgb,var(--gold) 10%,transparent)', marginBottom: 12 }}>
+        <OnyxIcon name="guardian" size={14} /><span style={{ fontSize: 12, color: 'var(--soft-gold, var(--gold))' }}>{L('Logros reales de miembros. No son promesa de resultados.', 'Real member wins. Not a promise of results.')}</span>
+      </div>
+
+      <div className="sk-seg" style={{ marginBottom: 12 }}>
+        <button className={filter === 'all' ? 'on' : ''} onClick={() => setFilter('all')}>{L('Todos', 'All')}</button>
+        {Object.keys(WIN_KINDS).map((k) => <button key={k} className={filter === k ? 'on' : ''} onClick={() => setFilter(k)}>{L(WIN_KINDS[k].es, WIN_KINDS[k].en)}</button>)}
+      </div>
+
+      {isMentor && pending.length > 0 && (
+        <div className="sk-card" style={{ border: '1px dashed color-mix(in srgb,var(--gold) 45%,transparent)', marginBottom: 12 }}>
+          <div className="row between" style={{ marginBottom: 8 }}><b style={{ fontSize: 13.5, display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon name="calendar" size={14} /> {L('Por aprobar', 'To approve')}</b><span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--gold) 16%,transparent)', color: 'var(--gold)' }}>{pending.length}</span></div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {pending.map((w: any) => (
+              <div key={w.id} className="row" style={{ gap: 10, alignItems: 'center', background: 'var(--bg2)', borderRadius: 8, padding: 8 }}>
+                {w.image_url ? <img src={w.image_url} alt="" style={{ width: 46, height: 46, borderRadius: 6, objectFit: 'cover', flex: 'none' }} /> : <span style={{ width: 46, height: 46, borderRadius: 6, background: 'var(--card2)', display: 'grid', placeItems: 'center', flex: 'none', color: WIN_KINDS[w.kind]?.color }}><OnyxIcon name={(WIN_KINDS[w.kind]?.icon as any) || 'trophy'} size={20} /></span>}
+                <div style={{ flex: 1, minWidth: 0, fontSize: 13 }}><b>{w.author_name}</b> · {L(WIN_KINDS[w.kind]?.es, WIN_KINDS[w.kind]?.en)}{w.amount_cents ? ' · ' + winMoney(w.amount_cents, w.currency) : ''}<div className="muted" style={{ fontSize: 11.5 }}>{w.title || ''}{w.prop_firm ? ' · ' + w.prop_firm : ''}</div></div>
+                <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '3px 9px', color: 'var(--soft-green)' }} onClick={() => review(w.id, 'approve', true)} title={L('Aprobar y verificar', 'Approve & verify')}>✓✓</button>
+                <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '3px 9px', color: 'var(--soft-green)' }} onClick={() => review(w.id, 'approve', false)}>✓</button>
+                <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '3px 8px', color: 'var(--red)' }} onClick={() => review(w.id, 'reject')}>✕</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {wins.length === 0 ? <div className="sk-card muted">{L('Aún no hay logros publicados. ¡Sé el primero en compartir el tuyo!', 'No wins yet. Be the first to share yours!')}</div> : (
+        <div className="sk-grid-courses">
+          {wins.map((w: any) => (
+            <div key={w.id} className="sk-card" style={{ margin: 0, padding: 0, overflow: 'hidden' }}>
+              <div style={{ height: 130, position: 'relative', background: `color-mix(in srgb,${WIN_KINDS[w.kind]?.color} 16%, var(--bg2))`, display: 'grid', placeItems: 'center' }}>
+                {w.image_url ? <img src={w.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ color: WIN_KINDS[w.kind]?.color }}><OnyxIcon name={(WIN_KINDS[w.kind]?.icon as any) || 'trophy'} size={34} /></span>}
+                <span className="sk-chip" style={{ position: 'absolute', top: 8, left: 8, background: 'rgba(0,0,0,.55)', color: WIN_KINDS[w.kind]?.color }}>{L(WIN_KINDS[w.kind]?.es, WIN_KINDS[w.kind]?.en)}</span>
+                {w.verified && <span className="sk-chip" style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,.55)', color: 'var(--gold)' }}>✓ {L('Verificado', 'Verified')}</span>}
+              </div>
+              <div style={{ padding: '10px 12px' }}>
+                {w.amount_cents ? <div style={{ fontSize: 18, fontWeight: 800 }}>{winMoney(w.amount_cents, w.currency)} {w.kind === 'payout' && <span className="muted" style={{ fontSize: 12, fontWeight: 400 }}>{L('retiro', 'payout')}</span>}</div> : <div style={{ fontSize: 15, fontWeight: 700 }}>{w.title || L(WIN_KINDS[w.kind]?.es, WIN_KINDS[w.kind]?.en)}</div>}
+                {(w.title && w.amount_cents) ? <div className="muted" style={{ fontSize: 12 }}>{w.title}</div> : null}
+                {w.prop_firm && <div className="muted" style={{ fontSize: 12 }}>{w.prop_firm}</div>}
+                <div className="row between" style={{ alignItems: 'center', marginTop: 9 }}>
+                  <div className="row" style={{ gap: 7, alignItems: 'center', minWidth: 0 }}><Avatar name={w.author_name} size={22} /><span className="muted" style={{ fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{w.author_name}</span></div>
+                  <div className="row" style={{ gap: 6, alignItems: 'center' }}>
+                    <button className={'sk-like' + (w.liked ? ' on' : '')} onClick={() => like(w.id)} style={{ fontSize: 12 }}><OnyxIcon name="heart" size={13} glow={false} /> {w.likes || 0}</button>
+                    {isMentor && <button className="btn btn-ghost" style={{ padding: '2px 6px', fontSize: 11, color: 'var(--red)' }} onClick={() => delWin(w.id)}>✕</button>}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {form && (
+        <Modal onClose={() => setForm(null)}>
+          <div className="sk-card" style={{ border: '1px solid var(--brand)' }}>
+            <h3 style={{ marginBottom: 12 }}>{L('Sube tu logro', 'Share your win')}</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <select value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })} style={{ margin: 0 }}>
+                {Object.keys(WIN_KINDS).map((k) => <option key={k} value={k}>{L(WIN_KINDS[k].es, WIN_KINDS[k].en)}</option>)}
+              </select>
+              <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder={L('Título (ej: Primer retiro, Fase 2 aprobada)', 'Title (e.g. First payout, Phase 2 passed)')} style={{ margin: 0 }} />
+              <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+                <input type="number" min={0} step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder={L('Monto (opcional)', 'Amount (optional)')} style={{ margin: 0, width: 150 }} />
+                <select value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value })} style={{ margin: 0 }}><option value="usd">USD</option><option value="eur">EUR</option><option value="mxn">MXN</option></select>
+              </div>
+              <input value={form.prop_firm} onChange={(e) => setForm({ ...form, prop_firm: e.target.value })} placeholder={L('Prop firm / bróker (opcional)', 'Prop firm / broker (optional)')} style={{ margin: 0 }} />
+              <div>
+                <span className="muted" style={{ fontSize: 12 }}>{L('Prueba (captura o certificado)', 'Proof (screenshot or certificate)')}</span>
+                <ImageUpload value={form.image_url} onChange={(v: string) => setForm({ ...form, image_url: v })} L={L} />
+              </div>
+              <p className="muted" style={{ fontSize: 11.5 }}>{L('Tu mentor revisará y aprobará tu logro antes de publicarlo.', 'Your mentor reviews and approves your win before it goes public.')}</p>
+            </div>
+            <div className="row" style={{ gap: 8, marginTop: 12 }}>
+              <button className="btn btn-primary" onClick={submit} disabled={busy || (!form.title && !form.image_url)}>{busy ? '…' : L('Enviar', 'Send')}</button>
+              <button className="btn btn-ghost" onClick={() => setForm(null)}>{L('Cancelar', 'Cancel')}</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
 function Leaderboard({ mentorId, initial, L }: any) {
   const [range, setRange] = useState<'7d' | '30d' | 'all' | 'traders'>('all');
   const [rows, setRows] = useState<any[]>(initial); const [loading, setLoading] = useState(false);
@@ -1001,10 +1144,10 @@ function Tiers({ products, purchases, onBuy, L }: any) {
         {products.map((p: any) => {
           const owned = ownedIds.has(p.id);
           return (
-            <div key={p.id} className="sk-card" style={{ margin: 0, background: 'var(--bg2)' }}>
+            <div key={p.id} className={'sk-card sk-tier-card' + (p.kind === 'audit' ? ' sk-featured' : '')} style={{ margin: 0, background: 'var(--bg2)', textAlign: 'center' }}>
               <div style={{ fontWeight: 700, fontSize: 15 }}>{p.name}</div>
               {p.description && <div className="muted" style={{ fontSize: 12.5, margin: '4px 0 8px' }}>{p.description}</div>}
-              <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--gold)', marginBottom: 8 }}>{priceLabel(p, L)}</div>
+              <div className="sk-price" style={{ margin: '8px 0' }}>{priceLabel(p, L)}</div>
               {p.kind === 'audit' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 10 }}>
                   <span style={{ fontSize: 12, color: 'var(--soft-green)' }}>✓ {L('Tu mentor audita tu trading real', 'Your mentor audits your real trading')}</span>
