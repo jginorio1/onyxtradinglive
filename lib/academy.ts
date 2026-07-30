@@ -299,10 +299,10 @@ export async function publicDirectory() {
 // ============================================================
 // Template "Academia Onyx" · deja la academia pre-armada en un clic.
 // ============================================================
-export async function applyTemplate(mentorId: string) {
-  // No pisar si ya hay contenido.
+export async function applyTemplate(mentorId: string, force = false) {
+  // No pisar si ya hay contenido, salvo que el mentor lo pida explícitamente (force).
   const { data: existing } = await supabaseAdmin.from('academy_modules').select('id').eq('mentor_id', mentorId).limit(1);
-  if (existing && existing.length) return { ok: true, skipped: true };
+  if (existing && existing.length && !force) return { ok: true, skipped: true };
 
   const modules = [
     { title: 'Empieza aquí', description: 'Bienvenida y cómo aprovechar la academia.', position: 0, lessons: [

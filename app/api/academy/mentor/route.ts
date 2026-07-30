@@ -43,7 +43,7 @@ export async function POST(req: Request) {
       case 'lesson_delete': await deleteLesson(mid, String(b.id)); return NextResponse.json({ ok: true });
       case 'post': await addPost(mid, user.id, String(b.body || ''), !!b.pinned); return NextResponse.json({ ok: true });
       case 'post_delete': await deletePost(mid, String(b.id)); return NextResponse.json({ ok: true });
-      case 'template': return NextResponse.json({ ok: true, ...(await applyTemplate(mid)) });
+      case 'template': return NextResponse.json({ ok: true, ...(await applyTemplate(mid, !!b.force)) });
       case 'event': return NextResponse.json({ ok: true, ...(await saveEvent(mid, b)) });
       case 'event_delete': await deleteEvent(mid, String(b.id)); return NextResponse.json({ ok: true });
       default: return NextResponse.json({ error: 'bad_action' }, { status: 400 });

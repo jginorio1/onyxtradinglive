@@ -396,6 +396,50 @@ function OnboardingChecklist({ active, L, onGo }: any) {
   );
 }
 
+// Calendario en cuadrícula (vista de mes) con las clases/eventos marcados.
+function MonthCalendar({ events, lang }: any) {
+  const now = useNow(true);
+  const [cur, setCur] = useState(() => { const d = new Date(); return { y: d.getFullYear(), m: d.getMonth() }; });
+  const first = new Date(cur.y, cur.m, 1);
+  const startOffset = (first.getDay() + 6) % 7; // lunes = 0
+  const daysInMonth = new Date(cur.y, cur.m + 1, 0).getDate();
+  const todayKey = new Date().toDateString();
+  const byDay: Record<string, any[]> = {};
+  (events || []).forEach((e: any) => { const k = new Date(e.starts_at).toDateString(); (byDay[k] ||= []).push(e); });
+  Object.values(byDay).forEach((arr) => arr.sort((a: any, b: any) => a.starts_at.localeCompare(b.starts_at)));
+  const cells: { date: Date; inMonth: boolean }[] = [];
+  for (let i = 0; i < 42; i++) { const n = i - startOffset + 1; cells.push({ date: new Date(cur.y, cur.m, n), inMonth: n >= 1 && n <= daysInMonth }); }
+  const monthLabel = first.toLocaleString(lang === 'en' ? 'en-US' : 'es-ES', { month: 'long', year: 'numeric' });
+  const dows = lang === 'en' ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] : ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+  const hhmm = (iso: string) => new Date(iso).toLocaleTimeString(lang === 'en' ? 'en-US' : 'es-ES', { hour: '2-digit', minute: '2-digit' });
+  function shift(n: number) { let m = cur.m + n, y = cur.y; if (m < 0) { m = 11; y--; } if (m > 11) { m = 0; y++; } setCur({ y, m }); }
+  return (
+    <div className="sk-card">
+      <div className="row between" style={{ marginBottom: 12, alignItems: 'center' }}>
+        <button className="btn btn-ghost" style={{ padding: '4px 12px' }} onClick={() => shift(-1)}>←</button>
+        <b style={{ textTransform: 'capitalize', fontSize: 15 }}>{monthLabel}</b>
+        <button className="btn btn-ghost" style={{ padding: '4px 12px' }} onClick={() => shift(1)}>→</button>
+      </div>
+      <div className="sk-cal-head">{dows.map((d) => <div key={d} className="sk-cal-dow">{d}</div>)}</div>
+      <div className="sk-cal-grid">
+        {cells.map((c, i) => {
+          const key = c.date.toDateString(); const evs = byDay[key] || []; const isToday = key === todayKey;
+          return (
+            <div key={i} className={'sk-cal-cell' + (c.inMonth ? '' : ' dim') + (isToday ? ' today' : '')}>
+              <div className="sk-cal-day">{c.date.getDate()}</div>
+              {evs.slice(0, 3).map((e: any) => {
+                const start = new Date(e.starts_at).getTime(); const end = start + (e.duration_min || 60) * 60000; const live = now >= start && now < end;
+                return <div key={e.id} className={'sk-cal-ev' + (live ? ' live' : '')} title={`${hhmm(e.starts_at)} · ${e.title}`} onClick={() => e.join_url && window.open(e.join_url, '_blank')}>{live ? '● ' : ''}{hhmm(e.starts_at)} {e.title}</div>;
+              })}
+              {evs.length > 3 && <div className="muted" style={{ fontSize: 10 }}>+{evs.length - 3}</div>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function CalendarTab({ events, lang, L }: any) {
   const now = useNow(true);
   const upcoming = (events || []).filter((e: any) => new Date(e.starts_at).getTime() + (e.duration_min || 60) * 60000 > now);
@@ -419,6 +463,7 @@ function CalendarTab({ events, lang, L }: any) {
   };
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <MonthCalendar events={events} lang={lang} />
       <div className="sk-sec-title">{L('Próximas clases en vivo', 'Upcoming live classes')}</div>
       {upcoming.length === 0 && <div className="sk-card muted">{L('No hay clases programadas por ahora.', 'No classes scheduled right now.')}</div>}
       {upcoming.map(Row)}
@@ -801,6 +846,10 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
             <input value={newMod} onChange={(e) => setNewMod(e.target.value)} placeholder={L('Nombre del nuevo curso/aula', 'New course/classroom name')} style={{ margin: 0, flex: 1 }} />
             <button className="btn btn-primary" onClick={() => { if (newMod.trim()) { api({ action: 'module', title: newMod, position: (d.content?.length || 0) }, L('Aula creada', 'Classroom created')); setNewMod(''); } }}>＋ {L('Aula', 'Classroom')}</button>
           </div>
+          <div className="row" style={{ marginTop: 8, alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span className="muted" style={{ fontSize: 12.5, flex: 1 }}>{L('¿Empezar rápido? Añade aulas de ejemplo con la plantilla Academia Onyx.', 'Want a quick start? Add sample classrooms with the Onyx Academy template.')}</span>
+            <button className="btn btn-ghost" onClick={() => { if (confirm(L('Se añadirán aulas de ejemplo (Empieza aquí, Fundamentos, Estrategia) a tu academia. ¿Continuar?', 'Sample classrooms (Start here, Fundamentals, Strategy) will be added to your academy. Continue?'))) api({ action: 'template', force: true }, L('Plantilla aplicada', 'Template applied')); }}><OnyxIcon name="graduation" size={14} /> {L('Usar plantilla Academia Onyx', 'Use Onyx Academy template')}</button>
+          </div>
         </div>
         {(d.content || []).map((m: any) => (
           <div key={m.id} className="sk-card">
@@ -835,6 +884,7 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
           <div className="row between"><h3 style={{ display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic"><OnyxIcon name="calendar" size={16} /></span> {L('Clases en vivo', 'Live classes')}</h3><button className="btn btn-primary" onClick={() => setEvForm({ title: '', join_url: '', starts_at: '', duration_min: 60 })}>＋ {L('Programar', 'Schedule')}</button></div>
           <p className="muted" style={{ fontSize: 13, marginTop: 6 }}>{L('Programa tus sesiones Zoom/Meet. El alumno verá una cuenta regresiva fija y un aviso EN VIVO cuando empieces.', 'Schedule your Zoom/Meet sessions. Students see a fixed countdown and a LIVE banner when you start.')}</p>
         </div>
+        {(d.events || []).length > 0 && <MonthCalendar events={d.events} lang={lang} />}
         {(d.events || []).map((e: any) => (
           <div key={e.id} className="sk-card">
             <div className="row between" style={{ gap: 10, flexWrap: 'wrap' }}>
