@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation';
 import { useLang } from '@/lib/lang';
 import Link from 'next/link';
 import OnyxIcon from '@/app/components/OnyxIcon';
+import BrandIcon, { BRAND_COLOR } from '@/app/components/BrandIcon';
 
 // Página pública de VENTAS de una academia (Onyx Academy), estilo Skool.
 const SOCIAL: { key: string; label: string; abbr: string; color: string }[] = [
@@ -86,7 +87,7 @@ export default function AcademiaPublic() {
       {a.socials && SOCIAL.some((s) => a.socials[s.key]) && (
         <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
           {SOCIAL.filter((s) => a.socials[s.key]).map((s) => (
-            <a key={s.key} href={socialUrl(s.key, a.socials[s.key])} target="_blank" rel="noreferrer" title={s.label} style={{ width: 34, height: 34, borderRadius: 9, display: 'grid', placeItems: 'center', background: 'var(--card2, rgba(255,255,255,.06))', border: '1px solid var(--line)', color: s.color, fontWeight: 800, fontSize: 12, textDecoration: 'none' }}>{s.abbr}</a>
+            <a key={s.key} href={socialUrl(s.key, a.socials[s.key])} target="_blank" rel="noreferrer" title={s.label} style={{ width: 36, height: 36, borderRadius: 9, display: 'grid', placeItems: 'center', background: 'var(--card2, rgba(255,255,255,.06))', border: '1px solid var(--line)', color: BRAND_COLOR[s.key] || s.color, textDecoration: 'none' }}><BrandIcon name={s.key} size={18} /></a>
           ))}
         </div>
       )}

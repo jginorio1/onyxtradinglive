@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import OnyxIcon from '@/app/components/OnyxIcon';
+import BrandIcon, { BRAND_COLOR } from '@/app/components/BrandIcon';
 
 // Onyx Academy v2 — comunidad estilo Skool: feed, aulas con secciones y progreso,
 // calendario con clase en vivo (countdown + EN VIVO), miembros, ranking, perfil,
@@ -157,7 +158,7 @@ function SocialRow({ socials }: { socials: any }) {
   return (
     <div className="sk-social">
       {items.map((s) => (
-        <a key={s.key} href={socialUrl(s.key, socials[s.key])} target="_blank" rel="noreferrer" title={s.label} style={{ color: s.color, fontWeight: 800, fontSize: 12 }}>{s.abbr}</a>
+        <a key={s.key} href={socialUrl(s.key, socials[s.key])} target="_blank" rel="noreferrer" title={s.label} style={{ color: BRAND_COLOR[s.key] || s.color }}><BrandIcon name={s.key} size={17} /></a>
       ))}
     </div>
   );
@@ -1601,7 +1602,7 @@ function MentorSettings({ mentor, onSave, L }: any) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 8 }}>
           {SOCIAL.map((s) => (
             <div key={s.key} className="row" style={{ gap: 8, alignItems: 'center' }}>
-              <span style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--bg2)', border: '1px solid var(--line)', display: 'grid', placeItems: 'center', color: s.color, fontWeight: 800, fontSize: 11, flex: 'none' }}>{s.abbr}</span>
+              <span style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--bg2)', border: '1px solid var(--line)', display: 'grid', placeItems: 'center', color: BRAND_COLOR[s.key] || s.color, flex: 'none' }}><BrandIcon name={s.key} size={16} /></span>
               <input value={f.socials[s.key] || ''} onChange={(e) => setSocial(s.key, e.target.value)} placeholder={s.label} style={{ margin: 0, flex: 1 }} />
             </div>
           ))}
