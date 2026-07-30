@@ -1081,3 +1081,29 @@ Convertidos: chips del saludo (estilo/rango/plataforma/meta), botones de rango
 (ManagerClient/Phase2), Copy (CopyClient), Bots, y Mi cuenta con sus
 sub-componentes (Referidos, 2FA, PIN, notificaciones push, embajador, Telegram).
 Ampliado el mapa (⚡🌊🏔 ✈️ 🚧 🥧 🎉 📧 📁 ℹ ✋ 📡 🕑 🖨 〽 …).
+
+### 27 · Onyx Academy (estilo Skool) — Fase 1: academia de vídeos + comunidad
+
+Módulo de academia para mentores dentro de Onyx.
+
+**SQL (ejecutar en Supabase):** `supabase/academy.sql` (mentors, academy_modules,
+academy_lessons, academy_enrollments, lesson_progress, academy_posts,
+academy_comments).
+
+**Capacidad de plan:** para poder SER mentor, el plan del usuario debe tener
+`capabilities.academy = true` (plan "Mentor" o add-on). Los alumnos no necesitan
+capacidad: se inscriben con el código/enlace del mentor.
+
+Qué hace:
+- **Alumno** (`/dashboard/academy`, enlace "Academia" en el menú del avatar):
+  se une con el código del mentor, ve la **comunidad** (publicar + comentar) y los
+  **cursos** (módulos → lecciones con vídeo YouTube/Vimeo/.mp4 + notas + recursos),
+  marca lecciones como completadas y ve su **progreso**. Enlace directo
+  `/dashboard/academy?join=CODIGO` auto-inscribe.
+- **Mentor** (botón "Panel del mentor" si tiene la capacidad): crea/edita/borra
+  módulos y lecciones, comparte su **enlace de inscripción**, ve el **roster** de
+  alumnos con su progreso, publica/fija anuncios y ajusta el nombre/lema/descripción.
+
+APIs: `GET/POST /api/academy` (alumno + comunidad), `POST /api/academy/enroll`
+(unirse), `GET/POST /api/academy/mentor` (gestión). Siguiente fase: calificación
+semanal/mensual con Onyx AI (el panel del mentor de la propuesta).

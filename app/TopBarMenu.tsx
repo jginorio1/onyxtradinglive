@@ -30,6 +30,7 @@ export default function TopBarMenu({ email, initial, isAdmin, t }:
           <div className="menu-head">{email}</div>
           <Link className="menu-item" href="/account" onClick={() => setOpen(false)}>{t.myAccount}</Link>
           <Link className="menu-item" href="/pricing" onClick={() => setOpen(false)}>{t.myPlan}</Link>
+          <Link className="menu-item" href="/dashboard/academy" onClick={() => setOpen(false)}>{t.academy || 'Academia'}</Link>
           <Link className="menu-item" href="/dashboard/soporte" onClick={() => setOpen(false)}>{t.support}</Link>
           <Link className="menu-item" href="/account#referidos" onClick={() => setOpen(false)}>{t.referrals}</Link>
           <Link className="menu-item" href="/guia" onClick={() => setOpen(false)}>{t.guide}</Link>
