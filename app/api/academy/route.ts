@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { getMentor, myAcademies, getContent, progressSet, markLesson, isEnrolled, listPosts, addPost, addComment } from '@/lib/academy';
+import { getMentor, myAcademies, getContent, progressSet, markLesson, isEnrolled, listPosts, addPost, addComment, leaderboard, membersList, toggleLike, levelFor } from '@/lib/academy';
 import { listProducts, accessibleModules, studentPurchases } from '@/lib/academyPay';
 
 export const dynamic = 'force-dynamic';
@@ -20,20 +20,43 @@ async function me() {
 export async function GET(req: Request) {
   const { user, caps } = await me();
   if (!user) return NextResponse.json({ error: 'no autorizado' }, { status: 401 });
-  const m = new URL(req.url).searchParams.get('m');
+  const sp = new URL(req.url).searchParams;
+  const m = sp.get('m');
+  const boardRange = sp.get('board');
+  // Petición ligera solo del ranking (para el selector 7d/30d/all-time).
+  if (m && boardRange) {
+    const mrow = await getMentor(user.id);
+    const allowed = (mrow && mrow.user_id === m) || (await isEnrolled(m, user.id));
+    if (!allowed) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+    const range = boardRange === '7d' ? '7d' : boardRange === '30d' ? '30d' : 'all';
+    return NextResponse.json({ leaderboard: await leaderboard(m, range, 50) });
+  }
   const [mine, mentorRow] = await Promise.all([myAcademies(user.id), getMentor(user.id)]);
   const out: any = { canMentor: !!caps?.academy, isMentor: !!mentorRow, mentorCode: mentorRow?.code || null, academies: mine };
-  if (m && (await isEnrolled(m, user.id))) {
-    const [mentor, content, progress, feed, products, access, purchases] = await Promise.all([
-      supabaseAdmin.from('mentors').select('academy_name,tagline,about').eq('user_id', m).maybeSingle(),
-      getContent(m, true), progressSet(user.id, m), listPosts(m), listProducts(m, true), accessibleModules(user.id, m), studentPurchases(user.id, m),
+  const enrolledHere = m ? await isEnrolled(m, user.id) : false;
+  const iAmMentorHere = m && mentorRow && mentorRow.user_id === m;
+  if (m && (enrolledHere || iAmMentorHere)) {
+    const [mentor, content, progress, feed, products, access, purchases, board, members, myPts, roster] = await Promise.all([
+      supabaseAdmin.from('mentors').select('academy_name,tagline,about,cover_url,code').eq('user_id', m).maybeSingle(),
+      getContent(m, true), progressSet(user.id, m), listPosts(m, user.id), listProducts(m, true), accessibleModules(user.id, m), studentPurchases(user.id, m),
+      leaderboard(m, 'all', 10), membersList(m),
+      supabaseAdmin.from('academy_points').select('points').eq('mentor_id', m).eq('user_id', user.id).maybeSingle(),
+      supabaseAdmin.from('academy_enrollments').select('student_id', { count: 'exact', head: true }).eq('mentor_id', m).eq('status', 'active'),
     ]);
     // Marca cada módulo como bloqueado si el alumno no tiene acceso por su compra.
+    // El mentor ve todo desbloqueado.
     const lockedContent = (content as any[]).map((mod: any) => {
-      const unlocked = access.all || access.ids.has(mod.id);
+      const unlocked = iAmMentorHere || access.all || access.ids.has(mod.id);
       return { ...mod, locked: !unlocked, lessons: mod.lessons.map((l: any) => (unlocked || l.is_free) ? l : { id: l.id, title: l.title, is_free: false, locked: true }) };
     });
-    out.active = { mentor_id: m, ...(mentor.data as any), content: lockedContent, progress, feed, products, purchases, hasAccess: access.all || access.ids.size > 0, hasAccessAll: access.all };
+    const myPoints = (myPts.data as any)?.points || 0;
+    out.active = {
+      mentor_id: m, ...(mentor.data as any), content: lockedContent, progress, feed, products, purchases,
+      hasAccess: iAmMentorHere || access.all || access.ids.size > 0, hasAccessAll: iAmMentorHere || access.all,
+      isMentorHere: !!iAmMentorHere,
+      leaderboard: board, members, membersCount: (roster as any).count || members.length,
+      me: { points: myPoints, level: levelFor(myPoints).level },
+    };
   }
   return NextResponse.json(out);
 }
@@ -45,6 +68,13 @@ export async function POST(req: Request) {
   const b = await req.json().catch(() => ({}));
   try {
     if (b.action === 'lesson' && b.lesson_id) { await markLesson(user.id, String(b.lesson_id), !!b.done); return NextResponse.json({ ok: true }); }
+    if (b.action === 'like' && b.mentor_id && b.target_id && (b.target_type === 'post' || b.target_type === 'comment')) {
+      const mentorRow2 = await getMentor(user.id);
+      const allowed = (mentorRow2 && mentorRow2.user_id === b.mentor_id) || (await isEnrolled(String(b.mentor_id), user.id));
+      if (!allowed) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+      const r = await toggleLike(user.id, String(b.mentor_id), b.target_type, String(b.target_id));
+      return NextResponse.json({ ok: true, ...r });
+    }
     if (b.action === 'post' && b.mentor_id && b.body) {
       const mentorRow = await getMentor(user.id);
       const allowed = (mentorRow && mentorRow.user_id === b.mentor_id) || (await isEnrolled(String(b.mentor_id), user.id));

@@ -71,6 +71,8 @@ const G: Record<string, Els> = {
   gem: (<><path d="M6 3 h12 l3 6 -9 12 -9 -12 z" /><path d="M3 9 h18 M9 3 l-3 6 6 12 M15 3 l3 6 -6 12" /></>),
   coins: (<><ellipse cx="9" cy="7" rx="5" ry="2.4" /><path d="M4 7 v4 c0 1.3 2.2 2.4 5 2.4 s5 -1.1 5 -2.4 v-4" /><path d="M14 12.6 c2.4 .3 6 -.6 6 -2.6 M10 17 c0 1.3 2.2 2.4 5 2.4 s5 -1.1 5 -2.4 v-8" /></>),
   cart: (<><circle cx="9" cy="20" r="1.4" fill="currentColor" stroke="none" /><circle cx="17" cy="20" r="1.4" fill="currentColor" stroke="none" /><path d="M3 4 h2 l2.2 11 h11 l1.8 -8 H6" /></>),
+  heart: (<><path d="M12 20 C5 15 3 11 3 8 a4.5 4.5 0 0 1 9 -1 a4.5 4.5 0 0 1 9 1 c0 3 -2 7 -9 12 z" /></>),
+  link: (<><path d="M9 15 l6 -6 M8 12 l-2 2 a3 3 0 0 0 4 4 l2 -2 M16 12 l2 -2 a3 3 0 0 0 -4 -4 l-2 2" /></>),
 };
 
 // Emoji → nombre de glifo (se normaliza quitando el selector de variación).

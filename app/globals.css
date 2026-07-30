@@ -356,3 +356,39 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
 .helpdot:hover{border-color:var(--brand);color:var(--tx);}
 .helppop{position:absolute;left:0;top:calc(100% + 8px);width:270px;background:var(--card);border:1px solid var(--brand);border-radius:10px;padding:12px 14px;z-index:70;box-shadow:0 12px 32px rgba(0,0,0,.5);text-align:left;font-weight:400;}
 @media(max-width:520px){ .helppop{left:auto;right:0;width:240px;} }
+
+/* ===== Onyx Academy · layout estilo Skool (theme-aware) ===== */
+.sk-wrap{max-width:1180px;margin:0 auto;padding:0 4px;}
+.sk-grid{display:grid;grid-template-columns:1fr 320px;gap:18px;align-items:start;}
+@media(max-width:920px){.sk-grid{grid-template-columns:1fr;}.sk-side{order:-1;}}
+.sk-hero{position:relative;border:1px solid var(--line);border-radius:18px;overflow:hidden;background:var(--card);box-shadow:0 8px 30px rgba(0,0,0,.25);}
+.sk-hero-cover{height:120px;background:var(--grad);}
+.sk-hero-body{padding:16px 18px;display:flex;gap:14px;align-items:flex-end;margin-top:-34px;}
+.sk-hero-logo{width:64px;height:64px;border-radius:16px;background:var(--grad);display:grid;place-items:center;color:#fff;border:3px solid var(--card);box-shadow:0 6px 18px rgba(0,0,0,.3);flex:none;}
+.sk-tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:14px 0 16px;overflow-x:auto;}
+.sk-tab{padding:10px 14px;font-size:14px;font-weight:600;color:var(--mut);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap;transition:.15s;display:flex;align-items:center;gap:7px;}
+.sk-tab:hover{color:var(--tx);}
+.sk-tab.on{color:var(--tx);border-bottom-color:var(--brand);}
+.sk-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:0 4px 18px rgba(0,0,0,.16);}
+.sk-card+.sk-card{margin-top:12px;}
+.sk-av{border-radius:50%;background:var(--grad);color:#fff;display:grid;place-items:center;font-weight:700;flex:none;position:relative;}
+.sk-lvl{position:absolute;right:-3px;bottom:-3px;min-width:16px;height:16px;padding:0 3px;border-radius:9px;background:var(--gold);color:#1a1205;font-size:10px;font-weight:800;display:grid;place-items:center;border:2px solid var(--card);}
+.sk-post-actions{display:flex;gap:16px;align-items:center;margin-top:12px;color:var(--mut);font-size:13px;}
+.sk-like{display:inline-flex;align-items:center;gap:6px;cursor:pointer;background:none;border:none;color:var(--mut);font-size:13px;padding:4px 6px;border-radius:8px;transition:.12s;}
+.sk-like:hover{background:var(--card2);color:var(--tx);}
+.sk-like.on{color:var(--red);}
+.sk-chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px;background:color-mix(in srgb,var(--brand) 15%,transparent);color:var(--soft-brand);}
+.sk-course{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--card);cursor:pointer;transition:.15s;display:flex;flex-direction:column;text-align:left;padding:0;}
+.sk-course:hover{transform:translateY(-3px);box-shadow:0 12px 30px -8px color-mix(in srgb,var(--brand) 40%,transparent);border-color:color-mix(in srgb,var(--brand) 45%,transparent);}
+.sk-course-cover{height:120px;background-size:cover;background-position:center;position:relative;display:grid;place-items:center;}
+.sk-course-body{padding:13px 14px;}
+.sk-grid-courses{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;}
+.sk-side-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:0 4px 18px rgba(0,0,0,.16);}
+.sk-side-card+.sk-side-card{margin-top:14px;}
+.sk-board-row{display:flex;align-items:center;gap:10px;padding:7px 0;font-size:13.5px;}
+.sk-rank{width:22px;text-align:center;font-weight:800;color:var(--mut);flex:none;}
+.sk-seg{display:inline-flex;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:3px;gap:2px;}
+.sk-seg button{border:none;background:none;color:var(--mut);font-size:12.5px;font-weight:600;padding:5px 12px;border-radius:8px;cursor:pointer;}
+.sk-seg button.on{background:var(--brand);color:#111726;}
+.sk-member{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--card);}
+.sk-grid-members{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;}

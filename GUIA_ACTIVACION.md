@@ -1168,3 +1168,35 @@ para unirse). API pública: `GET /api/academy/public` (opcional `?code=`).
 
 **Finanzas Onyx:** la comisión de las academias del mes en curso se suma como ingreso
 y aparece en el campo `academyCommission`.
+
+### 29 · Onyx Academy — rebuild estilo Skool (comunidad + gamificación)
+
+Rediseño completo del módulo como una comunidad tipo Skool.
+
+**SQL (Supabase, tras academy.sql y academy_pay.sql):** `supabase/academy_gamify.sql`
+- `cover_url` en `academy_modules` y `mentors` (portadas del classroom y de la comunidad).
+- `academy_likes` (likes de posts y comentarios).
+- `academy_points` (puntos por comunidad y usuario; el nivel 1–9 se calcula con los
+  umbrales de Skool en `lib/academy.ts`).
+
+**Cómo se ve / funciona:**
+- **Hero** con portada + logo + nombre + lema, y barra de pestañas
+  **Comunidad / Aulas / Miembros / Ranking**. Layout ancho a 2 columnas con sidebar.
+- **Comunidad**: feed tipo foro con caja de publicar, posts con avatar + nivel, likes
+  (❤) y comentarios anidados con like propio. Dar like suma **+1 punto** al autor.
+- **Aulas (Classroom)**: tarjetas con **portada** (URL de imagen) y **anillo de
+  progreso**; las bloqueadas muestran candado y el paywall de niveles arriba.
+- **Miembros**: directorio con avatar, nivel y puntos; el mentor va marcado.
+- **Ranking**: leaderboard con selector **7 días / 30 días / total** y niveles.
+- **Sidebar**: tarjeta de la comunidad (miembros, aulas, tu nivel), botón **Invitar**
+  (copia `/academia/CODE`), tu barra de progreso y el top-5 del ranking.
+
+**Mentor:** en el panel puede poner **portada** a cada aula (botón "Portada") y a la
+comunidad (Ajustes → Portada), además de los Cobros y niveles ya existentes. Con
+"Ver como alumno" navega la comunidad completa como la ven sus alumnos.
+
+**Niveles (umbrales de puntos, estilo Skool):** 0, 5, 20, 65, 155, 515, 2015, 8015,
+33015 → niveles 1 a 9.
+
+Sin datos nuevos que configurar aparte del SQL. Los puntos empiezan en 0 y suben con
+la actividad real (likes recibidos).

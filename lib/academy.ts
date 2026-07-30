@@ -31,6 +31,7 @@ export async function updateMentor(userId: string, b: any) {
   if (b.academy_name !== undefined) patch.academy_name = String(b.academy_name).slice(0, 80);
   if (b.tagline !== undefined) patch.tagline = String(b.tagline || '').slice(0, 160);
   if (b.about !== undefined) patch.about = String(b.about || '').slice(0, 2000);
+  if (b.cover_url !== undefined) patch.cover_url = b.cover_url ? String(b.cover_url).slice(0, 500) : null;
   if (b.active !== undefined) patch.active = !!b.active;
   await supabaseAdmin.from('mentors').update(patch).eq('user_id', userId);
 }
@@ -49,8 +50,13 @@ export async function getContent(mentorId: string, onlyPublished = false) {
 }
 
 export async function saveModule(mentorId: string, b: any) {
-  if (b.id) { await supabaseAdmin.from('academy_modules').update({ title: String(b.title || '').slice(0, 120), description: b.description ? String(b.description).slice(0, 500) : null, position: Number(b.position) || 0, published: b.published !== false }).eq('id', b.id).eq('mentor_id', mentorId); return { id: b.id }; }
-  const { data } = await supabaseAdmin.from('academy_modules').insert({ mentor_id: mentorId, title: String(b.title || 'Módulo').slice(0, 120), description: b.description ? String(b.description).slice(0, 500) : null, position: Number(b.position) || 0 }).select('id').single();
+  const cover = b.cover_url !== undefined ? (b.cover_url ? String(b.cover_url).slice(0, 500) : null) : undefined;
+  if (b.id) {
+    const patch: any = { title: String(b.title || '').slice(0, 120), description: b.description ? String(b.description).slice(0, 500) : null, position: Number(b.position) || 0, published: b.published !== false };
+    if (cover !== undefined) patch.cover_url = cover;
+    await supabaseAdmin.from('academy_modules').update(patch).eq('id', b.id).eq('mentor_id', mentorId); return { id: b.id };
+  }
+  const { data } = await supabaseAdmin.from('academy_modules').insert({ mentor_id: mentorId, title: String(b.title || 'Módulo').slice(0, 120), description: b.description ? String(b.description).slice(0, 500) : null, position: Number(b.position) || 0, cover_url: cover ?? null }).select('id').single();
   return data as any;
 }
 export async function deleteModule(mentorId: string, id: string) {
@@ -126,19 +132,131 @@ export async function roster(mentorId: string) {
   return { students, totalLessons: total };
 }
 
+// ============================================================
+// Gamificación estilo Skool: puntos por likes recibidos y niveles 1–9.
+// ============================================================
+// Umbrales de puntos acumulados para cada nivel (los de Skool).
+export const LEVEL_THRESHOLDS = [0, 5, 20, 65, 155, 515, 2015, 8015, 33015];
+export function levelFor(points: number): { level: number; next: number | null; into: number; span: number } {
+  const p = Math.max(0, points || 0);
+  let level = 1;
+  for (let i = 0; i < LEVEL_THRESHOLDS.length; i++) if (p >= LEVEL_THRESHOLDS[i]) level = i + 1;
+  const cur = LEVEL_THRESHOLDS[level - 1];
+  const next = level < 9 ? LEVEL_THRESHOLDS[level] : null;
+  return { level, next, into: p - cur, span: next == null ? 0 : next - cur };
+}
+
+// Da/quita "me gusta". Suma o resta 1 punto al autor del contenido en esa comunidad.
+export async function toggleLike(userId: string, mentorId: string, targetType: 'post' | 'comment', targetId: string) {
+  // Autor del contenido.
+  const tbl = targetType === 'post' ? 'academy_posts' : 'academy_comments';
+  const { data: row } = await supabaseAdmin.from(tbl).select('author_id').eq('id', targetId).maybeSingle();
+  const authorId = (row as any)?.author_id;
+  const { data: existing } = await supabaseAdmin.from('academy_likes').select('id').eq('target_type', targetType).eq('target_id', targetId).eq('user_id', userId).maybeSingle();
+  let liked: boolean;
+  if (existing) {
+    await supabaseAdmin.from('academy_likes').delete().eq('id', (existing as any).id);
+    liked = false;
+    if (authorId && authorId !== userId) await bumpPoints(mentorId, authorId, -1);
+  } else {
+    await supabaseAdmin.from('academy_likes').insert({ target_type: targetType, target_id: targetId, user_id: userId, mentor_id: mentorId });
+    liked = true;
+    if (authorId && authorId !== userId) await bumpPoints(mentorId, authorId, +1);
+  }
+  const { count } = await supabaseAdmin.from('academy_likes').select('id', { count: 'exact', head: true }).eq('target_type', targetType).eq('target_id', targetId);
+  return { liked, count: count || 0 };
+}
+async function bumpPoints(mentorId: string, userId: string, delta: number) {
+  const { data } = await supabaseAdmin.from('academy_points').select('points').eq('mentor_id', mentorId).eq('user_id', userId).maybeSingle();
+  const points = Math.max(0, ((data as any)?.points || 0) + delta);
+  await supabaseAdmin.from('academy_points').upsert({ mentor_id: mentorId, user_id: userId, points, updated_at: new Date().toISOString() }, { onConflict: 'mentor_id,user_id' });
+}
+
+// Ranking de la comunidad. range: 'all' (puntos acumulados) | '7d' | '30d'
+// (likes recibidos en la ventana). Devuelve top N con nombre y nivel.
+export async function leaderboard(mentorId: string, range: 'all' | '7d' | '30d' = 'all', limit = 30) {
+  let board: { user_id: string; points: number }[] = [];
+  if (range === 'all') {
+    const { data } = await supabaseAdmin.from('academy_points').select('user_id,points').eq('mentor_id', mentorId).order('points', { ascending: false }).limit(limit);
+    board = (data || []) as any;
+  } else {
+    const days = range === '7d' ? 7 : 30;
+    const since = new Date(Date.now() - days * 864e5).toISOString();
+    // Likes recibidos = likes cuyo contenido pertenece a cada autor.
+    const { data: likes } = await supabaseAdmin.from('academy_likes').select('target_type,target_id,user_id').eq('mentor_id', mentorId).gte('created_at', since);
+    const postIds = (likes || []).filter((l: any) => l.target_type === 'post').map((l: any) => l.target_id);
+    const comIds = (likes || []).filter((l: any) => l.target_type === 'comment').map((l: any) => l.target_id);
+    const authorOf: Record<string, string> = {};
+    if (postIds.length) { const { data } = await supabaseAdmin.from('academy_posts').select('id,author_id').in('id', postIds); (data || []).forEach((r: any) => { authorOf['p' + r.id] = r.author_id; }); }
+    if (comIds.length) { const { data } = await supabaseAdmin.from('academy_comments').select('id,author_id').in('id', comIds); (data || []).forEach((r: any) => { authorOf['c' + r.id] = r.author_id; }); }
+    const tally: Record<string, number> = {};
+    (likes || []).forEach((l: any) => { const a = authorOf[(l.target_type === 'post' ? 'p' : 'c') + l.target_id]; if (a && a !== l.user_id) tally[a] = (tally[a] || 0) + 1; });
+    board = Object.entries(tally).map(([user_id, points]) => ({ user_id, points })).sort((a, b) => b.points - a.points).slice(0, limit);
+  }
+  const ids = board.map((b) => b.user_id);
+  if (!ids.length) return [];
+  const { data: profs } = await supabaseAdmin.from('profiles').select('id,full_name,email').in('id', ids);
+  const nameOf: Record<string, any> = {}; (profs || []).forEach((p: any) => { nameOf[p.id] = p; });
+  // nivel siempre desde puntos acumulados
+  const { data: allPts } = await supabaseAdmin.from('academy_points').select('user_id,points').eq('mentor_id', mentorId).in('user_id', ids);
+  const ptOf: Record<string, number> = {}; (allPts || []).forEach((r: any) => { ptOf[r.user_id] = r.points; });
+  return board.map((b, i) => {
+    const pr = nameOf[b.user_id];
+    return { rank: i + 1, user_id: b.user_id, name: pr?.full_name || (pr?.email || '').split('@')[0] || 'Trader', points: b.points, level: levelFor(ptOf[b.user_id] || 0).level };
+  });
+}
+
+// Directorio de miembros (mentor + alumnos) con nivel y puntos.
+export async function membersList(mentorId: string) {
+  const { data: enr } = await supabaseAdmin.from('academy_enrollments').select('student_id,joined_at').eq('mentor_id', mentorId).eq('status', 'active');
+  const ids = new Set<string>((enr || []).map((e: any) => e.student_id));
+  ids.add(mentorId); // el mentor también es miembro
+  const idArr = Array.from(ids);
+  const [{ data: profs }, { data: pts }] = await Promise.all([
+    supabaseAdmin.from('profiles').select('id,full_name,email').in('id', idArr),
+    supabaseAdmin.from('academy_points').select('user_id,points').eq('mentor_id', mentorId).in('user_id', idArr),
+  ]);
+  const ptOf: Record<string, number> = {}; (pts || []).forEach((r: any) => { ptOf[r.user_id] = r.points; });
+  const joinOf: Record<string, string> = {}; (enr || []).forEach((e: any) => { joinOf[e.student_id] = e.joined_at; });
+  return (profs || []).map((p: any) => {
+    const points = ptOf[p.id] || 0;
+    return {
+      user_id: p.id, name: p.full_name || (p.email || '').split('@')[0] || 'Trader',
+      points, level: levelFor(points).level, joined_at: joinOf[p.id] || null,
+      is_mentor: p.id === mentorId,
+    };
+  }).sort((a, b) => (b.is_mentor ? 1 : 0) - (a.is_mentor ? 1 : 0) || b.points - a.points);
+}
+
 // ---- Comunidad ----
-export async function listPosts(mentorId: string) {
+export async function listPosts(mentorId: string, viewerId?: string) {
   const { data: posts } = await supabaseAdmin.from('academy_posts').select('*').eq('mentor_id', mentorId).order('pinned', { ascending: false }).order('created_at', { ascending: false }).limit(50);
   const list = posts || [];
   const authorIds = Array.from(new Set(list.map((p: any) => p.author_id)));
-  const { data: profs } = authorIds.length ? await supabaseAdmin.from('profiles').select('id,full_name').in('id', authorIds) : { data: [] } as any;
-  const nameOf: Record<string, string> = {}; (profs || []).forEach((p: any) => { nameOf[p.id] = p.full_name || 'Trader'; });
   const postIds = list.map((p: any) => p.id);
   const { data: comments } = postIds.length ? await supabaseAdmin.from('academy_comments').select('*').in('post_id', postIds).order('created_at') : { data: [] } as any;
-  const cIds = Array.from(new Set((comments || []).map((c: any) => c.author_id)));
-  if (cIds.length) { const { data: cp } = await supabaseAdmin.from('profiles').select('id,full_name').in('id', cIds); (cp || []).forEach((p: any) => { nameOf[p.id] = nameOf[p.id] || p.full_name || 'Trader'; }); }
-  const byPost: Record<string, any[]> = {}; (comments || []).forEach((c: any) => { (byPost[c.post_id] ||= []).push({ ...c, author_name: nameOf[c.author_id] || 'Trader' }); });
-  return list.map((p: any) => ({ ...p, author_name: nameOf[p.author_id] || 'Trader', comments: byPost[p.id] || [] }));
+  (comments || []).forEach((c: any) => authorIds.push(c.author_id));
+  const uniqAuthors = Array.from(new Set(authorIds));
+  const [{ data: profs }, { data: pts }] = await Promise.all([
+    uniqAuthors.length ? supabaseAdmin.from('profiles').select('id,full_name').in('id', uniqAuthors) : Promise.resolve({ data: [] } as any),
+    uniqAuthors.length ? supabaseAdmin.from('academy_points').select('user_id,points').eq('mentor_id', mentorId).in('user_id', uniqAuthors) : Promise.resolve({ data: [] } as any),
+  ]);
+  const nameOf: Record<string, string> = {}; (profs || []).forEach((p: any) => { nameOf[p.id] = p.full_name || 'Trader'; });
+  const lvlOf: Record<string, number> = {}; (pts || []).forEach((r: any) => { lvlOf[r.user_id] = levelFor(r.points).level; });
+  // Likes de todos los posts + comentarios de esta tanda.
+  const comIds = (comments || []).map((c: any) => c.id);
+  const { data: likes } = (postIds.length || comIds.length)
+    ? await supabaseAdmin.from('academy_likes').select('target_type,target_id,user_id').eq('mentor_id', mentorId)
+    : { data: [] } as any;
+  const likeCount: Record<string, number> = {}; const likedMine: Record<string, boolean> = {};
+  (likes || []).forEach((l: any) => { const k = l.target_type + ':' + l.target_id; likeCount[k] = (likeCount[k] || 0) + 1; if (viewerId && l.user_id === viewerId) likedMine[k] = true; });
+  const byPost: Record<string, any[]> = {};
+  (comments || []).forEach((c: any) => { (byPost[c.post_id] ||= []).push({ ...c, author_name: nameOf[c.author_id] || 'Trader', author_level: lvlOf[c.author_id] || 1, likes: likeCount['comment:' + c.id] || 0, liked: !!likedMine['comment:' + c.id] }); });
+  return list.map((p: any) => ({
+    ...p, author_name: nameOf[p.author_id] || 'Trader', author_level: lvlOf[p.author_id] || 1,
+    likes: likeCount['post:' + p.id] || 0, liked: !!likedMine['post:' + p.id],
+    comments: byPost[p.id] || [],
+  }));
 }
 export async function addPost(mentorId: string, authorId: string, body: string, pinned = false) {
   const { data } = await supabaseAdmin.from('academy_posts').insert({ mentor_id: mentorId, author_id: authorId, body: String(body || '').slice(0, 4000), pinned }).select('id').single();
