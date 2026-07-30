@@ -237,8 +237,10 @@ export async function membersList(mentorId: string) {
 }
 
 // ---- Comunidad ----
-export async function listPosts(mentorId: string, viewerId?: string) {
-  const { data: posts } = await supabaseAdmin.from('academy_posts').select('*').eq('mentor_id', mentorId).order('pinned', { ascending: false }).order('created_at', { ascending: false }).limit(50);
+export async function listPosts(mentorId: string, viewerId?: string, includeScheduled = false) {
+  let pq = supabaseAdmin.from('academy_posts').select('*').eq('mentor_id', mentorId);
+  if (!includeScheduled) pq = pq.or(`scheduled_at.is.null,scheduled_at.lte.${new Date().toISOString()}`);
+  const { data: posts } = await pq.order('pinned', { ascending: false }).order('created_at', { ascending: false }).limit(50);
   const list = posts || [];
   const authorIds = Array.from(new Set(list.map((p: any) => p.author_id)));
   const postIds = list.map((p: any) => p.id);
@@ -266,8 +268,9 @@ export async function listPosts(mentorId: string, viewerId?: string) {
     comments: byPost[p.id] || [],
   }));
 }
-export async function addPost(mentorId: string, authorId: string, body: string, pinned = false, imageUrl?: string) {
-  const { data } = await supabaseAdmin.from('academy_posts').insert({ mentor_id: mentorId, author_id: authorId, body: String(body || '').slice(0, 4000), pinned, image_url: imageUrl ? String(imageUrl).slice(0, 500) : null }).select('id').single();
+export async function addPost(mentorId: string, authorId: string, body: string, pinned = false, imageUrl?: string, scheduledAt?: string) {
+  const sched = scheduledAt && new Date(scheduledAt).getTime() > Date.now() ? new Date(scheduledAt).toISOString() : null;
+  const { data } = await supabaseAdmin.from('academy_posts').insert({ mentor_id: mentorId, author_id: authorId, body: String(body || '').slice(0, 4000), pinned, image_url: imageUrl ? String(imageUrl).slice(0, 500) : null, scheduled_at: sched }).select('id').single();
   return data as any;
 }
 export async function addComment(postId: string, authorId: string, body: string, imageUrl?: string) {

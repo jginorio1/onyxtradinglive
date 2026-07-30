@@ -899,13 +899,14 @@ function Tiers({ products, purchases, onBuy, L }: any) {
 function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: () => void; openStudent: (mid: string) => void }) {
   const L = (a: string, b: string) => (lang === 'en' ? b : a);
   const [d, setD] = useState<any>(null);
-  const [tab, setTab] = useState<'cursos' | 'envivo' | 'cobros' | 'alumnos' | 'comunidad' | 'ajustes'>('cursos');
+  const [tab, setTab] = useState<'cursos' | 'envivo' | 'cobros' | 'alumnos' | 'comunidad' | 'correos' | 'ajustes'>('cursos');
   const [newMod, setNewMod] = useState('');
   const [lessonForm, setLessonForm] = useState<any>(null);
   const [modForm, setModForm] = useState<any>(null);
   const [evForm, setEvForm] = useState<any>(null);
   const [post, setPost] = useState('');
   const [postImg, setPostImg] = useState('');
+  const [postWhen, setPostWhen] = useState('');
   const [toast, setToast] = useState('');
 
   async function load() { const r = await fetch('/api/academy/mentor'); setD(await r.json()); }
@@ -942,7 +943,7 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
       </div>
 
       <div className="sk-tabs big">
-        {([['cursos', 'graduation', L('Aulas', 'Classroom')], ['envivo', 'calendar', L('En vivo', 'Live')], ['cobros', 'coins', L('Cobros', 'Payments')], ['alumnos', 'users', L('Alumnos', 'Students')], ['comunidad', 'chat', L('Comunidad', 'Community')], ['ajustes', 'settings', L('Ajustes', 'Settings')]] as any[]).map(([k, ic, lbl]) => (
+        {([['cursos', 'graduation', L('Aulas', 'Classroom')], ['envivo', 'calendar', L('En vivo', 'Live')], ['cobros', 'coins', L('Cobros', 'Payments')], ['alumnos', 'users', L('Alumnos', 'Students')], ['comunidad', 'chat', L('Comunidad', 'Community')], ['correos', 'mail', L('Correos', 'Emails')], ['ajustes', 'settings', L('Ajustes', 'Settings')]] as any[]).map(([k, ic, lbl]) => (
           <button key={k} className={'sk-tab' + (tab === k ? ' on' : '')} onClick={() => setTab(k)}><OnyxIcon name={ic} size={16} /> {lbl}</button>
         ))}
       </div>
@@ -1024,24 +1025,122 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
         <div className="sk-card">
           <textarea value={post} onChange={(e) => setPost(e.target.value)} rows={2} placeholder={L('Publica un anuncio para tus alumnos…', 'Post an announcement for your students…')} style={{ width: '100%', margin: 0 }} />
           <ImgPreview url={postImg} onRemove={() => setPostImg('')} />
+          <div className="row" style={{ gap: 8, marginTop: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span className="muted" style={{ fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 5 }}><OnyxIcon name="calendar" size={13} /> {L('Programar', 'Schedule')}:</span>
+            <input type="datetime-local" value={postWhen} onChange={(e) => setPostWhen(e.target.value)} style={{ margin: 0, width: 210 }} />
+            {postWhen && <button className="btn btn-ghost" style={{ fontSize: 11, padding: '2px 8px' }} onClick={() => setPostWhen('')}>{L('Ahora', 'Now')}</button>}
+          </div>
           <div className="row between" style={{ gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
             <div className="row" style={{ gap: 2 }}><AiBtn kind="post" onText={(t: string) => setPost(t)} L={L} /><EmojiRow onPick={(e: string) => setPost((v) => v + e)} /><ImgAttach onUrl={(u: string) => setPostImg(u)} L={L} /></div>
             <div className="row" style={{ gap: 8 }}>
-              <button className="btn btn-ghost" onClick={() => { if (post.trim() || postImg) { api({ action: 'post', body: post, pinned: true, image_url: postImg }); setPost(''); setPostImg(''); } }}>📌 {L('Fijar', 'Pin')}</button>
-              <button className="btn btn-primary" onClick={() => { if (post.trim() || postImg) { api({ action: 'post', body: post, image_url: postImg }); setPost(''); setPostImg(''); } }}>{L('Publicar', 'Post')}</button>
+              <button className="btn btn-ghost" onClick={() => { if (post.trim() || postImg) { api({ action: 'post', body: post, pinned: true, image_url: postImg, scheduled_at: postWhen }, postWhen ? L('Post programado', 'Post scheduled') : ''); setPost(''); setPostImg(''); setPostWhen(''); } }}>📌 {L('Fijar', 'Pin')}</button>
+              <button className="btn btn-primary" onClick={() => { if (post.trim() || postImg) { api({ action: 'post', body: post, image_url: postImg, scheduled_at: postWhen }, postWhen ? L('Post programado', 'Post scheduled') : ''); setPost(''); setPostImg(''); setPostWhen(''); } }}>{postWhen ? L('Programar', 'Schedule') : L('Publicar', 'Post')}</button>
             </div>
           </div>
         </div>
         {(d.feed || []).map((p: any) => (
           <div key={p.id} className="sk-card">
-            <div className="row between"><b style={{ fontSize: 13.5 }}>{p.author_name}{p.pinned && ' 📌'}</b><button className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 11, color: 'var(--red)' }} onClick={() => api({ action: 'post_delete', id: p.id })}>✕</button></div>
+            <div className="row between"><b style={{ fontSize: 13.5 }}>{p.author_name}{p.pinned && ' 📌'}{p.scheduled_at && new Date(p.scheduled_at).getTime() > Date.now() && <span className="sk-chip" style={{ marginLeft: 8, background: 'color-mix(in srgb,var(--gold) 16%,transparent)', color: 'var(--gold)' }}>⏱ {L('programado', 'scheduled')} {new Date(p.scheduled_at).toLocaleString(lang === 'en' ? 'en-US' : 'es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>}</b><button className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 11, color: 'var(--red)' }} onClick={() => api({ action: 'post_delete', id: p.id })}>✕</button></div>
             {p.body && <div style={{ fontSize: 14, whiteSpace: 'pre-wrap', marginTop: 4 }}>{p.body}</div>}
             {p.image_url && <img src={p.image_url} alt="" style={{ maxWidth: '100%', maxHeight: 300, borderRadius: 10, marginTop: 6, display: 'block' }} />}
           </div>
         ))}
       </>)}
 
+      {tab === 'correos' && <MentorEmails lang={lang} L={L} />}
+
       {tab === 'ajustes' && <MentorSettings mentor={d.mentor} L={L} onSave={(b: any) => api({ action: 'settings', ...b }, L('Ajustes guardados', 'Settings saved'))} />}
+    </div>
+  );
+}
+
+// =================== Correos del mentor (campañas + automatizaciones) ===================
+function MentorEmails({ lang, L }: { lang: string; L: (a: string, b: string) => string }) {
+  const [d, setD] = useState<any>(null);
+  const [subject, setSubject] = useState('');
+  const [body, setBody] = useState('');
+  const [audience, setAudience] = useState('all');
+  const [when, setWhen] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [toast, setToast] = useState('');
+
+  async function load() { const r = await fetch('/api/academy/emails'); setD(await r.json()); }
+  useEffect(() => { load(); }, []);
+  function flash(m: string) { setToast(m); setTimeout(() => setToast(''), 2200); }
+
+  async function send(schedule: boolean) {
+    if (!subject.trim() || !body.trim()) return;
+    setBusy(true);
+    const r = await fetch('/api/academy/emails', { method: 'POST', body: JSON.stringify({ action: schedule ? 'schedule' : 'send', subject, body, audience, scheduled_at: schedule ? when : undefined }) });
+    const j = await r.json(); setBusy(false);
+    if (j.ok) { setSubject(''); setBody(''); setWhen(''); flash(schedule ? L('Campaña programada', 'Campaign scheduled') : L(`Enviado a ${j.sent} alumnos`, `Sent to ${j.sent} students`)); load(); }
+    else alert(j.error === 'fecha_invalida' ? L('Elige una fecha futura.', 'Pick a future date.') : L('No se pudo. ¿Configuraste Resend?', 'Failed. Is Resend configured?'));
+  }
+  async function del(id: string) { await fetch('/api/academy/emails', { method: 'POST', body: JSON.stringify({ action: 'delete', id }) }); load(); }
+  async function saveAuto(patch: any) {
+    const a = { welcome: !!d.email_auto?.welcome, class_reminder: !!d.email_auto?.class_reminder, expiring: !!d.email_auto?.expiring, ...patch };
+    await fetch('/api/academy/emails', { method: 'POST', body: JSON.stringify({ action: 'automations', ...a }) }); load();
+  }
+
+  if (!d) return <div className="sk-card muted">…</div>;
+  if (d.error) return <div className="sk-card muted">{L('No disponible.', 'Not available.')}</div>;
+  const c = d.counts || {};
+  const AUD: [string, string, number][] = [['all', L('Todos', 'All'), c.all], ['active', L('Activos', 'Active'), c.active], ['inactive', L('Inactivos', 'Inactive'), c.inactive], ['expiring', L('Por expirar', 'Expiring'), c.expiring]];
+  const fmt = (iso: string) => iso ? new Date(iso).toLocaleString(lang === 'en' ? 'en-US' : 'es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {toast && <Toast msg={toast} />}
+      {d.mailEnabled === false && <div className="sk-card" style={{ border: '1px solid var(--gold)' }}><b>{L('Correo no configurado', 'Email not configured')}</b><p className="muted" style={{ fontSize: 13, marginTop: 4 }}>{L('Falta RESEND_API_KEY en Vercel para enviar correos.', 'RESEND_API_KEY missing in Vercel to send emails.')}</p></div>}
+
+      {/* Redactar campaña */}
+      <div className="sk-card">
+        <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 10 }}><span className="card-ic"><OnyxIcon name="mail" size={16} /></span> {L('Nueva campaña / promoción', 'New campaign / promo')}</h3>
+        <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder={L('Asunto', 'Subject')} style={{ margin: '0 0 8px' }} />
+        <div className="row between" style={{ alignItems: 'center' }}><span className="muted" style={{ fontSize: 12 }}>{L('Mensaje', 'Message')}</span><AiBtn kind="post" onText={(t: string) => setBody(t)} L={L} /></div>
+        <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={6} placeholder={L('Escribe tu correo o pulsa ✨ IA…', 'Write your email or hit ✨ AI…')} style={{ width: '100%', margin: '4px 0 0' }} />
+        <div className="row" style={{ gap: 8, margin: '10px 0', flexWrap: 'wrap', alignItems: 'center' }}>
+          <span className="muted" style={{ fontSize: 12 }}>{L('Enviar a', 'Send to')}:</span>
+          {AUD.map(([k, lbl, n]) => <button key={k} className={'btn ' + (audience === k ? 'btn-primary' : 'btn-ghost')} style={{ fontSize: 12.5, padding: '5px 10px' }} onClick={() => setAudience(k)}>{lbl} ({n ?? 0})</button>)}
+        </div>
+        <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <button className="btn btn-primary" disabled={busy || !subject.trim() || !body.trim()} onClick={() => send(false)}>{busy ? '…' : L('Enviar ahora', 'Send now')}</button>
+          <span className="muted" style={{ fontSize: 12 }}>{L('o programar:', 'or schedule:')}</span>
+          <input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} style={{ margin: 0, width: 210 }} />
+          <button className="btn btn-ghost" disabled={busy || !when || !subject.trim() || !body.trim()} onClick={() => send(true)}>{L('Programar', 'Schedule')}</button>
+        </div>
+      </div>
+
+      {/* Automatizaciones */}
+      <div className="sk-card">
+        <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 6 }}><span className="card-ic"><OnyxIcon name="ai" size={16} /></span> {L('Automáticos (ciclo de vida)', 'Automations (lifecycle)')}</h3>
+        <p className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>{L('Onyx envía estos correos solo, a la persona correcta, en el momento correcto.', 'Onyx sends these on its own, to the right person, at the right time.')}</p>
+        {([['welcome', L('Bienvenida al inscribirse', 'Welcome on join')], ['class_reminder', L('Recordatorio de clase en vivo', 'Live class reminder')], ['expiring', L('Aviso de membresía por vencer', 'Membership expiring reminder')]] as [string, string][]).map(([k, lbl]) => (
+          <label key={k} className="row between" style={{ padding: '7px 0', fontSize: 13.5, alignItems: 'center' }}>
+            <span>{lbl}</span>
+            <input type="checkbox" checked={!!d.email_auto?.[k]} onChange={(e) => saveAuto({ [k]: e.target.checked })} style={{ width: 'auto', margin: 0 }} />
+          </label>
+        ))}
+      </div>
+
+      {/* Historial */}
+      <div className="sk-card">
+        <h3 style={{ marginBottom: 10 }}>{L('Campañas', 'Campaigns')}</h3>
+        {(d.campaigns || []).length === 0 && <p className="muted" style={{ fontSize: 13 }}>{L('Aún no has enviado campañas.', 'No campaigns yet.')}</p>}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {(d.campaigns || []).map((k: any) => (
+            <div key={k.id} className="row between" style={{ background: 'var(--bg2)', borderRadius: 8, padding: '9px 12px' }}>
+              <div style={{ minWidth: 0 }}>
+                <b style={{ fontSize: 13.5 }}>{k.subject}</b>
+                <div className="muted" style={{ fontSize: 12 }}>
+                  {k.status === 'sent' ? `✓ ${L('enviada', 'sent')} · ${k.sent_count} ${L('correos', 'emails')}` : k.status === 'scheduled' ? `⏱ ${L('programada', 'scheduled')} ${fmt(k.scheduled_at)}` : k.status} · {k.audience}
+                </div>
+              </div>
+              <button className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 11, color: 'var(--red)' }} onClick={() => del(k.id)}>✕</button>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

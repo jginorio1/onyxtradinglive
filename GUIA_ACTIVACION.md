@@ -1355,3 +1355,31 @@ el botón avisa que la IA no está configurada.
 - Gráficos de trading, capturas, logos, memes y personas vestidas normal → permitido.
 - Requiere `ANTHROPIC_API_KEY`. Sin key, la moderación no corre (deja pasar) — configúrala
   en Vercel para que el filtro funcione.
+
+### 36 · Onyx Academy — Programar posts + campañas de email del mentor (Fase 4)
+
+**SQL (Supabase, tras academy_v6.sql):** `supabase/academy_v7.sql`
+- `academy_posts.scheduled_at` (programar publicaciones).
+- `mentors.email_auto` (toggles de automatización).
+- `academy_emails` (campañas) y `academy_email_log` (dedup de automáticos).
+
+**Programar posts:** en el compositor de comunidad del mentor hay un campo
+**"Programar"** (fecha/hora). Si lo pones, el post se guarda y **aparece solo** a esa
+hora (los alumnos no lo ven antes); el mentor lo ve con la etiqueta ⏱ programado.
+
+**Campañas de email (pestaña "Correos"):**
+- Redacta asunto + mensaje (con **✨ IA**), elige público (**Todos / Activos / Inactivos
+  / Por expirar**) y **Envía ahora** o **Programa** fecha/hora.
+- Historial de campañas con estado (enviada/programada) y nº de correos.
+- Se envían con el mailer de Onyx (Resend), "de parte de" la academia, con pie de baja.
+
+**Automatizaciones de ciclo de vida** (toggles en la misma pestaña):
+- **Bienvenida** al inscribirse.
+- **Recordatorio de clase en vivo** (~1h antes).
+- **Aviso de membresía por vencer** (~3 días antes).
+
+**Cron:** programa en Vercel `GET /api/cron/academy-emails` (cada ~15 min), protegido con
+`CRON_SECRET`. Envía las campañas programadas que ya vencieron y corre las
+automatizaciones (con dedup para no repetir).
+
+**Requisitos:** `RESEND_API_KEY` (envío) y `ANTHROPIC_API_KEY` (borradores con IA) en Vercel.
