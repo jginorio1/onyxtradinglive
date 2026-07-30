@@ -190,6 +190,100 @@ function Modal({ onClose, children }: { onClose: () => void; children: any }) {
   return <div className="sk-modal-ov" onClick={onClose}><div className="sk-modal" onClick={(e) => e.stopPropagation()}>{children}</div></div>;
 }
 
+// Preferencias de notificaciones push del alumno (qué avisos quiere).
+function NotifPrefs({ prefs, L }: { prefs: any; L: (a: string, b: string) => string }) {
+  const init = (k: string) => (prefs || {})[k] !== false;
+  const [p, setP] = useState({ announcements: init('announcements'), messages: init('messages'), classes: init('classes'), wins: init('wins') });
+  const [open, setOpen] = useState(false);
+  async function set(k: string, v: boolean) { const np = { ...p, [k]: v }; setP(np); await fetch('/api/academy/profile', { method: 'POST', body: JSON.stringify({ push_prefs: np }) }); }
+  const rows: [string, string, string][] = [
+    ['announcements', L('Anuncios del mentor', 'Mentor announcements'), 'chat'],
+    ['messages', L('Mensajes privados', 'Private messages'), 'mail'],
+    ['classes', L('Clases en vivo', 'Live classes'), 'calendar'],
+    ['wins', L('Logros', 'Wins'), 'trophy'],
+  ];
+  return (
+    <div className="sk-side-card">
+      <button className="row between" onClick={() => setOpen((v) => !v)} style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: 0, alignItems: 'center' }}>
+        <b style={{ fontSize: 14, display: 'inline-flex', alignItems: 'center', gap: 7 }}><OnyxIcon emoji="🔔" size={14} /> {L('Notificaciones', 'Notifications')}</b>
+        <span className="muted" style={{ fontSize: 12 }}>{open ? '▲' : '▼'}</span>
+      </button>
+      {open && (
+        <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {rows.map(([k, lbl, ic]) => (
+            <label key={k} className="row between" style={{ alignItems: 'center', fontSize: 13, cursor: 'pointer' }}>
+              <span className="row" style={{ gap: 8, alignItems: 'center' }}><OnyxIcon name={ic as any} size={14} glow={false} /> {lbl}</span>
+              <input type="checkbox" checked={(p as any)[k]} onChange={(e) => set(k, e.target.checked)} style={{ width: 'auto', margin: 0 }} />
+            </label>
+          ))}
+          <p className="muted" style={{ fontSize: 11, marginTop: 2 }}>{L('Elige qué push quieres recibir en tu teléfono.', 'Choose which pushes you get on your phone.')}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Banner (una vez) para instalar la app + activar notificaciones dentro de la academia.
+function InstallBanner({ L }: { L: (a: string, b: string) => string }) {
+  const [show, setShow] = useState(false);
+  const [pubKey, setPubKey] = useState('');
+  const [iosInstall, setIosInstall] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const KEY = 'onyx_acad_notif_dismissed';
+  useEffect(() => {
+    const supported = typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window;
+    if (!supported) return;
+    try { if (localStorage.getItem(KEY)) return; } catch {}
+    const iOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const standalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true;
+    (async () => {
+      try {
+        const j = await (await fetch('/api/push')).json();
+        if (!j.enabled) return; // sin claves VAPID → no molestamos
+        setPubKey(j.publicKey || '');
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        if (sub) return; // ya suscrito
+        if (iOS && !standalone) setIosInstall(true); // en iPhone primero hay que instalar
+        setShow(true);
+      } catch {}
+    })();
+  }, []);
+  function dismiss() { try { localStorage.setItem(KEY, '1'); } catch {}; setShow(false); }
+  function urlB64(base64: string) { const pad = '='.repeat((4 - (base64.length % 4)) % 4); const b64 = (base64 + pad).replace(/-/g, '+').replace(/_/g, '/'); const raw = atob(b64); const a = new Uint8Array(raw.length); for (let i = 0; i < raw.length; i++) a[i] = raw.charCodeAt(i); return a; }
+  async function enable() {
+    setBusy(true);
+    try {
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') { alert(L('Bloqueaste las notificaciones. Actívalas en los ajustes del navegador.', 'You blocked notifications. Enable them in your browser settings.')); return; }
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64(pubKey) });
+      await fetch('/api/push', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ subscription: sub.toJSON() }) });
+      dismiss();
+    } catch { alert(L('No se pudo activar. Intenta de nuevo.', 'Could not enable. Try again.')); }
+    finally { setBusy(false); }
+  }
+  if (!show) return null;
+  return (
+    <div className="sk-card" style={{ border: '1px solid color-mix(in srgb,var(--brand) 45%,transparent)', background: 'color-mix(in srgb,var(--brand) 8%,var(--card))' }}>
+      <div className="row between" style={{ alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <div className="row" style={{ gap: 10, alignItems: 'center', minWidth: 0 }}>
+          <span style={{ width: 40, height: 40, borderRadius: 12, background: 'color-mix(in srgb,var(--brand) 18%,transparent)', display: 'grid', placeItems: 'center', flex: 'none' }}><OnyxIcon emoji="🔔" size={18} /></span>
+          <div style={{ minWidth: 0 }}>
+            <b style={{ fontSize: 14 }}>{L('No te pierdas nada', 'Don’t miss a thing')}</b>
+            <div className="muted" style={{ fontSize: 12.5 }}>{iosInstall ? L('Instala la app y activa las notificaciones para recibir clases en vivo, mensajes y anuncios.', 'Install the app and turn on notifications for live classes, messages and announcements.') : L('Activa las notificaciones para clases en vivo, mensajes y anuncios.', 'Turn on notifications for live classes, messages and announcements.')}</div>
+          </div>
+        </div>
+        <div className="row" style={{ gap: 6 }}>
+          {!iosInstall && <button className="btn btn-primary" disabled={busy} onClick={enable}>{busy ? '…' : L('Activar', 'Turn on')}</button>}
+          <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={dismiss}>{L('Ahora no', 'Not now')}</button>
+        </div>
+      </div>
+      {iosInstall && <div className="muted" style={{ fontSize: 12, marginTop: 10, borderTop: '1px solid var(--line)', paddingTop: 10 }}>ℹ {L('En iPhone: toca «Compartir» en Safari → «Añadir a pantalla de inicio». Abre Onyx desde ahí y vuelve aquí para activar.', 'On iPhone: tap “Share” in Safari → “Add to Home Screen”. Open Onyx from there and come back to enable.')}</div>}
+    </div>
+  );
+}
+
 export default function AcademyClient() {
   const { lang } = useLang();
   const L = (a: string, b: string) => (lang === 'en' ? b : a);
@@ -383,6 +477,7 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
 
   return (
     <div className="sk-wrap" data-tab={tab} style={{ paddingTop: 4 }}>
+      <div style={{ marginBottom: 12 }}><InstallBanner L={L} /></div>
       <div className="sk-hero">
         <div className="sk-hero-cover" style={active.cover_url ? { backgroundImage: `url(${active.cover_url})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined} />
         <div className="sk-hero-body">
@@ -549,6 +644,7 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
             </div>
           )}
           {active.assistant_on && <AssistantCard mentorId={active.mentor_id} L={L} />}
+          <NotifPrefs prefs={active.myPushPrefs || {}} L={L} />
           {totalLessons > 0 && (
             <div className="sk-side-card">
               <div className="row between" style={{ fontSize: 13, marginBottom: 8 }}><b>{L('Tu progreso', 'Your progress')}</b><span className="muted">{doneCount}/{totalLessons}</span></div>

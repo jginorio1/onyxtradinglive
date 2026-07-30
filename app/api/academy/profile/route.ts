@@ -30,6 +30,11 @@ export async function POST(req: Request) {
   const patch: any = {};
   if (b.share !== undefined) await setShareStats(user.id, !!b.share);
   if (b.country !== undefined) patch.country = b.country ? String(b.country).slice(0, 2).toUpperCase() : null;
+  if (b.push_prefs !== undefined && b.push_prefs && typeof b.push_prefs === 'object') {
+    const keys = ['announcements', 'messages', 'classes', 'wins'];
+    const p: any = {}; for (const k of keys) if (b.push_prefs[k] !== undefined) p[k] = !!b.push_prefs[k];
+    patch.academy_push_prefs = p;
+  }
   if (Object.keys(patch).length) await supabaseAdmin.from('profiles').update(patch).eq('id', user.id);
   return NextResponse.json({ ok: true });
 }

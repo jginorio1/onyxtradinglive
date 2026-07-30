@@ -71,7 +71,8 @@ export async function GET(req: Request) {
       listWins(m, user.id),
       iAmMentorHere ? pendingCount(m) : Promise.resolve(0),
     ]);
-    const [roles, myPerms, staff] = await Promise.all([roleMap(m), permsFor(m, user.id), staffIds(m)]);
+    const [roles, myPerms, staff, prefsRow] = await Promise.all([roleMap(m), permsFor(m, user.id), staffIds(m), supabaseAdmin.from('profiles').select('academy_push_prefs').eq('id', user.id).maybeSingle()]);
+    const myPushPrefs = (prefsRow.data as any)?.academy_push_prefs || {};
     // Un módulo se bloquea SOLO si la academia vende niveles y el alumno no tiene
     // acceso. Si no hay niveles activos, es una academia gratis → todo abierto.
     // El mentor siempre ve todo desbloqueado.
@@ -91,7 +92,7 @@ export async function GET(req: Request) {
       referral: refStats, affiliateReward: (mrow2.data as any)?.affiliate_reward_cents || 0, affiliateCurrency: (mrow2.data as any)?.affiliate_currency || 'usd',
       audit: { addon, hasAddon, consent, verified },
       wins, winsPending,
-      roles, myPerms, staffIds: staff,
+      roles, myPerms, staffIds: staff, myPushPrefs,
     };
   }
   return NextResponse.json(out);

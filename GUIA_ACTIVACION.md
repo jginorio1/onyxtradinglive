@@ -1612,3 +1612,22 @@ Se enganchan los eventos de la academia a notificaciones push:
 VAPID_PRIVATE_KEY, VAPID_SUBJECT). Si faltan, todo queda desactivado sin romper nada.
 El alumno/mentor debe haber instalado la PWA y activado las notificaciones (interruptor ya
 existente en la app). El deep-link abre la academia correcta.
+
+### 47 · Onyx Academy — Preferencias de notificaciones + banner instalar/activar (Fase 14)
+
+**SQL (Supabase, tras academy_v14.sql):** `supabase/academy_v15.sql`
+- `profiles.academy_push_prefs` (jsonb): qué push quiere cada alumno.
+
+**Centro de preferencias (alumno):** en la comunidad (barra lateral) hay una tarjeta
+**"Notificaciones"** con interruptores por tipo: **Anuncios, Mensajes, Clases en vivo, Logros**.
+El backend respeta la preferencia: si el alumno apaga un tipo, no recibe ese push (ni por
+usuario ni en los envíos masivos). Clave ausente = activo.
+
+**Banner de instalar + activar (una sola vez):** arriba de la academia aparece un banner
+**"No te pierdas nada"** que invita a **activar las notificaciones** (y en iPhone, primero a
+instalar la PWA con instrucciones). Al activar, se suscribe al push y el banner desaparece.
+Se puede posponer ("Ahora no") y no vuelve a salir (guardado en el dispositivo). Solo aparece
+si el push está configurado (VAPID) y el usuario aún no está suscrito.
+
+**Requisitos:** el SQL v15 + las claves VAPID en Vercel (ya existentes) para que el banner y el
+push funcionen.
