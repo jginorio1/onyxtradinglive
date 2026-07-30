@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { getMentor, myAcademies, getContent, progressSet, markLesson, isEnrolled, listPosts, addPost, addComment, leaderboard, membersList, toggleLike, levelFor } from '@/lib/academy';
+import { getMentor, myAcademies, getContent, progressSet, markLesson, isEnrolled, listPosts, addPost, addComment, leaderboard, membersList, toggleLike, levelFor, listEvents, nextEvent, dmUnread } from '@/lib/academy';
 import { listProducts, accessibleModules, studentPurchases } from '@/lib/academyPay';
 
 export const dynamic = 'force-dynamic';
@@ -36,12 +36,13 @@ export async function GET(req: Request) {
   const enrolledHere = m ? await isEnrolled(m, user.id) : false;
   const iAmMentorHere = m && mentorRow && mentorRow.user_id === m;
   if (m && (enrolledHere || iAmMentorHere)) {
-    const [mentor, content, progress, feed, products, access, purchases, board, members, myPts, roster] = await Promise.all([
+    const [mentor, content, progress, feed, products, access, purchases, board, members, myPts, roster, events, live, unread] = await Promise.all([
       supabaseAdmin.from('mentors').select('academy_name,tagline,about,cover_url,code').eq('user_id', m).maybeSingle(),
       getContent(m, true), progressSet(user.id, m), listPosts(m, user.id), listProducts(m, true), accessibleModules(user.id, m), studentPurchases(user.id, m),
       leaderboard(m, 'all', 10), membersList(m),
       supabaseAdmin.from('academy_points').select('points').eq('mentor_id', m).eq('user_id', user.id).maybeSingle(),
       supabaseAdmin.from('academy_enrollments').select('student_id', { count: 'exact', head: true }).eq('mentor_id', m).eq('status', 'active'),
+      listEvents(m), nextEvent(m), dmUnread(m, user.id),
     ]);
     // Marca cada módulo como bloqueado si el alumno no tiene acceso por su compra.
     // El mentor ve todo desbloqueado.
@@ -56,6 +57,7 @@ export async function GET(req: Request) {
       isMentorHere: !!iAmMentorHere,
       leaderboard: board, members, membersCount: (roster as any).count || members.length,
       me: { points: myPoints, level: levelFor(myPoints).level },
+      events, live, dmUnread: unread, myUserId: user.id,
     };
   }
   return NextResponse.json(out);

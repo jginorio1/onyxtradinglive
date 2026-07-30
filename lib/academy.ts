@@ -65,6 +65,7 @@ export async function deleteModule(mentorId: string, id: string) {
 export async function saveLesson(mentorId: string, b: any) {
   const row: any = {
     title: String(b.title || 'Lección').slice(0, 160),
+    section: b.section !== undefined ? (b.section ? String(b.section).slice(0, 120) : null) : undefined,
     video_url: b.video_url ? String(b.video_url).slice(0, 500) : null,
     content: b.content ? String(b.content).slice(0, 8000) : null,
     resources: Array.isArray(b.resources) ? b.resources.slice(0, 20).map((r: any) => ({ label: String(r.label || '').slice(0, 80), url: String(r.url || '').slice(0, 400) })) : [],
@@ -72,6 +73,7 @@ export async function saveLesson(mentorId: string, b: any) {
     is_free: !!b.is_free,
     published: b.published !== false,
   };
+  if (row.section === undefined) delete row.section;
   if (b.id) { await supabaseAdmin.from('academy_lessons').update(row).eq('id', b.id).eq('mentor_id', mentorId); return { id: b.id }; }
   const { data } = await supabaseAdmin.from('academy_lessons').insert({ ...row, mentor_id: mentorId, module_id: b.module_id }).select('id').single();
   return data as any;
@@ -291,6 +293,140 @@ export async function publicDirectory() {
     mentor_name: nameOf[m.user_id] || 'Mentor', students: students[m.user_id] || 0,
     from_price_cents: fromPrice[m.user_id]?.price_cents ?? null, currency: fromPrice[m.user_id]?.currency || 'usd',
   }));
+}
+
+// ============================================================
+// Template "Academia Onyx" · deja la academia pre-armada en un clic.
+// ============================================================
+export async function applyTemplate(mentorId: string) {
+  // No pisar si ya hay contenido.
+  const { data: existing } = await supabaseAdmin.from('academy_modules').select('id').eq('mentor_id', mentorId).limit(1);
+  if (existing && existing.length) return { ok: true, skipped: true };
+
+  const modules = [
+    { title: 'Empieza aquí', description: 'Bienvenida y cómo aprovechar la academia.', position: 0, lessons: [
+      { title: 'Bienvenida', section: 'Introducción', is_free: true, content: 'Te damos la bienvenida. Mira este video y preséntate en la comunidad.' },
+      { title: 'Cómo funciona la academia', section: 'Introducción', is_free: true, content: 'Aulas, comunidad, niveles y clases en vivo.' },
+    ] },
+    { title: 'Fundamentos', description: 'Las bases del trading.', position: 1, lessons: [
+      { title: 'Conceptos básicos', section: 'Teoría', content: '' },
+      { title: 'Gestión de riesgo', section: 'Teoría', content: '' },
+      { title: 'Tu primer análisis', section: 'Práctica', content: '' },
+    ] },
+    { title: 'Estrategia', description: 'La estrategia principal paso a paso.', position: 2, lessons: [
+      { title: 'La estrategia explicada', section: 'Estrategia', content: '' },
+      { title: 'Ejemplos reales', section: 'Estrategia', content: '' },
+    ] },
+  ];
+  for (const m of modules) {
+    const { data: mod } = await supabaseAdmin.from('academy_modules').insert({ mentor_id: mentorId, title: m.title, description: m.description, position: m.position }).select('id').single();
+    let pos = 0;
+    for (const l of m.lessons) {
+      await supabaseAdmin.from('academy_lessons').insert({ mentor_id: mentorId, module_id: (mod as any).id, title: l.title, section: (l as any).section || null, content: (l as any).content || null, is_free: !!(l as any).is_free, position: pos++ });
+    }
+  }
+  // Post de bienvenida fijado.
+  await supabaseAdmin.from('academy_posts').insert({ mentor_id: mentorId, author_id: mentorId, pinned: true, body: '¡Bienvenidos a la comunidad! 🎉\n\n1. Mira la lección de bienvenida en «Empieza aquí».\n2. Preséntate en un comentario.\n3. Sube de nivel participando: cada like que recibes suma puntos.' });
+  // Niveles de ejemplo (si aún no hay productos).
+  const { data: prods } = await supabaseAdmin.from('academy_products').select('id').eq('mentor_id', mentorId).limit(1);
+  if (!prods || !prods.length) {
+    await supabaseAdmin.from('academy_products').insert([
+      { mentor_id: mentorId, name: 'VIP', description: 'Acceso a todas las aulas y clases en vivo.', kind: 'subscription', interval: 'month', price_cents: 4900, currency: 'usd', grants: 'all', active: false, position: 0 },
+    ]);
+  }
+  return { ok: true };
+}
+
+// ============================================================
+// Clases en vivo (Zoom) + próximo evento con estado.
+// ============================================================
+export async function listEvents(mentorId: string) {
+  const { data } = await supabaseAdmin.from('academy_events').select('*').eq('mentor_id', mentorId).order('starts_at');
+  return (data || []) as any[];
+}
+export async function saveEvent(mentorId: string, b: any) {
+  const row: any = {
+    title: String(b.title || 'Clase en vivo').slice(0, 160),
+    description: b.description ? String(b.description).slice(0, 1000) : null,
+    join_url: b.join_url ? String(b.join_url).slice(0, 500) : null,
+    starts_at: b.starts_at ? new Date(b.starts_at).toISOString() : new Date().toISOString(),
+    duration_min: Math.max(5, Math.min(600, Number(b.duration_min) || 60)),
+  };
+  if (b.id) { await supabaseAdmin.from('academy_events').update(row).eq('id', b.id).eq('mentor_id', mentorId); return { id: b.id }; }
+  const { data } = await supabaseAdmin.from('academy_events').insert({ ...row, mentor_id: mentorId }).select('id').single();
+  return data as any;
+}
+export async function deleteEvent(mentorId: string, id: string) {
+  await supabaseAdmin.from('academy_events').delete().eq('id', id).eq('mentor_id', mentorId);
+}
+// Próxima clase (en curso o futura) con su estado para el banner.
+export async function nextEvent(mentorId: string) {
+  const now = Date.now();
+  const { data } = await supabaseAdmin.from('academy_events').select('*').eq('mentor_id', mentorId).order('starts_at');
+  for (const e of (data || []) as any[]) {
+    const start = new Date(e.starts_at).getTime();
+    const end = start + (e.duration_min || 60) * 60000;
+    if (now < end) return { ...e, live: now >= start && now < end };
+  }
+  return null;
+}
+
+// ============================================================
+// Mensajes privados (DM) dentro de una comunidad.
+// ============================================================
+export async function dmThreads(mentorId: string, userId: string) {
+  const { data } = await supabaseAdmin.from('academy_messages').select('*').eq('mentor_id', mentorId).or(`from_id.eq.${userId},to_id.eq.${userId}`).order('created_at', { ascending: false }).limit(300);
+  const byOther: Record<string, any> = {};
+  for (const m of (data || []) as any[]) {
+    const other = m.from_id === userId ? m.to_id : m.from_id;
+    if (!byOther[other]) byOther[other] = { user_id: other, last: m.body, at: m.created_at, unread: 0 };
+    if (m.to_id === userId && !m.read_at) byOther[other].unread++;
+  }
+  const ids = Object.keys(byOther);
+  if (!ids.length) return [];
+  const { data: profs } = await supabaseAdmin.from('profiles').select('id,full_name,email').in('id', ids);
+  const nameOf: Record<string, any> = {}; (profs || []).forEach((p: any) => { nameOf[p.id] = p; });
+  return Object.values(byOther).map((t: any) => ({ ...t, name: nameOf[t.user_id]?.full_name || (nameOf[t.user_id]?.email || '').split('@')[0] || 'Trader' }));
+}
+export async function dmUnread(mentorId: string, userId: string) {
+  const { count } = await supabaseAdmin.from('academy_messages').select('id', { count: 'exact', head: true }).eq('mentor_id', mentorId).eq('to_id', userId).is('read_at', null);
+  return count || 0;
+}
+export async function dmWith(mentorId: string, userId: string, otherId: string) {
+  const { data } = await supabaseAdmin.from('academy_messages').select('*').eq('mentor_id', mentorId)
+    .or(`and(from_id.eq.${userId},to_id.eq.${otherId}),and(from_id.eq.${otherId},to_id.eq.${userId})`)
+    .order('created_at').limit(200);
+  await supabaseAdmin.from('academy_messages').update({ read_at: new Date().toISOString() }).eq('mentor_id', mentorId).eq('from_id', otherId).eq('to_id', userId).is('read_at', null);
+  const { data: prof } = await supabaseAdmin.from('profiles').select('full_name,email').eq('id', otherId).maybeSingle();
+  return { messages: (data || []) as any[], name: (prof as any)?.full_name || ((prof as any)?.email || '').split('@')[0] || 'Trader' };
+}
+export async function dmSend(mentorId: string, fromId: string, toId: string, body: string) {
+  const { data } = await supabaseAdmin.from('academy_messages').insert({ mentor_id: mentorId, from_id: fromId, to_id: toId, body: String(body || '').slice(0, 4000) }).select('*').single();
+  return data as any;
+}
+
+// ============================================================
+// Perfil de miembro: nivel, puntos, contribuciones y mapa de actividad.
+// ============================================================
+export async function memberProfile(mentorId: string, userId: string) {
+  const [{ data: prof }, { data: pts }, { data: posts }, { data: comments }] = await Promise.all([
+    supabaseAdmin.from('profiles').select('full_name,email,created_at').eq('id', userId).maybeSingle(),
+    supabaseAdmin.from('academy_points').select('points').eq('mentor_id', mentorId).eq('user_id', userId).maybeSingle(),
+    supabaseAdmin.from('academy_posts').select('created_at').eq('mentor_id', mentorId).eq('author_id', userId),
+    supabaseAdmin.from('academy_comments').select('created_at,post_id').eq('author_id', userId),
+  ]);
+  const points = (pts as any)?.points || 0;
+  // Mapa de actividad últimos ~180 días (posts + comentarios por día).
+  const days: Record<string, number> = {};
+  const add = (iso: string) => { const k = iso.slice(0, 10); days[k] = (days[k] || 0) + 1; };
+  (posts || []).forEach((p: any) => add(p.created_at));
+  (comments || []).forEach((c: any) => add(c.created_at));
+  const contributions = (posts || []).length + (comments || []).length;
+  return {
+    user_id: userId,
+    name: (prof as any)?.full_name || ((prof as any)?.email || '').split('@')[0] || 'Trader',
+    points, level: levelFor(points), contributions, activity: days,
+  };
 }
 
 // Página pública de una academia por su código: datos + módulos (con lecciones

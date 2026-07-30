@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { ensureMentor, getMentor, updateMentor, getContent, saveModule, deleteModule, saveLesson, deleteLesson, roster, listPosts, addPost, deletePost } from '@/lib/academy';
+import { ensureMentor, getMentor, updateMentor, getContent, saveModule, deleteModule, saveLesson, deleteLesson, roster, listPosts, addPost, deletePost, applyTemplate, listEvents, saveEvent, deleteEvent } from '@/lib/academy';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -21,8 +21,8 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: 'no autorizado' }, { status: 401 });
   if (!caps?.academy) return NextResponse.json({ error: 'no_academy', code: 'no_academy' }, { status: 403 });
   const mentor = await ensureMentor(user.id);
-  const [content, rost, feed] = await Promise.all([getContent(mentor.user_id, false), roster(mentor.user_id), listPosts(mentor.user_id)]);
-  return NextResponse.json({ mentor, content, roster: rost, feed });
+  const [content, rost, feed, events] = await Promise.all([getContent(mentor.user_id, false), roster(mentor.user_id), listPosts(mentor.user_id), listEvents(mentor.user_id)]);
+  return NextResponse.json({ mentor, content, roster: rost, feed, events });
 }
 
 // POST · gestión del contenido y la comunidad (solo el mentor).
@@ -43,6 +43,9 @@ export async function POST(req: Request) {
       case 'lesson_delete': await deleteLesson(mid, String(b.id)); return NextResponse.json({ ok: true });
       case 'post': await addPost(mid, user.id, String(b.body || ''), !!b.pinned); return NextResponse.json({ ok: true });
       case 'post_delete': await deletePost(mid, String(b.id)); return NextResponse.json({ ok: true });
+      case 'template': return NextResponse.json({ ok: true, ...(await applyTemplate(mid)) });
+      case 'event': return NextResponse.json({ ok: true, ...(await saveEvent(mid, b)) });
+      case 'event_delete': await deleteEvent(mid, String(b.id)); return NextResponse.json({ ok: true });
       default: return NextResponse.json({ error: 'bad_action' }, { status: 400 });
     }
   } catch (e: any) { return NextResponse.json({ error: e?.message || 'error' }, { status: 500 }); }

@@ -63,6 +63,9 @@ export async function checkoutForProduct(product: any, mentorAccount: string, st
       line_items: [{ price_data: { currency: product.currency || 'usd', unit_amount: product.price_cents, product_data: { name: product.name } }, quantity: 1 }],
       payment_intent_data: {
         application_fee_amount: Math.round(product.price_cents * feePct),
+        // on_behalf_of hace que el mentor sea el comercio de registro: ABSORBE el
+        // fee de Stripe y la comisión de Onyx (application_fee) queda limpia.
+        on_behalf_of: mentorAccount,
         transfer_data: { destination: mentorAccount },
         metadata: base.metadata,
       },
@@ -73,6 +76,7 @@ export async function checkoutForProduct(product: any, mentorAccount: string, st
     line_items: [{ price_data: { currency: product.currency || 'usd', unit_amount: product.price_cents, recurring: { interval: product.interval === 'year' ? 'year' : 'month' }, product_data: { name: product.name } }, quantity: 1 }],
     subscription_data: {
       application_fee_percent: pct,
+      on_behalf_of: mentorAccount,
       transfer_data: { destination: mentorAccount },
       metadata: base.metadata,
     },

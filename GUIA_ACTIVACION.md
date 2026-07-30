@@ -1200,3 +1200,39 @@ comunidad (Ajustes → Portada), además de los Cobros y niveles ya existentes. 
 
 Sin datos nuevos que configurar aparte del SQL. Los puntos empiezan en 0 y suben con
 la actividad real (likes recibidos).
+
+### 30 · Onyx Academy v2 — template, clases en vivo, upload, DMs, perfil, app-nav
+
+Gran upgrade del módulo para que sea "como Skool pero mejor".
+
+**SQL (Supabase, tras los anteriores):** `supabase/academy_v2.sql`
+- `academy_lessons.section` (agrupar lecciones por tema dentro del curso).
+- `academy_events` (clases en vivo: título, link Zoom, fecha, duración).
+- `academy_messages` (chat privado / DM entre miembros).
+- Crea el bucket público **`academy`** en Storage + sus políticas (portadas subidas).
+
+**Fees de Stripe → los paga el MENTOR.** En `checkoutForProduct` se añadió
+`on_behalf_of` la cuenta del mentor: el mentor absorbe el fee de procesamiento y la
+comisión de Onyx (application fee) queda limpia. (Antes lo pagaba la plataforma.)
+
+**Novedades de producto:**
+- **Template "Academia Onyx" + wizard**: el mentor pulsa Aplicar y se crean aulas base
+  con secciones, post de bienvenida y un nivel VIP de ejemplo. Wizard de 4 pasos con
+  confirmaciones ("¡Paso completado!") vía toast.
+- **Upload de portadas/miniaturas**: botón *Subir imagen* en aulas y en Ajustes de la
+  comunidad → `POST /api/academy/upload` (bucket `academy`). Los **vídeos siguen por
+  enlace** (YouTube/Vimeo/.mp4).
+- **Cursos con secciones + progreso**: lecciones agrupadas por sección, viñetas ○/✓,
+  anillo y barra 0–100%, visor con lista lateral de lecciones.
+- **Calendario + clase en vivo**: tab Calendario; barra fija en todos los tabs con
+  **cuenta regresiva**; estado **EN VIVO** con bolita roja pulsante + botón Entrar.
+  Mentor programa en la pestaña "En vivo". APIs en `/api/academy/mentor` (event*).
+- **Barra inferior tipo app** (móvil): Inicio / Chat / Ranking / Perfil.
+- **Perfil de miembro**: nivel, puntos, contribuciones y **mapa de actividad** (heatmap).
+  `GET /api/academy/profile?m=&u=`.
+- **Chat privado (DM)** entre miembros por polling. `GET/POST /api/academy/dm`.
+- **Onboarding "Empieza aquí"** para el alumno + guías escritas
+  (`ONYX_ACADEMY_GUIA_MENTOR.md`, `ONYX_ACADEMY_GUIA_ESTUDIANTE.md`).
+
+**Recuerda:** el mentor necesita `capabilities.academy = true`. Bucket `academy` público
+obligatorio para las portadas (lo crea el SQL v2 o créalo a mano en Storage).
