@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getMentor } from '@/lib/academy';
-import { audienceCounts, sendCampaign } from '@/lib/academyEmail';
+import { audienceCounts, sendCampaign, mergeAutomations } from '@/lib/academyEmail';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -25,7 +25,7 @@ export async function GET(req: Request) {
     supabaseAdmin.from('academy_emails').select('*').eq('mentor_id', mentor.user_id).order('created_at', { ascending: false }).limit(50),
     audienceCounts(mentor.user_id),
   ]);
-  return NextResponse.json({ campaigns: campaigns || [], counts, email_auto: mentor.email_auto || {}, mailEnabled: !!process.env.RESEND_API_KEY });
+  return NextResponse.json({ campaigns: campaigns || [], counts, email_auto: mentor.email_auto || {}, automations: mergeAutomations(mentor.email_templates, mentor.email_auto), mailEnabled: !!process.env.RESEND_API_KEY });
 }
 
 // POST · crear+enviar ya, programar, borrar, o guardar automatizaciones.
@@ -36,9 +36,20 @@ export async function POST(req: Request) {
   const b = await req.json().catch(() => ({}));
   try {
     if (b.action === 'automations') {
-      const a = { welcome: !!b.welcome, class_reminder: !!b.class_reminder, expiring: !!b.expiring };
-      await supabaseAdmin.from('mentors').update({ email_auto: a }).eq('user_id', mid);
-      return NextResponse.json({ ok: true, email_auto: a });
+      // Guarda plantillas editables completas (asunto, cuerpo, tiempos, on/off).
+      const src = b.automations && typeof b.automations === 'object' ? b.automations : {};
+      const clean = (o: any) => ({
+        enabled: !!o?.enabled,
+        subject: String(o?.subject || '').slice(0, 200),
+        body: String(o?.body || '').slice(0, 8000),
+        ...(o?.lead_min !== undefined ? { lead_min: Math.max(5, Math.min(1440, Number(o.lead_min) || 60)) } : {}),
+        ...(o?.days_before !== undefined ? { days_before: Math.max(1, Math.min(30, Number(o.days_before) || 3)) } : {}),
+      });
+      const tpl = { welcome: clean(src.welcome), class_reminder: clean(src.class_reminder), expiring: clean(src.expiring) };
+      // Mantén el toggle viejo sincronizado por compatibilidad.
+      const a = { welcome: tpl.welcome.enabled, class_reminder: tpl.class_reminder.enabled, expiring: tpl.expiring.enabled };
+      await supabaseAdmin.from('mentors').update({ email_templates: tpl, email_auto: a }).eq('user_id', mid);
+      return NextResponse.json({ ok: true, automations: mergeAutomations(tpl) });
     }
     if (b.action === 'delete' && b.id) {
       await supabaseAdmin.from('academy_emails').delete().eq('id', String(b.id)).eq('mentor_id', mid);

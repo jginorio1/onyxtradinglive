@@ -6,6 +6,22 @@ import Link from 'next/link';
 import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Página pública de VENTAS de una academia (Onyx Academy), estilo Skool.
+const SOCIAL: { key: string; label: string; abbr: string; color: string }[] = [
+  { key: 'whatsapp', label: 'WhatsApp', abbr: 'WA', color: '#25D366' },
+  { key: 'instagram', label: 'Instagram', abbr: 'IG', color: '#E1306C' },
+  { key: 'facebook', label: 'Facebook', abbr: 'FB', color: '#1877F2' },
+  { key: 'youtube', label: 'YouTube', abbr: 'YT', color: '#FF0000' },
+  { key: 'tiktok', label: 'TikTok', abbr: 'TT', color: '#000000' },
+  { key: 'telegram', label: 'Telegram', abbr: 'TG', color: '#229ED9' },
+  { key: 'x', label: 'X', abbr: 'X', color: '#000000' },
+];
+function socialUrl(key: string, val: string): string {
+  const v = String(val || '').trim(); if (!v) return '';
+  if (/^https?:\/\//i.test(v)) return v;
+  const h = v.replace(/^@/, '');
+  const map: Record<string, string> = { whatsapp: 'https://wa.me/' + v.replace(/[^\d]/g, ''), instagram: 'https://instagram.com/' + h, facebook: 'https://facebook.com/' + h, youtube: 'https://youtube.com/@' + h, tiktok: 'https://tiktok.com/@' + h, telegram: 'https://t.me/' + h, x: 'https://x.com/' + h };
+  return map[key] || v;
+}
 function embed(url: string): string | null {
   if (!url) return null;
   const yt = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]{11})/);
@@ -22,10 +38,18 @@ export default function AcademiaPublic() {
   const [a, setA] = useState<any>(null);
   const [state, setState] = useState<'loading' | 'ok' | 'missing'>('loading');
 
-  useEffect(() => {
-    fetch('/api/academy/public?code=' + encodeURIComponent(String(code))).then((r) => r.json())
+  function reload() {
+    fetch('/api/academy/public?code=' + encodeURIComponent(String(code)), { cache: 'no-store' }).then((r) => r.json())
       .then((j) => { if (j.academy) { setA(j.academy); setState('ok'); } else setState('missing'); })
       .catch(() => setState('missing'));
+  }
+  useEffect(() => { reload(); }, [code]);
+  // Refresca al volver a la pestaña (para ver cambios recién guardados).
+  useEffect(() => {
+    const onFocus = () => reload();
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
+    return () => { window.removeEventListener('focus', onFocus); document.removeEventListener('visibilitychange', onFocus); };
   }, [code]);
 
   const money = (cents: number, curr: string) => { const cur = (curr || 'usd').toUpperCase(); const sym = cur === 'USD' ? '$' : cur === 'EUR' ? '€' : ''; const amt = (cents / 100).toLocaleString(undefined, { minimumFractionDigits: cents % 100 ? 2 : 0, maximumFractionDigits: 2 }); return sym ? sym + amt : amt + ' ' + cur; };
@@ -52,8 +76,20 @@ export default function AcademiaPublic() {
         ? <div style={{ position: 'relative', paddingTop: '56.25%', borderRadius: 16, overflow: 'hidden', marginBottom: 18 }}><iframe src={emb} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }} allow="autoplay; fullscreen; picture-in-picture" allowFullScreen /></div>
         : <div style={{ height: 200, borderRadius: 16, marginBottom: 18, backgroundSize: 'cover', backgroundPosition: 'center', ...(a.cover_url ? { backgroundImage: `url(${a.cover_url})` } : { background: 'var(--grad)' }) }} />}
 
-      <h1 style={{ fontSize: 30, letterSpacing: '-.5px', margin: 0 }}>{a.academy_name}</h1>
-      {a.tagline && <p className="muted" style={{ fontSize: 16, marginTop: 4 }}>{a.tagline}</p>}
+      <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+        {a.logo_url && <img src={a.logo_url} alt="" style={{ width: 60, height: 60, borderRadius: 14, objectFit: 'cover', flex: 'none' }} />}
+        <div style={{ minWidth: 0 }}>
+          <h1 style={{ fontSize: 30, letterSpacing: '-.5px', margin: 0 }}>{a.academy_name}</h1>
+          {a.tagline && <p className="muted" style={{ fontSize: 16, marginTop: 4 }}>{a.tagline}</p>}
+        </div>
+      </div>
+      {a.socials && SOCIAL.some((s) => a.socials[s.key]) && (
+        <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+          {SOCIAL.filter((s) => a.socials[s.key]).map((s) => (
+            <a key={s.key} href={socialUrl(s.key, a.socials[s.key])} target="_blank" rel="noreferrer" title={s.label} style={{ width: 34, height: 34, borderRadius: 9, display: 'grid', placeItems: 'center', background: 'var(--card2, rgba(255,255,255,.06))', border: '1px solid var(--line)', color: s.color, fontWeight: 800, fontSize: 12, textDecoration: 'none' }}>{s.abbr}</a>
+          ))}
+        </div>
+      )}
 
       {/* Barra: privada · miembros · precio · mentor */}
       <div className="row" style={{ gap: 20, margin: '16px 0', flexWrap: 'wrap', alignItems: 'center' }}>

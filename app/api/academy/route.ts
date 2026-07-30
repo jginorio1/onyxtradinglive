@@ -49,7 +49,7 @@ export async function GET(req: Request) {
   }
   if (m && (enrolledHere || iAmMentorHere)) {
     const [mentor, content, progress, feed, products, access, purchases, board, members, myPts, roster, events, live, unread] = await Promise.all([
-      supabaseAdmin.from('mentors').select('academy_name,tagline,about,cover_url,code').eq('user_id', m).maybeSingle(),
+      supabaseAdmin.from('mentors').select('academy_name,tagline,about,cover_url,logo_url,socials,code').eq('user_id', m).maybeSingle(),
       getContent(m, true), progressSet(user.id, m), listPosts(m, user.id), listProducts(m, true), accessibleModules(user.id, m), studentPurchases(user.id, m),
       leaderboard(m, 'all', 10), membersList(m),
       supabaseAdmin.from('academy_points').select('points').eq('mentor_id', m).eq('user_id', user.id).maybeSingle(),

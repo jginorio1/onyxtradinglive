@@ -42,6 +42,9 @@ export default function SupportWidget({ loggedIn = false }: { loggedIn?: boolean
   // router.refresh() (no navega), así que aquí lo resolvemos con la ruta viva.
   const pathname = usePathname() || '';
   const inAdmin = pathname === '/admin' || pathname.startsWith('/admin/') || pathname === '/en/admin' || pathname.startsWith('/en/admin/');
+  // Dentro de la academia (comunidad y su página de ventas) no mostramos la
+  // burbuja de soporte: la academia tiene su propio chat y flujo.
+  const inAcademy = pathname.startsWith('/dashboard/academy') || pathname.startsWith('/en/dashboard/academy') || pathname.startsWith('/academia/') || pathname.startsWith('/en/academia/');
   const [open, setOpen] = useState(false);
   const [human, setHuman] = useState(false); // ¿hay una persona del equipo disponible? (la IA siempre está)
   const [chat, setChat] = useState<any[]>([]);
@@ -100,7 +103,7 @@ export default function SupportWidget({ loggedIn = false }: { loggedIn?: boolean
     : { alignSelf: 'flex-start', background: 'var(--card2)', border: '1px solid var(--line)', borderRadius: '12px 12px 12px 2px' };
   const topics = loggedIn ? t.topicsU : t.topicsA;
 
-  if (inAdmin) return null;   // en el panel de admin no se muestra la burbuja de usuario
+  if (inAdmin || inAcademy) return null;   // ni en admin ni dentro de la academia
 
   return (
     <>

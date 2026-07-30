@@ -125,6 +125,48 @@ function ImgPreview({ url, onRemove }: any) {
   );
 }
 
+// ---- Redes sociales del mentor ----
+const SOCIAL: { key: string; label: string; abbr: string; color: string }[] = [
+  { key: 'whatsapp', label: 'WhatsApp', abbr: 'WA', color: '#25D366' },
+  { key: 'instagram', label: 'Instagram', abbr: 'IG', color: '#E1306C' },
+  { key: 'facebook', label: 'Facebook', abbr: 'FB', color: '#1877F2' },
+  { key: 'youtube', label: 'YouTube', abbr: 'YT', color: '#FF0000' },
+  { key: 'tiktok', label: 'TikTok', abbr: 'TT', color: '#000000' },
+  { key: 'telegram', label: 'Telegram', abbr: 'TG', color: '#229ED9' },
+  { key: 'x', label: 'X', abbr: 'X', color: '#000000' },
+];
+function socialUrl(key: string, val: string): string {
+  const v = String(val || '').trim();
+  if (!v) return '';
+  if (/^https?:\/\//i.test(v)) return v;
+  const h = v.replace(/^@/, '');
+  switch (key) {
+    case 'whatsapp': return 'https://wa.me/' + v.replace(/[^\d]/g, '');
+    case 'instagram': return 'https://instagram.com/' + h;
+    case 'facebook': return 'https://facebook.com/' + h;
+    case 'youtube': return 'https://youtube.com/@' + h;
+    case 'tiktok': return 'https://tiktok.com/@' + h;
+    case 'telegram': return 'https://t.me/' + h;
+    case 'x': return 'https://x.com/' + h;
+    default: return v;
+  }
+}
+function SocialRow({ socials }: { socials: any }) {
+  const items = SOCIAL.filter((s) => socials?.[s.key]);
+  if (!items.length) return null;
+  return (
+    <div className="sk-social">
+      {items.map((s) => (
+        <a key={s.key} href={socialUrl(s.key, socials[s.key])} target="_blank" rel="noreferrer" title={s.label} style={{ color: s.color, fontWeight: 800, fontSize: 12 }}>{s.abbr}</a>
+      ))}
+    </div>
+  );
+}
+// Overlay modal para formularios (siempre visible al abrir, evita el bug de "no pasa nada").
+function Modal({ onClose, children }: { onClose: () => void; children: any }) {
+  return <div className="sk-modal-ov" onClick={onClose}><div className="sk-modal" onClick={(e) => e.stopPropagation()}>{children}</div></div>;
+}
+
 export default function AcademyClient() {
   const { lang } = useLang();
   const L = (a: string, b: string) => (lang === 'en' ? b : a);
@@ -320,15 +362,16 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
       <div className="sk-hero">
         <div className="sk-hero-cover" style={active.cover_url ? { backgroundImage: `url(${active.cover_url})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined} />
         <div className="sk-hero-body">
-          <span className="sk-hero-logo"><OnyxIcon name="graduation" size={30} /></span>
+          <span className="sk-hero-logo">{active.logo_url ? <img src={active.logo_url} alt="" /> : <OnyxIcon name="graduation" size={30} />}</span>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="row between" style={{ alignItems: 'flex-end', flexWrap: 'wrap', gap: 8 }}>
-              <div><h2 style={{ margin: 0, fontSize: 22 }}>{active.academy_name}</h2>{active.tagline && <div className="muted" style={{ fontSize: 13 }}>{active.tagline}</div>}</div>
+            <div className="row between" style={{ alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
+              <div style={{ minWidth: 0 }}><h2 style={{ margin: 0, fontSize: 21 }}>{active.academy_name}</h2>{active.tagline && <div className="muted" style={{ fontSize: 13, marginTop: 2 }}>{active.tagline}</div>}</div>
               <div className="row" style={{ gap: 6 }}>
                 {active.isMentorHere && toMentor && <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={toMentor}>{L('Configurar', 'Manage')}</button>}
                 <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={onExit}>← {L('Mis academias', 'My academies')}</button>
               </div>
             </div>
+            {active.socials && Object.keys(active.socials).length > 0 && <div style={{ marginTop: 10 }}><SocialRow socials={active.socials} /></div>}
           </div>
         </div>
       </div>
@@ -382,7 +425,7 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
                       return (
                         <button key={m.id} className="sk-course" onClick={() => setOpenMod(m)}>
                           <div className="sk-course-cover" style={m.cover_url ? { backgroundImage: `url(${m.cover_url})` } : { background: 'var(--grad)' }}>
-                            {!m.cover_url && <OnyxIcon name={m.locked ? 'guardian' : 'modules'} size={28} />}
+                            {!m.cover_url && <span style={{ color: 'rgba(255,255,255,.92)', display: 'inline-flex' }}><OnyxIcon name={m.locked ? 'guardian' : 'modules'} size={30} glow={false} /></span>}
                             {m.locked && <span className="sk-chip" style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,.5)', color: 'var(--gold)' }}><OnyxIcon name="guardian" size={11} /> {L('Bloqueado', 'Locked')}</span>}
                           </div>
                           <div className="sk-course-body">
@@ -1327,10 +1370,12 @@ function MentorEmails({ lang, L }: { lang: string; L: (a: string, b: string) => 
   const [when, setWhen] = useState('');
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState('');
+  const [autos, setAutos] = useState<any>(null);
 
-  async function load() { const r = await fetch('/api/academy/emails'); setD(await r.json()); }
+  async function load() { const r = await fetch('/api/academy/emails'); const j = await r.json(); setD(j); setAutos(j.automations || null); }
   useEffect(() => { load(); }, []);
   function flash(m: string) { setToast(m); setTimeout(() => setToast(''), 2200); }
+  const setAuto = (k: string, field: string, v: any) => setAutos((a: any) => ({ ...a, [k]: { ...a[k], [field]: v } }));
 
   async function send(schedule: boolean) {
     if (!subject.trim() || !body.trim()) return;
@@ -1341,10 +1386,7 @@ function MentorEmails({ lang, L }: { lang: string; L: (a: string, b: string) => 
     else alert(j.error === 'fecha_invalida' ? L('Elige una fecha futura.', 'Pick a future date.') : L('No se pudo. ¿Configuraste Resend?', 'Failed. Is Resend configured?'));
   }
   async function del(id: string) { await fetch('/api/academy/emails', { method: 'POST', body: JSON.stringify({ action: 'delete', id }) }); load(); }
-  async function saveAuto(patch: any) {
-    const a = { welcome: !!d.email_auto?.welcome, class_reminder: !!d.email_auto?.class_reminder, expiring: !!d.email_auto?.expiring, ...patch };
-    await fetch('/api/academy/emails', { method: 'POST', body: JSON.stringify({ action: 'automations', ...a }) }); load();
-  }
+  async function saveAutos() { await fetch('/api/academy/emails', { method: 'POST', body: JSON.stringify({ action: 'automations', automations: autos }) }); flash(L('Automáticos guardados', 'Automations saved')); load(); }
 
   if (!d) return <div className="sk-card muted">…</div>;
   if (d.error) return <div className="sk-card muted">{L('No disponible.', 'Not available.')}</div>;
@@ -1375,17 +1417,37 @@ function MentorEmails({ lang, L }: { lang: string; L: (a: string, b: string) => 
         </div>
       </div>
 
-      {/* Automatizaciones */}
-      <div className="sk-card">
-        <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 6 }}><span className="card-ic"><OnyxIcon name="ai" size={16} /></span> {L('Automáticos (ciclo de vida)', 'Automations (lifecycle)')}</h3>
-        <p className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>{L('Onyx envía estos correos solo, a la persona correcta, en el momento correcto.', 'Onyx sends these on its own, to the right person, at the right time.')}</p>
-        {([['welcome', L('Bienvenida al inscribirse', 'Welcome on join')], ['class_reminder', L('Recordatorio de clase en vivo', 'Live class reminder')], ['expiring', L('Aviso de membresía por vencer', 'Membership expiring reminder')]] as [string, string][]).map(([k, lbl]) => (
-          <label key={k} className="row between" style={{ padding: '7px 0', fontSize: 13.5, alignItems: 'center' }}>
-            <span>{lbl}</span>
-            <input type="checkbox" checked={!!d.email_auto?.[k]} onChange={(e) => saveAuto({ [k]: e.target.checked })} style={{ width: 'auto', margin: 0 }} />
-          </label>
-        ))}
-      </div>
+      {/* Automatizaciones editables */}
+      {autos && (
+        <div className="sk-card">
+          <div className="row between" style={{ marginBottom: 6, alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
+            <div><h3 style={{ display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic"><OnyxIcon name="ai" size={16} /></span> {L('Correos automáticos', 'Automated emails')}</h3><p className="muted" style={{ fontSize: 12.5, marginTop: 4 }}>{L('Edita el asunto, el texto y el momento. Variables: {name}, {academy}, {join}, {class}, {classlink}.', 'Edit subject, copy and timing. Variables: {name}, {academy}, {join}, {class}, {classlink}.')}</p></div>
+            <button className="btn btn-primary" style={{ fontSize: 12.5 }} onClick={saveAutos}>{L('Guardar automáticos', 'Save automations')}</button>
+          </div>
+          {([
+            ['welcome', L('Bienvenida al inscribirse', 'Welcome on join'), null],
+            ['class_reminder', L('Recordatorio de clase en vivo', 'Live class reminder'), 'lead_min'],
+            ['expiring', L('Membresía por vencer', 'Membership expiring'), 'days_before'],
+          ] as [string, string, string | null][]).map(([k, lbl, timing]) => {
+            const a = autos[k] || {};
+            return (
+              <div key={k} style={{ border: '1px solid var(--line)', borderRadius: 10, padding: 12, marginTop: 10, opacity: a.enabled ? 1 : .7 }}>
+                <label className="row between" style={{ alignItems: 'center', marginBottom: a.enabled ? 10 : 0, cursor: 'pointer' }}>
+                  <b style={{ fontSize: 13.5 }}>{lbl}</b>
+                  <input type="checkbox" checked={!!a.enabled} onChange={(e) => setAuto(k, 'enabled', e.target.checked)} style={{ width: 'auto', margin: 0 }} />
+                </label>
+                {a.enabled && (<>
+                  <input value={a.subject || ''} onChange={(e) => setAuto(k, 'subject', e.target.value)} placeholder={L('Asunto', 'Subject')} style={{ margin: '0 0 8px' }} />
+                  <div className="row between" style={{ alignItems: 'center' }}><span className="muted" style={{ fontSize: 12 }}>{L('Mensaje', 'Message')}</span><AiBtn kind="post" onText={(t: string) => setAuto(k, 'body', t)} L={L} /></div>
+                  <textarea value={a.body || ''} onChange={(e) => setAuto(k, 'body', e.target.value)} rows={4} style={{ width: '100%', margin: '4px 0 0' }} />
+                  {timing === 'lead_min' && <div className="row" style={{ gap: 8, marginTop: 8, alignItems: 'center' }}><span className="muted" style={{ fontSize: 12 }}>{L('Enviar', 'Send')}</span><input type="number" min={5} max={1440} value={a.lead_min ?? 60} onChange={(e) => setAuto(k, 'lead_min', Number(e.target.value))} style={{ margin: 0, width: 90 }} /><span className="muted" style={{ fontSize: 12 }}>{L('min antes de la clase', 'min before class')}</span></div>}
+                  {timing === 'days_before' && <div className="row" style={{ gap: 8, marginTop: 8, alignItems: 'center' }}><span className="muted" style={{ fontSize: 12 }}>{L('Avisar', 'Notify')}</span><input type="number" min={1} max={30} value={a.days_before ?? 3} onChange={(e) => setAuto(k, 'days_before', Number(e.target.value))} style={{ margin: 0, width: 90 }} /><span className="muted" style={{ fontSize: 12 }}>{L('días antes de vencer', 'days before expiry')}</span></div>}
+                </>)}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Historial */}
       <div className="sk-card">
@@ -1437,7 +1499,7 @@ function SetupWizard({ d, L, api, setModForm, setEvForm, goTab }: any) {
 function EventForm({ form, setForm, onSave, onCancel, L }: any) {
   const set = (k: string, v: any) => setForm({ ...form, [k]: v });
   return (
-    <div className="sk-card" style={{ border: '1px solid var(--brand)' }}>
+    <Modal onClose={onCancel}><div className="sk-card" style={{ border: '1px solid var(--brand)' }}>
       <h3 style={{ marginBottom: 12 }}>{form.id ? L('Editar clase', 'Edit class') : L('Programar clase en vivo', 'Schedule live class')}</h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <input value={form.title || ''} onChange={(e) => set('title', e.target.value)} placeholder={L('Título', 'Title')} style={{ margin: 0 }} />
@@ -1452,27 +1514,27 @@ function EventForm({ form, setForm, onSave, onCancel, L }: any) {
         <button className="btn btn-primary" onClick={() => onSave(form)} disabled={!form.title || !form.starts_at}>{L('Guardar', 'Save')}</button>
         <button className="btn btn-ghost" onClick={onCancel}>{L('Cancelar', 'Cancel')}</button>
       </div>
-    </div>
+    </div></Modal>
   );
 }
 
 function CoverForm({ form, setForm, onSave, onCancel, L }: any) {
   return (
-    <div className="sk-card" style={{ border: '1px solid var(--brand)' }}>
+    <Modal onClose={onCancel}><div className="sk-card" style={{ border: '1px solid var(--brand)' }}>
       <h3 style={{ marginBottom: 12 }}>{L('Portada del aula', 'Classroom cover')} · {form.title}</h3>
       <ImageUpload value={form.cover_url || ''} onChange={(v: string) => setForm({ ...form, cover_url: v })} L={L} label={L('Miniatura del curso (sube una imagen)', 'Course thumbnail (upload an image)')} />
       <div className="row" style={{ gap: 8, marginTop: 12 }}>
         <button className="btn btn-primary" onClick={() => onSave(form)}>{L('Guardar', 'Save')}</button>
         <button className="btn btn-ghost" onClick={onCancel}>{L('Cancelar', 'Cancel')}</button>
       </div>
-    </div>
+    </div></Modal>
   );
 }
 
 function LessonForm({ form, setForm, onSave, onCancel, L }: any) {
   const set = (k: string, v: any) => setForm({ ...form, [k]: v });
   return (
-    <div className="sk-card" style={{ border: '1px solid var(--brand)' }}>
+    <Modal onClose={onCancel}><div className="sk-card" style={{ border: '1px solid var(--brand)' }}>
       <h3 style={{ marginBottom: 12 }}>{form.id ? L('Editar lección', 'Edit lesson') : L('Nueva lección', 'New lesson')}</h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <input value={form.title || ''} onChange={(e) => set('title', e.target.value)} placeholder={L('Título de la lección', 'Lesson title')} style={{ margin: 0 }} />
@@ -1486,16 +1548,18 @@ function LessonForm({ form, setForm, onSave, onCancel, L }: any) {
         <button className="btn btn-primary" onClick={() => onSave(form)} disabled={!form.title}>{L('Guardar', 'Save')}</button>
         <button className="btn btn-ghost" onClick={onCancel}>{L('Cancelar', 'Cancel')}</button>
       </div>
-    </div>
+    </div></Modal>
   );
 }
 
 function MentorSettings({ mentor, onSave, L }: any) {
   const [f, setF] = useState({
-    academy_name: mentor.academy_name, tagline: mentor.tagline || '', about: mentor.about || '', cover_url: mentor.cover_url || '',
+    academy_name: mentor.academy_name, tagline: mentor.tagline || '', about: mentor.about || '', cover_url: mentor.cover_url || '', logo_url: mentor.logo_url || '',
     intro_video_url: mentor.intro_video_url || '', pitch: mentor.pitch || '',
+    brand_info: mentor.brand_info || '', ai_emojis: mentor.ai_emojis !== false, socials: { ...(mentor.socials || {}) } as any,
     membership_price: ((mentor.membership_price_cents || 0) / 100).toString(), membership_currency: mentor.membership_currency || 'usd', membership_interval: mentor.membership_interval || 'month',
   });
+  const setSocial = (k: string, v: string) => setF((s: any) => ({ ...s, socials: { ...s.socials, [k]: v } }));
   const link = typeof window !== 'undefined' ? `${window.location.origin}/academia/${mentor.code}` : '';
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -1507,11 +1571,40 @@ function MentorSettings({ mentor, onSave, L }: any) {
             <div className="row between" style={{ alignItems: 'center' }}><span className="muted" style={{ fontSize: 12 }}>{L('Lema', 'Tagline')}</span><AiBtn kind="tagline" getInput={() => `${f.academy_name}. ${f.about}`} onText={(t: string) => setF((s: any) => ({ ...s, tagline: t }))} L={L} /></div>
             <input value={f.tagline} onChange={(e) => setF({ ...f, tagline: e.target.value })} style={{ margin: '4px 0 0' }} />
           </div>
-          <ImageUpload value={f.cover_url} onChange={(v: string) => setF({ ...f, cover_url: v })} L={L} label={L('Portada de la comunidad', 'Community cover')} />
+          <div className="row" style={{ gap: 16, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+            <div style={{ flex: '1 1 220px' }}><ImageUpload value={f.cover_url} onChange={(v: string) => setF({ ...f, cover_url: v })} L={L} label={L('Portada de la comunidad', 'Community cover')} /></div>
+            <div style={{ flex: '0 0 auto' }}>
+              <span className="muted" style={{ fontSize: 12 }}>{L('Logo / foto (reemplaza el ícono)', 'Logo / photo (replaces the icon)')}</span>
+              <div className="row" style={{ gap: 10, marginTop: 6, alignItems: 'center' }}>
+                <span className="sk-hero-logo" style={{ margin: 0, width: 56, height: 56 }}>{f.logo_url ? <img src={f.logo_url} alt="" /> : <OnyxIcon name="graduation" size={26} />}</span>
+                <div><ImageUpload value={''} onChange={(v: string) => setF({ ...f, logo_url: v })} L={L} />{f.logo_url && <button className="btn btn-ghost" style={{ fontSize: 11, color: 'var(--red)', marginTop: 4 }} onClick={() => setF({ ...f, logo_url: '' })}>{L('Quitar logo', 'Remove logo')}</button>}</div>
+              </div>
+            </div>
+          </div>
           <div>
             <div className="row between" style={{ alignItems: 'center' }}><span className="muted" style={{ fontSize: 12 }}>{L('Sobre la academia', 'About')}</span><AiBtn kind="about" getInput={() => `${f.academy_name}. ${f.tagline}`} onText={(t: string) => setF((s: any) => ({ ...s, about: t }))} L={L} /></div>
             <textarea value={f.about} onChange={(e) => setF({ ...f, about: e.target.value })} rows={3} style={{ width: '100%', margin: '4px 0 0' }} />
           </div>
+        </div>
+      </div>
+
+      {/* Branding: info para el AI + redes sociales + toggle emojis */}
+      <div className="sk-card">
+        <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 6 }}><span className="card-ic"><OnyxIcon name="gem" size={16} /></span> {L('Branding y AI', 'Branding & AI')}</h3>
+        <p className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>{L('Cuéntale a Onyx AI quién eres y tu estilo. Lo usará para escribir en tu voz (about, lemas, posts, ventas).', 'Tell Onyx AI who you are and your style. It will write in your voice (about, taglines, posts, sales).')}</p>
+        <textarea value={f.brand_info} onChange={(e) => setF({ ...f, brand_info: e.target.value })} rows={4} placeholder={L('Ej: Soy trader de forex desde 2016, enseño price action con enfoque en disciplina. Tono cercano y directo, sin promesas.', 'e.g. I’m a forex trader since 2016, I teach price action focused on discipline. Warm, direct tone, no promises.')} style={{ width: '100%', margin: 0 }} />
+        <label className="row" style={{ gap: 8, fontSize: 13, marginTop: 10, cursor: 'pointer' }}>
+          <input type="checkbox" checked={!!f.ai_emojis} onChange={(e) => setF({ ...f, ai_emojis: e.target.checked })} style={{ width: 'auto', margin: 0 }} />
+          {L('Que el AI use emojis en los textos', 'Let AI use emojis in copy')}
+        </label>
+        <div className="muted" style={{ fontSize: 12, margin: '14px 0 8px' }}>{L('Redes sociales (usuario o enlace). Aparecen en tu comunidad y página de ventas.', 'Social links (handle or URL). Shown on your community and sales page.')}</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 8 }}>
+          {SOCIAL.map((s) => (
+            <div key={s.key} className="row" style={{ gap: 8, alignItems: 'center' }}>
+              <span style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--bg2)', border: '1px solid var(--line)', display: 'grid', placeItems: 'center', color: s.color, fontWeight: 800, fontSize: 11, flex: 'none' }}>{s.abbr}</span>
+              <input value={f.socials[s.key] || ''} onChange={(e) => setSocial(s.key, e.target.value)} placeholder={s.label} style={{ margin: 0, flex: 1 }} />
+            </div>
+          ))}
         </div>
       </div>
 
@@ -1641,7 +1734,7 @@ function TierForm({ form, setForm, modules, busy, onSave, onCancel, L }: any) {
   const grantIds: string[] = Array.isArray(form.grants) ? form.grants : [];
   const toggleMod = (id: string) => set('grants', grantIds.includes(id) ? grantIds.filter((x) => x !== id) : [...grantIds, id]);
   return (
-    <div className="sk-card" style={{ border: '1px solid var(--brand)', marginTop: 12 }}>
+    <Modal onClose={onCancel}><div className="sk-card" style={{ border: '1px solid var(--brand)' }}>
       <h3 style={{ marginBottom: 12 }}>{form.id ? L('Editar nivel', 'Edit tier') : L('Nuevo nivel', 'New tier')}</h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <input value={form.name || ''} onChange={(e) => set('name', e.target.value)} placeholder={L('Nombre (Curso básico, VIP, Bootcamp…)', 'Name (Basic, VIP, Bootcamp…)')} style={{ margin: 0 }} />
@@ -1677,6 +1770,6 @@ function TierForm({ form, setForm, modules, busy, onSave, onCancel, L }: any) {
         <button className="btn btn-primary" onClick={() => onSave(form)} disabled={!form.name || !form.price || busy}>{busy ? '…' : L('Guardar', 'Save')}</button>
         <button className="btn btn-ghost" onClick={onCancel}>{L('Cancelar', 'Cancel')}</button>
       </div>
-    </div>
+    </div></Modal>
   );
 }

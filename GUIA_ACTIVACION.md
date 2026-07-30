@@ -1444,3 +1444,34 @@ predicciones), escribir **notas privadas** y marcar **"Plan verificado por su me
 **Requisitos.** `ANTHROPIC_API_KEY` (solo para el reporte AI). El dashboard, KPIs,
 semáforo, notas y verificación funcionan sin IA. Sin cambios de webhook: el add-on usa
 el flujo de checkout de niveles existente.
+
+### 39 · Onyx Academy — Pulido "todos los power" (Fase 7)
+
+**SQL (Supabase, tras academy_v9.sql):** `supabase/academy_v10.sql`
+- `mentors.logo_url`, `mentors.brand_info`, `mentors.ai_emojis`,
+  `mentors.socials` (jsonb), `mentors.email_templates` (jsonb).
+
+**Qué cambió:**
+1. **Iconos visibles** — los iconos sobre las portadas moradas ahora son blancos (antes
+   el azul se perdía en tema oscuro).
+2. **Hero arreglado** — el nombre de la academia ya no cruza el banner: va debajo, con
+   el logo a la izquierda. El mentor puede **subir su logo o foto** (Ajustes → Logo/foto);
+   si no sube nada, queda el ícono blanco.
+3. **Editor de lecciones/clases/niveles** — ahora se abren como **ventana modal** centrada
+   y visible al instante (antes el formulario aparecía al fondo y parecía "no hacer nada").
+4. **Landing** — se **refresca sola** al volver a la pestaña (sin caché), muestra logo y
+   redes, y **lista todos los niveles** activos (vende por niveles: Básico, VIP, Mentoría…).
+5. **AI** — nuevo interruptor **"que el AI use emojis"** (Ajustes → Branding y AI). El AI
+   ya **no** mete `#` ni `**` (texto limpio, garantizado en código). Usa tu **info de marca**
+   para escribir en tu voz y puede añadir tu **enlace de academia** en posts promocionales.
+6. **Branding + redes** — sección nueva en Ajustes: cuéntale al AI quién eres y tu tono, y
+   pon tus redes (WhatsApp, Instagram, Facebook, YouTube, TikTok, Telegram, X). Los iconos
+   salen en tu comunidad y en tu página de ventas.
+7. **Correos automáticos editables** — Correos → "Correos automáticos": edita **asunto,
+   texto, día/hora y on/off** de Bienvenida, Recordatorio de clase (min antes) y Membresía
+   por vencer (días antes). Variables: `{name} {academy} {join} {class} {classlink}`.
+8. **Chat de soporte** — la burbuja "¿Necesitas ayuda?" **no aparece** dentro de la academia
+   ni en su página de ventas (la academia tiene su propio flujo).
+
+**Requisitos:** `ANTHROPIC_API_KEY` para el AI; `RESEND_API_KEY` para los correos. Todo lo
+demás (logo, hero, modales, landing, redes) funciona sin nada extra aparte del SQL.

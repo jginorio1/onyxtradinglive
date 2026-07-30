@@ -80,46 +80,74 @@ async function once(mentorId: string, studentId: string, kind: string, ref: stri
   return !error;
 }
 
+// Plantillas por defecto de los correos automáticos (editables por el mentor).
+export function defaultAutomations() {
+  return {
+    welcome: { enabled: false, subject: '¡Bienvenido a {academy}!', body: 'Hola {name},\n\nQué bueno tenerte en {academy}. Entra, preséntate en la comunidad y empieza por el aula "Empieza aquí".\n\nEntrar: {join}' },
+    class_reminder: { enabled: false, lead_min: 60, subject: 'Clase en vivo pronto: {class}', body: 'Hola {name},\n\nTu clase en vivo "{class}" empieza pronto.\nEntrar: {classlink}' },
+    expiring: { enabled: false, days_before: 3, subject: 'Tu membresía de {academy} está por vencer', body: 'Hola {name},\n\nTu membresía de {academy} se renueva pronto. Si quieres seguir con acceso a la comunidad, las aulas y las clases en vivo, no tienes que hacer nada; se renovará automáticamente.' },
+  } as any;
+}
+// Fusiona plantillas guardadas con las por defecto (compatibilidad con email_auto viejo).
+export function mergeAutomations(saved: any, legacy?: any) {
+  const def = defaultAutomations();
+  const out: any = {};
+  for (const k of Object.keys(def)) {
+    const s = (saved && saved[k]) || {};
+    out[k] = { ...def[k], ...s };
+    // Compatibilidad: si venía del toggle viejo email_auto.
+    if (legacy && legacy[k] && s.enabled === undefined) out[k].enabled = !!legacy[k];
+  }
+  return out;
+}
+function fill(t: string, vars: Record<string, string>) {
+  return (t || '').replace(/\{(\w+)\}/g, (_m, k) => vars[k] ?? '');
+}
+
 // Automatizaciones de ciclo de vida (las corre el cron).
 export async function runAutomations() {
-  const { data: mentors } = await supabaseAdmin.from('mentors').select('user_id,academy_name,code,email_auto').eq('active', true);
+  const { data: mentors } = await supabaseAdmin.from('mentors').select('user_id,academy_name,code,email_auto,email_templates').eq('active', true);
   let sent = 0;
   for (const m of (mentors || []) as any[]) {
-    const auto = m.email_auto || {};
+    const t = mergeAutomations(m.email_templates, m.email_auto);
     const join = `${SITE}/dashboard/academy?join=${m.code}`;
+    const base = { academy: m.academy_name || 'Onyx Academy', join };
     // Bienvenida (inscritos en las últimas 48h)
-    if (auto.welcome) {
+    if (t.welcome.enabled) {
       const since = new Date(Date.now() - 2 * 864e5).toISOString();
       const { data: enr } = await supabaseAdmin.from('academy_enrollments').select('student_id').eq('mentor_id', m.user_id).eq('status', 'active').gte('joined_at', since);
       for (const e of (enr || []) as any[]) {
         if (await once(m.user_id, e.student_id, 'welcome', '')) {
           const s = await emailFor(e.student_id);
-          if (s) { await sendEmail(s.email, `¡Bienvenido a ${m.academy_name}!`, `Hola ${s.name},\n\nQué bueno tenerte en ${m.academy_name}. Entra, preséntate en la comunidad y empieza por el aula "Empieza aquí".\n\nEntrar: ${join}` + footer(m), { kind: 'academy_welcome', userId: s.id, unsub: unsubUrl(s.email) }); sent++; }
+          if (s) { const v = { ...base, name: s.name }; await sendEmail(s.email, fill(t.welcome.subject, v), fill(t.welcome.body, v) + footer(m), { kind: 'academy_welcome', userId: s.id, unsub: unsubUrl(s.email) }); sent++; }
         }
       }
     }
-    // Recordatorio de clase en vivo (empieza en < 60 min)
-    if (auto.class_reminder) {
+    // Recordatorio de clase en vivo (empieza en < lead_min)
+    if (t.class_reminder.enabled) {
       const now = Date.now();
-      const { data: evs } = await supabaseAdmin.from('academy_events').select('id,title,starts_at,join_url').eq('mentor_id', m.user_id).gte('starts_at', new Date(now).toISOString()).lte('starts_at', new Date(now + 60 * 60000).toISOString());
+      const lead = Math.max(5, Math.min(1440, Number(t.class_reminder.lead_min) || 60));
+      const { data: evs } = await supabaseAdmin.from('academy_events').select('id,title,starts_at,join_url').eq('mentor_id', m.user_id).gte('starts_at', new Date(now).toISOString()).lte('starts_at', new Date(now + lead * 60000).toISOString());
       for (const ev of (evs || []) as any[]) {
         const list = await studentsWithEmail(m.user_id);
         for (const s of list) {
           if (await once(m.user_id, s.id, 'class_reminder', ev.id)) {
-            await sendEmail(s.email, `Clase en vivo pronto: ${ev.title}`, `Hola ${s.name},\n\nTu clase en vivo "${ev.title}" empieza pronto.\n${ev.join_url ? 'Entrar: ' + ev.join_url : 'Entra a la academia para el enlace.'}` + footer(m), { kind: 'academy_class', userId: s.id, unsub: unsubUrl(s.email) }); sent++;
+            const v = { ...base, name: s.name, class: ev.title, classlink: ev.join_url || join };
+            await sendEmail(s.email, fill(t.class_reminder.subject, v), fill(t.class_reminder.body, v) + footer(m), { kind: 'academy_class', userId: s.id, unsub: unsubUrl(s.email) }); sent++;
           }
         }
       }
     }
-    // Membresía por vencer (en <= 3 días)
-    if (auto.expiring) {
-      const soon = new Date(Date.now() + 3 * 864e5).toISOString();
+    // Membresía por vencer (en <= days_before días)
+    if (t.expiring.enabled) {
+      const days = Math.max(1, Math.min(30, Number(t.expiring.days_before) || 3));
+      const soon = new Date(Date.now() + days * 864e5).toISOString();
       const { data: ms } = await supabaseAdmin.from('academy_memberships').select('student_id,current_period_end').eq('mentor_id', m.user_id).eq('status', 'active').gte('current_period_end', new Date().toISOString()).lte('current_period_end', soon);
       for (const mm of (ms || []) as any[]) {
         const ref = (mm.current_period_end || '').slice(0, 10);
         if (await once(m.user_id, mm.student_id, 'expiring', ref)) {
           const s = await emailFor(mm.student_id);
-          if (s) { await sendEmail(s.email, `Tu membresía de ${m.academy_name} está por vencer`, `Hola ${s.name},\n\nTu membresía de ${m.academy_name} se renueva pronto. Si quieres seguir con acceso a la comunidad, las aulas y las clases en vivo, no tienes que hacer nada; se renovará automáticamente.` + footer(m), { kind: 'academy_expiring', userId: s.id, unsub: unsubUrl(s.email) }); sent++; }
+          if (s) { const v = { ...base, name: s.name }; await sendEmail(s.email, fill(t.expiring.subject, v), fill(t.expiring.body, v) + footer(m), { kind: 'academy_expiring', userId: s.id, unsub: unsubUrl(s.email) }); sent++; }
         }
       }
     }

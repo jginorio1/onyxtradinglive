@@ -24,9 +24,24 @@ async function ai(system: string, user: string, maxTokens = 700): Promise<string
 }
 
 const GUARD = {
-  es: 'Reglas: es una academia de trading. NUNCA prometas ganancias garantizadas, ni des señales o predicciones del mercado, ni cifras de rentabilidad inventadas. Nada de hype engañoso. Enfócate en educación, comunidad, disciplina y valor real. Español neutro.',
-  en: 'Rules: it is a trading academy. NEVER promise guaranteed profits, market signals/predictions, or made-up returns. No misleading hype. Focus on education, community, discipline and real value. Natural English.',
+  es: 'Reglas: es una academia de trading. NUNCA prometas ganancias garantizadas, ni des señales o predicciones del mercado, ni cifras de rentabilidad inventadas. Nada de hype engañoso. Enfócate en educación, comunidad, disciplina y valor real. Español neutro. IMPORTANTE DE FORMATO: escribe en TEXTO PLANO. Prohibido usar markdown: nada de #, ##, ###, **, __, ni asteriscos ni almohadillas para dar formato. No pongas títulos con # ni negritas con **.',
+  en: 'Rules: it is a trading academy. NEVER promise guaranteed profits, market signals/predictions, or made-up returns. No misleading hype. Focus on education, community, discipline and real value. Natural English. FORMAT: write in PLAIN TEXT. No markdown allowed: no #, ##, ###, **, __, no asterisks or hashes for formatting. No # headings, no ** bold.',
 };
+
+// Quita restos de markdown que el modelo pueda colar (#, **, __, viñetas *).
+function stripMd(t: string): string {
+  return (t || '')
+    .replace(/^#{1,6}\s*/gm, '')      // encabezados #
+    .replace(/\*\*(.+?)\*\*/g, '$1')  // **negrita**
+    .replace(/__(.+?)__/g, '$1')      // __negrita__
+    .replace(/(^|\s)\*(?!\s)([^*\n]+?)\*(?=\s|$)/g, '$1$2') // *cursiva*
+    .replace(/^\s*[-*]\s+/gm, '• ')   // viñetas - o * → •
+    .replace(/`{1,3}/g, '')           // backticks
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+const NO_EMOJI = { es: ' No uses emojis.', en: ' Do not use emojis.' };
+const YES_EMOJI = { es: ' Puedes usar emojis con medida (1-3), donde aporten.', en: ' You may use emojis sparingly (1-3), where they add value.' };
 
 // Moderación de imágenes con visión. Devuelve { safe }. Si no hay API key o falla
 // la llamada, deja pasar (fail-open) para no romper la subida; solo BLOQUEA cuando
@@ -68,45 +83,50 @@ export type CopilotKind = 'tagline' | 'about' | 'pitch' | 'course_desc' | 'lesso
 
 // Genera contenido para el mentor. `input` describe el contexto (nombre de la
 // academia, tema del curso/lección, idea del post, etc.).
-export async function academyCopilot(kind: CopilotKind, input: string, lang: Lang = 'es'): Promise<{ ok: boolean; text?: string; reason?: string }> {
+// opts: emojis (¿usar emojis?), brand (info de marca/voz del mentor), link (enlace
+// de la academia para posts promocionales).
+export async function academyCopilot(kind: CopilotKind, input: string, lang: Lang = 'es', opts?: { emojis?: boolean; brand?: string; link?: string }): Promise<{ ok: boolean; text?: string; reason?: string }> {
   if (!process.env.ANTHROPIC_API_KEY) return { ok: false, reason: 'no_key' };
-  const g = GUARD[lang];
+  const emoji = opts?.emojis ? YES_EMOJI[lang] : NO_EMOJI[lang];
+  const g = GUARD[lang] + emoji;
   const ES = lang === 'es';
+  const brand = opts?.brand ? (ES ? `\nInfo de marca del mentor (úsala para escribir en su voz, sin copiarla literal):\n${opts.brand}` : `\nMentor brand info (use it to write in their voice, don't copy verbatim):\n${opts.brand}`) : '';
+  const bullet = opts?.emojis ? '✅' : '•';
 
   const prompts: Record<CopilotKind, { sys: string; user: string; max: number }> = {
     tagline: {
       sys: `${g} Devuelve UN lema corto (máx 8 palabras), sin comillas.`,
-      user: (ES ? 'Academia de trading: ' : 'Trading academy: ') + input,
+      user: (ES ? 'Academia de trading: ' : 'Trading academy: ') + input + brand,
       max: 60,
     },
     about: {
       sys: `${g} Escribe un "sobre la academia" de 2-3 frases, cálido y claro. Sin títulos ni viñetas.`,
-      user: (ES ? 'Contexto: ' : 'Context: ') + input,
+      user: (ES ? 'Contexto: ' : 'Context: ') + input + brand,
       max: 300,
     },
     pitch: {
-      sys: `${g} Escribe una página de ventas breve para una comunidad de trading: 1 gancho, un bloque "¿Qué incluye tu acceso?" con 5-7 viñetas (usa ✅), y un cierre con llamado a la acción. Tono seguro pero honesto.`,
-      user: (ES ? 'Detalles de la academia: ' : 'Academy details: ') + input,
+      sys: `${g} Escribe una página de ventas breve para una comunidad de trading: 1 gancho, un bloque "¿Qué incluye tu acceso?" con 5-7 viñetas (usa "${bullet}" al inicio de cada una), y un cierre con llamado a la acción. Tono seguro pero honesto.`,
+      user: (ES ? 'Detalles de la academia: ' : 'Academy details: ') + input + brand,
       max: 700,
     },
     course_desc: {
       sys: `${g} Escribe una descripción de curso de 1-2 frases, clara y concreta. Sin viñetas.`,
-      user: (ES ? 'Curso/aula: ' : 'Course/classroom: ') + input,
+      user: (ES ? 'Curso/aula: ' : 'Course/classroom: ') + input + brand,
       max: 200,
     },
     lesson_desc: {
-      sys: `${g} Escribe notas/descripción de una lección: 2-4 frases o 3-5 viñetas con lo que el alumno aprenderá.`,
-      user: (ES ? 'Lección: ' : 'Lesson: ') + input,
+      sys: `${g} Escribe notas/descripción de una lección: 2-4 frases o 3-5 viñetas con "${bullet}" con lo que el alumno aprenderá.`,
+      user: (ES ? 'Lección: ' : 'Lesson: ') + input + brand,
       max: 300,
     },
     post: {
-      sys: `${g} Redacta un post para la comunidad (announcement, motivación o lección del día). Directo, con energía, 2-5 frases. Puede llevar 1-2 emojis. Sin promesas de dinero.`,
-      user: (ES ? 'Idea del post: ' : 'Post idea: ') + input,
+      sys: `${g} Redacta un post para la comunidad (announcement, motivación o lección del día). Directo, con energía, 2-5 frases. Sin promesas de dinero.${opts?.link ? (ES ? ` Si el post invita a unirse o es promocional, incluye este enlace al final en su propia línea: ${opts.link}` : ` If the post invites people to join or is promotional, add this link at the end on its own line: ${opts.link}`) : ''}`,
+      user: (ES ? 'Idea del post: ' : 'Post idea: ') + input + brand,
       max: 350,
     },
   };
   const p = prompts[kind];
   if (!p) return { ok: false, reason: 'bad_kind' };
   const text = await ai(p.sys, p.user, p.max);
-  return text ? { ok: true, text } : { ok: false, reason: 'ai_error' };
+  return text ? { ok: true, text: stripMd(text) } : { ok: false, reason: 'ai_error' };
 }
