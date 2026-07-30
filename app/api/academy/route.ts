@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getMentor, myAcademies, getContent, progressSet, markLesson, isEnrolled, listPosts, addPost, addComment, leaderboard, membersList, toggleLike, levelFor, listEvents, nextEvent, dmUnread, tradersBoard } from '@/lib/academy';
 import { listProducts, accessibleModules, studentPurchases, perksFor, membershipInfo, hasMembership } from '@/lib/academyPay';
 import { myReferralStats } from '@/lib/academyExtras';
+import { auditAddon, hasAuditAddon, auditConsent, planVerified } from '@/lib/academyAudit';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -56,14 +57,18 @@ export async function GET(req: Request) {
       listEvents(m), nextEvent(m), dmUnread(m, user.id),
     ]);
     const myPerks = iAmMentorHere ? { copy: true, guardian: true } : await perksFor(user.id, m);
-    const [refStats, mrow2] = await Promise.all([
+    const [refStats, mrow2, addon, hasAddon, consent, verified] = await Promise.all([
       myReferralStats(user.id, m),
       supabaseAdmin.from('mentors').select('affiliate_reward_cents,affiliate_currency').eq('user_id', m).maybeSingle(),
+      auditAddon(m),
+      iAmMentorHere ? Promise.resolve(false) : hasAuditAddon(user.id, m),
+      iAmMentorHere ? Promise.resolve(false) : auditConsent(m, user.id),
+      iAmMentorHere ? Promise.resolve(false) : planVerified(m, user.id),
     ]);
     // Un módulo se bloquea SOLO si la academia vende niveles y el alumno no tiene
     // acceso. Si no hay niveles activos, es una academia gratis → todo abierto.
     // El mentor siempre ve todo desbloqueado.
-    const gated = (products as any[]).length > 0;
+    const gated = (products as any[]).filter((p: any) => p.kind !== 'audit').length > 0;
     const lockedContent = (content as any[]).map((mod: any) => {
       const unlocked = iAmMentorHere || !gated || access.all || access.ids.has(mod.id);
       return { ...mod, locked: !unlocked, lessons: mod.lessons.map((l: any) => (unlocked || l.is_free) ? l : { id: l.id, title: l.title, is_free: false, locked: true }) };
@@ -77,6 +82,7 @@ export async function GET(req: Request) {
       me: { points: myPoints, level: levelFor(myPoints).level },
       events, live, dmUnread: unread, myUserId: user.id, myPerks,
       referral: refStats, affiliateReward: (mrow2.data as any)?.affiliate_reward_cents || 0, affiliateCurrency: (mrow2.data as any)?.affiliate_currency || 'usd',
+      audit: { addon, hasAddon, consent, verified },
     };
   }
   return NextResponse.json(out);

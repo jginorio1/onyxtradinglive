@@ -454,6 +454,27 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
               </div>
             );
           })()}
+          {active.audit && (active.audit.hasAddon || active.audit.addon || active.audit.verified) && (
+            <div className="sk-side-card" style={{ border: '1px solid color-mix(in srgb,var(--green) 32%,transparent)' }}>
+              <div className="row between" style={{ marginBottom: 6 }}><b style={{ fontSize: 14 }}>{L('Auditoría de tu plan', 'Your plan audit')}</b><OnyxIcon name="guardian" size={15} /></div>
+              {active.audit.verified && <div className="sk-chip" style={{ background: 'color-mix(in srgb,var(--green) 15%,transparent)', color: 'var(--soft-green)', marginBottom: 8, display: 'inline-flex' }}>✓ {L('Plan verificado por tu mentor', 'Plan verified by your mentor')}</div>}
+              {active.audit.hasAddon ? (
+                <>
+                  <p className="muted" style={{ fontSize: 12.5, marginBottom: 8 }}>{L('Tu mentor puede revisar tu trading real y darte un boletín. Tú controlas el permiso.', 'Your mentor can review your real trading and give you a report card. You control the permission.')}</p>
+                  <label className="row" style={{ gap: 8, fontSize: 12.5, cursor: 'pointer' }}>
+                    <input type="checkbox" checked={!!active.audit.consent} onChange={async (e) => { await fetch('/api/academy/audit', { method: 'POST', body: JSON.stringify({ action: 'consent', mentor_id: active.mentor_id, on: e.target.checked }) }); reload(); }} style={{ width: 'auto', margin: 0 }} />
+                    {L('Dejar que mi mentor audite mi trading', 'Let my mentor audit my trading')}
+                  </label>
+                  {!active.audit.consent && <p className="muted" style={{ fontSize: 11, marginTop: 6 }}>{L('Sin tu permiso, tu mentor no ve tus datos.', 'Without your permission, your mentor sees no data.')}</p>}
+                </>
+              ) : active.audit.addon ? (
+                <>
+                  <p className="muted" style={{ fontSize: 12.5, marginBottom: 8 }}>{L('Activa el add-on para que tu mentor audite tu trading real, te dé un reporte AI y verifique tu plan.', 'Activate the add-on so your mentor audits your real trading, gives you an AI report and verifies your plan.')}</p>
+                  <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => buy(active.audit.addon.id)}>{priceLabel(active.audit.addon, L)} · {L('Activar', 'Activate')}</button>
+                </>
+              ) : null}
+            </div>
+          )}
           {totalLessons > 0 && (
             <div className="sk-side-card">
               <div className="row between" style={{ fontSize: 13, marginBottom: 8 }}><b>{L('Tu progreso', 'Your progress')}</b><span className="muted">{doneCount}/{totalLessons}</span></div>
@@ -921,6 +942,7 @@ function priceLabel(p: any, L: (a: string, b: string) => string) {
   const cur = (p.currency || 'usd').toUpperCase(); const sym = cur === 'USD' ? '$' : cur === 'EUR' ? '€' : '';
   const base = sym ? sym + amount : amount + ' ' + cur;
   if (p.kind === 'one_time') return base + ' · ' + L('pago único', 'one-time');
+  if (p.kind === 'audit') return base + '/' + (p.interval === 'year' ? L('año', 'yr') : L('mes', 'mo')) + ' · ' + L('add-on', 'add-on');
   return base + '/' + (p.interval === 'year' ? L('año', 'yr') : L('mes', 'mo'));
 }
 
@@ -937,6 +959,12 @@ function Tiers({ products, purchases, onBuy, L }: any) {
               <div style={{ fontWeight: 700, fontSize: 15 }}>{p.name}</div>
               {p.description && <div className="muted" style={{ fontSize: 12.5, margin: '4px 0 8px' }}>{p.description}</div>}
               <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--gold)', marginBottom: 8 }}>{priceLabel(p, L)}</div>
+              {p.kind === 'audit' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 10 }}>
+                  <span style={{ fontSize: 12, color: 'var(--soft-green)' }}>✓ {L('Tu mentor audita tu trading real', 'Your mentor audits your real trading')}</span>
+                  <span style={{ fontSize: 12, color: 'var(--soft-green)' }}>✓ {L('Reporte AI + verificación de tu plan', 'AI report + plan verification')}</span>
+                </div>
+              )}
               {(p.perks?.copy || p.perks?.guardian) && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 10 }}>
                   {p.perks?.copy && <span style={{ fontSize: 12, color: 'var(--soft-green)' }}>✓ {L('Copy trading del mentor', 'Mentor copy trading')}</span>}
@@ -957,7 +985,7 @@ function Tiers({ products, purchases, onBuy, L }: any) {
 function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: () => void; openStudent: (mid: string) => void }) {
   const L = (a: string, b: string) => (lang === 'en' ? b : a);
   const [d, setD] = useState<any>(null);
-  const [tab, setTab] = useState<'cursos' | 'envivo' | 'cobros' | 'alumnos' | 'comunidad' | 'correos' | 'ajustes'>('cursos');
+  const [tab, setTab] = useState<'cursos' | 'envivo' | 'cobros' | 'alumnos' | 'auditoria' | 'comunidad' | 'correos' | 'ajustes'>('cursos');
   const [newMod, setNewMod] = useState('');
   const [lessonForm, setLessonForm] = useState<any>(null);
   const [modForm, setModForm] = useState<any>(null);
@@ -1001,7 +1029,7 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
       </div>
 
       <div className="sk-tabs big">
-        {([['cursos', 'graduation', L('Aulas', 'Classroom')], ['envivo', 'calendar', L('En vivo', 'Live')], ['cobros', 'coins', L('Cobros', 'Payments')], ['alumnos', 'users', L('Alumnos', 'Students')], ['comunidad', 'chat', L('Comunidad', 'Community')], ['correos', 'mail', L('Correos', 'Emails')], ['ajustes', 'settings', L('Ajustes', 'Settings')]] as any[]).map(([k, ic, lbl]) => (
+        {([['cursos', 'graduation', L('Aulas', 'Classroom')], ['envivo', 'calendar', L('En vivo', 'Live')], ['cobros', 'coins', L('Cobros', 'Payments')], ['alumnos', 'users', L('Alumnos', 'Students')], ['auditoria', 'guardian', L('Auditoría', 'Audit')], ['comunidad', 'chat', L('Comunidad', 'Community')], ['correos', 'mail', L('Correos', 'Emails')], ['ajustes', 'settings', L('Ajustes', 'Settings')]] as any[]).map(([k, ic, lbl]) => (
           <button key={k} className={'sk-tab' + (tab === k ? ' on' : '')} onClick={() => setTab(k)}><OnyxIcon name={ic} size={16} /> {lbl}</button>
         ))}
       </div>
@@ -1076,9 +1104,11 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
               {d.roster.students.map((s: any) => <StudentRow key={s.id} s={s} total={d.roster.totalLessons} lang={lang} L={L} />)}
             </div>
           )}
-          <p className="muted" style={{ fontSize: 11.5, marginTop: 10 }}>{L('La auditoría IA solo funciona si el alumno activó «mostrar mi track record» en su perfil.', 'AI audit only works if the student enabled “show my track record” in their profile.')}</p>
+          <p className="muted" style={{ fontSize: 11.5, marginTop: 10 }}>{L('Para el dashboard completo de auditoría (KPIs, disciplina, reporte AI y verificación), ve a la pestaña Auditoría. Requiere que el alumno compre el add-on y dé su consentimiento.', 'For the full audit dashboard (KPIs, discipline, AI report and verification), go to the Audit tab. Requires the student to buy the add-on and give consent.')}</p>
         </div>
       )}
+
+      {tab === 'auditoria' && <MentorAudit mentorId={d.mentor.user_id} lang={lang} L={L} />}
 
       {tab === 'comunidad' && (<>
         <div className="sk-card">
@@ -1122,7 +1152,7 @@ function StudentRow({ s, total, lang, L }: any) {
     const r = await fetch('/api/academy/audit', { method: 'POST', body: JSON.stringify({ student_id: s.id, period: '30d', lang: L('es', 'en') }) });
     const j = await r.json(); setBusy(false);
     if (j.ok) setAudit(j.text);
-    else alert(j.error === 'no_consent' ? L('El alumno no ha activado «mostrar mi track record».', 'The student hasn’t enabled “show my track record”.') : j.error === 'no_data' ? L('El alumno no tiene suficientes operaciones.', 'Not enough trades for this student.') : L('No se pudo generar (¿IA configurada?).', 'Could not generate (AI configured?).'));
+    else alert(j.error === 'no_addon' ? L('El alumno no tiene el add-on de auditoría activo. Véndelo en Cobros → Add-on auditoría.', 'The student has no active audit add-on. Sell it in Payments → Audit add-on.') : j.error === 'no_consent' ? L('El alumno no ha dado su consentimiento en su comunidad.', 'The student hasn’t given consent in their community.') : j.error === 'no_data' ? L('El alumno no tiene suficientes operaciones.', 'Not enough trades for this student.') : L('No se pudo generar (¿IA configurada?).', 'Could not generate (AI configured?).'));
   }
   return (
     <div style={{ background: 'var(--bg2)', borderRadius: 8, padding: '9px 12px', fontSize: 13 }}>
@@ -1134,6 +1164,156 @@ function StudentRow({ s, total, lang, L }: any) {
         </div>
       </div>
       {audit && <div style={{ whiteSpace: 'pre-wrap', fontSize: 13, lineHeight: 1.5, marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--line)' }}>{audit}<div className="muted" style={{ fontSize: 11, marginTop: 6 }}>{L('Guardado. El alumno lo verá en su perfil.', 'Saved. The student sees it in their profile.')}</div></div>}
+    </div>
+  );
+}
+
+// =================== Dashboard de auditoría del mentor (add-on) ===================
+const LIGHT = { green: '#1D9E75', amber: '#EF9F27', red: '#E24B4A', gray: 'var(--mut)' } as any;
+function MentorAudit({ mentorId, lang, L }: { mentorId: string; lang: string; L: (a: string, b: string) => string }) {
+  const [d, setD] = useState<any>(null);
+  const [sel, setSel] = useState<string | null>(null);
+  const [busy, setBusy] = useState('');
+  const [report, setReport] = useState<any>(null);
+  const [history, setHistory] = useState<any[]>([]);
+  const [notes, setNotes] = useState('');
+  const [trades, setTrades] = useState<any[] | null>(null);
+  const [period, setPeriod] = useState<'30d' | '90d'>('30d');
+  const [toast, setToast] = useState('');
+
+  async function load() { const r = await fetch(`/api/academy/audit?roster=1&m=${mentorId}`); setD(await r.json()); }
+  useEffect(() => { load(); }, []);
+  const cur = (d?.students || []).find((s: any) => s.student_id === sel) || null;
+  useEffect(() => {
+    setReport(null); setTrades(null); setHistory([]);
+    if (!cur) return;
+    setNotes(cur.notes || '');
+    fetch(`/api/academy/audit?m=${mentorId}&u=${cur.student_id}`).then((r) => r.json()).then((j) => { setHistory(j.audits || []); if ((j.audits || [])[0]) setReport(j.audits[0]); });
+  }, [sel]);
+  function flash(m: string) { setToast(m); setTimeout(() => setToast(''), 2000); }
+
+  async function gen() {
+    if (!cur) return; setBusy('gen');
+    const r = await fetch('/api/academy/audit', { method: 'POST', body: JSON.stringify({ student_id: cur.student_id, period, lang: L('es', 'en') }) });
+    const j = await r.json(); setBusy('');
+    if (j.ok) { setReport({ text: j.text, metrics: j.metrics, created_at: new Date().toISOString(), period }); load(); }
+    else alert(j.error === 'no_consent' ? L('El alumno no ha dado su consentimiento.', 'The student hasn’t given consent.') : j.error === 'no_addon' ? L('El alumno no tiene el add-on activo.', 'The student has no active add-on.') : j.error === 'no_data' ? L('No hay suficientes operaciones (mín. 5).', 'Not enough trades (min 5).') : L('No se pudo generar (¿IA configurada?).', 'Could not generate (AI set up?).'));
+  }
+  async function saveNote() { if (!cur) return; setBusy('note'); await fetch('/api/academy/audit', { method: 'POST', body: JSON.stringify({ action: 'note', student_id: cur.student_id, notes }) }); setBusy(''); flash(L('Nota guardada', 'Note saved')); }
+  async function verify(on: boolean) { if (!cur) return; await fetch('/api/academy/audit', { method: 'POST', body: JSON.stringify({ action: 'verify', student_id: cur.student_id, on }) }); load(); }
+  async function viewTrades() { if (!cur) return; setBusy('trades'); const r = await fetch(`/api/academy/audit?trades=1&m=${mentorId}&u=${cur.student_id}&period=${period}`); const j = await r.json(); setBusy(''); setTrades(j.trades || []); }
+
+  if (!d) return <div className="sk-card muted">…</div>;
+  if (d.error) return <div className="sk-card muted">{L('No disponible.', 'Not available.')}</div>;
+  if (!d.addon) {
+    return (
+      <div className="sk-card">
+        <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 8 }}><span className="card-ic"><OnyxIcon name="guardian" size={16} /></span> {L('Auditoría de alumnos', 'Student audit')}</h3>
+        <p className="muted" style={{ fontSize: 13, marginBottom: 6 }}>{L('Vende la auditoría como add-on: revisa el trading real de tus alumnos, dales un reporte AI y verifica su plan — con su consentimiento.', 'Sell audits as an add-on: review your students’ real trading, give them an AI report and verify their plan — with their consent.')}</p>
+        <p className="muted" style={{ fontSize: 12.5 }}>{L('Créalo en', 'Create it in')} <b>{L('Cobros → Niveles → Add-on auditoría', 'Payments → Tiers → Audit add-on')}</b>.</p>
+      </div>
+    );
+  }
+  return (
+    <div>
+      {toast && <Toast msg={toast} />}
+      <div className="sk-card" style={{ marginBottom: 12 }}>
+        <div className="row between" style={{ flexWrap: 'wrap', gap: 8 }}>
+          <div><b style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><OnyxIcon name="guardian" size={16} /> {L('Auditoría de alumnos', 'Student audit')}</b><div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>{L('Solo alumnos con el add-on activo. Sin consentimiento no ves sus datos.', 'Only students with the active add-on. No consent, no data.')}</div></div>
+          <div className="sk-seg">{(['30d', '90d'] as const).map((p) => <button key={p} className={period === p ? 'on' : ''} onClick={() => setPeriod(p)}>{p}</button>)}</div>
+        </div>
+      </div>
+      <div className="sk-grid" style={{ gridTemplateColumns: 'minmax(0,300px) 1fr' }}>
+        <div className="sk-card" style={{ alignSelf: 'start' }}>
+          <div className="muted" style={{ fontSize: 11.5, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>{L('Alumnos', 'Students')}</div>
+          {(d.students || []).length === 0 && <p className="muted" style={{ fontSize: 12.5 }}>{L('Aún nadie ha comprado el add-on de auditoría.', 'Nobody bought the audit add-on yet.')}</p>}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {(d.students || []).map((s: any) => (
+              <button key={s.student_id} onClick={() => setSel(s.student_id)} className="row" style={{ gap: 10, alignItems: 'center', textAlign: 'left', cursor: 'pointer', padding: '8px 10px', borderRadius: 8, border: '1px solid ' + (sel === s.student_id ? 'var(--brand)' : 'transparent'), background: sel === s.student_id ? 'color-mix(in srgb,var(--brand) 12%,transparent)' : 'var(--bg2)' }}>
+                <Avatar name={s.name} size={32} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>{s.name}{s.verified && <OnyxIcon name="guardian" size={12} />}</div>
+                  <div className="muted" style={{ fontSize: 11.5 }}>{!s.consent ? L('sin consentimiento', 'no consent') : s.kpis?.trades ? `${s.kpis.winRate}% · PF ${s.kpis.profitFactor}` : L('sin datos', 'no data')}</div>
+                </div>
+                <span style={{ width: 10, height: 10, borderRadius: '50%', background: s.consent ? LIGHT[s.kpis?.light || 'gray'] : 'var(--mut)' }} />
+              </button>
+            ))}
+          </div>
+          {d.waiting > 0 && <div className="row" style={{ gap: 8, marginTop: 10, padding: '8px 10px', borderRadius: 8, background: 'var(--bg2)', fontSize: 12, color: 'var(--mut)' }}><OnyxIcon name="lock" size={14} /> {d.waiting} {L('alumnos sin el add-on', 'students without the add-on')}</div>}
+        </div>
+
+        <div>
+          {!cur ? <div className="sk-card muted">{L('Elige un alumno para ver su auditoría.', 'Pick a student to see their audit.')}</div>
+          : !cur.consent ? (
+            <div className="sk-card">
+              <div className="row" style={{ gap: 10, alignItems: 'center', marginBottom: 8 }}><Avatar name={cur.name} size={38} /><b>{cur.name}</b></div>
+              <div className="row" style={{ gap: 8, alignItems: 'flex-start', padding: '10px 12px', borderRadius: 10, background: 'color-mix(in srgb,var(--gold) 10%,transparent)' }}><OnyxIcon name="lock" size={16} /><span style={{ fontSize: 13 }}>{L('Este alumno tiene el add-on pero aún no ha dado su consentimiento para compartir su track record. No puedes ver sus datos hasta que lo active en su comunidad.', 'This student has the add-on but hasn’t consented to share their track record yet. You can’t see their data until they enable it in their community.')}</span></div>
+            </div>
+          ) : (
+            <div className="sk-card">
+              <div className="row between" style={{ alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+                <div className="row" style={{ gap: 10, alignItems: 'center' }}><Avatar name={cur.name} size={40} /><div><b>{cur.name}</b>{cur.verified && <div style={{ fontSize: 12, color: 'var(--soft-green)', display: 'flex', alignItems: 'center', gap: 5 }}><OnyxIcon name="guardian" size={12} /> {L('Plan verificado por ti', 'Plan verified by you')}</div>}</div></div>
+                <span style={{ fontSize: 12, color: 'var(--mut)' }}>{period === '90d' ? L('últimos 90 días', 'last 90 days') : L('últimos 30 días', 'last 30 days')}</span>
+              </div>
+              {cur.kpis && cur.kpis.trades > 0 ? (<>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(96px,1fr))', gap: 8, marginBottom: 12 }}>
+                  {[[L('Aciertos', 'Win rate'), cur.kpis.winRate + '%'], [L('Profit factor', 'Profit factor'), cur.kpis.profitFactor], [L('Trades', 'Trades'), cur.kpis.trades], [L('Max DD', 'Max DD'), cur.kpis.maxDDPct + '%'], [L('Expectativa', 'Expectancy'), cur.kpis.expectancy]].map(([lbl, val]) => (
+                    <div key={lbl as string} style={{ background: 'var(--bg2)', borderRadius: 10, padding: '9px 11px' }}><div className="muted" style={{ fontSize: 11 }}>{lbl}</div><div style={{ fontSize: 19, fontWeight: 800 }}>{val}</div></div>
+                  ))}
+                </div>
+                <div className="row" style={{ gap: 10, alignItems: 'center', padding: '9px 12px', borderRadius: 10, marginBottom: 12, background: 'color-mix(in srgb,' + LIGHT[cur.kpis.light] + ' 12%,transparent)' }}>
+                  <span style={{ width: 12, height: 12, borderRadius: '50%', background: LIGHT[cur.kpis.light], flex: '0 0 auto' }} />
+                  <span style={{ fontSize: 13, fontWeight: 600 }}>{L('Disciplina', 'Discipline')} {cur.kpis.discipline}%</span>
+                  <span className="muted" style={{ fontSize: 12 }}>· {cur.kpis.light === 'green' ? L('opera consistente', 'consistent') : cur.kpis.light === 'amber' ? L('a vigilar', 'watch') : L('riesgo alto', 'high risk')}</span>
+                  <div style={{ flex: 1 }} />
+                  <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '3px 9px' }} disabled={busy === 'trades'} onClick={viewTrades}>{busy === 'trades' ? '…' : L('Ver trades', 'View trades')}</button>
+                </div>
+              </>) : <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{L('El alumno aún no tiene operaciones registradas en este periodo.', 'No trades recorded for this student in this period.')}</p>}
+
+              {trades && (
+                <div style={{ maxHeight: 220, overflowY: 'auto', border: '1px solid var(--line)', borderRadius: 10, marginBottom: 12 }}>
+                  {trades.length === 0 ? <div className="muted" style={{ fontSize: 12.5, padding: 12 }}>{L('Sin operaciones.', 'No trades.')}</div> : trades.map((t: any, i: number) => (
+                    <div key={i} className="row between" style={{ padding: '6px 12px', borderBottom: '1px solid var(--line)', fontSize: 12.5 }}>
+                      <span style={{ flex: 1 }}>{t.symbol || '—'} <span className="muted">{t.side || ''}</span></span>
+                      <span className="muted" style={{ fontSize: 11.5 }}>{t.close_time ? new Date(t.close_time).toLocaleDateString(lang === 'en' ? 'en-US' : 'es-ES') : ''}</span>
+                      <b style={{ minWidth: 64, textAlign: 'right', color: t.pnl >= 0 ? 'var(--soft-green)' : 'var(--red)' }}>{t.pnl >= 0 ? '+' : ''}{Math.round(t.pnl)}</b>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div style={{ border: '1px solid var(--line)', borderRadius: 10, padding: 12, marginBottom: 12 }}>
+                <div className="row between" style={{ marginBottom: 6, alignItems: 'center' }}>
+                  <b style={{ fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon name="star" size={14} /> {L('Reporte de Onyx AI', 'Onyx AI report')}</b>
+                  <button className="btn btn-primary" style={{ fontSize: 11.5, padding: '4px 10px' }} disabled={busy === 'gen'} onClick={gen}>{busy === 'gen' ? '…' : (report ? '✨ ' + L('Regenerar', 'Regenerate') : '✨ ' + L('Generar', 'Generate'))}</button>
+                </div>
+                {report ? <div style={{ fontSize: 13, whiteSpace: 'pre-wrap', lineHeight: 1.55 }}>{report.text}<div className="muted" style={{ fontSize: 11, marginTop: 6 }}>{L('Guardado. El alumno lo ve en su perfil.', 'Saved. The student sees it in their profile.')}</div></div>
+                  : <p className="muted" style={{ fontSize: 12.5 }}>{L('Aún sin reporte. Genera uno con AI (factual, sin promesas ni predicciones).', 'No report yet. Generate one with AI (factual, no promises or predictions).')}</p>}
+              </div>
+
+              <div style={{ marginBottom: 12 }}>
+                <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{L('Notas privadas (solo tú las ves)', 'Private notes (only you)')}</div>
+                <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder={L('Ej: mejorar gestión de riesgo en NY…', 'e.g. improve risk management in NY session…')} style={{ width: '100%', margin: 0 }} />
+                <button className="btn btn-ghost" style={{ fontSize: 12, marginTop: 6 }} disabled={busy === 'note'} onClick={saveNote}>{L('Guardar nota', 'Save note')}</button>
+              </div>
+
+              <label className="row" style={{ gap: 8, fontSize: 13, cursor: 'pointer' }}>
+                <input type="checkbox" checked={!!cur.verified} onChange={(e) => verify(e.target.checked)} style={{ width: 'auto', margin: 0 }} />
+                {L('Marcar «Plan verificado por su mentor» (lo ve el alumno)', 'Mark “Plan verified by mentor” (student sees it)')}
+              </label>
+
+              {history.length > 1 && (
+                <div style={{ marginTop: 14, borderTop: '1px solid var(--line)', paddingTop: 10 }}>
+                  <div className="muted" style={{ fontSize: 11.5, marginBottom: 6 }}>{L('Historial', 'History')}</div>
+                  {history.map((h: any, i: number) => (
+                    <div key={i} className="muted" style={{ fontSize: 11.5, padding: '3px 0' }}>{new Date(h.created_at).toLocaleDateString(lang === 'en' ? 'en-US' : 'es-ES')} · {h.period} {h.metrics ? `· ${h.metrics.winRate}% · PF ${h.metrics.profitFactor}` : ''}</div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -1401,7 +1581,7 @@ function MentorPayments({ modules, L }: { modules: any[]; L: (a: string, b: stri
         </div>
       )}
       <div className="sk-card">
-        <div className="row between" style={{ marginBottom: 10 }}><h3 style={{ display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic" style={{ color: 'var(--gold)' }}><OnyxIcon name="gem" size={16} /></span> {L('Niveles', 'Tiers')}</h3><button className="btn btn-primary" onClick={() => setForm({ name: '', kind: 'subscription', interval: 'month', price: '', currency: 'usd', grants: 'all', active: true })}>＋ {L('Nivel', 'Tier')}</button></div>
+        <div className="row between" style={{ marginBottom: 10, flexWrap: 'wrap', gap: 8 }}><h3 style={{ display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic" style={{ color: 'var(--gold)' }}><OnyxIcon name="gem" size={16} /></span> {L('Niveles', 'Tiers')}</h3><div className="row" style={{ gap: 6 }}><button className="btn btn-ghost" onClick={() => setForm({ name: L('Auditoría de mi plan', 'Plan audit'), kind: 'audit', interval: 'month', price: '', currency: 'usd', grants: [], active: true })}><OnyxIcon name="guardian" size={14} /> {L('Add-on auditoría', 'Audit add-on')}</button><button className="btn btn-primary" onClick={() => setForm({ name: '', kind: 'subscription', interval: 'month', price: '', currency: 'usd', grants: 'all', active: true })}>＋ {L('Nivel', 'Tier')}</button></div></div>
         {prods.length === 0 && <p className="muted" style={{ fontSize: 13 }}>{L('Crea niveles como “Curso básico”, “VIP” o “Bootcamp”.', 'Create tiers like “Basic”, “VIP” or “Bootcamp”.')}</p>}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {prods.map((p) => (
@@ -1467,11 +1647,17 @@ function TierForm({ form, setForm, modules, busy, onSave, onCancel, L }: any) {
         <input value={form.name || ''} onChange={(e) => set('name', e.target.value)} placeholder={L('Nombre (Curso básico, VIP, Bootcamp…)', 'Name (Basic, VIP, Bootcamp…)')} style={{ margin: 0 }} />
         <textarea value={form.description || ''} onChange={(e) => set('description', e.target.value)} rows={2} placeholder={L('Descripción (opcional)', 'Description (optional)')} style={{ width: '100%', margin: 0 }} />
         <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-          <select value={form.kind} onChange={(e) => set('kind', e.target.value)} style={{ margin: 0 }}><option value="subscription">{L('Suscripción', 'Subscription')}</option><option value="one_time">{L('Pago único', 'One-time')}</option></select>
-          {form.kind === 'subscription' && <select value={form.interval} onChange={(e) => set('interval', e.target.value)} style={{ margin: 0 }}><option value="month">{L('Mensual', 'Monthly')}</option><option value="year">{L('Anual', 'Yearly')}</option></select>}
+          <select value={form.kind} onChange={(e) => set('kind', e.target.value)} style={{ margin: 0 }}><option value="subscription">{L('Suscripción', 'Subscription')}</option><option value="one_time">{L('Pago único', 'One-time')}</option><option value="audit">{L('Add-on auditoría', 'Audit add-on')}</option></select>
+          {form.kind !== 'one_time' && <select value={form.interval} onChange={(e) => set('interval', e.target.value)} style={{ margin: 0 }}><option value="month">{L('Mensual', 'Monthly')}</option><option value="year">{L('Anual', 'Yearly')}</option></select>}
           <input type="number" min={0} step="0.01" value={form.price ?? ''} onChange={(e) => set('price', e.target.value)} placeholder={L('Precio', 'Price')} style={{ margin: 0, width: 120 }} />
           <select value={form.currency} onChange={(e) => set('currency', e.target.value)} style={{ margin: 0 }}><option value="usd">USD</option><option value="eur">EUR</option><option value="mxn">MXN</option></select>
         </div>
+        {form.kind === 'audit' ? (
+          <div className="row" style={{ gap: 8, alignItems: 'flex-start', padding: '10px 12px', borderRadius: 10, background: 'color-mix(in srgb,var(--green) 10%,transparent)' }}>
+            <OnyxIcon name="guardian" size={16} />
+            <span style={{ fontSize: 12.5 }}>{L('Add-on de auditoría: los alumnos que lo compren podrán darte permiso para revisar su trading real, generarles un reporte AI y verificar su plan. No desbloquea aulas.', 'Audit add-on: students who buy it can let you review their real trading, generate an AI report and verify their plan. It does not unlock classrooms.')}</span>
+          </div>
+        ) : (<>
         <div>
           <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{L('¿Qué desbloquea?', 'What does it unlock?')}</div>
           <label className="row" style={{ gap: 8, fontSize: 13, marginBottom: 6 }}><input type="radio" checked={grantsAll} onChange={() => set('grants', 'all')} style={{ width: 'auto', margin: 0 }} /> {L('Todas las aulas', 'All classrooms')}</label>
@@ -1484,6 +1670,7 @@ function TierForm({ form, setForm, modules, busy, onSave, onCancel, L }: any) {
           <label className="row" style={{ gap: 8, fontSize: 13 }}><input type="checkbox" checked={!!form.perks?.guardian} onChange={(e) => set('perks', { ...(form.perks || {}), guardian: e.target.checked })} style={{ width: 'auto', margin: 0 }} /> Onyx Guardian</label>
           <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{L('Se muestran al alumno como incluidos; tú das el acceso desde la lista de abajo (por seguridad no se activa solo).', 'Shown to the student as included; you grant access from the list below (not auto-enabled, for safety).')}</div>
         </div>
+        </>)}
         <label className="row" style={{ gap: 8, fontSize: 13 }}><input type="checkbox" checked={form.active !== false} onChange={(e) => set('active', e.target.checked)} style={{ width: 'auto', margin: 0 }} /> {L('Activo (visible para alumnos)', 'Active (visible to students)')}</label>
       </div>
       <div className="row" style={{ gap: 8, marginTop: 12 }}>

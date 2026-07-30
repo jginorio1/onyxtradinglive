@@ -1407,3 +1407,40 @@ alumno activó **"mostrar mi track record"** (consentimiento) y tiene ≥5 opera
 
 **Requisitos:** `ANTHROPIC_API_KEY` (auditoría). Certificados y afiliados no necesitan nada
 extra aparte del SQL.
+
+### 38 · Onyx Academy — Auditoría de alumnos como add-on de pago del mentor (Fase 6)
+
+**SQL (Supabase, tras academy_v8.sql):** `supabase/academy_v9.sql`
+- `academy_audit_consent` (consentimiento POR-MENTOR, revocable),
+  `academy_student_notes` (notas privadas del mentor),
+  `academy_plan_verified` (sello "plan verificado por su mentor"),
+  `academy_audits.discipline` + `.light` (semáforo).
+
+**Qué hace.** El mentor vende una **Auditoría de plan** como add-on de pago
+(recurrente). El alumno que lo compra puede darle permiso para revisar su **trading
+real**; el mentor ve un **dashboard** con KPIs (aciertos, profit factor, trades, max
+drawdown, expectativa), un **semáforo de disciplina** (verde/ámbar/rojo calculado del
+comportamiento real: consistencia de tamaño, control de pérdidas, profit factor),
+puede **ver sus trades**, generar un **reporte de Onyx AI** (factual, sin promesas ni
+predicciones), escribir **notas privadas** y marcar **"Plan verificado por su mentor"**.
+
+**Cómo se activa (mentor).**
+1. `Cobros → Add-on auditoría` → fija precio y guárdalo (nivel con `kind='audit'`).
+2. El alumno lo compra desde su comunidad (tarjeta "Auditoría de tu plan").
+3. Nueva pestaña **Auditoría** en el panel del mentor: lista de alumnos con el add-on,
+   semáforo, KPIs, reporte AI, notas y verificación.
+
+**Los 3 candados de seguridad (no negociables).**
+- *Consentimiento por-mentor, explícito y revocable*: el alumno activa "Dejar que mi
+  mentor audite mi trading". Sin ese permiso, el mentor **no ve ningún dato**. Si lo
+  revoca, el acceso se corta al instante.
+- *La AI audita, no promete*: reporte factual, sin señales ni predicciones (misma línea
+  roja de `auditStudent`).
+- *La verificación dice "por su mentor"*, nunca "por Onyx" — no carga la marca.
+
+**Monetización.** Onyx cobra su comisión sobre el add-on igual que en membresías/niveles
+(destination charge, el mentor paga las fees de Stripe con `on_behalf_of`).
+
+**Requisitos.** `ANTHROPIC_API_KEY` (solo para el reporte AI). El dashboard, KPIs,
+semáforo, notas y verificación funcionan sin IA. Sin cambios de webhook: el add-on usa
+el flujo de checkout de niveles existente.

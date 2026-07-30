@@ -34,7 +34,7 @@ export async function saveProduct(mentorId: string, b: any) {
   const row: any = {
     name: String(b.name || 'Nivel').slice(0, 80),
     description: b.description ? String(b.description).slice(0, 500) : null,
-    kind: b.kind === 'one_time' ? 'one_time' : 'subscription',
+    kind: b.kind === 'one_time' ? 'one_time' : (b.kind === 'audit' ? 'audit' : 'subscription'),
     interval: b.interval === 'year' ? 'year' : 'month',
     price_cents: Math.max(0, Math.round(Number(b.price_cents) || 0)),
     currency: (b.currency || 'usd').toLowerCase().slice(0, 3),
