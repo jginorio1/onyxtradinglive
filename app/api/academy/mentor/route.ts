@@ -41,7 +41,7 @@ export async function POST(req: Request) {
       case 'module_delete': await deleteModule(mid, String(b.id)); return NextResponse.json({ ok: true });
       case 'lesson': return NextResponse.json({ ok: true, ...(await saveLesson(mid, b)) });
       case 'lesson_delete': await deleteLesson(mid, String(b.id)); return NextResponse.json({ ok: true });
-      case 'post': await addPost(mid, user.id, String(b.body || ''), !!b.pinned); return NextResponse.json({ ok: true });
+      case 'post': await addPost(mid, user.id, String(b.body || ''), !!b.pinned, b.image_url ? String(b.image_url) : undefined); return NextResponse.json({ ok: true });
       case 'post_delete': await deletePost(mid, String(b.id)); return NextResponse.json({ ok: true });
       case 'template': return NextResponse.json({ ok: true, ...(await applyTemplate(mid, !!b.force)) });
       case 'event': return NextResponse.json({ ok: true, ...(await saveEvent(mid, b)) });

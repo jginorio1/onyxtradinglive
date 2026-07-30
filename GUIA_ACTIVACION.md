@@ -1336,3 +1336,22 @@ predicciones del mercado; genera copy educativo y honesto.
 
 **Requisito:** `ANTHROPIC_API_KEY` en Vercel (ya la usa el resto de Onyx AI). Sin ella,
 el botón avisa que la IA no está configurada.
+
+### 35 · Onyx Academy — Emojis + fotos + moderación AI (posts y chat)
+
+**SQL (Supabase, tras academy_v5.sql):** `supabase/academy_v6.sql`
+- Añade `image_url` a `academy_posts`, `academy_comments` y `academy_messages`.
+
+**Qué hace:**
+- Selector de **emojis** (😊) y botón de **foto** (📷) en el compositor de posts, en los
+  comentarios, en los anuncios del mentor y en el chat privado. Vista previa antes de
+  enviar. Se puede publicar solo imagen (sin texto).
+- Las fotos se suben a Storage (bucket `academy`) y se muestran en el feed/chat.
+
+**Moderación con IA (bloquea contenido indebido):**
+- Antes de guardar, la imagen pasa por `moderateImage` (visión, `lib/academyAI.ts`).
+  Si detecta contenido **sexual/pornográfico, desnudez, menores, gore o violencia
+  gráfica**, la subida se **rechaza** (`/api/academy/upload` responde `blocked`).
+- Gráficos de trading, capturas, logos, memes y personas vestidas normal → permitido.
+- Requiere `ANTHROPIC_API_KEY`. Sin key, la moderación no corre (deja pasar) — configúrala
+  en Vercel para que el filtro funcione.

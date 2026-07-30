@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { moderateImage } from '@/lib/academyAI';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -27,6 +28,10 @@ export async function POST(req: Request) {
 
     const buf = Buffer.from(m[2], 'base64');
     if (buf.byteLength > MAX) return NextResponse.json({ error: 'imagen demasiado grande (máx 6 MB)' }, { status: 400 });
+
+    // Moderación con IA: bloquea contenido sexual/indebido antes de guardar.
+    const mod = await moderateImage(mediaType, m[2]);
+    if (!mod.safe) return NextResponse.json({ error: 'blocked', message: 'Imagen bloqueada por moderación (contenido no permitido).' }, { status: 400 });
 
     const path = `${user.id}/${Date.now()}-${name}`;
     const up = await supabaseAdmin.storage.from(BUCKET).upload(path, buf, { contentType: mediaType, upsert: false });

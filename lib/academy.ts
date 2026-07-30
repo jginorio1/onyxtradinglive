@@ -266,12 +266,12 @@ export async function listPosts(mentorId: string, viewerId?: string) {
     comments: byPost[p.id] || [],
   }));
 }
-export async function addPost(mentorId: string, authorId: string, body: string, pinned = false) {
-  const { data } = await supabaseAdmin.from('academy_posts').insert({ mentor_id: mentorId, author_id: authorId, body: String(body || '').slice(0, 4000), pinned }).select('id').single();
+export async function addPost(mentorId: string, authorId: string, body: string, pinned = false, imageUrl?: string) {
+  const { data } = await supabaseAdmin.from('academy_posts').insert({ mentor_id: mentorId, author_id: authorId, body: String(body || '').slice(0, 4000), pinned, image_url: imageUrl ? String(imageUrl).slice(0, 500) : null }).select('id').single();
   return data as any;
 }
-export async function addComment(postId: string, authorId: string, body: string) {
-  await supabaseAdmin.from('academy_comments').insert({ post_id: postId, author_id: authorId, body: String(body || '').slice(0, 2000) });
+export async function addComment(postId: string, authorId: string, body: string, imageUrl?: string) {
+  await supabaseAdmin.from('academy_comments').insert({ post_id: postId, author_id: authorId, body: String(body || '').slice(0, 2000), image_url: imageUrl ? String(imageUrl).slice(0, 500) : null });
 }
 export async function deletePost(mentorId: string, id: string) {
   await supabaseAdmin.from('academy_posts').delete().eq('id', id).eq('mentor_id', mentorId);
@@ -406,8 +406,8 @@ export async function dmWith(mentorId: string, userId: string, otherId: string) 
   const { data: prof } = await supabaseAdmin.from('profiles').select('full_name,email').eq('id', otherId).maybeSingle();
   return { messages: (data || []) as any[], name: (prof as any)?.full_name || ((prof as any)?.email || '').split('@')[0] || 'Trader' };
 }
-export async function dmSend(mentorId: string, fromId: string, toId: string, body: string) {
-  const { data } = await supabaseAdmin.from('academy_messages').insert({ mentor_id: mentorId, from_id: fromId, to_id: toId, body: String(body || '').slice(0, 4000) }).select('*').single();
+export async function dmSend(mentorId: string, fromId: string, toId: string, body: string, imageUrl?: string) {
+  const { data } = await supabaseAdmin.from('academy_messages').insert({ mentor_id: mentorId, from_id: fromId, to_id: toId, body: String(body || '').slice(0, 4000), image_url: imageUrl ? String(imageUrl).slice(0, 500) : null }).select('*').single();
   return data as any;
 }
 

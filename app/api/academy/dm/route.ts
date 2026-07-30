@@ -30,10 +30,10 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: 'no autorizado' }, { status: 401 });
   const b = await req.json().catch(() => ({}));
   const m = String(b.m || ''); const to = String(b.to || '');
-  if (!m || !to || !b.body || !(await guard(m, user.id))) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+  if (!m || !to || (!b.body && !b.image_url) || !(await guard(m, user.id))) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
   if (to === user.id) return NextResponse.json({ error: 'self' }, { status: 400 });
   // El destinatario debe ser miembro de la comunidad.
   if (!(await guard(m, to))) return NextResponse.json({ error: 'no_member' }, { status: 400 });
-  const msg = await dmSend(m, user.id, to, String(b.body));
+  const msg = await dmSend(m, user.id, to, String(b.body || ''), b.image_url ? String(b.image_url) : undefined);
   return NextResponse.json({ ok: true, message: msg });
 }

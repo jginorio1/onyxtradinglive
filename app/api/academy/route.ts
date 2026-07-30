@@ -90,18 +90,18 @@ export async function POST(req: Request) {
       const r = await toggleLike(user.id, String(b.mentor_id), b.target_type, String(b.target_id));
       return NextResponse.json({ ok: true, ...r });
     }
-    if (b.action === 'post' && b.mentor_id && b.body) {
+    if (b.action === 'post' && b.mentor_id && (b.body || b.image_url)) {
       const mentorRow = await getMentor(user.id);
       const allowed = (mentorRow && mentorRow.user_id === b.mentor_id) || (await isEnrolled(String(b.mentor_id), user.id));
       if (!allowed) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
-      await addPost(String(b.mentor_id), user.id, String(b.body));
+      await addPost(String(b.mentor_id), user.id, String(b.body), false, b.image_url ? String(b.image_url) : undefined);
       return NextResponse.json({ ok: true });
     }
-    if (b.action === 'comment' && b.post_id && b.mentor_id && b.body) {
+    if (b.action === 'comment' && b.post_id && b.mentor_id && (b.body || b.image_url)) {
       const mentorRow = await getMentor(user.id);
       const allowed = (mentorRow && mentorRow.user_id === b.mentor_id) || (await isEnrolled(String(b.mentor_id), user.id));
       if (!allowed) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
-      await addComment(String(b.post_id), user.id, String(b.body));
+      await addComment(String(b.post_id), user.id, String(b.body), b.image_url ? String(b.image_url) : undefined);
       return NextResponse.json({ ok: true });
     }
     return NextResponse.json({ error: 'bad_request' }, { status: 400 });

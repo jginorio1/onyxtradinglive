@@ -86,6 +86,45 @@ function AiBtn({ kind, getInput, onText, L }: any) {
   return <button type="button" className="btn btn-ghost" style={{ fontSize: 12, padding: '4px 10px' }} disabled={busy} onClick={go}>{busy ? '…' : '✨ ' + L('IA', 'AI')}</button>;
 }
 
+const EMOJIS = ['🔥', '💪', '🚀', '📈', '✅', '🙌', '👏', '🎯', '💰', '🧠', '⚡', '❤️', '😂', '👀', '🤝', '💎'];
+function EmojiRow({ onPick }: any) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span style={{ position: 'relative', display: 'inline-flex' }}>
+      <button type="button" className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 15 }} onClick={() => setOpen((v) => !v)}>😊</button>
+      {open && (
+        <span style={{ position: 'absolute', bottom: '110%', left: 0, zIndex: 30, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 10, padding: 6, display: 'flex', flexWrap: 'wrap', gap: 2, width: 210, boxShadow: '0 8px 24px rgba(0,0,0,.3)' }}>
+          {EMOJIS.map((e) => <button key={e} type="button" onClick={() => { onPick(e); setOpen(false); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: 3 }}>{e}</button>)}
+        </span>
+      )}
+    </span>
+  );
+}
+function ImgAttach({ onUrl, L }: any) {
+  const ref = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  return (
+    <>
+      <input ref={ref} type="file" accept="image/*" style={{ display: 'none' }} onChange={async (e) => {
+        const f = e.target.files?.[0]; if (!f) return; setBusy(true);
+        const url = await uploadImage(f); setBusy(false); if (ref.current) ref.current.value = '';
+        if (url) onUrl(url); else alert(L('No se pudo subir la imagen (puede estar bloqueada por moderación).', 'Could not upload image (it may be blocked by moderation).'));
+      }} />
+      <button type="button" className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 15 }} disabled={busy} onClick={() => ref.current?.click()} title={L('Adjuntar foto', 'Attach photo')}>{busy ? '…' : '📷'}</button>
+    </>
+  );
+}
+// Vista previa de imagen adjunta con botón de quitar.
+function ImgPreview({ url, onRemove }: any) {
+  if (!url) return null;
+  return (
+    <div style={{ position: 'relative', display: 'inline-block', marginTop: 8 }}>
+      <img src={url} alt="" style={{ maxHeight: 120, borderRadius: 10, display: 'block' }} />
+      <button type="button" onClick={onRemove} style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,.6)', color: '#fff', border: 'none', borderRadius: '50%', width: 22, height: 22, cursor: 'pointer', fontSize: 12 }}>✕</button>
+    </div>
+  );
+}
+
 export default function AcademyClient() {
   const { lang } = useLang();
   const L = (a: string, b: string) => (lang === 'en' ? b : a);
@@ -245,6 +284,7 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
   const [openMod, setOpenMod] = useState<any>(null);
   const [lesson, setLesson] = useState<any>(null);
   const [post, setPost] = useState('');
+  const [postImg, setPostImg] = useState('');
   const [viewUser, setViewUser] = useState<string | null>(null);
   const [dmWith, setDmWith] = useState<string | null>(null);
 
@@ -253,9 +293,9 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
   const doneCount = (active.progress || []).length;
 
   async function api(body: any) { await fetch('/api/academy', { method: 'POST', body: JSON.stringify(body) }); }
-  async function sendPost() { if (!post.trim()) return; await api({ action: 'post', mentor_id: active.mentor_id, body: post }); setPost(''); reload(); }
+  async function sendPost() { if (!post.trim() && !postImg) return; await api({ action: 'post', mentor_id: active.mentor_id, body: post, image_url: postImg }); setPost(''); setPostImg(''); reload(); }
   async function like(t: string, id: string) { await api({ action: 'like', mentor_id: active.mentor_id, target_type: t, target_id: id }); reload(); }
-  async function comment(pid: string, body: string) { await api({ action: 'comment', post_id: pid, mentor_id: active.mentor_id, body }); reload(); }
+  async function comment(pid: string, body: string, image?: string) { await api({ action: 'comment', post_id: pid, mentor_id: active.mentor_id, body, image_url: image || '' }); reload(); }
   async function toggleLesson(l: any, done: boolean) { await api({ action: 'lesson', lesson_id: l.id, done }); reload(); }
   async function buy(productId: string) {
     const r = await fetch('/api/academy/checkout', { method: 'POST', body: JSON.stringify({ product_id: productId }) });
@@ -314,7 +354,11 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
                   <Avatar name="•" level={active.me?.level} size={40} />
                   <div style={{ flex: 1 }}>
                     <textarea value={post} onChange={(e) => setPost(e.target.value)} rows={2} placeholder={L('Comparte algo con la comunidad…', 'Share something with the community…')} style={{ width: '100%', margin: 0 }} />
-                    <div className="row" style={{ justifyContent: 'flex-end', marginTop: 8 }}><button className="btn btn-primary" onClick={sendPost} disabled={!post.trim()}>{L('Publicar', 'Post')}</button></div>
+                    <ImgPreview url={postImg} onRemove={() => setPostImg('')} />
+                    <div className="row between" style={{ marginTop: 8, alignItems: 'center' }}>
+                      <div className="row" style={{ gap: 2 }}><EmojiRow onPick={(e: string) => setPost((p) => p + e)} /><ImgAttach onUrl={(u: string) => setPostImg(u)} L={L} /></div>
+                      <button className="btn btn-primary" onClick={sendPost} disabled={!post.trim() && !postImg}>{L('Publicar', 'Post')}</button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -666,6 +710,7 @@ function ChatView({ mentorId, lang, initialWith, members, myUserId }: any) {
   const [withId, setWithId] = useState<string | null>(initialWith || null);
   const [conv, setConv] = useState<any>(null);
   const [text, setText] = useState('');
+  const [img, setImg] = useState('');
   const [picking, setPicking] = useState(false);
 
   async function loadThreads() { const r = await fetch(`/api/academy/dm?m=${mentorId}`); const j = await r.json(); setThreads(j.threads || []); }
@@ -675,9 +720,9 @@ function ChatView({ mentorId, lang, initialWith, members, myUserId }: any) {
   useEffect(() => { if (!withId) return; const t = setInterval(() => loadConv(withId), 5000); return () => clearInterval(t); }, [withId]);
 
   async function send() {
-    if (!text.trim() || !withId) return;
-    await fetch('/api/academy/dm', { method: 'POST', body: JSON.stringify({ m: mentorId, to: withId, body: text }) });
-    setText(''); loadConv(withId); loadThreads();
+    if ((!text.trim() && !img) || !withId) return;
+    await fetch('/api/academy/dm', { method: 'POST', body: JSON.stringify({ m: mentorId, to: withId, body: text, image_url: img }) });
+    setText(''); setImg(''); loadConv(withId); loadThreads();
   }
   const others = (members || []).filter((mem: any) => mem.user_id !== myUserId);
 
@@ -690,11 +735,17 @@ function ChatView({ mentorId, lang, initialWith, members, myUserId }: any) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 440, overflowY: 'auto', marginBottom: 12 }}>
             {(conv.messages || []).map((msg: any) => {
               const mine = msg.from_id === myUserId;
-              return <div key={msg.id} style={{ alignSelf: mine ? 'flex-end' : 'flex-start', maxWidth: '75%', background: mine ? 'var(--brand)' : 'var(--bg2)', color: mine ? '#111726' : 'var(--tx)', padding: '8px 12px', borderRadius: 12, fontSize: 14 }}>{msg.body}</div>;
+              return <div key={msg.id} style={{ alignSelf: mine ? 'flex-end' : 'flex-start', maxWidth: '75%', background: mine ? 'var(--brand)' : 'var(--bg2)', color: mine ? '#111726' : 'var(--tx)', padding: '8px 12px', borderRadius: 12, fontSize: 14 }}>
+                {msg.body}
+                {msg.image_url && <a href={msg.image_url} target="_blank" rel="noreferrer"><img src={msg.image_url} alt="" style={{ maxWidth: '100%', maxHeight: 260, borderRadius: 8, marginTop: msg.body ? 6 : 0, display: 'block' }} /></a>}
+              </div>;
             })}
             {(conv.messages || []).length === 0 && <div className="muted" style={{ fontSize: 13 }}>{L('Escribe el primer mensaje.', 'Write the first message.')}</div>}
           </div>
-          <div className="row" style={{ gap: 8 }}>
+          <ImgPreview url={img} onRemove={() => setImg('')} />
+          <div className="row" style={{ gap: 6, alignItems: 'center' }}>
+            <EmojiRow onPick={(e: string) => setText((v) => v + e)} />
+            <ImgAttach onUrl={(u: string) => setImg(u)} L={L} />
             <input value={text} onChange={(e) => setText(e.target.value)} placeholder={L('Mensaje…', 'Message…')} style={{ margin: 0, flex: 1 }} onKeyDown={(e) => e.key === 'Enter' && send()} />
             <button className="btn btn-primary" onClick={send}>{L('Enviar', 'Send')}</button>
           </div>
@@ -726,7 +777,8 @@ function ChatView({ mentorId, lang, initialWith, members, myUserId }: any) {
 }
 
 function PostCard({ p, onLike, onComment, onProfile, L, es }: any) {
-  const [c, setC] = useState(''); const [openC, setOpenC] = useState(false);
+  const [c, setC] = useState(''); const [cImg, setCImg] = useState(''); const [openC, setOpenC] = useState(false);
+  const sendComment = () => { if (c.trim() || cImg) { onComment(p.id, c, cImg); setC(''); setCImg(''); } };
   return (
     <div className="sk-card">
       <div className="row" style={{ gap: 10, alignItems: 'center', marginBottom: 8 }}>
@@ -734,7 +786,8 @@ function PostCard({ p, onLike, onComment, onProfile, L, es }: any) {
         <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontWeight: 600, fontSize: 13.5, cursor: 'pointer' }} onClick={() => onProfile(p.author_id)}>{p.author_name}</div><div className="muted" style={{ fontSize: 11.5 }}>{timeAgo(p.created_at, es)}</div></div>
         {p.pinned && <span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--gold) 16%,transparent)', color: 'var(--gold)' }}>📌 {L('fijado', 'pinned')}</span>}
       </div>
-      <div style={{ fontSize: 14.5, whiteSpace: 'pre-wrap', lineHeight: 1.55 }}>{p.body}</div>
+      {p.body && <div style={{ fontSize: 14.5, whiteSpace: 'pre-wrap', lineHeight: 1.55 }}>{p.body}</div>}
+      {p.image_url && <a href={p.image_url} target="_blank" rel="noreferrer"><img src={p.image_url} alt="" style={{ maxWidth: '100%', maxHeight: 420, borderRadius: 12, marginTop: 8, display: 'block' }} /></a>}
       <div className="sk-post-actions">
         <button className={'sk-like' + (p.liked ? ' on' : '')} onClick={() => onLike('post', p.id)}><OnyxIcon name="heart" size={15} glow={false} /> {p.likes || 0}</button>
         <button className="sk-like" onClick={() => setOpenC((v) => !v)}><OnyxIcon name="chat" size={15} glow={false} /> {(p.comments || []).length}</button>
@@ -746,13 +799,17 @@ function PostCard({ p, onLike, onComment, onProfile, L, es }: any) {
               <Avatar name={c2.author_name} level={c2.author_level} size={28} onClick={() => onProfile(c2.author_id)} />
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13 }}><b style={{ fontSize: 12.5 }}>{c2.author_name}</b> {c2.body}</div>
+                {c2.image_url && <a href={c2.image_url} target="_blank" rel="noreferrer"><img src={c2.image_url} alt="" style={{ maxWidth: 220, maxHeight: 220, borderRadius: 8, marginTop: 4, display: 'block' }} /></a>}
                 <button className={'sk-like' + (c2.liked ? ' on' : '')} style={{ fontSize: 11.5, padding: '2px 4px' }} onClick={() => onLike('comment', c2.id)}><OnyxIcon name="heart" size={12} glow={false} /> {c2.likes || 0}</button>
               </div>
             </div>
           ))}
-          <div className="row" style={{ gap: 8 }}>
-            <input value={c} onChange={(e) => setC(e.target.value)} placeholder={L('Comentar…', 'Comment…')} style={{ margin: 0, flex: 1 }} onKeyDown={(e) => { if (e.key === 'Enter' && c.trim()) { onComment(p.id, c); setC(''); } }} />
-            <button className="btn btn-ghost" onClick={() => { if (c.trim()) { onComment(p.id, c); setC(''); } }}>{L('Enviar', 'Send')}</button>
+          <ImgPreview url={cImg} onRemove={() => setCImg('')} />
+          <div className="row" style={{ gap: 6, alignItems: 'center' }}>
+            <EmojiRow onPick={(e: string) => setC((v) => v + e)} />
+            <ImgAttach onUrl={(u: string) => setCImg(u)} L={L} />
+            <input value={c} onChange={(e) => setC(e.target.value)} placeholder={L('Comentar…', 'Comment…')} style={{ margin: 0, flex: 1 }} onKeyDown={(e) => { if (e.key === 'Enter') sendComment(); }} />
+            <button className="btn btn-ghost" onClick={sendComment}>{L('Enviar', 'Send')}</button>
           </div>
         </div>
       )}
@@ -848,6 +905,7 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
   const [modForm, setModForm] = useState<any>(null);
   const [evForm, setEvForm] = useState<any>(null);
   const [post, setPost] = useState('');
+  const [postImg, setPostImg] = useState('');
   const [toast, setToast] = useState('');
 
   async function load() { const r = await fetch('/api/academy/mentor'); setD(await r.json()); }
@@ -965,18 +1023,20 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
       {tab === 'comunidad' && (<>
         <div className="sk-card">
           <textarea value={post} onChange={(e) => setPost(e.target.value)} rows={2} placeholder={L('Publica un anuncio para tus alumnos…', 'Post an announcement for your students…')} style={{ width: '100%', margin: 0 }} />
+          <ImgPreview url={postImg} onRemove={() => setPostImg('')} />
           <div className="row between" style={{ gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-            <AiBtn kind="post" onText={(t: string) => setPost(t)} L={L} />
+            <div className="row" style={{ gap: 2 }}><AiBtn kind="post" onText={(t: string) => setPost(t)} L={L} /><EmojiRow onPick={(e: string) => setPost((v) => v + e)} /><ImgAttach onUrl={(u: string) => setPostImg(u)} L={L} /></div>
             <div className="row" style={{ gap: 8 }}>
-              <button className="btn btn-ghost" onClick={() => { if (post.trim()) { api({ action: 'post', body: post, pinned: true }); setPost(''); } }}>📌 {L('Fijar', 'Pin')}</button>
-              <button className="btn btn-primary" onClick={() => { if (post.trim()) { api({ action: 'post', body: post }); setPost(''); } }}>{L('Publicar', 'Post')}</button>
+              <button className="btn btn-ghost" onClick={() => { if (post.trim() || postImg) { api({ action: 'post', body: post, pinned: true, image_url: postImg }); setPost(''); setPostImg(''); } }}>📌 {L('Fijar', 'Pin')}</button>
+              <button className="btn btn-primary" onClick={() => { if (post.trim() || postImg) { api({ action: 'post', body: post, image_url: postImg }); setPost(''); setPostImg(''); } }}>{L('Publicar', 'Post')}</button>
             </div>
           </div>
         </div>
         {(d.feed || []).map((p: any) => (
           <div key={p.id} className="sk-card">
             <div className="row between"><b style={{ fontSize: 13.5 }}>{p.author_name}{p.pinned && ' 📌'}</b><button className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 11, color: 'var(--red)' }} onClick={() => api({ action: 'post_delete', id: p.id })}>✕</button></div>
-            <div style={{ fontSize: 14, whiteSpace: 'pre-wrap', marginTop: 4 }}>{p.body}</div>
+            {p.body && <div style={{ fontSize: 14, whiteSpace: 'pre-wrap', marginTop: 4 }}>{p.body}</div>}
+            {p.image_url && <img src={p.image_url} alt="" style={{ maxWidth: '100%', maxHeight: 300, borderRadius: 10, marginTop: 6, display: 'block' }} />}
           </div>
         ))}
       </>)}

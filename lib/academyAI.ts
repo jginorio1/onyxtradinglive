@@ -28,6 +28,33 @@ const GUARD = {
   en: 'Rules: it is a trading academy. NEVER promise guaranteed profits, market signals/predictions, or made-up returns. No misleading hype. Focus on education, community, discipline and real value. Natural English.',
 };
 
+// Moderación de imágenes con visión. Devuelve { safe }. Si no hay API key o falla
+// la llamada, deja pasar (fail-open) para no romper la subida; solo BLOQUEA cuando
+// el modelo marca claramente contenido sexual/explícito o indebido.
+export async function moderateImage(mediaType: string, base64Data: string): Promise<{ safe: boolean; checked: boolean }> {
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) return { safe: true, checked: false };
+  try {
+    const model = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5';
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({
+        model, max_tokens: 8,
+        system: 'You are an image safety filter for a trading community. Reply with a single word: BLOCK if the image contains sexual/pornographic/nudity content, sexualized minors, gore, or graphic violence; otherwise SAFE. Trading charts, screenshots, people dressed normally, memes and logos are SAFE.',
+        messages: [{ role: 'user', content: [
+          { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64Data } },
+          { type: 'text', text: 'Classify: SAFE or BLOCK.' },
+        ] }],
+      }),
+    });
+    if (!r.ok) return { safe: true, checked: false };
+    const d = await r.json();
+    const out = (d?.content || []).map((c: any) => c.text || '').join(' ').toUpperCase();
+    return { safe: !out.includes('BLOCK'), checked: true };
+  } catch { return { safe: true, checked: false }; }
+}
+
 export type CopilotKind = 'tagline' | 'about' | 'pitch' | 'course_desc' | 'lesson_desc' | 'post';
 
 // Genera contenido para el mentor. `input` describe el contexto (nombre de la
