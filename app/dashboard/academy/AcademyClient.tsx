@@ -69,6 +69,23 @@ function ImageUpload({ value, onChange, L, label }: any) {
   );
 }
 
+// Botón de copiloto IA: genera texto y lo pasa a onText. kind define qué genera.
+function AiBtn({ kind, getInput, onText, L }: any) {
+  const [busy, setBusy] = useState(false);
+  const lang = L('es', 'en');
+  async function go() {
+    let input = getInput ? getInput() : '';
+    if (kind === 'post') { const idea = window.prompt(L('¿Sobre qué es el post? (ej: bienvenida, lección del día, motivación)', 'What is the post about? (e.g. welcome, lesson of the day, motivation)')); if (idea === null) return; input = idea; }
+    if (!input || !String(input).trim()) { alert(L('Escribe primero un título/nombre para dar contexto a la IA.', 'Write a title/name first so the AI has context.')); return; }
+    setBusy(true);
+    const r = await fetch('/api/academy/ai', { method: 'POST', body: JSON.stringify({ kind, input, lang }) });
+    const j = await r.json().catch(() => ({})); setBusy(false);
+    if (j.ok && j.text) onText(j.text);
+    else alert(j.error === 'no_key' ? L('La IA no está configurada (falta ANTHROPIC_API_KEY en Vercel).', 'AI not configured (ANTHROPIC_API_KEY missing in Vercel).') : L('No se pudo generar. Intenta de nuevo.', 'Could not generate. Try again.'));
+  }
+  return <button type="button" className="btn btn-ghost" style={{ fontSize: 12, padding: '4px 10px' }} disabled={busy} onClick={go}>{busy ? '…' : '✨ ' + L('IA', 'AI')}</button>;
+}
+
 export default function AcademyClient() {
   const { lang } = useLang();
   const L = (a: string, b: string) => (lang === 'en' ? b : a);
@@ -948,9 +965,12 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
       {tab === 'comunidad' && (<>
         <div className="sk-card">
           <textarea value={post} onChange={(e) => setPost(e.target.value)} rows={2} placeholder={L('Publica un anuncio para tus alumnos…', 'Post an announcement for your students…')} style={{ width: '100%', margin: 0 }} />
-          <div className="row" style={{ justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
-            <button className="btn btn-ghost" onClick={() => { if (post.trim()) { api({ action: 'post', body: post, pinned: true }); setPost(''); } }}>📌 {L('Fijar', 'Pin')}</button>
-            <button className="btn btn-primary" onClick={() => { if (post.trim()) { api({ action: 'post', body: post }); setPost(''); } }}>{L('Publicar', 'Post')}</button>
+          <div className="row between" style={{ gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+            <AiBtn kind="post" onText={(t: string) => setPost(t)} L={L} />
+            <div className="row" style={{ gap: 8 }}>
+              <button className="btn btn-ghost" onClick={() => { if (post.trim()) { api({ action: 'post', body: post, pinned: true }); setPost(''); } }}>📌 {L('Fijar', 'Pin')}</button>
+              <button className="btn btn-primary" onClick={() => { if (post.trim()) { api({ action: 'post', body: post }); setPost(''); } }}>{L('Publicar', 'Post')}</button>
+            </div>
           </div>
         </div>
         {(d.feed || []).map((p: any) => (
@@ -1035,7 +1055,8 @@ function LessonForm({ form, setForm, onSave, onCancel, L }: any) {
         <input value={form.title || ''} onChange={(e) => set('title', e.target.value)} placeholder={L('Título de la lección', 'Lesson title')} style={{ margin: 0 }} />
         <input value={form.section || ''} onChange={(e) => set('section', e.target.value)} placeholder={L('Sección/tema (ej: Fundamentos) — opcional', 'Section/topic (e.g. Fundamentals) — optional')} style={{ margin: 0 }} />
         <input value={form.video_url || ''} onChange={(e) => set('video_url', e.target.value)} placeholder={L('URL del vídeo (YouTube, Vimeo o .mp4)', 'Video URL (YouTube, Vimeo or .mp4)')} style={{ margin: 0 }} />
-        <textarea value={form.content || ''} onChange={(e) => set('content', e.target.value)} rows={4} placeholder={L('Notas de la lección (opcional)', 'Lesson notes (optional)')} style={{ width: '100%', margin: 0 }} />
+        <div className="row between" style={{ alignItems: 'center' }}><span className="muted" style={{ fontSize: 12 }}>{L('Notas de la lección (opcional)', 'Lesson notes (optional)')}</span><AiBtn kind="lesson_desc" getInput={() => form.title} onText={(t: string) => set('content', t)} L={L} /></div>
+        <textarea value={form.content || ''} onChange={(e) => set('content', e.target.value)} rows={4} placeholder={L('Escribe o pulsa ✨ IA (usa el título como contexto).', 'Write or hit ✨ AI (uses the title as context).')} style={{ width: '100%', margin: 0 }} />
         <label className="row" style={{ gap: 8, fontSize: 13 }}><input type="checkbox" checked={!!form.is_free} onChange={(e) => set('is_free', e.target.checked)} style={{ width: 'auto', margin: 0 }} /> {L('Lección gratis (preview sin inscribirse)', 'Free lesson (preview without enrolling)')}</label>
       </div>
       <div className="row" style={{ gap: 8, marginTop: 12 }}>
@@ -1059,9 +1080,15 @@ function MentorSettings({ mentor, onSave, L }: any) {
         <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 12 }}><span className="card-ic"><OnyxIcon name="settings" size={16} /></span> {L('Ajustes de la academia', 'Academy settings')}</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div><span className="muted" style={{ fontSize: 12 }}>{L('Nombre', 'Name')}</span><input value={f.academy_name} onChange={(e) => setF({ ...f, academy_name: e.target.value })} style={{ margin: '4px 0 0' }} /></div>
-          <div><span className="muted" style={{ fontSize: 12 }}>{L('Lema', 'Tagline')}</span><input value={f.tagline} onChange={(e) => setF({ ...f, tagline: e.target.value })} style={{ margin: '4px 0 0' }} /></div>
+          <div>
+            <div className="row between" style={{ alignItems: 'center' }}><span className="muted" style={{ fontSize: 12 }}>{L('Lema', 'Tagline')}</span><AiBtn kind="tagline" getInput={() => `${f.academy_name}. ${f.about}`} onText={(t: string) => setF((s: any) => ({ ...s, tagline: t }))} L={L} /></div>
+            <input value={f.tagline} onChange={(e) => setF({ ...f, tagline: e.target.value })} style={{ margin: '4px 0 0' }} />
+          </div>
           <ImageUpload value={f.cover_url} onChange={(v: string) => setF({ ...f, cover_url: v })} L={L} label={L('Portada de la comunidad', 'Community cover')} />
-          <div><span className="muted" style={{ fontSize: 12 }}>{L('Sobre la academia', 'About')}</span><textarea value={f.about} onChange={(e) => setF({ ...f, about: e.target.value })} rows={3} style={{ width: '100%', margin: '4px 0 0' }} /></div>
+          <div>
+            <div className="row between" style={{ alignItems: 'center' }}><span className="muted" style={{ fontSize: 12 }}>{L('Sobre la academia', 'About')}</span><AiBtn kind="about" getInput={() => `${f.academy_name}. ${f.tagline}`} onText={(t: string) => setF((s: any) => ({ ...s, about: t }))} L={L} /></div>
+            <textarea value={f.about} onChange={(e) => setF({ ...f, about: e.target.value })} rows={3} style={{ width: '100%', margin: '4px 0 0' }} />
+          </div>
         </div>
       </div>
 
@@ -1074,7 +1101,10 @@ function MentorSettings({ mentor, onSave, L }: any) {
           <select value={f.membership_interval} onChange={(e) => setF({ ...f, membership_interval: e.target.value })} style={{ margin: 0 }}><option value="month">{L('/ mes', '/ month')}</option><option value="year">{L('/ año', '/ year')}</option></select>
         </div>
         <div style={{ marginTop: 12 }}><span className="muted" style={{ fontSize: 12 }}>{L('Video de presentación (YouTube/Vimeo/.mp4)', 'Intro video (YouTube/Vimeo/.mp4)')}</span><input value={f.intro_video_url} onChange={(e) => setF({ ...f, intro_video_url: e.target.value })} placeholder="https://youtu.be/…" style={{ margin: '4px 0 0' }} /></div>
-        <div style={{ marginTop: 10 }}><span className="muted" style={{ fontSize: 12 }}>{L('Texto de ventas (qué incluye, casos de éxito…)', 'Sales copy (what’s included, testimonials…)')}</span><textarea value={f.pitch} onChange={(e) => setF({ ...f, pitch: e.target.value })} rows={5} placeholder={L('Escríbelo o pídele a Onyx AI que te lo genere (próximamente).', 'Write it or let Onyx AI generate it (coming soon).')} style={{ width: '100%', margin: '4px 0 0' }} /></div>
+        <div style={{ marginTop: 10 }}>
+          <div className="row between" style={{ alignItems: 'center' }}><span className="muted" style={{ fontSize: 12 }}>{L('Texto de ventas (qué incluye, casos de éxito…)', 'Sales copy (what’s included, testimonials…)')}</span><AiBtn kind="pitch" getInput={() => `${f.academy_name}. ${f.tagline}. ${f.about}`} onText={(t: string) => setF((s: any) => ({ ...s, pitch: t }))} L={L} /></div>
+          <textarea value={f.pitch} onChange={(e) => setF({ ...f, pitch: e.target.value })} rows={6} placeholder={L('Escríbelo o pulsa ✨ IA para que Onyx AI te lo genere.', 'Write it or hit ✨ AI to let Onyx AI generate it.')} style={{ width: '100%', margin: '4px 0 0' }} />
+        </div>
         <div className="row" style={{ gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' }}>
           <span className="muted" style={{ fontSize: 12 }}>{L('Tu página de ventas:', 'Your sales page:')}</span>
           <a href={link} target="_blank" rel="noreferrer" className="sk-chip">{link}</a>

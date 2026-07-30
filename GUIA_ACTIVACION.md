@@ -1316,3 +1316,23 @@ APIs: `POST /api/academy/membership` (checkout de membresía), webhook maneja
 `onyx_kind='membership'`, y `/api/academy?m=` devuelve `membershipRequired` para el paywall.
 
 Requiere: Stripe Connect conectado por el mentor (Cobros) para poder cobrar.
+
+### 34 · Onyx Academy — Copiloto AI del mentor (Fase 2)
+
+Onyx AI ayuda al mentor a redactar su academia y su comunidad.
+
+**Genera con IA** (botón ✨ IA en el Panel del mentor):
+- **Lema** y **"Sobre la academia"** (Ajustes) a partir del nombre.
+- **Texto de ventas** (pitch) para la landing: gancho + "qué incluye" + cierre.
+- **Notas/descripción de lección** a partir del título (LessonForm).
+- **Redactar un post** para la comunidad: pulsa ✨ IA en el compositor, describe la
+  idea (bienvenida, lección del día, motivación) y lo escribe.
+
+**Backend:** `lib/academyAI.ts` (usa `ANTHROPIC_API_KEY`, modelo `ONYX_AI_MODEL` o
+`claude-haiku-4-5`), API `POST /api/academy/ai` gateada a mentores (capacidad academy).
+
+**Línea roja:** el copiloto NUNCA promete ganancias garantizadas ni da señales/
+predicciones del mercado; genera copy educativo y honesto.
+
+**Requisito:** `ANTHROPIC_API_KEY` en Vercel (ya la usa el resto de Onyx AI). Sin ella,
+el botón avisa que la IA no está configurada.
