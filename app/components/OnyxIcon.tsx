@@ -67,6 +67,10 @@ const G: Record<string, Els> = {
   bell: (<><path d="M6 16 v-4 a6 6 0 0 1 12 0 v4 l2 2 H4 z" /><path d="M10 20 a2 2 0 0 0 4 0" /></>),
   refer: (<><circle cx="7" cy="8" r="3" /><path d="M2 19 a5 5 0 0 1 10 0" /><path d="M16 8 v6 M13 11 h6" /></>),
   book: (<><path d="M5 5 a2 2 0 0 1 2 -2 h11 v18 H7 a2 2 0 0 0 -2 2 z" /><path d="M7 3 v16" /></>),
+  graduation: (<><path d="M2 9 l10 -4 10 4 -10 4 z" /><path d="M6 11 v4 c0 1.5 2.7 2.6 6 2.6 s6 -1.1 6 -2.6 v-4" /><line x1="22" y1="9" x2="22" y2="14" /></>),
+  gem: (<><path d="M6 3 h12 l3 6 -9 12 -9 -12 z" /><path d="M3 9 h18 M9 3 l-3 6 6 12 M15 3 l3 6 -6 12" /></>),
+  coins: (<><ellipse cx="9" cy="7" rx="5" ry="2.4" /><path d="M4 7 v4 c0 1.3 2.2 2.4 5 2.4 s5 -1.1 5 -2.4 v-4" /><path d="M14 12.6 c2.4 .3 6 -.6 6 -2.6 M10 17 c0 1.3 2.2 2.4 5 2.4 s5 -1.1 5 -2.4 v-8" /></>),
+  cart: (<><circle cx="9" cy="20" r="1.4" fill="currentColor" stroke="none" /><circle cx="17" cy="20" r="1.4" fill="currentColor" stroke="none" /><path d="M3 4 h2 l2.2 11 h11 l1.8 -8 H6" /></>),
 };
 
 // Emoji → nombre de glifo (se normaliza quitando el selector de variación).
@@ -80,6 +84,7 @@ const EMOJI: Record<string, string> = {
   '🎁': 'gift', '🛟': 'retention', '🩺': 'diag', '🗄': 'backups', '🚀': 'optim', '🧪': 'tests',
   '⚙': 'settings', '👥': 'users', '✉': 'mail', '🎫': 'ticket', '💬': 'chat', '🔔': 'bell',
   '📥': 'install', '⬇': 'install', '📖': 'book', '📚': 'book',
+  '🎓': 'graduation', '💎': 'gem', '🪙': 'coins', '🛒': 'cart', '🛍': 'cart',
   // Barra superior y varios
   '🔌': 'accounts', '🛠': 'settings', '🔧': 'settings', '💡': 'ai', '🌱': 'up',
   '⚠': 'bell', '🏅': 'trophy', '🖥': 'modules', '🎬': 'trades', '🔒': 'guardian',

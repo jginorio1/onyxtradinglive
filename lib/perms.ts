@@ -6,6 +6,7 @@ export const AREAS: { id: string; label: string }[] = [
   { id: 'usuarios', label: 'Usuarios' },
   { id: 'planes', label: 'Planes / Facturación' },
   { id: 'finanzas', label: 'Finanzas Onyx (P&L)' },
+  { id: 'academy', label: 'Onyx Academy (mentores/comisiones)' },
   { id: 'campanas', label: 'Campañas' },
   { id: 'embajadores', label: 'Embajadores' },
   { id: 'retencion', label: 'Retención' },

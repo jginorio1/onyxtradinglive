@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getMentor, myAcademies, getContent, progressSet, markLesson, isEnrolled, listPosts, addPost, addComment } from '@/lib/academy';
+import { listProducts, accessibleModules, studentPurchases } from '@/lib/academyPay';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -23,11 +24,16 @@ export async function GET(req: Request) {
   const [mine, mentorRow] = await Promise.all([myAcademies(user.id), getMentor(user.id)]);
   const out: any = { canMentor: !!caps?.academy, isMentor: !!mentorRow, mentorCode: mentorRow?.code || null, academies: mine };
   if (m && (await isEnrolled(m, user.id))) {
-    const [mentor, content, progress, feed] = await Promise.all([
+    const [mentor, content, progress, feed, products, access, purchases] = await Promise.all([
       supabaseAdmin.from('mentors').select('academy_name,tagline,about').eq('user_id', m).maybeSingle(),
-      getContent(m, true), progressSet(user.id, m), listPosts(m),
+      getContent(m, true), progressSet(user.id, m), listPosts(m), listProducts(m, true), accessibleModules(user.id, m), studentPurchases(user.id, m),
     ]);
-    out.active = { mentor_id: m, ...(mentor.data as any), content, progress, feed };
+    // Marca cada módulo como bloqueado si el alumno no tiene acceso por su compra.
+    const lockedContent = (content as any[]).map((mod: any) => {
+      const unlocked = access.all || access.ids.has(mod.id);
+      return { ...mod, locked: !unlocked, lessons: mod.lessons.map((l: any) => (unlocked || l.is_free) ? l : { id: l.id, title: l.title, is_free: false, locked: true }) };
+    });
+    out.active = { mentor_id: m, ...(mentor.data as any), content: lockedContent, progress, feed, products, purchases, hasAccess: access.all || access.ids.size > 0, hasAccessAll: access.all };
   }
   return NextResponse.json(out);
 }

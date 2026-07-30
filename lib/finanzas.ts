@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getSetting, saveSetting } from '@/lib/settings';
 import { computeRevenue } from '@/lib/revenue';
+import { onyxCommissionTotal } from '@/lib/academyPay';
 
 // ============================================================
 // Finanzas de Onyx · P&L del negocio.
@@ -88,6 +89,7 @@ export type FinanceData = {
   burn: number;               // gasto fijo mensual actual (recurrentes activos)
   cash: number; runway: number | null;
   mrr: number; collected: number;
+  academyCommission?: number;
   series: FinanceMonth[];
   categories: { category: string; recurring: number; one_off: number; total: number }[];
   expenses: Expense[];
@@ -107,6 +109,14 @@ export async function computeFinance(fromMs: number, toMs: number, incomeMode: '
     const income = incomeMode === 'mrr' ? rev.mrr : Number(m.total || 0);
     return { label: m.label, income: Math.round(income), expense: Math.round(expense), net: Math.round(income - expense) };
   });
+
+  // Comisión de las academias (nuestro %). Se suma como ingreso del mes en curso.
+  const curStart0 = Date.UTC(anchor.getUTCFullYear(), anchor.getUTCMonth(), 1);
+  const curEnd0 = Date.UTC(anchor.getUTCFullYear(), anchor.getUTCMonth() + 1, 1) - 1;
+  let academyCommission = 0;
+  try { academyCommission = Math.round(await onyxCommissionTotal(curStart0, curEnd0)); } catch {}
+  const last = series[series.length - 1];
+  if (last) { last.income += academyCommission; last.net += academyCommission; }
 
   const tm = series[series.length - 1] || { income: 0, expense: 0, net: 0 };
   const margin = tm.income > 0 ? Math.round((tm.net / tm.income) * 100) : null;
@@ -138,6 +148,7 @@ export async function computeFinance(fromMs: number, toMs: number, incomeMode: '
     configured: rev.configured, incomeMode, currency: rev.currency || 'usd',
     thisMonth: { income: tm.income, expense: tm.expense, net: tm.net, margin },
     burn, cash, runway, mrr: Math.round(rev.mrr), collected: Math.round(rev.collected),
+    academyCommission,
     series, categories, expenses,
   };
 }

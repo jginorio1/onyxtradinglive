@@ -150,3 +150,51 @@ export async function addComment(postId: string, authorId: string, body: string)
 export async function deletePost(mentorId: string, id: string) {
   await supabaseAdmin.from('academy_posts').delete().eq('id', id).eq('mentor_id', mentorId);
 }
+
+// ---- Directorio público (páginas /academias y /academia/[code]) ----
+// Solo academias activas. Nunca exponemos correos ni datos sensibles.
+export async function publicDirectory() {
+  const { data: mentors } = await supabaseAdmin.from('mentors')
+    .select('user_id,code,academy_name,tagline,active').eq('active', true).order('created_at', { ascending: false }).limit(200);
+  const rows = (mentors || []) as any[];
+  if (!rows.length) return [];
+  const ids = rows.map((m) => m.user_id);
+  const [{ data: profs }, { data: enr }, { data: prods }] = await Promise.all([
+    supabaseAdmin.from('profiles').select('id,full_name').in('id', ids),
+    supabaseAdmin.from('academy_enrollments').select('mentor_id').in('mentor_id', ids).eq('status', 'active'),
+    supabaseAdmin.from('academy_products').select('mentor_id,price_cents,currency,active').in('mentor_id', ids).eq('active', true),
+  ]);
+  const nameOf: Record<string, string> = {}; (profs || []).forEach((p: any) => { nameOf[p.id] = p.full_name || 'Mentor'; });
+  const students: Record<string, number> = {}; (enr || []).forEach((e: any) => { students[e.mentor_id] = (students[e.mentor_id] || 0) + 1; });
+  const fromPrice: Record<string, any> = {};
+  (prods || []).forEach((p: any) => { const cur = fromPrice[p.mentor_id]; if (!cur || p.price_cents < cur.price_cents) fromPrice[p.mentor_id] = p; });
+  return rows.map((m) => ({
+    code: m.code, academy_name: m.academy_name, tagline: m.tagline || '',
+    mentor_name: nameOf[m.user_id] || 'Mentor', students: students[m.user_id] || 0,
+    from_price_cents: fromPrice[m.user_id]?.price_cents ?? null, currency: fromPrice[m.user_id]?.currency || 'usd',
+  }));
+}
+
+// Página pública de una academia por su código: datos + módulos (con lecciones
+// gratis marcadas) + niveles activos. No expone contenido de pago.
+export async function publicAcademy(code: string) {
+  const { data: m } = await supabaseAdmin.from('mentors').select('user_id,code,academy_name,tagline,about,active').eq('code', code).maybeSingle();
+  if (!m || !(m as any).active) return null;
+  const mentorId = (m as any).user_id;
+  const [{ data: prof }, content, { data: prods }, { data: enr }] = await Promise.all([
+    supabaseAdmin.from('profiles').select('full_name').eq('id', mentorId).maybeSingle(),
+    getContent(mentorId, true),
+    supabaseAdmin.from('academy_products').select('*').eq('mentor_id', mentorId).eq('active', true).order('position'),
+    supabaseAdmin.from('academy_enrollments').select('student_id').eq('mentor_id', mentorId).eq('status', 'active'),
+  ]);
+  const modules = (content as any[]).map((mod: any) => ({
+    id: mod.id, title: mod.title, description: mod.description || '',
+    lessons: mod.lessons.map((l: any) => ({ id: l.id, title: l.title, is_free: !!l.is_free })),
+    freeCount: mod.lessons.filter((l: any) => l.is_free).length,
+  }));
+  return {
+    code: (m as any).code, academy_name: (m as any).academy_name, tagline: (m as any).tagline || '',
+    about: (m as any).about || '', mentor_name: (prof as any)?.full_name || 'Mentor',
+    students: (enr || []).length, modules, products: (prods || []) as any[],
+  };
+}

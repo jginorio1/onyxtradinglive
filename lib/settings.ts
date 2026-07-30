@@ -64,6 +64,11 @@ const MR: MemberReferral = {
 };
 export const memberReferralSettings = () => getSetting<MemberReferral>('member_referral', MR);
 
+// Onyx Academy · comisión por defecto (editable por el dueño en el panel).
+export type AcademyFee = { default_pct: number };
+const AF: AcademyFee = { default_pct: Number(process.env.ONYX_ACADEMY_FEE_PCT || 10) };
+export const academyFeeSettings = () => getSetting<AcademyFee>('academy_fee', AF);
+
 // Cuántas cuentas MT puede tener: las del plan + las compradas como complemento
 export async function accountLimit(userId: string) {
   const { data: prof } = await supabaseAdmin.from('profiles').select('plan,extra_accounts').eq('id', userId).maybeSingle();

@@ -1107,3 +1107,64 @@ Qué hace:
 APIs: `GET/POST /api/academy` (alumno + comunidad), `POST /api/academy/enroll`
 (unirse), `GET/POST /api/academy/mentor` (gestión). Siguiente fase: calificación
 semanal/mensual con Onyx AI (el panel del mentor de la propuesta).
+
+### 28 · Onyx Academy — Monetización (Stripe Connect, niveles y comisión editable)
+
+El mentor cobra a sus alumnos con **Stripe Connect** (cuenta Express propia). Onyx
+retiene su **comisión automáticamente** en cada venta (destination charge +
+application fee), sin tocar el dinero del mentor. La comisión es **editable por el
+dueño desde el panel** (global y por mentor).
+
+**SQL (ejecutar en Supabase, después de `academy.sql`):** `supabase/academy_pay.sql`
+- Añade a `mentors`: `stripe_account_id`, `charges_enabled`, y **`fee_pct`**
+  (comisión propia del mentor; NULL = usa el % por defecto).
+- Crea `academy_products` (niveles: curso básico / VIP / bootcamp — suscripción o
+  pago único, precio, moneda, qué módulos desbloquea), `academy_purchases`
+  (compras/suscripciones activas del alumno) y `onyx_commissions` (libro de nuestra
+  comisión, que alimenta Finanzas Onyx).
+
+**Variables de entorno en Vercel (NO en el código):**
+- `STRIPE_SECRET_KEY` — ya existente; habilita los cobros de la academia también.
+- `ACADEMY_WEBHOOK_SECRET` — secreto del webhook **dedicado** de la academia.
+  ⚠️ NO reutilizar ni sobrescribir `STRIPE_WEBHOOK_SECRET` (el del checkout normal).
+- `ONYX_ACADEMY_FEE_PCT` — comisión por defecto (%). **Opcional**: es solo el valor
+  inicial; una vez guardes el % en el panel manda el panel (app_settings).
+- `NEXT_PUBLIC_APP_URL` (o `APP_URL`) — para las URLs de retorno de Stripe.
+
+**Stripe (una sola vez):**
+1. Habilita **Connect** en tu cuenta de Stripe (modo Express).
+2. Crea un **webhook** apuntando a `https://TU_DOMINIO/api/academy/webhook` y
+   suscríbelo a estos eventos: `checkout.session.completed`,
+   `customer.subscription.updated`, `customer.subscription.deleted`,
+   `account.updated`. Copia su *signing secret* a `ACADEMY_WEBHOOK_SECRET`.
+
+**Capacidad de plan:** el mentor necesita `capabilities.academy = true` para conectar
+Stripe y crear niveles. Opcional: `capabilities.academy_fee_pct` ya NO se usa; la
+comisión propia del mentor se fija en el panel (columna `mentors.fee_pct`).
+
+**Panel del dueño → Onyx Academy** (`app/admin/AcademyAdmin.tsx`, área de permisos
+`academy`, solo dueño por defecto — como Finanzas, se puede conceder a mano):
+- Editar la **comisión por defecto** (se aplica a todas las academias).
+- Ver todas las academias con sus ventas y comisión, y fijar un **% propio** por
+  mentor (déjalo vacío para volver al por defecto). Estilo Skool: plan/mentor alto
+  puede tener menos %.
+- API: `GET/POST /api/admin/academy`.
+
+**Mentor → pestaña "Cobros"** (`/dashboard/academy` → Panel del mentor → Cobros):
+- Botón **Conectar Stripe** (onboarding) y estado de la cuenta + enlace a su panel
+  Express. API: `GET/POST /api/academy/connect`.
+- **Niveles** (crear/editar/borrar): nombre, descripción, suscripción o pago único,
+  intervalo, precio, moneda, y **qué módulos desbloquea** (todos o concretos).
+  API: `GET/POST /api/academy/products`.
+- Resumen de **ingresos** (ventas, bruto, comisión Onyx, tu neto).
+
+**Alumno → paywall:** en "Cursos" ve los **niveles** disponibles y los módulos
+**bloqueados** (candado); las lecciones marcadas como *gratis* siguen siendo preview.
+"Desbloquear" abre Stripe Checkout. API: `POST /api/academy/checkout`.
+
+**Directorio público (sin sesión):** `/academias` (listado con buscador) y
+`/academia/[code]` (vitrina de una academia: módulos, previews gratis, niveles y CTA
+para unirse). API pública: `GET /api/academy/public` (opcional `?code=`).
+
+**Finanzas Onyx:** la comisión de las academias del mes en curso se suma como ingreso
+y aparece en el campo `academyCommission`.

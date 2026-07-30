@@ -67,6 +67,14 @@ export default function AcademyClient() {
     await fetch('/api/academy', { method: 'POST', body: JSON.stringify({ action: 'comment', post_id: pid, mentor_id: active.mentor_id, body }) });
     openAcademy(active.mentor_id);
   }
+  async function buy(productId: string) {
+    const r = await fetch('/api/academy/checkout', { method: 'POST', body: JSON.stringify({ product_id: productId }) });
+    const j = await r.json();
+    if (j.url) window.location.href = j.url;
+    else alert(j.error === 'mentor_not_ready'
+      ? L('El mentor aún no ha activado los cobros.', 'The mentor has not enabled payments yet.')
+      : L('No se pudo iniciar el pago.', 'Could not start checkout.'));
+  }
 
   if (!d) return <div className="card muted">…</div>;
   if (manage && d.canMentor) return <MentorPanel lang={lang} onClose={() => { setManage(false); load(); }} />;
@@ -78,7 +86,7 @@ export default function AcademyClient() {
     <div style={{ maxWidth: 940, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div className="row between" style={{ flexWrap: 'wrap', gap: 10 }}>
         <div>
-          <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 9 }}><span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon emoji="📚" size={22} /></span> {L('Academia', 'Academy')}</h2>
+          <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 9 }}><span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="graduation" size={22} /></span> Onyx Academy</h2>
           <div className="muted" style={{ fontSize: 13 }}>{L('Comunidad y cursos de tu mentor.', 'Community and courses from your mentor.')}</div>
         </div>
         {d.canMentor && <button className="btn btn-primary" onClick={() => setManage(true)}>🎓 {L('Panel del mentor', 'Mentor panel')}</button>}
@@ -131,6 +139,10 @@ export default function AcademyClient() {
 
           {tab === 'cursos' && (
             <>
+              {/* Niveles de pago (paywall). Se muestran si el mentor vende y el alumno no lo tiene todo. */}
+              {(active.products || []).length > 0 && !active.hasAccessAll && (
+                <Tiers products={active.products} purchases={active.purchases || []} onBuy={buy} L={L} />
+              )}
               {totalLessons > 0 && (
                 <div className="card">
                   <div className="row between" style={{ fontSize: 13, marginBottom: 6 }}><span className="muted">{L('Tu progreso', 'Your progress')}</span><b>{doneCount}/{totalLessons}</b></div>
@@ -138,23 +150,33 @@ export default function AcademyClient() {
                 </div>
               )}
               {lesson ? <LessonView lesson={lesson} done={active.progress.includes(lesson.id)} onBack={() => setLesson(null)} onToggle={toggleLesson} L={L} /> : (
-                (active.content || []).map((m: any) => (
-                  <div key={m.id} className="card">
-                    <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: m.description ? 4 : 10 }}><span className="card-ic"><OnyxIcon emoji="🧩" size={16} /></span> {m.title}</h3>
+                (active.content || []).map((m: any) => {
+                  const locked = !!m.locked;
+                  return (
+                  <div key={m.id} className="card" style={locked ? { position: 'relative' } : undefined}>
+                    <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: m.description ? 4 : 10 }}>
+                      <span className="card-ic"><OnyxIcon name={locked ? 'guardian' : 'modules'} size={16} /></span> {m.title}
+                      {locked && <span className="pill" style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--gold)', background: 'rgba(255,192,77,.15)' }}><OnyxIcon name="guardian" size={11} /> {L('Bloqueado', 'Locked')}</span>}
+                    </h3>
                     {m.description && <p className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>{m.description}</p>}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      {m.lessons.map((l: any) => { const done = active.progress.includes(l.id); return (
-                        <button key={l.id} className="jrow" onClick={() => setLesson(l)} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '10px 12px', textAlign: 'left', cursor: 'pointer' }}>
-                          <span style={{ color: done ? 'var(--green)' : 'var(--mut)' }}>{done ? '✓' : '▷'}</span>
+                      {m.lessons.map((l: any) => { const done = active.progress.includes(l.id); const open = !locked || l.is_free; return (
+                        <button key={l.id} className="jrow" onClick={() => open ? setLesson(l) : setTab('cursos')} disabled={!open} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '10px 12px', textAlign: 'left', cursor: open ? 'pointer' : 'not-allowed', opacity: open ? 1 : .6 }}>
+                          <span style={{ color: !open ? 'var(--gold)' : done ? 'var(--green)' : 'var(--mut)' }}>{!open ? <OnyxIcon name="guardian" size={13} /> : done ? '✓' : '▷'}</span>
                           <span style={{ flex: 1, fontSize: 13.5 }}>{l.title}</span>
                           {l.is_free && <span className="pill" style={{ fontSize: 10, color: 'var(--soft-green)', background: 'rgba(52,226,160,.15)' }}>{L('gratis', 'free')}</span>}
-                          {l.video_url && <OnyxIcon emoji="🎬" size={14} />}
+                          {l.video_url && open && <OnyxIcon emoji="🎬" size={14} />}
                         </button>
                       ); })}
                       {m.lessons.length === 0 && <span className="muted" style={{ fontSize: 12.5 }}>{L('Sin lecciones todavía.', 'No lessons yet.')}</span>}
                     </div>
+                    {locked && (active.products || []).length > 0 && (
+                      <div className="muted" style={{ fontSize: 12, marginTop: 10 }}>
+                        {L('Desbloquea este módulo con uno de los niveles de arriba.', 'Unlock this module with one of the tiers above.')}
+                      </div>
+                    )}
                   </div>
-                ))
+                ); })
               )}
               {(active.content || []).length === 0 && <div className="muted" style={{ fontSize: 13 }}>{L('El mentor aún no ha publicado cursos.', 'The mentor has not published courses yet.')}</div>}
             </>
@@ -206,11 +228,52 @@ function PostCard({ p, onComment, L }: any) {
   );
 }
 
+// Precio formateado (centavos → $X / mes|año, o pago único).
+function priceLabel(p: any, L: (a: string, b: string) => string) {
+  const amount = (p.price_cents / 100).toLocaleString(undefined, { minimumFractionDigits: p.price_cents % 100 ? 2 : 0, maximumFractionDigits: 2 });
+  const cur = (p.currency || 'usd').toUpperCase();
+  const sym = cur === 'USD' ? '$' : cur === 'EUR' ? '€' : '';
+  const base = sym ? sym + amount : amount + ' ' + cur;
+  if (p.kind === 'one_time') return base + ' · ' + L('pago único', 'one-time');
+  return base + '/' + (p.interval === 'year' ? L('año', 'yr') : L('mes', 'mo'));
+}
+
+// Niveles de pago que ve el alumno (curso básico, VIP, bootcamp…).
+function Tiers({ products, purchases, onBuy, L }: any) {
+  const ownedIds = new Set((purchases || []).map((x: any) => x.product_id));
+  return (
+    <div className="card" style={{ border: '1px solid color-mix(in srgb, var(--gold) 40%, transparent)' }}>
+      <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 10 }}>
+        <span className="card-ic" style={{ color: 'var(--gold)' }}><OnyxIcon name="gem" size={16} /></span>
+        {L('Desbloquea más con estos niveles', 'Unlock more with these tiers')}
+      </h3>
+      <div className="grid g2" style={{ gap: 10 }}>
+        {products.map((p: any) => {
+          const owned = ownedIds.has(p.id);
+          return (
+            <div key={p.id} className="card" style={{ margin: 0, background: 'var(--bg2)' }}>
+              <div style={{ fontWeight: 700, fontSize: 15 }}>{p.name}</div>
+              {p.description && <div className="muted" style={{ fontSize: 12.5, margin: '4px 0 8px' }}>{p.description}</div>}
+              <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--gold)', marginBottom: 10 }}>{priceLabel(p, L)}</div>
+              <div className="muted" style={{ fontSize: 12, marginBottom: 10 }}>
+                {p.grants === 'all' ? L('Acceso a todos los módulos', 'Access to all modules') : L('Acceso a los módulos incluidos', 'Access to included modules')}
+              </div>
+              {owned
+                ? <span className="pill" style={{ color: 'var(--soft-green)', background: 'rgba(52,226,160,.15)' }}>✓ {L('Ya lo tienes', 'You have it')}</span>
+                : <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => onBuy(p.id)}>{L('Desbloquear', 'Unlock')}</button>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // =================== Panel del mentor ===================
 function MentorPanel({ lang, onClose }: { lang: string; onClose: () => void }) {
   const L = (a: string, b: string) => (lang === 'en' ? b : a);
   const [d, setD] = useState<any>(null);
-  const [tab, setTab] = useState<'cursos' | 'alumnos' | 'comunidad' | 'ajustes'>('cursos');
+  const [tab, setTab] = useState<'cursos' | 'cobros' | 'alumnos' | 'comunidad' | 'ajustes'>('cursos');
   const [newMod, setNewMod] = useState('');
   const [lessonForm, setLessonForm] = useState<any>(null); // {module_id, ...}
   const [post, setPost] = useState('');
@@ -227,7 +290,7 @@ function MentorPanel({ lang, onClose }: { lang: string; onClose: () => void }) {
   return (
     <div style={{ maxWidth: 940, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div className="row between" style={{ flexWrap: 'wrap', gap: 10 }}>
-        <div><h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 9 }}>🎓 {d.mentor.academy_name}</h2><div className="muted" style={{ fontSize: 13 }}>{L('Panel del mentor', 'Mentor panel')}</div></div>
+        <div><h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 9 }}><span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="graduation" size={22} /></span> {d.mentor.academy_name}</h2><div className="muted" style={{ fontSize: 13 }}>{L('Panel del mentor · Onyx Academy', 'Mentor panel · Onyx Academy')}</div></div>
         <button className="btn btn-ghost" onClick={onClose}>← {L('Ver como alumno', 'Student view')}</button>
       </div>
 
@@ -241,7 +304,7 @@ function MentorPanel({ lang, onClose }: { lang: string; onClose: () => void }) {
       </div>
 
       <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-        {([['cursos', '📚', L('Cursos', 'Courses')], ['alumnos', '👥', L('Alumnos', 'Students')], ['comunidad', '💬', L('Comunidad', 'Community')], ['ajustes', '⚙️', L('Ajustes', 'Settings')]] as any[]).map(([k, ic, lbl]) => (
+        {([['cursos', '📚', L('Cursos', 'Courses')], ['cobros', '🪙', L('Cobros', 'Payments')], ['alumnos', '👥', L('Alumnos', 'Students')], ['comunidad', '💬', L('Comunidad', 'Community')], ['ajustes', '⚙️', L('Ajustes', 'Settings')]] as any[]).map(([k, ic, lbl]) => (
           <button key={k} className={'btn ' + (tab === k ? 'btn-primary' : 'btn-ghost')} onClick={() => setTab(k)}><OnyxIcon emoji={ic} size={14} /> {lbl}</button>
         ))}
       </div>
@@ -277,6 +340,8 @@ function MentorPanel({ lang, onClose }: { lang: string; onClose: () => void }) {
         ))}
         {lessonForm && <LessonForm form={lessonForm} setForm={setLessonForm} L={L} onSave={(f: any) => { api({ action: 'lesson', ...f }); setLessonForm(null); }} onCancel={() => setLessonForm(null)} />}
       </>)}
+
+      {tab === 'cobros' && <MentorPayments modules={d.content || []} L={L} />}
 
       {tab === 'alumnos' && (
         <div className="card">
@@ -328,6 +393,173 @@ function LessonForm({ form, setForm, onSave, onCancel, L }: any) {
       </div>
       <div className="row" style={{ gap: 8, marginTop: 12 }}>
         <button className="btn btn-primary" onClick={() => onSave(form)} disabled={!form.title}>{L('Guardar', 'Save')}</button>
+        <button className="btn btn-ghost" onClick={onCancel}>{L('Cancelar', 'Cancel')}</button>
+      </div>
+    </div>
+  );
+}
+
+// =================== Cobros del mentor (Stripe Connect + niveles) ===================
+function MentorPayments({ modules, L }: { modules: any[]; L: (a: string, b: string) => string }) {
+  const [conn, setConn] = useState<any>(null);
+  const [prods, setProds] = useState<any[]>([]);
+  const [earn, setEarn] = useState<any>(null);
+  const [busy, setBusy] = useState('');
+  const [form, setForm] = useState<any>(null);
+
+  async function load() {
+    const [c, p] = await Promise.all([
+      fetch('/api/academy/connect').then((r) => r.json()).catch(() => ({})),
+      fetch('/api/academy/products').then((r) => r.json()).catch(() => ({})),
+    ]);
+    setConn(c); setProds(p.products || []); setEarn(p.earnings || null);
+  }
+  useEffect(() => { load(); }, []);
+
+  async function connect() {
+    setBusy('connect');
+    const r = await fetch('/api/academy/connect', { method: 'POST' });
+    const j = await r.json();
+    if (j.url) window.location.href = j.url; else { setBusy(''); alert(L('No se pudo conectar Stripe.', 'Could not connect Stripe.')); }
+  }
+  async function saveProd(f: any) {
+    setBusy('prod');
+    const body: any = { ...f, price_cents: Math.round(Number(f.price) * 100) };
+    delete body.price;
+    await fetch('/api/academy/products', { method: 'POST', body: JSON.stringify(body) });
+    setBusy(''); setForm(null); load();
+  }
+  async function delProd(id: string) {
+    if (!confirm(L('¿Borrar este nivel?', 'Delete this tier?'))) return;
+    await fetch('/api/academy/products', { method: 'POST', body: JSON.stringify({ action: 'delete', id }) });
+    load();
+  }
+
+  if (!conn) return <div className="card muted">…</div>;
+  const money = (c: number) => '$' + (Math.round((c || 0) / 100)).toLocaleString();
+
+  return (
+    <>
+      {/* Estado de Stripe */}
+      <div className="card">
+        <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 8 }}><span className="card-ic"><OnyxIcon name="card" size={16} /></span> {L('Cobros con Stripe', 'Payments with Stripe')}</h3>
+        {conn.configured === false ? (
+          <p className="muted" style={{ fontSize: 13 }}>{L('Los cobros aún no están habilitados en la plataforma.', 'Payments are not enabled on the platform yet.')}</p>
+        ) : conn.chargesEnabled ? (
+          <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <span className="pill" style={{ color: 'var(--soft-green)', background: 'rgba(52,226,160,.15)' }}>✓ {L('Conectado y cobrando', 'Connected & charging')}</span>
+            {conn.dashboard && <a className="btn btn-ghost" href={conn.dashboard} target="_blank" rel="noreferrer">{L('Abrir mi panel de Stripe', 'Open my Stripe dashboard')}</a>}
+          </div>
+        ) : (
+          <>
+            <p className="muted" style={{ fontSize: 13, marginBottom: 10 }}>
+              {conn.connected
+                ? L('Termina de verificar tu cuenta de Stripe para empezar a cobrar.', 'Finish verifying your Stripe account to start charging.')
+                : L('Conecta una cuenta de Stripe para cobrar a tus alumnos. Onyx cobra su comisión automáticamente en cada venta.', 'Connect a Stripe account to charge your students. Onyx takes its commission automatically on each sale.')}
+            </p>
+            <button className="btn btn-primary" disabled={busy === 'connect'} onClick={connect}>{busy === 'connect' ? '…' : (conn.connected ? L('Continuar verificación', 'Continue verification') : L('Conectar Stripe', 'Connect Stripe'))}</button>
+          </>
+        )}
+      </div>
+
+      {/* Ingresos */}
+      {earn && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 10 }}>
+          {[
+            [L('Ventas', 'Sales'), String(earn.sales || 0), 'cart'],
+            [L('Bruto', 'Gross'), money(earn.grossCents), 'coins'],
+            [L('Comisión Onyx', 'Onyx fee'), money(earn.feeCents), 'gem'],
+            [L('Tu neto', 'Your net'), money(earn.netCents), 'money'],
+          ].map(([lbl, val, ic]) => (
+            <div key={lbl} className="statcard">
+              <div className="statcard-ic"><OnyxIcon name={ic as any} /></div>
+              <div><div className="sc-lbl">{lbl}</div><div className="sc-val">{val}</div></div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Niveles */}
+      <div className="card">
+        <div className="row between" style={{ marginBottom: 10 }}>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic" style={{ color: 'var(--gold)' }}><OnyxIcon name="gem" size={16} /></span> {L('Niveles', 'Tiers')}</h3>
+          <button className="btn btn-primary" onClick={() => setForm({ name: '', kind: 'subscription', interval: 'month', price: '', currency: 'usd', grants: 'all', active: true })}>＋ {L('Nivel', 'Tier')}</button>
+        </div>
+        {prods.length === 0 && <p className="muted" style={{ fontSize: 13 }}>{L('Crea niveles como “Curso básico”, “VIP” o “Bootcamp”. Elige suscripción o pago único y qué módulos desbloquea cada uno.', 'Create tiers like “Basic”, “VIP” or “Bootcamp”. Pick subscription or one-time and which modules each unlocks.')}</p>}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {prods.map((p) => (
+            <div key={p.id} className="row between" style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '10px 12px' }}>
+              <div>
+                <b style={{ fontSize: 14 }}>{p.name}</b>
+                {!p.active && <span className="pill" style={{ marginLeft: 6, fontSize: 10, color: 'var(--mut)' }}>{L('inactivo', 'inactive')}</span>}
+                <div className="muted" style={{ fontSize: 12 }}>{priceLabel(p, L)} · {p.grants === 'all' ? L('todos los módulos', 'all modules') : (Array.isArray(p.grants) ? p.grants.length : 0) + ' ' + L('módulos', 'modules')}</div>
+              </div>
+              <div className="row" style={{ gap: 6 }}>
+                <button className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 11 }} onClick={() => setForm({ ...p, price: (p.price_cents / 100).toString() })}>✎</button>
+                <button className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 11, color: 'var(--red)' }} onClick={() => delProd(p.id)}>✕</button>
+              </div>
+            </div>
+          ))}
+        </div>
+        {form && <TierForm form={form} setForm={setForm} modules={modules} busy={busy === 'prod'} onSave={saveProd} onCancel={() => setForm(null)} L={L} />}
+      </div>
+    </>
+  );
+}
+
+function TierForm({ form, setForm, modules, busy, onSave, onCancel, L }: any) {
+  const set = (k: string, v: any) => setForm({ ...form, [k]: v });
+  const grantsAll = form.grants === 'all';
+  const grantIds: string[] = Array.isArray(form.grants) ? form.grants : [];
+  const toggleMod = (id: string) => {
+    const next = grantIds.includes(id) ? grantIds.filter((x) => x !== id) : [...grantIds, id];
+    set('grants', next);
+  };
+  return (
+    <div className="card" style={{ border: '1px solid var(--brand)', marginTop: 12 }}>
+      <h3 style={{ marginBottom: 12 }}>{form.id ? L('Editar nivel', 'Edit tier') : L('Nuevo nivel', 'New tier')}</h3>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <input value={form.name || ''} onChange={(e) => set('name', e.target.value)} placeholder={L('Nombre (Curso básico, VIP, Bootcamp…)', 'Name (Basic, VIP, Bootcamp…)')} style={{ margin: 0 }} />
+        <textarea value={form.description || ''} onChange={(e) => set('description', e.target.value)} rows={2} placeholder={L('Descripción (opcional)', 'Description (optional)')} style={{ width: '100%', margin: 0 }} />
+        <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+          <select value={form.kind} onChange={(e) => set('kind', e.target.value)} style={{ margin: 0 }}>
+            <option value="subscription">{L('Suscripción', 'Subscription')}</option>
+            <option value="one_time">{L('Pago único', 'One-time')}</option>
+          </select>
+          {form.kind === 'subscription' && (
+            <select value={form.interval} onChange={(e) => set('interval', e.target.value)} style={{ margin: 0 }}>
+              <option value="month">{L('Mensual', 'Monthly')}</option>
+              <option value="year">{L('Anual', 'Yearly')}</option>
+            </select>
+          )}
+          <input type="number" min={0} step="0.01" value={form.price ?? ''} onChange={(e) => set('price', e.target.value)} placeholder={L('Precio', 'Price')} style={{ margin: 0, width: 120 }} />
+          <select value={form.currency} onChange={(e) => set('currency', e.target.value)} style={{ margin: 0 }}>
+            <option value="usd">USD</option><option value="eur">EUR</option><option value="mxn">MXN</option>
+          </select>
+        </div>
+        <div>
+          <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{L('¿Qué desbloquea?', 'What does it unlock?')}</div>
+          <label className="row" style={{ gap: 8, fontSize: 13, marginBottom: 6 }}>
+            <input type="radio" checked={grantsAll} onChange={() => set('grants', 'all')} style={{ width: 'auto', margin: 0 }} /> {L('Todos los módulos', 'All modules')}
+          </label>
+          <label className="row" style={{ gap: 8, fontSize: 13 }}>
+            <input type="radio" checked={!grantsAll} onChange={() => set('grants', [])} style={{ width: 'auto', margin: 0 }} /> {L('Módulos concretos', 'Specific modules')}
+          </label>
+          {!grantsAll && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8, paddingLeft: 22 }}>
+              {(modules || []).map((m: any) => (
+                <label key={m.id} className="row" style={{ gap: 8, fontSize: 13 }}>
+                  <input type="checkbox" checked={grantIds.includes(m.id)} onChange={() => toggleMod(m.id)} style={{ width: 'auto', margin: 0 }} /> {m.title}
+                </label>
+              ))}
+              {(modules || []).length === 0 && <span className="muted" style={{ fontSize: 12 }}>{L('Primero crea módulos en la pestaña Cursos.', 'First create modules in the Courses tab.')}</span>}
+            </div>
+          )}
+        </div>
+        <label className="row" style={{ gap: 8, fontSize: 13 }}><input type="checkbox" checked={form.active !== false} onChange={(e) => set('active', e.target.checked)} style={{ width: 'auto', margin: 0 }} /> {L('Activo (visible para alumnos)', 'Active (visible to students)')}</label>
+      </div>
+      <div className="row" style={{ gap: 8, marginTop: 12 }}>
+        <button className="btn btn-primary" onClick={() => onSave(form)} disabled={!form.name || !form.price || busy}>{busy ? '…' : L('Guardar', 'Save')}</button>
         <button className="btn btn-ghost" onClick={onCancel}>{L('Cancelar', 'Cancel')}</button>
       </div>
     </div>
