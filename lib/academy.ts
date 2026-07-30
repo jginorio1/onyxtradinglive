@@ -43,6 +43,8 @@ export async function updateMentor(userId: string, b: any) {
     patch.socials = s;
   }
   if (b.email_templates !== undefined && b.email_templates && typeof b.email_templates === 'object') patch.email_templates = b.email_templates;
+  if (b.assistant_kb !== undefined) patch.assistant_kb = b.assistant_kb ? String(b.assistant_kb).slice(0, 20000) : null;
+  if (b.assistant_on !== undefined) patch.assistant_on = !!b.assistant_on;
   if (b.intro_video_url !== undefined) patch.intro_video_url = b.intro_video_url ? String(b.intro_video_url).slice(0, 500) : null;
   if (b.pitch !== undefined) patch.pitch = b.pitch ? String(b.pitch).slice(0, 4000) : null;
   if (b.membership_price_cents !== undefined) patch.membership_price_cents = Math.max(0, Math.round(Number(b.membership_price_cents) || 0));

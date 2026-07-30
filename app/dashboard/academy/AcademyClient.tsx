@@ -529,6 +529,7 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
               ) : null}
             </div>
           )}
+          {active.assistant_on && <AssistantCard mentorId={active.mentor_id} L={L} />}
           {totalLessons > 0 && (
             <div className="sk-side-card">
               <div className="row between" style={{ fontSize: 13, marginBottom: 8 }}><b>{L('Tu progreso', 'Your progress')}</b><span className="muted">{doneCount}/{totalLessons}</span></div>
@@ -1089,6 +1090,50 @@ function WinsWall({ active, lang, reload, L }: any) {
   );
 }
 
+// Resumen semanal AI de la comunidad (mentor).
+function MentorDigest({ L }: any) {
+  const [d, setD] = useState<any>(null); const [busy, setBusy] = useState(false); const [open, setOpen] = useState(false);
+  async function run() { setBusy(true); setOpen(true); const r = await fetch('/api/academy/digest'); const j = await r.json(); setBusy(false); setD(j); }
+  const s = d?.stats;
+  return (
+    <div className="sk-card" style={{ border: '1px solid color-mix(in srgb,var(--brand) 35%,transparent)' }}>
+      <div className="row between" style={{ alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+        <b style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="ai" size={16} /></span> {L('Resumen de la semana (AI)', 'Weekly summary (AI)')}</b>
+        <button className="btn btn-primary" style={{ fontSize: 12.5 }} disabled={busy} onClick={run}>{busy ? '…' : (d ? '✨ ' + L('Actualizar', 'Refresh') : '✨ ' + L('Generar', 'Generate'))}</button>
+      </div>
+      {open && s && (
+        <div className="row" style={{ gap: 8, margin: '10px 0', flexWrap: 'wrap' }}>
+          {[[L('Nuevos', 'New'), s.newMembers], [L('Activos', 'Active'), s.activeMembers], [L('Posts', 'Posts'), s.posts], [L('Logros', 'Wins'), s.winsApproved]].map(([lbl, v]: any) => (
+            <span key={lbl} className="sk-chip" style={{ background: 'var(--bg2)' }}>{lbl}: <b style={{ marginLeft: 4 }}>{v}</b></span>
+          ))}
+        </div>
+      )}
+      {open && (d?.text ? <div style={{ fontSize: 13.5, whiteSpace: 'pre-wrap', lineHeight: 1.55, marginTop: 6 }}>{d.text}</div>
+        : d && !d.text ? <p className="muted" style={{ fontSize: 12.5, marginTop: 8 }}>{L('Activa ANTHROPIC_API_KEY en Vercel para el resumen AI. Arriba tienes las métricas.', 'Enable ANTHROPIC_API_KEY in Vercel for the AI summary. Metrics are shown above.')}</p> : null)}
+    </div>
+  );
+}
+
+// Asistente AI del alumno (responde con la guía del mentor).
+function AssistantCard({ mentorId, L }: any) {
+  const [q, setQ] = useState(''); const [a, setA] = useState(''); const [busy, setBusy] = useState(false);
+  async function ask() {
+    if (!q.trim() || busy) return; setBusy(true); setA('');
+    const r = await fetch('/api/academy/assistant', { method: 'POST', body: JSON.stringify({ mentor_id: mentorId, question: q }) });
+    const j = await r.json(); setBusy(false);
+    setA(j.ok ? j.text : (j.error === 'assistant_off' ? L('El asistente no está disponible ahora.', 'The assistant is not available right now.') : L('No se pudo responder. Intenta de nuevo.', 'Could not answer. Try again.')));
+  }
+  return (
+    <div className="sk-side-card" style={{ border: '1px solid color-mix(in srgb,var(--brand) 32%,transparent)' }}>
+      <div className="row between" style={{ marginBottom: 6 }}><b style={{ fontSize: 14 }}>{L('Asistente AI', 'AI assistant')}</b><OnyxIcon name="ai" size={15} /></div>
+      <p className="muted" style={{ fontSize: 12, marginBottom: 8 }}>{L('Pregunta sobre la academia; responde con la guía de tu mentor.', 'Ask about the academy; it answers from your mentor’s guide.')}</p>
+      <textarea value={q} onChange={(e) => setQ(e.target.value)} rows={2} placeholder={L('Ej: ¿A qué hora es la clase en vivo?', 'e.g. What time is the live class?')} style={{ width: '100%', margin: 0 }} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(); } }} />
+      <button className="btn btn-primary" style={{ width: '100%', marginTop: 8 }} disabled={busy || !q.trim()} onClick={ask}>{busy ? '…' : L('Preguntar', 'Ask')}</button>
+      {a && <div style={{ fontSize: 13, whiteSpace: 'pre-wrap', lineHeight: 1.5, marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--line)' }}>{a}</div>}
+    </div>
+  );
+}
+
 function Leaderboard({ mentorId, initial, L }: any) {
   const [range, setRange] = useState<'7d' | '30d' | 'all' | 'traders'>('all');
   const [rows, setRows] = useState<any[]>(initial); const [loading, setLoading] = useState(false);
@@ -1312,6 +1357,7 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
       {tab === 'auditoria' && <MentorAudit mentorId={d.mentor.user_id} lang={lang} L={L} />}
 
       {tab === 'comunidad' && (<>
+        <MentorDigest L={L} />
         <div className="sk-card">
           <textarea value={post} onChange={(e) => setPost(e.target.value)} rows={2} placeholder={L('Publica un anuncio para tus alumnos…', 'Post an announcement for your students…')} style={{ width: '100%', margin: 0 }} />
           <ImgPreview url={postImg} onRemove={() => setPostImg('')} />
@@ -1801,6 +1847,7 @@ function MentorSettings({ mentor, onSave, L }: any) {
     academy_name: mentor.academy_name, tagline: mentor.tagline || '', about: mentor.about || '', cover_url: mentor.cover_url || '', logo_url: mentor.logo_url || '',
     intro_video_url: mentor.intro_video_url || '', pitch: mentor.pitch || '',
     brand_info: mentor.brand_info || '', ai_emojis: mentor.ai_emojis !== false, socials: { ...(mentor.socials || {}) } as any,
+    assistant_kb: mentor.assistant_kb || '', assistant_on: !!mentor.assistant_on,
     membership_price: ((mentor.membership_price_cents || 0) / 100).toString(), membership_currency: mentor.membership_currency || 'usd', membership_interval: mentor.membership_interval || 'month',
   });
   const setSocial = (k: string, v: string) => setF((s: any) => ({ ...s, socials: { ...s.socials, [k]: v } }));
@@ -1850,6 +1897,16 @@ function MentorSettings({ mentor, onSave, L }: any) {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Asistente AI del alumno (base de conocimiento del mentor) */}
+      <div className="sk-card">
+        <div className="row between" style={{ marginBottom: 6, flexWrap: 'wrap', gap: 8 }}>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic"><OnyxIcon name="ai" size={16} /></span> {L('Asistente AI de tus alumnos', 'Your students’ AI assistant')}</h3>
+          <label className="row" style={{ gap: 8, fontSize: 13, cursor: 'pointer' }}><input type="checkbox" checked={!!f.assistant_on} onChange={(e) => setF({ ...f, assistant_on: e.target.checked })} style={{ width: 'auto', margin: 0 }} /> {L('Activar', 'Enable')}</label>
+        </div>
+        <p className="muted" style={{ fontSize: 12.5, marginBottom: 8 }}>{L('Pega tu guía / preguntas frecuentes. El asistente responderá a tus alumnos usando SOLO esto (no inventa). Si algo no está, les dice que te pregunten a ti.', 'Paste your guide / FAQ. The assistant answers your students using ONLY this (it won’t make things up). If something isn’t here, it tells them to ask you.')}</p>
+        <textarea value={f.assistant_kb} onChange={(e) => setF({ ...f, assistant_kb: e.target.value })} rows={7} placeholder={L('Ej: Horario de clases, cómo conectar la cuenta, reglas de la comunidad, tu estrategia en resumen, preguntas frecuentes con sus respuestas…', 'e.g. Class schedule, how to connect an account, community rules, your strategy summary, FAQs with answers…')} style={{ width: '100%', margin: 0 }} />
       </div>
 
       <div className="sk-card" style={{ border: '1px solid color-mix(in srgb,var(--gold) 35%,transparent)' }}>

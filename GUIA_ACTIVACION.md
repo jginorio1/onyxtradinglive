@@ -1551,3 +1551,20 @@ comunidad, respuestas AI a preguntas de alumnos con la Guía del mentor.)
 
 **Requisitos:** el SQL v12. `qrcode` se instala solo en el build de Vercel. `ANTHROPIC_API_KEY`
 para el AI; `RESEND_API_KEY` para correos.
+
+### 43 · Onyx Academy — Fase 10 (Resumen semanal AI + Asistente AI del alumno)
+
+**SQL (Supabase, tras academy_v12.sql):** `supabase/academy_v13.sql`
+- `mentors.assistant_kb` (guía del mentor para el asistente), `mentors.assistant_on`.
+
+**Resumen semanal AI (mentor):** en el panel del mentor → Comunidad, tarjeta "Resumen de la
+semana (AI)". Con un clic Onyx AI genera un resumen accionable a partir de métricas reales
+(nuevos miembros, activos, posts, logros aprobados, top contribuyentes, próxima clase) y
+sugiere qué hacer la próxima semana. Sin IA configurada, muestra las métricas igual.
+
+**Asistente AI del alumno:** en Ajustes → "Asistente AI de tus alumnos" el mentor pega su
+guía / preguntas frecuentes y lo activa. Los alumnos ven una tarjeta "Asistente AI" en su
+comunidad y preguntan; el AI responde **usando solo esa guía** (no inventa; si algo no está,
+les dice que te pregunten). Sin señales ni promesas de ganancias.
+
+**Requisitos:** el SQL v13 + `ANTHROPIC_API_KEY` para ambas funciones AI.

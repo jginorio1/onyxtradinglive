@@ -79,6 +79,26 @@ export async function auditStudent(name: string, stats: { trades: number; winRat
   return ai(sys, user, 500);
 }
 
+// Resumen semanal de la comunidad para el mentor (a partir de métricas reales).
+export async function communityDigest(stats: any, lang: Lang = 'es', emojis = true): Promise<string | null> {
+  const g = GUARD[lang] + (emojis ? YES_EMOJI[lang] : NO_EMOJI[lang]);
+  const sys = `${g} Eres el copiloto del mentor. Escribe un resumen BREVE de la semana de su comunidad de trading a partir de estas métricas. Estructura: (1) una frase de cómo va la comunidad, (2) 2-3 datos que destaquen (crecimiento, participación, logros), (3) 2-3 acciones concretas recomendadas para la próxima semana (ej: felicitar a X, reactivar inactivos, publicar sobre Y, recordar la clase). Directo y accionable. No inventes datos que no estén en las métricas.`;
+  const user = (lang === 'es' ? 'Métricas de la semana: ' : 'This week metrics: ') + JSON.stringify(stats).slice(0, 3000);
+  const text = await ai(sys, user, 500);
+  return text ? stripMd(text) : null;
+}
+
+// Asistente del alumno: responde SOLO con la guía/base del mentor. Si no está
+// cubierto, invita a preguntar al mentor. Nunca da señales ni promete ganancias.
+export async function assistantAnswer(question: string, kb: string, academy: string, lang: Lang = 'es', emojis = true): Promise<string | null> {
+  const g = GUARD[lang] + (emojis ? YES_EMOJI[lang] : NO_EMOJI[lang]);
+  const ES = lang === 'es';
+  const sys = `${g} Eres el asistente de la academia "${academy}". Responde la pregunta del alumno USANDO EXCLUSIVAMENTE la BASE DE CONOCIMIENTO de abajo (la guía del mentor). Si la respuesta no está en la base, dilo con honestidad y sugiere que le pregunten directamente a su mentor; NO inventes. No des señales de trading, predicciones ni promesas de ganancias. Responde claro y breve.\n\nBASE DE CONOCIMIENTO:\n${(kb || '').slice(0, 8000)}`;
+  const user = (ES ? 'Pregunta del alumno: ' : 'Student question: ') + question.slice(0, 1000);
+  const text = await ai(sys, user, 500);
+  return text ? stripMd(text) : null;
+}
+
 export type CopilotKind = 'tagline' | 'about' | 'pitch' | 'course_desc' | 'lesson_desc' | 'post';
 
 // Genera contenido para el mentor. `input` describe el contexto (nombre de la
