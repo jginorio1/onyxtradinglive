@@ -81,7 +81,12 @@ async function once(mentorId: string, studentId: string, kind: string, ref: stri
 }
 
 // Plantillas por defecto de los correos automáticos (editables por el mentor).
-export function defaultAutomations() {
+export function defaultAutomations(lang: 'es' | 'en' = 'es') {
+  if (lang === 'en') return {
+    welcome: { enabled: false, subject: 'Welcome to {academy}!', body: 'Hi {name},\n\nGreat to have you in {academy}. Come in, introduce yourself in the community and start with the "Start here" classroom.\n\nEnter: {join}' },
+    class_reminder: { enabled: false, lead_min: 60, subject: 'Live class soon: {class}', body: 'Hi {name},\n\nYour live class "{class}" starts soon.\nJoin: {classlink}' },
+    expiring: { enabled: false, days_before: 3, subject: 'Your {academy} membership is about to renew', body: 'Hi {name},\n\nYour {academy} membership renews soon. If you want to keep access to the community, classrooms and live classes, you don\'t need to do anything; it renews automatically.' },
+  } as any;
   return {
     welcome: { enabled: false, subject: '¡Bienvenido a {academy}!', body: 'Hola {name},\n\nQué bueno tenerte en {academy}. Entra, preséntate en la comunidad y empieza por el aula "Empieza aquí".\n\nEntrar: {join}' },
     class_reminder: { enabled: false, lead_min: 60, subject: 'Clase en vivo pronto: {class}', body: 'Hola {name},\n\nTu clase en vivo "{class}" empieza pronto.\nEntrar: {classlink}' },
@@ -89,8 +94,8 @@ export function defaultAutomations() {
   } as any;
 }
 // Fusiona plantillas guardadas con las por defecto (compatibilidad con email_auto viejo).
-export function mergeAutomations(saved: any, legacy?: any) {
-  const def = defaultAutomations();
+export function mergeAutomations(saved: any, legacy?: any, lang: 'es' | 'en' = 'es') {
+  const def = defaultAutomations(lang);
   const out: any = {};
   for (const k of Object.keys(def)) {
     const s = (saved && saved[k]) || {};

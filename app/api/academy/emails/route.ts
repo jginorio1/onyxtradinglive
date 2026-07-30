@@ -25,7 +25,8 @@ export async function GET(req: Request) {
     supabaseAdmin.from('academy_emails').select('*').eq('mentor_id', mentor.user_id).order('created_at', { ascending: false }).limit(50),
     audienceCounts(mentor.user_id),
   ]);
-  return NextResponse.json({ campaigns: campaigns || [], counts, email_auto: mentor.email_auto || {}, automations: mergeAutomations(mentor.email_templates, mentor.email_auto), mailEnabled: !!process.env.RESEND_API_KEY });
+  const lang = /onyx_lang=en/.test(req.headers.get('cookie') || '') ? 'en' : 'es';
+  return NextResponse.json({ campaigns: campaigns || [], counts, email_auto: mentor.email_auto || {}, automations: mergeAutomations(mentor.email_templates, mentor.email_auto, lang), mailEnabled: !!process.env.RESEND_API_KEY });
 }
 
 // POST · crear+enviar ya, programar, borrar, o guardar automatizaciones.

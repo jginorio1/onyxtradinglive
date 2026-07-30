@@ -1475,3 +1475,16 @@ el flujo de checkout de niveles existente.
 
 **Requisitos:** `ANTHROPIC_API_KEY` para el AI; `RESEND_API_KEY` para los correos. Todo lo
 demás (logo, hero, modales, landing, redes) funciona sin nada extra aparte del SQL.
+
+### 40 · Onyx Academy — Idioma ES/EN dentro de la academia (Fase 7.1)
+
+Sin SQL nuevo. Cambios:
+- **Selector ES|EN visible dentro de la academia** (en el hero, junto a "Configurar/Mis
+  academias"). La UI de la academia ya cambiaba con el idioma, pero ahora el interruptor
+  está a la vista, no solo en el menú ☰.
+- **Plantilla "Academia Onyx" bilingüe** — al aplicarla en inglés, las aulas de ejemplo,
+  lecciones y el post de bienvenida se crean en inglés ("Start here", "Fundamentals"…).
+- **Correos automáticos por defecto bilingües** — si el mentor usa la app en inglés, las
+  plantillas de bienvenida/recordatorio/expira salen en inglés.
+Nota: el nombre, "sobre", lemas y textos que escribe el mentor (o genera el AI) quedan en
+el idioma en que se escribieron; eso es contenido, no interfaz.

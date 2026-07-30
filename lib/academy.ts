@@ -317,12 +317,27 @@ export async function publicDirectory() {
 // ============================================================
 // Template "Academia Onyx" · deja la academia pre-armada en un clic.
 // ============================================================
-export async function applyTemplate(mentorId: string, force = false) {
+export async function applyTemplate(mentorId: string, force = false, lang: 'es' | 'en' = 'es') {
   // No pisar si ya hay contenido, salvo que el mentor lo pida explícitamente (force).
   const { data: existing } = await supabaseAdmin.from('academy_modules').select('id').eq('mentor_id', mentorId).limit(1);
   if (existing && existing.length && !force) return { ok: true, skipped: true };
 
-  const modules = [
+  const EN = lang === 'en';
+  const modules = EN ? [
+    { title: 'Start here', description: 'Welcome and how to get the most out of the academy.', position: 0, lessons: [
+      { title: 'Welcome', section: 'Intro', is_free: true, content: 'Welcome! Watch this video and introduce yourself in the community.' },
+      { title: 'How the academy works', section: 'Intro', is_free: true, content: 'Classrooms, community, tiers and live classes.' },
+    ] },
+    { title: 'Fundamentals', description: 'The basics of trading.', position: 1, lessons: [
+      { title: 'Core concepts', section: 'Theory', content: '' },
+      { title: 'Risk management', section: 'Theory', content: '' },
+      { title: 'Your first analysis', section: 'Practice', content: '' },
+    ] },
+    { title: 'Strategy', description: 'The main strategy step by step.', position: 2, lessons: [
+      { title: 'The strategy explained', section: 'Strategy', content: '' },
+      { title: 'Real examples', section: 'Strategy', content: '' },
+    ] },
+  ] : [
     { title: 'Empieza aquí', description: 'Bienvenida y cómo aprovechar la academia.', position: 0, lessons: [
       { title: 'Bienvenida', section: 'Introducción', is_free: true, content: 'Te damos la bienvenida. Mira este video y preséntate en la comunidad.' },
       { title: 'Cómo funciona la academia', section: 'Introducción', is_free: true, content: 'Aulas, comunidad, niveles y clases en vivo.' },
@@ -345,12 +360,14 @@ export async function applyTemplate(mentorId: string, force = false) {
     }
   }
   // Post de bienvenida fijado.
-  await supabaseAdmin.from('academy_posts').insert({ mentor_id: mentorId, author_id: mentorId, pinned: true, body: '¡Bienvenidos a la comunidad! 🎉\n\n1. Mira la lección de bienvenida en «Empieza aquí».\n2. Preséntate en un comentario.\n3. Sube de nivel participando: cada like que recibes suma puntos.' });
+  await supabaseAdmin.from('academy_posts').insert({ mentor_id: mentorId, author_id: mentorId, pinned: true, body: EN
+    ? 'Welcome to the community! 🎉\n\n1. Watch the welcome lesson in "Start here".\n2. Introduce yourself in a comment.\n3. Level up by taking part: every like you receive earns points.'
+    : '¡Bienvenidos a la comunidad! 🎉\n\n1. Mira la lección de bienvenida en «Empieza aquí».\n2. Preséntate en un comentario.\n3. Sube de nivel participando: cada like que recibes suma puntos.' });
   // Niveles de ejemplo (si aún no hay productos).
   const { data: prods } = await supabaseAdmin.from('academy_products').select('id').eq('mentor_id', mentorId).limit(1);
   if (!prods || !prods.length) {
     await supabaseAdmin.from('academy_products').insert([
-      { mentor_id: mentorId, name: 'VIP', description: 'Acceso a todas las aulas y clases en vivo.', kind: 'subscription', interval: 'month', price_cents: 4900, currency: 'usd', grants: 'all', active: false, position: 0 },
+      { mentor_id: mentorId, name: 'VIP', description: EN ? 'Access to all classrooms and live classes.' : 'Acceso a todas las aulas y clases en vivo.', kind: 'subscription', interval: 'month', price_cents: 4900, currency: 'usd', grants: 'all', active: false, position: 0 },
     ]);
   }
   return { ok: true };

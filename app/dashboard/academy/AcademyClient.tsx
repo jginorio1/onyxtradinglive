@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import BrandIcon, { BRAND_COLOR } from '@/app/components/BrandIcon';
+import LangToggle from '@/app/LangToggle';
 
 // Onyx Academy v2 — comunidad estilo Skool: feed, aulas con secciones y progreso,
 // calendario con clase en vivo (countdown + EN VIVO), miembros, ranking, perfil,
@@ -367,7 +368,8 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="row between" style={{ alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
               <div style={{ minWidth: 0 }}><h2 style={{ margin: 0, fontSize: 21 }}>{active.academy_name}</h2>{active.tagline && <div className="muted" style={{ fontSize: 13, marginTop: 2 }}>{active.tagline}</div>}</div>
-              <div className="row" style={{ gap: 6 }}>
+              <div className="row" style={{ gap: 6, alignItems: 'center' }}>
+                <LangToggle compact />
                 {active.isMentorHere && toMentor && <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={toMentor}>{L('Configurar', 'Manage')}</button>}
                 <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={onExit}>← {L('Mis academias', 'My academies')}</button>
               </div>
@@ -1086,7 +1088,7 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
           </div>
           <div className="row" style={{ marginTop: 8, alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <span className="muted" style={{ fontSize: 12.5, flex: 1 }}>{L('¿Empezar rápido? Añade aulas de ejemplo con la plantilla Academia Onyx.', 'Want a quick start? Add sample classrooms with the Onyx Academy template.')}</span>
-            <button className="btn btn-ghost" onClick={() => { if (confirm(L('Se añadirán aulas de ejemplo (Empieza aquí, Fundamentos, Estrategia) a tu academia. ¿Continuar?', 'Sample classrooms (Start here, Fundamentals, Strategy) will be added to your academy. Continue?'))) api({ action: 'template', force: true }, L('Plantilla aplicada', 'Template applied')); }}><OnyxIcon name="graduation" size={14} /> {L('Usar plantilla Academia Onyx', 'Use Onyx Academy template')}</button>
+            <button className="btn btn-ghost" onClick={() => { if (confirm(L('Se añadirán aulas de ejemplo (Empieza aquí, Fundamentos, Estrategia) a tu academia. ¿Continuar?', 'Sample classrooms (Start here, Fundamentals, Strategy) will be added to your academy. Continue?'))) api({ action: 'template', force: true, lang: L('es', 'en') }, L('Plantilla aplicada', 'Template applied')); }}><OnyxIcon name="graduation" size={14} /> {L('Usar plantilla Academia Onyx', 'Use Onyx Academy template')}</button>
           </div>
         </div>
         {(d.content || []).map((m: any) => (
@@ -1477,7 +1479,7 @@ function SetupWizard({ d, L, api, setModForm, setEvForm, goTab }: any) {
   const hasCover = !!d.mentor.cover_url;
   const hasTier = false; // no lo sabemos aquí; se anima igual
   const steps = [
-    { done: hasContent, label: L('Usa la plantilla Academia Onyx (crea aulas base)', 'Use the Onyx Academy template (creates starter classrooms)'), action: () => api({ action: 'template' }, L('¡Plantilla aplicada! Tu academia ya tiene aulas.', 'Template applied! Your academy now has classrooms.')) },
+    { done: hasContent, label: L('Usa la plantilla Academia Onyx (crea aulas base)', 'Use the Onyx Academy template (creates starter classrooms)'), action: () => api({ action: 'template', lang: L('es', 'en') }, L('¡Plantilla aplicada! Tu academia ya tiene aulas.', 'Template applied! Your academy now has classrooms.')) },
     { done: hasCover, label: L('Sube la portada de tu comunidad (Ajustes)', 'Upload your community cover (Settings)'), action: () => goTab('ajustes') },
     { done: false, label: L('Programa tu primera clase en vivo', 'Schedule your first live class'), action: () => { goTab('envivo'); setEvForm({ title: '', join_url: '', starts_at: '', duration_min: 60 }); } },
     { done: false, label: L('Crea tu nivel de pago y conecta Stripe (Cobros)', 'Create your paid tier and connect Stripe (Payments)'), action: () => goTab('cobros') },
