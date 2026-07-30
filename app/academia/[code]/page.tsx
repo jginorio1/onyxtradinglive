@@ -40,17 +40,22 @@ export default function AcademiaPublic() {
   const [state, setState] = useState<'loading' | 'ok' | 'missing'>('loading');
 
   function reload() {
-    fetch('/api/academy/public?code=' + encodeURIComponent(String(code)), { cache: 'no-store' }).then((r) => r.json())
+    // `_` (timestamp) evita cualquier caché del navegador o de intermediarios.
+    fetch('/api/academy/public?code=' + encodeURIComponent(String(code)) + '&_=' + Date.now(), { cache: 'no-store' }).then((r) => r.json())
       .then((j) => { if (j.academy) { setA(j.academy); setState('ok'); } else setState('missing'); })
       .catch(() => setState('missing'));
   }
   useEffect(() => { reload(); }, [code]);
-  // Refresca al volver a la pestaña (para ver cambios recién guardados).
+  // Refresca al volver a la pestaña o con atrás/adelante (bfcache), para ver
+  // siempre los últimos cambios guardados por el mentor.
   useEffect(() => {
     const onFocus = () => reload();
+    const onShow = (e: any) => { if (e.persisted) reload(); };
+    const onVis = () => { if (document.visibilityState === 'visible') reload(); };
     window.addEventListener('focus', onFocus);
-    document.addEventListener('visibilitychange', onFocus);
-    return () => { window.removeEventListener('focus', onFocus); document.removeEventListener('visibilitychange', onFocus); };
+    window.addEventListener('pageshow', onShow);
+    document.addEventListener('visibilitychange', onVis);
+    return () => { window.removeEventListener('focus', onFocus); window.removeEventListener('pageshow', onShow); document.removeEventListener('visibilitychange', onVis); };
   }, [code]);
 
   const money = (cents: number, curr: string) => { const cur = (curr || 'usd').toUpperCase(); const sym = cur === 'USD' ? '$' : cur === 'EUR' ? '€' : ''; const amt = (cents / 100).toLocaleString(undefined, { minimumFractionDigits: cents % 100 ? 2 : 0, maximumFractionDigits: 2 }); return sym ? sym + amt : amt + ' ' + cur; };
