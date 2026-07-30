@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { grantPurchase, setPurchaseStatus, feeForMentor, grantMembership, setMembershipStatus } from '@/lib/academyPay';
+import { creditReferral } from '@/lib/academyExtras';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -28,6 +29,7 @@ export async function POST(req: Request) {
       if (md.onyx_mentor && md.onyx_student && md.onyx_kind === 'membership') {
         const feePct = await feeForMentor(md.onyx_mentor);
         await grantMembership({ mentorId: md.onyx_mentor, studentId: md.onyx_student, grossCents: Number(s.amount_total || 0), currency: s.currency || 'usd', subId: s.subscription || undefined, feePct });
+        await creditReferral(md.onyx_mentor, md.onyx_student);
       } else if (md.onyx_mentor && md.onyx_student && md.onyx_product) {
         const feePct = await feeForMentor(md.onyx_mentor);
         await grantPurchase({
@@ -36,6 +38,7 @@ export async function POST(req: Request) {
           grossCents: Number(s.amount_total || 0), currency: s.currency || 'usd',
           subId: s.subscription || undefined, sessionId: s.id, feePct,
         });
+        await creditReferral(md.onyx_mentor, md.onyx_student);
       }
     } else if (event.type === 'customer.subscription.deleted') {
       // Puede ser un nivel o una membresía: intentamos ambos (uno hará match).

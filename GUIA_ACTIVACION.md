@@ -1383,3 +1383,27 @@ hora (los alumnos no lo ven antes); el mentor lo ve con la etiqueta ⏱ programa
 automatizaciones (con dedup para no repetir).
 
 **Requisitos:** `RESEND_API_KEY` (envío) y `ANTHROPIC_API_KEY` (borradores con IA) en Vercel.
+
+### 37 · Onyx Academy — Certificados + Afiliados + Auditoría AI del alumno (Fase 5)
+
+**SQL (Supabase, tras academy_v7.sql):** `supabase/academy_v8.sql`
+- `academy_certificates`, `academy_referrals` (+ `mentors.affiliate_reward_cents`),
+  `academy_audits`.
+
+**Certificados:** cuando el alumno completa TODAS las lecciones de un curso, en el curso
+aparece **"Descargar certificado"** → se emite y abre una página verificable
+`/certificado/CODIGO` (imprimible a PDF). Sus certificados también salen en su Perfil.
+
+**Afiliados del mentor:** el mentor fija en **Cobros → Afiliados** una recompensa por
+referido que pague. Cada miembro tiene su **enlace de afiliado** (tarjeta "Invita y gana"
+en el sidebar) `?join=CODE&ref=SU_ID`. Cuando el referido **paga** (membresía o nivel),
+el webhook lo marca y acredita la recompensa en el **libro de afiliados**. NO mueve dinero
+solo (seguridad): el mentor paga la recompensa a mano según el libro.
+
+**Auditoría AI del alumno:** en **Alumnos**, cada alumno tiene **"✨ Auditar"** → Onyx AI
+genera un boletín honesto de su trading real (aciertos, profit factor, disciplina) — sin
+predicciones ni promesas. Se guarda y el alumno lo ve en su **Perfil**. Solo funciona si el
+alumno activó **"mostrar mi track record"** (consentimiento) y tiene ≥5 operaciones.
+
+**Requisitos:** `ANTHROPIC_API_KEY` (auditoría). Certificados y afiliados no necesitan nada
+extra aparte del SQL.

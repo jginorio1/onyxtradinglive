@@ -55,6 +55,15 @@ export async function moderateImage(mediaType: string, base64Data: string): Prom
   } catch { return { safe: true, checked: false }; }
 }
 
+// Boletín de auditoría del alumno: repaso honesto de su track record real, para
+// que el mentor lo califique. Solo pasado, sin predicciones ni promesas.
+export async function auditStudent(name: string, stats: { trades: number; winRate: number; profitFactor: number }, period: string, lang: Lang = 'es'): Promise<string | null> {
+  const g = GUARD[lang];
+  const sys = `${g} Eres un mentor de trading revisando el rendimiento REAL de un alumno para darle un boletín. Estructura: (1) una nota/valoración general en 1 frase, (2) 2-3 fortalezas, (3) 2-3 puntos a mejorar (disciplina, gestión de riesgo, consistencia), (4) 1 recomendación concreta de hábito. Directo y motivador, sin promesas de dinero ni predicciones.`;
+  const user = (lang === 'es' ? `Alumno: ${name}. Últimos ${period}. Operaciones: ${stats.trades}, aciertos: ${stats.winRate}%, profit factor: ${stats.profitFactor}.` : `Student: ${name}. Last ${period}. Trades: ${stats.trades}, win rate: ${stats.winRate}%, profit factor: ${stats.profitFactor}.`);
+  return ai(sys, user, 500);
+}
+
 export type CopilotKind = 'tagline' | 'about' | 'pitch' | 'course_desc' | 'lesson_desc' | 'post';
 
 // Genera contenido para el mentor. `input` describe el contexto (nombre de la

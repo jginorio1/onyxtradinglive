@@ -3,6 +3,7 @@ import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getMentor, myAcademies, getContent, progressSet, markLesson, isEnrolled, listPosts, addPost, addComment, leaderboard, membersList, toggleLike, levelFor, listEvents, nextEvent, dmUnread, tradersBoard } from '@/lib/academy';
 import { listProducts, accessibleModules, studentPurchases, perksFor, membershipInfo, hasMembership } from '@/lib/academyPay';
+import { myReferralStats } from '@/lib/academyExtras';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -55,6 +56,10 @@ export async function GET(req: Request) {
       listEvents(m), nextEvent(m), dmUnread(m, user.id),
     ]);
     const myPerks = iAmMentorHere ? { copy: true, guardian: true } : await perksFor(user.id, m);
+    const [refStats, mrow2] = await Promise.all([
+      myReferralStats(user.id, m),
+      supabaseAdmin.from('mentors').select('affiliate_reward_cents,affiliate_currency').eq('user_id', m).maybeSingle(),
+    ]);
     // Un módulo se bloquea SOLO si la academia vende niveles y el alumno no tiene
     // acceso. Si no hay niveles activos, es una academia gratis → todo abierto.
     // El mentor siempre ve todo desbloqueado.
@@ -71,6 +76,7 @@ export async function GET(req: Request) {
       leaderboard: board, members, membersCount: (roster as any).count || members.length,
       me: { points: myPoints, level: levelFor(myPoints).level },
       events, live, dmUnread: unread, myUserId: user.id, myPerks,
+      referral: refStats, affiliateReward: (mrow2.data as any)?.affiliate_reward_cents || 0, affiliateCurrency: (mrow2.data as any)?.affiliate_currency || 'usd',
     };
   }
   return NextResponse.json(out);

@@ -139,8 +139,9 @@ export default function AcademyClient() {
   useEffect(() => {
     (async () => {
       try {
-        const jc = new URLSearchParams(window.location.search).get('join');
-        if (jc) { const r = await fetch('/api/academy/enroll', { method: 'POST', body: JSON.stringify({ code: jc }) }); const j = await r.json(); await load(); if (j.ok) openAcademy(j.mentor_id); return; }
+        const sp = new URLSearchParams(window.location.search);
+        const jc = sp.get('join'); const ref = sp.get('ref') || '';
+        if (jc) { const r = await fetch('/api/academy/enroll', { method: 'POST', body: JSON.stringify({ code: jc, ref }) }); const j = await r.json(); await load(); if (j.ok) openAcademy(j.mentor_id); return; }
       } catch {}
       load();
     })();
@@ -369,7 +370,7 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
 
           {tab === 'classroom' && (
             lesson ? <LessonView lesson={lesson} course={openMod} done={(active.progress || []).includes(lesson.id)} progress={active.progress || []} onBack={() => setLesson(null)} onToggle={toggleLesson} onPick={setLesson} L={L} />
-            : openMod ? <CourseView course={openMod} progress={active.progress || []} onBack={() => setOpenMod(null)} onPick={(l: any) => setLesson(l)} L={L} />
+            : openMod ? <CourseView course={openMod} mentorId={active.mentor_id} progress={active.progress || []} onBack={() => setOpenMod(null)} onPick={(l: any) => setLesson(l)} L={L} />
             : (
               <>
                 {(active.products || []).length > 0 && !active.hasAccessAll && <Tiers products={active.products} purchases={active.purchases || []} onBuy={buy} L={L} />}
@@ -434,6 +435,25 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
             </div>
             <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => { navigator.clipboard.writeText(link); alert(L('Enlace de invitación copiado.', 'Invite link copied.')); }}><OnyxIcon emoji="🔗" size={14} /> {L('Invitar', 'Invite')}</button>
           </div>
+
+          {active.affiliateReward > 0 && (() => {
+            const cur = (active.affiliateCurrency || 'usd').toUpperCase(); const sym = cur === 'USD' ? '$' : cur === 'EUR' ? '€' : '';
+            const reward = sym ? sym + (active.affiliateReward / 100).toLocaleString() : (active.affiliateReward / 100).toLocaleString() + ' ' + cur;
+            const refLink = typeof window !== 'undefined' ? `${window.location.origin}/dashboard/academy?join=${active.code}&ref=${active.myUserId}` : '';
+            const earned = sym ? sym + ((active.referral?.earnedCents || 0) / 100).toLocaleString() : ((active.referral?.earnedCents || 0) / 100).toLocaleString();
+            return (
+              <div className="sk-side-card" style={{ border: '1px solid color-mix(in srgb,var(--gold) 35%,transparent)' }}>
+                <div className="row between" style={{ marginBottom: 6 }}><b style={{ fontSize: 14 }}>{L('Invita y gana', 'Refer & earn')}</b><OnyxIcon name="gift" size={15} /></div>
+                <p className="muted" style={{ fontSize: 12.5, marginBottom: 8 }}>{L(`Gana ${reward} por cada amigo que se una y pague.`, `Earn ${reward} for each friend who joins and pays.`)}</p>
+                <div className="row" style={{ gap: 14, margin: '8px 0', textAlign: 'center' }}>
+                  <div style={{ flex: 1 }}><div style={{ fontWeight: 800 }}>{active.referral?.total || 0}</div><div className="muted" style={{ fontSize: 11 }}>{L('Invitados', 'Referred')}</div></div>
+                  <div style={{ flex: 1 }}><div style={{ fontWeight: 800 }}>{active.referral?.paid || 0}</div><div className="muted" style={{ fontSize: 11 }}>{L('Pagaron', 'Paid')}</div></div>
+                  <div style={{ flex: 1 }}><div style={{ fontWeight: 800, color: 'var(--gold)' }}>{earned}</div><div className="muted" style={{ fontSize: 11 }}>{L('Ganado', 'Earned')}</div></div>
+                </div>
+                <button className="btn btn-ghost" style={{ width: '100%' }} onClick={() => { navigator.clipboard.writeText(refLink); alert(L('Tu enlace de afiliado copiado.', 'Your affiliate link copied.')); }}>{L('Copiar mi enlace', 'Copy my link')}</button>
+              </div>
+            );
+          })()}
           {totalLessons > 0 && (
             <div className="sk-side-card">
               <div className="row between" style={{ fontSize: 13, marginBottom: 8 }}><b>{L('Tu progreso', 'Your progress')}</b><span className="muted">{doneCount}/{totalLessons}</span></div>
@@ -565,12 +585,21 @@ function CalendarTab({ events, lang, L }: any) {
   );
 }
 
-function CourseView({ course, progress, onBack, onPick, L }: any) {
+function CourseView({ course, mentorId, progress, onBack, onPick, L }: any) {
+  const [certBusy, setCertBusy] = useState(false);
   // Agrupa lecciones por sección.
   const groups: Record<string, any[]> = {};
   const order: string[] = [];
   (course.lessons || []).forEach((l: any) => { const s = l.section || L('Lecciones', 'Lessons'); if (!groups[s]) { groups[s] = []; order.push(s); } groups[s].push(l); });
   const total = course.lessons.length; const done = course.lessons.filter((l: any) => progress.includes(l.id)).length;
+  const complete = total > 0 && done >= total;
+  async function getCert() {
+    setCertBusy(true);
+    const r = await fetch('/api/academy/certificate', { method: 'POST', body: JSON.stringify({ mentor_id: mentorId, module_id: course.id }) });
+    const j = await r.json(); setCertBusy(false);
+    if (j.ok && j.code) window.open('/certificado/' + j.code, '_blank');
+    else alert(L('Completa todas las lecciones para tu certificado.', 'Complete all lessons to get your certificate.'));
+  }
   return (
     <div>
       <button className="btn btn-ghost" style={{ fontSize: 12.5, marginBottom: 12 }} onClick={onBack}>← {L('Aulas', 'Classroom')}</button>
@@ -581,6 +610,7 @@ function CourseView({ course, progress, onBack, onPick, L }: any) {
           <Ring pct={total ? (done / total) * 100 : 0} size={46} />
         </div>
         {course.description && <p className="muted" style={{ fontSize: 13, marginBottom: 10 }}>{course.description}</p>}
+        {complete && <button className="btn btn-primary" style={{ marginBottom: 12 }} disabled={certBusy} onClick={getCert}><OnyxIcon name="graduation" size={14} /> {certBusy ? '…' : L('Descargar certificado', 'Download certificate')}</button>}
         {order.map((sec) => (
           <div key={sec}>
             <div className="sk-sec-title">{sec}</div>
@@ -693,6 +723,34 @@ function ProfileView({ mentorId, userId, me, lang, onDm, onBack }: any) {
               {L('Mostrar mi track record verificado a la comunidad', 'Show my verified track record to the community')}
             </label>
           )}
+        </div>
+      )}
+
+      {(p.certificates || []).length > 0 && (
+        <div className="sk-card">
+          <div className="sk-sec-title" style={{ marginTop: 0 }}>{L('Certificados', 'Certificates')}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {p.certificates.map((cert: any) => (
+              <a key={cert.code} href={'/certificado/' + cert.code} target="_blank" rel="noreferrer" className="row between" style={{ background: 'var(--bg2)', borderRadius: 8, padding: '9px 12px', textDecoration: 'none', color: 'inherit' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13.5 }}><OnyxIcon name="graduation" size={15} /> {cert.title}</span>
+                <span className="muted" style={{ fontSize: 12 }}>{new Date(cert.issued_at).toLocaleDateString(lang === 'en' ? 'en-US' : 'es-ES')} →</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {(p.audits || []).length > 0 && (
+        <div className="sk-card">
+          <div className="sk-sec-title" style={{ marginTop: 0 }}>{L('Auditorías de tu mentor (IA)', 'Your mentor’s audits (AI)')}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {p.audits.map((au: any, i: number) => (
+              <div key={i} style={{ background: 'var(--bg2)', borderRadius: 10, padding: 12 }}>
+                <div className="muted" style={{ fontSize: 11.5, marginBottom: 6 }}>{new Date(au.created_at).toLocaleDateString(lang === 'en' ? 'en-US' : 'es-ES')} · {au.period} {au.metrics ? `· ${au.metrics.winRate}% · PF ${au.metrics.profitFactor}` : ''}</div>
+                <div style={{ fontSize: 13.5, whiteSpace: 'pre-wrap', lineHeight: 1.55 }}>{au.text}</div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -1015,9 +1073,10 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
           <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 12 }}><span className="card-ic"><OnyxIcon name="users" size={16} /></span> {L('Alumnos', 'Students')} · {d.roster.students.length}</h3>
           {d.roster.students.length === 0 ? <p className="muted">{L('Comparte tu enlace para que se inscriban.', 'Share your link so they enroll.')}</p> : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {d.roster.students.map((s: any) => (<div key={s.id} className="row between" style={{ background: 'var(--bg2)', borderRadius: 8, padding: '9px 12px', fontSize: 13 }}><span>{s.name}</span><span className="muted" style={{ fontSize: 12 }}>{L('progreso', 'progress')} {s.done}/{d.roster.totalLessons}</span></div>))}
+              {d.roster.students.map((s: any) => <StudentRow key={s.id} s={s} total={d.roster.totalLessons} lang={lang} L={L} />)}
             </div>
           )}
+          <p className="muted" style={{ fontSize: 11.5, marginTop: 10 }}>{L('La auditoría IA solo funciona si el alumno activó «mostrar mi track record» en su perfil.', 'AI audit only works if the student enabled “show my track record” in their profile.')}</p>
         </div>
       )}
 
@@ -1050,6 +1109,31 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
       {tab === 'correos' && <MentorEmails lang={lang} L={L} />}
 
       {tab === 'ajustes' && <MentorSettings mentor={d.mentor} L={L} onSave={(b: any) => api({ action: 'settings', ...b }, L('Ajustes guardados', 'Settings saved'))} />}
+    </div>
+  );
+}
+
+// Fila de alumno con botón de auditoría IA.
+function StudentRow({ s, total, lang, L }: any) {
+  const [busy, setBusy] = useState(false);
+  const [audit, setAudit] = useState<string>('');
+  async function run() {
+    setBusy(true);
+    const r = await fetch('/api/academy/audit', { method: 'POST', body: JSON.stringify({ student_id: s.id, period: '30d', lang: L('es', 'en') }) });
+    const j = await r.json(); setBusy(false);
+    if (j.ok) setAudit(j.text);
+    else alert(j.error === 'no_consent' ? L('El alumno no ha activado «mostrar mi track record».', 'The student hasn’t enabled “show my track record”.') : j.error === 'no_data' ? L('El alumno no tiene suficientes operaciones.', 'Not enough trades for this student.') : L('No se pudo generar (¿IA configurada?).', 'Could not generate (AI configured?).'));
+  }
+  return (
+    <div style={{ background: 'var(--bg2)', borderRadius: 8, padding: '9px 12px', fontSize: 13 }}>
+      <div className="row between" style={{ alignItems: 'center' }}>
+        <span>{s.name}</span>
+        <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+          <span className="muted" style={{ fontSize: 12 }}>{L('progreso', 'progress')} {s.done}/{total}</span>
+          <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '3px 9px' }} disabled={busy} onClick={run}>{busy ? '…' : '✨ ' + L('Auditar', 'Audit')}</button>
+        </div>
+      </div>
+      {audit && <div style={{ whiteSpace: 'pre-wrap', fontSize: 13, lineHeight: 1.5, marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--line)' }}>{audit}<div className="muted" style={{ fontSize: 11, marginTop: 6 }}>{L('Guardado. El alumno lo verá en su perfil.', 'Saved. The student sees it in their profile.')}</div></div>}
     </div>
   );
 }
@@ -1282,17 +1366,21 @@ function MentorPayments({ modules, L }: { modules: any[]; L: (a: string, b: stri
   const [prods, setProds] = useState<any[]>([]);
   const [earn, setEarn] = useState<any>(null);
   const [ents, setEnts] = useState<any[]>([]);
+  const [aff, setAff] = useState<any[]>([]);
+  const [affReward, setAffReward] = useState('');
   const [busy, setBusy] = useState('');
   const [form, setForm] = useState<any>(null);
 
   async function load() {
     const [c, p] = await Promise.all([fetch('/api/academy/connect').then((r) => r.json()).catch(() => ({})), fetch('/api/academy/products').then((r) => r.json()).catch(() => ({}))]);
     setConn(c); setProds(p.products || []); setEarn(p.earnings || null); setEnts(p.entitlements || []);
+    setAff(p.affiliates || []); setAffReward(((p.affiliate_reward_cents || 0) / 100).toString());
   }
   useEffect(() => { load(); }, []);
   async function connect() { setBusy('connect'); const r = await fetch('/api/academy/connect', { method: 'POST' }); const j = await r.json(); if (j.url) window.location.href = j.url; else { setBusy(''); alert(L('No se pudo conectar Stripe.', 'Could not connect Stripe.')); } }
   async function saveProd(f: any) { setBusy('prod'); const body: any = { ...f, price_cents: Math.round(Number(f.price) * 100) }; delete body.price; await fetch('/api/academy/products', { method: 'POST', body: JSON.stringify(body) }); setBusy(''); setForm(null); load(); }
   async function delProd(id: string) { if (!confirm(L('¿Borrar este nivel?', 'Delete this tier?'))) return; await fetch('/api/academy/products', { method: 'POST', body: JSON.stringify({ action: 'delete', id }) }); load(); }
+  async function saveAff() { await fetch('/api/academy/products', { method: 'POST', body: JSON.stringify({ action: 'affiliate', reward_cents: Math.round(Number(affReward) * 100) }) }); load(); }
 
   if (!conn) return <div className="sk-card muted">…</div>;
   const money = (c: number) => '$' + (Math.round((c || 0) / 100)).toLocaleString();
@@ -1324,6 +1412,26 @@ function MentorPayments({ modules, L }: { modules: any[]; L: (a: string, b: stri
           ))}
         </div>
         {form && <TierForm form={form} setForm={setForm} modules={modules} busy={busy === 'prod'} onSave={saveProd} onCancel={() => setForm(null)} L={L} />}
+      </div>
+
+      {/* Afiliados del mentor */}
+      <div className="sk-card">
+        <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 6 }}><span className="card-ic"><OnyxIcon name="gift" size={16} /></span> {L('Afiliados', 'Affiliates')}</h3>
+        <p className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>{L('Recompensa a los miembros que traigan alumnos que paguen. Se registra en el libro; tú pagas la recompensa a mano (no se descuenta solo).', 'Reward members who bring paying students. It’s tracked in the ledger; you pay the reward manually (not auto-deducted).')}</p>
+        <div className="row" style={{ gap: 8, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 12 }}>
+          <div><span className="muted" style={{ fontSize: 12 }}>{L('Recompensa por referido que paga', 'Reward per paying referral')}</span><input type="number" min={0} step="0.01" value={affReward} onChange={(e) => setAffReward(e.target.value)} style={{ margin: '4px 0 0', width: 130 }} /></div>
+          <button className="btn btn-primary" onClick={saveAff}>{L('Guardar', 'Save')}</button>
+        </div>
+        {aff.length === 0 ? <p className="muted" style={{ fontSize: 12.5 }}>{L('Aún no hay referidos.', 'No referrals yet.')}</p> : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {aff.map((a: any) => (
+              <div key={a.user_id} className="row between" style={{ background: 'var(--bg2)', borderRadius: 8, padding: '9px 12px', fontSize: 13 }}>
+                <span>{a.name}</span>
+                <span className="muted" style={{ fontSize: 12 }}>{a.paid}/{a.total} {L('pagaron', 'paid')} · {money(a.earned)}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {ents.length > 0 && (

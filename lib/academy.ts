@@ -422,7 +422,7 @@ export async function dmSend(mentorId: string, fromId: string, toId: string, bod
 const VERIFIED_DAYS = 90;
 const VERIFIED_MIN_TRADES = 10;
 
-async function rawUserStats(userId: string, days = VERIFIED_DAYS) {
+export async function userTradeStats(userId: string, days = VERIFIED_DAYS) {
   const { data: accs } = await supabaseAdmin.from('trading_accounts').select('id').eq('user_id', userId);
   const ids = (accs || []).map((a: any) => a.id);
   if (!ids.length) return { trades: 0, winRate: 0, profitFactor: 0 };
@@ -439,7 +439,7 @@ export async function verifiedStats(userId: string, self = false) {
   const { data: prof } = await supabaseAdmin.from('profiles').select('academy_share_stats').eq('id', userId).maybeSingle();
   const shared = !!(prof as any)?.academy_share_stats;
   if (!shared && !self) return { shared: false };
-  const st = await rawUserStats(userId);
+  const st = await userTradeStats(userId);
   return { shared, self, days: VERIFIED_DAYS, hasData: st.trades >= VERIFIED_MIN_TRADES, ...st };
 }
 export async function setShareStats(userId: string, on: boolean) {
@@ -456,7 +456,7 @@ export async function tradersBoard(mentorId: string, limit = 30) {
   const sharers = (profs || []).filter((p: any) => p.academy_share_stats);
   const rows: any[] = [];
   for (const p of sharers) {
-    const st = await rawUserStats(p.id);
+    const st = await userTradeStats(p.id);
     if (st.trades >= VERIFIED_MIN_TRADES) rows.push({ user_id: p.id, name: p.full_name || (p.email || '').split('@')[0] || 'Trader', ...st });
   }
   rows.sort((a, b) => b.profitFactor - a.profitFactor || b.winRate - a.winRate);
@@ -481,10 +481,18 @@ export async function memberProfile(mentorId: string, userId: string, self = fal
   (comments || []).forEach((c: any) => add(c.created_at));
   const contributions = (posts || []).length + (comments || []).length;
   const verified = await verifiedStats(userId, !!self);
+  // Certificados y auditorías (visibles en el propio perfil / o para el mentor).
+  let certificates: any[] = []; let audits: any[] = [];
+  try {
+    const { data: certs } = await supabaseAdmin.from('academy_certificates').select('code,title,issued_at').eq('mentor_id', mentorId).eq('student_id', userId).order('issued_at', { ascending: false });
+    certificates = certs || [];
+    const { data: au } = await supabaseAdmin.from('academy_audits').select('period,text,created_at,metrics').eq('mentor_id', mentorId).eq('student_id', userId).order('created_at', { ascending: false }).limit(10);
+    audits = au || [];
+  } catch {}
   return {
     user_id: userId,
     name: (prof as any)?.full_name || ((prof as any)?.email || '').split('@')[0] || 'Trader',
-    points, level: levelFor(points), contributions, activity: days, verified,
+    points, level: levelFor(points), contributions, activity: days, verified, certificates, audits,
   };
 }
 
