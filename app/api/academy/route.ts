@@ -32,7 +32,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ leaderboard: await leaderboard(m, range, 50) });
   }
   const [mine, mentorRow] = await Promise.all([myAcademies(user.id), getMentor(user.id)]);
-  const out: any = { canMentor: !!caps?.academy, isMentor: !!mentorRow, mentorCode: mentorRow?.code || null, academies: mine };
+  const out: any = { canMentor: !!caps?.academy, isMentor: !!mentorRow, mentorCode: mentorRow?.code || null, myMentorId: mentorRow?.user_id || null, myAcademyName: mentorRow?.academy_name || null, academies: mine };
   const enrolledHere = m ? await isEnrolled(m, user.id) : false;
   const iAmMentorHere = m && mentorRow && mentorRow.user_id === m;
   if (m && (enrolledHere || iAmMentorHere)) {

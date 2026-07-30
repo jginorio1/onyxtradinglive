@@ -102,9 +102,25 @@ export default function AcademyClient() {
         </div>
       </div>
 
+      {/* Mi propia comunidad (mentor): entra a verla estilo Skool */}
+      {d.isMentor && d.myMentorId && (
+        <div>
+          <div className="muted" style={{ fontSize: 12, fontWeight: 600, margin: '4px 2px 8px', textTransform: 'uppercase', letterSpacing: '.04em' }}>{L('Mi comunidad', 'My community')}</div>
+          <button className="sk-course" style={{ maxWidth: 280 }} onClick={() => openAcademy(d.myMentorId)}>
+            <div className="sk-course-cover" style={{ background: 'var(--grad)' }}><OnyxIcon name="graduation" size={30} /></div>
+            <div className="sk-course-body">
+              <div style={{ fontWeight: 700, fontSize: 15 }}>{d.myAcademyName || 'Onyx Academy'}</div>
+              <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>{L('Entrar como mentor →', 'Enter as mentor →')}</div>
+            </div>
+          </button>
+        </div>
+      )}
+
       {(d.academies || []).length === 0
-        ? <div className="sk-card muted">{L('Todavía no estás en ninguna academia. Únete con un código o explora el directorio.', 'You are not in any academy yet. Join with a code or browse the directory.')}</div>
-        : <div className="sk-grid-courses">{d.academies.map((a: any) => (
+        ? (!d.isMentor && <div className="sk-card muted">{L('Todavía no estás en ninguna academia. Únete con un código o explora el directorio.', 'You are not in any academy yet. Join with a code or browse the directory.')}</div>)
+        : <div>
+          <div className="muted" style={{ fontSize: 12, fontWeight: 600, margin: '4px 2px 8px', textTransform: 'uppercase', letterSpacing: '.04em' }}>{L('Academias en las que estoy', 'Academies I’m in')}</div>
+          <div className="sk-grid-courses">{d.academies.map((a: any) => (
           <button key={a.mentor_id} className="sk-course" onClick={() => openAcademy(a.mentor_id)}>
             <div className="sk-course-cover" style={{ background: 'var(--grad)' }}><OnyxIcon name="graduation" size={30} /></div>
             <div className="sk-course-body">
@@ -112,7 +128,7 @@ export default function AcademyClient() {
               <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>{a.mentor_name}{a.tagline ? ' · ' + a.tagline : ''}</div>
             </div>
           </button>
-        ))}</div>}
+        ))}</div></div>}
     </div>
   );
 }
