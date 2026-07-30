@@ -429,3 +429,13 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
   .sk-cal-cell{min-height:44px;padding:3px;}
   .sk-cal-ev{font-size:0;padding:0;height:6px;border-radius:6px;}
 }
+
+/* Onyx Academy · calendario más vivo/grande + inputs más grandes */
+.sk-cal-cell{min-height:92px;}
+.sk-cal-ev{font-size:11.5px;font-weight:600;background:var(--grad);color:#fff;padding:3px 7px;border-radius:6px;box-shadow:0 2px 8px -2px color-mix(in srgb,var(--brand) 70%,transparent);}
+.sk-cal-ev.live{background:linear-gradient(120deg,#ff5a6a,#e23b55);color:#fff;font-weight:800;box-shadow:0 0 10px -1px color-mix(in srgb,var(--red) 80%,transparent);}
+@media(max-width:640px){.sk-cal-cell{min-height:52px;}.sk-cal-ev{height:8px;}}
+/* Campos de escritura de la academia: más grandes y cómodos */
+.sk-wrap textarea{min-height:70px;font-size:15px;padding:12px 14px;line-height:1.5;}
+.sk-wrap input[type="text"],.sk-wrap input:not([type]){font-size:15px;padding:12px 14px;}
+.sk-wrap .sk-card textarea{border-radius:12px;}

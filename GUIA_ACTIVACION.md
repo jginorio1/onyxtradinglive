@@ -1290,3 +1290,29 @@ Onyx; enciéndelo solo si lo quieres como parte del trato con los mentores.
   recalcula y se **revoca**.
 - **Copy trading NUNCA se auto-activa** (mueve dinero/ejecución real): sigue en la
   lista "Accesos a dar" de Cobros para que el mentor lo conceda a mano.
+
+### 33 · Onyx Academy — Membresía de pago + landing de ventas (Fase 1)
+
+Convierte la comunidad en un negocio recurrente estilo Skool/Golden.
+
+**SQL (Supabase, tras academy_v4.sql):** `supabase/academy_v5.sql`
+- `mentors`: `membership_price_cents`, `membership_currency`, `membership_interval`,
+  `intro_video_url`, `pitch`.
+- Tabla `academy_memberships` (suscripciones de membresía).
+
+**Cómo funciona:**
+- El mentor pone un **precio de membresía** en Panel del mentor → **Ajustes** →
+  "Membresía y página de ventas" (precio, moneda, mes/año), su **video de presentación**
+  y el **texto de ventas**. Deja precio 0 para academia gratis.
+- Su **página de ventas** es `onyxtradinglive.com/academia/CODIGO`: video/portada,
+  "Privada · N miembros · $X/mes · por Mentor", pitch, niveles y botón **Unirme**.
+- Cuando un alumno abre una comunidad **de pago** sin membresía activa, ve un **paywall**
+  con botón "Unirme ahora" → Stripe Checkout (suscripción con `on_behalf_of` el mentor;
+  tu comisión limpia) → al pagar entra a la comunidad.
+- Los **niveles internos** (VIP, Bootcamp, Mentoría) siguen como upsells por encima.
+- Cancelación → el webhook marca la membresía `canceled` y se corta el acceso.
+
+APIs: `POST /api/academy/membership` (checkout de membresía), webhook maneja
+`onyx_kind='membership'`, y `/api/academy?m=` devuelve `membershipRequired` para el paywall.
+
+Requiere: Stripe Connect conectado por el mentor (Cobros) para poder cobrar.

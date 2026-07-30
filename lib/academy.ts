@@ -33,6 +33,11 @@ export async function updateMentor(userId: string, b: any) {
   if (b.tagline !== undefined) patch.tagline = String(b.tagline || '').slice(0, 160);
   if (b.about !== undefined) patch.about = String(b.about || '').slice(0, 2000);
   if (b.cover_url !== undefined) patch.cover_url = b.cover_url ? String(b.cover_url).slice(0, 500) : null;
+  if (b.intro_video_url !== undefined) patch.intro_video_url = b.intro_video_url ? String(b.intro_video_url).slice(0, 500) : null;
+  if (b.pitch !== undefined) patch.pitch = b.pitch ? String(b.pitch).slice(0, 4000) : null;
+  if (b.membership_price_cents !== undefined) patch.membership_price_cents = Math.max(0, Math.round(Number(b.membership_price_cents) || 0));
+  if (b.membership_currency !== undefined) patch.membership_currency = String(b.membership_currency || 'usd').toLowerCase().slice(0, 3);
+  if (b.membership_interval !== undefined) patch.membership_interval = b.membership_interval === 'year' ? 'year' : 'month';
   if (b.active !== undefined) patch.active = !!b.active;
   await supabaseAdmin.from('mentors').update(patch).eq('user_id', userId);
 }
@@ -483,7 +488,7 @@ export async function memberProfile(mentorId: string, userId: string, self = fal
 // Página pública de una academia por su código: datos + módulos (con lecciones
 // gratis marcadas) + niveles activos. No expone contenido de pago.
 export async function publicAcademy(code: string) {
-  const { data: m } = await supabaseAdmin.from('mentors').select('user_id,code,academy_name,tagline,about,active').eq('code', code).maybeSingle();
+  const { data: m } = await supabaseAdmin.from('mentors').select('user_id,code,academy_name,tagline,about,active,cover_url,intro_video_url,pitch,membership_price_cents,membership_currency,membership_interval').eq('code', code).maybeSingle();
   if (!m || !(m as any).active) return null;
   const mentorId = (m as any).user_id;
   const [{ data: prof }, content, { data: prods }, { data: enr }] = await Promise.all([
@@ -500,6 +505,8 @@ export async function publicAcademy(code: string) {
   return {
     code: (m as any).code, academy_name: (m as any).academy_name, tagline: (m as any).tagline || '',
     about: (m as any).about || '', mentor_name: (prof as any)?.full_name || 'Mentor',
+    cover_url: (m as any).cover_url || null, intro_video_url: (m as any).intro_video_url || null, pitch: (m as any).pitch || '',
+    membership_price_cents: (m as any).membership_price_cents || 0, membership_currency: (m as any).membership_currency || 'usd', membership_interval: (m as any).membership_interval || 'month',
     students: (enr || []).length, modules, products: (prods || []) as any[],
   };
 }

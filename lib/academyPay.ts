@@ -119,6 +119,34 @@ export async function syncGuardianGrant(studentId: string) {
   } catch { /* silencioso: no bloquea el pago */ }
 }
 
+// ============================================================
+// Membresía de pago de la comunidad (suscripción para entrar).
+// ============================================================
+export async function membershipInfo(mentorId: string) {
+  const { data: m } = await supabaseAdmin.from('mentors').select('membership_price_cents,membership_currency,membership_interval').eq('user_id', mentorId).maybeSingle();
+  const price = (m as any)?.membership_price_cents || 0;
+  return { paid: price > 0, priceCents: price, currency: (m as any)?.membership_currency || 'usd', interval: (m as any)?.membership_interval || 'month' };
+}
+export async function hasMembership(studentId: string, mentorId: string) {
+  const { data } = await supabaseAdmin.from('academy_memberships').select('status').eq('mentor_id', mentorId).eq('student_id', studentId).maybeSingle();
+  return !!data && (data as any).status === 'active';
+}
+export async function grantMembership(o: { mentorId: string; studentId: string; grossCents: number; currency?: string; subId?: string; periodEnd?: number; feePct?: number }) {
+  await supabaseAdmin.from('academy_memberships').upsert({
+    mentor_id: o.mentorId, student_id: o.studentId, status: 'active',
+    stripe_subscription_id: o.subId || null,
+    current_period_end: o.periodEnd ? new Date(o.periodEnd * 1000).toISOString() : null,
+  }, { onConflict: 'mentor_id,student_id' });
+  const pct = o.feePct != null ? o.feePct : FEE_PCT;
+  const fee = Math.round((o.grossCents || 0) * (pct / 100));
+  await supabaseAdmin.from('onyx_commissions').insert({ mentor_id: o.mentorId, student_id: o.studentId, product_id: null, gross_cents: o.grossCents || 0, fee_cents: fee, currency: o.currency || 'usd', kind: 'membership' });
+}
+export async function setMembershipStatus(subId: string, status: string, periodEnd?: number) {
+  const patch: any = { status };
+  if (periodEnd) patch.current_period_end = new Date(periodEnd * 1000).toISOString();
+  await supabaseAdmin.from('academy_memberships').update(patch).eq('stripe_subscription_id', subId);
+}
+
 // Registra/actualiza una compra y anota la comisión de Onyx.
 export async function grantPurchase(o: { mentorId: string; studentId: string; productId: string; kind: string; grossCents: number; currency?: string; subId?: string; sessionId?: string; periodEnd?: number; feePct?: number }) {
   await supabaseAdmin.from('academy_purchases').upsert({

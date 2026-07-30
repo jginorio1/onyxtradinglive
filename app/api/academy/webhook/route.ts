@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { grantPurchase, setPurchaseStatus, feeForMentor } from '@/lib/academyPay';
+import { grantPurchase, setPurchaseStatus, feeForMentor, grantMembership, setMembershipStatus } from '@/lib/academyPay';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -25,7 +25,10 @@ export async function POST(req: Request) {
     if (event.type === 'checkout.session.completed') {
       const s = event.data.object;
       const md = s.metadata || {};
-      if (md.onyx_mentor && md.onyx_student && md.onyx_product) {
+      if (md.onyx_mentor && md.onyx_student && md.onyx_kind === 'membership') {
+        const feePct = await feeForMentor(md.onyx_mentor);
+        await grantMembership({ mentorId: md.onyx_mentor, studentId: md.onyx_student, grossCents: Number(s.amount_total || 0), currency: s.currency || 'usd', subId: s.subscription || undefined, feePct });
+      } else if (md.onyx_mentor && md.onyx_student && md.onyx_product) {
         const feePct = await feeForMentor(md.onyx_mentor);
         await grantPurchase({
           mentorId: md.onyx_mentor, studentId: md.onyx_student, productId: md.onyx_product,
@@ -35,11 +38,14 @@ export async function POST(req: Request) {
         });
       }
     } else if (event.type === 'customer.subscription.deleted') {
+      // Puede ser un nivel o una membresía: intentamos ambos (uno hará match).
       await setPurchaseStatus(event.data.object.id, 'canceled');
+      await setMembershipStatus(event.data.object.id, 'canceled');
     } else if (event.type === 'customer.subscription.updated') {
       const sub = event.data.object;
       const status = sub.status === 'active' || sub.status === 'trialing' ? 'active' : (sub.status === 'past_due' ? 'past_due' : 'canceled');
       await setPurchaseStatus(sub.id, status, sub.current_period_end);
+      await setMembershipStatus(sub.id, status, sub.current_period_end);
     } else if (event.type === 'account.updated') {
       const acct = event.data.object;
       await supabaseAdmin.from('mentors').update({ charges_enabled: !!acct.charges_enabled }).eq('stripe_account_id', acct.id);

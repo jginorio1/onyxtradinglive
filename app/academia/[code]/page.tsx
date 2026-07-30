@@ -5,7 +5,16 @@ import { useLang } from '@/lib/lang';
 import Link from 'next/link';
 import OnyxIcon from '@/app/components/OnyxIcon';
 
-// Página pública de una academia (Onyx Academy). Muestra vitrina + niveles + CTA.
+// Página pública de VENTAS de una academia (Onyx Academy), estilo Skool.
+function embed(url: string): string | null {
+  if (!url) return null;
+  const yt = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]{11})/);
+  if (yt) return 'https://www.youtube.com/embed/' + yt[1];
+  const vi = url.match(/vimeo\.com\/(\d+)/);
+  if (vi) return 'https://player.vimeo.com/video/' + vi[1];
+  return null;
+}
+
 export default function AcademiaPublic() {
   const { code } = useParams<{ code: string }>();
   const { lang } = useLang();
@@ -14,72 +23,63 @@ export default function AcademiaPublic() {
   const [state, setState] = useState<'loading' | 'ok' | 'missing'>('loading');
 
   useEffect(() => {
-    fetch('/api/academy/public?code=' + encodeURIComponent(String(code)))
-      .then((r) => r.json())
+    fetch('/api/academy/public?code=' + encodeURIComponent(String(code))).then((r) => r.json())
       .then((j) => { if (j.academy) { setA(j.academy); setState('ok'); } else setState('missing'); })
       .catch(() => setState('missing'));
   }, [code]);
 
-  const price = (p: any) => {
-    const cur = (p.currency || 'usd').toUpperCase();
-    const sym = cur === 'USD' ? '$' : cur === 'EUR' ? '€' : '';
-    const amt = (p.price_cents / 100).toLocaleString(undefined, { minimumFractionDigits: p.price_cents % 100 ? 2 : 0, maximumFractionDigits: 2 });
-    const base = sym ? sym + amt : amt + ' ' + cur;
-    if (p.kind === 'one_time') return base + ' · ' + L('pago único', 'one-time');
-    return base + '/' + (p.interval === 'year' ? L('año', 'yr') : L('mes', 'mo'));
-  };
+  const money = (cents: number, curr: string) => { const cur = (curr || 'usd').toUpperCase(); const sym = cur === 'USD' ? '$' : cur === 'EUR' ? '€' : ''; const amt = (cents / 100).toLocaleString(undefined, { minimumFractionDigits: cents % 100 ? 2 : 0, maximumFractionDigits: 2 }); return sym ? sym + amt : amt + ' ' + cur; };
+  const tierPrice = (p: any) => money(p.price_cents, p.currency) + (p.kind === 'one_time' ? ' · ' + L('pago único', 'one-time') : '/' + (p.interval === 'year' ? L('año', 'yr') : L('mes', 'mo')));
   const join = `/dashboard/academy?join=${code}`;
 
   if (state === 'loading') return <div className="wrap" style={{ padding: '60px 22px' }}><p className="muted">…</p></div>;
   if (state === 'missing') return (
     <div className="wrap" style={{ padding: '60px 22px', textAlign: 'center' }}>
       <h1>{L('Academia no encontrada', 'Academy not found')}</h1>
-      <Link className="btn btn-primary" href="/academias" style={{ marginTop: 16 }}>{L('Ver todas las academias', 'Browse all academies')}</Link>
+      <Link className="btn btn-primary" href="/dashboard/academy" style={{ marginTop: 16 }}>Onyx Academy</Link>
     </div>
   );
 
+  const emb = embed(a.intro_video_url || '');
+  const paid = (a.membership_price_cents || 0) > 0;
+  const priceLabel = paid ? money(a.membership_price_cents, a.membership_currency) + '/' + (a.membership_interval === 'year' ? L('año', 'yr') : L('mes', 'mo')) : L('Gratis', 'Free');
   const totalFree = (a.modules || []).reduce((s: number, m: any) => s + m.freeCount, 0);
 
   return (
-    <div className="wrap" style={{ padding: '48px 22px 60px', maxWidth: 940, margin: '0 auto' }}>
-      <Link href="/academias" className="muted" style={{ fontSize: 13, textDecoration: 'none' }}>← Onyx Academy</Link>
+    <div className="wrap" style={{ padding: '40px 22px 70px', maxWidth: 900, margin: '0 auto' }}>
+      {/* Video / portada */}
+      {emb
+        ? <div style={{ position: 'relative', paddingTop: '56.25%', borderRadius: 16, overflow: 'hidden', marginBottom: 18 }}><iframe src={emb} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }} allow="autoplay; fullscreen; picture-in-picture" allowFullScreen /></div>
+        : <div style={{ height: 200, borderRadius: 16, marginBottom: 18, backgroundSize: 'cover', backgroundPosition: 'center', ...(a.cover_url ? { backgroundImage: `url(${a.cover_url})` } : { background: 'var(--grad)' }) }} />}
 
-      {/* Hero */}
-      <div className="card" style={{ marginTop: 14, background: 'var(--grad-soft, var(--bg2))' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="graduation" size={28} /></span>
-          <h1 style={{ margin: 0, fontSize: 28, letterSpacing: '-.5px' }}>{a.academy_name}</h1>
-        </div>
-        <div className="muted" style={{ fontSize: 14, marginTop: 6 }}>{a.mentor_name}{a.tagline ? ' · ' + a.tagline : ''}</div>
-        <div className="row" style={{ gap: 14, marginTop: 12, flexWrap: 'wrap' }}>
-          <span className="muted" style={{ fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 5 }}><OnyxIcon name="users" size={14} /> {a.students} {L('alumnos', 'students')}</span>
-          <span className="muted" style={{ fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 5 }}><OnyxIcon name="modules" size={14} /> {(a.modules || []).length} {L('módulos', 'modules')}</span>
-          {totalFree > 0 && <span className="pill" style={{ color: 'var(--soft-green)', background: 'rgba(52,226,160,.15)' }}>{totalFree} {L('lecciones gratis', 'free lessons')}</span>}
-        </div>
-        <div style={{ marginTop: 16 }}>
-          <Link className="btn btn-primary" href={join}>{L('Unirme a la academia', 'Join the academy')}</Link>
-        </div>
+      <h1 style={{ fontSize: 30, letterSpacing: '-.5px', margin: 0 }}>{a.academy_name}</h1>
+      {a.tagline && <p className="muted" style={{ fontSize: 16, marginTop: 4 }}>{a.tagline}</p>}
+
+      {/* Barra: privada · miembros · precio · mentor */}
+      <div className="row" style={{ gap: 20, margin: '16px 0', flexWrap: 'wrap', alignItems: 'center' }}>
+        <span className="muted" style={{ fontSize: 14, display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon name="guardian" size={15} /> {L('Privada', 'Private')}</span>
+        <span className="muted" style={{ fontSize: 14, display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon name="users" size={15} /> {a.students} {L('miembros', 'members')}</span>
+        <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--gold)', display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon name="coins" size={15} /> {priceLabel}</span>
+        <span className="muted" style={{ fontSize: 14 }}>{L('por', 'by')} <b style={{ color: 'var(--tx)' }}>{a.mentor_name}</b></span>
       </div>
 
-      {a.about && (
-        <div className="card">
-          <h3 style={{ marginBottom: 8 }}>{L('Sobre la academia', 'About')}</h3>
-          <p style={{ fontSize: 14, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{a.about}</p>
-        </div>
-      )}
+      <Link className="btn btn-primary" href={join} style={{ fontSize: 16, padding: '12px 28px' }}>{paid ? L('Unirme por ', 'Join for ') + priceLabel : L('Unirme gratis', 'Join free')}</Link>
 
-      {/* Niveles */}
+      {/* Texto de ventas */}
+      {a.pitch && <div className="card" style={{ marginTop: 24, whiteSpace: 'pre-wrap', fontSize: 15, lineHeight: 1.65 }}>{a.pitch}</div>}
+      {a.about && !a.pitch && <div className="card" style={{ marginTop: 24, whiteSpace: 'pre-wrap', fontSize: 15, lineHeight: 1.65 }}>{a.about}</div>}
+
+      {/* Niveles / upsells */}
       {(a.products || []).length > 0 && (
         <>
-          <h2 style={{ margin: '10px 0 4px', display: 'flex', alignItems: 'center', gap: 9 }}>
-            <span style={{ color: 'var(--gold)', display: 'inline-flex' }}><OnyxIcon name="gem" size={20} /></span> {L('Niveles', 'Tiers')}
-          </h2>
+          <h2 style={{ margin: '28px 0 12px', display: 'flex', alignItems: 'center', gap: 9 }}><span style={{ color: 'var(--gold)', display: 'inline-flex' }}><OnyxIcon name="gem" size={20} /></span> {L('Elige tu nivel', 'Choose your tier')}</h2>
           <div className="grid g3">
             {a.products.map((p: any) => (
               <div key={p.id} className="card">
                 <div style={{ fontWeight: 800, fontSize: 16 }}>{p.name}</div>
                 {p.description && <p className="muted" style={{ fontSize: 13, margin: '6px 0 10px' }}>{p.description}</p>}
-                <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--gold)', margin: '8px 0 12px' }}>{price(p)}</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--gold)', margin: '8px 0 12px' }}>{tierPrice(p)}</div>
+                {(p.perks?.copy || p.perks?.guardian) && <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 10 }}>{p.perks?.copy && <span style={{ fontSize: 12, color: 'var(--soft-green)' }}>✓ Copy trading</span>}{p.perks?.guardian && <span style={{ fontSize: 12, color: 'var(--soft-green)' }}>✓ Onyx Guardian</span>}</div>}
                 <Link className="btn btn-primary" href={join} style={{ width: '100%', textAlign: 'center' }}>{L('Empezar', 'Get started')}</Link>
               </div>
             ))}
@@ -87,35 +87,30 @@ export default function AcademiaPublic() {
         </>
       )}
 
-      {/* Vitrina de módulos */}
+      {/* Vitrina de contenido */}
       {(a.modules || []).length > 0 && (
         <>
-          <h2 style={{ margin: '18px 0 4px' }}>{L('Contenido', 'Content')}</h2>
+          <h2 style={{ margin: '28px 0 4px' }}>{L('Contenido', 'Content')}{totalFree > 0 && <span className="muted" style={{ fontSize: 14, fontWeight: 400 }}> · {totalFree} {L('lecciones gratis', 'free lessons')}</span>}</h2>
           {a.modules.map((m: any) => (
-            <div key={m.id} className="card">
-              <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: m.description ? 4 : 10 }}>
-                <span className="card-ic"><OnyxIcon name="modules" size={16} /></span> {m.title}
-              </h3>
+            <div key={m.id} className="card" style={{ marginTop: 12 }}>
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: m.description ? 4 : 10 }}><span className="card-ic"><OnyxIcon name="modules" size={16} /></span> {m.title}</h3>
               {m.description && <p className="muted" style={{ fontSize: 13, marginBottom: 10 }}>{m.description}</p>}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                 {m.lessons.map((l: any) => (
                   <div key={l.id} className="row" style={{ gap: 10, alignItems: 'center', fontSize: 13.5 }}>
-                    <span style={{ color: l.is_free ? 'var(--green)' : 'var(--mut)', display: 'inline-flex' }}>
-                      {l.is_free ? '▷' : <OnyxIcon name="guardian" size={13} />}
-                    </span>
+                    <span style={{ color: l.is_free ? 'var(--green)' : 'var(--mut)', display: 'inline-flex' }}>{l.is_free ? '▷' : <OnyxIcon name="guardian" size={13} />}</span>
                     <span style={{ flex: 1 }}>{l.title}</span>
                     {l.is_free && <span className="pill" style={{ fontSize: 10, color: 'var(--soft-green)', background: 'rgba(52,226,160,.15)' }}>{L('gratis', 'free')}</span>}
                   </div>
                 ))}
-                {m.lessons.length === 0 && <span className="muted" style={{ fontSize: 12.5 }}>{L('Próximamente.', 'Coming soon.')}</span>}
               </div>
             </div>
           ))}
         </>
       )}
 
-      <div style={{ textAlign: 'center', marginTop: 24 }}>
-        <Link className="btn btn-primary" href={join}>{L('Unirme a la academia', 'Join the academy')}</Link>
+      <div style={{ textAlign: 'center', marginTop: 30 }}>
+        <Link className="btn btn-primary" href={join} style={{ fontSize: 16, padding: '12px 28px' }}>{paid ? L('Unirme por ', 'Join for ') + priceLabel : L('Unirme gratis', 'Join free')}</Link>
       </div>
     </div>
   );

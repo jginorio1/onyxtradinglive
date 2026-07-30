@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getMentor, myAcademies, getContent, progressSet, markLesson, isEnrolled, listPosts, addPost, addComment, leaderboard, membersList, toggleLike, levelFor, listEvents, nextEvent, dmUnread, tradersBoard } from '@/lib/academy';
-import { listProducts, accessibleModules, studentPurchases, perksFor } from '@/lib/academyPay';
+import { listProducts, accessibleModules, studentPurchases, perksFor, membershipInfo, hasMembership } from '@/lib/academyPay';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -36,6 +36,15 @@ export async function GET(req: Request) {
   const out: any = { canMentor: !!caps?.academy, isMentor: !!mentorRow, mentorCode: mentorRow?.code || null, myMentorId: mentorRow?.user_id || null, myAcademyName: mentorRow?.academy_name || null, academies: mine };
   const enrolledHere = m ? await isEnrolled(m, user.id) : false;
   const iAmMentorHere = m && mentorRow && mentorRow.user_id === m;
+  // Comunidad de pago: si no es el mentor y no tiene membresía activa → paywall.
+  if (m && (enrolledHere || iAmMentorHere) && !iAmMentorHere) {
+    const info = await membershipInfo(m);
+    if (info.paid && !(await hasMembership(user.id, m))) {
+      const { data: mrow } = await supabaseAdmin.from('mentors').select('academy_name,tagline,code,cover_url').eq('user_id', m).maybeSingle();
+      out.membershipRequired = { mentor_id: m, ...(mrow as any), priceCents: info.priceCents, currency: info.currency, interval: info.interval };
+      return NextResponse.json(out);
+    }
+  }
   if (m && (enrolledHere || iAmMentorHere)) {
     const [mentor, content, progress, feed, products, access, purchases, board, members, myPts, roster, events, live, unread] = await Promise.all([
       supabaseAdmin.from('mentors').select('academy_name,tagline,about,cover_url,code').eq('user_id', m).maybeSingle(),
@@ -46,10 +55,12 @@ export async function GET(req: Request) {
       listEvents(m), nextEvent(m), dmUnread(m, user.id),
     ]);
     const myPerks = iAmMentorHere ? { copy: true, guardian: true } : await perksFor(user.id, m);
-    // Marca cada módulo como bloqueado si el alumno no tiene acceso por su compra.
-    // El mentor ve todo desbloqueado.
+    // Un módulo se bloquea SOLO si la academia vende niveles y el alumno no tiene
+    // acceso. Si no hay niveles activos, es una academia gratis → todo abierto.
+    // El mentor siempre ve todo desbloqueado.
+    const gated = (products as any[]).length > 0;
     const lockedContent = (content as any[]).map((mod: any) => {
-      const unlocked = iAmMentorHere || access.all || access.ids.has(mod.id);
+      const unlocked = iAmMentorHere || !gated || access.all || access.ids.has(mod.id);
       return { ...mod, locked: !unlocked, lessons: mod.lessons.map((l: any) => (unlocked || l.is_free) ? l : { id: l.id, title: l.title, is_free: false, locked: true }) };
     });
     const myPoints = (myPts.data as any)?.points || 0;

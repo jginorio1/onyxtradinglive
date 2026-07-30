@@ -74,11 +74,12 @@ export default function AcademyClient() {
   const L = (a: string, b: string) => (lang === 'en' ? b : a);
   const [d, setD] = useState<any>(null);
   const [active, setActive] = useState<any>(null);
+  const [paywall, setPaywall] = useState<any>(null);
   const [joinCode, setJoinCode] = useState('');
   const [manage, setManage] = useState(false);
 
   async function load() { const r = await fetch('/api/academy'); setD(await r.json()); }
-  async function openAcademy(mid: string) { const r = await fetch('/api/academy?m=' + mid); const j = await r.json(); if (j.active) setActive(j.active); }
+  async function openAcademy(mid: string) { const r = await fetch('/api/academy?m=' + mid); const j = await r.json(); if (j.active) { setPaywall(null); setActive(j.active); } else if (j.membershipRequired) { setActive(null); setPaywall(j.membershipRequired); } }
   useEffect(() => {
     (async () => {
       try {
@@ -97,6 +98,7 @@ export default function AcademyClient() {
 
   if (!d) return <div className="card muted">…</div>;
   if (manage && d.canMentor) return <MentorPanel lang={lang} onClose={() => { setManage(false); load(); }} openStudent={(mid: string) => { setManage(false); openAcademy(mid); }} />;
+  if (paywall) return <Paywall pw={paywall} lang={lang} onBack={() => { setPaywall(null); load(); }} />;
   if (active) return <Community active={active} lang={lang} reload={() => openAcademy(active.mentor_id)} onExit={() => { setActive(null); load(); }} toMentor={d.canMentor ? () => setManage(true) : undefined} />;
 
   return (
@@ -107,7 +109,6 @@ export default function AcademyClient() {
           <div className="muted" style={{ fontSize: 13 }}>{L('Comunidades de trading: aprende, comparte y sube de nivel.', 'Trading communities: learn, share and level up.')}</div>
         </div>
         <div className="row" style={{ gap: 8 }}>
-          <a className="btn btn-ghost" href="/academias">{L('Explorar', 'Browse')}</a>
           {d.canMentor && <button className="btn btn-primary" onClick={() => setManage(true)}><OnyxIcon name="graduation" size={15} /> {L('Panel del mentor', 'Mentor panel')}</button>}
         </div>
       </div>
@@ -184,6 +185,37 @@ function LiveBanner({ ev, lang }: { ev: any; lang: string }) {
         {!live && <div className="muted" style={{ fontSize: 12 }}>{L('Empieza en', 'Starts in')} <span className="sk-count" style={{ fontSize: 13 }}>{fmtCountdown(start - now)}</span></div>}
       </div>
       {ev.join_url && (live || start - now < 15 * 60000) && <a className="btn btn-primary" href={ev.join_url} target="_blank" rel="noreferrer">{L('Entrar', 'Join')}</a>}
+    </div>
+  );
+}
+
+// Pantalla de membresía requerida (comunidad de pago).
+function Paywall({ pw, lang, onBack }: any) {
+  const L = (a: string, b: string) => (lang === 'en' ? b : a);
+  const [busy, setBusy] = useState(false);
+  const cur = (pw.currency || 'usd').toUpperCase(); const sym = cur === 'USD' ? '$' : cur === 'EUR' ? '€' : '';
+  const price = (sym ? sym + (pw.priceCents / 100).toLocaleString() : (pw.priceCents / 100).toLocaleString() + ' ' + cur) + '/' + (pw.interval === 'year' ? L('año', 'yr') : L('mes', 'mo'));
+  async function join() {
+    setBusy(true);
+    const r = await fetch('/api/academy/membership', { method: 'POST', body: JSON.stringify({ code: pw.code }) });
+    const j = await r.json();
+    if (j.url) window.location.href = j.url;
+    else if (j.free || j.already) window.location.reload();
+    else { setBusy(false); alert(j.error === 'mentor_not_ready' ? L('El mentor aún no ha activado los cobros.', 'The mentor has not enabled payments yet.') : L('No se pudo iniciar el pago.', 'Could not start checkout.')); }
+  }
+  return (
+    <div className="sk-wrap" style={{ maxWidth: 560, margin: '0 auto', paddingTop: 8 }}>
+      <button className="btn btn-ghost" style={{ fontSize: 12.5, marginBottom: 12 }} onClick={onBack}>← {L('Mis academias', 'My academies')}</button>
+      <div className="sk-card" style={{ textAlign: 'center', overflow: 'hidden' }}>
+        <div className="sk-hero-cover" style={{ borderRadius: 12, marginBottom: 14, ...(pw.cover_url ? { backgroundImage: `url(${pw.cover_url})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}) }} />
+        <div className="sk-chip" style={{ margin: '0 auto' }}><OnyxIcon name="guardian" size={12} /> {L('Comunidad privada', 'Private community')}</div>
+        <h2 style={{ margin: '10px 0 4px' }}>{pw.academy_name}</h2>
+        {pw.tagline && <div className="muted" style={{ fontSize: 13.5 }}>{pw.tagline}</div>}
+        <div style={{ fontSize: 30, fontWeight: 800, color: 'var(--gold)', margin: '16px 0 6px' }}>{price}</div>
+        <p className="muted" style={{ fontSize: 13.5, marginBottom: 16 }}>{L('Suscríbete para entrar a la comunidad, las aulas y las clases en vivo.', 'Subscribe to access the community, classrooms and live classes.')}</p>
+        <button className="btn btn-primary" style={{ width: '100%', fontSize: 16, padding: '12px' }} disabled={busy} onClick={join}>{busy ? '…' : L('Unirme ahora', 'Join now')}</button>
+        <a href={`/academia/${pw.code}`} target="_blank" rel="noreferrer" className="muted" style={{ display: 'inline-block', marginTop: 12, fontSize: 12.5 }}>{L('Ver la página completa', 'See the full page')} →</a>
+      </div>
     </div>
   );
 }
@@ -1015,17 +1047,42 @@ function LessonForm({ form, setForm, onSave, onCancel, L }: any) {
 }
 
 function MentorSettings({ mentor, onSave, L }: any) {
-  const [f, setF] = useState({ academy_name: mentor.academy_name, tagline: mentor.tagline || '', about: mentor.about || '', cover_url: mentor.cover_url || '' });
+  const [f, setF] = useState({
+    academy_name: mentor.academy_name, tagline: mentor.tagline || '', about: mentor.about || '', cover_url: mentor.cover_url || '',
+    intro_video_url: mentor.intro_video_url || '', pitch: mentor.pitch || '',
+    membership_price: ((mentor.membership_price_cents || 0) / 100).toString(), membership_currency: mentor.membership_currency || 'usd', membership_interval: mentor.membership_interval || 'month',
+  });
+  const link = typeof window !== 'undefined' ? `${window.location.origin}/academia/${mentor.code}` : '';
   return (
-    <div className="sk-card">
-      <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 12 }}><span className="card-ic"><OnyxIcon name="settings" size={16} /></span> {L('Ajustes de la academia', 'Academy settings')}</h3>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <div><span className="muted" style={{ fontSize: 12 }}>{L('Nombre', 'Name')}</span><input value={f.academy_name} onChange={(e) => setF({ ...f, academy_name: e.target.value })} style={{ margin: '4px 0 0' }} /></div>
-        <div><span className="muted" style={{ fontSize: 12 }}>{L('Lema', 'Tagline')}</span><input value={f.tagline} onChange={(e) => setF({ ...f, tagline: e.target.value })} style={{ margin: '4px 0 0' }} /></div>
-        <ImageUpload value={f.cover_url} onChange={(v: string) => setF({ ...f, cover_url: v })} L={L} label={L('Portada de la comunidad', 'Community cover')} />
-        <div><span className="muted" style={{ fontSize: 12 }}>{L('Sobre la academia', 'About')}</span><textarea value={f.about} onChange={(e) => setF({ ...f, about: e.target.value })} rows={3} style={{ width: '100%', margin: '4px 0 0' }} /></div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="sk-card">
+        <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 12 }}><span className="card-ic"><OnyxIcon name="settings" size={16} /></span> {L('Ajustes de la academia', 'Academy settings')}</h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div><span className="muted" style={{ fontSize: 12 }}>{L('Nombre', 'Name')}</span><input value={f.academy_name} onChange={(e) => setF({ ...f, academy_name: e.target.value })} style={{ margin: '4px 0 0' }} /></div>
+          <div><span className="muted" style={{ fontSize: 12 }}>{L('Lema', 'Tagline')}</span><input value={f.tagline} onChange={(e) => setF({ ...f, tagline: e.target.value })} style={{ margin: '4px 0 0' }} /></div>
+          <ImageUpload value={f.cover_url} onChange={(v: string) => setF({ ...f, cover_url: v })} L={L} label={L('Portada de la comunidad', 'Community cover')} />
+          <div><span className="muted" style={{ fontSize: 12 }}>{L('Sobre la academia', 'About')}</span><textarea value={f.about} onChange={(e) => setF({ ...f, about: e.target.value })} rows={3} style={{ width: '100%', margin: '4px 0 0' }} /></div>
+        </div>
       </div>
-      <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={() => onSave(f)}>{L('Guardar', 'Save')}</button>
+
+      <div className="sk-card" style={{ border: '1px solid color-mix(in srgb,var(--gold) 35%,transparent)' }}>
+        <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 6 }}><span className="card-ic" style={{ color: 'var(--gold)' }}><OnyxIcon name="coins" size={16} /></span> {L('Membresía y página de ventas', 'Membership & sales page')}</h3>
+        <p className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>{L('Cobra una mensualidad para entrar a la comunidad. Deja 0 para que sea gratis. Necesitas conectar Stripe en Cobros.', 'Charge a monthly fee to enter the community. Leave 0 for free. You must connect Stripe in Payments.')}</p>
+        <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <div><span className="muted" style={{ fontSize: 12 }}>{L('Precio de membresía', 'Membership price')}</span><input type="number" min={0} step="0.01" value={f.membership_price} onChange={(e) => setF({ ...f, membership_price: e.target.value })} style={{ margin: '4px 0 0', width: 130 }} /></div>
+          <select value={f.membership_currency} onChange={(e) => setF({ ...f, membership_currency: e.target.value })} style={{ margin: 0 }}><option value="usd">USD</option><option value="eur">EUR</option><option value="mxn">MXN</option></select>
+          <select value={f.membership_interval} onChange={(e) => setF({ ...f, membership_interval: e.target.value })} style={{ margin: 0 }}><option value="month">{L('/ mes', '/ month')}</option><option value="year">{L('/ año', '/ year')}</option></select>
+        </div>
+        <div style={{ marginTop: 12 }}><span className="muted" style={{ fontSize: 12 }}>{L('Video de presentación (YouTube/Vimeo/.mp4)', 'Intro video (YouTube/Vimeo/.mp4)')}</span><input value={f.intro_video_url} onChange={(e) => setF({ ...f, intro_video_url: e.target.value })} placeholder="https://youtu.be/…" style={{ margin: '4px 0 0' }} /></div>
+        <div style={{ marginTop: 10 }}><span className="muted" style={{ fontSize: 12 }}>{L('Texto de ventas (qué incluye, casos de éxito…)', 'Sales copy (what’s included, testimonials…)')}</span><textarea value={f.pitch} onChange={(e) => setF({ ...f, pitch: e.target.value })} rows={5} placeholder={L('Escríbelo o pídele a Onyx AI que te lo genere (próximamente).', 'Write it or let Onyx AI generate it (coming soon).')} style={{ width: '100%', margin: '4px 0 0' }} /></div>
+        <div className="row" style={{ gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span className="muted" style={{ fontSize: 12 }}>{L('Tu página de ventas:', 'Your sales page:')}</span>
+          <a href={link} target="_blank" rel="noreferrer" className="sk-chip">{link}</a>
+          <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => navigator.clipboard.writeText(link)}>{L('Copiar', 'Copy')}</button>
+        </div>
+      </div>
+
+      <button className="btn btn-primary" onClick={() => onSave({ ...f, membership_price_cents: Math.round(Number(f.membership_price) * 100) })}>{L('Guardar', 'Save')}</button>
     </div>
   );
 }
