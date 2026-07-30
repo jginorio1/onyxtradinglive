@@ -1,6 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { FEE_PCT } from '@/lib/stripeConnect';
-import { academyFeeSettings, saveSetting } from '@/lib/settings';
+import { academyFeeSettings, academyPerksSettings, saveSetting } from '@/lib/settings';
 
 // ============================================================
 // Academia · productos (niveles), compras y acceso por nivel + comisiones.
@@ -100,6 +100,25 @@ export async function entitlements(mentorId: string) {
   }));
 }
 
+// Recalcula si un alumno tiene Onyx Guardian concedido por una compra activa.
+// Solo concede si el dueño activó el interruptor global. Reversible: si cancela o
+// se apaga el interruptor, se revoca. NUNCA toca copy trading (dinero).
+export async function syncGuardianGrant(studentId: string) {
+  try {
+    const s = await academyPerksSettings();
+    let grant = false;
+    if (s?.guardian_autogrant) {
+      const { data: buys } = await supabaseAdmin.from('academy_purchases').select('product_id').eq('student_id', studentId).eq('status', 'active');
+      const pids = (buys || []).map((b: any) => b.product_id);
+      if (pids.length) {
+        const { data: prods } = await supabaseAdmin.from('academy_products').select('perks').in('id', pids);
+        grant = (prods || []).some((p: any) => p.perks?.guardian);
+      }
+    }
+    await supabaseAdmin.from('profiles').update({ academy_guardian: grant }).eq('id', studentId);
+  } catch { /* silencioso: no bloquea el pago */ }
+}
+
 // Registra/actualiza una compra y anota la comisión de Onyx.
 export async function grantPurchase(o: { mentorId: string; studentId: string; productId: string; kind: string; grossCents: number; currency?: string; subId?: string; sessionId?: string; periodEnd?: number; feePct?: number }) {
   await supabaseAdmin.from('academy_purchases').upsert({
@@ -110,11 +129,14 @@ export async function grantPurchase(o: { mentorId: string; studentId: string; pr
   const pct = o.feePct != null ? o.feePct : FEE_PCT;
   const fee = Math.round((o.grossCents || 0) * (pct / 100));
   await supabaseAdmin.from('onyx_commissions').insert({ mentor_id: o.mentorId, student_id: o.studentId, product_id: o.productId, gross_cents: o.grossCents || 0, fee_cents: fee, currency: o.currency || 'usd', kind: o.kind });
+  await syncGuardianGrant(o.studentId);
 }
 export async function setPurchaseStatus(subId: string, status: string, periodEnd?: number) {
   const patch: any = { status };
   if (periodEnd) patch.current_period_end = new Date(periodEnd * 1000).toISOString();
-  await supabaseAdmin.from('academy_purchases').update(patch).eq('stripe_subscription_id', subId);
+  const { data: rows } = await supabaseAdmin.from('academy_purchases').update(patch).eq('stripe_subscription_id', subId).select('student_id');
+  const sid = (rows || [])[0]?.student_id;
+  if (sid) await syncGuardianGrant(sid);
 }
 
 // Ingresos del mentor (bruto) y comisión de Onyx, a partir del libro de comisiones.

@@ -69,6 +69,11 @@ export type AcademyFee = { default_pct: number };
 const AF: AcademyFee = { default_pct: Number(process.env.ONYX_ACADEMY_FEE_PCT || 10) };
 export const academyFeeSettings = () => getSetting<AcademyFee>('academy_fee', AF);
 
+// Onyx Academy · perks. ¿Un nivel VIP puede conceder Onyx Guardian automáticamente?
+// APAGADO por defecto: regala una feature de pago de Onyx, el dueño lo activa a mano.
+export type AcademyPerks = { guardian_autogrant: boolean };
+export const academyPerksSettings = () => getSetting<AcademyPerks>('academy_perks', { guardian_autogrant: false });
+
 // Cuántas cuentas MT puede tener: las del plan + las compradas como complemento
 export async function accountLimit(userId: string) {
   const { data: prof } = await supabaseAdmin.from('profiles').select('plan,extra_accounts').eq('id', userId).maybeSingle();

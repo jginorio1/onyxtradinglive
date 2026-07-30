@@ -264,7 +264,7 @@ function PlanBadge({ plan }: { plan: string }) {
   return <span style={{ fontSize: 10, fontWeight: 800, background: elite ? 'rgba(52,226,160,.15)' : 'rgba(160,107,255,.2)', color: elite ? 'var(--soft-green)' : 'var(--soft-purple)', border: '1px solid ' + (elite ? 'var(--green)' : 'var(--brand2)'), borderRadius: 20, padding: '2px 8px', whiteSpace: 'nowrap' }}>🔒 {plan.toUpperCase()}</span>;
 }
 
-export default function DashboardClient({ email = '', plan = 'free', profile, trades = [], accounts: accs0 = [] }: { email?: string; plan?: string; profile?: { full_name?: string; trade_style?: string; experience?: string; platform?: string; goal?: string }; trades?: TT[]; accounts?: Acc[] }) {
+export default function DashboardClient({ email = '', plan = 'free', capOverride, profile, trades = [], accounts: accs0 = [] }: { email?: string; plan?: string; capOverride?: Record<string, any>; profile?: { full_name?: string; trade_style?: string; experience?: string; platform?: string; goal?: string }; trades?: TT[]; accounts?: Acc[] }) {
   const isFree = (plan || 'free') === 'free';
   const { lang, setLang } = useLang();
   const [rRange, setRRange] = useState<Range>(() => defaultRange('month'));
@@ -296,7 +296,9 @@ export default function DashboardClient({ email = '', plan = 'free', profile, tr
 
   // Capacidades del plan actual (controladas 100% desde el panel). Antes de cargar, cae al comportamiento por defecto (free vs pago).
   const myPlan = plans.find((p: any) => p.id === (plan || 'free'));
-  const caps = myPlan?.capabilities && typeof myPlan.capabilities === 'object' ? myPlan.capabilities : null;
+  const baseCaps = myPlan?.capabilities && typeof myPlan.capabilities === 'object' ? myPlan.capabilities : null;
+  // Onyx Guardian puede venir concedido por un nivel VIP de academia (capOverride).
+  const caps = (baseCaps || capOverride) ? { ...(baseCaps || {}), ...(capOverride || {}) } : null;
   const histDays = caps ? (Number(caps.history_days) || 0) : (isFree ? 30 : 0); // 0 = ilimitado
   const canJournal = caps ? !!caps.journal : !isFree;
   const canCompare = caps ? !!caps.compare : !isFree;

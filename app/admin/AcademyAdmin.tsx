@@ -38,6 +38,10 @@ export default function AcademyAdmin({ canManage = false }: { canManage?: boolea
     await fetch('/api/admin/academy', { method: 'POST', body: JSON.stringify({ action: 'mentor', mentor_id: userId, fee_pct: rowPct[userId] === '' ? '' : Number(rowPct[userId]) }) });
     setBusy(''); load();
   }
+  async function toggleGuardianPerk(on: boolean) {
+    await fetch('/api/admin/academy', { method: 'POST', body: JSON.stringify({ action: 'perks', guardian_autogrant: on }) });
+    load();
+  }
 
   const money = (c: number) => '$' + (Math.round((c || 0) / 100)).toLocaleString();
 
@@ -85,6 +89,22 @@ export default function AcademyAdmin({ canManage = false }: { canManage?: boolea
             </button>
           )}
         </div>
+      </div>
+
+      {/* Perk: auto-conceder Guardian */}
+      <div className="card">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+          <div className="card-ic"><OnyxIcon name="guardian" /></div>
+          <b>{L('Niveles VIP que incluyen Onyx Guardian', 'VIP tiers that include Onyx Guardian')}</b>
+        </div>
+        <p className="muted" style={{ margin: '0 0 10px' }}>
+          {L('Si lo activas, cuando un alumno compra un nivel marcado con «Onyx Guardian», se le concede Guardian automáticamente en su propia cuenta mientras la compra siga activa (se revoca al cancelar). Ojo: regalas una función de pago de Onyx.',
+             'If enabled, when a student buys a tier flagged with “Onyx Guardian”, they automatically get Guardian on their own account while the purchase is active (revoked on cancel). Note: you give away an Onyx paid feature.')}
+        </p>
+        <label className="row" style={{ gap: 10, alignItems: 'center', fontSize: 14 }}>
+          <input type="checkbox" checked={!!d.perks?.guardian_autogrant} disabled={!canManage} onChange={(e) => toggleGuardianPerk(e.target.checked)} style={{ width: 'auto', margin: 0 }} />
+          {L('Conceder Onyx Guardian automáticamente por perk', 'Auto-grant Onyx Guardian from tier perk')}
+        </label>
       </div>
 
       {/* Academias */}

@@ -1,16 +1,17 @@
 import { NextResponse } from 'next/server';
 import { requirePerm, logAdmin } from '@/lib/admin';
 import { adminListAcademies, getDefaultFeePct, setDefaultFeePct, setMentorFeePct } from '@/lib/academyPay';
+import { academyPerksSettings, saveSetting } from '@/lib/settings';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-// GET · panel del dueño: % por defecto + lista de academias con ventas y comisión.
+// GET · panel del dueño: % por defecto + lista de academias + ajuste de perks.
 export async function GET() {
   const { ok } = await requirePerm('academy', 'view');
   if (!ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
-  const data = await adminListAcademies();
-  return NextResponse.json(data);
+  const [data, perks] = await Promise.all([adminListAcademies(), academyPerksSettings()]);
+  return NextResponse.json({ ...data, perks });
 }
 
 // POST · editar la comisión: global (default_pct) o por mentor (mentor_id + fee_pct).
@@ -23,6 +24,11 @@ export async function POST(req: Request) {
       const pct = await setDefaultFeePct(Number(b.default_pct));
       await logAdmin(user.email, 'academy_fee_default', String(pct));
       return NextResponse.json({ ok: true, defaultFeePct: pct });
+    }
+    if (b.action === 'perks') {
+      await saveSetting('academy_perks', { guardian_autogrant: !!b.guardian_autogrant });
+      await logAdmin(user.email, 'academy_perks', 'guardian_autogrant=' + (!!b.guardian_autogrant));
+      return NextResponse.json({ ok: true, guardian_autogrant: !!b.guardian_autogrant });
     }
     if (b.action === 'mentor' && b.mentor_id) {
       const raw = b.fee_pct === '' || b.fee_pct == null ? null : Number(b.fee_pct);

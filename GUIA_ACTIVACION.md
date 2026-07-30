@@ -1265,3 +1265,28 @@ Lo que Skool no puede: track record REAL dentro de la comunidad.
 
 Sin nada extra que configurar aparte del SQL. Los stats salen de las operaciones que ya
 sincroniza el trader en Onyx.
+
+### 32 · Onyx Academy — Auto-concesión de Guardian por perk (reversible)
+
+Cierra el círculo del VIP "incluye Onyx Guardian": ahora puede concederse solo.
+
+**SQL (Supabase, tras academy_v3.sql):** `supabase/academy_v4.sql`
+- `profiles.academy_guardian` (marca por usuario; se recalcula al comprar/cancelar).
+
+**Interruptor del dueño (APAGADO por defecto):** Admin → **Onyx Academy** →
+"Niveles VIP que incluyen Onyx Guardian" → activar **Auto-grant**. Guardado en
+`app_settings.academy_perks.guardian_autogrant`. ⚠️ Regala una función de pago de
+Onyx; enciéndelo solo si lo quieres como parte del trato con los mentores.
+
+**Cómo funciona (seguro y reversible):**
+- Al comprar un nivel marcado con perk `guardian` (y con el interruptor ON), se pone
+  `profiles.academy_guardian = true`. La capacidad efectiva de Guardian pasa a ser
+  `plan.capabilities.manager OR profiles.academy_guardian`.
+- Wiring: `lib/academyPay.syncGuardianGrant` (llamado en `grantPurchase` y en
+  `setPurchaseStatus`), `app/api/manager` (caps OR), y visibilidad en el dashboard
+  (`app/dashboard/page.tsx` pasa `capOverride={manager:true}`; DashboardClient lo
+  fusiona).
+- Si el alumno **cancela** (o apagas el interruptor), en el siguiente evento se
+  recalcula y se **revoca**.
+- **Copy trading NUNCA se auto-activa** (mueve dinero/ejecución real): sigue en la
+  lista "Accesos a dar" de Cobros para que el mentor lo conceda a mano.

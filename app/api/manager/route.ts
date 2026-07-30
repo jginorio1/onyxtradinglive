@@ -11,9 +11,12 @@ async function me() {
   const sb = createSupabaseServer();
   const { data: { user } } = await sb.auth.getUser();
   if (!user) return { user: null as any, caps: {} as any };
-  const { data: prof } = await supabaseAdmin.from('profiles').select('plan').eq('id', user.id).maybeSingle();
+  const { data: prof } = await supabaseAdmin.from('profiles').select('plan,academy_guardian').eq('id', user.id).maybeSingle();
   const { data: plan } = await supabaseAdmin.from('plans').select('capabilities').eq('id', prof?.plan || 'free').maybeSingle();
-  return { user, caps: plan?.capabilities || {} };
+  const caps: any = { ...(plan?.capabilities || {}) };
+  // Onyx Guardian concedido por un nivel VIP de academia (si el dueño lo activó).
+  if ((prof as any)?.academy_guardian) caps.manager = true;
+  return { user, caps };
 }
 
 // GET · cuentas del usuario con su configuración, plantillas y últimos eventos
