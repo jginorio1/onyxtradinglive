@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { getMentor, myAcademies, getContent, progressSet, markLesson, isEnrolled, listPosts, addPost, addComment, leaderboard, membersList, toggleLike, levelFor, listEvents, nextEvent, dmUnread } from '@/lib/academy';
-import { listProducts, accessibleModules, studentPurchases } from '@/lib/academyPay';
+import { getMentor, myAcademies, getContent, progressSet, markLesson, isEnrolled, listPosts, addPost, addComment, leaderboard, membersList, toggleLike, levelFor, listEvents, nextEvent, dmUnread, tradersBoard } from '@/lib/academy';
+import { listProducts, accessibleModules, studentPurchases, perksFor } from '@/lib/academyPay';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -23,11 +23,12 @@ export async function GET(req: Request) {
   const sp = new URL(req.url).searchParams;
   const m = sp.get('m');
   const boardRange = sp.get('board');
-  // Petición ligera solo del ranking (para el selector 7d/30d/all-time).
+  // Petición ligera solo del ranking (para el selector 7d/30d/all-time/traders).
   if (m && boardRange) {
     const mrow = await getMentor(user.id);
     const allowed = (mrow && mrow.user_id === m) || (await isEnrolled(m, user.id));
     if (!allowed) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+    if (boardRange === 'traders') return NextResponse.json({ traders: await tradersBoard(m, 50) });
     const range = boardRange === '7d' ? '7d' : boardRange === '30d' ? '30d' : 'all';
     return NextResponse.json({ leaderboard: await leaderboard(m, range, 50) });
   }
@@ -44,6 +45,7 @@ export async function GET(req: Request) {
       supabaseAdmin.from('academy_enrollments').select('student_id', { count: 'exact', head: true }).eq('mentor_id', m).eq('status', 'active'),
       listEvents(m), nextEvent(m), dmUnread(m, user.id),
     ]);
+    const myPerks = iAmMentorHere ? { copy: true, guardian: true } : await perksFor(user.id, m);
     // Marca cada módulo como bloqueado si el alumno no tiene acceso por su compra.
     // El mentor ve todo desbloqueado.
     const lockedContent = (content as any[]).map((mod: any) => {
@@ -57,7 +59,7 @@ export async function GET(req: Request) {
       isMentorHere: !!iAmMentorHere,
       leaderboard: board, members, membersCount: (roster as any).count || members.length,
       me: { points: myPoints, level: levelFor(myPoints).level },
-      events, live, dmUnread: unread, myUserId: user.id,
+      events, live, dmUnread: unread, myUserId: user.id, myPerks,
     };
   }
   return NextResponse.json(out);

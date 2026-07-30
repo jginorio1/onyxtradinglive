@@ -498,8 +498,12 @@ function LessonView({ lesson, course, done, progress, onBack, onToggle, onPick, 
 function ProfileView({ mentorId, userId, me, lang, onDm, onBack }: any) {
   const L = (a: string, b: string) => (lang === 'en' ? b : a);
   const [p, setP] = useState<any>(null);
-  useEffect(() => { setP(null); fetch(`/api/academy/profile?m=${mentorId}&u=${userId}`).then((r) => r.json()).then((j) => setP(j.profile)); }, [mentorId, userId]);
+  function reloadP() { fetch(`/api/academy/profile?m=${mentorId}&u=${userId}`).then((r) => r.json()).then((j) => setP(j.profile)); }
+  useEffect(() => { setP(null); reloadP(); }, [mentorId, userId]);
+  async function toggleShare(on: boolean) { await fetch('/api/academy/profile', { method: 'POST', body: JSON.stringify({ share: on }) }); reloadP(); }
   if (!p) return <div className="sk-card muted">…</div>;
+  const v = p.verified || {};
+  const isSelf = userId === me;
   const lv = p.level;
   // Mapa de actividad: últimas 18 semanas.
   const cells: { key: string; n: number }[] = [];
@@ -526,6 +530,34 @@ function ProfileView({ mentorId, userId, me, lang, onDm, onBack }: any) {
           <div><div style={{ fontWeight: 800, fontSize: 18 }}>{p.points}</div><div className="muted" style={{ fontSize: 11 }}>{L('Puntos', 'Points')}</div></div>
         </div>
       </div>
+      {/* Trader verificado — track record real (opt-in, sin promesas) */}
+      {(v.hasData || isSelf) && (
+        <div className="sk-card" style={{ border: '1px solid color-mix(in srgb,var(--green) 35%,transparent)' }}>
+          <div className="row between" style={{ alignItems: 'center', marginBottom: 8 }}>
+            <b style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ color: 'var(--green)', display: 'inline-flex' }}><OnyxIcon name="guardian" size={16} /></span> {L('Trader verificado', 'Verified trader')}</b>
+            {v.hasData && <span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--green) 15%,transparent)', color: 'var(--soft-green)' }}>✓ {L('Verificado por Onyx', 'Verified by Onyx')}</span>}
+          </div>
+          {v.hasData ? (
+            <>
+              <div className="row" style={{ gap: 16, textAlign: 'center', justifyContent: 'space-around' }}>
+                <div><div style={{ fontWeight: 800, fontSize: 18 }}>{v.winRate}%</div><div className="muted" style={{ fontSize: 11 }}>{L('Aciertos', 'Win rate')}</div></div>
+                <div><div style={{ fontWeight: 800, fontSize: 18 }}>{v.profitFactor}</div><div className="muted" style={{ fontSize: 11 }}>{L('Profit factor', 'Profit factor')}</div></div>
+                <div><div style={{ fontWeight: 800, fontSize: 18 }}>{v.trades}</div><div className="muted" style={{ fontSize: 11 }}>{L('Operaciones', 'Trades')}</div></div>
+              </div>
+              <div className="muted" style={{ fontSize: 11, marginTop: 10, textAlign: 'center' }}>{L(`Rendimiento histórico real de los últimos ${v.days} días. No es una promesa de resultados futuros.`, `Real historical performance over the last ${v.days} days. Not a promise of future results.`)}</div>
+            </>
+          ) : isSelf ? (
+            <p className="muted" style={{ fontSize: 13 }}>{v.shared ? L('Aún no tienes suficientes operaciones registradas para mostrar tu track record.', 'You don’t have enough recorded trades yet to show your track record.') : L('Activa esto para mostrar tu track record real (aciertos, profit factor y nº de operaciones) en tu perfil de la comunidad.', 'Turn this on to show your real track record (win rate, profit factor and trades) on your community profile.')}</p>
+          ) : null}
+          {isSelf && (
+            <label className="row" style={{ gap: 8, fontSize: 13, marginTop: 10 }}>
+              <input type="checkbox" checked={!!v.shared} onChange={(e) => toggleShare(e.target.checked)} style={{ width: 'auto', margin: 0 }} />
+              {L('Mostrar mi track record verificado a la comunidad', 'Show my verified track record to the community')}
+            </label>
+          )}
+        </div>
+      )}
+
       <div className="sk-card">
         <div className="sk-sec-title" style={{ marginTop: 0 }}>{L('Actividad', 'Activity')}</div>
         <div className="sk-heat">{cells.map((c) => <i key={c.key} title={c.key} style={{ background: shade(c.n) }} />)}</div>
@@ -635,18 +667,26 @@ function PostCard({ p, onLike, onComment, onProfile, L, es }: any) {
 }
 
 function Leaderboard({ mentorId, initial, L }: any) {
-  const [range, setRange] = useState<'7d' | '30d' | 'all'>('all');
+  const [range, setRange] = useState<'7d' | '30d' | 'all' | 'traders'>('all');
   const [rows, setRows] = useState<any[]>(initial); const [loading, setLoading] = useState(false);
-  async function pick(r: '7d' | '30d' | 'all') { setRange(r); setLoading(true); const res = await fetch(`/api/academy?m=${mentorId}&board=${r}`); const j = await res.json(); setRows(j.leaderboard || []); setLoading(false); }
+  async function pick(r: '7d' | '30d' | 'all' | 'traders') {
+    setRange(r); setLoading(true);
+    const res = await fetch(`/api/academy?m=${mentorId}&board=${r}`); const j = await res.json();
+    setRows(r === 'traders' ? (j.traders || []) : (j.leaderboard || [])); setLoading(false);
+  }
+  const isTraders = range === 'traders';
   return (
     <div className="sk-card">
       <div className="row between" style={{ marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-        <b style={{ fontSize: 15 }}>{L('Ranking de la comunidad', 'Community leaderboard')}</b>
-        <div className="sk-seg">{(['7d', '30d', 'all'] as const).map((r) => <button key={r} className={range === r ? 'on' : ''} onClick={() => pick(r)}>{r === 'all' ? L('Total', 'All-time') : r}</button>)}</div>
+        <b style={{ fontSize: 15 }}>{isTraders ? L('Traders verificados', 'Verified traders') : L('Ranking de la comunidad', 'Community leaderboard')}</b>
+        <div className="sk-seg">
+          {(['7d', '30d', 'all'] as const).map((r) => <button key={r} className={range === r ? 'on' : ''} onClick={() => pick(r)}>{r === 'all' ? L('Total', 'All-time') : r}</button>)}
+          <button className={isTraders ? 'on' : ''} onClick={() => pick('traders')} style={{ display: 'flex', alignItems: 'center', gap: 4 }}><OnyxIcon name="guardian" size={12} glow={false} /> {L('Traders', 'Traders')}</button>
+        </div>
       </div>
       {loading && <div className="muted" style={{ fontSize: 13 }}>…</div>}
-      {!loading && rows.length === 0 && <div className="muted" style={{ fontSize: 13 }}>{L('Todavía nadie ha sumado puntos en este periodo.', 'Nobody has earned points in this period yet.')}</div>}
-      {!loading && rows.map((r: any) => (
+      {!loading && rows.length === 0 && <div className="muted" style={{ fontSize: 13 }}>{isTraders ? L('Aún no hay traders que compartan su track record verificado.', 'No traders sharing a verified track record yet.') : L('Todavía nadie ha sumado puntos en este periodo.', 'Nobody has earned points in this period yet.')}</div>}
+      {!loading && !isTraders && rows.map((r: any) => (
         <div key={r.user_id} className="sk-board-row" style={{ borderBottom: '1px solid var(--line)' }}>
           <span className="sk-rank" style={r.rank <= 3 ? { color: 'var(--gold)', fontSize: 15 } : undefined}>{r.rank}</span>
           <Avatar name={r.name} level={r.level} size={34} />
@@ -654,6 +694,15 @@ function Leaderboard({ mentorId, initial, L }: any) {
           <b>{r.points} <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>{L('pts', 'pts')}</span></b>
         </div>
       ))}
+      {!loading && isTraders && rows.map((r: any) => (
+        <div key={r.user_id} className="sk-board-row" style={{ borderBottom: '1px solid var(--line)' }}>
+          <span className="sk-rank" style={r.rank <= 3 ? { color: 'var(--gold)', fontSize: 15 } : undefined}>{r.rank}</span>
+          <Avatar name={r.name} size={34} />
+          <span style={{ flex: 1, fontSize: 14 }}>{r.name}</span>
+          <span className="muted" style={{ fontSize: 12.5 }}>{r.winRate}% · PF {r.profitFactor} · {r.trades} ops</span>
+        </div>
+      ))}
+      {!loading && isTraders && rows.length > 0 && <div className="muted" style={{ fontSize: 11, marginTop: 10 }}>{L('Rendimiento histórico real (90 días). No es promesa de resultados.', 'Real historical performance (90 days). Not a promise of results.')}</div>}
     </div>
   );
 }
@@ -678,7 +727,13 @@ function Tiers({ products, purchases, onBuy, L }: any) {
             <div key={p.id} className="sk-card" style={{ margin: 0, background: 'var(--bg2)' }}>
               <div style={{ fontWeight: 700, fontSize: 15 }}>{p.name}</div>
               {p.description && <div className="muted" style={{ fontSize: 12.5, margin: '4px 0 8px' }}>{p.description}</div>}
-              <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--gold)', marginBottom: 10 }}>{priceLabel(p, L)}</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--gold)', marginBottom: 8 }}>{priceLabel(p, L)}</div>
+              {(p.perks?.copy || p.perks?.guardian) && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 10 }}>
+                  {p.perks?.copy && <span style={{ fontSize: 12, color: 'var(--soft-green)' }}>✓ {L('Copy trading del mentor', 'Mentor copy trading')}</span>}
+                  {p.perks?.guardian && <span style={{ fontSize: 12, color: 'var(--soft-green)' }}>✓ Onyx Guardian</span>}
+                </div>
+              )}
               {owned ? <span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--green) 15%,transparent)', color: 'var(--soft-green)' }}>✓ {L('Ya lo tienes', 'You have it')}</span>
                 : <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => onBuy(p.id)}>{L('Desbloquear', 'Unlock')}</button>}
             </div>
@@ -930,12 +985,13 @@ function MentorPayments({ modules, L }: { modules: any[]; L: (a: string, b: stri
   const [conn, setConn] = useState<any>(null);
   const [prods, setProds] = useState<any[]>([]);
   const [earn, setEarn] = useState<any>(null);
+  const [ents, setEnts] = useState<any[]>([]);
   const [busy, setBusy] = useState('');
   const [form, setForm] = useState<any>(null);
 
   async function load() {
     const [c, p] = await Promise.all([fetch('/api/academy/connect').then((r) => r.json()).catch(() => ({})), fetch('/api/academy/products').then((r) => r.json()).catch(() => ({}))]);
-    setConn(c); setProds(p.products || []); setEarn(p.earnings || null);
+    setConn(c); setProds(p.products || []); setEarn(p.earnings || null); setEnts(p.entitlements || []);
   }
   useEffect(() => { load(); }, []);
   async function connect() { setBusy('connect'); const r = await fetch('/api/academy/connect', { method: 'POST' }); const j = await r.json(); if (j.url) window.location.href = j.url; else { setBusy(''); alert(L('No se pudo conectar Stripe.', 'Could not connect Stripe.')); } }
@@ -973,6 +1029,24 @@ function MentorPayments({ modules, L }: { modules: any[]; L: (a: string, b: stri
         </div>
         {form && <TierForm form={form} setForm={setForm} modules={modules} busy={busy === 'prod'} onSave={saveProd} onCancel={() => setForm(null)} L={L} />}
       </div>
+
+      {ents.length > 0 && (
+        <div className="sk-card">
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 6 }}><span className="card-ic"><OnyxIcon name="guardian" size={16} /></span> {L('Accesos a dar (Copy / Guardian)', 'Access to grant (Copy / Guardian)')}</h3>
+          <p className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>{L('Estos alumnos compraron un nivel con extras. Dales el acceso manualmente (Copy trading / Guardian) desde sus módulos — por seguridad no se activa solo.', 'These students bought a tier with perks. Grant them access manually (Copy trading / Guardian) — for safety it is not auto-enabled.')}</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {ents.map((e: any, i: number) => (
+              <div key={i} className="row between" style={{ background: 'var(--bg2)', borderRadius: 8, padding: '9px 12px', fontSize: 13 }}>
+                <span>{e.name} <span className="muted">· {e.tier}</span></span>
+                <span className="row" style={{ gap: 6 }}>
+                  {e.perks?.copy && <span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--brand) 15%,transparent)', color: 'var(--soft-brand)' }}>Copy</span>}
+                  {e.perks?.guardian && <span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--green) 15%,transparent)', color: 'var(--soft-green)' }}>Guardian</span>}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </>
   );
 }
@@ -999,6 +1073,12 @@ function TierForm({ form, setForm, modules, busy, onSave, onCancel, L }: any) {
           <label className="row" style={{ gap: 8, fontSize: 13, marginBottom: 6 }}><input type="radio" checked={grantsAll} onChange={() => set('grants', 'all')} style={{ width: 'auto', margin: 0 }} /> {L('Todas las aulas', 'All classrooms')}</label>
           <label className="row" style={{ gap: 8, fontSize: 13 }}><input type="radio" checked={!grantsAll} onChange={() => set('grants', [])} style={{ width: 'auto', margin: 0 }} /> {L('Aulas concretas', 'Specific classrooms')}</label>
           {!grantsAll && <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8, paddingLeft: 22 }}>{(modules || []).map((m: any) => <label key={m.id} className="row" style={{ gap: 8, fontSize: 13 }}><input type="checkbox" checked={grantIds.includes(m.id)} onChange={() => toggleMod(m.id)} style={{ width: 'auto', margin: 0 }} /> {m.title}</label>)}{(modules || []).length === 0 && <span className="muted" style={{ fontSize: 12 }}>{L('Primero crea aulas.', 'First create classrooms.')}</span>}</div>}
+        </div>
+        <div>
+          <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{L('Extras incluidos (opcional)', 'Included perks (optional)')}</div>
+          <label className="row" style={{ gap: 8, fontSize: 13, marginBottom: 4 }}><input type="checkbox" checked={!!form.perks?.copy} onChange={(e) => set('perks', { ...(form.perks || {}), copy: e.target.checked })} style={{ width: 'auto', margin: 0 }} /> {L('Copy trading del mentor', 'Mentor copy trading')}</label>
+          <label className="row" style={{ gap: 8, fontSize: 13 }}><input type="checkbox" checked={!!form.perks?.guardian} onChange={(e) => set('perks', { ...(form.perks || {}), guardian: e.target.checked })} style={{ width: 'auto', margin: 0 }} /> Onyx Guardian</label>
+          <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{L('Se muestran al alumno como incluidos; tú das el acceso desde la lista de abajo (por seguridad no se activa solo).', 'Shown to the student as included; you grant access from the list below (not auto-enabled, for safety).')}</div>
         </div>
         <label className="row" style={{ gap: 8, fontSize: 13 }}><input type="checkbox" checked={form.active !== false} onChange={(e) => set('active', e.target.checked)} style={{ width: 'auto', margin: 0 }} /> {L('Activo (visible para alumnos)', 'Active (visible to students)')}</label>
       </div>

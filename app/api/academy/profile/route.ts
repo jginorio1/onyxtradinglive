@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
-import { getMentor, isEnrolled, memberProfile } from '@/lib/academy';
+import { getMentor, isEnrolled, memberProfile, setShareStats } from '@/lib/academy';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-// GET · ?m=mentorId&u=userId → perfil de un miembro (nivel, puntos, actividad).
-// Si no se pasa u, devuelve el propio perfil.
+// GET · ?m=mentorId&u=userId → perfil de un miembro (nivel, puntos, actividad,
+// track record verificado si lo comparte). Sin u → el propio perfil.
 export async function GET(req: Request) {
   const sb = createSupabaseServer();
   const { data: { user } } = await sb.auth.getUser();
@@ -17,5 +17,15 @@ export async function GET(req: Request) {
   const mrow = await getMentor(user.id);
   const allowed = (mrow && mrow.user_id === m) || (await isEnrolled(m, user.id));
   if (!allowed) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
-  return NextResponse.json({ profile: await memberProfile(m, u) });
+  return NextResponse.json({ profile: await memberProfile(m, u, u === user.id) });
+}
+
+// POST · { share: bool } → activar/desactivar compartir mi track record.
+export async function POST(req: Request) {
+  const sb = createSupabaseServer();
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'no autorizado' }, { status: 401 });
+  const b = await req.json().catch(() => ({}));
+  const on = await setShareStats(user.id, !!b.share);
+  return NextResponse.json({ ok: true, share: on });
 }

@@ -1236,3 +1236,32 @@ comisión de Onyx (application fee) queda limpia. (Antes lo pagaba la plataforma
 
 **Recuerda:** el mentor necesita `capabilities.academy = true`. Bucket `academy` público
 obligatorio para las portadas (lo crea el SQL v2 o créalo a mano en Storage).
+
+### 31 · Onyx Academy — Traders verificados + perks de nivel (Copy/Guardian)
+
+Lo que Skool no puede: track record REAL dentro de la comunidad.
+
+**SQL (Supabase, tras academy_v2.sql):** `supabase/academy_v3.sql`
+- `profiles.academy_share_stats` (opt-in para mostrar tu track record).
+- `academy_products.perks` (extras que incluye un nivel: `{copy, guardian}`).
+
+**Traders verificados (opt-in, sin promesas):**
+- En su **perfil**, el usuario activa "Mostrar mi track record verificado". A partir
+  de ahí (con ≥10 operaciones en 90 días) su perfil muestra **win rate, profit factor
+  y nº de operaciones**, con sello "Verificado por Onyx". Se calcula desde sus `trades`
+  reales (`lib/stats.computeStats`). NO se expone dinero de nadie y se etiqueta como
+  "rendimiento histórico, no promesa de resultados".
+- Nuevo modo **"Traders"** en el Ranking: ordena por profit factor a quienes comparten.
+- APIs: `GET /api/academy/profile` (incluye `verified`), `POST` para el toggle;
+  `GET /api/academy?m=..&board=traders`.
+
+**Perks de nivel (Copy / Guardian):**
+- Al crear un nivel, el mentor marca si **incluye Copy trading** y/o **Onyx Guardian**.
+  El alumno lo ve como incluido en la tarjeta del nivel.
+- Por **seguridad, NO se activa solo** (mueve dinero/ejecución real). El mentor ve en
+  **Cobros → "Accesos a dar"** la lista de quién compró cada perk, para concederlo a
+  mano desde Copy/Guardian.
+- API: `academy_products.perks` en products; `entitlements` en `GET /api/academy/products`.
+
+Sin nada extra que configurar aparte del SQL. Los stats salen de las operaciones que ya
+sincroniza el trader en Onyx.

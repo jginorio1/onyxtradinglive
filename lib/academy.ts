@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { computeStats } from '@/lib/stats';
 import crypto from 'crypto';
 
 // ============================================================
@@ -406,9 +407,58 @@ export async function dmSend(mentorId: string, fromId: string, toId: string, bod
 }
 
 // ============================================================
+// Traders verificados · track record REAL desde Onyx (opt-in y sin promesas).
+// Solo métricas de ratio (win rate, profit factor, nº operaciones). No exponemos
+// el $ de nadie. El usuario decide compartirlo (profiles.academy_share_stats).
+// ============================================================
+const VERIFIED_DAYS = 90;
+const VERIFIED_MIN_TRADES = 10;
+
+async function rawUserStats(userId: string, days = VERIFIED_DAYS) {
+  const { data: accs } = await supabaseAdmin.from('trading_accounts').select('id').eq('user_id', userId);
+  const ids = (accs || []).map((a: any) => a.id);
+  if (!ids.length) return { trades: 0, winRate: 0, profitFactor: 0 };
+  const since = new Date(Date.now() - days * 864e5).toISOString();
+  const { data: trades } = await supabaseAdmin.from('trades').select('close_time,net_profit,profit,symbol,side,volume')
+    .in('account_id', ids).gte('close_time', since).order('close_time', { ascending: false }).limit(5000);
+  const norm = (trades || []).map((t: any) => ({ symbol: t.symbol, side: t.side, volume: t.volume, close_time: t.close_time, net_profit: Number(t.net_profit ?? t.profit ?? 0) || 0 }));
+  const s = computeStats(norm);
+  return { trades: s.trades, winRate: Math.round(s.winRate), profitFactor: Math.round(s.profitFactor * 100) / 100 };
+}
+
+// Devuelve el track record de un usuario si lo comparte (o si es él mismo, con `self`).
+export async function verifiedStats(userId: string, self = false) {
+  const { data: prof } = await supabaseAdmin.from('profiles').select('academy_share_stats').eq('id', userId).maybeSingle();
+  const shared = !!(prof as any)?.academy_share_stats;
+  if (!shared && !self) return { shared: false };
+  const st = await rawUserStats(userId);
+  return { shared, self, days: VERIFIED_DAYS, hasData: st.trades >= VERIFIED_MIN_TRADES, ...st };
+}
+export async function setShareStats(userId: string, on: boolean) {
+  await supabaseAdmin.from('profiles').update({ academy_share_stats: !!on }).eq('id', userId);
+  return !!on;
+}
+// Ranking de traders (rendimiento histórico, no promesa). Solo quienes comparten y
+// tienen suficientes operaciones. Ordenado por profit factor.
+export async function tradersBoard(mentorId: string, limit = 30) {
+  const { data: enr } = await supabaseAdmin.from('academy_enrollments').select('student_id').eq('mentor_id', mentorId).eq('status', 'active');
+  const ids = new Set<string>((enr || []).map((e: any) => e.student_id)); ids.add(mentorId);
+  const idArr = Array.from(ids).slice(0, 200);
+  const { data: profs } = await supabaseAdmin.from('profiles').select('id,full_name,email,academy_share_stats').in('id', idArr);
+  const sharers = (profs || []).filter((p: any) => p.academy_share_stats);
+  const rows: any[] = [];
+  for (const p of sharers) {
+    const st = await rawUserStats(p.id);
+    if (st.trades >= VERIFIED_MIN_TRADES) rows.push({ user_id: p.id, name: p.full_name || (p.email || '').split('@')[0] || 'Trader', ...st });
+  }
+  rows.sort((a, b) => b.profitFactor - a.profitFactor || b.winRate - a.winRate);
+  return rows.slice(0, limit).map((r, i) => ({ rank: i + 1, ...r }));
+}
+
+// ============================================================
 // Perfil de miembro: nivel, puntos, contribuciones y mapa de actividad.
 // ============================================================
-export async function memberProfile(mentorId: string, userId: string) {
+export async function memberProfile(mentorId: string, userId: string, self = false) {
   const [{ data: prof }, { data: pts }, { data: posts }, { data: comments }] = await Promise.all([
     supabaseAdmin.from('profiles').select('full_name,email,created_at').eq('id', userId).maybeSingle(),
     supabaseAdmin.from('academy_points').select('points').eq('mentor_id', mentorId).eq('user_id', userId).maybeSingle(),
@@ -422,10 +472,11 @@ export async function memberProfile(mentorId: string, userId: string) {
   (posts || []).forEach((p: any) => add(p.created_at));
   (comments || []).forEach((c: any) => add(c.created_at));
   const contributions = (posts || []).length + (comments || []).length;
+  const verified = await verifiedStats(userId, !!self);
   return {
     user_id: userId,
     name: (prof as any)?.full_name || ((prof as any)?.email || '').split('@')[0] || 'Trader',
-    points, level: levelFor(points), contributions, activity: days,
+    points, level: levelFor(points), contributions, activity: days, verified,
   };
 }
 

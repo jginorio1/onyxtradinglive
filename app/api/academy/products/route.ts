@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getMentor } from '@/lib/academy';
-import { listProducts, saveProduct, deleteProduct, mentorEarnings } from '@/lib/academyPay';
+import { listProducts, saveProduct, deleteProduct, mentorEarnings, entitlements } from '@/lib/academyPay';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -23,8 +23,8 @@ export async function GET(req: Request) {
   if (m) return NextResponse.json({ products: await listProducts(m, true) });
   const { user, caps } = await me();
   if (!user || !caps?.academy) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
-  const [products, earnings] = await Promise.all([listProducts(user.id, false), mentorEarnings(user.id)]);
-  return NextResponse.json({ products, earnings });
+  const [products, earnings, ents] = await Promise.all([listProducts(user.id, false), mentorEarnings(user.id), entitlements(user.id)]);
+  return NextResponse.json({ products, earnings, entitlements: ents });
 }
 
 // POST · crear/editar/borrar un nivel (solo el mentor).

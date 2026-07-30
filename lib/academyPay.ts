@@ -39,6 +39,7 @@ export async function saveProduct(mentorId: string, b: any) {
     price_cents: Math.max(0, Math.round(Number(b.price_cents) || 0)),
     currency: (b.currency || 'usd').toLowerCase().slice(0, 3),
     grants: b.grants === 'all' || !Array.isArray(b.grants) ? 'all' : b.grants.map((x: any) => String(x)).slice(0, 100),
+    perks: { copy: !!(b.perks?.copy), guardian: !!(b.perks?.guardian) },
     active: b.active !== false,
     position: Number(b.position) || 0,
   };
@@ -69,6 +70,34 @@ export async function accessibleModules(studentId: string, mentorId: string): Pr
     if (Array.isArray(p.grants)) p.grants.forEach((m: string) => ids.add(m));
   }
   return { all, ids };
+}
+
+// Perks (extras) que tiene un alumno por sus compras activas (unión).
+export async function perksFor(studentId: string, mentorId: string) {
+  const buys = await studentPurchases(studentId, mentorId);
+  if (!buys.length) return { copy: false, guardian: false };
+  const { data: prods } = await supabaseAdmin.from('academy_products').select('perks').in('id', buys.map((b) => b.product_id));
+  let copy = false, guardian = false;
+  for (const p of (prods || []) as any[]) { if (p.perks?.copy) copy = true; if (p.perks?.guardian) guardian = true; }
+  return { copy, guardian };
+}
+
+// Para el mentor: quién compró un nivel con extras (para darles el acceso a mano).
+// NO ejecuta copy/guardian automáticamente (seguridad): solo lista.
+export async function entitlements(mentorId: string) {
+  const { data: prods } = await supabaseAdmin.from('academy_products').select('id,name,perks').eq('mentor_id', mentorId);
+  const withPerks = (prods || []).filter((p: any) => p.perks?.copy || p.perks?.guardian);
+  if (!withPerks.length) return [];
+  const { data: buys } = await supabaseAdmin.from('academy_purchases').select('student_id,product_id').eq('mentor_id', mentorId).eq('status', 'active').in('product_id', withPerks.map((p: any) => p.id));
+  const ids = Array.from(new Set((buys || []).map((b: any) => b.student_id)));
+  if (!ids.length) return [];
+  const { data: profs } = await supabaseAdmin.from('profiles').select('id,full_name,email').in('id', ids);
+  const nameOf: Record<string, any> = {}; (profs || []).forEach((p: any) => { nameOf[p.id] = p; });
+  const prodOf: Record<string, any> = {}; withPerks.forEach((p: any) => { prodOf[p.id] = p; });
+  return (buys || []).map((b: any) => ({
+    student_id: b.student_id, name: nameOf[b.student_id]?.full_name || (nameOf[b.student_id]?.email || '').split('@')[0] || 'Alumno',
+    tier: prodOf[b.product_id]?.name || '', perks: prodOf[b.product_id]?.perks || {},
+  }));
 }
 
 // Registra/actualiza una compra y anota la comisión de Onyx.
