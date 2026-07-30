@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendEmail } from '@/lib/mail';
+import { pushClassSoon } from '@/lib/academyPush';
 
 // ============================================================
 // Campañas de email del mentor + automatizaciones de ciclo de vida.
@@ -134,6 +135,8 @@ export async function runAutomations() {
       const lead = Math.max(5, Math.min(1440, Number(t.class_reminder.lead_min) || 60));
       const { data: evs } = await supabaseAdmin.from('academy_events').select('id,title,starts_at,join_url').eq('mentor_id', m.user_id).gte('starts_at', new Date(now).toISOString()).lte('starts_at', new Date(now + lead * 60000).toISOString());
       for (const ev of (evs || []) as any[]) {
+        // Push a todos los alumnos (una vez por evento) además del correo.
+        if (await once(m.user_id, m.user_id, 'class_push', ev.id)) pushClassSoon(m.user_id, ev.title, ev.join_url || undefined);
         const list = await studentsWithEmail(m.user_id);
         for (const s of list) {
           if (await once(m.user_id, s.id, 'class_reminder', ev.id)) {

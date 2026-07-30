@@ -3,6 +3,7 @@ import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { ensureMentor, getMentor, updateMentor, getContent, saveModule, deleteModule, saveLesson, deleteLesson, roster, listPosts, addPost, deletePost, applyTemplate, listEvents, saveEvent, deleteEvent } from '@/lib/academy';
 import { listCollaborators, addCollaborator, removeCollaborator } from '@/lib/academyCollab';
+import { pushAnnouncement } from '@/lib/academyPush';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -54,7 +55,12 @@ export async function POST(req: Request) {
       case 'module_delete': await deleteModule(mid, String(b.id)); return NextResponse.json({ ok: true });
       case 'lesson': return NextResponse.json({ ok: true, ...(await saveLesson(mid, b)) });
       case 'lesson_delete': await deleteLesson(mid, String(b.id)); return NextResponse.json({ ok: true });
-      case 'post': await addPost(mid, user.id, String(b.body || ''), !!b.pinned, b.image_url ? String(b.image_url) : undefined, b.scheduled_at ? String(b.scheduled_at) : undefined); return NextResponse.json({ ok: true });
+      case 'post': {
+        await addPost(mid, user.id, String(b.body || ''), !!b.pinned, b.image_url ? String(b.image_url) : undefined, b.scheduled_at ? String(b.scheduled_at) : undefined);
+        // Anuncio fijado y no programado → push a los alumnos.
+        if (b.pinned && !b.scheduled_at) pushAnnouncement(mid, String(b.body || ''));
+        return NextResponse.json({ ok: true });
+      }
       case 'post_delete': await deletePost(mid, String(b.id)); return NextResponse.json({ ok: true });
       case 'template': return NextResponse.json({ ok: true, ...(await applyTemplate(mid, !!b.force, b.lang === 'en' ? 'en' : 'es')) });
       case 'event': return NextResponse.json({ ok: true, ...(await saveEvent(mid, b)) });

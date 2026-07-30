@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { getMentor, isEnrolled, dmThreads, dmWith, dmSend } from '@/lib/academy';
 import { isStaff } from '@/lib/academyCollab';
+import { pushDm } from '@/lib/academyPush';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -40,5 +41,6 @@ export async function POST(req: Request) {
   const senderStaff = await isStaff(m, user.id);
   if (!senderStaff && !(await isStaff(m, to))) return NextResponse.json({ error: 'only_staff' }, { status: 403 });
   const msg = await dmSend(m, user.id, to, String(b.body || ''), b.image_url ? String(b.image_url) : undefined);
+  pushDm(m, user.id, to, String(b.body || '') || (b.image_url ? '📷' : ''));
   return NextResponse.json({ ok: true, message: msg });
 }

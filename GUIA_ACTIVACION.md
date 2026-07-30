@@ -1598,3 +1598,17 @@ inactivos y cancelados; gráfico de **altas por semana**; y **lista de alumnos e
 (segmento Inactivos). "Activo" = entró a la academia o publicó/comentó.
 
 **Requisitos:** solo el SQL v14.
+
+### 46 · Onyx Academy — Notificaciones push de la academia (Fase 13)
+
+Sin SQL nuevo (reutiliza la infra de web-push que ya existe: PWA + VAPID + push_subscriptions).
+Se enganchan los eventos de la academia a notificaciones push:
+- **Anuncio fijado del mentor** → push a todos los alumnos.
+- **Mensaje privado (DM)** → push al destinatario.
+- **Clase en vivo próxima** → push a los alumnos (junto al correo, desde el cron).
+- **Logro subido** → push al mentor ("por aprobar"); **logro aprobado** → push al alumno.
+
+**Requisitos:** las mismas claves VAPID de siempre en Vercel (VAPID_PUBLIC_KEY,
+VAPID_PRIVATE_KEY, VAPID_SUBJECT). Si faltan, todo queda desactivado sin romper nada.
+El alumno/mentor debe haber instalado la PWA y activado las notificaciones (interruptor ya
+existente en la app). El deep-link abre la academia correcta.
