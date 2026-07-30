@@ -22,8 +22,20 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: 'no autorizado' }, { status: 401 });
   if (!caps?.academy) return NextResponse.json({ error: 'no_academy', code: 'no_academy' }, { status: 403 });
   const mentor = await ensureMentor(user.id);
-  const [content, rost, feed, events, collaborators] = await Promise.all([getContent(mentor.user_id, false), roster(mentor.user_id), listPosts(mentor.user_id, undefined, true), listEvents(mentor.user_id), listCollaborators(mentor.user_id)]);
-  return NextResponse.json({ mentor, content, roster: rost, feed, events, collaborators });
+  const [content, rost, feed, events, collaborators, prodCount] = await Promise.all([getContent(mentor.user_id, false), roster(mentor.user_id), listPosts(mentor.user_id, undefined, true), listEvents(mentor.user_id), listCollaborators(mentor.user_id),
+    supabaseAdmin.from('academy_products').select('id', { count: 'exact', head: true }).eq('mentor_id', mentor.user_id).eq('active', true)]);
+  // Estado de onboarding (5-6 pasos) para la lista de configuración del mentor.
+  const onboarding = {
+    dismissed: !!(mentor as any).onboarding_dismissed,
+    logo: !!(mentor as any).logo_url,
+    cover: !!(mentor as any).cover_url,
+    content: (content || []).length > 0,
+    monetize: ((prodCount.count || 0) > 0) || ((mentor as any).membership_price_cents || 0) > 0,
+    charges: !!(mentor as any).charges_enabled,
+    liveClass: (events || []).length > 0,
+    branding: !!((mentor as any).brand_info || Object.keys((mentor as any).socials || {}).length),
+  };
+  return NextResponse.json({ mentor, content, roster: rost, feed, events, collaborators, onboarding });
 }
 
 // POST · gestión del contenido y la comunidad (solo el mentor).
@@ -49,6 +61,7 @@ export async function POST(req: Request) {
       case 'event_delete': await deleteEvent(mid, String(b.id)); return NextResponse.json({ ok: true });
       case 'collab_add': return NextResponse.json(await addCollaborator(mid, String(b.user_id), String(b.role || 'Colaborador'), b.perms || {}));
       case 'collab_remove': await removeCollaborator(mid, String(b.user_id)); return NextResponse.json({ ok: true });
+      case 'onboarding_dismiss': await supabaseAdmin.from('mentors').update({ onboarding_dismissed: !!b.on }).eq('user_id', mid); return NextResponse.json({ ok: true });
       default: return NextResponse.json({ error: 'bad_action' }, { status: 400 });
     }
   } catch (e: any) { return NextResponse.json({ error: e?.message || 'error' }, { status: 500 }); }

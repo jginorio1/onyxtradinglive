@@ -1581,3 +1581,20 @@ Sin SQL nuevo. Cambios de UI/CSS:
 - **Tarjeta del add-on de auditoría** ("Your plan audit"): ahora **palpita/brilla** para llamar la
   atención (borde verde + halo animado).
 - **Países**: se añadieron los que faltaban — **Puerto Rico**, Hong Kong, Kosovo, Macao.
+
+### 45 · Onyx Academy — Onboarding del mentor + Analíticas de retención (Fase 12)
+
+**SQL (Supabase, tras academy_v13.sql):** `supabase/academy_v14.sql`
+- `mentors.onboarding_dismissed` (la retención usa columnas ya existentes).
+
+**Onboarding del mentor (5 min):** al entrar al panel aparece una lista de configuración con
+**barra de progreso** que se marca sola con datos reales: crear aula, subir logo, portada,
+membresía/nivel, conectar Stripe, primera clase en vivo, branding. Cada paso lleva al lugar
+correcto con un clic. Al completar todo, se puede ocultar.
+
+**Analíticas de retención (nueva pestaña "Retención"):** retención 30d (%), activos, en riesgo,
+inactivos y cancelados; gráfico de **altas por semana**; y **lista de alumnos en riesgo**
+(sin actividad 14+ días) con botón **"Enviar correo de reactivación"** que lleva a Correos
+(segmento Inactivos). "Activo" = entró a la academia o publicó/comentó.
+
+**Requisitos:** solo el SQL v14.

@@ -1242,7 +1242,7 @@ function Tiers({ products, purchases, onBuy, L }: any) {
 function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: () => void; openStudent: (mid: string) => void }) {
   const L = (a: string, b: string) => (lang === 'en' ? b : a);
   const [d, setD] = useState<any>(null);
-  const [tab, setTab] = useState<'cursos' | 'envivo' | 'cobros' | 'alumnos' | 'auditoria' | 'comunidad' | 'correos' | 'ajustes'>('cursos');
+  const [tab, setTab] = useState<'cursos' | 'envivo' | 'cobros' | 'alumnos' | 'auditoria' | 'retencion' | 'comunidad' | 'correos' | 'ajustes'>('cursos');
   const [newMod, setNewMod] = useState('');
   const [lessonForm, setLessonForm] = useState<any>(null);
   const [modForm, setModForm] = useState<any>(null);
@@ -1273,6 +1273,8 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
         </div>
       </div>
 
+      {/* Onboarding del mentor: lista de configuración con progreso (5 min) */}
+      <OnboardingCard d={d} L={L} api={api} goTab={setTab} openStudent={openStudent} />
       {/* Wizard de configuración cuando la academia está vacía */}
       {empty && <SetupWizard d={d} L={L} api={api} setModForm={setModForm} setEvForm={setEvForm} goTab={setTab} />}
 
@@ -1294,7 +1296,7 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
       </div>
 
       <div className="sk-tabs big">
-        {([['cursos', 'graduation', L('Aulas', 'Classroom')], ['envivo', 'calendar', L('En vivo', 'Live')], ['cobros', 'coins', L('Cobros', 'Payments')], ['alumnos', 'users', L('Alumnos', 'Students')], ['auditoria', 'guardian', L('Auditoría', 'Audit')], ['comunidad', 'chat', L('Comunidad', 'Community')], ['correos', 'mail', L('Correos', 'Emails')], ['ajustes', 'settings', L('Ajustes', 'Settings')]] as any[]).map(([k, ic, lbl]) => (
+        {([['cursos', 'graduation', L('Aulas', 'Classroom')], ['envivo', 'calendar', L('En vivo', 'Live')], ['cobros', 'coins', L('Cobros', 'Payments')], ['alumnos', 'users', L('Alumnos', 'Students')], ['auditoria', 'guardian', L('Auditoría', 'Audit')], ['retencion', 'trophy', L('Retención', 'Retention')], ['comunidad', 'chat', L('Comunidad', 'Community')], ['correos', 'mail', L('Correos', 'Emails')], ['ajustes', 'settings', L('Ajustes', 'Settings')]] as any[]).map(([k, ic, lbl]) => (
           <button key={k} className={'sk-tab' + (tab === k ? ' on' : '')} onClick={() => setTab(k)}><OnyxIcon name={ic} size={16} /> {lbl}</button>
         ))}
       </div>
@@ -1376,6 +1378,8 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
       )}
 
       {tab === 'auditoria' && <MentorAudit mentorId={d.mentor.user_id} lang={lang} L={L} />}
+
+      {tab === 'retencion' && <RetentionView lang={lang} L={L} goEmails={() => setTab('correos')} />}
 
       {tab === 'comunidad' && (<>
         <MentorDigest L={L} />
@@ -1778,6 +1782,104 @@ function CollabManager({ d, api, L }: any) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// Onboarding del mentor: checklist con barra de progreso. Se autocompleta con datos reales.
+function OnboardingCard({ d, L, api, goTab }: any) {
+  const o = d.onboarding || {};
+  if (o.dismissed) return null;
+  const steps: [boolean, string, () => void][] = [
+    [o.content, L('Crea tu primera aula (o usa la plantilla)', 'Create your first classroom (or use the template)'), () => goTab('cursos')],
+    [o.logo, L('Sube tu logo o foto', 'Upload your logo or photo'), () => goTab('ajustes')],
+    [o.cover, L('Sube la portada de tu comunidad', 'Upload your community cover'), () => goTab('ajustes')],
+    [o.monetize, L('Crea tu membresía o un nivel de pago', 'Create your membership or a paid tier'), () => goTab('cobros')],
+    [o.charges, L('Conecta Stripe para cobrar', 'Connect Stripe to get paid'), () => goTab('cobros')],
+    [o.liveClass, L('Programa tu primera clase en vivo', 'Schedule your first live class'), () => goTab('envivo')],
+    [o.branding, L('Configura tu branding y redes (para el AI)', 'Set your branding and socials (for the AI)'), () => goTab('ajustes')],
+  ];
+  const done = steps.filter((s) => s[0]).length;
+  const pct = Math.round((done / steps.length) * 100);
+  const allDone = done === steps.length;
+  return (
+    <div className="sk-card" style={{ border: '1px solid color-mix(in srgb,var(--brand) 40%,transparent)' }}>
+      <div className="row between" style={{ alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
+        <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 9 }}><span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="graduation" size={18} /></span> {allDone ? L('¡Tu academia está lista! 🎉', 'Your academy is ready! 🎉') : L('Configura tu academia', 'Set up your academy')}</h3>
+        <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+          <span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--brand) 16%,transparent)', color: 'var(--soft-brand,var(--brand))' }}>{done}/{steps.length}</span>
+          {allDone && <button className="btn btn-ghost" style={{ fontSize: 12, padding: '3px 10px' }} onClick={() => api({ action: 'onboarding_dismiss', on: true })}>{L('Ocultar', 'Dismiss')}</button>}
+        </div>
+      </div>
+      <div className="statbar" style={{ ['--ac' as any]: 'var(--brand)', marginBottom: 12 }}><i style={{ width: pct + '%' }} /></div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {steps.map(([ok, label, go], i) => (
+          <button key={i} className="row between" onClick={go} style={{ alignItems: 'center', gap: 10, background: 'var(--bg2)', border: 'none', borderRadius: 8, padding: '9px 11px', cursor: 'pointer', textAlign: 'left', opacity: ok ? .7 : 1 }}>
+            <span className="row" style={{ gap: 10, alignItems: 'center', minWidth: 0 }}>
+              <span style={{ width: 20, height: 20, borderRadius: '50%', flex: 'none', display: 'grid', placeItems: 'center', fontSize: 12, background: ok ? 'var(--green)' : 'color-mix(in srgb,var(--brand) 22%,transparent)', color: ok ? '#04121a' : 'var(--soft-brand,var(--brand))' }}>{ok ? '✓' : i + 1}</span>
+              <span style={{ fontSize: 13.5, textDecoration: ok ? 'line-through' : 'none' }}>{label}</span>
+            </span>
+            {!ok && <span style={{ fontSize: 12, color: 'var(--brand)' }}>{L('Ir →', 'Go →')}</span>}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Analíticas de retención (mentor).
+function RetentionView({ lang, L, goEmails }: any) {
+  const [d, setD] = useState<any>(null);
+  useEffect(() => { fetch('/api/academy/retention').then((r) => r.json()).then(setD); }, []);
+  if (!d) return <div className="sk-card muted">…</div>;
+  if (d.error || !d.total) return <div className="sk-card muted">{L('Cuando tengas alumnos verás aquí su retención y quiénes están en riesgo.', 'Once you have students you’ll see retention and who’s at risk here.')}</div>;
+  const maxW = Math.max(1, ...(d.newByWeek || []).map((w: any) => w.n));
+  const daysAgo = (iso: string | null) => iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 864e5) : null;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(130px,1fr))', gap: 10 }}>
+        {[[L('Retención 30d', '30d retention'), d.retention30 + '%', 'guardian', 'var(--soft-green)'],
+          [L('Activos 30d', 'Active 30d'), String(d.active30), 'users', 'var(--soft-green)'],
+          [L('En riesgo', 'At risk'), String(d.atRisk.length), 'lock', '#EF9F27'],
+          [L('Inactivos', 'Inactive'), String(d.inactive30), 'lock', 'var(--red)'],
+          [L('Cancelados 30d', 'Churn 30d'), String(d.churn30), 'coins', 'var(--red)']].map(([lbl, v, ic, col]: any) => (
+          <div key={lbl} className="statcard"><div className="statcard-ic" style={{ color: col }}><OnyxIcon name={ic} /></div><div><div className="sc-lbl">{lbl}</div><div className="sc-val">{v}</div></div></div>
+        ))}
+      </div>
+
+      <div className="sk-card">
+        <div className="sk-sec-title" style={{ marginTop: 0 }}>{L('Altas por semana', 'New joins per week')}</div>
+        <div className="row" style={{ gap: 10, alignItems: 'flex-end', height: 90 }}>
+          {(d.newByWeek || []).map((w: any, i: number) => (
+            <div key={i} style={{ flex: 1, textAlign: 'center' }}>
+              <div style={{ height: 66, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}><div style={{ width: '70%', height: (w.n / maxW) * 66 + 'px', minHeight: w.n ? 6 : 2, background: w.n ? 'var(--grad)' : 'var(--line)', borderRadius: '6px 6px 0 0' }} /></div>
+              <div className="muted" style={{ fontSize: 10.5, marginTop: 4 }}>{w.label}</div>
+              <div style={{ fontSize: 12, fontWeight: 800 }}>{w.n}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="sk-card">
+        <div className="row between" style={{ marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
+          <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic" style={{ color: '#EF9F27' }}><OnyxIcon name="lock" size={16} /></span> {L('Alumnos en riesgo', 'At-risk students')} · {d.atRisk.length}</h3>
+          {d.atRisk.length > 0 && <button className="btn btn-primary" style={{ fontSize: 12.5 }} onClick={goEmails}><OnyxIcon name="mail" size={14} /> {L('Enviar correo de reactivación', 'Send re-engagement email')}</button>}
+        </div>
+        <p className="muted" style={{ fontSize: 12, marginBottom: 10 }}>{L('Sin actividad en 14+ días. Escríbeles o mándales un correo al segmento "Inactivos".', 'No activity in 14+ days. Message them or email the "Inactive" segment.')}</p>
+        {d.atRisk.length === 0 ? <p className="muted" style={{ fontSize: 13 }}>{L('¡Nadie en riesgo ahora mismo! 🎉', 'Nobody at risk right now! 🎉')}</p> : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {d.atRisk.map((s: any) => {
+              const dd = daysAgo(s.lastActive);
+              return (
+                <div key={s.user_id} className="row between" style={{ background: 'var(--bg2)', borderRadius: 8, padding: '8px 12px', fontSize: 13, alignItems: 'center' }}>
+                  <div className="row" style={{ gap: 8, alignItems: 'center', minWidth: 0 }}><Avatar name={s.name} size={26} /><span>{s.name}</span></div>
+                  <span className="muted" style={{ fontSize: 12 }}>{dd == null ? L('nunca entró', 'never active') : L(`hace ${dd} días`, `${dd}d ago`)}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
