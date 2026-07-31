@@ -389,10 +389,10 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
 /* QR con marco blanco y halo de marca */
 .sk-qr-frame{background:#fff;border-radius:14px;padding:8px;display:grid;place-items:center;box-shadow:0 0 0 2px color-mix(in srgb,var(--brand) 55%,transparent),0 0 28px -2px color-mix(in srgb,var(--brand) 55%,transparent);}
 /* Botón de copiar "encendido" */
-.btn.sk-glow{border-color:var(--brand)!important;color:var(--soft-brand,var(--brand))!important;box-shadow:0 0 14px -2px color-mix(in srgb,var(--brand) 60%,transparent);}
-.btn.sk-glow:hover{box-shadow:0 0 20px 0 color-mix(in srgb,var(--brand) 70%,transparent);}
+.btn.sk-glow{border-color:var(--brand)!important;background:color-mix(in srgb,var(--brand) 16%,var(--card))!important;color:#fff!important;box-shadow:0 0 10px -3px color-mix(in srgb,var(--brand) 45%,transparent);}
+.btn.sk-glow:hover{box-shadow:0 0 16px -2px color-mix(in srgb,var(--brand) 60%,transparent);}
 /* Chip de código destacado */
-.sk-code{background:color-mix(in srgb,var(--brand) 18%,transparent);color:var(--soft-brand,var(--brand));font-weight:800;letter-spacing:.06em;padding:6px 12px;border-radius:9px;font-size:13px;box-shadow:0 0 12px -3px color-mix(in srgb,var(--brand) 55%,transparent);}
+.sk-code{background:color-mix(in srgb,var(--brand) 26%,var(--card));color:#fff;font-weight:700;letter-spacing:.08em;padding:6px 12px;border-radius:9px;font-size:13px;border:1px solid color-mix(in srgb,var(--brand) 55%,transparent);box-shadow:none;text-shadow:0 1px 2px rgba(0,0,0,.35);}
 /* Botones de compartir a redes */
 .sk-share{display:flex;gap:8px;flex-wrap:wrap;}
 .sk-share a{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:var(--bg2);border:1px solid var(--line);transition:.15s;}
@@ -416,7 +416,8 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
 .sk-like:hover{background:var(--card2);color:var(--tx);}
 .sk-like.on{color:var(--red);}
 .sk-chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px;background:color-mix(in srgb,var(--brand) 15%,transparent);color:var(--soft-brand);}
-.sk-course{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--card);cursor:pointer;transition:.15s;display:flex;flex-direction:column;text-align:left;padding:0;}
+.sk-course{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--card);cursor:pointer;transition:.15s;display:flex;flex-direction:column;text-align:left;padding:0;color:var(--tx);}
+.sk-course-body,.sk-course-body *{color:var(--tx);}
 .sk-course:hover{transform:translateY(-3px);box-shadow:0 12px 30px -8px color-mix(in srgb,var(--brand) 40%,transparent);border-color:color-mix(in srgb,var(--brand) 45%,transparent);}
 .sk-course-cover{height:120px;background-size:cover;background-position:center;position:relative;display:grid;place-items:center;}
 .sk-course-body{padding:13px 14px;}
@@ -433,8 +434,10 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
 
 /* ===== Onyx Academy v2 · live, bottom nav, heatmap, wizard ===== */
 .sk-tabs.big .sk-tab{font-size:15.5px;padding:13px 18px;}
-.sk-live{display:flex;align-items:center;gap:12px;border-radius:14px;padding:12px 16px;margin-bottom:14px;border:1px solid var(--line);background:linear-gradient(90deg,color-mix(in srgb,var(--brand) 14%,var(--card)),var(--card));}
-.sk-live.on{border-color:var(--red);background:linear-gradient(90deg,color-mix(in srgb,var(--red) 20%,var(--card)),var(--card));}
+.sk-live{display:flex;align-items:center;gap:12px;border-radius:14px;padding:12px 16px;margin-bottom:14px;text-align:center;border:1.5px solid color-mix(in srgb,var(--gold) 60%,transparent);background:linear-gradient(90deg,color-mix(in srgb,var(--gold) 12%,var(--card)),var(--card));box-shadow:0 0 16px -3px color-mix(in srgb,var(--gold) 55%,transparent);animation:skLiveGlow 2.4s ease-in-out infinite;}
+.sk-live.on{border-color:var(--red);background:linear-gradient(90deg,color-mix(in srgb,var(--red) 18%,var(--card)),var(--card));box-shadow:0 0 20px -2px color-mix(in srgb,var(--red) 60%,transparent);animation:skLiveGlowRed 1.6s ease-in-out infinite;}
+@keyframes skLiveGlow{0%,100%{box-shadow:0 0 12px -4px color-mix(in srgb,var(--gold) 45%,transparent);}50%{box-shadow:0 0 22px 0 color-mix(in srgb,var(--gold) 70%,transparent);}}
+@keyframes skLiveGlowRed{0%,100%{box-shadow:0 0 14px -3px color-mix(in srgb,var(--red) 50%,transparent);}50%{box-shadow:0 0 26px 2px color-mix(in srgb,var(--red) 80%,transparent);}}
 .sk-dot{width:12px;height:12px;border-radius:50%;background:var(--red);flex:none;box-shadow:0 0 0 0 rgba(255,80,80,.7);animation:skpulse 1.4s infinite;}
 @keyframes skpulse{0%{box-shadow:0 0 0 0 rgba(255,80,80,.7);}70%{box-shadow:0 0 0 12px rgba(255,80,80,0);}100%{box-shadow:0 0 0 0 rgba(255,80,80,0);}}
 .sk-count{font-variant-numeric:tabular-nums;font-weight:800;font-size:18px;letter-spacing:.5px;}

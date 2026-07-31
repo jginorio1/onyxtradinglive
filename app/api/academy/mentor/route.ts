@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { ensureMentor, getMentor, updateMentor, getContent, saveModule, deleteModule, saveLesson, deleteLesson, roster, listPosts, addPost, deletePost, applyTemplate, listEvents, saveEvent, deleteEvent } from '@/lib/academy';
+import { ensureMentor, getMentor, updateMentor, getContent, saveModule, deleteModule, saveLesson, deleteLesson, roster, listPosts, addPost, deletePost, applyTemplate, listEvents, saveEvent, deleteEvent, setStudentDisplayName, setStudentBanned, removeStudent } from '@/lib/academy';
 import { listCollaborators, addCollaborator, removeCollaborator } from '@/lib/academyCollab';
 import { pushAnnouncement } from '@/lib/academyPush';
 
@@ -65,6 +65,9 @@ export async function POST(req: Request) {
       case 'template': return NextResponse.json({ ok: true, ...(await applyTemplate(mid, !!b.force, b.lang === 'en' ? 'en' : 'es')) });
       case 'event': return NextResponse.json({ ok: true, ...(await saveEvent(mid, b)) });
       case 'event_delete': await deleteEvent(mid, String(b.id)); return NextResponse.json({ ok: true });
+      case 'student_name': await setStudentDisplayName(mid, String(b.student_id), String(b.name || '')); return NextResponse.json({ ok: true });
+      case 'student_ban': return NextResponse.json(await setStudentBanned(mid, String(b.student_id), !!b.banned));
+      case 'student_remove': return NextResponse.json(await removeStudent(mid, String(b.student_id)));
       case 'collab_add': return NextResponse.json(await addCollaborator(mid, String(b.user_id), String(b.role || 'Colaborador'), b.perms || {}));
       case 'collab_remove': await removeCollaborator(mid, String(b.user_id)); return NextResponse.json({ ok: true });
       case 'onboarding_dismiss': await supabaseAdmin.from('mentors').update({ onboarding_dismissed: !!b.on }).eq('user_id', mid); return NextResponse.json({ ok: true });

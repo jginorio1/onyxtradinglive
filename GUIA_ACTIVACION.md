@@ -1714,3 +1714,27 @@ Academy"** para la confianza. Los correos automáticos ya usaban el nombre de la
 mentor (`{academy}` + pie), no requieren cambio.
 
 **Requisitos:** correr `academy_v17.sql`. Nada nuevo en variables de entorno.
+
+### 51 · Onyx Academy — Ajustes visuales + control de alumnos + PDF solo lectura (Fase 17)
+
+**SQL (Supabase, tras academy_v17.sql):** `supabase/academy_v18.sql`
+- `academy_enrollments.display_name` (alias del alumno por academia).
+- `academy_lessons.pdf_download` (bool, default true).
+
+**Ajustes visuales:**
+- La franja de "Próxima clase en vivo / EN VIVO" ahora va **centrada** y con **borde que
+  alumbra** (ámbar cuando falta y rojo pulsante cuando está en vivo).
+- Los títulos de las aulas ya se leen claros sobre el fondo oscuro (antes salían en negro).
+- El **código del mentor** y el botón **Copiar** quedaron más definidos (menos brillo, texto
+  legible).
+
+**Control del mentor sobre el perfil del alumno (pestaña Alumnos):** cada alumno tiene botones
+para **corregir su nombre** (alias solo dentro de la academia; no toca su cuenta de Onyx),
+**banear/readmitir** (el baneado pierde acceso a la comunidad al instante y puede readmitirse),
+y **quitar** (borra su inscripción). El alias corregido se ve en miembros, ranking y publicaciones.
+
+**PDF solo lectura:** al subir/enlazar un PDF en una lección, el mentor decide con una casilla
+si el alumno **puede descargarlo** o no. Si lo desactiva, el visor muestra "Solo lectura" (sin
+botón de descarga y sin menú contextual sobre el documento).
+
+**Requisitos:** correr `academy_v18.sql`. Nada nuevo en variables de entorno.

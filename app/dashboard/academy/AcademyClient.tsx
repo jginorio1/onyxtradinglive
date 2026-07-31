@@ -408,7 +408,7 @@ function LiveBanner({ ev, lang }: { ev: any; lang: string }) {
   return (
     <div className={'sk-live' + (live ? ' on' : '')}>
       {live ? <span className="sk-dot" /> : <OnyxIcon name="calendar" size={18} />}
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
         <div style={{ fontWeight: 700, fontSize: 14 }}>
           {live ? <span style={{ color: 'var(--red)' }}>● {L('EN VIVO AHORA', 'LIVE NOW')}</span> : L('Próxima clase en vivo', 'Next live class')}
           {' · '}{ev.title}
@@ -900,7 +900,7 @@ function LessonView({ lesson, course, done, progress, onBack, onToggle, onPick, 
         {lesson.video_url && (emb
           ? <div style={{ position: 'relative', paddingTop: '56.25%', borderRadius: 12, overflow: 'hidden', marginBottom: 12 }}><iframe src={emb} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }} allow="autoplay; fullscreen; picture-in-picture" allowFullScreen /></div>
           : <video src={lesson.video_url} controls style={{ width: '100%', borderRadius: 12, marginBottom: 12 }} />)}
-        {lesson.pdf_url && <PdfViewer url={lesson.pdf_url} L={L} />}
+        {lesson.pdf_url && <PdfViewer url={lesson.pdf_url} allowDownload={lesson.pdf_download !== false} L={L} />}
         {lesson.content && <div style={{ whiteSpace: 'pre-wrap', fontSize: 14, lineHeight: 1.6, marginBottom: 12 }}>{lesson.content}</div>}
         {(lesson.resources || []).length > 0 && <div style={{ marginBottom: 12 }}>{lesson.resources.map((r: any, i: number) => <a key={i} href={r.url} target="_blank" rel="noreferrer" className="sk-chip" style={{ marginRight: 8 }}>📎 {r.label || r.url}</a>)}</div>}
         <div className="row between" style={{ alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
@@ -916,7 +916,7 @@ function LessonView({ lesson, course, done, progress, onBack, onToggle, onPick, 
 }
 
 // Visor de PDF con navegación por páginas (pdf.js desde CDN, sin dependencias del bundle).
-function PdfViewer({ url, L }: { url: string; L: (a: string, b: string) => string }) {
+function PdfViewer({ url, allowDownload = true, L }: { url: string; allowDownload?: boolean; L: (a: string, b: string) => string }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const docRef = useRef<any>(null);
   const [page, setPage] = useState(1);
@@ -964,15 +964,15 @@ function PdfViewer({ url, L }: { url: string; L: (a: string, b: string) => strin
 
   if (err) return (
     <div className="sk-card" style={{ margin: '0 0 12px', textAlign: 'center' }}>
-      <p className="muted" style={{ fontSize: 13, marginBottom: 8 }}>{L('No se pudo cargar el PDF aquí.', 'Could not load the PDF here.')}</p>
-      <a className="btn btn-primary" href={url} target="_blank" rel="noreferrer">{L('Abrir PDF', 'Open PDF')}</a>
+      <p className="muted" style={{ fontSize: 13, marginBottom: 8 }}>{L('No se pudo mostrar el PDF aquí.', 'Could not display the PDF here.')}</p>
+      {allowDownload && <a className="btn btn-primary" href={url} target="_blank" rel="noreferrer">{L('Abrir PDF', 'Open PDF')}</a>}
     </div>
   );
   return (
     <div style={{ marginBottom: 12 }}>
       <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 12, padding: 10, overflow: 'auto', textAlign: 'center', minHeight: 200 }}>
         {!ready && <div className="muted" style={{ fontSize: 13, padding: 24 }}>{L('Cargando PDF…', 'Loading PDF…')}</div>}
-        <canvas ref={canvasRef} style={{ maxWidth: '100%', borderRadius: 8, display: ready ? 'inline-block' : 'none' }} />
+        <canvas ref={canvasRef} onContextMenu={(e) => { if (!allowDownload) e.preventDefault(); }} style={{ maxWidth: '100%', borderRadius: 8, display: ready ? 'inline-block' : 'none' }} />
       </div>
       <div className="row between" style={{ alignItems: 'center', marginTop: 8, flexWrap: 'wrap', gap: 8 }}>
         <div className="row" style={{ gap: 6 }}>
@@ -980,7 +980,9 @@ function PdfViewer({ url, L }: { url: string; L: (a: string, b: string) => strin
           <button className="btn btn-ghost" style={{ fontSize: 12.5 }} disabled={page >= pages} onClick={() => setPage((p) => Math.min(pages, p + 1))}>{L('Siguiente', 'Next')} →</button>
         </div>
         <span className="muted" style={{ fontSize: 12.5 }}>{L('Página', 'Page')} {page} / {pages || '…'}</span>
-        <a className="sk-chip" href={url} target="_blank" rel="noreferrer">⤓ {L('Descargar', 'Download')}</a>
+        {allowDownload
+          ? <a className="sk-chip" href={url} target="_blank" rel="noreferrer">⤓ {L('Descargar', 'Download')}</a>
+          : <span className="sk-chip muted" style={{ opacity: .8 }}>🔒 {L('Solo lectura', 'View only')}</span>}
       </div>
     </div>
   );
@@ -1673,7 +1675,7 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
           <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 12 }}><span className="card-ic"><OnyxIcon name="users" size={16} /></span> {L('Alumnos', 'Students')} · {d.roster.students.length}</h3>
           {d.roster.students.length === 0 ? <p className="muted">{L('Comparte tu enlace para que se inscriban.', 'Share your link so they enroll.')}</p> : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {d.roster.students.map((s: any) => <StudentRow key={s.id} s={s} total={d.roster.totalLessons} lang={lang} L={L} />)}
+              {d.roster.students.map((s: any) => <StudentRow key={s.id} s={s} total={d.roster.totalLessons} lang={lang} L={L} api={api} />)}
             </div>
           )}
           <p className="muted" style={{ fontSize: 11.5, marginTop: 10 }}>{L('Para el dashboard completo de auditoría (KPIs, disciplina, reporte AI y verificación), ve a la pestaña Auditoría. Requiere que el alumno compre el add-on y dé su consentimiento.', 'For the full audit dashboard (KPIs, discipline, AI report and verification), go to the Audit tab. Requires the student to buy the add-on and give consent.')}</p>
@@ -1720,9 +1722,11 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
 }
 
 // Fila de alumno con botón de auditoría IA.
-function StudentRow({ s, total, lang, L }: any) {
+function StudentRow({ s, total, lang, L, api }: any) {
   const [busy, setBusy] = useState(false);
   const [audit, setAudit] = useState<string>('');
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(s.display_name || '');
   async function run() {
     setBusy(true);
     const r = await fetch('/api/academy/audit', { method: 'POST', body: JSON.stringify({ student_id: s.id, period: '30d', lang: L('es', 'en') }) });
@@ -1730,15 +1734,39 @@ function StudentRow({ s, total, lang, L }: any) {
     if (j.ok) setAudit(j.text);
     else alert(j.error === 'no_addon' ? L('El alumno no tiene el add-on de auditoría activo. Véndelo en Cobros → Add-on auditoría.', 'The student has no active audit add-on. Sell it in Payments → Audit add-on.') : j.error === 'no_consent' ? L('El alumno no ha dado su consentimiento en su comunidad.', 'The student hasn’t given consent in their community.') : j.error === 'no_data' ? L('El alumno no tiene suficientes operaciones.', 'Not enough trades for this student.') : L('No se pudo generar (¿IA configurada?).', 'Could not generate (AI configured?).'));
   }
+  function saveName() { api({ action: 'student_name', student_id: s.id, name }, L('Nombre actualizado', 'Name updated')); setEditing(false); }
+  function toggleBan() {
+    if (!s.banned && !confirm(L('¿Banear a este alumno? Perderá acceso a la comunidad al instante (puedes readmitirlo después).', 'Ban this student? They lose community access instantly (you can readmit later).'))) return;
+    api({ action: 'student_ban', student_id: s.id, banned: !s.banned }, s.banned ? L('Readmitido', 'Readmitted') : L('Baneado', 'Banned'));
+  }
+  function remove() {
+    if (!confirm(L('¿Quitar a este alumno de tu academia? Se borra su inscripción.', 'Remove this student from your academy? Their enrollment is deleted.'))) return;
+    api({ action: 'student_remove', student_id: s.id }, L('Alumno quitado', 'Student removed'));
+  }
   return (
-    <div style={{ background: 'var(--bg2)', borderRadius: 8, padding: '9px 12px', fontSize: 13 }}>
-      <div className="row between" style={{ alignItems: 'center' }}>
-        <span>{s.name}</span>
-        <div className="row" style={{ gap: 8, alignItems: 'center' }}>
-          <span className="muted" style={{ fontSize: 12 }}>{L('progreso', 'progress')} {s.done}/{total}</span>
-          <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '3px 9px' }} disabled={busy} onClick={run}>{busy ? '…' : '✨ ' + L('Auditar', 'Audit')}</button>
+    <div style={{ background: 'var(--bg2)', borderRadius: 8, padding: '9px 12px', fontSize: 13, opacity: s.banned ? 0.7 : 1 }}>
+      <div className="row between" style={{ alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <div style={{ minWidth: 0 }}>
+          <span style={{ color: 'var(--tx)' }}>{s.name}</span>
+          {s.banned && <span className="sk-chip" style={{ marginLeft: 6, background: 'color-mix(in srgb,var(--red) 16%,transparent)', color: 'var(--red)' }}>{L('Baneado', 'Banned')}</span>}
+          {s.display_name && <span className="muted" style={{ fontSize: 11, marginLeft: 6 }}>({L('real', 'real')}: {s.real_name})</span>}
+        </div>
+        <div className="row" style={{ gap: 6, alignItems: 'center' }}>
+          <span className="muted" style={{ fontSize: 12 }}>{s.done}/{total}</span>
+          <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '3px 8px' }} onClick={() => { setName(s.display_name || s.real_name || ''); setEditing((v) => !v); }} title={L('Corregir nombre', 'Fix name')}>✎</button>
+          <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '3px 8px' }} disabled={busy} onClick={run} title={L('Auditar', 'Audit')}>{busy ? '…' : '✨'}</button>
+          <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '3px 8px', color: s.banned ? 'var(--green)' : 'var(--gold)' }} onClick={toggleBan}>{s.banned ? L('Readmitir', 'Unban') : L('Banear', 'Ban')}</button>
+          <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '3px 8px', color: 'var(--red)' }} onClick={remove} title={L('Quitar', 'Remove')}>✕</button>
         </div>
       </div>
+      {editing && (
+        <div className="row" style={{ gap: 6, marginTop: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder={L('Nombre visible en tu academia', 'Display name in your academy')} style={{ margin: 0, flex: 1, minWidth: 160 }} />
+          <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={saveName}>{L('Guardar', 'Save')}</button>
+          {s.display_name && <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => { setName(''); api({ action: 'student_name', student_id: s.id, name: '' }, L('Nombre restablecido', 'Name reset')); setEditing(false); }}>{L('Usar el real', 'Use real')}</button>}
+          <span className="muted" style={{ fontSize: 11, width: '100%' }}>{L('Solo cambia cómo se ve en tu academia; no toca su cuenta de Onyx.', 'Only changes how they appear in your academy; does not touch their Onyx account.')}</span>
+        </div>
+      )}
       {audit && <div style={{ whiteSpace: 'pre-wrap', fontSize: 13, lineHeight: 1.5, marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--line)' }}>{audit}<div className="muted" style={{ fontSize: 11, marginTop: 6 }}>{L('Guardado. El alumno lo verá en su perfil.', 'Saved. The student sees it in their profile.')}</div></div>}
     </div>
   );
@@ -2262,6 +2290,7 @@ function LessonForm({ form, setForm, onSave, onCancel, L }: any) {
         <div>
           <input value={form.pdf_url || ''} onChange={(e) => set('pdf_url', e.target.value)} placeholder={L('URL del PDF (se ve página por página)', 'PDF URL (viewed page by page)')} style={{ margin: 0 }} />
           <div className="row" style={{ gap: 8, marginTop: 6, alignItems: 'center' }}><span className="muted" style={{ fontSize: 11.5 }}>{L('O sube un PDF:', 'Or upload a PDF:')}</span><PdfUpload onUrl={(u: string) => set('pdf_url', u)} L={L} />{form.pdf_url && <button className="btn btn-ghost" style={{ fontSize: 11, color: 'var(--red)' }} onClick={() => set('pdf_url', '')}>{L('Quitar PDF', 'Remove PDF')}</button>}</div>
+          {form.pdf_url && <label className="row" style={{ gap: 8, fontSize: 12.5, marginTop: 6, cursor: 'pointer' }}><input type="checkbox" checked={form.pdf_download !== false} onChange={(e) => set('pdf_download', e.target.checked)} style={{ width: 'auto', margin: 0 }} /> {L('Permitir que el alumno descargue el PDF', 'Let students download the PDF')}</label>}
         </div>
         <div className="row between" style={{ alignItems: 'center' }}><span className="muted" style={{ fontSize: 12 }}>{L('Notas de la lección (opcional)', 'Lesson notes (optional)')}</span><AiBtn kind="lesson_desc" getInput={() => form.title} onText={(t: string) => set('content', t)} L={L} /></div>
         <textarea value={form.content || ''} onChange={(e) => set('content', e.target.value)} rows={4} placeholder={L('Escribe o pulsa ✨ IA (usa el título como contexto).', 'Write or hit ✨ AI (uses the title as context).')} style={{ width: '100%', margin: 0 }} />

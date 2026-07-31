@@ -88,6 +88,7 @@ export async function saveLesson(mentorId: string, b: any) {
     section: b.section !== undefined ? (b.section ? String(b.section).slice(0, 120) : null) : undefined,
     video_url: b.video_url ? String(b.video_url).slice(0, 500) : null,
     pdf_url: b.pdf_url ? String(b.pdf_url).slice(0, 500) : null,
+    pdf_download: b.pdf_download !== false,
     content: b.content ? String(b.content).slice(0, 8000) : null,
     resources: Array.isArray(b.resources) ? b.resources.slice(0, 20).map((r: any) => ({ label: String(r.label || '').slice(0, 80), url: String(r.url || '').slice(0, 400) })) : [],
     position: Number(b.position) || 0,
@@ -138,9 +139,19 @@ export async function markLesson(studentId: string, lessonId: string, done: bool
   else await supabaseAdmin.from('lesson_progress').delete().eq('student_id', studentId).eq('lesson_id', lessonId);
 }
 
-// ---- Roster del mentor (alumnos + progreso) ----
+// Nombres de visualización por academia (el mentor puede corregirlos). Devuelve
+// { studentId: display_name } solo para quienes tengan un alias definido.
+export async function displayNames(mentorId: string, ids: string[]): Promise<Record<string, string>> {
+  if (!ids.length) return {};
+  const { data } = await supabaseAdmin.from('academy_enrollments').select('student_id,display_name').eq('mentor_id', mentorId).in('student_id', ids);
+  const map: Record<string, string> = {};
+  (data || []).forEach((r: any) => { if (r.display_name) map[r.student_id] = r.display_name; });
+  return map;
+}
+
+// ---- Roster del mentor (alumnos + progreso). Incluye baneados para poder gestionarlos. ----
 export async function roster(mentorId: string) {
-  const { data: enr } = await supabaseAdmin.from('academy_enrollments').select('student_id,joined_at,status').eq('mentor_id', mentorId).eq('status', 'active');
+  const { data: enr } = await supabaseAdmin.from('academy_enrollments').select('student_id,joined_at,status,display_name').eq('mentor_id', mentorId).in('status', ['active', 'banned']);
   const ids = (enr || []).map((e: any) => e.student_id);
   const { data: lessons } = await supabaseAdmin.from('academy_lessons').select('id').eq('mentor_id', mentorId);
   const total = (lessons || []).length;
@@ -151,8 +162,36 @@ export async function roster(mentorId: string) {
   ]);
   const nameOf: Record<string, any> = {}; (profs || []).forEach((p: any) => { nameOf[p.id] = p; });
   const done: Record<string, number> = {}; (prog || []).forEach((r: any) => { done[r.student_id] = (done[r.student_id] || 0) + 1; });
-  const students = (enr || []).map((e: any) => ({ id: e.student_id, name: nameOf[e.student_id]?.full_name || (nameOf[e.student_id]?.email || '').split('@')[0] || 'Alumno', joined_at: e.joined_at, done: done[e.student_id] || 0 }));
+  const students = (enr || []).map((e: any) => ({
+    id: e.student_id,
+    name: e.display_name || nameOf[e.student_id]?.full_name || (nameOf[e.student_id]?.email || '').split('@')[0] || 'Alumno',
+    real_name: nameOf[e.student_id]?.full_name || (nameOf[e.student_id]?.email || '').split('@')[0] || 'Alumno',
+    display_name: e.display_name || '',
+    email: nameOf[e.student_id]?.email || '',
+    joined_at: e.joined_at, done: done[e.student_id] || 0,
+    banned: e.status === 'banned',
+  }));
+  // activos primero, luego baneados
+  students.sort((a: any, b: any) => (a.banned ? 1 : 0) - (b.banned ? 1 : 0));
   return { students, totalLessons: total };
+}
+
+// ---- Control del mentor sobre el perfil del alumno DENTRO de su academia ----
+// Corregir el nombre visible (alias por academia; no toca el perfil global).
+export async function setStudentDisplayName(mentorId: string, studentId: string, name: string) {
+  const val = String(name || '').trim().slice(0, 60) || null;
+  await supabaseAdmin.from('academy_enrollments').update({ display_name: val }).eq('mentor_id', mentorId).eq('student_id', studentId);
+  return { ok: true };
+}
+// Banear / readmitir (banned pierde acceso a la comunidad al instante).
+export async function setStudentBanned(mentorId: string, studentId: string, banned: boolean) {
+  await supabaseAdmin.from('academy_enrollments').update({ status: banned ? 'banned' : 'active' }).eq('mentor_id', mentorId).eq('student_id', studentId);
+  return { ok: true, banned };
+}
+// Quitar por completo de la academia (borra la inscripción).
+export async function removeStudent(mentorId: string, studentId: string) {
+  await supabaseAdmin.from('academy_enrollments').delete().eq('mentor_id', mentorId).eq('student_id', studentId);
+  return { ok: true };
 }
 
 // ============================================================
@@ -220,12 +259,13 @@ export async function leaderboard(mentorId: string, range: 'all' | '7d' | '30d' 
   if (!ids.length) return [];
   const { data: profs } = await supabaseAdmin.from('profiles').select('id,full_name,email').in('id', ids);
   const nameOf: Record<string, any> = {}; (profs || []).forEach((p: any) => { nameOf[p.id] = p; });
+  const dn = await displayNames(mentorId, ids);
   // nivel siempre desde puntos acumulados
   const { data: allPts } = await supabaseAdmin.from('academy_points').select('user_id,points').eq('mentor_id', mentorId).in('user_id', ids);
   const ptOf: Record<string, number> = {}; (allPts || []).forEach((r: any) => { ptOf[r.user_id] = r.points; });
   return board.map((b, i) => {
     const pr = nameOf[b.user_id];
-    return { rank: i + 1, user_id: b.user_id, name: pr?.full_name || (pr?.email || '').split('@')[0] || 'Trader', points: b.points, level: levelFor(ptOf[b.user_id] || 0).level };
+    return { rank: i + 1, user_id: b.user_id, name: dn[b.user_id] || pr?.full_name || (pr?.email || '').split('@')[0] || 'Trader', points: b.points, level: levelFor(ptOf[b.user_id] || 0).level };
   });
 }
 
@@ -241,12 +281,13 @@ export async function membersList(mentorId: string) {
   ]);
   const ptOf: Record<string, number> = {}; (pts || []).forEach((r: any) => { ptOf[r.user_id] = r.points; });
   const joinOf: Record<string, string> = {}; (enr || []).forEach((e: any) => { joinOf[e.student_id] = e.joined_at; });
+  const dn = await displayNames(mentorId, idArr);
   const ONLINE_MS = 5 * 60 * 1000; // "en línea" = actividad en los últimos 5 min
   return (profs || []).map((p: any) => {
     const points = ptOf[p.id] || 0;
     const online = p.last_seen_at ? (Date.now() - new Date(p.last_seen_at).getTime()) < ONLINE_MS : false;
     return {
-      user_id: p.id, name: p.full_name || (p.email || '').split('@')[0] || 'Trader',
+      user_id: p.id, name: dn[p.id] || p.full_name || (p.email || '').split('@')[0] || 'Trader',
       points, level: levelFor(points).level, joined_at: joinOf[p.id] || null,
       country: p.country || null, online,
       is_mentor: p.id === mentorId,
@@ -270,6 +311,8 @@ export async function listPosts(mentorId: string, viewerId?: string, includeSche
     uniqAuthors.length ? supabaseAdmin.from('academy_points').select('user_id,points').eq('mentor_id', mentorId).in('user_id', uniqAuthors) : Promise.resolve({ data: [] } as any),
   ]);
   const nameOf: Record<string, string> = {}; (profs || []).forEach((p: any) => { nameOf[p.id] = p.full_name || 'Trader'; });
+  const dnP = await displayNames(mentorId, uniqAuthors);
+  Object.keys(dnP).forEach((id) => { nameOf[id] = dnP[id]; });
   const lvlOf: Record<string, number> = {}; (pts || []).forEach((r: any) => { lvlOf[r.user_id] = levelFor(r.points).level; });
   // Likes de todos los posts + comentarios de esta tanda.
   const comIds = (comments || []).map((c: any) => c.id);
