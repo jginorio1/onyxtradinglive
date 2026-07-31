@@ -2473,7 +2473,7 @@ function GuidedTour({ stepKey, o, L, onGoto, onFinish, onClose }: any) {
           <button className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 12 }} onClick={onClose}>✕</button>
         </div>
         <b style={{ fontSize: 15 }}>{title}</b>
-        <p style={{ fontSize: 13, margin: '6px 0 4px', color: '#fff', lineHeight: 1.5 }}>{howTo}</p>
+        <p style={{ fontSize: 13, margin: '6px 0 4px', color: 'var(--tx)', lineHeight: 1.5 }}>{howTo}</p>
         <p className="muted" style={{ fontSize: 12.5, margin: '0 0 10px', lineHeight: 1.5 }}>{why}</p>
         {done ? (
           <div className="row" style={{ gap: 8, alignItems: 'center' }}>
@@ -2543,7 +2543,7 @@ function OnboardingCard({ d, L, api, goTab, startTour }: any) {
           <button key={i} className="row between" onClick={go} style={{ alignItems: 'center', gap: 10, background: 'var(--bg2)', border: 'none', borderRadius: 8, padding: '9px 11px', cursor: 'pointer', textAlign: 'left', opacity: ok ? .7 : 1 }}>
             <span className="row" style={{ gap: 10, alignItems: 'center', minWidth: 0 }}>
               <span style={{ width: 20, height: 20, borderRadius: '50%', flex: 'none', display: 'grid', placeItems: 'center', fontSize: 12, background: ok ? 'var(--green)' : 'color-mix(in srgb,var(--brand) 22%,transparent)', color: ok ? '#04121a' : 'var(--soft-brand,var(--brand))' }}>{ok ? '✓' : i + 1}</span>
-              <span style={{ fontSize: 13.5, color: ok ? 'var(--mut)' : '#fff', textDecoration: ok ? 'line-through' : 'none' }}>{label}</span>
+              <span style={{ fontSize: 13.5, color: ok ? 'var(--mut)' : 'var(--tx)', textDecoration: ok ? 'line-through' : 'none' }}>{label}</span>
             </span>
             {!ok && <span style={{ fontSize: 12, color: 'var(--brand)' }}>{L('Ir →', 'Go →')}</span>}
           </button>
