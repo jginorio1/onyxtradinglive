@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { enrollByCode } from '@/lib/academy';
+import { enrollByCode, subsStatus, addToWaitlist } from '@/lib/academy';
 import { feeForMentor, membershipInfo, hasMembership } from '@/lib/academyPay';
 import { checkoutForMembership } from '@/lib/stripeConnect';
 
@@ -20,11 +20,20 @@ export async function POST(req: Request) {
   if (!mentor || !(mentor as any).active) return NextResponse.json({ error: 'not_found' }, { status: 404 });
   const mid = (mentor as any).user_id;
 
+  // Lista de espera: solo apuntar el correo, no inscribir.
+  if (b.action === 'waitlist') { return NextResponse.json(await addToWaitlist(mid, String(b.email || user.email || ''))); }
+
   const info = await membershipInfo(mid);
+  const alreadyMember = await hasMembership(user.id, mid);
+  // Puertas cerradas: bloquea NUEVOS suscriptores (los que ya son miembros pasan).
+  if (!alreadyMember) {
+    const subs = await subsStatus(mid);
+    if (!subs.open) return NextResponse.json({ closed: true, reopenAt: subs.reopenAt, note: subs.note, mentor_id: mid });
+  }
   // Gratis → inscribir directo.
   if (!info.paid) { await enrollByCode(user.id, code); return NextResponse.json({ free: true, mentor_id: mid }); }
   // Ya tiene membresía activa.
-  if (await hasMembership(user.id, mid)) { await enrollByCode(user.id, code); return NextResponse.json({ already: true, mentor_id: mid }); }
+  if (alreadyMember) { await enrollByCode(user.id, code); return NextResponse.json({ already: true, mentor_id: mid }); }
   if (!process.env.STRIPE_SECRET_KEY) return NextResponse.json({ error: 'stripe_off' }, { status: 400 });
   if (!(mentor as any).stripe_account_id || !(mentor as any).charges_enabled) return NextResponse.json({ error: 'mentor_not_ready' }, { status: 400 });
 

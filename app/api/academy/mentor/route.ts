@@ -56,9 +56,10 @@ export async function POST(req: Request) {
       case 'lesson': return NextResponse.json({ ok: true, ...(await saveLesson(mid, b)) });
       case 'lesson_delete': await deleteLesson(mid, String(b.id)); return NextResponse.json({ ok: true });
       case 'post': {
-        await addPost(mid, user.id, String(b.body || ''), !!b.pinned, b.image_url ? String(b.image_url) : undefined, b.scheduled_at ? String(b.scheduled_at) : undefined);
-        // Anuncio fijado y no programado → push a los alumnos.
-        if (b.pinned && !b.scheduled_at) pushAnnouncement(mid, String(b.body || ''));
+        const isAnn = !!b.announcement;
+        await addPost(mid, user.id, String(b.body || ''), !!b.pinned || isAnn, b.image_url ? String(b.image_url) : undefined, b.scheduled_at ? String(b.scheduled_at) : undefined, { kind: b.kind, win_kind: b.win_kind, announcement: isAnn });
+        // Anuncio (o fijado) no programado → push a los alumnos.
+        if ((b.pinned || isAnn) && !b.scheduled_at) pushAnnouncement(mid, String(b.body || ''));
         return NextResponse.json({ ok: true });
       }
       case 'post_delete': await deletePost(mid, String(b.id)); return NextResponse.json({ ok: true });

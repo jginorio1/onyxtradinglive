@@ -116,7 +116,7 @@ export async function POST(req: Request) {
       const mentorRow = await getMentor(user.id);
       const allowed = (mentorRow && mentorRow.user_id === b.mentor_id) || (await isEnrolled(String(b.mentor_id), user.id));
       if (!allowed) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
-      await addPost(String(b.mentor_id), user.id, String(b.body), false, b.image_url ? String(b.image_url) : undefined);
+      await addPost(String(b.mentor_id), user.id, String(b.body), false, b.image_url ? String(b.image_url) : undefined, undefined, { kind: b.kind, win_kind: b.win_kind });
       return NextResponse.json({ ok: true });
     }
     if (b.action === 'comment' && b.post_id && b.mentor_id && (b.body || b.image_url)) {

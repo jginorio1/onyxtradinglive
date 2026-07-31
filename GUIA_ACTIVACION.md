@@ -1755,3 +1755,38 @@ Sin SQL nuevo (todo es código; el país ya existía en `profiles.country`).
 - **"Configura tu academia" ocultable:** ahora se puede ocultar aunque falten pasos; si queda
   algo pendiente, deja una **píldora iluminada** de recordatorio (solo desaparece del todo cuando
   completas todo). El estado se recuerda en el dispositivo.
+
+### 53 · Onyx Academy — USD, comunidad móvil, tipos de post, anuncios, suscripciones y NY (Fase 19)
+
+**SQL (Supabase, tras academy_v18.sql):** `supabase/academy_v19.sql`
+- `mentors.subs_open / subs_reopen_at / subs_closed_note` (puertas de la academia).
+- `academy_posts.kind / win_kind / announcement` (tipo de publicación + anuncios).
+- Tabla `academy_waitlist` (lista de espera para reapertura).
+
+**Solo USD:** se quitaron EUR/MXN de todos los precios (membresía, niveles, logros). Todo en USD.
+
+**Comunidad móvil más limpia:** la cabecera de la comunidad es mucho más fina en móvil, y ahora
+el aviso de **clase en vivo va primero**, luego las pestañas y el contenido.
+
+**Tipos de publicación:** al postear (alumno o mentor) se elige el tipo — Comunidad, Análisis de
+mercado, Hábitos, Pregunta general, o Logro (con subtipo: retiro/payout, challenge pasado, meta).
+Cada post muestra su etiqueta de color y la comunidad se puede filtrar por tipo. El mentor
+también publica logros y contenido de comunidad con estos tipos.
+
+**Anuncios:** el mentor puede marcar una publicación como **Anuncio** — se fija arriba, sale con
+estilo destacado y manda push a todos.
+
+**Gestión de alumnos más elaborada + clic en el nombre:** la pestaña Alumnos tiene **buscador**
+(nombre o correo), mini-stats (total/activos/baneados) y filtro. Y desde **cualquier parte** de
+la academia (miembros, ranking, feed, chat) el mentor puede tocar el nombre de un alumno para
+abrir un panel de **editar nombre · mensaje · banear · quitar**.
+
+**Abrir / cerrar suscripciones:** en Ajustes → "Puertas de la academia" el mentor abre o cierra
+las nuevas suscripciones. Al cerrar puede poner una **fecha de reapertura** (se muestra un
+countdown en la landing y el paywall) y los visitantes pueden **apuntarse a la lista de espera**.
+Los alumnos que ya están dentro no se ven afectados.
+
+**Hora de Nueva York:** el calendario y la clase en vivo muestran la hora en **America/New_York
+(NY)**. Al programar una clase, el mentor la ingresa en hora de Nueva York.
+
+**Requisitos:** correr `academy_v19.sql`. Nada nuevo en variables de entorno.

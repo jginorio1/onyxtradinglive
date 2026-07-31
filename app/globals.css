@@ -405,6 +405,9 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
 .btn.sk-glow:hover{box-shadow:0 0 16px -2px color-mix(in srgb,var(--brand) 60%,transparent);}
 /* Chip de código destacado */
 .sk-code{background:color-mix(in srgb,var(--brand) 26%,var(--card));color:#fff;font-weight:700;letter-spacing:.08em;padding:6px 12px;border-radius:9px;font-size:13px;border:1px solid color-mix(in srgb,var(--brand) 55%,transparent);box-shadow:none;text-shadow:0 1px 2px rgba(0,0,0,.35);}
+/* Publicación de anuncio destacado */
+.sk-ann{border:1px solid color-mix(in srgb,var(--brand) 45%,transparent)!important;box-shadow:0 0 16px -6px color-mix(in srgb,var(--brand) 45%,transparent);}
+.sk-ann-tag{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:var(--brand);background:color-mix(in srgb,var(--brand) 14%,transparent);border-radius:7px;padding:3px 8px;margin-bottom:8px;}
 /* Botones de compartir a redes */
 .sk-share{display:flex;gap:8px;flex-wrap:wrap;}
 .sk-share a{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:var(--bg2);border:1px solid var(--line);transition:.15s;}
@@ -414,6 +417,13 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
   .sk-wrap[data-tab]:not([data-tab="community"]) .sk-hero{display:none;}
   .sk-wrap[data-tab]:not([data-tab="community"]) .sk-side{display:none;}
   .sk-wrap[data-tab] .sk-grid{grid-template-columns:1fr;}
+  /* Cabecera de comunidad mucho más fina en móvil */
+  .sk-hero{border-radius:14px;box-shadow:0 4px 16px rgba(0,0,0,.2);}
+  .sk-hero-cover{height:56px;}
+  .sk-hero-logo{width:42px;height:42px;border-radius:11px;margin-top:-24px;border-width:2px;}
+  .sk-hero-body{padding:7px 12px 11px;gap:10px;}
+  .sk-hero-body h2{font-size:16px!important;}
+  .sk-tabs.big{margin-top:10px!important;}
 }
 .sk-tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:14px 0 16px;overflow-x:auto;}
 .sk-tab{padding:10px 14px;font-size:14px;font-weight:600;color:var(--mut);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap;transition:.15s;display:flex;align-items:center;gap:7px;}

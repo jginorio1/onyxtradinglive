@@ -52,8 +52,28 @@ export async function updateMentor(userId: string, b: any) {
   if (b.membership_year_cents !== undefined) patch.membership_year_cents = Math.max(0, Math.round(Number(b.membership_year_cents) || 0));
   if (b.membership_currency !== undefined) patch.membership_currency = String(b.membership_currency || 'usd').toLowerCase().slice(0, 3);
   if (b.membership_interval !== undefined) patch.membership_interval = b.membership_interval === 'year' ? 'year' : 'month';
+  if (b.subs_open !== undefined) patch.subs_open = !!b.subs_open;
+  if (b.subs_reopen_at !== undefined) patch.subs_reopen_at = b.subs_reopen_at ? new Date(b.subs_reopen_at).toISOString() : null;
+  if (b.subs_closed_note !== undefined) patch.subs_closed_note = b.subs_closed_note ? String(b.subs_closed_note).slice(0, 300) : null;
   if (b.active !== undefined) patch.active = !!b.active;
   await supabaseAdmin.from('mentors').update(patch).eq('user_id', userId);
+}
+
+// ---- Suscripciones: abrir/cerrar + lista de espera ----
+export async function subsStatus(mentorId: string) {
+  const { data } = await supabaseAdmin.from('mentors').select('subs_open,subs_reopen_at,subs_closed_note').eq('user_id', mentorId).maybeSingle();
+  const m = (data as any) || {};
+  // Si la fecha de reapertura ya pasó, se considera abierta.
+  const reopenAt = m.subs_reopen_at ? new Date(m.subs_reopen_at).getTime() : null;
+  const autoOpen = reopenAt != null && reopenAt <= Date.now();
+  const open = m.subs_open !== false || autoOpen;
+  return { open, reopenAt: open ? null : reopenAt, note: open ? null : (m.subs_closed_note || null) };
+}
+export async function addToWaitlist(mentorId: string, email: string) {
+  const e = String(email || '').trim().toLowerCase().slice(0, 160);
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) return { ok: false, error: 'bad_email' };
+  await supabaseAdmin.from('academy_waitlist').upsert({ mentor_id: mentorId, email: e }, { onConflict: 'mentor_id,email' });
+  return { ok: true };
 }
 
 // ---- Contenido (módulos + lecciones) ----
@@ -329,9 +349,17 @@ export async function listPosts(mentorId: string, viewerId?: string, includeSche
     comments: byPost[p.id] || [],
   }));
 }
-export async function addPost(mentorId: string, authorId: string, body: string, pinned = false, imageUrl?: string, scheduledAt?: string) {
+const POST_KINDS = ['community', 'analysis', 'habits', 'question', 'win'];
+const WIN_KINDS = ['payout', 'challenge', 'goal'];
+export async function addPost(mentorId: string, authorId: string, body: string, pinned = false, imageUrl?: string, scheduledAt?: string, opts: { kind?: string; win_kind?: string; announcement?: boolean } = {}) {
   const sched = scheduledAt && new Date(scheduledAt).getTime() > Date.now() ? new Date(scheduledAt).toISOString() : null;
-  const { data } = await supabaseAdmin.from('academy_posts').insert({ mentor_id: mentorId, author_id: authorId, body: String(body || '').slice(0, 4000), pinned, image_url: imageUrl ? String(imageUrl).slice(0, 500) : null, scheduled_at: sched }).select('id').single();
+  const kind = POST_KINDS.includes(String(opts.kind)) ? String(opts.kind) : 'community';
+  const win_kind = kind === 'win' && WIN_KINDS.includes(String(opts.win_kind)) ? String(opts.win_kind) : null;
+  const { data } = await supabaseAdmin.from('academy_posts').insert({
+    mentor_id: mentorId, author_id: authorId, body: String(body || '').slice(0, 4000), pinned,
+    image_url: imageUrl ? String(imageUrl).slice(0, 500) : null, scheduled_at: sched,
+    kind, win_kind, announcement: !!opts.announcement,
+  }).select('id').single();
   return data as any;
 }
 export async function addComment(postId: string, authorId: string, body: string, imageUrl?: string) {
@@ -579,7 +607,7 @@ export async function memberProfile(mentorId: string, userId: string, self = fal
 // Página pública de una academia por su código: datos + módulos (con lecciones
 // gratis marcadas) + niveles activos. No expone contenido de pago.
 export async function publicAcademy(code: string) {
-  const { data: m } = await supabaseAdmin.from('mentors').select('user_id,code,academy_name,tagline,about,active,cover_url,logo_url,socials,intro_video_url,pitch,membership_price_cents,membership_year_cents,membership_currency,membership_interval').eq('code', code).maybeSingle();
+  const { data: m } = await supabaseAdmin.from('mentors').select('user_id,code,academy_name,tagline,about,active,cover_url,logo_url,socials,intro_video_url,pitch,membership_price_cents,membership_year_cents,membership_currency,membership_interval,subs_open,subs_reopen_at,subs_closed_note').eq('code', code).maybeSingle();
   if (!m || !(m as any).active) return null;
   const mentorId = (m as any).user_id;
   const [{ data: prof }, content, { data: prods }, { data: enr }, reviews] = await Promise.all([
@@ -603,5 +631,6 @@ export async function publicAcademy(code: string) {
     membership_price_cents: price, membership_year_cents: yc, membership_year_save_pct: yearSavePct, membership_currency: (m as any).membership_currency || 'usd', membership_interval: (m as any).membership_interval || 'month',
     students: (enr || []).length, modules, products: (prods || []) as any[],
     reviews: reviews.list, reviews_avg: reviews.avg, reviews_count: reviews.count,
+    ...(() => { const reopenAt = (m as any).subs_reopen_at ? new Date((m as any).subs_reopen_at).getTime() : null; const autoOpen = reopenAt != null && reopenAt <= Date.now(); const open = (m as any).subs_open !== false || autoOpen; return { subs_open: open, subs_reopen_at: open ? null : reopenAt, subs_closed_note: open ? null : ((m as any).subs_closed_note || null) }; })(),
   };
 }

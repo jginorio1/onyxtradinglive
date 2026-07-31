@@ -113,8 +113,17 @@ export default function AcademiaPublic() {
         <span className="muted" style={{ fontSize: 14 }}>{L('por', 'by')} <b style={{ color: 'var(--tx)' }}>{a.mentor_name}</b></span>
       </div>
 
-      <Link className="btn btn-primary" href={join} style={{ fontSize: 16, padding: '12px 28px' }}>{paid ? L('Unirme por ', 'Join for ') + priceLabel : L('Unirme gratis', 'Join free')}</Link>
-      {hasYear && <div className="muted" style={{ fontSize: 13, marginTop: 8 }}>{L('También disponible el plan anual', 'Annual plan also available')}: <b style={{ color: 'var(--gold)' }}>{yearLabel}</b>{(a.membership_year_save_pct || 0) > 0 && ' (' + L('ahorra', 'save') + ' ' + a.membership_year_save_pct + '%)'}.</div>}
+      {a.subs_open === false ? (
+        <div className="card" style={{ border: '1px solid color-mix(in srgb,var(--gold) 40%,transparent)', textAlign: 'center' }}>
+          <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--gold)' }}>{L('Inscripciones cerradas', 'Enrollment closed')}</div>
+          {a.subs_closed_note && <div className="muted" style={{ fontSize: 13.5, marginTop: 4 }}>{a.subs_closed_note}</div>}
+          {a.subs_reopen_at && <div style={{ marginTop: 8, fontSize: 14 }}>{L('Reabre el', 'Reopens on')} <b>{new Date(a.subs_reopen_at).toLocaleString(lang === 'en' ? 'en-US' : 'es-ES', { timeZone: 'America/New_York', dateStyle: 'medium', timeStyle: 'short' })} (NY)</b></div>}
+          <Link className="btn btn-primary" href={join} style={{ fontSize: 15, padding: '11px 24px', marginTop: 12 }}>{L('Avísame cuando reabra', 'Notify me when it reopens')}</Link>
+        </div>
+      ) : (<>
+        <Link className="btn btn-primary" href={join} style={{ fontSize: 16, padding: '12px 28px' }}>{paid ? L('Unirme por ', 'Join for ') + priceLabel : L('Unirme gratis', 'Join free')}</Link>
+        {hasYear && <div className="muted" style={{ fontSize: 13, marginTop: 8 }}>{L('También disponible el plan anual', 'Annual plan also available')}: <b style={{ color: 'var(--gold)' }}>{yearLabel}</b>{(a.membership_year_save_pct || 0) > 0 && ' (' + L('ahorra', 'save') + ' ' + a.membership_year_save_pct + '%)'}.</div>}
+      </>)}
 
       {/* Texto de ventas */}
       {a.pitch && <div className="card" style={{ marginTop: 24, whiteSpace: 'pre-wrap', fontSize: 15, lineHeight: 1.65 }}>{a.pitch}</div>}
