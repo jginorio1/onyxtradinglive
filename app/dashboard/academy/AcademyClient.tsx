@@ -2818,7 +2818,10 @@ function GuidedTour({ stepKey, o, L, onGoto, onFinish, onClose, academyName }: a
   useEffect(() => {
     if (!step || !done || step.manual) return; // los pasos "manual" (branding) no saltan solos
     const t = setTimeout(() => {
-      const next = TOUR_STEPS.find((s) => !s.review && !o?.[s.key]);
+      // Solo avanzar HACIA ADELANTE: si el único incompleto quedó atrás, terminamos
+      // en vez de rebotar a él (evita el bucle al saltar el último paso pendiente).
+      const cur = TOUR_STEPS.findIndex((s) => s.key === step.key);
+      const next = TOUR_STEPS.find((s, i) => i > cur && !s.review && !o?.[s.key]);
       if (next) onGoto(next.key); else onFinish();
     }, 1800);
     return () => clearTimeout(t);
@@ -2878,7 +2881,7 @@ function GuidedTour({ stepKey, o, L, onGoto, onFinish, onClose, academyName }: a
               <span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--green) 16%,transparent)', color: 'var(--soft-green)' }}>✓ {L('Guardado', 'Saved')}</span>
               <span className="muted" style={{ fontSize: 11.5, lineHeight: 1.4 }}>{L('Léelo y edítalo a tu gusto; cuando estés conforme, sigue.', 'Read and edit it as you like; when you’re happy, continue.')}</span>
             </div>
-            <button className="btn btn-primary" style={{ width: '100%', fontSize: 12 }} onClick={() => { const next = TOUR_STEPS.find((s) => !s.review && !o?.[s.key]); if (next) onGoto(next.key); else onFinish(); }}>{L('Revisado, siguiente →', 'Reviewed, next →')}</button>
+            <button className="btn btn-primary" style={{ width: '100%', fontSize: 12 }} onClick={() => { const next = TOUR_STEPS.find((s, i) => i > idx && !s.review && !o?.[s.key]); if (next) onGoto(next.key); else onFinish(); }}>{L('Revisado, siguiente →', 'Reviewed, next →')}</button>
           </div>
         ) : done ? (
           <div className="row" style={{ gap: 8, alignItems: 'center' }}>
@@ -2887,7 +2890,7 @@ function GuidedTour({ stepKey, o, L, onGoto, onFinish, onClose, academyName }: a
           </div>
         ) : (
           <div className="row" style={{ gap: 8 }}>
-            <button className="btn btn-ghost" style={{ fontSize: 12, flex: 1 }} onClick={() => { const next = TOUR_STEPS[idx + 1]; if (next) onGoto(next.key); else onClose(); }}>{L('Saltar paso', 'Skip step')}</button>
+            <button className="btn btn-ghost" style={{ fontSize: 12, flex: 1 }} onClick={() => { const next = TOUR_STEPS.find((s, i) => i > idx && !s.review && !o?.[s.key]); if (next) onGoto(next.key); else onClose(); }}>{L('Saltar paso', 'Skip step')}</button>
             <button className="btn btn-primary" style={{ fontSize: 12, flex: 1 }} onClick={() => setTipOpen(false)}>{L('Entendido', 'Got it')}</button>
           </div>
         )}
