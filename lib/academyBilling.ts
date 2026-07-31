@@ -138,6 +138,63 @@ export async function academyPortal(studentId: string, mentorId: string): Promis
   } catch { return null; }
 }
 
+// ============================================================
+// INGRESOS del MENTOR (el otro lado): ventas, comisión de Onyx, saldo y payouts.
+// El dinero está en su cuenta conectada; leemos saldo y payouts EN VIVO de Stripe,
+// y el detalle de ventas del libro de comisiones (onyx_commissions).
+// ============================================================
+export async function mentorPayoutDetail(mentorId: string) {
+  const { data: m } = await supabaseAdmin.from('mentors').select('stripe_account_id').eq('user_id', mentorId).maybeSingle();
+  const account = (m as any)?.stripe_account_id || null;
+
+  // Resumen + detalle de ventas desde el libro de comisiones.
+  const { data: comm } = await supabaseAdmin.from('onyx_commissions')
+    .select('student_id,product_id,gross_cents,fee_cents,currency,kind,created_at').eq('mentor_id', mentorId).order('created_at', { ascending: false }).limit(60);
+  const rows = (comm || []) as any[];
+  const sids = Array.from(new Set(rows.map((r) => r.student_id).filter(Boolean)));
+  const pids = Array.from(new Set(rows.map((r) => r.product_id).filter(Boolean)));
+  const [{ data: profs }, { data: prods }] = await Promise.all([
+    sids.length ? supabaseAdmin.from('profiles').select('id,full_name,email').in('id', sids) : Promise.resolve({ data: [] } as any),
+    pids.length ? supabaseAdmin.from('academy_products').select('id,name').in('id', pids) : Promise.resolve({ data: [] } as any),
+  ]);
+  const nameOf: Record<string, string> = {}; (profs || []).forEach((p: any) => { nameOf[p.id] = p.full_name || (p.email || '').split('@')[0] || 'Alumno'; });
+  const prodOf: Record<string, string> = {}; (prods || []).forEach((p: any) => { prodOf[p.id] = p.name; });
+
+  const grossCents = rows.reduce((s, r) => s + (r.gross_cents || 0), 0);
+  const feeCents = rows.reduce((s, r) => s + (r.fee_cents || 0), 0);
+  const sales = rows.map((r) => ({
+    student: r.student_id ? (nameOf[r.student_id] || 'Alumno') : 'Alumno',
+    product: r.kind === 'membership' ? 'Membresía' : (prodOf[r.product_id] || 'Nivel'),
+    kind: r.kind, gross_cents: r.gross_cents || 0, fee_cents: r.fee_cents || 0, net_cents: (r.gross_cents || 0) - (r.fee_cents || 0),
+    currency: r.currency || 'usd', date: r.created_at,
+  }));
+
+  // Saldo y payouts EN VIVO desde Stripe (cuenta conectada). Fail-safe.
+  let balance: { available: number; pending: number; currency: string } | null = null;
+  let payouts: { amount_cents: number; currency: string; status: string; arrival: string | null; created: string }[] = [];
+  if (account) {
+    try {
+      const bal: any = await stripe.balance.retrieve({ stripeAccount: account });
+      const av = (bal.available || [])[0]; const pe = (bal.pending || [])[0];
+      balance = { available: av?.amount || 0, pending: pe?.amount || 0, currency: (av?.currency || pe?.currency || 'usd') };
+    } catch { /* fail-safe */ }
+    try {
+      const po: any = await stripe.payouts.list({ limit: 8 }, { stripeAccount: account });
+      payouts = (po.data || []).map((p: any) => ({
+        amount_cents: p.amount || 0, currency: p.currency || 'usd', status: p.status || 'paid',
+        arrival: p.arrival_date ? new Date(p.arrival_date * 1000).toISOString() : null,
+        created: new Date((p.created || 0) * 1000).toISOString(),
+      }));
+    } catch { /* fail-safe */ }
+  }
+
+  return {
+    summary: { grossCents, feeCents, netCents: grossCents - feeCents, sales: rows.length },
+    balance, payouts, sales,
+    hasAccount: !!account,
+  };
+}
+
 // Cancelar (al final del periodo) o reactivar la suscripción del alumno.
 export async function setAcademyCancel(studentId: string, mentorId: string, cancel: boolean): Promise<{ ok: boolean; error?: string }> {
   const { subId, account } = await findSub(studentId, mentorId);

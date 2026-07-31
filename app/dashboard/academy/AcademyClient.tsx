@@ -3212,6 +3212,65 @@ function MentorSettings({ mentor, onSave, L }: any) {
   );
 }
 
+// =================== Ingresos del mentor (saldo, payouts, ventas) ===================
+function MentorEarnings({ L }: { L: (a: string, b: string) => string }) {
+  const es = L('es', 'en') === 'es';
+  const [d, setD] = useState<any>(null);
+  useEffect(() => { fetch('/api/academy/earnings').then((r) => r.json()).then(setD).catch(() => setD({})); }, []);
+  function money(c: number | null | undefined, cur = 'usd') {
+    if (c == null) return '—'; const s = (cur || 'usd').toUpperCase(); const sym = s === 'USD' ? '$' : s === 'EUR' ? '€' : '';
+    const n = (c / 100).toLocaleString(es ? 'es-ES' : 'en-US', { minimumFractionDigits: c % 100 ? 2 : 0, maximumFractionDigits: 2 });
+    return sym ? sym + n : n + ' ' + s;
+  }
+  function when(iso: string | null, t = false) { if (!iso) return '—'; try { const dt = new Date(iso); const dd = dt.toLocaleDateString(es ? 'es-ES' : 'en-US', { day: '2-digit', month: 'short', year: 'numeric' }); return t ? dd + ' · ' + dt.toLocaleTimeString(es ? 'es-ES' : 'en-US', { hour: '2-digit', minute: '2-digit' }) : dd; } catch { return '—'; } }
+  const poStatus = (s: string) => s === 'paid' ? L('pagado', 'paid') : s === 'in_transit' ? L('en camino', 'in transit') : s === 'pending' ? L('pendiente', 'pending') : s === 'failed' ? L('fallido', 'failed') : s;
+  if (!d) return null;
+  const bal = d.balance; const payouts = d.payouts || []; const sales = d.sales || [];
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, margin: '0 0 12px' }}>
+      {/* Saldo en Stripe */}
+      {bal && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10 }}>
+          <div className="statcard"><div className="statcard-ic" style={{ color: 'var(--soft-green)' }}><OnyxIcon name="coins" /></div><div><div className="sc-lbl">{L('Saldo disponible', 'Available balance')}</div><div className="sc-val">{money(bal.available, bal.currency)}</div></div></div>
+          <div className="statcard"><div className="statcard-ic" style={{ color: 'var(--gold)' }}><OnyxIcon name="duration" /></div><div><div className="sc-lbl">{L('Pendiente de liberar', 'Pending')}</div><div className="sc-val">{money(bal.pending, bal.currency)}</div></div></div>
+          <div className="statcard"><div className="statcard-ic"><OnyxIcon name="money" /></div><div><div className="sc-lbl">{L('Próximo depósito', 'Next payout')}</div><div className="sc-val" style={{ fontSize: 15 }}>{payouts.find((p: any) => p.status === 'pending' || p.status === 'in_transit') ? when(payouts.find((p: any) => p.status === 'pending' || p.status === 'in_transit').arrival) : L('según Stripe', 'per Stripe')}</div></div></div>
+        </div>
+      )}
+
+      {/* Últimos depósitos (payouts) */}
+      {payouts.length > 0 && (
+        <div className="sk-card">
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 8, fontSize: 15 }}><span className="card-ic"><OnyxIcon name="money" size={15} /></span> {L('Depósitos a tu banco', 'Payouts to your bank')}</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {payouts.map((p: any, i: number) => (
+              <div key={i} className="row between" style={{ fontSize: 13, alignItems: 'center' }}>
+                <span className="muted">{when(p.arrival || p.created)}</span>
+                <span className="row" style={{ gap: 10, alignItems: 'center' }}><b>{money(p.amount_cents, p.currency)}</b><span className="sk-chip" style={{ fontSize: 10.5, background: p.status === 'paid' ? 'color-mix(in srgb,var(--green) 15%,transparent)' : 'var(--card2)', color: p.status === 'paid' ? 'var(--soft-green)' : 'var(--mut)' }}>{poStatus(p.status)}</span></span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Ventas (quién pagó, cuánto, comisión, neto) */}
+      {sales.length > 0 && (
+        <div className="sk-card">
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 8, fontSize: 15 }}><span className="card-ic" style={{ color: 'var(--gold)' }}><OnyxIcon name="cart" size={15} /></span> {L('Ventas', 'Sales')}</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {sales.slice(0, 20).map((s: any, i: number) => (
+              <div key={i} className="row between" style={{ alignItems: 'center', gap: 8, borderTop: i ? '1px solid var(--line)' : 'none', paddingTop: i ? 8 : 0 }}>
+                <div style={{ minWidth: 0 }}><div style={{ fontSize: 13.5, fontWeight: 600 }}>{s.student}</div><div className="muted" style={{ fontSize: 11.5 }}>{s.product} · {when(s.date, true)}</div></div>
+                <div style={{ textAlign: 'right' }}><div style={{ fontSize: 14, fontWeight: 700 }}>{money(s.net_cents, s.currency)}</div><div className="muted" style={{ fontSize: 11 }}>{money(s.gross_cents, s.currency)} − {money(s.fee_cents, s.currency)} {L('Onyx', 'Onyx')}</div></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // =================== Cobros del mentor ===================
 function MentorPayments({ modules, L, onChanged }: { modules: any[]; L: (a: string, b: string) => string; onChanged?: () => void }) {
   const [conn, setConn] = useState<any>(null);
@@ -3260,6 +3319,8 @@ function MentorPayments({ modules, L, onChanged }: { modules: any[]; L: (a: stri
           ))}
         </div>
       )}
+      {/* Detalle en vivo desde Stripe: saldo, depósitos a tu banco y ventas */}
+      {conn.chargesEnabled && <MentorEarnings L={L} />}
       <div className="sk-card" data-onb="tier">
         <div className="row between" style={{ marginBottom: 10, flexWrap: 'wrap', gap: 8 }}><h3 style={{ display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic" style={{ color: 'var(--gold)' }}><OnyxIcon name="gem" size={16} /></span> {L('Niveles', 'Tiers')}</h3><div className="row" style={{ gap: 6 }}><button className="btn btn-ghost" onClick={() => setForm({ name: L('Auditoría de mi plan', 'Plan audit'), kind: 'audit', interval: 'month', price: '', currency: 'usd', grants: [], active: true })}><OnyxIcon name="guardian" size={14} /> {L('Add-on auditoría', 'Audit add-on')}</button><button className="btn btn-primary" onClick={() => setForm({ name: '', kind: 'subscription', interval: 'month', price: '', currency: 'usd', grants: 'all', active: true })}>＋ {L('Nivel', 'Tier')}</button></div></div>
         {prods.length === 0 && <p className="muted" style={{ fontSize: 13 }}>{L('Crea niveles como “Curso básico”, “VIP” o “Bootcamp”.', 'Create tiers like “Basic”, “VIP” or “Bootcamp”.')}</p>}
