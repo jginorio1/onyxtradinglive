@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requirePerm, logAdmin } from '@/lib/admin';
 import { adminListAcademies, getDefaultFeePct, setDefaultFeePct, setMentorFeePct, getPlanFees, setPlanFee, logFeeChange, feeLog } from '@/lib/academyPay';
 import { academyPerksSettings, saveSetting } from '@/lib/settings';
+import { platformBalancePayouts } from '@/lib/academyBilling';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -10,8 +11,8 @@ export const runtime = 'nodejs';
 export async function GET() {
   const { ok } = await requirePerm('academy', 'view');
   if (!ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
-  const [data, perks, planFees, log] = await Promise.all([adminListAcademies(), academyPerksSettings(), getPlanFees(), feeLog()]);
-  return NextResponse.json({ ...data, perks, planFees, feeLog: log });
+  const [data, perks, planFees, log, platform] = await Promise.all([adminListAcademies(), academyPerksSettings(), getPlanFees(), feeLog(), platformBalancePayouts()]);
+  return NextResponse.json({ ...data, perks, planFees, feeLog: log, platform });
 }
 
 // POST · editar la comisión: global (default_pct) o por mentor (mentor_id + fee_pct).

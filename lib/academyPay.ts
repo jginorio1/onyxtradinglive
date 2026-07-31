@@ -190,14 +190,43 @@ export async function hasMembership(studentId: string, mentorId: string) {
   return !!data && (data as any).status === 'active';
 }
 export async function grantMembership(o: { mentorId: string; studentId: string; grossCents: number; currency?: string; subId?: string; periodEnd?: number; feePct?: number }) {
+  // Solo DA ACCESO. La comisión se registra por FACTURA (invoice.paid), así se
+  // anota también en cada renovación mensual, no solo en el primer pago.
   await supabaseAdmin.from('academy_memberships').upsert({
     mentor_id: o.mentorId, student_id: o.studentId, status: 'active',
     stripe_subscription_id: o.subId || null,
     current_period_end: o.periodEnd ? new Date(o.periodEnd * 1000).toISOString() : null,
   }, { onConflict: 'mentor_id,student_id' });
-  const pct = o.feePct != null ? o.feePct : FEE_PCT;
+}
+
+// Inserta una comisión de forma IDEMPOTENTE (por referencia única de Stripe).
+// Si el webhook se reintenta, el índice único (mentor_id, stripe_ref) evita duplicar.
+export async function recordCommission(o: { mentorId: string; studentId?: string; productId?: string; grossCents: number; currency?: string; kind: string; ref: string; feePct?: number }) {
+  if (!o.ref) return;
+  const pct = o.feePct != null ? o.feePct : await feeForMentor(o.mentorId);
   const fee = Math.round((o.grossCents || 0) * (pct / 100));
-  await supabaseAdmin.from('onyx_commissions').insert({ mentor_id: o.mentorId, student_id: o.studentId, product_id: null, gross_cents: o.grossCents || 0, fee_cents: fee, currency: o.currency || 'usd', kind: 'membership' });
+  await supabaseAdmin.from('onyx_commissions').upsert({
+    mentor_id: o.mentorId, student_id: o.studentId || null, product_id: o.productId || null,
+    gross_cents: o.grossCents || 0, fee_cents: fee, currency: (o.currency || 'usd').toLowerCase().slice(0, 3),
+    kind: o.kind, status: 'earned', stripe_ref: o.ref,
+  }, { onConflict: 'mentor_id,stripe_ref', ignoreDuplicates: true });
+}
+
+// Comisión de una FACTURA de suscripción (primer pago y cada renovación). Busca
+// mentor/alumno por el id de suscripción en membresías o compras.
+export async function recordInvoiceCommission(o: { subId: string; grossCents: number; currency?: string; invoiceId: string }) {
+  if (!o.subId || !o.invoiceId || !o.grossCents) return;
+  const { data: mem } = await supabaseAdmin.from('academy_memberships').select('mentor_id,student_id').eq('stripe_subscription_id', o.subId).maybeSingle();
+  if (mem) { await recordCommission({ mentorId: (mem as any).mentor_id, studentId: (mem as any).student_id, grossCents: o.grossCents, currency: o.currency, kind: 'membership', ref: o.invoiceId }); return; }
+  const { data: buy } = await supabaseAdmin.from('academy_purchases').select('mentor_id,student_id,product_id').eq('stripe_subscription_id', o.subId).maybeSingle();
+  if (buy) await recordCommission({ mentorId: (buy as any).mentor_id, studentId: (buy as any).student_id, productId: (buy as any).product_id, grossCents: o.grossCents, currency: o.currency, kind: 'subscription', ref: o.invoiceId });
+}
+
+// Reembolso/disputa: marca la comisión como revertida (no la borra). Por factura o
+// por payment_intent (pago único). No resta dinero: solo corrige el libro.
+export async function reverseCommissionByRef(ref?: string | null) {
+  if (!ref) return;
+  await supabaseAdmin.from('onyx_commissions').update({ status: 'reversed', reversed_at: new Date().toISOString() }).eq('stripe_ref', ref).eq('status', 'earned');
 }
 export async function setMembershipStatus(subId: string, status: string, periodEnd?: number) {
   const patch: any = { status };
@@ -205,16 +234,18 @@ export async function setMembershipStatus(subId: string, status: string, periodE
   await supabaseAdmin.from('academy_memberships').update(patch).eq('stripe_subscription_id', subId);
 }
 
-// Registra/actualiza una compra y anota la comisión de Onyx.
-export async function grantPurchase(o: { mentorId: string; studentId: string; productId: string; kind: string; grossCents: number; currency?: string; subId?: string; sessionId?: string; periodEnd?: number; feePct?: number }) {
+// Registra/actualiza una compra. Da ACCESO siempre. La comisión:
+//  · pago único (one_time): se anota aquí, atada al payment_intent (idempotente).
+//  · suscripción: NO aquí — se anota por factura (invoice.paid), incluidas renovaciones.
+export async function grantPurchase(o: { mentorId: string; studentId: string; productId: string; kind: string; grossCents: number; currency?: string; subId?: string; sessionId?: string; paymentIntent?: string; periodEnd?: number; feePct?: number }) {
   await supabaseAdmin.from('academy_purchases').upsert({
     mentor_id: o.mentorId, student_id: o.studentId, product_id: o.productId, kind: o.kind, status: 'active',
     stripe_session_id: o.sessionId || null, stripe_subscription_id: o.subId || null,
     current_period_end: o.periodEnd ? new Date(o.periodEnd * 1000).toISOString() : null,
   }, { onConflict: 'student_id,product_id' });
-  const pct = o.feePct != null ? o.feePct : FEE_PCT;
-  const fee = Math.round((o.grossCents || 0) * (pct / 100));
-  await supabaseAdmin.from('onyx_commissions').insert({ mentor_id: o.mentorId, student_id: o.studentId, product_id: o.productId, gross_cents: o.grossCents || 0, fee_cents: fee, currency: o.currency || 'usd', kind: o.kind });
+  if (o.kind === 'one_time' && o.paymentIntent) {
+    await recordCommission({ mentorId: o.mentorId, studentId: o.studentId, productId: o.productId, grossCents: o.grossCents, currency: o.currency, kind: 'one_time', ref: o.paymentIntent, feePct: o.feePct });
+  }
   await syncGuardianGrant(o.studentId);
 }
 export async function setPurchaseStatus(subId: string, status: string, periodEnd?: number) {
@@ -256,7 +287,7 @@ export async function mentorSubStats(mentorId: string) {
 
 // Ingresos del mentor (bruto) y comisión de Onyx, a partir del libro de comisiones.
 export async function mentorEarnings(mentorId: string) {
-  const { data } = await supabaseAdmin.from('onyx_commissions').select('gross_cents,fee_cents').eq('mentor_id', mentorId);
+  const { data } = await supabaseAdmin.from('onyx_commissions').select('gross_cents,fee_cents').eq('mentor_id', mentorId).neq('status', 'reversed');
   const gross = (data || []).reduce((s: number, r: any) => s + (r.gross_cents || 0), 0);
   const fee = (data || []).reduce((s: number, r: any) => s + (r.fee_cents || 0), 0);
   return { grossCents: gross, feeCents: fee, netCents: gross - fee, sales: (data || []).length };
@@ -293,7 +324,7 @@ export async function adminListAcademies() {
   const profs = ids.length ? (await supabaseAdmin.from('profiles').select('id,email,full_name').in('id', ids)).data || [] : [];
   const pmap = new Map((profs as any[]).map((p) => [p.id, p]));
   // Comisiones agregadas por mentor.
-  const { data: comm } = ids.length ? await supabaseAdmin.from('onyx_commissions').select('mentor_id,gross_cents,fee_cents').in('mentor_id', ids) : { data: [] as any };
+  const { data: comm } = ids.length ? await supabaseAdmin.from('onyx_commissions').select('mentor_id,gross_cents,fee_cents').in('mentor_id', ids).neq('status', 'reversed') : { data: [] as any };
   const cagg = new Map<string, { gross: number; fee: number; sales: number }>();
   for (const c of (comm || []) as any[]) {
     const a = cagg.get(c.mentor_id) || { gross: 0, fee: 0, sales: 0 };

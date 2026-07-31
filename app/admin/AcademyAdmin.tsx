@@ -79,6 +79,40 @@ export default function AcademyAdmin({ canManage = false }: { canManage?: boolea
         ))}
       </div>
 
+      {/* Ingresos reales de la plataforma en Stripe (application fees) + reconciliación */}
+      {d.platform && (() => {
+        const bal = d.platform.balance; const payouts = d.platform.payouts || [];
+        const m2 = (c: number, cur = 'usd') => { const s = (cur || 'usd').toUpperCase(); const sym = s === 'USD' ? '$' : s === 'EUR' ? '€' : ''; return (sym || '') + (c / 100).toLocaleString(es ? 'es-ES' : 'en-US', { minimumFractionDigits: 2 }) + (sym ? '' : ' ' + s); };
+        const wh = (iso: string | null) => { if (!iso) return '—'; try { return new Date(iso).toLocaleDateString(es ? 'es-ES' : 'en-US', { day: '2-digit', month: 'short', year: 'numeric' }); } catch { return '—'; } };
+        return (
+          <div className="card">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <div className="card-ic"><OnyxIcon name="coins" /></div>
+              <b>{L('Ingresos de la plataforma (Stripe)', 'Platform income (Stripe)')}</b>
+            </div>
+            <p className="muted" style={{ margin: '0 0 10px' }}>{L('Lo que Onyx realmente recibe por comisión (application fees). Compáralo con el libro para reconciliar.', 'What Onyx actually receives as commission (application fees). Compare with the ledger to reconcile.')}</p>
+            {bal && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10, marginBottom: 10 }}>
+                <div className="statcard"><div className="statcard-ic" style={{ color: 'var(--soft-green,var(--green))' }}><OnyxIcon name="coins" /></div><div><div className="sc-lbl">{L('Saldo disponible', 'Available')}</div><div className="sc-val">{m2(bal.available, bal.currency)}</div></div></div>
+                <div className="statcard"><div className="statcard-ic" style={{ color: 'var(--gold)' }}><OnyxIcon name="duration" /></div><div><div className="sc-lbl">{L('Pendiente', 'Pending')}</div><div className="sc-val">{m2(bal.pending, bal.currency)}</div></div></div>
+                <div className="statcard"><div className="statcard-ic"><OnyxIcon name="gem" /></div><div><div className="sc-lbl">{L('Comisión en el libro', 'Ledger commission')}</div><div className="sc-val">{money(totalFee)}</div></div></div>
+              </div>
+            )}
+            {payouts.length > 0 && (
+              <div>
+                <div className="muted" style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>{L('Depósitos a tu banco', 'Payouts to your bank')}</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  {payouts.slice(0, 6).map((p: any, i: number) => (
+                    <div key={i} className="row between" style={{ fontSize: 13, alignItems: 'center' }}><span className="muted">{wh(p.arrival || p.created)}</span><span className="row" style={{ gap: 10, alignItems: 'center' }}><b>{m2(p.amount_cents, p.currency)}</b><span className="pill" style={{ fontSize: 10, color: p.status === 'paid' ? 'var(--green)' : 'var(--mut)' }}>{p.status}</span></span></div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {!bal && <p className="muted" style={{ fontSize: 12.5, margin: 0 }}>{L('Conecta/verifica Stripe de plataforma para ver el saldo real.', 'Configure platform Stripe to see the live balance.')}</p>}
+          </div>
+        );
+      })()}
+
       {/* Comisión por defecto */}
       <div className="card">
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>

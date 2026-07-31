@@ -33,11 +33,13 @@ async function mentorInfo(mentorId: string) {
 }
 
 // Enriquecer un item con datos EN VIVO de Stripe (suscripción + facturas).
-async function enrichFromStripe(base: Item, subId: string | null, account: string | null, sessionId?: string | null): Promise<Item> {
-  if (!account) return base;
+// IMPORTANTE: la academia usa "destination charges": el cobro, la suscripción, la
+// factura y el cliente viven en la cuenta de PLATAFORMA (la nuestra), no en la del
+// mentor. Por eso consultamos Stripe SIN { stripeAccount }.
+async function enrichFromStripe(base: Item, subId: string | null, _account: string | null, sessionId?: string | null): Promise<Item> {
   try {
     if (subId) {
-      const sub: any = await stripe.subscriptions.retrieve(subId, { expand: ['items.data.price'] }, { stripeAccount: account });
+      const sub: any = await stripe.subscriptions.retrieve(subId, { expand: ['items.data.price'] });
       const price = sub.items?.data?.[0]?.price;
       base.amount_cents = price?.unit_amount ?? base.amount_cents;
       base.currency = (price?.currency || base.currency || 'usd');
@@ -50,15 +52,15 @@ async function enrichFromStripe(base: Item, subId: string | null, account: strin
       base.started_at = sub.start_date ? new Date(sub.start_date * 1000).toISOString() : base.started_at;
       base.can_manage = true;
       // Facturas de esta suscripción (últimas 6).
-      const inv: any = await stripe.invoices.list({ subscription: subId, limit: 6 }, { stripeAccount: account });
+      const inv: any = await stripe.invoices.list({ subscription: subId, limit: 6 });
       base.invoices = (inv.data || []).map((i: any) => ({
         date: new Date((i.status_transitions?.paid_at || i.created) * 1000).toISOString(),
         amount_cents: i.amount_paid ?? i.amount_due ?? 0, currency: i.currency || base.currency,
         status: i.status || 'paid', url: i.hosted_invoice_url || null, pdf: i.invoice_pdf || null,
       }));
     } else if (sessionId) {
-      // Pago único: importe desde la sesión de checkout.
-      const s: any = await stripe.checkout.sessions.retrieve(sessionId, { stripeAccount: account });
+      // Pago único: importe desde la sesión de checkout (en la cuenta de plataforma).
+      const s: any = await stripe.checkout.sessions.retrieve(sessionId);
       base.amount_cents = s.amount_total ?? base.amount_cents;
       base.currency = s.currency || base.currency;
     }
@@ -116,24 +118,24 @@ export async function studentBilling(studentId: string, onlyMentor?: string): Pr
 }
 
 // Buscar la suscripción activa del alumno en una academia (membresía o nivel).
-async function findSub(studentId: string, mentorId: string): Promise<{ subId: string | null; account: string | null }> {
-  const mi = await mentorInfo(mentorId);
+// La suscripción vive en la cuenta de PLATAFORMA (destination charges).
+async function findSub(studentId: string, mentorId: string): Promise<{ subId: string | null }> {
   const { data: mem } = await supabaseAdmin.from('academy_memberships').select('stripe_subscription_id').eq('student_id', studentId).eq('mentor_id', mentorId).maybeSingle();
-  if ((mem as any)?.stripe_subscription_id) return { subId: (mem as any).stripe_subscription_id, account: mi.account };
+  if ((mem as any)?.stripe_subscription_id) return { subId: (mem as any).stripe_subscription_id };
   const { data: buy } = await supabaseAdmin.from('academy_purchases').select('stripe_subscription_id').eq('student_id', studentId).eq('mentor_id', mentorId).not('stripe_subscription_id', 'is', null).limit(1).maybeSingle();
-  return { subId: (buy as any)?.stripe_subscription_id || null, account: mi.account };
+  return { subId: (buy as any)?.stripe_subscription_id || null };
 }
 
-// Portal de facturación de Stripe (cambiar tarjeta, ver facturas, cancelar) en la
-// cuenta conectada del mentor. Devuelve la URL o null.
+// Portal de facturación de Stripe (cambiar tarjeta, ver facturas, cancelar). El
+// cliente y la suscripción están en TU cuenta de plataforma → sin { stripeAccount }.
 export async function academyPortal(studentId: string, mentorId: string): Promise<string | null> {
-  const { subId, account } = await findSub(studentId, mentorId);
-  if (!subId || !account) return null;
+  const { subId } = await findSub(studentId, mentorId);
+  if (!subId) return null;
   try {
-    const sub: any = await stripe.subscriptions.retrieve(subId, {}, { stripeAccount: account });
+    const sub: any = await stripe.subscriptions.retrieve(subId);
     const customer = typeof sub.customer === 'string' ? sub.customer : sub.customer?.id;
     if (!customer) return null;
-    const ps: any = await stripe.billingPortal.sessions.create({ customer, return_url: `${appUrl()}/account#academias` }, { stripeAccount: account });
+    const ps: any = await stripe.billingPortal.sessions.create({ customer, return_url: `${appUrl()}/account#academias` });
     return ps.url || null;
   } catch { return null; }
 }
@@ -149,7 +151,7 @@ export async function mentorPayoutDetail(mentorId: string) {
 
   // Resumen + detalle de ventas desde el libro de comisiones.
   const { data: comm } = await supabaseAdmin.from('onyx_commissions')
-    .select('student_id,product_id,gross_cents,fee_cents,currency,kind,created_at').eq('mentor_id', mentorId).order('created_at', { ascending: false }).limit(60);
+    .select('student_id,product_id,gross_cents,fee_cents,currency,kind,created_at').eq('mentor_id', mentorId).neq('status', 'reversed').order('created_at', { ascending: false }).limit(60);
   const rows = (comm || []) as any[];
   const sids = Array.from(new Set(rows.map((r) => r.student_id).filter(Boolean)));
   const pids = Array.from(new Set(rows.map((r) => r.product_id).filter(Boolean)));
@@ -195,12 +197,36 @@ export async function mentorPayoutDetail(mentorId: string) {
   };
 }
 
+// ============================================================
+// ADMIN (Onyx): saldo y payouts de la PLATAFORMA. Aquí llegan las comisiones
+// (application fees) que Onyx retiene de cada venta de las academias. Es lo que
+// Onyx realmente recibe, para reconciliar contra el libro (onyx_commissions).
+// ============================================================
+export async function platformBalancePayouts() {
+  let balance: { available: number; pending: number; currency: string } | null = null;
+  let payouts: { amount_cents: number; currency: string; status: string; arrival: string | null; created: string }[] = [];
+  try {
+    const bal: any = await stripe.balance.retrieve();
+    const av = (bal.available || [])[0]; const pe = (bal.pending || [])[0];
+    balance = { available: av?.amount || 0, pending: pe?.amount || 0, currency: (av?.currency || pe?.currency || 'usd') };
+  } catch { /* fail-safe */ }
+  try {
+    const po: any = await stripe.payouts.list({ limit: 10 });
+    payouts = (po.data || []).map((p: any) => ({
+      amount_cents: p.amount || 0, currency: p.currency || 'usd', status: p.status || 'paid',
+      arrival: p.arrival_date ? new Date(p.arrival_date * 1000).toISOString() : null,
+      created: new Date((p.created || 0) * 1000).toISOString(),
+    }));
+  } catch { /* fail-safe */ }
+  return { balance, payouts };
+}
+
 // Cancelar (al final del periodo) o reactivar la suscripción del alumno.
 export async function setAcademyCancel(studentId: string, mentorId: string, cancel: boolean): Promise<{ ok: boolean; error?: string }> {
-  const { subId, account } = await findSub(studentId, mentorId);
-  if (!subId || !account) return { ok: false, error: 'no_sub' };
+  const { subId } = await findSub(studentId, mentorId);
+  if (!subId) return { ok: false, error: 'no_sub' };
   try {
-    await stripe.subscriptions.update(subId, { cancel_at_period_end: cancel }, { stripeAccount: account });
+    await stripe.subscriptions.update(subId, { cancel_at_period_end: cancel });   // suscripción en tu cuenta de plataforma
     return { ok: true };
   } catch (e: any) { return { ok: false, error: e?.message || 'stripe_error' }; }
 }
