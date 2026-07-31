@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import Link from 'next/link';
 import OnyxIcon from '@/app/components/OnyxIcon';
+import CountrySelect from '@/app/components/CountrySelect';
 import { errMsg, planName } from '@/lib/i18nErrors';
 import Ambassador from './Ambassador';
 import ReferralCard from './ReferralCard';
@@ -453,7 +454,7 @@ export default function AccountClient({ email }: { email: string }) {
                 <div style={{ borderTop: '1px solid var(--line)', margin: '20px 0 4px' }} />
                 <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{L.tProfTitle}</div>
                 <span style={lbl}>{L.tCountry}</span>
-                <input value={p.country || ''} onChange={(e) => setField('country', e.target.value)} style={{ margin: '4px 0 0' }} />
+                <CountrySelect value={p.country} onChange={(code) => setField('country', code)} placeholder={L.tChoose} style={{ margin: '4px 0 0', width: '100%' }} />
                 <span style={lbl}>{L.tExp}</span>
                 <select value={p.experience || ''} onChange={(e) => setField('experience', e.target.value)} style={{ margin: '4px 0 0' }}>
                   <option value="">{L.tChoose}</option>{(L as any).tExpO.map(([v, l]: any) => <option key={v} value={v}>{l}</option>)}
@@ -585,7 +586,9 @@ export default function AccountClient({ email }: { email: string }) {
                   {([['notify_email', L.nEmail, L.nEmailS], ['notify_weekly', L.nWeek, L.nWeekS], ['notify_funding', L.nFund, L.nFundS], ['notify_marketing', L.nMkt, L.nMktS]] as [string, string, string][]).map(([k, label, sub], i) => (
                     <div key={k} className="row between" style={{ padding: '11px 0', borderTop: i ? '1px solid var(--line)' : 'none', gap: 10 }}>
                       <div><div style={{ fontSize: 14 }}>{label}</div><div className="muted" style={{ fontSize: 11.5 }}>{sub}</div></div>
-                      <Toggle on={!!p[k]} onClick={() => setField(k, !p[k])} />
+                      {/* "Novedades y ofertas" viene activado por defecto (null => on) y respeta
+                          también las bajas hechas desde el pie del correo (marketing_emails). */}
+                      {(() => { const cur = k === 'notify_marketing' ? (p.notify_marketing !== false && p.marketing_emails !== false) : !!p[k]; return <Toggle on={cur} onClick={() => setField(k, !cur)} />; })()}
                     </div>
                   ))}
                   <div className="row" style={{ gap: 10, marginTop: 14 }}>

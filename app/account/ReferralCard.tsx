@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import { useLang } from '@/lib/lang';
 import QrPop from '@/app/components/QrPop';
+import ShareRow from '@/app/components/ShareRow';
 
 // "Invita y gana": el enlace propio del usuario común + sus estadísticas y el
 // puente para hacerse Embajador. La recompensa es CRÉDITO en su cuenta.
@@ -16,14 +17,10 @@ export default function ReferralCard() {
   if (!d || d.enabled === false) return null;
 
   const link = d.link || '';
-  const share = (net: 'wa' | 'tg' | 'x') => {
-    const msg = es
-      ? `Estoy usando Onyx Trading Live para analizar mi trading. Únete con mi enlace y ambos ganamos crédito 👇`
-      : `I'm using Onyx Trading Live to analyze my trading. Join with my link and we both get credit 👇`;
-    const u = encodeURIComponent(link); const tx = encodeURIComponent(msg + ' ' + link);
-    const url = net === 'wa' ? `https://wa.me/?text=${tx}` : net === 'tg' ? `https://t.me/share/url?url=${u}&text=${encodeURIComponent(msg)}` : `https://twitter.com/intent/tweet?text=${tx}`;
-    window.open(url, '_blank');
-  };
+  const L = (a: string, b: string) => (es ? a : b);
+  const shareMsg = es
+    ? `Estoy usando Onyx Trading Live para analizar mi trading. Únete con mi enlace y ambos ganamos crédito 👇`
+    : `I'm using Onyx Trading Live to analyze my trading. Join with my link and we both get credit 👇`;
   async function copy() { try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch {} }
 
   const toBridge = Math.max(0, (d.bridge || 0) - (d.qualified || 0));
@@ -49,10 +46,8 @@ export default function ReferralCard() {
         <input readOnly value={link} onFocus={(e) => e.currentTarget.select()} style={{ flex: 1, minWidth: 200, margin: 0, fontSize: 13 }} />
         <button className="btn btn-primary" onClick={copy} style={{ minWidth: 96 }}>{copied ? (es ? '¡Copiado!' : 'Copied!') : (es ? 'Copiar' : 'Copy')}</button>
       </div>
-      <div className="row" style={{ gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
-        <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => share('wa')}><OnyxIcon emoji="🟢" size={16} /> WhatsApp</button>
-        <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => share('tg')}><OnyxIcon emoji="✈" size={16} /> Telegram</button>
-        <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => share('x')}>𝕏</button>
+      <div className="row" style={{ gap: 14, flexWrap: 'wrap', marginBottom: 14, alignItems: 'center' }}>
+        <ShareRow link={link} message={shareMsg} L={L} title={es ? 'Onyx Trading Live' : 'Onyx Trading Live'} />
         <QrPop data={link} poster="referral" label={es ? 'QR / Póster' : 'QR / Poster'} title={es ? 'Únete y ganamos los dos' : 'Join and we both win'} />
       </div>
 

@@ -7,7 +7,7 @@ import { accountLimit, addonSettings, retentionSettings, ensureProfile } from '@
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-const FIELDS = 'id,email,plan,subscription_status,stripe_customer_id,stripe_subscription_id,full_name,timezone,lang,country,experience,trade_style,platform,prop_firm,goal,notify_email,notify_weekly,notify_funding,notify_marketing,created_at,pending_plan,pending_plan_at,pending_keep';
+const FIELDS = 'id,email,plan,subscription_status,stripe_customer_id,stripe_subscription_id,full_name,timezone,lang,country,experience,trade_style,platform,prop_firm,goal,notify_email,notify_weekly,notify_funding,notify_marketing,marketing_emails,created_at,pending_plan,pending_plan_at,pending_keep';
 // Sin las columnas del perfil de trader, por si aún no se corrió onboarding_v1.sql
 const FIELDS_BASE = 'id,email,plan,subscription_status,stripe_customer_id,stripe_subscription_id,full_name,timezone,lang,notify_email,notify_weekly,notify_funding,notify_marketing,created_at';
 
@@ -98,11 +98,15 @@ export async function PATCH(req: Request) {
     const OPTS: Record<string, string[]> = {
       experience: ['novato', 'intermedio', 'avanzado', 'pro'],
       trade_style: ['scalping', 'day', 'swing', 'position', 'algo'],
-      platform: ['mt4', 'mt5', 'ambas'],
+      platform: ['mt4', 'mt5', 'ctrader', 'matchtrader', 'ambas'],
       goal: ['pasar_challenge', 'consistencia', 'crecer', 'vivir'],
     };
     Object.keys(OPTS).forEach((k) => { if (b[k] !== undefined && (b[k] === '' || OPTS[k].includes(String(b[k])))) fields[k] = b[k] ? String(b[k]) : null; });
     ['notify_email', 'notify_weekly', 'notify_funding', 'notify_marketing'].forEach((k) => { if (b[k] !== undefined) fields[k] = !!b[k]; });
+    // El toggle "Novedades y ofertas" (notify_marketing) es la MISMA decisión que el
+    // opt-out de campañas (marketing_emails). Los mantenemos sincronizados para que el
+    // toggle controle de verdad quién recibe campañas.
+    if (b.notify_marketing !== undefined) fields.marketing_emails = !!b.notify_marketing;
     // Cuentas a conservar cuando aplique un downgrade (solo ids propias, sanea)
     if (b.pending_keep !== undefined) {
       const ids = Array.isArray(b.pending_keep) ? b.pending_keep.map((x: any) => String(x)).slice(0, 100) : [];

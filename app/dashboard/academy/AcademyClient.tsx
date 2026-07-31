@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import BrandIcon, { BRAND_COLOR } from '@/app/components/BrandIcon';
+import ShareRow from '@/app/components/ShareRow';
 import LangToggle from '@/app/LangToggle';
 import { COUNTRIES, flagOf, countryName } from '@/app/components/countries';
 import JoinQR from '@/app/components/JoinQR';
@@ -181,25 +182,10 @@ function SocialRow({ socials }: { socials: any }) {
     </div>
   );
 }
-// Botones para compartir el enlace de la academia a redes (share nativo del móvil + directos).
-function ShareRow({ link, message, L }: { link: string; message: string; L: (a: string, b: string) => string }) {
-  const enc = encodeURIComponent; const msg = enc(message + ' ' + link);
-  const items: { key: string; color: string; href: string }[] = [
-    { key: 'whatsapp', color: BRAND_COLOR.whatsapp, href: `https://wa.me/?text=${msg}` },
-    { key: 'telegram', color: BRAND_COLOR.telegram, href: `https://t.me/share/url?url=${enc(link)}&text=${enc(message)}` },
-    { key: 'facebook', color: BRAND_COLOR.facebook, href: `https://www.facebook.com/sharer/sharer.php?u=${enc(link)}` },
-    { key: 'x', color: BRAND_COLOR.x, href: `https://twitter.com/intent/tweet?text=${enc(message)}&url=${enc(link)}` },
-  ];
-  const nativeShare = () => { try { (navigator as any).share?.({ title: 'Onyx Academy', text: message, url: link }); } catch {} };
-  const hasNative = typeof navigator !== 'undefined' && !!(navigator as any).share;
-  return (
-    <div className="sk-share">
-      {hasNative && <a role="button" tabIndex={0} onClick={nativeShare} title={L('Compartir', 'Share')} style={{ color: 'var(--brand)', cursor: 'pointer' }}><OnyxIcon emoji="🔗" size={16} /></a>}
-      {items.map((s) => <a key={s.key} href={s.href} target="_blank" rel="noreferrer" title={s.key} style={{ color: s.color }}><BrandIcon name={s.key} size={17} /></a>)}
-      <a href={`mailto:?subject=${enc(message)}&body=${enc(message + '\n\n' + link)}`} title={L('Correo', 'Email')} style={{ color: 'var(--tx)' }}><OnyxIcon name="mail" size={16} /></a>
-    </div>
-  );
-}
+// El componente ShareRow (compartir a redes: WhatsApp, Telegram, Instagram, Facebook, X,
+// correo y compartir nativo) es compartido en '@/app/components/ShareRow' para que sea
+// idéntico en la academia y en referidos.
+
 // Overlay modal para formularios (siempre visible al abrir, evita el bug de "no pasa nada").
 function Modal({ onClose, children }: { onClose: () => void; children: any }) {
   return <div className="sk-modal-ov" onClick={onClose}><div className="sk-modal" onClick={(e) => e.stopPropagation()}>{children}</div></div>;

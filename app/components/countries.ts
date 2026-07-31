@@ -21,3 +21,12 @@ export function countryName(code: string): string {
   const f = COUNTRIES.find((c) => c[0] === code);
   return f ? f[1] : code;
 }
+// Normaliza cualquier valor a un código ISO. Acepta ya-código ("PR"), o un nombre
+// guardado antes como texto libre ("Puerto Rico"). Devuelve '' si no lo reconoce.
+export function countryCode(input: string | null | undefined): string {
+  const v = (input || '').trim();
+  if (!v) return '';
+  if (v.length === 2 && COUNTRIES.some((c) => c[0] === v.toUpperCase())) return v.toUpperCase();
+  const byName = COUNTRIES.find((c) => c[1].toLowerCase() === v.toLowerCase());
+  return byName ? byName[0] : '';
+}

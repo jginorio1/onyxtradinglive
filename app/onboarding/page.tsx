@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useLang } from '@/lib/lang';
+import CountrySelect from '@/app/components/CountrySelect';
 
 const T = {
   es: {
@@ -92,7 +93,7 @@ export default function Onboarding() {
           </div>
           <div>
             <label style={field}>{t.country}</label>
-            <input value={country} onChange={(e) => setCountry(e.target.value)} placeholder={t.countryPh} style={{ width: '100%' }} />
+            <CountrySelect value={country} onChange={setCountry} placeholder={t.choose} style={{ width: '100%' }} />
           </div>
           <div>
             <label style={field}>{t.experience}</label>
