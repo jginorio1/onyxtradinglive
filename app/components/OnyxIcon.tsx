@@ -77,6 +77,10 @@ const G: Record<string, Els> = {
   key: (<><circle cx="8" cy="8" r="3.6" /><line x1="10.6" y1="10.6" x2="19.5" y2="19.5" /><line x1="19.5" y1="19.5" x2="17.4" y2="21.6" /><line x1="16.4" y1="16.4" x2="14.3" y2="18.5" /></>),
   // Mano abierta (pausa / detener / saludo). Palma con cuatro dedos y pulgar.
   hand: (<><path d="M8 12 V6.6 a1.2 1.2 0 0 1 2.4 0 V11 M10.4 11 V5 a1.2 1.2 0 0 1 2.4 0 V11 M12.8 11 V5.6 a1.2 1.2 0 0 1 2.4 0 V12 M15.2 12 V8 a1.2 1.2 0 0 1 2.4 0 V15 a5 5 0 0 1 -5 5 h-1 a5 5 0 0 1 -3.6 -1.6 l-2.7 -2.9 a1.3 1.3 0 0 1 1.9 -1.8 L8 13.4 z" /></>),
+  // Ojo (ver, vista previa, transparencia).
+  eye: (<><path d="M2.5 12 C5 7.5 8.5 5.5 12 5.5 s7 2 9.5 6.5 c-2.5 4.5 -6 6.5 -9.5 6.5 s-7 -2 -9.5 -6.5 z" /><circle cx="12" cy="12" r="2.7" /></>),
+  // Tijeras (cierres parciales, recortar).
+  scissors: (<><circle cx="6" cy="7" r="2.3" /><circle cx="6" cy="17" r="2.3" /><line x1="8" y1="8.2" x2="20" y2="16" /><line x1="8" y1="15.8" x2="20" y2="8" /></>),
 };
 
 // Emoji → nombre de glifo (se normaliza quitando el selector de variación).
@@ -104,6 +108,8 @@ const EMOJI: Record<string, string> = {
   '✋': 'hand', '🤚': 'hand', '👋': 'hand', '🖐': 'hand', '🖖': 'hand',
   // Landing (metáforas propias, no genéricas)
   '🔗': 'link', '📲': 'telegram', '🏦': 'firms', '👥': 'users', '🏛': 'firms',
+  // Guía
+  '👁': 'eye', '✂': 'scissors', '📉': 'down',
 };
 
 const strip = (s: string) => (s || '').replace(/️/g, '').trim();

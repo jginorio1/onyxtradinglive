@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useLang } from '@/lib/lang';
 import { ARTICLES, CATEGORIES, searchArticles, byCat } from '@/lib/guide';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 const T: any = {
   es: {
@@ -103,7 +104,7 @@ export default function GuideHome() {
               const n = byCat(c.id).length;
               return (
                 <Link key={c.id} href={`/guia#${c.id}`} className="card" style={{ display: 'block' }}>
-                  <div style={{ fontSize: 20, marginBottom: 8 }}>{c.icon}</div>
+                  <div style={{ color: c.color || 'var(--brand)', marginBottom: 8 }}><OnyxIcon emoji={c.icon} size={22} /></div>
                   <div style={{ fontSize: 15, marginBottom: 3 }}>{(c.name as any)[lang]}</div>
                   <div className="muted" style={{ fontSize: 12 }}>{t.articles(n)}</div>
                 </Link>
@@ -114,7 +115,7 @@ export default function GuideHome() {
           {/* Listado por categoría */}
           {CATEGORIES.map((c) => (
             <div key={c.id} id={c.id} style={{ marginBottom: 30 }}>
-              <h2 style={{ fontSize: 18, marginBottom: 12 }}>{c.icon} {(c.name as any)[lang]}</h2>
+              <h2 style={{ fontSize: 18, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 9 }}><span style={{ color: c.color || 'var(--brand)', display: 'inline-flex' }}><OnyxIcon emoji={c.icon} size={20} /></span> {(c.name as any)[lang]}</h2>
               {byCat(c.id).map((a) => <ArticleRow key={a.slug} a={a} lang={lang} />)}
             </div>
           ))}
@@ -131,7 +132,7 @@ function ArticleRow({ a, lang }: any) {
       background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 12,
     }}>
       <div className="row" style={{ gap: 11, alignItems: 'flex-start' }}>
-        <span style={{ fontSize: 17, lineHeight: 1.3 }}>{a.icon}</span>
+        <span style={{ color: 'var(--brand)', display: 'inline-flex', marginTop: 1, flex: 'none' }}><OnyxIcon emoji={a.icon} size={18} /></span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 14.5, marginBottom: 2 }}>{a.title[lang]}</div>
           <div className="muted" style={{ fontSize: 13, lineHeight: 1.6 }}>{a.summary[lang]}</div>
