@@ -775,6 +775,20 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
                   <button key={t.key} className="sk-chip" onClick={() => setFeedFilter(t.key)} style={{ cursor: 'pointer', border: feedFilter === t.key ? `1px solid ${t.color}` : '1px solid var(--line)', background: feedFilter === t.key ? `color-mix(in srgb,${t.color} 14%,transparent)` : 'var(--bg2)', color: feedFilter === t.key ? t.color : 'var(--mut)' }}>{L(t.es, t.en)}</button>
                 ))}
               </div>
+              {(feedFilter === 'all' || feedFilter === 'win') && (active.winsMinePending || []).map((w: any) => (
+                <div key={'wp' + w.id} className="sk-card sk-pending">
+                  <div className="row" style={{ gap: 10, alignItems: 'center', marginBottom: 6 }}>
+                    <Avatar name="•" level={active.me?.level} size={34} />
+                    <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontWeight: 600, fontSize: 13.5, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>{L('Tu logro', 'Your win')} <span className="sk-chip" style={{ fontSize: 10.5, padding: '1px 6px', background: `color-mix(in srgb,${WIN_KINDS[w.kind]?.color || 'var(--gold)'} 16%,transparent)`, color: WIN_KINDS[w.kind]?.color || 'var(--gold)' }}>{L(WIN_KINDS[w.kind]?.es, WIN_KINDS[w.kind]?.en)}</span></div></div>
+                    {w.status === 'rejected'
+                      ? <span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--red) 16%,transparent)', color: 'var(--red)' }}>{L('No aprobado', 'Not approved')}</span>
+                      : <span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--gold) 16%,transparent)', color: 'var(--gold)' }}>{L('En revisión', 'In review')}</span>}
+                  </div>
+                  {w.title && <div style={{ fontSize: 14, whiteSpace: 'pre-wrap' }}>{w.title}</div>}
+                  {w.image_url && <img src={w.image_url} alt="" style={{ maxWidth: '100%', maxHeight: 300, borderRadius: 12, marginTop: 8, display: 'block' }} />}
+                  <div className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>{w.status === 'rejected' ? L('La academia no aprobó este logro.', 'The academy did not approve this win.') : L('Aparecerá en el muro de logros cuando la academia lo apruebe.', 'It will show on the wins wall once the academy approves it.')}</div>
+                </div>
+              ))}
               {(active.feed || []).filter((p: any) => feedFilter === 'all' || (p.kind || 'community') === feedFilter).map((p: any) => <PostCard key={p.id} p={p} onLike={like} onComment={comment} onProfile={openProfile} onReport={report} onModDelete={modDelete} canModerate={!!(active.isMentorHere || active.myPerms?.moderate)} myUserId={active.myUserId} L={L} es={es} />)}
               {(active.feed || []).length === 0 && <div className="sk-card muted">{L('Sé el primero en publicar en la comunidad.', 'Be the first to post in the community.')}</div>}
             </>
