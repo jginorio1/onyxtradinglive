@@ -377,6 +377,18 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
 .sk-modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:120;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;overflow-y:auto;}
 .sk-modal{width:100%;max-width:560px;margin:auto;}
 .sk-modal .sk-card{margin:0;box-shadow:0 20px 60px rgba(0,0,0,.4);}
+/* Popup de confirmación de borrado (iluminado) */
+.sk-confirm{max-width:420px;background:var(--card);border:1.5px solid color-mix(in srgb,var(--red) 55%,transparent);border-radius:16px;padding:20px 22px;box-shadow:0 0 0 1px color-mix(in srgb,var(--red) 25%,transparent),0 0 34px -4px color-mix(in srgb,var(--red) 60%,transparent),0 24px 60px rgba(0,0,0,.5);animation:skConfirmGlow 1.8s ease-in-out infinite;}
+@keyframes skConfirmGlow{0%,100%{box-shadow:0 0 0 1px color-mix(in srgb,var(--red) 22%,transparent),0 0 26px -6px color-mix(in srgb,var(--red) 50%,transparent),0 24px 60px rgba(0,0,0,.5);}50%{box-shadow:0 0 0 1px color-mix(in srgb,var(--red) 30%,transparent),0 0 40px 0 color-mix(in srgb,var(--red) 75%,transparent),0 24px 60px rgba(0,0,0,.5);}}
+.sk-confirm-ic{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;flex:none;background:color-mix(in srgb,var(--red) 16%,transparent);color:var(--red);box-shadow:0 0 14px -3px color-mix(in srgb,var(--red) 60%,transparent);}
+.sk-confirm-item{background:var(--bg2);border:1px solid var(--line);border-left:3px solid var(--red);border-radius:8px;padding:8px 11px;font-size:13.5px;font-weight:600;color:var(--tx);word-break:break-word;}
+.btn.sk-btn-danger{background:var(--red)!important;border-color:var(--red)!important;color:#fff!important;font-weight:700;box-shadow:0 0 14px -3px color-mix(in srgb,var(--red) 65%,transparent);}
+.btn.sk-btn-danger:hover{box-shadow:0 0 20px -1px color-mix(in srgb,var(--red) 80%,transparent);}
+/* Onboarding: tarjeta que alumbra si faltan pasos + píldora recordatorio */
+.sk-onb-live{box-shadow:0 0 18px -5px color-mix(in srgb,var(--brand) 55%,transparent);animation:skOnbGlow 2.6s ease-in-out infinite;}
+@keyframes skOnbGlow{0%,100%{box-shadow:0 0 14px -6px color-mix(in srgb,var(--brand) 45%,transparent);}50%{box-shadow:0 0 26px -2px color-mix(in srgb,var(--brand) 70%,transparent);}}
+.sk-onb-mini{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;background:color-mix(in srgb,var(--brand) 10%,var(--card));border:1px solid color-mix(in srgb,var(--brand) 45%,transparent);border-radius:12px;padding:11px 14px;cursor:pointer;text-align:left;color:var(--tx);box-shadow:0 0 16px -5px color-mix(in srgb,var(--brand) 55%,transparent);animation:skOnbGlow 2.6s ease-in-out infinite;}
+.sk-onb-mini:hover{border-color:var(--brand);}
 /* Puntito "en línea" (verde brillante) sobre el avatar */
 .sk-online{position:absolute;right:-1px;bottom:-1px;width:12px;height:12px;border-radius:50%;background:#1fd18a;border:2px solid var(--card);box-shadow:0 0 8px rgba(31,209,138,.9);}
 /* Precios centrados y "encendidos" en las tarjetas de nivel */

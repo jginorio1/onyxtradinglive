@@ -1738,3 +1738,20 @@ si el alumno **puede descargarlo** o no. Si lo desactiva, el visor muestra "Solo
 botón de descarga y sin menú contextual sobre el documento).
 
 **Requisitos:** correr `academy_v18.sql`. Nada nuevo en variables de entorno.
+
+### 52 · Onyx Academy — Segundos, país, PDF nítido, confirmaciones y onboarding (Fase 18)
+
+Sin SQL nuevo (todo es código; el país ya existía en `profiles.country`).
+
+- **Clase en vivo con segundos:** la cuenta regresiva ahora muestra también los segundos
+  (ej. "1d 10h 58m 07s") y baja segundo a segundo.
+- **País del alumno:** se corrigió que no se mostrara ni pareciera guardarse. El perfil ya
+  devuelve el país elegido, así que la bandera aparece y persiste.
+- **PDF nítido en móvil:** el visor renderiza a mayor resolución (según el DPR del dispositivo),
+  así que al hacer zoom con los dedos ya no se ve borroso.
+- **Confirmación de borrado iluminada:** cualquier acción destructiva (borrar aula, lección,
+  clase, publicación, logro, nivel, colaborador, o quitar/banear a un alumno) abre un **popup
+  rojo que alumbra** indicando qué se va a eliminar y pide confirmar antes de borrar.
+- **"Configura tu academia" ocultable:** ahora se puede ocultar aunque falten pasos; si queda
+  algo pendiente, deja una **píldora iluminada** de recordatorio (solo desaparece del todo cuando
+  completas todo). El estado se recuerda en el dispositivo.

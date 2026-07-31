@@ -571,6 +571,7 @@ export async function memberProfile(mentorId: string, userId: string, self = fal
   return {
     user_id: userId,
     name: (prof as any)?.full_name || ((prof as any)?.email || '').split('@')[0] || 'Trader',
+    country: (prof as any)?.country || null,
     points, level: levelFor(points), contributions, activity: days, verified, certificates, audits,
   };
 }

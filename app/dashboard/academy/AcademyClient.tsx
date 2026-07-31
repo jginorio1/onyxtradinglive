@@ -205,6 +205,41 @@ function Modal({ onClose, children }: { onClose: () => void; children: any }) {
   return <div className="sk-modal-ov" onClick={onClose}><div className="sk-modal" onClick={(e) => e.stopPropagation()}>{children}</div></div>;
 }
 
+// ---- Confirmación de borrado global (popup iluminado) ----
+// confirmDelete(...) devuelve una promesa que resuelve true si el usuario confirma.
+// Cualquier acción destructiva (borrar comentario, PDF, archivo, alumno, etc.) la usa.
+type ConfirmOpts = { title?: string; message?: string; confirmText?: string; itemName?: string };
+let _askDelete: ((o: ConfirmOpts) => Promise<boolean>) | null = null;
+function confirmDelete(o: ConfirmOpts = {}): Promise<boolean> {
+  if (_askDelete) return _askDelete(o);
+  if (typeof window !== 'undefined') return Promise.resolve(window.confirm(o.message || o.title || '¿Eliminar?'));
+  return Promise.resolve(false);
+}
+function ConfirmHost({ lang }: { lang: string }) {
+  const L = (a: string, b: string) => (lang === 'en' ? b : a);
+  const [st, setSt] = useState<{ o: ConfirmOpts; res: (v: boolean) => void } | null>(null);
+  useEffect(() => { _askDelete = (o) => new Promise<boolean>((res) => setSt({ o, res })); return () => { _askDelete = null; }; }, []);
+  if (!st) return null;
+  const done = (v: boolean) => { st.res(v); setSt(null); };
+  const o = st.o;
+  return (
+    <div className="sk-modal-ov" onClick={() => done(false)}>
+      <div className="sk-modal sk-confirm" onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 10 }}>
+          <span className="sk-confirm-ic"><OnyxIcon emoji="🗑" size={20} /></span>
+          <b style={{ fontSize: 16.5 }}>{o.title || L('¿Eliminar?', 'Delete?')}</b>
+        </div>
+        {o.itemName && <div className="sk-confirm-item">{o.itemName}</div>}
+        <p className="muted" style={{ fontSize: 13.5, margin: '8px 0 18px', lineHeight: 1.55 }}>{o.message || L('Esta acción no se puede deshacer.', 'This action cannot be undone.')}</p>
+        <div className="row" style={{ gap: 8, justifyContent: 'flex-end' }}>
+          <button className="btn btn-ghost" onClick={() => done(false)}>{L('Cancelar', 'Cancel')}</button>
+          <button className="btn sk-btn-danger" onClick={() => done(true)}>{o.confirmText || L('Eliminar', 'Delete')}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Preferencias de notificaciones push del alumno (qué avisos quiere).
 function NotifPrefs({ prefs, L }: { prefs: any; L: (a: string, b: string) => string }) {
   const init = (k: string) => (prefs || {})[k] !== false;
@@ -394,9 +429,10 @@ function useNow(active: boolean) {
 function fmtCountdown(ms: number) {
   const s = Math.max(0, Math.floor(ms / 1000));
   const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
-  if (d > 0) return `${d}d ${h}h ${m}m`;
-  if (h > 0) return `${h}h ${m}m ${sec}s`;
-  return `${m}m ${sec}s`;
+  const ss = String(sec).padStart(2, '0');
+  if (d > 0) return `${d}d ${h}h ${m}m ${ss}s`;
+  if (h > 0) return `${h}h ${m}m ${ss}s`;
+  return `${m}m ${ss}s`;
 }
 
 function LiveBanner({ ev, lang }: { ev: any; lang: string }) {
@@ -500,6 +536,7 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
 
   return (
     <div className="sk-wrap" data-tab={tab} style={{ paddingTop: 4 }}>
+      <ConfirmHost lang={lang} />
       <div style={{ marginBottom: 12 }}><InstallBanner L={L} /></div>
       <div className="sk-hero">
         <div className="sk-hero-cover" style={active.cover_url ? { backgroundImage: `url(${active.cover_url})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined} />
@@ -954,9 +991,16 @@ function PdfViewer({ url, allowDownload = true, L }: { url: string; allowDownloa
       const canvas = canvasRef.current!; const ctx = canvas.getContext('2d');
       const wrapW = canvas.parentElement ? canvas.parentElement.clientWidth : 800;
       const base = pg.getViewport({ scale: 1 });
-      const scale = Math.min(2, Math.max(0.5, wrapW / base.width));
-      const vp = pg.getViewport({ scale });
+      // Escala CSS: ocupar el ancho disponible. Súper-muestreo por DPR (y algo extra)
+      // para que se vea nítido al hacer zoom con los dedos en el móvil.
+      const cssScale = Math.max(0.5, wrapW / base.width);
+      const dpr = (typeof window !== 'undefined' ? window.devicePixelRatio : 1) || 1;
+      const render = Math.min(6, cssScale * Math.max(2, dpr));  // resolución interna alta
+      const vp = pg.getViewport({ scale: render });
       canvas.width = vp.width; canvas.height = vp.height;
+      // El canvas se muestra al ancho CSS, pero guarda muchos más píxeles → nítido al ampliar.
+      canvas.style.width = Math.round(base.width * cssScale) + 'px';
+      canvas.style.height = 'auto';
       pg.render({ canvasContext: ctx, viewport: vp });
     }).catch(() => {});
     return () => { cancelled = true; };
@@ -1247,7 +1291,7 @@ function WinsWall({ active, lang, reload, L }: any) {
   }
   async function like(id: string) { await fetch('/api/academy/wins', { method: 'POST', body: JSON.stringify({ action: 'like', mentor_id: mentorId, win_id: id }) }); reload(); }
   async function review(id: string, decision: string, verified = false) { await fetch('/api/academy/wins', { method: 'POST', body: JSON.stringify({ action: 'review', mentor_id: mentorId, win_id: id, decision, verified }) }); loadPending(); reload(); }
-  async function delWin(id: string) { if (!confirm(L('¿Quitar este logro?', 'Remove this win?'))) return; await fetch('/api/academy/wins', { method: 'POST', body: JSON.stringify({ action: 'delete', mentor_id: mentorId, win_id: id }) }); reload(); }
+  async function delWin(id: string) { if (!await confirmDelete({ title: L('¿Quitar logro?', 'Remove win?'), message: L('Se quitará del muro de logros.', 'It will be removed from the wins wall.') })) return; await fetch('/api/academy/wins', { method: 'POST', body: JSON.stringify({ action: 'delete', mentor_id: mentorId, win_id: id }) }); reload(); }
 
   const wins = (active.wins || []).filter((w: any) => filter === 'all' || w.kind === filter);
   return (
@@ -1569,6 +1613,7 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
 
   return (
     <div className="sk-wrap" style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 4 }}>
+      <ConfirmHost lang={lang} />
       {toast && <Toast msg={toast} />}
       <div className="row between" style={{ flexWrap: 'wrap', gap: 10 }}>
         <div><h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 9 }}><span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="graduation" size={22} /></span> {d.mentor.academy_name}</h2><div className="muted" style={{ fontSize: 13 }}>{L('Panel del mentor · Onyx Academy', 'Mentor panel · Onyx Academy')}</div></div>
@@ -1624,7 +1669,7 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
               <div className="row" style={{ gap: 6 }}>
                 <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setModForm({ ...m })}>{L('Portada', 'Cover')}</button>
                 <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setLessonForm({ module_id: m.id })}>＋ {L('Lección', 'Lesson')}</button>
-                <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--red)' }} onClick={() => confirm(L('¿Borrar aula?', 'Delete classroom?')) && api({ action: 'module_delete', id: m.id })}>✕</button>
+                <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--red)' }} onClick={async () => { if (await confirmDelete({ title: L('¿Borrar aula?', 'Delete classroom?'), itemName: m.title, message: L('Se borrará el aula y todas sus lecciones. No se puede deshacer.', 'The classroom and all its lessons will be deleted. This cannot be undone.') })) api({ action: 'module_delete', id: m.id }); }}>✕</button>
               </div>
             </div>
             {m.cover_url && <div className="sk-course-cover" style={{ backgroundImage: `url(${m.cover_url})`, borderRadius: 10, marginBottom: 10 }} />}
@@ -1634,7 +1679,7 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
                   <span>{l.section && <span className="muted" style={{ marginRight: 6 }}>[{l.section}]</span>}{l.title}{l.is_free && <span className="sk-chip" style={{ marginLeft: 6, background: 'color-mix(in srgb,var(--green) 15%,transparent)', color: 'var(--soft-green)' }}>{L('gratis', 'free')}</span>}</span>
                   <div className="row" style={{ gap: 6 }}>
                     <button className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 11 }} onClick={() => setLessonForm({ ...l })}>✎</button>
-                    <button className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 11, color: 'var(--red)' }} onClick={() => api({ action: 'lesson_delete', id: l.id })}>✕</button>
+                    <button className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 11, color: 'var(--red)' }} onClick={async () => { if (await confirmDelete({ title: L('¿Borrar lección?', 'Delete lesson?'), itemName: l.title })) api({ action: 'lesson_delete', id: l.id }); }}>✕</button>
                   </div>
                 </div>
               ))}
@@ -1657,7 +1702,7 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
               <div><b>{e.title}</b><div className="muted" style={{ fontSize: 12.5 }}>{new Date(e.starts_at).toLocaleString(lang === 'en' ? 'en-US' : 'es-ES')} · {e.duration_min} min {e.recording_url && <span className="sk-chip" style={{ marginLeft: 6 }}>🎬 {L('grabación', 'replay')}</span>}</div></div>
               <div className="row" style={{ gap: 6 }}>
                 <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setEvForm({ ...e, starts_at: e.starts_at ? new Date(e.starts_at).toISOString().slice(0, 16) : '' })}>✎</button>
-                <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--red)' }} onClick={() => api({ action: 'event_delete', id: e.id })}>✕</button>
+                <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--red)' }} onClick={async () => { if (await confirmDelete({ title: L('¿Borrar clase en vivo?', 'Delete live class?'), itemName: e.title })) api({ action: 'event_delete', id: e.id }); }}>✕</button>
               </div>
             </div>
           </div>
@@ -1707,7 +1752,7 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
         </div>
         {(d.feed || []).map((p: any) => (
           <div key={p.id} className="sk-card">
-            <div className="row between"><b style={{ fontSize: 13.5 }}>{p.author_name}{p.pinned && ' 📌'}{p.scheduled_at && new Date(p.scheduled_at).getTime() > Date.now() && <span className="sk-chip" style={{ marginLeft: 8, background: 'color-mix(in srgb,var(--gold) 16%,transparent)', color: 'var(--gold)' }}>⏱ {L('programado', 'scheduled')} {new Date(p.scheduled_at).toLocaleString(lang === 'en' ? 'en-US' : 'es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>}</b><button className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 11, color: 'var(--red)' }} onClick={() => api({ action: 'post_delete', id: p.id })}>✕</button></div>
+            <div className="row between"><b style={{ fontSize: 13.5 }}>{p.author_name}{p.pinned && ' 📌'}{p.scheduled_at && new Date(p.scheduled_at).getTime() > Date.now() && <span className="sk-chip" style={{ marginLeft: 8, background: 'color-mix(in srgb,var(--gold) 16%,transparent)', color: 'var(--gold)' }}>⏱ {L('programado', 'scheduled')} {new Date(p.scheduled_at).toLocaleString(lang === 'en' ? 'en-US' : 'es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>}</b><button className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 11, color: 'var(--red)' }} onClick={async () => { if (await confirmDelete({ title: L('¿Borrar publicación?', 'Delete post?'), message: L('Se borrará para todos los alumnos.', 'It will be removed for all students.') })) api({ action: 'post_delete', id: p.id }); }}>✕</button></div>
             {p.body && <div style={{ fontSize: 14, whiteSpace: 'pre-wrap', marginTop: 4 }}>{p.body}</div>}
             {p.image_url && <img src={p.image_url} alt="" style={{ maxWidth: '100%', maxHeight: 300, borderRadius: 10, marginTop: 6, display: 'block' }} />}
           </div>
@@ -1735,12 +1780,14 @@ function StudentRow({ s, total, lang, L, api }: any) {
     else alert(j.error === 'no_addon' ? L('El alumno no tiene el add-on de auditoría activo. Véndelo en Cobros → Add-on auditoría.', 'The student has no active audit add-on. Sell it in Payments → Audit add-on.') : j.error === 'no_consent' ? L('El alumno no ha dado su consentimiento en su comunidad.', 'The student hasn’t given consent in their community.') : j.error === 'no_data' ? L('El alumno no tiene suficientes operaciones.', 'Not enough trades for this student.') : L('No se pudo generar (¿IA configurada?).', 'Could not generate (AI configured?).'));
   }
   function saveName() { api({ action: 'student_name', student_id: s.id, name }, L('Nombre actualizado', 'Name updated')); setEditing(false); }
-  function toggleBan() {
-    if (!s.banned && !confirm(L('¿Banear a este alumno? Perderá acceso a la comunidad al instante (puedes readmitirlo después).', 'Ban this student? They lose community access instantly (you can readmit later).'))) return;
+  async function toggleBan() {
+    if (!s.banned) {
+      if (!await confirmDelete({ title: L('¿Banear alumno?', 'Ban student?'), itemName: s.name, message: L('Perderá acceso a la comunidad al instante. Puedes readmitirlo después.', 'They lose community access instantly. You can readmit later.'), confirmText: L('Banear', 'Ban') })) return;
+    }
     api({ action: 'student_ban', student_id: s.id, banned: !s.banned }, s.banned ? L('Readmitido', 'Readmitted') : L('Baneado', 'Banned'));
   }
-  function remove() {
-    if (!confirm(L('¿Quitar a este alumno de tu academia? Se borra su inscripción.', 'Remove this student from your academy? Their enrollment is deleted.'))) return;
+  async function remove() {
+    if (!await confirmDelete({ title: L('¿Quitar alumno?', 'Remove student?'), itemName: s.name, message: L('Se borra su inscripción a tu academia.', 'Their enrollment in your academy is deleted.'), confirmText: L('Quitar', 'Remove') })) return;
     api({ action: 'student_remove', student_id: s.id }, L('Alumno quitado', 'Student removed'));
   }
   return (
@@ -2091,7 +2138,7 @@ function CollabManager({ d, api, L }: any) {
                 {c.perms?.post && <span title={L('Publica', 'Posts')}><OnyxIcon name="chat" size={13} /></span>}
                 {c.perms?.message && <span title={L('Chatea', 'Messages')}><OnyxIcon name="mail" size={13} /></span>}
                 {c.perms?.events && <span title={L('Clases', 'Classes')}><OnyxIcon name="calendar" size={13} /></span>}
-                <button className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 11, color: 'var(--red)' }} onClick={() => api({ action: 'collab_remove', user_id: c.user_id })}>✕</button>
+                <button className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 11, color: 'var(--red)' }} onClick={async () => { if (await confirmDelete({ title: L('¿Quitar colaborador?', 'Remove collaborator?'), itemName: c.name, message: L('Perderá sus permisos de gestión.', 'They lose their management permissions.'), confirmText: L('Quitar', 'Remove') })) api({ action: 'collab_remove', user_id: c.user_id }); }}>✕</button>
               </div>
             </div>
           ))}
@@ -2121,6 +2168,9 @@ function CollabManager({ d, api, L }: any) {
 // Onboarding del mentor: checklist con barra de progreso. Se autocompleta con datos reales.
 function OnboardingCard({ d, L, api, goTab }: any) {
   const o = d.onboarding || {};
+  const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => { try { setCollapsed(localStorage.getItem('onyx_onb_collapsed') === '1'); } catch {} }, []);
+  const setCol = (v: boolean) => { setCollapsed(v); try { localStorage.setItem('onyx_onb_collapsed', v ? '1' : '0'); } catch {} };
   if (o.dismissed) return null;
   const steps: [boolean, string, () => void][] = [
     [o.content, L('Crea tu primera aula (o usa la plantilla)', 'Create your first classroom (or use the template)'), () => goTab('cursos')],
@@ -2134,13 +2184,31 @@ function OnboardingCard({ d, L, api, goTab }: any) {
   const done = steps.filter((s) => s[0]).length;
   const pct = Math.round((done / steps.length) * 100);
   const allDone = done === steps.length;
+  const pending = steps.length - done;
+  // Colapsado: si todo está listo, se oculta del todo; si falta algo, deja una
+  // píldora ILUMINADA como recordatorio (no desaparece hasta completar).
+  if (collapsed) {
+    if (allDone) return null;
+    return (
+      <button className="sk-onb-mini" onClick={() => setCol(false)}>
+        <span className="row" style={{ gap: 8, alignItems: 'center', minWidth: 0 }}>
+          <OnyxIcon name="graduation" size={15} />
+          <b style={{ fontSize: 13.5 }}>{L('Configura tu academia', 'Set up your academy')}</b>
+          <span className="muted" style={{ fontSize: 12 }}>· {pending} {L('pendiente(s)', 'pending')}</span>
+        </span>
+        <span style={{ color: 'var(--brand)', fontSize: 12.5, fontWeight: 600, flex: 'none' }}>{L('Ver', 'Open')} →</span>
+      </button>
+    );
+  }
   return (
-    <div className="sk-card" style={{ border: '1px solid color-mix(in srgb,var(--brand) 40%,transparent)' }}>
+    <div className={'sk-card' + (allDone ? '' : ' sk-onb-live')} style={{ border: '1px solid color-mix(in srgb,var(--brand) 40%,transparent)' }}>
       <div className="row between" style={{ alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
         <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 9 }}><span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="graduation" size={18} /></span> {allDone ? L('¡Tu academia está lista! 🎉', 'Your academy is ready! 🎉') : L('Configura tu academia', 'Set up your academy')}</h3>
         <div className="row" style={{ gap: 8, alignItems: 'center' }}>
           <span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--brand) 16%,transparent)', color: 'var(--soft-brand,var(--brand))' }}>{done}/{steps.length}</span>
-          {allDone && <button className="btn btn-ghost" style={{ fontSize: 12, padding: '3px 10px' }} onClick={() => api({ action: 'onboarding_dismiss', on: true })}>{L('Ocultar', 'Dismiss')}</button>}
+          {allDone
+            ? <button className="btn btn-ghost" style={{ fontSize: 12, padding: '3px 10px' }} onClick={() => api({ action: 'onboarding_dismiss', on: true })}>{L('Ocultar', 'Dismiss')}</button>
+            : <button className="btn btn-ghost" style={{ fontSize: 12, padding: '3px 10px' }} onClick={() => setCol(true)}>{L('Ocultar', 'Hide')}</button>}
         </div>
       </div>
       <div className="statbar" style={{ ['--ac' as any]: 'var(--brand)', marginBottom: 12 }}><i style={{ width: pct + '%' }} /></div>
@@ -2423,7 +2491,7 @@ function MentorPayments({ modules, L }: { modules: any[]; L: (a: string, b: stri
   useEffect(() => { load(); }, []);
   async function connect() { setBusy('connect'); const r = await fetch('/api/academy/connect', { method: 'POST' }); const j = await r.json(); if (j.url) window.location.href = j.url; else { setBusy(''); alert(L('No se pudo conectar Stripe.', 'Could not connect Stripe.')); } }
   async function saveProd(f: any) { setBusy('prod'); const body: any = { ...f, price_cents: Math.round(Number(f.price) * 100) }; delete body.price; await fetch('/api/academy/products', { method: 'POST', body: JSON.stringify(body) }); setBusy(''); setForm(null); load(); }
-  async function delProd(id: string) { if (!confirm(L('¿Borrar este nivel?', 'Delete this tier?'))) return; await fetch('/api/academy/products', { method: 'POST', body: JSON.stringify({ action: 'delete', id }) }); load(); }
+  async function delProd(id: string) { if (!await confirmDelete({ title: L('¿Borrar nivel?', 'Delete tier?'), message: L('Se dejará de vender este nivel.', 'This tier will stop being sold.') })) return; await fetch('/api/academy/products', { method: 'POST', body: JSON.stringify({ action: 'delete', id }) }); load(); }
   async function saveAff() { await fetch('/api/academy/products', { method: 'POST', body: JSON.stringify({ action: 'affiliate', reward_cents: Math.round(Number(affReward) * 100) }) }); load(); }
 
   if (!conn) return <div className="sk-card muted">…</div>;
