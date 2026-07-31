@@ -400,6 +400,14 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
 .sk-vitem span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 /* Selector nativo de sección para móvil (mismo patrón que Mi cuenta): oculto en escritorio */
 .sk-nav-mobile{display:none;}
+
+/* Rejilla de tarjetas que aprovecha el ancho: 1 col angosto → 2/3 col según pantalla.
+   Las tarjetas de resumen/estado usan .sk-span-all para ocupar todo el ancho. */
+.sk-cardgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;align-items:start;grid-auto-flow:row dense;}
+.sk-cardgrid > *{min-width:0;margin:0;}
+.sk-cardgrid > .sk-card{margin:0;}
+.sk-span-all{grid-column:1 / -1;}
+@media(max-width:620px){.sk-cardgrid{grid-template-columns:1fr;}}
 /* Tablet: 2 columnas (nav + contenido); la guía baja a ancho completo */
 @media(max-width:1080px){
   .sk-academy-3col{grid-template-columns:minmax(0,196px) minmax(0,1fr) !important;}
