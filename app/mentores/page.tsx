@@ -1,0 +1,124 @@
+'use client';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useLang } from '@/lib/lang';
+import OnyxIcon from '@/app/components/OnyxIcon';
+import PlansCompareTable from '@/app/PlansCompareTable';
+
+// ============================================================
+// Landing dedicado para MENTORES: "monta tu academia de trading".
+// Segundo público de Onyx (además del trader). URL propia para anuncios/SEO.
+// Reutiliza el mismo estilo y la tabla comparativa (con la sección Academy).
+// ============================================================
+type Plan = { id: string; name: string; name_en?: string; price_month: number; price_year: number; badge?: string | null; badge_en?: string | null; max_accounts?: number };
+
+const FALLBACK: Plan[] = [
+  { id: 'free', name: 'Free', price_month: 0, price_year: 0, badge: null, max_accounts: 1 },
+  { id: 'pro', name: 'Pro', price_month: 19, price_year: 190, badge: 'Más popular', badge_en: 'Most popular', max_accounts: 3 },
+  { id: 'elite', name: 'Elite', price_month: 39, price_year: 390, badge: null, max_accounts: 10 },
+  { id: 'black', name: 'Black Onyx', price_month: 79, price_year: 790, badge: null, max_accounts: 999 },
+];
+
+export default function MentoresPage() {
+  const { lang } = useLang();
+  const L = (a: string, b: string) => (lang === 'en' ? b : a);
+  const [plans, setPlans] = useState<Plan[]>([]);
+  useEffect(() => { fetch('/api/admin/plans').then((r) => r.json()).then((j) => setPlans(j.plans || [])).catch(() => {}); }, []);
+  const shown = plans.length ? plans : FALLBACK;
+
+  const grad: any = { background: 'linear-gradient(90deg,var(--brand),#7a5cff)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' };
+
+  const steps = [
+    { ic: 'card', es: 'Elige tu plan', en: 'Choose your plan', de: 'Crear tu academia va desde Pro. Ese plan ya te da todas las herramientas.', den: 'Creating an academy starts at Pro. That plan gives you all the tools.' },
+    { ic: 'book', es: 'Sube tu contenido', en: 'Upload your content', de: 'Cursos, aulas y clases en vivo. La IA te ayuda a redactarlo todo.', den: 'Courses, classrooms and live classes. AI helps you write it all.' },
+    { ic: 'money', es: 'Cobra a tus alumnos', en: 'Charge your students', de: 'Membresías o niveles. Cada pago llega directo a tu cuenta de Stripe.', den: 'Memberships or tiers. Each payment goes straight to your Stripe account.' },
+  ];
+  const feats = [
+    { ic: 'book', es: 'Cursos y aulas', en: 'Courses & classrooms', de: 'Con progreso y certificados', den: 'With progress & certificates' },
+    { ic: 'users', es: 'Comunidad', en: 'Community', de: 'Feed, niveles y ranking', den: 'Feed, levels & ranking' },
+    { ic: 'sessions', es: 'Clases en vivo', en: 'Live classes', de: 'En la hora local de cada alumno', den: "In each student's local time" },
+    { ic: 'card', es: 'Membresías', en: 'Memberships', de: 'Niveles y pagos recurrentes', den: 'Tiers & recurring payments' },
+    { ic: 'shield', es: 'Moderación con IA', en: 'AI moderation', de: 'Comunidad sana, sin spam', den: 'Healthy community, no spam' },
+    { ic: 'trophy', es: 'Muro de logros', en: 'Wins wall', de: 'Prueba social real de tus alumnos', den: 'Real social proof from students' },
+  ];
+
+  return (
+    <div>
+      {/* HERO */}
+      <div className="wrap" style={{ textAlign: 'center', padding: '78px 22px 30px' }}>
+        <div style={{ display: 'inline-flex', border: '1px solid var(--line)', borderRadius: 999, padding: 3, marginBottom: 18, background: 'var(--card2, rgba(255,255,255,.03))' }}>
+          <Link href="/" style={{ padding: '7px 18px', borderRadius: 999, fontSize: 13.5, fontWeight: 600, color: 'var(--mut)', textDecoration: 'none' }}>{L('Soy trader', "I'm a trader")}</Link>
+          <span style={{ padding: '7px 18px', borderRadius: 999, fontSize: 13.5, fontWeight: 700, background: 'var(--brand)', color: '#fff' }}>{L('Soy mentor', "I'm a mentor")}</span>
+        </div>
+        <br />
+        <span className="pill green" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon name="graduation" size={14} /> Onyx Academy</span>
+        <h1 style={{ fontSize: 46, margin: '20px 0', lineHeight: 1.1 }}>{L('Monta tu academia de trading,', 'Build your trading academy,')}<br /><span style={grad}>{L('sin montar tu web.', 'without building a website.')}</span></h1>
+        <p className="muted" style={{ fontSize: 19, maxWidth: 620, margin: '0 auto 26px' }}>{L('Cursos, comunidad, clases en vivo y cobros — todo dentro de Onyx. Tú fijas el precio, tú te quedas con la mayoría.', 'Courses, community, live classes and payments — all inside Onyx. You set the price, you keep the majority.')}</p>
+        <div className="row" style={{ justifyContent: 'center' }}>
+          <Link className="btn btn-primary" href="/login?mode=signup" style={{ padding: '14px 28px', fontSize: 16 }}>{L('Crea tu academia', 'Create your academy')}</Link>
+          <Link className="btn btn-ghost" href="/academias" style={{ padding: '14px 28px', fontSize: 16 }}>{L('Ver academias', 'Browse academies')}</Link>
+        </div>
+        <div className="row" style={{ justifyContent: 'center', gap: 20, flexWrap: 'wrap', marginTop: 18, fontSize: 13.5, color: 'var(--mut)' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon name="card" size={15} glow={false} /> {L('Cobros con Stripe', 'Payments with Stripe')}</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon name="money" size={15} glow={false} /> {L('Tú fijas el precio', 'You set the price')}</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon name="costs" size={15} glow={false} /> {L('Onyx toma solo 3–10%', 'Onyx takes just 3–10%')}</span>
+        </div>
+      </div>
+
+      {/* CÓMO FUNCIONA */}
+      <div className="wrap" style={{ padding: '20px 22px' }}>
+        <h2 style={{ textAlign: 'center', marginBottom: 20 }}>{L('Cómo funciona', 'How it works')}</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 14 }}>
+          {steps.map((s, i) => (
+            <div key={i} className="card" style={{ padding: 20 }}>
+              <div className="row" style={{ alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                <span style={{ width: 30, height: 30, borderRadius: '50%', background: 'color-mix(in srgb,var(--brand) 18%,transparent)', color: 'var(--brand)', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 14 }}>{i + 1}</span>
+                <span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name={s.ic} size={18} /></span>
+                <b style={{ fontSize: 16 }}>{L(s.es, s.en)}</b>
+              </div>
+              <p className="muted" style={{ fontSize: 14, margin: 0, lineHeight: 1.55 }}>{L(s.de, s.den)}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* FEATURES */}
+      <div className="wrap" style={{ padding: '30px 22px' }}>
+        <h2 style={{ textAlign: 'center', marginBottom: 20 }}>{L('Todo lo que incluye tu academia', 'Everything your academy includes')}</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 12 }}>
+          {feats.map((f, i) => (
+            <div key={i} className="card" style={{ padding: 18 }}>
+              <span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name={f.ic} size={24} /></span>
+              <div style={{ fontSize: 15, fontWeight: 700, marginTop: 8 }}>{L(f.es, f.en)}</div>
+              <div className="muted" style={{ fontSize: 13, marginTop: 2 }}>{L(f.de, f.den)}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ECONOMÍA */}
+      <div className="wrap" style={{ padding: '20px 22px' }}>
+        <div className="card" style={{ padding: 24, border: '1px solid color-mix(in srgb,var(--brand) 35%,transparent)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 18, flexWrap: 'wrap' }}>
+          <div style={{ maxWidth: 620 }}>
+            <div style={{ fontSize: 18, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="coins" size={20} /></span> {L('Ganas por lo que vendes', 'You earn from what you sell')}</div>
+            <p className="muted" style={{ fontSize: 15, marginTop: 6, marginBottom: 0, lineHeight: 1.6 }}>{L('Tú cobras membresías y niveles a tu precio. Onyx solo toma un 3–10% según tu plan — sin montar web, sin pasarela, sin servidores. Y entre más alto tu plan, menor la comisión.', 'You charge memberships and tiers at your price. Onyx only takes 3–10% depending on your plan — no website, no gateway, no servers. The higher your plan, the lower the fee.')}</p>
+          </div>
+          <Link className="btn btn-primary" href="/login?mode=signup" style={{ padding: '13px 26px', fontSize: 16, whiteSpace: 'nowrap' }}>{L('Empezar ahora', 'Start now')}</Link>
+        </div>
+      </div>
+
+      {/* PLANES (tabla compartida, con la sección Onyx Academy) */}
+      <div className="wrap" style={{ padding: '10px 22px 40px' }} id="pricing">
+        <PlansCompareTable plans={shown as any} lang={lang} annual={false} loadingId=""
+          onChoose={() => { window.location.href = '/login?mode=signup'; }} />
+      </div>
+
+      {/* CTA final */}
+      <div className="wrap" style={{ textAlign: 'center', padding: '20px 22px 70px' }}>
+        <h2 style={{ marginBottom: 10 }}>{L('Convierte tu comunidad en tu negocio', 'Turn your community into your business')}</h2>
+        <p className="muted" style={{ fontSize: 16, maxWidth: 560, margin: '0 auto 20px' }}>{L('Miles de traders buscan un mentor. Dales una casa dentro de Onyx.', 'Thousands of traders are looking for a mentor. Give them a home inside Onyx.')}</p>
+        <Link className="btn btn-primary" href="/login?mode=signup" style={{ padding: '15px 34px', fontSize: 17 }}>{L('Crea tu academia', 'Create your academy')}</Link>
+      </div>
+    </div>
+  );
+}

@@ -1,5 +1,13 @@
 'use client';
 import { PLAN_ROWS } from '@/lib/plansData';
+import OnyxIcon from '@/app/components/OnyxIcon';
+
+// Icono del encabezado de cada sección (Guardian, Copy trading, Academy).
+function sectionIcon(es: string): string {
+  if (es.includes('Academy')) return 'graduation';
+  if (es.includes('Copy')) return 'swap';
+  return 'guardian';
+}
 
 // ============================================================
 // Tabla comparativa de planes, compartida por el landing y /pricing.
@@ -32,7 +40,9 @@ export default function PlansCompareTable({
   };
   const chk = (v: boolean | string) => typeof v === 'string'
     ? <span style={{ fontSize: 13 }}>{v}</span>
-    : v ? <span style={{ color: 'var(--green)', fontSize: 16 }}>✓</span> : <span style={{ color: '#66708a', fontSize: 14 }}>🔒</span>;
+    : v
+      ? <span style={{ color: 'var(--green)', display: 'inline-flex' }}><OnyxIcon name="check" size={17} glow={false} /></span>
+      : <span style={{ color: '#66708a', display: 'inline-flex' }}><OnyxIcon name="lock" size={15} glow={false} /></span>;
 
   return (
     <div style={{ marginTop: 46 }}>
@@ -55,7 +65,7 @@ export default function PlansCompareTable({
             </tr>
 
             {PLAN_ROWS.map((r, ri) => r.head
-              ? (<tr key={ri}><td colSpan={5} style={{ padding: '16px 16px 8px', color: 'var(--brand)', fontWeight: 700, fontSize: 13, letterSpacing: '.02em' }}>{(lang === 'es' ? r.es : r.en) === 'Copy trading' ? '🔁' : '🛡️'} {lang === 'es' ? r.es : r.en}</td></tr>)
+              ? (<tr key={ri}><td colSpan={5} style={{ padding: '16px 16px 8px', color: 'var(--brand)', fontWeight: 700, fontSize: 13, letterSpacing: '.02em' }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}><OnyxIcon name={sectionIcon(r.es)} size={16} /> {lang === 'es' ? r.es : r.en}</span></td></tr>)
               : (<tr key={ri}><td style={{ padding: '12px 16px', color: 'var(--mut)' }}>{lang === 'es' ? r.es : r.en}</td>{r.v.map((v, ci) => <td key={ci} style={{ textAlign: 'center', padding: '12px 16px' }}>{chk(v)}</td>)}</tr>))}
 
             {/* Botones de compra al final, alineados con cada columna */}

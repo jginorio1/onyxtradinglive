@@ -37,4 +37,14 @@ export const PLAN_ROWS: PlanRow[] = [
   { es: 'Cuentas Master', en: 'Master accounts', v: [false, false, '1', '∞'] },
   { es: 'Cuentas esclava', en: 'Slave accounts', v: [false, false, '5', '∞'] },
   { es: 'Control remoto (web y Telegram)', en: 'Remote control (web & Telegram)', v: [false, false, true, true] },
+
+  { es: 'Onyx Academy (para mentores)', en: 'Onyx Academy (for mentors)', v: ['', '', '', ''], head: true },
+  { es: 'Crea tu propia academia', en: 'Create your own academy', v: [false, true, true, true] },
+  { es: 'Cursos, aulas y progreso', en: 'Courses, classrooms & progress', v: [false, true, true, true] },
+  { es: 'Comunidad (feed, niveles, ranking)', en: 'Community (feed, levels, ranking)', v: [false, true, true, true] },
+  { es: 'Clases en vivo (hora local)', en: 'Live classes (local time)', v: [false, true, true, true] },
+  { es: 'Membresías y niveles de pago', en: 'Memberships & paid tiers', v: [false, true, true, true] },
+  { es: 'Moderación con IA', en: 'AI moderation', v: [false, true, true, true] },
+  { es: 'Certificados a tus alumnos', en: 'Certificates for students', v: [false, true, true, true] },
+  { es: 'Comisión de Onyx por venta', en: 'Onyx fee per sale', v: ['—', '10%', '6%', '3%'] },
 ];

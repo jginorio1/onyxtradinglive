@@ -83,6 +83,9 @@ const G: Record<string, Els> = {
   eye: (<><path d="M2.5 12 C5 7.5 8.5 5.5 12 5.5 s7 2 9.5 6.5 c-2.5 4.5 -6 6.5 -9.5 6.5 s-7 -2 -9.5 -6.5 z" /><circle cx="12" cy="12" r="2.7" /></>),
   // Tijeras (cierres parciales, recortar).
   scissors: (<><circle cx="6" cy="7" r="2.3" /><circle cx="6" cy="17" r="2.3" /><line x1="8" y1="8.2" x2="20" y2="16" /><line x1="8" y1="15.8" x2="20" y2="8" /></>),
+  // Palomita (incluido) y candado (no incluido / desbloquea al subir de plan).
+  check: (<><polyline points="5,12.5 10,17.5 19,7" /></>),
+  lock: (<><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11 V8 a4 4 0 0 1 8 0 v3" /><circle cx="12" cy="15.5" r="1.2" fill="currentColor" stroke="none" /></>),
 };
 
 // Emoji → nombre de glifo (se normaliza quitando el selector de variación).

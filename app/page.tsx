@@ -383,6 +383,12 @@ export default function Home() {
 
       {/* HERO */}
       <div className="wrap" style={{ textAlign: 'center', padding: '78px 22px 30px' }}>
+        {/* Selector de público: el mismo sitio le habla al trader y al mentor */}
+        <div style={{ display: 'inline-flex', border: '1px solid var(--line)', borderRadius: 999, padding: 3, marginBottom: 18, background: 'var(--card2, rgba(255,255,255,.03))' }}>
+          <span style={{ padding: '7px 18px', borderRadius: 999, fontSize: 13.5, fontWeight: 700, background: 'var(--brand)', color: '#fff' }}>{lang === 'es' ? 'Soy trader' : "I'm a trader"}</span>
+          <Link href="/mentores" style={{ padding: '7px 18px', borderRadius: 999, fontSize: 13.5, fontWeight: 600, color: 'var(--mut)', textDecoration: 'none' }}>{lang === 'es' ? 'Soy mentor' : "I'm a mentor"}</Link>
+        </div>
+        <br />
         <span className="pill green">{t.hero.badge}</span>
         <h1 style={{ fontSize: 50, margin: '20px 0', lineHeight: 1.08 }}>{t.hero.h1a}<br /><span style={grad}>{t.hero.h1b}</span></h1>
         <p className="muted" style={{ fontSize: 19, maxWidth: 640, margin: '0 auto 26px' }}>{t.hero.sub}</p>
