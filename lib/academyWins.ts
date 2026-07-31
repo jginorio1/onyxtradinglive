@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { isOurUpload } from '@/lib/academy';
 
 // ============================================================
 // Muro de Logros: los alumnos suben pruebas (retiros, retos superados,
@@ -19,7 +20,7 @@ export async function addWin(mentorId: string, studentId: string, b: any) {
     amount_cents: b.amount_cents != null ? Math.max(0, Math.round(Number(b.amount_cents) || 0)) : null,
     currency: (b.currency || 'usd').toLowerCase().slice(0, 3),
     prop_firm: b.prop_firm ? String(b.prop_firm).slice(0, 80) : null,
-    image_url: b.image_url ? String(b.image_url).slice(0, 500) : null,
+    image_url: isOurUpload(b.image_url) ? (b.image_url ? String(b.image_url).slice(0, 500) : null) : null,
     status: 'pending',
   }).select('id').single();
   return { ok: true, id: (data as any)?.id };
@@ -50,6 +51,11 @@ export async function pendingWins(mentorId: string) {
   const { data: profs } = ids.length ? await supabaseAdmin.from('profiles').select('id,full_name,email').in('id', ids) : { data: [] } as any;
   const pmap = new Map((profs || []).map((p: any) => [p.id, p]));
   return rows.map((w) => ({ ...w, author_name: nameOf(pmap.get(w.student_id)) }));
+}
+// Los logros que ESTE alumno subió y siguen pendientes/rechazados (su zona "esperando aprobación").
+export async function myPending(mentorId: string, studentId: string) {
+  const { data } = await supabaseAdmin.from('academy_wins').select('id,kind,title,amount_cents,currency,prop_firm,image_url,status,created_at').eq('mentor_id', mentorId).eq('student_id', studentId).in('status', ['pending', 'rejected']).order('created_at', { ascending: false }).limit(20);
+  return (data || []) as any[];
 }
 export async function pendingCount(mentorId: string) {
   const { count } = await supabaseAdmin.from('academy_wins').select('id', { count: 'exact', head: true }).eq('mentor_id', mentorId).eq('status', 'pending');

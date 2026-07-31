@@ -1,12 +1,22 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { getMentor, myAcademies, getContent, progressSet, markLesson, isEnrolled, listPosts, addPost, addComment, leaderboard, membersList, toggleLike, levelFor, listEvents, nextEvent, dmUnread, tradersBoard } from '@/lib/academy';
+import { getMentor, myAcademies, getContent, progressSet, markLesson, isEnrolled, listPosts, addPost, addComment, leaderboard, membersList, toggleLike, levelFor, listEvents, nextEvent, dmUnread, tradersBoard, recentCount } from '@/lib/academy';
 import { listProducts, accessibleModules, studentPurchases, perksFor, membershipInfo, hasMembership } from '@/lib/academyPay';
 import { myReferralStats } from '@/lib/academyExtras';
 import { auditAddon, hasAuditAddon, auditConsent, planVerified } from '@/lib/academyAudit';
-import { listWins, pendingCount } from '@/lib/academyWins';
+import { listWins, pendingCount, addWin, myPending } from '@/lib/academyWins';
+import { pushWinPending } from '@/lib/academyPush';
 import { roleMap, permsFor, staffIds } from '@/lib/academyCollab';
+
+// ¿Puede este usuario ESCRIBIR en esta academia? (inscrito + membresía si es de pago).
+async function canWrite(userId: string, mentorId: string, isMentorHere: boolean): Promise<boolean> {
+  if (isMentorHere) return true;
+  if (!(await isEnrolled(mentorId, userId))) return false;
+  const info = await membershipInfo(mentorId);
+  if (info.paid && !(await hasMembership(userId, mentorId))) return false;
+  return true;
+}
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -94,6 +104,10 @@ export async function GET(req: Request) {
       wins, winsPending,
       roles, myPerms, staffIds: staff, myPushPrefs,
     };
+    // Un colaborador con permiso de moderar también ve la cola por aprobar.
+    if (!iAmMentorHere && (myPerms as any)?.moderate) out.active.winsPending = await pendingCount(m);
+    // El alumno ve sus propios logros pendientes (zona "esperando aprobación").
+    if (!iAmMentorHere) out.active.winsMinePending = await myPending(m, user.id);
   }
   return NextResponse.json(out);
 }
@@ -114,15 +128,23 @@ export async function POST(req: Request) {
     }
     if (b.action === 'post' && b.mentor_id && (b.body || b.image_url)) {
       const mentorRow = await getMentor(user.id);
-      const allowed = (mentorRow && mentorRow.user_id === b.mentor_id) || (await isEnrolled(String(b.mentor_id), user.id));
-      if (!allowed) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+      const isMentorHere = !!(mentorRow && mentorRow.user_id === b.mentor_id);
+      if (!(await canWrite(user.id, String(b.mentor_id), isMentorHere))) return NextResponse.json({ error: 'needs_membership' }, { status: 403 });
+      if (await recentCount('academy_posts', 'author_id', user.id, 60) >= 8) return NextResponse.json({ error: 'too_fast' }, { status: 429 });
+      // Un LOGRO de un alumno NO se publica directo: pasa a la cola de aprobación de la academia.
+      if (b.kind === 'win' && !isMentorHere) {
+        await addWin(String(b.mentor_id), user.id, { kind: b.win_kind || 'payout', title: b.body, image_url: b.image_url });
+        pushWinPending(String(b.mentor_id), user.id);
+        return NextResponse.json({ ok: true, pending: true });
+      }
       await addPost(String(b.mentor_id), user.id, String(b.body), false, b.image_url ? String(b.image_url) : undefined, undefined, { kind: b.kind, win_kind: b.win_kind });
       return NextResponse.json({ ok: true });
     }
     if (b.action === 'comment' && b.post_id && b.mentor_id && (b.body || b.image_url)) {
       const mentorRow = await getMentor(user.id);
-      const allowed = (mentorRow && mentorRow.user_id === b.mentor_id) || (await isEnrolled(String(b.mentor_id), user.id));
-      if (!allowed) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+      const isMentorHere = !!(mentorRow && mentorRow.user_id === b.mentor_id);
+      if (!(await canWrite(user.id, String(b.mentor_id), isMentorHere))) return NextResponse.json({ error: 'needs_membership' }, { status: 403 });
+      if (await recentCount('academy_comments', 'author_id', user.id, 60) >= 15) return NextResponse.json({ error: 'too_fast' }, { status: 429 });
       await addComment(String(b.post_id), user.id, String(b.body), b.image_url ? String(b.image_url) : undefined);
       return NextResponse.json({ ok: true });
     }

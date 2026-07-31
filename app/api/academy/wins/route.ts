@@ -1,21 +1,22 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { getMentor, isEnrolled } from '@/lib/academy';
+import { getMentor, isEnrolled, recentCount } from '@/lib/academy';
 import { addWin, listWins, pendingWins, reviewWin, toggleWinLike, deleteWin, setWinVerified } from '@/lib/academyWins';
 import { pushWinPending, pushWinApproved } from '@/lib/academyPush';
+import { permsFor } from '@/lib/academyCollab';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-async function ctx(req: Request, mentorId: string, userId: string) {
-  const mrow = await getMentor(userId);
-  const isMentor = mrow && mrow.user_id === mentorId;
-  const allowed = isMentor || (await isEnrolled(mentorId, userId));
-  return { isMentor, allowed };
+// Contexto de permisos: dueño, colaborador con permiso de moderar, o alumno inscrito.
+async function ctx(mentorId: string, userId: string) {
+  const perms = await permsFor(mentorId, userId);
+  const allowed = perms.isMentor || perms.isCollab || (await isEnrolled(mentorId, userId));
+  return { perms, allowed };
 }
 
-// GET · ?m= muro aprobado (+ mi like). ?m=&pending=1 la cola (solo mentor).
+// GET · ?m= muro aprobado (+ mi like). ?m=&pending=1 la cola (mentor o colaborador que modera).
 export async function GET(req: Request) {
   const sb = createSupabaseServer();
   const { data: { user } } = await sb.auth.getUser();
@@ -23,16 +24,16 @@ export async function GET(req: Request) {
   const sp = new URL(req.url).searchParams;
   const m = sp.get('m');
   if (!m) return NextResponse.json({ error: 'bad_request' }, { status: 400 });
-  const { isMentor, allowed } = await ctx(req, m, user.id);
+  const { perms, allowed } = await ctx(m, user.id);
   if (!allowed) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
   if (sp.get('pending')) {
-    if (!isMentor) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+    if (!perms.moderate) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
     return NextResponse.json({ pending: await pendingWins(m) });
   }
   return NextResponse.json({ wins: await listWins(m, user.id, sp.get('kind') || undefined) });
 }
 
-// POST · alumno sube logro; like; el mentor aprueba/rechaza/verifica/borra.
+// POST · alumno sube logro; like; el mentor/colaborador aprueba/rechaza/verifica/borra.
 export async function POST(req: Request) {
   const sb = createSupabaseServer();
   const { data: { user } } = await sb.auth.getUser();
@@ -40,15 +41,18 @@ export async function POST(req: Request) {
   const b = await req.json().catch(() => ({}));
   const m = String(b.mentor_id || '');
   if (!m) return NextResponse.json({ error: 'bad_request' }, { status: 400 });
-  const { isMentor, allowed } = await ctx(req, m, user.id);
+  const { perms, allowed } = await ctx(m, user.id);
   if (!allowed) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
 
   const action = String(b.action || 'add');
-  if (action === 'add') { const r = await addWin(m, user.id, b); if (r.ok && !isMentor) pushWinPending(m, user.id); return NextResponse.json(r); }
+  if (action === 'add') {
+    if (await recentCount('academy_wins', 'student_id', user.id, 120) >= 4) return NextResponse.json({ error: 'too_fast' }, { status: 429 });
+    const r = await addWin(m, user.id, b); if (r.ok && !perms.isMentor) pushWinPending(m, user.id); return NextResponse.json(r);
+  }
   if (action === 'like') { return NextResponse.json(await toggleWinLike(String(b.win_id), user.id)); }
 
-  // Acciones del mentor.
-  if (!isMentor) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+  // Acciones de moderación: dueño o colaborador con permiso "moderate".
+  if (!perms.moderate) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
   if (action === 'review') {
     // Antes de aprobar, sabemos a quién notificar (el autor del logro).
     const decision = b.decision === 'reject' ? 'reject' : 'approve';

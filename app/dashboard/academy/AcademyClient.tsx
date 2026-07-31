@@ -638,6 +638,7 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
   const [feedFilter, setFeedFilter] = useState('all');
   const [composeOpen, setComposeOpen] = useState(false);
   const [sentToast, setSentToast] = useState(false);
+  const [sentPending, setSentPending] = useState(false);
   const [viewUser, setViewUser] = useState<string | null>(null);
   const [dmWith, setDmWith] = useState<string | null>(null);
   const [manageStudent, setManageStudent] = useState<any>(null);
@@ -646,8 +647,8 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
   const totalLessons = (active.content || []).reduce((s: number, m: any) => s + m.lessons.length, 0);
   const doneCount = (active.progress || []).length;
 
-  async function api(body: any) { await fetch('/api/academy', { method: 'POST', body: JSON.stringify(body) }); }
-  async function sendPost() { if (!post.trim() && !postImg) return; await api({ action: 'post', mentor_id: active.mentor_id, body: post, image_url: postImg, kind: postKind, win_kind: postKind === 'win' ? postWinKind : undefined }); setPost(''); setPostImg(''); setPostKind('community'); reload(); }
+  async function api(body: any) { const r = await fetch('/api/academy', { method: 'POST', body: JSON.stringify(body) }); return r.json().catch(() => ({})); }
+  async function sendPost() { if (!post.trim() && !postImg) return { ok: false }; const res = await api({ action: 'post', mentor_id: active.mentor_id, body: post, image_url: postImg, kind: postKind, win_kind: postKind === 'win' ? postWinKind : undefined }); setPost(''); setPostImg(''); setPostKind('community'); reload(); return res || {}; }
   async function like(t: string, id: string) { await api({ action: 'like', mentor_id: active.mentor_id, target_type: t, target_id: id }); reload(); }
   async function comment(pid: string, body: string, image?: string) { await api({ action: 'comment', post_id: pid, mentor_id: active.mentor_id, body, image_url: image || '' }); reload(); }
   async function toggleLesson(l: any, done: boolean) { await api({ action: 'lesson', lesson_id: l.id, done }); reload(); }
@@ -689,16 +690,16 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
           <PostTypePicker kind={postKind} setKind={setPostKind} winKind={postWinKind} setWinKind={setPostWinKind} L={L} />
           <div className="row" style={{ gap: 8, marginTop: 14, justifyContent: 'flex-end' }}>
             <button className="btn btn-ghost" onClick={() => setComposeOpen(false)}>{L('Cancelar', 'Cancel')}</button>
-            <button className="btn btn-primary" onClick={async () => { await sendPost(); setComposeOpen(false); setSentToast(true); setTimeout(() => setSentToast(false), 2600); }}>{postKind === 'win' ? L('Publicar logro', 'Post win') : L('Publicar', 'Post')}</button>
+            <button className="btn btn-primary" onClick={async () => { const res = await sendPost(); setComposeOpen(false); setSentPending(!!res?.pending); setSentToast(true); setTimeout(() => setSentToast(false), 2800); }}>{postKind === 'win' ? L('Publicar logro', 'Post win') : L('Publicar', 'Post')}</button>
           </div>
         </div></Modal>
       )}
       {sentToast && (
         <div className="sk-modal-ov" style={{ alignItems: 'center' }} onClick={() => setSentToast(false)}>
           <div className="sk-confirm" style={{ maxWidth: 340, textAlign: 'center', borderColor: 'color-mix(in srgb,var(--green) 55%,transparent)', animation: 'skConfirmGlowG 1.6s ease-in-out infinite' }} onClick={(e) => e.stopPropagation()}>
-            <div className="sk-confirm-ic" style={{ margin: '0 auto 10px', background: 'color-mix(in srgb,var(--green) 16%,transparent)', color: 'var(--soft-green,var(--green))' }}><OnyxIcon emoji="✅" size={22} /></div>
-            <b style={{ fontSize: 16 }}>{postKind === 'win' ? L('¡Logro publicado!', 'Win posted!') : L('¡Publicado!', 'Posted!')}</b>
-            <p className="muted" style={{ fontSize: 12.5, marginTop: 6, marginBottom: 0 }}>{L('Ya está visible en la comunidad.', 'It’s now visible in the community.')}</p>
+            <div className="sk-confirm-ic" style={{ margin: '0 auto 10px', background: 'color-mix(in srgb,var(--green) 16%,transparent)', color: 'var(--soft-green,var(--green))' }}><OnyxIcon emoji={sentPending ? '⏳' : '✅'} size={22} /></div>
+            <b style={{ fontSize: 16 }}>{sentPending ? L('¡Enviado!', 'Sent!') : (postKind === 'win' ? L('¡Logro publicado!', 'Win posted!') : L('¡Publicado!', 'Posted!'))}</b>
+            <p className="muted" style={{ fontSize: 12.5, marginTop: 6, marginBottom: 0 }}>{sentPending ? L('Tu logro aparecerá cuando la academia lo apruebe.', 'Your win will show once the academy approves it.') : L('Ya está visible en la comunidad.', 'It’s now visible in the community.')}</p>
           </div>
         </div>
       )}
@@ -1491,8 +1492,10 @@ function WinsWall({ active, lang, reload, L }: any) {
   const [pending, setPending] = useState<any[]>([]);
   const [busy, setBusy] = useState(false);
   const isMentor = !!active.isMentorHere;
+  const canModerate = !!(active.isMentorHere || active.myPerms?.moderate); // dueño o colaborador que modera
+  const minePending = (active.winsMinePending || []) as any[];
 
-  async function loadPending() { if (!isMentor) return; const r = await fetch(`/api/academy/wins?m=${mentorId}&pending=1`); const j = await r.json(); setPending(j.pending || []); }
+  async function loadPending() { if (!canModerate) return; const r = await fetch(`/api/academy/wins?m=${mentorId}&pending=1`); const j = await r.json(); setPending(j.pending || []); }
   useEffect(() => { loadPending(); }, []);
 
   async function submit() {
@@ -1523,7 +1526,24 @@ function WinsWall({ active, lang, reload, L }: any) {
         {Object.keys(WIN_KINDS).map((k) => <button key={k} className={filter === k ? 'on' : ''} onClick={() => setFilter(k)}>{L(WIN_KINDS[k].es, WIN_KINDS[k].en)}</button>)}
       </div>
 
-      {isMentor && pending.length > 0 && (
+      {!canModerate && minePending.length > 0 && (
+        <div className="sk-card" style={{ border: '1px dashed color-mix(in srgb,var(--gold) 45%,transparent)', marginBottom: 12 }}>
+          <div className="row between" style={{ marginBottom: 8 }}><b style={{ fontSize: 13.5, display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon name="calendar" size={14} /> {L('Esperando aprobación de la academia', 'Waiting for academy approval')}</b><span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--gold) 16%,transparent)', color: 'var(--gold)' }}>{minePending.length}</span></div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {minePending.map((w: any) => (
+              <div key={w.id} className="row" style={{ gap: 10, alignItems: 'center', background: 'var(--bg2)', borderRadius: 8, padding: 8 }}>
+                {w.image_url ? <img src={w.image_url} alt="" style={{ width: 46, height: 46, borderRadius: 6, objectFit: 'cover', flex: 'none' }} /> : <span style={{ width: 46, height: 46, borderRadius: 6, background: 'var(--card2)', display: 'grid', placeItems: 'center', flex: 'none', color: WIN_KINDS[w.kind]?.color }}><OnyxIcon name={(WIN_KINDS[w.kind]?.icon as any) || 'trophy'} size={20} /></span>}
+                <div style={{ flex: 1, minWidth: 0, fontSize: 13 }}><b>{L(WIN_KINDS[w.kind]?.es, WIN_KINDS[w.kind]?.en)}</b>{w.amount_cents ? ' · ' + winMoney(w.amount_cents, w.currency) : ''}<div className="muted" style={{ fontSize: 11.5 }}>{w.title || ''}{w.prop_firm ? ' · ' + w.prop_firm : ''}</div></div>
+                {w.status === 'rejected'
+                  ? <span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--red) 16%,transparent)', color: 'var(--red)' }}>{L('No aprobado', 'Not approved')}</span>
+                  : <span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--gold) 16%,transparent)', color: 'var(--gold)' }}>{L('En revisión', 'In review')}</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {canModerate && pending.length > 0 && (
         <div className="sk-card" style={{ border: '1px dashed color-mix(in srgb,var(--gold) 45%,transparent)', marginBottom: 12 }}>
           <div className="row between" style={{ marginBottom: 8 }}><b style={{ fontSize: 13.5, display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon name="calendar" size={14} /> {L('Por aprobar', 'To approve')}</b><span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--gold) 16%,transparent)', color: 'var(--gold)' }}>{pending.length}</span></div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -1557,7 +1577,7 @@ function WinsWall({ active, lang, reload, L }: any) {
                   <div className="row" style={{ gap: 7, alignItems: 'center', minWidth: 0 }}><Avatar name={w.author_name} size={22} /><span className="muted" style={{ fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{w.author_name}</span></div>
                   <div className="row" style={{ gap: 6, alignItems: 'center' }}>
                     <button className={'sk-like' + (w.liked ? ' on' : '')} onClick={() => like(w.id)} style={{ fontSize: 12 }}><OnyxIcon name="heart" size={13} glow={false} /> {w.likes || 0}</button>
-                    {isMentor && <button className="btn btn-ghost" style={{ padding: '2px 6px', fontSize: 11, color: 'var(--red)' }} onClick={() => delWin(w.id)}>✕</button>}
+                    {canModerate && <button className="btn btn-ghost" style={{ padding: '2px 6px', fontSize: 11, color: 'var(--red)' }} onClick={() => delWin(w.id)}>✕</button>}
                   </div>
                 </div>
               </div>
@@ -2728,6 +2748,8 @@ function RetentionView({ lang, L, goEmails }: any) {
 
 function EventForm({ form, setForm, onSave, onCancel, L }: any) {
   const set = (k: string, v: any) => setForm({ ...form, [k]: v });
+  // Solo bloqueamos fecha pasada al CREAR. Al editar una clase ya pasada se permite (ej: añadir grabación).
+  const isPastNew = !form.id && form.starts_at && form.starts_at.length >= 16 && (() => { try { return new Date(form.starts_at).getTime() < Date.now() - 60000; } catch { return false; } })();
   return (
     <Modal onClose={onCancel}><div className="sk-card" style={{ border: '1px solid var(--brand)' }}>
       <h3 style={{ marginBottom: 12 }}>{form.id ? L('Editar clase', 'Edit class') : L('Programar clase en vivo', 'Schedule live class')}</h3>
@@ -2741,9 +2763,10 @@ function EventForm({ form, setForm, onSave, onCancel, L }: any) {
         </div>
         <input value={form.recording_url || ''} onChange={(e) => set('recording_url', e.target.value)} placeholder={L('Link de la grabación (YouTube/Vimeo/.mp4) — opcional', 'Recording link (YouTube/Vimeo/.mp4) — optional')} style={{ margin: 0 }} />
         <textarea value={form.description || ''} onChange={(e) => set('description', e.target.value)} rows={2} placeholder={L('Descripción (opcional)', 'Description (optional)')} style={{ width: '100%', margin: 0 }} />
+        {isPastNew && <div style={{ fontSize: 12, color: 'var(--red)', display: 'flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="⚠️" size={13} /> {L('Esa fecha y hora ya pasó. Elige un momento futuro.', 'That date and time is in the past. Pick a future moment.')}</div>}
       </div>
       <div className="row" style={{ gap: 8, marginTop: 12 }}>
-        <button className="btn btn-primary" onClick={() => onSave(form)} disabled={!form.title || !form.starts_at}>{L('Guardar', 'Save')}</button>
+        <button className="btn btn-primary" onClick={() => onSave(form)} disabled={!form.title || !form.starts_at || isPastNew}>{L('Guardar', 'Save')}</button>
         <button className="btn btn-ghost" onClick={onCancel}>{L('Cancelar', 'Cancel')}</button>
       </div>
     </div></Modal>

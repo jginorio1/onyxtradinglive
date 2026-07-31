@@ -3,6 +3,27 @@ import { approvedReviews } from '@/lib/academyReviews';
 import { computeStats } from '@/lib/stats';
 import crypto from 'crypto';
 
+// ---- Validaciones de seguridad compartidas ----
+// La imagen debe venir de NUESTRO Storage (bucket "academy"), nunca una URL externa
+// arbitraria: así no se salta la moderación de la subida.
+export function isOurUpload(url?: string | null): boolean {
+  if (!url) return true; // vacío = sin imagen, válido
+  const base = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  try { const u = new URL(String(url)); const b = new URL(base); return !!base && u.host === b.host && u.pathname.includes('/storage/v1/object/public/academy/'); } catch { return false; }
+}
+// Solo enlaces http(s) (bloquea javascript:, data:, etc.). Devuelve null si no es válido.
+export function safeHttpUrl(url?: string | null): string | null {
+  if (!url) return null;
+  const s = String(url).trim();
+  try { const u = new URL(s); return (u.protocol === 'http:' || u.protocol === 'https:') ? s.slice(0, 500) : null; } catch { return null; }
+}
+// Anti-spam sencillo: cuántas filas creó este usuario en los últimos N segundos.
+export async function recentCount(table: string, userCol: string, userId: string, seconds: number): Promise<number> {
+  const since = new Date(Date.now() - seconds * 1000).toISOString();
+  const { count } = await supabaseAdmin.from(table).select('id', { count: 'exact', head: true }).eq(userCol, userId).gte('created_at', since);
+  return count || 0;
+}
+
 // ============================================================
 // Onyx Academy · comunidad + cursos (estilo Skool).
 // Un mentor tiene una academia (mentors). Publica módulos/lecciones y tiene
@@ -355,15 +376,17 @@ export async function addPost(mentorId: string, authorId: string, body: string, 
   const sched = scheduledAt && new Date(scheduledAt).getTime() > Date.now() ? new Date(scheduledAt).toISOString() : null;
   const kind = POST_KINDS.includes(String(opts.kind)) ? String(opts.kind) : 'community';
   const win_kind = kind === 'win' && WIN_KINDS.includes(String(opts.win_kind)) ? String(opts.win_kind) : null;
+  const img = isOurUpload(imageUrl) ? (imageUrl ? String(imageUrl).slice(0, 500) : null) : null; // solo imágenes de nuestro Storage
   const { data } = await supabaseAdmin.from('academy_posts').insert({
     mentor_id: mentorId, author_id: authorId, body: String(body || '').slice(0, 4000), pinned,
-    image_url: imageUrl ? String(imageUrl).slice(0, 500) : null, scheduled_at: sched,
+    image_url: img, scheduled_at: sched,
     kind, win_kind, announcement: !!opts.announcement,
   }).select('id').single();
   return data as any;
 }
 export async function addComment(postId: string, authorId: string, body: string, imageUrl?: string) {
-  await supabaseAdmin.from('academy_comments').insert({ post_id: postId, author_id: authorId, body: String(body || '').slice(0, 2000), image_url: imageUrl ? String(imageUrl).slice(0, 500) : null });
+  const img = isOurUpload(imageUrl) ? (imageUrl ? String(imageUrl).slice(0, 500) : null) : null;
+  await supabaseAdmin.from('academy_comments').insert({ post_id: postId, author_id: authorId, body: String(body || '').slice(0, 2000), image_url: img });
 }
 export async function deletePost(mentorId: string, id: string) {
   await supabaseAdmin.from('academy_posts').delete().eq('id', id).eq('mentor_id', mentorId);
@@ -472,13 +495,16 @@ export function nyNaiveToUtc(naive: string): string {
   return new Date(asUtc.getTime() + offset).toISOString();
 }
 export async function saveEvent(mentorId: string, b: any) {
+  const startsAt = b.starts_at ? nyNaiveToUtc(String(b.starts_at)) : new Date().toISOString();
+  // No se puede CREAR una clase en el pasado (al editar sí, p.ej. para añadir la grabación).
+  if (!b.id && new Date(startsAt).getTime() < Date.now() - 60000) throw new Error('past_date');
   const row: any = {
     title: String(b.title || 'Clase en vivo').slice(0, 160),
     description: b.description ? String(b.description).slice(0, 1000) : null,
-    join_url: b.join_url ? String(b.join_url).slice(0, 500) : null,
-    starts_at: b.starts_at ? nyNaiveToUtc(String(b.starts_at)) : new Date().toISOString(),
+    join_url: safeHttpUrl(b.join_url),          // solo http(s); bloquea javascript:
+    starts_at: startsAt,
     duration_min: Math.max(5, Math.min(600, Number(b.duration_min) || 60)),
-    recording_url: b.recording_url ? String(b.recording_url).slice(0, 500) : null,
+    recording_url: safeHttpUrl(b.recording_url),
   };
   if (b.id) { await supabaseAdmin.from('academy_events').update(row).eq('id', b.id).eq('mentor_id', mentorId); return { id: b.id }; }
   const { data } = await supabaseAdmin.from('academy_events').insert({ ...row, mentor_id: mentorId }).select('id').single();
