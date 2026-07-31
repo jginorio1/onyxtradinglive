@@ -361,6 +361,10 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
 .sk-wrap{max-width:1180px;margin:0 auto;padding:0 4px;}
 .sk-grid{display:grid;grid-template-columns:1fr 320px;gap:18px;align-items:start;}
 @media(max-width:920px){.sk-grid{grid-template-columns:1fr;}.sk-side{order:-1;}}
+/* Vista de lección: menú de temas a la izquierda, media a la derecha */
+.sk-lesson{grid-template-columns:260px 1fr!important;}
+.sk-lesson-menu{position:sticky;top:12px;}
+@media(max-width:920px){.sk-lesson{grid-template-columns:1fr!important;}.sk-lesson-menu{position:static;}}
 .sk-hero{position:relative;border:1px solid var(--line);border-radius:18px;overflow:hidden;background:var(--card);box-shadow:0 8px 30px rgba(0,0,0,.25);}
 .sk-hero-cover{height:120px;background:var(--grad);}
 .sk-hero-body{padding:12px 18px 16px;display:flex;gap:14px;align-items:flex-start;}

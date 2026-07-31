@@ -118,6 +118,21 @@ function ImgAttach({ onUrl, L }: any) {
     </>
   );
 }
+// Sube un PDF al Storage (reutiliza /api/academy/upload) y devuelve su URL.
+function PdfUpload({ onUrl, L }: any) {
+  const ref = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  return (
+    <>
+      <input ref={ref} type="file" accept="application/pdf,.pdf" style={{ display: 'none' }} onChange={async (e) => {
+        const f = e.target.files?.[0]; if (!f) return; setBusy(true);
+        const url = await uploadImage(f); setBusy(false); if (ref.current) ref.current.value = '';
+        if (url) onUrl(url); else alert(L('No se pudo subir el PDF.', 'Could not upload the PDF.'));
+      }} />
+      <button type="button" className="btn btn-ghost" style={{ fontSize: 12, padding: '4px 10px' }} disabled={busy} onClick={() => ref.current?.click()}>{busy ? '…' : '📄 ' + L('Subir PDF', 'Upload PDF')}</button>
+    </>
+  );
+}
 // Vista previa de imagen adjunta con botón de quitar.
 function ImgPreview({ url, onRemove }: any) {
   if (!url) return null;
@@ -516,7 +531,7 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
       {tab === 'profile' ? <ProfileView mentorId={active.mentor_id} userId={viewUser || active.myUserId} me={active.myUserId} lang={lang} onDm={openDm} onBack={() => setTab('members')} />
       : tab === 'chat' ? <ChatView mentorId={active.mentor_id} lang={lang} initialWith={dmWith} members={active.members || []} myUserId={active.myUserId} staffIds={active.staffIds || []} iAmStaff={!!active.myPerms?.isCollab} roles={active.roles || {}} />
       : (
-      <div className="sk-grid">
+      <div className="sk-grid" style={tab === 'classroom' ? { gridTemplateColumns: '1fr' } : undefined}>
         <div>
           {tab === 'community' && (
             <>
@@ -600,6 +615,7 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
           {tab === 'logros' && <WinsWall active={active} lang={lang} reload={reload} L={L} />}
         </div>
 
+        {tab !== 'classroom' && (
         <div className="sk-side">
           <div className="sk-side-card">
             <div style={{ fontWeight: 800, fontSize: 16 }}>{active.academy_name}</div>
@@ -673,6 +689,7 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
             ))}
           </div>
         </div>
+        )}
       </div>
       )}
 
@@ -826,11 +843,12 @@ function CourseView({ course, mentorId, progress, onBack, onPick, L }: any) {
             <div className="sk-sec-title">{sec}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {groups[sec].map((l: any) => { const isDone = progress.includes(l.id); const open = !course.locked || l.is_free; return (
-                <button key={l.id} onClick={() => open && onPick(l)} disabled={!open} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '11px 13px', textAlign: 'left', cursor: open ? 'pointer' : 'not-allowed', opacity: open ? 1 : .6 }}>
+                <button key={l.id} onClick={() => open && onPick(l)} disabled={!open} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '11px 13px', textAlign: 'left', cursor: open ? 'pointer' : 'not-allowed', opacity: open ? 1 : .6, color: 'var(--tx)' }}>
                   <span style={{ color: !open ? 'var(--gold)' : isDone ? 'var(--green)' : 'var(--mut)', display: 'inline-flex' }}>{!open ? <OnyxIcon name="guardian" size={14} /> : isDone ? '✓' : '○'}</span>
-                  <span style={{ flex: 1, fontSize: 13.5 }}>{l.title}</span>
+                  <span style={{ flex: 1, fontSize: 13.5, color: 'var(--tx)' }}>{l.title}</span>
                   {l.is_free && <span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--green) 15%,transparent)', color: 'var(--soft-green)' }}>{L('gratis', 'free')}</span>}
                   {l.video_url && open && <OnyxIcon emoji="🎬" size={14} />}
+                  {l.pdf_url && open && <OnyxIcon emoji="📄" size={14} />}
                 </button>
               ); })}
             </div>
@@ -845,29 +863,124 @@ function CourseView({ course, mentorId, progress, onBack, onPick, L }: any) {
 function LessonView({ lesson, course, done, progress, onBack, onToggle, onPick, L }: any) {
   const emb = embed(lesson.video_url || '');
   const list = (course?.lessons || []).filter((l: any) => !course.locked || l.is_free);
+  const idx = list.findIndex((l: any) => l.id === lesson.id);
+  const next = idx >= 0 && idx < list.length - 1 ? list[idx + 1] : null;
+  const prev = idx > 0 ? list[idx - 1] : null;
+  // Marca completada y avanza a la siguiente lección automáticamente.
+  async function completeAndNext() {
+    if (!done) { await onToggle(lesson, true); if (next) onPick(next); }
+    else { onToggle(lesson, false); }
+  }
+  // Menú de temas (izquierda) — reutilizable para desktop y móvil.
+  const Menu = (
+    <div className="sk-side-card">
+      <b style={{ fontSize: 13.5 }}>{course?.title}</b>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8 }}>
+        {list.map((l: any) => { const isDone = (progress || []).includes(l.id); const cur = l.id === lesson.id; return (
+          <button key={l.id} onClick={() => onPick(l)} style={{ display: 'flex', gap: 8, alignItems: 'center', background: cur ? 'var(--bg2)' : 'none', border: cur ? '1px solid color-mix(in srgb,var(--brand) 40%,transparent)' : '1px solid transparent', borderRadius: 8, padding: '8px 9px', textAlign: 'left', cursor: 'pointer', fontSize: 12.5, color: cur ? 'var(--tx)' : 'var(--mut)' }}>
+            <span style={{ color: isDone ? 'var(--green)' : cur ? 'var(--brand)' : 'var(--mut)', flex: 'none' }}>{isDone ? '✓' : cur ? '▸' : '○'}</span>
+            <span style={{ flex: 1 }}>{l.title}</span>
+            {l.pdf_url && <OnyxIcon emoji="📄" size={12} />}{l.video_url && <OnyxIcon emoji="🎬" size={12} />}
+          </button>
+        ); })}
+      </div>
+    </div>
+  );
   return (
-    <div className="sk-grid" style={{ gridTemplateColumns: '1fr 260px' }}>
+    <div className="sk-grid sk-lesson">
+      {/* IZQUIERDA: menú de temas */}
+      <div className="sk-lesson-menu">{Menu}</div>
+      {/* DERECHA: video / PDF / contenido */}
       <div className="sk-card">
-        <button className="btn btn-ghost" style={{ fontSize: 12.5, marginBottom: 12 }} onClick={onBack}>← {L('Volver', 'Back')}</button>
+        <div className="row between" style={{ alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+          <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={onBack}>← {L('Aulas', 'Classroom')}</button>
+          <span className="muted" style={{ fontSize: 12 }}>{idx >= 0 ? `${idx + 1} / ${list.length}` : ''}</span>
+        </div>
         <h3 style={{ marginBottom: 12 }}>{lesson.title}</h3>
         {lesson.video_url && (emb
           ? <div style={{ position: 'relative', paddingTop: '56.25%', borderRadius: 12, overflow: 'hidden', marginBottom: 12 }}><iframe src={emb} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }} allow="autoplay; fullscreen; picture-in-picture" allowFullScreen /></div>
           : <video src={lesson.video_url} controls style={{ width: '100%', borderRadius: 12, marginBottom: 12 }} />)}
+        {lesson.pdf_url && <PdfViewer url={lesson.pdf_url} L={L} />}
         {lesson.content && <div style={{ whiteSpace: 'pre-wrap', fontSize: 14, lineHeight: 1.6, marginBottom: 12 }}>{lesson.content}</div>}
         {(lesson.resources || []).length > 0 && <div style={{ marginBottom: 12 }}>{lesson.resources.map((r: any, i: number) => <a key={i} href={r.url} target="_blank" rel="noreferrer" className="sk-chip" style={{ marginRight: 8 }}>📎 {r.label || r.url}</a>)}</div>}
-        <button className={'btn ' + (done ? 'btn-ghost' : 'btn-primary')} onClick={() => onToggle(lesson, !done)}>{done ? '✓ ' + L('Completada', 'Completed') : L('Marcar como completada', 'Mark as completed')}</button>
-      </div>
-      <div className="sk-side">
-        <div className="sk-side-card">
-          <b style={{ fontSize: 13.5 }}>{course?.title}</b>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8 }}>
-            {list.map((l: any) => { const isDone = (progress || []).includes(l.id); const cur = l.id === lesson.id; return (
-              <button key={l.id} onClick={() => onPick(l)} style={{ display: 'flex', gap: 8, alignItems: 'center', background: cur ? 'var(--bg2)' : 'none', border: 'none', borderRadius: 8, padding: '7px 8px', textAlign: 'left', cursor: 'pointer', fontSize: 12.5, color: cur ? 'var(--tx)' : 'var(--mut)' }}>
-                <span style={{ color: isDone ? 'var(--green)' : 'var(--mut)' }}>{isDone ? '✓' : '○'}</span> {l.title}
-              </button>
-            ); })}
+        <div className="row between" style={{ alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
+          <button className="btn" style={done ? { background: 'color-mix(in srgb,var(--green) 22%,transparent)', border: '1px solid var(--green)', color: 'var(--soft-green, var(--green))', fontWeight: 700 } : { background: 'var(--brand)', color: '#fff' }} onClick={completeAndNext}>{done ? '✓ ' + L('Completada', 'Completed') : (next ? L('Completar y siguiente →', 'Complete & next →') : L('Marcar como completada', 'Mark as completed'))}</button>
+          <div className="row" style={{ gap: 6 }}>
+            {prev && <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={() => onPick(prev)}>← {L('Anterior', 'Previous')}</button>}
+            {next && <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={() => onPick(next)}>{L('Siguiente', 'Next')} →</button>}
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// Visor de PDF con navegación por páginas (pdf.js desde CDN, sin dependencias del bundle).
+function PdfViewer({ url, L }: { url: string; L: (a: string, b: string) => string }) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const docRef = useRef<any>(null);
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(0);
+  const [err, setErr] = useState(false);
+  const [ready, setReady] = useState(false);
+
+  // Carga pdf.js una sola vez.
+  useEffect(() => {
+    let cancelled = false;
+    function ensureLib(): Promise<any> {
+      const w = window as any;
+      if (w.pdfjsLib) return Promise.resolve(w.pdfjsLib);
+      return new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+        s.onload = () => { const lib = (window as any).pdfjsLib; if (lib) { lib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; resolve(lib); } else reject(new Error('no lib')); };
+        s.onerror = () => reject(new Error('load error'));
+        document.head.appendChild(s);
+      });
+    }
+    ensureLib().then((lib) => lib.getDocument(url).promise).then((doc: any) => {
+      if (cancelled) return;
+      docRef.current = doc; setPages(doc.numPages); setPage(1); setReady(true);
+    }).catch(() => { if (!cancelled) setErr(true); });
+    return () => { cancelled = true; };
+  }, [url]);
+
+  // Renderiza la página actual.
+  useEffect(() => {
+    if (!ready || !docRef.current || !canvasRef.current) return;
+    let cancelled = false;
+    docRef.current.getPage(page).then((pg: any) => {
+      if (cancelled) return;
+      const canvas = canvasRef.current!; const ctx = canvas.getContext('2d');
+      const wrapW = canvas.parentElement ? canvas.parentElement.clientWidth : 800;
+      const base = pg.getViewport({ scale: 1 });
+      const scale = Math.min(2, Math.max(0.5, wrapW / base.width));
+      const vp = pg.getViewport({ scale });
+      canvas.width = vp.width; canvas.height = vp.height;
+      pg.render({ canvasContext: ctx, viewport: vp });
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [page, ready]);
+
+  if (err) return (
+    <div className="sk-card" style={{ margin: '0 0 12px', textAlign: 'center' }}>
+      <p className="muted" style={{ fontSize: 13, marginBottom: 8 }}>{L('No se pudo cargar el PDF aquí.', 'Could not load the PDF here.')}</p>
+      <a className="btn btn-primary" href={url} target="_blank" rel="noreferrer">{L('Abrir PDF', 'Open PDF')}</a>
+    </div>
+  );
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 12, padding: 10, overflow: 'auto', textAlign: 'center', minHeight: 200 }}>
+        {!ready && <div className="muted" style={{ fontSize: 13, padding: 24 }}>{L('Cargando PDF…', 'Loading PDF…')}</div>}
+        <canvas ref={canvasRef} style={{ maxWidth: '100%', borderRadius: 8, display: ready ? 'inline-block' : 'none' }} />
+      </div>
+      <div className="row between" style={{ alignItems: 'center', marginTop: 8, flexWrap: 'wrap', gap: 8 }}>
+        <div className="row" style={{ gap: 6 }}>
+          <button className="btn btn-ghost" style={{ fontSize: 12.5 }} disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>← {L('Anterior', 'Prev')}</button>
+          <button className="btn btn-ghost" style={{ fontSize: 12.5 }} disabled={page >= pages} onClick={() => setPage((p) => Math.min(pages, p + 1))}>{L('Siguiente', 'Next')} →</button>
+        </div>
+        <span className="muted" style={{ fontSize: 12.5 }}>{L('Página', 'Page')} {page} / {pages || '…'}</span>
+        <a className="sk-chip" href={url} target="_blank" rel="noreferrer">⤓ {L('Descargar', 'Download')}</a>
       </div>
     </div>
   );
@@ -2146,6 +2259,10 @@ function LessonForm({ form, setForm, onSave, onCancel, L }: any) {
         <input value={form.title || ''} onChange={(e) => set('title', e.target.value)} placeholder={L('Título de la lección', 'Lesson title')} style={{ margin: 0 }} />
         <input value={form.section || ''} onChange={(e) => set('section', e.target.value)} placeholder={L('Sección/tema (ej: Fundamentos) — opcional', 'Section/topic (e.g. Fundamentals) — optional')} style={{ margin: 0 }} />
         <input value={form.video_url || ''} onChange={(e) => set('video_url', e.target.value)} placeholder={L('URL del vídeo (YouTube, Vimeo o .mp4)', 'Video URL (YouTube, Vimeo or .mp4)')} style={{ margin: 0 }} />
+        <div>
+          <input value={form.pdf_url || ''} onChange={(e) => set('pdf_url', e.target.value)} placeholder={L('URL del PDF (se ve página por página)', 'PDF URL (viewed page by page)')} style={{ margin: 0 }} />
+          <div className="row" style={{ gap: 8, marginTop: 6, alignItems: 'center' }}><span className="muted" style={{ fontSize: 11.5 }}>{L('O sube un PDF:', 'Or upload a PDF:')}</span><PdfUpload onUrl={(u: string) => set('pdf_url', u)} L={L} />{form.pdf_url && <button className="btn btn-ghost" style={{ fontSize: 11, color: 'var(--red)' }} onClick={() => set('pdf_url', '')}>{L('Quitar PDF', 'Remove PDF')}</button>}</div>
+        </div>
         <div className="row between" style={{ alignItems: 'center' }}><span className="muted" style={{ fontSize: 12 }}>{L('Notas de la lección (opcional)', 'Lesson notes (optional)')}</span><AiBtn kind="lesson_desc" getInput={() => form.title} onText={(t: string) => set('content', t)} L={L} /></div>
         <textarea value={form.content || ''} onChange={(e) => set('content', e.target.value)} rows={4} placeholder={L('Escribe o pulsa ✨ IA (usa el título como contexto).', 'Write or hit ✨ AI (uses the title as context).')} style={{ width: '100%', margin: 0 }} />
         <label className="row" style={{ gap: 8, fontSize: 13 }}><input type="checkbox" checked={!!form.is_free} onChange={(e) => set('is_free', e.target.checked)} style={{ width: 'auto', margin: 0 }} /> {L('Lección gratis (preview sin inscribirse)', 'Free lesson (preview without enrolling)')}</label>

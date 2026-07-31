@@ -9,6 +9,7 @@ export const runtime = 'nodejs';
 const BUCKET = 'academy';
 const OK = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
 const MAX = 6 * 1024 * 1024;
+const PDF_MAX = 40 * 1024 * 1024;
 
 // POST · sube una portada/miniatura (imagen) al Storage y devuelve su URL pública.
 // Recibe { name, type, data } donde data es un data URL base64.
@@ -24,14 +25,18 @@ export async function POST(req: Request) {
     const m = /^data:([^;]+);base64,(.+)$/s.exec(data);
     if (!m) return NextResponse.json({ error: 'formato inválido' }, { status: 400 });
     const mediaType = m[1];
-    if (!OK.includes(mediaType)) return NextResponse.json({ error: 'solo imágenes (png, jpg, webp, gif)' }, { status: 400 });
+    const isPdf = mediaType === 'application/pdf';
+    if (!OK.includes(mediaType) && !isPdf) return NextResponse.json({ error: 'solo imágenes (png, jpg, webp, gif) o PDF' }, { status: 400 });
 
     const buf = Buffer.from(m[2], 'base64');
-    if (buf.byteLength > MAX) return NextResponse.json({ error: 'imagen demasiado grande (máx 6 MB)' }, { status: 400 });
-
-    // Moderación con IA: bloquea contenido sexual/indebido antes de guardar.
-    const mod = await moderateImage(mediaType, m[2]);
-    if (!mod.safe) return NextResponse.json({ error: 'blocked', message: 'Imagen bloqueada por moderación (contenido no permitido).' }, { status: 400 });
+    if (isPdf) {
+      if (buf.byteLength > PDF_MAX) return NextResponse.json({ error: 'PDF demasiado grande (máx 40 MB)' }, { status: 400 });
+    } else {
+      if (buf.byteLength > MAX) return NextResponse.json({ error: 'imagen demasiado grande (máx 6 MB)' }, { status: 400 });
+      // Moderación con IA: bloquea contenido sexual/indebido antes de guardar (solo imágenes).
+      const mod = await moderateImage(mediaType, m[2]);
+      if (!mod.safe) return NextResponse.json({ error: 'blocked', message: 'Imagen bloqueada por moderación (contenido no permitido).' }, { status: 400 });
+    }
 
     const path = `${user.id}/${Date.now()}-${name}`;
     const up = await supabaseAdmin.storage.from(BUCKET).upload(path, buf, { contentType: mediaType, upsert: false });

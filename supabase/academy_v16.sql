@@ -7,6 +7,9 @@
 -- Grabación de la clase en vivo (link de YouTube/Vimeo/.mp4).
 alter table academy_events add column if not exists recording_url text;
 
+-- PDF de la lección (se muestra página por página dentro del aula).
+alter table academy_lessons add column if not exists pdf_url text;
+
 -- Precio anual de la membresía (opcional). 0 = sin opción anual.
 alter table mentors add column if not exists membership_year_cents bigint not null default 0;
 

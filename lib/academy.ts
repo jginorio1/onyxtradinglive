@@ -87,6 +87,7 @@ export async function saveLesson(mentorId: string, b: any) {
     title: String(b.title || 'Lección').slice(0, 160),
     section: b.section !== undefined ? (b.section ? String(b.section).slice(0, 120) : null) : undefined,
     video_url: b.video_url ? String(b.video_url).slice(0, 500) : null,
+    pdf_url: b.pdf_url ? String(b.pdf_url).slice(0, 500) : null,
     content: b.content ? String(b.content).slice(0, 8000) : null,
     resources: Array.isArray(b.resources) ? b.resources.slice(0, 20).map((r: any) => ({ label: String(r.label || '').slice(0, 80), url: String(r.url || '').slice(0, 400) })) : [],
     position: Number(b.position) || 0,

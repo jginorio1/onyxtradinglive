@@ -1666,3 +1666,23 @@ el mentor la **apruebe** en **Comunidad → Reseñas por aprobar**. Las aprobada
 
 **Requisitos:** correr `academy_v16.sql`. Para el plan anual y los cupones, el mentor debe tener
 **Stripe conectado** (Cobros). Nada nuevo en variables de entorno.
+
+### 49 · Onyx Academy — Aula enfocada + PDF por páginas (Fase 15.1)
+
+**SQL:** ya incluido en `supabase/academy_v16.sql` (`academy_lessons.pdf_url`).
+
+- **Aula sin distracciones:** al abrir una lección, la columna de la derecha (ranking,
+  invitar, auditoría, etc.) desaparece. Queda solo el banner de la próxima clase en vivo y el
+  contenido del curso. El **menú de temas va a la izquierda** y el **video/PDF a la derecha**,
+  más grande.
+- **Lecciones en PDF (página por página):** en el formulario de lección el mentor pega una
+  **URL de PDF** o pulsa **Subir PDF** (hasta 40 MB, guardado en el bucket `academy`). El alumno
+  lo ve incrustado con botones **Anterior / Siguiente**, número de página y **Descargar**.
+  Funciona combinado con video (ambos en la misma lección).
+- **Completar y siguiente:** el botón **"Completar y siguiente →"** marca la lección y salta
+  automáticamente a la próxima. Cuando está completada, el botón se pone **verde**.
+- **Contraste:** los títulos de lección ahora usan color claro también en escritorio (antes se
+  veían en negro sobre el fondo oscuro).
+
+**Requisitos:** correr `academy_v16.sql`. El visor de PDF usa pdf.js desde CDN (sin dependencias
+nuevas en el bundle).
