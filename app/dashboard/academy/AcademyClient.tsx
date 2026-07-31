@@ -1802,7 +1802,6 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
   if (d.error) return <div className="sk-card"><b>{L('Academia no disponible en tu plan', 'Academy not on your plan')}</b><p className="muted" style={{ marginTop: 6 }}>{L('El módulo Mentor está en el plan Mentor o como add-on.', 'The Mentor module is on the Mentor plan or as an add-on.')}</p></div>;
 
   const link = typeof window !== 'undefined' ? `${window.location.origin}/dashboard/academy?join=${d.mentor.code}` : '';
-  const empty = (d.content || []).length === 0;
 
   return (
     <div className="sk-wrap" style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 4 }}>
@@ -1816,10 +1815,10 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
         </div>
       </div>
 
-      {/* Onboarding del mentor: lista de configuración con progreso (5 min) */}
+      {/* Onboarding del mentor: única lista de configuración con progreso.
+          (Antes había además un "SetupWizard" de 4 pasos que se solapaba con esta;
+          se eliminó para no mostrar dos cuadros de configuración a la vez.) */}
       <OnboardingCard d={d} L={L} api={api} goTab={setTab} openStudent={openStudent} />
-      {/* Wizard de configuración cuando la academia está vacía */}
-      {empty && <SetupWizard d={d} L={L} api={api} setModForm={setModForm} setEvForm={setEvForm} goTab={setTab} />}
 
       <div className="sk-card">
         <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>🔑 {L('Enlace de inscripción (compártelo con tus alumnos)', 'Enrollment link (share with your students)')}</div>
@@ -2441,7 +2440,7 @@ function OnboardingCard({ d, L, api, goTab }: any) {
           <button key={i} className="row between" onClick={go} style={{ alignItems: 'center', gap: 10, background: 'var(--bg2)', border: 'none', borderRadius: 8, padding: '9px 11px', cursor: 'pointer', textAlign: 'left', opacity: ok ? .7 : 1 }}>
             <span className="row" style={{ gap: 10, alignItems: 'center', minWidth: 0 }}>
               <span style={{ width: 20, height: 20, borderRadius: '50%', flex: 'none', display: 'grid', placeItems: 'center', fontSize: 12, background: ok ? 'var(--green)' : 'color-mix(in srgb,var(--brand) 22%,transparent)', color: ok ? '#04121a' : 'var(--soft-brand,var(--brand))' }}>{ok ? '✓' : i + 1}</span>
-              <span style={{ fontSize: 13.5, textDecoration: ok ? 'line-through' : 'none' }}>{label}</span>
+              <span style={{ fontSize: 13.5, color: ok ? 'var(--mut)' : '#fff', textDecoration: ok ? 'line-through' : 'none' }}>{label}</span>
             </span>
             {!ok && <span style={{ fontSize: 12, color: 'var(--brand)' }}>{L('Ir →', 'Go →')}</span>}
           </button>
@@ -2504,31 +2503,6 @@ function RetentionView({ lang, L, goEmails }: any) {
           </div>
         )}
       </div>
-    </div>
-  );
-}
-
-function SetupWizard({ d, L, api, setModForm, setEvForm, goTab }: any) {
-  const hasContent = (d.content || []).length > 0;
-  const hasCover = !!d.mentor.cover_url;
-  const hasTier = false; // no lo sabemos aquí; se anima igual
-  const steps = [
-    { done: hasContent, label: L('Usa la plantilla Academia Onyx (crea aulas base)', 'Use the Onyx Academy template (creates starter classrooms)'), action: () => api({ action: 'template', lang: L('es', 'en') }, L('¡Plantilla aplicada! Tu academia ya tiene aulas.', 'Template applied! Your academy now has classrooms.')) },
-    { done: hasCover, label: L('Sube la portada de tu comunidad (Ajustes)', 'Upload your community cover (Settings)'), action: () => goTab('ajustes') },
-    { done: false, label: L('Programa tu primera clase en vivo', 'Schedule your first live class'), action: () => { goTab('envivo'); setEvForm({ title: '', join_url: '', starts_at: '', duration_min: 60 }); } },
-    { done: false, label: L('Crea tu nivel de pago y conecta Stripe (Cobros)', 'Create your paid tier and connect Stripe (Payments)'), action: () => goTab('cobros') },
-  ];
-  return (
-    <div className="sk-card" style={{ border: '1px solid var(--brand)' }}>
-      <h3 style={{ marginBottom: 4, display: 'flex', alignItems: 'center', gap: 9 }}><span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="graduation" size={18} /></span> {L('Configura tu academia en 4 pasos', 'Set up your academy in 4 steps')}</h3>
-      <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{L('Empieza con la plantilla y en minutos tendrás tu academia lista.', 'Start with the template and your academy will be ready in minutes.')}</p>
-      {steps.map((s: any, i: number) => (
-        <div key={i} className={'sk-wizard-step' + (s.done ? ' done' : (i === steps.findIndex((x: any) => !x.done) ? ' active' : ''))}>
-          <span className="sk-wizard-num">{s.done ? '✓' : i + 1}</span>
-          <span style={{ flex: 1, fontSize: 13.5 }}>{s.label}</span>
-          {!s.done && <button className="btn btn-primary" style={{ fontSize: 12.5 }} onClick={s.action}>{i === 0 ? L('Aplicar', 'Apply') : L('Ir', 'Go')}</button>}
-        </div>
-      ))}
     </div>
   );
 }
