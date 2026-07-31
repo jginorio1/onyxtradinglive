@@ -480,6 +480,45 @@ function nyInputToLocalHint(naive: string, lang: string): string {
   const utc = new Date(asUtc.getTime() + (asUtc.getTime() - shown.getTime()));
   return utc.toLocaleString(lang === 'en' ? 'en-US' : 'es-ES', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
+// ---- Horarios a prueba de husos: guardamos un instante (UTC) y lo mostramos en la hora
+// local de quien mira, con etiqueta de zona; más referencias (NY/UTC) y "añadir a calendario". ----
+function localTime(iso: string, lang: string, withDay = true) {
+  const opts: any = { ...(withDay ? { weekday: 'short', day: 'numeric', month: 'short' } : {}), hour: '2-digit', minute: '2-digit', timeZoneName: 'short' };
+  return new Date(iso).toLocaleString(lang === 'en' ? 'en-US' : 'es-ES', opts);
+}
+function refTimes(iso: string, lang: string) {
+  const d = new Date(iso);
+  const ny = d.toLocaleString(lang === 'en' ? 'en-US' : 'es-ES', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit' });
+  const utc = d.toLocaleString('en-GB', { timeZone: 'UTC', hour: '2-digit', minute: '2-digit', hour12: false });
+  return `${ny} ${lang === 'en' ? 'New York' : 'Nueva York'} · ${utc} UTC`;
+}
+// UTC guardado → "YYYY-MM-DDTHH:mm" en la hora LOCAL del navegador (para el input del mentor).
+function utcToLocalInput(iso: string): string {
+  if (!iso) return '';
+  const d = new Date(iso); const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+function icsStamp(d: Date) { return d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, ''); }
+function gcalUrl(ev: any) {
+  const start = new Date(ev.starts_at); const end = new Date(start.getTime() + (ev.duration_min || 60) * 60000);
+  const p = new URLSearchParams({ action: 'TEMPLATE', text: ev.title || 'Live class', dates: `${icsStamp(start)}/${icsStamp(end)}`, details: [ev.description || '', ev.join_url || ''].filter(Boolean).join('\n'), location: ev.join_url || '' });
+  return 'https://calendar.google.com/calendar/render?' + p.toString();
+}
+function downloadIcs(ev: any) {
+  const start = new Date(ev.starts_at); const end = new Date(start.getTime() + (ev.duration_min || 60) * 60000);
+  const esc = (s: any) => String(s || '').replace(/([,;\\])/g, '\\$1').replace(/\r?\n/g, '\\n');
+  const body = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Onyx Academy//EN', 'CALSCALE:GREGORIAN', 'BEGIN:VEVENT', `UID:${ev.id || Date.now()}@onyxtradinglive`, `DTSTAMP:${icsStamp(new Date())}`, `DTSTART:${icsStamp(start)}`, `DTEND:${icsStamp(end)}`, `SUMMARY:${esc(ev.title || 'Live class')}`, `DESCRIPTION:${esc([ev.description || '', ev.join_url || ''].filter(Boolean).join('\n'))}`, ev.join_url ? `URL:${esc(ev.join_url)}` : '', 'END:VEVENT', 'END:VCALENDAR'].filter(Boolean).join('\r\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([body], { type: 'text/calendar;charset=utf-8' }));
+  a.download = `${(ev.title || 'clase').replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.ics`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+function CalBtns({ ev, L }: any) {
+  return (
+    <div className="row" style={{ gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+      <a className="btn btn-ghost" style={{ fontSize: 12 }} href={gcalUrl(ev)} target="_blank" rel="noreferrer"><OnyxIcon name="calendar" size={14} glow={false} /> {L('Añadir a Google', 'Add to Google')}</a>
+      <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => downloadIcs(ev)}><OnyxIcon name="install" size={14} glow={false} /> {L('Descargar .ics', 'Download .ics')}</button>
+    </div>
+  );
+}
 function LiveBanner({ ev, lang }: { ev: any; lang: string }) {
   const L = (a: string, b: string) => (lang === 'en' ? b : a);
   const now = useNow(true);
@@ -494,7 +533,7 @@ function LiveBanner({ ev, lang }: { ev: any; lang: string }) {
           {live ? <span style={{ color: 'var(--red)' }}>● {L('EN VIVO AHORA', 'LIVE NOW')}</span> : L('Próxima clase en vivo', 'Next live class')}
           {' · '}{ev.title}
         </div>
-        {!live && <div className="muted" style={{ fontSize: 12 }}>{nyTime(ev.starts_at, lang)} (NY) · {L('empieza en', 'starts in')} <span className="sk-count" style={{ fontSize: 13 }}>{fmtCountdown(start - now)}</span></div>}
+        {!live && <div className="muted" style={{ fontSize: 12 }}>{localTime(ev.starts_at, lang)} · {L('tu hora', 'your time')} · {L('empieza en', 'starts in')} <span className="sk-count" style={{ fontSize: 13 }}>{fmtCountdown(start - now)}</span></div>}
       </div>
       {ev.join_url && (live || start - now < 15 * 60000) && <a className="btn btn-primary" href={ev.join_url} target="_blank" rel="noreferrer">{L('Entrar', 'Join')}</a>}
     </div>
@@ -910,7 +949,7 @@ function MonthCalendar({ events, lang }: any) {
   for (let i = 0; i < 42; i++) { const n = i - startOffset + 1; cells.push({ date: new Date(cur.y, cur.m, n), inMonth: n >= 1 && n <= daysInMonth }); }
   const monthLabel = first.toLocaleString(lang === 'en' ? 'en-US' : 'es-ES', { month: 'long', year: 'numeric' });
   const dows = lang === 'en' ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] : ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
-  const hhmm = (iso: string) => new Date(iso).toLocaleTimeString(lang === 'en' ? 'en-US' : 'es-ES', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit' });
+  const hhmm = (iso: string) => new Date(iso).toLocaleTimeString(lang === 'en' ? 'en-US' : 'es-ES', { hour: '2-digit', minute: '2-digit' });
   function shift(n: number) { let m = cur.m + n, y = cur.y; if (m < 0) { m = 11; y--; } if (m > 11) { m = 0; y++; } setCur({ y, m }); }
   return (
     <div className="sk-card">
@@ -943,7 +982,6 @@ function CalendarTab({ events, lang, L }: any) {
   const now = useNow(true);
   const upcoming = (events || []).filter((e: any) => new Date(e.starts_at).getTime() + (e.duration_min || 60) * 60000 > now);
   const past = (events || []).filter((e: any) => new Date(e.starts_at).getTime() + (e.duration_min || 60) * 60000 <= now);
-  const fmt = (iso: string) => new Date(iso).toLocaleString(lang === 'en' ? 'en-US' : 'es-ES', { timeZone: 'America/New_York', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + ' (NY)';
   const Row = (e: any) => {
     const start = new Date(e.starts_at).getTime(); const end = start + (e.duration_min || 60) * 60000; const live = now >= start && now < end;
     const isPast = end <= now;
@@ -951,11 +989,13 @@ function CalendarTab({ events, lang, L }: any) {
     const recEmbed = isPast ? embed(e.recording_url || '') : '';
     return (
       <div key={e.id} className="sk-card" style={{ margin: 0 }}>
-        <div className="row between" style={{ alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <div className="row between" style={{ alignItems: 'flex-start', gap: 10, flexWrap: 'wrap' }}>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>{live && <span className="sk-dot" />}{e.title}</div>
-            <div className="muted" style={{ fontSize: 12.5 }}>{fmt(e.starts_at)} · {e.duration_min} min</div>
+            <div style={{ fontSize: 13, marginTop: 2 }}>{localTime(e.starts_at, lang)} · <span className="muted">{L('tu hora', 'your time')} · {e.duration_min} min</span></div>
+            {!isPast && <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>{refTimes(e.starts_at, lang)}</div>}
             {e.description && <div className="muted" style={{ fontSize: 12.5, marginTop: 4 }}>{e.description}</div>}
+            {!isPast && <CalBtns ev={e} L={L} />}
           </div>
           {e.join_url && (live || start - now < 15 * 60000) ? <a className="btn btn-primary" href={e.join_url} target="_blank" rel="noreferrer">{live ? L('Entrar EN VIVO', 'Join LIVE') : L('Entrar', 'Join')}</a>
             : isPast && e.recording_url ? <a className="btn btn-ghost" href={e.recording_url} target="_blank" rel="noreferrer"><OnyxIcon emoji="🎬" size={14} /> {L('Ver grabación', 'Watch replay')}</a>
@@ -1893,17 +1933,17 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
         {(d.events || []).length > 0 && <MonthCalendar events={d.events} lang={lang} />}
         {(d.events || []).map((e: any) => (
           <div key={e.id} className="sk-card">
-            <div className="row between" style={{ gap: 10, flexWrap: 'wrap' }}>
-              <div><b>{e.title}</b><div className="muted" style={{ fontSize: 12.5 }}>{new Date(e.starts_at).toLocaleString(lang === 'en' ? 'en-US' : 'es-ES', { timeZone: 'America/New_York', dateStyle: 'medium', timeStyle: 'short' })} (NY) · {e.duration_min} min {e.recording_url && <span className="sk-chip" style={{ marginLeft: 6 }}>🎬 {L('grabación', 'replay')}</span>}</div></div>
+            <div className="row between" style={{ gap: 10, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+              <div><b>{e.title}</b><div style={{ fontSize: 12.5, marginTop: 2 }}>{localTime(e.starts_at, lang)} · <span className="muted">{L('tu hora', 'your time')} · {e.duration_min} min</span> {e.recording_url && <span className="sk-chip" style={{ marginLeft: 6 }}>🎬 {L('grabación', 'replay')}</span>}</div><div className="muted" style={{ fontSize: 11, marginTop: 2 }}>{refTimes(e.starts_at, lang)}</div></div>
               <div className="row" style={{ gap: 6 }}>
-                <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setEvForm({ ...e, starts_at: e.starts_at ? utcToNyInput(e.starts_at) : '' })}>✎</button>
+                <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setEvForm({ ...e, starts_at: e.starts_at ? utcToLocalInput(e.starts_at) : '' })}>✎</button>
                 <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--red)' }} onClick={async () => { if (await confirmDelete({ title: L('¿Borrar clase en vivo?', 'Delete live class?'), itemName: e.title })) api({ action: 'event_delete', id: e.id }); }}>✕</button>
               </div>
             </div>
           </div>
         ))}
         {(d.events || []).length === 0 && <div className="sk-card muted">{L('Aún no has programado clases.', 'No classes scheduled yet.')}</div>}
-        {evForm && <EventForm form={evForm} setForm={setEvForm} L={L} onSave={(f: any) => { api({ action: 'event', ...f }, L('Clase programada', 'Class scheduled')); setEvForm(null); }} onCancel={() => setEvForm(null)} />}
+        {evForm && <EventForm form={evForm} setForm={setEvForm} L={L} onSave={(f: any) => { api({ action: 'event', ...f, starts_at: f.starts_at ? new Date(f.starts_at).toISOString() : '' }, L('Clase programada', 'Class scheduled')); setEvForm(null); }} onCancel={() => setEvForm(null)} />}
       </>)}
 
       {tab === 'cobros' && <MentorPayments modules={d.content || []} L={L} onChanged={load} />}
@@ -2696,7 +2736,7 @@ function EventForm({ form, setForm, onSave, onCancel, L }: any) {
         <input value={form.join_url || ''} onChange={(e) => set('join_url', e.target.value)} placeholder={L('Link para entrar (Zoom, Meet o YouTube Live)', 'Join link (Zoom, Meet or YouTube Live)')} style={{ margin: 0 }} />
         <div className="muted" style={{ fontSize: 11.5, marginTop: -2 }}>{L('Si pones un link de YouTube Live, se ve incrustado dentro de la academia.', 'A YouTube Live link plays embedded inside the academy.')}</div>
         <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-          <div><span className="muted" style={{ fontSize: 12 }}>{L('Fecha y hora (hora de Nueva York)', 'Date & time (New York time)')}</span><input type="datetime-local" value={form.starts_at || ''} onChange={(e) => set('starts_at', e.target.value)} style={{ margin: '4px 0 0' }} />{form.starts_at && nyInputToLocalHint(form.starts_at, L('es', 'en')) && <div className="muted" style={{ fontSize: 11, marginTop: 3 }}>{L('Tu hora local:', 'Your local time:')} {nyInputToLocalHint(form.starts_at, L('es', 'en'))}</div>}</div>
+          <div><span className="muted" style={{ fontSize: 12 }}>{L('Fecha y hora (tu hora local)', 'Date & time (your local time)')}</span><input type="datetime-local" value={form.starts_at || ''} onChange={(e) => set('starts_at', e.target.value)} style={{ margin: '4px 0 0' }} />{form.starts_at && form.starts_at.length >= 16 && (() => { try { const utc = new Date(form.starts_at).toISOString(); return <div className="muted" style={{ fontSize: 11, marginTop: 3, lineHeight: 1.4 }}>{L('Cada alumno la verá en SU hora. Referencia:', 'Each student sees it in THEIR time. Reference:')} {refTimes(utc, L('es', 'en'))}</div>; } catch { return null; } })()}</div>
           <div><span className="muted" style={{ fontSize: 12 }}>{L('Duración (min)', 'Duration (min)')}</span><input type="number" value={form.duration_min ?? 60} onChange={(e) => set('duration_min', Number(e.target.value))} style={{ margin: '4px 0 0', width: 100 }} /></div>
         </div>
         <input value={form.recording_url || ''} onChange={(e) => set('recording_url', e.target.value)} placeholder={L('Link de la grabación (YouTube/Vimeo/.mp4) — opcional', 'Recording link (YouTube/Vimeo/.mp4) — optional')} style={{ margin: 0 }} />

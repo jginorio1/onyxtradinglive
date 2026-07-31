@@ -117,7 +117,7 @@ export default function AcademiaPublic() {
         <div className="card" style={{ border: '1px solid color-mix(in srgb,var(--gold) 40%,transparent)', textAlign: 'center' }}>
           <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--gold)' }}>{L('Inscripciones cerradas', 'Enrollment closed')}</div>
           {a.subs_closed_note && <div className="muted" style={{ fontSize: 13.5, marginTop: 4 }}>{a.subs_closed_note}</div>}
-          {a.subs_reopen_at && <div style={{ marginTop: 8, fontSize: 14 }}>{L('Reabre el', 'Reopens on')} <b>{new Date(a.subs_reopen_at).toLocaleString(lang === 'en' ? 'en-US' : 'es-ES', { timeZone: 'America/New_York', dateStyle: 'medium', timeStyle: 'short' })} (NY)</b></div>}
+          {a.subs_reopen_at && <div style={{ marginTop: 8, fontSize: 14 }}>{L('Reabre el', 'Reopens on')} <b>{new Date(a.subs_reopen_at).toLocaleString(lang === 'en' ? 'en-US' : 'es-ES', { dateStyle: 'medium', timeStyle: 'short', timeZoneName: 'short' })}</b> <span style={{ opacity: .7 }}>({L('tu hora', 'your time')})</span></div>}
           <Link className="btn btn-primary" href={join} style={{ fontSize: 15, padding: '11px 24px', marginTop: 12 }}>{L('Avísame cuando reabra', 'Notify me when it reopens')}</Link>
         </div>
       ) : (<>
