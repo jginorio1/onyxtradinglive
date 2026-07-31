@@ -442,6 +442,20 @@ export default function AcademyClient() {
         </div>
       )}
       {!d.isMentor && (d.academies || []).length === 0 && <div className="sk-card muted">{L('Todavía no estás en ninguna academia. Únete con un código o explora el directorio.', 'You are not in any academy yet. Join with a code or browse the directory.')}</div>}
+
+      {/* Crear tu propia academia es una función de pago: los usuarios Gratis pueden ser
+          alumnos, pero para TENER su academia necesitan un plan de pago. */}
+      {!d.canMentor && (
+        <div className="sk-card" style={{ border: '1px solid color-mix(in srgb,var(--brand) 35%,transparent)', background: 'color-mix(in srgb,var(--brand) 6%,transparent)' }}>
+          <div className="row between" style={{ alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+            <div style={{ minWidth: 0 }}>
+              <b style={{ fontSize: 14, display: 'inline-flex', alignItems: 'center', gap: 8 }}><span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="graduation" size={16} /></span> {L('¿Quieres tu propia academia?', 'Want your own academy?')}</b>
+              <div className="muted" style={{ fontSize: 12.5, marginTop: 3, lineHeight: 1.5 }}>{L('Crea tu comunidad, sube cursos y cobra membresías o niveles a tus alumnos. Disponible en los planes Pro, Elite y Black Onyx.', 'Build your community, upload courses and charge memberships or tiers to your students. Available on Pro, Elite and Black Onyx plans.')}</div>
+            </div>
+            <a className="btn btn-primary" href="/account#plan" style={{ whiteSpace: 'nowrap' }}>{L('Mejorar mi plan', 'Upgrade my plan')}</a>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
