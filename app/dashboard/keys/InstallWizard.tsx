@@ -3,16 +3,17 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 
 // ============================================================
-// Asistente de instalación del EA.
+// Asistente de instalación (multiplataforma).
 //
-// De los siete pasos, solo dos se pueden comprobar de verdad: la descarga
-// (se pulsó aquí) y el final (el EA sincronizó). Los cinco de en medio
-// ocurren dentro de MetaTrader y no los vemos, así que avanzan cuando el
-// trader dice que los hizo.
+// La página elige la plataforma (MT5, MT4, cTrader…) y nos pasa SUS pasos,
+// SUS botones de descarga y SU lista de "no llega nada". Todo lo demás
+// —el semáforo de conexión de las cuentas— es igual para todas, porque el
+// endpoint /api/v1/sync es agnóstico de plataforma.
 //
-// Pero el final NO se lo creemos: preguntamos al servidor hasta que llegue
-// la primera señal real. Y si a los 90 segundos no ha llegado, enseñamos
-// las cuatro causas habituales en orden de probabilidad.
+// Solo dos pasos se comprueban de verdad: la descarga (se pulsó aquí) y el
+// final (la cuenta sincronizó). Los de en medio ocurren dentro de la
+// plataforma y no los vemos. Si a los 90 s no llega señal, mostramos las
+// causas habituales de esa plataforma.
 // ============================================================
 
 const POLL_MS = 5000;
@@ -20,84 +21,56 @@ const HELP_AFTER_MS = 90000;
 
 export const WIZ: any = {
   es: {
-    title: 'Instalar Onyx en MetaTrader',
-    stepOf: (a: number, b: number) => `Paso ${a} de ${b}`,
-    seeAll: 'Ver todos los pasos', seeWizard: 'Guíame paso a paso',
-    back: 'Atrás', next: 'Ya lo hice', start: 'Empezar',
-    needKey: 'Antes de instalar, crea una clave arriba para tu cuenta.',
-    keyLabel: 'Pega esto', srvNote: 'La dirección del servidor ya viene puesta en el EA. No la cambies.',
     accStatusT: 'Estado de tus cuentas', accLive: 'Conectada', accStale: 'Sin señal',
     accWaiting: 'Esperando su primera señal…', accWaitN: 'en espera',
-    accNewHint: 'Instala el EA en la cuenta nueva con su clave y se pondrá verde aquí sola.',
+    accNewHint: 'Instala el conector en la cuenta nueva con su clave y se pondrá verde aquí sola.',
 
-    waitT: 'Esperando la primera señal de tu MetaTrader…',
-    waitD: 'Enciende AlgoTrading (el botón verde de arriba). Suele tardar menos de un minuto.',
+    waitT: (n: string) => `Esperando la primera señal de tu ${n}…`,
     checking: 'Comprobando cada 5 segundos',
     retry: 'Comprobar ahora',
 
-    okT: 'Conectado',
-    okD: (n: number) => `${n} operación(es) importada(s)`,
-    okNone: 'Todavía sin operaciones en el historial, pero la conexión funciona.',
     goDash: 'Ver mi dashboard', goManager: 'Configurar Onyx Guardian',
-    again: 'Conectar otra cuenta',
 
     stuckT: 'Todavía no llega nada',
-    stuckD: 'Casi siempre es una de estas cuatro. Revísalas en orden:',
-    stuck: [
-      { t: 'El botón AlgoTrading no está verde', d: 'Es lo que falla el 80% de las veces.' },
-      { t: 'Falta autorizar la URL', d: 'Herramientas → Opciones → Asesores Expertos → "Permitir WebRequest".' },
-      { t: 'En el gráfico no sale la carita sonriente', d: 'Si hay una cruz, el EA no está activo en ese gráfico.' },
-      { t: 'La clave se pegó mal', d: 'Vuelve al paso de los campos y cópiala otra vez.' },
-    ],
-    keepWaiting: 'Seguir esperando', backToFields: 'Volver a los campos',
+    stuckD: 'Casi siempre es una de estas. Revísalas en orden:',
+    keepWaiting: 'Seguir esperando',
 
-    connectedT: 'Tu MetaTrader está conectado',
+    connectedT: (n: string) => `Tu ${n} está conectado`,
     connectedD: (l: any, b: string) => `Cuenta ${l}${b ? ' · ' + b : ''}`,
     expand: 'Conectar otra cuenta',
     staleT: 'Configurada, pero sin señal ahora',
-    staleHint: 'Abre MetaTrader, pon el EA en un gráfico y activa AlgoTrading para que vuelva a sincronizar.',
     since: (m: number) => m < 1 ? 'hace segundos' : m < 60 ? `hace ${m} min` : m < 1440 ? `hace ${Math.floor(m / 60)} h` : `hace ${Math.floor(m / 1440)} día(s)`,
     lastSeen: 'Última señal',
+    stepsT: 'Instálalo paso a paso',
+    stepsD: (n: number) => `Sigue los ${n} pasos en orden.`,
+    needKey: 'Antes de instalar, crea una clave arriba para tu cuenta.',
+    srvNote: 'La dirección del servidor ya viene puesta en el conector. No la cambies.',
   },
   en: {
-    title: 'Install Onyx in MetaTrader',
-    stepOf: (a: number, b: number) => `Step ${a} of ${b}`,
-    seeAll: 'See all steps', seeWizard: 'Guide me step by step',
-    back: 'Back', next: 'Done, next', start: 'Start',
-    needKey: 'Before installing, create a key above for your account.',
-    keyLabel: 'Paste this', srvNote: 'The server address is already set in the EA. Do not change it.',
     accStatusT: 'Your accounts', accLive: 'Connected', accStale: 'No signal',
     accWaiting: 'Waiting for its first signal…', accWaitN: 'waiting',
-    accNewHint: 'Install the EA on the new account with its key and it turns green here on its own.',
+    accNewHint: 'Install the connector on the new account with its key and it turns green here on its own.',
 
-    waitT: 'Waiting for the first signal from your MetaTrader…',
-    waitD: 'Turn on AlgoTrading (the green button at the top). It usually takes under a minute.',
+    waitT: (n: string) => `Waiting for the first signal from your ${n}…`,
     checking: 'Checking every 5 seconds',
     retry: 'Check now',
 
-    okT: 'Connected',
-    okD: (n: number) => `${n} trade(s) imported`,
-    okNone: 'No trades in your history yet, but the connection works.',
     goDash: 'Go to my dashboard', goManager: 'Set up Onyx Guardian',
-    again: 'Connect another account',
 
     stuckT: 'Nothing has arrived yet',
-    stuckD: 'It is almost always one of these four. Check them in order:',
-    stuck: [
-      { t: 'The AlgoTrading button is not green', d: 'This is what fails 80% of the time.' },
-      { t: 'The URL is not authorized', d: 'Tools → Options → Expert Advisors → "Allow WebRequest".' },
-      { t: 'No smiley face on the chart', d: 'If you see a cross, the EA is not active on that chart.' },
-      { t: 'The key was pasted wrong', d: 'Go back to the fields step and copy it again.' },
-    ],
-    keepWaiting: 'Keep waiting', backToFields: 'Back to the fields',
+    stuckD: 'It is almost always one of these. Check them in order:',
+    keepWaiting: 'Keep waiting',
 
-    connectedT: 'Your MetaTrader is connected',
+    connectedT: (n: string) => `Your ${n} is connected`,
     connectedD: (l: any, b: string) => `Account ${l}${b ? ' · ' + b : ''}`,
     expand: 'Connect another account',
     staleT: 'Set up, but not reporting now',
-    staleHint: 'Open MetaTrader, put the EA on a chart and turn on AlgoTrading so it syncs again.',
     since: (m: number) => m < 1 ? 'seconds ago' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.floor(m / 60)} h ago` : `${Math.floor(m / 1440)} day(s) ago`,
     lastSeen: 'Last signal',
+    stepsT: 'Install it step by step',
+    stepsD: (n: number) => `Follow the ${n} steps in order.`,
+    needKey: 'Before installing, create a key above for your account.',
+    srvNote: 'The server address is already set in the connector. Do not change it.',
   },
 };
 
@@ -106,11 +79,15 @@ function mmss(ms: number) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
-export default function InstallWizard({ t, w, lang, apiUrl, origin, apiKey, onDownload, copy, copied }: any) {
+export default function InstallWizard({
+  t, w, lang, apiUrl, origin, apiKey, onDownload, copy, copied,
+  steps, stuckList, dlButtons, conn,
+}: any) {
   const [status, setStatus] = useState<any>(null);
   const [elapsed, setElapsed] = useState(0);
   const [collapsed, setCollapsed] = useState(false);
   const startedAt = useRef(0);
+  const platName = conn?.name || 'MetaTrader';
 
   const check = useCallback(async () => {
     try {
@@ -122,13 +99,10 @@ export default function InstallWizard({ t, w, lang, apiUrl, origin, apiKey, onDo
     } catch { return null; }
   }, []);
 
-  // Al abrir: si ya hay una cuenta reportando, lo enseñamos plegado
   useEffect(() => {
     check().then((j) => { if (j?.connected) setCollapsed(true); });
   }, [check]);
 
-  // Mientras no haya señal VIVA (últimos 2 min), preguntamos al servidor en
-  // bucle para ir refrescando el semáforo de conexión de abajo.
   const live = !!status?.live;
   useEffect(() => {
     if (live) return;
@@ -140,8 +114,7 @@ export default function InstallWizard({ t, w, lang, apiUrl, origin, apiKey, onDo
 
   const stripNum = (s: string) => (s || '').replace(/^\s*\d+\.\s*/, '');
 
-  // ---- Ya configurado y plegado ---- (banner compacto para quien vuelve)
-  // "connected" = sincronizó alguna vez; "live" = señal en los últimos 2 min.
+  // ---- Ya configurado y plegado ----
   if (collapsed && status?.connected) {
     const mins = status.account?.lastSyncAt
       ? Math.max(0, Math.floor((Date.now() - new Date(status.account.lastSyncAt).getTime()) / 60000))
@@ -157,13 +130,13 @@ export default function InstallWizard({ t, w, lang, apiUrl, origin, apiKey, onDo
               display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16,
             }}>{live ? '✓' : '⚠'}</span>
             <div>
-              <div style={{ fontWeight: 700, color: col }}>{live ? w.connectedT : w.staleT}</div>
+              <div style={{ fontWeight: 700, color: col }}>{live ? w.connectedT(platName) : w.staleT}</div>
               <div className="muted" style={{ fontSize: 13 }}>
                 {w.connectedD(status.account?.login, status.account?.broker)}
                 {status.syncedAccounts > 1 && ` · ${status.syncedAccounts}`}
                 {!live && ` · ${w.lastSeen}: ${w.since(mins)}`}
               </div>
-              {!live && <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{w.staleHint}</div>}
+              {!live && <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{conn?.staleHint}</div>}
             </div>
           </div>
           <button className="btn btn-ghost" style={{ fontSize: 13 }}
@@ -173,17 +146,17 @@ export default function InstallWizard({ t, w, lang, apiUrl, origin, apiKey, onDo
     );
   }
 
-  // ---- Vista completa: todos los pasos + semáforo de conexión ----
   const stuck = !live && elapsed > HELP_AFTER_MS;
+  const nSteps = (steps || []).length;
 
   return (
     <div style={{ marginBottom: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-      {/* Fase 2 · todos los pasos, abiertos */}
+      {/* Pasos de la plataforma elegida */}
       <div className="card">
-        <h3 style={{ marginBottom: 2 }}>{t.step3}</h3>
-        <p className="muted" style={{ fontSize: 13, marginBottom: 18 }}>{lang === 'en' ? 'Follow the 7 steps in order.' : 'Sigue los 7 pasos en orden.'}</p>
-        {t.steps.map((s: any, i: number) => (
+        <h3 style={{ marginBottom: 2 }}>{w.stepsT}</h3>
+        <p className="muted" style={{ fontSize: 13, marginBottom: 18 }}>{w.stepsD(nSteps)}</p>
+        {(steps || []).map((s: any, i: number) => (
           <div key={i} className="row" style={{ gap: 12, alignItems: 'flex-start', paddingTop: i ? 16 : 0, marginTop: i ? 16 : 0, borderTop: i ? '1px solid var(--line)' : 'none' }}>
             <div style={{
               width: 28, height: 28, borderRadius: '50%', flex: 'none', fontSize: 13, fontWeight: 700,
@@ -193,15 +166,15 @@ export default function InstallWizard({ t, w, lang, apiUrl, origin, apiKey, onDo
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 15, fontWeight: 600 }}>{stripNum(s.t)}</div>
               {s.d && <div className="muted" style={{ fontSize: 13, marginTop: 3, lineHeight: 1.6 }}>{s.d}</div>}
-              <StepVisual viz={s.viz} origin={origin} apiUrl={apiUrl} lang={lang} />
+              <StepVisual viz={s.viz} origin={origin} apiUrl={apiUrl} lang={lang} dlButtons={dlButtons} />
               <StepExtras s={s} t={t} w={w} apiUrl={apiUrl} origin={origin} apiKey={apiKey}
-                copy={copy} copied={copied} onDownload={onDownload} first={i === 0} />
+                copy={copy} copied={copied} onDownload={onDownload} first={i === 0} dlButtons={dlButtons} />
             </div>
           </div>
         ))}
       </div>
 
-      {/* Fase 3 · estado de conexión de TODAS tus cuentas */}
+      {/* Estado de conexión de TODAS tus cuentas (agnóstico de plataforma) */}
       {(() => {
         const accts: any[] = status?.accounts || [];
         const pend: any[] = status?.pending || [];
@@ -210,12 +183,11 @@ export default function InstallWizard({ t, w, lang, apiUrl, origin, apiKey, onDo
         const hasRows = accts.length + pend.length > 0;
         const border = anyLive ? 'var(--green)' : 'var(--amber)';
 
-        // Bloque de ayuda "no llega nada", que se reutiliza
         const stuckBox = stuck ? (
           <div style={{ marginTop: 16, textAlign: 'left', padding: '14px 16px', background: 'rgba(245,158,11,.06)', border: '1px solid var(--amber)', borderRadius: 10 }}>
             <div style={{ color: 'var(--amber)', fontWeight: 600, marginBottom: 4 }}>{w.stuckT}</div>
             <div className="muted" style={{ fontSize: 13, marginBottom: 10 }}>{w.stuckD}</div>
-            {w.stuck.map((x: any, i: number) => (
+            {(stuckList || []).map((x: any, i: number) => (
               <div key={i} className="row" style={{ gap: 10, alignItems: 'flex-start', borderTop: '1px solid var(--line)', padding: '9px 0' }}>
                 <span className="muted" style={{ fontSize: 12 }}>{i + 1}</span>
                 <div><div style={{ fontSize: 13 }}>{x.t}</div><div className="muted" style={{ fontSize: 12 }}>{x.d}</div></div>
@@ -239,7 +211,6 @@ export default function InstallWizard({ t, w, lang, apiUrl, origin, apiKey, onDo
               )}
             </div>
 
-            {/* Filas: cuentas conectadas + cuentas en espera */}
             {hasRows && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {accts.map((a, i) => {
@@ -272,18 +243,16 @@ export default function InstallWizard({ t, w, lang, apiUrl, origin, apiKey, onDo
               </div>
             )}
 
-            {/* No hay ninguna cuenta ni clave todavía: gran spinner de espera */}
             {!hasRows && (
               <div style={{ textAlign: 'center', padding: '6px 0' }}>
                 <div className="spin" style={{ width: 34, height: 34, borderRadius: '50%', margin: '0 auto 14px', border: '3px solid var(--bg2)', borderTopColor: 'var(--amber)' }} />
-                <div style={{ fontSize: 16, marginBottom: 6, color: 'var(--amber)' }}>{w.waitT}</div>
-                <p className="muted" style={{ fontSize: 13, lineHeight: 1.7, maxWidth: 420, margin: '0 auto' }}>{w.waitD}</p>
+                <div style={{ fontSize: 16, marginBottom: 6, color: 'var(--amber)' }}>{w.waitT(platName)}</div>
+                <p className="muted" style={{ fontSize: 13, lineHeight: 1.7, maxWidth: 420, margin: '0 auto' }}>{conn?.waitD}</p>
                 <div className="muted" style={{ fontSize: 12, marginTop: 12 }}>{w.checking} · {mmss(elapsed)}</div>
                 {stuckBox}
               </div>
             )}
 
-            {/* Hay filas pero ninguna viva aún: temporizador + ayuda */}
             {hasRows && !anyLive && (
               <div style={{ marginTop: 12 }}>
                 <div className="muted" style={{ fontSize: 12, textAlign: 'center' }}>{w.checking} · {mmss(elapsed)}</div>
@@ -291,7 +260,6 @@ export default function InstallWizard({ t, w, lang, apiUrl, origin, apiKey, onDo
               </div>
             )}
 
-            {/* Al menos una viva: accesos al panel */}
             {anyLive && (
               <div className="row" style={{ gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginTop: 14 }}>
                 <Link className="btn btn-primary" href="/dashboard">{w.goDash}</Link>
@@ -299,7 +267,6 @@ export default function InstallWizard({ t, w, lang, apiUrl, origin, apiKey, onDo
               </div>
             )}
 
-            {/* Si hay cuentas en espera, guiamos a instalar el EA en la nueva */}
             {pend.length > 0 && (
               <div className="muted" style={{ fontSize: 12, marginTop: 12, textAlign: 'center' }}>{w.accNewHint}</div>
             )}
@@ -310,9 +277,8 @@ export default function InstallWizard({ t, w, lang, apiUrl, origin, apiKey, onDo
   );
 }
 
-// Ilustración simple por paso: rutas de menú con flechas y mini-ventanas,
-// para que cada paso se entienda de un vistazo (sin depender de capturas).
-function StepVisual({ viz, origin, apiUrl, lang }: any) {
+// Ilustración por paso. Casos 'ct-*' son de cTrader; los demás, MetaTrader.
+function StepVisual({ viz, origin, lang, dlButtons }: any) {
   if (!viz) return null;
   const p = (es: string, en: string) => (lang === 'en' ? en : es);
   const box = { border: '1px solid var(--line)', borderRadius: 10, background: 'var(--bg2)', padding: 12, marginTop: 12 } as any;
@@ -322,17 +288,18 @@ function StepVisual({ viz, origin, apiUrl, lang }: any) {
   const check = <span style={{ width: 16, height: 16, borderRadius: 4, background: 'var(--green)', color: '#04120c', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, flex: 'none' }}>✓</span>;
 
   switch (viz) {
+    // ---------- MetaTrader ----------
     case 'download':
       return <div style={box}>
         <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={{ color: 'var(--mut)', fontSize: 18 }}>↑</span>
-          <span className="muted" style={{ fontSize: 12 }}>{p('Usa uno de los botones de arriba:', 'Use one of the buttons above:')}</span>
+          <span className="muted" style={{ fontSize: 12 }}>{p('Usa el botón de arriba:', 'Use the button above:')}</span>
         </div>
         <div className="row" style={{ gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-          <span style={{ ...chip, borderColor: 'var(--brand)', color: 'var(--tx)' }}>⬇️ {p('Descargar para MT5', 'Download for MT5')}</span>
-          <span style={chip}>⬇️ {p('Descargar para MT4', 'Download for MT4')}</span>
+          {(dlButtons || []).map((b: any, i: number) => (
+            <span key={i} style={{ ...chip, borderColor: b.primary ? 'var(--brand)' : 'var(--line)', color: 'var(--tx)' }}>⬇️ {b.label}</span>
+          ))}
         </div>
-        <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>{p('MT5 si usas MetaTrader 5 · MT4 si usas MetaTrader 4.', 'MT5 if you use MetaTrader 5 · MT4 if you use MetaTrader 4.')}</div>
       </div>;
     case 'folder':
       return <div style={box}>
@@ -396,12 +363,64 @@ function StepVisual({ viz, origin, apiUrl, lang }: any) {
           </div>
         </div>
       </div>;
+
+    // ---------- cTrader ----------
+    case 'ct-download':
+      return <div style={box}>
+        <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ color: 'var(--mut)', fontSize: 18 }}>↑</span>
+          <span className="muted" style={{ fontSize: 12 }}>{p('Usa el botón de arriba:', 'Use the button above:')}</span>
+        </div>
+        <div className="row" style={{ gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+          {(dlButtons || []).map((b: any, i: number) => (
+            <span key={i} style={{ ...chip, borderColor: b.primary ? 'var(--brand)' : 'var(--line)' }}>⬇️ {b.label}</span>
+          ))}
+        </div>
+        <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>{p('Es un archivo de texto (.cs) con el código del cBot.', 'It is a text file (.cs) with the cBot code.')}</div>
+      </div>;
+    case 'ct-new':
+      return <div style={box}>
+        <div className="muted" style={{ fontSize: 11, marginBottom: 8 }}>{p('En cTrader Desktop:', 'In cTrader Desktop:')}</div>
+        <div className="row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={chip}>Automate</span>{arrow}<span style={chip}>＋ New cBot</span>{arrow}<span style={chip}>{p('Nómbralo: OnyxGuardian', 'Name it: OnyxGuardian')}</span>
+        </div>
+        <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>{p('Se abre el editor de código.', 'The code editor opens.')}</div>
+      </div>;
+    case 'ct-build':
+      return <div style={box}>
+        <div className="row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
+          <span style={chip}>{p('Borra el ejemplo', 'Delete the sample')}</span>{arrow}<span style={chip}>{p('Pega el .cs', 'Paste the .cs')}</span>{arrow}<span style={chip}>🔨 Build (F6)</span>
+        </div>
+        <div style={{ marginTop: 4, display: 'inline-flex', gap: 6, alignItems: 'center', background: 'rgba(52,226,160,.10)', border: '1px solid var(--green)', borderRadius: 8, padding: '6px 10px' }}>
+          {check}<span style={{ fontSize: 12, color: 'var(--green)' }}>{p('Debe decir: Build succeeded', 'It should say: Build succeeded')}</span>
+        </div>
+      </div>;
+    case 'ct-fields':
+      return <div style={box}>
+        <div className="muted" style={{ fontSize: 11, marginBottom: 8 }}>{p('En los parámetros del cBot:', 'In the cBot parameters:')}</div>
+        <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}><span style={{ fontSize: 12, minWidth: 70, color: 'var(--green)', fontWeight: 600 }}>API key</span><code style={code}>{p('pega tu clave', 'paste your key')}</code><span style={{ fontSize: 11, color: 'var(--green)' }}>← {p('lo único que pegas', 'the only thing you paste')}</span></div>
+        <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>{p('No toques el Server URL: ya viene puesto.', 'Do not touch the Server URL: it is already set.')}</div>
+      </div>;
+    case 'ct-run':
+      return <div style={box}>
+        <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 150, border: '1px solid var(--line)', borderRadius: 8, padding: 8, background: 'var(--card2)' }}>
+            <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>{p('Aviso la 1ª vez', 'First-time prompt')}</div>
+            <div className="row" style={{ gap: 6, alignItems: 'center' }}>{check}<span style={{ fontSize: 12 }}>{p('Acepta «Acceso completo» (red)', 'Accept "Full Access" (network)')}</span></div>
+          </div>
+          <div style={{ flex: 1, minWidth: 150, border: '1px solid var(--line)', borderRadius: 8, padding: 8, background: 'var(--card2)' }}>
+            <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>{p('Barra del cBot', 'cBot bar')}</div>
+            <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', background: 'rgba(52,226,160,.12)', color: 'var(--green)', borderRadius: 6, padding: '5px 9px', fontSize: 12 }}>▶ Play</span>
+          </div>
+        </div>
+      </div>;
+
     default: return null;
   }
 }
 
-// Lo que hay que copiar en cada paso concreto
-function StepExtras({ s, t, w, apiUrl, origin, apiKey, copy, copied, onDownload, first }: any) {
+// Lo que hay que copiar/descargar en cada paso
+function StepExtras({ s, t, w, origin, apiKey, copy, copied, onDownload, first, dlButtons }: any) {
   const Row = ({ label, value, tag }: any) => (
     <div className="row" style={{ gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
       {label && <span className="muted" style={{ fontSize: 12, width: 92, flex: 'none' }}>{label}</span>}
@@ -414,15 +433,11 @@ function StepExtras({ s, t, w, apiUrl, origin, apiKey, copy, copied, onDownload,
   if (first) {
     return (
       <div className="row" style={{ gap: 10, flexWrap: 'wrap', marginTop: 4 }}>
-        <a className="btn btn-primary" href="/OnyxManager_MT5.mq5" download onClick={onDownload}>
-          <span className="ic">↓</span>{t.dlMt5}
-        </a>
-        <a className="btn btn-ghost" href="/OnyxManager_MT4.mq4" download onClick={onDownload}>
-          <span className="ic">↓</span>{t.dlMt4}
-        </a>
-        <a className="btn btn-ghost" href="/ctrader/OnyxGuardian.cs" download onClick={onDownload}>
-          <span className="ic">↓</span>cTrader (cBot)
-        </a>
+        {(dlButtons || []).map((b: any, i: number) => (
+          <a key={i} className={b.primary ? 'btn btn-primary' : 'btn btn-ghost'} href={b.href} download onClick={onDownload}>
+            <span className="ic">↓</span>{b.label}
+          </a>
+        ))}
       </div>
     );
   }
@@ -432,7 +447,7 @@ function StepExtras({ s, t, w, apiUrl, origin, apiKey, copy, copied, onDownload,
     return (
       <>
         {apiKey
-          ? <Row label="ApiKey" value={apiKey} tag="wizkey" />
+          ? <Row label={s.viz === 'ct-fields' ? 'API key' : 'ApiKey'} value={apiKey} tag="wizkey" />
           : <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>{w.needKey}</div>}
         <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>ℹ️ {w.srvNote}</div>
       </>

@@ -18,7 +18,7 @@ using cAlgo.API.Internals;
 
 namespace cAlgo.Robots
 {
-    [Robot(TimeZone = TimeZones.UTC, AccessRights = AccessRights.FullAccess, AddIndicators = false)]
+    [Robot(TimeZone = TimeZones.UTC, AccessRights = AccessRights.FullAccess)]
     public class OnyxCopySlave : Robot
     {
         [Parameter("API base", DefaultValue = "https://www.onyxtradinglive.com")]

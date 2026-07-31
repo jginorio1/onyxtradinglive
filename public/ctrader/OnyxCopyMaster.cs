@@ -18,7 +18,7 @@ using cAlgo.API.Internals;
 
 namespace cAlgo.Robots
 {
-    [Robot(TimeZone = TimeZones.UTC, AccessRights = AccessRights.FullAccess, AddIndicators = false)]
+    [Robot(TimeZone = TimeZones.UTC, AccessRights = AccessRights.FullAccess)]
     public class OnyxCopyMaster : Robot
     {
         [Parameter("API base", DefaultValue = "https://www.onyxtradinglive.com")]
@@ -73,7 +73,7 @@ namespace cAlgo.Robots
                 var req = new HttpRequestMessage(HttpMethod.Post, ApiBase.TrimEnd('/') + path) { Content = content };
                 req.Headers.TryAddWithoutValidation("x-onyx-key", CopyApiKey);
                 var res = _http.SendAsync(req).GetAwaiter().GetResult();
-                if (!res.IsSuccessStatusCode) Print("Onyx copy master HTTP ", (int)res.StatusCode);
+                if (!res.IsSuccessStatusCode) Print("Onyx copy master HTTP " + (int)res.StatusCode);
             }
             catch (Exception e) { Print("Onyx copy master net err: ", e.Message); }
         }

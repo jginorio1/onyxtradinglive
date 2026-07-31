@@ -26,7 +26,7 @@ using cAlgo.API.Internals;
 
 namespace cAlgo.Robots
 {
-    [Robot(TimeZone = TimeZones.UTC, AccessRights = AccessRights.FullAccess, AddIndicators = false)]
+    [Robot(TimeZone = TimeZones.UTC, AccessRights = AccessRights.FullAccess)]
     public class OnyxGuardian : Robot
     {
         // ---------------- Inputs ----------------
@@ -182,7 +182,7 @@ namespace cAlgo.Robots
             s.Append("\"broker\":\"").Append(Esc(Account.BrokerName)).Append("\",");
             s.Append("\"server\":\"").Append(Esc(Account.BrokerName)).Append("\",");
             s.Append("\"name\":\"").Append(Esc(Account.BrokerName)).Append("\",");
-            s.Append("\"currency\":\"").Append(Account.Asset != null ? Account.Asset.Name : "").Append("\",");
+            s.Append("\"currency\":\"").Append(Account.Currency ?? "").Append("\",");
             s.Append("\"leverage\":").Append((long)Account.PreciseLeverage).Append(",");
             s.Append("\"platform\":\"cTrader\",");
             s.Append("\"balance\":").Append(F(Account.Balance)).Append(",");
@@ -266,7 +266,7 @@ namespace cAlgo.Robots
                 req.Headers.TryAddWithoutValidation("Authorization", "Bearer " + ApiKey);
                 var res = _http.SendAsync(req).GetAwaiter().GetResult();
                 resp = res.Content.ReadAsStringAsync().GetAwaiter().GetResult();
-                if (!res.IsSuccessStatusCode) { Print("Onyx: HTTP ", (int)res.StatusCode, " ", resp); return; }
+                if (!res.IsSuccessStatusCode) { Print("Onyx: HTTP " + (int)res.StatusCode + " " + resp); return; }
             }
             catch (Exception e) { Print("Onyx: error de red / network error: ", e.Message); return; }
 
@@ -538,7 +538,7 @@ namespace cAlgo.Robots
                 else if (cmd == "sl_to_be") { var r = ModifyPosition(pos, pos.EntryPrice, pos.TakeProfit); if (r != null && r.IsSuccessful) done++; }
             }
             LogEvent(cmd == "close_all" ? "close_all" : "info", L("Action done: ", "Acción ejecutada: ") + cmd + " (" + done + ")", "", 0, done);
-            Print("Onyx: ", cmd, " (", done, ")");
+            Print("Onyx: " + cmd + " (" + done + ")");
         }
     }
 }

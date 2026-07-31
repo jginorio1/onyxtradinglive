@@ -14,8 +14,8 @@ type Lang = 'es' | 'en';
 const K = {
   es: {
     nav_dash: 'Panel', nav_connect: 'Conectar cuenta', nav_plan: 'Plan', signout: 'Salir',
-    h1: 'Instalar Onyx en MetaTrader',
-    intro: 'Un solo archivo por plataforma. Ya trae tu servidor configurado: solo tienes que pegar tu clave.',
+    h1: 'Conecta tu cuenta a Onyx',
+    intro: 'Elige tu plataforma y sigue el paso a paso. El conector ya trae tu servidor configurado: solo pegas tu clave.',
     step2: 'Elige tu archivo',
     dlNote: 'Los dos hacen lo mismo. Solo cambia la plataforma para la que están escritos.',
     eaMt5: 'Onyx EA · MT5', eaMt4: 'Onyx EA · MT4',
@@ -39,6 +39,41 @@ const K = {
       { t: '6. Autoriza la dirección web', d: 'Arriba: Herramientas → Opciones → Asesores Expertos. Marca "Permitir WebRequest" y añade la dirección de abajo (escríbela y pulsa Enter). Sin esto, Onyx no puede hablar con tu cuenta.', copy: 'domain', viz: 'webrequest' },
       { t: '7. Enciende Algo Trading', d: 'Pulsa el botón Algo Trading de la barra de arriba: se pone verde. En la esquina del gráfico debe salir una carita sonriente. En unos segundos aquí abajo dirá "Conectado".', viz: 'algo' },
     ],
+    // --- Selector de plataforma ---
+    platT: 'Elige tu plataforma', platD: 'Selecciona dónde operas. El paso a paso cambia según la plataforma.',
+    platforms: [
+      { key: 'mt5', name: 'MetaTrader 5', badge: 'Más usado', kind: 'mt' },
+      { key: 'mt4', name: 'MetaTrader 4', badge: 'Nuevo', kind: 'mt' },
+      { key: 'ctrader', name: 'cTrader', badge: 'cBot', kind: 'ctrader' },
+      { key: 'matchtrader', name: 'MatchTrader', badge: 'Pronto', kind: 'soon' },
+    ],
+    dlCardT: 'Descarga el conector',
+    ctDoes: ['Sincroniza tus operaciones al diario', 'Break even, trailing y cierres parciales', 'Tu plan, límites y bloqueo fuera de plan'],
+    mtNoteMt4: 'En MT4, al cerrar parte de una operación el resto cambia de número. Está resuelto, pero avísanos si ves algo raro.',
+    ctFileName: 'OnyxGuardian.cs · cBot de cTrader',
+    ctGuide: 'Ver guía completa de cTrader',
+    soonT: 'MatchTrader llega pronto', soonD: 'La conexión de MatchTrader depende de la API de tu bróker. Estamos habilitándola. Mientras tanto, si tu bróker también ofrece MT5, MT4 o cTrader, usa esa.',
+    stepsCt: [
+      { t: '1. Descarga el cBot Onyx (.cs)', d: 'Usa el botón de arriba. Se guarda en tu carpeta de Descargas. Es un archivo de texto con el código del cBot.', viz: 'ct-download' },
+      { t: '2. Abre cTrader → Automate → New cBot', d: 'En cTrader Desktop, arriba, entra en Automate. Pulsa New cBot y ponle un nombre (ej: OnyxGuardian). Se abre el editor de código.', viz: 'ct-new' },
+      { t: '3. Pega el código y pulsa Build', d: 'Borra el código de ejemplo, abre el .cs que descargaste, copia todo y pégalo. Pulsa Build (o F6). Abajo debe decir "Build succeeded".', viz: 'ct-build' },
+      { t: '4. Añádelo a un gráfico y pega tu clave', d: 'Abre cualquier gráfico. En los parámetros del cBot pega tu API key. El Server URL ya viene puesto: no lo toques.', copy: 'url', viz: 'ct-fields' },
+      { t: '5. Acepta el acceso a red y pulsa Play', d: 'La primera vez cTrader pide permiso de "Acceso completo" (para hablar con Onyx): acéptalo. Pulsa Play ▶. En unos segundos aquí abajo dirá "Conectado".', viz: 'ct-run' },
+    ],
+    stuckCt: [
+      { t: 'El cBot no está en Play (▶)', d: 'Es lo que falla casi siempre. Debe estar corriendo, no parado.' },
+      { t: 'No aceptaste el "Acceso completo" (red)', d: 'Sin permiso de red, el cBot no puede hablar con Onyx. Reinícialo y acepta.' },
+      { t: 'El Build no terminó bien', d: 'Abajo debe decir "Build succeeded". Si hay errores, mándanoslos.' },
+      { t: 'La clave se pegó mal', d: 'Vuelve a los parámetros del cBot y pega la API key otra vez.' },
+    ],
+    stuckMt: [
+      { t: 'El botón AlgoTrading no está verde', d: 'Es lo que falla el 80% de las veces.' },
+      { t: 'Falta autorizar la URL', d: 'Herramientas → Opciones → Asesores Expertos → "Permitir WebRequest".' },
+      { t: 'En el gráfico no sale la carita sonriente', d: 'Si hay una cruz, el EA no está activo en ese gráfico.' },
+      { t: 'La clave se pegó mal', d: 'Vuelve al paso de los campos y cópiala otra vez.' },
+    ],
+    connMt: { waitD: 'Enciende AlgoTrading (el botón verde de arriba). Suele tardar menos de un minuto.', staleHint: 'Abre MetaTrader, pon el EA en un gráfico y activa AlgoTrading para que vuelva a sincronizar.' },
+    connCt: { waitD: 'Pon el cBot en Play ▶ y acepta el permiso de red. Suele tardar unos segundos.', staleHint: 'Abre cTrader, añade el cBot a un gráfico y pulsa Play ▶ para que vuelva a sincronizar.' },
     step1: '1 · Conecta una cuenta', newKey: '+ Crear clave para esta cuenta', created: '✅ Clave creada. Cópiala y pégala en el connector:',
     slots: 'Cuentas conectadas', of: 'de', unlimited: 'ilimitadas', unlimitedTxt: 'Tu plan permite cuentas ilimitadas.',
     left: 'Te quedan', left2: 'cuenta(s) por conectar.', full: 'Has llegado al límite de tu plan.',
@@ -58,8 +93,8 @@ const K = {
   },
   en: {
     nav_dash: 'Dashboard', nav_connect: 'Connect account', nav_plan: 'Plan', signout: 'Sign out',
-    h1: 'Install Onyx in MetaTrader',
-    intro: 'One file per platform. It already has your server configured: you only paste your key.',
+    h1: 'Connect your account to Onyx',
+    intro: 'Choose your platform and follow the step-by-step. The connector already has your server set: you only paste your key.',
     step2: 'Pick your file',
     dlNote: 'Both do the same. Only the platform they are written for changes.',
     eaMt5: 'Onyx EA · MT5', eaMt4: 'Onyx EA · MT4',
@@ -83,6 +118,35 @@ const K = {
       { t: '6. Authorize the web address', d: 'Top menu: Tools → Options → Expert Advisors. Tick "Allow WebRequest" and add the address below (type it and press Enter). Without this, Onyx cannot talk to your account.', copy: 'domain', viz: 'webrequest' },
       { t: '7. Turn on Algo Trading', d: 'Press the Algo Trading button in the top bar: it turns green. A smiley face should appear in the chart corner. In a few seconds it will say "Connected" below.', viz: 'algo' },
     ],
+    // --- Platform selector ---
+    platT: 'Choose your platform', platD: 'Pick where you trade. The step-by-step changes per platform.',
+    platforms: [
+      { key: 'mt5', name: 'MetaTrader 5', badge: 'Most used', kind: 'mt' },
+      { key: 'mt4', name: 'MetaTrader 4', badge: 'New', kind: 'mt' },
+      { key: 'ctrader', name: 'cTrader', badge: 'cBot', kind: 'ctrader' },
+      { key: 'matchtrader', name: 'MatchTrader', badge: 'Soon', kind: 'soon' },
+    ],
+    dlCardT: 'Download the connector',
+    ctDoes: ['Syncs your trades to the journal', 'Break even, trailing and partial closes', 'Your plan, limits and out-of-plan block'],
+    mtNoteMt4: 'On MT4, closing part of a trade changes the ticket of the rest. It is handled, but tell us if you see anything odd.',
+    ctFileName: 'OnyxGuardian.cs · cTrader cBot',
+    ctGuide: 'See full cTrader guide',
+    soonT: 'MatchTrader is coming soon', soonD: 'MatchTrader connection depends on your broker API. We are enabling it. Meanwhile, if your broker also offers MT5, MT4 or cTrader, use that.',
+    stepsCt: [
+      { t: '1. Download the Onyx cBot (.cs)', d: 'Use the button above. It saves to your Downloads folder. It is a text file with the cBot code.', viz: 'ct-download' },
+      { t: '2. Open cTrader → Automate → New cBot', d: 'In cTrader Desktop, go to Automate. Click New cBot and name it (e.g. OnyxGuardian). The code editor opens.', viz: 'ct-new' },
+      { t: '3. Paste the code and press Build', d: 'Delete the sample code, open the .cs you downloaded, copy all and paste it. Press Build (or F6). It should say "Build succeeded".', viz: 'ct-build' },
+      { t: '4. Add it to a chart and paste your key', d: 'Open any chart. In the cBot parameters paste your API key. The Server URL is already set: do not touch it.', copy: 'url', viz: 'ct-fields' },
+      { t: '5. Accept network access and press Play', d: 'The first time cTrader asks for "Full Access" (to talk to Onyx): accept it. Press Play ▶. In a few seconds it will say "Connected" below.', viz: 'ct-run' },
+    ],
+    stuckCt: [
+      { t: 'The cBot is not on Play (▶)', d: 'This is what fails most. It must be running, not stopped.' },
+      { t: 'You did not accept "Full Access" (network)', d: 'Without network permission, the cBot cannot talk to Onyx. Restart it and accept.' },
+      { t: 'The Build did not finish OK', d: 'It should say "Build succeeded". If there are errors, send them to us.' },
+      { t: 'The key was pasted wrong', d: 'Go back to the cBot parameters and paste the API key again.' },
+    ],
+    connMt: { waitD: 'Turn on AlgoTrading (the green button at the top). It usually takes under a minute.', staleHint: 'Open MetaTrader, put the EA on a chart and turn on AlgoTrading so it syncs again.' },
+    connCt: { waitD: 'Put the cBot on Play ▶ and accept the network prompt. It usually takes a few seconds.', staleHint: 'Open cTrader, add the cBot to a chart and press Play ▶ so it syncs again.' },
     step1: '1 · Connect an account', newKey: '+ Create key for this account', created: '✅ Key created. Copy it and paste it into the connector:',
     slots: 'Connected accounts', of: 'of', unlimited: 'unlimited', unlimitedTxt: 'Your plan allows unlimited accounts.',
     left: 'You have', left2: 'account(s) left to connect.', full: 'You reached your plan limit.',
@@ -161,6 +225,34 @@ export default function KeysPage() {
     if (what === 'dl') { setDownloaded(true); try { localStorage.setItem('onyx_ea_dl', '1'); } catch {} }
   }
 
+  // ---- Plataforma elegida (persistida) ----
+  const [plat, setPlat] = useState('mt5');
+  useEffect(() => { try { const p = localStorage.getItem('onyx_plat'); if (p) setPlat(p); } catch {} }, []);
+  function pickPlat(k: string) { setPlat(k); try { localStorage.setItem('onyx_plat', k); } catch {} }
+  const activePlat = (t.platforms || []).find((p: any) => p.key === plat) || t.platforms[0];
+  const kind = activePlat.kind; // 'mt' | 'ctrader' | 'soon'
+
+  // Datos que dependen de la plataforma para pasar al asistente
+  const platData = (() => {
+    if (kind === 'ctrader') {
+      return {
+        steps: t.stepsCt, stuck: t.stuckCt,
+        dl: [{ href: '/ctrader/OnyxGuardian.cs', label: 'cTrader (.cs)', primary: true }],
+        conn: { name: 'cTrader', waitD: t.connCt.waitD, staleHint: t.connCt.staleHint },
+        does: t.ctDoes, fileName: t.ctFileName, note: '',
+      };
+    }
+    // MetaTrader (mt5 / mt4)
+    const isMt4 = plat === 'mt4';
+    return {
+      steps: t.steps, stuck: t.stuckMt,
+      dl: [{ href: isMt4 ? '/OnyxManager_MT4.mq4' : '/OnyxManager_MT5.mq5', label: isMt4 ? t.dlMt4 : t.dlMt5, primary: true }],
+      conn: { name: activePlat.name, waitD: t.connMt.waitD, staleHint: t.connMt.staleHint },
+      does: t.mt5Does, fileName: isMt4 ? 'OnyxManager_MT4.mq4 · v2.0' : 'OnyxManager_MT5.mq5 · v2.0',
+      note: isMt4 ? t.mtNoteMt4 : '',
+    };
+  })();
+
 
 
   async function load() {
@@ -236,7 +328,7 @@ export default function KeysPage() {
           <div className="row" style={{ alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <Phase n={1} done={hasKey} active={!hasKey} label={lang === 'en' ? 'Create your key' : 'Crea tu clave'} />
             <div style={{ flex: 1, height: 2, minWidth: 16, background: hasKey ? 'var(--green)' : 'var(--line)' }} />
-            <Phase n={2} done={false} active={hasKey} label={lang === 'en' ? 'Install the EA' : 'Instala el EA'} />
+            <Phase n={2} done={false} active={hasKey} label={lang === 'en' ? 'Install the connector' : 'Instala el conector'} />
             <div style={{ flex: 1, height: 2, minWidth: 16, background: 'var(--line)' }} />
             <Phase n={3} done={false} active={false} label={lang === 'en' ? 'Connect' : 'Conecta'} />
           </div>
@@ -329,56 +421,85 @@ export default function KeysPage() {
         </div>
         )}
 
-        {/* Paso 2: elegir el archivo */}
+        {/* Paso 2: elige tu plataforma */}
         <div className="card" style={{ marginBottom: 18 }}>
-          <h3 style={{ marginBottom: 4 }}>{t.step2}</h3>
-          <p className="muted" style={{ fontSize: 13, marginBottom: 14 }}>{t.dlNote}</p>
+          <h3 style={{ marginBottom: 4 }}>{t.platT}</h3>
+          <p className="muted" style={{ fontSize: 13, marginBottom: 14 }}>{t.platD}</p>
 
-          <div className="grid g2" style={{ gap: 12 }}>
-            {/* MT5: el gestor completo */}
-            <div style={{ background: 'var(--bg2)', border: '2px solid var(--brand)', borderRadius: 12, padding: 14 }}>
-              <div className="row between" style={{ marginBottom: 8, gap: 8 }}>
-                <b style={{ fontSize: 15 }}>{t.eaMt5}</b>
-                <span className="pill" style={{ background: 'rgba(124,140,255,.16)', color: '#aeb7ff' }}>{t.recommended}</span>
-              </div>
-              <div style={{ fontSize: 12, lineHeight: 1.9, color: 'var(--mut)', marginBottom: 14 }}>
-                {t.mt5Does.map((x: string, i: number) => (
-                  <div key={i}><span style={{ color: 'var(--green)' }}>✓</span> {x}</div>
-                ))}
-              </div>
-              <a className="btn btn-primary" style={{ width: '100%' }} href="/OnyxManager_MT5.mq5" download
-                onClick={() => markDone('dl')}><span className="ic">↓</span>{t.dlMt5}</a>
-              <div className="muted" style={{ fontSize: 11, marginTop: 7, textAlign: 'center' }}>OnyxManager_MT5.mq5 · v2.0</div>
-            </div>
-
-            {/* MT4: lo mismo, portado a MQL4 */}
-            <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 12, padding: 14 }}>
-              <div className="row between" style={{ marginBottom: 8, gap: 8 }}>
-                <b style={{ fontSize: 15 }}>{t.eaMt4}</b>
-                <span className="pill">{t.newBadge}</span>
-              </div>
-              <div style={{ fontSize: 12, lineHeight: 1.9, color: 'var(--mut)', marginBottom: 14 }}>
-                {t.mt4Does.map((x: string, i: number) => (
-                  <div key={i}><span style={{ color: 'var(--green)' }}>✓</span> {x}</div>
-                ))}
-                <div style={{ color: 'var(--amber)' }}>! {t.mt4Note}</div>
-              </div>
-              <a className="btn btn-ghost" style={{ width: '100%' }} href="/OnyxManager_MT4.mq4" download
-                onClick={() => markDone('dl')}><span className="ic">↓</span>{t.dlMt4}</a>
-              <div className="muted" style={{ fontSize: 11, marginTop: 7, textAlign: 'center' }}>OnyxManager_MT4.mq4 · v2.0</div>
-            </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10 }}>
+            {t.platforms.map((p: any) => {
+              const on = p.key === plat;
+              return (
+                <button key={p.key} onClick={() => pickPlat(p.key)}
+                  style={{
+                    textAlign: 'left', cursor: 'pointer', borderRadius: 12, padding: '12px 13px',
+                    background: on ? 'rgba(124,140,255,.10)' : 'var(--bg2)',
+                    border: on ? '2px solid var(--brand)' : '1px solid var(--line)', transition: '.15s',
+                  }}>
+                  <div className="row between" style={{ gap: 6, alignItems: 'center' }}>
+                    <b style={{ fontSize: 14.5, color: 'var(--tx)' }}>{p.name}</b>
+                    <span style={{
+                      width: 16, height: 16, borderRadius: '50%', flex: 'none',
+                      border: on ? 'none' : '1.5px solid var(--line)',
+                      background: on ? 'var(--brand)' : 'transparent', color: '#fff',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11,
+                    }}>{on ? '✓' : ''}</span>
+                  </div>
+                  <span className="pill" style={{ marginTop: 8, fontSize: 11, background: 'var(--card2)', color: 'var(--mut)' }}>{p.badge}</span>
+                </button>
+              );
+            })}
           </div>
-
         </div>
 
-        {/* Paso 3: asistente de instalación */}
-        <InstallWizard
-          t={t} w={WIZ[lang]} lang={lang}
-          apiUrl={apiUrl} origin={origin}
-          apiKey={newKey || keys[0]?.key || ''}
-          onDownload={() => markDone('dl')}
-          copy={copy} copied={copied}
-        />
+        {kind === 'soon' ? (
+          /* MatchTrader: aún no conectable */
+          <div className="card" style={{ marginBottom: 18, border: '1px solid var(--amber)' }}>
+            <div style={{ fontWeight: 800, marginBottom: 6, color: 'var(--amber)' }}>⏳ {t.soonT}</div>
+            <p className="muted" style={{ fontSize: 13.5, lineHeight: 1.7 }}>{t.soonD}</p>
+          </div>
+        ) : (
+          <>
+            {/* Paso 3: descarga el conector de la plataforma elegida */}
+            <div className="card" style={{ marginBottom: 18 }}>
+              <h3 style={{ marginBottom: 4 }}>{t.dlCardT}</h3>
+              <p className="muted" style={{ fontSize: 13, marginBottom: 14 }}>{activePlat.name}</p>
+
+              <div style={{ background: 'var(--bg2)', border: '2px solid var(--brand)', borderRadius: 12, padding: 14, maxWidth: 460 }}>
+                <div className="row between" style={{ marginBottom: 8, gap: 8 }}>
+                  <b style={{ fontSize: 15 }}>Onyx · {activePlat.name}</b>
+                  <span className="pill" style={{ background: 'rgba(124,140,255,.16)', color: '#aeb7ff' }}>{activePlat.badge}</span>
+                </div>
+                <div style={{ fontSize: 12, lineHeight: 1.9, color: 'var(--mut)', marginBottom: 14 }}>
+                  {platData.does.map((x: string, i: number) => (
+                    <div key={i}><span style={{ color: 'var(--green)' }}>✓</span> {x}</div>
+                  ))}
+                  {platData.note && <div style={{ color: 'var(--amber)' }}>! {platData.note}</div>}
+                </div>
+                <a className="btn btn-primary" style={{ width: '100%' }} href={platData.dl[0].href} download
+                  onClick={() => markDone('dl')}><span className="ic">↓</span>{platData.dl[0].label}</a>
+                <div className="muted" style={{ fontSize: 11, marginTop: 7, textAlign: 'center' }}>{platData.fileName}</div>
+                {kind === 'ctrader' && (
+                  <div style={{ textAlign: 'center', marginTop: 8 }}>
+                    <a className="muted" style={{ fontSize: 12, textDecoration: 'underline' }} href="/ctrader/GUIA_CTRADER.md" target="_blank" rel="noreferrer">{t.ctGuide}</a>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Paso 4: asistente de instalación de la plataforma */}
+            <InstallWizard
+              key={plat}
+              t={t} w={WIZ[lang]} lang={lang}
+              apiUrl={apiUrl} origin={origin}
+              apiKey={newKey || keys[0]?.key || ''}
+              onDownload={() => markDone('dl')}
+              copy={copy} copied={copied}
+              steps={platData.steps} stuckList={platData.stuck}
+              dlButtons={platData.dl} conn={platData.conn}
+            />
+          </>
+        )}
 
         {/* Lista de keys */}
         <div className="card">
