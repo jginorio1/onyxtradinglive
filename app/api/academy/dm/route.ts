@@ -3,6 +3,7 @@ import { createSupabaseServer } from '@/lib/supabaseServer';
 import { getMentor, isEnrolled, dmThreads, dmWith, dmSend } from '@/lib/academy';
 import { isStaff } from '@/lib/academyCollab';
 import { pushDm } from '@/lib/academyPush';
+import { getSettings, moderateText, isMuted, logInfraction } from '@/lib/academyModeration';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -40,6 +41,16 @@ export async function POST(req: Request) {
   // El equipo puede escribir a cualquiera. (Alumno↔alumno no está permitido.)
   const senderStaff = await isStaff(m, user.id);
   if (!senderStaff && !(await isStaff(m, to))) return NextResponse.json({ error: 'only_staff' }, { status: 403 });
+  // Moderación del chat privado: el alumno no puede colar mensajes ofensivos/sexuales
+  // ni al equipo ni a nadie. El equipo no se auto-modera. Si está silenciado, no envía.
+  if (!senderStaff) {
+    const mu = await isMuted(m, user.id);
+    if (mu.muted) return NextResponse.json({ error: 'muted', until: mu.until }, { status: 403 });
+    if (b.body) {
+      const dec = await moderateText(await getSettings(m), String(b.body), { kind: 'dm' });
+      if (dec.action === 'block') { await logInfraction(m, user.id, 'block', undefined, 'dm:' + dec.reason); return NextResponse.json({ error: 'blocked', message: 'Tu mensaje no cumple las normas y no se envió.' }, { status: 422 }); }
+    }
+  }
   const msg = await dmSend(m, user.id, to, String(b.body || ''), b.image_url ? String(b.image_url) : undefined);
   pushDm(m, user.id, to, String(b.body || '') || (b.image_url ? '📷' : ''));
   return NextResponse.json({ ok: true, message: msg });

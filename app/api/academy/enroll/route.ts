@@ -3,6 +3,7 @@ import { createSupabaseServer } from '@/lib/supabaseServer';
 import { enrollByCode, subsStatus, isEnrolled } from '@/lib/academy';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { recordReferral } from '@/lib/academyExtras';
+import { getSettings, moderateText, addReport } from '@/lib/academyModeration';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -29,5 +30,16 @@ export async function POST(req: Request) {
   // Afiliado: registra quién lo trajo (si viene ?ref y es otro miembro).
   const ref = String(b.ref || '').trim();
   if (ref && ref !== user.id) { try { await recordReferral(r.mentor_id!, ref, user.id); } catch {} }
+  // Screening del nombre: si el nombre del perfil es ofensivo, entra a la cola del
+  // mentor como reporte de perfil (para que lo renombre o lo revise). No bloquea.
+  try {
+    const mid = r.mentor_id!;
+    const { data: prof } = await supabaseAdmin.from('profiles').select('full_name').eq('id', user.id).maybeSingle();
+    const nm = (prof as any)?.full_name || '';
+    if (nm) {
+      const dec = await moderateText(await getSettings(mid), nm, { kind: 'name' });
+      if (dec.action === 'block') await addReport(mid, user.id, 'profile', user.id, 'nombre ofensivo (automático)');
+    }
+  } catch {}
   return NextResponse.json({ ok: true, mentor_id: r.mentor_id });
 }

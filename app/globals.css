@@ -422,6 +422,8 @@ html[data-theme="dark"] .sk-code, :root:not([data-theme="light"]) .sk-code{text-
 /* Publicación de anuncio destacado */
 .sk-ann{border:1px solid color-mix(in srgb,var(--brand) 45%,transparent)!important;box-shadow:0 0 16px -6px color-mix(in srgb,var(--brand) 45%,transparent);}
 .sk-ann-tag{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:var(--brand);background:color-mix(in srgb,var(--brand) 14%,transparent);border-radius:7px;padding:3px 8px;margin-bottom:8px;}
+/* Post/comentario propio esperando aprobación de la academia */
+.sk-card.sk-pending{border:1px dashed color-mix(in srgb,var(--gold) 50%,transparent);background:color-mix(in srgb,var(--gold) 5%,var(--card));}
 /* Botones de compartir a redes */
 .sk-share{display:flex;gap:8px;flex-wrap:wrap;}
 .sk-share a{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:var(--bg2);border:1px solid var(--line);transition:.15s;}

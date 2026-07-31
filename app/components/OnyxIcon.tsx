@@ -52,6 +52,8 @@ const G: Record<string, Els> = {
   modules: (<><rect x="4" y="4" width="7" height="7" rx="1.5" /><rect x="13" y="4" width="7" height="7" rx="1.5" /><rect x="4" y="13" width="7" height="7" rx="1.5" /><path d="M13 16.5 a3.5 3.5 0 1 0 7 0 a3.5 3.5 0 1 0 -7 0" /></>),
   firms: (<><path d="M4 9 l8 -5 8 5" /><line x1="4" y1="20" x2="20" y2="20" /><line x1="6" y1="9" x2="6" y2="20" /><line x1="10" y1="9" x2="10" y2="20" /><line x1="14" y1="9" x2="14" y2="20" /><line x1="18" y1="9" x2="18" y2="20" /></>),
   megaphone: (<><path d="M4 10 v4 l3 1 l1 4 h2 l-1 -4 l8 3 V6 z" /><path d="M18 9 a3 3 0 0 1 0 6" /></>),
+  flag: (<><line x1="6" y1="3" x2="6" y2="21" /><path d="M6 4 h11 l-2 3.5 l2 3.5 H6 z" /></>),
+  shield: (<><path d="M12 3 l7 3 v5 c0 4.5 -3 7.5 -7 9 c-4 -1.5 -7 -4.5 -7 -9 V6 z" /><polyline points="9,12 11,14 15,10" /></>),
   gift: (<><rect x="4" y="9" width="16" height="11" rx="1" /><line x1="4" y1="13" x2="20" y2="13" /><line x1="12" y1="9" x2="12" y2="20" /><path d="M12 9 c-1 -4 -6 -4 -5 -1 c.5 1.5 5 1 5 1 z M12 9 c1 -4 6 -4 5 -1 c-.5 1.5 -5 1 -5 1 z" /></>),
   retention: (<><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="3.4" /><path d="M12 4 v4 M12 16 v4 M4 12 h4 M16 12 h4" /></>),
   kb: (<><path d="M5 5 a2 2 0 0 1 2 -2 h11 v18 H7 a2 2 0 0 0 -2 2 z" /><path d="M7 3 v16" /><path d="M10 8 h5 M10 11 h5" /></>),

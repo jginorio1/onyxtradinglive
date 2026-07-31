@@ -337,14 +337,25 @@ export async function membersList(mentorId: string) {
 }
 
 // ---- Comunidad ----
-export async function listPosts(mentorId: string, viewerId?: string, includeScheduled = false) {
+export async function listPosts(mentorId: string, viewerId?: string, includeScheduled = false, canModerate = false) {
   let pq = supabaseAdmin.from('academy_posts').select('*').eq('mentor_id', mentorId);
   if (!includeScheduled) pq = pq.or(`scheduled_at.is.null,scheduled_at.lte.${new Date().toISOString()}`);
+  // Moderación: todos ven lo 'visible'; el autor ve además lo suyo 'pending' (marcado
+  // "en revisión"); nunca se muestra lo 'hidden'. El equipo revisa en la cola aparte.
+  if (canModerate) pq = pq.in('status', ['visible', 'pending']);
+  else if (viewerId) pq = pq.or(`status.eq.visible,and(status.eq.pending,author_id.eq.${viewerId})`);
+  else pq = pq.eq('status', 'visible');
   const { data: posts } = await pq.order('pinned', { ascending: false }).order('created_at', { ascending: false }).limit(50);
   const list = posts || [];
   const authorIds = Array.from(new Set(list.map((p: any) => p.author_id)));
   const postIds = list.map((p: any) => p.id);
-  const { data: comments } = postIds.length ? await supabaseAdmin.from('academy_comments').select('*').in('post_id', postIds).order('created_at') : { data: [] } as any;
+  let cq = postIds.length ? supabaseAdmin.from('academy_comments').select('*').in('post_id', postIds) : null;
+  if (cq) {
+    if (canModerate) cq = cq.in('status', ['visible', 'pending']);
+    else if (viewerId) cq = cq.or(`status.eq.visible,and(status.eq.pending,author_id.eq.${viewerId})`);
+    else cq = cq.eq('status', 'visible');
+  }
+  const { data: comments } = cq ? await cq.order('created_at') : { data: [] } as any;
   (comments || []).forEach((c: any) => authorIds.push(c.author_id));
   const uniqAuthors = Array.from(new Set(authorIds));
   const [{ data: profs }, { data: pts }] = await Promise.all([
@@ -372,24 +383,38 @@ export async function listPosts(mentorId: string, viewerId?: string, includeSche
 }
 const POST_KINDS = ['community', 'analysis', 'habits', 'question', 'win'];
 const WIN_KINDS = ['payout', 'challenge', 'goal'];
-export async function addPost(mentorId: string, authorId: string, body: string, pinned = false, imageUrl?: string, scheduledAt?: string, opts: { kind?: string; win_kind?: string; announcement?: boolean } = {}) {
+export async function addPost(mentorId: string, authorId: string, body: string, pinned = false, imageUrl?: string, scheduledAt?: string, opts: { kind?: string; win_kind?: string; announcement?: boolean; status?: string; flag_reason?: string } = {}) {
   const sched = scheduledAt && new Date(scheduledAt).getTime() > Date.now() ? new Date(scheduledAt).toISOString() : null;
   const kind = POST_KINDS.includes(String(opts.kind)) ? String(opts.kind) : 'community';
   const win_kind = kind === 'win' && WIN_KINDS.includes(String(opts.win_kind)) ? String(opts.win_kind) : null;
   const img = isOurUpload(imageUrl) ? (imageUrl ? String(imageUrl).slice(0, 500) : null) : null; // solo imágenes de nuestro Storage
+  const status = opts.status === 'pending' || opts.status === 'hidden' ? opts.status : 'visible';
   const { data } = await supabaseAdmin.from('academy_posts').insert({
     mentor_id: mentorId, author_id: authorId, body: String(body || '').slice(0, 4000), pinned,
     image_url: img, scheduled_at: sched,
     kind, win_kind, announcement: !!opts.announcement,
+    status, flag_reason: opts.flag_reason || null,
   }).select('id').single();
   return data as any;
 }
-export async function addComment(postId: string, authorId: string, body: string, imageUrl?: string) {
+export async function addComment(postId: string, authorId: string, body: string, imageUrl?: string, opts: { status?: string; flag_reason?: string } = {}) {
   const img = isOurUpload(imageUrl) ? (imageUrl ? String(imageUrl).slice(0, 500) : null) : null;
-  await supabaseAdmin.from('academy_comments').insert({ post_id: postId, author_id: authorId, body: String(body || '').slice(0, 2000), image_url: img });
+  const status = opts.status === 'pending' || opts.status === 'hidden' ? opts.status : 'visible';
+  const { data } = await supabaseAdmin.from('academy_comments').insert({ post_id: postId, author_id: authorId, body: String(body || '').slice(0, 2000), image_url: img, status, flag_reason: opts.flag_reason || null }).select('id').single();
+  return data as any;
 }
 export async function deletePost(mentorId: string, id: string) {
   await supabaseAdmin.from('academy_posts').delete().eq('id', id).eq('mentor_id', mentorId);
+}
+// Borrar un comentario (dueño o colaborador que modera). Verifica que el comentario
+// pertenezca a un post de esta academia antes de borrar.
+export async function deleteComment(mentorId: string, id: string) {
+  const { data: c } = await supabaseAdmin.from('academy_comments').select('post_id').eq('id', id).maybeSingle();
+  if (!c) return { ok: false };
+  const { data: p } = await supabaseAdmin.from('academy_posts').select('id').eq('id', (c as any).post_id).eq('mentor_id', mentorId).maybeSingle();
+  if (!p) return { ok: false };
+  await supabaseAdmin.from('academy_comments').delete().eq('id', id);
+  return { ok: true };
 }
 
 // ---- Directorio público (páginas /academias y /academia/[code]) ----

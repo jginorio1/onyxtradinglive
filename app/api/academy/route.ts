@@ -8,6 +8,23 @@ import { auditAddon, hasAuditAddon, auditConsent, planVerified } from '@/lib/aca
 import { listWins, pendingCount, addWin, myPending } from '@/lib/academyWins';
 import { pushWinPending } from '@/lib/academyPush';
 import { roleMap, permsFor, staffIds } from '@/lib/academyCollab';
+import { getSettings, moderateText, isMuted, pendingContentCount, reportsCount } from '@/lib/academyModeration';
+
+// Mensaje que ve el alumno cuando su texto se bloquea (sin exponer qué palabra).
+function blockedMsg(category: string): string {
+  if (category === 'spam') return 'Tu mensaje parece spam o promoción no permitida y no se publicó.';
+  return 'Tu mensaje no cumple las normas de la comunidad y no se publicó.';
+}
+// ¿Es un miembro "nuevo" (para el modo de revisión de primeros posts)? Nuevo si aún
+// tiene menos de `threshold` publicaciones o entró hace menos de 3 días.
+async function isNewMember(mentorId: string, userId: string, threshold: number): Promise<boolean> {
+  if (threshold <= 0) return false;
+  const { data } = await supabaseAdmin.from('academy_enrollments').select('posts_count,joined_at').eq('mentor_id', mentorId).eq('student_id', userId).maybeSingle();
+  const pc = (data as any)?.posts_count || 0;
+  const joined = (data as any)?.joined_at ? new Date((data as any).joined_at).getTime() : 0;
+  const recent = joined && (Date.now() - joined) < 3 * 24 * 3600 * 1000;
+  return pc < threshold || recent;
+}
 
 // ¿Puede este usuario ESCRIBIR en esta academia? (inscrito + membresía si es de pago).
 async function canWrite(userId: string, mentorId: string, isMentorHere: boolean): Promise<boolean> {
@@ -62,7 +79,7 @@ export async function GET(req: Request) {
   if (m && (enrolledHere || iAmMentorHere)) {
     const [mentor, content, progress, feed, products, access, purchases, board, members, myPts, roster, events, live, unread] = await Promise.all([
       supabaseAdmin.from('mentors').select('academy_name,tagline,about,cover_url,logo_url,socials,code,assistant_on').eq('user_id', m).maybeSingle(),
-      getContent(m, true), progressSet(user.id, m), listPosts(m, user.id), listProducts(m, true), accessibleModules(user.id, m), studentPurchases(user.id, m),
+      getContent(m, true), progressSet(user.id, m), listPosts(m, user.id, false, !!iAmMentorHere), listProducts(m, true), accessibleModules(user.id, m), studentPurchases(user.id, m),
       leaderboard(m, 'all', 10), membersList(m),
       supabaseAdmin.from('academy_points').select('points').eq('mentor_id', m).eq('user_id', user.id).maybeSingle(),
       supabaseAdmin.from('academy_enrollments').select('student_id', { count: 'exact', head: true }).eq('mentor_id', m).eq('status', 'active'),
@@ -108,6 +125,12 @@ export async function GET(req: Request) {
     if (!iAmMentorHere && (myPerms as any)?.moderate) out.active.winsPending = await pendingCount(m);
     // El alumno ve sus propios logros pendientes (zona "esperando aprobación").
     if (!iAmMentorHere) out.active.winsMinePending = await myPending(m, user.id);
+    // Moderación: el equipo (dueño o colaborador que modera) ve contadores de cola.
+    const canModerate = iAmMentorHere || (myPerms as any)?.moderate;
+    if (canModerate) {
+      const [pc, rc, ms] = await Promise.all([pendingContentCount(m), reportsCount(m), getSettings(m)]);
+      out.active.modPending = pc; out.active.modReports = rc; out.active.modLevel = ms.level;
+    }
   }
   return NextResponse.json(out);
 }
@@ -127,26 +150,52 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, ...r });
     }
     if (b.action === 'post' && b.mentor_id && (b.body || b.image_url)) {
+      const mid = String(b.mentor_id);
       const mentorRow = await getMentor(user.id);
-      const isMentorHere = !!(mentorRow && mentorRow.user_id === b.mentor_id);
-      if (!(await canWrite(user.id, String(b.mentor_id), isMentorHere))) return NextResponse.json({ error: 'needs_membership' }, { status: 403 });
+      const isMentorHere = !!(mentorRow && mentorRow.user_id === mid);
+      if (!(await canWrite(user.id, mid, isMentorHere))) return NextResponse.json({ error: 'needs_membership' }, { status: 403 });
+      if (!isMentorHere) {
+        const mu = await isMuted(mid, user.id);
+        if (mu.muted) return NextResponse.json({ error: 'muted', until: mu.until }, { status: 403 });
+      }
       if (await recentCount('academy_posts', 'author_id', user.id, 60) >= 8) return NextResponse.json({ error: 'too_fast' }, { status: 429 });
       // Un LOGRO de un alumno NO se publica directo: pasa a la cola de aprobación de la academia.
       if (b.kind === 'win' && !isMentorHere) {
-        await addWin(String(b.mentor_id), user.id, { kind: b.win_kind || 'payout', title: b.body, image_url: b.image_url });
-        pushWinPending(String(b.mentor_id), user.id);
+        await addWin(mid, user.id, { kind: b.win_kind || 'payout', title: b.body, image_url: b.image_url });
+        pushWinPending(mid, user.id);
         return NextResponse.json({ ok: true, pending: true });
       }
-      await addPost(String(b.mentor_id), user.id, String(b.body), false, b.image_url ? String(b.image_url) : undefined, undefined, { kind: b.kind, win_kind: b.win_kind });
-      return NextResponse.json({ ok: true });
+      // Moderación del texto (el mentor no se auto-modera).
+      let modStatus: string | undefined; let flag: string | undefined;
+      if (!isMentorHere && b.body) {
+        const settings = await getSettings(mid);
+        const isNew = await isNewMember(mid, user.id, settings.new_member_review);
+        const dec = await moderateText(settings, String(b.body), { kind: 'post', isNewMember: isNew });
+        if (dec.action === 'block') return NextResponse.json({ error: 'blocked', category: dec.category, message: blockedMsg(dec.category) }, { status: 422 });
+        if (dec.action === 'review') { modStatus = 'pending'; flag = dec.reason; }
+      }
+      await addPost(mid, user.id, String(b.body), false, b.image_url ? String(b.image_url) : undefined, undefined, { kind: b.kind, win_kind: b.win_kind, status: modStatus, flag_reason: flag });
+      return NextResponse.json({ ok: true, pending: modStatus === 'pending' });
     }
     if (b.action === 'comment' && b.post_id && b.mentor_id && (b.body || b.image_url)) {
+      const mid = String(b.mentor_id);
       const mentorRow = await getMentor(user.id);
-      const isMentorHere = !!(mentorRow && mentorRow.user_id === b.mentor_id);
-      if (!(await canWrite(user.id, String(b.mentor_id), isMentorHere))) return NextResponse.json({ error: 'needs_membership' }, { status: 403 });
+      const isMentorHere = !!(mentorRow && mentorRow.user_id === mid);
+      if (!(await canWrite(user.id, mid, isMentorHere))) return NextResponse.json({ error: 'needs_membership' }, { status: 403 });
+      if (!isMentorHere) {
+        const mu = await isMuted(mid, user.id);
+        if (mu.muted) return NextResponse.json({ error: 'muted', until: mu.until }, { status: 403 });
+      }
       if (await recentCount('academy_comments', 'author_id', user.id, 60) >= 15) return NextResponse.json({ error: 'too_fast' }, { status: 429 });
-      await addComment(String(b.post_id), user.id, String(b.body), b.image_url ? String(b.image_url) : undefined);
-      return NextResponse.json({ ok: true });
+      let modStatus: string | undefined; let flag: string | undefined;
+      if (!isMentorHere && b.body) {
+        const settings = await getSettings(mid);
+        const dec = await moderateText(settings, String(b.body), { kind: 'comment' });
+        if (dec.action === 'block') return NextResponse.json({ error: 'blocked', category: dec.category, message: blockedMsg(dec.category) }, { status: 422 });
+        if (dec.action === 'review') { modStatus = 'pending'; flag = dec.reason; }
+      }
+      await addComment(String(b.post_id), user.id, String(b.body), b.image_url ? String(b.image_url) : undefined, { status: modStatus, flag_reason: flag });
+      return NextResponse.json({ ok: true, pending: modStatus === 'pending' });
     }
     return NextResponse.json({ error: 'bad_request' }, { status: 400 });
   } catch (e: any) { return NextResponse.json({ error: e?.message || 'error' }, { status: 500 }); }

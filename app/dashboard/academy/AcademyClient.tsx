@@ -642,6 +642,9 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
   const [viewUser, setViewUser] = useState<string | null>(null);
   const [dmWith, setDmWith] = useState<string | null>(null);
   const [manageStudent, setManageStudent] = useState<any>(null);
+  const [modOpen, setModOpen] = useState(false);
+  const canModerateHere = !!(active.isMentorHere || active.myPerms?.moderate);
+  const modBadge = (active.modPending || 0) + (active.modReports || 0);
 
   const link = typeof window !== 'undefined' ? `${window.location.origin}/academia/${active.code}` : '';
   const totalLessons = (active.content || []).reduce((s: number, m: any) => s + m.lessons.length, 0);
@@ -650,7 +653,19 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
   async function api(body: any) { const r = await fetch('/api/academy', { method: 'POST', body: JSON.stringify(body) }); return r.json().catch(() => ({})); }
   async function sendPost() { if (!post.trim() && !postImg) return { ok: false }; const res = await api({ action: 'post', mentor_id: active.mentor_id, body: post, image_url: postImg, kind: postKind, win_kind: postKind === 'win' ? postWinKind : undefined }); setPost(''); setPostImg(''); setPostKind('community'); reload(); return res || {}; }
   async function like(t: string, id: string) { await api({ action: 'like', mentor_id: active.mentor_id, target_type: t, target_id: id }); reload(); }
-  async function comment(pid: string, body: string, image?: string) { await api({ action: 'comment', post_id: pid, mentor_id: active.mentor_id, body, image_url: image || '' }); reload(); }
+  async function comment(pid: string, body: string, image?: string) { const r = await api({ action: 'comment', post_id: pid, mentor_id: active.mentor_id, body, image_url: image || '' }); if (r?.error === 'blocked') alert(r.message || L('Tu comentario no cumple las normas.', 'Your comment does not meet the rules.')); else if (r?.error === 'muted') alert(L('Estás silenciado temporalmente y no puedes comentar ahora.', 'You are temporarily muted and cannot comment right now.')); reload(); }
+  // Reportar un contenido (post/comentario) para que lo revise el equipo.
+  async function report(targetType: string, id: string) {
+    const reason = prompt(L('¿Por qué reportas esto? (opcional)', 'Why are you reporting this? (optional)')) ?? '';
+    await fetch('/api/academy/moderation', { method: 'POST', body: JSON.stringify({ action: 'report', mentor_id: active.mentor_id, target_type: targetType, target_id: id, reason }) });
+    alert(L('Gracias. El equipo lo revisará.', 'Thanks. The team will review it.'));
+  }
+  // Moderar (dueño/colaborador): ocultar o borrar un post/comentario directo desde el feed.
+  async function modDelete(type: string, id: string) {
+    if (!await confirmDelete({ title: L('¿Eliminar?', 'Delete?'), message: L('Se quitará de la comunidad.', 'It will be removed from the community.') })) return;
+    await fetch('/api/academy/moderation', { method: 'POST', body: JSON.stringify({ action: 'review', mentor_id: active.mentor_id, type, id, decision: 'delete' }) });
+    reload();
+  }
   async function toggleLesson(l: any, done: boolean) { await api({ action: 'lesson', lesson_id: l.id, done }); reload(); }
   async function buy(productId: string) {
     const r = await fetch('/api/academy/checkout', { method: 'POST', body: JSON.stringify({ product_id: productId }) });
@@ -683,6 +698,7 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
     <div className="sk-wrap" data-tab={tab} style={{ paddingTop: 4 }}>
       <ConfirmHost lang={lang} />
       {manageStudent && <StudentManageModal s={manageStudent} L={L} onClose={() => setManageStudent(null)} onAction={manageAction} onDm={(uid: string) => { setManageStudent(null); openDm(uid); }} />}
+      {modOpen && <ModerationPanel mentorId={active.mentor_id} isOwner={!!active.isMentorHere} L={L} lang={lang} onClose={() => setModOpen(false)} reload={reload} />}
       {composeOpen && (
         <Modal onClose={() => setComposeOpen(false)}><div className="sk-card" style={{ border: '1px solid var(--brand)' }}>
           <h3 style={{ marginBottom: 4 }}>{L('¿Qué tipo de publicación es?', 'What kind of post is this?')}</h3>
@@ -690,7 +706,7 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
           <PostTypePicker kind={postKind} setKind={setPostKind} winKind={postWinKind} setWinKind={setPostWinKind} L={L} />
           <div className="row" style={{ gap: 8, marginTop: 14, justifyContent: 'flex-end' }}>
             <button className="btn btn-ghost" onClick={() => setComposeOpen(false)}>{L('Cancelar', 'Cancel')}</button>
-            <button className="btn btn-primary" onClick={async () => { const res = await sendPost(); setComposeOpen(false); setSentPending(!!res?.pending); setSentToast(true); setTimeout(() => setSentToast(false), 2800); }}>{postKind === 'win' ? L('Publicar logro', 'Post win') : L('Publicar', 'Post')}</button>
+            <button className="btn btn-primary" onClick={async () => { const res = await sendPost(); setComposeOpen(false); if (res?.error === 'blocked') { alert(res.message || L('Tu publicación no cumple las normas de la comunidad.', 'Your post does not meet the community rules.')); return; } if (res?.error === 'muted') { alert(L('Estás silenciado temporalmente y no puedes publicar ahora.', 'You are temporarily muted and cannot post right now.')); return; } setSentPending(!!res?.pending); setSentToast(true); setTimeout(() => setSentToast(false), 2800); }}>{postKind === 'win' ? L('Publicar logro', 'Post win') : L('Publicar', 'Post')}</button>
           </div>
         </div></Modal>
       )}
@@ -713,6 +729,7 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
               <div style={{ minWidth: 0 }}><h2 style={{ margin: 0, fontSize: 21 }}>{active.academy_name}</h2>{active.tagline && <div className="muted" style={{ fontSize: 13, marginTop: 2 }}>{active.tagline}</div>}</div>
               <div className="row" style={{ gap: 6, alignItems: 'center' }}>
                 <LangToggle compact />
+                {canModerateHere && <button className="btn btn-ghost" style={{ fontSize: 12.5, display: 'inline-flex', alignItems: 'center', gap: 5 }} onClick={() => setModOpen(true)}><OnyxIcon name="shield" size={14} /> {L('Moderación', 'Moderation')}{modBadge > 0 && <span className="sk-chip" style={{ padding: '0 6px', background: 'var(--red)', color: '#fff', fontSize: 11 }}>{modBadge}</span>}</button>}
                 {active.isMentorHere && toMentor && <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={toMentor}>{L('Configurar', 'Manage')}</button>}
                 <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={onExit}>← {L('Mis academias', 'My academies')}</button>
               </div>
@@ -758,7 +775,7 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
                   <button key={t.key} className="sk-chip" onClick={() => setFeedFilter(t.key)} style={{ cursor: 'pointer', border: feedFilter === t.key ? `1px solid ${t.color}` : '1px solid var(--line)', background: feedFilter === t.key ? `color-mix(in srgb,${t.color} 14%,transparent)` : 'var(--bg2)', color: feedFilter === t.key ? t.color : 'var(--mut)' }}>{L(t.es, t.en)}</button>
                 ))}
               </div>
-              {(active.feed || []).filter((p: any) => feedFilter === 'all' || (p.kind || 'community') === feedFilter).map((p: any) => <PostCard key={p.id} p={p} onLike={like} onComment={comment} onProfile={openProfile} L={L} es={es} />)}
+              {(active.feed || []).filter((p: any) => feedFilter === 'all' || (p.kind || 'community') === feedFilter).map((p: any) => <PostCard key={p.id} p={p} onLike={like} onComment={comment} onProfile={openProfile} onReport={report} onModDelete={modDelete} canModerate={!!(active.isMentorHere || active.myPerms?.moderate)} myUserId={active.myUserId} L={L} es={es} />)}
               {(active.feed || []).length === 0 && <div className="sk-card muted">{L('Sé el primero en publicar en la comunidad.', 'Be the first to post in the community.')}</div>}
             </>
           )}
@@ -1430,16 +1447,21 @@ function PostTypePicker({ kind, setKind, winKind, setWinKind, L }: any) {
     </div>
   );
 }
-function PostCard({ p, onLike, onComment, onProfile, L, es }: any) {
+function PostCard({ p, onLike, onComment, onProfile, onReport, onModDelete, canModerate, myUserId, L, es }: any) {
   const [c, setC] = useState(''); const [cImg, setCImg] = useState(''); const [openC, setOpenC] = useState(false);
   const sendComment = () => { if (c.trim() || cImg) { onComment(p.id, c, cImg); setC(''); setCImg(''); setOpenC(true); } };
+  const mine = p.author_id === myUserId;
+  const pending = p.status === 'pending';
   return (
-    <div className={'sk-card' + (p.announcement ? ' sk-ann' : '')}>
+    <div className={'sk-card' + (p.announcement ? ' sk-ann' : '') + (pending ? ' sk-pending' : '')}>
       {p.announcement && <div className="sk-ann-tag"><OnyxIcon name="megaphone" size={13} glow={false} /> {L('Anuncio', 'Announcement')}</div>}
       <div className="row" style={{ gap: 10, alignItems: 'center', marginBottom: 8 }}>
         <Avatar name={p.author_name} level={p.author_level} size={38} onClick={() => onProfile(p.author_id)} />
         <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontWeight: 600, fontSize: 13.5, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }} onClick={() => onProfile(p.author_id)}>{p.author_name} <PostTag kind={p.kind} winKind={p.win_kind} L={L} /></div><div className="muted" style={{ fontSize: 11.5 }}>{timeAgo(p.created_at, es)}</div></div>
+        {pending && <span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--gold) 16%,transparent)', color: 'var(--gold)' }}>{L('En revisión', 'In review')}</span>}
         {p.pinned && <span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--gold) 16%,transparent)', color: 'var(--gold)' }}>📌 {L('fijado', 'pinned')}</span>}
+        {canModerate && <button className="btn btn-ghost" style={{ padding: '2px 7px', fontSize: 12, color: 'var(--red)' }} title={L('Eliminar', 'Delete')} onClick={() => onModDelete('post', p.id)}>✕</button>}
+        {!mine && !canModerate && onReport && <button className="btn btn-ghost" style={{ padding: '2px 7px', fontSize: 11.5, color: 'var(--mut)' }} title={L('Reportar', 'Report')} onClick={() => onReport('post', p.id)}><OnyxIcon name="flag" size={13} glow={false} /></button>}
       </div>
       {p.body && <div style={{ fontSize: 14.5, whiteSpace: 'pre-wrap', lineHeight: 1.55 }}>{p.body}</div>}
       {p.image_url && <a href={p.image_url} target="_blank" rel="noreferrer"><img src={p.image_url} alt="" style={{ maxWidth: '100%', maxHeight: 420, borderRadius: 12, marginTop: 8, display: 'block' }} /></a>}
@@ -1453,9 +1475,13 @@ function PostCard({ p, onLike, onComment, onProfile, L, es }: any) {
             <div key={c2.id} className="row" style={{ gap: 8, alignItems: 'flex-start' }}>
               <Avatar name={c2.author_name} level={c2.author_level} size={28} onClick={() => onProfile(c2.author_id)} />
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13 }}><b style={{ fontSize: 12.5 }}>{c2.author_name}</b> {c2.body}</div>
+                <div style={{ fontSize: 13 }}><b style={{ fontSize: 12.5 }}>{c2.author_name}</b> {c2.body} {c2.status === 'pending' && <span className="sk-chip" style={{ fontSize: 10.5, padding: '1px 6px', background: 'color-mix(in srgb,var(--gold) 16%,transparent)', color: 'var(--gold)' }}>{L('En revisión', 'In review')}</span>}</div>
                 {c2.image_url && <a href={c2.image_url} target="_blank" rel="noreferrer"><img src={c2.image_url} alt="" style={{ maxWidth: 220, maxHeight: 220, borderRadius: 8, marginTop: 4, display: 'block' }} /></a>}
-                <button className={'sk-like' + (c2.liked ? ' on' : '')} style={{ fontSize: 11.5, padding: '2px 4px' }} onClick={() => onLike('comment', c2.id)}><OnyxIcon name="heart" size={12} glow={false} /> {c2.likes || 0}</button>
+                <div className="row" style={{ gap: 6, alignItems: 'center' }}>
+                  <button className={'sk-like' + (c2.liked ? ' on' : '')} style={{ fontSize: 11.5, padding: '2px 4px' }} onClick={() => onLike('comment', c2.id)}><OnyxIcon name="heart" size={12} glow={false} /> {c2.likes || 0}</button>
+                  {canModerate && <button className="btn btn-ghost" style={{ fontSize: 10.5, padding: '1px 6px', color: 'var(--red)' }} onClick={() => onModDelete('comment', c2.id)}>✕</button>}
+                  {c2.author_id !== myUserId && !canModerate && onReport && <button className="btn btn-ghost" style={{ fontSize: 10.5, padding: '1px 6px', color: 'var(--mut)' }} onClick={() => onReport('comment', c2.id)} title={L('Reportar', 'Report')}><OnyxIcon name="flag" size={11} glow={false} /></button>}
+                </div>
               </div>
             </div>
           ))}
@@ -1470,6 +1496,144 @@ function PostCard({ p, onLike, onComment, onProfile, L, es }: any) {
       )}
     </div>
   );
+}
+
+// =================== Moderación de la comunidad ===================
+const MOD_LEVELS = [
+  { key: 'off', es: 'Apagado', en: 'Off', desc_es: 'Solo se corta lo más grave.', desc_en: 'Only the worst is blocked.' },
+  { key: 'relaxed', es: 'Relajado', en: 'Relaxed', desc_es: 'Bloquea lo grave, deja pasar lo leve.', desc_en: 'Blocks severe, lets mild through.' },
+  { key: 'normal', es: 'Normal', en: 'Normal', desc_es: 'Recomendado. Grave se bloquea, dudoso a revisión.', desc_en: 'Recommended. Severe blocked, doubtful to review.' },
+  { key: 'strict', es: 'Estricto', en: 'Strict', desc_es: 'Todo lo dudoso pasa por revisión.', desc_en: 'Anything doubtful goes to review.' },
+];
+function ModerationPanel({ mentorId, isOwner, L, lang, onClose, reload }: any) {
+  const [tab, setTab] = useState<'queue' | 'settings'>('queue');
+  const [data, setData] = useState<any>(null);
+  const [s, setS] = useState<any>(null);
+  const [saving, setSaving] = useState(false);
+  const es = lang !== 'en';
+  async function load() { const r = await fetch(`/api/academy/moderation?m=${mentorId}`); const j = await r.json(); setData(j); setS(j.settings); }
+  useEffect(() => { load(); }, []);
+  async function act(body: any) { await fetch('/api/academy/moderation', { method: 'POST', body: JSON.stringify({ mentor_id: mentorId, ...body }) }); await load(); reload?.(); }
+  async function review(type: string, id: string, decision: string) { await act({ action: 'review', type, id, decision }); }
+  async function saveSettings() { setSaving(true); await act({ action: 'settings', settings: { ...s, words: normList(s.words), allow: normList(s.allow) } }); setSaving(false); }
+  function normList(v: any) { return typeof v === 'string' ? v.split(/[\n,]/).map((x: string) => x.trim()).filter(Boolean) : (v || []); }
+  const pending = data?.pending || { posts: [], comments: [] };
+  const reports = data?.reports || [];
+  const nPending = (pending.posts?.length || 0) + (pending.comments?.length || 0);
+
+  return (
+    <Modal onClose={onClose}>
+      <div className="sk-card" style={{ border: '1px solid var(--brand)', maxWidth: 640, width: '100%' }}>
+        <div className="row between" style={{ marginBottom: 10, alignItems: 'center' }}>
+          <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="shield" size={18} /></span> {L('Moderación', 'Moderation')}</h3>
+          <button className="btn btn-ghost" onClick={onClose}>✕</button>
+        </div>
+        <div className="sk-seg" style={{ marginBottom: 12 }}>
+          <button className={tab === 'queue' ? 'on' : ''} onClick={() => setTab('queue')}>{L('Cola', 'Queue')}{nPending + reports.length > 0 ? ` (${nPending + reports.length})` : ''}</button>
+          {isOwner && <button className={tab === 'settings' ? 'on' : ''} onClick={() => setTab('settings')}>{L('Ajustes', 'Settings')}</button>}
+        </div>
+
+        {tab === 'queue' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: '60vh', overflowY: 'auto' }}>
+            {nPending === 0 && reports.length === 0 && <div className="sk-card muted" style={{ margin: 0 }}>{L('Nada pendiente. Todo limpio ✨', 'Nothing pending. All clear ✨')}</div>}
+
+            {reports.length > 0 && <div className="muted" style={{ fontSize: 12, fontWeight: 600, marginTop: 2 }}>{L('Reportado por la comunidad', 'Reported by the community')}</div>}
+            {reports.map((r: any) => (
+              <div key={r.target_type + r.target_id} className="sk-card" style={{ margin: 0, padding: 10, border: '1px solid color-mix(in srgb,var(--red) 40%,transparent)' }}>
+                <div className="row between" style={{ alignItems: 'center' }}>
+                  <b style={{ fontSize: 12.5 }}><OnyxIcon name="flag" size={12} glow={false} /> {r.count}× {L('reporte', 'report')} · {r.target_type}</b>
+                  <div className="row" style={{ gap: 6 }}>
+                    {(r.target_type === 'post' || r.target_type === 'comment') && <>
+                      <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '3px 8px', color: 'var(--red)' }} onClick={() => review(r.target_type, r.target_id, 'delete')}>{L('Borrar', 'Delete')}</button>
+                      <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '3px 8px' }} onClick={() => review(r.target_type, r.target_id, 'hide')}>{L('Ocultar', 'Hide')}</button>
+                    </>}
+                    <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '3px 8px' }} onClick={() => act({ action: 'dismiss_report', target_type: r.target_type, target_id: r.target_id })}>{L('Descartar', 'Dismiss')}</button>
+                    {r.target_type === 'profile' && <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '3px 8px', color: 'var(--red)' }} onClick={() => act({ action: 'ban', student_id: r.target_id })}>{L('Banear', 'Ban')}</button>}
+                  </div>
+                </div>
+                {r.reasons?.length > 0 && <div className="muted" style={{ fontSize: 11.5, marginTop: 4 }}>{r.reasons.slice(0, 3).join(' · ')}</div>}
+              </div>
+            ))}
+
+            {nPending > 0 && <div className="muted" style={{ fontSize: 12, fontWeight: 600, marginTop: 6 }}>{L('Marcado por el filtro — esperando aprobación', 'Flagged by the filter — awaiting approval')}</div>}
+            {[...(pending.posts || []), ...(pending.comments || [])].map((it: any) => (
+              <div key={it.type + it.id} className="sk-card" style={{ margin: 0, padding: 10, background: 'var(--bg2)' }}>
+                <div className="row between" style={{ alignItems: 'flex-start', gap: 8 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12.5 }}><b>{it.author_name}</b> <span className="sk-chip" style={{ fontSize: 10.5, padding: '1px 6px' }}>{it.type === 'post' ? L('post', 'post') : L('comentario', 'comment')}</span> {it.flag_reason && <span className="muted" style={{ fontSize: 11 }}>· {flagLabel(it.flag_reason, L)}</span>}</div>
+                    <div style={{ fontSize: 13, marginTop: 3, whiteSpace: 'pre-wrap' }}>{it.body}</div>
+                    {it.image_url && <img src={it.image_url} alt="" style={{ maxWidth: 160, borderRadius: 8, marginTop: 6, display: 'block' }} />}
+                  </div>
+                </div>
+                <div className="row" style={{ gap: 6, marginTop: 8, justifyContent: 'flex-end' }}>
+                  <button className="btn btn-primary" style={{ fontSize: 11.5, padding: '4px 10px' }} onClick={() => review(it.type, it.id, 'approve')}>✓ {L('Aprobar', 'Approve')}</button>
+                  <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '4px 10px', color: 'var(--red)' }} onClick={() => review(it.type, it.id, 'delete')}>{L('Borrar', 'Delete')}</button>
+                  <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '4px 10px', color: 'var(--red)' }} onClick={() => act({ action: 'mute', student_id: it.author_id, hours: 24 })} title={L('Silenciar 24h', 'Mute 24h')}>{L('Silenciar', 'Mute')}</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {tab === 'settings' && s && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxHeight: '62vh', overflowY: 'auto' }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{L('¿Cuán estricta es tu comunidad?', 'How strict is your community?')}</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8 }}>
+                {MOD_LEVELS.map((lv) => (
+                  <button key={lv.key} onClick={() => setS({ ...s, level: lv.key })} className="sk-card" style={{ margin: 0, padding: 10, textAlign: 'left', cursor: 'pointer', border: s.level === lv.key ? '2px solid var(--brand)' : '1px solid var(--line)', background: s.level === lv.key ? 'color-mix(in srgb,var(--brand) 10%,transparent)' : 'var(--bg2)' }}>
+                    <div style={{ fontWeight: 600, fontSize: 13 }}>{L(lv.es, lv.en)}{lv.key === 'normal' && <span className="sk-chip" style={{ marginLeft: 6, fontSize: 10, padding: '1px 6px', background: 'color-mix(in srgb,var(--brand) 16%,transparent)', color: 'var(--brand)' }}>{L('por defecto', 'default')}</span>}</div>
+                    <div className="muted" style={{ fontSize: 11.5, marginTop: 2 }}>{L(lv.desc_es, lv.desc_en)}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <label className="row between" style={{ alignItems: 'center', cursor: 'pointer' }}>
+              <span style={{ fontSize: 13 }}><b>{L('Moderación con IA', 'AI moderation')}</b><div className="muted" style={{ fontSize: 11.5 }}>{L('Entiende el contexto y evita falsos positivos. Recomendado.', 'Understands context and avoids false positives. Recommended.')}</div></span>
+              <input type="checkbox" checked={!!s.ai} onChange={(e) => setS({ ...s, ai: e.target.checked })} />
+            </label>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>{L('Palabras prohibidas (tuyas)', 'Blocked words (yours)')}</div>
+              <div className="muted" style={{ fontSize: 11.5, marginBottom: 4 }}>{L('Una por línea o separadas por comas. Se suman a la lista base.', 'One per line or comma-separated. Added to the base list.')}</div>
+              <textarea rows={3} value={Array.isArray(s.words) ? s.words.join('\n') : s.words} onChange={(e) => setS({ ...s, words: e.target.value })} style={{ width: '100%', margin: 0 }} />
+            </div>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>{L('Palabras permitidas', 'Allowed words')}</div>
+              <div className="muted" style={{ fontSize: 11.5, marginBottom: 4 }}>{L('Nunca marques estas (evita falsos positivos).', 'Never flag these (avoids false positives).')}</div>
+              <textarea rows={2} value={Array.isArray(s.allow) ? s.allow.join('\n') : s.allow} onChange={(e) => setS({ ...s, allow: e.target.value })} style={{ width: '100%', margin: 0 }} />
+            </div>
+            <div className="row" style={{ gap: 12, flexWrap: 'wrap' }}>
+              <label style={{ fontSize: 12.5 }}>{L('Nuevos miembros a revisión (primeros N posts)', 'New members to review (first N posts)')}<br /><input type="number" min={0} max={20} value={s.new_member_review} onChange={(e) => setS({ ...s, new_member_review: Number(e.target.value) })} style={{ margin: '4px 0 0', width: 90 }} /></label>
+              <label style={{ fontSize: 12.5 }}>{L('Auto-ocultar con N reportes', 'Auto-hide after N reports')}<br /><input type="number" min={0} max={50} value={s.report_threshold} onChange={(e) => setS({ ...s, report_threshold: Number(e.target.value) })} style={{ margin: '4px 0 0', width: 90 }} /></label>
+            </div>
+            <div>
+              <div style={{ fontSize: 12.5, marginBottom: 4 }}>{L('Enlaces en publicaciones', 'Links in posts')}</div>
+              <select value={s.link_policy} onChange={(e) => setS({ ...s, link_policy: e.target.value })} style={{ margin: 0 }}>
+                <option value="allow">{L('Permitir', 'Allow')}</option>
+                <option value="review">{L('Enviar a revisión', 'Send to review')}</option>
+                <option value="members">{L('Solo miembros con antigüedad', 'Established members only')}</option>
+              </select>
+            </div>
+            <div className="row" style={{ gap: 8 }}>
+              <button className="btn btn-primary" onClick={saveSettings} disabled={saving}>{saving ? '…' : L('Guardar ajustes', 'Save settings')}</button>
+              <button className="btn btn-ghost" onClick={onClose}>{L('Cerrar', 'Close')}</button>
+            </div>
+            <p className="muted" style={{ fontSize: 11 }}>{L('Las imágenes ya se revisan con IA al subirlas (contenido sexual/indebido se bloquea).', 'Images are already screened by AI on upload (sexual/inappropriate content is blocked).')}</p>
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+}
+function flagLabel(reason: string, L: any): string {
+  const r = String(reason || '');
+  if (r.startsWith('word:')) return L('palabra marcada', 'flagged word');
+  if (r.startsWith('ai:')) return L('IA: contenido dudoso', 'AI: doubtful content');
+  if (r.startsWith('strict:')) return L('modo estricto', 'strict mode');
+  if (r.includes('spam') || r.includes('link')) return L('posible spam', 'possible spam');
+  if (r === 'new_member') return L('miembro nuevo', 'new member');
+  if (r === 'reports') return L('reportado', 'reported');
+  return r;
 }
 
 // =================== Muro de Logros ===================
