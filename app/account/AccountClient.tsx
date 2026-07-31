@@ -13,6 +13,7 @@ import ReferralCard from './ReferralCard';
 import CancelFlow from './CancelFlow';
 import TelegramCard from './TelegramCard';
 import BillingCard from './BillingCard';
+import EmbeddedCheckoutModal from '@/app/EmbeddedCheckoutModal';
 import InstallApp from '@/app/dashboard/InstallApp';
 import PushToggle from './PushToggle';
 import TwoFactorCard from './TwoFactorCard';
@@ -173,6 +174,7 @@ export default function AccountClient({ email }: { email: string }) {
   useEffect(() => { fetch('/api/admin/plans').then((r) => r.ok ? r.json() : null).then((j) => setAllPlans(j?.plans || [])).catch(() => {}); }, []);
   const [chTarget, setChTarget] = useState<{ id: string; name: string; up: boolean } | null>(null);   // confirmación
   const [chDone, setChDone] = useState<{ name: string; up: boolean } | null>(null);                    // gracias
+  const [coPlan, setCoPlan] = useState<string | null>(null);                                            // checkout embebido (Free → de pago)
   const [chErr, setChErr] = useState('');
   const [cancelTick, setCancelTick] = useState(0);   // abre el flujo de cancelación (bajar a Free)
   async function changePlan(planId: string, up: boolean, name: string) {
@@ -365,6 +367,38 @@ export default function AccountClient({ email }: { email: string }) {
                     );
                   })()}
 
+                  {/* Usuario Free (sin suscripción): opciones para SUBIR a un plan de pago */}
+                  {!sub && allPlans.length > 0 && (() => {
+                    const paid = allPlans.filter((pl: any) => pl.id !== 'free' && Number(pl.price_month) > 0);
+                    if (!paid.length) return null;
+                    return (
+                      <div style={{ borderTop: '1px solid var(--line)', paddingTop: 14, marginTop: 14 }}>
+                        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>{lang === 'es' ? 'Mejora tu plan' : 'Upgrade your plan'}</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10 }}>
+                          {paid.map((pl: any) => {
+                            const nm = lang === 'es' ? pl.name : (pl.name_en || pl.name);
+                            const badge = lang === 'es' ? pl.badge : (pl.badge_en || pl.badge);
+                            return (
+                              <div key={pl.id} style={{ border: badge ? '2px solid var(--brand)' : '0.5px solid var(--line)', borderRadius: 10, padding: 12 }}>
+                                <div className="row between" style={{ gap: 6 }}>
+                                  <div style={{ fontSize: 13, fontWeight: 600 }}>{nm}</div>
+                                  {badge && <span className="pill" style={{ fontSize: 10, background: 'rgba(124,140,255,.16)', color: 'var(--soft-brand,var(--brand))' }}>★</span>}
+                                </div>
+                                <div style={{ fontSize: 18, fontWeight: 800 }}>${pl.price_month}<span className="muted" style={{ fontSize: 11, fontWeight: 400 }}>{L.chMo}</span></div>
+                                <button className="btn btn-primary" style={{ width: '100%', marginTop: 8, fontSize: 12.5, padding: '6px 0' }} onClick={() => setCoPlan(pl.id)}>
+                                  ↑ {L.upBtn} {nm}
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div style={{ marginTop: 10 }}>
+                          <a href="/pricing" className="muted" style={{ fontSize: 12, textDecoration: 'underline' }}>{L.seePlans} →</a>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {/* Confirmación de cambio de plan */}
                   {chTarget && (
                     <div onClick={() => setChTarget(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 70, padding: 16 }}>
@@ -443,6 +477,9 @@ export default function AccountClient({ email }: { email: string }) {
                     <CancelFlow lang={lang} canceling={!!sub.cancelAtPeriodEnd} planName={planName(myPlan, lang)} onDone={load} openTick={cancelTick} />
                   </div>
                 )}
+
+                {/* Checkout embebido para crear la suscripción (usuario Free → de pago) */}
+                {coPlan && <EmbeddedCheckoutModal plan={coPlan} annual={false} lang={lang} onClose={() => setCoPlan(null)} />}
               </Section>
             )}
 
