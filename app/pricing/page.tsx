@@ -14,6 +14,21 @@ const T = {
   en: { title: 'Plans for every trader', sub: 'Start free · no card · cancel anytime', monthly: 'Monthly', annual: 'Annual', save: 'save 2 months', mo: 'mo', yr: 'yr', free: 'Start free', choose: 'Choose', account: 'My account', login: 'You must log in first', allOf: 'Everything in', andMore: 'and more:', popular: '★ Most popular', compareT: 'Compare plans', accounts: 'Connected accounts', unlimited: 'Unlimited', addonNote: 'All paid plans support extra connected accounts and additional copy slaves as add-ons, from your account.' },
 };
 
+// Fallback: si la API no devuelve planes (tabla vacía o sin conexión), mostramos
+// estos por defecto para que la página nunca se vea vacía. Los reales (de la BD)
+// siempre tienen prioridad.
+const DEFAULT_PLANS: Plan[] = [
+  { id: 'free', name: 'Free', name_en: 'Free', desc_es: null, desc_en: null, price_month: 0, price_year: 0, max_accounts: 1,
+    features: ['1 cuenta conectada', 'Estadísticas básicas', '30 días de historial'],
+    features_en: ['1 connected account', 'Basic stats', '30 days of history'], badge: null, badge_en: null },
+  { id: 'pro', name: 'Pro', name_en: 'Pro', desc_es: null, desc_en: null, price_month: 19, price_year: 190, max_accounts: 5,
+    features: ['5 cuentas conectadas', 'Todas las estadísticas', 'Historial ilimitado', 'Calendario y gráficas', 'Reglas de fondeo'],
+    features_en: ['5 connected accounts', 'All stats', 'Unlimited history', 'Calendar & charts', 'Prop-firm rules'], badge: 'Más popular', badge_en: 'Most popular' },
+  { id: 'elite', name: 'Elite', name_en: 'Elite', desc_es: null, desc_en: null, price_month: 39, price_year: 390, max_accounts: 999,
+    features: ['Cuentas ilimitadas', 'Todo lo de Pro', 'Informes automáticos', 'Alertas por Telegram', 'Soporte prioritario'],
+    features_en: ['Unlimited accounts', 'Everything in Pro', 'Automatic reports', 'Telegram alerts', 'Priority support'], badge: null, badge_en: null },
+];
+
 
 export default function Pricing() {
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -23,8 +38,11 @@ export default function Pricing() {
   const t = T[lang];
 
   useEffect(() => {
-    fetch('/api/admin/plans').then((r) => r.json()).then((j) => setPlans(j.plans || []));
+    fetch('/api/admin/plans').then((r) => r.json()).then((j) => setPlans(j.plans || [])).catch(() => setPlans([]));
   }, []);
+
+  // Si la BD no devolvió planes, usamos los de por defecto para no dejar la página vacía.
+  const shown = plans.length ? plans : DEFAULT_PLANS;
 
   // Al volver desde Stripe con el botón "atrás", el navegador restaura la página congelada:
   // reactivamos los botones para que no queden en "cargando".
@@ -57,14 +75,14 @@ export default function Pricing() {
 
         {/* Tarjetas */}
         <div className="grid" style={{ textAlign: 'left', alignItems: 'start', gridTemplateColumns: 'repeat(auto-fit,minmax(210px,1fr))' }}>
-          {plans.map((p, i) => {
+          {shown.map((p, i) => {
             const price = annual ? p.price_year : p.price_month;
             const name = lang === 'es' ? p.name : (p.name_en || p.name);
             const desc = lang === 'es' ? p.desc_es : (p.desc_en || p.desc_es);
             const feats = (lang === 'es' ? p.features : (p.features_en?.length ? p.features_en : p.features)) || [];
             const badge = lang === 'es' ? p.badge : (p.badge_en || p.badge);
             const pop = !!badge;
-            const prev = plans[i - 1];
+            const prev = shown[i - 1];
             const prevName = prev ? (lang === 'es' ? prev.name : (prev.name_en || prev.name)) : '';
             return (
               <div key={p.id} className="card" style={pop ? { border: '2px solid var(--brand)', boxShadow: '0 0 30px rgba(124,140,255,.25)', position: 'relative' } : { position: 'relative' }}>
@@ -87,7 +105,7 @@ export default function Pricing() {
         <p className="muted" style={{ textAlign: 'center', fontSize: 12.5, margin: '14px auto 0', maxWidth: 620 }}>➕ {t.addonNote}</p>
 
         {/* Tabla comparativa (misma que el landing, componente compartido) */}
-        <PlansCompareTable plans={plans as any} lang={lang} annual={annual} loadingId={loading}
+        <PlansCompareTable plans={shown as any} lang={lang} annual={annual} loadingId={loading}
           onChoose={(id, price) => subscribe(id, price)} />
       </div>
       {co && <EmbeddedCheckoutModal plan={co.plan} annual={annual} lang={lang} onClose={() => setCo(null)} />}

@@ -350,6 +350,13 @@ export default function Home() {
       trades: Number(j.trades || 0), blocks: Number(j.blocks || 0), accounts: Number(j.accounts || 0),
     })).catch(() => {});
   }, []);
+  // Si la BD aún no devolvió planes, mostramos unos por defecto (nunca vacío).
+  const FALLBACK_PLANS: any[] = [
+    { id: 'free', name: 'Free', name_en: 'Free', price_month: 0, price_year: 0, features: t.plans[0].items, features_en: dict.en.plans[0].items, badge: null, badge_en: null },
+    { id: 'pro', name: 'Pro', name_en: 'Pro', price_month: 19, price_year: 190, features: t.plans[1].items, features_en: dict.en.plans[1].items, badge: lang === 'es' ? 'Más popular' : 'Most popular', badge_en: 'Most popular' },
+    { id: 'elite', name: 'Elite', name_en: 'Elite', price_month: 39, price_year: 390, features: t.plans[2].items, features_en: dict.en.plans[2].items, badge: null, badge_en: null },
+  ];
+  const shownPlans = dbPlans.length ? dbPlans : FALLBACK_PLANS;
   const f = FIRMS[firm];
   const target = 5000, maxLoss = 5000;
   const targetPct = Math.max(0, Math.min(100, (pnl / target) * 100));
@@ -681,14 +688,14 @@ export default function Home() {
           <button className={'btn ' + (annual ? 'btn-primary' : 'btn-ghost')} onClick={() => setAnnual(true)}>{lang === 'es' ? 'Anual · ahorra 2 meses' : 'Annual · save 2 months'}</button>
         </div>
         <div className="grid g3" style={{ alignItems: 'start' }}>
-          {dbPlans.map((p, i) => {
+          {shownPlans.map((p, i) => {
             const price = annual ? p.price_year : p.price_month;
             const name = lang === 'es' ? p.name : (p.name_en || p.name);
             const desc = lang === 'es' ? p.desc_es : (p.desc_en || p.desc_es);
             const feats = (lang === 'es' ? p.features : (p.features_en?.length ? p.features_en : p.features)) || [];
             const badge = lang === 'es' ? p.badge : (p.badge_en || p.badge);
             const pop = !!badge;
-            const prev = dbPlans[i - 1];
+            const prev = shownPlans[i - 1];
             const prevName = prev ? (lang === 'es' ? prev.name : (prev.name_en || prev.name)) : '';
             return (
               <div key={p.id} className="card" style={pop ? { border: '2px solid var(--brand)', boxShadow: '0 0 30px rgba(124,140,255,.25)', position: 'relative' } : { position: 'relative' }}>
@@ -707,7 +714,7 @@ export default function Home() {
         </div>
 
         {/* Tabla comparativa (componente compartido con /pricing) */}
-        <PlansCompareTable plans={dbPlans} lang={lang} annual={false} loadingId=""
+        <PlansCompareTable plans={shownPlans} lang={lang} annual={false} loadingId=""
           onChoose={() => { window.location.href = '/login?mode=signup'; }} />
       </div>
 
