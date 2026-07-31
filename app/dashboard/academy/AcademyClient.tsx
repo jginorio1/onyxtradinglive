@@ -1907,7 +1907,7 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
         {evForm && <EventForm form={evForm} setForm={setEvForm} L={L} onSave={(f: any) => { api({ action: 'event', ...f }, L('Clase programada', 'Class scheduled')); setEvForm(null); }} onCancel={() => setEvForm(null)} />}
       </>)}
 
-      {tab === 'cobros' && <MentorPayments modules={d.content || []} L={L} />}
+      {tab === 'cobros' && <MentorPayments modules={d.content || []} L={L} onChanged={load} />}
 
       {tab === 'alumnos' && <CollabManager d={d} api={api} L={L} />}
 
@@ -2397,9 +2397,9 @@ function CollabManager({ d, api, L }: any) {
 // Onboarding del mentor: checklist con barra de progreso. Se autocompleta con datos reales.
 // ---- Guía interactiva del onboarding: flecha animada + campo iluminado + explicación ----
 // Orden "identidad primero": nombre → branding (tu voz) → y solo entonces el copy con AI.
-const TOUR_STEPS: { key: string; tab: string; sel: string; review?: boolean }[] = [
+const TOUR_STEPS: { key: string; tab: string; sel: string; review?: boolean; manual?: boolean }[] = [
   { key: 'name', tab: 'ajustes', sel: 'name', review: true },
-  { key: 'branding', tab: 'ajustes', sel: 'branding' },
+  { key: 'branding', tab: 'ajustes', sel: 'branding', manual: true },
   { key: 'logo', tab: 'ajustes', sel: 'logo' },
   { key: 'cover', tab: 'ajustes', sel: 'cover' },
   { key: 'content', tab: 'cursos', sel: 'classroom' },
@@ -2482,7 +2482,7 @@ function GuidedTour({ stepKey, o, L, onGoto, onFinish, onClose, academyName }: a
   }, [stepKey]);
 
   useEffect(() => {
-    if (!step || !done) return;
+    if (!step || !done || step.manual) return; // los pasos "manual" (branding) no saltan solos
     const t = setTimeout(() => {
       const next = TOUR_STEPS.find((s) => !s.review && !o?.[s.key]);
       if (next) onGoto(next.key); else onFinish();
@@ -2537,6 +2537,14 @@ function GuidedTour({ stepKey, o, L, onGoto, onFinish, onClose, academyName }: a
           <div className="row" style={{ gap: 8 }}>
             <button className="btn btn-ghost" style={{ fontSize: 12, flex: 1 }} onClick={() => setTipOpen(false)}>{L('Ahora no', 'Not now')}</button>
             <button className="btn btn-primary" style={{ fontSize: 12, flex: 2 }} onClick={() => { const next = TOUR_STEPS[idx + 1]; if (next) onGoto(next.key); else onFinish(); }}>{L('Listo, siguiente →', 'Done, next →')}</button>
+          </div>
+        ) : done && step.manual ? (
+          <div>
+            <div className="row" style={{ gap: 6, alignItems: 'center', marginBottom: 8 }}>
+              <span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--green) 16%,transparent)', color: 'var(--soft-green)' }}>✓ {L('Guardado', 'Saved')}</span>
+              <span className="muted" style={{ fontSize: 11.5, lineHeight: 1.4 }}>{L('Léelo y edítalo a tu gusto; cuando estés conforme, sigue.', 'Read and edit it as you like; when you’re happy, continue.')}</span>
+            </div>
+            <button className="btn btn-primary" style={{ width: '100%', fontSize: 12 }} onClick={() => { const next = TOUR_STEPS.find((s) => !s.review && !o?.[s.key]); if (next) onGoto(next.key); else onFinish(); }}>{L('Revisado, siguiente →', 'Reviewed, next →')}</button>
           </div>
         ) : done ? (
           <div className="row" style={{ gap: 8, alignItems: 'center' }}>
@@ -2868,7 +2876,7 @@ function MentorSettings({ mentor, onSave, L }: any) {
 }
 
 // =================== Cobros del mentor ===================
-function MentorPayments({ modules, L }: { modules: any[]; L: (a: string, b: string) => string }) {
+function MentorPayments({ modules, L, onChanged }: { modules: any[]; L: (a: string, b: string) => string; onChanged?: () => void }) {
   const [conn, setConn] = useState<any>(null);
   const [prods, setProds] = useState<any[]>([]);
   const [earn, setEarn] = useState<any>(null);
@@ -2886,8 +2894,8 @@ function MentorPayments({ modules, L }: { modules: any[]; L: (a: string, b: stri
   }
   useEffect(() => { load(); }, []);
   async function connect() { setBusy('connect'); const r = await fetch('/api/academy/connect', { method: 'POST' }); const j = await r.json(); if (j.url) window.location.href = j.url; else { setBusy(''); alert(L('No se pudo conectar Stripe.', 'Could not connect Stripe.')); } }
-  async function saveProd(f: any) { setBusy('prod'); const body: any = { ...f, price_cents: Math.round(Number(f.price) * 100) }; delete body.price; await fetch('/api/academy/products', { method: 'POST', body: JSON.stringify(body) }); setBusy(''); setForm(null); load(); }
-  async function delProd(id: string) { if (!await confirmDelete({ title: L('¿Borrar nivel?', 'Delete tier?'), message: L('Se dejará de vender este nivel.', 'This tier will stop being sold.') })) return; await fetch('/api/academy/products', { method: 'POST', body: JSON.stringify({ action: 'delete', id }) }); load(); }
+  async function saveProd(f: any) { setBusy('prod'); const body: any = { ...f, price_cents: Math.round(Number(f.price) * 100) }; delete body.price; await fetch('/api/academy/products', { method: 'POST', body: JSON.stringify(body) }); setBusy(''); setForm(null); load(); onChanged?.(); }
+  async function delProd(id: string) { if (!await confirmDelete({ title: L('¿Borrar nivel?', 'Delete tier?'), message: L('Se dejará de vender este nivel.', 'This tier will stop being sold.') })) return; await fetch('/api/academy/products', { method: 'POST', body: JSON.stringify({ action: 'delete', id }) }); load(); onChanged?.(); }
   async function saveAff() { await fetch('/api/academy/products', { method: 'POST', body: JSON.stringify({ action: 'affiliate', reward_cents: Math.round(Number(affReward) * 100) }) }); load(); }
 
   if (!conn) return <div className="sk-card muted">…</div>;
