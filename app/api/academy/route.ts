@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { getMentor, myAcademies, getContent, progressSet, markLesson, isEnrolled, listPosts, addPost, addComment, leaderboard, membersList, toggleLike, levelFor, listEvents, nextEvent, dmUnread, tradersBoard, recentCount } from '@/lib/academy';
+import { getMentor, myAcademies, getContent, progressSet, markLesson, isEnrolled, listPosts, addPost, addComment, leaderboard, membersList, toggleLike, levelFor, listEvents, nextEvent, dmUnread, tradersBoard, recentCount, deleteOwnPost, deleteOwnComment, editOwnPost, editOwnComment } from '@/lib/academy';
 import { listProducts, accessibleModules, studentPurchases, perksFor, membershipInfo, hasMembership } from '@/lib/academyPay';
 import { myReferralStats } from '@/lib/academyExtras';
 import { auditAddon, hasAuditAddon, auditConsent, planVerified } from '@/lib/academyAudit';
@@ -196,6 +196,25 @@ export async function POST(req: Request) {
       }
       await addComment(String(b.post_id), user.id, String(b.body), b.image_url ? String(b.image_url) : undefined, { status: modStatus, flag_reason: flag });
       return NextResponse.json({ ok: true, pending: modStatus === 'pending' });
+    }
+    // El alumno borra lo SUYO (verifica autor en la consulta).
+    if (b.action === 'delete_post' && b.id) { return NextResponse.json(await deleteOwnPost(user.id, String(b.id))); }
+    if (b.action === 'delete_comment' && b.id) { return NextResponse.json(await deleteOwnComment(user.id, String(b.id))); }
+    // El alumno edita el texto de lo SUYO. Si edita, se vuelve a moderar.
+    if ((b.action === 'edit_post' || b.action === 'edit_comment') && b.id && b.mentor_id && b.body != null) {
+      const mid = String(b.mentor_id);
+      const mentorRow = await getMentor(user.id);
+      const isMentorHere = !!(mentorRow && mentorRow.user_id === mid);
+      let modStatus: string | undefined; let flag: string | undefined;
+      if (!isMentorHere) {
+        const dec = await moderateText(await getSettings(mid), String(b.body), { kind: b.action === 'edit_post' ? 'post' : 'comment' });
+        if (dec.action === 'block') { const esc = await escalateOnBlock(mid, user.id, await getSettings(mid), dec.reason); return NextResponse.json({ error: 'blocked', message: blockedMsg(dec.category), escalated: esc.action }, { status: 422 }); }
+        modStatus = dec.action === 'review' ? 'pending' : 'visible'; if (dec.action === 'review') flag = dec.reason;
+      } else { modStatus = 'visible'; }
+      const r = b.action === 'edit_post'
+        ? await editOwnPost(user.id, String(b.id), String(b.body), modStatus, flag)
+        : await editOwnComment(user.id, String(b.id), String(b.body), modStatus, flag);
+      return NextResponse.json({ ...r, pending: modStatus === 'pending' });
     }
     return NextResponse.json({ error: 'bad_request' }, { status: 400 });
   } catch (e: any) { return NextResponse.json({ error: e?.message || 'error' }, { status: 500 }); }

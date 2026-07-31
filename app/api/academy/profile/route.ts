@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
-import { getMentor, isEnrolled, memberProfile, setShareStats } from '@/lib/academy';
+import { getMentor, isEnrolled, memberProfile, setShareStats, setStudentDisplayName, setAvatar } from '@/lib/academy';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { getSettings, moderateText } from '@/lib/academyModeration';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -30,6 +31,17 @@ export async function POST(req: Request) {
   const patch: any = {};
   if (b.share !== undefined) await setShareStats(user.id, !!b.share);
   if (b.country !== undefined) patch.country = b.country ? String(b.country).slice(0, 2).toUpperCase() : null;
+  // El alumno cambia su avatar (foto de perfil).
+  if (b.avatar_url !== undefined) await setAvatar(user.id, b.avatar_url ? String(b.avatar_url) : null);
+  // El alumno cambia su nombre visible en ESTA academia (se modera; el mentor puede sobrescribir).
+  if (b.display_name !== undefined && b.mentor_id) {
+    const nm = String(b.display_name || '').slice(0, 60);
+    if (nm) {
+      const dec = await moderateText(await getSettings(String(b.mentor_id)), nm, { kind: 'name' });
+      if (dec.action === 'block') return NextResponse.json({ error: 'blocked', message: 'Ese nombre no cumple las normas.' }, { status: 422 });
+    }
+    await setStudentDisplayName(String(b.mentor_id), user.id, nm);
+  }
   if (b.push_prefs !== undefined && b.push_prefs && typeof b.push_prefs === 'object') {
     const keys = ['announcements', 'messages', 'classes', 'wins'];
     const p: any = {}; for (const k of keys) if (b.push_prefs[k] !== undefined) p[k] = !!b.push_prefs[k];

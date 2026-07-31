@@ -36,10 +36,11 @@ async function uploadImage(file: File): Promise<string | null> {
   return j.url || null;
 }
 
-function Avatar({ name, level, size = 40, onClick }: { name: string; level?: number; size?: number; onClick?: () => void }) {
+function Avatar({ name, level, size = 40, onClick, img }: { name: string; level?: number; size?: number; onClick?: () => void; img?: string | null }) {
   return (
-    <span className="sk-av" style={{ width: size, height: size, fontSize: size * 0.36, cursor: onClick ? 'pointer' : undefined }} onClick={onClick}>
-      {initials(name)}{level != null && <span className="sk-lvl">{level}</span>}
+    <span className="sk-av" style={{ width: size, height: size, fontSize: size * 0.36, cursor: onClick ? 'pointer' : undefined, padding: 0, overflow: 'hidden' }} onClick={onClick}>
+      {img ? <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} /> : initials(name)}
+      {level != null && <span className="sk-lvl">{level}</span>}
     </span>
   );
 }
@@ -666,6 +667,16 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
     await fetch('/api/academy/moderation', { method: 'POST', body: JSON.stringify({ action: 'review', mentor_id: active.mentor_id, type, id, decision: 'delete' }) });
     reload();
   }
+  // Auto-gestión del alumno: borrar / editar SOLO lo suyo.
+  async function selfDelete(type: 'post' | 'comment', id: string) {
+    if (!await confirmDelete({ title: L('¿Borrar lo tuyo?', 'Delete yours?'), message: type === 'post' ? L('Se borrará tu publicación.', 'Your post will be deleted.') : L('Se borrará tu comentario.', 'Your comment will be deleted.') })) return;
+    await api({ action: type === 'post' ? 'delete_post' : 'delete_comment', id }); reload();
+  }
+  async function selfEdit(type: 'post' | 'comment', id: string, body: string) {
+    const r = await api({ action: type === 'post' ? 'edit_post' : 'edit_comment', id, mentor_id: active.mentor_id, body });
+    if (r?.error === 'blocked') { alert((r.message || L('El texto no cumple las normas.', 'The text does not meet the rules.')) + escalMsg(r.escalated, L)); return false; }
+    reload(); return true;
+  }
   async function toggleLesson(l: any, done: boolean) { await api({ action: 'lesson', lesson_id: l.id, done }); reload(); }
   async function buy(productId: string) {
     const r = await fetch('/api/academy/checkout', { method: 'POST', body: JSON.stringify({ product_id: productId }) });
@@ -789,7 +800,7 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
                   <div className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>{w.status === 'rejected' ? L('La academia no aprobó este logro.', 'The academy did not approve this win.') : L('Aparecerá en el muro de logros cuando la academia lo apruebe.', 'It will show on the wins wall once the academy approves it.')}</div>
                 </div>
               ))}
-              {(active.feed || []).filter((p: any) => feedFilter === 'all' || (p.kind || 'community') === feedFilter).map((p: any) => <PostCard key={p.id} p={p} onLike={like} onComment={comment} onProfile={openProfile} onReport={report} onModDelete={modDelete} canModerate={!!(active.isMentorHere || active.myPerms?.moderate)} myUserId={active.myUserId} L={L} es={es} />)}
+              {(active.feed || []).filter((p: any) => feedFilter === 'all' || (p.kind || 'community') === feedFilter).map((p: any) => <PostCard key={p.id} p={p} onLike={like} onComment={comment} onProfile={openProfile} onReport={report} onModDelete={modDelete} onSelfDelete={selfDelete} onSelfEdit={selfEdit} canModerate={!!(active.isMentorHere || active.myPerms?.moderate)} myUserId={active.myUserId} L={L} es={es} />)}
               {(active.feed || []).length === 0 && <div className="sk-card muted">{L('Sé el primero en publicar en la comunidad.', 'Be the first to post in the community.')}</div>}
             </>
           )}
@@ -1241,8 +1252,11 @@ function ProfileView({ mentorId, userId, me, lang, onDm, onBack }: any) {
   const [p, setP] = useState<any>(null);
   function reloadP() { fetch(`/api/academy/profile?m=${mentorId}&u=${userId}`).then((r) => r.json()).then((j) => setP(j.profile)); }
   useEffect(() => { setP(null); reloadP(); }, [mentorId, userId]);
+  const [editP, setEditP] = useState(false); const [nm, setNm] = useState('');
   async function toggleShare(on: boolean) { await fetch('/api/academy/profile', { method: 'POST', body: JSON.stringify({ share: on }) }); reloadP(); }
   async function saveCountry(code: string) { await fetch('/api/academy/profile', { method: 'POST', body: JSON.stringify({ country: code }) }); reloadP(); }
+  async function saveAvatar(url: string) { await fetch('/api/academy/profile', { method: 'POST', body: JSON.stringify({ avatar_url: url || null }) }); reloadP(); }
+  async function saveName() { const r = await fetch('/api/academy/profile', { method: 'POST', body: JSON.stringify({ display_name: nm, mentor_id: mentorId }) }); const j = await r.json().catch(() => ({})); if (j?.error === 'blocked') { alert(L('Ese nombre no cumple las normas.', 'That name does not meet the rules.')); return; } setEditP(false); reloadP(); }
   if (!p) return <div className="sk-card muted">…</div>;
   const v = p.verified || {};
   const isSelf = userId === me;
@@ -1260,12 +1274,13 @@ function ProfileView({ mentorId, userId, me, lang, onDm, onBack }: any) {
       <div className="sk-card" style={{ textAlign: 'center' }}>
         <div style={{ display: 'grid', placeItems: 'center', gap: 10 }}>
           <div style={{ position: 'relative' }}>
-            <Avatar name={p.name} size={84} />
+            <Avatar name={p.name} img={p.avatar_url} size={84} />
             <span className="sk-lvl" style={{ width: 26, height: 26, fontSize: 13, right: 0, bottom: 0 }}>{lv.level}</span>
           </div>
           <div><div style={{ fontWeight: 800, fontSize: 20 }}>{p.name}</div><div style={{ color: 'var(--brand)', fontWeight: 700 }}>{L('Nivel', 'Level')} {lv.level}</div></div>
           {lv.next != null && <div className="muted" style={{ fontSize: 13 }}>{lv.next - p.points} {L('puntos para subir', 'points to level up')}</div>}
           {userId !== me && <button className="btn btn-primary" onClick={() => onDm(userId)}><OnyxIcon name="chat" size={14} /> {L('Enviar mensaje', 'Message')}</button>}
+          {isSelf && !editP && <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={() => { setNm(p.display_name || ''); setEditP(true); }}>✎ {L('Editar mi perfil', 'Edit my profile')}</button>}
         </div>
         <div className="row" style={{ gap: 16, margin: '16px 0 0', textAlign: 'center', justifyContent: 'center' }}>
           <div><div style={{ fontWeight: 800, fontSize: 18 }}>{p.contributions}</div><div className="muted" style={{ fontSize: 11 }}>{L('Contribuciones', 'Contributions')}</div></div>
@@ -1280,6 +1295,26 @@ function ProfileView({ mentorId, userId, me, lang, onDm, onBack }: any) {
             </select>
           </div>
         ) : (p.country && <div className="muted" style={{ fontSize: 13, marginTop: 10 }}>{flagOf(p.country)} {countryName(p.country)}</div>)}
+        {isSelf && editP && (
+          <div style={{ marginTop: 14, borderTop: '1px solid var(--line)', paddingTop: 14, textAlign: 'left', maxWidth: 340, marginLeft: 'auto', marginRight: 'auto' }}>
+            <div style={{ fontSize: 12, color: 'var(--mut)', marginBottom: 4 }}>{L('Tu foto de perfil', 'Your profile photo')}</div>
+            <div className="row" style={{ gap: 10, alignItems: 'center', marginBottom: 10 }}>
+              <Avatar name={p.name} img={p.avatar_url} size={52} />
+              <div style={{ flex: 1 }}><ImageUpload value={p.avatar_url || ''} onChange={saveAvatar} L={L} /></div>
+              {p.avatar_url && <button className="btn btn-ghost" style={{ fontSize: 11.5 }} onClick={() => saveAvatar('')}>{L('Quitar', 'Remove')}</button>}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--mut)', marginBottom: 4 }}>{L('Tu nombre en esta academia', 'Your name in this academy')}</div>
+            <input value={nm} onChange={(e) => setNm(e.target.value)} placeholder={p.name} style={{ margin: 0, width: '100%' }} maxLength={60} />
+            <div className="row" style={{ gap: 8, marginTop: 10 }}>
+              <button className="btn btn-primary" style={{ fontSize: 12.5 }} onClick={saveName}>{L('Guardar', 'Save')}</button>
+              <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={() => setEditP(false)}>{L('Cerrar', 'Close')}</button>
+            </div>
+            <p className="muted" style={{ fontSize: 11, marginTop: 10 }}>
+              {p.email ? <>{L('Tu correo:', 'Your email:')} <b>{p.email}</b><br /></> : null}
+              {L('El correo y la contraseña se cambian en Ajustes de cuenta. Tu mentor puede ajustar tu nombre si incumple las normas.', 'Email and password are changed in Account settings. Your mentor may adjust your name if it breaks the rules.')}
+            </p>
+          </div>
+        )}
       </div>
       {/* Trader verificado — track record real (opt-in, sin promesas) */}
       {(v.hasData || isSelf) && (
@@ -1461,23 +1496,36 @@ function PostTypePicker({ kind, setKind, winKind, setWinKind, L }: any) {
     </div>
   );
 }
-function PostCard({ p, onLike, onComment, onProfile, onReport, onModDelete, canModerate, myUserId, L, es }: any) {
+function PostCard({ p, onLike, onComment, onProfile, onReport, onModDelete, onSelfDelete, onSelfEdit, canModerate, myUserId, L, es }: any) {
   const [c, setC] = useState(''); const [cImg, setCImg] = useState(''); const [openC, setOpenC] = useState(false);
+  const [editing, setEditing] = useState(false); const [draft, setDraft] = useState(p.body || '');
   const sendComment = () => { if (c.trim() || cImg) { onComment(p.id, c, cImg); setC(''); setCImg(''); setOpenC(true); } };
   const mine = p.author_id === myUserId;
   const pending = p.status === 'pending';
+  async function saveEdit() { const ok = await onSelfEdit?.('post', p.id, draft); if (ok) setEditing(false); }
+  function editComment(c2: any) { const nv = window.prompt(L('Edita tu comentario:', 'Edit your comment:'), c2.body || ''); if (nv != null && nv.trim() !== (c2.body || '')) onSelfEdit?.('comment', c2.id, nv); }
   return (
     <div className={'sk-card' + (p.announcement ? ' sk-ann' : '') + (pending ? ' sk-pending' : '')}>
       {p.announcement && <div className="sk-ann-tag"><OnyxIcon name="megaphone" size={13} glow={false} /> {L('Anuncio', 'Announcement')}</div>}
       <div className="row" style={{ gap: 10, alignItems: 'center', marginBottom: 8 }}>
-        <Avatar name={p.author_name} level={p.author_level} size={38} onClick={() => onProfile(p.author_id)} />
+        <Avatar name={p.author_name} img={p.author_avatar} level={p.author_level} size={38} onClick={() => onProfile(p.author_id)} />
         <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontWeight: 600, fontSize: 13.5, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }} onClick={() => onProfile(p.author_id)}>{p.author_name} <PostTag kind={p.kind} winKind={p.win_kind} L={L} /></div><div className="muted" style={{ fontSize: 11.5 }}>{timeAgo(p.created_at, es)}</div></div>
         {pending && <span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--gold) 16%,transparent)', color: 'var(--gold)' }}>{L('En revisión', 'In review')}</span>}
         {p.pinned && <span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--gold) 16%,transparent)', color: 'var(--gold)' }}>📌 {L('fijado', 'pinned')}</span>}
-        {canModerate && <button className="btn btn-ghost" style={{ padding: '2px 7px', fontSize: 12, color: 'var(--red)' }} title={L('Eliminar', 'Delete')} onClick={() => onModDelete('post', p.id)}>✕</button>}
+        {mine && onSelfEdit && !editing && <button className="btn btn-ghost" style={{ padding: '2px 7px', fontSize: 12 }} title={L('Editar', 'Edit')} onClick={() => { setDraft(p.body || ''); setEditing(true); }}>✎</button>}
+        {mine && onSelfDelete && <button className="btn btn-ghost" style={{ padding: '2px 7px', fontSize: 12, color: 'var(--red)' }} title={L('Borrar', 'Delete')} onClick={() => onSelfDelete('post', p.id)}>✕</button>}
+        {canModerate && !mine && <button className="btn btn-ghost" style={{ padding: '2px 7px', fontSize: 12, color: 'var(--red)' }} title={L('Eliminar (moderación)', 'Delete (moderation)')} onClick={() => onModDelete('post', p.id)}>✕</button>}
         {!mine && !canModerate && onReport && <button className="btn btn-ghost" style={{ padding: '2px 7px', fontSize: 11.5, color: 'var(--mut)' }} title={L('Reportar', 'Report')} onClick={() => onReport('post', p.id)}><OnyxIcon name="flag" size={13} glow={false} /></button>}
       </div>
-      {p.body && <div style={{ fontSize: 14.5, whiteSpace: 'pre-wrap', lineHeight: 1.55 }}>{p.body}</div>}
+      {editing ? (
+        <div style={{ marginBottom: 6 }}>
+          <textarea value={draft} onChange={(e) => setDraft(e.target.value)} rows={3} style={{ width: '100%', margin: 0 }} />
+          <div className="row" style={{ gap: 6, marginTop: 6 }}>
+            <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={saveEdit} disabled={!draft.trim()}>{L('Guardar', 'Save')}</button>
+            <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setEditing(false)}>{L('Cancelar', 'Cancel')}</button>
+          </div>
+        </div>
+      ) : (p.body && <div style={{ fontSize: 14.5, whiteSpace: 'pre-wrap', lineHeight: 1.55 }}>{p.body} {p.edited_at && <span className="muted" style={{ fontSize: 11 }}>· {L('editado', 'edited')}</span>}</div>)}
       {p.image_url && <a href={p.image_url} target="_blank" rel="noreferrer"><img src={p.image_url} alt="" style={{ maxWidth: '100%', maxHeight: 420, borderRadius: 12, marginTop: 8, display: 'block' }} /></a>}
       <div className="sk-post-actions">
         <button className={'sk-like' + (p.liked ? ' on' : '')} onClick={() => onLike('post', p.id)}><OnyxIcon name="heart" size={15} glow={false} /> {p.likes || 0}</button>
@@ -1487,13 +1535,15 @@ function PostCard({ p, onLike, onComment, onProfile, onReport, onModDelete, canM
         <div style={{ marginTop: 10, borderTop: '1px solid var(--line)', paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
           {(p.comments || []).map((c2: any) => (
             <div key={c2.id} className="row" style={{ gap: 8, alignItems: 'flex-start' }}>
-              <Avatar name={c2.author_name} level={c2.author_level} size={28} onClick={() => onProfile(c2.author_id)} />
+              <Avatar name={c2.author_name} img={c2.author_avatar} level={c2.author_level} size={28} onClick={() => onProfile(c2.author_id)} />
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13 }}><b style={{ fontSize: 12.5 }}>{c2.author_name}</b> {c2.body} {c2.status === 'pending' && <span className="sk-chip" style={{ fontSize: 10.5, padding: '1px 6px', background: 'color-mix(in srgb,var(--gold) 16%,transparent)', color: 'var(--gold)' }}>{L('En revisión', 'In review')}</span>}</div>
                 {c2.image_url && <a href={c2.image_url} target="_blank" rel="noreferrer"><img src={c2.image_url} alt="" style={{ maxWidth: 220, maxHeight: 220, borderRadius: 8, marginTop: 4, display: 'block' }} /></a>}
                 <div className="row" style={{ gap: 6, alignItems: 'center' }}>
                   <button className={'sk-like' + (c2.liked ? ' on' : '')} style={{ fontSize: 11.5, padding: '2px 4px' }} onClick={() => onLike('comment', c2.id)}><OnyxIcon name="heart" size={12} glow={false} /> {c2.likes || 0}</button>
-                  {canModerate && <button className="btn btn-ghost" style={{ fontSize: 10.5, padding: '1px 6px', color: 'var(--red)' }} onClick={() => onModDelete('comment', c2.id)}>✕</button>}
+                  {c2.author_id === myUserId && onSelfEdit && <button className="btn btn-ghost" style={{ fontSize: 10.5, padding: '1px 6px' }} onClick={() => editComment(c2)} title={L('Editar', 'Edit')}>✎</button>}
+                  {c2.author_id === myUserId && onSelfDelete && <button className="btn btn-ghost" style={{ fontSize: 10.5, padding: '1px 6px', color: 'var(--red)' }} onClick={() => onSelfDelete('comment', c2.id)}>✕</button>}
+                  {canModerate && c2.author_id !== myUserId && <button className="btn btn-ghost" style={{ fontSize: 10.5, padding: '1px 6px', color: 'var(--red)' }} onClick={() => onModDelete('comment', c2.id)}>✕</button>}
                   {c2.author_id !== myUserId && !canModerate && onReport && <button className="btn btn-ghost" style={{ fontSize: 10.5, padding: '1px 6px', color: 'var(--mut)' }} onClick={() => onReport('comment', c2.id)} title={L('Reportar', 'Report')}><OnyxIcon name="flag" size={11} glow={false} /></button>}
                 </div>
               </div>

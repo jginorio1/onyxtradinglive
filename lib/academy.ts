@@ -317,7 +317,7 @@ export async function membersList(mentorId: string) {
   ids.add(mentorId); // el mentor también es miembro
   const idArr = Array.from(ids);
   const [{ data: profs }, { data: pts }] = await Promise.all([
-    supabaseAdmin.from('profiles').select('id,full_name,email,country,last_seen_at').in('id', idArr),
+    supabaseAdmin.from('profiles').select('id,full_name,email,country,last_seen_at,avatar_url').in('id', idArr),
     supabaseAdmin.from('academy_points').select('user_id,points').eq('mentor_id', mentorId).in('user_id', idArr),
   ]);
   const ptOf: Record<string, number> = {}; (pts || []).forEach((r: any) => { ptOf[r.user_id] = r.points; });
@@ -329,6 +329,7 @@ export async function membersList(mentorId: string) {
     const online = p.last_seen_at ? (Date.now() - new Date(p.last_seen_at).getTime()) < ONLINE_MS : false;
     return {
       user_id: p.id, name: dn[p.id] || p.full_name || (p.email || '').split('@')[0] || 'Trader',
+      avatar_url: p.avatar_url || null,
       points, level: levelFor(points).level, joined_at: joinOf[p.id] || null,
       country: p.country || null, online,
       is_mentor: p.id === mentorId,
@@ -359,10 +360,11 @@ export async function listPosts(mentorId: string, viewerId?: string, includeSche
   (comments || []).forEach((c: any) => authorIds.push(c.author_id));
   const uniqAuthors = Array.from(new Set(authorIds));
   const [{ data: profs }, { data: pts }] = await Promise.all([
-    uniqAuthors.length ? supabaseAdmin.from('profiles').select('id,full_name').in('id', uniqAuthors) : Promise.resolve({ data: [] } as any),
+    uniqAuthors.length ? supabaseAdmin.from('profiles').select('id,full_name,avatar_url').in('id', uniqAuthors) : Promise.resolve({ data: [] } as any),
     uniqAuthors.length ? supabaseAdmin.from('academy_points').select('user_id,points').eq('mentor_id', mentorId).in('user_id', uniqAuthors) : Promise.resolve({ data: [] } as any),
   ]);
   const nameOf: Record<string, string> = {}; (profs || []).forEach((p: any) => { nameOf[p.id] = p.full_name || 'Trader'; });
+  const avatarOf: Record<string, string | null> = {}; (profs || []).forEach((p: any) => { avatarOf[p.id] = p.avatar_url || null; });
   const dnP = await displayNames(mentorId, uniqAuthors);
   Object.keys(dnP).forEach((id) => { nameOf[id] = dnP[id]; });
   const lvlOf: Record<string, number> = {}; (pts || []).forEach((r: any) => { lvlOf[r.user_id] = levelFor(r.points).level; });
@@ -374,9 +376,9 @@ export async function listPosts(mentorId: string, viewerId?: string, includeSche
   const likeCount: Record<string, number> = {}; const likedMine: Record<string, boolean> = {};
   (likes || []).forEach((l: any) => { const k = l.target_type + ':' + l.target_id; likeCount[k] = (likeCount[k] || 0) + 1; if (viewerId && l.user_id === viewerId) likedMine[k] = true; });
   const byPost: Record<string, any[]> = {};
-  (comments || []).forEach((c: any) => { (byPost[c.post_id] ||= []).push({ ...c, author_name: nameOf[c.author_id] || 'Trader', author_level: lvlOf[c.author_id] || 1, likes: likeCount['comment:' + c.id] || 0, liked: !!likedMine['comment:' + c.id] }); });
+  (comments || []).forEach((c: any) => { (byPost[c.post_id] ||= []).push({ ...c, author_name: nameOf[c.author_id] || 'Trader', author_avatar: avatarOf[c.author_id] || null, author_level: lvlOf[c.author_id] || 1, likes: likeCount['comment:' + c.id] || 0, liked: !!likedMine['comment:' + c.id] }); });
   return list.map((p: any) => ({
-    ...p, author_name: nameOf[p.author_id] || 'Trader', author_level: lvlOf[p.author_id] || 1,
+    ...p, author_name: nameOf[p.author_id] || 'Trader', author_avatar: avatarOf[p.author_id] || null, author_level: lvlOf[p.author_id] || 1,
     likes: likeCount['post:' + p.id] || 0, liked: !!likedMine['post:' + p.id],
     comments: byPost[p.id] || [],
   }));
@@ -415,6 +417,38 @@ export async function deleteComment(mentorId: string, id: string) {
   if (!p) return { ok: false };
   await supabaseAdmin.from('academy_comments').delete().eq('id', id);
   return { ok: true };
+}
+
+// ---- Autogestión del alumno: editar / borrar SOLO lo suyo ----
+export async function deleteOwnPost(userId: string, id: string) {
+  const { error } = await supabaseAdmin.from('academy_posts').delete().eq('id', id).eq('author_id', userId);
+  return { ok: !error };
+}
+export async function deleteOwnComment(userId: string, id: string) {
+  const { error } = await supabaseAdmin.from('academy_comments').delete().eq('id', id).eq('author_id', userId);
+  return { ok: !error };
+}
+// Editar el texto de un post propio. `status` permite volver a poner "pending" si el
+// texto editado necesita revisión de nuevo (lo decide la ruta con el moderador).
+export async function editOwnPost(userId: string, id: string, body: string, status?: string, flag?: string) {
+  const patch: any = { body: String(body || '').slice(0, 4000), edited_at: new Date().toISOString() };
+  if (status === 'pending' || status === 'visible') patch.status = status;
+  if (flag !== undefined) patch.flag_reason = flag || null;
+  const { data } = await supabaseAdmin.from('academy_posts').update(patch).eq('id', id).eq('author_id', userId).select('id').maybeSingle();
+  return { ok: !!data };
+}
+export async function editOwnComment(userId: string, id: string, body: string, status?: string, flag?: string) {
+  const patch: any = { body: String(body || '').slice(0, 2000), edited_at: new Date().toISOString() };
+  if (status === 'pending' || status === 'visible') patch.status = status;
+  if (flag !== undefined) patch.flag_reason = flag || null;
+  const { data } = await supabaseAdmin.from('academy_comments').update(patch).eq('id', id).eq('author_id', userId).select('id').maybeSingle();
+  return { ok: !!data };
+}
+// Foto de perfil (avatar) del alumno. Debe ser una imagen de nuestro Storage.
+export async function setAvatar(userId: string, url: string | null) {
+  const val = url ? (isOurUpload(url) ? String(url).slice(0, 500) : null) : null;
+  await supabaseAdmin.from('profiles').update({ avatar_url: val }).eq('id', userId);
+  return { ok: true, avatar_url: val };
 }
 
 // ---- Directorio público (páginas /academias y /academia/[code]) ----
@@ -638,7 +672,7 @@ export async function tradersBoard(mentorId: string, limit = 30) {
 // ============================================================
 export async function memberProfile(mentorId: string, userId: string, self = false) {
   const [{ data: prof }, { data: pts }, { data: posts }, { data: comments }] = await Promise.all([
-    supabaseAdmin.from('profiles').select('full_name,email,created_at,country').eq('id', userId).maybeSingle(),
+    supabaseAdmin.from('profiles').select('full_name,email,created_at,country,avatar_url').eq('id', userId).maybeSingle(),
     supabaseAdmin.from('academy_points').select('points').eq('mentor_id', mentorId).eq('user_id', userId).maybeSingle(),
     supabaseAdmin.from('academy_posts').select('created_at').eq('mentor_id', mentorId).eq('author_id', userId),
     supabaseAdmin.from('academy_comments').select('created_at,post_id').eq('author_id', userId),
@@ -659,9 +693,14 @@ export async function memberProfile(mentorId: string, userId: string, self = fal
     const { data: au } = await supabaseAdmin.from('academy_audits').select('period,text,created_at,metrics').eq('mentor_id', mentorId).eq('student_id', userId).order('created_at', { ascending: false }).limit(10);
     audits = au || [];
   } catch {}
+  const dnMap = await displayNames(mentorId, [userId]);
+  const academyName = dnMap[userId] || (prof as any)?.full_name || ((prof as any)?.email || '').split('@')[0] || 'Trader';
   return {
     user_id: userId,
-    name: (prof as any)?.full_name || ((prof as any)?.email || '').split('@')[0] || 'Trader',
+    name: academyName,
+    display_name: self ? (dnMap[userId] || '') : undefined,     // el alias propio en ESTA academia (editable por el alumno)
+    email: self ? ((prof as any)?.email || null) : undefined,   // solo el propio dueño ve su email (de solo lectura)
+    avatar_url: (prof as any)?.avatar_url || null,
     country: (prof as any)?.country || null,
     points, level: levelFor(points), contributions, activity: days, verified, certificates, audits,
   };
