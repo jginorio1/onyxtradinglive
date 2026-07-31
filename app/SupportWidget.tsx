@@ -14,8 +14,8 @@ const T: any = {
     msgT: 'Cuéntanos en qué te ayudamos:', msgPh: 'Escribe tu mensaje…',
     sentT: '¡Recibido!', sentD: 'Te responderemos a tu correo muy pronto.', createAcc: 'Crear cuenta gratis',
     errMail: 'Escribe un correo válido.', errMsg: 'Escribe tu mensaje.',
-    topicsA: [['¿Cuáles son los precios y planes?', '💳 Precios'], ['¿Cómo me hago embajador?', '🎁 Embajador'], ['¿Cómo conecto mi cuenta de MetaTrader?', '🔌 Conectar'], ['¿Qué hace Onyx Guardian?', '🛡️ Guardian'], ['¿Sirve para cuentas de fondeo?', '🏆 Fondeo']],
-    topicsU: [['¿Cómo conecto mi cuenta de MetaTrader?', '🔌 Conectar'], ['¿Qué hace Onyx Guardian?', '🛡️ Guardian'], ['¿Sirve para cuentas de fondeo?', '🏆 Fondeo'], ['¿Cómo cambio de plan?', '💳 Mi plan']],
+    topicsA: [['¿Cuáles son los precios y planes?', '💳 Precios'], ['¿Cómo me hago embajador?', '🎁 Embajador'], ['¿Cómo conecto mi cuenta (MetaTrader/cTrader)?', '🔌 Conectar'], ['¿Qué hace Onyx Guardian?', '🛡️ Guardian'], ['¿Sirve para cuentas de fondeo?', '🏆 Fondeo']],
+    topicsU: [['¿Cómo conecto mi cuenta (MetaTrader/cTrader)?', '🔌 Conectar'], ['¿Qué hace Onyx Guardian?', '🛡️ Guardian'], ['¿Sirve para cuentas de fondeo?', '🏆 Fondeo'], ['¿Cómo cambio de plan?', '💳 Mi plan']],
     human: '🙋 Hablar con una persona',
   },
   en: {
@@ -27,8 +27,8 @@ const T: any = {
     msgT: 'Tell us how we can help:', msgPh: 'Type your message…',
     sentT: 'Got it!', sentD: 'We will reply to your email very soon.', createAcc: 'Create free account',
     errMail: 'Enter a valid email.', errMsg: 'Type your message.',
-    topicsA: [['What are the prices and plans?', '💳 Pricing'], ['How do I become an ambassador?', '🎁 Ambassador'], ['How do I connect my MetaTrader account?', '🔌 Connect'], ['What does Onyx Guardian do?', '🛡️ Guardian'], ['Does it work for funded accounts?', '🏆 Funded']],
-    topicsU: [['How do I connect my MetaTrader account?', '🔌 Connect'], ['What does Onyx Guardian do?', '🛡️ Guardian'], ['Does it work for funded accounts?', '🏆 Funded'], ['How do I change my plan?', '💳 My plan']],
+    topicsA: [['What are the prices and plans?', '💳 Pricing'], ['How do I become an ambassador?', '🎁 Ambassador'], ['How do I connect my account (MetaTrader/cTrader)?', '🔌 Connect'], ['What does Onyx Guardian do?', '🛡️ Guardian'], ['Does it work for funded accounts?', '🏆 Funded']],
+    topicsU: [['How do I connect my account (MetaTrader/cTrader)?', '🔌 Connect'], ['What does Onyx Guardian do?', '🛡️ Guardian'], ['Does it work for funded accounts?', '🏆 Funded'], ['How do I change my plan?', '💳 My plan']],
     human: '🙋 Talk to a person',
   },
 };

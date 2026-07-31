@@ -9,7 +9,7 @@ export default function Terms() {
       <h1>Términos y Condiciones</h1>
       <p className="muted">Última actualización: 2026</p>
       <h3>1. El servicio</h3>
-      <p>Onyx Trading Live ("Onyx") es una herramienta de diario y análisis de trading que se conecta a tus cuentas de MetaTrader (MT4/MT5) en modo <b>solo lectura</b> para mostrar tu historial y estadísticas. Onyx no ejecuta operaciones ni mueve fondos.</p>
+      <p>Onyx Trading Live ("Onyx") es una herramienta de diario y análisis de trading que se conecta a tus cuentas de MetaTrader (MT4/MT5), cTrader y otras plataformas compatibles en modo <b>solo lectura</b> para mostrar tu historial y estadísticas. Onyx no ejecuta operaciones ni mueve fondos.</p>
       <h3>2. Cuentas</h3>
       <p>Eres responsable de mantener la confidencialidad de tu cuenta y tu API key. Debes ser mayor de edad para usar el servicio.</p>
       <h3>3. Suscripciones y pagos</h3>
@@ -31,7 +31,7 @@ export default function Terms() {
       <h1>Terms & Conditions</h1>
       <p className="muted">Last updated: 2026</p>
       <h3>1. The service</h3>
-      <p>Onyx Trading Live ("Onyx") is a trading journal and analytics tool that connects to your MetaTrader (MT4/MT5) accounts in <b>read-only</b> mode to display your history and statistics. Onyx does not place trades or move funds.</p>
+      <p>Onyx Trading Live ("Onyx") is a trading journal and analytics tool that connects to your MetaTrader (MT4/MT5), cTrader and other supported platform accounts in <b>read-only</b> mode to display your history and statistics. Onyx does not place trades or move funds.</p>
       <h3>2. Accounts</h3>
       <p>You are responsible for keeping your account and API key confidential. You must be of legal age to use the service.</p>
       <h3>3. Subscriptions & payments</h3>

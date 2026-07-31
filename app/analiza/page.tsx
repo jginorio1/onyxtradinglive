@@ -28,7 +28,7 @@ export default function AnalizaPage() {
         <img src="/onyx-symbol.png" alt="Onyx" style={{ width: 44, height: 44, objectFit: 'contain', marginBottom: 14 }} />
         <h1 style={{ marginBottom: 8 }}>{L('Analiza tu cuenta gratis 🔍', 'Analyze your account free 🔍')}</h1>
         <p className="muted" style={{ fontSize: 15, maxWidth: 560, margin: '0 auto' }}>
-          {L('Pega tu reporte de MetaTrader o tu lista de operaciones cerradas y Onyx AI te dará 3 hallazgos al instante. Sin registro.', 'Paste your MetaTrader statement or your list of closed trades and Onyx AI gives you 3 findings instantly. No signup.')}
+          {L('Pega tu reporte de MetaTrader o cTrader (o tu lista de operaciones cerradas) y Onyx AI te dará 3 hallazgos al instante. Sin registro.', 'Paste your MetaTrader or cTrader statement (or your list of closed trades) and Onyx AI gives you 3 findings instantly. No signup.')}
         </p>
       </div>
 

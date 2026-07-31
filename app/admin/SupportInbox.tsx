@@ -43,7 +43,7 @@ const L: any = {
   en: {
     fMine: 'Mine', fUnassigned: 'Unassigned', needsReply: 'Awaiting reply',
     ctxTitle: 'Trader profile', ctxLead: 'Visitor without account (lead)', ctxNoUser: 'No Onyx account yet.',
-    plan: 'Plan', member: 'Member since', accounts: 'MT accounts', funded: 'funded', prior: 'Prior tickets',
+    plan: 'Plan', member: 'Member since', accounts: 'Accounts', funded: 'funded', prior: 'Prior tickets',
     langF: 'Language', country: 'Country', firm: 'Prop firm', firstSeen: 'First contact', none: '—',
     canned: 'Saved reply', cannedNew: 'New saved reply', cTitle: 'Short title',
     cBody: 'Reply text', cSave: 'Save', cManage: 'Saved replies', cEmpty: 'No saved replies yet.',

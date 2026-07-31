@@ -17,7 +17,7 @@ export default function Privacy() {
       <h3>4. Terceros</h3>
       <p>Usamos proveedores de confianza: Supabase (base de datos), Vercel (hosting) y Stripe (pagos). Cada uno tiene sus propias políticas de privacidad.</p>
       <h3>5. Seguridad</h3>
-      <p>La conexión con MetaTrader es de solo lectura. Aplicamos medidas para proteger tu información, aunque ningún sistema es 100% infalible.</p>
+      <p>La conexión con tu plataforma (MetaTrader, cTrader…) es de solo lectura. Aplicamos medidas para proteger tu información, aunque ningún sistema es 100% infalible.</p>
       <h3>6. Tus derechos</h3>
       <p>Puedes acceder, corregir o eliminar tus datos y tu cuenta en cualquier momento contactándonos.</p>
       <h3>7. Cookies</h3>
@@ -39,7 +39,7 @@ export default function Privacy() {
       <h3>4. Third parties</h3>
       <p>We use trusted providers: Supabase (database), Vercel (hosting) and Stripe (payments). Each has its own privacy policy.</p>
       <h3>5. Security</h3>
-      <p>The MetaTrader connection is read-only. We apply measures to protect your information, although no system is 100% foolproof.</p>
+      <p>The connection to your platform (MetaTrader, cTrader…) is read-only. We apply measures to protect your information, although no system is 100% foolproof.</p>
       <h3>6. Your rights</h3>
       <p>You can access, correct or delete your data and account at any time by contacting us.</p>
       <h3>7. Cookies</h3>

@@ -31,7 +31,7 @@ const A: any = {
     kitT: 'Kit de materiales', kitD: 'Copia estos textos y adáptalos a tu estilo. Cambia el enlace por el tuyo.',
     kIg: 'Para Instagram o X', kTg: 'Para Telegram o WhatsApp', kVid: 'Guion de video (30 segundos)',
     txtIg: 'Dejé de anotar mis operaciones en Excel. Conecto MT4/MT5 a Onyx y veo mi win rate, mis horas buenas y mis errores automáticamente. Pruébalo gratis con mi enlace y llévate descuento:',
-    txtTg: 'Os dejo la herramienta que uso para llevar mi diario de trading. Se conecta sola a MetaTrader y te muestra estadísticas reales: rachas, mejores horas, costes y reglas de fondeo. Hay plan gratis, y con mi código tenéis descuento el primer mes:',
+    txtTg: 'Os dejo la herramienta que uso para llevar mi diario de trading. Se conecta sola a MetaTrader y cTrader y te muestra estadísticas reales: rachas, mejores horas, costes y reglas de fondeo. Hay plan gratis, y con mi código tenéis descuento el primer mes:',
     txtVid: '1) Enseña tu MT5 lleno de operaciones: "así llevaba yo mis números". 2) Abre tu dashboard de Onyx: "y así los llevo ahora". 3) Señala tu win rate y tus mejores horas. 4) "Se conecta solo, hay versión gratis, mi código está abajo".',
   },
   en: {
@@ -56,7 +56,7 @@ const A: any = {
     kitT: 'Marketing kit', kitD: 'Copy these texts and make them your own. Swap the link for yours.',
     kIg: 'For Instagram or X', kTg: 'For Telegram or WhatsApp', kVid: 'Video script (30 seconds)',
     txtIg: 'I stopped tracking my trades in a spreadsheet. I connect MT4/MT5 to Onyx and it shows my win rate, my best hours and my mistakes automatically. Try it free with my link and get a discount:',
-    txtTg: 'Here is the tool I use for my trading journal. It connects to MetaTrader by itself and shows real stats: streaks, best hours, costs and prop-firm rules. There is a free plan, and with my code you get a discount on your first month:',
+    txtTg: 'Here is the tool I use for my trading journal. It connects to MetaTrader and cTrader by itself and shows real stats: streaks, best hours, costs and prop-firm rules. There is a free plan, and with my code you get a discount on your first month:',
     txtVid: '1) Show your MT5 full of trades: "this is how I used to track my numbers". 2) Open your Onyx dashboard: "and this is how I track them now". 3) Point at your win rate and your best hours. 4) "It connects by itself, there is a free version, my code is below".',
   },
 };

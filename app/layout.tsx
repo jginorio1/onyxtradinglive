@@ -37,9 +37,9 @@ export function generateMetadata(): Metadata {
       ? 'Onyx Trading Live · Tu diario de trading conectado a MT4/MT5'
       : 'Onyx Trading Live · Your trading journal connected to MT4/MT5',
     description: es
-      ? 'Conecta tus cuentas MT4/MT5 y analiza tu trading automáticamente: estadísticas, calendario, sesiones, pares y seguimiento de fondeo. Empieza gratis.'
-      : 'Connect your MT4/MT5 accounts and analyze your trading automatically: stats, calendar, sessions, pairs and funding tracking. Start free.',
-    keywords: ['trading journal', 'diario de trading', 'MT4', 'MT5', 'MetaTrader', 'estadísticas trading', 'trading stats', 'FTMO', 'prop firm', 'analytics'],
+      ? 'Conecta tus cuentas de MetaTrader (MT4/MT5) o cTrader y analiza tu trading automáticamente: estadísticas, calendario, sesiones, pares, seguimiento de fondeo, copy trading y academia. Empieza gratis.'
+      : 'Connect your MetaTrader (MT4/MT5) or cTrader accounts and analyze your trading automatically: stats, calendar, sessions, pairs, funding tracking, copy trading and academy. Start free.',
+    keywords: ['trading journal', 'diario de trading', 'MT4', 'MT5', 'MetaTrader', 'cTrader', 'MatchTrader', 'estadísticas trading', 'trading stats', 'FTMO', 'prop firm', 'copy trading', 'trading academy', 'analytics'],
     alternates: localeAlternates('/'),
     manifest: '/manifest.webmanifest',
     appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'Onyx' },
@@ -93,8 +93,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       },
       {
         '@type': 'SoftwareApplication', name: 'Onyx Trading Live',
-        applicationCategory: 'FinanceApplication', operatingSystem: 'Windows (MetaTrader 4/5)',
-        description: 'Diario de trading y gestor de riesgo (Onyx Guardian) para cuentas MT4/MT5: estadísticas automáticas, calendario, control de fondeo y protección del plan de trading.',
+        applicationCategory: 'FinanceApplication', operatingSystem: 'Windows, macOS (MetaTrader 4/5, cTrader)',
+        description: 'Diario de trading y gestor de riesgo (Onyx Guardian) para cuentas de MetaTrader (MT4/MT5) y cTrader: estadísticas automáticas, calendario, control de fondeo, copy trading, academia y protección del plan de trading.',
         url,
         offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD', description: 'Plan gratis para empezar' },
       },

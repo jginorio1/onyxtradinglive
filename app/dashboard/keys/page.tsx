@@ -89,7 +89,7 @@ const K = {
     copy: 'Copiar', copied: '✓ Copiado',
     apiKeyHint: 'tu clave de arriba (o una de la lista de abajo)',
     yourKeys: 'Tus API keys', active: 'activa', revoked: 'revocada', revoke: 'Revocar', noKeys: 'Aún no tienes API keys. Genera una arriba.',
-    errKey: 'No se pudo crear la key: ', errNet: 'Error de red: ', confirmRevoke: '¿Revocar esta API key? La cuenta MT que la use dejará de sincronizar.',
+    errKey: 'No se pudo crear la key: ', errNet: 'Error de red: ', confirmRevoke: '¿Revocar esta API key? La cuenta que la use dejará de sincronizar.',
   },
   en: {
     nav_dash: 'Dashboard', nav_connect: 'Connect account', nav_plan: 'Plan', signout: 'Sign out',
@@ -162,7 +162,7 @@ const K = {
     copy: 'Copy', copied: '✓ Copied',
     apiKeyHint: 'your key from above (or one from the list below)',
     yourKeys: 'Your API keys', active: 'active', revoked: 'revoked', revoke: 'Revoke', noKeys: 'You have no API keys yet. Generate one above.',
-    errKey: 'Could not create the key: ', errNet: 'Network error: ', confirmRevoke: 'Revoke this API key? The MT account using it will stop syncing.',
+    errKey: 'Could not create the key: ', errNet: 'Network error: ', confirmRevoke: 'Revoke this API key? The account using it will stop syncing.',
   },
 };
 
@@ -267,7 +267,7 @@ export default function KeysPage() {
   async function create() {
     setLoading(true); setNewKey('');
     try {
-      const body = { ...f, label: (f.label || '').trim() || (f.broker ? f.broker : 'Mi cuenta MT') };
+      const body = { ...f, label: (f.label || '').trim() || (f.broker ? f.broker : 'Mi cuenta') };
       const r = await fetch('/api/keys', { method: 'POST', body: JSON.stringify(body) });
       const j = await r.json();
       if (j.key) { setNewKey(j.key); setAddingKey(false); setF({ label: '', acc_type: 'own', broker: '', account_login: '', acc_size: '' }); }

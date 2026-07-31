@@ -50,7 +50,7 @@ export default function PlansCompareTable({
           </thead>
           <tbody>
             <tr>
-              <td style={{ padding: '12px 16px', color: 'var(--mut)' }}>{lang === 'es' ? 'Cuentas MT' : 'MT accounts'}</td>
+              <td style={{ padding: '12px 16px', color: 'var(--mut)' }}>{lang === 'es' ? 'Cuentas conectadas' : 'Connected accounts'}</td>
               {cols.map((id) => <td key={id} style={{ textAlign: 'center', padding: '12px 16px', fontWeight: 700 }}>{acc(id)}</td>)}
             </tr>
 

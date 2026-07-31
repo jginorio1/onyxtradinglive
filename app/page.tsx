@@ -17,7 +17,7 @@ type Lang = 'es' | 'en';
 const STATS = [
   { to: 100, suffix: '%', es: 'Conexión solo lectura', en: 'Read-only connection' },
   { to: 15, prefix: '+', es: 'Métricas profesionales', en: 'Pro metrics' },
-  { to: 2, suffix: '', es: 'Plataformas · MT4 y MT5', en: 'Platforms · MT4 & MT5' },
+  { to: 4, suffix: '', es: 'Plataformas', en: 'Platforms' },
   { to: 4, prefix: '+', es: 'Prop firms compatibles', en: 'Compatible prop firms' },
 ];
 
@@ -26,6 +26,7 @@ const LOGOS = [
   { n: 'FTMO', c: '#2f6bff' }, { n: 'FundedNext', c: '#16c98d' },
   { n: 'FundingPips', c: '#8b5cff' }, { n: 'The5%ers', c: '#ffce00' },
   { n: 'MetaTrader 4', c: '#f0a020' }, { n: 'MetaTrader 5', c: '#2f6bff' },
+  { n: 'cTrader', c: '#e0533d' }, { n: 'MatchTrader', c: '#16c98d' },
   { n: 'Axi', c: '#ff4757' }, { n: 'IC Markets', c: 'var(--red2)' },
   { n: 'Pepperstone', c: '#e2531f' }, { n: 'Exness', c: '#ffcf5c' },
 ];
@@ -74,7 +75,7 @@ const dict = {
     mgr: {
       badge: 'Módulo activo · Pro y Elite',
       title: 'Onyx Guardian — el gestor que te protege de ti mismo',
-      sub: 'Nunca abre operaciones. Solo cuida las que abres tú y hace cumplir el plan de trading que escribiste cuando estabas tranquilo. Ya funcionando en MT4 y MT5.',
+      sub: 'Nunca abre operaciones. Solo cuida las que abres tú y hace cumplir el plan de trading que escribiste cuando estabas tranquilo. Ya funcionando en MetaTrader (MT4/MT5) y cTrader.',
       cards: [
         { i: '🎯', t: 'Break even que sale a cero de verdad', d: 'Mueve el stop cuando la operación va a favor y suma la comisión y el swap que te cobró el bróker. Cero real, no cero de precio.' },
         { i: '📐', t: 'Trailing y cierres por partes', d: 'Persigue al precio y cierra en varios niveles. Tú eliges si mides en pips, en R o en dinero.' },
@@ -84,16 +85,29 @@ const dict = {
         { i: '📰', t: 'Bloqueo por noticias', d: 'Evita operar alrededor de datos de alto impacto, los minutos que tú marques. Disponible en Elite.' },
       ],
       honestT: 'Lo que no hace, dicho claro',
-      honestD: 'MetaTrader no permite que un EA impida una orden antes de enviarse. Lo que Onyx hace es cerrarla en cuanto aparece, en uno o dos segundos, y eso te cuesta el spread de esa entrada. No es un fallo: es la fricción. Y sin MetaTrader abierto no protege nada — para uso serio, un VPS.',
+      honestD: 'Onyx no puede impedir una orden antes de que la envíes: la cierra en cuanto aparece, en uno o dos segundos, y eso te cuesta el spread de esa entrada. No es un fallo: es la fricción. Y sin tu plataforma abierta no protege nada — para uso serio, un VPS.',
     },
-    nav: { features: 'Funciones', how: 'Cómo funciona', fondeo: 'Fondeo', gestor: 'Guardian', pricing: 'Precios', amb: 'Embajadores', faq: 'FAQ', login: 'Entrar', cta: 'Empieza gratis' },
+    nav: { features: 'Funciones', eco: 'Ecosistema', how: 'Cómo funciona', fondeo: 'Fondeo', gestor: 'Guardian', pricing: 'Precios', amb: 'Embajadores', faq: 'FAQ', login: 'Entrar', cta: 'Empieza gratis' },
+    eco: {
+      badge: '🧩 Mucho más que un diario',
+      t: 'Todo el ecosistema Onyx',
+      s: 'Un solo lugar para analizar, proteger, aprender y hacer crecer tu trading. Todo conectado a tu misma cuenta.',
+      cards: [
+        { i: '🛡️', t: 'Onyx Guardian', d: 'Gestiona y frena tus operaciones según tu plan: break even real, trailing, parciales, límites de fondeo y bloqueo por noticias.' },
+        { i: '🔁', t: 'Copy trading', d: 'Copia de una cuenta maestra a varias, con tus límites de riesgo por enlace. Nunca se activa solo: tú decides.' },
+        { i: '🎓', t: 'Onyx Academy', d: 'Comunidad y mentoría estilo Skool: cursos, clases en vivo, feed, retos y certificados. Los mentores cobran con Stripe.' },
+        { i: '🤖', t: 'Onyx AI', d: 'Analiza tu operativa, lee tu reporte y te da hallazgos claros. Nunca da señales ni promete ganancias.' },
+        { i: '📲', t: 'Alertas por Telegram', d: 'Avisos de fondeo, Guardian, noticias, meta alcanzada y resumen diario, directo a tu Telegram.' },
+        { i: '🏆', t: 'Seguimiento de reto', d: 'Vigila las reglas de tu prop firm en vivo: objetivo, pérdida diaria y total, con margen de seguridad.' },
+      ],
+    },
     hero: {
-      badge: '🔗 Conecta MT4 y MT5 · Sincronización automática',
+      badge: '🔗 MetaTrader, cTrader y más · Sincronización automática',
       h1a: 'Opera con datos,', h1b: 'no con memoria',
-      sub: 'Conecta tu cuenta de MetaTrader o de fondeo y deja que Onyx analice cada operación: sesiones y noticias en vivo, costes, calendario y reglas de fondeo. Todo en un panel.',
+      sub: 'Conecta tu cuenta de MetaTrader, cTrader o de fondeo y deja que Onyx analice cada operación: sesiones y noticias en vivo, costes, calendario y reglas de fondeo. Todo en un panel.',
       cta1: 'Empieza gratis →', cta2: 'Ver precios', note: 'Sin tarjeta para empezar · Cancela cuando quieras',
     },
-    trust: ['✅ Compatible con MT4 y MT5', '🔒 Conexión de solo lectura', '💳 Pagos seguros con Stripe'],
+    trust: ['✅ MT4, MT5 y cTrader', '🔒 Conexión de solo lectura', '💳 Pagos seguros con Stripe'],
     logosT: 'Compatible con tu bróker y tu prop firm',
     videoBadge: '▶ En acción',
     videoT: 'Mira Onyx por dentro',
@@ -103,7 +117,7 @@ const dict = {
     probS: 'La mayoría de traders no sabe qué le hace ganar y qué le hace perder. Onyx convierte tu historial en información clara para que mejores de verdad.',
     featT: 'Todo lo que necesitas para mejorar',
     features: [
-      { i: '🔗', t: 'Conexión MT4/MT5', d: 'Vincula tus cuentas y sincroniza el historial automáticamente, sin subir nada a mano.' },
+      { i: '🔗', t: 'Conexión multiplataforma', d: 'MetaTrader 4 y 5, cTrader y pronto MatchTrader. Vincula tus cuentas y sincroniza el historial automáticamente, sin subir nada a mano.' },
       { i: '📈', t: 'Estadísticas avanzadas', d: 'Win rate, profit factor, expectancy, payoff, drawdown, break even y mucho más.' },
       { i: '🗓️', t: 'Calendario de resultados', d: 'Visualiza tu P&L por día, mes y año con un calendario tipo mapa de calor.' },
       { i: '🗂️', t: 'Multi-cuenta y portafolio', d: 'Gestiona varias cuentas (real, demo, fondeo) y ve tu portafolio completo sumado.' },
@@ -115,7 +129,7 @@ const dict = {
     howT: 'Listo en 3 minutos',
     steps: [
       { t: 'Crea tu cuenta', d: 'Regístrate gratis con tu email. Sin tarjeta.' },
-      { t: 'Conecta MetaTrader', d: 'Instala el Onyx Connector y pega tu API key. Solo lectura.' },
+      { t: 'Conecta tu plataforma', d: 'Elige MetaTrader o cTrader, instala el Onyx Connector y pega tu API key. Solo lectura.' },
       { t: 'Analiza y mejora', d: 'Tus operaciones aparecen al instante con todas las estadísticas.' },
     ],
     whoT: '¿Para quién es Onyx?',
@@ -127,11 +141,11 @@ const dict = {
     prop: {
       badge: '🏆 Hecho para cuentas de fondeo',
       t: 'Compatible con tu prop firm',
-      s: 'Tu cuenta de fondeo es una cuenta de MetaTrader. Onyx se conecta igual que a cualquier broker: instalas el connector, pegas tu API key y listo. Elige tu firma para ver los detalles:',
+      s: 'Tu cuenta de fondeo es una cuenta de MetaTrader o cTrader. Onyx se conecta igual que a cualquier broker: instalas el connector, pegas tu API key y listo. Elige tu firma para ver los detalles:',
       onyx: '✓ Compatible con Onyx',
       plats: 'Plataformas disponibles',
       sizes: 'Tamaños de cuenta',
-      note: '¿Tu firma no está en la lista? Si te da una cuenta MT4 o MT5, Onyx funciona igual.',
+      note: '¿Tu firma no está en la lista? Si te da una cuenta MetaTrader (MT4/MT5) o cTrader, Onyx funciona igual.',
       tTitle: '📊 Seguimiento de fondeo en vivo',
       tSub: 'Mueve el control y mira cómo Onyx vigila tus reglas en tiempo real. Ejemplo con cuenta de $50.000.',
       tPnl: 'Tu P&L actual',
@@ -155,8 +169,8 @@ const dict = {
     priceT: 'Planes para cada trader', priceS: 'Empieza gratis. Cambia o cancela cuando quieras.',
     monthly: 'Mensual', annual: 'Anual (2 meses gratis)',
     plans: [
-      { n: 'Free', p: 0, items: ['1 cuenta MT', 'Estadísticas básicas', '30 días de historial'], cta: 'Empezar gratis', pop: false },
-      { n: 'Pro', p: 19, items: ['5 cuentas MT', 'Todas las estadísticas', 'Historial ilimitado', 'Calendario y gráficas', 'Reglas de fondeo'], cta: 'Elegir Pro', pop: true },
+      { n: 'Free', p: 0, items: ['1 cuenta conectada', 'Estadísticas básicas', '30 días de historial'], cta: 'Empezar gratis', pop: false },
+      { n: 'Pro', p: 19, items: ['5 cuentas conectadas', 'Todas las estadísticas', 'Historial ilimitado', 'Calendario y gráficas', 'Reglas de fondeo'], cta: 'Elegir Pro', pop: true },
       { n: 'Elite', p: 39, items: ['Cuentas ilimitadas', 'Todo lo de Pro', 'Informes automáticos', 'Alertas por Telegram', 'Soporte prioritario'], cta: 'Elegir Elite', pop: false },
     ],
     amb: {
@@ -167,14 +181,14 @@ const dict = {
     },
     faqT: 'Preguntas frecuentes',
     faqs: [
-      ['¿Con qué brokers y prop firms funciona?', 'Con cualquier cuenta MT4 o MT5: FTMO, FundedNext, The5ers, FundingPips y tu bróker de siempre. Tu cuenta de fondeo es una cuenta de MetaTrader, así que se conecta igual.'],
+      ['¿Con qué brokers y prop firms funciona?', 'Con cualquier cuenta de MetaTrader (MT4/MT5) o cTrader: FTMO, FundedNext, The5ers, FundingPips y tu bróker de siempre. Tu cuenta de fondeo usa una de esas plataformas, así que se conecta igual.'],
       ['¿Es seguro conectar mi cuenta?', 'Sí. La conexión es de solo lectura: Onyx lee tu historial pero nunca puede operar, retirar ni mover tus fondos.'],
       ['¿Necesito saber programar?', 'No. Instalas el connector, pegas tu API key y listo. Te guiamos paso a paso; no hay que tocar código.'],
       ['¿Cuántas cuentas puedo conectar?', 'Depende de tu plan: desde 1 cuenta en el plan gratis hasta cuentas ilimitadas. Ves todas juntas en tu portafolio.'],
       ['¿Tienen programa de afiliados o embajadores?', 'Sí. Si tienes comunidad, canal o seguidores, cobras una comisión recurrente por cada persona que se suscriba con tu enlace, mientras siga pagando. Además tu audiencia entra con descuento usando tu código. Míralo en la página de Embajadores.'],
       ['¿Funciona en el móvil?', 'Sí. El panel se adapta a móvil, tablet y monitores grandes, así que lo revisas desde cualquier dispositivo.'],
       ['¿En qué se diferencia de un Excel?', 'Onyx sincroniza solo, calcula 15+ métricas, tiene calendario, sesiones y noticias en vivo, costes, fondeo y gráficas modernas. Un Excel no hace nada de eso.'],
-      ['¿Funciona con MT4 y MT5?', 'Sí, con las dos. Solo cambias el archivo del connector según tu plataforma; la misma API key sirve para ambas.'],
+      ['¿Con qué plataformas funciona?', 'Con MetaTrader 4 y 5 y con cTrader; MatchTrader llega pronto. Al conectar eliges tu plataforma y descargas el conector correcto (EA para MetaTrader, cBot para cTrader). La misma cuenta y clave te valen para todas.'],
       ['¿Puedo cancelar cuando quiera?', 'Claro. Gestionas tu suscripción desde tu panel y cancelas o cambias de plan en cualquier momento.'],
       ['¿Qué formas de pago aceptan?', 'Pago seguro con tarjeta a través de Stripe. Tus datos de pago nunca pasan por nuestros servidores.'],
     ],
@@ -185,7 +199,7 @@ const dict = {
     mgr: {
       badge: 'Live module · Pro and Elite',
       title: 'Onyx Guardian — the manager that protects you from yourself',
-      sub: 'It never opens trades. It only looks after the ones you open and enforces the trading plan you wrote while you were calm. Already running on MT4 and MT5.',
+      sub: 'It never opens trades. It only looks after the ones you open and enforces the trading plan you wrote while you were calm. Already running on MetaTrader (MT4/MT5) and cTrader.',
       cards: [
         { i: '🎯', t: 'Break even that really means zero', d: 'Moves the stop once the trade goes your way and adds the commission and swap your broker charged. Real zero, not price zero.' },
         { i: '📐', t: 'Trailing and partial closes', d: 'Follows price and closes at several levels. You choose whether you measure in pips, R or money.' },
@@ -195,16 +209,29 @@ const dict = {
         { i: '📰', t: 'News blackout', d: 'Avoids trading around high-impact releases, for the minutes you set. Available on Elite.' },
       ],
       honestT: 'What it does not do, said plainly',
-      honestD: 'MetaTrader does not let an EA block an order before it is sent. What Onyx does is close it as soon as it appears, within a second or two, and that costs you the spread on that entry. Not a bug: that is the friction. And with MetaTrader closed it protects nothing — for serious use, a VPS.',
+      honestD: 'Onyx cannot block an order before you send it: it closes it as soon as it appears, within a second or two, and that costs you the spread on that entry. Not a bug: that is the friction. And with your platform closed it protects nothing — for serious use, a VPS.',
     },
-    nav: { features: 'Features', how: 'How it works', fondeo: 'Prop firms', gestor: 'Guardian', pricing: 'Pricing', amb: 'Ambassadors', faq: 'FAQ', login: 'Log in', cta: 'Start free' },
+    nav: { features: 'Features', eco: 'Ecosystem', how: 'How it works', fondeo: 'Prop firms', gestor: 'Guardian', pricing: 'Pricing', amb: 'Ambassadors', faq: 'FAQ', login: 'Log in', cta: 'Start free' },
+    eco: {
+      badge: '🧩 Much more than a journal',
+      t: 'The whole Onyx ecosystem',
+      s: 'One place to analyze, protect, learn and grow your trading. All wired to your same account.',
+      cards: [
+        { i: '🛡️', t: 'Onyx Guardian', d: 'Manages and brakes your trades to your plan: real break even, trailing, partials, funded-account limits and news blackout.' },
+        { i: '🔁', t: 'Copy trading', d: 'Copy from a master account to several, with your own per-link risk limits. Never auto-activates: you decide.' },
+        { i: '🎓', t: 'Onyx Academy', d: 'Skool-style community and mentorship: courses, live classes, feed, challenges and certificates. Mentors get paid with Stripe.' },
+        { i: '🤖', t: 'Onyx AI', d: 'Analyzes your trading, reads your statement and gives you clear findings. Never gives signals or promises profit.' },
+        { i: '📲', t: 'Telegram alerts', d: 'Funding, Guardian, news, target reached and daily summary alerts, straight to your Telegram.' },
+        { i: '🏆', t: 'Challenge tracker', d: 'Watch your prop-firm rules live: target, daily and total loss, with a safety margin.' },
+      ],
+    },
     hero: {
-      badge: '🔗 Connect MT4 & MT5 · Automatic sync',
+      badge: '🔗 MetaTrader, cTrader & more · Automatic sync',
       h1a: 'Trade with data,', h1b: 'not memory',
-      sub: 'Connect your MetaTrader or funded account and let Onyx analyze every trade: live sessions and news, costs, calendar and prop-firm rules. All in one panel.',
+      sub: 'Connect your MetaTrader, cTrader or funded account and let Onyx analyze every trade: live sessions and news, costs, calendar and prop-firm rules. All in one panel.',
       cta1: 'Start free →', cta2: 'See pricing', note: 'No card to start · Cancel anytime',
     },
-    trust: ['✅ Works with MT4 & MT5', '🔒 Read-only connection', '💳 Secure payments with Stripe'],
+    trust: ['✅ MT4, MT5 & cTrader', '🔒 Read-only connection', '💳 Secure payments with Stripe'],
     logosT: 'Works with your broker and prop firm',
     videoBadge: '▶ In action',
     videoT: 'See Onyx from the inside',
@@ -214,7 +241,7 @@ const dict = {
     probS: 'Most traders don\'t know what makes them win or lose. Onyx turns your history into clear insights so you actually improve.',
     featT: 'Everything you need to improve',
     features: [
-      { i: '🔗', t: 'MT4/MT5 connection', d: 'Link your accounts and sync your history automatically — nothing to upload by hand.' },
+      { i: '🔗', t: 'Multi-platform connection', d: 'MetaTrader 4 & 5, cTrader and MatchTrader soon. Link your accounts and sync your history automatically — nothing to upload by hand.' },
       { i: '📈', t: 'Advanced stats', d: 'Win rate, profit factor, expectancy, payoff, drawdown, break even and much more.' },
       { i: '🗓️', t: 'Results calendar', d: 'See your P&L by day, month and year with a heatmap-style calendar.' },
       { i: '🗂️', t: 'Multi-account & portfolio', d: 'Manage several accounts (live, demo, funded) and see your full portfolio combined.' },
@@ -226,7 +253,7 @@ const dict = {
     howT: 'Ready in 3 minutes',
     steps: [
       { t: 'Create your account', d: 'Sign up free with your email. No card.' },
-      { t: 'Connect MetaTrader', d: 'Install the Onyx Connector and paste your API key. Read-only.' },
+      { t: 'Connect your platform', d: 'Pick MetaTrader or cTrader, install the Onyx Connector and paste your API key. Read-only.' },
       { t: 'Analyze & improve', d: 'Your trades show up instantly with all the stats.' },
     ],
     whoT: 'Who is Onyx for?',
@@ -238,11 +265,11 @@ const dict = {
     prop: {
       badge: '🏆 Built for funded accounts',
       t: 'Works with your prop firm',
-      s: 'Your funded account is a MetaTrader account. Onyx connects just like any broker: install the connector, paste your API key, done. Pick your firm to see the details:',
+      s: 'Your funded account is a MetaTrader or cTrader account. Onyx connects just like any broker: install the connector, paste your API key, done. Pick your firm to see the details:',
       onyx: '✓ Works with Onyx',
       plats: 'Available platforms',
       sizes: 'Account sizes',
-      note: 'Your firm not listed? If it gives you an MT4 or MT5 account, Onyx works too.',
+      note: 'Your firm not listed? If it gives you a MetaTrader (MT4/MT5) or cTrader account, Onyx works too.',
       tTitle: '📊 Live funding tracker',
       tSub: 'Drag the control and watch Onyx guard your rules in real time. Example with a $50,000 account.',
       tPnl: 'Your current P&L',
@@ -266,8 +293,8 @@ const dict = {
     priceT: 'Plans for every trader', priceS: 'Start free. Switch or cancel anytime.',
     monthly: 'Monthly', annual: 'Annual (2 months free)',
     plans: [
-      { n: 'Free', p: 0, items: ['1 MT account', 'Basic stats', '30 days of history'], cta: 'Start free', pop: false },
-      { n: 'Pro', p: 19, items: ['5 MT accounts', 'All stats', 'Unlimited history', 'Calendar & charts', 'Prop-firm rules'], cta: 'Choose Pro', pop: true },
+      { n: 'Free', p: 0, items: ['1 connected account', 'Basic stats', '30 days of history'], cta: 'Start free', pop: false },
+      { n: 'Pro', p: 19, items: ['5 connected accounts', 'All stats', 'Unlimited history', 'Calendar & charts', 'Prop-firm rules'], cta: 'Choose Pro', pop: true },
       { n: 'Elite', p: 39, items: ['Unlimited accounts', 'Everything in Pro', 'Automatic reports', 'Telegram alerts', 'Priority support'], cta: 'Choose Elite', pop: false },
     ],
     amb: {
@@ -278,14 +305,14 @@ const dict = {
     },
     faqT: 'Frequently asked questions',
     faqs: [
-      ['Which brokers and prop firms does it work with?', 'Any MT4 or MT5 account: FTMO, FundedNext, The5ers, FundingPips and your usual broker. Your funded account is a MetaTrader account, so it connects the same way.'],
+      ['Which brokers and prop firms does it work with?', 'Any MetaTrader (MT4/MT5) or cTrader account: FTMO, FundedNext, The5ers, FundingPips and your usual broker. Your funded account uses one of those platforms, so it connects the same way.'],
       ['Is it safe to connect my account?', 'Yes. The connection is read-only: Onyx reads your history but can never trade, withdraw or move your funds.'],
       ['Do I need to know how to code?', 'No. Install the connector, paste your API key and you\'re done. We guide you step by step — no code required.'],
       ['How many accounts can I connect?', 'Depends on your plan: from 1 account on Free to unlimited accounts. You see them all combined in your portfolio.'],
       ['Do you have an affiliate or ambassador program?', 'Yes. If you have a community, channel or followers, you earn a recurring commission for every person who subscribes through your link, for as long as they keep paying. Your audience also gets a discount with your code. Check the Ambassadors page.'],
       ['Does it work on mobile?', 'Yes. The dashboard adapts to phone, tablet and large monitors, so you can check it from any device.'],
       ['How is it different from a spreadsheet?', 'Onyx syncs automatically, computes 15+ metrics, and has a calendar, live sessions and news, costs, prop-firm tracking and modern charts. A spreadsheet does none of that.'],
-      ['Does it work with MT4 and MT5?', 'Yes, both. You just use the connector file for your platform; the same API key works for both.'],
+      ['Which platforms does it work with?', 'MetaTrader 4 and 5 and cTrader; MatchTrader is coming soon. When you connect you pick your platform and download the right connector (EA for MetaTrader, cBot for cTrader). The same account and key work across all of them.'],
       ['Can I cancel anytime?', 'Of course. Manage your subscription from your panel and cancel or change plan anytime.'],
       ['What payment methods do you accept?', 'Secure card payments through Stripe. Your payment data never touches our servers.'],
     ],
@@ -333,6 +360,7 @@ export default function Home() {
 
   const SECTIONS = [
     { id: 'features', label: t.nav.features },
+    { id: 'eco', label: t.nav.eco },
     { id: 'how', label: t.nav.how },
     { id: 'fondeo', label: t.nav.fondeo },
     { id: 'gestor', label: t.nav.gestor },
@@ -414,8 +442,8 @@ export default function Home() {
             <div className="muted" style={{ fontSize: 14, marginTop: 6 }}>{lang === 'es' ? 'Frenos del Guardian' : 'Guardian stops'}</div>
           </div>
           <div className="card" style={{ padding: '26px 16px' }}>
-            <Counter to={2} />
-            <div className="muted" style={{ fontSize: 14, marginTop: 6 }}>{lang === 'es' ? 'Plataformas · MT4 y MT5' : 'Platforms · MT4 & MT5'}</div>
+            <Counter to={4} />
+            <div className="muted" style={{ fontSize: 14, marginTop: 6 }}>{lang === 'es' ? 'Plataformas · MT4, MT5, cTrader, MatchTrader' : 'Platforms · MT4, MT5, cTrader, MatchTrader'}</div>
           </div>
           <div className="card" style={{ padding: '26px 16px' }}>
             <Counter to={100} suffix="%" />
@@ -447,6 +475,24 @@ export default function Home() {
         <div className="grid g3">
           {t.features.map((f, i) => (
             <div key={i} className="card"><div style={{ fontSize: 26, marginBottom: 10 }}>{f.i}</div><h3 style={{ marginBottom: 6 }}>{f.t}</h3><p className="muted" style={{ fontSize: 15 }}>{f.d}</p></div>
+          ))}
+        </div>
+      </div>
+
+      {/* ECOSISTEMA · todo lo que hace Onyx además del diario */}
+      <div id="eco" className="wrap section">
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <span className="pill green">{t.eco.badge}</span>
+          <h2 style={{ margin: '14px 0 10px' }}>{t.eco.t}</h2>
+          <p className="muted" style={{ fontSize: 17, maxWidth: 660, margin: '0 auto' }}>{t.eco.s}</p>
+        </div>
+        <div className="grid g3">
+          {t.eco.cards.map((c: any, i: number) => (
+            <div key={i} className="card">
+              <div style={{ fontSize: 26, marginBottom: 10 }}>{c.i}</div>
+              <h3 style={{ marginBottom: 6 }}>{c.t}</h3>
+              <p className="muted" style={{ fontSize: 15, lineHeight: 1.7 }}>{c.d}</p>
+            </div>
           ))}
         </div>
       </div>
@@ -543,7 +589,7 @@ export default function Home() {
             <div style={{ fontSize: 13, color: 'var(--mut)', marginBottom: 7 }}>{t.prop.plats}</div>
             <div className="row" style={{ gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
               {f.plats.map((p, j) => {
-                const ok = p.indexOf('MT') === 0;
+                const ok = /^(MT4|MT5|MetaTrader|cTrader|MatchTrader)/.test(p);
                 return <span key={j} style={{ padding: '5px 11px', borderRadius: 8, fontSize: 13, fontWeight: 600,
                   background: ok ? 'rgba(52,226,160,0.14)' : 'var(--bg2)', color: ok ? 'var(--green)' : 'var(--mut)',
                   border: ok ? '1px solid rgba(52,226,160,0.45)' : '1px solid var(--line)' }}>{ok ? '✓ ' : ''}{p}</span>;

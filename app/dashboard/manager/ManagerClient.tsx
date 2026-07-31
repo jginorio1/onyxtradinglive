@@ -14,12 +14,12 @@ type Lang = 'es' | 'en';
 
 const T: any = {
   es: {
-    title: 'Onyx Guardian', subtitle: 'Protege tus operaciones automáticamente', back: 'Volver al panel', save: 'Guardar y enviar', saved: 'Enviado al MetaTrader', saving: '...', planLink: '🎯 Mi plan y hábitos',
+    title: 'Onyx Guardian', subtitle: 'Protege tus operaciones automáticamente', back: 'Volver al panel', save: 'Guardar y enviar', saved: 'Enviado a tu plataforma', saving: '...', planLink: '🎯 Mi plan y hábitos',
     sumActive: 'Protecciones activas', sumOf: 'de',
     unitsBigT: '¿En qué mido mis niveles?', unitsApplies: 'Se aplica a break even, trailing y parciales. Cámbialo aquí y todas las casillas se ajustan.',
     unitsChosen: 'Elegiste', unitsChosen2: ': las casillas de esta pestaña usan esa unidad.',
     uPipsD: 'Distancia del par', uRD: 'Múltiplos del stop', uMoneyD: 'En tu divisa',
-    noAcc: 'Conecta una cuenta MT para usar Onyx Guardian.', connect: 'Conectar cuenta →',
+    noAcc: 'Conecta una cuenta (MetaTrader o cTrader) para usar Onyx Guardian.', connect: 'Conectar cuenta →',
     lockT: 'Onyx Guardian está en los planes de pago', lockD: 'Deja que Onyx mueva tus stops, aplique trailing y cierre por partes mientras tú te concentras en operar.', lockCta: 'Ver planes →',
     account: 'Cuenta', live: 'EA conectado', offline: 'EA sin señal', never: 'Nunca ha sincronizado',
     onoff: 'Gestor activo en esta cuenta', onoffD: 'Si lo apagas, Onyx no toca ninguna operación.',
@@ -42,7 +42,7 @@ const T: any = {
     ptAt: 'Al llegar a', ptClose: 'Cierro', ptTotal: 'Total cerrado', ptOver: 'La suma no puede pasar de 100%.',
     ptMinLot: 'Ojo: si tu operación es de 0.01 lotes, el bróker no deja partirla. Los parciales se saltarán.',
 
-    qaT: 'Acciones rápidas', qaD: 'Se ejecutan en tu MetaTrader en unos segundos.',
+    qaT: 'Acciones rápidas', qaD: 'Se ejecutan en tu plataforma (MetaTrader o cTrader) en unos segundos.',
     qaBe: 'Poner SL en break even', qaHalf: 'Cerrar la mitad', qaProfit: 'Cerrar solo las ganadoras', qaAll: 'Cerrar todo',
     qaConfirm: '¿Seguro? Esto afecta a tus operaciones reales.', qaSent: 'Orden enviada. El EA la ejecutará en segundos.',
 
@@ -51,16 +51,16 @@ const T: any = {
 
     evT: 'Últimas intervenciones', evNone: 'Onyx aún no ha hecho nada en tus cuentas.',
     kinds: { breakeven: 'Break even', trailing: 'Trailing', partial: 'Cierre parcial', close_all: 'Cerró todo', blocked: 'Bloqueó', info: 'Aviso' },
-    warnT: 'Ten esto en cuenta', warn1: 'Onyx solo actúa con MetaTrader abierto, AlgoTrading encendido y conexión activa. Si tu ordenador se apaga, no protege. Si operas en serio, usa un VPS.', warn2: 'Es una ayuda, no una garantía. Un hueco de mercado puede saltarse cualquier stop.', warn3: 'Pon el EA en un solo gráfico por cuenta. Gestiona todas tus posiciones desde ahí.',
+    warnT: 'Ten esto en cuenta', warn1: 'Onyx solo actúa con tu plataforma abierta y el conector corriendo (AlgoTrading en MetaTrader, o el cBot en Play en cTrader) y conexión activa. Si tu ordenador se apaga, no protege. Si operas en serio, usa un VPS.', warn2: 'Es una ayuda, no una garantía. Un hueco de mercado puede saltarse cualquier stop.', warn3: 'Pon el conector en un solo gráfico por cuenta. Gestiona todas tus posiciones desde ahí.',
     adv: 'Disponible en Elite',
   },
   en: {
-    title: 'Onyx Guardian', subtitle: 'Protects your trades automatically', back: 'Back to dashboard', save: 'Save and send', saved: 'Sent to MetaTrader', saving: '...', planLink: '🎯 My plan and habits',
+    title: 'Onyx Guardian', subtitle: 'Protects your trades automatically', back: 'Back to dashboard', save: 'Save and send', saved: 'Sent to your platform', saving: '...', planLink: '🎯 My plan and habits',
     sumActive: 'Active protections', sumOf: 'of',
     unitsBigT: 'How do I measure my levels?', unitsApplies: 'Applies to break even, trailing and partials. Change it here and every box adjusts.',
     unitsChosen: 'You chose', unitsChosen2: ': the boxes on this tab use that unit.',
     uPipsD: 'Pair distance', uRD: 'Stop multiples', uMoneyD: 'In your currency',
-    noAcc: 'Connect an MT account to use Onyx Guardian.', connect: 'Connect account →',
+    noAcc: 'Connect an account (MetaTrader or cTrader) to use Onyx Guardian.', connect: 'Connect account →',
     lockT: 'Onyx Guardian is on the paid plans', lockD: 'Let Onyx move your stops, run trailing and close in parts while you focus on trading.', lockCta: 'See plans →',
     account: 'Account', live: 'EA connected', offline: 'EA not reporting', never: 'Never synced',
     onoff: 'Manager active on this account', onoffD: 'If you turn it off, Onyx touches nothing.',
@@ -83,7 +83,7 @@ const T: any = {
     ptAt: 'When it reaches', ptClose: 'Close', ptTotal: 'Total closed', ptOver: 'The sum cannot exceed 100%.',
     ptMinLot: 'Heads up: with 0.01 lots your broker will not let it be split. Partials will be skipped.',
 
-    qaT: 'Quick actions', qaD: 'They run in your MetaTrader within seconds.',
+    qaT: 'Quick actions', qaD: 'They run in your platform (MetaTrader or cTrader) within seconds.',
     qaBe: 'Move SL to break even', qaHalf: 'Close half', qaProfit: 'Close winners only', qaAll: 'Close everything',
     qaConfirm: 'Are you sure? This affects your real trades.', qaSent: 'Order sent. The EA will run it in seconds.',
 
@@ -92,7 +92,7 @@ const T: any = {
 
     evT: 'Latest actions', evNone: 'Onyx has not done anything on your accounts yet.',
     kinds: { breakeven: 'Break even', trailing: 'Trailing', partial: 'Partial close', close_all: 'Closed all', blocked: 'Blocked', info: 'Notice' },
-    warnT: 'Keep this in mind', warn1: 'Onyx only acts with MetaTrader open, AlgoTrading on and a live connection. If your computer shuts down, it does not protect. If you trade seriously, use a VPS.', warn2: 'It is a helper, not a guarantee. A market gap can jump over any stop.', warn3: 'Run the EA on a single chart per account. It manages all your positions from there.',
+    warnT: 'Keep this in mind', warn1: 'Onyx only acts with your platform open and the connector running (AlgoTrading on in MetaTrader, or the cBot on Play in cTrader) and a live connection. If your computer shuts down, it does not protect. If you trade seriously, use a VPS.', warn2: 'It is a helper, not a guarantee. A market gap can jump over any stop.', warn3: 'Run the connector on a single chart per account. It manages all your positions from there.',
     adv: 'Available on Elite',
   },
 };

@@ -193,7 +193,7 @@ export default function Expenses() {
               {f.firm === 'Otra' && <div><span style={lbl}>{L('Nombre', 'Name')}</span><input value={f.firmOther} onChange={(e) => set('firmOther', e.target.value)} style={{ ...inp, margin: 0 }} /></div>}
               <div><span style={lbl}>{L('Tamaño', 'Size')}</span><input value={f.acc_size} onChange={(e) => set('acc_size', e.target.value.replace(/[^\d]/g, ''))} placeholder="50000" inputMode="numeric" style={{ ...inp, margin: 0 }} /></div>
               <div><span style={lbl}>{L('Tipo', 'Type')}</span><select value={f.phase} onChange={(e) => set('phase', e.target.value)} style={{ ...inp, margin: 0 }}>{Object.keys(PHASE_LABEL).map((k) => <option key={k} value={k}>{ph(k)}</option>)}</select></div>
-              <div><span style={lbl}>{L('Cuenta MT', 'MT account')}</span><select value={f.account_id} onChange={(e) => set('account_id', e.target.value)} style={{ ...inp, margin: 0 }}><option value="">{L('— ninguna —', '— none —')}</option>{(d.accounts || []).map((a: any) => <option key={a.id} value={a.id}>{a.name}</option>)}</select></div>
+              <div><span style={lbl}>{L('Cuenta', 'Account')}</span><select value={f.account_id} onChange={(e) => set('account_id', e.target.value)} style={{ ...inp, margin: 0 }}><option value="">{L('— ninguna —', '— none —')}</option>{(d.accounts || []).map((a: any) => <option key={a.id} value={a.id}>{a.name}</option>)}</select></div>
             </div>
             <label className="row" style={{ gap: 6, marginTop: 10, fontSize: 12.5, color: 'var(--mut)', cursor: 'pointer', alignItems: 'flex-start' }}>
               <input type="checkbox" checked={f.refundable} onChange={(e) => set('refundable', e.target.checked)} style={{ width: 'auto', margin: '2px 0 0' }} />
@@ -226,7 +226,7 @@ export default function Expenses() {
               </div>
             ))}
           </div>
-          <p className="muted" style={{ fontSize: 11, marginTop: 8 }}>{L('El "ganado" solo cuenta si vinculaste el reto a una cuenta MT.', 'Earned only counts if you linked the challenge to an MT account.')}</p>
+          <p className="muted" style={{ fontSize: 11, marginTop: 8 }}>{L('El "ganado" solo cuenta si vinculaste el reto a una cuenta conectada.', 'Earned only counts if you linked the challenge to a connected account.')}</p>
         </div>
       )}
 
