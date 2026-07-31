@@ -1631,3 +1631,38 @@ si el push está configurado (VAPID) y el usuario aún no está suscrito.
 
 **Requisitos:** el SQL v15 + las claves VAPID en Vercel (ya existentes) para que el banner y el
 push funcionen.
+
+### 48 · Onyx Academy — Grabaciones, plan anual, cupones y reseñas (Fase 15)
+
+**SQL (Supabase, tras academy_v15.sql):** `supabase/academy_v16.sql`
+- `academy_events.recording_url` (text): link de la grabación de cada clase en vivo.
+- `mentors.membership_year_cents` (bigint): precio anual opcional de la membresía (0 = sin anual).
+- Tabla `academy_reviews`: reseñas verificadas de alumnos (aprobación del mentor).
+
+Cinco mejoras de bajo costo (todas reutilizan la infra que ya tienes, sin servicios nuevos):
+
+**1) Clases por YouTube Live (sin costo de streaming).** En **En vivo → Programar**, si el
+mentor pone un link de **YouTube Live** en "Link para entrar", la clase se ve **incrustada**
+dentro de la academia (además del botón "Entrar EN VIVO"). También sirve Zoom/Meet como antes.
+
+**2) Grabaciones de clases.** Cada clase tiene un campo **"Link de la grabación"** (YouTube/
+Vimeo/.mp4). Cuando la clase termina, el alumno ve **"Ver grabación"** y el video incrustado en
+el calendario. El mentor ve un chip 🎬 en su lista de clases.
+
+**3) Planes anuales con descuento.** En **Ajustes → Membresía** el mentor añade un **"Precio
+anual (opcional)"**. Se calcula solo el % de ahorro vs. 12 meses. El alumno ve la opción
+**anual** en el paywall y en la landing con su badge de ahorro. El checkout usa el intervalo
+correcto (mes/año) en Stripe.
+
+**4) Cupones de lanzamiento.** El checkout ahora permite **códigos promocionales**
+(`allow_promotion_codes`). El mentor crea sus cupones en su **panel de Stripe** (Productos →
+Cupones / Códigos promocionales) y los alumnos los aplican solos al pagar. Sin SQL ni código
+extra: es una casilla en el checkout de Stripe. Hay una nota guía en Ajustes → Membresía.
+
+**5) Reseñas verificadas de alumnos.** En la comunidad (barra lateral) el alumno deja su
+**reseña con estrellas** (solo miembros inscritos = "verificada"). Queda **pendiente** hasta que
+el mentor la **apruebe** en **Comunidad → Reseñas por aprobar**. Las aprobadas salen en la
+**landing** con el promedio de estrellas, el total y las tarjetas de reseña.
+
+**Requisitos:** correr `academy_v16.sql`. Para el plan anual y los cupones, el mentor debe tener
+**Stripe conectado** (Cobros). Nada nuevo en variables de entorno.

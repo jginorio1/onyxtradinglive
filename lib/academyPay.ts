@@ -123,9 +123,12 @@ export async function syncGuardianGrant(studentId: string) {
 // Membresía de pago de la comunidad (suscripción para entrar).
 // ============================================================
 export async function membershipInfo(mentorId: string) {
-  const { data: m } = await supabaseAdmin.from('mentors').select('membership_price_cents,membership_currency,membership_interval').eq('user_id', mentorId).maybeSingle();
+  const { data: m } = await supabaseAdmin.from('mentors').select('membership_price_cents,membership_year_cents,membership_currency,membership_interval').eq('user_id', mentorId).maybeSingle();
   const price = (m as any)?.membership_price_cents || 0;
-  return { paid: price > 0, priceCents: price, currency: (m as any)?.membership_currency || 'usd', interval: (m as any)?.membership_interval || 'month' };
+  const yearCents = (m as any)?.membership_year_cents || 0;
+  // % de ahorro del plan anual vs 12 meses.
+  const yearSavePct = (price > 0 && yearCents > 0) ? Math.max(0, Math.round((1 - (yearCents / (price * 12))) * 100)) : 0;
+  return { paid: price > 0, priceCents: price, yearCents, yearSavePct, currency: (m as any)?.membership_currency || 'usd', interval: (m as any)?.membership_interval || 'month' };
 }
 export async function hasMembership(studentId: string, mentorId: string) {
   const { data } = await supabaseAdmin.from('academy_memberships').select('status').eq('mentor_id', mentorId).eq('student_id', studentId).maybeSingle();

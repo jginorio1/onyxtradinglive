@@ -45,7 +45,7 @@ export async function GET(req: Request) {
     const info = await membershipInfo(m);
     if (info.paid && !(await hasMembership(user.id, m))) {
       const { data: mrow } = await supabaseAdmin.from('mentors').select('academy_name,tagline,code,cover_url').eq('user_id', m).maybeSingle();
-      out.membershipRequired = { mentor_id: m, ...(mrow as any), priceCents: info.priceCents, currency: info.currency, interval: info.interval };
+      out.membershipRequired = { mentor_id: m, ...(mrow as any), priceCents: info.priceCents, yearCents: info.yearCents, yearSavePct: info.yearSavePct, currency: info.currency, interval: info.interval };
       return NextResponse.json(out);
     }
   }

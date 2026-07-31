@@ -410,10 +410,12 @@ function Paywall({ pw, lang, onBack }: any) {
   const L = (a: string, b: string) => (lang === 'en' ? b : a);
   const [busy, setBusy] = useState(false);
   const cur = (pw.currency || 'usd').toUpperCase(); const sym = cur === 'USD' ? '$' : cur === 'EUR' ? '€' : '';
-  const price = (sym ? sym + (pw.priceCents / 100).toLocaleString() : (pw.priceCents / 100).toLocaleString() + ' ' + cur) + '/' + (pw.interval === 'year' ? L('año', 'yr') : L('mes', 'mo'));
-  async function join() {
+  const money = (c: number) => sym ? sym + (c / 100).toLocaleString() : (c / 100).toLocaleString() + ' ' + cur;
+  const price = money(pw.priceCents) + '/' + (pw.interval === 'year' ? L('año', 'yr') : L('mes', 'mo'));
+  const hasYear = (pw.yearCents || 0) > 0;
+  async function join(plan?: 'year') {
     setBusy(true);
-    const r = await fetch('/api/academy/membership', { method: 'POST', body: JSON.stringify({ code: pw.code }) });
+    const r = await fetch('/api/academy/membership', { method: 'POST', body: JSON.stringify({ code: pw.code, plan: plan || 'month' }) });
     const j = await r.json();
     if (j.url) window.location.href = j.url;
     else if (j.free || j.already) window.location.reload();
@@ -429,7 +431,13 @@ function Paywall({ pw, lang, onBack }: any) {
         {pw.tagline && <div className="muted" style={{ fontSize: 13.5 }}>{pw.tagline}</div>}
         <div style={{ fontSize: 30, fontWeight: 800, color: 'var(--gold)', margin: '16px 0 6px' }}>{price}</div>
         <p className="muted" style={{ fontSize: 13.5, marginBottom: 16 }}>{L('Suscríbete para entrar a la comunidad, las aulas y las clases en vivo.', 'Subscribe to access the community, classrooms and live classes.')}</p>
-        <button className="btn btn-primary" style={{ width: '100%', fontSize: 16, padding: '12px' }} disabled={busy} onClick={join}>{busy ? '…' : L('Unirme ahora', 'Join now')}</button>
+        <button className="btn btn-primary" style={{ width: '100%', fontSize: 16, padding: '12px' }} disabled={busy} onClick={() => join()}>{busy ? '…' : L('Unirme mensual', 'Join monthly')}</button>
+        {hasYear && (
+          <button className="btn btn-ghost" style={{ width: '100%', fontSize: 14.5, padding: '11px', marginTop: 10, border: '1px solid var(--gold)' }} disabled={busy} onClick={() => join('year')}>
+            {L('Plan anual', 'Annual plan')} · {money(pw.yearCents)}/{L('año', 'yr')}
+            {(pw.yearSavePct || 0) > 0 && <span className="sk-chip" style={{ marginLeft: 8, background: 'var(--soft-green)', color: '#04210f' }}>-{pw.yearSavePct}%</span>}
+          </button>
+        )}
         <a href={`/academia/${pw.code}`} target="_blank" rel="noreferrer" className="muted" style={{ display: 'inline-block', marginTop: 12, fontSize: 12.5 }}>{L('Ver la página completa', 'See the full page')} →</a>
       </div>
     </div>
@@ -644,6 +652,7 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
             </div>
           )}
           {active.assistant_on && <AssistantCard mentorId={active.mentor_id} L={L} />}
+          {!active.isMentorHere && <ReviewCard mentorId={active.mentor_id} L={L} />}
           <NotifPrefs prefs={active.myPushPrefs || {}} L={L} />
           {totalLessons > 0 && (
             <div className="sk-side-card">
@@ -751,6 +760,9 @@ function CalendarTab({ events, lang, L }: any) {
   const fmt = (iso: string) => new Date(iso).toLocaleString(lang === 'en' ? 'en-US' : 'es-ES', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   const Row = (e: any) => {
     const start = new Date(e.starts_at).getTime(); const end = start + (e.duration_min || 60) * 60000; const live = now >= start && now < end;
+    const isPast = end <= now;
+    const liveEmbed = live ? embed(e.join_url || '') : '';
+    const recEmbed = isPast ? embed(e.recording_url || '') : '';
     return (
       <div key={e.id} className="sk-card" style={{ margin: 0 }}>
         <div className="row between" style={{ alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -760,8 +772,15 @@ function CalendarTab({ events, lang, L }: any) {
             {e.description && <div className="muted" style={{ fontSize: 12.5, marginTop: 4 }}>{e.description}</div>}
           </div>
           {e.join_url && (live || start - now < 15 * 60000) ? <a className="btn btn-primary" href={e.join_url} target="_blank" rel="noreferrer">{live ? L('Entrar EN VIVO', 'Join LIVE') : L('Entrar', 'Join')}</a>
+            : isPast && e.recording_url ? <a className="btn btn-ghost" href={e.recording_url} target="_blank" rel="noreferrer"><OnyxIcon emoji="🎬" size={14} /> {L('Ver grabación', 'Watch replay')}</a>
+            : isPast ? <span className="sk-chip muted">{L('Finalizada', 'Ended')}</span>
             : <span className="sk-chip">{fmtCountdown(start - now)}</span>}
         </div>
+        {(liveEmbed || recEmbed) && (
+          <div style={{ position: 'relative', paddingTop: '56.25%', borderRadius: 12, overflow: 'hidden', marginTop: 12 }}>
+            <iframe src={liveEmbed || recEmbed} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }} allow="autoplay; fullscreen; picture-in-picture" allowFullScreen />
+          </div>
+        )}
       </div>
     );
   };
@@ -1249,6 +1268,81 @@ function AssistantCard({ mentorId, L }: any) {
   );
 }
 
+// Estrellas clicables / de solo lectura.
+function Stars({ value, onPick, size = 18 }: { value: number; onPick?: (n: number) => void; size?: number }) {
+  return (
+    <span style={{ display: 'inline-flex', gap: 2 }}>
+      {[1, 2, 3, 4, 5].map((n) => (
+        <span key={n} onClick={onPick ? () => onPick(n) : undefined} style={{ cursor: onPick ? 'pointer' : 'default', color: n <= value ? 'var(--gold)' : 'var(--line)', fontSize: size, lineHeight: 1 }}>★</span>
+      ))}
+    </span>
+  );
+}
+
+// Tarjeta de reseña del alumno (deja/actualiza; el mentor la aprueba).
+function ReviewCard({ mentorId, L }: any) {
+  const [mine, setMine] = useState<any>(null);
+  const [rating, setRating] = useState(5);
+  const [body, setBody] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
+  useEffect(() => {
+    fetch('/api/academy/reviews?m=' + mentorId).then((r) => r.json()).then((j) => {
+      if (j.mine) { setMine(j.mine); setRating(j.mine.rating || 5); setBody(j.mine.body || ''); }
+    }).catch(() => {});
+  }, [mentorId]);
+  async function submit() {
+    if (busy) return; setBusy(true);
+    await fetch('/api/academy/reviews', { method: 'POST', body: JSON.stringify({ mentor_id: mentorId, rating, body }) });
+    setBusy(false); setSent(true); setMine({ rating, body, status: 'pending' });
+  }
+  const status = mine?.status;
+  return (
+    <div className="sk-side-card" style={{ border: '1px solid color-mix(in srgb,var(--gold) 28%,transparent)' }}>
+      <div className="row between" style={{ marginBottom: 6 }}><b style={{ fontSize: 14 }}>{L('Tu reseña', 'Your review')}</b><OnyxIcon name="trophy" size={15} /></div>
+      {status === 'approved'
+        ? <p className="muted" style={{ fontSize: 12, marginBottom: 8 }}>{L('¡Publicada! Gracias por tu reseña.', 'Published! Thanks for your review.')}</p>
+        : status === 'pending' || sent
+          ? <p className="muted" style={{ fontSize: 12, marginBottom: 8 }}>{L('Enviada. Tu mentor la revisará antes de publicarla.', 'Submitted. Your mentor will review it before publishing.')}</p>
+          : <p className="muted" style={{ fontSize: 12, marginBottom: 8 }}>{L('Cuéntale a otros cómo te ha ido en la comunidad.', 'Tell others how the community worked for you.')}</p>}
+      <Stars value={rating} onPick={setRating} />
+      <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={2} placeholder={L('Escribe tu reseña (opcional)', 'Write your review (optional)')} style={{ width: '100%', margin: '8px 0 0' }} />
+      <button className="btn btn-primary" style={{ width: '100%', marginTop: 8 }} disabled={busy} onClick={submit}>{busy ? '…' : mine ? L('Actualizar reseña', 'Update review') : L('Enviar reseña', 'Send review')}</button>
+    </div>
+  );
+}
+
+// Cola de reseñas para el mentor (aprobar / rechazar).
+function MentorReviews({ mentorId, L }: any) {
+  const [pending, setPending] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  function reload() { setLoading(true); fetch(`/api/academy/reviews?m=${mentorId}&pending=1`).then((r) => r.json()).then((j) => { setPending(j.pending || []); setLoading(false); }).catch(() => setLoading(false)); }
+  useEffect(reload, [mentorId]);
+  async function decide(id: string, approve: boolean) {
+    await fetch('/api/academy/reviews', { method: 'POST', body: JSON.stringify({ mentor_id: mentorId, action: 'decide', id, approve }) });
+    reload();
+  }
+  return (
+    <div className="sk-card">
+      <div className="row between" style={{ marginBottom: 12 }}><h3 style={{ display: 'flex', alignItems: 'center', gap: 9, margin: 0 }}><span className="card-ic"><OnyxIcon name="trophy" size={16} /></span> {L('Reseñas por aprobar', 'Reviews to approve')}</h3></div>
+      {loading && <div className="muted" style={{ fontSize: 13 }}>…</div>}
+      {!loading && pending.length === 0 && <div className="muted" style={{ fontSize: 13 }}>{L('No hay reseñas pendientes. Las reseñas aprobadas salen en tu landing.', 'No pending reviews. Approved reviews show on your landing page.')}</div>}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {pending.map((r: any) => (
+          <div key={r.id} className="sk-card" style={{ margin: 0 }}>
+            <div className="row between" style={{ alignItems: 'center', marginBottom: 6 }}><b style={{ fontSize: 13.5 }}>{r.name}</b><Stars value={r.rating} size={15} /></div>
+            {r.body && <p style={{ fontSize: 13, lineHeight: 1.5, marginBottom: 8 }}>{r.body}</p>}
+            <div className="row" style={{ gap: 8 }}>
+              <button className="btn btn-primary" style={{ fontSize: 12.5 }} onClick={() => decide(r.id, true)}>{L('Aprobar', 'Approve')}</button>
+              <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={() => decide(r.id, false)}>{L('Rechazar', 'Reject')}</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function Leaderboard({ mentorId, initial, L }: any) {
   const [range, setRange] = useState<'7d' | '30d' | 'all' | 'traders'>('all');
   const [rows, setRows] = useState<any[]>(initial); const [loading, setLoading] = useState(false);
@@ -1445,7 +1539,7 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
         {(d.events || []).map((e: any) => (
           <div key={e.id} className="sk-card">
             <div className="row between" style={{ gap: 10, flexWrap: 'wrap' }}>
-              <div><b>{e.title}</b><div className="muted" style={{ fontSize: 12.5 }}>{new Date(e.starts_at).toLocaleString(lang === 'en' ? 'en-US' : 'es-ES')} · {e.duration_min} min</div></div>
+              <div><b>{e.title}</b><div className="muted" style={{ fontSize: 12.5 }}>{new Date(e.starts_at).toLocaleString(lang === 'en' ? 'en-US' : 'es-ES')} · {e.duration_min} min {e.recording_url && <span className="sk-chip" style={{ marginLeft: 6 }}>🎬 {L('grabación', 'replay')}</span>}</div></div>
               <div className="row" style={{ gap: 6 }}>
                 <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setEvForm({ ...e, starts_at: e.starts_at ? new Date(e.starts_at).toISOString().slice(0, 16) : '' })}>✎</button>
                 <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--red)' }} onClick={() => api({ action: 'event_delete', id: e.id })}>✕</button>
@@ -1479,6 +1573,7 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
 
       {tab === 'comunidad' && (<>
         <MentorDigest L={L} />
+        <MentorReviews mentorId={d.mentor.user_id} L={L} />
         <div className="sk-card">
           <textarea value={post} onChange={(e) => setPost(e.target.value)} rows={2} placeholder={L('Publica un anuncio para tus alumnos…', 'Post an announcement for your students…')} style={{ width: '100%', margin: 0 }} />
           <ImgPreview url={postImg} onRemove={() => setPostImg('')} />
@@ -2012,11 +2107,13 @@ function EventForm({ form, setForm, onSave, onCancel, L }: any) {
       <h3 style={{ marginBottom: 12 }}>{form.id ? L('Editar clase', 'Edit class') : L('Programar clase en vivo', 'Schedule live class')}</h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <input value={form.title || ''} onChange={(e) => set('title', e.target.value)} placeholder={L('Título', 'Title')} style={{ margin: 0 }} />
-        <input value={form.join_url || ''} onChange={(e) => set('join_url', e.target.value)} placeholder={L('Link de Zoom/Meet', 'Zoom/Meet link')} style={{ margin: 0 }} />
+        <input value={form.join_url || ''} onChange={(e) => set('join_url', e.target.value)} placeholder={L('Link para entrar (Zoom, Meet o YouTube Live)', 'Join link (Zoom, Meet or YouTube Live)')} style={{ margin: 0 }} />
+        <div className="muted" style={{ fontSize: 11.5, marginTop: -2 }}>{L('Si pones un link de YouTube Live, se ve incrustado dentro de la academia.', 'A YouTube Live link plays embedded inside the academy.')}</div>
         <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
           <div><span className="muted" style={{ fontSize: 12 }}>{L('Fecha y hora', 'Date & time')}</span><input type="datetime-local" value={form.starts_at || ''} onChange={(e) => set('starts_at', e.target.value)} style={{ margin: '4px 0 0' }} /></div>
           <div><span className="muted" style={{ fontSize: 12 }}>{L('Duración (min)', 'Duration (min)')}</span><input type="number" value={form.duration_min ?? 60} onChange={(e) => set('duration_min', Number(e.target.value))} style={{ margin: '4px 0 0', width: 100 }} /></div>
         </div>
+        <input value={form.recording_url || ''} onChange={(e) => set('recording_url', e.target.value)} placeholder={L('Link de la grabación (YouTube/Vimeo/.mp4) — opcional', 'Recording link (YouTube/Vimeo/.mp4) — optional')} style={{ margin: 0 }} />
         <textarea value={form.description || ''} onChange={(e) => set('description', e.target.value)} rows={2} placeholder={L('Descripción (opcional)', 'Description (optional)')} style={{ width: '100%', margin: 0 }} />
       </div>
       <div className="row" style={{ gap: 8, marginTop: 12 }}>
@@ -2067,7 +2164,7 @@ function MentorSettings({ mentor, onSave, L }: any) {
     intro_video_url: mentor.intro_video_url || '', pitch: mentor.pitch || '',
     brand_info: mentor.brand_info || '', ai_emojis: mentor.ai_emojis !== false, socials: { ...(mentor.socials || {}) } as any,
     assistant_kb: mentor.assistant_kb || '', assistant_on: !!mentor.assistant_on,
-    membership_price: ((mentor.membership_price_cents || 0) / 100).toString(), membership_currency: mentor.membership_currency || 'usd', membership_interval: mentor.membership_interval || 'month',
+    membership_price: ((mentor.membership_price_cents || 0) / 100).toString(), membership_year: ((mentor.membership_year_cents || 0) / 100).toString(), membership_currency: mentor.membership_currency || 'usd', membership_interval: mentor.membership_interval || 'month',
   });
   const setSocial = (k: string, v: string) => setF((s: any) => ({ ...s, socials: { ...s.socials, [k]: v } }));
   const link = typeof window !== 'undefined' ? `${window.location.origin}/academia/${mentor.code}` : '';
@@ -2132,9 +2229,16 @@ function MentorSettings({ mentor, onSave, L }: any) {
         <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 6 }}><span className="card-ic" style={{ color: 'var(--gold)' }}><OnyxIcon name="coins" size={16} /></span> {L('Membresía y página de ventas', 'Membership & sales page')}</h3>
         <p className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>{L('Cobra una mensualidad para entrar a la comunidad. Deja 0 para que sea gratis. Necesitas conectar Stripe en Cobros.', 'Charge a monthly fee to enter the community. Leave 0 for free. You must connect Stripe in Payments.')}</p>
         <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <div><span className="muted" style={{ fontSize: 12 }}>{L('Precio de membresía', 'Membership price')}</span><input type="number" min={0} step="0.01" value={f.membership_price} onChange={(e) => setF({ ...f, membership_price: e.target.value })} style={{ margin: '4px 0 0', width: 130 }} /></div>
+          <div><span className="muted" style={{ fontSize: 12 }}>{L('Precio mensual', 'Monthly price')}</span><input type="number" min={0} step="0.01" value={f.membership_price} onChange={(e) => setF({ ...f, membership_price: e.target.value })} style={{ margin: '4px 0 0', width: 120 }} /></div>
+          <div><span className="muted" style={{ fontSize: 12 }}>{L('Precio anual (opcional)', 'Annual price (optional)')}</span><input type="number" min={0} step="0.01" value={f.membership_year} onChange={(e) => setF({ ...f, membership_year: e.target.value })} placeholder={L('con descuento', 'discounted')} style={{ margin: '4px 0 0', width: 140 }} /></div>
           <select value={f.membership_currency} onChange={(e) => setF({ ...f, membership_currency: e.target.value })} style={{ margin: 0 }}><option value="usd">USD</option><option value="eur">EUR</option><option value="mxn">MXN</option></select>
-          <select value={f.membership_interval} onChange={(e) => setF({ ...f, membership_interval: e.target.value })} style={{ margin: 0 }}><option value="month">{L('/ mes', '/ month')}</option><option value="year">{L('/ año', '/ year')}</option></select>
+        </div>
+        {Number(f.membership_price) > 0 && Number(f.membership_year) > 0 && (
+          <div className="muted" style={{ fontSize: 12, marginTop: 6, color: 'var(--soft-green)' }}>{L('Los alumnos ahorran', 'Students save')} {Math.max(0, Math.round((1 - (Number(f.membership_year) / (Number(f.membership_price) * 12))) * 100))}% {L('con el plan anual.', 'with the annual plan.')}</div>
+        )}
+        <div className="sk-side-card" style={{ marginTop: 12, background: 'var(--bg2)' }}>
+          <div className="row between" style={{ marginBottom: 4 }}><b style={{ fontSize: 13 }}>🎟️ {L('Cupones de lanzamiento', 'Launch coupons')}</b></div>
+          <p className="muted" style={{ fontSize: 12, margin: 0 }}>{L('Crea cupones de descuento en tu panel de Stripe (Productos → Cupones / Códigos promocionales). Tus alumnos podrán aplicarlos en el checkout automáticamente.', 'Create discount coupons in your Stripe dashboard (Products → Coupons / Promotion codes). Students can apply them at checkout automatically.')}</p>
         </div>
         <div style={{ marginTop: 12 }}><span className="muted" style={{ fontSize: 12 }}>{L('Video de presentación (YouTube/Vimeo/.mp4)', 'Intro video (YouTube/Vimeo/.mp4)')}</span><input value={f.intro_video_url} onChange={(e) => setF({ ...f, intro_video_url: e.target.value })} placeholder="https://youtu.be/…" style={{ margin: '4px 0 0' }} /></div>
         <div style={{ marginTop: 10 }}>
@@ -2148,7 +2252,7 @@ function MentorSettings({ mentor, onSave, L }: any) {
         </div>
       </div>
 
-      <button className="btn btn-primary" onClick={() => onSave({ ...f, membership_price_cents: Math.round(Number(f.membership_price) * 100) })}>{L('Guardar', 'Save')}</button>
+      <button className="btn btn-primary" onClick={() => onSave({ ...f, membership_price_cents: Math.round(Number(f.membership_price) * 100), membership_year_cents: Math.round(Number(f.membership_year) * 100) })}>{L('Guardar', 'Save')}</button>
     </div>
   );
 }

@@ -73,7 +73,13 @@ export default function AcademiaPublic() {
   const emb = embed(a.intro_video_url || '');
   const paid = (a.membership_price_cents || 0) > 0;
   const priceLabel = paid ? money(a.membership_price_cents, a.membership_currency) + '/' + (a.membership_interval === 'year' ? L('año', 'yr') : L('mes', 'mo')) : L('Gratis', 'Free');
+  const hasYear = (a.membership_year_cents || 0) > 0;
+  const yearLabel = hasYear ? money(a.membership_year_cents, a.membership_currency) + '/' + L('año', 'yr') : '';
+  const reviews = a.reviews || [];
   const totalFree = (a.modules || []).reduce((s: number, m: any) => s + m.freeCount, 0);
+  const Stars = ({ n, size = 15 }: { n: number; size?: number }) => (
+    <span style={{ display: 'inline-flex', gap: 1 }}>{[1, 2, 3, 4, 5].map((i) => <span key={i} style={{ color: i <= Math.round(n) ? 'var(--gold)' : 'var(--line)', fontSize: size, lineHeight: 1 }}>★</span>)}</span>
+  );
 
   return (
     <div className="wrap" style={{ padding: '40px 22px 70px', maxWidth: 900, margin: '0 auto' }}>
@@ -102,14 +108,36 @@ export default function AcademiaPublic() {
         <span className="muted" style={{ fontSize: 14, display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon name="guardian" size={15} /> {L('Privada', 'Private')}</span>
         <span className="muted" style={{ fontSize: 14, display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon name="users" size={15} /> {a.students} {L('miembros', 'members')}</span>
         <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--gold)', display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon name="coins" size={15} /> {priceLabel}</span>
+        {hasYear && <span className="sk-chip" style={{ fontSize: 13, background: 'color-mix(in srgb,var(--gold) 14%,transparent)', color: 'var(--gold)' }}>{L('o', 'or')} {yearLabel}{(a.membership_year_save_pct || 0) > 0 && ' · -' + a.membership_year_save_pct + '%'}</span>}
+        {(a.reviews_count || 0) > 0 && <span style={{ fontSize: 14, display: 'inline-flex', alignItems: 'center', gap: 6 }}><Stars n={a.reviews_avg || 5} /> <b>{a.reviews_avg}</b> <span className="muted">({a.reviews_count})</span></span>}
         <span className="muted" style={{ fontSize: 14 }}>{L('por', 'by')} <b style={{ color: 'var(--tx)' }}>{a.mentor_name}</b></span>
       </div>
 
       <Link className="btn btn-primary" href={join} style={{ fontSize: 16, padding: '12px 28px' }}>{paid ? L('Unirme por ', 'Join for ') + priceLabel : L('Unirme gratis', 'Join free')}</Link>
+      {hasYear && <div className="muted" style={{ fontSize: 13, marginTop: 8 }}>{L('También disponible el plan anual', 'Annual plan also available')}: <b style={{ color: 'var(--gold)' }}>{yearLabel}</b>{(a.membership_year_save_pct || 0) > 0 && ' (' + L('ahorra', 'save') + ' ' + a.membership_year_save_pct + '%)'}.</div>}
 
       {/* Texto de ventas */}
       {a.pitch && <div className="card" style={{ marginTop: 24, whiteSpace: 'pre-wrap', fontSize: 15, lineHeight: 1.65 }}>{a.pitch}</div>}
       {a.about && !a.pitch && <div className="card" style={{ marginTop: 24, whiteSpace: 'pre-wrap', fontSize: 15, lineHeight: 1.65 }}>{a.about}</div>}
+
+      {/* Reseñas verificadas de alumnos */}
+      {reviews.length > 0 && (
+        <div style={{ marginTop: 30 }}>
+          <div className="row" style={{ alignItems: 'center', gap: 10, marginBottom: 14 }}>
+            <h2 style={{ margin: 0, fontSize: 22 }}>{L('Lo que dicen los alumnos', 'What students say')}</h2>
+            {(a.reviews_count || 0) > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Stars n={a.reviews_avg || 5} size={17} /> <b>{a.reviews_avg}</b> <span className="muted">({a.reviews_count})</span></span>}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(260px,1fr))', gap: 12 }}>
+            {reviews.map((r: any, i: number) => (
+              <div key={i} className="card" style={{ margin: 0 }}>
+                <div className="row between" style={{ alignItems: 'center', marginBottom: 6 }}><b style={{ fontSize: 14 }}>{r.name}</b><Stars n={r.rating} /></div>
+                {r.body && <p style={{ fontSize: 13.5, lineHeight: 1.55, margin: 0 }}>{r.body}</p>}
+                <div className="muted" style={{ fontSize: 11, marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 4 }}><OnyxIcon name="guardian" size={12} /> {L('Alumno verificado', 'Verified student')}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div style={{ textAlign: 'center', marginTop: 30 }}>
         <Link className="btn btn-primary" href={join} style={{ fontSize: 16, padding: '12px 28px' }}>{paid ? L('Unirme por ', 'Join for ') + priceLabel : L('Unirme gratis', 'Join free')}</Link>

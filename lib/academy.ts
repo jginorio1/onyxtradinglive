@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { approvedReviews } from '@/lib/academyReviews';
 import { computeStats } from '@/lib/stats';
 import crypto from 'crypto';
 
@@ -48,6 +49,7 @@ export async function updateMentor(userId: string, b: any) {
   if (b.intro_video_url !== undefined) patch.intro_video_url = b.intro_video_url ? String(b.intro_video_url).slice(0, 500) : null;
   if (b.pitch !== undefined) patch.pitch = b.pitch ? String(b.pitch).slice(0, 4000) : null;
   if (b.membership_price_cents !== undefined) patch.membership_price_cents = Math.max(0, Math.round(Number(b.membership_price_cents) || 0));
+  if (b.membership_year_cents !== undefined) patch.membership_year_cents = Math.max(0, Math.round(Number(b.membership_year_cents) || 0));
   if (b.membership_currency !== undefined) patch.membership_currency = String(b.membership_currency || 'usd').toLowerCase().slice(0, 3);
   if (b.membership_interval !== undefined) patch.membership_interval = b.membership_interval === 'year' ? 'year' : 'month';
   if (b.active !== undefined) patch.active = !!b.active;
@@ -392,6 +394,7 @@ export async function saveEvent(mentorId: string, b: any) {
     join_url: b.join_url ? String(b.join_url).slice(0, 500) : null,
     starts_at: b.starts_at ? new Date(b.starts_at).toISOString() : new Date().toISOString(),
     duration_min: Math.max(5, Math.min(600, Number(b.duration_min) || 60)),
+    recording_url: b.recording_url ? String(b.recording_url).slice(0, 500) : null,
   };
   if (b.id) { await supabaseAdmin.from('academy_events').update(row).eq('id', b.id).eq('mentor_id', mentorId); return { id: b.id }; }
   const { data } = await supabaseAdmin.from('academy_events').insert({ ...row, mentor_id: mentorId }).select('id').single();
@@ -531,15 +534,18 @@ export async function memberProfile(mentorId: string, userId: string, self = fal
 // Página pública de una academia por su código: datos + módulos (con lecciones
 // gratis marcadas) + niveles activos. No expone contenido de pago.
 export async function publicAcademy(code: string) {
-  const { data: m } = await supabaseAdmin.from('mentors').select('user_id,code,academy_name,tagline,about,active,cover_url,logo_url,socials,intro_video_url,pitch,membership_price_cents,membership_currency,membership_interval').eq('code', code).maybeSingle();
+  const { data: m } = await supabaseAdmin.from('mentors').select('user_id,code,academy_name,tagline,about,active,cover_url,logo_url,socials,intro_video_url,pitch,membership_price_cents,membership_year_cents,membership_currency,membership_interval').eq('code', code).maybeSingle();
   if (!m || !(m as any).active) return null;
   const mentorId = (m as any).user_id;
-  const [{ data: prof }, content, { data: prods }, { data: enr }] = await Promise.all([
+  const [{ data: prof }, content, { data: prods }, { data: enr }, reviews] = await Promise.all([
     supabaseAdmin.from('profiles').select('full_name').eq('id', mentorId).maybeSingle(),
     getContent(mentorId, true),
     supabaseAdmin.from('academy_products').select('*').eq('mentor_id', mentorId).eq('active', true).order('position'),
     supabaseAdmin.from('academy_enrollments').select('student_id').eq('mentor_id', mentorId).eq('status', 'active'),
+    approvedReviews(mentorId),
   ]);
+  const price = (m as any).membership_price_cents || 0; const yc = (m as any).membership_year_cents || 0;
+  const yearSavePct = (price > 0 && yc > 0) ? Math.max(0, Math.round((1 - (yc / (price * 12))) * 100)) : 0;
   const modules = (content as any[]).map((mod: any) => ({
     id: mod.id, title: mod.title, description: mod.description || '',
     lessons: mod.lessons.map((l: any) => ({ id: l.id, title: l.title, is_free: !!l.is_free })),
@@ -549,7 +555,8 @@ export async function publicAcademy(code: string) {
     code: (m as any).code, academy_name: (m as any).academy_name, tagline: (m as any).tagline || '',
     about: (m as any).about || '', mentor_name: (prof as any)?.full_name || 'Mentor',
     cover_url: (m as any).cover_url || null, logo_url: (m as any).logo_url || null, socials: (m as any).socials || {}, intro_video_url: (m as any).intro_video_url || null, pitch: (m as any).pitch || '',
-    membership_price_cents: (m as any).membership_price_cents || 0, membership_currency: (m as any).membership_currency || 'usd', membership_interval: (m as any).membership_interval || 'month',
+    membership_price_cents: price, membership_year_cents: yc, membership_year_save_pct: yearSavePct, membership_currency: (m as any).membership_currency || 'usd', membership_interval: (m as any).membership_interval || 'month',
     students: (enr || []).length, modules, products: (prods || []) as any[],
+    reviews: reviews.list, reviews_avg: reviews.avg, reviews_count: reviews.count,
   };
 }

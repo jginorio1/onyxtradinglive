@@ -30,9 +30,12 @@ export async function POST(req: Request) {
 
   await enrollByCode(user.id, code); // inscribe (el acceso lo abre la membresía activa)
   const feePct = await feeForMentor(mid);
+  // Plan anual (si el mentor lo ofrece y el alumno lo elige).
+  const wantsYear = b.plan === 'year' && info.yearCents > 0;
   const session = await checkoutForMembership({
-    mentorId: mid, mentorAccount: (mentor as any).stripe_account_id, priceCents: info.priceCents, currency: info.currency,
-    interval: info.interval, code, studentId: user.id, customerEmail: user.email || undefined, feePct,
+    mentorId: mid, mentorAccount: (mentor as any).stripe_account_id,
+    priceCents: wantsYear ? info.yearCents : info.priceCents, currency: info.currency,
+    interval: wantsYear ? 'year' : 'month', code, studentId: user.id, customerEmail: user.email || undefined, feePct,
   });
   return NextResponse.json({ url: session.url });
 }

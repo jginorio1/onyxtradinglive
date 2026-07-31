@@ -54,6 +54,7 @@ export async function checkoutForProduct(product: any, mentorAccount: string, st
     success_url: `${appUrl()}/dashboard/academy?m=${product.mentor_id}&bought=1`,
     cancel_url: `${appUrl()}/dashboard/academy?m=${product.mentor_id}`,
     customer_email: customerEmail,
+    allow_promotion_codes: true,   // el alumno puede aplicar cupones del mentor (Stripe)
     metadata: { onyx_mentor: product.mentor_id, onyx_student: studentId, onyx_product: product.id, onyx_kind: product.kind },
   } as any;
 
@@ -91,6 +92,7 @@ export async function checkoutForMembership(o: { mentorId: string; mentorAccount
     success_url: `${appUrl()}/dashboard/academy?m=${o.mentorId}&joined=1`,
     cancel_url: `${appUrl()}/academia/${o.code}`,
     customer_email: o.customerEmail,
+    allow_promotion_codes: true,
     metadata: { onyx_mentor: o.mentorId, onyx_student: o.studentId, onyx_kind: 'membership' },
     line_items: [{ price_data: { currency: o.currency || 'usd', unit_amount: o.priceCents, recurring: { interval: o.interval === 'year' ? 'year' : 'month' }, product_data: { name: 'Membership' } }, quantity: 1 }],
     subscription_data: {
