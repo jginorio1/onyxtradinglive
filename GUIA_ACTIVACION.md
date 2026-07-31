@@ -1686,3 +1686,31 @@ el mentor la **apruebe** en **Comunidad → Reseñas por aprobar**. Las aprobada
 
 **Requisitos:** correr `academy_v16.sql`. El visor de PDF usa pdf.js desde CDN (sin dependencias
 nuevas en el bundle).
+
+### 50 · Onyx Academy — Comisión por plan del mentor + historial + marca en certificados (Fase 16)
+
+**SQL (Supabase, tras academy_v16.sql):** `supabase/academy_v17.sql`
+- Siembra `academy_fee_pct` en `plans.capabilities` (Free 15 · Pro 10 · Elite 6 · Black 3) — editable luego.
+- Crea `academy_fee_log` (historial de cambios de comisión).
+
+**Comisión que baja al subir de plan.** La comisión de Onyx sobre cada venta del mentor ahora
+se resuelve por prioridad: **1)** override manual por mentor → **2)** el `academy_fee_pct` de su
+**plan de Onyx** → **3)** el % global → **4)** el valor por defecto. Así, entre más alto el plan
+del mentor, menor su comisión, y sube de plan solo. El webhook y el checkout no cambian: ya usan
+`feeForMentor`, así que el nuevo % aplica automático en las ventas siguientes (las ya cobradas no
+se tocan).
+
+**Editable desde tu panel (Owner → Onyx Academy):**
+- **Comisión por plan del mentor:** una tabla con cada plan y su %. Vacío = ese plan usa el %
+  global.
+- **% global por defecto** y **% propio por mentor** (override) — ya existían; el override
+  siempre gana.
+- **Historial de cambios de comisión:** quién lo cambió, cuándo, ámbito (global/plan/mentor),
+  objetivo y valor.
+
+**Certificados con la marca del mentor.** El certificado ahora encabeza con el **nombre y logo de
+la academia del mentor** (no "Onyx Academy"), y deja un pie discreto **"Verificado por Onyx
+Academy"** para la confianza. Los correos automáticos ya usaban el nombre de la academia del
+mentor (`{academy}` + pie), no requieren cambio.
+
+**Requisitos:** correr `academy_v17.sql`. Nada nuevo en variables de entorno.

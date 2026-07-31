@@ -25,16 +25,21 @@ export default function Certificado() {
   return (
     <div className="wrap" style={{ padding: '40px 22px 60px', maxWidth: 820, margin: '0 auto' }}>
       <div style={{ border: '3px solid var(--gold)', borderRadius: 18, padding: '48px 40px', textAlign: 'center', background: 'var(--card)', position: 'relative' }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, color: 'var(--brand)' }}><OnyxIcon name="graduation" size={30} /><span style={{ fontSize: 20, fontWeight: 800 }}>Onyx Academy</span></div>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12, color: 'var(--brand)' }}>
+          {c.logo_url ? <img src={c.logo_url} alt="" style={{ width: 42, height: 42, borderRadius: 10, objectFit: 'cover' }} /> : <OnyxIcon name="graduation" size={32} />}
+          <span style={{ fontSize: 24, fontWeight: 800, color: 'var(--tx)' }}>{c.academy}</span>
+        </div>
         <div className="muted" style={{ textTransform: 'uppercase', letterSpacing: '.2em', fontSize: 13, marginTop: 22 }}>{L('Certificado de finalización', 'Certificate of completion')}</div>
         <div className="muted" style={{ fontSize: 15, marginTop: 20 }}>{L('Se otorga a', 'Awarded to')}</div>
         <h1 style={{ fontSize: 34, margin: '8px 0', letterSpacing: '-.5px' }}>{c.student}</h1>
         <div className="muted" style={{ fontSize: 15 }}>{L('por completar el curso', 'for completing the course')}</div>
         <div style={{ fontSize: 22, fontWeight: 700, margin: '8px 0 4px', color: 'var(--gold)' }}>{c.title}</div>
-        <div className="muted" style={{ fontSize: 14 }}>{L('en la academia', 'at')} <b style={{ color: 'var(--tx)' }}>{c.academy}</b></div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 40, fontSize: 12.5, color: 'var(--mut)' }}>
           <span>{date}</span>
           <span>{L('Código de verificación', 'Verification code')}: {c.code}</span>
+        </div>
+        <div style={{ marginTop: 22, paddingTop: 14, borderTop: '1px solid var(--line)', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'var(--mut)' }}>
+          <OnyxIcon name="guardian" size={12} /> {L('Verificado por Onyx Academy', 'Verified by Onyx Academy')}
         </div>
       </div>
       <div style={{ textAlign: 'center', marginTop: 18 }} className="no-print">

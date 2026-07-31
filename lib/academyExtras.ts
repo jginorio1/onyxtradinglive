@@ -31,9 +31,9 @@ export async function certByCode(code: string) {
   if (!c) return null;
   const [{ data: st }, { data: mentor }] = await Promise.all([
     supabaseAdmin.from('profiles').select('full_name,email').eq('id', (c as any).student_id).maybeSingle(),
-    supabaseAdmin.from('mentors').select('academy_name').eq('user_id', (c as any).mentor_id).maybeSingle(),
+    supabaseAdmin.from('mentors').select('academy_name,logo_url').eq('user_id', (c as any).mentor_id).maybeSingle(),
   ]);
-  return { code: (c as any).code, title: (c as any).title, issued_at: (c as any).issued_at, student: nameOf(st), academy: (mentor as any)?.academy_name || 'Onyx Academy' };
+  return { code: (c as any).code, title: (c as any).title, issued_at: (c as any).issued_at, student: nameOf(st), academy: (mentor as any)?.academy_name || 'Onyx Academy', logo_url: (mentor as any)?.logo_url || null };
 }
 export async function myCertificates(studentId: string) {
   const { data } = await supabaseAdmin.from('academy_certificates').select('code,title,issued_at,mentor_id').eq('student_id', studentId).order('issued_at', { ascending: false });

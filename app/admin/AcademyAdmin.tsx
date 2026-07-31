@@ -13,6 +13,7 @@ export default function AcademyAdmin({ canManage = false }: { canManage?: boolea
   const [d, setD] = useState<any>(null);
   const [defPct, setDefPct] = useState('');
   const [rowPct, setRowPct] = useState<Record<string, string>>({});
+  const [planPct, setPlanPct] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState('');
 
   async function load() {
@@ -24,9 +25,18 @@ export default function AcademyAdmin({ canManage = false }: { canManage?: boolea
       const m: Record<string, string> = {};
       (j.academies || []).forEach((a: any) => { m[a.userId] = a.feePct == null ? '' : String(a.feePct); });
       setRowPct(m);
+      const pf: Record<string, string> = {};
+      (j.planFees || []).forEach((p: any) => { pf[p.id] = p.fee_pct == null ? '' : String(p.fee_pct); });
+      setPlanPct(pf);
     }
   }
   useEffect(() => { load(); }, []);
+
+  async function savePlan(planId: string) {
+    setBusy('plan:' + planId);
+    await fetch('/api/admin/academy', { method: 'POST', body: JSON.stringify({ action: 'plan', plan_id: planId, fee_pct: planPct[planId] === '' ? '' : Number(planPct[planId]) }) });
+    setBusy(''); load();
+  }
 
   async function saveDefault() {
     setBusy('default');
@@ -88,6 +98,52 @@ export default function AcademyAdmin({ canManage = false }: { canManage?: boolea
               {busy === 'default' ? '…' : L('Guardar', 'Save')}
             </button>
           )}
+        </div>
+      </div>
+
+      {/* Comisión por PLAN del mentor (baja al subir de plan) */}
+      <div className="card">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+          <div className="card-ic"><OnyxIcon name="graduation" /></div>
+          <b>{L('Comisión por plan del mentor', 'Commission by mentor plan')}</b>
+        </div>
+        <p className="muted" style={{ margin: '0 0 10px' }}>
+          {L('El plan de Onyx del mentor fija su comisión: entre más alto el plan, menor el %. Deja vacío para que ese plan use el % por defecto. Un % propio por mentor (más abajo) siempre gana.',
+             'The mentor’s Onyx plan sets their commission: the higher the plan, the lower the %. Leave empty so that plan uses the default %. A per-mentor custom % (below) always wins.')}
+        </p>
+        <div style={{ overflowX: 'auto' }}>
+          <table className="jtbl" style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ textAlign: 'left' }}>
+                <th style={{ padding: '6px 8px' }}>{L('Plan', 'Plan')}</th>
+                <th style={{ padding: '6px 8px' }}>{L('Academia', 'Academy')}</th>
+                <th style={{ padding: '6px 8px' }}>% {L('comisión', 'commission')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(d.planFees || []).map((p: any) => (
+                <tr key={p.id} style={{ borderTop: '1px solid var(--bd)' }}>
+                  <td style={{ padding: '8px' }}><b>{p.name}</b><div className="muted" style={{ fontSize: 12 }}>{p.id}</div></td>
+                  <td style={{ padding: '8px' }}>
+                    <span className="jchip" style={{ color: p.academy ? 'var(--green)' : 'var(--mut)' }}>{p.academy ? L('Incluida', 'Included') : L('Sin academia', 'No academy')}</span>
+                  </td>
+                  <td style={{ padding: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <input type="number" min={0} max={50} step={0.1} className="input" style={{ width: 90 }}
+                        placeholder={String(d.defaultFeePct)} disabled={!canManage}
+                        value={planPct[p.id] ?? ''} onChange={(e) => setPlanPct({ ...planPct, [p.id]: e.target.value })} />
+                      <span className="muted">%</span>
+                      {canManage && (
+                        <button className="btn" disabled={busy === 'plan:' + p.id} onClick={() => savePlan(p.id)} title={L('Guardar % de este plan', 'Save this plan %')}>
+                          {busy === 'plan:' + p.id ? '…' : '✓'}
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -167,9 +223,44 @@ export default function AcademyAdmin({ canManage = false }: { canManage?: boolea
           </div>
         )}
         <p className="muted" style={{ marginTop: 10, fontSize: 12 }}>
-          {L('Deja el % propio vacío para que ese mentor use el % por defecto. La comisión se cobra automáticamente en cada pago vía Stripe Connect y aparece en Finanzas Onyx.',
-             'Leave the custom % empty so that mentor uses the default. The commission is charged automatically on each payment via Stripe Connect and shows up in Onyx finances.')}
+          {L('Deja el % propio vacío para que ese mentor use el % de su plan o el % por defecto. La comisión se cobra automáticamente en cada pago vía Stripe Connect y aparece en Finanzas Onyx.',
+             'Leave the custom % empty so that mentor uses their plan % or the default. The commission is charged automatically on each payment via Stripe Connect and shows up in Onyx finances.')}
         </p>
+      </div>
+
+      {/* Historial de cambios de comisión */}
+      <div className="card">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+          <div className="card-ic"><OnyxIcon name="duration" /></div>
+          <b>{L('Historial de cambios de comisión', 'Commission change history')}</b>
+        </div>
+        {(!d.feeLog || d.feeLog.length === 0) && <p className="muted" style={{ margin: 0 }}>{L('Aún no hay cambios registrados.', 'No changes recorded yet.')}</p>}
+        {d.feeLog && d.feeLog.length > 0 && (
+          <div style={{ overflowX: 'auto' }}>
+            <table className="jtbl" style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ textAlign: 'left' }}>
+                  <th style={{ padding: '6px 8px' }}>{L('Fecha', 'Date')}</th>
+                  <th style={{ padding: '6px 8px' }}>{L('Quién', 'Who')}</th>
+                  <th style={{ padding: '6px 8px' }}>{L('Ámbito', 'Scope')}</th>
+                  <th style={{ padding: '6px 8px' }}>{L('Objetivo', 'Target')}</th>
+                  <th style={{ padding: '6px 8px', textAlign: 'right' }}>{L('Valor', 'Value')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {d.feeLog.map((r: any) => (
+                  <tr key={r.id} style={{ borderTop: '1px solid var(--bd)' }}>
+                    <td style={{ padding: '8px', whiteSpace: 'nowrap' }}>{new Date(r.created_at).toLocaleString(es ? 'es-ES' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                    <td style={{ padding: '8px' }}>{r.actor_email || '—'}</td>
+                    <td style={{ padding: '8px' }}>{r.scope === 'default' ? L('Global', 'Default') : r.scope === 'plan' ? L('Plan', 'Plan') : L('Mentor', 'Mentor')}</td>
+                    <td style={{ padding: '8px' }}>{r.target || '—'}</td>
+                    <td style={{ padding: '8px', textAlign: 'right' }}>{r.pct == null ? L('(por defecto)', '(default)') : r.pct + '%'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -6,18 +6,73 @@ import { academyFeeSettings, academyPerksSettings, saveSetting } from '@/lib/set
 // Academia · productos (niveles), compras y acceso por nivel + comisiones.
 // ============================================================
 
-// Comisión de Onyx para un mentor (%). Editable por el dueño en el panel:
-//   1) override por mentor (mentors.fee_pct)  2) % por defecto (app_settings)  3) env.
+// Comisión de Onyx para un mentor (%). Orden de prioridad (de más a menos específico):
+//   1) override por mentor (mentors.fee_pct)
+//   2) comisión de SU PLAN de Onyx (plans.capabilities.academy_fee_pct) — baja al subir de plan
+//   3) % por defecto (app_settings)
+//   4) env (FEE_PCT).
 const clampPct = (n: any) => Math.max(0, Math.min(50, Number(n)));
+
+// Comisión definida por el plan de Onyx del mentor (o null si su plan no fija una).
+export async function planFeePctFor(mentorUserId: string): Promise<number | null> {
+  try {
+    const { data: prof } = await supabaseAdmin.from('profiles').select('plan').eq('id', mentorUserId).maybeSingle();
+    const planId = (prof as any)?.plan || 'free';
+    const { data: plan } = await supabaseAdmin.from('plans').select('capabilities').eq('id', planId).maybeSingle();
+    const pct = (plan as any)?.capabilities?.academy_fee_pct;
+    if (pct != null && Number.isFinite(Number(pct))) return clampPct(pct);
+  } catch {}
+  return null;
+}
+
 export async function feeForMentor(mentorId: string): Promise<number> {
   try {
     const { data: m } = await supabaseAdmin.from('mentors').select('fee_pct').eq('user_id', mentorId).maybeSingle();
     const own = (m as any)?.fee_pct;
-    if (own != null && Number.isFinite(Number(own))) return clampPct(own);
+    if (own != null && Number.isFinite(Number(own))) return clampPct(own);   // 1) override manual
+    const planPct = await planFeePctFor(mentorId);
+    if (planPct != null) return planPct;                                     // 2) plan del mentor
     const s = await academyFeeSettings();
-    if (s?.default_pct != null && Number.isFinite(Number(s.default_pct))) return clampPct(s.default_pct);
+    if (s?.default_pct != null && Number.isFinite(Number(s.default_pct))) return clampPct(s.default_pct); // 3) global
   } catch {}
-  return FEE_PCT;
+  return FEE_PCT;                                                            // 4) env
+}
+
+// ---- Comisión por PLAN (editable por el dueño) ----
+const PLAN_ORDER = ['free', 'pro', 'elite', 'black_onyx', 'black'];
+// Lista de planes con su comisión de academia (null = usa la global).
+export async function getPlanFees() {
+  const { data } = await supabaseAdmin.from('plans').select('id,name,capabilities');
+  const rows = (data || []) as any[];
+  rows.sort((a, b) => {
+    const ia = PLAN_ORDER.indexOf(a.id); const ib = PLAN_ORDER.indexOf(b.id);
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+  });
+  return rows.map((p) => ({
+    id: p.id, name: p.name || p.id,
+    academy: !!(p.capabilities?.academy),
+    fee_pct: p.capabilities?.academy_fee_pct != null ? Number(p.capabilities.academy_fee_pct) : null,
+  }));
+}
+// Fija (o borra, con null/'') la comisión de un plan dentro de su JSON capabilities.
+export async function setPlanFee(planId: string, pct: number | null) {
+  const { data: p } = await supabaseAdmin.from('plans').select('capabilities').eq('id', planId).maybeSingle();
+  const caps = { ...(((p as any)?.capabilities) || {}) };
+  const val = pct == null || (pct as any) === '' || Number.isNaN(Number(pct)) ? null : clampPct(pct);
+  if (val == null) delete caps.academy_fee_pct; else caps.academy_fee_pct = val;
+  await supabaseAdmin.from('plans').update({ capabilities: caps }).eq('id', planId);
+  return val;
+}
+
+// ---- Historial de cambios de comisión (quién / cuándo / cuánto) ----
+export async function logFeeChange(actor: string | null | undefined, scope: 'default' | 'plan' | 'mentor', target: string | null, pct: number | null) {
+  try {
+    await supabaseAdmin.from('academy_fee_log').insert({ actor_email: actor || null, scope, target: target || null, pct: pct == null ? null : Number(pct) });
+  } catch { /* si la tabla no existe aún, no rompe el guardado */ }
+}
+export async function feeLog(limit = 60) {
+  const { data } = await supabaseAdmin.from('academy_fee_log').select('*').order('created_at', { ascending: false }).limit(limit);
+  return (data || []) as any[];
 }
 
 export async function listProducts(mentorId: string, onlyActive = false) {
@@ -247,17 +302,22 @@ export async function adminListAcademies() {
   }
   return {
     defaultFeePct: def,
-    academies: rows.map((m) => {
+    academies: await Promise.all(rows.map(async (m) => {
       const agg = cagg.get(m.user_id) || { gross: 0, fee: 0, sales: 0 };
       const p = pmap.get(m.user_id) as any;
+      // % efectivo real: override del mentor → plan → global. Se resuelve con feeForMentor.
+      const effective = await feeForMentor(m.user_id);
+      const planPct = await planFeePctFor(m.user_id);
       return {
         userId: m.user_id, code: m.code, name: m.academy_name || '—',
         mentorName: p?.full_name || null, mentorEmail: p?.email || null,
         active: !!m.active, chargesEnabled: !!m.charges_enabled, connected: !!m.stripe_account_id,
-        feePct: m.fee_pct == null ? null : Number(m.fee_pct), effectiveFeePct: m.fee_pct == null ? def : clampPct(m.fee_pct),
+        feePct: m.fee_pct == null ? null : Number(m.fee_pct),
+        planFeePct: planPct,
+        effectiveFeePct: effective,
         grossCents: agg.gross, feeCents: agg.fee, sales: agg.sales,
       };
-    }),
+    })),
   };
 }
 
