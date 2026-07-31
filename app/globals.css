@@ -390,6 +390,7 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
 @keyframes skOnbGlow{0%,100%{box-shadow:0 0 14px -6px color-mix(in srgb,var(--brand) 45%,transparent);}50%{box-shadow:0 0 26px -2px color-mix(in srgb,var(--brand) 70%,transparent);}}
 .sk-onb-mini{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;background:color-mix(in srgb,var(--brand) 10%,var(--card));border:1px solid color-mix(in srgb,var(--brand) 45%,transparent);border-radius:12px;padding:11px 14px;cursor:pointer;text-align:left;color:var(--tx);box-shadow:0 0 16px -5px color-mix(in srgb,var(--brand) 55%,transparent);animation:skOnbGlow 2.6s ease-in-out infinite;}
 .sk-onb-mini:hover{border-color:var(--brand);}
+@media(max-width:860px){.sk-academy-2col{grid-template-columns:1fr !important;}}
 /* Puntito "en línea" (verde brillante) sobre el avatar */
 .sk-online{position:absolute;right:-1px;bottom:-1px;width:12px;height:12px;border-radius:50%;background:#1fd18a;border:2px solid var(--card);box-shadow:0 0 8px rgba(31,209,138,.9);}
 /* Precios centrados y "encendidos" en las tarjetas de nivel */

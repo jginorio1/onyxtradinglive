@@ -1802,9 +1802,13 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
       </div>
 
       {/* Onboarding del mentor: única lista de configuración con progreso.
-          (Antes había además un "SetupWizard" de 4 pasos que se solapaba con esta;
-          se eliminó para no mostrar dos cuadros de configuración a la vez.) */}
-      <OnboardingCard d={d} L={L} api={api} goTab={setTab} openStudent={openStudent} />
+          Layout de dos columnas: el checklist queda a la izquierda (columna estrecha)
+          y todo lo demás (enlace, pestañas y contenido) sube al tope a la derecha. */}
+      <div className="sk-academy-2col" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,320px) minmax(0,1fr)', gap: 16, alignItems: 'start' }}>
+        <div style={{ minWidth: 0 }}>
+          <OnboardingCard d={d} L={L} api={api} goTab={setTab} openStudent={openStudent} />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
 
       <div className="sk-card">
         <div className="muted" style={{ fontSize: 12, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 7 }}><span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="key" size={14} glow={false} /></span> {L('Enlace de inscripción (compártelo con tus alumnos)', 'Enrollment link (share with your students)')}</div>
@@ -1971,6 +1975,8 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
       {tab === 'correos' && <MentorEmails lang={lang} L={L} />}
 
       {tab === 'ajustes' && <MentorSettings mentor={d.mentor} L={L} onSave={(b: any) => api({ action: 'settings', ...b }, L('Ajustes guardados', 'Settings saved'))} />}
+        </div>
+      </div>
     </div>
   );
 }
@@ -2410,7 +2416,7 @@ function OnboardingCard({ d, L, api, goTab }: any) {
     );
   }
   return (
-    <div className={'sk-card' + (allDone ? '' : ' sk-onb-live')} style={{ border: '1px solid color-mix(in srgb,var(--brand) 40%,transparent)', maxWidth: 560, width: '100%', alignSelf: 'flex-start', marginRight: 'auto' }}>
+    <div className={'sk-card' + (allDone ? '' : ' sk-onb-live')} style={{ border: '1px solid color-mix(in srgb,var(--brand) 40%,transparent)', width: '100%', margin: 0 }}>
       <div className="row between" style={{ alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
         <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 9 }}><span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="graduation" size={18} /></span> {allDone ? L('¡Tu academia está lista! 🎉', 'Your academy is ready! 🎉') : L('Configura tu academia', 'Set up your academy')}</h3>
         <div className="row" style={{ gap: 8, alignItems: 'center' }}>
