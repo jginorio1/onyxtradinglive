@@ -1779,6 +1779,9 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
   const [studentQ, setStudentQ] = useState('');
   const [studentFilter, setStudentFilter] = useState('all');
   const [toast, setToast] = useState('');
+  const [tourKey, setTourKey] = useState<string | null>(null);
+  const [tourDone, setTourDone] = useState(false);
+  const startTour = (key: string) => { const s = TOUR_STEPS.find((x) => x.key === key); if (s) { setTab(s.tab as any); setTourKey(key); } };
 
   async function load() { const r = await fetch('/api/academy/mentor'); setD(await r.json()); }
   useEffect(() => { load(); }, []);
@@ -1793,6 +1796,17 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
     <div className="sk-wrap" style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 4 }}>
       <ConfirmHost lang={lang} />
       {toast && <Toast msg={toast} />}
+      <GuidedTour stepKey={tourKey} o={d.onboarding || {}} L={L} onGoto={startTour} onFinish={() => { setTourKey(null); setTourDone(true); }} onClose={() => setTourKey(null)} />
+      {tourDone && (
+        <div className="sk-modal-ov" onClick={() => setTourDone(false)}>
+          <div className="sk-modal sk-confirm" onClick={(e) => e.stopPropagation()} style={{ textAlign: 'center' }}>
+            <div className="sk-confirm-ic" style={{ color: 'var(--brand)', background: 'color-mix(in srgb,var(--brand) 16%,transparent)', boxShadow: '0 0 16px -3px color-mix(in srgb,var(--brand) 60%,transparent)', width: 48, height: 48, margin: '0 auto' }}><OnyxIcon name="trophy" size={26} /></div>
+            <h3 style={{ margin: '10px 0 6px' }}>{L('¡Felicidades! 🎉', 'Congrats! 🎉')}</h3>
+            <p className="muted" style={{ fontSize: 13.5, marginBottom: 16 }}>{L('Terminaste de configurar tu academia. Ya está lista para recibir alumnos y empezar a vender.', 'You’ve finished setting up your academy. It’s ready to welcome students and start selling.')}</p>
+            <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => { setTourDone(false); api({ action: 'onboarding_dismiss', on: true }); }}>{L('¡Vamos!', 'Let’s go!')}</button>
+          </div>
+        </div>
+      )}
       <div className="row between" style={{ flexWrap: 'wrap', gap: 10 }}>
         <div><h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 9 }}><span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="graduation" size={22} /></span> {d.mentor.academy_name}</h2><div className="muted" style={{ fontSize: 13 }}>{L('Panel del mentor · Onyx Academy', 'Mentor panel · Onyx Academy')}</div></div>
         <div className="row" style={{ gap: 6 }}>
@@ -1806,7 +1820,7 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
           y todo lo demás (enlace, pestañas y contenido) sube al tope a la derecha. */}
       <div className="sk-academy-2col" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,320px) minmax(0,1fr)', gap: 16, alignItems: 'start' }}>
         <div style={{ minWidth: 0 }}>
-          <OnboardingCard d={d} L={L} api={api} goTab={setTab} openStudent={openStudent} />
+          <OnboardingCard d={d} L={L} api={api} goTab={setTab} startTour={startTour} openStudent={openStudent} />
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
 
@@ -1834,7 +1848,7 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
       </div>
 
       {tab === 'cursos' && (<>
-        <div className="sk-card">
+        <div className="sk-card" data-onb="classroom">
           <div className="row" style={{ gap: 8 }}>
             <input value={newMod} onChange={(e) => setNewMod(e.target.value)} placeholder={L('Nombre del nuevo curso/aula', 'New course/classroom name')} style={{ margin: 0, flex: 1 }} />
             <button className="btn btn-primary" onClick={() => { if (newMod.trim()) { api({ action: 'module', title: newMod, position: (d.content?.length || 0) }, L('Aula creada', 'Classroom created')); setNewMod(''); } }}>＋ {L('Aula', 'Classroom')}</button>
@@ -1873,7 +1887,7 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
       </>)}
 
       {tab === 'envivo' && (<>
-        <div className="sk-card">
+        <div className="sk-card" data-onb="liveclass">
           <div className="row between"><h3 style={{ display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic"><OnyxIcon name="calendar" size={16} /></span> {L('Clases en vivo', 'Live classes')}</h3><button className="btn btn-primary" onClick={() => setEvForm({ title: '', join_url: '', starts_at: '', duration_min: 60 })}>＋ {L('Programar', 'Schedule')}</button></div>
           <p className="muted" style={{ fontSize: 13, marginTop: 6 }}>{L('Programa tus sesiones Zoom/Meet. El alumno verá una cuenta regresiva fija y un aviso EN VIVO cuando empieces.', 'Schedule your Zoom/Meet sessions. Students see a fixed countdown and a LIVE banner when you start.')}</p>
         </div>
@@ -2381,20 +2395,117 @@ function CollabManager({ d, api, L }: any) {
 }
 
 // Onboarding del mentor: checklist con barra de progreso. Se autocompleta con datos reales.
-function OnboardingCard({ d, L, api, goTab }: any) {
+// ---- Guía interactiva del onboarding: flecha animada + campo iluminado + explicación ----
+const TOUR_STEPS: { key: string; tab: string; sel: string }[] = [
+  { key: 'content', tab: 'cursos', sel: 'classroom' },
+  { key: 'logo', tab: 'ajustes', sel: 'logo' },
+  { key: 'cover', tab: 'ajustes', sel: 'cover' },
+  { key: 'monetize', tab: 'cobros', sel: 'tier' },
+  { key: 'charges', tab: 'cobros', sel: 'stripe' },
+  { key: 'liveClass', tab: 'envivo', sel: 'liveclass' },
+  { key: 'branding', tab: 'ajustes', sel: 'branding' },
+];
+
+function tourCopy(key: string, L: (a: string, b: string) => string): [string, string, string] {
+  const M: Record<string, [string, string, string]> = {
+    content: [L('Crea tu primera aula', 'Create your first classroom'), L('Escribe aquí el nombre de un aula (curso o módulo) y pulsa “Aula”.', 'Type a classroom name (course or module) here and hit “Classroom”.'), L('Es donde vivirán tus lecciones. Puedes crear varias (Empieza aquí, Fundamentos…). ¿Con prisa? Usa la plantilla Academia Onyx.', 'It’s where your lessons live. Create several (Start here, Fundamentals…). In a hurry? Use the Onyx Academy template.')],
+    logo: [L('Sube tu logo o foto', 'Upload your logo or photo'), L('Sube una imagen cuadrada. Reemplaza el ícono por defecto de tu academia.', 'Upload a square image. It replaces your academy’s default icon.'), L('Le da cara a tu marca en la comunidad, la página de ventas y los correos.', 'It gives your brand a face across the community, sales page and emails.')],
+    cover: [L('Sube la portada de tu comunidad', 'Upload your community cover'), L('Sube una imagen ancha (tipo banner). Es lo primero que ve el visitante.', 'Upload a wide (banner) image. It’s the first thing a visitor sees.')  , L('Aparece arriba de tu comunidad y en tu página de ventas. Una buena portada sube las conversiones.', 'It shows at the top of your community and sales page. A good cover lifts conversions.')],
+    monetize: [L('Crea tu membresía o un nivel de pago', 'Create your membership or a paid tier'), L('Pulsa “＋ Nivel” y define nombre, precio y qué aulas incluye.', 'Hit “＋ Tier” and set name, price and which classrooms it includes.'), L('Los niveles son lo que vendes (Básico, VIP, Bootcamp). Deja el precio en 0 para uno gratis.', 'Tiers are what you sell (Basic, VIP, Bootcamp). Set price to 0 for a free one.')],
+    charges: [L('Conecta Stripe para cobrar', 'Connect Stripe to get paid'), L('Pulsa “Conectar Stripe” y verifica tu cuenta. Es lo que te deja cobrar de verdad.', 'Hit “Connect Stripe” and verify your account. This is what lets you actually get paid.'), L('Stripe procesa los pagos y te deposita. Sin esto tus niveles no se pueden vender.', 'Stripe processes payments and pays you out. Without it your tiers can’t be sold.')],
+    liveClass: [L('Programa tu primera clase en vivo', 'Schedule your first live class'), L('Pulsa “Programar”, pega tu enlace de Zoom/Meet y elige fecha y hora (NY).', 'Hit “Schedule”, paste your Zoom/Meet link and pick date and time (NY).'), L('Tus alumnos verán una cuenta regresiva y un aviso EN VIVO cuando empieces.', 'Students see a countdown and a LIVE banner when you start.')],
+    branding: [L('Configura tu branding y redes', 'Set your branding and socials'), L('Cuéntale a Onyx AI quién eres y tu estilo, y añade tus redes sociales.', 'Tell Onyx AI who you are and your style, and add your social links.'), L('El AI escribe en tu voz (about, lemas, posts, ventas) y tus redes aparecen en tu comunidad.', 'The AI writes in your voice (about, taglines, posts, sales) and your socials show on your community.')],
+  };
+  return M[key] || ['', '', ''];
+}
+
+function GuidedTour({ stepKey, o, L, onGoto, onFinish, onClose }: any) {
+  const step = TOUR_STEPS.find((s) => s.key === stepKey);
+  const [rect, setRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
+  const done = step ? !!o?.[step.key] : false;
+
+  useEffect(() => {
+    if (!step) { setRect(null); return; }
+    let raf = 0; let first = true;
+    const tick = () => {
+      const el = document.querySelector(`[data-onb="${step.sel}"]`) as HTMLElement | null;
+      if (el) {
+        const r = el.getBoundingClientRect();
+        setRect({ top: r.top, left: r.left, width: r.width, height: r.height });
+        if (first) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); first = false; }
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [stepKey]);
+
+  useEffect(() => {
+    if (!step || !done) return;
+    const t = setTimeout(() => {
+      const next = TOUR_STEPS.find((s) => !o?.[s.key]);
+      if (next) onGoto(next.key); else onFinish();
+    }, 1800);
+    return () => clearTimeout(t);
+  }, [done, stepKey]); // eslint-disable-line
+
+  if (!step) return null;
+  const [title, howTo, why] = tourCopy(step.key, L);
+  const idx = TOUR_STEPS.findIndex((s) => s.key === step.key);
+  const vw = typeof window !== 'undefined' ? window.innerWidth : 1000;
+  const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
+  const below = rect ? rect.top + rect.height + 300 < vh : true;
+  const tipTop = rect ? (below ? rect.top + rect.height + 26 : Math.max(12, rect.top - 260)) : 120;
+  const tipLeft = rect ? Math.min(Math.max(12, rect.left), vw - 360) : 120;
+  const Arrow = () => (
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {below ? <><line x1="12" y1="4" x2="12" y2="19" /><polyline points="6,13 12,19 18,13" /></> : <><line x1="12" y1="20" x2="12" y2="5" /><polyline points="6,11 12,5 18,11" /></>}
+    </svg>
+  );
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 92, pointerEvents: 'none' }}>
+      {rect && <div className="onb-halo" style={{ top: rect.top - 8, left: rect.left - 8, width: rect.width + 16, height: rect.height + 16 }} />}
+      {rect && <div className="onb-arrow" style={{ top: below ? rect.top - 38 : rect.top + rect.height + 6, left: rect.left + Math.min(46, rect.width / 2), color: 'var(--brand)' }}><Arrow /></div>}
+      <div className="onb-tip" style={{ top: tipTop, left: tipLeft }}>
+        <div className="row between" style={{ marginBottom: 6, alignItems: 'center' }}>
+          <span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--brand) 16%,transparent)', color: 'var(--soft-brand,var(--brand))' }}>{L('Paso', 'Step')} {idx + 1}/{TOUR_STEPS.length}</span>
+          <button className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 12 }} onClick={onClose}>✕</button>
+        </div>
+        <b style={{ fontSize: 15 }}>{title}</b>
+        <p style={{ fontSize: 13, margin: '6px 0 4px', color: '#fff', lineHeight: 1.5 }}>{howTo}</p>
+        <p className="muted" style={{ fontSize: 12.5, margin: '0 0 10px', lineHeight: 1.5 }}>{why}</p>
+        {done ? (
+          <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+            <span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--green) 16%,transparent)', color: 'var(--soft-green)' }}>✓ {L('¡Completado!', 'Done!')}</span>
+            <span className="muted" style={{ fontSize: 12 }}>{L('Pasando al siguiente…', 'Moving to next…')}</span>
+          </div>
+        ) : (
+          <div className="row" style={{ gap: 8 }}>
+            <button className="btn btn-ghost" style={{ fontSize: 12, flex: 1 }} onClick={() => { const next = TOUR_STEPS[idx + 1]; if (next) onGoto(next.key); else onClose(); }}>{L('Saltar paso', 'Skip step')}</button>
+            <button className="btn btn-primary" style={{ fontSize: 12, flex: 1 }} onClick={onClose}>{L('Entendido', 'Got it')}</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function OnboardingCard({ d, L, api, goTab, startTour }: any) {
   const o = d.onboarding || {};
   const [collapsed, setCollapsed] = useState(false);
   useEffect(() => { try { setCollapsed(localStorage.getItem('onyx_onb_collapsed') === '1'); } catch {} }, []);
   const setCol = (v: boolean) => { setCollapsed(v); try { localStorage.setItem('onyx_onb_collapsed', v ? '1' : '0'); } catch {} };
   if (o.dismissed) return null;
+  const go = (key: string) => (startTour ? startTour(key) : goTab(TOUR_STEPS.find((s) => s.key === key)?.tab || 'cursos'));
   const steps: [boolean, string, () => void][] = [
-    [o.content, L('Crea tu primera aula (o usa la plantilla)', 'Create your first classroom (or use the template)'), () => goTab('cursos')],
-    [o.logo, L('Sube tu logo o foto', 'Upload your logo or photo'), () => goTab('ajustes')],
-    [o.cover, L('Sube la portada de tu comunidad', 'Upload your community cover'), () => goTab('ajustes')],
-    [o.monetize, L('Crea tu membresía o un nivel de pago', 'Create your membership or a paid tier'), () => goTab('cobros')],
-    [o.charges, L('Conecta Stripe para cobrar', 'Connect Stripe to get paid'), () => goTab('cobros')],
-    [o.liveClass, L('Programa tu primera clase en vivo', 'Schedule your first live class'), () => goTab('envivo')],
-    [o.branding, L('Configura tu branding y redes (para el AI)', 'Set your branding and socials (for the AI)'), () => goTab('ajustes')],
+    [o.content, L('Crea tu primera aula (o usa la plantilla)', 'Create your first classroom (or use the template)'), () => go('content')],
+    [o.logo, L('Sube tu logo o foto', 'Upload your logo or photo'), () => go('logo')],
+    [o.cover, L('Sube la portada de tu comunidad', 'Upload your community cover'), () => go('cover')],
+    [o.monetize, L('Crea tu membresía o un nivel de pago', 'Create your membership or a paid tier'), () => go('monetize')],
+    [o.charges, L('Conecta Stripe para cobrar', 'Connect Stripe to get paid'), () => go('charges')],
+    [o.liveClass, L('Programa tu primera clase en vivo', 'Schedule your first live class'), () => go('liveClass')],
+    [o.branding, L('Configura tu branding y redes (para el AI)', 'Set your branding and socials (for the AI)'), () => go('branding')],
   ];
   const done = steps.filter((s) => s[0]).length;
   const pct = Math.round((done / steps.length) * 100);
@@ -2584,8 +2695,8 @@ function MentorSettings({ mentor, onSave, L }: any) {
             <input value={f.tagline} onChange={(e) => setF({ ...f, tagline: e.target.value })} style={{ margin: '4px 0 0' }} />
           </div>
           <div className="row" style={{ gap: 16, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-            <div style={{ flex: '1 1 220px' }}><ImageUpload value={f.cover_url} onChange={(v: string) => setF({ ...f, cover_url: v })} L={L} label={L('Portada de la comunidad', 'Community cover')} /></div>
-            <div style={{ flex: '0 0 auto' }}>
+            <div style={{ flex: '1 1 220px' }} data-onb="cover"><ImageUpload value={f.cover_url} onChange={(v: string) => setF({ ...f, cover_url: v })} L={L} label={L('Portada de la comunidad', 'Community cover')} /></div>
+            <div style={{ flex: '0 0 auto' }} data-onb="logo">
               <span className="muted" style={{ fontSize: 12 }}>{L('Logo / foto (reemplaza el ícono)', 'Logo / photo (replaces the icon)')}</span>
               <div className="row" style={{ gap: 10, marginTop: 6, alignItems: 'center' }}>
                 <span className="sk-hero-logo" style={{ margin: 0, width: 56, height: 56 }}>{f.logo_url ? <img src={f.logo_url} alt="" /> : <OnyxIcon name="graduation" size={26} />}</span>
@@ -2601,7 +2712,7 @@ function MentorSettings({ mentor, onSave, L }: any) {
       </div>
 
       {/* Branding: info para el AI + redes sociales + toggle emojis */}
-      <div className="sk-card">
+      <div className="sk-card" data-onb="branding">
         <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 6 }}><span className="card-ic"><OnyxIcon name="gem" size={16} /></span> {L('Branding y AI', 'Branding & AI')}</h3>
         <p className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>{L('Cuéntale a Onyx AI quién eres y tu estilo. Lo usará para escribir en tu voz (about, lemas, posts, ventas).', 'Tell Onyx AI who you are and your style. It will write in your voice (about, taglines, posts, sales).')}</p>
         <textarea value={f.brand_info} onChange={(e) => setF({ ...f, brand_info: e.target.value })} rows={4} placeholder={L('Ej: Soy trader de forex desde 2016, enseño price action con enfoque en disciplina. Tono cercano y directo, sin promesas.', 'e.g. I’m a forex trader since 2016, I teach price action focused on discipline. Warm, direct tone, no promises.')} style={{ width: '100%', margin: 0 }} />
@@ -2706,7 +2817,7 @@ function MentorPayments({ modules, L }: { modules: any[]; L: (a: string, b: stri
 
   return (
     <>
-      <div className="sk-card">
+      <div className="sk-card" data-onb="stripe">
         <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 8 }}><span className="card-ic"><OnyxIcon name="card" size={16} /></span> {L('Cobros con Stripe', 'Payments with Stripe')}</h3>
         {conn.configured === false ? <p className="muted" style={{ fontSize: 13 }}>{L('Los cobros aún no están habilitados en la plataforma.', 'Payments are not enabled on the platform yet.')}</p>
           : conn.chargesEnabled ? <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}><span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--green) 15%,transparent)', color: 'var(--soft-green)' }}>✓ {L('Conectado y cobrando', 'Connected & charging')}</span>{conn.dashboard && <a className="btn btn-ghost" href={conn.dashboard} target="_blank" rel="noreferrer">{L('Abrir mi panel de Stripe', 'Open my Stripe dashboard')}</a>}</div>
@@ -2726,7 +2837,7 @@ function MentorPayments({ modules, L }: { modules: any[]; L: (a: string, b: stri
           ))}
         </div>
       )}
-      <div className="sk-card">
+      <div className="sk-card" data-onb="tier">
         <div className="row between" style={{ marginBottom: 10, flexWrap: 'wrap', gap: 8 }}><h3 style={{ display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic" style={{ color: 'var(--gold)' }}><OnyxIcon name="gem" size={16} /></span> {L('Niveles', 'Tiers')}</h3><div className="row" style={{ gap: 6 }}><button className="btn btn-ghost" onClick={() => setForm({ name: L('Auditoría de mi plan', 'Plan audit'), kind: 'audit', interval: 'month', price: '', currency: 'usd', grants: [], active: true })}><OnyxIcon name="guardian" size={14} /> {L('Add-on auditoría', 'Audit add-on')}</button><button className="btn btn-primary" onClick={() => setForm({ name: '', kind: 'subscription', interval: 'month', price: '', currency: 'usd', grants: 'all', active: true })}>＋ {L('Nivel', 'Tier')}</button></div></div>
         {prods.length === 0 && <p className="muted" style={{ fontSize: 13 }}>{L('Crea niveles como “Curso básico”, “VIP” o “Bootcamp”.', 'Create tiers like “Basic”, “VIP” or “Bootcamp”.')}</p>}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
