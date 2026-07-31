@@ -8,7 +8,7 @@ import { auditAddon, hasAuditAddon, auditConsent, planVerified } from '@/lib/aca
 import { listWins, pendingCount, addWin, myPending } from '@/lib/academyWins';
 import { pushWinPending } from '@/lib/academyPush';
 import { roleMap, permsFor, staffIds } from '@/lib/academyCollab';
-import { getSettings, moderateText, isMuted, pendingContentCount, reportsCount } from '@/lib/academyModeration';
+import { getSettings, moderateText, isMuted, pendingContentCount, reportsCount, escalateOnBlock } from '@/lib/academyModeration';
 
 // Mensaje que ve el alumno cuando su texto se bloquea (sin exponer qué palabra).
 function blockedMsg(category: string): string {
@@ -171,7 +171,7 @@ export async function POST(req: Request) {
         const settings = await getSettings(mid);
         const isNew = await isNewMember(mid, user.id, settings.new_member_review);
         const dec = await moderateText(settings, String(b.body), { kind: 'post', isNewMember: isNew });
-        if (dec.action === 'block') return NextResponse.json({ error: 'blocked', category: dec.category, message: blockedMsg(dec.category) }, { status: 422 });
+        if (dec.action === 'block') { const esc = await escalateOnBlock(mid, user.id, settings, dec.reason); return NextResponse.json({ error: 'blocked', category: dec.category, message: blockedMsg(dec.category), escalated: esc.action }, { status: 422 }); }
         if (dec.action === 'review') { modStatus = 'pending'; flag = dec.reason; }
       }
       await addPost(mid, user.id, String(b.body), false, b.image_url ? String(b.image_url) : undefined, undefined, { kind: b.kind, win_kind: b.win_kind, status: modStatus, flag_reason: flag });
@@ -191,7 +191,7 @@ export async function POST(req: Request) {
       if (!isMentorHere && b.body) {
         const settings = await getSettings(mid);
         const dec = await moderateText(settings, String(b.body), { kind: 'comment' });
-        if (dec.action === 'block') return NextResponse.json({ error: 'blocked', category: dec.category, message: blockedMsg(dec.category) }, { status: 422 });
+        if (dec.action === 'block') { const esc = await escalateOnBlock(mid, user.id, settings, dec.reason); return NextResponse.json({ error: 'blocked', category: dec.category, message: blockedMsg(dec.category), escalated: esc.action }, { status: 422 }); }
         if (dec.action === 'review') { modStatus = 'pending'; flag = dec.reason; }
       }
       await addComment(String(b.post_id), user.id, String(b.body), b.image_url ? String(b.image_url) : undefined, { status: modStatus, flag_reason: flag });

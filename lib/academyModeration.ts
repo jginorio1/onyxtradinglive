@@ -21,12 +21,18 @@ export interface ModSettings {
   new_member_review: number; // primeros N posts de un recién llegado pasan por revisión (0 = off)
   link_policy: 'allow' | 'review' | 'members'; // links: permitir / a revisión / solo miembros con antigüedad
   report_threshold: number;  // nº de reportes que auto-oculta un contenido (0 = off)
+  auto_escalate: boolean;    // sanciones automáticas escaladas al acumular bloqueos
+  mute_after: number;        // nº de bloqueos que dispara un silencio automático (0 = off)
+  mute_hours: number;        // duración del silencio automático
+  ban_after: number;         // nº de bloqueos que dispara un ban automático (0 = nunca)
 }
 
-// Default que se usa al crear la academia: la seguridad "normal" típica de estos grupos.
+// Default que se usa al crear la academia: la seguridad "normal" típica de estos grupos,
+// con un escalado suave (2 bloqueos → silencio 24h, 4 → ban).
 export const DEFAULT_SETTINGS: ModSettings = {
   level: 'normal', ai: true, words: [], allow: [],
   new_member_review: 0, link_policy: 'review', report_threshold: 3,
+  auto_escalate: true, mute_after: 2, mute_hours: 24, ban_after: 4,
 };
 
 export function mergeSettings(raw: any): ModSettings {
@@ -41,6 +47,10 @@ export function mergeSettings(raw: any): ModSettings {
     new_member_review: Math.max(0, Math.min(20, Math.round(Number(r.new_member_review) || 0))),
     link_policy: lp,
     report_threshold: Math.max(0, Math.min(50, Math.round(Number(r.report_threshold ?? DEFAULT_SETTINGS.report_threshold)))),
+    auto_escalate: r.auto_escalate === undefined ? DEFAULT_SETTINGS.auto_escalate : !!r.auto_escalate,
+    mute_after: Math.max(0, Math.min(20, Math.round(Number(r.mute_after ?? DEFAULT_SETTINGS.mute_after)))),
+    mute_hours: Math.max(1, Math.min(720, Math.round(Number(r.mute_hours ?? DEFAULT_SETTINGS.mute_hours)))),
+    ban_after: Math.max(0, Math.min(50, Math.round(Number(r.ban_after ?? DEFAULT_SETTINGS.ban_after)))),
   };
 }
 
@@ -236,6 +246,35 @@ export async function infractions(mentorId: string, studentId: string) {
 export async function infractionCount(mentorId: string, studentId: string): Promise<number> {
   const { count } = await supabaseAdmin.from('academy_infractions').select('id', { count: 'exact', head: true }).eq('mentor_id', mentorId).eq('student_id', studentId).in('kind', ['warn', 'mute', 'ban', 'block']);
   return count || 0;
+}
+// Nº de bloqueos automáticos recientes (ventana de 30 días) — alimenta el escalado.
+async function recentBlocks(mentorId: string, studentId: string): Promise<number> {
+  const since = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
+  const { count } = await supabaseAdmin.from('academy_infractions').select('id', { count: 'exact', head: true }).eq('mentor_id', mentorId).eq('student_id', studentId).eq('kind', 'block').gte('created_at', since);
+  return count || 0;
+}
+
+// Escalado automático: se llama CADA VEZ que se bloquea un texto de un alumno.
+// Registra el bloqueo y, según los umbrales del mentor, aplica silencio o ban solos.
+// Devuelve qué acción automática se tomó (para avisar al alumno) o null.
+export async function escalateOnBlock(mentorId: string, studentId: string, settings: ModSettings, reason?: string): Promise<{ action: 'mute' | 'ban' | null; until?: string }> {
+  await logInfraction(mentorId, studentId, 'block', undefined, reason ? String(reason).slice(0, 120) : 'auto');
+  if (!settings.auto_escalate) return { action: null };
+  const n = await recentBlocks(mentorId, studentId);
+  // Ban automático (umbral más alto) tiene prioridad.
+  if (settings.ban_after > 0 && n >= settings.ban_after) {
+    await supabaseAdmin.from('academy_enrollments').update({ status: 'banned' }).eq('mentor_id', mentorId).eq('student_id', studentId);
+    await logInfraction(mentorId, studentId, 'ban', undefined, `auto: ${n} bloqueos`);
+    return { action: 'ban' };
+  }
+  if (settings.mute_after > 0 && n >= settings.mute_after) {
+    const already = await isMuted(mentorId, studentId);
+    if (!already.muted) {
+      const r = await muteStudent(mentorId, studentId, settings.mute_hours, 'system', `auto: ${n} bloqueos`);
+      return { action: 'mute', until: r.until };
+    }
+  }
+  return { action: null };
 }
 
 // ============================================================

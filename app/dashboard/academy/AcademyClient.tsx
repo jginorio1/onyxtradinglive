@@ -653,7 +653,7 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
   async function api(body: any) { const r = await fetch('/api/academy', { method: 'POST', body: JSON.stringify(body) }); return r.json().catch(() => ({})); }
   async function sendPost() { if (!post.trim() && !postImg) return { ok: false }; const res = await api({ action: 'post', mentor_id: active.mentor_id, body: post, image_url: postImg, kind: postKind, win_kind: postKind === 'win' ? postWinKind : undefined }); setPost(''); setPostImg(''); setPostKind('community'); reload(); return res || {}; }
   async function like(t: string, id: string) { await api({ action: 'like', mentor_id: active.mentor_id, target_type: t, target_id: id }); reload(); }
-  async function comment(pid: string, body: string, image?: string) { const r = await api({ action: 'comment', post_id: pid, mentor_id: active.mentor_id, body, image_url: image || '' }); if (r?.error === 'blocked') alert(r.message || L('Tu comentario no cumple las normas.', 'Your comment does not meet the rules.')); else if (r?.error === 'muted') alert(L('Estás silenciado temporalmente y no puedes comentar ahora.', 'You are temporarily muted and cannot comment right now.')); reload(); }
+  async function comment(pid: string, body: string, image?: string) { const r = await api({ action: 'comment', post_id: pid, mentor_id: active.mentor_id, body, image_url: image || '' }); if (r?.error === 'blocked') alert((r.message || L('Tu comentario no cumple las normas.', 'Your comment does not meet the rules.')) + escalMsg(r.escalated, L)); else if (r?.error === 'muted') alert(L('Estás silenciado temporalmente y no puedes comentar ahora.', 'You are temporarily muted and cannot comment right now.')); reload(); }
   // Reportar un contenido (post/comentario) para que lo revise el equipo.
   async function report(targetType: string, id: string) {
     const reason = prompt(L('¿Por qué reportas esto? (opcional)', 'Why are you reporting this? (optional)')) ?? '';
@@ -706,7 +706,7 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
           <PostTypePicker kind={postKind} setKind={setPostKind} winKind={postWinKind} setWinKind={setPostWinKind} L={L} />
           <div className="row" style={{ gap: 8, marginTop: 14, justifyContent: 'flex-end' }}>
             <button className="btn btn-ghost" onClick={() => setComposeOpen(false)}>{L('Cancelar', 'Cancel')}</button>
-            <button className="btn btn-primary" onClick={async () => { const res = await sendPost(); setComposeOpen(false); if (res?.error === 'blocked') { alert(res.message || L('Tu publicación no cumple las normas de la comunidad.', 'Your post does not meet the community rules.')); return; } if (res?.error === 'muted') { alert(L('Estás silenciado temporalmente y no puedes publicar ahora.', 'You are temporarily muted and cannot post right now.')); return; } setSentPending(!!res?.pending); setSentToast(true); setTimeout(() => setSentToast(false), 2800); }}>{postKind === 'win' ? L('Publicar logro', 'Post win') : L('Publicar', 'Post')}</button>
+            <button className="btn btn-primary" onClick={async () => { const res = await sendPost(); setComposeOpen(false); if (res?.error === 'blocked') { alert((res.message || L('Tu publicación no cumple las normas de la comunidad.', 'Your post does not meet the community rules.')) + escalMsg(res.escalated, L)); return; } if (res?.error === 'muted') { alert(L('Estás silenciado temporalmente y no puedes publicar ahora.', 'You are temporarily muted and cannot post right now.')); return; } setSentPending(!!res?.pending); setSentToast(true); setTimeout(() => setSentToast(false), 2800); }}>{postKind === 'win' ? L('Publicar logro', 'Post win') : L('Publicar', 'Post')}</button>
           </div>
         </div></Modal>
       )}
@@ -1614,6 +1614,20 @@ function ModerationPanel({ mentorId, isOwner, L, lang, onClose, reload }: any) {
                 <option value="members">{L('Solo miembros con antigüedad', 'Established members only')}</option>
               </select>
             </div>
+            <div style={{ borderTop: '1px solid var(--line)', paddingTop: 12 }}>
+              <label className="row between" style={{ alignItems: 'center', cursor: 'pointer' }}>
+                <span style={{ fontSize: 13 }}><b>{L('Sanciones automáticas', 'Automatic sanctions')}</b><div className="muted" style={{ fontSize: 11.5 }}>{L('Al acumular mensajes bloqueados, silencia o expulsa solo.', 'When blocked messages pile up, auto-mutes or removes.')}</div></span>
+                <input type="checkbox" checked={!!s.auto_escalate} onChange={(e) => setS({ ...s, auto_escalate: e.target.checked })} />
+              </label>
+              {s.auto_escalate && (
+                <div className="row" style={{ gap: 12, flexWrap: 'wrap', marginTop: 8 }}>
+                  <label style={{ fontSize: 12.5 }}>{L('Silenciar tras N bloqueos', 'Mute after N blocks')}<br /><input type="number" min={0} max={20} value={s.mute_after} onChange={(e) => setS({ ...s, mute_after: Number(e.target.value) })} style={{ margin: '4px 0 0', width: 80 }} /></label>
+                  <label style={{ fontSize: 12.5 }}>{L('Duración del silencio (h)', 'Mute duration (h)')}<br /><input type="number" min={1} max={720} value={s.mute_hours} onChange={(e) => setS({ ...s, mute_hours: Number(e.target.value) })} style={{ margin: '4px 0 0', width: 80 }} /></label>
+                  <label style={{ fontSize: 12.5 }}>{L('Banear tras N bloqueos (0 = nunca)', 'Ban after N blocks (0 = never)')}<br /><input type="number" min={0} max={50} value={s.ban_after} onChange={(e) => setS({ ...s, ban_after: Number(e.target.value) })} style={{ margin: '4px 0 0', width: 80 }} /></label>
+                </div>
+              )}
+              <p className="muted" style={{ fontSize: 11, marginTop: 6 }}>{L('Se cuenta por los últimos 30 días. El equipo siempre puede revertir un silencio o readmitir.', 'Counted over the last 30 days. The team can always undo a mute or readmit.')}</p>
+            </div>
             <div className="row" style={{ gap: 8 }}>
               <button className="btn btn-primary" onClick={saveSettings} disabled={saving}>{saving ? '…' : L('Guardar ajustes', 'Save settings')}</button>
               <button className="btn btn-ghost" onClick={onClose}>{L('Cerrar', 'Close')}</button>
@@ -1624,6 +1638,11 @@ function ModerationPanel({ mentorId, isOwner, L, lang, onClose, reload }: any) {
       </div>
     </Modal>
   );
+}
+function escalMsg(escalated: string | null | undefined, L: any): string {
+  if (escalated === 'mute') return '\n\n' + L('Por acumular avisos, quedas silenciado temporalmente.', 'For repeated flags, you are temporarily muted.');
+  if (escalated === 'ban') return '\n\n' + L('Por incumplir las normas repetidamente, se te ha retirado el acceso a la comunidad.', 'For repeatedly breaking the rules, your community access has been removed.');
+  return '';
 }
 function flagLabel(reason: string, L: any): string {
   const r = String(reason || '');
