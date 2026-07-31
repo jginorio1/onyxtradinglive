@@ -2410,7 +2410,7 @@ function OnboardingCard({ d, L, api, goTab }: any) {
     );
   }
   return (
-    <div className={'sk-card' + (allDone ? '' : ' sk-onb-live')} style={{ border: '1px solid color-mix(in srgb,var(--brand) 40%,transparent)', maxWidth: 560, marginRight: 'auto' }}>
+    <div className={'sk-card' + (allDone ? '' : ' sk-onb-live')} style={{ border: '1px solid color-mix(in srgb,var(--brand) 40%,transparent)', maxWidth: 560, width: '100%', alignSelf: 'flex-start', marginRight: 'auto' }}>
       <div className="row between" style={{ alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
         <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 9 }}><span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="graduation" size={18} /></span> {allDone ? L('¡Tu academia está lista! 🎉', 'Your academy is ready! 🎉') : L('Configura tu academia', 'Set up your academy')}</h3>
         <div className="row" style={{ gap: 8, alignItems: 'center' }}>
