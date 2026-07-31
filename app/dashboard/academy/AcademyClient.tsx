@@ -611,6 +611,8 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
   const [postKind, setPostKind] = useState('community');
   const [postWinKind, setPostWinKind] = useState('payout');
   const [feedFilter, setFeedFilter] = useState('all');
+  const [composeOpen, setComposeOpen] = useState(false);
+  const [sentToast, setSentToast] = useState(false);
   const [viewUser, setViewUser] = useState<string | null>(null);
   const [dmWith, setDmWith] = useState<string | null>(null);
   const [manageStudent, setManageStudent] = useState<any>(null);
@@ -655,6 +657,26 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
     <div className="sk-wrap" data-tab={tab} style={{ paddingTop: 4 }}>
       <ConfirmHost lang={lang} />
       {manageStudent && <StudentManageModal s={manageStudent} L={L} onClose={() => setManageStudent(null)} onAction={manageAction} onDm={(uid: string) => { setManageStudent(null); openDm(uid); }} />}
+      {composeOpen && (
+        <Modal onClose={() => setComposeOpen(false)}><div className="sk-card" style={{ border: '1px solid var(--brand)' }}>
+          <h3 style={{ marginBottom: 4 }}>{L('¿Qué tipo de publicación es?', 'What kind of post is this?')}</h3>
+          <p className="muted" style={{ fontSize: 12.5, marginBottom: 12 }}>{L('Elige una categoría para tu post.', 'Pick a category for your post.')}</p>
+          <PostTypePicker kind={postKind} setKind={setPostKind} winKind={postWinKind} setWinKind={setPostWinKind} L={L} />
+          <div className="row" style={{ gap: 8, marginTop: 14, justifyContent: 'flex-end' }}>
+            <button className="btn btn-ghost" onClick={() => setComposeOpen(false)}>{L('Cancelar', 'Cancel')}</button>
+            <button className="btn btn-primary" onClick={async () => { await sendPost(); setComposeOpen(false); setSentToast(true); setTimeout(() => setSentToast(false), 2600); }}>{postKind === 'win' ? L('Publicar logro', 'Post win') : L('Publicar', 'Post')}</button>
+          </div>
+        </div></Modal>
+      )}
+      {sentToast && (
+        <div className="sk-modal-ov" style={{ alignItems: 'center' }} onClick={() => setSentToast(false)}>
+          <div className="sk-confirm" style={{ maxWidth: 340, textAlign: 'center', borderColor: 'color-mix(in srgb,var(--green) 55%,transparent)', animation: 'skConfirmGlowG 1.6s ease-in-out infinite' }} onClick={(e) => e.stopPropagation()}>
+            <div className="sk-confirm-ic" style={{ margin: '0 auto 10px', background: 'color-mix(in srgb,var(--green) 16%,transparent)', color: 'var(--soft-green,var(--green))' }}><OnyxIcon emoji="✅" size={22} /></div>
+            <b style={{ fontSize: 16 }}>{postKind === 'win' ? L('¡Logro publicado!', 'Win posted!') : L('¡Publicado!', 'Posted!')}</b>
+            <p className="muted" style={{ fontSize: 12.5, marginTop: 6, marginBottom: 0 }}>{L('Ya está visible en la comunidad.', 'It’s now visible in the community.')}</p>
+          </div>
+        </div>
+      )}
       <div style={{ marginBottom: 12 }}><InstallBanner L={L} /></div>
       <div className="sk-hero">
         <div className="sk-hero-cover" style={active.cover_url ? { backgroundImage: `url(${active.cover_url})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined} />
@@ -695,13 +717,11 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
                 <div className="row" style={{ gap: 10, alignItems: 'flex-start' }}>
                   <Avatar name="•" level={active.me?.level} size={40} />
                   <div style={{ flex: 1 }}>
-                    <div className="muted" style={{ fontSize: 11.5, marginBottom: 6 }}>{L('¿Qué tipo de publicación es?', 'What kind of post is this?')}</div>
-                    <PostTypePicker kind={postKind} setKind={setPostKind} winKind={postWinKind} setWinKind={setPostWinKind} L={L} />
                     <textarea value={post} onChange={(e) => setPost(e.target.value)} rows={2} placeholder={L('Comparte algo con la comunidad…', 'Share something with the community…')} style={{ width: '100%', margin: 0 }} />
                     <ImgPreview url={postImg} onRemove={() => setPostImg('')} />
                     <div className="row between" style={{ marginTop: 8, alignItems: 'center' }}>
                       <div className="row" style={{ gap: 2 }}><EmojiRow onPick={(e: string) => setPost((p) => p + e)} /><ImgAttach onUrl={(u: string) => setPostImg(u)} L={L} /></div>
-                      <button className="btn btn-primary" onClick={sendPost} disabled={!post.trim() && !postImg}>{L('Publicar', 'Post')}</button>
+                      <button className="btn btn-primary" onClick={() => { if (post.trim() || postImg) setComposeOpen(true); }} disabled={!post.trim() && !postImg}>{L('Publicar', 'Post')}</button>
                     </div>
                   </div>
                 </div>

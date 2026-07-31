@@ -380,6 +380,7 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
 /* Popup de confirmación de borrado (iluminado) */
 .sk-confirm{max-width:420px;background:var(--card);border:1.5px solid color-mix(in srgb,var(--red) 55%,transparent);border-radius:16px;padding:20px 22px;box-shadow:0 0 0 1px color-mix(in srgb,var(--red) 25%,transparent),0 0 34px -4px color-mix(in srgb,var(--red) 60%,transparent),0 24px 60px rgba(0,0,0,.5);animation:skConfirmGlow 1.8s ease-in-out infinite;}
 @keyframes skConfirmGlow{0%,100%{box-shadow:0 0 0 1px color-mix(in srgb,var(--red) 22%,transparent),0 0 26px -6px color-mix(in srgb,var(--red) 50%,transparent),0 24px 60px rgba(0,0,0,.5);}50%{box-shadow:0 0 0 1px color-mix(in srgb,var(--red) 30%,transparent),0 0 40px 0 color-mix(in srgb,var(--red) 75%,transparent),0 24px 60px rgba(0,0,0,.5);}}
+@keyframes skConfirmGlowG{0%,100%{box-shadow:0 0 0 1px color-mix(in srgb,var(--green) 22%,transparent),0 0 26px -6px color-mix(in srgb,var(--green) 55%,transparent),0 24px 60px rgba(0,0,0,.5);}50%{box-shadow:0 0 0 1px color-mix(in srgb,var(--green) 32%,transparent),0 0 40px 0 color-mix(in srgb,var(--green) 80%,transparent),0 24px 60px rgba(0,0,0,.5);}}
 .sk-confirm-ic{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;flex:none;background:color-mix(in srgb,var(--red) 16%,transparent);color:var(--red);box-shadow:0 0 14px -3px color-mix(in srgb,var(--red) 60%,transparent);}
 .sk-confirm-item{background:var(--bg2);border:1px solid var(--line);border-left:3px solid var(--red);border-radius:8px;padding:8px 11px;font-size:13.5px;font-weight:600;color:var(--tx);word-break:break-word;}
 .btn.sk-btn-danger{background:var(--red)!important;border-color:var(--red)!important;color:#fff!important;font-weight:700;box-shadow:0 0 14px -3px color-mix(in srgb,var(--red) 65%,transparent);}
@@ -415,7 +416,7 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
 /* Aislar el contenido del tab en móvil: solo se ve el tab activo, sin hero ni sidebar */
 @media(max-width:720px){
   .sk-wrap[data-tab]:not([data-tab="community"]) .sk-hero{display:none;}
-  .sk-wrap[data-tab]:not([data-tab="community"]) .sk-side{display:none;}
+  .sk-wrap[data-tab] .sk-side{display:none!important;}
   .sk-wrap[data-tab] .sk-grid{grid-template-columns:1fr;}
   /* Cabecera de comunidad muy fina en móvil: sin portada, solo una barra slim */
   .sk-hero{border-radius:12px;box-shadow:0 3px 12px rgba(0,0,0,.18);}
