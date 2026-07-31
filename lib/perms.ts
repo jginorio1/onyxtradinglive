@@ -11,6 +11,7 @@ export const AREAS: { id: string; label: string }[] = [
   { id: 'embajadores', label: 'Embajadores' },
   { id: 'retencion', label: 'Retención' },
   { id: 'firms', label: 'Prop firms' },
+  { id: 'catalogos', label: 'Catálogos (países, plataformas…)' },
   { id: 'modulos', label: 'Módulos' },
   { id: 'soporte', label: 'Soporte / Chat' },
   { id: 'chat', label: 'Chat de equipo' },

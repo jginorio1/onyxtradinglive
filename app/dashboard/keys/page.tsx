@@ -8,6 +8,7 @@ import { ACC_TYPES } from '@/lib/accountMeta';
 import { errMsg } from '@/lib/i18nErrors';
 import InstallWizard, { WIZ } from './InstallWizard';
 import QrPop from '@/app/components/QrPop';
+import { useCatalog } from '@/lib/useCatalog';
 
 type Lang = 'es' | 'en';
 
@@ -199,6 +200,7 @@ export default function KeysPage() {
   const [origin, setOrigin] = useState('');
   const { lang, setLang } = useLang();
   const t = K[lang];
+  const firmItems = useCatalog('firm'); // prop firms / brokers del catálogo del admin
   const atLimit = !!usage && !usage.unlimited && usage.used >= usage.max;
 
   // Campos obligatorios: sin ellos no dejamos crear la clave
@@ -393,7 +395,7 @@ export default function KeysPage() {
                 <div>
                   <span style={lbl}>{t.fFirm}</span>
                   <input list="onyx-firms" value={f.broker} onChange={(e) => setF({ ...f, broker: e.target.value })} placeholder="Ej: FTMO" style={{ margin: '4px 0 0' }} />
-                  <datalist id="onyx-firms">{FIRMS.map((x) => <option key={x} value={x} />)}</datalist>
+                  <datalist id="onyx-firms">{firmItems.map((x) => <option key={x.code} value={lang === 'en' ? (x.en || x.es) : x.es} />)}</datalist>
                   <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{t.fFirmHint}</div>
                 </div>
                 <div>
