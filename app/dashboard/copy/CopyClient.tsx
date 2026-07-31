@@ -412,6 +412,7 @@ export default function CopyClient() {
             <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
               <a className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 11px' }} href="/ea/OnyxCopyMaster.mq5" download><OnyxIcon emoji="⬇" size={16} /> MT5 (.mq5)</a>
               <a className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 11px' }} href="/ea/OnyxCopyMaster.mq4" download><OnyxIcon emoji="⬇" size={16} /> MT4 (.mq4)</a>
+              <a className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 11px' }} href="/ctrader/OnyxCopyMaster.cs" download><OnyxIcon emoji="⬇" size={16} /> cTrader (.cs)</a>
             </div>
           </div>
           <div style={{ border: `1px solid ${C_SLAVE}44`, borderRadius: 10, padding: 12 }}>
@@ -420,6 +421,7 @@ export default function CopyClient() {
             <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
               <a className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 11px' }} href="/ea/OnyxCopySlave.mq5" download><OnyxIcon emoji="⬇" size={16} /> MT5 (.mq5)</a>
               <a className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 11px' }} href="/ea/OnyxCopySlave.mq4" download><OnyxIcon emoji="⬇" size={16} /> MT4 (.mq4)</a>
+              <a className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 11px' }} href="/ctrader/OnyxCopySlave.cs" download><OnyxIcon emoji="⬇" size={16} /> cTrader (.cs)</a>
             </div>
           </div>
         </div>

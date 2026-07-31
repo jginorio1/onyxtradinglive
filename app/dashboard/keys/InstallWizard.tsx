@@ -420,6 +420,9 @@ function StepExtras({ s, t, w, apiUrl, origin, apiKey, copy, copied, onDownload,
         <a className="btn btn-ghost" href="/OnyxManager_MT4.mq4" download onClick={onDownload}>
           <span className="ic">↓</span>{t.dlMt4}
         </a>
+        <a className="btn btn-ghost" href="/ctrader/OnyxGuardian.cs" download onClick={onDownload}>
+          <span className="ic">↓</span>cTrader (cBot)
+        </a>
       </div>
     );
   }

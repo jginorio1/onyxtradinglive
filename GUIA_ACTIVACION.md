@@ -1801,3 +1801,34 @@ como **hora de Nueva York**, sin importar en qué país esté:
 - Debajo del campo aparece un aviso **"Tu hora local: …"** con la conversión a la zona del
   navegador del mentor, para que no se confunda al programar de madrugada.
 Los alumnos ven la clase en NY (calendario y banner en vivo) sin cambios.
+
+### 54 · cTrader — cBots Onyx (Guardian + Copy), sin EA de MetaTrader (Fase 20)
+
+Sin SQL nuevo. cTrader no usa EAs de MetaTrader (MQL); usa **cBots en C#** (cTrader
+Automate). Reusan tu backend actual tal cual: el mismo endpoint `/api/v1/sync`, la misma
+tabla de trades, el mismo Guardian y el mismo relay de copy. Los archivos están en
+`public/ctrader/`.
+
+**OnyxGuardian.cs** (el principal): hace **sincronización + Guardian** en una sola pieza.
+- Envía cuenta, operaciones cerradas y posiciones abiertas a `/api/v1/sync` con
+  `platform: "cTrader"`.
+- Aplica lo que decide el servidor: break even, trailing, TP parciales, cierre por
+  límite/noticia, **bloqueo de nuevas operaciones fuera del plan** (cierra lo que se abre tras
+  el bloqueo), cierre de fin de semana y comandos (cerrar todo, ganadoras, perdedoras, mitad,
+  SL a BE). Igual que en MetaTrader, y en tiempo real porque corre dentro de cTrader.
+- Descarga: en **Conectar cuenta → Guardian** (botón "cTrader (cBot)").
+
+**OnyxCopyMaster.cs / OnyxCopySlave.cs**: copy trading, equivalentes a las plantillas de MT.
+- Master reporta aperturas/cierres a `/api/v1/copy/master`; Slave consulta `/api/v1/copy/slave`,
+  resuelve el símbolo local, calcula el lote según el modo, aplica los límites del enlace
+  (lote máx, spread, pérdida diaria, drawdown) y ejecuta. Usa tu **clave Copy** (onyx_copy_...).
+- Descarga: en **Copy trading → Instalar** (botón "cTrader (.cs)").
+
+**Instalar un cBot:** cTrader → Automate → New cBot → pega el código → Build → añádelo a un
+gráfico y pega tu API key. Requiere permisos de red (ya declarados: `AccessRights.FullAccess`).
+
+**Notas honestas:** son cBots de C# que se **compilan dentro de cTrader**; pruébalos primero en
+**demo**. La parte de copy es una plantilla (igual que en MT): tu desarrollador puede afinar la
+tabla de alias de símbolos y el manejo de "modify" (SL/TP). MatchTrader no tiene cBots ni EA;
+su integración es por API del bróker y depende de que el bróker la habilite (se puede añadir
+después como conexión por token).
