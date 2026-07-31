@@ -1790,3 +1790,14 @@ Los alumnos que ya están dentro no se ven afectados.
 (NY)**. Al programar una clase, el mentor la ingresa en hora de Nueva York.
 
 **Requisitos:** correr `academy_v19.sql`. Nada nuevo en variables de entorno.
+
+### 53.1 · Onyx Academy — Conversión automática de zona horaria (clase en vivo)
+
+Sin SQL nuevo. Ahora la hora que el mentor escribe al programar una clase se interpreta SIEMPRE
+como **hora de Nueva York**, sin importar en qué país esté:
+- Al **guardar**, el servidor (`nyNaiveToUtc`) convierte esa hora de pared de NY al instante UTC
+  real (maneja el horario de verano automáticamente).
+- Al **editar**, el input vuelve a mostrar la hora en NY (`utcToNyInput`).
+- Debajo del campo aparece un aviso **"Tu hora local: …"** con la conversión a la zona del
+  navegador del mentor, para que no se confunda al programar de madrugada.
+Los alumnos ven la clase en NY (calendario y banner en vivo) sin cambios.

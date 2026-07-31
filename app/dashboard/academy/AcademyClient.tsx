@@ -478,6 +478,22 @@ function fmtCountdown(ms: number) {
 function nyTime(iso: string, lang: string, withDay = true) {
   return new Date(iso).toLocaleString(lang === 'en' ? 'en-US' : 'es-ES', { timeZone: 'America/New_York', ...(withDay ? { weekday: 'short', day: 'numeric', month: 'short' } : {}), hour: '2-digit', minute: '2-digit' });
 }
+// UTC guardado → "hora de pared" de NY para el input datetime-local (YYYY-MM-DDTHH:mm).
+function utcToNyInput(iso: string): string {
+  if (!iso) return '';
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(new Date(iso));
+  const g = (t: string) => parts.find((p) => p.type === t)?.value || '00';
+  return `${g('year')}-${g('month')}-${g('day')}T${(g('hour') === '24' ? '00' : g('hour'))}:${g('minute')}`;
+}
+// "hora de pared" de NY (del input) → hora local del navegador (para el aviso "tu hora").
+function nyInputToLocalHint(naive: string, lang: string): string {
+  if (!naive || naive.length < 16) return '';
+  const s = naive.length === 16 ? naive + ':00' : naive;
+  const asUtc = new Date(s + 'Z');
+  const shown = new Date(asUtc.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+  const utc = new Date(asUtc.getTime() + (asUtc.getTime() - shown.getTime()));
+  return utc.toLocaleString(lang === 'en' ? 'en-US' : 'es-ES', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
 function LiveBanner({ ev, lang }: { ev: any; lang: string }) {
   const L = (a: string, b: string) => (lang === 'en' ? b : a);
   const now = useNow(true);
@@ -1858,7 +1874,7 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
             <div className="row between" style={{ gap: 10, flexWrap: 'wrap' }}>
               <div><b>{e.title}</b><div className="muted" style={{ fontSize: 12.5 }}>{new Date(e.starts_at).toLocaleString(lang === 'en' ? 'en-US' : 'es-ES', { timeZone: 'America/New_York', dateStyle: 'medium', timeStyle: 'short' })} (NY) · {e.duration_min} min {e.recording_url && <span className="sk-chip" style={{ marginLeft: 6 }}>🎬 {L('grabación', 'replay')}</span>}</div></div>
               <div className="row" style={{ gap: 6 }}>
-                <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setEvForm({ ...e, starts_at: e.starts_at ? new Date(e.starts_at).toISOString().slice(0, 16) : '' })}>✎</button>
+                <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setEvForm({ ...e, starts_at: e.starts_at ? utcToNyInput(e.starts_at) : '' })}>✎</button>
                 <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--red)' }} onClick={async () => { if (await confirmDelete({ title: L('¿Borrar clase en vivo?', 'Delete live class?'), itemName: e.title })) api({ action: 'event_delete', id: e.id }); }}>✕</button>
               </div>
             </div>
@@ -2507,7 +2523,7 @@ function EventForm({ form, setForm, onSave, onCancel, L }: any) {
         <input value={form.join_url || ''} onChange={(e) => set('join_url', e.target.value)} placeholder={L('Link para entrar (Zoom, Meet o YouTube Live)', 'Join link (Zoom, Meet or YouTube Live)')} style={{ margin: 0 }} />
         <div className="muted" style={{ fontSize: 11.5, marginTop: -2 }}>{L('Si pones un link de YouTube Live, se ve incrustado dentro de la academia.', 'A YouTube Live link plays embedded inside the academy.')}</div>
         <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-          <div><span className="muted" style={{ fontSize: 12 }}>{L('Fecha y hora (hora de Nueva York)', 'Date & time (New York time)')}</span><input type="datetime-local" value={form.starts_at || ''} onChange={(e) => set('starts_at', e.target.value)} style={{ margin: '4px 0 0' }} /></div>
+          <div><span className="muted" style={{ fontSize: 12 }}>{L('Fecha y hora (hora de Nueva York)', 'Date & time (New York time)')}</span><input type="datetime-local" value={form.starts_at || ''} onChange={(e) => set('starts_at', e.target.value)} style={{ margin: '4px 0 0' }} />{form.starts_at && nyInputToLocalHint(form.starts_at, L('es', 'en')) && <div className="muted" style={{ fontSize: 11, marginTop: 3 }}>{L('Tu hora local:', 'Your local time:')} {nyInputToLocalHint(form.starts_at, L('es', 'en'))}</div>}</div>
           <div><span className="muted" style={{ fontSize: 12 }}>{L('Duración (min)', 'Duration (min)')}</span><input type="number" value={form.duration_min ?? 60} onChange={(e) => set('duration_min', Number(e.target.value))} style={{ margin: '4px 0 0', width: 100 }} /></div>
         </div>
         <input value={form.recording_url || ''} onChange={(e) => set('recording_url', e.target.value)} placeholder={L('Link de la grabación (YouTube/Vimeo/.mp4) — opcional', 'Recording link (YouTube/Vimeo/.mp4) — optional')} style={{ margin: 0 }} />

@@ -459,12 +459,24 @@ export async function listEvents(mentorId: string) {
   const { data } = await supabaseAdmin.from('academy_events').select('*').eq('mentor_id', mentorId).order('starts_at');
   return (data || []) as any[];
 }
+// Interpreta una hora "de pared" (sin zona, del input datetime-local) COMO hora de
+// Nueva York y devuelve el instante UTC. Maneja el horario de verano automáticamente.
+// Si el valor ya trae zona (Z o +hh:mm) se respeta tal cual.
+export function nyNaiveToUtc(naive: string): string {
+  if (!naive) return new Date().toISOString();
+  if (/([zZ])$|[+-]\d\d:?\d\d$/.test(naive)) return new Date(naive).toISOString();
+  const s = naive.length === 16 ? naive + ':00' : naive;   // asegura segundos
+  const asUtc = new Date(s + 'Z');
+  const shown = new Date(asUtc.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+  const offset = asUtc.getTime() - shown.getTime();
+  return new Date(asUtc.getTime() + offset).toISOString();
+}
 export async function saveEvent(mentorId: string, b: any) {
   const row: any = {
     title: String(b.title || 'Clase en vivo').slice(0, 160),
     description: b.description ? String(b.description).slice(0, 1000) : null,
     join_url: b.join_url ? String(b.join_url).slice(0, 500) : null,
-    starts_at: b.starts_at ? new Date(b.starts_at).toISOString() : new Date().toISOString(),
+    starts_at: b.starts_at ? nyNaiveToUtc(String(b.starts_at)) : new Date().toISOString(),
     duration_min: Math.max(5, Math.min(600, Number(b.duration_min) || 60)),
     recording_url: b.recording_url ? String(b.recording_url).slice(0, 500) : null,
   };
