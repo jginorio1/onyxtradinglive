@@ -2136,12 +2136,22 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
           Layout de dos columnas: el checklist queda a la izquierda (columna estrecha)
           y todo lo demás (enlace, pestañas y contenido) sube al tope a la derecha. */}
       <div className="sk-academy-3col" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,208px) minmax(0,1fr) minmax(0,300px)', gap: 16, alignItems: 'start' }}>
-        {/* Opción D · navegación vertical del panel del mentor */}
-        <nav className="sk-vnav">
-          {([['cursos', 'graduation', L('Aulas', 'Classroom')], ['envivo', 'calendar', L('En vivo', 'Live')], ['cobros', 'coins', L('Cobros', 'Payments')], ['alumnos', 'users', L('Alumnos', 'Students')], ['auditoria', 'guardian', L('Auditoría', 'Audit')], ['retencion', 'trophy', L('Retención', 'Retention')], ['comunidad', 'chat', L('Comunidad', 'Community')], ['correos', 'mail', L('Correos', 'Emails')], ['ajustes', 'settings', L('Ajustes', 'Settings')]] as any[]).map(([k, ic, lbl]) => (
-            <button key={k} className={'sk-vitem' + (tab === k ? ' on' : '')} onClick={() => setTab(k)}><OnyxIcon name={ic} size={16} /> <span>{lbl}</span></button>
-          ))}
-        </nav>
+        {/* Opción D · navegación vertical (escritorio/tablet) + selector nativo en móvil (como Mi cuenta) */}
+        {(() => {
+          const mentorTabs = [['cursos', 'graduation', L('Aulas', 'Classroom')], ['envivo', 'calendar', L('En vivo', 'Live')], ['cobros', 'coins', L('Cobros', 'Payments')], ['alumnos', 'users', L('Alumnos', 'Students')], ['auditoria', 'guardian', L('Auditoría', 'Audit')], ['retencion', 'trophy', L('Retención', 'Retention')], ['comunidad', 'chat', L('Comunidad', 'Community')], ['correos', 'mail', L('Correos', 'Emails')], ['ajustes', 'settings', L('Ajustes', 'Settings')]] as any[];
+          return (
+            <div style={{ minWidth: 0 }}>
+              <select className="sk-nav-mobile" value={tab} onChange={(e) => setTab(e.target.value as any)} style={{ width: '100%', margin: 0 }}>
+                {mentorTabs.map(([k, , lbl]) => <option key={k} value={k}>{lbl}</option>)}
+              </select>
+              <nav className="sk-vnav">
+                {mentorTabs.map(([k, ic, lbl]) => (
+                  <button key={k} className={'sk-vitem' + (tab === k ? ' on' : '')} onClick={() => setTab(k)}><OnyxIcon name={ic} size={16} /> <span>{lbl}</span></button>
+                ))}
+              </nav>
+            </div>
+          );
+        })()}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
 
       <div className="sk-card">

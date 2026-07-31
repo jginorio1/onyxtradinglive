@@ -398,17 +398,18 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
 .sk-vitem:hover{background:var(--bg2);color:var(--tx);}
 .sk-vitem.on{background:color-mix(in srgb,var(--brand) 14%,transparent);color:var(--brand);border-color:color-mix(in srgb,var(--brand) 32%,transparent);font-weight:600;}
 .sk-vitem span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* Selector nativo de sección para móvil (mismo patrón que Mi cuenta): oculto en escritorio */
+.sk-nav-mobile{display:none;}
 /* Tablet: 2 columnas (nav + contenido); la guía baja a ancho completo */
 @media(max-width:1080px){
   .sk-academy-3col{grid-template-columns:minmax(0,196px) minmax(0,1fr) !important;}
   .sk-academy-3col > .sk-onb-col{grid-column:1 / -1;}
 }
-/* Móvil: una columna; la nav se vuelve horizontal con scroll (opción A) */
+/* Móvil: una columna; la nav vertical se oculta y aparece el desplegable */
 @media(max-width:760px){
   .sk-academy-3col{grid-template-columns:1fr !important;}
-  .sk-vnav{flex-direction:row;overflow-x:auto;gap:4px;position:static;top:auto;border-bottom:1px solid var(--line);padding-bottom:8px;-webkit-overflow-scrolling:touch;}
-  .sk-vnav::-webkit-scrollbar{display:none;}
-  .sk-vitem{flex:0 0 auto;}
+  .sk-vnav{display:none;}
+  .sk-nav-mobile{display:block;}
 }
 /* Guía interactiva del onboarding: halo iluminado + flecha + tarjeta */
 .onb-halo{position:fixed;border:2px solid var(--brand);border-radius:14px;pointer-events:none;z-index:91;animation:onbPulse 1.1s ease-in-out infinite;}
