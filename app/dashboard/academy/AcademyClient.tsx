@@ -1745,10 +1745,9 @@ function Tiers({ products, purchases, onBuy, L }: any) {
                   <span style={{ fontSize: 12, color: 'var(--soft-green)' }}>✓ {L('Reporte AI + verificación de tu plan', 'AI report + plan verification')}</span>
                 </div>
               )}
-              {(p.perks?.copy || p.perks?.guardian) && (
+              {p.perks?.guardian && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 10 }}>
-                  {p.perks?.copy && <span style={{ fontSize: 12, color: 'var(--soft-green)' }}>✓ {L('Copy trading del mentor', 'Mentor copy trading')}</span>}
-                  {p.perks?.guardian && <span style={{ fontSize: 12, color: 'var(--soft-green)' }}>✓ Onyx Guardian</span>}
+                  <span style={{ fontSize: 12, color: 'var(--soft-green)' }}>✓ Onyx Guardian</span>
                 </div>
               )}
               {owned ? <span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--green) 15%,transparent)', color: 'var(--soft-green)' }}>✓ {L('Ya lo tienes', 'You have it')}</span>
@@ -2957,18 +2956,15 @@ function MentorPayments({ modules, L, onChanged }: { modules: any[]; L: (a: stri
         )}
       </div>
 
-      {ents.length > 0 && (
+      {ents.filter((e: any) => e.perks?.guardian).length > 0 && (
         <div className="sk-card">
-          <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 6 }}><span className="card-ic"><OnyxIcon name="guardian" size={16} /></span> {L('Accesos a dar (Copy / Guardian)', 'Access to grant (Copy / Guardian)')}</h3>
-          <p className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>{L('Estos alumnos compraron un nivel con extras. Dales el acceso manualmente (Copy trading / Guardian) desde sus módulos — por seguridad no se activa solo.', 'These students bought a tier with perks. Grant them access manually (Copy trading / Guardian) — for safety it is not auto-enabled.')}</p>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 6 }}><span className="card-ic"><OnyxIcon name="guardian" size={16} /></span> {L('Accesos a dar (Onyx Guardian)', 'Access to grant (Onyx Guardian)')}</h3>
+          <p className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>{L('Estos alumnos compraron un nivel que incluye Onyx Guardian. Dales el acceso manualmente desde sus módulos — por seguridad no se activa solo.', 'These students bought a tier that includes Onyx Guardian. Grant them access manually — for safety it is not auto-enabled.')}</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {ents.map((e: any, i: number) => (
+            {ents.filter((e: any) => e.perks?.guardian).map((e: any, i: number) => (
               <div key={i} className="row between" style={{ background: 'var(--bg2)', borderRadius: 8, padding: '9px 12px', fontSize: 13 }}>
                 <span>{e.name} <span className="muted">· {e.tier}</span></span>
-                <span className="row" style={{ gap: 6 }}>
-                  {e.perks?.copy && <span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--brand) 15%,transparent)', color: 'var(--soft-brand)' }}>Copy</span>}
-                  {e.perks?.guardian && <span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--green) 15%,transparent)', color: 'var(--soft-green)' }}>Guardian</span>}
-                </span>
+                <span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--green) 15%,transparent)', color: 'var(--soft-green)' }}>Guardian</span>
               </div>
             ))}
           </div>
@@ -3009,9 +3005,8 @@ function TierForm({ form, setForm, modules, busy, onSave, onCancel, L }: any) {
         </div>
         <div>
           <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{L('Extras incluidos (opcional)', 'Included perks (optional)')}</div>
-          <label className="row" style={{ gap: 8, fontSize: 13, marginBottom: 4 }}><input type="checkbox" checked={!!form.perks?.copy} onChange={(e) => set('perks', { ...(form.perks || {}), copy: e.target.checked })} style={{ width: 'auto', margin: 0 }} /> {L('Copy trading del mentor', 'Mentor copy trading')}</label>
           <label className="row" style={{ gap: 8, fontSize: 13 }}><input type="checkbox" checked={!!form.perks?.guardian} onChange={(e) => set('perks', { ...(form.perks || {}), guardian: e.target.checked })} style={{ width: 'auto', margin: 0 }} /> Onyx Guardian</label>
-          <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{L('Se muestran al alumno como incluidos; tú das el acceso desde la lista de abajo (por seguridad no se activa solo).', 'Shown to the student as included; you grant access from the list below (not auto-enabled, for safety).')}</div>
+          <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{L('Se muestra al alumno como incluido; tú das el acceso desde la lista de abajo (por seguridad no se activa solo).', 'Shown to the student as included; you grant access from the list below (not auto-enabled, for safety).')}</div>
         </div>
         </>)}
         <label className="row" style={{ gap: 8, fontSize: 13 }}><input type="checkbox" checked={form.active !== false} onChange={(e) => set('active', e.target.checked)} style={{ width: 'auto', margin: 0 }} /> {L('Activo (visible para alumnos)', 'Active (visible to students)')}</label>

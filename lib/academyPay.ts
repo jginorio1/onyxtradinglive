@@ -94,7 +94,7 @@ export async function saveProduct(mentorId: string, b: any) {
     price_cents: Math.max(0, Math.round(Number(b.price_cents) || 0)),
     currency: (b.currency || 'usd').toLowerCase().slice(0, 3),
     grants: b.grants === 'all' || !Array.isArray(b.grants) ? 'all' : b.grants.map((x: any) => String(x)).slice(0, 100),
-    perks: { copy: !!(b.perks?.copy), guardian: !!(b.perks?.guardian) },
+    perks: { copy: false, guardian: !!(b.perks?.guardian) }, // copy trading retirado de la academia
     active: b.active !== false,
     position: Number(b.position) || 0,
   };
@@ -132,16 +132,16 @@ export async function perksFor(studentId: string, mentorId: string) {
   const buys = await studentPurchases(studentId, mentorId);
   if (!buys.length) return { copy: false, guardian: false };
   const { data: prods } = await supabaseAdmin.from('academy_products').select('perks').in('id', buys.map((b) => b.product_id));
-  let copy = false, guardian = false;
-  for (const p of (prods || []) as any[]) { if (p.perks?.copy) copy = true; if (p.perks?.guardian) guardian = true; }
-  return { copy, guardian };
+  let guardian = false;
+  for (const p of (prods || []) as any[]) { if (p.perks?.guardian) guardian = true; }
+  return { copy: false, guardian }; // copy trading ya no se otorga por la academia
 }
 
 // Para el mentor: quién compró un nivel con extras (para darles el acceso a mano).
 // NO ejecuta copy/guardian automáticamente (seguridad): solo lista.
 export async function entitlements(mentorId: string) {
   const { data: prods } = await supabaseAdmin.from('academy_products').select('id,name,perks').eq('mentor_id', mentorId);
-  const withPerks = (prods || []).filter((p: any) => p.perks?.copy || p.perks?.guardian);
+  const withPerks = (prods || []).filter((p: any) => p.perks?.guardian);
   if (!withPerks.length) return [];
   const { data: buys } = await supabaseAdmin.from('academy_purchases').select('student_id,product_id').eq('mentor_id', mentorId).eq('status', 'active').in('product_id', withPerks.map((p: any) => p.id));
   const ids = Array.from(new Set((buys || []).map((b: any) => b.student_id)));
