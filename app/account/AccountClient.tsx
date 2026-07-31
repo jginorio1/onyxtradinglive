@@ -7,6 +7,7 @@ import Link from 'next/link';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import CountrySelect from '@/app/components/CountrySelect';
 import { useCatalog } from '@/lib/useCatalog';
+import { platformLabel } from '@/lib/platforms';
 import { errMsg, planName } from '@/lib/i18nErrors';
 import Ambassador from './Ambassador';
 import ReferralCard from './ReferralCard';
@@ -575,7 +576,7 @@ export default function AccountClient({ email }: { email: string }) {
                           })()}
                           {a.plan_paused && <span className="pill" style={{ color: 'var(--amber)', background: 'rgba(255,192,77,.15)' }}>⏸ {L.accPaused}</span>}
                         </div>
-                        <div className="muted" style={{ fontSize: 12 }}>{a.platform || 'MT5'} · {L.lastSync}: {a.last_sync_at ? fmtDateTime(a.last_sync_at, lang) : L.never}</div>
+                        <div className="muted" style={{ fontSize: 12 }}>{platformLabel(a.platform, lang) || 'MetaTrader 5'} · {L.lastSync}: {a.last_sync_at ? fmtDateTime(a.last_sync_at, lang) : L.never}</div>
                         {a.plan_paused && <div style={{ fontSize: 11.5, color: 'var(--amber)', marginTop: 2 }}>{L.pausedNote}</div>}
                       </div>
                       <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>

@@ -30,7 +30,7 @@ const L: any = {
   es: {
     fMine: 'Mías', fUnassigned: 'Sin asignar', needsReply: 'Espera respuesta',
     ctxTitle: 'Ficha del trader', ctxLead: 'Visitante sin cuenta (lead)', ctxNoUser: 'No tiene cuenta en Onyx todavía.',
-    plan: 'Plan', member: 'Miembro desde', accounts: 'Cuentas MT', funded: 'de fondeo', prior: 'Tickets antes',
+    plan: 'Plan', member: 'Miembro desde', accounts: 'Cuentas', funded: 'de fondeo', prior: 'Tickets antes',
     langF: 'Idioma', country: 'País', firm: 'Prop firm', firstSeen: 'Primer contacto', none: '—',
     canned: 'Respuesta guardada', cannedNew: 'Nueva respuesta guardada', cTitle: 'Título corto',
     cBody: 'Texto de la respuesta', cSave: 'Guardar', cManage: 'Guardadas', cEmpty: 'Aún no tienes respuestas guardadas.',

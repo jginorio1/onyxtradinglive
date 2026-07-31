@@ -23,6 +23,8 @@ import NetRealCard from './NetRealCard';
 import CoachCard from './CoachCard';
 import Achievements from './Achievements';
 import Nudge from './Nudge';
+import { platformLabel, platformsPhrase } from '@/lib/platforms';
+import { useCatalog } from '@/lib/useCatalog';
 
 // Genera operaciones de ejemplo variadas (modo demo)
 function genDemo(accId: string): TT[] {
@@ -71,8 +73,7 @@ const D = {
     styleMap: { scalping: 'Scalper', day: 'Day Trader', swing: 'Swing Trader', position: 'Position Trader', algo: 'Algo Trader' } as Record<string, string>,
     rankMap: { novato: 'Aprendiz', intermedio: 'Intermedio', avanzado: 'Avanzado', pro: 'Pro' } as Record<string, string>,
     goalMap: { pasar_challenge: 'Pasar challenge', consistencia: 'Consistencia', crecer: 'Crecer la cuenta', vivir: 'Vivir del trading' } as Record<string, string>,
-    platMap: { mt5: 'MT5', mt4: 'MT4', ambas: 'MT4 + MT5' } as Record<string, string>,
-    empty1_t: 'Conecta tu primera cuenta', empty1_d: 'Instala el Onyx Connector (MT4/MT5), genera una API key y en segundos verás aquí todas tus estadísticas.', empty1_cta: 'Conectar cuenta →',
+    empty1_t: 'Conecta tu primera cuenta', empty1_d: 'Elige tu plataforma ({plats}), instala el conector, genera una API key y en segundos verás aquí todas tus estadísticas.', empty1_cta: 'Conectar cuenta →',
     empty2: 'Cuenta conectada. En cuanto cierres operaciones, aparecerán aquí tus analíticas.',
     portfolio: 'Portafolio', updated: 'Actualizado hace', sAgo: 's', now: 'ahora mismo',
     insights: '💡 Onyx te dice', health: 'Salud de la cuenta', back: '← Volver al panel',
@@ -101,8 +102,7 @@ const D = {
     styleMap: { scalping: 'Scalper', day: 'Day Trader', swing: 'Swing Trader', position: 'Position Trader', algo: 'Algo Trader' } as Record<string, string>,
     rankMap: { novato: 'Rookie', intermedio: 'Intermediate', avanzado: 'Advanced', pro: 'Pro' } as Record<string, string>,
     goalMap: { pasar_challenge: 'Pass challenge', consistencia: 'Consistency', crecer: 'Grow account', vivir: 'Trade for a living' } as Record<string, string>,
-    platMap: { mt5: 'MT5', mt4: 'MT4', ambas: 'MT4 + MT5' } as Record<string, string>,
-    empty1_t: 'Connect your first account', empty1_d: 'Install the Onyx Connector (MT4/MT5), generate an API key and in seconds all your stats will show up here.', empty1_cta: 'Connect account →',
+    empty1_t: 'Connect your first account', empty1_d: 'Pick your platform ({plats}), install the connector, generate an API key and in seconds all your stats will show up here.', empty1_cta: 'Connect account →',
     empty2: 'Account connected. As soon as you close trades, your analytics will appear here.',
     portfolio: 'Portfolio', updated: 'Updated', sAgo: 's ago', now: 'just now',
     insights: '💡 Onyx says', health: 'Account health', back: '← Back to dashboard',
@@ -292,6 +292,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
   const [plans, setPlans] = useState<any[]>([]);
   const [limitInfo, setLimitInfo] = useState<any>(null);
   const L = D[lang];
+  const platItems = useCatalog('platform');
   const proPrice = plans.find((p: any) => p.id === 'pro')?.price_month || 0;
 
   // Capacidades del plan actual (controladas 100% desde el panel). Antes de cargar, cae al comportamiento por defecto (free vs pago).
@@ -490,7 +491,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
   const heroChips: { icon: string; label: string }[] = [];
   if (profile?.trade_style && L.styleMap[profile.trade_style]) heroChips.push({ icon: STYLE_EMOJI[profile.trade_style] || '📈', label: L.styleMap[profile.trade_style] });
   if (profile?.experience && L.rankMap[profile.experience]) heroChips.push({ icon: '🏅', label: L.rankMap[profile.experience] });
-  if (profile?.platform && L.platMap[profile.platform]) heroChips.push({ icon: '🖥️', label: L.platMap[profile.platform] });
+  if (profile?.platform && platformLabel(profile.platform, lang)) heroChips.push({ icon: '🖥️', label: platformLabel(profile.platform, lang) });
   if (profile?.goal && L.goalMap[profile.goal]) heroChips.push({ icon: '🎯', label: L.goalMap[profile.goal] });
 
   return (
@@ -533,7 +534,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
           <div className="rail-right"><News lang={lang} /></div>
           <div className="center">
         {!hasAccounts ? (
-          <div className="card"><h3>{L.empty1_t}</h3><p className="muted" style={{ margin: '8px 0 14px' }}>{L.empty1_d}</p><Link className="btn btn-primary" href="/dashboard/keys">{L.empty1_cta}</Link></div>
+          <div className="card"><h3>{L.empty1_t}</h3><p className="muted" style={{ margin: '8px 0 14px' }}>{L.empty1_d.replace('{plats}', platformsPhrase(platItems, lang, 3))}</p><Link className="btn btn-primary" href="/dashboard/keys">{L.empty1_cta}</Link></div>
         ) : !hasTrades ? (
           <div className="card"><p className="muted">{L.empty2}</p></div>
         ) : (

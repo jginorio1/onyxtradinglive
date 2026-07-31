@@ -34,7 +34,7 @@ export default function AnalizaPage() {
 
       <div className="card">
         <textarea value={text} onChange={(e) => setText(e.target.value)}
-          placeholder={L('Pega aquí tus operaciones (par, resultado, hora…) o el texto de tu reporte de MT4/MT5.', 'Paste your trades here (pair, result, time…) or your MT4/MT5 statement text.')}
+          placeholder={L('Pega aquí tus operaciones (par, resultado, hora…) o el texto de tu reporte de MetaTrader o cTrader.', 'Paste your trades here (pair, result, time…) or your MetaTrader or cTrader statement text.')}
           style={{ width: '100%', minHeight: 150, padding: '12px 14px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 14, fontFamily: 'inherit', resize: 'vertical' }} />
         <div className="row" style={{ gap: 10, marginTop: 12, alignItems: 'center', flexWrap: 'wrap' }}>
           <button className="btn btn-primary" onClick={run} disabled={busy || text.trim().length < 30}>{busy ? L('Analizando…', 'Analyzing…') : '✨ ' + L('Analizar', 'Analyze')}</button>
