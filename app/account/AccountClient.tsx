@@ -61,6 +61,8 @@ const D: any = {
     nEmailS: 'Cobros, recibos y cambios de plan', nWeekS: 'Tu semana por email', nFundS: 'Cuando te acercas a un límite', nMktS: 'Promos y lanzamientos',
     pwT: 'Cambiar contraseña', pwNew: 'Nueva contraseña', pwRep: 'Repetir contraseña', pwBtn: 'Actualizar contraseña', pwShort: 'Mínimo 8 caracteres.', pwDiff: 'Las contraseñas no coinciden.', pwOk: 'Contraseña actualizada.',
     dTitle: 'Eliminar mi cuenta', dTxt: 'Se borrarán tus cuentas, operaciones y notas para siempre, y se cancelará tu suscripción. Esto no se puede deshacer.', dType: 'Escribe ELIMINAR para confirmar', dBtn: 'Eliminar mi cuenta',
+    dWord: 'ELIMINAR', dHintA: 'Escribe ', dHintB: ' (en mayúsculas) para activar el botón.', dCaps: 'Debe ir TODO en mayúsculas.', dReady: 'Coincide. Ya puedes eliminar.',
+    dMTitle: '¿Eliminar tu cuenta?', dMBody: 'Esta acción no se puede deshacer. Se borra todo y se cancela tu suscripción.', dMCancel: 'Cancelar', dMDel: 'Eliminar',
     mtDisc: 'Desconectar', mtDel: 'Eliminar',
     mtDiscQ: '¿Desconectar esta cuenta? Se libera el cupo y podrás usarlo en otra, pero tu historial se conserva.',
     mtDelQ: '¿ELIMINAR esta cuenta y TODAS sus operaciones? Esto no se puede deshacer.',
@@ -109,7 +111,9 @@ const D: any = {
     nSub: 'Choose where and what you want to hear about.', nMailT: 'Email',
     nEmailS: 'Charges, receipts and plan changes', nWeekS: 'Your week by email', nFundS: 'When you get close to a limit', nMktS: 'Promos and launches',
     pwT: 'Change password', pwNew: 'New password', pwRep: 'Repeat password', pwBtn: 'Update password', pwShort: 'At least 8 characters.', pwDiff: 'Passwords do not match.', pwOk: 'Password updated.',
-    dTitle: 'Delete my account', dTxt: 'Your accounts, trades and notes will be erased forever and your subscription will be canceled. This cannot be undone.', dType: 'Type ELIMINAR to confirm', dBtn: 'Delete my account',
+    dTitle: 'Delete my account', dTxt: 'Your accounts, trades and notes will be erased forever and your subscription will be canceled. This cannot be undone.', dType: 'Type DELETE to confirm', dBtn: 'Delete my account',
+    dWord: 'DELETE', dHintA: 'Type ', dHintB: ' (uppercase) to enable the button.', dCaps: 'It must be ALL uppercase.', dReady: 'Match. You can delete now.',
+    dMTitle: 'Delete your account?', dMBody: 'This cannot be undone. Everything is erased and your subscription is canceled.', dMCancel: 'Cancel', dMDel: 'Delete',
     mtDisc: 'Disconnect', mtDel: 'Delete',
     mtDiscQ: 'Disconnect this account? The slot is freed and you can use it elsewhere, but your history is kept.',
     mtDelQ: 'DELETE this account and ALL its trades? This cannot be undone.',
@@ -667,7 +671,7 @@ function LockPinCard({ lang }: { lang: Lang }) {
 
 function Security({ L, lang }: { L: any; lang: Lang }) {
   const [pw1, setPw1] = useState(''); const [pw2, setPw2] = useState('');
-  const [conf, setConf] = useState(''); const [busy, setBusy] = useState(''); const [ok, setOk] = useState('');
+  const [conf, setConf] = useState(''); const [busy, setBusy] = useState(''); const [ok, setOk] = useState(''); const [delModal, setDelModal] = useState(false);
 
   async function changePw() {
     if (pw1.length < 8) { toast(L.pwShort); return; }
@@ -708,12 +712,46 @@ function Security({ L, lang }: { L: any; lang: Lang }) {
       {/* Solo para admins/equipo: cambiar su PIN de bloqueo del panel. */}
       <LockPinCard lang={lang} />
 
-      <div className="card" style={{ border: '1px solid var(--red)' }}>
-        <h3 style={{ marginBottom: 6, color: 'var(--red)' }}>{L.dTitle}</h3>
-        <p className="muted" style={{ fontSize: 13, marginBottom: 10 }}>{L.dTxt}</p>
-        <input placeholder={L.dType} value={conf} onChange={(e) => setConf(e.target.value)} style={{ margin: 0 }} />
-        <button className="btn btn-danger" style={{ marginTop: 12 }} onClick={delAcc} disabled={busy === 'del' || conf.trim().toUpperCase() !== 'ELIMINAR'}>{busy === 'del' ? '...' : L.dBtn}</button>
-      </div>
+      {(() => {
+        const word = (L as any).dWord as string;             // ELIMINAR / DELETE
+        const v = conf.trim();
+        const matched = v === word;                            // exacto, sensible a mayúsculas
+        const badCase = !matched && v.toUpperCase() === word;  // escribió la palabra pero mal escrita
+        return (
+          <div className="card" style={{ border: '1px solid var(--red)' }}>
+            <h3 style={{ marginBottom: 6, color: 'var(--red)' }}>{L.dTitle}</h3>
+            <p className="muted" style={{ fontSize: 13, marginBottom: 8 }}>{L.dTxt}</p>
+            <p className="muted" style={{ fontSize: 12.5, marginBottom: 6 }}>
+              {(L as any).dHintA}<code style={{ color: 'var(--red)', fontWeight: 700 }}>{word}</code>{(L as any).dHintB}
+            </p>
+            <input placeholder={L.dType} value={conf} onChange={(e) => setConf(e.target.value)} style={{ margin: 0 }} />
+            <div style={{ fontSize: 12, minHeight: 16, margin: '6px 2px 0', color: matched ? 'var(--green)' : 'var(--amber)' }}>
+              {matched ? '✓ ' + (L as any).dReady : (badCase ? (L as any).dCaps : '')}
+            </div>
+            <button className="btn btn-danger" style={{ marginTop: 10, opacity: matched ? 1 : .45, cursor: matched ? 'pointer' : 'not-allowed' }}
+              onClick={() => { if (matched) setDelModal(true); }} disabled={!matched || busy === 'del'}>
+              {busy === 'del' ? '...' : L.dBtn}
+            </button>
+          </div>
+        );
+      })()}
+
+      {/* Popup de confirmación iluminado (mismo estilo que la academia) */}
+      {delModal && (
+        <div className="sk-modal-ov" onClick={() => setDelModal(false)}>
+          <div className="sk-modal sk-confirm" onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 10 }}>
+              <span className="sk-confirm-ic"><OnyxIcon emoji="🗑" size={20} /></span>
+              <b style={{ fontSize: 16.5 }}>{(L as any).dMTitle}</b>
+            </div>
+            <p className="muted" style={{ fontSize: 13.5, margin: '8px 0 18px', lineHeight: 1.55 }}>{(L as any).dMBody}</p>
+            <div className="row" style={{ gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn btn-ghost" onClick={() => setDelModal(false)}>{(L as any).dMCancel}</button>
+              <button className="btn sk-btn-danger" onClick={() => { setDelModal(false); delAcc(); }} disabled={busy === 'del'}>{busy === 'del' ? '...' : (L as any).dMDel}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
