@@ -2396,25 +2396,28 @@ function CollabManager({ d, api, L }: any) {
 
 // Onboarding del mentor: checklist con barra de progreso. Se autocompleta con datos reales.
 // ---- Guía interactiva del onboarding: flecha animada + campo iluminado + explicación ----
-const TOUR_STEPS: { key: string; tab: string; sel: string }[] = [
-  { key: 'content', tab: 'cursos', sel: 'classroom' },
+// Orden "identidad primero": nombre → branding (tu voz) → y solo entonces el copy con AI.
+const TOUR_STEPS: { key: string; tab: string; sel: string; review?: boolean }[] = [
+  { key: 'name', tab: 'ajustes', sel: 'name', review: true },
+  { key: 'branding', tab: 'ajustes', sel: 'branding' },
   { key: 'logo', tab: 'ajustes', sel: 'logo' },
   { key: 'cover', tab: 'ajustes', sel: 'cover' },
+  { key: 'content', tab: 'cursos', sel: 'classroom' },
   { key: 'monetize', tab: 'cobros', sel: 'tier' },
   { key: 'charges', tab: 'cobros', sel: 'stripe' },
   { key: 'liveClass', tab: 'envivo', sel: 'liveclass' },
-  { key: 'branding', tab: 'ajustes', sel: 'branding' },
 ];
 
-// Pasos donde Onyx AI ayuda a redactar: qué kind de la API usar y con qué contexto.
-const TOUR_AI: Record<string, { kind: string; input: (name: string) => string }> = {
-  content: { kind: 'course_desc', input: (n) => `${n}: aula "Empieza aquí" para alumnos nuevos de trading` },
-  monetize: { kind: 'pitch', input: (n) => `${n}: nivel de membresía con acceso a la comunidad y las clases` },
+// Pasos donde Onyx AI ayuda a redactar. content/monetize se "encienden" solo tras el branding.
+const TOUR_AI: Record<string, { kind: string; input: (name: string) => string; gated?: boolean }> = {
   branding: { kind: 'tagline', input: (n) => `${n}` },
+  content: { kind: 'course_desc', input: (n) => `${n}: aula "Empieza aquí" para alumnos nuevos de trading`, gated: true },
+  monetize: { kind: 'pitch', input: (n) => `${n}: nivel de membresía con acceso a la comunidad y las clases`, gated: true },
 };
 
 function tourCopy(key: string, L: (a: string, b: string) => string): [string, string, string] {
   const M: Record<string, [string, string, string]> = {
+    name: [L('Ponle nombre a tu academia', 'Name your academy'), L('Escribe aquí el nombre de tu academia. Puedes cambiarlo cuando quieras.', 'Type your academy’s name here. You can change it anytime.'), L('Es lo primero que ven tus alumnos y Onyx AI lo usará para escribir en tu voz. Empezamos por aquí para que todo lo demás salga con tu marca.', 'It’s the first thing students see and Onyx AI uses it to write in your voice. We start here so everything else comes out on-brand.')],
     content: [L('Crea tu primera aula', 'Create your first classroom'), L('Escribe aquí el nombre de un aula (curso o módulo) y pulsa “Aula”.', 'Type a classroom name (course or module) here and hit “Classroom”.'), L('Es donde vivirán tus lecciones. Puedes crear varias (Empieza aquí, Fundamentos…). ¿Con prisa? Usa la plantilla Academia Onyx.', 'It’s where your lessons live. Create several (Start here, Fundamentals…). In a hurry? Use the Onyx Academy template.')],
     logo: [L('Sube tu logo o foto', 'Upload your logo or photo'), L('Sube una imagen cuadrada. Reemplaza el ícono por defecto de tu academia.', 'Upload a square image. It replaces your academy’s default icon.'), L('Le da cara a tu marca en la comunidad, la página de ventas y los correos.', 'It gives your brand a face across the community, sales page and emails.')],
     cover: [L('Sube la portada de tu comunidad', 'Upload your community cover'), L('Sube una imagen ancha (tipo banner). Es lo primero que ve el visitante.', 'Upload a wide (banner) image. It’s the first thing a visitor sees.')  , L('Aparece arriba de tu comunidad y en tu página de ventas. Una buena portada sube las conversiones.', 'It shows at the top of your community and sales page. A good cover lifts conversions.')],
@@ -2433,8 +2436,9 @@ function GuidedTour({ stepKey, o, L, onGoto, onFinish, onClose, academyName }: a
   const [aiBusy, setAiBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [tipOpen, setTipOpen] = useState(true);
-  const done = step ? !!o?.[step.key] : false;
+  const done = step && !step.review ? !!o?.[step.key] : false;
   const ai = step ? TOUR_AI[step.key] : null;
+  const aiGated = !!(ai && ai.gated && !o?.branding); // copy solo tras branding
 
   // Al cambiar de paso: limpiar el borrador y resaltar los botones ✨ IA de la pantalla (refuerzo B).
   useEffect(() => {
@@ -2456,26 +2460,28 @@ function GuidedTour({ stepKey, o, L, onGoto, onFinish, onClose, academyName }: a
     setAiBusy(false);
   }
 
+  // Medimos el campo objetivo con listeners (no en cada frame) para que la tarjeta
+  // y el chip "Ver ayuda" no salten y sus clics no fallen.
   useEffect(() => {
     if (!step) { setRect(null); return; }
-    let raf = 0; let first = true;
-    const tick = () => {
+    const measure = () => {
       const el = document.querySelector(`[data-onb="${step.sel}"]`) as HTMLElement | null;
-      if (el) {
-        const r = el.getBoundingClientRect();
-        setRect({ top: r.top, left: r.left, width: r.width, height: r.height });
-        if (first) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); first = false; }
-      }
-      raf = requestAnimationFrame(tick);
+      if (el) { const r = el.getBoundingClientRect(); setRect({ top: r.top, left: r.left, width: r.width, height: r.height }); }
     };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    const el = document.querySelector(`[data-onb="${step.sel}"]`) as HTMLElement | null;
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    measure();
+    const iv = setInterval(measure, 120);          // reasienta mientras el scroll suave termina
+    const stop = setTimeout(() => clearInterval(iv), 1400);
+    window.addEventListener('scroll', measure, true);
+    window.addEventListener('resize', measure);
+    return () => { clearInterval(iv); clearTimeout(stop); window.removeEventListener('scroll', measure, true); window.removeEventListener('resize', measure); };
   }, [stepKey]);
 
   useEffect(() => {
     if (!step || !done) return;
     const t = setTimeout(() => {
-      const next = TOUR_STEPS.find((s) => !o?.[s.key]);
+      const next = TOUR_STEPS.find((s) => !s.review && !o?.[s.key]);
       if (next) onGoto(next.key); else onFinish();
     }, 1800);
     return () => clearTimeout(t);
@@ -2500,7 +2506,7 @@ function GuidedTour({ stepKey, o, L, onGoto, onFinish, onClose, academyName }: a
       {rect && <div className="onb-halo" style={{ top: rect.top - 8, left: rect.left - 8, width: rect.width + 16, height: rect.height + 16 }} />}
       {rect && <div className="onb-arrow" style={{ top: below ? rect.top - 38 : rect.top + rect.height + 6, left: rect.left + Math.min(46, rect.width / 2), color: 'var(--brand)' }}><Arrow /></div>}
       {!tipOpen && !done && (
-        <button className="onb-tip-mini" style={{ top: tipTop, left: tipLeft }} onClick={() => setTipOpen(true)}>
+        <button className="onb-tip-mini" style={{ top: tipTop, left: tipLeft, pointerEvents: 'auto' }} onClick={() => setTipOpen(true)}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon name="ai" size={14} glow={false} /> {L('Completa este paso', 'Complete this step')}</span>
           <span style={{ color: 'var(--brand)', fontWeight: 600 }}>{L('Ver ayuda', 'Show tip')}</span>
         </button>
@@ -2516,7 +2522,12 @@ function GuidedTour({ stepKey, o, L, onGoto, onFinish, onClose, academyName }: a
         <p className="muted" style={{ fontSize: 12.5, margin: '0 0 10px', lineHeight: 1.5 }}>{why}</p>
         {ai && (
           <div style={{ margin: '0 0 10px', padding: '9px 10px', borderRadius: 10, background: 'color-mix(in srgb,var(--brand) 12%,transparent)', border: '1px solid color-mix(in srgb,var(--brand) 32%,transparent)' }}>
-            {!aiDraft ? (
+            {aiGated ? (
+              <div className="row between" style={{ gap: 8, alignItems: 'center' }}>
+                <span style={{ fontSize: 12, color: 'var(--mut)', display: 'inline-flex', alignItems: 'center', gap: 6, lineHeight: 1.4 }}>✨ {L('Para que el AI escriba en tu voz, define tu branding primero.', 'For AI to write in your voice, set your branding first.')}</span>
+                <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '4px 10px', flex: 'none' }} onClick={() => onGoto('branding')}>{L('Ir a branding →', 'Go to branding →')}</button>
+              </div>
+            ) : !aiDraft ? (
               <div className="row between" style={{ gap: 8, alignItems: 'center' }}>
                 <span style={{ fontSize: 12, color: 'var(--soft-brand,var(--brand))', display: 'inline-flex', alignItems: 'center', gap: 6 }}>✨ {L('Onyx AI puede escribirlo por ti', 'Onyx AI can write it for you')}</span>
                 <button className="btn btn-primary" style={{ fontSize: 11.5, padding: '4px 10px', flex: 'none' }} disabled={aiBusy} onClick={genAI}>{aiBusy ? L('Escribiendo…', 'Writing…') : L('Ver ejemplo', 'See example')}</button>
@@ -2533,7 +2544,12 @@ function GuidedTour({ stepKey, o, L, onGoto, onFinish, onClose, academyName }: a
             )}
           </div>
         )}
-        {done ? (
+        {step.review ? (
+          <div className="row" style={{ gap: 8 }}>
+            <button className="btn btn-ghost" style={{ fontSize: 12, flex: 1 }} onClick={() => setTipOpen(false)}>{L('Ahora no', 'Not now')}</button>
+            <button className="btn btn-primary" style={{ fontSize: 12, flex: 2 }} onClick={() => { const next = TOUR_STEPS[idx + 1]; if (next) onGoto(next.key); else onFinish(); }}>{L('Listo, siguiente →', 'Done, next →')}</button>
+          </div>
+        ) : done ? (
           <div className="row" style={{ gap: 8, alignItems: 'center' }}>
             <span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--green) 16%,transparent)', color: 'var(--soft-green)' }}>✓ {L('¡Completado!', 'Done!')}</span>
             <span className="muted" style={{ fontSize: 12 }}>{L('Pasando al siguiente…', 'Moving to next…')}</span>
@@ -2558,13 +2574,13 @@ function OnboardingCard({ d, L, api, goTab, startTour }: any) {
   if (o.dismissed) return null;
   const go = (key: string) => (startTour ? startTour(key) : goTab(TOUR_STEPS.find((s) => s.key === key)?.tab || 'cursos'));
   const steps: [boolean, string, () => void][] = [
-    [o.content, L('Crea tu primera aula (o usa la plantilla)', 'Create your first classroom (or use the template)'), () => go('content')],
+    [o.branding, L('Configura tu branding y redes (para el AI)', 'Set your branding and socials (for the AI)'), () => go('branding')],
     [o.logo, L('Sube tu logo o foto', 'Upload your logo or photo'), () => go('logo')],
     [o.cover, L('Sube la portada de tu comunidad', 'Upload your community cover'), () => go('cover')],
+    [o.content, L('Crea tu primera aula (o usa la plantilla)', 'Create your first classroom (or use the template)'), () => go('content')],
     [o.monetize, L('Crea tu membresía o un nivel de pago', 'Create your membership or a paid tier'), () => go('monetize')],
     [o.charges, L('Conecta Stripe para cobrar', 'Connect Stripe to get paid'), () => go('charges')],
     [o.liveClass, L('Programa tu primera clase en vivo', 'Schedule your first live class'), () => go('liveClass')],
-    [o.branding, L('Configura tu branding y redes (para el AI)', 'Set your branding and socials (for the AI)'), () => go('branding')],
   ];
   const done = steps.filter((s) => s[0]).length;
   const pct = Math.round((done / steps.length) * 100);
@@ -2596,7 +2612,12 @@ function OnboardingCard({ d, L, api, goTab, startTour }: any) {
             : <button className="btn btn-ghost" style={{ fontSize: 12, padding: '3px 10px' }} onClick={() => setCol(true)}>{L('Ocultar', 'Hide')}</button>}
         </div>
       </div>
-      <div className="statbar" style={{ ['--ac' as any]: 'var(--brand)', marginBottom: 12 }}><i style={{ width: pct + '%' }} /></div>
+      <div className="statbar" style={{ ['--ac' as any]: 'var(--brand)', marginBottom: 10 }}><i style={{ width: pct + '%' }} /></div>
+      {!allDone && startTour && (
+        <button className="btn btn-primary" style={{ width: '100%', marginBottom: 10, fontSize: 13 }} onClick={() => startTour(TOUR_STEPS[0].key)}>
+          <OnyxIcon name="ai" size={14} glow={false} /> {L('Guíame paso a paso (con Onyx AI)', 'Guide me step by step (with Onyx AI)')}
+        </button>
+      )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {steps.map(([ok, label, go], i) => (
           <button key={i} className="row between" onClick={go} style={{ alignItems: 'center', gap: 10, background: 'var(--bg2)', border: 'none', borderRadius: 8, padding: '9px 11px', cursor: 'pointer', textAlign: 'left', opacity: ok ? .7 : 1 }}>
@@ -2742,24 +2763,26 @@ function MentorSettings({ mentor, onSave, L }: any) {
     subs_open: mentor.subs_open !== false, subs_reopen_at: mentor.subs_reopen_at ? new Date(mentor.subs_reopen_at).toISOString().slice(0, 16) : '', subs_closed_note: mentor.subs_closed_note || '',
   });
   const setSocial = (k: string, v: string) => setF((s: any) => ({ ...s, socials: { ...s.socials, [k]: v } }));
+  // Guarda los ajustes (usado por el botón y por el auto-guardado de imágenes/nombre/branding).
+  const commit = (extra: any = {}) => { const m = { ...f, ...extra }; onSave({ ...m, membership_price_cents: Math.round(Number(m.membership_price) * 100), membership_year_cents: Math.round(Number(m.membership_year) * 100), subs_reopen_at: m.subs_open ? '' : m.subs_reopen_at }); };
   const link = typeof window !== 'undefined' ? `${window.location.origin}/academia/${mentor.code}` : '';
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div className="sk-card">
         <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 12 }}><span className="card-ic"><OnyxIcon name="settings" size={16} /></span> {L('Ajustes de la academia', 'Academy settings')}</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div><span className="muted" style={{ fontSize: 12 }}>{L('Nombre', 'Name')}</span><input value={f.academy_name} onChange={(e) => setF({ ...f, academy_name: e.target.value })} style={{ margin: '4px 0 0' }} /></div>
+          <div data-onb="name"><span className="muted" style={{ fontSize: 12 }}>{L('Nombre', 'Name')}</span><input value={f.academy_name} onChange={(e) => setF({ ...f, academy_name: e.target.value })} onBlur={() => { if (f.academy_name.trim()) commit(); }} style={{ margin: '4px 0 0' }} /></div>
           <div>
             <div className="row between" style={{ alignItems: 'center' }}><span className="muted" style={{ fontSize: 12 }}>{L('Lema', 'Tagline')}</span><AiBtn kind="tagline" getInput={() => `${f.academy_name}. ${f.about}`} onText={(t: string) => setF((s: any) => ({ ...s, tagline: t }))} L={L} /></div>
             <input value={f.tagline} onChange={(e) => setF({ ...f, tagline: e.target.value })} style={{ margin: '4px 0 0' }} />
           </div>
           <div className="row" style={{ gap: 16, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-            <div style={{ flex: '1 1 220px' }} data-onb="cover"><ImageUpload value={f.cover_url} onChange={(v: string) => setF({ ...f, cover_url: v })} L={L} label={L('Portada de la comunidad', 'Community cover')} /></div>
+            <div style={{ flex: '1 1 220px' }} data-onb="cover"><ImageUpload value={f.cover_url} onChange={(v: string) => { setF({ ...f, cover_url: v }); if (v) commit({ cover_url: v }); }} L={L} label={L('Portada de la comunidad', 'Community cover')} /></div>
             <div style={{ flex: '0 0 auto' }} data-onb="logo">
               <span className="muted" style={{ fontSize: 12 }}>{L('Logo / foto (reemplaza el ícono)', 'Logo / photo (replaces the icon)')}</span>
               <div className="row" style={{ gap: 10, marginTop: 6, alignItems: 'center' }}>
                 <span className="sk-hero-logo" style={{ margin: 0, width: 56, height: 56 }}>{f.logo_url ? <img src={f.logo_url} alt="" /> : <OnyxIcon name="graduation" size={26} />}</span>
-                <div><ImageUpload value={''} onChange={(v: string) => setF({ ...f, logo_url: v })} L={L} />{f.logo_url && <button className="btn btn-ghost" style={{ fontSize: 11, color: 'var(--red)', marginTop: 4 }} onClick={() => setF({ ...f, logo_url: '' })}>{L('Quitar logo', 'Remove logo')}</button>}</div>
+                <div><ImageUpload value={''} onChange={(v: string) => { setF({ ...f, logo_url: v }); if (v) commit({ logo_url: v }); }} L={L} />{f.logo_url && <button className="btn btn-ghost" style={{ fontSize: 11, color: 'var(--red)', marginTop: 4 }} onClick={() => { setF({ ...f, logo_url: '' }); commit({ logo_url: '' }); }}>{L('Quitar logo', 'Remove logo')}</button>}</div>
               </div>
             </div>
           </div>
@@ -2774,7 +2797,7 @@ function MentorSettings({ mentor, onSave, L }: any) {
       <div className="sk-card" data-onb="branding">
         <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 6 }}><span className="card-ic"><OnyxIcon name="gem" size={16} /></span> {L('Branding y AI', 'Branding & AI')}</h3>
         <p className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>{L('Cuéntale a Onyx AI quién eres y tu estilo. Lo usará para escribir en tu voz (about, lemas, posts, ventas).', 'Tell Onyx AI who you are and your style. It will write in your voice (about, taglines, posts, sales).')}</p>
-        <textarea value={f.brand_info} onChange={(e) => setF({ ...f, brand_info: e.target.value })} rows={4} placeholder={L('Ej: Soy trader de forex desde 2016, enseño price action con enfoque en disciplina. Tono cercano y directo, sin promesas.', 'e.g. I’m a forex trader since 2016, I teach price action focused on discipline. Warm, direct tone, no promises.')} style={{ width: '100%', margin: 0 }} />
+        <textarea value={f.brand_info} onChange={(e) => setF({ ...f, brand_info: e.target.value })} onBlur={() => { if (f.brand_info.trim()) commit(); }} rows={4} placeholder={L('Ej: Soy trader de forex desde 2016, enseño price action con enfoque en disciplina. Tono cercano y directo, sin promesas.', 'e.g. I’m a forex trader since 2016, I teach price action focused on discipline. Warm, direct tone, no promises.')} style={{ width: '100%', margin: 0 }} />
         <label className="row" style={{ gap: 8, fontSize: 13, marginTop: 10, cursor: 'pointer' }}>
           <input type="checkbox" checked={!!f.ai_emojis} onChange={(e) => setF({ ...f, ai_emojis: e.target.checked })} style={{ width: 'auto', margin: 0 }} />
           {L('Que el AI use emojis en los textos', 'Let AI use emojis in copy')}
