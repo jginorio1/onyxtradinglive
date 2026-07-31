@@ -88,7 +88,7 @@ function AiBtn({ kind, getInput, onText, L }: any) {
     if (j.ok && j.text) onText(j.text);
     else alert(j.error === 'no_key' ? L('La IA no está configurada (falta ANTHROPIC_API_KEY en Vercel).', 'AI not configured (ANTHROPIC_API_KEY missing in Vercel).') : L('No se pudo generar. Intenta de nuevo.', 'Could not generate. Try again.'));
   }
-  return <button type="button" className="btn btn-ghost" style={{ fontSize: 12, padding: '4px 10px' }} disabled={busy} onClick={go}>{busy ? '…' : '✨ ' + L('IA', 'AI')}</button>;
+  return <button type="button" className="btn btn-ghost ai-btn" style={{ fontSize: 12, padding: '4px 10px' }} disabled={busy} onClick={go}>{busy ? '…' : '✨ ' + L('IA', 'AI')}</button>;
 }
 
 const EMOJIS = ['🔥', '💪', '🚀', '📈', '✅', '🙌', '👏', '🎯', '💰', '🧠', '⚡', '❤️', '😂', '👀', '🤝', '💎'];
@@ -1796,7 +1796,7 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
     <div className="sk-wrap" style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 4 }}>
       <ConfirmHost lang={lang} />
       {toast && <Toast msg={toast} />}
-      <GuidedTour stepKey={tourKey} o={d.onboarding || {}} L={L} onGoto={startTour} onFinish={() => { setTourKey(null); setTourDone(true); }} onClose={() => setTourKey(null)} />
+      <GuidedTour stepKey={tourKey} o={d.onboarding || {}} L={L} academyName={d.mentor?.academy_name} onGoto={startTour} onFinish={() => { setTourKey(null); setTourDone(true); }} onClose={() => setTourKey(null)} />
       {tourDone && (
         <div className="sk-modal-ov" onClick={() => setTourDone(false)}>
           <div className="sk-modal sk-confirm" onClick={(e) => e.stopPropagation()} style={{ textAlign: 'center' }}>
@@ -2406,6 +2406,13 @@ const TOUR_STEPS: { key: string; tab: string; sel: string }[] = [
   { key: 'branding', tab: 'ajustes', sel: 'branding' },
 ];
 
+// Pasos donde Onyx AI ayuda a redactar: qué kind de la API usar y con qué contexto.
+const TOUR_AI: Record<string, { kind: string; input: (name: string) => string }> = {
+  content: { kind: 'course_desc', input: (n) => `${n}: aula "Empieza aquí" para alumnos nuevos de trading` },
+  monetize: { kind: 'pitch', input: (n) => `${n}: nivel de membresía con acceso a la comunidad y las clases` },
+  branding: { kind: 'tagline', input: (n) => `${n}` },
+};
+
 function tourCopy(key: string, L: (a: string, b: string) => string): [string, string, string] {
   const M: Record<string, [string, string, string]> = {
     content: [L('Crea tu primera aula', 'Create your first classroom'), L('Escribe aquí el nombre de un aula (curso o módulo) y pulsa “Aula”.', 'Type a classroom name (course or module) here and hit “Classroom”.'), L('Es donde vivirán tus lecciones. Puedes crear varias (Empieza aquí, Fundamentos…). ¿Con prisa? Usa la plantilla Academia Onyx.', 'It’s where your lessons live. Create several (Start here, Fundamentals…). In a hurry? Use the Onyx Academy template.')],
@@ -2419,10 +2426,34 @@ function tourCopy(key: string, L: (a: string, b: string) => string): [string, st
   return M[key] || ['', '', ''];
 }
 
-function GuidedTour({ stepKey, o, L, onGoto, onFinish, onClose }: any) {
+function GuidedTour({ stepKey, o, L, onGoto, onFinish, onClose, academyName }: any) {
   const step = TOUR_STEPS.find((s) => s.key === stepKey);
   const [rect, setRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
+  const [aiDraft, setAiDraft] = useState('');
+  const [aiBusy, setAiBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
   const done = step ? !!o?.[step.key] : false;
+  const ai = step ? TOUR_AI[step.key] : null;
+
+  // Al cambiar de paso: limpiar el borrador y resaltar los botones ✨ IA de la pantalla (refuerzo B).
+  useEffect(() => {
+    setAiDraft(''); setCopied(false);
+    if (typeof document === 'undefined') return;
+    if (step && TOUR_AI[step.key]) document.body.classList.add('onb-ai-active');
+    else document.body.classList.remove('onb-ai-active');
+    return () => { if (typeof document !== 'undefined') document.body.classList.remove('onb-ai-active'); };
+  }, [stepKey]);
+
+  async function genAI() {
+    if (!ai) return;
+    setAiBusy(true); setCopied(false);
+    try {
+      const r = await fetch('/api/academy/ai', { method: 'POST', body: JSON.stringify({ kind: ai.kind, input: ai.input(academyName || 'Mi academia'), lang: L('es', 'en') }) });
+      const j = await r.json().catch(() => ({}));
+      setAiDraft(j.ok && j.text ? j.text : L('La IA no está disponible ahora. Usa el botón ✨ IA junto al campo.', 'AI is unavailable right now. Use the ✨ AI button next to the field.'));
+    } catch { setAiDraft(L('No se pudo generar. Intenta de nuevo.', 'Could not generate. Try again.')); }
+    setAiBusy(false);
+  }
 
   useEffect(() => {
     if (!step) { setRect(null); return; }
@@ -2475,6 +2506,25 @@ function GuidedTour({ stepKey, o, L, onGoto, onFinish, onClose }: any) {
         <b style={{ fontSize: 15 }}>{title}</b>
         <p style={{ fontSize: 13, margin: '6px 0 4px', color: 'var(--tx)', lineHeight: 1.5 }}>{howTo}</p>
         <p className="muted" style={{ fontSize: 12.5, margin: '0 0 10px', lineHeight: 1.5 }}>{why}</p>
+        {ai && (
+          <div style={{ margin: '0 0 10px', padding: '9px 10px', borderRadius: 10, background: 'color-mix(in srgb,var(--brand) 12%,transparent)', border: '1px solid color-mix(in srgb,var(--brand) 32%,transparent)' }}>
+            {!aiDraft ? (
+              <div className="row between" style={{ gap: 8, alignItems: 'center' }}>
+                <span style={{ fontSize: 12, color: 'var(--soft-brand,var(--brand))', display: 'inline-flex', alignItems: 'center', gap: 6 }}>✨ {L('Onyx AI puede escribirlo por ti', 'Onyx AI can write it for you')}</span>
+                <button className="btn btn-primary" style={{ fontSize: 11.5, padding: '4px 10px', flex: 'none' }} disabled={aiBusy} onClick={genAI}>{aiBusy ? L('Escribiendo…', 'Writing…') : L('Ver ejemplo', 'See example')}</button>
+              </div>
+            ) : (
+              <div>
+                <div style={{ fontSize: 12.5, fontStyle: 'italic', color: 'var(--tx)', lineHeight: 1.5, borderLeft: '2px solid var(--brand)', paddingLeft: 8 }}>{aiDraft}</div>
+                <div className="row" style={{ gap: 8, marginTop: 8, alignItems: 'center' }}>
+                  <button className="btn btn-ghost" style={{ fontSize: 11.5 }} disabled={aiBusy} onClick={genAI}>{aiBusy ? '…' : L('Otra idea', 'Another idea')}</button>
+                  <button className="btn btn-ghost" style={{ fontSize: 11.5 }} onClick={() => { try { navigator.clipboard.writeText(aiDraft); setCopied(true); } catch {} }}>{copied ? L('✓ Copiado', '✓ Copied') : L('Copiar', 'Copy')}</button>
+                </div>
+                <div className="muted" style={{ fontSize: 11, marginTop: 6, lineHeight: 1.4 }}>{L('Cópialo, o usa el botón ✨ IA que parpadea junto al campo para que lo escriba y lo inserte solo.', 'Copy it, or use the blinking ✨ AI button next to the field to write and insert it for you.')}</div>
+              </div>
+            )}
+          </div>
+        )}
         {done ? (
           <div className="row" style={{ gap: 8, alignItems: 'center' }}>
             <span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--green) 16%,transparent)', color: 'var(--soft-green)' }}>✓ {L('¡Completado!', 'Done!')}</span>

@@ -396,7 +396,10 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
 @keyframes onbPulse{0%,100%{box-shadow:0 0 0 3px color-mix(in srgb,var(--brand) 20%,transparent),0 0 14px 2px color-mix(in srgb,var(--brand) 45%,transparent);}50%{box-shadow:0 0 0 6px color-mix(in srgb,var(--brand) 34%,transparent),0 0 30px 8px color-mix(in srgb,var(--brand) 78%,transparent);}}
 .onb-arrow{position:fixed;z-index:93;pointer-events:none;filter:drop-shadow(0 0 6px var(--brand));animation:onbBounce .9s ease-in-out infinite;}
 @keyframes onbBounce{0%,100%{transform:translateY(0);}50%{transform:translateY(7px);}}
-.onb-tip{position:fixed;width:340px;max-width:calc(100vw - 24px);z-index:93;background:var(--card);border:1px solid color-mix(in srgb,var(--brand) 45%,transparent);border-radius:14px;padding:14px 15px;box-shadow:0 12px 44px -8px rgba(0,0,0,.6),0 0 22px -6px color-mix(in srgb,var(--brand) 60%,transparent);}
+.onb-tip{position:fixed;width:340px;max-width:calc(100vw - 24px);z-index:93;pointer-events:auto;background:var(--card);border:1px solid color-mix(in srgb,var(--brand) 45%,transparent);border-radius:14px;padding:14px 15px;box-shadow:0 12px 44px -8px rgba(0,0,0,.6),0 0 22px -6px color-mix(in srgb,var(--brand) 60%,transparent);}
+/* Refuerzo B: cuando la guía está en un paso con AI, los botones ✨ IA del campo laten */
+body.onb-ai-active .ai-btn{border-color:var(--brand)!important;color:var(--soft-brand,var(--brand))!important;animation:onbAiPulse 1.15s ease-in-out infinite;}
+@keyframes onbAiPulse{0%,100%{box-shadow:0 0 0 2px color-mix(in srgb,var(--brand) 18%,transparent);}50%{box-shadow:0 0 12px 2px color-mix(in srgb,var(--brand) 60%,transparent);}}
 /* Puntito "en línea" (verde brillante) sobre el avatar */
 .sk-online{position:absolute;right:-1px;bottom:-1px;width:12px;height:12px;border-radius:50%;background:#1fd18a;border:2px solid var(--card);box-shadow:0 0 8px rgba(31,209,138,.9);}
 /* Precios centrados y "encendidos" en las tarjetas de nivel */
