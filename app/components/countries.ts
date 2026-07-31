@@ -21,6 +21,15 @@ export function countryName(code: string): string {
   const f = COUNTRIES.find((c) => c[0] === code);
   return f ? f[1] : code;
 }
+// Nombre en inglés vía Intl (Node 18+ y navegadores lo soportan). Si no lo
+// reconoce, cae al nombre en español para no quedar vacío.
+export function countryNameEn(code: string): string {
+  try {
+    const n = new (Intl as any).DisplayNames(['en'], { type: 'region' }).of(String(code || '').toUpperCase());
+    if (n && n.toUpperCase() !== String(code || '').toUpperCase()) return n;
+  } catch { /* Intl.DisplayNames no disponible */ }
+  return countryName(code);
+}
 // Normaliza cualquier valor a un código ISO. Acepta ya-código ("PR"), o un nombre
 // guardado antes como texto libre ("Puerto Rico"). Devuelve '' si no lo reconoce.
 export function countryCode(input: string | null | undefined): string {

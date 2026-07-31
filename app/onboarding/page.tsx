@@ -4,12 +4,13 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useLang } from '@/lib/lang';
 import CountrySelect from '@/app/components/CountrySelect';
+import { useCatalog } from '@/lib/useCatalog';
 
 const T = {
   es: {
     title: 'Cuéntanos cómo operas',
     sub: 'Personaliza tu panel y el Onyx Guardian. Puedes saltarlo y llenarlo después en Mi cuenta.',
-    name: 'Nombre', namePh: 'Jerry',
+    name: 'Nombre completo', namePh: 'Jerry Pérez',
     country: 'País', countryPh: 'Colombia',
     experience: 'Experiencia',
     style: 'Estilo de trading',
@@ -29,7 +30,7 @@ const T = {
   en: {
     title: 'Tell us how you trade',
     sub: 'Personalize your dashboard and Onyx Guardian. You can skip and fill it later in My account.',
-    name: 'Name', namePh: 'Jerry',
+    name: 'Full name', namePh: 'Jerry Smith',
     country: 'Country', countryPh: 'United States',
     experience: 'Experience',
     style: 'Trading style',
@@ -52,6 +53,9 @@ export default function Onboarding() {
   const router = useRouter();
   const { lang } = useLang();
   const t = T[lang];
+  const platItems = useCatalog('platform');   // plataformas del catálogo del admin
+  const styItems = useCatalog('trader_type');  // tipos de trader del catálogo del admin
+  const catLabel = (c: { es: string; en: string }) => (lang === 'en' ? (c.en || c.es) : c.es);
 
   const [full_name, setName] = useState('');
   const [country, setCountry] = useState('');
@@ -106,14 +110,14 @@ export default function Onboarding() {
             <label style={field}>{t.style}</label>
             <select value={trade_style} onChange={(e) => setStyle(e.target.value)} style={{ width: '100%' }}>
               <option value="">{t.choose}</option>
-              {t.sty.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+              {styItems.map((c) => <option key={c.code} value={c.code}>{catLabel(c)}</option>)}
             </select>
           </div>
           <div>
             <label style={field}>{t.platform}</label>
             <select value={platform} onChange={(e) => setPlatform(e.target.value)} style={{ width: '100%' }}>
               <option value="">{t.choose}</option>
-              {t.plat.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+              {platItems.map((c) => <option key={c.code} value={c.code}>{catLabel(c)}</option>)}
             </select>
           </div>
           <div>

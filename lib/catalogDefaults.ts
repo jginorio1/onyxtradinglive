@@ -1,7 +1,7 @@
 // Catálogos editables desde el panel admin: países, plataformas, tipos de trader
 // y prop firms / brokers. Se guardan en app_settings (clave catalog_<kind>) como
 // { items: [{ code, es, en }] }. Si no hay nada guardado, se usan estos por defecto.
-import { COUNTRIES } from '@/app/components/countries';
+import { COUNTRIES, countryNameEn } from '@/app/components/countries';
 
 export type CatalogItem = { code: string; es: string; en: string };
 export type CatalogKind = 'country' | 'platform' | 'trader_type' | 'firm';
@@ -36,7 +36,7 @@ const FIRMS: CatalogItem[] = [
   'Admiral Markets', 'Darwinex', 'RoboForex', 'Eightcap', 'ThinkMarkets',
 ].map((n) => ({ code: n.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, ''), es: n, en: n }));
 
-const COUNTRY_ITEMS: CatalogItem[] = COUNTRIES.map((c) => ({ code: c[0], es: c[1], en: c[1] }));
+const COUNTRY_ITEMS: CatalogItem[] = COUNTRIES.map((c) => ({ code: c[0], es: c[1], en: countryNameEn(c[0]) }));
 
 export const CATALOG_DEFAULTS: Record<CatalogKind, CatalogItem[]> = {
   country: COUNTRY_ITEMS,

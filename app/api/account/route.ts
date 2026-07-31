@@ -94,14 +94,15 @@ export async function PATCH(req: Request) {
     const b = await req.json();
     const fields: any = {};
     ['full_name', 'timezone', 'lang', 'country', 'prop_firm'].forEach((k) => { if (b[k] !== undefined) fields[k] = String(b[k] || '').slice(0, 120); });
-    // Campos de lista del perfil de trader: solo valores permitidos
+    // Campos de lista del perfil con lista fija (experiencia y meta)
     const OPTS: Record<string, string[]> = {
       experience: ['novato', 'intermedio', 'avanzado', 'pro'],
-      trade_style: ['scalping', 'day', 'swing', 'position', 'algo'],
-      platform: ['mt4', 'mt5', 'ctrader', 'matchtrader', 'ambas'],
       goal: ['pasar_challenge', 'consistencia', 'crecer', 'vivir'],
     };
     Object.keys(OPTS).forEach((k) => { if (b[k] !== undefined && (b[k] === '' || OPTS[k].includes(String(b[k])))) fields[k] = b[k] ? String(b[k]) : null; });
+    // Plataforma y tipo de trader ahora vienen del catálogo del admin (editable),
+    // así que aceptamos cualquier código saneado en vez de una lista fija.
+    ['platform', 'trade_style'].forEach((k) => { if (b[k] !== undefined) fields[k] = b[k] ? String(b[k]).toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 40) : null; });
     ['notify_email', 'notify_weekly', 'notify_funding', 'notify_marketing'].forEach((k) => { if (b[k] !== undefined) fields[k] = !!b[k]; });
     // El toggle "Novedades y ofertas" (notify_marketing) es la MISMA decisión que el
     // opt-out de campañas (marketing_emails). Los mantenemos sincronizados para que el

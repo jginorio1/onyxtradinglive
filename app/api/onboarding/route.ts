@@ -9,10 +9,10 @@ export const runtime = 'nodejs';
 // Valores permitidos, para no guardar basura que venga del cliente.
 const ALLOW: Record<string, string[]> = {
   experience: ['novato', 'intermedio', 'avanzado', 'pro'],
-  trade_style: ['scalping', 'day', 'swing', 'position', 'algo'],
-  platform: ['mt4', 'mt5', 'ambas'],
   goal: ['pasar_challenge', 'consistencia', 'crecer', 'vivir'],
 };
+// Plataforma y tipo de trader vienen del catálogo editable del admin: aceptamos
+// cualquier código saneado en vez de una lista fija.
 
 // POST · guarda el perfil de trader del onboarding y marca onboarded_at.
 // Con { skip: true } solo marca la fecha (el usuario lo saltó).
@@ -35,6 +35,10 @@ export async function POST(req: Request) {
       // Campos de lista: solo si el valor es uno de los permitidos
       Object.keys(ALLOW).forEach((k) => {
         if (b[k] !== undefined && ALLOW[k].includes(String(b[k]))) fields[k] = String(b[k]);
+      });
+      // Plataforma y tipo de trader: código saneado del catálogo del admin
+      ['platform', 'trade_style'].forEach((k) => {
+        if (b[k] !== undefined) fields[k] = b[k] ? String(b[k]).toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 40) : null;
       });
     }
 

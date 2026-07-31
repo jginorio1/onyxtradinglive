@@ -6,6 +6,7 @@ import { useLang } from '@/lib/lang';
 import Link from 'next/link';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import CountrySelect from '@/app/components/CountrySelect';
+import { useCatalog } from '@/lib/useCatalog';
 import { errMsg, planName } from '@/lib/i18nErrors';
 import Ambassador from './Ambassador';
 import ReferralCard from './ReferralCard';
@@ -45,7 +46,7 @@ const D: any = {
     dgDate: 'Se aplicará el', dgLoseCopy: 'Perderás copy trading (se pausa, no se borra).', dgLoseAcc: 'Se pausarán {n} cuenta(s) que exceden el nuevo límite.',
     usage: 'Cuentas usadas', of: 'de', unlimited: 'ilimitadas', usageLeft: 'Te queda', usageLeft2: 'cuenta(s).', usageFull: 'Has llegado a tu límite.',
     upTitle: 'Mejorar a', upBtn: 'Mejorar a', andMore: 'y además:', seePlans: 'Ver todos los planes',
-    name: 'Nombre', tz: 'Zona horaria', langL: 'Idioma', email: 'Correo', emailNote: 'El correo no se puede cambiar aquí.',
+    name: 'Nombre completo', tz: 'Zona horaria', langL: 'Idioma', email: 'Correo', emailNote: 'El correo no se puede cambiar aquí.',
     tProfTitle: 'Perfil de trader', tCountry: 'País', tExp: 'Experiencia', tStyle: 'Estilo', tPlat: 'Plataforma', tGoal: 'Meta principal', tProp: 'Prop firm', tChoose: 'Elige…',
     tExpO: [['novato', 'Novato'], ['intermedio', 'Intermedio'], ['avanzado', 'Avanzado'], ['pro', 'Profesional']],
     tStyleO: [['scalping', 'Scalping'], ['day', 'Day trading'], ['swing', 'Swing'], ['position', 'Position'], ['algo', 'Trader algorítmico (bots)']],
@@ -94,7 +95,7 @@ const D: any = {
     dgDate: 'Applies on', dgLoseCopy: 'You will lose copy trading (paused, not deleted).', dgLoseAcc: 'We will pause {n} account(s) that exceed the new limit.',
     usage: 'Accounts used', of: 'of', unlimited: 'unlimited', usageLeft: 'You have', usageLeft2: 'account(s) left.', usageFull: 'You reached your limit.',
     upTitle: 'Upgrade to', upBtn: 'Upgrade to', andMore: 'plus:', seePlans: 'See all plans',
-    name: 'Name', tz: 'Time zone', langL: 'Language', email: 'Email', emailNote: 'Email cannot be changed here.',
+    name: 'Full name', tz: 'Time zone', langL: 'Language', email: 'Email', emailNote: 'Email cannot be changed here.',
     tProfTitle: 'Trader profile', tCountry: 'Country', tExp: 'Experience', tStyle: 'Style', tPlat: 'Platform', tGoal: 'Main goal', tProp: 'Prop firm', tChoose: 'Choose…',
     tExpO: [['novato', 'Beginner'], ['intermedio', 'Intermediate'], ['avanzado', 'Advanced'], ['pro', 'Professional']],
     tStyleO: [['scalping', 'Scalping'], ['day', 'Day trading'], ['swing', 'Swing'], ['position', 'Position'], ['algo', 'Algo trader (bots)']],
@@ -199,6 +200,9 @@ export default function AccountClient({ email }: { email: string }) {
     toast(L.keepSaved, 'ok'); load();
   }
   const L = D[lang];
+  const platItems = useCatalog('platform');    // plataformas del catálogo del admin
+  const styItems = useCatalog('trader_type');   // tipos de trader del catálogo del admin
+  const catLabel = (c: { es: string; en: string }) => (lang === 'en' ? (c.en || c.es) : c.es);
   const pending = data?.pending || null;
 
   useEffect(() => {
@@ -461,11 +465,11 @@ export default function AccountClient({ email }: { email: string }) {
                 </select>
                 <span style={lbl}>{L.tStyle}</span>
                 <select value={p.trade_style || ''} onChange={(e) => setField('trade_style', e.target.value)} style={{ margin: '4px 0 0' }}>
-                  <option value="">{L.tChoose}</option>{(L as any).tStyleO.map(([v, l]: any) => <option key={v} value={v}>{l}</option>)}
+                  <option value="">{L.tChoose}</option>{styItems.map((c) => <option key={c.code} value={c.code}>{catLabel(c)}</option>)}
                 </select>
                 <span style={lbl}>{L.tPlat}</span>
                 <select value={p.platform || ''} onChange={(e) => setField('platform', e.target.value)} style={{ margin: '4px 0 0' }}>
-                  <option value="">{L.tChoose}</option>{(L as any).tPlatO.map(([v, l]: any) => <option key={v} value={v}>{l}</option>)}
+                  <option value="">{L.tChoose}</option>{platItems.map((c) => <option key={c.code} value={c.code}>{catLabel(c)}</option>)}
                 </select>
                 <span style={lbl}>{L.tProp}</span>
                 <input value={p.prop_firm && p.prop_firm !== 'ninguna' ? p.prop_firm : ''} onChange={(e) => setField('prop_firm', e.target.value)} style={{ margin: '4px 0 0' }} />
