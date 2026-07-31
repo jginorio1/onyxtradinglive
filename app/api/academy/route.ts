@@ -3,7 +3,7 @@ import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getMentor, myAcademies, getContent, progressSet, markLesson, isEnrolled, listPosts, addPost, addComment, leaderboard, membersList, toggleLike, levelFor, listEvents, nextEvent, dmUnread, tradersBoard, recentCount, deleteOwnPost, deleteOwnComment, editOwnPost, editOwnComment } from '@/lib/academy';
 import { listProducts, accessibleModules, studentPurchases, perksFor, membershipInfo, hasMembership } from '@/lib/academyPay';
-import { myReferralStats } from '@/lib/academyExtras';
+import { referrerView } from '@/lib/academyReferral';
 import { auditAddon, hasAuditAddon, auditConsent, planVerified } from '@/lib/academyAudit';
 import { listWins, pendingCount, addWin, myPending } from '@/lib/academyWins';
 import { pushWinPending } from '@/lib/academyPush';
@@ -88,9 +88,8 @@ export async function GET(req: Request) {
     const myPerks = iAmMentorHere ? { copy: true, guardian: true } : await perksFor(user.id, m);
     // Marca "en línea" (para el puntito verde de miembros).
     supabaseAdmin.from('profiles').update({ last_seen_at: new Date().toISOString() }).eq('id', user.id).then(() => {});
-    const [refStats, mrow2, addon, hasAddon, consent, verified, wins, winsPending] = await Promise.all([
-      myReferralStats(user.id, m),
-      supabaseAdmin.from('mentors').select('affiliate_reward_cents,affiliate_currency').eq('user_id', m).maybeSingle(),
+    const [refStats, addon, hasAddon, consent, verified, wins, winsPending] = await Promise.all([
+      referrerView(user.id, m),
       auditAddon(m),
       iAmMentorHere ? Promise.resolve(false) : hasAuditAddon(user.id, m),
       iAmMentorHere ? Promise.resolve(false) : auditConsent(m, user.id),
@@ -116,7 +115,7 @@ export async function GET(req: Request) {
       leaderboard: board, members, membersCount: (roster as any).count || members.length,
       me: { points: myPoints, level: levelFor(myPoints).level },
       events, live, dmUnread: unread, myUserId: user.id, myPerks,
-      referral: refStats, affiliateReward: (mrow2.data as any)?.affiliate_reward_cents || 0, affiliateCurrency: (mrow2.data as any)?.affiliate_currency || 'usd',
+      referral: refStats,
       audit: { addon, hasAddon, consent, verified },
       wins, winsPending,
       roles, myPerms, staffIds: staff, myPushPrefs,

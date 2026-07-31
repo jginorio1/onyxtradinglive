@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { grantPurchase, setPurchaseStatus, feeForMentor, grantMembership, setMembershipStatus, recordInvoiceCommission, reverseCommissionByRef } from '@/lib/academyPay';
-import { creditReferral } from '@/lib/academyExtras';
+import { qualifyReferral, qualifyReferralByInvoice, reverseRewardsByRef } from '@/lib/academyReferral';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -30,18 +30,21 @@ export async function POST(req: Request) {
       if (md.onyx_mentor && md.onyx_student && md.onyx_kind === 'membership') {
         const feePct = await feeForMentor(md.onyx_mentor);
         await grantMembership({ mentorId: md.onyx_mentor, studentId: md.onyx_student, grossCents: Number(s.amount_total || 0), currency: s.currency || 'usd', subId: s.subscription || undefined, feePct });
-        await creditReferral(md.onyx_mentor, md.onyx_student);
+        // Recompensa del referido (primer pago). Atada a la factura para no duplicar en invoice.paid.
+        await qualifyReferral({ mentorId: md.onyx_mentor, referredId: md.onyx_student, grossCents: Number(s.amount_total || 0), currency: s.currency || 'usd', ref: String(s.invoice || s.id), kind: 'first' });
       } else if (md.onyx_mentor && md.onyx_student && md.onyx_product) {
         const feePct = await feeForMentor(md.onyx_mentor);
+        const oneTime = md.onyx_kind === 'one_time';
         await grantPurchase({
           mentorId: md.onyx_mentor, studentId: md.onyx_student, productId: md.onyx_product,
-          kind: md.onyx_kind === 'one_time' ? 'one_time' : 'subscription',
+          kind: oneTime ? 'one_time' : 'subscription',
           grossCents: Number(s.amount_total || 0), currency: s.currency || 'usd',
           subId: s.subscription || undefined, sessionId: s.id,
           paymentIntent: s.payment_intent || undefined,   // pago único: comisión atada al PI
           feePct,
         });
-        await creditReferral(md.onyx_mentor, md.onyx_student);
+        // Pago único → ata la recompensa al payment_intent; suscripción → a la factura.
+        await qualifyReferral({ mentorId: md.onyx_mentor, referredId: md.onyx_student, grossCents: Number(s.amount_total || 0), currency: s.currency || 'usd', ref: String(oneTime ? (s.payment_intent || s.id) : (s.invoice || s.id)), kind: oneTime ? 'one_time' : 'first' });
       }
     } else if (event.type === 'invoice.paid' || event.type === 'invoice.payment_succeeded') {
       // Cada FACTURA pagada de una suscripción (primer mes y RENOVACIONES) registra
@@ -49,12 +52,19 @@ export async function POST(req: Request) {
       const inv: any = event.data.object;
       if (inv.subscription && Number(inv.amount_paid || 0) > 0) {
         await recordInvoiceCommission({ subId: String(inv.subscription), grossCents: Number(inv.amount_paid || 0), currency: inv.currency || 'usd', invoiceId: String(inv.id) });
+        // Recompensa del referido en RENOVACIONES (solo si el mentor activó recurrente).
+        // El primer pago (subscription_create) ya se registró en checkout.session.completed.
+        if (inv.billing_reason === 'subscription_cycle') {
+          await qualifyReferralByInvoice({ subId: String(inv.subscription), grossCents: Number(inv.amount_paid || 0), currency: inv.currency || 'usd', invoiceId: String(inv.id), isRenewal: true });
+        }
       }
     } else if (event.type === 'charge.refunded') {
-      // Reembolso: revierte la comisión asociada (por factura o por payment_intent).
+      // Reembolso: revierte la comisión de Onyx y la recompensa del referido (por factura o PI).
       const ch: any = event.data.object;
       await reverseCommissionByRef(ch.invoice || null);
       await reverseCommissionByRef(ch.payment_intent || null);
+      await reverseRewardsByRef(ch.invoice || null);
+      await reverseRewardsByRef(ch.payment_intent || null);
     } else if (event.type === 'customer.subscription.deleted') {
       // Puede ser un nivel o una membresía: intentamos ambos (uno hará match).
       await setPurchaseStatus(event.data.object.id, 'canceled');

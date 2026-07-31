@@ -40,41 +40,14 @@ export async function myCertificates(studentId: string) {
   return (data || []) as any[];
 }
 
-// ---- Afiliados del mentor (tracking + libro, sin auto-pago) ----
+// ---- Afiliados del mentor · ATRIBUCIÓN (quién trajo a quién) ----
+// El dinero (recompensas, estados, pagos) vive en lib/academyReferral.ts.
 export async function recordReferral(mentorId: string, referrerId: string, referredId: string) {
   if (!referrerId || referrerId === referredId) return;
   // El referidor debe ser miembro de la comunidad (o el mentor).
   const isMember = referrerId === mentorId || (await supabaseAdmin.from('academy_enrollments').select('student_id').eq('mentor_id', mentorId).eq('student_id', referrerId).eq('status', 'active').maybeSingle()).data;
   if (!isMember) return;
-  await supabaseAdmin.from('academy_referrals').insert({ mentor_id: mentorId, referrer_id: referrerId, referred_id: referredId }).select('id').maybeSingle();
-}
-// Al pagar el referido, acredita la recompensa al referidor (una vez).
-export async function creditReferral(mentorId: string, referredId: string) {
-  const { data: r } = await supabaseAdmin.from('academy_referrals').select('id,paid').eq('mentor_id', mentorId).eq('referred_id', referredId).maybeSingle();
-  if (!r || (r as any).paid) return;
-  const { data: m } = await supabaseAdmin.from('mentors').select('affiliate_reward_cents').eq('user_id', mentorId).maybeSingle();
-  const reward = (m as any)?.affiliate_reward_cents || 0;
-  await supabaseAdmin.from('academy_referrals').update({ paid: true, reward_cents: reward }).eq('id', (r as any).id);
-}
-export async function myReferralStats(userId: string, mentorId: string) {
-  const { data } = await supabaseAdmin.from('academy_referrals').select('paid,reward_cents').eq('mentor_id', mentorId).eq('referrer_id', userId);
-  const total = (data || []).length;
-  const paid = (data || []).filter((r: any) => r.paid).length;
-  const earned = (data || []).reduce((s: number, r: any) => s + (r.reward_cents || 0), 0);
-  return { total, paid, earnedCents: earned };
-}
-export async function affiliateLedger(mentorId: string) {
-  const { data: refs } = await supabaseAdmin.from('academy_referrals').select('referrer_id,referred_id,paid,reward_cents,created_at').eq('mentor_id', mentorId).order('created_at', { ascending: false }).limit(300);
-  const ids = Array.from(new Set([...(refs || []).map((r: any) => r.referrer_id), ...(refs || []).map((r: any) => r.referred_id)]));
-  const { data: profs } = ids.length ? await supabaseAdmin.from('profiles').select('id,full_name,email').in('id', ids) : { data: [] } as any;
-  const map = new Map((profs || []).map((p: any) => [p.id, nameOf(p)]));
-  // Agrupado por referidor.
-  const byRef: Record<string, { name: string; total: number; paid: number; earned: number }> = {};
-  for (const r of (refs || []) as any[]) {
-    const k = r.referrer_id; (byRef[k] ||= { name: map.get(k) || 'Trader', total: 0, paid: 0, earned: 0 });
-    byRef[k].total++; if (r.paid) { byRef[k].paid++; byRef[k].earned += r.reward_cents || 0; }
-  }
-  return Object.entries(byRef).map(([user_id, v]) => ({ user_id, ...v })).sort((a, b) => b.paid - a.paid || b.total - a.total);
+  await supabaseAdmin.from('academy_referrals').upsert({ mentor_id: mentorId, referrer_id: referrerId, referred_id: referredId }, { onConflict: 'mentor_id,referred_id', ignoreDuplicates: true }).select('id').maybeSingle();
 }
 
 // ---- Auditoría AI del alumno ----

@@ -3,7 +3,6 @@ import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getMentor } from '@/lib/academy';
 import { listProducts, saveProduct, deleteProduct, mentorEarnings, entitlements, mentorSubStats } from '@/lib/academyPay';
-import { affiliateLedger } from '@/lib/academyExtras';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -24,9 +23,8 @@ export async function GET(req: Request) {
   if (m) return NextResponse.json({ products: await listProducts(m, true) });
   const { user, caps } = await me();
   if (!user || !caps?.academy) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
-  const [products, earnings, ents, ledger, subStats] = await Promise.all([listProducts(user.id, false), mentorEarnings(user.id), entitlements(user.id), affiliateLedger(user.id), mentorSubStats(user.id)]);
-  const { data: mrow } = await supabaseAdmin.from('mentors').select('affiliate_reward_cents,affiliate_currency').eq('user_id', user.id).maybeSingle();
-  return NextResponse.json({ products, earnings, subStats, entitlements: ents, affiliates: ledger, affiliate_reward_cents: (mrow as any)?.affiliate_reward_cents || 0, affiliate_currency: (mrow as any)?.affiliate_currency || 'usd' });
+  const [products, earnings, ents, subStats] = await Promise.all([listProducts(user.id, false), mentorEarnings(user.id), entitlements(user.id), mentorSubStats(user.id)]);
+  return NextResponse.json({ products, earnings, subStats, entitlements: ents });
 }
 
 // POST · crear/editar/borrar un nivel (solo el mentor).
@@ -37,10 +35,6 @@ export async function POST(req: Request) {
   if (!mentor) return NextResponse.json({ error: 'no_mentor' }, { status: 400 });
   const b = await req.json().catch(() => ({}));
   try {
-    if (b.action === 'affiliate') {
-      await supabaseAdmin.from('mentors').update({ affiliate_reward_cents: Math.max(0, Math.round(Number(b.reward_cents) || 0)) }).eq('user_id', user.id);
-      return NextResponse.json({ ok: true });
-    }
     if (b.action === 'delete' && b.id) { await deleteProduct(user.id, String(b.id)); return NextResponse.json({ ok: true }); }
     const r = await saveProduct(user.id, b);
     return NextResponse.json({ ok: true, ...r });

@@ -907,24 +907,7 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
             <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => { navigator.clipboard.writeText(link); alert(L('Enlace de invitación copiado.', 'Invite link copied.')); }}><OnyxIcon emoji="🔗" size={14} /> {L('Invitar', 'Invite')}</button>
           </div>
 
-          {active.affiliateReward > 0 && (() => {
-            const cur = (active.affiliateCurrency || 'usd').toUpperCase(); const sym = cur === 'USD' ? '$' : cur === 'EUR' ? '€' : '';
-            const reward = sym ? sym + (active.affiliateReward / 100).toLocaleString() : (active.affiliateReward / 100).toLocaleString() + ' ' + cur;
-            const refLink = typeof window !== 'undefined' ? `${window.location.origin}/dashboard/academy?join=${active.code}&ref=${active.myUserId}` : '';
-            const earned = sym ? sym + ((active.referral?.earnedCents || 0) / 100).toLocaleString() : ((active.referral?.earnedCents || 0) / 100).toLocaleString();
-            return (
-              <div className="sk-side-card" style={{ border: '1px solid color-mix(in srgb,var(--gold) 35%,transparent)' }}>
-                <div className="row between" style={{ marginBottom: 6 }}><b style={{ fontSize: 14 }}>{L('Invita y gana', 'Refer & earn')}</b><OnyxIcon name="gift" size={15} /></div>
-                <p className="muted" style={{ fontSize: 12.5, marginBottom: 8 }}>{L(`Gana ${reward} por cada amigo que se una y pague.`, `Earn ${reward} for each friend who joins and pays.`)}</p>
-                <div className="row" style={{ gap: 14, margin: '8px 0', textAlign: 'center' }}>
-                  <div style={{ flex: 1 }}><div style={{ fontWeight: 800 }}>{active.referral?.total || 0}</div><div className="muted" style={{ fontSize: 11 }}>{L('Invitados', 'Referred')}</div></div>
-                  <div style={{ flex: 1 }}><div style={{ fontWeight: 800 }}>{active.referral?.paid || 0}</div><div className="muted" style={{ fontSize: 11 }}>{L('Pagaron', 'Paid')}</div></div>
-                  <div style={{ flex: 1 }}><div style={{ fontWeight: 800, color: 'var(--gold)' }}>{earned}</div><div className="muted" style={{ fontSize: 11 }}>{L('Ganado', 'Earned')}</div></div>
-                </div>
-                <button className="btn btn-ghost" style={{ width: '100%' }} onClick={() => { navigator.clipboard.writeText(refLink); alert(L('Tu enlace de afiliado copiado.', 'Your affiliate link copied.')); }}>{L('Copiar mi enlace', 'Copy my link')}</button>
-              </div>
-            );
-          })()}
+          <ReferralEarnings active={active} L={L} />
           {active.audit && (active.audit.hasAddon || active.audit.addon || active.audit.verified) && (
             <div className={'sk-side-card' + ((active.audit.addon && !active.audit.hasAddon) ? ' sk-featured' : '')} style={{ border: '1px solid color-mix(in srgb,var(--green) 32%,transparent)' }}>
               <div className="row between" style={{ marginBottom: 6 }}><b style={{ fontSize: 14 }}>{L('Auditoría de tu plan', 'Your plan audit')}</b><OnyxIcon name="guardian" size={15} /></div>
@@ -3281,21 +3264,40 @@ function MentorPayments({ modules, L, onChanged }: { modules: any[]; L: (a: stri
   const [earn, setEarn] = useState<any>(null);
   const [subs, setSubs] = useState<any>(null);
   const [ents, setEnts] = useState<any[]>([]);
-  const [aff, setAff] = useState<any[]>([]);
-  const [affReward, setAffReward] = useState('');
+  const [affData, setAffData] = useState<any>(null);
+  const [affForm, setAffForm] = useState<any>(null);
+  const [payTarget, setPayTarget] = useState<any>(null);
   const [busy, setBusy] = useState('');
   const [form, setForm] = useState<any>(null);
 
   async function load() {
-    const [c, p] = await Promise.all([fetch('/api/academy/connect').then((r) => r.json()).catch(() => ({})), fetch('/api/academy/products').then((r) => r.json()).catch(() => ({}))]);
+    const [c, p, a] = await Promise.all([
+      fetch('/api/academy/connect').then((r) => r.json()).catch(() => ({})),
+      fetch('/api/academy/products').then((r) => r.json()).catch(() => ({})),
+      fetch('/api/academy/affiliate').then((r) => r.json()).catch(() => null),
+    ]);
     setConn(c); setProds(p.products || []); setEarn(p.earnings || null); setSubs(p.subStats || null); setEnts(p.entitlements || []);
-    setAff(p.affiliates || []); setAffReward(((p.affiliate_reward_cents || 0) / 100).toString());
+    if (a && a.settings) { setAffData(a); const s = a.settings; setAffForm({ type: s.type, reward: (s.reward_cents / 100).toString(), pct: String(s.pct || 0), recurring: !!s.recurring, hold_days: String(s.hold_days), min: (s.min_cents / 100).toString(), rail: s.rail }); }
   }
   useEffect(() => { load(); }, []);
   async function connect() { setBusy('connect'); const r = await fetch('/api/academy/connect', { method: 'POST' }); const j = await r.json(); if (j.url) window.location.href = j.url; else { setBusy(''); alert(L('No se pudo conectar Stripe.', 'Could not connect Stripe.')); } }
   async function saveProd(f: any) { setBusy('prod'); const body: any = { ...f, price_cents: Math.round(Number(f.price) * 100) }; delete body.price; await fetch('/api/academy/products', { method: 'POST', body: JSON.stringify(body) }); setBusy(''); setForm(null); load(); onChanged?.(); }
   async function delProd(id: string) { if (!await confirmDelete({ title: L('¿Borrar nivel?', 'Delete tier?'), message: L('Se dejará de vender este nivel.', 'This tier will stop being sold.') })) return; await fetch('/api/academy/products', { method: 'POST', body: JSON.stringify({ action: 'delete', id }) }); load(); onChanged?.(); }
-  async function saveAff() { await fetch('/api/academy/products', { method: 'POST', body: JSON.stringify({ action: 'affiliate', reward_cents: Math.round(Number(affReward) * 100) }) }); load(); }
+  async function saveAff() {
+    if (!affForm) return; setBusy('aff');
+    await fetch('/api/academy/affiliate', { method: 'POST', body: JSON.stringify({ action: 'settings', type: affForm.type, reward_cents: Math.round(Number(affForm.reward) * 100), pct: Number(affForm.pct) || 0, recurring: !!affForm.recurring, hold_days: Number(affForm.hold_days) || 0, min_cents: Math.round(Number(affForm.min) * 100), rail: affForm.rail, currency: 'usd' }) });
+    setBusy(''); load();
+  }
+  async function doPay(referrerId: string, method: string, note: string) {
+    setBusy('pay'); await fetch('/api/academy/affiliate', { method: 'POST', body: JSON.stringify({ action: 'pay', referrer_id: referrerId, method, note }) }); setBusy(''); setPayTarget(null); load();
+  }
+  function exportAff() {
+    const rows = (affData?.referrers || []) as any[];
+    const head = 'Referido,Metodo,Contacto,Disponible,En espera,Pagado\n';
+    const body = rows.map((r) => [r.name, r.method?.method || '', r.method?.handle || '', (r.availableCents / 100).toFixed(2), (r.pendingCents / 100).toFixed(2), (r.paidCents / 100).toFixed(2)].map((x) => `"${String(x).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([head + body], { type: 'text/csv' }); const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'afiliados.csv'; a.click(); URL.revokeObjectURL(url);
+  }
 
   if (!conn) return <div className="sk-card muted">…</div>;
   const money = (c: number) => '$' + (Math.round((c || 0) / 100)).toLocaleString();
@@ -3338,25 +3340,101 @@ function MentorPayments({ modules, L, onChanged }: { modules: any[]; L: (a: stri
         {form && <TierForm form={form} setForm={setForm} modules={modules} busy={busy === 'prod'} onSave={saveProd} onCancel={() => setForm(null)} L={L} />}
       </div>
 
-      {/* Afiliados del mentor */}
-      <div className="sk-card">
-        <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 6 }}><span className="card-ic"><OnyxIcon name="gift" size={16} /></span> {L('Afiliados', 'Affiliates')}</h3>
-        <p className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>{L('Recompensa a los miembros que traigan alumnos que paguen. Se registra en el libro; tú pagas la recompensa a mano (no se descuenta solo).', 'Reward members who bring paying students. It’s tracked in the ledger; you pay the reward manually (not auto-deducted).')}</p>
-        <div className="row" style={{ gap: 8, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 12 }}>
-          <div><span className="muted" style={{ fontSize: 12 }}>{L('Recompensa por referido que paga', 'Reward per paying referral')}</span><input type="number" min={0} step="0.01" value={affReward} onChange={(e) => setAffReward(e.target.value)} style={{ margin: '4px 0 0', width: 130 }} /></div>
-          <button className="btn btn-primary" onClick={saveAff}>{L('Guardar', 'Save')}</button>
-        </div>
-        {aff.length === 0 ? <p className="muted" style={{ fontSize: 12.5 }}>{L('Aún no hay referidos.', 'No referrals yet.')}</p> : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {aff.map((a: any) => (
-              <div key={a.user_id} className="row between" style={{ background: 'var(--bg2)', borderRadius: 8, padding: '9px 12px', fontSize: 13 }}>
-                <span>{a.name}</span>
-                <span className="muted" style={{ fontSize: 12 }}>{a.paid}/{a.total} {L('pagaron', 'paid')} · {money(a.earned)}</span>
-              </div>
+      {/* Afiliados del mentor · ajustes + pagos */}
+      {affForm && (
+        <div className="sk-card">
+          <div className="row between" style={{ marginBottom: 6, flexWrap: 'wrap', gap: 8 }}>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic"><OnyxIcon name="gift" size={16} /></span> {L('Afiliados y pagos', 'Affiliates & payouts')}</h3>
+            {(affData?.referrers?.length > 0) && <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={exportAff}><OnyxIcon emoji="⬇️" size={13} /> {L('Exportar CSV', 'Export CSV')}</button>}
+          </div>
+          <p className="muted" style={{ fontSize: 12.5, marginBottom: 12 }}>{L('Premia a los miembros que traigan alumnos que paguen. Elige cómo pagas: crédito automático en la academia o pago manual (PayPal, Zelle, efectivo…).', 'Reward members who bring paying students. Choose how you pay: automatic academy credit or manual payout (PayPal, Zelle, cash…).')}</p>
+
+          {/* Resumen */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(130px,1fr))', gap: 10, marginBottom: 14 }}>
+            {[[L('Por cobrar', 'Ready to pay'), money(affData?.totals?.availableCents || 0), 'var(--gold)'], [L('En espera', 'On hold'), money(affData?.totals?.pendingCents || 0), 'var(--mut)'], [L('Pagado', 'Paid'), money(affData?.totals?.paidCents || 0), 'var(--soft-green)']].map(([lbl, val, col]) => (
+              <div key={lbl} className="statcard"><div><div className="sc-lbl">{lbl}</div><div className="sc-val" style={{ color: col }}>{val}</div></div></div>
             ))}
           </div>
-        )}
-      </div>
+
+          {/* Ajustes */}
+          <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '12px', marginBottom: 14 }}>
+            <div className="row" style={{ gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+              <div>
+                <span className="muted" style={{ fontSize: 12 }}>{L('Recompensa', 'Reward')}</span>
+                <div style={{ display: 'inline-flex', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden', margin: '4px 0 0' }}>
+                  {[['flat', L('$ fijo', '$ flat')], ['pct', L('% de la venta', '% of sale')]].map(([k, lbl]) => (
+                    <button key={k} className="btn" style={{ borderRadius: 0, border: 'none', padding: '6px 12px', fontSize: 12.5, background: affForm.type === k ? 'color-mix(in srgb,var(--brand) 16%,transparent)' : 'transparent', color: affForm.type === k ? 'var(--brand)' : 'var(--mut)' }} onClick={() => setAffForm({ ...affForm, type: k })}>{lbl}</button>
+                  ))}
+                </div>
+              </div>
+              {affForm.type === 'flat'
+                ? <div><span className="muted" style={{ fontSize: 12 }}>{L('Monto (USD)', 'Amount (USD)')}</span><input type="number" min={0} step="0.01" value={affForm.reward} onChange={(e) => setAffForm({ ...affForm, reward: e.target.value })} style={{ margin: '4px 0 0', width: 110 }} /></div>
+                : <div><span className="muted" style={{ fontSize: 12 }}>{L('Porcentaje', 'Percent')}</span><input type="number" min={0} max={90} step="1" value={affForm.pct} onChange={(e) => setAffForm({ ...affForm, pct: e.target.value })} style={{ margin: '4px 0 0', width: 90 }} /></div>}
+              <div><span className="muted" style={{ fontSize: 12 }}>{L('Espera (días)', 'Hold (days)')}</span><input type="number" min={0} max={120} value={affForm.hold_days} onChange={(e) => setAffForm({ ...affForm, hold_days: e.target.value })} style={{ margin: '4px 0 0', width: 90 }} /></div>
+              <div><span className="muted" style={{ fontSize: 12 }}>{L('Mínimo (USD)', 'Minimum (USD)')}</span><input type="number" min={0} step="0.01" value={affForm.min} onChange={(e) => setAffForm({ ...affForm, min: e.target.value })} style={{ margin: '4px 0 0', width: 100 }} /></div>
+              <div><span className="muted" style={{ fontSize: 12 }}>{L('Cómo pagas', 'Payout rail')}</span><br /><select value={affForm.rail} onChange={(e) => setAffForm({ ...affForm, rail: e.target.value })} style={{ margin: '4px 0 0' }}><option value="manual">{L('Pago manual', 'Manual payout')}</option><option value="credit">{L('Crédito automático', 'Auto credit')}</option></select></div>
+            </div>
+            <label className="row" style={{ gap: 8, fontSize: 12.5, cursor: 'pointer', marginTop: 10 }}>
+              <input type="checkbox" checked={!!affForm.recurring} onChange={(e) => setAffForm({ ...affForm, recurring: e.target.checked })} style={{ width: 'auto', margin: 0 }} />
+              {L('Pagar también en cada renovación (no solo el primer pago)', 'Pay on every renewal too (not just the first payment)')}
+            </label>
+            <div className="row" style={{ marginTop: 10 }}><button className="btn btn-primary" disabled={busy === 'aff'} onClick={saveAff}>{busy === 'aff' ? '…' : L('Guardar ajustes', 'Save settings')}</button></div>
+            <p className="muted" style={{ fontSize: 11.5, marginTop: 8 }}>{affForm.rail === 'credit' ? L('Riel A: al vencer la espera, la recompensa se aplica sola como crédito en la cuenta del referido.', 'Rail A: after the hold, the reward is auto-applied as account credit to the referrer.') : L('Riel B: al vencer la espera queda “por cobrar”; tú pagas por fuera y pulsas “Marcar pagado”.', 'Rail B: after the hold it becomes “ready to pay”; you pay externally and click “Mark paid”.')}</p>
+          </div>
+
+          {/* Lista de referidos */}
+          {(!affData?.referrers || affData.referrers.length === 0) ? <p className="muted" style={{ fontSize: 12.5 }}>{L('Aún no hay referidos.', 'No referrals yet.')}</p> : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {affData.referrers.map((a: any) => (
+                <div key={a.user_id} className="row between" style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 8, padding: '9px 12px', gap: 8, flexWrap: 'wrap' }}>
+                  <div style={{ minWidth: 140 }}>
+                    <b style={{ fontSize: 13.5 }}>{a.name}</b>
+                    <div className="muted" style={{ fontSize: 11.5 }}>{a.method?.method ? `${a.method.method}${a.method.handle ? ' · ' + a.method.handle : ''}` : L('sin método de cobro', 'no payout method')}</div>
+                  </div>
+                  <div className="row" style={{ gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <span className="muted" style={{ fontSize: 12 }}>{L('Por cobrar', 'Ready')} <b style={{ color: 'var(--gold)' }}>{money(a.availableCents)}</b> · {L('espera', 'hold')} {money(a.pendingCents)} · {L('pagado', 'paid')} {money(a.paidCents)}</span>
+                    <button className="btn btn-primary" style={{ fontSize: 12, padding: '5px 10px' }} disabled={a.availableCents <= 0} onClick={() => setPayTarget({ ...a, method: a.method?.method || 'manual', note: '' })}><OnyxIcon emoji="💸" size={13} /> {L('Marcar pagado', 'Mark paid')}</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Historial de pagos */}
+          {(affData?.payouts?.length > 0) && (
+            <div style={{ marginTop: 14 }}>
+              <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{L('Pagos realizados', 'Payouts made')}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {affData.payouts.slice(0, 12).map((p: any, i: number) => (
+                  <div key={i} className="row between" style={{ fontSize: 12.5, padding: '6px 10px', background: 'var(--bg2)', borderRadius: 8 }}>
+                    <span>{p.name} <span className="muted">· {p.method || '—'}</span></span>
+                    <span className="muted">{money(p.total_cents)} · {new Date(p.created_at).toLocaleDateString()}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Modal: marcar pagado */}
+      {payTarget && (
+        <div className="sk-modal-ov" style={{ alignItems: 'center' }} onClick={() => setPayTarget(null)}>
+          <div className="sk-modal sk-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 380 }}>
+            <h3 style={{ marginBottom: 4 }}>{L('Marcar pagado', 'Mark paid')}</h3>
+            <p className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>{L(`Vas a registrar ${money(payTarget.availableCents)} pagados a ${payTarget.name}. Esto no mueve dinero: confirma que ya le pagaste por fuera.`, `You'll record ${money(payTarget.availableCents)} paid to ${payTarget.name}. This moves no money: confirm you already paid them externally.`)}</p>
+            <span className="muted" style={{ fontSize: 12 }}>{L('Método', 'Method')}</span><br />
+            <select value={payTarget.method} onChange={(e) => setPayTarget({ ...payTarget, method: e.target.value })} style={{ margin: '4px 0 8px', width: '100%' }}>
+              <option value="manual">{L('Manual', 'Manual')}</option><option value="paypal">PayPal</option><option value="zelle">Zelle</option><option value="bank">{L('Banco', 'Bank')}</option><option value="cash">{L('Efectivo', 'Cash')}</option><option value="other">{L('Otro', 'Other')}</option>
+            </select>
+            <input placeholder={L('Nota / referencia (opcional)', 'Note / reference (optional)')} value={payTarget.note} onChange={(e) => setPayTarget({ ...payTarget, note: e.target.value })} style={{ marginBottom: 12, width: '100%' }} />
+            <div className="row" style={{ gap: 8 }}>
+              <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setPayTarget(null)}>{L('Cancelar', 'Cancel')}</button>
+              <button className="btn btn-primary" style={{ flex: 2 }} disabled={busy === 'pay'} onClick={() => doPay(payTarget.user_id, payTarget.method, payTarget.note)}>{busy === 'pay' ? '…' : L('Confirmar pago', 'Confirm payment')}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {ents.filter((e: any) => e.perks?.guardian).length > 0 && (
         <div className="sk-card">
@@ -3369,6 +3447,90 @@ function MentorPayments({ modules, L, onChanged }: { modules: any[]; L: (a: stri
                 <span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--green) 15%,transparent)', color: 'var(--soft-green)' }}>Guardian</span>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+// Vista del REFERIDO: cuánto gana, cómo/ cuándo le pagan, método e historial.
+function ReferralEarnings({ active, L }: any) {
+  const r = active?.referral;
+  const [open, setOpen] = useState(false);
+  const [detail, setDetail] = useState<any>(null);
+  const [mf, setMf] = useState<any>({ method: 'paypal', handle: '' });
+  const [saved, setSaved] = useState(false);
+  const s = r?.settings;
+  const hasReward = !!s && (s.reward_cents > 0 || (s.type === 'pct' && s.pct > 0));
+  const money = (c: number) => '$' + Math.round((c || 0) / 100).toLocaleString();
+  const rewardLabel = s ? (s.type === 'pct' ? `${s.pct}%` : money(s.reward_cents)) : '';
+  const refLink = typeof window !== 'undefined' ? `${window.location.origin}/dashboard/academy?join=${active.code}&ref=${active.myUserId}` : '';
+
+  async function loadDetail() {
+    const d = await fetch('/api/academy/affiliate?m=' + active.mentor_id).then((x) => x.json()).catch(() => null);
+    if (d) { setDetail(d); if (d.method) setMf({ method: d.method.method || 'paypal', handle: d.method.handle || '' }); }
+  }
+  async function openModal() { setOpen(true); setSaved(false); await loadDetail(); }
+  async function saveMethod() {
+    await fetch('/api/academy/affiliate', { method: 'POST', body: JSON.stringify({ action: 'method', mentor_id: active.mentor_id, method: mf.method, handle: mf.handle }) });
+    setSaved(true); loadDetail();
+  }
+  if (!hasReward) return null;
+  const t = r.totals || {};
+  const stChip = (st: string) => st === 'paid' ? { t: L('pagado', 'paid'), c: 'var(--soft-green)' } : st === 'available' ? { t: L('por cobrar', 'ready'), c: 'var(--gold)' } : st === 'reversed' ? { t: L('anulado', 'reversed'), c: 'var(--red)' } : { t: L('en espera', 'on hold'), c: 'var(--mut)' };
+
+  return (
+    <>
+      <div className="sk-side-card" style={{ border: '1px solid color-mix(in srgb,var(--gold) 35%,transparent)' }}>
+        <div className="row between" style={{ marginBottom: 6 }}><b style={{ fontSize: 14 }}>{L('Invita y gana', 'Refer & earn')}</b><OnyxIcon name="gift" size={15} /></div>
+        <p className="muted" style={{ fontSize: 12.5, marginBottom: 8 }}>{L(`Gana ${rewardLabel} por cada amigo que se una y pague.`, `Earn ${rewardLabel} for each friend who joins and pays.`)}</p>
+        <div className="row" style={{ gap: 10, margin: '8px 0', textAlign: 'center' }}>
+          <div style={{ flex: 1 }}><div style={{ fontWeight: 800, color: 'var(--gold)' }}>{money(t.availableCents)}</div><div className="muted" style={{ fontSize: 10.5 }}>{L('Disponible', 'Available')}</div></div>
+          <div style={{ flex: 1 }}><div style={{ fontWeight: 800 }}>{money(t.pendingCents)}</div><div className="muted" style={{ fontSize: 10.5 }}>{L('En espera', 'On hold')}</div></div>
+          <div style={{ flex: 1 }}><div style={{ fontWeight: 800, color: 'var(--soft-green)' }}>{money(t.paidCents)}</div><div className="muted" style={{ fontSize: 10.5 }}>{L('Pagado', 'Paid')}</div></div>
+        </div>
+        <div className="row" style={{ gap: 6 }}>
+          <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => { navigator.clipboard.writeText(refLink); alert(L('Tu enlace de afiliado copiado.', 'Your affiliate link copied.')); }}>{L('Copiar enlace', 'Copy link')}</button>
+          <button className="btn btn-primary" style={{ flex: 1 }} onClick={openModal}>{L('Mis pagos', 'My payouts')}</button>
+        </div>
+      </div>
+
+      {open && (
+        <div className="sk-modal-ov" style={{ alignItems: 'center' }} onClick={() => setOpen(false)}>
+          <div className="sk-modal sk-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 460 }}>
+            <div className="row between" style={{ marginBottom: 8 }}><h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><OnyxIcon name="gift" size={17} /> {L('Mis ganancias', 'My earnings')}</h3><button className="btn btn-ghost" style={{ padding: '2px 8px' }} onClick={() => setOpen(false)}>✕</button></div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 12 }}>
+              {[[L('Disponible', 'Available'), money(t.availableCents), 'var(--gold)'], [L('En espera', 'On hold'), money(t.pendingCents), 'var(--mut)'], [L('Pagado', 'Paid'), money(t.paidCents), 'var(--soft-green)']].map(([lbl, val, col]) => (
+                <div key={lbl} className="statcard"><div><div className="sc-lbl">{lbl}</div><div className="sc-val" style={{ color: col }}>{val}</div></div></div>
+              ))}
+            </div>
+
+            <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: 12, marginBottom: 12 }}>
+              <div className="row between" style={{ marginBottom: 6 }}><b style={{ fontSize: 13 }}>{L('Cómo me pagan', 'How I get paid')}</b>
+                <span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--brand) 14%,transparent)', color: 'var(--brand)' }}>{s.rail === 'credit' ? L('crédito automático', 'auto credit') : L('pago manual', 'manual')}</span></div>
+              {s.rail === 'credit'
+                ? <p className="muted" style={{ fontSize: 12, marginBottom: 8 }}>{L('Tu recompensa se aplica sola como crédito en tu cuenta al pasar la ventana de espera.', 'Your reward auto-applies as account credit after the hold window.')}</p>
+                : <p className="muted" style={{ fontSize: 12, marginBottom: 8 }}>{L('Tu mentor te paga por fuera. Dile aquí a dónde enviarte el dinero.', 'Your mentor pays you externally. Tell them where to send the money.')}</p>}
+              <div className="row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                <select value={mf.method} onChange={(e) => { setMf({ ...mf, method: e.target.value }); setSaved(false); }} style={{ width: 120 }}><option value="paypal">PayPal</option><option value="zelle">Zelle</option><option value="bank">{L('Banco', 'Bank')}</option><option value="cash">{L('Efectivo', 'Cash')}</option><option value="other">{L('Otro', 'Other')}</option></select>
+                <input placeholder={L('Correo / número / cuenta', 'Email / number / account')} value={mf.handle} onChange={(e) => { setMf({ ...mf, handle: e.target.value }); setSaved(false); }} style={{ flex: '1 1 150px' }} />
+                <button className="btn btn-primary" onClick={saveMethod}>{saved ? '✓' : L('Guardar', 'Save')}</button>
+              </div>
+            </div>
+
+            <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{L('Historial', 'History')}</div>
+            {(!detail || (detail.events || []).length === 0) ? <p className="muted" style={{ fontSize: 12.5 }}>{L('Aún no tienes movimientos.', 'No activity yet.')}</p> : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 260, overflowY: 'auto' }}>
+                {(detail.events || []).map((e: any, i: number) => { const c = stChip(e.status); return (
+                  <div key={i} className="row between" style={{ fontSize: 12.5, padding: '7px 10px', background: 'var(--bg2)', borderRadius: 8 }}>
+                    <span>{e.kind === 'renewal' ? L('Renovación de un referido', 'A referral renewed') : e.kind === 'one_time' ? L('Compra de un referido', 'A referral purchased') : L('Un referido pagó', 'A referral paid')}<br /><span className="muted" style={{ fontSize: 11 }}>{new Date(e.created_at).toLocaleDateString()}{e.paid_at ? ' · ' + L('pagado', 'paid') + ' ' + new Date(e.paid_at).toLocaleDateString() : ''}{e.paid_method ? ' · ' + e.paid_method : ''}</span></span>
+                    <span style={{ textAlign: 'right' }}><b style={{ color: e.status === 'reversed' ? 'var(--red)' : 'var(--tx)', textDecoration: e.status === 'reversed' ? 'line-through' : 'none' }}>{money(e.amount_cents)}</b><br /><span className="sk-chip" style={{ fontSize: 10.5, background: `color-mix(in srgb,${c.c} 16%,transparent)`, color: c.c }}>{c.t}</span></span>
+                  </div>
+                ); })}
+              </div>
+            )}
           </div>
         </div>
       )}
