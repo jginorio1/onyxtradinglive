@@ -458,7 +458,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                           <td className="muted" style={{ fontSize: 12 }}>{u.lastSync ? fmtDate(u.lastSync, lang) : '—'}</td>
                           <td><div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
                             <button className="btn btn-ghost" style={{ padding: '5px 9px', fontSize: 12 }} title={t.u_openCard} onClick={() => setUDrawer({ id: u.id, email: u.email })}>👁</button>
-                            <button className="btn btn-ghost" style={{ padding: '5px 9px', fontSize: 12 }} onClick={() => resetPass(u)} disabled={busy === u.id + 'rst'}>🔑</button>
+                            <button className="btn btn-ghost" style={{ padding: '5px 9px', fontSize: 12 }} onClick={() => resetPass(u)} disabled={busy === u.id + 'rst'}><OnyxIcon name="key" size={14} glow={false} /></button>
                             {u.banned ? <button className="btn btn-ghost" style={{ padding: '5px 9px', fontSize: 12 }} onClick={() => userAction(u.id, 'unban')}>{t.u_unban}</button> : <button className="btn btn-ghost" style={{ padding: '5px 9px', fontSize: 12 }} onClick={() => userAction(u.id, 'ban')}>🚫</button>}
                             <button className="btn btn-ghost" style={{ padding: '5px 9px', fontSize: 12 }} onClick={() => userAction(u.id, 'admin', !u.is_admin)}>{u.is_admin ? t.u_removeAdmin : t.u_makeAdmin}</button>
                             {u.email !== meEmail && <button className="btn btn-danger" style={{ padding: '5px 9px', fontSize: 12 }} onClick={() => delUser(u)} disabled={busy === u.id + 'del'}>🗑</button>}

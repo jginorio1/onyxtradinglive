@@ -503,7 +503,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
           <div className="row" style={{ gap: 14, alignItems: 'center' }}>
             <div style={{ width: 52, height: 52, borderRadius: 14, background: 'var(--grad)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 700, flex: 'none' }}>{heroInitials}</div>
             <div>
-              <h1 style={{ marginBottom: 6, lineHeight: 1.15 }}>{heroTitle} <span style={{ fontSize: 22 }}>👋</span></h1>
+              <h1 style={{ marginBottom: 6, lineHeight: 1.15, display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>{heroTitle} <span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="hand" size={22} /></span></h1>
               {heroChips.length ? (
                 <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
                   {heroChips.map((c, i) => <span key={i} className="pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(124,140,255,.14)', color: 'var(--soft-brand)', fontWeight: 500 }}><OnyxIcon emoji={c.icon} size={13} /> {c.label}</span>)}

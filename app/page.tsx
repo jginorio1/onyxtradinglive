@@ -4,6 +4,7 @@ import { useLang } from '@/lib/lang';
 import Link from 'next/link';
 import SectionNav from './SectionNav';
 import PlansCompareTable from './PlansCompareTable';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 type Lang = 'es' | 'en';
 
@@ -481,7 +482,7 @@ export default function Home() {
         <h2 style={{ textAlign: 'center', marginBottom: 34 }}>{t.featT}</h2>
         <div className="grid g3">
           {t.features.map((f, i) => (
-            <div key={i} className="card"><div style={{ fontSize: 26, marginBottom: 10 }}>{f.i}</div><h3 style={{ marginBottom: 6 }}>{f.t}</h3><p className="muted" style={{ fontSize: 15 }}>{f.d}</p></div>
+            <div key={i} className="card"><div style={{ color: 'var(--brand)', marginBottom: 10 }}><OnyxIcon emoji={f.i} size={26} /></div><h3 style={{ marginBottom: 6 }}>{f.t}</h3><p className="muted" style={{ fontSize: 15 }}>{f.d}</p></div>
           ))}
         </div>
       </div>
@@ -496,7 +497,7 @@ export default function Home() {
         <div className="grid g3">
           {t.eco.cards.map((c: any, i: number) => (
             <div key={i} className="card">
-              <div style={{ fontSize: 26, marginBottom: 10 }}>{c.i}</div>
+              <div style={{ color: 'var(--brand)', marginBottom: 10 }}><OnyxIcon emoji={c.i} size={26} /></div>
               <h3 style={{ marginBottom: 6 }}>{c.t}</h3>
               <p className="muted" style={{ fontSize: 15, lineHeight: 1.7 }}>{c.d}</p>
             </div>
@@ -508,9 +509,9 @@ export default function Home() {
       <div className="wrap section" style={{ textAlign: 'center' }}>
         <h2>{t.showT}</h2><p className="muted" style={{ fontSize: 17, margin: '10px auto 26px', maxWidth: 620 }}>{t.showS}</p>
         <div className="grid g3" style={{ textAlign: 'left' }}>
-          <div className="card"><h3>🗓️ {lang === 'es' ? 'Calendario' : 'Calendar'}</h3><p className="muted" style={{ fontSize: 14, marginTop: 6 }}>{lang === 'es' ? 'P&L por día en verde/rojo, con total mensual y anual.' : 'Daily P&L in green/red, with monthly and yearly totals.'}</p></div>
-          <div className="card"><h3>📊 {lang === 'es' ? 'Gráficas' : 'Charts'}</h3><p className="muted" style={{ fontSize: 14, marginTop: 6 }}>{lang === 'es' ? 'Por día, hora, sesión, par, largos vs cortos y más.' : 'By day, hour, session, pair, long vs short and more.'}</p></div>
-          <div className="card"><h3>🗂️ {lang === 'es' ? 'Portafolio' : 'Portfolio'}</h3><p className="muted" style={{ fontSize: 14, marginTop: 6 }}>{lang === 'es' ? 'Suma varias cuentas y ponles nombre (FTMO 50K…).' : 'Combine several accounts and name them (FTMO 50K…).'}</p></div>
+          <div className="card"><h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="calendar" size={20} /></span> {lang === 'es' ? 'Calendario' : 'Calendar'}</h3><p className="muted" style={{ fontSize: 14, marginTop: 6 }}>{lang === 'es' ? 'P&L por día en verde/rojo, con total mensual y anual.' : 'Daily P&L in green/red, with monthly and yearly totals.'}</p></div>
+          <div className="card"><h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="bars" size={20} /></span> {lang === 'es' ? 'Gráficas' : 'Charts'}</h3><p className="muted" style={{ fontSize: 14, marginTop: 6 }}>{lang === 'es' ? 'Por día, hora, sesión, par, largos vs cortos y más.' : 'By day, hour, session, pair, long vs short and more.'}</p></div>
+          <div className="card"><h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="accounts" size={20} /></span> {lang === 'es' ? 'Portafolio' : 'Portfolio'}</h3><p className="muted" style={{ fontSize: 14, marginTop: 6 }}>{lang === 'es' ? 'Suma varias cuentas y ponles nombre (FTMO 50K…).' : 'Combine several accounts and name them (FTMO 50K…).'}</p></div>
         </div>
       </div>
 
@@ -559,7 +560,7 @@ export default function Home() {
       <div className="wrap section">
         <h2 style={{ textAlign: 'center', marginBottom: 34 }}>{t.whoT}</h2>
         <div className="grid g3">
-          {t.who.map((w, i) => (<div key={i} className="card"><div style={{ fontSize: 26, marginBottom: 8 }}>{w.i}</div><h3>{w.t}</h3><p className="muted" style={{ marginTop: 6 }}>{w.d}</p></div>))}
+          {t.who.map((w, i) => (<div key={i} className="card"><div style={{ color: 'var(--brand)', marginBottom: 8 }}><OnyxIcon emoji={w.i} size={26} /></div><h3>{w.t}</h3><p className="muted" style={{ marginTop: 6 }}>{w.d}</p></div>))}
         </div>
       </div>
 
@@ -659,7 +660,7 @@ export default function Home() {
         <div className="grid g3" style={{ marginBottom: 24 }}>
           {t.mgr.cards.map((c: any, i: number) => (
             <div key={i} className="card">
-              <div style={{ fontSize: 26, marginBottom: 10 }}>{c.i}</div>
+              <div style={{ color: 'var(--brand)', marginBottom: 10 }}><OnyxIcon emoji={c.i} size={26} /></div>
               <h3 style={{ fontSize: 17, marginBottom: 6 }}>{c.t}</h3>
               <p className="muted" style={{ fontSize: 14, lineHeight: 1.7 }}>{c.d}</p>
             </div>
@@ -675,7 +676,7 @@ export default function Home() {
 
       {/* SECURITY */}
       <div className="wrap section" style={{ textAlign: 'center', maxWidth: 720 }}>
-        <div style={{ fontSize: 34, marginBottom: 8 }}>🔒</div>
+        <div style={{ color: 'var(--brand)', marginBottom: 8, display: 'flex', justifyContent: 'center' }}><OnyxIcon name="guardian" size={34} /></div>
         <h2>{t.secT}</h2><p className="muted" style={{ fontSize: 17, marginTop: 10 }}>{t.secS}</p>
       </div>
 

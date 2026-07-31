@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Códigos de respaldo del 2FA: por si pierdes el teléfono. Se generan una vez y
 // se muestran solo en ese momento (se guardan cifrados). Cada uno se usa una vez.
@@ -28,7 +29,7 @@ export default function BackupCodes() {
   return (
     <div className="card" style={{ marginTop: 12 }}>
       <div className="row between" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 6 }}>
-        <b style={{ fontSize: 14 }}>🗝️ {es ? 'Códigos de respaldo (2FA)' : 'Backup codes (2FA)'}</b>
+        <b style={{ fontSize: 14, display: 'inline-flex', alignItems: 'center', gap: 8 }}><span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="key" size={16} /></span> {es ? 'Códigos de respaldo (2FA)' : 'Backup codes (2FA)'}</b>
         {left !== null && <span className="pill" style={left > 0 ? { color: 'var(--soft-green)', background: 'rgba(52,226,160,.15)' } : { color: 'var(--amber)', background: 'rgba(255,192,77,.16)' }}>{left} {es ? 'disponibles' : 'left'}</span>}
       </div>
       <p className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>

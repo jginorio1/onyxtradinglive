@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useLang } from '@/lib/lang';
 import ChatThread, { type ChatMsg, type Att } from '@/app/components/ChatThread';
 import { useChatRealtime } from '@/lib/chatRealtime';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 type Lang = 'es' | 'en';
 
@@ -21,10 +22,10 @@ const T: any = {
     st: { open: 'Abierto', in_progress: 'En curso', resolved: 'Resuelto' },
     cats: [['general', 'General'], ['conexion', 'Conexión'], ['instalacion', 'Instalación'], ['guardian', 'Onyx Guardian'], ['facturacion', 'Facturación']],
     quick: [
-      ['instalar-ea', '🔌 Instalar y conectar el EA'],
-      ['que-hace-onyx', '🛡️ Qué hace Onyx Guardian'],
-      ['conectar-cuenta', '🔑 Conectar tu cuenta'],
-      ['profit-factor', '📊 Entender tus números'],
+      ['instalar-ea', '🔌', 'Instalar y conectar el EA'],
+      ['que-hace-onyx', '🛡️', 'Qué hace Onyx Guardian'],
+      ['conectar-cuenta', '🔑', 'Conectar tu cuenta'],
+      ['profit-factor', '📊', 'Entender tus números'],
     ],
     seeGuide: 'Ver toda la guía →', missing: 'Escribe un asunto y un mensaje.',
   },
@@ -40,10 +41,10 @@ const T: any = {
     st: { open: 'Open', in_progress: 'In progress', resolved: 'Resolved' },
     cats: [['general', 'General'], ['conexion', 'Connection'], ['instalacion', 'Install'], ['guardian', 'Onyx Guardian'], ['facturacion', 'Billing']],
     quick: [
-      ['instalar-ea', '🔌 Install and connect the EA'],
-      ['que-hace-onyx', '🛡️ What Onyx Guardian does'],
-      ['conectar-cuenta', '🔑 Connect your account'],
-      ['profit-factor', '📊 Understand your numbers'],
+      ['instalar-ea', '🔌', 'Install and connect the EA'],
+      ['que-hace-onyx', '🛡️', 'What Onyx Guardian does'],
+      ['conectar-cuenta', '🔑', 'Connect your account'],
+      ['profit-factor', '📊', 'Understand your numbers'],
     ],
     seeGuide: 'See the whole guide →', missing: 'Write a subject and a message.',
   },
@@ -162,7 +163,7 @@ export default function SupportClient() {
       {/* Onyx AI */}
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="row" style={{ gap: 10, alignItems: 'center', marginBottom: 12 }}>
-          <span style={{ width: 36, height: 36, borderRadius: 9, background: 'rgba(124,140,255,.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none', fontSize: 18 }}>🤖</span>
+          <span style={{ width: 36, height: 36, borderRadius: 9, background: 'rgba(124,140,255,.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none', color: 'var(--brand)' }}><OnyxIcon name="ai" size={20} /></span>
           <div style={{ flex: 1 }}><div style={{ fontWeight: 700 }}>{t.aiT}</div><div className="muted" style={{ fontSize: 12 }}>{t.aiD}</div></div>
           <span className="pill" style={{ color: 'var(--green)', background: 'rgba(52,226,160,.15)' }}>{t.online}</span>
         </div>
@@ -182,15 +183,15 @@ export default function SupportClient() {
           <input value={ask} onChange={(e) => setAsk(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') sendAI(); }} placeholder={t.aiPh} style={{ flex: 1, minWidth: 180, margin: 0 }} />
           <button className="btn btn-primary" onClick={sendAI} disabled={aiBusy || !ask.trim()}>{t.send}</button>
         </div>
-        <button className="btn btn-ghost" style={{ marginTop: 10, fontSize: 13 }} onClick={escalateToTicket}>💬 {t.openTicket}</button>
+        <button className="btn btn-ghost" style={{ marginTop: 10, fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 7 }} onClick={escalateToTicket}><OnyxIcon name="chat" size={15} glow={false} /> {t.openTicket}</button>
       </div>
 
       {/* Ayuda rápida */}
       <div className="card" style={{ marginBottom: 16 }}>
-        <h3 style={{ marginBottom: 12 }}>📚 {t.quickT}</h3>
+        <h3 style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="book" size={18} /></span> {t.quickT}</h3>
         <div className="grid g2" style={{ gap: 8 }}>
-          {t.quick.map(([slug, label]: any) => (
-            <Link key={slug} href={`/guia/${slug}`} className="card" style={{ padding: '11px 13px', fontSize: 14 }}>{label}</Link>
+          {t.quick.map(([slug, emo, label]: any) => (
+            <Link key={slug} href={`/guia/${slug}`} className="card" style={{ padding: '11px 13px', fontSize: 14, display: 'flex', alignItems: 'center', gap: 9 }}><span style={{ color: 'var(--brand)', display: 'inline-flex', flex: 'none' }}><OnyxIcon emoji={emo} size={17} /></span> {label}</Link>
           ))}
         </div>
         <Link href="/guia" style={{ color: 'var(--brand)', fontSize: 13, display: 'inline-block', marginTop: 12 }}>{t.seeGuide}</Link>
@@ -199,7 +200,7 @@ export default function SupportClient() {
       {/* Tickets */}
       <div className="card" id="onyx-tickets">
         <div className="row between" style={{ marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-          <h3>🎫 {t.ticketsT}</h3>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="ticket" size={18} /></span> {t.ticketsT}</h3>
           <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => setShowNew(!showNew)}>+ {t.newT}</button>
         </div>
 

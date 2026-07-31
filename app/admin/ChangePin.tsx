@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLang } from '@/lib/lang';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Cambio obligatorio del PIN provisional en el primer acceso del empleado.
 // No deja entrar al panel hasta que fija uno propio (distinto del temporal).
@@ -32,7 +33,7 @@ export default function ChangePin({ email }: { email: string }) {
   return (
     <div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div style={{ width: '100%', maxWidth: 380, textAlign: 'center' }}>
-        <div style={{ width: 54, height: 54, borderRadius: 14, margin: '0 auto 14px', background: 'rgba(124,140,255,.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26 }}>🔑</div>
+        <div style={{ width: 54, height: 54, borderRadius: 14, margin: '0 auto 14px', background: 'rgba(124,140,255,.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--brand)' }}><OnyxIcon name="key" size={26} /></div>
         <h1 style={{ fontSize: 20, marginBottom: 4 }}>{es ? 'Crea tu PIN' : 'Create your PIN'}</h1>
         <p className="muted" style={{ fontSize: 13.5, marginBottom: 4 }}>
           {es ? 'Tu acceso usa un PIN temporal. Elige uno nuevo de 6 dígitos que solo tú sepas.' : 'Your access uses a temporary PIN. Choose a new 6-digit one only you know.'}

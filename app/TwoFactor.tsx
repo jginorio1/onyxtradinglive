@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 type Lang = 'es' | 'en';
 
@@ -106,7 +107,7 @@ export default function TwoFactor({ mode, lang, onDone }: { mode: 'enroll' | 'ch
   if (backupCodes) {
     return (
       <div style={box}>
-        <h3 style={{ marginBottom: 4 }}>🗝️ {L.bkT}</h3>
+        <h3 style={{ marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="key" size={18} /></span> {L.bkT}</h3>
         <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{L.bkH}</p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 12, padding: 12 }}>
           {backupCodes.map((c) => <div key={c} className="code" style={{ textAlign: 'center', letterSpacing: 2, fontSize: 14 }}>{c}</div>)}

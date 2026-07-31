@@ -1807,7 +1807,7 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
       <OnboardingCard d={d} L={L} api={api} goTab={setTab} openStudent={openStudent} />
 
       <div className="sk-card">
-        <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>🔑 {L('Enlace de inscripción (compártelo con tus alumnos)', 'Enrollment link (share with your students)')}</div>
+        <div className="muted" style={{ fontSize: 12, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 7 }}><span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="key" size={14} glow={false} /></span> {L('Enlace de inscripción (compártelo con tus alumnos)', 'Enrollment link (share with your students)')}</div>
         <div className="row" style={{ gap: 14, flexWrap: 'wrap', alignItems: 'flex-start' }}>
           <div style={{ flex: 1, minWidth: 220 }}>
             <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>

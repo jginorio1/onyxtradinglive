@@ -457,7 +457,7 @@ export default function CopyClient() {
       {/* CLAVES COPY + INSTALAR */}
       {accs.length > 0 && (
         <div className="card" style={{ marginBottom: 12 }}>
-          <b style={{ fontSize: 14 }}>🔑 {t.keys}</b>
+          <b style={{ fontSize: 14, display: 'inline-flex', alignItems: 'center', gap: 8 }}><span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="key" size={16} /></span> {t.keys}</b>
           <p className="muted" style={{ fontSize: 12, marginTop: 2, marginBottom: 8 }}>{t.keysSub}</p>
           {accs.map((a) => {
             const r = roleOf(a.id); const k = keyOf(a.login); const live = keyLive(k);

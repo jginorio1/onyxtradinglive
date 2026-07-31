@@ -73,6 +73,10 @@ const G: Record<string, Els> = {
   cart: (<><circle cx="9" cy="20" r="1.4" fill="currentColor" stroke="none" /><circle cx="17" cy="20" r="1.4" fill="currentColor" stroke="none" /><path d="M3 4 h2 l2.2 11 h11 l1.8 -8 H6" /></>),
   heart: (<><path d="M12 20 C5 15 3 11 3 8 a4.5 4.5 0 0 1 9 -1 a4.5 4.5 0 0 1 9 1 c0 3 -2 7 -9 12 z" /></>),
   link: (<><path d="M9 15 l6 -6 M8 12 l-2 2 a3 3 0 0 0 4 4 l2 -2 M16 12 l2 -2 a3 3 0 0 0 -4 -4 l-2 2" /></>),
+  // Llave: cabeza de anillo + espiga con dientes (acceso, claves, inscripción).
+  key: (<><circle cx="8" cy="8" r="3.6" /><line x1="10.6" y1="10.6" x2="19.5" y2="19.5" /><line x1="19.5" y1="19.5" x2="17.4" y2="21.6" /><line x1="16.4" y1="16.4" x2="14.3" y2="18.5" /></>),
+  // Mano abierta (pausa / detener / saludo). Palma con cuatro dedos y pulgar.
+  hand: (<><path d="M8 12 V6.6 a1.2 1.2 0 0 1 2.4 0 V11 M10.4 11 V5 a1.2 1.2 0 0 1 2.4 0 V11 M12.8 11 V5.6 a1.2 1.2 0 0 1 2.4 0 V12 M15.2 12 V8 a1.2 1.2 0 0 1 2.4 0 V15 a5 5 0 0 1 -5 5 h-1 a5 5 0 0 1 -3.6 -1.6 l-2.7 -2.9 a1.3 1.3 0 0 1 1.9 -1.8 L8 13.4 z" /></>),
 };
 
 // Emoji → nombre de glifo (se normaliza quitando el selector de variación).
@@ -93,8 +97,13 @@ const EMOJI: Record<string, string> = {
   '👤': 'users', '🧾': 'card', '🔐': 'guardian', '⭐': 'trophy', '📝': 'coach', '✍': 'coach',
   '⏳': 'duration', '⏰': 'duration', '💪': 'trophy', '🟢': 'up', '🎁': 'gift',
   '⚡': 'up', '🌊': 'performance', '🏔': 'performance', '✈': 'telegram', '🚧': 'settings',
-  '🥧': 'finance', '🎉': 'trophy', '📧': 'mail', '📁': 'accounts', 'ℹ': 'ai', '✋': 'guardian',
+  '🥧': 'finance', '🎉': 'trophy', '📧': 'mail', '📁': 'accounts', 'ℹ': 'ai',
   '📡': 'sessions', '🕑': 'duration', '🕐': 'duration', '☺': 'users', '🖨': 'install', '〽': 'up',
+  // Llave y mano
+  '🔑': 'key', '🗝': 'key', '🔓': 'key',
+  '✋': 'hand', '🤚': 'hand', '👋': 'hand', '🖐': 'hand', '🖖': 'hand',
+  // Landing (metáforas propias, no genéricas)
+  '🔗': 'link', '📲': 'telegram', '🏦': 'firms', '👥': 'users', '🏛': 'firms',
 };
 
 const strip = (s: string) => (s || '').replace(/️/g, '').trim();
