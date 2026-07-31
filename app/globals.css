@@ -417,13 +417,14 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
   .sk-wrap[data-tab]:not([data-tab="community"]) .sk-hero{display:none;}
   .sk-wrap[data-tab]:not([data-tab="community"]) .sk-side{display:none;}
   .sk-wrap[data-tab] .sk-grid{grid-template-columns:1fr;}
-  /* Cabecera de comunidad mucho más fina en móvil */
-  .sk-hero{border-radius:14px;box-shadow:0 4px 16px rgba(0,0,0,.2);}
-  .sk-hero-cover{height:56px;}
-  .sk-hero-logo{width:42px;height:42px;border-radius:11px;margin-top:-24px;border-width:2px;}
-  .sk-hero-body{padding:7px 12px 11px;gap:10px;}
-  .sk-hero-body h2{font-size:16px!important;}
-  .sk-tabs.big{margin-top:10px!important;}
+  /* Cabecera de comunidad muy fina en móvil: sin portada, solo una barra slim */
+  .sk-hero{border-radius:12px;box-shadow:0 3px 12px rgba(0,0,0,.18);}
+  .sk-hero-cover{display:none!important;}
+  .sk-hero-logo{width:34px!important;height:34px!important;border-radius:9px!important;margin-top:0!important;border-width:1px!important;box-shadow:none!important;}
+  .sk-hero-body{padding:9px 12px!important;gap:10px!important;align-items:center!important;}
+  .sk-hero-body h2{font-size:15.5px!important;}
+  .sk-hero-body .muted{font-size:11.5px!important;}
+  .sk-tabs.big{margin-top:8px!important;}
 }
 .sk-tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:14px 0 16px;overflow-x:auto;}
 .sk-tab{padding:10px 14px;font-size:14px;font-weight:600;color:var(--mut);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap;transition:.15s;display:flex;align-items:center;gap:7px;}

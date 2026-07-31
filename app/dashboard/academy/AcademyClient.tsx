@@ -1385,7 +1385,7 @@ function PostTypePicker({ kind, setKind, winKind, setWinKind, L }: any) {
 }
 function PostCard({ p, onLike, onComment, onProfile, L, es }: any) {
   const [c, setC] = useState(''); const [cImg, setCImg] = useState(''); const [openC, setOpenC] = useState(false);
-  const sendComment = () => { if (c.trim() || cImg) { onComment(p.id, c, cImg); setC(''); setCImg(''); } };
+  const sendComment = () => { if (c.trim() || cImg) { onComment(p.id, c, cImg); setC(''); setCImg(''); setOpenC(true); } };
   return (
     <div className={'sk-card' + (p.announcement ? ' sk-ann' : '')}>
       {p.announcement && <div className="sk-ann-tag"><OnyxIcon name="megaphone" size={13} glow={false} /> {L('Anuncio', 'Announcement')}</div>}
@@ -1400,7 +1400,7 @@ function PostCard({ p, onLike, onComment, onProfile, L, es }: any) {
         <button className={'sk-like' + (p.liked ? ' on' : '')} onClick={() => onLike('post', p.id)}><OnyxIcon name="heart" size={15} glow={false} /> {p.likes || 0}</button>
         <button className="sk-like" onClick={() => setOpenC((v) => !v)}><OnyxIcon name="chat" size={15} glow={false} /> {(p.comments || []).length}</button>
       </div>
-      {(openC || (p.comments || []).length > 0) && (
+      {openC && (
         <div style={{ marginTop: 10, borderTop: '1px solid var(--line)', paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
           {(p.comments || []).map((c2: any) => (
             <div key={c2.id} className="row" style={{ gap: 8, alignItems: 'flex-start' }}>
