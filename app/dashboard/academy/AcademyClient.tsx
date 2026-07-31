@@ -4,6 +4,7 @@ import { useLang } from '@/lib/lang';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import BrandIcon, { BRAND_COLOR } from '@/app/components/BrandIcon';
 import ShareRow from '@/app/components/ShareRow';
+import StudentBilling from '@/app/components/StudentBilling';
 import LangToggle from '@/app/LangToggle';
 import { COUNTRIES, flagOf, countryName } from '@/app/components/countries';
 import JoinQR from '@/app/components/JoinQR';
@@ -658,6 +659,7 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
   const [dmWith, setDmWith] = useState<string | null>(null);
   const [manageStudent, setManageStudent] = useState<any>(null);
   const [modOpen, setModOpen] = useState(false);
+  const [billingOpen, setBillingOpen] = useState(false);
   const canModerateHere = !!(active.isMentorHere || active.myPerms?.moderate);
   const modBadge = (active.modPending || 0) + (active.modReports || 0);
 
@@ -724,6 +726,17 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
       <ConfirmHost lang={lang} />
       {manageStudent && <StudentManageModal s={manageStudent} L={L} onClose={() => setManageStudent(null)} onAction={manageAction} onDm={(uid: string) => { setManageStudent(null); openDm(uid); }} />}
       {modOpen && <ModerationPanel mentorId={active.mentor_id} isOwner={!!active.isMentorHere} L={L} lang={lang} onClose={() => setModOpen(false)} reload={reload} />}
+      {billingOpen && (
+        <Modal onClose={() => setBillingOpen(false)}>
+          <div className="sk-card" style={{ border: '1px solid var(--brand)', maxWidth: 560, width: '100%' }}>
+            <div className="row between" style={{ marginBottom: 12, alignItems: 'center' }}>
+              <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="card" size={18} /></span> {L('Mi membresía', 'My membership')}</h3>
+              <button className="btn btn-ghost" onClick={() => setBillingOpen(false)}>✕</button>
+            </div>
+            <div style={{ maxHeight: '70vh', overflowY: 'auto' }}><StudentBilling lang={lang} mentorId={active.mentor_id} /></div>
+          </div>
+        </Modal>
+      )}
       {composeOpen && (
         <Modal onClose={() => setComposeOpen(false)}><div className="sk-card" style={{ border: '1px solid var(--brand)' }}>
           <h3 style={{ marginBottom: 4 }}>{L('¿Qué tipo de publicación es?', 'What kind of post is this?')}</h3>
@@ -754,6 +767,7 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
               <div style={{ minWidth: 0 }}><h2 style={{ margin: 0, fontSize: 21 }}>{active.academy_name}</h2>{active.tagline && <div className="muted" style={{ fontSize: 13, marginTop: 2 }}>{active.tagline}</div>}</div>
               <div className="row" style={{ gap: 6, alignItems: 'center' }}>
                 <LangToggle compact />
+                {!active.isMentorHere && <button className="btn btn-ghost" style={{ fontSize: 12.5, display: 'inline-flex', alignItems: 'center', gap: 5 }} onClick={() => setBillingOpen(true)}><OnyxIcon name="card" size={14} /> {L('Mi membresía', 'My membership')}</button>}
                 {canModerateHere && <button className="btn btn-ghost" style={{ fontSize: 12.5, display: 'inline-flex', alignItems: 'center', gap: 5 }} onClick={() => setModOpen(true)}><OnyxIcon name="shield" size={14} /> {L('Moderación', 'Moderation')}{modBadge > 0 && <span className="sk-chip" style={{ padding: '0 6px', background: 'var(--red)', color: '#fff', fontSize: 11 }}>{modBadge}</span>}</button>}
                 {active.isMentorHere && toMentor && <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={toMentor}>{L('Configurar', 'Manage')}</button>}
                 <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={onExit}>← {L('Mis academias', 'My academies')}</button>
