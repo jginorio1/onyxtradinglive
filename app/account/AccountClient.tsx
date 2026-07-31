@@ -291,7 +291,7 @@ export default function AccountClient({ email }: { email: string }) {
             </div>
             {/* Móvil: selector (se adapta como el menú de arriba) */}
             <select className="adminnav-mobile" value={tab} onChange={(e) => setTab(e.target.value as Tab)} style={{ margin: 0, width: '100%' }}>
-              {NAV.map(([k, icon]) => <option key={k} value={k}>{`${icon}  ${L.nav[k]}`}</option>)}
+              {NAV.map(([k]) => <option key={k} value={k}>{L.nav[k]}</option>)}
             </select>
             <div className="adminnav-items">
               {NAV.map(([k, icon]) => <button key={k} className={'adminnav-item' + (tab === k ? ' on' : '')} onClick={() => setTab(k)}><span style={{ width: 18, display: 'inline-flex', justifyContent: 'center' }}><OnyxIcon emoji={icon} size={16} /></span><span>{L.nav[k]}</span><span className="navdot" /></button>)}
