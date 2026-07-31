@@ -2432,12 +2432,13 @@ function GuidedTour({ stepKey, o, L, onGoto, onFinish, onClose, academyName }: a
   const [aiDraft, setAiDraft] = useState('');
   const [aiBusy, setAiBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [tipOpen, setTipOpen] = useState(true);
   const done = step ? !!o?.[step.key] : false;
   const ai = step ? TOUR_AI[step.key] : null;
 
   // Al cambiar de paso: limpiar el borrador y resaltar los botones ✨ IA de la pantalla (refuerzo B).
   useEffect(() => {
-    setAiDraft(''); setCopied(false);
+    setAiDraft(''); setCopied(false); setTipOpen(true);
     if (typeof document === 'undefined') return;
     if (step && TOUR_AI[step.key]) document.body.classList.add('onb-ai-active');
     else document.body.classList.remove('onb-ai-active');
@@ -2498,6 +2499,13 @@ function GuidedTour({ stepKey, o, L, onGoto, onFinish, onClose, academyName }: a
     <div style={{ position: 'fixed', inset: 0, zIndex: 92, pointerEvents: 'none' }}>
       {rect && <div className="onb-halo" style={{ top: rect.top - 8, left: rect.left - 8, width: rect.width + 16, height: rect.height + 16 }} />}
       {rect && <div className="onb-arrow" style={{ top: below ? rect.top - 38 : rect.top + rect.height + 6, left: rect.left + Math.min(46, rect.width / 2), color: 'var(--brand)' }}><Arrow /></div>}
+      {!tipOpen && !done && (
+        <button className="onb-tip-mini" style={{ top: tipTop, left: tipLeft }} onClick={() => setTipOpen(true)}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon name="ai" size={14} glow={false} /> {L('Completa este paso', 'Complete this step')}</span>
+          <span style={{ color: 'var(--brand)', fontWeight: 600 }}>{L('Ver ayuda', 'Show tip')}</span>
+        </button>
+      )}
+      {tipOpen && (
       <div className="onb-tip" style={{ top: tipTop, left: tipLeft }}>
         <div className="row between" style={{ marginBottom: 6, alignItems: 'center' }}>
           <span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--brand) 16%,transparent)', color: 'var(--soft-brand,var(--brand))' }}>{L('Paso', 'Step')} {idx + 1}/{TOUR_STEPS.length}</span>
@@ -2533,10 +2541,11 @@ function GuidedTour({ stepKey, o, L, onGoto, onFinish, onClose, academyName }: a
         ) : (
           <div className="row" style={{ gap: 8 }}>
             <button className="btn btn-ghost" style={{ fontSize: 12, flex: 1 }} onClick={() => { const next = TOUR_STEPS[idx + 1]; if (next) onGoto(next.key); else onClose(); }}>{L('Saltar paso', 'Skip step')}</button>
-            <button className="btn btn-primary" style={{ fontSize: 12, flex: 1 }} onClick={onClose}>{L('Entendido', 'Got it')}</button>
+            <button className="btn btn-primary" style={{ fontSize: 12, flex: 1 }} onClick={() => setTipOpen(false)}>{L('Entendido', 'Got it')}</button>
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }
