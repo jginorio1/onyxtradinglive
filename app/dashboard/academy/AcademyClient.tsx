@@ -2408,11 +2408,10 @@ const TOUR_STEPS: { key: string; tab: string; sel: string; review?: boolean }[] 
   { key: 'liveClass', tab: 'envivo', sel: 'liveclass' },
 ];
 
-// Pasos donde Onyx AI ayuda a redactar. content/monetize se "encienden" solo tras el branding.
-const TOUR_AI: Record<string, { kind: string; input: (name: string) => string; gated?: boolean }> = {
-  branding: { kind: 'tagline', input: (n) => `${n}` },
-  content: { kind: 'course_desc', input: (n) => `${n}: aula "Empieza aquí" para alumnos nuevos de trading`, gated: true },
-  monetize: { kind: 'pitch', input: (n) => `${n}: nivel de membresía con acceso a la comunidad y las clases`, gated: true },
+// Onyx AI solo donde hay un campo de copy real. Escribe DIRECTO en ese campo (con todo el
+// espacio), no en el tooltip. `field` = qué campo de MentorSettings rellenar vía evento.
+const TOUR_AI: Record<string, { kind: string; field: string; input: (name: string) => string }> = {
+  branding: { kind: 'about', field: 'brand_info', input: (n) => `${n} — academia de trading. Describe al mentor: experiencia, estilo de enseñanza y tono (cercano, directo, sin promesas).` },
 };
 
 function tourCopy(key: string, L: (a: string, b: string) => string): [string, string, string] {
@@ -2432,31 +2431,35 @@ function tourCopy(key: string, L: (a: string, b: string) => string): [string, st
 function GuidedTour({ stepKey, o, L, onGoto, onFinish, onClose, academyName }: any) {
   const step = TOUR_STEPS.find((s) => s.key === stepKey);
   const [rect, setRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
-  const [aiDraft, setAiDraft] = useState('');
+  const [aiFilled, setAiFilled] = useState(false);
   const [aiBusy, setAiBusy] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [tipOpen, setTipOpen] = useState(true);
   const done = step && !step.review ? !!o?.[step.key] : false;
   const ai = step ? TOUR_AI[step.key] : null;
-  const aiGated = !!(ai && ai.gated && !o?.branding); // copy solo tras branding
 
   // Al cambiar de paso: limpiar el borrador y resaltar los botones ✨ IA de la pantalla (refuerzo B).
   useEffect(() => {
-    setAiDraft(''); setCopied(false); setTipOpen(true);
+    setAiFilled(false); setTipOpen(true);
     if (typeof document === 'undefined') return;
     if (step && TOUR_AI[step.key]) document.body.classList.add('onb-ai-active');
     else document.body.classList.remove('onb-ai-active');
     return () => { if (typeof document !== 'undefined') document.body.classList.remove('onb-ai-active'); };
   }, [stepKey]);
 
+  // Genera con Onyx AI y lo ESCRIBE en el campo real (vía evento), no en el tooltip.
   async function genAI() {
     if (!ai) return;
-    setAiBusy(true); setCopied(false);
+    setAiBusy(true);
     try {
       const r = await fetch('/api/academy/ai', { method: 'POST', body: JSON.stringify({ kind: ai.kind, input: ai.input(academyName || 'Mi academia'), lang: L('es', 'en') }) });
       const j = await r.json().catch(() => ({}));
-      setAiDraft(j.ok && j.text ? j.text : L('La IA no está disponible ahora. Usa el botón ✨ IA junto al campo.', 'AI is unavailable right now. Use the ✨ AI button next to the field.'));
-    } catch { setAiDraft(L('No se pudo generar. Intenta de nuevo.', 'Could not generate. Try again.')); }
+      if (j.ok && j.text) {
+        window.dispatchEvent(new CustomEvent('onyx-ai-fill', { detail: { field: ai.field, text: j.text } }));
+        setAiFilled(true);
+      } else {
+        alert(j.error === 'no_key' ? L('La IA no está configurada (falta ANTHROPIC_API_KEY en Vercel).', 'AI not configured (ANTHROPIC_API_KEY missing in Vercel).') : L('No se pudo generar. Intenta de nuevo.', 'Could not generate. Try again.'));
+      }
+    } catch { alert(L('No se pudo generar. Intenta de nuevo.', 'Could not generate. Try again.')); }
     setAiBusy(false);
   }
 
@@ -2522,26 +2525,12 @@ function GuidedTour({ stepKey, o, L, onGoto, onFinish, onClose, academyName }: a
         <p className="muted" style={{ fontSize: 12.5, margin: '0 0 10px', lineHeight: 1.5 }}>{why}</p>
         {ai && (
           <div style={{ margin: '0 0 10px', padding: '9px 10px', borderRadius: 10, background: 'color-mix(in srgb,var(--brand) 12%,transparent)', border: '1px solid color-mix(in srgb,var(--brand) 32%,transparent)' }}>
-            {aiGated ? (
-              <div className="row between" style={{ gap: 8, alignItems: 'center' }}>
-                <span style={{ fontSize: 12, color: 'var(--mut)', display: 'inline-flex', alignItems: 'center', gap: 6, lineHeight: 1.4 }}>✨ {L('Para que el AI escriba en tu voz, define tu branding primero.', 'For AI to write in your voice, set your branding first.')}</span>
-                <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '4px 10px', flex: 'none' }} onClick={() => onGoto('branding')}>{L('Ir a branding →', 'Go to branding →')}</button>
-              </div>
-            ) : !aiDraft ? (
-              <div className="row between" style={{ gap: 8, alignItems: 'center' }}>
-                <span style={{ fontSize: 12, color: 'var(--soft-brand,var(--brand))', display: 'inline-flex', alignItems: 'center', gap: 6 }}>✨ {L('Onyx AI puede escribirlo por ti', 'Onyx AI can write it for you')}</span>
-                <button className="btn btn-primary" style={{ fontSize: 11.5, padding: '4px 10px', flex: 'none' }} disabled={aiBusy} onClick={genAI}>{aiBusy ? L('Escribiendo…', 'Writing…') : L('Ver ejemplo', 'See example')}</button>
-              </div>
-            ) : (
-              <div>
-                <div style={{ fontSize: 12.5, fontStyle: 'italic', color: 'var(--tx)', lineHeight: 1.5, borderLeft: '2px solid var(--brand)', paddingLeft: 8 }}>{aiDraft}</div>
-                <div className="row" style={{ gap: 8, marginTop: 8, alignItems: 'center' }}>
-                  <button className="btn btn-ghost" style={{ fontSize: 11.5 }} disabled={aiBusy} onClick={genAI}>{aiBusy ? '…' : L('Otra idea', 'Another idea')}</button>
-                  <button className="btn btn-ghost" style={{ fontSize: 11.5 }} onClick={() => { try { navigator.clipboard.writeText(aiDraft); setCopied(true); } catch {} }}>{copied ? L('✓ Copiado', '✓ Copied') : L('Copiar', 'Copy')}</button>
-                </div>
-                <div className="muted" style={{ fontSize: 11, marginTop: 6, lineHeight: 1.4 }}>{L('Cópialo, o usa el botón ✨ IA que parpadea junto al campo para que lo escriba y lo inserte solo.', 'Copy it, or use the blinking ✨ AI button next to the field to write and insert it for you.')}</div>
-              </div>
-            )}
+            <div className="row between" style={{ gap: 8, alignItems: 'center' }}>
+              <span style={{ fontSize: 12, color: aiFilled ? 'var(--soft-green)' : 'var(--soft-brand,var(--brand))', display: 'inline-flex', alignItems: 'center', gap: 6, lineHeight: 1.4 }}>
+                {aiFilled ? '✓ ' + L('Escrito en el campo — míralo abajo y edítalo.', 'Written in the field — see it below and edit.') : '✨ ' + L('Deja que Onyx AI lo escriba en el campo', 'Let Onyx AI write it in the field')}
+              </span>
+              <button className="btn btn-primary" style={{ fontSize: 11.5, padding: '4px 10px', flex: 'none' }} disabled={aiBusy} onClick={genAI}>{aiBusy ? L('Escribiendo…', 'Writing…') : aiFilled ? L('Otra versión', 'Another version') : L('Escribir con IA', 'Write with AI')}</button>
+            </div>
           </div>
         )}
         {step.review ? (
@@ -2765,6 +2754,13 @@ function MentorSettings({ mentor, onSave, L }: any) {
   const setSocial = (k: string, v: string) => setF((s: any) => ({ ...s, socials: { ...s.socials, [k]: v } }));
   // Guarda los ajustes (usado por el botón y por el auto-guardado de imágenes/nombre/branding).
   const commit = (extra: any = {}) => { const m = { ...f, ...extra }; onSave({ ...m, membership_price_cents: Math.round(Number(m.membership_price) * 100), membership_year_cents: Math.round(Number(m.membership_year) * 100), subs_reopen_at: m.subs_open ? '' : m.subs_reopen_at }); };
+  // La guía interactiva puede pedir que Onyx AI escriba un texto DIRECTO en un campo (con todo
+  // el espacio, sin recortes). Lo recibimos aquí, lo ponemos en el campo y lo guardamos.
+  useEffect(() => {
+    const onFill = (e: any) => { const { field, text } = e.detail || {}; if (!field || typeof text !== 'string') return; setF((s: any) => ({ ...s, [field]: text })); commit({ [field]: text }); };
+    window.addEventListener('onyx-ai-fill', onFill as any);
+    return () => window.removeEventListener('onyx-ai-fill', onFill as any);
+  }, [f]); // eslint-disable-line
   const link = typeof window !== 'undefined' ? `${window.location.origin}/academia/${mentor.code}` : '';
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
