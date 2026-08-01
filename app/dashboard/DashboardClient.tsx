@@ -499,6 +499,8 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
       <DailyCheckinPopup lang={lang} />
 
       <div className="wrap-wide" style={{ padding: '24px 0' }}>
+        {/* Cabecera centrada con ancho de lectura (hero + neto + coach) */}
+        <div style={{ maxWidth: 960, margin: '0 auto' }}>
         <div className="row between" style={{ marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
           <div className="row" style={{ gap: 14, alignItems: 'center' }}>
             <div style={{ width: 52, height: 52, borderRadius: 14, background: 'var(--grad)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 700, flex: 'none' }}>{heroInitials}</div>
@@ -519,6 +521,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
 
         {caps?.expenses ? <NetRealCard /> : null}
         {caps?.coach ? <CoachCard /> : null}
+        </div>
 
         {!isFree && (
           <>

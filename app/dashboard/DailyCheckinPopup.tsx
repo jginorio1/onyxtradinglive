@@ -82,11 +82,11 @@ export default function DailyCheckinPopup({ lang }: { lang: Lang }) {
   // ---- Tira fija arriba: aparece si saltó el popup, hasta que haga el check-in ----
   if (phase === 'bar') {
     return (
-      <div style={{ position: 'sticky', top: 0, zIndex: 60, background: 'rgba(255,192,77,.14)', borderBottom: '1px solid var(--amber)', backdropFilter: 'blur(6px)' }}>
-        <div className="wrap-wide" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', flexWrap: 'wrap' }}>
-          <span style={{ display: 'inline-flex', color: 'var(--amber)' }}><OnyxIcon emoji="⏳" size={16} /></span>
-          <span style={{ fontSize: 13.5, flex: 1, minWidth: 160, color: 'var(--amber)', fontWeight: 600 }}>{t.barText}</span>
-          <button className="btn btn-primary" style={{ fontSize: 12.5, padding: '5px 14px', display: 'inline-flex', alignItems: 'center', gap: 7 }} onClick={() => setPhase('popup')}><OnyxIcon emoji="🎯" size={14} /> {t.barCta}</button>
+      <div style={{ position: 'sticky', top: 8, zIndex: 60, display: 'flex', justifyContent: 'center', padding: '8px 12px', pointerEvents: 'none' }}>
+        <div style={{ pointerEvents: 'auto', display: 'inline-flex', alignItems: 'center', gap: 10, maxWidth: 'calc(100vw - 24px)', background: 'var(--card)', border: '1px solid var(--amber)', borderRadius: 999, padding: '6px 8px 6px 14px', boxShadow: '0 8px 24px rgba(0,0,0,.28)', WebkitBackdropFilter: 'blur(6px)', backdropFilter: 'blur(6px)' }}>
+          <span style={{ display: 'inline-flex', color: 'var(--amber)', flex: 'none' }}><OnyxIcon emoji="⏳" size={16} /></span>
+          <span style={{ fontSize: 13, color: 'var(--amber)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.barText}</span>
+          <button className="btn btn-primary" style={{ fontSize: 12.5, padding: '5px 13px', display: 'inline-flex', alignItems: 'center', gap: 6, flex: 'none' }} onClick={() => setPhase('popup')}><OnyxIcon emoji="🎯" size={14} /> {t.barCta}</button>
         </div>
       </div>
     );

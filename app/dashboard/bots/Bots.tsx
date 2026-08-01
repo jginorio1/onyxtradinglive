@@ -8,7 +8,7 @@ import { toast } from '@/lib/toast';
 type Lang = 'es' | 'en';
 const T: any = {
   es: {
-    title: 'Bots', sub: 'Rendimiento por estrategia. Separa las que están en pruebas de las que ya operan en vivo.',
+    title: 'Mis robots', sub: 'Rendimiento por estrategia. Separa las que están en pruebas de las que ya operan en vivo.',
     testing: 'En pruebas', live: 'En vivo', running: 'activo', idle: 'inactivo',
     net: 'Neto', pf: 'PF', dd: 'DD', win: 'Aciertos', ops: 'Ops', exp: 'Exp', rec: 'Recovery', opsDay: 'Ops/día',
     ready: 'Listo para vivo', promote: 'Promover a vivo', config: 'Config', detail: 'Métricas', save: 'Guardar', saved: 'Guardado',
@@ -24,7 +24,7 @@ const T: any = {
     addBtn: 'Añadir por $%/mes', addOr: 'o incluido en Black Onyx', addNeedSub: 'Necesitas un plan de pago activo para añadir el módulo. Elige uno abajo.',
   },
   en: {
-    title: 'Bots', sub: 'Performance per strategy. Split the ones in testing from the ones already live.',
+    title: 'My robots', sub: 'Performance per strategy. Split the ones in testing from the ones already live.',
     testing: 'Testing', live: 'Live', running: 'active', idle: 'idle',
     net: 'Net', pf: 'PF', dd: 'DD', win: 'Win', ops: 'Trades', exp: 'Exp', rec: 'Recovery', opsDay: 'Trades/day',
     ready: 'Ready for live', promote: 'Promote to live', config: 'Config', detail: 'Metrics', save: 'Save', saved: 'Saved',

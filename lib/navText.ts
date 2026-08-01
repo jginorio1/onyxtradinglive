@@ -9,7 +9,7 @@ export type Lang = 'es' | 'en';
 
 export const NAV_T: Record<Lang, Record<string, string>> = {
   es: {
-    dashboard: 'Panel', accounts: 'Cuentas', manager: 'Guardian', copy: 'Copy', bots: 'Bots', support: 'Soporte', admin: 'Admin',
+    dashboard: 'Panel', accounts: 'Cuentas', manager: 'Guardian', copy: 'Copy', bots: 'Mis robots', support: 'Soporte', admin: 'Admin',
     home: 'Inicio', plans: 'Planes', ambassadors: 'Embajadores', guide: 'Guía',
     login: 'Entrar', signup: 'Empezar gratis',
     myAccount: 'Mi cuenta', myPlan: 'Mi plan', referrals: 'Referidos', adminPanel: 'Panel de admin', academy: 'Onyx Academy',
@@ -18,7 +18,7 @@ export const NAV_T: Record<Lang, Record<string, string>> = {
     eaOnTitle: 'Cuenta conectada', eaOffTitle: 'Cuenta sin señal',
   },
   en: {
-    dashboard: 'Dashboard', accounts: 'Accounts', manager: 'Guardian', copy: 'Copy', bots: 'Bots', support: 'Support', admin: 'Admin',
+    dashboard: 'Dashboard', accounts: 'Accounts', manager: 'Guardian', copy: 'Copy', bots: 'My robots', support: 'Support', admin: 'Admin',
     home: 'Home', plans: 'Plans', ambassadors: 'Ambassadors', guide: 'Guide',
     login: 'Sign in', signup: 'Start free',
     myAccount: 'My account', myPlan: 'My plan', referrals: 'Referrals', adminPanel: 'Admin panel', academy: 'Onyx Academy',

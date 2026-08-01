@@ -2,6 +2,30 @@
 import { useState } from 'react';
 import { useLang } from '@/lib/lang';
 
+// Convierte el texto de la IA (con **negrita**, # títulos, - listas) en JSX real,
+// para que NO se vean los asteriscos ni las almohadillas.
+function inline(s: string, key: string) {
+  const clean = s.replace(/`/g, '');
+  const parts = clean.split(/(\*\*[^*]+\*\*)/g).filter((x) => x !== '');
+  return parts.map((p, i) => (p.startsWith('**') && p.endsWith('**'))
+    ? <strong key={key + '-' + i}>{p.slice(2, -2)}</strong>
+    : <span key={key + '-' + i}>{p}</span>);
+}
+function RichText({ text }: { text: string }) {
+  const lines = String(text || '').replace(/\r/g, '').split('\n');
+  const out: any[] = [];
+  lines.forEach((raw, i) => {
+    const line = raw.replace(/\s+$/, '');
+    if (!line.trim()) { out.push(<div key={i} style={{ height: 6 }} />); return; }
+    const h = line.match(/^(#{1,6})\s+(.*)$/);
+    if (h) { out.push(<div key={i} style={{ fontWeight: 700, fontSize: 15, margin: '8px 0 2px' }}>{inline(h[2], 'h' + i)}</div>); return; }
+    const bullet = line.match(/^\s*[-•]\s+(.*)$/);
+    if (bullet) { out.push(<div key={i} style={{ display: 'flex', gap: 8, margin: '2px 0' }}><span style={{ color: 'var(--brand)' }}>•</span><span>{inline(bullet[1], 'b' + i)}</span></div>); return; }
+    out.push(<div key={i} style={{ margin: '3px 0' }}>{inline(line, 'p' + i)}</div>);
+  });
+  return <>{out}</>;
+}
+
 // Coach AI: repaso honesto del rendimiento del trader, bajo demanda.
 export default function CoachCard() {
   const { lang } = useLang();
@@ -37,7 +61,7 @@ export default function CoachCard() {
         </div>
       </div>
       {msg && <div className="muted" style={{ fontSize: 13 }}>{msg}</div>}
-      {txt && open && <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '12px 14px', fontSize: 14, lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>{txt}</div>}
+      {txt && open && <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '12px 14px', fontSize: 14, lineHeight: 1.6 }}><RichText text={txt} /></div>}
     </div>
   );
 }

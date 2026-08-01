@@ -30,7 +30,7 @@ export default function NetRealCard() {
         <div className="muted" style={{ fontSize: 12.5 }}>
           {L('Bruto', 'Gross')} <b style={{ color: 'var(--tx)' }}>${d.gross.toLocaleString()}</b> · {L('Gastos', 'Expenses')} <b style={{ color: 'var(--tx)' }}>−${d.expenses.toLocaleString()}</b>
         </div>
-        <span className="pill" style={{ marginLeft: 'auto', color: 'var(--soft-brand)', background: 'rgba(124,140,255,.14)' }}>{L('Balance real', 'True P&L')} →</span>
+        <span className="pill" style={{ marginLeft: 'auto', color: 'var(--soft-brand)', background: 'rgba(124,140,255,.14)' }}>{L('Ganancia neta', 'Net profit')} →</span>
       </div>
     </Link>
   );

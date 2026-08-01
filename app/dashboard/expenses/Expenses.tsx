@@ -125,7 +125,7 @@ export default function Expenses() {
     <div style={{ maxWidth: 900, margin: '0 auto', padding: '22px 18px' }}>
       <div className="card" style={{ maxWidth: 520, textAlign: 'center', margin: '0 auto' }}>
         <div style={{ marginBottom: 8, display: "flex", justifyContent: "center", color: "var(--brand)" }}><OnyxIcon emoji="🧮" size={30} /></div>
-        <h3 style={{ marginBottom: 8 }}>{L('Balance real', 'True P&L')}</h3>
+        <h3 style={{ marginBottom: 8 }}>{L('Ganancia neta', 'Net profit')}</h3>
         <p className="muted" style={{ fontSize: 14, marginBottom: 14 }}>{L('Lleva tus gastos (retos, VPS, software…) y ve lo que de verdad te quedó. Disponible en Pro y superiores.', 'Track your costs (challenges, VPS, software…) and see what you truly netted. Available on Pro and above.')}</p>
         <Link className="btn btn-primary" href="/pricing">{L('Ver planes', 'See plans')}</Link>
       </div>
@@ -141,7 +141,7 @@ export default function Expenses() {
       <div className="row between" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
         <div className="row" style={{ gap: 10, alignItems: 'center' }}>
           <span style={{ display: "inline-flex", color: "var(--brand)" }}><OnyxIcon emoji="🧮" size={22} /></span>
-          <div><h2 style={{ margin: 0, fontSize: 20 }}>{L('Balance real', 'True P&L')}</h2>
+          <div><h2 style={{ margin: 0, fontSize: 20 }}>{L('Ganancia neta', 'Net profit')}</h2>
             <div className="muted" style={{ fontSize: 13 }}>{L('Lo que de verdad te quedó, después de tus gastos.', 'What you truly kept, after your costs.')}</div></div>
         </div>
         <div className="row" style={{ gap: 6, alignItems: 'center' }}>
