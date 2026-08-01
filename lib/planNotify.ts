@@ -21,7 +21,7 @@ export async function notifyPlanChange(userId: string, subject: BiText, body: Bi
     const { data: p } = await supabaseAdmin.from('profiles')
       .select('email,lang,telegram_chat_id,tg_alerts,tg_billing').eq('id', userId).maybeSingle() as any;
     if (!p) return;
-    const lang: 'es' | 'en' = p.lang === 'en' ? 'en' : 'es';
+    const lang: 'es' | 'en' = p.lang === 'es' ? 'es' : 'en';
     if (p.email) { try { await sendEmail(p.email, subject[lang], body[lang]); } catch { /* mailer opcional */ } }
     if (p.telegram_chat_id && p.tg_alerts !== false && p.tg_billing !== false) {
       try { await sendMessage(p.telegram_chat_id, `💳 ${subject[lang]}\n\n${body[lang]}`, { kind: 'billing', userId }); } catch { /* opcional */ }

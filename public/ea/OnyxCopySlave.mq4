@@ -17,7 +17,7 @@ extern string ApiBase    = "https://www.onyxtradinglive.com";
 extern string CopyApiKey = "PON_TU_CLAVE_COPY";   // onyx_copy_...
 extern int    PollMs     = 1000;
 extern int    Slippage   = 30;
-extern string PanelLang  = "EN";                  // Panel language: EN or ES
+extern string PanelLang  = "EN";                  // Panel: ES=Español, otro=English (web/IA/Telegram en 6 idiomas)
 
 string L(string en, string es){ return (StringFind(PanelLang, "ES") == 0) ? es : en; }
 

@@ -1,4 +1,5 @@
 'use client';
+import { dictFor } from '@/lib/i18n';
 import { useState } from 'react';
 import Link from 'next/link';
 import { useLang } from '@/lib/lang';
@@ -32,7 +33,7 @@ const T: any = {
 
 export default function Contacto() {
   const { lang } = useLang() as { lang: Lang };
-  const t = T[lang];
+  const t = dictFor(T, lang);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [msg, setMsg] = useState('');

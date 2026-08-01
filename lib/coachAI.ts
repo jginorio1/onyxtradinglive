@@ -8,7 +8,8 @@ import { ONYX_BRIEF } from '@/lib/supportAI';
 // LÍNEA ROJA: nunca predice el mercado, da señales ni promete ganancias.
 // ============================================================
 
-type Lang = 'es' | 'en';
+import type { Lang } from './navText';
+import { aiLangDirective, enBase, LANG_NAME , dictFor } from '@/lib/i18n';
 
 // Llamada base: contenido como texto o como bloques (imagen/PDF).
 async function aiRaw(system: string, content: any, maxTokens: number, beta?: string): Promise<string | null> {
@@ -44,12 +45,12 @@ export type CoachSummary = {
 };
 export async function weeklyReview(s: CoachSummary, lang: Lang): Promise<{ ok: boolean; text?: string; reason?: string }> {
   if (!process.env.ANTHROPIC_API_KEY) return { ok: false, reason: 'no_key' };
-  const system = (lang === 'en'
+  const system = (enBase(lang)
     ? `You are Onyx Coach, a calm, honest trading-performance coach. Read the trader's stats below and write a short review (max ~160 words) in plain language: what they did well, the 1-2 biggest leaks, and one concrete habit to fix next. Be direct but supportive, never harsh. Use a couple of tasteful emojis and short paragraphs. ${NO_ADVICE.en}`
     : `Eres Onyx Coach, un coach de rendimiento de trading, tranquilo y honesto. Lee las estadísticas del trader y escribe un repaso corto (máx ~160 palabras) en lenguaje claro: qué hizo bien, la 1-2 fugas más grandes, y un hábito concreto para corregir. Directo pero de apoyo, nunca duro. Usa un par de emojis con criterio y párrafos cortos. ${NO_ADVICE.es}`)
-    + `\n\n=== ${lang === 'en' ? 'ONYX KNOWLEDGE' : 'CONOCIMIENTO DE ONYX'} ===\n${ONYX_BRIEF[lang]}`;
+    + `\n\n=== ${enBase(lang) ? 'ONYX KNOWLEDGE' : 'CONOCIMIENTO DE ONYX'} ===\n${dictFor(ONYX_BRIEF, lang)}` + aiLangDirective(lang);
   const user = JSON.stringify(s);
-  const text = await ai(system, (lang === 'en' ? 'Stats: ' : 'Estadísticas: ') + user, 600);
+  const text = await ai(system, (enBase(lang) ? 'Stats: ' : 'Estadísticas: ') + user, 600);
   return text ? { ok: true, text } : { ok: false, reason: 'error' };
 }
 
@@ -57,10 +58,10 @@ export async function weeklyReview(s: CoachSummary, lang: Lang): Promise<{ ok: b
 export async function analyzeStatement(text: string, lang: Lang): Promise<{ ok: boolean; findings?: string[]; reason?: string }> {
   if (!process.env.ANTHROPIC_API_KEY) return { ok: false, reason: 'no_key' };
   if (!text || text.trim().length < 30) return { ok: false, reason: 'short' };
-  const system = (lang === 'en'
+  const system = (enBase(lang)
     ? `You are Onyx AI analyzing a trader's pasted MT4/MT5 statement or trade list. Return EXACTLY 3 short, specific, useful findings about their trading (patterns, risk, best/worst pairs or hours, over-trading, win rate reality). If the data is thin, infer what you honestly can and say what more Onyx would show once connected. ${NO_ADVICE.en}`
     : `Eres Onyx AI analizando el reporte de MT4/MT5 o lista de operaciones que pegó un trader. Devuelve EXACTAMENTE 3 hallazgos cortos, específicos y útiles sobre su trading (patrones, riesgo, mejores/peores pares u horas, sobreoperar, la realidad de su win rate). Si los datos son pocos, infiere lo que puedas con honestidad y di qué más mostraría Onyx al conectarse. ${NO_ADVICE.es}`)
-    + `\n\nDevuelve SOLO un JSON: {"findings":["...","...","..."]}`;
+    + `\n\nDevuelve SOLO un JSON: {"findings":["...","...","..."]}` + aiLangDirective(lang);
   const raw = await ai(system, text, 600);
   if (!raw) return { ok: false, reason: 'error' };
   try {
@@ -84,7 +85,7 @@ Rules: a prop-firm challenge fee → category "funding" and set firm, acc_size, 
 
   let raw: string | null;
   if (inp.file) {
-    const instr = lang === 'en' ? 'Extract the expense from this receipt.' : 'Extrae el gasto de este recibo.';
+    const instr = enBase(lang) ? 'Extract the expense from this receipt.' : 'Extrae el gasto de este recibo.';
     const isPdf = inp.file.media_type === 'application/pdf';
     const block = isPdf
       ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: inp.file.data } }
@@ -115,9 +116,9 @@ Rules: a prop-firm challenge fee → category "funding" and set firm, acc_size, 
 // ---- Coach de gasto: lectura honesta del dinero ----
 export async function spendingReview(summary: any, lang: Lang): Promise<{ ok: boolean; text?: string; reason?: string }> {
   if (!process.env.ANTHROPIC_API_KEY) return { ok: false, reason: 'no_key' };
-  const system = (lang === 'en'
+  const system = (enBase(lang)
     ? `You are Onyx Coach reviewing a trader's MONEY (not their trades). Read the spending summary and write a short, honest read (max ~140 words) in plain language: where the money goes, whether prop-firm challenge spending is paying off (ROI), and one concrete money habit. Be supportive, never harsh, a couple of tasteful emojis. ${NO_ADVICE.en}`
-    : `Eres Onyx Coach revisando el DINERO del trader (no sus operaciones). Lee el resumen de gastos y escribe una lectura corta y honesta (máx ~140 palabras) en lenguaje claro: dónde se va el dinero, si el gasto en retos de prop firm se está pagando (ROI), y un hábito concreto de dinero. De apoyo, nunca duro, un par de emojis con criterio. ${NO_ADVICE.es}`);
+    : `Eres Onyx Coach revisando el DINERO del trader (no sus operaciones). Lee el resumen de gastos y escribe una lectura corta y honesta (máx ~140 palabras) en lenguaje claro: dónde se va el dinero, si el gasto en retos de prop firm se está pagando (ROI), y un hábito concreto de dinero. De apoyo, nunca duro, un par de emojis con criterio. ${NO_ADVICE.es}`) + aiLangDirective(lang);
   const text = await ai(system, JSON.stringify(summary), 500);
   return text ? { ok: true, text } : { ok: false, reason: 'error' };
 }

@@ -1,3 +1,4 @@
+import { pickLang, langFromCookie } from '@/lib/i18n';
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
@@ -19,7 +20,7 @@ export async function POST(req: Request) {
     if (!(pl?.capabilities as any)?.coach) return NextResponse.json({ locked: true });
 
     const b = await req.json().catch(() => ({}));
-    const lang = b.lang === 'en' ? 'en' : 'es';
+    const lang = pickLang(b.lang);
     const plan = await getPlan(user.id);
     const stats = await computeStats(user.id, plan);
     const review = await planReview(plan, stats, lang as any);

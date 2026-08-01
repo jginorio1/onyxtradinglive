@@ -1,4 +1,5 @@
 'use client';
+import { dictFor } from '@/lib/i18n';
 import { useMemo } from 'react';
 
 type TT = { symbol: string; volume: number; close_time: string; net_profit: number; profit?: number; commission?: number; swap?: number };
@@ -25,7 +26,7 @@ const C = {
 };
 
 export default function Costs({ trades, lang }: { trades: TT[]; lang: Lang }) {
-  const t = C[lang];
+  const t = dictFor(C, lang);
   const now = new Date();
   const y = now.getUTCFullYear(), mo = now.getUTCMonth(), day = now.getUTCDate();
   const todayStr = now.toISOString().slice(0, 10);

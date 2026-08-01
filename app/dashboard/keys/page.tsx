@@ -1,4 +1,5 @@
 'use client';
+import { dictFor } from '@/lib/i18n';
 import { toast } from '@/lib/toast';
 import { fmtDate, fmtDateTime } from '@/lib/fmtDate';
 import { useEffect, useState } from 'react';
@@ -199,7 +200,7 @@ export default function KeysPage() {
   const [copied, setCopied] = useState('');
   const [origin, setOrigin] = useState('');
   const { lang, setLang } = useLang();
-  const t = K[lang];
+  const t = dictFor(K, lang);
   const firmItems = useCatalog('firm'); // prop firms / brokers del catálogo del admin
   const atLimit = !!usage && !usage.unlimited && usage.used >= usage.max;
 

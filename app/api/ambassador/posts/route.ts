@@ -1,3 +1,4 @@
+import { pickLang, langFromCookie } from '@/lib/i18n';
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
@@ -20,7 +21,7 @@ export async function POST(req: Request) {
     if (!amb || (amb as any).status !== 'approved') return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
 
     const b = await req.json().catch(() => ({} as any));
-    const lang = b.lang === 'en' ? 'en' : 'es';
+    const lang = pickLang(b.lang);
     const platform = String(b.platform || 'instagram');
     const niche = String(b.niche || 'prop');
     const s = await ambSettings();

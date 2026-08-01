@@ -1,4 +1,5 @@
 'use client';
+import { mkL } from '@/lib/i18n';
 import { useLang } from '@/lib/lang';
 import Link from 'next/link';
 import OnyxIcon from '@/app/components/OnyxIcon';
@@ -7,7 +8,7 @@ import OnyxIcon from '@/app/components/OnyxIcon';
 // el enlace o el QR del mentor. Esta página solo explica cómo unirse.
 export default function Academias() {
   const { lang } = useLang();
-  const L = (a: string, b: string) => (lang === 'en' ? b : a);
+  const L = mkL(lang);
   return (
     <div className="wrap" style={{ padding: '64px 22px 80px', maxWidth: 640, margin: '0 auto', textAlign: 'center' }}>
       <h1 style={{ fontSize: 32, letterSpacing: '-1px', display: 'inline-flex', alignItems: 'center', gap: 10 }}>

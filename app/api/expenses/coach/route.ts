@@ -1,3 +1,4 @@
+import { pickLang, langFromCookie } from '@/lib/i18n';
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
@@ -22,7 +23,7 @@ export async function GET(req: Request) {
     if (!user) return NextResponse.json({ error: 'no autorizado' }, { status: 401 });
     if (!(await hasExpenses(user.id))) return NextResponse.json({ locked: true });
 
-    const lang = new URL(req.url).searchParams.get('lang') === 'en' ? 'en' : 'es';
+    const lang = pickLang(new URL(req.url).searchParams.get('lang'));
     const now = new Date();
     const y = now.getFullYear();
     const monthsElapsed = now.getMonth() + 1;

@@ -1,3 +1,4 @@
+import { pickLang, langFromCookie } from '@/lib/i18n';
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
@@ -16,7 +17,7 @@ export async function GET(req: Request) {
   const mrow = await getMentor(user.id);
   if (!mrow) return NextResponse.json({ error: 'no_mentor' }, { status: 403 });
   const stats = await communityStats(mrow.user_id, 7);
-  const lang = /onyx_lang=en/.test(req.headers.get('cookie') || '') ? 'en' : 'es';
+  const lang = langFromCookie(req.headers.get('cookie'));
   const text = await communityDigest(stats, lang, (mrow as any).ai_emojis !== false);
   if (!text) return NextResponse.json({ stats, text: null, error: 'ai_off' });
   return NextResponse.json({ stats, text });

@@ -12,21 +12,23 @@ export async function middleware(req: NextRequest) {
     url.pathname = rawPath.slice(3) || '/';
     return NextResponse.redirect(url, 308);
   }
-  // /en/... se sirve reescribiendo a la ruta normal, pero marcando el idioma
-  // con una cabecera para que el servidor renderice en inglés.
-  const isEn = rawPath === '/en' || rawPath.startsWith('/en/');
-  const path = isEn ? (rawPath.slice(3) || '/') : rawPath;
+  // /en, /zh, /ja, /pt, /vi se sirven reescribiendo a la ruta normal, pero
+  // marcando el idioma con una cabecera para que el servidor renderice traducido.
+  const PREFIXES = ['en']; // app en es/en; otros idiomas desactivados (ver lib/navText LANGS)
+  const seg = rawPath.split('/')[1];
+  const urlLang = PREFIXES.includes(seg) ? seg : '';
+  const path = urlLang ? (rawPath.slice(urlLang.length + 1) || '/') : rawPath;
 
   const fwd = new Headers(req.headers);
-  if (isEn) fwd.set('x-onyx-lang', 'en');
+  if (urlLang) fwd.set('x-onyx-lang', urlLang);
   fwd.set('x-onyx-path', path);   // para que el layout sepa en qué página está (barra de promo)
 
   let res: NextResponse;
-  if (isEn) {
+  if (urlLang) {
     const url = req.nextUrl.clone();
     url.pathname = path;
     res = NextResponse.rewrite(url, { request: { headers: fwd } });
-    res.cookies.set({ name: 'onyx_lang', value: 'en', path: '/', sameSite: 'lax', maxAge: 60 * 60 * 24 * 365 });
+    res.cookies.set({ name: 'onyx_lang', value: urlLang, path: '/', sameSite: 'lax', maxAge: 60 * 60 * 24 * 365 });
   } else {
     res = NextResponse.next({ request: { headers: fwd } });
   }

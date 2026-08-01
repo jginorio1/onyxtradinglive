@@ -1,4 +1,5 @@
 'use client';
+import { dictFor } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import { useT } from '@/lib/adminText';
@@ -62,7 +63,7 @@ function Ring({ label, value }: { label: string; value: number }) {
 
 export default function Audit() {
   const { lang } = useLang();
-  const t = T[lang];
+  const t = dictFor(T, lang);
   const gt = useT();
   const [d, setD] = useState<any>(null);
   const [sec, setSec] = useState<any>(null);

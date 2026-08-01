@@ -1,3 +1,4 @@
+import { pickLang, langFromCookie } from '@/lib/i18n';
 import { NextResponse } from 'next/server';
 import { requirePerm, logAdmin } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
@@ -33,7 +34,7 @@ export async function POST(req: Request) {
     const b = await req.json().catch(() => ({} as any));
     const title = String(b.title || '').trim().slice(0, 120);
     const body = String(b.body || '').trim().slice(0, 4000);
-    const lang = b.lang === 'en' ? 'en' : 'es';
+    const lang = pickLang(b.lang);
     if (!title || !body) return NextResponse.json({ error: 'faltan datos', code: 'missing' }, { status: 400 });
     const { data, error } = await supabaseAdmin
       .from('support_canned')

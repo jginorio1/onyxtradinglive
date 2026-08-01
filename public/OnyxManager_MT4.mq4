@@ -21,7 +21,11 @@
 #define PREFIX     "ONYXM_"
 
 //==================== ENTRADAS ====================================
-enum ENUM_ONYX_LANG { ONYX_ES = 0, ONYX_EN = 1 };
+// Idioma del panel. El dashboard web, la IA y Telegram están en los 6 idiomas.
+// En el gráfico de MetaTrader solo se garantiza Español/Inglés (los objetos de
+// gráfico no renderizan chino/japonés sin una fuente CJK instalada); si eliges
+// otro idioma, el panel del gráfico se muestra en Inglés.
+enum ENUM_ONYX_LANG { ONYX_ES = 0, ONYX_EN = 1, ONYX_ZH = 2, ONYX_JA = 3, ONYX_PT = 4, ONYX_VI = 5 };
 
 extern string           ApiKey       = "";                                    // API key (onyxtradinglive.com)
 extern ENUM_ONYX_LANG   Idioma       = ONYX_EN;                               // Language / Idioma

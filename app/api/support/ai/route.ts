@@ -1,3 +1,4 @@
+import { pickLang, langFromCookie } from '@/lib/i18n';
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
@@ -25,7 +26,7 @@ export async function POST(req: Request) {
 
     const b = await req.json().catch(() => ({}));
     const question = String(b.question || '').slice(0, 2000).trim();
-    const lang: Lang = b.lang === 'en' ? 'en' : 'es';
+    const lang: Lang = pickLang(b.lang);
     const history: any[] = Array.isArray(b.history) ? b.history.slice(-6) : [];
     if (!question) return NextResponse.json({ error: 'empty' }, { status: 400 });
 

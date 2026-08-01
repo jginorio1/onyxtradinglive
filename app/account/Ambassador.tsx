@@ -1,4 +1,5 @@
 'use client';
+import { dictFor } from '@/lib/i18n';
 import { toast } from '@/lib/toast';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import { useEffect, useState } from 'react';
@@ -70,7 +71,7 @@ export default function Ambassador({ lang }: { lang: Lang }) {
   const [origin, setOrigin] = useState('');
   const [plat, setPlat] = useState('instagram');
   const [aiText, setAiText] = useState('');
-  const t = A[lang];
+  const t = dictFor(A, lang);
 
   async function genPost() {
     setBusy('ai');

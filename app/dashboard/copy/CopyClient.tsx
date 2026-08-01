@@ -1,4 +1,5 @@
 'use client';
+import { dictFor } from '@/lib/i18n';
 import { toast } from '@/lib/toast';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import { useEffect, useState, useCallback } from 'react';
@@ -187,7 +188,7 @@ function blankLink() {
 
 export default function CopyClient() {
   const { lang } = useLang();
-  const t = T[lang];
+  const t = dictFor(T, lang);
   const [d, setD] = useState<any>(null);
   const [ctrl, setCtrl] = useState<any>(null);
   const [ckeys, setCkeys] = useState<any[]>([]);
