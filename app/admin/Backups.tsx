@@ -1,4 +1,5 @@
 'use client';
+import { dictFor } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 import { fmtDate, fmtDateTime } from '@/lib/fmtDate';
 import { useLang } from '@/lib/lang';
@@ -89,7 +90,7 @@ const fmtSize = (n: number) => (!n ? '—' : n < 1024 * 1024 ? Math.round(n / 10
 
 export default function Backups() {
   const { lang } = useLang();
-  const t = T[lang] || T.en;
+  const t = dictFor(T, lang);
   const gt = useT();
   const [d, setD] = useState<any>(null);
   const [busy, setBusy] = useState('');

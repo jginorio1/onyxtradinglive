@@ -1,4 +1,5 @@
 'use client';
+import { dictFor } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import QrPop from '@/app/components/QrPop';
@@ -25,7 +26,7 @@ const T: any = {
 };
 
 export default function InstallApp({ lang }: { lang: Lang }) {
-  const L = T[lang] || T.en;
+  const L = dictFor(T, lang);
   const [canInstall, setCanInstall] = useState(false);
   const [standalone, setStandalone] = useState(false);
   const [show, setShow] = useState(false);

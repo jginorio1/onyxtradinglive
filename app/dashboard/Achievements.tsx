@@ -1,4 +1,5 @@
 'use client';
+import { dictFor } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import { Ring } from './Modern';
@@ -13,7 +14,7 @@ const T = {
 };
 
 export default function Achievements({ a, accounts, lang }: { a: any; accounts: any[]; lang: Lang }) {
-  const t = T[lang] || T.en;
+  const t = dictFor(T, lang);
   const [goal, setGoal] = useState<number>(0);
   const [edit, setEdit] = useState('');
   useEffect(() => { try { const g = Number(localStorage.getItem('onyx_goal') || 0); setGoal(g); setEdit(g ? String(g) : ''); } catch {} }, []);

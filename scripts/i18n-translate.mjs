@@ -77,30 +77,40 @@ Rules:
 }
 
 const allEs = Object.keys(STRINGS);
-const BATCH = 5;
+const BATCH = Number(process.env.BATCH || 12);
+
+// Traduce una tanda; si el lote falla (JSON cortado, etc.) se DIVIDE a la mitad
+// y reintenta cada parte. Así solo se pierde alguna cadena suelta muy rara, y en
+// UNA sola corrida se llena casi todo. Devuelve cuántas se guardaron.
+async function fill(langName, lang, dict, slice) {
+  const pairs = slice.map((es) => [es, STRINGS[es]]);
+  let tries = 0;
+  for (;;) {
+    try {
+      const out = await translateBatch(langName, pairs);
+      slice.forEach((es, k) => { if (out[k]) dict[es] = out[k]; });
+      saveDict(lang, dict);
+      return slice.length;
+    } catch (e) {
+      if (tries++ < 2) { await new Promise((r) => setTimeout(r, 1200 * tries)); continue; }
+      if (slice.length <= 1) { console.error(`  [${lang}] omitida: ${JSON.stringify(slice[0]).slice(0, 50)}`); return 0; }
+      const mid = Math.ceil(slice.length / 2);
+      return (await fill(langName, lang, dict, slice.slice(0, mid))) + (await fill(langName, lang, dict, slice.slice(mid)));
+    }
+  }
+}
 
 for (const lang of langs) {
   const langName = TARGETS[lang];
   const dict = loadDict(lang);
   const todo = allEs.filter((es) => FORCE || !dict[es]);
   console.log(`\n[${lang}] ${langName} — a traducir: ${todo.length} / ${allEs.length}`);
+  let done = 0;
   for (let i = 0; i < todo.length; i += BATCH) {
-    const slice = todo.slice(i, i + BATCH);
-    const pairs = slice.map((es) => [es, STRINGS[es]]);
-    let tries = 0;
-    while (true) {
-      try {
-        const out = await translateBatch(langName, pairs);
-        slice.forEach((es, k) => { dict[es] = out[k]; });
-        saveDict(lang, dict); // guarda tras cada lote (resistente a cortes)
-        console.log(`  [${lang}] ${Math.min(i + BATCH, todo.length)}/${todo.length}`);
-        break;
-      } catch (e) {
-        if (++tries >= 4) { console.error(`  [${lang}] lote ${i} falló: ${e.message}`); break; }
-        await new Promise((res) => setTimeout(res, 1500 * tries));
-      }
-    }
+    done += await fill(langName, lang, dict, todo.slice(i, i + BATCH));
+    console.log(`  [${lang}] ${Math.min(i + BATCH, todo.length)}/${todo.length}`);
   }
-  console.log(`[${lang}] listo → lib/i18n/${lang}.ts (${Object.keys(dict).length} entradas)`);
+  const missing = allEs.filter((es) => !dict[es]).length;
+  console.log(`[${lang}] listo → lib/i18n/${lang}.ts (${Object.keys(dict).length} entradas · faltan ${missing})`);
 }
 console.log('\n✅ Traducción completa. Revisa lib/i18n/*.ts y haz commit.');

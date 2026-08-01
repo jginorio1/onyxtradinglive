@@ -1,4 +1,5 @@
 'use client';
+import { dictFor } from '@/lib/i18n';
 import { toast } from '@/lib/toast';
 import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
@@ -70,7 +71,7 @@ export default function Embajadores() {
   const [state, setState] = useState<'loading' | 'guest' | 'form' | 'sent' | 'has'>('loading');
   const [f, setF] = useState<any>({ code: '', audience: '', followers: '', payout_method: 'paypal', payout_details: '' });
   const [busy, setBusy] = useState(false);
-  const t = T[lang] || T.en;
+  const t = dictFor(T, lang);
 
   useEffect(() => {
     fetch('/api/ambassador').then(async (r) => {

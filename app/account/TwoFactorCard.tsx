@@ -1,4 +1,5 @@
 'use client';
+import { dictFor } from '@/lib/i18n';
 import { toast } from '@/lib/toast';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import { useEffect, useState } from 'react';
@@ -20,7 +21,7 @@ const T: any = {
 };
 
 export default function TwoFactorCard({ lang }: { lang: Lang }) {
-  const L = T[lang] || T.en;
+  const L = dictFor(T, lang);
   const sb = supabaseBrowser();
   const [has, setHas] = useState<boolean | null>(null);
   const [enrolling, setEnrolling] = useState(false);

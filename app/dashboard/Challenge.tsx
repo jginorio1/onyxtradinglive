@@ -1,4 +1,5 @@
 'use client';
+import { dictFor } from '@/lib/i18n';
 import { toast } from '@/lib/toast';
 import { useEffect, useState } from 'react';
 import { errMsg } from '@/lib/i18nErrors';
@@ -65,7 +66,7 @@ const T: any = {
 const STCOL: any = { ok: 'var(--green)', watch: 'var(--amber)', breach: 'var(--red)', na: 'var(--mut)' };
 
 export default function Challenge({ lang }: { lang: Lang }) {
-  const L = T[lang] || T.en;
+  const L = dictFor(T, lang);
   const [data, setData] = useState<any>(null);
   const [busy, setBusy] = useState('');
   const [draft, setDraft] = useState<any>({});   // account_id -> rules en edición

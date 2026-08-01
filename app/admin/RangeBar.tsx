@@ -1,4 +1,5 @@
 'use client';
+import { dictFor } from '@/lib/i18n';
 import { useEffect, type ReactNode } from 'react';
 import { useLang } from '@/lib/lang';
 
@@ -41,7 +42,7 @@ export default function RangeBar({
   label?: ReactNode;
 }) {
   const { lang } = useLang();
-  const t = L[lang] || L.en;
+  const t = dictFor(L, lang);
 
   // Al montar, si el rango viene vacío, aplica el preset por defecto.
   useEffect(() => { if (!value.from || !value.to) onChange(defaultRange(value.preset || 'month')); }, []);

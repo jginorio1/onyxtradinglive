@@ -1,4 +1,5 @@
 'use client';
+import { dictFor } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import Link from 'next/link';
@@ -129,7 +130,7 @@ function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
 }
 
 export default function TelegramCard({ lang }: { lang: 'es' | 'en' }) {
-  const t = T[lang] || T.en;
+  const t = dictFor(T, lang);
   const [d, setD] = useState<any>(null);
   const [busy, setBusy] = useState('');
   const [waiting, setWaiting] = useState(false);

@@ -61,6 +61,30 @@ export function asLang(v: any): Lang | null {
 }
 export function pickLang(v: any): Lang { return asLang(v) || 'es'; }
 
+// Adaptador para los diccionarios por-componente `{ es:{...}, en:{...} }` (o
+// `{ es:'..', en:'..' }`). Si el idioma pedido no está, en vez de caer a inglés,
+// TRADUCE cada valor español a través de la memoria (translate). Así todo el
+// texto viejo es/en también sale en zh/ja/pt/vi sin reescribir cada componente.
+export function dictFor(obj: any, lang: Lang): any {
+  if (!obj) return obj;
+  if (obj[lang] !== undefined) return obj[lang];
+  const es = obj.es !== undefined ? obj.es : obj.en;
+  const en = obj.en !== undefined ? obj.en : obj.es;
+  if (lang === 'es') return es;
+  if (lang === 'en') return en;
+  // Diccionario de un solo string: { es:'..', en:'..' }
+  if (typeof es === 'string') return translate(lang, es, typeof en === 'string' ? en : es);
+  if (typeof es !== 'object' || es === null) return en; // no traducible → inglés
+  // Diccionario de objeto: { es:{k:'..'}, en:{k:'..'} }
+  const out: any = Array.isArray(es) ? [] : {};
+  for (const k of Object.keys(es)) {
+    const ev = es[k];
+    const nv = en ? en[k] : undefined;
+    out[k] = (typeof ev === 'string') ? translate(lang, ev, typeof nv === 'string' ? nv : ev) : (nv !== undefined ? nv : ev);
+  }
+  return out;
+}
+
 // Extrae el idioma de una cadena de cookies (onyx_lang=xx).
 export function langFromCookie(cookie: string | null | undefined): Lang {
   const m = /onyx_lang=([a-z]{2})/.exec(cookie || '');

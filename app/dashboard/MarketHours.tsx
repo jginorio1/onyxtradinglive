@@ -1,4 +1,5 @@
 'use client';
+import { dictFor } from '@/lib/i18n';
 import { Fragment, useEffect, useState } from 'react';
 
 type Lang = 'es' | 'en';
@@ -14,7 +15,7 @@ const T = {
 };
 
 export default function MarketHours({ lang, compact }: { lang: Lang; compact?: boolean }) {
-  const t = T[lang] || T.en;
+  const t = dictFor(T, lang);
   const [now, setNow] = useState<Date | null>(null);
   const [open, setOpen] = useState(false);
   useEffect(() => { setNow(new Date()); const iv = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(iv); }, []);

@@ -1,3 +1,4 @@
+import { dictFor } from '@/lib/i18n';
 import Link from 'next/link';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
@@ -19,7 +20,7 @@ import MainNav from './MainNav';
 // ============================================================
 export default async function TopBar() {
   const lang: Lang = serverLang();
-  const t = NAV_T[lang] || NAV_T.en;
+  const t = dictFor(NAV_T, lang);
 
   let user: any = null;
   let plan = 'free';

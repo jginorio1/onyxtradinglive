@@ -1,4 +1,5 @@
 'use client';
+import { dictFor } from '@/lib/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { fmtDate, fmtDateTime } from '@/lib/fmtDate';
 import Link from 'next/link';
@@ -55,7 +56,7 @@ const stBg: any = { open: 'rgba(124,140,255,.15)', in_progress: 'rgba(255,192,77
 
 export default function SupportClient() {
   const { lang } = useLang();
-  const t = T[lang] || T.en;
+  const t = dictFor(T, lang);
 
   // --- Onyx AI ---
   const [chat, setChat] = useState<any[]>([{ role: 'assistant', content: t.aiHi }]);

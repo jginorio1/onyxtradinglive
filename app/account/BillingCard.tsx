@@ -1,4 +1,5 @@
 'use client';
+import { dictFor } from '@/lib/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { getStripe, onyxAppearance } from '@/lib/stripeClient';
 
@@ -16,7 +17,7 @@ const T: any = {
 };
 
 export default function BillingCard({ lang }: { lang: 'es' | 'en' }) {
-  const t = T[lang] || T.en;
+  const t = dictFor(T, lang);
   const [open, setOpen] = useState(false);
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
