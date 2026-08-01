@@ -1,5 +1,4 @@
 'use client';
-import { dictFor } from '@/lib/i18n';
 import { toast } from '@/lib/toast';
 import { useEffect, useRef, useState } from 'react';
 import { ACC_TYPES, CH_STATUS, typeMeta, money2, type Lang } from '@/lib/accountMeta';
@@ -26,7 +25,7 @@ const A = {
 };
 
 export default function AccountExtras({ acc, net, lang, onSaved }: { acc: any; net: number; lang: Lang; onSaved: (f: any) => void }) {
-  const t = dictFor(A, lang);
+  const t = A[lang];
   const [payouts, setPayouts] = useState<any[]>([]);
   const [docs, setDocs] = useState<any[]>([]);
 

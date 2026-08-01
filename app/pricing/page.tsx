@@ -1,5 +1,4 @@
 'use client';
-import { dictFor } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import Link from 'next/link';
@@ -36,7 +35,7 @@ export default function Pricing() {
   const [annual, setAnnual] = useState(false);
   const [loading, setLoading] = useState('');
   const { lang, setLang } = useLang();
-  const t = dictFor(T, lang);
+  const t = T[lang];
 
   useEffect(() => {
     fetch('/api/admin/plans').then((r) => r.json()).then((j) => setPlans(j.plans || [])).catch(() => setPlans([]));

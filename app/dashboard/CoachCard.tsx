@@ -1,5 +1,4 @@
 'use client';
-import { mkL } from '@/lib/i18n';
 import { useState } from 'react';
 import { useLang } from '@/lib/lang';
 import OnyxIcon from '@/app/components/OnyxIcon';
@@ -31,7 +30,7 @@ function RichText({ text }: { text: string }) {
 // Coach AI: repaso honesto del rendimiento del trader, bajo demanda.
 export default function CoachCard() {
   const { lang } = useLang();
-  const L = mkL(lang);
+  const L = (es: string, en: string) => (lang === 'en' ? en : es);
   const [txt, setTxt] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');

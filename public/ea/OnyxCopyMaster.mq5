@@ -16,7 +16,7 @@
 
 input string ApiBase     = "https://www.onyxtradinglive.com";
 input string CopyApiKey  = "PON_TU_CLAVE_COPY";   // onyx_copy_...
-input string PanelLang   = "EN";                  // Panel: ES=Español, otro=English (web/IA/Telegram en 6 idiomas)
+input string PanelLang   = "EN";                  // Panel language: EN or ES
 
 string L(string en, string es){ return (StringFind(PanelLang, "ES") == 0) ? es : en; }
 

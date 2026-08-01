@@ -51,7 +51,7 @@ export async function runOnboardingEmails(dryRun = false) {
     const email = (u as any).email; if (!email) continue;
     const age = (now - new Date((u as any).created_at || now).getTime()) / day;
     const done = ((u as any).onboarding_emails || {}) as Record<string, string>;
-    const lang = (u as any).lang === 'es' ? 'es' : 'en';
+    const lang = (u as any).lang === 'en' ? 'en' : 'es';
     const name = ((u as any).full_name || '').split(' ')[0] || '';
 
     let step: Step | null = null;

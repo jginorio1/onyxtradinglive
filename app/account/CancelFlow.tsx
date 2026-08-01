@@ -1,5 +1,4 @@
 'use client';
-import { dictFor } from '@/lib/i18n';
 import { toast } from '@/lib/toast';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import { useEffect, useState } from 'react';
@@ -60,7 +59,7 @@ export default function CancelFlow({ lang, canceling, planName, onDone, openTick
   const [downs, setDowns] = useState<any[]>([]);
   const [busy, setBusy] = useState('');
   const [done, setDone] = useState('');
-  const t = dictFor(C, lang);
+  const t = C[lang];
   const fill = (txt: string, m: any) => Object.keys(m).reduce((x, k) => x.replace(`{${k}}`, m[k]), txt);
 
   async function call(body: any) {

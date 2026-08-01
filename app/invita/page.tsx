@@ -1,5 +1,4 @@
 'use client';
-import { dictFor } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import Link from 'next/link';
@@ -49,7 +48,7 @@ const T: any = {
 
 export default function Invita() {
   const { lang } = useLang();
-  const t = dictFor(T, lang);
+  const t = T[lang];
   const [d, setD] = useState<any>(null);
   const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
 

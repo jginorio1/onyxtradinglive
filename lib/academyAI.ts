@@ -5,12 +5,7 @@
 // mercado. Copy honesto, claro y motivador — sin hype engañoso.
 // ============================================================
 
-import type { Lang } from './navText';
-import { aiLangDirective, enBase, LANG_NAME , dictFor } from '@/lib/i18n';
-
-function langNote(lang: Lang): string {
-  return lang === 'es' ? '' : `\n\nEscribe TODO en ${LANG_NAME[lang] || 'English'}, con estilo nativo y natural.`;
-}
+type Lang = 'es' | 'en';
 
 async function ai(system: string, user: string, maxTokens = 700): Promise<string | null> {
   const key = process.env.ANTHROPIC_API_KEY;
@@ -78,7 +73,7 @@ export async function moderateImage(mediaType: string, base64Data: string): Prom
 // Boletín de auditoría del alumno: repaso honesto de su track record real, para
 // que el mentor lo califique. Solo pasado, sin predicciones ni promesas.
 export async function auditStudent(name: string, stats: { trades: number; winRate: number; profitFactor: number }, period: string, lang: Lang = 'es'): Promise<string | null> {
-  const g = (dictFor(GUARD, lang)) + langNote(lang);
+  const g = GUARD[lang];
   const sys = `${g} Eres un mentor de trading revisando el rendimiento REAL de un alumno para darle un boletín. Estructura: (1) una nota/valoración general en 1 frase, (2) 2-3 fortalezas, (3) 2-3 puntos a mejorar (disciplina, gestión de riesgo, consistencia), (4) 1 recomendación concreta de hábito. Directo y motivador, sin promesas de dinero ni predicciones.`;
   const user = (lang === 'es' ? `Alumno: ${name}. Últimos ${period}. Operaciones: ${stats.trades}, aciertos: ${stats.winRate}%, profit factor: ${stats.profitFactor}.` : `Student: ${name}. Last ${period}. Trades: ${stats.trades}, win rate: ${stats.winRate}%, profit factor: ${stats.profitFactor}.`);
   return ai(sys, user, 500);
@@ -86,7 +81,7 @@ export async function auditStudent(name: string, stats: { trades: number; winRat
 
 // Resumen semanal de la comunidad para el mentor (a partir de métricas reales).
 export async function communityDigest(stats: any, lang: Lang = 'es', emojis = true): Promise<string | null> {
-  const g = (dictFor(GUARD, lang)) + (emojis ? (dictFor(YES_EMOJI, lang)) : (dictFor(NO_EMOJI, lang))) + langNote(lang);
+  const g = GUARD[lang] + (emojis ? YES_EMOJI[lang] : NO_EMOJI[lang]);
   const sys = `${g} Eres el copiloto del mentor. Escribe un resumen BREVE de la semana de su comunidad de trading a partir de estas métricas. Estructura: (1) una frase de cómo va la comunidad, (2) 2-3 datos que destaquen (crecimiento, participación, logros), (3) 2-3 acciones concretas recomendadas para la próxima semana (ej: felicitar a X, reactivar inactivos, publicar sobre Y, recordar la clase). Directo y accionable. No inventes datos que no estén en las métricas.`;
   const user = (lang === 'es' ? 'Métricas de la semana: ' : 'This week metrics: ') + JSON.stringify(stats).slice(0, 3000);
   const text = await ai(sys, user, 500);
@@ -96,7 +91,7 @@ export async function communityDigest(stats: any, lang: Lang = 'es', emojis = tr
 // Asistente del alumno: responde SOLO con la guía/base del mentor. Si no está
 // cubierto, invita a preguntar al mentor. Nunca da señales ni promete ganancias.
 export async function assistantAnswer(question: string, kb: string, academy: string, lang: Lang = 'es', emojis = true): Promise<string | null> {
-  const g = (dictFor(GUARD, lang)) + (emojis ? (dictFor(YES_EMOJI, lang)) : (dictFor(NO_EMOJI, lang))) + langNote(lang);
+  const g = GUARD[lang] + (emojis ? YES_EMOJI[lang] : NO_EMOJI[lang]);
   const ES = lang === 'es';
   const sys = `${g} Eres el asistente de la academia "${academy}". Responde la pregunta del alumno USANDO EXCLUSIVAMENTE la BASE DE CONOCIMIENTO de abajo (la guía del mentor). Si la respuesta no está en la base, dilo con honestidad y sugiere que le pregunten directamente a su mentor; NO inventes. No des señales de trading, predicciones ni promesas de ganancias. Responde claro y breve.\n\nBASE DE CONOCIMIENTO:\n${(kb || '').slice(0, 8000)}`;
   const user = (ES ? 'Pregunta del alumno: ' : 'Student question: ') + question.slice(0, 1000);
@@ -112,8 +107,8 @@ export type CopilotKind = 'tagline' | 'about' | 'pitch' | 'course_desc' | 'lesso
 // de la academia para posts promocionales).
 export async function academyCopilot(kind: CopilotKind, input: string, lang: Lang = 'es', opts?: { emojis?: boolean; brand?: string; link?: string }): Promise<{ ok: boolean; text?: string; reason?: string }> {
   if (!process.env.ANTHROPIC_API_KEY) return { ok: false, reason: 'no_key' };
-  const emoji = opts?.emojis ? (dictFor(YES_EMOJI, lang)) : (dictFor(NO_EMOJI, lang));
-  const g = (dictFor(GUARD, lang)) + emoji + langNote(lang);
+  const emoji = opts?.emojis ? YES_EMOJI[lang] : NO_EMOJI[lang];
+  const g = GUARD[lang] + emoji;
   const ES = lang === 'es';
   const brand = opts?.brand ? (ES ? `\nInfo de marca del mentor (úsala para escribir en su voz, sin copiarla literal):\n${opts.brand}` : `\nMentor brand info (use it to write in their voice, don't copy verbatim):\n${opts.brand}`) : '';
   const bullet = opts?.emojis ? '✅' : '•';

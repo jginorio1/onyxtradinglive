@@ -1,5 +1,4 @@
 'use client';
-import { mkL } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import { useLang } from '@/lib/lang';
@@ -18,7 +17,7 @@ export default function ReferralCard() {
   if (!d || d.enabled === false) return null;
 
   const link = d.link || '';
-  const L = mkL(lang);
+  const L = (a: string, b: string) => (es ? a : b);
   const shareMsg = es
     ? `Estoy usando Onyx Trading Live para analizar mi trading. Únete con mi enlace y ambos ganamos crédito 👇`
     : `I'm using Onyx Trading Live to analyze my trading. Join with my link and we both get credit 👇`;

@@ -1,5 +1,4 @@
 'use client';
-import { dictFor } from '@/lib/i18n';
 import { toast } from '@/lib/toast';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import { useEffect, useMemo, useState } from 'react';
@@ -162,8 +161,8 @@ export default function ManagerClient() {
   const [tab, setTab] = useState<Tab>('trade');
   const [firmSel, setFirmSel] = useState('');
   const [warnings, setWarnings] = useState<string[]>([]);
-  const t = dictFor(T, lang);
-  const t2 = dictFor(P2, lang);
+  const t = T[lang];
+  const t2 = P2[lang];
 
   useEffect(() => {
     load();

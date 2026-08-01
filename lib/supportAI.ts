@@ -1,4 +1,3 @@
-import { dictFor } from '@/lib/i18n';
 import { ARTICLES, searchArticles, type Article, type Lang } from '@/lib/guide';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendEmail } from '@/lib/mail';
@@ -38,9 +37,9 @@ export function classify(text: string): { category: Category; priority: Priority
 
 // Aplana un artículo de la Guía a texto plano para dárselo a la IA.
 function articleText(a: Article, lang: Lang): string {
-  const blocks = ((a.body[lang]||a.body.en) || []) as any[];
+  const blocks = (a.body[lang] || []) as any[];
   const parts = blocks.map((b) => b.p || b.h || b.note || b.warn || (b.list || b.steps || []).join(' · ') || '');
-  return `# ${(a.title[lang]||a.title.en)}\n${(a.summary[lang]||a.summary.en)}\n${parts.filter(Boolean).join('\n')}`;
+  return `# ${a.title[lang]}\n${a.summary[lang]}\n${parts.filter(Boolean).join('\n')}`;
 }
 
 // Resumen COMPLETO de Onyx: el "cerebro" que la IA siempre tiene, sin depender
@@ -96,7 +95,7 @@ export type AiAnswer = { answer: string; confident: boolean; articles: Array<{ s
 export async function aiAnswer(question: string, lang: Lang, sensitive = false): Promise<AiAnswer> {
   const found = searchArticles(question, lang).slice(0, 4);
   const pool = found.length ? found : ARTICLES.slice(0, 4);
-  const articles = pool.map((a) => ({ slug: a.slug, title: (a.title[lang]||a.title.en) }));
+  const articles = pool.map((a) => ({ slug: a.slug, title: a.title[lang] }));
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return { answer: '', confident: false, articles, reason: 'no_key' };
@@ -114,12 +113,12 @@ export async function aiAnswer(question: string, lang: Lang, sensitive = false):
       .eq('active', true).order('sort', { ascending: true });
     if (plans?.length) {
       const rows = plans.map((p: any) => {
-        const n = enBase(lang) ? (p.name_en || p.name) : p.name;
-        const acc = p.max_accounts >= 999 ? (enBase(lang) ? 'unlimited accounts' : 'cuentas ilimitadas') : `${p.max_accounts} ${enBase(lang) ? 'accounts' : 'cuentas'}`;
-        const feats = ((enBase(lang) ? p.features_en : p.features) || []).slice(0, 6).join(', ');
-        return `- ${n}: $${p.price_month}/${enBase(lang) ? 'mo' : 'mes'} · $${p.price_year}/${enBase(lang) ? 'yr' : 'año'} · ${acc}. ${feats}`;
+        const n = lang === 'en' ? (p.name_en || p.name) : p.name;
+        const acc = p.max_accounts >= 999 ? (lang === 'en' ? 'unlimited accounts' : 'cuentas ilimitadas') : `${p.max_accounts} ${lang === 'en' ? 'accounts' : 'cuentas'}`;
+        const feats = ((lang === 'en' ? p.features_en : p.features) || []).slice(0, 6).join(', ');
+        return `- ${n}: $${p.price_month}/${lang === 'en' ? 'mo' : 'mes'} · $${p.price_year}/${lang === 'en' ? 'yr' : 'año'} · ${acc}. ${feats}`;
       }).join('\n');
-      extra += `\n\n=== ${enBase(lang) ? 'PRICES AND PLANS (current)' : 'PRECIOS Y PLANES (actuales)'} ===\n${rows}`;
+      extra += `\n\n=== ${lang === 'en' ? 'PRICES AND PLANS (current)' : 'PRECIOS Y PLANES (actuales)'} ===\n${rows}`;
     }
   } catch {}
   try {
@@ -129,14 +128,14 @@ export async function aiAnswer(question: string, lang: Lang, sensitive = false):
       const hay = `${a.title} ${a.tags} ${a.body}`.toLowerCase();
       return { a, score: words.reduce((s: number, w: string) => s + (hay.includes(w) ? 1 : 0), 0) };
     }).sort((x, y) => y.score - x.score).slice(0, 3).filter((x) => x.score > 0);
-    if (scored.length) extra += `\n\n=== ${enBase(lang) ? 'KNOWLEDGE BASE' : 'BASE DE CONOCIMIENTO'} ===\n` + scored.map((x) => `# ${x.a.title}\n${x.a.body}`).join('\n\n');
+    if (scored.length) extra += `\n\n=== ${lang === 'en' ? 'KNOWLEDGE BASE' : 'BASE DE CONOCIMIENTO'} ===\n` + scored.map((x) => `# ${x.a.title}\n${x.a.body}`).join('\n\n');
   } catch {}
 
-  const system = (enBase(lang)
+  const system = (lang === 'en'
     ? `You are Onyx AI, the support agent for Onyx Trading Live. Answer the user's message helpfully and accurately using the ONYX KNOWLEDGE, current PRICES and KNOWLEDGE BASE below. Be brief, warm and clear, like a great support agent. Use a few tasteful emojis and bullet points for readability. Prices below are authoritative for any pricing question. Do NOT add a signature or sign-off — it is added automatically. Never invent features or give financial advice. Answer general product, pricing, how-to and feature questions confidently. ONLY reply with the exact token NO_ANSWER (and nothing else) when the question requires the user's PRIVATE account data that you cannot see — for example "why was I charged X", "is MY account blocked", "what is MY balance", a specific bug tied to their account. For everything else, give a helpful answer.`
     : `Eres Onyx AI, el agente de soporte de Onyx Trading Live. Responde al mensaje del usuario de forma útil y correcta usando el CONOCIMIENTO DE ONYX, los PRECIOS actuales y la BASE DE CONOCIMIENTO de abajo. Sé breve, cercano y claro, como un gran agente de soporte. Usa algunos emojis con criterio y viñetas para que sea legible. Los precios de abajo son la fuente oficial para cualquier pregunta de precios. NO añadas firma ni despedida — se agrega automáticamente. No inventes funciones ni des consejo financiero. Responde con seguridad las preguntas generales de producto, precios, cómo hacer algo y funciones. SOLO responde con el token exacto NO_ANSWER (y nada más) cuando la pregunta necesite datos PRIVADOS de la cuenta del usuario que no puedes ver — por ejemplo "por qué me cobraron X", "está bloqueada MI cuenta", "cuál es MI saldo", o un fallo concreto atado a su cuenta. Para todo lo demás, da una respuesta útil.`)
-    + `\n\n=== ${enBase(lang) ? 'ONYX KNOWLEDGE' : 'CONOCIMIENTO DE ONYX'} ===\n${dictFor(ONYX_BRIEF, lang)}`
-    + `\n\n=== ${enBase(lang) ? 'HELP ARTICLES' : 'ARTÍCULOS DE AYUDA'} ===\n${context}` + extra + aiLangDirective(lang);
+    + `\n\n=== ${lang === 'en' ? 'ONYX KNOWLEDGE' : 'CONOCIMIENTO DE ONYX'} ===\n${ONYX_BRIEF[lang]}`
+    + `\n\n=== ${lang === 'en' ? 'HELP ARTICLES' : 'ARTÍCULOS DE AYUDA'} ===\n${context}` + extra;
 
   try {
     const model = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5';
@@ -178,30 +177,30 @@ export async function autoHandleTicket(opts: { ticketId: string; question: strin
 
     const cfg = await autoReplySettings();
 
-    if (!cfg.enabled) { await addNote(ticketId, enBase(lang) ? 'AI auto-reply is off: needs a human.' : 'Auto-respuesta IA apagada: requiere un humano.'); return { answered: false }; }
-    if (sensitive) { await addNote(ticketId, enBase(lang) ? '⚠️ Sensitive topic (money/legal/account): needs a human, not auto-answered.' : '⚠️ Tema sensible (dinero/legal/cuenta): requiere un humano, no se auto-responde.'); return { answered: false }; }
+    if (!cfg.enabled) { await addNote(ticketId, lang === 'en' ? 'AI auto-reply is off: needs a human.' : 'Auto-respuesta IA apagada: requiere un humano.'); return { answered: false }; }
+    if (sensitive) { await addNote(ticketId, lang === 'en' ? '⚠️ Sensitive topic (money/legal/account): needs a human, not auto-answered.' : '⚠️ Tema sensible (dinero/legal/cuenta): requiere un humano, no se auto-responde.'); return { answered: false }; }
 
     const ai = await aiAnswer(question, lang, sensitive);
     if (ai.confident && ai.answer) {
       await supabaseAdmin.from('support_messages').insert({ ticket_id: ticketId, sender: 'ai', body: ai.answer });
       await supabaseAdmin.from('support_tickets').update({ status: 'in_progress', updated_at: new Date().toISOString() }).eq('id', ticketId);
       if (email) {
-        const subj = opts.subject || (enBase(lang) ? 'Your question at Onyx' : 'Tu consulta en Onyx');
+        const subj = opts.subject || (lang === 'en' ? 'Your question at Onyx' : 'Tu consulta en Onyx');
         await sendEmail(
           email,
           `Re: ${subj}`,
-          `${ai.answer}\n\n—\n${enBase(lang) ? 'Onyx Trading Live team' : 'Equipo de Onyx Trading Live'}`,
+          `${ai.answer}\n\n—\n${lang === 'en' ? 'Onyx Trading Live team' : 'Equipo de Onyx Trading Live'}`,
           { kind: 'support' },
         );
       }
-      await addNote(ticketId, (enBase(lang) ? '🤖 Auto-answered by Onyx AI. Review if it needs follow-up.' : '🤖 Respondido automáticamente por Onyx AI. Revisa si necesita seguimiento.'));
+      await addNote(ticketId, (lang === 'en' ? '🤖 Auto-answered by Onyx AI. Review if it needs follow-up.' : '🤖 Respondido automáticamente por Onyx AI. Revisa si necesita seguimiento.'));
       return { answered: true };
     }
     // Nota clara según el motivo real de la escalada
     let why: string;
-    if (ai.reason === 'no_key') why = enBase(lang) ? '⚠️ AI not configured: ANTHROPIC_API_KEY is missing in Vercel. Add it so the AI can answer.' : '⚠️ IA no configurada: falta ANTHROPIC_API_KEY en Vercel. Agrégala para que la IA responda.';
-    else if (ai.reason === 'error') why = enBase(lang) ? '⚠️ The AI had a temporary error. This ticket needs a human for now.' : '⚠️ La IA tuvo un error temporal. Este ticket necesita un humano por ahora.';
-    else why = (enBase(lang) ? 'The AI escalated: the question needs private account data it cannot see. Needs a human.' : 'La IA escaló: la pregunta necesita datos privados de la cuenta que no puede ver. Requiere un humano.') + (ai.articles.length ? (enBase(lang) ? ' Suggested: ' : ' Sugerencia: ') + ai.articles.map((a) => a.title).join(', ') : '');
+    if (ai.reason === 'no_key') why = lang === 'en' ? '⚠️ AI not configured: ANTHROPIC_API_KEY is missing in Vercel. Add it so the AI can answer.' : '⚠️ IA no configurada: falta ANTHROPIC_API_KEY en Vercel. Agrégala para que la IA responda.';
+    else if (ai.reason === 'error') why = lang === 'en' ? '⚠️ The AI had a temporary error. This ticket needs a human for now.' : '⚠️ La IA tuvo un error temporal. Este ticket necesita un humano por ahora.';
+    else why = (lang === 'en' ? 'The AI escalated: the question needs private account data it cannot see. Needs a human.' : 'La IA escaló: la pregunta necesita datos privados de la cuenta que no puede ver. Requiere un humano.') + (ai.articles.length ? (lang === 'en' ? ' Suggested: ' : ' Sugerencia: ') + ai.articles.map((a) => a.title).join(', ') : '');
     await addNote(ticketId, why);
     return { answered: false };
   } catch { return { answered: false }; }

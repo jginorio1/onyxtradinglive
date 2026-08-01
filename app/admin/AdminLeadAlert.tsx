@@ -1,5 +1,4 @@
 'use client';
-import { mkL } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
 
@@ -7,7 +6,7 @@ import { useLang } from '@/lib/lang';
 // pegado al borde derecho y centrado vertical. Solo a empleados "Disponible".
 export default function AdminLeadAlert({ available }: { available: boolean }) {
   const { lang } = useLang();
-  const L = mkL(lang);
+  const L = (es: string, en: string) => (lang === 'en' ? en : es);
   const [leads, setLeads] = useState<any[]>([]);
   const [seen, setSeen] = useState<Set<string>>(new Set());
   const [min, setMin] = useState(false);

@@ -75,7 +75,7 @@ export async function POST(req: Request) {
   // Generar auditoría AI. Requiere add-on activo + consentimiento del alumno.
   const perm = await canAudit(mrow.user_id, student);
   if (!perm.ok) return NextResponse.json({ error: perm.consent ? 'no_addon' : 'no_consent' }, { status: 400 });
-  const r = await generateAuditReport(mrow.user_id, student, b.period === '90d' ? '90d' : '30d', pickLang(b.lang));
+  const r = await generateAuditReport(mrow.user_id, student, b.period === '90d' ? '90d' : '30d', b.lang === 'en' ? 'en' : 'es');
   if (!r.ok) return NextResponse.json({ error: r.error }, { status: 400 });
   return NextResponse.json({ ok: true, ...r });
 }

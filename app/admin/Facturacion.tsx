@@ -1,5 +1,4 @@
 'use client';
-import { mkL } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import OnyxIcon from '@/app/components/OnyxIcon';
@@ -21,7 +20,7 @@ export default function Facturacion({ showIngresos, showAcademia, showFinanzas, 
   { showIngresos: boolean; showAcademia: boolean; showFinanzas: boolean; canManageFinanzas: boolean; canManageAcademy: boolean }) {
   const { lang } = useLang();
   const es = lang !== 'en';
-  const L = mkL(lang);
+  const L = (a: string, b: string) => (es ? a : b);
   const first: View = showIngresos ? 'onyx' : showAcademia ? 'academia' : 'negocio';
   const [view, setView] = useState<View>(first);
   const [sum, setSum] = useState<any>({});

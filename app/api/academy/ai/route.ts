@@ -1,4 +1,3 @@
-import { pickLang, langFromCookie } from '@/lib/i18n';
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
@@ -22,7 +21,7 @@ export async function POST(req: Request) {
   const b = await req.json().catch(() => ({}));
   const kind = String(b.kind || '') as CopilotKind;
   if (!KINDS.includes(kind)) return NextResponse.json({ error: 'bad_kind' }, { status: 400 });
-  const lang = pickLang(b.lang);
+  const lang = b.lang === 'en' ? 'en' : 'es';
   // Lee ajustes de marca del mentor: emojis, info de marca, y su enlace de academia.
   const { data: mrow } = await supabaseAdmin.from('mentors').select('ai_emojis,brand_info,code').eq('user_id', user.id).maybeSingle();
   const site = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.onyxtradinglive.com').replace(/\/$/, '');

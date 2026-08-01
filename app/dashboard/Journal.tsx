@@ -1,5 +1,4 @@
 'use client';
-import { dictFor } from '@/lib/i18n';
 import { toast } from '@/lib/toast';
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { errMsg } from '@/lib/i18nErrors';
@@ -43,7 +42,7 @@ const J = {
 };
 
 export default function Journal({ trades, lang }: { trades: TT[]; lang: Lang }) {
-  const t = dictFor(J, lang);
+  const t = J[lang];
   const WD = lang === 'es' ? ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'] : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   const [entries, setEntries] = useState<Record<string, Entry>>({});
   const [open, setOpen] = useState<TT | null>(null);
@@ -212,7 +211,7 @@ export default function Journal({ trades, lang }: { trades: TT[]; lang: Lang }) 
 }
 
 function TradeModal({ trade, entry, lang, onClose, onSaved }: { trade: TT; entry?: Entry; lang: Lang; onClose: () => void; onSaved: (e: Entry) => void }) {
-  const t = dictFor(J, lang);
+  const t = J[lang];
   const [notes, setNotes] = useState(entry?.notes || '');
   const [tags, setTags] = useState<string[]>(entry?.tags || []);
   const [emotion, setEmotion] = useState(entry?.emotion || '');

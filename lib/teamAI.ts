@@ -5,8 +5,7 @@
 // cliente, etc. Nunca revela secretos ni da consejo financiero.
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
-import type { Lang } from './navText';
-import { aiLangDirective, enBase, LANG_NAME } from '@/lib/i18n';
+type Lang = 'es' | 'en';
 const H = 3600 * 1000;
 
 function nameOf(p: any) { return (p?.full_name || (p?.email || '').split('@')[0] || 'cliente'); }
@@ -17,7 +16,7 @@ const CAT_EN: any = { general: 'General', conexion: 'Connection', instalacion: '
 // Resumen diario del turno (determinista, sin modelo → siempre sale y es barato).
 // Pendientes de anoche, leads nuevos, lo que espera respuesta, sin asignar.
 export async function teamDigest(lang: Lang): Promise<string> {
-  const en = enBase(lang);
+  const en = lang === 'en';
   const { data: tickets } = await supabaseAdmin.from('support_tickets')
     .select('id,email,subject,category,status,is_lead,priority,assignee_id,created_at,updated_at')
     .order('updated_at', { ascending: false }).limit(200);
@@ -74,7 +73,7 @@ export async function teamDigest(lang: Lang): Promise<string> {
 export async function onyxTeamAnswer(opts: { question: string; lang: Lang }): Promise<string> {
   const { question, lang } = opts;
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return enBase(lang) ? '⚠️ AI not configured: ANTHROPIC_API_KEY is missing in Vercel.' : '⚠️ IA no configurada: falta ANTHROPIC_API_KEY en Vercel.';
+  if (!apiKey) return lang === 'en' ? '⚠️ AI not configured: ANTHROPIC_API_KEY is missing in Vercel.' : '⚠️ IA no configurada: falta ANTHROPIC_API_KEY en Vercel.';
 
   // 1) Tickets recientes (120) + último remitente por ticket
   const { data: tickets } = await supabaseAdmin.from('support_tickets')
@@ -129,10 +128,10 @@ export async function onyxTeamAnswer(opts: { question: string; lang: Lang }): Pr
     ctx += `- Tickets (${(cli || []).length}): ` + ((cli || []).map((t: any) => `"${t.subject}" [${t.status}]`).join(', ') || 'ninguno') + '\n';
   }
 
-  const system = (enBase(lang)
+  const system = (lang === 'en'
     ? `You are Onyx AI for the internal SUPPORT TEAM of Onyx Trading Live (staff-only). Answer the teammate's question using the SUPPORT DATA below (aggregate ticket stats, pending list, and a client's history when present). Give real numbers and short bulleted lists. Be concise. If the data does not contain the answer, say so plainly. Never reveal passwords, API keys or secrets. Never give financial advice or predict the market. Do not add a sign-off.`
     : `Eres Onyx AI para el EQUIPO de soporte interno de Onyx Trading Live (solo empleados). Responde la pregunta del compañero usando los DATOS DE SOPORTE de abajo (agregados de tickets, lista de pendientes y el historial de un cliente si aparece). Da cifras reales y listas cortas con viñetas. Sé breve. Si los datos no tienen la respuesta, dilo claramente. Nunca reveles contraseñas, claves ni secretos. Nunca des consejo financiero ni predigas el mercado. No añadas despedida.`)
-    + `\n\n=== ${enBase(lang) ? 'SUPPORT DATA' : 'DATOS DE SOPORTE'} ===\n${ctx}` + aiLangDirective(lang);
+    + `\n\n=== ${lang === 'en' ? 'SUPPORT DATA' : 'DATOS DE SOPORTE'} ===\n${ctx}`;
 
   try {
     const model = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5';
@@ -141,11 +140,11 @@ export async function onyxTeamAnswer(opts: { question: string; lang: Lang }): Pr
       headers: { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({ model, max_tokens: 700, system, messages: [{ role: 'user', content: question.slice(0, 1500) }] }),
     });
-    if (!r.ok) return enBase(lang) ? 'Sorry, I could not process that right now.' : 'Perdona, no pude procesar eso ahora mismo.';
+    if (!r.ok) return lang === 'en' ? 'Sorry, I could not process that right now.' : 'Perdona, no pude procesar eso ahora mismo.';
     const data = await r.json();
     const answer = (data?.content || []).map((c: any) => c.text || '').join('\n').trim();
-    return answer || (enBase(lang) ? 'No data for that.' : 'Sin datos para eso.');
+    return answer || (lang === 'en' ? 'No data for that.' : 'Sin datos para eso.');
   } catch {
-    return enBase(lang) ? 'Sorry, I could not process that right now.' : 'Perdona, no pude procesar eso ahora mismo.';
+    return lang === 'en' ? 'Sorry, I could not process that right now.' : 'Perdona, no pude procesar eso ahora mismo.';
   }
 }

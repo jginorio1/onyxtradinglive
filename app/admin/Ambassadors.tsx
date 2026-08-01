@@ -1,5 +1,4 @@
 'use client';
-import { mkL } from '@/lib/i18n';
 import { toast, toastErr } from '@/lib/toast';
 import { useEffect, useState } from 'react';
 import { useT } from '@/lib/adminText';
@@ -13,7 +12,7 @@ const METHOD: any = { paypal: 'PayPal', usdt: 'USDT', credit: 'Credit' };
 // ---- Reclutar: mini-CRM de prospectos + invitación con AI ----
 const PLATFORMS = ['youtube', 'instagram', 'tiktok', 'telegram', 'x', 'other'];
 function Recruit({ lang }: { lang: 'es' | 'en' }) {
-  const L = mkL(lang);
+  const L = (es: string, en: string) => (lang === 'en' ? en : es);
   const NICHES: [string, string][] = [['prop', L('Prop firms', 'Prop firms')], ['beginners', L('Principiantes', 'Beginners')], ['signals', L('Señales', 'Signals')], ['forex', 'Forex'], ['crypto', L('Cripto', 'Crypto')], ['other', L('Otro', 'Other')]];
   const STAT: Record<string, [string, string]> = {
     new: [L('Nuevo', 'New'), 'var(--mut)'], contacted: [L('Contactado', 'Contacted'), 'var(--amber)'],

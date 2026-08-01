@@ -1,5 +1,4 @@
 'use client';
-import { dictFor } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import Link from 'next/link';
@@ -53,7 +52,7 @@ function Spark({ pts, color }: { pts: number[]; color: string }) {
 
 export default function Bots() {
   const { lang } = useLang() as { lang: Lang };
-  const t = dictFor(T, lang);
+  const t = T[lang];
   const [d, setD] = useState<any>(null);
   const [port, setPort] = useState<any>(null);
   const [edit, setEdit] = useState<number | null>(null);

@@ -1,5 +1,4 @@
 'use client';
-import { dictFor } from '@/lib/i18n';
 import { toast } from '@/lib/toast';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import { useEffect, useState } from 'react';
@@ -31,7 +30,7 @@ function urlB64ToUint8(base64: string) {
 }
 
 export default function PushToggle({ lang }: { lang: Lang }) {
-  const L = dictFor(T, lang);
+  const L = T[lang];
   const [enabled, setEnabled] = useState(false);   // configurado en el servidor
   const [pubKey, setPubKey] = useState('');
   const [subscribed, setSubscribed] = useState(false);
