@@ -1,5 +1,5 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { useLang } from '@/lib/lang';
 
 // Barra reutilizable: presets de fecha + rango personalizado + PDF/CSV.
@@ -32,12 +32,13 @@ const L: any = {
 };
 
 export default function RangeBar({
-  value, onChange, pdfUrl, csvUrl, presets = ['month', 'd7', 'd30', 'quarter', 'custom'],
+  value, onChange, pdfUrl, csvUrl, presets = ['month', 'd7', 'd30', 'quarter', 'custom'], label,
 }: {
   value: Range; onChange: (v: Range) => void;
   pdfUrl?: (from: string, to: string) => string;
   csvUrl?: (from: string, to: string) => string;
   presets?: string[];
+  label?: ReactNode;
 }) {
   const { lang } = useLang();
   const t = L[lang];
@@ -59,6 +60,7 @@ export default function RangeBar({
   return (
     <div className="card" style={{ marginBottom: 12 }}>
       <div className="row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+        {label && <span style={{ marginRight: 4 }}>{label}</span>}
         {presets.map(chip)}
         {(pdfUrl || csvUrl) && (
           <span className="row" style={{ gap: 8, marginLeft: 'auto' }}>

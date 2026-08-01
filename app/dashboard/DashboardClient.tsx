@@ -499,8 +499,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
       <DailyCheckinPopup lang={lang} />
 
       <div className="wrap-wide" style={{ padding: '24px 0' }}>
-        {/* Cabecera centrada con ancho de lectura (hero + neto + coach) */}
-        <div style={{ maxWidth: 960, margin: '0 auto' }}>
+        {/* Info del trader: alineada a la izquierda */}
         <div className="row between" style={{ marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
           <div className="row" style={{ gap: 14, alignItems: 'center' }}>
             <div style={{ width: 52, height: 52, borderRadius: 14, background: 'var(--grad)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 700, flex: 'none' }}>{heroInitials}</div>
@@ -519,18 +518,18 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
         </div>
         <p className="muted" style={{ fontSize: 13, margin: '-6px 0 14px', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>{email} · {accounts.length} {L.accountsWord} · {L.balance} ${totalBalance.toLocaleString()} · <span className="livedot" style={{ width: 8, height: 8 }} /><span style={{ color: GREEN }}>{updatedTxt}</span></p>
 
+        {/* Ganancia neta, Onyx Coach y reporte: centrados */}
+        <div style={{ maxWidth: 560, margin: '0 auto' }}>
         {caps?.expenses ? <NetRealCard /> : null}
         {caps?.coach ? <CoachCard /> : null}
 
         {!isFree && (
-          <>
-            <div className="muted" style={{ fontSize: 12.5, marginBottom: 4 }}>{lang === 'es' ? '📄 Descarga tu reporte de rendimiento (para fondeo, impuestos o tu análisis)' : '📄 Download your performance report (for funding, taxes or your own analysis)'}</div>
-            <RangeBar value={rRange} onChange={setRRange}
-              pdfUrl={(f, tt) => `/api/dashboard/report?from=${f}&to=${tt}&lang=${lang}`}
-              csvUrl={(f, tt) => `/api/dashboard/report?export=csv&from=${f}&to=${tt}&lang=${lang}`} />
-          </>
+          <RangeBar value={rRange} onChange={setRRange}
+            label={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12.5, color: 'var(--tx)' }}><OnyxIcon emoji="📄" size={15} /> {lang === 'es' ? 'Reporte de rendimiento' : 'Performance report'} <span className="muted" style={{ fontSize: 11 }}>· {lang === 'es' ? 'fondeo, impuestos o análisis' : 'funding, taxes or analysis'}</span></span>}
+            pdfUrl={(f, tt) => `/api/dashboard/report?from=${f}&to=${tt}&lang=${lang}`}
+            csvUrl={(f, tt) => `/api/dashboard/report?export=csv&from=${f}&to=${tt}&lang=${lang}`} />
         )}
-        </div>{/* /cabecera centrada */}
+        </div>{/* /neto+coach+reporte centrados */}
 
         <div className="cockpit">
           <div className="rail-left"><MarketHours lang={lang} compact /><details style={{ marginTop: 12 }}><summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 700, color: 'var(--tx)', padding: '10px 12px', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, listStyle: 'none', display: 'flex', alignItems: 'center', gap: 8 }}><OnyxIcon emoji="🧮" size={16} /> {lang === 'en' ? 'Lot size calculator' : 'Calculadora de lotes'}</summary><div style={{ marginTop: 10 }}><LotCalculator lang={lang} balance={Number(cur?.balance) || totalBalance || undefined} /></div></details></div>
