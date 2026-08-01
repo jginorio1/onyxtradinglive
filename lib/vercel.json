@@ -1,0 +1,17 @@
+{
+  "crons": [
+    { "path": "/api/cron/telegram?job=offline", "schedule": "*/10 * * * *" },
+    { "path": "/api/cron/telegram?job=daily", "schedule": "0 21 * * *" },
+    { "path": "/api/cron/telegram?job=weekly", "schedule": "0 18 * * 0" },
+    { "path": "/api/cron/plan-reminders", "schedule": "0 15 * * *" },
+    { "path": "/api/cron/clean-signups", "schedule": "30 4 * * *" },
+    { "path": "/api/cron/security-check", "schedule": "0 5 * * *" },
+    { "path": "/api/cron/onboarding-emails", "schedule": "0 16 * * *" },
+    { "path": "/api/cron/bots-check", "schedule": "0 */6 * * *" },
+    { "path": "/api/cron/campaigns", "schedule": "0 * * * *" },
+    { "path": "/api/cron/selftest", "schedule": "0 8 * * *" },
+    { "path": "/api/cron/team-digest", "schedule": "0 12 * * *" },
+    { "path": "/api/cron/member-rewards", "schedule": "0 */6 * * *" },
+    { "path": "/api/cron/checkin-reminder", "schedule": "30 21 * * *" }
+  ]
+}

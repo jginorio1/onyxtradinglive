@@ -1,0 +1,17 @@
+{
+"Escribe aquí el nombre de un aula (curso o módulo) y pulsa “Aula”.":{"zh":"在这里输入教室（课程或模块）的名称，然后点击「教室」。"},
+"Sube tu logo o foto":{"zh":"上传你的标志或照片"},
+"Sube una imagen cuadrada. Reemplaza el ícono por defecto de tu academia.":{"zh":"上传一张方形图片。它会替换你学院的默认图标。"},
+"Le da cara a tu marca en la comunidad, la página de ventas y los correos.":{"zh":"它让你的品牌在社区、销售页面和邮件中都有一张面孔。"},
+"Sube la portada de tu comunidad":{"zh":"上传你社区的封面"},
+"Sube una imagen ancha (tipo banner). Es lo primero que ve el visitante.":{"zh":"上传一张宽幅图片（横幅样式）。这是访客看到的第一样东西。"},
+"Aparece arriba de tu comunidad y en tu página de ventas. Una buena portada sube las conversiones.":{"zh":"它显示在你社区的顶部和销售页面上。好的封面能提升转化率。"},
+"Crea tu membresía o un nivel de pago":{"zh":"创建你的会员或付费等级"},
+"Pulsa “＋ Nivel” y define nombre, precio y qué aulas incluye.":{"zh":"点击「＋ 等级」，设置名称、价格以及包含哪些教室。"},
+"Los niveles son lo que vendes (Básico, VIP, Bootcamp). Deja el precio en 0 para uno gratis.":{"zh":"等级就是你出售的内容（基础版、VIP、训练营）。将价格设为 0 即为免费。"},
+"Conecta Stripe para cobrar":{"zh":"连接 Stripe 以收款"},
+"Pulsa “Conectar Stripe” y verifica tu cuenta. Es lo que te deja cobrar de verdad.":{"zh":"点击「连接 Stripe」并验证你的账户。这才是真正让你收款的关键。"},
+"Stripe procesa los pagos y te deposita. Sin esto tus niveles no se pueden vender.":{"zh":"Stripe 处理付款并向你结算。没有它，你的等级无法出售。"},
+"Programa tu primera clase en vivo":{"zh":"安排你的第一堂直播课"},
+"Pulsa “Programar”, pega tu enlace de Zoom/Meet y elige fecha y hora (NY).":{"zh":"点击「安排」，粘贴你的 Zoom/Meet 链接，并选择日期和时间（纽约时间）。"}
+}

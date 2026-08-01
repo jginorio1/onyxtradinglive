@@ -1,0 +1,68 @@
+import { NextResponse } from 'next/server';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { authAccount } from '@/lib/copyAuth';
+import { alertOncePerDay } from '@/lib/telegram';
+
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+// GET · la EA esclava pide sus comandos pendientes (y los marca como tomados).
+export async function GET(req: Request) {
+  const a = await authAccount(req);
+  if (!a) return NextResponse.json({ error: 'invalid api key' }, { status: 401 });
+
+  const { data: cmds } = await supabaseAdmin.from('copy_commands')
+    .select('id,action,master_ticket,base_symbol,side,volume_hint,sl,tp,price,payload')
+    .eq('slave_account_id', a.account.id).eq('status', 'pending')
+    .order('created_at', { ascending: true }).limit(50);
+
+  if (cmds?.length) {
+    await supabaseAdmin.from('copy_commands')
+      .update({ status: 'taken', taken_at: new Date().toISOString() })
+      .in('id', cmds.map((c) => c.id));
+  }
+
+  // Estado de pausa → el panel de la EA colorea el borde (rojo si está en pausa).
+  const { data: prof } = await supabaseAdmin.from('profiles').select('copy_paused').eq('id', a.userId).maybeSingle();
+  const paused = !!prof?.copy_paused || !!a.account.copy_paused;
+
+  return NextResponse.json({ commands: cmds || [], paused });
+}
+
+// POST · la EA esclava confirma el resultado de un comando. Escribe en el log.
+export async function POST(req: Request) {
+  const a = await authAccount(req);
+  if (!a) return NextResponse.json({ error: 'invalid api key' }, { status: 401 });
+
+  const b = await req.json().catch(() => ({}));
+  const id = String(b.command_id || '');
+  if (!id) return NextResponse.json({ error: 'missing command_id' }, { status: 400 });
+
+  const ok = !!b.ok;
+  const status = ok ? 'done' : (String(b.error || '') === 'symbol_not_found' ? 'skipped' : 'failed');
+
+  const { data: cmd } = await supabaseAdmin.from('copy_commands')
+    .select('link_id,base_symbol,slave_account_id').eq('id', id).maybeSingle();
+  // Solo el dueño de esa cuenta esclava puede confirmar.
+  if (!cmd || cmd.slave_account_id !== a.account.id) return NextResponse.json({ error: 'not found' }, { status: 404 });
+
+  await supabaseAdmin.from('copy_commands').update({ status, done_at: new Date().toISOString(), error: b.error || null }).eq('id', id);
+  await supabaseAdmin.from('copy_log').insert({
+    owner_id: a.userId, link_id: cmd.link_id,
+    kind: ok ? 'copied' : (status === 'skipped' ? 'skipped' : 'error'),
+    symbol: cmd.base_symbol, ok, latency_ms: Number(b.latency_ms) || null,
+    detail: { slave_ticket: b.slave_ticket || null, error: b.error || null },
+  });
+
+  // Aviso por Telegram cuando falla una copia (una vez al día por tipo de error,
+  // para no saturar). Solo si el trader tiene ese aviso encendido.
+  if (!ok) {
+    const err = String(b.error || 'fallo');
+    const label = err === 'symbol_not_found' ? 'símbolo no encontrado'
+      : err === 'spread_high' ? 'spread demasiado alto'
+      : err === 'risk_stop' ? 'límite de riesgo alcanzado' : err;
+    alertOncePerDay(a.userId, 'copy_error', 'copy_' + err,
+      `⚠ <b>No se copió una operación</b>\n${cmd.base_symbol || ''}: ${label}.\nRevisa tu Copy trading.`).catch(() => {});
+  }
+  return NextResponse.json({ ok: true });
+}
