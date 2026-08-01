@@ -1,4 +1,5 @@
 'use client';
+import { dictFor } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import Link from 'next/link';
@@ -35,7 +36,7 @@ export default function Pricing() {
   const [annual, setAnnual] = useState(false);
   const [loading, setLoading] = useState('');
   const { lang, setLang } = useLang();
-  const t = T[lang];
+  const t = dictFor(T, lang);
 
   useEffect(() => {
     fetch('/api/admin/plans').then((r) => r.json()).then((j) => setPlans(j.plans || [])).catch(() => setPlans([]));
@@ -74,7 +75,7 @@ export default function Pricing() {
         </div>
 
         {/* Tarjetas */}
-        <div className="grid" style={{ textAlign: 'left', alignItems: 'start', gridTemplateColumns: 'repeat(auto-fit,minmax(210px,1fr))' }}>
+        <div className="pricing-grid" style={{ textAlign: 'left', alignItems: 'start' }}>
           {shown.map((p, i) => {
             const price = annual ? p.price_year : p.price_month;
             const name = lang === 'es' ? p.name : (p.name_en || p.name);

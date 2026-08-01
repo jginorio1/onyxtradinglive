@@ -36,6 +36,9 @@ html[data-theme="light"]{
 
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:radial-gradient(1200px 600px at 50% -200px, rgba(124,140,255,.10), transparent 60%), var(--bg);color:var(--tx);font-family:"Segoe UI",system-ui,-apple-system,Arial,sans-serif;line-height:1.6;}
+/* Tipografía para chino y japonés (se activa por el atributo lang del <html>). */
+html[lang="zh"] body{font-family:"Noto Sans SC","Segoe UI",system-ui,-apple-system,Arial,sans-serif;}
+html[lang="ja"] body{font-family:"Noto Sans JP","Segoe UI",system-ui,-apple-system,Arial,sans-serif;}
 
 /* Interruptor sol/luna */
 .themetoggle{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--tx);cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;transition:.15s;flex:none;}
@@ -566,3 +569,10 @@ html[data-theme="dark"] .sk-code, :root:not([data-theme="light"]) .sk-code{text-
 .sk-wrap textarea{min-height:70px;font-size:15px;padding:12px 14px;line-height:1.5;}
 .sk-wrap input[type="text"],.sk-wrap input:not([type]){font-size:15px;padding:12px 14px;}
 .sk-wrap .sk-card textarea{border-radius:12px;}
+
+/* Cuadrícula de planes: 4 en fila (grande), 2×2 (tablet), 1 (móvil).
+   Evita el "3 arriba + 1 abajo" que dejaba hueco. */
+.pricing-grid{ display:grid; gap:16px; grid-template-columns:repeat(4, minmax(0,1fr)); max-width:1200px; margin:0 auto; }
+.pricing-grid > *{ min-width:0; }
+@media (max-width:1024px){ .pricing-grid{ grid-template-columns:repeat(2, minmax(0,1fr)); max-width:720px; } }
+@media (max-width:640px){ .pricing-grid{ grid-template-columns:1fr; max-width:420px; } }
