@@ -1,3 +1,4 @@
+import { pickLang, langFromCookie } from '@/lib/i18n';
 import { NextResponse } from 'next/server';
 import { requirePerm, logAdmin } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
@@ -16,7 +17,7 @@ export async function POST(req: Request) {
   if (!p.ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
   try {
     const b = await req.json().catch(() => ({} as any));
-    const lang = b.lang === 'en' ? 'en' : 'es';
+    const lang = pickLang(b.lang);
     const s = await ambSettings();
     const rate = Number(s.tier_rate || 30);
     const couponPct = Number(s.coupon_percent || 20);

@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     if (action === 'test') {
       const to = b.to || p.user?.email;
       if (!to) return NextResponse.json({ error: 'sin destino' }, { status: 400 });
-      const lang = b.lang === 'en' ? 'en' : 'es';
+      const lang = b.lang === 'es' ? 'es' : 'en';
       const r = { id: 'test', email: to, name: (p.user?.email || '').split('@')[0], lang, plan: 'test' } as any;
       const subject = lang === 'en' ? (b.subject_en || b.subject_es) : b.subject_es;
       const body = lang === 'en' ? (b.body_en || b.body_es) : b.body_es;
