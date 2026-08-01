@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useLang } from '@/lib/lang';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Convierte el texto de la IA (con **negrita**, # títulos, - listas) en JSX real,
 // para que NO se vean los asteriscos ni las almohadillas.
@@ -51,8 +52,8 @@ export default function CoachCard() {
     <div className="card" style={{ marginBottom: 14, border: '1px solid rgba(124,140,255,.3)' }}>
       <div className="row between" style={{ flexWrap: 'wrap', gap: 8, marginBottom: txt && open ? 10 : 0 }}>
         <div className="row" style={{ gap: 10, alignItems: 'center' }}>
-          <span style={{ fontSize: 22 }}>🧠</span>
-          <div><b style={{ fontSize: 15 }}>{L('Coach AI', 'Onyx Coach')}</b>
+          <span style={{ width: 38, height: 38, borderRadius: 11, background: 'rgba(124,140,255,.16)', color: 'var(--brand)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}><OnyxIcon emoji="✨" size={20} /></span>
+          <div><b style={{ fontSize: 15, display: 'inline-flex', alignItems: 'center', gap: 7 }}>Onyx Coach <span style={{ fontSize: 10, letterSpacing: '.3px', background: 'rgba(124,140,255,.16)', color: 'var(--soft-brand)', border: '1px solid rgba(124,140,255,.35)', borderRadius: 20, padding: '1px 7px' }}>{L('IA', 'AI')}</span></b>
             <div className="muted" style={{ fontSize: 12.5 }}>{L('Un repaso honesto de tu trading, en palabras claras.', 'An honest review of your trading, in plain words.')}</div></div>
         </div>
         <div className="row" style={{ gap: 8 }}>
