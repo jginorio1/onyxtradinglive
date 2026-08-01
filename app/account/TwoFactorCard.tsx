@@ -20,7 +20,7 @@ const T: any = {
 };
 
 export default function TwoFactorCard({ lang }: { lang: Lang }) {
-  const L = T[lang];
+  const L = T[lang] || T.en;
   const sb = supabaseBrowser();
   const [has, setHas] = useState<boolean | null>(null);
   const [enrolling, setEnrolling] = useState(false);

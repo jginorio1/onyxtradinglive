@@ -1,4 +1,5 @@
 'use client';
+import { mkL } from '@/lib/i18n';
 import { useState } from 'react';
 import { toast } from '@/lib/toast';
 import { useLang } from '@/lib/lang';
@@ -12,7 +13,7 @@ const PROD_URL = process.env.NEXT_PUBLIC_PROD_URL || '';
 
 export default function EnvSwitch() {
   const { lang } = useLang();
-  const L = (es: string, en: string) => (lang === 'en' ? en : es);
+  const L = mkL(lang);
   const isBeta = CUR === 'beta' || CUR === 'staging';
   const [ask, setAsk] = useState(false);
   const [pin, setPin] = useState('');

@@ -1,4 +1,5 @@
 'use client';
+import { mkL } from '@/lib/i18n';
 import { toast, toastErr } from '@/lib/toast';
 import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
@@ -10,7 +11,7 @@ import { CATALOG_KINDS, CATALOG_LABEL, type CatalogKind } from '@/lib/catalogDef
 export default function CatalogAdmin() {
   const { lang } = useLang();
   const es = lang !== 'en';
-  const L = (a: string, b: string) => (es ? a : b);
+  const L = mkL(lang);
   const [kind, setKind] = useState<CatalogKind>('country');
   const [list, setList] = useState<any[]>([]);
   const [isDefault, setIsDefault] = useState(true);

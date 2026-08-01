@@ -187,7 +187,7 @@ function blankLink() {
 
 export default function CopyClient() {
   const { lang } = useLang();
-  const t = T[lang];
+  const t = T[lang] || T.en;
   const [d, setD] = useState<any>(null);
   const [ctrl, setCtrl] = useState<any>(null);
   const [ckeys, setCkeys] = useState<any[]>([]);

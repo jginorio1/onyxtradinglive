@@ -52,7 +52,7 @@ function Spark({ pts, color }: { pts: number[]; color: string }) {
 
 export default function Bots() {
   const { lang } = useLang() as { lang: Lang };
-  const t = T[lang];
+  const t = T[lang] || T.en;
   const [d, setD] = useState<any>(null);
   const [port, setPort] = useState<any>(null);
   const [edit, setEdit] = useState<number | null>(null);

@@ -55,7 +55,7 @@ const stBg: any = { open: 'rgba(124,140,255,.15)', in_progress: 'rgba(255,192,77
 
 export default function SupportClient() {
   const { lang } = useLang();
-  const t = T[lang];
+  const t = T[lang] || T.en;
 
   // --- Onyx AI ---
   const [chat, setChat] = useState<any[]>([{ role: 'assistant', content: t.aiHi }]);

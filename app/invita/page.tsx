@@ -48,7 +48,7 @@ const T: any = {
 
 export default function Invita() {
   const { lang } = useLang();
-  const t = T[lang];
+  const t = T[lang] || T.en;
   const [d, setD] = useState<any>(null);
   const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
 

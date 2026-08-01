@@ -29,7 +29,7 @@ const T: any = {
 };
 
 export default function TwoFactor({ mode, lang, onDone }: { mode: 'enroll' | 'challenge'; lang: Lang; onDone: () => void }) {
-  const L = T[lang];
+  const L = T[lang] || T.en;
   const sb = supabaseBrowser();
   const [qr, setQr] = useState('');
   const [secret, setSecret] = useState('');

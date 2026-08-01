@@ -1,4 +1,5 @@
 'use client';
+import { mkL } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 import OnyxIcon from '@/app/components/OnyxIcon';
 
@@ -10,7 +11,7 @@ import OnyxIcon from '@/app/components/OnyxIcon';
 // facturas (con descarga), y acciones (gestionar tarjeta / cancelar / reactivar).
 // ============================================================
 export default function StudentBilling({ lang = 'es', mentorId }: { lang?: 'es' | 'en'; mentorId?: string }) {
-  const L = (a: string, b: string) => (lang === 'en' ? b : a);
+  const L = mkL(lang);
   const [items, setItems] = useState<any[] | null>(null);
   const [busy, setBusy] = useState('');
 

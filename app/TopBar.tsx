@@ -19,7 +19,7 @@ import MainNav from './MainNav';
 // ============================================================
 export default async function TopBar() {
   const lang: Lang = serverLang();
-  const t = NAV_T[lang];
+  const t = NAV_T[lang] || NAV_T.en;
 
   let user: any = null;
   let plan = 'free';

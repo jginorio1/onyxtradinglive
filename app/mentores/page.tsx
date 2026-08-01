@@ -1,4 +1,5 @@
 'use client';
+import { mkL } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useLang } from '@/lib/lang';
@@ -21,7 +22,7 @@ const FALLBACK: Plan[] = [
 
 export default function MentoresPage() {
   const { lang } = useLang();
-  const L = (a: string, b: string) => (lang === 'en' ? b : a);
+  const L = mkL(lang);
   const [plans, setPlans] = useState<Plan[]>([]);
   useEffect(() => { fetch('/api/admin/plans').then((r) => r.json()).then((j) => setPlans(j.plans || [])).catch(() => {}); }, []);
   const shown = plans.length ? plans : FALLBACK;

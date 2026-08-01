@@ -102,7 +102,7 @@ const T: any = {
 const TYPE_LABEL: Record<string, [string, string]> = { challenge: ['challenge', 'challenge'], funded: ['fondeada', 'funded'], own: ['propia', 'own'], demo: ['demo', 'demo'] };
 
 export default function PlanHabits({ lang, onGoGuardian }: { lang: Lang; onGoGuardian?: () => void }) {
-  const t = T[lang]; const i = lang === 'en' ? 1 : 0;
+  const t = T[lang] || T.en; const i = lang === 'en' ? 1 : 0;
   const [d, setD] = useState<any>(null);
   const [items, setItems] = useState<Record<string, boolean>>({});
   const [note, setNote] = useState('');

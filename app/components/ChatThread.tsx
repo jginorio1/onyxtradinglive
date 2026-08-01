@@ -1,4 +1,5 @@
 'use client';
+import { mkL } from '@/lib/i18n';
 // ============================================================
 // ChatThread — motor de chat estilo WhatsApp compartido por:
 //   · Centro de soporte del trader (cliente ↔ equipo)
@@ -57,7 +58,7 @@ export default function ChatThread({
   height?: number;
   emptyText?: string;
 }) {
-  const L = (es: string, en: string) => (lang === 'en' ? en : es);
+  const L = mkL(lang);
   const [text, setText] = useState('');
   const [atts, setAtts] = useState<Att[]>([]);
   const [busy, setBusy] = useState(false);
