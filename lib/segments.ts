@@ -58,7 +58,7 @@ export async function resolveSegment(segment: string, trigger: Trigger = {}): Pr
   const toRec = (p: any): Recipient => ({
     id: p.id, email: p.email,
     name: (p.full_name || '').split(' ')[0] || '',
-    lang: p.lang === 'es' ? 'es' : 'en',
+    lang: p.lang === 'en' ? 'en' : 'es',
     plan: p.plan || 'free',
   });
 

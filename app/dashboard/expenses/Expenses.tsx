@@ -1,5 +1,4 @@
 'use client';
-import { mkL } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { toast, toastErr } from '@/lib/toast';
@@ -26,7 +25,7 @@ const emptyForm = (m: string) => ({ id: '', category: 'funding', amount: '', pro
 
 export default function Expenses() {
   const { lang } = useLang();
-  const L = mkL(lang);
+  const L = (es: string, en: string) => (lang === 'en' ? en : es);
   const cat = (k: string) => (CAT_LABEL[k] || CAT_LABEL.other)[lang === 'en' ? 1 : 0];
   const ph = (k: string | null) => k && PHASE_LABEL[k] ? PHASE_LABEL[k][lang === 'en' ? 1 : 0] : '';
   const [month, setMonth] = useState(monthNow());

@@ -291,7 +291,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
   const [, setTick] = useState(0);
   const [plans, setPlans] = useState<any[]>([]);
   const [limitInfo, setLimitInfo] = useState<any>(null);
-  const L = D[lang] || D.en;
+  const L = D[lang];
   const platItems = useCatalog('platform');
   const proPrice = plans.find((p: any) => p.id === 'pro')?.price_month || 0;
 

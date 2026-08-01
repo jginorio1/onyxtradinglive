@@ -129,7 +129,7 @@ function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
 }
 
 export default function TelegramCard({ lang }: { lang: 'es' | 'en' }) {
-  const t = T[lang] || T.en;
+  const t = T[lang];
   const [d, setD] = useState<any>(null);
   const [busy, setBusy] = useState('');
   const [waiting, setWaiting] = useState(false);

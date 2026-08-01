@@ -25,7 +25,7 @@ const T: any = {
 };
 
 export default function InstallApp({ lang }: { lang: Lang }) {
-  const L = T[lang] || T.en;
+  const L = T[lang];
   const [canInstall, setCanInstall] = useState(false);
   const [standalone, setStandalone] = useState(false);
   const [show, setShow] = useState(false);

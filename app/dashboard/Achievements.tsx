@@ -13,7 +13,7 @@ const T = {
 };
 
 export default function Achievements({ a, accounts, lang }: { a: any; accounts: any[]; lang: Lang }) {
-  const t = T[lang] || T.en;
+  const t = T[lang];
   const [goal, setGoal] = useState<number>(0);
   const [edit, setEdit] = useState('');
   useEffect(() => { try { const g = Number(localStorage.getItem('onyx_goal') || 0); setGoal(g); setEdit(g ? String(g) : ''); } catch {} }, []);

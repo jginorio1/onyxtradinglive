@@ -39,7 +39,7 @@ namespace cAlgo.Robots
         [Parameter("Sync seconds", DefaultValue = 10, MinValue = 5, MaxValue = 120)]
         public int SyncSeconds { get; set; }
 
-        [Parameter("Language (ES=Español, other=English)", DefaultValue = "EN")]
+        [Parameter("Language (EN/ES)", DefaultValue = "EN")]
         public string Lang { get; set; }
 
         // ---------------- Estado del Guardian ----------------

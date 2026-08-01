@@ -1,4 +1,3 @@
-import { pickLang, langFromCookie } from '@/lib/i18n';
 import { NextResponse } from 'next/server';
 import { requirePerm, logAdmin } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
@@ -76,7 +75,7 @@ export async function POST(req: Request) {
     let ai = null as any;
     if (askedAI) {
       const question = body.replace(/@onyx( ai)?/ig, '').trim() || body;
-      const lang = pickLang((prof as any)?.lang);
+      const lang = (prof as any)?.lang === 'en' ? 'en' : 'es';
       // Onyx interno: responde con datos de conjunto (tickets, pendientes, historial de un cliente).
       const answer = await onyxTeamAnswer({ question, lang: lang as any });
       const { data: aiMsg } = await supabaseAdmin.from('chat_messages')

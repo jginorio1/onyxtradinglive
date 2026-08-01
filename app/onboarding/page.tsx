@@ -52,7 +52,7 @@ const T = {
 export default function Onboarding() {
   const router = useRouter();
   const { lang } = useLang();
-  const t = T[lang] || T.en;
+  const t = T[lang];
   const platItems = useCatalog('platform');   // plataformas del catálogo del admin
   const styItems = useCatalog('trader_type');  // tipos de trader del catálogo del admin
   const catLabel = (c: { es: string; en: string }) => (lang === 'en' ? (c.en || c.es) : c.es);

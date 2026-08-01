@@ -25,7 +25,7 @@ const C = {
 };
 
 export default function Costs({ trades, lang }: { trades: TT[]; lang: Lang }) {
-  const t = C[lang] || C.en;
+  const t = C[lang];
   const now = new Date();
   const y = now.getUTCFullYear(), mo = now.getUTCMonth(), day = now.getUTCDate();
   const todayStr = now.toISOString().slice(0, 10);

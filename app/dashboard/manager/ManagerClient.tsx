@@ -161,8 +161,8 @@ export default function ManagerClient() {
   const [tab, setTab] = useState<Tab>('trade');
   const [firmSel, setFirmSel] = useState('');
   const [warnings, setWarnings] = useState<string[]>([]);
-  const t = T[lang] || T.en;
-  const t2 = P2[lang] || P2.en;
+  const t = T[lang];
+  const t2 = P2[lang];
 
   useEffect(() => {
     load();

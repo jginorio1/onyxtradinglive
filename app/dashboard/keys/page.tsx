@@ -199,7 +199,7 @@ export default function KeysPage() {
   const [copied, setCopied] = useState('');
   const [origin, setOrigin] = useState('');
   const { lang, setLang } = useLang();
-  const t = K[lang] || K.en;
+  const t = K[lang];
   const firmItems = useCatalog('firm'); // prop firms / brokers del catálogo del admin
   const atLimit = !!usage && !usage.unlimited && usage.used >= usage.max;
 

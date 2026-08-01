@@ -1,5 +1,4 @@
 'use client';
-import { mkL } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import OnyxIcon from '@/app/components/OnyxIcon';
@@ -10,7 +9,7 @@ import OnyxIcon from '@/app/components/OnyxIcon';
 export default function AcademyAdmin({ canManage = false }: { canManage?: boolean }) {
   const { lang } = useLang();
   const es = lang !== 'en';
-  const L = mkL(lang);
+  const L = (a: string, b: string) => (es ? a : b);
   const [d, setD] = useState<any>(null);
   const [defPct, setDefPct] = useState('');
   const [rowPct, setRowPct] = useState<Record<string, string>>({});

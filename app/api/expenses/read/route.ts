@@ -1,4 +1,3 @@
-import { pickLang, langFromCookie } from '@/lib/i18n';
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
@@ -22,7 +21,7 @@ export async function POST(req: Request) {
     if (!user) return NextResponse.json({ error: 'no autorizado' }, { status: 401 });
     if (!(await hasExpenses(user.id))) return NextResponse.json({ error: 'plan' }, { status: 403 });
     const b = await req.json().catch(() => ({} as any));
-    const lang = pickLang(b.lang);
+    const lang = b.lang === 'en' ? 'en' : 'es';
 
     // Archivo adjunto (imagen o PDF) o texto pegado.
     const allowed = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp', 'image/gif'];

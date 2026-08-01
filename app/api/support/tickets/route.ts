@@ -1,4 +1,3 @@
-import { pickLang, langFromCookie } from '@/lib/i18n';
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
@@ -65,7 +64,7 @@ export async function POST(req: Request) {
 
     // Triage + auto-respuesta con IA, en el idioma del trader
     const { data: prof } = await supabaseAdmin.from('profiles').select('lang').eq('id', user.id).maybeSingle();
-    const lang = pickLang((prof as any)?.lang);
+    const lang = (prof as any)?.lang === 'en' ? 'en' : 'es';
     await autoHandleTicket({ ticketId: ticket.id, question: body, lang, email: user.email, subject });
 
     return NextResponse.json({ ok: true, id: ticket.id });

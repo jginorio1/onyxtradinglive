@@ -1,5 +1,4 @@
 'use client';
-import { mkL } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 import { toast, toastErr } from '@/lib/toast';
 import { useLang } from '@/lib/lang';
@@ -19,7 +18,7 @@ type Seg = { id: string; es: string; en: string; auto?: boolean };
 
 export default function Campaigns() {
   const { lang } = useLang();
-  const L = mkL(lang);
+  const L = (es: string, en: string) => (lang === 'en' ? en : es);
   const [camps, setCamps] = useState<Campaign[]>([]);
   const [segs, setSegs] = useState<Seg[]>([]);
   const [stats, setStats] = useState<any>(null);

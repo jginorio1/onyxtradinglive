@@ -44,7 +44,7 @@ const NEXT: any = {
 
 export default function GuideHome() {
   const { lang } = useLang();
-  const t = T[lang] || T.en;
+  const t = T[lang];
   const [q, setQ] = useState('');
   const [state, setState] = useState<'guest' | 'noAcc' | 'noMgr' | 'ready'>('guest');
 

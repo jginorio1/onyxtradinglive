@@ -1,5 +1,4 @@
 'use client';
-import { mkL } from '@/lib/i18n';
 // Chat en vivo del equipo: canales + mensajes directos, @menciones (compañero /
 // cliente / ticket), adjuntar fotos y documentos, emojis, @Onyx AI y búsqueda por
 // día. Reusa el motor ChatThread del soporte, con tiempo real por broadcast.
@@ -64,7 +63,7 @@ export default function TeamChat() {
 function TeamChatInner() {
   const { lang } = useLang();
   const en = lang === 'en';
-  const L = mkL(lang);
+  const L = (es: string, e: string) => (en ? e : es);
   const [channels, setChannels] = useState<Channel[]>([]);
   const [team, setTeam] = useState<Member[]>([]);
   const [me, setMe] = useState('');

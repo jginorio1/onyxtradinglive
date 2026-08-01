@@ -1,4 +1,3 @@
-import { pickLang, langFromCookie } from '@/lib/i18n';
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
@@ -27,7 +26,7 @@ export async function POST(req: Request) {
   if (!mrow || !(mrow as any).assistant_on || !((mrow as any).assistant_kb || '').trim()) {
     return NextResponse.json({ error: 'assistant_off' }, { status: 400 });
   }
-  const lang = langFromCookie(req.headers.get('cookie'));
+  const lang = /onyx_lang=en/.test(req.headers.get('cookie') || '') ? 'en' : 'es';
   const text = await assistantAnswer(question, (mrow as any).assistant_kb, (mrow as any).academy_name || 'Onyx Academy', lang, (mrow as any).ai_emojis !== false);
   if (!text) return NextResponse.json({ error: 'ai_error' }, { status: 400 });
   return NextResponse.json({ ok: true, text });

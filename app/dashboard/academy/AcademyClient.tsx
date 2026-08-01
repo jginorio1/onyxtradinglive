@@ -1,5 +1,4 @@
 'use client';
-import { mkL } from '@/lib/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import OnyxIcon from '@/app/components/OnyxIcon';
@@ -205,7 +204,7 @@ function confirmDelete(o: ConfirmOpts = {}): Promise<boolean> {
   return Promise.resolve(false);
 }
 function ConfirmHost({ lang }: { lang: string }) {
-  const L = mkL(lang);
+  const L = (a: string, b: string) => (lang === 'en' ? b : a);
   const [st, setSt] = useState<{ o: ConfirmOpts; res: (v: boolean) => void } | null>(null);
   useEffect(() => { _askDelete = (o) => new Promise<boolean>((res) => setSt({ o, res })); return () => { _askDelete = null; }; }, []);
   if (!st) return null;
@@ -362,7 +361,7 @@ function InstallBanner({ L }: { L: (a: string, b: string) => string }) {
 
 export default function AcademyClient() {
   const { lang } = useLang();
-  const L = mkL(lang);
+  const L = (a: string, b: string) => (lang === 'en' ? b : a);
   const [d, setD] = useState<any>(null);
   const [active, setActive] = useState<any>(null);
   const [paywall, setPaywall] = useState<any>(null);
@@ -537,7 +536,7 @@ function CalBtns({ ev, L }: any) {
   );
 }
 function LiveBanner({ ev, lang }: { ev: any; lang: string }) {
-  const L = mkL(lang);
+  const L = (a: string, b: string) => (lang === 'en' ? b : a);
   const now = useNow(true);
   if (!ev) return null;
   const start = new Date(ev.starts_at).getTime();
@@ -559,7 +558,7 @@ function LiveBanner({ ev, lang }: { ev: any; lang: string }) {
 
 // Pantalla de membresía requerida (comunidad de pago).
 function Paywall({ pw, lang, onBack }: any) {
-  const L = mkL(lang);
+  const L = (a: string, b: string) => (lang === 'en' ? b : a);
   const [busy, setBusy] = useState(false);
   const [closed, setClosed] = useState<any>(null);
   const cur = (pw.currency || 'usd').toUpperCase(); const sym = cur === 'USD' ? '$' : '';
@@ -601,7 +600,7 @@ function Paywall({ pw, lang, onBack }: any) {
 
 // Puertas cerradas: countdown de reapertura + lista de espera.
 function ClosedDoors({ pw, closed, lang, onBack }: any) {
-  const L = mkL(lang);
+  const L = (a: string, b: string) => (lang === 'en' ? b : a);
   const now = useNow(true);
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
@@ -643,7 +642,7 @@ function ClosedDoors({ pw, closed, lang, onBack }: any) {
 
 // =================== Comunidad ===================
 function Community({ active, lang, reload, onExit, toMentor }: any) {
-  const L = mkL(lang);
+  const L = (a: string, b: string) => (lang === 'en' ? b : a);
   const es = lang !== 'en';
   const [tab, setTab] = useState<'community' | 'classroom' | 'calendar' | 'members' | 'leaderboard' | 'logros' | 'profile' | 'chat'>('community');
   const [openMod, setOpenMod] = useState<any>(null);
@@ -1267,7 +1266,7 @@ function PdfViewer({ url, allowDownload = true, L }: { url: string; allowDownloa
 }
 
 function ProfileView({ mentorId, userId, me, lang, onDm, onBack }: any) {
-  const L = mkL(lang);
+  const L = (a: string, b: string) => (lang === 'en' ? b : a);
   const [p, setP] = useState<any>(null);
   function reloadP() { fetch(`/api/academy/profile?m=${mentorId}&u=${userId}`).then((r) => r.json()).then((j) => setP(j.profile)); }
   useEffect(() => { setP(null); reloadP(); }, [mentorId, userId]);
@@ -1400,7 +1399,7 @@ function ProfileView({ mentorId, userId, me, lang, onDm, onBack }: any) {
 }
 
 function ChatView({ mentorId, lang, initialWith, members, myUserId, staffIds = [], iAmStaff = false, roles = {} }: any) {
-  const L = mkL(lang);
+  const L = (a: string, b: string) => (lang === 'en' ? b : a);
   const [threads, setThreads] = useState<any[]>([]);
   const [withId, setWithId] = useState<string | null>(initialWith || null);
   const [conv, setConv] = useState<any>(null);
@@ -2088,7 +2087,7 @@ function Tiers({ products, purchases, onBuy, L }: any) {
 
 // =================== Panel del mentor ===================
 function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: () => void; openStudent: (mid: string) => void }) {
-  const L = mkL(lang);
+  const L = (a: string, b: string) => (lang === 'en' ? b : a);
   const [d, setD] = useState<any>(null);
   const [tab, setTab] = useState<'cursos' | 'envivo' | 'cobros' | 'alumnos' | 'auditoria' | 'retencion' | 'comunidad' | 'correos' | 'ajustes'>('cursos');
   const [newMod, setNewMod] = useState('');

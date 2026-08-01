@@ -35,7 +35,7 @@ export default function Pricing() {
   const [annual, setAnnual] = useState(false);
   const [loading, setLoading] = useState('');
   const { lang, setLang } = useLang();
-  const t = T[lang] || T.en;
+  const t = T[lang];
 
   useEffect(() => {
     fetch('/api/admin/plans').then((r) => r.json()).then((j) => setPlans(j.plans || [])).catch(() => setPlans([]));

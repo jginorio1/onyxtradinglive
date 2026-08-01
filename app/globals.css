@@ -36,9 +36,6 @@ html[data-theme="light"]{
 
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:radial-gradient(1200px 600px at 50% -200px, rgba(124,140,255,.10), transparent 60%), var(--bg);color:var(--tx);font-family:"Segoe UI",system-ui,-apple-system,Arial,sans-serif;line-height:1.6;}
-/* Tipografía para chino y japonés (se activa por el atributo lang del <html>). */
-html[lang="zh"] body{font-family:"Noto Sans SC","Segoe UI",system-ui,-apple-system,Arial,sans-serif;}
-html[lang="ja"] body{font-family:"Noto Sans JP","Segoe UI",system-ui,-apple-system,Arial,sans-serif;}
 
 /* Interruptor sol/luna */
 .themetoggle{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--tx);cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;transition:.15s;flex:none;}

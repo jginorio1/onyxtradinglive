@@ -34,7 +34,7 @@ export async function GET(req: Request) {
     // Idioma de cada uno para el aviso.
     const { data: profs } = await supabaseAdmin.from('profiles').select('id,lang').in('id', pending);
     const langOf: Record<string, string> = {};
-    (profs || []).forEach((p: any) => { langOf[p.id] = p.lang === 'es' ? 'es' : 'en'; });
+    (profs || []).forEach((p: any) => { langOf[p.id] = p.lang === 'en' ? 'en' : 'es'; });
 
     let sent = 0;
     for (const uid of pending) {

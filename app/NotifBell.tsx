@@ -1,5 +1,4 @@
 'use client';
-import { mkL } from '@/lib/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { useLang } from '@/lib/lang';
 
@@ -8,7 +7,7 @@ const ICON: Record<string, string> = { support: '💬', funding: '⚠️', manag
 
 export default function NotifBell() {
   const { lang } = useLang();
-  const L = mkL(lang);
+  const L = (es: string, en: string) => (lang === 'en' ? en : es);
   const [open, setOpen] = useState(false);
   const [pinned, setPinned] = useState(false);
   const [items, setItems] = useState<any[]>([]);
