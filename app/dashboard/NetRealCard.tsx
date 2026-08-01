@@ -21,7 +21,7 @@ export default function NetRealCard() {
 
   return (
     <Link href="/dashboard/expenses" style={{ textDecoration: 'none', display: 'block' }}>
-      <div className="card" style={{ margin: '0 auto 14px', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', border: '1px solid rgba(124,140,255,.3)', maxWidth: 560 }}>
+      <div className="card" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', border: '1px solid rgba(124,140,255,.3)', height: '100%' }}>
         <span style={{ display: "inline-flex", color: "var(--brand)" }}><OnyxIcon emoji="🧮" size={22} /></span>
         <div>
           <div className="muted" style={{ fontSize: 12.5 }}>{L('Neto real este mes', 'True net this month')}</div>

@@ -223,7 +223,7 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
 .section{padding:34px 0;}
 
 /* Contenedor del dashboard: llena cualquier monitor con margen proporcional */
-.wrap-wide{max-width:none;margin:0;padding:0 clamp(16px,3vw,80px);}
+.wrap-wide{max-width:1680px;margin:0 auto;padding:0 clamp(16px,3vw,64px);}
 
 /* Layout cabina: sesiones izquierda · panel centro (se estira) · noticias derecha */
 .cockpit{display:flex;flex-direction:column;gap:16px;}

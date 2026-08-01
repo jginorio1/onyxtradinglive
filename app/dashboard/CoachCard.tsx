@@ -49,7 +49,7 @@ export default function CoachCard() {
   }
 
   return (
-    <div className="card" style={{ marginBottom: 14, border: '1px solid rgba(124,140,255,.3)' }}>
+    <div className="card" style={{ margin: 0, border: '1px solid rgba(124,140,255,.3)' }}>
       <div className="row between" style={{ flexWrap: 'wrap', gap: 8, marginBottom: txt && open ? 10 : 0 }}>
         <div className="row" style={{ gap: 10, alignItems: 'center' }}>
           <span style={{ width: 38, height: 38, borderRadius: 11, background: 'rgba(124,140,255,.16)', color: 'var(--brand)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}><OnyxIcon emoji="✨" size={20} /></span>
