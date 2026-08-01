@@ -26,6 +26,9 @@ export default function MentoresPage() {
   const [plans, setPlans] = useState<Plan[]>([]);
   useEffect(() => { fetch('/api/admin/plans').then((r) => r.json()).then((j) => setPlans(j.plans || [])).catch(() => {}); }, []);
   const shown = plans.length ? plans : FALLBACK;
+  // Comisión dinámica: rango min–max del % por plan (se refleja al cambiarlo en admin).
+  const _fees = (plans as any[]).map((p) => p?.capabilities?.academy_fee_pct).filter((x) => x != null && !isNaN(Number(x))).map(Number);
+  const feeRange = _fees.length ? `${Math.min(..._fees)}–${Math.max(..._fees)}%` : '3–10%';
 
   const grad: any = { background: 'linear-gradient(90deg,var(--brand),#7a5cff)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' };
 
@@ -38,7 +41,15 @@ export default function MentoresPage() {
     { ic: 'book', es: 'Cursos y aulas', en: 'Courses & classrooms', de: 'Con progreso y certificados', den: 'With progress & certificates' },
     { ic: 'users', es: 'Comunidad', en: 'Community', de: 'Feed, niveles y ranking', den: 'Feed, levels & ranking' },
     { ic: 'sessions', es: 'Clases en vivo', en: 'Live classes', de: 'En la hora local de cada alumno', den: "In each student's local time" },
-    { ic: 'card', es: 'Membresías', en: 'Memberships', de: 'Niveles y pagos recurrentes', den: 'Tiers & recurring payments' },
+    { ic: 'card', es: 'Membresías y niveles', en: 'Memberships & tiers', de: 'Pagos recurrentes con Stripe', den: 'Recurring payments with Stripe' },
+    { ic: 'coach', es: 'Copiloto IA', en: 'AI copilot', de: 'Escribe tu about, posts y ventas en tu voz', den: 'Writes your about, posts & sales in your voice' },
+    { ic: 'card', es: 'Te quedas con la mayoría', en: 'You keep the majority', de: 'Stripe cobra directo a tu cuenta', den: 'Stripe pays straight to your account' },
+    { ic: 'users', es: 'Referidos de alumnos', en: 'Student referrals', de: 'Tus alumnos te traen alumnos', den: 'Your students bring you students' },
+    { ic: 'book', es: 'Auditoría de alumnos', en: 'Student audits', de: 'Revisa su trading real (add-on)', den: 'Review their real trading (add-on)' },
+    { ic: 'mail', es: 'Emails automáticos', en: 'Automated emails', de: 'Bienvenida y seguimiento', den: 'Welcome & follow-up' },
+    { ic: 'megaphone', es: 'Marca propia', en: 'Your own brand', de: 'Tu logo, colores y redes', den: 'Your logo, colors & socials' },
+    { ic: 'ticket', es: 'Cupones y plan anual', en: 'Coupons & annual', de: 'Descuentos y cobro anual', den: 'Discounts & annual billing' },
+    { ic: 'shield', es: 'Onyx Guardian VIP', en: 'Onyx Guardian VIP', de: 'Regálalo en tus niveles altos', den: 'Give it away on your top tiers' },
     { ic: 'shield', es: 'Moderación con IA', en: 'AI moderation', de: 'Comunidad sana, sin spam', den: 'Healthy community, no spam' },
     { ic: 'trophy', es: 'Muro de logros', en: 'Wins wall', de: 'Prueba social real de tus alumnos', den: 'Real social proof from students' },
   ];
@@ -47,9 +58,12 @@ export default function MentoresPage() {
     <div>
       {/* HERO */}
       <div className="wrap" style={{ textAlign: 'center', padding: '78px 22px 30px' }}>
-        <div style={{ display: 'inline-flex', border: '1px solid var(--line)', borderRadius: 999, padding: 3, marginBottom: 18, background: 'var(--card2, rgba(255,255,255,.03))' }}>
-          <Link href="/" style={{ padding: '7px 18px', borderRadius: 999, fontSize: 13.5, fontWeight: 600, color: 'var(--mut)', textDecoration: 'none' }}>{L('Soy trader', "I'm a trader")}</Link>
-          <span style={{ padding: '7px 18px', borderRadius: 999, fontSize: 13.5, fontWeight: 700, background: 'var(--brand)', color: '#fff' }}>{L('Soy mentor', "I'm a mentor")}</span>
+        <div style={{ marginBottom: 18 }}>
+          <div style={{ fontSize: 12.5, color: 'var(--mut)', marginBottom: 9 }}>{L('¿Cómo vas a usar Onyx?', 'How will you use Onyx?')}</div>
+          <div style={{ display: 'inline-flex', border: '1px solid var(--line)', borderRadius: 999, padding: 5, background: 'var(--card2, rgba(255,255,255,.03))' }}>
+            <Link href="/" style={{ padding: '11px 26px', borderRadius: 999, fontSize: 15, fontWeight: 600, color: 'var(--tx)', textDecoration: 'none' }}>{L('Soy trader', "I'm a trader")}</Link>
+            <span style={{ padding: '11px 26px', borderRadius: 999, fontSize: 15, fontWeight: 800, background: 'var(--brand)', color: '#fff', boxShadow: '0 0 22px rgba(124,140,255,.65)' }}>{L('Soy mentor', "I'm a mentor")}</span>
+          </div>
         </div>
         <br />
         <span className="pill green" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon name="graduation" size={14} /> Onyx Academy</span>
@@ -62,7 +76,7 @@ export default function MentoresPage() {
         <div className="row" style={{ justifyContent: 'center', gap: 20, flexWrap: 'wrap', marginTop: 18, fontSize: 13.5, color: 'var(--mut)' }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon name="card" size={15} glow={false} /> {L('Cobros con Stripe', 'Payments with Stripe')}</span>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon name="money" size={15} glow={false} /> {L('Tú fijas el precio', 'You set the price')}</span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon name="costs" size={15} glow={false} /> {L('Onyx toma solo 3–10%', 'Onyx takes just 3–10%')}</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon name="costs" size={15} glow={false} /> {L('Onyx toma solo ' + feeRange, 'Onyx takes just ' + feeRange)}</span>
         </div>
       </div>
 
@@ -102,7 +116,7 @@ export default function MentoresPage() {
         <div className="card" style={{ padding: 24, border: '1px solid color-mix(in srgb,var(--brand) 35%,transparent)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 18, flexWrap: 'wrap' }}>
           <div style={{ maxWidth: 620 }}>
             <div style={{ fontSize: 18, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="coins" size={20} /></span> {L('Ganas por lo que vendes', 'You earn from what you sell')}</div>
-            <p className="muted" style={{ fontSize: 15, marginTop: 6, marginBottom: 0, lineHeight: 1.6 }}>{L('Tú cobras membresías y niveles a tu precio. Onyx solo toma un 3–10% según tu plan — sin montar web, sin pasarela, sin servidores. Y entre más alto tu plan, menor la comisión.', 'You charge memberships and tiers at your price. Onyx only takes 3–10% depending on your plan — no website, no gateway, no servers. The higher your plan, the lower the fee.')}</p>
+            <p className="muted" style={{ fontSize: 15, marginTop: 6, marginBottom: 0, lineHeight: 1.6 }}>{L('Tú cobras membresías y niveles a tu precio. Onyx solo toma un ' + feeRange + ' según tu plan — sin montar web, sin pasarela, sin servidores. Y entre más alto tu plan, menor la comisión.', 'You charge memberships and tiers at your price. Onyx only takes ' + feeRange + ' depending on your plan — no website, no gateway, no servers. The higher your plan, the lower the fee.')}</p>
           </div>
           <Link className="btn btn-primary" href="/login?mode=signup" style={{ padding: '13px 26px', fontSize: 16, whiteSpace: 'nowrap' }}>{L('Empezar ahora', 'Start now')}</Link>
         </div>

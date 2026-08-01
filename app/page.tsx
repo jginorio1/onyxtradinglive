@@ -385,9 +385,12 @@ export default function Home() {
       {/* HERO */}
       <div className="wrap" style={{ textAlign: 'center', padding: '78px 22px 30px' }}>
         {/* Selector de público: el mismo sitio le habla al trader y al mentor */}
-        <div style={{ display: 'inline-flex', border: '1px solid var(--line)', borderRadius: 999, padding: 3, marginBottom: 18, background: 'var(--card2, rgba(255,255,255,.03))' }}>
-          <span style={{ padding: '7px 18px', borderRadius: 999, fontSize: 13.5, fontWeight: 700, background: 'var(--brand)', color: '#fff' }}>{lang === 'es' ? 'Soy trader' : "I'm a trader"}</span>
-          <Link href="/mentores" style={{ padding: '7px 18px', borderRadius: 999, fontSize: 13.5, fontWeight: 600, color: 'var(--mut)', textDecoration: 'none' }}>{lang === 'es' ? 'Soy mentor' : "I'm a mentor"}</Link>
+        <div style={{ marginBottom: 18 }}>
+          <div style={{ fontSize: 12.5, color: 'var(--mut)', marginBottom: 9 }}>{lang === 'es' ? '¿Cómo vas a usar Onyx?' : 'How will you use Onyx?'}</div>
+          <div style={{ display: 'inline-flex', border: '1px solid var(--line)', borderRadius: 999, padding: 5, background: 'var(--card2, rgba(255,255,255,.03))' }}>
+            <span style={{ padding: '11px 26px', borderRadius: 999, fontSize: 15, fontWeight: 800, background: 'var(--brand)', color: '#fff', boxShadow: '0 0 22px rgba(124,140,255,.65)' }}>{lang === 'es' ? 'Soy trader' : "I'm a trader"}</span>
+            <Link href="/mentores" style={{ padding: '11px 26px', borderRadius: 999, fontSize: 15, fontWeight: 600, color: 'var(--tx)', textDecoration: 'none' }}>{lang === 'es' ? 'Soy mentor' : "I'm a mentor"}</Link>
+          </div>
         </div>
         <br />
         <span className="pill green">{t.hero.badge}</span>
