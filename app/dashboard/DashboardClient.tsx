@@ -520,7 +520,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
 
         {/* Ganancia neta + Onyx Coach: rejilla fluida (lado a lado en ancho, apiladas en móvil) */}
         {(caps?.expenses || caps?.coach) && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(320px,1fr))', gap: 12, alignItems: 'start', marginBottom: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(320px,1fr))', gap: 12, alignItems: 'stretch', marginBottom: 14 }}>
             {caps?.expenses ? <NetRealCard /> : null}
             {caps?.coach ? <CoachCard /> : null}
           </div>
