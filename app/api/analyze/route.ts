@@ -1,4 +1,3 @@
-import { pickLang, langFromCookie } from '@/lib/i18n';
 import { NextResponse } from 'next/server';
 import { analyzeStatement } from '@/lib/coachAI';
 import { logError } from '@/lib/errlog';
@@ -11,7 +10,7 @@ export const runtime = 'nodejs';
 export async function POST(req: Request) {
   try {
     const b = await req.json().catch(() => ({} as any));
-    const lang = pickLang(b.lang);
+    const lang = b.lang === 'en' ? 'en' : 'es';
     const text = String(b.text || '').slice(0, 8000);
     if (text.trim().length < 30) {
       return NextResponse.json({ error: lang === 'en' ? 'Paste a bit more of your statement or trades.' : 'Pega un poco más de tu reporte u operaciones.' }, { status: 400 });

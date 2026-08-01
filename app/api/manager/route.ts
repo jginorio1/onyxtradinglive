@@ -129,7 +129,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       ok: true,
       version: Number(prev?.version || 0) + 1,
-      warnings: configWarnings(config, b.lang === 'es' ? 'es' : 'en'),
+      warnings: configWarnings(config, b.lang === 'en' ? 'en' : 'es'),
     });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });

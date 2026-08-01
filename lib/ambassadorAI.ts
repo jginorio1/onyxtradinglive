@@ -8,8 +8,7 @@ import { ONYX_BRIEF } from '@/lib/supportAI';
 // Reusa el "cerebro" de Onyx (ONYX_BRIEF) para no inventar funciones. Bilingüe.
 // ============================================================
 
-import type { Lang } from './navText';
-import { aiLangDirective, enBase, LANG_NAME } from '@/lib/i18n';
+type Lang = 'es' | 'en';
 
 async function anthropic(system: string, user: string, maxTokens = 900): Promise<string | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -34,13 +33,13 @@ const NICHE_EN: Record<string, string> = { prop: 'prop-firm / funded accounts', 
 export async function draftInvite(opts: { name: string; platform: string; niche: string; lang: Lang; rate: number; couponPct: number }):
   Promise<{ ok: boolean; subject?: string; body?: string; reason?: string }> {
   if (!process.env.ANTHROPIC_API_KEY) return { ok: false, reason: 'no_key' };
-  const nicheLabel = (enBase(opts.lang) ? NICHE_EN : NICHE_ES)[opts.niche] || opts.niche;
-  const system = (enBase(opts.lang)
+  const nicheLabel = (opts.lang === 'en' ? NICHE_EN : NICHE_ES)[opts.niche] || opts.niche;
+  const system = (opts.lang === 'en'
     ? `You write short, warm, personal partnership-invitation emails from Onyx Trading Live to content creators. Honest, not salesy. Use the ONYX KNOWLEDGE below as the only source of truth about the product — never invent features and never promise profits or income. Lead with the value for THEIR audience (especially the prop-firm angle: Onyx Guardian enforces challenge rules). Mention the offer: ${opts.rate}% recurring commission for them and a ${opts.couponPct}% discount coupon for their followers. End with a soft call to reply. Max ~130 words.`
     : `Escribes correos de invitación de colaboración cortos, cercanos y personales, de Onyx Trading Live para creadores de contenido. Honesto, sin sonar a venta. Usa el CONOCIMIENTO DE ONYX de abajo como única fuente de verdad — nunca inventes funciones ni prometas ganancias. Empieza por el valor para SU audiencia (sobre todo el ángulo de prop firms: Onyx Guardian hace respetar las reglas del reto). Menciona la oferta: ${opts.rate}% de comisión recurrente para él/ella y un cupón de ${opts.couponPct}% de descuento para sus seguidores. Cierra con una llamada suave a responder. Máx ~130 palabras.`)
     + `\n\nDevuelve SOLO un JSON válido: {"subject":"...","body":"..."}`
-    + `\n\n=== ${enBase(opts.lang) ? 'ONYX KNOWLEDGE' : 'CONOCIMIENTO DE ONYX'} ===\n${ONYX_BRIEF[opts.lang] || ONYX_BRIEF.en}` + aiLangDirective(opts.lang);
-  const user = enBase(opts.lang)
+    + `\n\n=== ${opts.lang === 'en' ? 'ONYX KNOWLEDGE' : 'CONOCIMIENTO DE ONYX'} ===\n${ONYX_BRIEF[opts.lang]}`;
+  const user = opts.lang === 'en'
     ? `Creator: ${opts.name}. Platform: ${opts.platform}. Audience/niche: ${nicheLabel}.`
     : `Creador: ${opts.name}. Plataforma: ${opts.platform}. Audiencia/nicho: ${nicheLabel}.`;
 
@@ -57,17 +56,17 @@ export async function draftInvite(opts: { name: string; platform: string; niche:
 export async function draftPost(opts: { platform: string; link: string; code: string; couponPct: number; niche: string; lang: Lang }):
   Promise<{ ok: boolean; text?: string; reason?: string }> {
   if (!process.env.ANTHROPIC_API_KEY) return { ok: false, reason: 'no_key' };
-  const nicheLabel = (enBase(opts.lang) ? NICHE_EN : NICHE_ES)[opts.niche] || opts.niche;
-  const fmt: Record<string, string> = enBase(opts.lang)
+  const nicheLabel = (opts.lang === 'en' ? NICHE_EN : NICHE_ES)[opts.niche] || opts.niche;
+  const fmt: Record<string, string> = opts.lang === 'en'
     ? { youtube: 'a YouTube video description / pinned comment', instagram: 'a short Instagram caption', tiktok: 'a punchy TikTok caption', telegram: 'a Telegram/WhatsApp broadcast message', x: 'a short tweet' }
     : { youtube: 'una descripción de video de YouTube / comentario fijado', instagram: 'un pie de foto corto de Instagram', tiktok: 'un pie de TikTok con gancho', telegram: 'un mensaje de difusión de Telegram/WhatsApp', x: 'un tuit corto' };
   const format = fmt[opts.platform] || fmt.instagram;
 
-  const system = (enBase(opts.lang)
+  const system = (opts.lang === 'en'
     ? `You are a social copywriter for creators promoting Onyx Trading Live. Write ${format} that the creator can post as-is. Honest, engaging, with 1-2 tasteful emojis. NEVER promise profits/income and never invent features — use only the ONYX KNOWLEDGE below. Lean into the ${nicheLabel} angle. You MUST include this exact link and code at the end: link ${opts.link} and code ${opts.code} (${opts.couponPct}% off). Output ONLY the post text, nothing else.`
     : `Eres un copywriter social para creadores que promocionan Onyx Trading Live. Escribe ${format} que el creador pueda publicar tal cual. Honesto, con gancho, con 1-2 emojis con criterio. NUNCA prometas ganancias ni inventes funciones — usa solo el CONOCIMIENTO DE ONYX de abajo. Apóyate en el ángulo de ${nicheLabel}. DEBES incluir al final este enlace y código exactos: enlace ${opts.link} y código ${opts.code} (${opts.couponPct}% de descuento). Devuelve SOLO el texto del post, nada más.`)
-    + `\n\n=== ${enBase(opts.lang) ? 'ONYX KNOWLEDGE' : 'CONOCIMIENTO DE ONYX'} ===\n${ONYX_BRIEF[opts.lang] || ONYX_BRIEF.en}` + aiLangDirective(opts.lang);
-  const user = enBase(opts.lang) ? `Write the post for ${opts.platform}.` : `Escribe el post para ${opts.platform}.`;
+    + `\n\n=== ${opts.lang === 'en' ? 'ONYX KNOWLEDGE' : 'CONOCIMIENTO DE ONYX'} ===\n${ONYX_BRIEF[opts.lang]}`;
+  const user = opts.lang === 'en' ? `Write the post for ${opts.platform}.` : `Escribe el post para ${opts.platform}.`;
 
   const raw = await anthropic(system, user, 500);
   if (!raw) return { ok: false, reason: 'error' };

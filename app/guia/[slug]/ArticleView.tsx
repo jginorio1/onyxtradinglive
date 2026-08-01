@@ -21,7 +21,7 @@ const T: any = {
 
 export default function ArticleView({ slug }: { slug: string }) {
   const { lang } = useLang();
-  const t = T[lang] || T.en;
+  const t = T[lang];
   const [voted, setVoted] = useState(false);
 
   // Si el CTA lleva a una zona con sesión y el visitante no la tiene,

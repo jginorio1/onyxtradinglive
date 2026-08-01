@@ -1,4 +1,3 @@
-import { pickLang, langFromCookie } from '@/lib/i18n';
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
@@ -20,7 +19,7 @@ export async function POST(req: Request) {
     if (!(plan?.capabilities as any)?.manager) return NextResponse.json({ error: 'plan' }, { status: 403 });
 
     const b = await req.json().catch(() => ({} as any));
-    const lang = pickLang(b.lang);
+    const lang = b.lang === 'en' ? 'en' : 'es';
     const text = String(b.text || '').slice(0, 6000);
     const r = await parseRules(text, lang);
     if (!r.ok) {

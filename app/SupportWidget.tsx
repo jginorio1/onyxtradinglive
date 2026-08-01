@@ -35,7 +35,7 @@ const T: any = {
 
 export default function SupportWidget({ loggedIn = false }: { loggedIn?: boolean }) {
   const { lang } = useLang();
-  const t = T[lang] || T.en;
+  const t = T[lang];
   // Guardia del lado del cliente: la burbuja de usuario nunca aparece en el
   // panel de admin, sin importar el idioma. El guard del layout depende de una
   // cabecera del servidor que queda obsoleta al cambiar de idioma con

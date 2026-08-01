@@ -32,7 +32,7 @@ const T: any = {
 
 export default function Contacto() {
   const { lang } = useLang() as { lang: Lang };
-  const t = T[lang] || T.en;
+  const t = T[lang];
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [msg, setMsg] = useState('');

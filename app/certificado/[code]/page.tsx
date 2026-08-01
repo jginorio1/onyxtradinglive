@@ -1,5 +1,4 @@
 'use client';
-import { mkL } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useLang } from '@/lib/lang';
@@ -9,7 +8,7 @@ import OnyxIcon from '@/app/components/OnyxIcon';
 export default function Certificado() {
   const { code } = useParams<{ code: string }>();
   const { lang } = useLang();
-  const L = mkL(lang);
+  const L = (a: string, b: string) => (lang === 'en' ? b : a);
   const [c, setC] = useState<any>(null);
   const [state, setState] = useState<'loading' | 'ok' | 'missing'>('loading');
 

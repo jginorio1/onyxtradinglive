@@ -1,5 +1,4 @@
 'use client';
-import { mkL } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import OnyxIcon from '@/app/components/OnyxIcon';
@@ -18,7 +17,7 @@ const GREEN = 'var(--green)', RED = 'var(--red)', BRAND = 'var(--brand)', GOLD =
 export default function Finanzas({ canManage = false }: { canManage?: boolean }) {
   const { lang } = useLang();
   const es = lang !== 'en';
-  const L = mkL(lang);
+  const L = (a: string, b: string) => (es ? a : b);
   const [d, setD] = useState<any>(null);
   const [mode, setMode] = useState<'collected' | 'mrr'>('collected');
   const [busy, setBusy] = useState(false);

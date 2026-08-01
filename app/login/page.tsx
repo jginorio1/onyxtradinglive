@@ -97,7 +97,7 @@ function LoginInner() {
   const [hp, setHp] = useState('');               // honeypot: humanos lo dejan vacío
   const [captcha, setCaptcha] = useState('');     // token de Turnstile (si está activo)
   const { lang } = useLang();
-  const t = T[lang] || T.en;
+  const t = T[lang];
   const sb = supabaseBrowser();
 
   // Validación antes de llamar a Supabase, para dar el mensaje en su idioma

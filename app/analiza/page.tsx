@@ -1,5 +1,4 @@
 'use client';
-import { mkL } from '@/lib/i18n';
 import { useState } from 'react';
 import Link from 'next/link';
 import { useLang } from '@/lib/lang';
@@ -7,7 +6,7 @@ import { useLang } from '@/lib/lang';
 // Imán de leads público: pega tu reporte / operaciones y el AI te da 3 hallazgos.
 export default function AnalizaPage() {
   const { lang } = useLang();
-  const L = mkL(lang);
+  const L = (es: string, en: string) => (lang === 'en' ? en : es);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [findings, setFindings] = useState<string[] | null>(null);

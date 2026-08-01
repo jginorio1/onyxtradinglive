@@ -62,7 +62,7 @@ function Ring({ label, value }: { label: string; value: number }) {
 
 export default function Audit() {
   const { lang } = useLang();
-  const t = T[lang] || T.en;
+  const t = T[lang];
   const gt = useT();
   const [d, setD] = useState<any>(null);
   const [sec, setSec] = useState<any>(null);

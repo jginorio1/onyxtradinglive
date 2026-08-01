@@ -66,7 +66,7 @@ const INSTRUMENTS: Inst[] = [
 ];
 
 export default function LotCalculator({ lang, balance }: { lang: Lang; balance?: number }) {
-  const L = T[lang] || T.en;
+  const L = T[lang];
   const [bal, setBal] = useState<string>(balance ? String(Math.round(balance)) : '');
   const [risk, setRisk] = useState<string>('1');
   const [stop, setStop] = useState<string>('');

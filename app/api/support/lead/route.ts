@@ -1,4 +1,3 @@
-import { pickLang, langFromCookie } from '@/lib/i18n';
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendEmail } from '@/lib/mail';
@@ -16,7 +15,7 @@ export async function POST(req: Request) {
     const b = await req.json().catch(() => ({}));
     const email = String(b.email || '').trim().toLowerCase().slice(0, 160);
     const message = String(b.message || '').trim().slice(0, 4000);
-    const lang = pickLang(b.lang);
+    const lang = b.lang === 'en' ? 'en' : 'es';
     // Conversación completa con la IA (para dar contexto al equipo)
     const history: any[] = Array.isArray(b.history) ? b.history.slice(-20) : [];
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {

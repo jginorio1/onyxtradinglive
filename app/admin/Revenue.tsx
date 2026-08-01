@@ -41,7 +41,7 @@ function presetRange(k: string): [string, string] {
 
 export default function Revenue() {
   const { lang } = useLang();
-  const t = T[lang] || T.en;
+  const t = T[lang];
   const gt = useT();
   const [preset, setPreset] = useState('month');
   const [from, setFrom] = useState(() => presetRange('month')[0]);

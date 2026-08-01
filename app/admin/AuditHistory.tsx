@@ -30,7 +30,7 @@ const scoreCol = (v: number) => (v >= 90 ? 'var(--green)' : v >= 50 ? 'var(--amb
 
 export default function AuditHistory() {
   const { lang } = useLang() as { lang: Lang };
-  const t = T[lang] || T.en;
+  const t = T[lang];
   const [data, setData] = useState<any>(null);
   const [cursor, setCursor] = useState(() => { const d = new Date(); return { y: d.getFullYear(), m: d.getMonth() }; });
   const [selKey, setSelKey] = useState<string | null>(null);
