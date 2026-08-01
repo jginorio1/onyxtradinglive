@@ -651,6 +651,7 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
   const [postImg, setPostImg] = useState('');
   const [postKind, setPostKind] = useState('community');
   const [postWinKind, setPostWinKind] = useState('payout');
+  const [postAnn, setPostAnn] = useState(false);
   const [feedFilter, setFeedFilter] = useState('all');
   const [composeOpen, setComposeOpen] = useState(false);
   const [sentToast, setSentToast] = useState(false);
@@ -668,7 +669,7 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
   const doneCount = (active.progress || []).length;
 
   async function api(body: any) { const r = await fetch('/api/academy', { method: 'POST', body: JSON.stringify(body) }); return r.json().catch(() => ({})); }
-  async function sendPost() { if (!post.trim() && !postImg) return { ok: false }; const res = await api({ action: 'post', mentor_id: active.mentor_id, body: post, image_url: postImg, kind: postKind, win_kind: postKind === 'win' ? postWinKind : undefined }); setPost(''); setPostImg(''); setPostKind('community'); reload(); return res || {}; }
+  async function sendPost() { if (!post.trim() && !postImg) return { ok: false }; const res = await api({ action: 'post', mentor_id: active.mentor_id, body: post, image_url: postImg, kind: postKind, win_kind: postKind === 'win' ? postWinKind : undefined, announcement: postAnn, pinned: postAnn }); setPost(''); setPostImg(''); setPostKind('community'); setPostAnn(false); reload(); return res || {}; }
   async function like(t: string, id: string) { await api({ action: 'like', mentor_id: active.mentor_id, target_type: t, target_id: id }); reload(); }
   async function comment(pid: string, body: string, image?: string) { const r = await api({ action: 'comment', post_id: pid, mentor_id: active.mentor_id, body, image_url: image || '' }); if (r?.error === 'blocked') alert((r.message || L('Tu comentario no cumple las normas.', 'Your comment does not meet the rules.')) + escalMsg(r.escalated, L)); else if (r?.error === 'muted') alert(L('Estás silenciado temporalmente y no puedes comentar ahora.', 'You are temporarily muted and cannot comment right now.')); reload(); }
   // Reportar un contenido (post/comentario) para que lo revise el equipo.
@@ -742,6 +743,12 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
           <h3 style={{ marginBottom: 4 }}>{L('¿Qué tipo de publicación es?', 'What kind of post is this?')}</h3>
           <p className="muted" style={{ fontSize: 12.5, marginBottom: 12 }}>{L('Elige una categoría para tu post.', 'Pick a category for your post.')}</p>
           <PostTypePicker kind={postKind} setKind={setPostKind} winKind={postWinKind} setWinKind={setPostWinKind} L={L} />
+          {(active.isMentorHere || active.myPerms?.announce) && (
+            <label className="row" style={{ gap: 8, fontSize: 12.5, cursor: 'pointer', marginTop: 12 }}>
+              <input type="checkbox" checked={postAnn} onChange={(e) => setPostAnn(e.target.checked)} style={{ width: 'auto', margin: 0 }} />
+              <OnyxIcon name="megaphone" size={13} /> {L('Anuncio (fija arriba + push a todos)', 'Announcement (pins on top + push to all)')}
+            </label>
+          )}
           <div className="row" style={{ gap: 8, marginTop: 14, justifyContent: 'flex-end' }}>
             <button className="btn btn-ghost" onClick={() => setComposeOpen(false)}>{L('Cancelar', 'Cancel')}</button>
             <button className="btn btn-primary" onClick={async () => { const res = await sendPost(); setComposeOpen(false); if (res?.error === 'blocked') { alert((res.message || L('Tu publicación no cumple las normas de la comunidad.', 'Your post does not meet the community rules.')) + escalMsg(res.escalated, L)); return; } if (res?.error === 'muted') { alert(L('Estás silenciado temporalmente y no puedes publicar ahora.', 'You are temporarily muted and cannot post right now.')); return; } setSentPending(!!res?.pending); setSentToast(true); setTimeout(() => setSentToast(false), 2800); }}>{postKind === 'win' ? L('Publicar logro', 'Post win') : L('Publicar', 'Post')}</button>
@@ -1750,7 +1757,7 @@ function WinsWall({ active, lang, reload, L }: any) {
   const [pending, setPending] = useState<any[]>([]);
   const [busy, setBusy] = useState(false);
   const isMentor = !!active.isMentorHere;
-  const canModerate = !!(active.isMentorHere || active.myPerms?.moderate); // dueño o colaborador que modera
+  const canModerate = !!(active.isMentorHere || active.myPerms?.wins); // dueño o colaborador que aprueba logros
   const minePending = (active.winsMinePending || []) as any[];
 
   async function loadPending() { if (!canModerate) return; const r = await fetch(`/api/academy/wins?m=${mentorId}&pending=1`); const j = await r.json(); setPending(j.pending || []); }
@@ -2663,20 +2670,34 @@ function CollabManager({ d, api, L }: any) {
   const [open, setOpen] = useState(false);
   const [pick, setPick] = useState('');
   const [role, setRole] = useState('');
-  const [perms, setPerms] = useState<any>({ moderate: false, post: false, message: true, events: false });
+  const [preset, setPreset] = useState('custom');
+  const [perms, setPerms] = useState<any>({ wins: false, moderate: false, announce: false, message: false });
   const collabs = d.collaborators || [];
   const collabIds = new Set(collabs.map((c: any) => c.user_id));
   const candidates = (d.roster?.students || []).filter((s: any) => !collabIds.has(s.id));
-  const PERMS: [string, string, string][] = [
-    ['moderate', L('Aprobar logros', 'Approve wins'), 'trophy'],
-    ['post', L('Publicar / fijar', 'Post / pin'), 'chat'],
-    ['message', L('Chatear con alumnos', 'Message students'), 'mail'],
-    ['events', L('Programar clases', 'Schedule classes'), 'calendar'],
+  const PERMS: [string, string, string, string][] = [
+    ['wins', L('Aprobar logros', 'Approve wins'), 'trophy', L('Revisar la cola de logros: aprobar, rechazar o verificar.', 'Review the wins queue: approve, reject or verify.')],
+    ['moderate', L('Moderar el muro', 'Moderate the feed'), 'shield', L('Ver reportes, ocultar/borrar posts y comentarios, mutear o expulsar de la conversación.', 'See reports, hide/delete posts and comments, mute or remove from the conversation.')],
+    ['announce', L('Publicar y fijar anuncios', 'Post & pin announcements'), 'megaphone', L('Fijar arriba y enviar push a todos los alumnos.', 'Pin on top and push to all students.')],
+    ['message', L('Chatear con alumnos', 'Message students'), 'mail', L('Abrir chats privados con los alumnos de la comunidad.', 'Open private chats with community students.')],
   ];
+  // Roles listos que preseleccionan permisos típicos (editables después).
+  const PRESETS: [string, string, any][] = [
+    ['custom', L('Personalizado', 'Custom'), null],
+    ['moderador', L('Moderador', 'Moderator'), { wins: true, moderate: true }],
+    ['coach', L('Coach', 'Coach'), { message: true }],
+    ['cm', L('Community Manager', 'Community Manager'), { announce: true, moderate: true, message: true }],
+    ['logros', L('Revisor de logros', 'Wins reviewer'), { wins: true }],
+  ];
+  function applyPreset(id: string) {
+    setPreset(id);
+    const p = PRESETS.find((x) => x[0] === id);
+    if (p && p[2]) { setPerms({ wins: false, moderate: false, announce: false, message: false, ...p[2] }); if (!role.trim()) setRole(p[1]); }
+  }
   function add() {
     if (!pick) return;
     api({ action: 'collab_add', user_id: pick, role: role || L('Colaborador', 'Collaborator'), perms }, L('Colaborador añadido', 'Collaborator added'));
-    setOpen(false); setPick(''); setRole(''); setPerms({ moderate: false, post: false, message: true, events: false });
+    setOpen(false); setPick(''); setRole(''); setPreset('custom'); setPerms({ wins: false, moderate: false, announce: false, message: false });
   }
   return (
     <div className="sk-card">
@@ -2684,17 +2705,17 @@ function CollabManager({ d, api, L }: any) {
         <h3 style={{ display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic"><OnyxIcon name="guardian" size={16} /></span> {L('Colaboradores', 'Collaborators')}</h3>
         <button className="btn btn-primary" style={{ fontSize: 12.5 }} onClick={() => setOpen((v) => !v)}>＋ {L('Añadir', 'Add')}</button>
       </div>
-      <p className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>{L('Suma a tu equipo: dales un rol visible y permisos (moderar logros, publicar, chatear con alumnos, programar clases).', 'Build your team: give them a visible role and permissions (moderate wins, post, message students, schedule classes).')}</p>
+      <p className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>{L('Suma a tu equipo: elige un rol listo o crea uno propio, y marca qué puede hacer dentro de la comunidad (aprobar logros, moderar el muro, anunciar, chatear con alumnos).', 'Build your team: pick a ready role or make your own, and choose what they can do in the community (approve wins, moderate the feed, announce, message students).')}</p>
       {collabs.length === 0 ? <p className="muted" style={{ fontSize: 12.5 }}>{L('Aún no tienes colaboradores.', 'No collaborators yet.')}</p> : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {collabs.map((c: any) => (
             <div key={c.user_id} className="row between" style={{ background: 'var(--bg2)', borderRadius: 8, padding: '9px 12px', fontSize: 13, alignItems: 'center' }}>
               <div className="row" style={{ gap: 8, alignItems: 'center', minWidth: 0 }}><Avatar name={c.name} size={26} /><span>{c.name}</span><span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--brand) 16%,transparent)', color: 'var(--soft-brand,var(--brand))' }}>{c.role}</span></div>
               <div className="row" style={{ gap: 4, alignItems: 'center' }}>
-                {c.perms?.moderate && <span title={L('Modera', 'Moderates')}><OnyxIcon name="trophy" size={13} /></span>}
-                {c.perms?.post && <span title={L('Publica', 'Posts')}><OnyxIcon name="chat" size={13} /></span>}
+                {(c.perms?.wins ?? c.perms?.moderate) && <span title={L('Logros', 'Wins')}><OnyxIcon name="trophy" size={13} /></span>}
+                {c.perms?.moderate && <span title={L('Modera', 'Moderates')}><OnyxIcon name="shield" size={13} /></span>}
+                {(c.perms?.announce ?? c.perms?.post) && <span title={L('Anuncia', 'Announces')}><OnyxIcon name="megaphone" size={13} /></span>}
                 {c.perms?.message && <span title={L('Chatea', 'Messages')}><OnyxIcon name="mail" size={13} /></span>}
-                {c.perms?.events && <span title={L('Clases', 'Classes')}><OnyxIcon name="calendar" size={13} /></span>}
                 <button className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 11, color: 'var(--red)' }} onClick={async () => { if (await confirmDelete({ title: L('¿Quitar colaborador?', 'Remove collaborator?'), itemName: c.name, message: L('Perderá sus permisos de gestión.', 'They lose their management permissions.'), confirmText: L('Quitar', 'Remove') })) api({ action: 'collab_remove', user_id: c.user_id }); }}>✕</button>
               </div>
             </div>
@@ -2707,10 +2728,20 @@ function CollabManager({ d, api, L }: any) {
             <option value="">{L('— Elige un alumno —', '— Pick a student —')}</option>
             {candidates.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
-          <input value={role} onChange={(e) => setRole(e.target.value)} placeholder={L('Rol / etiqueta (ej: Moderador, Coach)', 'Role / tag (e.g. Moderator, Coach)')} style={{ margin: '0 0 8px' }} />
+          <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{L('Rol', 'Role')}</div>
+          <select value={preset} onChange={(e) => applyPreset(e.target.value)} style={{ margin: '0 0 8px' }}>
+            {PRESETS.map(([id, lbl]) => <option key={id} value={id}>{lbl}</option>)}
+          </select>
+          <input value={role} onChange={(e) => setRole(e.target.value)} placeholder={L('Etiqueta visible (ej: Moderador, Coach)', 'Visible tag (e.g. Moderator, Coach)')} style={{ margin: '0 0 10px' }} />
           <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{L('Permisos', 'Permissions')}</div>
-          {PERMS.map(([k, lbl]) => (
-            <label key={k} className="row" style={{ gap: 8, fontSize: 13, marginBottom: 4 }}><input type="checkbox" checked={!!perms[k]} onChange={(e) => setPerms({ ...perms, [k]: e.target.checked })} style={{ width: 'auto', margin: 0 }} /> {lbl}</label>
+          {PERMS.map(([k, lbl, ic, desc]) => (
+            <label key={k} className="row" style={{ gap: 8, fontSize: 13, marginBottom: 9, alignItems: 'flex-start' }}>
+              <input type="checkbox" checked={!!perms[k]} onChange={(e) => { setPerms({ ...perms, [k]: e.target.checked }); setPreset('custom'); }} style={{ width: 'auto', margin: '2px 0 0' }} />
+              <span style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon name={ic as any} size={13} /> {lbl}</span>
+                <span className="muted" style={{ fontSize: 11.5, lineHeight: 1.35 }}>{desc}</span>
+              </span>
+            </label>
           ))}
           <div className="row" style={{ gap: 8, marginTop: 10 }}>
             <button className="btn btn-primary" onClick={add} disabled={!pick}>{L('Añadir colaborador', 'Add collaborator')}</button>

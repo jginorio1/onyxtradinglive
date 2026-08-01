@@ -27,7 +27,7 @@ export async function GET(req: Request) {
   const { perms, allowed } = await ctx(m, user.id);
   if (!allowed) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
   if (sp.get('pending')) {
-    if (!perms.moderate) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+    if (!perms.wins) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
     return NextResponse.json({ pending: await pendingWins(m) });
   }
   return NextResponse.json({ wins: await listWins(m, user.id, sp.get('kind') || undefined) });
@@ -51,8 +51,8 @@ export async function POST(req: Request) {
   }
   if (action === 'like') { return NextResponse.json(await toggleWinLike(String(b.win_id), user.id)); }
 
-  // Acciones de moderación: dueño o colaborador con permiso "moderate".
-  if (!perms.moderate) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+  // Acciones sobre logros: dueño o colaborador con permiso "wins".
+  if (!perms.wins) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
   if (action === 'review') {
     // Antes de aprobar, sabemos a quién notificar (el autor del logro).
     const decision = b.decision === 'reject' ? 'reject' : 'approve';

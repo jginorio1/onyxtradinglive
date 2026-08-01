@@ -6,7 +6,7 @@ import { listProducts, accessibleModules, studentPurchases, perksFor, membership
 import { referrerView } from '@/lib/academyReferral';
 import { auditAddon, hasAuditAddon, auditConsent, planVerified } from '@/lib/academyAudit';
 import { listWins, pendingCount, addWin, myPending } from '@/lib/academyWins';
-import { pushWinPending } from '@/lib/academyPush';
+import { pushWinPending, pushAnnouncement } from '@/lib/academyPush';
 import { roleMap, permsFor, staffIds } from '@/lib/academyCollab';
 import { getSettings, moderateText, isMuted, pendingContentCount, reportsCount, escalateOnBlock } from '@/lib/academyModeration';
 
@@ -120,8 +120,8 @@ export async function GET(req: Request) {
       wins, winsPending,
       roles, myPerms, staffIds: staff, myPushPrefs,
     };
-    // Un colaborador con permiso de moderar también ve la cola por aprobar.
-    if (!iAmMentorHere && (myPerms as any)?.moderate) out.active.winsPending = await pendingCount(m);
+    // Un colaborador con permiso de logros ve la cola de aprobación de logros.
+    if (!iAmMentorHere && (myPerms as any)?.wins) out.active.winsPending = await pendingCount(m);
     // El alumno ve sus propios logros pendientes (zona "esperando aprobación").
     if (!iAmMentorHere) out.active.winsMinePending = await myPending(m, user.id);
     // Moderación: el equipo (dueño o colaborador que modera) ve contadores de cola.
@@ -164,6 +164,9 @@ export async function POST(req: Request) {
         pushWinPending(mid, user.id);
         return NextResponse.json({ ok: true, pending: true });
       }
+      // ¿Puede fijar/anunciar? El mentor siempre; un colaborador con permiso "announce".
+      const canAnn = isMentorHere || (await permsFor(mid, user.id)).announce;
+      const wantAnn = canAnn && (!!b.announcement || !!b.pinned);
       // Moderación del texto (el mentor no se auto-modera).
       let modStatus: string | undefined; let flag: string | undefined;
       if (!isMentorHere && b.body) {
@@ -173,7 +176,9 @@ export async function POST(req: Request) {
         if (dec.action === 'block') { const esc = await escalateOnBlock(mid, user.id, settings, dec.reason); return NextResponse.json({ error: 'blocked', category: dec.category, message: blockedMsg(dec.category), escalated: esc.action }, { status: 422 }); }
         if (dec.action === 'review') { modStatus = 'pending'; flag = dec.reason; }
       }
-      await addPost(mid, user.id, String(b.body), false, b.image_url ? String(b.image_url) : undefined, undefined, { kind: b.kind, win_kind: b.win_kind, status: modStatus, flag_reason: flag });
+      await addPost(mid, user.id, String(b.body), wantAnn, b.image_url ? String(b.image_url) : undefined, undefined, { kind: b.kind, win_kind: b.win_kind, status: modStatus, flag_reason: flag, announcement: canAnn && !!b.announcement });
+      // Anuncio visible → push a todos los alumnos.
+      if (wantAnn && modStatus !== 'pending') pushAnnouncement(mid, String(b.body || ''));
       return NextResponse.json({ ok: true, pending: modStatus === 'pending' });
     }
     if (b.action === 'comment' && b.post_id && b.mentor_id && (b.body || b.image_url)) {

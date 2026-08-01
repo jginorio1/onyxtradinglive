@@ -3,11 +3,28 @@ import { isEnrolled } from '@/lib/academy';
 
 // ============================================================
 // Colaboradores de la academia: el mentor asigna rol (etiqueta) y permisos.
-// perms: moderate (aprobar logros), post (publicar/fijar), message (chatear con
-// alumnos), events (programar clases). El mentor siempre tiene todos.
+// Permisos ENFORCED (el colaborador solo actúa dentro de la comunidad):
+//   wins      → aprobar/rechazar/verificar logros
+//   moderate  → moderar el muro: reportes, ocultar/borrar, mutear/expulsar
+//   announce  → publicar y fijar anuncios (con push a todos)
+//   message   → chatear con alumnos
+//   members   → gestionar alumnos de la comunidad (renombrar, banear, expulsar)
+// El mentor siempre tiene todos. Se conservan claves antiguas por compat.
 // ============================================================
-const PERM_KEYS = ['moderate', 'post', 'message', 'events'];
+const PERM_KEYS = ['wins', 'moderate', 'announce', 'message', 'members'];
 const nameOf = (p: any) => p?.full_name || (p?.email || '').split('@')[0] || 'Colaborador';
+
+// Normaliza permisos leyendo también el esquema viejo (moderate→wins, post→announce).
+function normPerms(p: any) {
+  p = p || {};
+  return {
+    wins: !!(p.wins ?? p.moderate),          // antes "moderate" cubría los logros
+    moderate: !!p.moderate,
+    announce: !!(p.announce ?? p.post),      // antes "post"
+    message: !!p.message,
+    members: !!p.members,
+  };
+}
 
 export async function listCollaborators(mentorId: string) {
   const { data } = await supabaseAdmin.from('academy_collaborators').select('*').eq('mentor_id', mentorId).order('created_at');
@@ -40,11 +57,10 @@ export async function removeCollaborator(mentorId: string, userId: string) {
 
 // Permisos efectivos de un usuario en una academia (el mentor = todos).
 export async function permsFor(mentorId: string, userId: string) {
-  if (mentorId === userId) return { isMentor: true, isCollab: true, role: 'Mentor', moderate: true, post: true, message: true, events: true };
+  if (mentorId === userId) return { isMentor: true, isCollab: true, role: 'Mentor', wins: true, moderate: true, announce: true, message: true, members: true };
   const { data } = await supabaseAdmin.from('academy_collaborators').select('role,perms').eq('mentor_id', mentorId).eq('user_id', userId).maybeSingle();
-  if (!data) return { isMentor: false, isCollab: false, role: null, moderate: false, post: false, message: false, events: false };
-  const p = (data as any).perms || {};
-  return { isMentor: false, isCollab: true, role: (data as any).role || 'Colaborador', moderate: !!p.moderate, post: !!p.post, message: !!p.message, events: !!p.events };
+  if (!data) return { isMentor: false, isCollab: false, role: null, wins: false, moderate: false, announce: false, message: false, members: false };
+  return { isMentor: false, isCollab: true, role: (data as any).role || 'Colaborador', ...normPerms((data as any).perms) };
 }
 export async function isStaff(mentorId: string, userId: string) {
   if (mentorId === userId) return true;
