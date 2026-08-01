@@ -25,7 +25,7 @@ const A = {
 };
 
 export default function AccountExtras({ acc, net, lang, onSaved }: { acc: any; net: number; lang: Lang; onSaved: (f: any) => void }) {
-  const t = A[lang];
+  const t = A[lang] || A.en;
   const [payouts, setPayouts] = useState<any[]>([]);
   const [docs, setDocs] = useState<any[]>([]);
 

@@ -41,7 +41,7 @@ export default function RangeBar({
   label?: ReactNode;
 }) {
   const { lang } = useLang();
-  const t = L[lang];
+  const t = L[lang] || L.en;
 
   // Al montar, si el rango viene vacío, aplica el preset por defecto.
   useEffect(() => { if (!value.from || !value.to) onChange(defaultRange(value.preset || 'month')); }, []);

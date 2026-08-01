@@ -65,7 +65,7 @@ const T: any = {
 const STCOL: any = { ok: 'var(--green)', watch: 'var(--amber)', breach: 'var(--red)', na: 'var(--mut)' };
 
 export default function Challenge({ lang }: { lang: Lang }) {
-  const L = T[lang];
+  const L = T[lang] || T.en;
   const [data, setData] = useState<any>(null);
   const [busy, setBusy] = useState('');
   const [draft, setDraft] = useState<any>({});   // account_id -> rules en edición

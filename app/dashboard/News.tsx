@@ -12,7 +12,7 @@ const T = {
 };
 
 export default function News({ lang }: { lang: Lang }) {
-  const t = T[lang];
+  const t = T[lang] || T.en;
   const [events, setEvents] = useState<Ev[] | null>(null);
   const [open, setOpen] = useState(false);
   const [showMed, setShowMed] = useState(false);

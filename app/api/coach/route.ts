@@ -1,3 +1,4 @@
+import { pickLang, langFromCookie } from '@/lib/i18n';
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
@@ -19,7 +20,7 @@ export async function GET(req: Request) {
     const { data: plan } = await supabaseAdmin.from('plans').select('capabilities').eq('id', (prof as any)?.plan || 'free').maybeSingle();
     if (!(plan?.capabilities as any)?.coach) return NextResponse.json({ locked: true });
 
-    const lang = new URL(req.url).searchParams.get('lang') === 'en' ? 'en' : 'es';
+    const lang = pickLang(new URL(req.url).searchParams.get('lang'));
     const { data: accs } = await supabaseAdmin.from('trading_accounts').select('id').eq('user_id', user.id);
     const ids = (accs || []).map((a: any) => a.id);
     if (!ids.length) return NextResponse.json({ ok: false, empty: true });

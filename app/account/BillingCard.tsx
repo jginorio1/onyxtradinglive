@@ -16,7 +16,7 @@ const T: any = {
 };
 
 export default function BillingCard({ lang }: { lang: 'es' | 'en' }) {
-  const t = T[lang];
+  const t = T[lang] || T.en;
   const [open, setOpen] = useState(false);
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);

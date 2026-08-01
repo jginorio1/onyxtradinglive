@@ -1,3 +1,4 @@
+import { pickLang, langFromCookie } from '@/lib/i18n';
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
@@ -18,7 +19,7 @@ export async function GET(req: Request) {
   if (!amb || (amb as any).status !== 'approved') return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
 
   const s = await ambSettings();
-  const lang = new URL(req.url).searchParams.get('lang') === 'en' ? 'en' : 'es';
+  const lang = pickLang(new URL(req.url).searchParams.get('lang'));
   const code = String((amb as any).code).toUpperCase();
   const pct = Number(s.coupon_percent || 20);
   const tagline = lang === 'en' ? 'Your MetaTrader trading journal + risk guard' : 'Tu diario de trading MetaTrader + guardián de riesgo';

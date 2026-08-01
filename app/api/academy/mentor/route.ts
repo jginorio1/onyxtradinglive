@@ -63,7 +63,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: true });
       }
       case 'post_delete': await deletePost(mid, String(b.id)); return NextResponse.json({ ok: true });
-      case 'template': return NextResponse.json({ ok: true, ...(await applyTemplate(mid, !!b.force, b.lang === 'en' ? 'en' : 'es')) });
+      case 'template': return NextResponse.json({ ok: true, ...(await applyTemplate(mid, !!b.force, pickLang(b.lang))) });
       case 'event': return NextResponse.json({ ok: true, ...(await saveEvent(mid, b)) });
       case 'event_delete': await deleteEvent(mid, String(b.id)); return NextResponse.json({ ok: true });
       case 'student_name': await setStudentDisplayName(mid, String(b.student_id), String(b.name || '')); return NextResponse.json({ ok: true });

@@ -1,4 +1,5 @@
 'use client';
+import { mkL } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useLang } from '@/lib/lang';
@@ -35,7 +36,7 @@ function embed(url: string): string | null {
 export default function AcademiaPublic() {
   const { code } = useParams<{ code: string }>();
   const { lang } = useLang();
-  const L = (a: string, b: string) => (lang === 'en' ? b : a);
+  const L = mkL(lang);
   const [a, setA] = useState<any>(null);
   const [state, setState] = useState<'loading' | 'ok' | 'missing'>('loading');
 

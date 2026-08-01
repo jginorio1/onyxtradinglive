@@ -18,7 +18,7 @@ const T: any = {
 
 export default function UserDrawer({ userId, email, onClose }: { userId: string; email: string; onClose: () => void }) {
   const { lang } = useLang() as { lang: Lang };
-  const t = T[lang];
+  const t = T[lang] || T.en;
   const [d, setD] = useState<any>(null);
   const [tab, setTab] = useState(0);
   const [subj, setSubj] = useState('');

@@ -70,7 +70,7 @@ export default function Ambassador({ lang }: { lang: Lang }) {
   const [origin, setOrigin] = useState('');
   const [plat, setPlat] = useState('instagram');
   const [aiText, setAiText] = useState('');
-  const t = A[lang];
+  const t = A[lang] || A.en;
 
   async function genPost() {
     setBusy('ai');

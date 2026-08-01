@@ -59,7 +59,7 @@ export default function CancelFlow({ lang, canceling, planName, onDone, openTick
   const [downs, setDowns] = useState<any[]>([]);
   const [busy, setBusy] = useState('');
   const [done, setDone] = useState('');
-  const t = C[lang];
+  const t = C[lang] || C.en;
   const fill = (txt: string, m: any) => Object.keys(m).reduce((x, k) => x.replace(`{${k}}`, m[k]), txt);
 
   async function call(body: any) {

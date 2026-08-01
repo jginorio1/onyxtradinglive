@@ -1,4 +1,5 @@
 'use client';
+import { mkL } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useLang } from '@/lib/lang';
@@ -9,7 +10,7 @@ import OnyxIcon from '@/app/components/OnyxIcon';
 // locked y no mostramos nada).
 export default function NetRealCard() {
   const { lang } = useLang();
-  const L = (es: string, en: string) => (lang === 'en' ? en : es);
+  const L = mkL(lang);
   const [d, setD] = useState<any>(null);
 
   useEffect(() => {

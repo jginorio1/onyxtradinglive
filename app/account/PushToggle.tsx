@@ -30,7 +30,7 @@ function urlB64ToUint8(base64: string) {
 }
 
 export default function PushToggle({ lang }: { lang: Lang }) {
-  const L = T[lang];
+  const L = T[lang] || T.en;
   const [enabled, setEnabled] = useState(false);   // configurado en el servidor
   const [pubKey, setPubKey] = useState('');
   const [subscribed, setSubscribed] = useState(false);
