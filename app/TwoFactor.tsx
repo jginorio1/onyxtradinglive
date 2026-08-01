@@ -1,5 +1,4 @@
 'use client';
-import { dictFor } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 import OnyxIcon from '@/app/components/OnyxIcon';
@@ -30,7 +29,7 @@ const T: any = {
 };
 
 export default function TwoFactor({ mode, lang, onDone }: { mode: 'enroll' | 'challenge'; lang: Lang; onDone: () => void }) {
-  const L = dictFor(T, lang);
+  const L = T[lang] || T.en;
   const sb = supabaseBrowser();
   const [qr, setQr] = useState('');
   const [secret, setSecret] = useState('');

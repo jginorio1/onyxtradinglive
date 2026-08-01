@@ -1,5 +1,4 @@
 'use client';
-import { dictFor } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 
 type Lang = 'es' | 'en';
@@ -13,7 +12,7 @@ const T = {
 };
 
 export default function News({ lang }: { lang: Lang }) {
-  const t = dictFor(T, lang);
+  const t = T[lang] || T.en;
   const [events, setEvents] = useState<Ev[] | null>(null);
   const [open, setOpen] = useState(false);
   const [showMed, setShowMed] = useState(false);

@@ -9,7 +9,7 @@ import { ONYX_BRIEF } from '@/lib/supportAI';
 // ============================================================
 
 import type { Lang } from './navText';
-import { aiLangDirective, enBase, LANG_NAME , dictFor } from '@/lib/i18n';
+import { aiLangDirective, enBase, LANG_NAME } from '@/lib/i18n';
 
 // Llamada base: contenido como texto o como bloques (imagen/PDF).
 async function aiRaw(system: string, content: any, maxTokens: number, beta?: string): Promise<string | null> {
@@ -48,7 +48,7 @@ export async function weeklyReview(s: CoachSummary, lang: Lang): Promise<{ ok: b
   const system = (enBase(lang)
     ? `You are Onyx Coach, a calm, honest trading-performance coach. Read the trader's stats below and write a short review (max ~160 words) in plain language: what they did well, the 1-2 biggest leaks, and one concrete habit to fix next. Be direct but supportive, never harsh. Use a couple of tasteful emojis and short paragraphs. ${NO_ADVICE.en}`
     : `Eres Onyx Coach, un coach de rendimiento de trading, tranquilo y honesto. Lee las estadísticas del trader y escribe un repaso corto (máx ~160 palabras) en lenguaje claro: qué hizo bien, la 1-2 fugas más grandes, y un hábito concreto para corregir. Directo pero de apoyo, nunca duro. Usa un par de emojis con criterio y párrafos cortos. ${NO_ADVICE.es}`)
-    + `\n\n=== ${enBase(lang) ? 'ONYX KNOWLEDGE' : 'CONOCIMIENTO DE ONYX'} ===\n${dictFor(ONYX_BRIEF, lang)}` + aiLangDirective(lang);
+    + `\n\n=== ${enBase(lang) ? 'ONYX KNOWLEDGE' : 'CONOCIMIENTO DE ONYX'} ===\n${ONYX_BRIEF[lang] || ONYX_BRIEF.en}` + aiLangDirective(lang);
   const user = JSON.stringify(s);
   const text = await ai(system, (enBase(lang) ? 'Stats: ' : 'Estadísticas: ') + user, 600);
   return text ? { ok: true, text } : { ok: false, reason: 'error' };

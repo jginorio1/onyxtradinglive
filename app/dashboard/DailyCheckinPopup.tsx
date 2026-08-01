@@ -1,5 +1,4 @@
 'use client';
-import { dictFor } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 import OnyxIcon from '@/app/components/OnyxIcon';
 
@@ -35,7 +34,7 @@ const T: any = {
 function todayLocal() { return new Date().toLocaleDateString('en-CA'); } // YYYY-MM-DD local
 
 export default function DailyCheckinPopup({ lang }: { lang: Lang }) {
-  const t = dictFor(T, lang); const i = lang === 'en' ? 1 : 0;
+  const t = T[lang] || T.en; const i = lang === 'en' ? 1 : 0;
   const [d, setD] = useState<any>(null);
   const [items, setItems] = useState<Record<string, boolean>>({});
   const [phase, setPhase] = useState<'hidden' | 'popup' | 'bar'>('hidden');

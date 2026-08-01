@@ -1,5 +1,4 @@
 'use client';
-import { dictFor } from '@/lib/i18n';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -53,7 +52,7 @@ const T = {
 export default function Onboarding() {
   const router = useRouter();
   const { lang } = useLang();
-  const t = dictFor(T, lang);
+  const t = T[lang] || T.en;
   const platItems = useCatalog('platform');   // plataformas del catálogo del admin
   const styItems = useCatalog('trader_type');  // tipos de trader del catálogo del admin
   const catLabel = (c: { es: string; en: string }) => (lang === 'en' ? (c.en || c.es) : c.es);

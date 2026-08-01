@@ -1,5 +1,4 @@
 'use client';
-import { dictFor } from '@/lib/i18n';
 import { toast, toastErr } from '@/lib/toast';
 import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
@@ -19,7 +18,7 @@ const T: any = {
 
 export default function UserDrawer({ userId, email, onClose }: { userId: string; email: string; onClose: () => void }) {
   const { lang } = useLang() as { lang: Lang };
-  const t = dictFor(T, lang);
+  const t = T[lang] || T.en;
   const [d, setD] = useState<any>(null);
   const [tab, setTab] = useState(0);
   const [subj, setSubj] = useState('');

@@ -1,5 +1,4 @@
 'use client';
-import { dictFor } from '@/lib/i18n';
 import { useMemo, useState } from 'react';
 
 // ============================================================
@@ -67,7 +66,7 @@ const INSTRUMENTS: Inst[] = [
 ];
 
 export default function LotCalculator({ lang, balance }: { lang: Lang; balance?: number }) {
-  const L = dictFor(T, lang);
+  const L = T[lang] || T.en;
   const [bal, setBal] = useState<string>(balance ? String(Math.round(balance)) : '');
   const [risk, setRisk] = useState<string>('1');
   const [stop, setStop] = useState<string>('');

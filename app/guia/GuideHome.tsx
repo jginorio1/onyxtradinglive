@@ -1,5 +1,4 @@
 'use client';
-import { dictFor } from '@/lib/i18n';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useLang } from '@/lib/lang';
@@ -45,7 +44,7 @@ const NEXT: any = {
 
 export default function GuideHome() {
   const { lang } = useLang();
-  const t = dictFor(T, lang);
+  const t = T[lang] || T.en;
   const [q, setQ] = useState('');
   const [state, setState] = useState<'guest' | 'noAcc' | 'noMgr' | 'ready'>('guest');
 

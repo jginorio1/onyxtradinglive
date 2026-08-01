@@ -1,5 +1,4 @@
 'use client';
-import { dictFor } from '@/lib/i18n';
 import { useEffect, useMemo, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import { fmtDate } from '@/lib/fmtDate';
@@ -31,7 +30,7 @@ const scoreCol = (v: number) => (v >= 90 ? 'var(--green)' : v >= 50 ? 'var(--amb
 
 export default function AuditHistory() {
   const { lang } = useLang() as { lang: Lang };
-  const t = dictFor(T, lang);
+  const t = T[lang] || T.en;
   const [data, setData] = useState<any>(null);
   const [cursor, setCursor] = useState(() => { const d = new Date(); return { y: d.getFullYear(), m: d.getMonth() }; });
   const [selKey, setSelKey] = useState<string | null>(null);

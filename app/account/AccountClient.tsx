@@ -1,5 +1,4 @@
 'use client';
-import { dictFor } from '@/lib/i18n';
 import { toast } from '@/lib/toast';
 import { fmtDate, fmtDateTime } from '@/lib/fmtDate';
 import { useEffect, useMemo, useState } from 'react';
@@ -210,7 +209,7 @@ export default function AccountClient({ email }: { email: string }) {
     if (!r.ok) { toast(errMsg(j, lang)); return; }
     toast(L.keepSaved, 'ok'); load();
   }
-  const L = dictFor(D, lang);
+  const L = D[lang] || D.en;
   const platItems = useCatalog('platform');    // plataformas del catálogo del admin
   const styItems = useCatalog('trader_type');   // tipos de trader del catálogo del admin
   const catLabel = (c: { es: string; en: string }) => (lang === 'en' ? (c.en || c.es) : c.es);

@@ -61,45 +61,6 @@ export function asLang(v: any): Lang | null {
 }
 export function pickLang(v: any): Lang { return asLang(v) || 'es'; }
 
-// Adaptador para los diccionarios por-componente `{ es:{...}, en:{...} }` (o
-// `{ es:'..', en:'..' }`). Si el idioma pedido no está, en vez de caer a inglés,
-// TRADUCE cada valor español a través de la memoria (translate). Así todo el
-// texto viejo es/en también sale en zh/ja/pt/vi sin reescribir cada componente.
-// Caché: MISMA referencia por (obj, idioma) en cada render. CRÍTICO — sin esto,
-// devolver un objeto nuevo en cada render rompe los useEffect/useMemo que lo usan
-// como dependencia (bucle infinito de renders → excepción del lado del cliente).
-const _dictCache: WeakMap<object, Record<string, any>> = new WeakMap();
-
-export function dictFor(obj: any, lang: Lang): any {
-  if (!obj || typeof obj !== 'object') return obj;                 // no-objeto: tal cual
-  if (obj[lang] !== undefined) return obj[lang];                   // idioma ya presente
-  let per = _dictCache.get(obj);
-  if (per && per[lang] !== undefined) return per[lang];            // ya calculado antes
-  try {
-    const es = obj.es !== undefined ? obj.es : obj.en;
-    const en = obj.en !== undefined ? obj.en : obj.es;
-    let result: any;
-    if (lang === 'es') result = es;
-    else if (lang === 'en') result = en;
-    else if (typeof es === 'string') result = translate(lang, es, typeof en === 'string' ? en : es);
-    else if (typeof es !== 'object' || es === null) result = en;   // no traducible → inglés
-    else {
-      const out: any = Array.isArray(es) ? [] : {};
-      for (const k of Object.keys(es)) {
-        const ev = es[k];
-        const nv = en ? en[k] : undefined;
-        out[k] = (typeof ev === 'string') ? translate(lang, ev, typeof nv === 'string' ? nv : ev) : (nv !== undefined ? nv : ev);
-      }
-      result = out;
-    }
-    if (!per) { per = {}; _dictCache.set(obj, per); }
-    per[lang] = result;
-    return result;
-  } catch {
-    return obj.en !== undefined ? obj.en : (obj.es !== undefined ? obj.es : obj); // nunca romper
-  }
-}
-
 // Extrae el idioma de una cadena de cookies (onyx_lang=xx).
 export function langFromCookie(cookie: string | null | undefined): Lang {
   const m = /onyx_lang=([a-z]{2})/.exec(cookie || '');

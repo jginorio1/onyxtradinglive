@@ -1,5 +1,4 @@
 'use client';
-import { dictFor } from '@/lib/i18n';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
@@ -22,7 +21,7 @@ const T: any = {
 
 export default function ArticleView({ slug }: { slug: string }) {
   const { lang } = useLang();
-  const t = dictFor(T, lang);
+  const t = T[lang] || T.en;
   const [voted, setVoted] = useState(false);
 
   // Si el CTA lleva a una zona con sesión y el visitante no la tiene,

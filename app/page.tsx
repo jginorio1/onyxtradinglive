@@ -1,5 +1,4 @@
 'use client';
-import { dictFor } from '@/lib/i18n';
 import { useState, useEffect, useRef } from 'react';
 import { useLang } from '@/lib/lang';
 import Link from 'next/link';
@@ -343,7 +342,7 @@ export default function Home() {
   const [vidErr, setVidErr] = useState(false);
   const [dbPlans, setDbPlans] = useState<any[]>([]);
   const [stats, setStats] = useState({ trades: 0, blocks: 0, accounts: 0 });
-  const t = dictFor(dict, lang);
+  const t = dict[lang] || dict.en;
 
   useEffect(() => {
     fetch('/api/admin/plans').then((r) => r.json()).then((j) => setDbPlans(j.plans || [])).catch(() => {});

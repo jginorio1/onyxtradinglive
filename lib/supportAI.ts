@@ -1,4 +1,3 @@
-import { dictFor } from '@/lib/i18n';
 import { ARTICLES, searchArticles, type Article, type Lang } from '@/lib/guide';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendEmail } from '@/lib/mail';
@@ -135,7 +134,7 @@ export async function aiAnswer(question: string, lang: Lang, sensitive = false):
   const system = (enBase(lang)
     ? `You are Onyx AI, the support agent for Onyx Trading Live. Answer the user's message helpfully and accurately using the ONYX KNOWLEDGE, current PRICES and KNOWLEDGE BASE below. Be brief, warm and clear, like a great support agent. Use a few tasteful emojis and bullet points for readability. Prices below are authoritative for any pricing question. Do NOT add a signature or sign-off — it is added automatically. Never invent features or give financial advice. Answer general product, pricing, how-to and feature questions confidently. ONLY reply with the exact token NO_ANSWER (and nothing else) when the question requires the user's PRIVATE account data that you cannot see — for example "why was I charged X", "is MY account blocked", "what is MY balance", a specific bug tied to their account. For everything else, give a helpful answer.`
     : `Eres Onyx AI, el agente de soporte de Onyx Trading Live. Responde al mensaje del usuario de forma útil y correcta usando el CONOCIMIENTO DE ONYX, los PRECIOS actuales y la BASE DE CONOCIMIENTO de abajo. Sé breve, cercano y claro, como un gran agente de soporte. Usa algunos emojis con criterio y viñetas para que sea legible. Los precios de abajo son la fuente oficial para cualquier pregunta de precios. NO añadas firma ni despedida — se agrega automáticamente. No inventes funciones ni des consejo financiero. Responde con seguridad las preguntas generales de producto, precios, cómo hacer algo y funciones. SOLO responde con el token exacto NO_ANSWER (y nada más) cuando la pregunta necesite datos PRIVADOS de la cuenta del usuario que no puedes ver — por ejemplo "por qué me cobraron X", "está bloqueada MI cuenta", "cuál es MI saldo", o un fallo concreto atado a su cuenta. Para todo lo demás, da una respuesta útil.`)
-    + `\n\n=== ${enBase(lang) ? 'ONYX KNOWLEDGE' : 'CONOCIMIENTO DE ONYX'} ===\n${dictFor(ONYX_BRIEF, lang)}`
+    + `\n\n=== ${enBase(lang) ? 'ONYX KNOWLEDGE' : 'CONOCIMIENTO DE ONYX'} ===\n${ONYX_BRIEF[lang] || ONYX_BRIEF.en}`
     + `\n\n=== ${enBase(lang) ? 'HELP ARTICLES' : 'ARTÍCULOS DE AYUDA'} ===\n${context}` + extra + aiLangDirective(lang);
 
   try {

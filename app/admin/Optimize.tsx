@@ -1,5 +1,4 @@
 'use client';
-import { dictFor } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 import { fmtDate, fmtDateTime } from '@/lib/fmtDate';
 import { useLang } from '@/lib/lang';
@@ -52,7 +51,7 @@ function Ic({ e }: { e: string }) {
 
 export default function Optimize() {
   const { lang } = useLang();
-  const t = dictFor(T, lang);
+  const t = T[lang] || T.en;
   const gt = useT();
   const [d, setD] = useState<any>(null);
   const [busy, setBusy] = useState(false);

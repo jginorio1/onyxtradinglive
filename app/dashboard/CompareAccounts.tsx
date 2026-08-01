@@ -1,5 +1,4 @@
 'use client';
-import { dictFor } from '@/lib/i18n';
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { typeMeta, money2, type Lang } from '@/lib/accountMeta';
 
@@ -9,7 +8,7 @@ const C = {
 };
 
 export default function CompareAccounts({ accounts, trades, lang }: { accounts: any[]; trades: any[]; lang: Lang }) {
-  const t = dictFor(C, lang);
+  const t = C[lang] || C.en;
   const [payouts, setPayouts] = useState<Record<string, number>>({});
 
   useEffect(() => {

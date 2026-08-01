@@ -1,5 +1,4 @@
 'use client';
-import { dictFor } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
@@ -65,7 +64,7 @@ export default function Nudge({
 }) {
   const [tick, setTick] = useState(0);
   const [ready, setReady] = useState(false);
-  const t = dictFor(N, lang);
+  const t = N[lang] || N.en;
   useEffect(() => { setReady(true); }, []);
 
   const nameOf = (p: any) => (lang === 'en' ? (p?.name_en || p?.name) : p?.name) || '';
