@@ -4,11 +4,20 @@
 //  - Navegaciones: red primero; si no hay internet, muestra /offline.html.
 //  - Estáticos (_next/static, íconos, imágenes): se sirven de caché y se
 //    actualizan en segundo plano (stale-while-revalidate).
-const VERSION = 'onyx-v1';
+// La versión sale del query con que se registra (/sw.js?v=XXXX). Cambia en cada
+// deploy, así el caché es único por versión y los viejos se borran solos.
+const VERSION = 'onyx-' + (new URL(self.location.href).searchParams.get('v') || '1');
 const SHELL = ['/offline.html', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  // NO hacemos skipWaiting aquí: esperamos a que el usuario toque "Actualizar"
+  // (evita cambiar la app a media sesión y romper la pantalla).
+  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL)));
+});
+
+// La página pide activar la versión nueva cuando el usuario lo aprueba.
+self.addEventListener('message', (e) => {
+  if (e.data === 'SKIP_WAITING' || (e.data && e.data.type === 'SKIP_WAITING')) self.skipWaiting();
 });
 
 self.addEventListener('activate', (e) => {

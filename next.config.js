@@ -33,6 +33,10 @@ const nextConfig = {
         source: '/:all*(png|jpg|jpeg|gif|svg|webp|avif|ico|woff|woff2|ttf|otf|mp4)',
         headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
       },
+      // El service worker NUNCA se cachea: así una versión nueva llega enseguida
+      // (sin esto, un CDN podría servir el sw.js viejo y bloquear las mejoras).
+      { source: '/sw.js', headers: [{ key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' }] },
+      { source: '/manifest.webmanifest', headers: [{ key: 'Cache-Control', value: 'no-cache' }] },
     ];
   },
 };

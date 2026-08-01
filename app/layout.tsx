@@ -2,6 +2,8 @@ import './globals.css';
 import type { Metadata, Viewport } from 'next';
 import TopBar from './TopBar';
 import PWARegister from './PWARegister';
+import ChunkReload from './ChunkReload';
+import UpdateToast from './UpdateToast';
 import SupportWidget from './SupportWidget';
 import { Toaster } from '@/lib/toast';
 import JsonLd from './JsonLd';
@@ -121,6 +123,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             {!path.startsWith('/admin') && <SupportWidget loggedIn={loggedIn} />}
             <Toaster />
             <PWARegister />
+            <ChunkReload />
+            <UpdateToast />
           </BetaProvider>
         </LanguageProvider>
       </body>
