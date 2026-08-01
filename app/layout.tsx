@@ -106,6 +106,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang={lang} data-theme={theme || undefined} suppressHydrationWarning>
       <body>
+        {/* Fuente CJK: solo se carga cuando el idioma es chino o japonés (pesan). */}
+        {(lang === 'zh' || lang === 'ja') && (
+          <link rel="stylesheet" href={`https://fonts.googleapis.com/css2?family=Noto+Sans+${lang === 'ja' ? 'JP' : 'SC'}:wght@400;500;700&display=swap`} />
+        )}
         <JsonLd data={graph} />
         <EnvBanner />
         <LanguageProvider initial={lang}>
@@ -124,7 +128,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <Toaster />
             <PWARegister />
             <ChunkReload />
-            <UpdateToast />
+            {/* <UpdateToast /> — aviso de "nueva versión" desactivado (molesto). La
+                versión nueva llega en la próxima recarga; ChunkReload evita errores. */}
           </BetaProvider>
         </LanguageProvider>
       </body>
