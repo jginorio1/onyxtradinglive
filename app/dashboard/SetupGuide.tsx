@@ -112,8 +112,6 @@ export default function SetupGuide() {
     return s;
   }
 
-  if (!data) return null;
-
   const accLabel = (a: Acc) => (a.nickname || a.broker || 'MT') + ' · ' + a.login;
   const goalsOf = (a: Acc) => ({ journal: true, guardian: !!a.goals?.guardian, copy: !!a.goals?.copy, tv: !!a.goals?.tv });
   const accDone = (a: Acc) => stepsFor(a, a.platform, goalsOf(a)).every((s) => s.done);
@@ -123,6 +121,7 @@ export default function SetupGuide() {
   // Mensaje "¡Todo listo!" una sola vez, cuando se completa. Vuelve a salir si
   // añades una cuenta nueva y también la terminas (la firma cambia).
   const sig = accounts.map((a) => a.id + ':' + (accDone(a) ? 1 : 0)).join('|');
+  // IMPORTANTE: este useEffect va ANTES de cualquier return temprano (reglas de hooks).
   useEffect(() => {
     if (!hasAcc || !allDone) return;
     try {
@@ -133,6 +132,8 @@ export default function SetupGuide() {
     try { localStorage.setItem('onyx_setup_sig', sig); } catch {}
     setCelebrate(false);
   }
+
+  if (!data) return null;
 
   // ---------- Estado vacío: onboarding grande ----------
   if (!hasAcc) {
