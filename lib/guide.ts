@@ -811,6 +811,96 @@ export const ARTICLES: Article[] = [
       ],
     },
   },
+
+  // ---------- cTrader ----------
+  {
+    slug: 'conectar-ctrader',
+    cat: 'start', icon: '🔌',
+    title: { es: 'Conectar tu cuenta de cTrader', en: 'Connecting your cTrader account' },
+    summary: {
+      es: 'En cTrader no se usa un EA sino un cBot. Es el mismo Onyx, escrito para cTrader.',
+      en: 'In cTrader you don\'t use an EA but a cBot. Same Onyx, written for cTrader.',
+    },
+    cta: { href: '/dashboard/keys?platform=ctrader', label: { es: 'Conectar cTrader', en: 'Connect cTrader' } },
+    body: {
+      es: [
+        { p: 'Onyx funciona igual en cTrader que en MetaTrader: lee tus operaciones en solo lectura, nunca opera ni toca tu dinero. La diferencia es que en cTrader el conector se llama cBot (en MetaTrader es EA), pero hace lo mismo.' },
+        { h: 'Pasos' },
+        { steps: [
+          'En Onyx, en Conectar cuenta, elige la plataforma cTrader.',
+          'Descarga el cBot de Onyx (archivo .algo o el código .cs).',
+          'En cTrader Desktop: pega el cBot en Automate, compílalo y añádelo a tu gráfico.',
+          'Pega tu clave API de Onyx en los parámetros del cBot y pulsa Play (con el botón global de automatización activado).',
+        ] },
+        { note: 'Cuando el cBot reporte, tu cuenta aparecerá conectada y verás tus estadísticas en segundos.', title: 'Confirmación' },
+        { p: 'El Onyx Guardian y el copy trading también existen para cTrader, como cBots separados, con los mismos ajustes que en MetaTrader.' },
+      ],
+      en: [
+        { p: 'Onyx works the same on cTrader as on MetaTrader: it reads your trades read-only, never trades or touches your money. The difference is that in cTrader the connector is a cBot (in MetaTrader it\'s an EA), but it does the same thing.' },
+        { h: 'Steps' },
+        { steps: [
+          'In Onyx, on Connect account, pick the cTrader platform.',
+          'Download the Onyx cBot (.algo file or the .cs source).',
+          'In cTrader Desktop: paste the cBot into Automate, compile it and add it to your chart.',
+          'Paste your Onyx API key into the cBot parameters and hit Play (with the global automation button on).',
+        ] },
+        { note: 'When the cBot reports, your account shows as connected and your stats appear in seconds.', title: 'Confirmation' },
+        { p: 'Onyx Guardian and copy trading also exist for cTrader, as separate cBots, with the same settings as on MetaTrader.' },
+      ],
+    },
+  },
+
+  // ---------- TradingView → EA ----------
+  {
+    slug: 'tradingview-senales',
+    cat: 'start', icon: '📈',
+    title: { es: 'TradingView → Onyx: ejecutar tus alertas', en: 'TradingView → Onyx: execute your alerts' },
+    summary: {
+      es: 'Haz que tus alertas de TradingView abran la operación en tu cuenta real, solas.',
+      en: 'Make your TradingView alerts open the trade in your real account, automatically.',
+    },
+    cta: { href: '/dashboard/tradingview', label: { es: 'Ir a TradingView', en: 'Go to TradingView' } },
+    body: {
+      es: [
+        { p: 'Onyx puede recibir las alertas de TradingView por webhook y ejecutarlas en tu cuenta real usando el EA de Copy que ya tienes instalado. No hace falta cambiar el EA.' },
+        { h: 'Qué necesitas' },
+        { list: [
+          'Una cuenta conectada con el EA de Copy (OnyxCopySlave) corriendo.',
+          'Un plan que incluya TradingView.',
+          'Una cuenta de TradingView de pago (los webhooks no están en su plan gratis).',
+        ] },
+        { h: 'Pasos' },
+        { steps: [
+          'En Onyx, entra en TradingView y activa la función para tu cuenta.',
+          'Copia tu URL de webhook y pégala en la alerta de TradingView (Notificaciones → Webhook URL).',
+          'Copia el mensaje JSON y pégalo en el campo Mensaje de la alerta.',
+          'Fija tu lote por defecto, lote máximo y símbolos permitidos.',
+          'Envía una señal de prueba para ver la ejecución.',
+        ] },
+        { note: '🛡️ El Onyx Guardian sigue vigilando esa cuenta: si tu pérdida diaria está alcanzada, el EA no abrirá aunque llegue la señal.', title: 'Seguridad' },
+        { warn: 'El token del webhook no es la clave del EA. Si se filtra, solo permite mandar señales con tope de lote, y lo puedes rotar con un clic.' },
+      ],
+      en: [
+        { p: 'Onyx can receive TradingView alerts via webhook and execute them in your real account using the Copy EA you already have installed. No need to change the EA.' },
+        { h: 'What you need' },
+        { list: [
+          'A connected account with the Copy EA (OnyxCopySlave) running.',
+          'A plan that includes TradingView.',
+          'A paid TradingView account (webhooks aren\'t in their free plan).',
+        ] },
+        { h: 'Steps' },
+        { steps: [
+          'In Onyx, open TradingView and enable it for your account.',
+          'Copy your webhook URL and paste it into your TradingView alert (Notifications → Webhook URL).',
+          'Copy the JSON message and paste it into the alert Message field.',
+          'Set your default lot, max lot and allowed symbols.',
+          'Send a test signal to see the execution.',
+        ] },
+        { note: '🛡️ Onyx Guardian still watches that account: if your daily loss is hit, the EA won\'t open even if a signal arrives.', title: 'Safety' },
+        { warn: 'The webhook token isn\'t the EA key. If leaked, it only allows sending signals with a lot cap, and you can rotate it with one click.' },
+      ],
+    },
+  },
 ];
 
 // Búsqueda simple sobre título, resumen y texto

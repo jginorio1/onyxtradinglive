@@ -190,6 +190,7 @@ const dict = {
       ['¿Qué es Onyx Guardian?', 'Tu gestor de riesgo automático: defines tu pérdida máxima diaria, número de operaciones, horarios y las reglas de tu prop firm, y Onyx te frena antes de romperlas. Ideal para pasar y conservar cuentas de fondeo.'],
       ['¿Hay un plan gratis?', 'Sí. Empiezas gratis, sin tarjeta, con 1 cuenta y las estadísticas básicas. Subes de plan solo cuando lo necesites.'],
       ['¿Puedo copiar operaciones entre mis cuentas?', 'Sí, con el copy trading integrado: replicas de una cuenta maestra a varias esclavas, con control de riesgo por cada enlace. Disponible según tu plan.'],
+      ['¿Puedo ejecutar señales de TradingView?', 'Sí. Tus alertas de TradingView pueden abrir la operación en tu cuenta real a través de tu EA de Onyx, con tope de lote y símbolos permitidos. El Guardian sigue protegiéndote. En planes de pago.'],
       ['¿Tienen academia o comunidad?', 'Sí. En Onyx Academy aprendes con mentores verificados, cursos y comunidad estilo Skool. Y si eres mentor, puedes crear la tuya y cobrar por ella.'],
       ['¿Cuántas cuentas puedo conectar?', 'Depende de tu plan: desde 1 cuenta en el plan gratis hasta cuentas ilimitadas. Ves todas juntas en tu portafolio.'],
       ['¿Tienen programa de afiliados o embajadores?', 'Sí. Si tienes comunidad, canal o seguidores, cobras una comisión recurrente por cada persona que se suscriba con tu enlace, mientras siga pagando. Además tu audiencia entra con descuento usando tu código. Míralo en la página de Embajadores.'],
@@ -319,6 +320,7 @@ const dict = {
       ['What is Onyx Guardian?', 'Your automatic risk manager: set your max daily loss, number of trades, trading hours and your prop-firm rules, and Onyx stops you before you break them. Perfect for passing and keeping funded accounts.'],
       ['Is there a free plan?', 'Yes. Start free, no card, with 1 account and the basic stats. Upgrade only when you need to.'],
       ['Can I copy trades between my accounts?', 'Yes, with built-in copy trading: replicate from a master account to several slaves, with per-link risk control. Available depending on your plan.'],
+      ['Can I execute TradingView signals?', 'Yes. Your TradingView alerts can open the trade in your real account through your Onyx EA, with a lot cap and allowed symbols. Guardian keeps protecting you. On paid plans.'],
       ['Do you have an academy or community?', 'Yes. In Onyx Academy you learn with verified mentors, courses and a Skool-style community. And if you\'re a mentor, you can build your own and charge for it.'],
       ['How many accounts can I connect?', 'Depends on your plan: from 1 account on Free to unlimited accounts. You see them all combined in your portfolio.'],
       ['Do you have an affiliate or ambassador program?', 'Yes. If you have a community, channel or followers, you earn a recurring commission for every person who subscribes through your link, for as long as they keep paying. Your audience also gets a discount with your code. Check the Ambassadors page.'],
@@ -362,12 +364,20 @@ export default function Home() {
     // Cifras reales para la prueba social; crecen solas con el uso.
     // no-store + ?t=: siempre trae lo último del admin (base + real, comisión/cupón), sin caché.
     // Se refresca cada 30s para que las cifras suban EN VIVO mientras se ve la página.
+    // Nunca dejar que un fallo o un 0 baje las cifras ya mostradas: nos quedamos
+    // con el máximo entre lo que hay y lo nuevo (los contadores solo suben).
     const loadStats = () => fetch('/api/stats?t=' + Date.now(), { cache: 'no-store' }).then((r) => r.json()).then((j) => {
-      setStats({ trades: Number(j.trades || 0), blocks: Number(j.blocks || 0), accounts: Number(j.accounts || 0), platforms: Number(j.platforms ?? 4), readonly: Number(j.readonly ?? 100) });
+      setStats((p) => ({
+        trades: Math.max(p.trades, Number(j.trades || 0)),
+        blocks: Math.max(p.blocks, Number(j.blocks || 0)),
+        accounts: Math.max(p.accounts, Number(j.accounts || 0)),
+        platforms: Number(j.platforms ?? p.platforms ?? 4),
+        readonly: Number(j.readonly ?? p.readonly ?? 100),
+      }));
       setAmb({ rate: Number(j.ambRate || 30), coupon: Number(j.ambCoupon || 20) });
-    }).catch(() => {});
+    }).catch(() => { /* si falla, mantenemos las cifras que ya se ven */ });
     loadStats();
-    const iv = setInterval(loadStats, 30000);
+    const iv = setInterval(loadStats, 20000);
     return () => clearInterval(iv);
   }, []);
   // Si la BD aún no devolvió planes, mostramos unos por defecto (nunca vacío).
@@ -782,20 +792,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* FOOTER */}
-      <div style={{ borderTop: '1px solid var(--line)', padding: '32px 0' }}>
-        <div className="wrap row between" style={{ flexWrap: 'wrap', gap: 16, color: 'var(--mut)', fontSize: 14 }}>
-          <div className="logo" style={{ fontSize: 16 }}><img src="/onyx-symbol.png" alt="Onyx" style={{ width: 24, height: 24, objectFit: 'contain' }} /> Onyx Trading Live</div>
-          <div className="row" style={{ gap: 20 }}>
-            <Link href="/embajadores">{t.footer.amb}</Link>
-            <Link href="/invita">{t.footer.invita}</Link>
-            <Link href="/contacto">{t.footer.contact}</Link>
-            <Link href="/terms">{t.footer.terms}</Link>
-            <Link href="/privacy">{t.footer.privacy}</Link>
-            <span>{t.footer.rights}</span>
-          </div>
-        </div>
-      </div>
+      {/* El footer ahora es global (app/SiteFooter.tsx), en todas las páginas. */}
     </>
   );
 }

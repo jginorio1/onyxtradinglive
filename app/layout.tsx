@@ -1,6 +1,7 @@
 import './globals.css';
 import type { Metadata, Viewport } from 'next';
 import TopBar from './TopBar';
+import SiteFooter from './SiteFooter';
 import PWARegister from './PWARegister';
 import ChunkReload from './ChunkReload';
 import UpdateToast from './UpdateToast';
@@ -124,6 +125,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <BetaBanner />
             <TopBar />
             {children}
+            {!path.startsWith('/admin') && <SiteFooter />}
             {!path.startsWith('/admin') && <SupportWidget loggedIn={loggedIn} />}
             <Toaster />
             <PWARegister />

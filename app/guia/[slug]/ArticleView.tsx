@@ -106,7 +106,7 @@ function BlockView({ b }: { b: Block }) {
   if (any.h) return <h2 style={{ fontSize: 18, margin: '26px 0 10px' }}>{any.h}</h2>;
 
   if (any.p) return (
-    <p style={{ fontSize: 15, lineHeight: 1.85, color: '#c9d2e3', marginBottom: 14 }}>{any.p}</p>
+    <p style={{ fontSize: 15, lineHeight: 1.85, color: 'var(--tx)', marginBottom: 14 }}>{any.p}</p>
   );
 
   if (any.note) return (
@@ -132,7 +132,7 @@ function BlockView({ b }: { b: Block }) {
   if (any.list) return (
     <ul style={{ margin: '0 0 16px 20px', padding: 0 }}>
       {any.list.map((x: string, i: number) => (
-        <li key={i} style={{ fontSize: 15, lineHeight: 1.8, color: '#c9d2e3', marginBottom: 7 }}>{x}</li>
+        <li key={i} style={{ fontSize: 15, lineHeight: 1.8, color: 'var(--tx)', marginBottom: 7 }}>{x}</li>
       ))}
     </ul>
   );
@@ -146,7 +146,7 @@ function BlockView({ b }: { b: Block }) {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             background: 'var(--card2)', color: 'var(--mut)',
           }}>{i + 1}</span>
-          <span style={{ fontSize: 14.5, lineHeight: 1.7, color: '#c9d2e3' }}>{x}</span>
+          <span style={{ fontSize: 14.5, lineHeight: 1.7, color: 'var(--tx)' }}>{x}</span>
         </div>
       ))}
     </div>

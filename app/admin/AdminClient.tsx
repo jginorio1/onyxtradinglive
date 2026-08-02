@@ -561,6 +561,17 @@ function Modules() {
   const [lf, setLf] = useState<any>(null);          // base editable de las cifras del landing
   const [savingL, setSavingL] = useState(false);
   const [savedL, setSavedL] = useState(false);
+  const [ver, setVer] = useState<any>(null);        // versión de la app (canales)
+  const [verBusy, setVerBusy] = useState('');
+  const loadVer = () => fetch('/api/admin/version').then((r) => r.json()).then(setVer).catch(() => {});
+  useEffect(() => { loadVer(); }, []);
+  async function promoteVer() {
+    if (!confirm(lang === 'es' ? '¿Promover Beta → Production? La versión pública cambiará.' : 'Promote Beta → Production? The public version will change.')) return;
+    setVerBusy('promote'); try { const r = await fetch('/api/admin/version', { method: 'POST', body: JSON.stringify({ action: 'promote' }) }); setVer(await r.json()); } finally { setVerBusy(''); }
+  }
+  async function saveVer(patch: any) {
+    setVerBusy('set'); try { const r = await fetch('/api/admin/version', { method: 'POST', body: JSON.stringify({ action: 'set', ...patch }) }); setVer(await r.json()); } finally { setVerBusy(''); }
+  }
   // Auto-refresco en vivo: los contadores suben solos sin pulsar Refrescar.
   useEffect(() => {
     const load = () => fetch('/api/admin/modules').then((r) => r.json()).then((d: any) => {
@@ -677,6 +688,43 @@ function Modules() {
           <button className="btn btn-primary" style={{ marginTop: 14 }} onClick={saveLanding} disabled={savingL}>
             {savingL ? (es ? 'Guardando…' : 'Saving…') : savedL ? (es ? '✓ Guardado' : '✓ Saved') : (es ? 'Guardar cifras' : 'Save numbers')}
           </button>
+        </div>
+      )}
+
+      {ver && (
+        <div className="card" style={{ gridColumn: '1 / -1' }}>
+          <div className="row between" style={{ marginBottom: 12 }}>
+            <div className="row" style={{ gap: 10 }}><Ic e="🏷️" /><h3>{es ? 'Versión de la app' : 'App version'}</h3></div>
+          </div>
+          <p className="muted" style={{ fontSize: 13, marginBottom: 14 }}>{es ? 'Canales Stable ← Production ← Beta. Production es lo que ven todos (sale en el footer).' : 'Channels Stable ← Production ← Beta. Production is what everyone sees (shown in the footer).'}</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10 }}>
+            <div style={{ padding: 12, border: '1px solid var(--line)', borderRadius: 10, background: 'var(--card2)' }}>
+              <div className="muted" style={{ fontSize: 11, textTransform: 'uppercase' }}>Stable</div>
+              <div style={{ fontSize: 22, fontWeight: 800 }}>{ver.stable ? 'v' + ver.stable : '—'}</div>
+              <div className="muted" style={{ fontSize: 11.5 }}>{es ? 'respaldo' : 'rollback'}</div>
+            </div>
+            <div style={{ padding: 12, border: '2px solid var(--green)', borderRadius: 10, background: 'rgba(52,226,160,.08)' }}>
+              <div style={{ fontSize: 11, textTransform: 'uppercase', color: 'var(--green)' }}>Production</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--green)' }}>v{ver.production}</div>
+              <div style={{ fontSize: 11.5, color: 'var(--green)' }}>{es ? 'lo que ven todos' : 'everyone sees'}</div>
+            </div>
+            <div style={{ padding: 12, border: '2px solid var(--brand)', borderRadius: 10, background: 'rgba(124,140,255,.08)' }}>
+              <div style={{ fontSize: 11, textTransform: 'uppercase', color: 'var(--soft-brand)' }}>Beta</div>
+              <input value={ver.beta} onChange={(e) => setVer({ ...ver, beta: e.target.value })} onBlur={(e) => saveVer({ beta: e.target.value })}
+                style={{ margin: '2px 0', width: '100%', fontSize: 20, fontWeight: 800, background: 'transparent', border: 'none', color: 'var(--soft-brand)' }} />
+              <div style={{ fontSize: 11.5, color: 'var(--soft-brand)' }}>{es ? 'solo testers' : 'testers only'}</div>
+            </div>
+          </div>
+          <div style={{ marginTop: 12 }}>
+            <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{es ? 'Notas de la Beta (changelog)' : 'Beta notes (changelog)'}</div>
+            <textarea value={ver.notes?.[ver.beta] || ''} onChange={(e) => setVer({ ...ver, notes: { ...ver.notes, [ver.beta]: e.target.value } })}
+              onBlur={(e) => saveVer({ notes: { [ver.beta]: e.target.value } })} rows={2} placeholder={es ? 'Qué hay de nuevo en esta versión…' : 'What\'s new in this version…'}
+              style={{ width: '100%', margin: 0 }} />
+          </div>
+          <button className="btn btn-primary" style={{ marginTop: 14 }} onClick={promoteVer} disabled={!!verBusy}>
+            🚀 {verBusy === 'promote' ? (es ? 'Promoviendo…' : 'Promoting…') : (es ? 'Promover Beta → Production' : 'Promote Beta → Production')}
+          </button>
+          <p className="muted" style={{ fontSize: 11.5, marginTop: 8 }}>{es ? `Al promover: v${ver.production} → Stable · v${ver.beta} → Production · nueva Beta automática.` : `On promote: v${ver.production} → Stable · v${ver.beta} → Production · new Beta auto-opens.`}</p>
         </div>
       )}
 
