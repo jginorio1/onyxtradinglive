@@ -21,6 +21,13 @@ export type LandingContent = {
   how?: { t_es?: string; t_en?: string; steps?: CardRow[] };   // steps sin icono (van numerados)
   trust?: { es?: string[]; en?: string[] };                    // 3 insignias de confianza
   cta?: { t_es?: string; t_en?: string; btn_es?: string; btn_en?: string };
+  // FASE 3 · textos por página (embajadores, invita, mentores, academias, analiza).
+  // clave de campo → { es, en }. Vacío = usa el texto del código.
+  pages?: Record<string, Record<string, { es?: string; en?: string }>>;
+  // FASE 4 · navegación, footer y legales.
+  nav?: Record<string, { es?: string; en?: string }>;          // etiquetas del menú del landing
+  footer?: { tagline_es?: string; tagline_en?: string; links?: { es: string; en: string; href: string }[] };
+  legal?: { terms_es?: string; terms_en?: string; privacy_es?: string; privacy_en?: string };
 };
 
 export async function landingContent(): Promise<LandingContent> {

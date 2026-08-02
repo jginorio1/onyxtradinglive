@@ -51,3 +51,182 @@ export const DEFAULT_CTA = {
   t_es: 'Empieza a operar con datos, no con memoria', t_en: 'Trade with data, not memory',
   btn_es: 'Crear cuenta gratis', btn_en: 'Create free account',
 };
+
+// ===================== FASE 3: textos por página =====================
+// Etiqueta legible de cada campo para el editor + valor ES/EN por defecto.
+export type PageField = { key: string; label_es: string; label_en: string; es: string; en: string; multiline?: boolean };
+
+export const DEFAULT_PAGES: Record<string, { label_es: string; label_en: string; fields: PageField[] }> = {
+  embajadores: {
+    label_es: 'Embajadores', label_en: 'Ambassadors',
+    fields: [
+      { key: 'h1', label_es: 'Título', label_en: 'Title', es: 'Gana dinero cada mes con tu comunidad', en: 'Earn every month with your community' },
+      { key: 'sub', label_es: 'Subtítulo', label_en: 'Subtitle', multiline: true, es: 'Recomienda Onyx a tus seguidores y cobra una comisión recurrente mientras sigan suscritos. Sin límite de ganancias.', en: 'Recommend Onyx to your followers and earn a recurring commission for as long as they stay subscribed. No earnings cap.' },
+    ],
+  },
+  invita: {
+    label_es: 'Invita y gana', label_en: 'Invite & earn',
+    fields: [
+      { key: 'h1', label_es: 'Título', label_en: 'Title', es: 'Invita a un amigo y ganen los dos', en: 'Invite a friend and you both win' },
+      { key: 'sub', label_es: 'Subtítulo', label_en: 'Subtitle', multiline: true, es: 'Comparte tu enlace de Onyx. Cuando tu amigo se suscribe, tú recibes crédito y él también. Sin trámites, sin códigos que recordar.', en: 'Share your Onyx link. When your friend subscribes, you get credit and so do they. No paperwork, no codes to remember.' },
+    ],
+  },
+  mentores: {
+    label_es: 'Mentores', label_en: 'Mentors',
+    fields: [
+      { key: 'h1a', label_es: 'Título — línea 1', label_en: 'Title — line 1', es: 'Monta tu academia de trading,', en: 'Build your trading academy,' },
+      { key: 'h1b', label_es: 'Título — línea 2', label_en: 'Title — line 2', es: 'sin montar tu web.', en: 'without building a website.' },
+      { key: 'ctaTitle', label_es: 'Título CTA final', label_en: 'Final CTA title', es: 'Convierte tu comunidad en tu negocio', en: 'Turn your community into your business' },
+    ],
+  },
+  academias: {
+    label_es: 'Academias (directorio)', label_en: 'Academies (directory)',
+    fields: [
+      { key: 'intro', label_es: 'Intro', label_en: 'Intro', multiline: true, es: 'Las academias son privadas. Solo puedes unirte con el código, el enlace o el código QR que te comparta tu mentor.', en: 'Academies are private. You can only join with the code, link or QR your mentor shares with you.' },
+      { key: 'codeTitle', label_es: 'Título tarjeta', label_en: 'Card title', es: '¿Tienes un código?', en: 'Have a code?' },
+      { key: 'codeText', label_es: 'Texto tarjeta', label_en: 'Card text', multiline: true, es: 'Entra a tu cuenta y pégalo en Dashboard → Onyx Academy → «Unirme a una academia».', en: 'Sign in and paste it in Dashboard → Onyx Academy → “Join an academy”.' },
+    ],
+  },
+  analiza: {
+    label_es: 'Analiza gratis', label_en: 'Analyze free',
+    fields: [
+      { key: 'title', label_es: 'Título', label_en: 'Title', es: 'Analiza tu cuenta gratis 🔍', en: 'Analyze your account free 🔍' },
+      { key: 'sub', label_es: 'Subtítulo', label_en: 'Subtitle', multiline: true, es: 'Pega tu reporte de MetaTrader o cTrader (o tu lista de operaciones cerradas) y Onyx AI te dará 3 hallazgos al instante. Sin registro.', en: 'Paste your MetaTrader or cTrader statement (or your list of closed trades) and Onyx AI gives you 3 findings instantly. No signup.' },
+      { key: 'placeholder', label_es: 'Placeholder del cuadro', label_en: 'Textarea placeholder', multiline: true, es: 'Pega aquí tus operaciones (par, resultado, hora…) o el texto de tu reporte de MetaTrader o cTrader.', en: 'Paste your trades here (pair, result, time…) or your MetaTrader or cTrader statement text.' },
+      { key: 'privacy', label_es: 'Nota de privacidad', label_en: 'Privacy note', es: 'No guardamos lo que pegas.', en: "We don't store what you paste." },
+      { key: 'disclaimer', label_es: 'Aviso inferior', label_en: 'Bottom disclaimer', multiline: true, es: 'Onyx analiza tu pasado para darte disciplina. No predice el mercado ni da señales.', en: 'Onyx analyzes your past to give you discipline. It does not predict the market or give signals.' },
+    ],
+  },
+};
+
+// ===================== FASE 4: nav, footer, legales =====================
+export const DEFAULT_NAV: { key: string; es: string; en: string }[] = [
+  { key: 'features', es: 'Funciones', en: 'Features' },
+  { key: 'eco', es: 'Ecosistema', en: 'Ecosystem' },
+  { key: 'how', es: 'Cómo funciona', en: 'How it works' },
+  { key: 'fondeo', es: 'Fondeo', en: 'Prop firms' },
+  { key: 'gestor', es: 'Guardian', en: 'Guardian' },
+  { key: 'pricing', es: 'Precios', en: 'Pricing' },
+  { key: 'amb', es: 'Embajadores', en: 'Ambassadors' },
+  { key: 'faq', es: 'FAQ', en: 'FAQ' },
+];
+
+export const DEFAULT_FOOTER = {
+  tagline_es: '', tagline_en: '',
+  links: [
+    { es: 'Inicio', en: 'Home', href: '/' },
+    { es: 'Planes', en: 'Plans', href: '/pricing' },
+    { es: 'Guía', en: 'Guide', href: '/guia' },
+    { es: 'Embajadores', en: 'Ambassadors', href: '/embajadores' },
+    { es: 'Invita y gana', en: 'Invite & earn', href: '/invita' },
+    { es: 'Contacto', en: 'Contact', href: '/contacto' },
+    { es: 'Términos', en: 'Terms', href: '/terms' },
+    { es: 'Privacidad', en: 'Privacy', href: '/privacy' },
+  ],
+};
+
+// Legales en texto plano. El renderer usa: 1ª línea = título (h1),
+// líneas que empiezan con "## " = subtítulo, y párrafos separados por línea en blanco.
+export const DEFAULT_LEGAL = {
+  terms_es: `Términos y Condiciones
+
+## 1. El servicio
+Onyx Trading Live ("Onyx") es una herramienta de diario y análisis de trading que se conecta a tus cuentas de MetaTrader (MT4/MT5), cTrader y otras plataformas compatibles en modo solo lectura para mostrar tu historial y estadísticas. Onyx no ejecuta operaciones ni mueve fondos.
+
+## 2. Cuentas
+Eres responsable de mantener la confidencialidad de tu cuenta y tu API key. Debes ser mayor de edad para usar el servicio.
+
+## 3. Suscripciones y pagos
+Los planes de pago se gestionan a través de Stripe. Las suscripciones se renuevan automáticamente hasta que las canceles. Puedes cancelar en cualquier momento desde tu panel; el acceso continúa hasta el final del periodo pagado. Los reembolsos se evalúan caso por caso.
+
+## 4. Uso aceptable
+No puedes usar Onyx para actividades ilegales, ni intentar vulnerar la seguridad de la plataforma o de otros usuarios.
+
+## 5. Sin asesoramiento financiero
+Onyx es una herramienta informativa. No constituye asesoramiento financiero ni recomendaciones de inversión. Operar conlleva riesgo de pérdida.
+
+## 6. Limitación de responsabilidad
+El servicio se ofrece "tal cual". Onyx no se responsabiliza de pérdidas derivadas del uso de la plataforma, de errores en los datos importados o de interrupciones del servicio.
+
+## 7. Cambios
+Podemos actualizar estos términos. Te avisaremos de cambios importantes.
+
+## 8. Contacto
+Para cualquier consulta, contáctanos a través del correo indicado en la web.`,
+  terms_en: `Terms & Conditions
+
+## 1. The service
+Onyx Trading Live ("Onyx") is a trading journal and analytics tool that connects to your MetaTrader (MT4/MT5), cTrader and other supported platform accounts in read-only mode to display your history and statistics. Onyx does not place trades or move funds.
+
+## 2. Accounts
+You are responsible for keeping your account and API key confidential. You must be of legal age to use the service.
+
+## 3. Subscriptions & payments
+Paid plans are handled through Stripe. Subscriptions renew automatically until cancelled. You can cancel anytime from your panel; access continues until the end of the paid period. Refunds are evaluated case by case.
+
+## 4. Acceptable use
+You may not use Onyx for illegal activities, nor attempt to breach the security of the platform or other users.
+
+## 5. No financial advice
+Onyx is an informational tool. It does not constitute financial advice or investment recommendations. Trading involves risk of loss.
+
+## 6. Limitation of liability
+The service is provided "as is". Onyx is not liable for losses arising from use of the platform, errors in imported data, or service interruptions.
+
+## 7. Changes
+We may update these terms. We will notify you of significant changes.
+
+## 8. Contact
+For any questions, contact us via the email listed on the website.`,
+  privacy_es: `Política de Privacidad
+
+## 1. Qué datos recogemos
+Recogemos tu email (para tu cuenta), los datos de tu historial de trading que envía el connector (operaciones, balance, cuenta) y datos de pago gestionados por Stripe (no almacenamos números de tarjeta).
+
+## 2. Para qué los usamos
+Usamos tus datos para mostrarte tus estadísticas, gestionar tu suscripción y mejorar el servicio. No vendemos tus datos a terceros.
+
+## 3. Dónde se guardan
+Los datos se almacenan de forma segura en nuestra base de datos (Supabase). Los pagos se procesan a través de Stripe.
+
+## 4. Terceros
+Usamos proveedores de confianza: Supabase (base de datos), Vercel (hosting) y Stripe (pagos). Cada uno tiene sus propias políticas de privacidad.
+
+## 5. Seguridad
+La conexión con tu plataforma (MetaTrader, cTrader…) es de solo lectura. Aplicamos medidas para proteger tu información, aunque ningún sistema es 100% infalible.
+
+## 6. Tus derechos
+Puedes acceder, corregir o eliminar tus datos y tu cuenta en cualquier momento contactándonos.
+
+## 7. Cookies
+Usamos cookies esenciales para mantener tu sesión iniciada.
+
+## 8. Contacto
+Para ejercer tus derechos o cualquier consulta, contáctanos a través del correo indicado en la web.`,
+  privacy_en: `Privacy Policy
+
+## 1. What data we collect
+We collect your email (for your account), the trading history data sent by the connector (trades, balance, account) and payment data handled by Stripe (we do not store card numbers).
+
+## 2. How we use it
+We use your data to show your statistics, manage your subscription and improve the service. We do not sell your data to third parties.
+
+## 3. Where it is stored
+Data is stored securely in our database (Supabase). Payments are processed through Stripe.
+
+## 4. Third parties
+We use trusted providers: Supabase (database), Vercel (hosting) and Stripe (payments). Each has its own privacy policy.
+
+## 5. Security
+The connection to your platform (MetaTrader, cTrader…) is read-only. We apply measures to protect your information, although no system is 100% foolproof.
+
+## 6. Your rights
+You can access, correct or delete your data and account at any time by contacting us.
+
+## 7. Cookies
+We use essential cookies to keep your session logged in.
+
+## 8. Contact
+To exercise your rights or for any questions, contact us via the email listed on the website.`,
+};
+

@@ -424,15 +424,17 @@ export default function Home() {
   const finalTitle = lc?.cta?.[`t_${lang}`] || t.finalT;
   const finalBtn = lc?.cta?.[`btn_${lang}`] || t.finalCta;
 
+  // Etiquetas del menú editables desde el Landing Builder (vacío = texto del código).
+  const nv = (k: string, fb: string) => lc?.nav?.[k]?.[lang] || fb;
   const SECTIONS = [
-    { id: 'features', label: t.nav.features },
-    { id: 'eco', label: t.nav.eco },
-    { id: 'how', label: t.nav.how },
-    { id: 'fondeo', label: t.nav.fondeo },
-    { id: 'gestor', label: t.nav.gestor },
-    { id: 'pricing', label: t.nav.pricing },
-    { id: 'embajadores', label: t.nav.amb },
-    { id: 'faq', label: t.nav.faq },
+    { id: 'features', label: nv('features', t.nav.features) },
+    { id: 'eco', label: nv('eco', t.nav.eco) },
+    { id: 'how', label: nv('how', t.nav.how) },
+    { id: 'fondeo', label: nv('fondeo', t.nav.fondeo) },
+    { id: 'gestor', label: nv('gestor', t.nav.gestor) },
+    { id: 'pricing', label: nv('pricing', t.nav.pricing) },
+    { id: 'embajadores', label: nv('amb', t.nav.amb) },
+    { id: 'faq', label: nv('faq', t.nav.faq) },
   ];
 
   return (

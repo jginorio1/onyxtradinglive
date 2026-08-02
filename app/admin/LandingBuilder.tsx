@@ -55,7 +55,9 @@ export default function LandingBuilder() {
   const es = lang === 'es';
   const L = (a: string, b: string) => (es ? a : b);
 
-  const [sub, setSub] = useState<'hero' | 'faq' | 'compare' | 'eco' | 'features' | 'how' | 'trust' | 'cta'>('hero');
+  const [sub, setSub] = useState<'hero' | 'faq' | 'compare' | 'eco' | 'features' | 'how' | 'trust' | 'cta' | 'pages' | 'nav' | 'footer' | 'legal'>('hero');
+  const [pageId, setPageId] = useState('embajadores');
+  const [legalDoc, setLegalDoc] = useState<'terms' | 'privacy'>('terms');
   const [content, setContent] = useState<any>(null);
   const [defaults, setDefaults] = useState<any>({});
   const [faqPage, setFaqPage] = useState('landing');
@@ -99,6 +101,20 @@ export default function LandingBuilder() {
   const cta = content.cta || defaults.cta || {};
   const setCta = (patch: any) => setContent({ ...content, cta: { ...cta, ...patch } });
 
+  // Fase 3/4
+  const pageDefs = defaults.pages || {};                 // { id: {label_es,label_en,fields:[]} }
+  const pageVals = content.pages || {};                  // { id: { key: {es,en} } }
+  const setPageField = (pid: string, key: string, lng: 'es' | 'en', v: string) =>
+    setContent({ ...content, pages: { ...pageVals, [pid]: { ...(pageVals[pid] || {}), [key]: { ...((pageVals[pid] || {})[key] || {}), [lng]: v } } } });
+  const navDefs = defaults.nav || [];                    // [{key,es,en}]
+  const navVals = content.nav || {};                     // { key: {es,en} }
+  const setNav = (key: string, lng: 'es' | 'en', v: string) =>
+    setContent({ ...content, nav: { ...navVals, [key]: { ...(navVals[key] || {}), [lng]: v } } });
+  const footer = content.footer || defaults.footer || { links: [] };
+  const setFooter = (patch: any) => setContent({ ...content, footer: { ...footer, ...patch } });
+  const legal = content.legal || defaults.legal || {};
+  const setLegal = (patch: any) => setContent({ ...content, legal: { ...legal, ...patch } });
+
   const inp = { width: '100%', margin: 0 } as any;
   const lbl = { fontSize: 11.5, color: 'var(--mut)', marginBottom: 3 } as any;
 
@@ -114,7 +130,7 @@ export default function LandingBuilder() {
 
       {/* sub-tabs */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
-        {([['hero', L('Hero del landing', 'Landing hero')], ['features', L('Funciones', 'Features')], ['eco', L('Ecosistema', 'Ecosystem')], ['how', L('Cómo funciona', 'How it works')], ['trust', L('Insignias de confianza', 'Trust badges')], ['cta', L('Llamada final (CTA)', 'Final CTA')], ['faq', L('FAQ por página', 'FAQ per page')], ['compare', L('Comparación de planes', 'Plan comparison')]] as const).map(([k, label]) => (
+        {([['hero', L('Hero del landing', 'Landing hero')], ['features', L('Funciones', 'Features')], ['eco', L('Ecosistema', 'Ecosystem')], ['how', L('Cómo funciona', 'How it works')], ['trust', L('Insignias de confianza', 'Trust badges')], ['cta', L('Llamada final (CTA)', 'Final CTA')], ['faq', L('FAQ por página', 'FAQ per page')], ['compare', L('Comparación de planes', 'Plan comparison')], ['pages', L('Otras páginas', 'Other pages')], ['nav', L('Menú (nav)', 'Menu (nav)')], ['footer', L('Footer', 'Footer')], ['legal', L('Legales', 'Legal')]] as const).map(([k, label]) => (
           <button key={k} className={'btn ' + (sub === k ? 'btn-primary' : 'btn-ghost')} style={{ padding: '6px 13px', fontSize: 13 }} onClick={() => setSub(k as any)}>{label}</button>
         ))}
       </div>
@@ -282,6 +298,107 @@ export default function LandingBuilder() {
             ))}
           </div>
           <button className="btn btn-primary" style={{ marginTop: 14 }} onClick={() => save({ cta })} disabled={busy}>{busy ? '…' : L('Guardar CTA', 'Save CTA')}</button>
+        </div>
+      )}
+
+      {/* OTRAS PÁGINAS (Fase 3) */}
+      {sub === 'pages' && (
+        <div className="card" style={{ padding: 18 }}>
+          <div style={{ marginBottom: 14 }}>
+            <span className="muted" style={{ fontSize: 12.5, marginRight: 8 }}>{L('Página', 'Page')}:</span>
+            <select value={pageId} onChange={(e) => setPageId(e.target.value)} style={{ padding: '5px 10px' }}>
+              {Object.keys(pageDefs).map((id) => <option key={id} value={id}>{es ? pageDefs[id].label_es : pageDefs[id].label_en}</option>)}
+            </select>
+            <span className="muted" style={{ fontSize: 11.5, marginLeft: 10 }}>{L('Vacío = usa el texto del código.', 'Empty = uses the code text.')}</span>
+          </div>
+          <div style={{ display: 'grid', gap: 14, maxWidth: 820 }}>
+            {(pageDefs[pageId]?.fields || []).map((f: any) => (
+              <div key={f.key} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div>
+                  <div style={lbl}>{(es ? f.label_es : f.label_en)} · ES</div>
+                  {f.multiline
+                    ? <textarea rows={2} style={inp} placeholder={f.es} value={pageVals[pageId]?.[f.key]?.es ?? ''} onChange={(e) => setPageField(pageId, f.key, 'es', e.target.value)} />
+                    : <input style={inp} placeholder={f.es} value={pageVals[pageId]?.[f.key]?.es ?? ''} onChange={(e) => setPageField(pageId, f.key, 'es', e.target.value)} />}
+                </div>
+                <div>
+                  <div style={lbl}>{(es ? f.label_es : f.label_en)} · EN</div>
+                  {f.multiline
+                    ? <textarea rows={2} style={inp} placeholder={f.en} value={pageVals[pageId]?.[f.key]?.en ?? ''} onChange={(e) => setPageField(pageId, f.key, 'en', e.target.value)} />
+                    : <input style={inp} placeholder={f.en} value={pageVals[pageId]?.[f.key]?.en ?? ''} onChange={(e) => setPageField(pageId, f.key, 'en', e.target.value)} />}
+                </div>
+              </div>
+            ))}
+          </div>
+          <button className="btn btn-primary" style={{ marginTop: 14 }} onClick={() => save({ pages: content.pages || {} })} disabled={busy}>{busy ? '…' : L('Guardar página', 'Save page')}</button>
+        </div>
+      )}
+
+      {/* MENÚ (nav) */}
+      {sub === 'nav' && (
+        <div className="card" style={{ padding: 18, maxWidth: 720 }}>
+          <p className="muted" style={{ fontSize: 12.5, marginBottom: 12 }}>{L('Etiquetas del menú superior del landing. Vacío = usa el texto del código.', 'Landing top-menu labels. Empty = uses the code text.')}</p>
+          <div style={{ display: 'grid', gap: 8 }}>
+            {navDefs.map((n: any) => (
+              <div key={n.key} style={{ display: 'grid', gridTemplateColumns: '110px 1fr 1fr', gap: 8, alignItems: 'center' }}>
+                <span className="muted" style={{ fontSize: 12 }}>{n.key}</span>
+                <input placeholder={n.es} style={inp} value={navVals[n.key]?.es ?? ''} onChange={(e) => setNav(n.key, 'es', e.target.value)} />
+                <input placeholder={n.en} style={inp} value={navVals[n.key]?.en ?? ''} onChange={(e) => setNav(n.key, 'en', e.target.value)} />
+              </div>
+            ))}
+          </div>
+          <button className="btn btn-primary" style={{ marginTop: 14 }} onClick={() => save({ nav: content.nav || {} })} disabled={busy}>{busy ? '…' : L('Guardar menú', 'Save menu')}</button>
+        </div>
+      )}
+
+      {/* FOOTER */}
+      {sub === 'footer' && (
+        <div className="card" style={{ padding: 18 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16, maxWidth: 640 }}>
+            <div><div style={lbl}>{L('Lema (opcional)', 'Tagline (optional)')} · ES</div><input style={inp} value={footer.tagline_es || ''} onChange={(e) => setFooter({ tagline_es: e.target.value })} /></div>
+            <div><div style={lbl}>{L('Lema (opcional)', 'Tagline (optional)')} · EN</div><input style={inp} value={footer.tagline_en || ''} onChange={(e) => setFooter({ tagline_en: e.target.value })} /></div>
+          </div>
+          <div style={lbl}>{L('Enlaces del footer', 'Footer links')}</div>
+          {(footer.links || []).map((lk: any, i: number) => (
+            <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.1fr auto', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+              <input placeholder="ES" style={inp} value={lk.es} onChange={(e) => { const r = [...footer.links]; r[i] = { ...lk, es: e.target.value }; setFooter({ links: r }); }} />
+              <input placeholder="EN" style={inp} value={lk.en} onChange={(e) => { const r = [...footer.links]; r[i] = { ...lk, en: e.target.value }; setFooter({ links: r }); }} />
+              <input placeholder="/ruta" style={inp} value={lk.href} onChange={(e) => { const r = [...footer.links]; r[i] = { ...lk, href: e.target.value }; setFooter({ links: r }); }} />
+              <div style={{ display: 'flex', gap: 3 }}>
+                <button className="btn btn-ghost" style={{ padding: '2px 7px', fontSize: 11 }} disabled={!i} onClick={() => { const r = [...footer.links];[r[i - 1], r[i]] = [r[i], r[i - 1]]; setFooter({ links: r }); }}>↑</button>
+                <button className="btn btn-ghost" style={{ padding: '2px 7px', fontSize: 11 }} disabled={i === footer.links.length - 1} onClick={() => { const r = [...footer.links];[r[i + 1], r[i]] = [r[i], r[i + 1]]; setFooter({ links: r }); }}>↓</button>
+                <button className="btn btn-ghost" style={{ padding: '2px 7px', fontSize: 11, color: 'var(--red)' }} onClick={() => setFooter({ links: footer.links.filter((_: any, j: number) => j !== i) })}>✕</button>
+              </div>
+            </div>
+          ))}
+          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+            <button className="btn btn-ghost" onClick={() => setFooter({ links: [...(footer.links || []), { es: '', en: '', href: '/' }] })}>＋ {L('Añadir enlace', 'Add link')}</button>
+            <button className="btn btn-primary" onClick={() => save({ footer })} disabled={busy}>{busy ? '…' : L('Guardar footer', 'Save footer')}</button>
+          </div>
+        </div>
+      )}
+
+      {/* LEGALES */}
+      {sub === 'legal' && (
+        <div className="card" style={{ padding: 18 }}>
+          <div style={{ marginBottom: 12 }}>
+            <span className="muted" style={{ fontSize: 12.5, marginRight: 8 }}>{L('Documento', 'Document')}:</span>
+            <select value={legalDoc} onChange={(e) => setLegalDoc(e.target.value as any)} style={{ padding: '5px 10px' }}>
+              <option value="terms">{L('Términos', 'Terms')}</option>
+              <option value="privacy">{L('Privacidad', 'Privacy')}</option>
+            </select>
+            <span className="muted" style={{ fontSize: 11.5, marginLeft: 10 }}>{L('1ª línea = título · líneas con «## » = subtítulo · párrafos separados por línea en blanco.', '1st line = title · lines with “## ” = heading · paragraphs separated by a blank line.')}</span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <div style={lbl}>ES</div>
+              <textarea rows={18} style={{ ...inp, fontFamily: 'inherit', lineHeight: 1.6 }} value={legal[`${legalDoc}_es`] ?? ''} onChange={(e) => setLegal({ [`${legalDoc}_es`]: e.target.value })} />
+            </div>
+            <div>
+              <div style={lbl}>EN</div>
+              <textarea rows={18} style={{ ...inp, fontFamily: 'inherit', lineHeight: 1.6 }} value={legal[`${legalDoc}_en`] ?? ''} onChange={(e) => setLegal({ [`${legalDoc}_en`]: e.target.value })} />
+            </div>
+          </div>
+          <button className="btn btn-primary" style={{ marginTop: 14 }} onClick={() => save({ legal })} disabled={busy}>{busy ? '…' : L('Guardar legales', 'Save legal')}</button>
         </div>
       )}
     </>

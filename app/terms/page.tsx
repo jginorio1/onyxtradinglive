@@ -1,9 +1,13 @@
 'use client';
 import { useLang } from '@/lib/lang';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { renderLegal } from '@/app/legalRender';
 
 export default function Terms() {
   const { lang } = useLang();
+  const [ov, setOv] = useState<string | null>(null);
+  useEffect(() => { fetch('/api/landing-content', { cache: 'no-store' }).then((r) => r.json()).then((c) => setOv(c?.legal?.[`terms_${lang}`] || null)).catch(() => {}); }, [lang]);
   const es = (
     <>
       <h1>Términos y Condiciones</h1>
@@ -51,7 +55,7 @@ export default function Terms() {
   return (
     <>
       <div className="wrap" style={{ maxWidth: 760, padding: '40px 22px' }}>
-        <div className="card" style={{ lineHeight: 1.8 }}>{lang === 'es' ? es : en}</div>
+        <div className="card" style={{ lineHeight: 1.8 }}>{ov ? renderLegal(ov) : (lang === 'es' ? es : en)}</div>
         <p style={{ marginTop: 20 }}><Link href="/" className="muted">← {lang === 'es' ? 'Volver al inicio' : 'Back home'}</Link></p>
       </div>
     </>

@@ -26,11 +26,13 @@ export default function MentoresPage() {
   const L = mkL(lang);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [lcFaqRaw, setLcFaqRaw] = useState<string[][] | null>(null);
+  const [lcPage, setLcPage] = useState<any>(null);
+  const px = (k: string, fb: string) => lcPage?.[k]?.[lang] || fb;
   useEffect(() => {
     fetch('/api/admin/plans').then((r) => r.json()).then((j) => setPlans(j.plans || [])).catch(() => {});
-    // FAQ editable del Landing Builder (si el admin la puso, reemplaza la del código).
+    // FAQ + textos editables del Landing Builder (vacío = texto del código).
     fetch('/api/landing-content', { cache: 'no-store' }).then((r) => r.json())
-      .then((c) => { const rows = c?.faq?.mentores; if (Array.isArray(rows) && rows.length) setLcFaqRaw(rows); }).catch(() => {});
+      .then((c) => { const rows = c?.faq?.mentores; if (Array.isArray(rows) && rows.length) setLcFaqRaw(rows); setLcPage(c?.pages?.mentores || null); }).catch(() => {});
   }, []);
   const shown = plans.length ? plans : FALLBACK;
   // Comisión dinámica: rango min–max del % por plan (se refleja al cambiarlo en admin).
@@ -76,7 +78,7 @@ export default function MentoresPage() {
         </div>
         <br />
         <span className="pill green" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon name="graduation" size={14} /> Onyx Academy</span>
-        <h1 style={{ fontSize: 46, margin: '20px 0', lineHeight: 1.1 }}>{L('Monta tu academia de trading,', 'Build your trading academy,')}<br /><span style={grad}>{L('sin montar tu web.', 'without building a website.')}</span></h1>
+        <h1 style={{ fontSize: 46, margin: '20px 0', lineHeight: 1.1 }}>{px('h1a', L('Monta tu academia de trading,', 'Build your trading academy,'))}<br /><span style={grad}>{px('h1b', L('sin montar tu web.', 'without building a website.'))}</span></h1>
         <p className="muted" style={{ fontSize: 19, maxWidth: 620, margin: '0 auto 26px' }}>{L('Cursos, comunidad, clases en vivo y cobros — todo dentro de Onyx. Tú fijas el precio, tú te quedas con la mayoría.', 'Courses, community, live classes and payments — all inside Onyx. You set the price, you keep the majority.')}</p>
         <div className="row" style={{ justifyContent: 'center' }}>
           <Link className="btn btn-primary" href="/login?mode=signup" style={{ padding: '14px 28px', fontSize: 16 }}>{L('Crea tu academia', 'Create your academy')}</Link>
@@ -176,7 +178,7 @@ export default function MentoresPage() {
 
       {/* CTA final */}
       <div className="wrap" style={{ textAlign: 'center', padding: '20px 22px 70px' }}>
-        <h2 style={{ marginBottom: 10 }}>{L('Convierte tu comunidad en tu negocio', 'Turn your community into your business')}</h2>
+        <h2 style={{ marginBottom: 10 }}>{px('ctaTitle', L('Convierte tu comunidad en tu negocio', 'Turn your community into your business'))}</h2>
         <p className="muted" style={{ fontSize: 16, maxWidth: 560, margin: '0 auto 20px' }}>{L('Miles de traders buscan un mentor. Dales una casa dentro de Onyx.', 'Thousands of traders are looking for a mentor. Give them a home inside Onyx.')}</p>
         <Link className="btn btn-primary" href="/login?mode=signup" style={{ padding: '15px 34px', fontSize: 17 }}>{L('Crea tu academia', 'Create your academy')}</Link>
       </div>

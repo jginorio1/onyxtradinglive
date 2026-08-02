@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getAdmin, requirePerm } from '@/lib/admin';
 import { landingContent, saveLandingContent, type LandingContent } from '@/lib/landingContent';
 import { PLAN_ROWS } from '@/lib/plansData';
-import { DEFAULT_ECO, DEFAULT_FEATURES, DEFAULT_HOW, DEFAULT_TRUST, DEFAULT_CTA } from '@/lib/landingDefaults';
+import { DEFAULT_ECO, DEFAULT_FEATURES, DEFAULT_HOW, DEFAULT_TRUST, DEFAULT_CTA, DEFAULT_PAGES, DEFAULT_NAV, DEFAULT_FOOTER, DEFAULT_LEGAL } from '@/lib/landingDefaults';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -13,7 +13,7 @@ export async function GET() {
   const { isAdmin } = await getAdmin();
   if (!isAdmin) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
   const content = await landingContent();
-  return NextResponse.json({ content, defaults: { compare: PLAN_ROWS, eco: DEFAULT_ECO, features: DEFAULT_FEATURES, how: DEFAULT_HOW, trust: DEFAULT_TRUST, cta: DEFAULT_CTA } });
+  return NextResponse.json({ content, defaults: { compare: PLAN_ROWS, eco: DEFAULT_ECO, features: DEFAULT_FEATURES, how: DEFAULT_HOW, trust: DEFAULT_TRUST, cta: DEFAULT_CTA, pages: DEFAULT_PAGES, nav: DEFAULT_NAV, footer: DEFAULT_FOOTER, legal: DEFAULT_LEGAL } });
 }
 
 export async function PATCH(req: Request) {
@@ -31,6 +31,10 @@ export async function PATCH(req: Request) {
   if (b.how !== undefined) next.how = b.how;
   if (b.trust !== undefined) next.trust = b.trust;
   if (b.cta !== undefined) next.cta = b.cta;
+  if (b.pages !== undefined) next.pages = b.pages;
+  if (b.nav !== undefined) next.nav = b.nav;
+  if (b.footer !== undefined) next.footer = b.footer;
+  if (b.legal !== undefined) next.legal = b.legal;
   await saveLandingContent(next);
   return NextResponse.json({ ok: true, content: next });
 }

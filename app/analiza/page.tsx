@@ -1,6 +1,6 @@
 'use client';
 import { mkL } from '@/lib/i18n';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useLang } from '@/lib/lang';
 
@@ -12,6 +12,9 @@ export default function AnalizaPage() {
   const [busy, setBusy] = useState(false);
   const [findings, setFindings] = useState<string[] | null>(null);
   const [err, setErr] = useState('');
+  const [lcPage, setLcPage] = useState<any>(null);
+  const px = (k: string, fb: string) => lcPage?.[k]?.[lang] || fb;
+  useEffect(() => { fetch('/api/landing-content', { cache: 'no-store' }).then((r) => r.json()).then((c) => setLcPage(c?.pages?.analiza || null)).catch(() => {}); }, []);
 
   async function run() {
     setBusy(true); setErr(''); setFindings(null);
@@ -27,19 +30,19 @@ export default function AnalizaPage() {
     <div className="wrap" style={{ maxWidth: 720, margin: '0 auto', padding: '48px 18px' }}>
       <div style={{ textAlign: 'center', marginBottom: 22 }}>
         <img src="/onyx-symbol.png" alt="Onyx" style={{ width: 44, height: 44, objectFit: 'contain', marginBottom: 14 }} />
-        <h1 style={{ marginBottom: 8 }}>{L('Analiza tu cuenta gratis 🔍', 'Analyze your account free 🔍')}</h1>
+        <h1 style={{ marginBottom: 8 }}>{px('title', L('Analiza tu cuenta gratis 🔍', 'Analyze your account free 🔍'))}</h1>
         <p className="muted" style={{ fontSize: 15, maxWidth: 560, margin: '0 auto' }}>
-          {L('Pega tu reporte de MetaTrader o cTrader (o tu lista de operaciones cerradas) y Onyx AI te dará 3 hallazgos al instante. Sin registro.', 'Paste your MetaTrader or cTrader statement (or your list of closed trades) and Onyx AI gives you 3 findings instantly. No signup.')}
+          {px('sub', L('Pega tu reporte de MetaTrader o cTrader (o tu lista de operaciones cerradas) y Onyx AI te dará 3 hallazgos al instante. Sin registro.', 'Paste your MetaTrader or cTrader statement (or your list of closed trades) and Onyx AI gives you 3 findings instantly. No signup.'))}
         </p>
       </div>
 
       <div className="card">
         <textarea value={text} onChange={(e) => setText(e.target.value)}
-          placeholder={L('Pega aquí tus operaciones (par, resultado, hora…) o el texto de tu reporte de MetaTrader o cTrader.', 'Paste your trades here (pair, result, time…) or your MetaTrader or cTrader statement text.')}
+          placeholder={px('placeholder', L('Pega aquí tus operaciones (par, resultado, hora…) o el texto de tu reporte de MetaTrader o cTrader.', 'Paste your trades here (pair, result, time…) or your MetaTrader or cTrader statement text.'))}
           style={{ width: '100%', minHeight: 150, padding: '12px 14px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 14, fontFamily: 'inherit', resize: 'vertical' }} />
         <div className="row" style={{ gap: 10, marginTop: 12, alignItems: 'center', flexWrap: 'wrap' }}>
           <button className="btn btn-primary" onClick={run} disabled={busy || text.trim().length < 30}>{busy ? L('Analizando…', 'Analyzing…') : '✨ ' + L('Analizar', 'Analyze')}</button>
-          <span className="muted" style={{ fontSize: 12 }}>{L('No guardamos lo que pegas.', "We don't store what you paste.")}</span>
+          <span className="muted" style={{ fontSize: 12 }}>{px('privacy', L('No guardamos lo que pegas.', "We don't store what you paste."))}</span>
         </div>
         {err && <div style={{ marginTop: 12, color: 'var(--amber)', fontSize: 13 }}>⚠ {err}</div>}
       </div>
@@ -63,7 +66,7 @@ export default function AnalizaPage() {
       )}
 
       <p className="muted" style={{ fontSize: 11.5, textAlign: 'center', marginTop: 18 }}>
-        {L('Onyx analiza tu pasado para darte disciplina. No predice el mercado ni da señales.', 'Onyx analyzes your past to give you discipline. It does not predict the market or give signals.')}
+        {px('disclaimer', L('Onyx analiza tu pasado para darte disciplina. No predice el mercado ni da señales.', 'Onyx analyzes your past to give you discipline. It does not predict the market or give signals.'))}
       </p>
     </div>
   );

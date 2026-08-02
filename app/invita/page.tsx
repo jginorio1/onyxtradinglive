@@ -61,16 +61,18 @@ export default function Invita() {
   const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
   const [n, setN] = useState(5);
   const [lcFaqRaw, setLcFaqRaw] = useState<string[][] | null>(null);
+  const [lcPage, setLcPage] = useState<any>(null);
   // FAQ editable del Landing Builder (si el admin la puso, reemplaza la del código).
   const faqRows: [string, string][] = (lcFaqRaw && lcFaqRaw.length)
     ? lcFaqRaw.map((r) => lang === 'es' ? [r[0], r[1]] : [r[2], r[3]])
     : t.faq;
+  const px = (k: string, fb: string) => lcPage?.[k]?.[lang] || fb;
 
   useEffect(() => {
     fetch('/api/referral/info?t=' + Date.now(), { cache: 'no-store' }).then((r) => r.json()).then(setD).catch(() => setD({ referrerCredit: 10, friendCredit: 10, holdDays: 21, bridge: 5 }));
     fetch('/api/referral').then((r) => setLoggedIn(r.status !== 401)).catch(() => setLoggedIn(false));
     fetch('/api/landing-content', { cache: 'no-store' }).then((r) => r.json())
-      .then((c) => { const rows = c?.faq?.invita; if (Array.isArray(rows) && rows.length) setLcFaqRaw(rows); }).catch(() => {});
+      .then((c) => { const rows = c?.faq?.invita; if (Array.isArray(rows) && rows.length) setLcFaqRaw(rows); setLcPage(c?.pages?.invita || null); }).catch(() => {});
   }, []);
 
   const fill = (s: string, m: any) => Object.keys(m).reduce((x, k) => x.replace(`{${k}}`, m[k]), s);
@@ -83,8 +85,8 @@ export default function Invita() {
     <div className="wrap" style={{ padding: '52px 22px 60px' }}>
       <div style={{ textAlign: 'center', marginBottom: 40 }}>
         <div style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="gift" size={40} /></div>
-        <h1 style={{ fontSize: 36, letterSpacing: '-1px', marginTop: 8 }}>{t.h1}</h1>
-        <p className="muted" style={{ margin: '12px auto 0', maxWidth: 620, fontSize: 17 }}>{t.sub}</p>
+        <h1 style={{ fontSize: 36, letterSpacing: '-1px', marginTop: 8 }}>{px('h1', t.h1)}</h1>
+        <p className="muted" style={{ margin: '12px auto 0', maxWidth: 620, fontSize: 17 }}>{px('sub', t.sub)}</p>
       </div>
 
       <div className="grid g2" style={{ maxWidth: 620, margin: '0 auto 12px', gap: 14 }}>

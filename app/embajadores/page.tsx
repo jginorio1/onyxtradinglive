@@ -83,15 +83,18 @@ export default function Embajadores() {
   const [f, setF] = useState<any>({ code: '', audience: '', followers: '', payout_method: 'paypal', payout_details: '' });
   const [busy, setBusy] = useState(false);
   const [lcFaqRaw, setLcFaqRaw] = useState<string[][] | null>(null);
+  const [lcPage, setLcPage] = useState<any>(null);
   const t = dictFor(T, lang);
   // FAQ editable del Landing Builder (si el admin la puso, reemplaza la del código).
   const faqRows: [string, string][] = (lcFaqRaw && lcFaqRaw.length)
     ? lcFaqRaw.map((r) => lang === 'es' ? [r[0], r[1]] : [r[2], r[3]])
     : t.faq;
+  // Textos editables de la página (vacío = texto del código).
+  const px = (k: string, fb: string) => lcPage?.[k]?.[lang] || fb;
 
   useEffect(() => {
     fetch('/api/landing-content', { cache: 'no-store' }).then((r) => r.json())
-      .then((c) => { const rows = c?.faq?.embajadores; if (Array.isArray(rows) && rows.length) setLcFaqRaw(rows); })
+      .then((c) => { const rows = c?.faq?.embajadores; if (Array.isArray(rows) && rows.length) setLcFaqRaw(rows); setLcPage(c?.pages?.embajadores || null); })
       .catch(() => {});
     fetch('/api/ambassador').then(async (r) => {
       if (r.status === 401) {
@@ -135,8 +138,8 @@ export default function Embajadores() {
 
       <div className="wrap" style={{ padding: '52px 22px 60px' }}>
         <div style={{ textAlign: 'center', marginBottom: 40 }}>
-          <h1 style={{ fontSize: 36, letterSpacing: '-1px' }}>{t.h1}</h1>
-          <p className="muted" style={{ margin: '12px auto 0', maxWidth: 620, fontSize: 17 }}>{t.sub}</p>
+          <h1 style={{ fontSize: 36, letterSpacing: '-1px' }}>{px('h1', t.h1)}</h1>
+          <p className="muted" style={{ margin: '12px auto 0', maxWidth: 620, fontSize: 17 }}>{px('sub', t.sub)}</p>
         </div>
 
         <div className="grid g3" style={{ marginBottom: 44 }}>
