@@ -51,15 +51,22 @@ export async function GET() {
       }
     } catch {}
 
+    // Piso semilla: si no hay base fijada NI operaciones reales, el número sería 0.
+    // Para no enseñar un "0 +" pelado en el landing, mostramos una semilla mínima.
+    // En cuanto el admin ponga una base o entren operaciones reales, manda eso.
+    const SEED = { trades: 1000, blocks: 80, accounts: 40 };
+    const t = tBase + Math.max(Number(trades || 0), 0);
+    const b = bBase + Math.max(Number(blocks || 0), 0);
+    const a = aBase + Math.max(Number(accounts || 0), 0);
+
     return NextResponse.json({
-      // Base fijada en admin + lo real de todos los usuarios (crece solo).
-      trades: tBase + Math.max(Number(trades || 0), 0),
-      blocks: bBase + Math.max(Number(blocks || 0), 0),
-      accounts: aBase + Math.max(Number(accounts || 0), 0),
+      trades: t > 0 ? t : SEED.trades,
+      blocks: b > 0 ? b : SEED.blocks,
+      accounts: a > 0 ? a : SEED.accounts,
       platforms, readonly,          // valores fijos editables desde admin
       ambRate, ambCoupon, ambBase, ambMinPayout,
     }, { headers: NO_CACHE });
   } catch {
-    return NextResponse.json({ trades: 0, blocks: 0, accounts: 0, platforms: 4, readonly: 100, ambRate: 30, ambCoupon: 20, ambBase: 20, ambMinPayout: 50 }, { headers: NO_CACHE });
+    return NextResponse.json({ trades: 1000, blocks: 80, accounts: 40, platforms: 4, readonly: 100, ambRate: 30, ambCoupon: 20, ambBase: 20, ambMinPayout: 50 }, { headers: NO_CACHE });
   }
 }

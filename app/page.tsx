@@ -97,6 +97,7 @@ const dict = {
       cards: [
         { i: '🛡️', t: 'Onyx Guardian', d: 'Gestiona y frena tus operaciones según tu plan: break even real, trailing, parciales, límites de fondeo y bloqueo por noticias.' },
         { i: '🔁', t: 'Copy trading', d: 'Copia de una cuenta maestra a varias, con tus límites de riesgo por enlace. Nunca se activa solo: tú decides.' },
+        { i: '📈', t: 'Señales de TradingView', d: 'Tus alertas de TradingView abren la operación en tu cuenta real vía tu EA, con tope de lote y símbolos. El Guardian te sigue protegiendo.' },
         { i: '🎓', t: 'Onyx Academy', d: 'Comunidad y mentoría estilo Skool: cursos, clases en vivo, feed, retos y certificados. Los mentores cobran con Stripe.' },
         { i: '🤖', t: 'Onyx AI', d: 'Analiza tu operativa, lee tu reporte y te da hallazgos claros. Nunca da señales ni promete ganancias.' },
         { i: '📲', t: 'Alertas por Telegram', d: 'Avisos de fondeo, Guardian, noticias, meta alcanzada y resumen diario, directo a tu Telegram.' },
@@ -227,6 +228,7 @@ const dict = {
       cards: [
         { i: '🛡️', t: 'Onyx Guardian', d: 'Manages and brakes your trades to your plan: real break even, trailing, partials, funded-account limits and news blackout.' },
         { i: '🔁', t: 'Copy trading', d: 'Copy from a master account to several, with your own per-link risk limits. Never auto-activates: you decide.' },
+        { i: '📈', t: 'TradingView signals', d: 'Your TradingView alerts open the trade in your real account via your EA, with a lot cap and symbols. Guardian keeps protecting you.' },
         { i: '🎓', t: 'Onyx Academy', d: 'Skool-style community and mentorship: courses, live classes, feed, challenges and certificates. Mentors get paid with Stripe.' },
         { i: '🤖', t: 'Onyx AI', d: 'Analyzes your trading, reads your statement and gives you clear findings. Never gives signals or promises profit.' },
         { i: '📲', t: 'Telegram alerts', d: 'Funding, Guardian, news, target reached and daily summary alerts, straight to your Telegram.' },

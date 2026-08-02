@@ -14,8 +14,8 @@ export async function GET() {
       friendCredit: s.friend_credit,
       holdDays: s.hold_days,
       bridge: s.bridge_threshold,
-    });
+    }, { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0' } });
   } catch {
-    return NextResponse.json({ enabled: true, referrerCredit: 10, friendCredit: 10, holdDays: 21, bridge: 5 });
+    return NextResponse.json({ enabled: true, referrerCredit: 10, friendCredit: 10, holdDays: 21, bridge: 5 }, { headers: { 'Cache-Control': 'no-store' } });
   }
 }
