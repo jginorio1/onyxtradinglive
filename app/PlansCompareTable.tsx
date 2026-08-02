@@ -54,7 +54,14 @@ export default function PlansCompareTable({
               <th style={{ textAlign: 'left', padding: '14px 16px' }}></th>
               {cols.map((id) => {
                 const p = byId(id);
-                return <th key={id} style={{ textAlign: 'center', padding: '14px 16px', color: isPro(p) ? 'var(--brand)' : 'var(--tx)', fontSize: 15 }}>{name(p, id)}</th>;
+                const price = p ? (annual ? p.price_year : p.price_month) : 0;
+                const per = annual ? (lang === 'es' ? '/año' : '/yr') : (lang === 'es' ? '/mes' : '/mo');
+                return (
+                  <th key={id} style={{ textAlign: 'center', padding: '14px 16px', color: isPro(p) ? 'var(--brand)' : 'var(--tx)', fontSize: 15 }}>
+                    <div>{name(p, id)}</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--tx)' }}>{price === 0 ? (lang === 'es' ? 'Gratis' : 'Free') : `$${price}`}<span style={{ fontSize: 11, color: 'var(--mut)', fontWeight: 500 }}>{price === 0 ? '' : per}</span></div>
+                  </th>
+                );
               })}
             </tr>
           </thead>
@@ -66,7 +73,13 @@ export default function PlansCompareTable({
 
             {PLAN_ROWS.map((r, ri) => r.head
               ? (<tr key={ri}><td colSpan={5} style={{ padding: '16px 16px 8px', color: 'var(--brand)', fontWeight: 700, fontSize: 13, letterSpacing: '.02em' }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}><OnyxIcon name={sectionIcon(r.es)} size={16} /> {lang === 'es' ? r.es : r.en}</span></td></tr>)
-              : (<tr key={ri}><td style={{ padding: '12px 16px', color: 'var(--mut)' }}>{lang === 'es' ? r.es : r.en}</td>{r.v.map((v, ci) => <td key={ci} style={{ textAlign: 'center', padding: '12px 16px' }}>{chk(v)}</td>)}</tr>))}
+              : (<tr key={ri}><td style={{ padding: '12px 16px', color: 'var(--mut)' }}>{lang === 'es' ? r.es : r.en}</td>{r.v.map((v, ci) => {
+                  // Fila de comisión: lee el % por plan del admin (capabilities.academy_fee_pct) → se actualiza solo.
+                  const isFee = /por venta|per sale/i.test(r.es + r.en);
+                  let cell: boolean | string = v;
+                  if (isFee) { const pct = (byId(cols[ci]) as any)?.capabilities?.academy_fee_pct; if (pct != null && !isNaN(Number(pct))) cell = `${Number(pct)}%`; }
+                  return <td key={ci} style={{ textAlign: 'center', padding: '12px 16px' }}>{chk(cell)}</td>;
+                })}</tr>))}
 
             {/* Botones de compra al final, alineados con cada columna */}
             <tr>

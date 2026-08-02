@@ -28,6 +28,9 @@ const DEFAULT_PLANS: Plan[] = [
   { id: 'elite', name: 'Elite', name_en: 'Elite', desc_es: null, desc_en: null, price_month: 39, price_year: 390, max_accounts: 999,
     features: ['Cuentas ilimitadas', 'Todo lo de Pro', 'Informes automáticos', 'Alertas por Telegram', 'Soporte prioritario'],
     features_en: ['Unlimited accounts', 'Everything in Pro', 'Automatic reports', 'Telegram alerts', 'Priority support'], badge: null, badge_en: null },
+  { id: 'black', name: 'Black Onyx', name_en: 'Black Onyx', desc_es: null, desc_en: null, price_month: 99, price_year: 990, max_accounts: 999,
+    features: ['Todo ilimitado', 'Copy trading ilimitado', 'Onyx Guardian completo', 'Academia + Telegram', 'Soporte prioritario'],
+    features_en: ['Everything unlimited', 'Unlimited copy trading', 'Full Onyx Guardian', 'Academy + Telegram', 'Priority support'], badge: null, badge_en: null },
 ];
 
 
@@ -43,7 +46,10 @@ export default function Pricing() {
   }, []);
 
   // Si la BD no devolvió planes, usamos los de por defecto para no dejar la página vacía.
-  const shown = plans.length ? plans : DEFAULT_PLANS;
+  // Además garantizamos que Black Onyx siempre aparezca como 4º plan (para el 2×2).
+  const _base = plans.length ? plans : DEFAULT_PLANS;
+  const _black = DEFAULT_PLANS.find((p) => p.id === 'black');
+  const shown = (_base.some((p) => /black/i.test(p.id || '')) || !_black) ? _base : [..._base, _black];
 
   // Al volver desde Stripe con el botón "atrás", el navegador restaura la página congelada:
   // reactivamos los botones para que no queden en "cargando".

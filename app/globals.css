@@ -572,7 +572,15 @@ html[data-theme="dark"] .sk-code, :root:not([data-theme="light"]) .sk-code{text-
 
 /* Cuadrícula de planes: 4 en fila (grande), 2×2 (tablet), 1 (móvil).
    Evita el "3 arriba + 1 abajo" que dejaba hueco. */
-.pricing-grid{ display:grid; gap:16px; grid-template-columns:repeat(4, minmax(0,1fr)); max-width:1200px; margin:0 auto; }
+.pricing-grid{ display:grid; gap:16px; grid-template-columns:repeat(2, minmax(0,1fr)); max-width:760px; margin:0 auto; }
 .pricing-grid > *{ min-width:0; }
-@media (max-width:1024px){ .pricing-grid{ grid-template-columns:repeat(2, minmax(0,1fr)); max-width:720px; } }
 @media (max-width:640px){ .pricing-grid{ grid-template-columns:1fr; max-width:420px; } }
+
+/* TopBar en móvil: que no se corte. Barra de idioma compacta, menos gaps,
+   sin desbordar hacia los lados. */
+@media (max-width:600px){
+  .topbar .wrap-wide{ gap:6px; }
+  .topbar .wrap-wide > *{ min-width:0; }
+  .langsel{ max-width:78px; font-size:12px; padding:5px 6px; }
+  .topbar .logo{ font-size:15px; }
+}

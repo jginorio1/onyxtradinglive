@@ -27,7 +27,7 @@ export default function MentoresPage() {
   useEffect(() => { fetch('/api/admin/plans').then((r) => r.json()).then((j) => setPlans(j.plans || [])).catch(() => {}); }, []);
   const shown = plans.length ? plans : FALLBACK;
   // Comisión dinámica: rango min–max del % por plan (se refleja al cambiarlo en admin).
-  const _fees = (plans as any[]).map((p) => p?.capabilities?.academy_fee_pct).filter((x) => x != null && !isNaN(Number(x))).map(Number);
+  const _fees = (plans as any[]).filter((p) => !/free/i.test(p.id || '') && Number(p.price_month) > 0).map((p) => p?.capabilities?.academy_fee_pct).filter((x) => x != null && !isNaN(Number(x))).map(Number);
   const feeRange = _fees.length ? `${Math.min(..._fees)}–${Math.max(..._fees)}%` : '3–10%';
 
   const grad: any = { background: 'linear-gradient(90deg,var(--brand),#7a5cff)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' };
@@ -42,7 +42,7 @@ export default function MentoresPage() {
     { ic: 'users', es: 'Comunidad', en: 'Community', de: 'Feed, niveles y ranking', den: 'Feed, levels & ranking' },
     { ic: 'sessions', es: 'Clases en vivo', en: 'Live classes', de: 'En la hora local de cada alumno', den: "In each student's local time" },
     { ic: 'card', es: 'Membresías y niveles', en: 'Memberships & tiers', de: 'Pagos recurrentes con Stripe', den: 'Recurring payments with Stripe' },
-    { ic: 'coach', es: 'Copiloto IA', en: 'AI copilot', de: 'Escribe tu about, posts y ventas en tu voz', den: 'Writes your about, posts & sales in your voice' },
+    { ic: 'coach', es: 'Textos con IA', en: 'AI copywriting', de: 'Redacta descripciones de cursos, posts y ventas por ti', den: 'Writes course descriptions, posts & sales for you' },
     { ic: 'card', es: 'Te quedas con la mayoría', en: 'You keep the majority', de: 'Stripe cobra directo a tu cuenta', den: 'Stripe pays straight to your account' },
     { ic: 'users', es: 'Referidos de alumnos', en: 'Student referrals', de: 'Tus alumnos te traen alumnos', den: 'Your students bring you students' },
     { ic: 'book', es: 'Auditoría de alumnos', en: 'Student audits', de: 'Revisa su trading real (add-on)', den: 'Review their real trading (add-on)' },
@@ -50,6 +50,7 @@ export default function MentoresPage() {
     { ic: 'megaphone', es: 'Marca propia', en: 'Your own brand', de: 'Tu logo, colores y redes', den: 'Your logo, colors & socials' },
     { ic: 'ticket', es: 'Cupones y plan anual', en: 'Coupons & annual', de: 'Descuentos y cobro anual', den: 'Discounts & annual billing' },
     { ic: 'shield', es: 'Onyx Guardian VIP', en: 'Onyx Guardian VIP', de: 'Regálalo en tus niveles altos', den: 'Give it away on your top tiers' },
+    { ic: 'sessions', es: 'Compatible con móvil', en: 'Works on mobile', de: 'Tus alumnos entran desde el celular, sin instalar nada', den: 'Students access from their phone, nothing to install' },
     { ic: 'shield', es: 'Moderación con IA', en: 'AI moderation', de: 'Comunidad sana, sin spam', den: 'Healthy community, no spam' },
     { ic: 'trophy', es: 'Muro de logros', en: 'Wins wall', de: 'Prueba social real de tus alumnos', den: 'Real social proof from students' },
   ];
