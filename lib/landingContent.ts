@@ -8,11 +8,19 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 export type FaqRow = [string, string, string, string];   // q_es, a_es, q_en, a_en
 export type CompareRow = { es: string; en: string; v: (boolean | string)[]; head?: boolean };
+// Tarjeta con icono (emoji) + título + descripción, bilingüe. Sirve para eco y features.
+export type CardRow = { i?: string; t_es: string; t_en: string; d_es: string; d_en: string };
 
 export type LandingContent = {
   hero?: { h1a_es?: string; h1b_es?: string; sub_es?: string; h1a_en?: string; h1b_en?: string; sub_en?: string };
   faq?: Record<string, FaqRow[]>;   // 'landing' | 'embajadores' | 'invita' | 'mentores'
   compare?: CompareRow[];           // reemplaza la tabla de comparación entera
+  // FASE 2:
+  eco?: { badge_es?: string; badge_en?: string; t_es?: string; t_en?: string; s_es?: string; s_en?: string; cards?: CardRow[] };
+  features?: { t_es?: string; t_en?: string; cards?: CardRow[] };
+  how?: { t_es?: string; t_en?: string; steps?: CardRow[] };   // steps sin icono (van numerados)
+  trust?: { es?: string[]; en?: string[] };                    // 3 insignias de confianza
+  cta?: { t_es?: string; t_en?: string; btn_es?: string; btn_en?: string };
 };
 
 export async function landingContent(): Promise<LandingContent> {

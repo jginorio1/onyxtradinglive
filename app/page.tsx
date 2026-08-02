@@ -408,6 +408,22 @@ export default function Home() {
     ? lc.faq.landing.map((r: string[]) => lang === 'es' ? [r[0], r[1]] : [r[2], r[3]])
     : t.faqs);
 
+  // Fase 2 · overrides de secciones (vacío = texto del código).
+  const mapCards = (arr: any[]) => arr.map((c) => ({ i: c.i, t: lang === 'es' ? c.t_es : c.t_en, d: lang === 'es' ? c.d_es : c.d_en }));
+  const ecoBadge = lc?.eco?.[`badge_${lang}`] || t.eco.badge;
+  const ecoTitle = lc?.eco?.[`t_${lang}`] || t.eco.t;
+  const ecoSub = lc?.eco?.[`s_${lang}`] || t.eco.s;
+  const ecoCards = lc?.eco?.cards?.length ? mapCards(lc.eco.cards) : t.eco.cards;
+  const featTitle = lc?.features?.[`t_${lang}`] || t.featT;
+  const featCards = lc?.features?.cards?.length ? mapCards(lc.features.cards) : t.features;
+  const howTitle = lc?.how?.[`t_${lang}`] || t.howT;
+  const howSteps = lc?.how?.steps?.length
+    ? lc.how.steps.map((s: any) => ({ t: lang === 'es' ? s.t_es : s.t_en, d: lang === 'es' ? s.d_es : s.d_en }))
+    : t.steps;
+  const trustBadges: string[] = lc?.trust?.[lang]?.length ? lc.trust[lang] : t.trust;
+  const finalTitle = lc?.cta?.[`t_${lang}`] || t.finalT;
+  const finalBtn = lc?.cta?.[`btn_${lang}`] || t.finalCta;
+
   const SECTIONS = [
     { id: 'features', label: t.nav.features },
     { id: 'eco', label: t.nav.eco },
@@ -485,7 +501,7 @@ export default function Home() {
       {/* TRUST */}
       <div className="wrap" style={{ padding: '10px 22px 30px' }}>
         <div className="row" style={{ justifyContent: 'center', gap: 34, flexWrap: 'wrap', color: 'var(--mut)', fontSize: 15 }}>
-          {t.trust.map((x, i) => <span key={i}>{x}</span>)}
+          {trustBadges.map((x, i) => <span key={i}>{x}</span>)}
         </div>
       </div>
 
@@ -530,9 +546,9 @@ export default function Home() {
 
       {/* FEATURES */}
       <div id="features" className="wrap section">
-        <h2 style={{ textAlign: 'center', marginBottom: 34 }}>{t.featT}</h2>
+        <h2 style={{ textAlign: 'center', marginBottom: 34 }}>{featTitle}</h2>
         <div className="grid g3">
-          {t.features.map((f, i) => (
+          {featCards.map((f: any, i: number) => (
             <div key={i} className="card"><div style={{ color: 'var(--brand)', marginBottom: 10 }}><OnyxIcon emoji={f.i} size={26} /></div><h3 style={{ marginBottom: 6 }}>{f.t}</h3><p className="muted" style={{ fontSize: 15 }}>{f.d}</p></div>
           ))}
         </div>
@@ -541,12 +557,12 @@ export default function Home() {
       {/* ECOSISTEMA · todo lo que hace Onyx además del diario */}
       <div id="eco" className="wrap section">
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <span className="pill green">{t.eco.badge}</span>
-          <h2 style={{ margin: '14px 0 10px' }}>{t.eco.t}</h2>
-          <p className="muted" style={{ fontSize: 17, maxWidth: 660, margin: '0 auto' }}>{t.eco.s}</p>
+          <span className="pill green">{ecoBadge}</span>
+          <h2 style={{ margin: '14px 0 10px' }}>{ecoTitle}</h2>
+          <p className="muted" style={{ fontSize: 17, maxWidth: 660, margin: '0 auto' }}>{ecoSub}</p>
         </div>
         <div className="grid g3">
-          {t.eco.cards.map((c: any, i: number) => (
+          {ecoCards.map((c: any, i: number) => (
             <div key={i} className="card">
               <div style={{ color: 'var(--brand)', marginBottom: 10 }}><OnyxIcon emoji={c.i} size={26} /></div>
               <h3 style={{ marginBottom: 6 }}>{c.t}</h3>
@@ -599,9 +615,9 @@ export default function Home() {
 
       {/* HOW */}
       <div id="how" className="wrap section">
-        <h2 style={{ textAlign: 'center', marginBottom: 34 }}>{t.howT}</h2>
+        <h2 style={{ textAlign: 'center', marginBottom: 34 }}>{howTitle}</h2>
         <div className="grid g3">
-          {t.steps.map((s, i) => (
+          {howSteps.map((s: any, i: number) => (
             <div key={i} className="card"><div className="mark" style={{ width: 34, height: 34, borderRadius: 10, marginBottom: 12, fontWeight: 700 }}>{i + 1}</div><h3>{s.t}</h3><p className="muted" style={{ marginTop: 6 }}>{s.d}</p></div>
           ))}
         </div>
@@ -800,8 +816,8 @@ export default function Home() {
       {/* FINAL CTA */}
       <div className="wrap section">
         <div className="card" style={{ textAlign: 'center', padding: '54px 30px', background: 'linear-gradient(120deg,#1a1f30,#141826)' }}>
-          <h2 style={{ marginBottom: 20 }}>{t.finalT}</h2>
-          <Link className="btn btn-primary" href="/login?mode=signup" style={{ padding: '15px 34px', fontSize: 17 }}>{t.finalCta}</Link>
+          <h2 style={{ marginBottom: 20 }}>{finalTitle}</h2>
+          <Link className="btn btn-primary" href="/login?mode=signup" style={{ padding: '15px 34px', fontSize: 17 }}>{finalBtn}</Link>
         </div>
       </div>
 
