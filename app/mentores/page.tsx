@@ -136,6 +136,38 @@ export default function MentoresPage() {
           onChoose={() => { window.location.href = '/login?mode=signup'; }} />
       </div>
 
+      {/* FAQ */}
+      <div className="wrap section" style={{ maxWidth: 760, padding: '20px 22px' }}>
+        <h2 style={{ textAlign: 'center', marginBottom: 22 }}>{L('Preguntas frecuentes', 'Frequently asked questions')}</h2>
+        {[
+          [L('¿Cuánto cobra Onyx por vender en mi academia?', 'How much does Onyx take for selling in my academy?'),
+           L('Onyx solo se lleva una comisión según tu plan (la ves en la tabla de arriba) y el resto es tuyo. Sin cuota de montaje ni mensualidad extra por tener tu academia. Cuanto más alto tu plan, menor la comisión.', 'Onyx only takes a fee based on your plan (shown in the table above) and the rest is yours. No setup fee and no extra monthly charge for running your academy. The higher your plan, the lower the fee.')],
+          [L('¿Cómo y cuándo recibo mis pagos?', 'How and when do I get paid?'),
+           L('Cobras directo por Stripe a tu cuenta conectada. Los pagos de tus alumnos llegan a tu cuenta y Onyx descuenta únicamente su comisión — sin intermediarios ni retrasos por nuestra parte.', 'You get paid directly through Stripe into your connected account. Your students\' payments land in your account and Onyx only deducts its fee — no middlemen or delays on our side.')],
+          [L('¿Mis alumnos tienen que pagar Onyx aparte?', 'Do my students have to pay Onyx separately?'),
+           L('No. Tus alumnos solo te pagan a ti por tu academia. No necesitan una suscripción de Onyx para estar en tu comunidad ni ver tus cursos.', 'No. Your students only pay you for your academy. They don\'t need an Onyx subscription to be in your community or watch your courses.')],
+          [L('¿Necesito saber de tecnología?', 'Do I need to be tech-savvy?'),
+           L('No. Montas tu academia con un asistente paso a paso: portada, precios, cursos y comunidad. Sin código y sin web que construir.', 'No. You set up your academy with a step-by-step wizard: cover, pricing, courses and community. No code and no website to build.')],
+          [L('¿Puedo poner mi propia marca?', 'Can I use my own branding?'),
+           L('Sí. Personalizas el nombre, logo, colores y redes de tu academia. Los correos automáticos y los certificados salen con tu marca, no con la de Onyx.', 'Yes. You customize your academy\'s name, logo, colors and social links. Automated emails and certificates go out with your brand, not Onyx\'s.')],
+          [L('¿Qué puedo vender?', 'What can I sell?'),
+           L('Membresías mensuales o anuales, varios niveles, cursos con secciones y hasta clases en vivo. Tú pones los precios y decides qué es gratis y qué es de pago.', 'Monthly or annual memberships, multiple tiers, courses with sections and even live classes. You set the prices and decide what\'s free and what\'s paid.')],
+          [L('¿Puedo migrar mi comunidad de Skool u otra plataforma?', 'Can I migrate my community from Skool or another platform?'),
+           L('Sí. Onyx Academy funciona como Skool — comunidad, cursos, gamificación y ranking — para que traigas a tu gente sin perder tu formato, y además con las herramientas de trading de Onyx.', 'Yes. Onyx Academy works like Skool — community, courses, gamification and leaderboard — so you can bring your people over without losing your format, plus Onyx\'s trading tools.')],
+          [L('¿Funciona en el móvil?', 'Does it work on mobile?'),
+           L('Sí. Tu academia funciona en el móvil desde el navegador y se puede instalar como app (PWA): tus alumnos la abren desde el teléfono como cualquier otra app.', 'Yes. Your academy works on mobile from the browser and can be installed as an app (PWA): your students open it from their phone like any other app.')],
+          [L('¿Qué pasa con reembolsos o alumnos problemáticos?', 'What about refunds or problem students?'),
+           L('Tienes moderación, control de miembros (silenciar o expulsar) y las reglas de reembolso de Stripe. Tú mandas en tu comunidad.', 'You have moderation, member controls (mute or remove) and Stripe\'s refund rules. You\'re in charge of your community.')],
+        ].map(([q, a], i) => (
+          <details key={i} className="card" style={{ padding: '14px 18px', marginBottom: 10, cursor: 'pointer' }}>
+            <summary style={{ fontWeight: 700, listStyle: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ color: 'var(--brand)' }}>▶</span> {q}
+            </summary>
+            <p className="muted" style={{ fontSize: 14.5, marginTop: 10, marginBottom: 0, lineHeight: 1.6 }}>{a}</p>
+          </details>
+        ))}
+      </div>
+
       {/* CTA final */}
       <div className="wrap" style={{ textAlign: 'center', padding: '20px 22px 70px' }}>
         <h2 style={{ marginBottom: 10 }}>{L('Convierte tu comunidad en tu negocio', 'Turn your community into your business')}</h2>
