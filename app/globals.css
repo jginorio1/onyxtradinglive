@@ -585,3 +585,10 @@ html[data-theme="dark"] .sk-code, :root:not([data-theme="light"]) .sk-code{text-
   .topbar .logo{ font-size:15px; }
   .logo-text{ display:none; }   /* en móvil solo el símbolo; el texto se ve en desktop */
 }
+
+/* FAQ desplegables (details/summary): oculta la flecha nativa para dejar solo la ▶ morada,
+   y gira la ▶ cuando la pregunta está abierta. Mismo estilo en landing, embajadores y mentores. */
+summary::-webkit-details-marker { display: none; }
+summary { list-style: none; }
+details > summary > span:first-child { transition: transform .18s ease; display: inline-block; }
+details[open] > summary > span:first-child { transform: rotate(90deg); }

@@ -761,9 +761,11 @@ export default function Home() {
       <div id="faq" className="wrap section" style={{ maxWidth: 760 }}>
         <h2 style={{ textAlign: 'center', marginBottom: 26 }}>{t.faqT}</h2>
         {t.faqs.map((f, i) => (
-          <details key={i} className="card" style={{ marginBottom: 12, padding: '4px 20px' }}>
-            <summary style={{ cursor: 'pointer', padding: '16px 0', fontWeight: 600, fontSize: 16 }}>{f[0]}</summary>
-            <p className="muted" style={{ padding: '0 0 16px', fontSize: 15 }}>{f[1]}</p>
+          <details key={i} className="card" style={{ padding: '14px 18px', marginBottom: 10, cursor: 'pointer' }}>
+            <summary style={{ fontWeight: 700, listStyle: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ color: 'var(--brand)' }}>▶</span> {f[0]}
+            </summary>
+            <p className="muted" style={{ fontSize: 14.5, marginTop: 10, marginBottom: 0, lineHeight: 1.6 }}>{f[1]}</p>
           </details>
         ))}
       </div>

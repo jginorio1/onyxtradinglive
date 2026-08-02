@@ -227,13 +227,15 @@ export default function Embajadores() {
           )}
         </div>
 
-        <h2 style={{ textAlign: 'center', marginBottom: 18 }}>{t.faqT}</h2>
-        <div style={{ maxWidth: 680, margin: '0 auto' }}>
+        <h2 style={{ textAlign: 'center', marginBottom: 22 }}>{t.faqT}</h2>
+        <div style={{ maxWidth: 760, margin: '0 auto' }}>
           {t.faq.map(([q, a]: [string, string]) => (
-            <div key={q} className="card" style={{ marginBottom: 10 }}>
-              <b>{q}</b>
-              <p className="muted" style={{ fontSize: 14, marginTop: 6 }}>{a}</p>
-            </div>
+            <details key={q} className="card" style={{ padding: '14px 18px', marginBottom: 10, cursor: 'pointer' }}>
+              <summary style={{ fontWeight: 700, listStyle: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ color: 'var(--brand)' }}>▶</span> {q}
+              </summary>
+              <p className="muted" style={{ fontSize: 14.5, marginTop: 10, marginBottom: 0, lineHeight: 1.6 }}>{a}</p>
+            </details>
           ))}
         </div>
       </div>
