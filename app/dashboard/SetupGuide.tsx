@@ -237,27 +237,67 @@ function StepList({ steps, L, onClose, platKey: pk }: { steps: { key: string; ic
     onClose?.();
   };
   const hrefFor = (s: any) => (s.key === 'connect' && pk) ? `${s.href}?platform=${pk}` : s.href;
+  const activeIdx = steps.findIndex((s) => !s.done);   // el primer paso pendiente = el actual
+
   return (
-    <div>
-      {steps.map((s, i) => (
-        <div key={s.key} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '12px 0', borderTop: i ? '1px solid var(--line)' : 'none' }}>
-          <span style={{ flex: 'none', width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12.5, fontWeight: 700, background: s.done ? 'var(--green)' : 'var(--card2)', color: s.done ? '#fff' : 'var(--mut)', border: s.done ? 'none' : '1px solid var(--line)' }}>{s.done ? '✓' : i + 1}</span>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
-              <span style={{ color: s.done ? 'var(--green)' : 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name={s.icon} size={16} glow={false} /></span>
-              <span style={{ fontSize: 14, fontWeight: 700, color: s.done ? 'var(--green)' : 'var(--tx)' }}>{s.title}</span>
-              {s.time && !s.done && <span className="muted" style={{ fontSize: 11, background: 'var(--card2)', border: '1px solid var(--line)', borderRadius: 20, padding: '1px 8px' }}>{s.time}</span>}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {steps.map((s, i) => {
+        const active = i === activeIdx;
+        const numBadge = (
+          <span style={{ flex: 'none', width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12.5, fontWeight: 700, background: s.done ? 'var(--green)' : active ? 'var(--brand)' : 'var(--card2)', color: s.done || active ? '#fff' : 'var(--mut)', border: s.done || active ? 'none' : '1px solid var(--line)' }}>{s.done ? '✓' : i + 1}</span>
+        );
+
+        // Paso hecho: tarjeta compacta verde, no clicable.
+        if (s.done) {
+          return (
+            <div key={s.key} className="card" style={{ padding: '12px 14px', display: 'flex', gap: 12, alignItems: 'center', border: '1px solid rgba(52,226,160,.35)', background: 'rgba(52,226,160,.06)' }}>
+              {numBadge}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--green)', display: 'flex', alignItems: 'center', gap: 7 }}><OnyxIcon name={s.icon} size={15} glow={false} /> {s.title}</div>
+                <div className="muted" style={{ fontSize: 12, marginTop: 1 }}>{s.sub}</div>
+              </div>
             </div>
-            <div className="muted" style={{ fontSize: 12.5, marginTop: 3, lineHeight: 1.5 }}>{s.sub}</div>
-            {!s.done && s.detail?.length > 0 && (
-              <ol style={{ margin: '8px 0 0', paddingLeft: 18 }}>
-                {s.detail.map((d: string, j: number) => <li key={j} className="muted" style={{ fontSize: 12, lineHeight: 1.6 }}>{d}</li>)}
-              </ol>
-            )}
-          </div>
-          {!s.done && <Link href={hrefFor(s)} onClick={() => go(s)} className="btn btn-ghost" style={{ padding: '4px 12px', fontSize: 12.5, flex: 'none' }}>{L('Ir', 'Go')}</Link>}
-        </div>
-      ))}
+          );
+        }
+
+        // Paso ACTUAL: tarjeta grande iluminada + botón de ancho completo. Toda clicable.
+        if (active) {
+          return (
+            <Link key={s.key} href={hrefFor(s)} onClick={() => go(s)} className="card" style={{ display: 'block', padding: 16, textDecoration: 'none', color: 'inherit', border: '2px solid var(--brand)', background: 'rgba(124,140,255,.08)', boxShadow: '0 0 26px rgba(124,140,255,.25)' }}>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                {numBadge}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+                    <span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name={s.icon} size={16} glow={false} /></span>
+                    <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--soft-brand)' }}>{s.title}</span>
+                    <span style={{ fontSize: 11, color: 'var(--soft-brand)', background: 'rgba(124,140,255,.18)', borderRadius: 20, padding: '1px 9px' }}>{L('tu paso ahora', 'your step now')}</span>
+                    {s.time && <span className="muted" style={{ fontSize: 11 }}>· {s.time}</span>}
+                  </div>
+                  <div className="muted" style={{ fontSize: 12.5, marginTop: 4, lineHeight: 1.5 }}>{s.sub}</div>
+                  {s.detail?.length > 0 && (
+                    <ol style={{ margin: '8px 0 0', paddingLeft: 18 }}>
+                      {s.detail.map((d: string, j: number) => <li key={j} className="muted" style={{ fontSize: 12, lineHeight: 1.6 }}>{d}</li>)}
+                    </ol>
+                  )}
+                </div>
+              </div>
+              <div style={{ marginTop: 12, background: 'var(--grad)', color: '#fff', borderRadius: 10, padding: '11px 14px', fontSize: 14, fontWeight: 700, textAlign: 'center' }}>{L('Hacer este paso', 'Do this step')} →</div>
+            </Link>
+          );
+        }
+
+        // Pasos siguientes: tarjeta clicable normal, discreta, con flecha grande.
+        return (
+          <Link key={s.key} href={hrefFor(s)} onClick={() => go(s)} className="card" style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '13px 14px', textDecoration: 'none', color: 'inherit' }}>
+            {numBadge}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--mut)', display: 'flex', alignItems: 'center', gap: 7 }}><OnyxIcon name={s.icon} size={15} glow={false} /> {s.title}</div>
+              <div className="muted" style={{ fontSize: 12, marginTop: 1 }}>{s.sub}</div>
+            </div>
+            <span style={{ flex: 'none', color: 'var(--mut)', fontSize: 20, lineHeight: 1 }}>›</span>
+          </Link>
+        );
+      })}
     </div>
   );
 }

@@ -539,7 +539,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
         )}
 
         <div className="cockpit">
-          <div className="rail-left"><MarketHours lang={lang} compact /><details style={{ marginTop: 12 }}><summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 700, color: 'var(--tx)', padding: '10px 12px', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, listStyle: 'none', display: 'flex', alignItems: 'center', gap: 8 }}><OnyxIcon emoji="🧮" size={16} /> {lang === 'en' ? 'Lot size calculator' : 'Calculadora de lotes'}</summary><div style={{ marginTop: 10 }}><LotCalculator lang={lang} balance={Number(cur?.balance) || totalBalance || undefined} /></div></details></div>
+          <div className="rail-left"><MarketHours lang={lang} compact /><details style={{ marginTop: 12 }}><summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 700, color: 'var(--tx)', padding: '10px 12px', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, listStyle: 'none', display: 'flex', alignItems: 'center', gap: 8 }}><OnyxIcon name="lots" size={16} /> {lang === 'en' ? 'Lot size calculator' : 'Calculadora de lotes'}</summary><div style={{ marginTop: 10 }}><LotCalculator lang={lang} balance={Number(cur?.balance) || totalBalance || undefined} /></div></details></div>
           <div className="rail-right"><News lang={lang} /></div>
           <div className="center">
         {!hasAccounts ? (
