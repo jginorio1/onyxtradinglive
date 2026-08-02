@@ -78,6 +78,7 @@ export default async function TopBar() {
         ...(caps.manager ? [{ href: '/dashboard/manager', label: t.manager, icon: '🛡️', dot: (eaLive ? 'on' : 'off') as 'on' | 'off', dim: !eaLive, dotTitle: eaLive ? t.eaOn : t.eaOff }] : []),
         ...(caps.copy ? [{ href: '/dashboard/copy', label: t.copy, icon: '🔁', dot: (copyActive ? 'on' : 'off') as 'on' | 'off', dim: !copyActive, dotTitle: (copyActive ? (lang === 'es' ? 'Copia activa' : 'Copy on') : (lang === 'es' ? 'Copia inactiva' : 'Copy off')) }] : []),
         ...((caps.algo || addonAlgo) ? [{ href: '/dashboard/bots', label: (t as any).bots, icon: '🤖' }] : []),
+        ...((caps.tv || caps.copy) ? [{ href: '/dashboard/tradingview', label: 'TradingView', icon: '📈' }] : []),
         ...(caps.expenses ? [{ href: '/dashboard/expenses', label: lang === 'en' ? 'Net profit' : 'Ganancia neta', icon: '🧮' }] : []),
         ...(isAdmin ? [{ href: '/admin', label: t.admin, icon: '🛠️' }] : []),
       ]
