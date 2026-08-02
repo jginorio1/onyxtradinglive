@@ -1,0 +1,29 @@
+// ============================================================
+// Motor de idiomas (memoria de traducción).
+//
+// Todo el código usa L('texto en español', 'text in english'). Para los idiomas
+// nuevos (zh/ja/pt/vi) NO hace falta tocar cada sitio: aquí buscamos la
+// traducción usando el TEXTO EN ESPAÑOL como clave. Si falta, cae al INGLÉS
+// (nunca mostramos español a un usuario de otro idioma).
+//
+// Los diccionarios (lib/i18n/*.ts) los va llenando Onyx AI por superficie.
+// ============================================================
+import type { Lang } from './navText';
+import zh from './i18n/zh';
+import ja from './i18n/ja';
+import pt from './i18n/pt';
+import vi from './i18n/vi';
+
+const MEM: Partial<Record<Lang, Record<string, string>>> = { zh, ja, pt, vi };
+
+export function translate(lang: Lang, es: string, en: string): string {
+  if (lang === 'en') return en;
+  if (lang === 'es' || !lang) return es;
+  const m = MEM[lang];
+  return (m && m[es]) || en; // idiomas nuevos: traducción o inglés de respaldo
+}
+
+// Fábrica del ayudante L para un idioma. Reemplaza a los `const L = (a,b)=>…`.
+export function mkL(lang: Lang) {
+  return (es: string, en: string) => translate(lang, es, en);
+}

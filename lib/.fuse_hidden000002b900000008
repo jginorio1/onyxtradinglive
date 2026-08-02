@@ -1,0 +1,150 @@
+// Onyx AI INTERNO para el equipo. A diferencia del Onyx de cara al cliente
+// (que nunca da datos privados), este vive SOLO dentro del panel y solo lo usan
+// empleados con permiso. Sirve para preguntas de CONJUNTO que no ves de un
+// vistazo en un ticket: pendientes, patrones por categoría, historial de un
+// cliente, etc. Nunca revela secretos ni da consejo financiero.
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
+
+import type { Lang } from './navText';
+const H = 3600 * 1000;
+
+function nameOf(p: any) { return (p?.full_name || (p?.email || '').split('@')[0] || 'cliente'); }
+
+const CAT_ES: any = { general: 'General', conexion: 'Conexión', instalacion: 'Instalación', guardian: 'Guardian', facturacion: 'Facturación' };
+const CAT_EN: any = { general: 'General', conexion: 'Connection', instalacion: 'Install', guardian: 'Guardian', facturacion: 'Billing' };
+
+// Resumen diario del turno (determinista, sin modelo → siempre sale y es barato).
+// Pendientes de anoche, leads nuevos, lo que espera respuesta, sin asignar.
+export async function teamDigest(lang: Lang): Promise<string> {
+  const en = lang === 'en';
+  const { data: tickets } = await supabaseAdmin.from('support_tickets')
+    .select('id,email,subject,category,status,is_lead,priority,assignee_id,created_at,updated_at')
+    .order('updated_at', { ascending: false }).limit(200);
+  const rows = (tickets || []) as any[];
+  const ids = rows.map((t) => t.id);
+  const lastSender: Record<string, string> = {};
+  const lastAt: Record<string, string> = {};
+  if (ids.length) {
+    const { data: msgs } = await supabaseAdmin.from('support_messages')
+      .select('ticket_id,sender,created_at').in('ticket_id', ids).order('created_at', { ascending: true });
+    for (const m of (msgs || []) as any[]) { lastSender[m.ticket_id] = m.sender; lastAt[m.ticket_id] = m.created_at; }
+  }
+  const dayAgo = Date.now() - 24 * H;
+  const waiting: any[] = [];
+  const newLeads: any[] = [];
+  let newTickets = 0, unassigned = 0;
+  const byCat: Record<string, number> = {};
+  for (const t of rows) {
+    const created = new Date(t.created_at).getTime();
+    if (created > dayAgo) { newTickets++; if (t.is_lead) newLeads.push(t); }
+    if (t.status !== 'resolved') {
+      byCat[t.category || 'general'] = (byCat[t.category || 'general'] || 0) + 1;
+      if (!t.assignee_id) unassigned++;
+      if (lastSender[t.id] === 'user') {
+        const hrs = Math.round((Date.now() - new Date(lastAt[t.id] || t.updated_at).getTime()) / H);
+        waiting.push({ subject: t.subject, email: t.email, hrs, priority: t.priority });
+      }
+    }
+  }
+  waiting.sort((a, b) => b.hrs - a.hrs);
+  const CAT = en ? CAT_EN : CAT_ES;
+  const date = new Date().toLocaleDateString(en ? 'en-US' : 'es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+
+  const lines: string[] = [];
+  lines.push(en ? `☀️ Shift digest — ${date}` : `☀️ Resumen del turno — ${date}`);
+  lines.push('');
+  lines.push(en ? `🕒 Awaiting our reply: ${waiting.length}` : `🕒 Esperan nuestra respuesta: ${waiting.length}`);
+  waiting.slice(0, 8).forEach((w) => lines.push(`   • "${(w.subject || '').slice(0, 50)}" · ${w.email || '—'} · ${w.hrs}h${w.priority === 'high' ? (en ? ' · HIGH' : ' · ALTA') : ''}`));
+  lines.push('');
+  lines.push(en ? `🆕 New leads (24h): ${newLeads.length}` : `🆕 Leads nuevos (24h): ${newLeads.length}`);
+  newLeads.slice(0, 8).forEach((t) => lines.push(`   • ${t.email || '—'} — "${(t.subject || '').slice(0, 50)}"`));
+  lines.push('');
+  lines.push(en ? `📨 New tickets (24h): ${newTickets}` : `📨 Tickets nuevos (24h): ${newTickets}`);
+  lines.push(en ? `🗂️ Unassigned: ${unassigned}` : `🗂️ Sin asignar: ${unassigned}`);
+  const catStr = Object.entries(byCat).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${CAT[k] || k}=${v}`).join(' · ');
+  lines.push((en ? `📊 Open by category: ` : `📊 Sin resolver por categoría: `) + (catStr || '—'));
+  lines.push('');
+  lines.push(en ? 'Have a great shift 💪' : 'Buen turno 💪');
+  return lines.join('\n');
+}
+
+// Arma una foto compacta del estado del soporte + (si se menciona un correo) el
+// historial de ese cliente, y se la pasa al modelo para que responda con datos.
+export async function onyxTeamAnswer(opts: { question: string; lang: Lang }): Promise<string> {
+  const { question, lang } = opts;
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return lang === 'en' ? '⚠️ AI not configured: ANTHROPIC_API_KEY is missing in Vercel.' : '⚠️ IA no configurada: falta ANTHROPIC_API_KEY en Vercel.';
+
+  // 1) Tickets recientes (120) + último remitente por ticket
+  const { data: tickets } = await supabaseAdmin.from('support_tickets')
+    .select('id,email,subject,category,status,is_lead,priority,assignee_id,created_at,updated_at')
+    .order('updated_at', { ascending: false }).limit(120);
+  const rows = tickets || [];
+  const ids = rows.map((t: any) => t.id);
+  const lastSender: Record<string, string> = {};
+  const lastAt: Record<string, string> = {};
+  if (ids.length) {
+    const { data: msgs } = await supabaseAdmin.from('support_messages')
+      .select('ticket_id,sender,created_at').in('ticket_id', ids).order('created_at', { ascending: true });
+    for (const m of (msgs || []) as any[]) { lastSender[m.ticket_id] = m.sender; lastAt[m.ticket_id] = m.created_at; }
+  }
+
+  // 2) Agregados
+  const byStatus: any = { open: 0, in_progress: 0, resolved: 0 };
+  const byCat: Record<string, number> = {};
+  let leads = 0, unassigned = 0;
+  const waiting: any[] = [];   // esperan respuesta del equipo
+  for (const t of rows as any[]) {
+    byStatus[t.status] = (byStatus[t.status] || 0) + 1;
+    if (t.status !== 'resolved') byCat[t.category || 'general'] = (byCat[t.category || 'general'] || 0) + 1;
+    if (t.is_lead) leads++;
+    if (!t.assignee_id && t.status !== 'resolved') unassigned++;
+    if (lastSender[t.id] === 'user' && t.status !== 'resolved') {
+      const hrs = Math.round((Date.now() - new Date(lastAt[t.id] || t.updated_at).getTime()) / H);
+      waiting.push({ subject: t.subject, email: t.email, hrs, priority: t.priority });
+    }
+  }
+  waiting.sort((a, b) => b.hrs - a.hrs);
+
+  let ctx = `RESUMEN (${rows.length} tickets recientes):\n`
+    + `- Abiertos: ${byStatus.open || 0} · En curso: ${byStatus.in_progress || 0} · Resueltos: ${byStatus.resolved || 0}\n`
+    + `- Sin asignar: ${unassigned} · Leads: ${leads}\n`
+    + `- Por categoría (sin resolver): ${Object.entries(byCat).map(([k, v]) => `${k}=${v}`).join(', ') || '—'}\n`
+    + `- Esperan respuesta del equipo: ${waiting.length}${waiting.length ? ` (más viejo: ${waiting[0].hrs}h)` : ''}\n`;
+  if (waiting.length) {
+    ctx += `\nPENDIENTES (esperan respuesta, del más viejo):\n`
+      + waiting.slice(0, 12).map((w) => `- "${w.subject}" · ${w.email || '—'} · ${w.hrs}h${w.priority === 'high' ? ' · ALTA' : ''}`).join('\n') + '\n';
+  }
+
+  // 3) ¿Se menciona un cliente por correo? → historial de ese cliente
+  const email = (question.match(/[\w.+-]+@[\w-]+\.[\w.-]+/) || [])[0]?.toLowerCase();
+  if (email) {
+    const { data: cli } = await supabaseAdmin.from('support_tickets')
+      .select('id,subject,category,status,created_at,updated_at').ilike('email', email).order('created_at', { ascending: false }).limit(15);
+    let prof: any = null;
+    try { const { data } = await supabaseAdmin.from('profiles').select('email,full_name,plan,created_at').ilike('email', email).maybeSingle(); prof = data; } catch {}
+    ctx += `\nCLIENTE ${email}:\n`;
+    if (prof) ctx += `- ${nameOf(prof)}${prof.plan ? ` · plan ${String(prof.plan).toUpperCase()}` : ''}${prof.created_at ? ` · desde ${new Date(prof.created_at).toLocaleDateString()}` : ''}\n`;
+    ctx += `- Tickets (${(cli || []).length}): ` + ((cli || []).map((t: any) => `"${t.subject}" [${t.status}]`).join(', ') || 'ninguno') + '\n';
+  }
+
+  const system = (lang === 'en'
+    ? `You are Onyx AI for the internal SUPPORT TEAM of Onyx Trading Live (staff-only). Answer the teammate's question using the SUPPORT DATA below (aggregate ticket stats, pending list, and a client's history when present). Give real numbers and short bulleted lists. Be concise. If the data does not contain the answer, say so plainly. Never reveal passwords, API keys or secrets. Never give financial advice or predict the market. Do not add a sign-off.`
+    : `Eres Onyx AI para el EQUIPO de soporte interno de Onyx Trading Live (solo empleados). Responde la pregunta del compañero usando los DATOS DE SOPORTE de abajo (agregados de tickets, lista de pendientes y el historial de un cliente si aparece). Da cifras reales y listas cortas con viñetas. Sé breve. Si los datos no tienen la respuesta, dilo claramente. Nunca reveles contraseñas, claves ni secretos. Nunca des consejo financiero ni predigas el mercado. No añadas despedida.`)
+    + `\n\n=== ${lang === 'en' ? 'SUPPORT DATA' : 'DATOS DE SOPORTE'} ===\n${ctx}`;
+
+  try {
+    const model = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5';
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model, max_tokens: 700, system, messages: [{ role: 'user', content: question.slice(0, 1500) }] }),
+    });
+    if (!r.ok) return lang === 'en' ? 'Sorry, I could not process that right now.' : 'Perdona, no pude procesar eso ahora mismo.';
+    const data = await r.json();
+    const answer = (data?.content || []).map((c: any) => c.text || '').join('\n').trim();
+    return answer || (lang === 'en' ? 'No data for that.' : 'Sin datos para eso.');
+  } catch {
+    return lang === 'en' ? 'Sorry, I could not process that right now.' : 'Perdona, no pude procesar eso ahora mismo.';
+  }
+}

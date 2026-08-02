@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { mkL } from '@/lib/i18n';
 import type { Lang } from '@/lib/navText';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // ============================================================
 // Calculadora de ganancias, en tarjeta iluminada (resalta sobre el fondo).
@@ -39,7 +40,7 @@ export default function EarningsCalc({ mode, pct, lang }: { mode: 'academy' | 'a
   return (
     <div style={{ maxWidth: 560, margin: '0 auto', background: 'var(--card)', border: '2px solid var(--brand)', borderRadius: 18, padding: 22, boxShadow: '0 0 0 1px rgba(124,140,255,.5), 0 0 44px rgba(124,140,255,.35)' }}>
       <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12.5, background: 'rgba(124,140,255,.15)', color: 'var(--brand)', padding: '5px 13px', borderRadius: 999, marginBottom: 16, fontWeight: 700 }}>
-        🧮 {acad ? L('Calcula lo que ganarías', 'See what you could earn') : L('Calcula tu comisión', 'Estimate your commission')}
+        <OnyxIcon name="coins" size={15} glow={false} /> {acad ? L('Calcula lo que ganarías', 'See what you could earn') : L('Calcula tu comisión', 'Estimate your commission')}
       </div>
 
       {row(acad ? L('Alumnos', 'Students') : L('Suscriptores', 'Subscribers'), n, acad ? 5 : 1, acad ? 500 : 300, acad ? 5 : 1, setN, String(n))}

@@ -343,14 +343,17 @@ export default function Home() {
   const [vidErr, setVidErr] = useState(false);
   const [dbPlans, setDbPlans] = useState<any[]>([]);
   const [stats, setStats] = useState({ trades: 0, blocks: 0, accounts: 0 });
+  // Comisión y cupón del embajador desde el panel admin (vía /api/stats).
+  const [amb, setAmb] = useState({ rate: 30, coupon: 20 });
   const t = dictFor(dict, lang);
 
   useEffect(() => {
     fetch('/api/admin/plans').then((r) => r.json()).then((j) => setDbPlans(j.plans || [])).catch(() => {});
     // Cifras reales para la prueba social; crecen solas con el uso
-    fetch('/api/stats').then((r) => r.json()).then((j) => setStats({
-      trades: Number(j.trades || 0), blocks: Number(j.blocks || 0), accounts: Number(j.accounts || 0),
-    })).catch(() => {});
+    fetch('/api/stats').then((r) => r.json()).then((j) => {
+      setStats({ trades: Number(j.trades || 0), blocks: Number(j.blocks || 0), accounts: Number(j.accounts || 0) });
+      setAmb({ rate: Number(j.ambRate || 30), coupon: Number(j.ambCoupon || 20) });
+    }).catch(() => {});
   }, []);
   // Si la BD aún no devolvió planes, mostramos unos por defecto (nunca vacío).
   const FALLBACK_PLANS: any[] = [
@@ -735,9 +738,9 @@ export default function Home() {
           <h2 style={{ marginBottom: 10 }}>{t.amb.t}</h2>
           <p className="muted" style={{ maxWidth: 620, margin: '0 auto 22px', fontSize: 16 }}>{t.amb.d}</p>
           <div className="grid g3" style={{ maxWidth: 640, margin: '0 auto 24px' }}>
-            <div><div style={{ fontSize: 32, fontWeight: 800, background: 'var(--grad)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>30%</div><div className="muted" style={{ fontSize: 13 }}>{t.amb.k1}</div></div>
+            <div><div style={{ fontSize: 32, fontWeight: 800, background: 'var(--grad)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{amb.rate}%</div><div className="muted" style={{ fontSize: 13 }}>{t.amb.k1}</div></div>
             <div><div style={{ fontSize: 32, fontWeight: 800, color: 'var(--green)' }}>{t.amb.k2}</div><div className="muted" style={{ fontSize: 13 }}>{t.amb.k2s}</div></div>
-            <div><div style={{ fontSize: 32, fontWeight: 800, color: 'var(--gold)' }}>-20%</div><div className="muted" style={{ fontSize: 13 }}>{t.amb.k3} {t.amb.k3s}</div></div>
+            <div><div style={{ fontSize: 32, fontWeight: 800, color: 'var(--gold)' }}>-{amb.coupon}%</div><div className="muted" style={{ fontSize: 13 }}>{t.amb.k3} {t.amb.k3s}</div></div>
           </div>
           <Link className="btn btn-primary" href="/embajadores" style={{ padding: '12px 26px', fontSize: 16 }}>{t.amb.cta}</Link>
         </div>

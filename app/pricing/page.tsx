@@ -81,7 +81,7 @@ export default function Pricing() {
         </div>
 
         {/* Tarjetas */}
-        <div className="pricing-grid" style={{ textAlign: 'left', alignItems: 'start' }}>
+        <div className="pricing-grid" style={{ textAlign: 'left', alignItems: 'start', display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', maxWidth: 760, margin: '0 auto' }}>
           {shown.map((p, i) => {
             const price = annual ? p.price_year : p.price_month;
             const name = lang === 'es' ? p.name : (p.name_en || p.name);
