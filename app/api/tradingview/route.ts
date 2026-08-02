@@ -12,6 +12,37 @@ async function me() {
   return data?.user || null;
 }
 
+// POST · señal de PRUEBA: mete una orden real mínima (0.01) en la cola para que
+// el trader compruebe que su EA ejecuta. El EA la abre en su cuenta.
+export async function POST(req: Request) {
+  const user = await me();
+  if (!user) return NextResponse.json({ error: 'no auth' }, { status: 401 });
+  const b = await req.json().catch(() => ({}));
+  const accountId = String(b.accountId || '');
+  const { data: acc } = await supabaseAdmin.from('trading_accounts')
+    .select('id,user_id,tv_symbols,copy_paused').eq('id', accountId).maybeSingle();
+  if (!acc || acc.user_id !== user.id) return NextResponse.json({ error: 'not found' }, { status: 404 });
+
+  const { data: prof } = await supabaseAdmin.from('profiles').select('copy_paused').eq('id', user.id).maybeSingle();
+  if (prof?.copy_paused || acc.copy_paused) return NextResponse.json({ error: 'paused' }, { status: 200 });
+
+  const wl = Array.isArray(acc.tv_symbols) ? acc.tv_symbols : [];
+  const symbol = String(b.symbol || wl[0] || 'EURUSD').toUpperCase();
+  const side = b.side === 'sell' ? 'sell' : 'buy';
+
+  await supabaseAdmin.from('copy_commands').insert({
+    link_id: null, source: 'tradingview', slave_account_id: acc.id,
+    action: 'open', master_ticket: '', base_symbol: symbol, side,
+    volume_hint: 0.01, sl: null, tp: null,
+    payload: { source: 'tradingview', test: true, limits: {} }, status: 'pending',
+  });
+  await supabaseAdmin.from('tv_signals').insert({
+    account_id: acc.id, user_id: user.id, action: 'open', symbol, lots: 0.01,
+    status: 'queued', raw: { test: true, side },
+  });
+  return NextResponse.json({ ok: true, symbol, side });
+}
+
 // GET · el panel pide las cuentas del trader con sus ajustes de TradingView,
 // si su plan lo incluye, y las últimas señales recibidas.
 export async function GET() {
@@ -23,11 +54,26 @@ export async function GET() {
   const caps: any = planRow?.capabilities || {};
   const allowed = !!(caps.tv || caps.copy);
 
-  const { data: accounts } = await supabaseAdmin.from('trading_accounts')
+  const { data: accountsRaw } = await supabaseAdmin.from('trading_accounts')
     .select('id,login,nickname,broker,tv_token,tv_enabled,tv_default_lot,tv_max_lot,tv_symbols')
     .eq('user_id', user.id).order('created_at', { ascending: true });
+  const accounts = accountsRaw || [];
 
-  const ids = (accounts || []).map((a) => a.id);
+  // Estado en vivo del EA de Copy por cuenta: ¿tiene clave de copy y reporta ahora?
+  const logins = accounts.map((a) => String(a.login));
+  const { data: keys } = logins.length ? await supabaseAdmin.from('api_keys')
+    .select('account_login,last_used_at,revoked,kind')
+    .eq('user_id', user.id).eq('kind', 'copy').in('account_login', logins) : { data: [] } as any;
+  const keyByLogin: Record<string, any> = {};
+  (keys || []).forEach((k: any) => { if (!k.revoked) keyByLogin[String(k.account_login)] = k; });
+  const now = Date.now();
+  const accts = accounts.map((a) => {
+    const k = keyByLogin[String(a.login)];
+    const eaLive = !!(k?.last_used_at && (now - new Date(k.last_used_at).getTime()) < 120000);
+    return { ...a, copyKey: !!k, eaLive };
+  });
+
+  const ids = accounts.map((a) => a.id);
   let signals: any[] = [];
   if (ids.length) {
     const { data: sg } = await supabaseAdmin.from('tv_signals')
@@ -36,7 +82,7 @@ export async function GET() {
     signals = sg || [];
   }
 
-  return NextResponse.json({ allowed, plan: prof?.plan || 'free', accounts: accounts || [], signals });
+  return NextResponse.json({ allowed, plan: prof?.plan || 'free', accounts: accts, signals });
 }
 
 // PATCH · guardar ajustes / generar-rotar token / activar-desactivar por cuenta.
