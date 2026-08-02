@@ -351,7 +351,7 @@ export default function Home() {
     fetch('/api/admin/plans', { cache: 'no-store' }).then((r) => r.json()).then((j) => setDbPlans(j.plans || [])).catch(() => {});
     // Cifras reales para la prueba social; crecen solas con el uso.
     // no-store: siempre trae lo último del panel admin (comisión/cupón), sin caché del navegador.
-    fetch('/api/stats', { cache: 'no-store' }).then((r) => r.json()).then((j) => {
+    fetch('/api/stats?t=' + Date.now(), { cache: 'no-store' }).then((r) => r.json()).then((j) => {
       setStats({ trades: Number(j.trades || 0), blocks: Number(j.blocks || 0), accounts: Number(j.accounts || 0) });
       setAmb({ rate: Number(j.ambRate || 30), coupon: Number(j.ambCoupon || 20) });
     }).catch(() => {});

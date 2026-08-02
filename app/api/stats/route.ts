@@ -4,6 +4,11 @@ import { ambSettings } from '@/lib/ambassadors';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';   // en vivo; no se prerenderea en el build
+export const revalidate = 0;              // nunca cachear en el servidor
+
+// Cabeceras que impiden a Vercel/CDN/navegador guardar la respuesta en caché,
+// para que los % de comisión/cupón que cambies en admin salgan al instante.
+const NO_CACHE = { 'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0' };
 
 // Estadísticas públicas para el landing. Todo es real y sale de la base de
 // datos; crece solo con el uso. Nada inventado — si un usuario lo comprueba,
@@ -41,8 +46,8 @@ export async function GET() {
       blocks: Math.max(Number(blocks || 0), 0),
       accounts: Math.max(Number(accounts || 0), 0),
       ambRate, ambCoupon, ambBase, ambMinPayout,
-    });
+    }, { headers: NO_CACHE });
   } catch {
-    return NextResponse.json({ trades: 0, blocks: 0, accounts: 0, ambRate: 30, ambCoupon: 20, ambBase: 20, ambMinPayout: 50 });
+    return NextResponse.json({ trades: 0, blocks: 0, accounts: 0, ambRate: 30, ambCoupon: 20, ambBase: 20, ambMinPayout: 50 }, { headers: NO_CACHE });
   }
 }
