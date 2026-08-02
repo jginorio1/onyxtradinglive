@@ -359,10 +359,13 @@ export default function Home() {
   const [stats, setStats] = useState({ trades: 0, blocks: 0, accounts: 0, platforms: 4, readonly: 100 });
   // Comisión y cupón del embajador desde el panel admin (vía /api/stats).
   const [amb, setAmb] = useState({ rate: 30, coupon: 20 });
+  // Contenido editable del Landing Builder (hero + FAQ). Vacío = usa el del código.
+  const [lc, setLc] = useState<any>(null);
   const t = dictFor(dict, lang);
 
   useEffect(() => {
     fetch('/api/admin/plans', { cache: 'no-store' }).then((r) => r.json()).then((j) => setDbPlans(j.plans || [])).catch(() => {});
+    fetch('/api/landing-content', { cache: 'no-store' }).then((r) => r.json()).then((c) => setLc(c || {})).catch(() => {});
     // Cifras reales para la prueba social; crecen solas con el uso.
     // no-store + ?t=: siempre trae lo último del admin (base + real, comisión/cupón), sin caché.
     // Se refresca cada 30s para que las cifras suban EN VIVO mientras se ve la página.
@@ -397,6 +400,14 @@ export default function Home() {
   const stColor = pnl <= -maxLoss ? 'var(--red)' : pnl >= target ? 'var(--green)' : (pnl < 0 && -pnl > maxLoss * 0.7) ? '#ffcf5c' : 'var(--brand)';
   const grad = { background: 'var(--grad)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' } as any;
 
+  // Overrides del Landing Builder (si un campo está vacío → texto del código).
+  const heroH1a = lc?.hero?.[`h1a_${lang}`] || t.hero.h1a;
+  const heroH1b = lc?.hero?.[`h1b_${lang}`] || t.hero.h1b;
+  const heroSub = lc?.hero?.[`sub_${lang}`] || t.hero.sub;
+  const lcFaqs: [string, string][] = (lc?.faq?.landing?.length
+    ? lc.faq.landing.map((r: string[]) => lang === 'es' ? [r[0], r[1]] : [r[2], r[3]])
+    : t.faqs);
+
   const SECTIONS = [
     { id: 'features', label: t.nav.features },
     { id: 'eco', label: t.nav.eco },
@@ -424,8 +435,8 @@ export default function Home() {
         </div>
         <br />
         <span className="pill green">{t.hero.badge}</span>
-        <h1 style={{ fontSize: 50, margin: '20px 0', lineHeight: 1.08 }}>{t.hero.h1a}<br /><span style={grad}>{t.hero.h1b}</span></h1>
-        <p className="muted" style={{ fontSize: 19, maxWidth: 640, margin: '0 auto 26px' }}>{t.hero.sub}</p>
+        <h1 style={{ fontSize: 50, margin: '20px 0', lineHeight: 1.08 }}>{heroH1a}<br /><span style={grad}>{heroH1b}</span></h1>
+        <p className="muted" style={{ fontSize: 19, maxWidth: 640, margin: '0 auto 26px' }}>{heroSub}</p>
         <div className="row" style={{ justifyContent: 'center' }}>
           <Link className="btn btn-primary" href="/login?mode=signup" style={{ padding: '14px 28px', fontSize: 16 }}>{t.hero.cta1}</Link>
           <Link className="btn btn-ghost" href="#pricing" style={{ padding: '14px 28px', fontSize: 16 }}>{t.hero.cta2}</Link>
@@ -776,7 +787,7 @@ export default function Home() {
       {/* FAQ */}
       <div id="faq" className="wrap section" style={{ maxWidth: 760 }}>
         <h2 style={{ textAlign: 'center', marginBottom: 26 }}>{t.faqT}</h2>
-        {t.faqs.map((f, i) => (
+        {lcFaqs.map((f, i) => (
           <details key={i} className="card" style={{ padding: '14px 18px', marginBottom: 10, cursor: 'pointer' }}>
             <summary style={{ fontWeight: 700, listStyle: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ color: 'var(--brand)' }}>▶</span> {f[0]}

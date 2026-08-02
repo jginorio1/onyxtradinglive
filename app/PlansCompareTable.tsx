@@ -1,4 +1,5 @@
 'use client';
+import { useEffect, useState } from 'react';
 import { PLAN_ROWS } from '@/lib/plansData';
 import OnyxIcon from '@/app/components/OnyxIcon';
 
@@ -28,6 +29,17 @@ export default function PlansCompareTable({
   plans: Plan[]; lang: 'es' | 'en'; annual?: boolean;
   onChoose: (planId: string, price: number) => void; loadingId?: string;
 }) {
+  // Filas de comparación: si el admin las editó en Landing Builder, usamos esas;
+  // si no, caemos a las del código (PLAN_ROWS). Nunca se queda en blanco.
+  const [ovRows, setOvRows] = useState<typeof PLAN_ROWS | null>(null);
+  useEffect(() => {
+    fetch('/api/landing-content', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((c) => { if (Array.isArray(c?.compare) && c.compare.length) setOvRows(c.compare); })
+      .catch(() => {});
+  }, []);
+  const rows = ovRows && ovRows.length ? ovRows : PLAN_ROWS;
+
   if (!plans.length) return null;
 
   const cols = ['free', 'pro', 'elite', 'black'];
@@ -71,7 +83,7 @@ export default function PlansCompareTable({
               {cols.map((id) => <td key={id} style={{ textAlign: 'center', padding: '12px 16px', fontWeight: 700 }}>{acc(id)}</td>)}
             </tr>
 
-            {PLAN_ROWS.map((r, ri) => r.head
+            {rows.map((r, ri) => r.head
               ? (<tr key={ri}><td colSpan={5} style={{ padding: '16px 16px 8px', color: 'var(--brand)', fontWeight: 700, fontSize: 13, letterSpacing: '.02em' }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}><OnyxIcon name={sectionIcon(r.es)} size={16} /> {lang === 'es' ? r.es : r.en}</span></td></tr>)
               : (<tr key={ri}><td style={{ padding: '12px 16px', color: 'var(--mut)' }}>{lang === 'es' ? r.es : r.en}</td>{r.v.map((v, ci) => {
                   // Fila de comisión: lee el % por plan del admin (capabilities.academy_fee_pct) → se actualiza solo.

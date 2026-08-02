@@ -25,7 +25,13 @@ export default function MentoresPage() {
   const { lang } = useLang();
   const L = mkL(lang);
   const [plans, setPlans] = useState<Plan[]>([]);
-  useEffect(() => { fetch('/api/admin/plans').then((r) => r.json()).then((j) => setPlans(j.plans || [])).catch(() => {}); }, []);
+  const [lcFaqRaw, setLcFaqRaw] = useState<string[][] | null>(null);
+  useEffect(() => {
+    fetch('/api/admin/plans').then((r) => r.json()).then((j) => setPlans(j.plans || [])).catch(() => {});
+    // FAQ editable del Landing Builder (si el admin la puso, reemplaza la del código).
+    fetch('/api/landing-content', { cache: 'no-store' }).then((r) => r.json())
+      .then((c) => { const rows = c?.faq?.mentores; if (Array.isArray(rows) && rows.length) setLcFaqRaw(rows); }).catch(() => {});
+  }, []);
   const shown = plans.length ? plans : FALLBACK;
   // Comisión dinámica: rango min–max del % por plan (se refleja al cambiarlo en admin).
   const _fees = (plans as any[]).filter((p) => !/free/i.test(p.id || '') && Number(p.price_month) > 0).map((p) => p?.capabilities?.academy_fee_pct).filter((x) => x != null && !isNaN(Number(x))).map(Number);
@@ -139,7 +145,7 @@ export default function MentoresPage() {
       {/* FAQ */}
       <div className="wrap section" style={{ maxWidth: 760, padding: '20px 22px' }}>
         <h2 style={{ textAlign: 'center', marginBottom: 22 }}>{L('Preguntas frecuentes', 'Frequently asked questions')}</h2>
-        {[
+        {(lcFaqRaw && lcFaqRaw.length ? lcFaqRaw.map((r) => lang === 'es' ? [r[0], r[1]] : [r[2], r[3]]) : [
           [L('¿Cuánto cobra Onyx por vender en mi academia?', 'How much does Onyx take for selling in my academy?'),
            L('Onyx solo se lleva una comisión según tu plan (la ves en la tabla de arriba) y el resto es tuyo. Sin cuota de montaje ni mensualidad extra por tener tu academia. Cuanto más alto tu plan, menor la comisión.', 'Onyx only takes a fee based on your plan (shown in the table above) and the rest is yours. No setup fee and no extra monthly charge for running your academy. The higher your plan, the lower the fee.')],
           [L('¿Cómo y cuándo recibo mis pagos?', 'How and when do I get paid?'),
@@ -158,7 +164,7 @@ export default function MentoresPage() {
            L('Sí. Tu academia funciona en el móvil desde el navegador y se puede instalar como app (PWA): tus alumnos la abren desde el teléfono como cualquier otra app.', 'Yes. Your academy works on mobile from the browser and can be installed as an app (PWA): your students open it from their phone like any other app.')],
           [L('¿Qué pasa con reembolsos o alumnos problemáticos?', 'What about refunds or problem students?'),
            L('Tienes moderación, control de miembros (silenciar o expulsar) y las reglas de reembolso de Stripe. Tú mandas en tu comunidad.', 'You have moderation, member controls (mute or remove) and Stripe\'s refund rules. You\'re in charge of your community.')],
-        ].map(([q, a], i) => (
+        ]).map(([q, a]: [string, string], i: number) => (
           <details key={i} className="card" style={{ padding: '14px 18px', marginBottom: 10, cursor: 'pointer' }}>
             <summary style={{ fontWeight: 700, listStyle: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ color: 'var(--brand)' }}>▶</span> {q}

@@ -60,10 +60,17 @@ export default function Invita() {
   const [d, setD] = useState<any>(null);
   const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
   const [n, setN] = useState(5);
+  const [lcFaqRaw, setLcFaqRaw] = useState<string[][] | null>(null);
+  // FAQ editable del Landing Builder (si el admin la puso, reemplaza la del código).
+  const faqRows: [string, string][] = (lcFaqRaw && lcFaqRaw.length)
+    ? lcFaqRaw.map((r) => lang === 'es' ? [r[0], r[1]] : [r[2], r[3]])
+    : t.faq;
 
   useEffect(() => {
     fetch('/api/referral/info?t=' + Date.now(), { cache: 'no-store' }).then((r) => r.json()).then(setD).catch(() => setD({ referrerCredit: 10, friendCredit: 10, holdDays: 21, bridge: 5 }));
     fetch('/api/referral').then((r) => setLoggedIn(r.status !== 401)).catch(() => setLoggedIn(false));
+    fetch('/api/landing-content', { cache: 'no-store' }).then((r) => r.json())
+      .then((c) => { const rows = c?.faq?.invita; if (Array.isArray(rows) && rows.length) setLcFaqRaw(rows); }).catch(() => {});
   }, []);
 
   const fill = (s: string, m: any) => Object.keys(m).reduce((x, k) => x.replace(`{${k}}`, m[k]), s);
@@ -145,7 +152,7 @@ export default function Invita() {
 
       <h2 style={{ textAlign: 'center', marginBottom: 22 }}>{t.faqT}</h2>
       <div style={{ maxWidth: 760, margin: '0 auto' }}>
-        {t.faq.map(([q, a]: [string, string]) => (
+        {faqRows.map(([q, a]: [string, string]) => (
           <details key={q} className="card" style={{ padding: '14px 18px', marginBottom: 10, cursor: 'pointer' }}>
             <summary style={{ fontWeight: 700, listStyle: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ color: 'var(--brand)' }}>▶</span> {q}

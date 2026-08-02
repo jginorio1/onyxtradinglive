@@ -1,0 +1,83 @@
+import { pickLang, langFromCookie } from '@/lib/i18n';
+import { NextResponse } from 'next/server';
+import { createSupabaseServer } from '@/lib/supabaseServer';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { spendingReview } from '@/lib/coachAI';
+import { logError } from '@/lib/errlog';
+
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+async function hasExpenses(userId: string): Promise<boolean> {
+  const { data: prof } = await supabaseAdmin.from('profiles').select('plan').eq('id', userId).maybeSingle();
+  const { data: plan } = await supabaseAdmin.from('plans').select('capabilities').eq('id', (prof as any)?.plan || 'free').maybeSingle();
+  return !!(plan?.capabilities as any)?.expenses;
+}
+const realCost = (e: any) => Math.max(0, (Number(e.amount) || 0) - (Number(e.recovered) || 0));
+
+// GET · lectura honesta del gasto (coach de dinero). Resume el año en curso.
+export async function GET(req: Request) {
+  try {
+    const sb = createSupabaseServer();
+    const { data: { user } } = await sb.auth.getUser();
+    if (!user) return NextResponse.json({ error: 'no autorizado' }, { status: 401 });
+    if (!(await hasExpenses(user.id))) return NextResponse.json({ locked: true });
+
+    const lang = new URL(req.url).searchParams.get('lang') === 'en' ? 'en' : 'es';
+    const now = new Date();
+    const y = now.getFullYear();
+    const monthsElapsed = now.getMonth() + 1;
+
+    const { data: exAll } = await supabaseAdmin.from('expenses').select('*').eq('user_id', user.id).limit(5000);
+    const ex = exAll || [];
+    // Gasto del año: puntuales de este año + recurrentes por sus meses activos.
+    let expensesYear = 0;
+    const byCategory: Record<string, number> = {};
+    for (const e of ex) {
+      let c = 0;
+      if (e.recurring) { const startM = new Date(e.spent_on).getFullYear() < y ? 1 : (new Date(e.spent_on).getMonth() + 1); c = realCost(e) * Math.max(0, monthsElapsed - startM + 1); }
+      else if (String(e.spent_on).slice(0, 4) === String(y)) c = realCost(e);
+      if (c > 0) { expensesYear += c; byCategory[e.category] = (byCategory[e.category] || 0) + c; }
+    }
+
+    // ROI por firma (igual que la pantalla) + conteo de retos.
+    const fundAll = ex.filter((e: any) => e.category === 'funding' && (e.firm || '').trim());
+    const firmByAcc: Record<string, string> = {};
+    const byFirm: Record<string, { spent: number; recovered: number; earned: number }> = {};
+    for (const e of fundAll) {
+      const f = String(e.firm).trim();
+      if (!byFirm[f]) byFirm[f] = { spent: 0, recovered: 0, earned: 0 };
+      byFirm[f].spent += Number(e.amount) || 0; byFirm[f].recovered += Number(e.recovered) || 0;
+      if (e.account_id) firmByAcc[e.account_id] = f;
+    }
+    const facc = Object.keys(firmByAcc);
+    if (facc.length) {
+      const { data: yt } = await supabaseAdmin.from('trades').select('net_profit,account_id').in('account_id', facc).gte('close_time', `${y}-01-01T00:00:00`).limit(100000);
+      for (const t of (yt || []) as any[]) { const f = firmByAcc[t.account_id]; if (f && byFirm[f]) byFirm[f].earned += Number(t.net_profit) || 0; }
+    }
+    const firms = Object.entries(byFirm).map(([firm, v]) => ({ firm, spent: Math.round(v.spent), recovered: Math.round(v.recovered), earned: Math.round(v.earned), roi: v.spent > 0 ? Math.round(((v.recovered + v.earned - v.spent) / v.spent) * 100) : 0 }));
+
+    // Bruto del año.
+    const { data: accs } = await supabaseAdmin.from('trading_accounts').select('id').eq('user_id', user.id);
+    const ids = (accs || []).map((a: any) => a.id);
+    let grossYear = 0;
+    if (ids.length) {
+      const { data: tr } = await supabaseAdmin.from('trades').select('net_profit').in('account_id', ids).gte('close_time', `${y}-01-01T00:00:00`).limit(100000);
+      grossYear = (tr || []).reduce((s: number, t: any) => s + (Number(t.net_profit) || 0), 0);
+    }
+
+    const summary = {
+      year: y, grossYear: Math.round(grossYear), expensesYear: Math.round(expensesYear), netYear: Math.round(grossYear - expensesYear),
+      byCategory: Object.fromEntries(Object.entries(byCategory).map(([k, v]) => [k, Math.round(v)])),
+      firms, challengesBought: fundAll.length,
+    };
+    if (!ex.length) return NextResponse.json({ ok: false, empty: true });
+
+    const r = await spendingReview(summary, lang);
+    if (!r.ok) return NextResponse.json({ ok: false, reason: r.reason });
+    return NextResponse.json({ ok: true, review: r.text });
+  } catch (e: any) {
+    await logError('expenses_coach', e);
+    return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
+  }
+}

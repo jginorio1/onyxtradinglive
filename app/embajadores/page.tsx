@@ -82,9 +82,17 @@ export default function Embajadores() {
   const [state, setState] = useState<'loading' | 'guest' | 'form' | 'sent' | 'has'>('loading');
   const [f, setF] = useState<any>({ code: '', audience: '', followers: '', payout_method: 'paypal', payout_details: '' });
   const [busy, setBusy] = useState(false);
+  const [lcFaqRaw, setLcFaqRaw] = useState<string[][] | null>(null);
   const t = dictFor(T, lang);
+  // FAQ editable del Landing Builder (si el admin la puso, reemplaza la del código).
+  const faqRows: [string, string][] = (lcFaqRaw && lcFaqRaw.length)
+    ? lcFaqRaw.map((r) => lang === 'es' ? [r[0], r[1]] : [r[2], r[3]])
+    : t.faq;
 
   useEffect(() => {
+    fetch('/api/landing-content', { cache: 'no-store' }).then((r) => r.json())
+      .then((c) => { const rows = c?.faq?.embajadores; if (Array.isArray(rows) && rows.length) setLcFaqRaw(rows); })
+      .catch(() => {});
     fetch('/api/ambassador').then(async (r) => {
       if (r.status === 401) {
         setState('guest');
@@ -229,7 +237,7 @@ export default function Embajadores() {
 
         <h2 style={{ textAlign: 'center', marginBottom: 22 }}>{t.faqT}</h2>
         <div style={{ maxWidth: 760, margin: '0 auto' }}>
-          {t.faq.map(([q, a]: [string, string]) => (
+          {faqRows.map(([q, a]: [string, string]) => (
             <details key={q} className="card" style={{ padding: '14px 18px', marginBottom: 10, cursor: 'pointer' }}>
               <summary style={{ fontWeight: 700, listStyle: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ color: 'var(--brand)' }}>▶</span> {q}
