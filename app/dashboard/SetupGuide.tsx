@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useLang } from '@/lib/lang';
 import { mkL } from '@/lib/i18n';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 type Acc = {
   id: string; login: string; nickname: string | null; broker: string | null; platform: string;
@@ -11,6 +12,9 @@ type Acc = {
 };
 
 const PLATS = ['MT5', 'MT4', 'cTrader'];
+// Mapea el nombre visible al código que usa la página de conectar, para
+// preseleccionar el conector correcto de esa plataforma.
+const platKey = (p: string) => ({ MT5: 'mt5', MT4: 'mt4', cTrader: 'ctrader' } as Record<string, string>)[p] || (p || 'mt5').toLowerCase();
 
 export default function SetupGuide() {
   const { lang } = useLang();
@@ -20,6 +24,7 @@ export default function SetupGuide() {
   const [sel, setSel] = useState('');            // cuenta seleccionada en el popup ('' = cuenta nueva)
   const [newPlat, setNewPlat] = useState('MT5');
   const [busy, setBusy] = useState('');
+  const [celebrate, setCelebrate] = useState(false);
 
   const load = () => fetch('/api/setup').then((r) => r.json()).then(setData).catch(() => setData({ caps: {}, accounts: [] }));
   useEffect(() => { load(); const iv = setInterval(load, 12000); return () => clearInterval(iv); }, []);
@@ -51,15 +56,59 @@ export default function SetupGuide() {
   }
 
   // Construye los pasos de una cuenta (o de una cuenta nueva) con estado en vivo.
-  type St = { key: string; title: string; sub: string; done: boolean; href: string };
+  type St = { key: string; icon: string; title: string; sub: string; detail: string[]; done: boolean; href: string; time?: string };
   function stepsFor(a: Acc | null, plat: string, goals: Record<string, boolean>): St[] {
     const g = goals || {};
     const s: St[] = [];
-    s.push({ key: 'connect', title: L(`Conecta la cuenta (${plat})`, `Connect the account (${plat})`), sub: L('Instala el conector y pega tu API key.', 'Install the connector and paste your API key.'), done: !!a, href: '/dashboard/keys' });
-    s.push({ key: 'connector', title: L('El conector está reportando', 'Connector is reporting'), sub: L('Deja el EA/cBot conector corriendo para ver tus estadísticas.', 'Keep the connector EA/cBot running to see your stats.'), done: !!a?.connectorLive, href: '/dashboard/keys' });
-    if (g.guardian) s.push({ key: 'guardian', title: L('Onyx Guardian activo', 'Onyx Guardian active'), sub: L('Instala el EA del gestor y fija tus límites de riesgo.', 'Install the manager EA and set your risk limits.'), done: !!a?.guardianOn, href: '/dashboard/manager' });
-    if (g.copy || g.tv) s.push({ key: 'copy', title: L('EA de Copy corriendo', 'Copy EA running'), sub: g.tv && !g.copy ? L('También ejecuta las señales de TradingView.', 'Also executes TradingView signals.') : L('Copia de una cuenta maestra a esclavas.', 'Copy from a master account to slaves.'), done: !!a?.copyLive, href: '/dashboard/copy' });
-    if (g.tv) s.push({ key: 'tv', title: L('TradingView conectado', 'TradingView connected'), sub: L('Pega tu webhook y envía una señal de prueba.', 'Paste your webhook and send a test signal.'), done: !!a?.tvOn, href: '/dashboard/tradingview' });
+    s.push({
+      key: 'connect', icon: 'accounts', done: !!a, href: '/dashboard/keys', time: '~2 min',
+      title: L(`Conecta tu cuenta (${plat})`, `Connect your account (${plat})`),
+      sub: L('Es como enchufar Onyx a tu cuenta de trading. Solo lee, nunca opera por ti.', 'It\'s like plugging Onyx into your trading account. Read-only, it never trades for you.'),
+      detail: [
+        L('Pulsa el botón “Conectar cuenta”.', 'Click the “Connect account” button.'),
+        L(`Elige tu plataforma: ${plat}.`, `Pick your platform: ${plat}.`),
+        L('Descarga el conector y ábrelo dentro de tu plataforma.', 'Download the connector and open it inside your platform.'),
+        L('Copia tu clave (API key) de Onyx y pégala en el conector.', 'Copy your Onyx API key and paste it into the connector.'),
+      ],
+    });
+    s.push({
+      key: 'connector', icon: 'settings', done: !!a?.connectorLive, href: '/dashboard/keys',
+      title: L('Enciende el conector', 'Turn the connector on'),
+      sub: L('Deja tu plataforma abierta con el “AutoTrading” activado. Cuando reporte, este paso se pone verde solo.', 'Keep your platform open with “AutoTrading” on. When it reports, this step turns green by itself.'),
+      detail: [
+        L('Abre tu plataforma (MetaTrader / cTrader).', 'Open your platform (MetaTrader / cTrader).'),
+        L('Activa el botón “AutoTrading” (arriba).', 'Enable the “AutoTrading” button (top).'),
+        L('Espera unos segundos: verás tus operaciones aquí.', 'Wait a few seconds: your trades show up here.'),
+      ],
+    });
+    if (g.guardian) s.push({
+      key: 'guardian', icon: 'guardian', done: !!a?.guardianOn, href: '/dashboard/manager',
+      title: L('Activa Onyx Guardian', 'Turn on Onyx Guardian'),
+      sub: L('Tu red de seguridad: le dices cuánto puedes perder al día y te frena antes de pasarte.', 'Your safety net: tell it your daily loss limit and it stops you before you cross it.'),
+      detail: [
+        L('Instala el EA del Guardian (un clic).', 'Install the Guardian EA (one click).'),
+        L('Pon tu pérdida máxima diaria y tus horarios.', 'Set your max daily loss and your hours.'),
+        L('Listo: Onyx vigila esa cuenta 24/7.', 'Done: Onyx watches that account 24/7.'),
+      ],
+    });
+    if (g.copy || g.tv) s.push({
+      key: 'copy', icon: 'swap', done: !!a?.copyLive, href: '/dashboard/copy',
+      title: L('Instala el EA de Copy', 'Install the Copy EA'),
+      sub: g.tv && !g.copy ? L('Es el mismo que ejecuta tus señales de TradingView.', 'It\'s the same one that executes your TradingView signals.') : L('Copia las operaciones de una cuenta maestra a tus otras cuentas.', 'Copies trades from a master account to your other accounts.'),
+      detail: [
+        L('Descarga el EA de Copy e instálalo en tu plataforma.', 'Download the Copy EA and install it on your platform.'),
+        L('Pega tu clave de Copy y activa el AutoTrading.', 'Paste your Copy key and enable AutoTrading.'),
+      ],
+    });
+    if (g.tv) s.push({
+      key: 'tv', icon: 'bars', done: !!a?.tvOn, href: '/dashboard/tradingview',
+      title: L('Conecta TradingView', 'Connect TradingView'),
+      sub: L('Tus alertas de TradingView abren la operación en tu cuenta real, solas.', 'Your TradingView alerts open the trade in your real account, automatically.'),
+      detail: [
+        L('Copia tu URL de webhook y pégala en la alerta de TradingView.', 'Copy your webhook URL and paste it into your TradingView alert.'),
+        L('Copia el mensaje y envía una señal de prueba.', 'Copy the message and send a test signal.'),
+      ],
+    });
     return s;
   }
 
@@ -69,20 +118,43 @@ export default function SetupGuide() {
   const goalsOf = (a: Acc) => ({ journal: true, guardian: !!a.goals?.guardian, copy: !!a.goals?.copy, tv: !!a.goals?.tv });
   const accDone = (a: Acc) => stepsFor(a, a.platform, goalsOf(a)).every((s) => s.done);
   const allDone = hasAcc && accounts.every(accDone);
+  const remaining = accounts.reduce((n, a) => n + stepsFor(a, a.platform, goalsOf(a)).filter((s) => !s.done).length, 0);
+
+  // Mensaje "¡Todo listo!" una sola vez, cuando se completa. Vuelve a salir si
+  // añades una cuenta nueva y también la terminas (la firma cambia).
+  const sig = accounts.map((a) => a.id + ':' + (accDone(a) ? 1 : 0)).join('|');
+  useEffect(() => {
+    if (!hasAcc || !allDone) return;
+    try {
+      if (localStorage.getItem('onyx_setup_sig') !== sig) setCelebrate(true);
+    } catch { /* localStorage no disponible */ }
+  }, [hasAcc, allDone, sig]);
+  function dismissCelebrate() {
+    try { localStorage.setItem('onyx_setup_sig', sig); } catch {}
+    setCelebrate(false);
+  }
 
   // ---------- Estado vacío: onboarding grande ----------
   if (!hasAcc) {
     const steps = stepsFor(null, newPlat, { journal: true, guardian: goalDefs.some((g) => g.k === 'guardian'), copy: false, tv: false });
+    const pk = platKey(newPlat);
     return (
-      <div className="card" style={{ padding: 22, marginBottom: 16, border: '2px solid var(--brand)', boxShadow: '0 0 30px rgba(124,140,255,.18)' }}>
-        <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 4 }}>👋 {L('Empecemos: conecta tu primera cuenta', 'Let\'s start: connect your first account')}</div>
-        <p className="muted" style={{ fontSize: 13.5, marginBottom: 16 }}>{L('Elige tu plataforma y sigue los pasos. Cada uno se marca solo cuando lo completes.', 'Pick your platform and follow the steps. Each one checks itself when you complete it.')}</p>
-        <div style={{ marginBottom: 14 }}>
-          <span className="muted" style={{ fontSize: 12.5, marginRight: 8 }}>{L('Plataforma', 'Platform')}:</span>
-          {PLATS.map((p) => <button key={p} className={'btn ' + (newPlat === p ? 'btn-primary' : 'btn-ghost')} style={{ marginRight: 6, padding: '5px 12px', fontSize: 13 }} onClick={() => setNewPlat(p)}>{p}</button>)}
+      <div className="card" style={{ padding: 24, marginBottom: 16, border: '2px solid var(--brand)', boxShadow: '0 0 30px rgba(124,140,255,.18)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 4 }}>
+          <span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="hand" size={22} /></span>
+          <span style={{ fontSize: 19, fontWeight: 800 }}>{L('Empecemos — es muy fácil', 'Let\'s start — it\'s super easy')}</span>
         </div>
-        <StepList steps={steps} L={L} />
-        <Link className="btn btn-primary" href="/dashboard/keys" style={{ marginTop: 8 }}>{L('Conectar cuenta →', 'Connect account →')}</Link>
+        <p className="muted" style={{ fontSize: 13.5, marginBottom: 18 }}>{L('Te llevamos de la mano. Elige tu plataforma y sigue los pasos: cada uno se pone en verde solo cuando lo logras. Unos 3 minutos.', 'We\'ll guide you. Pick your platform and follow the steps: each one turns green on its own once you\'re done. About 3 minutes.')}</p>
+        <div style={{ marginBottom: 18 }}>
+          <div className="muted" style={{ fontSize: 12.5, marginBottom: 6 }}>{L('1 · ¿Dónde operas? (tu plataforma)', '1 · Where do you trade? (your platform)')}</div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {PLATS.map((p) => <button key={p} className={'btn ' + (newPlat === p ? 'btn-primary' : 'btn-ghost')} style={{ padding: '7px 16px', fontSize: 13.5 }} onClick={() => { setNewPlat(p); try { localStorage.setItem('onyx_plat', platKey(p)); } catch {} }}>{p}</button>)}
+          </div>
+          <div className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>{L('Es la app donde operas. Al elegirla, descargarás el conector correcto para ella.', 'It\'s the app where you trade. Picking it downloads the right connector for it.')}</div>
+        </div>
+        <div className="muted" style={{ fontSize: 12.5, marginBottom: 6 }}>{L('2 · Sigue estos pasos', '2 · Follow these steps')}</div>
+        <StepList steps={steps} L={L} platKey={pk} />
+        <Link className="btn btn-primary" href={`/dashboard/keys?platform=${pk}`} onClick={() => { try { localStorage.setItem('onyx_plat', pk); } catch {} }} style={{ marginTop: 10, padding: '11px 22px' }}>{L('Conectar cuenta →', 'Connect account →')}</Link>
       </div>
     );
   }
@@ -93,7 +165,7 @@ export default function SetupGuide() {
       {!allDone && (
         <div className="card" style={{ padding: '12px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 13.5, fontWeight: 700 }}>{L('Configuración', 'Setup')}</span>
+            <span style={{ fontSize: 13.5, fontWeight: 700 }}>{L('Configuración', 'Setup')}{remaining > 0 && <span className="muted" style={{ fontWeight: 500, marginLeft: 6 }}>· {L(`faltan ${remaining} paso${remaining > 1 ? 's' : ''}`, `${remaining} step${remaining > 1 ? 's' : ''} left`)}</span>}</span>
             {accounts.map((a) => (
               <button key={a.id} className="pill" onClick={() => { setSel(a.id); setOpen(true); }}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--card2)', cursor: 'pointer', border: '1px solid var(--line)' }}
@@ -138,8 +210,19 @@ export default function SetupGuide() {
                 })}
               </div>
               <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>{L('Pasos para esta cuenta', 'Steps for this account')}</div>
-              <StepList steps={stepsFor(acc, acc.platform, goalsOf(acc))} L={L} onClose={() => setOpen(false)} />
+              <StepList steps={stepsFor(acc, acc.platform, goalsOf(acc))} L={L} onClose={() => setOpen(false)} platKey={platKey(acc.platform)} />
             </>)}
+          </div>
+        </div>
+      )}
+
+      {celebrate && (
+        <div onClick={dismissCelebrate} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6vh 16px' }}>
+          <div onClick={(e) => e.stopPropagation()} className="card" style={{ width: '100%', maxWidth: 380, padding: 26, textAlign: 'center', border: '2px solid var(--green)', boxShadow: '0 0 40px rgba(52,226,160,.3)' }}>
+            <div style={{ fontSize: 40, marginBottom: 6 }}>🎉</div>
+            <h3 style={{ marginBottom: 8 }}>{L('¡Todo listo!', 'All set!')}</h3>
+            <p className="muted" style={{ fontSize: 14, marginBottom: 18 }}>{accounts.length > 1 ? L('Tus cuentas están conectadas y configuradas. Onyx ya está trabajando por ti.', 'Your accounts are connected and configured. Onyx is now working for you.') : L('Tu cuenta está conectada y configurada. Onyx ya está trabajando por ti.', 'Your account is connected and configured. Onyx is now working for you.')}</p>
+            <button className="btn btn-primary" onClick={dismissCelebrate}>{L('Entendido', 'Got it')}</button>
           </div>
         </div>
       )}
@@ -147,17 +230,31 @@ export default function SetupGuide() {
   );
 }
 
-function StepList({ steps, L, onClose }: { steps: { key: string; title: string; sub: string; done: boolean; href: string }[]; L: any; onClose?: () => void }) {
+function StepList({ steps, L, onClose, platKey: pk }: { steps: { key: string; icon: string; title: string; sub: string; detail: string[]; done: boolean; href: string; time?: string }[]; L: any; onClose?: () => void; platKey?: string }) {
+  const go = (s: any) => {
+    if (s.key === 'connect' && pk) { try { localStorage.setItem('onyx_plat', pk); } catch {} }
+    onClose?.();
+  };
+  const hrefFor = (s: any) => (s.key === 'connect' && pk) ? `${s.href}?platform=${pk}` : s.href;
   return (
     <div>
       {steps.map((s, i) => (
-        <div key={s.key} style={{ display: 'flex', gap: 11, alignItems: 'flex-start', padding: '10px 0', borderTop: i ? '1px solid var(--line)' : 'none' }}>
-          <span style={{ flex: 'none', width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, background: s.done ? 'var(--green)' : 'var(--card2)', color: s.done ? '#fff' : 'var(--mut)', border: s.done ? 'none' : '1px solid var(--line)' }}>{s.done ? '✓' : i + 1}</span>
+        <div key={s.key} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '12px 0', borderTop: i ? '1px solid var(--line)' : 'none' }}>
+          <span style={{ flex: 'none', width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12.5, fontWeight: 700, background: s.done ? 'var(--green)' : 'var(--card2)', color: s.done ? '#fff' : 'var(--mut)', border: s.done ? 'none' : '1px solid var(--line)' }}>{s.done ? '✓' : i + 1}</span>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13.5, fontWeight: 600, color: s.done ? 'var(--green)' : 'var(--tx)' }}>{s.title}</div>
-            <div className="muted" style={{ fontSize: 12, marginTop: 1 }}>{s.sub}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+              <span style={{ color: s.done ? 'var(--green)' : 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name={s.icon} size={16} glow={false} /></span>
+              <span style={{ fontSize: 14, fontWeight: 700, color: s.done ? 'var(--green)' : 'var(--tx)' }}>{s.title}</span>
+              {s.time && !s.done && <span className="muted" style={{ fontSize: 11, background: 'var(--card2)', border: '1px solid var(--line)', borderRadius: 20, padding: '1px 8px' }}>{s.time}</span>}
+            </div>
+            <div className="muted" style={{ fontSize: 12.5, marginTop: 3, lineHeight: 1.5 }}>{s.sub}</div>
+            {!s.done && s.detail?.length > 0 && (
+              <ol style={{ margin: '8px 0 0', paddingLeft: 18 }}>
+                {s.detail.map((d: string, j: number) => <li key={j} className="muted" style={{ fontSize: 12, lineHeight: 1.6 }}>{d}</li>)}
+              </ol>
+            )}
           </div>
-          {!s.done && <Link href={s.href} onClick={onClose} className="btn btn-ghost" style={{ padding: '3px 10px', fontSize: 12, flex: 'none' }}>{L('Ir', 'Go')}</Link>}
+          {!s.done && <Link href={hrefFor(s)} onClick={() => go(s)} className="btn btn-ghost" style={{ padding: '4px 12px', fontSize: 12.5, flex: 'none' }}>{L('Ir', 'Go')}</Link>}
         </div>
       ))}
     </div>

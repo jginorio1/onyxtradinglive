@@ -230,7 +230,11 @@ export default function KeysPage() {
 
   // ---- Plataforma elegida (persistida) ----
   const [plat, setPlat] = useState('mt5');
-  useEffect(() => { try { const p = localStorage.getItem('onyx_plat'); if (p) setPlat(p); } catch {} }, []);
+  useEffect(() => { try {
+    const q = new URLSearchParams(window.location.search).get('platform');
+    if (q) { setPlat(q); localStorage.setItem('onyx_plat', q); return; }
+    const p = localStorage.getItem('onyx_plat'); if (p) setPlat(p);
+  } catch {} }, []);
   function pickPlat(k: string) { setPlat(k); try { localStorage.setItem('onyx_plat', k); } catch {} }
   const activePlat = (t.platforms || []).find((p: any) => p.key === plat) || t.platforms[0];
   const kind = activePlat.kind; // 'mt' | 'ctrader' | 'soon'

@@ -543,7 +543,10 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
           <div className="rail-right"><News lang={lang} /></div>
           <div className="center">
         {!hasAccounts ? (
-          <div className="card"><h3>{L.empty1_t}</h3><p className="muted" style={{ margin: '8px 0 14px' }}>{L.empty1_d.replace('{plats}', platformsPhrase(platItems, lang, 3))}</p><Link className="btn btn-primary" href="/dashboard/keys">{L.empty1_cta}</Link></div>
+          <div className="card" style={{ textAlign: 'center', padding: '30px 20px' }}>
+            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>{lang === 'en' ? 'Your stats will appear here' : 'Aquí aparecerán tus estadísticas'}</div>
+            <p className="muted" style={{ fontSize: 13.5, margin: 0 }}>{lang === 'en' ? 'Follow the setup guide above to connect your first account.' : 'Sigue la guía de arriba para conectar tu primera cuenta.'}</p>
+          </div>
         ) : !hasTrades ? (
           <div className="card"><p className="muted">{L.empty2}</p></div>
         ) : (
