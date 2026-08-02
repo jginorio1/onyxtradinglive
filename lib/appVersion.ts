@@ -4,17 +4,25 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 //  · production = lo que ve todo el mundo (sale en el footer)
 //  · beta       = lo que prueban los testers
 //  · stable     = la última versión buena (respaldo / rollback)
-// Al "promover" Beta → Production, todo sube un escalón y se abre una Beta nueva.
+export type VersionLog = {
+  at: string;
+  action: 'promote' | 'rollback' | 'edit';
+  from: string;
+  to: string;
+  by: string;      // email de quién lo hizo
+  note: string;    // notas del cambio
+};
+
 export type AppVersion = {
   stable: string;
   production: string;
   beta: string;
   notes: Record<string, string>;   // changelog por versión: { "1.1": "…" }
-  history: { at: string; production: string; beta: string }[];
+  log: VersionLog[];               // historial detallado y automático
 };
 
 const DEFAULT_VERSION: AppVersion = {
-  stable: '', production: '1.0', beta: '1.1', notes: {}, history: [],
+  stable: '', production: '1.0', beta: '1.1', notes: {}, log: [],
 };
 
 export async function appVersion(): Promise<AppVersion> {
@@ -28,6 +36,9 @@ async function save(v: AppVersion) {
   await supabaseAdmin.from('app_settings').upsert({ key: 'app_version', value: v, updated_at: new Date().toISOString() });
 }
 
+const pushLog = (v: AppVersion, e: Omit<VersionLog, 'at'>): VersionLog[] =>
+  [{ at: new Date().toISOString(), ...e }, ...(v.log || [])].slice(0, 60);
+
 // Sube el número menor: 1.1 → 1.2 (mantiene el mayor). Si es raro, añade ".1".
 function bump(ver: string): string {
   const m = String(ver || '1.0').match(/^(\d+)\.(\d+)/);
@@ -36,23 +47,38 @@ function bump(ver: string): string {
 }
 
 // Promover: production→stable, beta→production, y nueva beta = bump(beta).
-export async function promote(): Promise<AppVersion> {
+export async function promote(by: string, note: string): Promise<AppVersion> {
   const v = await appVersion();
   const next: AppVersion = {
     stable: v.production,
     production: v.beta,
     beta: bump(v.beta),
     notes: v.notes,
-    history: [{ at: new Date().toISOString(), production: v.beta, beta: bump(v.beta) }, ...(v.history || [])].slice(0, 30),
+    log: pushLog(v, { action: 'promote', from: v.production, to: v.beta, by, note }),
   };
   await save(next);
   return next;
 }
 
-// Editar a mano (números o notas de la beta).
-export async function setVersion(patch: Partial<AppVersion>): Promise<AppVersion> {
+// Rollback: Production vuelve a la versión Stable (la buena). La beta no cambia.
+export async function rollback(by: string, note: string): Promise<AppVersion> {
   const v = await appVersion();
-  const next = { ...v, ...patch, notes: { ...v.notes, ...(patch.notes || {}) } };
+  if (!v.stable) return v;   // no hay respaldo al que volver
+  const next: AppVersion = {
+    ...v,
+    production: v.stable,
+    log: pushLog(v, { action: 'rollback', from: v.production, to: v.stable, by, note }),
+  };
+  await save(next);
+  return next;
+}
+
+// Editar a mano (número de beta o notas). Se registra en el log como 'edit'.
+export async function setVersion(patch: Partial<AppVersion>, by: string): Promise<AppVersion> {
+  const v = await appVersion();
+  const changedBeta = typeof patch.beta === 'string' && patch.beta !== v.beta;
+  const next: AppVersion = { ...v, ...patch, notes: { ...v.notes, ...(patch.notes || {}) } };
+  if (changedBeta) next.log = pushLog(v, { action: 'edit', from: v.beta, to: patch.beta as string, by, note: 'editó la versión Beta' });
   await save(next);
   return next;
 }

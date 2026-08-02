@@ -563,13 +563,24 @@ function Modules() {
   const [savedL, setSavedL] = useState(false);
   const [ver, setVer] = useState<any>(null);        // versión de la app (canales)
   const [verBusy, setVerBusy] = useState('');
+  const [verModal, setVerModal] = useState<'promote' | 'rollback' | null>(null);   // popup de confirmación
+  const [verNote, setVerNote] = useState('');
+  const [verPin, setVerPin] = useState('');
+  const [verErr, setVerErr] = useState('');
   const loadVer = () => fetch('/api/admin/version').then((r) => r.json()).then(setVer).catch(() => {});
   useEffect(() => { loadVer(); }, []);
-  async function promoteVer() {
-    if (!confirm(lang === 'es' ? '¿Promover Beta → Production? La versión pública cambiará.' : 'Promote Beta → Production? The public version will change.')) return;
-    setVerBusy('promote'); try { const r = await fetch('/api/admin/version', { method: 'POST', body: JSON.stringify({ action: 'promote' }) }); setVer(await r.json()); } finally { setVerBusy(''); }
+  function openVerModal(action: 'promote' | 'rollback') { setVerModal(action); setVerNote(''); setVerPin(''); setVerErr(''); }
+  async function confirmVer() {
+    if (!verModal) return;
+    setVerBusy(verModal); setVerErr('');
+    try {
+      const r = await fetch('/api/admin/version', { method: 'POST', body: JSON.stringify({ action: verModal, note: verNote, pin: verPin }) });
+      const j = await r.json();
+      if (!r.ok) { setVerErr(j.error || 'Error'); return; }
+      setVer(j); setVerModal(null);
+    } finally { setVerBusy(''); }
   }
-  async function saveVer(patch: any) {
+  async function saveVer(patch: any) {   // notas / número de beta (sin PIN)
     setVerBusy('set'); try { const r = await fetch('/api/admin/version', { method: 'POST', body: JSON.stringify({ action: 'set', ...patch }) }); setVer(await r.json()); } finally { setVerBusy(''); }
   }
   // Auto-refresco en vivo: los contadores suben solos sin pulsar Refrescar.
@@ -721,10 +732,57 @@ function Modules() {
               onBlur={(e) => saveVer({ notes: { [ver.beta]: e.target.value } })} rows={2} placeholder={es ? 'Qué hay de nuevo en esta versión…' : 'What\'s new in this version…'}
               style={{ width: '100%', margin: 0 }} />
           </div>
-          <button className="btn btn-primary" style={{ marginTop: 14 }} onClick={promoteVer} disabled={!!verBusy}>
-            🚀 {verBusy === 'promote' ? (es ? 'Promoviendo…' : 'Promoting…') : (es ? 'Promover Beta → Production' : 'Promote Beta → Production')}
-          </button>
-          <p className="muted" style={{ fontSize: 11.5, marginTop: 8 }}>{es ? `Al promover: v${ver.production} → Stable · v${ver.beta} → Production · nueva Beta automática.` : `On promote: v${ver.production} → Stable · v${ver.beta} → Production · new Beta auto-opens.`}</p>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>
+            <button className="btn btn-primary" onClick={() => openVerModal('promote')} disabled={!!verBusy}>🚀 {es ? 'Promover Beta → Production' : 'Promote Beta → Production'}</button>
+            <button className="btn btn-ghost" onClick={() => openVerModal('rollback')} disabled={!!verBusy || !ver.stable} title={!ver.stable ? (es ? 'No hay versión Stable a la que volver' : 'No Stable version to roll back to') : ''}>↩︎ {es ? 'Rollback a Stable' : 'Rollback to Stable'}</button>
+          </div>
+          <p className="muted" style={{ fontSize: 11.5, marginTop: 8 }}>{es ? `Al promover: v${ver.production} → Stable · v${ver.beta} → Production · nueva Beta automática. Cada cambio pide tu PIN.` : `On promote: v${ver.production} → Stable · v${ver.beta} → Production · new Beta auto-opens. Each change asks for your PIN.`}</p>
+
+          {/* Historial de cambios automático */}
+          {!!(ver.log && ver.log.length) && (
+            <div style={{ marginTop: 16 }}>
+              <div className="muted" style={{ fontSize: 12, marginBottom: 6, fontWeight: 700 }}>{es ? 'Historial de cambios' : 'Change log'}</div>
+              <div style={{ border: '1px solid var(--line)', borderRadius: 10, overflow: 'hidden' }}>
+                {ver.log.slice(0, 8).map((e: any, i: number) => (
+                  <div key={i} style={{ display: 'flex', gap: 10, padding: '10px 12px', borderTop: i ? '1px solid var(--line)' : 'none' }}>
+                    <span style={{ flex: 'none', color: e.action === 'promote' ? 'var(--green)' : e.action === 'rollback' ? 'var(--amber)' : 'var(--mut)' }}>{e.action === 'promote' ? '🚀' : e.action === 'rollback' ? '↩︎' : '✏️'}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600 }}>
+                        {e.action === 'promote' ? (es ? `Promovió v${e.from} → v${e.to}` : `Promoted v${e.from} → v${e.to}`)
+                          : e.action === 'rollback' ? (es ? `Rollback: v${e.from} → v${e.to} (Stable)` : `Rollback: v${e.from} → v${e.to} (Stable)`)
+                          : (es ? `Editó la Beta v${e.from} → v${e.to}` : `Edited Beta v${e.from} → v${e.to}`)}
+                      </div>
+                      <div className="muted" style={{ fontSize: 11.5 }}>{e.by} · {new Date(e.at).toLocaleString(es ? 'es-ES' : 'en-US', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}{e.note ? ` · “${e.note}”` : ''}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Popup de confirmación iluminado con PIN */}
+      {verModal && ver && (
+        <div onClick={() => !verBusy && setVerModal(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6vh 16px' }}>
+          <div onClick={(e) => e.stopPropagation()} className="card" style={{ width: '100%', maxWidth: 400, padding: 22, border: '2px solid var(--brand)', boxShadow: '0 0 40px rgba(124,140,255,.4)' }}>
+            <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 4 }}>{verModal === 'promote' ? '🚀 ' : '↩︎ '}{es ? 'Confirmar cambio de versión' : 'Confirm version change'}</div>
+            <div className="muted" style={{ fontSize: 12.5, marginBottom: 14 }}>{verModal === 'promote' ? (es ? 'Promover Beta → Production. Cambia lo que ven todos.' : 'Promote Beta → Production. Changes what everyone sees.') : (es ? 'Revertir Production a la versión Stable.' : 'Revert Production to the Stable version.')}</div>
+            <div className="row between" style={{ background: 'var(--card2)', borderRadius: 10, padding: 12, marginBottom: 14, gap: 8 }}>
+              <div style={{ textAlign: 'center', flex: 1 }}><div className="muted" style={{ fontSize: 11 }}>{es ? 'Production ahora' : 'Production now'}</div><div style={{ fontSize: 18, fontWeight: 800 }}>v{ver.production}</div></div>
+              <span style={{ color: 'var(--brand)' }}>→</span>
+              <div style={{ textAlign: 'center', flex: 1 }}><div style={{ fontSize: 11, color: 'var(--soft-brand)' }}>{es ? 'quedará' : 'will be'}</div><div style={{ fontSize: 18, fontWeight: 800, color: 'var(--soft-brand)' }}>v{verModal === 'promote' ? ver.beta : ver.stable}</div></div>
+            </div>
+            <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{es ? 'Notas del cambio (van al historial)' : 'Change notes (go to the log)'}</div>
+            <textarea value={verNote} onChange={(e) => setVerNote(e.target.value)} rows={2} placeholder={es ? 'Qué se corrigió o añadió…' : 'What was fixed or added…'} style={{ width: '100%', marginBottom: 12 }} />
+            <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{es ? 'PIN de seguridad' : 'Security PIN'}</div>
+            <input type="password" inputMode="numeric" value={verPin} onChange={(e) => setVerPin(e.target.value.replace(/\D/g, '').slice(0, 8))} placeholder="••••••" style={{ width: '100%', letterSpacing: 6, textAlign: 'center', marginBottom: 14 }} />
+            {verErr && <p style={{ color: 'var(--red)', fontSize: 12.5, marginBottom: 10 }}>{verErr}</p>}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setVerModal(null)} disabled={!!verBusy}>{es ? 'Cancelar' : 'Cancel'}</button>
+              <button className="btn btn-primary" style={{ flex: 1 }} onClick={confirmVer} disabled={!!verBusy}>{verBusy ? (es ? 'Aplicando…' : 'Applying…') : (es ? 'Confirmar' : 'Confirm')}</button>
+            </div>
+          </div>
         </div>
       )}
 
