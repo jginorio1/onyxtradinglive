@@ -83,9 +83,10 @@ export default function LandingBuilder() {
   const hero = content.hero || {};
   const setHero = (k: string, v: string) => setContent({ ...content, hero: { ...hero, [k]: v } });
 
-  // Si el admin nunca guardó FAQ para esta página, sembramos con las del código
-  // (defaults.faq) para que el editor no salga vacío. Si guardó (incluso vacío), se respeta.
-  const faqRows: Faq[] = content.faq?.[faqPage] ?? (defaults.faq?.[faqPage] || []);
+  // Si no hay FAQ guardada para esta página (o quedó vacía de una versión anterior),
+  // sembramos con las del código (defaults.faq) para que el editor no salga vacío.
+  const savedFaq = content.faq?.[faqPage];
+  const faqRows: Faq[] = (Array.isArray(savedFaq) && savedFaq.length) ? savedFaq : (defaults.faq?.[faqPage] || []);
   const setFaq = (rows: Faq[]) => setContent({ ...content, faq: { ...(content.faq || {}), [faqPage]: rows } });
 
   const compareRows: Row[] = content.compare?.length ? content.compare : (defaults.compare || []);
