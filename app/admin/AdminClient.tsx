@@ -555,12 +555,27 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
 // Estado real de los módulos, con métricas en vivo de la base de datos.
 function Modules() {
   const t = useT();
+  const { lang } = useLang();
   const [m, setM] = useState<any>(null);
+  const [lf, setLf] = useState<any>(null);          // base editable de las cifras del landing
+  const [savingL, setSavingL] = useState(false);
+  const [savedL, setSavedL] = useState(false);
   // Auto-refresco en vivo: los contadores suben solos sin pulsar Refrescar.
   useEffect(() => {
-    const load = () => fetch('/api/admin/modules').then((r) => r.json()).then(setM).catch(() => setM((v: any) => v || {}));
+    const load = () => fetch('/api/admin/modules').then((r) => r.json()).then((d: any) => {
+      setM(d);
+      // Solo la primera vez, para no pisar lo que el admin esté escribiendo.
+      setLf((prev: any) => prev ?? { trades_base: d.landing?.trades_base || 0, blocks_base: d.landing?.blocks_base || 0, accounts_base: d.landing?.accounts_base || 0, platforms: d.landing?.platforms ?? 4, readonly: d.landing?.readonly ?? 100 });
+    }).catch(() => setM((v: any) => v || {}));
     load(); const iv = setInterval(load, 20000); return () => clearInterval(iv);
   }, []);
+  async function saveLanding() {
+    if (!lf) return;
+    setSavingL(true);
+    try { await fetch('/api/admin/modules', { method: 'PATCH', body: JSON.stringify(lf) }); setSavedL(true); setTimeout(() => setSavedL(false), 2200); }
+    finally { setSavingL(false); }
+  }
+  const es = lang === 'es';
   const LiveBadge = () => <span className="pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--soft-green)', background: 'rgba(52,226,160,.15)' }}><span className="livedot" />{t.mo_liveBadge}</span>;
 
   const StatusPill = ({ on, txt }: { on: boolean; txt: string }) => (
@@ -622,6 +637,47 @@ function Modules() {
           <Tile label={t.mo_rep_next} value={nextSunday()} />
         </div>
       </div>
+
+      {lf && (
+        <div className="card" style={{ gridColumn: '1 / -1' }}>
+          <div className="row between" style={{ marginBottom: 12 }}>
+            <div className="row" style={{ gap: 10 }}><Ic e="🌐" /><h3>{es ? 'Cifras del landing' : 'Landing numbers'}</h3></div>
+            <LiveBadge />
+          </div>
+          <p className="muted" style={{ fontSize: 13, marginBottom: 14 }}>{es ? 'Fija una base para cada cifra. Lo que se ve en el landing = tu base + lo real de todos los usuarios, y sube solo en vivo.' : 'Set a base for each number. What the landing shows = your base + real user activity, and it grows live on its own.'}</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 14 }}>
+            {[
+              ['trades_base', es ? 'Operaciones analizadas' : 'Trades analyzed', m?.landing?.realTrades ?? 0],
+              ['blocks_base', es ? 'Frenos del Guardian' : 'Guardian blocks', m?.landing?.realBlocks ?? 0],
+              ['accounts_base', es ? 'Cuentas conectadas' : 'Connected accounts', m?.landing?.realAccounts ?? 0],
+            ].map(([k, label, real]: any) => (
+              <div key={k}>
+                <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{label}</div>
+                <input type="number" min={0} value={lf[k]} onChange={(e) => setLf({ ...lf, [k]: Math.max(0, Number(e.target.value) || 0) })} style={{ margin: 0, width: '100%' }} />
+                <div className="muted" style={{ fontSize: 11.5, marginTop: 5 }}>
+                  {es ? 'Real ahora' : 'Real now'}: <b>{Number(real).toLocaleString()}</b> · {es ? 'se muestra' : 'shows'}: <b style={{ color: 'var(--soft-brand)' }}>{(Number(lf[k] || 0) + Number(real)).toLocaleString()}</b>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="muted" style={{ fontSize: 12, margin: '16px 0 6px', fontWeight: 700 }}>{es ? 'Valores fijos (no dependen del uso)' : 'Fixed values (independent of usage)'}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 14 }}>
+            <div>
+              <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{es ? 'Plataformas' : 'Platforms'}</div>
+              <input type="number" min={0} value={lf.platforms ?? 4} onChange={(e) => setLf({ ...lf, platforms: Math.max(0, Number(e.target.value) || 0) })} style={{ margin: 0, width: '100%' }} />
+              <div className="muted" style={{ fontSize: 11.5, marginTop: 5 }}>{es ? 'Se muestra como' : 'Shows as'}: <b style={{ color: 'var(--soft-brand)' }}>{Number(lf.platforms ?? 4)}</b></div>
+            </div>
+            <div>
+              <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{es ? 'Conexión solo lectura (%)' : 'Read-only connection (%)'}</div>
+              <input type="number" min={0} max={100} value={lf.readonly ?? 100} onChange={(e) => setLf({ ...lf, readonly: Math.max(0, Math.min(100, Number(e.target.value) || 0)) })} style={{ margin: 0, width: '100%' }} />
+              <div className="muted" style={{ fontSize: 11.5, marginTop: 5 }}>{es ? 'Se muestra como' : 'Shows as'}: <b style={{ color: 'var(--soft-brand)' }}>{Number(lf.readonly ?? 100)}%</b></div>
+            </div>
+          </div>
+          <button className="btn btn-primary" style={{ marginTop: 14 }} onClick={saveLanding} disabled={savingL}>
+            {savingL ? (es ? 'Guardando…' : 'Saving…') : savedL ? (es ? '✓ Guardado' : '✓ Saved') : (es ? 'Guardar cifras' : 'Save numbers')}
+          </button>
+        </div>
+      )}
 
       <div className="muted" style={{ fontSize: 12, gridColumn: '1 / -1' }}>{t.mo_needLog}</div>
     </div>

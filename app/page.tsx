@@ -352,7 +352,7 @@ export default function Home() {
   const [pnl, setPnl] = useState(1800);
   const [vidErr, setVidErr] = useState(false);
   const [dbPlans, setDbPlans] = useState<any[]>([]);
-  const [stats, setStats] = useState({ trades: 0, blocks: 0, accounts: 0 });
+  const [stats, setStats] = useState({ trades: 0, blocks: 0, accounts: 0, platforms: 4, readonly: 100 });
   // Comisión y cupón del embajador desde el panel admin (vía /api/stats).
   const [amb, setAmb] = useState({ rate: 30, coupon: 20 });
   const t = dictFor(dict, lang);
@@ -360,11 +360,15 @@ export default function Home() {
   useEffect(() => {
     fetch('/api/admin/plans', { cache: 'no-store' }).then((r) => r.json()).then((j) => setDbPlans(j.plans || [])).catch(() => {});
     // Cifras reales para la prueba social; crecen solas con el uso.
-    // no-store: siempre trae lo último del panel admin (comisión/cupón), sin caché del navegador.
-    fetch('/api/stats?t=' + Date.now(), { cache: 'no-store' }).then((r) => r.json()).then((j) => {
-      setStats({ trades: Number(j.trades || 0), blocks: Number(j.blocks || 0), accounts: Number(j.accounts || 0) });
+    // no-store + ?t=: siempre trae lo último del admin (base + real, comisión/cupón), sin caché.
+    // Se refresca cada 30s para que las cifras suban EN VIVO mientras se ve la página.
+    const loadStats = () => fetch('/api/stats?t=' + Date.now(), { cache: 'no-store' }).then((r) => r.json()).then((j) => {
+      setStats({ trades: Number(j.trades || 0), blocks: Number(j.blocks || 0), accounts: Number(j.accounts || 0), platforms: Number(j.platforms ?? 4), readonly: Number(j.readonly ?? 100) });
       setAmb({ rate: Number(j.ambRate || 30), coupon: Number(j.ambCoupon || 20) });
     }).catch(() => {});
+    loadStats();
+    const iv = setInterval(loadStats, 30000);
+    return () => clearInterval(iv);
   }, []);
   // Si la BD aún no devolvió planes, mostramos unos por defecto (nunca vacío).
   const FALLBACK_PLANS: any[] = [
@@ -474,11 +478,11 @@ export default function Home() {
             <div className="muted" style={{ fontSize: 14, marginTop: 6 }}>{lang === 'es' ? 'Frenos del Guardian' : 'Guardian stops'}</div>
           </div>
           <div className="card" style={{ padding: '26px 16px' }}>
-            <Counter to={4} />
+            <Counter to={stats.platforms} />
             <div className="muted" style={{ fontSize: 14, marginTop: 6 }}>{lang === 'es' ? 'Plataformas · MT4, MT5, cTrader, MatchTrader' : 'Platforms · MT4, MT5, cTrader, MatchTrader'}</div>
           </div>
           <div className="card" style={{ padding: '26px 16px' }}>
-            <Counter to={100} suffix="%" />
+            <Counter to={stats.readonly} suffix="%" />
             <div className="muted" style={{ fontSize: 14, marginTop: 6 }}>{lang === 'es' ? 'Conexión de solo lectura' : 'Read-only connection'}</div>
           </div>
         </div>

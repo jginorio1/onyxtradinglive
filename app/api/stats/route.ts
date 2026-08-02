@@ -39,15 +39,27 @@ export async function GET() {
       ambMinPayout = Number(s.min_payout || 50);
     } catch { /* si falla, dejamos los valores por defecto */ }
 
+    // Base editable de las cifras del landing (desde Admin → Módulos).
+    // La cifra pública = base + real, y sube en vivo con el uso de todos.
+    let tBase = 0, bBase = 0, aBase = 0, platforms = 4, readonly = 100;
+    try {
+      const { data: ls } = await supabaseAdmin.from('app_settings').select('value').eq('key', 'landing_stats').maybeSingle();
+      if (ls?.value) {
+        tBase = Number(ls.value.trades_base || 0); bBase = Number(ls.value.blocks_base || 0); aBase = Number(ls.value.accounts_base || 0);
+        if (ls.value.platforms != null) platforms = Number(ls.value.platforms);
+        if (ls.value.readonly != null) readonly = Number(ls.value.readonly);
+      }
+    } catch {}
+
     return NextResponse.json({
-      // El máximo entre lo real y una base pequeña de arranque.
-      // No es inflar: es no enseñar un cero mientras el número real es bajo.
-      trades: Math.max(Number(trades || 0), 0),
-      blocks: Math.max(Number(blocks || 0), 0),
-      accounts: Math.max(Number(accounts || 0), 0),
+      // Base fijada en admin + lo real de todos los usuarios (crece solo).
+      trades: tBase + Math.max(Number(trades || 0), 0),
+      blocks: bBase + Math.max(Number(blocks || 0), 0),
+      accounts: aBase + Math.max(Number(accounts || 0), 0),
+      platforms, readonly,          // valores fijos editables desde admin
       ambRate, ambCoupon, ambBase, ambMinPayout,
     }, { headers: NO_CACHE });
   } catch {
-    return NextResponse.json({ trades: 0, blocks: 0, accounts: 0, ambRate: 30, ambCoupon: 20, ambBase: 20, ambMinPayout: 50 }, { headers: NO_CACHE });
+    return NextResponse.json({ trades: 0, blocks: 0, accounts: 0, platforms: 4, readonly: 100, ambRate: 30, ambCoupon: 20, ambBase: 20, ambMinPayout: 50 }, { headers: NO_CACHE });
   }
 }
