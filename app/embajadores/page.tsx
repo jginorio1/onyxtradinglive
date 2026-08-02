@@ -81,7 +81,7 @@ export default function Embajadores() {
         // Invitado: no puede leer la config privada, pero SÍ la pública de /api/stats,
         // para que los tiers/mínimo reflejen siempre lo que hay en el panel admin.
         try {
-          const sr = await fetch('/api/stats'); const sj = await sr.json();
+          const sr = await fetch('/api/stats', { cache: 'no-store' }); const sj = await sr.json();
           setS({ base_rate: Number(sj.ambBase || 20), tier_rate: Number(sj.ambRate || 30), min_payout: Number(sj.ambMinPayout || 50), coupon_percent: Number(sj.ambCoupon || 20) });
         } catch { /* si falla, los fallbacks del render se encargan */ }
         return;

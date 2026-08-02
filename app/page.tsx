@@ -348,9 +348,10 @@ export default function Home() {
   const t = dictFor(dict, lang);
 
   useEffect(() => {
-    fetch('/api/admin/plans').then((r) => r.json()).then((j) => setDbPlans(j.plans || [])).catch(() => {});
-    // Cifras reales para la prueba social; crecen solas con el uso
-    fetch('/api/stats').then((r) => r.json()).then((j) => {
+    fetch('/api/admin/plans', { cache: 'no-store' }).then((r) => r.json()).then((j) => setDbPlans(j.plans || [])).catch(() => {});
+    // Cifras reales para la prueba social; crecen solas con el uso.
+    // no-store: siempre trae lo último del panel admin (comisión/cupón), sin caché del navegador.
+    fetch('/api/stats', { cache: 'no-store' }).then((r) => r.json()).then((j) => {
       setStats({ trades: Number(j.trades || 0), blocks: Number(j.blocks || 0), accounts: Number(j.accounts || 0) });
       setAmb({ rate: Number(j.ambRate || 30), coupon: Number(j.ambCoupon || 20) });
     }).catch(() => {});
@@ -701,7 +702,7 @@ export default function Home() {
           <button className={'btn ' + (!annual ? 'btn-primary' : 'btn-ghost')} onClick={() => setAnnual(false)}>{lang === 'es' ? 'Mensual' : 'Monthly'}</button>
           <button className={'btn ' + (annual ? 'btn-primary' : 'btn-ghost')} onClick={() => setAnnual(true)}>{lang === 'es' ? 'Anual · ahorra 2 meses' : 'Annual · save 2 months'}</button>
         </div>
-        <div className="grid g3" style={{ alignItems: 'start' }}>
+        <div style={{ alignItems: 'start', display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', maxWidth: 760, margin: '0 auto' }}>
           {shownPlans.map((p, i) => {
             const price = annual ? p.price_year : p.price_month;
             const name = lang === 'es' ? p.name : (p.name_en || p.name);

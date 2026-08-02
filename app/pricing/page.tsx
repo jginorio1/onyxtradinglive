@@ -42,7 +42,7 @@ export default function Pricing() {
   const t = dictFor(T, lang);
 
   useEffect(() => {
-    fetch('/api/admin/plans').then((r) => r.json()).then((j) => setPlans(j.plans || [])).catch(() => setPlans([]));
+    fetch('/api/admin/plans', { cache: 'no-store' }).then((r) => r.json()).then((j) => setPlans(j.plans || [])).catch(() => setPlans([]));
   }, []);
 
   // Si la BD no devolvió planes, usamos los de por defecto para no dejar la página vacía.
