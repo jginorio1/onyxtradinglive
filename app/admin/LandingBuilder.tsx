@@ -83,7 +83,9 @@ export default function LandingBuilder() {
   const hero = content.hero || {};
   const setHero = (k: string, v: string) => setContent({ ...content, hero: { ...hero, [k]: v } });
 
-  const faqRows: Faq[] = content.faq?.[faqPage] || [];
+  // Si el admin nunca guardó FAQ para esta página, sembramos con las del código
+  // (defaults.faq) para que el editor no salga vacío. Si guardó (incluso vacío), se respeta.
+  const faqRows: Faq[] = content.faq?.[faqPage] ?? (defaults.faq?.[faqPage] || []);
   const setFaq = (rows: Faq[]) => setContent({ ...content, faq: { ...(content.faq || {}), [faqPage]: rows } });
 
   const compareRows: Row[] = content.compare?.length ? content.compare : (defaults.compare || []);
@@ -179,7 +181,7 @@ export default function LandingBuilder() {
           ))}
           <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
             <button className="btn btn-ghost" onClick={() => setFaq([...faqRows, ['', '', '', '']])}>＋ {L('Añadir pregunta', 'Add question')}</button>
-            <button className="btn btn-primary" onClick={() => save({ faq: content.faq || {} })} disabled={busy}>{busy ? '…' : L('Guardar FAQ', 'Save FAQ')}</button>
+            <button className="btn btn-primary" onClick={() => save({ faq: { ...(content.faq || {}), [faqPage]: faqRows } })} disabled={busy}>{busy ? '…' : L('Guardar FAQ', 'Save FAQ')}</button>
           </div>
         </div>
       )}
