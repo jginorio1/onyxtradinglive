@@ -18,6 +18,7 @@ import ReferralBanner from './ReferralBanner';
 import PlanHabits from './PlanHabits';
 import DailyCheckinPopup from './DailyCheckinPopup';
 import HubVitals, { StatCard, type Vital, type Tile } from './HubVitals';
+import SetupGuide from './SetupGuide';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import News from './News';
 import NetRealCard from './NetRealCard';
@@ -518,6 +519,9 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
           <Link className="btn btn-ghost" href="/dashboard/keys">{L.connectBtn}</Link>
         </div>
         <p className="muted" style={{ fontSize: 13, margin: '-6px 0 14px', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>{email} · {accounts.length} {L.accountsWord} · {L.balance} ${totalBalance.toLocaleString()} · <span className="livedot" style={{ width: 8, height: 8 }} /><span style={{ color: GREEN }}>{updatedTxt}</span></p>
+
+        {/* Guía de configuración adaptativa (onboarding + añadir cuentas, con confirmación en vivo) */}
+        <SetupGuide />
 
         {/* Ganancia neta + Onyx Coach: rejilla fluida (lado a lado en ancho, apiladas en móvil) */}
         {(caps?.expenses || caps?.coach) && (
