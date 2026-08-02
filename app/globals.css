@@ -583,4 +583,5 @@ html[data-theme="dark"] .sk-code, :root:not([data-theme="light"]) .sk-code{text-
   .topbar .wrap-wide > *{ min-width:0; }
   .langsel{ max-width:78px; font-size:12px; padding:5px 6px; }
   .topbar .logo{ font-size:15px; }
+  .logo-text{ display:none; }   /* en móvil solo el símbolo; el texto se ve en desktop */
 }

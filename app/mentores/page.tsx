@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useLang } from '@/lib/lang';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import PlansCompareTable from '@/app/PlansCompareTable';
+import EarningsCalc from '@/app/EarningsCalc';
 
 // ============================================================
 // Landing dedicado para MENTORES: "monta tu academia de trading".
@@ -29,6 +30,7 @@ export default function MentoresPage() {
   // Comisión dinámica: rango min–max del % por plan (se refleja al cambiarlo en admin).
   const _fees = (plans as any[]).filter((p) => !/free/i.test(p.id || '') && Number(p.price_month) > 0).map((p) => p?.capabilities?.academy_fee_pct).filter((x) => x != null && !isNaN(Number(x))).map(Number);
   const feeRange = _fees.length ? `${Math.min(..._fees)}–${Math.max(..._fees)}%` : '3–10%';
+  const feeForCalc = _fees.length ? Math.max(..._fees) : 10; // para la calculadora (escenario conservador)
 
   const grad: any = { background: 'linear-gradient(90deg,var(--brand),#7a5cff)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' };
 
@@ -79,6 +81,11 @@ export default function MentoresPage() {
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon name="money" size={15} glow={false} /> {L('Tú fijas el precio', 'You set the price')}</span>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon name="costs" size={15} glow={false} /> {L('Onyx toma solo ' + feeRange, 'Onyx takes just ' + feeRange)}</span>
         </div>
+      </div>
+
+      {/* CALCULADORA DE GANANCIAS (tarjeta iluminada) */}
+      <div className="wrap" style={{ padding: '6px 22px 24px' }}>
+        <EarningsCalc mode="academy" pct={feeForCalc} lang={lang} />
       </div>
 
       {/* CÓMO FUNCIONA */}

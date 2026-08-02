@@ -4,6 +4,7 @@ import { toast } from '@/lib/toast';
 import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import Link from 'next/link';
+import EarningsCalc from '@/app/EarningsCalc';
 import { errMsg } from '@/lib/i18nErrors';
 
 type Lang = 'es' | 'en';
@@ -126,6 +127,11 @@ export default function Embajadores() {
             <div style={{ fontWeight: 700 }}>{t.k3}</div>
             <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>{t.k3s}</div>
           </div>
+        </div>
+
+        {/* CALCULADORA DE COMISIÓN (tarjeta iluminada) */}
+        <div style={{ marginBottom: 44 }}>
+          <EarningsCalc mode="ambassador" pct={rate} lang={lang} />
         </div>
 
         <h2 style={{ textAlign: 'center', marginBottom: 20 }}>{t.how}</h2>

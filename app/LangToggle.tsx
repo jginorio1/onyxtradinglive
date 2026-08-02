@@ -27,10 +27,12 @@ export default function LangToggle({ compact = false, label = '' }: { compact?: 
     }
   }
 
+  // Solo la bandera (el <select> nativo muestra en la barra el texto de la opción,
+  // así que las opciones son solo la bandera). Altura 36px = igual que los botones.
   const select = (
-    <select className="langsel" value={lang} onChange={(e) => go(e.target.value as Lang)} aria-label="Language"
-      style={{ margin: 0, padding: '5px 8px', fontSize: 12.5, width: 'auto', minWidth: 0 }}>
-      {LANGS.map((l) => <option key={l} value={l}>{LANG_META[l].flag} {LANG_META[l].native}</option>)}
+    <select className="langsel" value={lang} onChange={(e) => go(e.target.value as Lang)} aria-label="Language" title="Language / Idioma"
+      style={{ margin: 0, height: 36, padding: '0 6px', fontSize: 17, width: 'auto', minWidth: 0, textAlignLast: 'center' }}>
+      {LANGS.map((l) => <option key={l} value={l} title={LANG_META[l].native}>{LANG_META[l].flag}</option>)}
     </select>
   );
 

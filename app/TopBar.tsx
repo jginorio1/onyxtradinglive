@@ -96,9 +96,9 @@ export default async function TopBar() {
     <div className="topbar">
       <div className="wrap-wide">
         {/* El logo siempre vuelve al inicio. Para el panel ya está "Panel". */}
-        <Link className="logo" href="/">
-          <img src="/onyx-symbol.png" alt="Onyx" style={{ width: 28, height: 28, objectFit: 'contain' }} />
-          Onyx Trading Live
+        <Link className="logo" href="/" aria-label="Onyx Trading Live">
+          <img src="/onyx-symbol.png" alt="Onyx Trading Live" style={{ width: 28, height: 28, objectFit: 'contain' }} />
+          <span className="logo-text">Onyx Trading Live</span>
         </Link>
 
         {user ? (
