@@ -362,6 +362,13 @@ export default function Home() {
   // Reloj que avanza cada minuto para que las cifras suban solas con el tiempo.
   const [nowTs, setNowTs] = useState(() => Date.now());
   useEffect(() => { const iv = setInterval(() => setNowTs(Date.now()), 60000); return () => clearInterval(iv); }, []);
+  // Piso guardado en el navegador: la cifra JAMÁS baja de lo ya mostrado en pantalla,
+  // aunque el fetch real falle o llegue una respuesta vieja.
+  const [floorT, setFloorT] = useState(0);
+  const [floorB, setFloorB] = useState(0);
+  useEffect(() => {
+    try { setFloorT(Number(localStorage.getItem('onyx_stat_t') || 0)); setFloorB(Number(localStorage.getItem('onyx_stat_b') || 0)); } catch {}
+  }, []);
   // Comisión y cupón del embajador desde el panel admin (vía /api/stats).
   const [amb, setAmb] = useState({ rate: 30, coupon: 20 });
   // Contenido editable del Landing Builder (hero + FAQ). Vacío = usa el del código.
@@ -429,17 +436,27 @@ export default function Home() {
     : t.steps;
   const trustBadges: string[] = lc?.trust?.[lang]?.length ? lc.trust[lang] : t.trust;
 
-  // Cifras que suben solas con el tiempo y SIEMPRE son impares.
-  // Anclado a una fecha fija: crece cada 5 min de forma consistente entre recargas
-  // (nunca baja). Sobre la base real/semilla de /api/stats.
+  // Cifras que SIEMPRE suben y NUNCA bajan de lo ya mostrado, ni por fetch lento,
+  // ni por caché vieja, ni al recargar. Se toma el MÁXIMO entre:
+  //   1) un crecimiento por tiempo (determinista, anclado a una fecha fija),
+  //   2) el dato real de /api/stats, y
+  //   3) el piso guardado en el navegador (lo más alto ya mostrado).
+  // El resultado se guarda como nuevo piso. Siempre impar.
   const GROW_EPOCH = Date.UTC(2026, 7, 1); // 1 de agosto de 2026
-  const oddGrow = (base: number, per5: number) => {
-    const ticks = Math.max(0, Math.floor((nowTs - GROW_EPOCH) / 300000)); // nº de tramos de 5 min
-    let n = Math.round(base) + Math.floor(ticks * per5);
+  const ticks = Math.max(0, Math.floor((nowTs - GROW_EPOCH) / 300000)); // tramos de 5 min
+  const oddUp = (timeBase: number, per5: number, real: number, floor: number) => {
+    let n = Math.max(timeBase + Math.floor(ticks * per5), Math.round(real) || 0, floor || 0);
     return n % 2 === 0 ? n + 1 : n; // forzar impar
   };
-  const dTrades = oddGrow(stats.trades, 2);      // ~+2 cada 5 min
-  const dBlocks = oddGrow(stats.blocks, 0.2);    // ~+1 cada 25 min
+  const dTrades = oddUp(1000, 2, stats.trades, floorT);   // crece ~+2 cada 5 min
+  const dBlocks = oddUp(80, 0.2, stats.blocks, floorB);   // crece ~+1 cada 25 min
+  // Persistir el nuevo máximo para que nunca vuelva a bajar en este navegador.
+  useEffect(() => {
+    try {
+      if (dTrades > floorT) { setFloorT(dTrades); localStorage.setItem('onyx_stat_t', String(dTrades)); }
+      if (dBlocks > floorB) { setFloorB(dBlocks); localStorage.setItem('onyx_stat_b', String(dBlocks)); }
+    } catch {}
+  }, [dTrades, dBlocks]);
   const finalTitle = lc?.cta?.[`t_${lang}`] || t.finalT;
   const finalBtn = lc?.cta?.[`btn_${lang}`] || t.finalCta;
 
