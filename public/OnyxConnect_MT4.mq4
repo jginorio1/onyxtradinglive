@@ -91,6 +91,15 @@ int      g_maxTrades  = 0;
 string   g_newsTitle  = "";
 string   g_newsCur    = "";
 int      g_newsMin    = -1;
+bool     g_newsWillBlock = false;
+int      g_newsBlockIn   = -1;
+
+// Onyx Connect: contador de reanudacion tras un bloqueo.
+datetime g_resumeAt   = 0;
+
+// Onyx Connect: horas (epoch UTC) de las noticias → lineas verticales.
+long     g_newsEpoch[16];
+int      g_newsCount  = 0;
 
 int   PY = 22;
 color COL_BG   = C'26,33,51';
@@ -342,11 +351,64 @@ string LimTxt(double v, bool pct)
    return "$" + DoubleToString(v, 0);
   }
 
+// Pastilla de color (fondo + texto). Devuelve el ancho para poner varias en fila.
+int PanelChip(string name, string text, int x, int y, color bgc, color txc)
+  {
+   int w = StringLen(text) * 6 + 14;
+   string r = PREFIX + name + "b";
+   if(ObjectFind(0, r) < 0) ObjectCreate(0, r, OBJ_RECTANGLE_LABEL, 0, 0, 0);
+   ObjectSetInteger(0, r, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+   ObjectSetInteger(0, r, OBJPROP_XDISTANCE, x);
+   ObjectSetInteger(0, r, OBJPROP_YDISTANCE, y - 2);
+   ObjectSetInteger(0, r, OBJPROP_XSIZE, w);
+   ObjectSetInteger(0, r, OBJPROP_YSIZE, 16);
+   ObjectSetInteger(0, r, OBJPROP_BGCOLOR, bgc);
+   ObjectSetInteger(0, r, OBJPROP_BORDER_TYPE, BORDER_FLAT);
+   ObjectSetInteger(0, r, OBJPROP_COLOR, bgc);
+   ObjectSetInteger(0, r, OBJPROP_BACK, false);
+   ObjectSetInteger(0, r, OBJPROP_SELECTABLE, false);
+   PanelLabel(name + "t", text, x + 7, y, txc, 8, false);
+   return w;
+  }
+
+// Mini-tarjeta de dato: etiqueta arriba, valor abajo, sobre un bloque de color.
+void PanelStat(string name, string label, string val, int x, int y, int w, color bgc, color valc)
+  {
+   string r = PREFIX + name + "b";
+   if(ObjectFind(0, r) < 0) ObjectCreate(0, r, OBJ_RECTANGLE_LABEL, 0, 0, 0);
+   ObjectSetInteger(0, r, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+   ObjectSetInteger(0, r, OBJPROP_XDISTANCE, x);
+   ObjectSetInteger(0, r, OBJPROP_YDISTANCE, y);
+   ObjectSetInteger(0, r, OBJPROP_XSIZE, w);
+   ObjectSetInteger(0, r, OBJPROP_YSIZE, 32);
+   ObjectSetInteger(0, r, OBJPROP_BGCOLOR, bgc);
+   ObjectSetInteger(0, r, OBJPROP_BORDER_TYPE, BORDER_FLAT);
+   ObjectSetInteger(0, r, OBJPROP_COLOR, bgc);
+   ObjectSetInteger(0, r, OBJPROP_BACK, false);
+   ObjectSetInteger(0, r, OBJPROP_SELECTABLE, false);
+   PanelLabel(name + "l", label, x + 7, y + 4,  COL_MUT, 7, false);
+   PanelLabel(name + "v", val,   x + 7, y + 16, valc,    9, true);
+  }
+
+// mm:ss de un contador (segundos) para la reanudacion.
+string MMSS(int secs)
+  {
+   if(secs < 0) secs = 0;
+   int m = secs / 60, s = secs % 60;
+   return (m < 10 ? "0" : "") + IntegerToString(m) + ":" + (s < 10 ? "0" : "") + IntegerToString(s);
+  }
+
 void DrawPanel()
   {
-   int X = 12, W = 230, y = 22;
-   int vx = X + 116;
-   int bx = X + W - 12 - 46;
+   int X = 12, W = 250, y = 22;
+   int bx = X + W - 12 - 50;
+
+   color TB = C'42,50,86',  TBt = C'185,194,255';
+   color TG = C'18,54,44',  TGt = C'94,234,185';
+   color TC = C'16,50,62',  TCt = C'127,223,255';
+   color TA = C'58,50,22',  TAt = C'255,220,122';
+   color TR = C'64,30,40',  TRt = C'255,139,154';
+   color AMBER = C'255,192,77';
 
    string bg = PREFIX + "bg";
    if(ObjectFind(0, bg) < 0) ObjectCreate(0, bg, OBJ_RECTANGLE_LABEL, 0, 0, 0);
@@ -361,18 +423,19 @@ void DrawPanel()
    ObjectSetInteger(0, bg, OBJPROP_BACK, false);
    ObjectSetInteger(0, bg, OBJPROP_SELECTABLE, false);
 
-   PanelLabel("title", "Onyx Connect", X + 12, y, COL_TX, 10, true);
-   y += PY;
+   PanelLabel("title", "Onyx Connect", X + 12, y, COL_TX, 11, true);
+   if(g_featPlan != "") PanelChip("plan", g_featPlan, X + W - 12 - (StringLen(g_featPlan) * 6 + 14), y + 1, TB, TBt);
+   else { ObjectDelete(0, PREFIX + "planb"); ObjectDelete(0, PREFIX + "plant"); }
+   y += PY + 2;
 
-   // Funciones activas segun el plan (Journal siempre; el resto segun el plan).
    {
-      string feat = T("Diario", "Journal");
-      if(g_featG) feat += " · Guardian";
-      if(g_featC) feat += " · Copy";
-      if(g_featT) feat += " · TV";
-      string planTx = (g_featPlan != "" ? g_featPlan + " · " : "");
-      PanelLabel("feat", planTx + feat, X + 12, y, COL_MUT, 8, false);
-      y += PY - 2;
+      int cx = X + 12;
+      cx += PanelChip("fJ", T("Diario", "Journal"), cx, y, TB, TBt) + 4;
+      if(g_featG) cx += PanelChip("fG", "Guardian", cx, y, TG, TGt) + 4;   else { ObjectDelete(0, PREFIX + "fGb"); ObjectDelete(0, PREFIX + "fGt"); }
+      if(g_featC) cx += PanelChip("fC", "Copy", cx, y, TC, TCt) + 4;       else { ObjectDelete(0, PREFIX + "fCb"); ObjectDelete(0, PREFIX + "fCt"); }
+      if(g_featT) { if(cx + 80 > X + W - 8) { cx = X + 12; y += 20; } PanelChip("fT", "TradingView", cx, y, TA, TAt); }
+      else { ObjectDelete(0, PREFIX + "fTb"); ObjectDelete(0, PREFIX + "fTt"); }
+      y += 22;
    }
 
    bool alive = (g_lastSyncOk > 0 && (TimeCurrent() - g_lastSyncOk) < 120);
@@ -384,86 +447,120 @@ void DrawPanel()
    y += PY;
 
    if(g_lastError != "")
-     {
-      PanelLabel("err", StringSubstr(g_lastError, 0, 36), X + 12, y, COL_RED, 7);
-      y += PY - 6;
-     }
+   { PanelLabel("err", StringSubstr(g_lastError, 0, 38), X + 12, y, COL_RED, 7); y += PY - 6; }
    else ObjectDelete(0, PREFIX + "err");
 
-   //========= EN VIVO (siempre visible, todo local) =================
+   //========= EN VIVO (chips, todo local) ===========================
    PanelLabel("liveh", T("En vivo", "Live"), X + 12, y, COL_MUT, 8);
-   y += PY - 4;
+   y += 16;
+   {
+      bool ta2 = (IsExpertEnabled() && IsTradeAllowed());
+      int spread = (int)MarketInfo(Symbol(), MODE_SPREAD);
+      int cx = X + 12;
+      cx += PanelChip("lat", ta2 ? "AutoTrading ON" : "AutoTrading OFF", cx, y, ta2 ? TG : TR, ta2 ? TGt : TRt) + 4;
+      PanelChip("lsp", IntegerToString(spread) + " pts", cx, y, TC, TCt);
+      y += 20;
+      PanelChip("lss", OnyxSession() + " · " + TimeToString(TimeCurrent(), TIME_MINUTES) + " · " + Symbol(), X + 12, y, TB, TBt);
+      y += 22;
+   }
 
    bool ta = (IsExpertEnabled() && IsTradeAllowed());
-   PanelRow("rat", "AutoTrading", ta ? "● ON" : "● OFF", X + 12, vx, y, COL_TX, ta ? COL_ON : COL_RED);
-   y += PY - 4;
-
-   int spread = (int)MarketInfo(Symbol(), MODE_SPREAD);
-   PanelRow("rsp", "Spread", IntegerToString(spread) + " pts · " + Symbol(), X + 12, vx, y, COL_TX, COL_TX);
-   y += PY - 4;
-
-   PanelRow("rss", T("Sesion", "Session"), OnyxSession() + " · " + TimeToString(TimeCurrent(), TIME_MINUTES), X + 12, vx, y, COL_TX, COL_TX);
-   y += PY - 2;
 
    //========= "Mi reto": marcador (informativo) =====================
    if(g_chVerdict != "")
    {
-      string cv; color cc;
-      if(g_chVerdict == "breach")      { cv = T("Reto: regla rota", "Challenge: rule broken"); cc = COL_RED; }
-      else if(g_chVerdict == "watch")  { cv = T("Reto: vigila", "Challenge: watch");            cc = (color)C'245,158,11'; }
-      else                             { cv = T("Reto: en camino", "Challenge: on track");      cc = COL_ON; }
-      PanelLabel("chv", cv, X + 12, y, cc, 8, true);
-      y += PY - 6;
-      if(g_chLine != "") { PanelLabel("chl", StringSubstr(g_chLine, 0, 36), X + 12, y, COL_MUT, 7); y += 14; }
+      string cv; color cbg, ctx;
+      if(g_chVerdict == "breach")      { cv = T("Reto: regla rota", "Challenge: rule broken"); cbg = TR; ctx = TRt; }
+      else if(g_chVerdict == "watch")  { cv = T("Reto: vigila", "Challenge: watch");            cbg = TA; ctx = TAt; }
+      else                             { cv = T("Reto: en camino", "Challenge: on track");      cbg = TG; ctx = TGt; }
+      PanelChip("chv", cv, X + 12, y, cbg, ctx);
+      y += 20;
+      if(g_chLine != "") { PanelLabel("chl", StringSubstr(g_chLine, 0, 40), X + 12, y, COL_MUT, 7); y += 15; }
       else ObjectDelete(0, PREFIX + "chl");
    }
-   else { ObjectDelete(0, PREFIX + "chv"); ObjectDelete(0, PREFIX + "chl"); }
+   else { ObjectDelete(0, PREFIX + "chvb"); ObjectDelete(0, PREFIX + "chvt"); ObjectDelete(0, PREFIX + "chl"); }
 
-   //========= GUARDIAN: mi plan, limites, metas, noticias ===========
+   //========= GUARDIAN: mi plan, contador, limites, noticias ========
    if(g_guardOn)
      {
-      PanelLabel("plan", T("Guardian · mi plan", "Guardian · my plan"), X + 12, y, COL_MUT, 8);
-      y += PY - 4;
+      PanelLabel("gh", T("Guardian · mi plan", "Guardian · my plan"), X + 12, y, COL_MUT, 8);
+      y += 16;
 
-      string ps; color pc;
-      if(g_allowNew) { ps = T("Puedes operar", "You may trade"); pc = COL_ON; }
-      else           { ps = T("BLOQUEADO", "BLOCKED");           pc = COL_RED; }
-      PanelLabel("pst", ps, X + 12, y, pc, 9, true);
-      y += PY - 4;
-
-      if(!g_allowNew && g_blockMsg != "")
+      if(g_allowNew)
         {
-         PanelLabel("pms1", StringSubstr(g_blockMsg, 0, 38), X + 12, y, COL_MUT, 7);
-         y += 13;
-         if(StringLen(g_blockMsg) > 38) { PanelLabel("pms2", StringSubstr(g_blockMsg, 38, 38), X + 12, y, COL_MUT, 7); y += 14; }
-         else                           { ObjectDelete(0, PREFIX + "pms2"); y += 2; }
+         PanelChip("pst", T("Puedes operar", "You may trade"), X + 12, y, TG, TGt);
+         y += 22;
+         ObjectDelete(0, PREFIX + "cbBox"); ObjectDelete(0, PREFIX + "cbTop");
+         ObjectDelete(0, PREFIX + "cbLab"); ObjectDelete(0, PREFIX + "cbNum");
+         ObjectDelete(0, PREFIX + "pms1"); ObjectDelete(0, PREFIX + "pms2");
         }
-      else { ObjectDelete(0, PREFIX + "pms1"); ObjectDelete(0, PREFIX + "pms2"); }
+      else
+        {
+         int boxH = (g_resumeAt > 0 ? 62 : 40);
+         string r = PREFIX + "cbBox";
+         if(ObjectFind(0, r) < 0) ObjectCreate(0, r, OBJ_RECTANGLE_LABEL, 0, 0, 0);
+         ObjectSetInteger(0, r, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+         ObjectSetInteger(0, r, OBJPROP_XDISTANCE, X + 12);
+         ObjectSetInteger(0, r, OBJPROP_YDISTANCE, y);
+         ObjectSetInteger(0, r, OBJPROP_XSIZE, W - 24);
+         ObjectSetInteger(0, r, OBJPROP_YSIZE, boxH);
+         ObjectSetInteger(0, r, OBJPROP_BGCOLOR, TR);
+         ObjectSetInteger(0, r, OBJPROP_BORDER_TYPE, BORDER_FLAT);
+         ObjectSetInteger(0, r, OBJPROP_COLOR, COL_RED);
+         ObjectSetInteger(0, r, OBJPROP_BACK, false);
+         ObjectSetInteger(0, r, OBJPROP_SELECTABLE, false);
+         PanelLabel("cbTop", "BLOQUEADO", X + 22, y + 6, TRt, 10, true);
+         PanelLabel("cbLab", StringSubstr(g_blockMsg, 0, 40), X + 22, y + 22, COL_MUT, 7);
+         if(g_resumeAt > 0)
+           {
+            int left = (int)(g_resumeAt - TimeLocal());
+            PanelLabel("cbNum", T("Reanuda en ", "Resumes in ") + MMSS(left), X + 22, y + 40, AMBER, 11, true);
+           }
+         else ObjectDelete(0, PREFIX + "cbNum");
+         y += boxH + 6;
+         ObjectDelete(0, PREFIX + "pstb"); ObjectDelete(0, PREFIX + "pstt");
+         ObjectDelete(0, PREFIX + "pms1"); ObjectDelete(0, PREFIX + "pms2");
+        }
 
-      PanelRow("rdl", T("Perdida dia", "Daily loss"),  LimTxt(g_limDLoss, g_limDLossPct), X + 12, vx, y, COL_MUT, COL_TX); y += PY - 5;
-      PanelRow("rdt", T("Meta dia", "Daily target"),   LimTxt(g_limDTarget, g_limDTgtPct), X + 12, vx, y, COL_MUT, COL_ON); y += PY - 5;
-      PanelRow("rtl", T("Perdida total", "Total loss"),LimTxt(g_limTLoss, g_limTLossPct), X + 12, vx, y, COL_MUT, COL_TX); y += PY - 5;
-      PanelRow("rmx", T("Ops por dia", "Trades/day"),  (g_maxTrades > 0 ? IntegerToString(g_maxTrades) : "—"), X + 12, vx, y, COL_MUT, COL_TX); y += PY - 3;
+      int halfW = (W - 24 - 6) / 2;
+      int x2 = X + 12 + halfW + 6;
+      PanelStat("sdl", T("Perdida dia", "Daily loss"),  LimTxt(g_limDLoss, g_limDLossPct),   X + 12, y, halfW, TR, TRt);
+      PanelStat("sdt", T("Meta dia", "Daily target"),   LimTxt(g_limDTarget, g_limDTgtPct),  x2,     y, halfW, TG, TGt);
+      y += 36;
+      PanelStat("stl", T("Perdida total", "Total loss"),LimTxt(g_limTLoss, g_limTLossPct),   X + 12, y, halfW, TA, TAt);
+      PanelStat("smx", T("Ops por dia", "Trades/day"),  (g_maxTrades > 0 ? IntegerToString(g_maxTrades) : "—"), x2, y, halfW, TB, TBt);
+      y += 40;
 
       if(g_newsTitle != "")
         {
          string nt = g_newsTitle;
          if(g_newsCur != "") nt = g_newsCur + " · " + nt;
-         string nm = (g_newsMin >= 0 ? " (" + IntegerToString(g_newsMin) + "m)" : "");
-         PanelLabel("rnwk", T("Proxima noticia", "Next news"), X + 12, y, COL_MUT, 8); y += 13;
-         PanelLabel("rnwv", StringSubstr(nt, 0, 34) + nm, X + 12, y, (color)C'245,158,11', 8, true); y += PY - 4;
+         if(g_newsWillBlock && g_newsBlockIn >= 0)
+           {
+            PanelChip("nw", T("Bloqueo por noticia en ", "News block in ") + IntegerToString(g_newsBlockIn) + "m", X + 12, y, TA, TAt);
+            y += 18;
+            PanelLabel("nwt", StringSubstr(nt, 0, 40), X + 12, y, AMBER, 7); y += 15;
+           }
+         else
+           {
+            string nm = (g_newsMin >= 0 ? " (" + IntegerToString(g_newsMin) + "m)" : "");
+            PanelLabel("nwk", T("Proxima noticia", "Next news"), X + 12, y, COL_MUT, 8); y += 13;
+            PanelLabel("nwt", StringSubstr(nt, 0, 38) + nm, X + 12, y, AMBER, 8, true); y += 16;
+            ObjectDelete(0, PREFIX + "nwb");
+           }
         }
-      else { ObjectDelete(0, PREFIX + "rnwk"); ObjectDelete(0, PREFIX + "rnwv"); }
+      else { ObjectDelete(0, PREFIX + "nwb"); ObjectDelete(0, PREFIX + "nwt"); ObjectDelete(0, PREFIX + "nwk"); }
      }
    else
      {
-      ObjectDelete(0, PREFIX + "plan"); ObjectDelete(0, PREFIX + "pst");
-      ObjectDelete(0, PREFIX + "pms1"); ObjectDelete(0, PREFIX + "pms2");
-      ObjectDelete(0, PREFIX + "rdlk"); ObjectDelete(0, PREFIX + "rdlv");
-      ObjectDelete(0, PREFIX + "rdtk"); ObjectDelete(0, PREFIX + "rdtv");
-      ObjectDelete(0, PREFIX + "rtlk"); ObjectDelete(0, PREFIX + "rtlv");
-      ObjectDelete(0, PREFIX + "rmxk"); ObjectDelete(0, PREFIX + "rmxv");
-      ObjectDelete(0, PREFIX + "rnwk"); ObjectDelete(0, PREFIX + "rnwv");
+      ObjectDelete(0, PREFIX + "gh");
+      ObjectDelete(0, PREFIX + "pstb"); ObjectDelete(0, PREFIX + "pstt");
+      ObjectDelete(0, PREFIX + "cbBox"); ObjectDelete(0, PREFIX + "cbTop"); ObjectDelete(0, PREFIX + "cbLab"); ObjectDelete(0, PREFIX + "cbNum");
+      ObjectDelete(0, PREFIX + "sdlb"); ObjectDelete(0, PREFIX + "sdll"); ObjectDelete(0, PREFIX + "sdlv");
+      ObjectDelete(0, PREFIX + "sdtb"); ObjectDelete(0, PREFIX + "sdtl"); ObjectDelete(0, PREFIX + "sdtv");
+      ObjectDelete(0, PREFIX + "stlb"); ObjectDelete(0, PREFIX + "stll"); ObjectDelete(0, PREFIX + "stlv");
+      ObjectDelete(0, PREFIX + "smxb"); ObjectDelete(0, PREFIX + "smxl"); ObjectDelete(0, PREFIX + "smxv");
+      ObjectDelete(0, PREFIX + "nwb"); ObjectDelete(0, PREFIX + "nwt"); ObjectDelete(0, PREFIX + "nwk");
      }
 
    //========= MODULOS ===============================================
@@ -471,33 +568,33 @@ void DrawPanel()
    y += PY - 2;
 
    PanelLabel("lbe", "Break even", X + 12, y + 3, COL_TX, 8);
-   PanelButton("bbe", g_beOn ? "ON" : "OFF", bx, y, 46, 18, g_beOn ? COL_ON : COL_OFF, C'20,25,38');
+   PanelButton("bbe", g_beOn ? "ON" : "OFF", bx, y, 50, 18, g_beOn ? COL_ON : COL_OFF, C'20,25,38');
    y += PY;
 
    PanelLabel("ltr", "Trailing stop", X + 12, y + 3, COL_TX, 8);
-   PanelButton("btr", g_trOn ? "ON" : "OFF", bx, y, 46, 18, g_trOn ? COL_ON : COL_OFF, C'20,25,38');
+   PanelButton("btr", g_trOn ? "ON" : "OFF", bx, y, 50, 18, g_trOn ? COL_ON : COL_OFF, C'20,25,38');
    y += PY;
 
    PanelLabel("lpt", T("TP parciales", "Partial TPs"), X + 12, y + 3, COL_TX, 8);
-   PanelButton("bpt", g_ptOn ? "ON" : "OFF", bx, y, 46, 18, g_ptOn ? COL_ON : COL_OFF, C'20,25,38');
+   PanelButton("bpt", g_ptOn ? "ON" : "OFF", bx, y, 50, 18, g_ptOn ? COL_ON : COL_OFF, C'20,25,38');
    y += PY + 8;
 
    //========= ACCIONES RAPIDAS (solo cierran/protegen) =============
    PanelLabel("acts", T("Acciones rapidas · solo protegen", "Quick actions · protect only"), X + 12, y, COL_MUT, 7);
    y += PY - 2;
 
-   int bw = 100;
-   PanelButton("bslbe", T("SL a BE", "SL to BE"),      X + 12,      y, bw, 20, C'35,44,66', COL_TX);
-   PanelButton("bhalf", T("Cerrar 50%", "Close 50%"),  X + 18 + bw, y, bw, 20, C'35,44,66', COL_TX);
-   y += 24;
-   PanelButton("bwin",  T("Ganadoras", "Winners"),     X + 12,      y, bw, 20, C'35,44,66', COL_TX);
-   PanelButton("ball",  T("Cerrar todo", "Close all"), X + 18 + bw, y, bw, 20, C'120,40,55', COL_TX);
+   int bw = (W - 24 - 6) / 2;
+   PanelButton("bslbe", T("SL a BE", "SL to BE"),      X + 12,          y, bw, 22, C'35,44,66', COL_TX);
+   PanelButton("bhalf", T("Cerrar 50%", "Close 50%"),  X + 18 + bw,     y, bw, 22, C'35,44,66', COL_TX);
    y += 26;
+   PanelButton("bwin",  T("Ganadoras", "Winners"),     X + 12,          y, bw, 22, C'35,44,66', COL_TX);
+   PanelButton("ball",  T("Cerrar todo", "Close all"), X + 18 + bw,     y, bw, 22, C'120,40,55', COL_TX);
+   y += 28;
 
    PanelLabel("foot", T("Onyx no abre operaciones", "Onyx never opens trades"), X + 12, y, COL_MUT, 7);
    y += 16;
 
-   color bordCol = (g_lastError != "" || !ta) ? COL_RED : (alive ? COL_ON : (color)C'245,158,11');
+   color bordCol = (g_lastError != "" || !ta) ? COL_RED : (alive ? COL_ON : AMBER);
    ObjectSetInteger(0, PREFIX + "bg", OBJPROP_COLOR, bordCol);
    ObjectSetInteger(0, PREFIX + "bg", OBJPROP_YSIZE, y - 12);
 
@@ -710,12 +807,56 @@ void ApplyConfig(string resp)
 //==================== PROXIMA NOTICIA (INFORMATIVA) ===============
 void ParseNews(string resp)
   {
-   if(StringFind(resp, "\"news\":null") >= 0) { g_newsTitle = ""; g_newsCur = ""; g_newsMin = -1; return; }
+   if(StringFind(resp, "\"news\":null") >= 0)
+   { g_newsTitle = ""; g_newsCur = ""; g_newsMin = -1; g_newsWillBlock = false; g_newsBlockIn = -1; return; }
    string ns = JsonSection(resp, "news");
-   if(ns == "") { g_newsTitle = ""; g_newsCur = ""; g_newsMin = -1; return; }
-   g_newsTitle = JsonStr(ns, "title", "");
-   g_newsCur   = JsonStr(ns, "currency", "");
-   g_newsMin   = (int)JsonNum(ns, "minutes", -1);
+   if(ns == "")
+   { g_newsTitle = ""; g_newsCur = ""; g_newsMin = -1; g_newsWillBlock = false; g_newsBlockIn = -1; return; }
+   g_newsTitle     = JsonStr(ns, "title", "");
+   g_newsCur       = JsonStr(ns, "currency", "");
+   g_newsMin       = (int)JsonNum(ns, "minutes", -1);
+   g_newsWillBlock = JsonBool(ns, "willBlock", false);
+   g_newsBlockIn   = (int)JsonNum(ns, "blockInMin", -1);
+  }
+
+//==================== HORAS DE NOTICIAS (LINEAS EN EL GRAFICO) =====
+void ParseNewsTimes(string resp)
+  {
+   g_newsCount = 0;
+   string arr = JsonArray(resp, "newsTimes");
+   if(arr == "") return;
+   int pos = 1;
+   while(g_newsCount < 16)
+     {
+      while(pos < StringLen(arr) && (StringGetChar(arr, pos) < '0' || StringGetChar(arr, pos) > '9')) pos++;
+      if(pos >= StringLen(arr)) break;
+      int start = pos;
+      while(pos < StringLen(arr) && StringGetChar(arr, pos) >= '0' && StringGetChar(arr, pos) <= '9') pos++;
+      string num = StringSubstr(arr, start, pos - start);
+      if(num == "") break;
+      g_newsEpoch[g_newsCount] = (long)StringToInteger(num);
+      g_newsCount++;
+     }
+  }
+
+// Dibuja una linea vertical ambar por cada noticia de alto impacto.
+void DrawNewsLines()
+  {
+   ObjectsDeleteAll(0, PREFIX + "nl_");
+   long broker = (long)(TimeCurrent() - TimeGMT());
+   for(int i = 0; i < g_newsCount; i++)
+     {
+      datetime t = (datetime)(g_newsEpoch[i] + broker);
+      string nm = PREFIX + "nl_" + IntegerToString(i);
+      if(ObjectFind(0, nm) < 0) ObjectCreate(0, nm, OBJ_VLINE, 0, t, 0);
+      ObjectMove(0, nm, 0, t, 0);
+      ObjectSetInteger(0, nm, OBJPROP_COLOR, (color)C'255,192,77');
+      ObjectSetInteger(0, nm, OBJPROP_STYLE, STYLE_DOT);
+      ObjectSetInteger(0, nm, OBJPROP_WIDTH, 1);
+      ObjectSetInteger(0, nm, OBJPROP_BACK, true);
+      ObjectSetInteger(0, nm, OBJPROP_SELECTABLE, false);
+      ObjectSetString(0, nm, OBJPROP_TOOLTIP, "Onyx · " + T("Noticia alto impacto", "High-impact news"));
+     }
   }
 
 //==================== VEREDICTO DEL SERVIDOR ======================
@@ -736,6 +877,10 @@ void ApplyVerdict(string resp)
    g_forceClose  = JsonBool(v, "close_all", false);
    g_blockReason = JsonStr(v, "reason", "");
    g_blockMsg    = JsonStr(v, (Idioma == ONYX_ES ? "message_es" : "message_en"), "");
+
+   int rsec = (int)JsonNum(v, "resume_in_sec", -1);
+   if(!allow && rsec > 0) g_resumeAt = TimeLocal() + rsec;
+   else                   g_resumeAt = 0;
 
    // Solo cerramos lo que se abra DESPUES del bloqueo
    if(!allow && g_allowNew) g_blockSince = TimeCurrent();
@@ -830,6 +975,8 @@ void Sync()
    ParseChallenge(resp);
    ParseFeatures(resp);
    ParseNews(resp);
+   ParseNewsTimes(resp);
+   DrawNewsLines();
    HandleCommands(resp);
   }
 
@@ -1205,7 +1352,7 @@ int OnInit()
    else                       g_lastClose = TimeCurrent() - 120 * 86400;
 
    CleanOldPartials();
-   EventSetTimer(30);
+   EventSetTimer(1);            // 1s: el panel y el contador laten cada segundo
    DrawPanel();
    Sync();
    return(INIT_SUCCEEDED);
@@ -1219,10 +1366,15 @@ void OnDeinit(const int reason)
 
 void OnTimer()
   {
-   Sync();
-   EnforceGuard();
-   WeekendCheck();
-   ManageAll();
+   static int tick = 0;
+   tick++;
+   if(tick % 10 == 0)          // sincroniza cada 10s; el panel late cada segundo
+     {
+      Sync();
+      EnforceGuard();
+      WeekendCheck();
+      ManageAll();
+     }
    DrawPanel();
   }
 

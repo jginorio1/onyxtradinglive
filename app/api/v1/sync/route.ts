@@ -266,6 +266,8 @@ export async function POST(req: NextRequest) {
     let features: any = { journal: true, guardian: false, copy: false, tv: false, copyRole: '', plan: '' };
     // Onyx Connect · próxima noticia de alto impacto para el panel (solo informativa).
     let news: any = null;
+    let newsTimes: number[] = [];   // epochs (seg) de las noticias de alto impacto próximas → líneas en el gráfico
+    let nextNewsAt: number | null = null;
     try {
       const { data: prof } = await supabaseAdmin.from('profiles').select('plan').eq('id', userId).maybeSingle();
       const { data: planRow } = await supabaseAdmin.from('plans').select('name,capabilities').eq('id', prof?.plan || 'free').maybeSingle();
@@ -283,10 +285,18 @@ export async function POST(req: NextRequest) {
           const nr = await fetch(`${base.protocol}//${base.host}/api/news`, { next: { revalidate: 900 } } as any);
           const nj = await nr.json();
           const now = Date.now();
-          const up = (nj.events || [])
-            .filter((e: any) => e.impact === 'High' && e.date && new Date(e.date).getTime() > now)
-            .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())[0];
-          if (up) news = { title: String(up.title).slice(0, 40), currency: String(up.currency || '').slice(0, 6), minutes: Math.max(0, Math.round((new Date(up.date).getTime() - now) / 60000)) };
+          // Todas las de alto impacto en las próximas 24 h → líneas en el gráfico.
+          const highSoon = (nj.events || [])
+            .filter((e: any) => e.impact === 'High' && e.date)
+            .map((e: any) => ({ ...e, ts: new Date(e.date).getTime() }))
+            .filter((e: any) => e.ts > now && e.ts < now + 86400000)
+            .sort((a: any, b: any) => a.ts - b.ts);
+          newsTimes = highSoon.slice(0, 12).map((e: any) => Math.round(e.ts / 1000));
+          const up = highSoon[0];
+          if (up) {
+            nextNewsAt = up.ts;
+            news = { title: String(up.title).slice(0, 40), currency: String(up.currency || '').slice(0, 6), minutes: Math.max(0, Math.round((up.ts - now) / 60000)) };
+          }
         } catch { /* si el calendario falla, el panel simplemente no muestra noticia */ }
       }
       // Rol de copy de esta cuenta (maestra/esclava), si aplica.
@@ -331,6 +341,17 @@ export async function POST(req: NextRequest) {
               newsBlocked: !!newsTitle,
               newsTitle: newsTitle || undefined,
             });
+
+            // Aviso de bloqueo próximo por noticia + reanudación para el contador.
+            if (news && cfgMerged.news.on && nextNewsAt) {
+              const beforeMin = Number(cfgMerged.news.before_min || 15);
+              const afterMin = Number(cfgMerged.news.after_min || 15);
+              news.blockInMin = Math.max(0, (news.minutes ?? 0) - beforeMin);
+              news.willBlock = (news.minutes ?? 999) <= beforeMin;   // ya dentro de la ventana previa
+              if (verdict && verdict.reason === 'news' && !verdict.resume_at) {
+                verdict.resume_at = new Date(nextNewsAt + afterMin * 60000).toISOString();
+              }
+            }
           } catch (e) { console.error('guard error', e); }
         }
 
@@ -356,7 +377,12 @@ export async function POST(req: NextRequest) {
       }
     } catch { /* si algo falla aquí, el sync de datos no debe romperse */ }
 
-    return NextResponse.json({ ok: true, received: closed.length, accountId, config: managerCfg, verdict, challenge, commands, features, news });
+    // Segundos que faltan para reanudar (para el contador del panel del EA).
+    if (verdict && (verdict as any).resume_at) {
+      (verdict as any).resume_in_sec = Math.max(0, Math.round((new Date((verdict as any).resume_at).getTime() - Date.now()) / 1000));
+    }
+
+    return NextResponse.json({ ok: true, received: closed.length, accountId, config: managerCfg, verdict, challenge, commands, features, news, newsTimes });
   } catch (e: any) {
     console.error('sync error', e);
     await logError('ea_sync', e);

@@ -19,6 +19,7 @@ export type Verdict = {
   severity: 'ok' | 'warn' | 'block';
   can_override: boolean;      // ¿puede pedir saltarse esta regla?
   override_ready_at: string | null; // cuándo terminará la espera, si ya la pidió
+  resume_at: string | null;   // cuándo se levanta el bloqueo (para el contador del panel)
   usage: {                    // para pintar las barras del panel
     daily_loss_used_pct: number;
     total_loss_used_pct: number;
@@ -30,7 +31,7 @@ export type Verdict = {
 
 const OK: Verdict = {
   allow_new: true, close_all: false, reason: '', message_es: '', message_en: '',
-  severity: 'ok', can_override: false, override_ready_at: null,
+  severity: 'ok', can_override: false, override_ready_at: null, resume_at: null,
   usage: { daily_loss_used_pct: 0, total_loss_used_pct: 0, target_used_pct: 0, trades_today: 0, max_trades_day: 0 },
 };
 
@@ -228,6 +229,7 @@ export async function evaluate(opts: {
       if (!until || until > now) {
         return finish(v, {
           reason: 'tilt', severity: 'block', canOverride: cfg.plan.rigidity !== 'hard', close: false,
+          resumeAt: until,
           es: `Llevas ${st.losses_streak} pérdidas seguidas. Para, respira y vuelve más tarde.`,
           en: `You have ${st.losses_streak} losses in a row. Stop, breathe, come back later.`,
         }, opts, st, cfg);
@@ -241,6 +243,7 @@ export async function evaluate(opts: {
         const mins = Math.ceil((until.getTime() - now.getTime()) / 60000);
         return finish(v, {
           reason: 'cooldown', severity: 'block', canOverride: cfg.plan.rigidity !== 'hard', close: false,
+          resumeAt: until,
           es: `Acabas de cerrar en pérdida. Espera ${mins} minuto(s) antes de la siguiente.`,
           en: `You just closed a loss. Wait ${mins} more minute(s) before the next one.`,
         }, opts, st, cfg);
@@ -283,9 +286,10 @@ function fmt(n: number) { return (n >= 0 ? '' : '-') + '$' + Math.abs(n).toFixed
 
 // Guarda el bloqueo, deja el rastro en el historial y devuelve el veredicto
 async function finish(v: Verdict, r: {
-  reason: string; severity: 'warn' | 'block'; canOverride: boolean; close: boolean; es: string; en: string;
+  reason: string; severity: 'warn' | 'block'; canOverride: boolean; close: boolean; es: string; en: string; resumeAt?: Date | null;
 }, opts: any, st: any, cfg: ManagerConfig): Promise<Verdict> {
   const now = new Date();
+  v.resume_at = r.resumeAt ? r.resumeAt.toISOString() : null;
   const overrideActive = st?.override_until && new Date(st.override_until) > now;
 
   // Si tiene permiso temporal y esta regla admite saltarse, le dejamos pasar
