@@ -78,6 +78,20 @@ bool     g_featG      = false;   // Guardian
 bool     g_featC      = false;   // Copy
 bool     g_featT      = false;   // TradingView
 
+// Onyx Connect: limites y metas (llegan dentro de config.limits / plan).
+double   g_limDLoss   = 0;
+bool     g_limDLossPct= true;
+double   g_limDTarget = 0;
+bool     g_limDTgtPct = true;
+double   g_limTLoss   = 0;
+bool     g_limTLossPct= true;
+int      g_maxTrades  = 0;
+
+// Onyx Connect: proxima noticia de alto impacto (la manda el servidor).
+string   g_newsTitle  = "";
+string   g_newsCur    = "";
+int      g_newsMin    = -1;
+
 int   PY = 22;
 color COL_BG   = C'26,33,51';
 color COL_LINE = C'56,69,95';
@@ -297,9 +311,41 @@ void PanelButton(string name, string text, int x, int y, int w, int h, color bg,
    ObjectSetInteger(0, nm, OBJPROP_SELECTABLE, false);
   }
 
+// Fila "clave : valor" en dos columnas para el panel.
+void PanelRow(string name, string key, string val, int x, int vx, int yy, color kc, color vc)
+  {
+   PanelLabel(name + "k", key, x,  yy, kc, 8);
+   PanelLabel(name + "v", val, vx, yy, vc, 8, false);
+  }
+
+// Sesion de mercado activa segun la hora GMT (aproximada, para orientar).
+string OnyxSession()
+  {
+   int h = (int)((TimeGMT() / 3600) % 24);
+   bool ldn = (h >= 7  && h < 16);
+   bool ny  = (h >= 12 && h < 21);
+   bool tok = (h >= 23 || h < 8);
+   bool syd = (h >= 21 || h < 6);
+   if(ldn && ny) return "London+NY";
+   if(ldn) return "London";
+   if(ny)  return "New York";
+   if(tok) return T("Tokio", "Tokyo");
+   if(syd) return T("Sidney", "Sydney");
+   return T("Fuera de sesion", "Off-session");
+  }
+
+// Formatea un limite: "5%" o "$500" o "—" si esta en cero.
+string LimTxt(double v, bool pct)
+  {
+   if(v <= 0) return "—";
+   if(pct) return DoubleToString(v, (v == MathFloor(v) ? 0 : 1)) + "%";
+   return "$" + DoubleToString(v, 0);
+  }
+
 void DrawPanel()
   {
-   int X = 12, W = 214, y = 22;
+   int X = 12, W = 230, y = 22;
+   int vx = X + 116;
    int bx = X + W - 12 - 46;
 
    string bg = PREFIX + "bg";
@@ -308,14 +354,14 @@ void DrawPanel()
    ObjectSetInteger(0, bg, OBJPROP_XDISTANCE, X);
    ObjectSetInteger(0, bg, OBJPROP_YDISTANCE, y - 10);
    ObjectSetInteger(0, bg, OBJPROP_XSIZE, W);
-   ObjectSetInteger(0, bg, OBJPROP_YSIZE, (g_guardOn ? 334 : 290) + (g_chVerdict != "" ? 34 : 0));
+   ObjectSetInteger(0, bg, OBJPROP_YSIZE, 500);
    ObjectSetInteger(0, bg, OBJPROP_BGCOLOR, COL_BG);
    ObjectSetInteger(0, bg, OBJPROP_BORDER_TYPE, BORDER_FLAT);
    ObjectSetInteger(0, bg, OBJPROP_COLOR, COL_LINE);
    ObjectSetInteger(0, bg, OBJPROP_BACK, false);
    ObjectSetInteger(0, bg, OBJPROP_SELECTABLE, false);
 
-   PanelLabel("title", "Onyx Connect", X + 12, y, COL_TX, 9, true);
+   PanelLabel("title", "Onyx Connect", X + 12, y, COL_TX, 10, true);
    y += PY;
 
    // Funciones activas segun el plan (Journal siempre; el resto segun el plan).
@@ -326,29 +372,40 @@ void DrawPanel()
       if(g_featT) feat += " · TV";
       string planTx = (g_featPlan != "" ? g_featPlan + " · " : "");
       PanelLabel("feat", planTx + feat, X + 12, y, COL_MUT, 8, false);
-      y += PY;
+      y += PY - 2;
    }
 
    bool alive = (g_lastSyncOk > 0 && (TimeCurrent() - g_lastSyncOk) < 120);
    string st;
    if(g_lastSyncOk == 0)   st = T("Conectando...", "Connecting...");
-   else if(alive)          st = T("Conectado - cuenta ", "Connected - account ") + IntegerToString(g_login);
+   else if(alive)          st = T("Conectado · cuenta ", "Connected · account ") + IntegerToString(g_login);
    else                    st = T("Sin senal del servidor", "No server signal");
    PanelLabel("state", st, X + 12, y, alive ? COL_ON : COL_MUT, 8);
    y += PY;
 
-   // Borde del panel segun estado: verde conectado, ambar esperando, rojo si hay error/apagado.
-   color bordCol = (g_lastError != "" || !g_guardOn) ? COL_RED : (alive ? COL_ON : (color)C'245,158,11');
-   ObjectSetInteger(0, PREFIX + "bg", OBJPROP_COLOR, bordCol);
-
    if(g_lastError != "")
      {
-      PanelLabel("err", StringSubstr(g_lastError, 0, 32), X + 12, y, COL_RED, 7);
+      PanelLabel("err", StringSubstr(g_lastError, 0, 36), X + 12, y, COL_RED, 7);
       y += PY - 6;
      }
    else ObjectDelete(0, PREFIX + "err");
 
-   //---- "Mi reto": marcador (solo informativo, lo calcula el servidor) ----
+   //========= EN VIVO (siempre visible, todo local) =================
+   PanelLabel("liveh", T("En vivo", "Live"), X + 12, y, COL_MUT, 8);
+   y += PY - 4;
+
+   bool ta = (IsExpertEnabled() && IsTradeAllowed());
+   PanelRow("rat", "AutoTrading", ta ? "● ON" : "● OFF", X + 12, vx, y, COL_TX, ta ? COL_ON : COL_RED);
+   y += PY - 4;
+
+   int spread = (int)MarketInfo(Symbol(), MODE_SPREAD);
+   PanelRow("rsp", "Spread", IntegerToString(spread) + " pts · " + Symbol(), X + 12, vx, y, COL_TX, COL_TX);
+   y += PY - 4;
+
+   PanelRow("rss", T("Sesion", "Session"), OnyxSession() + " · " + TimeToString(TimeCurrent(), TIME_MINUTES), X + 12, vx, y, COL_TX, COL_TX);
+   y += PY - 2;
+
+   //========= "Mi reto": marcador (informativo) =====================
    if(g_chVerdict != "")
    {
       string cv; color cc;
@@ -357,16 +414,16 @@ void DrawPanel()
       else                             { cv = T("Reto: en camino", "Challenge: on track");      cc = COL_ON; }
       PanelLabel("chv", cv, X + 12, y, cc, 8, true);
       y += PY - 6;
-      if(g_chLine != "") { PanelLabel("chl", StringSubstr(g_chLine, 0, 34), X + 12, y, COL_MUT, 7); y += 14; }
+      if(g_chLine != "") { PanelLabel("chl", StringSubstr(g_chLine, 0, 36), X + 12, y, COL_MUT, 7); y += 14; }
       else ObjectDelete(0, PREFIX + "chl");
    }
    else { ObjectDelete(0, PREFIX + "chv"); ObjectDelete(0, PREFIX + "chl"); }
 
-   //---- Fase 2: estado de mi plan de trading ---------------------
+   //========= GUARDIAN: mi plan, limites, metas, noticias ===========
    if(g_guardOn)
      {
-      PanelLabel("plan", T("Mi plan", "My plan"), X + 12, y, COL_MUT, 8);
-      y += PY - 2;
+      PanelLabel("plan", T("Guardian · mi plan", "Guardian · my plan"), X + 12, y, COL_MUT, 8);
+      y += PY - 4;
 
       string ps; color pc;
       if(g_allowNew) { ps = T("Puedes operar", "You may trade"); pc = COL_ON; }
@@ -376,20 +433,40 @@ void DrawPanel()
 
       if(!g_allowNew && g_blockMsg != "")
         {
-         PanelLabel("pms1", StringSubstr(g_blockMsg, 0, 34), X + 12, y, COL_MUT, 7);
+         PanelLabel("pms1", StringSubstr(g_blockMsg, 0, 38), X + 12, y, COL_MUT, 7);
          y += 13;
-         if(StringLen(g_blockMsg) > 34) PanelLabel("pms2", StringSubstr(g_blockMsg, 34, 34), X + 12, y, COL_MUT, 7);
-         else                           ObjectDelete(0, PREFIX + "pms2");
-         y += 14;
+         if(StringLen(g_blockMsg) > 38) { PanelLabel("pms2", StringSubstr(g_blockMsg, 38, 38), X + 12, y, COL_MUT, 7); y += 14; }
+         else                           { ObjectDelete(0, PREFIX + "pms2"); y += 2; }
         }
-      else { ObjectDelete(0, PREFIX + "pms1"); ObjectDelete(0, PREFIX + "pms2"); y += 6; }
+      else { ObjectDelete(0, PREFIX + "pms1"); ObjectDelete(0, PREFIX + "pms2"); }
+
+      PanelRow("rdl", T("Perdida dia", "Daily loss"),  LimTxt(g_limDLoss, g_limDLossPct), X + 12, vx, y, COL_MUT, COL_TX); y += PY - 5;
+      PanelRow("rdt", T("Meta dia", "Daily target"),   LimTxt(g_limDTarget, g_limDTgtPct), X + 12, vx, y, COL_MUT, COL_ON); y += PY - 5;
+      PanelRow("rtl", T("Perdida total", "Total loss"),LimTxt(g_limTLoss, g_limTLossPct), X + 12, vx, y, COL_MUT, COL_TX); y += PY - 5;
+      PanelRow("rmx", T("Ops por dia", "Trades/day"),  (g_maxTrades > 0 ? IntegerToString(g_maxTrades) : "—"), X + 12, vx, y, COL_MUT, COL_TX); y += PY - 3;
+
+      if(g_newsTitle != "")
+        {
+         string nt = g_newsTitle;
+         if(g_newsCur != "") nt = g_newsCur + " · " + nt;
+         string nm = (g_newsMin >= 0 ? " (" + IntegerToString(g_newsMin) + "m)" : "");
+         PanelLabel("rnwk", T("Proxima noticia", "Next news"), X + 12, y, COL_MUT, 8); y += 13;
+         PanelLabel("rnwv", StringSubstr(nt, 0, 34) + nm, X + 12, y, (color)C'245,158,11', 8, true); y += PY - 4;
+        }
+      else { ObjectDelete(0, PREFIX + "rnwk"); ObjectDelete(0, PREFIX + "rnwv"); }
      }
    else
      {
       ObjectDelete(0, PREFIX + "plan"); ObjectDelete(0, PREFIX + "pst");
       ObjectDelete(0, PREFIX + "pms1"); ObjectDelete(0, PREFIX + "pms2");
+      ObjectDelete(0, PREFIX + "rdlk"); ObjectDelete(0, PREFIX + "rdlv");
+      ObjectDelete(0, PREFIX + "rdtk"); ObjectDelete(0, PREFIX + "rdtv");
+      ObjectDelete(0, PREFIX + "rtlk"); ObjectDelete(0, PREFIX + "rtlv");
+      ObjectDelete(0, PREFIX + "rmxk"); ObjectDelete(0, PREFIX + "rmxv");
+      ObjectDelete(0, PREFIX + "rnwk"); ObjectDelete(0, PREFIX + "rnwv");
      }
 
+   //========= MODULOS ===============================================
    PanelLabel("mods", T("Modulos", "Modules"), X + 12, y, COL_MUT, 8);
    y += PY - 2;
 
@@ -405,10 +482,11 @@ void DrawPanel()
    PanelButton("bpt", g_ptOn ? "ON" : "OFF", bx, y, 46, 18, g_ptOn ? COL_ON : COL_OFF, C'20,25,38');
    y += PY + 8;
 
-   PanelLabel("acts", T("Acciones rapidas", "Quick actions"), X + 12, y, COL_MUT, 8);
+   //========= ACCIONES RAPIDAS (solo cierran/protegen) =============
+   PanelLabel("acts", T("Acciones rapidas · solo protegen", "Quick actions · protect only"), X + 12, y, COL_MUT, 7);
    y += PY - 2;
 
-   int bw = 92;
+   int bw = 100;
    PanelButton("bslbe", T("SL a BE", "SL to BE"),      X + 12,      y, bw, 20, C'35,44,66', COL_TX);
    PanelButton("bhalf", T("Cerrar 50%", "Close 50%"),  X + 18 + bw, y, bw, 20, C'35,44,66', COL_TX);
    y += 24;
@@ -417,6 +495,11 @@ void DrawPanel()
    y += 26;
 
    PanelLabel("foot", T("Onyx no abre operaciones", "Onyx never opens trades"), X + 12, y, COL_MUT, 7);
+   y += 16;
+
+   color bordCol = (g_lastError != "" || !ta) ? COL_RED : (alive ? COL_ON : (color)C'245,158,11');
+   ObjectSetInteger(0, PREFIX + "bg", OBJPROP_COLOR, bordCol);
+   ObjectSetInteger(0, PREFIX + "bg", OBJPROP_YSIZE, y - 12);
 
    ChartRedraw();
   }
@@ -604,11 +687,35 @@ void ApplyConfig(string resp)
             g_wkMin  = (int)StringToInteger(StringSubstr(hm, c + 1));
            }
         }
+      g_maxTrades = (int)JsonNum(pl, "max_trades_day", 0);
      }
+   else g_maxTrades = 0;
+
    string li = JsonSection(cfg, "limits");
    if(JsonBool(li, "on", false)) g_guardOn = true;
+   if(li != "" && JsonBool(li, "on", false))
+     {
+      g_limDLoss    = JsonNum(li, "daily_loss", 0);
+      g_limDLossPct = JsonBool(li, "daily_loss_pct", true);
+      g_limDTarget  = JsonNum(li, "daily_target", 0);
+      g_limDTgtPct  = JsonBool(li, "daily_target_pct", true);
+      g_limTLoss    = JsonNum(li, "total_loss", 0);
+      g_limTLossPct = JsonBool(li, "total_loss_pct", true);
+     }
+   else { g_limDLoss = 0; g_limDTarget = 0; g_limTLoss = 0; }
 
    Print("Onyx: ", T("configuracion actualizada v", "config updated v"), g_cfgVersion);
+  }
+
+//==================== PROXIMA NOTICIA (INFORMATIVA) ===============
+void ParseNews(string resp)
+  {
+   if(StringFind(resp, "\"news\":null") >= 0) { g_newsTitle = ""; g_newsCur = ""; g_newsMin = -1; return; }
+   string ns = JsonSection(resp, "news");
+   if(ns == "") { g_newsTitle = ""; g_newsCur = ""; g_newsMin = -1; return; }
+   g_newsTitle = JsonStr(ns, "title", "");
+   g_newsCur   = JsonStr(ns, "currency", "");
+   g_newsMin   = (int)JsonNum(ns, "minutes", -1);
   }
 
 //==================== VEREDICTO DEL SERVIDOR ======================
@@ -722,6 +829,7 @@ void Sync()
    ApplyVerdict(resp);
    ParseChallenge(resp);
    ParseFeatures(resp);
+   ParseNews(resp);
    HandleCommands(resp);
   }
 

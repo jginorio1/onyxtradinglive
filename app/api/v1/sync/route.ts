@@ -264,6 +264,8 @@ export async function POST(req: NextRequest) {
     // Funciones activas del plan + rol de copy → para que el panel de Onyx Connect
     // muestre Journal/Guardian/Copy/TradingView con su estado real.
     let features: any = { journal: true, guardian: false, copy: false, tv: false, copyRole: '', plan: '' };
+    // Onyx Connect · próxima noticia de alto impacto para el panel (solo informativa).
+    let news: any = null;
     try {
       const { data: prof } = await supabaseAdmin.from('profiles').select('plan').eq('id', userId).maybeSingle();
       const { data: planRow } = await supabaseAdmin.from('plans').select('name,capabilities').eq('id', prof?.plan || 'free').maybeSingle();
@@ -272,6 +274,21 @@ export async function POST(req: NextRequest) {
       features.guardian = !!caps.manager;
       features.copy = !!caps.copy;
       features.tv = !!(caps.tv || caps.copy);
+
+      // Próxima noticia de alto impacto (si el plan incluye noticias). El feed
+      // está cacheado 15 min, así que no pesa aunque el sync sea frecuente.
+      if (caps.manager_news) {
+        try {
+          const base = new URL(req.url);
+          const nr = await fetch(`${base.protocol}//${base.host}/api/news`, { next: { revalidate: 900 } } as any);
+          const nj = await nr.json();
+          const now = Date.now();
+          const up = (nj.events || [])
+            .filter((e: any) => e.impact === 'High' && e.date && new Date(e.date).getTime() > now)
+            .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())[0];
+          if (up) news = { title: String(up.title).slice(0, 40), currency: String(up.currency || '').slice(0, 6), minutes: Math.max(0, Math.round((new Date(up.date).getTime() - now) / 60000)) };
+        } catch { /* si el calendario falla, el panel simplemente no muestra noticia */ }
+      }
       // Rol de copy de esta cuenta (maestra/esclava), si aplica.
       try {
         if (caps.copy) {
@@ -339,7 +356,7 @@ export async function POST(req: NextRequest) {
       }
     } catch { /* si algo falla aquí, el sync de datos no debe romperse */ }
 
-    return NextResponse.json({ ok: true, received: closed.length, accountId, config: managerCfg, verdict, challenge, commands, features });
+    return NextResponse.json({ ok: true, received: closed.length, accountId, config: managerCfg, verdict, challenge, commands, features, news });
   } catch (e: any) {
     console.error('sync error', e);
     await logError('ea_sync', e);
