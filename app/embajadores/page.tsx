@@ -86,8 +86,9 @@ export default function Embajadores() {
   const [lcPage, setLcPage] = useState<any>(null);
   const t = dictFor(T, lang);
   // FAQ editable del Landing Builder (si el admin la puso, reemplaza la del código).
-  const faqRows: [string, string][] = (lcFaqRaw && lcFaqRaw.length)
-    ? lcFaqRaw.map((r) => lang === 'es' ? [r[0], r[1]] : [r[2], r[3]])
+  const _validFaq = (lcFaqRaw || []).filter((r) => (r?.[0] || '').trim() || (r?.[2] || '').trim());
+  const faqRows: [string, string][] = _validFaq.length
+    ? _validFaq.map((r) => lang === 'es' ? [r[0], r[1]] : [r[2], r[3]])
     : t.faq;
   // Textos editables de la página (vacío = texto del código).
   const px = (k: string, fb: string) => lcPage?.[k]?.[lang] || fb;

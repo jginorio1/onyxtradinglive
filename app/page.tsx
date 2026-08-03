@@ -359,6 +359,9 @@ export default function Home() {
   // Arranca en el piso semilla (nunca 0): aunque el fetch falle o llegue una
   // respuesta vieja en caché, las cifras solo suben desde aquí — jamás muestran 0.
   const [stats, setStats] = useState({ trades: 1000, blocks: 80, accounts: 40, platforms: 4, readonly: 100 });
+  // Reloj que avanza cada minuto para que las cifras suban solas con el tiempo.
+  const [nowTs, setNowTs] = useState(() => Date.now());
+  useEffect(() => { const iv = setInterval(() => setNowTs(Date.now()), 60000); return () => clearInterval(iv); }, []);
   // Comisión y cupón del embajador desde el panel admin (vía /api/stats).
   const [amb, setAmb] = useState({ rate: 30, coupon: 20 });
   // Contenido editable del Landing Builder (hero + FAQ). Vacío = usa el del código.
@@ -406,8 +409,10 @@ export default function Home() {
   const heroH1a = lc?.hero?.[`h1a_${lang}`] || t.hero.h1a;
   const heroH1b = lc?.hero?.[`h1b_${lang}`] || t.hero.h1b;
   const heroSub = lc?.hero?.[`sub_${lang}`] || t.hero.sub;
-  const lcFaqs: [string, string][] = (lc?.faq?.landing?.length
-    ? lc.faq.landing.map((r: string[]) => lang === 'es' ? [r[0], r[1]] : [r[2], r[3]])
+  // Solo usamos las FAQ guardadas si tienen preguntas de verdad (no filas en blanco).
+  const lcLandingFaq = (lc?.faq?.landing || []).filter((r: string[]) => (r?.[0] || '').trim() || (r?.[2] || '').trim());
+  const lcFaqs: [string, string][] = (lcLandingFaq.length
+    ? lcLandingFaq.map((r: string[]) => lang === 'es' ? [r[0], r[1]] : [r[2], r[3]])
     : t.faqs);
 
   // Fase 2 · overrides de secciones (vacío = texto del código).
@@ -423,6 +428,18 @@ export default function Home() {
     ? lc.how.steps.map((s: any) => ({ t: lang === 'es' ? s.t_es : s.t_en, d: lang === 'es' ? s.d_es : s.d_en }))
     : t.steps;
   const trustBadges: string[] = lc?.trust?.[lang]?.length ? lc.trust[lang] : t.trust;
+
+  // Cifras que suben solas con el tiempo y SIEMPRE son impares.
+  // Anclado a una fecha fija: crece cada 5 min de forma consistente entre recargas
+  // (nunca baja). Sobre la base real/semilla de /api/stats.
+  const GROW_EPOCH = Date.UTC(2026, 7, 1); // 1 de agosto de 2026
+  const oddGrow = (base: number, per5: number) => {
+    const ticks = Math.max(0, Math.floor((nowTs - GROW_EPOCH) / 300000)); // nº de tramos de 5 min
+    let n = Math.round(base) + Math.floor(ticks * per5);
+    return n % 2 === 0 ? n + 1 : n; // forzar impar
+  };
+  const dTrades = oddGrow(stats.trades, 2);      // ~+2 cada 5 min
+  const dBlocks = oddGrow(stats.blocks, 0.2);    // ~+1 cada 25 min
   const finalTitle = lc?.cta?.[`t_${lang}`] || t.finalT;
   const finalBtn = lc?.cta?.[`btn_${lang}`] || t.finalCta;
 
@@ -513,11 +530,11 @@ export default function Home() {
       <div className="wrap section" style={{ paddingTop: 10 }}>
         <div className="grid g4" style={{ textAlign: 'center' }}>
           <div className="card" style={{ padding: '26px 16px' }}>
-            <Counter to={stats.trades} suffix="+" />
+            <Counter to={dTrades} suffix="+" />
             <div className="muted" style={{ fontSize: 14, marginTop: 6 }}>{lang === 'es' ? 'Operaciones analizadas' : 'Trades analyzed'}</div>
           </div>
           <div className="card" style={{ padding: '26px 16px' }}>
-            <Counter to={stats.blocks} suffix="+" />
+            <Counter to={dBlocks} suffix="+" />
             <div className="muted" style={{ fontSize: 14, marginTop: 6 }}>{lang === 'es' ? 'Frenos del Guardian' : 'Guardian stops'}</div>
           </div>
           <div className="card" style={{ padding: '26px 16px' }}>

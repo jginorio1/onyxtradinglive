@@ -83,10 +83,11 @@ export default function LandingBuilder() {
   const hero = content.hero || {};
   const setHero = (k: string, v: string) => setContent({ ...content, hero: { ...hero, [k]: v } });
 
-  // Si no hay FAQ guardada para esta página (o quedó vacía de una versión anterior),
-  // sembramos con las del código (defaults.faq) para que el editor no salga vacío.
+  // Si no hay FAQ guardada para esta página (o quedó vacía / en blanco de una
+  // versión anterior), sembramos con las del código (defaults.faq).
   const savedFaq = content.faq?.[faqPage];
-  const faqRows: Faq[] = (Array.isArray(savedFaq) && savedFaq.length) ? savedFaq : (defaults.faq?.[faqPage] || []);
+  const savedHasContent = Array.isArray(savedFaq) && savedFaq.some((r: any) => (r?.[0] || '').trim() || (r?.[2] || '').trim());
+  const faqRows: Faq[] = savedHasContent ? savedFaq : (defaults.faq?.[faqPage] || []);
   const setFaq = (rows: Faq[]) => setContent({ ...content, faq: { ...(content.faq || {}), [faqPage]: rows } });
 
   const compareRows: Row[] = content.compare?.length ? content.compare : (defaults.compare || []);
@@ -182,7 +183,8 @@ export default function LandingBuilder() {
           ))}
           <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
             <button className="btn btn-ghost" onClick={() => setFaq([...faqRows, ['', '', '', '']])}>＋ {L('Añadir pregunta', 'Add question')}</button>
-            <button className="btn btn-primary" onClick={() => save({ faq: { ...(content.faq || {}), [faqPage]: faqRows } })} disabled={busy}>{busy ? '…' : L('Guardar FAQ', 'Save FAQ')}</button>
+            <button className="btn btn-ghost" onClick={() => { if (confirm(L('¿Restaurar las FAQ del código para esta página?', 'Reset to the code FAQ for this page?'))) setFaq(defaults.faq?.[faqPage] || []); }}>{L('Restaurar', 'Reset')}</button>
+            <button className="btn btn-primary" onClick={() => save({ faq: { ...(content.faq || {}), [faqPage]: faqRows.filter((r) => (r[0] || '').trim() || (r[2] || '').trim()) } })} disabled={busy}>{busy ? '…' : L('Guardar FAQ', 'Save FAQ')}</button>
           </div>
         </div>
       )}

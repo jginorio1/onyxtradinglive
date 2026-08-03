@@ -147,7 +147,7 @@ export default function MentoresPage() {
       {/* FAQ */}
       <div className="wrap section" style={{ maxWidth: 760, padding: '20px 22px' }}>
         <h2 style={{ textAlign: 'center', marginBottom: 22 }}>{L('Preguntas frecuentes', 'Frequently asked questions')}</h2>
-        {(lcFaqRaw && lcFaqRaw.length ? lcFaqRaw.map((r) => lang === 'es' ? [r[0], r[1]] : [r[2], r[3]]) : [
+        {((lcFaqRaw || []).filter((r) => (r?.[0] || '').trim() || (r?.[2] || '').trim()).length ? (lcFaqRaw || []).filter((r) => (r?.[0] || '').trim() || (r?.[2] || '').trim()).map((r) => lang === 'es' ? [r[0], r[1]] : [r[2], r[3]]) : [
           [L('¿Cuánto cobra Onyx por vender en mi academia?', 'How much does Onyx take for selling in my academy?'),
            L('Onyx solo se lleva una comisión según tu plan (la ves en la tabla de arriba) y el resto es tuyo. Sin cuota de montaje ni mensualidad extra por tener tu academia. Cuanto más alto tu plan, menor la comisión.', 'Onyx only takes a fee based on your plan (shown in the table above) and the rest is yours. No setup fee and no extra monthly charge for running your academy. The higher your plan, the lower the fee.')],
           [L('¿Cómo y cuándo recibo mis pagos?', 'How and when do I get paid?'),
