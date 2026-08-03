@@ -37,6 +37,7 @@ string L(string en, string es){ return (StringFind(PanelLang, "ES") == 0) ? es :
 double g_dayStartEquity = 0;
 int    g_dayStamp       = -1;
 int    g_localDone      = 0;      // lineas del archivo local ya procesadas
+string g_cloudMap = "";           // tabla de simbolos que llega de la web (por comando)
 
 // Config EFECTIVA en modo Local. Por defecto usa los inputs Local*; si hay clave
 // Copy, se sobreescribe con lo que configuraste en la web (una sola vez al iniciar).
@@ -192,6 +193,31 @@ string AliasList(string want)
       for(int j=0;j<nm;j++) if(SymMatch(want, mem[j])) return g[i];
    }
    return "";
+}
+//--- Tabla manual master=esclava. Prioridad: 1) tabla de la web (nube), 2) input local SymbolMap.
+string MapOverrideSrc(string masterSymbol, string src)
+{
+   if(src == "") return "";
+   string pairs[]; int np = StringSplit(src, ';', pairs);
+   string mUp = masterSymbol; StringToUpper(mUp);
+   for(int i=0;i<np;i++){
+      string kv[]; int nk = StringSplit(pairs[i], '=', kv);
+      if(nk < 2) continue;
+      string left = kv[0]; StringTrimLeft(left); StringTrimRight(left); StringToUpper(left);
+      string right = kv[1]; StringTrimLeft(right); StringTrimRight(right);
+      if(right == "") continue;
+      if(left == mUp || SymMatch(NormalizeSym(left), NormalizeSym(masterSymbol))){
+         if(SymbolSelect(right, true)) return right;
+         return "";
+      }
+   }
+   return "";
+}
+string MapOverride(string masterSymbol)
+{
+   string r = MapOverrideSrc(masterSymbol, g_cloudMap);
+   if(r != "") return r;
+   return MapOverrideSrc(masterSymbol, SymbolMap);
 }
 string ResolveLocalSymbol(string masterSymbol)
 {
@@ -426,6 +452,7 @@ void OnTimer()
       double sl     = JNum(o, "sl");
       double tp     = JNum(o, "tp");
       string pl     = JVal(o, "payload");
+      g_cloudMap    = JVal(pl, "symbol_map_str");
       string lim    = JVal(pl, "limits");
       string mode   = JVal(pl, "mode");
       double mult   = JNum(pl, "multiplier");

@@ -103,6 +103,7 @@ const T: any = {
     symMap: 'Tabla de símbolos (una por línea: MASTER=ESCLAVA)', symMapPh: 'US100=NAS100\nGOLD=XAUUSD',
     dupTitle: 'Esta cuenta ya está en copia', dupBodyA: 'ya está activa como', dupBodyB: 'del enlace', dupRoleM: 'MASTER', dupRoleS: 'ESCLAVA',
     dupWarn: 'Usarla en dos enlaces puede duplicar operaciones y romper tu gestión de riesgo.', dupCancel: 'Elegir otra', dupGo: 'Continuar de todos modos',
+    addSlave: 'Añadir otra esclava a esta master', colMaster: 'En la master', colSlave: 'En la esclava', addRow: 'Añadir fila', saveTable: 'Guardar tabla', savedOk: 'Guardado', anyHour: '— (24 h)',
     mpTitle: 'Vas a elegir la cuenta Master', mpBody: 'La cuenta Master es la que MANDA: sus operaciones se copian a las esclavas. Elige la cuenta desde la que operas tú. Puedes tener varias masters (cada master extra es un add-on), cada una con sus propias esclavas.',
     mpWarn: 'Si tus esclavas son de prop firm, copiar entre cuentas puede violar sus reglas. Eres responsable de cumplirlas.',
     clTitle: 'Vas a empezar a copiar en real',
@@ -202,6 +203,7 @@ const T: any = {
     symMap: 'Symbol table (one per line: MASTER=SLAVE)', symMapPh: 'US100=NAS100\nGOLD=XAUUSD',
     dupTitle: 'This account is already copying', dupBodyA: 'is already active as', dupBodyB: 'of link', dupRoleM: 'MASTER', dupRoleS: 'SLAVE',
     dupWarn: 'Using it in two links can duplicate trades and break your risk management.', dupCancel: 'Pick another', dupGo: 'Continue anyway',
+    addSlave: 'Add another slave to this master', colMaster: 'On the master', colSlave: 'On the slave', addRow: 'Add row', saveTable: 'Save table', savedOk: 'Saved', anyHour: '— (24 h)',
     mpTitle: 'You are choosing the Master account', mpBody: 'The Master account SENDS: its trades are copied to the slaves. Pick the account you trade from. You can run several masters (each extra master is an add-on), each with its own slaves.',
     mpWarn: 'If your slaves are prop-firm accounts, copying between accounts may break their rules. You are responsible for compliance.',
     clTitle: 'You are about to copy for real',
@@ -218,7 +220,7 @@ const T: any = {
 function blankLink() {
   return { master_account_id: '', slave_account_id: '', mode: 'balance', multiplier: 1, risk_pct: 1, pip_risk: 20, max_lot: 50, reverse: false,
     daily_loss_pct: 5, max_drawdown_pct: 10, max_spread: 30, session_from: '', session_to: '', symbol_whitelist: [],
-    max_deviation_pts: 20, max_signal_age_s: 30, require_sl: true, max_positions: 20, per_symbol_lot_cap: 0, symbol_map: {} };
+    max_deviation_pts: 20, max_signal_age_s: 30, require_sl: true, max_positions: 20, per_symbol_lot_cap: 0, symbol_map: {}, symbol_rows: [] };
 }
 
 export default function CopyClient() {
@@ -278,6 +280,11 @@ export default function CopyClient() {
   const keyOf = (login: any) => ckeys.find((k) => String(k.account_login) === String(login));
   const keyLive = (k: any) => k?.last_used_at && (Date.now() - new Date(k.last_used_at).getTime()) < 120000;
 
+  async function saveSymbolMap(o: any) {
+    if (!o.id) return;
+    await fetch('/api/copy/links', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: o.id, symbol_map: rowsToObj(o.symbol_rows) }) });
+    toast(lang === 'es' ? 'Tabla guardada' : 'Table saved'); load();
+  }
   async function save(payload: any) {
     setBusy(true);
     try {
@@ -357,8 +364,8 @@ export default function CopyClient() {
       <label className="muted" style={{ fontSize: 12 }}>{t.dailyLoss}<input type="number" value={o.daily_loss_pct} onChange={(e) => set('daily_loss_pct', Number(e.target.value))} style={{ marginTop: 3 }} /></label>
       <label className="muted" style={{ fontSize: 12 }}>{t.maxDD}<input type="number" value={o.max_drawdown_pct} onChange={(e) => set('max_drawdown_pct', Number(e.target.value))} style={{ marginTop: 3 }} /></label>
       <label className="muted" style={{ fontSize: 12 }}>{t.maxSpread}<input type="number" value={o.max_spread} onChange={(e) => set('max_spread', Number(e.target.value))} style={{ marginTop: 3 }} /></label>
-      <label className="muted" style={{ fontSize: 12 }}>{t.sessFrom}<input type="time" value={o.session_from} onChange={(e) => set('session_from', e.target.value)} style={{ marginTop: 3 }} /></label>
-      <label className="muted" style={{ fontSize: 12 }}>{t.sessTo}<input type="time" value={o.session_to} onChange={(e) => set('session_to', e.target.value)} style={{ marginTop: 3 }} /></label>
+      <label className="muted" style={{ fontSize: 12 }}>{t.sessFrom}<select value={o.session_from || ''} onChange={(e) => set('session_from', e.target.value)} style={{ marginTop: 3 }}><option value="">{t.anyHour}</option>{TIMES.map((h) => <option key={h} value={h}>{h}</option>)}</select></label>
+      <label className="muted" style={{ fontSize: 12 }}>{t.sessTo}<select value={o.session_to || ''} onChange={(e) => set('session_to', e.target.value)} style={{ marginTop: 3 }}><option value="">{t.anyHour}</option>{TIMES.map((h) => <option key={h} value={h}>{h}</option>)}</select></label>
       <label className="muted" style={{ fontSize: 12, gridColumn: '1 / -1' }}>{t.whitelist}
         <input value={(o.symbol_whitelist || []).join(', ')} placeholder={t.whitelistPh}
           onChange={(e) => set('symbol_whitelist', e.target.value.split(',').map((s: string) => s.trim().toUpperCase()).filter(Boolean))} style={{ marginTop: 3 }} />
@@ -368,9 +375,21 @@ export default function CopyClient() {
       <label className="muted" style={{ fontSize: 12 }}>{t.maxPos}<input type="number" value={o.max_positions} onChange={(e) => set('max_positions', Number(e.target.value))} style={{ marginTop: 3 }} /></label>
       <label className="muted" style={{ fontSize: 12 }}>{t.symCap}<input type="number" step="0.01" value={o.per_symbol_lot_cap} onChange={(e) => set('per_symbol_lot_cap', Number(e.target.value))} style={{ marginTop: 3 }} /></label>
       <label className="muted row" style={{ fontSize: 12, gap: 8, alignItems: 'center', gridColumn: '1 / -1' }}><input type="checkbox" checked={o.require_sl !== false} onChange={(e) => set('require_sl', e.target.checked)} style={{ width: 'auto', margin: 0 }} /> {t.requireSL}</label>
-      <label className="muted" style={{ fontSize: 12, gridColumn: '1 / -1' }}>{t.symMap}
-        <textarea rows={2} value={mapToText(o.symbol_map)} placeholder={t.symMapPh} onChange={(e) => set('symbol_map', textToMap(e.target.value))} style={{ marginTop: 3, width: '100%', fontFamily: 'monospace', fontSize: 12.5 }} />
-      </label>
+      <div style={{ gridColumn: '1 / -1' }}>
+        <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{t.symMap}</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 34px', gap: 6, fontSize: 11, color: 'var(--mut)', marginBottom: 3 }}><span>{t.colMaster}</span><span>{t.colSlave}</span><span /></div>
+        {(o.symbol_rows || []).map((row: any, i: number) => (
+          <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 34px', gap: 6, marginBottom: 6, alignItems: 'center' }}>
+            <input value={row.m} placeholder="US100" onChange={(e) => { const rows = [...(o.symbol_rows || [])]; rows[i] = { ...rows[i], m: e.target.value }; set('symbol_rows', rows); }} style={{ margin: 0 }} />
+            <input value={row.s} placeholder="NAS100" onChange={(e) => { const rows = [...(o.symbol_rows || [])]; rows[i] = { ...rows[i], s: e.target.value }; set('symbol_rows', rows); }} style={{ margin: 0 }} />
+            <button className="btn btn-ghost" style={{ padding: 0, height: 34, width: 34 }} onClick={() => { const rows = (o.symbol_rows || []).filter((_: any, j: number) => j !== i); set('symbol_rows', rows); }}>✕</button>
+          </div>
+        ))}
+        <div className="row between" style={{ marginTop: 4 }}>
+          <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => set('symbol_rows', [...(o.symbol_rows || []), { m: '', s: '' }])}>+ {t.addRow}</button>
+          {o.id && <button className="btn btn-primary" style={{ padding: '4px 12px', fontSize: 12 }} onClick={() => saveSymbolMap(o)}>{t.saveTable}</button>}
+        </div>
+      </div>
       <p className="muted" style={{ fontSize: 11, gridColumn: '1 / -1', margin: 0 }}>{t.onNote}</p>
       <p className="muted" style={{ fontSize: 11, gridColumn: '1 / -1', margin: 0 }}>{t.riskNote}</p>
     </div>
@@ -586,11 +605,15 @@ export default function CopyClient() {
                       {l.enabled ? '⏸ ' + t.off : '▶ ' + t.on}
                     </button>
                     <span className="pill" style={l.enabled ? { color: 'var(--soft-green)', background: 'rgba(52,226,160,.15)' } : { color: 'var(--mut)' }}>{l.enabled ? t.on : t.off}</span>
-                    <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setEdit({ ...blankLink(), ...l, symbol_whitelist: l.symbol_whitelist || [], session_from: l.session_from || '', session_to: l.session_to || '' })}>{t.edit}</button>
+                    <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setEdit({ ...blankLink(), ...l, symbol_whitelist: l.symbol_whitelist || [], session_from: l.session_from || '', session_to: l.session_to || '', symbol_rows: objToRows(l.symbol_map) })}>{t.edit}</button>
                     <button className="btn btn-danger" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => del(l.id)}>{t.del}</button>
                   </div>
                 </div>
               ))}
+              <button className="btn btn-ghost" style={{ marginTop: 8, marginLeft: 16, fontSize: 12.5, padding: '6px 12px', color: 'var(--accent,#8a97ff)', border: '1px dashed var(--accent,#6c7bff)' }}
+                onClick={() => { setNl({ ...blankLink(), master_account_id: mid }); setTimeout(() => { const el = document.getElementById('newlink'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 60); }}>
+                + {t.addSlave}
+              </button>
             </div>
           ));
         })()}
@@ -598,7 +621,7 @@ export default function CopyClient() {
 
       {/* Nuevo enlace */}
       {accs.length >= 2 && (
-        <div className="card" style={{ marginBottom: 12 }}>
+        <div className="card" id="newlink" style={{ marginBottom: 12 }}>
           <b style={{ fontSize: 14 }}>{t.newLink}</b>
           <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10, marginTop: 10, alignItems: 'end' }}>
             <label className="muted" style={{ fontSize: 12 }}><span style={{ color: C_MASTER }}>● </span>{t.master}
@@ -749,9 +772,12 @@ function linkPayload(l: any) {
     symbol_whitelist: l.symbol_whitelist || [],
     max_deviation_pts: l.max_deviation_pts ?? 20, max_signal_age_s: l.max_signal_age_s ?? 30,
     require_sl: l.require_sl !== false, max_positions: l.max_positions ?? 20, per_symbol_lot_cap: l.per_symbol_lot_cap ?? 0,
-    symbol_map: l.symbol_map || {},
+    symbol_map: l.symbol_rows ? rowsToObj(l.symbol_rows) : (l.symbol_map || {}),
   };
 }
+const TIMES: string[] = (() => { const a: string[] = []; for (let h = 0; h < 24; h++) for (const m of ['00', '30']) a.push((h < 10 ? '0' + h : '' + h) + ':' + m); return a; })();
+function objToRows(m: any): any[] { if (!m || typeof m !== 'object') return []; return Object.keys(m).map((k) => ({ m: k, s: m[k] })); }
+function rowsToObj(rows: any[]): any { const o: any = {}; (rows || []).forEach((r: any) => { const k = String(r.m || '').trim().toUpperCase(); const v = String(r.s || '').trim(); if (k && v) o[k] = v; }); return o; }
 function mapToText(m: any): string { if (!m || typeof m !== 'object') return ''; return Object.keys(m).map((k) => k + '=' + m[k]).join('\n'); }
 function textToMap(t: string): any { const o: any = {}; String(t || '').split('\n').forEach((ln) => { const i = ln.indexOf('='); if (i > 0) { const k = ln.slice(0, i).trim().toUpperCase(); const v = ln.slice(i + 1).trim(); if (k && v) o[k] = v; } }); return o; }
 

@@ -132,6 +132,17 @@ export async function POST(req: Request) {
 }
 
 // DELETE · borrar un enlace.
+export async function PATCH(req: Request) {
+  const user = await me();
+  if (!user) return NextResponse.json({ error: 'no auth' }, { status: 401 });
+  const b = await req.json().catch(() => ({}));
+  const id = String(b.id || '');
+  if (!id) return NextResponse.json({ error: 'missing id' }, { status: 400 });
+  const map = (b.symbol_map && typeof b.symbol_map === 'object') ? b.symbol_map : {};
+  await supabaseAdmin.from('copy_links').update({ symbol_map: map }).eq('id', id).eq('owner_id', user.id);
+  return NextResponse.json({ ok: true });
+}
+
 export async function DELETE(req: Request) {
   const user = await me();
   if (!user) return NextResponse.json({ error: 'no auth' }, { status: 401 });

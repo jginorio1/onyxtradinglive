@@ -162,8 +162,9 @@
     <p>Si aun así no encuentra el instrumento en tu broker, <b>no inventa</b>: se salta esa operación (falla seguro) y lo deja anotado, en vez de abrir en el par equivocado.</p>
     <div class="warn"><b>Consejo:</b> antes de operar en real, abre el <b>Market Watch (Observación del Mercado)</b> del broker Esclava y asegúrate de que el instrumento existe ahí.</div>
 
-    <h3>8.1 · Tabla manual master → esclava (para nombres muy raros)</h3>
-    <p>Si un broker usa un nombre que la detección automática no reconoce, tú mismo puedes <b>decirle al EA la equivalencia</b>. En los <b>Inputs</b> del EA Esclava hay un campo:</p>
+    <h3>8.1 · Tabla de símbolos master → esclava (para nombres muy raros)</h3>
+    <div class="ok"><b>Ahora en el dashboard.</b> Dentro de cada enlace (al crear o editar) tienes la <b>Tabla de símbolos en dos columnas</b> ("En la master" / "En la esclava") con su propio botón <span class="field">Guardar tabla</span>. Se guarda en la nube y la aplican por igual <b>MT4, MT5 y cTrader</b>. Es lo más cómodo y no hay que tocar MetaTrader.</div>
+    <p>Alternativa 100% local: si copias por archivo local (mismo VPS), en los <b>Inputs</b> del EA Esclava sigue estando el campo:</p>
     <table>
       <tr><th>Campo del EA</th><th>Qué escribir</th></tr>
       <tr><td><code>SymbolMap</code></td><td>Pares <b>NOMBRE_MASTER=NOMBRE_ESCLAVA</b> separados por punto y coma.</td></tr>

@@ -13,6 +13,8 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { normalizeSymbol, aliasesOf } from '@/lib/copySymbols';
 
+function mapStr(m: any): string { if (!m || typeof m !== 'object') return ''; return Object.keys(m).map((k) => k + '=' + m[k]).join(';'); }
+
 function inSession(from?: string | null, to?: string | null): boolean {
   if (!from || !to) return true;
   const now = new Date();
@@ -80,6 +82,7 @@ export async function relayMasterSnapshot(opts: {
       require_sl: l.require_sl ? 1 : 0, max_positions: Number(l.max_positions) || 0,
       per_symbol_lot_cap: Number(l.per_symbol_lot_cap) || 0,
     },
+    symbol_map_str: mapStr(l.symbol_map),
   });
 
   const rows: any[] = [];

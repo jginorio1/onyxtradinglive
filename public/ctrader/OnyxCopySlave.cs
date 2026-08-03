@@ -33,6 +33,7 @@ namespace cAlgo.Robots
         private const string OnyxLabel = "OnyxCopy";
         private HttpClient _http;
         private double _dayStartEquity;
+        private Dictionary<string, string> _cloudMap = new Dictionary<string, string>();
         private int _dayStamp = -1;
         private readonly Dictionary<long, long> _map = new Dictionary<long, long>(); // masterTicket -> slave position Id
 
@@ -64,6 +65,7 @@ namespace cAlgo.Robots
                 double sl = JNum(o, "sl");
                 double tp = JNum(o, "tp");
                 string pl = JVal(o, "payload");
+                _cloudMap = ParseMap(JVal(pl, "symbol_map_str"));
                 string lim = JVal(pl, "limits");
                 string mode = JVal(pl, "mode");
                 double mult = JNum(pl, "multiplier"); if (mult <= 0) mult = 1;
@@ -128,8 +130,27 @@ namespace cAlgo.Robots
         {
             return (s ?? "").ToUpper().Replace(".", "").Replace("_", "").Replace("-", "").Replace("#", "");
         }
+        private static Dictionary<string, string> ParseMap(string src)
+        {
+            var d = new Dictionary<string, string>();
+            if (string.IsNullOrEmpty(src)) return d;
+            foreach (var pair in src.Split(';'))
+            {
+                int i = pair.IndexOf('=');
+                if (i > 0) { var k = pair.Substring(0, i).Trim().ToUpper(); var v = pair.Substring(i + 1).Trim(); if (k.Length > 0 && v.Length > 0) d[k] = v; }
+            }
+            return d;
+        }
         private Symbol ResolveLocalSymbol(string masterSymbol)
         {
+            // 0) tabla de simbolos de la web (nube): prioridad maxima
+            if (_cloudMap.Count > 0)
+            {
+                string mu = (masterSymbol ?? "").ToUpper();
+                foreach (var kv in _cloudMap)
+                    if (kv.Key == mu || Norm(kv.Key) == Norm(masterSymbol))
+                    { var sMap = Symbols.GetSymbol(kv.Value); if (sMap != null) return sMap; }
+            }
             var exact = Symbols.GetSymbol(masterSymbol);
             if (exact != null) return exact;
             string want = Norm(masterSymbol);

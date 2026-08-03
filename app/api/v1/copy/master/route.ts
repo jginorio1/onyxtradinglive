@@ -98,6 +98,7 @@ export async function POST(req: Request) {
           max_positions: Number(l.max_positions) || 0,
           per_symbol_lot_cap: Number(l.per_symbol_lot_cap) || 0,
         },
+        symbol_map_str: (l.symbol_map && typeof l.symbol_map === 'object') ? Object.keys(l.symbol_map).map((k) => k + '=' + l.symbol_map[k]).join(';') : '',
       },
       status: 'pending',
     });
