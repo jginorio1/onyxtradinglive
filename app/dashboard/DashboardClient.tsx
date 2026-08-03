@@ -500,7 +500,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
     <>
       <DailyCheckinPopup lang={lang} />
 
-      <div className="wrap-wide" style={{ padding: '24px 0' }}>
+      <div className="wrap-wide" style={{ padding: '24px clamp(16px,1.6vw,40px)' }}>
         {/* Info del trader: alineada a la izquierda */}
         <div className="row between" style={{ marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
           <div className="row" style={{ gap: 14, alignItems: 'center' }}>

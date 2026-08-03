@@ -61,12 +61,12 @@ html[data-theme="light"] .adminnav-item.on{color:#3b46b8;background:rgba(91,108,
 }
 a{color:inherit;text-decoration:none;}
 .wrap{max-width:1140px;margin:0 auto;padding:0 22px;}
-/* En monitores grandes la web usa más pantalla y se auto-ajusta por resolución.
-   Móvil/tablet no cambian (empiezan a partir de 1500px de ancho). */
-@media(min-width:1500px){ .wrap{max-width:1320px;padding:0 clamp(22px,3vw,48px);} }
-@media(min-width:1800px){ .wrap{max-width:1520px;} }
-@media(min-width:2200px){ .wrap{max-width:1760px;} }
-@media(min-width:2600px){ .wrap{max-width:2000px;} }
+/* Adaptación TOTALMENTE automática a cualquier monitor (grande, curvo, gamer,
+   ultrawide 21:9 / 32:9). A partir de 1400px el contenedor pasa a ser proporcional
+   al ancho de la pantalla (90% del viewport), así llena monitores anchos solo.
+   En pantallas normales (portátil/tablet/móvil) no cambia nada. */
+@media(min-width:1400px){ .wrap{max-width:90vw;padding:0 clamp(22px,3vw,64px);} }
+@media(min-width:3200px){ .wrap{max-width:86vw;} } /* super ultrawide: un pelín más aire */
 .row{display:flex;align-items:center;gap:12px;}
 .between{justify-content:space-between;}
 .logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px;}
@@ -87,6 +87,13 @@ a{color:inherit;text-decoration:none;}
 .card{background:linear-gradient(180deg,rgba(255,255,255,.04),transparent),var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 8px 30px rgba(0,0,0,.35);}
 .grid{display:grid;gap:16px;}
 .g4{grid-template-columns:repeat(4,minmax(0,1fr));} .g3{grid-template-columns:repeat(3,minmax(0,1fr));} .g2{grid-template-columns:repeat(2,minmax(0,1fr));}
+/* Rejillas del landing/públicas (dentro de .wrap): se auto-ajustan a CUALQUIER
+   monitor. auto-fit añade o quita columnas solo según el ancho disponible —
+   1 columna en móvil, 3-4 en portátil, 5-6+ en monitores anchos/curvos/gamer.
+   El dashboard usa .wrap-wide, así que no se ve afectado. */
+.wrap .g4{grid-template-columns:repeat(auto-fit,minmax(230px,1fr));}
+.wrap .g3{grid-template-columns:repeat(auto-fit,minmax(300px,1fr));}
+.wrap .g2{grid-template-columns:repeat(auto-fit,minmax(320px,1fr));}
 .kpi{position:relative;overflow:hidden;}
 .kpi .lbl{color:var(--mut);font-size:13px;}
 .kpi .val{font-size:26px;font-weight:800;margin-top:4px;letter-spacing:-.5px;}
@@ -233,6 +240,10 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
 
 /* Contenedor del dashboard: llena cualquier monitor con margen proporcional */
 .wrap-wide{max-width:1680px;margin:0 auto;padding:0 clamp(16px,3vw,64px);}
+/* En monitores grandes/curvos/gamer el dashboard (y admin/cuenta) van de borde a
+   borde: el contenedor deja de tener tope y usa toda la pantalla, con un margen
+   lateral mínimo que se auto-ajusta. La cabina ya estira el centro sola. */
+@media(min-width:1720px){ .wrap-wide{max-width:none;} }
 
 /* Layout cabina: sesiones izquierda · panel centro (se estira) · noticias derecha */
 .cockpit{display:flex;flex-direction:column;gap:16px;}
