@@ -107,7 +107,7 @@ export default function TradingViewClient() {
   const LiveDot = () => <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--green)', background: 'rgba(52,226,160,.12)', border: '1px solid rgba(52,226,160,.4)', padding: '1px 8px', borderRadius: 20, marginLeft: 8 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--green)' }} />{L('en vivo', 'live')}</span>;
 
   return (
-    <div className="wrap" style={{ padding: '32px 22px', maxWidth: 720 }}>
+    <div className="wrap" style={{ padding: '32px 26px', maxWidth: 1180, fontSize: 15 }}>
       <h1 style={{ fontSize: 26, marginBottom: 4 }}>📈 TradingView → Onyx</h1>
       <p className="muted" style={{ marginBottom: 20 }}>{L('Conéctalo en 4 pasos. Cada paso se confirma solo.', 'Connect it in 4 steps. Each step confirms itself.')}</p>
 

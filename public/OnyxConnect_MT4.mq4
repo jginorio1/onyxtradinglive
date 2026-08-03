@@ -1391,6 +1391,20 @@ void OnTick()
   {
    EnforceGuard();       // si abre fuera de su plan, se cierra al instante
    ManageAll();          // reaccionar rapido entre sincronizaciones
+
+   // Copia INSTANTANEA (MT4 no tiene OnTradeTransaction): si es master de copy y
+   // cambia el numero de ordenes (abrio/cerro), empuja el snapshot al momento.
+   if(g_featMaster && StringLen(g_url) > 0)
+     {
+      static int  lastOrders = -1;
+      static uint lastPush4  = 0;
+      int n = OrdersTotal();
+      if(n != lastOrders)
+        {
+         uint now4 = GetTickCount();
+         if(now4 - lastPush4 >= 250) { lastPush4 = now4; lastOrders = n; Sync(); }
+        }
+     }
   }
 
 void OnChartEvent(const int id, const long &lparam, const double &dparam, const string &sparam)

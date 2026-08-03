@@ -1279,6 +1279,20 @@ void OnTick()
    ManageAll();          // reaccionar rapido entre sincronizaciones
 }
 
+//--- Copia INSTANTANEA: si esta cuenta es MASTER de copy, empuja al abrir/cerrar
+//    sin esperar al timer. Recorta la latencia de ~3s a casi nada.
+void OnTradeTransaction(const MqlTradeTransaction &trans, const MqlTradeRequest &request, const MqlTradeResult &result)
+{
+   if(!g_featMaster) return;                       // solo si es master de copy
+   if(trans.type != TRADE_TRANSACTION_DEAL_ADD) return;   // apertura/cierre real
+   if(StringLen(g_url) == 0) return;               // aun sin inicializar
+   static uint lastPush = 0;
+   uint now = GetTickCount();
+   if(now - lastPush < 250) return;                // agrupa rafagas de deals
+   lastPush = now;
+   Sync();                                         // empuja el snapshot ya mismo
+}
+
 void OnChartEvent(const int id, const long &lparam, const double &dparam, const string &sparam)
 {
    if(id != CHARTEVENT_OBJECT_CLICK) return;

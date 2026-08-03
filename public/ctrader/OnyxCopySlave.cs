@@ -74,6 +74,13 @@ namespace cAlgo.Robots
                 double maxSpr = JNum(lim, "max_spread");
                 double dLoss = JNum(lim, "daily_loss_pct");
                 double mDD = JNum(lim, "max_drawdown_pct");
+                double mPrice = JNum(o, "price");
+                double ageMs = JNum(o, "age_ms");
+                double maxDev = JNum(lim, "max_deviation_pts");
+                double maxAge = JNum(lim, "max_signal_age_s");
+                double reqSL = JNum(lim, "require_sl");
+                double maxPos = JNum(lim, "max_positions");
+                double symCap = JNum(lim, "per_symbol_lot_cap");
                 long mt = 0; long.TryParse(mtk, out mt);
                 var t0 = DateTime.UtcNow;
 
@@ -83,7 +90,16 @@ namespace cAlgo.Robots
                     var sym = ResolveLocalSymbol(bsym);
                     if (sym == null) { Ack(id, false, "symbol_not_found", 0, 0); continue; }
                     if (SpreadTooHigh(sym, maxSpr)) { Ack(id, false, "spread_high", 0, 0); continue; }
+                    if (maxAge > 0 && ageMs > maxAge * 1000.0) { Ack(id, false, "signal_old", 0, 0); continue; }
+                    if (reqSL >= 1 && sl <= 0) { Ack(id, false, "no_sl", 0, 0); continue; }
+                    if (maxPos > 0 && CountMyPositions() >= (int)maxPos) { Ack(id, false, "max_positions", 0, 0); continue; }
+                    if (maxDev > 0 && mPrice > 0)
+                    {
+                        double cur = side == "buy" ? sym.Ask : sym.Bid;
+                        if (sym.TickSize > 0 && Math.Abs(cur - mPrice) / sym.TickSize > maxDev) { Ack(id, false, "deviation", 0, 0); continue; }
+                    }
                     double lots = ApplyMaxLot(CalcLot(sym, mode, vol, mBal, mult, riskPct, pip), maxLot);
+                    if (symCap > 0 && SumMyLots(sym) + lots > symCap) { Ack(id, false, "symbol_cap", 0, 0); continue; }
                     long units = (long)sym.NormalizeVolumeInUnits(sym.QuantityToVolumeInUnits(lots), RoundingMode.Down);
                     if (units < sym.VolumeInUnitsMin) units = (long)sym.VolumeInUnitsMin;
                     var tt = side == "buy" ? TradeType.Buy : TradeType.Sell;
@@ -139,6 +155,8 @@ namespace cAlgo.Robots
             return lot;
         }
         private static double ApplyMaxLot(double lot, double maxLot) { return (maxLot > 0 && lot > maxLot) ? maxLot : lot; }
+        private int CountMyPositions() { int c = 0; foreach (var p in Positions) if ((p.Label ?? "").StartsWith(OnyxLabel)) c++; return c; }
+        private double SumMyLots(Symbol sym) { double v = 0; foreach (var p in Positions) if ((p.Label ?? "").StartsWith(OnyxLabel) && p.SymbolName == sym.Name) v += sym.VolumeInUnitsToQuantity(p.VolumeInUnits); return v; }
         private bool SpreadTooHigh(Symbol sym, double maxSpreadPts)
         {
             if (maxSpreadPts <= 0) return false;

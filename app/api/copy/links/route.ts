@@ -82,14 +82,20 @@ export async function POST(req: Request) {
     symbol_map: (b.symbol_map && typeof b.symbol_map === 'object') ? b.symbol_map : {},
     enabled: b.enabled !== false,
     // Controles de riesgo (se configuran desde el tab, no en la EA):
-    daily_loss_pct: Math.max(0, Number(b.daily_loss_pct) || 0),
-    max_drawdown_pct: Math.max(0, Number(b.max_drawdown_pct) || 0),
-    max_spread: Math.max(0, Number(b.max_spread) || 0),
+    daily_loss_pct: Math.max(0, Number(b.daily_loss_pct ?? 5)),
+    max_drawdown_pct: Math.max(0, Number(b.max_drawdown_pct ?? 10)),
+    max_spread: Math.max(0, Number(b.max_spread ?? 30)),
     session_from: cleanHHMM(b.session_from),
     session_to: cleanHHMM(b.session_to),
     symbol_whitelist: Array.isArray(b.symbol_whitelist)
       ? b.symbol_whitelist.map((s: any) => String(s).toUpperCase().trim()).filter(Boolean).slice(0, 40)
       : [],
+    // Filtros de entrada avanzados (todos ON por defecto; 0 = apagado):
+    max_deviation_pts: Math.max(0, Number(b.max_deviation_pts ?? 20)),
+    max_signal_age_s: Math.max(0, Number(b.max_signal_age_s ?? 30)),
+    require_sl: b.require_sl !== false,
+    max_positions: Math.max(0, Math.floor(Number(b.max_positions ?? 20))),
+    per_symbol_lot_cap: Math.max(0, Number(b.per_symbol_lot_cap ?? 0)),
   };
 
   if (b.id) {

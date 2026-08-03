@@ -121,9 +121,9 @@ export default function Expenses() {
   const inp = { padding: '8px 10px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', width: '100%' } as any;
   const lbl = { fontSize: 11, color: 'var(--mut)', display: 'block', marginBottom: 3 } as any;
 
-  if (!d) return <div style={{ maxWidth: 900, margin: '0 auto', padding: '22px 18px' }}><div className="card muted">…</div></div>;
+  if (!d) return <div style={{ maxWidth: 1180, margin: '0 auto', padding: '22px 22px', fontSize: 15 }}><div className="card muted">…</div></div>;
   if (d.locked) return (
-    <div style={{ maxWidth: 900, margin: '0 auto', padding: '22px 18px' }}>
+    <div style={{ maxWidth: 1180, margin: '0 auto', padding: '22px 22px', fontSize: 15 }}>
       <div className="card" style={{ maxWidth: 520, textAlign: 'center', margin: '0 auto' }}>
         <div style={{ marginBottom: 8, display: "flex", justifyContent: "center", color: "var(--brand)" }}><OnyxIcon emoji="🧮" size={30} /></div>
         <h3 style={{ marginBottom: 8 }}>{L('Ganancia neta', 'Net profit')}</h3>
@@ -137,7 +137,7 @@ export default function Expenses() {
   const maxCat = cats.length ? Math.max(...cats.map((c) => c[1])) : 1;
 
   return (
-    <div style={{ maxWidth: 900, margin: '0 auto', padding: '22px 18px' }}>
+    <div style={{ maxWidth: 1180, margin: '0 auto', padding: '22px 22px', fontSize: 15 }}>
       <Link href="/dashboard" className="btn btn-ghost" style={{ padding: '5px 12px', fontSize: 13, marginBottom: 12, display: 'inline-flex' }}>← {L('Dashboard', 'Dashboard')}</Link>
       <div className="row between" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
         <div className="row" style={{ gap: 10, alignItems: 'center' }}>

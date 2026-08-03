@@ -12,7 +12,7 @@ export async function GET(req: Request) {
   if (!a) return NextResponse.json({ error: 'invalid api key' }, { status: 401 });
 
   const { data: cmds } = await supabaseAdmin.from('copy_commands')
-    .select('id,action,master_ticket,base_symbol,side,volume_hint,sl,tp,price,payload')
+    .select('id,action,master_ticket,base_symbol,side,volume_hint,sl,tp,price,payload,created_at')
     .eq('slave_account_id', a.account.id).eq('status', 'pending')
     .order('created_at', { ascending: true }).limit(50);
 
@@ -26,7 +26,13 @@ export async function GET(req: Request) {
   const { data: prof } = await supabaseAdmin.from('profiles').select('copy_paused').eq('id', a.userId).maybeSingle();
   const paused = !!prof?.copy_paused || !!a.account.copy_paused;
 
-  return NextResponse.json({ commands: cmds || [], paused });
+  const now = Date.now();
+  const out = (cmds || []).map((c: any) => {
+    const { created_at, ...rest } = c;
+    const age_ms = created_at ? Math.max(0, now - new Date(created_at).getTime()) : 0;
+    return { ...rest, age_ms };
+  });
+  return NextResponse.json({ commands: out, paused });
 }
 
 // POST · la EA esclava confirma el resultado de un comando. Escribe en el log.
@@ -39,7 +45,8 @@ export async function POST(req: Request) {
   if (!id) return NextResponse.json({ error: 'missing command_id' }, { status: 400 });
 
   const ok = !!b.ok;
-  const status = ok ? 'done' : (String(b.error || '') === 'symbol_not_found' ? 'skipped' : 'failed');
+  const SKIP = ['symbol_not_found', 'spread_high', 'risk_stop', 'signal_old', 'no_sl', 'max_positions', 'deviation', 'symbol_cap'];
+  const status = ok ? 'done' : (SKIP.includes(String(b.error || '')) ? 'skipped' : 'failed');
 
   const { data: cmd } = await supabaseAdmin.from('copy_commands')
     .select('link_id,base_symbol,slave_account_id').eq('id', id).maybeSingle();
@@ -58,9 +65,13 @@ export async function POST(req: Request) {
   // para no saturar). Solo si el trader tiene ese aviso encendido.
   if (!ok) {
     const err = String(b.error || 'fallo');
-    const label = err === 'symbol_not_found' ? 'símbolo no encontrado'
-      : err === 'spread_high' ? 'spread demasiado alto'
-      : err === 'risk_stop' ? 'límite de riesgo alcanzado' : err;
+    const labels: Record<string, string> = {
+      symbol_not_found: 'símbolo no encontrado', spread_high: 'spread demasiado alto',
+      risk_stop: 'límite de riesgo alcanzado', signal_old: 'señal llegó tarde',
+      no_sl: 'operación sin Stop Loss', max_positions: 'máx posiciones alcanzado',
+      deviation: 'precio se movió demasiado', symbol_cap: 'tope de lote por símbolo',
+    };
+    const label = labels[err] || err;
     alertOncePerDay(a.userId, 'copy_error', 'copy_' + err,
       `⚠ <b>No se copió una operación</b>\n${cmd.base_symbol || ''}: ${label}.\nRevisa tu Copy trading.`).catch(() => {});
   }

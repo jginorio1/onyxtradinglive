@@ -98,6 +98,11 @@ const T: any = {
     riskBlock: 'Controles de riesgo (opcional)', dailyLoss: 'Pérdida diaria máx %', maxDD: 'Drawdown máx %',
     maxSpread: 'Spread máx (pts)', sessFrom: 'Sesión desde (UTC)', sessTo: 'hasta', whitelist: 'Solo estos símbolos',
     whitelistPh: 'EURUSD, XAUUSD… (vacío = todos)', riskNote: 'La sesión y la lista de símbolos las aplica el servidor; el resto, la EA esclava.',
+    onNote: 'Todo viene encendido para cuidar la cuenta. Pon 0 para apagar un control.',
+    dev: 'Desvío máx entrada (pts)', sigAge: 'Antigüedad máx señal (s)', maxPos: 'Máx posiciones', symCap: 'Tope lote por símbolo', requireSL: 'Exigir Stop Loss',
+    symMap: 'Tabla de símbolos (una por línea: MASTER=ESCLAVA)', symMapPh: 'US100=NAS100\nGOLD=XAUUSD',
+    dupTitle: 'Esta cuenta ya está en copia', dupBodyA: 'ya está activa como', dupBodyB: 'del enlace', dupRoleM: 'MASTER', dupRoleS: 'ESCLAVA',
+    dupWarn: 'Usarla en dos enlaces puede duplicar operaciones y romper tu gestión de riesgo.', dupCancel: 'Elegir otra', dupGo: 'Continuar de todos modos',
     mpTitle: 'Vas a elegir la cuenta Master', mpBody: 'La cuenta Master es la que MANDA: sus operaciones se copian a las esclavas. Elige la cuenta desde la que operas tú. Puedes tener varias masters (cada master extra es un add-on), cada una con sus propias esclavas.',
     mpWarn: 'Si tus esclavas son de prop firm, copiar entre cuentas puede violar sus reglas. Eres responsable de cumplirlas.',
     clTitle: 'Vas a empezar a copiar en real',
@@ -192,6 +197,11 @@ const T: any = {
     riskBlock: 'Risk controls (optional)', dailyLoss: 'Max daily loss %', maxDD: 'Max drawdown %',
     maxSpread: 'Max spread (pts)', sessFrom: 'Session from (UTC)', sessTo: 'to', whitelist: 'Only these symbols',
     whitelistPh: 'EURUSD, XAUUSD… (empty = all)', riskNote: 'Session and symbol list are enforced by the server; the rest by the slave EA.',
+    onNote: 'Everything is on by default to protect the account. Set 0 to turn a control off.',
+    dev: 'Max entry deviation (pts)', sigAge: 'Max signal age (s)', maxPos: 'Max positions', symCap: 'Per-symbol lot cap', requireSL: 'Require Stop Loss',
+    symMap: 'Symbol table (one per line: MASTER=SLAVE)', symMapPh: 'US100=NAS100\nGOLD=XAUUSD',
+    dupTitle: 'This account is already copying', dupBodyA: 'is already active as', dupBodyB: 'of link', dupRoleM: 'MASTER', dupRoleS: 'SLAVE',
+    dupWarn: 'Using it in two links can duplicate trades and break your risk management.', dupCancel: 'Pick another', dupGo: 'Continue anyway',
     mpTitle: 'You are choosing the Master account', mpBody: 'The Master account SENDS: its trades are copied to the slaves. Pick the account you trade from. You can run several masters (each extra master is an add-on), each with its own slaves.',
     mpWarn: 'If your slaves are prop-firm accounts, copying between accounts may break their rules. You are responsible for compliance.',
     clTitle: 'You are about to copy for real',
@@ -207,7 +217,8 @@ const T: any = {
 
 function blankLink() {
   return { master_account_id: '', slave_account_id: '', mode: 'balance', multiplier: 1, risk_pct: 1, pip_risk: 20, max_lot: 50, reverse: false,
-    daily_loss_pct: 0, max_drawdown_pct: 0, max_spread: 0, session_from: '', session_to: '', symbol_whitelist: [] };
+    daily_loss_pct: 5, max_drawdown_pct: 10, max_spread: 30, session_from: '', session_to: '', symbol_whitelist: [],
+    max_deviation_pts: 20, max_signal_age_s: 30, require_sl: true, max_positions: 20, per_symbol_lot_cap: 0, symbol_map: {} };
 }
 
 export default function CopyClient() {
@@ -230,6 +241,7 @@ export default function CopyClient() {
   const [masterPopup, setMasterPopup] = useState<any>(null);
   const [pinModal, setPinModal] = useState<any>(null);
   const [guideOpen, setGuideOpen] = useState(false);
+  const [dupWarn, setDupWarn] = useState<any>(null);
 
   const load = useCallback(() => fetch('/api/copy/links').then((r) => r.json()).then(setD).catch(() => setD({ inPlan: false })), []);
   const loadControl = useCallback(() => fetch('/api/copy/control').then((r) => r.ok ? r.json() : null).then((j) => j && setCtrl(j)).catch(() => {}), []);
@@ -331,6 +343,7 @@ export default function CopyClient() {
 
   const paused = !!ctrl?.paused;
   const linksActive = links.filter((l) => l.enabled).length;
+  const usedRole = (id: string) => links.some((l: any) => l.master_account_id === id) ? 'master' : (links.some((l: any) => l.slave_account_id === id) ? 'slave' : '');
   const copyAccs = (ctrl?.accounts || []).filter((a: any) => roleOf(a.id));
 
   const modeField = (o: any, set: (k: string, v: any) => void) => {
@@ -350,12 +363,21 @@ export default function CopyClient() {
         <input value={(o.symbol_whitelist || []).join(', ')} placeholder={t.whitelistPh}
           onChange={(e) => set('symbol_whitelist', e.target.value.split(',').map((s: string) => s.trim().toUpperCase()).filter(Boolean))} style={{ marginTop: 3 }} />
       </label>
+      <label className="muted" style={{ fontSize: 12 }}>{t.dev}<input type="number" value={o.max_deviation_pts} onChange={(e) => set('max_deviation_pts', Number(e.target.value))} style={{ marginTop: 3 }} /></label>
+      <label className="muted" style={{ fontSize: 12 }}>{t.sigAge}<input type="number" value={o.max_signal_age_s} onChange={(e) => set('max_signal_age_s', Number(e.target.value))} style={{ marginTop: 3 }} /></label>
+      <label className="muted" style={{ fontSize: 12 }}>{t.maxPos}<input type="number" value={o.max_positions} onChange={(e) => set('max_positions', Number(e.target.value))} style={{ marginTop: 3 }} /></label>
+      <label className="muted" style={{ fontSize: 12 }}>{t.symCap}<input type="number" step="0.01" value={o.per_symbol_lot_cap} onChange={(e) => set('per_symbol_lot_cap', Number(e.target.value))} style={{ marginTop: 3 }} /></label>
+      <label className="muted row" style={{ fontSize: 12, gap: 8, alignItems: 'center', gridColumn: '1 / -1' }}><input type="checkbox" checked={o.require_sl !== false} onChange={(e) => set('require_sl', e.target.checked)} style={{ width: 'auto', margin: 0 }} /> {t.requireSL}</label>
+      <label className="muted" style={{ fontSize: 12, gridColumn: '1 / -1' }}>{t.symMap}
+        <textarea rows={2} value={mapToText(o.symbol_map)} placeholder={t.symMapPh} onChange={(e) => set('symbol_map', textToMap(e.target.value))} style={{ marginTop: 3, width: '100%', fontFamily: 'monospace', fontSize: 12.5 }} />
+      </label>
+      <p className="muted" style={{ fontSize: 11, gridColumn: '1 / -1', margin: 0 }}>{t.onNote}</p>
       <p className="muted" style={{ fontSize: 11, gridColumn: '1 / -1', margin: 0 }}>{t.riskNote}</p>
     </div>
   );
 
   return (
-    <div className="wrap" style={{ maxWidth: 880, margin: '0 auto', padding: '22px 22px 50px' }}>{head}
+    <div className="wrap" style={{ maxWidth: 1180, margin: '0 auto', padding: '22px 26px 60px', fontSize: 15 }}>{head}
       <CopyGuide open={guideOpen} onClose={() => setGuideOpen(false)} lang={lang} />
       <div className="card" style={{ marginBottom: 12, border: '1px solid var(--amber)', background: 'rgba(255,192,77,.06)' }}>
         <span style={{ fontSize: 12.5, color: 'var(--amber)' }}><OnyxIcon emoji="⚠" size={16} /> {t.warn}</span>
@@ -581,13 +603,13 @@ export default function CopyClient() {
           <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10, marginTop: 10, alignItems: 'end' }}>
             <label className="muted" style={{ fontSize: 12 }}><span style={{ color: C_MASTER }}>● </span>{t.master}
               <select value={nl.master_account_id}
-                onChange={(e) => { const v = e.target.value; if (v && v !== nl.master_account_id) setMasterPopup({ value: v, onConfirm: () => { setNl({ ...nl, master_account_id: v }); setMasterPopup(null); } }); else setNl({ ...nl, master_account_id: v }); }}
+                onChange={(e) => { const v = e.target.value; const r = usedRole(v); if (v && r === 'slave') { setDupWarn({ role: r, apply: () => { setNl({ ...nl, master_account_id: v }); setDupWarn(null); } }); return; } if (v && v !== nl.master_account_id) setMasterPopup({ value: v, onConfirm: () => { setNl({ ...nl, master_account_id: v }); setMasterPopup(null); } }); else setNl({ ...nl, master_account_id: v }); }}
                 style={{ marginTop: 3, borderColor: nl.master_account_id ? C_MASTER : undefined }}>
                 <option value="">{t.pick}</option>{accs.map((a) => <option key={a.id} value={a.id}>{a.nickname || a.login}</option>)}
               </select>
             </label>
             <label className="muted" style={{ fontSize: 12 }}><span style={{ color: C_SLAVE }}>● </span>{t.slave}
-              <select value={nl.slave_account_id} onChange={(e) => setNl({ ...nl, slave_account_id: e.target.value })} style={{ marginTop: 3, borderColor: nl.slave_account_id ? C_SLAVE : undefined }}>
+              <select value={nl.slave_account_id} onChange={(e) => { const v = e.target.value; const r = usedRole(v); if (v && r) setDupWarn({ role: r, apply: () => { setNl({ ...nl, slave_account_id: v }); setDupWarn(null); } }); else setNl({ ...nl, slave_account_id: v }); }} style={{ marginTop: 3, borderColor: nl.slave_account_id ? C_SLAVE : undefined }}>
                 <option value="">{t.pick}</option>{accs.filter((a) => a.id !== nl.master_account_id && !slaveIds.has(a.id) && !masterIds.has(a.id)).map((a) => <option key={a.id} value={a.id}>{a.nickname || a.login}</option>)}
               </select>
             </label>
@@ -623,6 +645,24 @@ export default function CopyClient() {
       </div>
 
       {/* MODALES */}
+      {dupWarn && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1600, padding: 16 }} onClick={() => setDupWarn(null)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420, width: '100%', background: 'var(--card,#12151d)', border: '2px solid var(--amber,#fbbf24)', borderRadius: 16, padding: 22, boxShadow: '0 0 0 4px rgba(251,191,36,.18), 0 20px 60px rgba(0,0,0,.5)' }}>
+            <div className="row" style={{ gap: 10, alignItems: 'center', marginBottom: 10 }}>
+              <span style={{ width: 38, height: 38, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(251,191,36,.15)', fontSize: 20 }}>⚠</span>
+              <b style={{ fontSize: 16 }}>{t.dupTitle}</b>
+            </div>
+            <p style={{ fontSize: 14, color: 'var(--muted,#9aa6b8)', margin: '0 0 10px', lineHeight: 1.6 }}>
+              {t.dupBodyA} <span style={{ fontSize: 11, fontWeight: 800, padding: '2px 8px', borderRadius: 20, background: dupWarn.role === 'master' ? 'rgba(138,125,255,.18)' : 'rgba(52,226,160,.18)', color: dupWarn.role === 'master' ? C_MASTER : C_SLAVE }}>{dupWarn.role === 'master' ? t.dupRoleM : t.dupRoleS}</span> {t.dupBodyB}.
+            </p>
+            <div style={{ background: 'rgba(251,191,36,.10)', borderRadius: 8, padding: '9px 12px', fontSize: 12.5, color: 'var(--amber,#fbbf24)', marginBottom: 16 }}>⚠ {t.dupWarn}</div>
+            <div className="row" style={{ gap: 10 }}>
+              <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setDupWarn(null)}>{t.dupCancel}</button>
+              <button className="btn" style={{ flex: 1, background: 'rgba(251,191,36,.15)', color: 'var(--amber,#fbbf24)', borderColor: 'var(--amber,#fbbf24)' }} onClick={() => dupWarn.apply && dupWarn.apply()}>{t.dupGo}</button>
+            </div>
+          </div>
+        </div>
+      )}
       {confirmLink && (
         <Modal onClose={() => setConfirmLink(null)}>
           <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}><OnyxIcon emoji="🔗" size={18} /> {t.clTitle}</div>
@@ -682,7 +722,7 @@ export default function CopyClient() {
           </div>
           <div className="row" style={{ gap: 8, justifyContent: 'flex-end', marginTop: 14 }}>
             <button className="btn btn-ghost" onClick={() => setEdit(null)}>{t.pinCancel}</button>
-            <button className="btn btn-primary" disabled={busy} onClick={() => save(linkPayload(edit))}>{t.save}</button>
+            <button className="btn btn-primary" disabled={busy} onClick={() => setConfirmLink(linkPayload(edit))}>{t.save}</button>
           </div>
         </Modal>
       )}
@@ -707,8 +747,13 @@ function linkPayload(l: any) {
     enabled: l.enabled, daily_loss_pct: l.daily_loss_pct || 0, max_drawdown_pct: l.max_drawdown_pct || 0,
     max_spread: l.max_spread || 0, session_from: l.session_from || '', session_to: l.session_to || '',
     symbol_whitelist: l.symbol_whitelist || [],
+    max_deviation_pts: l.max_deviation_pts ?? 20, max_signal_age_s: l.max_signal_age_s ?? 30,
+    require_sl: l.require_sl !== false, max_positions: l.max_positions ?? 20, per_symbol_lot_cap: l.per_symbol_lot_cap ?? 0,
+    symbol_map: l.symbol_map || {},
   };
 }
+function mapToText(m: any): string { if (!m || typeof m !== 'object') return ''; return Object.keys(m).map((k) => k + '=' + m[k]).join('\n'); }
+function textToMap(t: string): any { const o: any = {}; String(t || '').split('\n').forEach((ln) => { const i = ln.indexOf('='); if (i > 0) { const k = ln.slice(0, i).trim().toUpperCase(); const v = ln.slice(i + 1).trim(); if (k && v) o[k] = v; } }); return o; }
 
 function Modal({ children, onClose, wide }: any) {
   return (

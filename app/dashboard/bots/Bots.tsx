@@ -185,7 +185,7 @@ export default function Bots() {
   const corrColor = (v: number) => v >= 0.7 ? 'rgba(255,107,125,.28)' : v >= 0.3 ? 'rgba(255,192,77,.25)' : 'rgba(52,226,160,.22)';
 
   return (
-    <div className="wrap" style={{ padding: '24px 0 60px', maxWidth: 920 }}>
+    <div className="wrap" style={{ padding: '24px 0 60px', maxWidth: 1180, fontSize: 15 }}>
       <div style={{ padding: '0 4px', marginBottom: 16 }}>
         <h1 style={{ fontSize: 24 }}><OnyxIcon emoji="🤖" size={16} /> {t.title}</h1>
         <p className="muted" style={{ marginTop: 6 }}>{t.sub}</p>

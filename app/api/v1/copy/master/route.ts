@@ -48,7 +48,7 @@ export async function POST(req: Request) {
   const symbol = String(b.symbol || '');
 
   const { data: links } = await supabaseAdmin.from('copy_links')
-    .select('id,slave_account_id,mode,multiplier,risk_pct,pip_risk,max_lot,reverse,symbol_map,daily_loss_pct,max_drawdown_pct,max_spread,session_from,session_to,symbol_whitelist')
+    .select('id,slave_account_id,mode,multiplier,risk_pct,pip_risk,max_lot,reverse,symbol_map,daily_loss_pct,max_drawdown_pct,max_spread,session_from,session_to,symbol_whitelist,max_deviation_pts,max_signal_age_s,require_sl,max_positions,per_symbol_lot_cap')
     .eq('master_account_id', a.account.id).eq('enabled', true);
   if (!links?.length) return NextResponse.json({ ok: true, slaves: 0 });
 
@@ -92,6 +92,11 @@ export async function POST(req: Request) {
           max_spread: Number(l.max_spread) || 0,
           daily_loss_pct: Number(l.daily_loss_pct) || 0,
           max_drawdown_pct: Number(l.max_drawdown_pct) || 0,
+          max_deviation_pts: Number(l.max_deviation_pts) || 0,
+          max_signal_age_s: Number(l.max_signal_age_s) || 0,
+          require_sl: l.require_sl ? 1 : 0,
+          max_positions: Number(l.max_positions) || 0,
+          per_symbol_lot_cap: Number(l.per_symbol_lot_cap) || 0,
         },
       },
       status: 'pending',

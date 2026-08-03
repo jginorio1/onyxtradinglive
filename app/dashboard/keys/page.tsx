@@ -307,7 +307,7 @@ export default function KeysPage() {
   return (
     <>
 
-      <div className="wrap" style={{ padding: '28px 22px', maxWidth: 860 }}>
+      <div className="wrap" style={{ padding: '28px 26px', maxWidth: 1180, fontSize: 15 }}>
         <div className="row between" style={{ gap: 10, flexWrap: 'wrap', alignItems: 'flex-start' }}>
           <h1>{t.h1}</h1>
           {typeof window !== 'undefined' && <QrPop data={window.location.origin + '/dashboard/keys'} label={lang === 'es' ? 'Abrir en el móvil' : 'Open on phone'} />}

@@ -15,7 +15,7 @@
 
 extern string ApiBase    = "https://www.onyxtradinglive.com";
 extern string CopyApiKey = "PON_TU_CLAVE_COPY";   // onyx_copy_...  (no hace falta en modo Local)
-extern int    PollMs     = 1000;                  // En modo Local ponlo bajo (ej. 100) para copiar mas rapido
+extern int    PollMs     = 500;                   // Nube: cada cuanto pregunta (ms). 300-500 = mas rapido. Local usa 100 solo.
 extern int    Slippage   = 30;
 extern string PanelLang  = "EN";                  // Panel: ES=Español, otro=English (web/IA/Telegram en 6 idiomas)
 extern string SymbolMap  = "";                    // Tabla manual master=esclava. Ej: US100=NAS100;GOLD=XAUUSD.pro;EURUSD=EURUSDm
@@ -286,6 +286,8 @@ int JSplit(string arr, string &out[])
 long g_mMaster[]; int g_mSlave[]; int g_mN = 0;
 void MapAdd(long mt, int st){ ArrayResize(g_mMaster, g_mN + 1); ArrayResize(g_mSlave, g_mN + 1); g_mMaster[g_mN] = mt; g_mSlave[g_mN] = st; g_mN++; }
 int  MapGet(long mt){ for(int i = 0; i < g_mN; i++) if(g_mMaster[i] == mt) return(g_mSlave[i]); return(0); }
+int    CountMyPositions(){ int c=0; for(int i=OrdersTotal()-1;i>=0;i--){ if(!OrderSelect(i,SELECT_BY_POS,MODE_TRADES)) continue; if(OrderMagicNumber()==ONYX_MAGIC && OrderType()<=OP_SELL) c++; } return(c); }
+double SumMyLots(string sym){ double v=0; for(int i=OrdersTotal()-1;i>=0;i--){ if(!OrderSelect(i,SELECT_BY_POS,MODE_TRADES)) continue; if(OrderMagicNumber()==ONYX_MAGIC && OrderSymbol()==sym) v+=OrderLots(); } return(v); }
 
 #define ONYX_MAGIC 990201
 
@@ -394,6 +396,13 @@ void OnTimer()
       double maxSpr = JNum(lim, "max_spread");
       double dLoss  = JNum(lim, "daily_loss_pct");
       double mDD    = JNum(lim, "max_drawdown_pct");
+      double mPrice = JNum(o,   "price");
+      double ageMs  = JNum(o,   "age_ms");
+      double maxDev = JNum(lim, "max_deviation_pts");
+      double maxAge = JNum(lim, "max_signal_age_s");
+      double reqSL  = JNum(lim, "require_sl");
+      double maxPos = JNum(lim, "max_positions");
+      double symCap = JNum(lim, "per_symbol_lot_cap");
       long   mt     = StringToInteger(mtk);
       int    t0     = (int)GetTickCount();
 
@@ -402,9 +411,17 @@ void OnTimer()
          string local = ResolveLocalSymbol(bsym);
          if(local == ""){ Ack(id, false, "symbol_not_found", 0, 0); g_skipped++; continue; }
          if(SpreadTooHigh(local, maxSpr)){ Ack(id, false, "spread_high", 0, 0); g_skipped++; continue; }
-         double lot = ApplyMaxLot(CalcLot(local, mode, vol, mBal, mult, riskPct, pip), maxLot);
+         if(maxAge > 0 && ageMs > maxAge*1000.0){ Ack(id, false, "signal_old", 0, 0); g_skipped++; continue; }
+         if(reqSL >= 1 && sl <= 0){ Ack(id, false, "no_sl", 0, 0); g_skipped++; continue; }
+         if(maxPos > 0 && CountMyPositions() >= (int)maxPos){ Ack(id, false, "max_positions", 0, 0); g_skipped++; continue; }
          int type = (side == "buy") ? OP_BUY : OP_SELL;
          double px = (type == OP_BUY) ? MarketInfo(local, MODE_ASK) : MarketInfo(local, MODE_BID);
+         if(maxDev > 0 && mPrice > 0){
+            double pt2 = MarketInfo(local, MODE_POINT);
+            if(pt2 > 0 && MathAbs(px - mPrice)/pt2 > maxDev){ Ack(id, false, "deviation", 0, 0); g_skipped++; continue; }
+         }
+         double lot = ApplyMaxLot(CalcLot(local, mode, vol, mBal, mult, riskPct, pip), maxLot);
+         if(symCap > 0 && SumMyLots(local) + lot > symCap){ Ack(id, false, "symbol_cap", 0, 0); g_skipped++; continue; }
          int tk = OrderSend(local, type, lot, px, Slippage, sl, tp, "OC" + mtk, ONYX_MAGIC, 0, clrNONE);
          int lat = GetTickCount() - t0;
          if(tk > 0){ MapAdd(mt, tk); g_copied++; g_lat = lat; g_masterInfo = "#" + mtk; Ack(id, true, "", tk, lat); }

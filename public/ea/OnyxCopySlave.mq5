@@ -18,7 +18,7 @@ CTrade trade;
 
 input string ApiBase    = "https://www.onyxtradinglive.com";
 input string CopyApiKey = "PON_TU_CLAVE_COPY";   // onyx_copy_...  (no hace falta en modo Local)
-input int    PollMs     = 1000;                  // En modo Local ponlo bajo (ej. 100) para copiar mas rapido
+input int    PollMs     = 500;                   // Nube: cada cuanto pregunta (ms). 300-500 = mas rapido. Local usa 100 solo.
 input string PanelLang  = "EN";                  // Panel: ES=Español, otro=English (web/IA/Telegram en 6 idiomas)
 input string SymbolMap  = "";                    // Tabla manual master=esclava. Ej: US100=NAS100;GOLD=XAUUSD.pro;EURUSD=EURUSDm
 // ---- Modo LOCAL (mismo VPS): lee el archivo comun que escribe el master ----
@@ -321,6 +321,9 @@ int JSplit(string arr, string &out[])
 long  g_mMaster[]; ulong g_mSlave[]; int g_mN = 0;
 void  MapAdd(long mt, ulong st){ ArrayResize(g_mMaster, g_mN + 1); ArrayResize(g_mSlave, g_mN + 1); g_mMaster[g_mN] = mt; g_mSlave[g_mN] = st; g_mN++; }
 ulong MapGet(long mt){ for(int i = 0; i < g_mN; i++) if(g_mMaster[i] == mt) return g_mSlave[i]; return 0; }
+//--- Cuenta posiciones propias (por magic) y suma su lote por simbolo (para topes).
+int    CountMyPositions(){ int c=0; for(int i=PositionsTotal()-1;i>=0;i--){ ulong tk=PositionGetTicket(i); if(PositionSelectByTicket(tk) && PositionGetInteger(POSITION_MAGIC)==ONYX_MAGIC) c++; } return c; }
+double SumMyLots(string sym){ double v=0; for(int i=PositionsTotal()-1;i>=0;i--){ ulong tk=PositionGetTicket(i); if(PositionSelectByTicket(tk) && PositionGetInteger(POSITION_MAGIC)==ONYX_MAGIC && PositionGetString(POSITION_SYMBOL)==sym) v+=PositionGetDouble(POSITION_VOLUME); } return v; }
 
 #define ONYX_MAGIC 990201
 
@@ -433,6 +436,13 @@ void OnTimer()
       double maxSpr = JNum(lim, "max_spread");
       double dLoss  = JNum(lim, "daily_loss_pct");
       double mDD    = JNum(lim, "max_drawdown_pct");
+      double mPrice = JNum(o,   "price");             // precio de entrada del master
+      double ageMs  = JNum(o,   "age_ms");            // antiguedad de la senal (ms, del servidor)
+      double maxDev = JNum(lim, "max_deviation_pts"); // desvio max de entrada (pts)
+      double maxAge = JNum(lim, "max_signal_age_s");  // antiguedad max de senal (s)
+      double reqSL  = JNum(lim, "require_sl");        // 1 = exigir SL
+      double maxPos = JNum(lim, "max_positions");     // max posiciones por copia
+      double symCap = JNum(lim, "per_symbol_lot_cap");// tope de lote por simbolo
       long   mt     = (long)StringToInteger(mtk);
       uint   t0     = GetTickCount();
 
@@ -441,9 +451,18 @@ void OnTimer()
          string local = ResolveLocalSymbol(bsym);
          if(local == ""){ Ack(id, false, "symbol_not_found", 0, 0); g_skipped++; continue; }
          if(SpreadTooHigh(local, maxSpr)){ Ack(id, false, "spread_high", 0, 0); g_skipped++; continue; }
+         if(maxAge > 0 && ageMs > maxAge*1000.0){ Ack(id, false, "signal_old", 0, 0); g_skipped++; continue; }
+         if(reqSL >= 1 && sl <= 0){ Ack(id, false, "no_sl", 0, 0); g_skipped++; continue; }
+         if(maxPos > 0 && CountMyPositions() >= (int)maxPos){ Ack(id, false, "max_positions", 0, 0); g_skipped++; continue; }
+         if(maxDev > 0 && mPrice > 0){
+            double pt2 = SymbolInfoDouble(local, SYMBOL_POINT);
+            double cur = (side=="buy") ? SymbolInfoDouble(local, SYMBOL_ASK) : SymbolInfoDouble(local, SYMBOL_BID);
+            if(pt2 > 0 && MathAbs(cur - mPrice)/pt2 > maxDev){ Ack(id, false, "deviation", 0, 0); g_skipped++; continue; }
+         }
          double lot = ApplyMaxLot(CalcLot(local, mode, vol, mBal, mult, riskPct, pip), maxLot);
+         if(symCap > 0 && SumMyLots(local) + lot > symCap){ Ack(id, false, "symbol_cap", 0, 0); g_skipped++; continue; }
          trade.SetExpertMagicNumber(ONYX_MAGIC);
-         trade.SetDeviationInPoints(20);
+         trade.SetDeviationInPoints((int)(maxDev>0 ? maxDev : 20));
          // SL/TP llegan como precios de la master (validos para el mismo instrumento).
          bool ok = (side == "buy") ? trade.Buy(lot, local, 0.0, sl, tp, "OC" + mtk)
                                    : trade.Sell(lot, local, 0.0, sl, tp, "OC" + mtk);

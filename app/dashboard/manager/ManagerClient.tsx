@@ -279,7 +279,7 @@ export default function ManagerClient() {
 
   return (
     <>
-      <div className="wrap" style={{ padding: '22px 22px 50px', maxWidth: 780 }}>
+      <div className="wrap" style={{ padding: '22px 26px 60px', maxWidth: 1180, fontSize: 15 }}>
 
         {/* Cabecera Onyx Guardian */}
         <div className="card" style={card}>
