@@ -163,10 +163,16 @@ export default function SetupGuide() {
   // ---------- Con cuentas: lanzador (+ popup) ----------
   return (
     <>
-      {!allDone && (
+      {hasAcc && (
         <div className="card" style={{ padding: '12px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 13.5, fontWeight: 700 }}>{L('Configuración', 'Setup')}{remaining > 0 && <span className="muted" style={{ fontWeight: 500, marginLeft: 6 }}>· {L(`faltan ${remaining} paso${remaining > 1 ? 's' : ''}`, `${remaining} step${remaining > 1 ? 's' : ''} left`)}</span>}</span>
+            <span style={{ fontSize: 13.5, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="accounts" size={16} /></span>
+              {L('Tus cuentas', 'Your accounts')}
+              {remaining > 0
+                ? <span className="muted" style={{ fontWeight: 500 }}>· {L(`faltan ${remaining} paso${remaining > 1 ? 's' : ''}`, `${remaining} step${remaining > 1 ? 's' : ''} left`)}</span>
+                : <span style={{ fontWeight: 500, color: 'var(--green)' }}>· {L('todo listo ✓', 'all set ✓')}</span>}
+            </span>
             {accounts.map((a) => (
               <button key={a.id} className="pill" onClick={() => { setSel(a.id); setOpen(true); }}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--card2)', cursor: 'pointer', border: '1px solid var(--line)' }}
