@@ -516,7 +516,8 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
               )}
             </div>
           </div>
-          <Link className="btn btn-ghost" href="/dashboard/keys">{L.connectBtn}</Link>
+          {/* El botón viejo de "Conectar cuenta" se quitó: ahora se usa el sistema
+              nuevo de abajo (SetupGuide) — barra "Tus cuentas" + "Añadir cuenta". */}
         </div>
         <p className="muted" style={{ fontSize: 13, margin: '-6px 0 14px', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>{email} · {accounts.length} {L.accountsWord} · {L.balance} ${totalBalance.toLocaleString()} · <span className="livedot" style={{ width: 8, height: 8 }} /><span style={{ color: GREEN }}>{updatedTxt}</span></p>
 

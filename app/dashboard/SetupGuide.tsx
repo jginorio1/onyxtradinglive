@@ -209,7 +209,7 @@ export default function SetupGuide() {
                   const on = g.k === 'journal' ? true : !!acc.goals?.[g.k];
                   return (
                     <button key={g.k} onClick={() => toggleGoal(acc, g.k)} disabled={g.k === 'journal' || busy === 'goals'}
-                      className="card" style={{ padding: '8px 10px', textAlign: 'left', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8, cursor: g.k === 'journal' ? 'default' : 'pointer', border: on ? '2px solid var(--brand)' : '1px solid var(--line)', opacity: g.k === 'journal' ? .75 : 1 }}>
+                      className="card" style={{ padding: '8px 10px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: 'var(--tx)', display: 'flex', alignItems: 'center', gap: 8, cursor: g.k === 'journal' ? 'default' : 'pointer', border: on ? '2px solid var(--brand)' : '1px solid var(--line)', background: on ? 'rgba(124,140,255,.10)' : 'var(--card)' }}>
                       <span style={{ width: 16, height: 16, borderRadius: 4, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, background: on ? 'var(--brand)' : 'transparent', color: '#fff', border: on ? 'none' : '1px solid var(--line)' }}>{on ? '✓' : ''}</span>
                       {g.label}
                     </button>
