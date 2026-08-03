@@ -6,6 +6,7 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useLang } from '@/lib/lang';
 import { errMsg } from '@/lib/i18nErrors';
+import { useRouter } from 'next/navigation';
 
 // Colores de rol: master = morado, esclava = verde-azulado. Bien marcados.
 const C_MASTER = 'var(--brand)';
@@ -188,6 +189,7 @@ function blankLink() {
 
 export default function CopyClient() {
   const { lang } = useLang();
+  const router = useRouter();
   const t = dictFor(T, lang);
   const [d, setD] = useState<any>(null);
   const [ctrl, setCtrl] = useState<any>(null);
@@ -236,10 +238,10 @@ export default function CopyClient() {
       const r = await fetch('/api/copy/links', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
       const j = await r.json();
       if (!r.ok) toast(errMsg(j, lang));
-      else { load(); if (!payload.id) { setNl(blankLink()); setShowRisk(false); } setEdit(null); }
+      else { load(); if (!payload.id) { setNl(blankLink()); setShowRisk(false); } setEdit(null); router.refresh(); }
     } finally { setBusy(false); }
   }
-  async function del(id: string) { await fetch('/api/copy/links', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id }) }); load(); }
+  async function del(id: string) { await fetch('/api/copy/links', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id }) }); load(); router.refresh(); }
   async function buyExtra(delta: number) {
     const next = Math.max(0, (d.extraSlaves || 0) + delta);
     const r = await fetch('/api/copy/addon', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ qty: next }) });
@@ -255,7 +257,7 @@ export default function CopyClient() {
     const r = await fetch('/api/copy/control', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action, ...opts }) });
     const j = await r.json();
     if (!r.ok) { if (j.code === 'bad_pin') return false; toast(errMsg(j, lang)); return false; }
-    loadControl(); return true;
+    loadControl(); router.refresh(); return true; // refresca el punto verde de Copy en la barra
   }
   function doPause(action: string, opts: any = {}) { control(action, opts); }
   function doResume(action: string, opts: any = {}) {

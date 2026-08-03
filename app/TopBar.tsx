@@ -31,6 +31,7 @@ export default async function TopBar() {
   let addonAlgo = false;
   let copyActive = false;   // hay copia corriendo (enlace activo y sin pausa global)
   let guardianOn = false;   // el Onyx Guardian está ACTIVADO (no solo el EA sincronizando)
+  let botsActive = false;   // hay al menos un robot con posiciones abiertas (corriendo)
 
   try {
     const sb = createSupabaseServer();
@@ -70,6 +71,18 @@ export default async function TopBar() {
           .from('manager_configs').select('enabled').eq('user_id', user.id).eq('enabled', true).limit(1);
         guardianOn = !!(mg && mg.length);
       }
+
+      // ¿Hay algún robot CORRIENDO? Verde si tiene posiciones abiertas con magic (un EA operando).
+      if (caps.algo || addonAlgo) {
+        const { data: myAccs } = await supabaseAdmin.from('trading_accounts').select('id').eq('user_id', user.id);
+        const ids = (myAccs || []).map((a: any) => a.id);
+        if (ids.length) {
+          const { count } = await supabaseAdmin
+            .from('open_positions').select('*', { count: 'exact', head: true })
+            .in('account_id', ids).not('magic', 'is', null).neq('magic', 0);
+          botsActive = (count || 0) > 0;
+        }
+      }
     }
   } catch { /* si falla, enseñamos la barra de invitado y ya */ }
 
@@ -85,7 +98,7 @@ export default async function TopBar() {
         { href: '/dashboard/keys', label: t.accounts, icon: '🔌' },
         ...(caps.manager ? [{ href: '/dashboard/manager', label: t.manager, icon: '🛡️', dot: (guardianOn ? 'on' : 'off') as 'on' | 'off', dim: !guardianOn, dotTitle: guardianOn ? (lang === 'es' ? 'Guardian activado' : 'Guardian on') : (lang === 'es' ? 'Guardian desactivado' : 'Guardian off') }] : []),
         ...(caps.copy ? [{ href: '/dashboard/copy', label: t.copy, icon: '🔁', dot: (copyActive ? 'on' : 'off') as 'on' | 'off', dim: !copyActive, dotTitle: (copyActive ? (lang === 'es' ? 'Copia activa' : 'Copy on') : (lang === 'es' ? 'Copia inactiva' : 'Copy off')) }] : []),
-        ...((caps.algo || addonAlgo) ? [{ href: '/dashboard/bots', label: (t as any).bots, icon: '🤖' }] : []),
+        ...((caps.algo || addonAlgo) ? [{ href: '/dashboard/bots', label: (t as any).bots, icon: '🤖', dot: (botsActive ? 'on' : 'off') as 'on' | 'off', dim: !botsActive, dotTitle: (botsActive ? (lang === 'es' ? 'Robots operando' : 'Robots running') : (lang === 'es' ? 'Sin robots operando ahora' : 'No robots running now')) }] : []),
         ...((caps.tv || caps.copy) ? [{ href: '/dashboard/tradingview', label: 'TradingView', icon: '📈' }] : []),
         ...(caps.expenses ? [{ href: '/dashboard/expenses', label: lang === 'en' ? 'Net profit' : 'Ganancia neta', icon: '🧮' }] : []),
         ...(isAdmin ? [{ href: '/admin', label: t.admin, icon: '🛠️' }] : []),

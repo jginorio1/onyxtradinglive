@@ -4,6 +4,7 @@ import { toast } from '@/lib/toast';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import { useEffect, useMemo, useState } from 'react';
 import { useLang } from '@/lib/lang';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { errMsg } from '@/lib/i18nErrors';
 import { P2, PlanTab, LimitsTab, NewsTab, StateTab } from './Phase2';
@@ -151,6 +152,7 @@ function ProtHeader({ icon, title, desc, on, onToggle, right }: any) {
 
 export default function ManagerClient() {
   const { lang, setLang } = useLang();
+  const router = useRouter();
   const [d, setD] = useState<any>(null);
   const [sel, setSel] = useState('');
   const [cfg, setCfg] = useState<any>(null);
@@ -220,6 +222,7 @@ export default function ManagerClient() {
     if (!r.ok) { toast(errMsg(j, lang)); return; }
     setWarnings(j.warnings || []);
     setMsg(t.saved); setTimeout(() => setMsg(''), 3000); load();
+    router.refresh(); // refresca el punto verde del Guardian en la barra al instante
   }
   async function command(cmd: string) {
     if (!confirm(t.qaConfirm)) return;

@@ -4,6 +4,7 @@ import TopBar from './TopBar';
 import SiteFooter from './SiteFooter';
 import PWARegister from './PWARegister';
 import ChunkReload from './ChunkReload';
+import LiveNavRefresh from './LiveNavRefresh';
 import UpdateToast from './UpdateToast';
 import SupportWidget from './SupportWidget';
 import { Toaster } from '@/lib/toast';
@@ -130,6 +131,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <Toaster />
             <PWARegister />
             <ChunkReload />
+            <LiveNavRefresh />
             {/* <UpdateToast /> — aviso de "nueva versión" desactivado (molesto). La
                 versión nueva llega en la próxima recarga; ChunkReload evita errores. */}
           </BetaProvider>
