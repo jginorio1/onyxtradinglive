@@ -9,6 +9,7 @@ type Acc = {
   id: string; login: string; nickname: string | null; broker: string | null; platform: string;
   goals: Record<string, boolean>;
   connectorLive: boolean; guardianOn: boolean; copyKey: boolean; copyLive: boolean; tvOn: boolean;
+  tradeAllowed?: boolean | null;
 };
 
 const PLATS = ['MT5', 'MT4', 'cTrader'];
@@ -183,6 +184,21 @@ export default function SetupGuide() {
             ))}
           </div>
           <button className="btn btn-primary" style={{ padding: '7px 14px', fontSize: 13 }} onClick={() => { setSel(accounts[0]?.id || ''); setOpen(true); }}>＋ {L('Añadir cuenta', 'Add account')}</button>
+        </div>
+      )}
+
+      {/* Aviso: hay ejecución activada (Guardian/Copy/TV) pero el AutoTrading está APAGADO
+          en la plataforma, así que Onyx Connect no podrá ejecutar. Solo si el EA lo reporta false. */}
+      {hasAcc && accounts.some((a) => a.tradeAllowed === false && (a.guardianOn || a.copyKey || a.tvOn)) && (
+        <div className="card" style={{ padding: '11px 14px', marginBottom: 14, border: '1px solid var(--amber)', background: 'rgba(255,192,77,.10)', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+          <span style={{ color: 'var(--amber)', flex: 'none', display: 'inline-flex', marginTop: 1 }}><OnyxIcon emoji="⚠️" size={16} /></span>
+          <div style={{ fontSize: 13, lineHeight: 1.5 }}>
+            <b>{L('AutoTrading apagado en tu plataforma', 'AutoTrading is off in your platform')}</b>
+            <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>
+              {L('Onyx Connect está reportando, pero el AutoTrading está apagado: el Guardian, el Copy y las señales de TradingView NO ejecutarán. Enciende el botón AutoTrading (arriba en MetaTrader) para que actúe.',
+                 'Onyx Connect is reporting, but AutoTrading is off: Guardian, Copy and TradingView signals will NOT execute. Turn on the AutoTrading button (top of MetaTrader) so it can act.')}
+            </div>
+          </div>
         </div>
       )}
 

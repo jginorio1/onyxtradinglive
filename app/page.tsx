@@ -132,7 +132,7 @@ const dict = {
     howT: 'Listo en 3 minutos',
     steps: [
       { t: 'Crea tu cuenta', d: 'Regístrate gratis con tu email. Sin tarjeta.' },
-      { t: 'Conecta tu plataforma', d: 'Elige MetaTrader o cTrader, instala el Onyx Connector y pega tu API key. Solo lectura.' },
+      { t: 'Conecta tu plataforma', d: 'Elige MetaTrader o cTrader, instala Onyx Connect y pega tu API key. Solo lectura.' },
       { t: 'Analiza y mejora', d: 'Tus operaciones aparecen al instante con todas las estadísticas.' },
     ],
     whoT: '¿Para quién es Onyx?',
@@ -263,7 +263,7 @@ const dict = {
     howT: 'Ready in 3 minutes',
     steps: [
       { t: 'Create your account', d: 'Sign up free with your email. No card.' },
-      { t: 'Connect your platform', d: 'Pick MetaTrader or cTrader, install the Onyx Connector and paste your API key. Read-only.' },
+      { t: 'Connect your platform', d: 'Pick MetaTrader or cTrader, install Onyx Connect and paste your API key. Read-only.' },
       { t: 'Analyze & improve', d: 'Your trades show up instantly with all the stats.' },
     ],
     whoT: 'Who is Onyx for?',

@@ -20,7 +20,7 @@ const T: any = {
     btT: 'Backtest esperado (para comparar el vivo)', btPf: 'PF esperado', btWin: 'Win % esperado', btDd: 'DD % esperado', btHint: 'Copia los números del reporte del Strategy Tester.',
     divOk: '✓ en línea con el backtest', divWatch: '~ algo por debajo del backtest', divBad: '⚠ divergencia — revisa sobreajuste',
     portT: 'Portafolio en vivo', portSub: 'Correlación entre tus bots (baja = diversifican; alta = bajan juntos) y curva combinada.', combined: 'Curva combinada',
-    emptyT: 'Aún no vemos bots', emptyD: 'Cuando un EA opere en una cuenta conectada, aquí aparecerá por su magic number. Reinstala el Onyx Connector o el Guardian si es una versión vieja (ahora reportan el magic).',
+    emptyT: 'Aún no vemos bots', emptyD: 'Cuando un EA opere en una cuenta conectada, aquí aparecerá por su magic number. Reinstala Onyx Connect si es una versión vieja (ahora reporta el magic).',
     lockT: 'Módulo de bots', lockD: 'Evalúa tus estrategias algorítmicas: KPIs por bot, pruebas vs vivo, criterios de graduación, backtest vs vivo y correlación de portafolio.', lockCta: 'Ver planes',
     addBtn: 'Añadir por $%/mes', addOr: 'o incluido en Black Onyx', addNeedSub: 'Necesitas un plan de pago activo para añadir el módulo. Elige uno abajo.',
   },

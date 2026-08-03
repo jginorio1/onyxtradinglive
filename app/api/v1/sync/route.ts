@@ -192,6 +192,15 @@ export async function POST(req: NextRequest) {
     if (body.eaVersion) eaPatch.ea_version = String(body.eaVersion).slice(0, 20);
     if (Object.keys(eaPatch).length) await supabaseAdmin.from('trading_accounts').update(eaPatch).eq('id', accountId);
 
+    // Onyx Connect: AutoTrading permitido (para ejecutar) + spread en vivo.
+    // Tolerante: si aún no existen las columnas (onyx_connect.sql sin correr), no rompe el sync.
+    try {
+      const acp: any = {};
+      if (body.tradeAllowed !== undefined) acp.trade_allowed = !!body.tradeAllowed;
+      if (body.spread !== undefined) acp.spread = Number(body.spread) || 0;
+      if (Object.keys(acp).length) await supabaseAdmin.from('trading_accounts').update(acp).eq('id', accountId);
+    } catch { /* columnas aún no creadas */ }
+
     // --- Eventos que nos manda el EA (lo que hizo y por qué) ---
     if (Array.isArray(body.events) && body.events.length) {
       const clean = body.events.slice(0, 50).map((e: any) => ({
@@ -252,10 +261,25 @@ export async function POST(req: NextRequest) {
     let commands: any[] = [];
     let verdict: any = null;
     let challenge: any = null;
+    // Funciones activas del plan + rol de copy → para que el panel de Onyx Connect
+    // muestre Journal/Guardian/Copy/TradingView con su estado real.
+    let features: any = { journal: true, guardian: false, copy: false, tv: false, copyRole: '', plan: '' };
     try {
       const { data: prof } = await supabaseAdmin.from('profiles').select('plan').eq('id', userId).maybeSingle();
-      const { data: planRow } = await supabaseAdmin.from('plans').select('capabilities').eq('id', prof?.plan || 'free').maybeSingle();
+      const { data: planRow } = await supabaseAdmin.from('plans').select('name,capabilities').eq('id', prof?.plan || 'free').maybeSingle();
       const caps = planRow?.capabilities || {};
+      features.plan = planRow?.name || (prof?.plan || 'Free');
+      features.guardian = !!caps.manager;
+      features.copy = !!caps.copy;
+      features.tv = !!(caps.tv || caps.copy);
+      // Rol de copy de esta cuenta (maestra/esclava), si aplica.
+      try {
+        if (caps.copy) {
+          const { data: cl } = await supabaseAdmin.from('copy_links')
+            .select('role').or(`master_account_id.eq.${accountId},slave_account_id.eq.${accountId}`).limit(1);
+          if (cl && cl.length) features.copyRole = (cl[0] as any).role || '';
+        }
+      } catch { /* rol opcional */ }
 
       if (caps.manager) {
         const { data: cfgRow } = await supabaseAdmin.from('manager_configs').select('*').eq('account_id', accountId).maybeSingle();
@@ -315,7 +339,7 @@ export async function POST(req: NextRequest) {
       }
     } catch { /* si algo falla aquí, el sync de datos no debe romperse */ }
 
-    return NextResponse.json({ ok: true, received: closed.length, accountId, config: managerCfg, verdict, challenge, commands });
+    return NextResponse.json({ ok: true, received: closed.length, accountId, config: managerCfg, verdict, challenge, commands, features });
   } catch (e: any) {
     console.error('sync error', e);
     await logError('ea_sync', e);

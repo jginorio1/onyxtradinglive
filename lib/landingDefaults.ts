@@ -37,7 +37,7 @@ export const DEFAULT_HOW = {
   t_es: 'Listo en 3 minutos', t_en: 'Ready in 3 minutes',
   steps: [
     { t_es: 'Crea tu cuenta', t_en: 'Create your account', d_es: 'Regístrate gratis con tu email. Sin tarjeta.', d_en: 'Sign up free with your email. No card.' },
-    { t_es: 'Conecta tu plataforma', t_en: 'Connect your platform', d_es: 'Elige MetaTrader o cTrader, instala el Onyx Connector y pega tu API key. Solo lectura.', d_en: 'Pick MetaTrader or cTrader, install the Onyx Connector and paste your API key. Read-only.' },
+    { t_es: 'Conecta tu plataforma', t_en: 'Connect your platform', d_es: 'Elige MetaTrader o cTrader, instala Onyx Connect y pega tu API key. Solo lectura.', d_en: 'Pick MetaTrader or cTrader, install Onyx Connect and paste your API key. Read-only.' },
     { t_es: 'Analiza y mejora', t_en: 'Analyze & improve', d_es: 'Tus operaciones aparecen al instante con todas las estadísticas.', d_en: 'Your trades show up instantly with all the stats.' },
   ] as CardRow[],
 };

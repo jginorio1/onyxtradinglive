@@ -327,7 +327,7 @@ function StepVisual({ viz, origin, lang, dlButtons }: any) {
           <div style={{ flex: 1, minWidth: 130, border: '1px solid var(--line)', borderRadius: 8, padding: 8, background: 'var(--card2)' }}>
             <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>{p('Navegador', 'Navigator')}</div>
             <div style={{ fontSize: 12 }}>📁 {p('Asesores Expertos', 'Expert Advisors')}</div>
-            <div style={{ fontSize: 12, color: 'var(--brand)', paddingLeft: 14 }}>🤖 OnyxManager</div>
+            <div style={{ fontSize: 12, color: 'var(--brand)', paddingLeft: 14 }}>🤖 Onyx Connect</div>
           </div>
           {arrow}
           <div style={{ flex: 1, minWidth: 130, border: '1px dashed var(--line)', borderRadius: 8, padding: 8, textAlign: 'center', color: 'var(--mut)', fontSize: 12 }}>📈 {p('Suéltalo en un gráfico', 'Drop it on a chart')}</div>

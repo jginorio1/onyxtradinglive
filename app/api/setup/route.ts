@@ -39,6 +39,14 @@ export async function GET() {
   const copyKey: Record<string, any> = {};
   (keys || []).forEach((k: any) => { if (!k.revoked) copyKey[String(k.account_login)] = k; });
 
+  // AutoTrading permitido (lo reporta Onyx Connect). Tolerante: si la columna aún
+  // no existe (onyx_connect.sql sin correr), no rompe la respuesta.
+  const tradeAllowed: Record<string, boolean | null> = {};
+  try {
+    const { data: ta } = await supabaseAdmin.from('trading_accounts').select('id,trade_allowed').eq('user_id', user.id);
+    (ta || []).forEach((r: any) => { tradeAllowed[r.id] = r.trade_allowed; });
+  } catch { /* columna aún no creada */ }
+
   const accounts = accs.map((a) => {
     const k = copyKey[String(a.login)];
     return {
@@ -50,6 +58,7 @@ export async function GET() {
       copyKey: !!k,
       copyLive: fresh(k?.last_used_at, 120000),
       tvOn: !!a.tv_enabled,
+      tradeAllowed: (a.id in tradeAllowed) ? tradeAllowed[a.id] : null,  // true/false/null(desconocido)
     };
   });
 
