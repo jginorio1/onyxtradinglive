@@ -15,8 +15,10 @@
 #property strict
 
 input string ApiBase     = "https://www.onyxtradinglive.com";
-input string CopyApiKey  = "PON_TU_CLAVE_COPY";   // onyx_copy_...
+input string CopyApiKey  = "PON_TU_CLAVE_COPY";   // onyx_copy_...  (deja en blanco si SOLO usas modo Local)
 input string PanelLang   = "EN";                  // Panel: ES=Español, otro=English (web/IA/Telegram en 6 idiomas)
+input bool   LocalMode   = false;                 // Copia LOCAL (mismo VPS): escribe a archivo comun, sin nube (milisegundos)
+input string CopyChannel = "onyx1";               // Mismo nombre en master y esclavas del mismo VPS
 
 string L(string en, string es){ return (StringFind(PanelLang, "ES") == 0) ? es : en; }
 
@@ -47,7 +49,7 @@ void DrawPanel(){
    ObjectSetInteger(0,bg,OBJPROP_BACK,false); ObjectSetInteger(0,bg,OBJPROP_SELECTABLE,false);
    color bc = g_state==2?CP_ON : (g_state==0?CP_RED : CP_AMBER);
    ObjectSetInteger(0,bg,OBJPROP_COLOR,bc);
-   PLabel("t","Onyx Copy   MASTER",X+12,y,CP_TX,9,true); y+=18;
+   PLabel("t",LocalMode?"Onyx Copy  MASTER · LOCAL":"Onyx Copy  MASTER",X+12,y,CP_TX,9,true); y+=18;
    string stx = g_state==2?L("Sending","Enviando") : (g_state==0?L("PAUSED","PAUSADA"):L("Waiting for trades","Esperando operaciones"));
    PLabel("st",stx,X+12,y,bc,8); y+=16;
    PLabel("c",L("Sent: ","Enviadas: ")+(string)g_sent,X+12,y,CP_TX,8); y+=16;
@@ -72,13 +74,34 @@ int PostJson(string path, string json)
    return code;
 }
 
-//--- Envía un evento de trade al relay.
+//--- Modo Local: escribe el evento en la carpeta comun de MetaTrader (mismo VPS).
+//    Todos los terminales del mismo PC comparten esta carpeta (FILE_COMMON),
+//    asi que la esclava lo lee al instante sin pasar por internet.
+void WriteLocal(string ev, ulong ticket, string sym, string side, double vol, double sl, double tp, double price, double mbal)
+{
+   string fn = "onyx_local_" + CopyChannel + ".jsonl";
+   int h = FileOpen(fn, FILE_READ|FILE_WRITE|FILE_TXT|FILE_ANSI|FILE_COMMON|FILE_SHARE_READ|FILE_SHARE_WRITE);
+   if(h == INVALID_HANDLE) { Print("Onyx local: no pude abrir ", fn, " err ", GetLastError()); return; }
+   FileSeek(h, 0, SEEK_END);
+   string line = StringFormat(
+      "{\"ev\":\"%s\",\"ticket\":\"%I64u\",\"symbol\":\"%s\",\"side\":\"%s\",\"vol\":%.2f,\"sl\":%.5f,\"tp\":%.5f,\"price\":%.5f,\"mbal\":%.2f}",
+      ev, ticket, sym, side, vol, sl, tp, price, mbal);
+   FileWriteString(h, line + "\r\n");
+   FileClose(h);
+   g_state = 2; g_sent++;
+}
+
+//--- Envía un evento de trade (local, nube o ambos según la configuración).
 void ReportEvent(string ev, ulong ticket, string sym, string side, double vol, double sl, double tp, double price)
 {
-   string j = StringFormat(
-      "{\"event\":\"%s\",\"ticket\":\"%I64u\",\"symbol\":\"%s\",\"side\":\"%s\",\"volume\":%.2f,\"sl\":%.5f,\"tp\":%.5f,\"price\":%.5f}",
-      ev, ticket, sym, side, vol, sl, tp, price);
-   PostJson("/api/v1/copy/master", j);
+   double mbal = AccountInfoDouble(ACCOUNT_BALANCE);
+   if(LocalMode) WriteLocal(ev, ticket, sym, side, vol, sl, tp, price, mbal);
+   if(StringFind(CopyApiKey, "onyx_copy_") == 0) {
+      string j = StringFormat(
+         "{\"event\":\"%s\",\"ticket\":\"%I64u\",\"symbol\":\"%s\",\"side\":\"%s\",\"volume\":%.2f,\"sl\":%.5f,\"tp\":%.5f,\"price\":%.5f}",
+         ev, ticket, sym, side, vol, sl, tp, price);
+      PostJson("/api/v1/copy/master", j);
+   }
 }
 
 //--- Detecta aperturas/cierres/modificaciones.

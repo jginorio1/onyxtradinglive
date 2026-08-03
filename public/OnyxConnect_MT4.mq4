@@ -77,6 +77,7 @@ string   g_featPlan   = "";
 bool     g_featG      = false;   // Guardian
 bool     g_featC      = false;   // Copy
 bool     g_featT      = false;   // TradingView
+bool     g_featMaster = false;   // esta cuenta es MASTER de copy → sync mas rapido
 
 // Onyx Connect: limites y metas (llegan dentro de config.limits / plan).
 double   g_limDLoss   = 0;
@@ -712,10 +713,11 @@ void ParseFeatures(string resp)
   {
    string f = JsonSection(resp, "features");
    if(f == "") return;
-   g_featPlan = JsonStr(f, "plan", "");
-   g_featG    = JsonBool(f, "guardian", false);
-   g_featC    = JsonBool(f, "copy", false);
-   g_featT    = JsonBool(f, "tv", false);
+   g_featPlan   = JsonStr(f, "plan", "");
+   g_featG      = JsonBool(f, "guardian", false);
+   g_featC      = JsonBool(f, "copy", false);
+   g_featT      = JsonBool(f, "tv", false);
+   g_featMaster = JsonBool(f, "copyMaster", false);
   }
 
 //==================== CONFIGURACION QUE LLEGA =====================
@@ -1374,7 +1376,8 @@ void OnTimer()
   {
    static int tick = 0;
    tick++;
-   if(tick % 10 == 0)          // sincroniza cada 10s; el panel late cada segundo
+   int every = (g_featMaster ? 3 : 10);   // master de copy → sync mas rapido (3s)
+   if(tick % every == 0)                   // el panel late cada segundo igual
      {
       Sync();
       EnforceGuard();

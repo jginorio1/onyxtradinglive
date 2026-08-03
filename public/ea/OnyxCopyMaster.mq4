@@ -13,9 +13,11 @@
 #property strict
 
 extern string ApiBase    = "https://www.onyxtradinglive.com";
-extern string CopyApiKey = "PON_TU_CLAVE_COPY";   // onyx_copy_...
+extern string CopyApiKey = "PON_TU_CLAVE_COPY";   // onyx_copy_...  (en blanco si SOLO usas modo Local)
 extern int    PollMs     = 800;
 extern string PanelLang  = "EN";                  // Panel: ES=Español, otro=English (web/IA/Telegram en 6 idiomas)
+extern bool   LocalMode   = false;                // Copia LOCAL (mismo VPS): archivo comun, sin nube (milisegundos)
+extern string CopyChannel = "onyx1";              // Mismo nombre en master y esclavas del mismo VPS
 
 string L(string en, string es){ return (StringFind(PanelLang, "ES") == 0) ? es : en; }
 
@@ -50,7 +52,7 @@ void DrawPanel(){
    ObjectSetInteger(0,bg,OBJPROP_BACK,false); ObjectSetInteger(0,bg,OBJPROP_SELECTABLE,false);
    color bc = g_state==2?CP_ON : (g_state==0?CP_RED : CP_AMBER);
    ObjectSetInteger(0,bg,OBJPROP_COLOR,bc);
-   PLabel("t","Onyx Copy   MASTER",X+12,y,CP_TX,9,true); y+=18;
+   PLabel("t",LocalMode?"Onyx Copy  MASTER · LOCAL":"Onyx Copy  MASTER",X+12,y,CP_TX,9,true); y+=18;
    string stx = g_state==2?L("Sending","Enviando") : (g_state==0?L("PAUSED","PAUSADA"):L("Waiting for trades","Esperando operaciones"));
    PLabel("st",stx,X+12,y,bc,8); y+=16;
    PLabel("c",L("Sent: ","Enviadas: ")+(string)g_sent,X+12,y,CP_TX,8); y+=16;
@@ -84,12 +86,30 @@ int PostJson(string path, string json)
    return(code);
 }
 
+//--- Modo Local: escribe el evento en la carpeta comun de MetaTrader (mismo VPS).
+void WriteLocal(string ev, int ticket, string sym, string side, double vol, double sl, double tp, double price, double mbal)
+{
+   string fn = "onyx_local_" + CopyChannel + ".jsonl";
+   int h = FileOpen(fn, FILE_READ|FILE_WRITE|FILE_TXT|FILE_ANSI|FILE_COMMON|FILE_SHARE_READ|FILE_SHARE_WRITE);
+   if(h == INVALID_HANDLE) { Print("Onyx local: no pude abrir ", fn, " err ", GetLastError()); return; }
+   FileSeek(h, 0, SEEK_END);
+   string line = StringFormat(
+      "{\"ev\":\"%s\",\"ticket\":\"%d\",\"symbol\":\"%s\",\"side\":\"%s\",\"vol\":%.2f,\"sl\":%.5f,\"tp\":%.5f,\"price\":%.5f,\"mbal\":%.2f}",
+      ev, ticket, sym, side, vol, sl, tp, price, mbal);
+   FileWriteString(h, line + "\r\n");
+   FileClose(h);
+   g_state = 2; g_sent++;
+}
+
 void ReportEvent(string ev, int ticket, string sym, string side, double vol, double sl, double tp, double price)
 {
-   string j = StringFormat(
-      "{\"event\":\"%s\",\"ticket\":\"%d\",\"symbol\":\"%s\",\"side\":\"%s\",\"volume\":%.2f,\"sl\":%.5f,\"tp\":%.5f,\"price\":%.5f}",
-      ev, ticket, sym, side, vol, sl, tp, price);
-   PostJson("/api/v1/copy/master", j);
+   if(LocalMode) WriteLocal(ev, ticket, sym, side, vol, sl, tp, price, AccountBalance());
+   if(StringFind(CopyApiKey, "onyx_copy_") == 0) {
+      string j = StringFormat(
+         "{\"event\":\"%s\",\"ticket\":\"%d\",\"symbol\":\"%s\",\"side\":\"%s\",\"volume\":%.2f,\"sl\":%.5f,\"tp\":%.5f,\"price\":%.5f}",
+         ev, ticket, sym, side, vol, sl, tp, price);
+      PostJson("/api/v1/copy/master", j);
+   }
 }
 
 bool WasOpen(int ticket)

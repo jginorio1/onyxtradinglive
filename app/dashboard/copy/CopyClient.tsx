@@ -22,8 +22,8 @@ const T: any = {
     howTitle: 'Cómo activar el copy trading', howHide: 'Ocultar', howShow: 'Ver guía',
     how1: 'Conecta al menos 2 cuentas', how1b: 'Una será la Master (manda) y las otras Esclavas (reciben). Se conectan en Cuentas (MetaTrader o cTrader).',
     how1link: 'Ir a Cuentas →',
-    how2: 'Genera la clave Copy e instala la EA', how2b: 'Abajo, en “Claves Copy”, pulsa Instalar en cada cuenta: te abre el asistente con la EA, la URL y tu clave, y confirma en vivo cuando conecta.',
-    how3: 'Crea el enlace Master → Esclava', how3b: 'En “Nuevo enlace” eliges la master, la esclava y el modo. Desde ese momento se copia. Puedes pausar/reanudar arriba o por Telegram.',
+    how2: 'Prepara las cuentas', how2b: 'La Master ya va integrada en Onyx Connect (no instalas nada aparte). En cada Esclava pulsa «Instalar» en «Claves Copy»: te abre el asistente con la EA Esclava, la URL y tu clave, y confirma en vivo cuando conecta.',
+    how3: 'Crea el enlace Master → Esclava', how3b: 'En «Nuevo enlace» eliges la master, la esclava y el modo. Al confirmar empieza a copiar operaciones reales, así que pruébalo primero en DEMO. Puedes pausar/reanudar arriba o por Telegram.',
     needMore: 'Solo tienes 1 cuenta conectada. Conecta otra para poder crear un enlace de copia.',
     control: 'Control de copia', ctrlActive: 'Copia activa', ctrlPaused: 'Copia pausada',
     ctrlActiveSub: 'enlaces activos', ctrlPausedSub: 'nada se está replicando',
@@ -39,8 +39,12 @@ const T: any = {
     addonNeed2: 'Conecta 2 cuentas (Master y Esclava) para copiar y poder comprar esclavas extra.',
     masters: 'Masters', buyMaster: 'Comprar master extra', masterMo: '/mes cada una',
     grpMaster: 'MASTER', ungrouped: 'Sin agrupar',
-    dlTitle: 'Descargar el conector de copy', dlSub: 'MetaTrader (.mq5/.mq4) o cTrader (.cs). Master en la cuenta que manda, Esclava en las que reciben.',
+    dlTitle: 'EAs de copy', dlSub: 'El Master ya va integrado en Onyx Connect. Solo instalas la EA Esclava en las cuentas que reciben.',
     dlMasterDesc: 'La que manda las operaciones.', dlSlaveDesc: 'La que recibe y replica.',
+    masterBuiltin: 'Integrado en Onyx Connect', masterBuiltinD: 'La cuenta que corre Onyx Connect ya actúa de Master: sus operaciones se copian sin instalar nada más. Usa su clave Guardian.',
+    masterGoConnect: 'Ver Onyx Connect →',
+    masterLegacy: 'EA Master aparte (baja latencia, avanzado)', masterLegacyD: 'Solo si haces scalping y necesitas copiar al instante. No lo uses a la vez que Onyx Connect en la misma cuenta.',
+    localHint: '¿Master y esclavas en el mismo VPS? Activa «LocalMode» en los EA (mismo CopyChannel): copian por archivo local en milisegundos, sin nube. Ideal para scalping.',
     dlHint: 'El asistente “Instalar” te guía paso a paso con tu clave.',
     keys: 'Claves Copy', keysSub: 'Cada cuenta en copy usa su propia clave Copy, separada del Guardian.',
     genKey: 'Generar clave', revoke: 'Revocar', copyKey: 'Copiar', copied: '¡Copiado!',
@@ -95,6 +99,13 @@ const T: any = {
     whitelistPh: 'EURUSD, XAUUSD… (vacío = todos)', riskNote: 'La sesión y la lista de símbolos las aplica el servidor; el resto, la EA esclava.',
     mpTitle: 'Vas a elegir la cuenta Master', mpBody: 'La cuenta Master es la que MANDA: sus operaciones se copian a las esclavas. Elige la cuenta desde la que operas tú. Puedes tener varias masters (cada master extra es un add-on), cada una con sus propias esclavas.',
     mpWarn: 'Si tus esclavas son de prop firm, copiar entre cuentas puede violar sus reglas. Eres responsable de cumplirlas.',
+    clTitle: 'Vas a empezar a copiar en real',
+    clBody1: 'Desde ahora, cada operación que abras o cierres en', clBody2: 'se copiará automáticamente en',
+    clP1: 'Se copian operaciones reales: si el master pierde, la esclava también.',
+    clP2: 'Pruébalo primero en cuenta DEMO (master y esclava en demo) antes de usar dinero real.',
+    clP3: 'Puedes pausar o borrar el enlace cuando quieras desde esta pantalla o por Telegram.',
+    clWarn: 'Si alguna cuenta es de prop firm, copiar entre cuentas puede romper sus reglas. Tú eres responsable.',
+    clNo: 'Cancelar', clGo: 'Entiendo, crear enlace',
     mpOk: 'Sí, es mi Master', mpNo: 'Cancelar',
   },
   en: {
@@ -105,8 +116,8 @@ const T: any = {
     howTitle: 'How to activate copy trading', howHide: 'Hide', howShow: 'Show guide',
     how1: 'Connect at least 2 accounts', how1b: 'One is the Master (sends), the others Slaves (receive). Connect them under Accounts.',
     how1link: 'Go to Accounts →',
-    how2: 'Generate the Copy key and install the EA', how2b: 'Below, in “Copy keys”, click Install on each account: it opens the wizard with the EA, the URL and your key, and confirms live when it connects.',
-    how3: 'Create the Master → Slave link', how3b: 'In “New link” pick the master, the slave and the mode. From then on it copies. Pause/resume from the top or via Telegram.',
+    how2: 'Set up the accounts', how2b: 'The Master is built into Onyx Connect (nothing extra to install). On each Slave click “Install” in “Copy keys”: it opens the wizard with the Slave EA, the URL and your key, and confirms live when it connects.',
+    how3: 'Create the Master → Slave link', how3b: 'In “New link” pick the master, the slave and the mode. Confirming starts copying real trades, so test it on DEMO first. Pause/resume from the top or via Telegram.',
     needMore: 'You only have 1 connected account. Connect another to create a copy link.',
     control: 'Copy control', ctrlActive: 'Copy active', ctrlPaused: 'Copy paused',
     ctrlActiveSub: 'active links', ctrlPausedSub: 'nothing is replicating',
@@ -122,8 +133,12 @@ const T: any = {
     addonNeed2: 'Connect 2 accounts (Master and Slave) to copy and to buy extra slaves.',
     masters: 'Masters', buyMaster: 'Buy extra master', masterMo: '/mo each',
     grpMaster: 'MASTER', ungrouped: 'Ungrouped',
-    dlTitle: 'Download the copy connector', dlSub: 'MetaTrader (.mq5/.mq4) or cTrader (.cs). Master on the account that sends, Slave on those that receive.',
+    dlTitle: 'Copy EAs', dlSub: 'The Master is built into Onyx Connect. You only install the Slave EA on the accounts that receive.',
     dlMasterDesc: 'Sends the trades.', dlSlaveDesc: 'Receives and replicates.',
+    masterBuiltin: 'Built into Onyx Connect', masterBuiltinD: 'The account running Onyx Connect already acts as Master: its trades are copied without installing anything else. Uses its Guardian key.',
+    masterGoConnect: 'Open Onyx Connect →',
+    masterLegacy: 'Separate Master EA (low latency, advanced)', masterLegacyD: 'Only if you scalp and need instant copying. Do not run it together with Onyx Connect on the same account.',
+    localHint: 'Master and slaves on the same VPS? Enable “LocalMode” in the EAs (same CopyChannel): they copy via a local file in milliseconds, no cloud. Best for scalping.',
     dlHint: 'The “Install” wizard walks you through it with your key.',
     keys: 'Copy keys', keysSub: 'Each copy account uses its own Copy key, separate from Guardian.',
     genKey: 'Generate key', revoke: 'Revoke', copyKey: 'Copy', copied: 'Copied!',
@@ -178,6 +193,13 @@ const T: any = {
     whitelistPh: 'EURUSD, XAUUSD… (empty = all)', riskNote: 'Session and symbol list are enforced by the server; the rest by the slave EA.',
     mpTitle: 'You are choosing the Master account', mpBody: 'The Master account SENDS: its trades are copied to the slaves. Pick the account you trade from. You can run several masters (each extra master is an add-on), each with its own slaves.',
     mpWarn: 'If your slaves are prop-firm accounts, copying between accounts may break their rules. You are responsible for compliance.',
+    clTitle: 'You are about to copy for real',
+    clBody1: 'From now on, every trade you open or close on', clBody2: 'will be copied automatically to',
+    clP1: 'Real trades are copied: if the master loses, the slave loses too.',
+    clP2: 'Test it first on a DEMO account (master and slave in demo) before using real money.',
+    clP3: 'You can pause or delete the link anytime from this screen or via Telegram.',
+    clWarn: 'If any account is a prop firm, copying between accounts may break their rules. You are responsible.',
+    clNo: 'Cancel', clGo: 'I understand, create link',
     mpOk: 'Yes, it’s my Master', mpNo: 'Cancel',
   },
 };
@@ -196,6 +218,7 @@ export default function CopyClient() {
   const [ckeys, setCkeys] = useState<any[]>([]);
   const [log, setLog] = useState<any[]>([]);
   const [nl, setNl] = useState<any>(blankLink());
+  const [confirmLink, setConfirmLink] = useState<any>(null);
   const [showRisk, setShowRisk] = useState(false);
   const [showHow, setShowHow] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -437,12 +460,18 @@ export default function CopyClient() {
         <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(210px,1fr))', gap: 10 }}>
           <div style={{ border: `1px solid ${C_MASTER}44`, borderRadius: 10, padding: 12 }}>
             <span className="pill" style={{ fontSize: 9.5, color: C_MASTER, background: C_MASTER + '22' }}>{t.role_master}</span>
-            <div className="muted" style={{ fontSize: 12, margin: '7px 0 9px' }}>{t.dlMasterDesc}</div>
-            <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-              <a className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 11px' }} href="/ea/OnyxCopyMaster.mq5" download><OnyxIcon emoji="⬇" size={16} /> MT5 (.mq5)</a>
-              <a className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 11px' }} href="/ea/OnyxCopyMaster.mq4" download><OnyxIcon emoji="⬇" size={16} /> MT4 (.mq4)</a>
-              <a className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 11px' }} href="/ctrader/OnyxCopyMaster.cs" download><OnyxIcon emoji="⬇" size={16} /> cTrader (.cs)</a>
-            </div>
+            <div style={{ fontSize: 12.5, margin: '7px 0 4px', color: 'var(--tx)' }}>{t.masterBuiltin}</div>
+            <div className="muted" style={{ fontSize: 11.5, marginBottom: 9 }}>{t.masterBuiltinD}</div>
+            <a className="btn btn-primary" style={{ fontSize: 12, padding: '6px 12px', background: C_MASTER }} href="/dashboard/keys">{t.masterGoConnect}</a>
+            <details style={{ marginTop: 10 }}>
+              <summary className="muted" style={{ fontSize: 11, cursor: 'pointer' }}>{t.masterLegacy}</summary>
+              <div className="muted" style={{ fontSize: 11, margin: '6px 0 8px' }}>{t.masterLegacyD}</div>
+              <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+                <a className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 11px' }} href="/ea/OnyxCopyMaster.mq5" download><OnyxIcon emoji="⬇" size={16} /> MT5</a>
+                <a className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 11px' }} href="/ea/OnyxCopyMaster.mq4" download><OnyxIcon emoji="⬇" size={16} /> MT4</a>
+                <a className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 11px' }} href="/ctrader/OnyxCopyMaster.cs" download><OnyxIcon emoji="⬇" size={16} /> cTrader</a>
+              </div>
+            </details>
           </div>
           <div style={{ border: `1px solid ${C_SLAVE}44`, borderRadius: 10, padding: 12 }}>
             <span className="pill" style={{ fontSize: 9.5, color: C_SLAVE, background: C_SLAVE + '22' }}>{t.role_slave}</span>
@@ -455,6 +484,7 @@ export default function CopyClient() {
           </div>
         </div>
         <p className="muted" style={{ fontSize: 11, marginTop: 9, marginBottom: 0 }}><OnyxIcon emoji="💡" size={16} /> {t.dlHint}</p>
+        <p className="muted" style={{ fontSize: 11, marginTop: 6, marginBottom: 0 }}><OnyxIcon emoji="⚡" size={16} /> {t.localHint}</p>
       </div>
 
       {/* CLAVES COPY + INSTALAR */}
@@ -560,7 +590,7 @@ export default function CopyClient() {
           </div>
           <button className="btn btn-ghost" style={{ marginTop: 10, padding: '3px 10px', fontSize: 12 }} onClick={() => setShowRisk(!showRisk)}>{showRisk ? '▾ ' : '▸ '}{t.riskBlock}</button>
           {showRisk && riskFields(nl, (k, v) => setNl({ ...nl, [k]: v }))}
-          <div><button className="btn btn-primary" style={{ marginTop: 12 }} disabled={busy || !nl.master_account_id || !nl.slave_account_id} onClick={() => save(nl)}>{t.add}</button></div>
+          <div><button className="btn btn-primary" style={{ marginTop: 12 }} disabled={busy || !nl.master_account_id || !nl.slave_account_id} onClick={() => setConfirmLink(nl)}>{t.add}</button></div>
         </div>
       )}
 
@@ -581,6 +611,24 @@ export default function CopyClient() {
       </div>
 
       {/* MODALES */}
+      {confirmLink && (
+        <Modal onClose={() => setConfirmLink(null)}>
+          <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}><OnyxIcon emoji="🔗" size={18} /> {t.clTitle}</div>
+          <p style={{ fontSize: 13.5, lineHeight: 1.6, margin: '0 0 10px', color: 'var(--tx)' }}>
+            {t.clBody1} <b style={{ color: C_MASTER }}>{label(confirmLink.master_account_id)}</b> {t.clBody2} <b style={{ color: C_SLAVE }}>{label(confirmLink.slave_account_id)}</b>.
+          </p>
+          <ul style={{ fontSize: 12.5, lineHeight: 1.7, color: 'var(--mut)', margin: '0 0 10px', paddingLeft: 18 }}>
+            <li>{t.clP1}</li>
+            <li>{t.clP2}</li>
+            <li>{t.clP3}</li>
+          </ul>
+          <div style={{ background: 'rgba(255,192,77,.08)', border: '1px solid var(--amber)', borderRadius: 8, padding: 10, fontSize: 12, color: 'var(--amber)', marginBottom: 14 }}><OnyxIcon emoji="⚠" size={16} /> {t.clWarn}</div>
+          <div className="row" style={{ gap: 8, justifyContent: 'flex-end' }}>
+            <button className="btn btn-ghost" onClick={() => setConfirmLink(null)}>{t.clNo}</button>
+            <button className="btn btn-primary" disabled={busy} onClick={() => { const p = confirmLink; setConfirmLink(null); save(p); }}>{t.clGo}</button>
+          </div>
+        </Modal>
+      )}
       {masterPopup && (
         <Modal onClose={() => setMasterPopup(null)}>
           <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6, color: C_MASTER }}>● {t.mpTitle}</div>

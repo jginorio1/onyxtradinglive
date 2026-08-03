@@ -52,12 +52,12 @@ const K = {
     dlCardT: 'Descarga el conector',
     ctDoes: ['Sincroniza tus operaciones al diario', 'Break even, trailing y cierres parciales', 'Tu plan, límites y bloqueo fuera de plan'],
     mtNoteMt4: 'En MT4, al cerrar parte de una operación el resto cambia de número. Está resuelto, pero avísanos si ves algo raro.',
-    ctFileName: 'OnyxGuardian.cs · cBot de cTrader',
+    ctFileName: 'OnyxConnect.cs · cBot de cTrader',
     ctGuide: 'Ver guía completa de cTrader',
     soonT: 'MatchTrader llega pronto', soonD: 'La conexión de MatchTrader depende de la API de tu bróker. Estamos habilitándola. Mientras tanto, si tu bróker también ofrece MT5, MT4 o cTrader, usa esa.',
     stepsCt: [
       { t: '1. Descarga el cBot Onyx (.cs)', d: 'Usa el botón de arriba. Se guarda en tu carpeta de Descargas. Es un archivo de texto con el código del cBot.', viz: 'ct-download' },
-      { t: '2. Abre cTrader → Automate → New cBot', d: 'En cTrader Desktop, arriba, entra en Automate. Pulsa New cBot y ponle un nombre (ej: OnyxGuardian). Se abre el editor de código.', viz: 'ct-new' },
+      { t: '2. Abre cTrader → Automate → New cBot', d: 'En cTrader Desktop, arriba, entra en Automate. Pulsa New cBot y ponle un nombre (ej: OnyxConnect). Se abre el editor de código.', viz: 'ct-new' },
       { t: '3. Pega el código y pulsa Build', d: 'Borra el código de ejemplo, abre el .cs que descargaste, copia todo y pégalo. Pulsa Build (o F6). Abajo debe decir "Build succeeded".', viz: 'ct-build' },
       { t: '4. Añádelo a un gráfico y pega tu clave', d: 'Abre cualquier gráfico. En los parámetros del cBot pega tu API key. El Server URL ya viene puesto: no lo toques.', copy: 'url', viz: 'ct-fields' },
       { t: '5. Acepta el acceso a red y pulsa Play', d: 'La primera vez cTrader pide permiso de "Acceso completo" (para hablar con Onyx): acéptalo. Pulsa Play ▶. En unos segundos aquí abajo dirá "Conectado".', viz: 'ct-run' },
@@ -131,12 +131,12 @@ const K = {
     dlCardT: 'Download the connector',
     ctDoes: ['Syncs your trades to the journal', 'Break even, trailing and partial closes', 'Your plan, limits and out-of-plan block'],
     mtNoteMt4: 'On MT4, closing part of a trade changes the ticket of the rest. It is handled, but tell us if you see anything odd.',
-    ctFileName: 'OnyxGuardian.cs · cTrader cBot',
+    ctFileName: 'OnyxConnect.cs · cTrader cBot',
     ctGuide: 'See full cTrader guide',
     soonT: 'MatchTrader is coming soon', soonD: 'MatchTrader connection depends on your broker API. We are enabling it. Meanwhile, if your broker also offers MT5, MT4 or cTrader, use that.',
     stepsCt: [
       { t: '1. Download the Onyx cBot (.cs)', d: 'Use the button above. It saves to your Downloads folder. It is a text file with the cBot code.', viz: 'ct-download' },
-      { t: '2. Open cTrader → Automate → New cBot', d: 'In cTrader Desktop, go to Automate. Click New cBot and name it (e.g. OnyxGuardian). The code editor opens.', viz: 'ct-new' },
+      { t: '2. Open cTrader → Automate → New cBot', d: 'In cTrader Desktop, go to Automate. Click New cBot and name it (e.g. OnyxConnect). The code editor opens.', viz: 'ct-new' },
       { t: '3. Paste the code and press Build', d: 'Delete the sample code, open the .cs you downloaded, copy all and paste it. Press Build (or F6). It should say "Build succeeded".', viz: 'ct-build' },
       { t: '4. Add it to a chart and paste your key', d: 'Open any chart. In the cBot parameters paste your API key. The Server URL is already set: do not touch it.', copy: 'url', viz: 'ct-fields' },
       { t: '5. Accept network access and press Play', d: 'The first time cTrader asks for "Full Access" (to talk to Onyx): accept it. Press Play ▶. In a few seconds it will say "Connected" below.', viz: 'ct-run' },
@@ -244,7 +244,7 @@ export default function KeysPage() {
     if (kind === 'ctrader') {
       return {
         steps: t.stepsCt, stuck: t.stuckCt,
-        dl: [{ href: '/ctrader/OnyxGuardian.cs', label: 'cTrader (.cs)', primary: true }],
+        dl: [{ href: '/ctrader/OnyxConnect.cs', label: 'cTrader (.cs)', primary: true }],
         conn: { name: 'cTrader', waitD: t.connCt.waitD, staleHint: t.connCt.staleHint },
         does: t.ctDoes, fileName: t.ctFileName, note: '',
       };

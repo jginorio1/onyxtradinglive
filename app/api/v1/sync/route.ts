@@ -6,6 +6,7 @@ import { accountLimit } from '@/lib/settings';
 import { forEA, mergeConfig } from '@/lib/manager';
 import { evaluate, registerClosedTrades, newsNear } from '@/lib/managerGuard';
 import { loadChallenge } from '@/lib/challenge';
+import { isCopyMaster, relayMasterSnapshot } from '@/lib/copyRelay';
 import { sendPush } from '@/lib/push';
 import { alertUser, alertOncePerDay } from '@/lib/telegram';
 import { logError } from '@/lib/errlog';
@@ -157,6 +158,9 @@ export async function POST(req: NextRequest) {
 
     // --- Posiciones abiertas (reemplazamos la foto actual) ---
     const opens = Array.isArray(body.openPositions) ? body.openPositions : [];
+    // Foto ANTERIOR de tickets: para el copy integrado (diff open/close del master).
+    const { data: oldOpen } = await supabaseAdmin.from('open_positions').select('ticket').eq('account_id', accountId);
+    const oldTickets = new Set((oldOpen || []).map((r: any) => String(r.ticket)));
     await supabaseAdmin.from('open_positions').delete().eq('account_id', accountId);
     if (opens.length) {
       const rows = opens.map((p: any) => ({
@@ -179,6 +183,24 @@ export async function POST(req: NextRequest) {
         await supabaseAdmin.from('open_positions').insert(bare);
       }
     }
+
+    // --- Copy integrado: si esta cuenta es MASTER, genera órdenes desde el diff.
+    // El master ya no necesita un EA aparte: Onyx Connect reporta sus posiciones.
+    let copyMaster = false;
+    try {
+      copyMaster = await isCopyMaster(accountId);
+      if (copyMaster) {
+        const newTickets = new Set(opens.map((p: any) => String(p.ticket)));
+        const nowSec = Math.floor(Date.now() / 1000);
+        // Solo copiamos aperturas FRESCAS (evita copiar posiciones que ya
+        // existían al enlazar o tras reiniciar el EA).
+        const opened = opens
+          .filter((p: any) => !oldTickets.has(String(p.ticket)) && (Number(p.openTime) || 0) >= nowSec - 90)
+          .map((p: any) => ({ ticket: p.ticket, symbol: p.symbol, side: p.side, volume: p.volume, sl: p.sl, tp: p.tp, price: p.openPrice }));
+        const closedTickets = Array.from(oldTickets).filter((tk) => !newTickets.has(tk)) as string[];
+        await relayMasterSnapshot({ userId, masterAccountId: accountId, masterBalance: Number(acc.balance) || 0, opened, closedTickets });
+      }
+    } catch (e) { /* el relay de copy nunca rompe el sync */ }
 
     // --- Marca la key como usada ---
     await supabaseAdmin
@@ -263,7 +285,7 @@ export async function POST(req: NextRequest) {
     let challenge: any = null;
     // Funciones activas del plan + rol de copy → para que el panel de Onyx Connect
     // muestre Journal/Guardian/Copy/TradingView con su estado real.
-    let features: any = { journal: true, guardian: false, copy: false, tv: false, copyRole: '', plan: '' };
+    let features: any = { journal: true, guardian: false, copy: false, tv: false, copyRole: '', plan: '', copyMaster };
     // Onyx Connect · próxima noticia de alto impacto para el panel (solo informativa).
     let news: any = null;
     let newsTimes: number[] = [];   // epochs (seg) de las noticias de alto impacto próximas → líneas en el gráfico

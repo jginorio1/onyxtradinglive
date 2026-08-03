@@ -382,7 +382,7 @@ function StepVisual({ viz, origin, lang, dlButtons }: any) {
       return <div style={box}>
         <div className="muted" style={{ fontSize: 11, marginBottom: 8 }}>{p('En cTrader Desktop:', 'In cTrader Desktop:')}</div>
         <div className="row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-          <span style={chip}>Automate</span>{arrow}<span style={chip}>＋ New cBot</span>{arrow}<span style={chip}>{p('Nómbralo: OnyxGuardian', 'Name it: OnyxGuardian')}</span>
+          <span style={chip}>Automate</span>{arrow}<span style={chip}>＋ New cBot</span>{arrow}<span style={chip}>{p('Nómbralo: OnyxConnect', 'Name it: OnyxConnect')}</span>
         </div>
         <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>{p('Se abre el editor de código.', 'The code editor opens.')}</div>
       </div>;
