@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Landing Builder · Fase 1: Hero del landing, FAQ por página y tabla de comparación.
 // Guarda en landing_content; las páginas lo aplican por encima del texto en código.
@@ -29,8 +30,14 @@ function CardList({ cards, onChange, showIcon, addLabel, tLabel, dLabel, es }: {
     <>
       {cards.map((c, i) => (
         <div key={i} className="card" style={{ padding: 12, marginBottom: 10, background: 'var(--card2)' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: showIcon ? '70px 1fr 1fr' : '1fr 1fr', gap: 8, marginBottom: 6, alignItems: 'center' }}>
-            {showIcon && <input title={es ? 'Emoji / icono' : 'Emoji / icon'} placeholder="🛡️" style={{ ...inp, textAlign: 'center', fontSize: 18 }} value={c.i || ''} onChange={(e) => set(i, { i: e.target.value })} />}
+          <div style={{ display: 'grid', gridTemplateColumns: showIcon ? '92px 1fr 1fr' : '1fr 1fr', gap: 8, marginBottom: 6, alignItems: 'center' }}>
+            {showIcon && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                {/* Vista previa del icono MODERNO que se verá en el landing */}
+                <span title={es ? 'Así se verá' : 'How it will look'} style={{ color: 'var(--brand)', display: 'inline-flex', flex: 'none' }}><OnyxIcon emoji={c.i || ''} size={22} /></span>
+                <input title={es ? 'Emoji / icono' : 'Emoji / icon'} placeholder="🛡️" style={{ ...inp, textAlign: 'center', fontSize: 18, width: 52 }} value={c.i || ''} onChange={(e) => set(i, { i: e.target.value })} />
+              </div>
+            )}
             <input placeholder={`${tLabel} (ES)`} style={inp} value={c.t_es} onChange={(e) => set(i, { t_es: e.target.value })} />
             <input placeholder={`${tLabel} (EN)`} style={inp} value={c.t_en} onChange={(e) => set(i, { t_en: e.target.value })} />
           </div>
