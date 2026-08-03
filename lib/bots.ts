@@ -174,11 +174,46 @@ export async function loadBots(userId: string) {
         ddDur, maxConsecLoss: maxLoss, monthsPos: Math.round(monthsPos),
         exposure: Math.round(exposure), avgHoldH: r1(avgHoldH), annualNet: Math.round(annualNet),
         avgWin: Math.round(avgWin), avgLoss: Math.round(avgLoss),
+        stability: r2(stabilityR2(cumNets)), retDD: r2(dd > 0 ? net / dd : (net > 0 ? 99 : 0)),
+        mc: monteCarlo(nets), wf: walkForward(nets, closeMs),
       },
     };
   }).sort((a, b) => b.net - a.net);
 
   return { bots, hasData: true };
+}
+
+// Stability (StrategyQuant): R² de la curva de equity vs su recta de ajuste. 1 = curva muy estable.
+function stabilityR2(cum: number[]): number {
+  const n = cum.length; if (n < 3) return 0;
+  const mx = (n - 1) / 2, my = mean(cum);
+  let sxy = 0, sxx = 0, syy = 0;
+  for (let i = 0; i < n; i++) { const dx = i - mx, dy = cum[i] - my; sxy += dx * dy; sxx += dx * dx; syy += dy * dy; }
+  if (sxx <= 0 || syy <= 0) return 0;
+  const r = sxy / Math.sqrt(sxx * syy);
+  return Math.max(0, Math.min(1, r * r));
+}
+// Monte Carlo (bootstrap con reemplazo): distribución de drawdown y retorno.
+function monteCarlo(nets: number[], iters = 400): any {
+  const n = nets.length; if (n < 20) return null;
+  const dds: number[] = [], rets: number[] = [];
+  for (let it = 0; it < iters; it++) {
+    let cum = 0, peak = 0, maxDD = 0;
+    for (let i = 0; i < n; i++) { cum += nets[(Math.random() * n) | 0]; if (cum > peak) peak = cum; const d = peak - cum; if (d > maxDD) maxDD = d; }
+    dds.push(maxDD); rets.push(cum);
+  }
+  dds.sort((a, b) => a - b); rets.sort((a, b) => a - b);
+  const q = (arr: number[], p: number) => arr[Math.min(arr.length - 1, Math.floor(p * arr.length))];
+  return { p95dd: Math.round(q(dds, 0.95)), medDD: Math.round(q(dds, 0.5)), p5ret: Math.round(q(rets, 0.05)), medRet: Math.round(q(rets, 0.5)), iters };
+}
+// Walk-forward: métricas por trimestre para ver si el robot se mantiene o se degrada.
+function walkForward(nets: number[], closeMs: number[]): any[] {
+  const byQ: Record<string, number[]> = {};
+  for (let i = 0; i < nets.length; i++) { const d = new Date(closeMs[i]); const k = 'Q' + (Math.floor(d.getUTCMonth() / 3) + 1) + ' ' + d.getUTCFullYear(); (byQ[k] = byQ[k] || []).push(nets[i]); }
+  return Object.keys(byQ).map((k) => {
+    const a = byQ[k]; const gw = a.filter((x) => x > 0).reduce((s, x) => s + x, 0); const gl = Math.abs(a.filter((x) => x < 0).reduce((s, x) => s + x, 0)); const w = a.filter((x) => x > 0).length;
+    return { label: k, net: Math.round(a.reduce((s, x) => s + x, 0)), pf: gl > 0 ? r2(gw / gl) : (gw > 0 ? 99 : 0), win: a.length ? Math.round((w / a.length) * 100) : 0, trades: a.length };
+  });
 }
 
 // Correlación de Pearson entre dos vectores del mismo largo.

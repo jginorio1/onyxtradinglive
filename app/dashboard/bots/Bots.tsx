@@ -17,6 +17,7 @@ const T: any = {
     crit: 'Criterios para graduar a vivo', cDays: 'Días mín.', cTrades: 'Ops mín.', cPf: 'PF mín.', cDd: 'DD máx. %',
     metrics: 'Métricas avanzadas', sharpe: 'Sharpe', sortino: 'Sortino', mar: 'MAR/Calmar', sqn: 'SQN', payoff: 'Payoff',
     ddDur: 'DD (días)', maxLoss: 'Máx. pérdidas seg.', monthsPos: '% meses +', exposure: 'Exposición', annual: 'Anualizado', avgWin: 'Gan. media', avgLoss: 'Pérd. media',
+    stability: 'Stability (R²)', retDD: 'Ret/DD', mcT: 'Monte Carlo (95%)', mcDD: 'Drawdown peor 5%', mcRet: 'Retorno peor 5%', mcNote: 'Reordena las operaciones al azar para estimar el peor caso realista.', wfT: 'Walk-forward (por trimestre)', wfNet: 'Neto', wfNoData: 'Aún no hay suficientes operaciones.',
     btT: 'Backtest esperado (para comparar el vivo)', btPf: 'PF esperado', btWin: 'Win % esperado', btDd: 'DD % esperado', btHint: 'Copia los números del reporte del Strategy Tester.',
     divOk: '✓ en línea con el backtest', divWatch: '~ algo por debajo del backtest', divBad: '⚠ divergencia — revisa sobreajuste',
     portT: 'Portafolio en vivo', portSub: 'Correlación entre tus bots (baja = diversifican; alta = bajan juntos) y curva combinada.', combined: 'Curva combinada',
@@ -33,6 +34,7 @@ const T: any = {
     crit: 'Criteria to graduate to live', cDays: 'Min days', cTrades: 'Min trades', cPf: 'Min PF', cDd: 'Max DD %',
     metrics: 'Advanced metrics', sharpe: 'Sharpe', sortino: 'Sortino', mar: 'MAR/Calmar', sqn: 'SQN', payoff: 'Payoff',
     ddDur: 'DD (days)', maxLoss: 'Max consec. losses', monthsPos: '% months +', exposure: 'Exposure', annual: 'Annualized', avgWin: 'Avg win', avgLoss: 'Avg loss',
+    stability: 'Stability (R²)', retDD: 'Ret/DD', mcT: 'Monte Carlo (95%)', mcDD: 'Worst-5% drawdown', mcRet: 'Worst-5% return', mcNote: 'Randomly reshuffles trades to estimate a realistic worst case.', wfT: 'Walk-forward (per quarter)', wfNet: 'Net', wfNoData: 'Not enough trades yet.',
     btT: 'Expected backtest (to compare live)', btPf: 'Expected PF', btWin: 'Expected win %', btDd: 'Expected DD %', btHint: 'Copy the numbers from your Strategy Tester report.',
     divOk: '✓ in line with backtest', divWatch: '~ a bit below backtest', divBad: '⚠ diverging — check overfitting',
     portT: 'Live portfolio', portSub: 'Correlation between your bots (low = they diversify; high = they drop together) and combined curve.', combined: 'Combined curve',
@@ -149,7 +151,31 @@ export default function Bots() {
               <Metric k={t.sqn} v={m.sqn} /><Metric k={t.payoff} v={m.payoff} /><Metric k={t.ddDur} v={m.ddDur} />
               <Metric k={t.maxLoss} v={m.maxConsecLoss} /><Metric k={t.monthsPos} v={m.monthsPos + '%'} /><Metric k={t.exposure} v={m.exposure + '%'} />
               <Metric k={t.annual} v={money(m.annualNet)} /><Metric k={t.avgWin} v={money(m.avgWin)} /><Metric k={t.avgLoss} v={money(-m.avgLoss)} />
+              <Metric k={t.stability} v={m.stability} /><Metric k={t.retDD} v={m.retDD} /><Metric k={t.recovery ? t.recovery : 'Recovery'} v={b.recovery} />
             </div>
+            {m.mc && (
+              <div style={{ marginTop: 10 }}>
+                <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>{t.mcT}</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 6 }}>
+                  <Metric k={t.mcDD} v={money(-m.mc.p95dd)} /><Metric k={t.mcRet} v={money(m.mc.p5ret)} />
+                </div>
+                <p className="muted" style={{ fontSize: 10.5, margin: '4px 0 0' }}>{t.mcNote}</p>
+              </div>
+            )}
+            {Array.isArray(m.wf) && m.wf.length > 0 && (
+              <div style={{ marginTop: 10 }}>
+                <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>{t.wfT}</div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {m.wf.map((q: any) => (
+                    <div key={q.label} style={{ flex: '1 1 92px', minWidth: 92, background: 'rgba(255,255,255,.03)', borderRadius: 8, padding: '6px 8px' }}>
+                      <div className="muted" style={{ fontSize: 10.5 }}>{q.label}</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: q.net >= 0 ? 'var(--soft-green,#34e2a0)' : 'var(--red,#ff6b7d)' }}>{money(q.net)}</div>
+                      <div className="muted" style={{ fontSize: 10.5 }}>PF {q.pf} · {q.win}% · {q.trades}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

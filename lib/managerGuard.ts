@@ -124,6 +124,16 @@ export async function evaluate(opts: {
 
   // --- 2) ¿Tiene un permiso temporal activo? ---
   const overrideActive = st?.override_until && new Date(st.override_until) > now;
+
+  // De qué configuración del Guardian viene el bloqueo (para el panel del EA).
+  const SRC: Record<string, [string, string]> = {
+    daily_loss: ['Límites', 'Limits'], total_loss: ['Reglas de fondeo', 'Funding rules'],
+    target: ['Límites', 'Limits'], max_open: ['Límites', 'Limits'], news: ['Noticias', 'News'],
+    tilt: ['Mi plan', 'My plan'], cooldown: ['Mi plan', 'My plan'], max_trades: ['Mi plan', 'My plan'], schedule: ['Mi plan', 'My plan'],
+  };
+  const _src = SRC[r.reason];
+  const _tagEs = _src ? ` — Guardian › ${_src[0]}` : '';
+  const _tagEn = _src ? ` — Guardian › ${_src[1]}` : '';
   if (st?.override_requested_at && !overrideActive) {
     const ready = new Date(new Date(st.override_requested_at).getTime() + cfg.plan.friction_min * 60000);
     if (ready > now) v.override_ready_at = ready.toISOString();
@@ -297,8 +307,8 @@ async function finish(v: Verdict, r: {
     v.allow_new = true;
     v.severity = 'warn';
     v.reason = r.reason;
-    v.message_es = r.es + ' (te lo estás saltando a propósito)';
-    v.message_en = r.en + ' (you are deliberately overriding this)';
+    v.message_es = r.es + _tagEs + ' (te lo estás saltando a propósito)';
+    v.message_en = r.en + _tagEn + ' (you are deliberately overriding this)';
     return v;
   }
 
@@ -307,8 +317,8 @@ async function finish(v: Verdict, r: {
   v.reason = r.reason;
   v.severity = r.severity;
   v.can_override = r.canOverride && cfg.plan.rigidity !== 'hard';
-  v.message_es = r.es;
-  v.message_en = r.en;
+  v.message_es = r.es + _tagEs;
+  v.message_en = r.en + _tagEn;
 
   const wasBlocked = st?.blocked && st?.blocked_reason === r.reason;
   await supabaseAdmin.from('manager_state').upsert({
