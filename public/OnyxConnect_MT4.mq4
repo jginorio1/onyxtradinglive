@@ -491,12 +491,15 @@ void DrawPanel()
          PanelChip("pst", T("Puedes operar", "You may trade"), X + 12, y, TG, TGt);
          y += 22;
          ObjectDelete(0, PREFIX + "cbBox"); ObjectDelete(0, PREFIX + "cbTop");
-         ObjectDelete(0, PREFIX + "cbLab"); ObjectDelete(0, PREFIX + "cbNum");
+         ObjectDelete(0, PREFIX + "cbLab"); ObjectDelete(0, PREFIX + "cbLab2"); ObjectDelete(0, PREFIX + "cbNum");
          ObjectDelete(0, PREFIX + "pms1"); ObjectDelete(0, PREFIX + "pms2");
         }
       else
         {
-         int boxH = (g_resumeAt > 0 ? 62 : 40);
+         string m = g_blockMsg;
+         string m1 = StringSubstr(m, 0, 40);
+         string m2 = (StringLen(m) > 40 ? StringSubstr(m, 40, 40) : "");
+         int boxH = 42 + (m2 != "" ? 12 : 0) + (g_resumeAt > 0 ? 24 : 0);
          string r = PREFIX + "cbBox";
          if(ObjectFind(0, r) < 0) ObjectCreate(0, r, OBJ_RECTANGLE_LABEL, 0, 0, 0);
          ObjectSetInteger(0, r, OBJPROP_CORNER, CORNER_LEFT_UPPER);
@@ -509,12 +512,15 @@ void DrawPanel()
          ObjectSetInteger(0, r, OBJPROP_COLOR, COL_RED);
          ObjectSetInteger(0, r, OBJPROP_BACK, false);
          ObjectSetInteger(0, r, OBJPROP_SELECTABLE, false);
-         PanelLabel("cbTop", "BLOQUEADO", X + 22, y + 6, TRt, 10, true);
-         PanelLabel("cbLab", StringSubstr(g_blockMsg, 0, 40), X + 22, y + 22, COL_MUT, 7);
+         PanelLabel("cbTop", T("BLOQUEADO", "BLOCKED"), X + 22, y + 7, TRt, 10, true);
+         int my = y + 24;
+         PanelLabel("cbLab", m1, X + 22, my, COL_TX, 7); my += 12;
+         if(m2 != "") { PanelLabel("cbLab2", m2, X + 22, my, COL_TX, 7); my += 12; }
+         else ObjectDelete(0, PREFIX + "cbLab2");
          if(g_resumeAt > 0)
            {
             int left = (int)(g_resumeAt - TimeLocal());
-            PanelLabel("cbNum", T("Reanuda en ", "Resumes in ") + MMSS(left), X + 22, y + 40, AMBER, 11, true);
+            PanelLabel("cbNum", T("Reanuda en ", "Resumes in ") + MMSS(left), X + 22, my + 2, AMBER, 12, true);
            }
          else ObjectDelete(0, PREFIX + "cbNum");
          y += boxH + 6;
@@ -555,7 +561,7 @@ void DrawPanel()
      {
       ObjectDelete(0, PREFIX + "gh");
       ObjectDelete(0, PREFIX + "pstb"); ObjectDelete(0, PREFIX + "pstt");
-      ObjectDelete(0, PREFIX + "cbBox"); ObjectDelete(0, PREFIX + "cbTop"); ObjectDelete(0, PREFIX + "cbLab"); ObjectDelete(0, PREFIX + "cbNum");
+      ObjectDelete(0, PREFIX + "cbBox"); ObjectDelete(0, PREFIX + "cbTop"); ObjectDelete(0, PREFIX + "cbLab"); ObjectDelete(0, PREFIX + "cbLab2"); ObjectDelete(0, PREFIX + "cbNum");
       ObjectDelete(0, PREFIX + "sdlb"); ObjectDelete(0, PREFIX + "sdll"); ObjectDelete(0, PREFIX + "sdlv");
       ObjectDelete(0, PREFIX + "sdtb"); ObjectDelete(0, PREFIX + "sdtl"); ObjectDelete(0, PREFIX + "sdtv");
       ObjectDelete(0, PREFIX + "stlb"); ObjectDelete(0, PREFIX + "stll"); ObjectDelete(0, PREFIX + "stlv");

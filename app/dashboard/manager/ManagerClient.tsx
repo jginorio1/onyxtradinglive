@@ -171,16 +171,18 @@ export default function ManagerClient() {
     load();
   }, []);
 
-  async function load() {
+  async function load(keepId?: string) {
     try {
       const r = await fetch('/api/manager');
       if (!r.ok) { setD({ accounts: [], caps: {} }); return; }
       const j = await r.json();
       setD(j);
-      const first = j.accounts?.[0];
-      if (first) {
-        setSel(first.id); setCfg(first.manager.config); setUnits(first.manager.units);
-        setEnabled(first.manager.enabled); setFirmSel(first.firm_template || '');
+      // Conserva la cuenta que el usuario tenía seleccionada (no saltes a la primera).
+      const wantId = keepId || sel;
+      const chosen = (j.accounts || []).find((a: any) => a.id === wantId) || j.accounts?.[0];
+      if (chosen) {
+        setSel(chosen.id); setCfg(chosen.manager.config); setUnits(chosen.manager.units);
+        setEnabled(chosen.manager.enabled); setFirmSel(chosen.firm_template || '');
       }
     } catch { setD({ accounts: [], caps: {} }); }
   }
@@ -221,7 +223,7 @@ export default function ManagerClient() {
     const j = await r.json(); setBusy('');
     if (!r.ok) { toast(errMsg(j, lang)); return; }
     setWarnings(j.warnings || []);
-    setMsg(t.saved); setTimeout(() => setMsg(''), 3000); load();
+    setMsg(t.saved); setTimeout(() => setMsg(''), 3000); load(sel);
     router.refresh(); // refresca el punto verde del Guardian en la barra al instante
   }
   async function command(cmd: string) {

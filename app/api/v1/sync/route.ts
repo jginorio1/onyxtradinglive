@@ -277,9 +277,9 @@ export async function POST(req: NextRequest) {
       features.copy = !!caps.copy;
       features.tv = !!(caps.tv || caps.copy);
 
-      // Próxima noticia de alto impacto (si el plan incluye noticias). El feed
-      // está cacheado 15 min, así que no pesa aunque el sync sea frecuente.
-      if (caps.manager_news) {
+      // Próxima noticia de alto impacto (informativa: si el plan tiene Guardian).
+      // El feed está cacheado 15 min, así que no pesa aunque el sync sea frecuente.
+      if (caps.manager || caps.manager_news) {
         try {
           const base = new URL(req.url);
           const nr = await fetch(`${base.protocol}//${base.host}/api/news`, { next: { revalidate: 900 } } as any);
