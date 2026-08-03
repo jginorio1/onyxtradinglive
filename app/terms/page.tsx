@@ -7,7 +7,7 @@ import { renderLegal } from '@/app/legalRender';
 export default function Terms() {
   const { lang } = useLang();
   const [ov, setOv] = useState<string | null>(null);
-  useEffect(() => { fetch('/api/landing-content', { cache: 'no-store' }).then((r) => r.json()).then((c) => setOv(c?.legal?.[`terms_${lang}`] || null)).catch(() => {}); }, [lang]);
+  useEffect(() => { fetch('/api/landing-content?t=' + Date.now(), { cache: 'no-store' }).then((r) => r.json()).then((c) => setOv(c?.legal?.[`terms_${lang}`] || null)).catch(() => {}); }, [lang]);
   const es = (
     <>
       <h1>Términos y Condiciones</h1>

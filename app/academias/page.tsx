@@ -12,7 +12,7 @@ export default function Academias() {
   const L = mkL(lang);
   const [lcPage, setLcPage] = useState<any>(null);
   const px = (k: string, fb: string) => lcPage?.[k]?.[lang] || fb;
-  useEffect(() => { fetch('/api/landing-content', { cache: 'no-store' }).then((r) => r.json()).then((c) => setLcPage(c?.pages?.academias || null)).catch(() => {}); }, []);
+  useEffect(() => { fetch('/api/landing-content?t=' + Date.now(), { cache: 'no-store' }).then((r) => r.json()).then((c) => setLcPage(c?.pages?.academias || null)).catch(() => {}); }, []);
   return (
     <div className="wrap" style={{ padding: '64px 22px 80px', maxWidth: 640, margin: '0 auto', textAlign: 'center' }}>
       <h1 style={{ fontSize: 32, letterSpacing: '-1px', display: 'inline-flex', alignItems: 'center', gap: 10 }}>

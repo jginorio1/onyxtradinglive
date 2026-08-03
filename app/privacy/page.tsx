@@ -7,7 +7,7 @@ import { renderLegal } from '@/app/legalRender';
 export default function Privacy() {
   const { lang } = useLang();
   const [ov, setOv] = useState<string | null>(null);
-  useEffect(() => { fetch('/api/landing-content', { cache: 'no-store' }).then((r) => r.json()).then((c) => setOv(c?.legal?.[`privacy_${lang}`] || null)).catch(() => {}); }, [lang]);
+  useEffect(() => { fetch('/api/landing-content?t=' + Date.now(), { cache: 'no-store' }).then((r) => r.json()).then((c) => setOv(c?.legal?.[`privacy_${lang}`] || null)).catch(() => {}); }, [lang]);
   const es = (
     <>
       <h1>Política de Privacidad</h1>

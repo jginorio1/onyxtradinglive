@@ -65,7 +65,7 @@ export default function LandingBuilder() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    fetch('/api/admin/landing-content').then((r) => r.json()).then((j) => { setContent(j.content || {}); setDefaults(j.defaults || {}); }).catch(() => setContent({}));
+    fetch('/api/admin/landing-content?t=' + Date.now(), { cache: 'no-store' }).then((r) => r.json()).then((j) => { setContent(j.content || {}); setDefaults(j.defaults || {}); }).catch(() => setContent({}));
   }, []);
 
   async function save(patch: any) {

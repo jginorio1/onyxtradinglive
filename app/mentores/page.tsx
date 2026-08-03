@@ -31,7 +31,7 @@ export default function MentoresPage() {
   useEffect(() => {
     fetch('/api/admin/plans').then((r) => r.json()).then((j) => setPlans(j.plans || [])).catch(() => {});
     // FAQ + textos editables del Landing Builder (vacío = texto del código).
-    fetch('/api/landing-content', { cache: 'no-store' }).then((r) => r.json())
+    fetch('/api/landing-content?t=' + Date.now(), { cache: 'no-store' }).then((r) => r.json())
       .then((c) => { const rows = c?.faq?.mentores; if (Array.isArray(rows) && rows.length) setLcFaqRaw(rows); setLcPage(c?.pages?.mentores || null); }).catch(() => {});
   }, []);
   const shown = plans.length ? plans : FALLBACK;

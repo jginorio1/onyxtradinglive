@@ -71,7 +71,7 @@ export default function Invita() {
   useEffect(() => {
     fetch('/api/referral/info?t=' + Date.now(), { cache: 'no-store' }).then((r) => r.json()).then(setD).catch(() => setD({ referrerCredit: 10, friendCredit: 10, holdDays: 21, bridge: 5 }));
     fetch('/api/referral').then((r) => setLoggedIn(r.status !== 401)).catch(() => setLoggedIn(false));
-    fetch('/api/landing-content', { cache: 'no-store' }).then((r) => r.json())
+    fetch('/api/landing-content?t=' + Date.now(), { cache: 'no-store' }).then((r) => r.json())
       .then((c) => { const rows = c?.faq?.invita; if (Array.isArray(rows) && rows.length) setLcFaqRaw(rows); setLcPage(c?.pages?.invita || null); }).catch(() => {});
   }, []);
 

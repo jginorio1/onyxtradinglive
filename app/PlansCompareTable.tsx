@@ -33,7 +33,7 @@ export default function PlansCompareTable({
   // si no, caemos a las del código (PLAN_ROWS). Nunca se queda en blanco.
   const [ovRows, setOvRows] = useState<typeof PLAN_ROWS | null>(null);
   useEffect(() => {
-    fetch('/api/landing-content', { cache: 'no-store' })
+    fetch('/api/landing-content?t=' + Date.now(), { cache: 'no-store' })
       .then((r) => r.json())
       .then((c) => { if (Array.isArray(c?.compare) && c.compare.length) setOvRows(c.compare); })
       .catch(() => {});

@@ -356,7 +356,9 @@ export default function Home() {
   const [pnl, setPnl] = useState(1800);
   const [vidErr, setVidErr] = useState(false);
   const [dbPlans, setDbPlans] = useState<any[]>([]);
-  const [stats, setStats] = useState({ trades: 0, blocks: 0, accounts: 0, platforms: 4, readonly: 100 });
+  // Arranca en el piso semilla (nunca 0): aunque el fetch falle o llegue una
+  // respuesta vieja en caché, las cifras solo suben desde aquí — jamás muestran 0.
+  const [stats, setStats] = useState({ trades: 1000, blocks: 80, accounts: 40, platforms: 4, readonly: 100 });
   // Comisión y cupón del embajador desde el panel admin (vía /api/stats).
   const [amb, setAmb] = useState({ rate: 30, coupon: 20 });
   // Contenido editable del Landing Builder (hero + FAQ). Vacío = usa el del código.
@@ -365,7 +367,7 @@ export default function Home() {
 
   useEffect(() => {
     fetch('/api/admin/plans', { cache: 'no-store' }).then((r) => r.json()).then((j) => setDbPlans(j.plans || [])).catch(() => {});
-    fetch('/api/landing-content', { cache: 'no-store' }).then((r) => r.json()).then((c) => setLc(c || {})).catch(() => {});
+    fetch('/api/landing-content?t=' + Date.now(), { cache: 'no-store' }).then((r) => r.json()).then((c) => setLc(c || {})).catch(() => {});
     // Cifras reales para la prueba social; crecen solas con el uso.
     // no-store + ?t=: siempre trae lo último del admin (base + real, comisión/cupón), sin caché.
     // Se refresca cada 30s para que las cifras suban EN VIVO mientras se ve la página.

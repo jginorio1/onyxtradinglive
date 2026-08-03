@@ -15,7 +15,7 @@ export default function SiteFooter() {
   useEffect(() => {
     fetch('/api/version', { cache: 'no-store' }).then((r) => r.json()).then((j) => setVer(j.version || '')).catch(() => {});
     // Footer editable del Landing Builder (enlaces + lema). Vacío = enlaces del código.
-    fetch('/api/landing-content', { cache: 'no-store' }).then((r) => r.json()).then((c) => setFx(c?.footer || null)).catch(() => {});
+    fetch('/api/landing-content?t=' + Date.now(), { cache: 'no-store' }).then((r) => r.json()).then((c) => setFx(c?.footer || null)).catch(() => {});
   }, []);
 
   const L = (a: string, b: string) => (es ? a : b);

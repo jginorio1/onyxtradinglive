@@ -14,7 +14,7 @@ export default function AnalizaPage() {
   const [err, setErr] = useState('');
   const [lcPage, setLcPage] = useState<any>(null);
   const px = (k: string, fb: string) => lcPage?.[k]?.[lang] || fb;
-  useEffect(() => { fetch('/api/landing-content', { cache: 'no-store' }).then((r) => r.json()).then((c) => setLcPage(c?.pages?.analiza || null)).catch(() => {}); }, []);
+  useEffect(() => { fetch('/api/landing-content?t=' + Date.now(), { cache: 'no-store' }).then((r) => r.json()).then((c) => setLcPage(c?.pages?.analiza || null)).catch(() => {}); }, []);
 
   async function run() {
     setBusy(true); setErr(''); setFindings(null);

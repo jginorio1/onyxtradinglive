@@ -93,7 +93,7 @@ export default function Embajadores() {
   const px = (k: string, fb: string) => lcPage?.[k]?.[lang] || fb;
 
   useEffect(() => {
-    fetch('/api/landing-content', { cache: 'no-store' }).then((r) => r.json())
+    fetch('/api/landing-content?t=' + Date.now(), { cache: 'no-store' }).then((r) => r.json())
       .then((c) => { const rows = c?.faq?.embajadores; if (Array.isArray(rows) && rows.length) setLcFaqRaw(rows); setLcPage(c?.pages?.embajadores || null); })
       .catch(() => {});
     fetch('/api/ambassador').then(async (r) => {
