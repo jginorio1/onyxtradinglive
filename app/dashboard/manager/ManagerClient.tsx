@@ -287,6 +287,17 @@ export default function ManagerClient() {
             <Link href="/dashboard?view=plan" className="btn btn-ghost" style={{ fontSize: 12.5, flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 7 }}><OnyxIcon emoji="🎯" size={14} /> {t.planLink.replace('🎯 ', '')} →</Link>
             <Toggle on={enabled} onClick={() => setEnabled(!enabled)} />
           </div>
+          {/* Botón iluminado: al activar/desactivar hay que GUARDAR para enviarlo al EA. */}
+          <button className="btn" onClick={save} disabled={busy === 'save' || totalClose > 100}
+            style={{ width: '100%', marginTop: 12, padding: '12px', fontWeight: 800, fontSize: 15,
+              background: enabled ? 'var(--green)' : 'var(--card2)',
+              color: enabled ? '#04150d' : 'var(--tx)',
+              border: enabled ? 'none' : '1px solid var(--line)',
+              boxShadow: enabled ? '0 0 26px rgba(52,226,160,.55)' : 'none' }}>
+            {busy === 'save' ? t.saving
+              : enabled ? (lang === 'es' ? '✓ Guardar y ACTIVAR el Guardian' : '✓ Save and ACTIVATE Guardian')
+              : (lang === 'es' ? 'Guardar (Guardian desactivado)' : 'Save (Guardian off)')}
+          </button>
           <div className="row" style={{ gap: 10, alignItems: 'center', marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--line)', flexWrap: 'wrap' }}>
             <select value={sel} onChange={(e) => pick(e.target.value)} style={{ margin: 0, width: 'auto', minWidth: 200 }}>
               {d.accounts.map((a: any) => <option key={a.id} value={a.id}>{a.nickname || a.login} · {a.broker || ''}</option>)}

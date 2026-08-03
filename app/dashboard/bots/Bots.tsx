@@ -210,11 +210,24 @@ export default function Bots() {
         </div>
       )}
 
-      {d && !d.locked && !bots.length && (
+      {d && !d.locked && !bots.length && d.needsMigration && (
+        <div className="card" style={{ textAlign: 'center', padding: 28, border: '1px solid var(--amber)' }}>
+          <div style={{ fontSize: 34, marginBottom: 8 }}><OnyxIcon emoji="🛠️" size={18} /></div>
+          <h3 style={{ marginBottom: 6 }}>{lang === 'es' ? 'Falta una actualización de la base de datos' : 'A database update is missing'}</h3>
+          <p className="muted" style={{ fontSize: 14, maxWidth: 560, margin: '0 auto' }}>{lang === 'es'
+            ? 'Tu tabla de operaciones aún no tiene la columna “magic”, que es como se identifica cada robot. Corre el SQL de robots en Supabase (supabase/bots.sql) una sola vez y vuelve a sincronizar; entonces tus robots aparecerán aquí solos.'
+            : 'Your trades table doesn\'t have the “magic” column yet, which is how each robot is identified. Run the bots SQL in Supabase (supabase/bots.sql) once and re-sync; then your robots will show up here automatically.'}</p>
+        </div>
+      )}
+
+      {d && !d.locked && !bots.length && !d.needsMigration && (
         <div className="card" style={{ textAlign: 'center', padding: 28 }}>
           <div style={{ fontSize: 34, marginBottom: 8 }}><OnyxIcon emoji="📡" size={16} /></div>
           <h3 style={{ marginBottom: 6 }}>{t.emptyT}</h3>
           <p className="muted" style={{ fontSize: 14, maxWidth: 520, margin: '0 auto' }}>{t.emptyD}</p>
+          <p className="muted" style={{ fontSize: 12.5, maxWidth: 520, margin: '10px auto 0', opacity: .8 }}>{lang === 'es'
+            ? 'Nota: las operaciones manuales no cuentan como robot. Solo aparecen las que un EA/robot abre con su magic number.'
+            : 'Note: manual trades don\'t count as a robot. Only trades opened by an EA/robot with its magic number show up.'}</p>
         </div>
       )}
 

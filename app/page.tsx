@@ -436,21 +436,20 @@ export default function Home() {
     : t.steps;
   const trustBadges: string[] = lc?.trust?.[lang]?.length ? lc.trust[lang] : t.trust;
 
-  // Cifras que SIEMPRE suben y NUNCA bajan de lo ya mostrado, ni por fetch lento,
-  // ni por caché vieja, ni al recargar. Se toma el MÁXIMO entre:
-  //   1) un crecimiento por tiempo (determinista, anclado a una fecha fija),
-  //   2) el dato real de /api/stats, y
-  //   3) el piso guardado en el navegador (lo más alto ya mostrado).
-  // El resultado se guarda como nuevo piso. Siempre impar.
+  // ── Contadores 100% deterministas y monótonos ──────────────────────────────
+  // El número NO depende del fetch (que varía o falla): es una función pura del
+  // reloj. Con una base alta y un crecimiento fijo por tiempo, SIEMPRE sube y
+  // NUNCA baja — da igual el dispositivo, la caché o si el fetch tarda.
+  //   valor = BASE + (tramos de 5 min desde una fecha fija) · ritmo
+  // Se toma además el máximo con el dato real (por si un día es mayor) y con el
+  // piso guardado en el navegador (anti-reloj-hacia-atrás). Siempre impar.
   const GROW_EPOCH = Date.UTC(2026, 7, 1); // 1 de agosto de 2026
   const ticks = Math.max(0, Math.floor((nowTs - GROW_EPOCH) / 300000)); // tramos de 5 min
-  const oddUp = (timeBase: number, per5: number, real: number, floor: number) => {
-    let n = Math.max(timeBase + Math.floor(ticks * per5), Math.round(real) || 0, floor || 0);
-    return n % 2 === 0 ? n + 1 : n; // forzar impar
-  };
-  const dTrades = oddUp(1000, 2, stats.trades, floorT);   // crece ~+2 cada 5 min
-  const dBlocks = oddUp(80, 0.2, stats.blocks, floorB);   // crece ~+1 cada 25 min
-  // Persistir el nuevo máximo para que nunca vuelva a bajar en este navegador.
+  const odd = (n: number) => (n % 2 === 0 ? n + 1 : n);
+  // Bases altas: por encima de lo ya mostrado, para que nunca parezca bajar.
+  const dTrades = odd(Math.max(12000 + ticks * 2, Math.round(stats.trades) || 0, floorT));
+  const dBlocks = odd(Math.max(3900 + Math.floor(ticks * 0.4), Math.round(stats.blocks) || 0, floorB));
+  // Persistir el nuevo máximo (guarda contra un reloj que retroceda).
   useEffect(() => {
     try {
       if (dTrades > floorT) { setFloorT(dTrades); localStorage.setItem('onyx_stat_t', String(dTrades)); }

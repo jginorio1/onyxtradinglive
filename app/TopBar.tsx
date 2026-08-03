@@ -30,6 +30,7 @@ export default async function TopBar() {
   let caps: any = {};
   let addonAlgo = false;
   let copyActive = false;   // hay copia corriendo (enlace activo y sin pausa global)
+  let guardianOn = false;   // el Onyx Guardian está ACTIVADO (no solo el EA sincronizando)
 
   try {
     const sb = createSupabaseServer();
@@ -62,6 +63,13 @@ export default async function TopBar() {
       const last = accs?.[0]?.last_sync_at;
       if (last) eaLive = (Date.now() - new Date(last).getTime()) < 120000;
       else if (accs?.length) eaLive = false;
+
+      // ¿El Onyx Guardian está ACTIVADO? Verde solo si el usuario lo encendió.
+      if (caps.manager) {
+        const { data: mg } = await supabaseAdmin
+          .from('manager_configs').select('enabled').eq('user_id', user.id).eq('enabled', true).limit(1);
+        guardianOn = !!(mg && mg.length);
+      }
     }
   } catch { /* si falla, enseñamos la barra de invitado y ya */ }
 
@@ -75,7 +83,7 @@ export default async function TopBar() {
     ? [
         { href: '/dashboard', label: t.dashboard, icon: '📊' },
         { href: '/dashboard/keys', label: t.accounts, icon: '🔌' },
-        ...(caps.manager ? [{ href: '/dashboard/manager', label: t.manager, icon: '🛡️', dot: (eaLive ? 'on' : 'off') as 'on' | 'off', dim: !eaLive, dotTitle: eaLive ? t.eaOn : t.eaOff }] : []),
+        ...(caps.manager ? [{ href: '/dashboard/manager', label: t.manager, icon: '🛡️', dot: (guardianOn ? 'on' : 'off') as 'on' | 'off', dim: !guardianOn, dotTitle: guardianOn ? (lang === 'es' ? 'Guardian activado' : 'Guardian on') : (lang === 'es' ? 'Guardian desactivado' : 'Guardian off') }] : []),
         ...(caps.copy ? [{ href: '/dashboard/copy', label: t.copy, icon: '🔁', dot: (copyActive ? 'on' : 'off') as 'on' | 'off', dim: !copyActive, dotTitle: (copyActive ? (lang === 'es' ? 'Copia activa' : 'Copy on') : (lang === 'es' ? 'Copia inactiva' : 'Copy off')) }] : []),
         ...((caps.algo || addonAlgo) ? [{ href: '/dashboard/bots', label: (t as any).bots, icon: '🤖' }] : []),
         ...((caps.tv || caps.copy) ? [{ href: '/dashboard/tradingview', label: 'TradingView', icon: '📈' }] : []),
