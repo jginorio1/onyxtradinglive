@@ -14,15 +14,29 @@
 #property strict
 
 extern string ApiBase    = "https://www.onyxtradinglive.com";
-extern string CopyApiKey = "PON_TU_CLAVE_COPY";   // onyx_copy_...
-extern int    PollMs     = 1000;
+extern string CopyApiKey = "PON_TU_CLAVE_COPY";   // onyx_copy_...  (no hace falta en modo Local)
+extern int    PollMs     = 1000;                  // En modo Local ponlo bajo (ej. 100) para copiar mas rapido
 extern int    Slippage   = 30;
 extern string PanelLang  = "EN";                  // Panel: ES=Español, otro=English (web/IA/Telegram en 6 idiomas)
+extern string SymbolMap  = "";                    // Tabla manual master=esclava. Ej: US100=NAS100;GOLD=XAUUSD.pro;EURUSD=EURUSDm
+// ---- Modo LOCAL (mismo VPS): lee el archivo comun del master ----
+extern bool   LocalMode      = false;
+extern string CopyChannel    = "onyx1";           // Mismo nombre que el master del mismo VPS
+extern string LocalSizing    = "multiplier";      // multiplier | balance
+extern double LocalMult      = 1.0;
+extern double LocalMaxLot    = 0;
+extern double LocalMaxSpread = 0;
+extern double LocalDailyLoss = 0;
+extern double LocalMaxDd      = 0;
 
 string L(string en, string es){ return (StringFind(PanelLang, "ES") == 0) ? es : en; }
 
 double g_dayStartEquity = 0;
 int    g_dayStamp       = -1;
+int    g_localDone      = 0;
+
+// Config EFECTIVA en modo Local (inputs Local* o, si hay clave, la de la web).
+string gMode; double gMult, gRisk, gPip, gMaxLot, gMaxSpr, gDLoss, gMDD;
 
 //==================== PANEL EN EL GRAFICO ====================
 // Igual que Onyx Guardian. Borde: verde=conectada · ambar=esperando · rojo=pausada.
@@ -51,7 +65,7 @@ void DrawPanel(){
    ObjectSetInteger(0,bg,OBJPROP_BACK,false); ObjectSetInteger(0,bg,OBJPROP_SELECTABLE,false);
    color bc = g_state==2?CP_ON : (g_state==0?CP_RED : CP_AMBER);
    ObjectSetInteger(0,bg,OBJPROP_COLOR,bc);
-   PLabel("t",L("Onyx Copy   SLAVE","Onyx Copy   ESCLAVA"),X+12,y,CP_TX,9,true); y+=18;
+   PLabel("t",L("Onyx Copy  SLAVE","Onyx Copy  ESCLAVA")+(LocalMode?" · LOCAL":""),X+12,y,CP_TX,9,true); y+=18;
    string stx = g_state==2?L("Connected","Conectada") : (g_state==0?L("PAUSED","PAUSADA"):L("Waiting for signal","Esperando senal"));
    PLabel("st",stx,X+12,y,bc,8); y+=16;
    PLabel("m",L("Copying from: ","Copia de: ")+g_masterInfo,X+12,y,CP_MUT,8); y+=16;
@@ -63,13 +77,44 @@ void DelPanel(){ ObjectsDeleteAll(0,PFX); }
 
 int OnInit()
 {
-   if(StringFind(CopyApiKey, "onyx_copy_") != 0)
+   if(!LocalMode && StringFind(CopyApiKey, "onyx_copy_") != 0)
       Print("AVISO: CopyApiKey no parece una clave Copy (debe empezar por onyx_copy_).");
    g_dayStartEquity = AccountEquity();
    g_dayStamp = DayOfYear();
-   EventSetMillisecondTimer(PollMs);
+   InitLocalCfg();
+   if(LocalMode)
+   {
+      g_localDone = CountLocalLines();
+      FetchLocalConfig();
+   }
+   EventSetMillisecondTimer(LocalMode ? 100 : PollMs);
    DrawPanel();
    return(INIT_SUCCEEDED);
+}
+
+void InitLocalCfg()
+{
+   gMode = LocalSizing; gMult = LocalMult; gRisk = 0; gPip = 0;
+   gMaxLot = LocalMaxLot; gMaxSpr = LocalMaxSpread; gDLoss = LocalDailyLoss; gMDD = LocalMaxDd;
+}
+void FetchLocalConfig()
+{
+   if(StringFind(CopyApiKey, "onyx_copy_") != 0) return;
+   char post[]; char result[]; string rh;
+   string headers = "x-onyx-key: " + CopyApiKey + "\r\n";
+   int code = WebRequest("GET", ApiBase + "/api/v1/copy/config", headers, 5000, post, result, rh);
+   if(code != 200) return;
+   string b = CharArrayToString(result);
+   if(StringFind(b, "\"found\":true") < 0) return;
+   gMode   = JVal(b, "mode");
+   gMult   = JNum(b, "multiplier"); if(gMult <= 0) gMult = 1;
+   gRisk   = JNum(b, "risk_pct");
+   gPip    = JNum(b, "pip_risk");
+   gMaxLot = JNum(b, "max_lot");
+   gMaxSpr = JNum(b, "max_spread");
+   gDLoss  = JNum(b, "daily_loss_pct");
+   gMDD    = JNum(b, "max_drawdown_pct");
+   Print("Onyx local: config del enlace cargada desde la web (modo ", gMode, ").");
 }
 void OnDeinit(const int reason){ EventKillTimer(); DelPanel(); }
 
@@ -104,14 +149,62 @@ string NormalizeSym(string s)
    StringReplace(u, ".", ""); StringReplace(u, "_", ""); StringReplace(u, "-", ""); StringReplace(u, "#", "");
    return(u);
 }
+//--- ¿Dos símbolos normalizados son el mismo par, admitiendo un sufijo de letras (.sim, m, .pro, ecn…)?
+bool SymMatch(string a, string b)
+{
+   if(a == b) return(true);
+   string lng = (StringLen(a) >= StringLen(b)) ? a : b;          // el más largo
+   string sht = (StringLen(a) >= StringLen(b)) ? b : a;          // el más corto
+   int ls = StringLen(sht), ll = StringLen(lng);
+   if(ll > ls && (ll - ls) <= 5 && StringSubstr(lng,0,ls) == sht){
+      string rest = StringSubstr(lng, ls);                       // p.ej. "M", "PRO", "ECN", "SIM"
+      for(int k=0;k<StringLen(rest);k++){ int c = StringGetChar(rest,k); if(c < 'A' || c > 'Z') return(false); }
+      return(true);
+   }
+   return(false);
+}
+string AliasList(string want)
+{
+   string g[] = {
+      "NAS100,US100,USTEC,USTECH,NASDAQ,NDX,USNAS100,US100CASH,NAS100CASH,USTEC100",
+      "US30,DJ30,WS30,DOW,DJIA,US30CASH,USA30,DJI,WALLST30",
+      "SPX500,US500,SP500,SPX,USA500,US500CASH,SPX500USD",
+      "GER40,DE40,GER30,DE30,DAX40,DAX30,DAX,GERMANY40,GER40CASH",
+      "UK100,FTSE100,FTSE,UK100CASH,GB100,BRITAIN100",
+      "US2000,RUSSELL2000,US2000CASH,RUT",
+      "JP225,JPN225,NIKKEI,NIK225,JAPAN225,JP225CASH",
+      "XAUUSD,GOLD,GOLDUSD",
+      "XAGUSD,SILVER,SILVERUSD",
+      "USOIL,WTI,WTIUSD,CRUDE,OILUSD,USCRUDE,XTIUSD,USOUSD",
+      "UKOIL,BRENT,BRENTUSD,XBRUSD,UKOUSD"
+   };
+   for(int i=0;i<ArraySize(g);i++){
+      string mem[]; int nm = StringSplit(g[i], ',', mem);
+      for(int j=0;j<nm;j++) if(SymMatch(want, mem[j])) return(g[i]);
+   }
+   return("");
+}
 string ResolveLocalSymbol(string masterSymbol)
 {
-   if(MarketInfo(masterSymbol, MODE_BID) > 0) return(masterSymbol);   // existe
+   string ov = MapOverride(masterSymbol);
+   if(ov != "") return(ov);                                          // 0) tabla manual (máxima prioridad)
+   if(MarketInfo(masterSymbol, MODE_BID) > 0) return(masterSymbol);   // 1) existe tal cual
    string want = NormalizeSym(masterSymbol);
    int total = SymbolsTotal(false);
+   // Pase 1: mismo par con o sin sufijo de broker (EURUSDm, EURUSD.pro, XAUUSDecn…)
    for(int i=0;i<total;i++){
       string s = SymbolName(i, false);
-      if(NormalizeSym(s) == want) return(s);
+      if(SymMatch(NormalizeSym(s), want)) return(s);
+   }
+   // Pase 2: alias de índices/metales (GOLD↔XAUUSD, US100↔NAS100, GER40↔DE40…)
+   string alias = AliasList(want);
+   if(alias != ""){
+      string mem[]; int n = StringSplit(alias, ',', mem);
+      for(int m=0;m<n;m++)
+         for(int i=0;i<total;i++){
+            string s = SymbolName(i, false);
+            if(SymMatch(NormalizeSym(s), mem[m])) return(s);
+         }
    }
    return("");                                                        // no encontrado → no ejecutar
 }
@@ -212,8 +305,66 @@ bool CloseByMaster(long mt)
    return(false);
 }
 
+//============================================================
+// MODO LOCAL (mismo VPS): lee el archivo comun del master.
+//============================================================
+int CountLocalLines()
+{
+   string fn = "onyx_local_" + CopyChannel + ".jsonl";
+   int h = FileOpen(fn, FILE_READ|FILE_TXT|FILE_ANSI|FILE_COMMON|FILE_SHARE_READ|FILE_SHARE_WRITE);
+   if(h == INVALID_HANDLE) return(0);
+   int c = 0;
+   while(!FileIsEnding(h)){ string ln = FileReadString(h); if(StringLen(ln) > 0) c++; }
+   FileClose(h);
+   return(c);
+}
+
+void HandleLocalEvent(string o)
+{
+   string ev  = JVal(o, "ev");
+   string sym = JVal(o, "symbol");
+   string side= JVal(o, "side");
+   string mtk = JVal(o, "ticket");
+   double vol = JNum(o, "vol");
+   double sl  = JNum(o, "sl");
+   double tp  = JNum(o, "tp");
+   double mbal= JNum(o, "mbal");
+   long   mt  = StringToInteger(mtk);
+   int    t0  = (int)GetTickCount();
+
+   if(ev == "open"){
+      if(RiskStop(gDLoss, gMDD)){ g_skipped++; return; }
+      string local = ResolveLocalSymbol(sym);
+      if(local == ""){ g_skipped++; return; }
+      if(SpreadTooHigh(local, gMaxSpr)){ g_skipped++; return; }
+      double lot = ApplyMaxLot(CalcLot(local, gMode, vol, mbal, gMult, gRisk, gPip), gMaxLot);
+      int type = (side == "buy") ? OP_BUY : OP_SELL;
+      double px = (type == OP_BUY) ? MarketInfo(local, MODE_ASK) : MarketInfo(local, MODE_BID);
+      int tk = OrderSend(local, type, lot, px, Slippage, sl, tp, "OC" + mtk, ONYX_MAGIC, 0, clrNONE);
+      int lat = GetTickCount() - t0;
+      if(tk > 0){ MapAdd(mt, tk); g_copied++; g_lat = lat; g_masterInfo = "#" + mtk; }
+      else g_skipped++;
+   }
+   else if(ev == "close") CloseByMaster(mt);
+}
+
+void ProcessLocal()
+{
+   string fn = "onyx_local_" + CopyChannel + ".jsonl";
+   int h = FileOpen(fn, FILE_READ|FILE_TXT|FILE_ANSI|FILE_COMMON|FILE_SHARE_READ|FILE_SHARE_WRITE);
+   if(h == INVALID_HANDLE){ g_state = 1; return; }
+   g_state = 2;
+   string lines[]; int cnt = 0;
+   while(!FileIsEnding(h)){ string ln = FileReadString(h); if(StringLen(ln) > 0){ ArrayResize(lines, cnt + 1); lines[cnt] = ln; cnt++; } }
+   FileClose(h);
+   for(int i = g_localDone; i < cnt; i++) HandleLocalEvent(lines[i]);
+   if(cnt > g_localDone) g_localDone = cnt;
+}
+
 void OnTimer()
 {
+   if(LocalMode){ ProcessLocal(); DrawPanel(); return; }
+
    string body = GetCommands();
    DrawPanel();                       // refresca la tarjeta (borde por estado)
    if(body == "") return;

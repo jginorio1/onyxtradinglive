@@ -20,6 +20,7 @@ input string ApiBase    = "https://www.onyxtradinglive.com";
 input string CopyApiKey = "PON_TU_CLAVE_COPY";   // onyx_copy_...  (no hace falta en modo Local)
 input int    PollMs     = 1000;                  // En modo Local ponlo bajo (ej. 100) para copiar mas rapido
 input string PanelLang  = "EN";                  // Panel: ES=Español, otro=English (web/IA/Telegram en 6 idiomas)
+input string SymbolMap  = "";                    // Tabla manual master=esclava. Ej: US100=NAS100;GOLD=XAUUSD.pro;EURUSD=EURUSDm
 // ---- Modo LOCAL (mismo VPS): lee el archivo comun que escribe el master ----
 input bool   LocalMode      = false;             // Copia LOCAL sin nube (milisegundos)
 input string CopyChannel    = "onyx1";           // Mismo nombre que el master del mismo VPS
@@ -156,17 +157,65 @@ string NormalizeSym(string s)
    StringReplace(u, ".", ""); StringReplace(u, "_", ""); StringReplace(u, "-", ""); StringReplace(u, "#", "");
    return u;
 }
+//--- ¿Dos símbolos normalizados son el mismo par, admitiendo un sufijo de letras (.sim, m, .pro, ecn…)?
+bool SymMatch(string a, string b)
+{
+   if(a == b) return true;
+   string lng = (StringLen(a) >= StringLen(b)) ? a : b;          // el más largo
+   string sht = (StringLen(a) >= StringLen(b)) ? b : a;          // el más corto
+   int ls = StringLen(sht), ll = StringLen(lng);
+   if(ll > ls && (ll - ls) <= 5 && StringSubstr(lng,0,ls) == sht){
+      string rest = StringSubstr(lng, ls);                       // p.ej. "M", "PRO", "ECN", "SIM"
+      for(int k=0;k<StringLen(rest);k++){ ushort c = StringGetCharacter(rest,k); if(c < 'A' || c > 'Z') return false; }
+      return true;
+   }
+   return false;
+}
+//--- Grupos de alias para índices/metales cuyo nombre cambia entre brokers.
+string AliasList(string want)
+{
+   string g[] = {
+      "NAS100,US100,USTEC,USTECH,NASDAQ,NDX,USNAS100,US100CASH,NAS100CASH,USTEC100",
+      "US30,DJ30,WS30,DOW,DJIA,US30CASH,USA30,DJI,WALLST30",
+      "SPX500,US500,SP500,SPX,USA500,US500CASH,SPX500USD",
+      "GER40,DE40,GER30,DE30,DAX40,DAX30,DAX,GERMANY40,GER40CASH",
+      "UK100,FTSE100,FTSE,UK100CASH,GB100,BRITAIN100",
+      "US2000,RUSSELL2000,US2000CASH,RUT",
+      "JP225,JPN225,NIKKEI,NIK225,JAPAN225,JP225CASH",
+      "XAUUSD,GOLD,GOLDUSD",
+      "XAGUSD,SILVER,SILVERUSD",
+      "USOIL,WTI,WTIUSD,CRUDE,OILUSD,USCRUDE,XTIUSD,USOUSD",
+      "UKOIL,BRENT,BRENTUSD,XBRUSD,UKOUSD"
+   };
+   for(int i=0;i<ArraySize(g);i++){
+      string mem[]; int nm = StringSplit(g[i], ',', mem);
+      for(int j=0;j<nm;j++) if(SymMatch(want, mem[j])) return g[i];
+   }
+   return "";
+}
 string ResolveLocalSymbol(string masterSymbol)
 {
-   if(SymbolSelect(masterSymbol, true)) return masterSymbol;      // match exacto
+   string ov = MapOverride(masterSymbol);
+   if(ov != "") return ov;                                       // 0) tabla manual (máxima prioridad)
+   if(SymbolSelect(masterSymbol, true)) return masterSymbol;     // 1) match exacto directo
    string want = NormalizeSym(masterSymbol);
    int total = SymbolsTotal(false);
+   // Pase 1: mismo par con o sin sufijo de broker (EURUSDm, EURUSD.pro, XAUUSDecn…)
    for(int i=0;i<total;i++){
       string s = SymbolName(i, false);
-      if(NormalizeSym(s) == want) return s;                       // por base
+      if(SymMatch(NormalizeSym(s), want)){ SymbolSelect(s, true); return s; }
    }
-   // TODO: tabla de alias (GOLD↔XAUUSD, US100↔NAS100…) igual que en copySymbols.ts
-   return "";                                                     // no encontrado → no ejecutar
+   // Pase 2: alias de índices/metales (GOLD↔XAUUSD, US100↔NAS100, GER40↔DE40…)
+   string alias = AliasList(want);
+   if(alias != ""){
+      string mem[]; int n = StringSplit(alias, ',', mem);
+      for(int m=0;m<n;m++)
+         for(int i=0;i<total;i++){
+            string s = SymbolName(i, false);
+            if(SymMatch(NormalizeSym(s), mem[m])){ SymbolSelect(s, true); return s; }
+         }
+   }
+   return "";                                                    // no encontrado → no ejecutar (falla seguro)
 }
 
 //--- Cálculo de lote según el modo (leyendo datos reales del broker esclavo).

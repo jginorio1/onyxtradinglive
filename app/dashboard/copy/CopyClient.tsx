@@ -2,6 +2,7 @@
 import { dictFor } from '@/lib/i18n';
 import { toast } from '@/lib/toast';
 import OnyxIcon from '@/app/components/OnyxIcon';
+import CopyGuide from './CopyGuide';
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useLang } from '@/lib/lang';
@@ -228,12 +229,22 @@ export default function CopyClient() {
   const [copiedId, setCopiedId] = useState('');
   const [masterPopup, setMasterPopup] = useState<any>(null);
   const [pinModal, setPinModal] = useState<any>(null);
+  const [guideOpen, setGuideOpen] = useState(false);
 
   const load = useCallback(() => fetch('/api/copy/links').then((r) => r.json()).then(setD).catch(() => setD({ inPlan: false })), []);
   const loadControl = useCallback(() => fetch('/api/copy/control').then((r) => r.ok ? r.json() : null).then((j) => j && setCtrl(j)).catch(() => {}), []);
   const loadKeys = useCallback(() => fetch('/api/copy/keys').then((r) => r.ok ? r.json() : null).then((j) => j && setCkeys(j.keys || [])).catch(() => {}), []);
 
   useEffect(() => { load(); loadControl(); loadKeys(); }, [load, loadControl, loadKeys]);
+  // Abre la guia flotante automaticamente la primera vez que el usuario entra al copiador.
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined' && !localStorage.getItem('onyx_copy_guide_seen')) {
+        setGuideOpen(true);
+        localStorage.setItem('onyx_copy_guide_seen', '1');
+      }
+    } catch {}
+  }, []);
   useEffect(() => {
     const f = () => fetch('/api/copy/log').then((r) => r.ok ? r.json() : null).then((j) => j && setLog(j.log || [])).catch(() => {});
     f(); const iv = setInterval(() => { f(); loadControl(); }, 6000); return () => clearInterval(iv);
@@ -345,6 +356,7 @@ export default function CopyClient() {
 
   return (
     <div className="wrap" style={{ maxWidth: 880, margin: '0 auto', padding: '22px 22px 50px' }}>{head}
+      <CopyGuide open={guideOpen} onClose={() => setGuideOpen(false)} lang={lang} />
       <div className="card" style={{ marginBottom: 12, border: '1px solid var(--amber)', background: 'rgba(255,192,77,.06)' }}>
         <span style={{ fontSize: 12.5, color: 'var(--amber)' }}><OnyxIcon emoji="⚠" size={16} /> {t.warn}</span>
       </div>
@@ -353,7 +365,7 @@ export default function CopyClient() {
       <div className="card" style={{ marginBottom: 12, border: '1px solid var(--accent,#6c7bff)', background: 'linear-gradient(180deg,rgba(108,123,255,.08),transparent)' }}>
         <div className="row between" style={{ alignItems: 'center', gap: 8 }}>
           <b style={{ fontSize: 14 }}><OnyxIcon emoji="🚀" size={16} /> {t.howTitle}</b>
-          <button className="btn btn-ghost" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => setShowHow(!showHow)}>{showHow ? t.howHide : t.howShow}</button>
+          <div className="row" style={{ gap: 6 }}><button className="btn btn-ghost" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => setGuideOpen(true)} title={lang==='es'?'Abrir guia flotante':'Open floating guide'}>📘 {lang==='es'?'Guia':'Guide'}</button><button className="btn btn-ghost" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => setShowHow(!showHow)}>{showHow ? t.howHide : t.howShow}</button></div>
         </div>
         {showHow && (
           <div style={{ marginTop: 10 }}>
