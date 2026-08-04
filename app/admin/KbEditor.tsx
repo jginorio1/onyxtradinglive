@@ -13,9 +13,22 @@ export default function KbEditor() {
   const [edit, setEdit] = useState<any>(null); // artículo en edición (o nuevo)
   const [busy, setBusy] = useState(false);
   const [importing, setImporting] = useState(false);
+  // Editor del prompt de Onyx AI (instrucciones + conocimiento de marca).
+  const [pfOpen, setPfOpen] = useState(false);
+  const [pf, setPf] = useState<any>(null);
+  const [pfBusy, setPfBusy] = useState(false);
 
   async function load() { try { const r = await fetch('/api/admin/kb'); const j = await r.json(); setItems(j.articles || []); } catch {} }
-  useEffect(() => { load(); }, []);
+  async function loadPrompt() { try { const r = await fetch('/api/admin/ai-prompt'); setPf(await r.json()); } catch {} }
+  useEffect(() => { load(); loadPrompt(); }, []);
+
+  async function savePrompt() {
+    setPfBusy(true);
+    try {
+      const r = await fetch('/api/admin/ai-prompt', { method: 'POST', body: JSON.stringify({ brief_es: pf.brief_es || '', brief_en: pf.brief_en || '', extra_es: pf.extra_es || '', extra_en: pf.extra_en || '' }) });
+      toast(r.ok ? (es ? 'Prompt guardado. La IA lo usa al instante.' : 'Prompt saved. The AI uses it right away.') : (es ? 'No se pudo guardar.' : 'Could not save.'));
+    } finally { setPfBusy(false); }
+  }
 
   // Importa toda la Guía a la Base IA (idempotente). Así la IA la tiene aquí y
   // puedes editarla desde el panel sin desplegar.
@@ -50,6 +63,46 @@ export default function KbEditor() {
         <button className="btn btn-primary" onClick={() => setEdit({ title: '', body: '', tags: '', published: true })}>{t.kb_new}</button>
       </div>
     </div>
+    {/* Editor del PROMPT de Onyx AI: instrucciones (tono/reglas) + conocimiento de marca. */}
+    <div className="card" style={{ borderColor: 'var(--brand)' }}>
+      <div className="row between" style={{ alignItems: 'center', cursor: 'pointer', flexWrap: 'wrap', gap: 8 }} onClick={() => setPfOpen(!pfOpen)}>
+        <div>
+          <b style={{ fontSize: 15 }}>🧩 {es ? 'Instrucciones de Onyx AI (prompt)' : 'Onyx AI instructions (prompt)'}</b>
+          <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>{es ? 'Ajusta cómo responde el chat y qué sabe de Onyx, sin tocar código. Se aplica al instante.' : 'Tune how the chat replies and what it knows about Onyx, no code needed. Applies instantly.'}</div>
+        </div>
+        <button className="btn btn-ghost" style={{ fontSize: 12 }}>{pfOpen ? (es ? 'Ocultar' : 'Hide') : (es ? 'Editar' : 'Edit')}</button>
+      </div>
+
+      {pfOpen && pf && (
+        <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <div style={{ fontWeight: 600, fontSize: 13.5, marginBottom: 4 }}>{es ? 'Instrucciones extra (tono, reglas propias)' : 'Extra instructions (tone, your own rules)'}</div>
+            <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{es ? 'Se AÑADEN a las reglas base (que no dé consejo financiero, texto plano, etc. siguen activas). Ej: "Sé más breve", "Ofrece el plan Pro cuando encaje".' : 'These ADD to the base rules (no financial advice, plain text, etc. stay on). E.g. "Be more concise", "Suggest the Pro plan when it fits".'}</div>
+            <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ flex: '1 1 300px' }}><span className="muted" style={{ fontSize: 12 }}>Español</span><textarea value={pf.extra_es || ''} onChange={(e) => setPf({ ...pf, extra_es: e.target.value })} rows={4} style={{ width: '100%', margin: '4px 0 0' }} placeholder={es ? 'Instrucciones extra en español…' : ''} /></div>
+              <div style={{ flex: '1 1 300px' }}><span className="muted" style={{ fontSize: 12 }}>English</span><textarea value={pf.extra_en || ''} onChange={(e) => setPf({ ...pf, extra_en: e.target.value })} rows={4} style={{ width: '100%', margin: '4px 0 0' }} placeholder="Extra instructions in English…" /></div>
+            </div>
+          </div>
+
+          <div>
+            <div className="row between" style={{ alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+              <div style={{ fontWeight: 600, fontSize: 13.5 }}>{es ? 'Conocimiento de marca (qué es Onyx, funciones, cómo conectar)' : 'Brand knowledge (what Onyx is, features, how to connect)'}</div>
+              <button className="btn btn-ghost" style={{ fontSize: 11.5 }} onClick={() => { if (confirm(es ? '¿Cargar el texto por defecto? Reemplaza lo que haya en estos dos campos.' : 'Load the default text? It replaces what is in these two fields.')) setPf({ ...pf, brief_es: pf.defaultBrief_es || '', brief_en: pf.defaultBrief_en || '' }); }}>{es ? '↺ Cargar el texto por defecto' : '↺ Load the default text'}</button>
+            </div>
+            <div className="muted" style={{ fontSize: 12, margin: '4px 0 6px' }}>{es ? 'Si lo dejas VACÍO, la IA usa el texto interno por defecto. Si escribes aquí, REEMPLAZA ese texto (tú controlas los hechos que da sobre Onyx).' : 'If you leave it EMPTY, the AI uses the built-in default. If you write here, it REPLACES that text (you control the facts it gives about Onyx).'}</div>
+            <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ flex: '1 1 300px' }}><span className="muted" style={{ fontSize: 12 }}>Español</span><textarea value={pf.brief_es || ''} onChange={(e) => setPf({ ...pf, brief_es: e.target.value })} rows={8} style={{ width: '100%', margin: '4px 0 0', fontSize: 12.5 }} placeholder={es ? '(vacío = usa el texto por defecto). Pulsa "Cargar el texto por defecto" para editarlo.' : ''} /></div>
+              <div style={{ flex: '1 1 300px' }}><span className="muted" style={{ fontSize: 12 }}>English</span><textarea value={pf.brief_en || ''} onChange={(e) => setPf({ ...pf, brief_en: e.target.value })} rows={8} style={{ width: '100%', margin: '4px 0 0', fontSize: 12.5 }} placeholder="(empty = uses the default text). Click “Load the default text” to edit it." /></div>
+            </div>
+          </div>
+
+          <div className="row" style={{ gap: 8 }}>
+            <button className="btn btn-primary" onClick={savePrompt} disabled={pfBusy}>{pfBusy ? '…' : (es ? 'Guardar prompt' : 'Save prompt')}</button>
+          </div>
+        </div>
+      )}
+    </div>
+
     <div className="card">
       <p className="muted" style={{ fontSize: 13, marginBottom: 16 }}>{t.kb_intro}</p>
 

@@ -3,7 +3,7 @@ import { ARTICLES, searchArticles, type Article, type Lang } from '@/lib/guide';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { listPublished } from '@/lib/blog';
 import { sendEmail } from '@/lib/mail';
-import { getSetting } from '@/lib/settings';
+import { getSetting, aiPromptSettings } from '@/lib/settings';
 
 // ============================================================
 // Cerebro de soporte con IA: clasifica los tickets (triage) y, cuando es
@@ -102,6 +102,20 @@ export type AiAnswer = { answer: string; confident: boolean; articles: Array<{ s
 // Redacta una respuesta con el cerebro de Onyx + precios reales + base de
 // conocimiento + Guía. Solo escala (NO_ANSWER) cuando necesita datos PRIVADOS de
 // la cuenta del usuario que no puede ver. `reason` dice qué pasó exactamente.
+// El chat de soporte muestra TEXTO PLANO (no renderiza markdown). Limpiamos las marcas
+// que el modelo pueda dejar: **negrita**, ## títulos, `código`, y pasamos "- "/"* " a "• ".
+function stripMarkdown(s: string): string {
+  return String(s || '')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')          // **negrita** -> negrita
+    .replace(/__([^_]+)__/g, '$1')               // __negrita__ -> negrita
+    .replace(/`([^`]+)`/g, '$1')                 // `código` -> código
+    .replace(/(^|\n)\s{0,3}#{1,6}\s+/g, '$1')    // "## Título" -> "Título"
+    .replace(/(^|\n)\s*[-*]\s+/g, '$1• ')        // viñetas "- "/"* " -> "• "
+    .replace(/\*/g, '')                          // asteriscos sueltos que queden
+    .replace(/\n{3,}/g, '\n\n')                   // no más de una línea en blanco
+    .trim();
+}
+
 export async function aiAnswer(question: string, lang: Lang, sensitive = false): Promise<AiAnswer> {
   // Chips "Abrir: ..." (solo para los botones). NO limita lo que la IA sabe: eso ahora es TODO el corpus.
   const found = searchArticles(question, lang).slice(0, 4);
@@ -112,6 +126,13 @@ export async function aiAnswer(question: string, lang: Lang, sensitive = false):
   if (sensitive) return { answer: '', confident: false, articles: chips, reason: 'sensitive' };
 
   const en = enBase(lang);
+
+  // Prompt editable desde el Admin: `brief` reemplaza el conocimiento de marca si el admin
+  // lo escribió; `extra` se añade a las instrucciones. Si están vacíos, se usan los del código.
+  const prompt = await aiPromptSettings();
+  const adminBrief = ((en ? prompt.brief_en : prompt.brief_es) || '').trim();
+  const brief = adminBrief || dictFor(ONYX_BRIEF, lang);
+  const adminExtra = ((en ? prompt.extra_en : prompt.extra_es) || '').trim();
 
   // === CORPUS COMPLETO ===
   // La base es pequeña, así que Claude LEE TODO (guía + Base IA + blog) y decide por
@@ -152,12 +173,25 @@ export async function aiAnswer(question: string, lang: Lang, sensitive = false):
   } catch {}
 
   const persona = en
-    ? `You are Onyx AI, the support agent for Onyx Trading Live. Assume the person may know NOTHING about Onyx and may ask in vague, incomplete or misspelled ways — figure out their intent and help anyway. Answer using ALL the knowledge below (help articles, knowledge base, blog and current prices). Be brief, warm and clear, with a few tasteful emojis and bullets. Prices below are authoritative. Never invent features or give financial/market advice. If the question is too vague or incomplete to answer well, ask ONE short clarifying question instead of guessing. Do NOT add a signature. ONLY reply with the exact token NO_ANSWER (nothing else) when the question needs the user's PRIVATE account data you cannot see — e.g. "why was I charged", "is MY account blocked", "MY balance". For everything else, help.`
-    : `Eres Onyx AI, el agente de soporte de Onyx Trading Live. Supón que la persona quizá NO conoce nada de Onyx y puede preguntar de forma vaga, incompleta o con errores — deduce su intención y ayúdala igual. Responde usando TODO el conocimiento de abajo (artículos de ayuda, base de conocimiento, blog y precios actuales). Sé breve, cercano y claro, con algunos emojis con criterio y viñetas. Los precios de abajo son la fuente oficial. No inventes funciones ni des consejo financiero/de mercado. Si la pregunta es demasiado vaga o incompleta para responder bien, haz UNA pregunta corta de aclaración en vez de adivinar. No añadas firma. SOLO responde con el token exacto NO_ANSWER (y nada más) cuando la pregunta necesite datos PRIVADOS de la cuenta del usuario que no puedes ver — p. ej. "por qué me cobraron", "está bloqueada MI cuenta", "MI saldo". Para todo lo demás, ayuda.`;
+    ? `You are Onyx AI, the support agent for Onyx Trading Live. Assume the person may know NOTHING about Onyx and may ask in vague, incomplete or misspelled ways — figure out their intent and help anyway. Be brief, warm and clear. IMPORTANT: write in PLAIN TEXT only — do NOT use markdown: no asterisks for bold (no ** **), no # headings, no backticks. To emphasize, just write the words normally. For lists use a simple "• " bullet at the start of the line. A few tasteful emojis are fine.
+KNOWLEDGE RULES:
+• For GENERAL trading and industry questions — what a prop firm is, what FTMO / FundedNext / The5ers / FundingPips are, trading platforms (MetaTrader, cTrader, TradingView), and trading terms (drawdown, profit factor, pips, lot size...) — answer with your OWN general knowledge. You do NOT need an article for that; never say "I have no article on this". Keep it accurate and neutral.
+• For ONYX-SPECIFIC facts (what Onyx does, its features, how to connect, and PRICES) rely on the knowledge and prices below. Never invent Onyx features or make up prices.
+• When a general concept relates to Onyx (e.g. "does Onyx work with FTMO?"), explain the concept briefly AND connect it to Onyx using the knowledge below.
+Never give financial/market advice or predict the market. If the question is too vague to answer well, ask ONE short clarifying question instead of guessing. Do NOT add a signature. ONLY reply with the exact token NO_ANSWER (nothing else) when the question needs the user's PRIVATE account data you cannot see — e.g. "why was I charged", "is MY account blocked", "MY balance". For everything else, help.`
+    : `Eres Onyx AI, el agente de soporte de Onyx Trading Live. Supón que la persona quizá NO conoce nada de Onyx y puede preguntar de forma vaga, incompleta o con errores — deduce su intención y ayúdala igual. Sé breve, cercano y claro. IMPORTANTE: escribe en TEXTO PLANO — NO uses markdown: nada de asteriscos para negrita (nada de ** **), ni títulos con #, ni comillas invertidas. Para enfatizar, escribe las palabras normal. Para listas usa una viñeta simple "• " al inicio de la línea. Algunos emojis con criterio están bien.
+REGLAS DE CONOCIMIENTO:
+• Para preguntas GENERALES de trading y del sector — qué es una prop firm, qué son FTMO / FundedNext / The5ers / FundingPips, plataformas (MetaTrader, cTrader, TradingView) y términos (drawdown, profit factor, pips, lotaje...) — responde con tu PROPIO conocimiento general. NO necesitas un artículo para eso; nunca digas "no tengo información sobre esto en mis artículos". Sé exacto y neutral.
+• Para hechos ESPECÍFICOS de Onyx (qué hace Onyx, sus funciones, cómo conectar y los PRECIOS) usa el conocimiento y los precios de abajo. Nunca inventes funciones de Onyx ni te inventes precios.
+• Cuando un concepto general se relaciona con Onyx (p. ej. "¿Onyx funciona con FTMO?"), explica el concepto brevemente Y conéctalo con Onyx usando el conocimiento de abajo.
+Nunca des consejo financiero/de mercado ni predigas el mercado. Si la pregunta es demasiado vaga para responder bien, haz UNA pregunta corta de aclaración en vez de adivinar. No añadas firma. SOLO responde con el token exacto NO_ANSWER (y nada más) cuando la pregunta necesite datos PRIVADOS de la cuenta del usuario que no puedes ver — p. ej. "por qué me cobraron", "está bloqueada MI cuenta", "MI saldo". Para todo lo demás, ayuda.`;
 
-  const knowledge = `=== ${en ? 'ONYX KNOWLEDGE' : 'CONOCIMIENTO DE ONYX'} ===\n${dictFor(ONYX_BRIEF, lang)}\n\n=== ${en ? 'HELP ARTICLES' : 'ARTÍCULOS DE AYUDA'} ===\n${guide}`
+  const knowledge = `=== ${en ? 'ONYX KNOWLEDGE' : 'CONOCIMIENTO DE ONYX'} ===\n${brief}\n\n=== ${en ? 'HELP ARTICLES' : 'ARTÍCULOS DE AYUDA'} ===\n${guide}`
     + (kbText ? `\n\n=== ${en ? 'KNOWLEDGE BASE' : 'BASE DE CONOCIMIENTO'} ===\n${kbText}` : '')
     + (blogText ? `\n\n=== BLOG ===\n${blogText}` : '');
+
+  // Instrucciones extra del admin (tono, reglas propias) — se añaden al final del persona.
+  const personaFull = persona + aiLangDirective(lang) + (adminExtra ? `\n\n${en ? 'EXTRA INSTRUCTIONS (from admin)' : 'INSTRUCCIONES EXTRA (del admin)'}:\n${adminExtra}` : '');
 
   const model = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5';
   const headers: any = { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' };
@@ -168,7 +202,7 @@ export async function aiAnswer(question: string, lang: Lang, sensitive = false):
   const cachedBody = JSON.stringify({
     model, max_tokens: 700,
     system: [
-      { type: 'text', text: persona + aiLangDirective(lang) },
+      { type: 'text', text: personaFull },
       { type: 'text', text: knowledge, cache_control: { type: 'ephemeral' } },
       ...(prices ? [{ type: 'text', text: prices }] : []),
     ],
@@ -176,7 +210,7 @@ export async function aiAnswer(question: string, lang: Lang, sensitive = false):
   });
   const plainBody = JSON.stringify({
     model, max_tokens: 700,
-    system: persona + aiLangDirective(lang) + '\n\n' + knowledge + prices,
+    system: personaFull + '\n\n' + knowledge + prices,
     messages: userMsg,
   });
 
@@ -185,8 +219,11 @@ export async function aiAnswer(question: string, lang: Lang, sensitive = false):
     if (!r.ok) r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers, body: plainBody });
     if (!r.ok) return { answer: '', confident: false, articles: chips, reason: 'error' };
     const data = await r.json();
-    const answer = (data?.content || []).map((c: any) => c.text || '').join('\n').trim();
-    if (!answer || /NO_ANSWER/i.test(answer)) return { answer: '', confident: false, articles: chips, reason: 'declined' };
+    const raw = (data?.content || []).map((c: any) => c.text || '').join('\n').trim();
+    if (!raw || /NO_ANSWER/i.test(raw)) return { answer: '', confident: false, articles: chips, reason: 'declined' };
+    // El chat muestra texto plano; quitamos cualquier markdown que se le escape al modelo
+    // (negritas **, títulos #, `código`) y normalizamos las viñetas a "• ".
+    const answer = stripMarkdown(raw);
     return { answer, confident: true, articles: chips, reason: 'ok' };
   } catch {
     return { answer: '', confident: false, articles: chips, reason: 'error' };

@@ -48,6 +48,12 @@ export async function saveSetting(key: string, value: any) {
 export const retentionSettings = () => getSetting<Retention>('retention', R);
 export const addonSettings = () => getSetting<Addons>('addons', A);
 
+// Prompt editable de Onyx AI (soporte/chat) desde el Admin. Si un campo está vacío,
+// se usa el valor por defecto del código. `extra` se AÑADE a las instrucciones;
+// `brief` REEMPLAZA el conocimiento de marca (los hechos que la IA da sobre Onyx).
+export type AiPrompt = { brief_es: string; brief_en: string; extra_es: string; extra_en: string };
+export const aiPromptSettings = () => getSetting<AiPrompt>('support_ai_prompt', { brief_es: '', brief_en: '', extra_es: '', extra_en: '' });
+
 // "Invita y gana" — referidos del usuario común (recompensa en crédito de cuenta)
 export type MemberReferral = {
   enabled: boolean;
