@@ -23,7 +23,7 @@ const T: any = {
     uPipsD: 'Distancia del par', uRD: 'Múltiplos del stop', uMoneyD: 'En tu divisa',
     noAcc: 'Conecta una cuenta (MetaTrader o cTrader) para usar Onyx Guardian.', connect: 'Conectar cuenta →',
     lockT: 'Onyx Guardian está en los planes de pago', lockD: 'Deja que Onyx mueva tus stops, aplique trailing y cierre por partes mientras tú te concentras en operar.', lockCta: 'Ver planes →',
-    account: 'Cuenta', live: 'EA conectado', offline: 'EA sin señal', never: 'Nunca ha sincronizado',
+    account: 'Cuenta', live: 'EA conectado', offline: 'EA sin señal', never: 'Nunca ha sincronizado', working: 'Trabajando con esta cuenta', changeAcc: 'Cambiar cuenta',
     onoff: 'Gestor activo en esta cuenta', onoffD: 'Si lo apagas, Onyx no toca ninguna operación.',
     units: 'Trabajo con mis niveles en', uPips: 'Pips', uR: 'R (múltiplos del stop)', uMoney: 'Dinero',
     unitsHelp: { pips: 'Los niveles se miden en pips del par.', r: '1R es la distancia de tu stop. Se adapta a cada operación.', money: 'Los niveles se miden en la divisa de tu cuenta.' },
@@ -64,7 +64,7 @@ const T: any = {
     uPipsD: 'Pair distance', uRD: 'Stop multiples', uMoneyD: 'In your currency',
     noAcc: 'Connect an account (MetaTrader or cTrader) to use Onyx Guardian.', connect: 'Connect account →',
     lockT: 'Onyx Guardian is on the paid plans', lockD: 'Let Onyx move your stops, run trailing and close in parts while you focus on trading.', lockCta: 'See plans →',
-    account: 'Account', live: 'EA connected', offline: 'EA not reporting', never: 'Never synced',
+    account: 'Account', live: 'EA connected', offline: 'EA not reporting', never: 'Never synced', working: 'Working with this account', changeAcc: 'Change account',
     onoff: 'Manager active on this account', onoffD: 'If you turn it off, Onyx touches nothing.',
     units: 'I set my levels in', uPips: 'Pips', uR: 'R (stop multiples)', uMoney: 'Money',
     unitsHelp: { pips: 'Levels measured in pips of the pair.', r: '1R is your stop distance. Adapts to every trade.', money: 'Levels measured in your account currency.' },
@@ -303,14 +303,27 @@ export default function ManagerClient() {
               : enabled ? (lang === 'es' ? '✓ Guardar y ACTIVAR el Guardian' : '✓ Save and ACTIVATE Guardian')
               : (lang === 'es' ? 'Guardar (Guardian desactivado)' : 'Save (Guardian off)')}
           </button>
-          <div className="row" style={{ gap: 10, alignItems: 'center', marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--line)', flexWrap: 'wrap' }}>
-            <select value={sel} onChange={(e) => pick(e.target.value)} style={{ margin: 0, width: 'auto', minWidth: 200 }}>
-              {d.accounts.map((a: any) => <option key={a.id} value={a.id}>{a.nickname || a.login} · {a.broker || ''}</option>)}
-            </select>
-            {acc && (acc.last_sync_at
-              ? <span className="pill" style={{ color: acc.live ? 'var(--green)' : 'var(--amber)', background: acc.live ? 'rgba(52,226,160,.15)' : 'rgba(255,192,77,.15)' }}>{acc.live ? t.live : t.offline}</span>
-              : <span className="pill">{t.never}</span>)}
-            {acc?.ea_version && <span className="muted" style={{ fontSize: 12 }}>EA {acc.ea_version}</span>}
+          <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
+            <div style={{ border: '2px solid var(--brand)', borderRadius: 14, padding: '13px 15px', background: 'rgba(124,140,255,.06)' }}>
+              <div className="muted" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 7 }}>{t.working}</div>
+              <div className="row" style={{ gap: 13, alignItems: 'center', flexWrap: 'wrap' }}>
+                <div style={{ width: 46, height: 46, borderRadius: 12, background: 'rgba(124,140,255,.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}><OnyxIcon emoji="🏦" size={22} /></div>
+                <div style={{ flex: 1, minWidth: 160 }}>
+                  <div style={{ fontSize: 21, fontWeight: 700, lineHeight: 1.15 }}>{acc ? (acc.nickname || acc.login) : '—'}<span className="muted" style={{ fontSize: 13, fontWeight: 400 }}>{acc?.login && acc?.nickname ? ' · ' + acc.login : ''}</span></div>
+                  <div className="muted" style={{ fontSize: 13, marginTop: 2 }}>{acc?.broker || ''}{acc?.ea_version ? ' · EA ' + acc.ea_version : ''}</div>
+                </div>
+                {acc && (acc.last_sync_at
+                  ? <span className="pill" style={{ fontSize: 12.5, padding: '5px 12px', color: acc.live ? 'var(--green)' : 'var(--amber)', background: acc.live ? 'rgba(52,226,160,.15)' : 'rgba(255,192,77,.15)' }}>{acc.live ? '● ' + t.live : '● ' + t.offline}</span>
+                  : <span className="pill" style={{ fontSize: 12.5, padding: '5px 12px' }}>{t.never}</span>)}
+              </div>
+              {d.accounts.length > 1 && (
+                <label className="muted" style={{ fontSize: 12, display: 'block', marginTop: 12 }}>{t.changeAcc}
+                  <select value={sel} onChange={(e) => pick(e.target.value)} style={{ margin: '4px 0 0', width: '100%', fontSize: 14 }}>
+                    {d.accounts.map((a: any) => <option key={a.id} value={a.id}>{a.nickname || a.login} · {a.broker || ''}</option>)}
+                  </select>
+                </label>
+              )}
+            </div>
           </div>
           <div className="muted" style={{ fontSize: 13, marginTop: 10 }}>{t.onoffD}</div>
         </div>
