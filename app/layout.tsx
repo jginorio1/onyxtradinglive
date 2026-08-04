@@ -43,7 +43,7 @@ export function generateMetadata(): Metadata {
     description: es
       ? 'Conecta tus cuentas de MetaTrader (MT4/MT5) o cTrader y analiza tu trading automáticamente: estadísticas, calendario, sesiones, pares, seguimiento de fondeo, copy trading y academia. Empieza gratis.'
       : 'Connect your MetaTrader (MT4/MT5) or cTrader accounts and analyze your trading automatically: stats, calendar, sessions, pairs, funding tracking, copy trading and academy. Start free.',
-    keywords: ['trading journal', 'diario de trading', 'MT4', 'MT5', 'MetaTrader', 'cTrader', 'MatchTrader', 'estadísticas trading', 'trading stats', 'FTMO', 'prop firm', 'copy trading', 'trading academy', 'analytics'],
+    keywords: ['trading journal', 'diario de trading', 'MT4', 'MT5', 'MetaTrader', 'cTrader', 'MatchTrader', 'TradingView', 'TradingView signals', 'señales TradingView', 'estadísticas trading', 'trading stats', 'FTMO', 'prop firm', 'copy trading', 'trading academy', 'analytics'],
     alternates: localeAlternates('/'),
     manifest: '/manifest.webmanifest',
     appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'Onyx' },

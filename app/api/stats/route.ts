@@ -41,7 +41,7 @@ export async function GET() {
 
     // Base editable de las cifras del landing (desde Admin → Módulos).
     // La cifra pública = base + real, y sube en vivo con el uso de todos.
-    let tBase = 0, bBase = 0, aBase = 0, platforms = 4, readonly = 100;
+    let tBase = 0, bBase = 0, aBase = 0, platforms = 5, readonly = 100;
     try {
       const { data: ls } = await supabaseAdmin.from('app_settings').select('value').eq('key', 'landing_stats').maybeSingle();
       if (ls?.value) {
@@ -67,6 +67,6 @@ export async function GET() {
       ambRate, ambCoupon, ambBase, ambMinPayout,
     }, { headers: NO_CACHE });
   } catch {
-    return NextResponse.json({ trades: 1000, blocks: 80, accounts: 40, platforms: 4, readonly: 100, ambRate: 30, ambCoupon: 20, ambBase: 20, ambMinPayout: 50 }, { headers: NO_CACHE });
+    return NextResponse.json({ trades: 1000, blocks: 80, accounts: 40, platforms: 5, readonly: 100, ambRate: 30, ambCoupon: 20, ambBase: 20, ambMinPayout: 50 }, { headers: NO_CACHE });
   }
 }

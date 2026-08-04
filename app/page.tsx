@@ -360,7 +360,7 @@ export default function Home() {
   const [dbPlans, setDbPlans] = useState<any[]>([]);
   // Arranca en el piso semilla (nunca 0): aunque el fetch falle o llegue una
   // respuesta vieja en caché, las cifras solo suben desde aquí — jamás muestran 0.
-  const [stats, setStats] = useState({ trades: 1000, blocks: 80, accounts: 40, platforms: 4, readonly: 100 });
+  const [stats, setStats] = useState({ trades: 1000, blocks: 80, accounts: 40, platforms: 5, readonly: 100 });
   // Reloj que avanza cada minuto para que las cifras suban solas con el tiempo.
   const [nowTs, setNowTs] = useState(() => Date.now());
   useEffect(() => { const iv = setInterval(() => setNowTs(Date.now()), 60000); return () => clearInterval(iv); }, []);
@@ -390,7 +390,7 @@ export default function Home() {
         trades: Math.max(p.trades, Number(j.trades || 0)),
         blocks: Math.max(p.blocks, Number(j.blocks || 0)),
         accounts: Math.max(p.accounts, Number(j.accounts || 0)),
-        platforms: Number(j.platforms ?? p.platforms ?? 4),
+        platforms: Number(j.platforms ?? p.platforms ?? 5),
         readonly: Number(j.readonly ?? p.readonly ?? 100),
       }));
       setAmb({ rate: Number(j.ambRate || 30), coupon: Number(j.ambCoupon || 20) });
@@ -557,7 +557,7 @@ export default function Home() {
           </div>
           <div className="card" style={{ padding: '26px 16px' }}>
             <Counter to={stats.platforms} />
-            <div className="muted" style={{ fontSize: 14, marginTop: 6 }}>{lang === 'es' ? 'Plataformas · MT4, MT5, cTrader, MatchTrader' : 'Platforms · MT4, MT5, cTrader, MatchTrader'}</div>
+            <div className="muted" style={{ fontSize: 14, marginTop: 6 }}>{lang === 'es' ? 'Plataformas · MT4, MT5, cTrader, MatchTrader, TradingView' : 'Platforms · MT4, MT5, cTrader, MatchTrader, TradingView'}</div>
           </div>
           <div className="card" style={{ padding: '26px 16px' }}>
             <Counter to={stats.readonly} suffix="%" />
