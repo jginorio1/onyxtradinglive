@@ -1042,8 +1042,12 @@ function MonthCalendar({ events, lang }: any) {
 
 function CalendarTab({ events, lang, L }: any) {
   const now = useNow(true);
-  const upcoming = (events || []).filter((e: any) => new Date(e.starts_at).getTime() + (e.duration_min || 60) * 60000 > now);
-  const past = (events || []).filter((e: any) => new Date(e.starts_at).getTime() + (e.duration_min || 60) * 60000 <= now);
+  const fmtD = (d: Date) => { const p = (n: number) => (n < 10 ? '0' + n : '' + n); return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()); };
+  const [range, setRange] = useState(() => { const f = new Date(); f.setHours(0, 0, 0, 0); const t = new Date(f.getTime() + 7 * 86400000); return { from: fmtD(f), to: fmtD(t) }; });
+  const thisWeek = () => { const f = new Date(); f.setHours(0, 0, 0, 0); const t = new Date(f.getTime() + 7 * 86400000); setRange({ from: fmtD(f), to: fmtD(t) }); };
+  const fromMs = new Date(range.from + 'T00:00:00').getTime();
+  const toMs = new Date(range.to + 'T23:59:59').getTime();
+  const inRange = (events || []).filter((e: any) => { const ss = new Date(e.starts_at).getTime(); return ss >= fromMs && ss <= toMs; }).sort((a: any, b: any) => String(a.starts_at).localeCompare(String(b.starts_at)));
   const Row = (e: any) => {
     const start = new Date(e.starts_at).getTime(); const end = start + (e.duration_min || 60) * 60000; const live = now >= start && now < end;
     const isPast = end <= now;
@@ -1053,7 +1057,7 @@ function CalendarTab({ events, lang, L }: any) {
       <div key={e.id} className="sk-card" style={{ margin: 0 }}>
         <div className="row between" style={{ alignItems: 'flex-start', gap: 10, flexWrap: 'wrap' }}>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>{live && <span className="sk-dot" />}{e.title}</div>
+            <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, textDecoration: isPast ? 'line-through' : 'none', opacity: isPast ? 0.6 : 1 }}>{live && <span className="sk-dot" />}{e.title}</div>
             <div style={{ fontSize: 13, marginTop: 2 }}>{localTime(e.starts_at, lang)} · <span className="muted">{L('tu hora', 'your time')} · {e.duration_min} min</span></div>
             {!isPast && <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>{refTimes(e.starts_at, lang)}</div>}
             {e.description && <div className="muted" style={{ fontSize: 12.5, marginTop: 4 }}>{e.description}</div>}
@@ -1072,13 +1076,21 @@ function CalendarTab({ events, lang, L }: any) {
       </div>
     );
   };
+  const liveUp = inRange.filter((e: any) => new Date(e.starts_at).getTime() + (e.duration_min || 60) * 60000 > now);
+  const donePast = inRange.filter((e: any) => new Date(e.starts_at).getTime() + (e.duration_min || 60) * 60000 <= now);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <MonthCalendar events={events} lang={lang} />
-      <div className="sk-sec-title">{L('Próximas clases en vivo', 'Upcoming live classes')}</div>
-      {upcoming.length === 0 && <div className="sk-card muted">{L('No hay clases programadas por ahora.', 'No classes scheduled right now.')}</div>}
-      {upcoming.map(Row)}
-      {past.length > 0 && <><div className="sk-sec-title">{L('Anteriores', 'Past')}</div>{past.slice(0, 10).map(Row)}</>}
+      <div className="sk-card" style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap', margin: 0 }}>
+        <div><div className="muted" style={{ fontSize: 12 }}>{L('Desde', 'From')}</div><input type="date" value={range.from} onChange={(e) => setRange({ ...range, from: e.target.value })} style={{ margin: '4px 0 0' }} /></div>
+        <div><div className="muted" style={{ fontSize: 12 }}>{L('Hasta', 'To')}</div><input type="date" value={range.to} onChange={(e) => setRange({ ...range, to: e.target.value })} style={{ margin: '4px 0 0' }} /></div>
+        <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={thisWeek}>{L('Esta semana', 'This week')}</button>
+        <span className="muted" style={{ fontSize: 11.5, marginLeft: 'auto' }}>{L('Por defecto muestra 7 días. Cambia las fechas para ver anteriores.', 'Shows 7 days by default. Change dates to see past ones.')}</span>
+      </div>
+      <div className="sk-sec-title">{L('Clases en vivo', 'Live classes')}</div>
+      {liveUp.length === 0 && donePast.length === 0 && <div className="sk-card muted">{L('No hay clases en este rango de fechas.', 'No classes in this date range.')}</div>}
+      {liveUp.map(Row)}
+      {donePast.length > 0 && <><div className="sk-sec-title">{L('Ya pasaron', 'Already passed')}</div>{donePast.map(Row)}</>}
     </div>
   );
 }
@@ -3065,6 +3077,21 @@ function EventForm({ form, setForm, onSave, onCancel, L }: any) {
           <div><span className="muted" style={{ fontSize: 12 }}>{L('Fecha y hora (tu hora local)', 'Date & time (your local time)')}</span><input type="datetime-local" value={form.starts_at || ''} onChange={(e) => set('starts_at', e.target.value)} style={{ margin: '4px 0 0' }} />{form.starts_at && form.starts_at.length >= 16 && (() => { try { const utc = new Date(form.starts_at).toISOString(); return <div className="muted" style={{ fontSize: 11, marginTop: 3, lineHeight: 1.4 }}>{L('Cada alumno la verá en SU hora. Referencia:', 'Each student sees it in THEIR time. Reference:')} {refTimes(utc, L('es', 'en'))}</div>; } catch { return null; } })()}</div>
           <div><span className="muted" style={{ fontSize: 12 }}>{L('Duración (min)', 'Duration (min)')}</span><input type="number" value={form.duration_min ?? 60} onChange={(e) => set('duration_min', Number(e.target.value))} style={{ margin: '4px 0 0', width: 100 }} /></div>
         </div>
+        {!form.id && (
+          <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <div><span className="muted" style={{ fontSize: 12 }}>{L('Repetir', 'Repeat')}</span>
+              <select value={form.repeat || 'none'} onChange={(e) => set('repeat', e.target.value)} style={{ margin: '4px 0 0' }}>
+                <option value="none">{L('Solo ese día', 'Just that day')}</option>
+                <option value="weekly">{L('Cada semana', 'Weekly')}</option>
+                <option value="monthly">{L('Cada mes', 'Monthly')}</option>
+              </select>
+            </div>
+            {form.repeat && form.repeat !== 'none' && (
+              <div><span className="muted" style={{ fontSize: 12 }}>{L('¿Cuántas veces?', 'How many times?')}</span><input type="number" min={1} max={52} value={form.repeat_count ?? 4} onChange={(e) => set('repeat_count', Math.max(1, Math.min(52, Number(e.target.value) || 1)))} style={{ margin: '4px 0 0', width: 100 }} /></div>
+            )}
+            {form.repeat && form.repeat !== 'none' && <div className="muted" style={{ fontSize: 11 }}>{L('Se crean todas de una vez, a la misma hora.', 'All created at once, same time.')}</div>}
+          </div>
+        )}
         <input value={form.recording_url || ''} onChange={(e) => set('recording_url', e.target.value)} placeholder={L('Link de la grabación (YouTube/Vimeo/.mp4) — opcional', 'Recording link (YouTube/Vimeo/.mp4) — optional')} style={{ margin: 0 }} />
         <textarea value={form.description || ''} onChange={(e) => set('description', e.target.value)} rows={2} placeholder={L('Descripción (opcional)', 'Description (optional)')} style={{ width: '100%', margin: 0 }} />
         {isPastNew && <div style={{ fontSize: 12, color: 'var(--red)', display: 'flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="⚠️" size={13} /> {L('Esa fecha y hora ya pasó. Elige un momento futuro.', 'That date and time is in the past. Pick a future moment.')}</div>}
