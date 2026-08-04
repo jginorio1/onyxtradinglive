@@ -221,7 +221,12 @@ export async function loadBots(userId: string) {
     })();
   }).sort((a, b) => b.net - a.net);
 
-  const accounts = accList.map((a: any) => ({ id: a.id, name: accName(a), online: !!accOnline[a.id] }));
+  // Magics realmente vistos por cuenta (en operaciones cerradas o abiertas). Sirve para que el
+  // usuario elija el número correcto al añadir un bot, en vez de escribir uno que no coincide.
+  const detected: Record<string, Set<number>> = {};
+  (trades || []).forEach((t: any) => { (detected[t.account_id] = detected[t.account_id] || new Set()).add(Number(t.magic)); });
+  (opens || []).forEach((o: any) => { (detected[o.account_id] = detected[o.account_id] || new Set()).add(Number(o.magic)); });
+  const accounts = accList.map((a: any) => ({ id: a.id, name: accName(a), online: !!accOnline[a.id], magics: Array.from(detected[a.id] || []).filter((m) => m).sort((x, y) => x - y) }));
   return { bots, hasData: true, accounts };
 }
 

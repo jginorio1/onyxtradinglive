@@ -29,6 +29,7 @@ const T: any = {
     create: 'Registrar', cancel: 'Cancelar', pendingBadge: 'Sin operaciones aún', online: 'EA en línea', offline: 'EA desconectado',
     addBotHint: 'Escribe el magic number de tu EA para verlo aquí desde ya, aunque todavía no opere.', dupBot: 'Ya tienes un bot con ese magic en esta cuenta.', bots: 'bots',
     openNowLbl: 'abierta(s) ahora', floatLbl: 'flotante', closedHint: 'Los números (Neto, PF, aciertos) suman solo operaciones cerradas.', del: 'Eliminar',
+    detectedLbl: 'Magics detectados en esta cuenta (toca para usar):', detectedNone: 'Aún no se detecta ningún magic en esta cuenta. Si la operación fue manual, no lleva magic (es 0) y no cuenta como robot.', detectedTip: 'Usa el magic exacto que tu EA tiene en sus inputs. Si el EA ya operó, aparece aquí abajo.',
   },
   en: {
     title: 'My robots', sub: 'Performance per strategy. Split the ones in testing from the ones already live.',
@@ -51,6 +52,7 @@ const T: any = {
     create: 'Register', cancel: 'Cancel', pendingBadge: 'No trades yet', online: 'EA online', offline: 'EA offline',
     addBotHint: 'Type your EA magic number to see it here right away, even before it trades.', dupBot: 'You already have a bot with that magic in this account.', bots: 'bots',
     openNowLbl: 'open now', floatLbl: 'floating', closedHint: 'The numbers (Net, PF, win) only add up closed trades.', del: 'Delete',
+    detectedLbl: 'Magics detected on this account (tap to use):', detectedNone: 'No magic detected on this account yet. If the trade was manual it has no magic (0) and does not count as a robot.', detectedTip: 'Use the exact magic your EA has in its inputs. If the EA already traded, it shows below.',
   },
 };
 
@@ -389,6 +391,23 @@ export default function Bots() {
             <p className="muted" style={{ fontSize: 12.5, marginBottom: 12 }}>{t.accountL}: <b style={{ color: 'var(--tx)' }}>{addFor.accName}</b></p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div><span className="muted" style={{ fontSize: 12 }}>{t.magicL}</span><input type="number" value={addForm.magic} onChange={(e) => setAddForm({ ...addForm, magic: e.target.value })} placeholder="12345" style={{ margin: '4px 0 0' }} /></div>
+              {(() => {
+                const accMagics: number[] = (d?.accounts || []).find((a: any) => a.id === addFor.accountId)?.magics || [];
+                return (
+                  <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '8px 10px' }}>
+                    {accMagics.length > 0 ? (<>
+                      <div className="muted" style={{ fontSize: 11.5, marginBottom: 6 }}>{t.detectedLbl}</div>
+                      <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+                        {accMagics.map((mg) => (
+                          <button key={mg} type="button" onClick={() => setAddForm({ ...addForm, magic: String(mg) })}
+                            style={{ fontSize: 12, padding: '4px 10px', borderRadius: 999, cursor: 'pointer', border: '1px solid ' + (String(mg) === String(addForm.magic) ? 'var(--brand)' : 'var(--line)'), background: String(mg) === String(addForm.magic) ? 'color-mix(in srgb,var(--brand) 22%,transparent)' : 'var(--card)', color: 'var(--tx)' }}>#{mg}</button>
+                        ))}
+                      </div>
+                    </>) : <div className="muted" style={{ fontSize: 11.5 }}>{t.detectedNone}</div>}
+                    <div className="muted" style={{ fontSize: 11, marginTop: 8, opacity: .85 }}>{t.detectedTip}</div>
+                  </div>
+                );
+              })()}
               <div><span className="muted" style={{ fontSize: 12 }}>{t.name}</span><input value={addForm.name} onChange={(e) => setAddForm({ ...addForm, name: e.target.value })} placeholder={`Bot #${addForm.magic || '…'}`} style={{ margin: '4px 0 0' }} /></div>
               <div><span className="muted" style={{ fontSize: 12 }}>{t.mode}</span>
                 <select value={addForm.mode} onChange={(e) => setAddForm({ ...addForm, mode: e.target.value })} style={{ margin: '4px 0 0' }}>
