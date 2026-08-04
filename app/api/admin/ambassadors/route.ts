@@ -3,6 +3,7 @@ import { getAdmin, logAdmin, requirePerm } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { stripe } from '@/lib/stripe';
 import { ambSettings, rateFor, balances } from '@/lib/ambassadors';
+import { runPayout, markPaidManual } from '@/lib/ambassadorPayout';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -44,7 +45,21 @@ export async function GET() {
     }
 
     const { data: payouts } = await supabaseAdmin.from('ambassador_payouts').select('*').eq('status', 'requested').order('requested_at', { ascending: true });
-    return NextResponse.json({ ambassadors: list, payouts: payouts || [], settings });
+    // Añade a cada pago pendiente el método del embajador y si su Stripe ya cobra,
+    // para que el admin sepa si "Pagar" será automático (Stripe) o manual (cripto).
+    const payList: any[] = [];
+    for (const p of payouts || []) {
+      const { data: a } = await supabaseAdmin.from('ambassadors')
+        .select('code,payout_method,payout_details,payouts_enabled,stripe_account_id').eq('id', p.ambassador_id).maybeSingle();
+      payList.push({
+        ...p,
+        amb_code: (a as any)?.code || '',
+        amb_method: (a as any)?.payout_method || 'stripe',
+        amb_details: (a as any)?.payout_details || '',
+        stripe_ready: !!((a as any)?.stripe_account_id && (a as any)?.payouts_enabled),
+      });
+    }
+    return NextResponse.json({ ambassadors: list, payouts: payList, settings });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
   }
@@ -96,13 +111,30 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ ok: true });
     }
 
-    // Marcar un pago como realizado: las comisiones de ese pago pasan a 'paid'
+    // Pagar por Stripe Connect: transferencia REAL a la cuenta del embajador.
+    // Si su método es cripto/manual devuelve manual_method para marcarlo a mano.
     if (b.action === 'pay') {
-      const { data: pay } = await supabaseAdmin.from('ambassador_payouts').select('*').eq('id', b.id).maybeSingle();
-      if (!pay) return NextResponse.json({ error: 'payout not found' }, { status: 404 });
-      await supabaseAdmin.from('ambassador_payouts').update({ status: 'paid', paid_at: new Date().toISOString(), note: b.note || null }).eq('id', pay.id);
-      await supabaseAdmin.from('commissions').update({ status: 'paid' }).eq('payout_id', pay.id);
-      await logAdmin(user.email, 'amb_payout_paid', pay.id, { amount: pay.amount });
+      const r = await runPayout(b.id);
+      if (r.ok) {
+        await logAdmin(user.email, 'amb_payout_paid', b.id, { via: 'stripe', transfer_id: r.transfer_id });
+        return NextResponse.json({ ok: true, transfer_id: r.transfer_id });
+      }
+      // El front usa este código para pedir la referencia y llamar a 'mark_paid'.
+      return NextResponse.json({ error: r.error, code: r.error }, { status: 400 });
+    }
+
+    // Marcar un pago como realizado a mano (cripto/otro), con referencia opcional.
+    if (b.action === 'mark_paid') {
+      const { data: amb } = await supabaseAdmin.from('ambassador_payouts')
+        .select('ambassador_id').eq('id', b.id).maybeSingle();
+      let method = 'manual';
+      if (amb) {
+        const { data: a } = await supabaseAdmin.from('ambassadors').select('payout_method').eq('id', (amb as any).ambassador_id).maybeSingle();
+        method = (a as any)?.payout_method || 'manual';
+      }
+      const r = await markPaidManual(b.id, method, b.tx_ref || b.note);
+      if (!r.ok) return NextResponse.json({ error: r.error }, { status: 400 });
+      await logAdmin(user.email, 'amb_payout_paid', b.id, { via: method, tx_ref: b.tx_ref || null });
       return NextResponse.json({ ok: true });
     }
 

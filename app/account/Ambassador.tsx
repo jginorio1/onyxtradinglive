@@ -24,7 +24,10 @@ const A: any = {
     holdNote: 'Pendiente = comisiones de los últimos 30 días, retenidas por si hay reembolsos.',
     req: 'Solicitar pago', reqing: '...', minNote: 'Mínimo para cobrar:', reqOk: 'Solicitud enviada. Te pagaremos en los próximos días.',
     payT: 'Datos de cobro', method: 'Método', details: 'Datos', save: 'Guardar', saved: 'Guardado',
-    paypal: 'PayPal', usdt: 'USDT', credit: 'Crédito en mi plan',
+    paypal: 'PayPal', usdt: 'USDT (cripto)', credit: 'Crédito en mi plan', stripe: 'Stripe (a tu banco/tarjeta)',
+    stripeNote: 'Con Stripe cobras automático: el pago llega a tu banco o tarjeta sin que rellenes nada aquí.',
+    stripeConnect: 'Conectar con Stripe', stripeReady: 'Conectado · listo para cobrar', stripePend: 'Falta terminar tu registro en Stripe',
+    stripeFinish: 'Terminar registro', openDash: 'Ver mi panel de Stripe', usdtHint: 'Pega tu dirección USDT (red TRC20 o ERC20).',
     hist: 'Historial de pagos', noHist: 'Todavía no has solicitado ningún pago.',
     stReq: 'solicitado', stPaid: 'pagado', stRej: 'rechazado',
     aiKitT: 'Generar publicaciones con AI', aiKitD: 'Elige tu plataforma y la IA te crea un post listo, con tu enlace y código ya puestos.',
@@ -49,7 +52,10 @@ const A: any = {
     holdNote: 'Pending = commissions from the last 30 days, held in case of refunds.',
     req: 'Request payout', reqing: '...', minNote: 'Minimum payout:', reqOk: 'Request sent. We will pay you in the next few days.',
     payT: 'Payout details', method: 'Method', details: 'Details', save: 'Save', saved: 'Saved',
-    paypal: 'PayPal', usdt: 'USDT', credit: 'Credit on my plan',
+    paypal: 'PayPal', usdt: 'USDT (crypto)', credit: 'Credit on my plan', stripe: 'Stripe (to your bank/card)',
+    stripeNote: 'With Stripe you get paid automatically — money lands in your bank or card, nothing to fill in here.',
+    stripeConnect: 'Connect with Stripe', stripeReady: 'Connected · ready to get paid', stripePend: 'Finish your Stripe onboarding',
+    stripeFinish: 'Finish setup', openDash: 'Open my Stripe dashboard', usdtHint: 'Paste your USDT address (TRC20 or ERC20 network).',
     hist: 'Payout history', noHist: 'You have not requested any payout yet.',
     stReq: 'requested', stPaid: 'paid', stRej: 'rejected',
     aiKitT: 'Generate posts with AI', aiKitD: 'Pick your platform and AI writes a ready-to-post caption, with your link and code already in it.',
@@ -66,8 +72,9 @@ export default function Ambassador({ lang }: { lang: Lang }) {
   const [d, setD] = useState<any>(null);
   const [busy, setBusy] = useState('');
   const [copied, setCopied] = useState('');
-  const [pm, setPm] = useState('paypal');
+  const [pm, setPm] = useState('stripe');
   const [pd, setPd] = useState('');
+  const [conn, setConn] = useState<any>(null);   // estado de Stripe Connect
   const [origin, setOrigin] = useState('');
   const [plat, setPlat] = useState('instagram');
   const [aiText, setAiText] = useState('');
@@ -90,14 +97,29 @@ export default function Ambassador({ lang }: { lang: Lang }) {
       if (!r.ok) { setD({ ambassador: null }); return; }
       const j = await r.json();
       setD(j);
-      if (j.ambassador) { setPm(j.ambassador.payout_method || 'paypal'); setPd(j.ambassador.payout_details || ''); }
+      if (j.ambassador) {
+        setPm(j.ambassador.payout_method || 'stripe'); setPd(j.ambassador.payout_details || '');
+        loadConnect();
+      }
     } catch { setD({ ambassador: null }); }
+  }
+  async function loadConnect() {
+    try { const r = await fetch('/api/ambassador/connect'); if (r.ok) setConn(await r.json()); } catch {}
+  }
+  async function connectStripe() {
+    setBusy('conn');
+    try {
+      const r = await fetch('/api/ambassador/connect', { method: 'POST' });
+      const j = await r.json();
+      if (!r.ok || !j.url) { toast(errMsg(j, lang)); return; }
+      window.location.href = j.url;   // onboarding de Stripe
+    } finally { setBusy(''); }
   }
   function copy(text: string, tag: string) { navigator.clipboard.writeText(text); setCopied(tag); setTimeout(() => setCopied(''), 1800); }
 
   async function savePayout() {
-    // Sin datos de cobro no podriamos pagarle, asi que no dejamos guardar vacio
-    if (String(pd || '').trim().length < 4) { toast(errMsg({ code: 'need_details' }, lang)); return; }
+    // Con Stripe los datos se completan en su onboarding; para el resto son obligatorios.
+    if (pm !== 'stripe' && String(pd || '').trim().length < 4) { toast(errMsg({ code: 'need_details' }, lang)); return; }
     setBusy('pay');
     const r = await fetch('/api/ambassador', { method: 'PATCH', body: JSON.stringify({ payout_method: pm, payout_details: pd }) });
     const j = await r.json(); setBusy('');
@@ -210,16 +232,48 @@ export default function Ambassador({ lang }: { lang: Lang }) {
       <div className="card" style={{ marginBottom: 14 }}>
         <h3 style={{ marginBottom: 4 }}>{t.payT}</h3>
         <span style={lbl}>{t.method}</span>
-        <select value={pm} onChange={(e) => setPm(e.target.value)} style={{ margin: '4px 0 0', maxWidth: 260 }}>
-          <option value="paypal">{t.paypal}</option><option value="usdt">{t.usdt}</option><option value="credit">{t.credit}</option>
+        <select value={pm} onChange={(e) => setPm(e.target.value)} style={{ margin: '4px 0 0', maxWidth: 300 }}>
+          <option value="stripe">{t.stripe}</option>
+          <option value="usdt">{t.usdt}</option>
+          <option value="paypal">{t.paypal}</option>
+          <option value="credit">{t.credit}</option>
         </select>
-        <span style={lbl}>{t.details}</span>
-        <input value={pd} onChange={(e) => setPd(e.target.value)} style={{ margin: '4px 0 0', maxWidth: 380 }} />
-        <div className="row" style={{ gap: 10, marginTop: 14 }}>
-          <button className="btn btn-primary" onClick={savePayout} disabled={busy === 'pay' || String(pd || '').trim().length < 4}
-            style={{ opacity: String(pd || '').trim().length < 4 ? .5 : 1 }}>{busy === 'pay' ? '...' : t.save}</button>
-          {copied === 'saved' && <span style={{ color: 'var(--green)', fontSize: 13 }}>{t.saved}</span>}
-        </div>
+
+        {pm === 'stripe' ? (
+          <div style={{ marginTop: 12 }}>
+            <p className="muted" style={{ fontSize: 13, marginBottom: 10 }}>{t.stripeNote}</p>
+            {conn?.payoutsEnabled ? (
+              <div className="row" style={{ gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                <span className="pill green" style={{ fontSize: 13 }}>✓ {t.stripeReady}</span>
+                {conn.dashboard && <a className="btn btn-ghost" href={conn.dashboard} target="_blank" rel="noreferrer" style={{ fontSize: 13 }}>{t.openDash}</a>}
+              </div>
+            ) : (
+              <div className="row" style={{ gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                {conn?.connected && <span className="pill" style={{ color: 'var(--amber)', fontSize: 13 }}>{t.stripePend}</span>}
+                <button className="btn btn-primary" onClick={connectStripe} disabled={busy === 'conn'}>
+                  {busy === 'conn' ? '…' : (conn?.connected ? t.stripeFinish : t.stripeConnect)}
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <>
+            <span style={lbl}>{t.details}</span>
+            <input value={pd} onChange={(e) => setPd(e.target.value)} placeholder={pm === 'usdt' ? t.usdtHint : ''} style={{ margin: '4px 0 0', maxWidth: 420 }} />
+            <div className="row" style={{ gap: 10, marginTop: 14 }}>
+              <button className="btn btn-primary" onClick={savePayout} disabled={busy === 'pay' || String(pd || '').trim().length < 4}
+                style={{ opacity: String(pd || '').trim().length < 4 ? .5 : 1 }}>{busy === 'pay' ? '...' : t.save}</button>
+              {copied === 'saved' && <span style={{ color: 'var(--green)', fontSize: 13 }}>{t.saved}</span>}
+            </div>
+          </>
+        )}
+        {/* Guardar el método aunque sea Stripe (para persistir la elección) */}
+        {pm === 'stripe' && (
+          <div className="row" style={{ gap: 10, marginTop: 14 }}>
+            <button className="btn btn-ghost" onClick={savePayout} disabled={busy === 'pay'} style={{ fontSize: 13 }}>{busy === 'pay' ? '...' : t.save}</button>
+            {copied === 'saved' && <span style={{ color: 'var(--green)', fontSize: 13 }}>{t.saved}</span>}
+          </div>
+        )}
       </div>
 
       {/* Historial */}

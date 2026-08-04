@@ -8,7 +8,7 @@ import RangeBar, { type Range, defaultRange } from './RangeBar';
 import MemberReferralSettings from './MemberReferralSettings';
 import QrPop from '@/app/components/QrPop';
 
-const METHOD: any = { paypal: 'PayPal', usdt: 'USDT', credit: 'Credit' };
+const METHOD: any = { stripe: 'Stripe', paypal: 'PayPal', usdt: 'USDT', credit: 'Credit' };
 
 // ---- Reclutar: mini-CRM de prospectos + invitación con AI ----
 const PLATFORMS = ['youtube', 'instagram', 'tiktok', 'telegram', 'x', 'other'];
@@ -139,13 +139,27 @@ export default function Ambassadors() {
     const j = await r.json();
     setD(j); setS(j.settings || {});
   }
-  async function act(action: string, id?: string, value?: any, note?: string) {
+  async function act(action: string, id?: string, value?: any, note?: string, extra?: any) {
     setBusy(String(id || action));
-    const r = await fetch('/api/admin/ambassadors', { method: 'PATCH', body: JSON.stringify({ action, id, value, note }) });
+    const r = await fetch('/api/admin/ambassadors', { method: 'PATCH', body: JSON.stringify({ action, id, value, note, ...(extra || {}) }) });
     const j = await r.json(); setBusy('');
     if (!r.ok) { toastErr(j); return; }
     if (action === 'approve' && j.promo === false) toast(t.am_promoFail);
+    if (action === 'pay' && j.transfer_id) toast(L('Pago enviado por Stripe ✓', 'Payout sent via Stripe ✓'));
     load();
+  }
+  // Pagar un payout: Stripe = transferencia automática; cripto/otro = marcar con referencia.
+  async function payPayout(p: any) {
+    const isStripe = (p.method || p.amb_method) === 'stripe';
+    if (isStripe && p.stripe_ready) {
+      if (confirm(`${t.am_confirmPaid} $${p.amount} — Stripe?`)) act('pay', p.id);
+      return;
+    }
+    if (isStripe && !p.stripe_ready) {
+      toast(L('Este embajador aún no terminó de conectar Stripe. Puedes marcarlo pagado a mano.', 'This ambassador has not finished connecting Stripe. You can mark it paid manually.'));
+    }
+    const ref = prompt(L('Referencia del pago (hash/txid, opcional):', 'Payment reference (hash/txid, optional):')) ?? '';
+    act('mark_paid', p.id, null, undefined, { tx_ref: ref });
   }
 
   if (!d) return <div className="card muted">…</div>;
@@ -181,11 +195,18 @@ export default function Ambassadors() {
               <div key={p.id} className="row between" style={{ borderTop: '1px solid var(--line)', padding: '10px 0', flexWrap: 'wrap', gap: 8 }}>
                 <div>
                   <b>${p.amount}</b> · {amb?.email || '—'} <span className="muted">({METHOD[p.method] || p.method})</span>
+                  {(p.method || p.amb_method) === 'stripe' && (
+                    <span className="pill" style={{ marginLeft: 6, fontSize: 11, color: p.stripe_ready ? 'var(--green)' : 'var(--amber)' }}>
+                      {p.stripe_ready ? (lang === 'en' ? 'Stripe ready' : 'Stripe listo') : (lang === 'en' ? 'Stripe not connected' : 'Stripe sin conectar')}
+                    </span>
+                  )}
                   <div className="muted" style={{ fontSize: 12 }}>{p.details}</div>
                 </div>
                 <div className="row" style={{ gap: 6 }}>
                   {p.method === 'usdt' && p.details && <QrPop data={p.details} label={lang === 'en' ? 'USDT QR' : 'QR USDT'} />}
-                  <button className="btn btn-primary" style={{ padding: '5px 10px', fontSize: 12 }} onClick={() => { if (confirm(`${t.am_confirmPaid} $${p.amount}?`)) act('pay', p.id); }} disabled={busy === p.id}>{t.am_markPaid}</button>
+                  <button className="btn btn-primary" style={{ padding: '5px 10px', fontSize: 12 }} onClick={() => payPayout(p)} disabled={busy === p.id}>
+                    {(p.method || p.amb_method) === 'stripe' && p.stripe_ready ? (lang === 'en' ? 'Pay via Stripe' : 'Pagar por Stripe') : t.am_markPaid}
+                  </button>
                   <button className="btn btn-ghost" style={{ padding: '5px 10px', fontSize: 12 }} onClick={() => { const n = prompt(t.am_rejectReason) || ''; act('reject_payout', p.id, null, n); }}>{t.am_reject}</button>
                 </div>
               </div>
