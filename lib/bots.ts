@@ -50,7 +50,7 @@ export async function loadBots(userId: string) {
   const { data: accs } = await supabaseAdmin
     .from('trading_accounts').select('id,acc_type,last_sync_at,nickname,login').eq('user_id', userId);
   const accList = accs || [];
-  if (!accList.length) return { bots: [], hasData: false };
+  if (!accList.length) return { bots: [], hasData: false, accounts: [] };
   const accById: Record<string, any> = {}; accList.forEach((a: any) => { accById[a.id] = a; });
   const accIds = accList.map((a: any) => a.id);
 
@@ -61,17 +61,49 @@ export async function loadBots(userId: string) {
   if (error) return { bots: [], hasData: false, needsMigration: true };
 
   const { data: opens } = await supabaseAdmin
-    .from('open_positions').select('magic').in('account_id', accIds).not('magic', 'is', null).neq('magic', 0);
-  const running = new Set((opens || []).map((o: any) => Number(o.magic)));
+    .from('open_positions').select('account_id,magic').in('account_id', accIds).not('magic', 'is', null).neq('magic', 0);
+  // "Operando ahora": clave cuenta|magic (una posición abierta de ese bot en esa cuenta).
+  const running = new Set((opens || []).map((o: any) => `${o.account_id}|${Number(o.magic)}`));
 
-  const { data: cfgRows } = await supabaseAdmin.from('bots').select('magic,name,mode,criteria,backtest').eq('user_id', userId);
-  const cfgByMagic: Record<string, any> = {};
-  (cfgRows || []).forEach((c: any) => { cfgByMagic[String(c.magic)] = c; });
+  // EA en línea por cuenta: sincronizó hace menos de 2 min.
+  const ONLINE_MS = 120000;
+  const accOnline: Record<string, boolean> = {};
+  accList.forEach((a: any) => { accOnline[a.id] = !!a.last_sync_at && (Date.now() - new Date(a.last_sync_at).getTime()) < ONLINE_MS; });
+  const accName = (a: any) => a ? (a.nickname || (a.login ? `#${a.login}` : 'Cuenta')) : 'Cuenta';
 
+  // Config por bot. Preferimos la de la cuenta concreta; si es legacy (account_id null) la usamos de reserva.
+  const { data: cfgRows } = await supabaseAdmin.from('bots').select('account_id,magic,name,mode,criteria,backtest').eq('user_id', userId);
+  const cfgByKey: Record<string, any> = {};
+  const cfgLegacy: Record<string, any> = {};
+  (cfgRows || []).forEach((c: any) => { if (c.account_id) cfgByKey[`${c.account_id}|${c.magic}`] = c; else cfgLegacy[String(c.magic)] = c; });
+
+  // Agrupamos las operaciones por CUENTA + magic (antes solo por magic).
   const groups: Record<string, any[]> = {};
-  (trades || []).forEach((t: any) => { const m = String(t.magic); (groups[m] = groups[m] || []).push(t); });
+  (trades || []).forEach((t: any) => { const k = `${t.account_id}|${t.magic}`; (groups[k] = groups[k] || []).push(t); });
 
-  const bots = Object.entries(groups).map(([magic, list]) => {
+  // Bots registrados a mano que aún no tienen operaciones: los añadimos como clave vacía.
+  (cfgRows || []).forEach((c: any) => { if (c.account_id) { const k = `${c.account_id}|${c.magic}`; if (!groups[k]) groups[k] = []; } });
+
+  const bots = Object.entries(groups).map(([key, list]) => {
+    const [accId, magic] = key.split('|');
+    const acc = accById[accId];
+    const cfgRow = cfgByKey[key] || cfgLegacy[magic] || {};
+    const online = !!accOnline[accId];
+    const isRunning = running.has(`${accId}|${Number(magic)}`);
+    if (list.length === 0) {
+      // Bot recién registrado (sin operaciones todavía).
+      const mode: 'testing' | 'live' = cfgRow.mode === 'live' ? 'live' : 'testing';
+      const criteria: BotCriteria = { ...DEFAULT_CRITERIA, ...(cfgRow.criteria || {}) };
+      return {
+        magic: Number(magic), key, accountId: accId, accName: accName(acc), accOnline: online,
+        name: cfgRow.name || `Bot #${magic}`, mode,
+        net: 0, trades: 0, winRate: 0, pf: 0, expectancy: 0, dd: 0, ddPct: 0, recovery: 0, days: 0, tradesPerDay: 0,
+        running: false, status: (online ? 'espera' : 'inactivo') as 'operando' | 'espera' | 'inactivo',
+        lastTrade: null, spark: [], criteria, checks: [], passed: 0, total: 4, backtest: null, divergence: null,
+        metrics: {}, pending: true,
+      };
+    }
+    return (function build() {
     const nets = list.map((t) => Number(t.net_profit || 0));
     const n = nets.length;
     const net = nets.reduce((s, x) => s + x, 0);
@@ -129,7 +161,7 @@ export async function loadBots(userId: string) {
     const exposure = Math.min(100, (holdMs / spanMs) * 100);
     const avgHoldH = n ? (holdMs / n) / 3600000 : 0;
 
-    const cfg = cfgByMagic[magic] || {};
+    const cfg = cfgRow;
     const anyLive = list.some((t) => isLiveAcc(accById[t.account_id]?.acc_type));
     const mode: 'testing' | 'live' = cfg.mode === 'live' ? 'live' : cfg.mode === 'testing' ? 'testing' : (anyLive ? 'live' : 'testing');
 
@@ -160,11 +192,13 @@ export async function loadBots(userId: string) {
     const name = cfg.name || (list.find((t) => t.ea_comment)?.ea_comment) || `Bot #${magic}`;
 
     return {
-      magic: Number(magic), name, mode,
+      magic: Number(magic), key, accountId: accId, accName: accName(acc), accOnline: online,
+      name, mode,
       net: Math.round(net), trades: n, winRate: Math.round(winRate),
       pf: r2(pf), expectancy: r2(expectancy), dd: Math.round(dd), ddPct: r1(ddPct),
       recovery: r1(recovery), days, tradesPerDay: r1(tradesPerDay),
-      running: running.has(Number(magic)), lastTrade: new Date(last).toISOString(),
+      running: isRunning, status: (isRunning ? 'operando' : online ? 'espera' : 'inactivo') as 'operando' | 'espera' | 'inactivo',
+      lastTrade: new Date(last).toISOString(),
       spark: spark(cumNets).map((x) => Math.round(x)),
       criteria, checks, passed, total: checks.length,
       backtest: bt, divergence,
@@ -178,9 +212,11 @@ export async function loadBots(userId: string) {
         mc: monteCarlo(nets), wf: walkForward(nets, closeMs),
       },
     };
+    })();
   }).sort((a, b) => b.net - a.net);
 
-  return { bots, hasData: true };
+  const accounts = accList.map((a: any) => ({ id: a.id, name: accName(a), online: !!accOnline[a.id] }));
+  return { bots, hasData: true, accounts };
 }
 
 // Stability (StrategyQuant): R² de la curva de equity vs su recta de ajuste. 1 = curva muy estable.

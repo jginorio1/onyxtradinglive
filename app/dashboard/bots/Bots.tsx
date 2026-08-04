@@ -24,6 +24,10 @@ const T: any = {
     emptyT: 'Aún no vemos bots', emptyD: 'Cuando un EA opere en una cuenta conectada, aquí aparecerá por su magic number. Reinstala Onyx Connect si es una versión vieja (ahora reporta el magic).',
     lockT: 'Módulo de bots', lockD: 'Evalúa tus estrategias algorítmicas: KPIs por bot, pruebas vs vivo, criterios de graduación, backtest vs vivo y correlación de portafolio.', lockCta: 'Ver planes',
     addBtn: 'Añadir por $%/mes', addOr: 'o incluido en Black Onyx', addNeedSub: 'Necesitas un plan de pago activo para añadir el módulo. Elige uno abajo.',
+    statusRun: 'Operando', statusWait: 'Activo · en espera', statusOff: 'Inactivo',
+    addBot: 'Añadir bot por magic', addBotT: 'Registrar un robot', magicL: 'Magic number', accountL: 'Cuenta',
+    create: 'Registrar', cancel: 'Cancelar', pendingBadge: 'Sin operaciones aún', online: 'EA en línea', offline: 'EA desconectado',
+    addBotHint: 'Escribe el magic number de tu EA para verlo aquí desde ya, aunque todavía no opere.', dupBot: 'Ya tienes un bot con ese magic en esta cuenta.', bots: 'bots',
   },
   en: {
     title: 'My robots', sub: 'Performance per strategy. Split the ones in testing from the ones already live.',
@@ -41,6 +45,10 @@ const T: any = {
     emptyT: 'No bots yet', emptyD: 'When an EA trades on a connected account it appears here by its magic number. Reinstall the Onyx Connector or Guardian if it is an old version (they now report the magic).',
     lockT: 'Bots module', lockD: 'Evaluate your algorithmic strategies: per-bot KPIs, testing vs live, graduation criteria, backtest vs live and portfolio correlation.', lockCta: 'See plans',
     addBtn: 'Add for $%/mo', addOr: 'or included in Black Onyx', addNeedSub: 'You need an active paid plan to add the module. Pick one below.',
+    statusRun: 'Running', statusWait: 'Active · idle', statusOff: 'Offline',
+    addBot: 'Add bot by magic', addBotT: 'Register a robot', magicL: 'Magic number', accountL: 'Account',
+    create: 'Register', cancel: 'Cancel', pendingBadge: 'No trades yet', online: 'EA online', offline: 'EA offline',
+    addBotHint: 'Type your EA magic number to see it here right away, even before it trades.', dupBot: 'You already have a bot with that magic in this account.', bots: 'bots',
   },
 };
 
@@ -58,10 +66,12 @@ export default function Bots() {
   const t = dictFor(T, lang);
   const [d, setD] = useState<any>(null);
   const [port, setPort] = useState<any>(null);
-  const [edit, setEdit] = useState<number | null>(null);
-  const [detail, setDetail] = useState<number | null>(null);
+  const [edit, setEdit] = useState<string | null>(null);
+  const [detail, setDetail] = useState<string | null>(null);
   const [form, setForm] = useState<any>({});
   const [busy, setBusy] = useState(false);
+  const [addFor, setAddFor] = useState<any>(null); // {accountId, accName} cuando abrimos "Añadir bot"
+  const [addForm, setAddForm] = useState<any>({ magic: '', name: '', mode: 'testing' });
 
   async function load() {
     try { const r = await fetch('/api/bots'); setD(await r.json()); } catch { setD({ bots: [] }); }
@@ -69,16 +79,28 @@ export default function Bots() {
   }
   useEffect(() => { load(); const iv = setInterval(load, 20000); return () => clearInterval(iv); }, []);
 
-  async function save(magic: number, patch: any) {
+  async function save(b: any, patch: any) {
     setBusy(true);
     try {
-      const r = await fetch('/api/bots', { method: 'PATCH', body: JSON.stringify({ magic, ...patch }) });
+      const r = await fetch('/api/bots', { method: 'PATCH', body: JSON.stringify({ magic: b.magic, account_id: b.accountId, ...patch }) });
       if (r.ok) { toast(t.saved, 'ok'); setEdit(null); await load(); }
     } finally { setBusy(false); }
   }
   function openEdit(b: any) {
-    setEdit(b.magic); setDetail(null);
+    setEdit(b.key); setDetail(null);
     setForm({ name: b.name, mode: 'auto', ...b.criteria, btPf: b.backtest?.pf ?? '', btWin: b.backtest?.winRate ?? '', btDd: b.backtest?.maxDD ?? '' });
+  }
+  async function createBot() {
+    const magic = Number(addForm.magic);
+    if (!Number.isFinite(magic) || magic === 0) return;
+    // No permitir duplicar un magic ya existente en esa cuenta.
+    if ((d?.bots || []).some((x: any) => x.accountId === addFor.accountId && Number(x.magic) === magic)) { toast(t.dupBot); return; }
+    setBusy(true);
+    try {
+      const r = await fetch('/api/bots', { method: 'PATCH', body: JSON.stringify({ magic, account_id: addFor.accountId, name: addForm.name || `Bot #${magic}`, mode: addForm.mode }) });
+      if (r.ok) { toast(t.saved, 'ok'); setAddFor(null); setAddForm({ magic: '', name: '', mode: 'testing' }); await load(); }
+      else { const j = await r.json().catch(() => ({})); toast(j.error || 'error'); }
+    } finally { setBusy(false); }
   }
   async function buyAddon() {
     setBusy(true);
@@ -104,13 +126,25 @@ export default function Bots() {
   const Card = ({ b }: { b: any }) => {
     const up = b.net >= 0; const m = b.metrics || {};
     const dv = b.divergence;
+    const glow = b.status === 'operando' ? 'var(--green)' : b.status === 'espera' ? 'var(--brand)' : null;
     return (
-      <div className="card" style={{ padding: 12, marginBottom: 8 }}>
+      <div className="card" style={{
+        padding: 12, marginBottom: 10, position: 'relative', overflow: 'hidden',
+        border: '1px solid ' + (glow ? `color-mix(in srgb,${glow} 45%,var(--line))` : 'var(--line)'),
+        background: `linear-gradient(180deg, color-mix(in srgb,${glow || 'var(--brand)'} 6%, var(--card)) 0%, var(--card) 62%)`,
+        boxShadow: b.status === 'operando'
+          ? '0 0 0 1px color-mix(in srgb,var(--green) 30%,transparent), 0 10px 30px -14px color-mix(in srgb,var(--green) 55%,transparent)'
+          : '0 8px 24px -16px rgba(0,0,0,.7)',
+      }}>
+        <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: glow || 'var(--line)', opacity: glow ? 0.9 : 0.5 }} />
         <div className="row between" style={{ gap: 8 }}>
           <b style={{ fontSize: 13.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name}</b>
-          <span style={{ fontSize: 11, color: b.running ? 'var(--green)' : 'var(--mut)', whiteSpace: 'nowrap' }}>{b.running ? '● ' + t.running : '○ ' + t.idle}</span>
+          <span style={{ fontSize: 11, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 5, color: b.status === 'inactivo' ? 'var(--mut)' : 'var(--green)' }}>
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: b.status === 'inactivo' ? 'var(--mut)' : 'var(--green)', display: 'inline-block', boxShadow: b.status === 'operando' ? '0 0 0 3px color-mix(in srgb,var(--green) 22%,transparent)' : 'none' }} />
+            {b.status === 'operando' ? t.statusRun : b.status === 'espera' ? t.statusWait : t.statusOff}
+          </span>
         </div>
-        <div className="muted" style={{ fontSize: 10.5 }}>#{b.magic}</div>
+        <div className="muted" style={{ fontSize: 10.5 }}>#{b.magic}{b.pending && <span style={{ marginLeft: 6, color: 'var(--amber)' }}>· {t.pendingBadge}</span>}</div>
         <Spark pts={b.spark} color={up ? 'var(--green)' : 'var(--red)'} />
         <div className="row" style={{ gap: 12, flexWrap: 'wrap', fontSize: 11.5 }}>
           <span className="muted">{t.net} <b style={{ color: up ? 'var(--green)' : 'var(--red)' }}>{money(b.net)}</b></span>
@@ -129,7 +163,7 @@ export default function Bots() {
             <div style={{ height: 6, borderRadius: 6, background: 'var(--bg2)', overflow: 'hidden' }}>
               <div style={{ width: `${(b.passed / b.total) * 100}%`, height: '100%', background: b.passed === b.total ? 'var(--green)' : 'var(--amber)' }} />
             </div>
-            {b.passed === b.total && <button className="btn btn-primary" style={{ width: '100%', marginTop: 8, fontSize: 12.5 }} onClick={() => save(b.magic, { mode: 'live' })} disabled={busy}>↗ {t.promote}</button>}
+            {b.passed === b.total && b.trades > 0 && <button className="btn btn-primary" style={{ width: '100%', marginTop: 8, fontSize: 12.5 }} onClick={() => save(b, { mode: 'live' })} disabled={busy}>↗ {t.promote}</button>}
           </div>
         )}
         {b.mode === 'live' && dv && (
@@ -139,11 +173,11 @@ export default function Bots() {
         )}
 
         <div className="row" style={{ gap: 6, marginTop: 8 }}>
-          <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '5px 10px' }} onClick={() => { setDetail(detail === b.magic ? null : b.magic); setEdit(null); }}><OnyxIcon emoji="📊" size={16} /> {t.detail}</button>
-          <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '5px 10px' }} onClick={() => (edit === b.magic ? setEdit(null) : openEdit(b))}><OnyxIcon emoji="⚙" size={16} /> {t.config}</button>
+          <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '5px 10px' }} onClick={() => { setDetail(detail === b.key ? null : b.key); setEdit(null); }} disabled={b.trades === 0}><OnyxIcon emoji="📊" size={16} /> {t.detail}</button>
+          <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '5px 10px' }} onClick={() => (edit === b.key ? setEdit(null) : openEdit(b))}><OnyxIcon emoji="⚙" size={16} /> {t.config}</button>
         </div>
 
-        {detail === b.magic && (
+        {detail === b.key && (
           <div style={{ marginTop: 8, borderTop: '1px solid var(--line)', paddingTop: 10 }}>
             <div className="muted" style={{ fontSize: 11, marginBottom: 6 }}>{t.metrics}</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6 }}>
@@ -179,7 +213,7 @@ export default function Bots() {
           </div>
         )}
 
-        {edit === b.magic && (
+        {edit === b.key && (
           <div style={{ marginTop: 8, borderTop: '1px solid var(--line)', paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
             <div><span className="muted" style={{ fontSize: 11 }}>{t.name}</span><input value={form.name || ''} onChange={(e) => setForm({ ...form, name: e.target.value })} style={{ margin: '3px 0 0', fontSize: 13 }} /></div>
             <div><span className="muted" style={{ fontSize: 11 }}>{t.mode}</span>
@@ -201,7 +235,7 @@ export default function Bots() {
             </div>
             <div className="muted" style={{ fontSize: 10.5 }}>{t.btHint}</div>
             <button className="btn btn-primary" style={{ fontSize: 12.5 }} disabled={busy}
-              onClick={() => save(b.magic, { name: form.name, mode: form.mode, criteria: { minDays: form.minDays, minTrades: form.minTrades, pf: form.pf, maxDD: form.maxDD }, backtest: { pf: form.btPf, winRate: form.btWin, maxDD: form.btDd } })}>{t.save}</button>
+              onClick={() => save(b, { name: form.name, mode: form.mode, criteria: { minDays: form.minDays, minTrades: form.minTrades, pf: form.pf, maxDD: form.maxDD }, backtest: { pf: form.btPf, winRate: form.btWin, maxDD: form.btDd } })}>{t.save}</button>
           </div>
         )}
       </div>
@@ -246,7 +280,7 @@ export default function Bots() {
         </div>
       )}
 
-      {d && !d.locked && !bots.length && !d.needsMigration && (
+      {d && !d.locked && !d.needsMigration && !(d.accounts?.length) && (
         <div className="card" style={{ textAlign: 'center', padding: 28 }}>
           <div style={{ fontSize: 34, marginBottom: 8 }}><OnyxIcon emoji="📡" size={16} /></div>
           <h3 style={{ marginBottom: 6 }}>{t.emptyT}</h3>
@@ -257,26 +291,52 @@ export default function Bots() {
         </div>
       )}
 
-      {d && !d.locked && !!bots.length && (
+      {d && !d.locked && !d.needsMigration && !!(d.accounts?.length) && (
         <>
-          <div className="grid g2" style={{ gap: 14, alignItems: 'start' }}>
-            <div>
-              <div className="row" style={{ gap: 6, marginBottom: 8 }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--amber)' }} />
-                <b style={{ fontSize: 13 }}>{t.testing}</b><span className="muted" style={{ fontSize: 12 }}>{testing.length}</span>
+          {(d.accounts || []).map((acc: any) => {
+            const mine = bots.filter((b: any) => b.accountId === acc.id);
+            const tt = mine.filter((b: any) => b.mode === 'testing');
+            const ll = mine.filter((b: any) => b.mode === 'live');
+            const running = mine.filter((b: any) => b.status === 'operando').length;
+            return (
+              <div key={acc.id} className="card" style={{
+                marginBottom: 16, padding: '14px 14px 16px',
+                border: '1px solid ' + (acc.online ? 'color-mix(in srgb,var(--green) 30%,var(--line))' : 'var(--line)'),
+                background: 'linear-gradient(180deg, color-mix(in srgb,var(--brand) 6%, var(--card)) 0%, var(--card) 55%)',
+                boxShadow: '0 14px 40px -22px rgba(0,0,0,.8)',
+              }}>
+                <div className="row between" style={{ alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+                  <div className="row" style={{ gap: 9, alignItems: 'center' }}>
+                    <span style={{ width: 10, height: 10, borderRadius: '50%', background: acc.online ? 'var(--green)' : 'var(--mut)', boxShadow: acc.online ? '0 0 0 4px color-mix(in srgb,var(--green) 20%,transparent)' : 'none' }} />
+                    <b style={{ fontSize: 15.5 }}>{acc.name}</b>
+                    <span className="muted" style={{ fontSize: 12 }}>{acc.online ? t.online : t.offline} · {mine.length} {t.bots}{running > 0 ? ` · ${running} ${t.statusRun.toLowerCase()}` : ''}</span>
+                  </div>
+                  <button className="btn btn-primary" style={{ fontSize: 12.5 }} onClick={() => { setAddFor({ accountId: acc.id, accName: acc.name }); setAddForm({ magic: '', name: '', mode: 'testing' }); }}>＋ {t.addBot}</button>
+                </div>
+                {mine.length === 0 && <div className="muted" style={{ fontSize: 12.5, padding: '2px 2px 6px' }}>{lang === 'es' ? 'Aún no hay robots en esta cuenta. Añade uno por su magic number.' : 'No robots on this account yet. Add one by its magic number.'}</div>}
+                {mine.length > 0 && (
+                  <div className="grid g2" style={{ gap: 14, alignItems: 'start' }}>
+                    <div>
+                      <div className="row" style={{ gap: 6, marginBottom: 8 }}>
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--amber)' }} />
+                        <b style={{ fontSize: 13 }}>{t.testing}</b><span className="muted" style={{ fontSize: 12 }}>{tt.length}</span>
+                      </div>
+                      {tt.map((b: any) => <Card key={b.key} b={b} />)}
+                      {!tt.length && <div className="muted" style={{ fontSize: 12.5, padding: 4 }}>—</div>}
+                    </div>
+                    <div>
+                      <div className="row" style={{ gap: 6, marginBottom: 8 }}>
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--green)' }} />
+                        <b style={{ fontSize: 13 }}>{t.live}</b><span className="muted" style={{ fontSize: 12 }}>{ll.length}</span>
+                      </div>
+                      {ll.map((b: any) => <Card key={b.key} b={b} />)}
+                      {!ll.length && <div className="muted" style={{ fontSize: 12.5, padding: 4 }}>—</div>}
+                    </div>
+                  </div>
+                )}
               </div>
-              {testing.map((b) => <Card key={b.magic} b={b} />)}
-              {!testing.length && <div className="muted" style={{ fontSize: 12.5, padding: 4 }}>—</div>}
-            </div>
-            <div>
-              <div className="row" style={{ gap: 6, marginBottom: 8 }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--green)' }} />
-                <b style={{ fontSize: 13 }}>{t.live}</b><span className="muted" style={{ fontSize: 12 }}>{live.length}</span>
-              </div>
-              {live.map((b) => <Card key={b.magic} b={b} />)}
-              {!live.length && <div className="muted" style={{ fontSize: 12.5, padding: 4 }}>—</div>}
-            </div>
-          </div>
+            );
+          })}
 
           {port && port.bots && port.bots.length >= 2 && (
             <div className="card" style={{ marginTop: 16 }}>
@@ -300,6 +360,29 @@ export default function Bots() {
             </div>
           )}
         </>
+      )}
+
+      {addFor && (
+        <div onClick={() => setAddFor(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: 16 }}>
+          <div onClick={(e) => e.stopPropagation()} className="card" style={{ maxWidth: 400, width: '100%', border: '1px solid var(--brand)', boxShadow: '0 24px 70px -20px color-mix(in srgb,var(--brand) 55%,transparent)', background: 'linear-gradient(180deg, color-mix(in srgb,var(--brand) 8%, var(--card)) 0%, var(--card) 55%)' }}>
+            <h3 style={{ marginBottom: 4 }}><OnyxIcon emoji="🤖" size={15} /> {t.addBotT}</h3>
+            <p className="muted" style={{ fontSize: 12.5, marginBottom: 12 }}>{t.accountL}: <b style={{ color: 'var(--tx)' }}>{addFor.accName}</b></p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div><span className="muted" style={{ fontSize: 12 }}>{t.magicL}</span><input type="number" value={addForm.magic} onChange={(e) => setAddForm({ ...addForm, magic: e.target.value })} placeholder="12345" style={{ margin: '4px 0 0' }} /></div>
+              <div><span className="muted" style={{ fontSize: 12 }}>{t.name}</span><input value={addForm.name} onChange={(e) => setAddForm({ ...addForm, name: e.target.value })} placeholder={`Bot #${addForm.magic || '…'}`} style={{ margin: '4px 0 0' }} /></div>
+              <div><span className="muted" style={{ fontSize: 12 }}>{t.mode}</span>
+                <select value={addForm.mode} onChange={(e) => setAddForm({ ...addForm, mode: e.target.value })} style={{ margin: '4px 0 0' }}>
+                  <option value="testing">{t.testing}</option><option value="live">{t.live}</option>
+                </select>
+              </div>
+              <div className="muted" style={{ fontSize: 11.5 }}>{t.addBotHint}</div>
+            </div>
+            <div className="row" style={{ gap: 8, marginTop: 14 }}>
+              <button className="btn btn-primary" onClick={createBot} disabled={busy || !addForm.magic}>＋ {t.create}</button>
+              <button className="btn btn-ghost" onClick={() => setAddFor(null)}>{t.cancel}</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
