@@ -5,6 +5,15 @@ import { fmtDate, fmtDateTime } from '@/lib/fmtDate';
 import { useEffect, useState } from 'react';
 import Help from '@/app/Help';
 
+// Horas en desplegable cada 30 min (igual que en Copy). Si el valor guardado no
+// cae en la rejilla, se añade como opción para no perderlo.
+const TIMES: string[] = (() => { const a: string[] = []; for (let h = 0; h < 24; h++) for (const m of ['00', '30']) a.push((h < 10 ? '0' + h : '' + h) + ':' + m); return a; })();
+function timeOptions(cur: string) {
+  const list = TIMES.slice();
+  if (cur && !list.includes(cur)) list.unshift(cur);
+  return list;
+}
+
 // ============================================================
 // Fase 2 de Onyx Guardian: mi plan de trading, límites de la cuenta,
 // noticias y el espejo de disciplina.
@@ -249,8 +258,8 @@ export function PlanTab({ cfg, set, setCfg, t, acc }: any) {
                   <Toggle on={!!w.on} onClick={() => setWin(i, 'on', !w.on)} />
                   <StateLabel on={!!w.on} on1={t.wOn} off1={t.wOff} />
                 </div>
-                <div><span style={lbl}>{t.from}</span><input type="time" value={w.from} onChange={(e) => setWin(i, 'from', e.target.value)} style={{ ...num, width: 120 }} /></div>
-                <div><span style={lbl}>{t.to}</span><input type="time" value={w.to} onChange={(e) => setWin(i, 'to', e.target.value)} style={{ ...num, width: 120 }} /></div>
+                <div><span style={lbl}>{t.from}</span><select value={w.from} onChange={(e) => setWin(i, 'from', e.target.value)} style={{ ...num, width: 120 }}>{timeOptions(w.from).map((h) => <option key={h} value={h}>{h}</option>)}</select></div>
+                <div><span style={lbl}>{t.to}</span><select value={w.to} onChange={(e) => setWin(i, 'to', e.target.value)} style={{ ...num, width: 120 }}>{timeOptions(w.to).map((h) => <option key={h} value={h}>{h}</option>)}</select></div>
               </div>
             ))}
           </div>
@@ -272,7 +281,7 @@ export function PlanTab({ cfg, set, setCfg, t, acc }: any) {
                     {t.dayNames.map((n: string, i: number) => <option key={i} value={i}>{n}</option>)}
                   </select>
                 </div>
-                <div><span style={lbl}>{t.wkndTime}</span><input type="time" value={p.weekend_close.time} onChange={(e) => setWk('time', e.target.value)} style={{ ...num, width: 120 }} /></div>
+                <div><span style={lbl}>{t.wkndTime}</span><select value={p.weekend_close.time} onChange={(e) => setWk('time', e.target.value)} style={{ ...num, width: 120 }}>{timeOptions(p.weekend_close.time).map((h) => <option key={h} value={h}>{h}</option>)}</select></div>
               </div>
             )}
           </div>
