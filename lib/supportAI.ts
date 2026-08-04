@@ -1,6 +1,7 @@
-import { dictFor } from '@/lib/i18n';
+import { dictFor, enBase, aiLangDirective } from '@/lib/i18n';
 import { ARTICLES, searchArticles, type Article, type Lang } from '@/lib/guide';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { listPublished } from '@/lib/blog';
 import { sendEmail } from '@/lib/mail';
 import { getSetting } from '@/lib/settings';
 
@@ -102,65 +103,93 @@ export type AiAnswer = { answer: string; confident: boolean; articles: Array<{ s
 // conocimiento + Guía. Solo escala (NO_ANSWER) cuando necesita datos PRIVADOS de
 // la cuenta del usuario que no puede ver. `reason` dice qué pasó exactamente.
 export async function aiAnswer(question: string, lang: Lang, sensitive = false): Promise<AiAnswer> {
+  // Chips "Abrir: ..." (solo para los botones). NO limita lo que la IA sabe: eso ahora es TODO el corpus.
   const found = searchArticles(question, lang).slice(0, 4);
-  const pool = found.length ? found : ARTICLES.slice(0, 4);
-  const articles = pool.map((a) => ({ slug: a.slug, title: (a.title[lang]||a.title.en) }));
+  const chips = (found.length ? found : ARTICLES.slice(0, 4)).map((a) => ({ slug: a.slug, title: (a.title[lang] || a.title.en) }));
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return { answer: '', confident: false, articles, reason: 'no_key' };
-  if (sensitive) return { answer: '', confident: false, articles, reason: 'sensitive' };
+  if (!apiKey) return { answer: '', confident: false, articles: chips, reason: 'no_key' };
+  if (sensitive) return { answer: '', confident: false, articles: chips, reason: 'sensitive' };
 
-  const context = pool.map((a) => articleText(a, lang)).join('\n\n---\n\n');
+  const en = enBase(lang);
 
-  // Contexto extra: precios y planes REALES (de la BD) + base de conocimiento.
-  // Es lo mismo que usa el chat de la web, para que preguntas de precios se
-  // respondan solas y con datos correctos (no "no sé").
-  let extra = '';
+  // === CORPUS COMPLETO ===
+  // La base es pequeña, así que Claude LEE TODO (guía + Base IA + blog) y decide por
+  // SIGNIFICADO. Esto entiende preguntas incompletas, con sinónimos o mal escritas de
+  // forma nativa (ya no es coincidencia de palabras). Va en un bloque CACHEADO para que
+  // repetir preguntas sea barato y rápido.
+  const guide = ARTICLES.map((a) => articleText(a, lang)).join('\n\n---\n\n');
+  let kbText = '';
+  try {
+    const { data: kb } = await supabaseAdmin.from('kb_articles').select('title,body').eq('published', true).limit(200);
+    if (kb?.length) kbText = kb.map((a: any) => `# ${a.title}\n${a.body}`).join('\n\n---\n\n');
+  } catch {}
+  let blogText = '';
+  try {
+    const posts = await listPublished(50);
+    if (posts.length) blogText = posts.map((p: any) => {
+      const t = (en ? p.title_en : p.title_es) || p.title_es || p.title_en;
+      const b = (en ? p.body_en : p.body_es) || p.body_es || p.body_en || '';
+      return `# ${t}\n${String(b).slice(0, 2500)}`;
+    }).join('\n\n---\n\n');
+  } catch {}
+
+  // Precios reales (cambian; van FUERA del bloque cacheado para no invalidar la caché).
+  let prices = '';
   try {
     const { data: plans } = await supabaseAdmin.from('plans')
       .select('name,name_en,price_month,price_year,max_accounts,features,features_en')
       .eq('active', true).order('sort', { ascending: true });
     if (plans?.length) {
       const rows = plans.map((p: any) => {
-        const n = enBase(lang) ? (p.name_en || p.name) : p.name;
-        const acc = p.max_accounts >= 999 ? (enBase(lang) ? 'unlimited accounts' : 'cuentas ilimitadas') : `${p.max_accounts} ${enBase(lang) ? 'accounts' : 'cuentas'}`;
-        const feats = ((enBase(lang) ? p.features_en : p.features) || []).slice(0, 6).join(', ');
-        return `- ${n}: $${p.price_month}/${enBase(lang) ? 'mo' : 'mes'} · $${p.price_year}/${enBase(lang) ? 'yr' : 'año'} · ${acc}. ${feats}`;
+        const n = en ? (p.name_en || p.name) : p.name;
+        const acc = p.max_accounts >= 999 ? (en ? 'unlimited accounts' : 'cuentas ilimitadas') : `${p.max_accounts} ${en ? 'accounts' : 'cuentas'}`;
+        const feats = ((en ? p.features_en : p.features) || []).slice(0, 6).join(', ');
+        return `- ${n}: $${p.price_month}/${en ? 'mo' : 'mes'} · $${p.price_year}/${en ? 'yr' : 'año'} · ${acc}. ${feats}`;
       }).join('\n');
-      extra += `\n\n=== ${enBase(lang) ? 'PRICES AND PLANS (current)' : 'PRECIOS Y PLANES (actuales)'} ===\n${rows}`;
+      prices = `\n\n=== ${en ? 'PRICES AND PLANS (current)' : 'PRECIOS Y PLANES (actuales)'} ===\n${rows}`;
     }
   } catch {}
-  try {
-    const words = question.toLowerCase().split(/\s+/).filter((w) => w.length > 3);
-    const { data: kb } = await supabaseAdmin.from('kb_articles').select('title,body,tags').eq('published', true).limit(30);
-    const scored = (kb || []).map((a: any) => {
-      const hay = `${a.title} ${a.tags} ${a.body}`.toLowerCase();
-      return { a, score: words.reduce((s: number, w: string) => s + (hay.includes(w) ? 1 : 0), 0) };
-    }).sort((x, y) => y.score - x.score).slice(0, 3).filter((x) => x.score > 0);
-    if (scored.length) extra += `\n\n=== ${enBase(lang) ? 'KNOWLEDGE BASE' : 'BASE DE CONOCIMIENTO'} ===\n` + scored.map((x) => `# ${x.a.title}\n${x.a.body}`).join('\n\n');
-  } catch {}
 
-  const system = (enBase(lang)
-    ? `You are Onyx AI, the support agent for Onyx Trading Live. Answer the user's message helpfully and accurately using the ONYX KNOWLEDGE, current PRICES and KNOWLEDGE BASE below. Be brief, warm and clear, like a great support agent. Use a few tasteful emojis and bullet points for readability. Prices below are authoritative for any pricing question. Do NOT add a signature or sign-off — it is added automatically. Never invent features or give financial advice. Answer general product, pricing, how-to and feature questions confidently. ONLY reply with the exact token NO_ANSWER (and nothing else) when the question requires the user's PRIVATE account data that you cannot see — for example "why was I charged X", "is MY account blocked", "what is MY balance", a specific bug tied to their account. For everything else, give a helpful answer.`
-    : `Eres Onyx AI, el agente de soporte de Onyx Trading Live. Responde al mensaje del usuario de forma útil y correcta usando el CONOCIMIENTO DE ONYX, los PRECIOS actuales y la BASE DE CONOCIMIENTO de abajo. Sé breve, cercano y claro, como un gran agente de soporte. Usa algunos emojis con criterio y viñetas para que sea legible. Los precios de abajo son la fuente oficial para cualquier pregunta de precios. NO añadas firma ni despedida — se agrega automáticamente. No inventes funciones ni des consejo financiero. Responde con seguridad las preguntas generales de producto, precios, cómo hacer algo y funciones. SOLO responde con el token exacto NO_ANSWER (y nada más) cuando la pregunta necesite datos PRIVADOS de la cuenta del usuario que no puedes ver — por ejemplo "por qué me cobraron X", "está bloqueada MI cuenta", "cuál es MI saldo", o un fallo concreto atado a su cuenta. Para todo lo demás, da una respuesta útil.`)
-    + `\n\n=== ${enBase(lang) ? 'ONYX KNOWLEDGE' : 'CONOCIMIENTO DE ONYX'} ===\n${dictFor(ONYX_BRIEF, lang)}`
-    + `\n\n=== ${enBase(lang) ? 'HELP ARTICLES' : 'ARTÍCULOS DE AYUDA'} ===\n${context}` + extra + aiLangDirective(lang);
+  const persona = en
+    ? `You are Onyx AI, the support agent for Onyx Trading Live. Assume the person may know NOTHING about Onyx and may ask in vague, incomplete or misspelled ways — figure out their intent and help anyway. Answer using ALL the knowledge below (help articles, knowledge base, blog and current prices). Be brief, warm and clear, with a few tasteful emojis and bullets. Prices below are authoritative. Never invent features or give financial/market advice. If the question is too vague or incomplete to answer well, ask ONE short clarifying question instead of guessing. Do NOT add a signature. ONLY reply with the exact token NO_ANSWER (nothing else) when the question needs the user's PRIVATE account data you cannot see — e.g. "why was I charged", "is MY account blocked", "MY balance". For everything else, help.`
+    : `Eres Onyx AI, el agente de soporte de Onyx Trading Live. Supón que la persona quizá NO conoce nada de Onyx y puede preguntar de forma vaga, incompleta o con errores — deduce su intención y ayúdala igual. Responde usando TODO el conocimiento de abajo (artículos de ayuda, base de conocimiento, blog y precios actuales). Sé breve, cercano y claro, con algunos emojis con criterio y viñetas. Los precios de abajo son la fuente oficial. No inventes funciones ni des consejo financiero/de mercado. Si la pregunta es demasiado vaga o incompleta para responder bien, haz UNA pregunta corta de aclaración en vez de adivinar. No añadas firma. SOLO responde con el token exacto NO_ANSWER (y nada más) cuando la pregunta necesite datos PRIVADOS de la cuenta del usuario que no puedes ver — p. ej. "por qué me cobraron", "está bloqueada MI cuenta", "MI saldo". Para todo lo demás, ayuda.`;
+
+  const knowledge = `=== ${en ? 'ONYX KNOWLEDGE' : 'CONOCIMIENTO DE ONYX'} ===\n${dictFor(ONYX_BRIEF, lang)}\n\n=== ${en ? 'HELP ARTICLES' : 'ARTÍCULOS DE AYUDA'} ===\n${guide}`
+    + (kbText ? `\n\n=== ${en ? 'KNOWLEDGE BASE' : 'BASE DE CONOCIMIENTO'} ===\n${kbText}` : '')
+    + (blogText ? `\n\n=== BLOG ===\n${blogText}` : '');
+
+  const model = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5';
+  const headers: any = { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' };
+  const userMsg = [{ role: 'user', content: question.slice(0, 2000) }];
+
+  // Cuerpo con caché de Claude (bloques de sistema). Si el modelo/cuenta no soporta
+  // cache_control, reintentamos con un system de texto plano (misma calidad, sin caché).
+  const cachedBody = JSON.stringify({
+    model, max_tokens: 700,
+    system: [
+      { type: 'text', text: persona + aiLangDirective(lang) },
+      { type: 'text', text: knowledge, cache_control: { type: 'ephemeral' } },
+      ...(prices ? [{ type: 'text', text: prices }] : []),
+    ],
+    messages: userMsg,
+  });
+  const plainBody = JSON.stringify({
+    model, max_tokens: 700,
+    system: persona + aiLangDirective(lang) + '\n\n' + knowledge + prices,
+    messages: userMsg,
+  });
 
   try {
-    const model = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5';
-    const r = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model, max_tokens: 600, system, messages: [{ role: 'user', content: question.slice(0, 2000) }] }),
-    });
-    if (!r.ok) return { answer: '', confident: false, articles, reason: 'error' };
+    let r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers, body: cachedBody });
+    if (!r.ok) r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers, body: plainBody });
+    if (!r.ok) return { answer: '', confident: false, articles: chips, reason: 'error' };
     const data = await r.json();
     const answer = (data?.content || []).map((c: any) => c.text || '').join('\n').trim();
-    // El modelo declara que necesita datos privados → a un humano
-    if (!answer || /NO_ANSWER/i.test(answer)) return { answer: '', confident: false, articles, reason: 'declined' };
-    return { answer, confident: true, articles, reason: 'ok' };
+    if (!answer || /NO_ANSWER/i.test(answer)) return { answer: '', confident: false, articles: chips, reason: 'declined' };
+    return { answer, confident: true, articles: chips, reason: 'ok' };
   } catch {
-    return { answer: '', confident: false, articles, reason: 'error' };
+    return { answer: '', confident: false, articles: chips, reason: 'error' };
   }
 }
 
