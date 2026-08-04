@@ -1,4 +1,4 @@
-import { ONYX_BRIEF } from '@/lib/supportAI';
+import { ONYX_BRIEF, brandBrief } from '@/lib/supportAI';
 import { segmentLabel } from '@/lib/segments';
 
 // ============================================================
@@ -22,7 +22,7 @@ Devuelve SOLO un objeto JSON válido, sin texto extra, con EXACTAMENTE estas cla
 {"subject_es": "...", "body_es": "...", "subject_en": "...", "body_en": "..."}
 
 === CONOCIMIENTO DE ONYX ===
-${ONYX_BRIEF.es}`;
+${await brandBrief('es')}`;
 
   const user = `Escribe un correo de campaña.\nAudiencia: ${audience}.\nTema/instrucción del owner: "${opts.topic}".\nGenera asunto y cuerpo en español y en inglés (traducción natural, no literal).`;
 

@@ -1,4 +1,4 @@
-import { ONYX_BRIEF } from '@/lib/supportAI';
+import { ONYX_BRIEF, brandBrief } from '@/lib/supportAI';
 import { dictFor } from '@/lib/i18n';
 import type { Lang } from '@/lib/navText';
 
@@ -41,7 +41,7 @@ const GUARDRAIL = 'Reglas estrictas: NUNCA predigas el mercado, ni des señales,
 export async function suggestTitles(topic: string, lang: Lang = 'es'): Promise<{ ok: boolean; titles?: string[]; reason?: string }> {
   if (!process.env.ANTHROPIC_API_KEY) return { ok: false, reason: 'no_key' };
   const es = lang !== 'en';
-  const system = `Eres el editor SEO de Onyx Trading Live. ${GUARDRAIL}\n\nCONTEXTO DE MARCA:\n${dictFor(ONYX_BRIEF, lang)}\n\nDevuelve SOLO un JSON: {"titles": ["...", ...]} con 6 títulos ${es ? 'en español' : 'in English'}, atractivos y optimizados para búsqueda (claros, con la palabra clave al inicio, 40-65 caracteres). Sin numerar, sin comillas dentro.`;
+  const system = `Eres el editor SEO de Onyx Trading Live. ${GUARDRAIL}\n\nCONTEXTO DE MARCA:\n${await brandBrief(lang)}\n\nDevuelve SOLO un JSON: {"titles": ["...", ...]} con 6 títulos ${es ? 'en español' : 'in English'}, atractivos y optimizados para búsqueda (claros, con la palabra clave al inicio, 40-65 caracteres). Sin numerar, sin comillas dentro.`;
   const out = parseJson(await aiRaw(system, `Idea o tema: ${topic}`, 500));
   const titles = Array.isArray(out?.titles) ? out.titles.map((t: any) => String(t)).filter(Boolean).slice(0, 8) : null;
   if (!titles || !titles.length) return { ok: false, reason: 'ai_failed' };
@@ -51,7 +51,7 @@ export async function suggestTitles(topic: string, lang: Lang = 'es'): Promise<{
 // ---- Artículo completo bilingüe ----
 export async function generateArticle(title: string): Promise<{ ok: boolean; article?: any; reason?: string }> {
   if (!process.env.ANTHROPIC_API_KEY) return { ok: false, reason: 'no_key' };
-  const system = `Eres redactor de contenido SEO de Onyx Trading Live. ${GUARDRAIL}\n\nCONTEXTO DE MARCA (úsalo con naturalidad, sin sonar a anuncio):\n${dictFor(ONYX_BRIEF, 'es')}\n\nEscribe un artículo de blog COMPLETO sobre el título dado, en ESPAÑOL e INGLÉS. Formato markdown: usa subtítulos "## ", listas con "- " y **negritas** con moderación. 600-900 palabras por idioma, tono cercano y profesional para traders. Cierra invitando suavemente a usar Onyx (sin promesas). \n\nDevuelve SOLO este JSON (sin texto fuera):\n{"title_es":"...","title_en":"...","excerpt_es":"resumen 1-2 frases","excerpt_en":"1-2 sentence summary","body_es":"markdown en español","body_en":"markdown in English","tags":"3-6 palabras clave separadas por coma"}`;
+  const system = `Eres redactor de contenido SEO de Onyx Trading Live. ${GUARDRAIL}\n\nCONTEXTO DE MARCA (úsalo con naturalidad, sin sonar a anuncio):\n${await brandBrief('es')}\n\nEscribe un artículo de blog COMPLETO sobre el título dado, en ESPAÑOL e INGLÉS. Formato markdown: usa subtítulos "## ", listas con "- " y **negritas** con moderación. 600-900 palabras por idioma, tono cercano y profesional para traders. Cierra invitando suavemente a usar Onyx (sin promesas). \n\nDevuelve SOLO este JSON (sin texto fuera):\n{"title_es":"...","title_en":"...","excerpt_es":"resumen 1-2 frases","excerpt_en":"1-2 sentence summary","body_es":"markdown en español","body_en":"markdown in English","tags":"3-6 palabras clave separadas por coma"}`;
   const out = parseJson(await aiRaw(system, `Título: ${title}`, 4000));
   if (!out || !out.body_es || !out.body_en) return { ok: false, reason: 'ai_failed' };
   return {

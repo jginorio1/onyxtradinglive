@@ -96,6 +96,17 @@ AMBASSADORS: recurring commission for every subscriber you bring and a discount 
 SUPPORT: Onyx AI answers instantly; if needed, a person replies by email or in the Support Center.`,
 };
 
+// Conocimiento de marca EFECTIVO: si el admin lo editó en el panel, se usa ese; si no,
+// el texto interno por defecto. Lo usan TODAS las IAs de marca (soporte, coach, blog,
+// campañas, embajadores) para que Onyx cuente lo mismo en todos lados.
+export async function brandBrief(lang: Lang): Promise<string> {
+  try {
+    const p = await aiPromptSettings();
+    const admin = ((enBase(lang) ? p.brief_en : p.brief_es) || '').trim();
+    return admin || dictFor(ONYX_BRIEF, lang);
+  } catch { return dictFor(ONYX_BRIEF, lang); }
+}
+
 export type AiReason = 'ok' | 'no_key' | 'sensitive' | 'declined' | 'error';
 export type AiAnswer = { answer: string; confident: boolean; articles: Array<{ slug: string; title: string }>; reason: AiReason };
 
