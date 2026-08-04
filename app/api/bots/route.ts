@@ -97,3 +97,28 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
   }
 }
+
+// DELETE · quitar un bot registrado a mano (por cuenta+magic). Solo borra la ficha del bot;
+// las operaciones cerradas del historial no se tocan (si el bot tiene trades, reaparecerá solo).
+export async function DELETE(req: Request) {
+  try {
+    const sb = createSupabaseServer();
+    const { data: { user } } = await sb.auth.getUser();
+    if (!user) return NextResponse.json({ error: 'no autorizado' }, { status: 401 });
+    if (!(await hasAlgo(user.id))) return NextResponse.json({ error: 'plan' }, { status: 403 });
+
+    const b = await req.json().catch(() => ({} as any));
+    const magic = Number(b.magic);
+    if (!Number.isFinite(magic) || magic === 0) return NextResponse.json({ error: 'falta magic', code: 'missing' }, { status: 400 });
+    const account_id = b.account_id ? String(b.account_id) : null;
+
+    let q = supabaseAdmin.from('bots').delete().eq('user_id', user.id).eq('magic', magic);
+    q = account_id ? q.eq('account_id', account_id) : q.is('account_id', null);
+    const { error } = await q;
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  } catch (e: any) {
+    await logError('bots_delete', e);
+    return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
+  }
+}

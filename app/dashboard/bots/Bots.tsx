@@ -28,7 +28,7 @@ const T: any = {
     addBot: 'Añadir bot por magic', addBotT: 'Registrar un robot', magicL: 'Magic number', accountL: 'Cuenta',
     create: 'Registrar', cancel: 'Cancelar', pendingBadge: 'Sin operaciones aún', online: 'EA en línea', offline: 'EA desconectado',
     addBotHint: 'Escribe el magic number de tu EA para verlo aquí desde ya, aunque todavía no opere.', dupBot: 'Ya tienes un bot con ese magic en esta cuenta.', bots: 'bots',
-    openNowLbl: 'abierta(s) ahora', floatLbl: 'flotante', closedHint: 'Los números (Neto, PF, aciertos) suman solo operaciones cerradas.',
+    openNowLbl: 'abierta(s) ahora', floatLbl: 'flotante', closedHint: 'Los números (Neto, PF, aciertos) suman solo operaciones cerradas.', del: 'Eliminar',
   },
   en: {
     title: 'My robots', sub: 'Performance per strategy. Split the ones in testing from the ones already live.',
@@ -50,7 +50,7 @@ const T: any = {
     addBot: 'Add bot by magic', addBotT: 'Register a robot', magicL: 'Magic number', accountL: 'Account',
     create: 'Register', cancel: 'Cancel', pendingBadge: 'No trades yet', online: 'EA online', offline: 'EA offline',
     addBotHint: 'Type your EA magic number to see it here right away, even before it trades.', dupBot: 'You already have a bot with that magic in this account.', bots: 'bots',
-    openNowLbl: 'open now', floatLbl: 'floating', closedHint: 'The numbers (Net, PF, win) only add up closed trades.',
+    openNowLbl: 'open now', floatLbl: 'floating', closedHint: 'The numbers (Net, PF, win) only add up closed trades.', del: 'Delete',
   },
 };
 
@@ -91,6 +91,15 @@ export default function Bots() {
   function openEdit(b: any) {
     setEdit(b.key); setDetail(null);
     setForm({ name: b.name, mode: 'auto', ...b.criteria, btPf: b.backtest?.pf ?? '', btWin: b.backtest?.winRate ?? '', btDd: b.backtest?.maxDD ?? '' });
+  }
+  async function delBot(b: any) {
+    if (!window.confirm(lang === 'es' ? `¿Eliminar el robot "${b.name}"? Se quita de la lista (su historial de operaciones no se borra).` : `Delete robot "${b.name}"? It is removed from the list (its trade history is kept).`)) return;
+    setBusy(true);
+    try {
+      const r = await fetch('/api/bots', { method: 'DELETE', body: JSON.stringify({ magic: b.magic, account_id: b.accountId }) });
+      if (r.ok) { toast(t.saved, 'ok'); setEdit(null); setDetail(null); await load(); }
+      else { const j = await r.json().catch(() => ({})); toast(j.error || 'error'); }
+    } finally { setBusy(false); }
   }
   async function createBot() {
     const magic = Number(addForm.magic);
@@ -185,6 +194,7 @@ export default function Bots() {
         <div className="row" style={{ gap: 6, marginTop: 8 }}>
           <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '5px 10px' }} onClick={() => { setDetail(detail === b.key ? null : b.key); setEdit(null); }} disabled={b.trades === 0}><OnyxIcon emoji="📊" size={16} /> {t.detail}</button>
           <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '5px 10px' }} onClick={() => (edit === b.key ? setEdit(null) : openEdit(b))}><OnyxIcon emoji="⚙" size={16} /> {t.config}</button>
+          {b.pending && <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '5px 10px', color: 'var(--red)', marginLeft: 'auto' }} onClick={() => delBot(b)} disabled={busy}><OnyxIcon emoji="🗑" size={15} /> {t.del}</button>}
         </div>
 
         {detail === b.key && (
