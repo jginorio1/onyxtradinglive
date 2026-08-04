@@ -47,7 +47,7 @@ const K = {
       { key: 'mt5', name: 'MetaTrader 5', badge: 'Más usado', kind: 'mt' },
       { key: 'mt4', name: 'MetaTrader 4', badge: 'Nuevo', kind: 'mt' },
       { key: 'ctrader', name: 'cTrader', badge: 'cBot', kind: 'ctrader' },
-      { key: 'matchtrader', name: 'MatchTrader', badge: 'Pronto', kind: 'soon' },
+      { key: 'matchtrader', name: 'MatchTrader', badge: 'Beta', kind: 'matchtrader' },
     ],
     dlCardT: 'Descarga el conector',
     ctDoes: ['Sincroniza tus operaciones al diario', 'Break even, trailing y cierres parciales', 'Tu plan, límites y bloqueo fuera de plan'],
@@ -55,6 +55,9 @@ const K = {
     ctFileName: 'OnyxConnect.cs · cBot de cTrader',
     ctGuide: 'Ver guía completa de cTrader',
     soonT: 'MatchTrader llega pronto', soonD: 'La conexión de MatchTrader depende de la API de tu bróker. Estamos habilitándola. Mientras tanto, si tu bróker también ofrece MT5, MT4 o cTrader, usa esa.',
+    mtrT: 'Conecta MatchTrader (beta)', mtrD: 'MatchTrader se conecta con la API de tu bróker (no lleva EA que instalar). Pega la URL de la API y tu clave; en cuanto tu bróker confirme el acceso, Guardian y Copy funcionan igual que en MetaTrader.',
+    mtrBase: 'URL de la API del bróker', mtrKey: 'API key / token', mtrUuid: 'systemUuid / accountId (si tu bróker lo pide)', mtrSave: 'Guardar conexión', mtrSaved: 'Guardado ✓',
+    mtrBeta: 'Beta: se activa cuando tu bróker habilita la API. Si aún no la tienes, usa MT5/MT4/cTrader mientras tanto.',
     stepsCt: [
       { t: '1. Descarga el cBot Onyx (.cs)', d: 'Usa el botón de arriba. Se guarda en tu carpeta de Descargas. Es un archivo de texto con el código del cBot.', viz: 'ct-download' },
       { t: '2. Abre cTrader → Automate → New cBot', d: 'En cTrader Desktop, arriba, entra en Automate. Pulsa New cBot y ponle un nombre (ej: OnyxConnect). Se abre el editor de código.', viz: 'ct-new' },
@@ -126,7 +129,7 @@ const K = {
       { key: 'mt5', name: 'MetaTrader 5', badge: 'Most used', kind: 'mt' },
       { key: 'mt4', name: 'MetaTrader 4', badge: 'New', kind: 'mt' },
       { key: 'ctrader', name: 'cTrader', badge: 'cBot', kind: 'ctrader' },
-      { key: 'matchtrader', name: 'MatchTrader', badge: 'Soon', kind: 'soon' },
+      { key: 'matchtrader', name: 'MatchTrader', badge: 'Beta', kind: 'matchtrader' },
     ],
     dlCardT: 'Download the connector',
     ctDoes: ['Syncs your trades to the journal', 'Break even, trailing and partial closes', 'Your plan, limits and out-of-plan block'],
@@ -134,6 +137,9 @@ const K = {
     ctFileName: 'OnyxConnect.cs · cTrader cBot',
     ctGuide: 'See full cTrader guide',
     soonT: 'MatchTrader is coming soon', soonD: 'MatchTrader connection depends on your broker API. We are enabling it. Meanwhile, if your broker also offers MT5, MT4 or cTrader, use that.',
+    mtrT: 'Connect MatchTrader (beta)', mtrD: 'MatchTrader connects via your broker API (no EA to install). Paste the API URL and your key; once your broker confirms access, Guardian and Copy work just like on MetaTrader.',
+    mtrBase: 'Broker API URL', mtrKey: 'API key / token', mtrUuid: 'systemUuid / accountId (if your broker needs it)', mtrSave: 'Save connection', mtrSaved: 'Saved ✓',
+    mtrBeta: 'Beta: activates once your broker enables the API. If you do not have it yet, use MT5/MT4/cTrader meanwhile.',
     stepsCt: [
       { t: '1. Download the Onyx cBot (.cs)', d: 'Use the button above. It saves to your Downloads folder. It is a text file with the cBot code.', viz: 'ct-download' },
       { t: '2. Open cTrader → Automate → New cBot', d: 'In cTrader Desktop, go to Automate. Click New cBot and name it (e.g. OnyxConnect). The code editor opens.', viz: 'ct-new' },
@@ -459,12 +465,8 @@ export default function KeysPage() {
           </div>
         </div>
 
-        {kind === 'soon' ? (
-          /* MatchTrader: aún no conectable */
-          <div className="card" style={{ marginBottom: 18, border: '1px solid var(--amber)' }}>
-            <div style={{ fontWeight: 800, marginBottom: 6, color: 'var(--amber)' }}>⏳ {t.soonT}</div>
-            <p className="muted" style={{ fontSize: 13.5, lineHeight: 1.7 }}>{t.soonD}</p>
-          </div>
+        {kind === 'matchtrader' ? (
+          <MatchtraderConnect t={t} />
         ) : (
           <>
             {/* Paso 3: descarga el conector de la plataforma elegida */}
@@ -544,5 +546,37 @@ export default function KeysPage() {
         </div>
       </div>
     </>
+  );
+}
+
+
+// MatchTrader (beta): se conecta con la API del bróker (no lleva EA). El trader
+// pega la URL de la API y su clave; el motor server-side (lib/matchtrader.ts)
+// aplica el mismo Guardian y Copy en cuanto estén los endpoints del bróker.
+function MatchtraderConnect({ t }: any) {
+  const [base, setBase] = useState('');
+  const [key, setKey] = useState('');
+  const [uuid, setUuid] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  const save = async () => {
+    setBusy(true);
+    try {
+      const r = await fetch('/api/matchtrader/connect', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ api_base: base, api_key: key, system_uuid: uuid }) });
+      if (r.ok) { setDone(true); setBase(''); setKey(''); setUuid(''); }
+    } finally { setBusy(false); }
+  };
+  return (
+    <div className="card" style={{ marginBottom: 18, border: '1px solid var(--brand)' }}>
+      <h3 style={{ marginBottom: 4 }}>{t.mtrT}</h3>
+      <p className="muted" style={{ fontSize: 13.5, lineHeight: 1.7, marginBottom: 12 }}>{t.mtrD}</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 460 }}>
+        <label className="muted" style={{ fontSize: 12 }}>{t.mtrBase}<input value={base} onChange={(e) => setBase(e.target.value)} placeholder="https://api.tubroker.com" style={{ marginTop: 4 }} /></label>
+        <label className="muted" style={{ fontSize: 12 }}>{t.mtrKey}<input value={key} onChange={(e) => setKey(e.target.value)} placeholder="API key / token" style={{ marginTop: 4 }} /></label>
+        <label className="muted" style={{ fontSize: 12 }}>{t.mtrUuid}<input value={uuid} onChange={(e) => setUuid(e.target.value)} style={{ marginTop: 4 }} /></label>
+        <button className="btn btn-primary" disabled={busy || !base || !key} onClick={save}>{busy ? '…' : done ? t.mtrSaved : t.mtrSave}</button>
+        <div className="muted" style={{ fontSize: 11.5, lineHeight: 1.6 }}>{t.mtrBeta}</div>
+      </div>
+    </div>
   );
 }
