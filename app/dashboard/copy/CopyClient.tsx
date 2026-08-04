@@ -745,7 +745,7 @@ export default function CopyClient() {
           </div>
           <div className="row" style={{ gap: 8, justifyContent: 'flex-end', marginTop: 14 }}>
             <button className="btn btn-ghost" onClick={() => setEdit(null)}>{t.pinCancel}</button>
-            <button className="btn btn-primary" disabled={busy} onClick={() => setConfirmLink(linkPayload(edit))}>{t.save}</button>
+            <button className="btn btn-primary" disabled={busy} onClick={() => { const p = linkPayload(edit); setEdit(null); setConfirmLink(p); }}>{t.save}</button>
           </div>
         </Modal>
       )}
