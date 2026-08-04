@@ -364,30 +364,32 @@ async function finish(v: Verdict, r: {
 // ------------------------------------------------------------
 // Contadores del día: los llama el sync cuando llegan operaciones cerradas
 // ------------------------------------------------------------
-export async function registerClosedTrades(accountId: string, closed: any[]) {
-  if (!closed?.length) return;
-  const { data: st } = await supabaseAdmin.from('manager_state').select('*').eq('account_id', accountId).maybeSingle();
-  if (!st) return;
+export async function registerClosedTrades(accountId: string, serverOffsetMin: number, resetHour: number) {
+  // Recalcula SIEMPRE desde la tabla real de operaciones (idempotente por ticket),
+  // en vez de ir sumando en cada sync. Así nunca se infla aunque el EA reenvíe
+  // el mismo historial: contamos las operaciones cerradas HOY (día del broker).
+  const now = new Date();
+  const dayKey = brokerDayKey(serverOffsetMin, resetHour, now);   // 'YYYY-MM-DD' en tiempo desplazado
+  const dayStartUtc = new Date(dayKey + 'T00:00:00Z').getTime() + (resetHour || 0) * 3600000 - (serverOffsetMin || 0) * 60000;
+  const sinceISO = new Date(dayStartUtc).toISOString();
 
-  let trades = Number(st.trades_today || 0);
-  let streak = Number(st.losses_streak || 0);
-  let lastLoss: string | null = st.last_loss_at;
+  const { data: rows } = await supabaseAdmin.from('trades')
+    .select('close_time, profit, commission, swap, net_profit')
+    .eq('account_id', accountId).gte('close_time', sinceISO)
+    .order('close_time', { ascending: true }).limit(5000);
+  const list = rows || [];
 
-  // en orden cronológico para que la racha se cuente bien
-  const sorted = [...closed].sort((a, b) => Number(a.closeTime || 0) - Number(b.closeTime || 0));
-  for (const t of sorted) {
-    trades += 1;
-    const net = Number(t.profit || 0) + Number(t.commission || 0) + Number(t.swap || 0);
-    if (net < 0) {
-      streak += 1;
-      lastLoss = t.closeTime ? new Date(Number(t.closeTime) * 1000).toISOString() : new Date().toISOString();
-    } else if (net > 0) {
-      streak = 0;
-    }
+  const trades = list.length;
+  let streak = 0;
+  let lastLoss: string | null = null;
+  for (const t of list) {
+    const net = (t.net_profit != null) ? Number(t.net_profit) : (Number(t.profit || 0) + Number(t.commission || 0) + Number(t.swap || 0));
+    if (net < 0) { streak += 1; lastLoss = t.close_time; }
+    else if (net > 0) { streak = 0; }
   }
 
   await supabaseAdmin.from('manager_state').update({
-    trades_today: trades, losses_streak: streak, last_loss_at: lastLoss, updated_at: new Date().toISOString(),
+    trades_today: trades, losses_streak: streak, last_loss_at: lastLoss, updated_at: now.toISOString(),
   }).eq('account_id', accountId);
 }
 

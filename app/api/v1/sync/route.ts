@@ -337,7 +337,7 @@ export async function POST(req: NextRequest) {
         // Fase 2: contamos las operaciones cerradas y decidimos si puede seguir
         if (cfgRow?.enabled) {
           try {
-            await registerClosedTrades(accountId, closed);
+            await registerClosedTrades(accountId, Number(body.serverOffset || 0), Number(mergeConfig(cfgRow.config).limits.reset_hour || 0));
 
             // ¿Hay una noticia de alto impacto encima? Solo si su plan lo incluye.
             let newsTitle: string | null = null;
