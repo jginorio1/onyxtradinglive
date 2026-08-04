@@ -568,17 +568,15 @@ export async function saveEvent(mentorId: string, b: any) {
   if (b.id) { await supabaseAdmin.from('academy_events').update(row).eq('id', b.id).eq('mentor_id', mentorId); return { id: b.id }; }
 
   const rows: any[] = [];
-  // Multi-día: el mentor marca varios días en el calendario grande; se crea una clase por
-  // cada día seleccionado, todas a la MISMA hora (la del día principal). Prevalece sobre repeat.
-  const time = String(b.starts_at || '').slice(11, 16) || '00:00';
-  const anchorDate = String(b.starts_at || '').slice(0, 10);
-  const extra: string[] = Array.isArray(b.dates)
-    ? b.dates.map((s: any) => String(s).slice(0, 10)).filter((s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s))
+  // Multi-día: el cliente (navegador) ya convirtió cada día seleccionado a UTC usando la
+  // ZONA HORARIA DEL USUARIO, igual que el resto de la app. Aquí solo insertamos esos ISO
+  // tal cual, sin volver a interpretarlos (nada de Nueva York), para que la hora no se mueva.
+  const isoList: string[] = Array.isArray(b.dates_iso)
+    ? b.dates_iso.map((s: any) => String(s)).filter((s: string) => /^\d{4}-\d{2}-\d{2}T/.test(s) && !isNaN(new Date(s).getTime()))
     : [];
-  if (extra.length > 0) {
-    const all = Array.from(new Set([anchorDate, ...extra].filter(Boolean))).sort();
-    for (const dstr of all) {
-      const iso = nyNaiveToUtc(`${dstr}T${time}`);
+  if (isoList.length > 0) {
+    const uniq = Array.from(new Set(isoList.map((s) => new Date(s).toISOString()))).sort();
+    for (const iso of uniq) {
       if (new Date(iso).getTime() < Date.now() - 60000) continue; // saltar días ya pasados
       rows.push({ ...row, starts_at: iso, mentor_id: mentorId });
     }

@@ -2112,6 +2112,7 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
   const [lessonForm, setLessonForm] = useState<any>(null);
   const [modForm, setModForm] = useState<any>(null);
   const [evForm, setEvForm] = useState<any>(null);
+  const [evRange, setEvRange] = useState(() => { const f = new Date(); f.setHours(0, 0, 0, 0); const t = new Date(f.getTime() + 7 * 86400000); const p = (n: number) => (n < 10 ? '0' + n : '' + n); const fd = (d: Date) => d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()); return { from: fd(f), to: fd(t) }; });
   const [post, setPost] = useState('');
   const [postImg, setPostImg] = useState('');
   const [postWhen, setPostWhen] = useState('');
@@ -2241,22 +2242,55 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
           <p className="muted" style={{ fontSize: 13, marginTop: 6 }}>{L('Programa tus sesiones Zoom/Meet. El alumno verá una cuenta regresiva fija y un aviso EN VIVO cuando empieces.', 'Schedule your Zoom/Meet sessions. Students see a fixed countdown and a LIVE banner when you start.')}</p>
         </div>
         {(d.events || []).length > 0 && <MonthCalendar events={d.events} lang={lang} />}
-        {(d.events || []).map((e: any) => {
-          const evPast = new Date(e.starts_at).getTime() + (e.duration_min || 60) * 60000 <= Date.now();
-          return (
-          <div key={e.id} className="sk-card" style={{ opacity: evPast ? 0.72 : 1, ...(evPast ? { borderLeft: '3px solid var(--red)' } : {}) }}>
-            <div className="row between" style={{ gap: 10, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-              <div><b style={{ textDecoration: evPast ? 'line-through' : 'none', textDecorationColor: evPast ? 'var(--red)' : undefined, textDecorationThickness: evPast ? 2 : undefined }}>{e.title}</b> {evPast && <span className="sk-chip" style={{ marginLeft: 4, background: 'color-mix(in srgb,var(--red) 14%,transparent)', color: 'var(--red)', border: '1px solid color-mix(in srgb,var(--red) 40%,transparent)', fontWeight: 700 }}>✓ {L('Finalizada', 'Ended')}</span>}<div style={{ fontSize: 12.5, marginTop: 2 }}>{localTime(e.starts_at, lang)} · <span className="muted">{L('tu hora', 'your time')} · {e.duration_min} min</span> {e.recording_url && <span className="sk-chip" style={{ marginLeft: 6 }}>🎬 {L('grabación', 'replay')}</span>}</div><div className="muted" style={{ fontSize: 11, marginTop: 2 }}>{refTimes(e.starts_at, lang)}</div></div>
-              <div className="row" style={{ gap: 6 }}>
-                <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setEvForm({ ...e, starts_at: e.starts_at ? utcToLocalInput(e.starts_at) : '' })}>✎</button>
-                <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--red)' }} onClick={async () => { if (await confirmDelete({ title: L('¿Borrar clase en vivo?', 'Delete live class?'), itemName: e.title })) api({ action: 'event_delete', id: e.id }); }}>✕</button>
+        {(() => {
+          const nowMs = Date.now();
+          const evRow = (e: any) => {
+            const evPast = new Date(e.starts_at).getTime() + (e.duration_min || 60) * 60000 <= nowMs;
+            return (
+              <div key={e.id} className="sk-card" style={{ opacity: evPast ? 0.72 : 1, ...(evPast ? { borderLeft: '3px solid var(--red)' } : {}) }}>
+                <div className="row between" style={{ gap: 10, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                  <div><b style={{ textDecoration: evPast ? 'line-through' : 'none', textDecorationColor: evPast ? 'var(--red)' : undefined, textDecorationThickness: evPast ? 2 : undefined }}>{e.title}</b> {evPast && <span className="sk-chip" style={{ marginLeft: 4, background: 'color-mix(in srgb,var(--red) 14%,transparent)', color: 'var(--red)', border: '1px solid color-mix(in srgb,var(--red) 40%,transparent)', fontWeight: 700 }}>✓ {L('Finalizada', 'Ended')}</span>}<div style={{ fontSize: 12.5, marginTop: 2 }}>{localTime(e.starts_at, lang)} · <span className="muted">{L('tu hora', 'your time')} · {e.duration_min} min</span> {e.recording_url && <span className="sk-chip" style={{ marginLeft: 6 }}>🎬 {L('grabación', 'replay')}</span>}</div><div className="muted" style={{ fontSize: 11, marginTop: 2 }}>{refTimes(e.starts_at, lang)}</div></div>
+                  <div className="row" style={{ gap: 6 }}>
+                    <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setEvForm({ ...e, starts_at: e.starts_at ? utcToLocalInput(e.starts_at) : '' })}>✎</button>
+                    <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--red)' }} onClick={async () => { if (await confirmDelete({ title: L('¿Borrar clase en vivo?', 'Delete live class?'), itemName: e.title })) api({ action: 'event_delete', id: e.id }); }}>✕</button>
+                  </div>
+                </div>
               </div>
+            );
+          };
+          const all = d.events || [];
+          if (all.length === 0) return <div className="sk-card muted">{L('Aún no has programado clases.', 'No classes scheduled yet.')}</div>;
+          const fromMs = new Date(evRange.from + 'T00:00:00').getTime();
+          const toMs = new Date(evRange.to + 'T23:59:59').getTime();
+          const inRange = all.filter((e: any) => { const ss = new Date(e.starts_at).getTime(); return ss >= fromMs && ss <= toMs; });
+          const upcoming = inRange.filter((e: any) => new Date(e.starts_at).getTime() + (e.duration_min || 60) * 60000 > nowMs).sort((a: any, b: any) => String(a.starts_at).localeCompare(String(b.starts_at)));
+          const pastAll = inRange.filter((e: any) => new Date(e.starts_at).getTime() + (e.duration_min || 60) * 60000 <= nowMs).sort((a: any, b: any) => String(b.starts_at).localeCompare(String(a.starts_at)));
+          const past = pastAll.slice(0, 7);
+          const pastHidden = pastAll.length - past.length;
+          const p = (n: number) => (n < 10 ? '0' + n : '' + n); const fd = (dd: Date) => dd.getFullYear() + '-' + p(dd.getMonth() + 1) + '-' + p(dd.getDate());
+          return (<>
+            <div className="sk-card" style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap', margin: 0 }}>
+              <div><div className="muted" style={{ fontSize: 12 }}>{L('Desde', 'From')}</div><input type="date" value={evRange.from} onChange={(e) => setEvRange({ ...evRange, from: e.target.value })} style={{ margin: '4px 0 0' }} /></div>
+              <div><div className="muted" style={{ fontSize: 12 }}>{L('Hasta', 'To')}</div><input type="date" value={evRange.to} onChange={(e) => setEvRange({ ...evRange, to: e.target.value })} style={{ margin: '4px 0 0' }} /></div>
+              <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={() => { const f = new Date(); f.setHours(0, 0, 0, 0); const t = new Date(f.getTime() + 7 * 86400000); setEvRange({ from: fd(f), to: fd(t) }); }}>{L('Esta semana', 'This week')}</button>
+              <span className="muted" style={{ fontSize: 11.5, marginLeft: 'auto', maxWidth: 200, textAlign: 'right' }}>{L('Por defecto muestra 7 días. Cambia las fechas para ver otras.', 'Shows 7 days by default. Change the dates to see others.')}</span>
             </div>
-          </div>
-          );
-        })}
-        {(d.events || []).length === 0 && <div className="sk-card muted">{L('Aún no has programado clases.', 'No classes scheduled yet.')}</div>}
-        {evForm && <EventForm form={evForm} setForm={setEvForm} L={L} onSave={(f: any) => { api({ action: 'event', ...f, starts_at: f.starts_at ? new Date(f.starts_at).toISOString() : '' }, L('Clase programada', 'Class scheduled')); setEvForm(null); }} onCancel={() => setEvForm(null)} />}
+            {upcoming.length === 0 && past.length === 0 && <div className="sk-card muted">{L('No hay clases en este rango de fechas.', 'No classes in this date range.')}</div>}
+            {upcoming.length > 0 && <><div className="sk-sec-title">{L('Próximas', 'Upcoming')}</div>{upcoming.map(evRow)}</>}
+            {past.length > 0 && <><div className="sk-sec-title">{L('Ya pasaron', 'Already passed')} <span className="muted" style={{ fontSize: 12, fontWeight: 400 }}>· {L('últimas 7', 'last 7')}</span></div>{past.map(evRow)}{pastHidden > 0 && <div className="sk-card muted" style={{ fontSize: 12.5, textAlign: 'center' }}>{L(`Hay ${pastHidden} clase(s) más antiguas en este rango. Ajusta las fechas de arriba para verlas.`, `${pastHidden} older class(es) in this range. Adjust the dates above to see them.`)}</div>}</>}
+          </>);
+        })()}
+        {evForm && <EventForm form={evForm} setForm={setEvForm} L={L} onSave={(f: any) => {
+          // Convertimos TODO en la zona horaria del navegador (la misma que ve el usuario en el
+          // resto de la app). El día principal + cada día marcado -> UTC ISO, misma hora.
+          const anchorLocal: string = f.starts_at || '';
+          const time = anchorLocal.slice(11, 16);
+          const uniqDays = Array.from(new Set([anchorLocal.slice(0, 10), ...((f.dates || []) as string[])].filter(Boolean)));
+          const datesIso = uniqDays.map((d) => { try { return new Date(`${d}T${time}`).toISOString(); } catch { return ''; } }).filter(Boolean);
+          const { dates, ...rest } = f; // 'dates' (locales) no se envía; usamos dates_iso ya en UTC
+          api({ action: 'event', ...rest, starts_at: anchorLocal ? new Date(anchorLocal).toISOString() : '', dates_iso: datesIso.length > 1 ? datesIso : undefined }, L('Clase programada', 'Class scheduled'));
+          setEvForm(null);
+        }} onCancel={() => setEvForm(null)} />}
       </>)}
 
       {tab === 'cobros' && <MentorPayments modules={d.content || []} L={L} onChanged={load} />}
