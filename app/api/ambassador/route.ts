@@ -57,7 +57,7 @@ export async function POST(req: Request) {
 
     // Datos obligatorios de la solicitud
     const audience = String(b.audience || '').trim();
-    const method = ['stripe', 'usdt', 'paypal', 'credit'].includes(b.payout_method) ? b.payout_method : 'stripe';
+    const method = ['stripe', 'usdt', 'credit'].includes(b.payout_method) ? b.payout_method : 'stripe';
     const details = String(b.payout_details || '').trim();
     if (audience.length < 10) return NextResponse.json({ error: 'Tell us about your community.', code: 'need_audience' }, { status: 400 });
     // Con Stripe Connect los datos de cobro se completan luego en el onboarding de

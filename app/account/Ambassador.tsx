@@ -98,7 +98,10 @@ export default function Ambassador({ lang }: { lang: Lang }) {
       const j = await r.json();
       setD(j);
       if (j.ambassador) {
-        setPm(j.ambassador.payout_method || 'stripe'); setPd(j.ambassador.payout_details || '');
+        // PayPal ya no se ofrece: cualquier registro viejo se muestra como Stripe.
+        const savedM = j.ambassador.payout_method;
+        setPm(!savedM || savedM === 'paypal' ? 'stripe' : savedM);
+        setPd(j.ambassador.payout_details || '');
         loadConnect();
       }
     } catch { setD({ ambassador: null }); }
@@ -235,7 +238,6 @@ export default function Ambassador({ lang }: { lang: Lang }) {
         <select value={pm} onChange={(e) => setPm(e.target.value)} style={{ margin: '4px 0 0', maxWidth: 300 }}>
           <option value="stripe">{t.stripe}</option>
           <option value="usdt">{t.usdt}</option>
-          <option value="paypal">{t.paypal}</option>
           <option value="credit">{t.credit}</option>
         </select>
 
