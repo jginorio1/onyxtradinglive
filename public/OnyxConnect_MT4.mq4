@@ -53,6 +53,7 @@ bool     g_allowNew    = true;
 bool     g_forceClose  = false;
 string   g_blockReason = "";
 string   g_blockMsg    = "";
+string   g_blockSrc    = "";
 datetime g_blockSince  = 0;
 bool     g_guardOn     = false;
 
@@ -500,7 +501,7 @@ void DrawPanel()
          string m = g_blockMsg;
          string m1 = StringSubstr(m, 0, 40);
          string m2 = (StringLen(m) > 40 ? StringSubstr(m, 40, 40) : "");
-         int boxH = 42 + (m2 != "" ? 12 : 0) + (g_resumeAt > 0 ? 24 : 0);
+         int boxH = 42 + (m2 != "" ? 12 : 0) + (g_blockSrc != "" ? 13 : 0) + (g_resumeAt > 0 ? 24 : 0);
          string r = PREFIX + "cbBox";
          if(ObjectFind(0, r) < 0) ObjectCreate(0, r, OBJ_RECTANGLE_LABEL, 0, 0, 0);
          ObjectSetInteger(0, r, OBJPROP_CORNER, CORNER_LEFT_UPPER);
@@ -518,6 +519,8 @@ void DrawPanel()
          PanelLabel("cbLab", m1, X + 22, my, COL_TX, 7); my += 12;
          if(m2 != "") { PanelLabel("cbLab2", m2, X + 22, my, COL_TX, 7); my += 12; }
          else ObjectDelete(0, PREFIX + "cbLab2");
+         if(g_blockSrc != "") { PanelLabel("cbSrc", T("Origen: ", "From: ") + g_blockSrc, X + 22, my, COL_MUT, 7); my += 13; }
+         else ObjectDelete(0, PREFIX + "cbSrc");
          if(g_resumeAt > 0)
            {
             int left = (int)(g_resumeAt - TimeLocal());
@@ -562,7 +565,7 @@ void DrawPanel()
      {
       ObjectDelete(0, PREFIX + "gh");
       ObjectDelete(0, PREFIX + "pstb"); ObjectDelete(0, PREFIX + "pstt");
-      ObjectDelete(0, PREFIX + "cbBox"); ObjectDelete(0, PREFIX + "cbTop"); ObjectDelete(0, PREFIX + "cbLab"); ObjectDelete(0, PREFIX + "cbLab2"); ObjectDelete(0, PREFIX + "cbNum");
+      ObjectDelete(0, PREFIX + "cbBox"); ObjectDelete(0, PREFIX + "cbTop"); ObjectDelete(0, PREFIX + "cbLab"); ObjectDelete(0, PREFIX + "cbLab2"); ObjectDelete(0, PREFIX + "cbSrc"); ObjectDelete(0, PREFIX + "cbNum");
       ObjectDelete(0, PREFIX + "sdlb"); ObjectDelete(0, PREFIX + "sdll"); ObjectDelete(0, PREFIX + "sdlv");
       ObjectDelete(0, PREFIX + "sdtb"); ObjectDelete(0, PREFIX + "sdtl"); ObjectDelete(0, PREFIX + "sdtv");
       ObjectDelete(0, PREFIX + "stlb"); ObjectDelete(0, PREFIX + "stll"); ObjectDelete(0, PREFIX + "stlv");
@@ -728,7 +731,7 @@ void ApplyConfig(string resp)
       g_managerOn = false;
       g_beOn = false; g_trOn = false; g_ptOn = false;
       g_guardOn = false; g_wkOn = false;
-      g_allowNew = true; g_forceClose = false; g_blockReason = ""; g_blockMsg = "";
+      g_allowNew = true; g_forceClose = false; g_blockReason = ""; g_blockMsg = ""; g_blockSrc = "";
       return;
      }
 
@@ -874,7 +877,7 @@ void ApplyVerdict(string resp)
    if(StringFind(resp, "\"verdict\":null") >= 0)
      {
       g_allowNew = true; g_forceClose = false;
-      g_blockReason = ""; g_blockMsg = ""; g_blockSince = 0;
+      g_blockReason = ""; g_blockMsg = ""; g_blockSrc = ""; g_blockSince = 0;
       return;
      }
 
@@ -885,6 +888,7 @@ void ApplyVerdict(string resp)
    g_forceClose  = JsonBool(v, "close_all", false);
    g_blockReason = JsonStr(v, "reason", "");
    g_blockMsg    = JsonStr(v, (Idioma == ONYX_ES ? "message_es" : "message_en"), "");
+   g_blockSrc    = JsonStr(v, (Idioma == ONYX_ES ? "source_es" : "source_en"), "");
 
    int rsec = (int)JsonNum(v, "resume_in_sec", -1);
    if(!allow && rsec > 0) g_resumeAt = TimeLocal() + rsec;

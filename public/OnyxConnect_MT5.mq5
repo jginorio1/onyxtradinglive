@@ -55,6 +55,7 @@ bool     g_allowNew   = true;      // false = no deberia abrir operaciones ahora
 bool     g_forceClose = false;     // el servidor pide cerrar todo
 string   g_blockReason = "";       // schedule | daily_loss | ... (para el panel)
 string   g_blockMsg    = "";
+string   g_blockSrc    = "";       // origen del bloqueo (config y regla)
 datetime g_blockSince  = 0;        // desde cuando esta bloqueado
 bool     g_guardOn     = false;    // hay plan o limites encendidos
 
@@ -479,7 +480,7 @@ void DrawPanel()
          PanelChip("pst", T("Puedes operar", "You may trade"), X + 12, y, TG, TGt);
          y += 22;
          ObjectDelete(0, PREFIX + "cbBox"); ObjectDelete(0, PREFIX + "cbTop");
-         ObjectDelete(0, PREFIX + "cbLab"); ObjectDelete(0, PREFIX + "cbLab2"); ObjectDelete(0, PREFIX + "cbNum");
+         ObjectDelete(0, PREFIX + "cbLab"); ObjectDelete(0, PREFIX + "cbLab2"); ObjectDelete(0, PREFIX + "cbSrc"); ObjectDelete(0, PREFIX + "cbNum");
          ObjectDelete(0, PREFIX + "pms1"); ObjectDelete(0, PREFIX + "pms2");
       }
       else
@@ -488,7 +489,7 @@ void DrawPanel()
          string m = g_blockMsg;
          string m1 = StringSubstr(m, 0, 40);
          string m2 = (StringLen(m) > 40 ? StringSubstr(m, 40, 40) : "");
-         int boxH = 42 + (m2 != "" ? 12 : 0) + (g_resumeAt > 0 ? 24 : 0);
+         int boxH = 42 + (m2 != "" ? 12 : 0) + (g_blockSrc != "" ? 13 : 0) + (g_resumeAt > 0 ? 24 : 0);
          string r = PREFIX + "cbBox";
          if(ObjectFind(0, r) < 0) ObjectCreate(0, r, OBJ_RECTANGLE_LABEL, 0, 0, 0);
          ObjectSetInteger(0, r, OBJPROP_CORNER, CORNER_LEFT_UPPER);
@@ -506,6 +507,8 @@ void DrawPanel()
          PanelLabel("cbLab", m1, X + 22, my, COL_TX, 7); my += 12;
          if(m2 != "") { PanelLabel("cbLab2", m2, X + 22, my, COL_TX, 7); my += 12; }
          else ObjectDelete(0, PREFIX + "cbLab2");
+         if(g_blockSrc != "") { PanelLabel("cbSrc", T("Origen: ", "From: ") + g_blockSrc, X + 22, my, COL_MUT, 7); my += 13; }
+         else ObjectDelete(0, PREFIX + "cbSrc");
          if(g_resumeAt > 0)
          {
             int left = (int)(g_resumeAt - TimeLocal());
@@ -865,7 +868,7 @@ void ApplyVerdict(string resp)
    if(StringFind(resp, "\"verdict\":null") >= 0)
    {
       g_allowNew = true; g_forceClose = false;
-      g_blockReason = ""; g_blockMsg = ""; g_blockSince = 0;
+      g_blockReason = ""; g_blockMsg = ""; g_blockSrc = ""; g_blockSince = 0;
       return;
    }
 
@@ -876,6 +879,7 @@ void ApplyVerdict(string resp)
    g_forceClose  = JsonBool(v, "close_all", false);
    g_blockReason = JsonStr(v, "reason", "");
    g_blockMsg    = JsonStr(v, (Idioma == ONYX_ES ? "message_es" : "message_en"), "");
+   g_blockSrc    = JsonStr(v, (Idioma == ONYX_ES ? "source_es" : "source_en"), "");
 
    // Contador de reanudacion: el servidor dice cuantos segundos faltan.
    int rsec = (int)JsonNum(v, "resume_in_sec", -1);

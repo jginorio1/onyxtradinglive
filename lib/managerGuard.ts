@@ -16,6 +16,8 @@ export type Verdict = {
   reason: string;             // schedule | daily_loss | total_loss | target | tilt | cooldown | max_trades | news | ''
   message_es: string;
   message_en: string;
+  source_es: string;   // de qué config/regla viene (para el panel del EA)
+  source_en: string;
   severity: 'ok' | 'warn' | 'block';
   can_override: boolean;      // ¿puede pedir saltarse esta regla?
   override_ready_at: string | null; // cuándo terminará la espera, si ya la pidió
@@ -30,7 +32,7 @@ export type Verdict = {
 };
 
 const OK: Verdict = {
-  allow_new: true, close_all: false, reason: '', message_es: '', message_en: '',
+  allow_new: true, close_all: false, reason: '', message_es: '', message_en: '', source_es: '', source_en: '',
   severity: 'ok', can_override: false, override_ready_at: null, resume_at: null,
   usage: { daily_loss_used_pct: 0, total_loss_used_pct: 0, target_used_pct: 0, trades_today: 0, max_trades_day: 0 },
 };
@@ -294,21 +296,28 @@ async function finish(v: Verdict, r: {
 
   // De qué configuración del Guardian viene el bloqueo (para el panel del EA).
   const SRC: Record<string, [string, string]> = {
-    daily_loss: ['Límites', 'Limits'], total_loss: ['Reglas de fondeo', 'Funding rules'],
-    target: ['Límites', 'Limits'], max_open: ['Límites', 'Limits'], news: ['Noticias', 'News'],
-    tilt: ['Mi plan', 'My plan'], cooldown: ['Mi plan', 'My plan'], max_trades: ['Mi plan', 'My plan'], schedule: ['Mi plan', 'My plan'],
+    daily_loss: ['Límites · Pérdida diaria máx', 'Limits · Max daily loss'],
+    total_loss: ['Reglas de fondeo · Pérdida total máx', 'Funding rules · Max total loss'],
+    target: ['Límites · Objetivo del día', 'Limits · Daily target'],
+    max_open: ['Límites · Máx posiciones abiertas', 'Limits · Max open positions'],
+    news: ['Noticias · Alto impacto', 'News · High impact'],
+    tilt: ['Mi plan · Freno de racha', 'My plan · Losing streak brake'],
+    cooldown: ['Mi plan · Enfriamiento tras pérdida', 'My plan · Cooldown after a loss'],
+    max_trades: ['Mi plan · Máx operaciones del día', 'My plan · Max trades per day'],
+    schedule: ['Mi plan · Horario de trading', 'My plan · Trading hours'],
   };
   const _src = SRC[r.reason];
-  const _tagEs = _src ? ` — Guardian › ${_src[0]}` : '';
-  const _tagEn = _src ? ` — Guardian › ${_src[1]}` : '';
+  const _srcEs = _src ? _src[0] : '';
+  const _srcEn = _src ? _src[1] : '';
 
   // Si tiene permiso temporal y esta regla admite saltarse, le dejamos pasar
   if (overrideActive && r.canOverride) {
     v.allow_new = true;
     v.severity = 'warn';
     v.reason = r.reason;
-    v.message_es = r.es + _tagEs + ' (te lo estás saltando a propósito)';
-    v.message_en = r.en + _tagEn + ' (you are deliberately overriding this)';
+    v.message_es = r.es + ' (te lo estás saltando a propósito)';
+    v.message_en = r.en + ' (you are deliberately overriding this)';
+    v.source_es = _srcEs; v.source_en = _srcEn;
     return v;
   }
 
@@ -317,8 +326,9 @@ async function finish(v: Verdict, r: {
   v.reason = r.reason;
   v.severity = r.severity;
   v.can_override = r.canOverride && cfg.plan.rigidity !== 'hard';
-  v.message_es = r.es + _tagEs;
-  v.message_en = r.en + _tagEn;
+  v.message_es = r.es;
+  v.message_en = r.en;
+  v.source_es = _srcEs; v.source_en = _srcEn;
 
   const wasBlocked = st?.blocked && st?.blocked_reason === r.reason;
   await supabaseAdmin.from('manager_state').upsert({
