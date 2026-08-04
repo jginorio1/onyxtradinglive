@@ -28,6 +28,7 @@ const T: any = {
     addBot: 'Añadir bot por magic', addBotT: 'Registrar un robot', magicL: 'Magic number', accountL: 'Cuenta',
     create: 'Registrar', cancel: 'Cancelar', pendingBadge: 'Sin operaciones aún', online: 'EA en línea', offline: 'EA desconectado',
     addBotHint: 'Escribe el magic number de tu EA para verlo aquí desde ya, aunque todavía no opere.', dupBot: 'Ya tienes un bot con ese magic en esta cuenta.', bots: 'bots',
+    openNowLbl: 'abierta(s) ahora', floatLbl: 'flotante', closedHint: 'Los números (Neto, PF, aciertos) suman solo operaciones cerradas.',
   },
   en: {
     title: 'My robots', sub: 'Performance per strategy. Split the ones in testing from the ones already live.',
@@ -49,6 +50,7 @@ const T: any = {
     addBot: 'Add bot by magic', addBotT: 'Register a robot', magicL: 'Magic number', accountL: 'Account',
     create: 'Register', cancel: 'Cancel', pendingBadge: 'No trades yet', online: 'EA online', offline: 'EA offline',
     addBotHint: 'Type your EA magic number to see it here right away, even before it trades.', dupBot: 'You already have a bot with that magic in this account.', bots: 'bots',
+    openNowLbl: 'open now', floatLbl: 'floating', closedHint: 'The numbers (Net, PF, win) only add up closed trades.',
   },
 };
 
@@ -153,6 +155,14 @@ export default function Bots() {
           <span className="muted">{t.win} <b style={{ color: 'var(--tx)' }}>{b.winRate}%</b></span>
           <span className="muted">{t.ops} <b style={{ color: 'var(--tx)' }}>{b.trades}</b></span>
         </div>
+
+        {b.open?.count > 0 && (
+          <div style={{ marginTop: 8, fontSize: 12, display: 'flex', alignItems: 'center', gap: 7, color: 'var(--green)', background: 'color-mix(in srgb,var(--green) 12%,transparent)', border: '1px solid color-mix(in srgb,var(--green) 32%,transparent)', borderRadius: 8, padding: '6px 9px' }}>
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--green)', boxShadow: '0 0 0 3px color-mix(in srgb,var(--green) 22%,transparent)' }} />
+            <span><b>{b.open.count}</b> {t.openNowLbl} · {t.floatLbl} <b style={{ color: b.open.profit >= 0 ? 'var(--green)' : 'var(--red)' }}>{money(b.open.profit)}</b></span>
+          </div>
+        )}
+        {b.pending && b.open?.count === 0 && <div className="muted" style={{ fontSize: 11, marginTop: 6 }}>{t.closedHint}</div>}
 
         {b.mode === 'testing' && (
           <div style={{ marginTop: 8 }}>

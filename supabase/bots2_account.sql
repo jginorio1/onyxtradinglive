@@ -13,7 +13,7 @@ alter table bots add column if not exists account_id uuid references trading_acc
 update bots b
 set account_id = sub.account_id
 from (
-  select t.magic, min(t.account_id) as account_id, count(distinct t.account_id) as n
+  select t.magic, (array_agg(distinct t.account_id))[1] as account_id, count(distinct t.account_id) as n
   from trades t
   where t.magic is not null and t.magic <> 0
   group by t.magic

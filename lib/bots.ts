@@ -61,9 +61,13 @@ export async function loadBots(userId: string) {
   if (error) return { bots: [], hasData: false, needsMigration: true };
 
   const { data: opens } = await supabaseAdmin
-    .from('open_positions').select('account_id,magic').in('account_id', accIds).not('magic', 'is', null).neq('magic', 0);
+    .from('open_positions').select('account_id,magic,profit').in('account_id', accIds).not('magic', 'is', null).neq('magic', 0);
   // "Operando ahora": clave cuenta|magic (una posición abierta de ese bot en esa cuenta).
   const running = new Set((opens || []).map((o: any) => `${o.account_id}|${Number(o.magic)}`));
+  // Resumen de operaciones ABIERTAS por bot (cuántas y P&L flotante), para reflejarlas al instante
+  // en la tarjeta aunque todavía no hayan cerrado (Net/PF solo cuentan las cerradas).
+  const openByKey: Record<string, { count: number; profit: number }> = {};
+  (opens || []).forEach((o: any) => { const k = `${o.account_id}|${Number(o.magic)}`; const e = openByKey[k] || { count: 0, profit: 0 }; e.count += 1; e.profit += Number(o.profit || 0); openByKey[k] = e; });
 
   // EA en línea por cuenta: sincronizó hace menos de 2 min.
   const ONLINE_MS = 120000;
@@ -98,7 +102,8 @@ export async function loadBots(userId: string) {
         magic: Number(magic), key, accountId: accId, accName: accName(acc), accOnline: online,
         name: cfgRow.name || `Bot #${magic}`, mode,
         net: 0, trades: 0, winRate: 0, pf: 0, expectancy: 0, dd: 0, ddPct: 0, recovery: 0, days: 0, tradesPerDay: 0,
-        running: false, status: (online ? 'espera' : 'inactivo') as 'operando' | 'espera' | 'inactivo',
+        running: isRunning, status: (isRunning ? 'operando' : online ? 'espera' : 'inactivo') as 'operando' | 'espera' | 'inactivo',
+        open: openByKey[key] || { count: 0, profit: 0 },
         lastTrade: null, spark: [], criteria, checks: [], passed: 0, total: 4, backtest: null, divergence: null,
         metrics: {}, pending: true,
       };
@@ -198,6 +203,7 @@ export async function loadBots(userId: string) {
       pf: r2(pf), expectancy: r2(expectancy), dd: Math.round(dd), ddPct: r1(ddPct),
       recovery: r1(recovery), days, tradesPerDay: r1(tradesPerDay),
       running: isRunning, status: (isRunning ? 'operando' : online ? 'espera' : 'inactivo') as 'operando' | 'espera' | 'inactivo',
+      open: openByKey[key] || { count: 0, profit: 0 },
       lastTrade: new Date(last).toISOString(),
       spark: spark(cumNets).map((x) => Math.round(x)),
       criteria, checks, passed, total: checks.length,
