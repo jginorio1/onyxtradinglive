@@ -2236,17 +2236,20 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
           <p className="muted" style={{ fontSize: 13, marginTop: 6 }}>{L('Programa tus sesiones Zoom/Meet. El alumno verá una cuenta regresiva fija y un aviso EN VIVO cuando empieces.', 'Schedule your Zoom/Meet sessions. Students see a fixed countdown and a LIVE banner when you start.')}</p>
         </div>
         {(d.events || []).length > 0 && <MonthCalendar events={d.events} lang={lang} />}
-        {(d.events || []).map((e: any) => (
-          <div key={e.id} className="sk-card">
+        {(d.events || []).map((e: any) => {
+          const evPast = new Date(e.starts_at).getTime() + (e.duration_min || 60) * 60000 <= Date.now();
+          return (
+          <div key={e.id} className="sk-card" style={{ opacity: evPast ? 0.65 : 1 }}>
             <div className="row between" style={{ gap: 10, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-              <div><b>{e.title}</b><div style={{ fontSize: 12.5, marginTop: 2 }}>{localTime(e.starts_at, lang)} · <span className="muted">{L('tu hora', 'your time')} · {e.duration_min} min</span> {e.recording_url && <span className="sk-chip" style={{ marginLeft: 6 }}>🎬 {L('grabación', 'replay')}</span>}</div><div className="muted" style={{ fontSize: 11, marginTop: 2 }}>{refTimes(e.starts_at, lang)}</div></div>
+              <div><b style={{ textDecoration: evPast ? 'line-through' : 'none' }}>{e.title}</b> {evPast && <span className="sk-chip muted" style={{ marginLeft: 4 }}>{L('Finalizada', 'Ended')}</span>}<div style={{ fontSize: 12.5, marginTop: 2 }}>{localTime(e.starts_at, lang)} · <span className="muted">{L('tu hora', 'your time')} · {e.duration_min} min</span> {e.recording_url && <span className="sk-chip" style={{ marginLeft: 6 }}>🎬 {L('grabación', 'replay')}</span>}</div><div className="muted" style={{ fontSize: 11, marginTop: 2 }}>{refTimes(e.starts_at, lang)}</div></div>
               <div className="row" style={{ gap: 6 }}>
                 <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setEvForm({ ...e, starts_at: e.starts_at ? utcToLocalInput(e.starts_at) : '' })}>✎</button>
                 <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--red)' }} onClick={async () => { if (await confirmDelete({ title: L('¿Borrar clase en vivo?', 'Delete live class?'), itemName: e.title })) api({ action: 'event_delete', id: e.id }); }}>✕</button>
               </div>
             </div>
           </div>
-        ))}
+          );
+        })}
         {(d.events || []).length === 0 && <div className="sk-card muted">{L('Aún no has programado clases.', 'No classes scheduled yet.')}</div>}
         {evForm && <EventForm form={evForm} setForm={setEvForm} L={L} onSave={(f: any) => { api({ action: 'event', ...f, starts_at: f.starts_at ? new Date(f.starts_at).toISOString() : '' }, L('Clase programada', 'Class scheduled')); setEvForm(null); }} onCancel={() => setEvForm(null)} />}
       </>)}
