@@ -593,12 +593,20 @@ html[data-theme="dark"] .sk-code, :root:not([data-theme="light"]) .sk-code{text-
 /* Tablets (iPad): el nombre se amontona en el header, así que se oculta y
    queda solo el símbolo, igual que en móvil. El nombre completo aparece
    únicamente en computadoras (>=1025px). */
+/* Táctiles (móvil + TABLET/iPad, sin importar el ancho): solo el símbolo.
+   Se detecta por 'no hover' + 'puntero grueso' (dedo), así el iPad Pro
+   —que es tan ancho como un portátil— también oculta el nombre. */
+@media (hover: none) and (pointer: coarse){
+  .topbar .logo-text{ display:none !important; }
+  .topbar .logo{ gap:0 !important; font-size:0 !important; }
+}
+/* Fallback por ancho para ventanas estrechas en escritorio. */
 @media (max-width:1024px){
   .topbar .logo-text{ display:none !important; }
   .topbar .logo{ gap:0; }
 }
-/* En computadoras el logo y el nombre se ven más grandes. */
-@media (min-width:1025px){
+/* Solo en COMPUTADORAS (puntero fino + hover) el logo y el nombre salen más grandes. */
+@media (hover: hover) and (pointer: fine) and (min-width:1025px){
   .topbar .logo{ font-size:20px; }
   .topbar .logo img{ width:32px !important; height:32px !important; }
 }

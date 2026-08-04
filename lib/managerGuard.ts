@@ -124,16 +124,6 @@ export async function evaluate(opts: {
 
   // --- 2) ¿Tiene un permiso temporal activo? ---
   const overrideActive = st?.override_until && new Date(st.override_until) > now;
-
-  // De qué configuración del Guardian viene el bloqueo (para el panel del EA).
-  const SRC: Record<string, [string, string]> = {
-    daily_loss: ['Límites', 'Limits'], total_loss: ['Reglas de fondeo', 'Funding rules'],
-    target: ['Límites', 'Limits'], max_open: ['Límites', 'Limits'], news: ['Noticias', 'News'],
-    tilt: ['Mi plan', 'My plan'], cooldown: ['Mi plan', 'My plan'], max_trades: ['Mi plan', 'My plan'], schedule: ['Mi plan', 'My plan'],
-  };
-  const _src = SRC[r.reason];
-  const _tagEs = _src ? ` — Guardian › ${_src[0]}` : '';
-  const _tagEn = _src ? ` — Guardian › ${_src[1]}` : '';
   if (st?.override_requested_at && !overrideActive) {
     const ready = new Date(new Date(st.override_requested_at).getTime() + cfg.plan.friction_min * 60000);
     if (ready > now) v.override_ready_at = ready.toISOString();
@@ -301,6 +291,16 @@ async function finish(v: Verdict, r: {
   const now = new Date();
   v.resume_at = r.resumeAt ? r.resumeAt.toISOString() : null;
   const overrideActive = st?.override_until && new Date(st.override_until) > now;
+
+  // De qué configuración del Guardian viene el bloqueo (para el panel del EA).
+  const SRC: Record<string, [string, string]> = {
+    daily_loss: ['Límites', 'Limits'], total_loss: ['Reglas de fondeo', 'Funding rules'],
+    target: ['Límites', 'Limits'], max_open: ['Límites', 'Limits'], news: ['Noticias', 'News'],
+    tilt: ['Mi plan', 'My plan'], cooldown: ['Mi plan', 'My plan'], max_trades: ['Mi plan', 'My plan'], schedule: ['Mi plan', 'My plan'],
+  };
+  const _src = SRC[r.reason];
+  const _tagEs = _src ? ` — Guardian › ${_src[0]}` : '';
+  const _tagEn = _src ? ` — Guardian › ${_src[1]}` : '';
 
   // Si tiene permiso temporal y esta regla admite saltarse, le dejamos pasar
   if (overrideActive && r.canOverride) {
