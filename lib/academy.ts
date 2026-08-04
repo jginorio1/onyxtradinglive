@@ -567,16 +567,33 @@ export async function saveEvent(mentorId: string, b: any) {
   };
   if (b.id) { await supabaseAdmin.from('academy_events').update(row).eq('id', b.id).eq('mentor_id', mentorId); return { id: b.id }; }
 
-  // Recurrencia al CREAR: una sola vez, cada semana o cada mes, todas de golpe.
-  const repeat = ['weekly', 'monthly'].includes(String(b.repeat)) ? String(b.repeat) : 'none';
-  const count = repeat === 'none' ? 1 : Math.max(1, Math.min(52, Number(b.repeat_count) || 1));
-  const base = new Date(startsAt);
   const rows: any[] = [];
-  for (let i = 0; i < count; i++) {
-    const d = new Date(base.getTime());
-    if (repeat === 'weekly') d.setUTCDate(d.getUTCDate() + 7 * i);
-    else if (repeat === 'monthly') d.setUTCMonth(d.getUTCMonth() + i);
-    rows.push({ ...row, starts_at: d.toISOString(), mentor_id: mentorId });
+  // Multi-día: el mentor marca varios días en el calendario grande; se crea una clase por
+  // cada día seleccionado, todas a la MISMA hora (la del día principal). Prevalece sobre repeat.
+  const time = String(b.starts_at || '').slice(11, 16) || '00:00';
+  const anchorDate = String(b.starts_at || '').slice(0, 10);
+  const extra: string[] = Array.isArray(b.dates)
+    ? b.dates.map((s: any) => String(s).slice(0, 10)).filter((s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s))
+    : [];
+  if (extra.length > 0) {
+    const all = Array.from(new Set([anchorDate, ...extra].filter(Boolean))).sort();
+    for (const dstr of all) {
+      const iso = nyNaiveToUtc(`${dstr}T${time}`);
+      if (new Date(iso).getTime() < Date.now() - 60000) continue; // saltar días ya pasados
+      rows.push({ ...row, starts_at: iso, mentor_id: mentorId });
+    }
+    if (!rows.length) throw new Error('past_date');
+  } else {
+    // Recurrencia clásica (compat): una sola vez, cada semana o cada mes, todas de golpe.
+    const repeat = ['weekly', 'monthly'].includes(String(b.repeat)) ? String(b.repeat) : 'none';
+    const count = repeat === 'none' ? 1 : Math.max(1, Math.min(52, Number(b.repeat_count) || 1));
+    const base = new Date(startsAt);
+    for (let i = 0; i < count; i++) {
+      const d = new Date(base.getTime());
+      if (repeat === 'weekly') d.setUTCDate(d.getUTCDate() + 7 * i);
+      else if (repeat === 'monthly') d.setUTCMonth(d.getUTCMonth() + i);
+      rows.push({ ...row, starts_at: d.toISOString(), mentor_id: mentorId });
+    }
   }
   const { data } = await supabaseAdmin.from('academy_events').insert(rows).select('id');
   return { id: (data && data[0] && (data[0] as any).id) || null, count: rows.length } as any;

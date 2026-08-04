@@ -1054,10 +1054,10 @@ function CalendarTab({ events, lang, L }: any) {
     const liveEmbed = live ? embed(e.join_url || '') : '';
     const recEmbed = isPast ? embed(e.recording_url || '') : '';
     return (
-      <div key={e.id} className="sk-card" style={{ margin: 0 }}>
+      <div key={e.id} className="sk-card" style={{ margin: 0, ...(isPast ? { borderLeft: '3px solid var(--red)', opacity: 0.72 } : {}) }}>
         <div className="row between" style={{ alignItems: 'flex-start', gap: 10, flexWrap: 'wrap' }}>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, textDecoration: isPast ? 'line-through' : 'none', opacity: isPast ? 0.6 : 1 }}>{live && <span className="sk-dot" />}{e.title}</div>
+            <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, textDecoration: isPast ? 'line-through' : 'none', textDecorationColor: isPast ? 'var(--red)' : undefined, textDecorationThickness: isPast ? 2 : undefined }}>{live && <span className="sk-dot" />}{e.title}</div>
             <div style={{ fontSize: 13, marginTop: 2 }}>{localTime(e.starts_at, lang)} · <span className="muted">{L('tu hora', 'your time')} · {e.duration_min} min</span></div>
             {!isPast && <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>{refTimes(e.starts_at, lang)}</div>}
             {e.description && <div className="muted" style={{ fontSize: 12.5, marginTop: 4 }}>{e.description}</div>}
@@ -1065,7 +1065,7 @@ function CalendarTab({ events, lang, L }: any) {
           </div>
           {e.join_url && (live || start - now < 15 * 60000) ? <a className="btn btn-primary" href={e.join_url} target="_blank" rel="noreferrer">{live ? L('Entrar EN VIVO', 'Join LIVE') : L('Entrar', 'Join')}</a>
             : isPast && e.recording_url ? <a className="btn btn-ghost" href={e.recording_url} target="_blank" rel="noreferrer"><OnyxIcon emoji="🎬" size={14} /> {L('Ver grabación', 'Watch replay')}</a>
-            : isPast ? <span className="sk-chip muted">{L('Finalizada', 'Ended')}</span>
+            : isPast ? <span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--red) 14%,transparent)', color: 'var(--red)', border: '1px solid color-mix(in srgb,var(--red) 40%,transparent)', fontWeight: 700, letterSpacing: '.02em' }}>✓ {L('Finalizada', 'Ended')}</span>
             : <span className="sk-chip">{fmtCountdown(start - now)}</span>}
         </div>
         {(liveEmbed || recEmbed) && (
@@ -1077,7 +1077,12 @@ function CalendarTab({ events, lang, L }: any) {
     );
   };
   const liveUp = inRange.filter((e: any) => new Date(e.starts_at).getTime() + (e.duration_min || 60) * 60000 > now);
-  const donePast = inRange.filter((e: any) => new Date(e.starts_at).getTime() + (e.duration_min || 60) * 60000 <= now);
+  // "Ya pasaron": mostramos solo las 7 más recientes; para ver más antiguas se usa el filtro de fecha.
+  const donePastAll = inRange
+    .filter((e: any) => new Date(e.starts_at).getTime() + (e.duration_min || 60) * 60000 <= now)
+    .sort((a: any, b: any) => String(b.starts_at).localeCompare(String(a.starts_at)));
+  const donePast = donePastAll.slice(0, 7);
+  const donePastHidden = donePastAll.length - donePast.length;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <MonthCalendar events={events} lang={lang} />
@@ -1090,7 +1095,7 @@ function CalendarTab({ events, lang, L }: any) {
       <div className="sk-sec-title">{L('Clases en vivo', 'Live classes')}</div>
       {liveUp.length === 0 && donePast.length === 0 && <div className="sk-card muted">{L('No hay clases en este rango de fechas.', 'No classes in this date range.')}</div>}
       {liveUp.map(Row)}
-      {donePast.length > 0 && <><div className="sk-sec-title">{L('Ya pasaron', 'Already passed')}</div>{donePast.map(Row)}</>}
+      {donePast.length > 0 && <><div className="sk-sec-title">{L('Ya pasaron', 'Already passed')} <span className="muted" style={{ fontSize: 12, fontWeight: 400 }}>· {L('últimas 7', 'last 7')}</span></div>{donePast.map(Row)}{donePastHidden > 0 && <div className="sk-card muted" style={{ fontSize: 12.5, textAlign: 'center' }}>{L(`Hay ${donePastHidden} clase(s) más antiguas en este rango. Ajusta las fechas de arriba para verlas.`, `${donePastHidden} older class(es) in this range. Adjust the dates above to see them.`)}</div>}</>}
     </div>
   );
 }
@@ -2239,9 +2244,9 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
         {(d.events || []).map((e: any) => {
           const evPast = new Date(e.starts_at).getTime() + (e.duration_min || 60) * 60000 <= Date.now();
           return (
-          <div key={e.id} className="sk-card" style={{ opacity: evPast ? 0.65 : 1 }}>
+          <div key={e.id} className="sk-card" style={{ opacity: evPast ? 0.72 : 1, ...(evPast ? { borderLeft: '3px solid var(--red)' } : {}) }}>
             <div className="row between" style={{ gap: 10, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-              <div><b style={{ textDecoration: evPast ? 'line-through' : 'none' }}>{e.title}</b> {evPast && <span className="sk-chip muted" style={{ marginLeft: 4 }}>{L('Finalizada', 'Ended')}</span>}<div style={{ fontSize: 12.5, marginTop: 2 }}>{localTime(e.starts_at, lang)} · <span className="muted">{L('tu hora', 'your time')} · {e.duration_min} min</span> {e.recording_url && <span className="sk-chip" style={{ marginLeft: 6 }}>🎬 {L('grabación', 'replay')}</span>}</div><div className="muted" style={{ fontSize: 11, marginTop: 2 }}>{refTimes(e.starts_at, lang)}</div></div>
+              <div><b style={{ textDecoration: evPast ? 'line-through' : 'none', textDecorationColor: evPast ? 'var(--red)' : undefined, textDecorationThickness: evPast ? 2 : undefined }}>{e.title}</b> {evPast && <span className="sk-chip" style={{ marginLeft: 4, background: 'color-mix(in srgb,var(--red) 14%,transparent)', color: 'var(--red)', border: '1px solid color-mix(in srgb,var(--red) 40%,transparent)', fontWeight: 700 }}>✓ {L('Finalizada', 'Ended')}</span>}<div style={{ fontSize: 12.5, marginTop: 2 }}>{localTime(e.starts_at, lang)} · <span className="muted">{L('tu hora', 'your time')} · {e.duration_min} min</span> {e.recording_url && <span className="sk-chip" style={{ marginLeft: 6 }}>🎬 {L('grabación', 'replay')}</span>}</div><div className="muted" style={{ fontSize: 11, marginTop: 2 }}>{refTimes(e.starts_at, lang)}</div></div>
               <div className="row" style={{ gap: 6 }}>
                 <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setEvForm({ ...e, starts_at: e.starts_at ? utcToLocalInput(e.starts_at) : '' })}>✎</button>
                 <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--red)' }} onClick={async () => { if (await confirmDelete({ title: L('¿Borrar clase en vivo?', 'Delete live class?'), itemName: e.title })) api({ action: 'event_delete', id: e.id }); }}>✕</button>
@@ -3065,6 +3070,60 @@ function RetentionView({ lang, L, goEmails }: any) {
   );
 }
 
+// Calendario grande de selección múltiple: el mentor pinta los días extra para la clase en vivo.
+// Cada día marcado se sombrea; al guardar se crea una clase por día, todas a la misma hora.
+function MultiDayPicker({ selected, onChange, timeStr, anchorDate, L }: any) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const [view, setView] = useState(() => { const d = anchorDate ? new Date(anchorDate + 'T00:00') : new Date(); return { y: d.getFullYear(), m: d.getMonth() }; });
+  const sel: string[] = Array.isArray(selected) ? selected : [];
+  const isEs = L('es', 'en') === 'es';
+  const toKey = (y: number, m: number, d: number) => `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  const first = new Date(view.y, view.m, 1);
+  const startDow = (first.getDay() + 6) % 7; // lunes primero
+  const daysInMonth = new Date(view.y, view.m + 1, 0).getDate();
+  const monthName = new Date(view.y, view.m, 1).toLocaleDateString(isEs ? 'es-ES' : 'en-US', { month: 'long', year: 'numeric' });
+  const toggle = (key: string) => onChange(sel.includes(key) ? sel.filter((k) => k !== key) : [...sel, key].sort());
+  const dows = isEs ? ['L', 'M', 'X', 'J', 'V', 'S', 'D'] : ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  const cells: any[] = [];
+  for (let i = 0; i < startDow; i++) cells.push(<div key={'e' + i} />);
+  for (let d = 1; d <= daysInMonth; d++) {
+    const key = toKey(view.y, view.m, d);
+    const dt = new Date(view.y, view.m, d);
+    const past = dt < today;
+    const isAnchor = key === anchorDate;
+    const on = sel.includes(key) || isAnchor;
+    cells.push(
+      <button type="button" key={key} disabled={past || isAnchor} title={isAnchor ? L('Día principal', 'Main day') : ''}
+        onClick={() => { if (!past && !isAnchor) toggle(key); }}
+        style={{
+          height: 42, borderRadius: 10, border: '1px solid ' + (on ? 'var(--brand)' : 'var(--line)'),
+          background: isAnchor ? 'color-mix(in srgb,var(--brand) 40%,transparent)' : on ? 'color-mix(in srgb,var(--brand) 26%,transparent)' : 'var(--card)',
+          color: past ? 'var(--mut)' : 'var(--tx)', opacity: past ? 0.32 : 1, position: 'relative',
+          cursor: past || isAnchor ? 'default' : 'pointer', fontSize: 14, fontWeight: on ? 700 : 500, transition: '.12s',
+        }}>{d}{isAnchor && <span style={{ position: 'absolute', top: 3, right: 4, fontSize: 8.5, color: 'var(--brand)' }}>★</span>}</button>
+    );
+  }
+  return (
+    <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 14, padding: '12px 13px' }}>
+      <div className="row between" style={{ alignItems: 'center', marginBottom: 10 }}>
+        <button type="button" className="btn btn-ghost" style={{ padding: '4px 12px', fontSize: 18, lineHeight: 1 }} onClick={() => setView((v) => { const m = v.m - 1; return m < 0 ? { y: v.y - 1, m: 11 } : { y: v.y, m }; })}>‹</button>
+        <b style={{ fontSize: 15, textTransform: 'capitalize' }}>{monthName}</b>
+        <button type="button" className="btn btn-ghost" style={{ padding: '4px 12px', fontSize: 18, lineHeight: 1 }} onClick={() => setView((v) => { const m = v.m + 1; return m > 11 ? { y: v.y + 1, m: 0 } : { y: v.y, m }; })}>›</button>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 5, marginBottom: 5 }}>
+        {dows.map((w, i) => <span key={i} style={{ textAlign: 'center', fontSize: 10.5, color: 'var(--mut)', textTransform: 'uppercase', fontWeight: 600 }}>{w}</span>)}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 5 }}>{cells}</div>
+      <div className="row between" style={{ alignItems: 'center', marginTop: 10 }}>
+        <span className="muted" style={{ fontSize: 11.5 }}>{sel.length > 0
+          ? L(`${sel.length + (anchorDate ? 1 : 0)} días · misma hora ${timeStr || ''}`, `${sel.length + (anchorDate ? 1 : 0)} days · same time ${timeStr || ''}`)
+          : L('Toca los días extra que quieras. Se van sombreando.', 'Tap the extra days you want. They shade in.')}</span>
+        {sel.length > 0 && <button type="button" className="btn btn-ghost" style={{ fontSize: 11, color: 'var(--red)' }} onClick={() => onChange([])}>{L('Limpiar', 'Clear')}</button>}
+      </div>
+    </div>
+  );
+}
+
 function EventForm({ form, setForm, onSave, onCancel, L }: any) {
   const set = (k: string, v: any) => setForm({ ...form, [k]: v });
   // Solo bloqueamos fecha pasada al CREAR. Al editar una clase ya pasada se permite (ej: añadir grabación).
@@ -3081,18 +3140,18 @@ function EventForm({ form, setForm, onSave, onCancel, L }: any) {
           <div><span className="muted" style={{ fontSize: 12 }}>{L('Duración (min)', 'Duration (min)')}</span><input type="number" value={form.duration_min ?? 60} onChange={(e) => set('duration_min', Number(e.target.value))} style={{ margin: '4px 0 0', width: 100 }} /></div>
         </div>
         {!form.id && (
-          <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-            <div><span className="muted" style={{ fontSize: 12 }}>{L('Repetir', 'Repeat')}</span>
-              <select value={form.repeat || 'none'} onChange={(e) => set('repeat', e.target.value)} style={{ margin: '4px 0 0' }}>
-                <option value="none">{L('Solo ese día', 'Just that day')}</option>
-                <option value="weekly">{L('Cada semana', 'Weekly')}</option>
-                <option value="monthly">{L('Cada mes', 'Monthly')}</option>
-              </select>
+          <div>
+            <span className="muted" style={{ fontSize: 12 }}>{L('¿Varias clases? Marca más días (mismo horario)', 'Multiple classes? Mark more days (same time)')}</span>
+            <div style={{ marginTop: 6 }}>
+              <MultiDayPicker
+                selected={form.dates || []}
+                onChange={(d: string[]) => set('dates', d)}
+                timeStr={(form.starts_at || '').slice(11, 16)}
+                anchorDate={(form.starts_at || '').slice(0, 10) || null}
+                L={L}
+              />
             </div>
-            {form.repeat && form.repeat !== 'none' && (
-              <div><span className="muted" style={{ fontSize: 12 }}>{L('¿Cuántas veces?', 'How many times?')}</span><input type="number" min={1} max={52} value={form.repeat_count ?? 4} onChange={(e) => set('repeat_count', Math.max(1, Math.min(52, Number(e.target.value) || 1)))} style={{ margin: '4px 0 0', width: 100 }} /></div>
-            )}
-            {form.repeat && form.repeat !== 'none' && <div className="muted" style={{ fontSize: 11 }}>{L('Se crean todas de una vez, a la misma hora.', 'All created at once, same time.')}</div>}
+            {(form.dates || []).length > 0 && <div className="muted" style={{ fontSize: 11, marginTop: 6 }}>{L(`Se crearán ${(form.dates || []).length + 1} clases (el día principal ★ + los marcados), todas a la misma hora.`, `${(form.dates || []).length + 1} classes will be created (main day ★ + marked ones), all at the same time.`)}</div>}
           </div>
         )}
         <input value={form.recording_url || ''} onChange={(e) => set('recording_url', e.target.value)} placeholder={L('Link de la grabación (YouTube/Vimeo/.mp4) — opcional', 'Recording link (YouTube/Vimeo/.mp4) — optional')} style={{ margin: 0 }} />
