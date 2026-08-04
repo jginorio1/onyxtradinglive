@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
+import BrandIcon from '@/app/components/BrandIcon';
 
 // Footer único para TODAS las páginas. En móvil: solo el logo (el texto se oculta
 // con .logo-text, igual que el header) y los enlaces se apilan centrados.
@@ -33,6 +34,7 @@ export default function SiteFooter() {
     ? fx.links.map((l: any) => [l.href, es ? l.es : l.en])
     : defLinks;
   const tagline = es ? (fx?.tagline_es || '') : (fx?.tagline_en || '');
+  const social: any[] = (fx?.social || []).filter((x: any) => x && x.url && x.on !== false);
 
   return (
     <footer style={{ borderTop: '1px solid var(--line)', marginTop: 20, padding: '26px 0 30px' }}>
@@ -42,6 +44,17 @@ export default function SiteFooter() {
           <span className="logo-text">Onyx Trading Live</span>
         </Link>
         {tagline && <div className="muted" style={{ fontSize: 13, maxWidth: 520 }}>{tagline}</div>}
+        {social.length > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 14, flexWrap: 'wrap' }}>
+            {social.map((sc, i) => (
+              <a key={i} href={sc.url} target="_blank" rel="noopener noreferrer" aria-label={sc.platform} title={sc.platform}
+                 style={{ color: 'var(--mut)', display: 'inline-flex', transition: 'color .15s' }}
+                 onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--tx)')} onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--mut)')}>
+                <BrandIcon name={sc.platform} size={22} />
+              </a>
+            ))}
+          </div>
+        )}
         <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '10px 20px', color: 'var(--mut)', fontSize: 13.5 }}>
           {links.map(([href, label], i) => <Link key={href + i} href={href} style={{ color: 'var(--mut)' }}>{label}</Link>)}
         </div>

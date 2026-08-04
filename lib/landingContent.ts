@@ -26,7 +26,7 @@ export type LandingContent = {
   pages?: Record<string, Record<string, { es?: string; en?: string }>>;
   // FASE 4 · navegación, footer y legales.
   nav?: Record<string, { es?: string; en?: string }>;          // etiquetas del menú del landing
-  footer?: { tagline_es?: string; tagline_en?: string; links?: { es: string; en: string; href: string }[] };
+  footer?: { tagline_es?: string; tagline_en?: string; links?: { es: string; en: string; href: string }[]; social?: { platform: string; url: string; on?: boolean }[] };
   legal?: { terms_es?: string; terms_en?: string; privacy_es?: string; privacy_en?: string };
 };
 

@@ -382,7 +382,20 @@ export default function LandingBuilder() {
               </div>
             </div>
           ))}
-          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+          <div style={{ ...lbl, marginTop: 20 }}>{L('Redes sociales', 'Social links')} <span style={{ color: 'var(--mut)', fontWeight: 400 }}>· {L('vacías = no se muestran', 'empty = hidden')}</span></div>
+          {(footer.social || []).map((sc: any, i: number) => (
+            <div key={i} style={{ display: 'grid', gridTemplateColumns: '150px 1fr auto auto', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+              <select style={inp} value={sc.platform} onChange={(e) => { const r = [...(footer.social || [])]; r[i] = { ...sc, platform: e.target.value }; setFooter({ social: r }); }}>
+                {['instagram', 'youtube', 'tiktok', 'x', 'telegram', 'whatsapp', 'facebook'].map((p) => <option key={p} value={p}>{p}</option>)}
+              </select>
+              <input placeholder={sc.platform === 'whatsapp' ? 'https://wa.me/1XXXXXXXXXX' : 'https://...'} style={inp} value={sc.url || ''} onChange={(e) => { const r = [...(footer.social || [])]; r[i] = { ...sc, url: e.target.value }; setFooter({ social: r }); }} />
+              <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12, color: 'var(--mut)' }}><input type="checkbox" checked={sc.on !== false} onChange={(e) => { const r = [...(footer.social || [])]; r[i] = { ...sc, on: e.target.checked }; setFooter({ social: r }); }} style={{ width: 'auto', margin: 0 }} /> {L('Activa', 'On')}</label>
+              <button className="btn btn-ghost" style={{ padding: '2px 7px', fontSize: 11, color: 'var(--red)' }} onClick={() => setFooter({ social: (footer.social || []).filter((_: any, j: number) => j !== i) })}>✕</button>
+            </div>
+          ))}
+          <button className="btn btn-ghost" style={{ marginTop: 2 }} onClick={() => setFooter({ social: [...(footer.social || []), { platform: 'instagram', url: '', on: true }] })}>＋ {L('Añadir red', 'Add social')}</button>
+
+          <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
             <button className="btn btn-ghost" onClick={() => setFooter({ links: [...(footer.links || []), { es: '', en: '', href: '/' }] })}>＋ {L('Añadir enlace', 'Add link')}</button>
             <button className="btn btn-primary" onClick={() => save({ footer })} disabled={busy}>{busy ? '…' : L('Guardar footer', 'Save footer')}</button>
           </div>
