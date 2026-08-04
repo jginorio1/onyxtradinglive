@@ -116,15 +116,13 @@ function stripMarkdown(s: string): string {
     .trim();
 }
 
-export async function aiAnswer(question: string, lang: Lang, sensitive = false): Promise<AiAnswer> {
-  // Chips "Abrir: ..." (solo para los botones). NO limita lo que la IA sabe: eso ahora es TODO el corpus.
-  const found = searchArticles(question, lang).slice(0, 4);
-  const chips = (found.length ? found : ARTICLES.slice(0, 4)).map((a) => ({ slug: a.slug, title: (a.title[lang] || a.title.en) }));
-
+// CEREBRO ÚNICO de Onyx AI (lo usan el widget web y las respuestas de ticket).
+// Lee TODO el corpus (guía + Base IA + blog), respeta el prompt editable del admin,
+// escribe en texto plano, admite historial de conversación y un contexto de cuenta.
+// Devuelve la respuesta ya limpia; `declined` = necesita datos privados (→ humano).
+export async function supportChatReply(question: string, lang: Lang, history: any[] = [], acctContext = ''): Promise<{ answer: string; ok: boolean; declined: boolean }> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return { answer: '', confident: false, articles: chips, reason: 'no_key' };
-  if (sensitive) return { answer: '', confident: false, articles: chips, reason: 'sensitive' };
-
+  if (!apiKey) return { answer: '', ok: false, declined: false };
   const en = enBase(lang);
 
   // Prompt editable desde el Admin: `brief` reemplaza el conocimiento de marca si el admin
@@ -188,14 +186,19 @@ Nunca des consejo financiero/de mercado ni predigas el mercado. Si la pregunta e
 
   const knowledge = `=== ${en ? 'ONYX KNOWLEDGE' : 'CONOCIMIENTO DE ONYX'} ===\n${brief}\n\n=== ${en ? 'HELP ARTICLES' : 'ARTÍCULOS DE AYUDA'} ===\n${guide}`
     + (kbText ? `\n\n=== ${en ? 'KNOWLEDGE BASE' : 'BASE DE CONOCIMIENTO'} ===\n${kbText}` : '')
-    + (blogText ? `\n\n=== BLOG ===\n${blogText}` : '');
+    + (blogText ? `\n\n=== BLOG ===\n${blogText}` : '')
+    + (acctContext ? `\n\n${acctContext}` : '');
 
   // Instrucciones extra del admin (tono, reglas propias) — se añaden al final del persona.
   const personaFull = persona + aiLangDirective(lang) + (adminExtra ? `\n\n${en ? 'EXTRA INSTRUCTIONS (from admin)' : 'INSTRUCCIONES EXTRA (del admin)'}:\n${adminExtra}` : '');
 
   const model = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5';
   const headers: any = { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' };
-  const userMsg = [{ role: 'user', content: question.slice(0, 2000) }];
+  // Historial de conversación (para seguimientos como "¿y en iPhone?") + la pregunta nueva.
+  const prior = (Array.isArray(history) ? history : [])
+    .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && m.content)
+    .slice(-6).map((m) => ({ role: m.role, content: String(m.content).slice(0, 2000) }));
+  const userMsg = [...prior, { role: 'user', content: question.slice(0, 2000) }];
 
   // Cuerpo con caché de Claude (bloques de sistema). Si el modelo/cuenta no soporta
   // cache_control, reintentamos con un system de texto plano (misma calidad, sin caché).
@@ -217,17 +220,27 @@ Nunca des consejo financiero/de mercado ni predigas el mercado. Si la pregunta e
   try {
     let r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers, body: cachedBody });
     if (!r.ok) r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers, body: plainBody });
-    if (!r.ok) return { answer: '', confident: false, articles: chips, reason: 'error' };
+    if (!r.ok) return { answer: '', ok: false, declined: false };
     const data = await r.json();
     const raw = (data?.content || []).map((c: any) => c.text || '').join('\n').trim();
-    if (!raw || /NO_ANSWER/i.test(raw)) return { answer: '', confident: false, articles: chips, reason: 'declined' };
-    // El chat muestra texto plano; quitamos cualquier markdown que se le escape al modelo
-    // (negritas **, títulos #, `código`) y normalizamos las viñetas a "• ".
-    const answer = stripMarkdown(raw);
-    return { answer, confident: true, articles: chips, reason: 'ok' };
+    if (!raw || /NO_ANSWER/i.test(raw)) return { answer: '', ok: false, declined: true };
+    // El chat muestra texto plano; quitamos cualquier markdown que se le escape al modelo.
+    return { answer: stripMarkdown(raw), ok: true, declined: false };
   } catch {
-    return { answer: '', confident: false, articles: chips, reason: 'error' };
+    return { answer: '', ok: false, declined: false };
   }
+}
+
+// Auto-respuesta de TICKETS: usa el mismo cerebro. `sensitive` = temas de dinero/legales → humano.
+export async function aiAnswer(question: string, lang: Lang, sensitive = false): Promise<AiAnswer> {
+  const found = searchArticles(question, lang).slice(0, 4);
+  const chips = (found.length ? found : ARTICLES.slice(0, 4)).map((a) => ({ slug: a.slug, title: (a.title[lang] || a.title.en) }));
+  if (!process.env.ANTHROPIC_API_KEY) return { answer: '', confident: false, articles: chips, reason: 'no_key' };
+  if (sensitive) return { answer: '', confident: false, articles: chips, reason: 'sensitive' };
+  const r = await supportChatReply(question, lang);
+  if (r.declined) return { answer: '', confident: false, articles: chips, reason: 'declined' };
+  if (!r.ok || !r.answer) return { answer: '', confident: false, articles: chips, reason: 'error' };
+  return { answer: r.answer, confident: true, articles: chips, reason: 'ok' };
 }
 
 export type AutoSettings = { enabled: boolean };
