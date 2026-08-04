@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { ARTICLES } from '@/lib/guide';
 import { LANGS } from '@/lib/navText';
+import { publishedSlugs } from '@/lib/blog';
 
 // Sitemap: le dice a Google qué páginas existen para que las descubra rápido.
 // Para cada página incluimos las variantes de los 6 idiomas con hreflang, para
@@ -28,11 +29,21 @@ function entriesFor(path: string, opts: { lastModified: Date; changeFrequency: a
   }));
 }
 
-export default function sitemap(): MetadataRoute.Sitemap {
+// Entrada de blog: solo ES + EN (el contenido del blog es bilingüe, no en los 6 idiomas).
+function blogEntries(path: string, lastModified: Date) {
+  const languages: Record<string, string> = { 'x-default': `${url}${path}`, es: `${url}${path}`, en: `${url}/en${path}` };
+  return [
+    { url: `${url}${path}`, lastModified, changeFrequency: 'weekly' as const, priority: 0.7, alternates: { languages } },
+    { url: `${url}/en${path}`, lastModified, changeFrequency: 'weekly' as const, priority: 0.6, alternates: { languages } },
+  ];
+}
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
   const staticPaths: { p: string; pr: number; f: 'weekly' | 'monthly' | 'yearly' }[] = [
     { p: '', pr: 1, f: 'weekly' },
     { p: '/pricing', pr: 0.9, f: 'weekly' },
+    { p: '/blog', pr: 0.8, f: 'weekly' },
     { p: '/embajadores', pr: 0.7, f: 'monthly' },
     { p: '/invita', pr: 0.7, f: 'monthly' },
     { p: '/guia', pr: 0.8, f: 'weekly' },
@@ -42,5 +53,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
   ];
   const pages = staticPaths.flatMap((s) => entriesFor(s.p, { lastModified: now, changeFrequency: s.f, priority: s.pr }));
   const articles = ARTICLES.flatMap((a) => entriesFor(`/guia/${a.slug}`, { lastModified: now, changeFrequency: 'monthly', priority: 0.6 }));
-  return [...pages, ...articles];
+  let blog: MetadataRoute.Sitemap = [];
+  try {
+    const posts = await publishedSlugs();
+    blog = posts.flatMap((p) => blogEntries(`/blog/${p.slug}`, new Date(p.updated)));
+  } catch { blog = []; }
+  return [...pages, ...articles, ...blog];
 }

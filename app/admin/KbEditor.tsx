@@ -20,13 +20,13 @@ export default function KbEditor() {
   // Importa toda la Guía a la Base IA (idempotente). Así la IA la tiene aquí y
   // puedes editarla desde el panel sin desplegar.
   async function importGuide() {
-    if (!confirm(es ? 'Importar todos los artículos de la Guía a la Base IA? Reemplaza los importados anteriormente.' : 'Import all Guide articles into the Knowledge Base? Replaces previously imported ones.')) return;
+    if (!confirm(es ? 'Sincronizar la Guía con la Base IA? Actualiza las que ya existen, añade las nuevas y quita duplicados. No toca tus artículos escritos a mano.' : 'Sync the Guide into the Knowledge Base? Updates existing ones, adds new ones and removes duplicates. Your hand-written articles are untouched.')) return;
     setImporting(true);
     try {
       const r = await fetch('/api/admin/kb/import-guide', { method: 'POST' });
       const j = await r.json();
-      if (r.ok) toast(es ? `Guía importada: ${j.count} entradas.` : `Guide imported: ${j.count} entries.`);
-      else toast(es ? 'No se pudo importar.' : 'Could not import.');
+      if (r.ok) toast(es ? `Guía sincronizada: ${j.added || 0} nuevas, ${j.updated || 0} actualizadas${j.removed ? `, ${j.removed} limpiadas` : ''}.` : `Guide synced: ${j.added || 0} new, ${j.updated || 0} updated${j.removed ? `, ${j.removed} cleaned` : ''}.`);
+      else toast(es ? `No se pudo importar: ${j.error || ''}` : `Could not import: ${j.error || ''}`);
     } catch { toast(es ? 'No se pudo importar.' : 'Could not import.'); }
     setImporting(false); await load();
   }

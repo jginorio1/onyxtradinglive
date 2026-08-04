@@ -24,6 +24,7 @@ export default function SiteFooter() {
     ['/', L('Inicio', 'Home')],
     ['/pricing', L('Planes', 'Plans')],
     ['/guia', L('Guía', 'Guide')],
+    ['/blog', L('Blog', 'Blog')],
     ['/embajadores', L('Embajadores', 'Ambassadors')],
     ['/invita', L('Invita y gana', 'Invite & earn')],
     ['/contacto', L('Contacto', 'Contact')],
