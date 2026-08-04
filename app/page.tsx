@@ -29,6 +29,7 @@ const LOGOS = [
   { n: 'FundingPips', c: '#8b5cff' }, { n: 'The5%ers', c: '#ffce00' },
   { n: 'MetaTrader 4', c: '#f0a020' }, { n: 'MetaTrader 5', c: '#2f6bff' },
   { n: 'cTrader', c: '#e0533d' }, { n: 'MatchTrader', c: '#16c98d' },
+  { n: 'TradingView', c: '#111' },
   { n: 'Axi', c: '#ff4757' }, { n: 'IC Markets', c: 'var(--red2)' },
   { n: 'Pepperstone', c: '#e2531f' }, { n: 'Exness', c: '#ffcf5c' },
 ];
