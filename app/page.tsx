@@ -38,6 +38,7 @@ function Counter({ to, prefix = '', suffix = '' }: { to: number; prefix?: string
   const ref = useRef<HTMLDivElement>(null);
   const seen = useRef(false);        // ¿ya entró en pantalla alguna vez?
   const fromRef = useRef(0);         // desde qué valor animar
+  const toRef = useRef(to); toRef.current = to;   // valor más reciente (evita quedarse en el inicial)
 
   // Anima de `from` a `to`. Se vuelve a llamar cuando llegan los datos reales,
   // así que un valor que empezó en 0 sube hasta la cifra real al cargar /api/stats.
@@ -56,7 +57,7 @@ function Counter({ to, prefix = '', suffix = '' }: { to: number; prefix?: string
     const start = () => {
       if (seen.current) return; seen.current = true;
       const dur = 1200, t0 = performance.now();
-      const tick = (t: number) => { const p = Math.min(1, (t - t0) / dur); setN(Math.round((1 - Math.pow(1 - p, 3)) * to)); if (p < 1) requestAnimationFrame(tick); else fromRef.current = to; };
+      const tick = (t: number) => { const p = Math.min(1, (t - t0) / dur); const target = toRef.current; setN(Math.round((1 - Math.pow(1 - p, 3)) * target)); if (p < 1) requestAnimationFrame(tick); else fromRef.current = target; };
       requestAnimationFrame(tick);
     };
     const el = ref.current;

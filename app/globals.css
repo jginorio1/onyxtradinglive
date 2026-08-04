@@ -590,6 +590,19 @@ html[data-theme="dark"] .sk-code, :root:not([data-theme="light"]) .sk-code{text-
   .logo-text{ display:none; }   /* en móvil solo el símbolo; el texto se ve en desktop */
 }
 
+/* Tablets (iPad): el nombre se amontona en el header, así que se oculta y
+   queda solo el símbolo, igual que en móvil. El nombre completo aparece
+   únicamente en computadoras (>=1025px). */
+@media (max-width:1024px){
+  .topbar .logo-text{ display:none !important; }
+  .topbar .logo{ gap:0; }
+}
+/* En computadoras el logo y el nombre se ven más grandes. */
+@media (min-width:1025px){
+  .topbar .logo{ font-size:20px; }
+  .topbar .logo img{ width:32px !important; height:32px !important; }
+}
+
 /* FAQ desplegables (details/summary): oculta la flecha nativa para dejar solo la ▶ morada,
    y gira la ▶ cuando la pregunta está abierta. Mismo estilo en landing, embajadores y mentores. */
 summary::-webkit-details-marker { display: none; }
