@@ -162,7 +162,7 @@ function TeamChatInner() {
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', minHeight: 540 }} className="teamchat-grid">
           {/* Canales + equipo */}
-          <div style={{ borderRight: '1px solid var(--line)', display: 'flex', flexDirection: 'column' }}>
+          <div className="teamchat-side" style={{ borderRight: '1px solid var(--line)', display: 'flex', flexDirection: 'column' }}>
             <div className="row between" style={{ padding: '11px 12px', borderBottom: '1px solid var(--line)' }}>
               <b style={{ fontSize: 13 }}># {L('Canales', 'Channels')}</b>
               <button className="btn btn-ghost" style={{ padding: '3px 8px', fontSize: 16, lineHeight: 1 }} onClick={() => setShowNew((s) => !s)} title={L('Nuevo canal', 'New channel')}>+</button>
@@ -251,7 +251,7 @@ function TeamChatInner() {
       </div>
 
       {/* Ventanas acopladas: varios chats abiertos a la vez */}
-      <div style={{ position: 'fixed', right: 16, bottom: 12, display: 'flex', gap: 12, alignItems: 'flex-end', zIndex: 1500 }}>
+      <div className="teamchat-docks" style={{ position: 'fixed', right: 16, bottom: 12, display: 'flex', gap: 12, alignItems: 'flex-end', zIndex: 1500 }}>
         {docks.map((id) => {
           const c = channels.find((x) => x.id === id); if (!c) return null;
           const title = c.kind === 'dm' ? (teamById[c.members.find((m) => m !== me) || '']?.name || c.name) : '# ' + c.name;
@@ -259,7 +259,17 @@ function TeamChatInner() {
         })}
       </div>
 
-      <style>{`@media(max-width:720px){.teamchat-grid{grid-template-columns:1fr !important}}`}</style>
+      <style>{`
+        @media(max-width:720px){
+          .teamchat-grid{grid-template-columns:1fr !important; min-height:auto !important}
+          .teamchat-side{max-height:240px; overflow-y:auto; border-right:none !important; border-bottom:1px solid var(--line)}
+        }
+        @media(max-width:560px){
+          .teamchat-docks{left:0 !important; right:0 !important; bottom:0 !important; gap:0 !important; padding:0 8px; flex-direction:column; align-items:stretch}
+          .teamchat-dock{width:100% !important; border-radius:12px 12px 0 0}
+          .teamchat-docks .teamchat-dock:not(:last-child){display:none}
+        }
+      `}</style>
     </div>
   );
 }
@@ -294,7 +304,7 @@ function DockWindow({ channelId, title, me, lang, onClose, onActivity }: { chann
   const typingLabel = typing.length ? `${typing[0]} ${lang === 'en' ? 'is typing…' : 'está escribiendo…'}` : '';
 
   return (
-    <div style={{ width: 300, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: '12px 12px 0 0', boxShadow: '0 -6px 30px rgba(0,0,0,.35)', overflow: 'hidden' }}>
+    <div className="teamchat-dock" style={{ width: 300, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: '12px 12px 0 0', boxShadow: '0 -6px 30px rgba(0,0,0,.35)', overflow: 'hidden' }}>
       <div className="row between" style={{ padding: '8px 11px', borderBottom: min ? 'none' : '1px solid var(--line)', background: 'var(--bg2)', cursor: 'pointer' }} onClick={() => setMin((m) => !m)}>
         <b style={{ fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</b>
         <span className="row" style={{ gap: 8 }}>

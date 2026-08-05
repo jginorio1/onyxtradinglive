@@ -113,12 +113,12 @@ export default function SupportWidget({ loggedIn = false }: { loggedIn?: boolean
         @keyframes onyxType{0%,80%,100%{opacity:.3}40%{opacity:1}}
         .onyx-pulse{animation:onyxPulse 1.4s ease-in-out infinite}
         .onyx-d1{animation:onyxType 1.2s infinite}.onyx-d2{animation:onyxType 1.2s .2s infinite}.onyx-d3{animation:onyxType 1.2s .4s infinite}
-        @media(max-width:520px){.onyx-panel{right:0!important;left:0!important;bottom:0!important;width:100%!important;max-width:100%!important;height:100%!important;max-height:100%!important;border-radius:0!important}}
+        @media(max-width:520px){.onyx-panel{right:0!important;left:0!important;top:0!important;bottom:0!important;width:100%!important;max-width:100%!important;height:100dvh!important;max-height:100dvh!important;border-radius:0!important}}
       `}</style>
 
       {!open && (
         <button onClick={() => setOpen(true)} aria-label={t.help}
-          style={{ position: 'fixed', right: 18, bottom: 18, zIndex: 60, display: 'flex', alignItems: 'center', gap: 8, border: 'none', background: 'none', cursor: 'pointer' }}>
+          style={{ position: 'fixed', right: 18, bottom: 'calc(18px + env(safe-area-inset-bottom))', zIndex: 60, display: 'flex', alignItems: 'center', gap: 8, border: 'none', background: 'none', cursor: 'pointer' }}>
           <span style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 20, padding: '7px 13px', fontSize: 13, color: 'var(--tx)', boxShadow: '0 6px 18px rgba(0,0,0,.3)' }}>{t.help}</span>
           <span style={{ position: 'relative', width: 54, height: 54, borderRadius: '50%', background: 'var(--grad)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, boxShadow: '0 8px 22px rgba(0,0,0,.35)' }}>💬
             <span className="onyx-pulse" style={{ position: 'absolute', top: 2, right: 2, width: 13, height: 13, borderRadius: '50%', background: 'var(--green)', border: '2px solid var(--bg)' }} />
@@ -191,7 +191,7 @@ export default function SupportWidget({ loggedIn = false }: { loggedIn?: boolean
           </div>
 
           {!sent && (
-            <div style={{ padding: 10, borderTop: '1px solid var(--line)', background: 'var(--card)' }}>
+            <div style={{ padding: '10px 10px calc(10px + env(safe-area-inset-bottom))', borderTop: '1px solid var(--line)', background: 'var(--card)' }}>
               {loggedIn && (
                 <div className="row" style={{ gap: 6, marginBottom: 8 }}>
                   <Link href="/dashboard/soporte" className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }}>{t.openTicket}</Link>
