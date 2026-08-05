@@ -46,11 +46,39 @@ export const DEFAULT_CAMPAIGNS: Array<Partial<CampaignRow>> = [
     body_en: `Hi {{nombre}},\n\nYour trial is about to end. To keep your live stats, Onyx Guardian and your alerts, pick your plan:\n{{sitio}}/pricing\n\nNot sure which one? Reply and we'll guide you.`,
   },
   {
-    key: 'newsletter', name: 'Newsletter semanal', kind: 'scheduled', segment: 'all', schedule: '0 9 * * 1', trigger: {},
+    key: 'newsletter', name: 'Newsletter semanal', kind: 'scheduled', segment: 'all', schedule: '0 9 * * 1', trigger: { everyDays: 7 },
     subject_es: 'Onyx · novedades de la semana 📰',
     body_es: `Hola {{nombre}},\n\n(Escribe aquí las novedades, tips o promos de la semana.)\n\n— Equipo de Onyx Trading Live`,
     subject_en: 'Onyx · this week 📰',
     body_en: `Hi {{nombre}},\n\n(Write this week's news, tips or promos here.)\n\n— The Onyx Trading Live team`,
+  },
+  {
+    key: 'welcome', name: 'Bienvenida (día 0)', kind: 'trigger', segment: 'new_signup', trigger: { days: 0, maxDays: 2 },
+    subject_es: '¡Bienvenido a Onyx, {{nombre}}! 🖤',
+    body_es: `Hola {{nombre}},\n\nQué bueno tenerte en Onyx Trading Live. Para arrancar, conecta tu cuenta en 2 minutos y desbloquea tus estadísticas en vivo y a **Onyx Guardian** cuidando tu riesgo:\n{{sitio}}/dashboard/keys\n\n¿Dudas? Responde a este correo y te ayudamos.\n\n— Equipo de Onyx`,
+    subject_en: 'Welcome to Onyx, {{nombre}}! 🖤',
+    body_en: `Hi {{nombre}},\n\nGreat to have you at Onyx Trading Live. To get started, connect your account in 2 minutes and unlock your live stats and **Onyx Guardian** protecting your risk:\n{{sitio}}/dashboard/keys\n\nQuestions? Just reply and we'll help.\n\n— The Onyx team`,
+  },
+  {
+    key: 'winback', name: 'Te extrañamos (cancelados)', kind: 'trigger', segment: 'cancelled', trigger: {},
+    subject_es: 'Te extrañamos, {{nombre}} 🖤',
+    body_es: `Hola {{nombre}},\n\nVimos que dejaste tu plan de Onyx. Si algo no encajó, cuéntanos respondiendo aquí — lo tomamos muy en serio.\n\nCuando quieras volver, tu historial y tus ajustes siguen intactos:\n{{sitio}}/pricing\n\n— Equipo de Onyx`,
+    subject_en: 'We miss you, {{nombre}} 🖤',
+    body_en: `Hi {{nombre}},\n\nWe noticed you left your Onyx plan. If something didn't click, tell us by replying here — we take it seriously.\n\nWhenever you want to come back, your history and settings are still intact:\n{{sitio}}/pricing\n\n— The Onyx team`,
+  },
+  {
+    key: 'promo_monthly', name: 'Promo mensual', kind: 'scheduled', segment: 'all', schedule: '0 9 1 * *', trigger: { everyDays: 30 },
+    subject_es: 'Onyx · promo del mes 🎁',
+    body_es: `Hola {{nombre}},\n\n(Escribe aquí la promo del mes.)\n\nAprovéchala aquí:\n{{sitio}}/pricing\n\n— Equipo de Onyx`,
+    subject_en: 'Onyx · this month’s offer 🎁',
+    body_en: `Hi {{nombre}},\n\n(Write this month's promo here.)\n\nGrab it here:\n{{sitio}}/pricing\n\n— The Onyx team`,
+  },
+  {
+    key: 'anniversary', name: 'Aniversario de cuenta', kind: 'scheduled', segment: 'anniversary', trigger: { everyDays: 1 },
+    subject_es: '¡Feliz aniversario en Onyx, {{nombre}}! 🎉',
+    body_es: `Hola {{nombre}},\n\nHoy cumples un año más con Onyx Trading Live. Gracias por confiar en nosotros para cuidar tu trading.\n\nDe regalo, un detalle para ti:\n{{sitio}}/pricing\n\n— Equipo de Onyx`,
+    subject_en: 'Happy Onyx anniversary, {{nombre}}! 🎉',
+    body_en: `Hi {{nombre}},\n\nToday marks another year with Onyx Trading Live. Thanks for trusting us to look after your trading.\n\nHere's a little gift for you:\n{{sitio}}/pricing\n\n— The Onyx team`,
   },
 ];
 
@@ -132,9 +160,11 @@ export async function runCampaigns(dryRun = false): Promise<{ sent: number; deta
     if (budget <= 0) break;
 
     // Las programadas solo corren cada X días (evita reenviar el boletín a diario).
+    // El intervalo es por campaña (trigger.everyDays): semanal=7, mensual=30, aniversario=1.
     if (c.kind === 'scheduled') {
+      const interval = Number(c.trigger?.everyDays) || SCHEDULED_INTERVAL_DAYS;
       const since = c.last_run_at ? (Date.now() - new Date(c.last_run_at).getTime()) / 86400000 : Infinity;
-      if (since < SCHEDULED_INTERVAL_DAYS) { detail.push({ campaign: c.key || c.name, sent: 0 }); continue; }
+      if (since < interval) { detail.push({ campaign: c.key || c.name, sent: 0 }); continue; }
     }
 
     const recips = await resolveSegment(c.segment, c.trigger || {});

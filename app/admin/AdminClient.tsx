@@ -554,9 +554,16 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
             {uDrawer && <UserDrawer userId={uDrawer.id} email={uDrawer.email} onClose={() => setUDrawer(null)} />}
             {/* Confirmación con nota obligatoria para acciones críticas */}
             {pendAct && (
-              <div onClick={() => setPendAct(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-                <div onClick={(e) => e.stopPropagation()} className="card" style={{ maxWidth: 380, width: '100%', border: pendAct.danger ? '1px solid var(--red)' : undefined }}>
-                  <div style={{ fontWeight: 700, marginBottom: pendAct.detail ? 4 : 10, color: pendAct.danger ? 'var(--red)' : undefined }}>{pendAct.danger ? '⚠️ ' : ''}{pendAct.title}</div>
+              <div onClick={() => setPendAct(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(4,6,16,.62)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+                <div onClick={(e) => e.stopPropagation()} style={{ maxWidth: 400, width: '100%', borderRadius: 16, padding: '20px 22px',
+                  background: 'linear-gradient(180deg, color-mix(in srgb,var(--card) 92%, #fff 8%), var(--card))',
+                  border: '2px solid ' + (pendAct.danger ? 'var(--red)' : 'var(--brand)'),
+                  boxShadow: (pendAct.danger ? '0 0 0 4px rgba(226,75,75,.14), 0 24px 60px -18px rgba(226,75,75,.55)' : '0 0 0 4px color-mix(in srgb,var(--brand) 16%,transparent), 0 24px 60px -18px var(--brand)') }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: pendAct.detail ? 6 : 12 }}>
+                    <span style={{ display: 'grid', placeItems: 'center', width: 34, height: 34, borderRadius: 10, flexShrink: 0, fontSize: 17,
+                      background: pendAct.danger ? 'rgba(226,75,75,.16)' : 'rgba(124,140,255,.18)' }}>{pendAct.danger ? '⚠️' : '🔁'}</span>
+                    <div style={{ fontWeight: 700, fontSize: 15.5, color: pendAct.danger ? 'var(--red)' : 'var(--tx)' }}>{pendAct.title}</div>
+                  </div>
                   {pendAct.detail && <div className="muted" style={{ fontSize: 12.5, marginBottom: 12 }}>{pendAct.detail}</div>}
                   <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{lang === 'en' ? 'Note (required — saved to the log)' : 'Nota (obligatoria — queda en el registro)'}</div>
                   <input value={pendNote} onChange={(e) => setPendNote(e.target.value)} placeholder={lang === 'en' ? 'Reason…' : 'Motivo…'} style={{ margin: '0 0 12px' }} />

@@ -4,12 +4,43 @@ import { useEffect, useState } from 'react';
 import { toast, toastErr } from '@/lib/toast';
 import { useLang } from '@/lib/lang';
 import ConfirmNote from './ConfirmNote';
+import DateTimePicker from '@/app/components/DateTimePicker';
 
 // ============================================================
 // Admin → Campañas. Correos de seguimiento automáticos a la base de traders +
 // envío manual de promos/noticias, con plantillas editables y borrador IA.
 // Bilingüe por su cuenta (no depende del diccionario del panel).
 // ============================================================
+
+// Variables que la IA integra y que el owner puede insertar a mano.
+const VARS = ['{{nombre}}', '{{plan}}', '{{sitio}}'];
+// Tonos para controlar la voz que genera la IA.
+const TONES: Array<[string, string, string]> = [
+  ['friendly', 'Cercano', 'Friendly'], ['urgent', 'Urgente', 'Urgent'],
+  ['promo', 'Promocional', 'Promo'], ['informative', 'Informativo', 'Informative'],
+];
+// Renderiza las variables con un trader de ejemplo (para la vista previa).
+function fillPreview(text: string): string {
+  return String(text || '')
+    .replace(/\{\{\s*(nombre|name)\s*\}\}/gi, 'Jerry')
+    .replace(/\{\{\s*plan\s*\}\}/gi, 'Pro')
+    .replace(/\{\{\s*(sitio|site)\s*\}\}/gi, 'onyxtradinglive.com');
+}
+
+// Fila de chips de variables: inserta el token en el campo indicado.
+function VarChips({ onInsert, L }: { onInsert: (v: string) => void; L: (a: string, b: string) => string }) {
+  return (
+    <div className="row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center', margin: '2px 0 4px' }}>
+      <span className="muted" style={{ fontSize: 11.5 }}>{L('Variables:', 'Variables:')}</span>
+      {VARS.map((v) => (
+        <button key={v} type="button" onClick={() => onInsert(v)}
+          style={{ background: 'rgba(124,140,255,.16)', color: 'var(--soft-brand,#7c8cff)', border: '1px solid color-mix(in srgb,var(--soft-brand,#7c8cff) 40%,transparent)', borderRadius: 7, padding: '3px 9px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
+          {v}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 type Campaign = {
   id: string; key: string | null; name: string; kind: 'trigger' | 'scheduled' | 'manual';
@@ -144,20 +175,40 @@ export default function Campaigns() {
 function ManualComposer({ segs, manuals, L, lang, segLabel, reload, onEdit, ask }: any) {
   const [seg, setSeg] = useState('all');
   const [topic, setTopic] = useState('');
+  const [tone, setTone] = useState('friendly');
   const [f, setF] = useState({ subject_es: '', body_es: '', subject_en: '', body_en: '' });
   const [busy, setBusy] = useState('');
   const [count, setCount] = useState<number | null>(null);
   const [when, setWhen] = useState('');
+  const [titles, setTitles] = useState<Array<{ es: string; en: string }>>([]);
+  const [showPrev, setShowPrev] = useState(false);
+  const [lastField, setLastField] = useState<'subject_es' | 'body_es' | 'subject_en' | 'body_en'>('body_es');
   const set = (k: string, v: string) => setF((o) => ({ ...o, [k]: v }));
+  const insertVar = (v: string) => setF((o) => ({ ...o, [lastField]: (o as any)[lastField] + (((o as any)[lastField] && !(o as any)[lastField].endsWith(' ')) ? ' ' : '') + v }));
 
-  async function draft() {
+  // IA: sugerir 5 títulos (como el blog).
+  async function genTitles() {
+    if (!topic.trim()) { toast(L('Escribe de qué trata el correo.', 'Write what the email is about.')); return; }
+    setBusy('titles');
+    try {
+      const r = await fetch('/api/admin/campaigns/draft', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode: 'titles', topic, segment: seg, tone }) });
+      const j = await r.json();
+      if (!r.ok) { toastErr(j); return; }
+      setTitles(j.titles || []);
+    } finally { setBusy(''); }
+  }
+  // IA: escribir cuerpo (respeta el asunto ya elegido si lo hay), integrando variables.
+  async function draft(chosen?: { es: string; en: string }) {
     if (!topic.trim()) { toast(L('Escribe de qué trata el correo.', 'Write what the email is about.')); return; }
     setBusy('draft');
     try {
-      const r = await fetch('/api/admin/campaigns/draft', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ topic, segment: seg }) });
+      const body: any = { topic, segment: seg, tone };
+      if (chosen) { body.subject_es = chosen.es; body.subject_en = chosen.en; }
+      const r = await fetch('/api/admin/campaigns/draft', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
       const j = await r.json();
       if (!r.ok) { toastErr(j); return; }
       setF({ subject_es: j.draft.subject_es, body_es: j.draft.body_es, subject_en: j.draft.subject_en, body_en: j.draft.body_en });
+      setTitles([]);
       toast(L('Borrador listo. Revísalo y edítalo antes de enviar.', 'Draft ready. Review and edit before sending.'), 'ok');
     } finally { setBusy(''); }
   }
@@ -198,11 +249,12 @@ function ManualComposer({ segs, manuals, L, lang, segLabel, reload, onEdit, ask 
 
   const ta = { width: '100%', minHeight: 90, padding: '9px 11px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', marginTop: 4, fontFamily: 'inherit', fontSize: 13.5, resize: 'vertical' } as any;
   const inp = { width: '100%', padding: '9px 11px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', marginTop: 4 } as any;
+  const fld = (k: any) => ({ onFocus: () => setLastField(k) });
 
   return (
     <div className="card">
       <h3 style={{ marginBottom: 4 }}>✉️ {L('Envío manual (promos y noticias)', 'Manual send (promos & news)')}</h3>
-      <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{L('Elige a quién, escribe (o deja que la IA te dé un borrador), mira cuántos lo recibirán, prueba y envía.', 'Pick who, write (or let AI draft it), preview the count, test, and send.')}</p>
+      <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{L('Elige a quién, deja que la IA proponga títulos y escriba el copy en ambos idiomas con tus variables, prueba y envía.', 'Pick who, let AI suggest titles and write the copy in both languages with your variables, test and send.')}</p>
 
       <div className="grid g2" style={{ gap: 12, marginBottom: 12 }}>
         <label className="muted" style={{ fontSize: 12 }}>{L('Segmento', 'Segment')}
@@ -210,25 +262,59 @@ function ManualComposer({ segs, manuals, L, lang, segLabel, reload, onEdit, ask 
             {segs.map((s: Seg) => <option key={s.id} value={s.id}>{s[lang === 'en' ? 'en' : 'es']}</option>)}
           </select>
         </label>
-        <label className="muted" style={{ fontSize: 12 }}>{L('Tema para la IA (opcional)', 'Topic for AI (optional)')}
-          <div className="row" style={{ gap: 6, marginTop: 4 }}>
-            <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder={L('Ej: −30% en Pro por 48h', 'e.g. −30% on Pro for 48h')} style={{ ...inp, marginTop: 0 }} />
-            <button className="btn btn-ghost" onClick={draft} disabled={busy === 'draft'} style={{ whiteSpace: 'nowrap' }}>{busy === 'draft' ? '…' : '✨ ' + L('Borrador', 'Draft')}</button>
-          </div>
+        <label className="muted" style={{ fontSize: 12 }}>{L('Tono de la IA', 'AI tone')}
+          <select value={tone} onChange={(e) => setTone(e.target.value)} style={inp}>
+            {TONES.map(([id, es, en]) => <option key={id} value={id}>{lang === 'en' ? en : es}</option>)}
+          </select>
         </label>
       </div>
 
+      {/* Tema + IA (títulos y borrador, como el blog) */}
+      <div style={{ marginBottom: 12 }}>
+        <label className="muted" style={{ fontSize: 12 }}>{L('Tema para la IA', 'Topic for AI')}
+          <div className="row" style={{ gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
+            <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder={L('Ej: −30% en Pro por 48h', 'e.g. −30% on Pro for 48h')} style={{ ...inp, marginTop: 0, flex: 1, minWidth: 180 }} />
+            <button className="btn btn-ghost" onClick={genTitles} disabled={busy === 'titles'} style={{ whiteSpace: 'nowrap' }}>{busy === 'titles' ? '…' : '💡 ' + L('Sugerir títulos', 'Suggest titles')}</button>
+            <button className="btn btn-primary" onClick={() => draft()} disabled={busy === 'draft'} style={{ whiteSpace: 'nowrap' }}>{busy === 'draft' ? '…' : '✨ ' + L('Escribir copy', 'Write copy')}</button>
+          </div>
+        </label>
+        {titles.length > 0 && (
+          <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span className="muted" style={{ fontSize: 11.5 }}>{L('Toca un título para usarlo y que la IA escriba el cuerpo:', 'Tap a title to use it and let AI write the body:')}</span>
+            {titles.map((t, i) => (
+              <button key={i} type="button" onClick={() => { set('subject_es', t.es); set('subject_en', t.en); draft(t); }}
+                style={{ textAlign: 'left', border: '1px solid var(--line)', borderRadius: 9, padding: '8px 11px', background: 'var(--bg2)', color: 'var(--tx)', cursor: 'pointer', fontSize: 13 }}>
+                {t.es}<span className="muted" style={{ marginLeft: 6 }}>· EN: {t.en}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <VarChips onInsert={insertVar} L={L} />
+
       <div className="grid g2" style={{ gap: 12 }}>
         <div>
-          <label className="muted" style={{ fontSize: 12 }}>{L('Asunto (ES)', 'Subject (ES)')}<input value={f.subject_es} onChange={(e) => set('subject_es', e.target.value)} style={inp} /></label>
-          <label className="muted" style={{ fontSize: 12 }}>{L('Cuerpo (ES)', 'Body (ES)')}<textarea value={f.body_es} onChange={(e) => set('body_es', e.target.value)} style={ta} /></label>
+          <label className="muted" style={{ fontSize: 12 }}>{L('Asunto (ES)', 'Subject (ES)')}<input value={f.subject_es} onChange={(e) => set('subject_es', e.target.value)} style={inp} {...fld('subject_es')} /></label>
+          <label className="muted" style={{ fontSize: 12 }}>{L('Cuerpo (ES)', 'Body (ES)')}<textarea value={f.body_es} onChange={(e) => set('body_es', e.target.value)} style={ta} {...fld('body_es')} /></label>
         </div>
         <div>
-          <label className="muted" style={{ fontSize: 12 }}>{L('Asunto (EN)', 'Subject (EN)')}<input value={f.subject_en} onChange={(e) => set('subject_en', e.target.value)} style={inp} /></label>
-          <label className="muted" style={{ fontSize: 12 }}>{L('Cuerpo (EN)', 'Body (EN)')}<textarea value={f.body_en} onChange={(e) => set('body_en', e.target.value)} style={ta} /></label>
+          <label className="muted" style={{ fontSize: 12 }}>{L('Asunto (EN)', 'Subject (EN)')}<input value={f.subject_en} onChange={(e) => set('subject_en', e.target.value)} style={inp} {...fld('subject_en')} /></label>
+          <label className="muted" style={{ fontSize: 12 }}>{L('Cuerpo (EN)', 'Body (EN)')}<textarea value={f.body_en} onChange={(e) => set('body_en', e.target.value)} style={ta} {...fld('body_en')} /></label>
         </div>
       </div>
-      <p className="muted" style={{ fontSize: 11.5, marginTop: 8 }}>{L('Variables: {{nombre}} {{plan}} {{sitio}}. El pie con enlace de baja se añade solo.', 'Variables: {{nombre}} {{plan}} {{sitio}}. The unsubscribe footer is added automatically.')}</p>
+
+      <div className="row" style={{ gap: 8, marginTop: 8, alignItems: 'center' }}>
+        <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setShowPrev((v) => !v)}>👁 {showPrev ? L('Ocultar vista previa', 'Hide preview') : L('Vista previa', 'Preview')}</button>
+        <span className="muted" style={{ fontSize: 11 }}>{L('El pie con enlace de baja se añade solo.', 'The unsubscribe footer is added automatically.')}</span>
+      </div>
+      {showPrev && (
+        <div style={{ marginTop: 8, background: 'var(--card)', border: '1px solid var(--brand)', borderRadius: 10, padding: '10px 12px' }}>
+          <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>{L('Ejemplo con Jerry · plan Pro', 'Example with Jerry · Pro plan')}</div>
+          <div style={{ fontWeight: 700, fontSize: 13.5 }}>{fillPreview(lang === 'en' ? (f.subject_en || f.subject_es) : f.subject_es) || '—'}</div>
+          <div style={{ whiteSpace: 'pre-wrap', fontSize: 12.5, marginTop: 4 }}>{fillPreview(lang === 'en' ? (f.body_en || f.body_es) : f.body_es)}</div>
+        </div>
+      )}
 
       <div className="row" style={{ gap: 10, marginTop: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <button className="btn btn-ghost" onClick={preview} disabled={busy === 'count'}>{busy === 'count' ? '…' : '👁 ' + L('Ver cuántos', 'Preview count')}</button>
@@ -237,11 +323,13 @@ function ManualComposer({ segs, manuals, L, lang, segLabel, reload, onEdit, ask 
         <button className="btn btn-primary" onClick={send} disabled={busy === 'send'} style={{ marginLeft: 'auto' }}>{busy === 'send' ? '…' : '🚀 ' + L('Enviar ahora', 'Send now')}</button>
       </div>
 
-      {/* Programar para más tarde */}
-      <div className="row" style={{ gap: 10, marginTop: 12, alignItems: 'center', flexWrap: 'wrap', borderTop: '1px solid var(--line)', paddingTop: 12 }}>
-        <span className="muted" style={{ fontSize: 12.5 }}>🕒 {L('O prográmala:', 'Or schedule it:')}</span>
-        <input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} style={{ ...inp, width: 'auto', marginTop: 0 }} />
-        <button className="btn btn-ghost" onClick={schedule} disabled={busy === 'sched'}>{busy === 'sched' ? '…' : L('Programar', 'Schedule')}</button>
+      {/* Programar para más tarde (calendario intuitivo) */}
+      <div style={{ marginTop: 12, borderTop: '1px solid var(--line)', paddingTop: 12 }}>
+        <span className="muted" style={{ fontSize: 12.5 }}>🕒 {L('O prográmala para más tarde:', 'Or schedule it for later:')}</span>
+        <div style={{ marginTop: 6, maxWidth: 360 }}>
+          <DateTimePicker value={when} onChange={setWhen} es={lang !== 'en'} minNow />
+        </div>
+        <button className="btn btn-ghost" style={{ marginTop: 8 }} onClick={schedule} disabled={busy === 'sched'}>{busy === 'sched' ? '…' : L('Programar promo', 'Schedule promo')}</button>
       </div>
     </div>
   );
@@ -251,8 +339,37 @@ function ManualComposer({ segs, manuals, L, lang, segLabel, reload, onEdit, ask 
 function Editor({ c, segs, L, lang, onClose, onSaved }: any) {
   const [f, setF] = useState<Campaign>({ ...c });
   const [busy, setBusy] = useState(false);
+  const [aiBusy, setAiBusy] = useState('');
+  const [topic, setTopic] = useState('');
+  const [tone, setTone] = useState('friendly');
+  const [titles, setTitles] = useState<Array<{ es: string; en: string }>>([]);
+  const [showPrev, setShowPrev] = useState(false);
+  const [lastField, setLastField] = useState<'subject_es' | 'body_es' | 'subject_en' | 'body_en'>('body_es');
   const set = (k: string, v: any) => setF((o) => ({ ...o, [k]: v }));
+  const insertVar = (v: string) => setF((o) => ({ ...o, [lastField]: (o as any)[lastField] + (((o as any)[lastField] && !String((o as any)[lastField]).endsWith(' ')) ? ' ' : '') + v }));
+  const fld = (k: any) => ({ onFocus: () => setLastField(k) });
   const isAuto = c.kind !== 'manual';
+
+  async function genTitles() {
+    if (!topic.trim()) { toast(L('Escribe de qué trata el correo.', 'Write what the email is about.')); return; }
+    setAiBusy('titles');
+    try {
+      const r = await fetch('/api/admin/campaigns/draft', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode: 'titles', topic, segment: f.segment, tone }) });
+      const j = await r.json(); if (!r.ok) { toastErr(j); return; } setTitles(j.titles || []);
+    } finally { setAiBusy(''); }
+  }
+  async function draft(chosen?: { es: string; en: string }) {
+    if (!topic.trim()) { toast(L('Escribe de qué trata el correo.', 'Write what the email is about.')); return; }
+    setAiBusy('draft');
+    try {
+      const body: any = { topic, segment: f.segment, tone };
+      if (chosen) { body.subject_es = chosen.es; body.subject_en = chosen.en; }
+      const r = await fetch('/api/admin/campaigns/draft', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+      const j = await r.json(); if (!r.ok) { toastErr(j); return; }
+      setF((o) => ({ ...o, subject_es: j.draft.subject_es, body_es: j.draft.body_es, subject_en: j.draft.subject_en, body_en: j.draft.body_en }));
+      setTitles([]); toast(L('Copy generado. Revísalo antes de guardar.', 'Copy generated. Review before saving.'), 'ok');
+    } finally { setAiBusy(''); }
+  }
 
   async function save() {
     setBusy(true);
@@ -292,17 +409,50 @@ function Editor({ c, segs, L, lang, onClose, onSaved }: any) {
           )}
         </div>
 
-        <div className="grid g2" style={{ gap: 12, marginTop: 10 }}>
+        {/* IA: mismos superpoderes que el envío manual (títulos + copy bilingüe con variables) */}
+        <div style={{ marginTop: 12, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '10px 12px' }}>
+          <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder={L('Tema para la IA (ej: bienvenida cálida)', 'Topic for AI (e.g. warm welcome)')} style={{ ...inp, marginTop: 0, flex: 1, minWidth: 170 }} />
+            <select value={tone} onChange={(e) => setTone(e.target.value)} style={{ ...inp, marginTop: 0, width: 'auto' }}>
+              {TONES.map(([id, es, en]) => <option key={id} value={id}>{lang === 'en' ? en : es}</option>)}
+            </select>
+            <button className="btn btn-ghost" onClick={genTitles} disabled={aiBusy === 'titles'} style={{ whiteSpace: 'nowrap' }}>{aiBusy === 'titles' ? '…' : '💡 ' + L('Títulos', 'Titles')}</button>
+            <button className="btn btn-primary" onClick={() => draft()} disabled={aiBusy === 'draft'} style={{ whiteSpace: 'nowrap' }}>{aiBusy === 'draft' ? '…' : '✨ ' + L('Copy', 'Copy')}</button>
+          </div>
+          {titles.length > 0 && (
+            <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {titles.map((t, i) => (
+                <button key={i} type="button" onClick={() => { set('subject_es', t.es); set('subject_en', t.en); draft(t); }}
+                  style={{ textAlign: 'left', border: '1px solid var(--line)', borderRadius: 9, padding: '7px 10px', background: 'var(--card)', color: 'var(--tx)', cursor: 'pointer', fontSize: 12.5 }}>
+                  {t.es}<span className="muted" style={{ marginLeft: 6 }}>· EN: {t.en}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div style={{ marginTop: 10 }}><VarChips onInsert={insertVar} L={L} /></div>
+        <div className="grid g2" style={{ gap: 12 }}>
           <div>
-            <label className="muted" style={{ fontSize: 12 }}>{L('Asunto (ES)', 'Subject (ES)')}<input value={f.subject_es} onChange={(e) => set('subject_es', e.target.value)} style={inp} /></label>
-            <label className="muted" style={{ fontSize: 12 }}>{L('Cuerpo (ES)', 'Body (ES)')}<textarea value={f.body_es} onChange={(e) => set('body_es', e.target.value)} style={ta} /></label>
+            <label className="muted" style={{ fontSize: 12 }}>{L('Asunto (ES)', 'Subject (ES)')}<input value={f.subject_es} onChange={(e) => set('subject_es', e.target.value)} style={inp} {...fld('subject_es')} /></label>
+            <label className="muted" style={{ fontSize: 12 }}>{L('Cuerpo (ES)', 'Body (ES)')}<textarea value={f.body_es} onChange={(e) => set('body_es', e.target.value)} style={ta} {...fld('body_es')} /></label>
           </div>
           <div>
-            <label className="muted" style={{ fontSize: 12 }}>{L('Asunto (EN)', 'Subject (EN)')}<input value={f.subject_en} onChange={(e) => set('subject_en', e.target.value)} style={inp} /></label>
-            <label className="muted" style={{ fontSize: 12 }}>{L('Cuerpo (EN)', 'Body (EN)')}<textarea value={f.body_en} onChange={(e) => set('body_en', e.target.value)} style={ta} /></label>
+            <label className="muted" style={{ fontSize: 12 }}>{L('Asunto (EN)', 'Subject (EN)')}<input value={f.subject_en} onChange={(e) => set('subject_en', e.target.value)} style={inp} {...fld('subject_en')} /></label>
+            <label className="muted" style={{ fontSize: 12 }}>{L('Cuerpo (EN)', 'Body (EN)')}<textarea value={f.body_en} onChange={(e) => set('body_en', e.target.value)} style={ta} {...fld('body_en')} /></label>
           </div>
         </div>
-        <p className="muted" style={{ fontSize: 11.5, marginTop: 8 }}>{L('Variables: {{nombre}} {{plan}} {{sitio}}.', 'Variables: {{nombre}} {{plan}} {{sitio}}.')}{isAuto ? '' : ''}</p>
+        <div className="row" style={{ gap: 8, marginTop: 8, alignItems: 'center' }}>
+          <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setShowPrev((v) => !v)}>👁 {showPrev ? L('Ocultar vista previa', 'Hide preview') : L('Vista previa', 'Preview')}</button>
+          <span className="muted" style={{ fontSize: 11 }}>{L('Variables: {{nombre}} {{plan}} {{sitio}}', 'Variables: {{nombre}} {{plan}} {{sitio}}')}</span>
+        </div>
+        {showPrev && (
+          <div style={{ marginTop: 8, background: 'var(--card)', border: '1px solid var(--brand)', borderRadius: 10, padding: '10px 12px' }}>
+            <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>{L('Ejemplo con Jerry · plan Pro', 'Example with Jerry · Pro plan')}</div>
+            <div style={{ fontWeight: 700, fontSize: 13.5 }}>{fillPreview(lang === 'en' ? (f.subject_en || f.subject_es) : f.subject_es) || '—'}</div>
+            <div style={{ whiteSpace: 'pre-wrap', fontSize: 12.5, marginTop: 4 }}>{fillPreview(lang === 'en' ? (f.body_en || f.body_es) : f.body_es)}</div>
+          </div>
+        )}
 
         <div className="row" style={{ gap: 10, marginTop: 14 }}>
           <button className="btn btn-primary" onClick={save} disabled={busy}>{busy ? '…' : L('Guardar plantilla', 'Save template')}</button>

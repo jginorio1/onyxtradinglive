@@ -19,6 +19,9 @@ export const SEGMENTS: Array<{ id: string; es: string; en: string; auto?: boolea
   { id: 'no_connect', es: 'Sin conectar su cuenta', en: 'Never connected an account', auto: true },
   { id: 'inactive', es: 'Inactivos (sin sync)', en: 'Inactive (no sync)', auto: true },
   { id: 'trial_expiring', es: 'Prueba por expirar', en: 'Trial expiring', auto: true },
+  { id: 'new_signup', es: 'Recién registrados', en: 'New signups', auto: true },
+  { id: 'cancelled', es: 'Cancelaron su suscripción', en: 'Cancelled subscription', auto: true },
+  { id: 'anniversary', es: 'Aniversario de cuenta', en: 'Account anniversary', auto: true },
 ];
 
 export function segmentLabel(id: string, lang: 'es' | 'en'): string {
@@ -83,6 +86,18 @@ export async function resolveSegment(segment: string, trigger: Trigger = {}): Pr
         return hasAccount(p.id) && sync >= (minD || 14) && sync <= (maxD || 90);
       case 'trial_expiring':
         return (p.subscription_status || '') === 'trialing';
+      case 'new_signup':
+        // Registrado hace poco (def. hasta 2 días). Bienvenida, una sola vez.
+        return age <= (maxD || 2);
+      case 'cancelled':
+        // Canceló su suscripción (para reactivación / "te extrañamos").
+        return ['canceled', 'cancelled', 'unpaid'].includes((p.subscription_status || '').toLowerCase());
+      case 'anniversary': {
+        // El día (aprox.) de su aniversario de registro, cada año.
+        if (age < 360) return false;
+        const rem = age % 365;
+        return rem < 1.2;
+      }
       default: return false;
     }
   });
