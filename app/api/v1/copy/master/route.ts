@@ -48,9 +48,16 @@ export async function POST(req: Request) {
   const symbol = String(b.symbol || '');
 
   const { data: links } = await supabaseAdmin.from('copy_links')
-    .select('id,slave_account_id,mode,multiplier,risk_pct,pip_risk,max_lot,reverse,symbol_map,daily_loss_pct,max_drawdown_pct,max_spread,session_from,session_to,symbol_whitelist,max_deviation_pts,max_signal_age_s,require_sl,max_positions,per_symbol_lot_cap')
+    .select('id,slave_account_id,mode,multiplier,risk_pct,pip_risk,max_lot,reverse,symbol_map,daily_loss_pct,max_drawdown_pct,max_spread,session_from,session_to,symbol_whitelist,max_deviation_pts,max_signal_age_s,require_sl,max_positions,per_symbol_lot_cap,jitter_max_s')
     .eq('master_account_id', a.account.id).eq('enabled', true);
   if (!links?.length) return NextResponse.json({ ok: true, slaves: 0 });
+
+  // Retraso aleatorio anti-patrón (solo al abrir; cierres al instante).
+  const execAfter = (act: string, jitter: any): string | null => {
+    const j = Math.max(0, Math.min(120, Number(jitter) || 0));
+    if (act !== 'open' || j <= 0) return null;
+    return new Date(Date.now() + Math.floor(Math.random() * (j * 1000 + 1))).toISOString();
+  };
 
   // Estado de pausa de cada cuenta esclava (una consulta).
   const slaveIds = Array.from(new Set(links.map((l) => l.slave_account_id)));
@@ -101,6 +108,7 @@ export async function POST(req: Request) {
         symbol_map_str: (l.symbol_map && typeof l.symbol_map === 'object') ? Object.keys(l.symbol_map).map((k) => k + '=' + l.symbol_map[k]).join(';') : '',
       },
       status: 'pending',
+      execute_after: execAfter(action, l.jitter_max_s),
     });
   }
 

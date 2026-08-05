@@ -1082,6 +1082,46 @@ export const ARTICLES: Article[] = [
       ],
     },
   },
+  {
+    slug: 'copy-sin-baneos',
+    cat: 'funded', icon: '🛡️',
+    title: { es: 'Copy trading sin baneos: buenas prácticas anti-baneo', en: 'Copy trading without bans: anti-ban best practices' },
+    summary: {
+      es: 'Cómo evita Onyx la huella de IP compartida y qué tienes que hacer tú (VPS/IP por cuenta, reglas de la firma) para no arriesgar tu fondeo.',
+      en: 'How Onyx avoids a shared-IP fingerprint and what you must do (VPS/IP per account, firm rules) to protect your funded account.',
+    },
+    cta: { href: '/dashboard/copy', label: { es: 'Ir a Copy trading', en: 'Go to Copy trading' } },
+    body: {
+      es: [
+        { p: 'Muchas prop firms banean cuentas por "problemas de IP": cuando detectan varias cuentas operando desde la misma IP, o copia entre cuentas por un patrón de tiempo idéntico. Aquí va cómo lo maneja el copiador de Onyx y qué depende de ti.' },
+        { h: 'Onyx no centraliza la ejecución' },
+        { p: 'La nube de Onyx solo transmite la señal (qué se abrió o cerró). La orden real al bróker la ejecuta el Onyx Connect corriendo en TU terminal (tu PC o tu VPS). La operación le llega a la firma desde la IP de esa terminal, no desde nuestros servidores.' },
+        { note: 'Esto es una ventaja frente a copiadores "en la nube" donde todas las copias salen de la misma infraestructura y dejan una IP compartida idéntica en cientos de cuentas. Con Onyx eso no pasa.', title: 'Por qué importa' },
+        { h: 'Regla de oro: un VPS/IP por cuenta' },
+        { p: 'La firma ve la IP de DONDE corre la esclava. Si pones la master y la(s) esclava(s) —o varias cuentas fondeadas— en la MISMA máquina/VPS, comparten IP y la firma puede correlacionarlas. Para minimizar el riesgo, corre cada cuenta (sobre todo si son de firmas o identidades distintas) en un VPS/IP separado.' },
+        { h: 'Retraso aleatorio (jitter)' },
+        { p: 'En cada enlace de Copy puedes activar "Retraso aleatorio (s)". Onyx añade un retraso al azar (0…N s) antes de copiar cada apertura, para que el timing de la esclava NO sea idéntico al de la master y no salte por patrón. Los cierres siempre salen al instante para no dejar operaciones huérfanas.' },
+        { note: 'Un valor de 2–8 s suele bastar para romper el patrón sin perder la operación. Ponlo a 0 para desactivarlo.', title: 'Cuánto poner' },
+        { h: 'La IP es solo una señal' },
+        { p: 'Las firmas también detectan copia por: timing casi idéntico, ratios de lote iguales, mismo device fingerprint, y —lo más importante— muchas PROHÍBEN en sus reglas copiar entre cuentas fondeadas o entre traders distintos, sin importar la IP. Ninguna herramienta técnica te protege de incumplir el reglamento.' },
+        { warn: 'Esto es información técnica, no asesoría de compliance. Las reglas cambian y varían por firma: lee SIEMPRE el reglamento de tu prop firm antes de copiar entre cuentas.' },
+      ],
+      en: [
+        { p: 'Many prop firms ban accounts for "IP problems": when they detect several accounts trading from the same IP, or copying between accounts with an identical timing pattern. Here is how the Onyx copier handles it and what is on you.' },
+        { h: 'Onyx does not centralize execution' },
+        { p: 'The Onyx cloud only relays the signal (what opened or closed). The actual order to the broker is placed by the Onyx Connect running on YOUR terminal (your PC or VPS). The firm sees the trade coming from that terminal\'s IP, not from our servers.' },
+        { note: 'This is an advantage over "cloud" copiers where every copy comes from the same infrastructure and leaves an identical shared IP across hundreds of accounts. That does not happen with Onyx.', title: 'Why it matters' },
+        { h: 'Golden rule: one VPS/IP per account' },
+        { p: 'The firm sees the IP of WHERE the slave runs. If you put the master and slave(s) —or several funded accounts— on the SAME machine/VPS, they share an IP and the firm can correlate them. To minimize risk, run each account (especially across different firms or identities) on a separate VPS/IP.' },
+        { h: 'Random delay (jitter)' },
+        { p: 'On each Copy link you can turn on "Random delay (s)". Onyx adds a random delay (0…N s) before copying each open, so the slave\'s timing is NOT identical to the master and does not flag by pattern. Closes always go out instantly so no trade is left orphaned.' },
+        { note: 'A value of 2–8 s is usually enough to break the pattern without missing the trade. Set 0 to turn it off.', title: 'How much' },
+        { h: 'IP is only one signal' },
+        { p: 'Firms also flag copying by: near-identical timing, equal lot ratios, same device fingerprint, and —most importantly— many PROHIBIT copying between funded accounts or across different traders in their rules, regardless of IP. No technical tool protects you from breaking the rulebook.' },
+        { warn: 'This is technical information, not compliance advice. Rules change and vary by firm: ALWAYS read your prop firm\'s rulebook before copying between accounts.' },
+      ],
+    },
+  },
 ];
 
 // Búsqueda simple sobre título, resumen y texto

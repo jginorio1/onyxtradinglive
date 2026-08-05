@@ -96,6 +96,8 @@ export async function POST(req: Request) {
     require_sl: b.require_sl !== false,
     max_positions: Math.max(0, Math.floor(Number(b.max_positions ?? 20))),
     per_symbol_lot_cap: Math.max(0, Number(b.per_symbol_lot_cap ?? 0)),
+    // Retraso aleatorio anti-patrón (0…N s) antes de copiar cada apertura. 0 = off. Tope 120s.
+    jitter_max_s: Math.max(0, Math.min(120, Math.floor(Number(b.jitter_max_s ?? 0)))),
   };
 
   if (b.id) {

@@ -62,9 +62,17 @@ export async function relayMasterSnapshot(opts: {
   if ((macc as any)?.copy_paused) return;
 
   const { data: links } = await supabaseAdmin.from('copy_links')
-    .select('id,slave_account_id,mode,multiplier,risk_pct,pip_risk,max_lot,reverse,symbol_map,daily_loss_pct,max_drawdown_pct,max_spread,session_from,session_to,symbol_whitelist,max_deviation_pts,max_signal_age_s,require_sl,max_positions,per_symbol_lot_cap')
+    .select('id,slave_account_id,mode,multiplier,risk_pct,pip_risk,max_lot,reverse,symbol_map,daily_loss_pct,max_drawdown_pct,max_spread,session_from,session_to,symbol_whitelist,max_deviation_pts,max_signal_age_s,require_sl,max_positions,per_symbol_lot_cap,jitter_max_s')
     .eq('master_account_id', masterAccountId).eq('enabled', true);
   if (!links?.length) return;
+
+  // Retraso aleatorio anti-patrón: al ABRIR, la esclava no recibe el comando hasta
+  // execute_after = ahora + random(0..jitter). Los cierres salen al instante (null).
+  const execAfter = (action: string, jitter: any): string | null => {
+    const j = Math.max(0, Math.min(120, Number(jitter) || 0));
+    if (action !== 'open' || j <= 0) return null;
+    return new Date(Date.now() + Math.floor(Math.random() * (j * 1000 + 1))).toISOString();
+  };
 
   // Pausa de cada esclava.
   const slaveIds = Array.from(new Set(links.map((l) => l.slave_account_id)));
@@ -100,15 +108,15 @@ export async function relayMasterSnapshot(opts: {
         volume_hint: Number(p.volume) || 0,
         sl: p.sl != null ? Number(p.sl) : null, tp: p.tp != null ? Number(p.tp) : null,
         price: p.price != null ? Number(p.price) : null,
-        payload: mkPayload(l), status: 'pending',
+        payload: mkPayload(l), status: 'pending', execute_after: execAfter('open', l.jitter_max_s),
       });
     }
-    // Cierres: siempre pasan.
+    // Cierres: siempre pasan (sin retraso, para no dejar huérfanas).
     for (const tk of closedTickets) {
       rows.push({
         link_id: l.id, slave_account_id: l.slave_account_id, action: 'close',
         master_ticket: String(tk), base_symbol: '', side: '', volume_hint: 0,
-        sl: null, tp: null, price: null, payload: mkPayload(l), status: 'pending',
+        sl: null, tp: null, price: null, payload: mkPayload(l), status: 'pending', execute_after: null,
       });
     }
   }

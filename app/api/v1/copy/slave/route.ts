@@ -11,9 +11,13 @@ export async function GET(req: Request) {
   const a = await authAccount(req);
   if (!a) return NextResponse.json({ error: 'invalid api key' }, { status: 401 });
 
+  // Solo comandos "maduros": sin retraso (execute_after null) o cuya hora ya llegó.
+  // El retraso aleatorio (jitter) hace que la apertura no se entregue hasta su hora.
+  const nowIso = new Date().toISOString();
   const { data: cmds } = await supabaseAdmin.from('copy_commands')
-    .select('id,action,master_ticket,base_symbol,side,volume_hint,sl,tp,price,payload,created_at')
+    .select('id,action,master_ticket,base_symbol,side,volume_hint,sl,tp,price,payload,created_at,execute_after')
     .eq('slave_account_id', a.account.id).eq('status', 'pending')
+    .or(`execute_after.is.null,execute_after.lte.${nowIso}`)
     .order('created_at', { ascending: true }).limit(50);
 
   if (cmds?.length) {
@@ -28,8 +32,11 @@ export async function GET(req: Request) {
 
   const now = Date.now();
   const out = (cmds || []).map((c: any) => {
-    const { created_at, ...rest } = c;
-    const age_ms = created_at ? Math.max(0, now - new Date(created_at).getTime()) : 0;
+    const { created_at, execute_after, ...rest } = c;
+    // La antigüedad se mide desde execute_after (cuando había retraso deliberado) o
+    // desde created_at: así el jitter NO cuenta como "señal vieja".
+    const baseT = execute_after ? new Date(execute_after).getTime() : (created_at ? new Date(created_at).getTime() : now);
+    const age_ms = Math.max(0, now - baseT);
     return { ...rest, age_ms };
   });
   return NextResponse.json({ commands: out, paused });

@@ -100,6 +100,7 @@ const T: any = {
     whitelistPh: 'EURUSD, XAUUSD… (vacío = todos)', riskNote: 'La sesión y la lista de símbolos las aplica el servidor; el resto, la EA esclava.',
     onNote: 'Todo viene encendido para cuidar la cuenta. Pon 0 para apagar un control.',
     dev: 'Desvío máx entrada (pts)', sigAge: 'Antigüedad máx señal (s)', maxPos: 'Máx posiciones', symCap: 'Tope lote por símbolo', requireSL: 'Exigir Stop Loss',
+    jitter: 'Retraso aleatorio (s)', jitterNote: 'Añade un retraso al azar (0…N s) antes de copiar cada apertura, para que el timing NO sea idéntico al de la master. Reduce el riesgo de que una prop firm detecte copia por patrón. Los cierres siempre salen al instante. 0 = sin retraso.',
     symMap: 'Tabla de símbolos (una por línea: MASTER=ESCLAVA)', symMapPh: 'US100=NAS100\nGOLD=XAUUSD',
     dupTitle: 'Esta cuenta ya está en copia', dupBodyA: 'ya está activa como', dupBodyB: 'del enlace', dupRoleM: 'MASTER', dupRoleS: 'ESCLAVA',
     dupWarn: 'Usarla en dos enlaces puede duplicar operaciones y romper tu gestión de riesgo.', dupCancel: 'Elegir otra', dupGo: 'Continuar de todos modos',
@@ -200,6 +201,7 @@ const T: any = {
     whitelistPh: 'EURUSD, XAUUSD… (empty = all)', riskNote: 'Session and symbol list are enforced by the server; the rest by the slave EA.',
     onNote: 'Everything is on by default to protect the account. Set 0 to turn a control off.',
     dev: 'Max entry deviation (pts)', sigAge: 'Max signal age (s)', maxPos: 'Max positions', symCap: 'Per-symbol lot cap', requireSL: 'Require Stop Loss',
+    jitter: 'Random delay (s)', jitterNote: 'Adds a random delay (0…N s) before copying each open, so the timing is NOT identical to the master. Lowers the chance a prop firm flags copying by pattern. Closes always go out instantly. 0 = no delay.',
     symMap: 'Symbol table (one per line: MASTER=SLAVE)', symMapPh: 'US100=NAS100\nGOLD=XAUUSD',
     dupTitle: 'This account is already copying', dupBodyA: 'is already active as', dupBodyB: 'of link', dupRoleM: 'MASTER', dupRoleS: 'SLAVE',
     dupWarn: 'Using it in two links can duplicate trades and break your risk management.', dupCancel: 'Pick another', dupGo: 'Continue anyway',
@@ -220,7 +222,7 @@ const T: any = {
 function blankLink() {
   return { master_account_id: '', slave_account_id: '', mode: 'balance', multiplier: 1, risk_pct: 1, pip_risk: 20, max_lot: 50, reverse: false,
     daily_loss_pct: 5, max_drawdown_pct: 10, max_spread: 30, session_from: '', session_to: '', symbol_whitelist: [],
-    max_deviation_pts: 20, max_signal_age_s: 30, require_sl: true, max_positions: 20, per_symbol_lot_cap: 0, symbol_map: {}, symbol_rows: [] };
+    max_deviation_pts: 20, max_signal_age_s: 30, require_sl: true, max_positions: 20, per_symbol_lot_cap: 0, jitter_max_s: 0, symbol_map: {}, symbol_rows: [] };
 }
 
 export default function CopyClient() {
@@ -374,6 +376,8 @@ export default function CopyClient() {
       <label className="muted" style={{ fontSize: 12 }}>{t.sigAge}<input type="number" value={o.max_signal_age_s} onChange={(e) => set('max_signal_age_s', Number(e.target.value))} style={{ marginTop: 3 }} /></label>
       <label className="muted" style={{ fontSize: 12 }}>{t.maxPos}<input type="number" value={o.max_positions} onChange={(e) => set('max_positions', Number(e.target.value))} style={{ marginTop: 3 }} /></label>
       <label className="muted" style={{ fontSize: 12 }}>{t.symCap}<input type="number" step="0.01" value={o.per_symbol_lot_cap} onChange={(e) => set('per_symbol_lot_cap', Number(e.target.value))} style={{ marginTop: 3 }} /></label>
+      <label className="muted" style={{ fontSize: 12 }}>🎲 {t.jitter}<input type="number" min={0} value={o.jitter_max_s ?? 0} onChange={(e) => set('jitter_max_s', Number(e.target.value))} style={{ marginTop: 3 }} /></label>
+      <div className="muted" style={{ fontSize: 11, gridColumn: '1 / -1', lineHeight: 1.4 }}>{t.jitterNote}</div>
       <label className="muted row" style={{ fontSize: 12, gap: 8, alignItems: 'center', gridColumn: '1 / -1' }}><input type="checkbox" checked={o.require_sl !== false} onChange={(e) => set('require_sl', e.target.checked)} style={{ width: 'auto', margin: 0 }} /> {t.requireSL}</label>
       <div style={{ gridColumn: '1 / -1' }}>
         <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{t.symMap}</div>
@@ -771,7 +775,7 @@ function linkPayload(l: any) {
     max_spread: l.max_spread || 0, session_from: l.session_from || '', session_to: l.session_to || '',
     symbol_whitelist: l.symbol_whitelist || [],
     max_deviation_pts: l.max_deviation_pts ?? 20, max_signal_age_s: l.max_signal_age_s ?? 30,
-    require_sl: l.require_sl !== false, max_positions: l.max_positions ?? 20, per_symbol_lot_cap: l.per_symbol_lot_cap ?? 0,
+    require_sl: l.require_sl !== false, max_positions: l.max_positions ?? 20, per_symbol_lot_cap: l.per_symbol_lot_cap ?? 0, jitter_max_s: l.jitter_max_s ?? 0,
     symbol_map: l.symbol_rows ? rowsToObj(l.symbol_rows) : (l.symbol_map || {}),
   };
 }

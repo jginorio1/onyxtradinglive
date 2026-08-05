@@ -5,5 +5,5 @@
     "baseUrl": ".", "paths": { "@/*": ["./*"] }, "types": [],
     "allowJs": true, "strict": true, "noImplicitAny": false
   },
-  "include": ["app/components/DateTimePicker.tsx","lib/segments.ts","lib/campaigns.ts","lib/campaignAI.ts","app/api/admin/campaigns/draft/route.ts","app/admin/Campaigns.tsx","app/admin/AdminClient.tsx"]
+  "include": ["lib/guide.ts","lib/copyRelay.ts","app/api/v1/copy/master/route.ts","app/api/v1/copy/slave/route.ts","app/api/copy/links/route.ts","app/dashboard/copy/CopyClient.tsx"]
 }
