@@ -27,7 +27,12 @@ const A: any = {
     paypal: 'PayPal', usdt: 'USDT (cripto)', credit: 'Crédito en mi plan', stripe: 'Stripe (a tu banco/tarjeta)',
     stripeNote: 'Con Stripe cobras automático: el pago llega a tu banco o tarjeta sin que rellenes nada aquí.',
     stripeConnect: 'Conectar con Stripe', stripeReady: 'Conectado · listo para cobrar', stripePend: 'Falta terminar tu registro en Stripe',
-    stripeFinish: 'Terminar registro', openDash: 'Ver mi panel de Stripe', usdtHint: 'Pega tu dirección USDT (red TRC20 o ERC20).',
+    stripeFinish: 'Terminar registro', openDash: 'Ver mi panel de Stripe', usdtHint: 'Pega tu dirección USDT',
+    network: 'Red', netBad: 'La dirección no coincide con la red elegida', netOk: 'Dirección válida', usdtQr: 'Escanea para confirmar que es tu dirección',
+    creditExpl: 'Tu comisión se convierte en saldo de tu suscripción. Se descuenta solo de tu próxima factura, sin bancos ni comisiones.',
+    creditAvail: 'Comisión disponible', creditApplied: 'Saldo a favor ya aplicado a tu plan',
+    reqTitle: 'Confirmar solicitud de pago', reqAmount: 'Monto', reqMethod: 'Método',
+    reqDays: 'Los pagos pueden tardar entre 1 y 5 días laborables.', reqType: 'Escribe', reqConfirm: 'Confirmar solicitud', cancel: 'Cancelar', reqTypeBad: 'Debes escribir I ACCEPT (en mayúsculas) para continuar.',
     hist: 'Historial de pagos', noHist: 'Todavía no has solicitado ningún pago.',
     stReq: 'solicitado', stPaid: 'pagado', stRej: 'rechazado',
     aiKitT: 'Generar publicaciones con AI', aiKitD: 'Elige tu plataforma y la IA te crea un post listo, con tu enlace y código ya puestos.',
@@ -55,7 +60,12 @@ const A: any = {
     paypal: 'PayPal', usdt: 'USDT (crypto)', credit: 'Credit on my plan', stripe: 'Stripe (to your bank/card)',
     stripeNote: 'With Stripe you get paid automatically — money lands in your bank or card, nothing to fill in here.',
     stripeConnect: 'Connect with Stripe', stripeReady: 'Connected · ready to get paid', stripePend: 'Finish your Stripe onboarding',
-    stripeFinish: 'Finish setup', openDash: 'Open my Stripe dashboard', usdtHint: 'Paste your USDT address (TRC20 or ERC20 network).',
+    stripeFinish: 'Finish setup', openDash: 'Open my Stripe dashboard', usdtHint: 'Paste your USDT address',
+    network: 'Network', netBad: 'Address does not match the selected network', netOk: 'Valid address', usdtQr: 'Scan to confirm it is your address',
+    creditExpl: 'Your commission becomes credit on your subscription. It is applied to your next invoice only — no banks, no fees.',
+    creditAvail: 'Commission available', creditApplied: 'Credit already applied to your plan',
+    reqTitle: 'Confirm payout request', reqAmount: 'Amount', reqMethod: 'Method',
+    reqDays: 'Payments can take 1 to 5 business days.', reqType: 'Type', reqConfirm: 'Confirm request', cancel: 'Cancel', reqTypeBad: 'You must type I ACCEPT (uppercase) to continue.',
     hist: 'Payout history', noHist: 'You have not requested any payout yet.',
     stReq: 'requested', stPaid: 'paid', stRej: 'rejected',
     aiKitT: 'Generate posts with AI', aiKitD: 'Pick your platform and AI writes a ready-to-post caption, with your link and code already in it.',
@@ -68,13 +78,23 @@ const A: any = {
   },
 };
 
+// Validación básica de dirección cripto por red, para evitar enviar a la equivocada.
+function addrValid(addr: string, network: string): boolean {
+  const a = String(addr || '').trim();
+  if (network === 'TRC20') return /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(a);       // Tron: T + 33
+  return /^0x[0-9a-fA-F]{40}$/.test(a);                                        // ERC20/BEP20: 0x + 40 hex
+}
+
 export default function Ambassador({ lang }: { lang: Lang }) {
   const [d, setD] = useState<any>(null);
   const [busy, setBusy] = useState('');
   const [copied, setCopied] = useState('');
   const [pm, setPm] = useState('stripe');
   const [pd, setPd] = useState('');
-  const [conn, setConn] = useState<any>(null);   // estado de Stripe Connect
+  const [net, setNet] = useState('TRC20');        // red de la wallet cripto
+  const [conn, setConn] = useState<any>(null);    // estado de Stripe Connect
+  const [reqOpen, setReqOpen] = useState(false);  // popup de solicitar pago
+  const [accept, setAccept] = useState('');       // texto "I ACCEPT"
   const [origin, setOrigin] = useState('');
   const [plat, setPlat] = useState('instagram');
   const [aiText, setAiText] = useState('');
@@ -102,6 +122,7 @@ export default function Ambassador({ lang }: { lang: Lang }) {
         const savedM = j.ambassador.payout_method;
         setPm(!savedM || savedM === 'paypal' ? 'stripe' : savedM);
         setPd(j.ambassador.payout_details || '');
+        if (j.ambassador.payout_network) setNet(j.ambassador.payout_network);
         loadConnect();
       }
     } catch { setD({ ambassador: null }); }
@@ -123,18 +144,21 @@ export default function Ambassador({ lang }: { lang: Lang }) {
   async function savePayout() {
     // Con Stripe los datos se completan en su onboarding; para el resto son obligatorios.
     if (pm !== 'stripe' && String(pd || '').trim().length < 4) { toast(errMsg({ code: 'need_details' }, lang)); return; }
+    if (pm === 'usdt' && !addrValid(pd, net)) { toast(t.netBad); return; }
     setBusy('pay');
-    const r = await fetch('/api/ambassador', { method: 'PATCH', body: JSON.stringify({ payout_method: pm, payout_details: pd }) });
+    const r = await fetch('/api/ambassador', { method: 'PATCH', body: JSON.stringify({ payout_method: pm, payout_details: pd, payout_network: pm === 'usdt' ? net : null }) });
     const j = await r.json(); setBusy('');
     if (!r.ok) { toast(errMsg(j, lang)); return; }
     setCopied('saved'); setTimeout(() => setCopied(''), 2000);
   }
-  async function requestPayout() {
+  // Se abre el popup; el pago solo se solicita tras escribir I ACCEPT.
+  async function confirmRequestPayout() {
+    if (accept.trim() !== 'I ACCEPT') { toast(t.reqTypeBad); return; }
     setBusy('req');
     const r = await fetch('/api/ambassador/payout', { method: 'POST' });
     const j = await r.json(); setBusy('');
     if (!r.ok) { toast(errMsg(j, lang)); return; }
-    toast(t.reqOk); load();
+    setReqOpen(false); setAccept(''); toast(t.reqOk); load();
   }
 
   if (!d) return <div className="card muted">…</div>;
@@ -224,9 +248,12 @@ export default function Ambassador({ lang }: { lang: Lang }) {
           <div><div className="muted" style={{ fontSize: 13 }}>{t.available}</div><div style={{ fontSize: 22, fontWeight: 800, color: 'var(--green)' }}>${bal.available}</div></div>
           <div><div className="muted" style={{ fontSize: 13 }}>{t.paid}</div><div style={{ fontSize: 22, fontWeight: 800 }}>${bal.paid}</div></div>
         </div>
-        <p className="muted" style={{ fontSize: 12, margin: '10px 0 12px' }}>{t.holdNote}</p>
+        <p className="muted" style={{ fontSize: 12, margin: '10px 0 6px' }}>{t.holdNote}</p>
+        <p className="muted" style={{ fontSize: 12, margin: '0 0 12px', display: 'flex', gap: 6, alignItems: 'center' }}>
+          <span style={{ color: 'var(--amber)' }}>⏱</span> {t.reqDays}
+        </p>
         <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
-          <button className="btn btn-primary" onClick={requestPayout} disabled={!canReq || busy === 'req'}>{busy === 'req' ? t.reqing : t.req}</button>
+          <button className="btn btn-primary" onClick={() => { setAccept(''); setReqOpen(true); }} disabled={!canReq || busy === 'req'}>{busy === 'req' ? t.reqing : t.req}</button>
           {!canReq && <span className="muted" style={{ fontSize: 13 }}>{t.minNote} ${s.min_payout || 50}</span>}
         </div>
       </div>
@@ -258,13 +285,56 @@ export default function Ambassador({ lang }: { lang: Lang }) {
               </div>
             )}
           </div>
+        ) : pm === 'credit' ? (
+          <div style={{ marginTop: 12 }}>
+            <div style={{ background: 'rgba(124,140,255,.12)', borderRadius: 10, padding: '10px 12px', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <span style={{ fontSize: 18 }}>🎁</span>
+              <div style={{ fontSize: 13, color: '#9aa4ff', lineHeight: 1.6 }}>{t.creditExpl}</div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--line)', marginTop: 12, paddingTop: 10, fontSize: 13 }}>
+              <span className="muted">{t.creditAvail}</span><span style={{ fontWeight: 700, color: 'var(--green)' }}>${bal.available}</span>
+            </div>
+            {Number(d.creditBalance) > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 6, fontSize: 13 }}>
+                <span className="muted">{t.creditApplied}</span><span style={{ fontWeight: 700 }}>${d.creditBalance}</span>
+              </div>
+            )}
+            <div className="row" style={{ gap: 10, marginTop: 14 }}>
+              <button className="btn btn-ghost" onClick={savePayout} disabled={busy === 'pay'} style={{ fontSize: 13 }}>{busy === 'pay' ? '...' : t.save}</button>
+              {copied === 'saved' && <span style={{ color: 'var(--green)', fontSize: 13 }}>{t.saved}</span>}
+            </div>
+          </div>
         ) : (
           <>
-            <span style={lbl}>{t.details}</span>
-            <input value={pd} onChange={(e) => setPd(e.target.value)} placeholder={pm === 'usdt' ? t.usdtHint : ''} style={{ margin: '4px 0 0', maxWidth: 420 }} />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 8, maxWidth: 460 }}>
+              <div>
+                <span style={lbl}>{t.network}</span>
+                <select value={net} onChange={(e) => setNet(e.target.value)} style={{ margin: '4px 0 0' }}>
+                  <option value="TRC20">USDT · TRC20</option>
+                  <option value="ERC20">USDT · ERC20</option>
+                  <option value="BEP20">USDT · BEP20</option>
+                </select>
+              </div>
+              <div>
+                <span style={lbl}>{t.details}</span>
+                <input value={pd} onChange={(e) => setPd(e.target.value)} placeholder={t.usdtHint} style={{ margin: '4px 0 0' }} />
+              </div>
+            </div>
+            {pd.trim().length >= 6 && (
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 10, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '10px 12px', maxWidth: 460 }}>
+                {addrValid(pd, net)
+                  ? <img src={`/api/qr?data=${encodeURIComponent(pd.trim())}&size=120`} alt="QR" width={72} height={72} style={{ borderRadius: 8, background: '#fff', padding: 4 }} />
+                  : <div style={{ width: 72, height: 72, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--red)', fontSize: 26 }}>⚠</div>}
+                <div style={{ fontSize: 12, lineHeight: 1.6 }}>
+                  {addrValid(pd, net)
+                    ? <><span style={{ color: 'var(--green)' }}>✓ {t.netOk} ({net})</span><br /><span className="muted">{t.usdtQr}</span></>
+                    : <span style={{ color: 'var(--red)' }}>{t.netBad}</span>}
+                </div>
+              </div>
+            )}
             <div className="row" style={{ gap: 10, marginTop: 14 }}>
-              <button className="btn btn-primary" onClick={savePayout} disabled={busy === 'pay' || String(pd || '').trim().length < 4}
-                style={{ opacity: String(pd || '').trim().length < 4 ? .5 : 1 }}>{busy === 'pay' ? '...' : t.save}</button>
+              <button className="btn btn-primary" onClick={savePayout} disabled={busy === 'pay' || !addrValid(pd, net)}
+                style={{ opacity: addrValid(pd, net) ? 1 : .5 }}>{busy === 'pay' ? '...' : t.save}</button>
               {copied === 'saved' && <span style={{ color: 'var(--green)', fontSize: 13 }}>{t.saved}</span>}
             </div>
           </>
@@ -326,6 +396,29 @@ export default function Ambassador({ lang }: { lang: Lang }) {
           </div>
         ))}
       </div>
+
+      {/* Popup: confirmar solicitud de pago (escribir I ACCEPT) */}
+      {reqOpen && (
+        <div onClick={() => setReqOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div onClick={(e) => e.stopPropagation()} className="card" style={{ maxWidth: 380, width: '100%' }}>
+            <h3 style={{ marginBottom: 12 }}>{t.reqTitle}</h3>
+            <div style={{ fontSize: 13, display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+              <div className="row between"><span className="muted">{t.reqAmount}</span><b>${bal.available}</b></div>
+              <div className="row between"><span className="muted">{t.reqMethod}</span><span>{pm === 'stripe' ? t.stripe : pm === 'usdt' ? `USDT · ${net}` : t.credit}</span></div>
+            </div>
+            <div style={{ background: 'rgba(240,160,20,.12)', borderRadius: 10, padding: '9px 11px', fontSize: 12, color: 'var(--amber)', display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 12 }}>
+              <span>⏱</span><span>{t.reqDays}</span>
+            </div>
+            <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{t.reqType} <code style={{ fontWeight: 700 }}>I ACCEPT</code></div>
+            <input value={accept} onChange={(e) => setAccept(e.target.value)} placeholder="I ACCEPT" style={{ fontFamily: 'var(--font-mono, monospace)' }} />
+            <div className="row" style={{ gap: 8, marginTop: 14, justifyContent: 'flex-end' }}>
+              <button className="btn btn-ghost" onClick={() => setReqOpen(false)}>{t.cancel}</button>
+              <button className="btn btn-primary" onClick={confirmRequestPayout} disabled={busy === 'req' || accept.trim() !== 'I ACCEPT'}
+                style={{ opacity: accept.trim() === 'I ACCEPT' ? 1 : .5 }}>{busy === 'req' ? t.reqing : t.reqConfirm}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

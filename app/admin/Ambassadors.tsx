@@ -132,6 +132,8 @@ export default function Ambassadors() {
   const [d, setD] = useState<any>(null);
   const [busy, setBusy] = useState('');
   const [s, setS] = useState<any>({});
+  const [payM, setPayM] = useState<any>(null);   // payout que se está confirmando
+  const [txid, setTxid] = useState('');
 
   useEffect(() => { load(); }, []);
   async function load() {
@@ -148,18 +150,20 @@ export default function Ambassadors() {
     if (action === 'pay' && j.transfer_id) toast(L('Pago enviado por Stripe ✓', 'Payout sent via Stripe ✓'));
     load();
   }
-  // Pagar un payout: Stripe = transferencia automática; cripto/otro = marcar con referencia.
-  async function payPayout(p: any) {
-    const isStripe = (p.method || p.amb_method) === 'stripe';
-    if (isStripe && p.stripe_ready) {
-      if (confirm(`${t.am_confirmPaid} $${p.amount} — Stripe?`)) act('pay', p.id);
-      return;
-    }
-    if (isStripe && !p.stripe_ready) {
-      toast(L('Este embajador aún no terminó de conectar Stripe. Puedes marcarlo pagado a mano.', 'This ambassador has not finished connecting Stripe. You can mark it paid manually.'));
-    }
-    const ref = prompt(L('Referencia del pago (hash/txid, opcional):', 'Payment reference (hash/txid, optional):')) ?? '';
-    act('mark_paid', p.id, null, undefined, { tx_ref: ref });
+  // Abre el modal de confirmación (Stripe automático o cripto con QR + txid).
+  function payPayout(p: any) { setTxid(''); setPayM(p); }
+
+  // Ejecuta el pago de Stripe (transferencia real) desde el modal.
+  async function doStripePay() {
+    if (!payM) return;
+    await act('pay', payM.id);
+    setPayM(null);
+  }
+  // Marca pagado a mano (cripto/otro) con la referencia escrita.
+  async function doManualPay() {
+    if (!payM) return;
+    await act('mark_paid', payM.id, null, undefined, { tx_ref: txid });
+    setPayM(null);
   }
 
   if (!d) return <div className="card muted">…</div>;
@@ -289,6 +293,70 @@ export default function Ambassadors() {
           </div>
         );
       })}
+
+      {payM && (() => {
+        const isStripe = (payM.method || payM.amb_method) === 'stripe';
+        const isUsdt = (payM.method || payM.amb_method) === 'usdt';
+        const amb = list.find((a) => a.id === payM.ambassador_id);
+        return (
+          <div onClick={() => setPayM(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+            <div onClick={(e) => e.stopPropagation()} className="card" style={{ maxWidth: 400, width: '100%' }}>
+              <h3 style={{ marginBottom: 12 }}>{L('Confirmar pago', 'Confirm payout')}</h3>
+              <div style={{ fontSize: 13, display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+                <div className="row between"><span className="muted">{L('Monto', 'Amount')}</span><b>${payM.amount}</b></div>
+                <div className="row between"><span className="muted">{L('Embajador', 'Ambassador')}</span><span>{amb?.email || payM.amb_code || '—'}</span></div>
+                <div className="row between"><span className="muted">{L('Método', 'Method')}</span><span>{METHOD[payM.method || payM.amb_method] || '—'}{isUsdt && payM.amb_network ? ` · ${payM.amb_network}` : ''}</span></div>
+              </div>
+
+              {isStripe ? (
+                p_stripeReady(payM) ? (
+                  <>
+                    <div style={{ background: 'rgba(55,138,221,.12)', borderRadius: 10, padding: '9px 11px', fontSize: 12, color: 'var(--soft-brand)', marginBottom: 12 }}>
+                      {L('Se transferirá el monto a su cuenta de Stripe. Puede tardar 1–5 días laborables en llegar a su banco.', 'The amount will be transferred to their Stripe account. It can take 1–5 business days to reach their bank.')}
+                    </div>
+                    <div className="row" style={{ gap: 8, justifyContent: 'flex-end' }}>
+                      <button className="btn btn-ghost" onClick={() => setPayM(null)}>{L('Cancelar', 'Cancel')}</button>
+                      <button className="btn btn-primary" onClick={doStripePay} disabled={busy === payM.id}>{L('Pagar por Stripe', 'Pay via Stripe')}</button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ background: 'rgba(240,160,20,.12)', borderRadius: 10, padding: '9px 11px', fontSize: 12, color: 'var(--amber)', marginBottom: 12 }}>
+                      {L('Aún no terminó de conectar Stripe. Puedes marcarlo pagado a mano.', 'They have not finished connecting Stripe. You can mark it paid manually.')}
+                    </div>
+                    <input value={txid} onChange={(e) => setTxid(e.target.value)} placeholder={L('Referencia (opcional)', 'Reference (optional)')} style={{ marginBottom: 12 }} />
+                    <div className="row" style={{ gap: 8, justifyContent: 'flex-end' }}>
+                      <button className="btn btn-ghost" onClick={() => setPayM(null)}>{L('Cancelar', 'Cancel')}</button>
+                      <button className="btn btn-primary" onClick={doManualPay} disabled={busy === payM.id}>{t.am_markPaid}</button>
+                    </div>
+                  </>
+                )
+              ) : (
+                <>
+                  {isUsdt && payM.amb_details && (
+                    <div style={{ display: 'flex', gap: 12, alignItems: 'center', background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '10px 12px', marginBottom: 12 }}>
+                      <img src={`/api/qr?data=${encodeURIComponent(payM.amb_details)}&size=160`} alt="QR" width={96} height={96} style={{ borderRadius: 8, background: '#fff', padding: 4 }} />
+                      <div style={{ fontSize: 12, minWidth: 0 }}>
+                        <div className="muted">{payM.amb_network || 'USDT'}</div>
+                        <div style={{ wordBreak: 'break-all' }}>{payM.amb_details}</div>
+                        <button className="btn btn-ghost" style={{ padding: '4px 8px', fontSize: 12, marginTop: 6 }} onClick={() => navigator.clipboard.writeText(payM.amb_details)}>{L('Copiar dirección', 'Copy address')}</button>
+                      </div>
+                    </div>
+                  )}
+                  <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{L('Escanea, envía desde tu wallet y pega el txid:', 'Scan, send from your wallet and paste the txid:')}</div>
+                  <input value={txid} onChange={(e) => setTxid(e.target.value)} placeholder="txid" style={{ marginBottom: 12 }} />
+                  <div className="row" style={{ gap: 8, justifyContent: 'flex-end' }}>
+                    <button className="btn btn-ghost" onClick={() => setPayM(null)}>{L('Cancelar', 'Cancel')}</button>
+                    <button className="btn btn-primary" onClick={doManualPay} disabled={busy === payM.id}>{t.am_markPaid}</button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        );
+      })()}
     </>
   );
 }
+
+function p_stripeReady(p: any): boolean { return !!p.stripe_ready; }

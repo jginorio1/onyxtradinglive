@@ -72,8 +72,31 @@ export async function runPayout(payoutId: string): Promise<PayResult> {
   if (pay.status === 'paid') return { ok: false, error: 'already_paid' };
 
   const { data: amb } = await supabaseAdmin.from('ambassadors')
-    .select('id,payout_method,stripe_account_id,payouts_enabled').eq('id', pay.ambassador_id).maybeSingle();
+    .select('id,user_id,payout_method,stripe_account_id,payouts_enabled').eq('id', pay.ambassador_id).maybeSingle();
   if (!amb) return { ok: false, error: 'ambassador_not_found' };
+
+  // "Crédito en mi plan": aplica el monto como saldo a favor en la propia
+  // suscripción del embajador (Stripe customer balance). Negativo = crédito.
+  if ((amb as any).payout_method === 'credit') {
+    const { data: prof } = await supabaseAdmin.from('profiles').select('stripe_customer_id').eq('id', (amb as any).user_id).maybeSingle();
+    const cust = (prof as any)?.stripe_customer_id;
+    if (!cust) return { ok: false, error: 'no_stripe_customer' };
+    const cents = Math.round(Number(pay.amount) * 100);
+    if (cents <= 0) return { ok: false, error: 'zero_amount' };
+    try {
+      const bt = await stripe.customers.createBalanceTransaction(cust, {
+        amount: -cents,   // negativo = crédito a favor del cliente
+        currency: String(pay.currency || 'usd').toLowerCase(),
+        description: `Onyx · comisión de embajador aplicada como crédito (payout ${payoutId})`,
+      });
+      await supabaseAdmin.from('ambassador_payouts')
+        .update({ status: 'paid', paid_at: new Date().toISOString(), method: 'credit', tx_ref: bt.id }).eq('id', payoutId);
+      await supabaseAdmin.from('commissions').update({ status: 'paid' }).eq('payout_id', payoutId);
+      return { ok: true, auto: true, transfer_id: bt.id };
+    } catch (e: any) {
+      return { ok: false, error: e?.message || 'stripe_credit_failed' };
+    }
+  }
 
   if ((amb as any).payout_method === 'stripe') {
     if (!(amb as any).stripe_account_id || !(amb as any).payouts_enabled) return { ok: false, error: 'connect_not_ready' };

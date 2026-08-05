@@ -50,12 +50,13 @@ export async function GET() {
     const payList: any[] = [];
     for (const p of payouts || []) {
       const { data: a } = await supabaseAdmin.from('ambassadors')
-        .select('code,payout_method,payout_details,payouts_enabled,stripe_account_id').eq('id', p.ambassador_id).maybeSingle();
+        .select('code,payout_method,payout_details,payout_network,payouts_enabled,stripe_account_id').eq('id', p.ambassador_id).maybeSingle();
       payList.push({
         ...p,
         amb_code: (a as any)?.code || '',
         amb_method: (a as any)?.payout_method || 'stripe',
         amb_details: (a as any)?.payout_details || '',
+        amb_network: (a as any)?.payout_network || null,
         stripe_ready: !!((a as any)?.stripe_account_id && (a as any)?.payouts_enabled),
       });
     }

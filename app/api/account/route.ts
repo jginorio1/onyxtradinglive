@@ -48,6 +48,16 @@ export async function GET() {
       } catch { /* la suscripción pudo borrarse en Stripe */ }
     }
 
+    // Saldo a favor del cliente (crédito de embajador aplicado al plan). En Stripe
+    // el balance es NEGATIVO cuando hay crédito.
+    let creditBalance = 0;
+    if (prof?.stripe_customer_id) {
+      try {
+        const c: any = await stripe.customers.retrieve(prof.stripe_customer_id);
+        if (c && !c.deleted && typeof c.balance === 'number' && c.balance < 0) creditBalance = Math.round((-c.balance) / 100 * 100) / 100;
+      } catch { /* sin cliente */ }
+    }
+
     const limit = await accountLimit(user.id);
     const addons = await addonSettings();
     const retention = await retentionSettings();

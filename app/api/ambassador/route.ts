@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { ambSettings, rateFor, balances, codeFromEmail } from '@/lib/ambassadors';
+import { stripe } from '@/lib/stripe';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -25,13 +26,27 @@ export async function GET() {
     const { data: pays } = await supabaseAdmin.from('ambassador_payouts').select('id,amount,method,status,requested_at,paid_at').eq('ambassador_id', amb.id).order('requested_at', { ascending: false }).limit(20);
     const { data: recent } = await supabaseAdmin.from('commissions').select('amount,currency,status,created_at,available_at').eq('ambassador_id', amb.id).order('created_at', { ascending: false }).limit(20);
 
+    // Saldo a favor ya aplicado a su suscripción (para el método "crédito en mi plan").
+    // En Stripe el balance del cliente es NEGATIVO cuando tiene crédito.
+    let creditBalance = 0;
+    try {
+      const { data: prof } = await supabaseAdmin.from('profiles').select('stripe_customer_id').eq('id', user.id).maybeSingle();
+      const cust = (prof as any)?.stripe_customer_id;
+      if (cust) {
+        const c: any = await stripe.customers.retrieve(cust);
+        if (c && !c.deleted && typeof c.balance === 'number' && c.balance < 0) creditBalance = Math.round((-c.balance) / 100 * 100) / 100;
+      }
+    } catch { /* sin cliente Stripe todavía */ }
+
     return NextResponse.json({
       settings,
       ambassador: {
         code: amb.code, status: amb.status, payout_method: amb.payout_method, payout_details: amb.payout_details,
+        payout_network: amb.payout_network || null,
         rate, tier, active, clicks: clicks || 0, signups: signups || 0,
       },
       balances: bal,
+      creditBalance,
       payouts: pays || [],
       commissions: recent || [],
     });
@@ -78,6 +93,7 @@ export async function POST(req: Request) {
       followers: b.followers ? Number(String(b.followers).replace(/\D/g, '')) || null : null,
       payout_method: method,
       payout_details: String(b.payout_details || '').slice(0, 200),
+      payout_network: ['TRC20', 'ERC20', 'BEP20'].includes(b.payout_network) ? b.payout_network : null,
     });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true, code });
@@ -94,7 +110,8 @@ export async function PATCH(req: Request) {
     if (!user) return NextResponse.json({ error: 'Not signed in.', code: 'no_auth' }, { status: 401 });
     const b = await req.json().catch(() => ({} as any));
     const fields: any = {};
-    if (b.payout_method && ['stripe', 'paypal', 'usdt', 'credit'].includes(b.payout_method)) fields.payout_method = b.payout_method;
+    if (b.payout_method && ['stripe', 'usdt', 'credit'].includes(b.payout_method)) fields.payout_method = b.payout_method;
+    if (b.payout_network !== undefined) fields.payout_network = ['TRC20', 'ERC20', 'BEP20'].includes(b.payout_network) ? b.payout_network : null;
     const effMethod = fields.payout_method || null;   // método que quedará (si lo cambia)
     if (b.payout_details !== undefined) {
       const d = String(b.payout_details).trim();
