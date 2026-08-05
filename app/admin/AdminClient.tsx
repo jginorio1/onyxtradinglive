@@ -343,6 +343,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
   // Acción crítica pendiente de confirmar (con nota obligatoria).
   const [pendAct, setPendAct] = useState<{ title: string; danger?: boolean; run: (note: string) => Promise<void> } | null>(null);
   const [pendNote, setPendNote] = useState('');
+  const [menuFor, setMenuFor] = useState<string | null>(null);   // menú "⋯" abierto por usuario
 
   async function userAction(id: string, action: string, value?: any, note?: string) { setBusy(id + action); const r = await fetch('/api/admin/users', { method: 'PATCH', body: JSON.stringify({ id, action, value, note }) }); const j = await r.json(); if (!r.ok) toastErr(j); await loadUsers(); setBusy(''); }
   async function delUser(u: User) {
@@ -482,14 +483,36 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                           <td>{u.banned ? <span className="pill red">● {t.u_banned}</span> : <span className="pill" style={{ color: 'var(--green)', background: 'rgba(52,226,160,.15)' }}>● {u.subscription_status || t.u_active}</span>}</td>
                           <td className="muted">{u.accounts}</td>
                           <td className="muted" style={{ fontSize: 12 }}>{u.lastSync ? fmtDate(u.lastSync, lang) : '—'}</td>
-                          <td><div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-                            <button className="btn btn-ghost" style={{ padding: '5px 9px', fontSize: 12 }} title={t.u_openCard} onClick={() => setUDrawer({ id: u.id, email: u.email })}>👁</button>
-                            <button className="btn btn-ghost" style={{ padding: '5px 9px', fontSize: 12 }} onClick={() => resetPass(u)} disabled={busy === u.id + 'rst'}><OnyxIcon name="key" size={14} glow={false} /></button>
-                            {u.banned
-                              ? <button className="btn btn-ghost" style={{ padding: '5px 9px', fontSize: 12 }} onClick={() => askAction((lang === 'en' ? 'Unban ' : 'Desbloquear ') + u.email, false, u.id, 'unban')}>{t.u_unban}</button>
-                              : <button className="btn btn-ghost" style={{ padding: '5px 9px', fontSize: 12 }} onClick={() => askAction((lang === 'en' ? 'Ban ' : 'Bloquear ') + u.email, true, u.id, 'ban')}>🚫</button>}
-                            <button className="btn btn-ghost" style={{ padding: '5px 9px', fontSize: 12 }} onClick={() => askAction((u.is_admin ? (lang === 'en' ? 'Remove admin from ' : 'Quitar admin a ') : (lang === 'en' ? 'Make admin ' : 'Hacer admin a ')) + u.email, false, u.id, 'admin', !u.is_admin)}>{u.is_admin ? t.u_removeAdmin : t.u_makeAdmin}</button>
-                            {u.email !== meEmail && <button className="btn btn-danger" style={{ padding: '5px 9px', fontSize: 12 }} onClick={() => delUser(u)} disabled={busy === u.id + 'del'}>🗑</button>}
+                          <td><div className="row" style={{ gap: 8, alignItems: 'center' }}>
+                            <button className="btn btn-primary" style={{ padding: '6px 14px', fontSize: 12.5 }} onClick={() => setUDrawer({ id: u.id, email: u.email })}>
+                              {lang === 'en' ? 'Manage' : 'Gestionar'}
+                            </button>
+                            <div style={{ position: 'relative' }}>
+                              <button className="btn btn-ghost" style={{ padding: '6px 11px', fontSize: 15, lineHeight: 1 }} title={lang === 'en' ? 'More' : 'Más'} onClick={() => setMenuFor(menuFor === u.id ? null : u.id)}>⋯</button>
+                              {menuFor === u.id && (
+                                <>
+                                  <div onClick={() => setMenuFor(null)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
+                                  <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 6, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, boxShadow: '0 14px 34px rgba(0,0,0,.4)', zIndex: 41, width: 210, overflow: 'hidden' }}>
+                                    {[
+                                      { ic: '🔑', label: lang === 'en' ? 'Reset password' : 'Restablecer contraseña', on: () => { setMenuFor(null); resetPass(u); } },
+                                      u.banned
+                                        ? { ic: '✅', label: lang === 'en' ? 'Unban account' : 'Desbloquear cuenta', on: () => { setMenuFor(null); askAction((lang === 'en' ? 'Unban ' : 'Desbloquear ') + u.email, false, u.id, 'unban'); } }
+                                        : { ic: '🚫', label: lang === 'en' ? 'Ban account' : 'Bloquear cuenta', on: () => { setMenuFor(null); askAction((lang === 'en' ? 'Ban ' : 'Bloquear ') + u.email, true, u.id, 'ban'); } },
+                                      { ic: '🛡️', label: u.is_admin ? (lang === 'en' ? 'Remove admin' : 'Quitar admin') : (lang === 'en' ? 'Make admin' : 'Hacer admin'), on: () => { setMenuFor(null); askAction((u.is_admin ? (lang === 'en' ? 'Remove admin from ' : 'Quitar admin a ') : (lang === 'en' ? 'Make admin ' : 'Hacer admin a ')) + u.email, false, u.id, 'admin', !u.is_admin); } },
+                                    ].map((it, i) => (
+                                      <button key={i} onClick={it.on} style={{ display: 'flex', gap: 10, alignItems: 'center', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', borderBottom: '1px solid var(--line)', padding: '10px 13px', cursor: 'pointer', color: 'var(--tx)', fontSize: 13 }}>
+                                        <span style={{ width: 16, textAlign: 'center' }}>{it.ic}</span>{it.label}
+                                      </button>
+                                    ))}
+                                    {u.email !== meEmail && (
+                                      <button onClick={() => { setMenuFor(null); delUser(u); }} style={{ display: 'flex', gap: 10, alignItems: 'center', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', padding: '10px 13px', cursor: 'pointer', color: 'var(--red)', fontSize: 13 }}>
+                                        <span style={{ width: 16, textAlign: 'center' }}>🗑️</span>{lang === 'en' ? 'Delete account' : 'Borrar cuenta'}
+                                      </button>
+                                    )}
+                                  </div>
+                                </>
+                              )}
+                            </div>
                           </div></td>
                         </tr>
                       ))}
@@ -996,7 +1019,7 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
         {/* Búsqueda por palabra: acción, admin, destino, nota… */}
         <div style={{ position: 'relative', marginBottom: 10, maxWidth: 360 }}>
           <span style={{ position: 'absolute', left: 10, top: 8, color: 'var(--mut)' }}>🔍</span>
-          <input value={logQ} onChange={(e) => { setLogQ(e.target.value); setLogAll(true); }} placeholder={es ? 'Buscar: crédito, email, plan, nota…' : 'Search: credit, email, plan, note…'} style={{ width: '100%', margin: 0, paddingLeft: 32 }} />
+          <input value={logQ} onChange={(e) => { setLogQ(e.target.value); setLogAll(true); }} placeholder={lang === 'es' ? 'Buscar: crédito, email, plan, nota…' : 'Search: credit, email, plan, note…'} style={{ width: '100%', margin: 0, paddingLeft: 32 }} />
         </div>
         <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
           {LOG_TOPICS.map(([k, label, ic]) => {

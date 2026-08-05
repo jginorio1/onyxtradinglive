@@ -117,7 +117,7 @@ export async function PATCH(req: Request) {
     if (b.action === 'pay') {
       const r = await runPayout(b.id);
       if (r.ok) {
-        await logAdmin(user.email, 'amb_payout_paid', b.id, { via: 'stripe', transfer_id: r.transfer_id });
+        await logAdmin(user.email, 'amb_payout_paid', b.id, { via: 'stripe', transfer_id: r.transfer_id, note: b.note || null });
         return NextResponse.json({ ok: true, transfer_id: r.transfer_id });
       }
       // El front usa este código para pedir la referencia y llamar a 'mark_paid'.
@@ -135,7 +135,7 @@ export async function PATCH(req: Request) {
       }
       const r = await markPaidManual(b.id, method, b.tx_ref || b.note);
       if (!r.ok) return NextResponse.json({ error: r.error }, { status: 400 });
-      await logAdmin(user.email, 'amb_payout_paid', b.id, { via: method, tx_ref: b.tx_ref || null });
+      await logAdmin(user.email, 'amb_payout_paid', b.id, { via: method, tx_ref: b.tx_ref || null, note: b.note || null });
       return NextResponse.json({ ok: true });
     }
 

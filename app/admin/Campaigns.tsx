@@ -3,6 +3,7 @@ import { mkL } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 import { toast, toastErr } from '@/lib/toast';
 import { useLang } from '@/lib/lang';
+import ConfirmNote from './ConfirmNote';
 
 // ============================================================
 // Admin → Campañas. Correos de seguimiento automáticos a la base de traders +
@@ -24,6 +25,7 @@ export default function Campaigns() {
   const [segs, setSegs] = useState<Seg[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [editing, setEditing] = useState<Campaign | null>(null);
+  const [cf, setCf] = useState<any>(null);
   const segLabel = (id: string) => { const s = segs.find((x) => x.id === id); return s ? s[lang === 'en' ? 'en' : 'es'] : id; };
 
   async function load() {
@@ -46,10 +48,11 @@ export default function Campaigns() {
   const openRate = pct(stats?.opened30 ?? 0, stats?.sent30 ?? 0);
   const clickRate = pct(stats?.clicked30 ?? 0, stats?.sent30 ?? 0);
 
-  async function cancelSchedule(c: Campaign) {
-    if (!confirm(L('¿Cancelar esta promo programada?', 'Cancel this scheduled promo?'))) return;
-    await fetch('/api/admin/campaigns', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: c.id }) });
-    load();
+  function cancelSchedule(c: Campaign) {
+    setCf({ title: L('¿Cancelar esta promo programada?', 'Cancel this scheduled promo?'), detail: c.name, danger: true, run: async (note: string) => {
+      await fetch('/api/admin/campaigns', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: c.id, note }) });
+      load();
+    } });
   }
   const fmtWhen = (iso: string | null) => iso ? new Date(iso).toLocaleString(lang === 'en' ? 'en-US' : 'es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
 
@@ -129,15 +132,16 @@ export default function Campaigns() {
       )}
 
       {/* Envío manual */}
-      <ManualComposer segs={segs} manuals={manuals} L={L} lang={lang} segLabel={segLabel} reload={load} onEdit={setEditing} />
+      <ManualComposer segs={segs} manuals={manuals} L={L} lang={lang} segLabel={segLabel} reload={load} onEdit={setEditing} ask={setCf} />
 
       {editing && <Editor c={editing} segs={segs} L={L} lang={lang} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} />}
+      <ConfirmNote act={cf} onClose={() => setCf(null)} />
     </>
   );
 }
 
 // ---- Compositor de promos/noticias (envío manual inmediato) ----
-function ManualComposer({ segs, manuals, L, lang, segLabel, reload, onEdit }: any) {
+function ManualComposer({ segs, manuals, L, lang, segLabel, reload, onEdit, ask }: any) {
   const [seg, setSeg] = useState('all');
   const [topic, setTopic] = useState('');
   const [f, setF] = useState({ subject_es: '', body_es: '', subject_en: '', body_en: '' });
@@ -165,12 +169,18 @@ function ManualComposer({ segs, manuals, L, lang, segLabel, reload, onEdit }: an
     setBusy('test');
     try { const r = await fetch('/api/admin/campaigns/send', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'test', lang, ...f }) }); const j = await r.json(); if (!r.ok) toastErr(j); else toast(L('Correo de prueba enviado a tu dirección.', 'Test email sent to your address.'), 'ok'); } finally { setBusy(''); }
   }
-  async function send() {
+  function send() {
     if (!f.subject_es && !f.subject_en) { toast(L('Falta el asunto.', 'Subject is missing.')); return; }
     const n = count ?? '—';
-    if (!confirm(L(`¿Enviar esta campaña ahora a ${n} traders del segmento "${segLabel(seg)}"?`, `Send this campaign now to ${n} traders in "${segLabel(seg)}"?`))) return;
-    setBusy('send');
-    try { const r = await fetch('/api/admin/campaigns/send', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'send', segment: seg, ...f }) }); const j = await r.json(); if (!r.ok) toastErr(j); else { toast(L(`Enviado a ${j.sent} traders.`, `Sent to ${j.sent} traders.`), 'ok'); reload(); } } finally { setBusy(''); }
+    ask({
+      title: L(`Enviar esta campaña AHORA a ${n} traders del segmento "${segLabel(seg)}"`, `Send this campaign NOW to ${n} traders in "${segLabel(seg)}"`),
+      detail: (f.subject_es || f.subject_en),
+      danger: true,
+      run: async (note: string) => {
+        setBusy('send');
+        try { const r = await fetch('/api/admin/campaigns/send', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'send', segment: seg, note, ...f }) }); const j = await r.json(); if (!r.ok) toastErr(j); else { toast(L(`Enviado a ${j.sent} traders.`, `Sent to ${j.sent} traders.`), 'ok'); reload(); } } finally { setBusy(''); }
+      },
+    });
   }
   async function schedule() {
     if (!f.subject_es && !f.subject_en) { toast(L('Falta el asunto.', 'Subject is missing.')); return; }

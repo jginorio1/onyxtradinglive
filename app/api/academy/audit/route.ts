@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getMentor, isEnrolled } from '@/lib/academy';
+import { pickLang } from '@/lib/i18n';
 import { listAudits } from '@/lib/academyExtras';
 import { auditRoster, generateAuditReport, saveStudentNote, setPlanVerified, setAuditConsent, canAudit, studentTrades } from '@/lib/academyAudit';
 

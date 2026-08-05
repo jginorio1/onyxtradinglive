@@ -40,7 +40,7 @@ export async function POST(req: Request) {
 
   if (b.action === 'reset') {
     await saveSetting(catalogKey(kind), { items: [] });
-    await logAdmin(user.email, 'catalog_reset', kind, {});
+    await logAdmin(user.email, 'catalog_reset', kind, { note: b.note || null });
     return NextResponse.json({ ok: true, items: CATALOG_DEFAULTS[kind], isDefault: true });
   }
 

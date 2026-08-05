@@ -122,6 +122,7 @@ function Recruit({ lang }: { lang: 'es' | 'en' }) {
 export default function Ambassadors() {
   const t = useT();
   const { lang } = useLang();
+  const L = mkL(lang);   // bilingüe local (igual que en Recruit): evita ReferenceError en el modal de pago
   const [range, setRange] = useState<Range>(() => defaultRange('month'));
   const ST: any = {
     pending: { t: t.st_pending, c: 'var(--amber)' },
@@ -134,6 +135,7 @@ export default function Ambassadors() {
   const [s, setS] = useState<any>({});
   const [payM, setPayM] = useState<any>(null);   // payout que se está confirmando
   const [txid, setTxid] = useState('');
+  const [paynote, setPaynote] = useState('');    // nota interna del pago (además del txid)
 
   useEffect(() => { load(); }, []);
   async function load() {
@@ -151,18 +153,18 @@ export default function Ambassadors() {
     load();
   }
   // Abre el modal de confirmación (Stripe automático o cripto con QR + txid).
-  function payPayout(p: any) { setTxid(''); setPayM(p); }
+  function payPayout(p: any) { setTxid(''); setPaynote(''); setPayM(p); }
 
   // Ejecuta el pago de Stripe (transferencia real) desde el modal.
   async function doStripePay() {
     if (!payM) return;
-    await act('pay', payM.id);
+    await act('pay', payM.id, null, undefined, { note: paynote || null });
     setPayM(null);
   }
   // Marca pagado a mano (cripto/otro) con la referencia escrita.
   async function doManualPay() {
     if (!payM) return;
-    await act('mark_paid', payM.id, null, undefined, { tx_ref: txid });
+    await act('mark_paid', payM.id, null, undefined, { tx_ref: txid, note: paynote || null });
     setPayM(null);
   }
 
@@ -306,6 +308,12 @@ export default function Ambassadors() {
                 <div className="row between"><span className="muted">{L('Monto', 'Amount')}</span><b>${payM.amount}</b></div>
                 <div className="row between"><span className="muted">{L('Embajador', 'Ambassador')}</span><span>{amb?.email || payM.amb_code || '—'}</span></div>
                 <div className="row between"><span className="muted">{L('Método', 'Method')}</span><span>{METHOD[payM.method || payM.amb_method] || '—'}{isUsdt && payM.amb_network ? ` · ${payM.amb_network}` : ''}</span></div>
+              </div>
+
+              {/* Nota interna del pago (queda en el registro de actividad, además del txid). */}
+              <div style={{ marginBottom: 12 }}>
+                <span className="muted" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>{L('Nota interna (opcional)', 'Internal note (optional)')}</span>
+                <textarea value={paynote} onChange={(e) => setPaynote(e.target.value)} rows={2} placeholder={L('Ej: pago de la comisión de julio', 'e.g. July commission payout')} style={{ width: '100%', margin: 0 }} />
               </div>
 
               {isStripe ? (

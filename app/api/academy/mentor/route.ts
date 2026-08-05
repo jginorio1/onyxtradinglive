@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { ensureMentor, getMentor, updateMentor, getContent, saveModule, deleteModule, saveLesson, deleteLesson, roster, listPosts, addPost, deletePost, applyTemplate, listEvents, saveEvent, deleteEvent, setStudentDisplayName, setStudentBanned, removeStudent } from '@/lib/academy';
 import { listCollaborators, addCollaborator, removeCollaborator } from '@/lib/academyCollab';
 import { pushAnnouncement } from '@/lib/academyPush';
+import { pickLang } from '@/lib/i18n';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';

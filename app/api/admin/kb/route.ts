@@ -58,9 +58,10 @@ export async function DELETE(req: Request) {
   try {
     const { ok, user } = await requirePerm('soporte', 'manage');
     if (!ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
-    const { id } = await req.json();
+    const { id, note } = await req.json();
+    const { data: prev } = await supabaseAdmin.from('kb_articles').select('title').eq('id', id).maybeSingle();
     await supabaseAdmin.from('kb_articles').delete().eq('id', id);
-    await logAdmin(user?.email || '', 'kb_delete', id, {});
+    await logAdmin(user?.email || '', 'kb_delete', prev?.title || id, { note: note || null });
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });

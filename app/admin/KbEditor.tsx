@@ -3,6 +3,7 @@ import { toast } from '@/lib/toast';
 import { useEffect, useState } from 'react';
 import { useT } from '@/lib/adminText';
 import { useLang } from '@/lib/lang';
+import ConfirmNote from './ConfirmNote';
 
 // Base de conocimiento editable: lo que escribas aquí lo lee Onyx AI.
 export default function KbEditor() {
@@ -17,6 +18,7 @@ export default function KbEditor() {
   const [pfOpen, setPfOpen] = useState(false);
   const [pf, setPf] = useState<any>(null);
   const [pfBusy, setPfBusy] = useState(false);
+  const [cf, setCf] = useState<any>(null);
 
   async function load() { try { const r = await fetch('/api/admin/kb'); const j = await r.json(); setItems(j.articles || []); } catch {} }
   async function loadPrompt() { try { const r = await fetch('/api/admin/ai-prompt'); setPf(await r.json()); } catch {} }
@@ -51,11 +53,12 @@ export default function KbEditor() {
     await fetch('/api/admin/kb', { method, body: JSON.stringify(edit) });
     setBusy(false); setEdit(null); await load();
   }
-  async function del(id: string) { if (!confirm(t.kb_confirmDel)) return; await fetch('/api/admin/kb', { method: 'DELETE', body: JSON.stringify({ id }) }); await load(); }
+  function del(id: string) { setCf({ title: t.kb_confirmDel, danger: true, run: async (note: string) => { await fetch('/api/admin/kb', { method: 'DELETE', body: JSON.stringify({ id, note }) }); await load(); } }); }
   async function togglePub(a: any) { await fetch('/api/admin/kb', { method: 'PATCH', body: JSON.stringify({ id: a.id, published: !a.published }) }); await load(); }
 
   return (
     <>
+    <ConfirmNote act={cf} onClose={() => setCf(null)} />
     <div className="row between" style={{ flexWrap: 'wrap', gap: 8 }}>
       <div className="tabhead"><div className="th-row"><span className="th-ic">🧠</span><span className="th-t">{t.h_kb_t}</span></div><div className="th-s">{t.h_kb_s}</div></div>
       <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>

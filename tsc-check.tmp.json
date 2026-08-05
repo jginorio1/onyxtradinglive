@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "noEmit": true, "skipLibCheck": true, "jsx": "react-jsx",
+    "module": "esnext", "target": "esnext", "moduleResolution": "bundler",
+    "baseUrl": ".", "paths": { "@/*": ["./*"] }, "types": [],
+    "allowJs": true, "strict": true, "noImplicitAny": false
+  },
+  "include": [
+    "app/admin/KbEditor.tsx","app/admin/Campaigns.tsx","app/admin/CatalogAdmin.tsx",
+    "app/admin/ConfirmNote.tsx","app/admin/Ambassadors.tsx","lib/logFormat.ts",
+    "app/api/admin/catalog/route.ts","app/api/admin/kb/route.ts",
+    "app/api/admin/campaigns/route.ts","app/api/admin/campaigns/send/route.ts",
+    "app/api/admin/ambassadors/route.ts"
+  ]
+}

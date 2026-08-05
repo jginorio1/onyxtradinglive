@@ -93,10 +93,10 @@ export async function DELETE(req: Request) {
   try {
     const b = await req.json().catch(() => ({} as any));
     if (!b.id) return NextResponse.json({ error: 'falta id' }, { status: 400 });
-    const { data: c } = await supabaseAdmin.from('campaigns').select('key').eq('id', b.id).maybeSingle();
+    const { data: c } = await supabaseAdmin.from('campaigns').select('key, name').eq('id', b.id).maybeSingle();
     if ((c as any)?.key) return NextResponse.json({ error: 'No se puede borrar una campaña del sistema. Apágala si no la quieres.' }, { status: 400 });
     await supabaseAdmin.from('campaigns').delete().eq('id', b.id);
-    await logAdmin(p.user?.email || '', 'campaign_delete', b.id);
+    await logAdmin(p.user?.email || '', 'campaign_delete', (c as any)?.name || b.id, { note: b.note || null });
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     await logError('campaigns_delete', e);

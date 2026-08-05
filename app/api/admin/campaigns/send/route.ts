@@ -44,7 +44,7 @@ export async function POST(req: Request) {
       campaignId: b.campaignId, segment: b.segment,
       subject_es: b.subject_es, body_es: b.body_es, subject_en: b.subject_en, body_en: b.body_en,
     });
-    await logAdmin(p.user?.email || '', 'campaign_send', b.campaignId || b.segment || '', { sent: r.sent });
+    await logAdmin(p.user?.email || '', 'campaign_send', b.campaignId || b.segment || '', { sent: r.sent, segment: b.segment, subject: b.subject_es || b.subject_en, note: b.note || null });
     return NextResponse.json({ ok: true, ...r });
   } catch (e: any) {
     await logError('campaigns_send', e);

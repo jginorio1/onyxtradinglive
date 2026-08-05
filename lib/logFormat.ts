@@ -29,6 +29,9 @@ export function describeLog(e: LogEntry, lang: 'es' | 'en' = 'es'): { text: stri
   const m = e.meta || {};
   const tgt = e.target != null ? String(e.target) : '';
   const L = (s: string, en: string) => (es ? s : en);
+  // Sufijo con la nota (si la acción la trae). El texto final la muestra siempre.
+  const nt = (t: string) => m.note ? `${t} · ${L('Nota', 'Note')}: “${short(m.note, 60)}”` : t;
+  const R = (text: string, cat: LogCat): { text: string; cat: LogCat } => ({ text: nt(text), cat });
 
   // dinero
   if (a === 'user_credit') {
@@ -39,11 +42,11 @@ export function describeLog(e: LogEntry, lang: 'es' | 'en' = 'es'): { text: stri
   }
   if (a === 'amb_payout_paid') {
     const ref = m.transfer_id || m.tx_ref;
-    return { text: `${L('Pagó a un embajador por', 'Paid an ambassador via')} ${m.via || 'stripe'}${ref ? ` (${short(ref, 24)})` : ''}`, cat: 'money' };
+    return R(`${L('Pagó a un embajador por', 'Paid an ambassador via')} ${m.via || 'stripe'}${ref ? ` (${short(ref, 24)})` : ''}`, 'money');
   }
   if (a === 'finanzas_add') return { text: `${L('Añadió gasto', 'Added expense')} “${short(m.name)}” · ${money(m.amount)}`, cat: 'money' };
   if (a === 'finanzas_update') return { text: L('Editó un gasto del negocio', 'Edited a business expense'), cat: 'money' };
-  if (a === 'finanzas_delete') return { text: L('Borró un gasto del negocio', 'Deleted a business expense'), cat: 'money' };
+  if (a === 'finanzas_delete') return R(L('Borró un gasto del negocio', 'Deleted a business expense'), 'money');
   if (a === 'finanzas_cash') return { text: `${L('Fijó la caja en', 'Set cash to')} ${money(tgt)}`, cat: 'money' };
   if (a === 'academy_fee_default') return { text: `${L('Comisión global de academia', 'Global academy fee')} → ${tgt}%`, cat: 'money' };
   if (a === 'academy_fee_plan' || a === 'academy_fee_mentor') return { text: `${L('Cambió comisión de academia a', 'Changed academy fee to')} ${m.fee_pct}%`, cat: 'money' };
@@ -58,12 +61,12 @@ export function describeLog(e: LogEntry, lang: 'es' | 'en' = 'es'): { text: stri
   }
   if (a === 'edit_plan') return { text: `${L('Editó el plan', 'Edited plan')} ${tgt}`, cat: 'plan' };
   if (a === 'create_plan') return { text: `${L('Creó el plan', 'Created plan')} ${tgt}`, cat: 'plan' };
-  if (a === 'delete_plan') return { text: `${L('Borró el plan', 'Deleted plan')} ${tgt}`, cat: 'plan' };
+  if (a === 'delete_plan') return R(`${L('Borró el plan', 'Deleted plan')} ${tgt}`, 'plan');
 
   // peligro
-  if (a === 'delete_user') return { text: `${L('Eliminó la cuenta', 'Deleted account')} ${m.email || tgt} ${L('y todos sus datos', 'and all its data')}`, cat: 'danger' };
-  if (a === 'ban') return { text: `${L('Bloqueó la cuenta', 'Banned account')} ${m.email || tgt}`, cat: 'danger' };
-  if (a === 'unban') return { text: `${L('Desbloqueó la cuenta', 'Unbanned account')} ${m.email || tgt}`, cat: 'security' };
+  if (a === 'delete_user') return R(`${L('Eliminó la cuenta', 'Deleted account')} ${m.email || tgt} ${L('y todos sus datos', 'and all its data')}`, 'danger');
+  if (a === 'ban') return R(`${L('Bloqueó la cuenta', 'Banned account')} ${m.email || tgt}`, 'danger');
+  if (a === 'unban') return R(`${L('Desbloqueó la cuenta', 'Unbanned account')} ${m.email || tgt}`, 'security');
 
   // seguridad
   if (a === 'admin') return { text: m.value ? `${L('Hizo admin a', 'Made admin')} ${m.email || tgt}` : `${L('Quitó admin a', 'Removed admin from')} ${m.email || tgt}`, cat: 'security' };
@@ -78,16 +81,16 @@ export function describeLog(e: LogEntry, lang: 'es' | 'en' = 'es'): { text: stri
   if (a === 'blog_delete') return { text: L('Borró un artículo del blog', 'Deleted a blog post'), cat: 'content' };
   if (a === 'kb_add') return { text: `${L('Añadió a la Base IA', 'Added to AI knowledge')}: “${short(tgt)}”`, cat: 'content' };
   if (a === 'kb_edit') return { text: L('Editó una entrada de la Base IA', 'Edited an AI knowledge entry'), cat: 'content' };
-  if (a === 'kb_delete') return { text: L('Borró una entrada de la Base IA', 'Deleted an AI knowledge entry'), cat: 'content' };
+  if (a === 'kb_delete') return R(`${L('Borró de la Base IA', 'Deleted from AI knowledge')}${tgt ? `: “${short(tgt)}”` : ''}`, 'content');
   if (a === 'kb_import_guide') return { text: `${L('Importó la guía a la Base IA', 'Imported guide to AI knowledge')} (+${m.added || 0}/~${m.updated || 0})`, cat: 'content' };
   if (a === 'catalog_save') return { text: `${L('Guardó el catálogo', 'Saved catalog')} ${tgt} (${m.count})`, cat: 'content' };
-  if (a === 'catalog_reset') return { text: `${L('Restauró el catálogo', 'Reset catalog')} ${tgt}`, cat: 'content' };
+  if (a === 'catalog_reset') return R(`${L('Restauró el catálogo', 'Reset catalog')} ${tgt}`, 'content');
   if (a === 'firms_save') return { text: `${L('Guardó plantillas de prop firms', 'Saved prop-firm templates')} (${m.count})`, cat: 'content' };
   if (a === 'firms_reset') return { text: L('Restauró las prop firms', 'Reset prop firms'), cat: 'content' };
   if (a === 'campaign_create' || a === 'campaign_schedule') return { text: L('Creó/programó una campaña', 'Created/scheduled a campaign'), cat: 'content' };
-  if (a === 'campaign_send') return { text: `${L('Envió una campaña', 'Sent a campaign')} (${m.sent || 0})`, cat: 'content' };
+  if (a === 'campaign_send') return R(`${L('Envió una campaña a', 'Sent a campaign to')} ${m.sent || 0} ${L('traders', 'traders')}${m.subject ? ` · “${short(m.subject)}”` : ''}`, 'content');
   if (a === 'campaign_update') return { text: L('Editó una campaña', 'Edited a campaign'), cat: 'content' };
-  if (a === 'campaign_delete') return { text: L('Borró una campaña', 'Deleted a campaign'), cat: 'content' };
+  if (a === 'campaign_delete') return R(`${L('Borró una campaña', 'Deleted a campaign')}${tgt ? `: “${short(tgt)}”` : ''}`, 'content');
 
   // equipo / embajadores / soporte
   if (a === 'team_add') return { text: `${L('Añadió al equipo a', 'Added to team')} ${tgt}${m.role ? ` (${m.role})` : ''}`, cat: 'team' };

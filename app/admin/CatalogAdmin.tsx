@@ -4,6 +4,7 @@ import { toast, toastErr } from '@/lib/toast';
 import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import { CATALOG_KINDS, CATALOG_LABEL, type CatalogKind } from '@/lib/catalogDefaults';
+import ConfirmNote from './ConfirmNote';
 
 // Catálogos editables: países, plataformas, tipos de trader y prop firms / brokers.
 // Cada uno es una lista simple (código + nombre ES/EN) que alimenta los selectores
@@ -18,6 +19,7 @@ export default function CatalogAdmin() {
   const [busy, setBusy] = useState('');
   const [msg, setMsg] = useState('');
   const [q, setQ] = useState('');
+  const [cf, setCf] = useState<any>(null);
 
   useEffect(() => { load(kind); /* eslint-disable-next-line */ }, [kind]);
   async function load(k: CatalogKind) {
@@ -41,12 +43,13 @@ export default function CatalogAdmin() {
     setList(j.items || []); setIsDefault(false);
     setMsg(L('Guardado ✓', 'Saved ✓')); toast(L('Catálogo guardado', 'Catalog saved')); setTimeout(() => setMsg(''), 2500);
   }
-  async function reset() {
-    if (!confirm(L('¿Restablecer a los valores de fábrica? Se pierde tu lista personalizada.', 'Reset to factory defaults? Your custom list is lost.'))) return;
-    setBusy('reset');
-    const r = await fetch('/api/admin/catalog', { method: 'POST', body: JSON.stringify({ kind, action: 'reset' }) });
-    const j = await r.json(); setBusy('');
-    setList(j.items || []); setIsDefault(true);
+  function reset() {
+    setCf({ title: L('¿Restablecer a los valores de fábrica? Se pierde tu lista personalizada.', 'Reset to factory defaults? Your custom list is lost.'), danger: true, run: async (note: string) => {
+      setBusy('reset');
+      const r = await fetch('/api/admin/catalog', { method: 'POST', body: JSON.stringify({ kind, action: 'reset', note }) });
+      const j = await r.json(); setBusy('');
+      setList(j.items || []); setIsDefault(true);
+    } });
   }
 
   const lbl = { fontSize: 11, color: 'var(--mut)', display: 'block', marginBottom: 3 } as any;
@@ -59,6 +62,7 @@ export default function CatalogAdmin() {
 
   return (
     <>
+      <ConfirmNote act={cf} onClose={() => setCf(null)} />
       <div className="tabhead">
         <div className="th-row"><span className="th-ic">🗂️</span><span className="th-t">{L('Catálogos', 'Catalogs')}</span></div>
         <div className="th-s">{L('Añade o quita países, plataformas, tipos de trader y prop firms/brokers. Alimentan los selectores del app.', 'Add or remove countries, platforms, trader types and prop firms/brokers. They feed the app selectors.')}</div>
