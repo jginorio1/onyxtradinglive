@@ -111,7 +111,15 @@ export async function POST(req: NextRequest) {
     {
       const { data: pp } = await supabaseAdmin.from('trading_accounts').select('plan_paused').eq('id', accountId).maybeSingle();
       if ((pp as any)?.plan_paused) {
-        return NextResponse.json({ ok: true, paused: true, reason: 'plan_limit', message: 'Cuenta pausada por el límite de tu plan. | Account paused by your plan limit.' });
+        // Enviamos SIEMPRE el plan actual (aunque la cuenta esté pausada) para que el
+        // panel del EA/cBot no se quede mostrando el nombre de un plan viejo tras un downgrade.
+        const { data: prof } = await supabaseAdmin.from('profiles').select('plan').eq('id', userId).maybeSingle();
+        const { data: planRow } = await supabaseAdmin.from('plans').select('name').eq('id', (prof as any)?.plan || 'free').maybeSingle();
+        return NextResponse.json({
+          ok: true, paused: true, reason: 'plan_limit',
+          message: 'Cuenta pausada por el límite de tu plan. | Account paused by your plan limit.',
+          features: { plan: (planRow as any)?.name || 'Free', guardian: false, copy: false, tv: false, copyRole: '', copyMaster: false },
+        });
       }
     }
 
