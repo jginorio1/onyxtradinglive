@@ -84,6 +84,7 @@ export function describeLog(e: LogEntry, lang: 'es' | 'en' = 'es'): { text: stri
   if (a === 'kb_edit') return { text: L('Editó una entrada de la Base IA', 'Edited an AI knowledge entry'), cat: 'content' };
   if (a === 'kb_delete') return R(`${L('Borró de la Base IA', 'Deleted from AI knowledge')}${tgt ? `: “${short(tgt)}”` : ''}`, 'content');
   if (a === 'kb_import_guide') return { text: `${L('Importó la guía a la Base IA', 'Imported guide to AI knowledge')} (+${m.added || 0}/~${m.updated || 0})`, cat: 'content' };
+  if (a === 'seo_meta_save') return { text: L('Guardó el meta SEO de las páginas', 'Saved page SEO meta'), cat: 'content' };
   if (a === 'catalog_save') return { text: `${L('Guardó el catálogo', 'Saved catalog')} ${tgt} (${m.count})`, cat: 'content' };
   if (a === 'catalog_reset') return R(`${L('Restauró el catálogo', 'Reset catalog')} ${tgt}`, 'content');
   if (a === 'firms_save') return { text: `${L('Guardó plantillas de prop firms', 'Saved prop-firm templates')} (${m.count})`, cat: 'content' };

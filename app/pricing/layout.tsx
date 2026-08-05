@@ -1,16 +1,19 @@
 import type { Metadata } from 'next';
 import JsonLd from '../JsonLd';
 import { serverLang, localeAlternates, SITE as url } from '@/lib/locale';
+import { getSeoMeta, seoFor } from '@/lib/seo';
 
-export function generateMetadata(): Metadata {
+export async function generateMetadata(): Promise<Metadata> {
   const es = serverLang() === 'es';
+  const seo = seoFor(await getSeoMeta(), 'pricing', es,
+    es ? 'Planes y precios · Onyx Trading Live' : 'Plans and pricing · Onyx Trading Live',
+    es ? 'Compara los planes de Onyx Trading Live: Gratis, Pro y Elite. Diario de trading, estadísticas automáticas, control de fondeo y Onyx Guardian para MetaTrader (MT4/MT5) y cTrader.'
+       : 'Compare Onyx Trading Live plans: Free, Pro and Elite. Trading journal, automatic stats, funding control and Onyx Guardian for MetaTrader (MT4/MT5) and cTrader.');
   return {
-    title: es ? 'Planes y precios · Onyx Trading Live' : 'Plans and pricing · Onyx Trading Live',
-    description: es
-      ? 'Compara los planes de Onyx Trading Live: Gratis, Pro y Elite. Diario de trading, estadísticas automáticas, control de fondeo y Onyx Guardian para MetaTrader (MT4/MT5) y cTrader.'
-      : 'Compare Onyx Trading Live plans: Free, Pro and Elite. Trading journal, automatic stats, funding control and Onyx Guardian for MetaTrader (MT4/MT5) and cTrader.',
+    title: seo.title,
+    description: seo.description,
     alternates: localeAlternates('/pricing'),
-    openGraph: { title: es ? 'Planes y precios · Onyx Trading Live' : 'Plans and pricing · Onyx Trading Live', description: es ? 'Gratis, Pro y Elite.' : 'Free, Pro and Elite.', url: `${url}/pricing`, type: 'website' },
+    openGraph: { title: seo.title, description: seo.description, url: `${url}/pricing`, type: 'website' },
   };
 }
 

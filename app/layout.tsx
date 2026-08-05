@@ -17,6 +17,7 @@ import EnvBanner from './EnvBanner';
 import { serverBeta } from '@/lib/betaServer';
 import PromoBar from './PromoBar';
 import { getSetting } from '@/lib/settings';
+import { getSeoMeta, seoFor } from '@/lib/seo';
 import { type Promo, PROMO0 } from '@/lib/promo';
 import { headers } from 'next/headers';
 import type { Lang } from '@/lib/navText';
@@ -40,17 +41,21 @@ export const viewport: Viewport = {
 
 const url = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.onyxtradinglive.com').replace(/\/$/, '');
 
-export function generateMetadata(): Metadata {
+export async function generateMetadata(): Promise<Metadata> {
   const es = serverLang() === 'es';
+  // Overrides de título/descripción que el owner edita en Admin → SEO (si vacío, usa el default).
+  const seo = seoFor(await getSeoMeta(), 'home', es,
+    es ? 'Onyx Trading Live · Tu diario de trading conectado a MT4/MT5' : 'Onyx Trading Live · Your trading journal connected to MT4/MT5',
+    es ? 'Conecta tus cuentas de MetaTrader (MT4/MT5) o cTrader y analiza tu trading automáticamente: estadísticas, calendario, sesiones, pares, seguimiento de fondeo, copy trading y academia. Empieza gratis.'
+       : 'Connect your MetaTrader (MT4/MT5) or cTrader accounts and analyze your trading automatically: stats, calendar, sessions, pairs, funding tracking, copy trading and academy. Start free.');
+  const gVer = process.env.GOOGLE_SITE_VERIFICATION;
+  const bVer = process.env.BING_SITE_VERIFICATION;
   return {
     metadataBase: new URL(url),
-    title: es
-      ? 'Onyx Trading Live · Tu diario de trading conectado a MT4/MT5'
-      : 'Onyx Trading Live · Your trading journal connected to MT4/MT5',
-    description: es
-      ? 'Conecta tus cuentas de MetaTrader (MT4/MT5) o cTrader y analiza tu trading automáticamente: estadísticas, calendario, sesiones, pares, seguimiento de fondeo, copy trading y academia. Empieza gratis.'
-      : 'Connect your MetaTrader (MT4/MT5) or cTrader accounts and analyze your trading automatically: stats, calendar, sessions, pairs, funding tracking, copy trading and academy. Start free.',
+    title: seo.title,
+    description: seo.description,
     keywords: ['trading journal', 'diario de trading', 'MT4', 'MT5', 'MetaTrader', 'cTrader', 'MatchTrader', 'TradingView', 'TradingView signals', 'señales TradingView', 'estadísticas trading', 'trading stats', 'FTMO', 'prop firm', 'copy trading', 'trading academy', 'analytics'],
+    verification: gVer ? { google: gVer, ...(bVer ? { other: { 'msvalidate.01': bVer } } : {}) } : (bVer ? { other: { 'msvalidate.01': bVer } } : undefined),
     alternates: localeAlternates('/'),
     manifest: '/manifest.webmanifest',
     appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'Onyx' },
@@ -112,9 +117,18 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     ],
   };
 
+  const ga = process.env.NEXT_PUBLIC_GA_ID;   // Google Analytics 4 (opcional)
+
   return (
     <html lang={lang} data-theme={theme || undefined} suppressHydrationWarning>
       <body>
+        {/* Google Analytics 4 (solo si hay NEXT_PUBLIC_GA_ID). Mide tráfico y conversión. */}
+        {ga && (
+          <>
+            <script async src={`https://www.googletagmanager.com/gtag/js?id=${ga}`} />
+            <script dangerouslySetInnerHTML={{ __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${ga}');` }} />
+          </>
+        )}
         {/* Fuente CJK: solo se carga cuando el idioma es chino o japonés (pesan). */}
         {(lang === 'zh' || lang === 'ja') && (
           <link rel="stylesheet" href={`https://fonts.googleapis.com/css2?family=Noto+Sans+${lang === 'ja' ? 'JP' : 'SC'}:wght@400;500;700&display=swap`} />
