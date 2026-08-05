@@ -75,6 +75,9 @@ const D: any = {
     mtHelp: 'Desconectar libera el cupo y conserva tu historial. Eliminar borra la cuenta y sus operaciones para siempre.',
     addT: '¿Necesitas más cuentas?', addD: 'Añade cuentas sueltas a tu plan por ${p} al mes cada una.',
     addTotal: 'Total', addAcc: 'cuentas', addSave: 'Guardar cambios', addSaved: 'Actualizado',
+    addChargeNote: 'Se añade a tu suscripción y se cobra prorrateado a tu tarjeta; si tienes saldo a favor, se descuenta de ahí. No sales de esta página.',
+    addFreeNote: 'Las cuentas extra son un complemento de los planes de pago. Mejora a un plan de pago para añadir más cuentas.',
+    addSeePlans: 'Ver planes',
     refT: 'Programa de referidos', refTxt: 'Muy pronto podrás invitar amigos y ganar créditos, o convertirte en embajador y cobrar una comisión mensual por cada suscriptor que traigas.', soon: 'Próximamente',
   },
   en: {
@@ -127,6 +130,9 @@ const D: any = {
     mtHelp: 'Disconnect frees the slot and keeps your history. Delete erases the account and its trades forever.',
     addT: 'Need more accounts?', addD: 'Add extra accounts to your plan for ${p}/month each.',
     addTotal: 'Total', addAcc: 'accounts', addSave: 'Save changes', addSaved: 'Updated',
+    addChargeNote: 'Added to your subscription and charged prorated to your card; if you have account credit, it is deducted from there. You stay on this page.',
+    addFreeNote: 'Extra accounts are an add-on for paid plans. Upgrade to a paid plan to add more accounts.',
+    addSeePlans: 'See plans',
     refT: 'Referral program', refTxt: 'Soon you will be able to invite friends and earn credit, or become an ambassador and earn a monthly commission for every subscriber you bring.', soon: 'Coming soon',
   },
 };
@@ -356,7 +362,7 @@ export default function AccountClient({ email }: { email: string }) {
                     const others = allPlans.filter((pl: any) => pl.id !== myPlanId && (pl.id !== 'free' || !!data.retention?.enabled));
                     if (!others.length) return null;
                     return (
-                      <div style={{ borderTop: '1px solid var(--line)', paddingTop: 14, marginTop: 14 }}>
+                      <div id="change-plan" style={{ borderTop: '1px solid var(--line)', paddingTop: 14, marginTop: 14, scrollMarginTop: 80 }}>
                         <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>{L.changePlanT}</div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10 }}>
                           {others.map((p: any) => {
@@ -467,23 +473,38 @@ export default function AccountClient({ email }: { email: string }) {
                   </div>
                 </div>
 
-                {data.addons?.extra_account_enabled && data.addons?.extra_account_price_id && sub && !isUnlimited && (
+                {data.addons?.extra_account_enabled && data.addons?.extra_account_price_id && !isUnlimited && (
                   <div className="card" style={card}>
                     <div className="row between" style={{ flexWrap: 'wrap', gap: 12 }}>
                       <div style={{ flex: 1, minWidth: 200 }}>
                         <div style={{ fontWeight: 800, fontSize: 16 }}>{L.addT}</div>
                         <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>{L.addD.replace('{p}', String(data.addons.extra_account_price))}</div>
                       </div>
-                      <div className="row" style={{ gap: 8 }}>
-                        <button className="btn btn-ghost" style={{ width: 36, padding: '4px 0' }} onClick={() => setExtra(Math.max(0, extraQty - 1))}>−</button>
-                        <span style={{ fontSize: 19, fontWeight: 800, minWidth: 28, textAlign: 'center' }}>{extraQty}</span>
-                        <button className="btn btn-ghost" style={{ width: 36, padding: '4px 0' }} onClick={() => setExtra(extraQty + 1)}>+</button>
+                      {(p.plan || 'free') !== 'free' && (
+                        <div className="row" style={{ gap: 8 }}>
+                          <button className="btn btn-ghost" style={{ width: 36, padding: '4px 0' }} onClick={() => setExtra(Math.max(0, extraQty - 1))}>−</button>
+                          <span style={{ fontSize: 19, fontWeight: 800, minWidth: 28, textAlign: 'center' }}>{extraQty}</span>
+                          <button className="btn btn-ghost" style={{ width: 36, padding: '4px 0' }} onClick={() => setExtra(extraQty + 1)}>+</button>
+                        </div>
+                      )}
+                    </div>
+
+                    {(p.plan || 'free') === 'free' ? (
+                      // Opción 2: las cuentas extra son de los planes de pago.
+                      <div className="row between" style={{ borderTop: '1px solid var(--line)', marginTop: 14, paddingTop: 12, flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
+                        <span className="muted" style={{ fontSize: 13, flex: 1, minWidth: 180 }}>{L.addFreeNote}</span>
+                        <a href="#change-plan" className="btn btn-primary" style={{ fontSize: 13 }}>{L.addSeePlans}</a>
                       </div>
-                    </div>
-                    <div className="row between" style={{ borderTop: '1px solid var(--line)', marginTop: 14, paddingTop: 12, flexWrap: 'wrap', gap: 10 }}>
-                      <span style={{ fontSize: 14 }}>{L.addTotal}: <b>{(limit?.base || 0) + extraQty} {L.addAcc}</b>{extraQty > 0 ? ` · +$${extraQty * Number(data.addons.extra_account_price)}/${L.perMo}` : ''}</span>
-                      {extraQty !== (limit?.extra || 0) && <button className="btn btn-primary" onClick={saveExtra} disabled={busy === 'extra'}>{busy === 'extra' ? L.saving : L.addSave}</button>}
-                    </div>
+                    ) : (
+                      <>
+                        <div className="row between" style={{ borderTop: '1px solid var(--line)', marginTop: 14, paddingTop: 12, flexWrap: 'wrap', gap: 10 }}>
+                          <span style={{ fontSize: 14 }}>{L.addTotal}: <b>{(limit?.base || 0) + extraQty} {L.addAcc}</b>{extraQty > 0 ? ` · +$${extraQty * Number(data.addons.extra_account_price)}/${L.perMo}` : ''}</span>
+                          {extraQty !== (limit?.extra || 0) && <button className="btn btn-primary" onClick={saveExtra} disabled={busy === 'extra'}>{busy === 'extra' ? L.saving : L.addSave}</button>}
+                        </div>
+                        {/* Opción 1: aclaración de cómo se cobra (sin redirigir a Stripe). */}
+                        <div className="muted" style={{ fontSize: 12, marginTop: 8, lineHeight: 1.5 }}>{L.addChargeNote}</div>
+                      </>
+                    )}
                   </div>
                 )}
 

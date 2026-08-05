@@ -6,6 +6,7 @@ const MSG: Record<Lang, Record<string, string>> = {
   es: {
     no_auth: 'Debes iniciar sesión para continuar.',
     no_sub: 'Todavía no tienes una suscripción activa.',
+    free_no_addon: 'Las cuentas extra son de los planes de pago. Mejora a un plan de pago para añadirlas.',
     no_price: 'Este plan aún no tiene precio configurado. Escríbenos y lo arreglamos.',
     stripe: 'No pudimos conectar con el pago. Inténtalo de nuevo en un momento.',
     pw_short: 'La contraseña debe tener al menos 8 caracteres.',

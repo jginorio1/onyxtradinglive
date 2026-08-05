@@ -21,13 +21,14 @@ export async function POST(req: Request) {
     const { qty } = await req.json();
     const want = Math.max(0, Math.min(50, Number(qty) || 0));
 
-    const { data: prof } = await supabaseAdmin.from('profiles').select('stripe_subscription_id,extra_accounts').eq('id', user.id).maybeSingle();
+    const { data: prof } = await supabaseAdmin.from('profiles').select('stripe_subscription_id,extra_accounts,plan').eq('id', user.id).maybeSingle();
+    // Los add-ons son un extra de los planes de pago: en Free no se venden cuentas sueltas.
+    if ((prof?.plan || 'free') === 'free') return NextResponse.json({ error: 'Upgrade to a paid plan to add extra accounts.', code: 'free_no_addon' }, { status: 400 });
     if (!prof?.stripe_subscription_id) return NextResponse.json({ error: 'No active subscription.', code: 'no_sub' }, { status: 400 });
 
     // No dejar bajar por debajo de las cuentas que ya tiene conectadas
     const { count: used } = await supabaseAdmin.from('api_keys').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('revoked', false);
-    const { data: planRow } = await supabaseAdmin.from('profiles').select('plan').eq('id', user.id).maybeSingle();
-    const { data: plan } = await supabaseAdmin.from('plans').select('max_accounts').eq('id', planRow?.plan || 'free').maybeSingle();
+    const { data: plan } = await supabaseAdmin.from('plans').select('max_accounts').eq('id', prof?.plan || 'free').maybeSingle();
     const base = Number(plan?.max_accounts ?? 1);
     if (base < 999 && (used || 0) > base + want) {
       return NextResponse.json({ error: 'Revoke keys first.', code: 'addon_below_used', used, allowed: base + want }, { status: 400 });
