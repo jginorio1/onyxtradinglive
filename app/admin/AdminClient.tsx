@@ -341,8 +341,9 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
   const bannedCount = users.filter((u) => u.banned).length;
 
   // Acción crítica pendiente de confirmar (con nota obligatoria).
-  const [pendAct, setPendAct] = useState<{ title: string; danger?: boolean; run: (note: string) => Promise<void> } | null>(null);
+  const [pendAct, setPendAct] = useState<{ title: string; danger?: boolean; confirmWord?: string; detail?: string; run: (note: string) => Promise<void> } | null>(null);
   const [pendNote, setPendNote] = useState('');
+  const [pendWord, setPendWord] = useState('');   // palabra tecleada para acciones que la exigen (ej. CAMBIAR)
   const [menuFor, setMenuFor] = useState<string | null>(null);   // menú "⋯" abierto por usuario
   const [menuPos, setMenuPos] = useState<{ left: number; top: number } | null>(null);   // posición fija del menú (evita recorte en última fila)
   // Abre el menú "⋯" anclado al botón, con posición fija en viewport; si está cerca del
@@ -366,7 +367,20 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
   // Abre el modal de confirmación con nota para acciones críticas (ban/admin).
   function askAction(title: string, danger: boolean, id: string, action: string, value?: any) {
     setPendAct({ title, danger, run: async (note) => userAction(id, action, value, note) });
-    setPendNote('');
+    setPendNote(''); setPendWord('');
+  }
+  // Cambio de plan de un usuario: exige teclear CAMBIAR / CHANGE + nota antes de aplicar.
+  function askPlanChange(u: User, target: string) {
+    const from = plans.find((p) => p.id === u.plan)?.name || u.plan;
+    const to = plans.find((p) => p.id === target)?.name || target;
+    const word = lang === 'en' ? 'CHANGE' : 'CAMBIAR';
+    setPendAct({
+      title: lang === 'en' ? `Change ${u.email}'s plan: ${from} → ${to}` : `Cambiar el plan de ${u.email}: ${from} → ${to}`,
+      detail: lang === 'en' ? `Type ${word} to confirm.` : `Escribe ${word} para confirmar.`,
+      confirmWord: word,
+      run: async (note) => userAction(u.id, 'plan', target, note),
+    });
+    setPendNote(''); setPendWord('');
   }
   async function resetPass(u: User) { setBusy(u.id + 'rst'); const r = await fetch('/api/admin/reset-password', { method: 'POST', body: JSON.stringify({ email: u.email }) }); const j = await r.json(); setBusy(''); if (!r.ok) { toastErr(j); return; } if (j.link) { navigator.clipboard.writeText(j.link); toast((lang === 'en' ? 'Recovery link copied:\n\n' : 'Enlace de recuperación copiado:\n\n') + j.link); } else toast(lang === 'en' ? 'Recovery email sent.' : 'Email de recuperación enviado.'); }
 
@@ -490,7 +504,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                   <span style={{ display: 'block' }}>{u.full_name || u.email}{u.is_admin && <span className="pill brand" style={{ marginLeft: 6 }}>{t.u_admin}</span>}</span>
                   {u.full_name && <span className="muted" style={{ fontSize: 12, display: 'block' }}>{u.email}</span>}
                 </span></div></td>
-                          <td><select value={u.plan} onChange={(e) => userAction(u.id, 'plan', e.target.value)} style={{ margin: 0, padding: '5px 8px', width: 'auto' }}>{plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}{!plans.find((p) => p.id === u.plan) && <option value={u.plan}>{u.plan}</option>}</select></td>
+                          <td><select value={u.plan} onChange={(e) => { if (e.target.value !== u.plan) askPlanChange(u, e.target.value); }} style={{ margin: 0, padding: '5px 8px', width: 'auto' }}>{plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}{!plans.find((p) => p.id === u.plan) && <option value={u.plan}>{u.plan}</option>}</select></td>
                           <td>{u.banned ? <span className="pill red">● {t.u_banned}</span> : <span className="pill" style={{ color: 'var(--green)', background: 'rgba(52,226,160,.15)' }}>● {u.subscription_status || t.u_active}</span>}</td>
                           <td className="muted">{u.accounts}</td>
                           <td className="muted" style={{ fontSize: 12 }}>{u.lastSync ? fmtDate(u.lastSync, lang) : '—'}</td>
@@ -542,13 +556,28 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
             {pendAct && (
               <div onClick={() => setPendAct(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
                 <div onClick={(e) => e.stopPropagation()} className="card" style={{ maxWidth: 380, width: '100%', border: pendAct.danger ? '1px solid var(--red)' : undefined }}>
-                  <div style={{ fontWeight: 700, marginBottom: 10, color: pendAct.danger ? 'var(--red)' : undefined }}>{pendAct.danger ? '⚠️ ' : ''}{pendAct.title}</div>
+                  <div style={{ fontWeight: 700, marginBottom: pendAct.detail ? 4 : 10, color: pendAct.danger ? 'var(--red)' : undefined }}>{pendAct.danger ? '⚠️ ' : ''}{pendAct.title}</div>
+                  {pendAct.detail && <div className="muted" style={{ fontSize: 12.5, marginBottom: 12 }}>{pendAct.detail}</div>}
                   <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{lang === 'en' ? 'Note (required — saved to the log)' : 'Nota (obligatoria — queda en el registro)'}</div>
-                  <input value={pendNote} onChange={(e) => setPendNote(e.target.value)} placeholder={lang === 'en' ? 'Reason…' : 'Motivo…'} style={{ margin: '0 0 14px' }} />
+                  <input value={pendNote} onChange={(e) => setPendNote(e.target.value)} placeholder={lang === 'en' ? 'Reason…' : 'Motivo…'} style={{ margin: '0 0 12px' }} />
+                  {pendAct.confirmWord && (() => {
+                    const okWord = pendWord.trim().toUpperCase() === pendAct.confirmWord;
+                    return (<>
+                      <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{lang === 'en' ? `Type ` : 'Escribe '}<b style={{ color: 'var(--tx)' }}>{pendAct.confirmWord}</b>{lang === 'en' ? ' to confirm' : ' para confirmar'}</div>
+                      <input value={pendWord} onChange={(e) => setPendWord(e.target.value)} placeholder={pendAct.confirmWord} autoCapitalize="characters"
+                        style={{ margin: '0 0 14px', letterSpacing: 1, fontWeight: 700, borderColor: pendWord ? (okWord ? 'var(--green)' : 'var(--red)') : undefined }} />
+                    </>);
+                  })()}
                   <div className="row" style={{ gap: 8, justifyContent: 'flex-end' }}>
                     <button className="btn btn-ghost" onClick={() => setPendAct(null)}>{lang === 'en' ? 'Cancel' : 'Cancelar'}</button>
-                    <button className={pendAct.danger ? 'btn btn-danger' : 'btn btn-primary'} disabled={!pendNote.trim()} style={{ opacity: pendNote.trim() ? 1 : .5 }}
-                      onClick={async () => { const fn = pendAct.run; setPendAct(null); await fn(pendNote.trim()); }}>{lang === 'en' ? 'Confirm' : 'Confirmar'}</button>
+                    {(() => {
+                      const wordOk = !pendAct.confirmWord || pendWord.trim().toUpperCase() === pendAct.confirmWord;
+                      const ready = !!pendNote.trim() && wordOk;
+                      return (
+                        <button className={pendAct.danger ? 'btn btn-danger' : 'btn btn-primary'} disabled={!ready} style={{ opacity: ready ? 1 : .5 }}
+                          onClick={async () => { const fn = pendAct.run; setPendAct(null); await fn(pendNote.trim()); }}>{lang === 'en' ? 'Confirm' : 'Confirmar'}</button>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>

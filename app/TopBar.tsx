@@ -117,6 +117,7 @@ export default async function TopBar() {
         ...((caps.algo || addonAlgo) ? [{ href: '/dashboard/bots', label: (t as any).bots, icon: '🤖', dot: (botsActive ? 'on' : 'off') as 'on' | 'off', dim: !botsActive, dotTitle: (botsActive ? (lang === 'es' ? 'Robots operando' : 'Robots running') : (lang === 'es' ? 'Sin robots operando ahora' : 'No robots running now')) }] : []),
         ...((caps.tv || caps.copy) ? [{ href: '/dashboard/tradingview', label: 'TradingView', icon: '📈', dot: (tvOn ? 'on' : 'off') as 'on' | 'off', dim: !tvOn, dotTitle: (tvOn ? (lang === 'es' ? 'TradingView activado' : 'TradingView on') : (lang === 'es' ? 'TradingView desactivado' : 'TradingView off')) }] : []),
         ...(caps.expenses ? [{ href: '/dashboard/expenses', label: lang === 'en' ? 'Net profit' : 'Ganancia neta', icon: '🧮' }] : []),
+        { href: '/dashboard/academy', label: 'Onyx Academy', icon: '🎓' },
         ...(isAdmin ? [{ href: '/admin', label: t.admin, icon: '🛠️' }] : []),
       ]
     : [

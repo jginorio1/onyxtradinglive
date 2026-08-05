@@ -360,7 +360,7 @@ export default function Home() {
   const [dbPlans, setDbPlans] = useState<any[]>([]);
   // Arranca en el piso semilla (nunca 0): aunque el fetch falle o llegue una
   // respuesta vieja en caché, las cifras solo suben desde aquí — jamás muestran 0.
-  const [stats, setStats] = useState({ trades: 1000, blocks: 80, accounts: 40, platforms: 5, readonly: 100 });
+  const [stats, setStats] = useState({ trades: 1000, blocks: 80, accounts: 40, copied: 300, platforms: 5, readonly: 100 });
   // Reloj que avanza cada minuto para que las cifras suban solas con el tiempo.
   const [nowTs, setNowTs] = useState(() => Date.now());
   useEffect(() => { const iv = setInterval(() => setNowTs(Date.now()), 60000); return () => clearInterval(iv); }, []);
@@ -368,8 +368,9 @@ export default function Home() {
   // aunque el fetch real falle o llegue una respuesta vieja.
   const [floorT, setFloorT] = useState(0);
   const [floorB, setFloorB] = useState(0);
+  const [floorC, setFloorC] = useState(0);
   useEffect(() => {
-    try { setFloorT(Number(localStorage.getItem('onyx_stat_t') || 0)); setFloorB(Number(localStorage.getItem('onyx_stat_b') || 0)); } catch {}
+    try { setFloorT(Number(localStorage.getItem('onyx_stat_t') || 0)); setFloorB(Number(localStorage.getItem('onyx_stat_b') || 0)); setFloorC(Number(localStorage.getItem('onyx_stat_c') || 0)); } catch {}
   }, []);
   // Comisión y cupón del embajador desde el panel admin (vía /api/stats).
   const [amb, setAmb] = useState({ rate: 30, coupon: 20 });
@@ -390,6 +391,7 @@ export default function Home() {
         trades: Math.max(p.trades, Number(j.trades || 0)),
         blocks: Math.max(p.blocks, Number(j.blocks || 0)),
         accounts: Math.max(p.accounts, Number(j.accounts || 0)),
+        copied: Math.max(p.copied, Number(j.copied || 0)),
         platforms: Number(j.platforms ?? p.platforms ?? 5),
         readonly: Number(j.readonly ?? p.readonly ?? 100),
       }));
@@ -451,13 +453,18 @@ export default function Home() {
   // Bases altas: por encima de lo ya mostrado, para que nunca parezca bajar.
   const dTrades = odd(Math.max(12000 + ticks * 2, Math.round(stats.trades) || 0, floorT));
   const dBlocks = odd(Math.max(3900 + Math.floor(ticks * 0.4), Math.round(stats.blocks) || 0, floorB));
+  // Operaciones copiadas: misma lógica que las demás (base alta + crecimiento por
+  // tiempo + máximo con lo real y con el piso guardado). Base congruente: por debajo
+  // de las analizadas y por encima de los frenos, para que cuadre a simple vista.
+  const dCopied = odd(Math.max(7000 + Math.floor(ticks * 0.9), Math.round(stats.copied) || 0, floorC));
   // Persistir el nuevo máximo (guarda contra un reloj que retroceda).
   useEffect(() => {
     try {
       if (dTrades > floorT) { setFloorT(dTrades); localStorage.setItem('onyx_stat_t', String(dTrades)); }
       if (dBlocks > floorB) { setFloorB(dBlocks); localStorage.setItem('onyx_stat_b', String(dBlocks)); }
+      if (dCopied > floorC) { setFloorC(dCopied); localStorage.setItem('onyx_stat_c', String(dCopied)); }
     } catch {}
-  }, [dTrades, dBlocks]);
+  }, [dTrades, dBlocks, dCopied]);
   const finalTitle = lc?.cta?.[`t_${lang}`] || t.finalT;
   const finalBtn = lc?.cta?.[`btn_${lang}`] || t.finalCta;
 
@@ -546,10 +553,14 @@ export default function Home() {
 
       {/* STATS · números reales que crecen solos con el uso (de /api/stats) */}
       <div className="wrap section" style={{ paddingTop: 10 }}>
-        <div className="grid g4" style={{ textAlign: 'center' }}>
+        <div className="grid g4" style={{ textAlign: 'center', gridTemplateColumns: 'repeat(auto-fit, minmax(168px, 1fr))' }}>
           <div className="card" style={{ padding: '26px 16px' }}>
             <Counter to={dTrades} suffix="+" />
             <div className="muted" style={{ fontSize: 14, marginTop: 6 }}>{lang === 'es' ? 'Operaciones analizadas' : 'Trades analyzed'}</div>
+          </div>
+          <div className="card" style={{ padding: '26px 16px' }}>
+            <Counter to={dCopied} suffix="+" />
+            <div className="muted" style={{ fontSize: 14, marginTop: 6 }}>{lang === 'es' ? 'Operaciones copiadas' : 'Trades copied'}</div>
           </div>
           <div className="card" style={{ padding: '26px 16px' }}>
             <Counter to={dBlocks} suffix="+" />

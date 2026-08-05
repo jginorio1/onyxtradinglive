@@ -5,5 +5,5 @@
     "baseUrl": ".", "paths": { "@/*": ["./*"] }, "types": [],
     "allowJs": true, "strict": true, "noImplicitAny": false
   },
-  "include": ["app/LangToggle.tsx","app/admin/AdminClient.tsx","app/dashboard/academy/AcademyClient.tsx","app/api/admin/users/route.ts","lib/logFormat.ts"]
+  "include": ["app/page.tsx","app/TopBar.tsx","app/TopBarMenu.tsx","app/admin/AdminClient.tsx","app/api/stats/route.ts","app/api/admin/users/route.ts"]
 }
