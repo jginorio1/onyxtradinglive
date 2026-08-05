@@ -3,6 +3,7 @@ import { mkL } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import OnyxIcon from '@/app/components/OnyxIcon';
+import ConfirmNote from './ConfirmNote';
 
 // Finanzas de Onyx (P&L del negocio). Ingresos de Stripe vs gastos registrados.
 // Solo la ve quien tenga el permiso 'finanzas'. canManage = puede registrar gastos.
@@ -26,6 +27,7 @@ export default function Finanzas({ canManage = false }: { canManage?: boolean })
   const [form, setForm] = useState<any>(empty);
   const [editId, setEditId] = useState<string | null>(null);
   const [cashInput, setCashInput] = useState('');
+  const [cf, setCf] = useState<any>(null);   // confirmación con nota
 
   async function load() {
     const r = await fetch(`/api/admin/finanzas?income=${mode}&lang=${lang}`);
@@ -44,10 +46,11 @@ export default function Finanzas({ canManage = false }: { canManage?: boolean })
     await fetch('/api/admin/finanzas', { method: 'POST', body: JSON.stringify(body) });
     setBusy(false); setForm(empty); setEditId(null); load();
   }
-  async function del(id: string) {
-    if (!confirm(L('¿Borrar este gasto?', 'Delete this expense?'))) return;
-    await fetch('/api/admin/finanzas', { method: 'POST', body: JSON.stringify({ action: 'delete', id }) });
-    load();
+  function del(id: string) {
+    setCf({ title: L('¿Borrar este gasto?', 'Delete this expense?'), danger: true, run: async (note: string) => {
+      await fetch('/api/admin/finanzas', { method: 'POST', body: JSON.stringify({ action: 'delete', id, note }) });
+      load();
+    } });
   }
   async function toggleActive(e: any) {
     await fetch('/api/admin/finanzas', { method: 'POST', body: JSON.stringify({ action: 'update', id: e.id, active: !e.active }) });
@@ -78,6 +81,7 @@ export default function Finanzas({ canManage = false }: { canManage?: boolean })
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <ConfirmNote act={cf} onClose={() => setCf(null)} />
       <div className="row between" style={{ flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
         <div>
           <h3 style={{ display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic"><OnyxIcon emoji="📊" size={16} /></span> {L('Finanzas de Onyx', 'Onyx finances')}</h3>

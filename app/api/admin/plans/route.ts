@@ -84,12 +84,12 @@ export async function DELETE(req: Request) {
     const { isAdmin, user } = await getAdmin();
     if (!isAdmin) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
     const _p = await requirePerm('planes', 'view'); if (!_p.ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
-    const { id } = await req.json();
+    const { id, note } = await req.json();
     if (!id) return NextResponse.json({ error: 'falta id' }, { status: 400 });
     if (id === 'free') return NextResponse.json({ error: 'no se puede borrar el plan free' }, { status: 400 });
     const { error } = await supabaseAdmin.from('plans').delete().eq('id', id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    await logAdmin(user.email, 'delete_plan', id, {});
+    await logAdmin(user.email, 'delete_plan', id, { note: note || null });
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error', code: 'generic' }, { status: 500 });

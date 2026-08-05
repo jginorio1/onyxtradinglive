@@ -41,7 +41,7 @@ export async function POST(req: Request) {
   try {
     if (b.action === 'delete' && b.id) {
       await deleteExpense(String(b.id));
-      await logAdmin(user.email, 'finanzas_delete', String(b.id));
+      await logAdmin(user.email, 'finanzas_delete', String(b.id), { note: b.note || null });
       return NextResponse.json({ ok: true });
     }
     if (b.action === 'update' && b.id) {

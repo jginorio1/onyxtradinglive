@@ -9,6 +9,7 @@ import Addons from './Addons';
 import CleanSignups from './CleanSignups';
 import UserDrawer from './UserDrawer';
 import { describeLog, CAT_STYLE } from '@/lib/logFormat';
+import ConfirmNote from './ConfirmNote';
 import Emails from './Emails';
 import Campaigns from './Campaigns';
 import TestConsole from './TestConsole';
@@ -1084,7 +1085,12 @@ function PlanCard({ plan, isNew, reload, onCancel }: { plan: Plan; isNew?: boole
     const j = await r.json(); setSaving(false);
     if (!r.ok) { toastErr(j); return; } reload();
   }
-  async function del() { if (!confirm(`${t.pl_confirmDel} "${p.name}"?`)) return; const r = await fetch('/api/admin/plans', { method: 'DELETE', body: JSON.stringify({ id: p.id }) }); const j = await r.json(); if (!r.ok) { toastErr(j); return; } reload(); }
+  const [cf, setCf] = useState<any>(null);
+  function del() {
+    setCf({ title: `${t.pl_confirmDel} "${p.name}"?`, danger: true, run: async (note: string) => {
+      const r = await fetch('/api/admin/plans', { method: 'DELETE', body: JSON.stringify({ id: p.id, note }) }); const j = await r.json(); if (!r.ok) { toastErr(j); return; } reload();
+    } });
+  }
 
   const featES = Array.isArray(p.features) ? p.features.join('\n') : (p.features as any);
   const featEN = Array.isArray(p.features_en) ? p.features_en.join('\n') : (p.features_en as any);
@@ -1152,6 +1158,7 @@ function PlanCard({ plan, isNew, reload, onCancel }: { plan: Plan; isNew?: boole
       <div className="row" style={{ gap: 8, marginTop: 12 }}>
         <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? '...' : (isNew ? t.pl_create : t.pl_save)}</button>
         {isNew ? <button className="btn btn-ghost" onClick={onCancel}>{t.pl_cancel}</button> : (p.id !== 'free' && <button className="btn btn-danger" onClick={del}>{t.pl_delete}</button>)}
+        <ConfirmNote act={cf} onClose={() => setCf(null)} />
       </div>
     </div>
   );
