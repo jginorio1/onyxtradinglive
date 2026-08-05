@@ -70,6 +70,7 @@ export function describeLog(e: LogEntry, lang: 'es' | 'en' = 'es'): { text: stri
 
   // seguridad
   if (a === 'admin') return { text: m.value ? `${L('Hizo admin a', 'Made admin')} ${m.email || tgt}` : `${L('Quitó admin a', 'Removed admin from')} ${m.email || tgt}`, cat: 'security' };
+  if (a === 'name') return { text: `${L('Cambió el nombre de', 'Renamed')} ${m.email || tgt} → “${short(m.name || m.value)}”`, cat: 'other' };
   if (a === 'reset_password') return { text: `${L('Envió recuperación de contraseña a', 'Sent password reset to')} ${tgt}`, cat: 'security' };
   if (a === 'pin_fail') return { text: L('PIN de admin incorrecto', 'Wrong admin PIN'), cat: 'security' };
   if (a === 'pin_lockout') return { text: L('Bloqueó el panel por PIN fallido', 'Locked panel after failed PIN'), cat: 'security' };

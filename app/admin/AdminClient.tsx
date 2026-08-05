@@ -344,6 +344,17 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
   const [pendAct, setPendAct] = useState<{ title: string; danger?: boolean; run: (note: string) => Promise<void> } | null>(null);
   const [pendNote, setPendNote] = useState('');
   const [menuFor, setMenuFor] = useState<string | null>(null);   // menú "⋯" abierto por usuario
+  const [menuPos, setMenuPos] = useState<{ left: number; top: number } | null>(null);   // posición fija del menú (evita recorte en última fila)
+  // Abre el menú "⋯" anclado al botón, con posición fija en viewport; si está cerca del
+  // borde inferior, se abre HACIA ARRIBA para que nunca quede cortado.
+  function openRowMenu(e: React.MouseEvent, id: string) {
+    if (menuFor === id) { setMenuFor(null); return; }
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const MENU_W = 214, MENU_H = 232;
+    const left = Math.max(8, Math.min(r.right - MENU_W, window.innerWidth - MENU_W - 8));
+    const top = (r.bottom + MENU_H > window.innerHeight - 8) ? Math.max(8, r.top - MENU_H - 6) : r.bottom + 6;
+    setMenuPos({ left, top }); setMenuFor(id);
+  }
 
   async function userAction(id: string, action: string, value?: any, note?: string) { setBusy(id + action); const r = await fetch('/api/admin/users', { method: 'PATCH', body: JSON.stringify({ id, action, value, note }) }); const j = await r.json(); if (!r.ok) toastErr(j); await loadUsers(); setBusy(''); }
   async function delUser(u: User) {
@@ -488,12 +499,13 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                               {lang === 'en' ? 'Manage' : 'Gestionar'}
                             </button>
                             <div style={{ position: 'relative' }}>
-                              <button className="btn btn-ghost" style={{ padding: '6px 11px', fontSize: 15, lineHeight: 1 }} title={lang === 'en' ? 'More' : 'Más'} onClick={() => setMenuFor(menuFor === u.id ? null : u.id)}>⋯</button>
-                              {menuFor === u.id && (
+                              <button className="btn btn-ghost" style={{ padding: '6px 11px', fontSize: 15, lineHeight: 1 }} title={lang === 'en' ? 'More' : 'Más'} onClick={(e) => openRowMenu(e, u.id)}>⋯</button>
+                              {menuFor === u.id && menuPos && (
                                 <>
                                   <div onClick={() => setMenuFor(null)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
-                                  <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 6, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, boxShadow: '0 14px 34px rgba(0,0,0,.4)', zIndex: 41, width: 210, overflow: 'hidden' }}>
+                                  <div style={{ position: 'fixed', left: menuPos.left, top: menuPos.top, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, boxShadow: '0 14px 34px rgba(0,0,0,.4)', zIndex: 41, width: 214, overflow: 'hidden' }}>
                                     {[
+                                      { ic: '✏️', label: lang === 'en' ? 'Edit name' : 'Editar nombre', on: () => { setMenuFor(null); const nn = window.prompt(lang === 'en' ? 'Full name for ' + u.email : 'Nombre para ' + u.email, u.full_name || ''); if (nn !== null) userAction(u.id, 'name', nn.trim()); } },
                                       { ic: '🔑', label: lang === 'en' ? 'Reset password' : 'Restablecer contraseña', on: () => { setMenuFor(null); resetPass(u); } },
                                       u.banned
                                         ? { ic: '✅', label: lang === 'en' ? 'Unban account' : 'Desbloquear cuenta', on: () => { setMenuFor(null); askAction((lang === 'en' ? 'Unban ' : 'Desbloquear ') + u.email, false, u.id, 'unban'); } }

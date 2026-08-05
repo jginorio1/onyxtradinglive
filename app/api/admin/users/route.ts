@@ -80,6 +80,10 @@ export async function PATCH(req: Request) {
       await supabaseAdmin.from('profiles').update({ banned: false }).eq('id', id);
     } else if (action === 'admin') {
       await supabaseAdmin.from('profiles').update({ is_admin: !!value }).eq('id', id);
+    } else if (action === 'name') {
+      const nn = String(value || '').trim().slice(0, 80);
+      await supabaseAdmin.from('profiles').update({ full_name: nn || null }).eq('id', id);
+      meta.name = nn;
     } else {
       return NextResponse.json({ error: 'acción desconocida' }, { status: 400 });
     }
