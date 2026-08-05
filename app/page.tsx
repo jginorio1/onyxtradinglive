@@ -98,7 +98,7 @@ const dict = {
       s: 'Un solo lugar para analizar, proteger, aprender y hacer crecer tu trading. Todo conectado a tu misma cuenta.',
       cards: [
         { i: '🛡️', t: 'Onyx Guardian', d: 'Gestiona y frena tus operaciones según tu plan: break even real, trailing, parciales, límites de fondeo y bloqueo por noticias.' },
-        { i: '🔁', t: 'Copy trading', d: 'Copia de una cuenta maestra a varias, con tus límites de riesgo por enlace. Nunca se activa solo: tú decides.' },
+        { i: '🔁', t: 'Copy trading anti-baneo', d: 'Copia de una maestra a varias con tus límites de riesgo por enlace. Protege tu fondeo: ejecución local (sin IP compartida) y retraso aleatorio que rompe el patrón de timing. Nunca se activa solo: tú decides.' },
         { i: '📈', t: 'Señales de TradingView', d: 'Tus alertas de TradingView abren la operación en tu cuenta real vía tu EA, con tope de lote y símbolos. El Guardian te sigue protegiendo.' },
         { i: '🎓', t: 'Onyx Academy', d: 'Comunidad y mentoría estilo Skool: cursos, clases en vivo, feed, retos y certificados. Los mentores cobran con Stripe.' },
         { i: '🤖', t: 'Onyx AI', d: 'Analiza tu operativa, lee tu reporte y te da hallazgos claros. Nunca da señales ni promete ganancias.' },
@@ -176,7 +176,7 @@ const dict = {
     plans: [
       { n: 'Free', p: 0, items: ['1 cuenta conectada', 'Estadísticas básicas', '30 días de historial'], cta: 'Empezar gratis', pop: false },
       { n: 'Pro', p: 19, items: ['5 cuentas conectadas', 'Todas las estadísticas', 'Historial ilimitado', 'Calendario y gráficas', 'Reglas de fondeo'], cta: 'Elegir Pro', pop: true },
-      { n: 'Elite', p: 39, items: ['Cuentas ilimitadas', 'Todo lo de Pro', 'Informes automáticos', 'Alertas por Telegram', 'Soporte prioritario'], cta: 'Elegir Elite', pop: false },
+      { n: 'Elite', p: 39, items: ['Cuentas ilimitadas', 'Todo lo de Pro', 'Copy trading anti-baneo', 'Informes automáticos', 'Alertas por Telegram', 'Soporte prioritario'], cta: 'Elegir Elite', pop: false },
     ],
     amb: {
       t: '¿Tienes una comunidad de trading?',
@@ -229,7 +229,7 @@ const dict = {
       s: 'One place to analyze, protect, learn and grow your trading. All wired to your same account.',
       cards: [
         { i: '🛡️', t: 'Onyx Guardian', d: 'Manages and brakes your trades to your plan: real break even, trailing, partials, funded-account limits and news blackout.' },
-        { i: '🔁', t: 'Copy trading', d: 'Copy from a master account to several, with your own per-link risk limits. Never auto-activates: you decide.' },
+        { i: '🔁', t: 'Ban-safe copy trading', d: 'Copy from one master to several with your own per-link risk limits. Protects your funded account: local execution (no shared IP) and a random delay that breaks the timing pattern. Never auto-activates: you decide.' },
         { i: '📈', t: 'TradingView signals', d: 'Your TradingView alerts open the trade in your real account via your EA, with a lot cap and symbols. Guardian keeps protecting you.' },
         { i: '🎓', t: 'Onyx Academy', d: 'Skool-style community and mentorship: courses, live classes, feed, challenges and certificates. Mentors get paid with Stripe.' },
         { i: '🤖', t: 'Onyx AI', d: 'Analyzes your trading, reads your statement and gives you clear findings. Never gives signals or promises profit.' },
@@ -307,7 +307,7 @@ const dict = {
     plans: [
       { n: 'Free', p: 0, items: ['1 connected account', 'Basic stats', '30 days of history'], cta: 'Start free', pop: false },
       { n: 'Pro', p: 19, items: ['5 connected accounts', 'All stats', 'Unlimited history', 'Calendar & charts', 'Prop-firm rules'], cta: 'Choose Pro', pop: true },
-      { n: 'Elite', p: 39, items: ['Unlimited accounts', 'Everything in Pro', 'Automatic reports', 'Telegram alerts', 'Priority support'], cta: 'Choose Elite', pop: false },
+      { n: 'Elite', p: 39, items: ['Unlimited accounts', 'Everything in Pro', 'Ban-safe copy trading', 'Automatic reports', 'Telegram alerts', 'Priority support'], cta: 'Choose Elite', pop: false },
     ],
     amb: {
       t: 'Do you have a trading community?',

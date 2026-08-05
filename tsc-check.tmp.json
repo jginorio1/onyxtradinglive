@@ -1,9 +1,2 @@
-{
-  "compilerOptions": {
-    "noEmit": true, "skipLibCheck": true, "jsx": "react-jsx",
-    "module": "esnext", "target": "esnext", "moduleResolution": "bundler",
-    "baseUrl": ".", "paths": { "@/*": ["./*"] }, "types": [],
-    "allowJs": true, "strict": true, "noImplicitAny": false
-  },
-  "include": ["lib/guide.ts","lib/copyRelay.ts","app/api/v1/copy/master/route.ts","app/api/v1/copy/slave/route.ts","app/api/copy/links/route.ts","app/dashboard/copy/CopyClient.tsx"]
-}
+{ "compilerOptions": { "noEmit": true, "skipLibCheck": true, "jsx": "react-jsx", "module": "esnext", "target": "esnext", "moduleResolution": "bundler", "baseUrl": ".", "paths": { "@/*": ["./*"] }, "types": [], "allowJs": true, "strict": true, "noImplicitAny": false },
+  "include": ["lib/stripeClient.ts","app/account/BillingCard.tsx","app/page.tsx","lib/supportAI.ts"] }

@@ -58,7 +58,7 @@ CONECTAR: El trader instala el conector de Onyx dentro de su plataforma (EA en M
 
 ONYX GUARDIAN (gestor de riesgo): hace respetar reglas — límite de pérdida diaria, límite de pérdida total, protección/bloqueo de ganancias, aviso antes de noticias de alto impacto y controles de riesgo. "Mi reto" es un marcador para cuentas de fondeo/prop firm que compara tu progreso con las reglas del reto (objetivo, pérdida diaria/total, días mínimos, consistencia). Hay una calculadora de lotaje/riesgo. Cumplir las reglas de la prop firm es responsabilidad del trader.
 
-COPY TRADING: copia operaciones entre las cuentas del propio trader (una maestra a una o varias esclavas) con PIN y controles de riesgo por enlace. Es un gestor multicuenta legítimo.
+COPY TRADING (planes Elite y Black Onyx): copia operaciones entre las cuentas del propio trader (una maestra a una o varias esclavas) con PIN y controles de riesgo por enlace. Es un gestor multicuenta legítimo. ANTI-BANEO: reduce el riesgo de baneo en prop firms de dos formas: (1) la ejecución es LOCAL en la terminal del trader, así que Onyx NO estampa una IP compartida en las operaciones (a diferencia de copiadores en la nube); (2) hay un "retraso aleatorio" (jitter) configurable por enlace que añade unos segundos al azar antes de copiar cada apertura, para que el timing de la esclava no sea idéntico al de la master y no salte por patrón. Los cierres salen al instante. IMPORTANTE: la IP es solo una señal; para minimizar el riesgo conviene un VPS/IP por cuenta, y muchas prop firms PROHÍBEN en sus reglas copiar entre cuentas fondeadas sin importar la IP. Onyx reduce el riesgo pero no garantiza inmunidad; cumplir el reglamento de la firma es responsabilidad del trader.
 
 FONDEO / PROP FIRMS: Onyx sirve para challenges y cuentas fondeadas.
 
@@ -81,7 +81,7 @@ CONNECT: The trader installs the Onyx connector inside their platform (EA on Met
 
 ONYX GUARDIAN (risk manager): enforces rules — daily loss limit, total loss limit, profit protection/lock, warning before high-impact news, and risk controls. "My challenge" is a scoreboard for funded/prop-firm accounts that compares your progress with the challenge rules (target, daily/total loss, minimum days, consistency). There is a lot-size/risk calculator. Following prop-firm rules is the trader's responsibility.
 
-COPY TRADING: copies trades between the trader's own accounts (one master to one or more slaves) with a PIN and per-link risk controls. It is a legitimate multi-account manager.
+COPY TRADING (Elite and Black Onyx plans): copies trades between the trader's own accounts (one master to one or more slaves) with a PIN and per-link risk controls. It is a legitimate multi-account manager. BAN-SAFE: it lowers the risk of prop-firm bans two ways: (1) execution is LOCAL on the trader's terminal, so Onyx does NOT stamp a shared IP on the trades (unlike cloud copiers); (2) there is a configurable per-link "random delay" (jitter) that adds a few random seconds before copying each open, so the slave's timing is not identical to the master and does not flag by pattern. Closes go out instantly. IMPORTANT: IP is only one signal; to minimize risk use one VPS/IP per account, and many prop firms PROHIBIT copying between funded accounts in their rules regardless of IP. Onyx lowers the risk but does not guarantee immunity; following the firm's rulebook is the trader's responsibility.
 
 FUNDED / PROP FIRMS: Onyx works for challenges and funded accounts.
 

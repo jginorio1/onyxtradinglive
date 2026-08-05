@@ -38,7 +38,7 @@ export default function BillingCard({ lang }: { lang: 'es' | 'en' }) {
         const j = await r.json();
         if (!r.ok || !j.clientSecret) { setErr(j.error || t.err); return; }
         if (cancelled) return;
-        const elements = stripe.elements({ clientSecret: j.clientSecret, appearance: onyxAppearance });
+        const elements = stripe.elements({ clientSecret: j.clientSecret, appearance: onyxAppearance() });
         const pe = elements.create('payment');
         pe.mount(box.current);
         stripeRef.current = stripe; elementsRef.current = elements;

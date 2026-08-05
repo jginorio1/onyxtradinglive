@@ -36,16 +36,34 @@ export function getStripe(): Promise<any> {
   return stripePromise;
 }
 
-// Tema oscuro de Onyx para que los componentes de Stripe combinen con el panel.
-export const onyxAppearance = {
-  theme: 'night' as const,
-  variables: {
-    colorPrimary: '#7c8cff',
-    colorBackground: '#12151d',
-    colorText: '#e6ebf2',
-    colorTextSecondary: '#8a97a5',
-    colorDanger: '#e0504a',
-    fontFamily: 'system-ui, sans-serif',
-    borderRadius: '10px',
-  },
-};
+// Apariencia de los componentes de Stripe SEGÚN EL TEMA del sitio.
+// Antes estaba fijada a oscuro ('night'): en modo claro salían inputs oscuros
+// con etiquetas gris claro sobre fondo blanco (mal contraste). Ahora lee
+// data-theme del <html> y devuelve fondo blanco + texto negro en claro.
+function currentTheme(): 'light' | 'dark' {
+  if (typeof document === 'undefined') return 'dark';
+  const attr = document.documentElement.getAttribute('data-theme');
+  if (attr === 'light' || attr === 'dark') return attr;
+  return (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+}
+
+export function onyxAppearance() {
+  const light = currentTheme() === 'light';
+  return {
+    theme: (light ? 'stripe' : 'night') as 'stripe' | 'night',
+    variables: {
+      colorPrimary: '#7c8cff',
+      colorBackground: light ? '#ffffff' : '#12151d',
+      colorText: light ? '#0d1117' : '#e6ebf2',          // negro en claro
+      colorTextSecondary: light ? '#4a5568' : '#8a97a5', // gris oscuro legible en claro
+      colorTextPlaceholder: light ? '#6b7280' : '#6b7684',
+      colorDanger: '#e0504a',
+      fontFamily: 'system-ui, sans-serif',
+      borderRadius: '10px',
+    },
+    rules: light ? {
+      '.Input': { border: '1px solid #d0d5dd', boxShadow: 'none' },
+      '.Label': { color: '#0d1117' },
+    } : {},
+  };
+}
