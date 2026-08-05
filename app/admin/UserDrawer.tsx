@@ -10,15 +10,17 @@ const T: any = {
   es: { activity: 'Actividad de la cuenta', emails: 'Correos que le envió el sistema', none: 'Sin registros.', noEmails: 'Ningún correo aún.',
     by: 'por', write: 'Escribirle un correo', subj: 'Asunto', body: 'Mensaje', send: 'Enviar correo', sent: 'Correo enviado.', close: 'Cerrar',
     sentS: 'enviado', failed: 'falló', tabs: ['Actividad', 'Correos', 'Crédito'],
-    crT: 'Crédito en su plan', crAvail: 'Crédito disponible ahora', crAmount: 'Monto a añadir (USD)', crNote: 'Nota (opcional)',
+    crT: 'Crédito en su plan', crAvail: 'Crédito disponible ahora', crAmount: 'Monto a añadir (USD)', crNote: 'Nota (obligatoria)',
     crAdd: 'Añadir crédito', crDone: 'Crédito aplicado.', crNote2: 'Se aplica como saldo a favor y se descuenta de su próxima factura. Usa un monto negativo para quitar crédito.',
+    crNoteReq: 'La nota es obligatoria.', crConfT: 'Confirmar crédito', crYouCredit: 'Vas a acreditar a', crConfBtn: 'Confirmar y acreditar', crCancel: 'Cancelar', crNoteLbl: 'Nota',
     crNoCust: 'Este usuario aún no tiene cliente en Stripe (no ha iniciado ningún pago), así que no se le puede aplicar crédito todavía.',
     act: { plan: 'Cambió el plan', ban: 'Bloqueó la cuenta', unban: 'Desbloqueó la cuenta', admin: 'Cambió rol de admin', delete_user: 'Eliminó la cuenta', email_user: 'Le envió un correo', self_plan: 'Cambió su propio plan', user_credit: 'Le aplicó crédito' } },
   en: { activity: 'Account activity', emails: 'Emails the system sent them', none: 'No records.', noEmails: 'No emails yet.',
     by: 'by', write: 'Write them an email', subj: 'Subject', body: 'Message', send: 'Send email', sent: 'Email sent.', close: 'Close',
     sentS: 'sent', failed: 'failed', tabs: ['Activity', 'Emails', 'Credit'],
-    crT: 'Credit on their plan', crAvail: 'Credit available now', crAmount: 'Amount to add (USD)', crNote: 'Note (optional)',
+    crT: 'Credit on their plan', crAvail: 'Credit available now', crAmount: 'Amount to add (USD)', crNote: 'Note (required)',
     crAdd: 'Add credit', crDone: 'Credit applied.', crNote2: 'Applied as account credit, deducted from their next invoice. Use a negative amount to remove credit.',
+    crNoteReq: 'The note is required.', crConfT: 'Confirm credit', crYouCredit: 'You will credit', crConfBtn: 'Confirm and credit', crCancel: 'Cancel', crNoteLbl: 'Note',
     crNoCust: 'This user has no Stripe customer yet (never started a payment), so credit cannot be applied yet.',
     act: { plan: 'Changed plan', ban: 'Banned account', unban: 'Unbanned account', admin: 'Changed admin role', delete_user: 'Deleted account', email_user: 'Sent an email', self_plan: 'Changed own plan', user_credit: 'Applied credit' } },
 };
@@ -34,6 +36,7 @@ export default function UserDrawer({ userId, email, onClose }: { userId: string;
   const [credit, setCredit] = useState<any>(null);   // estado del crédito del usuario
   const [crAmt, setCrAmt] = useState('');
   const [crNote, setCrNote] = useState('');
+  const [crConfirm, setCrConfirm] = useState(false); // popup de confirmación
 
   useEffect(() => {
     load();
@@ -46,14 +49,21 @@ export default function UserDrawer({ userId, email, onClose }: { userId: string;
   async function loadCredit() { try { const r = await fetch('/api/admin/credit?id=' + userId); setCredit(await r.json()); } catch { setCredit({ hasCustomer: false, balance: 0 }); } }
   useEffect(() => { if (tab === 2 && !credit) loadCredit(); }, [tab]);
 
-  async function addCredit() {
+  // Paso 1: valida (nota obligatoria) y abre la confirmación.
+  function askCredit() {
     const amount = Number(crAmt);
     if (!Number.isFinite(amount) || amount === 0) return;
+    if (!crNote.trim()) { toast(t.crNoteReq); return; }
+    setCrConfirm(true);
+  }
+  // Paso 2: aplica el crédito tras confirmar.
+  async function doCredit() {
+    const amount = Number(crAmt);
     setBusy(true);
     try {
       const r = await fetch('/api/admin/credit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: userId, amount, note: crNote }) });
       const j = await r.json(); if (!r.ok) { toastErr(j); return; }
-      toast(t.crDone, 'ok'); setCrAmt(''); setCrNote(''); setCredit(j); load();
+      toast(t.crDone, 'ok'); setCrAmt(''); setCrNote(''); setCrConfirm(false); setCredit(j); load();
     } finally { setBusy(false); }
   }
 
@@ -130,11 +140,30 @@ export default function UserDrawer({ userId, email, onClose }: { userId: string;
                 <span style={{ fontSize: 12, color: 'var(--mut)' }}>{t.crAmount}</span>
                 <input type="number" step="0.01" value={crAmt} onChange={(e) => setCrAmt(e.target.value)} placeholder="10" style={{ margin: '4px 0 10px', maxWidth: 160 }} />
                 <span style={{ fontSize: 12, color: 'var(--mut)' }}>{t.crNote}</span>
-                <input value={crNote} onChange={(e) => setCrNote(e.target.value)} style={{ margin: '4px 0 12px' }} />
-                <button className="btn btn-primary" onClick={addCredit} disabled={busy || !Number(crAmt)}>{busy ? '…' : t.crAdd}</button>
+                <input value={crNote} onChange={(e) => setCrNote(e.target.value)} placeholder={t.crNoteLbl} style={{ margin: '4px 0 12px' }} />
+                <button className="btn btn-primary" onClick={askCredit} disabled={busy || !Number(crAmt) || !crNote.trim()}
+                  style={{ opacity: (Number(crAmt) && crNote.trim()) ? 1 : .5 }}>{busy ? '…' : t.crAdd}</button>
                 <div className="muted" style={{ fontSize: 12, marginTop: 10, lineHeight: 1.5 }}>{t.crNote2}</div>
               </>
             )}
+          </div>
+        )}
+
+        {/* Popup de confirmación del crédito */}
+        {crConfirm && (
+          <div onClick={() => setCrConfirm(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 90, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+            <div onClick={(e) => e.stopPropagation()} className="card" style={{ maxWidth: 340, width: '100%' }}>
+              <div style={{ fontWeight: 700, marginBottom: 12 }}>🎁 {t.crConfT}</div>
+              <div style={{ background: 'rgba(52,226,160,.12)', borderRadius: 10, padding: 12, textAlign: 'center', marginBottom: 12 }}>
+                <div style={{ fontSize: 12, color: 'var(--green)' }}>{t.crYouCredit} {email}</div>
+                <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--green)' }}>{Number(crAmt) >= 0 ? '+' : ''}${Number(crAmt)}</div>
+              </div>
+              <div style={{ fontSize: 13, marginBottom: 12 }}><span className="muted">{t.crNoteLbl}:</span> {crNote}</div>
+              <div className="row" style={{ gap: 8, justifyContent: 'flex-end' }}>
+                <button className="btn btn-ghost" onClick={() => setCrConfirm(false)}>{t.crCancel}</button>
+                <button className="btn btn-primary" onClick={doCredit} disabled={busy}>{busy ? '…' : t.crConfBtn}</button>
+              </div>
+            </div>
           </div>
         )}
       </div>

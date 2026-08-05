@@ -37,7 +37,7 @@ import { useT } from '@/lib/adminText';
 import { useLang } from '@/lib/lang';
 
 type Plan = { id: string; name: string; name_en: string; desc_es: string | null; desc_en: string | null; price_month: number; price_year: number; stripe_price_id: string | null; stripe_price_id_year: string | null; max_accounts: number; features: string[]; features_en: string[]; badge: string | null; badge_en: string | null; active: boolean; sort: number; capabilities: any };
-type User = { id: string; email: string; plan: string; subscription_status: string | null; banned: boolean; is_admin: boolean; created_at: string; accounts: number; lastSync: string | null };
+type User = { id: string; email: string; full_name?: string | null; plan: string; subscription_status: string | null; banned: boolean; is_admin: boolean; created_at: string; accounts: number; lastSync: string | null };
 type Team = { id: string; email: string; role: string | null; is_admin: boolean; perms?: any; available?: boolean; last_active?: string | null };
 type Tab = 'resumen' | 'facturacion' | 'ingresos' | 'finanzas' | 'academy' | 'usuarios' | 'correos' | 'campanas' | 'blog' | 'planes' | 'landing' | 'equipo' | 'embajadores' | 'retencion' | 'pruebas' | 'firms' | 'catalogos' | 'modulos' | 'soporte' | 'chat' | 'kb' | 'diag' | 'backups' | 'audit' | 'optim' | 'ajustes';
 
@@ -342,7 +342,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
   async function delUser(u: User) { if (!confirm(lang === 'en' ? `Delete ${u.email} and ALL their data?` : `¿Borrar a ${u.email} y TODOS sus datos?`)) return; setBusy(u.id + 'del'); const r = await fetch('/api/admin/users', { method: 'DELETE', body: JSON.stringify({ id: u.id }) }); const j = await r.json(); if (!r.ok) toastErr(j); await loadUsers(); setBusy(''); }
   async function resetPass(u: User) { setBusy(u.id + 'rst'); const r = await fetch('/api/admin/reset-password', { method: 'POST', body: JSON.stringify({ email: u.email }) }); const j = await r.json(); setBusy(''); if (!r.ok) { toastErr(j); return; } if (j.link) { navigator.clipboard.writeText(j.link); toast((lang === 'en' ? 'Recovery link copied:\n\n' : 'Enlace de recuperación copiado:\n\n') + j.link); } else toast(lang === 'en' ? 'Recovery email sent.' : 'Email de recuperación enviado.'); }
 
-  const filtered = users.filter((u) => u.email?.toLowerCase().includes(q.toLowerCase()));
+  const filtered = users.filter((u) => (u.email + ' ' + (u.full_name || '')).toLowerCase().includes(q.toLowerCase()));
   const NAV_GROUPS: { g: string; items: [Tab, string, string][] }[] = [
     { g: t.g_op, items: [['resumen', '📊', t.nav_resumen], ['facturacion', '💳', lang === 'en' ? 'Billing' : 'Facturación'], ['usuarios', '👥', t.nav_usuarios], ['correos', '✉️', t.nav_correos], ['soporte', '🎫', t.nav_soporte], ['chat', '💬', lang === 'en' ? 'Team chat' : 'Chat equipo'], ['equipo', '🛡️', t.nav_equipo]] },
     { g: t.g_prod, items: [['planes', '💳', t.nav_planes], ['landing', '🧩', lang === 'en' ? 'Landing Builder' : 'Landing Builder'], ['modulos', '🧩', t.nav_modulos], ['firms', '🏛️', t.nav_firms], ['catalogos', '🗂️', lang === 'en' ? 'Catalogs' : 'Catálogos']] },
@@ -458,7 +458,10 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                     <tbody>
                       {filtered.map((u) => (
                         <tr key={u.id}>
-                          <td><div className="row" style={{ gap: 9 }}><span className="avatar-init" style={{ width: 28, height: 28, fontSize: 11 }}>{initials(u.email)}</span><span>{u.email}{u.is_admin && <span className="pill brand" style={{ marginLeft: 6 }}>{t.u_admin}</span>}</span></div></td>
+                          <td><div className="row" style={{ gap: 9 }}><span className="avatar-init" style={{ width: 28, height: 28, fontSize: 11 }}>{initials(u.full_name || u.email)}</span><span style={{ minWidth: 0 }}>
+                  <span style={{ display: 'block' }}>{u.full_name || u.email}{u.is_admin && <span className="pill brand" style={{ marginLeft: 6 }}>{t.u_admin}</span>}</span>
+                  {u.full_name && <span className="muted" style={{ fontSize: 12, display: 'block' }}>{u.email}</span>}
+                </span></div></td>
                           <td><select value={u.plan} onChange={(e) => userAction(u.id, 'plan', e.target.value)} style={{ margin: 0, padding: '5px 8px', width: 'auto' }}>{plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}{!plans.find((p) => p.id === u.plan) && <option value={u.plan}>{u.plan}</option>}</select></td>
                           <td>{u.banned ? <span className="pill red">● {t.u_banned}</span> : <span className="pill" style={{ color: 'var(--green)', background: 'rgba(52,226,160,.15)' }}>● {u.subscription_status || t.u_active}</span>}</td>
                           <td className="muted">{u.accounts}</td>

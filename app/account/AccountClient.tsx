@@ -336,6 +336,16 @@ export default function AccountClient({ email }: { email: string }) {
                     </div>
                   </div>
 
+                  {/* Saldo a favor (crédito Stripe): referidos, embajador o crédito manual del admin. */}
+                  {Number(data?.creditBalance) > 0 && (
+                    <div className="row between" style={{ borderTop: '1px solid var(--line)', paddingTop: 12, marginTop: 4, flexWrap: 'wrap', gap: 8 }}>
+                      <span className="muted" style={{ fontSize: 13 }}>🎁 {lang === 'en' ? 'Account credit' : 'Saldo a favor'}</span>
+                      <span style={{ fontWeight: 800, color: 'var(--green)' }}>${data.creditBalance}
+                        <span className="muted" style={{ fontWeight: 400, fontSize: 12, marginLeft: 8 }}>{lang === 'en' ? 'applied to your next invoice' : 'se descuenta de tu próxima factura'}</span>
+                      </span>
+                    </div>
+                  )}
+
                   {sub && <div style={{ borderTop: '1px solid var(--line)', paddingTop: 14, marginTop: 14 }}><BillingCard lang={lang} /></div>}
 
                   {/* Cambiar de plan (upgrade / downgrade) sobre la misma suscripción */}
