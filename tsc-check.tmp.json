@@ -5,5 +5,5 @@
     "baseUrl": ".", "paths": { "@/*": ["./*"] }, "types": [],
     "allowJs": true, "strict": true, "noImplicitAny": false
   },
-  "include": ["app/page.tsx","app/TopBar.tsx","app/TopBarMenu.tsx","app/admin/AdminClient.tsx","app/api/stats/route.ts","app/api/admin/users/route.ts"]
+  "include": ["app/components/DateTimePicker.tsx","lib/segments.ts","lib/campaigns.ts","lib/campaignAI.ts","app/api/admin/campaigns/draft/route.ts","app/admin/Campaigns.tsx","app/admin/AdminClient.tsx"]
 }
