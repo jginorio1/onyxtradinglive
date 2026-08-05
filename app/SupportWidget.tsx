@@ -113,7 +113,8 @@ export default function SupportWidget({ loggedIn = false }: { loggedIn?: boolean
         @keyframes onyxType{0%,80%,100%{opacity:.3}40%{opacity:1}}
         .onyx-pulse{animation:onyxPulse 1.4s ease-in-out infinite}
         .onyx-d1{animation:onyxType 1.2s infinite}.onyx-d2{animation:onyxType 1.2s .2s infinite}.onyx-d3{animation:onyxType 1.2s .4s infinite}
-        @media(max-width:520px){.onyx-panel{right:0!important;left:0!important;top:0!important;bottom:0!important;width:100%!important;max-width:100%!important;height:100dvh!important;max-height:100dvh!important;border-radius:0!important}}
+        @media(max-width:520px){.onyx-panel{right:0!important;left:0!important;top:0!important;bottom:0!important;width:100%!important;max-width:100%!important;height:100dvh!important;max-height:100dvh!important;border-radius:0!important}
+        .onyx-panel input,.onyx-panel textarea{font-size:16px!important}}
       `}</style>
 
       {!open && (

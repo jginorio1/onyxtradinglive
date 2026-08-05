@@ -126,6 +126,8 @@ export default function ChatThread({
   let lastDay = '';
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      {/* En móvil los campos deben ser ≥16px o iOS hace zoom al enfocarlos. */}
+      <style>{`@media(max-width:600px){.ct-input{font-size:16px !important}}`}</style>
       {/* Alto MÁXIMO con scroll: si no, en un contenedor flex el hilo crecería sin
           fin con conversaciones largas (usar height+flex se anulan entre sí). */}
       <div style={{ overflowY: 'auto', maxHeight: height, minHeight: 60, padding: '4px 2px', display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -216,9 +218,9 @@ export default function ChatThread({
             <button title={L('Emojis', 'Emojis')} onClick={() => { setShowEmoji((s) => !s); }} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 19, padding: '6px 2px' }}>😊</button>
             <button title={L('Adjuntar', 'Attach')} onClick={() => fileRef.current?.click()} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 18, padding: '6px 2px' }}>📎</button>
             <input ref={fileRef} type="file" multiple accept="image/*,application/pdf,.doc,.docx,.csv,.xlsx,.txt" style={{ display: 'none' }} onChange={(e) => { if (e.target.files) uploadFiles(e.target.files); e.currentTarget.value = ''; }} />
-            <textarea ref={taRef} value={text} onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }}
-              rows={1} placeholder={placeholder || L('Escribe un mensaje…', 'Type a message…')}
-              style={{ flex: 1, margin: 0, resize: 'none', maxHeight: 110, minHeight: 38, padding: '9px 12px', borderRadius: 18 }} />
+            <textarea ref={taRef} className="ct-input" value={text} onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }}
+              rows={1} placeholder={placeholder || L('Escribe un mensaje…', 'Type a message…')} enterKeyHint="send"
+              style={{ flex: 1, margin: 0, resize: 'none', maxHeight: 110, minHeight: 38, padding: '9px 12px', borderRadius: 18, fontSize: 14 }} />
             <button className="btn btn-primary" onClick={submit} disabled={busy || (!text.trim() && !atts.length)} style={{ borderRadius: 20, padding: '9px 14px' }}>{busy ? '…' : L('Enviar', 'Send')}</button>
           </div>
           {mentionSource && <div className="muted" style={{ fontSize: 10.5, marginTop: 4 }}>{L('Usa @ para etiquetar un compañero, cliente o ticket', 'Use @ to tag a teammate, client or ticket')}</div>}

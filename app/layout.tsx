@@ -27,8 +27,15 @@ import { serverTheme } from '@/lib/theme';
 export const dynamic = 'force-dynamic';
 
 // Color de la barra del sistema cuando se instala como app (PWA).
+// width=device-width + initialScale evitan el zoom raro en móvil; viewportFit
+// 'cover' habilita las zonas seguras (safe-area) del notch; interactiveWidget
+// hace que el teclado móvil reduzca el alto (dvh) en vez de tapar el input.
 export const viewport: Viewport = {
   themeColor: '#121829',
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  interactiveWidget: 'resizes-content',
 };
 
 const url = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.onyxtradinglive.com').replace(/\/$/, '');
