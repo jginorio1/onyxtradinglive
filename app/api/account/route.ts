@@ -88,6 +88,7 @@ export async function GET() {
       accounts,
       apiKey: keys?.[0]?.key || null,
       subscription: sub,
+      creditBalance,
     });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
