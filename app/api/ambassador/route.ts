@@ -93,7 +93,7 @@ export async function POST(req: Request) {
       followers: b.followers ? Number(String(b.followers).replace(/\D/g, '')) || null : null,
       payout_method: method,
       payout_details: String(b.payout_details || '').slice(0, 200),
-      payout_network: ['TRC20', 'ERC20', 'BEP20'].includes(b.payout_network) ? b.payout_network : null,
+      payout_network: ['TRC20', 'ERC20'].includes(b.payout_network) ? b.payout_network : null,
     });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true, code });
@@ -111,7 +111,7 @@ export async function PATCH(req: Request) {
     const b = await req.json().catch(() => ({} as any));
     const fields: any = {};
     if (b.payout_method && ['stripe', 'usdt', 'credit'].includes(b.payout_method)) fields.payout_method = b.payout_method;
-    if (b.payout_network !== undefined) fields.payout_network = ['TRC20', 'ERC20', 'BEP20'].includes(b.payout_network) ? b.payout_network : null;
+    if (b.payout_network !== undefined) fields.payout_network = ['TRC20', 'ERC20'].includes(b.payout_network) ? b.payout_network : null;
     const effMethod = fields.payout_method || null;   // método que quedará (si lo cambia)
     if (b.payout_details !== undefined) {
       const d = String(b.payout_details).trim();

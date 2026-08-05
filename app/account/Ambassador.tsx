@@ -28,7 +28,9 @@ const A: any = {
     stripeNote: 'Con Stripe cobras automático: el pago llega a tu banco o tarjeta sin que rellenes nada aquí.',
     stripeConnect: 'Conectar con Stripe', stripeReady: 'Conectado · listo para cobrar', stripePend: 'Falta terminar tu registro en Stripe',
     stripeFinish: 'Terminar registro', openDash: 'Ver mi panel de Stripe', usdtHint: 'Pega tu dirección USDT',
-    network: 'Red', netBad: 'La dirección no coincide con la red elegida', netOk: 'Dirección válida', usdtQr: 'Escanea para confirmar que es tu dirección',
+    network: 'Red', netBad: 'La dirección no coincide con esa red', netOk: 'Formato de dirección correcto', usdtQr: 'Escanea para confirmar que es tu dirección',
+    usdtWarn: 'Te enviaremos USDT por esta red. La dirección no dice qué moneda recibe (USDT, USDC…): asegúrate de que tu wallet acepta USDT en esta red o podrías perder los fondos.',
+    usdtConfirmChk: 'Confirmo que esta wallet recibe USDT en la red seleccionada.',
     creditExpl: 'Tu comisión se convierte en saldo de tu suscripción. Se descuenta solo de tu próxima factura, sin bancos ni comisiones.',
     creditAvail: 'Comisión disponible', creditApplied: 'Saldo a favor ya aplicado a tu plan',
     reqTitle: 'Confirmar solicitud de pago', reqAmount: 'Monto', reqMethod: 'Método',
@@ -61,7 +63,9 @@ const A: any = {
     stripeNote: 'With Stripe you get paid automatically — money lands in your bank or card, nothing to fill in here.',
     stripeConnect: 'Connect with Stripe', stripeReady: 'Connected · ready to get paid', stripePend: 'Finish your Stripe onboarding',
     stripeFinish: 'Finish setup', openDash: 'Open my Stripe dashboard', usdtHint: 'Paste your USDT address',
-    network: 'Network', netBad: 'Address does not match the selected network', netOk: 'Valid address', usdtQr: 'Scan to confirm it is your address',
+    network: 'Network', netBad: 'Address does not match that network', netOk: 'Address format looks right', usdtQr: 'Scan to confirm it is your address',
+    usdtWarn: 'We will send USDT on this network. An address does not tell which coin it receives (USDT, USDC…): make sure your wallet accepts USDT on this network or funds may be lost.',
+    usdtConfirmChk: 'I confirm this wallet receives USDT on the selected network.',
     creditExpl: 'Your commission becomes credit on your subscription. It is applied to your next invoice only — no banks, no fees.',
     creditAvail: 'Commission available', creditApplied: 'Credit already applied to your plan',
     reqTitle: 'Confirm payout request', reqAmount: 'Amount', reqMethod: 'Method',
@@ -92,6 +96,7 @@ export default function Ambassador({ lang }: { lang: Lang }) {
   const [pm, setPm] = useState('stripe');
   const [pd, setPd] = useState('');
   const [net, setNet] = useState('TRC20');        // red de la wallet cripto
+  const [usdtOk, setUsdtOk] = useState(false);    // confirmación: la wallet recibe USDT en esa red
   const [conn, setConn] = useState<any>(null);    // estado de Stripe Connect
   const [reqOpen, setReqOpen] = useState(false);  // popup de solicitar pago
   const [accept, setAccept] = useState('');       // texto "I ACCEPT"
@@ -145,6 +150,7 @@ export default function Ambassador({ lang }: { lang: Lang }) {
     // Con Stripe los datos se completan en su onboarding; para el resto son obligatorios.
     if (pm !== 'stripe' && String(pd || '').trim().length < 4) { toast(errMsg({ code: 'need_details' }, lang)); return; }
     if (pm === 'usdt' && !addrValid(pd, net)) { toast(t.netBad); return; }
+    if (pm === 'usdt' && !usdtOk) { toast(t.usdtConfirmChk); return; }
     setBusy('pay');
     const r = await fetch('/api/ambassador', { method: 'PATCH', body: JSON.stringify({ payout_method: pm, payout_details: pd, payout_network: pm === 'usdt' ? net : null }) });
     const j = await r.json(); setBusy('');
@@ -309,10 +315,9 @@ export default function Ambassador({ lang }: { lang: Lang }) {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 8, maxWidth: 460 }}>
               <div>
                 <span style={lbl}>{t.network}</span>
-                <select value={net} onChange={(e) => setNet(e.target.value)} style={{ margin: '4px 0 0' }}>
-                  <option value="TRC20">USDT · TRC20</option>
-                  <option value="ERC20">USDT · ERC20</option>
-                  <option value="BEP20">USDT · BEP20</option>
+                <select value={net} onChange={(e) => { setNet(e.target.value); setUsdtOk(false); }} style={{ margin: '4px 0 0' }}>
+                  <option value="TRC20">USDT · TRC20 (Tron)</option>
+                  <option value="ERC20">USDT · ERC20 (Ethereum)</option>
                 </select>
               </div>
               <div>
@@ -332,9 +337,19 @@ export default function Ambassador({ lang }: { lang: Lang }) {
                 </div>
               </div>
             )}
+            {/* La dirección NO dice si recibe USDT o USDC: confirmación obligatoria. */}
+            {addrValid(pd, net) && (
+              <>
+                <div style={{ background: 'rgba(240,160,20,.12)', borderRadius: 10, padding: '9px 11px', fontSize: 12, color: 'var(--amber)', marginTop: 10, maxWidth: 460, lineHeight: 1.5 }}>⚠ {t.usdtWarn}</div>
+                <label className="row" style={{ gap: 8, marginTop: 10, fontSize: 13, cursor: 'pointer', alignItems: 'flex-start', maxWidth: 460 }}>
+                  <input type="checkbox" checked={usdtOk} onChange={(e) => setUsdtOk(e.target.checked)} style={{ margin: '3px 0 0', width: 'auto' }} />
+                  <span>{t.usdtConfirmChk}</span>
+                </label>
+              </>
+            )}
             <div className="row" style={{ gap: 10, marginTop: 14 }}>
-              <button className="btn btn-primary" onClick={savePayout} disabled={busy === 'pay' || !addrValid(pd, net)}
-                style={{ opacity: addrValid(pd, net) ? 1 : .5 }}>{busy === 'pay' ? '...' : t.save}</button>
+              <button className="btn btn-primary" onClick={savePayout} disabled={busy === 'pay' || !addrValid(pd, net) || !usdtOk}
+                style={{ opacity: (addrValid(pd, net) && usdtOk) ? 1 : .5 }}>{busy === 'pay' ? '...' : t.save}</button>
               {copied === 'saved' && <span style={{ color: 'var(--green)', fontSize: 13 }}>{t.saved}</span>}
             </div>
           </>
