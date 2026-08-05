@@ -4,6 +4,7 @@ import { toast, toastErr } from '@/lib/toast';
 import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import { fmtDateTime } from '@/lib/fmtDate';
+import { describeLog, CAT_STYLE } from '@/lib/logFormat';
 
 type Lang = 'es' | 'en';
 const T: any = {
@@ -95,12 +96,15 @@ export default function UserDrawer({ userId, email, onClose }: { userId: string;
           <div className="card">
             <div style={{ fontSize: 12, color: 'var(--mut)', marginBottom: 8 }}>{t.activity}</div>
             {!d.activity?.length && <div className="muted" style={{ fontSize: 13 }}>{t.none}</div>}
-            {(d.activity || []).map((a: any, i: number) => (
-              <div key={i} style={{ borderTop: i ? '1px solid var(--line)' : 'none', padding: '9px 0', fontSize: 13 }}>
-                <div>{t.act[a.action] || a.action}{a.meta?.plan ? `: ${a.meta.plan}` : a.meta?.value !== undefined ? `: ${a.meta.value}` : ''}</div>
-                <div className="muted" style={{ fontSize: 11.5, marginTop: 2 }}>{t.by} {a.admin_email || '—'} · {fmtDateTime(a.created_at, lang)}</div>
-              </div>
-            ))}
+            {(d.activity || []).map((a: any, i: number) => {
+              const dl = describeLog(a, lang); const cs = CAT_STYLE[dl.cat];
+              return (
+                <div key={i} style={{ borderLeft: `3px solid ${cs.color}`, background: cs.bg, borderRadius: '0 8px 8px 0', padding: '8px 10px', marginTop: i ? 6 : 0 }}>
+                  <div style={{ fontSize: 13, color: 'var(--tx)' }}><span style={{ marginRight: 6 }}>{cs.icon}</span>{dl.text}</div>
+                  <div className="muted" style={{ fontSize: 11.5, marginTop: 2 }}>{t.by} {a.admin_email || '—'} · {fmtDateTime(a.created_at, lang)}</div>
+                </div>
+              );
+            })}
           </div>
         )}
 

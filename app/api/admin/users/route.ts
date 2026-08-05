@@ -37,26 +37,41 @@ export async function PATCH(req: Request) {
   if (!isAdmin) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
     const _p = await requirePerm('usuarios', 'view'); if (!_p.ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
 
-  const { id, action, value } = await req.json();
+  const { id, action, value, note } = await req.json();
   if (!action) return NextResponse.json({ error: 'faltan datos' }, { status: 400 });
+
+  // Calcula si un cambio de plan es subida o bajada según el precio mensual.
+  async function planDir(from: string, to: string) {
+    const { data: pr } = await supabaseAdmin.from('plans').select('id,price_month').in('id', [from, to]);
+    const pm: any = Object.fromEntries((pr || []).map((p: any) => [p.id, Number(p.price_month) || 0]));
+    return (pm[to] || 0) > (pm[from] || 0) ? 'up' : (pm[to] || 0) < (pm[from] || 0) ? 'down' : '';
+  }
 
   try {
     // Cambiar MI PROPIO plan (para pruebas). No hace falta id: lo saca de la sesion.
     if (action === 'self_plan') {
-      // upsert: si la fila de perfil no existe, la crea
+      const { data: prof0 } = await supabaseAdmin.from('profiles').select('plan').eq('id', user.id).maybeSingle();
+      const from = (prof0 as any)?.plan || 'free';
       const { error: upErr } = await supabaseAdmin.from('profiles')
         .upsert({ id: user.id, email: user.email, plan: value }, { onConflict: 'id' });
       if (upErr) return NextResponse.json({ error: upErr.message }, { status: 500 });
       const { data: check } = await supabaseAdmin.from('profiles').select('plan').eq('id', user.id).maybeSingle();
       if (check?.plan !== value) return NextResponse.json({ error: 'No se guardo el plan.' }, { status: 500 });
-      await logAdmin(user.email, 'self_plan', user.email, { plan: value });
+      await logAdmin(user.email, 'self_plan', user.email, { from, to: value, dir: await planDir(from, value), note: note || null });
       return NextResponse.json({ ok: true, plan: value });
     }
 
     if (!id) return NextResponse.json({ error: 'falta id' }, { status: 400 });
 
+    // Email del usuario objetivo, para que el log diga a QUIÉN afectó (no solo el id).
+    const { data: tprof } = await supabaseAdmin.from('profiles').select('email,plan').eq('id', id).maybeSingle();
+    const email = (tprof as any)?.email || '';
+    const meta: any = { value, email, note: note || null };
+
     if (action === 'plan') {
+      const from = (tprof as any)?.plan || 'free';
       await supabaseAdmin.from('profiles').update({ plan: value }).eq('id', id);
+      meta.from = from; meta.to = value; meta.dir = await planDir(from, value);
     } else if (action === 'ban') {
       await supabaseAdmin.auth.admin.updateUserById(id, { ban_duration: '876000h' });
       await supabaseAdmin.from('profiles').update({ banned: true }).eq('id', id);
@@ -68,7 +83,7 @@ export async function PATCH(req: Request) {
     } else {
       return NextResponse.json({ error: 'acción desconocida' }, { status: 400 });
     }
-    await logAdmin(user.email, action, id, { value });
+    await logAdmin(user.email, action, id, meta);
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
@@ -81,15 +96,17 @@ export async function DELETE(req: Request) {
   if (!isAdmin) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
     const _p = await requirePerm('usuarios', 'view'); if (!_p.ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
 
-  const { id } = await req.json();
+  const { id, note } = await req.json();
   if (!id) return NextResponse.json({ error: 'falta id' }, { status: 400 });
   if (id === user.id) return NextResponse.json({ error: 'no puedes borrarte a ti mismo' }, { status: 400 });
 
   try {
+    // Guardamos el email ANTES de borrar, para que el log diga a quién se eliminó.
+    const { data: tprof } = await supabaseAdmin.from('profiles').select('email').eq('id', id).maybeSingle();
     // Borrar el usuario de Auth elimina en cascada profiles/api_keys/trading_accounts/trades.
     const { error } = await supabaseAdmin.auth.admin.deleteUser(id);
     if (error) throw error;
-    await logAdmin(user.email, 'delete_user', id, {});
+    await logAdmin(user.email, 'delete_user', id, { email: (tprof as any)?.email || '', note: note || null });
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });

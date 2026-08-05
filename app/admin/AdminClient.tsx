@@ -8,6 +8,7 @@ import Retention from './Retention';
 import Addons from './Addons';
 import CleanSignups from './CleanSignups';
 import UserDrawer from './UserDrawer';
+import { describeLog, CAT_STYLE } from '@/lib/logFormat';
 import Emails from './Emails';
 import Campaigns from './Campaigns';
 import TestConsole from './TestConsole';
@@ -338,8 +339,22 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
   const availableCount = team.filter((m) => m.available).length;
   const bannedCount = users.filter((u) => u.banned).length;
 
-  async function userAction(id: string, action: string, value?: any) { setBusy(id + action); const r = await fetch('/api/admin/users', { method: 'PATCH', body: JSON.stringify({ id, action, value }) }); const j = await r.json(); if (!r.ok) toastErr(j); await loadUsers(); setBusy(''); }
-  async function delUser(u: User) { if (!confirm(lang === 'en' ? `Delete ${u.email} and ALL their data?` : `¿Borrar a ${u.email} y TODOS sus datos?`)) return; setBusy(u.id + 'del'); const r = await fetch('/api/admin/users', { method: 'DELETE', body: JSON.stringify({ id: u.id }) }); const j = await r.json(); if (!r.ok) toastErr(j); await loadUsers(); setBusy(''); }
+  // Acción crítica pendiente de confirmar (con nota obligatoria).
+  const [pendAct, setPendAct] = useState<{ title: string; danger?: boolean; run: (note: string) => Promise<void> } | null>(null);
+  const [pendNote, setPendNote] = useState('');
+
+  async function userAction(id: string, action: string, value?: any, note?: string) { setBusy(id + action); const r = await fetch('/api/admin/users', { method: 'PATCH', body: JSON.stringify({ id, action, value, note }) }); const j = await r.json(); if (!r.ok) toastErr(j); await loadUsers(); setBusy(''); }
+  async function delUser(u: User) {
+    setPendAct({ title: (lang === 'en' ? 'Delete ' : 'Borrar ') + u.email + (lang === 'en' ? ' and ALL their data?' : ' y TODOS sus datos?'), danger: true, run: async (note) => {
+      setBusy(u.id + 'del'); const r = await fetch('/api/admin/users', { method: 'DELETE', body: JSON.stringify({ id: u.id, note }) }); const j = await r.json(); if (!r.ok) toastErr(j); await loadUsers(); setBusy('');
+    } });
+    setPendNote('');
+  }
+  // Abre el modal de confirmación con nota para acciones críticas (ban/admin).
+  function askAction(title: string, danger: boolean, id: string, action: string, value?: any) {
+    setPendAct({ title, danger, run: async (note) => userAction(id, action, value, note) });
+    setPendNote('');
+  }
   async function resetPass(u: User) { setBusy(u.id + 'rst'); const r = await fetch('/api/admin/reset-password', { method: 'POST', body: JSON.stringify({ email: u.email }) }); const j = await r.json(); setBusy(''); if (!r.ok) { toastErr(j); return; } if (j.link) { navigator.clipboard.writeText(j.link); toast((lang === 'en' ? 'Recovery link copied:\n\n' : 'Enlace de recuperación copiado:\n\n') + j.link); } else toast(lang === 'en' ? 'Recovery email sent.' : 'Email de recuperación enviado.'); }
 
   const filtered = users.filter((u) => (u.email + ' ' + (u.full_name || '')).toLowerCase().includes(q.toLowerCase()));
@@ -469,8 +484,10 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                           <td><div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
                             <button className="btn btn-ghost" style={{ padding: '5px 9px', fontSize: 12 }} title={t.u_openCard} onClick={() => setUDrawer({ id: u.id, email: u.email })}>👁</button>
                             <button className="btn btn-ghost" style={{ padding: '5px 9px', fontSize: 12 }} onClick={() => resetPass(u)} disabled={busy === u.id + 'rst'}><OnyxIcon name="key" size={14} glow={false} /></button>
-                            {u.banned ? <button className="btn btn-ghost" style={{ padding: '5px 9px', fontSize: 12 }} onClick={() => userAction(u.id, 'unban')}>{t.u_unban}</button> : <button className="btn btn-ghost" style={{ padding: '5px 9px', fontSize: 12 }} onClick={() => userAction(u.id, 'ban')}>🚫</button>}
-                            <button className="btn btn-ghost" style={{ padding: '5px 9px', fontSize: 12 }} onClick={() => userAction(u.id, 'admin', !u.is_admin)}>{u.is_admin ? t.u_removeAdmin : t.u_makeAdmin}</button>
+                            {u.banned
+                              ? <button className="btn btn-ghost" style={{ padding: '5px 9px', fontSize: 12 }} onClick={() => askAction((lang === 'en' ? 'Unban ' : 'Desbloquear ') + u.email, false, u.id, 'unban')}>{t.u_unban}</button>
+                              : <button className="btn btn-ghost" style={{ padding: '5px 9px', fontSize: 12 }} onClick={() => askAction((lang === 'en' ? 'Ban ' : 'Bloquear ') + u.email, true, u.id, 'ban')}>🚫</button>}
+                            <button className="btn btn-ghost" style={{ padding: '5px 9px', fontSize: 12 }} onClick={() => askAction((u.is_admin ? (lang === 'en' ? 'Remove admin from ' : 'Quitar admin a ') : (lang === 'en' ? 'Make admin ' : 'Hacer admin a ')) + u.email, false, u.id, 'admin', !u.is_admin)}>{u.is_admin ? t.u_removeAdmin : t.u_makeAdmin}</button>
                             {u.email !== meEmail && <button className="btn btn-danger" style={{ padding: '5px 9px', fontSize: 12 }} onClick={() => delUser(u)} disabled={busy === u.id + 'del'}>🗑</button>}
                           </div></td>
                         </tr>
@@ -485,6 +502,21 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
             {tab === 'correos' && <Emails />}
             {tab === 'campanas' && <Campaigns />}
             {uDrawer && <UserDrawer userId={uDrawer.id} email={uDrawer.email} onClose={() => setUDrawer(null)} />}
+            {/* Confirmación con nota obligatoria para acciones críticas */}
+            {pendAct && (
+              <div onClick={() => setPendAct(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+                <div onClick={(e) => e.stopPropagation()} className="card" style={{ maxWidth: 380, width: '100%', border: pendAct.danger ? '1px solid var(--red)' : undefined }}>
+                  <div style={{ fontWeight: 700, marginBottom: 10, color: pendAct.danger ? 'var(--red)' : undefined }}>{pendAct.danger ? '⚠️ ' : ''}{pendAct.title}</div>
+                  <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{lang === 'en' ? 'Note (required — saved to the log)' : 'Nota (obligatoria — queda en el registro)'}</div>
+                  <input value={pendNote} onChange={(e) => setPendNote(e.target.value)} placeholder={lang === 'en' ? 'Reason…' : 'Motivo…'} style={{ margin: '0 0 14px' }} />
+                  <div className="row" style={{ gap: 8, justifyContent: 'flex-end' }}>
+                    <button className="btn btn-ghost" onClick={() => setPendAct(null)}>{lang === 'en' ? 'Cancel' : 'Cancelar'}</button>
+                    <button className={pendAct.danger ? 'btn btn-danger' : 'btn btn-primary'} disabled={!pendNote.trim()} style={{ opacity: pendNote.trim() ? 1 : .5 }}
+                      onClick={async () => { const fn = pendAct.run; setPendAct(null); await fn(pendNote.trim()); }}>{lang === 'en' ? 'Confirm' : 'Confirmar'}</button>
+                  </div>
+                </div>
+              </div>
+            )}
             {tab === 'planes' && <PlansTab plans={plans} reload={loadPlans} />}
             {tab === 'landing' && <LandingBuilder />}
             {tab === 'equipo' && <Equipo team={team} role={role} meEmail={meEmail} reload={loadTeam} canManage={role === 'owner' || perms.equipo === 'manage'} />}
@@ -834,6 +866,7 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
   const [logFrom, setLogFrom] = useState('');
   const [logTo, setLogTo] = useState('');
   const [logAll, setLogAll] = useState(false);
+  const [logQ, setLogQ] = useState('');   // búsqueda por palabra en el registro
   const [secPins, setSecPins] = useState<string[]>([]);      // ids de miembros con PIN (owner)
   const [pinEditId, setPinEditId] = useState('');
   const [pinVal, setPinVal] = useState('');
@@ -959,6 +992,11 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
             <button className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: 12 }} onClick={() => { logQuick(null); setLogAll(false); }}>{t.qAll}</button>
           </div>
         </div>
+        {/* Búsqueda por palabra: acción, admin, destino, nota… */}
+        <div style={{ position: 'relative', marginBottom: 10, maxWidth: 360 }}>
+          <span style={{ position: 'absolute', left: 10, top: 8, color: 'var(--mut)' }}>🔍</span>
+          <input value={logQ} onChange={(e) => { setLogQ(e.target.value); setLogAll(true); }} placeholder={es ? 'Buscar: crédito, email, plan, nota…' : 'Search: credit, email, plan, note…'} style={{ width: '100%', margin: 0, paddingLeft: 32 }} />
+        </div>
         <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
           {LOG_TOPICS.map(([k, label, ic]) => {
             const n = k === 'all' ? log.length : log.filter((e) => topicOf(e.action) === k).length;
@@ -974,10 +1012,16 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
         {(() => {
           const fromMs = logFrom ? new Date(logFrom + 'T00:00:00').getTime() : -Infinity;
           const toMs = logTo ? new Date(logTo + 'T23:59:59').getTime() : Infinity;
+          const q = logQ.trim().toLowerCase();
           const matched = log.filter((e) => {
             if (logTopic !== 'all' && topicOf(e.action) !== logTopic) return false;
             const m = new Date(e.created_at).getTime();
-            return m >= fromMs && m <= toMs;
+            if (!(m >= fromMs && m <= toMs)) return false;
+            if (q) {
+              const hay = (describeLog(e, lang).text + ' ' + (e.admin_email || '') + ' ' + (e.target || '') + ' ' + JSON.stringify(e.meta || {})).toLowerCase();
+              if (!hay.includes(q)) return false;
+            }
+            return true;
           });
           if (!matched.length) return <p className="muted" style={{ fontSize: 14 }}>{t.t_noActivityTopic}</p>;
           const shown = logAll ? matched : matched.slice(0, 8);
@@ -985,11 +1029,13 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
           return (
             <>
               {shown.map((e, i) => {
-                const tp = topicOf(e.action);
+                const dl = describeLog(e, lang); const cs = CAT_STYLE[dl.cat];
                 return (
-                  <div key={i} className="row between" style={{ borderTop: i ? '1px solid var(--line)' : 'none', padding: '8px 0', fontSize: 13, flexWrap: 'wrap', gap: 6 }}>
-                    <span className="row" style={{ gap: 8 }}><span style={{ width: 18, textAlign: 'center' }}>{topicIcon[tp]}</span><span><b>{e.admin_email?.split('@')[0]}</b> · {e.action} <span className="muted">{e.target ? String(e.target).slice(0, 24) : ''}</span></span></span>
-                    <span className="muted" style={{ fontSize: 12 }}>{fmtDateTime(e.created_at, lang)}</span>
+                  <div key={i} style={{ borderLeft: `3px solid ${cs.color}`, background: cs.bg, borderRadius: '0 8px 8px 0', padding: '8px 11px', marginTop: i ? 6 : 0 }}>
+                    <div className="row between" style={{ flexWrap: 'wrap', gap: 6 }}>
+                      <span style={{ fontSize: 13, color: 'var(--tx)' }}><span style={{ marginRight: 6 }}>{cs.icon}</span><b>{e.admin_email?.split('@')[0]}</b> · {dl.text}</span>
+                      <span className="muted" style={{ fontSize: 12 }}>{fmtDateTime(e.created_at, lang)}</span>
+                    </div>
                   </div>
                 );
               })}
