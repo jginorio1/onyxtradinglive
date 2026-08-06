@@ -22,12 +22,13 @@ import PushToggle from './PushToggle';
 import TwoFactorCard from './TwoFactorCard';
 
 type Lang = 'es' | 'en';
-type Tab = 'plan' | 'perfil' | 'facturas' | 'academias' | 'cuentas' | 'avisos' | 'seguridad' | 'referidos';
+type Tab = 'plan' | 'perfil' | 'facturas' | 'academias' | 'cuentas' | 'avisos' | 'seguridad' | 'referidos' | 'retiros';
 
 const D: any = {
   es: {
     title: 'Mi cuenta', back: 'Ir al panel', save: 'Guardar', saved: 'Guardado', saving: '...',
-    nav: { plan: 'Suscripción', perfil: 'Perfil', facturas: 'Facturas', academias: 'Academias', cuentas: 'Cuentas', avisos: 'Notificaciones', seguridad: 'Seguridad', referidos: 'Referidos' },
+    nav: { plan: 'Suscripción', perfil: 'Perfil', facturas: 'Facturas', academias: 'Academias', cuentas: 'Cuentas', avisos: 'Notificaciones', seguridad: 'Seguridad', referidos: 'Referidos', retiros: 'Retiros' },
+    retSub2: 'Cobra tus comisiones y elige cómo recibir el dinero.',
     acadTitle: 'Academias', acadSub: 'Membresías y pagos de las academias en las que estás',
     planSub: 'Tu plan, tu facturación y cómo cambiarlo.', perfilSub: 'Tus datos y tu perfil de trader.', cuentasSub: 'Conecta y administra tus cuentas de trading (MetaTrader, cTrader…).', segSub: 'Contraseña y opciones de tu cuenta.', refSub: 'Invita amigos y gana con Onyx.',
     planCur: 'Tu plan', active: 'Activo', canceling: 'Se cancela al final del periodo', noSub: 'Plan gratuito', renews: 'Se renueva el', ends: 'Termina el',
@@ -82,7 +83,8 @@ const D: any = {
   },
   en: {
     title: 'My account', back: 'Go to dashboard', save: 'Save', saved: 'Saved', saving: '...',
-    nav: { plan: 'Subscription', perfil: 'Profile', facturas: 'Invoices', academias: 'Academies', cuentas: 'Accounts', avisos: 'Notifications', seguridad: 'Security', referidos: 'Referrals' },
+    nav: { plan: 'Subscription', perfil: 'Profile', facturas: 'Invoices', academias: 'Academies', cuentas: 'Accounts', avisos: 'Notifications', seguridad: 'Security', referidos: 'Referrals', retiros: 'Payouts' },
+    retSub2: 'Cash out your commissions and choose how to get paid.',
     acadTitle: 'Academies', acadSub: 'Memberships and payments for the academies you belong to',
     planSub: 'Your plan, billing and how to change it.', perfilSub: 'Your details and trader profile.', cuentasSub: 'Connect and manage your trading accounts (MetaTrader, cTrader…).', segSub: 'Password and account options.', refSub: 'Invite friends and earn with Onyx.',
     planCur: 'Your plan', active: 'Active', canceling: 'Cancels at period end', noSub: 'Free plan', renews: 'Renews on', ends: 'Ends on',
@@ -160,7 +162,7 @@ function Section({ icon, title, subtitle, children }: { icon: string; title: str
 export default function AccountClient({ email }: { email: string }) {
   const { lang, setLang } = useLang();
   // El tab se guarda en el # de la URL, así al refrescar te quedas donde estabas.
-  const TABS = ['plan', 'perfil', 'facturas', 'academias', 'cuentas', 'avisos', 'seguridad', 'referidos'];
+  const TABS = ['plan', 'perfil', 'facturas', 'academias', 'cuentas', 'avisos', 'seguridad', 'referidos', 'retiros'];
   const [tab, setTabState] = useState<Tab>('plan');
   const setTab = (t: Tab) => { setTabState(t); if (typeof window !== 'undefined') history.replaceState(null, '', '#' + t); };
   useEffect(() => {
@@ -282,7 +284,7 @@ export default function AccountClient({ email }: { email: string }) {
     setBusy('');
   }
 
-  const NAV: [Tab, string][] = [['plan', '💳'], ['perfil', '👤'], ['facturas', '🧾'], ['academias', '🎓'], ['cuentas', '🔌'], ['avisos', '🔔'], ['seguridad', '🔒'], ['referidos', '🎁']];
+  const NAV: [Tab, string][] = [['plan', '💳'], ['perfil', '👤'], ['facturas', '🧾'], ['academias', '🎓'], ['cuentas', '🔌'], ['avisos', '🔔'], ['seguridad', '🔒'], ['referidos', '🎁'], ['retiros', '💸']];
   const card = { marginBottom: 14 } as any;
   const lbl = { fontSize: 12, color: 'var(--mut)', marginTop: 10, display: 'block' } as any;
 
@@ -697,7 +699,13 @@ export default function AccountClient({ email }: { email: string }) {
             {data && tab === 'referidos' && (
               <Section icon="🎁" title={L.nav.referidos} subtitle={L.refSub}>
                 <ReferralCard />
-                <Ambassador lang={lang} />
+                <Ambassador lang={lang} only="referral" />
+              </Section>
+            )}
+
+            {data && tab === 'retiros' && (
+              <Section icon="💸" title={L.nav.retiros} subtitle={L.retSub2}>
+                <Ambassador lang={lang} only="payout" />
               </Section>
             )}
           </div>

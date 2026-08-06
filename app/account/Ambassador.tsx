@@ -91,7 +91,7 @@ function addrValid(addr: string, network: string): boolean {
   return /^0x[0-9a-fA-F]{40}$/.test(a);                                        // ERC20/BEP20: 0x + 40 hex
 }
 
-export default function Ambassador({ lang }: { lang: Lang }) {
+export default function Ambassador({ lang, only }: { lang: Lang; only?: 'payout' | 'referral' }) {
   const [d, setD] = useState<any>(null);
   const [busy, setBusy] = useState('');
   const [copied, setCopied] = useState('');
@@ -161,7 +161,7 @@ export default function Ambassador({ lang }: { lang: Lang }) {
   }
   // Se abre el popup; el pago solo se solicita tras escribir I ACCEPT.
   async function confirmRequestPayout() {
-    if (accept.trim() !== 'I ACCEPT') { toast(t.reqTypeBad); return; }
+    if (accept.trim() !== t.reqWord) { toast(t.reqTypeBad); return; }
     setBusy('req');
     const r = await fetch('/api/ambassador/payout', { method: 'POST' });
     const j = await r.json(); setBusy('');
@@ -203,10 +203,14 @@ export default function Ambassador({ lang }: { lang: Lang }) {
   const canReq = bal.available >= Number(s.min_payout || 50);
   const box = { background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '10px 12px', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' } as any;
   const lbl = { fontSize: 12, color: 'var(--mut)', marginTop: 10, display: 'block' } as any;
+  // only='payout' → solo tarjetas de retiro; only='referral' → solo referido; sin prop → todo.
+  const showPay = only !== 'referral';
+  const showRef = only !== 'payout';
 
   return (
     <>
       {/* Nivel */}
+      {showRef && (
       <div className="card" style={{ marginBottom: 14 }}>
         <div className="row between" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
           <b style={{ color: isGold ? 'var(--gold)' : '#c7ccd6' }}>{t.lvl} {isGold ? t.tierG : t.tierS} · {a.rate}%</b>
@@ -219,8 +223,10 @@ export default function Ambassador({ lang }: { lang: Lang }) {
           {isGold ? t.isGold : `${Math.max(0, thr - a.active)} ${t.toGold} ${s.tier_rate || 30}% ${t.toGold2}`}
         </p>
       </div>
+      )}
 
       {/* Enlace y cupón */}
+      {showRef && (
       <div className="card" style={{ marginBottom: 14 }}>
         <span style={lbl}>{t.link}</span>
         <div style={{ ...box, marginTop: 4 }}>
@@ -240,16 +246,20 @@ export default function Ambassador({ lang }: { lang: Lang }) {
           </>
         )}
       </div>
+      )}
 
       {/* Métricas */}
+      {showRef && (
       <div className="grid g4" style={{ marginBottom: 14 }}>
         <div className="card kpi"><div className="lbl">{t.clicks}</div><div className="val">{a.clicks}</div></div>
         <div className="card kpi"><div className="lbl">{t.signups}</div><div className="val">{a.signups}</div></div>
         <div className="card kpi"><div className="lbl">{t.active}</div><div className="val pos">{a.active}</div></div>
         <div className="card kpi"><div className="lbl">{t.conv}</div><div className="val">{conv}%</div></div>
       </div>
+      )}
 
       {/* Saldos */}
+      {showPay && (
       <div className="card" style={{ marginBottom: 14 }}>
         <div className="grid g3" style={{ gap: 12 }}>
           <div><div className="muted" style={{ fontSize: 13 }}>{t.pending}</div><div style={{ fontSize: 22, fontWeight: 800 }}>${bal.pending}</div></div>
@@ -265,8 +275,10 @@ export default function Ambassador({ lang }: { lang: Lang }) {
           {!canReq && <span className="muted" style={{ fontSize: 13 }}>{t.minNote} ${s.min_payout || 50}</span>}
         </div>
       </div>
+      )}
 
       {/* Datos de cobro */}
+      {showPay && (
       <div className="card" style={{ marginBottom: 14 }}>
         <h3 style={{ marginBottom: 4 }}>{t.payT}</h3>
         <span style={lbl}>{t.method}</span>
@@ -364,8 +376,10 @@ export default function Ambassador({ lang }: { lang: Lang }) {
           </div>
         )}
       </div>
+      )}
 
       {/* Historial */}
+      {showPay && (
       <div className="card" style={{ marginBottom: 14 }}>
         <h3 style={{ marginBottom: 10 }}>{t.hist}</h3>
         {!d.payouts?.length && <p className="muted" style={{ fontSize: 14 }}>{t.noHist}</p>}
@@ -378,8 +392,10 @@ export default function Ambassador({ lang }: { lang: Lang }) {
           </div>
         ))}
       </div>
+      )}
 
       {/* Generar publicaciones con AI */}
+      {showRef && (<>
       <div className="card" style={{ marginBottom: 14 }}>
         <div className="row between" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 4 }}>
           <h3 style={{ margin: 0 }}><OnyxIcon emoji="✨" size={16} /> {t.aiKitT}</h3>
@@ -413,8 +429,9 @@ export default function Ambassador({ lang }: { lang: Lang }) {
           </div>
         ))}
       </div>
+      </>)}
 
-      {/* Popup: confirmar solicitud de pago (escribir I ACCEPT) */}
+      {/* Popup: confirmar solicitud de pago (escribir CONFIRMAR) */}
       {reqOpen && (
         <div onClick={() => setReqOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
           <div onClick={(e) => e.stopPropagation()} className="card" style={{ maxWidth: 380, width: '100%' }}>
