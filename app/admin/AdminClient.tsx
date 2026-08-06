@@ -97,6 +97,7 @@ function PromoControl() {
       const r = await fetch('/api/admin/promo/coupon', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: b.coupon, percent: Number(pct[b.id]) || 0, endsAt: b.endsAt }) });
       const d = await r.json();
       if (!r.ok) setCpMsg((m) => ({ ...m, [b.id]: d.error || 'Error' }));
+      else if (d.replaced) setCpMsg((m) => ({ ...m, [b.id]: L(`✓ Actualizado a −${d.percent}% (reemplazó −${d.oldPercent}%)`, `✓ Updated to −${d.percent}% (replaced −${d.oldPercent}%)`) }));
       else if (d.created) setCpMsg((m) => ({ ...m, [b.id]: L(`✓ Creado en Stripe (−${d.percent}%)`, `✓ Created in Stripe (−${d.percent}%)`) }));
       else if (d.existed) setCpMsg((m) => ({ ...m, [b.id]: L(`✓ Ya existe en Stripe${d.percent ? ` (−${d.percent}%)` : ''}`, `✓ Already in Stripe${d.percent ? ` (−${d.percent}%)` : ''}`) }));
       else setCpMsg((m) => ({ ...m, [b.id]: L('No existe. Pon el % y créalo.', "Doesn't exist. Set % and create it.") }));
