@@ -34,7 +34,8 @@ const A: any = {
     creditExpl: 'Tu comisión se convierte en saldo de tu suscripción. Se descuenta solo de tu próxima factura, sin bancos ni comisiones.',
     creditAvail: 'Comisión disponible', creditApplied: 'Saldo a favor ya aplicado a tu plan',
     reqTitle: 'Confirmar solicitud de pago', reqAmount: 'Monto', reqMethod: 'Método',
-    reqDays: 'Los pagos pueden tardar entre 1 y 5 días laborables.', reqType: 'Escribe', reqConfirm: 'Confirmar solicitud', cancel: 'Cancelar', reqTypeBad: 'Debes escribir I ACCEPT (en mayúsculas) para continuar.',
+    reqDays: 'Los pagos pueden tardar de 1 a 5 días hábiles.', reqType: 'Escribe', reqWord: 'CONFIRMAR', reqConfirm: 'Confirmar solicitud', cancel: 'Cancelar', reqTypeBad: 'Debes escribir CONFIRMAR (en mayúsculas) para continuar.',
+    reqWallet: 'Se enviará a esta dirección', reqWalletWarn: 'Verifica que esta dirección sea la correcta. Un envío a una dirección equivocada no se puede recuperar.',
     hist: 'Historial de pagos', noHist: 'Todavía no has solicitado ningún pago.',
     stReq: 'solicitado', stPaid: 'pagado', stRej: 'rechazado',
     aiKitT: 'Generar publicaciones con AI', aiKitD: 'Elige tu plataforma y la IA te crea un post listo, con tu enlace y código ya puestos.',
@@ -69,7 +70,8 @@ const A: any = {
     creditExpl: 'Your commission becomes credit on your subscription. It is applied to your next invoice only — no banks, no fees.',
     creditAvail: 'Commission available', creditApplied: 'Credit already applied to your plan',
     reqTitle: 'Confirm payout request', reqAmount: 'Amount', reqMethod: 'Method',
-    reqDays: 'Payments can take 1 to 5 business days.', reqType: 'Type', reqConfirm: 'Confirm request', cancel: 'Cancel', reqTypeBad: 'You must type I ACCEPT (uppercase) to continue.',
+    reqDays: 'Payments can take 1 to 5 business days.', reqType: 'Type', reqWord: 'CONFIRM', reqConfirm: 'Confirm request', cancel: 'Cancel', reqTypeBad: 'You must type CONFIRM (uppercase) to continue.',
+    reqWallet: 'Will be sent to this address', reqWalletWarn: 'Make sure this address is correct. A transfer to the wrong address cannot be recovered.',
     hist: 'Payout history', noHist: 'You have not requested any payout yet.',
     stReq: 'requested', stPaid: 'paid', stRej: 'rejected',
     aiKitT: 'Generate posts with AI', aiKitD: 'Pick your platform and AI writes a ready-to-post caption, with your link and code already in it.',
@@ -421,15 +423,25 @@ export default function Ambassador({ lang }: { lang: Lang }) {
               <div className="row between"><span className="muted">{t.reqAmount}</span><b>${bal.available}</b></div>
               <div className="row between"><span className="muted">{t.reqMethod}</span><span>{pm === 'stripe' ? t.stripe : pm === 'usdt' ? `USDT · ${net}` : t.credit}</span></div>
             </div>
+            {/* En cripto mostramos la dirección completa para que la revise antes de confirmar */}
+            {pm === 'usdt' && (
+              <div style={{ marginBottom: 12 }}>
+                <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{t.reqWallet}</div>
+                <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '9px 11px', fontFamily: 'var(--font-mono, monospace)', fontSize: 12, wordBreak: 'break-all', lineHeight: 1.5 }}>{pd}</div>
+                <div style={{ background: 'rgba(240,160,20,.12)', borderRadius: 10, padding: '9px 11px', fontSize: 12, color: 'var(--amber)', display: 'flex', gap: 8, alignItems: 'flex-start', marginTop: 8 }}>
+                  <span>⚠</span><span>{t.reqWalletWarn}</span>
+                </div>
+              </div>
+            )}
             <div style={{ background: 'rgba(240,160,20,.12)', borderRadius: 10, padding: '9px 11px', fontSize: 12, color: 'var(--amber)', display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 12 }}>
               <span>⏱</span><span>{t.reqDays}</span>
             </div>
-            <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{t.reqType} <code style={{ fontWeight: 700 }}>I ACCEPT</code></div>
-            <input value={accept} onChange={(e) => setAccept(e.target.value)} placeholder="I ACCEPT" style={{ fontFamily: 'var(--font-mono, monospace)' }} />
+            <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{t.reqType} <code style={{ fontWeight: 700 }}>{t.reqWord}</code></div>
+            <input value={accept} onChange={(e) => setAccept(e.target.value.toUpperCase())} placeholder={t.reqWord} style={{ fontFamily: 'var(--font-mono, monospace)', letterSpacing: 1 }} />
             <div className="row" style={{ gap: 8, marginTop: 14, justifyContent: 'flex-end' }}>
               <button className="btn btn-ghost" onClick={() => setReqOpen(false)}>{t.cancel}</button>
-              <button className="btn btn-primary" onClick={confirmRequestPayout} disabled={busy === 'req' || accept.trim() !== 'I ACCEPT'}
-                style={{ opacity: accept.trim() === 'I ACCEPT' ? 1 : .5 }}>{busy === 'req' ? t.reqing : t.reqConfirm}</button>
+              <button className="btn btn-primary" onClick={confirmRequestPayout} disabled={busy === 'req' || accept.trim() !== t.reqWord}
+                style={{ opacity: accept.trim() === t.reqWord ? 1 : .5 }}>{busy === 'req' ? t.reqing : t.reqConfirm}</button>
             </div>
           </div>
         </div>

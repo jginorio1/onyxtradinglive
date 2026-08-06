@@ -3721,9 +3721,11 @@ function MentorPayments({ modules, L, onChanged }: { modules: any[]; L: (a: stri
               <option value="manual">{L('Manual', 'Manual')}</option><option value="paypal">PayPal</option><option value="zelle">Zelle</option><option value="bank">{L('Banco', 'Bank')}</option><option value="cash">{L('Efectivo', 'Cash')}</option><option value="other">{L('Otro', 'Other')}</option>
             </select>
             <input placeholder={L('Nota / referencia (opcional)', 'Note / reference (optional)')} value={payTarget.note} onChange={(e) => setPayTarget({ ...payTarget, note: e.target.value })} style={{ marginBottom: 12, width: '100%' }} />
+            <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{L('Escribe', 'Type')} <code style={{ fontWeight: 700 }}>{L('CONFIRMAR', 'CONFIRM')}</code> {L('para continuar', 'to continue')}</div>
+            <input value={payTarget.acc || ''} onChange={(e) => setPayTarget({ ...payTarget, acc: e.target.value.toUpperCase() })} placeholder={L('CONFIRMAR', 'CONFIRM')} style={{ marginBottom: 12, width: '100%', fontFamily: 'var(--font-mono, monospace)', letterSpacing: 1 }} />
             <div className="row" style={{ gap: 8 }}>
               <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setPayTarget(null)}>{L('Cancelar', 'Cancel')}</button>
-              <button className="btn btn-primary" style={{ flex: 2 }} disabled={busy === 'pay'} onClick={() => doPay(payTarget.user_id, payTarget.method, payTarget.note)}>{busy === 'pay' ? '…' : L('Confirmar pago', 'Confirm payment')}</button>
+              <button className="btn btn-primary" style={{ flex: 2, opacity: (payTarget.acc || '').trim() === L('CONFIRMAR', 'CONFIRM') ? 1 : .5 }} disabled={busy === 'pay' || (payTarget.acc || '').trim() !== L('CONFIRMAR', 'CONFIRM')} onClick={() => doPay(payTarget.user_id, payTarget.method, payTarget.note)}>{busy === 'pay' ? '…' : L('Confirmar pago', 'Confirm payment')}</button>
             </div>
           </div>
         </div>
