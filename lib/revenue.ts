@@ -21,6 +21,7 @@ export type RevenueData = {
   plans: { name: string; subs: number; mrr: number; pct: number }[];
   monthly: { label: string; total: number }[];
   recent: { at: number; amount: number; email: string; ok: boolean }[];
+  coupons: { code: string; percent: number | null; redeemed: number; active: boolean; source: string }[];
 };
 
 // Mapa priceId → nombre de plan, leído de la tabla plans.
@@ -42,7 +43,7 @@ export async function computeRevenue(fromMs: number, toMs: number, es = true): P
     configured: true, currency: 'usd', from: new Date(fromMs).toISOString(), to: new Date(toMs).toISOString(),
     mrr: 0, arr: 0, activeSubs: 0, arpu: 0, collected: 0, collectedPrev: 0, collectedDelta: null,
     newSubs: 0, canceledSubs: 0, failed: 0, churnPct: 0, moveNew: 0, moveLost: 0, moveNet: 0,
-    plans: [], monthly: [], recent: [], ...extra,
+    plans: [], monthly: [], recent: [], coupons: [], ...extra,
   });
   if (!process.env.STRIPE_SECRET_KEY) return { ...empty(), configured: false };
 
@@ -130,6 +131,17 @@ export async function computeRevenue(fromMs: number, toMs: number, es = true): P
 
     const collectedDelta = collectedPrev > 0 ? Math.round(((collected - collectedPrev) / collectedPrev) * 100) : null;
     const churnPct = activeSubs + canceledSubs > 0 ? Math.round((canceledSubs / (activeSubs + canceledSubs)) * 1000) / 10 : 0;
+
+    // Cupones: canjes de cada código promocional (barra "Onyx …" y embajador).
+    const coupons: RevenueData['coupons'] = [];
+    try {
+      for await (const pc of (stripe.promotionCodes.list({ limit: 100 }) as any)) {
+        const name = String(pc.coupon?.name || '');
+        const source = name.startsWith('Onyx ') ? (es ? 'Barra' : 'Bar') : name.startsWith('Embajador') ? (es ? 'Embajador' : 'Ambassador') : (es ? 'Otro' : 'Other');
+        coupons.push({ code: pc.code, percent: pc.coupon?.percent_off ?? null, redeemed: Number(pc.times_redeemed || 0), active: !!pc.active, source });
+      }
+    } catch { /* si falla, dejamos la lista vacía */ }
+    coupons.sort((a, b) => b.redeemed - a.redeemed);
 
     return {
       configured: true, currency, from: new Date(fromMs).toISOString(), to: new Date(toMs).toISOString(),

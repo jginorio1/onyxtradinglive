@@ -171,6 +171,24 @@ export default function Revenue() {
             ))}
             <div className="muted" style={{ fontSize: 11.5, marginTop: 10 }}>{t.tip}</div>
           </div>
+
+          {/* Cupones: canjes de cada código promocional (barra, embajador, otros) */}
+          <div className="card">
+            <b style={{ fontSize: 14 }}>{lang === 'es' ? 'Cupones · canjes' : 'Coupons · redemptions'}</b>
+            {!d.coupons?.length && <p className="muted" style={{ fontSize: 13, marginTop: 8 }}>{lang === 'es' ? 'Sin cupones en Stripe todavía.' : 'No coupons in Stripe yet.'}</p>}
+            {d.coupons?.filter((c: any) => c.redeemed > 0 || c.active).slice(0, 20).map((c: any, i: number) => (
+              <div key={i} className="row between" style={{ borderTop: '1px solid var(--line)', padding: '9px 0', fontSize: 13, gap: 8, flexWrap: 'wrap' }}>
+                <span className="row" style={{ gap: 8, alignItems: 'center' }}>
+                  <span style={{ fontFamily: 'var(--font-mono, monospace)', fontWeight: 700, letterSpacing: 1 }}>{c.code}</span>
+                  {c.percent != null && <span className="pill" style={{ fontSize: 11 }}>−{c.percent}%</span>}
+                  <span className="pill" style={{ fontSize: 11, color: 'var(--mut)' }}>{c.source}</span>
+                  {!c.active && <span className="pill" style={{ fontSize: 11, color: 'var(--amber)' }}>{lang === 'es' ? 'inactivo' : 'inactive'}</span>}
+                </span>
+                <span style={{ fontWeight: 700, color: c.redeemed ? 'var(--green)' : 'var(--mut)' }}>{c.redeemed} {lang === 'es' ? (c.redeemed === 1 ? 'canje' : 'canjes') : (c.redeemed === 1 ? 'redemption' : 'redemptions')}</span>
+              </div>
+            ))}
+            <div className="muted" style={{ fontSize: 11.5, marginTop: 10 }}>{lang === 'es' ? 'Los canjes vienen de Stripe. Cruza con las vistas/clics de cada barra en la Barra de descuentos para ver el embudo completo.' : 'Redemptions come from Stripe. Cross-check with each bar\'s views/clicks in the Discount bar for the full funnel.'}</div>
+          </div>
         </>
       )}
     </>

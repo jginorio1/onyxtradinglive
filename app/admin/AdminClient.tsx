@@ -123,7 +123,10 @@ function PromoControl() {
     <div className="card" style={{ marginBottom: 12 }}>
       <div className="row between" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 6 }}>
         <h3 style={{ margin: 0 }}>📣 {t.pr_title}</h3>
-        <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => addBar({ on: true })}>＋ {L('Nueva barra', 'New bar')}</button>
+        <span className="row" style={{ gap: 8 }}>
+          <a className="btn btn-ghost" href="/" target="_blank" rel="noreferrer" style={{ fontSize: 13 }}>👁 {L('Ver en vivo', 'View live')}</a>
+          <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => addBar({ on: true })}>＋ {L('Nueva barra', 'New bar')}</button>
+        </span>
       </div>
       <p className="muted" style={{ fontSize: 13, marginBottom: 8 }}>{L('Programa varias barras por temporada. El sitio muestra sola la que toca por fecha.', 'Schedule several bars by season. The site shows the one that fits the date automatically.')}</p>
 
