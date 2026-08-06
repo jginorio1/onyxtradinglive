@@ -1,7 +1,7 @@
 'use client';
 import { toast, toastErr } from '@/lib/toast';
 import { fmtDate, fmtDateTime } from '@/lib/fmtDate';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, Fragment } from 'react';
 import Link from 'next/link';
 import Ambassadors from './Ambassadors';
 import Retention from './Retention';
@@ -336,8 +336,13 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
   }, []);
 
   const priceOf = useMemo(() => { const m: Record<string, number> = {}; plans.forEach((p) => (m[p.id] = p.price_month)); return m; }, [plans]);
-  const paid = users.filter((u) => u.plan && u.plan !== 'free').length;
-  const mrr = users.reduce((s, u) => s + (u.plan !== 'free' ? (priceOf[u.plan] || 0) : 0), 0);
+  // Un plan de pago cuenta como "cortesía" si no tiene suscripción de Stripe activa.
+  const isActiveSub = (u: User) => ['active', 'trialing', 'past_due'].includes(String(u.subscription_status || ''));
+  const paidUsers = users.filter((u) => u.plan && u.plan !== 'free' && isActiveSub(u));
+  const compUsers = users.filter((u) => u.plan && u.plan !== 'free' && !isActiveSub(u));
+  const paid = paidUsers.length;         // solo los que realmente pagan
+  const comped = compUsers.length;       // planes de cortesía (no cuentan en MRR)
+  const mrr = paidUsers.reduce((s, u) => s + (priceOf[u.plan] || 0), 0);
   const availableCount = team.filter((m) => m.available).length;
   const bannedCount = users.filter((u) => u.banned).length;
 
@@ -386,6 +391,15 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
   async function resetPass(u: User) { setBusy(u.id + 'rst'); const r = await fetch('/api/admin/reset-password', { method: 'POST', body: JSON.stringify({ email: u.email }) }); const j = await r.json(); setBusy(''); if (!r.ok) { toastErr(j); return; } if (j.link) { navigator.clipboard.writeText(j.link); toast((lang === 'en' ? 'Recovery link copied:\n\n' : 'Enlace de recuperación copiado:\n\n') + j.link); } else toast(lang === 'en' ? 'Recovery email sent.' : 'Email de recuperación enviado.'); }
 
   const filtered = users.filter((u) => (u.email + ' ' + (u.full_name || '')).toLowerCase().includes(q.toLowerCase()));
+  // Admins arriba (el dueño primero), luego el resto. Grupos con cabecera propia.
+  const uAdmins = filtered.filter((u) => u.is_admin).sort((a, b) => (a.email === meEmail ? -1 : 0) - (b.email === meEmail ? -1 : 0));
+  const uOthers = filtered.filter((u) => !u.is_admin);
+  const uOrdered = [...uAdmins, ...uOthers];
+  // Etiqueta de cobro: Pago (suscripción Stripe activa), Cortesía (plan de pago sin suscripción), o Free.
+  const planTag = (u: User): 'paid' | 'comp' | 'free' => {
+    if (!u.plan || u.plan === 'free') return 'free';
+    return ['active', 'trialing', 'past_due'].includes(String(u.subscription_status || '')) ? 'paid' : 'comp';
+  };
   const NAV_GROUPS: { g: string; items: [Tab, string, string][] }[] = [
     { g: t.g_op, items: [['resumen', '📊', t.nav_resumen], ['facturacion', '💳', lang === 'en' ? 'Billing' : 'Facturación'], ['usuarios', '👥', t.nav_usuarios], ['correos', '✉️', t.nav_correos], ['soporte', '🎫', t.nav_soporte], ['chat', '💬', lang === 'en' ? 'Team chat' : 'Chat equipo'], ['equipo', '🛡️', t.nav_equipo]] },
     { g: t.g_prod, items: [['planes', '💳', t.nav_planes], ['landing', '🧩', lang === 'en' ? 'Landing Builder' : 'Landing Builder'], ['modulos', '🧩', t.nav_modulos], ['firms', '🏛️', t.nav_firms], ['catalogos', '🗂️', lang === 'en' ? 'Catalogs' : 'Catálogos']] },
@@ -438,7 +452,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
               <>
               <Head ic="📊" t={t.h_resumen_t} s={t.h_resumen_s} />
               <div className="grid g3" style={{ marginBottom: 12 }}>
-                <div className="card kpi"><div className="lbl">{t.r_mrr}</div><div className="val pos">${mrr.toLocaleString()}</div><div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{paid} {t.r_paying} · {users.length ? Math.round((paid / users.length) * 100) : 0}% {t.r_conversion}</div></div>
+                <div className="card kpi"><div className="lbl">{t.r_mrr}</div><div className="val pos">${mrr.toLocaleString()}</div><div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{paid} {t.r_paying}{comped > 0 && <> · {comped} {lang === 'en' ? 'comp' : 'cortesía'}</>} · {users.length ? Math.round((paid / users.length) * 100) : 0}% {t.r_conversion}</div></div>
                 <div className="card kpi"><div className="lbl">{t.r_users}</div><div className="val">{users.length}</div><div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{accounts} {t.r_mtAccounts} · {trades.toLocaleString()} {t.r_trades}</div></div>
                 <div className="card kpi"><div className="lbl">{t.r_team}</div><div className="val">{team.length}</div><div style={{ fontSize: 12, marginTop: 4, color: availableCount ? 'var(--green)' : 'var(--mut)' }}>● {availableCount} {availableCount === 1 ? t.r_availableNow1 : t.r_availableNow}</div></div>
               </div>
@@ -499,13 +513,20 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                   <table>
                     <thead><tr><th>Email</th><th>Plan</th><th>{lang === 'en' ? 'Status' : 'Estado'}</th><th>{lang === 'en' ? 'Accounts' : 'Cuentas'}</th><th>{lang === 'en' ? 'Last sync' : 'Últ. sync'}</th><th style={{ minWidth: 260 }}>{lang === 'en' ? 'Actions' : 'Acciones'}</th></tr></thead>
                     <tbody>
-                      {filtered.map((u) => (
-                        <tr key={u.id}>
+                      {uOrdered.map((u, i) => (
+                        <Fragment key={u.id}>
+                        {i === 0 && uAdmins.length > 0 && (
+                          <tr><td colSpan={6} style={{ background: 'var(--bg2)', fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--soft-brand,var(--brand))', padding: '7px 12px' }}>🛡️ {lang === 'en' ? 'Administrators' : 'Administradores'} · {uAdmins.length}</td></tr>
+                        )}
+                        {i === uAdmins.length && uOthers.length > 0 && (
+                          <tr><td colSpan={6} style={{ background: 'var(--bg2)', fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--mut)', padding: '7px 12px' }}>👥 {lang === 'en' ? 'Users' : 'Usuarios'} · {uOthers.length}</td></tr>
+                        )}
+                        <tr>
                           <td><div className="row" style={{ gap: 9 }}><span className="avatar-init" style={{ width: 28, height: 28, fontSize: 11 }}>{initials(u.full_name || u.email)}</span><span style={{ minWidth: 0 }}>
-                  <span style={{ display: 'block' }}>{u.full_name || u.email}{u.is_admin && <span className="pill brand" style={{ marginLeft: 6 }}>{t.u_admin}</span>}</span>
+                  <span style={{ display: 'block' }}>{u.full_name || u.email}{u.is_admin && <span className="pill brand" style={{ marginLeft: 6 }}>{u.email === meEmail ? (lang === 'en' ? 'Owner' : 'Dueño') : t.u_admin}</span>}</span>
                   {u.full_name && <span className="muted" style={{ fontSize: 12, display: 'block' }}>{u.email}</span>}
                 </span></div></td>
-                          <td><select value={u.plan} onChange={(e) => { if (e.target.value !== u.plan) askPlanChange(u, e.target.value); }} style={{ margin: 0, padding: '5px 8px', width: 'auto' }}>{plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}{!plans.find((p) => p.id === u.plan) && <option value={u.plan}>{u.plan}</option>}</select></td>
+                          <td><div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}><select value={u.plan} onChange={(e) => { if (e.target.value !== u.plan) askPlanChange(u, e.target.value); }} style={{ margin: 0, padding: '5px 8px', width: 'auto' }}>{plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}{!plans.find((p) => p.id === u.plan) && <option value={u.plan}>{u.plan}</option>}</select>{planTag(u) === 'paid' ? <span className="pill" style={{ color: 'var(--green)', background: 'rgba(52,226,160,.15)', fontSize: 11 }}>{lang === 'en' ? 'Paid' : 'Pago'}</span> : planTag(u) === 'comp' ? <span className="pill" style={{ color: 'var(--amber)', background: 'rgba(240,160,20,.15)', fontSize: 11 }}>🎁 {lang === 'en' ? 'Comp' : 'Cortesía'}</span> : null}</div></td>
                           <td>{u.banned ? <span className="pill red">● {t.u_banned}</span> : <span className="pill" style={{ color: 'var(--green)', background: 'rgba(52,226,160,.15)' }}>● {u.subscription_status || t.u_active}</span>}</td>
                           <td className="muted">{u.accounts}</td>
                           <td className="muted" style={{ fontSize: 12 }}>{u.lastSync ? fmtDate(u.lastSync, lang) : '—'}</td>
@@ -542,6 +563,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                             </div>
                           </div></td>
                         </tr>
+                        </Fragment>
                       ))}
                     </tbody>
                   </table>

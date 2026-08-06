@@ -31,6 +31,7 @@ const D: any = {
     retSub2: 'Cobra tus comisiones y elige cómo recibir el dinero.',
     acadTitle: 'Academias', acadSub: 'Membresías y pagos de las academias en las que estás',
     planSub: 'Tu plan, tu facturación y cómo cambiarlo.', perfilSub: 'Tus datos y tu perfil de trader.', cuentasSub: 'Conecta y administra tus cuentas de trading (MetaTrader, cTrader…).', segSub: 'Contraseña y opciones de tu cuenta.', refSub: 'Invita amigos y gana con Onyx.',
+    compNote: 'Plan de cortesía asignado por el equipo (sin cobro). No hay suscripción de Stripe que cambiar aquí; para modificarlo, se gestiona desde el panel de administración.',
     planCur: 'Tu plan', active: 'Activo', canceling: 'Se cancela al final del periodo', noSub: 'Plan gratuito', renews: 'Se renueva el', ends: 'Termina el',
     perMo: 'mes', perYr: 'año', manage: 'Gestionar pago', manageSub: 'Cambiar tarjeta, ver facturas o cancelar en Stripe',
     changePlanT: 'Cambiar de plan', chUp: 'Subir', chDown: 'Bajar', chCurrent: 'Plan actual', chMo: '/mes',
@@ -87,6 +88,7 @@ const D: any = {
     retSub2: 'Cash out your commissions and choose how to get paid.',
     acadTitle: 'Academies', acadSub: 'Memberships and payments for the academies you belong to',
     planSub: 'Your plan, billing and how to change it.', perfilSub: 'Your details and trader profile.', cuentasSub: 'Connect and manage your trading accounts (MetaTrader, cTrader…).', segSub: 'Password and account options.', refSub: 'Invite friends and earn with Onyx.',
+    compNote: 'Complimentary plan granted by the team (no charge). There is no Stripe subscription to change here; to modify it, it is managed from the admin panel.',
     planCur: 'Your plan', active: 'Active', canceling: 'Cancels at period end', noSub: 'Free plan', renews: 'Renews on', ends: 'Ends on',
     perMo: 'month', perYr: 'year', manage: 'Manage billing', manageSub: 'Change card, view invoices or cancel on Stripe',
     changePlanT: 'Change plan', chUp: 'Upgrade', chDown: 'Downgrade', chCurrent: 'Current plan', chMo: '/mo',
@@ -391,7 +393,14 @@ export default function AccountClient({ email }: { email: string }) {
                   })()}
 
                   {/* Usuario Free (sin suscripción): opciones para SUBIR a un plan de pago */}
-                  {!sub && allPlans.length > 0 && (() => {
+                  {/* Plan de cortesía: plan asignado a mano sin suscripción de Stripe */}
+                  {!sub && p.plan && p.plan !== 'free' && (
+                    <div style={{ borderTop: '1px solid var(--line)', paddingTop: 14, marginTop: 14, display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12.5, color: 'var(--mut)', lineHeight: 1.6 }}>
+                      <span style={{ flexShrink: 0 }}><OnyxIcon emoji="🎁" size={15} /></span><span>{L.compNote}</span>
+                    </div>
+                  )}
+
+                  {!sub && (!p.plan || p.plan === 'free') && allPlans.length > 0 && (() => {
                     const paid = allPlans.filter((pl: any) => pl.id !== 'free' && Number(pl.price_month) > 0);
                     if (!paid.length) return null;
                     return (
