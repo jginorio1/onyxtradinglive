@@ -19,7 +19,7 @@ type Lang = 'es' | 'en';
 const STATS = [
   { to: 100, suffix: '%', es: 'Conexión solo lectura', en: 'Read-only connection' },
   { to: 15, prefix: '+', es: 'Métricas profesionales', en: 'Pro metrics' },
-  { to: 4, suffix: '', es: 'Plataformas', en: 'Platforms' },
+  { to: 5, suffix: '', es: 'Plataformas y señales', en: 'Platforms & signals' },
   { to: 4, prefix: '+', es: 'Prop firms compatibles', en: 'Compatible prop firms' },
 ];
 
@@ -128,6 +128,8 @@ const dict = {
       { i: '🗂️', t: 'Multi-cuenta y portafolio', d: 'Gestiona varias cuentas (real, demo, fondeo) y ve tu portafolio completo sumado.' },
       { i: '🌍', t: 'Sesiones, días y pares', d: 'Descubre tus mejores y peores horas, sesiones, días y pares.' },
       { i: '🏆', t: 'Seguimiento de fondeo', d: 'Sigue tu drawdown y objetivo de FTMO y otras prop firms en tiempo real.' },
+      { i: '🤖', t: 'Mis robots', d: 'Detecta cada EA por su magic y mide su rendimiento real: métricas por robot, portafolio y divergencia con tu backtest.' },
+      { i: '💰', t: 'Ganancia neta', d: 'Resta tus gastos (fees de prop firm, reembolsos, add-ons) a tu bruto y ve tu ganancia real y el ROI por firma.' },
     ],
     showT: 'Un dashboard profesional de verdad',
     showS: 'Calendario, curva de equity, distribución, mejores pares y sesiones. Todo calculado por ti, en tiempo real.',
@@ -177,6 +179,7 @@ const dict = {
       { n: 'Free', p: 0, items: ['1 cuenta conectada', 'Estadísticas básicas', '30 días de historial'], cta: 'Empezar gratis', pop: false },
       { n: 'Pro', p: 19, items: ['5 cuentas conectadas', 'Todas las estadísticas', 'Historial ilimitado', 'Calendario y gráficas', 'Reglas de fondeo'], cta: 'Elegir Pro', pop: true },
       { n: 'Elite', p: 39, items: ['Cuentas ilimitadas', 'Todo lo de Pro', 'Copy trading anti-baneo', 'Informes automáticos', 'Alertas por Telegram', 'Soporte prioritario'], cta: 'Elegir Elite', pop: false },
+      { n: 'Black Onyx', p: 79, items: ['Todo lo de Elite', 'Copy trading ilimitado', 'Robots y cuentas sin límite', 'Acceso anticipado a novedades'], cta: 'Elegir Black Onyx', pop: false },
     ],
     amb: {
       t: '¿Tienes una comunidad de trading?',
@@ -259,6 +262,8 @@ const dict = {
       { i: '🗂️', t: 'Multi-account & portfolio', d: 'Manage several accounts (live, demo, funded) and see your full portfolio combined.' },
       { i: '🌍', t: 'Sessions, days & pairs', d: 'Discover your best and worst hours, sessions, days and pairs.' },
       { i: '🏆', t: 'Prop-firm tracking', d: 'Track your drawdown and target for FTMO and other prop firms in real time.' },
+      { i: '🤖', t: 'My robots', d: 'Detects each EA by its magic and measures real performance: per-robot metrics, portfolio and divergence from your backtest.' },
+      { i: '💰', t: 'Net profit', d: 'Subtract your costs (prop-firm fees, refunds, add-ons) from your gross and see your real profit and ROI per firm.' },
     ],
     showT: 'A truly professional dashboard',
     showS: 'Calendar, equity curve, distribution, best pairs and sessions. All computed for you, in real time.',
@@ -308,6 +313,7 @@ const dict = {
       { n: 'Free', p: 0, items: ['1 connected account', 'Basic stats', '30 days of history'], cta: 'Start free', pop: false },
       { n: 'Pro', p: 19, items: ['5 connected accounts', 'All stats', 'Unlimited history', 'Calendar & charts', 'Prop-firm rules'], cta: 'Choose Pro', pop: true },
       { n: 'Elite', p: 39, items: ['Unlimited accounts', 'Everything in Pro', 'Ban-safe copy trading', 'Automatic reports', 'Telegram alerts', 'Priority support'], cta: 'Choose Elite', pop: false },
+      { n: 'Black Onyx', p: 79, items: ['Everything in Elite', 'Unlimited copy trading', 'Unlimited robots and accounts', 'Early access to new features'], cta: 'Choose Black Onyx', pop: false },
     ],
     amb: {
       t: 'Do you have a trading community?',
@@ -360,7 +366,7 @@ export default function Home() {
   const [dbPlans, setDbPlans] = useState<any[]>([]);
   // Arranca en el piso semilla (nunca 0): aunque el fetch falle o llegue una
   // respuesta vieja en caché, las cifras solo suben desde aquí — jamás muestran 0.
-  const [stats, setStats] = useState({ trades: 1000, blocks: 80, accounts: 40, copied: 300, platforms: 5, readonly: 100 });
+  const [stats, setStats] = useState({ trades: 1000, blocks: 80, accounts: 40, copied: 300, bots: 1200, platforms: 5, readonly: 100 });
   // Reloj que avanza cada minuto para que las cifras suban solas con el tiempo.
   const [nowTs, setNowTs] = useState(() => Date.now());
   useEffect(() => { const iv = setInterval(() => setNowTs(Date.now()), 60000); return () => clearInterval(iv); }, []);
@@ -392,6 +398,7 @@ export default function Home() {
         blocks: Math.max(p.blocks, Number(j.blocks || 0)),
         accounts: Math.max(p.accounts, Number(j.accounts || 0)),
         copied: Math.max(p.copied, Number(j.copied || 0)),
+        bots: Math.max(p.bots, Number(j.bots || 0)),
         platforms: Number(j.platforms ?? p.platforms ?? 5),
         readonly: Number(j.readonly ?? p.readonly ?? 100),
       }));
@@ -457,6 +464,8 @@ export default function Home() {
   // tiempo + máximo con lo real y con el piso guardado). Base congruente: por debajo
   // de las analizadas y por encima de los frenos, para que cuadre a simple vista.
   const dCopied = odd(Math.max(7000 + Math.floor(ticks * 0.9), Math.round(stats.copied) || 0, floorC));
+  // Robots monitoreados: base congruente (por debajo de los frenos del Guardian).
+  const dBots = odd(Math.max(1200 + Math.floor(ticks * 0.15), Math.round((stats as any).bots) || 0));
   // Persistir el nuevo máximo (guarda contra un reloj que retroceda).
   useEffect(() => {
     try {
@@ -567,8 +576,12 @@ export default function Home() {
             <div className="muted" style={{ fontSize: 14, marginTop: 6 }}>{lang === 'es' ? 'Frenos del Guardian' : 'Guardian stops'}</div>
           </div>
           <div className="card" style={{ padding: '26px 16px' }}>
+            <Counter to={dBots} suffix="+" />
+            <div className="muted" style={{ fontSize: 14, marginTop: 6 }}>{lang === 'es' ? 'Robots monitoreados' : 'Robots monitored'}</div>
+          </div>
+          <div className="card" style={{ padding: '26px 16px' }}>
             <Counter to={stats.platforms} />
-            <div className="muted" style={{ fontSize: 14, marginTop: 6 }}>{lang === 'es' ? 'Plataformas · MT4, MT5, cTrader, MatchTrader, TradingView' : 'Platforms · MT4, MT5, cTrader, MatchTrader, TradingView'}</div>
+            <div className="muted" style={{ fontSize: 14, marginTop: 6 }}>{lang === 'es' ? 'Plataformas y señales · MT4, MT5, cTrader, TradingView · MatchTrader (beta)' : 'Platforms & signals · MT4, MT5, cTrader, TradingView · MatchTrader (beta)'}</div>
           </div>
           <div className="card" style={{ padding: '26px 16px' }}>
             <Counter to={stats.readonly} suffix="%" />

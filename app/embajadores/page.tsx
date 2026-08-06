@@ -14,7 +14,7 @@ const T: any = {
     nav: 'Inicio', account: 'Mi cuenta',
     h1: 'Gana dinero cada mes con tu comunidad',
     sub: 'Recomienda Onyx a tus seguidores y cobra una comisión recurrente mientras sigan suscritos. Sin límite de ganancias.',
-    k1: 'recurrente', k1s: 'de cada pago, todos los meses', k2: 'Mientras pague', k2s: 'tu comisión no caduca', k3: 'de retiro', k3s: 'cobra por PayPal o USDT',
+    k1: 'recurrente', k1s: 'de cada pago, todos los meses', k2: 'Mientras pague', k2s: 'mientras siga tu suscriptor', k3: 'de retiro', k3s: 'Stripe, cripto o crédito',
     how: 'Cómo funciona', h1t: 'Te apuntas', h1d: 'Rellenas el formulario contando dónde tienes tu comunidad. Lo revisamos y te aprobamos.',
     h2t: 'Compartes tu enlace', h2d: 'Recibes un enlace y un código de descuento propio. Tu audiencia entra con descuento y tú cobras.',
     h3t: 'Cobras cada mes', h3d: 'Por cada suscriptor activo se te acredita tu comisión, mes tras mes, mientras siga pagando.',
@@ -22,8 +22,8 @@ const T: any = {
     applyT: 'Solicitar plaza', applyD: 'Cuéntanos de tu comunidad. Respondemos en pocos días.',
     fCode: 'Tu código', fCodeH: 'Aparecerá en tu enlace y será tu cupón de descuento.',
     fAud: '¿Dónde tienes tu comunidad?', fAudPh: 'Instagram @micuenta, canal de Telegram con 4.000 personas...',
-    fFol: 'Seguidores aproximados', fMethod: 'Cómo quieres cobrar', fDet: 'Datos de cobro', fDetPh: 'correo de PayPal o dirección USDT',
-    paypal: 'PayPal', usdt: 'USDT', credit: 'Crédito en mi plan',
+    fFol: 'Seguidores aproximados', fMethod: 'Cómo quieres cobrar', fDet: 'Datos de cobro', fDetPh: 'dirección USDT (con Stripe te conectas luego en tu panel)',
+    paypal: 'Stripe (a tu banco/tarjeta)', usdt: 'USDT (cripto)', credit: 'Crédito en mi plan',
     send: 'Enviar solicitud', sending: 'Enviando...',
     missT: 'Para enviar la solicitud te falta:', missAud: 'Contarnos dónde tienes tu comunidad (unas pocas palabras).', missDet: 'Tus datos de cobro.',
     okT: '¡Solicitud enviada!', okD: 'La revisaremos pronto. Te avisaremos por correo y verás el estado en Mi cuenta → Referidos.',
@@ -31,13 +31,13 @@ const T: any = {
     already: 'Ya tienes una solicitud. Míralo en Mi cuenta → Referidos.', goPanel: 'Ir a mi panel →',
     faqT: 'Preguntas frecuentes',
     faq: [
-      ['¿Cuánto dura mi comisión?', 'Mientras tu referido siga pagando su suscripción. No hay límite de meses.'],
+      ['¿Cuánto dura mi comisión?', 'Mientras tu referido siga pagando su suscripción, según las condiciones vigentes del programa.'],
       ['¿Cuánto gano por cada referido?', 'Un porcentaje recurrente de cada pago. Empiezas en el nivel Silver y subes a Gold al llegar a 10 referidos activos, con una comisión mayor que se aplica también a los que ya tenías.'],
-      ['¿Cómo y por dónde me pagan?', 'Por PayPal o USDT, o como crédito en tu plan. Solicitas el pago desde tu panel cuando superes el mínimo.'],
+      ['¿Cómo y por dónde me pagan?', 'Por Stripe (a tu banco o tarjeta), en cripto (USDT) o como crédito en tu plan. Solicitas el pago desde Mi cuenta → Retiros cuando superes el mínimo. Tarda de 1 a 5 días hábiles.'],
       ['¿Cuándo puedo cobrar?', 'Las comisiones se retienen 30 días por si hay reembolsos. Después pasan a disponible y puedes solicitarlas.'],
       ['¿Tiene algún costo ser embajador?', 'No, es gratis. Solo llenas el formulario, te aprobamos y empiezas a compartir tu enlace.'],
       ['¿Qué descuento reciben mis seguidores?', 'Entran con el descuento de tu código, un incentivo para que se suscriban con tu enlace y tú cobres por ellos.'],
-      ['¿Dónde veo mis referidos y comisiones?', 'En Mi cuenta → Referidos: ves tus referidos activos y las comisiones pendientes, disponibles y pagadas, con su historial.'],
+      ['¿Dónde veo mis referidos y comisiones?', 'En Mi cuenta → Referidos ves tus referidos activos y tu enlace; en Mi cuenta → Retiros ves las comisiones pendientes, disponibles y pagadas, con su historial, y solicitas el pago.'],
       ['¿Tengo que ser cliente?', 'No hace falta, pero ayuda: es más fácil recomendar algo que usas todos los días.'],
       ['¿Puedo referirme a mí mismo?', 'No. El sistema no cuenta tu propia suscripción ni las cuentas duplicadas.'],
     ],
@@ -46,7 +46,7 @@ const T: any = {
     nav: 'Home', account: 'My account',
     h1: 'Earn every month with your community',
     sub: 'Recommend Onyx to your followers and earn a recurring commission for as long as they stay subscribed. No earnings cap.',
-    k1: 'recurring', k1s: 'of every payment, every month', k2: 'While they pay', k2s: 'your commission never expires', k3: 'minimum payout', k3s: 'paid via PayPal or USDT',
+    k1: 'recurring', k1s: 'of every payment, every month', k2: 'While they pay', k2s: 'while your subscriber stays', k3: 'minimum payout', k3s: 'Stripe, crypto or credit',
     how: 'How it works', h1t: 'You apply', h1d: 'Fill the form telling us where your community lives. We review and approve you.',
     h2t: 'You share your link', h2d: 'You get your own link and discount code. Your audience joins with a discount and you get paid.',
     h3t: 'You get paid monthly', h3d: 'For every active subscriber your commission is credited, month after month, while they keep paying.',
@@ -54,8 +54,8 @@ const T: any = {
     applyT: 'Apply', applyD: 'Tell us about your community. We answer within a few days.',
     fCode: 'Your code', fCodeH: 'It will be in your link and will be your discount coupon.',
     fAud: 'Where is your community?', fAudPh: 'Instagram @myhandle, Telegram channel with 4,000 people...',
-    fFol: 'Approximate followers', fMethod: 'How you want to get paid', fDet: 'Payout details', fDetPh: 'PayPal email or USDT address',
-    paypal: 'PayPal', usdt: 'USDT', credit: 'Credit on my plan',
+    fFol: 'Approximate followers', fMethod: 'How you want to get paid', fDet: 'Payout details', fDetPh: 'USDT address (with Stripe you connect later in your panel)',
+    paypal: 'Stripe (to your bank/card)', usdt: 'USDT (crypto)', credit: 'Credit on my plan',
     send: 'Send application', sending: 'Sending...',
     missT: 'Before sending we still need:', missAud: 'A few words about where your community lives.', missDet: 'Your payout details.',
     okT: 'Application sent!', okD: 'We will review it soon. You will get an email and can track it in My account → Referrals.',
@@ -63,13 +63,13 @@ const T: any = {
     already: 'You already applied. Check My account → Referrals.', goPanel: 'Go to my panel →',
     faqT: 'FAQ',
     faq: [
-      ['How long does my commission last?', 'As long as your referral keeps paying. There is no month cap.'],
+      ['How long does my commission last?', 'As long as your referral keeps paying their subscription, under the program\'s current terms.'],
       ['How much do I earn per referral?', 'A recurring percentage of every payment. You start at Silver and move up to Gold at 10 active referrals, with a higher rate that also applies to the ones you already had.'],
-      ['How and where do I get paid?', 'Via PayPal or USDT, or as credit on your plan. You request the payout from your panel once you pass the minimum.'],
+      ['How and where do I get paid?', 'Via Stripe (to your bank or card), crypto (USDT) or as credit on your plan. You request the payout from My account → Payouts once you pass the minimum. It takes 1 to 5 business days.'],
       ['When can I withdraw?', 'Commissions are held 30 days in case of refunds. After that they become available to request.'],
       ['Is there any cost to be an ambassador?', 'No, it is free. Just fill the form, get approved and start sharing your link.'],
       ['What discount do my followers get?', 'They join with your code\'s discount — an incentive so they subscribe through your link and you get paid for them.'],
-      ['Where do I see my referrals and commissions?', 'In My account → Referrals: your active referrals and your pending, available and paid commissions, with their history.'],
+      ['Where do I see my referrals and commissions?', 'In My account → Referrals you see your active referrals and your link; in My account → Payouts you see your pending, available and paid commissions with their history, and request the payout.'],
       ['Do I need to be a customer?', 'Not required, but it helps: it is easier to recommend something you use daily.'],
       ['Can I refer myself?', 'No. The system does not count your own subscription or duplicate accounts.'],
     ],
@@ -80,7 +80,7 @@ export default function Embajadores() {
   const { lang, setLang } = useLang();
   const [s, setS] = useState<any>(null);
   const [state, setState] = useState<'loading' | 'guest' | 'form' | 'sent' | 'has'>('loading');
-  const [f, setF] = useState<any>({ code: '', audience: '', followers: '', payout_method: 'paypal', payout_details: '' });
+  const [f, setF] = useState<any>({ code: '', audience: '', followers: '', payout_method: 'stripe', payout_details: '' });
   const [busy, setBusy] = useState(false);
   const [lcFaqRaw, setLcFaqRaw] = useState<string[][] | null>(null);
   const [lcPage, setLcPage] = useState<any>(null);
@@ -222,7 +222,7 @@ export default function Embajadores() {
               <input value={f.followers} onChange={(e) => setF({ ...f, followers: e.target.value })} placeholder="Ej: 4000" style={{ margin: '4px 0 0' }} />
               <span style={lbl}>{t.fMethod}</span>
               <select value={f.payout_method} onChange={(e) => setF({ ...f, payout_method: e.target.value })} style={{ margin: '4px 0 0' }}>
-                <option value="paypal">{t.paypal}</option><option value="usdt">{t.usdt}</option><option value="credit">{t.credit}</option>
+                <option value="stripe">{t.paypal}</option><option value="usdt">{t.usdt}</option><option value="credit">{t.credit}</option>
               </select>
               <span style={lbl}>{t.fDet}</span>
               <input value={f.payout_details} onChange={(e) => setF({ ...f, payout_details: e.target.value })} placeholder={t.fDetPh} style={{ margin: '4px 0 0' }} />

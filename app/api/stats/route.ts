@@ -32,6 +32,10 @@ export async function GET() {
     const { count: copied } = await supabaseAdmin
       .from('copy_commands').select('*', { count: 'exact', head: true });
 
+    // Robots monitoreados (cada fila de bots = un robot detectado/registrado)
+    let bots = 0;
+    try { const { count } = await supabaseAdmin.from('bots').select('*', { count: 'exact', head: true }); bots = Number(count || 0); } catch { /* tabla puede no existir */ }
+
     // Comisión y cupón del embajador (del panel admin) para que el landing
     // muestre siempre las cifras reales: si las cambias en admin, cambian aquí.
     let ambRate = 30, ambCoupon = 20, ambBase = 20, ambMinPayout = 50;
@@ -70,6 +74,7 @@ export async function GET() {
       blocks: b > 0 ? b : SEED.blocks,
       accounts: a > 0 ? a : SEED.accounts,
       copied: c > 0 ? c : SEED.copied,
+      bots: bots > 0 ? bots : 1200,
       platforms, readonly,          // valores fijos editables desde admin
       ambRate, ambCoupon, ambBase, ambMinPayout,
     }, { headers: NO_CACHE });
