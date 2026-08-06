@@ -27,6 +27,10 @@ export async function GET() {
       supabaseAdmin.from('member_rewards').select('*', { count: 'exact', head: true }).eq('referrer_id', user.id).eq('kind', 'referrer'),
     ]);
 
+    // ¿ya es embajador aprobado? Para no mostrarle el puente redundante.
+    const { data: amb } = await supabaseAdmin.from('ambassadors').select('status').eq('user_id', user.id).maybeSingle();
+    const isAmbassador = amb?.status === 'approved';
+
     // Crédito mío: pendiente (en ventana) y ya aplicado
     const { data: mine } = await supabaseAdmin.from('member_rewards').select('amount,status').eq('beneficiary', user.id);
     let pending = 0, applied = 0;
@@ -43,6 +47,7 @@ export async function GET() {
       friendCredit: s.friend_credit,
       holdDays: s.hold_days,
       bridge: s.bridge_threshold,
+      isAmbassador,
       invited: invited || 0,
       qualified: qualified || 0,
       pending: Math.round(pending * 100) / 100,

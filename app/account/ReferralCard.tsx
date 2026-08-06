@@ -58,7 +58,7 @@ export default function ReferralCard() {
         <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: '10px 12px' }}><div className="muted" style={{ fontSize: 12 }}>{es ? 'Crédito total' : 'Total credit'}</div><div style={{ fontSize: 20, fontWeight: 600 }}>${(d.pending + d.applied).toFixed(2)}</div></div>
       </div>
 
-      {d.bridge > 0 && (
+      {d.bridge > 0 && !d.isAmbassador && (
         <div style={{ borderTop: '1px solid var(--line)', paddingTop: 12 }}>
           {toBridge > 0 ? (
             <>

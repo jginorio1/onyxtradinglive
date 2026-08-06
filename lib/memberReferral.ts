@@ -3,6 +3,30 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { memberReferralSettings } from '@/lib/settings';
 import { stripe } from '@/lib/stripe';
 import { notify } from '@/lib/notify';
+import { sendEmail } from '@/lib/mail';
+import { sendMessage } from '@/lib/telegram';
+
+const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.onyxtradinglive.com').replace(/\/$/, '');
+
+// Aviso "ya puedes ser embajador": in-app + correo + Telegram (si lo tiene).
+// Nunca rompe el flujo del webhook si un canal falla.
+async function notifyBridge(userId: string, count: number) {
+  await notify(userId, { kind: 'info', title: '🚀 Puedes hacerte Embajador', body: `Ya trajiste ${count} amigos. Sube a comisión en efectivo recurrente.`, url: '/embajadores' });
+  try {
+    const { data: p } = await supabaseAdmin.from('profiles')
+      .select('email,lang,telegram_chat_id,tg_alerts').eq('id', userId).maybeSingle() as any;
+    if (!p) return;
+    const es = p.lang !== 'en';
+    const subject = es ? '🚀 Ya puedes hacerte Embajador de Onyx' : '🚀 You can now become an Onyx Ambassador';
+    const body = es
+      ? `¡Felicidades! Ya has traído ${count} amigos que se suscribieron.\n\nAhora puedes pasar al programa de Embajador y cobrar una comisión en efectivo recurrente por cada suscriptor, en vez de solo crédito.\n\nActívalo aquí: ${APP_URL}/embajadores`
+      : `Congrats! You've brought ${count} friends who subscribed.\n\nYou can now move up to the Ambassador program and earn a recurring cash commission for every subscriber, instead of just credit.\n\nGet started here: ${APP_URL}/embajadores`;
+    if (p.email) { try { await sendEmail(p.email, subject, body); } catch { /* mailer opcional */ } }
+    if (p.telegram_chat_id && p.tg_alerts !== false) {
+      try { await sendMessage(p.telegram_chat_id, `${subject}\n\n${body}`, { kind: 'referral_bridge', userId }); } catch { /* opcional */ }
+    }
+  } catch { /* nunca romper por un aviso */ }
+}
 
 // ============================================================
 // "Invita y gana" — referidos del usuario común. Recompensa en CRÉDITO de cuenta
@@ -79,8 +103,9 @@ export async function qualifyOnPaid(invoice: any) {
     const { count: qualified } = await supabaseAdmin.from('member_rewards').select('*', { count: 'exact', head: true }).eq('referrer_id', referrerId).eq('kind', 'referrer');
     const q = qualified || 0;
     await notify(referrerId, { kind: 'info', title: '🎉 ¡Ganaste crédito por un referido!', body: `Tu amigo se suscribió. Tu crédito se aplica en unos días.`, url: '/account#referidos' });
+    // Al alcanzar el umbral, avisamos por los 3 canales (in-app + correo + Telegram).
     if (s.bridge_threshold > 0 && q === s.bridge_threshold) {
-      await notify(referrerId, { kind: 'info', title: '🚀 Puedes hacerte Embajador', body: `Ya trajiste ${q} amigos. Sube a comisión en efectivo recurrente.`, url: '/embajadores' });
+      await notifyBridge(referrerId, q);
     }
   } catch { /* silencioso */ }
 }
