@@ -206,7 +206,7 @@ function PromoControl() {
                     <div style={grid}>
                       <label className="muted" style={{ fontSize: 12 }}>{L('Empieza (opcional)', 'Starts (optional)')}<input type="datetime-local" value={b.startsAt ? b.startsAt.slice(0, 16) : ''} onChange={(e) => upd(b.id, 'startsAt', e.target.value ? new Date(e.target.value).toISOString() : '')} style={inp} /></label>
                       <label className="muted" style={{ fontSize: 12 }}>{t.pr_ends}<input type="datetime-local" value={b.endsAt ? b.endsAt.slice(0, 16) : ''} onChange={(e) => upd(b.id, 'endsAt', e.target.value ? new Date(e.target.value).toISOString() : '')} style={inp} /></label>
-                      <label className="muted" style={{ fontSize: 12 }}>{L('Formato del contador', 'Countdown format')}<select value={b.countdownFmt || 'dhms'} onChange={(e) => upd(b.id, 'countdownFmt', e.target.value)} style={inp}><option value="dhms">2d 3h 4m</option><option value="hms">03:04:05</option></select></label>
+                      <label className="muted" style={{ fontSize: 12 }}>{L('Formato del contador', 'Countdown format')}<select value={b.countdownFmt || 'dhms'} onChange={(e) => upd(b.id, 'countdownFmt', e.target.value)} style={inp}><option value="dhms">2d 3h 4m 05s</option><option value="hms">03:04:05</option></select></label>
                     </div>
                     <label className="row" style={{ gap: 8, marginTop: 10, fontSize: 13, alignItems: 'center', cursor: 'pointer' }}>
                       <input type="checkbox" checked={b.countdown !== false} onChange={(e) => upd(b.id, 'countdown', e.target.checked)} style={{ width: 'auto', margin: 0 }} /> {L('Mostrar el contador (si hay fecha de fin)', 'Show countdown (if there is an end date)')}

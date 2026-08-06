@@ -22,6 +22,7 @@ export default function PromoBar({
   const [closed, setClosed] = useState(false);
   const [copied, setCopied] = useState(false);
   const [paused, setPaused] = useState(false);
+  const [urgent, setUrgent] = useState(false); // últimos minutos: resalta el contador
   const wrapRef = useRef<HTMLDivElement>(null);
   const stickyTop = position === 'top' && sticky;
 
@@ -61,8 +62,16 @@ export default function PromoBar({
       const h = Math.floor((ms % 86400000) / 3600000);
       const m = Math.floor((ms % 3600000) / 60000);
       const s = Math.floor((ms % 60000) / 1000);
-      if (countdownFmt === 'hms') setLeft(`${pad(d * 24 + h)}:${pad(m)}:${pad(s)}`);
-      else setLeft(d > 0 ? `${d}d ${h}h ${m}m` : `${h}h ${m}m ${s}s`);
+      // Últimos 10 min: resalta (parpadeo) para empujar la conversión.
+      setUrgent(ms <= 600000);
+      if (countdownFmt === 'hms') { setLeft(`${pad(d * 24 + h)}:${pad(m)}:${pad(s)}`); return; }
+      // "Urgencia inteligente" (formato 2d 3h 4m):
+      //  · faltan >24 h → sin segundos (calmo)   ej. "2d 3h 4m"
+      //  · faltan ≤24 h → aparecen los segundos   ej. "3h 04m 05s"
+      //  · falta ≤1 h  → reloj MM:SS (urgente)    ej. "04:05"
+      if (ms > 86400000) setLeft(`${d}d ${h}h ${m}m`);
+      else if (ms > 3600000) setLeft(`${h}h ${pad(m)}m ${pad(s)}s`);
+      else setLeft(`${pad(m)}:${pad(s)}`);
     };
     tick(); const iv = setInterval(tick, 1000); return () => clearInterval(iv);
   }, [endsAt, countdown, countdownFmt]);
@@ -89,7 +98,7 @@ export default function PromoBar({
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12, whiteSpace: 'nowrap' }}>
       {emoji && <span>{emoji}</span>}
       <span style={{ fontWeight: 600 }}>{text}</span>
-      {left && <span style={{ fontWeight: 700, opacity: .95, fontVariantNumeric: 'tabular-nums' }}>⏳ {left}</span>}
+      {left && <span style={{ fontWeight: 800, opacity: .95, fontVariantNumeric: 'tabular-nums', ...(urgent ? { padding: '1px 7px', borderRadius: 5, background: 'rgba(0,0,0,.22)', animation: 'onyxUrg 1s ease-in-out infinite' } : {}) }}>⏳ {left}</span>}
     </span>
   );
 
@@ -104,7 +113,7 @@ export default function PromoBar({
 
   return (
     <div ref={wrapRef} style={wrapStyle} onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
-      <style>{`@keyframes onyxPromo{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}@keyframes onyxPulse{0%,100%{opacity:1}50%{opacity:.72}}`}</style>
+      <style>{`@keyframes onyxPromo{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}@keyframes onyxPulse{0%,100%{opacity:1}50%{opacity:.72}}@keyframes onyxUrg{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.08);opacity:.85}}`}</style>
       <div style={{ display: 'flex', alignItems: 'center', paddingRight: dismissible ? 30 : 0, animation: anim === 'pulse' ? `onyxPulse ${pulseSecs}s ease-in-out infinite` : undefined }}>
         {/* Mensaje (link; se desplaza si es deslizar/marquesina, se pausa al pasar el ratón) */}
         <a {...linkAttrs} style={{ color: 'inherit', textDecoration: 'none', flex: '1 1 auto', minWidth: 0, overflow: 'hidden', padding: '7px 0', display: 'block' }}>
