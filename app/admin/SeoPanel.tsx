@@ -78,7 +78,7 @@ export default function SeoPanel() {
         <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           {chip(true, 'sitemap.xml')}{chip(true, 'robots.txt')}
           {chip(env.gsc, 'Search Console')}{chip(env.ga, 'Analytics (GA4)')}
-          {chip(env.googleVerify, L('Verificación Google', 'Google verify'))}{chip(env.bingVerify, 'Bing')}
+          {chip(env.googleVerify, L('Verificación Google', 'Google verify'))}
         </div>
         <div className="muted" style={{ fontSize: 12.5, marginTop: 10, lineHeight: 1.6 }}>
           {L('Pasos en Google (una vez):', 'Steps in Google (once):')} <b>1)</b> {L('crea la propiedad en Search Console y verifícala', 'create the property in Search Console and verify it')} · <b>2)</b> {L('envía tu sitemap:', 'submit your sitemap:')} <code>{site}/sitemap.xml</code>
