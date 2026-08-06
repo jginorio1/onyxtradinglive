@@ -232,6 +232,7 @@ export default function Ambassadors() {
           <div><span style={lbl}>{t.am_minPayout}</span><input type="number" value={s.min_payout ?? 50} onChange={(e) => setS({ ...s, min_payout: Number(e.target.value) })} style={num} /></div>
           <div><span style={lbl}>{t.am_couponPct}</span><input type="number" value={s.coupon_percent ?? 20} onChange={(e) => setS({ ...s, coupon_percent: Number(e.target.value) })} style={num} /></div>
           <div><span style={lbl}>{t.am_couponMonths}</span><input type="number" value={s.coupon_months ?? 1} onChange={(e) => setS({ ...s, coupon_months: Number(e.target.value) })} style={num} /></div>
+          <div><span style={lbl}>{t.am_commMonths}</span><input type="number" min={0} value={s.commission_months ?? 0} onChange={(e) => setS({ ...s, commission_months: Math.max(0, Number(e.target.value)) })} style={num} /></div>
         </div>
         <label className="row" style={{ gap: 8, marginTop: 14, cursor: 'pointer' }}>
           <input type="checkbox" checked={s.enabled !== false} onChange={(e) => setS({ ...s, enabled: e.target.checked })} style={{ width: 'auto', margin: 0 }} /> {t.am_open}

@@ -78,6 +78,16 @@ async function creditCommission(invoice: any) {
   const { rate } = await rateFor(amb, settings);
   if (!rate) return;
 
+  // Tope de meses de comisión por suscriptor (0 = ilimitado). Cada factura pagada
+  // genera una fila; si este suscriptor ya alcanzó el tope, dejamos de pagar.
+  const capMonths = Number(settings.commission_months) || 0;
+  if (capMonths > 0) {
+    const { count: prior } = await supabaseAdmin.from('commissions')
+      .select('*', { count: 'exact', head: true })
+      .eq('ambassador_id', amb.id).eq('user_id', prof.id).neq('status', 'reversed');
+    if ((prior || 0) >= capMonths) return;
+  }
+
   const amount = Math.round(paid * (rate / 100) * 100) / 100;
   const availableAt = new Date(Date.now() + (settings.hold_days || 30) * 864e5).toISOString();
 
