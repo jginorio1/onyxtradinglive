@@ -22,10 +22,22 @@ export async function GET() {
     byUser[a.user_id] = u;
   });
 
+  // Confirmación de email: vive en Auth (auth.users), no en profiles.
+  const confirmed: Record<string, boolean> = {};
+  try {
+    for (let page = 1; page <= 20; page++) {
+      const { data: au } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 1000 });
+      const list = au?.users || [];
+      for (const u of list) confirmed[u.id] = !!(u.email_confirmed_at || (u as any).confirmed_at);
+      if (list.length < 1000) break;
+    }
+  } catch { /* si Auth no responde, no marcamos a nadie como sin confirmar */ }
+
   const users = (profiles || []).map((p: any) => ({
     ...p,
     accounts: byUser[p.id]?.accounts || 0,
     lastSync: byUser[p.id]?.lastSync || null,
+    email_confirmed: confirmed[p.id] !== false, // desconocido → se asume confirmado
   }));
 
   return NextResponse.json({ users });
@@ -61,6 +73,24 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ ok: true, plan: value });
     }
 
+    // Reenviar confirmación a TODOS los sin confirmar (no necesita id).
+    if (action === 'resend_confirm_all') {
+      const targets: string[] = [];
+      for (let page = 1; page <= 20; page++) {
+        const { data: au } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 1000 });
+        const list = au?.users || [];
+        for (const u of list) { if (!(u.email_confirmed_at || (u as any).confirmed_at) && u.email && !(u as any).banned_until) targets.push(u.email); }
+        if (list.length < 1000) break;
+      }
+      let sent = 0;
+      for (const em of targets) {
+        try { const { error } = await (supabaseAdmin.auth as any).resend({ type: 'signup', email: em }); if (!error) sent++; } catch { /* rate limit u otro: seguimos */ }
+        await new Promise((r) => setTimeout(r, 120)); // pequeña pausa para no chocar con el rate limit
+      }
+      await logAdmin(user.email, 'resend_confirm_all', user.email, { total: targets.length, sent });
+      return NextResponse.json({ ok: true, sent, total: targets.length });
+    }
+
     if (!id) return NextResponse.json({ error: 'falta id' }, { status: 400 });
 
     // Email del usuario objetivo, para que el log diga a QUIÉN afectó (no solo el id).
@@ -84,6 +114,11 @@ export async function PATCH(req: Request) {
       const nn = String(value || '').trim().slice(0, 80);
       await supabaseAdmin.from('profiles').update({ full_name: nn || null }).eq('id', id);
       meta.name = nn;
+    } else if (action === 'resend_confirm') {
+      if (!email) return NextResponse.json({ error: 'sin correo' }, { status: 400 });
+      // Reenvía el correo de confirmación de registro (usa el SMTP de Supabase).
+      const { error: rErr } = await (supabaseAdmin.auth as any).resend({ type: 'signup', email });
+      if (rErr) return NextResponse.json({ error: rErr.message || 'no se pudo reenviar' }, { status: 500 });
     } else {
       return NextResponse.json({ error: 'acción desconocida' }, { status: 400 });
     }

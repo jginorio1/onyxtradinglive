@@ -40,7 +40,7 @@ import { useT } from '@/lib/adminText';
 import { useLang } from '@/lib/lang';
 
 type Plan = { id: string; name: string; name_en: string; desc_es: string | null; desc_en: string | null; price_month: number; price_year: number; stripe_price_id: string | null; stripe_price_id_year: string | null; max_accounts: number; features: string[]; features_en: string[]; badge: string | null; badge_en: string | null; active: boolean; sort: number; capabilities: any };
-type User = { id: string; email: string; full_name?: string | null; plan: string; subscription_status: string | null; banned: boolean; is_admin: boolean; created_at: string; accounts: number; lastSync: string | null };
+type User = { id: string; email: string; full_name?: string | null; plan: string; subscription_status: string | null; banned: boolean; is_admin: boolean; created_at: string; accounts: number; lastSync: string | null; email_confirmed?: boolean };
 type Team = { id: string; email: string; role: string | null; is_admin: boolean; perms?: any; available?: boolean; last_active?: string | null };
 type Tab = 'resumen' | 'facturacion' | 'ingresos' | 'finanzas' | 'academy' | 'usuarios' | 'correos' | 'campanas' | 'blog' | 'seo' | 'planes' | 'landing' | 'equipo' | 'embajadores' | 'retencion' | 'pruebas' | 'firms' | 'catalogos' | 'modulos' | 'soporte' | 'chat' | 'kb' | 'diag' | 'backups' | 'audit' | 'optim' | 'ajustes';
 
@@ -342,6 +342,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
   const compUsers = users.filter((u) => u.plan && u.plan !== 'free' && !isActiveSub(u));
   const paid = paidUsers.length;         // solo los que realmente pagan
   const comped = compUsers.length;       // planes de cortesía (no cuentan en MRR)
+  const unconfirmed = users.filter((u) => u.email_confirmed === false).length; // registro a medias
   const mrr = paidUsers.reduce((s, u) => s + (priceOf[u.plan] || 0), 0);
   const availableCount = team.filter((m) => m.available).length;
   const bannedCount = users.filter((u) => u.banned).length;
@@ -453,7 +454,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
               <Head ic="📊" t={t.h_resumen_t} s={t.h_resumen_s} />
               <div className="grid g3" style={{ marginBottom: 12 }}>
                 <div className="card kpi"><div className="lbl">{t.r_mrr}</div><div className="val pos">${mrr.toLocaleString()}</div><div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{paid} {t.r_paying}{comped > 0 && <> · {comped} {lang === 'en' ? 'comp' : 'cortesía'}</>} · {users.length ? Math.round((paid / users.length) * 100) : 0}% {t.r_conversion}</div></div>
-                <div className="card kpi"><div className="lbl">{t.r_users}</div><div className="val">{users.length}</div><div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{accounts} {t.r_mtAccounts} · {trades.toLocaleString()} {t.r_trades}</div></div>
+                <div className="card kpi"><div className="lbl">{t.r_users}</div><div className="val">{users.length}</div><div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{accounts} {t.r_mtAccounts} · {trades.toLocaleString()} {t.r_trades}{unconfirmed > 0 && <> · <span style={{ color: 'var(--amber)' }}>{unconfirmed} {lang === 'en' ? 'unconfirmed' : 'sin confirmar'}</span></>}</div></div>
                 <div className="card kpi"><div className="lbl">{t.r_team}</div><div className="val">{team.length}</div><div style={{ fontSize: 12, marginTop: 4, color: availableCount ? 'var(--green)' : 'var(--mut)' }}>● {availableCount} {availableCount === 1 ? t.r_availableNow1 : t.r_availableNow}</div></div>
               </div>
 
@@ -507,6 +508,19 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
               <CleanSignups />
               <div className="card">
                 <div className="row between" style={{ marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
+                  {unconfirmed > 0 && (
+                    <button className="btn btn-ghost" style={{ fontSize: 12.5, color: 'var(--amber)' }} disabled={busy === 'resendall'}
+                      onClick={async () => {
+                        if (!window.confirm(lang === 'en' ? `Resend the confirmation email to ${unconfirmed} unconfirmed users?` : `¿Reenviar el correo de confirmación a ${unconfirmed} usuarios sin confirmar?`)) return;
+                        setBusy('resendall');
+                        const r = await fetch('/api/admin/users', { method: 'PATCH', body: JSON.stringify({ action: 'resend_confirm_all' }) });
+                        const j = await r.json(); setBusy('');
+                        if (!r.ok) { toastErr(j); return; }
+                        toast(lang === 'en' ? `Sent to ${j.sent} of ${j.total}.` : `Enviado a ${j.sent} de ${j.total}.`);
+                      }}>
+                      {busy === 'resendall' ? '…' : `✉️ ${lang === 'en' ? 'Resend to all' : 'Reenviar a todos'} (${unconfirmed})`}
+                    </button>
+                  )}
                   <input placeholder={t.u_search} value={q} onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 260, margin: 0, marginLeft: 'auto' }} />
                 </div>
                 <div style={{ overflowX: 'auto' }}>
@@ -527,7 +541,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                   {u.full_name && <span className="muted" style={{ fontSize: 12, display: 'block' }}>{u.email}</span>}
                 </span></div></td>
                           <td><div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}><select value={u.plan} onChange={(e) => { if (e.target.value !== u.plan) askPlanChange(u, e.target.value); }} style={{ margin: 0, padding: '5px 8px', width: 'auto' }}>{plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}{!plans.find((p) => p.id === u.plan) && <option value={u.plan}>{u.plan}</option>}</select>{planTag(u) === 'paid' ? <span className="pill" style={{ color: 'var(--green)', background: 'rgba(52,226,160,.15)', fontSize: 11 }}>{lang === 'en' ? 'Paid' : 'Pago'}</span> : planTag(u) === 'comp' ? <span className="pill" style={{ color: 'var(--amber)', background: 'rgba(240,160,20,.15)', fontSize: 11 }}>🎁 {lang === 'en' ? 'Comp' : 'Cortesía'}</span> : null}</div></td>
-                          <td>{u.banned ? <span className="pill red">● {t.u_banned}</span> : <span className="pill" style={{ color: 'var(--green)', background: 'rgba(52,226,160,.15)' }}>● {u.subscription_status || t.u_active}</span>}</td>
+                          <td>{u.banned ? <span className="pill red">● {t.u_banned}</span> : u.email_confirmed === false ? <span className="pill" style={{ color: 'var(--amber)', background: 'rgba(240,160,20,.15)' }}>✉ {lang === 'en' ? 'Unconfirmed' : 'Sin confirmar'}</span> : <span className="pill" style={{ color: 'var(--green)', background: 'rgba(52,226,160,.15)' }}>● {u.subscription_status || t.u_active}</span>}</td>
                           <td className="muted">{u.accounts}</td>
                           <td className="muted" style={{ fontSize: 12 }}>{u.lastSync ? fmtDate(u.lastSync, lang) : '—'}</td>
                           <td><div className="row" style={{ gap: 8, alignItems: 'center' }}>
@@ -542,6 +556,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                                   <div style={{ position: 'fixed', left: menuPos.left, top: menuPos.top, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, boxShadow: '0 14px 34px rgba(0,0,0,.4)', zIndex: 41, width: 214, overflow: 'hidden' }}>
                                     {[
                                       { ic: '✏️', label: lang === 'en' ? 'Edit name' : 'Editar nombre', on: () => { setMenuFor(null); const nn = window.prompt(lang === 'en' ? 'Full name for ' + u.email : 'Nombre para ' + u.email, u.full_name || ''); if (nn !== null) userAction(u.id, 'name', nn.trim()); } },
+                                      ...(u.email_confirmed === false ? [{ ic: '✉️', label: lang === 'en' ? 'Resend confirmation' : 'Reenviar confirmación', on: async () => { setMenuFor(null); await userAction(u.id, 'resend_confirm'); toast(lang === 'en' ? 'Confirmation email sent.' : 'Correo de confirmación enviado.'); } }] : []),
                                       { ic: '🔑', label: lang === 'en' ? 'Reset password' : 'Restablecer contraseña', on: () => { setMenuFor(null); resetPass(u); } },
                                       u.banned
                                         ? { ic: '✅', label: lang === 'en' ? 'Unban account' : 'Desbloquear cuenta', on: () => { setMenuFor(null); askAction((lang === 'en' ? 'Unban ' : 'Desbloquear ') + u.email, false, u.id, 'unban'); } }
