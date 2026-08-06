@@ -18,7 +18,7 @@ import EnvBanner from './EnvBanner';
 import { serverBeta } from '@/lib/betaServer';
 import PromoBar from './PromoBar';
 import OnlineNow from './OnlineNow';
-import { getSetting, onlineNowSettings } from '@/lib/settings';
+import { getSetting, onlineNowSettings, chatWidgetSettings } from '@/lib/settings';
 import { getSeoMeta, seoFor } from '@/lib/seo';
 import { type Promo, type PromoQueue, pickActiveBar } from '@/lib/promo';
 import { headers } from 'next/headers';
@@ -109,6 +109,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   // Burbuja "en línea ahora" (simulada) · solo en páginas públicas.
   const online = isPublic ? await onlineNowSettings() : null;
+  // Configuración editable del chat de soporte (se pinta al vuelo).
+  const chatCfg = await chatWidgetSettings();
 
   const graph = {
     '@context': 'https://schema.org',
@@ -158,7 +160,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 text={lang === 'es' ? promo.text_es : promo.text_en}
                 cta={lang === 'es' ? promo.cta_es : promo.cta_en}
                 link={promo.link} bg={promo.bg} bg2={promo.bg2} gradient={promo.gradient} fg={promo.fg} endsAt={promo.endsAt}
-                emoji={promo.emoji} coupon={promo.coupon} newTab={promo.newTab} position={promo.position}
+                emoji={promo.emoji} coupon={promo.coupon} newTab={promo.newTab} position={promo.position} sticky={promo.sticky}
                 anim={promo.anim} speed={promo.speed} countdown={promo.countdown} countdownFmt={promo.countdownFmt} dismissible={promo.dismissible}
               />
             )}
@@ -166,7 +168,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <TopBar />
             {children}
             {!path.startsWith('/admin') && <SiteFooter />}
-            {!path.startsWith('/admin') && <SupportWidget loggedIn={loggedIn} />}
+            {!path.startsWith('/admin') && <SupportWidget loggedIn={loggedIn} cfg={chatCfg} />}
             {online && online.enabled && (
               <OnlineNow min={online.min} max={online.max} speed={online.speed} color={online.color} hideMobile={online.hideMobile} label={lang === 'es' ? online.label_es : online.label_en} />
             )}

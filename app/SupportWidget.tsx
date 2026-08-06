@@ -4,50 +4,37 @@ import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useLang } from '@/lib/lang';
+import type { ChatWidget } from '@/lib/settings';
 
+// Textos fijos del flujo (captura de correo/ticket). El resto (marca, saludo,
+// temas, colores, pestañas, por dispositivo) llega de la configuración editable.
 const T: any = {
   es: {
-    help: '¿Necesitas ayuda?', title: 'Onyx AI', online: 'En línea · responde al instante', offline: 'Te respondemos por correo',
-    humanTitle: 'Equipo Onyx', humanOnline: 'En línea · una persona te atiende', aiName: 'Onyx AI',
-    hi: '¡Hola! ¿Sobre qué te ayudo?', topicsT: 'Temas frecuentes',
-    ph: 'Escribe tu pregunta…', seeArt: 'Ver', center: 'Centro de soporte', openTicket: 'Abrir un ticket',
+    seeArt: 'Ver', center: 'Centro de soporte', openTicket: 'Abrir un ticket',
     emailT: 'Déjanos tu correo y te respondemos aunque cierres:', emailPh: 'tucorreo@email.com', send: 'Enviar',
     msgT: 'Cuéntanos en qué te ayudamos:', msgPh: 'Escribe tu mensaje…',
     sentT: '¡Recibido!', sentD: 'Te responderemos a tu correo muy pronto.', createAcc: 'Crear cuenta gratis',
     errMail: 'Escribe un correo válido.', errMsg: 'Escribe tu mensaje.',
-    topicsA: [['¿Cuáles son los precios y planes?', '💳 Precios'], ['¿Cómo me hago embajador?', '🎁 Embajador'], ['¿Cómo conecto mi cuenta (MetaTrader/cTrader)?', '🔌 Conectar'], ['¿Qué hace Onyx Guardian?', '🛡️ Guardian'], ['¿Sirve para cuentas de fondeo?', '🏆 Fondeo']],
-    topicsU: [['¿Cómo conecto mi cuenta (MetaTrader/cTrader)?', '🔌 Conectar'], ['¿Qué hace Onyx Guardian?', '🛡️ Guardian'], ['¿Sirve para cuentas de fondeo?', '🏆 Fondeo'], ['¿Cómo cambio de plan?', '💳 Mi plan']],
-    human: '🙋 Hablar con una persona',
   },
   en: {
-    help: 'Need help?', title: 'Onyx AI', online: 'Online · instant answers', offline: 'We reply by email',
-    humanTitle: 'Onyx team', humanOnline: 'Online · a person is here', aiName: 'Onyx AI',
-    hi: 'Hi! How can I help?', topicsT: 'Popular topics',
-    ph: 'Type your question…', seeArt: 'Open', center: 'Support center', openTicket: 'Open a ticket',
+    seeArt: 'Open', center: 'Support center', openTicket: 'Open a ticket',
     emailT: 'Leave your email and we will reply even if you close this:', emailPh: 'you@email.com', send: 'Send',
     msgT: 'Tell us how we can help:', msgPh: 'Type your message…',
     sentT: 'Got it!', sentD: 'We will reply to your email very soon.', createAcc: 'Create free account',
     errMail: 'Enter a valid email.', errMsg: 'Type your message.',
-    topicsA: [['What are the prices and plans?', '💳 Pricing'], ['How do I become an ambassador?', '🎁 Ambassador'], ['How do I connect my account (MetaTrader/cTrader)?', '🔌 Connect'], ['What does Onyx Guardian do?', '🛡️ Guardian'], ['Does it work for funded accounts?', '🏆 Funded']],
-    topicsU: [['How do I connect my account (MetaTrader/cTrader)?', '🔌 Connect'], ['What does Onyx Guardian do?', '🛡️ Guardian'], ['Does it work for funded accounts?', '🏆 Funded'], ['How do I change my plan?', '💳 My plan']],
-    human: '🙋 Talk to a person',
   },
 };
 
-export default function SupportWidget({ loggedIn = false }: { loggedIn?: boolean }) {
+export default function SupportWidget({ loggedIn = false, cfg }: { loggedIn?: boolean; cfg?: ChatWidget }) {
   const { lang } = useLang();
   const t = dictFor(T, lang);
-  // Guardia del lado del cliente: la burbuja de usuario nunca aparece en el
-  // panel de admin, sin importar el idioma. El guard del layout depende de una
-  // cabecera del servidor que queda obsoleta al cambiar de idioma con
-  // router.refresh() (no navega), así que aquí lo resolvemos con la ruta viva.
+  const es = lang === 'es';
   const pathname = usePathname() || '';
   const inAdmin = pathname === '/admin' || pathname.startsWith('/admin/') || pathname === '/en/admin' || pathname.startsWith('/en/admin/');
-  // Dentro de la academia (comunidad y su página de ventas) no mostramos la
-  // burbuja de soporte: la academia tiene su propio chat y flujo.
   const inAcademy = pathname.startsWith('/dashboard/academy') || pathname.startsWith('/en/dashboard/academy') || pathname.startsWith('/academia/') || pathname.startsWith('/en/academia/');
+
   const [open, setOpen] = useState(false);
-  const [human, setHuman] = useState(false); // ¿hay una persona del equipo disponible? (la IA siempre está)
+  const [human, setHuman] = useState(false);
   const [chat, setChat] = useState<any[]>([]);
   const [ask, setAsk] = useState('');
   const [busy, setBusy] = useState(false);
@@ -57,20 +44,36 @@ export default function SupportWidget({ loggedIn = false }: { loggedIn?: boolean
   const [leadMsg, setLeadMsg] = useState('');
   const [sent, setSent] = useState(false);
   const [err, setErr] = useState('');
-
-  // Abre la captura de contacto y precarga el mensaje con la última pregunta,
-  // para que el visitante no tenga que reescribirla.
-  function openEmail() {
-    const lastQ = [...chat].reverse().find((m) => m.role === 'user')?.content || '';
-    setLeadMsg((prev) => prev || lastQ);
-    setErr('');
-    setShowEmail(true);
-  }
+  const [device, setDevice] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
+  const [tease, setTease] = useState(false);
   const end = useRef<HTMLDivElement>(null);
   const started = chat.length > 0;
 
+  // Dispositivo actual (para ocultar/posicionar según la pantalla).
+  useEffect(() => {
+    const calc = () => { const w = window.innerWidth; setDevice(w <= 520 ? 'mobile' : w <= 1024 ? 'tablet' : 'desktop'); };
+    calc(); window.addEventListener('resize', calc); return () => window.removeEventListener('resize', calc);
+  }, []);
+
   useEffect(() => { fetch('/api/support/availability').then((r) => r.json()).then((j) => setHuman(!!j.online)).catch(() => {}); }, [open]);
   useEffect(() => { end.current?.scrollIntoView({ behavior: 'smooth' }); }, [chat, busy, showEmail, sent]);
+
+  // Mensaje proactivo: globo sobre el botón tras unos segundos (una vez por sesión).
+  const proactiveOn = cfg?.proactiveOn && !open;
+  useEffect(() => {
+    if (!proactiveOn) return;
+    try { if (sessionStorage.getItem('onyx_chat_tease') === '1') return; } catch {}
+    const id = setTimeout(() => setTease(true), Math.max(2, cfg?.proactiveDelay || 12) * 1000);
+    return () => clearTimeout(id);
+  }, [proactiveOn, cfg?.proactiveDelay]);
+
+  function openEmail() {
+    const lastQ = [...chat].reverse().find((m) => m.role === 'user')?.content || '';
+    setLeadMsg((prev) => prev || lastQ);
+    setErr(''); setShowEmail(true);
+  }
+  function dismissTease() { setTease(false); try { sessionStorage.setItem('onyx_chat_tease', '1'); } catch {} }
+  function launch() { setOpen(true); dismissTease(); }
 
   async function sendAI(q?: string) {
     const question = (q ?? ask).trim(); if (!question || busy) return;
@@ -92,8 +95,6 @@ export default function SupportWidget({ loggedIn = false }: { loggedIn?: boolean
     const msg = leadMsg.trim();
     if (!msg) { setErr(t.errMsg); return; }
     setErr(''); setBusy(true);
-    // Enviamos el mensaje que escribió + TODA la conversación con la IA,
-    // para que el equipo vea el contexto completo en el ticket.
     const history = chat.filter((m) => m.role === 'user' || m.role === 'assistant').map((m) => ({ role: m.role, content: m.content }));
     await fetch('/api/support/lead', { method: 'POST', body: JSON.stringify({ email: e, message: msg, history, lang }) });
     setBusy(false); setSent(true); setShowEmail(false);
@@ -102,15 +103,41 @@ export default function SupportWidget({ loggedIn = false }: { loggedIn?: boolean
   const bubble = (role: string) => role === 'user'
     ? { alignSelf: 'flex-end', background: 'var(--grad)', color: '#fff', borderRadius: '12px 12px 2px 12px' }
     : { alignSelf: 'flex-start', background: 'var(--card2)', border: '1px solid var(--line)', borderRadius: '12px 12px 12px 2px' };
-  const topics = loggedIn ? t.topicsU : t.topicsA;
 
-  if (inAdmin || inAcademy) return null;   // ni en admin ni dentro de la academia
+  if (inAdmin || inAcademy) return null;
+  if (!cfg || cfg.enabled === false) return null;
+  // Ocultar en el dispositivo elegido desde Admin.
+  if ((device === 'mobile' && cfg.hideMobile) || (device === 'tablet' && cfg.hideTablet) || (device === 'desktop' && cfg.hideDesktop)) return null;
+
+  // Textos según idioma (con respaldo).
+  const p = (a?: string, b?: string) => (es ? a : b) || a || b || '';
+  const x = {
+    help: p(cfg.helpLabel_es, cfg.helpLabel_en),
+    title: p(cfg.name_es, cfg.name_en), humanTitle: p(cfg.humanName_es, cfg.humanName_en),
+    online: p(cfg.subOn_es, cfg.subOn_en),
+    hi: p(cfg.greeting_es, cfg.greeting_en), topicsT: p(cfg.topicsTitle_es, cfg.topicsTitle_en),
+    ph: p(cfg.placeholder_es, cfg.placeholder_en), human: p(cfg.humanLabel_es, cfg.humanLabel_en),
+    proactive: p(cfg.proactive_es, cfg.proactive_en),
+  };
+  const topics = (loggedIn ? cfg.topicsUser : cfg.topicsGuest).map((tp) => [es ? tp.q_es : tp.q_en, es ? tp.label_es : tp.label_en] as [string, string]).filter(([, l]) => l);
+
+  // Colores del tema del chat (variables locales que heredan los hijos fijos).
+  const grad = cfg.gradient ? `linear-gradient(135deg, ${cfg.c1}, ${cfg.c2})` : cfg.c1;
+  const themeVars: any = { ['--grad']: grad, ['--brand']: cfg.accent };
+  const side = cfg.side === 'left' ? 'left' : 'right';
+  const ox = Math.max(0, cfg.offsetX ?? 18), oy = Math.max(0, cfg.offsetY ?? 18);
+  const lsz = Math.min(80, Math.max(40, cfg.launcherSize ?? 54));
+
+  const avatar = (sz: number) => cfg.avatarUrl
+    ? <img src={cfg.avatarUrl} alt="" style={{ width: sz, height: sz, borderRadius: 8, objectFit: 'cover', flex: 'none' }} />
+    : <span style={{ width: sz, height: sz, borderRadius: 8, background: 'rgba(255,255,255,.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none', fontSize: sz * 0.53 }}>{human ? '🙋' : (cfg.headerEmoji || '🤖')}</span>;
 
   return (
-    <>
+    <div style={themeVars}>
       <style>{`
         @keyframes onyxPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
         @keyframes onyxType{0%,80%,100%{opacity:.3}40%{opacity:1}}
+        @keyframes onyxTease{0%{opacity:0;transform:translateY(6px)}100%{opacity:1;transform:translateY(0)}}
         .onyx-pulse{animation:onyxPulse 1.4s ease-in-out infinite}
         .onyx-d1{animation:onyxType 1.2s infinite}.onyx-d2{animation:onyxType 1.2s .2s infinite}.onyx-d3{animation:onyxType 1.2s .4s infinite}
         @media(max-width:520px){.onyx-panel{right:0!important;left:0!important;top:0!important;bottom:0!important;width:100%!important;max-width:100%!important;height:100dvh!important;max-height:100dvh!important;border-radius:0!important}
@@ -118,39 +145,48 @@ export default function SupportWidget({ loggedIn = false }: { loggedIn?: boolean
       `}</style>
 
       {!open && (
-        <button onClick={() => setOpen(true)} aria-label={t.help}
-          style={{ position: 'fixed', right: 18, bottom: 'calc(18px + env(safe-area-inset-bottom))', zIndex: 60, display: 'flex', alignItems: 'center', gap: 8, border: 'none', background: 'none', cursor: 'pointer' }}>
-          <span style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 20, padding: '7px 13px', fontSize: 13, color: 'var(--tx)', boxShadow: '0 6px 18px rgba(0,0,0,.3)' }}>{t.help}</span>
-          <span style={{ position: 'relative', width: 54, height: 54, borderRadius: '50%', background: 'var(--grad)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, boxShadow: '0 8px 22px rgba(0,0,0,.35)' }}>💬
-            <span className="onyx-pulse" style={{ position: 'absolute', top: 2, right: 2, width: 13, height: 13, borderRadius: '50%', background: 'var(--green)', border: '2px solid var(--bg)' }} />
-          </span>
-        </button>
+        <div style={{ position: 'fixed', [side]: ox, bottom: `calc(${oy}px + env(safe-area-inset-bottom))`, zIndex: 60, display: 'flex', flexDirection: 'column', alignItems: side === 'left' ? 'flex-start' : 'flex-end', gap: 8 }}>
+          {/* Globo proactivo */}
+          {tease && x.proactive && (
+            <div onClick={launch} style={{ cursor: 'pointer', maxWidth: 230, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: '9px 12px', fontSize: 13, color: 'var(--tx)', boxShadow: '0 8px 22px rgba(0,0,0,.32)', animation: 'onyxTease .3s ease', position: 'relative' }}>
+              {x.proactive}
+              <button onClick={(e) => { e.stopPropagation(); dismissTease(); }} aria-label="close" style={{ position: 'absolute', top: 2, right: 5, background: 'none', border: 'none', color: 'var(--mut)', fontSize: 14, cursor: 'pointer', lineHeight: 1 }}>×</button>
+            </div>
+          )}
+          <button onClick={launch} aria-label={x.help}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, border: 'none', background: 'none', cursor: 'pointer', flexDirection: side === 'left' ? 'row-reverse' : 'row' }}>
+            {x.help && <span style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 20, padding: '7px 13px', fontSize: 13, color: 'var(--tx)', boxShadow: '0 6px 18px rgba(0,0,0,.3)' }}>{x.help}</span>}
+            <span style={{ position: 'relative', width: lsz, height: lsz, borderRadius: '50%', background: 'var(--grad)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: lsz * 0.48, boxShadow: '0 8px 22px rgba(0,0,0,.35)' }}>{cfg.launcher || '💬'}
+              {cfg.showPulse && <span className="onyx-pulse" style={{ position: 'absolute', top: 2, right: 2, width: 13, height: 13, borderRadius: '50%', background: 'var(--green)', border: '2px solid var(--bg)' }} />}
+            </span>
+          </button>
+        </div>
       )}
 
       {open && (
-        <div className="onyx-panel" style={{ position: 'fixed', right: 18, bottom: 18, zIndex: 61, width: 344, maxWidth: 'calc(100vw - 24px)', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, boxShadow: '0 14px 40px rgba(0,0,0,.45)', overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 40px)' }}>
-          <div style={{ background: 'var(--grad)', color: '#fff', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ width: 30, height: 30, borderRadius: 8, background: 'rgba(255,255,255,.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none', fontSize: 16 }}>{human ? '🙋' : '🤖'}</span>
+        <div className="onyx-panel" style={{ position: 'fixed', [side]: ox, bottom: oy, zIndex: 61, width: 344, maxWidth: 'calc(100vw - 24px)', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, boxShadow: '0 14px 40px rgba(0,0,0,.45)', overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 40px)' }}>
+          <div style={{ background: 'var(--grad)', color: cfg.fg || '#fff', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+            {avatar(30)}
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, fontSize: 14 }}>{human ? t.humanTitle : t.title}</div>
+              <div style={{ fontWeight: 700, fontSize: 14 }}>{human ? x.humanTitle : x.title}</div>
               <div style={{ fontSize: 11, opacity: .9, display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span className="onyx-pulse" style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--green)' }} />
-                {human ? t.humanOnline : t.online}
+                {cfg.showPulse && <span className="onyx-pulse" style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--green)' }} />}
+                {x.online}
               </div>
             </div>
-            <button onClick={() => setOpen(false)} aria-label="close" style={{ background: 'none', border: 'none', color: '#fff', fontSize: 20, cursor: 'pointer', lineHeight: 1 }}>×</button>
+            <button onClick={() => setOpen(false)} aria-label="close" style={{ background: 'none', border: 'none', color: cfg.fg || '#fff', fontSize: 20, cursor: 'pointer', lineHeight: 1 }}>×</button>
           </div>
 
           <div style={{ flex: 1, overflowY: 'auto', padding: 12, background: 'var(--bg2)', display: 'flex', flexDirection: 'column', gap: 8, minHeight: 200 }}>
-            <div style={{ maxWidth: '86%', padding: '8px 11px', fontSize: 13, lineHeight: 1.5, ...bubble('assistant') }}>{t.hi}</div>
-            {!started && (
+            <div style={{ maxWidth: '86%', padding: '8px 11px', fontSize: 13, lineHeight: 1.5, ...bubble('assistant') }}>{x.hi}</div>
+            {!started && cfg.showTopics && topics.length > 0 && (
               <div>
-                <div style={{ fontSize: 11, color: 'var(--mut)', margin: '2px 0 6px' }}>{t.topicsT}</div>
+                <div style={{ fontSize: 11, color: 'var(--mut)', margin: '2px 0 6px' }}>{x.topicsT}</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-                  {topics.map(([q, label]: any) => (
+                  {topics.map(([q, label]) => (
                     <button key={label} className="btn btn-ghost" style={{ padding: '8px 10px', fontSize: 12, textAlign: 'left' }} onClick={() => sendAI(q)}>{label}</button>
                   ))}
-                  {!loggedIn && <button className="btn btn-ghost" style={{ padding: '8px 10px', fontSize: 12, textAlign: 'left', gridColumn: '1 / -1' }} onClick={openEmail}>{t.human}</button>}
+                  {!loggedIn && cfg.showHuman && <button className="btn btn-ghost" style={{ padding: '8px 10px', fontSize: 12, textAlign: 'left', gridColumn: '1 / -1' }} onClick={openEmail}>{x.human}</button>}
                 </div>
               </div>
             )}
@@ -193,20 +229,20 @@ export default function SupportWidget({ loggedIn = false }: { loggedIn?: boolean
 
           {!sent && (
             <div style={{ padding: '10px 10px calc(10px + env(safe-area-inset-bottom))', borderTop: '1px solid var(--line)', background: 'var(--card)' }}>
-              {loggedIn && (
+              {loggedIn && cfg.showTicket && (
                 <div className="row" style={{ gap: 6, marginBottom: 8 }}>
                   <Link href="/dashboard/soporte" className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }}>{t.openTicket}</Link>
                   <Link href="/dashboard/soporte" className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }}>{t.center}</Link>
                 </div>
               )}
               <div className="row" style={{ gap: 6 }}>
-                <input value={ask} onChange={(e) => setAsk(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') sendAI(); }} placeholder={t.ph} style={{ flex: 1, margin: 0, fontSize: 13 }} />
+                <input value={ask} onChange={(e) => setAsk(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') sendAI(); }} placeholder={x.ph} style={{ flex: 1, margin: 0, fontSize: 13 }} />
                 <button className="btn btn-primary" style={{ padding: '9px 13px' }} onClick={() => sendAI()} disabled={busy || !ask.trim()}>➤</button>
               </div>
             </div>
           )}
         </div>
       )}
-    </>
+    </div>
   );
 }

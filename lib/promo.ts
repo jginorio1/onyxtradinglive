@@ -13,6 +13,7 @@ export type Promo = {
   coupon: string;                // código de cupón copiable ('' = sin cupón)
   bg: string; bg2: string; gradient: boolean; fg: string; // fondo sólido o degradado
   position: 'top' | 'bottom';
+  sticky: boolean;               // (position 'top') se queda fija al hacer scroll
   anim: 'none' | 'slide' | 'pulse' | 'marquee';
   speed: 'slow' | 'normal' | 'fast';   // velocidad de la animación
   countdown: boolean;
@@ -39,7 +40,7 @@ export function blankPromo(): Promo {
     cta_es: '', cta_en: '',
     coupon: '',
     bg: '#7c8cff', bg2: '#9a6bff', gradient: false, fg: '#0a0d14',
-    position: 'top', anim: 'slide', speed: 'normal',
+    position: 'top', sticky: true, anim: 'slide', speed: 'normal',
     countdown: true, countdownFmt: 'dhms',
     startsAt: '', endsAt: '',
     pages: 'all', audience: 'all', dismissible: true,

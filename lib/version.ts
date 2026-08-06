@@ -1,2 +1,2 @@
 // Autogenerado por scripts/gen-version.mjs en cada build. No editar a mano.
-export const APP_VERSION = '202608062135';
+export const APP_VERSION = '202608062156';

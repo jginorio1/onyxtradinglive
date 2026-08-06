@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 // Barra de anuncios/descuentos configurable desde Admin → Barra de descuentos.
 // Soporta: emoji, cupón copiable, contador (2 formatos), fondo sólido o degradado,
@@ -10,11 +10,11 @@ const PULSE_SECONDS: Record<string, number> = { slow: 3.4, normal: 2.4, fast: 1.
 
 export default function PromoBar({
   id = 'default', text, link, cta, bg, bg2, gradient, fg, endsAt,
-  emoji = '', coupon = '', newTab = false, position = 'top',
+  emoji = '', coupon = '', newTab = false, position = 'top', sticky = true,
   anim = 'slide', speed = 'normal', countdown = true, countdownFmt = 'dhms', dismissible = true,
 }: {
   id?: string; text: string; link: string; cta: string; bg: string; bg2?: string; gradient?: boolean; fg: string; endsAt: string;
-  emoji?: string; coupon?: string; newTab?: boolean; position?: 'top' | 'bottom';
+  emoji?: string; coupon?: string; newTab?: boolean; position?: 'top' | 'bottom'; sticky?: boolean;
   anim?: 'none' | 'slide' | 'pulse' | 'marquee'; speed?: 'slow' | 'normal' | 'fast'; countdown?: boolean; countdownFmt?: 'dhms' | 'hms'; dismissible?: boolean;
 }) {
   const [left, setLeft] = useState<string>('');
@@ -22,6 +22,22 @@ export default function PromoBar({
   const [closed, setClosed] = useState(false);
   const [copied, setCopied] = useState(false);
   const [paused, setPaused] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const stickyTop = position === 'top' && sticky;
+
+  // Cuando la barra es fija arriba, publica su alto en --promo-h para que la
+  // barra de navegación (sticky) se coloque justo debajo y no se solapen.
+  // Al cerrarse o desmontarse, vuelve a 0.
+  useEffect(() => {
+    const root = document.documentElement;
+    const setH = () => {
+      if (stickyTop && !closed && !gone && text && wrapRef.current) root.style.setProperty('--promo-h', wrapRef.current.offsetHeight + 'px');
+      else root.style.setProperty('--promo-h', '0px');
+    };
+    setH();
+    window.addEventListener('resize', setH);
+    return () => { window.removeEventListener('resize', setH); root.style.setProperty('--promo-h', '0px'); };
+  }, [stickyTop, closed, gone, text, left]);
 
   // Clave única de esta promo: si cambia el texto/fecha, vuelve a mostrarse
   // aunque el visitante hubiera cerrado la anterior.
@@ -78,13 +94,16 @@ export default function PromoBar({
   );
 
   const wrapStyle: any = {
-    background, color: fg || '#0a0d14', overflow: 'hidden', position: position === 'bottom' ? 'fixed' : 'relative',
-    zIndex: 55, ...(position === 'bottom' ? { left: 0, right: 0, bottom: 0 } : {}),
+    background, color: fg || '#0a0d14', overflow: 'hidden',
+    position: position === 'bottom' ? 'fixed' : (stickyTop ? 'sticky' : 'relative'),
+    zIndex: 55,
+    ...(position === 'bottom' ? { left: 0, right: 0, bottom: 0 } : {}),
+    ...(stickyTop ? { top: 0, left: 0, right: 0 } : {}),
   };
   const linkAttrs = { href: link || '#', onClick, target: newTab ? '_blank' : undefined, rel: newTab ? 'noopener noreferrer' : undefined } as any;
 
   return (
-    <div style={wrapStyle} onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
+    <div ref={wrapRef} style={wrapStyle} onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
       <style>{`@keyframes onyxPromo{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}@keyframes onyxPulse{0%,100%{opacity:1}50%{opacity:.72}}`}</style>
       <div style={{ display: 'flex', alignItems: 'center', paddingRight: dismissible ? 30 : 0, animation: anim === 'pulse' ? `onyxPulse ${pulseSecs}s ease-in-out infinite` : undefined }}>
         {/* Mensaje (link; se desplaza si es deslizar/marquesina, se pausa al pasar el ratón) */}

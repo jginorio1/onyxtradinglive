@@ -31,6 +31,7 @@ import Facturacion from './Facturacion';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import LandingBuilder from './LandingBuilder';
 import EnvSwitch from './EnvSwitch';
+import ChatWidgetEditor from './ChatWidgetEditor';
 import OnlineNowControl from './OnlineNowControl';
 import AdminLeadAlert from './AdminLeadAlert';
 import TeamChat from './TeamChat';
@@ -220,6 +221,9 @@ function PromoControl() {
                       <label className="muted" style={{ fontSize: 12 }}>{L('Color de fondo 2', 'Background 2')}<input type="color" value={b.bg2 || '#9a6bff'} onChange={(e) => upd(b.id, 'bg2', e.target.value)} style={{ ...inp, height: 38, padding: 3 }} /></label>
                       <label className="muted" style={{ fontSize: 12 }}>{t.pr_fg}<input type="color" value={b.fg || '#0a0d14'} onChange={(e) => upd(b.id, 'fg', e.target.value)} style={{ ...inp, height: 38, padding: 3 }} /></label>
                       <label className="muted" style={{ fontSize: 12 }}>{L('Posición', 'Position')}<select value={b.position || 'top'} onChange={(e) => upd(b.id, 'position', e.target.value)} style={inp}><option value="top">{L('Arriba', 'Top')}</option><option value="bottom">{L('Abajo', 'Bottom')}</option></select></label>
+                      {(b.position || 'top') === 'top' && (
+                        <label className="muted" style={{ fontSize: 12 }}>{L('Al hacer scroll', 'On scroll')}<select value={b.sticky === false ? 'no' : 'yes'} onChange={(e) => upd(b.id, 'sticky', e.target.value === 'yes')} style={inp}><option value="yes">{L('Fija (sigue arriba)', 'Fixed (stays on top)')}</option><option value="no">{L('Se desplaza con la página', 'Scrolls with page')}</option></select></label>
+                      )}
                       <label className="muted" style={{ fontSize: 12 }}>{L('Animación', 'Animation')}<select value={b.anim || 'slide'} onChange={(e) => upd(b.id, 'anim', e.target.value)} style={inp}><option value="none">{L('Ninguna', 'None')}</option><option value="slide">{L('Deslizar', 'Slide')}</option><option value="pulse">{L('Latido', 'Pulse')}</option><option value="marquee">{L('Marquesina', 'Marquee')}</option></select></label>
                       <label className="muted" style={{ fontSize: 12 }}>{L('Velocidad', 'Speed')}<select value={b.speed || 'normal'} onChange={(e) => upd(b.id, 'speed', e.target.value)} style={inp}><option value="slow">{L('Lenta', 'Slow')}</option><option value="normal">{L('Normal', 'Normal')}</option><option value="fast">{L('Rápida', 'Fast')}</option></select></label>
                     </div>
@@ -1087,6 +1091,8 @@ function Modules() {
           </div>
         </div>
       )}
+
+      <ChatWidgetEditor />
 
       <div className="muted" style={{ fontSize: 12, gridColumn: '1 / -1' }}>{t.mo_needLog}</div>
     </div>

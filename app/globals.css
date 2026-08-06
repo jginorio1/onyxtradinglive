@@ -140,7 +140,7 @@ th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);}
 th{color:var(--mut);font-weight:600;}
 .pill{font-size:12px;padding:3px 10px;border-radius:20px;background:var(--card2);color:var(--mut);}
 .pill.green{background:rgba(52,226,160,.15);color:var(--green);}
-.topbar{border-bottom:1px solid var(--line);background:rgba(8,10,16,.7);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);position:sticky;top:0;z-index:40;}
+.topbar{border-bottom:1px solid var(--line);background:rgba(8,10,16,.7);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);position:sticky;top:var(--promo-h,0);z-index:40;}
 .topbar .wrap,.topbar .wrap-wide{height:64px;display:flex;align-items:center;justify-content:space-between;}
 .navl{display:flex;gap:22px;color:var(--mut);font-size:15px;}
 .navl a:hover{color:#fff;}
@@ -153,7 +153,7 @@ th{color:var(--mut);font-weight:600;}
 .langseg.on{background:var(--brand);color:#111726;}
 
 /* Anclas del landing: segunda fila, pegada bajo la barra principal */
-.secnav{position:sticky;top:64px;z-index:35;border-bottom:1px solid var(--line);background:rgba(8,10,16,.92);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);}
+.secnav{position:sticky;top:calc(64px + var(--promo-h,0));z-index:35;border-bottom:1px solid var(--line);background:rgba(8,10,16,.92);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);}
 .secnav-items{display:flex;gap:2px;padding:8px 0;overflow-x:auto;}
 .secnav-item{font-size:14px;color:var(--mut);padding:6px 12px;border-radius:8px;white-space:nowrap;transition:.15s;}
 .secnav-item:hover{color:#fff;}

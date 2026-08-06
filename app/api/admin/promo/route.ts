@@ -29,6 +29,7 @@ function clean(b: any, prev: Promo): Promo {
     gradient: !!b.gradient,
     fg: String(b.fg ?? prev.fg).slice(0, 20),
     position: oneOf(b.position, ['top', 'bottom'], prev.position),
+    sticky: b.sticky == null ? prev.sticky : !!b.sticky,
     anim: oneOf(b.anim, ['none', 'slide', 'pulse', 'marquee'], prev.anim),
     speed: oneOf(b.speed, ['slow', 'normal', 'fast'], prev.speed),
     countdown: b.countdown == null ? prev.countdown : !!b.countdown,

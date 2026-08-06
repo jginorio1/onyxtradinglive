@@ -88,6 +88,73 @@ const ON: OnlineNow = {
 };
 export const onlineNowSettings = () => getSetting<OnlineNow>('online_now', ON);
 
+// Chat de soporte (burbuja "Onyx AI"): totalmente editable desde Admin → Módulos.
+// Marca, colores, textos (ES/EN), pestañas/acciones, temas rápidos, mensaje
+// proactivo y ajustes por dispositivo. Se lee al vuelo (sin volver a desplegar).
+export type ChatTopic = { q_es: string; q_en: string; label_es: string; label_en: string };
+export type ChatWidget = {
+  enabled: boolean;
+  // Marca
+  name_es: string; name_en: string;                 // título del asistente (IA)
+  humanName_es: string; humanName_en: string;        // título cuando atiende una persona
+  subOn_es: string; subOn_en: string;                // subtítulo "en línea"
+  subOff_es: string; subOff_en: string;              // subtítulo cuando no hay agentes
+  avatarUrl: string;                                 // foto del avatar ('' = usa emoji/iniciales)
+  headerEmoji: string;                               // emoji del avatar en la cabecera
+  launcher: string;                                  // emoji del botón flotante
+  helpLabel_es: string; helpLabel_en: string;        // etiqueta junto al botón
+  greeting_es: string; greeting_en: string;          // primer mensaje del bot
+  placeholder_es: string; placeholder_en: string;    // placeholder del input
+  humanLabel_es: string; humanLabel_en: string;      // botón "hablar con una persona"
+  topicsTitle_es: string; topicsTitle_en: string;    // título de "temas frecuentes"
+  // Colores
+  c1: string; c2: string; gradient: boolean; fg: string; accent: string;
+  // Pestañas / acciones visibles
+  showTopics: boolean; showHuman: boolean; showTicket: boolean; showPulse: boolean;
+  // Temas rápidos (visitante vs usuario)
+  topicsGuest: ChatTopic[];
+  topicsUser: ChatTopic[];
+  // Mensaje proactivo (globo sobre el botón tras unos segundos)
+  proactiveOn: boolean; proactiveDelay: number; proactive_es: string; proactive_en: string;
+  // Por dispositivo
+  side: 'right' | 'left';
+  hideDesktop: boolean; hideTablet: boolean; hideMobile: boolean;
+  launcherSize: number;                              // px del botón (escritorio)
+  offsetX: number; offsetY: number;                  // separación de los bordes (px)
+};
+const CW: ChatWidget = {
+  enabled: true,
+  name_es: 'Onyx AI', name_en: 'Onyx AI',
+  humanName_es: 'Equipo Onyx', humanName_en: 'Onyx team',
+  subOn_es: 'En línea · responde al instante', subOn_en: 'Online · instant answers',
+  subOff_es: 'Te respondemos por correo', subOff_en: 'We reply by email',
+  avatarUrl: '', headerEmoji: '🤖', launcher: '💬',
+  helpLabel_es: '¿Necesitas ayuda?', helpLabel_en: 'Need help?',
+  greeting_es: '¡Hola! ¿Sobre qué te ayudo?', greeting_en: 'Hi! How can I help?',
+  placeholder_es: 'Escribe tu pregunta…', placeholder_en: 'Type your question…',
+  humanLabel_es: '🙋 Hablar con una persona', humanLabel_en: '🙋 Talk to a person',
+  topicsTitle_es: 'Temas frecuentes', topicsTitle_en: 'Popular topics',
+  c1: '#7c8cff', c2: '#9a6bff', gradient: true, fg: '#ffffff', accent: '#7c8cff',
+  showTopics: true, showHuman: true, showTicket: true, showPulse: true,
+  topicsGuest: [
+    { q_es: '¿Cuáles son los precios y planes?', q_en: 'What are the prices and plans?', label_es: '💳 Precios', label_en: '💳 Pricing' },
+    { q_es: '¿Cómo me hago embajador?', q_en: 'How do I become an ambassador?', label_es: '🎁 Embajador', label_en: '🎁 Ambassador' },
+    { q_es: '¿Cómo conecto mi cuenta (MetaTrader/cTrader)?', q_en: 'How do I connect my account (MetaTrader/cTrader)?', label_es: '🔌 Conectar', label_en: '🔌 Connect' },
+    { q_es: '¿Qué hace Onyx Guardian?', q_en: 'What does Onyx Guardian do?', label_es: '🛡️ Guardian', label_en: '🛡️ Guardian' },
+    { q_es: '¿Sirve para cuentas de fondeo?', q_en: 'Does it work for funded accounts?', label_es: '🏆 Fondeo', label_en: '🏆 Funded' },
+  ],
+  topicsUser: [
+    { q_es: '¿Cómo conecto mi cuenta (MetaTrader/cTrader)?', q_en: 'How do I connect my account (MetaTrader/cTrader)?', label_es: '🔌 Conectar', label_en: '🔌 Connect' },
+    { q_es: '¿Qué hace Onyx Guardian?', q_en: 'What does Onyx Guardian do?', label_es: '🛡️ Guardian', label_en: '🛡️ Guardian' },
+    { q_es: '¿Sirve para cuentas de fondeo?', q_en: 'Does it work for funded accounts?', label_es: '🏆 Fondeo', label_en: '🏆 Funded' },
+    { q_es: '¿Cómo cambio de plan?', q_en: 'How do I change my plan?', label_es: '💳 Mi plan', label_en: '💳 My plan' },
+  ],
+  proactiveOn: false, proactiveDelay: 12, proactive_es: '¿Tienes dudas? Pregúntame lo que sea 👋', proactive_en: 'Any questions? Ask me anything 👋',
+  side: 'right', hideDesktop: false, hideTablet: false, hideMobile: false,
+  launcherSize: 54, offsetX: 18, offsetY: 18,
+};
+export const chatWidgetSettings = () => getSetting<ChatWidget>('chat_widget', CW);
+
 // Onyx Academy · comisión por defecto (editable por el dueño en el panel).
 export type AcademyFee = { default_pct: number };
 const AF: AcademyFee = { default_pct: Number(process.env.ONYX_ACADEMY_FEE_PCT || 10) };
