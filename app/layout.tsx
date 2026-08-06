@@ -19,7 +19,7 @@ import { serverBeta } from '@/lib/betaServer';
 import PromoBar from './PromoBar';
 import { getSetting } from '@/lib/settings';
 import { getSeoMeta, seoFor } from '@/lib/seo';
-import { type Promo, PROMO0 } from '@/lib/promo';
+import { type Promo, type PromoQueue, pickActiveBar } from '@/lib/promo';
 import { headers } from 'next/headers';
 import type { Lang } from '@/lib/navText';
 import { serverLang, localeAlternates } from '@/lib/locale';
@@ -85,8 +85,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // Barra de descuentos: solo en páginas públicas (no en dashboard/admin/cuenta).
   const path = headers().get('x-onyx-path') || '/';
   const isPublic = !/^\/(dashboard|admin|account|onboarding)/.test(path);
-  const promo = isPublic ? { ...PROMO0, ...(await getSetting<Promo>('promo', PROMO0)) } : PROMO0;
-
   // ¿Hay sesión? La burbuja de soporte se comporta distinto para trader o visitante.
   let loggedIn = false, userPlan = 'free';
   try {
@@ -96,14 +94,17 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     if (user) { try { const { data: pr } = await supabaseAdmin.from('profiles').select('plan').eq('id', user.id).maybeSingle(); userPlan = (pr as any)?.plan || 'free'; } catch {} }
   } catch { /* si falla, la tratamos como visitante */ }
 
-  // ¿Se muestra la barra? On + texto + ventana de fechas + página + público objetivo.
-  const now = Date.now();
-  const inWindow = (!promo.startsAt || new Date(promo.startsAt).getTime() <= now) && (!promo.endsAt || new Date(promo.endsAt).getTime() > now);
-  const isLanding = path === '/' || path === '/en';
-  const isPricing = /^\/(en\/)?pricing/.test(path);
-  const pageOk = promo.pages === 'all' || (promo.pages === 'landing' && isLanding) || (promo.pages === 'pricing' && isPricing);
-  const audOk = promo.audience === 'all' || (promo.audience === 'guests' && !loggedIn) || (promo.audience === 'free' && (!loggedIn || userPlan === 'free'));
-  const promoLive = isPublic && promo.on && (lang === 'es' ? promo.text_es : promo.text_en) && inWindow && pageOk && audOk;
+  // Cola de barras: el sitio muestra sola la que toca por fecha/página/público.
+  let promo: Promo | null = null;
+  if (isPublic) {
+    const q = await getSetting<PromoQueue | null>('promo_queue', null as any);
+    let bars: Promo[] = q && Array.isArray(q.bars) ? q.bars : [];
+    if (!bars.length) { const old = await getSetting<Promo | null>('promo', null as any); if (old && (old.text_es || old.text_en)) bars = [old]; }
+    const isLanding = path === '/' || path === '/en';
+    const isPricing = /^\/(en\/)?pricing/.test(path);
+    promo = pickActiveBar(bars, Date.now(), { lang, isLanding, isPricing, loggedIn, plan: userPlan });
+  }
+  const promoLive = !!promo;
 
   const graph = {
     '@context': 'https://schema.org',
@@ -147,13 +148,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <EnvBanner />
         <LanguageProvider initial={lang}>
           <BetaProvider initial={beta}>
-            {promoLive && (
+            {promoLive && promo && (
               <PromoBar
+                id={promo.id}
                 text={lang === 'es' ? promo.text_es : promo.text_en}
                 cta={lang === 'es' ? promo.cta_es : promo.cta_en}
                 link={promo.link} bg={promo.bg} bg2={promo.bg2} gradient={promo.gradient} fg={promo.fg} endsAt={promo.endsAt}
                 emoji={promo.emoji} coupon={promo.coupon} newTab={promo.newTab} position={promo.position}
-                anim={promo.anim} countdown={promo.countdown} countdownFmt={promo.countdownFmt} dismissible={promo.dismissible}
+                anim={promo.anim} speed={promo.speed} countdown={promo.countdown} countdownFmt={promo.countdownFmt} dismissible={promo.dismissible}
               />
             )}
             <BetaBanner />

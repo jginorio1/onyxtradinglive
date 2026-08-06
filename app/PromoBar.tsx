@@ -5,14 +5,17 @@ import { useEffect, useMemo, useState } from 'react';
 // Soporta: emoji, cupón copiable, contador (2 formatos), fondo sólido o degradado,
 // posición arriba/abajo, animaciones, cierre por el visitante (se recuerda) y
 // métricas de vistas/clics.
+const ANIM_SECONDS: Record<string, number> = { slow: 34, normal: 22, fast: 12 };
+const PULSE_SECONDS: Record<string, number> = { slow: 3.4, normal: 2.4, fast: 1.4 };
+
 export default function PromoBar({
-  text, link, cta, bg, bg2, gradient, fg, endsAt,
+  id = 'default', text, link, cta, bg, bg2, gradient, fg, endsAt,
   emoji = '', coupon = '', newTab = false, position = 'top',
-  anim = 'slide', countdown = true, countdownFmt = 'dhms', dismissible = true,
+  anim = 'slide', speed = 'normal', countdown = true, countdownFmt = 'dhms', dismissible = true,
 }: {
-  text: string; link: string; cta: string; bg: string; bg2?: string; gradient?: boolean; fg: string; endsAt: string;
+  id?: string; text: string; link: string; cta: string; bg: string; bg2?: string; gradient?: boolean; fg: string; endsAt: string;
   emoji?: string; coupon?: string; newTab?: boolean; position?: 'top' | 'bottom';
-  anim?: 'none' | 'slide' | 'pulse' | 'marquee'; countdown?: boolean; countdownFmt?: 'dhms' | 'hms'; dismissible?: boolean;
+  anim?: 'none' | 'slide' | 'pulse' | 'marquee'; speed?: 'slow' | 'normal' | 'fast'; countdown?: boolean; countdownFmt?: 'dhms' | 'hms'; dismissible?: boolean;
 }) {
   const [left, setLeft] = useState<string>('');
   const [gone, setGone] = useState(false);
@@ -26,8 +29,8 @@ export default function PromoBar({
   useEffect(() => {
     try { if (dismissible && localStorage.getItem(key) === '1') setClosed(true); } catch {}
     // Métrica de vista (una por carga).
-    try { fetch('/api/promo/track', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ev: 'view' }), keepalive: true }).catch(() => {}); } catch {}
-  }, [key, dismissible]);
+    try { fetch('/api/promo/track', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, ev: 'view' }), keepalive: true }).catch(() => {}); } catch {}
+  }, [key, dismissible, id]);
 
   useEffect(() => {
     if (!countdown || !endsAt) return;
@@ -60,7 +63,9 @@ export default function PromoBar({
     e.preventDefault(); e.stopPropagation();
     setClosed(true); try { localStorage.setItem(key, '1'); } catch {}
   };
-  const onClick = () => { try { fetch('/api/promo/track', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ev: 'click' }), keepalive: true }).catch(() => {}); } catch {} };
+  const onClick = () => { try { fetch('/api/promo/track', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, ev: 'click' }), keepalive: true }).catch(() => {}); } catch {} };
+  const animSecs = ANIM_SECONDS[speed] || 22;
+  const pulseSecs = PULSE_SECONDS[speed] || 2.4;
 
   const inner = (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12, whiteSpace: 'nowrap' }}>
@@ -85,9 +90,9 @@ export default function PromoBar({
     <div style={wrapStyle}>
       <style>{`@keyframes onyxPromo{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}@keyframes onyxPulse{0%,100%{opacity:1}50%{opacity:.72}}`}</style>
       <a href={link || '#'} onClick={onClick} target={newTab ? '_blank' : undefined} rel={newTab ? 'noopener noreferrer' : undefined}
-        style={{ color: 'inherit', textDecoration: 'none', display: 'block', padding: '7px 0', animation: anim === 'pulse' ? 'onyxPulse 2.4s ease-in-out infinite' : undefined }}>
+        style={{ color: 'inherit', textDecoration: 'none', display: 'block', padding: '7px 0', animation: anim === 'pulse' ? `onyxPulse ${pulseSecs}s ease-in-out infinite` : undefined }}>
         {scrolling ? (
-          <div style={{ display: 'inline-flex', whiteSpace: 'nowrap', animation: 'onyxPromo 22s linear infinite', willChange: 'transform', fontSize: 13.5 }}>
+          <div style={{ display: 'inline-flex', whiteSpace: 'nowrap', animation: `onyxPromo ${animSecs}s linear infinite`, willChange: 'transform', fontSize: 13.5 }}>
             {[0, 1, 2, 3].map((i) => <span key={i} style={{ paddingRight: 60 }}>{inner}</span>)}
           </div>
         ) : (

@@ -38,6 +38,7 @@ import RangeBar, { type Range, defaultRange } from './RangeBar';
 import { AREAS, effectivePerms } from '@/lib/perms';
 import { useT } from '@/lib/adminText';
 import { useLang } from '@/lib/lang';
+import { blankPromo, newId, THEMES, pickActiveBar } from '@/lib/promo';
 
 type Plan = { id: string; name: string; name_en: string; desc_es: string | null; desc_en: string | null; price_month: number; price_year: number; stripe_price_id: string | null; stripe_price_id_year: string | null; max_accounts: number; features: string[]; features_en: string[]; badge: string | null; badge_en: string | null; active: boolean; sort: number; capabilities: any };
 type User = { id: string; email: string; full_name?: string | null; plan: string; subscription_status: string | null; banned: boolean; is_admin: boolean; created_at: string; accounts: number; lastSync: string | null; email_confirmed?: boolean };
@@ -64,122 +65,191 @@ function PromoControl() {
   const t = useT();
   const { lang } = useLang();
   const L = (es: string, en: string) => (lang === 'en' ? en : es);
-  const [p, setP] = useState<any>(null);
-  const [stats, setStats] = useState<any>({ views: 0, clicks: 0 });
+  const [bars, setBars] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>({});
+  const [openId, setOpenId] = useState('');
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
-  useEffect(() => { fetch('/api/admin/promo').then((r) => r.json()).then((d) => { setP(d.promo); if (d.stats) setStats(d.stats); }).catch(() => {}); }, []);
-  const set = (k: string, v: any) => setP((o: any) => ({ ...o, [k]: v }));
+  const [pct, setPct] = useState<Record<string, string>>({});
+  const [cpMsg, setCpMsg] = useState<Record<string, string>>({});
+  const [cpBusy, setCpBusy] = useState('');
+  useEffect(() => { fetch('/api/admin/promo').then((r) => r.json()).then((d) => { setBars(d.bars || []); setStats(d.stats || {}); }).catch(() => {}); }, []);
+
+  const upd = (id: string, k: string, v: any) => setBars((bs) => bs.map((b) => (b.id === id ? { ...b, [k]: v } : b)));
+  const addBar = (patch: any = {}) => { const nb = { ...blankPromo(), id: newId(), ...patch }; setBars((bs) => [...bs, nb]); setOpenId(nb.id); };
+  const dupBar = (id: string) => { const src = bars.find((b) => b.id === id); if (!src) return; const nb = { ...src, id: newId(), name: (src.name || 'Barra') + ' ' + L('copia', 'copy') }; setBars((bs) => [...bs, nb]); setOpenId(nb.id); };
+  const delBar = (id: string) => { if (window.confirm(L('¿Borrar esta barra?', 'Delete this bar?'))) setBars((bs) => bs.filter((b) => b.id !== id)); };
+  const move = (id: string, dir: -1 | 1) => setBars((bs) => { const i = bs.findIndex((b) => b.id === id); const j = i + dir; if (i < 0 || j < 0 || j >= bs.length) return bs; const c = [...bs]; [c[i], c[j]] = [c[j], c[i]]; return c; });
 
   async function save(extra?: any) {
     setBusy(true); setMsg('');
     try {
-      const r = await fetch('/api/admin/promo', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...p, ...(extra || {}) }) });
+      const r = await fetch('/api/admin/promo', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ bars, ...(extra || {}) }) });
       const d = await r.json();
-      if (!r.ok) setMsg(d.error || 'Error'); else { setP(d.promo); if (d.stats) setStats(d.stats); setMsg(t.pr_saved); }
+      if (!r.ok) setMsg(d.error || 'Error'); else { setBars(d.bars || []); setStats(d.stats || {}); setMsg(t.pr_saved); }
     } finally { setBusy(false); }
   }
-  // Plantillas rápidas: rellenan varios campos de golpe (el admin luego ajusta).
-  const applyTemplate = (tpl: any) => setP((o: any) => ({ ...o, ...tpl }));
+  // Crea o valida el cupón en Stripe para que el descuento se aplique solo.
+  async function stripeCoupon(b: any) {
+    if (!b.coupon) { setCpMsg((m) => ({ ...m, [b.id]: L('Escribe un código primero.', 'Enter a code first.') })); return; }
+    setCpBusy(b.id); setCpMsg((m) => ({ ...m, [b.id]: '' }));
+    try {
+      const r = await fetch('/api/admin/promo/coupon', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: b.coupon, percent: Number(pct[b.id]) || 0, endsAt: b.endsAt }) });
+      const d = await r.json();
+      if (!r.ok) setCpMsg((m) => ({ ...m, [b.id]: d.error || 'Error' }));
+      else if (d.created) setCpMsg((m) => ({ ...m, [b.id]: L(`✓ Creado en Stripe (−${d.percent}%)`, `✓ Created in Stripe (−${d.percent}%)`) }));
+      else if (d.existed) setCpMsg((m) => ({ ...m, [b.id]: L(`✓ Ya existe en Stripe${d.percent ? ` (−${d.percent}%)` : ''}`, `✓ Already in Stripe${d.percent ? ` (−${d.percent}%)` : ''}`) }));
+      else setCpMsg((m) => ({ ...m, [b.id]: L('No existe. Pon el % y créalo.', "Doesn't exist. Set % and create it.") }));
+    } finally { setCpBusy(''); }
+  }
 
-  if (!p) return null;
   const inp = { padding: '8px 10px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', width: '100%', marginTop: 4 } as any;
   const sec = { background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: 12, marginTop: 10 } as any;
   const secTitle = { fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--mut)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 } as any;
   const grid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 10 } as any;
-  const bgPrev = p.gradient && p.bg2 ? `linear-gradient(90deg,${p.bg},${p.bg2})` : (p.bg || 'var(--brand)');
-  const ctr = stats.views ? Math.round((stats.clicks / stats.views) * 1000) / 10 : 0;
+  const now = Date.now();
+  const activeId = pickActiveBar(bars as any, now, { lang, isLanding: true, isPricing: false, loggedIn: false, plan: 'free' })?.id || '';
+  const statusOf = (b: any) => {
+    if (!b.on) return { t: L('Apagada', 'Off'), c: 'var(--mut)', bg: 'var(--bg2)' };
+    if (b.endsAt && new Date(b.endsAt).getTime() <= now) return { t: L('Finalizada', 'Ended'), c: 'var(--mut)', bg: 'var(--bg2)' };
+    if (b.startsAt && new Date(b.startsAt).getTime() > now) return { t: L('Próxima', 'Upcoming'), c: 'var(--soft-brand)', bg: 'rgba(124,140,255,.15)' };
+    if (b.id === activeId) return { t: L('Activa ahora', 'Active now'), c: 'var(--soft-green)', bg: 'rgba(52,226,160,.15)' };
+    return { t: L('Programada', 'Scheduled'), c: 'var(--mut)', bg: 'var(--bg2)' };
+  };
+  const fmtDate = (s: string) => (s ? new Date(s).toLocaleDateString(lang === 'es' ? 'es' : 'en', { day: 'numeric', month: 'short' }) : '—');
 
   return (
     <div className="card" style={{ marginBottom: 12 }}>
       <div className="row between" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 6 }}>
         <h3 style={{ margin: 0 }}>📣 {t.pr_title}</h3>
-        <span className="row" style={{ gap: 8 }}>
-          <span className="pill" style={p.on ? { color: 'var(--soft-green)', background: 'rgba(52,226,160,.15)' } : { color: 'var(--mut)' }}>{p.on ? t.pr_on : t.pr_off}</span>
-          <Toggle on={!!p.on} onClick={() => set('on', !p.on)} />
-        </span>
+        <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => addBar({ on: true })}>＋ {L('Nueva barra', 'New bar')}</button>
       </div>
-      <p className="muted" style={{ fontSize: 13, marginBottom: 6 }}>{t.pr_body}</p>
+      <p className="muted" style={{ fontSize: 13, marginBottom: 8 }}>{L('Programa varias barras por temporada. El sitio muestra sola la que toca por fecha.', 'Schedule several bars by season. The site shows the one that fits the date automatically.')}</p>
 
-      {/* Plantillas rápidas */}
-      <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
-        <span className="muted" style={{ fontSize: 12 }}>{L('Plantillas:', 'Templates:')}</span>
-        <button className="pill" style={{ cursor: 'pointer' }} onClick={() => applyTemplate({ emoji: '🛍️', text_es: '−30% en Black Friday', text_en: '−30% Black Friday', cta_es: 'Aprovechar', cta_en: 'Grab it', coupon: 'BF30', gradient: true, bg: '#111111', bg2: '#6b5cff', fg: '#ffffff', anim: 'slide', countdown: true })}>Black Friday</button>
-        <button className="pill" style={{ cursor: 'pointer' }} onClick={() => applyTemplate({ emoji: '🚀', text_es: 'Lanzamiento: prueba Onyx gratis', text_en: 'Launch: try Onyx free', cta_es: 'Empezar', cta_en: 'Start', coupon: '', gradient: true, bg: '#6b5cff', bg2: '#16c98d', fg: '#ffffff', anim: 'pulse', countdown: false })}>{L('Lanzamiento', 'Launch')}</button>
-        <button className="pill" style={{ cursor: 'pointer' }} onClick={() => applyTemplate({ emoji: '⏰', text_es: 'Última hora: oferta termina hoy', text_en: 'Last call: offer ends today', cta_es: 'Ver oferta', cta_en: 'See offer', coupon: '', gradient: false, bg: '#e24b4a', fg: '#ffffff', anim: 'slide', countdown: true, countdownFmt: 'hms' })}>{L('Última hora', 'Last call')}</button>
-      </div>
-
-      {/* Vista previa */}
-      <div style={{ background: bgPrev, color: p.fg || '#0a0d14', borderRadius: 8, padding: '8px 12px', fontSize: 13, fontWeight: 600, marginBottom: 4, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', textAlign: 'center' }}>
-        {(p.emoji ? p.emoji + ' ' : '') + (p.text_es || t.pr_ph) + (p.coupon ? '  [' + p.coupon + ' ⧉]' : '') + (p.cta_es ? '  ' + p.cta_es + ' →' : '')}
-      </div>
-
-      {/* Contenido */}
-      <div style={sec}>
-        <div style={secTitle}>💬 {L('Contenido', 'Content')}</div>
-        <div style={grid}>
-          <label className="muted" style={{ fontSize: 12 }}>{L('Emoji / icono', 'Emoji / icon')}<input value={p.emoji || ''} onChange={(e) => set('emoji', e.target.value)} placeholder="🔥" style={inp} maxLength={8} /></label>
-          <label className="muted" style={{ fontSize: 12 }}>{t.pr_textEs}<input value={p.text_es} onChange={(e) => set('text_es', e.target.value)} placeholder="−30% en el plan Pro por 48 h" style={inp} /></label>
-          <label className="muted" style={{ fontSize: 12 }}>{t.pr_textEn}<input value={p.text_en} onChange={(e) => set('text_en', e.target.value)} placeholder="−30% on Pro for 48 h" style={inp} /></label>
-          <label className="muted" style={{ fontSize: 12 }}>{t.pr_ctaEs}<input value={p.cta_es} onChange={(e) => set('cta_es', e.target.value)} placeholder="Aprovéchalo" style={inp} /></label>
-          <label className="muted" style={{ fontSize: 12 }}>{t.pr_ctaEn}<input value={p.cta_en} onChange={(e) => set('cta_en', e.target.value)} placeholder="Grab it" style={inp} /></label>
-          <label className="muted" style={{ fontSize: 12 }}>{L('Cupón (copiable)', 'Coupon (copyable)')}<input value={p.coupon || ''} onChange={(e) => set('coupon', e.target.value)} placeholder="PRO30" style={inp} /></label>
-          <label className="muted" style={{ fontSize: 12 }}>{t.pr_link}<input value={p.link} onChange={(e) => set('link', e.target.value)} placeholder="/pricing" style={inp} /></label>
+      {/* Biblioteca de temas */}
+      <div style={{ marginBottom: 10 }}>
+        <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{L('Biblioteca de temas — un clic crea una barra con ese estilo:', 'Theme library — one click creates a bar with that style:')}</div>
+        <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+          {THEMES.map((th) => {
+            const bg = th.patch.gradient ? `linear-gradient(90deg,${th.patch.bg},${th.patch.bg2})` : th.patch.bg;
+            return <button key={th.key} onClick={() => addBar({ name: th.name, ...th.patch })} style={{ cursor: 'pointer', border: 'none', borderRadius: 20, padding: '6px 13px', fontSize: 12.5, fontWeight: 600, background: bg, color: th.patch.fg }}>{th.patch.emoji} {th.name}</button>;
+          })}
         </div>
-        <label className="row" style={{ gap: 8, marginTop: 10, fontSize: 13, alignItems: 'center', cursor: 'pointer' }}>
-          <input type="checkbox" checked={!!p.newTab} onChange={(e) => set('newTab', e.target.checked)} style={{ width: 'auto', margin: 0 }} /> {L('Abrir el enlace en pestaña nueva', 'Open link in a new tab')}
-        </label>
       </div>
 
-      {/* Programación y contador */}
-      <div style={sec}>
-        <div style={secTitle}>⏱ {L('Programación y contador', 'Schedule & countdown')}</div>
-        <div style={grid}>
-          <label className="muted" style={{ fontSize: 12 }}>{L('Empieza (opcional)', 'Starts (optional)')}<input type="datetime-local" value={p.startsAt ? p.startsAt.slice(0, 16) : ''} onChange={(e) => set('startsAt', e.target.value ? new Date(e.target.value).toISOString() : '')} style={inp} /></label>
-          <label className="muted" style={{ fontSize: 12 }}>{t.pr_ends}<input type="datetime-local" value={p.endsAt ? p.endsAt.slice(0, 16) : ''} onChange={(e) => set('endsAt', e.target.value ? new Date(e.target.value).toISOString() : '')} style={inp} /></label>
-          <label className="muted" style={{ fontSize: 12 }}>{L('Formato del contador', 'Countdown format')}<select value={p.countdownFmt || 'dhms'} onChange={(e) => set('countdownFmt', e.target.value)} style={inp}><option value="dhms">2d 3h 4m</option><option value="hms">03:04:05</option></select></label>
-        </div>
-        <label className="row" style={{ gap: 8, marginTop: 10, fontSize: 13, alignItems: 'center', cursor: 'pointer' }}>
-          <input type="checkbox" checked={p.countdown !== false} onChange={(e) => set('countdown', e.target.checked)} style={{ width: 'auto', margin: 0 }} /> {L('Mostrar el contador (si hay fecha de fin)', 'Show countdown (if there is an end date)')}
-        </label>
-      </div>
+      {/* Cola de barras */}
+      {!bars.length && <p className="muted" style={{ fontSize: 13, padding: '10px 0' }}>{L('No hay barras. Crea una desde un tema o con "Nueva barra".', 'No bars yet. Create one from a theme or with "New bar".')}</p>}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {bars.map((b, i) => {
+          const st = statusOf(b);
+          const bgPrev = b.gradient && b.bg2 ? `linear-gradient(90deg,${b.bg},${b.bg2})` : (b.bg || 'var(--brand)');
+          const s = stats[b.id] || { views: 0, clicks: 0 };
+          const ctr = s.views ? Math.round((s.clicks / s.views) * 1000) / 10 : 0;
+          const opened = openId === b.id;
+          return (
+            <div key={b.id} style={{ border: opened ? '1px solid var(--soft-brand)' : '1px solid var(--line)', borderRadius: 10, overflow: 'hidden' }}>
+              {/* Tira de vista previa */}
+              <div style={{ background: bgPrev, color: b.fg || '#0a0d14', padding: '7px 12px', fontSize: 12.5, fontWeight: 600, textAlign: 'center', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+                {(b.emoji ? b.emoji + ' ' : '') + ((lang === 'es' ? b.text_es : b.text_en) || t.pr_ph) + (b.coupon ? '  [' + b.coupon + ']' : '') + ((lang === 'es' ? b.cta_es : b.cta_en) ? '  →' : '')}
+              </div>
+              {/* Fila de gestión */}
+              <div className="row between" style={{ gap: 10, padding: '8px 12px', flexWrap: 'wrap', alignItems: 'center' }}>
+                <span style={{ fontSize: 13, fontWeight: 600, minWidth: 90 }}>{b.name || L('Barra', 'Bar')}</span>
+                <span className="muted" style={{ fontSize: 12 }}>📅 {fmtDate(b.startsAt)} → {fmtDate(b.endsAt)}</span>
+                <span className="pill" style={{ fontSize: 11, color: st.c, background: st.bg }}>{st.t}</span>
+                <span className="row" style={{ gap: 6, alignItems: 'center', marginLeft: 'auto' }}>
+                  <Toggle on={!!b.on} onClick={() => upd(b.id, 'on', !b.on)} />
+                  <button className="btn btn-ghost" style={{ padding: '5px 9px', fontSize: 12 }} onClick={() => setOpenId(opened ? '' : b.id)}>{opened ? L('Cerrar', 'Close') : '✏️'}</button>
+                  <button className="btn btn-ghost" style={{ padding: '5px 9px', fontSize: 12 }} title={L('Duplicar', 'Duplicate')} onClick={() => dupBar(b.id)}>⧉</button>
+                  <button className="btn btn-ghost" style={{ padding: '5px 8px', fontSize: 12 }} title={L('Subir', 'Up')} onClick={() => move(b.id, -1)} disabled={i === 0}>↑</button>
+                  <button className="btn btn-ghost" style={{ padding: '5px 8px', fontSize: 12 }} title={L('Bajar', 'Down')} onClick={() => move(b.id, 1)} disabled={i === bars.length - 1}>↓</button>
+                  <button className="btn btn-ghost" style={{ padding: '5px 9px', fontSize: 12, color: 'var(--red)' }} onClick={() => delBar(b.id)}>🗑️</button>
+                </span>
+              </div>
 
-      {/* Apariencia */}
-      <div style={sec}>
-        <div style={secTitle}>🎨 {L('Apariencia', 'Appearance')}</div>
-        <div style={grid}>
-          <label className="muted" style={{ fontSize: 12 }}>{t.pr_bg}<input type="color" value={p.bg || '#7c8cff'} onChange={(e) => set('bg', e.target.value)} style={{ ...inp, height: 38, padding: 3 }} /></label>
-          <label className="muted" style={{ fontSize: 12 }}>{L('Color de fondo 2 (degradado)', 'Background 2 (gradient)')}<input type="color" value={p.bg2 || '#9a6bff'} onChange={(e) => set('bg2', e.target.value)} style={{ ...inp, height: 38, padding: 3 }} /></label>
-          <label className="muted" style={{ fontSize: 12 }}>{t.pr_fg}<input type="color" value={p.fg || '#0a0d14'} onChange={(e) => set('fg', e.target.value)} style={{ ...inp, height: 38, padding: 3 }} /></label>
-          <label className="muted" style={{ fontSize: 12 }}>{L('Posición', 'Position')}<select value={p.position || 'top'} onChange={(e) => set('position', e.target.value)} style={inp}><option value="top">{L('Arriba', 'Top')}</option><option value="bottom">{L('Abajo', 'Bottom')}</option></select></label>
-          <label className="muted" style={{ fontSize: 12 }}>{L('Animación', 'Animation')}<select value={p.anim || 'slide'} onChange={(e) => set('anim', e.target.value)} style={inp}><option value="none">{L('Ninguna', 'None')}</option><option value="slide">{L('Deslizar', 'Slide')}</option><option value="pulse">{L('Latido', 'Pulse')}</option><option value="marquee">{L('Marquesina', 'Marquee')}</option></select></label>
-        </div>
-        <label className="row" style={{ gap: 8, marginTop: 10, fontSize: 13, alignItems: 'center', cursor: 'pointer' }}>
-          <input type="checkbox" checked={!!p.gradient} onChange={(e) => set('gradient', e.target.checked)} style={{ width: 'auto', margin: 0 }} /> {L('Usar fondo en degradado (2 colores)', 'Use gradient background (2 colors)')}
-        </label>
-      </div>
+              {/* Editor expandido */}
+              {opened && (
+                <div style={{ padding: '0 12px 12px' }}>
+                  {/* Contenido */}
+                  <div style={sec}>
+                    <div style={secTitle}>💬 {L('Contenido', 'Content')}</div>
+                    <div style={grid}>
+                      <label className="muted" style={{ fontSize: 12 }}>{L('Nombre interno', 'Internal name')}<input value={b.name || ''} onChange={(e) => upd(b.id, 'name', e.target.value)} placeholder="Halloween" style={inp} /></label>
+                      <label className="muted" style={{ fontSize: 12 }}>{L('Emoji / icono', 'Emoji / icon')}<input value={b.emoji || ''} onChange={(e) => upd(b.id, 'emoji', e.target.value)} placeholder="🔥" style={inp} maxLength={8} /></label>
+                      <label className="muted" style={{ fontSize: 12 }}>{t.pr_textEs}<input value={b.text_es} onChange={(e) => upd(b.id, 'text_es', e.target.value)} placeholder="−30% en el plan Pro" style={inp} /></label>
+                      <label className="muted" style={{ fontSize: 12 }}>{t.pr_textEn}<input value={b.text_en} onChange={(e) => upd(b.id, 'text_en', e.target.value)} placeholder="−30% on Pro" style={inp} /></label>
+                      <label className="muted" style={{ fontSize: 12 }}>{t.pr_ctaEs}<input value={b.cta_es} onChange={(e) => upd(b.id, 'cta_es', e.target.value)} placeholder="Aprovéchalo" style={inp} /></label>
+                      <label className="muted" style={{ fontSize: 12 }}>{t.pr_ctaEn}<input value={b.cta_en} onChange={(e) => upd(b.id, 'cta_en', e.target.value)} placeholder="Grab it" style={inp} /></label>
+                      <label className="muted" style={{ fontSize: 12 }}>{t.pr_link}<input value={b.link} onChange={(e) => upd(b.id, 'link', e.target.value)} placeholder="/pricing" style={inp} /></label>
+                    </div>
+                    {/* Cupón + descuento automático en Stripe */}
+                    <div style={{ ...grid, marginTop: 10, gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', alignItems: 'end' }}>
+                      <label className="muted" style={{ fontSize: 12 }}>{L('Cupón (copiable)', 'Coupon (copyable)')}<input value={b.coupon || ''} onChange={(e) => upd(b.id, 'coupon', e.target.value.toUpperCase())} placeholder="PRO30" style={inp} /></label>
+                      <label className="muted" style={{ fontSize: 12 }}>{L('% descuento', '% off')}<input type="number" min={1} max={100} value={pct[b.id] ?? ''} onChange={(e) => setPct((m) => ({ ...m, [b.id]: e.target.value }))} placeholder="30" style={inp} /></label>
+                      <button className="btn btn-ghost" style={{ fontSize: 12.5 }} disabled={cpBusy === b.id} onClick={() => stripeCoupon(b)}>{cpBusy === b.id ? '…' : L('Crear/validar en Stripe', 'Create/validate in Stripe')}</button>
+                    </div>
+                    {cpMsg[b.id] && <div style={{ fontSize: 12, marginTop: 6, color: cpMsg[b.id].startsWith('✓') ? 'var(--soft-green)' : 'var(--amber)' }}>{cpMsg[b.id]}</div>}
+                    <label className="row" style={{ gap: 8, marginTop: 10, fontSize: 13, alignItems: 'center', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={!!b.newTab} onChange={(e) => upd(b.id, 'newTab', e.target.checked)} style={{ width: 'auto', margin: 0 }} /> {L('Abrir el enlace en pestaña nueva', 'Open link in a new tab')}
+                    </label>
+                  </div>
 
-      {/* Dónde y a quién */}
-      <div style={sec}>
-        <div style={secTitle}>🎯 {L('Dónde y a quién', 'Where & who')}</div>
-        <div style={grid}>
-          <label className="muted" style={{ fontSize: 12 }}>{L('Páginas', 'Pages')}<select value={p.pages || 'all'} onChange={(e) => set('pages', e.target.value)} style={inp}><option value="all">{L('Todas las públicas', 'All public pages')}</option><option value="landing">{L('Solo el landing', 'Landing only')}</option><option value="pricing">{L('Solo precios', 'Pricing only')}</option></select></label>
-          <label className="muted" style={{ fontSize: 12 }}>{L('Público', 'Audience')}<select value={p.audience || 'all'} onChange={(e) => set('audience', e.target.value)} style={inp}><option value="all">{L('Todos', 'Everyone')}</option><option value="guests">{L('Solo sin cuenta', 'Logged-out only')}</option><option value="free">{L('Sin cuenta o plan Free', 'Logged-out or Free plan')}</option></select></label>
-        </div>
-        <label className="row" style={{ gap: 8, marginTop: 10, fontSize: 13, alignItems: 'center', cursor: 'pointer' }}>
-          <input type="checkbox" checked={p.dismissible !== false} onChange={(e) => set('dismissible', e.target.checked)} style={{ width: 'auto', margin: 0 }} /> {L('El visitante puede cerrarla (se recuerda)', 'Visitor can close it (remembered)')}
-        </label>
-      </div>
+                  {/* Programación */}
+                  <div style={sec}>
+                    <div style={secTitle}>⏱ {L('Programación y contador', 'Schedule & countdown')}</div>
+                    <div style={grid}>
+                      <label className="muted" style={{ fontSize: 12 }}>{L('Empieza (opcional)', 'Starts (optional)')}<input type="datetime-local" value={b.startsAt ? b.startsAt.slice(0, 16) : ''} onChange={(e) => upd(b.id, 'startsAt', e.target.value ? new Date(e.target.value).toISOString() : '')} style={inp} /></label>
+                      <label className="muted" style={{ fontSize: 12 }}>{t.pr_ends}<input type="datetime-local" value={b.endsAt ? b.endsAt.slice(0, 16) : ''} onChange={(e) => upd(b.id, 'endsAt', e.target.value ? new Date(e.target.value).toISOString() : '')} style={inp} /></label>
+                      <label className="muted" style={{ fontSize: 12 }}>{L('Formato del contador', 'Countdown format')}<select value={b.countdownFmt || 'dhms'} onChange={(e) => upd(b.id, 'countdownFmt', e.target.value)} style={inp}><option value="dhms">2d 3h 4m</option><option value="hms">03:04:05</option></select></label>
+                    </div>
+                    <label className="row" style={{ gap: 8, marginTop: 10, fontSize: 13, alignItems: 'center', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={b.countdown !== false} onChange={(e) => upd(b.id, 'countdown', e.target.checked)} style={{ width: 'auto', margin: 0 }} /> {L('Mostrar el contador (si hay fecha de fin)', 'Show countdown (if there is an end date)')}
+                    </label>
+                  </div>
 
-      {/* Rendimiento */}
-      <div style={sec}>
-        <div style={secTitle}>📊 {L('Rendimiento', 'Performance')}</div>
-        <div className="row" style={{ gap: 24, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <div><div className="muted" style={{ fontSize: 12 }}>{L('Vistas', 'Views')}</div><div style={{ fontSize: 20, fontWeight: 800 }}>{Number(stats.views || 0).toLocaleString()}</div></div>
-          <div><div className="muted" style={{ fontSize: 12 }}>{L('Clics', 'Clicks')}</div><div style={{ fontSize: 20, fontWeight: 800 }}>{Number(stats.clicks || 0).toLocaleString()}</div></div>
-          <div><div className="muted" style={{ fontSize: 12 }}>CTR</div><div style={{ fontSize: 20, fontWeight: 800, color: 'var(--soft-green)' }}>{ctr}%</div></div>
-          <button className="btn btn-ghost" style={{ fontSize: 12, marginLeft: 'auto' }} onClick={() => { if (window.confirm(L('¿Reiniciar las métricas a 0?', 'Reset stats to 0?'))) save({ resetStats: true }); }}>{L('Reiniciar métricas', 'Reset stats')}</button>
-        </div>
+                  {/* Apariencia */}
+                  <div style={sec}>
+                    <div style={secTitle}>🎨 {L('Apariencia', 'Appearance')}</div>
+                    <div style={grid}>
+                      <label className="muted" style={{ fontSize: 12 }}>{t.pr_bg}<input type="color" value={b.bg || '#7c8cff'} onChange={(e) => upd(b.id, 'bg', e.target.value)} style={{ ...inp, height: 38, padding: 3 }} /></label>
+                      <label className="muted" style={{ fontSize: 12 }}>{L('Color de fondo 2', 'Background 2')}<input type="color" value={b.bg2 || '#9a6bff'} onChange={(e) => upd(b.id, 'bg2', e.target.value)} style={{ ...inp, height: 38, padding: 3 }} /></label>
+                      <label className="muted" style={{ fontSize: 12 }}>{t.pr_fg}<input type="color" value={b.fg || '#0a0d14'} onChange={(e) => upd(b.id, 'fg', e.target.value)} style={{ ...inp, height: 38, padding: 3 }} /></label>
+                      <label className="muted" style={{ fontSize: 12 }}>{L('Posición', 'Position')}<select value={b.position || 'top'} onChange={(e) => upd(b.id, 'position', e.target.value)} style={inp}><option value="top">{L('Arriba', 'Top')}</option><option value="bottom">{L('Abajo', 'Bottom')}</option></select></label>
+                      <label className="muted" style={{ fontSize: 12 }}>{L('Animación', 'Animation')}<select value={b.anim || 'slide'} onChange={(e) => upd(b.id, 'anim', e.target.value)} style={inp}><option value="none">{L('Ninguna', 'None')}</option><option value="slide">{L('Deslizar', 'Slide')}</option><option value="pulse">{L('Latido', 'Pulse')}</option><option value="marquee">{L('Marquesina', 'Marquee')}</option></select></label>
+                      <label className="muted" style={{ fontSize: 12 }}>{L('Velocidad', 'Speed')}<select value={b.speed || 'normal'} onChange={(e) => upd(b.id, 'speed', e.target.value)} style={inp}><option value="slow">{L('Lenta', 'Slow')}</option><option value="normal">{L('Normal', 'Normal')}</option><option value="fast">{L('Rápida', 'Fast')}</option></select></label>
+                    </div>
+                    <label className="row" style={{ gap: 8, marginTop: 10, fontSize: 13, alignItems: 'center', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={!!b.gradient} onChange={(e) => upd(b.id, 'gradient', e.target.checked)} style={{ width: 'auto', margin: 0 }} /> {L('Fondo en degradado (2 colores)', 'Gradient background (2 colors)')}
+                    </label>
+                  </div>
+
+                  {/* Dónde y a quién */}
+                  <div style={sec}>
+                    <div style={secTitle}>🎯 {L('Dónde y a quién', 'Where & who')}</div>
+                    <div style={grid}>
+                      <label className="muted" style={{ fontSize: 12 }}>{L('Páginas', 'Pages')}<select value={b.pages || 'all'} onChange={(e) => upd(b.id, 'pages', e.target.value)} style={inp}><option value="all">{L('Todas las públicas', 'All public pages')}</option><option value="landing">{L('Solo el landing', 'Landing only')}</option><option value="pricing">{L('Solo precios', 'Pricing only')}</option></select></label>
+                      <label className="muted" style={{ fontSize: 12 }}>{L('Público', 'Audience')}<select value={b.audience || 'all'} onChange={(e) => upd(b.id, 'audience', e.target.value)} style={inp}><option value="all">{L('Todos', 'Everyone')}</option><option value="guests">{L('Solo sin cuenta', 'Logged-out only')}</option><option value="free">{L('Sin cuenta o plan Free', 'Logged-out or Free plan')}</option></select></label>
+                    </div>
+                    <label className="row" style={{ gap: 8, marginTop: 10, fontSize: 13, alignItems: 'center', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={b.dismissible !== false} onChange={(e) => upd(b.id, 'dismissible', e.target.checked)} style={{ width: 'auto', margin: 0 }} /> {L('El visitante puede cerrarla (se recuerda)', 'Visitor can close it (remembered)')}
+                    </label>
+                  </div>
+
+                  {/* Rendimiento por barra */}
+                  <div style={sec}>
+                    <div style={secTitle}>📊 {L('Rendimiento', 'Performance')}</div>
+                    <div className="row" style={{ gap: 24, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                      <div><div className="muted" style={{ fontSize: 12 }}>{L('Vistas', 'Views')}</div><div style={{ fontSize: 20, fontWeight: 800 }}>{Number(s.views || 0).toLocaleString()}</div></div>
+                      <div><div className="muted" style={{ fontSize: 12 }}>{L('Clics', 'Clicks')}</div><div style={{ fontSize: 20, fontWeight: 800 }}>{Number(s.clicks || 0).toLocaleString()}</div></div>
+                      <div><div className="muted" style={{ fontSize: 12 }}>CTR</div><div style={{ fontSize: 20, fontWeight: 800, color: 'var(--soft-green)' }}>{ctr}%</div></div>
+                      <button className="btn btn-ghost" style={{ fontSize: 12, marginLeft: 'auto' }} onClick={() => { if (window.confirm(L('¿Reiniciar las métricas de esta barra?', 'Reset this bar\'s stats?'))) save({ resetStatsId: b.id }); }}>{L('Reiniciar', 'Reset')}</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       <div className="row" style={{ gap: 10, marginTop: 12, alignItems: 'center' }}>
