@@ -10,6 +10,7 @@ import SupportWidget from './SupportWidget';
 import { Toaster } from '@/lib/toast';
 import JsonLd from './JsonLd';
 import { createSupabaseServer } from '@/lib/supabaseServer';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { LanguageProvider } from '@/lib/lang';
 import { BetaProvider } from '@/lib/beta';
 import BetaBanner from './BetaBanner';
@@ -84,16 +85,25 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // Barra de descuentos: solo en páginas públicas (no en dashboard/admin/cuenta).
   const path = headers().get('x-onyx-path') || '/';
   const isPublic = !/^\/(dashboard|admin|account|onboarding)/.test(path);
-  const promo = isPublic ? await getSetting<Promo>('promo', PROMO0) : PROMO0;
-  const promoLive = promo.on && (lang === 'es' ? promo.text_es : promo.text_en) && (!promo.endsAt || new Date(promo.endsAt).getTime() > Date.now());
+  const promo = isPublic ? { ...PROMO0, ...(await getSetting<Promo>('promo', PROMO0)) } : PROMO0;
 
   // ¿Hay sesión? La burbuja de soporte se comporta distinto para trader o visitante.
-  let loggedIn = false;
+  let loggedIn = false, userPlan = 'free';
   try {
     const sb = createSupabaseServer();
     const { data: { user } } = await sb.auth.getUser();
     loggedIn = !!user;
+    if (user) { try { const { data: pr } = await supabaseAdmin.from('profiles').select('plan').eq('id', user.id).maybeSingle(); userPlan = (pr as any)?.plan || 'free'; } catch {} }
   } catch { /* si falla, la tratamos como visitante */ }
+
+  // ¿Se muestra la barra? On + texto + ventana de fechas + página + público objetivo.
+  const now = Date.now();
+  const inWindow = (!promo.startsAt || new Date(promo.startsAt).getTime() <= now) && (!promo.endsAt || new Date(promo.endsAt).getTime() > now);
+  const isLanding = path === '/' || path === '/en';
+  const isPricing = /^\/(en\/)?pricing/.test(path);
+  const pageOk = promo.pages === 'all' || (promo.pages === 'landing' && isLanding) || (promo.pages === 'pricing' && isPricing);
+  const audOk = promo.audience === 'all' || (promo.audience === 'guests' && !loggedIn) || (promo.audience === 'free' && (!loggedIn || userPlan === 'free'));
+  const promoLive = isPublic && promo.on && (lang === 'es' ? promo.text_es : promo.text_en) && inWindow && pageOk && audOk;
 
   const graph = {
     '@context': 'https://schema.org',
@@ -141,7 +151,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <PromoBar
                 text={lang === 'es' ? promo.text_es : promo.text_en}
                 cta={lang === 'es' ? promo.cta_es : promo.cta_en}
-                link={promo.link} bg={promo.bg} fg={promo.fg} endsAt={promo.endsAt}
+                link={promo.link} bg={promo.bg} bg2={promo.bg2} gradient={promo.gradient} fg={promo.fg} endsAt={promo.endsAt}
+                emoji={promo.emoji} coupon={promo.coupon} newTab={promo.newTab} position={promo.position}
+                anim={promo.anim} countdown={promo.countdown} countdownFmt={promo.countdownFmt} dismissible={promo.dismissible}
               />
             )}
             <BetaBanner />

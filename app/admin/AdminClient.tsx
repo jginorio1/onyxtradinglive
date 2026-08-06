@@ -58,26 +58,37 @@ function Head({ ic, t, s }: { ic: string; t: string; s: string }) {
 }
 const initials = (email: string) => (email || '?').replace(/@.*/, '').slice(0, 2).toUpperCase();
 
-// Barra de descuentos del landing: texto ES/EN, enlace, colores, contador.
+// Barra de descuentos del landing: contenido, programación, apariencia,
+// segmentación y métricas. Todo editable desde aquí.
 function PromoControl() {
   const t = useT();
+  const { lang } = useLang();
+  const L = (es: string, en: string) => (lang === 'en' ? en : es);
   const [p, setP] = useState<any>(null);
+  const [stats, setStats] = useState<any>({ views: 0, clicks: 0 });
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
-  useEffect(() => { fetch('/api/admin/promo').then((r) => r.json()).then((d) => setP(d.promo)).catch(() => {}); }, []);
+  useEffect(() => { fetch('/api/admin/promo').then((r) => r.json()).then((d) => { setP(d.promo); if (d.stats) setStats(d.stats); }).catch(() => {}); }, []);
   const set = (k: string, v: any) => setP((o: any) => ({ ...o, [k]: v }));
 
-  async function save() {
+  async function save(extra?: any) {
     setBusy(true); setMsg('');
     try {
-      const r = await fetch('/api/admin/promo', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(p) });
+      const r = await fetch('/api/admin/promo', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...p, ...(extra || {}) }) });
       const d = await r.json();
-      if (!r.ok) setMsg(d.error || 'Error'); else { setP(d.promo); setMsg(t.pr_saved); }
+      if (!r.ok) setMsg(d.error || 'Error'); else { setP(d.promo); if (d.stats) setStats(d.stats); setMsg(t.pr_saved); }
     } finally { setBusy(false); }
   }
+  // Plantillas rápidas: rellenan varios campos de golpe (el admin luego ajusta).
+  const applyTemplate = (tpl: any) => setP((o: any) => ({ ...o, ...tpl }));
 
   if (!p) return null;
   const inp = { padding: '8px 10px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', width: '100%', marginTop: 4 } as any;
+  const sec = { background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: 12, marginTop: 10 } as any;
+  const secTitle = { fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--mut)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 } as any;
+  const grid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 10 } as any;
+  const bgPrev = p.gradient && p.bg2 ? `linear-gradient(90deg,${p.bg},${p.bg2})` : (p.bg || 'var(--brand)');
+  const ctr = stats.views ? Math.round((stats.clicks / stats.views) * 1000) / 10 : 0;
 
   return (
     <div className="card" style={{ marginBottom: 12 }}>
@@ -88,26 +99,91 @@ function PromoControl() {
           <Toggle on={!!p.on} onClick={() => set('on', !p.on)} />
         </span>
       </div>
-      <p className="muted" style={{ fontSize: 13, marginBottom: 10 }}>{t.pr_body}</p>
+      <p className="muted" style={{ fontSize: 13, marginBottom: 6 }}>{t.pr_body}</p>
 
-      {/* Vista previa */}
-      <div style={{ background: p.bg || 'var(--brand)', color: p.fg || '#0a0d14', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 600, marginBottom: 12, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
-        {(p.text_es || t.pr_ph) + (p.cta_es ? '  ' + p.cta_es + ' →' : '')}
+      {/* Plantillas rápidas */}
+      <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+        <span className="muted" style={{ fontSize: 12 }}>{L('Plantillas:', 'Templates:')}</span>
+        <button className="pill" style={{ cursor: 'pointer' }} onClick={() => applyTemplate({ emoji: '🛍️', text_es: '−30% en Black Friday', text_en: '−30% Black Friday', cta_es: 'Aprovechar', cta_en: 'Grab it', coupon: 'BF30', gradient: true, bg: '#111111', bg2: '#6b5cff', fg: '#ffffff', anim: 'slide', countdown: true })}>Black Friday</button>
+        <button className="pill" style={{ cursor: 'pointer' }} onClick={() => applyTemplate({ emoji: '🚀', text_es: 'Lanzamiento: prueba Onyx gratis', text_en: 'Launch: try Onyx free', cta_es: 'Empezar', cta_en: 'Start', coupon: '', gradient: true, bg: '#6b5cff', bg2: '#16c98d', fg: '#ffffff', anim: 'pulse', countdown: false })}>{L('Lanzamiento', 'Launch')}</button>
+        <button className="pill" style={{ cursor: 'pointer' }} onClick={() => applyTemplate({ emoji: '⏰', text_es: 'Última hora: oferta termina hoy', text_en: 'Last call: offer ends today', cta_es: 'Ver oferta', cta_en: 'See offer', coupon: '', gradient: false, bg: '#e24b4a', fg: '#ffffff', anim: 'slide', countdown: true, countdownFmt: 'hms' })}>{L('Última hora', 'Last call')}</button>
       </div>
 
-      <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 10 }}>
-        <label className="muted" style={{ fontSize: 12 }}>{t.pr_textEs}<input value={p.text_es} onChange={(e) => set('text_es', e.target.value)} placeholder="−30% en el plan Pro por 48 h" style={inp} /></label>
-        <label className="muted" style={{ fontSize: 12 }}>{t.pr_textEn}<input value={p.text_en} onChange={(e) => set('text_en', e.target.value)} placeholder="−30% on Pro for 48 h" style={inp} /></label>
-        <label className="muted" style={{ fontSize: 12 }}>{t.pr_ctaEs}<input value={p.cta_es} onChange={(e) => set('cta_es', e.target.value)} placeholder="Aprovéchalo" style={inp} /></label>
-        <label className="muted" style={{ fontSize: 12 }}>{t.pr_ctaEn}<input value={p.cta_en} onChange={(e) => set('cta_en', e.target.value)} placeholder="Grab it" style={inp} /></label>
-        <label className="muted" style={{ fontSize: 12 }}>{t.pr_link}<input value={p.link} onChange={(e) => set('link', e.target.value)} placeholder="/pricing" style={inp} /></label>
-        <label className="muted" style={{ fontSize: 12 }}>{t.pr_ends}<input type="datetime-local" value={p.endsAt ? p.endsAt.slice(0, 16) : ''} onChange={(e) => set('endsAt', e.target.value ? new Date(e.target.value).toISOString() : '')} style={inp} /></label>
-        <label className="muted" style={{ fontSize: 12 }}>{t.pr_bg}<input type="color" value={p.bg || 'var(--brand)'} onChange={(e) => set('bg', e.target.value)} style={{ ...inp, height: 38, padding: 3 }} /></label>
-        <label className="muted" style={{ fontSize: 12 }}>{t.pr_fg}<input type="color" value={p.fg || '#0a0d14'} onChange={(e) => set('fg', e.target.value)} style={{ ...inp, height: 38, padding: 3 }} /></label>
+      {/* Vista previa */}
+      <div style={{ background: bgPrev, color: p.fg || '#0a0d14', borderRadius: 8, padding: '8px 12px', fontSize: 13, fontWeight: 600, marginBottom: 4, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', textAlign: 'center' }}>
+        {(p.emoji ? p.emoji + ' ' : '') + (p.text_es || t.pr_ph) + (p.coupon ? '  [' + p.coupon + ' ⧉]' : '') + (p.cta_es ? '  ' + p.cta_es + ' →' : '')}
+      </div>
+
+      {/* Contenido */}
+      <div style={sec}>
+        <div style={secTitle}>💬 {L('Contenido', 'Content')}</div>
+        <div style={grid}>
+          <label className="muted" style={{ fontSize: 12 }}>{L('Emoji / icono', 'Emoji / icon')}<input value={p.emoji || ''} onChange={(e) => set('emoji', e.target.value)} placeholder="🔥" style={inp} maxLength={8} /></label>
+          <label className="muted" style={{ fontSize: 12 }}>{t.pr_textEs}<input value={p.text_es} onChange={(e) => set('text_es', e.target.value)} placeholder="−30% en el plan Pro por 48 h" style={inp} /></label>
+          <label className="muted" style={{ fontSize: 12 }}>{t.pr_textEn}<input value={p.text_en} onChange={(e) => set('text_en', e.target.value)} placeholder="−30% on Pro for 48 h" style={inp} /></label>
+          <label className="muted" style={{ fontSize: 12 }}>{t.pr_ctaEs}<input value={p.cta_es} onChange={(e) => set('cta_es', e.target.value)} placeholder="Aprovéchalo" style={inp} /></label>
+          <label className="muted" style={{ fontSize: 12 }}>{t.pr_ctaEn}<input value={p.cta_en} onChange={(e) => set('cta_en', e.target.value)} placeholder="Grab it" style={inp} /></label>
+          <label className="muted" style={{ fontSize: 12 }}>{L('Cupón (copiable)', 'Coupon (copyable)')}<input value={p.coupon || ''} onChange={(e) => set('coupon', e.target.value)} placeholder="PRO30" style={inp} /></label>
+          <label className="muted" style={{ fontSize: 12 }}>{t.pr_link}<input value={p.link} onChange={(e) => set('link', e.target.value)} placeholder="/pricing" style={inp} /></label>
+        </div>
+        <label className="row" style={{ gap: 8, marginTop: 10, fontSize: 13, alignItems: 'center', cursor: 'pointer' }}>
+          <input type="checkbox" checked={!!p.newTab} onChange={(e) => set('newTab', e.target.checked)} style={{ width: 'auto', margin: 0 }} /> {L('Abrir el enlace en pestaña nueva', 'Open link in a new tab')}
+        </label>
+      </div>
+
+      {/* Programación y contador */}
+      <div style={sec}>
+        <div style={secTitle}>⏱ {L('Programación y contador', 'Schedule & countdown')}</div>
+        <div style={grid}>
+          <label className="muted" style={{ fontSize: 12 }}>{L('Empieza (opcional)', 'Starts (optional)')}<input type="datetime-local" value={p.startsAt ? p.startsAt.slice(0, 16) : ''} onChange={(e) => set('startsAt', e.target.value ? new Date(e.target.value).toISOString() : '')} style={inp} /></label>
+          <label className="muted" style={{ fontSize: 12 }}>{t.pr_ends}<input type="datetime-local" value={p.endsAt ? p.endsAt.slice(0, 16) : ''} onChange={(e) => set('endsAt', e.target.value ? new Date(e.target.value).toISOString() : '')} style={inp} /></label>
+          <label className="muted" style={{ fontSize: 12 }}>{L('Formato del contador', 'Countdown format')}<select value={p.countdownFmt || 'dhms'} onChange={(e) => set('countdownFmt', e.target.value)} style={inp}><option value="dhms">2d 3h 4m</option><option value="hms">03:04:05</option></select></label>
+        </div>
+        <label className="row" style={{ gap: 8, marginTop: 10, fontSize: 13, alignItems: 'center', cursor: 'pointer' }}>
+          <input type="checkbox" checked={p.countdown !== false} onChange={(e) => set('countdown', e.target.checked)} style={{ width: 'auto', margin: 0 }} /> {L('Mostrar el contador (si hay fecha de fin)', 'Show countdown (if there is an end date)')}
+        </label>
+      </div>
+
+      {/* Apariencia */}
+      <div style={sec}>
+        <div style={secTitle}>🎨 {L('Apariencia', 'Appearance')}</div>
+        <div style={grid}>
+          <label className="muted" style={{ fontSize: 12 }}>{t.pr_bg}<input type="color" value={p.bg || '#7c8cff'} onChange={(e) => set('bg', e.target.value)} style={{ ...inp, height: 38, padding: 3 }} /></label>
+          <label className="muted" style={{ fontSize: 12 }}>{L('Color de fondo 2 (degradado)', 'Background 2 (gradient)')}<input type="color" value={p.bg2 || '#9a6bff'} onChange={(e) => set('bg2', e.target.value)} style={{ ...inp, height: 38, padding: 3 }} /></label>
+          <label className="muted" style={{ fontSize: 12 }}>{t.pr_fg}<input type="color" value={p.fg || '#0a0d14'} onChange={(e) => set('fg', e.target.value)} style={{ ...inp, height: 38, padding: 3 }} /></label>
+          <label className="muted" style={{ fontSize: 12 }}>{L('Posición', 'Position')}<select value={p.position || 'top'} onChange={(e) => set('position', e.target.value)} style={inp}><option value="top">{L('Arriba', 'Top')}</option><option value="bottom">{L('Abajo', 'Bottom')}</option></select></label>
+          <label className="muted" style={{ fontSize: 12 }}>{L('Animación', 'Animation')}<select value={p.anim || 'slide'} onChange={(e) => set('anim', e.target.value)} style={inp}><option value="none">{L('Ninguna', 'None')}</option><option value="slide">{L('Deslizar', 'Slide')}</option><option value="pulse">{L('Latido', 'Pulse')}</option><option value="marquee">{L('Marquesina', 'Marquee')}</option></select></label>
+        </div>
+        <label className="row" style={{ gap: 8, marginTop: 10, fontSize: 13, alignItems: 'center', cursor: 'pointer' }}>
+          <input type="checkbox" checked={!!p.gradient} onChange={(e) => set('gradient', e.target.checked)} style={{ width: 'auto', margin: 0 }} /> {L('Usar fondo en degradado (2 colores)', 'Use gradient background (2 colors)')}
+        </label>
+      </div>
+
+      {/* Dónde y a quién */}
+      <div style={sec}>
+        <div style={secTitle}>🎯 {L('Dónde y a quién', 'Where & who')}</div>
+        <div style={grid}>
+          <label className="muted" style={{ fontSize: 12 }}>{L('Páginas', 'Pages')}<select value={p.pages || 'all'} onChange={(e) => set('pages', e.target.value)} style={inp}><option value="all">{L('Todas las públicas', 'All public pages')}</option><option value="landing">{L('Solo el landing', 'Landing only')}</option><option value="pricing">{L('Solo precios', 'Pricing only')}</option></select></label>
+          <label className="muted" style={{ fontSize: 12 }}>{L('Público', 'Audience')}<select value={p.audience || 'all'} onChange={(e) => set('audience', e.target.value)} style={inp}><option value="all">{L('Todos', 'Everyone')}</option><option value="guests">{L('Solo sin cuenta', 'Logged-out only')}</option><option value="free">{L('Sin cuenta o plan Free', 'Logged-out or Free plan')}</option></select></label>
+        </div>
+        <label className="row" style={{ gap: 8, marginTop: 10, fontSize: 13, alignItems: 'center', cursor: 'pointer' }}>
+          <input type="checkbox" checked={p.dismissible !== false} onChange={(e) => set('dismissible', e.target.checked)} style={{ width: 'auto', margin: 0 }} /> {L('El visitante puede cerrarla (se recuerda)', 'Visitor can close it (remembered)')}
+        </label>
+      </div>
+
+      {/* Rendimiento */}
+      <div style={sec}>
+        <div style={secTitle}>📊 {L('Rendimiento', 'Performance')}</div>
+        <div className="row" style={{ gap: 24, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <div><div className="muted" style={{ fontSize: 12 }}>{L('Vistas', 'Views')}</div><div style={{ fontSize: 20, fontWeight: 800 }}>{Number(stats.views || 0).toLocaleString()}</div></div>
+          <div><div className="muted" style={{ fontSize: 12 }}>{L('Clics', 'Clicks')}</div><div style={{ fontSize: 20, fontWeight: 800 }}>{Number(stats.clicks || 0).toLocaleString()}</div></div>
+          <div><div className="muted" style={{ fontSize: 12 }}>CTR</div><div style={{ fontSize: 20, fontWeight: 800, color: 'var(--soft-green)' }}>{ctr}%</div></div>
+          <button className="btn btn-ghost" style={{ fontSize: 12, marginLeft: 'auto' }} onClick={() => { if (window.confirm(L('¿Reiniciar las métricas a 0?', 'Reset stats to 0?'))) save({ resetStats: true }); }}>{L('Reiniciar métricas', 'Reset stats')}</button>
+        </div>
       </div>
 
       <div className="row" style={{ gap: 10, marginTop: 12, alignItems: 'center' }}>
-        <button className="btn btn-primary" onClick={save} disabled={busy}>{busy ? '…' : t.pr_save}</button>
+        <button className="btn btn-primary" onClick={() => save()} disabled={busy}>{busy ? '…' : t.pr_save}</button>
         {msg && <span style={{ fontSize: 12.5, color: 'var(--soft-green)' }}>{msg}</span>}
       </div>
       <p className="muted" style={{ fontSize: 11.5, marginTop: 10 }}>{t.pr_note}</p>
