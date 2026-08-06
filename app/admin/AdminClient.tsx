@@ -31,6 +31,7 @@ import Facturacion from './Facturacion';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import LandingBuilder from './LandingBuilder';
 import EnvSwitch from './EnvSwitch';
+import OnlineNowControl from './OnlineNowControl';
 import AdminLeadAlert from './AdminLeadAlert';
 import TeamChat from './TeamChat';
 import BackupCodes from './BackupCodes';
@@ -840,6 +841,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                     </div>
                     <EnvSwitch />
                     <PromoControl />
+                    <OnlineNowControl />
                     <AlertsControl />
                     <BetaControl />
                   </>

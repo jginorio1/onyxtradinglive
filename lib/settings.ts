@@ -70,6 +70,24 @@ const MR: MemberReferral = {
 };
 export const memberReferralSettings = () => getSetting<MemberReferral>('member_referral', MR);
 
+// "En línea ahora" — burbuja de prueba social (abajo-izquierda, solo escritorio).
+// El número es SIMULADO: se mantiene entre `min` y `max` y sube/baja suave.
+export type OnlineNow = {
+  enabled: boolean;
+  min: number;        // piso: el número nunca baja de aquí
+  max: number;        // techo
+  speed: 'slow' | 'normal' | 'fast';
+  color: string;      // color de la luz/punto
+  hideMobile: boolean;
+  label_es: string;
+  label_en: string;
+};
+const ON: OnlineNow = {
+  enabled: true, min: 197, max: 1448, speed: 'normal', color: '#22c55e', hideMobile: true,
+  label_es: 'en línea ahora', label_en: 'online now',
+};
+export const onlineNowSettings = () => getSetting<OnlineNow>('online_now', ON);
+
 // Onyx Academy · comisión por defecto (editable por el dueño en el panel).
 export type AcademyFee = { default_pct: number };
 const AF: AcademyFee = { default_pct: Number(process.env.ONYX_ACADEMY_FEE_PCT || 10) };

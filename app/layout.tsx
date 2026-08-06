@@ -17,7 +17,8 @@ import BetaBanner from './BetaBanner';
 import EnvBanner from './EnvBanner';
 import { serverBeta } from '@/lib/betaServer';
 import PromoBar from './PromoBar';
-import { getSetting } from '@/lib/settings';
+import OnlineNow from './OnlineNow';
+import { getSetting, onlineNowSettings } from '@/lib/settings';
 import { getSeoMeta, seoFor } from '@/lib/seo';
 import { type Promo, type PromoQueue, pickActiveBar } from '@/lib/promo';
 import { headers } from 'next/headers';
@@ -106,6 +107,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   }
   const promoLive = !!promo;
 
+  // Burbuja "en línea ahora" (simulada) · solo en páginas públicas.
+  const online = isPublic ? await onlineNowSettings() : null;
+
   const graph = {
     '@context': 'https://schema.org',
     '@graph': [
@@ -163,6 +167,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             {children}
             {!path.startsWith('/admin') && <SiteFooter />}
             {!path.startsWith('/admin') && <SupportWidget loggedIn={loggedIn} />}
+            {online && online.enabled && (
+              <OnlineNow min={online.min} max={online.max} speed={online.speed} color={online.color} hideMobile={online.hideMobile} label={lang === 'es' ? online.label_es : online.label_en} />
+            )}
             <Toaster />
             <PWARegister />
             <ChunkReload />
