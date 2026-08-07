@@ -47,6 +47,20 @@ function DayCalendar({ value, onChange, es }: { value: string; onChange: (d: str
 const TIMES = Array.from({ length: 48 }, (_, i) => `${String(Math.floor(i / 2)).padStart(2, '0')}:${i % 2 ? '30' : '00'}`);
 const blank = { id: '', slug: '', title_es: '', title_en: '', excerpt_es: '', excerpt_en: '', body_es: '', body_en: '', cover_url: '', tags: '', status: 'draft', pubDate: '', pubTime: '09:00' };
 
+// Cronómetro en vivo hasta la publicación. Se ve tranquilo si falta mucho y
+// urgente (MM:SS, rojo) en la última hora. Al llegar a 0 marca "vencido".
+function Countdown({ iso, es, compact = false }: { iso: string; es: boolean; compact?: boolean }) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => { const i = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(i); }, []);
+  const ms = new Date(iso).getTime() - now;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  if (ms <= 0) return <span style={{ color: 'var(--red)', fontWeight: 700, whiteSpace: 'nowrap' }}>⚠ {es ? 'vencido' : 'overdue'}</span>;
+  const d = Math.floor(ms / 864e5), h = Math.floor((ms % 864e5) / 36e5), m = Math.floor((ms % 36e5) / 6e4), s = Math.floor((ms % 6e4) / 1e3);
+  const txt = ms > 864e5 ? `${d}d ${h}h ${m}m` : ms > 36e5 ? `${h}h ${pad(m)}m` : `${pad(m)}:${pad(s)}`;
+  const urgent = ms <= 6e5; // últimos 10 min
+  return <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', fontWeight: urgent ? 800 : 600, ...(urgent ? { color: 'var(--red)' } : {}) }}>⏳ {compact ? '' : (es ? 'en ' : '')}{txt}</span>;
+}
+
 export default function BlogEditor() {
   const { lang } = useLang() as { lang: 'es' | 'en' };
   const es = lang !== 'en';
@@ -82,8 +96,35 @@ export default function BlogEditor() {
     await load();
   }
 
-  async function load() { try { const r = await fetch('/api/admin/blog'); const j = await r.json(); setPosts(j.posts || []); } catch {} }
+  const isOverdue = (p: any) => p.status === 'scheduled' && p.publish_at && new Date(p.publish_at).getTime() <= Date.now();
+
+  async function load(safety = true) {
+    try {
+      const r = await fetch('/api/admin/blog'); const j = await r.json();
+      const list = j.posts || [];
+      setPosts(list);
+      // Red de seguridad: si algún programado ya venció, lo publicamos al instante
+      // (sin esperar al cron). Evita que se quede colgado en "programado".
+      if (safety) {
+        const due = list.filter(isOverdue);
+        if (due.length) {
+          await Promise.all(due.map((p: any) => fetch('/api/admin/blog', { method: 'POST', body: JSON.stringify({ ...p, status: 'published', published_at: new Date().toISOString() }) }).catch(() => {})));
+          const r2 = await fetch('/api/admin/blog'); const j2 = await r2.json(); setPosts(j2.posts || []);
+          toast(es ? `${due.length} artículo(s) vencido(s) publicado(s).` : `${due.length} overdue article(s) published.`);
+        }
+      }
+    } catch {}
+  }
   useEffect(() => { load(); }, []);
+
+  // Publicar un programado ahora mismo (manual, adelantándose a su hora).
+  async function publishNow(p: any) {
+    if (!confirm(es ? '¿Publicar ahora este artículo?' : 'Publish this article now?')) return;
+    const iso = new Date().toISOString();
+    setPosts((ps) => ps.map((x) => (x.id === p.id ? { ...x, status: 'published', published_at: iso } : x)));
+    try { await fetch('/api/admin/blog', { method: 'POST', body: JSON.stringify({ ...p, status: 'published', published_at: iso }) }); } catch {}
+    await load(false);
+  }
 
   function edit(p: any) {
     const d = p.publish_at ? new Date(p.publish_at) : null;
@@ -171,16 +212,21 @@ export default function BlogEditor() {
       scheduled: ['color-mix(in srgb,var(--amber) 16%,transparent)', 'var(--amber)'],
       draft: ['var(--card2)', 'var(--mut)'],
     };
-    const Chip = (p: any, drag: boolean) => (
-      <div key={p.id} draggable={drag}
-        onDragStart={drag ? (e) => { setDragId(p.id); e.dataTransfer.effectAllowed = 'move'; } : undefined}
-        onDragEnd={() => { setDragId(''); setOverDay(''); }}
-        onClick={(e) => { e.stopPropagation(); edit(p); }}
-        title={p.title_es || p.title_en}
-        style={{ fontSize: 10.5, lineHeight: 1.3, background: chipCol[p.status][0], color: chipCol[p.status][1], borderRadius: 5, padding: '2px 5px', marginBottom: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: drag ? 'grab' : 'pointer', border: '1px solid color-mix(in srgb,' + chipCol[p.status][1] + ' 30%,transparent)' }}>
-        {p.status === 'scheduled' && p.publish_at ? `${pad2(new Date(p.publish_at).getHours())}:${pad2(new Date(p.publish_at).getMinutes())} ` : ''}{p.title_es || p.title_en}
-      </div>
-    );
+    const Chip = (p: any, drag: boolean) => {
+      const sched = p.status === 'scheduled' && p.publish_at;
+      const timeLbl = sched ? `${pad2(new Date(p.publish_at).getHours())}:${pad2(new Date(p.publish_at).getMinutes())} ` : '';
+      return (
+        <div key={p.id} draggable={drag}
+          onDragStart={drag ? (e) => { setDragId(p.id); e.dataTransfer.effectAllowed = 'move'; } : undefined}
+          onDragEnd={() => { setDragId(''); setOverDay(''); }}
+          onClick={(e) => { e.stopPropagation(); edit(p); }}
+          title={p.title_es || p.title_en}
+          style={{ fontSize: 10.5, lineHeight: 1.3, background: chipCol[p.status][0], color: chipCol[p.status][1], borderRadius: 5, padding: '2px 5px', marginBottom: 3, display: 'flex', alignItems: 'center', gap: 4, cursor: drag ? 'grab' : 'pointer', border: '1px solid color-mix(in srgb,' + chipCol[p.status][1] + ' 30%,transparent)' }}>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: '1 1 auto', minWidth: 0 }}>{timeLbl}{p.title_es || p.title_en}</span>
+          {sched && <span style={{ flex: 'none', fontSize: 9.5 }}><Countdown iso={p.publish_at} es={es} compact /></span>}
+        </div>
+      );
+    };
 
     const cells: any[] = [];
     for (let i = 0; i < startDow; i++) cells.push(<div key={'e' + i} />);
@@ -273,10 +319,16 @@ export default function BlogEditor() {
             {posts.map((p) => (
               <div key={p.id} className="card" style={{ margin: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}><b>{p.title_es || p.title_en}</b> {statusChip(p.status)}</div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <b>{p.title_es || p.title_en}</b> {statusChip(p.status)}
+                    {p.status === 'scheduled' && p.publish_at && (
+                      <span className="sk-chip" style={{ color: 'var(--amber)', background: 'color-mix(in srgb,var(--amber) 12%,transparent)', border: '1px solid color-mix(in srgb,var(--amber) 40%,transparent)', fontWeight: 700 }}><Countdown iso={p.publish_at} es={es} /></span>
+                    )}
+                  </div>
                   <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>/blog/{p.slug}{p.status === 'scheduled' && p.publish_at ? ` · ${new Date(p.publish_at).toLocaleString(es ? 'es-ES' : 'en-US')}` : ''}</div>
                 </div>
                 <div className="row" style={{ gap: 6 }}>
+                  {p.status === 'scheduled' && <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--green)' }} onClick={() => publishNow(p)}>⚡ {es ? 'Publicar ahora' : 'Publish now'}</button>}
                   {p.status === 'published' && <a className="btn btn-ghost" style={{ fontSize: 12 }} href={`/blog/${p.slug}`} target="_blank" rel="noreferrer">{es ? 'Ver' : 'View'}</a>}
                   <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => edit(p)}>✎ {es ? 'Editar' : 'Edit'}</button>
                   <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--red)' }} onClick={() => del(p.id)}>✕</button>
