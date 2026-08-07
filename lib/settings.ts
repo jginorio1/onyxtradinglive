@@ -155,6 +155,18 @@ const CW: ChatWidget = {
 };
 export const chatWidgetSettings = () => getSetting<ChatWidget>('chat_widget', CW);
 
+// Palabras clave prioritarias del blog. El AI apunta a UNA objetivo por artículo
+// (rotando para cubrir todas) y teje el resto solo donde encajan, sin relleno.
+export type BlogKeywords = {
+  enabled: boolean;
+  intensity: 'soft' | 'normal' | 'strong';
+  variants: boolean;         // permitir sinónimos/variantes naturales
+  internalLinks: boolean;    // enlazar la keyword a la página pilar (precios/guía)
+  es: string[]; en: string[];
+};
+const BK: BlogKeywords = { enabled: false, intensity: 'normal', variants: true, internalLinks: true, es: [], en: [] };
+export const blogKeywordsSettings = () => getSetting<BlogKeywords>('blog_keywords', BK);
+
 // Onyx Academy · comisión por defecto (editable por el dueño en el panel).
 export type AcademyFee = { default_pct: number };
 const AF: AcademyFee = { default_pct: Number(process.env.ONYX_ACADEMY_FEE_PCT || 10) };

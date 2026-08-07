@@ -37,11 +37,32 @@ function parseJson(txt: string | null): any | null {
 
 const GUARDRAIL = 'Reglas estrictas: NUNCA predigas el mercado, ni des señales, ni prometas ganancias, ni digas qué operar. Escribe contenido educativo y de marca honesto (disciplina, gestión de riesgo, psicología, prop firms, herramientas de Onyx). Sin relleno. Sin promesas de rentabilidad.';
 
+// Guía SEO de palabras clave prioritarias para el prompt del generador.
+export type KwGuide = {
+  targetEs?: string; targetEn?: string;   // keyword objetivo por idioma (una, rota)
+  moreEs?: string[]; moreEn?: string[];   // secundarias (solo si encajan)
+  intensity?: 'soft' | 'normal' | 'strong'; variants?: boolean; internalLinks?: boolean; pillar?: string;
+};
+function kwBlock(kw?: KwGuide): string {
+  if (!kw || (!kw.targetEs && !kw.targetEn)) return '';
+  const dens = kw.intensity === 'soft' ? '1-2 veces / 1-2 times' : kw.intensity === 'strong' ? '4-6 veces / 4-6 times' : '2-3 veces / 2-3 times';
+  const L: string[] = ['\n\nSEO — PALABRAS CLAVE PRIORITARIAS (intégralas de forma NATURAL; PROHIBIDO el relleno o repetirlas a la fuerza):'];
+  if (kw.targetEs) L.push(`- Español: keyword objetivo "${kw.targetEs}". Úsala en el título si encaja, en el primer párrafo, en un subtítulo "## " y en excerpt_es, y ${dens} en body_es. Densidad máx ~1.5%.`);
+  if (kw.targetEn) L.push(`- English: target keyword "${kw.targetEn}". Use it in the title if it fits, in the first paragraph, one "## " heading and excerpt_en, and ${dens} in body_en. Max density ~1.5%.`);
+  if (kw.moreEs?.length) L.push(`- Secundarias ES (solo si encajan con el tema): ${kw.moreEs.join(', ')}.`);
+  if (kw.moreEn?.length) L.push(`- Secondary EN (only if they fit the topic): ${kw.moreEn.join(', ')}.`);
+  if (kw.variants) L.push('- Puedes usar variantes/sinónimos naturales para que se lea humano / You may use natural variants.');
+  if (kw.internalLinks && kw.pillar) L.push(`- Añade UN enlace interno en markdown a la página pilar donde aparezca la keyword: [texto](${kw.pillar}) / add ONE internal link.`);
+  L.push('- Si una keyword no encaja de forma natural, NO la fuerces.');
+  return L.join('\n');
+}
+
 // ---- Sugerencias de título ----
-export async function suggestTitles(topic: string, lang: Lang = 'es'): Promise<{ ok: boolean; titles?: string[]; reason?: string }> {
+export async function suggestTitles(topic: string, lang: Lang = 'es', target?: string): Promise<{ ok: boolean; titles?: string[]; reason?: string }> {
   if (!process.env.ANTHROPIC_API_KEY) return { ok: false, reason: 'no_key' };
   const es = lang !== 'en';
-  const system = `Eres el editor SEO de Onyx Trading Live. ${GUARDRAIL}\n\nCONTEXTO DE MARCA:\n${await brandBrief(lang)}\n\nDevuelve SOLO un JSON: {"titles": ["...", ...]} con 6 títulos ${es ? 'en español' : 'in English'}, atractivos y optimizados para búsqueda (claros, con la palabra clave al inicio, 40-65 caracteres). Sin numerar, sin comillas dentro.`;
+  const kwLine = target ? `\n\nIMPORTANTE: incluye la palabra clave "${target}" cerca del inicio en al menos la mitad de los títulos, de forma natural (sin forzar).` : '';
+  const system = `Eres el editor SEO de Onyx Trading Live. ${GUARDRAIL}\n\nCONTEXTO DE MARCA:\n${await brandBrief(lang)}${kwLine}\n\nDevuelve SOLO un JSON: {"titles": ["...", ...]} con 6 títulos ${es ? 'en español' : 'in English'}, atractivos y optimizados para búsqueda (claros, con la palabra clave al inicio, 40-65 caracteres). Sin numerar, sin comillas dentro.`;
   const out = parseJson(await aiRaw(system, `Idea o tema: ${topic}`, 500));
   const titles = Array.isArray(out?.titles) ? out.titles.map((t: any) => String(t)).filter(Boolean).slice(0, 8) : null;
   if (!titles || !titles.length) return { ok: false, reason: 'ai_failed' };
@@ -49,9 +70,9 @@ export async function suggestTitles(topic: string, lang: Lang = 'es'): Promise<{
 }
 
 // ---- Artículo completo bilingüe ----
-export async function generateArticle(title: string): Promise<{ ok: boolean; article?: any; reason?: string }> {
+export async function generateArticle(title: string, kw?: KwGuide): Promise<{ ok: boolean; article?: any; reason?: string }> {
   if (!process.env.ANTHROPIC_API_KEY) return { ok: false, reason: 'no_key' };
-  const system = `Eres redactor de contenido SEO de Onyx Trading Live. ${GUARDRAIL}\n\nCONTEXTO DE MARCA (úsalo con naturalidad, sin sonar a anuncio):\n${await brandBrief('es')}\n\nEscribe un artículo de blog COMPLETO sobre el título dado, en ESPAÑOL e INGLÉS. Formato markdown: usa subtítulos "## ", listas con "- " y **negritas** con moderación. 600-900 palabras por idioma, tono cercano y profesional para traders. Cierra invitando suavemente a usar Onyx (sin promesas). \n\nDevuelve SOLO este JSON (sin texto fuera):\n{"title_es":"...","title_en":"...","excerpt_es":"resumen 1-2 frases","excerpt_en":"1-2 sentence summary","body_es":"markdown en español","body_en":"markdown in English","tags":"3-6 palabras clave separadas por coma"}`;
+  const system = `Eres redactor de contenido SEO de Onyx Trading Live. ${GUARDRAIL}\n\nCONTEXTO DE MARCA (úsalo con naturalidad, sin sonar a anuncio):\n${await brandBrief('es')}${kwBlock(kw)}\n\nEscribe un artículo de blog COMPLETO sobre el título dado, en ESPAÑOL e INGLÉS. Formato markdown: usa subtítulos "## ", listas con "- " y **negritas** con moderación. 600-900 palabras por idioma, tono cercano y profesional para traders. Cierra invitando suavemente a usar Onyx (sin promesas). \n\nDevuelve SOLO este JSON (sin texto fuera):\n{"title_es":"...","title_en":"...","excerpt_es":"resumen 1-2 frases","excerpt_en":"1-2 sentence summary","body_es":"markdown en español","body_en":"markdown in English","tags":"3-6 palabras clave separadas por coma"}`;
   const out = parseJson(await aiRaw(system, `Título: ${title}`, 4000));
   if (!out || !out.body_es || !out.body_en) return { ok: false, reason: 'ai_failed' };
   return {

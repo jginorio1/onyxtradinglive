@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { toast } from '@/lib/toast';
 import { useLang } from '@/lib/lang';
+import BlogKeywords from './BlogKeywords';
 
 // Calendario de un solo día, mismo estilo que el de la academia (mes grande,
 // día sombreado, navegación de mes, días pasados deshabilitados).
@@ -169,7 +170,11 @@ export default function BlogEditor() {
     try {
       const r = await fetch('/api/admin/blog/ai', { method: 'POST', body: JSON.stringify({ mode: 'generate', title: t }) });
       const j = await r.json();
-      if (r.ok && j.article) { setF((s: any) => ({ ...s, ...j.article })); toast(es ? 'Artículo generado. Revísalo antes de publicar.' : 'Article generated. Review before publishing.'); }
+      if (r.ok && j.article) {
+        setF((s: any) => ({ ...s, ...j.article }));
+        const tgt = j.target ? (es ? j.target.es : j.target.en) : '';
+        toast((es ? 'Artículo generado. Revísalo antes de publicar.' : 'Article generated. Review before publishing.') + (tgt ? (es ? ` Keyword objetivo: “${tgt}”.` : ` Target keyword: “${tgt}”.`) : ''));
+      }
       else toast(j.code === 'no_key' ? (es ? 'IA no configurada (falta ANTHROPIC_API_KEY).' : 'AI not configured (missing ANTHROPIC_API_KEY).') : (es ? 'La IA no pudo generar.' : 'AI could not generate.'));
     } finally { setAi(false); }
   }
@@ -291,6 +296,8 @@ export default function BlogEditor() {
             <button className="btn btn-primary" onClick={() => { setTitles([]); setTopic(''); setF({ ...blank }); }}>＋ {es ? 'Nuevo' : 'New'}</button>
           </div>
         </div>
+
+        <BlogKeywords />
 
         {posts.length === 0 && <div className="card muted">{es ? 'Aún no hay artículos.' : 'No articles yet.'}</div>}
 
