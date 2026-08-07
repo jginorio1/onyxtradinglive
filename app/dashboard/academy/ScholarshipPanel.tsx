@@ -32,6 +32,7 @@ export default function ScholarshipPanel({ L }: { L: L }) {
   const [days, setDays] = useState(90);
   const [lifetime, setLifetime] = useState(false);
   const [reason, setReason] = useState('low_income');
+  const [appDays, setAppDays] = useState(90);   // días al aprobar una solicitud
 
   async function load() { try { const r = await fetch('/api/academy/scholarships'); const j = await r.json(); if (!j.error) setD(j); } catch {} }
   useEffect(() => { load(); }, []);
@@ -52,6 +53,12 @@ export default function ScholarshipPanel({ L }: { L: L }) {
     await load();
   }
   const copy = (t: string) => { try { navigator.clipboard.writeText(t); setMsg(L('Código copiado ✓', 'Code copied ✓')); } catch {} };
+  async function decide(id: string, action: 'approve' | 'deny') {
+    const body: any = { action, id, days: appDays };
+    if (action === 'deny') { const note = prompt(L('Motivo (opcional) para el alumno:', 'Reason (optional) for the student:')) || ''; body.note = note; }
+    await fetch('/api/academy/scholarships', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    await load();
+  }
 
   if (!d) return null;
   const list: any[] = d.scholarships || [];
@@ -71,6 +78,30 @@ export default function ScholarshipPanel({ L }: { L: L }) {
         <span className="pill">{d.report?.expiredCount ?? 0} {L('vencidas', 'expired')}</span>
         {(d.report?.givenCents ?? 0) > 0 && <span className="pill" style={{ color: 'var(--soft-brand)' }}>{L('valor regalado', 'value given')}: {money(d.report.givenCents)}</span>}
       </div>
+
+      {/* Solicitudes pendientes */}
+      {(d.apps || []).length > 0 && (
+        <div className="card" style={{ marginBottom: 14, border: '1px solid var(--amber)' }}>
+          <div className="row between" style={{ alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
+            <div style={{ fontSize: 12.5, fontWeight: 700 }}>📝 {L('Solicitudes de beca', 'Scholarship requests')} · {(d.apps || []).length}</div>
+            <label style={{ fontSize: 12, color: 'var(--mut)', display: 'inline-flex', gap: 6, alignItems: 'center' }}>{L('Al aprobar, dar', 'On approve, grant')}
+              <input type="number" min={1} value={appDays} onChange={(e) => setAppDays(Number(e.target.value))} style={{ ...inp, width: 70, padding: '5px 7px' }} /> {L('días', 'days')}
+            </label>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {(d.apps || []).map((a: any) => (
+              <div key={a.id} style={{ border: '1px solid var(--line)', borderRadius: 9, padding: 10 }}>
+                <div style={{ fontSize: 13, fontWeight: 500 }}>{a.email || L('Alumno', 'Student')}</div>
+                {a.message && <div className="muted" style={{ fontSize: 12, margin: '3px 0 8px', lineHeight: 1.4 }}>“{a.message}”</div>}
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button className="btn" style={{ fontSize: 12, background: 'color-mix(in srgb,var(--green) 18%,transparent)', color: 'var(--green)', border: 'none' }} onClick={() => decide(a.id, 'approve')}>{L('Aprobar', 'Approve')}</button>
+                  <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => decide(a.id, 'deny')}>{L('Rechazar', 'Deny')}</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Crear */}
       <div className="card" style={{ marginBottom: 14 }}>

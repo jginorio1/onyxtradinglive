@@ -11,6 +11,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 // ============================================================
 
 const TB = 'academy_scholarships';
+const APPS = 'academy_scholarship_apps';
 
 export type Scholarship = {
   id: string; mentor_id: string; student_id: string | null;
@@ -164,6 +165,57 @@ export async function mentorReport(mentorId: string) {
     expiredCount: list.filter((s) => s.status === 'expired').length,
     givenCents,
   };
+}
+
+// ============================================================
+// Fase 2 · Solicitudes de beca (el alumno pide, el mentor aprueba).
+// ============================================================
+
+// Un alumno solicita una beca a una academia.
+export async function applyScholarship(studentId: string, mentorId: string, message: string, reason: string): Promise<{ ok: boolean; error?: string }> {
+  const { data: prev } = await supabaseAdmin.from(APPS).select('id').eq('mentor_id', mentorId).eq('student_id', studentId).eq('status', 'pending').maybeSingle();
+  if (prev) return { ok: false, error: 'Ya tienes una solicitud pendiente en esta academia.' };
+  const r = ['low_income', 'merit', 'other'].includes(reason) ? reason : 'low_income';
+  const { error } = await supabaseAdmin.from(APPS).insert({ mentor_id: mentorId, student_id: studentId, message: String(message || '').slice(0, 1000), reason: r, status: 'pending' });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+// Solicitudes de una academia (por defecto, las pendientes).
+export async function listApps(mentorId: string, status = 'pending') {
+  const { data } = await supabaseAdmin.from(APPS).select('*').eq('mentor_id', mentorId).eq('status', status).order('created_at', { ascending: false }).limit(200);
+  return (data || []) as any[];
+}
+
+// El mentor aprueba (crea la beca) o rechaza una solicitud.
+export async function decideApp(mentorId: string, appId: string, decision: 'approve' | 'deny', opts: any = {}): Promise<{ ok: boolean; error?: string; approved?: boolean; studentId?: string }> {
+  const { data: app } = await supabaseAdmin.from(APPS).select('*').eq('id', appId).eq('mentor_id', mentorId).maybeSingle();
+  if (!app) return { ok: false, error: 'Solicitud no encontrada.' };
+  if ((app as any).status !== 'pending') return { ok: false, error: 'La solicitud ya estaba resuelta.' };
+  const a: any = app;
+  if (decision === 'approve') {
+    const r = await createScholarship(mentorId, mentorId, {
+      kind: 'direct', student_id: a.student_id, coverage: 'full',
+      scope: opts.scope === 'modules' ? 'modules' : 'all', modules: opts.modules || [],
+      days: Number(opts.days) || 90, reason: a.reason,
+    });
+    if (!r.ok) return { ok: false, error: r.error };
+    await supabaseAdmin.from(APPS).update({ status: 'approved', grant_id: r.row?.id || null, decided_by: mentorId, decided_at: nowIso(), mentor_note: opts.note || null }).eq('id', appId);
+    return { ok: true, approved: true, studentId: a.student_id };
+  }
+  await supabaseAdmin.from(APPS).update({ status: 'denied', decided_by: mentorId, decided_at: nowIso(), mentor_note: opts.note || null }).eq('id', appId);
+  return { ok: true, approved: false, studentId: a.student_id };
+}
+
+// Cron: becas que vencen dentro de `days` días y aún no avisaron. Marca enviado.
+export async function dueReminders(days = 3): Promise<Scholarship[]> {
+  const soon = new Date(Date.now() + days * 86400000).toISOString();
+  const { data } = await supabaseAdmin.from(TB).select('*')
+    .eq('status', 'active').eq('kind', 'direct').eq('reminder_sent', false)
+    .not('ends_at', 'is', null).lte('ends_at', soon).gt('ends_at', nowIso()).limit(500);
+  const list = (data || []) as any[];
+  if (list.length) await supabaseAdmin.from(TB).update({ reminder_sent: true }).in('id', list.map((d) => d.id));
+  return list as Scholarship[];
 }
 
 // Vista global de Onyx (solo lectura): todas las becas + resumen por academia.
