@@ -224,6 +224,9 @@ export default function BlogEditor() {
           style={{ fontSize: 10.5, lineHeight: 1.3, background: chipCol[p.status][0], color: chipCol[p.status][1], borderRadius: 5, padding: '2px 5px', marginBottom: 3, display: 'flex', alignItems: 'center', gap: 4, cursor: drag ? 'grab' : 'pointer', border: '1px solid color-mix(in srgb,' + chipCol[p.status][1] + ' 30%,transparent)' }}>
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: '1 1 auto', minWidth: 0 }}>{timeLbl}{p.title_es || p.title_en}</span>
           {sched && <span style={{ flex: 'none', fontSize: 9.5 }}><Countdown iso={p.publish_at} es={es} compact /></span>}
+          {p.status === 'published' && p.slug && (
+            <a href={`/blog/${p.slug}`} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} title={es ? 'Ver en la web' : 'View on the web'} style={{ flex: 'none', textDecoration: 'none', color: 'inherit', opacity: .8 }}>👁</a>
+          )}
         </div>
       );
     };
@@ -264,6 +267,7 @@ export default function BlogEditor() {
                 <button key={v} type="button" onClick={() => setView(v)} className="btn" style={{ padding: '4px 12px', fontSize: 12.5, border: 'none', borderRadius: 15, background: view === v ? 'var(--brand)' : 'transparent', color: view === v ? '#0a0d14' : 'var(--mut)' }}>{l}</button>
               ))}
             </div>
+            <a className="btn btn-ghost" href={es ? '/blog' : '/en/blog'} target="_blank" rel="noreferrer" title={es ? 'Abrir el blog público en la web' : 'Open the public blog on the web'}>👁 {es ? 'Ver blog' : 'View blog'}</a>
             <button className="btn btn-primary" onClick={() => { setTitles([]); setTopic(''); setF({ ...blank }); }}>＋ {es ? 'Nuevo' : 'New'}</button>
           </div>
         </div>
