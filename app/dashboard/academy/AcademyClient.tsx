@@ -9,6 +9,8 @@ import StudentBilling from '@/app/components/StudentBilling';
 import LangToggle from '@/app/LangToggle';
 import { COUNTRIES, flagOf, countryName } from '@/app/components/countries';
 import JoinQR from '@/app/components/JoinQR';
+import ScholarshipPanel from './ScholarshipPanel';
+import RedeemBeca from './RedeemBeca';
 
 // Onyx Academy v2 — comunidad estilo Skool: feed, aulas con secciones y progreso,
 // calendario con clase en vivo (countdown + EN VIVO), miembros, ranking, perfil,
@@ -415,6 +417,8 @@ export default function AcademyClient() {
           <button className="btn btn-primary" onClick={join}>{L('Unirme', 'Join')}</button>
         </div>
       </div>
+
+      <RedeemBeca L={L} onDone={(mid: string) => { load(); openAcademy(mid); }} />
 
       {d.isMentor && d.myMentorId && (
         <div>
@@ -2107,7 +2111,7 @@ function Tiers({ products, purchases, onBuy, L }: any) {
 function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: () => void; openStudent: (mid: string) => void }) {
   const L = mkL(lang);
   const [d, setD] = useState<any>(null);
-  const [tab, setTab] = useState<'cursos' | 'envivo' | 'cobros' | 'alumnos' | 'auditoria' | 'retencion' | 'comunidad' | 'correos' | 'ajustes'>('cursos');
+  const [tab, setTab] = useState<'cursos' | 'envivo' | 'cobros' | 'becas' | 'alumnos' | 'auditoria' | 'retencion' | 'comunidad' | 'correos' | 'ajustes'>('cursos');
   const [newMod, setNewMod] = useState('');
   const [lessonForm, setLessonForm] = useState<any>(null);
   const [modForm, setModForm] = useState<any>(null);
@@ -2164,7 +2168,7 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
       <div className="sk-academy-3col" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,208px) minmax(0,1fr) minmax(0,300px)', gap: 16, alignItems: 'start' }}>
         {/* Opción D · navegación vertical (escritorio/tablet) + selector nativo en móvil (como Mi cuenta) */}
         {(() => {
-          const mentorTabs = [['cursos', 'graduation', L('Aulas', 'Classroom')], ['envivo', 'calendar', L('En vivo', 'Live')], ['cobros', 'coins', L('Cobros', 'Payments')], ['alumnos', 'users', L('Alumnos', 'Students')], ['auditoria', 'guardian', L('Auditoría', 'Audit')], ['retencion', 'trophy', L('Retención', 'Retention')], ['comunidad', 'chat', L('Comunidad', 'Community')], ['correos', 'mail', L('Correos', 'Emails')], ['ajustes', 'settings', L('Ajustes', 'Settings')]] as any[];
+          const mentorTabs = [['cursos', 'graduation', L('Aulas', 'Classroom')], ['envivo', 'calendar', L('En vivo', 'Live')], ['cobros', 'coins', L('Cobros', 'Payments')], ['becas', 'gift', L('Becas', 'Scholarships')], ['alumnos', 'users', L('Alumnos', 'Students')], ['auditoria', 'guardian', L('Auditoría', 'Audit')], ['retencion', 'trophy', L('Retención', 'Retention')], ['comunidad', 'chat', L('Comunidad', 'Community')], ['correos', 'mail', L('Correos', 'Emails')], ['ajustes', 'settings', L('Ajustes', 'Settings')]] as any[];
           return (
             <div style={{ minWidth: 0 }}>
               <select className="sk-nav-mobile" value={tab} onChange={(e) => setTab(e.target.value as any)} style={{ width: '100%', margin: 0 }}>
@@ -2294,6 +2298,8 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
       </>)}
 
       {tab === 'cobros' && <MentorPayments modules={d.content || []} L={L} onChanged={load} />}
+
+      {tab === 'becas' && <ScholarshipPanel L={L} />}
 
       {tab === 'alumnos' && <CollabManager d={d} api={api} L={L} />}
 

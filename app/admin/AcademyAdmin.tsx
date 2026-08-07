@@ -7,6 +7,56 @@ import OnyxIcon from '@/app/components/OnyxIcon';
 // Onyx Academy · panel del dueño. Ver academias y EDITAR las comisiones de Onyx:
 // el % por defecto (todas) y un % propio por mentor (override). canManage = editable.
 
+// Vista global de becas (solo lectura): supervisión de todas las academias.
+function ScholarshipsOverview({ L, es }: { L: (a: string, b: string) => string; es: boolean }) {
+  const [d, setD] = useState<any>(null);
+  useEffect(() => { fetch('/api/admin/scholarships').then((r) => r.json()).then((j) => { if (!j.error) setD(j); }).catch(() => {}); }, []);
+  if (!d) return null;
+  const rows: any[] = d.rows || [];
+  const live = rows.filter((r) => r.live);
+  const reasonLbl: any = { low_income: L('Pocos recursos', 'Low income'), raffle: L('Sorteo', 'Raffle'), merit: L('Mérito', 'Merit'), other: L('Otro', 'Other') };
+  const left = (iso: string | null) => { if (!iso) return '∞'; const ms = new Date(iso).getTime() - Date.now(); if (ms <= 0) return '—'; const dd = Math.floor(ms / 86400000); return dd > 0 ? dd + 'd' : Math.floor(ms / 3600000) + 'h'; };
+  return (
+    <div className="card">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+        <div className="card-ic"><OnyxIcon name="gift" /></div>
+        <b>{L('Becas de las academias (supervisión)', 'Academies scholarships (oversight)')}</b>
+      </div>
+      <p className="muted" style={{ margin: '0 0 10px' }}>{L('Vista global de solo lectura: cada mentor gestiona las suyas; tú solo supervisas y detectas abusos.', 'Global read-only view: each mentor manages their own; you only oversee and spot abuse.')}</p>
+      <div className="row" style={{ gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+        <span className="pill green">{d.summary?.active ?? 0} {L('activas', 'active')}</span>
+        <span className="pill">{d.summary?.total ?? 0} {L('en total', 'total')}</span>
+        <span className="pill">{d.summary?.academies ?? 0} {L('academias', 'academies')}</span>
+      </div>
+      {!live.length && <p className="muted" style={{ margin: 0 }}>{L('Ninguna beca activa por ahora.', 'No active scholarships yet.')}</p>}
+      {live.length > 0 && (
+        <div style={{ overflowX: 'auto' }}>
+          <table className="jtbl" style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead><tr style={{ textAlign: 'left' }}>
+              <th style={{ padding: '6px 8px' }}>{L('Academia', 'Academy')}</th>
+              <th style={{ padding: '6px 8px' }}>{L('Beneficiario', 'Recipient')}</th>
+              <th style={{ padding: '6px 8px' }}>{L('Tipo', 'Type')}</th>
+              <th style={{ padding: '6px 8px' }}>{L('Motivo', 'Reason')}</th>
+              <th style={{ padding: '6px 8px', textAlign: 'right' }}>{L('Vence', 'Ends')}</th>
+            </tr></thead>
+            <tbody>
+              {live.slice(0, 100).map((r) => (
+                <tr key={r.id} style={{ borderTop: '1px solid var(--bd)' }}>
+                  <td style={{ padding: '8px' }}>{r.academy}</td>
+                  <td style={{ padding: '8px' }}>{r.who}</td>
+                  <td style={{ padding: '8px' }}>{r.kind === 'code' ? L('Código', 'Code') : L('Directa', 'Direct')}</td>
+                  <td style={{ padding: '8px' }}>{reasonLbl[r.reason] || r.reason}</td>
+                  <td style={{ padding: '8px', textAlign: 'right' }}>{left(r.ends_at)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AcademyAdmin({ canManage = false }: { canManage?: boolean }) {
   const { lang } = useLang();
   const es = lang !== 'en';
@@ -262,6 +312,9 @@ export default function AcademyAdmin({ canManage = false }: { canManage?: boolea
              'Leave the custom % empty so that mentor uses their plan % or the default. The commission is charged automatically on each payment via Stripe Connect and shows up in Onyx finances.')}
         </p>
       </div>
+
+      {/* Becas de todas las academias (solo lectura, supervisión) */}
+      <ScholarshipsOverview L={L} es={es} />
 
       {/* Historial de cambios de comisión */}
       <div className="card">

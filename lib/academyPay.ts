@@ -112,17 +112,29 @@ export async function studentPurchases(studentId: string, mentorId: string) {
   return (data || []) as any[];
 }
 
-// Conjunto de módulos a los que el alumno tiene acceso (según sus compras activas).
+// Conjunto de módulos a los que el alumno tiene acceso: sus compras activas
+// UNIDAS a las becas vigentes (beca completa = acceso gratis mientras dure).
 export async function accessibleModules(studentId: string, mentorId: string): Promise<{ all: boolean; ids: Set<string> }> {
-  const buys = await studentPurchases(studentId, mentorId);
-  if (!buys.length) return { all: false, ids: new Set() };
-  const prodIds = buys.map((b) => b.product_id);
-  const { data: prods } = await supabaseAdmin.from('academy_products').select('id,grants').in('id', prodIds);
   const ids = new Set<string>();
   let all = false;
-  for (const p of (prods || []) as any[]) {
-    if (p.grants === 'all') { all = true; break; }
-    if (Array.isArray(p.grants)) p.grants.forEach((m: string) => ids.add(m));
+
+  const buys = await studentPurchases(studentId, mentorId);
+  if (buys.length) {
+    const prodIds = buys.map((b) => b.product_id);
+    const { data: prods } = await supabaseAdmin.from('academy_products').select('id,grants').in('id', prodIds);
+    for (const p of (prods || []) as any[]) {
+      if (p.grants === 'all') { all = true; break; }
+      if (Array.isArray(p.grants)) p.grants.forEach((m: string) => ids.add(m));
+    }
+  }
+
+  // Becas vigentes (import diferido para evitar ciclos).
+  if (!all) {
+    try {
+      const { scholarshipModules } = await import('@/lib/academyScholarship');
+      const sch = await scholarshipModules(studentId, mentorId);
+      if (sch.all) all = true; else sch.ids.forEach((m) => ids.add(m));
+    } catch {}
   }
   return { all, ids };
 }
