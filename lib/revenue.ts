@@ -16,6 +16,7 @@ export type RevenueData = {
   from: string; to: string;
   mrr: number; arr: number; activeSubs: number; arpu: number;
   collected: number; collectedPrev: number; collectedDelta: number | null;
+  stripeFees: number;   // comisiones de Stripe estimadas del rango (2.9% + $0.30)
   newSubs: number; canceledSubs: number; failed: number; churnPct: number;
   moveNew: number; moveLost: number; moveNet: number;
   plans: { name: string; subs: number; mrr: number; pct: number }[];
@@ -41,7 +42,7 @@ async function planMap(es = true): Promise<Record<string, string>> {
 export async function computeRevenue(fromMs: number, toMs: number, es = true): Promise<RevenueData> {
   const empty = (extra: Partial<RevenueData> = {}): RevenueData => ({
     configured: true, currency: 'usd', from: new Date(fromMs).toISOString(), to: new Date(toMs).toISOString(),
-    mrr: 0, arr: 0, activeSubs: 0, arpu: 0, collected: 0, collectedPrev: 0, collectedDelta: null,
+    mrr: 0, arr: 0, activeSubs: 0, arpu: 0, collected: 0, collectedPrev: 0, collectedDelta: null, stripeFees: 0,
     newSubs: 0, canceledSubs: 0, failed: 0, churnPct: 0, moveNew: 0, moveLost: 0, moveNet: 0,
     plans: [], monthly: [], recent: [], coupons: [], ...extra,
   });
@@ -96,6 +97,7 @@ export async function computeRevenue(fromMs: number, toMs: number, es = true): P
     const sixMonthsAgo = Math.floor(Date.now() / 1000) - 182 * 86400;
     const startFetch = Math.min(prevFromS, sixMonthsAgo, fromS);
     let collected = 0, collectedPrev = 0, failed = 0, charges = 0;
+    let grossInRange = 0, paidInRange = 0;   // para estimar la comisión de Stripe
     const buckets: Record<string, number> = {};
     const recent: RevenueData['recent'] = [];
     for await (const c of stripe.charges.list({ limit: 100, created: { gte: startFetch } })) {
@@ -104,11 +106,12 @@ export async function computeRevenue(fromMs: number, toMs: number, es = true): P
       const t = c.created;
       const paid = c.paid && c.status === 'succeeded';
       if (paid) {
-        if (t >= fromS && t <= toS) collected += c.amount;
-        if (t >= prevFromS && t < prevToS) collectedPrev += c.amount;
+        const net = c.amount - (c.amount_refunded || 0);   // resta reembolsos
+        if (t >= fromS && t <= toS) { collected += net; grossInRange += c.amount; paidInRange++; }
+        if (t >= prevFromS && t < prevToS) collectedPrev += net;
         const d = new Date(t * 1000);
         const key = d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0');
-        buckets[key] = (buckets[key] || 0) + c.amount;
+        buckets[key] = (buckets[key] || 0) + net;
       }
       if (c.status === 'failed' && t >= fromS && t <= toS) failed++;
       if (recent.length < 8 && t >= fromS && t <= toS) recent.push({ at: t, amount: money(c.amount), email: c.billing_details?.email || c.receipt_email || '', ok: paid });
@@ -147,6 +150,7 @@ export async function computeRevenue(fromMs: number, toMs: number, es = true): P
       configured: true, currency, from: new Date(fromMs).toISOString(), to: new Date(toMs).toISOString(),
       mrr: money(mrrCents), arr: money(mrrCents * 12), activeSubs, arpu: activeSubs ? money(mrrCents / activeSubs) : 0,
       collected: money(collected), collectedPrev: money(collectedPrev), collectedDelta,
+      stripeFees: money(Math.round(grossInRange * 0.029) + paidInRange * 30),   // 2.9% + $0.30 por cobro (estimado)
       newSubs, canceledSubs, failed, churnPct,
       moveNew: money(newMrrCents), moveLost: money(lostMrrCents), moveNet: money(newMrrCents - lostMrrCents),
       plans, monthly: monthsArr, recent,

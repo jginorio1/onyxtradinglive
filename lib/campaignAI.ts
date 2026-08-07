@@ -35,6 +35,7 @@ async function callAI(system: string, user: string, maxTokens = 1200): Promise<a
     });
     if (!r.ok) return null;
     const data = await r.json();
+    import('@/lib/aiCost').then((m) => m.logAiUsage('campanas', data)).catch(() => {});
     const raw = (data?.content || []).map((c: any) => c.text || '').join('\n').trim();
     try { return JSON.parse(stripFences(raw)); } catch { const m = raw.match(/\{[\s\S]*\}|\[[\s\S]*\]/); if (m) { try { return JSON.parse(m[0]); } catch {} } return null; }
   } catch { return null; }

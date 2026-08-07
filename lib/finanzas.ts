@@ -2,6 +2,8 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getSetting, saveSetting } from '@/lib/settings';
 import { computeRevenue } from '@/lib/revenue';
 import { onyxCommissionTotal } from '@/lib/academyPay';
+import { aiSpend } from '@/lib/aiCost';
+import { autoExpensesForMonth } from '@/lib/autoExpenses';
 
 // ============================================================
 // Finanzas de Onyx · P&L del negocio.
@@ -90,6 +92,11 @@ export type FinanceData = {
   cash: number; runway: number | null;
   mrr: number; collected: number;
   academyCommission?: number;
+  aiCost?: number;   // gasto de IA del mes en curso (automático)
+  aiByFeature?: { feature: string; cents: number; calls: number; tokens: number }[];
+  stripeFees?: number;      // comisiones de Stripe estimadas (auto)
+  ambassadorPayouts?: number;  // comisiones a embajadores del mes (auto)
+  memberRewards?: number;      // recompensas de referidos de miembros (auto)
   series: FinanceMonth[];
   categories: { category: string; recurring: number; one_off: number; total: number }[];
   expenses: Expense[];
@@ -118,6 +125,19 @@ export async function computeFinance(fromMs: number, toMs: number, incomeMode: '
   const last = series[series.length - 1];
   if (last) { last.income += academyCommission; last.net += academyCommission; }
 
+  // Gasto de IA del mes en curso (automático). Se suma como gasto y baja el neto.
+  let aiCost = 0; let aiByFeature: any[] = [];
+  try { const ai = await aiSpend(curStart0, curEnd0); aiCost = Math.round(ai.totalCents) / 100; aiByFeature = ai.byFeature; } catch {}
+  if (last && aiCost > 0) { last.expense += Math.round(aiCost); last.net -= Math.round(aiCost); }
+
+  // Otros gastos automáticos del mes: comisiones de Stripe (estimadas), comisiones
+  // a embajadores y recompensas de referidos de miembros. Todos bajan el neto.
+  const stripeFees = Math.round(Number((rev as any).stripeFees) || 0);
+  let ambassadorPayouts = 0, memberRewards = 0;
+  try { const ax = await autoExpensesForMonth(curStart0, curEnd0); ambassadorPayouts = ax.ambassadors; memberRewards = ax.members; } catch {}
+  const autoTotal = stripeFees + ambassadorPayouts + memberRewards;
+  if (last && autoTotal > 0) { last.expense += autoTotal; last.net -= autoTotal; }
+
   const tm = series[series.length - 1] || { income: 0, expense: 0, net: 0 };
   const margin = tm.income > 0 ? Math.round((tm.net / tm.income) * 100) : null;
 
@@ -140,6 +160,12 @@ export async function computeFinance(fromMs: number, toMs: number, incomeMode: '
     (catMap[e.category] ||= { recurring: 0, one_off: 0 });
     if (e.kind === 'recurring') catMap[e.category].recurring += c; else catMap[e.category].one_off += c;
   }
+  // La IA entra sola como su propia línea (categoría 'ia'), sin filas manuales.
+  if (aiCost > 0) { (catMap['ia'] ||= { recurring: 0, one_off: 0 }); catMap['ia'].recurring += aiCost; }
+  // Gastos automáticos como líneas propias.
+  if (stripeFees > 0) { (catMap['stripe'] ||= { recurring: 0, one_off: 0 }); catMap['stripe'].recurring += stripeFees; }
+  if (ambassadorPayouts > 0) { (catMap['embajadores'] ||= { recurring: 0, one_off: 0 }); catMap['embajadores'].recurring += ambassadorPayouts; }
+  if (memberRewards > 0) { (catMap['referidos'] ||= { recurring: 0, one_off: 0 }); catMap['referidos'].recurring += memberRewards; }
   const categories = Object.entries(catMap).map(([category, v]) => ({
     category, recurring: Math.round(v.recurring), one_off: Math.round(v.one_off), total: Math.round(v.recurring + v.one_off),
   })).sort((a, b) => b.total - a.total);
@@ -148,7 +174,8 @@ export async function computeFinance(fromMs: number, toMs: number, incomeMode: '
     configured: rev.configured, incomeMode, currency: rev.currency || 'usd',
     thisMonth: { income: tm.income, expense: tm.expense, net: tm.net, margin },
     burn, cash, runway, mrr: Math.round(rev.mrr), collected: Math.round(rev.collected),
-    academyCommission,
+    academyCommission, aiCost, aiByFeature,
+    stripeFees, ambassadorPayouts, memberRewards,
     series, categories, expenses,
   };
 }

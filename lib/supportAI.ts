@@ -233,6 +233,7 @@ Nunca des consejo financiero/de mercado ni predigas el mercado. Si la pregunta e
     if (!r.ok) r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers, body: plainBody });
     if (!r.ok) return { answer: '', ok: false, declined: false };
     const data = await r.json();
+    import('@/lib/aiCost').then((m) => m.logAiUsage('soporte', data)).catch(() => {});
     const raw = (data?.content || []).map((c: any) => c.text || '').join('\n').trim();
     if (!raw || /NO_ANSWER/i.test(raw)) return { answer: '', ok: false, declined: true };
     // El chat muestra texto plano; quitamos cualquier markdown que se le escape al modelo.

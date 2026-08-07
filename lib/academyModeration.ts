@@ -141,6 +141,7 @@ export async function aiModerate(text: string): Promise<{ flag: 'none' | 'low' |
     });
     if (!r.ok) return { flag: 'none', category: 'none' };
     const d = await r.json();
+    import('@/lib/aiCost').then((m) => m.logAiUsage('moderacion', d)).catch(() => {});
     const out = (d?.content || []).map((c: any) => c.text || '').join(' ').trim().toUpperCase();
     const flag = out.startsWith('HIGH') ? 'high' : out.startsWith('LOW') ? 'low' : 'none';
     const category = (out.split(/\s+/)[1] || 'none').toLowerCase();

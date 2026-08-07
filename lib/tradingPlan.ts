@@ -322,6 +322,7 @@ export async function planReview(plan: Plan, stats: PlanStats, lang: 'es' | 'en'
     });
     if (!r.ok) return lang === 'en' ? 'Could not review right now.' : 'No pude repasar ahora mismo.';
     const data = await r.json();
+    import('@/lib/aiCost').then((m) => m.logAiUsage('coach', data)).catch(() => {});
     return (data?.content || []).map((c: any) => c.text || '').join('\n').trim() || (lang === 'en' ? 'No review available.' : 'Sin repaso disponible.');
   } catch { return lang === 'en' ? 'Could not review right now.' : 'No pude repasar ahora mismo.'; }
 }

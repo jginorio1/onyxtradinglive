@@ -143,6 +143,7 @@ export async function onyxTeamAnswer(opts: { question: string; lang: Lang }): Pr
     });
     if (!r.ok) return enBase(lang) ? 'Sorry, I could not process that right now.' : 'Perdona, no pude procesar eso ahora mismo.';
     const data = await r.json();
+    import('@/lib/aiCost').then((m) => m.logAiUsage('equipo', data)).catch(() => {});
     const answer = (data?.content || []).map((c: any) => c.text || '').join('\n').trim();
     return answer || (enBase(lang) ? 'No data for that.' : 'Sin datos para eso.');
   } catch {

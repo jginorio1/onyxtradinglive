@@ -23,6 +23,7 @@ async function aiRaw(system: string, user: string, maxTokens: number): Promise<s
     });
     if (!r.ok) return null;
     const d = await r.json();
+    import('@/lib/aiCost').then((m) => m.logAiUsage('blog', d)).catch(() => {});
     return (d?.content || []).map((c: any) => c.text || '').join('\n').trim() || null;
   } catch { return null; }
 }

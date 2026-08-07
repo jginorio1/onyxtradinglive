@@ -24,6 +24,7 @@ async function ai(system: string, user: string, maxTokens = 700): Promise<string
     });
     if (!r.ok) return null;
     const d = await r.json();
+    import('@/lib/aiCost').then((m) => m.logAiUsage('academia', d)).catch(() => {});
     return (d?.content || []).map((c: any) => c.text || '').join('\n').trim() || null;
   } catch { return null; }
 }

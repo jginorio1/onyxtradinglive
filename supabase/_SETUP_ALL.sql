@@ -2331,6 +2331,19 @@ create table if not exists public.onyx_expenses (
 create index if not exists onyx_expenses_kind on public.onyx_expenses (kind);
 create index if not exists onyx_expenses_date on public.onyx_expenses (incurred_on);
 
+-- Gasto de IA (Anthropic) registrado automáticamente en cada llamada.
+create table if not exists public.ai_usage (
+  id            uuid primary key default gen_random_uuid(),
+  feature       text not null,
+  model         text,
+  input_tokens  int  not null default 0,
+  output_tokens int  not null default 0,
+  cost_cents    int  not null default 0,
+  created_at    timestamptz not null default now()
+);
+create index if not exists idx_ai_usage_created on public.ai_usage (created_at);
+create index if not exists idx_ai_usage_feature on public.ai_usage (feature);
+
 -- La caja (saldo actual del negocio) se guarda en app_settings con la clave 'onyx_cash'
 -- mediante lib/settings (getSetting/saveSetting), así que no hace falta tabla extra.
 

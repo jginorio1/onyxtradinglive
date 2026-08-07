@@ -25,6 +25,7 @@ async function aiRaw(system: string, content: any, maxTokens: number, beta?: str
     });
     if (!r.ok) return null;
     const d = await r.json();
+    import('@/lib/aiCost').then((m) => m.logAiUsage('coach', d)).catch(() => {});
     return (d?.content || []).map((c: any) => c.text || '').join('\n').trim() || null;
   } catch { return null; }
 }

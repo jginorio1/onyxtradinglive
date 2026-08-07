@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { requirePerm, logAdmin } from '@/lib/admin';
 import { computeFinance, addExpense, updateExpense, deleteExpense, setCash } from '@/lib/finanzas';
+import { aiPricesSettings } from '@/lib/settings';
+import { saveAiPrices } from '@/lib/aiCost';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -29,8 +31,8 @@ export async function GET(req: Request) {
   const [from, to] = parseRange(sp);
   const mode = sp.get('income') === 'mrr' ? 'mrr' : 'collected';
   const es = sp.get('lang') !== 'en';
-  const data = await computeFinance(from, to, mode, es);
-  return NextResponse.json(data);
+  const [data, aiPrices] = await Promise.all([computeFinance(from, to, mode, es), aiPricesSettings()]);
+  return NextResponse.json({ ...data, aiPrices });
 }
 
 // POST · añadir / editar / borrar un gasto. Requiere 'manage'.
@@ -39,6 +41,11 @@ export async function POST(req: Request) {
   if (!ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
   const b = await req.json().catch(() => ({}));
   try {
+    if (b.action === 'ai_prices') {
+      const saved = await saveAiPrices(b.prices || {});
+      await logAdmin(user.email, 'finanzas_ai_prices', 'ai_prices');
+      return NextResponse.json({ ok: true, aiPrices: saved });
+    }
     if (b.action === 'delete' && b.id) {
       await deleteExpense(String(b.id));
       await logAdmin(user.email, 'finanzas_delete', String(b.id), { note: b.note || null });

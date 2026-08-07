@@ -38,6 +38,7 @@ ${await brandBrief(lang)}`;
     });
     if (!r.ok) return { ok: false, reason: 'error' };
     const d = await r.json();
+    import('@/lib/aiCost').then((m) => m.logAiUsage('seo', d)).catch(() => {});
     const raw = (d?.content || []).map((c: any) => c.text || '').join('\n').trim();
     const parsed = parseJson(raw);
     if (!parsed || !Array.isArray(parsed.keywords)) return { ok: false, reason: 'parse' };

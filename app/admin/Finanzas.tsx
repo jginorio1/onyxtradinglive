@@ -11,9 +11,11 @@ import ConfirmNote from './ConfirmNote';
 const CATS = ['infra', 'sueldos', 'ads', 'herramientas', 'legal', 'otros'];
 const CAT_LABEL: Record<string, [string, string]> = {
   infra: ['Infraestructura', 'Infrastructure'], sueldos: ['Sueldos', 'Salaries'], ads: ['Publicidad', 'Ads'],
-  herramientas: ['Herramientas', 'Tools'], legal: ['Legal', 'Legal'], otros: ['Otros', 'Other'],
+  herramientas: ['Herramientas', 'Tools'], legal: ['Legal', 'Legal'], otros: ['Otros', 'Other'], ia: ['Onyx AI (auto)', 'Onyx AI (auto)'],
+  stripe: ['Comisiones Stripe (auto)', 'Stripe fees (auto)'], embajadores: ['Embajadores (auto)', 'Ambassadors (auto)'], referidos: ['Referidos miembros (auto)', 'Member referrals (auto)'],
 };
-const CAT_COLOR: Record<string, string> = { infra: 'var(--brand)', sueldos: 'var(--purple)', ads: 'var(--gold)', herramientas: 'var(--cyan)', legal: 'var(--red)', otros: 'var(--mut)' };
+const CAT_COLOR: Record<string, string> = { infra: 'var(--brand)', sueldos: 'var(--purple)', ads: 'var(--gold)', herramientas: 'var(--cyan)', legal: 'var(--red)', otros: 'var(--mut)', ia: 'var(--soft-brand, var(--brand))', stripe: 'var(--purple)', embajadores: 'var(--gold)', referidos: 'var(--cyan)' };
+const AI_FEAT: Record<string, [string, string]> = { blog: ['Blog', 'Blog'], soporte: ['Soporte', 'Support'], academia: ['Academia', 'Academy'], moderacion: ['Moderación', 'Moderation'], coach: ['Coach', 'Coach'], campanas: ['Campañas', 'Campaigns'], embajadores: ['Embajadores', 'Ambassadors'], equipo: ['Equipo', 'Team'], seo: ['SEO', 'SEO'] };
 const GREEN = 'var(--green)', RED = 'var(--red)', BRAND = 'var(--brand)', GOLD = 'var(--gold)';
 
 export default function Finanzas({ canManage = false }: { canManage?: boolean }) {
@@ -28,13 +30,20 @@ export default function Finanzas({ canManage = false }: { canManage?: boolean })
   const [editId, setEditId] = useState<string | null>(null);
   const [cashInput, setCashInput] = useState('');
   const [cf, setCf] = useState<any>(null);   // confirmación con nota
+  const [aiEdit, setAiEdit] = useState(false);
+  const [aiP, setAiP] = useState<any>(null);   // precios de IA editables
 
   async function load() {
     const r = await fetch(`/api/admin/finanzas?income=${mode}&lang=${lang}`);
     const j = await r.json();
-    if (!j.error) { setD(j); setCashInput(String(j.cash || '')); }
+    if (!j.error) { setD(j); setCashInput(String(j.cash || '')); setAiP(j.aiPrices || {}); }
   }
   useEffect(() => { load(); }, [mode]);
+
+  async function saveAiPrices() {
+    await fetch('/api/admin/finanzas', { method: 'POST', body: JSON.stringify({ action: 'ai_prices', prices: aiP }) });
+    setAiEdit(false); load();
+  }
 
   const fmt = (n: number) => (n < 0 ? '−' : '') + '$' + Math.abs(Math.round(n || 0)).toLocaleString();
 
@@ -147,6 +156,53 @@ export default function Finanzas({ canManage = false }: { canManage?: boolean })
           <span><span style={{ display: 'inline-block', width: 9, height: 9, borderRadius: 2, background: RED, marginRight: 5 }} />{L('Gastos', 'Expenses')}</span>
           <span><span style={{ display: 'inline-block', width: 9, height: 9, borderRadius: 2, background: BRAND, marginRight: 5 }} />{L('Beneficio', 'Profit')}</span>
         </div>
+      </div>
+
+      {/* Gasto de IA (automático) */}
+      <div className="card">
+        <div className="row between" style={{ marginBottom: 8, alignItems: 'center' }}>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, margin: 0 }}><span className="card-ic"><OnyxIcon emoji="✨" size={16} /></span> {L('Gasto de IA (automático)', 'AI spend (automatic)')}</h3>
+          <span style={{ fontWeight: 800, fontSize: 18, color: BRAND }}>{fmt(d.aiCost || 0)}<span className="muted" style={{ fontSize: 11, fontWeight: 400 }}> /{L('mes', 'mo')}</span></span>
+        </div>
+        <p className="muted" style={{ fontSize: 12, marginTop: 0, marginBottom: 10 }}>{L('Se registra solo en cada llamada de la app a la IA y ya está sumado al P&L (línea Onyx AI). Es una estimación por tokens.', 'Logged automatically on each AI call and already added to the P&L (Onyx AI line). Token-based estimate.')}</p>
+        {(d.aiByFeature || []).length === 0
+          ? <p className="muted" style={{ fontSize: 12.5 }}>{L('Aún sin uso de IA este mes.', 'No AI usage this month yet.')}</p>
+          : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {(d.aiByFeature || []).map((f: any) => {
+                const maxF = Math.max(1, ...(d.aiByFeature || []).map((x: any) => x.cents));
+                return (
+                  <div key={f.feature}>
+                    <div className="row between" style={{ fontSize: 12.5, marginBottom: 3 }}>
+                      <span>{AI_FEAT[f.feature]?.[es ? 0 : 1] || f.feature} <span className="muted" style={{ fontSize: 11 }}>· {f.calls} {L('llamadas', 'calls')}</span></span>
+                      <span style={{ fontWeight: 700 }}>{fmt(f.cents / 100)}</span>
+                    </div>
+                    <div style={{ height: 6, borderRadius: 6, background: 'var(--bg2)', overflow: 'hidden' }}>
+                      <div style={{ width: (f.cents / maxF) * 100 + '%', height: '100%', borderRadius: 6, background: BRAND }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        {canManage && (
+          <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--line)' }}>
+            <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setAiEdit((o) => !o)}>{aiEdit ? L('Cerrar precios', 'Close prices') : L('Editar precios por modelo', 'Edit prices per model')}</button>
+            {aiEdit && aiP && (
+              <div style={{ marginTop: 10 }}>
+                <p className="muted" style={{ fontSize: 11.5, marginTop: 0 }}>{L('USD por 1M de tokens. Ajusta si Anthropic cambia tarifas. "default" se usa para modelos no listados.', 'USD per 1M tokens. Adjust if Anthropic changes rates. "default" applies to unlisted models.')}</p>
+                {Object.keys(aiP).map((m) => (
+                  <div key={m} className="row" style={{ gap: 8, alignItems: 'center', marginBottom: 6, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 12, minWidth: 130, fontFamily: 'var(--font-mono, monospace)' }}>{m}</span>
+                    <label style={{ fontSize: 11.5 }}>{L('entrada', 'input')} <input type="number" step="0.01" value={aiP[m].in} onChange={(e) => setAiP({ ...aiP, [m]: { ...aiP[m], in: Number(e.target.value) } })} style={{ width: 80, margin: '0 0 0 4px' }} /></label>
+                    <label style={{ fontSize: 11.5 }}>{L('salida', 'output')} <input type="number" step="0.01" value={aiP[m].out} onChange={(e) => setAiP({ ...aiP, [m]: { ...aiP[m], out: Number(e.target.value) } })} style={{ width: 80, margin: '0 0 0 4px' }} /></label>
+                  </div>
+                ))}
+                <button className="btn btn-primary" style={{ fontSize: 12, marginTop: 4 }} onClick={saveAiPrices}>{L('Guardar precios', 'Save prices')}</button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="grid g2">

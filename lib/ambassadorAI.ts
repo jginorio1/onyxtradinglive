@@ -23,6 +23,7 @@ async function anthropic(system: string, user: string, maxTokens = 900): Promise
     });
     if (!r.ok) return null;
     const data = await r.json();
+    import('@/lib/aiCost').then((m) => m.logAiUsage('embajadores', data)).catch(() => {});
     return (data?.content || []).map((c: any) => c.text || '').join('\n').trim() || null;
   } catch { return null; }
 }

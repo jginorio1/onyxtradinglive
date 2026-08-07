@@ -177,6 +177,16 @@ export const academyFeeSettings = () => getSetting<AcademyFee>('academy_fee', AF
 export type AcademyPerks = { guardian_autogrant: boolean };
 export const academyPerksSettings = () => getSetting<AcademyPerks>('academy_perks', { guardian_autogrant: false });
 
+// Finanzas · precios de la IA por modelo (USD por 1M de tokens), editables por el
+// dueño. Como Anthropic cambia tarifas, se ajustan sin volver a desplegar.
+// 'default' se usa para cualquier modelo no listado.
+export type AiPrices = { [model: string]: { in: number; out: number } };
+const AI_PRICES_DEF: AiPrices = {
+  'claude-haiku-4-5': { in: 1.0, out: 5.0 },
+  'default': { in: 1.0, out: 5.0 },
+};
+export const aiPricesSettings = () => getSetting<AiPrices>('ai_prices', AI_PRICES_DEF);
+
 // Onyx Academy · Guardian DE PAGO dentro de la comunidad. El alumno se suscribe
 // (Pro o Elite) y el cobro va a la cuenta de Onyx. El dueño fija precios y on/off.
 // enabled=false por defecto: no se muestra nada hasta que el dueño lo activa.
