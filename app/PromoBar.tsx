@@ -23,8 +23,18 @@ export default function PromoBar({
   const [copied, setCopied] = useState(false);
   const [paused, setPaused] = useState(false);
   const [urgent, setUrgent] = useState(false); // últimos minutos: resalta el contador
+  const [narrow, setNarrow] = useState(false);  // móvil: modo compacto (sin desplazar)
   const wrapRef = useRef<HTMLDivElement>(null);
   const stickyTop = position === 'top' && sticky;
+
+  // En móvil la barra se ve apretada: pasamos a modo compacto (texto recortado,
+  // sin marquesina, cupón y CTA reducidos) para que todo quepa en una línea.
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 520px)');
+    const on = () => setNarrow(mq.matches);
+    on(); mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
 
   // Cuando la barra es fija arriba, publica su alto en --promo-h para que la
   // barra de navegación (sticky) se coloque justo debajo y no se solapen.
@@ -79,7 +89,7 @@ export default function PromoBar({
   if (gone || closed || !text) return null;
 
   const background = gradient && bg2 ? `linear-gradient(90deg, ${bg || '#7c8cff'}, ${bg2})` : (bg || 'var(--brand)');
-  const scrolling = anim === 'slide' || anim === 'marquee';
+  const scrolling = (anim === 'slide' || anim === 'marquee') && !narrow;  // en móvil nunca se desplaza
 
   const copyCoupon = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
@@ -93,12 +103,22 @@ export default function PromoBar({
   const animSecs = ANIM_SECONDS[speed] || 22;
   const pulseSecs = PULSE_SECONDS[speed] || 2.4;
 
+  const countdownEl = left ? <span style={{ flex: 'none', fontWeight: 800, opacity: .95, fontVariantNumeric: 'tabular-nums', ...(urgent ? { padding: '1px 7px', borderRadius: 5, background: 'rgba(0,0,0,.22)', animation: 'onyxUrg 1s ease-in-out infinite' } : {}) }}>⏳ {left}</span> : null;
+
   // El mensaje (emoji + texto + contador) es lo único que se desplaza.
   const message = (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12, whiteSpace: 'nowrap' }}>
       {emoji && <span>{emoji}</span>}
       <span style={{ fontWeight: 600 }}>{text}</span>
-      {left && <span style={{ fontWeight: 800, opacity: .95, fontVariantNumeric: 'tabular-nums', ...(urgent ? { padding: '1px 7px', borderRadius: 5, background: 'rgba(0,0,0,.22)', animation: 'onyxUrg 1s ease-in-out infinite' } : {}) }}>⏳ {left}</span>}
+      {countdownEl}
+    </span>
+  );
+  // Variante compacta para móvil: el texto se recorta con "…" y no se desplaza.
+  const messageNarrow = (
+    <span style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0, width: '100%' }}>
+      {emoji && <span style={{ flex: 'none' }}>{emoji}</span>}
+      <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: '1 1 auto', minWidth: 0 }}>{text}</span>
+      {countdownEl}
     </span>
   );
 
@@ -114,26 +134,28 @@ export default function PromoBar({
   return (
     <div ref={wrapRef} style={wrapStyle} onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
       <style>{`@keyframes onyxPromo{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}@keyframes onyxPulse{0%,100%{opacity:1}50%{opacity:.72}}@keyframes onyxUrg{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.08);opacity:.85}}`}</style>
-      <div style={{ display: 'flex', alignItems: 'center', paddingRight: dismissible ? 30 : 0, animation: anim === 'pulse' ? `onyxPulse ${pulseSecs}s ease-in-out infinite` : undefined }}>
-        {/* Mensaje (link; se desplaza si es deslizar/marquesina, se pausa al pasar el ratón) */}
+      <div style={{ display: 'flex', alignItems: 'center', paddingRight: dismissible ? (narrow ? 26 : 30) : 0, animation: anim === 'pulse' ? `onyxPulse ${pulseSecs}s ease-in-out infinite` : undefined }}>
+        {/* Mensaje (link; se desplaza en escritorio, se recorta en móvil) */}
         <a {...linkAttrs} style={{ color: 'inherit', textDecoration: 'none', flex: '1 1 auto', minWidth: 0, overflow: 'hidden', padding: '7px 0', display: 'block' }}>
           {scrolling ? (
             <div style={{ display: 'inline-flex', whiteSpace: 'nowrap', animation: `onyxPromo ${animSecs}s linear infinite`, animationPlayState: paused ? 'paused' : 'running', willChange: 'transform', fontSize: 13.5 }}>
               {[0, 1, 2, 3].map((i) => <span key={i} style={{ paddingRight: 60 }}>{message}</span>)}
             </div>
+          ) : narrow ? (
+            <div style={{ display: 'flex', alignItems: 'center', fontSize: 12.5, padding: '0 8px', minWidth: 0 }}>{messageNarrow}</div>
           ) : (
             <div style={{ display: 'flex', justifyContent: 'center', fontSize: 13.5, padding: '0 12px' }}>{message}</div>
           )}
         </a>
         {/* Acciones FIJAS: el cupón y el CTA nunca se desplazan → siempre clicables */}
         {(coupon || cta) && (
-          <div style={{ flex: 'none', display: 'flex', gap: 10, alignItems: 'center', padding: '0 12px 0 10px', fontSize: 13.5 }}>
+          <div style={{ flex: 'none', display: 'flex', gap: narrow ? 6 : 10, alignItems: 'center', padding: narrow ? '0 6px 0 6px' : '0 12px 0 10px', fontSize: narrow ? 12 : 13.5 }}>
             {coupon && (
-              <button onClick={copyCoupon} title="Copiar" style={{ font: 'inherit', fontWeight: 700, letterSpacing: 1, cursor: 'pointer', background: 'rgba(0,0,0,.18)', color: 'inherit', border: 'none', borderRadius: 6, padding: '3px 10px', display: 'inline-flex', gap: 6, alignItems: 'center', whiteSpace: 'nowrap' }}>
+              <button onClick={copyCoupon} title="Copiar" style={{ font: 'inherit', fontWeight: 700, letterSpacing: narrow ? 0.5 : 1, cursor: 'pointer', background: 'rgba(0,0,0,.18)', color: 'inherit', border: 'none', borderRadius: 6, padding: narrow ? '3px 7px' : '3px 10px', display: 'inline-flex', gap: narrow ? 4 : 6, alignItems: 'center', whiteSpace: 'nowrap' }}>
                 {coupon} <span style={{ fontWeight: 400, fontSize: 12 }}>{copied ? '✓' : '⧉'}</span>
               </button>
             )}
-            {cta && <a {...linkAttrs} style={{ color: 'inherit', fontWeight: 700, textDecoration: 'underline', whiteSpace: 'nowrap' }}>{cta} →</a>}
+            {cta && <a {...linkAttrs} style={{ color: 'inherit', fontWeight: 700, textDecoration: narrow ? 'none' : 'underline', whiteSpace: 'nowrap', fontSize: narrow ? 16 : 'inherit' }}>{narrow ? '→' : `${cta} →`}</a>}
           </div>
         )}
       </div>
