@@ -1,7 +1,22 @@
 import { logError } from '@/lib/errlog';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
-type MailOpts = { kind?: string; userId?: string | null; meta?: any; unsub?: string | null };
+type MailOpts = { kind?: string; userId?: string | null; meta?: any; unsub?: string | null;
+  from?: string;        // remitente completo, p. ej. "Academia de Juan <no-reply@onyxtradinglive.com>"
+  brandName?: string;   // nombre en la cabecera del correo (por defecto "Onyx Trading Live")
+  brandLogo?: string;   // logo en la cabecera (por defecto el de Onyx)
+};
+
+// Construye un remitente "Nombre <dirección>" reutilizando la dirección verificada
+// de SUPPORT_FROM_EMAIL. Así un correo puede salir con el nombre de la academia
+// sin cambiar de dominio (que es lo que Resend tiene verificado).
+export function fromWithName(name: string): string {
+  const base = process.env.SUPPORT_FROM_EMAIL || 'Onyx Trading Live <no-reply@onyxtradinglive.com>';
+  const m = base.match(/<([^>]+)>/);
+  const addr = m ? m[1] : base;
+  const clean = String(name || '').replace(/[<>"]/g, '').trim().slice(0, 60) || 'Onyx Trading Live';
+  return `${clean} <${addr}>`;
+}
 
 // --- Formato de correo: convierte el texto (con markdown básico) a HTML
 // limpio y profesional, con la marca Onyx. Compatible con clientes de correo
@@ -35,8 +50,10 @@ function bodyToHtml(text: string) {
 const SITE = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.onyxtradinglive.com').replace(/\/$/, '');
 const LOGO = process.env.EMAIL_LOGO_URL || `${SITE}/onyx-symbol.png`;
 
-function renderEmailHtml(text: string, unsub?: string | null) {
+function renderEmailHtml(text: string, unsub?: string | null, brand?: { name?: string; logo?: string }) {
   const body = bodyToHtml(text);
+  const bName = esc(brand?.name || 'Onyx Trading Live');
+  const bLogo = brand?.logo || LOGO;
   const unsubRow = unsub
     ? `<br><a href="${unsub}" style="color:#8a90a0;text-decoration:underline;">Darte de baja de estos correos / Unsubscribe</a>`
     : '';
@@ -45,8 +62,8 @@ function renderEmailHtml(text: string, unsub?: string | null) {
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
 <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e3e6ec;">
 <tr><td style="background:#121829;padding:16px 28px;">
-<img src="${LOGO}" alt="Onyx Trading Live" width="26" height="26" style="vertical-align:middle;border:0;display:inline-block;">
-<span style="color:#ffffff;font-size:18px;font-weight:700;letter-spacing:.3px;vertical-align:middle;margin-left:9px;">Onyx Trading Live</span>
+<img src="${bLogo}" alt="${bName}" width="26" height="26" style="vertical-align:middle;border:0;display:inline-block;">
+<span style="color:#ffffff;font-size:18px;font-weight:700;letter-spacing:.3px;vertical-align:middle;margin-left:9px;">${bName}</span>
 </td></tr>
 <tr><td style="padding:26px 28px;font-size:15px;color:#1a1d24;">${body}</td></tr>
 <tr><td style="background:#f6f7f9;padding:16px 28px;color:#8a90a0;font-size:12px;border-top:1px solid #eceef2;line-height:1.5;">
@@ -79,10 +96,10 @@ export async function sendEmail(to: string, subject: string, text: string, opts?
 export async function sendEmailId(to: string, subject: string, text: string, opts?: MailOpts): Promise<{ ok: boolean; id: string | null }> {
   const key = process.env.RESEND_API_KEY;
   if (!key || !to) return { ok: false, id: null };
-  const from = process.env.SUPPORT_FROM_EMAIL || 'Onyx Trading Live <no-reply@onyxtradinglive.com>';
+  const from = opts?.from || process.env.SUPPORT_FROM_EMAIL || 'Onyx Trading Live <no-reply@onyxtradinglive.com>';
   // Versión de texto plano (sin markdown) como respaldo, y versión HTML con marca.
   const plain = String(text || '').replace(/\*\*(.+?)\*\*/g, '$1') + (opts?.unsub ? `\n\n—\nDarte de baja / Unsubscribe: ${opts.unsub}` : '');
-  const html = renderEmailHtml(text, opts?.unsub);
+  const html = renderEmailHtml(text, opts?.unsub, (opts?.brandName || opts?.brandLogo) ? { name: opts?.brandName, logo: opts?.brandLogo } : undefined);
   try {
     const r = await fetch('https://api.resend.com/emails', {
       method: 'POST',

@@ -88,7 +88,8 @@ export async function createScholarship(mentorId: string, createdBy: string, b: 
   const reason = ['low_income', 'raffle', 'merit', 'other'].includes(b.reason) ? b.reason : 'other';
   const product_id = b.product_id ? String(b.product_id) : null;
 
-  const row: any = { mentor_id: mentorId, created_by: createdBy, kind, coverage, percent, scope, modules, product_id, reason, ends_at, status: 'active' };
+  const lang = b.lang === 'en' ? 'en' : 'es';
+  const row: any = { mentor_id: mentorId, created_by: createdBy, kind, coverage, percent, scope, modules, product_id, reason, ends_at, status: 'active', lang };
 
   if (kind === 'direct') {
     const studentId = b.student_id || (b.email ? await idByEmail(b.email) : null);
@@ -113,7 +114,7 @@ export async function revokeScholarship(mentorId: string, id: string) {
 }
 
 // Alumno canjea un código de beca. Crea un grant directo para él.
-export async function redeemCode(studentId: string, code: string): Promise<{ ok: boolean; error?: string; mentorId?: string }> {
+export async function redeemCode(studentId: string, code: string, lang: string = 'es'): Promise<{ ok: boolean; error?: string; mentorId?: string }> {
   const c = String(code || '').trim().toUpperCase();
   if (!c) return { ok: false, error: 'Escribe un código.' };
   const { data } = await supabaseAdmin.from(TB).select('*').eq('code', c).eq('kind', 'code').eq('status', 'active').maybeSingle();
@@ -130,6 +131,7 @@ export async function redeemCode(studentId: string, code: string): Promise<{ ok:
     mentor_id: sch.mentor_id, student_id: studentId, kind: 'direct', coverage: 'full',
     scope: sch.scope, modules: sch.modules, product_id: sch.product_id, reason: sch.reason,
     seats: 1, used: 1, ends_at: sch.ends_at, status: 'active', source_code: sch.id, created_by: studentId,
+    lang: lang === 'en' ? 'en' : 'es',
   };
   const { error } = await supabaseAdmin.from(TB).insert(grant);
   if (error) return { ok: false, error: error.message };
@@ -172,11 +174,11 @@ export async function mentorReport(mentorId: string) {
 // ============================================================
 
 // Un alumno solicita una beca a una academia.
-export async function applyScholarship(studentId: string, mentorId: string, message: string, reason: string): Promise<{ ok: boolean; error?: string }> {
+export async function applyScholarship(studentId: string, mentorId: string, message: string, reason: string, lang: string = 'es'): Promise<{ ok: boolean; error?: string }> {
   const { data: prev } = await supabaseAdmin.from(APPS).select('id').eq('mentor_id', mentorId).eq('student_id', studentId).eq('status', 'pending').maybeSingle();
   if (prev) return { ok: false, error: 'Ya tienes una solicitud pendiente en esta academia.' };
   const r = ['low_income', 'merit', 'other'].includes(reason) ? reason : 'low_income';
-  const { error } = await supabaseAdmin.from(APPS).insert({ mentor_id: mentorId, student_id: studentId, message: String(message || '').slice(0, 1000), reason: r, status: 'pending' });
+  const { error } = await supabaseAdmin.from(APPS).insert({ mentor_id: mentorId, student_id: studentId, message: String(message || '').slice(0, 1000), reason: r, status: 'pending', lang: lang === 'en' ? 'en' : 'es' });
   if (error) return { ok: false, error: error.message };
   return { ok: true };
 }
@@ -188,7 +190,7 @@ export async function listApps(mentorId: string, status = 'pending') {
 }
 
 // El mentor aprueba (crea la beca) o rechaza una solicitud.
-export async function decideApp(mentorId: string, appId: string, decision: 'approve' | 'deny', opts: any = {}): Promise<{ ok: boolean; error?: string; approved?: boolean; studentId?: string }> {
+export async function decideApp(mentorId: string, appId: string, decision: 'approve' | 'deny', opts: any = {}): Promise<{ ok: boolean; error?: string; approved?: boolean; studentId?: string; lang?: string }> {
   const { data: app } = await supabaseAdmin.from(APPS).select('*').eq('id', appId).eq('mentor_id', mentorId).maybeSingle();
   if (!app) return { ok: false, error: 'Solicitud no encontrada.' };
   if ((app as any).status !== 'pending') return { ok: false, error: 'La solicitud ya estaba resuelta.' };
@@ -197,14 +199,14 @@ export async function decideApp(mentorId: string, appId: string, decision: 'appr
     const r = await createScholarship(mentorId, mentorId, {
       kind: 'direct', student_id: a.student_id, coverage: 'full',
       scope: opts.scope === 'modules' ? 'modules' : 'all', modules: opts.modules || [],
-      days: Number(opts.days) || 90, reason: a.reason,
+      days: Number(opts.days) || 90, reason: a.reason, lang: a.lang || 'es',
     });
     if (!r.ok) return { ok: false, error: r.error };
     await supabaseAdmin.from(APPS).update({ status: 'approved', grant_id: r.row?.id || null, decided_by: mentorId, decided_at: nowIso(), mentor_note: opts.note || null }).eq('id', appId);
-    return { ok: true, approved: true, studentId: a.student_id };
+    return { ok: true, approved: true, studentId: a.student_id, lang: a.lang || 'es' };
   }
   await supabaseAdmin.from(APPS).update({ status: 'denied', decided_by: mentorId, decided_at: nowIso(), mentor_note: opts.note || null }).eq('id', appId);
-  return { ok: true, approved: false, studentId: a.student_id };
+  return { ok: true, approved: false, studentId: a.student_id, lang: a.lang || 'es' };
 }
 
 // Cron: becas que vencen dentro de `days` días y aún no avisaron. Marca enviado.

@@ -3,6 +3,8 @@ import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { applyScholarship } from '@/lib/academyScholarship';
 import { sendEmail } from '@/lib/mail';
+import { emailTpl } from '@/lib/emailTemplates';
+import { serverLang } from '@/lib/locale';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -25,14 +27,19 @@ export async function POST(req: Request) {
   if (!mentorId) return NextResponse.json({ error: 'Indica el código de la academia.' }, { status: 400 });
   if (mentorId === user.id) return NextResponse.json({ error: 'No puedes pedirte una beca a ti mismo.' }, { status: 400 });
 
-  const r = await applyScholarship(user.id, mentorId, String(b.message || ''), String(b.reason || 'low_income'));
+  const lang = serverLang();
+  const r = await applyScholarship(user.id, mentorId, String(b.message || ''), String(b.reason || 'low_income'), lang);
   if (!r.ok) return NextResponse.json({ error: r.error || 'Error' }, { status: 400 });
 
-  // Aviso al mentor (best-effort).
+  // Aviso al mentor (best-effort), desde la plataforma.
   try {
     const { data: mp } = await supabaseAdmin.from('profiles').select('email').eq('id', mentorId).maybeSingle();
-    if ((mp as any)?.email) await sendEmail((mp as any).email, 'Nueva solicitud de beca en tu academia',
-      `Un alumno ha solicitado una beca en tu academia.\n\nRevísala y apruébala o recházala en tu panel:\n${APP}/dashboard/academy (Panel del mentor → Becas → Solicitudes).`);
+    const { data: m } = await supabaseAdmin.from('mentors').select('academy_name').eq('user_id', mentorId).maybeSingle();
+    const academia = (m as any)?.academy_name || 'tu academia';
+    if ((mp as any)?.email) {
+      const t = emailTpl('sch_apply_mentor', 'es', { academia, enlace: `${APP}/dashboard/academy` });
+      await sendEmail((mp as any).email, t.subject, t.text);
+    }
   } catch {}
   return NextResponse.json({ ok: true });
 }

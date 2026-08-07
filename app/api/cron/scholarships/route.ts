@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { expireDue, dueReminders } from '@/lib/academyScholarship';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { sendEmail } from '@/lib/mail';
+import { sendEmail, fromWithName } from '@/lib/mail';
+import { emailTpl } from '@/lib/emailTemplates';
 import { logError } from '@/lib/errlog';
 
 export const dynamic = 'force-dynamic';
@@ -16,36 +17,29 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
   try {
-    const due = await expireDue();
-    // Aviso best-effort a cada alumno (nombre de academia + enlace a suscribirse).
-    for (const s of due) {
+    // Correo a un alumno con plantilla bilingüe + marca de la academia.
+    const notify = async (s: any, tplId: string, extra: Record<string, string | number> = {}) => {
       try {
-        if (!s.student_id) continue;
+        if (!s.student_id) return;
         const { data: prof } = await supabaseAdmin.from('profiles').select('email').eq('id', s.student_id).maybeSingle();
         const email = (prof as any)?.email;
-        if (!email) continue;
+        if (!email) return;
         const { data: m } = await supabaseAdmin.from('mentors').select('academy_name,slug').eq('user_id', s.mentor_id).maybeSingle();
-        const name = (m as any)?.academy_name || 'la academia';
-        const link = `${APP}/academia/${(m as any)?.slug || ''}`;
-        await sendEmail(email, `Tu beca en ${name} ha finalizado`,
-          `Hola,\n\nTu beca en ${name} ha llegado a su fin, por lo que el acceso se ha cerrado.\n\nSi quieres seguir aprendiendo, puedes continuar con una suscripción aquí:\n${link}\n\n¡Gracias por formar parte!`);
+        const academia = (m as any)?.academy_name || 'la academia';
+        const enlace = `${APP}/academia/${(m as any)?.slug || ''}`;
+        const t = emailTpl(tplId, s.lang, { academia, enlace, ...extra });
+        await sendEmail(email, t.subject, t.text, { from: fromWithName(academia), brandName: academia });
       } catch {}
-    }
+    };
+
+    const due = await expireDue();
+    for (const s of due) await notify(s, 'sch_expired');
+
     // Recordatorio a quienes les vence pronto (≤3 días): renovar/suscribirse.
     const soon = await dueReminders(3);
     for (const s of soon) {
-      try {
-        if (!s.student_id) continue;
-        const { data: prof } = await supabaseAdmin.from('profiles').select('email').eq('id', s.student_id).maybeSingle();
-        const email = (prof as any)?.email;
-        if (!email) continue;
-        const { data: m } = await supabaseAdmin.from('mentors').select('academy_name,slug').eq('user_id', s.mentor_id).maybeSingle();
-        const name = (m as any)?.academy_name || 'la academia';
-        const link = `${APP}/academia/${(m as any)?.slug || ''}`;
-        const days = s.ends_at ? Math.max(1, Math.ceil((new Date(s.ends_at).getTime() - Date.now()) / 86400000)) : 0;
-        await sendEmail(email, `Tu beca en ${name} vence pronto`,
-          `Hola,\n\nTu beca en ${name} vence en unos ${days} día(s). Cuando termine, el acceso se cerrará.\n\nSi quieres seguir sin interrupción, puedes continuar con una suscripción aquí:\n${link}\n\n¡Sigue aprendiendo!`);
-      } catch {}
+      const days = s.ends_at ? Math.max(1, Math.ceil((new Date(s.ends_at).getTime() - Date.now()) / 86400000)) : 0;
+      await notify(s, 'sch_reminder', { dias: days });
     }
 
     return NextResponse.json({ ok: true, expired: due.length, reminded: soon.length });

@@ -3,7 +3,8 @@ import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getMentor } from '@/lib/academy';
 import { mentorScholarships, createScholarship, revokeScholarship, mentorReport, listApps, decideApp } from '@/lib/academyScholarship';
-import { sendEmail } from '@/lib/mail';
+import { sendEmail, fromWithName } from '@/lib/mail';
+import { emailTpl } from '@/lib/emailTemplates';
 
 const APP = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.onyxtradinglive.com').replace(/\/$/, '');
 
@@ -58,18 +59,17 @@ export async function POST(req: Request) {
     if ((b.action === 'approve' || b.action === 'deny') && b.id) {
       const r = await decideApp(user.id, String(b.id), b.action === 'approve' ? 'approve' : 'deny', b);
       if (!r.ok) return NextResponse.json({ error: r.error || 'Error' }, { status: 400 });
-      // Aviso al alumno (best-effort).
+      // Aviso al alumno (best-effort), en su idioma y con la marca de la academia.
       try {
         if (r.studentId) {
           const { data: sp } = await supabaseAdmin.from('profiles').select('email').eq('id', r.studentId).maybeSingle();
           const { data: mm } = await supabaseAdmin.from('mentors').select('academy_name,slug').eq('user_id', user.id).maybeSingle();
-          const name = (mm as any)?.academy_name || 'la academia';
-          const link = `${APP}/academia/${(mm as any)?.slug || ''}`;
-          if ((sp as any)?.email) await sendEmail((sp as any).email,
-            r.approved ? `¡Tu beca en ${name} fue aprobada! 🎓` : `Tu solicitud de beca en ${name}`,
-            r.approved
-              ? `¡Buenas noticias! Tu beca fue aprobada. Ya puedes entrar y aprender:\n${link}`
-              : `Gracias por tu interés. Esta vez tu solicitud no fue aprobada. Puedes seguir aprendiendo con una suscripción:\n${link}`);
+          const academia = (mm as any)?.academy_name || 'la academia';
+          const enlace = `${APP}/academia/${(mm as any)?.slug || ''}`;
+          if ((sp as any)?.email) {
+            const t = emailTpl(r.approved ? 'sch_approved' : 'sch_denied', r.lang, { academia, enlace });
+            await sendEmail((sp as any).email, t.subject, t.text, { from: fromWithName(academia), brandName: academia });
+          }
         }
       } catch {}
       return NextResponse.json({ ok: true, approved: r.approved });
