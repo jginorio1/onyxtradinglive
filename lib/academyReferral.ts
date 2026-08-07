@@ -23,11 +23,21 @@ export type AffiliateSettings = {
   hold_days: number;
   min_cents: number;
   rail: 'credit' | 'manual';
+  payout_methods: string[];   // métodos que el mentor ofrece a sus referidos
 };
+
+// Métodos de cobro válidos y el conjunto por defecto (si el mentor no configura).
+export const PAYOUT_METHODS = ['paypal', 'zelle', 'bank', 'cash', 'crypto', 'other'] as const;
+export const DEFAULT_PAYOUT_METHODS = ['paypal', 'zelle', 'crypto'];
+export function cleanPayoutMethods(v: any): string[] {
+  const list = Array.isArray(v) ? v.map((x) => String(x)).filter((x) => (PAYOUT_METHODS as readonly string[]).includes(x)) : [];
+  const uniq = Array.from(new Set(list));
+  return uniq.length ? uniq : DEFAULT_PAYOUT_METHODS;   // nunca dejar la lista vacía
+}
 
 export async function affiliateSettings(mentorId: string): Promise<AffiliateSettings> {
   const { data: m } = await supabaseAdmin.from('mentors')
-    .select('affiliate_type,affiliate_pct,affiliate_reward_cents,affiliate_currency,affiliate_recurring,affiliate_hold_days,affiliate_min_cents,affiliate_rail')
+    .select('affiliate_type,affiliate_pct,affiliate_reward_cents,affiliate_currency,affiliate_recurring,affiliate_hold_days,affiliate_min_cents,affiliate_rail,affiliate_payout_methods')
     .eq('user_id', mentorId).maybeSingle();
   const r: any = m || {};
   return {
@@ -39,6 +49,7 @@ export async function affiliateSettings(mentorId: string): Promise<AffiliateSett
     hold_days: Math.max(0, Math.min(120, Math.round(Number(r.affiliate_hold_days ?? 14)))),
     min_cents: Math.max(0, Math.round(Number(r.affiliate_min_cents) || 0)),
     rail: r.affiliate_rail === 'credit' ? 'credit' : 'manual',
+    payout_methods: cleanPayoutMethods(r.affiliate_payout_methods),
   };
 }
 
@@ -52,6 +63,7 @@ export async function saveAffiliateSettings(mentorId: string, b: any) {
     affiliate_min_cents: Math.max(0, Math.round(Number(b.min_cents) || 0)),
     affiliate_rail: b.rail === 'credit' ? 'credit' : 'manual',
   };
+  if (b.payout_methods !== undefined) patch.affiliate_payout_methods = cleanPayoutMethods(b.payout_methods);
   if (b.currency) patch.affiliate_currency = String(b.currency).toLowerCase().slice(0, 3);
   await supabaseAdmin.from('mentors').update(patch).eq('user_id', mentorId);
   return affiliateSettings(mentorId);
@@ -145,14 +157,16 @@ export async function releaseDueRewards(): Promise<{ released: number; credited:
 }
 
 // Método de cobro del referido (por academia).
-export async function setPayoutMethod(mentorId: string, referrerId: string, method: string, handle: string) {
+export async function setPayoutMethod(mentorId: string, referrerId: string, method: string, handle: string, network?: string) {
   await supabaseAdmin.from('academy_payout_methods').upsert({
     mentor_id: mentorId, referrer_id: referrerId,
-    method: String(method || '').slice(0, 20), handle: String(handle || '').slice(0, 120), updated_at: new Date().toISOString(),
+    method: String(method || '').slice(0, 20), handle: String(handle || '').slice(0, 120),
+    network: method === 'crypto' ? String(network || '').slice(0, 20) : null,
+    updated_at: new Date().toISOString(),
   }, { onConflict: 'mentor_id,referrer_id' });
 }
 async function payoutMethod(mentorId: string, referrerId: string) {
-  const { data } = await supabaseAdmin.from('academy_payout_methods').select('method,handle').eq('mentor_id', mentorId).eq('referrer_id', referrerId).maybeSingle();
+  const { data } = await supabaseAdmin.from('academy_payout_methods').select('method,handle,network').eq('mentor_id', mentorId).eq('referrer_id', referrerId).maybeSingle();
   return (data as any) || null;
 }
 
@@ -195,7 +209,7 @@ export async function mentorAffiliateData(mentorId: string) {
   const refIds = Array.from(new Set(rows.map((r) => r.referrer_id)));
   const [{ data: profs }, { data: methods }] = await Promise.all([
     refIds.length ? supabaseAdmin.from('profiles').select('id,full_name,email').in('id', refIds) : Promise.resolve({ data: [] as any }),
-    refIds.length ? supabaseAdmin.from('academy_payout_methods').select('referrer_id,method,handle').eq('mentor_id', mentorId).in('referrer_id', refIds) : Promise.resolve({ data: [] as any }),
+    refIds.length ? supabaseAdmin.from('academy_payout_methods').select('referrer_id,method,handle,network').eq('mentor_id', mentorId).in('referrer_id', refIds) : Promise.resolve({ data: [] as any }),
   ]);
   const pmap = new Map((profs || []).map((p: any) => [p.id, p]));
   const mmap = new Map((methods || []).map((m: any) => [m.referrer_id, m]));

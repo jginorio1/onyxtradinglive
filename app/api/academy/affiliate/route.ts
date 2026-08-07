@@ -33,7 +33,7 @@ export async function POST(req: Request) {
     if (b.action === 'method') {
       // El referido guarda cómo quiere que le paguen en esta academia.
       if (!b.mentor_id) return NextResponse.json({ error: 'missing_mentor' }, { status: 400 });
-      await setPayoutMethod(String(b.mentor_id), user.id, String(b.method || ''), String(b.handle || ''));
+      await setPayoutMethod(String(b.mentor_id), user.id, String(b.method || ''), String(b.handle || ''), b.network ? String(b.network) : undefined);
       return NextResponse.json({ ok: true });
     }
     // Acciones de mentor: verifica que sea mentor con academia.

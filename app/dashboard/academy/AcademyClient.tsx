@@ -3576,7 +3576,7 @@ function MentorPayments({ modules, L, onChanged }: { modules: any[]; L: (a: stri
       fetch('/api/academy/affiliate').then((r) => r.json()).catch(() => null),
     ]);
     setConn(c); setProds(p.products || []); setEarn(p.earnings || null); setSubs(p.subStats || null); setEnts(p.entitlements || []);
-    if (a && a.settings) { setAffData(a); const s = a.settings; setAffForm({ type: s.type, reward: (s.reward_cents / 100).toString(), pct: String(s.pct || 0), recurring: !!s.recurring, hold_days: String(s.hold_days), min: (s.min_cents / 100).toString(), rail: s.rail }); }
+    if (a && a.settings) { setAffData(a); const s = a.settings; setAffForm({ type: s.type, reward: (s.reward_cents / 100).toString(), pct: String(s.pct || 0), recurring: !!s.recurring, hold_days: String(s.hold_days), min: (s.min_cents / 100).toString(), rail: s.rail, methods: s.payout_methods && s.payout_methods.length ? s.payout_methods : ['paypal', 'zelle', 'crypto'] }); }
   }
   useEffect(() => { load(); }, []);
   async function connect() { setBusy('connect'); const r = await fetch('/api/academy/connect', { method: 'POST' }); const j = await r.json(); if (j.url) window.location.href = j.url; else { setBusy(''); alert(L('No se pudo conectar Stripe.', 'Could not connect Stripe.')); } }
@@ -3584,7 +3584,7 @@ function MentorPayments({ modules, L, onChanged }: { modules: any[]; L: (a: stri
   async function delProd(id: string) { if (!await confirmDelete({ title: L('¿Borrar nivel?', 'Delete tier?'), message: L('Se dejará de vender este nivel.', 'This tier will stop being sold.') })) return; await fetch('/api/academy/products', { method: 'POST', body: JSON.stringify({ action: 'delete', id }) }); load(); onChanged?.(); }
   async function saveAff() {
     if (!affForm) return; setBusy('aff');
-    await fetch('/api/academy/affiliate', { method: 'POST', body: JSON.stringify({ action: 'settings', type: affForm.type, reward_cents: Math.round(Number(affForm.reward) * 100), pct: Number(affForm.pct) || 0, recurring: !!affForm.recurring, hold_days: Number(affForm.hold_days) || 0, min_cents: Math.round(Number(affForm.min) * 100), rail: affForm.rail, currency: 'usd' }) });
+    await fetch('/api/academy/affiliate', { method: 'POST', body: JSON.stringify({ action: 'settings', type: affForm.type, reward_cents: Math.round(Number(affForm.reward) * 100), pct: Number(affForm.pct) || 0, recurring: !!affForm.recurring, hold_days: Number(affForm.hold_days) || 0, min_cents: Math.round(Number(affForm.min) * 100), rail: affForm.rail, payout_methods: affForm.methods, currency: 'usd' }) });
     setBusy(''); load();
   }
   async function doPay(referrerId: string, method: string, note: string) {
@@ -3678,6 +3678,23 @@ function MentorPayments({ modules, L, onChanged }: { modules: any[]; L: (a: stri
               <input type="checkbox" checked={!!affForm.recurring} onChange={(e) => setAffForm({ ...affForm, recurring: e.target.checked })} style={{ width: 'auto', margin: 0 }} />
               {L('Pagar también en cada renovación (no solo el primer pago)', 'Pay on every renewal too (not just the first payment)')}
             </label>
+            {affForm.rail === 'manual' && (
+              <div style={{ marginTop: 12 }}>
+                <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{L('Métodos de cobro que ofrezco', 'Payout methods I offer')}</div>
+                <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+                  {([['paypal', 'PayPal'], ['zelle', 'Zelle'], ['crypto', L('Cripto', 'Crypto')], ['bank', L('Banco', 'Bank')], ['cash', L('Efectivo', 'Cash')], ['other', L('Otro', 'Other')]] as [string, string][]).map(([k, lbl]) => {
+                    const on = (affForm.methods || []).includes(k);
+                    return (
+                      <label key={k} className="sk-chip" style={{ cursor: 'pointer', gap: 6, background: on ? 'color-mix(in srgb,var(--brand) 16%,transparent)' : 'var(--bg2)', color: on ? 'var(--brand)' : 'var(--mut)', border: '1px solid var(--line)' }}>
+                        <input type="checkbox" checked={on} onChange={(e) => { const cur = new Set(affForm.methods || []); e.target.checked ? cur.add(k) : cur.delete(k); setAffForm({ ...affForm, methods: Array.from(cur) }); }} style={{ width: 'auto', margin: 0 }} />
+                        {lbl}
+                      </label>
+                    );
+                  })}
+                </div>
+                <p className="muted" style={{ fontSize: 11, marginTop: 6 }}>{L('El referido solo verá estos al elegir cómo cobrar. Cripto le pide red y billetera.', 'The referrer only sees these when choosing how to get paid. Crypto asks for network and wallet.')}</p>
+              </div>
+            )}
             <div className="row" style={{ marginTop: 10 }}><button className="btn btn-primary" disabled={busy === 'aff'} onClick={saveAff}>{busy === 'aff' ? '…' : L('Guardar ajustes', 'Save settings')}</button></div>
             <p className="muted" style={{ fontSize: 11.5, marginTop: 8 }}>{affForm.rail === 'credit' ? L('Riel A: al vencer la espera, la recompensa se aplica sola como crédito en la cuenta del referido.', 'Rail A: after the hold, the reward is auto-applied as account credit to the referrer.') : L('Riel B: al vencer la espera queda “por cobrar”; tú pagas por fuera y pulsas “Marcar pagado”.', 'Rail B: after the hold it becomes “ready to pay”; you pay externally and click “Mark paid”.')}</p>
           </div>
@@ -3689,7 +3706,7 @@ function MentorPayments({ modules, L, onChanged }: { modules: any[]; L: (a: stri
                 <div key={a.user_id} className="row between" style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 8, padding: '9px 12px', gap: 8, flexWrap: 'wrap' }}>
                   <div style={{ minWidth: 140 }}>
                     <b style={{ fontSize: 13.5 }}>{a.name}</b>
-                    <div className="muted" style={{ fontSize: 11.5 }}>{a.method?.method ? `${a.method.method}${a.method.handle ? ' · ' + a.method.handle : ''}` : L('sin método de cobro', 'no payout method')}</div>
+                    <div className="muted" style={{ fontSize: 11.5 }}>{a.method?.method ? `${a.method.method}${a.method.network ? ' (' + a.method.network.toUpperCase() + ')' : ''}${a.method.handle ? ' · ' + a.method.handle : ''}` : L('sin método de cobro', 'no payout method')}</div>
                   </div>
                   <div className="row" style={{ gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
                     <span className="muted" style={{ fontSize: 12 }}>{L('Por cobrar', 'Ready')} <b style={{ color: 'var(--gold)' }}>{money(a.availableCents)}</b> · {L('espera', 'hold')} {money(a.pendingCents)} · {L('pagado', 'paid')} {money(a.paidCents)}</span>
@@ -3727,7 +3744,10 @@ function MentorPayments({ modules, L, onChanged }: { modules: any[]; L: (a: stri
             <p className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>{L(`Vas a registrar ${money(payTarget.availableCents)} pagados a ${payTarget.name}. Esto no mueve dinero: confirma que ya le pagaste por fuera.`, `You'll record ${money(payTarget.availableCents)} paid to ${payTarget.name}. This moves no money: confirm you already paid them externally.`)}</p>
             <span className="muted" style={{ fontSize: 12 }}>{L('Método', 'Method')}</span><br />
             <select value={payTarget.method} onChange={(e) => setPayTarget({ ...payTarget, method: e.target.value })} style={{ margin: '4px 0 8px', width: '100%' }}>
-              <option value="manual">{L('Manual', 'Manual')}</option><option value="paypal">PayPal</option><option value="zelle">Zelle</option><option value="bank">{L('Banco', 'Bank')}</option><option value="cash">{L('Efectivo', 'Cash')}</option><option value="other">{L('Otro', 'Other')}</option>
+              <option value="manual">{L('Manual', 'Manual')}</option>
+              {(affData?.settings?.payout_methods && affData.settings.payout_methods.length ? affData.settings.payout_methods : ['paypal', 'zelle', 'crypto']).map((m: string) => (
+                <option key={m} value={m}>{({ paypal: 'PayPal', zelle: 'Zelle', bank: L('Banco', 'Bank'), cash: L('Efectivo', 'Cash'), crypto: L('Cripto', 'Crypto'), other: L('Otro', 'Other') } as any)[m] || m}</option>
+              ))}
             </select>
             <input placeholder={L('Nota / referencia (opcional)', 'Note / reference (optional)')} value={payTarget.note} onChange={(e) => setPayTarget({ ...payTarget, note: e.target.value })} style={{ marginBottom: 12, width: '100%' }} />
             <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{L('Escribe', 'Type')} <code style={{ fontWeight: 700 }}>{L('CONFIRMAR', 'CONFIRM')}</code> {L('para continuar', 'to continue')}</div>
@@ -3763,9 +3783,13 @@ function ReferralEarnings({ active, L }: any) {
   const r = active?.referral;
   const [open, setOpen] = useState(false);
   const [detail, setDetail] = useState<any>(null);
-  const [mf, setMf] = useState<any>({ method: 'paypal', handle: '' });
+  const [mf, setMf] = useState<any>({ method: '', handle: '', network: 'usdt_trc20' });
   const [saved, setSaved] = useState(false);
   const s = r?.settings;
+  // Solo los métodos que el mentor ofrece; nunca vacío.
+  const offered: string[] = (s?.payout_methods && s.payout_methods.length ? s.payout_methods : ['paypal', 'zelle', 'crypto']);
+  const methodLabel = (m: string) => ({ paypal: 'PayPal', zelle: 'Zelle', bank: L('Banco', 'Bank'), cash: L('Efectivo', 'Cash'), crypto: L('Cripto', 'Crypto'), other: L('Otro', 'Other') } as any)[m] || m;
+  const NETWORKS = [['usdt_trc20', 'USDT · TRC20'], ['usdt_erc20', 'USDT · ERC20'], ['usdt_bsc', 'USDT · BSC (BEP20)'], ['btc', 'BTC'], ['eth', 'ETH'], ['other', L('Otra', 'Other')]];
   const hasReward = !!s && (s.reward_cents > 0 || (s.type === 'pct' && s.pct > 0));
   const money = (c: number) => '$' + Math.round((c || 0) / 100).toLocaleString();
   const rewardLabel = s ? (s.type === 'pct' ? `${s.pct}%` : money(s.reward_cents)) : '';
@@ -3773,11 +3797,16 @@ function ReferralEarnings({ active, L }: any) {
 
   async function loadDetail() {
     const d = await fetch('/api/academy/affiliate?m=' + active.mentor_id).then((x) => x.json()).catch(() => null);
-    if (d) { setDetail(d); if (d.method) setMf({ method: d.method.method || 'paypal', handle: d.method.handle || '' }); }
+    if (d) {
+      setDetail(d);
+      const first = (d.settings?.payout_methods && d.settings.payout_methods.length ? d.settings.payout_methods[0] : 'paypal');
+      if (d.method) setMf({ method: d.method.method || first, handle: d.method.handle || '', network: d.method.network || 'usdt_trc20' });
+      else setMf((m: any) => ({ ...m, method: m.method || first }));
+    }
   }
   async function openModal() { setOpen(true); setSaved(false); await loadDetail(); }
   async function saveMethod() {
-    await fetch('/api/academy/affiliate', { method: 'POST', body: JSON.stringify({ action: 'method', mentor_id: active.mentor_id, method: mf.method, handle: mf.handle }) });
+    await fetch('/api/academy/affiliate', { method: 'POST', body: JSON.stringify({ action: 'method', mentor_id: active.mentor_id, method: mf.method, handle: mf.handle, network: mf.method === 'crypto' ? mf.network : undefined }) });
     setSaved(true); loadDetail();
   }
   if (!hasReward) return null;
@@ -3815,13 +3844,23 @@ function ReferralEarnings({ active, L }: any) {
               <div className="row between" style={{ marginBottom: 6 }}><b style={{ fontSize: 13 }}>{L('Cómo me pagan', 'How I get paid')}</b>
                 <span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--brand) 14%,transparent)', color: 'var(--brand)' }}>{s.rail === 'credit' ? L('crédito automático', 'auto credit') : L('pago manual', 'manual')}</span></div>
               {s.rail === 'credit'
-                ? <p className="muted" style={{ fontSize: 12, marginBottom: 8 }}>{L('Tu recompensa se aplica sola como crédito en tu cuenta al pasar la ventana de espera.', 'Your reward auto-applies as account credit after the hold window.')}</p>
-                : <p className="muted" style={{ fontSize: 12, marginBottom: 8 }}>{L('Tu mentor te paga por fuera. Dile aquí a dónde enviarte el dinero.', 'Your mentor pays you externally. Tell them where to send the money.')}</p>}
-              <div className="row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-                <select value={mf.method} onChange={(e) => { setMf({ ...mf, method: e.target.value }); setSaved(false); }} style={{ width: 120 }}><option value="paypal">PayPal</option><option value="zelle">Zelle</option><option value="bank">{L('Banco', 'Bank')}</option><option value="cash">{L('Efectivo', 'Cash')}</option><option value="other">{L('Otro', 'Other')}</option></select>
-                <input placeholder={L('Correo / número / cuenta', 'Email / number / account')} value={mf.handle} onChange={(e) => { setMf({ ...mf, handle: e.target.value }); setSaved(false); }} style={{ flex: '1 1 150px' }} />
-                <button className="btn btn-primary" onClick={saveMethod}>{saved ? '✓' : L('Guardar', 'Save')}</button>
-              </div>
+                ? <p className="muted" style={{ fontSize: 12, marginBottom: 0 }}>{L('Tu recompensa se aplica sola como crédito en tu cuenta al pasar la ventana de espera. No hace falta elegir método de cobro.', 'Your reward auto-applies as account credit after the hold window. No payout method needed.')}</p>
+                : <>
+                  <p className="muted" style={{ fontSize: 12, marginBottom: 8 }}>{L('Tu mentor te paga por fuera. Dile aquí a dónde enviarte el dinero.', 'Your mentor pays you externally. Tell them where to send the money.')}</p>
+                  <div className="row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                    <select value={mf.method} onChange={(e) => { setMf({ ...mf, method: e.target.value }); setSaved(false); }} style={{ width: 120 }}>
+                      {offered.map((m) => <option key={m} value={m}>{methodLabel(m)}</option>)}
+                    </select>
+                    {mf.method === 'crypto' && (
+                      <select value={mf.network} onChange={(e) => { setMf({ ...mf, network: e.target.value }); setSaved(false); }} style={{ width: 150 }}>
+                        {NETWORKS.map(([v, lbl]) => <option key={v} value={v}>{lbl}</option>)}
+                      </select>
+                    )}
+                    <input placeholder={mf.method === 'crypto' ? L('Dirección de billetera', 'Wallet address') : L('Correo / número / cuenta', 'Email / number / account')} value={mf.handle} onChange={(e) => { setMf({ ...mf, handle: e.target.value }); setSaved(false); }} style={{ flex: '1 1 150px' }} />
+                    <button className="btn btn-primary" onClick={saveMethod}>{saved ? '✓' : L('Guardar', 'Save')}</button>
+                  </div>
+                  {mf.method === 'crypto' && <p className="muted" style={{ fontSize: 11, marginTop: 6 }}>{L('Revisa bien la red: enviar a la red equivocada pierde los fondos.', 'Double-check the network: sending on the wrong one loses funds.')}</p>}
+                </>}
             </div>
 
             <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{L('Historial', 'History')}</div>
@@ -3870,11 +3909,6 @@ function TierForm({ form, setForm, modules, busy, onSave, onCancel, L }: any) {
           <label className="row" style={{ gap: 8, fontSize: 13, marginBottom: 6 }}><input type="radio" checked={grantsAll} onChange={() => set('grants', 'all')} style={{ width: 'auto', margin: 0 }} /> {L('Todas las aulas', 'All classrooms')}</label>
           <label className="row" style={{ gap: 8, fontSize: 13 }}><input type="radio" checked={!grantsAll} onChange={() => set('grants', [])} style={{ width: 'auto', margin: 0 }} /> {L('Aulas concretas', 'Specific classrooms')}</label>
           {!grantsAll && <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8, paddingLeft: 22 }}>{(modules || []).map((m: any) => <label key={m.id} className="row" style={{ gap: 8, fontSize: 13 }}><input type="checkbox" checked={grantIds.includes(m.id)} onChange={() => toggleMod(m.id)} style={{ width: 'auto', margin: 0 }} /> {m.title}</label>)}{(modules || []).length === 0 && <span className="muted" style={{ fontSize: 12 }}>{L('Primero crea aulas.', 'First create classrooms.')}</span>}</div>}
-        </div>
-        <div>
-          <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{L('Extras incluidos (opcional)', 'Included perks (optional)')}</div>
-          <label className="row" style={{ gap: 8, fontSize: 13 }}><input type="checkbox" checked={!!form.perks?.guardian} onChange={(e) => set('perks', { ...(form.perks || {}), guardian: e.target.checked })} style={{ width: 'auto', margin: 0 }} /> Onyx Guardian</label>
-          <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{L('Se muestra al alumno como incluido; tú das el acceso desde la lista de abajo (por seguridad no se activa solo).', 'Shown to the student as included; you grant access from the list below (not auto-enabled, for safety).')}</div>
         </div>
         </>)}
         <label className="row" style={{ gap: 8, fontSize: 13 }}><input type="checkbox" checked={form.active !== false} onChange={(e) => set('active', e.target.checked)} style={{ width: 'auto', margin: 0 }} /> {L('Activo (visible para alumnos)', 'Active (visible to students)')}</label>

@@ -1241,6 +1241,8 @@ alter table public.mentors add column if not exists affiliate_recurring boolean 
 alter table public.mentors add column if not exists affiliate_hold_days int     not null default 14;       -- ventana anti-reembolso
 alter table public.mentors add column if not exists affiliate_min_cents int     not null default 0;        -- mínimo para pagar
 alter table public.mentors add column if not exists affiliate_rail      text    not null default 'manual'; -- 'credit' | 'manual'
+-- Métodos de cobro que el mentor ofrece a sus referidos (el referido solo ve estos).
+alter table public.mentors add column if not exists affiliate_payout_methods jsonb not null default '["paypal","zelle","crypto"]'::jsonb;
 -- (ya existían: affiliate_reward_cents, affiliate_currency)
 
 -- ---- Libro de recompensas por evento (una por factura/pago) ----
@@ -1287,8 +1289,9 @@ create index if not exists academy_payout_referrer on public.academy_referral_pa
 create table if not exists public.academy_payout_methods (
   mentor_id   uuid not null,
   referrer_id uuid not null,
-  method      text,                              -- paypal | zelle | bank | cash | other
-  handle      text,                              -- correo / número / cuenta
+  method      text,                              -- paypal | zelle | bank | cash | crypto | other
+  handle      text,                              -- correo / número / cuenta / billetera
+  network     text,                              -- red de la billetera si method = crypto
   updated_at  timestamptz not null default now(),
   primary key (mentor_id, referrer_id)
 );
