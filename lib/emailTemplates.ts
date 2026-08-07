@@ -34,10 +34,39 @@ function fill(s: string, vars: Record<string, string | number>): string {
   return String(s).replace(/\{(\w+)\}/g, (_, k) => (vars[k] != null ? String(vars[k]) : ''));
 }
 
-// Devuelve { subject, text } listos para sendEmail, en el idioma pedido.
+// Devuelve { subject, text } listos para sendEmail, en el idioma pedido (defaults).
 export function emailTpl(id: string, lang: string | undefined, vars: Record<string, string | number> = {}): { subject: string; text: string } {
   const e = TEMPLATES[id];
   if (!e) return { subject: '', text: '' };
   const t = lang === 'en' ? e.en : e.es;
   return { subject: fill(t.subject, vars), text: fill(t.body, vars) };
+}
+
+// Metadatos para el editor del dueño: id + variables disponibles por plantilla.
+export const TEMPLATE_META: { id: string; label: string; vars: string[] }[] = [
+  { id: 'sch_apply_mentor', label: 'Beca · nueva solicitud (al mentor)', vars: ['academia', 'enlace'] },
+  { id: 'sch_approved', label: 'Beca · aprobada (al alumno)', vars: ['academia', 'enlace'] },
+  { id: 'sch_denied', label: 'Beca · rechazada (al alumno)', vars: ['academia', 'enlace'] },
+  { id: 'sch_reminder', label: 'Beca · vence pronto (al alumno)', vars: ['academia', 'enlace', 'dias'] },
+  { id: 'sch_expired', label: 'Beca · finalizó (al alumno)', vars: ['academia', 'enlace'] },
+];
+
+export function defaultTemplates(): Record<string, Entry> { return TEMPLATES; }
+
+// Igual que emailTpl pero aplica los overrides que el dueño guardó en Admin.
+// overrides: { [id]: { es?:{subject?,body?}, en?:{subject?,body?} } }
+export function emailTplWith(overrides: any, id: string, lang: string | undefined, vars: Record<string, string | number> = {}): { subject: string; text: string } {
+  const e = TEMPLATES[id];
+  if (!e) return { subject: '', text: '' };
+  const l = lang === 'en' ? 'en' : 'es';
+  const base = (e as any)[l] as Tpl;
+  const o = overrides?.[id]?.[l] || {};
+  return { subject: fill(o.subject || base.subject, vars), text: fill(o.body || base.body, vars) };
+}
+
+// Carga los overrides desde ajustes y renderiza (para usar en las rutas/cron).
+export async function emailTplLive(id: string, lang: string | undefined, vars: Record<string, string | number> = {}): Promise<{ subject: string; text: string }> {
+  let ov: any = {};
+  try { const { getSetting } = await import('@/lib/settings'); ov = await getSetting('email_tpl_overrides', {} as any); } catch {}
+  return emailTplWith(ov, id, lang, vars);
 }

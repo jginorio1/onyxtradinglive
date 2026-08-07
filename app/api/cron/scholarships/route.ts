@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { expireDue, dueReminders } from '@/lib/academyScholarship';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendEmail, fromWithName } from '@/lib/mail';
-import { emailTpl } from '@/lib/emailTemplates';
+import { emailTplLive } from '@/lib/emailTemplates';
 import { logError } from '@/lib/errlog';
 
 export const dynamic = 'force-dynamic';
@@ -27,7 +27,7 @@ export async function GET(req: Request) {
         const { data: m } = await supabaseAdmin.from('mentors').select('academy_name,slug').eq('user_id', s.mentor_id).maybeSingle();
         const academia = (m as any)?.academy_name || 'la academia';
         const enlace = `${APP}/academia/${(m as any)?.slug || ''}`;
-        const t = emailTpl(tplId, s.lang, { academia, enlace, ...extra });
+        const t = await emailTplLive(tplId, s.lang, { academia, enlace, ...extra });
         await sendEmail(email, t.subject, t.text, { from: fromWithName(academia), brandName: academia });
       } catch {}
     };

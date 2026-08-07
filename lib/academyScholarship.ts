@@ -89,6 +89,18 @@ export async function createScholarship(mentorId: string, createdBy: string, b: 
   const product_id = b.product_id ? String(b.product_id) : null;
 
   const lang = b.lang === 'en' ? 'en' : 'es';
+
+  // Cupo/presupuesto: si el mentor puso un tope, no permitir más becas completas activas.
+  if (kind === 'direct' && coverage === 'full') {
+    const { data: mRow } = await supabaseAdmin.from('mentors').select('scholarship_cap').eq('user_id', mentorId).maybeSingle();
+    const cap = Number((mRow as any)?.scholarship_cap) || 0;
+    if (cap > 0) {
+      const { data: act } = await supabaseAdmin.from(TB).select('id,ends_at').eq('mentor_id', mentorId).eq('kind', 'direct').eq('coverage', 'full').eq('status', 'active');
+      const live = ((act || []) as any[]).filter(isLive).length;
+      if (live >= cap) return { ok: false, error: `Alcanzaste tu tope de ${cap} beca(s) activa(s). Sube el cupo o revoca alguna.` };
+    }
+  }
+
   const row: any = { mentor_id: mentorId, created_by: createdBy, kind, coverage, percent, scope, modules, product_id, reason, ends_at, status: 'active', lang };
 
   if (kind === 'direct') {
@@ -218,6 +230,45 @@ export async function dueReminders(days = 3): Promise<Scholarship[]> {
   const list = (data || []) as any[];
   if (list.length) await supabaseAdmin.from(TB).update({ reminder_sent: true }).in('id', list.map((d) => d.id));
   return list as Scholarship[];
+}
+
+// Reporte de conversión: de los becados cuya beca ya venció, ¿cuántos siguen
+// pagando ahora (compra o membresía activa)? La métrica clave del programa.
+export async function conversionReport(mentorId: string): Promise<{ expired: number; converted: number; rate: number }> {
+  const { data: exp } = await supabaseAdmin.from(TB).select('student_id').eq('mentor_id', mentorId).eq('status', 'expired').eq('kind', 'direct');
+  const ids = Array.from(new Set(((exp || []) as any[]).map((r) => r.student_id).filter(Boolean))) as string[];
+  if (!ids.length) return { expired: 0, converted: 0, rate: 0 };
+  const [buys, mems] = await Promise.all([
+    supabaseAdmin.from('academy_purchases').select('student_id').eq('mentor_id', mentorId).eq('status', 'active').in('student_id', ids),
+    supabaseAdmin.from('academy_memberships').select('student_id').eq('mentor_id', mentorId).eq('status', 'active').in('student_id', ids),
+  ]);
+  const conv = new Set<string>();
+  for (const r of (buys.data || []) as any[]) conv.add(r.student_id);
+  for (const r of (mems.data || []) as any[]) conv.add(r.student_id);
+  const converted = ids.filter((id) => conv.has(id)).length;
+  return { expired: ids.length, converted, rate: Math.round((converted / ids.length) * 100) };
+}
+
+// Cupo del mentor (tope de becas completas activas; 0 = sin tope).
+export async function getCap(mentorId: string): Promise<number> {
+  const { data } = await supabaseAdmin.from('mentors').select('scholarship_cap').eq('user_id', mentorId).maybeSingle();
+  return Number((data as any)?.scholarship_cap) || 0;
+}
+export async function setCap(mentorId: string, cap: number) {
+  await supabaseAdmin.from('mentors').update({ scholarship_cap: Math.max(0, Math.round(cap) || 0) }).eq('user_id', mentorId);
+}
+
+// Sorteo: elige al azar `count` solicitantes pendientes y les concede la beca.
+// Devuelve los ganadores (para avisarles por correo desde la ruta).
+export async function raffle(mentorId: string, count: number, days: number): Promise<{ ok: boolean; winners: { studentId: string; lang: string }[] }> {
+  const pend = await listApps(mentorId, 'pending');
+  const shuffled = [...pend].sort(() => Math.random() - 0.5).slice(0, Math.max(1, Math.min(pend.length, Math.round(count) || 1)));
+  const winners: { studentId: string; lang: string }[] = [];
+  for (const a of shuffled) {
+    const r = await decideApp(mentorId, a.id, 'approve', { days });
+    if (r.ok && r.approved && r.studentId) winners.push({ studentId: r.studentId, lang: r.lang || 'es' });
+  }
+  return { ok: true, winners };
 }
 
 // Vista global de Onyx (solo lectura): todas las becas + resumen por academia.

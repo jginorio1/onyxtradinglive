@@ -3,7 +3,7 @@ import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { applyScholarship } from '@/lib/academyScholarship';
 import { sendEmail } from '@/lib/mail';
-import { emailTpl } from '@/lib/emailTemplates';
+import { emailTplLive } from '@/lib/emailTemplates';
 import { serverLang } from '@/lib/locale';
 
 export const dynamic = 'force-dynamic';
@@ -37,7 +37,7 @@ export async function POST(req: Request) {
     const { data: m } = await supabaseAdmin.from('mentors').select('academy_name').eq('user_id', mentorId).maybeSingle();
     const academia = (m as any)?.academy_name || 'tu academia';
     if ((mp as any)?.email) {
-      const t = emailTpl('sch_apply_mentor', 'es', { academia, enlace: `${APP}/dashboard/academy` });
+      const t = await emailTplLive('sch_apply_mentor', 'es', { academia, enlace: `${APP}/dashboard/academy` });
       await sendEmail((mp as any).email, t.subject, t.text);
     }
   } catch {}

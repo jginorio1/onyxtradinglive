@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getMentor } from '@/lib/academy';
-import { mentorScholarships, createScholarship, revokeScholarship, mentorReport, listApps, decideApp } from '@/lib/academyScholarship';
+import { mentorScholarships, createScholarship, revokeScholarship, mentorReport, listApps, decideApp, conversionReport, getCap, setCap, raffle } from '@/lib/academyScholarship';
 import { sendEmail, fromWithName } from '@/lib/mail';
-import { emailTpl } from '@/lib/emailTemplates';
+import { emailTplLive } from '@/lib/emailTemplates';
 
 const APP = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.onyxtradinglive.com').replace(/\/$/, '');
 
@@ -24,12 +24,14 @@ async function me() {
 export async function GET() {
   const { user, caps } = await me();
   if (!user || !caps?.academy) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
-  const [scholarships, report, mods, prods, apps] = await Promise.all([
+  const [scholarships, report, mods, prods, apps, conv, cap] = await Promise.all([
     mentorScholarships(user.id),
     mentorReport(user.id),
     supabaseAdmin.from('academy_modules').select('id,title').eq('mentor_id', user.id).order('position'),
     supabaseAdmin.from('academy_products').select('id,name,grants').eq('mentor_id', user.id).eq('active', true),
     listApps(user.id, 'pending'),
+    conversionReport(user.id),
+    getCap(user.id),
   ]);
   // Adjunta el correo de becados y solicitantes (para mostrarlo en la lista).
   const sids = Array.from(new Set([...scholarships.map((s: any) => s.student_id), ...apps.map((a: any) => a.student_id)].filter(Boolean)));
@@ -40,7 +42,7 @@ export async function GET() {
   }
   const enriched = scholarships.map((s: any) => ({ ...s, email: s.student_id ? emailById[s.student_id] || null : null }));
   const appsE = apps.map((a: any) => ({ ...a, email: emailById[a.student_id] || null }));
-  return NextResponse.json({ scholarships: enriched, report, modules: mods.data || [], products: prods.data || [], apps: appsE });
+  return NextResponse.json({ scholarships: enriched, report, modules: mods.data || [], products: prods.data || [], apps: appsE, conversion: conv, cap });
 }
 
 // POST · crear o revocar. { action:'create'|'revoke', ... }
@@ -52,26 +54,38 @@ export async function POST(req: Request) {
   if ((mentor as any).scholarships_enabled === false) return NextResponse.json({ error: 'Las becas están desactivadas para esta academia.' }, { status: 403 });
 
   const b = await req.json().catch(() => ({} as any));
+  // Helper: correo al alumno con plantilla + marca de la academia.
+  async function mailStudent(studentId: string, tplId: string, lang: string, mm: any) {
+    try {
+      const { data: sp } = await supabaseAdmin.from('profiles').select('email').eq('id', studentId).maybeSingle();
+      if (!(sp as any)?.email) return;
+      const academia = mm?.academy_name || 'la academia';
+      const enlace = `${APP}/academia/${mm?.slug || ''}`;
+      const t = await emailTplLive(tplId, lang, { academia, enlace });
+      await sendEmail((sp as any).email, t.subject, t.text, { from: fromWithName(academia), brandName: academia });
+    } catch {}
+  }
   try {
     if (b.action === 'revoke' && b.id) { await revokeScholarship(user.id, String(b.id)); return NextResponse.json({ ok: true }); }
+    if (b.action === 'setcap') { await setCap(user.id, Number(b.cap) || 0); return NextResponse.json({ ok: true }); }
+
+    // Sorteo: elige al azar N solicitantes pendientes y les concede la beca.
+    if (b.action === 'raffle') {
+      const r = await raffle(user.id, Number(b.count) || 1, Number(b.days) || 90);
+      const { data: mm } = await supabaseAdmin.from('mentors').select('academy_name,slug').eq('user_id', user.id).maybeSingle();
+      for (const w of r.winners) await mailStudent(w.studentId, 'sch_approved', w.lang, mm);
+      return NextResponse.json({ ok: true, winners: r.winners.length });
+    }
 
     // Resolver una solicitud (aprobar crea la beca; rechazar la cierra).
     if ((b.action === 'approve' || b.action === 'deny') && b.id) {
       const r = await decideApp(user.id, String(b.id), b.action === 'approve' ? 'approve' : 'deny', b);
       if (!r.ok) return NextResponse.json({ error: r.error || 'Error' }, { status: 400 });
       // Aviso al alumno (best-effort), en su idioma y con la marca de la academia.
-      try {
-        if (r.studentId) {
-          const { data: sp } = await supabaseAdmin.from('profiles').select('email').eq('id', r.studentId).maybeSingle();
-          const { data: mm } = await supabaseAdmin.from('mentors').select('academy_name,slug').eq('user_id', user.id).maybeSingle();
-          const academia = (mm as any)?.academy_name || 'la academia';
-          const enlace = `${APP}/academia/${(mm as any)?.slug || ''}`;
-          if ((sp as any)?.email) {
-            const t = emailTpl(r.approved ? 'sch_approved' : 'sch_denied', r.lang, { academia, enlace });
-            await sendEmail((sp as any).email, t.subject, t.text, { from: fromWithName(academia), brandName: academia });
-          }
-        }
-      } catch {}
+      if (r.studentId) {
+        const { data: mm } = await supabaseAdmin.from('mentors').select('academy_name,slug').eq('user_id', user.id).maybeSingle();
+        await mailStudent(r.studentId, r.approved ? 'sch_approved' : 'sch_denied', r.lang || 'es', mm);
+      }
       return NextResponse.json({ ok: true, approved: r.approved });
     }
 

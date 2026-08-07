@@ -33,6 +33,7 @@ export default function ScholarshipPanel({ L }: { L: L }) {
   const [lifetime, setLifetime] = useState(false);
   const [reason, setReason] = useState('low_income');
   const [appDays, setAppDays] = useState(90);   // días al aprobar una solicitud
+  const [capInput, setCapInput] = useState<number | null>(null);   // cupo (null = usa el del servidor)
 
   async function load() { try { const r = await fetch('/api/academy/scholarships'); const j = await r.json(); if (!j.error) setD(j); } catch {} }
   useEffect(() => { load(); }, []);
@@ -53,6 +54,18 @@ export default function ScholarshipPanel({ L }: { L: L }) {
     await load();
   }
   const copy = (t: string) => { try { navigator.clipboard.writeText(t); setMsg(L('Código copiado ✓', 'Code copied ✓')); } catch {} };
+  async function saveCap() {
+    const cap = capInput ?? d.cap ?? 0;
+    await fetch('/api/academy/scholarships', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'setcap', cap }) });
+    setMsg(L('Cupo guardado ✓', 'Cap saved ✓')); await load();
+  }
+  async function doRaffle() {
+    const n = Number(prompt(L('¿Cuántas becas sortear entre las solicitudes pendientes?', 'How many scholarships to raffle among pending requests?'), '1')) || 0;
+    if (n < 1) return;
+    if (!confirm(L(`Se sortearán ${n} beca(s) al azar entre los solicitantes y se les concederá (${appDays} días). ¿Continuar?`, `${n} scholarship(s) will be raffled among applicants and granted (${appDays} days). Continue?`))) return;
+    await fetch('/api/academy/scholarships', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'raffle', count: n, days: appDays }) });
+    await load();
+  }
   async function decide(id: string, action: 'approve' | 'deny') {
     const body: any = { action, id, days: appDays };
     if (action === 'deny') { const note = prompt(L('Motivo (opcional) para el alumno:', 'Reason (optional) for the student:')) || ''; body.note = note; }
@@ -77,6 +90,15 @@ export default function ScholarshipPanel({ L }: { L: L }) {
         <span className="pill">{d.report?.codeCount ?? 0} {L('códigos', 'codes')}</span>
         <span className="pill">{d.report?.expiredCount ?? 0} {L('vencidas', 'expired')}</span>
         {(d.report?.givenCents ?? 0) > 0 && <span className="pill" style={{ color: 'var(--soft-brand)' }}>{L('valor regalado', 'value given')}: {money(d.report.givenCents)}</span>}
+        {(d.conversion?.expired ?? 0) > 0 && <span className="pill" style={{ color: 'var(--green)' }}>{L('conversión', 'conversion')}: {d.conversion.converted}/{d.conversion.expired} ({d.conversion.rate}%)</span>}
+      </div>
+
+      {/* Cupo / presupuesto */}
+      <div className="card" style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 13 }}>{L('Tope de becas completas activas', 'Cap of active full scholarships')}</span>
+        <input type="number" min={0} value={capInput ?? d.cap ?? 0} onChange={(e) => setCapInput(Number(e.target.value))} style={{ ...inp, width: 90 }} />
+        <span className="muted" style={{ fontSize: 12 }}>{L('(0 = sin tope)', '(0 = no cap)')}</span>
+        <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={saveCap}>{L('Guardar cupo', 'Save cap')}</button>
       </div>
 
       {/* Solicitudes pendientes */}
@@ -84,9 +106,12 @@ export default function ScholarshipPanel({ L }: { L: L }) {
         <div className="card" style={{ marginBottom: 14, border: '1px solid var(--amber)' }}>
           <div className="row between" style={{ alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
             <div style={{ fontSize: 12.5, fontWeight: 700 }}>📝 {L('Solicitudes de beca', 'Scholarship requests')} · {(d.apps || []).length}</div>
-            <label style={{ fontSize: 12, color: 'var(--mut)', display: 'inline-flex', gap: 6, alignItems: 'center' }}>{L('Al aprobar, dar', 'On approve, grant')}
-              <input type="number" min={1} value={appDays} onChange={(e) => setAppDays(Number(e.target.value))} style={{ ...inp, width: 70, padding: '5px 7px' }} /> {L('días', 'days')}
-            </label>
+            <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+              <label style={{ fontSize: 12, color: 'var(--mut)', display: 'inline-flex', gap: 6, alignItems: 'center' }}>{L('Al aprobar, dar', 'On approve, grant')}
+                <input type="number" min={1} value={appDays} onChange={(e) => setAppDays(Number(e.target.value))} style={{ ...inp, width: 70, padding: '5px 7px' }} /> {L('días', 'days')}
+              </label>
+              <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={doRaffle}>🎲 {L('Sortear', 'Raffle')}</button>
+            </div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {(d.apps || []).map((a: any) => (

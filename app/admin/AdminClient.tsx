@@ -32,6 +32,7 @@ import OnyxIcon from '@/app/components/OnyxIcon';
 import LandingBuilder from './LandingBuilder';
 import EnvSwitch from './EnvSwitch';
 import ChatWidgetEditor from './ChatWidgetEditor';
+import EmailTemplatesControl from './EmailTemplatesControl';
 import OnlineNowControl from './OnlineNowControl';
 import AdminLeadAlert from './AdminLeadAlert';
 import TeamChat from './TeamChat';
@@ -846,6 +847,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                     <EnvSwitch />
                     <PromoControl />
                     <OnlineNowControl />
+                    <EmailTemplatesControl />
                     <AlertsControl />
                     <BetaControl />
                   </>
