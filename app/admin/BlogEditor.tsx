@@ -117,6 +117,17 @@ export default function BlogEditor() {
   }
   useEffect(() => { load(); }, []);
 
+  // ¿Le falta contenido en algún idioma? Devuelve la lista de lo que falta.
+  // Un artículo publicado sin ES (o sin EN) hace que esa URL caiga al otro idioma.
+  const missingLangs = (p: any) => {
+    const m: string[] = [];
+    if (!(p.title_es || '').trim()) m.push(es ? 'Título ES' : 'Title ES');
+    if (!(p.title_en || '').trim()) m.push(es ? 'Título EN' : 'Title EN');
+    if (!(p.body_es || '').trim()) m.push(es ? 'Cuerpo ES' : 'Body ES');
+    if (!(p.body_en || '').trim()) m.push(es ? 'Cuerpo EN' : 'Body EN');
+    return m;
+  };
+
   // Publicar un programado ahora mismo (manual, adelantándose a su hora).
   async function publishNow(p: any) {
     if (!confirm(es ? '¿Publicar ahora este artículo?' : 'Publish this article now?')) return;
@@ -165,6 +176,14 @@ export default function BlogEditor() {
 
   async function save() {
     if (!f.title_es && !f.title_en) { toast(es ? 'Falta el título.' : 'Missing title.'); return; }
+    // Avisar si se va a publicar/programar sin contenido en algún idioma.
+    const gaps = missingLangs(f);
+    if (gaps.length && f.status !== 'draft') {
+      const ok = confirm(es
+        ? `Le falta contenido en un idioma: ${gaps.join(', ')}.\nSi publicas así, esa URL mostrará el otro idioma. ¿Publicar de todos modos?`
+        : `Missing content in a language: ${gaps.join(', ')}.\nIf you publish like this, that URL will show the other language. Publish anyway?`);
+      if (!ok) return;
+    }
     const body: any = { ...f };
     if (f.status === 'scheduled') {
       if (!f.pubDate) { toast(es ? 'Elige la fecha de publicación.' : 'Pick a publish date.'); return; }
@@ -222,6 +241,7 @@ export default function BlogEditor() {
           onClick={(e) => { e.stopPropagation(); edit(p); }}
           title={p.title_es || p.title_en}
           style={{ fontSize: 10.5, lineHeight: 1.3, background: chipCol[p.status][0], color: chipCol[p.status][1], borderRadius: 5, padding: '2px 5px', marginBottom: 3, display: 'flex', alignItems: 'center', gap: 4, cursor: drag ? 'grab' : 'pointer', border: '1px solid color-mix(in srgb,' + chipCol[p.status][1] + ' 30%,transparent)' }}>
+          {missingLangs(p).length > 0 && <span style={{ flex: 'none', color: 'var(--amber)' }} title={(es ? 'Falta: ' : 'Missing: ') + missingLangs(p).join(', ')}>⚠</span>}
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: '1 1 auto', minWidth: 0 }}>{timeLbl}{p.title_es || p.title_en}</span>
           {sched && <span style={{ flex: 'none', fontSize: 9.5 }}><Countdown iso={p.publish_at} es={es} compact /></span>}
           {p.status === 'published' && p.slug && (
@@ -325,6 +345,7 @@ export default function BlogEditor() {
                 <div style={{ minWidth: 0 }}>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                     <b>{p.title_es || p.title_en}</b> {statusChip(p.status)}
+                    {missingLangs(p).length > 0 && <span className="sk-chip" style={{ color: 'var(--amber)', background: 'color-mix(in srgb,var(--amber) 12%,transparent)', border: '1px solid color-mix(in srgb,var(--amber) 45%,transparent)', fontWeight: 700 }} title={missingLangs(p).join(', ')}>⚠ {es ? 'Falta ' : 'Missing ' }{missingLangs(p).join(', ')}</span>}
                     {p.status === 'scheduled' && p.publish_at && (
                       <span className="sk-chip" style={{ color: 'var(--amber)', background: 'color-mix(in srgb,var(--amber) 12%,transparent)', border: '1px solid color-mix(in srgb,var(--amber) 40%,transparent)', fontWeight: 700 }}><Countdown iso={p.publish_at} es={es} /></span>
                     )}
@@ -352,6 +373,14 @@ export default function BlogEditor() {
         <h3>{f.id ? (es ? 'Editar artículo' : 'Edit article') : (es ? 'Nuevo artículo' : 'New article')}</h3>
         <button className="btn btn-ghost" onClick={() => setF(null)}>← {es ? 'Volver' : 'Back'}</button>
       </div>
+
+      {/* Aviso: falta contenido en algún idioma (evita URLs que caen al otro idioma). */}
+      {missingLangs(f).length > 0 && (
+        <div style={{ border: '1px solid var(--amber)', background: 'color-mix(in srgb,var(--amber) 10%,transparent)', borderRadius: 10, padding: '10px 12px', marginBottom: 12, fontSize: 13 }}>
+          <b style={{ color: 'var(--amber)' }}>⚠ {es ? 'Falta contenido en un idioma:' : 'Missing content in a language:'}</b> {missingLangs(f).join(' · ')}.
+          <div className="muted" style={{ fontSize: 12, marginTop: 3 }}>{es ? 'Si publicas así, esa URL mostrará el otro idioma. Rellénalo o genera con la IA (rellena ES y EN).' : 'If you publish like this, that URL will show the other language. Fill it in or generate with AI (fills ES and EN).'}</div>
+        </div>
+      )}
 
       {/* IA: sugerir títulos */}
       <div className="card" style={{ marginBottom: 12 }}>
