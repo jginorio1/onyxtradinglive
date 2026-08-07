@@ -19,12 +19,13 @@ const T = {
     errBad: 'Email o contraseña incorrectos.',
     errExists: 'Ya existe una cuenta con ese email. Inicia sesión.',
     errShort: 'La contraseña debe tener al menos 8 caracteres.',
+    errWeak: 'Contraseña muy débil. Usa 10+ caracteres y combina letras con números o símbolos.',
     errMail: 'Escribe un email válido.',
     errTerms: 'Debes aceptar los términos para crear la cuenta.',
     errCaptcha: 'Completa la verificación de seguridad.',
     errGeneric: 'No pudimos completar la operación. Inténtalo de nuevo.',
     strength: ['Muy débil', 'Débil', 'Aceptable', 'Fuerte', 'Excelente'],
-    strengthHint: 'Usa 8+ caracteres, con mayúsculas, números o símbolos.',
+    strengthHint: 'Usa 10+ caracteres, combinando letras, números o símbolos.',
     terms: 'Acepto los', termsLink: 'términos y la política de privacidad',
     // Pantalla de confirmación
     checkT: 'Revisa tu correo',
@@ -43,12 +44,13 @@ const T = {
     errBad: 'Wrong email or password.',
     errExists: 'An account with that email already exists. Sign in instead.',
     errShort: 'Password must be at least 8 characters.',
+    errWeak: 'Password too weak. Use 10+ characters and mix letters with numbers or symbols.',
     errMail: 'Enter a valid email address.',
     errTerms: 'You must accept the terms to create an account.',
     errCaptcha: 'Complete the security check.',
     errGeneric: 'We could not complete the request. Please try again.',
     strength: ['Very weak', 'Weak', 'Okay', 'Strong', 'Excellent'],
-    strengthHint: 'Use 8+ characters, with uppercase, numbers or symbols.',
+    strengthHint: 'Use 10+ characters, mixing letters, numbers or symbols.',
     terms: 'I accept the', termsLink: 'terms and privacy policy',
     checkT: 'Check your email',
     checkD: 'We sent a confirmation link to',
@@ -81,6 +83,21 @@ function scorePass(p: string) {
   return Math.max(0, Math.min(4, Math.round(s)));
 }
 
+// Contraseñas demasiado comunes: se rechazan aunque cumplan la longitud.
+const COMMON_PASS = new Set(['password', 'password1', 'passw0rd', '12345678', '123456789', '1234567890', 'qwertyuiop', '11111111', '00000000', 'contraseña', 'onyxtrading', 'trading123', 'iloveyou1', 'letmein123', 'administrador']);
+// Regla de registro: mínimo 10 caracteres, al menos 2 tipos de caracter
+// (minúscula/mayúscula/número/símbolo) y que no sea una contraseña común.
+function strongEnough(p: string): boolean {
+  if (p.length < 10) return false;
+  if (COMMON_PASS.has(p.toLowerCase())) return false;
+  let classes = 0;
+  if (/[a-z]/.test(p)) classes++;
+  if (/[A-Z]/.test(p)) classes++;
+  if (/\d/.test(p)) classes++;
+  if (/[^A-Za-z0-9]/.test(p)) classes++;
+  return classes >= 2;
+}
+
 function LoginInner() {
   const router = useRouter();
   const params = useSearchParams();
@@ -103,11 +120,12 @@ function LoginInner() {
 
   // Validación antes de llamar a Supabase, para dar el mensaje en su idioma
   const mailOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
-  const passOk = pass.length >= 8;
+  const passOk = pass.length >= 8;                 // login: mínimo histórico
+  const passStrong = strongEnough(pass);           // registro: regla fuerte
   const nameOk = name.trim().length >= 2 && lastName.trim().length >= 2; // nombre Y apellido
   const fullName = `${name.trim()} ${lastName.trim()}`.trim();
   const score = scorePass(pass);
-  const formOk = mailOk && passOk && (!signup || (terms && nameOk));
+  const formOk = mailOk && passOk && (!signup || (terms && nameOk && passStrong));
 
   // A dónde vuelve el usuario tras confirmar el email o tras entrar.
   const nextRaw = params.get('next') || '/dashboard';
@@ -119,6 +137,7 @@ function LoginInner() {
     if (signup && !nameOk) { setMsg(t.errName); return; }
     if (!mailOk) { setMsg(t.errMail); return; }
     if (!passOk) { setMsg(t.errShort); return; }
+    if (signup && !passStrong) { setMsg(t.errWeak); return; }
     if (signup && !terms) { setMsg(t.errTerms); return; }
     if (TURNSTILE_KEY && !captcha) { setMsg(t.errCaptcha); return; }
     setLoading(true); setMsg('');

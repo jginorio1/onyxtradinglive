@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import DashboardClient from './DashboardClient';
+import { guardianOverride } from '@/lib/guardianAccess';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +13,7 @@ export default async function Dashboard() {
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect('/login');
 
-  const { data: profile } = await supabaseAdmin.from('profiles').select('plan,academy_guardian').eq('id', user.id).maybeSingle();
+  const { data: profile } = await supabaseAdmin.from('profiles').select('plan,academy_guardian,academy_guardian_tier').eq('id', user.id).maybeSingle();
 
   // Perfil de trader (para el saludo personalizado). Tolerante si onboarding_v1.sql aún no corrió.
   let tp: any = {};
@@ -53,5 +54,5 @@ export default async function Dashboard() {
     trades = data || [];
   }
 
-  return <DashboardClient email={user.email || ''} plan={profile?.plan || 'free'} capOverride={(profile as any)?.academy_guardian ? { manager: true } : undefined} profile={traderProfile} accounts={(accounts || []) as any} trades={trades as any} />;
+  return <DashboardClient email={user.email || ''} plan={profile?.plan || 'free'} capOverride={(() => { const o = guardianOverride(profile as any); return Object.keys(o).length ? o : undefined; })()} profile={traderProfile} accounts={(accounts || []) as any} trades={trades as any} />;
 }

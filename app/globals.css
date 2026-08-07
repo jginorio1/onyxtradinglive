@@ -628,3 +628,25 @@ details[open] > summary > span:first-child { transform: rotate(90deg); }
 .blog-body li{margin:6px 0;}
 .blog-body a{color:var(--brand);text-decoration:underline;}
 .blog-body strong{color:var(--tx);font-weight:700;}
+
+/* ---- Onyx Guardian: tarjetas iluminadas dentro de la academia ---- */
+.gdn-wrap{position:relative;overflow:hidden;border:1px solid color-mix(in srgb,var(--gold) 30%,var(--line,#2a2f45));}
+.gdn-wrap::before{content:"";position:absolute;inset:-40% -10% auto;height:70%;
+  background:radial-gradient(60% 100% at 50% 0%,color-mix(in srgb,var(--gold) 22%,transparent),transparent 70%);
+  pointer-events:none;}
+.gdn-ic{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;
+  color:var(--gold);background:color-mix(in srgb,var(--gold) 16%,transparent);
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--gold) 30%,transparent),0 0 18px color-mix(in srgb,var(--gold) 35%,transparent);}
+.gdn-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;}
+.gdn-card{position:relative;background:var(--card2,rgba(255,255,255,.03));border-radius:14px;padding:16px 16px 15px;
+  border:1px solid color-mix(in srgb,var(--gc,var(--brand)) 45%,transparent);
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--gc,var(--brand)) 18%,transparent),
+             0 0 22px color-mix(in srgb,var(--gc,var(--brand)) 22%,transparent);
+  animation:gdnGlow 3.4s ease-in-out infinite;}
+@keyframes gdnGlow{
+  0%,100%{box-shadow:0 0 0 1px color-mix(in srgb,var(--gc,var(--brand)) 18%,transparent),0 0 18px color-mix(in srgb,var(--gc,var(--brand)) 18%,transparent);}
+  50%{box-shadow:0 0 0 1px color-mix(in srgb,var(--gc,var(--brand)) 30%,transparent),0 0 30px color-mix(in srgb,var(--gc,var(--brand)) 34%,transparent);}
+}
+.gdn-badge{position:absolute;top:-10px;left:14px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;
+  color:#1a1400;background:var(--gold);box-shadow:0 0 14px color-mix(in srgb,var(--gold) 55%,transparent);}
+@media (prefers-reduced-motion:reduce){.gdn-card{animation:none;}}

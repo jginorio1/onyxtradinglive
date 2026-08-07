@@ -177,6 +177,18 @@ export const academyFeeSettings = () => getSetting<AcademyFee>('academy_fee', AF
 export type AcademyPerks = { guardian_autogrant: boolean };
 export const academyPerksSettings = () => getSetting<AcademyPerks>('academy_perks', { guardian_autogrant: false });
 
+// Onyx Academy · Guardian DE PAGO dentro de la comunidad. El alumno se suscribe
+// (Pro o Elite) y el cobro va a la cuenta de Onyx. El dueño fija precios y on/off.
+// enabled=false por defecto: no se muestra nada hasta que el dueño lo activa.
+export type GuardianAcademy = {
+  enabled: boolean;
+  pro_cents: number;    // precio mensual del nivel Pro (en centavos)
+  elite_cents: number;  // precio mensual del nivel Elite (en centavos)
+  currency: string;     // 'usd'
+};
+const GA_DEF: GuardianAcademy = { enabled: false, pro_cents: 1900, elite_cents: 3900, currency: 'usd' };
+export const guardianAcademySettings = () => getSetting<GuardianAcademy>('guardian_academy', GA_DEF);
+
 // Cuántas cuentas MT puede tener: las del plan + las compradas como complemento
 export async function accountLimit(userId: string) {
   const { data: prof } = await supabaseAdmin.from('profiles').select('plan,extra_accounts').eq('id', userId).maybeSingle();

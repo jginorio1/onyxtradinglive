@@ -66,6 +66,10 @@ export default function AcademyAdmin({ canManage = false }: { canManage?: boolea
   const [rowPct, setRowPct] = useState<Record<string, string>>({});
   const [planPct, setPlanPct] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState('');
+  // Guardian de pago dentro de la academia (precios en dólares en el formulario).
+  const [gEnabled, setGEnabled] = useState(false);
+  const [gPro, setGPro] = useState('');
+  const [gElite, setGElite] = useState('');
 
   async function load() {
     const r = await fetch('/api/admin/academy');
@@ -79,6 +83,10 @@ export default function AcademyAdmin({ canManage = false }: { canManage?: boolea
       const pf: Record<string, string> = {};
       (j.planFees || []).forEach((p: any) => { pf[p.id] = p.fee_pct == null ? '' : String(p.fee_pct); });
       setPlanPct(pf);
+      const g = j.guardian || {};
+      setGEnabled(!!g.enabled);
+      setGPro(g.pro_cents ? String(g.pro_cents / 100) : '');
+      setGElite(g.elite_cents ? String(g.elite_cents / 100) : '');
     }
   }
   useEffect(() => { load(); }, []);
@@ -102,6 +110,16 @@ export default function AcademyAdmin({ canManage = false }: { canManage?: boolea
   async function toggleGuardianPerk(on: boolean) {
     await fetch('/api/admin/academy', { method: 'POST', body: JSON.stringify({ action: 'perks', guardian_autogrant: on }) });
     load();
+  }
+  async function saveGuardianPricing() {
+    setBusy('guardian');
+    await fetch('/api/admin/academy', { method: 'POST', body: JSON.stringify({
+      action: 'guardian_pricing', enabled: gEnabled,
+      pro_cents: Math.round((Number(gPro) || 0) * 100),
+      elite_cents: Math.round((Number(gElite) || 0) * 100),
+      currency: 'usd',
+    }) });
+    setBusy(''); load();
   }
 
   const money = (c: number) => '$' + (Math.round((c || 0) / 100)).toLocaleString();
@@ -246,6 +264,37 @@ export default function AcademyAdmin({ canManage = false }: { canManage?: boolea
           <input type="checkbox" checked={!!d.perks?.guardian_autogrant} disabled={!canManage} onChange={(e) => toggleGuardianPerk(e.target.checked)} style={{ width: 'auto', margin: 0 }} />
           {L('Conceder Onyx Guardian automáticamente por perk', 'Auto-grant Onyx Guardian from tier perk')}
         </label>
+      </div>
+
+      {/* Guardian DE PAGO dentro de la academia (cobro a Onyx) */}
+      <div className="card">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+          <div className="card-ic"><OnyxIcon name="guardian" /></div>
+          <b>{L('Vender Onyx Guardian dentro de la academia', 'Sell Onyx Guardian inside the academy')}</b>
+        </div>
+        <p className="muted" style={{ margin: '0 0 12px' }}>
+          {L('El alumno se suscribe a Guardian (Pro o Elite) desde la comunidad y el cobro va a TU cuenta de Stripe (no a la del mentor). Al cancelar, Guardian se apaga solo. Fija los precios mensuales; si un alumno ya tiene ese nivel por su plan de Onyx, no se le ofrece.',
+             'The student subscribes to Guardian (Pro or Elite) from the community and the charge goes to YOUR Stripe account (not the mentor’s). On cancel, Guardian turns off automatically. Set monthly prices; if a student already has that level from their Onyx plan, it isn’t offered.')}
+        </p>
+        <label className="row" style={{ gap: 10, alignItems: 'center', fontSize: 14, marginBottom: 12 }}>
+          <input type="checkbox" checked={gEnabled} disabled={!canManage} onChange={(e) => setGEnabled(e.target.checked)} style={{ width: 'auto', margin: 0 }} />
+          {L('Mostrar la oferta de Guardian en la academia', 'Show the Guardian offer in the academy')}
+        </label>
+        <div className="row" style={{ gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <label style={{ fontSize: 12.5 }}>{L('Guardian Pro · $/mes', 'Guardian Pro · $/mo')}
+            <input type="number" min={0} step="1" value={gPro} disabled={!canManage} onChange={(e) => setGPro(e.target.value)} placeholder="19" style={{ display: 'block', width: 120, marginTop: 4 }} />
+          </label>
+          <label style={{ fontSize: 12.5 }}>{L('Guardian Elite · $/mes', 'Guardian Elite · $/mo')}
+            <input type="number" min={0} step="1" value={gElite} disabled={!canManage} onChange={(e) => setGElite(e.target.value)} placeholder="39" style={{ display: 'block', width: 120, marginTop: 4 }} />
+          </label>
+          <button className="btn btn-primary" disabled={!canManage || busy === 'guardian'} onClick={saveGuardianPricing}>
+            {busy === 'guardian' ? '…' : L('Guardar', 'Save')}
+          </button>
+        </div>
+        <p className="muted" style={{ margin: '10px 0 0', fontSize: 12 }}>
+          {L('Pro = Guardian básico. Elite = completo (cierres parciales, bloqueo por noticias, alertas por Telegram).',
+             'Pro = basic Guardian. Elite = complete (partial closes, news blackout, Telegram alerts).')}
+        </p>
       </div>
 
       {/* Academias */}

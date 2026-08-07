@@ -11,6 +11,7 @@ import { COUNTRIES, flagOf, countryName } from '@/app/components/countries';
 import JoinQR from '@/app/components/JoinQR';
 import ScholarshipPanel from './ScholarshipPanel';
 import RedeemBeca from './RedeemBeca';
+import GuardianUpsell from './GuardianUpsell';
 
 // Onyx Academy v2 — comunidad estilo Skool: feed, aulas con secciones y progreso,
 // calendario con clase en vivo (countdown + EN VIVO), miembros, ranking, perfil,
@@ -419,6 +420,8 @@ export default function AcademyClient() {
       </div>
 
       <RedeemBeca L={L} onDone={(mid: string) => { load(); openAcademy(mid); }} />
+
+      <GuardianUpsell L={L} />
 
       {d.isMentor && d.myMentorId && (
         <div>

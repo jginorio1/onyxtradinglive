@@ -4,6 +4,14 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { ambSettings, rateFor } from '@/lib/ambassadors';
 import { enforcePlanLimits, notifyPlanChange, planRank } from '@/lib/planNotify';
 import { qualifyOnPaid, reverseMemberRewards } from '@/lib/memberReferral';
+import { setGuardianTier, revokeGuardianBySub, type GuardianTier } from '@/lib/guardianAccess';
+
+// ¿Es una suscripción de Onyx Guardian comprada dentro de la academia?
+// Esas NO cambian el plan de Onyx: solo activan/revocan el gestor de riesgo.
+function guardianMeta(md: any): { userId?: string; tier: GuardianTier } | null {
+  if (md?.kind !== 'guardian_academy') return null;
+  return { userId: md.userId, tier: (md.tier === 'elite' ? 'elite' : 'pro') as GuardianTier };
+}
 
 export const runtime = 'nodejs';
 
@@ -127,7 +135,11 @@ export async function POST(req: Request) {
   try {
     if (event.type === 'checkout.session.completed') {
       const s: any = event.data.object;
-      if (s.subscription && s.customer) {
+      const g = guardianMeta(s.metadata);
+      if (g && g.userId && s.subscription) {
+        // Guardian de academia: activa el nivel, guarda la suscripción, NO toca el plan.
+        await setGuardianTier(g.userId, g.tier, s.subscription);
+      } else if (s.subscription && s.customer) {
         const sub: any = await stripe.subscriptions.retrieve(s.subscription);
         const priceId = sub.items.data[0]?.price?.id;
         await setByCustomer(s.customer, {
@@ -156,6 +168,14 @@ export async function POST(req: Request) {
       }
     } else if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.deleted') {
       const sub: any = event.data.object;
+      const g = guardianMeta(sub.metadata);
+      if (g) {
+        // Suscripción de Guardian de academia: activa si vigente, revoca si no.
+        const alive = sub.status === 'active' || sub.status === 'trialing';
+        if (alive && g.userId) await setGuardianTier(g.userId, g.tier, sub.id);
+        else await revokeGuardianBySub(sub.id);
+        return NextResponse.json({ received: true });   // no tocar el plan
+      }
       const priceId = sub.items.data[0]?.price?.id;
       const active = sub.status === 'active' || sub.status === 'trialing';
       const newPlan = active ? await planFromPriceId(priceId) : 'free';

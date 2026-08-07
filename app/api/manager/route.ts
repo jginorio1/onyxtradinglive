@@ -3,6 +3,7 @@ import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { mergeConfig, sanitize, partialsTotal, DEFAULT_CONFIG, PROP_TEMPLATES, configWarnings } from '@/lib/manager';
 import { getSetting } from '@/lib/settings';
+import { guardianOverride } from '@/lib/guardianAccess';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -11,11 +12,12 @@ async function me() {
   const sb = createSupabaseServer();
   const { data: { user } } = await sb.auth.getUser();
   if (!user) return { user: null as any, caps: {} as any };
-  const { data: prof } = await supabaseAdmin.from('profiles').select('plan,academy_guardian').eq('id', user.id).maybeSingle();
+  const { data: prof } = await supabaseAdmin.from('profiles').select('plan,academy_guardian,academy_guardian_tier').eq('id', user.id).maybeSingle();
   const { data: plan } = await supabaseAdmin.from('plans').select('capabilities').eq('id', prof?.plan || 'free').maybeSingle();
   const caps: any = { ...(plan?.capabilities || {}) };
-  // Onyx Guardian concedido por un nivel VIP de academia (si el dueño lo activó).
-  if ((prof as any)?.academy_guardian) caps.manager = true;
+  // Onyx Guardian por academia: perk regalado (booleano) o suscripción de pago
+  // (tier pro/elite). Elite añade cierres parciales y bloqueo por noticias.
+  Object.assign(caps, guardianOverride(prof as any));
   return { user, caps };
 }
 

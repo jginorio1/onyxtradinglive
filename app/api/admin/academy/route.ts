@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requirePerm, logAdmin } from '@/lib/admin';
 import { adminListAcademies, getDefaultFeePct, setDefaultFeePct, setMentorFeePct, getPlanFees, setPlanFee, logFeeChange, feeLog } from '@/lib/academyPay';
-import { academyPerksSettings, saveSetting } from '@/lib/settings';
+import { academyPerksSettings, guardianAcademySettings, saveSetting } from '@/lib/settings';
 import { platformBalancePayouts } from '@/lib/academyBilling';
 
 export const dynamic = 'force-dynamic';
@@ -11,8 +11,8 @@ export const runtime = 'nodejs';
 export async function GET() {
   const { ok } = await requirePerm('academy', 'view');
   if (!ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
-  const [data, perks, planFees, log, platform] = await Promise.all([adminListAcademies(), academyPerksSettings(), getPlanFees(), feeLog(), platformBalancePayouts()]);
-  return NextResponse.json({ ...data, perks, planFees, feeLog: log, platform });
+  const [data, perks, planFees, log, platform, guardian] = await Promise.all([adminListAcademies(), academyPerksSettings(), getPlanFees(), feeLog(), platformBalancePayouts(), guardianAcademySettings()]);
+  return NextResponse.json({ ...data, perks, planFees, feeLog: log, platform, guardian });
 }
 
 // POST · editar la comisión: global (default_pct) o por mentor (mentor_id + fee_pct).
@@ -38,6 +38,18 @@ export async function POST(req: Request) {
       await saveSetting('academy_perks', { guardian_autogrant: !!b.guardian_autogrant });
       await logAdmin(user.email, 'academy_perks', 'guardian_autogrant=' + (!!b.guardian_autogrant));
       return NextResponse.json({ ok: true, guardian_autogrant: !!b.guardian_autogrant });
+    }
+    if (b.action === 'guardian_pricing') {
+      const cents = (v: any) => Math.max(0, Math.round(Number(v) || 0));
+      const value = {
+        enabled: !!b.enabled,
+        pro_cents: cents(b.pro_cents),
+        elite_cents: cents(b.elite_cents),
+        currency: String(b.currency || 'usd').toLowerCase().slice(0, 3),
+      };
+      await saveSetting('guardian_academy', value);
+      await logAdmin(user.email, 'guardian_academy', `on=${value.enabled} pro=${value.pro_cents} elite=${value.elite_cents}`);
+      return NextResponse.json({ ok: true, guardian: value });
     }
     if (b.action === 'mentor' && b.mentor_id) {
       const raw = b.fee_pct === '' || b.fee_pct == null ? null : Number(b.fee_pct);
