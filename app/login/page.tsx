@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { supabaseBrowser } from '@/lib/supabaseBrowser';
+import { supabaseBrowser, passkeySupported } from '@/lib/supabaseBrowser';
 import TwoFactor from '@/app/TwoFactor';
 import Turnstile, { TURNSTILE_KEY } from '@/app/Turnstile';
 
@@ -111,6 +111,8 @@ function LoginInner() {
   const [hp, setHp] = useState('');               // honeypot: humanos lo dejan vacío
   const [captcha, setCaptcha] = useState('');     // token de Turnstile (si está activo)
   const [showPass, setShowPass] = useState(false); // mostrar/ocultar contraseña
+  const [pkOk, setPkOk] = useState(false);         // navegador+SDK soportan passkey
+  useEffect(() => { setPkOk(passkeySupported()); }, []);
   const { lang } = useLang();
   const t = dictFor(T, lang);
   const sb = supabaseBrowser();
@@ -127,6 +129,22 @@ function LoginInner() {
   // A dónde vuelve el usuario tras confirmar el email o tras entrar.
   const nextRaw = params.get('next') || '/dashboard';
   const nextDest = nextRaw.startsWith('/') && !nextRaw.startsWith('//') ? nextRaw : '/dashboard';
+
+  // Entrar con passkey (huella/Face ID). El autenticador resuelve la cuenta solo.
+  async function signInPasskey() {
+    setLoading(true); setMsg('');
+    try {
+      const { error } = await (sb as any).auth.signInWithPasskey();
+      if (error) throw error;
+      try {
+        const { data: aal } = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (aal && aal.nextLevel === 'aal2' && aal.currentLevel !== 'aal2') { setMfa(true); return; }
+      } catch { /* seguimos */ }
+      router.push(nextDest); router.refresh();
+    } catch (e: any) {
+      setMsg(authMsg(e?.message || '', t));
+    } finally { setLoading(false); }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -285,6 +303,18 @@ function LoginInner() {
           <button className="btn btn-primary" style={{ width: '100%', opacity: formOk ? 1 : .5 }} disabled={loading || !formOk}>
             {loading ? '...' : signup ? t.signupT : t.loginT}
           </button>
+
+          {!signup && pkOk && (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '14px 0', color: 'var(--mut)', fontSize: 12 }}>
+                <span style={{ flex: 1, height: 1, background: 'var(--line)' }} />{lang === 'en' ? 'or' : 'o'}<span style={{ flex: 1, height: 1, background: 'var(--line)' }} />
+              </div>
+              <button type="button" className="btn btn-ghost" style={{ width: '100%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }} disabled={loading} onClick={signInPasskey}>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="7.5" cy="15.5" r="4.5" /><path d="M10.7 12.3 19 4" /><path d="m16 6 3 3" /><path d="m14 8 2 2" /></svg>
+                {lang === 'en' ? 'Sign in with passkey' : 'Entrar con passkey'}
+              </button>
+            </>
+          )}
         </form>
         {msg && <p className="muted" style={{ marginTop: 14, fontSize: 14 }}>{msg}</p>}
         <p className="muted" style={{ marginTop: 18, fontSize: 14 }}>

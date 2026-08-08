@@ -20,6 +20,7 @@ import EmbeddedCheckoutModal from '@/app/EmbeddedCheckoutModal';
 import InstallApp from '@/app/dashboard/InstallApp';
 import PushToggle from './PushToggle';
 import TwoFactorCard from './TwoFactorCard';
+import PasskeyCard from './PasskeyCard';
 
 type Lang = 'es' | 'en';
 type Tab = 'plan' | 'perfil' | 'facturas' | 'academias' | 'cuentas' | 'avisos' | 'seguridad' | 'referidos' | 'retiros';
@@ -804,6 +805,9 @@ function Security({ L, lang }: { L: any; lang: Lang }) {
 
       {/* Verificación en dos pasos (opcional para el usuario). */}
       <TwoFactorCard lang={lang} />
+
+      {/* Passkey: entrar con huella/Face ID (se oculta si el navegador no lo soporta). */}
+      <PasskeyCard lang={lang} />
 
       {/* Solo para admins/equipo: cambiar su PIN de bloqueo del panel. */}
       <LockPinCard lang={lang} />
