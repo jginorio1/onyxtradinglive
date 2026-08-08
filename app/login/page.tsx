@@ -132,9 +132,10 @@ function LoginInner() {
 
   // Entrar con passkey (huella/Face ID). El autenticador resuelve la cuenta solo.
   async function signInPasskey() {
+    if (TURNSTILE_KEY && !captcha) { setMsg(t.errCaptcha); return; }   // espera al captcha
     setLoading(true); setMsg('');
     try {
-      const { error } = await (sb as any).auth.signInWithPasskey();
+      const { error } = await (sb as any).auth.signInWithPasskey(captcha ? { options: { captchaToken: captcha } } : undefined);
       if (error) throw error;
       try {
         const { data: aal } = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
