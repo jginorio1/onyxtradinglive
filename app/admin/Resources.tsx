@@ -38,7 +38,8 @@ const T: any = {
     editCosts: 'Editar costos en Finanzas →', noInfra: 'Aún no registras costos de infra. Añádelos en Finanzas (categoría "infra") para verlos aquí y en tu P&L.',
     vBilling: 'Vercel · Facturación (monto exacto)', sBilling: 'Supabase · Facturación (monto exacto)',
     perMonth: '/mes',
-    instTitle: 'Instancia Supabase (en vivo)', cpu: 'CPU', ram: 'RAM', disk: 'Disco', cores: 'núcleos', of: 'de',
+    instTitle: 'Instancia Supabase (en vivo)', cpu: 'CPU', ram: 'RAM', disk: 'Disco del sistema', cores: 'núcleos', of: 'de',
+    autoscale: 'auto-escala · tus datos:',
   },
   en: {
     title: 'Resources', sub: 'Live app usage. Server gauges (CPU/RAM/bandwidth) live in Vercel and Supabase.',
@@ -60,17 +61,20 @@ const T: any = {
     editCosts: 'Edit costs in Finance →', noInfra: 'No infra costs logged yet. Add them in Finance (category "infra") to see them here and in your P&L.',
     vBilling: 'Vercel · Billing (exact amount)', sBilling: 'Supabase · Billing (exact amount)',
     perMonth: '/mo',
-    instTitle: 'Supabase instance (live)', cpu: 'CPU', ram: 'RAM', disk: 'Disk', cores: 'cores', of: 'of',
+    instTitle: 'Supabase instance (live)', cpu: 'CPU', ram: 'RAM', disk: 'System disk', cores: 'cores', of: 'of',
+    autoscale: 'auto-scales · your data:',
   },
 };
 
-// Color de semáforo según % de uso (verde / ámbar / rojo).
-function pctColor(p: number | null): string {
+// Color de semáforo según % de uso (verde / ámbar / rojo). Umbrales configurables:
+// el disco del sistema de Supabase vive naturalmente lleno y auto-escala, así que
+// para ese medidor subimos los umbrales para no alarmar de más.
+function pctColor(p: number | null, warn = 75, crit = 90): string {
   if (p == null) return 'var(--muted)';
-  return p >= 90 ? 'var(--red)' : p >= 75 ? 'var(--amber)' : 'var(--green)';
+  return p >= crit ? 'var(--red)' : p >= warn ? 'var(--amber)' : 'var(--green)';
 }
-function Gauge({ label, pct, sub }: { label: string; pct: number | null; sub?: string }) {
-  const c = pctColor(pct);
+function Gauge({ label, pct, sub, warn, crit }: { label: string; pct: number | null; sub?: string; warn?: number; crit?: number }) {
+  const c = pctColor(pct, warn, crit);
   return (
     <div className="tile" style={{ minWidth: 0 }}>
       <div className="row between" style={{ marginBottom: 6 }}>
@@ -142,7 +146,7 @@ export default function Resources() {
           <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 10 }}>
             <Gauge label={L.cpu} pct={d.instance.cpuPct} sub={d.instance.cores ? `${d.instance.cores} ${L.cores}${d.instance.load1 != null ? ` · load ${d.instance.load1.toFixed(2)}` : ''}` : undefined} />
             <Gauge label={L.ram} pct={d.instance.memPct} sub={d.instance.memTotal ? `${fmtBytes(d.instance.memUsed || 0)} ${L.of} ${fmtBytes(d.instance.memTotal)}` : undefined} />
-            <Gauge label={L.disk} pct={d.instance.diskPct} sub={d.instance.diskTotal ? `${fmtBytes(d.instance.diskUsed || 0)} ${L.of} ${fmtBytes(d.instance.diskTotal)}` : undefined} />
+            <Gauge label={L.disk} pct={d.instance.diskPct} warn={90} crit={97} sub={d.instance.diskTotal ? `${fmtBytes(d.instance.diskUsed || 0)} ${L.of} ${fmtBytes(d.instance.diskTotal)} · ${L.autoscale} ${fmtBytes((d.db?.bytes || 0) + (d.storage?.totalBytes || 0))}` : undefined} />
           </div>
         </div>
       )}
