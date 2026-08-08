@@ -19,13 +19,13 @@ const T = {
     errBad: 'Email o contraseña incorrectos.',
     errExists: 'Ya existe una cuenta con ese email. Inicia sesión.',
     errShort: 'La contraseña debe tener al menos 8 caracteres.',
-    errWeak: 'Contraseña muy débil. Usa 10+ caracteres y combina letras con números o símbolos.',
+    errWeak: 'Contraseña muy débil. Usa 10+ caracteres con al menos una letra y un número.',
     errMail: 'Escribe un email válido.',
     errTerms: 'Debes aceptar los términos para crear la cuenta.',
     errCaptcha: 'Completa la verificación de seguridad.',
     errGeneric: 'No pudimos completar la operación. Inténtalo de nuevo.',
     strength: ['Muy débil', 'Débil', 'Aceptable', 'Fuerte', 'Excelente'],
-    strengthHint: 'Usa 10+ caracteres, combinando letras, números o símbolos.',
+    strengthHint: 'Usa 10+ caracteres con al menos una letra y un número.',
     terms: 'Acepto los', termsLink: 'términos y la política de privacidad',
     // Pantalla de confirmación
     checkT: 'Revisa tu correo',
@@ -44,13 +44,13 @@ const T = {
     errBad: 'Wrong email or password.',
     errExists: 'An account with that email already exists. Sign in instead.',
     errShort: 'Password must be at least 8 characters.',
-    errWeak: 'Password too weak. Use 10+ characters and mix letters with numbers or symbols.',
+    errWeak: 'Password too weak. Use 10+ characters with at least one letter and one number.',
     errMail: 'Enter a valid email address.',
     errTerms: 'You must accept the terms to create an account.',
     errCaptcha: 'Complete the security check.',
     errGeneric: 'We could not complete the request. Please try again.',
     strength: ['Very weak', 'Weak', 'Okay', 'Strong', 'Excellent'],
-    strengthHint: 'Use 10+ characters, mixing letters, numbers or symbols.',
+    strengthHint: 'Use 10+ characters with at least one letter and one number.',
     terms: 'I accept the', termsLink: 'terms and privacy policy',
     checkT: 'Check your email',
     checkD: 'We sent a confirmation link to',
@@ -85,17 +85,13 @@ function scorePass(p: string) {
 
 // Contraseñas demasiado comunes: se rechazan aunque cumplan la longitud.
 const COMMON_PASS = new Set(['password', 'password1', 'passw0rd', '12345678', '123456789', '1234567890', 'qwertyuiop', '11111111', '00000000', 'contraseña', 'onyxtrading', 'trading123', 'iloveyou1', 'letmein123', 'administrador']);
-// Regla de registro: mínimo 10 caracteres, al menos 2 tipos de caracter
-// (minúscula/mayúscula/número/símbolo) y que no sea una contraseña común.
+// Regla de registro: mínimo 10 caracteres, al menos UNA LETRA y UN NÚMERO, y que
+// no sea una contraseña común. Es exactamente la misma regla que exige Supabase
+// (Letters and digits), para que nunca haya un rechazo inesperado del servidor.
 function strongEnough(p: string): boolean {
   if (p.length < 10) return false;
   if (COMMON_PASS.has(p.toLowerCase())) return false;
-  let classes = 0;
-  if (/[a-z]/.test(p)) classes++;
-  if (/[A-Z]/.test(p)) classes++;
-  if (/\d/.test(p)) classes++;
-  if (/[^A-Za-z0-9]/.test(p)) classes++;
-  return classes >= 2;
+  return /[a-zA-Z]/.test(p) && /\d/.test(p);
 }
 
 function LoginInner() {
@@ -114,6 +110,7 @@ function LoginInner() {
   const [mfa, setMfa] = useState(false);          // pide el código de 2 pasos
   const [hp, setHp] = useState('');               // honeypot: humanos lo dejan vacío
   const [captcha, setCaptcha] = useState('');     // token de Turnstile (si está activo)
+  const [showPass, setShowPass] = useState(false); // mostrar/ocultar contraseña
   const { lang } = useLang();
   const t = dictFor(T, lang);
   const sb = supabaseBrowser();
@@ -250,7 +247,17 @@ function LoginInner() {
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
           <div style={{ height: 12 }} />
           <label>{t.pass}</label>
-          <input type="password" value={pass} onChange={(e) => setPass(e.target.value)} required minLength={8} />
+          <div style={{ position: 'relative' }}>
+            <input type={showPass ? 'text' : 'password'} value={pass} onChange={(e) => setPass(e.target.value)} required minLength={8} style={{ paddingRight: 44, width: '100%' }} autoComplete={signup ? 'new-password' : 'current-password'} />
+            <button type="button" onClick={() => setShowPass((s) => !s)} aria-label={showPass ? (lang === 'en' ? 'Hide password' : 'Ocultar contraseña') : (lang === 'en' ? 'Show password' : 'Mostrar contraseña')}
+              style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: 6, cursor: 'pointer', color: 'var(--mut)', display: 'inline-flex', alignItems: 'center', lineHeight: 0 }}>
+              {showPass ? (
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" /><path d="M6.61 6.61A18.5 18.5 0 0 0 2 12s3 8 10 8a9.12 9.12 0 0 0 5.39-1.61" /><line x1="2" y1="2" x2="22" y2="22" /></svg>
+              ) : (
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-8 10-8 10 8 10 8-3 8-10 8-10-8-10-8Z" /><circle cx="12" cy="12" r="3" /></svg>
+              )}
+            </button>
+          </div>
 
           {signup && pass.length > 0 && (
             <div style={{ marginTop: 8 }}>
