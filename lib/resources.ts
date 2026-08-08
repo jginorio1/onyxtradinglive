@@ -16,7 +16,14 @@ export type ResourceStats = {
   errors: { last24h: number; last7d: number };
   ai: { monthCents: number; calls: number; tokens: number };
   users: { total: number; new24h: number; new7d: number };
-  deepLinks: { vercelUsage: string; vercelObservability: string; supabaseReports: string; supabaseDatabase: string };
+  // Costo de operación del mes (lo que nos cuesta): infra fija (recurrentes de
+  // categoría 'infra' en Finanzas) + IA. Comisiones de Stripe y pagos a afiliados
+  // se ven completos en Finanzas (P&L) para no recalcular ingresos aquí.
+  costs: { infraFixed: number; aiMonth: number; total: number; items: { name: string; vendor: string | null; monthly: number }[] };
+  deepLinks: {
+    vercelUsage: string; vercelObservability: string; vercelBilling: string;
+    supabaseReports: string; supabaseDatabase: string; supabaseBilling: string;
+  };
   meta: { at: number };
 };
 
@@ -72,6 +79,28 @@ export async function resourceStats(): Promise<ResourceStats> {
     count('profiles', d7),
   ]);
 
+  // Costo de infraestructura fija del mes: recurrentes activos de categoría 'infra'
+  // (Vercel, Supabase, dominio, Resend…) que el dueño registra en Finanzas. Se
+  // prorratea el anual entre 12 y se respeta la ventana de fechas.
+  const aiMonth = Number((ai as any).totalCents || 0) / 100;
+  let infraFixed = 0; let items: { name: string; vendor: string | null; monthly: number }[] = [];
+  try {
+    const { data: exp } = await supabaseAdmin.from('onyx_expenses')
+      .select('name,vendor,amount,interval,kind,category,active,incurred_on,ends_on')
+      .eq('category', 'infra').eq('kind', 'recurring').eq('active', true);
+    const asDate = (s: string) => new Date(String(s) + 'T00:00:00Z').getTime();
+    for (const e of (exp || []) as any[]) {
+      const start = asDate(e.incurred_on);
+      const end = e.ends_on ? asDate(e.ends_on) : Infinity;
+      if (!(start <= now && end >= now)) continue;
+      const monthly = e.interval === 'yearly' ? Number(e.amount || 0) / 12 : Number(e.amount || 0);
+      infraFixed += monthly;
+      items.push({ name: String(e.name || 'Infra'), vendor: e.vendor || null, monthly: Math.round(monthly * 100) / 100 });
+    }
+  } catch { /* si no existe la tabla, infra queda en 0 */ }
+  items.sort((a, b) => b.monthly - a.monthly);
+  const total = Math.round((infraFixed + aiMonth) * 100) / 100;
+
   const ref = supabaseRef();
   return {
     db,
@@ -80,11 +109,14 @@ export async function resourceStats(): Promise<ResourceStats> {
     errors: { last24h: err24, last7d: err7 },
     ai: { monthCents: Number((ai as any).totalCents || 0), calls: Number((ai as any).calls || 0), tokens: Number((ai as any).tokens || 0) },
     users: { total: uTotal, new24h: uNew24, new7d: uNew7 },
+    costs: { infraFixed: Math.round(infraFixed * 100) / 100, aiMonth: Math.round(aiMonth * 100) / 100, total, items },
     deepLinks: {
       vercelUsage: 'https://vercel.com/dashboard/usage',
       vercelObservability: 'https://vercel.com/dashboard/observability',
+      vercelBilling: 'https://vercel.com/dashboard/settings/billing',
       supabaseReports: ref ? `https://supabase.com/dashboard/project/${ref}/reports/database` : 'https://supabase.com/dashboard/project/_/reports/database',
       supabaseDatabase: ref ? `https://supabase.com/dashboard/project/${ref}/database/tables` : 'https://supabase.com/dashboard/project/_/database/tables',
+      supabaseBilling: ref ? `https://supabase.com/dashboard/project/${ref}/settings/billing` : 'https://supabase.com/dashboard/project/_/settings/billing',
     },
     meta: { at: now },
   };

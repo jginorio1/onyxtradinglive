@@ -33,6 +33,12 @@ const T: any = {
     sReports: 'Supabase · Reportes (CPU/RAM/disco de la BD)', sDb: 'Supabase · Tablas y almacenamiento',
     open: 'Abrir ↗', warn: 'Advertencia', good: 'Bien', high: 'Alto',
     setup: 'Nota: si la función SQL onyx_resource_stats no está creada, el tamaño de BD y storage saldrá en 0. Ejecuta supabase/resources_stats.sql una vez.',
+    costTitle: 'Costo de operación (mes)', infraFixed: 'Infra fija', aiMonth: 'IA', costTotal: 'Total infra + IA',
+    costNote: 'Costos fijos que registras en Finanzas (categoría "infra"): Vercel, Supabase, dominio, Resend… Se suman solos a tu P&L cada mes. Las comisiones de Stripe y pagos a afiliados salen completos en Finanzas.',
+    editCosts: 'Editar costos en Finanzas →', noInfra: 'Aún no registras costos de infra. Añádelos en Finanzas (categoría "infra") para verlos aquí y en tu P&L.',
+    vBilling: 'Vercel · Facturación (monto exacto)', sBilling: 'Supabase · Facturación (monto exacto)',
+    perMonth: '/mes',
+    instTitle: 'Instancia Supabase (en vivo)', cpu: 'CPU', ram: 'RAM', disk: 'Disco', cores: 'núcleos', of: 'de',
   },
   en: {
     title: 'Resources', sub: 'Live app usage. Server gauges (CPU/RAM/bandwidth) live in Vercel and Supabase.',
@@ -49,8 +55,35 @@ const T: any = {
     sReports: 'Supabase · Reports (DB CPU/RAM/disk)', sDb: 'Supabase · Tables & storage',
     open: 'Open ↗', warn: 'Warning', good: 'Good', high: 'High',
     setup: 'Note: if the onyx_resource_stats SQL function is not created, DB size and storage show 0. Run supabase/resources_stats.sql once.',
+    costTitle: 'Operating cost (month)', infraFixed: 'Fixed infra', aiMonth: 'AI', costTotal: 'Total infra + AI',
+    costNote: 'Fixed costs you log in Finance (category "infra"): Vercel, Supabase, domain, Resend… They flow into your P&L each month automatically. Stripe fees and affiliate payouts show in full in Finance.',
+    editCosts: 'Edit costs in Finance →', noInfra: 'No infra costs logged yet. Add them in Finance (category "infra") to see them here and in your P&L.',
+    vBilling: 'Vercel · Billing (exact amount)', sBilling: 'Supabase · Billing (exact amount)',
+    perMonth: '/mo',
+    instTitle: 'Supabase instance (live)', cpu: 'CPU', ram: 'RAM', disk: 'Disk', cores: 'cores', of: 'of',
   },
 };
+
+// Color de semáforo según % de uso (verde / ámbar / rojo).
+function pctColor(p: number | null): string {
+  if (p == null) return 'var(--muted)';
+  return p >= 90 ? 'var(--red)' : p >= 75 ? 'var(--amber)' : 'var(--green)';
+}
+function Gauge({ label, pct, sub }: { label: string; pct: number | null; sub?: string }) {
+  const c = pctColor(pct);
+  return (
+    <div className="tile" style={{ minWidth: 0 }}>
+      <div className="row between" style={{ marginBottom: 6 }}>
+        <span className="muted" style={{ fontSize: 12 }}>{label}</span>
+        <b style={{ fontSize: 14, color: c }}>{pct == null ? '—' : `${pct}%`}</b>
+      </div>
+      <div style={{ background: 'var(--bg2)', borderRadius: 6, height: 10, overflow: 'hidden' }}>
+        <div style={{ width: `${Math.min(100, Math.max(2, pct || 0))}%`, height: '100%', background: c, borderRadius: 6, transition: 'width .4s' }} />
+      </div>
+      {sub && <div className="muted" style={{ fontSize: 11, marginTop: 5 }}>{sub}</div>}
+    </div>
+  );
+}
 
 function Stat({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) {
   return (
@@ -99,6 +132,45 @@ export default function Resources() {
         <Stat label={L.usersCard + ' · ' + L.uTotal} value={fmtNum(d.users?.total || 0)} sub={`+${fmtNum(d.users?.new24h || 0)} / 24h · +${fmtNum(d.users?.new7d || 0)} / 7d`} />
       </div>
 
+      {/* Instancia Supabase en vivo (CPU/RAM/disco) — solo si el endpoint responde */}
+      {d.instance?.ok && (
+        <div className="card" style={{ marginBottom: 14 }}>
+          <div className="row between" style={{ marginBottom: 10 }}>
+            <b>{L.instTitle}</b>
+            <span className="pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--soft-green)', background: 'rgba(52,226,160,.15)' }}><span className="livedot" />{L.live}</span>
+          </div>
+          <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 10 }}>
+            <Gauge label={L.cpu} pct={d.instance.cpuPct} sub={d.instance.cores ? `${d.instance.cores} ${L.cores}${d.instance.load1 != null ? ` · load ${d.instance.load1.toFixed(2)}` : ''}` : undefined} />
+            <Gauge label={L.ram} pct={d.instance.memPct} sub={d.instance.memTotal ? `${fmtBytes(d.instance.memUsed || 0)} ${L.of} ${fmtBytes(d.instance.memTotal)}` : undefined} />
+            <Gauge label={L.disk} pct={d.instance.diskPct} sub={d.instance.diskTotal ? `${fmtBytes(d.instance.diskUsed || 0)} ${L.of} ${fmtBytes(d.instance.diskTotal)}` : undefined} />
+          </div>
+        </div>
+      )}
+
+      {/* Costo de operación (mes) */}
+      <div className="card" style={{ marginBottom: 14 }}>
+        <div className="row between" style={{ marginBottom: 4 }}>
+          <b>{L.costTitle}</b>
+          <a href="#facturacion" onClick={() => { try { window.location.hash = 'facturacion'; setTimeout(() => window.location.reload(), 20); } catch {} }} style={{ fontSize: 12, color: 'var(--brand)', textDecoration: 'none' }}>{L.editCosts}</a>
+        </div>
+        <p className="muted" style={{ fontSize: 12, margin: '0 0 12px' }}>{L.costNote}</p>
+        <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 10, marginBottom: 12 }}>
+          <Stat label={L.infraFixed} value={`$${(d.costs?.infraFixed || 0).toFixed(2)}`} sub={L.perMonth} />
+          <Stat label={L.aiMonth} value={`$${(d.costs?.aiMonth || 0).toFixed(2)}`} sub={L.perMonth} />
+          <Stat label={L.costTotal} value={`$${(d.costs?.total || 0).toFixed(2)}`} sub={L.perMonth} color="var(--brand)" />
+        </div>
+        {(d.costs?.items || []).length ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            {d.costs.items.map((it: any, i: number) => (
+              <div key={i} className="row between" style={{ fontSize: 12.5, padding: '6px 0', borderTop: i ? '1px solid var(--line)' : 'none' }}>
+                <span>{it.name}{it.vendor ? <span className="muted"> · {it.vendor}</span> : null}</span>
+                <b>${(it.monthly || 0).toFixed(2)}<span className="muted" style={{ fontWeight: 400 }}>{L.perMonth}</span></b>
+              </div>
+            ))}
+          </div>
+        ) : <p className="muted" style={{ fontSize: 12 }}>{L.noInfra}</p>}
+      </div>
+
       {/* Base de datos */}
       <div className="card" style={{ marginBottom: 14 }}>
         <div className="row between" style={{ marginBottom: 10 }}>
@@ -145,7 +217,7 @@ export default function Resources() {
         <b>{L.infraTitle}</b>
         <p className="muted" style={{ fontSize: 12.5, margin: '6px 0 12px' }}>{L.infraNote}</p>
         <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 8 }}>
-          {[[L.vUsage, links.vercelUsage], [L.vObs, links.vercelObservability], [L.sReports, links.supabaseReports], [L.sDb, links.supabaseDatabase]].map(([label, url]: any) => (
+          {[[L.vBilling, links.vercelBilling], [L.sBilling, links.supabaseBilling], [L.vUsage, links.vercelUsage], [L.vObs, links.vercelObservability], [L.sReports, links.supabaseReports], [L.sDb, links.supabaseDatabase]].map(([label, url]: any) => (
             <a key={label} href={url} target="_blank" rel="noopener noreferrer" className="tile" style={{ textDecoration: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 12.5 }}>{label}</span>
               <span className="pill" style={{ fontSize: 11, flex: 'none' }}>{L.open}</span>
