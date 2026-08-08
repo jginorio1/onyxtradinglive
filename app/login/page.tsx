@@ -263,7 +263,7 @@ function LoginInner() {
             </>
           )}
           <label>{t.email}</label>
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="username" inputMode="email" />
           <div style={{ height: 12 }} />
           <label>{t.pass}</label>
           <div style={{ position: 'relative' }}>
