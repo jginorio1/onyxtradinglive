@@ -16,12 +16,12 @@ values
     '["1 connected account","Basic stats","30 days of history"]',
     null, null, true, 0),
   ('pro',   'Pro',   'Pro',   19,  190, 5,
-    '["5 cuentas conectadas","Todas las estadísticas","Historial ilimitado","Calendario y gráficas","Reglas de fondeo"]',
-    '["5 connected accounts","All stats","Unlimited history","Calendar & charts","Prop-firm rules"]',
+    '["5 cuentas conectadas","Onyx Guardian: freno de riesgo","Historial ilimitado y reglas de fondeo","Diario, costes y exportar CSV","Crea tu academia (Onyx Academy)"]',
+    '["5 connected accounts","Onyx Guardian: risk brake","Unlimited history & funding rules","Journal, costs & CSV export","Build your academy (Onyx Academy)"]',
     'Más popular', 'Most popular', true, 1),
   ('elite', 'Elite', 'Elite', 39,  390, 999,
-    '["Cuentas ilimitadas","Todo lo de Pro","Informes automáticos","Alertas por Telegram","Soporte prioritario"]',
-    '["Unlimited accounts","Everything in Pro","Automatic reports","Telegram alerts","Priority support"]',
+    '["Cuentas ilimitadas","Copy trading (1 master · 5 esclavas)","Cierres parciales y bloqueo por noticias","Alertas e informe por Telegram","Soporte prioritario"]',
+    '["Unlimited accounts","Copy trading (1 master · 5 slaves)","Partial closes & news blackout","Telegram alerts & report","Priority support"]',
     null, null, true, 2)
 on conflict (id) do update
   set active = true;   -- si ya existe, solo lo reactiva (no toca tus precios/textos)
