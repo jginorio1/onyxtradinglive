@@ -12,6 +12,7 @@ import JoinQR from '@/app/components/JoinQR';
 import ScholarshipPanel from './ScholarshipPanel';
 import RedeemBeca from './RedeemBeca';
 import GuardianUpsell from './GuardianUpsell';
+import CopyPanel from './CopyPanel';
 
 // Onyx Academy v2 — comunidad estilo Skool: feed, aulas con secciones y progreso,
 // calendario con clase en vivo (countdown + EN VIVO), miembros, ranking, perfil,
@@ -810,6 +811,7 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
           {tab === 'community' && (
             <>
               {totalLessons >= 0 && <OnboardingChecklist active={active} L={L} onGo={(t: any) => setTab(t)} />}
+              <CopyPanel mentorId={active.mentor_id} isMentor={!!active.isMentorHere} L={L} />
               <div className="sk-card">
                 <div className="row" style={{ gap: 10, alignItems: 'flex-start' }}>
                   <Avatar name="•" level={active.me?.level} size={40} />
