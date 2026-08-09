@@ -2650,8 +2650,7 @@ function MentorEmails({ lang, L }: { lang: string; L: (a: string, b: string) => 
       {d.mailEnabled === false && <div className="sk-card" style={{ border: '1px solid var(--gold)' }}><b>{L('Correo no configurado', 'Email not configured')}</b><p className="muted" style={{ fontSize: 13, marginTop: 4 }}>{L('Falta RESEND_API_KEY en Vercel para enviar correos.', 'RESEND_API_KEY missing in Vercel to send emails.')}</p></div>}
 
       {/* Redactar campaña */}
-      <div className="sk-card">
-        <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 10 }}><span className="card-ic"><OnyxIcon name="mail" size={16} /></span> {L('Nueva campaña / promoción', 'New campaign / promo')}</h3>
+      <SectionCard icon="mail" title={L('Nueva campaña / promoción', 'New campaign / promo')} summary={L('Escribe y envía o programa un correo a tus alumnos', 'Write and send or schedule an email to your students')} wide>
         <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder={L('Asunto', 'Subject')} style={{ margin: '0 0 8px' }} />
         <div className="row between" style={{ alignItems: 'center' }}><span className="muted" style={{ fontSize: 12 }}>{L('Mensaje', 'Message')}</span><AiBtn kind="post" onText={(t: string) => setBody(t)} L={L} /></div>
         <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={6} placeholder={L('Escribe tu correo o pulsa ✨ IA…', 'Write your email or hit ✨ AI…')} style={{ width: '100%', margin: '4px 0 0' }} />
@@ -2674,13 +2673,13 @@ function MentorEmails({ lang, L }: { lang: string; L: (a: string, b: string) => 
             <button className="btn btn-ghost" disabled={busy || !when || !subject.trim() || !body.trim()} onClick={() => send(true)}>{L('Programar', 'Schedule')}</button>
           </div>
         )}
-      </div>
+      </SectionCard>
 
       {/* Automatizaciones editables */}
       {autos && (
-        <div className="sk-card">
+        <SectionCard icon="ai" title={L('Correos automáticos', 'Automated emails')} summary={(() => { const on = ['welcome', 'class_reminder', 'expiring'].filter((k) => autos[k]?.enabled).length; return L(`${on} de 3 activos`, `${on} of 3 enabled`); })()} wide>
           <div className="row between" style={{ marginBottom: 6, alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
-            <div><h3 style={{ display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic"><OnyxIcon name="ai" size={16} /></span> {L('Correos automáticos', 'Automated emails')}</h3><p className="muted" style={{ fontSize: 12.5, marginTop: 4 }}>{L('Edita el asunto, el texto y el momento. Variables: {name}, {academy}, {join}, {class}, {classlink}.', 'Edit subject, copy and timing. Variables: {name}, {academy}, {join}, {class}, {classlink}.')}</p></div>
+            <p className="muted" style={{ fontSize: 12.5, marginTop: 0 }}>{L('Edita el asunto, el texto y el momento. Variables: {name}, {academy}, {join}, {class}, {classlink}.', 'Edit subject, copy and timing. Variables: {name}, {academy}, {join}, {class}, {classlink}.')}</p>
             <button className="btn btn-primary" style={{ fontSize: 12.5 }} onClick={saveAutos}>{L('Guardar automáticos', 'Save automations')}</button>
           </div>
           {([
@@ -2705,12 +2704,11 @@ function MentorEmails({ lang, L }: { lang: string; L: (a: string, b: string) => 
               </div>
             );
           })}
-        </div>
+        </SectionCard>
       )}
 
       {/* Historial */}
-      <div className="sk-card">
-        <h3 style={{ marginBottom: 10 }}>{L('Campañas', 'Campaigns')}</h3>
+      <SectionCard icon="mail" title={L('Campañas', 'Campaigns')} summary={L(`${(d.campaigns || []).length} campañas`, `${(d.campaigns || []).length} campaigns`)} wide>
         {(d.campaigns || []).length === 0 && <p className="muted" style={{ fontSize: 13 }}>{L('Aún no has enviado campañas.', 'No campaigns yet.')}</p>}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {(d.campaigns || []).map((k: any) => (
@@ -2728,7 +2726,7 @@ function MentorEmails({ lang, L }: { lang: string; L: (a: string, b: string) => 
             </div>
           ))}
         </div>
-      </div>
+      </SectionCard>
     </div>
   );
 }
@@ -3398,8 +3396,7 @@ function MentorSettings({ mentor, onSave, L }: any) {
   const link = typeof window !== 'undefined' ? `${window.location.origin}/academia/${mentor.code}` : '';
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div className="sk-card">
-        <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 12 }}><span className="card-ic"><OnyxIcon name="settings" size={16} /></span> {L('Ajustes de la academia', 'Academy settings')}</h3>
+      <SectionCard icon="settings" title={L('Ajustes de la academia', 'Academy settings')} summary={f.academy_name || L('Nombre, lema, portada, logo, sobre la academia', 'Name, tagline, cover, logo, about')} wide>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div data-onb="name"><span className="muted" style={{ fontSize: 12 }}>{L('Nombre', 'Name')}</span><input value={f.academy_name} onChange={(e) => setF({ ...f, academy_name: e.target.value })} onBlur={() => { if (f.academy_name.trim()) commit(); }} style={{ margin: '4px 0 0' }} /></div>
           <div>
@@ -3421,11 +3418,10 @@ function MentorSettings({ mentor, onSave, L }: any) {
             <textarea value={f.about} onChange={(e) => setF({ ...f, about: e.target.value })} rows={3} style={{ width: '100%', margin: '4px 0 0' }} />
           </div>
         </div>
-      </div>
+      </SectionCard>
 
       {/* Branding: info para el AI + redes sociales + toggle emojis */}
-      <div className="sk-card" data-onb="branding">
-        <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 6 }}><span className="card-ic"><OnyxIcon name="gem" size={16} /></span> {L('Branding y AI', 'Branding & AI')}</h3>
+      <div data-onb="branding"><SectionCard icon="gem" title={L('Branding y AI', 'Branding & AI')} summary={L('Voz para el AI, emojis y redes sociales', 'AI voice, emojis and social links')} wide>
         <p className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>{L('Cuéntale a Onyx AI quién eres y tu estilo. Lo usará para escribir en tu voz (about, lemas, posts, ventas).', 'Tell Onyx AI who you are and your style. It will write in your voice (about, taglines, posts, sales).')}</p>
         <textarea value={f.brand_info} onChange={(e) => setF({ ...f, brand_info: e.target.value })} onBlur={() => { if (f.brand_info.trim()) commit(); }} rows={4} placeholder={L('Ej: Soy trader de forex desde 2016, enseño price action con enfoque en disciplina. Tono cercano y directo, sin promesas.', 'e.g. I’m a forex trader since 2016, I teach price action focused on discipline. Warm, direct tone, no promises.')} style={{ width: '100%', margin: 0 }} />
         <label className="row" style={{ gap: 8, fontSize: 13, marginTop: 10, cursor: 'pointer' }}>
@@ -3441,20 +3437,19 @@ function MentorSettings({ mentor, onSave, L }: any) {
             </div>
           ))}
         </div>
-      </div>
+      </SectionCard></div>
 
       {/* Asistente AI del alumno (base de conocimiento del mentor) */}
-      <div className="sk-card">
+      <SectionCard icon="ai" title={L('Asistente AI de tus alumnos', 'Your students’ AI assistant')} summary={f.assistant_on ? L('Activado · responde con tu guía', 'Enabled · answers from your guide') : L('Desactivado', 'Disabled')} badge={f.assistant_on ? { text: L('Activo', 'On'), tone: 'ok' } : { text: L('Inactivo', 'Off'), tone: 'off' }} wide>
         <div className="row between" style={{ marginBottom: 6, flexWrap: 'wrap', gap: 8 }}>
-          <h3 style={{ display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic"><OnyxIcon name="ai" size={16} /></span> {L('Asistente AI de tus alumnos', 'Your students’ AI assistant')}</h3>
+          <span />
           <label className="row" style={{ gap: 8, fontSize: 13, cursor: 'pointer' }}><input type="checkbox" checked={!!f.assistant_on} onChange={(e) => setF({ ...f, assistant_on: e.target.checked })} style={{ width: 'auto', margin: 0 }} /> {L('Activar', 'Enable')}</label>
         </div>
         <p className="muted" style={{ fontSize: 12.5, marginBottom: 8 }}>{L('Pega tu guía / preguntas frecuentes. El asistente responderá a tus alumnos usando SOLO esto (no inventa). Si algo no está, les dice que te pregunten a ti.', 'Paste your guide / FAQ. The assistant answers your students using ONLY this (it won’t make things up). If something isn’t here, it tells them to ask you.')}</p>
         <textarea value={f.assistant_kb} onChange={(e) => setF({ ...f, assistant_kb: e.target.value })} rows={7} placeholder={L('Ej: Horario de clases, cómo conectar la cuenta, reglas de la comunidad, tu estrategia en resumen, preguntas frecuentes con sus respuestas…', 'e.g. Class schedule, how to connect an account, community rules, your strategy summary, FAQs with answers…')} style={{ width: '100%', margin: 0 }} />
-      </div>
+      </SectionCard>
 
-      <div className="sk-card" style={{ border: '1px solid color-mix(in srgb,var(--gold) 35%,transparent)' }}>
-        <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 6 }}><span className="card-ic" style={{ color: 'var(--gold)' }}><OnyxIcon name="coins" size={16} /></span> {L('Membresía y página de ventas', 'Membership & sales page')}</h3>
+      <SectionCard icon="coins" title={L('Membresía y página de ventas', 'Membership & sales page')} summary={Number(f.membership_price) > 0 ? `$${f.membership_price}/mes${Number(f.membership_year) > 0 ? ` · $${f.membership_year}/año` : ''}` : L('Gratis · página de ventas', 'Free · sales page')} wide>
         <p className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>{L('Cobra una mensualidad para entrar a la comunidad. Deja 0 para que sea gratis. Necesitas conectar Stripe en Cobros.', 'Charge a monthly fee to enter the community. Leave 0 for free. You must connect Stripe in Payments.')}</p>
         <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <div><span className="muted" style={{ fontSize: 12 }}>{L('Precio mensual', 'Monthly price')}</span><input type="number" min={0} step="0.01" value={f.membership_price} onChange={(e) => setF({ ...f, membership_price: e.target.value })} style={{ margin: '4px 0 0', width: 120 }} /></div>
@@ -3478,10 +3473,9 @@ function MentorSettings({ mentor, onSave, L }: any) {
           <a href={link} target="_blank" rel="noreferrer" className="sk-chip">{link}</a>
           <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => navigator.clipboard.writeText(link)}>{L('Copiar', 'Copy')}</button>
         </div>
-      </div>
+      </SectionCard>
 
-      <div className="sk-card">
-        <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 6 }}><span className="card-ic"><OnyxIcon name="guardian" size={16} /></span> {L('Puertas de la academia (nuevas suscripciones)', 'Academy doors (new subscriptions)')}</h3>
+      <SectionCard icon="guardian" title={L('Puertas de la academia (nuevas suscripciones)', 'Academy doors (new subscriptions)')} summary={f.subs_open ? L('Abiertas — cualquiera puede unirse', 'Open — anyone can join') : L('Cerradas — no entran nuevos', 'Closed — no new members')} badge={f.subs_open ? { text: L('Abiertas', 'Open'), tone: 'ok' } : { text: L('Cerradas', 'Closed'), tone: 'off' }} wide>
         <p className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>{L('Controla si aceptas nuevos alumnos. Los que ya están dentro no se ven afectados. Ideal para lanzamientos por rondas.', 'Control whether you accept new students. Existing members are unaffected. Great for cohort launches.')}</p>
         <label className="row" style={{ gap: 10, alignItems: 'center', fontSize: 14, marginBottom: 10 }}>
           <input type="checkbox" checked={!!f.subs_open} onChange={(e) => setF({ ...f, subs_open: e.target.checked })} style={{ width: 'auto', margin: 0 }} />
@@ -3494,7 +3488,7 @@ function MentorSettings({ mentor, onSave, L }: any) {
             <p className="muted" style={{ fontSize: 11.5, margin: 0 }}>{L('Los visitantes verán el countdown y podrán apuntarse a la lista de espera para avisarles.', 'Visitors see the countdown and can join a waitlist to be notified.')}</p>
           </div>
         )}
-      </div>
+      </SectionCard>
 
       <button className="btn btn-primary" onClick={() => onSave({ ...f, membership_price_cents: Math.round(Number(f.membership_price) * 100), membership_year_cents: Math.round(Number(f.membership_year) * 100), subs_reopen_at: f.subs_open ? '' : f.subs_reopen_at })}>{L('Guardar', 'Save')}</button>
     </div>
