@@ -479,14 +479,15 @@ export default function Home() {
 
   // Etiquetas del menú editables desde el Landing Builder (vacío = texto del código).
   const nv = (k: string, fb: string) => lc?.nav?.[k]?.[lang] || fb;
+  // Anclas de secciones del landing. NO repetimos aquí "Precios" ni "Embajadores":
+  // ya están en la barra de arriba (Plans / Ambassadors), y salir dos veces
+  // recargaba el menú.
   const SECTIONS = [
     { id: 'features', label: nv('features', t.nav.features) },
     { id: 'eco', label: nv('eco', t.nav.eco) },
     { id: 'how', label: nv('how', t.nav.how) },
     { id: 'fondeo', label: nv('fondeo', t.nav.fondeo) },
     { id: 'gestor', label: nv('gestor', t.nav.gestor) },
-    { id: 'pricing', label: nv('pricing', t.nav.pricing) },
-    { id: 'embajadores', label: nv('amb', t.nav.amb) },
     { id: 'faq', label: nv('faq', t.nav.faq) },
   ];
 
