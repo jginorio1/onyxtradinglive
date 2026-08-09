@@ -271,12 +271,13 @@ export default function BlogEditor() {
       const past = cellDate < today;
       const isToday = cellDate.getTime() === today.getTime();
       const list = byDay[k] || [];
-      const canDrop = !past && !!dragId;
+      // Los manejadores van SIEMPRE puestos (solo se bloquean en días pasados). Si se condicionan a
+      // `dragId`, el estado de React aún no está listo en el primer `dragover` y la celda no deja soltar.
       cells.push(
         <div key={k}
-          onDragOver={canDrop ? (e) => { e.preventDefault(); setOverDay(k); } : undefined}
+          onDragOver={past ? undefined : (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setOverDay(k); }}
           onDragLeave={() => setOverDay((o) => (o === k ? '' : o))}
-          onDrop={canDrop ? (e) => { e.preventDefault(); const p = posts.find((x) => x.id === dragId); if (p) reschedule(p, k); setOverDay(''); setDragId(''); } : undefined}
+          onDrop={past ? undefined : (e) => { e.preventDefault(); const id = dragId || e.dataTransfer.getData('text/plain'); const pp = posts.find((x) => x.id === id); if (pp) reschedule(pp, k); setOverDay(''); setDragId(''); }}
           onClick={() => !past && newOn(k)}
           style={{ border: '1px solid ' + (overDay === k ? 'var(--brand)' : 'var(--line)'), outline: isToday ? '1.5px solid var(--brand)' : 'none', borderRadius: 10, padding: '5px 6px', minHeight: 92, background: overDay === k ? 'color-mix(in srgb,var(--brand) 12%,transparent)' : (past ? 'transparent' : 'var(--card)'), opacity: past ? 0.5 : 1, cursor: past ? 'default' : 'pointer', overflow: 'hidden' }}>
           <div style={{ fontSize: 11, color: isToday ? 'var(--brand)' : 'var(--mut)', fontWeight: isToday ? 700 : 500, marginBottom: 3 }}>{d}</div>

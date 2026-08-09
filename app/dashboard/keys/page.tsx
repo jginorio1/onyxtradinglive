@@ -251,7 +251,7 @@ export default function KeysPage() {
       return {
         steps: t.stepsCt, stuck: t.stuckCt,
         dl: [{ href: '/ctrader/OnyxConnect.cs', label: 'cTrader (.cs)', primary: true }],
-        conn: { name: 'cTrader', waitD: t.connCt.waitD, staleHint: t.connCt.staleHint },
+        conn: { name: 'cTrader', platKey: 'ctrader', waitD: t.connCt.waitD, staleHint: t.connCt.staleHint },
         does: t.ctDoes, fileName: t.ctFileName, note: '',
       };
     }
@@ -260,7 +260,7 @@ export default function KeysPage() {
     return {
       steps: t.steps, stuck: t.stuckMt,
       dl: [{ href: isMt4 ? '/OnyxConnect_MT4.mq4' : '/OnyxConnect_MT5.mq5', label: isMt4 ? t.dlMt4 : t.dlMt5, primary: true }],
-      conn: { name: activePlat.name, waitD: t.connMt.waitD, staleHint: t.connMt.staleHint },
+      conn: { name: activePlat.name, platKey: plat, waitD: t.connMt.waitD, staleHint: t.connMt.staleHint },
       does: t.mt5Does, fileName: isMt4 ? 'OnyxConnect_MT4.mq4 · v2.00' : 'OnyxConnect_MT5.mq5 · v2.00',
       note: isMt4 ? t.mtNoteMt4 : '',
     };

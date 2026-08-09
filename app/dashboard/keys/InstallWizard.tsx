@@ -89,6 +89,24 @@ export default function InstallWizard({
   const startedAt = useRef(0);
   const platName = conn?.name || 'MetaTrader';
 
+  // Normaliza cualquier etiqueta de plataforma ('MT5','mt5','MetaTrader 5','cTrader'…)
+  // a un código estable para comparar la cuenta conectada con la plataforma elegida.
+  const platCode = (p: string) => {
+    const s = (p || '').toLowerCase();
+    if (s.includes('ctrader')) return 'ctrader';
+    if (s.includes('match')) return 'matchtrader';
+    if (s.includes('4')) return 'mt4';
+    if (s.includes('5')) return 'mt5';
+    if (s.includes('mt') || s.includes('meta')) return 'mt5';
+    return s;
+  };
+  const selCode = platCode(conn?.platKey || '');
+  // Solo las cuentas de la plataforma seleccionada cuentan como "conectada" aquí.
+  const myAccts: any[] = (status?.accounts || []).filter((a: any) => platCode(a.platform) === selCode);
+  const platConnected = myAccts.length > 0;
+  const platLive = myAccts.some((a: any) => a.live);
+  const myLatest = myAccts[0] || null; // la API los ordena por última sincronización desc
+
   const check = useCallback(async () => {
     try {
       const r = await fetch('/api/install/status');
@@ -114,29 +132,29 @@ export default function InstallWizard({
 
   const stripNum = (s: string) => (s || '').replace(/^\s*\d+\.\s*/, '');
 
-  // ---- Ya configurado y plegado ----
-  if (collapsed && status?.connected) {
-    const mins = status.account?.lastSyncAt
-      ? Math.max(0, Math.floor((Date.now() - new Date(status.account.lastSyncAt).getTime()) / 60000))
+  // ---- Ya configurado y plegado (solo si la cuenta es de la plataforma elegida) ----
+  if (collapsed && platConnected) {
+    const mins = myLatest?.lastSyncAt
+      ? Math.max(0, Math.floor((Date.now() - new Date(myLatest.lastSyncAt).getTime()) / 60000))
       : 0;
-    const col = live ? 'var(--green)' : 'var(--amber)';
+    const col = platLive ? 'var(--green)' : 'var(--amber)';
     return (
       <div className="card" style={{ marginBottom: 18, border: '1px solid ' + col }}>
         <div className="row between" style={{ flexWrap: 'wrap', gap: 10 }}>
           <div className="row" style={{ gap: 10 }}>
             <span style={{
               width: 30, height: 30, borderRadius: '50%', flex: 'none',
-              background: live ? 'rgba(52,226,160,.14)' : 'rgba(245,158,11,.14)', color: col,
+              background: platLive ? 'rgba(52,226,160,.14)' : 'rgba(245,158,11,.14)', color: col,
               display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16,
-            }}>{live ? '✓' : '⚠'}</span>
+            }}>{platLive ? '✓' : '⚠'}</span>
             <div>
-              <div style={{ fontWeight: 700, color: col }}>{live ? w.connectedT(platName) : w.staleT}</div>
+              <div style={{ fontWeight: 700, color: col }}>{platLive ? w.connectedT(platName) : w.staleT}</div>
               <div className="muted" style={{ fontSize: 13 }}>
-                {w.connectedD(status.account?.login, status.account?.broker)}
-                {status.syncedAccounts > 1 && ` · ${status.syncedAccounts}`}
-                {!live && ` · ${w.lastSeen}: ${w.since(mins)}`}
+                {w.connectedD(myLatest?.login, myLatest?.broker)}
+                {myAccts.length > 1 && ` · ${myAccts.length}`}
+                {!platLive && ` · ${w.lastSeen}: ${w.since(mins)}`}
               </div>
-              {!live && <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{conn?.staleHint}</div>}
+              {!platLive && <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{conn?.staleHint}</div>}
             </div>
           </div>
           <button className="btn btn-ghost" style={{ fontSize: 13 }}
