@@ -91,7 +91,7 @@ function addrValid(addr: string, network: string): boolean {
   return /^0x[0-9a-fA-F]{40}$/.test(a);                                        // ERC20/BEP20: 0x + 40 hex
 }
 
-export default function Ambassador({ lang, only }: { lang: Lang; only?: 'payout' | 'referral' | 'payout-balance' | 'payout-details' | 'payout-history' }) {
+export default function Ambassador({ lang, only }: { lang: Lang; only?: 'payout' | 'referral' }) {
   const [d, setD] = useState<any>(null);
   const [busy, setBusy] = useState('');
   const [copied, setCopied] = useState('');
@@ -203,12 +203,9 @@ export default function Ambassador({ lang, only }: { lang: Lang; only?: 'payout'
   const canReq = bal.available >= Number(s.min_payout || 50);
   const box = { background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '10px 12px', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' } as any;
   const lbl = { fontSize: 12, color: 'var(--mut)', marginTop: 10, display: 'block' } as any;
-  // only='payout' → todas las tarjetas de retiro; 'payout-balance'/'payout-details'/'payout-history' → una sola.
-  // only='referral' → solo referido; sin prop → todo.
-  const payBalance = !only || only === 'payout' || only === 'payout-balance';
-  const payDetails = !only || only === 'payout' || only === 'payout-details';
-  const payHistory = !only || only === 'payout' || only === 'payout-history';
-  const showRef = !only || only === 'referral';
+  // only='payout' → solo tarjetas de retiro; only='referral' → solo referido; sin prop → todo.
+  const showPay = only !== 'referral';
+  const showRef = only !== 'payout';
 
   return (
     <>
@@ -262,7 +259,7 @@ export default function Ambassador({ lang, only }: { lang: Lang; only?: 'payout'
       )}
 
       {/* Saldos */}
-      {payBalance && (
+      {showPay && (
       <div className="card" style={{ marginBottom: 14 }}>
         <div className="grid g3" style={{ gap: 12 }}>
           <div><div className="muted" style={{ fontSize: 13 }}>{t.pending}</div><div style={{ fontSize: 22, fontWeight: 800 }}>${bal.pending}</div></div>
@@ -281,7 +278,7 @@ export default function Ambassador({ lang, only }: { lang: Lang; only?: 'payout'
       )}
 
       {/* Datos de cobro */}
-      {payDetails && (
+      {showPay && (
       <div className="card" style={{ marginBottom: 14 }}>
         <h3 style={{ marginBottom: 4 }}>{t.payT}</h3>
         <span style={lbl}>{t.method}</span>
@@ -382,7 +379,7 @@ export default function Ambassador({ lang, only }: { lang: Lang; only?: 'payout'
       )}
 
       {/* Historial */}
-      {payHistory && (
+      {showPay && (
       <div className="card" style={{ marginBottom: 14 }}>
         <h3 style={{ marginBottom: 10 }}>{t.hist}</h3>
         {!d.payouts?.length && <p className="muted" style={{ fontSize: 14 }}>{t.noHist}</p>}
