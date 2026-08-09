@@ -2303,6 +2303,7 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
         }} onCancel={() => setEvForm(null)} />}
       </>)}
 
+      {tab === 'cobros' && <MembershipCard mentor={d.mentor} L={L} onSave={(b: any) => api({ action: 'settings', ...b }, L('Guardado', 'Saved'))} />}
       {tab === 'cobros' && <MentorPayments modules={d.content || []} L={L} onChanged={load} />}
       {tab === 'cobros' && <CopyPanel mentorId="" isMentor L={L} />}
 
@@ -3377,15 +3378,13 @@ function LessonForm({ form, setForm, onSave, onCancel, L }: any) {
 function MentorSettings({ mentor, onSave, L }: any) {
   const [f, setF] = useState({
     academy_name: mentor.academy_name, tagline: mentor.tagline || '', about: mentor.about || '', cover_url: mentor.cover_url || '', logo_url: mentor.logo_url || '',
-    intro_video_url: mentor.intro_video_url || '', pitch: mentor.pitch || '',
     brand_info: mentor.brand_info || '', ai_emojis: mentor.ai_emojis !== false, socials: { ...(mentor.socials || {}) } as any,
     assistant_kb: mentor.assistant_kb || '', assistant_on: !!mentor.assistant_on,
-    membership_price: ((mentor.membership_price_cents || 0) / 100).toString(), membership_year: ((mentor.membership_year_cents || 0) / 100).toString(), membership_currency: mentor.membership_currency || 'usd', membership_interval: mentor.membership_interval || 'month',
-    subs_open: mentor.subs_open !== false, subs_reopen_at: mentor.subs_reopen_at ? new Date(mentor.subs_reopen_at).toISOString().slice(0, 16) : '', subs_closed_note: mentor.subs_closed_note || '',
   });
   const setSocial = (k: string, v: string) => setF((s: any) => ({ ...s, socials: { ...s.socials, [k]: v } }));
   // Guarda los ajustes (usado por el botón y por el auto-guardado de imágenes/nombre/branding).
-  const commit = (extra: any = {}) => { const m = { ...f, ...extra }; onSave({ ...m, membership_price_cents: Math.round(Number(m.membership_price) * 100), membership_year_cents: Math.round(Number(m.membership_year) * 100), subs_reopen_at: m.subs_open ? '' : m.subs_reopen_at }); };
+  // Nota: membresía/precios/puertas se movieron a la pestaña Cobros (MembershipCard).
+  const commit = (extra: any = {}) => { onSave({ ...f, ...extra }); };
   // La guía interactiva puede pedir que Onyx AI escriba un texto DIRECTO en un campo (con todo
   // el espacio, sin recortes). Lo recibimos aquí, lo ponemos en el campo y lo guardamos.
   useEffect(() => {
@@ -3449,8 +3448,34 @@ function MentorSettings({ mentor, onSave, L }: any) {
         <textarea value={f.assistant_kb} onChange={(e) => setF({ ...f, assistant_kb: e.target.value })} rows={7} placeholder={L('Ej: Horario de clases, cómo conectar la cuenta, reglas de la comunidad, tu estrategia en resumen, preguntas frecuentes con sus respuestas…', 'e.g. Class schedule, how to connect an account, community rules, your strategy summary, FAQs with answers…')} style={{ width: '100%', margin: 0 }} />
       </SectionCard>
 
+      <button className="btn btn-primary" onClick={() => onSave(f)}>{L('Guardar', 'Save')}</button>
+    </div>
+  );
+}
+
+// =================== Membresía y página de ventas (movido a Cobros) ===================
+// Antes vivía dentro de Ajustes; se movió a Cobros porque es monetización pura
+// (precio de entrada + página de ventas + puertas de nuevas suscripciones).
+function MembershipCard({ mentor, onSave, L }: any) {
+  const [f, setF] = useState({
+    membership_price: ((mentor.membership_price_cents || 0) / 100).toString(),
+    membership_year: ((mentor.membership_year_cents || 0) / 100).toString(),
+    intro_video_url: mentor.intro_video_url || '', pitch: mentor.pitch || '',
+    subs_open: mentor.subs_open !== false,
+    subs_reopen_at: mentor.subs_reopen_at ? new Date(mentor.subs_reopen_at).toISOString().slice(0, 16) : '',
+    subs_closed_note: mentor.subs_closed_note || '',
+  });
+  const link = typeof window !== 'undefined' ? `${window.location.origin}/academia/${mentor.code}` : '';
+  const save = () => onSave({
+    membership_price_cents: Math.round(Number(f.membership_price) * 100),
+    membership_year_cents: Math.round(Number(f.membership_year) * 100),
+    intro_video_url: f.intro_video_url, pitch: f.pitch,
+    subs_open: f.subs_open, subs_reopen_at: f.subs_open ? '' : f.subs_reopen_at, subs_closed_note: f.subs_closed_note,
+  });
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, margin: '0 0 12px' }}>
       <SectionCard icon="coins" title={L('Membresía y página de ventas', 'Membership & sales page')} summary={Number(f.membership_price) > 0 ? `$${f.membership_price}/mes${Number(f.membership_year) > 0 ? ` · $${f.membership_year}/año` : ''}` : L('Gratis · página de ventas', 'Free · sales page')} wide>
-        <p className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>{L('Cobra una mensualidad para entrar a la comunidad. Deja 0 para que sea gratis. Necesitas conectar Stripe en Cobros.', 'Charge a monthly fee to enter the community. Leave 0 for free. You must connect Stripe in Payments.')}</p>
+        <p className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>{L('Cobra una mensualidad para entrar a la comunidad. Deja 0 para que sea gratis. Necesitas conectar Stripe (arriba).', 'Charge a monthly fee to enter the community. Leave 0 for free. You must connect Stripe (above).')}</p>
         <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <div><span className="muted" style={{ fontSize: 12 }}>{L('Precio mensual', 'Monthly price')}</span><input type="number" min={0} step="0.01" value={f.membership_price} onChange={(e) => setF({ ...f, membership_price: e.target.value })} style={{ margin: '4px 0 0', width: 120 }} /></div>
           <div><span className="muted" style={{ fontSize: 12 }}>{L('Precio anual (opcional)', 'Annual price (optional)')}</span><input type="number" min={0} step="0.01" value={f.membership_year} onChange={(e) => setF({ ...f, membership_year: e.target.value })} placeholder={L('con descuento', 'discounted')} style={{ margin: '4px 0 0', width: 140 }} /></div>
@@ -3465,7 +3490,7 @@ function MentorSettings({ mentor, onSave, L }: any) {
         </div>
         <div style={{ marginTop: 12 }}><span className="muted" style={{ fontSize: 12 }}>{L('Video de presentación (YouTube/Vimeo/.mp4)', 'Intro video (YouTube/Vimeo/.mp4)')}</span><input value={f.intro_video_url} onChange={(e) => setF({ ...f, intro_video_url: e.target.value })} placeholder="https://youtu.be/…" style={{ margin: '4px 0 0' }} /></div>
         <div style={{ marginTop: 10 }}>
-          <div className="row between" style={{ alignItems: 'center' }}><span className="muted" style={{ fontSize: 12 }}>{L('Texto de ventas (qué incluye, casos de éxito…)', 'Sales copy (what’s included, testimonials…)')}</span><AiBtn kind="pitch" getInput={() => `${f.academy_name}. ${f.tagline}. ${f.about}`} onText={(t: string) => setF((s: any) => ({ ...s, pitch: t }))} L={L} /></div>
+          <div className="row between" style={{ alignItems: 'center' }}><span className="muted" style={{ fontSize: 12 }}>{L('Texto de ventas (qué incluye, casos de éxito…)', 'Sales copy (what’s included, testimonials…)')}</span><AiBtn kind="pitch" getInput={() => `${mentor.academy_name}. ${mentor.tagline || ''}. ${mentor.about || ''}`} onText={(t: string) => setF((s: any) => ({ ...s, pitch: t }))} L={L} /></div>
           <textarea value={f.pitch} onChange={(e) => setF({ ...f, pitch: e.target.value })} rows={6} placeholder={L('Escríbelo o pulsa ✨ IA para que Onyx AI te lo genere.', 'Write it or hit ✨ AI to let Onyx AI generate it.')} style={{ width: '100%', margin: '4px 0 0' }} />
         </div>
         <div className="row" style={{ gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -3473,6 +3498,7 @@ function MentorSettings({ mentor, onSave, L }: any) {
           <a href={link} target="_blank" rel="noreferrer" className="sk-chip">{link}</a>
           <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => navigator.clipboard.writeText(link)}>{L('Copiar', 'Copy')}</button>
         </div>
+        <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={save}>{L('Guardar', 'Save')}</button>
       </SectionCard>
 
       <SectionCard icon="guardian" title={L('Puertas de la academia (nuevas suscripciones)', 'Academy doors (new subscriptions)')} summary={f.subs_open ? L('Abiertas — cualquiera puede unirse', 'Open — anyone can join') : L('Cerradas — no entran nuevos', 'Closed — no new members')} badge={f.subs_open ? { text: L('Abiertas', 'Open'), tone: 'ok' } : { text: L('Cerradas', 'Closed'), tone: 'off' }} wide>
@@ -3488,9 +3514,8 @@ function MentorSettings({ mentor, onSave, L }: any) {
             <p className="muted" style={{ fontSize: 11.5, margin: 0 }}>{L('Los visitantes verán el countdown y podrán apuntarse a la lista de espera para avisarles.', 'Visitors see the countdown and can join a waitlist to be notified.')}</p>
           </div>
         )}
+        <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={save}>{L('Guardar', 'Save')}</button>
       </SectionCard>
-
-      <button className="btn btn-primary" onClick={() => onSave({ ...f, membership_price_cents: Math.round(Number(f.membership_price) * 100), membership_year_cents: Math.round(Number(f.membership_year) * 100), subs_reopen_at: f.subs_open ? '' : f.subs_reopen_at })}>{L('Guardar', 'Save')}</button>
     </div>
   );
 }
