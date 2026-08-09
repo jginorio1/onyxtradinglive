@@ -2234,7 +2234,7 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
       <div className="sk-academy-3col" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,208px) minmax(0,1fr) minmax(0,300px)', gap: 16, alignItems: 'start' }}>
         {/* Opción D · navegación vertical (escritorio/tablet) + selector nativo en móvil (como Mi cuenta) */}
         {(() => {
-          const mentorTabs = [['cursos', 'graduation', L('Aulas', 'Classroom')], ['envivo', 'calendar', L('En vivo', 'Live')], ['cobros', 'coins', L('Cobros', 'Payments')], ['becas', 'gift', L('Becas', 'Scholarships')], ['alumnos', 'users', L('Alumnos', 'Students')], ['auditoria', 'guardian', L('Auditoría', 'Audit')], ['retencion', 'trophy', L('Retención', 'Retention')], ['comunidad', 'chat', L('Comunidad', 'Community')], ['correos', 'mail', L('Correos', 'Emails')], ['ajustes', 'settings', L('Ajustes', 'Settings')]] as any[];
+          const mentorTabs = [['cursos', 'graduation', L('Aulas', 'Classroom')], ['envivo', 'calendar', L('En vivo', 'Live')], ['cobros', 'coins', L('Cobros', 'Payments')], ['becas', 'gift', L('Becas', 'Scholarships')], ['alumnos', 'users', L('Alumnos', 'Students')], ['auditoria', 'guardian', L('Auditoría', 'Audit')], ['retencion', 'trophy', L('Retención', 'Retention')], ['comunidad', 'chat', L('Comunidad', 'Community')], ['correos', 'mail', L('Correos', 'Emails')], ['ajustes', 'settings', L('Ajustes', 'Settings')], ['guia', 'book', L('Academia 101', 'Academy 101')]] as any[];
           const byKey: Record<string, any> = {}; mentorTabs.forEach(([k, ic, lbl]) => { byKey[k] = { ic, lbl }; });
           // Insignias (a partir de los datos ya cargados en el panel).
           const todayKey = new Date().toDateString(); const nowMs = Date.now();
@@ -2251,6 +2251,7 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
             [L('Personas', 'People'), ['alumnos', 'auditoria', 'retencion']],
             [L('Dinero', 'Money'), ['cobros', 'becas']],
             [L('Configuración', 'Settings'), ['correos', 'ajustes']],
+            [L('Aprende', 'Learn'), ['guia']],
           ];
           const item = (k: string) => {
             const it = byKey[k]; const b = badges[k];
@@ -2295,6 +2296,8 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
           <JoinQR url={link} size={150} actions L={L} />
         </div>
       </div>
+
+      {tab === 'guia' && <MentorGuide d={d} L={L} onGoto={(k: string) => setTab(k as any)} />}
 
       {tab === 'cursos' && (<>
         <div className="sk-card" data-onb="classroom">
@@ -4018,5 +4021,133 @@ function TierForm({ form, setForm, modules, busy, onSave, onCancel, L }: any) {
         <button className="btn btn-ghost" onClick={onCancel}>{L('Cancelar', 'Cancel')}</button>
       </div>
     </div></Modal>
+  );
+}
+
+// ============================================================
+// Academia 101 · guía propia del mentor. Viva: el progreso y el "siguiente paso"
+// salen del estado real de su academia (portada, aulas, precio, alumnos). Las
+// guías son cortas y visuales (tarjeta → popup con pasos + "Hazlo ahora").
+// ============================================================
+function GuideRing({ pct }: { pct: number }) {
+  const r = 24, C = 2 * Math.PI * r, dash = Math.max(0, Math.min(1, pct)) * C;
+  const done = pct >= 1;
+  return (
+    <svg width="60" height="60" viewBox="0 0 60 60" style={{ flex: 'none' }}>
+      <circle cx="30" cy="30" r={r} fill="none" stroke="var(--line)" strokeWidth="6" />
+      <circle cx="30" cy="30" r={r} fill="none" stroke={done ? 'var(--green)' : 'var(--brand)'} strokeWidth="6" strokeLinecap="round" strokeDasharray={`${dash} ${C}`} transform="rotate(-90 30 30)" />
+      <text x="30" y="34" textAnchor="middle" fill="var(--tx)" fontSize="14" fontWeight="600">{Math.round(pct * 100)}%</text>
+    </svg>
+  );
+}
+
+function MentorGuide({ d, L, onGoto }: { d: any; L: (a: string, b: string) => string; onGoto: (k: string) => void }) {
+  const [q, setQ] = useState('');
+  const [ans, setAns] = useState<{ q: string; a: string; refs: any[] } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const lang = L('es', 'en');
+
+  const content = d.content || [];
+  const students = (d.roster?.students || []).length;
+  const hasLesson = content.some((m: any) => (m.lessons || []).length > 0);
+
+  const steps = [
+    { key: 'marca', ic: 'gem', tab: 'ajustes', done: !!(d.mentor?.cover_url || d.mentor?.logo_url), t: L('Personaliza tu marca', 'Set up your branding'), s: L('Portada, logo y colores de tu academia.', 'Cover, logo and your academy colors.') },
+    { key: 'aula', ic: 'graduation', tab: 'cursos', done: content.length > 0, t: L('Crea tu primera aula', 'Create your first classroom'), s: L('Un aula agrupa tus lecciones.', 'A classroom groups your lessons.') },
+    { key: 'leccion', ic: 'book', tab: 'cursos', done: hasLesson, t: L('Sube una lección', 'Upload a lesson'), s: L('Vídeo o texto dentro del aula.', 'Video or text inside the classroom.') },
+    { key: 'precio', ic: 'coins', tab: 'cobros', done: Number(d.mentor?.membership_price_cents || 0) > 0, t: L('Pon precio y cobra', 'Set a price and get paid'), s: L('Membresía mensual o anual con Stripe.', 'Monthly or annual membership with Stripe.') },
+    { key: 'invita', ic: 'users', tab: 'alumnos', done: students > 0, t: L('Invita a tus alumnos', 'Invite your students'), s: L('Comparte tu enlace o código de acceso.', 'Share your link or access code.') },
+    { key: 'crece', ic: 'megaphone', tab: 'comunidad', done: students >= 3, t: L('Haz crecer tu comunidad', 'Grow your community'), s: L('Publica, programa clases y activa afiliados.', 'Post, schedule classes and enable affiliates.') },
+  ];
+  const doneN = steps.filter((s) => s.done).length;
+  const pct = steps.length ? doneN / steps.length : 0;
+  const next = steps.find((s) => !s.done) || steps[steps.length - 1];
+
+  const guides: any[] = [
+    { ic: 'graduation', tab: 'cursos', mins: '3', t: L('Crea tu primer curso', 'Create your first course'), steps: [L('En Aulas, escribe un nombre y pulsa ＋ Aula.', 'In Classroom, type a name and hit ＋ Classroom.'), L('Abre el aula y añade lecciones (vídeo o texto).', 'Open the classroom and add lessons (video or text).'), L('Ordena las lecciones arrastrándolas.', 'Reorder lessons by dragging them.'), L('¿Sin ideas? Usa la plantilla Academia Onyx.', 'No ideas? Use the Onyx Academy template.')] },
+    { ic: 'calendar', tab: 'envivo', mins: '2', t: L('Programa una clase en vivo', 'Schedule a live class'), steps: [L('En En vivo, elige uno o varios días en el calendario.', 'In Live, pick one or more days on the calendar.'), L('Pon título, hora y duración.', 'Set title, time and duration.'), L('Tus alumnos ven la cuenta atrás y el aviso.', 'Your students see the countdown and the alert.'), L('Al empezar, aparece el botón EN VIVO.', 'When it starts, the LIVE button appears.')] },
+    { ic: 'coins', tab: 'cobros', mins: '2', t: L('Precio y membresías', 'Pricing and memberships'), steps: [L('En Cobros, define el precio mensual y/o anual.', 'In Payments, set the monthly and/or annual price.'), L('Añade varios niveles si quieres (VIP, básico…).', 'Add tiers if you want (VIP, basic…).'), L('Abre o cierra las suscripciones cuando quieras.', 'Open or close subscriptions anytime.'), L('El precio aparece en tu página de ventas.', 'The price shows on your sales page.')] },
+    { ic: 'ticket', tab: 'cobros', mins: '1', t: L('Cupones y descuentos', 'Coupons and discounts'), steps: [L('En Cobros, crea un cupón con % o monto.', 'In Payments, create a coupon with a % or amount.'), L('Ponle fecha de caducidad si es una promo.', 'Give it an expiry date if it is a promo.'), L('Comparte el código con tu audiencia.', 'Share the code with your audience.'), L('Míralo aplicado en el checkout del alumno.', 'See it applied at the student checkout.')] },
+    { ic: 'card', tab: 'cobros', mins: '2', t: L('Cobra con Stripe', 'Get paid with Stripe'), steps: [L('En Cobros, conecta tu cuenta de Stripe.', 'In Payments, connect your Stripe account.'), L('El dinero de tus alumnos llega directo a ti.', "Your students' money lands directly with you."), L('Onyx solo descuenta su comisión según tu plan.', 'Onyx only deducts its fee based on your plan.'), L('Sin intermediarios ni retrasos por nuestra parte.', 'No middlemen or delays on our side.')] },
+    { ic: 'guardian', tab: 'comunidad', mins: '2', t: L('Comunidad y moderación', 'Community and moderation'), steps: [L('Publica anuncios y posts en la comunidad.', 'Post announcements and posts in the community.'), L('En Ajustes activa la moderación automática.', 'In Settings turn on automatic moderation.'), L('Silencia o expulsa a un alumno desde su perfil.', 'Mute or remove a student from their profile.'), L('Revisa reportes en la cola de moderación.', 'Review reports in the moderation queue.')] },
+    { ic: 'swap', tab: 'cobros', mins: '3', t: L('Copy del mentor', 'Mentor copy'), steps: [L('En Cobros, activa la oferta de copy.', 'In Payments, enable the copy offer.'), L('Elige tu cuenta maestra y el precio.', 'Choose your master account and the price.'), L('Tus alumnos replican tus trades a su capital.', 'Your students replicate your trades to their capital.'), L('Nunca ves ni tocas la cuenta de tu alumno.', "You never see or touch your student's account.")] },
+    { ic: 'gift', tab: 'becas', mins: '2', t: L('Becas y afiliados', 'Scholarships and affiliates'), steps: [L('En Becas, ofrece cupos gratis o con descuento.', 'In Scholarships, offer free or discounted seats.'), L('Activa el programa de afiliados de tu academia.', "Turn on your academy's affiliate program."), L('Tus alumnos ganan por traer a más gente.', 'Your students earn for bringing more people.'), L('Sigue conversiones y pagos desde el panel.', 'Track conversions and payouts from the panel.')] },
+  ];
+
+  async function ask() {
+    const question = q.trim(); if (question.length < 2) return;
+    setBusy(true); setAns({ q: question, a: '', refs: [] });
+    try {
+      const r = await fetch('/api/support/ai', { method: 'POST', body: JSON.stringify({ question, history: [], lang }) });
+      const j = await r.json();
+      setAns({ q: question, a: j.answer || '…', refs: j.articles || [] });
+    } catch { setAns({ q: question, a: '…', refs: [] }); }
+    setBusy(false);
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Pregúntale a Onyx */}
+      <div className="sk-card">
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <span style={{ color: 'var(--brand)', display: 'inline-flex', flex: 'none' }}><OnyxIcon name="ai" size={20} /></span>
+          <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') ask(); }}
+            placeholder={L('Pregunta: ¿cómo pongo precio? ¿cómo programo una clase?…', 'Ask: how do I set a price? how do I schedule a class?…')}
+            style={{ flex: 1, margin: 0, border: 'none', background: 'transparent' }} />
+          <button className="btn btn-primary" style={{ flex: 'none' }} onClick={ask} disabled={busy || q.trim().length < 2}>{busy ? L('Pensando…', 'Thinking…') : L('Preguntar a Onyx', 'Ask Onyx')}</button>
+        </div>
+        {ans && (
+          <div style={{ marginTop: 12, borderTop: '1px solid var(--line)', paddingTop: 12 }}>
+            <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{ans.q}</div>
+            <div style={{ fontSize: 14, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{busy ? L('Pensando…', 'Thinking…') : ans.a}</div>
+            {ans.refs.length > 0 && <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>{ans.refs.map((a: any) => <a key={a.slug} href={`/guia/${a.slug}`} className="pill" style={{ color: 'var(--brand)', background: 'color-mix(in srgb,var(--brand) 12%,transparent)' }}>{L('Ver', 'See')}: {a.title}</a>)}</div>}
+          </div>
+        )}
+      </div>
+
+      {/* Progreso + siguiente paso */}
+      <div className="sk-card" style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+        <GuideRing pct={pct} />
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <div className="muted" style={{ fontSize: 12 }}>{pct >= 1 ? L('¡Tu academia está lista!', 'Your academy is ready!') : L('Tu academia está casi lista', 'Your academy is almost ready')}</div>
+          <div style={{ fontSize: 15, fontWeight: 600, margin: '2px 0 3px' }}>{L('Siguiente', 'Next')}: {next.t}</div>
+          <div className="muted" style={{ fontSize: 13 }}>{next.s}</div>
+        </div>
+        <button className="btn btn-primary sk-glow" style={{ flex: 'none' }} onClick={() => onGoto(next.tab)}>{L('Hazlo ahora', 'Do it now')}</button>
+      </div>
+
+      {/* Ruta del mentor */}
+      <div className="sk-card">
+        <div className="muted" style={{ fontSize: 11, letterSpacing: '.05em', marginBottom: 12 }}>{L('RUTA DEL MENTOR', 'MENTOR PATH')}</div>
+        <div style={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2 }}>
+          {steps.map((s, i) => {
+            const on = !s.done && (i === 0 || steps[i - 1].done);
+            const col = s.done ? 'var(--green)' : on ? 'var(--brand)' : 'var(--line)';
+            return (
+              <div key={s.key} style={{ display: 'flex', alignItems: 'center' }}>
+                <button onClick={() => onGoto(s.tab)} title={s.t} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, minWidth: 78, background: 'transparent', border: 'none', cursor: 'pointer' }}>
+                  <span style={{ width: 34, height: 34, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid ' + col, background: on ? 'color-mix(in srgb,var(--brand) 14%,transparent)' : 'var(--card2)', color: s.done ? 'var(--green)' : on ? 'var(--brand)' : 'var(--mut)' }}>
+                    <OnyxIcon name={s.done ? 'check' : s.ic} size={16} glow={false} />
+                  </span>
+                  <span style={{ fontSize: 10.5, color: on ? 'var(--tx)' : 'var(--mut)', textAlign: 'center', lineHeight: 1.2, maxWidth: 78 }}>{s.t}</span>
+                </button>
+                {i < steps.length - 1 && <div style={{ width: 20, height: 2, background: s.done ? 'var(--green)' : 'var(--line)', opacity: .6 }} />}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Guías visuales */}
+      <div className="muted" style={{ fontSize: 11, letterSpacing: '.05em', margin: '2px 4px' }}>{L('GUÍAS VISUALES', 'VISUAL GUIDES')}</div>
+      {guides.map((g, i) => (
+        <SectionCard key={i} icon={g.ic} title={g.t} summary={L(`${g.mins} min · paso a paso`, `${g.mins} min · step by step`)}>
+          <ol style={{ margin: '0 0 12px', paddingLeft: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {g.steps.map((st: string, j: number) => <li key={j} style={{ fontSize: 14, lineHeight: 1.55 }}>{st}</li>)}
+          </ol>
+          <button className="btn btn-primary" onClick={() => onGoto(g.tab)}>{L('Hazlo ahora', 'Do it now')}</button>
+        </SectionCard>
+      ))}
+    </div>
   );
 }
