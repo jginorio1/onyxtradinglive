@@ -131,6 +131,37 @@ export async function setSubStatus(mentorId: string, studentId: string, status: 
   await supabaseAdmin.from('academy_copy_subs').update({ status, updated_at: new Date().toISOString() }).eq('id', sub.id);
 }
 
+// Sincroniza el estado del copy según el estado de la suscripción de Stripe.
+// active/trialing → active (si ya conectó su cuenta) o pending_connect (si falta).
+// cualquier otro → canceled (apaga el enlace). Reversible.
+export async function syncCopyStatusBySub(subId: string, stripeStatus: string, periodEnd?: number) {
+  const { data } = await supabaseAdmin.from('academy_copy_subs')
+    .select('id,copy_link_id,status').eq('stripe_subscription_id', subId).maybeSingle();
+  if (!data) return;
+  const d = data as any;
+  const active = stripeStatus === 'active' || stripeStatus === 'trialing';
+  const newStatus = !active ? 'canceled' : (d.copy_link_id ? 'active' : 'pending_connect');
+  if (d.copy_link_id) await supabaseAdmin.from('copy_links').update({ enabled: newStatus === 'active' }).eq('id', d.copy_link_id);
+  const patch: any = { status: newStatus, updated_at: new Date().toISOString() };
+  if (periodEnd) patch.current_period_end = new Date(periodEnd * 1000).toISOString();
+  await supabaseAdmin.from('academy_copy_subs').update(patch).eq('id', d.id);
+}
+
+// Registra la comisión de Onyx del copy en el libro (para Finanzas). Idempotente
+// por (mentor_id, stripe_ref). Usa el % de Copy del mentor (no el de academia).
+export async function recordCopyCommission(o: { subId: string; grossCents: number; currency?: string; invoiceId: string }) {
+  if (!o.subId || !o.invoiceId || !o.grossCents) return;
+  const { data } = await supabaseAdmin.from('academy_copy_subs').select('mentor_id,student_id').eq('stripe_subscription_id', o.subId).maybeSingle();
+  if (!data) return;
+  const s = await copyMentorSettings();
+  const fee = Math.round((o.grossCents || 0) * (s.onyx_fee_pct / 100));
+  await supabaseAdmin.from('onyx_commissions').upsert({
+    mentor_id: (data as any).mentor_id, student_id: (data as any).student_id,
+    gross_cents: o.grossCents || 0, fee_cents: fee, currency: (o.currency || 'usd').toLowerCase().slice(0, 3),
+    kind: 'copy', status: 'earned', stripe_ref: o.invoiceId,
+  }, { onConflict: 'mentor_id,stripe_ref', ignoreDuplicates: true });
+}
+
 // Cancela por id de suscripción de Stripe (desde el webhook).
 export async function cancelBySub(subId: string) {
   const { data } = await supabaseAdmin.from('academy_copy_subs').select('id,copy_link_id').eq('stripe_subscription_id', subId).maybeSingle();

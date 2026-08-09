@@ -104,6 +104,26 @@ export async function checkoutForMembership(o: { mentorId: string; mentorAccount
   });
 }
 
+// Checkout del COPY del mentor (suscripción). Igual que la membresía: el mentor
+// absorbe el fee de Stripe (on_behalf_of) y Onyx retiene su comisión. Al pagar,
+// el alumno vuelve a la academia con ?copy=1 para el asistente de conexión.
+export async function checkoutForCopy(o: { mentorId: string; mentorAccount: string; priceCents: number; currency: string; code: string; studentId: string; customerEmail?: string; feePct: number }) {
+  return stripe.checkout.sessions.create({
+    mode: 'subscription',
+    success_url: `${appUrl()}/dashboard/academy?m=${o.mentorId}&copy=1`,
+    cancel_url: `${appUrl()}/dashboard/academy?m=${o.mentorId}`,
+    customer_email: o.customerEmail,
+    metadata: { onyx_mentor: o.mentorId, onyx_student: o.studentId, onyx_kind: 'copy' },
+    line_items: [{ price_data: { currency: o.currency || 'usd', unit_amount: o.priceCents, recurring: { interval: 'month' }, product_data: { name: 'Copy del mentor' } }, quantity: 1 }],
+    subscription_data: {
+      application_fee_percent: o.feePct,
+      on_behalf_of: o.mentorAccount,
+      transfer_data: { destination: o.mentorAccount },
+      metadata: { onyx_mentor: o.mentorId, onyx_student: o.studentId, onyx_kind: 'copy' },
+    },
+  });
+}
+
 // Enlace al panel de Stripe del mentor (Express dashboard) para ver sus cobros.
 export async function expressLoginLink(mentorUserId: string) {
   const { data: m } = await supabaseAdmin.from('mentors').select('stripe_account_id').eq('user_id', mentorUserId).maybeSingle();

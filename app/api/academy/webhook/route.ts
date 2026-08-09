@@ -3,6 +3,7 @@ import { stripe } from '@/lib/stripe';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { grantPurchase, setPurchaseStatus, feeForMentor, grantMembership, setMembershipStatus, recordInvoiceCommission, reverseCommissionByRef } from '@/lib/academyPay';
 import { qualifyReferral, qualifyReferralByInvoice, reverseRewardsByRef } from '@/lib/academyReferral';
+import { activateSub as activateCopySub, cancelBySub as cancelCopyBySub, syncCopyStatusBySub, recordCopyCommission } from '@/lib/academyCopy';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -27,7 +28,11 @@ export async function POST(req: Request) {
     if (event.type === 'checkout.session.completed') {
       const s = event.data.object;
       const md = s.metadata || {};
-      if (md.onyx_mentor && md.onyx_student && md.onyx_kind === 'membership') {
+      if (md.onyx_mentor && md.onyx_student && md.onyx_kind === 'copy') {
+        // Copy del mentor: activa la suscripción (queda pendiente de que conecte
+        // su cuenta). La comisión se registra por factura (abajo).
+        await activateCopySub({ mentorId: md.onyx_mentor, studentId: md.onyx_student, subId: s.subscription || undefined });
+      } else if (md.onyx_mentor && md.onyx_student && md.onyx_kind === 'membership') {
         const feePct = await feeForMentor(md.onyx_mentor);
         await grantMembership({ mentorId: md.onyx_mentor, studentId: md.onyx_student, grossCents: Number(s.amount_total || 0), currency: s.currency || 'usd', subId: s.subscription || undefined, feePct });
         // Recompensa del referido (primer pago). Atada a la factura para no duplicar en invoice.paid.
@@ -52,6 +57,8 @@ export async function POST(req: Request) {
       const inv: any = event.data.object;
       if (inv.subscription && Number(inv.amount_paid || 0) > 0) {
         await recordInvoiceCommission({ subId: String(inv.subscription), grossCents: Number(inv.amount_paid || 0), currency: inv.currency || 'usd', invoiceId: String(inv.id) });
+        // Copy del mentor: registra su comisión (idempotente; si no es copy, no hace nada).
+        await recordCopyCommission({ subId: String(inv.subscription), grossCents: Number(inv.amount_paid || 0), currency: inv.currency || 'usd', invoiceId: String(inv.id) });
         // Recompensa del referido en RENOVACIONES (solo si el mentor activó recurrente).
         // El primer pago (subscription_create) ya se registró en checkout.session.completed.
         if (inv.billing_reason === 'subscription_cycle') {
@@ -66,14 +73,16 @@ export async function POST(req: Request) {
       await reverseRewardsByRef(ch.invoice || null);
       await reverseRewardsByRef(ch.payment_intent || null);
     } else if (event.type === 'customer.subscription.deleted') {
-      // Puede ser un nivel o una membresía: intentamos ambos (uno hará match).
+      // Puede ser un nivel, una membresía o un copy: intentamos los tres.
       await setPurchaseStatus(event.data.object.id, 'canceled');
       await setMembershipStatus(event.data.object.id, 'canceled');
+      await cancelCopyBySub(event.data.object.id);
     } else if (event.type === 'customer.subscription.updated') {
       const sub = event.data.object;
       const status = sub.status === 'active' || sub.status === 'trialing' ? 'active' : (sub.status === 'past_due' ? 'past_due' : 'canceled');
       await setPurchaseStatus(sub.id, status, sub.current_period_end);
       await setMembershipStatus(sub.id, status, sub.current_period_end);
+      await syncCopyStatusBySub(sub.id, sub.status, sub.current_period_end);
     } else if (event.type === 'account.updated') {
       const acct = event.data.object;
       await supabaseAdmin.from('mentors').update({ charges_enabled: !!acct.charges_enabled }).eq('stripe_account_id', acct.id);
