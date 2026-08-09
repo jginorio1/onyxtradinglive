@@ -93,7 +93,7 @@ export default function MentoresPage() {
 
       {/* CALCULADORA DE GANANCIAS (tarjeta iluminada) */}
       <div className="wrap" style={{ padding: '6px 22px 24px' }}>
-        <EarningsCalc mode="academy" pct={feeForCalc} lang={lang} />
+        <EarningsCalc mode="academy" pct={feeForCalc} lang={lang} plans={shown as any} />
       </div>
 
       {/* CÓMO FUNCIONA */}
