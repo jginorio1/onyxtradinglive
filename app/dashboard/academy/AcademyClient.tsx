@@ -811,7 +811,6 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
           {tab === 'community' && (
             <>
               {totalLessons >= 0 && <OnboardingChecklist active={active} L={L} onGo={(t: any) => setTab(t)} />}
-              <CopyPanel mentorId={active.mentor_id} isMentor={!!active.isMentorHere} L={L} />
               <div className="sk-card">
                 <div className="row" style={{ gap: 10, alignItems: 'flex-start' }}>
                   <Avatar name="•" level={active.me?.level} size={40} />
@@ -924,6 +923,7 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
             <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => { navigator.clipboard.writeText(link); alert(L('Enlace de invitación copiado.', 'Invite link copied.')); }}><OnyxIcon emoji="🔗" size={14} /> {L('Invitar', 'Invite')}</button>
           </div>
 
+          {!active.isMentorHere && <CopyPanel mentorId={active.mentor_id} isMentor={false} L={L} />}
           <ReferralEarnings active={active} L={L} />
           {active.audit && (active.audit.hasAddon || active.audit.addon || active.audit.verified) && (
             <div className={'sk-side-card' + ((active.audit.addon && !active.audit.hasAddon) ? ' sk-featured' : '')} style={{ border: '1px solid color-mix(in srgb,var(--green) 32%,transparent)' }}>
@@ -2303,6 +2303,7 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
       </>)}
 
       {tab === 'cobros' && <MentorPayments modules={d.content || []} L={L} onChanged={load} />}
+      {tab === 'cobros' && <CopyPanel mentorId="" isMentor L={L} />}
 
       {tab === 'becas' && <ScholarshipPanel L={L} />}
 
