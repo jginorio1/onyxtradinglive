@@ -8,8 +8,8 @@ type Ev = { title: string; currency: string; impact: string; date: string; forec
 const FLAG: Record<string, string> = { USD: '🇺🇸', EUR: '🇪🇺', GBP: '🇬🇧', JPY: '🇯🇵', AUD: '🇦🇺', CAD: '🇨🇦', CHF: '🇨🇭', NZD: '🇳🇿', CNY: '🇨🇳' };
 
 const T = {
-  es: { title: '📰 Noticias', next: 'PRÓXIMA DE ALTO IMPACTO', in: 'en', med: '+ Medio', today: 'Hoy', prev: 'Prev', fcst: 'Fcst', none: 'No hay noticias próximas.', unavail: 'Calendario no disponible ahora.', warn: 'en menos de 30 min — cuidado', loading: 'Cargando…', all: 'Ver todas', hide: 'Ocultar', more: 'más esta semana' },
-  en: { title: '📰 News', next: 'NEXT HIGH-IMPACT', in: 'in', med: '+ Medium', today: 'Today', prev: 'Prev', fcst: 'Fcst', none: 'No upcoming news.', unavail: 'Calendar unavailable now.', warn: 'in under 30 min — careful', loading: 'Loading…', all: 'See all', hide: 'Hide', more: 'more this week' },
+  es: { title: '📰 Noticias', next: 'PRÓXIMA DE ALTO IMPACTO', in: 'en', med: '+ Medio', today: 'Hoy', prev: 'Prev', fcst: 'Fcst', none: 'No hay noticias próximas.', unavail: 'Calendario no disponible ahora.', warn: 'en menos de 30 min — cuidado', loading: 'Cargando…', all: 'Ver todas', hide: 'Ocultar', more: 'más esta semana', credit: 'By Forex Factory' },
+  en: { title: '📰 News', next: 'NEXT HIGH-IMPACT', in: 'in', med: '+ Medium', today: 'Today', prev: 'Prev', fcst: 'Fcst', none: 'No upcoming news.', unavail: 'Calendar unavailable now.', warn: 'in under 30 min — careful', loading: 'Loading…', all: 'See all', hide: 'Hide', more: 'more this week', credit: 'By Forex Factory' },
 };
 
 export default function News({ lang }: { lang: Lang }) {
@@ -77,6 +77,7 @@ export default function News({ lang }: { lang: Lang }) {
           </div>
         )}
       </>)}
+      <a href="https://www.forexfactory.com/calendar" target="_blank" rel="noopener noreferrer" style={{ display: 'block', textAlign: 'right', fontSize: 10, color: 'var(--mut)', marginTop: 10, textDecoration: 'none' }}>{t.credit} ↗</a>
     </div>
   );
 }

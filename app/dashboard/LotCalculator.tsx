@@ -1,6 +1,7 @@
 'use client';
 import { dictFor } from '@/lib/i18n';
 import { useMemo, useState } from 'react';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // ============================================================
 // Calculadora de lote por riesgo (position sizing).
@@ -94,7 +95,7 @@ export default function LotCalculator({ lang, balance }: { lang: Lang; balance?:
   return (
     <div className="card">
       <div className="row" style={{ gap: 9, alignItems: 'center', marginBottom: 2 }}>
-        <span style={{ width: 30, height: 30, borderRadius: 9, background: 'rgba(124,140,255,.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>🧮</span>
+        <span style={{ width: 30, height: 30, borderRadius: 9, background: 'rgba(124,140,255,.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--brand)' }}><OnyxIcon name="lots" size={17} glow={false} /></span>
         <b style={{ fontSize: 15 }}>{L.t}</b>
       </div>
       <p className="muted" style={{ fontSize: 13, margin: '2px 0 6px' }}>{L.s}</p>
