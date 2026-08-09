@@ -165,14 +165,14 @@ function Section({ icon, title, subtitle, children }: { icon: string; title: str
 export default function AccountClient({ email }: { email: string }) {
   const { lang, setLang } = useLang();
   // El tab se guarda en el # de la URL, así al refrescar te quedas donde estabas.
-  // Las 5 principales son pestañas; las 4 secundarias abren un popup (tarjeta).
-  const MAIN_TABS = ['plan', 'perfil', 'cuentas', 'facturas', 'academias'];
+  // Todas son pestañas. Las 4 secundarias muestran una tarjeta que abre su popup.
+  const ALL_TABS = ['plan', 'perfil', 'cuentas', 'facturas', 'academias', 'avisos', 'seguridad', 'referidos', 'retiros'];
   const CARD_KEYS = ['avisos', 'seguridad', 'referidos', 'retiros'];
   const [tab, setTabState] = useState<Tab>('plan');
   const [secOpen, setSecOpen] = useState<Tab | null>(null); // popup secundario abierto
-  const setTab = (t: Tab) => { setTabState(t); if (typeof window !== 'undefined') history.replaceState(null, '', '#' + t); };
+  const setTab = (t: Tab) => { setTabState(t); setSecOpen(null); if (typeof window !== 'undefined') history.replaceState(null, '', '#' + t); };
   useEffect(() => {
-    const apply = () => { const h = window.location.hash.replace('#', ''); if (MAIN_TABS.includes(h)) setTabState(h as Tab); else if (CARD_KEYS.includes(h)) setSecOpen(h as Tab); };
+    const apply = () => { const h = window.location.hash.replace('#', ''); if (ALL_TABS.includes(h)) setTabState(h as Tab); };
     apply();
     window.addEventListener('hashchange', apply);
     return () => window.removeEventListener('hashchange', apply);
@@ -301,13 +301,15 @@ export default function AccountClient({ email }: { email: string }) {
     setBusy('');
   }
 
-  // Barra: 5 principales agrupadas + 4 secundarias como tarjetas con popup.
+  // Barra agrupada; todas son pestañas. Las de "Más" muestran una tarjeta que abre su popup.
   const NAV_GROUPS: { g: string; items: [Tab, string][] }[] = [
     { g: lang === 'en' ? 'Account' : 'Cuenta', items: [['plan', '💳'], ['perfil', '👤'], ['cuentas', '🔌']] },
     { g: lang === 'en' ? 'Activity' : 'Actividad', items: [['academias', '🎓'], ['facturas', '🧾']] },
+    { g: lang === 'en' ? 'More' : 'Más', items: [['avisos', '🔔'], ['seguridad', '🔒'], ['referidos', '🎁'], ['retiros', '💸']] },
   ];
   const NAV_FLAT = NAV_GROUPS.flatMap((g) => g.items);
-  const CARDS: [Tab, string, string][] = [['avisos', '🔔', L.nSub], ['seguridad', '🔒', L.segSub], ['referidos', '🎁', L.refSub], ['retiros', '💸', L.retSub2]];
+  // Metadatos (icono + resumen) para la tarjeta que abre el popup de cada sección secundaria.
+  const CARD_META: Record<string, { icon: string; sub: string }> = { avisos: { icon: '🔔', sub: L.nSub }, seguridad: { icon: '🔒', sub: L.segSub }, referidos: { icon: '🎁', sub: L.refSub }, retiros: { icon: '💸', sub: L.retSub2 } };
   const card = { marginBottom: 14 } as any;
   const lbl = { fontSize: 12, color: 'var(--mut)', marginTop: 10, display: 'block' } as any;
 
@@ -343,17 +345,7 @@ export default function AccountClient({ email }: { email: string }) {
                 </div>
               ))}
             </div>
-              {/* Secundarias: filas de nav uniformes que abren su popup (como en la academia) */}
-              <div>
-                <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--mut)', margin: '8px 8px 4px' }}>{lang === 'en' ? 'More' : 'Más'}</div>
-                {CARDS.map(([k, icon]) => (
-                  <button key={k} className="adminnav-item" onClick={() => setSecOpen(k)}>
-                    <span style={{ width: 18, display: 'inline-flex', justifyContent: 'center' }}><OnyxIcon emoji={icon} size={16} /></span><span>{L.nav[k]}</span>
-                    <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', color: 'var(--mut)' }}><OnyxIcon name="link" size={13} glow={false} /></span>
-                  </button>
-                ))}
-              </div>
-            </div>
+          </div>
 
           <div style={{ minWidth: 0 }}>
             {!data && <div className="card muted">…</div>}
@@ -715,6 +707,23 @@ export default function AccountClient({ email }: { email: string }) {
               </Section>
             )}
 
+            {/* Secciones secundarias: muestran una tarjeta; al pincharla se abre el popup (como en la academia). */}
+            {data && CARD_KEYS.includes(tab) && (() => {
+              const m = CARD_META[tab as string];
+              return (
+                <div style={{ maxWidth: 820, margin: '0 auto' }}>
+                  <button onClick={() => setSecOpen(tab)} className="card" style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%', textAlign: 'left', cursor: 'pointer' }}>
+                    <span style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(124,140,255,.16)', color: 'var(--brand)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}><OnyxIcon emoji={m.icon} size={22} /></span>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <b style={{ fontSize: 16 }}>{L.nav[tab]}</b>
+                      <span style={{ display: 'block', fontSize: 13, color: 'var(--mut)', marginTop: 2 }}>{m.sub}</span>
+                    </span>
+                    <span style={{ color: 'var(--brand)', flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13 }}>{lang === 'en' ? 'Open' : 'Abrir'} ›</span>
+                  </button>
+                </div>
+              );
+            })()}
+
             {/* Popup de secciones secundarias: Notificaciones · Seguridad · Referidos · Retiros */}
             {data && secOpen && (
               <div className="sk-modal-ov" onClick={() => setSecOpen(null)}>
@@ -757,10 +766,7 @@ export default function AccountClient({ email }: { email: string }) {
             {/* Buscador rápido (⌘K): salta a una sección */}
             {pal && (() => {
               const query = palQ.trim().toLowerCase();
-              const items: { key: Tab; icon: string; label: string; card?: boolean }[] = [
-                ...NAV_FLAT.map(([k, icon]) => ({ key: k, icon, label: L.nav[k] })),
-                ...CARDS.map(([k, icon]) => ({ key: k, icon, label: L.nav[k], card: true })),
-              ];
+              const items: { key: Tab; icon: string; label: string }[] = NAV_FLAT.map(([k, icon]) => ({ key: k, icon, label: L.nav[k] }));
               const res = items.filter((it) => !query || it.label.toLowerCase().includes(query)).slice(0, 10);
               return (
                 <div className="sk-modal-ov" onClick={() => setPal(false)}>
@@ -768,8 +774,8 @@ export default function AccountClient({ email }: { email: string }) {
                     <input autoFocus value={palQ} onChange={(e) => setPalQ(e.target.value)} placeholder={lang === 'en' ? 'Jump to a section…' : 'Saltar a una sección…'} style={{ width: '100%', margin: 0 }} />
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 10 }}>
                       {res.map((it) => (
-                        <button key={it.key} className="btn btn-ghost" style={{ justifyContent: 'flex-start', display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left' }} onClick={() => { if (it.card) setSecOpen(it.key); else setTab(it.key); setPal(false); }}>
-                          <OnyxIcon emoji={it.icon} size={16} /><span style={{ flex: 1 }}>{it.label}</span>{it.card && <span className="muted" style={{ fontSize: 11 }}>{lang === 'en' ? 'Popup' : 'Popup'}</span>}
+                        <button key={it.key} className="btn btn-ghost" style={{ justifyContent: 'flex-start', display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left' }} onClick={() => { setTab(it.key); setPal(false); }}>
+                          <OnyxIcon emoji={it.icon} size={16} /><span style={{ flex: 1 }}>{it.label}</span>
                         </button>
                       ))}
                       {res.length === 0 && <p className="muted" style={{ fontSize: 13, textAlign: 'center', padding: '10px 0' }}>{lang === 'en' ? 'No results.' : 'Sin resultados.'}</p>}
