@@ -6,6 +6,7 @@ import { accountLimit } from '@/lib/settings';
 import { forEA, mergeConfig } from '@/lib/manager';
 import { evaluate, registerClosedTrades, newsNear } from '@/lib/managerGuard';
 import { loadChallenge } from '@/lib/challenge';
+import { guardianOverride } from '@/lib/guardianAccess';
 import { isCopyMaster, relayMasterSnapshot } from '@/lib/copyRelay';
 import { sendPush } from '@/lib/push';
 import { alertUser, alertOncePerDay } from '@/lib/telegram';
@@ -67,8 +68,11 @@ export async function POST(req: NextRequest) {
     {
       const lim = await accountLimit(userId);
       if (!lim.unlimited) {
+        // El cupo de cuentas se mide SOLO con claves Guardian (kind != 'copy'),
+        // igual que la web. Incluir las claves de copy inflaba el rank y podía
+        // rechazar por error una cuenta Guardian legítima.
         const { data: myKeys } = await supabaseAdmin
-          .from('api_keys').select('id').eq('user_id', userId).eq('revoked', false)
+          .from('api_keys').select('id').eq('user_id', userId).eq('revoked', false).neq('kind', 'copy')
           .order('created_at', { ascending: true });
         const rank = (myKeys || []).findIndex((k: any) => k.id === keyRow.id) + 1;   // 1 = la mas antigua
         if (rank > lim.max) {
@@ -299,9 +303,11 @@ export async function POST(req: NextRequest) {
     let newsTimes: number[] = [];   // epochs (seg) de las noticias de alto impacto próximas → líneas en el gráfico
     let nextNewsAt: number | null = null;
     try {
-      const { data: prof } = await supabaseAdmin.from('profiles').select('plan').eq('id', userId).maybeSingle();
+      const { data: prof } = await supabaseAdmin.from('profiles').select('plan,academy_guardian,academy_guardian_tier').eq('id', userId).maybeSingle();
       const { data: planRow } = await supabaseAdmin.from('plans').select('name,capabilities').eq('id', prof?.plan || 'free').maybeSingle();
-      const caps = planRow?.capabilities || {};
+      // El Guardian puede venir del plan O de la academia (perk/suscripción). Se
+      // fusiona el override para que el EA lo reciba igual que lo ve el dashboard.
+      const caps: any = { ...(planRow?.capabilities || {}), ...guardianOverride(prof as any) };
       features.plan = planRow?.name || (prof?.plan || 'Free');
       features.guardian = !!caps.manager;
       features.copy = !!caps.copy;
