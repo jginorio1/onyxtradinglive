@@ -91,7 +91,7 @@ const D = {
     topPairsT: 'Top 5 mejores pares', botPairsT: 'Top 5 peores pares', noPos: 'Sin pares en positivo.', noNeg: 'Sin pares en negativo.',
     byWeekday: 'Por día de la semana', bySession: 'Por sesión', byHour: 'Por hora del día', byMonth: 'Por mes',
     accCard: 'Cuentas y portafolio', balTotal: 'Balance total', accounts: 'Cuentas', opsTotal: 'Operaciones', th_acc: 'Cuenta', th_broker: 'Bróker', th_bal: 'Balance', th_net: 'Neto', th_win: 'Win', nickPh: 'Ej: FTMO 50K', nameBtn: '✏️ Nombre',
-    fundTitle: '🏆 Reglas de fondeo', fundEdit: '⚙️ Configurar reglas', fundHide: 'Ocultar', fundTarget: 'Objetivo de profit ($)', fundMaxDaily: 'Pérdida diaria máx ($)', fundMaxTotal: 'Pérdida total máx ($)', fundStart: 'Balance inicial ($)', fundSave: 'Guardar reglas', fundProfitBar: 'Progreso al objetivo', fundDDBar: 'Uso de pérdida máxima',
+    fundTitle: '🏆 Reglas de fondeo', fundEdit: '⚙️ Configurar reglas', fundHide: 'Ocultar', fundTarget: 'Objetivo de fondeo ($)', fundMaxDaily: 'Pérdida diaria máx ($)', fundMaxTotal: 'Pérdida total máx ($)', fundStart: 'Balance inicial ($)', fundSave: 'Guardar reglas', fundProfitBar: 'Progreso al objetivo de fondeo', fundDDBar: 'Uso de pérdida máxima', fundHint: 'El profit que te pide tu cuenta de fondeo.',
     ranges: { d1: 'Hoy', d7: '7d', d30: '30d', mo: 'Mes', yr: 'Año', all: 'Todo' },
     radarTitle: 'Perfil del trader', bubbleTitle: 'Pares · volumen y resultado', rWR: 'Win rate', rPF: 'P. factor', rPayoff: 'Payoff', rConsist: 'Consistencia', rRisk: 'Riesgo', demo: 'Demo', demoOn: '🎬 Viendo datos de ejemplo (no reales)', customRange: 'Rango de fechas', from: 'Desde', to: 'Hasta',
     proLockT: 'Función Pro', proLockD: 'Mejora tu plan para desbloquear esta sección.', proLockCta: 'Ver planes →', histCap: '🔒 En el plan Free ves solo los últimos 30 días. Desbloquea tu historial completo con Pro.', available: 'Disponible en', upgradeTo: 'Mejorar a', perMo: 'mes', dLock1: 'Diario con fotos, notas y etiquetas por operación.', dLock2: 'Compara tus cuentas lado a lado.', dLock3: 'Reglas de fondeo, retiros y documentos de la cuenta.',
@@ -120,7 +120,7 @@ const D = {
     topPairsT: 'Top 5 best pairs', botPairsT: 'Top 5 worst pairs', noPos: 'No pairs in profit.', noNeg: 'No pairs in loss.',
     byWeekday: 'By weekday', bySession: 'By session', byHour: 'By hour of day', byMonth: 'By month',
     accCard: 'Accounts & portfolio', balTotal: 'Total balance', accounts: 'Accounts', opsTotal: 'Trades', th_acc: 'Account', th_broker: 'Broker', th_bal: 'Balance', th_net: 'Net', th_win: 'Win', nickPh: 'e.g. FTMO 50K', nameBtn: '✏️ Name',
-    fundTitle: '🏆 Prop-firm rules', fundEdit: '⚙️ Set rules', fundHide: 'Hide', fundTarget: 'Profit target ($)', fundMaxDaily: 'Max daily loss ($)', fundMaxTotal: 'Max total loss ($)', fundStart: 'Starting balance ($)', fundSave: 'Save rules', fundProfitBar: 'Progress to target', fundDDBar: 'Max loss used',
+    fundTitle: '🏆 Prop-firm rules', fundEdit: '⚙️ Set rules', fundHide: 'Hide', fundTarget: 'Prop-firm target ($)', fundMaxDaily: 'Max daily loss ($)', fundMaxTotal: 'Max total loss ($)', fundStart: 'Starting balance ($)', fundSave: 'Save rules', fundProfitBar: 'Progress to prop-firm target', fundDDBar: 'Max loss used', fundHint: 'The profit your prop firm requires.',
     ranges: { d1: 'Today', d7: '7d', d30: '30d', mo: 'Month', yr: 'Year', all: 'All' },
     radarTitle: 'Trader profile', bubbleTitle: 'Pairs · volume and result', rWR: 'Win rate', rPF: 'P. factor', rPayoff: 'Payoff', rConsist: 'Consistency', rRisk: 'Risk', demo: 'Demo', demoOn: '🎬 Viewing example data (not real)', customRange: 'Date range', from: 'From', to: 'To',
     proLockT: 'Pro feature', proLockD: 'Upgrade your plan to unlock this section.', proLockCta: 'See plans →', histCap: '🔒 On the Free plan you see only the last 30 days. Unlock your full history with Pro.', available: 'Available in', upgradeTo: 'Upgrade to', perMo: 'mo', dLock1: 'Trade journal with photos, notes and tags.', dLock2: 'Compare your accounts side by side.', dLock3: 'Funding rules, payouts and account documents.',
@@ -193,7 +193,7 @@ function FundCard({ acc, net, maxDD, L, onSave }: { acc: Acc; net: number; maxDD
       </>)}
       {edit && (<div style={{ marginTop: hasRules ? 16 : 0 }}>
         <div className="grid g2">
-          <div><span style={lbl}>{L.fundTarget}</span><input type="number" value={f.fund_target} onChange={(e) => set('fund_target', e.target.value)} style={{ margin: 0 }} /></div>
+          <div><span style={lbl}>{L.fundTarget}</span><input type="number" value={f.fund_target} onChange={(e) => set('fund_target', e.target.value)} style={{ margin: 0 }} /><span className="muted" style={{ fontSize: 11.5, display: 'block', marginTop: 4 }}>{L.fundHint}</span></div>
           <div><span style={lbl}>{L.fundMaxTotal}</span><input type="number" value={f.fund_max_total} onChange={(e) => set('fund_max_total', e.target.value)} style={{ margin: 0 }} /></div>
           <div><span style={lbl}>{L.fundMaxDaily}</span><input type="number" value={f.fund_max_daily} onChange={(e) => set('fund_max_daily', e.target.value)} style={{ margin: 0 }} /></div>
           <div><span style={lbl}>{L.fundStart}</span><input type="number" value={f.fund_start} onChange={(e) => set('fund_start', e.target.value)} style={{ margin: 0 }} /></div>
@@ -445,7 +445,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
     const maxTotal = Number(cur.fund_max_total) || 0, target = Number(cur.fund_target) || 0;
     const es = lang === 'es';
     if (maxTotal > 0 && a.maxDD / maxTotal >= 0.8) return { type: 'danger', txt: es ? `⚠ Cuidado: has usado el ${Math.round(a.maxDD / maxTotal * 100)}% de tu pérdida máxima en ${accName(cur)}.` : `⚠ Careful: you've used ${Math.round(a.maxDD / maxTotal * 100)}% of your max loss on ${accName(cur)}.` };
-    if (target > 0 && a.net / target >= 1) return { type: 'ok', txt: es ? `🎉 ¡Objetivo alcanzado en ${accName(cur)}! (${money2(a.net)})` : `🎉 Target reached on ${accName(cur)}! (${money2(a.net)})` };
+    if (target > 0 && a.net / target >= 1) return { type: 'ok', txt: es ? `🎉 ¡Llegaste al objetivo de fondeo en ${accName(cur)}! (${money2(a.net)})` : `🎉 You hit the prop-firm target on ${accName(cur)}! (${money2(a.net)})` };
     return null;
   })();
 

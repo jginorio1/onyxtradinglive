@@ -21,15 +21,17 @@ const T = {
   es: {
     title: 'Logros y metas', streak: 'Racha de días verdes', bestMonth: 'Mejor mes', bestDay: 'Mejor día',
     trophies: 'Trofeos', challengesPassed: 'challenges aprobados', funded: 'cuentas fondeadas', badges: 'Insignias',
+    goalsHead: 'Mis metas de ganancia', goalsSub: 'Cuánto quieres ganar por semana, mes y año, sumando todas tus cuentas.',
     goalW: 'Meta semanal', goalM: 'Meta mensual', goalY: 'Meta anual', pW: 'Esta semana', pM: 'Este mes', pY: 'Este año',
-    remain: 'Faltan', done: '¡Meta lograda!', over: 'sobre la meta', setGoals: 'Fijar metas', save: 'Guardar metas', saved: 'Guardado',
+    remain: 'Te faltan', done: '¡Meta cumplida!', over: 'sobre la meta', setGoals: 'Fijar metas', save: 'Guardar metas', saved: 'Guardado',
     tzNote: 'Se guardan en tu cuenta · con tu zona horaria', days: 'días', wk: 'Semanal', mo: 'Mensual', yr: 'Anual',
   },
   en: {
     title: 'Achievements & goals', streak: 'Green-day streak', bestMonth: 'Best month', bestDay: 'Best day',
     trophies: 'Trophies', challengesPassed: 'challenges passed', funded: 'funded accounts', badges: 'Badges',
+    goalsHead: 'My profit goals', goalsSub: 'How much you want to make per week, month and year, across all your accounts.',
     goalW: 'Weekly goal', goalM: 'Monthly goal', goalY: 'Annual goal', pW: 'This week', pM: 'This month', pY: 'This year',
-    remain: 'To go', done: 'Goal reached', over: 'over goal', setGoals: 'Set goals', save: 'Save goals', saved: 'Saved',
+    remain: 'to go', done: 'Goal reached', over: 'over goal', setGoals: 'Set goals', save: 'Save goals', saved: 'Saved',
     tzNote: 'Saved to your account · in your timezone', days: 'days', wk: 'Weekly', mo: 'Monthly', yr: 'Annual',
   },
 };
@@ -126,6 +128,8 @@ export default function Achievements({ a, accounts, trades = [], lang }: { a: an
 
       {/* Metas: semanal / mensual / anual, con progreso y lo que falta */}
       <div style={{ borderTop: '1px solid var(--line)', paddingTop: 14 }}>
+        <div style={{ fontWeight: 700, marginBottom: 2 }}>{t.goalsHead}</div>
+        <div className="muted" style={{ fontSize: 12, marginBottom: 12 }}>{t.goalsSub}</div>
         <div className="grid g3" style={{ gap: 12 }}>
           {goalCards.map((g, i) => {
             const prog = g.target > 0 ? Math.max(0, Math.min(1, g.cur / g.target)) : 0;
@@ -141,7 +145,7 @@ export default function Achievements({ a, accounts, trades = [], lang }: { a: an
                   {g.target > 0 && (
                     <div style={{ marginTop: 6, display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11.5, padding: '3px 9px', borderRadius: 16, background: reached ? 'rgba(35,197,120,.15)' : 'var(--card2)', color: reached ? 'var(--green)' : 'var(--tx)' }}>
                       <span style={{ display: 'inline-flex' }}><OnyxIcon name={reached ? 'check' : 'flag'} size={12} /></span>
-                      {reached ? t.done : `${t.remain} ${money(remain).replace('+', '')}`}
+                      {reached ? t.done : (lang === 'es' ? `${t.remain} ${money(remain).replace('+', '')}` : `${money(remain).replace('+', '')} ${t.remain}`)}
                     </div>
                   )}
                 </div>

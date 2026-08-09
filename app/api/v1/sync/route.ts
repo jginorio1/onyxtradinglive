@@ -283,7 +283,7 @@ export async function POST(req: NextRequest) {
         if (pnl >= target) {
           const name = fa.nickname || fa.login;
           alertUser(userId, 'goal',
-            `🏆 Onyx Guardian\n¡Objetivo alcanzado en ${name}! Llevas +$${pnl.toFixed(0)} sobre tu inicio de $${start.toFixed(0)}.\nAhora protege lo conseguido: activa tus límites y no lo devuelvas.`).catch(() => {});
+            `🏆 Onyx Guardian\n¡Llegaste al objetivo de fondeo en ${name}! Llevas +$${pnl.toFixed(0)} sobre tu inicio de $${start.toFixed(0)}.\nAhora protege lo conseguido: activa tus límites y no lo devuelvas.`).catch(() => {});
           await supabaseAdmin.from('trading_accounts')
             .update({ goal_notified_at: new Date().toISOString() }).eq('id', accountId);
         }
