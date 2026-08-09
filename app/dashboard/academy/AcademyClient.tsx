@@ -1007,13 +1007,14 @@ function OnboardingChecklist({ active, L, onGo }: any) {
 }
 
 // Calendario en cuadrícula (vista de mes) con las clases/eventos marcados.
-function MonthCalendar({ events, lang }: any) {
+function MonthCalendar({ events, lang, onEventClick, onDayClick }: any) {
   const now = useNow(true);
   const [cur, setCur] = useState(() => { const d = new Date(); return { y: d.getFullYear(), m: d.getMonth() }; });
   const first = new Date(cur.y, cur.m, 1);
   const startOffset = (first.getDay() + 6) % 7; // lunes = 0
   const daysInMonth = new Date(cur.y, cur.m + 1, 0).getDate();
   const todayKey = new Date().toDateString();
+  const startToday = new Date(); startToday.setHours(0, 0, 0, 0); // medianoche de hoy
   const byDay: Record<string, any[]> = {};
   (events || []).forEach((e: any) => { const k = new Date(e.starts_at).toDateString(); (byDay[k] ||= []).push(e); });
   Object.values(byDay).forEach((arr) => arr.sort((a: any, b: any) => a.starts_at.localeCompare(b.starts_at)));
@@ -1034,12 +1035,24 @@ function MonthCalendar({ events, lang }: any) {
       <div className="sk-cal-grid">
         {cells.map((c, i) => {
           const key = c.date.toDateString(); const evs = byDay[key] || []; const isToday = key === todayKey;
+          // Día ya pasado (anterior a hoy). Hoy NO cuenta como pasado.
+          const dayPast = c.inMonth && c.date < startToday;
+          const clickableDay = !!onDayClick && c.inMonth;
           return (
-            <div key={i} className={'sk-cal-cell' + (c.inMonth ? '' : ' dim') + (isToday ? ' today' : '')}>
-              <div className="sk-cal-day">{c.date.getDate()}</div>
+            <div
+              key={i}
+              className={'sk-cal-cell' + (c.inMonth ? '' : ' dim') + (isToday ? ' today' : '')}
+              onClick={clickableDay ? () => onDayClick(c.date) : undefined}
+              style={{
+                ...(dayPast && !isToday ? { background: 'color-mix(in srgb,var(--red) 12%,transparent)', borderColor: 'color-mix(in srgb,var(--red) 38%,transparent)' } : {}),
+                ...(clickableDay ? { cursor: 'pointer' } : {}),
+              }}
+            >
+              <div className="sk-cal-day" style={dayPast && !isToday ? { color: 'var(--red)' } : undefined}>{c.date.getDate()}</div>
               {evs.slice(0, 3).map((e: any) => {
-                const start = new Date(e.starts_at).getTime(); const end = start + (e.duration_min || 60) * 60000; const live = now >= start && now < end;
-                return <div key={e.id} className={'sk-cal-ev' + (live ? ' live' : '')} title={`${hhmm(e.starts_at)} · ${e.title}`} onClick={() => e.join_url && window.open(e.join_url, '_blank')}>{live ? '● ' : ''}<b>{hhmm(e.starts_at)}</b>{e.title}</div>;
+                const start = new Date(e.starts_at).getTime(); const end = start + (e.duration_min || 60) * 60000; const live = now >= start && now < end; const evPast = end <= now;
+                const handle = (ev: any) => { ev.stopPropagation(); if (onEventClick) onEventClick(e); else if (e.join_url) window.open(e.join_url, '_blank'); };
+                return <div key={e.id} className={'sk-cal-ev' + (live ? ' live' : '')} title={`${hhmm(e.starts_at)} · ${e.title}`} onClick={handle} style={evPast && !live ? { background: 'color-mix(in srgb,var(--red) 16%,transparent)', color: 'var(--red)', border: '1px solid color-mix(in srgb,var(--red) 40%,transparent)' } : undefined}>{live ? '● ' : ''}<b>{hhmm(e.starts_at)}</b>{e.title}</div>;
               })}
               {evs.length > 3 && <div className="muted" style={{ fontSize: 10 }}>+{evs.length - 3}</div>}
             </div>
@@ -2122,7 +2135,7 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
   const [lessonForm, setLessonForm] = useState<any>(null);
   const [modForm, setModForm] = useState<any>(null);
   const [evForm, setEvForm] = useState<any>(null);
-  const [evRange, setEvRange] = useState(() => { const f = new Date(); f.setHours(0, 0, 0, 0); const t = new Date(f.getTime() + 7 * 86400000); const p = (n: number) => (n < 10 ? '0' + n : '' + n); const fd = (d: Date) => d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()); return { from: fd(f), to: fd(t) }; });
+  const [evRange, setEvRange] = useState(() => { const now = new Date(); const a = new Date(now.getFullYear(), now.getMonth(), 1); const b = new Date(now.getFullYear(), now.getMonth() + 1, 0); const p = (n: number) => (n < 10 ? '0' + n : '' + n); const fd = (d: Date) => d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()); return { from: fd(a), to: fd(b) }; });
   const [post, setPost] = useState('');
   const [postImg, setPostImg] = useState('');
   const [postWhen, setPostWhen] = useState('');
@@ -2251,43 +2264,30 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
           <div className="row between"><h3 style={{ display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic"><OnyxIcon name="calendar" size={16} /></span> {L('Clases en vivo', 'Live classes')}</h3><button className="btn btn-primary" onClick={() => setEvForm({ title: '', join_url: '', starts_at: '', duration_min: 60 })}>＋ {L('Programar', 'Schedule')}</button></div>
           <p className="muted" style={{ fontSize: 13, marginTop: 6 }}>{L('Programa tus sesiones Zoom/Meet. El alumno verá una cuenta regresiva fija y un aviso EN VIVO cuando empieces.', 'Schedule your Zoom/Meet sessions. Students see a fixed countdown and a LIVE banner when you start.')}</p>
         </div>
-        {(d.events || []).length > 0 && <MonthCalendar events={d.events} lang={lang} />}
         {(() => {
-          const nowMs = Date.now();
-          const evRow = (e: any) => {
-            const evPast = new Date(e.starts_at).getTime() + (e.duration_min || 60) * 60000 <= nowMs;
-            return (
-              <div key={e.id} className="sk-card" style={{ opacity: evPast ? 0.72 : 1, ...(evPast ? { borderLeft: '3px solid var(--red)' } : {}) }}>
-                <div className="row between" style={{ gap: 10, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-                  <div><b style={{ textDecoration: evPast ? 'line-through' : 'none', textDecorationColor: evPast ? 'var(--red)' : undefined, textDecorationThickness: evPast ? 2 : undefined }}>{e.title}</b> {evPast && <span className="sk-chip" style={{ marginLeft: 4, background: 'color-mix(in srgb,var(--red) 14%,transparent)', color: 'var(--red)', border: '1px solid color-mix(in srgb,var(--red) 40%,transparent)', fontWeight: 700 }}>✓ {L('Finalizada', 'Ended')}</span>}<div style={{ fontSize: 12.5, marginTop: 2 }}>{localTime(e.starts_at, lang)} · <span className="muted">{L('tu hora', 'your time')} · {e.duration_min} min</span> {e.recording_url && <span className="sk-chip" style={{ marginLeft: 6 }}>🎬 {L('grabación', 'replay')}</span>}</div><div className="muted" style={{ fontSize: 11, marginTop: 2 }}>{refTimes(e.starts_at, lang)}</div></div>
-                  <div className="row" style={{ gap: 6 }}>
-                    <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setEvForm({ ...e, starts_at: e.starts_at ? utcToLocalInput(e.starts_at) : '' })}>✎</button>
-                    <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--red)' }} onClick={async () => { if (await confirmDelete({ title: L('¿Borrar clase en vivo?', 'Delete live class?'), itemName: e.title })) api({ action: 'event_delete', id: e.id }); }}>✕</button>
-                  </div>
-                </div>
-              </div>
-            );
-          };
-          const all = d.events || [];
-          if (all.length === 0) return <div className="sk-card muted">{L('Aún no has programado clases.', 'No classes scheduled yet.')}</div>;
+          const p = (n: number) => (n < 10 ? '0' + n : '' + n);
           const fromMs = new Date(evRange.from + 'T00:00:00').getTime();
           const toMs = new Date(evRange.to + 'T23:59:59').getTime();
-          const inRange = all.filter((e: any) => { const ss = new Date(e.starts_at).getTime(); return ss >= fromMs && ss <= toMs; });
-          const upcoming = inRange.filter((e: any) => new Date(e.starts_at).getTime() + (e.duration_min || 60) * 60000 > nowMs).sort((a: any, b: any) => String(a.starts_at).localeCompare(String(b.starts_at)));
-          const pastAll = inRange.filter((e: any) => new Date(e.starts_at).getTime() + (e.duration_min || 60) * 60000 <= nowMs).sort((a: any, b: any) => String(b.starts_at).localeCompare(String(a.starts_at)));
-          const past = pastAll.slice(0, 7);
-          const pastHidden = pastAll.length - past.length;
-          const p = (n: number) => (n < 10 ? '0' + n : '' + n); const fd = (dd: Date) => dd.getFullYear() + '-' + p(dd.getMonth() + 1) + '-' + p(dd.getDate());
+          const all = d.events || [];
+          const shown = all.filter((e: any) => { const ss = new Date(e.starts_at).getTime(); return ss >= fromMs && ss <= toMs; });
+          // Día (Date del navegador) -> valor 'YYYY-MM-DDTHH:mm' para el input de EventForm.
+          const localInput = (date: Date, time = '19:00') => date.getFullYear() + '-' + p(date.getMonth() + 1) + '-' + p(date.getDate()) + 'T' + time;
           return (<>
+            {/* Filtro ARRIBA del calendario */}
             <div className="sk-card" style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap', margin: 0 }}>
               <div><div className="muted" style={{ fontSize: 12 }}>{L('Desde', 'From')}</div><input type="date" value={evRange.from} onChange={(e) => setEvRange({ ...evRange, from: e.target.value })} style={{ margin: '4px 0 0' }} /></div>
               <div><div className="muted" style={{ fontSize: 12 }}>{L('Hasta', 'To')}</div><input type="date" value={evRange.to} onChange={(e) => setEvRange({ ...evRange, to: e.target.value })} style={{ margin: '4px 0 0' }} /></div>
-              <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={() => { const f = new Date(); f.setHours(0, 0, 0, 0); const t = new Date(f.getTime() + 7 * 86400000); setEvRange({ from: fd(f), to: fd(t) }); }}>{L('Esta semana', 'This week')}</button>
-              <span className="muted" style={{ fontSize: 11.5, marginLeft: 'auto', maxWidth: 200, textAlign: 'right' }}>{L('Por defecto muestra 7 días. Cambia las fechas para ver otras.', 'Shows 7 days by default. Change the dates to see others.')}</span>
+              <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={() => { const f = new Date(); const a = new Date(f.getFullYear(), f.getMonth(), 1); const b = new Date(f.getFullYear(), f.getMonth() + 1, 0); setEvRange({ from: localInput(a).slice(0, 10), to: localInput(b).slice(0, 10) }); }}>{L('Este mes', 'This month')}</button>
+              <span className="muted" style={{ fontSize: 11.5, marginLeft: 'auto', maxWidth: 230, textAlign: 'right' }}>{L('Filtra las clases del calendario. Clic en un día para crear, clic en una clase para editar.', 'Filters calendar classes. Click a day to create, click a class to edit.')}</span>
             </div>
-            {upcoming.length === 0 && past.length === 0 && <div className="sk-card muted">{L('No hay clases en este rango de fechas.', 'No classes in this date range.')}</div>}
-            {upcoming.length > 0 && <><div className="sk-sec-title">{L('Próximas', 'Upcoming')}</div>{upcoming.map(evRow)}</>}
-            {past.length > 0 && <><div className="sk-sec-title">{L('Ya pasaron', 'Already passed')} <span className="muted" style={{ fontSize: 12, fontWeight: 400 }}>· {L('últimas 7', 'last 7')}</span></div>{past.map(evRow)}{pastHidden > 0 && <div className="sk-card muted" style={{ fontSize: 12.5, textAlign: 'center' }}>{L(`Hay ${pastHidden} clase(s) más antiguas en este rango. Ajusta las fechas de arriba para verlas.`, `${pastHidden} older class(es) in this range. Adjust the dates above to see them.`)}</div>}</>}
+            {/* Calendario: días pasados en rojo · clic-evento = editar · clic-día = crear */}
+            <MonthCalendar
+              events={shown}
+              lang={lang}
+              onEventClick={(e: any) => setEvForm({ ...e, starts_at: e.starts_at ? utcToLocalInput(e.starts_at) : '' })}
+              onDayClick={(date: Date) => setEvForm({ title: '', join_url: '', starts_at: localInput(date), duration_min: 60 })}
+            />
+            {all.length === 0 && <div className="sk-card muted">{L('Aún no has programado clases. Pulsa «Programar» o haz clic en un día del calendario.', 'No classes scheduled yet. Hit “Schedule” or click a day on the calendar.')}</div>}
           </>);
         })()}
         {evForm && <EventForm form={evForm} setForm={setEvForm} L={L} onSave={(f: any) => {
