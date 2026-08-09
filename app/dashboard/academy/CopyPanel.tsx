@@ -10,10 +10,12 @@ import OnyxIcon from '@/app/components/OnyxIcon';
 // ============================================================
 const money = (c: number) => '$' + Math.round((c || 0) / 100).toLocaleString('en-US');
 
-function Modal({ title, children, onClose }: { title: string; children: any; onClose: () => void }) {
+function Modal({ title, children, onClose, glow }: { title: string; children: any; onClose: () => void; glow?: boolean }) {
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999, padding: 16 }} onClick={onClose}>
-      <div className="sk-card" style={{ maxWidth: 460, width: '100%', maxHeight: '85vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999, padding: 16 }} onClick={onClose}>
+      <div className="sk-card" style={{ maxWidth: 460, width: '100%', maxHeight: '85vh', overflowY: 'auto',
+        border: glow ? '2px solid var(--amber)' : undefined,
+        boxShadow: glow ? '0 0 0 1px color-mix(in srgb,var(--amber) 60%,transparent), 0 0 40px color-mix(in srgb,var(--amber) 40%,transparent)' : undefined }} onClick={(e) => e.stopPropagation()}>
         <div className="row between" style={{ marginBottom: 8 }}>
           <b style={{ fontSize: 16, display: 'inline-flex', alignItems: 'center', gap: 8 }}><span style={{ color: 'var(--amber)' }}><OnyxIcon name="bell" size={18} /></span>{title}</b>
           <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={onClose}>✕</button>
@@ -33,7 +35,9 @@ function MentorCopy({ L }: { mentorId: string; L: (es: string, en: string) => st
   const [d, setD] = useState<any>(null);
   const [busy, setBusy] = useState('');
   const [warn, setWarn] = useState(false);
+  const [typed, setTyped] = useState('');   // el mentor escribe ACEPTO / I ACCEPT
   const [f, setF] = useState<any>({ enabled: false, master_account_id: '', price: '', min_capital: '', allow_funded: true });
+  const ACCEPT_WORD = L('ACEPTO', 'I ACCEPT');
 
   async function load() {
     const r = await fetch('/api/academy/copy/mentor'); const j = await r.json();
@@ -78,11 +82,16 @@ function MentorCopy({ L }: { mentorId: string; L: (es: string, en: string) => st
         <span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="sessions" size={18} /></span>
         <b>{L('Copy del mentor', 'Mentor copy')}</b>
         <span className="muted" style={{ fontSize: 12 }}>· Onyx {d.onyxFeePct}%</span>
-        <button className="btn btn-ghost" style={{ fontSize: 11.5, marginLeft: 'auto' }} onClick={() => setWarn(true)}>{L('Responsabilidades', 'Responsibilities')}</button>
+        <button className="btn btn-ghost" style={{ fontSize: 11.5, marginLeft: 'auto' }} onClick={() => { setTyped(''); setWarn(true); }}>{L('Responsabilidades', 'Responsibilities')}</button>
       </div>
 
       <label className="row" style={{ gap: 8, alignItems: 'center', marginBottom: 10, fontSize: 13.5, cursor: 'pointer' }}>
-        <input type="checkbox" checked={f.enabled} onChange={(e) => setF({ ...f, enabled: e.target.checked })} style={{ width: 'auto', margin: 0 }} />
+        <input type="checkbox" checked={f.enabled} onChange={(e) => {
+          const on = e.target.checked;
+          setF({ ...f, enabled: on });
+          // Al ACTIVAR por primera vez, el aviso de responsabilidades sale solo.
+          if (on && !d.offer?.terms_accepted_at) { setTyped(''); setWarn(true); }
+        }} style={{ width: 'auto', margin: 0 }} />
         {L('Ofrecer mi copy a mis alumnos', 'Offer my copy to my students')}
       </label>
 
@@ -126,14 +135,23 @@ function MentorCopy({ L }: { mentorId: string; L: (es: string, en: string) => st
       </div>
 
       {warn && (
-        <Modal title={L('Tus responsabilidades como mentor', 'Your responsibilities as a mentor')} onClose={() => setWarn(false)}>
+        <Modal glow title={L('Tus responsabilidades como mentor', 'Your responsibilities as a mentor')} onClose={() => { setWarn(false); if (!d.offer?.terms_accepted_at) setF({ ...f, enabled: false }); }}>
           <ul style={{ fontSize: 13, lineHeight: 1.65, color: 'var(--tx)', paddingLeft: 18, margin: '4px 0 12px' }}>
             <li>{L('Tus operaciones se replican con DINERO REAL en las cuentas de tus alumnos.', "Your trades replicate with REAL MONEY on your students' accounts.")}</li>
             <li>{L('Opera siempre con stop loss y riesgo sano; una mala racha afecta a todos.', 'Always trade with stop loss and sound risk; a bad streak affects everyone.')}</li>
             <li>{L('No uses martingala, grid agresivo ni operar en noticias: puede reventar cuentas de fondeo.', 'No martingale, aggressive grid or news trading: it can blow funded accounts.')}</li>
             <li>{L('Esto no es asesoría financiera. Cada alumno acepta el riesgo por su cuenta.', 'This is not financial advice. Each student accepts the risk on their own.')}</li>
           </ul>
-          <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => { setF({ ...f, enabled: true }); doSave(true); }}>{L('Entiendo y acepto · activar', 'I understand and accept · enable')}</button>
+          <div style={{ background: 'color-mix(in srgb,var(--amber) 12%,transparent)', border: '1px solid color-mix(in srgb,var(--amber) 40%,transparent)', borderRadius: 10, padding: '11px 13px', marginBottom: 12 }}>
+            <div style={{ fontSize: 12.5, color: 'var(--tx)', marginBottom: 8 }}>{L('Para confirmar, escribe ', 'To confirm, type ')}<b style={{ letterSpacing: '.5px' }}>{ACCEPT_WORD}</b>{L(' en mayúsculas:', ' in uppercase:')}</div>
+            <input value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={ACCEPT_WORD} autoFocus
+              style={{ width: '100%', margin: 0, textTransform: 'uppercase', letterSpacing: '1px', textAlign: 'center', fontWeight: 700 }} />
+          </div>
+          <button className="btn btn-primary" style={{ width: '100%', opacity: typed.trim() === ACCEPT_WORD ? 1 : .5 }}
+            disabled={typed.trim() !== ACCEPT_WORD || busy === 'save'}
+            onClick={() => { setF({ ...f, enabled: true }); doSave(true); }}>
+            {busy === 'save' ? '…' : L('Acepto y activo el copy', 'I accept and enable copy')}
+          </button>
         </Modal>
       )}
     </div>
@@ -145,7 +163,10 @@ function StudentCopy({ mentorId, L }: { mentorId: string; L: (es: string, en: st
   const [d, setD] = useState<any>(null);
   const [busy, setBusy] = useState('');
   const [riskOpen, setRiskOpen] = useState(false);
-  const [w, setW] = useState<any>({ slave: '', type: 'own', mult: '1', daily: '', maxdd: '', consent: false });
+  const [sTyped, setSTyped] = useState('');   // escribe ACEPTO / I ACCEPT antes del pago
+  const [cTyped, setCTyped] = useState('');   // escribe ACEPTO / I ACCEPT al conectar (ir en vivo)
+  const [w, setW] = useState<any>({ slave: '', type: 'own', mult: '1', daily: '', maxdd: '' });
+  const ACCEPT_WORD = L('ACEPTO', 'I ACCEPT');
 
   async function load() {
     const r = await fetch('/api/academy/copy/student?mentor_id=' + mentorId); const j = await r.json();
@@ -163,7 +184,7 @@ function StudentCopy({ mentorId, L }: { mentorId: string; L: (es: string, en: st
     if (j.url) window.location.href = j.url;
   }
   async function connect() {
-    if (!w.slave || !w.consent) return;
+    if (!w.slave || cTyped.trim() !== ACCEPT_WORD) return;
     setBusy('connect');
     await fetch('/api/academy/copy/student', { method: 'POST', body: JSON.stringify({
       action: 'connect', mentor_id: mentorId, slave_account_id: w.slave, account_type: w.type,
@@ -174,17 +195,6 @@ function StudentCopy({ mentorId, L }: { mentorId: string; L: (es: string, en: st
     setBusy(''); load();
   }
 
-  const RiskModal = () => (
-    <Modal title={L('Antes de copiar: riesgos', 'Before copying: risks')} onClose={() => setRiskOpen(false)}>
-      <ul style={{ fontSize: 13, lineHeight: 1.65, color: 'var(--tx)', paddingLeft: 18, margin: '4px 0 12px' }}>
-        <li>{L('Copiarás operaciones con DINERO REAL. El trading conlleva riesgo de pérdida, incluso total.', 'You will copy trades with REAL MONEY. Trading carries risk of loss, even total.')}</li>
-        <li>{L('Los resultados del mentor NO garantizan resultados futuros.', "The mentor's results do NOT guarantee future results.")}</li>
-        <li>{L('Guardian se activa con límites de seguridad; en fondeo respeta las reglas de tu firma, pero nada elimina el riesgo.', 'Guardian applies safety limits; on funded accounts it respects your firm rules, but nothing removes the risk.')}</li>
-        <li>{L('Esto no es asesoría financiera. Decides tú, bajo tu responsabilidad.', 'This is not financial advice. You decide, at your own responsibility.')}</li>
-      </ul>
-      <button className="btn btn-primary" style={{ width: '100%' }} disabled={busy === 'sub'} onClick={subscribe}>{busy === 'sub' ? '…' : L('Acepto los riesgos · continuar al pago', 'I accept the risks · continue to payment')}</button>
-    </Modal>
-  );
 
   // Estado 1: no suscrito → tarjeta de venta.
   if (!sub || sub.status === 'canceled') {
@@ -199,10 +209,27 @@ function StudentCopy({ mentorId, L }: { mentorId: string; L: (es: string, en: st
         </p>
         <div className="row between" style={{ alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
           <div style={{ fontSize: 22, fontWeight: 800 }}>{money(info.priceCents)}<span className="muted" style={{ fontSize: 13, fontWeight: 400 }}>/{L('mes', 'mo')}</span></div>
-          <button className="btn btn-primary" disabled={busy === 'sub'} onClick={() => setRiskOpen(true)}>{L('Copiar al mentor', 'Copy the mentor')}</button>
+          <button className="btn btn-primary" disabled={busy === 'sub'} onClick={() => { setSTyped(''); setRiskOpen(true); }}>{L('Copiar al mentor', 'Copy the mentor')}</button>
         </div>
         {info.minCapitalCents > 0 && <p className="muted" style={{ fontSize: 11.5, marginTop: 8 }}>{L('Capital mínimo: ', 'Min capital: ')}{money(info.minCapitalCents)}</p>}
-        {riskOpen && <RiskModal />}
+        {riskOpen && (
+          <Modal glow title={L('Antes de copiar: riesgos', 'Before copying: risks')} onClose={() => setRiskOpen(false)}>
+            <ul style={{ fontSize: 13, lineHeight: 1.65, color: 'var(--tx)', paddingLeft: 18, margin: '4px 0 12px' }}>
+              <li>{L('Copiarás operaciones con DINERO REAL. El trading conlleva riesgo de pérdida, incluso total.', 'You will copy trades with REAL MONEY. Trading carries risk of loss, even total.')}</li>
+              <li>{L('Los resultados del mentor NO garantizan resultados futuros.', "The mentor's results do NOT guarantee future results.")}</li>
+              <li>{L('Guardian se activa con límites de seguridad; en fondeo respeta las reglas de tu firma, pero nada elimina el riesgo.', 'Guardian applies safety limits; on funded accounts it respects your firm rules, but nothing removes the risk.')}</li>
+              <li>{L('Esto no es asesoría financiera. Decides tú, bajo tu responsabilidad.', 'This is not financial advice. You decide, at your own responsibility.')}</li>
+            </ul>
+            <div style={{ background: 'color-mix(in srgb,var(--amber) 12%,transparent)', border: '1px solid color-mix(in srgb,var(--amber) 40%,transparent)', borderRadius: 10, padding: '11px 13px', marginBottom: 12 }}>
+              <div style={{ fontSize: 12.5, color: 'var(--tx)', marginBottom: 8 }}>{L('Para confirmar, escribe ', 'To confirm, type ')}<b style={{ letterSpacing: '.5px' }}>{ACCEPT_WORD}</b>{L(' en mayúsculas:', ' in uppercase:')}</div>
+              <input value={sTyped} onChange={(e) => setSTyped(e.target.value)} placeholder={ACCEPT_WORD} autoFocus
+                style={{ width: '100%', margin: 0, textTransform: 'uppercase', letterSpacing: '1px', textAlign: 'center', fontWeight: 700 }} />
+            </div>
+            <button className="btn btn-primary" style={{ width: '100%', opacity: sTyped.trim() === ACCEPT_WORD ? 1 : .5 }} disabled={sTyped.trim() !== ACCEPT_WORD || busy === 'sub'} onClick={subscribe}>
+              {busy === 'sub' ? '…' : L('Acepto los riesgos · continuar al pago', 'I accept the risks · continue to payment')}
+            </button>
+          </Modal>
+        )}
       </div>
     );
   }
@@ -241,13 +268,13 @@ function StudentCopy({ mentorId, L }: { mentorId: string; L: (es: string, en: st
             </label>
           </div>
         )}
-        <div style={{ background: 'color-mix(in srgb,var(--amber) 12%,transparent)', border: '1px solid color-mix(in srgb,var(--amber) 35%,transparent)', borderRadius: 10, padding: '10px 12px', margin: '10px 0' }}>
-          <label className="row" style={{ gap: 8, alignItems: 'flex-start', fontSize: 12.5, cursor: 'pointer' }}>
-            <input type="checkbox" checked={w.consent} onChange={(e) => setW({ ...w, consent: e.target.checked })} style={{ width: 'auto', margin: '2px 0 0' }} />
-            <span>{L('Entiendo que copiaré con dinero real, que puedo perder, que no es asesoría financiera, y autorizo la copia con Guardian de seguridad.', 'I understand I will copy with real money, that I can lose, that this is not financial advice, and I authorize copying with Guardian safety.')}</span>
-          </label>
+        <div style={{ background: 'color-mix(in srgb,var(--amber) 12%,transparent)', border: '2px solid color-mix(in srgb,var(--amber) 45%,transparent)', borderRadius: 10, padding: '11px 13px', margin: '10px 0', boxShadow: '0 0 22px color-mix(in srgb,var(--amber) 22%,transparent)' }}>
+          <div style={{ fontSize: 12.5, color: 'var(--tx)', lineHeight: 1.5, marginBottom: 8 }}>
+            {L('Copiarás con DINERO REAL y puedes perder. No es asesoría financiera. Para autorizar, escribe ', 'You will copy with REAL MONEY and you can lose. This is not financial advice. To authorize, type ')}<b style={{ letterSpacing: '.5px' }}>{ACCEPT_WORD}</b>{L(' en mayúsculas:', ' in uppercase:')}
+          </div>
+          <input value={cTyped} onChange={(e) => setCTyped(e.target.value)} placeholder={ACCEPT_WORD} style={{ width: '100%', margin: 0, textTransform: 'uppercase', letterSpacing: '1px', textAlign: 'center', fontWeight: 700 }} />
         </div>
-        <button className="btn btn-primary" disabled={!w.slave || !w.consent || busy === 'connect'} onClick={connect}>{busy === 'connect' ? '…' : L('Empezar a copiar', 'Start copying')}</button>
+        <button className="btn btn-primary" style={{ opacity: (w.slave && cTyped.trim() === ACCEPT_WORD) ? 1 : .5 }} disabled={!w.slave || cTyped.trim() !== ACCEPT_WORD || busy === 'connect'} onClick={connect}>{busy === 'connect' ? '…' : L('Empezar a copiar', 'Start copying')}</button>
       </div>
     );
   }
