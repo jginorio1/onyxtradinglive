@@ -162,13 +162,16 @@ const dict = {
     },
     cmpT: 'Onyx vs lo de siempre',
     cmp: {
-      head: ['', 'Excel a mano', 'Onyx'],
+      head: ['', 'Sin Onyx', 'Onyx'],
       rows: [
         ['Sincronización automática', '❌', '✅'],
-        ['Estadísticas avanzadas', 'Limitado', '✅'],
+        ['Estadísticas avanzadas (15+)', 'Limitado', '✅'],
         ['Calendario y gráficas', '❌', '✅'],
         ['Multi-cuenta y portafolio', 'Difícil', '✅'],
-        ['Reglas de fondeo', '❌', '✅'],
+        ['Reglas de prop firm', '❌', '✅'],
+        ['Freno de riesgo (Onyx Guardian)', '❌', '✅'],
+        ['Copy trading y robots (EA)', '❌', '✅'],
+        ['Ganancia neta y alertas en vivo', 'Manual', '✅'],
       ],
     },
     secT: 'Seguro por diseño',
@@ -296,13 +299,16 @@ const dict = {
     },
     cmpT: 'Onyx vs the usual',
     cmp: {
-      head: ['', 'Manual Excel', 'Onyx'],
+      head: ['', 'Without Onyx', 'Onyx'],
       rows: [
         ['Automatic sync', '❌', '✅'],
-        ['Advanced stats', 'Limited', '✅'],
+        ['Advanced stats (15+)', 'Limited', '✅'],
         ['Calendar & charts', '❌', '✅'],
         ['Multi-account & portfolio', 'Hard', '✅'],
         ['Prop-firm rules', '❌', '✅'],
+        ['Risk brake (Onyx Guardian)', '❌', '✅'],
+        ['Copy trading & robots (EA)', '❌', '✅'],
+        ['Net profit & live alerts', 'Manual', '✅'],
       ],
     },
     secT: 'Secure by design',
@@ -447,6 +453,17 @@ export default function Home() {
     : t.steps;
   const trustBadges: string[] = lc?.trust?.[lang]?.length ? lc.trust[lang] : t.trust;
 
+  // Celda de la comparativa con iconos de línea: ✅ → check verde en pastilla,
+  // ❌ → cruz gris tenue, y "Limitado/Difícil/Manual" → texto ámbar suave.
+  const cmpCell = (v: string) =>
+    v === '✅' ? <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: 7, background: 'rgba(52,226,160,.16)', color: 'var(--green)' }}><OnyxIcon name="check" size={15} glow={false} /></span>
+      : v === '❌' ? <span style={{ color: 'var(--mut)', fontSize: 17, opacity: .75 }}>✕</span>
+        : <span style={{ fontSize: 13, color: 'var(--amber)' }}>{v}</span>;
+  // Fila de confianza: mapea el emoji inicial a un icono de línea.
+  const TRUST_ICON: Record<string, { name: string; color: string }> = {
+    '✅': { name: 'link', color: 'var(--green)' }, '🔒': { name: 'lock', color: 'var(--brand)' }, '💳': { name: 'card', color: 'var(--gold)' },
+  };
+
   // ── Contadores 100% deterministas y monótonos ──────────────────────────────
   // El número NO depende del fetch (que varía o falla): es una función pura del
   // reloj. Con una base alta y un crecimiento fijo por tiempo, SIEMPRE sube y
@@ -557,7 +574,7 @@ export default function Home() {
       {/* TRUST */}
       <div className="wrap" style={{ padding: '10px 22px 30px' }}>
         <div className="row" style={{ justifyContent: 'center', gap: 34, flexWrap: 'wrap', color: 'var(--mut)', fontSize: 15 }}>
-          {trustBadges.map((x, i) => <span key={i}>{x}</span>)}
+          {trustBadges.map((x, i) => { const first = [...x][0]; const meta = TRUST_ICON[first]; const text = meta ? x.slice(first.length).trim() : x; return <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>{meta && <span style={{ color: meta.color, display: 'inline-flex' }}><OnyxIcon name={meta.name} size={16} glow={false} /></span>}{text}</span>; })}
         </div>
       </div>
 
@@ -775,7 +792,7 @@ export default function Home() {
         <div className="card">
           <table>
             <thead><tr>{t.cmp.head.map((h, i) => <th key={i} style={{ textAlign: i === 0 ? 'left' : 'center', fontSize: 15 }}>{h}</th>)}</tr></thead>
-            <tbody>{t.cmp.rows.map((r, i) => (<tr key={i}><td>{r[0]}</td><td style={{ textAlign: 'center' }} className="muted">{r[1]}</td><td style={{ textAlign: 'center' }}>{r[2]}</td></tr>))}</tbody>
+            <tbody>{t.cmp.rows.map((r, i) => (<tr key={i}><td>{r[0]}</td><td style={{ textAlign: 'center' }}>{cmpCell(r[1])}</td><td style={{ textAlign: 'center' }}>{cmpCell(r[2])}</td></tr>))}</tbody>
           </table>
         </div>
       </div>
