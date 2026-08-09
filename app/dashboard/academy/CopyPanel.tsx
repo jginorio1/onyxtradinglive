@@ -50,6 +50,8 @@ function MentorCopy({ L }: { mentorId: string; L: (es: string, en: string) => st
         min_capital: o.min_capital_cents ? String(o.min_capital_cents / 100) : '',
         allow_funded: o.allow_funded !== false,
       });
+      // Si el copy está activado pero aún no aceptó responsabilidades, el aviso sale solo.
+      if (o.enabled && !o.terms_accepted_at) { setTyped(''); setWarn(true); }
     }
   }
   useEffect(() => { load(); }, []);
@@ -144,8 +146,8 @@ function MentorCopy({ L }: { mentorId: string; L: (es: string, en: string) => st
           </ul>
           <div style={{ background: 'color-mix(in srgb,var(--amber) 12%,transparent)', border: '1px solid color-mix(in srgb,var(--amber) 40%,transparent)', borderRadius: 10, padding: '11px 13px', marginBottom: 12 }}>
             <div style={{ fontSize: 12.5, color: 'var(--tx)', marginBottom: 8 }}>{L('Para confirmar, escribe ', 'To confirm, type ')}<b style={{ letterSpacing: '.5px' }}>{ACCEPT_WORD}</b>{L(' en mayúsculas:', ' in uppercase:')}</div>
-            <input value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={ACCEPT_WORD} autoFocus
-              style={{ width: '100%', margin: 0, textTransform: 'uppercase', letterSpacing: '1px', textAlign: 'center', fontWeight: 700 }} />
+            <input value={typed} onChange={(e) => setTyped(e.target.value.toUpperCase())} placeholder={ACCEPT_WORD} autoFocus
+              style={{ width: '100%', margin: 0, letterSpacing: '1px', textAlign: 'center', fontWeight: 700 }} />
           </div>
           <button className="btn btn-primary" style={{ width: '100%', opacity: typed.trim() === ACCEPT_WORD ? 1 : .5 }}
             disabled={typed.trim() !== ACCEPT_WORD || busy === 'save'}
@@ -222,8 +224,8 @@ function StudentCopy({ mentorId, L }: { mentorId: string; L: (es: string, en: st
             </ul>
             <div style={{ background: 'color-mix(in srgb,var(--amber) 12%,transparent)', border: '1px solid color-mix(in srgb,var(--amber) 40%,transparent)', borderRadius: 10, padding: '11px 13px', marginBottom: 12 }}>
               <div style={{ fontSize: 12.5, color: 'var(--tx)', marginBottom: 8 }}>{L('Para confirmar, escribe ', 'To confirm, type ')}<b style={{ letterSpacing: '.5px' }}>{ACCEPT_WORD}</b>{L(' en mayúsculas:', ' in uppercase:')}</div>
-              <input value={sTyped} onChange={(e) => setSTyped(e.target.value)} placeholder={ACCEPT_WORD} autoFocus
-                style={{ width: '100%', margin: 0, textTransform: 'uppercase', letterSpacing: '1px', textAlign: 'center', fontWeight: 700 }} />
+              <input value={sTyped} onChange={(e) => setSTyped(e.target.value.toUpperCase())} placeholder={ACCEPT_WORD} autoFocus
+                style={{ width: '100%', margin: 0, letterSpacing: '1px', textAlign: 'center', fontWeight: 700 }} />
             </div>
             <button className="btn btn-primary" style={{ width: '100%', opacity: sTyped.trim() === ACCEPT_WORD ? 1 : .5 }} disabled={sTyped.trim() !== ACCEPT_WORD || busy === 'sub'} onClick={subscribe}>
               {busy === 'sub' ? '…' : L('Acepto los riesgos · continuar al pago', 'I accept the risks · continue to payment')}
@@ -272,7 +274,7 @@ function StudentCopy({ mentorId, L }: { mentorId: string; L: (es: string, en: st
           <div style={{ fontSize: 12.5, color: 'var(--tx)', lineHeight: 1.5, marginBottom: 8 }}>
             {L('Copiarás con DINERO REAL y puedes perder. No es asesoría financiera. Para autorizar, escribe ', 'You will copy with REAL MONEY and you can lose. This is not financial advice. To authorize, type ')}<b style={{ letterSpacing: '.5px' }}>{ACCEPT_WORD}</b>{L(' en mayúsculas:', ' in uppercase:')}
           </div>
-          <input value={cTyped} onChange={(e) => setCTyped(e.target.value)} placeholder={ACCEPT_WORD} style={{ width: '100%', margin: 0, textTransform: 'uppercase', letterSpacing: '1px', textAlign: 'center', fontWeight: 700 }} />
+          <input value={cTyped} onChange={(e) => setCTyped(e.target.value.toUpperCase())} placeholder={ACCEPT_WORD} style={{ width: '100%', margin: 0, letterSpacing: '1px', textAlign: 'center', fontWeight: 700 }} />
         </div>
         <button className="btn btn-primary" style={{ opacity: (w.slave && cTyped.trim() === ACCEPT_WORD) ? 1 : .5 }} disabled={!w.slave || cTyped.trim() !== ACCEPT_WORD || busy === 'connect'} onClick={connect}>{busy === 'connect' ? '…' : L('Empezar a copiar', 'Start copying')}</button>
       </div>
