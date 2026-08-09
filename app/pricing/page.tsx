@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { errMsg } from '@/lib/i18nErrors';
 import PlansCompareTable from '@/app/PlansCompareTable';
 import EmbeddedCheckoutModal from '@/app/EmbeddedCheckoutModal';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 type Plan = { id: string; name: string; name_en: string; desc_es: string | null; desc_en: string | null; price_month: number; price_year: number; max_accounts: number; features: string[]; features_en: string[]; badge: string | null; badge_en: string | null };
 type Lang = 'es' | 'en';
@@ -23,14 +24,14 @@ const DEFAULT_PLANS: Plan[] = [
     features: ['1 cuenta conectada', 'Estadísticas básicas', '30 días de historial'],
     features_en: ['1 connected account', 'Basic stats', '30 days of history'], badge: null, badge_en: null },
   { id: 'pro', name: 'Pro', name_en: 'Pro', desc_es: null, desc_en: null, price_month: 19, price_year: 190, max_accounts: 5,
-    features: ['5 cuentas conectadas', 'Todas las estadísticas', 'Historial ilimitado', 'Calendario y gráficas', 'Reglas de fondeo'],
-    features_en: ['5 connected accounts', 'All stats', 'Unlimited history', 'Calendar & charts', 'Prop-firm rules'], badge: 'Más popular', badge_en: 'Most popular' },
+    features: ['5 cuentas conectadas', 'Onyx Guardian: freno de riesgo', 'Historial ilimitado y reglas de fondeo', 'Diario, costes y exportar CSV', 'Crea tu academia (Onyx Academy)'],
+    features_en: ['5 connected accounts', 'Onyx Guardian: risk brake', 'Unlimited history & funding rules', 'Journal, costs & CSV export', 'Build your academy (Onyx Academy)'], badge: 'Más popular', badge_en: 'Most popular' },
   { id: 'elite', name: 'Elite', name_en: 'Elite', desc_es: null, desc_en: null, price_month: 39, price_year: 390, max_accounts: 999,
-    features: ['Cuentas ilimitadas', 'Todo lo de Pro', 'Informes automáticos', 'Alertas por Telegram', 'Soporte prioritario'],
-    features_en: ['Unlimited accounts', 'Everything in Pro', 'Automatic reports', 'Telegram alerts', 'Priority support'], badge: null, badge_en: null },
+    features: ['Cuentas ilimitadas', 'Copy trading (1 master · 5 esclavas)', 'Cierres parciales y bloqueo por noticias', 'Alertas e informe por Telegram', 'Soporte prioritario'],
+    features_en: ['Unlimited accounts', 'Copy trading (1 master · 5 slaves)', 'Partial closes & news blackout', 'Telegram alerts & report', 'Priority support'], badge: null, badge_en: null },
   { id: 'black', name: 'Black Onyx', name_en: 'Black Onyx', desc_es: null, desc_en: null, price_month: 99, price_year: 990, max_accounts: 999,
-    features: ['Todo ilimitado', 'Copy trading ilimitado', 'Onyx Guardian completo', 'Academia + Telegram', 'Soporte prioritario'],
-    features_en: ['Everything unlimited', 'Unlimited copy trading', 'Full Onyx Guardian', 'Academy + Telegram', 'Priority support'], badge: null, badge_en: null },
+    features: ['Copy trading ilimitado (masters y esclavas)', 'Todo sin límites', 'Soporte prioritario'],
+    features_en: ['Unlimited copy trading (masters & slaves)', 'Everything with no limits', 'Priority support'], badge: null, badge_en: null },
 ];
 
 
@@ -113,7 +114,7 @@ export default function Pricing() {
                 <div style={{ fontSize: 40, fontWeight: 800, margin: '10px 0 4px' }}>${price}<span className="muted" style={{ fontSize: 15, fontWeight: 500 }}>/{annual ? t.yr : t.mo}</span></div>
                 <ul style={{ listStyle: 'none', margin: '16px 0' }}>
                   {i > 0 && <li style={{ padding: '7px 0', color: 'var(--mut)', fontWeight: 700, fontSize: 13 }}>{t.allOf} {prevName}, {t.andMore}</li>}
-                  {feats.map((it, j) => <li key={j} style={{ padding: '7px 0', color: '#cdd3e0' }}><span style={{ color: 'var(--green)' }}>✓</span> {it}</li>)}
+                  {feats.map((it, j) => <li key={j} style={{ padding: '7px 0', color: '#cdd3e0', display: 'flex', alignItems: 'flex-start', gap: 9 }}><span style={{ flex: 'none', marginTop: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, borderRadius: 6, background: 'rgba(52,226,160,.16)', color: 'var(--green)' }}><OnyxIcon name="check" size={13} glow={false} /></span>{it}</li>)}
                 </ul>
                 <button className={'btn ' + (pop ? 'btn-primary' : 'btn-ghost')} style={{ width: '100%' }} onClick={() => subscribe(p.id, price)} disabled={loading === p.id}>
                   {loading === p.id ? '...' : (price === 0 ? t.free : t.choose + ' ' + name)}
