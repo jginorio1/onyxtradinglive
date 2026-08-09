@@ -610,7 +610,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                 return <HubVitals net={money2(a.net)} netPos={a.net >= 0} netLabel={L.kNet} vitals={vitals} tiles={tiles} />;
               })()}
 
-              <Achievements a={a} accounts={accounts} lang={lang} />
+              <Achievements a={a} accounts={accounts} trades={demo ? demoTrades : tradesS} lang={lang} />
 
               <Nudge
                 lang={lang}
