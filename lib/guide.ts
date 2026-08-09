@@ -522,7 +522,7 @@ export const ARTICLES: Article[] = [
         { p: 'On each account you can mark whether it is a challenge, a funded account or your own capital, and enter the numbers from your contract: target, maximum daily loss and maximum total loss.' },
         { p: 'With that, the dashboard shows at all times how much margin you have left and how far you are from the target, without you calculating it by hand every morning.' },
         { h: 'And Onyx Guardian enforces it' },
-        { p: 'If you also turn on limits in Onyx Guardian, it does not just inform you: it stops you. With whatever safety margin you chose, so you never reach the real edge.' },
+        { p: 'If you also turn on limits in Onyx Guardian, it does not just inform you: it stops you. With whatever safety margin you chose, so you never reach the real limit.' },
         { note: 'Most funded accounts are not lost to a bad streak, but to a single trade taken with the limit already nearly touched. That is where an automatic brake earns its keep.', title: 'Where accounts are lost' },
         { warn: 'Onyx does not talk to your prop firm. We do not know your real rules: we use the numbers you enter. If your contract changes, you have to update them here.' },
       ],

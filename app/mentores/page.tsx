@@ -122,12 +122,12 @@ export default function MentoresPage() {
           ))}
         </div>
         {copy?.enabled && (
-          <div className="card" style={{ marginTop: 14, padding: 18, border: '1px solid color-mix(in srgb,var(--brand) 35%,transparent)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', justifyContent: 'space-between' }}>
+          <div className="card" style={{ marginTop: 14, padding: 20, border: '2px solid var(--brand)', boxShadow: '0 0 0 1px rgba(124,140,255,.5), 0 0 44px rgba(124,140,255,.35)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, maxWidth: 640 }}>
               <span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="sessions" size={22} /></span>
               <div>
                 <div style={{ fontSize: 16, fontWeight: 800 }}>{L('Vende el copy de tu estrategia', 'Sell copy of your strategy')}</div>
-                <p className="muted" style={{ fontSize: 14, margin: '4px 0 0', lineHeight: 1.55 }}>{L('Tus alumnos copian tus operaciones y pagan por acceso. Tú cobras por tu edge; Onyx toma solo ' + copy.onyxFeePct + '%. Guardian obligatorio de red de seguridad.', 'Your students copy your trades and pay for access. You earn from your edge; Onyx takes only ' + copy.onyxFeePct + '%. Guardian required as a safety net.')}</p>
+                <p className="muted" style={{ fontSize: 14, margin: '4px 0 0', lineHeight: 1.55 }}>{L('Tus alumnos copian tus operaciones y pagan por acceso. Tú ganas por tu operativa; Onyx toma solo ' + copy.onyxFeePct + '%. Guardian obligatorio de red de seguridad.', 'Your students copy your trades and pay for access. You earn from your trading; Onyx takes only ' + copy.onyxFeePct + '%. Guardian required as a safety net.')}</p>
               </div>
             </div>
           </div>
