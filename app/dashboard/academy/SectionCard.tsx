@@ -26,10 +26,10 @@ export default function SectionCard({ icon, title, summary, badge, children, wid
         </span>
         <span style={{ flex: 1, minWidth: 0 }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <b style={{ fontSize: 15 }}>{title}</b>
+            <b style={{ fontSize: 15, color: 'var(--tx)' }}>{title}</b>
             {badge && <span style={{ fontSize: 11, background: toneColor.bg, color: toneColor.fg, padding: '2px 8px', borderRadius: 999 }}>{badge.text}</span>}
           </span>
-          {summary && <span style={{ display: 'block', fontSize: 12.5, color: 'var(--mut)', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{summary}</span>}
+          {summary && <span style={{ display: 'block', fontSize: 12.5, color: 'var(--tx)', opacity: .85, marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{summary}</span>}
         </span>
         <span style={{ color: 'var(--brand)', display: 'inline-flex', alignItems: 'center', gap: 4, flex: 'none', fontSize: 12.5 }}>✎ ›</span>
       </button>

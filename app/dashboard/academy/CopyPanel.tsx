@@ -137,7 +137,7 @@ function MentorCopy({ L }: { mentorId: string; L: (es: string, en: string) => st
     </SectionCard>
 
       {warn && (
-        <Modal glow title={L('Tus responsabilidades como mentor', 'Your responsibilities as a mentor')} onClose={() => { setWarn(false); if (!d.offer?.terms_accepted_at) setF({ ...f, enabled: false }); }}>
+        <Modal glow title={L('Tus responsabilidades como mentor', 'Your responsibilities as a mentor')} onClose={() => { setWarn(false); setF((prev: any) => ({ ...prev, enabled: !!d.offer?.enabled })); }}>
           <ul style={{ fontSize: 13, lineHeight: 1.65, color: 'var(--tx)', paddingLeft: 18, margin: '4px 0 12px' }}>
             <li>{L('Tus operaciones se replican con DINERO REAL en las cuentas de tus alumnos.', "Your trades replicate with REAL MONEY on your students' accounts.")}</li>
             <li>{L('Opera siempre con stop loss y riesgo sano; una mala racha afecta a todos.', 'Always trade with stop loss and sound risk; a bad streak affects everyone.')}</li>
