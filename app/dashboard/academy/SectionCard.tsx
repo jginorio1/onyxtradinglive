@@ -35,13 +35,14 @@ export default function SectionCard({ icon, title, summary, badge, children, wid
       </button>
 
       {open && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 900, padding: '5vh 16px', overflowY: 'auto' }} onClick={() => setOpen(false)}>
-          <div className="sk-card" style={{ width: '100%', maxWidth: wide ? 720 : 520, margin: 'auto 0' }} onClick={(e) => e.stopPropagation()}>
-            <div className="row between" style={{ marginBottom: 12 }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 900, padding: '16px', overflowY: 'auto' }} onClick={() => setOpen(false)}>
+          <div className="sk-card" style={{ width: '100%', maxWidth: wide ? 720 : 520, margin: 'auto', padding: 0, maxHeight: 'calc(100dvh - 32px)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }} onClick={(e) => e.stopPropagation()}>
+            {/* Cabecera fija; solo el cuerpo scrollea (así el popup no se va tan hacia abajo). */}
+            <div className="row between" style={{ padding: '13px 16px', borderBottom: '1px solid var(--line)', flex: 'none' }}>
               <b style={{ fontSize: 16, display: 'inline-flex', alignItems: 'center', gap: 8 }}><span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name={icon || 'card'} size={18} /></span>{title}</b>
               <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => setOpen(false)}>✕</button>
             </div>
-            {children}
+            <div style={{ padding: '14px 16px', overflowY: 'auto', flex: 1, minHeight: 0 }}>{children}</div>
           </div>
         </div>
       )}
