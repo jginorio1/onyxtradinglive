@@ -26,6 +26,13 @@ export default function EarningsCalc({ mode, pct, lang, plans }: { mode: 'academ
     .filter((p) => p?.capabilities?.academy && Number(p.price_month) > 0)
     .sort((a, b) => Number(a.price_month) - Number(b.price_month)), [plans]);
 
+  // IMPORTANTE (reglas de hooks): estos useState se declaran SIEMPRE, antes de
+  // cualquier return condicional. Los usa la rama "legacy"; en la rama con planes
+  // simplemente no se leen, pero deben llamarse para que el nº de hooks no cambie
+  // cuando los planes cargan de forma asíncrona.
+  const [n, setN] = useState(acad ? 50 : 20);
+  const [price, setPrice] = useState(acad ? 30 : 19);
+
   const shell = (children: any) => (
     <div style={{ maxWidth: 560, margin: '0 auto', background: 'var(--card)', border: '2px solid var(--brand)', borderRadius: 18, padding: 22, boxShadow: '0 0 0 1px rgba(124,140,255,.5), 0 0 44px rgba(124,140,255,.35)' }}>
       {children}
@@ -57,8 +64,6 @@ export default function EarningsCalc({ mode, pct, lang, plans }: { mode: 'academ
 
   // ---- Legacy: % fijo (academia sin planes) / embajador ----
   const fee = clampPct(pct) || (acad ? 10 : 30);
-  const [n, setN] = useState(acad ? 50 : 20);
-  const [price, setPrice] = useState(acad ? 30 : 19);
   const gross = n * price;
   const onyx = Math.round((gross * fee) / 100);
   const net = acad ? gross - onyx : onyx;
