@@ -51,8 +51,6 @@ function MentorCopy({ L }: { mentorId: string; L: (es: string, en: string) => st
         min_capital: o.min_capital_cents ? String(o.min_capital_cents / 100) : '',
         allow_funded: o.allow_funded !== false,
       });
-      // Si el copy está activado pero aún no aceptó responsabilidades, el aviso sale solo.
-      if (o.enabled && !o.terms_accepted_at) { setTyped(''); setWarn(true); }
     }
   }
   useEffect(() => { load(); }, []);
@@ -92,8 +90,8 @@ function MentorCopy({ L }: { mentorId: string; L: (es: string, en: string) => st
         <input type="checkbox" checked={f.enabled} onChange={(e) => {
           const on = e.target.checked;
           setF({ ...f, enabled: on });
-          // Al ACTIVAR por primera vez, el aviso de responsabilidades sale solo.
-          if (on && !d.offer?.terms_accepted_at) { setTyped(''); setWarn(true); }
+          // Al ACTIVAR, el aviso de responsabilidades sale solo (siempre).
+          if (on) { setTyped(''); setWarn(true); }
         }} style={{ width: 'auto', margin: 0 }} />
         {L('Ofrecer mi copy a mis alumnos', 'Offer my copy to my students')}
       </label>

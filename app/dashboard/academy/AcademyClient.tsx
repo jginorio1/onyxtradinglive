@@ -13,6 +13,7 @@ import ScholarshipPanel from './ScholarshipPanel';
 import RedeemBeca from './RedeemBeca';
 import GuardianUpsell from './GuardianUpsell';
 import CopyPanel from './CopyPanel';
+import SectionCard from './SectionCard';
 
 // Onyx Academy v2 — comunidad estilo Skool: feed, aulas con secciones y progreso,
 // calendario con clase en vivo (countdown + EN VIVO), miembros, ranking, perfil,
@@ -3629,8 +3630,9 @@ function MentorPayments({ modules, L, onChanged }: { modules: any[]; L: (a: stri
       )}
       {/* Detalle en vivo desde Stripe: saldo, depósitos a tu banco y ventas */}
       {conn.chargesEnabled && <div className="sk-span-all"><MentorEarnings L={L} /></div>}
-      <div className="sk-card" data-onb="tier">
-        <div className="row between" style={{ marginBottom: 10, flexWrap: 'wrap', gap: 8 }}><h3 style={{ display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic" style={{ color: 'var(--gold)' }}><OnyxIcon name="gem" size={16} /></span> {L('Niveles', 'Tiers')}</h3><div className="row" style={{ gap: 6 }}><button className="btn btn-ghost" onClick={() => setForm({ name: L('Auditoría de mi plan', 'Plan audit'), kind: 'audit', interval: 'month', price: '', currency: 'usd', grants: [], active: true })}><OnyxIcon name="guardian" size={14} /> {L('Add-on auditoría', 'Audit add-on')}</button><button className="btn btn-primary" onClick={() => setForm({ name: '', kind: 'subscription', interval: 'month', price: '', currency: 'usd', grants: 'all', active: true })}>＋ {L('Nivel', 'Tier')}</button></div></div>
+      <SectionCard icon="gem" title={L('Niveles', 'Tiers')} summary={`${prods.length} ${L('niveles de pago', 'paid tiers')}`} wide>
+        <div data-onb="tier" />
+        <div className="row between" style={{ marginBottom: 10, flexWrap: 'wrap', gap: 8 }}><span /><div className="row" style={{ gap: 6 }}><button className="btn btn-ghost" onClick={() => setForm({ name: L('Auditoría de mi plan', 'Plan audit'), kind: 'audit', interval: 'month', price: '', currency: 'usd', grants: [], active: true })}><OnyxIcon name="guardian" size={14} /> {L('Add-on auditoría', 'Audit add-on')}</button><button className="btn btn-primary" onClick={() => setForm({ name: '', kind: 'subscription', interval: 'month', price: '', currency: 'usd', grants: 'all', active: true })}>＋ {L('Nivel', 'Tier')}</button></div></div>
         {prods.length === 0 && <p className="muted" style={{ fontSize: 13 }}>{L('Crea niveles como “Curso básico”, “VIP” o “Bootcamp”.', 'Create tiers like “Basic”, “VIP” or “Bootcamp”.')}</p>}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {prods.map((p) => (
@@ -3641,13 +3643,13 @@ function MentorPayments({ modules, L, onChanged }: { modules: any[]; L: (a: stri
           ))}
         </div>
         {form && <TierForm form={form} setForm={setForm} modules={modules} busy={busy === 'prod'} onSave={saveProd} onCancel={() => setForm(null)} L={L} />}
-      </div>
+      </SectionCard>
 
       {/* Afiliados del mentor · ajustes + pagos */}
       {affForm && (
-        <div className="sk-card">
+        <SectionCard icon="gift" title={L('Afiliados y pagos', 'Affiliates & payouts')} summary={L('Comisiones y pagos a los alumnos que traen alumnos', 'Rewards and payouts to students who bring students')} wide>
           <div className="row between" style={{ marginBottom: 6, flexWrap: 'wrap', gap: 8 }}>
-            <h3 style={{ display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic"><OnyxIcon name="gift" size={16} /></span> {L('Afiliados y pagos', 'Affiliates & payouts')}</h3>
+            <span />
             {(affData?.referrers?.length > 0) && <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={exportAff}><OnyxIcon emoji="⬇️" size={13} /> {L('Exportar CSV', 'Export CSV')}</button>}
           </div>
           <p className="muted" style={{ fontSize: 12.5, marginBottom: 12 }}>{L('Premia a los miembros que traigan alumnos que paguen. Elige cómo pagas: crédito automático en la academia o pago manual (PayPal, Zelle, efectivo…).', 'Reward members who bring paying students. Choose how you pay: automatic academy credit or manual payout (PayPal, Zelle, cash…).')}</p>
@@ -3734,7 +3736,7 @@ function MentorPayments({ modules, L, onChanged }: { modules: any[]; L: (a: stri
               </div>
             </div>
           )}
-        </div>
+        </SectionCard>
       )}
 
       </div>{/* /sk-cardgrid */}
