@@ -165,14 +165,28 @@ function Section({ icon, title, subtitle, children }: { icon: string; title: str
 export default function AccountClient({ email }: { email: string }) {
   const { lang, setLang } = useLang();
   // El tab se guarda en el # de la URL, así al refrescar te quedas donde estabas.
-  const TABS = ['plan', 'perfil', 'facturas', 'academias', 'cuentas', 'avisos', 'seguridad', 'referidos', 'retiros'];
+  // Las 5 principales son pestañas; las 4 secundarias abren un popup (tarjeta).
+  const MAIN_TABS = ['plan', 'perfil', 'cuentas', 'facturas', 'academias'];
+  const CARD_KEYS = ['avisos', 'seguridad', 'referidos', 'retiros'];
   const [tab, setTabState] = useState<Tab>('plan');
+  const [secOpen, setSecOpen] = useState<Tab | null>(null); // popup secundario abierto
   const setTab = (t: Tab) => { setTabState(t); if (typeof window !== 'undefined') history.replaceState(null, '', '#' + t); };
   useEffect(() => {
-    const apply = () => { const h = window.location.hash.replace('#', ''); if (TABS.includes(h)) setTabState(h as Tab); };
+    const apply = () => { const h = window.location.hash.replace('#', ''); if (MAIN_TABS.includes(h)) setTabState(h as Tab); else if (CARD_KEYS.includes(h)) setSecOpen(h as Tab); };
     apply();
     window.addEventListener('hashchange', apply);
     return () => window.removeEventListener('hashchange', apply);
+  }, []);
+  // Buscador rápido (⌘K / Ctrl+K): salta a una sección de Mi cuenta.
+  const [pal, setPal] = useState(false);
+  const [palQ, setPalQ] = useState('');
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setPalQ(''); setPal((v) => !v); }
+      if (e.key === 'Escape') { setPal(false); setSecOpen(null); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, []);
   const [data, setData] = useState<any>(null);
   const [p, setP] = useState<any>({});
@@ -287,7 +301,13 @@ export default function AccountClient({ email }: { email: string }) {
     setBusy('');
   }
 
-  const NAV: [Tab, string][] = [['plan', '💳'], ['perfil', '👤'], ['facturas', '🧾'], ['academias', '🎓'], ['cuentas', '🔌'], ['avisos', '🔔'], ['seguridad', '🔒'], ['referidos', '🎁'], ['retiros', '💸']];
+  // Barra: 5 principales agrupadas + 4 secundarias como tarjetas con popup.
+  const NAV_GROUPS: { g: string; items: [Tab, string][] }[] = [
+    { g: lang === 'en' ? 'Account' : 'Cuenta', items: [['plan', '💳'], ['perfil', '👤'], ['cuentas', '🔌']] },
+    { g: lang === 'en' ? 'Activity' : 'Actividad', items: [['academias', '🎓'], ['facturas', '🧾']] },
+  ];
+  const NAV_FLAT = NAV_GROUPS.flatMap((g) => g.items);
+  const CARDS: [Tab, string, string][] = [['avisos', '🔔', L.nSub], ['seguridad', '🔒', L.segSub], ['referidos', '🎁', L.refSub], ['retiros', '💸', L.retSub2]];
   const card = { marginBottom: 14 } as any;
   const lbl = { fontSize: 12, color: 'var(--mut)', marginTop: 10, display: 'block' } as any;
 
@@ -304,12 +324,38 @@ export default function AccountClient({ email }: { email: string }) {
                 <span className="pill" style={{ fontSize: 10.5, background: 'rgba(160,107,255,.16)', color: 'var(--soft-purple)', padding: '1px 8px' }}>{planName(myPlan, lang) || 'Free'}</span>
               </div>
             </div>
-            {/* Móvil: selector (se adapta como el menú de arriba) */}
+            {/* Buscador rápido (⌘K) */}
+            <button className="btn btn-ghost" style={{ width: '100%', justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, marginBottom: 10 }} onClick={() => { setPalQ(''); setPal(true); }}><OnyxIcon name="search" size={14} glow={false} /> {lang === 'en' ? 'Search' : 'Buscar'} <span style={{ opacity: .55, fontSize: 11 }}>⌘K</span></button>
+            {/* Móvil: selector (solo las principales) */}
             <select className="adminnav-mobile" value={tab} onChange={(e) => setTab(e.target.value as Tab)} style={{ margin: 0, width: '100%' }}>
-              {NAV.map(([k]) => <option key={k} value={k}>{L.nav[k]}</option>)}
+              {NAV_FLAT.map(([k]) => <option key={k} value={k}>{L.nav[k]}</option>)}
             </select>
             <div className="adminnav-items">
-              {NAV.map(([k, icon]) => <button key={k} className={'adminnav-item' + (tab === k ? ' on' : '')} onClick={() => setTab(k)}><span style={{ width: 18, display: 'inline-flex', justifyContent: 'center' }}><OnyxIcon emoji={icon} size={16} /></span><span>{L.nav[k]}</span><span className="navdot" /></button>)}
+              {NAV_GROUPS.map((gr) => (
+                <div key={gr.g}>
+                  <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--mut)', margin: '8px 8px 4px' }}>{gr.g}</div>
+                  {gr.items.map(([k, icon]) => (
+                    <button key={k} className={'adminnav-item' + (tab === k ? ' on' : '')} onClick={() => setTab(k)}>
+                      <span style={{ width: 18, display: 'inline-flex', justifyContent: 'center' }}><OnyxIcon emoji={icon} size={16} /></span><span>{L.nav[k]}</span>
+                      {k === 'plan' && pending ? <span style={{ marginLeft: 'auto', width: 7, height: 7, borderRadius: '50%', background: 'var(--brand)', flex: 'none' }} /> : <span className="navdot" />}
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </div>
+            {/* Secundarias como tarjetas con popup (como en la academia) */}
+            <div style={{ borderTop: '1px solid var(--line)', marginTop: 10, paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--mut)', margin: '0 8px 2px' }}>{lang === 'en' ? 'More' : 'Más'}</div>
+              {CARDS.map(([k, icon, sub]) => (
+                <button key={k} onClick={() => setSecOpen(k)} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', padding: '8px 10px', border: '1px solid var(--line)', background: 'var(--card)', borderRadius: 10, cursor: 'pointer' }}>
+                  <span style={{ width: 30, height: 30, borderRadius: 8, background: 'rgba(124,140,255,.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none', color: 'var(--brand)' }}><OnyxIcon emoji={icon} size={15} /></span>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--tx)' }}>{L.nav[k]}</span>
+                    <span style={{ display: 'block', fontSize: 11, color: 'var(--mut)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub}</span>
+                  </span>
+                  <span style={{ color: 'var(--mut)', flex: 'none' }}>›</span>
+                </button>
+              ))}
             </div>
           </div>
 
@@ -350,7 +396,7 @@ export default function AccountClient({ email }: { email: string }) {
                   {/* Saldo a favor (crédito Stripe): referidos, embajador o crédito manual del admin. */}
                   {Number(data?.creditBalance) > 0 && (
                     <div className="row between" style={{ borderTop: '1px solid var(--line)', paddingTop: 12, marginTop: 4, flexWrap: 'wrap', gap: 8 }}>
-                      <span className="muted" style={{ fontSize: 13 }}>🎁 {lang === 'en' ? 'Account credit' : 'Saldo a favor'}</span>
+                      <span className="muted" style={{ fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 5 }}><OnyxIcon name="gift" size={14} glow={false} /> {lang === 'en' ? 'Account credit' : 'Saldo a favor'}</span>
                       <span style={{ fontWeight: 800, color: 'var(--green)' }}>${data.creditBalance}
                         <span className="muted" style={{ fontWeight: 400, fontSize: 12, marginLeft: 8 }}>{lang === 'en' ? 'applied to your next invoice' : 'se descuenta de tu próxima factura'}</span>
                       </span>
@@ -415,7 +461,7 @@ export default function AccountClient({ email }: { email: string }) {
                               <div key={pl.id} style={{ border: badge ? '2px solid var(--brand)' : '0.5px solid var(--line)', borderRadius: 10, padding: 12 }}>
                                 <div className="row between" style={{ gap: 6 }}>
                                   <div style={{ fontSize: 13, fontWeight: 600 }}>{nm}</div>
-                                  {badge && <span className="pill" style={{ fontSize: 10, background: 'rgba(124,140,255,.16)', color: 'var(--soft-brand,var(--brand))' }}>★</span>}
+                                  {badge && <span className="pill" style={{ fontSize: 10, background: 'rgba(124,140,255,.16)', color: 'var(--soft-brand,var(--brand))', display: 'inline-flex', alignItems: 'center' }}><OnyxIcon name="star" size={12} glow={false} /></span>}
                                 </div>
                                 <div style={{ fontSize: 18, fontWeight: 800 }}>${pl.price_month}<span className="muted" style={{ fontSize: 11, fontWeight: 400 }}>{L.chMo}</span></div>
                                 <button className="btn btn-primary" style={{ width: '100%', marginTop: 8, fontSize: 12.5, padding: '6px 0' }} onClick={() => setCoPlan(pl.id)}>
@@ -673,51 +719,69 @@ export default function AccountClient({ email }: { email: string }) {
               </Section>
             )}
 
-            {data && tab === 'avisos' && (
-              <Section icon="🔔" title={L.nav.avisos} subtitle={L.nSub}>
-                <InstallApp lang={lang} />
-                <PushToggle lang={lang} />
-                <div className="card" style={{ marginBottom: 14 }}>
-                  <div className="row" style={{ gap: 9, marginBottom: 8, alignItems: 'center' }}>
-                    <span style={{ width: 30, height: 30, borderRadius: 9, background: 'rgba(124,140,255,.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}><OnyxIcon emoji="📧" size={16} /></span>
-                    <b style={{ fontSize: 15 }}>{L.nMailT}</b>
+            {/* Popup de secciones secundarias: Notificaciones · Seguridad · Referidos · Retiros */}
+            {data && secOpen && (
+              <div className="sk-modal-ov" onClick={() => setSecOpen(null)}>
+                <div className="sk-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 640 }}>
+                  <div className="row between" style={{ marginBottom: 4, alignItems: 'center' }}>
+                    <b style={{ fontSize: 16, display: 'inline-flex', alignItems: 'center', gap: 8 }}><span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name={({ avisos: 'bell', seguridad: 'shield', referidos: 'gift', retiros: 'money' } as any)[secOpen]} size={18} /></span>{L.nav[secOpen]}</b>
+                    <button className="btn btn-ghost" onClick={() => setSecOpen(null)}>✕</button>
                   </div>
-                  {([['notify_email', L.nEmail, L.nEmailS], ['notify_weekly', L.nWeek, L.nWeekS], ['notify_funding', L.nFund, L.nFundS], ['notify_marketing', L.nMkt, L.nMktS]] as [string, string, string][]).map(([k, label, sub], i) => (
-                    <div key={k} className="row between" style={{ padding: '11px 0', borderTop: i ? '1px solid var(--line)' : 'none', gap: 10 }}>
-                      <div><div style={{ fontSize: 14 }}>{label}</div><div className="muted" style={{ fontSize: 11.5 }}>{sub}</div></div>
-                      {/* "Novedades y ofertas" viene activado por defecto (null => on) y respeta
-                          también las bajas hechas desde el pie del correo (marketing_emails). */}
-                      {(() => { const cur = k === 'notify_marketing' ? (p.notify_marketing !== false && p.marketing_emails !== false) : !!p[k]; return <Toggle on={cur} onClick={() => setField(k, !cur)} />; })()}
+                  <p className="muted" style={{ fontSize: 12.5, margin: '0 0 14px' }}>{({ avisos: L.nSub, seguridad: L.segSub, referidos: L.refSub, retiros: L.retSub2 } as any)[secOpen]}</p>
+
+                  {secOpen === 'avisos' && (<>
+                    <InstallApp lang={lang} />
+                    <PushToggle lang={lang} />
+                    <div className="card" style={{ marginBottom: 14 }}>
+                      <div className="row" style={{ gap: 9, marginBottom: 8, alignItems: 'center' }}>
+                        <span style={{ width: 30, height: 30, borderRadius: 9, background: 'rgba(124,140,255,.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--brand)' }}><OnyxIcon name="mail" size={16} /></span>
+                        <b style={{ fontSize: 15 }}>{L.nMailT}</b>
+                      </div>
+                      {([['notify_email', L.nEmail, L.nEmailS], ['notify_weekly', L.nWeek, L.nWeekS], ['notify_funding', L.nFund, L.nFundS], ['notify_marketing', L.nMkt, L.nMktS]] as [string, string, string][]).map(([k, label, sub], i) => (
+                        <div key={k} className="row between" style={{ padding: '11px 0', borderTop: i ? '1px solid var(--line)' : 'none', gap: 10 }}>
+                          <div><div style={{ fontSize: 14 }}>{label}</div><div className="muted" style={{ fontSize: 11.5 }}>{sub}</div></div>
+                          {(() => { const cur = k === 'notify_marketing' ? (p.notify_marketing !== false && p.marketing_emails !== false) : !!p[k]; return <Toggle on={cur} onClick={() => setField(k, !cur)} />; })()}
+                        </div>
+                      ))}
+                      <div className="row" style={{ gap: 10, marginTop: 14 }}>
+                        <button className="btn btn-primary" onClick={() => saveProfile()} disabled={busy === 'save'}>{busy === 'save' ? L.saving : L.save}</button>
+                        {msg && <span style={{ color: 'var(--green)', fontSize: 13 }}>{msg}</span>}
+                      </div>
                     </div>
-                  ))}
-                  <div className="row" style={{ gap: 10, marginTop: 14 }}>
-                    <button className="btn btn-primary" onClick={() => saveProfile()} disabled={busy === 'save'}>{busy === 'save' ? L.saving : L.save}</button>
-                    {msg && <span style={{ color: 'var(--green)', fontSize: 13 }}>{msg}</span>}
+                    <div className="card"><TelegramCard lang={lang} /></div>
+                  </>)}
+
+                  {secOpen === 'seguridad' && <Security L={L} lang={lang} />}
+                  {secOpen === 'referidos' && (<><ReferralCard /><Ambassador lang={lang} only="referral" /></>)}
+                  {secOpen === 'retiros' && <Ambassador lang={lang} only="payout" />}
+                </div>
+              </div>
+            )}
+
+            {/* Buscador rápido (⌘K): salta a una sección */}
+            {pal && (() => {
+              const query = palQ.trim().toLowerCase();
+              const items: { key: Tab; icon: string; label: string; card?: boolean }[] = [
+                ...NAV_FLAT.map(([k, icon]) => ({ key: k, icon, label: L.nav[k] })),
+                ...CARDS.map(([k, icon]) => ({ key: k, icon, label: L.nav[k], card: true })),
+              ];
+              const res = items.filter((it) => !query || it.label.toLowerCase().includes(query)).slice(0, 10);
+              return (
+                <div className="sk-modal-ov" onClick={() => setPal(false)}>
+                  <div className="sk-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480 }}>
+                    <input autoFocus value={palQ} onChange={(e) => setPalQ(e.target.value)} placeholder={lang === 'en' ? 'Jump to a section…' : 'Saltar a una sección…'} style={{ width: '100%', margin: 0 }} />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 10 }}>
+                      {res.map((it) => (
+                        <button key={it.key} className="btn btn-ghost" style={{ justifyContent: 'flex-start', display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left' }} onClick={() => { if (it.card) setSecOpen(it.key); else setTab(it.key); setPal(false); }}>
+                          <OnyxIcon emoji={it.icon} size={16} /><span style={{ flex: 1 }}>{it.label}</span>{it.card && <span className="muted" style={{ fontSize: 11 }}>{lang === 'en' ? 'Popup' : 'Popup'}</span>}
+                        </button>
+                      ))}
+                      {res.length === 0 && <p className="muted" style={{ fontSize: 13, textAlign: 'center', padding: '10px 0' }}>{lang === 'en' ? 'No results.' : 'Sin resultados.'}</p>}
+                    </div>
                   </div>
                 </div>
-
-                <div className="card">
-                  <TelegramCard lang={lang} />
-                </div>
-              </Section>
-            )}
-
-            {data && tab === 'seguridad' && (
-              <Section icon="🔒" title={L.nav.seguridad} subtitle={L.segSub}><Security L={L} lang={lang} /></Section>
-            )}
-
-            {data && tab === 'referidos' && (
-              <Section icon="🎁" title={L.nav.referidos} subtitle={L.refSub}>
-                <ReferralCard />
-                <Ambassador lang={lang} only="referral" />
-              </Section>
-            )}
-
-            {data && tab === 'retiros' && (
-              <Section icon="💸" title={L.nav.retiros} subtitle={L.retSub2}>
-                <Ambassador lang={lang} only="payout" />
-              </Section>
-            )}
+              );
+            })()}
           </div>
         </div>
       </div>

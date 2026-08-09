@@ -75,6 +75,8 @@ const G: Record<string, Els> = {
   cart: (<><circle cx="9" cy="20" r="1.4" fill="currentColor" stroke="none" /><circle cx="17" cy="20" r="1.4" fill="currentColor" stroke="none" /><path d="M3 4 h2 l2.2 11 h11 l1.8 -8 H6" /></>),
   heart: (<><path d="M12 20 C5 15 3 11 3 8 a4.5 4.5 0 0 1 9 -1 a4.5 4.5 0 0 1 9 1 c0 3 -2 7 -9 12 z" /></>),
   link: (<><path d="M9 15 l6 -6 M8 12 l-2 2 a3 3 0 0 0 4 4 l2 -2 M16 12 l2 -2 a3 3 0 0 0 -4 -4 l-2 2" /></>),
+  search: (<><circle cx="11" cy="11" r="6.5" /><line x1="15.5" y1="15.5" x2="20" y2="20" /></>),
+  star: (<><path d="M12 4 l2.3 4.7 5.2 .8 -3.8 3.7 .9 5.1 -4.6 -2.4 -4.6 2.4 .9 -5.1 -3.8 -3.7 5.2 -.8 z" /></>),
   // Llave: cabeza de anillo + espiga con dientes (acceso, claves, inscripción).
   key: (<><circle cx="8" cy="8" r="3.6" /><line x1="10.6" y1="10.6" x2="19.5" y2="19.5" /><line x1="19.5" y1="19.5" x2="17.4" y2="21.6" /><line x1="16.4" y1="16.4" x2="14.3" y2="18.5" /></>),
   // Mano abierta (pausa / detener / saludo). Palma con cuatro dedos y pulgar.
