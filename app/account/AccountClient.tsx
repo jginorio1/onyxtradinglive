@@ -169,7 +169,7 @@ export default function AccountClient({ email }: { email: string }) {
   const ALL_TABS = ['plan', 'perfil', 'cuentas', 'facturas', 'academias', 'avisos', 'seguridad', 'referidos', 'retiros'];
   const CARD_KEYS = ['avisos', 'seguridad', 'referidos', 'retiros'];
   const [tab, setTabState] = useState<Tab>('plan');
-  const [secOpen, setSecOpen] = useState<Tab | null>(null); // popup secundario abierto
+  const [secOpen, setSecOpen] = useState<string | null>(null); // popup secundario abierto: "tab:parte"
   const setTab = (t: Tab) => { setTabState(t); setSecOpen(null); if (typeof window !== 'undefined') history.replaceState(null, '', '#' + t); };
   useEffect(() => {
     const apply = () => { const h = window.location.hash.replace('#', ''); if (ALL_TABS.includes(h)) setTabState(h as Tab); };
@@ -308,8 +308,27 @@ export default function AccountClient({ email }: { email: string }) {
     { g: lang === 'en' ? 'More' : 'Más', items: [['avisos', '🔔'], ['seguridad', '🔒'], ['referidos', '🎁'], ['retiros', '💸']] },
   ];
   const NAV_FLAT = NAV_GROUPS.flatMap((g) => g.items);
-  // Metadatos (icono + resumen) para la tarjeta que abre el popup de cada sección secundaria.
-  const CARD_META: Record<string, { icon: string; sub: string }> = { avisos: { icon: '🔔', sub: L.nSub }, seguridad: { icon: '🔒', sub: L.segSub }, referidos: { icon: '🎁', sub: L.refSub }, retiros: { icon: '💸', sub: L.retSub2 } };
+  // Cada sección secundaria se divide en micro-tarjetas; cada una abre su propio popup.
+  const en = lang === 'en';
+  const SEC_PARTS: Record<string, { id: string; icon: string; title: string; sub: string; wide?: boolean; danger?: boolean }[]> = {
+    avisos: [
+      { id: 'push', icon: '🔔', title: en ? 'Push notifications' : 'Notificaciones push', sub: en ? 'On your phone even when Onyx is closed' : 'En el móvil aunque Onyx esté cerrado' },
+      { id: 'email', icon: '📧', title: L.nMailT, sub: en ? 'Charges, weekly recap, funding, news' : 'Cobros, resumen, fondeo, novedades' },
+      { id: 'telegram', icon: '✈', title: 'Telegram', sub: en ? 'Guardian, risk, funding and reports' : 'Guardian, riesgo, fondeo e informes' },
+    ],
+    seguridad: [
+      { id: 'password', icon: '🔒', title: L.pwT, sub: en ? 'Set a new password' : 'Cambia tu contraseña' },
+      { id: 'signin', icon: '🔑', title: en ? 'Sign-in security' : 'Seguridad de acceso', sub: '2FA · Passkey · PIN' },
+      { id: 'delete', icon: '🗑', title: L.dTitle, sub: en ? 'Permanently erase your account' : 'Elimina tu cuenta para siempre', danger: true },
+    ],
+    referidos: [
+      { id: 'invite', icon: '🎁', title: en ? 'Invite & earn' : 'Invita y gana', sub: en ? 'Your link, code and tier' : 'Tu enlace, código y nivel', wide: true },
+      { id: 'kit', icon: '✨', title: en ? 'Marketing kit + AI' : 'Kit de marketing + IA', sub: en ? 'Ready-to-post texts and banners' : 'Posts listos y banners', wide: true },
+    ],
+    retiros: [
+      { id: 'payout', icon: '💸', title: L.nav.retiros, sub: L.retSub2, wide: true },
+    ],
+  };
   const card = { marginBottom: 14 } as any;
   const lbl = { fontSize: 12, color: 'var(--mut)', marginTop: 10, display: 'block' } as any;
 
@@ -707,61 +726,63 @@ export default function AccountClient({ email }: { email: string }) {
               </Section>
             )}
 
-            {/* Secciones secundarias: muestran una tarjeta; al pincharla se abre el popup (como en la academia). */}
-            {data && CARD_KEYS.includes(tab) && (() => {
-              const m = CARD_META[tab as string];
-              return (
-                <div style={{ maxWidth: 820, margin: '0 auto' }}>
-                  <button onClick={() => setSecOpen(tab)} className="card" style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%', textAlign: 'left', cursor: 'pointer' }}>
-                    <span style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(124,140,255,.16)', color: 'var(--brand)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}><OnyxIcon emoji={m.icon} size={22} /></span>
+            {/* Secciones secundarias: muestran micro-tarjetas; cada una abre su propio popup (como en la academia). */}
+            {data && CARD_KEYS.includes(tab) && (
+              <div style={{ maxWidth: 820, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {(SEC_PARTS[tab] || []).map((pt) => (
+                  <button key={pt.id} onClick={() => setSecOpen(`${tab}:${pt.id}`)} className="card" style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%', textAlign: 'left', cursor: 'pointer', ...(pt.danger ? { border: '1px solid var(--red)' } : {}) }}>
+                    <span style={{ width: 42, height: 42, borderRadius: 12, background: pt.danger ? 'rgba(255,90,90,.14)' : 'rgba(124,140,255,.16)', color: pt.danger ? 'var(--red)' : 'var(--brand)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}><OnyxIcon emoji={pt.icon} size={20} /></span>
                     <span style={{ flex: 1, minWidth: 0 }}>
-                      <b style={{ fontSize: 16 }}>{L.nav[tab]}</b>
-                      <span style={{ display: 'block', fontSize: 13, color: 'var(--mut)', marginTop: 2 }}>{m.sub}</span>
+                      <b style={{ fontSize: 15, color: pt.danger ? 'var(--red)' : undefined }}>{pt.title}</b>
+                      <span style={{ display: 'block', fontSize: 12.5, color: 'var(--mut)', marginTop: 2 }}>{pt.sub}</span>
                     </span>
-                    <span style={{ color: 'var(--brand)', flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13 }}>{lang === 'en' ? 'Open' : 'Abrir'} ›</span>
+                    <span style={{ color: pt.danger ? 'var(--red)' : 'var(--brand)', flex: 'none', fontSize: 13 }}>{lang === 'en' ? 'Open' : 'Abrir'} ›</span>
                   </button>
+                ))}
+              </div>
+            )}
+
+            {/* Popup de una pieza concreta (cabecera fija arriba, cuerpo con scroll) */}
+            {data && secOpen && (() => {
+              const [t, part] = secOpen.split(':');
+              const meta = (SEC_PARTS[t] || []).find((x) => x.id === part);
+              const wide = !!meta?.wide;
+              return (
+                <div className="sk-modal-ov" onClick={() => setSecOpen(null)}>
+                  <div className="sk-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: wide ? 'min(1100px, 96vw)' : 640, flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
+                    <div className="row between" style={{ alignItems: 'center', padding: '13px 16px', borderBottom: '1px solid var(--line)', flex: 'none' }}>
+                      <b style={{ fontSize: 16, display: 'inline-flex', alignItems: 'center', gap: 8 }}><span style={{ color: meta?.danger ? 'var(--red)' : 'var(--brand)', display: 'inline-flex' }}><OnyxIcon emoji={meta?.icon || '⚙'} size={18} /></span>{meta?.title}</b>
+                      <button className="btn btn-ghost" onClick={() => setSecOpen(null)}>✕</button>
+                    </div>
+                    <div style={{ padding: '14px 16px', overflowY: 'auto', flex: 1, minHeight: 0 }}>
+                      {t === 'avisos' && part === 'push' && (<><InstallApp lang={lang} /><PushToggle lang={lang} /></>)}
+                      {t === 'avisos' && part === 'email' && (
+                        <div className="card">
+                          {([['notify_email', L.nEmail, L.nEmailS], ['notify_weekly', L.nWeek, L.nWeekS], ['notify_funding', L.nFund, L.nFundS], ['notify_marketing', L.nMkt, L.nMktS]] as [string, string, string][]).map(([k, label, sub], i) => (
+                            <div key={k} className="row between" style={{ padding: '11px 0', borderTop: i ? '1px solid var(--line)' : 'none', gap: 10 }}>
+                              <div><div style={{ fontSize: 14 }}>{label}</div><div className="muted" style={{ fontSize: 11.5 }}>{sub}</div></div>
+                              {(() => { const cur = k === 'notify_marketing' ? (p.notify_marketing !== false && p.marketing_emails !== false) : !!p[k]; return <Toggle on={cur} onClick={() => setField(k, !cur)} />; })()}
+                            </div>
+                          ))}
+                          <div className="row" style={{ gap: 10, marginTop: 14 }}>
+                            <button className="btn btn-primary" onClick={() => saveProfile()} disabled={busy === 'save'}>{busy === 'save' ? L.saving : L.save}</button>
+                            {msg && <span style={{ color: 'var(--green)', fontSize: 13 }}>{msg}</span>}
+                          </div>
+                        </div>
+                      )}
+                      {t === 'avisos' && part === 'telegram' && (<div className="card"><TelegramCard lang={lang} /></div>)}
+
+                      {t === 'seguridad' && <Security L={L} lang={lang} only={part as any} />}
+
+                      {t === 'referidos' && part === 'invite' && <ReferralCard />}
+                      {t === 'referidos' && part === 'kit' && <Ambassador lang={lang} only="referral" />}
+
+                      {t === 'retiros' && <Ambassador lang={lang} only="payout" />}
+                    </div>
+                  </div>
                 </div>
               );
             })()}
-
-            {/* Popup de secciones secundarias: Notificaciones · Seguridad · Referidos · Retiros */}
-            {data && secOpen && (
-              <div className="sk-modal-ov" onClick={() => setSecOpen(null)}>
-                <div className="sk-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 640 }}>
-                  <div className="row between" style={{ marginBottom: 4, alignItems: 'center' }}>
-                    <b style={{ fontSize: 16, display: 'inline-flex', alignItems: 'center', gap: 8 }}><span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name={({ avisos: 'bell', seguridad: 'shield', referidos: 'gift', retiros: 'money' } as any)[secOpen]} size={18} /></span>{L.nav[secOpen]}</b>
-                    <button className="btn btn-ghost" onClick={() => setSecOpen(null)}>✕</button>
-                  </div>
-                  <p className="muted" style={{ fontSize: 12.5, margin: '0 0 14px' }}>{({ avisos: L.nSub, seguridad: L.segSub, referidos: L.refSub, retiros: L.retSub2 } as any)[secOpen]}</p>
-
-                  {secOpen === 'avisos' && (<>
-                    <InstallApp lang={lang} />
-                    <PushToggle lang={lang} />
-                    <div className="card" style={{ marginBottom: 14 }}>
-                      <div className="row" style={{ gap: 9, marginBottom: 8, alignItems: 'center' }}>
-                        <span style={{ width: 30, height: 30, borderRadius: 9, background: 'rgba(124,140,255,.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--brand)' }}><OnyxIcon name="mail" size={16} /></span>
-                        <b style={{ fontSize: 15 }}>{L.nMailT}</b>
-                      </div>
-                      {([['notify_email', L.nEmail, L.nEmailS], ['notify_weekly', L.nWeek, L.nWeekS], ['notify_funding', L.nFund, L.nFundS], ['notify_marketing', L.nMkt, L.nMktS]] as [string, string, string][]).map(([k, label, sub], i) => (
-                        <div key={k} className="row between" style={{ padding: '11px 0', borderTop: i ? '1px solid var(--line)' : 'none', gap: 10 }}>
-                          <div><div style={{ fontSize: 14 }}>{label}</div><div className="muted" style={{ fontSize: 11.5 }}>{sub}</div></div>
-                          {(() => { const cur = k === 'notify_marketing' ? (p.notify_marketing !== false && p.marketing_emails !== false) : !!p[k]; return <Toggle on={cur} onClick={() => setField(k, !cur)} />; })()}
-                        </div>
-                      ))}
-                      <div className="row" style={{ gap: 10, marginTop: 14 }}>
-                        <button className="btn btn-primary" onClick={() => saveProfile()} disabled={busy === 'save'}>{busy === 'save' ? L.saving : L.save}</button>
-                        {msg && <span style={{ color: 'var(--green)', fontSize: 13 }}>{msg}</span>}
-                      </div>
-                    </div>
-                    <div className="card"><TelegramCard lang={lang} /></div>
-                  </>)}
-
-                  {secOpen === 'seguridad' && <Security L={L} lang={lang} />}
-                  {secOpen === 'referidos' && (<><ReferralCard /><Ambassador lang={lang} only="referral" /></>)}
-                  {secOpen === 'retiros' && <Ambassador lang={lang} only="payout" />}
-                </div>
-              </div>
-            )}
 
             {/* Buscador rápido (⌘K): salta a una sección */}
             {pal && (() => {
@@ -832,7 +853,10 @@ function LockPinCard({ lang }: { lang: Lang }) {
   );
 }
 
-function Security({ L, lang }: { L: any; lang: Lang }) {
+function Security({ L, lang, only }: { L: any; lang: Lang; only?: 'password' | 'signin' | 'delete' }) {
+  const showPw = !only || only === 'password';
+  const showSignin = !only || only === 'signin';
+  const showDel = !only || only === 'delete';
   const [pw1, setPw1] = useState(''); const [pw2, setPw2] = useState('');
   const [conf, setConf] = useState(''); const [busy, setBusy] = useState(''); const [ok, setOk] = useState(''); const [delModal, setDelModal] = useState(false);
 
@@ -857,6 +881,7 @@ function Security({ L, lang }: { L: any; lang: Lang }) {
 
   return (
     <>
+      {showPw && (
       <div className="card" style={{ marginBottom: 14 }}>
         <h3 style={{ marginBottom: 4 }}>{L.pwT}</h3>
         <span style={lbl}>{L.pwNew}</span>
@@ -868,17 +893,18 @@ function Security({ L, lang }: { L: any; lang: Lang }) {
           {ok && <span style={{ color: 'var(--green)', fontSize: 13 }}>{ok}</span>}
         </div>
       </div>
+      )}
 
-      {/* Verificación en dos pasos (opcional para el usuario). */}
-      <TwoFactorCard lang={lang} />
+      {showSignin && <>
+        {/* Verificación en dos pasos (opcional para el usuario). */}
+        <TwoFactorCard lang={lang} />
+        {/* Passkey: entrar con huella/Face ID (se oculta si el navegador no lo soporta). */}
+        <PasskeyCard lang={lang} />
+        {/* Solo para admins/equipo: cambiar su PIN de bloqueo del panel. */}
+        <LockPinCard lang={lang} />
+      </>}
 
-      {/* Passkey: entrar con huella/Face ID (se oculta si el navegador no lo soporta). */}
-      <PasskeyCard lang={lang} />
-
-      {/* Solo para admins/equipo: cambiar su PIN de bloqueo del panel. */}
-      <LockPinCard lang={lang} />
-
-      {(() => {
+      {showDel && (() => {
         const word = (L as any).dWord as string;             // ELIMINAR / DELETE
         const v = conf.trim();
         const matched = v === word;                            // exacto, sensible a mayúsculas
