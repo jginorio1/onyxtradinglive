@@ -43,6 +43,8 @@ export async function saveOffer(mentorId: string, b: any) {
     default_multiplier: clampMult(b.default_multiplier),
     updated_at: new Date().toISOString(),
   };
+  // El mentor debe aceptar sus responsabilidades para activar la oferta.
+  if (b.enabled && b.accepted) row.terms_accepted_at = new Date().toISOString();
   const existing = await getOffer(mentorId);
   if (existing) { await supabaseAdmin.from('academy_copy_offers').update(row).eq('mentor_id', mentorId); return { ...existing, ...row }; }
   const { data } = await supabaseAdmin.from('academy_copy_offers').insert(row).select('*').single();
@@ -88,8 +90,9 @@ export async function activateSub(o: { mentorId: string; studentId: string; subI
 // El alumno conecta su cuenta → se crea el copy_link (proporcional + límites).
 export async function connectSlave(o: {
   mentorId: string; studentId: string; slaveAccountId: string;
-  accountType?: string; riskMultiplier?: number; fundedDaily?: number | null; fundedMaxDd?: number | null;
+  accountType?: string; riskMultiplier?: number; fundedDaily?: number | null; fundedMaxDd?: number | null; consent?: boolean;
 }) {
+  if (!o.consent) throw new Error('Debes aceptar los riesgos antes de conectar.');
   const [offer, sub] = await Promise.all([getOffer(o.mentorId), getSub(o.mentorId, o.studentId)]);
   if (!offer?.master_account_id) throw new Error('El mentor no tiene cuenta maestra configurada.');
   if (!sub || sub.status === 'canceled') throw new Error('No tienes una suscripción de copy activa.');
@@ -116,7 +119,7 @@ export async function connectSlave(o: {
   await supabaseAdmin.from('academy_copy_subs').update({
     slave_account_id: o.slaveAccountId, copy_link_id: linkId, account_type: accountType,
     risk_multiplier: mult, funded_daily_pct: o.fundedDaily ?? null, funded_max_dd_pct: o.fundedMaxDd ?? null,
-    status: 'active', updated_at: new Date().toISOString(),
+    status: 'active', consent_at: new Date().toISOString(), updated_at: new Date().toISOString(),
   }).eq('mentor_id', o.mentorId).eq('student_id', o.studentId);
   return { copyLinkId: linkId };
 }

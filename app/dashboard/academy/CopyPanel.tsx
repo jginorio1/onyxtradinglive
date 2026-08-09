@@ -4,11 +4,25 @@ import OnyxIcon from '@/app/components/OnyxIcon';
 
 // ============================================================
 // Copy del mentor · panel dentro de la academia (comunidad).
-//  · Mentor (isMentor): "Ofrecer mi copy" + "Mis copiadores".
-//  · Alumno: "Copiar al mentor" → pagar → conectar cuenta (asistente).
-// Se apoya en /api/academy/copy/{mentor,student,checkout}. Reversible y seguro.
+//  · Mentor: "Ofrecer mi copy" + "Mis copiadores" (con popup de responsabilidades).
+//  · Alumno: "Copiar al mentor" → popup de riesgos → pagar → conectar cuenta.
+// Advertencias claras y consentimiento obligatorio para ambos. Reversible.
 // ============================================================
 const money = (c: number) => '$' + Math.round((c || 0) / 100).toLocaleString('en-US');
+
+function Modal({ title, children, onClose }: { title: string; children: any; onClose: () => void }) {
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999, padding: 16 }} onClick={onClose}>
+      <div className="sk-card" style={{ maxWidth: 460, width: '100%', maxHeight: '85vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
+        <div className="row between" style={{ marginBottom: 8 }}>
+          <b style={{ fontSize: 16, display: 'inline-flex', alignItems: 'center', gap: 8 }}><span style={{ color: 'var(--amber)' }}><OnyxIcon name="bell" size={18} /></span>{title}</b>
+          <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={onClose}>✕</button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
 
 export default function CopyPanel({ mentorId, isMentor, L }: { mentorId: string; isMentor: boolean; L: (es: string, en: string) => string }) {
   return isMentor ? <MentorCopy mentorId={mentorId} L={L} /> : <StudentCopy mentorId={mentorId} L={L} />;
@@ -18,6 +32,7 @@ export default function CopyPanel({ mentorId, isMentor, L }: { mentorId: string;
 function MentorCopy({ L }: { mentorId: string; L: (es: string, en: string) => string }) {
   const [d, setD] = useState<any>(null);
   const [busy, setBusy] = useState('');
+  const [warn, setWarn] = useState(false);
   const [f, setF] = useState<any>({ enabled: false, master_account_id: '', price: '', min_capital: '', allow_funded: true });
 
   async function load() {
@@ -34,17 +49,22 @@ function MentorCopy({ L }: { mentorId: string; L: (es: string, en: string) => st
     }
   }
   useEffect(() => { load(); }, []);
-  if (!d || !d.enabled) return null;   // el dueño no ha activado el Copy del mentor
+  if (!d || !d.enabled) return null;
 
-  async function save() {
-    setBusy('save');
+  async function doSave(accepted: boolean) {
+    setBusy('save'); setWarn(false);
     await fetch('/api/academy/copy/mentor', { method: 'POST', body: JSON.stringify({
-      action: 'save', enabled: f.enabled, master_account_id: f.master_account_id,
+      action: 'save', enabled: f.enabled, accepted, master_account_id: f.master_account_id,
       price_cents: Math.round((Number(f.price) || 0) * 100),
       min_capital_cents: Math.round((Number(f.min_capital) || 0) * 100),
       allow_funded: f.allow_funded,
     }) });
     setBusy(''); load();
+  }
+  function onSave() {
+    // Al activar por primera vez, exige aceptar responsabilidades.
+    if (f.enabled && !d.offer?.terms_accepted_at) { setWarn(true); return; }
+    doSave(true);
   }
   async function toggleCopier(studentId: string, active: boolean) {
     await fetch('/api/academy/copy/mentor', { method: 'POST', body: JSON.stringify({ action: 'copier', student_id: studentId, status: active ? 'active' : 'paused' }) });
@@ -58,6 +78,7 @@ function MentorCopy({ L }: { mentorId: string; L: (es: string, en: string) => st
         <span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="sessions" size={18} /></span>
         <b>{L('Copy del mentor', 'Mentor copy')}</b>
         <span className="muted" style={{ fontSize: 12 }}>· Onyx {d.onyxFeePct}%</span>
+        <button className="btn btn-ghost" style={{ fontSize: 11.5, marginLeft: 'auto' }} onClick={() => setWarn(true)}>{L('Responsabilidades', 'Responsibilities')}</button>
       </div>
 
       <label className="row" style={{ gap: 8, alignItems: 'center', marginBottom: 10, fontSize: 13.5, cursor: 'pointer' }}>
@@ -83,9 +104,8 @@ function MentorCopy({ L }: { mentorId: string; L: (es: string, en: string) => st
         <input type="checkbox" checked={f.allow_funded} onChange={(e) => setF({ ...f, allow_funded: e.target.checked })} style={{ width: 'auto', margin: 0 }} />
         {L('Permitir cuentas de fondeo (con Mi reto obligatorio)', 'Allow funded accounts (My challenge required)')}
       </label>
-      <button className="btn btn-primary" disabled={busy === 'save'} onClick={save}>{busy === 'save' ? '…' : L('Guardar', 'Save')}</button>
+      <button className="btn btn-primary" disabled={busy === 'save'} onClick={onSave}>{busy === 'save' ? '…' : L('Guardar', 'Save')}</button>
 
-      {/* Mis copiadores */}
       <div style={{ marginTop: 16 }}>
         <div className="row between" style={{ marginBottom: 8 }}>
           <b style={{ fontSize: 14 }}>{L('Mis copiadores', 'My copiers')}</b>
@@ -104,6 +124,18 @@ function MentorCopy({ L }: { mentorId: string; L: (es: string, en: string) => st
           </div>
         ))}
       </div>
+
+      {warn && (
+        <Modal title={L('Tus responsabilidades como mentor', 'Your responsibilities as a mentor')} onClose={() => setWarn(false)}>
+          <ul style={{ fontSize: 13, lineHeight: 1.65, color: 'var(--tx)', paddingLeft: 18, margin: '4px 0 12px' }}>
+            <li>{L('Tus operaciones se replican con DINERO REAL en las cuentas de tus alumnos.', "Your trades replicate with REAL MONEY on your students' accounts.")}</li>
+            <li>{L('Opera siempre con stop loss y riesgo sano; una mala racha afecta a todos.', 'Always trade with stop loss and sound risk; a bad streak affects everyone.')}</li>
+            <li>{L('No uses martingala, grid agresivo ni operar en noticias: puede reventar cuentas de fondeo.', 'No martingale, aggressive grid or news trading: it can blow funded accounts.')}</li>
+            <li>{L('Esto no es asesoría financiera. Cada alumno acepta el riesgo por su cuenta.', 'This is not financial advice. Each student accepts the risk on their own.')}</li>
+          </ul>
+          <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => { setF({ ...f, enabled: true }); doSave(true); }}>{L('Entiendo y acepto · activar', 'I understand and accept · enable')}</button>
+        </Modal>
+      )}
     </div>
   );
 }
@@ -112,7 +144,8 @@ function MentorCopy({ L }: { mentorId: string; L: (es: string, en: string) => st
 function StudentCopy({ mentorId, L }: { mentorId: string; L: (es: string, en: string) => string }) {
   const [d, setD] = useState<any>(null);
   const [busy, setBusy] = useState('');
-  const [w, setW] = useState<any>({ slave: '', type: 'own', mult: '1', daily: '', maxdd: '' });
+  const [riskOpen, setRiskOpen] = useState(false);
+  const [w, setW] = useState<any>({ slave: '', type: 'own', mult: '1', daily: '', maxdd: '', consent: false });
 
   async function load() {
     const r = await fetch('/api/academy/copy/student?mentor_id=' + mentorId); const j = await r.json();
@@ -124,22 +157,34 @@ function StudentCopy({ mentorId, L }: { mentorId: string; L: (es: string, en: st
   const info = d.info; const sub = d.sub;
 
   async function subscribe() {
-    setBusy('sub');
+    setBusy('sub'); setRiskOpen(false);
     const r = await fetch('/api/academy/copy/checkout', { method: 'POST', body: JSON.stringify({ mentor_id: mentorId }) });
     const j = await r.json(); setBusy('');
     if (j.url) window.location.href = j.url;
   }
   async function connect() {
-    if (!w.slave) return;
+    if (!w.slave || !w.consent) return;
     setBusy('connect');
     await fetch('/api/academy/copy/student', { method: 'POST', body: JSON.stringify({
       action: 'connect', mentor_id: mentorId, slave_account_id: w.slave, account_type: w.type,
-      risk_multiplier: Number(w.mult) || 1,
+      risk_multiplier: Number(w.mult) || 1, consent: true,
       funded_daily: w.type === 'funded' ? Number(w.daily) || null : null,
       funded_max_dd: w.type === 'funded' ? Number(w.maxdd) || null : null,
     }) });
     setBusy(''); load();
   }
+
+  const RiskModal = () => (
+    <Modal title={L('Antes de copiar: riesgos', 'Before copying: risks')} onClose={() => setRiskOpen(false)}>
+      <ul style={{ fontSize: 13, lineHeight: 1.65, color: 'var(--tx)', paddingLeft: 18, margin: '4px 0 12px' }}>
+        <li>{L('Copiarás operaciones con DINERO REAL. El trading conlleva riesgo de pérdida, incluso total.', 'You will copy trades with REAL MONEY. Trading carries risk of loss, even total.')}</li>
+        <li>{L('Los resultados del mentor NO garantizan resultados futuros.', "The mentor's results do NOT guarantee future results.")}</li>
+        <li>{L('Guardian se activa con límites de seguridad; en fondeo respeta las reglas de tu firma, pero nada elimina el riesgo.', 'Guardian applies safety limits; on funded accounts it respects your firm rules, but nothing removes the risk.')}</li>
+        <li>{L('Esto no es asesoría financiera. Decides tú, bajo tu responsabilidad.', 'This is not financial advice. You decide, at your own responsibility.')}</li>
+      </ul>
+      <button className="btn btn-primary" style={{ width: '100%' }} disabled={busy === 'sub'} onClick={subscribe}>{busy === 'sub' ? '…' : L('Acepto los riesgos · continuar al pago', 'I accept the risks · continue to payment')}</button>
+    </Modal>
+  );
 
   // Estado 1: no suscrito → tarjeta de venta.
   if (!sub || sub.status === 'canceled') {
@@ -154,14 +199,15 @@ function StudentCopy({ mentorId, L }: { mentorId: string; L: (es: string, en: st
         </p>
         <div className="row between" style={{ alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
           <div style={{ fontSize: 22, fontWeight: 800 }}>{money(info.priceCents)}<span className="muted" style={{ fontSize: 13, fontWeight: 400 }}>/{L('mes', 'mo')}</span></div>
-          <button className="btn btn-primary" disabled={busy === 'sub'} onClick={subscribe}>{busy === 'sub' ? '…' : L('Copiar al mentor', 'Copy the mentor')}</button>
+          <button className="btn btn-primary" disabled={busy === 'sub'} onClick={() => setRiskOpen(true)}>{L('Copiar al mentor', 'Copy the mentor')}</button>
         </div>
         {info.minCapitalCents > 0 && <p className="muted" style={{ fontSize: 11.5, marginTop: 8 }}>{L('Capital mínimo: ', 'Min capital: ')}{money(info.minCapitalCents)}</p>}
+        {riskOpen && <RiskModal />}
       </div>
     );
   }
 
-  // Estado 2: pagó pero falta conectar cuenta → asistente.
+  // Estado 2: pagó pero falta conectar cuenta → asistente con consentimiento.
   if (sub.status === 'pending_connect') {
     return (
       <div className="sk-card" style={{ marginBottom: 12, border: '1px solid var(--brand)' }}>
@@ -187,7 +233,7 @@ function StudentCopy({ mentorId, L }: { mentorId: string; L: (es: string, en: st
         </div>
         {w.type === 'funded' && (
           <div className="row" style={{ gap: 12, flexWrap: 'wrap', alignItems: 'flex-end', marginTop: 8 }}>
-            <label style={{ fontSize: 12.5 }}>{L('Pérdida diaria de la firma %', "Firm daily loss %")}
+            <label style={{ fontSize: 12.5 }}>{L('Pérdida diaria de la firma %', 'Firm daily loss %')}
               <input type="number" value={w.daily} onChange={(e) => setW({ ...w, daily: e.target.value })} placeholder="5" style={{ display: 'block', width: 100, marginTop: 4 }} />
             </label>
             <label style={{ fontSize: 12.5 }}>{L('Drawdown máx. %', 'Max drawdown %')}
@@ -195,13 +241,18 @@ function StudentCopy({ mentorId, L }: { mentorId: string; L: (es: string, en: st
             </label>
           </div>
         )}
-        <p className="muted" style={{ fontSize: 11.5, margin: '10px 0' }}>{L('Guardian se activa solo con límites de seguridad. En fondeo respeta las reglas de tu firma.', 'Guardian turns on with safety limits. On funded accounts it respects your firm rules.')}</p>
-        <button className="btn btn-primary" disabled={!w.slave || busy === 'connect'} onClick={connect}>{busy === 'connect' ? '…' : L('Empezar a copiar', 'Start copying')}</button>
+        <div style={{ background: 'color-mix(in srgb,var(--amber) 12%,transparent)', border: '1px solid color-mix(in srgb,var(--amber) 35%,transparent)', borderRadius: 10, padding: '10px 12px', margin: '10px 0' }}>
+          <label className="row" style={{ gap: 8, alignItems: 'flex-start', fontSize: 12.5, cursor: 'pointer' }}>
+            <input type="checkbox" checked={w.consent} onChange={(e) => setW({ ...w, consent: e.target.checked })} style={{ width: 'auto', margin: '2px 0 0' }} />
+            <span>{L('Entiendo que copiaré con dinero real, que puedo perder, que no es asesoría financiera, y autorizo la copia con Guardian de seguridad.', 'I understand I will copy with real money, that I can lose, that this is not financial advice, and I authorize copying with Guardian safety.')}</span>
+          </label>
+        </div>
+        <button className="btn btn-primary" disabled={!w.slave || !w.consent || busy === 'connect'} onClick={connect}>{busy === 'connect' ? '…' : L('Empezar a copiar', 'Start copying')}</button>
       </div>
     );
   }
 
-  // Estado 3: copiando.
+  // Estado 3: copiando + guía de conexión del EA.
   return (
     <div className="sk-card" style={{ marginBottom: 12 }}>
       <div className="row between" style={{ alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
@@ -215,6 +266,10 @@ function StudentCopy({ mentorId, L }: { mentorId: string; L: (es: string, en: st
           </select>
         </label>
       </div>
+      <p className="muted" style={{ fontSize: 11.5, margin: '10px 0 0' }}>
+        {L('¿Aún no ves operaciones? Instala Onyx Connect como esclava en tu cuenta desde ', 'Not seeing trades yet? Install Onyx Connect as a slave on your account from ')}
+        <a href="/dashboard/copy" style={{ color: 'var(--brand)' }}>{L('Copy trading', 'Copy trading')}</a>.
+      </p>
     </div>
   );
 }

@@ -38,6 +38,7 @@ export async function POST(req: Request) {
         accountType: b.account_type, riskMultiplier: Number(b.risk_multiplier) || 1,
         fundedDaily: b.funded_daily != null ? Number(b.funded_daily) : null,
         fundedMaxDd: b.funded_max_dd != null ? Number(b.funded_max_dd) : null,
+        consent: !!b.consent,
       });
       return NextResponse.json({ ok: true, ...r });
     }

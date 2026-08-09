@@ -219,10 +219,17 @@ export async function accountLimit(userId: string) {
   const { data: planRow } = await supabaseAdmin.from('plans').select('id,name,name_en,max_accounts').eq('id', planId).maybeSingle();
   const base = Number(planRow?.max_accounts ?? 1);
   const extra = Number(prof?.extra_accounts || 0);
+  // Copy del mentor autocontenido: cada suscripción de copy ACTIVA otorga +1 cupo
+  // para la cuenta que copia, sin depender del plan del alumno (se quita al cancelar).
+  let copySlots = 0;
+  try {
+    const { count } = await supabaseAdmin.from('academy_copy_subs').select('id', { count: 'exact', head: true }).eq('student_id', userId).eq('status', 'active');
+    copySlots = Number(count || 0);
+  } catch { /* si la tabla no existe aún, no suma */ }
   const unlimited = base >= 999;
   return {
     planId, planName: planRow?.name || planId, planNameEn: planRow?.name_en || planRow?.name || planId,
-    base, extra, unlimited, max: unlimited ? 9999 : base + extra,
+    base, extra, copySlots, unlimited, max: unlimited ? 9999 : base + extra + copySlots,
   };
 }
 
