@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Interruptor sol/luna. Cambia el tema al instante (atributo data-theme en <html>)
 // y lo recuerda en la cookie onyx_theme para que el servidor lo aplique sin
@@ -31,9 +32,9 @@ export default function ThemeToggle() {
       aria-label={isDark ? 'Modo claro' : 'Modo oscuro'}
       title={isDark ? 'Modo claro' : 'Modo oscuro'}
       suppressHydrationWarning
-      style={{ opacity: ready ? 1 : 0.85 }}
+      style={{ opacity: ready ? 1 : 0.85, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: isDark ? 'var(--amber)' : '#f5b301' }}
     >
-      {isDark ? '🌙' : '☀️'}
+      <OnyxIcon name={isDark ? 'moon' : 'sun'} size={18} />
     </button>
   );
 }
