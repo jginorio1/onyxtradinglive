@@ -63,6 +63,20 @@ export default function Pricing() {
 
   // Checkout embebido: se abre dentro de Onyx (mismo diseño), sin redirigir a Stripe.
   const [co, setCo] = useState<{ plan: string } | null>(null);
+
+  // Si llegamos con ?plan=<id> (desde el landing de mentores tras registrarse),
+  // abrimos el checkout de ese plan automáticamente. Solo una vez.
+  const [autoTried, setAutoTried] = useState(false);
+  useEffect(() => {
+    if (autoTried || typeof window === 'undefined') return;
+    const pid = (new URLSearchParams(window.location.search).get('plan') || '').replace(/[^a-z0-9_-]/gi, '');
+    if (!pid) return;
+    const p = shown.find((x) => x.id === pid);
+    if (!p) return;                                  // esperamos a que carguen los planes
+    setAutoTried(true);
+    const price = annual ? p.price_year : p.price_month;
+    if (price > 0) setCo({ plan: p.id });
+  }, [plans, autoTried, annual]);
   async function subscribe(plan: string, price: number) {
     if (plan === 'free' || price === 0) { window.location.href = '/login?mode=signup'; return; }
     setCo({ plan });

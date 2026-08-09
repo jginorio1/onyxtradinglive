@@ -126,8 +126,13 @@ function LoginInner() {
   const score = scorePass(pass);
   const formOk = mailOk && passOk && (!signup || (terms && nameOk && passStrong));
 
+  // Plan preseleccionado (desde el landing de mentores). Si viene, tras registrarse
+  // o entrar lo mandamos directo al checkout de ese plan en /pricing.
+  const planParam = (params.get('plan') || '').replace(/[^a-z0-9_-]/gi, '').slice(0, 40);
+  const planDest = planParam ? '/pricing?plan=' + planParam : '';
+
   // A dónde vuelve el usuario tras confirmar el email o tras entrar.
-  const nextRaw = params.get('next') || '/dashboard';
+  const nextRaw = params.get('next') || planDest || '/dashboard';
   const nextDest = nextRaw.startsWith('/') && !nextRaw.startsWith('//') ? nextRaw : '/dashboard';
 
   // Entrar con passkey (huella/Face ID). El autenticador resuelve la cuenta solo.
@@ -163,7 +168,7 @@ function LoginInner() {
         // Tras confirmar el email, Supabase redirige aquí; el gate del dashboard
         // envía a /onboarding la primera vez.
         const emailRedirectTo = typeof window !== 'undefined'
-          ? `${window.location.origin}/onboarding` : undefined;
+          ? `${window.location.origin}${planDest || '/onboarding'}` : undefined;
         const { data, error } = await sb.auth.signUp({
           email: email.trim(), password: pass, options: { emailRedirectTo, data: { full_name: fullName, first_name: name.trim(), last_name: lastName.trim() }, captchaToken: cap },
         });
@@ -171,7 +176,7 @@ function LoginInner() {
         // Si la confirmación de email está ACTIVADA, no hay sesión todavía →
         // mostramos la pantalla de "revisa tu correo". Si está desactivada,
         // ya hay sesión y entramos directo al onboarding.
-        if (data.session) { router.push('/onboarding'); router.refresh(); }
+        if (data.session) { router.push(planDest || '/onboarding'); router.refresh(); }
         else { setSent(true); }
       } else {
         const { error } = await sb.auth.signInWithPassword({ email: email.trim(), password: pass, options: { captchaToken: cap } });
@@ -192,7 +197,7 @@ function LoginInner() {
   async function resend() {
     setResent(false);
     try {
-      const emailRedirectTo = typeof window !== 'undefined' ? `${window.location.origin}/onboarding` : undefined;
+      const emailRedirectTo = typeof window !== 'undefined' ? `${window.location.origin}${planDest || '/onboarding'}` : undefined;
       await sb.auth.resend({ type: 'signup', email: email.trim(), options: { emailRedirectTo } });
       setResent(true);
     } catch { setResent(true); }
