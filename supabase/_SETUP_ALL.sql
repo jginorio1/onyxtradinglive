@@ -2988,3 +2988,9 @@ alter table if exists public.copy_commands
   add column if not exists execute_after timestamptz;
 create index if not exists idx_copy_commands_slave_due
   on public.copy_commands (slave_account_id, status, execute_after);
+
+-- Metas de profit del trader (semanal / mensual / anual) — persistidas en el perfil.
+alter table if exists public.profiles
+  add column if not exists goal_week  numeric not null default 0,
+  add column if not exists goal_month numeric not null default 0,
+  add column if not exists goal_year  numeric not null default 0;
