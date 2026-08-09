@@ -34,7 +34,7 @@ const T: any = {
 
 function todayLocal() { return new Date().toLocaleDateString('en-CA'); } // YYYY-MM-DD local
 
-export default function DailyCheckinPopup({ lang }: { lang: Lang }) {
+export default function DailyCheckinPopup({ lang, onState }: { lang: Lang; onState?: (s: { pending: boolean; open: () => void }) => void }) {
   const t = dictFor(T, lang); const i = lang === 'en' ? 1 : 0;
   const [d, setD] = useState<any>(null);
   const [items, setItems] = useState<Record<string, boolean>>({});
@@ -59,6 +59,12 @@ export default function DailyCheckinPopup({ lang }: { lang: Lang }) {
     })();
   }, []);
 
+  // Avisamos al dashboard si el check-in está pendiente, para que muestre la
+  // píldora iluminada en la cápsula del saludo (en vez de una tira aparte arriba).
+  useEffect(() => {
+    onState?.({ pending: (phase === 'bar' || phase === 'popup') && !!d?.plan, open: () => setPhase('popup') });
+  }, [phase, d]);
+
   if (phase === 'hidden' || !d || !d.plan) return null;
   const p = d.plan; const s = d.stats || {}; const g = d.guardian || {};
   const allHabits: { id: string; label: string }[] = [
@@ -80,18 +86,10 @@ export default function DailyCheckinPopup({ lang }: { lang: Lang }) {
     } catch {} finally { setBusy(false); }
   }
 
-  // ---- Tira fija arriba: aparece si saltó el popup, hasta que haga el check-in ----
-  if (phase === 'bar') {
-    return (
-      <div style={{ position: 'sticky', top: 8, zIndex: 60, display: 'flex', justifyContent: 'center', padding: '8px 12px', pointerEvents: 'none' }}>
-        <div style={{ pointerEvents: 'auto', display: 'inline-flex', alignItems: 'center', gap: 10, maxWidth: 'calc(100vw - 24px)', background: 'var(--card)', border: '1px solid var(--amber)', borderRadius: 999, padding: '6px 8px 6px 14px', boxShadow: '0 8px 24px rgba(0,0,0,.28)', WebkitBackdropFilter: 'blur(6px)', backdropFilter: 'blur(6px)' }}>
-          <span style={{ display: 'inline-flex', color: 'var(--amber)', flex: 'none' }}><OnyxIcon emoji="⏳" size={16} /></span>
-          <span style={{ fontSize: 13, color: 'var(--amber)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.barText}</span>
-          <button className="btn btn-primary" style={{ fontSize: 12.5, padding: '5px 13px', display: 'inline-flex', alignItems: 'center', gap: 6, flex: 'none' }} onClick={() => setPhase('popup')}><OnyxIcon emoji="🎯" size={14} /> {t.barCta}</button>
-        </div>
-      </div>
-    );
-  }
+  // La tira central se quitó: el recordatorio ahora es una píldora iluminada dentro
+  // de la cápsula del saludo (la pinta el dashboard leyendo onState). Aquí, si el
+  // popup está saltado, no dibujamos nada; el dashboard muestra el recordatorio.
+  if (phase === 'bar') return null;
 
   const overlay: React.CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: 16 };
   const modal: React.CSSProperties = { background: 'var(--card)', border: '1px solid var(--brand)', borderRadius: 18, maxWidth: 440, width: '100%', padding: 22, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 0 0 1px rgba(124,140,255,.5), 0 0 40px rgba(124,140,255,.35)' };

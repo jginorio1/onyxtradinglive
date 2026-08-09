@@ -274,6 +274,8 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
   const [tradesS, setTradesS] = useState<TT[]>(trades || []);
   const [sel, setSel] = useState<string>('all');
   const [view, setView] = useState<View>('hub');
+  // Recordatorio de check-in del plan → píldora iluminada en la cápsula del saludo.
+  const [checkin, setCheckin] = useState<{ pending: boolean; open: () => void } | null>(null);
   // Deep-link: /dashboard?view=plan abre directo esa vista (p.ej. desde el Guardian).
   useEffect(() => {
     try {
@@ -498,7 +500,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
 
   return (
     <>
-      <DailyCheckinPopup lang={lang} />
+      <DailyCheckinPopup lang={lang} onState={setCheckin} />
 
       <div className="wrap-wide" style={{ padding: '24px clamp(16px,1.6vw,40px)' }}>
         {/* Info del trader: alineada a la izquierda */}
@@ -506,7 +508,14 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
           <div className="row" style={{ gap: 14, alignItems: 'center' }}>
             <div style={{ width: 52, height: 52, borderRadius: 14, background: 'var(--grad)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 700, flex: 'none' }}>{heroInitials}</div>
             <div>
-              <h1 style={{ marginBottom: 6, lineHeight: 1.15, display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>{heroTitle} <span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="hand" size={22} /></span></h1>
+              <h1 style={{ marginBottom: 6, lineHeight: 1.15, display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>{heroTitle} <span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="hand" size={22} /></span>
+                {checkin?.pending && (
+                  <button onClick={() => checkin.open()} title={lang === 'en' ? 'Review your plan today' : 'Revisa tu plan hoy'}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid var(--amber)', background: 'rgba(245,158,11,.12)', color: 'var(--amber)', borderRadius: 16, padding: '4px 11px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', animation: 'onyxGlow 1.9s ease-in-out infinite' }}>
+                    <OnyxIcon emoji="⏳" size={13} /> {lang === 'en' ? 'Review plan' : 'Revisar plan'}
+                  </button>
+                )}
+              </h1>
               {heroChips.length ? (
                 <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
                   {heroChips.map((c, i) => <span key={i} className="pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(124,140,255,.14)', color: 'var(--soft-brand)', fontWeight: 500 }}><OnyxIcon emoji={c.icon} size={13} /> {c.label}</span>)}
