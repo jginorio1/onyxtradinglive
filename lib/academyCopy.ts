@@ -101,6 +101,22 @@ export async function connectSlave(o: {
   const mult = clampMult(o.riskMultiplier ?? offer.default_multiplier);
   const lim = riskLimits(accountType, o.fundedDaily, o.fundedMaxDd);
 
+  // Mismas reglas de conflicto que el copy regular (una esclava = una sola master,
+  // y una cuenta no puede ser Master y esclava a la vez). Se excluye el propio enlace
+  // del mentor por si el alumno reconecta la misma cuenta.
+  const { data: clash } = await supabaseAdmin.from('copy_links')
+    .select('id,master_account_id,slave_account_id')
+    .or(`slave_account_id.eq.${o.slaveAccountId},master_account_id.eq.${o.slaveAccountId}`);
+  for (const l of (clash || []) as any[]) {
+    if (sub.copy_link_id && l.id === sub.copy_link_id) continue;   // el propio enlace de este mentor
+    if (l.slave_account_id === o.slaveAccountId) {
+      throw new Error('Esa cuenta ya recibe copia de otra fuente. Una esclava solo puede tener una master. | That account already copies from another source. A follower can only have one master.');
+    }
+    if (l.master_account_id === o.slaveAccountId) {
+      throw new Error('Esa cuenta es una Master de copy; no puede ser esclava a la vez. | That account is a copy Master; it cannot be a follower at the same time.');
+    }
+  }
+
   // ¿ya existe enlace? actualiza; si no, crea. Guardian obligatorio: require_sl + límites.
   const linkRow: any = {
     master_account_id: offer.master_account_id, slave_account_id: o.slaveAccountId, enabled: true,
