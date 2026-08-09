@@ -2232,28 +2232,28 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
           </div>
         </div>
         {(d.content || []).map((m: any) => (
-          <div key={m.id} className="sk-card">
-            <div className="row between" style={{ marginBottom: 10 }}>
-              <h3 style={{ display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic"><OnyxIcon name="modules" size={16} /></span> {m.title}</h3>
-              <div className="row" style={{ gap: 6 }}>
-                <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setModForm({ ...m })}>{L('Portada', 'Cover')}</button>
-                <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setLessonForm({ module_id: m.id })}>＋ {L('Lección', 'Lesson')}</button>
-                <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--red)' }} onClick={async () => { if (await confirmDelete({ title: L('¿Borrar aula?', 'Delete classroom?'), itemName: m.title, message: L('Se borrará el aula y todas sus lecciones. No se puede deshacer.', 'The classroom and all its lessons will be deleted. This cannot be undone.') })) api({ action: 'module_delete', id: m.id }); }}>✕</button>
-              </div>
+          <SectionCard key={m.id} icon="modules" title={m.title} summary={`${m.lessons.length} ${L('lección(es)', 'lesson(s)')}`} badge={m.lessons.length ? undefined : { text: L('Vacía', 'Empty'), tone: 'off' }} wide>
+            {/* Acciones del aula (antes en la cabecera; ahora dentro del popup) */}
+            <div className="row" style={{ gap: 6, marginBottom: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+              <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setModForm({ ...m })}><OnyxIcon name="gem" size={13} glow={false} /> {L('Portada', 'Cover')}</button>
+              <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={() => setLessonForm({ module_id: m.id })}>＋ {L('Lección', 'Lesson')}</button>
+              <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--red)', marginLeft: 'auto' }} onClick={async () => { if (await confirmDelete({ title: L('¿Borrar aula?', 'Delete classroom?'), itemName: m.title, message: L('Se borrará el aula y todas sus lecciones. No se puede deshacer.', 'The classroom and all its lessons will be deleted. This cannot be undone.') })) api({ action: 'module_delete', id: m.id }); }}>✕ {L('Borrar aula', 'Delete classroom')}</button>
             </div>
             {m.cover_url && <div className="sk-course-cover" style={{ backgroundImage: `url(${m.cover_url})`, borderRadius: 10, marginBottom: 10 }} />}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {m.lessons.map((l: any) => (
-                <div key={l.id} className="row between" style={{ background: 'var(--bg2)', borderRadius: 8, padding: '8px 11px', fontSize: 13 }}>
-                  <span>{l.section && <span className="muted" style={{ marginRight: 6 }}>[{l.section}]</span>}{l.title}{l.is_free && <span className="sk-chip" style={{ marginLeft: 6, background: 'color-mix(in srgb,var(--green) 15%,transparent)', color: 'var(--soft-green)' }}>{L('gratis', 'free')}</span>}</span>
-                  <div className="row" style={{ gap: 6 }}>
-                    <button className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 11 }} onClick={() => setLessonForm({ ...l })}>✎</button>
-                    <button className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 11, color: 'var(--red)' }} onClick={async () => { if (await confirmDelete({ title: L('¿Borrar lección?', 'Delete lesson?'), itemName: l.title })) api({ action: 'lesson_delete', id: l.id }); }}>✕</button>
+            {m.lessons.length === 0
+              ? <p className="muted" style={{ fontSize: 12.5, margin: 0 }}>{L('Aún no hay lecciones. Pulsa «＋ Lección» para añadir la primera.', 'No lessons yet. Hit “＋ Lesson” to add the first one.')}</p>
+              : <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {m.lessons.map((l: any) => (
+                  <div key={l.id} className="row between" style={{ background: 'var(--bg2)', borderRadius: 8, padding: '8px 11px', fontSize: 13 }}>
+                    <span>{l.section && <span className="muted" style={{ marginRight: 6 }}>[{l.section}]</span>}{l.title}{l.is_free && <span className="sk-chip" style={{ marginLeft: 6, background: 'color-mix(in srgb,var(--green) 15%,transparent)', color: 'var(--soft-green)' }}>{L('gratis', 'free')}</span>}</span>
+                    <div className="row" style={{ gap: 6 }}>
+                      <button className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 11 }} onClick={() => setLessonForm({ ...l })}>✎</button>
+                      <button className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 11, color: 'var(--red)' }} onClick={async () => { if (await confirmDelete({ title: L('¿Borrar lección?', 'Delete lesson?'), itemName: l.title })) api({ action: 'lesson_delete', id: l.id }); }}>✕</button>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </div>
+                ))}
+              </div>}
+          </SectionCard>
         ))}
         {modForm && <CoverForm form={modForm} setForm={setModForm} L={L} onSave={(f: any) => { api({ action: 'module', id: f.id, title: f.title, description: f.description, cover_url: f.cover_url }, L('Portada guardada', 'Cover saved')); setModForm(null); }} onCancel={() => setModForm(null)} />}
         {lessonForm && <LessonForm form={lessonForm} setForm={setLessonForm} L={L} onSave={(f: any) => { api({ action: 'lesson', ...f }, L('Lección guardada', 'Lesson saved')); setLessonForm(null); }} onCancel={() => setLessonForm(null)} />}
