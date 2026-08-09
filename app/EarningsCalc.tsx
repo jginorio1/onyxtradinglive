@@ -43,11 +43,16 @@ export default function EarningsCalc({ mode, pct, lang, plans }: { mode: 'academ
       <OnyxIcon name="coins" size={15} glow={false} /> {acad ? L('Calcula lo que ganarías', 'See what you could earn') : L('Calcula tu comisión', 'Estimate your commission')}
     </div>
   );
-  const row = (label: string, value: number, min: number, max: number, step: number, set: (v: number) => void, out: string) => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 11 }}>
-      <label style={{ fontSize: 13.5, color: 'var(--mut)', width: 130, flex: 'none' }}>{label}</label>
-      <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => set(Number(e.target.value))} style={{ flex: 1, margin: 0 }} />
-      <span style={{ fontSize: 14.5, fontWeight: 700, width: 52, textAlign: 'right', flex: 'none' }}>{out}</span>
+  // Fila de slider. `sub` (opcional) es la ayudita bajo la pregunta para que se
+  // entienda sin pensar. Si no se pasa, se comporta como una etiqueta simple.
+  const row = (label: string, value: number, min: number, max: number, step: number, set: (v: number) => void, out: string, sub?: string) => (
+    <div style={{ marginBottom: 14 }}>
+      <div style={{ fontSize: 14, fontWeight: 600 }}>{label}</div>
+      {sub && <div style={{ fontSize: 12, color: 'var(--mut)', margin: '1px 0 7px' }}>{sub}</div>}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: sub ? 0 : 6 }}>
+        <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => set(Number(e.target.value))} style={{ flex: 1, margin: 0 }} />
+        <span style={{ fontSize: 15, fontWeight: 700, width: 58, textAlign: 'right', flex: 'none' }}>{out}</span>
+      </div>
     </div>
   );
   const box = (k: string, v: string, tint?: 'green' | 'brand') => (
@@ -155,8 +160,15 @@ function PlanCalc({ plans, fallbackPct, lang, shell, chip, row, box }: {
         </div>
       </div>
 
-      {row(L('Alumnos', 'Students'), n, 5, 500, 5, setN, String(n))}
-      {row(L('Precio / mes', 'Price / mo'), price, 5, 200, 5, setPrice, '$' + price)}
+      {row(L('¿Cuántos alumnos tienes?', 'How many students do you have?'), n, 5, 5000, 5, setN, n.toLocaleString('en-US'),
+        L('Personas que pagan tu academia cada mes', 'People who pay for your academy each month'))}
+      {row(L('¿Cuánto le cobras a cada alumno al mes?', 'How much do you charge each student per month?'), price, 5, 200, 5, setPrice, '$' + price,
+        L('El precio de tu membresía', 'Your membership price'))}
+
+      {/* La cuenta en palabras, para que se entienda sin pensar. */}
+      <div style={{ textAlign: 'center', fontSize: 13.5, color: 'var(--mut)', margin: '2px 0 12px', lineHeight: 1.7 }}>
+        <b style={{ color: 'var(--tx)' }}>{n.toLocaleString('en-US')}</b> {L('alumnos', 'students')} <span style={{ opacity: .6 }}>×</span> <b style={{ color: 'var(--tx)' }}>${price}</b> {L('al mes', 'per mo')} <span style={{ opacity: .6 }}>=</span> <b style={{ color: 'var(--brand)' }}>{money(gross)}</b>
+      </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 10, marginTop: 6 }}>
         {box(L('Ingreso bruto', 'Gross'), money(gross))}
