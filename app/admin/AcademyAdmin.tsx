@@ -70,6 +70,10 @@ export default function AcademyAdmin({ canManage = false }: { canManage?: boolea
   const [gEnabled, setGEnabled] = useState(false);
   const [gPro, setGPro] = useState('');
   const [gElite, setGElite] = useState('');
+  // Copy del mentor: % de Onyx sobre cada copy vendido + on/off + precio mínimo.
+  const [cEnabled, setCEnabled] = useState(false);
+  const [cFee, setCFee] = useState('');
+  const [cMin, setCMin] = useState('');
 
   async function load() {
     const r = await fetch('/api/admin/academy');
@@ -87,6 +91,10 @@ export default function AcademyAdmin({ canManage = false }: { canManage?: boolea
       setGEnabled(!!g.enabled);
       setGPro(g.pro_cents ? String(g.pro_cents / 100) : '');
       setGElite(g.elite_cents ? String(g.elite_cents / 100) : '');
+      const cp = j.copy || {};
+      setCEnabled(!!cp.enabled);
+      setCFee(cp.onyx_fee_pct != null ? String(cp.onyx_fee_pct) : '');
+      setCMin(cp.min_price_cents ? String(cp.min_price_cents / 100) : '');
     }
   }
   useEffect(() => { load(); }, []);
@@ -117,6 +125,16 @@ export default function AcademyAdmin({ canManage = false }: { canManage?: boolea
       action: 'guardian_pricing', enabled: gEnabled,
       pro_cents: Math.round((Number(gPro) || 0) * 100),
       elite_cents: Math.round((Number(gElite) || 0) * 100),
+      currency: 'usd',
+    }) });
+    setBusy(''); load();
+  }
+  async function saveCopyPricing() {
+    setBusy('copy');
+    await fetch('/api/admin/academy', { method: 'POST', body: JSON.stringify({
+      action: 'copy_pricing', enabled: cEnabled,
+      onyx_fee_pct: Number(cFee) || 0,
+      min_price_cents: Math.round((Number(cMin) || 0) * 100),
       currency: 'usd',
     }) });
     setBusy(''); load();
@@ -294,6 +312,37 @@ export default function AcademyAdmin({ canManage = false }: { canManage?: boolea
         <p className="muted" style={{ margin: '10px 0 0', fontSize: 12 }}>
           {L('Pro = Guardian básico. Elite = completo (cierres parciales, bloqueo por noticias, alertas por Telegram).',
              'Pro = basic Guardian. Elite = complete (partial closes, news blackout, Telegram alerts).')}
+        </p>
+      </div>
+
+      {/* Copy del mentor · % de Onyx (se refleja en el landing y donde se promocione) */}
+      <div className="card">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+          <div className="card-ic"><OnyxIcon name="sessions" /></div>
+          <b>{L('Copy del mentor · comisión de Onyx', 'Mentor copy · Onyx commission')}</b>
+        </div>
+        <p className="muted" style={{ margin: '0 0 12px', fontSize: 13, lineHeight: 1.55 }}>
+          {L('El alumno paga para copiar las operaciones del mentor. El mentor cobra por el acceso y Onyx toma este %. Al cambiarlo, se actualiza solo en el landing de mentores y donde se promocione. Guardian obligatorio en la cuenta que copia.',
+             'Students pay to copy the mentor’s trades. The mentor charges for access and Onyx takes this %. Changing it updates automatically on the mentor landing and wherever it’s promoted. Guardian is mandatory on the copying account.')}
+        </p>
+        <label className="row" style={{ gap: 8, alignItems: 'center', marginBottom: 12, fontSize: 13.5, cursor: 'pointer' }}>
+          <input type="checkbox" checked={cEnabled} disabled={!canManage} onChange={(e) => setCEnabled(e.target.checked)} style={{ width: 'auto', margin: 0 }} />
+          {L('Activar Copy del mentor', 'Enable mentor copy')}
+        </label>
+        <div className="row" style={{ gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <label style={{ fontSize: 12.5 }}>{L('Comisión de Onyx · %', 'Onyx commission · %')}
+            <input type="number" min={0} max={50} step="0.5" value={cFee} disabled={!canManage} onChange={(e) => setCFee(e.target.value)} placeholder="15" style={{ display: 'block', width: 120, marginTop: 4 }} />
+          </label>
+          <label style={{ fontSize: 12.5 }}>{L('Precio mínimo · $/mes', 'Minimum price · $/mo')}
+            <input type="number" min={0} step="1" value={cMin} disabled={!canManage} onChange={(e) => setCMin(e.target.value)} placeholder="9" style={{ display: 'block', width: 120, marginTop: 4 }} />
+          </label>
+          <button className="btn btn-primary" disabled={!canManage || busy === 'copy'} onClick={saveCopyPricing}>
+            {busy === 'copy' ? '…' : L('Guardar', 'Save')}
+          </button>
+        </div>
+        <p className="muted" style={{ margin: '10px 0 0', fontSize: 12 }}>
+          {L('El mentor cobra por ACCESO (no comisión sobre ganancias). Revisa la parte legal en tu mercado antes de activarlo.',
+             'The mentor charges for ACCESS (not a performance fee). Check the legal side in your market before enabling.')}
         </p>
       </div>
 

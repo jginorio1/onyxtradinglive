@@ -199,6 +199,19 @@ export type GuardianAcademy = {
 const GA_DEF: GuardianAcademy = { enabled: false, pro_cents: 1900, elite_cents: 3900, currency: 'usd' };
 export const guardianAcademySettings = () => getSetting<GuardianAcademy>('guardian_academy', GA_DEF);
 
+// Onyx Academy · Copy del mentor DE PAGO. El alumno se suscribe para copiar las
+// operaciones del mentor. El mentor cobra por ACCESO (no performance fee) y Onyx
+// toma su % (onyx_fee_pct). El dueño controla el % y el on/off desde el panel;
+// cualquier cambio se refleja en el landing y donde se promocione (leen este valor).
+export type CopyMentor = {
+  enabled: boolean;
+  onyx_fee_pct: number;      // % que toma Onyx de cada copy vendido (editable por el dueño)
+  min_price_cents: number;   // precio mínimo mensual que puede fijar el mentor
+  currency: string;          // 'usd'
+};
+const COPY_DEF: CopyMentor = { enabled: false, onyx_fee_pct: 15, min_price_cents: 900, currency: 'usd' };
+export const copyMentorSettings = () => getSetting<CopyMentor>('copy_mentor', COPY_DEF);
+
 // Cuántas cuentas MT puede tener: las del plan + las compradas como complemento
 export async function accountLimit(userId: string) {
   const { data: prof } = await supabaseAdmin.from('profiles').select('plan,extra_accounts').eq('id', userId).maybeSingle();

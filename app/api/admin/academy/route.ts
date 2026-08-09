@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requirePerm, logAdmin } from '@/lib/admin';
 import { adminListAcademies, getDefaultFeePct, setDefaultFeePct, setMentorFeePct, getPlanFees, setPlanFee, logFeeChange, feeLog } from '@/lib/academyPay';
-import { academyPerksSettings, guardianAcademySettings, saveSetting } from '@/lib/settings';
+import { academyPerksSettings, guardianAcademySettings, copyMentorSettings, saveSetting } from '@/lib/settings';
 import { platformBalancePayouts } from '@/lib/academyBilling';
 
 export const dynamic = 'force-dynamic';
@@ -11,8 +11,8 @@ export const runtime = 'nodejs';
 export async function GET() {
   const { ok } = await requirePerm('academy', 'view');
   if (!ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
-  const [data, perks, planFees, log, platform, guardian] = await Promise.all([adminListAcademies(), academyPerksSettings(), getPlanFees(), feeLog(), platformBalancePayouts(), guardianAcademySettings()]);
-  return NextResponse.json({ ...data, perks, planFees, feeLog: log, platform, guardian });
+  const [data, perks, planFees, log, platform, guardian, copy] = await Promise.all([adminListAcademies(), academyPerksSettings(), getPlanFees(), feeLog(), platformBalancePayouts(), guardianAcademySettings(), copyMentorSettings()]);
+  return NextResponse.json({ ...data, perks, planFees, feeLog: log, platform, guardian, copy });
 }
 
 // POST · editar la comisión: global (default_pct) o por mentor (mentor_id + fee_pct).
@@ -50,6 +50,17 @@ export async function POST(req: Request) {
       await saveSetting('guardian_academy', value);
       await logAdmin(user.email, 'guardian_academy', `on=${value.enabled} pro=${value.pro_cents} elite=${value.elite_cents}`);
       return NextResponse.json({ ok: true, guardian: value });
+    }
+    if (b.action === 'copy_pricing') {
+      const value = {
+        enabled: !!b.enabled,
+        onyx_fee_pct: Math.max(0, Math.min(50, Number(b.onyx_fee_pct) || 0)),
+        min_price_cents: Math.max(0, Math.round(Number(b.min_price_cents) || 0)),
+        currency: String(b.currency || 'usd').toLowerCase().slice(0, 3),
+      };
+      await saveSetting('copy_mentor', value);
+      await logAdmin(user.email, 'copy_mentor', `on=${value.enabled} fee=${value.onyx_fee_pct}%`);
+      return NextResponse.json({ ok: true, copy: value });
     }
     if (b.action === 'mentor' && b.mentor_id) {
       const raw = b.fee_pct === '' || b.fee_pct == null ? null : Number(b.fee_pct);

@@ -27,9 +27,11 @@ export default function MentoresPage() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [lcFaqRaw, setLcFaqRaw] = useState<string[][] | null>(null);
   const [lcPage, setLcPage] = useState<any>(null);
+  const [copy, setCopy] = useState<any>(null);   // Copy del mentor (on/off + % de Onyx en vivo)
   const px = (k: string, fb: string) => lcPage?.[k]?.[lang] || fb;
   useEffect(() => {
     fetch('/api/admin/plans').then((r) => r.json()).then((j) => setPlans(j.plans || [])).catch(() => {});
+    fetch('/api/academy/copy', { cache: 'no-store' }).then((r) => r.json()).then((c) => setCopy(c)).catch(() => {});
     // FAQ + textos editables del Landing Builder (vacío = texto del código).
     fetch('/api/landing-content?t=' + Date.now(), { cache: 'no-store' }).then((r) => r.json())
       .then((c) => { const rows = c?.faq?.mentores; if (Array.isArray(rows) && rows.length) setLcFaqRaw(rows); setLcPage(c?.pages?.mentores || null); }).catch(() => {});
@@ -94,6 +96,42 @@ export default function MentoresPage() {
       {/* CALCULADORA DE GANANCIAS (tarjeta iluminada) */}
       <div className="wrap" style={{ padding: '6px 22px 24px' }}>
         <EarningsCalc mode="academy" pct={feeForCalc} lang={lang} plans={shown as any} />
+      </div>
+
+      {/* HECHO PARA TRADERS (diferenciador vs plataformas genéricas) */}
+      <div className="wrap" style={{ padding: '18px 22px' }}>
+        <div style={{ textAlign: 'center', maxWidth: 640, margin: '0 auto 20px' }}>
+          <span className="pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 12 }}><OnyxIcon name="graduation" size={14} /> Onyx Academy</span>
+          <h2 style={{ margin: '0 0 8px' }}>{L('Hecho para traders, no una plataforma genérica', 'Made for traders, not a generic platform')}</h2>
+          <p className="muted" style={{ fontSize: 15.5, lineHeight: 1.6, margin: 0 }}>{L('Otras plataformas te dan comunidad y cursos. Onyx también — y además las herramientas que tus alumnos ya usan para operar. Todo bajo tu marca.', 'Other platforms give you community and courses. Onyx does too — plus the tools your students already use to trade. All under your brand.')}</p>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 12 }}>
+          {[
+            { ic: 'guardian', es: 'Onyx Guardian', en: 'Onyx Guardian', de: 'Gestor de riesgo automático', den: 'Automatic risk manager' },
+            { ic: 'sessions', es: 'Copy trading', en: 'Copy trading', de: 'De tu cuenta a tus alumnos', den: 'From your account to your students' },
+            { ic: 'book', es: 'Journal y P&L', en: 'Journal & P&L', de: 'Sus operaciones y ganancia neta', den: 'Their trades and net profit' },
+            { ic: 'modules', es: 'Mis robots', en: 'My robots', de: 'Monitoreo de bots y EAs', den: 'Bots & EAs monitoring' },
+            { ic: 'challenge', es: 'Mi reto', en: 'My challenge', de: 'Reglas de prop firms', den: 'Prop-firm rules' },
+            { ic: 'bell', es: 'Alertas Telegram', en: 'Telegram alerts', de: 'Avisos en tiempo real', den: 'Real-time alerts' },
+          ].map((f, i) => (
+            <div key={i} className="card" style={{ padding: 18 }}>
+              <span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name={f.ic} size={24} /></span>
+              <div style={{ fontSize: 15, fontWeight: 700, marginTop: 8 }}>{L(f.es, f.en)}</div>
+              <div className="muted" style={{ fontSize: 13, marginTop: 2 }}>{L(f.de, f.den)}</div>
+            </div>
+          ))}
+        </div>
+        {copy?.enabled && (
+          <div className="card" style={{ marginTop: 14, padding: 18, border: '1px solid color-mix(in srgb,var(--brand) 35%,transparent)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, maxWidth: 640 }}>
+              <span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="sessions" size={22} /></span>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 800 }}>{L('Vende el copy de tu estrategia', 'Sell copy of your strategy')}</div>
+                <p className="muted" style={{ fontSize: 14, margin: '4px 0 0', lineHeight: 1.55 }}>{L('Tus alumnos copian tus operaciones y pagan por acceso. Tú cobras por tu edge; Onyx toma solo ' + copy.onyxFeePct + '%. Guardian obligatorio de red de seguridad.', 'Your students copy your trades and pay for access. You earn from your edge; Onyx takes only ' + copy.onyxFeePct + '%. Guardian required as a safety net.')}</p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* CÓMO FUNCIONA */}
