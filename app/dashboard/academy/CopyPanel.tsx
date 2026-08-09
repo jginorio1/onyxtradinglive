@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import OnyxIcon from '@/app/components/OnyxIcon';
+import SectionCard from './SectionCard';
 
 // ============================================================
 // Copy del mentor · panel dentro de la academia (comunidad).
@@ -78,13 +79,13 @@ function MentorCopy({ L }: { mentorId: string; L: (es: string, en: string) => st
   }
 
   const c = d.copiers || { copiers: [], count: 0, activeCount: 0, capital: 0 };
+  const summary = `${money((Number(f.price) || 0) * 100)}/${L('mes', 'mo')} · Onyx ${d.onyxFeePct}% · ${c.count} ${L('copiadores', 'copiers')}`;
   return (
-    <div className="sk-card" style={{ marginBottom: 12 }}>
-      <div className="row" style={{ gap: 8, alignItems: 'center', marginBottom: 8 }}>
-        <span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="sessions" size={18} /></span>
-        <b>{L('Copy del mentor', 'Mentor copy')}</b>
-        <span className="muted" style={{ fontSize: 12 }}>· Onyx {d.onyxFeePct}%</span>
-        <button className="btn btn-ghost" style={{ fontSize: 11.5, marginLeft: 'auto' }} onClick={() => { setTyped(''); setWarn(true); }}>{L('Responsabilidades', 'Responsibilities')}</button>
+    <>
+    <SectionCard icon="sessions" title={L('Copy del mentor', 'Mentor copy')} summary={summary}
+      badge={f.enabled ? { text: L('Activo', 'On'), tone: 'ok' } : { text: L('Inactivo', 'Off'), tone: 'off' }}>
+      <div className="row" style={{ justifyContent: 'flex-end', marginBottom: 6 }}>
+        <button className="btn btn-ghost" style={{ fontSize: 11.5 }} onClick={() => { setTyped(''); setWarn(true); }}>{L('Responsabilidades', 'Responsibilities')}</button>
       </div>
 
       <label className="row" style={{ gap: 8, alignItems: 'center', marginBottom: 10, fontSize: 13.5, cursor: 'pointer' }}>
@@ -135,6 +136,7 @@ function MentorCopy({ L }: { mentorId: string; L: (es: string, en: string) => st
           </div>
         ))}
       </div>
+    </SectionCard>
 
       {warn && (
         <Modal glow title={L('Tus responsabilidades como mentor', 'Your responsibilities as a mentor')} onClose={() => { setWarn(false); if (!d.offer?.terms_accepted_at) setF({ ...f, enabled: false }); }}>
@@ -156,7 +158,7 @@ function MentorCopy({ L }: { mentorId: string; L: (es: string, en: string) => st
           </button>
         </Modal>
       )}
-    </div>
+    </>
   );
 }
 
