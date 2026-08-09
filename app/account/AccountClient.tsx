@@ -343,21 +343,17 @@ export default function AccountClient({ email }: { email: string }) {
                 </div>
               ))}
             </div>
-            {/* Secundarias como tarjetas con popup (como en la academia) */}
-            <div style={{ borderTop: '1px solid var(--line)', marginTop: 10, paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--mut)', margin: '0 8px 2px' }}>{lang === 'en' ? 'More' : 'Más'}</div>
-              {CARDS.map(([k, icon, sub]) => (
-                <button key={k} onClick={() => setSecOpen(k)} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', padding: '8px 10px', border: '1px solid var(--line)', background: 'var(--card)', borderRadius: 10, cursor: 'pointer' }}>
-                  <span style={{ width: 30, height: 30, borderRadius: 8, background: 'rgba(124,140,255,.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none', color: 'var(--brand)' }}><OnyxIcon emoji={icon} size={15} /></span>
-                  <span style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--tx)' }}>{L.nav[k]}</span>
-                    <span style={{ display: 'block', fontSize: 11, color: 'var(--mut)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub}</span>
-                  </span>
-                  <span style={{ color: 'var(--mut)', flex: 'none' }}>›</span>
-                </button>
-              ))}
+              {/* Secundarias: filas de nav uniformes que abren su popup (como en la academia) */}
+              <div>
+                <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--mut)', margin: '8px 8px 4px' }}>{lang === 'en' ? 'More' : 'Más'}</div>
+                {CARDS.map(([k, icon]) => (
+                  <button key={k} className="adminnav-item" onClick={() => setSecOpen(k)}>
+                    <span style={{ width: 18, display: 'inline-flex', justifyContent: 'center' }}><OnyxIcon emoji={icon} size={16} /></span><span>{L.nav[k]}</span>
+                    <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', color: 'var(--mut)' }}><OnyxIcon name="link" size={13} glow={false} /></span>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
 
           <div style={{ minWidth: 0 }}>
             {!data && <div className="card muted">…</div>}
