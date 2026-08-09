@@ -310,12 +310,8 @@ export default function AccountClient({ email }: { email: string }) {
   const NAV_FLAT = NAV_GROUPS.flatMap((g) => g.items);
   // Cada sección secundaria se divide en micro-tarjetas; cada una abre su propio popup.
   const en = lang === 'en';
+  // Notificaciones NO usa popup (poca info → contenido inline). El resto usa micro-tarjetas + popup.
   const SEC_PARTS: Record<string, { id: string; icon: string; title: string; sub: string; wide?: boolean; danger?: boolean }[]> = {
-    avisos: [
-      { id: 'push', icon: '🔔', title: en ? 'Push notifications' : 'Notificaciones push', sub: en ? 'On your phone even when Onyx is closed' : 'En el móvil aunque Onyx esté cerrado' },
-      { id: 'email', icon: '📧', title: L.nMailT, sub: en ? 'Charges, weekly recap, funding, news' : 'Cobros, resumen, fondeo, novedades' },
-      { id: 'telegram', icon: '✈', title: 'Telegram', sub: en ? 'Guardian, risk, funding and reports' : 'Guardian, riesgo, fondeo e informes' },
-    ],
     seguridad: [
       { id: 'password', icon: '🔒', title: L.pwT, sub: en ? 'Set a new password' : 'Cambia tu contraseña' },
       { id: 'signin', icon: '🔑', title: en ? 'Sign-in security' : 'Seguridad de acceso', sub: '2FA · Passkey · PIN' },
@@ -326,7 +322,9 @@ export default function AccountClient({ email }: { email: string }) {
       { id: 'kit', icon: '✨', title: en ? 'Marketing kit + AI' : 'Kit de marketing + IA', sub: en ? 'Ready-to-post texts and banners' : 'Posts listos y banners', wide: true },
     ],
     retiros: [
-      { id: 'payout', icon: '💸', title: L.nav.retiros, sub: L.retSub2, wide: true },
+      { id: 'balance', icon: '💸', title: en ? 'Balance & request payout' : 'Saldo y solicitar pago', sub: en ? 'Pending · Available · Paid' : 'Pendiente · Disponible · Pagado', wide: true },
+      { id: 'details', icon: '🔌', title: en ? 'Payout details' : 'Datos de pago', sub: en ? 'Method, network and address' : 'Método, red y dirección', wide: true },
+      { id: 'history', icon: '🧾', title: en ? 'Payout history' : 'Historial de pagos', sub: en ? 'Your previous requests' : 'Tus solicitudes anteriores' },
     ],
   };
   const card = { marginBottom: 14 } as any;
@@ -726,8 +724,33 @@ export default function AccountClient({ email }: { email: string }) {
               </Section>
             )}
 
-            {/* Secciones secundarias: muestran micro-tarjetas; cada una abre su propio popup (como en la academia). */}
-            {data && CARD_KEYS.includes(tab) && (
+            {/* Notificaciones: contenido inline (sin popup, es poca info) */}
+            {data && tab === 'avisos' && (
+              <Section icon="🔔" title={L.nav.avisos} subtitle={L.nSub}>
+                <InstallApp lang={lang} />
+                <PushToggle lang={lang} />
+                <div className="card" style={{ marginBottom: 14 }}>
+                  <div className="row" style={{ gap: 9, marginBottom: 8, alignItems: 'center' }}>
+                    <span style={{ width: 30, height: 30, borderRadius: 9, background: 'rgba(124,140,255,.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--brand)' }}><OnyxIcon name="mail" size={16} /></span>
+                    <b style={{ fontSize: 15 }}>{L.nMailT}</b>
+                  </div>
+                  {([['notify_email', L.nEmail, L.nEmailS], ['notify_weekly', L.nWeek, L.nWeekS], ['notify_funding', L.nFund, L.nFundS], ['notify_marketing', L.nMkt, L.nMktS]] as [string, string, string][]).map(([k, label, sub], i) => (
+                    <div key={k} className="row between" style={{ padding: '11px 0', borderTop: i ? '1px solid var(--line)' : 'none', gap: 10 }}>
+                      <div><div style={{ fontSize: 14 }}>{label}</div><div className="muted" style={{ fontSize: 11.5 }}>{sub}</div></div>
+                      {(() => { const cur = k === 'notify_marketing' ? (p.notify_marketing !== false && p.marketing_emails !== false) : !!p[k]; return <Toggle on={cur} onClick={() => setField(k, !cur)} />; })()}
+                    </div>
+                  ))}
+                  <div className="row" style={{ gap: 10, marginTop: 14 }}>
+                    <button className="btn btn-primary" onClick={() => saveProfile()} disabled={busy === 'save'}>{busy === 'save' ? L.saving : L.save}</button>
+                    {msg && <span style={{ color: 'var(--green)', fontSize: 13 }}>{msg}</span>}
+                  </div>
+                </div>
+                <div className="card"><TelegramCard lang={lang} /></div>
+              </Section>
+            )}
+
+            {/* Otras secundarias: micro-tarjetas; cada una abre su popup (como en la academia). */}
+            {data && SEC_PARTS[tab] && (
               <div style={{ maxWidth: 820, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {(SEC_PARTS[tab] || []).map((pt) => (
                   <button key={pt.id} onClick={() => setSecOpen(`${tab}:${pt.id}`)} className="card" style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%', textAlign: 'left', cursor: 'pointer', ...(pt.danger ? { border: '1px solid var(--red)' } : {}) }}>
@@ -755,29 +778,14 @@ export default function AccountClient({ email }: { email: string }) {
                       <button className="btn btn-ghost" onClick={() => setSecOpen(null)}>✕</button>
                     </div>
                     <div style={{ padding: '14px 16px', overflowY: 'auto', flex: 1, minHeight: 0 }}>
-                      {t === 'avisos' && part === 'push' && (<><InstallApp lang={lang} /><PushToggle lang={lang} /></>)}
-                      {t === 'avisos' && part === 'email' && (
-                        <div className="card">
-                          {([['notify_email', L.nEmail, L.nEmailS], ['notify_weekly', L.nWeek, L.nWeekS], ['notify_funding', L.nFund, L.nFundS], ['notify_marketing', L.nMkt, L.nMktS]] as [string, string, string][]).map(([k, label, sub], i) => (
-                            <div key={k} className="row between" style={{ padding: '11px 0', borderTop: i ? '1px solid var(--line)' : 'none', gap: 10 }}>
-                              <div><div style={{ fontSize: 14 }}>{label}</div><div className="muted" style={{ fontSize: 11.5 }}>{sub}</div></div>
-                              {(() => { const cur = k === 'notify_marketing' ? (p.notify_marketing !== false && p.marketing_emails !== false) : !!p[k]; return <Toggle on={cur} onClick={() => setField(k, !cur)} />; })()}
-                            </div>
-                          ))}
-                          <div className="row" style={{ gap: 10, marginTop: 14 }}>
-                            <button className="btn btn-primary" onClick={() => saveProfile()} disabled={busy === 'save'}>{busy === 'save' ? L.saving : L.save}</button>
-                            {msg && <span style={{ color: 'var(--green)', fontSize: 13 }}>{msg}</span>}
-                          </div>
-                        </div>
-                      )}
-                      {t === 'avisos' && part === 'telegram' && (<div className="card"><TelegramCard lang={lang} /></div>)}
-
                       {t === 'seguridad' && <Security L={L} lang={lang} only={part as any} />}
 
                       {t === 'referidos' && part === 'invite' && <ReferralCard />}
                       {t === 'referidos' && part === 'kit' && <Ambassador lang={lang} only="referral" />}
 
-                      {t === 'retiros' && <Ambassador lang={lang} only="payout" />}
+                      {t === 'retiros' && part === 'balance' && <Ambassador lang={lang} only="payout-balance" />}
+                      {t === 'retiros' && part === 'details' && <Ambassador lang={lang} only="payout-details" />}
+                      {t === 'retiros' && part === 'history' && <Ambassador lang={lang} only="payout-history" />}
                     </div>
                   </div>
                 </div>

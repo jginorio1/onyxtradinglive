@@ -248,7 +248,7 @@ export default function BlogEditor() {
       const timeLbl = sched ? `${pad2(new Date(p.publish_at).getHours())}:${pad2(new Date(p.publish_at).getMinutes())} ` : '';
       return (
         <div key={p.id} draggable={drag}
-          onDragStart={drag ? (e) => { setDragId(p.id); e.dataTransfer.effectAllowed = 'move'; } : undefined}
+          onDragStart={drag ? (e) => { setDragId(p.id); e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', p.id); } catch {} } : undefined}
           onDragEnd={() => { setDragId(''); setOverDay(''); }}
           onClick={(e) => { e.stopPropagation(); edit(p); }}
           title={p.title_es || p.title_en}
@@ -340,7 +340,7 @@ export default function BlogEditor() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
                   {backlog.length === 0 && <div className="muted" style={{ fontSize: 12 }}>{es ? 'Nada pendiente.' : 'Nothing pending.'}</div>}
                   {backlog.map((p) => (
-                    <div key={p.id} draggable onDragStart={(e) => { setDragId(p.id); e.dataTransfer.effectAllowed = 'move'; }} onDragEnd={() => { setDragId(''); setOverDay(''); }}
+                    <div key={p.id} draggable onDragStart={(e) => { setDragId(p.id); e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', p.id); } catch {} }} onDragEnd={() => { setDragId(''); setOverDay(''); }}
                       onClick={() => edit(p)} title={p.title_es || p.title_en}
                       style={{ fontSize: 11.5, background: 'var(--card2)', color: 'var(--tx)', borderRadius: 7, padding: '7px 9px', cursor: 'grab', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', border: '1px solid var(--line)' }}>✍️ {p.title_es || p.title_en || (es ? '(sin título)' : '(untitled)')}</div>
                   ))}
