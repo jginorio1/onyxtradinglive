@@ -2148,6 +2148,17 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
   const [tourKey, setTourKey] = useState<string | null>(null);
   const [tourDone, setTourDone] = useState(false);
   const startTour = (key: string) => { const s = TOUR_STEPS.find((x) => x.key === key); if (s) { setTab(s.tab as any); setTourKey(key); } };
+  // Buscador rápido (⌘K / Ctrl+K): saltar a pestaña, aula, lección o alumno.
+  const [navSearch, setNavSearch] = useState(false);
+  const [nq, setNq] = useState('');
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setNq(''); setNavSearch((v) => !v); }
+      if (e.key === 'Escape') setNavSearch(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   async function load() { const r = await fetch('/api/academy/mentor'); setD(await r.json()); }
   useEffect(() => { load(); }, []);
@@ -2162,6 +2173,34 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
     <div className="sk-wrap" style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 4 }}>
       <ConfirmHost lang={lang} />
       {toast && <Toast msg={toast} />}
+      {/* Buscador rápido (⌘K): pestañas, aulas, lecciones y alumnos */}
+      {navSearch && (() => {
+        const q = nq.trim().toLowerCase();
+        const results: any[] = [];
+        const tabDefs: [string, string, string][] = [['cursos', L('Aulas', 'Classroom'), 'graduation'], ['envivo', L('En vivo', 'Live'), 'calendar'], ['comunidad', L('Comunidad', 'Community'), 'chat'], ['alumnos', L('Alumnos', 'Students'), 'users'], ['auditoria', L('Auditoría', 'Audit'), 'guardian'], ['retencion', L('Retención', 'Retention'), 'trophy'], ['cobros', L('Cobros', 'Payments'), 'coins'], ['becas', L('Becas', 'Scholarships'), 'gift'], ['correos', L('Correos', 'Emails'), 'mail'], ['ajustes', L('Ajustes', 'Settings'), 'settings']];
+        tabDefs.forEach(([k, lbl, ic]) => { if (!q || lbl.toLowerCase().includes(q)) results.push({ ic, label: lbl, sub: L('Pestaña', 'Tab'), go: () => setTab(k as any) }); });
+        (d.content || []).forEach((m: any) => {
+          if (q && String(m.title || '').toLowerCase().includes(q)) results.push({ ic: 'modules', label: m.title, sub: L('Aula', 'Classroom'), go: () => setTab('cursos') });
+          (m.lessons || []).forEach((l: any) => { if (q && String(l.title || '').toLowerCase().includes(q)) results.push({ ic: 'book', label: l.title, sub: `${L('Lección', 'Lesson')} · ${m.title}`, go: () => { setTab('cursos'); setLessonForm({ ...l }); } }); });
+        });
+        (d.roster?.students || []).forEach((s: any) => { const nm = s.display_name || s.real_name || ''; if (q && nm.toLowerCase().includes(q)) results.push({ ic: 'users', label: nm, sub: L('Alumno', 'Student'), go: () => { setStudentQ(nm); setTab('alumnos'); } }); });
+        const shown = results.slice(0, 24);
+        return (
+          <div className="sk-modal-ov" onClick={() => setNavSearch(false)}>
+            <div className="sk-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 560 }}>
+              <input autoFocus value={nq} onChange={(e) => setNq(e.target.value)} placeholder={L('Buscar aula, lección, alumno o pestaña…', 'Search classroom, lesson, student or tab…')} style={{ margin: 0, width: '100%' }} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 10, maxHeight: '52vh', overflowY: 'auto' }}>
+                {shown.length === 0 && <p className="muted" style={{ fontSize: 13, textAlign: 'center', padding: '12px 0' }}>{q ? L('Sin resultados.', 'No results.') : L('Escribe para buscar…', 'Type to search…')}</p>}
+                {shown.map((r: any, i: number) => (
+                  <button key={i} className="btn btn-ghost" style={{ justifyContent: 'flex-start', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', width: '100%' }} onClick={() => { r.go(); setNavSearch(false); }}>
+                    <OnyxIcon name={r.ic} size={16} glow={false} /><span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.label}</span><span className="muted" style={{ fontSize: 11, flex: 'none' }}>{r.sub}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
       <GuidedTour stepKey={tourKey} o={d.onboarding || {}} L={L} academyName={d.mentor?.academy_name} onGoto={startTour} onFinish={() => { setTourKey(null); setTourDone(true); }} onClose={() => setTourKey(null)} />
       {tourDone && (
         <div className="sk-modal-ov" onClick={() => setTourDone(false)}>
@@ -2175,8 +2214,16 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
       )}
       <div className="row between" style={{ flexWrap: 'wrap', gap: 10 }}>
         <div><h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 9 }}><span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="graduation" size={22} /></span> {d.mentor.academy_name}</h2><div className="muted" style={{ fontSize: 13 }}>{L('Panel del mentor · Onyx Academy', 'Mentor panel · Onyx Academy')}</div></div>
-        <div className="row" style={{ gap: 6 }}>
-          <button className="btn btn-primary" onClick={() => openStudent(d.mentor.user_id)}>{L('Ver mi comunidad', 'View my community')}</button>
+        <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+          {(() => {
+            const qc: any = {
+              cursos: { label: L('Aula', 'Classroom'), run: () => { const el = document.querySelector('[data-onb="classroom"] input') as HTMLInputElement | null; el?.focus(); el?.scrollIntoView({ behavior: 'smooth', block: 'center' }); } },
+              envivo: { label: L('Clase', 'Class'), run: () => setEvForm({ title: '', join_url: '', starts_at: '', duration_min: 60 }) },
+            }[tab as string];
+            return qc ? <button className="btn btn-primary" onClick={qc.run}>＋ {qc.label}</button> : null;
+          })()}
+          <button className="btn btn-ghost" onClick={() => { setNq(''); setNavSearch(true); }} title={L('Buscar (⌘K)', 'Search (⌘K)')}><OnyxIcon name="book" size={14} glow={false} /> {L('Buscar', 'Search')}</button>
+          <button className="btn btn-ghost" onClick={() => openStudent(d.mentor.user_id)}>{L('Ver comunidad', 'View community')}</button>
           <button className="btn btn-ghost" onClick={onClose}>← {L('Salir', 'Exit')}</button>
         </div>
       </div>
@@ -2188,14 +2235,43 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
         {/* Opción D · navegación vertical (escritorio/tablet) + selector nativo en móvil (como Mi cuenta) */}
         {(() => {
           const mentorTabs = [['cursos', 'graduation', L('Aulas', 'Classroom')], ['envivo', 'calendar', L('En vivo', 'Live')], ['cobros', 'coins', L('Cobros', 'Payments')], ['becas', 'gift', L('Becas', 'Scholarships')], ['alumnos', 'users', L('Alumnos', 'Students')], ['auditoria', 'guardian', L('Auditoría', 'Audit')], ['retencion', 'trophy', L('Retención', 'Retention')], ['comunidad', 'chat', L('Comunidad', 'Community')], ['correos', 'mail', L('Correos', 'Emails')], ['ajustes', 'settings', L('Ajustes', 'Settings')]] as any[];
+          const byKey: Record<string, any> = {}; mentorTabs.forEach(([k, ic, lbl]) => { byKey[k] = { ic, lbl }; });
+          // Insignias (a partir de los datos ya cargados en el panel).
+          const todayKey = new Date().toDateString(); const nowMs = Date.now();
+          const evToday = (d.events || []).filter((e: any) => new Date(e.starts_at).toDateString() === todayKey && new Date(e.starts_at).getTime() + (e.duration_min || 60) * 60000 > nowMs).length;
+          const nCourses = (d.content || []).length;
+          const nStudents = (d.roster?.students || []).length;
+          const badges: Record<string, any> = {
+            cursos: nCourses ? { text: String(nCourses), accent: false } : null,
+            envivo: evToday ? { text: L(`${evToday} hoy`, `${evToday} today`), accent: true } : null,
+            alumnos: nStudents ? { text: String(nStudents), accent: false } : null,
+          };
+          const groups: [string, string[]][] = [
+            [L('Contenido', 'Content'), ['cursos', 'envivo', 'comunidad']],
+            [L('Personas', 'People'), ['alumnos', 'auditoria', 'retencion']],
+            [L('Dinero', 'Money'), ['cobros', 'becas']],
+            [L('Configuración', 'Settings'), ['correos', 'ajustes']],
+          ];
+          const item = (k: string) => {
+            const it = byKey[k]; const b = badges[k];
+            return (
+              <button key={k} className={'sk-vitem' + (tab === k ? ' on' : '')} onClick={() => setTab(k as any)} style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%' }}>
+                <OnyxIcon name={it.ic} size={16} /> <span>{it.lbl}</span>
+                {b && <span style={{ marginLeft: 'auto', fontSize: 10.5, fontWeight: 700, background: b.accent ? 'color-mix(in srgb,var(--brand) 22%,transparent)' : 'var(--card2)', color: b.accent ? 'var(--brand)' : 'var(--mut)', padding: '1px 7px', borderRadius: 999, minWidth: 18, textAlign: 'center' }}>{b.text}</span>}
+              </button>
+            );
+          };
           return (
             <div style={{ minWidth: 0 }}>
               <select className="sk-nav-mobile" value={tab} onChange={(e) => setTab(e.target.value as any)} style={{ width: '100%', margin: 0 }}>
                 {mentorTabs.map(([k, , lbl]) => <option key={k} value={k}>{lbl}</option>)}
               </select>
               <nav className="sk-vnav">
-                {mentorTabs.map(([k, ic, lbl]) => (
-                  <button key={k} className={'sk-vitem' + (tab === k ? ' on' : '')} onClick={() => setTab(k)}><OnyxIcon name={ic} size={16} /> <span>{lbl}</span></button>
+                {groups.map(([label, keys]) => (
+                  <div key={label} style={{ marginBottom: 4 }}>
+                    <div className="muted" style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.05em', margin: '10px 8px 4px' }}>{label}</div>
+                    {keys.map(item)}
+                  </div>
                 ))}
               </nav>
             </div>
