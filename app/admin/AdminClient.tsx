@@ -482,6 +482,17 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
 
   const [diag, setDiag] = useState<any>(null);
   const [supCounts, setSupCounts] = useState<any>(null);
+  // Buscador rápido de pestañas / usuarios (⌘K / Ctrl+K).
+  const [pal, setPal] = useState(false);
+  const [palQ, setPalQ] = useState('');
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setPalQ(''); setPal((v) => !v); }
+      if (e.key === 'Escape') setPal(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
   async function loadUsers() { const r = await fetch('/api/admin/users'); const j = await r.json(); setUsers(j.users || []); }
   async function loadPlans() { const r = await fetch('/api/admin/plans'); const j = await r.json(); setPlans(j.plans || []); }
   async function loadTeam() { const r = await fetch('/api/admin/team'); const j = await r.json(); setTeam(j.team || []); const mine = (j.team || []).find((t: Team) => t.email === meEmail); if (mine) setAvailable(!!mine.available); }
@@ -566,16 +577,53 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
   ];
   const groups = NAV_GROUPS.map((gr) => ({ ...gr, items: gr.items.filter(([k]) => canSee(k)) })).filter((gr) => gr.items.length);
   const flatNav = groups.flatMap((gr) => gr.items);
+  // Insignias de "pendientes por atender" (datos ya cargados; sin backend nuevo).
+  const diagBad = ((diag?.migrations || []).filter((m: any) => !m.ok).length) + ((diag?.services || []).filter((s: any) => !s.ok).length);
+  const navBadges: Record<string, { n: number; tone: 'danger' | 'warn' }> = {};
+  if (supCounts?.open) navBadges.soporte = { n: supCounts.open, tone: 'danger' };
+  if (unconfirmed) navBadges.usuarios = { n: unconfirmed, tone: 'warn' };
+  if (diagBad) navBadges.diag = { n: diagBad, tone: 'danger' };
   useEffect(() => { if (flatNav.length && !flatNav.some(([k]) => k === tab)) setTab(flatNav[0][0]); }, []);
 
   return (
     <>
       <AdminLock hasPin={hasPin} idleMin={idleMin} />
       <AdminLeadAlert available={available} />
+      {/* Buscador rápido (⌘K): salta a pestaña o busca usuario por email */}
+      {pal && (() => {
+        const query = palQ.trim().toLowerCase();
+        const tabRes = flatNav.filter(([, , label]) => !query || String(label).toLowerCase().includes(query)).slice(0, 8);
+        const userOpt = query.length >= 2;
+        return (
+          <div onClick={() => setPal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '10vh 16px', overflowY: 'auto' }}>
+            <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 560, padding: 14 }}>
+              <input autoFocus value={palQ} onChange={(e) => setPalQ(e.target.value)} placeholder={lang === 'en' ? 'Jump to a tab or find a user by email…' : 'Saltar a una pestaña o buscar usuario por email…'} style={{ width: '100%', margin: 0 }} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 10, maxHeight: '52vh', overflowY: 'auto' }}>
+                {userOpt && canSee('usuarios') && (
+                  <button className="btn btn-ghost" style={{ justifyContent: 'flex-start', display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left' }} onClick={() => { setTab('usuarios'); setQ(palQ.trim()); setPal(false); }}>
+                    <OnyxIcon emoji="👤" size={16} /><span style={{ flex: 1, minWidth: 0 }}>{lang === 'en' ? 'Find user' : 'Buscar usuario'}: {palQ.trim()}</span><span className="muted" style={{ fontSize: 11 }}>{lang === 'en' ? 'Users' : 'Usuarios'}</span>
+                  </button>
+                )}
+                {tabRes.map(([k, ic, label]) => (
+                  <button key={k} className="btn btn-ghost" style={{ justifyContent: 'flex-start', display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left' }} onClick={() => { setTab(k); setPal(false); }}>
+                    <OnyxIcon emoji={ic} size={16} /><span style={{ flex: 1, minWidth: 0 }}>{label}</span><span className="muted" style={{ fontSize: 11 }}>{lang === 'en' ? 'Tab' : 'Pestaña'}</span>
+                  </button>
+                ))}
+                {tabRes.length === 0 && !userOpt && <p className="muted" style={{ fontSize: 13, textAlign: 'center', padding: '10px 0' }}>{lang === 'en' ? 'No results.' : 'Sin resultados.'}</p>}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       <div className="wrap-wide" style={{ padding: '22px 0' }}>
         <div className="adminlayout">
           <div className="adminnav card" style={{ padding: 12 }}>
+            {/* Buscador rápido + acción contextual */}
+            <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
+              <button className="btn btn-ghost" style={{ flex: 1, minWidth: 120, fontSize: 12.5, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 6 }} onClick={() => { setPalQ(''); setPal(true); }}>🔎 {lang === 'en' ? 'Search' : 'Buscar'} <span style={{ opacity: .55, fontSize: 11 }}>⌘K</span></button>
+              {(tab === 'blog' || tab === 'campanas') && <button className="btn btn-primary" style={{ fontSize: 12.5 }} onClick={() => window.dispatchEvent(new CustomEvent('admin-quick-create', { detail: tab }))}>＋ {tab === 'blog' ? (lang === 'en' ? 'Post' : 'Post') : (lang === 'en' ? 'Campaign' : 'Campaña')}</button>}
+            </div>
             {/* Móvil: selector agrupado (se adapta como el menú de arriba) */}
             <select className="adminnav-mobile" value={tab} onChange={(e) => setTab(e.target.value)} style={{ margin: 0, width: '100%' }}>
               {groups.map((gr) => (
@@ -590,7 +638,10 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                   <div className="adminnav-group">{gr.g}</div>
                   {gr.items.map(([k, ic, label]) => (
                     <button key={k} className={'adminnav-item' + (tab === k ? ' on' : '')} onClick={() => setTab(k)}>
-                      <span style={{ width: 18, display: 'inline-flex', justifyContent: 'center' }}><OnyxIcon emoji={ic} size={16} /></span><span>{label}</span><span className="navdot" />
+                      <span style={{ width: 18, display: 'inline-flex', justifyContent: 'center' }}><OnyxIcon emoji={ic} size={16} /></span><span>{label}</span>
+                      {navBadges[k]
+                        ? <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 700, background: navBadges[k].tone === 'danger' ? 'color-mix(in srgb,var(--red) 20%,transparent)' : 'color-mix(in srgb,var(--amber) 24%,transparent)', color: navBadges[k].tone === 'danger' ? 'var(--red)' : 'var(--amber)', padding: '0 6px', borderRadius: 999, minWidth: 16, textAlign: 'center', lineHeight: '17px' }}>{navBadges[k].n}</span>
+                        : <span className="navdot" />}
                     </button>
                   ))}
                 </div>

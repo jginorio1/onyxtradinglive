@@ -65,6 +65,12 @@ export default function Campaigns() {
   }
   // Auto-refresco: los números (aperturas/clics) suben solos sin pulsar nada.
   useEffect(() => { load(); const iv = setInterval(load, 15000); return () => clearInterval(iv); }, []);
+  // Acción rápida "＋ Campaña" del panel admin: lleva al compositor de envío manual.
+  useEffect(() => {
+    const onNew = (e: any) => { if (e?.detail === 'campanas') { const el = document.getElementById('admin-camp-composer'); el?.scrollIntoView({ behavior: 'smooth', block: 'start' }); (el?.querySelector('input,textarea') as HTMLElement | null)?.focus(); } };
+    window.addEventListener('admin-quick-create', onNew as any);
+    return () => window.removeEventListener('admin-quick-create', onNew as any);
+  }, []);
 
   async function toggle(c: Campaign) {
     const r = await fetch('/api/admin/campaigns', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: c.id, enabled: !c.enabled }) });
@@ -163,7 +169,9 @@ export default function Campaigns() {
       )}
 
       {/* Envío manual */}
-      <ManualComposer segs={segs} manuals={manuals} L={L} lang={lang} segLabel={segLabel} reload={load} onEdit={setEditing} ask={setCf} />
+      <div id="admin-camp-composer">
+        <ManualComposer segs={segs} manuals={manuals} L={L} lang={lang} segLabel={segLabel} reload={load} onEdit={setEditing} ask={setCf} />
+      </div>
 
       {editing && <Editor c={editing} segs={segs} L={L} lang={lang} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} />}
       <ConfirmNote act={cf} onClose={() => setCf(null)} />

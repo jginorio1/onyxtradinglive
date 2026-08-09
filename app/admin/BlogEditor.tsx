@@ -77,6 +77,13 @@ export default function BlogEditor() {
   const [overDay, setOverDay] = useState('');                // día resaltado al arrastrar encima
   const set = (k: string, v: any) => setF((s: any) => ({ ...s, [k]: v }));
 
+  // Acción rápida "＋ Post" del panel admin (botón contextual de la barra lateral).
+  useEffect(() => {
+    const onNew = (e: any) => { if (e?.detail === 'blog') { setTitles([]); setTopic(''); setF({ ...blank }); } };
+    window.addEventListener('admin-quick-create', onNew as any);
+    return () => window.removeEventListener('admin-quick-create', onNew as any);
+  }, []);
+
   const pad2 = (n: number) => String(n).padStart(2, '0');
   const dayKey = (y: number, m: number, d: number) => `${y}-${pad2(m + 1)}-${pad2(d)}`;
   // Fecha (clave YYYY-MM-DD) en la que vive un artículo en el calendario.
