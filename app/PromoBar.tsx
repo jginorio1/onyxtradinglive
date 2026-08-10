@@ -25,7 +25,6 @@ export default function PromoBar({
   const [urgent, setUrgent] = useState(false); // últimos minutos: resalta el contador
   const [narrow, setNarrow] = useState(false);  // móvil: CTA como flecha, cupón compacto
   const [reduce, setReduce] = useState(false);  // "reducir movimiento" del sistema
-  const [reps, setReps] = useState(6);          // copias por bloque (para que llene el ancho)
   const [dur, setDur] = useState(22);           // segundos por vuelta (velocidad constante)
   const wrapRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
@@ -54,24 +53,21 @@ export default function PromoBar({
 
   const scrolling = (anim === 'slide' || anim === 'marquee') && !reduce;
 
-  // Mide el ancho real para: (a) llenar la pista con suficientes copias y (b) fijar
-  // una duración que da velocidad CONSTANTE en cualquier pantalla/dispositivo.
+  // Duración = distancia de una vuelta / velocidad → velocidad CONSTANTE en cualquier
+  // pantalla. Solo cambia un número (seguro); las copias son fijas para no crear una
+  // capa gigante que iOS/iPad no puedan componer (eso dejaba la barra en blanco).
   useEffect(() => {
     if (!scrolling) return;
     const measure = () => {
-      const cW = wrapRef.current?.offsetWidth || 360;
-      const tW = trackRef.current?.scrollWidth || cW * 2;
-      const oneCopy = tW / (reps * 2) || 200;                 // ancho de una copia del mensaje
-      const need = Math.max(3, Math.ceil((cW * 1.4) / oneCopy)); // copias para superar el ancho
-      if (need !== reps) setReps(need);
-      const half = tW / 2;                                    // distancia de una vuelta (-50%)
+      const tW = trackRef.current?.scrollWidth || 800;
+      const half = tW / 2;
       const px = SPEED_PX[speed] || 62;
-      setDur(Math.min(60, Math.max(8, half / px)));
+      setDur(Math.min(45, Math.max(8, half / px)));
     };
-    measure();
+    const t = setTimeout(measure, 60);      // tras el layout de fuentes
     window.addEventListener('resize', measure);
-    return () => window.removeEventListener('resize', measure);
-  }, [scrolling, text, coupon, left, speed, reps]);
+    return () => { clearTimeout(t); window.removeEventListener('resize', measure); };
+  }, [scrolling, text, coupon, narrow, speed]);
 
   const key = useMemo(() => 'onyx_promo_' + btoa(unescape(encodeURIComponent((text || '') + '|' + (endsAt || '')))).slice(0, 24), [text, endsAt]);
 
@@ -104,7 +100,6 @@ export default function PromoBar({
   if (gone || closed || !text) return null;
 
   const background = gradient && bg2 ? `linear-gradient(90deg, ${bg || '#8b7bff'}, ${bg2})` : (bg || 'var(--brand)');
-  const dotColor = 'color-mix(in srgb, ' + (fg || '#0a0d14') + ' 70%, transparent)';
 
   const copyCoupon = (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); try { navigator.clipboard.writeText(coupon); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch {} };
   const close = (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); setClosed(true); try { localStorage.setItem(key, '1'); } catch {} };
@@ -117,7 +112,7 @@ export default function PromoBar({
   // Una copia del mensaje (emoji/punto + texto + contador).
   const message = (i: number) => (
     <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 11, whiteSpace: 'nowrap', paddingRight: 56, fontWeight: 600 }}>
-      <span style={{ width: 8, height: 8, borderRadius: '50%', background: dotColor, flex: 'none', animation: reduce ? undefined : 'onyxDot 1.6s ease-in-out infinite' }} />
+      <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'currentColor', opacity: .65, flex: 'none', animation: reduce ? undefined : 'onyxDot 1.6s ease-in-out infinite' }} />
       {emoji && <span>{emoji}</span>}
       <span>{text}</span>
       {countdownEl}
@@ -131,6 +126,7 @@ export default function PromoBar({
     ...(stickyTop ? { top: 0, left: 0, right: 0, paddingTop: 'env(safe-area-inset-top, 0px)' } : {}),
   };
   const linkAttrs = { href: link || '#', onClick, target: newTab ? '_blank' : undefined, rel: newTab ? 'noopener noreferrer' : undefined } as any;
+  const COPIES = narrow ? 3 : 6;   // menos en móvil (GPU iOS/iPad), más en escritorio
   const px = { paddingLeft: 'max(12px, env(safe-area-inset-left, 0px))', paddingRight: 'max(8px, env(safe-area-inset-right, 0px))' } as any;
 
   return (
@@ -143,8 +139,8 @@ export default function PromoBar({
         {/* Mensaje (link). Se desplaza; si el sistema pide menos movimiento, queda estático. */}
         <a {...linkAttrs} style={{ color: 'inherit', textDecoration: 'none', flex: '1 1 auto', minWidth: 0, overflow: 'hidden', display: 'block', padding: '8px 0', fontSize: 'clamp(12px, 3.3vw, 13.5px)' }}>
           {scrolling ? (
-            <div ref={trackRef} style={{ display: 'inline-flex', whiteSpace: 'nowrap', animation: `onyxMarq ${dur}s linear infinite`, animationPlayState: paused ? 'paused' : 'running', willChange: 'transform' }}>
-              {Array.from({ length: reps * 2 }).map((_, i) => message(i))}
+            <div ref={trackRef} style={{ display: 'inline-flex', whiteSpace: 'nowrap', animation: `onyxMarq ${dur}s linear infinite`, animationPlayState: paused ? 'paused' : 'running' }}>
+              {Array.from({ length: COPIES * 2 }).map((_, i) => message(i))}
             </div>
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: narrow ? 'flex-start' : 'center', gap: 10, minWidth: 0 }}>
