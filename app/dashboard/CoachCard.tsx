@@ -39,9 +39,10 @@ export default function CoachCard({ from, to, account }: { from?: string; to?: s
   const [msg, setMsg] = useState('');
   const [open, setOpen] = useState(true);
   const [sum, setSum] = useState<any>(null);
+  const [actions, setActions] = useState<{ label: string; href: string }[]>([]);
 
   async function gen() {
-    setBusy(true); setMsg(''); setTxt(''); setSum(null);
+    setBusy(true); setMsg(''); setTxt(''); setSum(null); setActions([]);
     try {
       const qs = new URLSearchParams({ lang });
       if (from) qs.set('from', from);
@@ -52,7 +53,7 @@ export default function CoachCard({ from, to, account }: { from?: string; to?: s
       if (j.locked) { setMsg(L('No disponible en tu plan.', 'Not available on your plan.')); return; }
       if (j.empty) { setMsg(L('Necesitas unas cuantas operaciones cerradas en este período para tu repaso.', 'You need a few closed trades in this period for your review.')); return; }
       if (!j.ok) { setMsg(L('No se pudo generar ahora. Inténtalo de nuevo.', "Couldn't generate now. Try again.")); return; }
-      setTxt(j.review || ''); setSum(j.summary || null); setOpen(true);
+      setTxt(j.review || ''); setSum(j.summary || null); setActions(Array.isArray(j.actions) ? j.actions : []); setOpen(true);
     } finally { setBusy(false); }
   }
 
@@ -81,6 +82,13 @@ export default function CoachCard({ from, to, account }: { from?: string; to?: s
       {msg && <div className="muted" style={{ fontSize: 13 }}>{msg}</div>}
       {txt && open && windowLine && <div className="muted" style={{ fontSize: 11.5, marginBottom: 8, display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="📅" size={13} /> {windowLine}</div>}
       {txt && open && <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '12px 14px', fontSize: 14, lineHeight: 1.6 }}><RichText text={txt} /></div>}
+      {txt && open && actions.length > 0 && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+          {actions.map((a, k) => (
+            <a key={k} href={a.href} className={'btn ' + (k === 0 ? 'btn-primary' : 'btn-ghost')} style={{ fontSize: 12.5, textDecoration: 'none' }}>{a.label} →</a>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

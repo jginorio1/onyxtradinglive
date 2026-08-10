@@ -213,6 +213,17 @@ export async function GET(req: Request) {
       periodLabel: (hasFrom || hasTo) ? `${firstDate} → ${lastDate}` : (enWindow(lang) ? 'last 90 days' : 'últimos 90 días'),
     };
 
+    // Acciones sugeridas: botones que llevan al lugar de configuración según los
+    // hallazgos (rompió el plan, está perdiendo, no tiene plan, sin Guardian…).
+    const losing = (summary.pf > 0 && summary.pf < 1) || summary.net < 0;
+    const A = (es: string, en: string, href: string) => ({ label: enWindow(lang) ? en : es, href });
+    const actions: { label: string; href: string }[] = [];
+    if (planBlock?.followedMaxTrades === false) actions.push(A('Ajustar mis límites', 'Adjust my limits', '/dashboard?view=plan&tab=limites'));
+    else if (losing && capsObj.manager) actions.push(A('Poner mi freno diario', 'Set my daily stop', '/dashboard?view=plan&tab=limites'));
+    else if (!planBlock && capsObj.manager) actions.push(A('Crear mi plan', 'Create my plan', '/dashboard?view=plan'));
+    if (losing && !capsObj.manager) actions.push(A('Desbloquear Onyx Guardian', 'Unlock Onyx Guardian', '/pricing'));
+    if (!actions.length) actions.push(A('Ir a Mi plan y hábitos', 'Go to My plan & habits', '/dashboard?view=plan'));
+
     // La IA con red de seguridad: si falla, no responde o tarda >12s, devolvemos
     // un repaso determinista con los mismos números → la cápsula SIEMPRE funciona.
     let reviewText: string | undefined;
@@ -224,7 +235,7 @@ export async function GET(req: Request) {
       if (r?.ok && r.text) reviewText = r.text;
     } catch { /* caemos al repaso determinista */ }
     if (!reviewText) reviewText = fallbackReview(summary, lang);
-    return NextResponse.json({ ok: true, review: reviewText, summary });
+    return NextResponse.json({ ok: true, review: reviewText, summary, actions });
   } catch (e: any) {
     await logError('coach_get', e);
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });

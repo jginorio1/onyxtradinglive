@@ -92,7 +92,10 @@ const TYPE_LABEL: Record<string, [string, string]> = { challenge: ['challenge', 
 
 export default function PlanHabits({ lang, onGoGuardian }: { lang: Lang; onGoGuardian?: () => void }) {
   const t = dictFor(T, lang); const i = lang === 'en' ? 1 : 0;
-  const [tab, setTab] = useState<'hoy' | 'plan' | 'limites'>('hoy');
+  const [tab, setTab] = useState<'hoy' | 'plan' | 'limites'>(() => {
+    if (typeof window !== 'undefined') { const q = new URLSearchParams(window.location.search).get('tab'); if (q === 'plan' || q === 'limites' || q === 'hoy') return q; }
+    return 'hoy';
+  });
   const [d, setD] = useState<any>(null);
   const [items, setItems] = useState<Record<string, boolean>>({});
   const [note, setNote] = useState('');
