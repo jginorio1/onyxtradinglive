@@ -53,8 +53,8 @@ export default function PlansCompareTable({
   const chk = (v: boolean | string) => typeof v === 'string'
     ? <span style={{ fontSize: 13 }}>{v}</span>
     : v
-      ? <span style={{ color: 'var(--green)', display: 'inline-flex' }}><OnyxIcon name="check" size={17} glow={false} /></span>
-      : <span style={{ color: '#66708a', display: 'inline-flex' }}><OnyxIcon name="lock" size={15} glow={false} /></span>;
+      ? <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: 6, background: 'var(--green)', color: '#04120b' }}><OnyxIcon name="check" size={14} glow={false} /></span>
+      : <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: 6, background: 'var(--card2)', color: 'var(--mut)' }}><OnyxIcon name="lock" size={13} glow={false} /></span>;
 
   return (
     <div style={{ marginTop: 46 }}>

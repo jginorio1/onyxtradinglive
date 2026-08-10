@@ -50,8 +50,8 @@ export default function PlanCards({
             <ul style={{ listStyle: 'none', margin: '16px 0' }}>
               {i > 0 && <li style={{ padding: '7px 0', color: 'var(--mut)', fontWeight: 700, fontSize: 13 }}>{t.allOf} {prevName}, {t.andMore}</li>}
               {feats.map((it, j) => (
-                <li key={j} style={{ padding: '7px 0', color: '#cdd3e0', display: 'flex', alignItems: 'flex-start', gap: 9 }}>
-                  <span style={{ flex: 'none', marginTop: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, borderRadius: 6, background: 'rgba(52,226,160,.16)', color: 'var(--green)' }}><OnyxIcon name="check" size={13} glow={false} /></span>{it}
+                <li key={j} style={{ padding: '7px 0', color: 'var(--tx)', display: 'flex', alignItems: 'flex-start', gap: 9 }}>
+                  <span style={{ flex: 'none', marginTop: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, borderRadius: 6, background: 'var(--green)', color: '#04120b' }}><OnyxIcon name="check" size={13} glow={false} /></span>{it}
                 </li>
               ))}
             </ul>
