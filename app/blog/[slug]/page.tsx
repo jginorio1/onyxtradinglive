@@ -5,6 +5,7 @@ import { getPublishedBySlug } from '@/lib/blog';
 import { mdToHtml } from '@/lib/md';
 import { serverLang, localeAlternates, SITE } from '@/lib/locale';
 import JsonLd from '../../JsonLd';
+import BlogCharts from '../BlogCharts';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,6 +37,7 @@ export default async function BlogArticle({ params }: { params: { slug: string }
   const excerpt = pref(es ? p.excerpt_es : p.excerpt_en, es ? p.excerpt_en : p.excerpt_es);
   const body = pref(es ? p.body_es : p.body_en, es ? p.body_en : p.body_es);
   const html = mdToHtml(body);
+  const coverAlt = pref(es ? p.cover_alt_es : p.cover_alt_en, es ? p.cover_alt_en : p.cover_alt_es) || title;
 
   const ld = {
     '@context': 'https://schema.org', '@type': 'Article',
@@ -54,8 +56,9 @@ export default async function BlogArticle({ params }: { params: { slug: string }
       <div className="muted" style={{ fontSize: 13, marginTop: 14 }}>{fmtDate(p.published_at, es)}</div>
       <h1 style={{ fontSize: 30, lineHeight: 1.2, margin: '6px 0 8px' }}>{title}</h1>
       {excerpt && <p className="muted" style={{ fontSize: 17, lineHeight: 1.5 }}>{excerpt}</p>}
-      {p.cover_url && <img src={p.cover_url} alt="" style={{ width: '100%', borderRadius: 14, margin: '16px 0' }} />}
+      {p.cover_url && <img src={p.cover_url} alt={coverAlt} style={{ width: '100%', borderRadius: 14, margin: '16px 0' }} />}
       <article className="blog-body" dangerouslySetInnerHTML={{ __html: html }} />
+      <BlogCharts />
       <div className="card" style={{ marginTop: 34, textAlign: 'center', padding: 24 }}>
         <h3 style={{ marginBottom: 8 }}>{es ? 'Lleva tu trading al siguiente nivel' : 'Take your trading to the next level'}</h3>
         <p className="muted" style={{ fontSize: 14, maxWidth: 480, margin: '0 auto 14px' }}>

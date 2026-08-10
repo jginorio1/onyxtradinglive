@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requirePerm } from '@/lib/admin';
-import { suggestTitles, generateArticle, type KwGuide } from '@/lib/blogAI';
+import { suggestTitles, generateArticle, generateAlt, type KwGuide } from '@/lib/blogAI';
 import { blogKeywordsSettings } from '@/lib/settings';
 import { listAllPosts } from '@/lib/blog';
 import { logError } from '@/lib/errlog';
@@ -66,6 +66,17 @@ export async function POST(req: Request) {
       const r = await generateArticle(title, g);
       if (!r.ok) return NextResponse.json({ error: r.reason || 'ai', code: r.reason }, { status: 502 });
       return NextResponse.json({ article: r.article, target: g ? { es: g.targetEs, en: g.targetEn } : null });
+    }
+
+    if (mode === 'alt') {
+      const context = String(b.context || '').slice(0, 300);
+      const hint = b.hint ? String(b.hint).slice(0, 200) : undefined;
+      if (!context && !hint) return NextResponse.json({ error: 'falta contexto' }, { status: 400 });
+      const g = await buildGuide(override);
+      const kw = g ? (g.targetEs || g.targetEn) : override;
+      const r = await generateAlt(context || (hint as string), hint, kw);
+      if (!r.ok) return NextResponse.json({ error: r.reason || 'ai', code: r.reason }, { status: 502 });
+      return NextResponse.json({ alt_es: r.alt_es, alt_en: r.alt_en });
     }
 
     return NextResponse.json({ error: 'modo inválido' }, { status: 400 });

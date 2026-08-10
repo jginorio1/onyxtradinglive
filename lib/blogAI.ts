@@ -73,8 +73,8 @@ export async function suggestTitles(topic: string, lang: Lang = 'es', target?: s
 // ---- Artículo completo bilingüe ----
 export async function generateArticle(title: string, kw?: KwGuide): Promise<{ ok: boolean; article?: any; reason?: string }> {
   if (!process.env.ANTHROPIC_API_KEY) return { ok: false, reason: 'no_key' };
-  const system = `Eres redactor de contenido SEO de Onyx Trading Live. ${GUARDRAIL}\n\nCONTEXTO DE MARCA (úsalo con naturalidad, sin sonar a anuncio):\n${await brandBrief('es')}${kwBlock(kw)}\n\nEscribe un artículo de blog COMPLETO sobre el título dado, en ESPAÑOL e INGLÉS. Formato markdown: usa subtítulos "## ", listas con "- " y **negritas** con moderación. 600-900 palabras por idioma, tono cercano y profesional para traders. Cierra invitando suavemente a usar Onyx (sin promesas). \n\nDevuelve SOLO este JSON (sin texto fuera):\n{"title_es":"...","title_en":"...","excerpt_es":"resumen 1-2 frases","excerpt_en":"1-2 sentence summary","body_es":"markdown en español","body_en":"markdown in English","tags":"3-6 palabras clave EN ESPAÑOL separadas por coma (solo español, nunca en inglés)"}`;
-  const out = parseJson(await aiRaw(system, `Título: ${title}`, 4000));
+  const system = `Eres redactor de contenido SEO de Onyx Trading Live. ${GUARDRAIL}\n\nCONTEXTO DE MARCA (úsalo con naturalidad, sin sonar a anuncio):\n${await brandBrief('es')}${kwBlock(kw)}\n\nEscribe un artículo de blog COMPLETO sobre el título dado, en ESPAÑOL e INGLÉS. Formato markdown: usa subtítulos "## ", listas con "- " y **negritas** con moderación. 600-900 palabras por idioma, tono cercano y profesional para traders. Cierra invitando suavemente a usar Onyx (sin promesas).\n\nGRÁFICAS (opcional, solo si de verdad aportan): puedes incluir UNA gráfica ilustrativa dentro del cuerpo con este bloque exacto (mismo contenido en ambos idiomas, traduciendo title/alt/source):\n:::chart\ntype: line\ntitle: Título corto de la gráfica\nalt: Descripción de lo que muestra la gráfica (para accesibilidad y SEO)\nsource: Datos de ejemplo · Onyx Trading Live\nx: [Etiqueta1, Etiqueta2, Etiqueta3]\ny: [10, 8, 5]\n:::\nReglas de la gráfica: type puede ser line, bar o doughnut. SIEMPRE datos de EJEMPLO/ilustrativos (nunca rendimientos reales, señales ni promesas) y por eso source siempre incluye "Datos de ejemplo". Máx 12 puntos. Si no encaja de forma natural, NO la pongas.\n\nNO inventes imágenes con URL (![...](...)) porque no tienes archivos reales; el editor las sube aparte. En su lugar, describe una imagen de portada apropiada en cover_alt.\n\nDevuelve SOLO este JSON (sin texto fuera):\n{"title_es":"...","title_en":"...","excerpt_es":"resumen 1-2 frases","excerpt_en":"1-2 sentence summary","body_es":"markdown en español (puede incluir un bloque :::chart)","body_en":"markdown in English (may include a :::chart block)","cover_alt_es":"texto alternativo de la imagen de portada en español, describiendo la escena, ~12 palabras","cover_alt_en":"cover image alt text in English, ~12 words","tags":"3-6 palabras clave EN ESPAÑOL separadas por coma (solo español, nunca en inglés)"}`;
+  const out = parseJson(await aiRaw(system, `Título: ${title}`, 4200));
   if (!out || !out.body_es || !out.body_en) return { ok: false, reason: 'ai_failed' };
   return {
     ok: true,
@@ -85,7 +85,24 @@ export async function generateArticle(title: string, kw?: KwGuide): Promise<{ ok
       excerpt_en: String(out.excerpt_en || '').slice(0, 400),
       body_es: String(out.body_es || '').slice(0, 20000),
       body_en: String(out.body_en || '').slice(0, 20000),
+      cover_alt_es: String(out.cover_alt_es || '').slice(0, 300),
+      cover_alt_en: String(out.cover_alt_en || '').slice(0, 300),
       tags: String(out.tags || '').slice(0, 300),
     },
   };
+}
+
+// ---- Texto alternativo (alt) de una imagen, bilingüe ----
+// Describe la imagen para accesibilidad y SEO, integrando la keyword si encaja.
+// context = título/tema del artículo; hint = nombre de archivo o pista opcional.
+export async function generateAlt(context: string, hint?: string, keyword?: string): Promise<{ ok: boolean; alt_es?: string; alt_en?: string; reason?: string }> {
+  if (!process.env.ANTHROPIC_API_KEY) return { ok: false, reason: 'no_key' };
+  const kwLine = keyword ? `\nSi encaja de forma natural, incluye la palabra clave "${keyword}" (o su equivalente en inglés) en el alt, sin forzar.` : '';
+  const system = `Eres el editor SEO de Onyx Trading Live. Escribe el TEXTO ALTERNATIVO (atributo alt) de una imagen para un artículo de blog de trading. El alt describe lo que se ve en la imagen de forma concreta y útil para una persona que no puede verla; 8-16 palabras; sin "imagen de" ni "foto de"; sin comillas; sin punto final.${kwLine}\n\nDevuelve SOLO un JSON: {"alt_es":"...","alt_en":"..."}`;
+  const user = `Tema del artículo: ${context}${hint ? `\nPista de la imagen (nombre de archivo o descripción): ${hint}` : ''}`;
+  const out = parseJson(await aiRaw(system, user, 300));
+  const es = out?.alt_es ? String(out.alt_es).slice(0, 300) : '';
+  const en = out?.alt_en ? String(out.alt_en).slice(0, 300) : '';
+  if (!es && !en) return { ok: false, reason: 'ai_failed' };
+  return { ok: true, alt_es: es, alt_en: en };
 }

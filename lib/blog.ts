@@ -12,7 +12,7 @@ export type BlogPost = {
   title_es: string; title_en: string;
   excerpt_es: string; excerpt_en: string;
   body_es: string; body_en: string;
-  cover_url: string | null; tags: string;
+  cover_url: string | null; cover_alt_es: string; cover_alt_en: string; tags: string;
   status: BlogStatus; publish_at: string | null; published_at: string | null;
   author: string | null; created_at: string; updated_at: string;
 };
@@ -35,7 +35,7 @@ export async function uniqueSlug(base: string, excludeId?: string): Promise<stri
   }
 }
 
-const PUB_COLS = 'id,slug,title_es,title_en,excerpt_es,excerpt_en,body_es,body_en,cover_url,tags,published_at';
+const PUB_COLS = 'id,slug,title_es,title_en,excerpt_es,excerpt_en,body_es,body_en,cover_url,cover_alt_es,cover_alt_en,tags,published_at';
 
 // Lista de artículos ya publicados (para la página pública /blog).
 export async function listPublished(limit = 60) {
@@ -75,6 +75,7 @@ export async function savePost(b: any) {
     excerpt_es: clean(b.excerpt_es, 400), excerpt_en: clean(b.excerpt_en, 400),
     body_es: clean(b.body_es), body_en: clean(b.body_en),
     cover_url: b.cover_url ? clean(b.cover_url, 500) : null,
+    cover_alt_es: clean(b.cover_alt_es, 300), cover_alt_en: clean(b.cover_alt_en, 300),
     tags: clean(b.tags, 300), status,
     publish_at: status === 'scheduled' && b.publish_at ? new Date(b.publish_at).toISOString() : null,
     updated_at: new Date().toISOString(),

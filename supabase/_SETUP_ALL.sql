@@ -2994,3 +2994,8 @@ alter table if exists public.profiles
   add column if not exists goal_week  numeric not null default 0,
   add column if not exists goal_month numeric not null default 0,
   add column if not exists goal_year  numeric not null default 0;
+
+-- Blog · texto alternativo (alt) bilingüe de la imagen de portada.
+alter table if exists public.blog_posts
+  add column if not exists cover_alt_es text default '',
+  add column if not exists cover_alt_en text default '';

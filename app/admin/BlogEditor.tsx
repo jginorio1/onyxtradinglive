@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ChangeEvent } from 'react';
 import { toast } from '@/lib/toast';
 import { useLang } from '@/lib/lang';
 import BlogKeywords from './BlogKeywords';
@@ -46,7 +46,29 @@ function DayCalendar({ value, onChange, es }: { value: string; onChange: (d: str
 }
 
 const TIMES = Array.from({ length: 48 }, (_, i) => `${String(Math.floor(i / 2)).padStart(2, '0')}:${i % 2 ? '30' : '00'}`);
-const blank = { id: '', slug: '', title_es: '', title_en: '', excerpt_es: '', excerpt_en: '', body_es: '', body_en: '', cover_url: '', tags: '', status: 'draft', pubDate: '', pubTime: '09:00' };
+const blank = { id: '', slug: '', title_es: '', title_en: '', excerpt_es: '', excerpt_en: '', body_es: '', body_en: '', cover_url: '', cover_alt_es: '', cover_alt_en: '', tags: '', status: 'draft', pubDate: '', pubTime: '09:00' };
+
+// Lee un File como data URL base64 (para subir la imagen al Storage).
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result || ''));
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+
+// Plantilla de gráfica ilustrativa que el editor puede insertar en el cuerpo.
+const CHART_TPL = [
+  ':::chart',
+  'type: line',
+  'title: Título de la gráfica',
+  'alt: Describe qué muestra la gráfica',
+  'source: Datos de ejemplo · Onyx Trading Live',
+  'x: [Ene, Feb, Mar, Abr, May]',
+  'y: [2, 4, 3, 6, 5]',
+  ':::',
+].join('\n');
 
 // Cronómetro en vivo hasta la publicación. Se ve tranquilo si falta mucho y
 // urgente (MM:SS, rojo) en la última hora. Al llegar a 0 marca "vencido".
@@ -152,6 +174,7 @@ export default function BlogEditor() {
     setF({
       ...blank, ...p,
       cover_url: p.cover_url || '',
+      cover_alt_es: p.cover_alt_es || '', cover_alt_en: p.cover_alt_en || '',
       pubDate: d ? `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` : '',
       pubTime: d ? `${pad(d.getHours())}:${pad(d.getMinutes())}` : '09:00',
     });
@@ -184,6 +207,71 @@ export default function BlogEditor() {
       }
       else toast(j.code === 'no_key' ? (es ? 'IA no configurada (falta ANTHROPIC_API_KEY).' : 'AI not configured (missing ANTHROPIC_API_KEY).') : (es ? 'La IA no pudo generar.' : 'AI could not generate.'));
     } finally { setAi(false); }
+  }
+
+  // Sube una imagen al Storage y devuelve su URL pública (o '' si falla).
+  const [imgBusy, setImgBusy] = useState<'' | 'cover' | 'body'>('');
+  async function uploadImage(file: File): Promise<string> {
+    if (file.size > 6 * 1024 * 1024) { toast(es ? 'Imagen muy grande (máx 6 MB).' : 'Image too large (max 6 MB).'); return ''; }
+    const data = await fileToDataUrl(file);
+    const r = await fetch('/api/admin/blog/upload', { method: 'POST', body: JSON.stringify({ name: file.name, data }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.url) { toast((es ? 'No se pudo subir: ' : 'Upload failed: ') + (j.message || j.error || '')); return ''; }
+    return j.url as string;
+  }
+
+  // Portada: subir imagen.
+  async function onCoverFile(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]; e.target.value = ''; if (!file) return;
+    setImgBusy('cover');
+    try { const url = await uploadImage(file); if (url) set('cover_url', url); } finally { setImgBusy(''); }
+  }
+
+  // Genera el alt (ES/EN) con la IA a partir del tema del artículo. Para portada o para una pista.
+  async function genAlt(target: 'cover') {
+    const context = f?.title_es || f?.title_en || topic;
+    if (!context) { toast(es ? 'Pon un título o tema primero.' : 'Set a title or topic first.'); return; }
+    setAi(true);
+    try {
+      const r = await fetch('/api/admin/blog/ai', { method: 'POST', body: JSON.stringify({ mode: 'alt', context, hint: f?.cover_url || '' }) });
+      const j = await r.json();
+      if (r.ok && (j.alt_es || j.alt_en)) {
+        if (target === 'cover') setF((s: any) => ({ ...s, cover_alt_es: j.alt_es || s.cover_alt_es, cover_alt_en: j.alt_en || s.cover_alt_en }));
+      } else toast(j.code === 'no_key' ? (es ? 'IA no configurada.' : 'AI not configured.') : (es ? 'La IA no pudo generar el alt.' : 'AI could not generate alt.'));
+    } finally { setAi(false); }
+  }
+
+  // Inserta una imagen en el cuerpo (sube + añade ![alt](url) con alt IA) en ambos idiomas.
+  async function insertBodyImage(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]; e.target.value = ''; if (!file) return;
+    setImgBusy('body');
+    try {
+      const url = await uploadImage(file); if (!url) return;
+      let altEs = '', altEn = '';
+      const context = f?.title_es || f?.title_en || topic;
+      if (context) {
+        try {
+          const r = await fetch('/api/admin/blog/ai', { method: 'POST', body: JSON.stringify({ mode: 'alt', context, hint: file.name }) });
+          const j = await r.json(); if (r.ok) { altEs = j.alt_es || ''; altEn = j.alt_en || ''; }
+        } catch {}
+      }
+      setF((s: any) => ({
+        ...s,
+        body_es: (s.body_es ? s.body_es.replace(/\s*$/, '') + '\n\n' : '') + `![${altEs || altEn}](${url})\n`,
+        body_en: (s.body_en ? s.body_en.replace(/\s*$/, '') + '\n\n' : '') + `![${altEn || altEs}](${url})\n`,
+      }));
+      toast(es ? 'Imagen insertada en el cuerpo (ES y EN).' : 'Image inserted in the body (ES and EN).');
+    } finally { setImgBusy(''); }
+  }
+
+  // Inserta una plantilla de gráfica al final del cuerpo (ambos idiomas).
+  function insertChart() {
+    setF((s: any) => ({
+      ...s,
+      body_es: (s.body_es ? s.body_es.replace(/\s*$/, '') + '\n\n' : '') + CHART_TPL + '\n',
+      body_en: (s.body_en ? s.body_en.replace(/\s*$/, '') + '\n\n' : '') + CHART_TPL + '\n',
+    }));
+    toast(es ? 'Plantilla de gráfica añadida. Edita los datos.' : 'Chart template added. Edit the data.');
   }
 
   async function save() {
@@ -431,11 +519,42 @@ export default function BlogEditor() {
           <div style={{ flex: '1 1 320px' }}><span className="muted" style={{ fontSize: 12 }}>{es ? 'Resumen (ES)' : 'Excerpt (ES)'}</span><textarea value={f.excerpt_es} onChange={(e) => set('excerpt_es', e.target.value)} rows={2} style={{ width: '100%', margin: '4px 0 0' }} /></div>
           <div style={{ flex: '1 1 320px' }}><span className="muted" style={{ fontSize: 12 }}>{es ? 'Resumen (EN)' : 'Excerpt (EN)'}</span><textarea value={f.excerpt_en} onChange={(e) => set('excerpt_en', e.target.value)} rows={2} style={{ width: '100%', margin: '4px 0 0' }} /></div>
         </div>
+        {/* Insertar imagen (con alt IA) o gráfica ilustrativa en el cuerpo (ambos idiomas) */}
+        <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <label className="btn btn-ghost" style={{ fontSize: 12.5, cursor: 'pointer', margin: 0 }}>
+            {imgBusy === 'body' ? '…' : (es ? '🖼 Insertar imagen' : '🖼 Insert image')}
+            <input type="file" accept="image/*" onChange={insertBodyImage} style={{ display: 'none' }} />
+          </label>
+          <button type="button" className="btn btn-ghost" onClick={insertChart} style={{ fontSize: 12.5 }}>{es ? '📈 Insertar gráfica' : '📈 Insert chart'}</button>
+          <span className="muted" style={{ fontSize: 11.5 }}>{es ? 'La imagen sube al almacenamiento y añade su alt; la gráfica usa datos de ejemplo.' : 'Image uploads to storage with its alt; the chart uses example data.'}</span>
+        </div>
         <div><span className="muted" style={{ fontSize: 12 }}>Cuerpo (ES) · markdown</span><textarea value={f.body_es} onChange={(e) => set('body_es', e.target.value)} rows={10} style={{ width: '100%', margin: '4px 0 0', fontFamily: 'ui-monospace,monospace', fontSize: 13 }} /></div>
         <div><span className="muted" style={{ fontSize: 12 }}>Body (EN) · markdown</span><textarea value={f.body_en} onChange={(e) => set('body_en', e.target.value)} rows={10} style={{ width: '100%', margin: '4px 0 0', fontFamily: 'ui-monospace,monospace', fontSize: 13 }} /></div>
-        <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-          <div style={{ flex: '1 1 320px' }}><span className="muted" style={{ fontSize: 12 }}>{es ? 'Etiquetas (coma)' : 'Tags (comma)'}</span><input value={f.tags} onChange={(e) => set('tags', e.target.value)} style={{ margin: '4px 0 0' }} /></div>
-          <div style={{ flex: '1 1 320px' }}><span className="muted" style={{ fontSize: 12 }}>{es ? 'Imagen de portada (URL) — opcional' : 'Cover image (URL) — optional'}</span><input value={f.cover_url} onChange={(e) => set('cover_url', e.target.value)} style={{ margin: '4px 0 0' }} /></div>
+        <div><span className="muted" style={{ fontSize: 12 }}>{es ? 'Etiquetas (coma)' : 'Tags (comma)'}</span><input value={f.tags} onChange={(e) => set('tags', e.target.value)} style={{ margin: '4px 0 0' }} /></div>
+
+        {/* Portada: subir imagen o URL + texto alternativo (alt) bilingüe con IA */}
+        <div className="card">
+          <div className="row between" style={{ alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+            <span className="muted" style={{ fontSize: 12.5 }}>{es ? 'Imagen de portada — opcional' : 'Cover image — optional'}</span>
+            <label className="btn btn-ghost" style={{ fontSize: 12.5, cursor: 'pointer', margin: 0 }}>
+              {imgBusy === 'cover' ? '…' : (es ? '⬆ Subir imagen' : '⬆ Upload image')}
+              <input type="file" accept="image/*" onChange={onCoverFile} style={{ display: 'none' }} />
+            </label>
+          </div>
+          <div className="row" style={{ gap: 10, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+            {f.cover_url
+              ? <img src={f.cover_url} alt="" style={{ width: 150, height: 96, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--line)', flex: 'none' }} />
+              : <div style={{ width: 150, height: 96, borderRadius: 8, border: '1px dashed var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--mut)', fontSize: 12, flex: 'none' }}>{es ? 'Sin imagen' : 'No image'}</div>}
+            <div style={{ flex: '1 1 260px', minWidth: 220, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <input value={f.cover_url} onChange={(e) => set('cover_url', e.target.value)} placeholder={es ? '…o pega una URL' : '…or paste a URL'} style={{ margin: 0 }} />
+              <div className="row between" style={{ alignItems: 'center' }}>
+                <span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Texto alternativo (alt) — lo lee Google y los lectores de pantalla' : 'Alt text — read by Google and screen readers'}</span>
+                <button type="button" className="btn btn-ghost" onClick={() => genAlt('cover')} disabled={ai} style={{ fontSize: 11.5, padding: '3px 8px' }}>{ai ? '…' : (es ? '✨ Generar alt con IA' : '✨ Generate alt with AI')}</button>
+              </div>
+              <input value={f.cover_alt_es} onChange={(e) => set('cover_alt_es', e.target.value)} placeholder={es ? 'Alt (ES)' : 'Alt (ES)'} style={{ margin: 0 }} />
+              <input value={f.cover_alt_en} onChange={(e) => set('cover_alt_en', e.target.value)} placeholder="Alt (EN)" style={{ margin: 0 }} />
+            </div>
+          </div>
         </div>
 
         {/* Estado + programación */}
