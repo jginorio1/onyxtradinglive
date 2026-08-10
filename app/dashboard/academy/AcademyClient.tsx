@@ -3,6 +3,7 @@ import { mkL } from '@/lib/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import OnyxIcon from '@/app/components/OnyxIcon';
+import NavSelect from '@/app/components/NavSelect';
 import BrandIcon, { BRAND_COLOR } from '@/app/components/BrandIcon';
 import ShareRow from '@/app/components/ShareRow';
 import StudentBilling from '@/app/components/StudentBilling';
@@ -2264,9 +2265,12 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
           };
           return (
             <div style={{ minWidth: 0 }}>
-              <select className="sk-nav-mobile" value={tab} onChange={(e) => setTab(e.target.value as any)} style={{ width: '100%', margin: 0 }}>
-                {mentorTabs.map(([k, , lbl]) => <option key={k} value={k}>{lbl}</option>)}
-              </select>
+              <NavSelect
+                className="sk-nav-mobile"
+                value={tab}
+                onChange={(v) => setTab(v as any)}
+                groups={groups.map(([label, keys]) => ({ label, items: keys.map((k) => ({ value: k, label: byKey[k].lbl, icon: byKey[k].ic, badge: badges[k]?.text })) }))}
+              />
               <nav className="sk-vnav">
                 {groups.map(([label, keys]) => (
                   <div key={label} style={{ marginBottom: 4 }}>

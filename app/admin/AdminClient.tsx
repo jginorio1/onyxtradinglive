@@ -30,6 +30,7 @@ import Finanzas from './Finanzas';
 import AcademyAdmin from './AcademyAdmin';
 import Facturacion from './Facturacion';
 import OnyxIcon from '@/app/components/OnyxIcon';
+import NavSelect from '@/app/components/NavSelect';
 import LandingBuilder from './LandingBuilder';
 import EnvSwitch from './EnvSwitch';
 import ChatWidgetEditor from './ChatWidgetEditor';
@@ -624,14 +625,12 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
               <button className="btn btn-ghost" style={{ flex: 1, minWidth: 120, fontSize: 12.5, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 6 }} onClick={() => { setPalQ(''); setPal(true); }}>🔎 {lang === 'en' ? 'Search' : 'Buscar'} <span style={{ opacity: .55, fontSize: 11 }}>⌘K</span></button>
               {(tab === 'blog' || tab === 'campanas') && <button className="btn btn-primary" style={{ fontSize: 12.5 }} onClick={() => window.dispatchEvent(new CustomEvent('admin-quick-create', { detail: tab }))}>＋ {tab === 'blog' ? (lang === 'en' ? 'Post' : 'Post') : (lang === 'en' ? 'Campaign' : 'Campaña')}</button>}
             </div>
-            {/* Móvil: selector agrupado (se adapta como el menú de arriba) */}
-            <select className="adminnav-mobile" value={tab} onChange={(e) => setTab(e.target.value)} style={{ margin: 0, width: '100%' }}>
-              {groups.map((gr) => (
-                <optgroup key={gr.g} label={gr.g}>
-                  {gr.items.map(([k, ic, label]) => <option key={k} value={k}>{`${ic}  ${label}`}</option>)}
-                </optgroup>
-              ))}
-            </select>
+            {/* Móvil: menú propio con iconos (OnyxIcon) en cada fila y cerrado */}
+            <NavSelect
+              value={tab}
+              onChange={(v) => setTab(v as any)}
+              groups={groups.map((gr) => ({ label: gr.g, items: gr.items.map(([k, ic, label]) => ({ value: k, label, icon: ic, emoji: true, badge: navBadges[k]?.n })) }))}
+            />
             <div className="adminnav-items adminnav-grouped">
               {groups.map((gr) => (
                 <div key={gr.g}>

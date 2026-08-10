@@ -47,7 +47,7 @@ export default function PlansCompareTable({
   const name = (p?: Plan, id?: string) => p ? (lang === 'es' ? p.name : (p.name_en || p.name)) : (id || '');
   const isPro = (p?: Plan) => !!(p && (lang === 'es' ? p.badge : p.badge_en));
   const acc = (id: string) => {
-    const p = byId(id); if (!p) return '—';
+    const p = byId(id); if (!p || p.max_accounts == null) return '—';
     return p.max_accounts >= 999 ? (lang === 'es' ? 'Ilimitadas' : 'Unlimited') : String(p.max_accounts);
   };
   const chk = (v: boolean | string) => typeof v === 'string'
@@ -66,12 +66,15 @@ export default function PlansCompareTable({
               <th style={{ textAlign: 'left', padding: '14px 16px' }}></th>
               {cols.map((id) => {
                 const p = byId(id);
-                const price = p ? (annual ? p.price_year : p.price_month) : 0;
+                const price = p ? (annual ? p.price_year : p.price_month) : null;
                 const per = annual ? (lang === 'es' ? '/año' : '/yr') : (lang === 'es' ? '/mes' : '/mo');
+                // "Gratis" solo para el Free real; si falta el plan mostramos "—" (nunca "Gratis" por error).
+                const priceLabel = price == null ? '—' : (price === 0 && id === 'free') ? (lang === 'es' ? 'Gratis' : 'Free') : `$${price}`;
+                const showPer = price != null && price > 0;
                 return (
                   <th key={id} style={{ textAlign: 'center', padding: '14px 16px', color: isPro(p) ? 'var(--brand)' : 'var(--tx)', fontSize: 15 }}>
                     <div>{name(p, id)}</div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--tx)' }}>{price === 0 ? (lang === 'es' ? 'Gratis' : 'Free') : `$${price}`}<span style={{ fontSize: 11, color: 'var(--mut)', fontWeight: 500 }}>{price === 0 ? '' : per}</span></div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--tx)' }}>{priceLabel}<span style={{ fontSize: 11, color: 'var(--mut)', fontWeight: 500 }}>{showPer ? per : ''}</span></div>
                   </th>
                 );
               })}

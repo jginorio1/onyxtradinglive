@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import Link from 'next/link';
 import OnyxIcon from '@/app/components/OnyxIcon';
+import NavSelect from '@/app/components/NavSelect';
 import CountrySelect from '@/app/components/CountrySelect';
 import StudentBilling from '@/app/components/StudentBilling';
 import { useCatalog } from '@/lib/useCatalog';
@@ -345,10 +346,12 @@ export default function AccountClient({ email }: { email: string }) {
             </div>
             {/* Buscador rápido (⌘K) */}
             <button className="btn btn-ghost" style={{ width: '100%', justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, marginBottom: 10 }} onClick={() => { setPalQ(''); setPal(true); }}><OnyxIcon name="search" size={14} glow={false} /> {lang === 'en' ? 'Search' : 'Buscar'} <span style={{ opacity: .55, fontSize: 11 }}>⌘K</span></button>
-            {/* Móvil: selector (solo las principales) */}
-            <select className="adminnav-mobile" value={tab} onChange={(e) => setTab(e.target.value as Tab)} style={{ margin: 0, width: '100%' }}>
-              {NAV_FLAT.map(([k]) => <option key={k} value={k}>{L.nav[k]}</option>)}
-            </select>
+            {/* Móvil: menú propio con iconos (OnyxIcon) en cada fila y cerrado */}
+            <NavSelect
+              value={tab}
+              onChange={(v) => setTab(v as Tab)}
+              groups={NAV_GROUPS.map((gr) => ({ label: gr.g, items: gr.items.map(([k, icon]) => ({ value: k, label: L.nav[k], icon, emoji: true, badge: (k === 'plan' && pending) ? '•' : undefined })) }))}
+            />
             <div className="adminnav-items">
               {NAV_GROUPS.map((gr) => (
                 <div key={gr.g}>

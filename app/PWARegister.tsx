@@ -15,10 +15,11 @@ export default function PWARegister() {
     const onInstalled = () => { (window as any).__onyxInstall = null; window.dispatchEvent(new Event('onyx-installed')); };
     window.addEventListener('appinstalled', onInstalled);
 
-    let id: any;
+    let id: any, poll: any;
+    let onVis: any, onFocus: any;
     if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
       const hadController = !!navigator.serviceWorker.controller;
-      // Cuando la versión nueva toma el control (tras aprobar "Actualizar"),
+      // Cuando la versión nueva toma el control (tras activar el SW nuevo),
       // recargamos una sola vez. En la primera instalación no había control, así
       // que no recargamos (la página ya funciona).
       let refreshing = false;
@@ -28,11 +29,27 @@ export default function PWARegister() {
         window.location.reload();
       });
 
-      const announce = (reg: ServiceWorkerRegistration) => { (window as any).__onyxWaiting = reg.waiting; window.dispatchEvent(new Event('onyx-update-available')); };
+      // Aplica la versión en espera (activa el SW nuevo → controllerchange → recarga).
+      const applyWaiting = (reg: ServiceWorkerRegistration) => { try { reg.waiting?.postMessage('SKIP_WAITING'); } catch {} };
+
+      const announce = (reg: ServiceWorkerRegistration) => {
+        (window as any).__onyxWaiting = reg.waiting;
+        // Ofrecemos el botón "Actualizar" (opt-in inmediato)...
+        window.dispatchEvent(new Event('onyx-update-available'));
+        // ...pero además auto-aplicamos cuando el usuario deja la app en segundo
+        // plano: así la versión nueva entra sin recargar a mitad de uso y, al
+        // volver a abrir el PWA, ya está fresca. Esto evita quedarse con precios
+        // viejos / tarjetas desaparecidas en modo app.
+        const applyOnHide = () => {
+          if (document.visibilityState === 'hidden') applyWaiting(reg);
+        };
+        document.addEventListener('visibilitychange', applyOnHide);
+      };
 
       id = setTimeout(() => {
         navigator.serviceWorker.register('/sw.js?v=' + encodeURIComponent(APP_VERSION), { updateViaCache: 'none' as any })
           .then((reg) => {
+            (window as any).__onyxReg = reg;
             if (reg.waiting && navigator.serviceWorker.controller) announce(reg); // ya hay una lista
             reg.addEventListener('updatefound', () => {
               const nw = reg.installing;
@@ -42,11 +59,25 @@ export default function PWARegister() {
                 if (nw.state === 'installed' && navigator.serviceWorker.controller) announce(reg);
               });
             });
+            // Un PWA instalado casi nunca hace una navegación nueva, así que el
+            // navegador no busca versiones por su cuenta. Forzamos la búsqueda
+            // cada hora y cada vez que el usuario vuelve a la app.
+            poll = setInterval(() => { reg.update().catch(() => {}); }, 60 * 60 * 1000);
+            onVis = () => { if (document.visibilityState === 'visible') reg.update().catch(() => {}); };
+            onFocus = () => reg.update().catch(() => {});
+            document.addEventListener('visibilitychange', onVis);
+            window.addEventListener('focus', onFocus);
           })
           .catch(() => {});
       }, 1200);
     }
-    return () => { clearTimeout(id); window.removeEventListener('beforeinstallprompt', onPrompt); window.removeEventListener('appinstalled', onInstalled); };
+    return () => {
+      clearTimeout(id); clearInterval(poll);
+      if (onVis) document.removeEventListener('visibilitychange', onVis);
+      if (onFocus) window.removeEventListener('focus', onFocus);
+      window.removeEventListener('beforeinstallprompt', onPrompt);
+      window.removeEventListener('appinstalled', onInstalled);
+    };
   }, []);
   return null;
 }

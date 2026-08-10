@@ -26,10 +26,10 @@ const DEFAULT_PLANS: Plan[] = [
   { id: 'pro', name: 'Pro', name_en: 'Pro', desc_es: null, desc_en: null, price_month: 19, price_year: 190, max_accounts: 5,
     features: ['5 cuentas conectadas', 'Onyx Guardian: freno de riesgo', 'Historial ilimitado y reglas de fondeo', 'Diario, costes y exportar CSV', 'Crea tu academia (Onyx Academy)'],
     features_en: ['5 connected accounts', 'Onyx Guardian: risk brake', 'Unlimited history & funding rules', 'Journal, costs & CSV export', 'Build your academy (Onyx Academy)'], badge: 'Más popular', badge_en: 'Most popular' },
-  { id: 'elite', name: 'Elite', name_en: 'Elite', desc_es: null, desc_en: null, price_month: 39, price_year: 390, max_accounts: 999,
+  { id: 'elite', name: 'Elite', name_en: 'Elite', desc_es: null, desc_en: null, price_month: 79, price_year: 790, max_accounts: 999,
     features: ['Cuentas ilimitadas', 'Copy trading (1 master · 5 esclavas)', 'Cierres parciales y bloqueo por noticias', 'Alertas e informe por Telegram', 'Soporte prioritario'],
     features_en: ['Unlimited accounts', 'Copy trading (1 master · 5 slaves)', 'Partial closes & news blackout', 'Telegram alerts & report', 'Priority support'], badge: null, badge_en: null },
-  { id: 'black', name: 'Black Onyx', name_en: 'Black Onyx', desc_es: null, desc_en: null, price_month: 99, price_year: 990, max_accounts: 999,
+  { id: 'black', name: 'Black Onyx', name_en: 'Black Onyx', desc_es: null, desc_en: null, price_month: 199, price_year: 1990, max_accounts: 999,
     features: ['Copy trading ilimitado (masters y esclavas)', 'Todo sin límites', 'Soporte prioritario'],
     features_en: ['Unlimited copy trading (masters & slaves)', 'Everything with no limits', 'Priority support'], badge: null, badge_en: null },
 ];
