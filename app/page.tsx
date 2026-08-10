@@ -35,7 +35,21 @@ const LOGOS = [
   { n: 'Pepperstone', c: '#e2531f' }, { n: 'Exness', c: '#ffcf5c' },
 ];
 
-function Counter({ to, prefix = '', suffix = '' }: { to: number; prefix?: string; suffix?: string }) {
+// Formato compacto universal (17.4K, 1.2M, 100M, 1.2B). Mantiene cortos los
+// números por muchos que crezcan, así el "+" nunca se corta. < 1000 = exacto.
+function fmtCompact(n: number): string {
+  const abs = Math.abs(n);
+  const cut = (v: number, suf: string) => {
+    const s = (Math.round(v * 10) / 10).toFixed(1).replace(/\.0$/, '');
+    return s + suf;
+  };
+  if (abs >= 1e9) return cut(n / 1e9, 'B');
+  if (abs >= 1e6) return cut(n / 1e6, 'M');
+  if (abs >= 1e3) return cut(n / 1e3, 'K');
+  return String(Math.round(n));
+}
+
+function Counter({ to, prefix = '', suffix = '', compact = true }: { to: number; prefix?: string; suffix?: string; compact?: boolean }) {
   const [n, setN] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
   const seen = useRef(false);        // ¿ya entró en pantalla alguna vez?
@@ -72,7 +86,7 @@ function Counter({ to, prefix = '', suffix = '' }: { to: number; prefix?: string
     return () => { if (io) io.disconnect(); clearTimeout(timer); };
   }, []);
 
-  return <div ref={ref} style={{ fontSize: 44, fontWeight: 800, letterSpacing: '-1px', background: 'var(--grad)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>{prefix}{n.toLocaleString()}{suffix}</div>;
+  return <div ref={ref} style={{ fontSize: 'clamp(28px, 6vw, 44px)', fontWeight: 800, letterSpacing: '-1px', lineHeight: 1.05, whiteSpace: 'nowrap', background: 'var(--grad)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>{prefix}{compact ? fmtCompact(n) : n.toLocaleString()}{suffix}</div>;
 }
 
 const dict = {
