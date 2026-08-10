@@ -104,15 +104,16 @@ export default function PlansCompareTable({
               </td>
               {cols.map((id) => {
                 const p = byId(id);
-                const price = p ? (annual ? p.price_year : p.price_month) : 0;
-                const free = id === 'free' || price === 0;
-                const label = free ? (lang === 'es' ? 'Empezar gratis' : 'Start free')
+                const price = p ? (annual ? p.price_year : p.price_month) : null;
+                // "Empezar gratis" SOLO para el Free real; los de pago dicen "Elegir …".
+                const isFree = id === 'free';
+                const label = isFree ? (lang === 'es' ? 'Empezar gratis' : 'Start free')
                   : (lang === 'es' ? 'Elegir ' : 'Choose ') + name(p, id);
                 return (
                   <td key={id} style={{ textAlign: 'center', padding: '18px 12px 16px' }}>
                     <button className={'btn ' + (isPro(p) ? 'btn-primary' : 'btn-ghost')}
                       style={{ fontSize: 13, padding: '8px 14px', whiteSpace: 'nowrap' }}
-                      onClick={() => onChoose(id, price)} disabled={loadingId === id}>
+                      onClick={() => onChoose(id, price ?? 0)} disabled={loadingId === id || (!isFree && price == null)}>
                       {loadingId === id ? '...' : label}
                     </button>
                   </td>

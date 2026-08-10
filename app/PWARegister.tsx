@@ -7,6 +7,43 @@ import { APP_VERSION } from '@/lib/version';
 // Además: detecta versiones nuevas y avisa a la UI para ofrecer "Actualizar"
 // (así el usuario NUNCA tiene que borrar el caché a mano).
 export default function PWARegister() {
+  // Red de seguridad independiente del service worker: preguntamos al servidor
+  // qué build corre AHORA y lo comparamos con el que trae este bundle. Si el
+  // cliente está viejo (típico en PWA instalada que no recarga), forzamos UNA
+  // recarga. Esto rompe el caso "no actualiza en app" aunque el SW se atasque.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    let stop = false;
+    const KEY = 'onyx_vreload';   // versión para la que ya intentamos recargar (evita bucles)
+    async function check() {
+      try {
+        const r = await fetch('/api/version?t=' + Date.now(), { cache: 'no-store' });
+        if (!r.ok) return;
+        const j = await r.json();
+        const server = String(j?.v || '');
+        if (stop || !server || server === APP_VERSION) return;
+        // Hay build nuevo en el servidor y este bundle es viejo.
+        if (sessionStorage.getItem(KEY) === server) {
+          // Ya recargamos una vez para esta versión y seguimos viejos (HTML/JS
+          // muy cacheado): ofrecemos el botón en vez de recargar en bucle.
+          window.dispatchEvent(new Event('onyx-update-available'));
+          return;
+        }
+        sessionStorage.setItem(KEY, server);
+        // Intentamos activar el SW en espera antes de recargar (por si lo hay).
+        try { const reg = await navigator.serviceWorker?.getRegistration(); reg?.waiting?.postMessage('SKIP_WAITING'); } catch {}
+        window.location.reload();
+      } catch {}
+    }
+    check();
+    const onVis = () => { if (document.visibilityState === 'visible') check(); };
+    const onFocus = () => check();
+    document.addEventListener('visibilitychange', onVis);
+    window.addEventListener('focus', onFocus);
+    const iv = setInterval(check, 30 * 60 * 1000);
+    return () => { stop = true; clearInterval(iv); document.removeEventListener('visibilitychange', onVis); window.removeEventListener('focus', onFocus); };
+  }, []);
+
   useEffect(() => {
     // Guardamos el evento de "instalable" en cuanto el navegador lo lanza, para
     // que el botón "Instalar app" pueda usarlo aunque aparezca más tarde.
