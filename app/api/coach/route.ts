@@ -3,7 +3,6 @@ import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { weeklyReview, fallbackReview, type CoachSummary } from '@/lib/coachAI';
-import { getPlan } from '@/lib/tradingPlan';
 import { logError } from '@/lib/errlog';
 
 export const dynamic = 'force-dynamic';
@@ -128,10 +127,10 @@ export async function GET(req: Request) {
     // atracón en un día, y adherencia de hábitos/racha (ligero, sin consultas pesadas).
     let planBlock: any = undefined;
     try {
-      const { data: planRow } = await supabaseAdmin.from('trading_plans').select('user_id').eq('user_id', user.id).maybeSingle();
-      if (planRow) {
-        const plan = await getPlan(user.id);   // trae el máx de ops/día real del Guardian
-        const maxTD = plan.max_trades_day || 0;
+      const { data: planRow } = await supabaseAdmin.from('trading_plans').select('data').eq('user_id', user.id).maybeSingle();
+      const pd: any = (planRow as any)?.data;
+      if (pd) {
+        const maxTD = Number(pd.max_trades_day) || 0;   // máx de ops/día del plan del trader
         // Adherencia calculada con LAS MISMAS operaciones ya analizadas (sin consultas extra):
         // días que pasó del límite y win rate respetando vs rompiendo el límite.
         let overLimitDays = 0, maxTradesInADay = 0, rW = 0, rN = 0, bW = 0, bN = 0;
@@ -143,7 +142,7 @@ export async function GET(req: Request) {
         // Cumplimiento de hábitos: UNA sola consulta de check-ins (14 días).
         let habitCheckinRate: number | undefined, hstreak: number | undefined;
         try {
-          const habitIds = [...(plan.habits || []), ...((plan.custom_habits || []).map((h: any) => h.id))];
+          const habitIds = [...(Array.isArray(pd.habits) ? pd.habits : []), ...((Array.isArray(pd.custom_habits) ? pd.custom_habits : []).map((h: any) => h.id))];
           const enabled = habitIds.length || 1;
           const fromD = new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 10);
           const { data: ch } = await supabaseAdmin.from('plan_checkins').select('day,items').eq('user_id', user.id).gte('day', fromD);
@@ -157,10 +156,10 @@ export async function GET(req: Request) {
           hstreak = s;
         } catch { /* sin check-ins, seguimos */ }
         planBlock = {
-          hasPlan: true, style: plan.style,
-          maxTradesDay: maxTD || undefined, maxDailyLossPct: plan.max_daily_loss_pct || undefined,
-          sessions: (plan.sessions || []).join(', ') || undefined,
-          rules: (plan.rules || []).slice(0, 4), goal: plan.goal || undefined,
+          hasPlan: true, style: pd.style,
+          maxTradesDay: maxTD || undefined, maxDailyLossPct: Number(pd.max_daily_loss_pct) || undefined,
+          sessions: Array.isArray(pd.sessions) && pd.sessions.length ? pd.sessions.join(', ') : undefined,
+          rules: Array.isArray(pd.rules) ? pd.rules.slice(0, 4) : [], goal: pd.goal || undefined,
           overLimitDays, maxTradesInADay,
           followedMaxTrades: maxTD > 0 ? overLimitDays === 0 : undefined,
           habitCheckinRate, streak: hstreak,
