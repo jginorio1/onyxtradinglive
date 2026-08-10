@@ -23,6 +23,7 @@ import News from './News';
 import NetRealCard from './NetRealCard';
 import CoachCard from './CoachCard';
 import Achievements from './Achievements';
+import MarketClock from './MarketClock';
 import Nudge from './Nudge';
 import { platformLabel, platformsPhrase } from '@/lib/platforms';
 import { useCatalog } from '@/lib/useCatalog';
@@ -551,6 +552,9 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
 
         {/* Guía de configuración adaptativa (onboarding + añadir cuentas, con confirmación en vivo) */}
         <SetupGuide />
+
+        {/* Reloj del mercado Forex (abre/cierra en HH:MM:SS) — sirve a todas las plataformas */}
+        <div style={{ marginBottom: 14 }}><MarketClock /></div>
 
         {/* Ganancia neta + Onyx Coach: rejilla fluida (lado a lado en ancho, apiladas en móvil) */}
         {(caps?.expenses || caps?.coach) && (

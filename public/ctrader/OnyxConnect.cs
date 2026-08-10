@@ -115,6 +115,7 @@ namespace cAlgo.Robots
         private TextBlock _txState;
         private TextBlock _pAutoTxt; private Border _pAuto;
         private TextBlock _pSpreadTxt; private TextBlock _pSessTxt;
+        private TextBlock _pMktTxt; private StackPanel _pMktWrap;
         private StackPanel _guardWrap;
         private Border _statusPill; private TextBlock _statusTxt;
         private Border _blockBox; private TextBlock _blockTop, _blockMsgL, _blockNum;
@@ -722,6 +723,12 @@ namespace cAlgo.Robots
             sessWrap.AddChild(Pill(_pSessTxt, TB));
             root.AddChild(sessWrap);
 
+            // Estado del mercado (cerrado + cuenta atras a la apertura)
+            _pMktTxt = Txt("", TRt, 10);
+            _pMktWrap = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 8), IsVisible = false };
+            _pMktWrap.AddChild(Pill(_pMktTxt, TR));
+            root.AddChild(_pMktWrap);
+
             // Guardian
             _guardWrap = new StackPanel { Orientation = Orientation.Vertical, IsVisible = false };
             _guardWrap.AddChild(Txt(L("GUARDIAN · MY PLAN", "GUARDIAN · MI PLAN"), C_MUT, 9));
@@ -837,6 +844,22 @@ namespace cAlgo.Robots
             int spreadPips = (int)Math.Round(Symbol.Spread / Symbol.PipSize);
             _pSpreadTxt.Text = spreadPips + " pips";
             _pSessTxt.Text = SessionName() + " · " + Server.TimeInUtc.ToString("HH:mm") + " · " + Symbol.Name;
+
+            // Estado del mercado: cerrado + cuenta atras a la apertura (cTrader lo da exacto).
+            try
+            {
+                var mh = Symbol.MarketHours;
+                bool open = mh.IsOpened();
+                if (!open)
+                {
+                    var tt = mh.TimeTillOpen();
+                    string cd = (tt.Days > 0 ? tt.Days + "d " : "") + tt.ToString(@"hh\:mm\:ss");
+                    _pMktTxt.Text = L("Market closed · opens in ", "Mercado cerrado · abre en ") + cd;
+                    _pMktWrap.IsVisible = true;
+                }
+                else _pMktWrap.IsVisible = false;
+            }
+            catch { _pMktWrap.IsVisible = false; }
 
             // guardian
             _guardWrap.IsVisible = _guardOn;

@@ -400,6 +400,27 @@ string MMSS(int secs)
    return (m < 10 ? "0" : "") + IntegerToString(m) + ":" + (s < 10 ? "0" : "") + IntegerToString(s);
   }
 
+// ===== Mercado cerrado + cuenta atras (MT4: sin API de sesiones) =====
+string FmtCountdown(long s)
+  {
+   if(s < 0) s = 0;
+   long d = s / 86400; s -= d * 86400;
+   long h = s / 3600;  s -= h * 3600;
+   long m = s / 60;    long sec = s - m * 60;
+   string hhmmss = StringFormat("%02d:%02d:%02d", (int)h, (int)m, (int)sec);
+   return d > 0 ? (IntegerToString((int)d) + "d " + hhmmss) : hhmmss;
+  }
+bool MarketClosedMT4() { return MarketInfo(Symbol(), MODE_TRADEALLOWED) < 0.5; }
+datetime NextForexOpen()
+  {
+   datetime now = TimeCurrent();
+   int dow = TimeDayOfWeek(now);
+   datetime mid = now - (TimeHour(now) * 3600 + TimeMinute(now) * 60 + TimeSeconds(now));
+   if(dow == 6) return mid + 86400 + 22 * 3600;
+   if(dow == 0) { datetime o = mid + 22 * 3600; if(now < o) return o; }
+   return 0;
+  }
+
 void DrawPanel()
   {
    int X = 12, W = 250, y = 22;
@@ -464,6 +485,16 @@ void DrawPanel()
       y += 20;
       PanelChip("lss", OnyxSession() + " · " + TimeToString(TimeCurrent(), TIME_MINUTES) + " · " + Symbol(), X + 12, y, TB, TBt);
       y += 22;
+      // Estado del mercado: cerrado + cuenta atras a la apertura (aprox. fin de semana).
+      if(MarketClosedMT4())
+      {
+         datetime openT = NextForexOpen();
+         string txt = T("Mercado cerrado", "Market closed");
+         if(openT > 0) txt += T(" · abre en ", " · opens in ") + FmtCountdown((long)(openT - TimeCurrent()));
+         PanelChip("mkt", txt, X + 12, y, TR, TRt);
+         y += 22;
+      }
+      else { ObjectDelete(0, PREFIX + "mktb"); ObjectDelete(0, PREFIX + "mktt"); }
    }
 
    bool ta = (IsExpertEnabled() && IsTradeAllowed());

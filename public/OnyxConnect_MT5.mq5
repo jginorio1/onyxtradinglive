@@ -382,6 +382,44 @@ string MMSS(int secs)
    return (m < 10 ? "0" : "") + IntegerToString(m) + ":" + (s < 10 ? "0" : "") + IntegerToString(s);
 }
 
+// ===== Mercado cerrado + cuenta atras hasta la apertura (sesiones reales) =====
+// Formatea segundos como "Xd HH:MM:SS" (o HH:MM:SS si es menos de un dia).
+string FmtCountdown(long s)
+{
+   if(s < 0) s = 0;
+   long d = s / 86400; s -= d * 86400;
+   long h = s / 3600;  s -= h * 3600;
+   long m = s / 60;    long sec = s - m * 60;
+   string hhmmss = StringFormat("%02d:%02d:%02d", (int)h, (int)m, (int)sec);
+   return d > 0 ? (IntegerToString((int)d) + "d " + hhmmss) : hhmmss;
+}
+
+// ¿El mercado del simbolo esta abierto? Si no, cuando abre (server time).
+// Usa las sesiones de TRADE reales que publica el broker por dia de la semana.
+bool MarketState(string sym, bool &isOpen, datetime &opensAt)
+{
+   datetime now = TimeTradeServer();
+   MqlDateTime mt; TimeToStruct(now, mt);
+   datetime midnight = now - (mt.hour * 3600 + mt.min * 60 + mt.sec);
+   isOpen = false; datetime best = 0;
+   for(int d = 0; d < 8; d++)
+   {
+      int dow = (mt.day_of_week + d) % 7;
+      datetime dayMid = midnight + (datetime)d * 86400;
+      for(uint si = 0; si < 8; si++)
+      {
+         datetime f, t;
+         if(!SymbolInfoSessionTrade(sym, (ENUM_DAY_OF_WEEK)dow, si, f, t)) break;
+         datetime sOpen  = dayMid + (datetime)f;
+         datetime sClose = dayMid + (datetime)t;
+         if(d == 0 && now >= sOpen && now < sClose) { isOpen = true; return true; }
+         if(sOpen > now && (best == 0 || sOpen < best)) best = sOpen;
+      }
+   }
+   opensAt = best;
+   return best > 0 || isOpen;
+}
+
 void DrawPanel()
 {
    int X = 12, W = 250, y = 22;
@@ -451,6 +489,21 @@ void DrawPanel()
       y += 20;
       PanelChip("lss", OnyxSession() + " · " + TimeToString(TimeCurrent(), TIME_MINUTES) + " · " + _Symbol, X + 12, y, TB, TBt);
       y += 22;
+      // Estado del mercado: si esta cerrado, cuenta atras a la apertura (HH:MM:SS).
+      {
+         bool mOpen; datetime mOpenAt;
+         if(MarketState(_Symbol, mOpen, mOpenAt))
+         {
+            if(!mOpen && mOpenAt > 0)
+            {
+               long secs = (long)(mOpenAt - TimeTradeServer());
+               PanelChip("mkt", T("Mercado cerrado · abre en ", "Market closed · opens in ") + FmtCountdown(secs), X + 12, y, TR, TRt);
+               y += 22;
+            }
+            else { ObjectDelete(0, PREFIX + "mktb"); ObjectDelete(0, PREFIX + "mktt"); }
+         }
+         else { ObjectDelete(0, PREFIX + "mktb"); ObjectDelete(0, PREFIX + "mktt"); }
+      }
    }
 
    bool ta = ((bool)MQLInfoInteger(MQL_TRADE_ALLOWED)) && ((bool)TerminalInfoInteger(TERMINAL_TRADE_ALLOWED));
