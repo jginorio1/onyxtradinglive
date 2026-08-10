@@ -535,11 +535,8 @@ export default function Home() {
         <p className="muted" style={{ fontSize: 13, marginTop: 14 }}>{t.hero.note}</p>
 
         {/* vista previa moderna del dashboard (cabina) */}
-        <div className="card" style={{ maxWidth: 940, margin: '46px auto 0', padding: 16, background: '#0b0f18',
-          // La cabina es una "captura" siempre oscura. Forzamos aquí las variables
-          // de tema a valores oscuros para que en tema claro el texto de dentro NO
-          // quede negro sobre fondo oscuro (invisible).
-          color: '#eef1f7', ['--tx' as any]: '#eef1f7', ['--mut' as any]: '#97a1b6', ['--line' as any]: 'rgba(255,255,255,.09)' }}>
+        {/* Cabina = "captura" siempre oscura → .fixed-dark mantiene el texto claro en ambos temas */}
+        <div className="card fixed-dark" style={{ maxWidth: 940, margin: '46px auto 0', padding: 16, background: '#0b0f18' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr 160px', gap: 10, textAlign: 'left' }} className="heroPreview">
             {/* sesiones */}
             <div style={{ background: '#151a28', borderRadius: 12, padding: 12, fontSize: 11 }}>
@@ -878,7 +875,8 @@ export default function Home() {
 
       {/* FINAL CTA */}
       <div className="wrap section">
-        <div className="card" style={{ textAlign: 'center', padding: '54px 30px', background: 'linear-gradient(120deg,#1a1f30,#141826)' }}>
+        {/* Banda de degradado oscuro FIJO → .fixed-dark evita título oscuro-sobre-oscuro en tema claro */}
+        <div className="card fixed-dark" style={{ textAlign: 'center', padding: '54px 30px', background: 'linear-gradient(120deg,#1a1f30,#141826)' }}>
           <h2 style={{ marginBottom: 20 }}>{finalTitle}</h2>
           <Link className="btn btn-primary" href="/login?mode=signup" style={{ padding: '15px 34px', fontSize: 17 }}>{finalBtn}</Link>
         </div>

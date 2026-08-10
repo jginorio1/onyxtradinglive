@@ -255,6 +255,13 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
 @media(max-width:640px){ .g4,.g3,.g2{grid-template-columns:1fr;} h1{font-size:26px;} .wrap,.wrap-wide{padding:0 15px;} .card{padding:16px;} }
 @media(max-width:760px){ .heroPreview{grid-template-columns:1fr!important;} }
 
+/* Bloque con fondo oscuro FIJO (capturas, mockups, bandas de CTA). Fija las
+   variables de tema a valores oscuros dentro del bloque para que el texto sea
+   SIEMPRE claro y legible en ambos temas. Evita el bug de texto oscuro sobre
+   fondo oscuro en tema claro. Úsalo en cualquier panel con background hardcodeado. */
+.fixed-dark{--tx:#eef1f7;--mut:#97a1b6;--line:rgba(255,255,255,.10);--card2:#151a28;color:var(--tx);}
+.fixed-dark h1,.fixed-dark h2,.fixed-dark h3{color:var(--tx);}
+
 /* Panel de admin con barra lateral */
 .adminlayout{display:grid;grid-template-columns:220px 1fr;gap:18px;align-items:start;}
 .adminnav{position:sticky;top:80px;}
