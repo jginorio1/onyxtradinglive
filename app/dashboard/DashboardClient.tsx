@@ -86,6 +86,7 @@ const D = {
     equity: 'Curva de equity', notEnough: 'Aún no hay suficientes operaciones.', ddMax: 'Drawdown máx:', streakMax: 'Racha máx:',
     donutTitle: 'Resultado de operaciones', dWin: 'Ganadoras', dLoss: 'Perdedoras', dBE: 'Break even', dCenter: 'ganadoras',
     pExitTitle: 'Salidas · Full TP vs parciales', pFullTP: 'Full TP', pFullTPsub: 'llegó al objetivo completo', pPartial: 'Cierre parcial', pPartialSub: 'cerró antes del objetivo', pPartialProfit: 'Ganancia parcial', pPartialProfitSub: 'banqueado en TP1/TP2', pRunner: 'Aporte del runner', pRunnerSub: 'lo que dejó correr', pReasons: 'Motivo de salida', rTP: 'Objetivo (TP)', rTrailing: 'Trailing', rManual: 'Manual', rSL: 'Stop (SL)', rSO: 'Stop out', rOther: 'Otro', pNoData: 'Actualiza tu EA a la última versión para ver el desglose de cierres parciales.',
+    pOfN: (n: number) => `de ${n} ops con datos de salida`, pNoPartials: 'Aún no usas cierres parciales en estas operaciones.',
     calTitle: 'Calendario de resultados', month: 'Mes', year: 'Año', monthTotal: 'Total mes:', ops: 'ops', dayOps: 'Operaciones del',
     bestDay: 'Mejor día', bestHour: 'Mejor hora', bestSess: 'Mejor sesión', bestPair: 'Mejor par', worstDay: 'Peor día', worstHour: 'Peor hora', worstSess: 'Peor sesión', worstPair: 'Peor par',
     lsTitle: 'Largos vs Cortos', longs: '🟢 Largos', shorts: '🔴 Cortos', distTitle: 'Distribución de resultados', noData: 'Sin datos.',
@@ -116,6 +117,7 @@ const D = {
     equity: 'Equity curve', notEnough: 'Not enough trades yet.', ddMax: 'Max drawdown:', streakMax: 'Max streak:',
     donutTitle: 'Trade outcome', dWin: 'Winners', dLoss: 'Losers', dBE: 'Break even', dCenter: 'winners',
     pExitTitle: 'Exits · Full TP vs partials', pFullTP: 'Full TP', pFullTPsub: 'reached the full target', pPartial: 'Partial close', pPartialSub: 'closed before target', pPartialProfit: 'Partial profit', pPartialProfitSub: 'banked at TP1/TP2', pRunner: 'Runner contribution', pRunnerSub: 'what you let run', pReasons: 'Exit reason', rTP: 'Target (TP)', rTrailing: 'Trailing', rManual: 'Manual', rSL: 'Stop (SL)', rSO: 'Stop out', rOther: 'Other', pNoData: 'Update your EA to the latest version to see the partial-close breakdown.',
+    pOfN: (n: number) => `of ${n} trades with exit data`, pNoPartials: "You haven't used partial closes on these trades yet.",
     calTitle: 'Results calendar', month: 'Month', year: 'Year', monthTotal: 'Month total:', ops: 'trades', dayOps: 'Trades on',
     bestDay: 'Best day', bestHour: 'Best hour', bestSess: 'Best session', bestPair: 'Best pair', worstDay: 'Worst day', worstHour: 'Worst hour', worstSess: 'Worst session', worstPair: 'Worst pair',
     lsTitle: 'Longs vs Shorts', longs: '🟢 Longs', shorts: '🔴 Shorts', distTitle: 'Results distribution', noData: 'No data.',
@@ -704,12 +706,20 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
               <Card title={L.pExitTitle} icon="🎯">
                 {a.hasReasons ? (
                   <>
-                    <div className="grid g4" style={{ marginBottom: 12 }}>
-                      <StatCard icon="🎯" label={L.pFullTP} value={`${a.fullTP}`} sub={a.n ? `${Math.round(100 * a.fullTP / a.n)}% · ${L.pFullTPsub}` : L.pFullTPsub} accent={GREEN} color={GREEN} bar={a.n ? a.fullTP / a.n : 0} />
-                      <StatCard icon="✂️" label={L.pPartial} value={`${a.partialTrades}`} sub={a.n ? `${Math.round(100 * a.partialTrades / a.n)}% · ${L.pPartialSub}` : L.pPartialSub} accent={BLUE} color={BLUE} bar={a.n ? a.partialTrades / a.n : 0} />
-                      <StatCard icon="💰" label={L.pPartialProfit} value={money(a.partialProfit)} sub={L.pPartialProfitSub} accent={a.partialProfit >= 0 ? GREEN : RED} color={a.partialProfit >= 0 ? GREEN : RED} />
-                      <StatCard icon="🏃" label={L.pRunner} value={money(a.runnerProfit)} sub={L.pRunnerSub} accent={a.runnerProfit >= 0 ? GREEN : RED} color={a.runnerProfit >= 0 ? GREEN : RED} />
-                    </div>
+                    {(() => {
+                      const rn = a.reasonN || 0;                       // ops con dato de salida (denominador correcto)
+                      const hasPartials = a.partialTrades > 0;
+                      const pct = (v: number) => rn ? `${Math.round(100 * v / rn)}%` : '—';
+                      return (
+                        <div className="grid g4" style={{ marginBottom: 12 }}>
+                          <StatCard icon="🎯" label={L.pFullTP} value={`${a.fullTP}`} sub={`${pct(a.fullTP)} · ${L.pOfN(rn)}`} accent={GREEN} color={GREEN} bar={rn ? a.fullTP / rn : 0} />
+                          <StatCard icon="✂️" label={L.pPartial} value={`${a.partialTrades}`} sub={`${pct(a.partialTrades)} · ${L.pPartialSub}`} accent={BLUE} color={BLUE} bar={rn ? a.partialTrades / rn : 0} />
+                          {/* Ganancia parcial y runner solo tienen sentido si usó parciales; si no, se atenúan con una nota. */}
+                          <StatCard icon="💰" label={L.pPartialProfit} value={hasPartials ? money(a.partialProfit) : '—'} sub={hasPartials ? L.pPartialProfitSub : L.pNoPartials} accent={a.partialProfit >= 0 ? GREEN : RED} color={hasPartials ? (a.partialProfit >= 0 ? GREEN : RED) : 'var(--mut)'} />
+                          <StatCard icon="🏃" label={L.pRunner} value={hasPartials ? money(a.runnerProfit) : '—'} sub={hasPartials ? L.pRunnerSub : L.pNoPartials} accent={a.runnerProfit >= 0 ? GREEN : RED} color={hasPartials ? (a.runnerProfit >= 0 ? GREEN : RED) : 'var(--mut)'} />
+                        </div>
+                      );
+                    })()}
                     <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{L.pReasons}</div>
                     {(() => {
                       const er = a.exitReasons as Record<string, number>;

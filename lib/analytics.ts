@@ -68,7 +68,10 @@ export function partialStats(logical: Logical[]) {
     const r = l.finalReason && exitReasons[l.finalReason] !== undefined ? l.finalReason : (l.finalReason ? 'other' : '');
     if (r) { exitReasons[r]++; anyReason = true; }
   }
-  return { fullTP, partialTrades, partialProfit, runnerProfit, exitReasons, hasReasons: anyReason };
+  // Nº de operaciones que SÍ traen dato de salida (motivo). Es el denominador
+  // correcto para los % de Full TP / parcial: las viejas sin dato no cuentan.
+  const reasonN = Object.values(exitReasons).reduce((s, v) => s + v, 0);
+  return { fullTP, partialTrades, partialProfit, runnerProfit, exitReasons, hasReasons: anyReason, reasonN };
 }
 
 export const WD = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
@@ -183,7 +186,7 @@ export function analyze(rawTrades: T[]) {
     // Ganancias parciales / motivo de salida (una op = una posición).
     fullTP: partial.fullTP, partialTrades: partial.partialTrades,
     partialProfit: partial.partialProfit, runnerProfit: partial.runnerProfit,
-    exitReasons: partial.exitReasons, hasReasons: partial.hasReasons,
+    exitReasons: partial.exitReasons, hasReasons: partial.hasReasons, reasonN: partial.reasonN,
     rawCount: rawTrades.length,   // nº de cierres crudos (deals), antes de agrupar
   };
 }
