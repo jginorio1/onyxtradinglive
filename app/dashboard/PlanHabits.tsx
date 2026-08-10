@@ -5,6 +5,33 @@ import OnyxIcon from '@/app/components/OnyxIcon';
 
 type Lang = 'es' | 'en';
 
+// Render del repaso de Onyx AI: cada sección empieza con un emoji + título.
+// Nunca muestra símbolos crudos (**, #, -): los limpia y resalta el título.
+function ReviewText({ text }: { text: string }) {
+  const clean = String(text || '')
+    .replace(/\*\*([^*]+)\*\*/g, '$1').replace(/\*([^*]+)\*/g, '$1').replace(/[*`]/g, '')
+    .replace(/^#{1,6}\s*/gm, '').replace(/^\s*[-•]\s+/gm, '');
+  const emoji = /^\p{Extended_Pictographic}/u;
+  const lines = clean.replace(/\r/g, '').split('\n').map((l) => l.trim());
+  const out: any[] = []; let k = 0;
+  for (const line of lines) {
+    if (!line) continue;
+    if (emoji.test(line)) {
+      const m = line.match(/^(\S+)\s*(.*)$/);
+      out.push(
+        <div key={k++} style={{ marginTop: out.length ? 12 : 0 }}>
+          <div style={{ fontSize: 13.5, fontWeight: 700, display: 'flex', gap: 7, alignItems: 'center' }}>
+            <span style={{ fontSize: 16 }}>{m?.[1]}</span><span>{m?.[2]}</span>
+          </div>
+        </div>
+      );
+    } else {
+      out.push(<div key={k++} style={{ fontSize: 13, lineHeight: 1.55, color: 'var(--mut)', marginTop: 3 }}>{line}</div>);
+    }
+  }
+  return <div>{out}</div>;
+}
+
 const HAB: Record<string, [string, string]> = {
   reviewed_calendar: ['Revisé el calendario económico', 'Reviewed the economic calendar'],
   defined_risk: ['Definí mi riesgo antes de entrar', 'Defined my risk before entering'],
@@ -282,7 +309,7 @@ export default function PlanHabits({ lang, onGoGuardian }: { lang: Lang; onGoGua
                 {s.winRateRespect != null && `${t.winR}: ${s.winRateRespect}%`}{s.winRateBroken != null && ` · ${t.winB}: ${s.winRateBroken}%`}{s.overtradingDays > 0 && ` · ${t.overtr}: ${s.overtradingDays}`}
               </p>
             )}
-            {review && <div style={{ fontSize: 13.5, lineHeight: 1.6, whiteSpace: 'pre-wrap', background: 'var(--bg2)', borderRadius: 10, padding: '11px 13px', marginTop: 8 }}>{review}</div>}
+            {review && <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '12px 14px', marginTop: 8 }}><ReviewText text={review} /></div>}
           </div>
         </div>
       )}

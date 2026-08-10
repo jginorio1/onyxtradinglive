@@ -311,8 +311,34 @@ export async function planReview(plan: Plan, stats: PlanStats, lang: 'es' | 'en'
     + `ADHERENCIA: ${stats.adherence}% · Racha: ${stats.streak} días · Cumplimiento de hábitos: ${stats.checkinRate}% · Disciplina en operaciones: ${stats.tradeDiscipline}% · Días de sobre-operar: ${stats.overtradingDays}\n`
     + `Win rate cuando respetó el límite: ${stats.winRateRespect ?? '—'}% · cuando lo rompió: ${stats.winRateBroken ?? '—'}%`;
   const system = (lang === 'en'
-    ? `You are Onyx AI, a trading discipline coach. Read the trader's PLAN and their real BEHAVIOR below and give a short, concrete review (max 5 short bullet points): what they're doing well, where they break their own rules, and one action for tomorrow. Be direct and encouraging. Use the numbers. NEVER predict the market, give signals or promise profits. No sign-off.`
-    : `Eres Onyx AI, un coach de disciplina de trading. Lee el PLAN del trader y su CONDUCTA real de abajo y da un repaso corto y concreto (máx 5 viñetas cortas): qué hace bien, dónde rompe sus propias reglas, y una acción para mañana. Sé directo y motivador. Usa los números. NUNCA predigas el mercado, des señales ni prometas ganancias. Sin despedida.`)
+    ? `You are Onyx AI, a trading discipline coach. Read the trader's PLAN and their real BEHAVIOR and write a short, warm, concrete review.
+
+WRITE IT WITH THIS EXACT STRUCTURE — four sections, each starting with the emoji + title shown, then ONE short sentence (max two) under it:
+
+✅ What's working
+🚩 Where you break your rules
+🧠 The pattern
+🎯 Your move for tomorrow
+
+Hard rules for formatting:
+- Use PLAIN TEXT only. NEVER use *, **, #, -, •, backticks or any markdown. No bold markup — the app renders the emoji headers.
+- Keep each section to one or two short sentences. Use the real numbers.
+- Be direct but encouraging, human, no jargon.
+- NEVER predict the market, give signals or promise profits. No greeting, no sign-off.`
+    : `Eres Onyx AI, un coach de disciplina de trading. Lee el PLAN del trader y su CONDUCTA real y escribe un repaso corto, cálido y concreto.
+
+ESCRÍBELO CON ESTA ESTRUCTURA EXACTA — cuatro secciones, cada una empieza con el emoji + título mostrado, y debajo UNA frase corta (máx dos):
+
+✅ Lo que funciona
+🚩 Dónde rompes tus reglas
+🧠 El patrón
+🎯 Tu acción para mañana
+
+Reglas estrictas de formato:
+- Usa SOLO TEXTO PLANO. NUNCA uses *, **, #, -, •, comillas invertidas ni markdown. Nada de negritas con símbolos — la app ya resalta los títulos con emoji.
+- Cada sección: una o dos frases cortas. Usa los números reales.
+- Directo pero motivador, humano, sin tecnicismos.
+- NUNCA predigas el mercado, des señales ni prometas ganancias. Sin saludo ni despedida.`)
     + `\n\n=== ${lang === 'en' ? 'PLAN AND BEHAVIOR' : 'PLAN Y CONDUCTA'} ===\n${ctx}`;
   try {
     const model = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5';
@@ -323,6 +349,11 @@ export async function planReview(plan: Plan, stats: PlanStats, lang: 'es' | 'en'
     if (!r.ok) return lang === 'en' ? 'Could not review right now.' : 'No pude repasar ahora mismo.';
     const data = await r.json();
     import('@/lib/aiCost').then((m) => m.logAiUsage('coach', data)).catch(() => {});
-    return (data?.content || []).map((c: any) => c.text || '').join('\n').trim() || (lang === 'en' ? 'No review available.' : 'Sin repaso disponible.');
+    const raw = (data?.content || []).map((c: any) => c.text || '').join('\n').trim();
+    // Defensa: quita cualquier markdown que se le escape al modelo (**, #, viñetas -/•).
+    const clean = raw
+      .replace(/\*\*([^*]+)\*\*/g, '$1').replace(/\*([^*]+)\*/g, '$1').replace(/[*`]/g, '')
+      .replace(/^#{1,6}\s*/gm, '').replace(/^\s*[-•]\s+/gm, '').trim();
+    return clean || (lang === 'en' ? 'No review available.' : 'Sin repaso disponible.');
   } catch { return lang === 'en' ? 'Could not review right now.' : 'No pude repasar ahora mismo.'; }
 }
