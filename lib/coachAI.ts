@@ -39,16 +39,33 @@ const NO_ADVICE = {
 };
 
 // ---- Coach: repaso del rendimiento ----
+// Resumen ENRIQUECIDO: además del P&L lleva el rango de fechas analizado, los
+// días operados, operaciones por día, expectancy, ratio R:R y drawdown, para
+// que el coach juzgue con contexto (y no confunda volumen con disciplina).
 export type CoachSummary = {
   net: number; trades: number; winRate: number; pf: number;
   avgWin: number; avgLoss: number; maxLossStreak: number; biggestLoss: number;
   bestPair?: string; worstPair?: string; bestSession?: string; worstDay?: string; bestHour?: string;
+  from?: string; to?: string; days?: number; tradingDays?: number; perDay?: number;
+  expectancy?: number; rr?: number; maxDrawdown?: number; periodLabel?: string;
 };
 export async function weeklyReview(s: CoachSummary, lang: Lang): Promise<{ ok: boolean; text?: string; reason?: string }> {
   if (!process.env.ANTHROPIC_API_KEY) return { ok: false, reason: 'no_key' };
+  // Reglas de análisis honesto: el coach da un VEREDICTO primero (¿gana o pierde
+  // en este período?) y NUNCA felicita por el volumen de operaciones.
+  const RUBRIC_EN = `SCORING RUBRIC (use these facts, don't invent):
+- Profit Factor < 1.0 OR net < 0 → the trader is LOSING money this period. Say it plainly and kindly; do NOT open with praise.
+- Never praise the NUMBER of trades. High volume without an edge is a risk, not an achievement. If perDay is high, treat it as possible over-trading, not discipline.
+- Win rate alone means nothing without R:R. Judge together: rr = avgWin/avgLoss and expectancy (avg $ per trade). Losing setups: low win rate AND rr < ~1.5.
+- Always ground the review in the analyzed window: mention the period (from–to), number of days and trades. Praise only if it is real and material (positive expectancy, controlled drawdown, improving R:R).`;
+  const RUBRIC_ES = `CRITERIO DE PUNTUACIÓN (usa estos hechos, no inventes):
+- Profit Factor < 1.0 O net < 0 → el trader ESTÁ PERDIENDO dinero en este período. Dilo claro y con amabilidad; NO empieces con un elogio.
+- Nunca felicites por el NÚMERO de operaciones. Mucho volumen sin ventaja es riesgo, no un logro. Si perDay es alto, trátalo como posible sobreoperación, no como disciplina.
+- El win rate solo no significa nada sin el R:R. Júzgalos juntos: rr = avgWin/avgLoss y expectancy ($ medio por operación). Configuración perdedora: win rate bajo Y rr < ~1.5.
+- Ancla siempre el repaso en el período analizado: menciona el rango (de–a), el número de días y de operaciones. Elogia solo si es real y relevante (expectancy positiva, drawdown controlado, R:R mejorando).`;
   const system = (enBase(lang)
-    ? `You are Onyx Coach, a calm, honest trading-performance coach. Read the trader's stats below and write a short review (max ~160 words) in plain language: what they did well, the 1-2 biggest leaks, and one concrete habit to fix next. Be direct but supportive, never harsh. Use a couple of tasteful emojis and short paragraphs. ${NO_ADVICE.en}`
-    : `Eres Onyx Coach, un coach de rendimiento de trading, tranquilo y honesto. Lee las estadísticas del trader y escribe un repaso corto (máx ~160 palabras) en lenguaje claro: qué hizo bien, la 1-2 fugas más grandes, y un hábito concreto para corregir. Directo pero de apoyo, nunca duro. Usa un par de emojis con criterio y párrafos cortos. ${NO_ADVICE.es}`)
+    ? `You are Onyx Coach, a calm, honest trading-performance coach. Read the trader's stats and write a short review (max ~160 words) in plain language, in this order: (1) an honest verdict of THIS period (are they making or losing money, with the dates and number of days/trades), (2) the 1-2 biggest leaks with the numbers, (3) one concrete habit to fix next. Direct but supportive, never harsh. A couple of tasteful emojis, short paragraphs.\n\n${RUBRIC_EN}\n\n${NO_ADVICE.en}`
+    : `Eres Onyx Coach, un coach de rendimiento de trading, tranquilo y honesto. Lee las estadísticas del trader y escribe un repaso corto (máx ~160 palabras) en lenguaje claro, en este orden: (1) un veredicto honesto de ESTE período (¿gana o pierde dinero, con las fechas y el número de días/operaciones), (2) la 1-2 fugas más grandes con los números, (3) un hábito concreto para corregir. Directo pero de apoyo, nunca duro. Un par de emojis con criterio y párrafos cortos.\n\n${RUBRIC_ES}\n\n${NO_ADVICE.es}`)
     + `\n\n=== ${enBase(lang) ? 'ONYX KNOWLEDGE' : 'CONOCIMIENTO DE ONYX'} ===\n${await brandBrief(lang)}` + aiLangDirective(lang);
   const user = JSON.stringify(s);
   const text = await ai(system, (enBase(lang) ? 'Stats: ' : 'Estadísticas: ') + user, 600);

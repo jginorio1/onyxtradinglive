@@ -29,25 +29,39 @@ function RichText({ text }: { text: string }) {
 }
 
 // Coach AI: repaso honesto del rendimiento del trader, bajo demanda.
-export default function CoachCard() {
+// Analiza EL MISMO rango de fechas que el filtro del dashboard (from/to). Si no
+// hay rango, cae a los últimos 90 días. Muestra siempre qué período analizó.
+export default function CoachCard({ from, to }: { from?: string; to?: string }) {
   const { lang } = useLang();
   const L = mkL(lang);
   const [txt, setTxt] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const [open, setOpen] = useState(true);
+  const [sum, setSum] = useState<any>(null);
 
   async function gen() {
-    setBusy(true); setMsg(''); setTxt('');
+    setBusy(true); setMsg(''); setTxt(''); setSum(null);
     try {
-      const r = await fetch('/api/coach?lang=' + lang);
+      const qs = new URLSearchParams({ lang });
+      if (from) qs.set('from', from);
+      if (to) qs.set('to', to);
+      const r = await fetch('/api/coach?' + qs.toString());
       const j = await r.json();
       if (j.locked) { setMsg(L('No disponible en tu plan.', 'Not available on your plan.')); return; }
-      if (j.empty) { setMsg(L('Necesitas unas cuantas operaciones cerradas para tu repaso.', 'You need a few closed trades for your review.')); return; }
+      if (j.empty) { setMsg(L('Necesitas unas cuantas operaciones cerradas en este período para tu repaso.', 'You need a few closed trades in this period for your review.')); return; }
       if (!j.ok) { setMsg(L('No se pudo generar ahora. Inténtalo de nuevo.', "Couldn't generate now. Try again.")); return; }
-      setTxt(j.review || ''); setOpen(true);
+      setTxt(j.review || ''); setSum(j.summary || null); setOpen(true);
     } finally { setBusy(false); }
   }
+
+  // Línea "Analizando: …" con el período real que devolvió la API.
+  const windowLine = sum ? (() => {
+    const wl = sum.periodLabel || (sum.from && sum.to ? `${sum.from} → ${sum.to}` : '');
+    const dias = sum.tradingDays ? `${sum.tradingDays} ${L('días operados', 'trading days')}` : '';
+    const perDay = sum.perDay ? ` · ${sum.perDay}/${L('día', 'day')}` : '';
+    return `${L('Analizando', 'Analyzing')}: ${wl} · ${sum.trades} ${L('ops', 'trades')}${dias ? ' · ' + dias : ''}${perDay}`;
+  })() : '';
 
   return (
     <div className="card" style={{ margin: 0, border: '1px solid rgba(124,140,255,.3)' }}>
@@ -63,6 +77,7 @@ export default function CoachCard() {
         </div>
       </div>
       {msg && <div className="muted" style={{ fontSize: 13 }}>{msg}</div>}
+      {txt && open && windowLine && <div className="muted" style={{ fontSize: 11.5, marginBottom: 8, display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="📅" size={13} /> {windowLine}</div>}
       {txt && open && <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '12px 14px', fontSize: 14, lineHeight: 1.6 }}><RichText text={txt} /></div>}
     </div>
   );

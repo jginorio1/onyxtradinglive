@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import Link from 'next/link';
 import { analyze, bestOf, worstOf, topPairs, fmtDur, type T, type Bucket } from '@/lib/analytics';
-import RangeBar, { type Range, defaultRange } from '@/app/admin/RangeBar';
 import Journal from './Journal';
 import LotCalculator from './LotCalculator';
 import Challenge from './Challenge';
@@ -269,7 +268,6 @@ function PlanBadge({ plan }: { plan: string }) {
 export default function DashboardClient({ email = '', plan = 'free', capOverride, profile, trades = [], accounts: accs0 = [] }: { email?: string; plan?: string; capOverride?: Record<string, any>; profile?: { full_name?: string; trade_style?: string; experience?: string; platform?: string; goal?: string }; trades?: TT[]; accounts?: Acc[] }) {
   const isFree = (plan || 'free') === 'free';
   const { lang, setLang } = useLang();
-  const [rRange, setRRange] = useState<Range>(() => defaultRange('month'));
   const [accounts, setAccounts] = useState<Acc[]>(accs0 || []);
   const [tradesS, setTradesS] = useState<TT[]>(trades || []);
   const [sel, setSel] = useState<string>('all');
@@ -360,6 +358,25 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
       return true;
     });
   }, [tradesS, demo, demoTrades, range, cFrom, cTo, histDays]);
+
+  // Fechas (YYYY-MM-DD) del filtro activo. UN SOLO control de fecha manda: alimenta
+  // al Coach y al export, para que "filtrar" signifique lo mismo en toda la pantalla.
+  const rangeDates = useMemo<{ from?: string; to?: string }>(() => {
+    const iso = (d: Date) => d.toISOString().slice(0, 10);
+    const now = new Date();
+    if (range === 'custom') return { from: cFrom || undefined, to: cTo || undefined };
+    if (range === 'd1') return { from: iso(new Date(Date.now() - 864e5)) };
+    if (range === 'd7') return { from: iso(new Date(Date.now() - 7 * 864e5)) };
+    if (range === 'd30') return { from: iso(new Date(Date.now() - 30 * 864e5)) };
+    if (range === 'mo') return { from: iso(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))) };
+    if (range === 'yr') return { from: iso(new Date(Date.UTC(now.getUTCFullYear(), 0, 1))) };
+    return {}; // 'all' → sin límite (el Coach cae a 90 días)
+  }, [range, cFrom, cTo]);
+  // URLs de descarga del reporte para el período filtrado (con topes seguros).
+  const expFrom = rangeDates.from || '2000-01-01';
+  const expTo = rangeDates.to || new Date().toISOString().slice(0, 10);
+  const pdfHref = `/api/dashboard/report?from=${expFrom}&to=${expTo}&lang=${lang}`;
+  const csvHref = `/api/dashboard/report?export=csv&from=${expFrom}&to=${expTo}&lang=${lang}`;
 
   // Cuántas operaciones suyas quedan fuera por el límite de historial de su plan
   const hiddenTrades = useMemo(() => {
@@ -537,15 +554,18 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
         {(caps?.expenses || caps?.coach) && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(320px,1fr))', gap: 12, alignItems: 'stretch', marginBottom: 14 }}>
             {caps?.expenses ? <NetRealCard /> : null}
-            {caps?.coach ? <CoachCard /> : null}
+            {caps?.coach ? <CoachCard from={rangeDates.from} to={rangeDates.to} /> : null}
           </div>
         )}
 
         {!isFree && (
-          <RangeBar value={rRange} onChange={setRRange}
-            label={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12.5, color: 'var(--tx)' }}><OnyxIcon emoji="📄" size={15} /> {lang === 'es' ? 'Reporte de rendimiento' : 'Performance report'} <span className="muted" style={{ fontSize: 11 }}>· {lang === 'es' ? 'fondeo, impuestos o análisis' : 'funding, taxes or analysis'}</span></span>}
-            pdfUrl={(f, tt) => `/api/dashboard/report?from=${f}&to=${tt}&lang=${lang}`}
-            csvUrl={(f, tt) => `/api/dashboard/report?export=csv&from=${f}&to=${tt}&lang=${lang}`} />
+          <div className="card" style={{ margin: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, padding: '12px 14px' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12.5, color: 'var(--tx)' }}><OnyxIcon emoji="📄" size={15} /> {lang === 'es' ? 'Descargar reporte del período filtrado' : 'Download report for the filtered period'} <span className="muted" style={{ fontSize: 11 }}>· {lang === 'es' ? 'fondeo, impuestos o análisis' : 'funding, taxes or analysis'}</span></span>
+            <span style={{ display: 'inline-flex', gap: 8 }}>
+              <a className="btn btn-ghost" href={pdfHref} target="_blank" rel="noopener noreferrer" style={{ padding: '7px 13px', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="⬇️" size={14} /> PDF</a>
+              <a className="btn btn-ghost" href={csvHref} target="_blank" rel="noopener noreferrer" style={{ padding: '7px 13px', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="⬇️" size={14} /> CSV</a>
+            </span>
+          </div>
         )}
 
         <div className="cockpit">
