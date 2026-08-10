@@ -482,12 +482,15 @@ export const ARTICLES: Article[] = [
     cta: { href: '/dashboard/manager', label: { es: 'Configurar parciales', en: 'Set up partials' } },
     body: {
       es: [
-        { p: 'Puedes cerrar tu posición en hasta cuatro tramos según avanza a tu favor. Por ejemplo: el 50% al llegar a 20 pips, el 30% a 40 pips, y dejas correr el resto.' },
-        { p: 'La ventaja psicológica es real: aseguras algo pronto, y eso te quita la ansiedad de ver una ganancia evaporarse. La desventaja también: si cierras demasiado pronto, tus operaciones ganadoras se quedan pequeñas y tu expectancy baja.' },
+        { p: 'Puedes cerrar tu posición en tres tramos (TP1, TP2, TP3) según avanza a tu favor. Por ejemplo: el 40% al llegar a 20 pips, el 30% a 40 pips, el 20% a 60 pips. Los porcentajes son del tamaño ORIGINAL de la posición y deben sumar 100% o menos.' },
+        { h: 'El Runner: el trozo que dejas correr' },
+        { p: 'El último bloque ya no es un TP más: es el Runner. No lleva porcentaje propio, cierra "el resto" (100% menos la suma de tus TP). Puedes dejarlo correr con el trailing para capturar un movimiento grande, o cerrarlo al llegar a una distancia. Si tus TP suman 100%, no queda runner y Onyx te avisa.' },
+        { p: 'La ventaja psicológica es real: aseguras algo pronto, y eso te quita la ansiedad de ver una ganancia evaporarse. La desventaja también: si cierras demasiado pronto, tus operaciones ganadoras se quedan pequeñas y tu expectancy baja. Por eso existe el runner: banqueas parte y dejas correr el resto.' },
+        { note: 'En el dashboard, la tarjeta "Salidas · Full TP vs parciales" te muestra cuántas cerraste al objetivo completo, cuántas por partes, la ganancia banqueada en TP1/TP2 y el aporte del runner, más el motivo de cada salida.', title: 'Lo ves en tus estadísticas' },
         { warn: 'Si tu operación es de 0,01 lotes, el bróker no deja partirla: no existe media unidad. En ese caso el parcial se salta y Onyx lo apunta en el historial para que sepas por qué no pasó nada.' },
-        { h: 'Un detalle solo de MT4' },
-        { p: 'En MT4, al cerrar parte de una posición el resto recibe un número de ticket nuevo. Onyx lo tiene en cuenta y sigue la pista por otro camino, pero si ves algo raro en el historial, avísanos.' },
-        { p: 'Los cierres parciales están disponibles en el plan Elite.' },
+        { h: 'Un detalle de MT4 y del trailing' },
+        { p: 'En MT4, al cerrar parte de una posición el resto recibe un número de ticket nuevo; Onyx lo agrupa por otro camino. Y en MetaTrader un cierre por trailing figura como "Stop (SL)" en el motivo de salida, porque un trailing es un stop que se movió: la plataforma no los distingue.' },
+        { p: 'Los cierres parciales están disponibles en el plan Elite. Para ver el desglose necesitas la última versión del EA instalada.' },
       ],
       en: [
         { p: 'You can close your position in up to four chunks as it moves your way. For example: 50% at 20 pips, 30% at 40 pips, and let the rest run.' },
