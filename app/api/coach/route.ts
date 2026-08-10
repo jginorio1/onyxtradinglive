@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { weeklyReview, type CoachSummary } from '@/lib/coachAI';
-import { getPlan, computeStats } from '@/lib/tradingPlan';
+import { getPlan } from '@/lib/tradingPlan';
 import { logError } from '@/lib/errlog';
 
 export const dynamic = 'force-dynamic';
@@ -84,6 +84,7 @@ export async function GET(req: Request) {
     const byDay: Record<number, number> = {};           // net por día de la semana (0=dom)
     const byHour: Record<number, number> = {};          // net por hora UTC
     const perDate: Record<string, number> = {};         // nº de ops por día (para adherencia al plan)
+    const perDateWins: Record<string, number> = {};      // ops ganadoras por día
     const tradingDates = new Set<string>();
     for (const t of rows) {
       const p = Number(t.net_profit) || 0;
@@ -94,7 +95,7 @@ export async function GET(req: Request) {
       const s = String(t.symbol || '?'); bySym[s] = (bySym[s] || 0) + p;
       const dt = new Date(t.close_time);
       const dstr = t.close_time.slice(0, 10);
-      tradingDates.add(dstr); perDate[dstr] = (perDate[dstr] || 0) + 1;
+      tradingDates.add(dstr); perDate[dstr] = (perDate[dstr] || 0) + 1; if (p > 0) perDateWins[dstr] = (perDateWins[dstr] || 0) + 1;
       byDay[dt.getUTCDay()] = (byDay[dt.getUTCDay()] || 0) + p;
       byHour[dt.getUTCHours()] = (byHour[dt.getUTCHours()] || 0) + p;
     }
@@ -116,16 +117,37 @@ export async function GET(req: Request) {
 
     // ¿El trader usa "Mi plan y hábitos"? Solo si tiene un plan guardado. Si es así,
     // medimos si LO ESTÁ SIGUIENDO: días que pasó del máx de operaciones, mayor
-    // atracón en un día, y adherencia de hábitos/racha (de tradingPlan.computeStats).
+    // atracón en un día, y adherencia de hábitos/racha (ligero, sin consultas pesadas).
     let planBlock: any = undefined;
     try {
       const { data: planRow } = await supabaseAdmin.from('trading_plans').select('user_id').eq('user_id', user.id).maybeSingle();
       if (planRow) {
-        const plan = await getPlan(user.id);
+        const plan = await getPlan(user.id);   // trae el máx de ops/día real del Guardian
         const maxTD = plan.max_trades_day || 0;
-        let overLimitDays = 0, maxTradesInADay = 0;
-        for (const d in perDate) { if (perDate[d] > maxTradesInADay) maxTradesInADay = perDate[d]; if (maxTD > 0 && perDate[d] > maxTD) overLimitDays++; }
-        const cs = await computeStats(user.id, plan).catch(() => null);
+        // Adherencia calculada con LAS MISMAS operaciones ya analizadas (sin consultas extra):
+        // días que pasó del límite y win rate respetando vs rompiendo el límite.
+        let overLimitDays = 0, maxTradesInADay = 0, rW = 0, rN = 0, bW = 0, bN = 0;
+        for (const d in perDate) {
+          const n = perDate[d], w = perDateWins[d] || 0;
+          if (n > maxTradesInADay) maxTradesInADay = n;
+          if (maxTD > 0 && n > maxTD) { overLimitDays++; bW += w; bN += n; } else { rW += w; rN += n; }
+        }
+        // Cumplimiento de hábitos: UNA sola consulta de check-ins (14 días).
+        let habitCheckinRate: number | undefined, hstreak: number | undefined;
+        try {
+          const habitIds = [...(plan.habits || []), ...((plan.custom_habits || []).map((h: any) => h.id))];
+          const enabled = habitIds.length || 1;
+          const fromD = new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 10);
+          const { data: ch } = await supabaseAdmin.from('plan_checkins').select('day,items').eq('user_id', user.id).gte('day', fromD);
+          const byDay: Record<string, number> = {};
+          for (const c of (ch || []) as any[]) { const it = c.items || {}; byDay[c.day] = habitIds.filter((h: string) => it[h]).length / enabled; }
+          const vals = Object.values(byDay);
+          habitCheckinRate = vals.length ? Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 100) : 0;
+          let s = 0; const today = new Date();
+          let cur = (byDay[today.toISOString().slice(0, 10)] || 0) >= 0.8 ? new Date(today) : new Date(today.getTime() - 86400000);
+          for (let i = 0; i < 60; i++) { const k = cur.toISOString().slice(0, 10); if ((byDay[k] || 0) >= 0.8) { s++; cur = new Date(cur.getTime() - 86400000); } else break; }
+          hstreak = s;
+        } catch { /* sin check-ins, seguimos */ }
         planBlock = {
           hasPlan: true, style: plan.style,
           maxTradesDay: maxTD || undefined, maxDailyLossPct: plan.max_daily_loss_pct || undefined,
@@ -133,8 +155,9 @@ export async function GET(req: Request) {
           rules: (plan.rules || []).slice(0, 4), goal: plan.goal || undefined,
           overLimitDays, maxTradesInADay,
           followedMaxTrades: maxTD > 0 ? overLimitDays === 0 : undefined,
-          adherence: cs?.adherence, habitCheckinRate: cs?.checkinRate, streak: cs?.streak,
-          winRateRespectingLimit: cs?.winRateRespect ?? undefined, winRateBreakingLimit: cs?.winRateBroken ?? undefined,
+          habitCheckinRate, streak: hstreak,
+          winRateRespectingLimit: rN ? Math.round((rW / rN) * 100) : undefined,
+          winRateBreakingLimit: bN ? Math.round((bW / bN) * 100) : undefined,
         };
       }
     } catch { /* si no hay plan, el coach simplemente no habla de adherencia */ }
