@@ -458,8 +458,8 @@ export default function Home() {
   // Celda de la comparativa con iconos de línea: ✅ → check verde en pastilla,
   // ❌ → cruz gris tenue, y "Limitado/Difícil/Manual" → texto ámbar suave.
   const cmpCell = (v: string) =>
-    v === '✅' ? <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: 7, background: 'rgba(52,226,160,.16)', color: 'var(--green)' }}><OnyxIcon name="check" size={15} glow={false} /></span>
-      : v === '❌' ? <span style={{ color: 'var(--mut)', fontSize: 17, opacity: .75 }}>✕</span>
+    v === '✅' ? <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: 7, background: 'var(--green)', color: '#04120b' }}><OnyxIcon name="check" size={15} glow={false} /></span>
+      : v === '❌' ? <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: 7, background: 'var(--card2)', color: 'var(--mut)', fontSize: 14 }}>✕</span>
         : <span style={{ fontSize: 13, color: 'var(--amber)' }}>{v}</span>;
   // Fila de confianza: mapea el emoji inicial a un icono de línea.
   const TRUST_ICON: Record<string, { name: string; color: string }> = {
@@ -535,7 +535,11 @@ export default function Home() {
         <p className="muted" style={{ fontSize: 13, marginTop: 14 }}>{t.hero.note}</p>
 
         {/* vista previa moderna del dashboard (cabina) */}
-        <div className="card" style={{ maxWidth: 940, margin: '46px auto 0', padding: 16, background: '#0b0f18' }}>
+        <div className="card" style={{ maxWidth: 940, margin: '46px auto 0', padding: 16, background: '#0b0f18',
+          // La cabina es una "captura" siempre oscura. Forzamos aquí las variables
+          // de tema a valores oscuros para que en tema claro el texto de dentro NO
+          // quede negro sobre fondo oscuro (invisible).
+          color: '#eef1f7', ['--tx' as any]: '#eef1f7', ['--mut' as any]: '#97a1b6', ['--line' as any]: 'rgba(255,255,255,.09)' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr 160px', gap: 10, textAlign: 'left' }} className="heroPreview">
             {/* sesiones */}
             <div style={{ background: '#151a28', borderRadius: 12, padding: 12, fontSize: 11 }}>
@@ -730,7 +734,7 @@ export default function Home() {
               border: i === firm ? `2px solid ${fm.color}` : `1px solid ${fm.color}55`,
               background: i === firm ? fm.color + '2e' : fm.color + '14', color: 'inherit', transition: 'all .2s' }}>
               <span style={{ width: 12, height: 12, borderRadius: '50%', background: fm.color, flex: 'none', boxShadow: i === firm ? `0 0 8px ${fm.color}` : 'none' }} />
-              <b style={{ fontSize: 15, color: i === firm ? '#fff' : fm.color }}>{fm.name}</b>
+              <b style={{ fontSize: 15, color: i === firm ? 'var(--tx)' : fm.color }}>{fm.name}</b>
             </button>
           ))}
         </div>
