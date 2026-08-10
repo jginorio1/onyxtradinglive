@@ -18,6 +18,20 @@ export const runtime = 'nodejs';
 const toISO = (s?: number) =>
   s && s > 0 ? new Date(s * 1000).toISOString() : null;
 
+// Normaliza el motivo de salida que reportan los distintos EAs a un set fijo.
+const REASONS = new Set(['tp', 'sl', 'trailing', 'manual', 'so', 'other']);
+function normReason(v: any): string | null {
+  if (v == null) return null;
+  const s = String(v).toLowerCase().trim();
+  if (REASONS.has(s)) return s;
+  if (s === 'take_profit' || s === 'takeprofit' || s === 'take-profit') return 'tp';
+  if (s === 'stop_loss' || s === 'stoploss' || s === 'stop-loss') return 'sl';
+  if (s === 'stopout' || s === 'stop_out') return 'so';
+  if (s === 'trail' || s === 'trailing_stop') return 'trailing';
+  if (s === 'client' || s === 'expert' || s === 'mobile' || s === 'web' || s === 'close') return 'manual';
+  return 'other';
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -156,15 +170,24 @@ export async function POST(req: NextRequest) {
         net_profit: t.netProfit,
         magic: t.magic != null ? Number(t.magic) : null,
         ea_comment: t.comment ? String(t.comment).slice(0, 120) : null,
+        // Ganancias parciales: agrupar por posición y motivo de salida.
+        position_id: t.positionId != null ? String(t.positionId).slice(0, 40) : null,
+        exit_reason: normReason(t.exitReason),
+        closed_volume: t.closedVolume != null ? Number(t.closedVolume) : (t.volume != null ? Number(t.volume) : null),
       }));
       const up = await supabaseAdmin
         .from('trades')
         .upsert(rows, { onConflict: 'account_id,ticket' });
-      // Tolerante: si aún no existen las columnas magic/ea_comment (bots.sql sin
+      // Tolerante: si aún no existen columnas nuevas (bots.sql / partials.sql sin
       // correr), reintentamos sin ellas para no perder ninguna operación.
       if (up.error) {
-        const bare = rows.map(({ magic, ea_comment, ...r }: any) => r);
-        await supabaseAdmin.from('trades').upsert(bare, { onConflict: 'account_id,ticket' });
+        const bare = rows.map(({ magic, ea_comment, position_id, exit_reason, closed_volume, ...r }: any) => r);
+        const up2 = await supabaseAdmin.from('trades').upsert(bare, { onConflict: 'account_id,ticket' });
+        // Segundo intento tolerante: puede faltar solo partials.sql (sí existe magic).
+        if (up2.error) {
+          const bare2 = rows.map(({ position_id, exit_reason, closed_volume, ...r }: any) => r);
+          await supabaseAdmin.from('trades').upsert(bare2, { onConflict: 'account_id,ticket' });
+        }
       }
     }
 

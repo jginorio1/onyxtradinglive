@@ -2999,3 +2999,10 @@ alter table if exists public.profiles
 alter table if exists public.blog_posts
   add column if not exists cover_alt_es text default '',
   add column if not exists cover_alt_en text default '';
+
+-- Ganancias parciales: agrupar cierres por posición y saber el motivo de salida.
+alter table if exists public.trades
+  add column if not exists position_id   text,
+  add column if not exists exit_reason   text,
+  add column if not exists closed_volume numeric;
+create index if not exists idx_trades_position on public.trades (account_id, position_id);

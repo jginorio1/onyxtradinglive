@@ -683,13 +683,37 @@ string BuildBody()
       if(ct > maxClose) maxClose = ct;
 
       double prof = OrderProfit(), comm = OrderCommission(), sw = OrderSwap();
+
+      // --- Ganancias parciales (MT4, mejor esfuerzo) ---
+      // MT4 no tiene posiciones: un cierre parcial abre una nueva orden para el
+      // resto y deja un comentario "from #<orig>" / "to #<nuevo>". Agrupamos por
+      // el ticket mas pequeno de la cadena. El motivo se deduce del precio de cierre.
+      string cmt = OrderComment();
+      long posId = OrderTicket();
+      int hash = StringFind(cmt, "#");
+      if(hash >= 0)
+        {
+         string num = "";
+         for(int c = hash + 1; c < StringLen(cmt); c++)
+           { string ch = StringSubstr(cmt, c, 1); if(ch >= "0" && ch <= "9") num += ch; else break; }
+         long ref = (long)StringToInteger(num);
+         if(ref > 0 && ref < posId) posId = ref;   // el mas viejo es la posicion
+        }
+      double tp = OrderTakeProfit(), sl = OrderStopLoss(), cp = OrderClosePrice();
+      double tol = 3 * MarketInfo(OrderSymbol(), MODE_POINT);
+      string er = "manual";
+      if(tp > 0 && MathAbs(cp - tp) <= tol) er = "tp";
+      else if(sl > 0 && MathAbs(cp - sl) <= tol) er = "sl";
+
       if(!first) s += ",";
       first = false;
       s += "{";
       s += "\"ticket\":"     + IntegerToString(OrderTicket()) + ",";
+      s += "\"positionId\":\"" + IntegerToString((int)posId) + "\",";
       s += "\"symbol\":\""   + Esc(OrderSymbol()) + "\",";
       s += "\"side\":\""     + (OrderType() == OP_BUY ? "buy" : "sell") + "\",";
       s += "\"volume\":"     + DoubleToString(OrderLots(), 2) + ",";
+      s += "\"closedVolume\":" + DoubleToString(OrderLots(), 2) + ",";
       s += "\"openTime\":"   + IntegerToString((int)OrderOpenTime()) + ",";
       s += "\"openPrice\":"  + DoubleToString(OrderOpenPrice(), 5) + ",";
       s += "\"closeTime\":"  + IntegerToString((int)ct) + ",";
@@ -698,6 +722,7 @@ string BuildBody()
       s += "\"commission\":" + DoubleToString(comm, 2) + ",";
       s += "\"swap\":"       + DoubleToString(sw, 2) + ",";
       s += "\"netProfit\":"  + DoubleToString(prof + comm + sw, 2) + ",";
+      s += "\"exitReason\":\"" + er + "\",";
       s += "\"magic\":"      + IntegerToString(OrderMagicNumber()) + ",";
       s += "\"comment\":\""  + Esc(OrderComment()) + "\"";
       s += "}";

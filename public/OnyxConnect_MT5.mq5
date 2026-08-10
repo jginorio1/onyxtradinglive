@@ -672,14 +672,22 @@ string BuildBody()
          double comm = HistoryDealGetDouble(dt, DEAL_COMMISSION);
          double swap = HistoryDealGetDouble(dt, DEAL_SWAP);
          double prof = HistoryDealGetDouble(dt, DEAL_PROFIT);
-         s += StringFormat("{\"ticket\":%I64u,\"symbol\":\"%s\",\"side\":\"%s\",\"volume\":%.2f,\"closeTime\":%I64d,\"closePrice\":%.5f,\"profit\":%.2f,\"commission\":%.2f,\"swap\":%.2f,\"netProfit\":%.2f,\"magic\":%I64d}",
-               dt,
+         // Ganancias parciales: id de la posicion (agrupa TP1/TP2/runner) + motivo de salida.
+         long   posId  = (long)HistoryDealGetInteger(dt, DEAL_POSITION_ID);
+         long   reason = (long)HistoryDealGetInteger(dt, DEAL_REASON);
+         string er = "manual";
+         if(reason == DEAL_REASON_TP) er = "tp";
+         else if(reason == DEAL_REASON_SL) er = "sl";
+         else if(reason == DEAL_REASON_SO) er = "so";
+         double dvol = HistoryDealGetDouble(dt, DEAL_VOLUME);
+         s += StringFormat("{\"ticket\":%I64u,\"positionId\":\"%I64d\",\"symbol\":\"%s\",\"side\":\"%s\",\"volume\":%.2f,\"closedVolume\":%.2f,\"closeTime\":%I64d,\"closePrice\":%.5f,\"profit\":%.2f,\"commission\":%.2f,\"swap\":%.2f,\"netProfit\":%.2f,\"exitReason\":\"%s\",\"magic\":%I64d}",
+               dt, posId,
                HistoryDealGetString(dt, DEAL_SYMBOL),
                (HistoryDealGetInteger(dt, DEAL_TYPE) == DEAL_TYPE_SELL ? "buy" : "sell"),
-               HistoryDealGetDouble(dt, DEAL_VOLUME),
+               dvol, dvol,
                (long)HistoryDealGetInteger(dt, DEAL_TIME),
                HistoryDealGetDouble(dt, DEAL_PRICE),
-               prof, comm, swap, prof + comm + swap,
+               prof, comm, swap, prof + comm + swap, er,
                (long)HistoryDealGetInteger(dt, DEAL_MAGIC));
          m++;
          if(m >= 300) break;

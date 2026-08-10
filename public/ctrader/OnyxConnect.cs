@@ -271,11 +271,16 @@ namespace cAlgo.Robots
                 if (count >= 300) break;
                 var sym = Symbols.GetSymbol(h.SymbolName);
                 double vol = sym != null ? sym.VolumeInUnitsToQuantity(h.VolumeInUnits) : h.VolumeInUnits;
+                // Ganancias parciales: cada cierre parcial es un HistoricalTrade con
+                // el MISMO PositionId. Usamos ClosingDealId como ticket unico (asi no
+                // se pisan en la nube) y PositionId para agruparlos (TP1/TP2/runner).
                 if (!f2) s.Append(","); f2 = false;
-                s.Append("{\"ticket\":").Append(h.PositionId)
+                s.Append("{\"ticket\":").Append(h.ClosingDealId)
+                 .Append(",\"positionId\":\"").Append(h.PositionId).Append("\"")
                  .Append(",\"symbol\":\"").Append(h.SymbolName).Append("\"")
                  .Append(",\"side\":\"").Append(h.TradeType == TradeType.Buy ? "buy" : "sell").Append("\"")
                  .Append(",\"volume\":").Append(F(vol))
+                 .Append(",\"closedVolume\":").Append(F(vol))
                  .Append(",\"openTime\":").Append(ToEpoch(h.EntryTime))
                  .Append(",\"openPrice\":").Append(F(h.EntryPrice, 5))
                  .Append(",\"closeTime\":").Append(ToEpoch(h.ClosingTime))

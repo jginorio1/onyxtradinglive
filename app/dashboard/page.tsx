@@ -48,9 +48,15 @@ export default async function Dashboard() {
 
   let trades: any[] = [];
   if (accIds.length) {
-    const { data } = await supabaseAdmin.from('trades')
-      .select('id,account_id,symbol,side,volume,open_time,close_time,net_profit,profit,commission,swap')
+    let { data, error } = await supabaseAdmin.from('trades')
+      .select('id,account_id,symbol,side,volume,open_time,close_time,net_profit,profit,commission,swap,position_id,exit_reason,closed_volume')
       .in('account_id', accIds).order('close_time', { ascending: false }).limit(5000);
+    if (error) {
+      const r2 = await supabaseAdmin.from('trades')
+        .select('id,account_id,symbol,side,volume,open_time,close_time,net_profit,profit,commission,swap')
+        .in('account_id', accIds).order('close_time', { ascending: false }).limit(5000);
+      data = r2.data as any[];
+    }
     trades = data || [];
   }
 

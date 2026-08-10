@@ -84,6 +84,7 @@ const D = {
     kNet: 'Ganancia neta', kWR: 'Win rate', kPF: 'Profit factor', kExp: 'Expectancy', kAvgW: 'Ganancia media', kAvgL: 'Pérdida media', kPayoff: 'Payoff', kDur: 'Duración media', kOps: 'Operaciones', kBest: 'Mejor trade', kWorst: 'Peor trade', kBE: 'Break even',
     equity: 'Curva de equity', notEnough: 'Aún no hay suficientes operaciones.', ddMax: 'Drawdown máx:', streakMax: 'Racha máx:',
     donutTitle: 'Resultado de operaciones', dWin: 'Ganadoras', dLoss: 'Perdedoras', dBE: 'Break even', dCenter: 'ganadoras',
+    pExitTitle: 'Salidas · Full TP vs parciales', pFullTP: 'Full TP', pFullTPsub: 'llegó al objetivo completo', pPartial: 'Cierre parcial', pPartialSub: 'cerró antes del objetivo', pPartialProfit: 'Ganancia parcial', pPartialProfitSub: 'banqueado en TP1/TP2', pRunner: 'Aporte del runner', pRunnerSub: 'lo que dejó correr', pReasons: 'Motivo de salida', rTP: 'Objetivo (TP)', rTrailing: 'Trailing', rManual: 'Manual', rSL: 'Stop (SL)', rSO: 'Stop out', rOther: 'Otro', pNoData: 'Actualiza tu EA a la última versión para ver el desglose de cierres parciales.',
     calTitle: 'Calendario de resultados', month: 'Mes', year: 'Año', monthTotal: 'Total mes:', ops: 'ops', dayOps: 'Operaciones del',
     bestDay: 'Mejor día', bestHour: 'Mejor hora', bestSess: 'Mejor sesión', bestPair: 'Mejor par', worstDay: 'Peor día', worstHour: 'Peor hora', worstSess: 'Peor sesión', worstPair: 'Peor par',
     lsTitle: 'Largos vs Cortos', longs: '🟢 Largos', shorts: '🔴 Cortos', distTitle: 'Distribución de resultados', noData: 'Sin datos.',
@@ -113,6 +114,7 @@ const D = {
     kNet: 'Net profit', kWR: 'Win rate', kPF: 'Profit factor', kExp: 'Expectancy', kAvgW: 'Avg win', kAvgL: 'Avg loss', kPayoff: 'Payoff', kDur: 'Avg duration', kOps: 'Trades', kBest: 'Best trade', kWorst: 'Worst trade', kBE: 'Break even',
     equity: 'Equity curve', notEnough: 'Not enough trades yet.', ddMax: 'Max drawdown:', streakMax: 'Max streak:',
     donutTitle: 'Trade outcome', dWin: 'Winners', dLoss: 'Losers', dBE: 'Break even', dCenter: 'winners',
+    pExitTitle: 'Exits · Full TP vs partials', pFullTP: 'Full TP', pFullTPsub: 'reached the full target', pPartial: 'Partial close', pPartialSub: 'closed before target', pPartialProfit: 'Partial profit', pPartialProfitSub: 'banked at TP1/TP2', pRunner: 'Runner contribution', pRunnerSub: 'what you let run', pReasons: 'Exit reason', rTP: 'Target (TP)', rTrailing: 'Trailing', rManual: 'Manual', rSL: 'Stop (SL)', rSO: 'Stop out', rOther: 'Other', pNoData: 'Update your EA to the latest version to see the partial-close breakdown.',
     calTitle: 'Results calendar', month: 'Month', year: 'Year', monthTotal: 'Month total:', ops: 'trades', dayOps: 'Trades on',
     bestDay: 'Best day', bestHour: 'Best hour', bestSess: 'Best session', bestPair: 'Best pair', worstDay: 'Worst day', worstHour: 'Worst hour', worstSess: 'Worst session', worstPair: 'Worst pair',
     lsTitle: 'Longs vs Shorts', longs: '🟢 Longs', shorts: '🔴 Shorts', distTitle: 'Results distribution', noData: 'No data.',
@@ -694,6 +696,35 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                 </Card>
                 <Card title={L.donutTitle} icon="🍩"><Donut win={a.catWin} loss={a.catLoss} be={a.catBE} L={L} /></Card>
               </div>
+              {/* Ganancias parciales: Full TP vs cierres parciales + motivo de salida */}
+              <Card title={L.pExitTitle} icon="🎯">
+                {a.hasReasons ? (
+                  <>
+                    <div className="grid g4" style={{ marginBottom: 12 }}>
+                      <StatCard icon="🎯" label={L.pFullTP} value={`${a.fullTP}`} sub={a.n ? `${Math.round(100 * a.fullTP / a.n)}% · ${L.pFullTPsub}` : L.pFullTPsub} accent={GREEN} color={GREEN} bar={a.n ? a.fullTP / a.n : 0} />
+                      <StatCard icon="✂️" label={L.pPartial} value={`${a.partialTrades}`} sub={a.n ? `${Math.round(100 * a.partialTrades / a.n)}% · ${L.pPartialSub}` : L.pPartialSub} accent={BLUE} color={BLUE} bar={a.n ? a.partialTrades / a.n : 0} />
+                      <StatCard icon="💰" label={L.pPartialProfit} value={money(a.partialProfit)} sub={L.pPartialProfitSub} accent={a.partialProfit >= 0 ? GREEN : RED} color={a.partialProfit >= 0 ? GREEN : RED} />
+                      <StatCard icon="🏃" label={L.pRunner} value={money(a.runnerProfit)} sub={L.pRunnerSub} accent={a.runnerProfit >= 0 ? GREEN : RED} color={a.runnerProfit >= 0 ? GREEN : RED} />
+                    </div>
+                    <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{L.pReasons}</div>
+                    {(() => {
+                      const er = a.exitReasons as Record<string, number>;
+                      const total = Object.values(er).reduce((s, v) => s + v, 0) || 1;
+                      const rows: [string, number, string][] = [
+                        [L.rTP, er.tp || 0, GREEN], [L.rTrailing, er.trailing || 0, BLUE],
+                        [L.rManual, er.manual || 0, GOLD], [L.rSL, (er.sl || 0) + (er.so || 0), RED], [L.rOther, er.other || 0, 'var(--mut)'],
+                      ];
+                      return rows.filter((r) => r[1] > 0).map(([label, val, col], i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '5px 0' }}>
+                          <span style={{ flex: '0 0 96px', fontSize: 12.5, color: 'var(--mut)' }}>{label}</span>
+                          <div style={{ flex: 1, height: 10, background: 'var(--bg2)', borderRadius: 6, overflow: 'hidden' }}><div style={{ width: `${Math.round(100 * val / total)}%`, height: '100%', background: col }} /></div>
+                          <span style={{ flex: '0 0 66px', textAlign: 'right', fontSize: 12, color: 'var(--mut)' }}>{val} · {Math.round(100 * val / total)}%</span>
+                        </div>
+                      ));
+                    })()}
+                  </>
+                ) : <p className="muted" style={{ fontSize: 13, margin: 0 }}>{L.pNoData}</p>}
+              </Card>
               <div className="grid g4">
                 <StatCard icon="📅" label={L.bestDay} value={bWD ? WDL[lang][+bWD[0]] : '—'} accent={GREEN} color={GREEN} sub={bWD ? money(bWD[1].net) : ''} />
                 <StatCard icon="⏰" label={L.bestHour} value={bH ? `${bH[0]}:00` : '—'} accent={GREEN} color={GREEN} sub={bH ? money(bH[1].net) : ''} />
