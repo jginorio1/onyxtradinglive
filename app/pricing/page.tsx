@@ -7,6 +7,7 @@ import { errMsg } from '@/lib/i18nErrors';
 import PlansCompareTable from '@/app/PlansCompareTable';
 import EmbeddedCheckoutModal from '@/app/EmbeddedCheckoutModal';
 import OnyxIcon from '@/app/components/OnyxIcon';
+import PlanCards from '@/app/PlanCards';
 
 type Plan = { id: string; name: string; name_en: string; desc_es: string | null; desc_en: string | null; price_month: number; price_year: number; max_accounts: number; features: string[]; features_en: string[]; badge: string | null; badge_en: string | null };
 type Lang = 'es' | 'en';
@@ -95,34 +96,8 @@ export default function Pricing() {
           <button className="btn" style={{ borderRadius: 30, background: annual ? 'var(--grad)' : 'transparent', color: annual ? '#fff' : 'var(--mut)' }} onClick={() => setAnnual(true)}>{t.annual} · {t.save}</button>
         </div>
 
-        {/* Tarjetas */}
-        <div className="pricing-grid" style={{ textAlign: 'left', alignItems: 'start', display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', maxWidth: 760, margin: '0 auto' }}>
-          {shown.map((p, i) => {
-            const price = annual ? p.price_year : p.price_month;
-            const name = lang === 'es' ? p.name : (p.name_en || p.name);
-            const desc = lang === 'es' ? p.desc_es : (p.desc_en || p.desc_es);
-            const feats = (lang === 'es' ? p.features : (p.features_en?.length ? p.features_en : p.features)) || [];
-            const badge = lang === 'es' ? p.badge : (p.badge_en || p.badge);
-            const pop = !!badge;
-            const prev = shown[i - 1];
-            const prevName = prev ? (lang === 'es' ? prev.name : (prev.name_en || prev.name)) : '';
-            return (
-              <div key={p.id} className="card" style={pop ? { border: '2px solid var(--brand)', boxShadow: '0 0 30px rgba(124,140,255,.25)', position: 'relative' } : { position: 'relative' }}>
-                {pop && <span style={{ position: 'absolute', top: -13, left: '50%', transform: 'translateX(-50%)', background: 'var(--grad)', color: '#fff', fontSize: 11, fontWeight: 800, padding: '4px 14px', borderRadius: 20, whiteSpace: 'nowrap' }}>★ {badge}</span>}
-                <h3 style={{ marginTop: pop ? 6 : 0 }}>{name}</h3>
-                {desc && <p className="muted" style={{ fontSize: 13, marginTop: 4 }}>{desc}</p>}
-                <div style={{ fontSize: 40, fontWeight: 800, margin: '10px 0 4px' }}>${price}<span className="muted" style={{ fontSize: 15, fontWeight: 500 }}>/{annual ? t.yr : t.mo}</span></div>
-                <ul style={{ listStyle: 'none', margin: '16px 0' }}>
-                  {i > 0 && <li style={{ padding: '7px 0', color: 'var(--mut)', fontWeight: 700, fontSize: 13 }}>{t.allOf} {prevName}, {t.andMore}</li>}
-                  {feats.map((it, j) => <li key={j} style={{ padding: '7px 0', color: '#cdd3e0', display: 'flex', alignItems: 'flex-start', gap: 9 }}><span style={{ flex: 'none', marginTop: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, borderRadius: 6, background: 'rgba(52,226,160,.16)', color: 'var(--green)' }}><OnyxIcon name="check" size={13} glow={false} /></span>{it}</li>)}
-                </ul>
-                <button className={'btn ' + (pop ? 'btn-primary' : 'btn-ghost')} style={{ width: '100%' }} onClick={() => subscribe(p.id, price)} disabled={loading === p.id}>
-                  {loading === p.id ? '...' : (price === 0 ? t.free : t.choose + ' ' + name)}
-                </button>
-              </div>
-            );
-          })}
-        </div>
+        {/* Tarjetas (componente compartido con el landing) */}
+        <PlanCards plans={shown as any} lang={lang} annual={annual} loadingId={loading} onChoose={(id, price) => subscribe(id, price)} />
 
         <p className="muted" style={{ textAlign: 'center', fontSize: 12.5, margin: '14px auto 0', maxWidth: 620 }}>➕ {t.addonNote}</p>
 

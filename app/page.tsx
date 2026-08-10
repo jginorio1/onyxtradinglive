@@ -5,6 +5,7 @@ import { useLang } from '@/lib/lang';
 import Link from 'next/link';
 import SectionNav from './SectionNav';
 import PlansCompareTable from './PlansCompareTable';
+import PlanCards from './PlanCards';
 import OnyxIcon from '@/app/components/OnyxIcon';
 
 type Lang = 'es' | 'en';
@@ -180,9 +181,9 @@ const dict = {
     monthly: 'Mensual', annual: 'Anual (2 meses gratis)',
     plans: [
       { n: 'Free', p: 0, items: ['1 cuenta conectada', 'Estadísticas básicas', '30 días de historial'], cta: 'Empezar gratis', pop: false },
-      { n: 'Pro', p: 19, items: ['5 cuentas conectadas', 'Todas las estadísticas', 'Historial ilimitado', 'Calendario y gráficas', 'Reglas de fondeo'], cta: 'Elegir Pro', pop: true },
-      { n: 'Elite', p: 39, items: ['Cuentas ilimitadas', 'Todo lo de Pro', 'Copy trading anti-baneo', 'Informes automáticos', 'Alertas por Telegram', 'Soporte prioritario'], cta: 'Elegir Elite', pop: false },
-      { n: 'Black Onyx', p: 79, items: ['Todo lo de Elite', 'Copy trading ilimitado', 'Robots y cuentas sin límite', 'Acceso anticipado a novedades'], cta: 'Elegir Black Onyx', pop: false },
+      { n: 'Pro', p: 19, items: ['5 cuentas conectadas', 'Onyx Guardian: freno de riesgo', 'Historial ilimitado y reglas de fondeo', 'Diario, costes y exportar CSV', 'Crea tu academia (Onyx Academy)'], cta: 'Elegir Pro', pop: true },
+      { n: 'Elite', p: 79, items: ['Cuentas ilimitadas', 'Copy trading (1 master · 5 esclavas)', 'Cierres parciales y bloqueo por noticias', 'Alertas e informe por Telegram', 'Soporte prioritario'], cta: 'Elegir Elite', pop: false },
+      { n: 'Black Onyx', p: 199, items: ['Copy trading ilimitado (masters y esclavas)', 'Todo sin límites', 'Soporte prioritario'], cta: 'Elegir Black Onyx', pop: false },
     ],
     amb: {
       t: '¿Tienes una comunidad de trading?',
@@ -317,9 +318,9 @@ const dict = {
     monthly: 'Monthly', annual: 'Annual (2 months free)',
     plans: [
       { n: 'Free', p: 0, items: ['1 connected account', 'Basic stats', '30 days of history'], cta: 'Start free', pop: false },
-      { n: 'Pro', p: 19, items: ['5 connected accounts', 'All stats', 'Unlimited history', 'Calendar & charts', 'Prop-firm rules'], cta: 'Choose Pro', pop: true },
-      { n: 'Elite', p: 39, items: ['Unlimited accounts', 'Everything in Pro', 'Ban-safe copy trading', 'Automatic reports', 'Telegram alerts', 'Priority support'], cta: 'Choose Elite', pop: false },
-      { n: 'Black Onyx', p: 79, items: ['Everything in Elite', 'Unlimited copy trading', 'Unlimited robots and accounts', 'Early access to new features'], cta: 'Choose Black Onyx', pop: false },
+      { n: 'Pro', p: 19, items: ['5 connected accounts', 'Onyx Guardian: risk brake', 'Unlimited history & funding rules', 'Journal, costs & CSV export', 'Build your academy (Onyx Academy)'], cta: 'Choose Pro', pop: true },
+      { n: 'Elite', p: 79, items: ['Unlimited accounts', 'Copy trading (1 master · 5 slaves)', 'Partial closes & news blackout', 'Telegram alerts & report', 'Priority support'], cta: 'Choose Elite', pop: false },
+      { n: 'Black Onyx', p: 199, items: ['Unlimited copy trading (masters & slaves)', 'Everything with no limits', 'Priority support'], cta: 'Choose Black Onyx', pop: false },
     ],
     amb: {
       t: 'Do you have a trading community?',
@@ -416,9 +417,10 @@ export default function Home() {
   }, []);
   // Si la BD aún no devolvió planes, mostramos unos por defecto (nunca vacío).
   const FALLBACK_PLANS: any[] = [
-    { id: 'free', name: 'Free', name_en: 'Free', price_month: 0, price_year: 0, features: t.plans[0].items, features_en: dict.en.plans[0].items, badge: null, badge_en: null },
-    { id: 'pro', name: 'Pro', name_en: 'Pro', price_month: 19, price_year: 190, features: t.plans[1].items, features_en: dict.en.plans[1].items, badge: lang === 'es' ? 'Más popular' : 'Most popular', badge_en: 'Most popular' },
-    { id: 'elite', name: 'Elite', name_en: 'Elite', price_month: 39, price_year: 390, features: t.plans[2].items, features_en: dict.en.plans[2].items, badge: null, badge_en: null },
+    { id: 'free', name: 'Free', name_en: 'Free', price_month: 0, price_year: 0, max_accounts: 1, features: t.plans[0].items, features_en: dict.en.plans[0].items, badge: null, badge_en: null },
+    { id: 'pro', name: 'Pro', name_en: 'Pro', price_month: 19, price_year: 190, max_accounts: 5, features: t.plans[1].items, features_en: dict.en.plans[1].items, badge: lang === 'es' ? 'Más popular' : 'Most popular', badge_en: 'Most popular' },
+    { id: 'elite', name: 'Elite', name_en: 'Elite', price_month: 79, price_year: 790, max_accounts: 999, features: t.plans[2].items, features_en: dict.en.plans[2].items, badge: null, badge_en: null },
+    { id: 'black', name: 'Black Onyx', name_en: 'Black Onyx', price_month: 199, price_year: 1990, max_accounts: 999, features: t.plans[3].items, features_en: dict.en.plans[3].items, badge: null, badge_en: null },
   ];
   const shownPlans = dbPlans.length ? dbPlans : FALLBACK_PLANS;
   const f = FIRMS[firm];
@@ -836,31 +838,7 @@ export default function Home() {
           <button className={'btn ' + (!annual ? 'btn-primary' : 'btn-ghost')} onClick={() => setAnnual(false)}>{lang === 'es' ? 'Mensual' : 'Monthly'}</button>
           <button className={'btn ' + (annual ? 'btn-primary' : 'btn-ghost')} onClick={() => setAnnual(true)}>{lang === 'es' ? 'Anual · ahorra 2 meses' : 'Annual · save 2 months'}</button>
         </div>
-        <div style={{ alignItems: 'start', display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', maxWidth: 760, margin: '0 auto' }}>
-          {shownPlans.map((p, i) => {
-            const price = annual ? p.price_year : p.price_month;
-            const name = lang === 'es' ? p.name : (p.name_en || p.name);
-            const desc = lang === 'es' ? p.desc_es : (p.desc_en || p.desc_es);
-            const feats = (lang === 'es' ? p.features : (p.features_en?.length ? p.features_en : p.features)) || [];
-            const badge = lang === 'es' ? p.badge : (p.badge_en || p.badge);
-            const pop = !!badge;
-            const prev = shownPlans[i - 1];
-            const prevName = prev ? (lang === 'es' ? prev.name : (prev.name_en || prev.name)) : '';
-            return (
-              <div key={p.id} className="card" style={pop ? { border: '2px solid var(--brand)', boxShadow: '0 0 30px rgba(124,140,255,.25)', position: 'relative' } : { position: 'relative' }}>
-                {pop && <span style={{ position: 'absolute', top: -13, left: '50%', transform: 'translateX(-50%)', background: 'var(--grad)', color: '#fff', fontSize: 11, fontWeight: 800, padding: '4px 14px', borderRadius: 20, whiteSpace: 'nowrap' }}>★ {badge}</span>}
-                <h3 style={{ marginTop: pop ? 6 : 0 }}>{name}</h3>
-                {desc && <p className="muted" style={{ fontSize: 13, marginTop: 4 }}>{desc}</p>}
-                <div style={{ fontSize: 42, fontWeight: 800, margin: '10px 0 2px' }}>${price}<span className="muted" style={{ fontSize: 15, fontWeight: 500 }}>/{annual ? (lang === 'es' ? 'año' : 'yr') : (lang === 'es' ? 'mes' : 'mo')}</span></div>
-                <ul style={{ listStyle: 'none', margin: '16px 0' }}>
-                  {i > 0 && <li style={{ padding: '7px 0', color: 'var(--mut)', fontWeight: 700, fontSize: 13 }}>{lang === 'es' ? `Todo lo de ${prevName}, y además:` : `Everything in ${prevName}, and more:`}</li>}
-                  {feats.map((it: string, j: number) => <li key={j} style={{ padding: '7px 0', color: '#d6dae6' }}><span style={{ color: 'var(--green)' }}>✓</span> {it}</li>)}
-                </ul>
-                <Link className={'btn ' + (pop ? 'btn-primary' : 'btn-ghost')} href="/login?mode=signup" style={{ display: 'block', textAlign: 'center' }}>{price === 0 ? (lang === 'es' ? 'Empezar gratis' : 'Start free') : (lang === 'es' ? 'Elegir ' : 'Choose ') + name}</Link>
-              </div>
-            );
-          })}
-        </div>
+        <PlanCards plans={shownPlans} lang={lang} annual={annual} onChoose={() => { window.location.href = '/login?mode=signup'; }} />
 
         {/* Tabla comparativa (componente compartido con /pricing) */}
         <PlansCompareTable plans={shownPlans} lang={lang} annual={false} loadingId=""
