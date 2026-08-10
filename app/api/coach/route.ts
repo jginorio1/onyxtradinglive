@@ -25,6 +25,14 @@ export async function GET(req: Request) {
     const { data: plan } = await supabaseAdmin.from('plans').select('name,name_en,capabilities').eq('id', planId).maybeSingle();
     const capsObj: any = (plan?.capabilities as any) || {};
     if (!capsObj.coach) return NextResponse.json({ locked: true });
+
+    // Idioma y parámetros primero (los usan las descripciones de features).
+    const url = new URL(req.url);
+    const lang = pickLang(url.searchParams.get('lang'));
+    const qFrom = url.searchParams.get('from') || '';
+    const qTo = url.searchParams.get('to') || '';
+    const qAccount = url.searchParams.get('account') || '';   // '' o 'all' = portafolio; si no, una cuenta
+
     // Features del plan del trader → el coach LEE qué incluye cada una para no
     // sugerir lo que su plan no tiene, y para recomendar usar lo que SÍ tiene.
     const FEATURE_DESC: Record<string, { es: string; en: string }> = {
@@ -44,11 +52,6 @@ export async function GET(req: Request) {
     const planIncludes = planFeatures.map(desc);
     const planMissing = FEAT_KEYS.filter((k) => !capsObj[k]).map(desc);
 
-    const url = new URL(req.url);
-    const lang = pickLang(url.searchParams.get('lang'));
-    const qFrom = url.searchParams.get('from') || '';
-    const qTo = url.searchParams.get('to') || '';
-    const qAccount = url.searchParams.get('account') || '';   // '' o 'all' = portafolio; si no, una cuenta
     // Traemos las cuentas con su balance y límite diario de la firma, para dar
     // contexto real al coach. Si esas columnas no existen en la BD desplegada,
     // reintentamos con solo el id para que el coach NUNCA se rompa por eso.
