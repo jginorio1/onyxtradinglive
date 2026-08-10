@@ -31,7 +31,7 @@ function RichText({ text }: { text: string }) {
 // Coach AI: repaso honesto del rendimiento del trader, bajo demanda.
 // Analiza EL MISMO rango de fechas que el filtro del dashboard (from/to). Si no
 // hay rango, cae a los últimos 90 días. Muestra siempre qué período analizó.
-export default function CoachCard({ from, to }: { from?: string; to?: string }) {
+export default function CoachCard({ from, to, account }: { from?: string; to?: string; account?: string }) {
   const { lang } = useLang();
   const L = mkL(lang);
   const [txt, setTxt] = useState('');
@@ -46,6 +46,7 @@ export default function CoachCard({ from, to }: { from?: string; to?: string }) 
       const qs = new URLSearchParams({ lang });
       if (from) qs.set('from', from);
       if (to) qs.set('to', to);
+      if (account && account !== 'all') qs.set('account', account);
       const r = await fetch('/api/coach?' + qs.toString());
       const j = await r.json();
       if (j.locked) { setMsg(L('No disponible en tu plan.', 'Not available on your plan.')); return; }
@@ -57,10 +58,11 @@ export default function CoachCard({ from, to }: { from?: string; to?: string }) 
 
   // Línea "Analizando: …" con el período real que devolvió la API.
   const windowLine = sum ? (() => {
+    const scope = sum.scope ? `${sum.scope} · ` : '';
     const wl = sum.periodLabel || (sum.from && sum.to ? `${sum.from} → ${sum.to}` : '');
     const dias = sum.tradingDays ? `${sum.tradingDays} ${L('días operados', 'trading days')}` : '';
     const perDay = sum.perDay ? ` · ${sum.perDay}/${L('día', 'day')}` : '';
-    return `${L('Analizando', 'Analyzing')}: ${wl} · ${sum.trades} ${L('ops', 'trades')}${dias ? ' · ' + dias : ''}${perDay}`;
+    return `${L('Analizando', 'Analyzing')}: ${scope}${wl} · ${sum.trades} ${L('ops', 'trades')}${dias ? ' · ' + dias : ''}${perDay}`;
   })() : '';
 
   return (

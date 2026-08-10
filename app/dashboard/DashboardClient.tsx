@@ -554,7 +554,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
         {(caps?.expenses || caps?.coach) && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(320px,1fr))', gap: 12, alignItems: 'stretch', marginBottom: 14 }}>
             {caps?.expenses ? <NetRealCard /> : null}
-            {caps?.coach ? <CoachCard from={rangeDates.from} to={rangeDates.to} /> : null}
+            {caps?.coach ? <CoachCard from={rangeDates.from} to={rangeDates.to} account={sel} /> : null}
           </div>
         )}
 
