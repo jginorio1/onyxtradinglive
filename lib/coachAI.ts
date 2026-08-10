@@ -104,6 +104,42 @@ export async function weeklyReview(s: CoachSummary, lang: Lang): Promise<{ ok: b
   return text ? { ok: true, text } : { ok: false, reason: 'error' };
 }
 
+// Repaso DETERMINISTA (sin IA): red de seguridad para que la cápsula del Coach
+// SIEMPRE muestre algo útil, aunque la IA esté caída, sin clave o el endpoint
+// tarde. Usa exactamente los mismos números que le pasaríamos a la IA.
+export function fallbackReview(s: CoachSummary, lang: Lang): string {
+  const en = enBase(lang);
+  const money = (n: number) => (n >= 0 ? '+$' : '-$') + Math.abs(Math.round(n)).toLocaleString('en-US');
+  const L = <T,>(a: T, b: T) => (en ? b : a);
+  const out: string[] = [];
+  const scope = s.scope ? s.scope + ' · ' : '';
+  out.push(`**${L('Repaso Onyx', 'Onyx review')}: ${scope}${s.periodLabel || ''}${s.trades ? ` · ${s.trades} ${L('ops', 'trades')}` : ''}${s.tradingDays ? ` · ${s.tradingDays} ${L('días', 'days')}` : ''}** 📊`);
+  const losing = (s.pf > 0 && s.pf < 1) || s.net < 0;
+  out.push(losing
+    ? `${L('Veredicto', 'Verdict')}: ${L('estás perdiendo en este período', 'you are losing money this period')}. PF ${s.pf}, ${L('neto', 'net')} ${money(s.net)}. ${s.perDay ? `${s.perDay}/${L('día', 'day')}.` : ''}`
+    : `${L('Veredicto', 'Verdict')}: ${L('período positivo', 'positive period')} (${L('neto', 'net')} ${money(s.net)}, PF ${s.pf}). ${L('Mantén la disciplina', 'Keep the discipline')}.`);
+  if (s.breakevenRR && s.rr != null) out.push(`R:R ${s.rr} · ${L('para no perder a tu win rate necesitas', 'to break even at your win rate you need')} ~${s.breakevenRR}:1 (${L('win rate', 'win rate')} ${s.winRate}%).`);
+  if (s.expectancy != null) out.push(`${L('Expectancy', 'Expectancy')}: ${money(s.expectancy)}/${L('operación', 'trade')}. ${L('Racha máx. de pérdidas', 'Max losing streak')}: ${s.maxLossStreak}. ${L('Drawdown', 'Drawdown')}: ${money(-(s.maxDrawdown || 0))}.`);
+  if (s.plan?.hasPlan) {
+    if (s.plan.followedMaxTrades === false) out.push(`⚠ ${L('No seguiste tu plan', "You didn't follow your plan")}: ${s.plan.maxTradesDay} ${L('ops/día máx, pero pasaste el límite en', 'trades/day max, but you went over on')} ${s.plan.overLimitDays} ${L('día(s)', 'day(s)')} (${L('máx', 'peak')} ${s.plan.maxTradesInADay}).`);
+    else if (s.plan.followedMaxTrades === true) out.push(`✓ ${L('Respetaste tu máx de operaciones', 'You respected your max trades')} (${s.plan.maxTradesDay}/${L('día', 'day')}).`);
+    if (s.plan.winRateRespectingLimit != null && s.plan.winRateBreakingLimit != null) out.push(`${L('Win rate respetando el límite', 'Win rate within limit')}: ${s.plan.winRateRespectingLimit}% · ${L('rompiéndolo', 'breaking it')}: ${s.plan.winRateBreakingLimit}%.`);
+    if (s.plan.habitCheckinRate != null) out.push(`${L('Cumplimiento de hábitos', 'Habit check-ins')}: ${s.plan.habitCheckinRate}%${s.plan.streak ? ` · ${L('racha', 'streak')} ${s.plan.streak}` : ''}.`);
+  }
+  const g = s.goals;
+  if (g) {
+    const gl: string[] = [];
+    if (g.week) gl.push(`${L('semana', 'week')} ${g.week.pct}%`);
+    if (g.month) gl.push(`${L('mes', 'month')} ${g.month.pct}%`);
+    if (g.year) gl.push(`${L('año', 'year')} ${g.year.pct}%`);
+    if (gl.length) out.push(`🎯 ${L('Metas', 'Goals')}: ${gl.join(' · ')}.`);
+  }
+  out.push(losing
+    ? `${L('Hábito', 'Habit')}: ${L('menos volumen y setups con R:R ≥ tu punto de equilibrio; usa un freno de pérdida diaria', 'trade less and only take setups with R:R ≥ your break-even; use a daily loss stop')}. 💪`
+    : `${L('Hábito', 'Habit')}: ${L('repite lo que funciona y no subas el riesgo', 'repeat what works and don\'t raise risk')}. 💪`);
+  return out.join('\n\n');
+}
+
 // ---- Imán de leads: analiza un reporte pegado ----
 export async function analyzeStatement(text: string, lang: Lang): Promise<{ ok: boolean; findings?: string[]; reason?: string }> {
   if (!process.env.ANTHROPIC_API_KEY) return { ok: false, reason: 'no_key' };

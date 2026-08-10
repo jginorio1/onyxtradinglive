@@ -2,7 +2,7 @@ import { pickLang, langFromCookie } from '@/lib/i18n';
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { weeklyReview, type CoachSummary } from '@/lib/coachAI';
+import { weeklyReview, fallbackReview, type CoachSummary } from '@/lib/coachAI';
 import { getPlan } from '@/lib/tradingPlan';
 import { logError } from '@/lib/errlog';
 
@@ -51,10 +51,18 @@ export async function GET(req: Request) {
     const qTo = url.searchParams.get('to') || '';
     const qAccount = url.searchParams.get('account') || '';   // '' o 'all' = portafolio; si no, una cuenta
     // Traemos las cuentas con su balance y límite diario de la firma, para dar
-    // contexto real al coach (no cifras inventadas).
-    const { data: accs } = await supabaseAdmin.from('trading_accounts')
+    // contexto real al coach. Si esas columnas no existen en la BD desplegada,
+    // reintentamos con solo el id para que el coach NUNCA se rompa por eso.
+    let accs: any[] = [];
+    const rAcc = await supabaseAdmin.from('trading_accounts')
       .select('id,nickname,balance,fund_max_daily').eq('user_id', user.id);
-    const allIds = (accs || []).map((a: any) => a.id);
+    if (rAcc.error) {
+      const r2 = await supabaseAdmin.from('trading_accounts').select('id').eq('user_id', user.id);
+      accs = (r2.data || []) as any[];
+    } else {
+      accs = (rAcc.data || []) as any[];
+    }
+    const allIds = accs.map((a: any) => a.id);
     if (!allIds.length) return NextResponse.json({ ok: false, empty: true });
 
     // Alcance: portafolio (todas) o una cuenta seleccionada del dashboard.
@@ -203,9 +211,18 @@ export async function GET(req: Request) {
       periodLabel: (hasFrom || hasTo) ? `${firstDate} → ${lastDate}` : (enWindow(lang) ? 'last 90 days' : 'últimos 90 días'),
     };
 
-    const r = await weeklyReview(summary, lang);
-    if (!r.ok) return NextResponse.json({ ok: false, reason: r.reason });
-    return NextResponse.json({ ok: true, review: r.text, summary });
+    // La IA con red de seguridad: si falla, no responde o tarda >12s, devolvemos
+    // un repaso determinista con los mismos números → la cápsula SIEMPRE funciona.
+    let reviewText: string | undefined;
+    try {
+      const r: any = await Promise.race([
+        weeklyReview(summary, lang),
+        new Promise((res) => setTimeout(() => res({ ok: false }), 12000)),
+      ]);
+      if (r?.ok && r.text) reviewText = r.text;
+    } catch { /* caemos al repaso determinista */ }
+    if (!reviewText) reviewText = fallbackReview(summary, lang);
+    return NextResponse.json({ ok: true, review: reviewText, summary });
   } catch (e: any) {
     await logError('coach_get', e);
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
