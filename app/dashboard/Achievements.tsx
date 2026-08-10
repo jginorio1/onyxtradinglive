@@ -23,7 +23,7 @@ const T = {
     trophies: 'Trofeos', challengesPassed: 'challenges aprobados', funded: 'cuentas fondeadas', badges: 'Insignias',
     goalsHead: 'Mis metas de ganancia', goalsSub: 'Cuánto quieres ganar por semana, mes y año, sumando todas tus cuentas.',
     goalW: 'Meta semanal', goalM: 'Meta mensual', goalY: 'Meta anual', pW: 'Esta semana', pM: 'Este mes', pY: 'Este año',
-    remain: 'Te faltan', done: '¡Meta cumplida!', over: 'sobre la meta', setGoals: 'Fijar metas', save: 'Guardar metas', saved: 'Guardado',
+    remain: 'Te faltan', done: '¡Meta cumplida!', over: 'sobre la meta', setGoals: 'Fijar metas', save: 'Guardar metas', saved: 'Guardado ✓', saveErr: 'No se pudo guardar. Inténtalo de nuevo.',
     tzNote: 'Se guardan en tu cuenta · con tu zona horaria', days: 'días', wk: 'Semanal', mo: 'Mensual', yr: 'Anual',
   },
   en: {
@@ -31,7 +31,7 @@ const T = {
     trophies: 'Trophies', challengesPassed: 'challenges passed', funded: 'funded accounts', badges: 'Badges',
     goalsHead: 'My profit goals', goalsSub: 'How much you want to make per week, month and year, across all your accounts.',
     goalW: 'Weekly goal', goalM: 'Monthly goal', goalY: 'Annual goal', pW: 'This week', pM: 'This month', pY: 'This year',
-    remain: 'to go', done: 'Goal reached', over: 'over goal', setGoals: 'Set goals', save: 'Save goals', saved: 'Saved',
+    remain: 'to go', done: 'Goal reached', over: 'over goal', setGoals: 'Set goals', save: 'Save goals', saved: 'Saved ✓', saveErr: "Couldn't save. Try again.",
     tzNote: 'Saved to your account · in your timezone', days: 'days', wk: 'Weekly', mo: 'Monthly', yr: 'Annual',
   },
 };
@@ -44,6 +44,7 @@ export default function Achievements({ a, accounts, trades = [], lang }: { a: an
   const [gw, setGw] = useState(0); const [gm, setGm] = useState(0); const [gy, setGy] = useState(0);
   const [ew, setEw] = useState(''); const [em, setEm] = useState(''); const [ey, setEy] = useState('');
   const [savedFlash, setSavedFlash] = useState(false);
+  const [saveErr, setSaveErr] = useState(false);
 
   useEffect(() => {
     try {
@@ -63,10 +64,18 @@ export default function Achievements({ a, accounts, trades = [], lang }: { a: an
 
   async function saveGoals() {
     const w = Number(ew) || 0, m = Number(em) || 0, y = Number(ey) || 0;
-    setGw(w); setGm(m); setGy(y);
+    setGw(w); setGm(m); setGy(y); setSaveErr(false);
     try { localStorage.setItem('onyx_goal_w', String(w)); localStorage.setItem('onyx_goal', String(m)); localStorage.setItem('onyx_goal_m', String(m)); localStorage.setItem('onyx_goal_y', String(y)); } catch {}
-    try { await fetch('/api/goals', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ week: w, month: m, year: y }) }); } catch {}
-    setSavedFlash(true); setTimeout(() => setSavedFlash(false), 1600);
+    try {
+      const r = await fetch('/api/goals', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ week: w, month: m, year: y }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || j.ok === false) { setSaveErr(true); return; }
+      // Confiamos en lo que el servidor confirma que guardó (fuente de verdad).
+      const sw = Number(j.week ?? w), sm = Number(j.month ?? m), sy = Number(j.year ?? y);
+      setGw(sw); setGm(sm); setGy(sy);
+      setEw(sw ? String(sw) : ''); setEm(sm ? String(sm) : ''); setEy(sy ? String(sy) : '');
+      setSavedFlash(true); setTimeout(() => setSavedFlash(false), 1600);
+    } catch { setSaveErr(true); }
   }
 
   // Progreso de cada período calculado desde las operaciones en la ZONA LOCAL del
@@ -162,7 +171,10 @@ export default function Achievements({ a, accounts, trades = [], lang }: { a: an
             <label style={{ fontSize: 12 }} className="muted">{t.mo}<input type="number" placeholder="2000" value={em} onChange={(e) => setEm(e.target.value)} style={{ margin: '5px 0 0', width: '100%' }} /></label>
             <label style={{ fontSize: 12 }} className="muted">{t.yr}<input type="number" placeholder="24000" value={ey} onChange={(e) => setEy(e.target.value)} style={{ margin: '5px 0 0', width: '100%' }} /></label>
           </div>
-          <button className="btn btn-primary" onClick={saveGoals} style={{ marginTop: 12 }}>{savedFlash ? t.saved : t.save}</button>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 12, flexWrap: 'wrap' }}>
+            <button className="btn btn-primary" onClick={saveGoals}>{savedFlash ? t.saved : t.save}</button>
+            {saveErr && <span style={{ fontSize: 12.5, color: 'var(--red, #ff6b6b)' }}>{(t as any).saveErr}</span>}
+          </div>
         </div>
       </div>
     </div>
