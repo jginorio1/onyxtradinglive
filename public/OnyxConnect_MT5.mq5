@@ -721,6 +721,25 @@ string BuildBody()
    if(HistorySelect(from, TimeCurrent()))
    {
       int deals = HistoryDealsTotal();
+      // Pre-pase: acumula comision y swap de los deals que NO son de salida (la
+      // entrada, sobre todo). Muchos brokers cobran la mitad de la comision al
+      // abrir; si solo leyeramos el deal de salida, la comision saldria a la
+      // mitad. Asi el total cuadra exacto con MT5. Se añade una sola vez por posicion.
+      long   posIds[]; double posInComm[]; double posInSwap[]; bool posApplied[];
+      int    np = 0;
+      for(int i = 0; i < deals; i++)
+      {
+         ulong d = HistoryDealGetTicket(i);
+         if(d == 0) continue;
+         if(HistoryDealGetInteger(d, DEAL_ENTRY) == DEAL_ENTRY_OUT) continue;   // solo entradas/ajustes
+         long pid = (long)HistoryDealGetInteger(d, DEAL_POSITION_ID);
+         if(pid == 0) continue;
+         int idx = -1;
+         for(int k = 0; k < np; k++) { if(posIds[k] == pid) { idx = k; break; } }
+         if(idx < 0) { np++; ArrayResize(posIds, np); ArrayResize(posInComm, np); ArrayResize(posInSwap, np); ArrayResize(posApplied, np); idx = np - 1; posIds[idx] = pid; posInComm[idx] = 0; posInSwap[idx] = 0; posApplied[idx] = false; }
+         posInComm[idx] += HistoryDealGetDouble(d, DEAL_COMMISSION);
+         posInSwap[idx] += HistoryDealGetDouble(d, DEAL_SWAP);
+      }
       for(int i = 0; i < deals; i++)
       {
          ulong dt = HistoryDealGetTicket(i);
@@ -732,6 +751,8 @@ string BuildBody()
          double prof = HistoryDealGetDouble(dt, DEAL_PROFIT);
          // Ganancias parciales: id de la posicion (agrupa TP1/TP2/runner) + motivo de salida.
          long   posId  = (long)HistoryDealGetInteger(dt, DEAL_POSITION_ID);
+         // Añade la comision/swap de la entrada una sola vez por posicion.
+         for(int k = 0; k < np; k++) { if(posIds[k] == posId) { if(!posApplied[k]) { comm += posInComm[k]; swap += posInSwap[k]; posApplied[k] = true; } break; } }
          long   reason = (long)HistoryDealGetInteger(dt, DEAL_REASON);
          string er = "manual";
          if(reason == DEAL_REASON_TP) er = "tp";
