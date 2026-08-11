@@ -56,7 +56,7 @@ export async function POST(req: Request) {
     const lang = pickLang(b.lang);
     // Texto pegado (hasta ~15.000 caracteres para contratos largos) y/o archivo
     // (foto o PDF del contrato). La IA lee de cualquiera de las dos formas.
-    const text = String(b.text || '').slice(0, 30000);
+    const text = String(b.text || '').slice(0, 200000);
     let file: { media_type: string; data: string } | undefined;
     if (b.file && b.file.data && b.file.media_type) {
       const ok = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(String(b.file.media_type));

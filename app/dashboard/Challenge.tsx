@@ -240,11 +240,11 @@ export default function Challenge({ lang }: { lang: Lang }) {
                       onChange={(e) => { const f = e.target.files?.[0]; if (f) readFile(a.id, f); e.currentTarget.value = ''; }} />
                   </label>
                   <div className="muted" style={{ fontSize: 11, textAlign: 'center', margin: '2px 0 8px' }}>{lang === 'es' ? '— o pega el texto —' : '— or paste the text —'}</div>
-                  <textarea value={aiText[a.id] || ''} maxLength={30000} onChange={(e) => setAiText((p: any) => ({ ...p, [a.id]: e.target.value }))} placeholder={L.aiPlaceholder}
+                  <textarea value={aiText[a.id] || ''} maxLength={200000} onChange={(e) => setAiText((p: any) => ({ ...p, [a.id]: e.target.value }))} placeholder={L.aiPlaceholder}
                     style={{ width: '100%', minHeight: 70, padding: '9px 11px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--tx)', fontSize: 13, fontFamily: 'inherit', resize: 'vertical' }} />
                   <div className="row between" style={{ marginTop: 8 }}>
                     <button className="btn btn-ghost" onClick={() => readRules(a.id)} disabled={busy === 'ai' + a.id}>{busy === 'ai' + a.id ? '…' : '✨ ' + L.aiBtn}</button>
-                    <span className="muted" style={{ fontSize: 11 }}>{(aiText[a.id] || '').length} / 30.000</span>
+                    <span className="muted" style={{ fontSize: 11 }}>{(aiText[a.id] || '').length} / 200.000</span>
                   </div>
                 </div>
 

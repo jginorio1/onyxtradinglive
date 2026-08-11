@@ -231,7 +231,7 @@ Rules: percentages → the number without % and the _pct flag true (e.g. "5% dai
     const content: any[] = [block, { type: 'text', text: instr + (inp.text ? `\n${inp.text}` : '') }];
     raw = await aiRaw(system, content, 500, isPdf ? 'pdfs-2024-09-25' : undefined);
   } else {
-    raw = await aiRaw(system, (inp.text || '').slice(0, 30000), 500);
+    raw = await aiRaw(system, (inp.text || '').slice(0, 200000), 500);
   }
   if (!raw) return { ok: false, reason: 'error' };
   try {
