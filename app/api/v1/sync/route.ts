@@ -434,12 +434,14 @@ export async function POST(req: NextRequest) {
         try {
           const sb = await loadChallenge(userId, accountId);
           if (sb) {
-            challenge = { verdict: sb.verdict, title: sb.name, lines: sb.lines };
+            challenge = { verdict: sb.verdict, title: sb.name, phaseEs: sb.phaseEs, phaseEn: sb.phaseEn, lines: sb.lines };
             if (sb.verdict === 'watch' || sb.verdict === 'breach') {
               const near = sb.closest ? ` (${sb.closest.es} / ${sb.closest.en})` : '';
               const head = sb.verdict === 'breach' ? '❌ Regla del reto rota / Challenge rule broken' : '⚠️ Cerca de romper una regla / Close to breaking a rule';
-              const fired = await alertOncePerDay(userId, 'funding', 'challenge_' + sb.verdict, `🏁 Onyx · ${sb.name}\n${head}${near}.`).catch(() => false);
-              if (fired) sendPush(userId, { title: `Onyx · ${sb.name}`, body: head, url: '/dashboard' }).catch(() => {});
+              // Título con nombre de cuenta y fase (si la hay): "FTMO-50K · Fase 1"
+              const tag = sb.name + (sb.phaseEs ? ` · ${sb.phaseEs} / ${sb.phaseEn}` : '');
+              const fired = await alertOncePerDay(userId, 'funding', 'challenge_' + sb.verdict, `🏁 Onyx · ${tag}\n${head}${near}.`).catch(() => false);
+              if (fired) sendPush(userId, { title: `Onyx · ${sb.name}${sb.phaseEs ? ' · ' + sb.phaseEs : ''}`, body: head, url: '/dashboard' }).catch(() => {});
             }
           }
         } catch { /* el marcador nunca rompe el sync */ }

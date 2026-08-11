@@ -72,6 +72,7 @@ export default function Challenge({ lang }: { lang: Lang }) {
   const [busy, setBusy] = useState('');
   const [draft, setDraft] = useState<any>({});   // account_id -> rules en edición
   const [aiText, setAiText] = useState<any>({});  // account_id -> texto de reglas para el lector AI
+  const [edit, setEdit] = useState<any>({});      // account_id -> ¿está abierto el editor de reglas?
 
   useEffect(() => { load(); }, []);
 
@@ -143,6 +144,7 @@ export default function Challenge({ lang }: { lang: Lang }) {
     } catch { setData({ boards: [], accounts: [] }); }
   }
   const boardFor = (id: string) => (data?.boards || []).find((b: any) => b.accountId === id);
+  const phaseLbl = (p: string, lg: string) => p === '2' ? (lg === 'es' ? 'Fase 2' : 'Phase 2') : p === 'funded' ? (lg === 'es' ? 'Fondeada' : 'Funded') : (lg === 'es' ? 'Fase 1' : 'Phase 1');
 
   function applyFirm(id: string, firmId: string) {
     const f = (data?.firms || []).find((x: any) => x.id === firmId);
@@ -198,6 +200,7 @@ export default function Challenge({ lang }: { lang: Lang }) {
             <div className="row between" style={{ flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
               <b style={{ fontSize: 15 }}>{a.name} <span className="muted" style={{ fontWeight: 400, fontSize: 12.5 }}>· #{a.login}</span></b>
               <div className="row" style={{ gap: 10, alignItems: 'center' }}>
+                {d.phase && <span className="pill" style={{ color: 'var(--soft-brand)', background: 'rgba(124,140,255,.15)' }}>{phaseLbl(d.phase, lang)}</span>}
                 {vpill && <span className="pill" style={{ color: vpill.c, background: vpill.bg }}>{vpill.t}</span>}
                 <label className="row" style={{ gap: 6, cursor: 'pointer', fontSize: 13 }}>
                   <input type="checkbox" checked={!!d.on} onChange={(e) => setF(a.id, 'on', e.target.checked)} style={{ width: 'auto', margin: 0 }} /> {L.on}
@@ -225,8 +228,16 @@ export default function Challenge({ lang }: { lang: Lang }) {
               </div>
             )}
 
-            {/* Editor de reglas */}
+            {/* Botón para abrir/cerrar el editor de reglas (plegado por defecto) */}
             {d.on && (
+              <button className="btn btn-ghost" style={{ marginTop: 12, fontSize: 12.5 }}
+                onClick={() => setEdit((p: any) => ({ ...p, [a.id]: !p[a.id] }))}>
+                {edit[a.id] ? (lang === 'es' ? '▲ Cerrar reglas' : '▲ Close rules') : '⚙️ ' + (lang === 'es' ? 'Editar reglas' : 'Edit rules')}
+              </button>
+            )}
+
+            {/* Editor de reglas (se abre con el botón) */}
+            {d.on && edit[a.id] && (
               <div style={{ borderTop: '1px solid var(--line)', marginTop: 12, paddingTop: 12 }}>
                 <div style={{ background: 'rgba(124,140,255,.10)', border: '1px solid rgba(124,140,255,.25)', borderRadius: 8, padding: '9px 11px', fontSize: 12.5, color: 'var(--soft-brand)', lineHeight: 1.4 }}>ℹ️ {L.intro}</div>
 
