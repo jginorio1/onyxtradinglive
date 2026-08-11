@@ -113,7 +113,8 @@ export default function SetupGuide() {
     return s;
   }
 
-  const accLabel = (a: Acc) => (a.nickname || a.broker || 'MT') + ' · ' + a.login;
+  // Muestra el apodo (si el trader se lo puso) + bróker + número de cuenta.
+  const accLabel = (a: Acc) => (a.nickname ? a.nickname + ' · ' : '') + (a.broker || 'MT') + ' · ' + a.login;
   const goalsOf = (a: Acc) => ({ journal: true, guardian: !!a.goals?.guardian, copy: !!a.goals?.copy, tv: !!a.goals?.tv });
   const accDone = (a: Acc) => stepsFor(a, a.platform, goalsOf(a)).every((s) => s.done);
   const allDone = hasAcc && accounts.every(accDone);

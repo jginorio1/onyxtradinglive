@@ -393,7 +393,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
   const a = useMemo(() => analyze(filtered), [filtered]);
 
   const totalBalance = accounts.reduce((s, x) => s + Number(x.balance || 0), 0);
-  const accName = (x: Acc) => x.nickname || `#${x.login}`;
+  const accName = (x: Acc) => x.nickname || (x.broker ? `${x.broker} · #${x.login}` : `#${x.login}`);
   const sessName = (key: string) => (SESS[key] ? SESS[key][lang] : key);
   function accStats(id: string) { const ts = ranged.filter((t) => t.account_id === id); let net = 0, w = 0; for (const t of ts) { const p = +t.net_profit || 0; net += p; if (p >= 0) w++; } return { net, ops: ts.length, wr: ts.length ? Math.round(100 * w / ts.length) : 0 }; }
   async function saveNick(id: string) { await fetch('/api/accounts', { method: 'PATCH', body: JSON.stringify({ id, nickname: nick }) }); setAccounts(accounts.map((x) => (x.id === id ? { ...x, nickname: nick } : x))); setEditing(''); }
@@ -570,7 +570,6 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
             </details>
           )}
         </div>
-        <p className="muted" style={{ fontSize: 11.5, margin: '-4px 0 14px' }}>{email}</p>
 
         {/* Onboarding grande: solo cuando aún NO hay cuentas — se queda a lo ancho para
             que el trader nuevo lo vea prominente. Con cuentas, el lanzador compacto,
