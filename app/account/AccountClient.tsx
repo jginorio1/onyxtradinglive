@@ -242,12 +242,16 @@ export default function AccountClient({ email }: { email: string }) {
   const catLabel = (c: { es: string; en: string }) => (lang === 'en' ? (c.en || c.es) : c.es);
   const pending = data?.pending || null;
 
+  const [keys, setKeys] = useState<any[]>([]);   // claves API por cuenta (una por cuenta)
   useEffect(() => {
     load();
+    fetch('/api/keys').then((r) => r.ok ? r.json() : null).then((j) => setKeys(j?.keys || [])).catch(() => {});
   }, []);
   async function load() {
     try { const r = await fetch('/api/account'); const j = await r.json(); setData(j); setP(j.profile || {}); setExtraQty(Number(j.limit?.extra || 0)); } catch {}
   }
+  // Clave de una cuenta concreta (por número de cuenta).
+  const keyForLogin = (login: any) => keys.find((k) => k.account_login != null && String(k.account_login) === String(login));
 
   const plans: any[] = data?.plans || [];
   const accounts: any[] = data?.accounts || [];
@@ -671,9 +675,9 @@ export default function AccountClient({ email }: { email: string }) {
                   {!!accounts.length && <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{L.mtHelp}</div>}
                   {accounts.map((a) => (
                     <div key={a.id} className="row between" style={{ borderTop: '1px solid var(--line)', padding: '10px 0', flexWrap: 'wrap', gap: 8 }}>
-                      <div>
+                      <div style={{ flex: '1 1 320px', minWidth: 260 }}>
                         <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                          <span style={{ fontWeight: 700 }}>{a.login} <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}>{a.broker || a.server || ''}</span></span>
+                          <span style={{ fontWeight: 700 }}>{a.nickname || keyForLogin(a.login)?.label || a.login} <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}>{a.broker || a.server || ''} · #{a.login}</span></span>
                           {(() => {
                             const live = a.last_sync_at && (Date.now() - new Date(a.last_sync_at).getTime()) < 120000;
                             const st = !a.last_sync_at ? { txt: L.mtNever, col: 'var(--mut)', bg: 'var(--card2)' }
@@ -685,6 +689,16 @@ export default function AccountClient({ email }: { email: string }) {
                         </div>
                         <div className="muted" style={{ fontSize: 12 }}>{platformLabel(a.platform, lang) || 'MetaTrader 5'} · {L.lastSync}: {a.last_sync_at ? fmtDateTime(a.last_sync_at, lang) : L.never}</div>
                         {a.plan_paused && <div style={{ fontSize: 11.5, color: 'var(--amber)', marginTop: 2 }}>{L.pausedNote}</div>}
+                        {(() => {
+                          const k = keyForLogin(a.login);
+                          return k ? (
+                            <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 8 }}>
+                              <span className="muted" style={{ fontSize: 11, flex: 'none' }}>{L.apiK}:</span>
+                              <span className="code" style={{ maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{k.key}</span>
+                              <button className="btn btn-ghost" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => { navigator.clipboard.writeText(k.key); setMsg(L.copied); setTimeout(() => setMsg(''), 2000); }}>{msg === L.copied ? L.copied : L.copy}</button>
+                            </div>
+                          ) : null;
+                        })()}
                       </div>
                       <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
                         <div style={{ fontWeight: 700 }}>{a.balance != null ? '$' + Number(a.balance).toLocaleString() : ''}</div>
@@ -714,14 +728,11 @@ export default function AccountClient({ email }: { email: string }) {
                     </div>
                   </div>
                 )}
-                {data.apiKey && (
+                {/* La clave ahora se muestra en cada cuenta arriba (una por cuenta).
+                    Aquí solo dejamos la nota de dónde pegarla y el acceso a gestionarlas. */}
+                {!!accounts.length && (
                   <div className="card">
-                    <h3 style={{ marginBottom: 6 }}>{L.apiK}</h3>
-                    <p className="muted" style={{ fontSize: 13, marginBottom: 10 }}>{L.apiTxt}</p>
-                    <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-                      <span className="code" style={{ flex: 1, minWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis' }}>{data.apiKey}</span>
-                      <button className="btn btn-ghost" onClick={() => { navigator.clipboard.writeText(data.apiKey); setMsg(L.copied); setTimeout(() => setMsg(''), 2000); }}>{msg === L.copied ? L.copied : L.copy}</button>
-                    </div>
+                    <p className="muted" style={{ fontSize: 13, margin: 0 }}>{L.apiTxt} <Link href="/dashboard/keys" style={{ color: 'var(--soft-brand)' }}>{lang === 'es' ? 'Gestionar claves →' : 'Manage keys →'}</Link></p>
                   </div>
                 )}
               </Section>

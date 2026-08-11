@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
 
     const { data: keyRow } = await supabaseAdmin
       .from('api_keys')
-      .select('id,user_id,revoked,account_login,acc_type,acc_size,broker,kind')
+      .select('id,user_id,revoked,account_login,acc_type,acc_size,broker,kind,label')
       .eq('key', apiKey)
       .maybeSingle();
 
@@ -141,14 +141,21 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Datos declarados al crear la clave (tipo y tamaño de la cuenta).
+    // Datos declarados al crear la clave (tipo, tamaño y NOMBRE de la cuenta).
     // Solo se rellenan si el usuario aún no los ha puesto a mano en el panel.
-    if (keyRow.acc_type || keyRow.acc_size) {
-      const { data: cur } = await supabaseAdmin.from('trading_accounts').select('acc_type,acc_size').eq('id', accountId).maybeSingle();
+    // Nombre único: el "label" que el trader puso a la clave se usa como apodo de
+    // la cuenta, así aparece igual en dashboard, selector y "Tus cuentas".
+    if (keyRow.acc_type || keyRow.acc_size || keyRow.label) {
+      const { data: cur } = await supabaseAdmin.from('trading_accounts').select('acc_type,acc_size,nickname').eq('id', accountId).maybeSingle();
       const patch: any = {};
       if (keyRow.acc_type && !cur?.acc_type) patch.acc_type = keyRow.acc_type;
       if (keyRow.acc_size && !cur?.acc_size) patch.acc_size = keyRow.acc_size;
-      if (Object.keys(patch).length) await supabaseAdmin.from('trading_accounts').update(patch).eq('id', accountId);
+      if (keyRow.label && !cur?.nickname) patch.nickname = String(keyRow.label).slice(0, 60);
+      if (Object.keys(patch).length) {
+        const upd = await supabaseAdmin.from('trading_accounts').update(patch).eq('id', accountId);
+        // Tolerante: si aún no existe la columna nickname, reintenta sin ella.
+        if (upd.error && patch.nickname) { delete patch.nickname; if (Object.keys(patch).length) await supabaseAdmin.from('trading_accounts').update(patch).eq('id', accountId); }
+      }
     }
 
     // --- Operaciones cerradas (idempotente por ticket) ---
