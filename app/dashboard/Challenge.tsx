@@ -181,10 +181,12 @@ export default function Challenge({ lang }: { lang: Lang }) {
 
   return (
     <div style={{ maxWidth: 860, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ textAlign: 'center', marginBottom: 2 }}>
-        <span style={{ display: 'inline-flex', width: 44, height: 44, borderRadius: 13, background: 'rgba(124,140,255,.16)', alignItems: 'center', justifyContent: 'center', fontSize: 21, marginBottom: 8 }}>🏁</span>
-        <h2 style={{ fontSize: 20, marginBottom: 2 }}>{L.title}</h2>
-        <p className="muted" style={{ fontSize: 13, margin: 0 }}>{L.sub}</p>
+      <div className="row" style={{ gap: 12, alignItems: 'center' }}>
+        <span style={{ display: 'inline-flex', width: 34, height: 34, borderRadius: 9, background: 'rgba(124,140,255,.16)', alignItems: 'center', justifyContent: 'center', fontSize: 17, flex: 'none' }}>🏁</span>
+        <div>
+          <h2 style={{ fontSize: 18, margin: 0 }}>{L.title}</h2>
+          <p className="muted" style={{ fontSize: 12.5, margin: 0 }}>{L.sub}</p>
+        </div>
       </div>
 
       {!data.accounts?.length && <div className="card muted">{L.none}</div>}
