@@ -76,7 +76,9 @@ export function pickActiveBar(
 ): Promo | null {
   for (const b of bars) {
     if (!b || !b.on) continue;
-    const text = ctx.lang === 'es' ? b.text_es : b.text_en;
+    // Texto del idioma del visitante; si ese idioma está vacío, cae al OTRO idioma
+    // para que la barra no desaparezca en dispositivos cuyo idioma no llenaste.
+    const text = (ctx.lang === 'es' ? b.text_es : b.text_en) || (ctx.lang === 'es' ? b.text_en : b.text_es);
     if (!text) continue;
     if (b.startsAt && new Date(b.startsAt).getTime() > now) continue;
     if (b.endsAt && new Date(b.endsAt).getTime() <= now) continue;

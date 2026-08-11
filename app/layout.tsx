@@ -157,8 +157,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             {promoLive && promo && (
               <PromoBar
                 id={promo.id}
-                text={lang === 'es' ? promo.text_es : promo.text_en}
-                cta={lang === 'es' ? promo.cta_es : promo.cta_en}
+                text={(lang === 'es' ? promo.text_es : promo.text_en) || (lang === 'es' ? promo.text_en : promo.text_es)}
+                cta={(lang === 'es' ? promo.cta_es : promo.cta_en) || (lang === 'es' ? promo.cta_en : promo.cta_es)}
                 link={promo.link} bg={promo.bg} bg2={promo.bg2} gradient={promo.gradient} fg={promo.fg} endsAt={promo.endsAt}
                 emoji={promo.emoji} coupon={promo.coupon} newTab={promo.newTab} position={promo.position} sticky={promo.sticky}
                 anim={promo.anim} speed={promo.speed} countdown={promo.countdown} countdownFmt={promo.countdownFmt} dismissible={promo.dismissible}
