@@ -552,19 +552,10 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
         </div>
         <p className="muted" style={{ fontSize: 13, margin: '-6px 0 14px', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>{email} · {accounts.length} {L.accountsWord} · {L.balance} ${totalBalance.toLocaleString()} · <span className="livedot" style={{ width: 8, height: 8 }} /><span style={{ color: GREEN }}>{updatedTxt}</span></p>
 
-        {/* Guía de configuración adaptativa (onboarding + añadir cuentas, con confirmación en vivo) */}
-        <SetupGuide />
-
-        {/* Reloj del mercado Forex (abre/cierra en HH:MM:SS) — sirve a todas las plataformas */}
-        <div style={{ marginBottom: 14 }}><MarketClock /></div>
-
-        {/* Ganancia neta + Onyx Coach: rejilla fluida (lado a lado en ancho, apiladas en móvil) */}
-        {(caps?.expenses || caps?.coach) && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(320px,1fr))', gap: 12, alignItems: 'stretch', marginBottom: 14 }}>
-            {caps?.expenses ? <NetRealCard /> : null}
-            {caps?.coach ? <CoachCard from={rangeDates.from} to={rangeDates.to} account={sel} /> : null}
-          </div>
-        )}
+        {/* Onboarding grande: solo cuando aún NO hay cuentas — se queda a lo ancho para
+            que el trader nuevo lo vea prominente. Con cuentas, el lanzador compacto,
+            el reloj de mercado, el neto y el Coach viven en el riel derecho (abajo). */}
+        {!hasAccounts && <SetupGuide />}
 
         {!isFree && (
           <div className="card" style={{ margin: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, padding: '12px 14px' }}>
@@ -577,8 +568,16 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
         )}
 
         <div className="cockpit">
-          <div className="rail-left"><MarketHours lang={lang} compact /><details style={{ marginTop: 12 }}><summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 700, color: 'var(--tx)', padding: '10px 12px', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, listStyle: 'none', display: 'flex', alignItems: 'center', gap: 8 }}><OnyxIcon name="lots" size={16} /> {lang === 'en' ? 'Lot size calculator' : 'Calculadora de lotes'}</summary><div style={{ marginTop: 10 }}><LotCalculator lang={lang} balance={Number(cur?.balance) || totalBalance || undefined} /></div></details></div>
-          <div className="rail-right"><News lang={lang} /></div>
+          {/* Riel derecho = panel personal de vistazo (cuentas · mercado · neto · coach).
+              En escritorio va a la derecha (order:3, sticky); en móvil, por el orden del
+              DOM, sube al tope — justo lo que se pidió: las bandas dejan de empujar el
+              contenido hacia abajo y el dashboard sube. */}
+          <div className="rail-right" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {hasAccounts && <SetupGuide />}
+            <MarketClock />
+            {caps?.expenses ? <NetRealCard /> : null}
+            {caps?.coach ? <CoachCard rail from={rangeDates.from} to={rangeDates.to} account={sel} /> : null}
+          </div>
           <div className="center">
         {!hasAccounts ? (
           <div className="card" style={{ textAlign: 'center', padding: '30px 20px' }}>
@@ -820,6 +819,9 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
           </div>
         )}
           </div>
+          {/* Riel izquierdo: contexto de mercado (sesiones · calculadora de lotes · noticias).
+              En escritorio va a la izquierda (order:1, sticky); en móvil baja al final. */}
+          <div className="rail-left"><MarketHours lang={lang} compact /><details style={{ marginTop: 12 }}><summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 700, color: 'var(--tx)', padding: '10px 12px', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, listStyle: 'none', display: 'flex', alignItems: 'center', gap: 8 }}><OnyxIcon name="lots" size={16} /> {lang === 'en' ? 'Lot size calculator' : 'Calculadora de lotes'}</summary><div style={{ marginTop: 10 }}><LotCalculator lang={lang} balance={Number(cur?.balance) || totalBalance || undefined} /></div></details><div style={{ marginTop: 12 }}><News lang={lang} /></div></div>
         </div>
       </div>
     </>
