@@ -820,7 +820,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                       <td>{editing === x.id ? (<span style={{ display: 'flex', gap: 6 }}><input value={nick} onChange={(e) => setNick(e.target.value)} placeholder={L.nickPh} style={{ width: 140, marginTop: 0, padding: '6px 8px' }} /><button className="btn btn-primary" onClick={() => saveNick(x.id)}>✓</button><button className="btn btn-ghost" onClick={() => setEditing('')}>✕</button></span>) : (<span>{accName(x)} {typeMeta(x.acc_type) && <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 10, background: typeMeta(x.acc_type)!.color + '22', color: typeMeta(x.acc_type)!.color }}>{lang === 'es' ? typeMeta(x.acc_type)!.es : typeMeta(x.acc_type)!.en}</span>} <span className="muted" style={{ fontSize: 12 }}>· {x.platform} · #{x.login}</span></span>)}</td>
                       <td className="muted">{x.broker}</td>
                       <td style={{ textAlign: 'right' }}>${Number(x.balance || 0).toLocaleString()}</td>
-                      <td style={{ textAlign: 'right' }}><span className={'jchip ' + (st.net >= 0 ? 'pos' : 'neg')}>{money(st.net)}</span></td>
+                      <td style={{ textAlign: 'right' }}><span className={'jchip ' + (st.net >= 0 ? 'pos' : 'neg')}>{money2(st.net)}</span></td>
                       <td style={{ textAlign: 'right' }} className="muted">{st.wr}%</td>
                       <td style={{ textAlign: 'right' }}>{editing !== x.id && <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                         <button className="btn btn-ghost" onClick={() => { setEditing(x.id); setNick(x.nickname || ''); }}>{L.nameBtn}</button>
