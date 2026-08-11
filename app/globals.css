@@ -260,6 +260,18 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
   .rail-body.open{display:flex;}
 }
 
+/* Cabecera del dashboard en móvil: apilar en vertical para que no se amontone */
+@media(max-width:640px){
+  .hero-row{flex-direction:column;align-items:stretch;}
+  .hero-left{width:100%;}
+  .hero-name h1{font-size:22px !important;}
+  /* El balance deja de ir "al lado del nombre": pasa a tarjeta a lo ancho */
+  .hero-balance{border-left:0 !important;padding:11px 14px !important;width:100%;
+    background:var(--bg2);border:1px solid var(--line);border-radius:12px;margin-top:2px;align-self:stretch !important;}
+  .hero-export{width:100%;}
+  .hero-export > summary{width:100%;}
+}
+
 /* Responsive por tamaño de pantalla */
 @media(max-width:1024px){ .g4{grid-template-columns:repeat(2,1fr);} .g3{grid-template-columns:repeat(2,1fr);} }
 /* Cuando los enlaces no caben se recogen en el menú de la hamburguesa.

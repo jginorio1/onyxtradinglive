@@ -65,7 +65,7 @@ export default function Costs({ trades, lang }: { trades: TT[]; lang: Lang }) {
   const icV = t.vsTitle.split(' ')[0], vsTx = t.vsTitle.split(' ').slice(1).join(' ');
 
   return (
-    <div style={{ maxWidth: 1040, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div className="card">
         <h3 style={{ marginBottom: 4, display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic"><OnyxIcon emoji={ic} size={16} /></span> {titleTx}</h3>
         <p className="muted" style={{ fontSize: 12, marginBottom: 12 }}>{t.note}</p>

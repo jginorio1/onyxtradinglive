@@ -526,10 +526,10 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
 
       <div className="wrap-wide" style={{ padding: '24px clamp(16px,1.6vw,40px)' }}>
         {/* Info del trader: alineada a la izquierda */}
-        <div className="row between" style={{ marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
-          <div className="row" style={{ gap: 14, alignItems: 'center' }}>
+        <div className="row between hero-row" style={{ marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+          <div className="row hero-left" style={{ gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
             <div style={{ width: 52, height: 52, borderRadius: 14, background: 'var(--grad)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 700, flex: 'none' }}>{heroInitials}</div>
-            <div>
+            <div className="hero-name">
               <h1 style={{ marginBottom: 6, lineHeight: 1.15, display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>{heroTitle} <span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="hand" size={22} /></span>
                 {checkin?.pending && (
                   <button onClick={() => checkin.open()} title={lang === 'en' ? 'Review your plan today' : 'Revisa tu plan hoy'}
@@ -548,7 +548,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
             </div>
             {/* Balance del portafolio: compacto, al lado del nombre (con separador).
                 Al vivir aquí, se elimina la banda de balance de abajo y el dashboard sube. */}
-            <div style={{ borderLeft: '1px solid var(--line)', paddingLeft: 16, alignSelf: 'center' }}>
+            <div className="hero-balance" style={{ borderLeft: '1px solid var(--line)', paddingLeft: 16, alignSelf: 'center' }}>
               <div className="muted" style={{ fontSize: 11 }}>{lang === 'es' ? 'Balance del portafolio' : 'Portfolio balance'} · {accounts.length} {L.accountsWord}</div>
               <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 7 }}>
                 <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.3px' }}>${totalBalance.toLocaleString()}</span>
@@ -559,8 +559,8 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
           {/* Exportar reporte del período filtrado: menú compacto arriba a la derecha
               (antes era una banda completa que cargaba la vista). Solo planes de pago. */}
           {!isFree && (
-            <details style={{ position: 'relative', flex: 'none' }}>
-              <summary style={{ listStyle: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--tx)', borderRadius: 10, padding: '8px 13px', fontSize: 13 }}>
+            <details className="hero-export" style={{ position: 'relative', flex: 'none' }}>
+              <summary style={{ listStyle: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--tx)', borderRadius: 10, padding: '8px 13px', fontSize: 13 }}>
                 <OnyxIcon emoji="⬇️" size={14} /> {lang === 'es' ? 'Exportar' : 'Export'} <span style={{ fontSize: 11, color: 'var(--mut)' }}>▾</span>
               </summary>
               <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', zIndex: 40, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 8, minWidth: 220, boxShadow: '0 12px 34px rgba(0,0,0,.4)' }}>
