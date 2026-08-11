@@ -89,6 +89,7 @@ namespace cAlgo.Robots
 
         private readonly StringBuilder _events = new StringBuilder();
         private readonly StringBuilder _doneCmds = new StringBuilder();
+        private bool _bfDone = false;   // ¿ya se envió el historial completo (backfill) esta sesión?
         private readonly HashSet<string> _partialDone = new HashSet<string>();
 
         private string L(string en, string es) { return (Lang != null && Lang.ToUpper().StartsWith("ES")) ? es : en; }
@@ -265,11 +266,14 @@ namespace cAlgo.Robots
 
             s.Append("\"closedTrades\":[");
             bool f2 = true; int count = 0;
-            var from = Server.Time.AddDays(-3);
+            // Primera vez del cBot: manda el HISTORIAL COMPLETO (backfill); despues, 3 dias.
+            // La nube hace upsert por ticket, asi que reenviar no duplica.
+            var from = _bfDone ? Server.Time.AddDays(-3) : Server.Time.AddYears(-10);
+            int cap = _bfDone ? 300 : 5000;
             foreach (var h in History)
             {
                 if (h.ClosingTime < from) continue;
-                if (count >= 300) break;
+                if (count >= cap) break;
                 var sym = Symbols.GetSymbol(h.SymbolName);
                 double vol = sym != null ? sym.VolumeInUnitsToQuantity(h.VolumeInUnits) : h.VolumeInUnits;
                 // Ganancias parciales: cada cierre parcial es un HistoricalTrade con
@@ -295,6 +299,7 @@ namespace cAlgo.Robots
                 count++;
             }
             s.Append("]");
+            _bfDone = true;   // backfill hecho: los proximos syncs solo mandan 3 dias
 
             if (_events.Length > 0) s.Append(",\"events\":[").Append(_events).Append("]");
             if (_doneCmds.Length > 0) s.Append(",\"doneCommands\":[").Append(_doneCmds).Append("]");

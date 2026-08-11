@@ -85,8 +85,8 @@ const D = {
     equity: 'Curva de equity', notEnough: 'Aún no hay suficientes operaciones.', ddMax: 'Drawdown máx:', streakMax: 'Racha máx:',
     donutTitle: 'Resultado de operaciones', dWin: 'Ganadoras', dLoss: 'Perdedoras', dBE: 'Break even', dCenter: 'ganadoras',
     pExitTitle: 'Salidas · Full TP vs parciales', pFullTP: 'Full TP', pFullTPsub: 'llegó al objetivo completo', pPartial: 'Cierre parcial', pPartialSub: 'cerró antes del objetivo', pPartialProfit: 'Ganancia parcial', pPartialProfitSub: 'banqueado en TP1/TP2', pRunner: 'Aporte del runner', pRunnerSub: 'lo que dejó correr', pReasons: 'Motivo de salida', rTP: 'Objetivo (TP)', rTrailing: 'Trailing', rManual: 'Manual', rSL: 'Stop (SL)', rSO: 'Stop out', rOther: 'Otro', pNoData: 'Actualiza tu EA a la última versión para ver el desglose de cierres parciales.',
-    pOfN: (n: number) => `de ${n} ops con datos de salida`, pNoPartials: 'Aún no usas cierres parciales en estas operaciones.',
-    calTitle: 'Calendario de resultados', month: 'Mes', year: 'Año', monthTotal: 'Total mes:', ops: 'ops', dayOps: 'Operaciones del',
+    pOfN: (n: number) => `de ${n} operaciones con datos de salida`, pNoPartials: 'Aún no usas cierres parciales en estas operaciones.',
+    calTitle: 'Calendario de resultados', month: 'Mes', year: 'Año', monthTotal: 'Total mes:', ops: 'operaciones', dayOps: 'Operaciones del',
     bestDay: 'Mejor día', bestHour: 'Mejor hora', bestSess: 'Mejor sesión', bestPair: 'Mejor par', worstDay: 'Peor día', worstHour: 'Peor hora', worstSess: 'Peor sesión', worstPair: 'Peor par',
     lsTitle: 'Largos vs Cortos', longs: '🟢 Largos', shorts: '🔴 Cortos', distTitle: 'Distribución de resultados', noData: 'Sin datos.',
     topPairsT: 'Top 5 mejores pares', botPairsT: 'Top 5 peores pares', noPos: 'Sin pares en positivo.', noNeg: 'Sin pares en negativo.',
@@ -276,6 +276,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
   const [tradesS, setTradesS] = useState<TT[]>(trades || []);
   const [sel, setSel] = useState<string>('all');
   const [view, setView] = useState<View>('hub');
+  const [railOpen, setRailOpen] = useState(false);   // móvil: menú del panel personal (cuentas/mercado/neto/coach)
   // Recordatorio de check-in del plan → píldora iluminada en la cápsula del saludo.
   const [checkin, setCheckin] = useState<{ pending: boolean; open: () => void } | null>(null);
   // Deep-link: /dashboard?view=plan abre directo esa vista (p.ej. desde el Guardian).
@@ -582,10 +583,18 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
               DOM, sube al tope — justo lo que se pidió: las bandas dejan de empujar el
               contenido hacia abajo y el dashboard sube. */}
           <div className="rail-right" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {hasAccounts && <SetupGuide />}
-            <MarketClock />
-            {caps?.expenses ? <NetRealCard /> : null}
-            {caps?.coach ? <CoachCard rail from={rangeDates.from} to={rangeDates.to} account={sel} /> : null}
+            {/* En móvil este panel se pliega en un menú (como Mi cuenta): las estadísticas
+                quedan arriba y estas tarjetas se abren al tocar. En escritorio siempre visible. */}
+            <button type="button" className="rail-menu-btn" onClick={() => setRailOpen((o) => !o)} aria-expanded={railOpen}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><OnyxIcon emoji="🧭" size={15} /> {lang === 'es' ? 'Cuentas · Mercado · Neto · Coach' : 'Accounts · Market · Net · Coach'}</span>
+              <span style={{ color: 'var(--mut)' }}>{railOpen ? '▲' : '▼'}</span>
+            </button>
+            <div className={'rail-body' + (railOpen ? ' open' : '')}>
+              {hasAccounts && <SetupGuide />}
+              <MarketClock />
+              {caps?.expenses ? <NetRealCard /> : null}
+              {caps?.coach ? <CoachCard rail from={rangeDates.from} to={rangeDates.to} account={sel} /> : null}
+            </div>
           </div>
           <div className="center">
         {!hasAccounts ? (

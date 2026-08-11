@@ -712,7 +712,12 @@ string BuildBody()
 
    s += "\"closedTrades\":[";
    int m = 0;
-   datetime from = TimeCurrent() - 3 * 24 * 3600;
+   // Primera conexion de ESTA cuenta: envia el HISTORIAL COMPLETO una sola vez (backfill).
+   // Despues, en cada sync bastan los ultimos 3 dias (la nube hace upsert idempotente por ticket).
+   string bfKey = "OnyxBF_" + IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN));
+   bool   bfNeed = !GlobalVariableCheck(bfKey);
+   datetime from = bfNeed ? (datetime)0 : (TimeCurrent() - 3 * 24 * 3600);
+   int    cap  = bfNeed ? 5000 : 300;
    if(HistorySelect(from, TimeCurrent()))
    {
       int deals = HistoryDealsTotal();
@@ -743,9 +748,11 @@ string BuildBody()
                prof, comm, swap, prof + comm + swap, er,
                (long)HistoryDealGetInteger(dt, DEAL_MAGIC));
          m++;
-         if(m >= 300) break;
+         if(m >= cap) break;
       }
    }
+   // Marca el backfill como hecho para no reenviar todo el historial en cada sync.
+   if(bfNeed) GlobalVariableSet(bfKey, (double)TimeCurrent());
    s += "]";
 
    if(g_events   != "") s += ",\"events\":["       + g_events   + "]";

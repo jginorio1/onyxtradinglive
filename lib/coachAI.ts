@@ -92,7 +92,8 @@ export async function weeklyReview(s: CoachSummary, lang: Lang): Promise<{ ok: b
 - Causa raíz, no síntomas: si el drawdown y la racha de pérdidas salen del mismo problema (sin freno de riesgo / expectancy negativa), nombra la causa raíz; no los cuentes como dos fugas independientes.
 - Las cifras concretas deben estar fundadas: si viene "dailyLossRule", usa el límite diario de la firma; si no, si viene "balance", sugiere ~1-2% del balance como freno diario. Nunca inventes números redondos sin base.
 - Si "smallSample" es true, añade un matiz corto de que la muestra es pequeña y el resultado puede ser varianza.
-- ADHERENCIA AL PLAN: si "plan.hasPlan" es true, añade UNA línea diciendo claramente si ESTÁ SIGUIENDO su plan o no. Si followedMaxTrades es false (overLimitDays > 0), dile que rompió su propia regla de máximo de operaciones (p. ej. "tu plan son X ops/día pero hiciste Y en Z día(s)"). Usa winRateRespectingLimit vs winRateBreakingLimit para mostrar que la disciplina paga. Menciona la racha/cumplimiento de hábitos si son bajos. Si "plan.hasPlan" no está presente, NO menciones ningún plan.
+- ADHERENCIA AL PLAN: si "plan.hasPlan" es true, añade UNA línea diciendo claramente si ESTÁ SIGUIENDO su plan o no. Si followedMaxTrades es false (overLimitDays > 0), dile que rompió su propia regla de máximo de operaciones (p. ej. "tu plan son X operaciones/día pero hiciste Y en Z día(s)"). Usa winRateRespectingLimit vs winRateBreakingLimit para mostrar que la disciplina paga. Menciona la racha/cumplimiento de hábitos si son bajos. Si "plan.hasPlan" no está presente, NO menciones ningún plan.
+- LENGUAJE: escribe siempre la palabra completa "operaciones" (u "operación" en singular). NUNCA uses la abreviatura "ops" ni "op".
 - METAS DE GANANCIA: si viene "goals", añade UNA línea corta sobre el progreso hacia su(s) meta(s) de ganancia: cita el pct (p. ej. "vas al 40% de tu meta mensual") o, si el neto es negativo, di que está por debajo/lejos de la meta. No inventes metas; comenta solo los períodos que vengan.
 - CONSEJO SEGÚN EL PLAN: el trader está en el plan "planTier". "planIncludes" lista lo que su plan ya le da y qué hace cada feature — recomienda acciones usando SOLO esas features (p. ej. sugiérele activar el bloqueo por noticias / cierres parciales del Onyx Guardian solo si tiene manager). NUNCA le digas que use una feature que no esté en planIncludes. "planMissing" lista lo que su plan NO tiene; puedes mencionar como MUCHO UNA, brevemente, SOLO si de verdad arreglaría una fuga que detectaste (p. ej. un trader que pierde sin Onyx Guardian), en plan "un plan superior desbloquea…", sin vender con presión.`;
   const system = (enBase(lang)
@@ -113,7 +114,7 @@ export function fallbackReview(s: CoachSummary, lang: Lang): string {
   const L = <T,>(a: T, b: T) => (en ? b : a);
   const out: string[] = [];
   const scope = s.scope ? s.scope + ' · ' : '';
-  out.push(`**${L('Repaso Onyx', 'Onyx review')}: ${scope}${s.periodLabel || ''}${s.trades ? ` · ${s.trades} ${L('ops', 'trades')}` : ''}${s.tradingDays ? ` · ${s.tradingDays} ${L('días', 'days')}` : ''}** 📊`);
+  out.push(`**${L('Repaso Onyx', 'Onyx review')}: ${scope}${s.periodLabel || ''}${s.trades ? ` · ${s.trades} ${L('operaciones', 'trades')}` : ''}${s.tradingDays ? ` · ${s.tradingDays} ${L('días', 'days')}` : ''}** 📊`);
   const losing = (s.pf > 0 && s.pf < 1) || s.net < 0;
   out.push(losing
     ? `${L('Veredicto', 'Verdict')}: ${L('estás perdiendo en este período', 'you are losing money this period')}. PF ${s.pf}, ${L('neto', 'net')} ${money(s.net)}. ${s.perDay ? `${s.perDay}/${L('día', 'day')}.` : ''}`
@@ -121,7 +122,7 @@ export function fallbackReview(s: CoachSummary, lang: Lang): string {
   if (s.breakevenRR && s.rr != null) out.push(`R:R ${s.rr} · ${L('para no perder a tu win rate necesitas', 'to break even at your win rate you need')} ~${s.breakevenRR}:1 (${L('win rate', 'win rate')} ${s.winRate}%).`);
   if (s.expectancy != null) out.push(`${L('Expectancy', 'Expectancy')}: ${money(s.expectancy)}/${L('operación', 'trade')}. ${L('Racha máx. de pérdidas', 'Max losing streak')}: ${s.maxLossStreak}. ${L('Drawdown', 'Drawdown')}: ${money(-(s.maxDrawdown || 0))}.`);
   if (s.plan?.hasPlan) {
-    if (s.plan.followedMaxTrades === false) out.push(`⚠ ${L('No seguiste tu plan', "You didn't follow your plan")}: ${s.plan.maxTradesDay} ${L('ops/día máx, pero pasaste el límite en', 'trades/day max, but you went over on')} ${s.plan.overLimitDays} ${L('día(s)', 'day(s)')} (${L('máx', 'peak')} ${s.plan.maxTradesInADay}).`);
+    if (s.plan.followedMaxTrades === false) out.push(`⚠ ${L('No seguiste tu plan', "You didn't follow your plan")}: ${s.plan.maxTradesDay} ${L('operaciones/día máx, pero pasaste el límite en', 'trades/day max, but you went over on')} ${s.plan.overLimitDays} ${L('día(s)', 'day(s)')} (${L('máx', 'peak')} ${s.plan.maxTradesInADay}).`);
     else if (s.plan.followedMaxTrades === true) out.push(`✓ ${L('Respetaste tu máx de operaciones', 'You respected your max trades')} (${s.plan.maxTradesDay}/${L('día', 'day')}).`);
     if (s.plan.winRateRespectingLimit != null && s.plan.winRateBreakingLimit != null) out.push(`${L('Win rate respetando el límite', 'Win rate within limit')}: ${s.plan.winRateRespectingLimit}% · ${L('rompiéndolo', 'breaking it')}: ${s.plan.winRateBreakingLimit}%.`);
     if (s.plan.habitCheckinRate != null) out.push(`${L('Cumplimiento de hábitos', 'Habit check-ins')}: ${s.plan.habitCheckinRate}%${s.plan.streak ? ` · ${L('racha', 'streak')} ${s.plan.streak}` : ''}.`);

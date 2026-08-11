@@ -280,14 +280,17 @@ export async function POST(req: NextRequest) {
 
       // Avisos a Telegram por lo que hizo el gestor con la operación abierta.
       // Solo los tres tipos que interesa notificar; el resto se queda en el historial.
+      // Se incluye SIEMPRE la cuenta (apodo o número) para que, con varias cuentas
+      // conectadas, el trader sepa a cuál se refiere cada aviso.
+      const accTag = String(keyRow.label || acc.login);
       for (const e of clean) {
         if (e.kind === 'breakeven' || e.kind === 'trailing' || e.kind === 'partial') {
           const icon = e.kind === 'partial' ? '💰' : '🎯';
           const line = e.symbol ? `${e.detail} · ${e.symbol}` : e.detail;
-          alertUser(userId, 'manager', `${icon} Onyx Guardian\n${line}`).catch(() => {});
+          alertUser(userId, 'manager', `${icon} Onyx Guardian · ${accTag}\n${line}`).catch(() => {});
         } else if (e.kind === 'override') {
           // "Te saltaste una regla" — deja constancia
-          alertUser(userId, 'blocks', `⚠️ Onyx Guardian\n${e.detail || 'Te saltaste una regla del plan.'}`).catch(() => {});
+          alertUser(userId, 'blocks', `⚠️ Onyx Guardian · ${accTag}\n${e.detail || 'Te saltaste una regla del plan.'}`).catch(() => {});
         }
       }
     }

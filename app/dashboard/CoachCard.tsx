@@ -66,7 +66,7 @@ export default function CoachCard({ from, to, account, rail = false }: { from?: 
     const wl = sum.periodLabel || (sum.from && sum.to ? `${sum.from} → ${sum.to}` : '');
     const dias = sum.tradingDays ? `${sum.tradingDays} ${L('días operados', 'trading days')}` : '';
     const perDay = sum.perDay ? ` · ${sum.perDay}/${L('día', 'day')}` : '';
-    return `${L('Analizando', 'Analyzing')}: ${scope}${wl} · ${sum.trades} ${L('ops', 'trades')}${dias ? ' · ' + dias : ''}${perDay}`;
+    return `${L('Analizando', 'Analyzing')}: ${scope}${wl} · ${sum.trades} ${L('operaciones', 'trades')}${dias ? ' · ' + dias : ''}${perDay}`;
   })() : '';
 
   // Cuerpo del repaso (se usa inline en modo normal, o dentro del modal en modo riel).

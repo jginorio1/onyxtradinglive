@@ -1417,7 +1417,7 @@ int OnInit()
    // desde cuando pedir historial la primera vez
    string k = PREFIX + "lc_" + IntegerToString(AccountNumber());
    if(GlobalVariableCheck(k)) g_lastClose = (datetime)GlobalVariableGet(k);
-   else                       g_lastClose = TimeCurrent() - 120 * 86400;
+   else                       g_lastClose = 0;   // primera conexion: envia el HISTORIAL COMPLETO (backfill una sola vez)
 
    CleanOldPartials();
    EventSetTimer(1);            // 1s: el panel y el contador laten cada segundo

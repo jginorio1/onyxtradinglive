@@ -246,6 +246,20 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
 }
 @media(min-width:2200px){ .cockpit{gap:22px;} .cockpit .rail-left{flex-basis:300px;} .cockpit .rail-right{flex-basis:330px;} }
 
+/* Panel personal (cuentas/mercado/neto/coach): botón-menú solo en móvil */
+.rail-body{display:flex;flex-direction:column;gap:12px;}
+.rail-menu-btn{display:none;}
+@media(max-width:1279px){
+  /* Estadísticas arriba del todo en móvil (antes quedaban muy abajo) */
+  .cockpit .center{order:-1;}
+  /* El panel personal se convierte en un menú plegable, como el de Mi cuenta */
+  .rail-menu-btn{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;
+    padding:12px 14px;border-radius:12px;cursor:pointer;font-size:13.5px;font-weight:700;color:var(--tx);
+    background:var(--card);border:1px solid var(--line);}
+  .rail-body{display:none;}
+  .rail-body.open{display:flex;}
+}
+
 /* Responsive por tamaño de pantalla */
 @media(max-width:1024px){ .g4{grid-template-columns:repeat(2,1fr);} .g3{grid-template-columns:repeat(2,1fr);} }
 /* Cuando los enlaces no caben se recogen en el menú de la hamburguesa.

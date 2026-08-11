@@ -29,6 +29,7 @@ export default function SetupGuide() {
   const [celebrate, setCelebrate] = useState(false);
   const [mounted, setMounted] = useState(false);   // para portalar los modales al <body> (evita que el riel sticky los tape)
   useEffect(() => { setMounted(true); }, []);
+  const [nick, setNick] = useState('');            // apodo editable de la cuenta seleccionada
 
   const load = () => fetch('/api/setup').then((r) => r.json()).then(setData).catch(() => setData({ caps: {}, accounts: [] }));
   useEffect(() => { load(); const iv = setInterval(load, 12000); return () => clearInterval(iv); }, []);
@@ -46,10 +47,18 @@ export default function SetupGuide() {
   ].filter((g) => g.always || g.show)), [caps, lang]);
 
   const acc = useMemo(() => accounts.find((a) => a.id === sel) || null, [accounts, sel]);
+  // Al cambiar de cuenta en el popup, precarga su apodo en el campo editable.
+  useEffect(() => { setNick(acc?.nickname || ''); }, [acc]);
 
   async function saveGoals(accountId: string, goals: Record<string, boolean>) {
     setBusy('goals');
     try { await fetch('/api/setup', { method: 'PATCH', body: JSON.stringify({ accountId, goals }) }); await load(); }
+    finally { setBusy(''); }
+  }
+  // Renombra la cuenta (apodo). Se guarda en trading_accounts.nickname y se refleja en todos lados.
+  async function saveNick(accountId: string, name: string) {
+    setBusy('nick');
+    try { await fetch('/api/accounts', { method: 'PATCH', body: JSON.stringify({ id: accountId, nickname: name.trim() }) }); await load(); }
     finally { setBusy(''); }
   }
   function toggleGoal(a: Acc, k: string) {
@@ -221,6 +230,17 @@ export default function SetupGuide() {
               </select>
               <Link className="btn btn-ghost" href="/dashboard/keys" style={{ fontSize: 13 }}>＋ {L('Nueva', 'New')}</Link>
             </div>
+
+            {acc && (
+              <div style={{ marginBottom: 14 }}>
+                <div className="muted" style={{ fontSize: 12, marginBottom: 5 }}>{L('Nombre de la cuenta (apodo)', 'Account name (nickname)')}</div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <input value={nick} onChange={(e) => setNick(e.target.value)} placeholder={L('Ej: FTMO 100K fase 1', 'Eg: FTMO 100K phase 1')} style={{ margin: 0, flex: 1 }} onKeyDown={(e) => { if (e.key === 'Enter') saveNick(acc.id, nick); }} />
+                  <button className="btn btn-primary" disabled={busy === 'nick' || nick.trim() === (acc.nickname || '')} onClick={() => saveNick(acc.id, nick)}>{busy === 'nick' ? '…' : L('Guardar', 'Save')}</button>
+                </div>
+                <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{L('Aparece en el dashboard, el selector y aquí.', 'Shows in the dashboard, the selector and here.')}</div>
+              </div>
+            )}
 
             {acc && (<>
               <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{L('¿Qué harás con esta cuenta?', 'What will you do with this account?')} · {acc.platform}</div>

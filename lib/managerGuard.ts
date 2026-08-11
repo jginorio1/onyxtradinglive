@@ -355,7 +355,10 @@ async function finish(v: Verdict, r: {
     // este bloqueo, así que no lo repetimos en cada heartbeat.
     // Las pérdidas límite van como 'limits'; el resto como 'blocks'.
     const kind = (r.reason === 'daily_loss' || r.reason === 'total_loss' || r.reason === 'target') ? 'limits' : 'blocks';
-    const head = kind === 'limits' ? '🛑 Onyx Guardian' : '⏸️ Onyx Guardian';
+    // Incluye la cuenta (apodo o número) para que el trader sepa a cuál se refiere.
+    let accTag = '';
+    try { const { data: an } = await supabaseAdmin.from('trading_accounts').select('nickname,login').eq('id', opts.accountId).maybeSingle(); accTag = String((an as any)?.nickname || (an as any)?.login || ''); } catch {}
+    const head = (kind === 'limits' ? '🛑 Onyx Guardian' : '⏸️ Onyx Guardian') + (accTag ? ` · ${accTag}` : '');
     alertUser(opts.userId, kind, `${head}\n${r.es}`).catch(() => {});
   }
   return v;
