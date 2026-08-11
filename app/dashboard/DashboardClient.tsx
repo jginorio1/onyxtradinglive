@@ -614,17 +614,42 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
 
             {view === 'hub' && (<>
               <ReferralBanner />
-              {/* Onyx te dice — tira compacta de consejos (una sola fila que hace scroll) */}
-              {insights.length > 0 && (
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'nowrap', overflowX: 'auto', paddingBottom: 2 }}>
-                  <span className="muted" style={{ fontSize: 12, fontWeight: 700, flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--brand)' }}><OnyxIcon emoji="💡" size={15} /> {L.insights}</span>
-                  {insights.map((x, i) => (
-                    <span key={i} style={{ display: 'inline-flex', gap: 7, alignItems: 'center', background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 999, padding: '6px 12px', fontSize: 12.5, whiteSpace: 'nowrap', flex: 'none' }}>
-                      <span style={{ display: 'inline-flex', color: 'var(--brand)' }}><OnyxIcon emoji={x.icon} size={14} /></span>{x.txt}
-                    </span>
-                  ))}
-                </div>
-              )}
+              {/* Onyx te dice + Neto: una sola fila. Onyx says destacado (acento morado)
+                  con cada consejo en su propio color e iluminación; el neto a la derecha,
+                  también alumbrado según su signo. En estrecho, el neto baja debajo. */}
+              {(() => {
+                // Paleta que rota por posición (rojo · ámbar · verde · morado · cyan),
+                // así cada consejo se enciende distinto sirva para 1, 3 o 5 consejos.
+                const GLOW = ['255,107,125', '255,192,77', '52,226,160', '124,140,255', '80,190,255'];
+                const netGlow = a.net >= 0 ? '52,226,160' : '255,107,125';
+                return (
+                  <div style={{ display: 'flex', alignItems: 'stretch', gap: 12, flexWrap: 'wrap' }}>
+                    {insights.length > 0 && (
+                      <div style={{ flex: '1 1 320px', minWidth: 280, background: 'var(--card)', border: '1px solid rgba(124,140,255,.35)', borderLeft: '3px solid var(--brand)', borderRadius: 12, padding: '12px 15px' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, marginBottom: 11 }}>
+                          <span style={{ width: 24, height: 24, borderRadius: 8, background: 'rgba(124,140,255,.18)', color: 'var(--soft-brand)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><OnyxIcon emoji="💡" size={14} /></span>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--soft-brand)' }}>{L.insights}</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: 9, flexWrap: 'wrap' }}>
+                          {insights.map((x, i) => {
+                            const c = GLOW[i % GLOW.length];
+                            return (
+                              <span key={i} style={{ display: 'inline-flex', gap: 7, alignItems: 'center', background: `rgba(${c},.12)`, border: `1px solid rgba(${c},.55)`, boxShadow: `0 0 10px -1px rgba(${c},.4)`, borderRadius: 999, padding: '6px 12px', fontSize: 12.5, whiteSpace: 'nowrap' }}>
+                                <span style={{ display: 'inline-flex', color: `rgb(${c})` }}><OnyxIcon emoji={x.icon} size={14} /></span>
+                                <span style={{ color: `rgb(${c})` }}>{x.txt}</span>
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    <div style={{ flex: 'none', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2, padding: '12px 18px', background: 'var(--card)', border: `1px solid rgba(${netGlow},.5)`, boxShadow: `0 0 16px -3px rgba(${netGlow},.45)`, borderRadius: 12, minWidth: 160 }}>
+                      <span className="muted" style={{ fontSize: 12 }}>{L.kNet}</span>
+                      <span style={{ fontSize: 26, fontWeight: 800, color: `rgb(${netGlow})`, textShadow: `0 0 18px rgba(${netGlow},.55)` }}>{money2(a.net)}</span>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Cabecera vital: anillos encendidos + mosaicos de navegación */}
               {(() => {
@@ -643,7 +668,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                   badge: s.pro && !canJournal ? <PlanBadge plan={upJ.name} /> : undefined,
                 }));
                 tiles.push({ key: 'plan', icon: '🎯', label: lang === 'en' ? 'My plan' : 'Mi plan', metric: lang === 'en' ? 'Habits' : 'Hábitos', mc: 'var(--soft-brand)', color: PURPLE, onClick: () => setView('plan') });
-                return <HubVitals net={money2(a.net)} netPos={a.net >= 0} netLabel={L.kNet} vitals={vitals} tiles={tiles} />;
+                return <HubVitals net={money2(a.net)} netPos={a.net >= 0} netLabel={L.kNet} vitals={vitals} tiles={tiles} hideNet />;
               })()}
 
               <Achievements a={a} accounts={accounts} trades={demo ? demoTrades : tradesS} lang={lang} />
