@@ -538,33 +538,44 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                 )}
               </h1>
               {heroChips.length ? (
-                <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-                  {heroChips.map((c, i) => <span key={i} className="pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(124,140,255,.14)', color: 'var(--soft-brand)', fontWeight: 500 }}><OnyxIcon emoji={c.icon} size={13} /> {c.label}</span>)}
+                <div className="row" style={{ gap: 10, flexWrap: 'wrap', marginTop: 3 }}>
+                  {heroChips.map((c, i) => <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--mut)' }}><OnyxIcon emoji={c.icon} size={12} /> {c.label}</span>)}
                 </div>
               ) : (
                 <Link href="/onboarding" className="pill" style={{ background: 'rgba(124,140,255,.14)', color: 'var(--soft-brand)' }}>{L.completeProfile}</Link>
               )}
             </div>
           </div>
-          {/* El botón viejo de "Conectar cuenta" se quitó: ahora se usa el sistema
-              nuevo de abajo (SetupGuide) — barra "Tus cuentas" + "Añadir cuenta". */}
+          {/* Exportar reporte del período filtrado: menú compacto arriba a la derecha
+              (antes era una banda completa que cargaba la vista). Solo planes de pago. */}
+          {!isFree && (
+            <details style={{ position: 'relative', flex: 'none' }}>
+              <summary style={{ listStyle: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--tx)', borderRadius: 10, padding: '8px 13px', fontSize: 13 }}>
+                <OnyxIcon emoji="⬇️" size={14} /> {lang === 'es' ? 'Exportar' : 'Export'} <span style={{ fontSize: 11, color: 'var(--mut)' }}>▾</span>
+              </summary>
+              <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', zIndex: 40, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 8, minWidth: 220, boxShadow: '0 12px 34px rgba(0,0,0,.4)' }}>
+                <div className="muted" style={{ fontSize: 11, padding: '4px 8px 8px' }}>{lang === 'es' ? 'Reporte del período filtrado' : 'Report for the filtered period'}</div>
+                <a className="btn btn-ghost" href={pdfHref} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="📄" size={14} /> PDF</a>
+                <a className="btn btn-ghost" href={csvHref} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%' }}><OnyxIcon emoji="📊" size={14} /> CSV</a>
+              </div>
+            </details>
+          )}
         </div>
-        <p className="muted" style={{ fontSize: 13, margin: '-6px 0 14px', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>{email} · {accounts.length} {L.accountsWord} · {L.balance} ${totalBalance.toLocaleString()} · <span className="livedot" style={{ width: 8, height: 8 }} /><span style={{ color: GREEN }}>{updatedTxt}</span></p>
+        {/* Balance del portafolio: tarjeta propia con etiqueta clara y número grande
+            (antes iba como texto pequeño en la línea de metadatos y pasaba desapercibido). */}
+        <div style={{ display: 'inline-flex', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap', margin: '2px 0 6px', padding: '12px 16px', background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 12, maxWidth: '100%' }}>
+          <div>
+            <div className="muted" style={{ fontSize: 12 }}>{lang === 'es' ? 'Balance del portafolio' : 'Portfolio balance'} · {accounts.length} {L.accountsWord}</div>
+            <div style={{ fontSize: 28, fontWeight: 800, marginTop: 2, letterSpacing: '-.5px' }}>${totalBalance.toLocaleString()}</div>
+          </div>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: GREEN, marginBottom: 5 }}><span className="livedot" style={{ width: 8, height: 8 }} /> {updatedTxt}</span>
+        </div>
+        <p className="muted" style={{ fontSize: 11.5, margin: '0 0 14px' }}>{email}</p>
 
         {/* Onboarding grande: solo cuando aún NO hay cuentas — se queda a lo ancho para
             que el trader nuevo lo vea prominente. Con cuentas, el lanzador compacto,
             el reloj de mercado, el neto y el Coach viven en el riel derecho (abajo). */}
         {!hasAccounts && <SetupGuide />}
-
-        {!isFree && (
-          <div className="card" style={{ margin: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, padding: '12px 14px' }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12.5, color: 'var(--tx)' }}><OnyxIcon emoji="📄" size={15} /> {lang === 'es' ? 'Descargar reporte del período filtrado' : 'Download report for the filtered period'} <span className="muted" style={{ fontSize: 11 }}>· {lang === 'es' ? 'fondeo, impuestos o análisis' : 'funding, taxes or analysis'}</span></span>
-            <span style={{ display: 'inline-flex', gap: 8 }}>
-              <a className="btn btn-ghost" href={pdfHref} target="_blank" rel="noopener noreferrer" style={{ padding: '7px 13px', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="⬇️" size={14} /> PDF</a>
-              <a className="btn btn-ghost" href={csvHref} target="_blank" rel="noopener noreferrer" style={{ padding: '7px 13px', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="⬇️" size={14} /> CSV</a>
-            </span>
-          </div>
-        )}
 
         <div className="cockpit">
           {/* Riel derecho = panel personal de vistazo (cuentas · mercado · neto · coach).
