@@ -14,7 +14,7 @@ async function sendFullReport(chatId: string, prof: any, days: number, label: st
   const cur = rep.currency;
   await sendMessage(chatId,
     `📊 <b>Tu reporte ${label}</b>\n\n`
-    + `Resultado neto: <b>${cur} ${rep.netTotal.toFixed(2)}</b>\n`
+    + `Resultado neto: <b>${rep.netTotal >= 0 ? '+' : '−'}$${Math.abs(rep.netTotal).toFixed(2)}</b>\n`
     + `Operaciones: ${rep.total}\n`
     + `Aciertos: ${rep.winRate}%\n`
     + `Factor de beneficio: ${rep.pf}\n\n`
