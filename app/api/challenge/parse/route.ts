@@ -21,14 +21,22 @@ export async function POST(req: Request) {
 
     const b = await req.json().catch(() => ({} as any));
     const lang = pickLang(b.lang);
-    const text = String(b.text || '').slice(0, 6000);
-    const r = await parseRules(text, lang);
+    // Texto pegado (hasta ~15.000 caracteres para contratos largos) y/o archivo
+    // (foto o PDF del contrato). La IA lee de cualquiera de las dos formas.
+    const text = String(b.text || '').slice(0, 15000);
+    let file: { media_type: string; data: string } | undefined;
+    if (b.file && b.file.data && b.file.media_type) {
+      const ok = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(String(b.file.media_type));
+      // Límite de tamaño del base64 (~8 MB de archivo).
+      if (ok && String(b.file.data).length < 11_000_000) file = { media_type: String(b.file.media_type), data: String(b.file.data) };
+    }
+    const r = await parseRules(file ? { text, file } : text, lang);
     if (!r.ok) {
       const msg = r.reason === 'no_key'
         ? (lang === 'en' ? 'AI not set up (ANTHROPIC_API_KEY).' : 'IA no configurada (ANTHROPIC_API_KEY).')
         : r.reason === 'short'
-          ? (lang === 'en' ? 'Paste the rules text.' : 'Pega el texto de las reglas.')
-          : (lang === 'en' ? "Couldn't read the rules. Paste the limits section." : 'No se pudieron leer las reglas. Pega la sección de límites.');
+          ? (lang === 'en' ? 'Paste the rules or attach the contract.' : 'Pega las reglas o adjunta el contrato.')
+          : (lang === 'en' ? "Couldn't read the rules. Paste the limits section or attach a clearer file." : 'No se pudieron leer las reglas. Pega la sección de límites o adjunta un archivo más claro.');
       return NextResponse.json({ error: msg }, { status: 400 });
     }
     return NextResponse.json({ ok: true, rules: r.rules });

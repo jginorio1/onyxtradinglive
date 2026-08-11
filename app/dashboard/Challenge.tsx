@@ -1,5 +1,6 @@
 'use client';
 import { dictFor } from '@/lib/i18n';
+import OnyxIcon from '@/app/components/OnyxIcon';
 import { toast } from '@/lib/toast';
 import { useEffect, useState } from 'react';
 import { errMsg } from '@/lib/i18nErrors';
@@ -74,27 +75,58 @@ export default function Challenge({ lang }: { lang: Lang }) {
 
   useEffect(() => { load(); }, []);
 
+  // Convierte un File a base64 (sin el prefijo data:).
+  function fileToB64(file: File): Promise<{ media_type: string; data: string }> {
+    return new Promise((resolve, reject) => {
+      const rd = new FileReader();
+      rd.onload = () => { const s = String(rd.result || ''); resolve({ media_type: file.type || 'application/octet-stream', data: s.slice(s.indexOf(',') + 1) }); };
+      rd.onerror = reject; rd.readAsDataURL(file);
+    });
+  }
+  // Adjunta un contrato (foto o PDF) y lo lee con IA para prellenar el reto.
+  async function readFile(id: string, file: File) {
+    if (!file) return;
+    if (file.size > 8 * 1024 * 1024) { toast(lang === 'es' ? 'El archivo es muy grande (máx 8 MB).' : 'File too large (max 8 MB).'); return; }
+    setBusy('ai' + id);
+    try {
+      const f = await fileToB64(file);
+      await sendParse(id, { file: f, text: String(aiText[id] || '') });
+    } catch { toast('Error'); } finally { setBusy(''); }
+  }
   // Lee las reglas pegadas con AI y prellena los campos (el trader confirma y guarda).
   async function readRules(id: string) {
     const text = String(aiText[id] || '');
     if (text.trim().length < 15) { toast(L.aiPlaceholder); return; }
     setBusy('ai' + id);
-    try {
-      const r = await fetch('/api/challenge/parse', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text, lang }) });
-      const j = await r.json();
-      if (!r.ok) { toast(j.error || 'Error'); return; }
-      const ru = j.rules || {};
-      setDraft((p: any) => {
-        const cur = { ...p[id] };
-        const set = (k: string, v: any) => { if (v !== undefined) cur[k] = v; };
-        set('daily_loss', ru.daily_loss); set('daily_loss_pct', ru.daily_loss_pct);
-        set('total_loss', ru.total_loss); set('total_loss_pct', ru.total_loss_pct);
-        set('profit_target', ru.profit_target); set('profit_target_pct', ru.profit_target_pct);
-        set('min_days', ru.min_days); set('consistency', ru.consistency);
-        return { ...p, [id]: cur };
+    try { await sendParse(id, { text }); } finally { setBusy(''); }
+  }
+  // Envía texto y/o archivo a la IA y aplica las reglas (incluida firma y fase).
+  async function sendParse(id: string, body: { text?: string; file?: { media_type: string; data: string } }) {
+    const r = await fetch('/api/challenge/parse', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...body, lang }) });
+    const j = await r.json();
+    if (!r.ok) { toast(j.error || 'Error'); return; }
+    const ru = j.rules || {};
+    // Firma detectada → si coincide con el catálogo, la preselecciona (rellena sus números).
+    if (ru.firm) {
+      const match = (data?.firms || []).find((x: any) => {
+        const n = String(x.name || '').toLowerCase(), en = String(x.name_en || '').toLowerCase(), f = String(ru.firm).toLowerCase();
+        return n && (n.includes(f) || f.includes(n) || (en && (en.includes(f) || f.includes(en))));
       });
-      toast(L.aiDone, 'ok');
-    } finally { setBusy(''); }
+      if (match) applyFirm(id, match.id);
+    }
+    setDraft((p: any) => {
+      const cur = { ...p[id] };
+      const set = (k: string, v: any) => { if (v !== undefined) cur[k] = v; };
+      set('daily_loss', ru.daily_loss); set('daily_loss_pct', ru.daily_loss_pct);
+      set('total_loss', ru.total_loss); set('total_loss_pct', ru.total_loss_pct);
+      set('profit_target', ru.profit_target); set('profit_target_pct', ru.profit_target_pct);
+      set('min_days', ru.min_days); set('consistency', ru.consistency);
+      set('no_weekend_hold', ru.weekend_flat);
+      // Fase detectada: p1→'1', p2→'2', funded→'funded'
+      if (ru.phase) set('phase', ru.phase === 'p1' ? '1' : ru.phase === 'p2' ? '2' : 'funded');
+      return { ...p, [id]: cur };
+    });
+    toast(L.aiDone, 'ok');
   }
   async function load() {
     try {
@@ -195,10 +227,20 @@ export default function Challenge({ lang }: { lang: Lang }) {
 
                 {/* Lector de reglas con AI */}
                 <div style={{ marginTop: 12, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: 12 }}>
-                  <div className="muted" style={{ fontSize: 12.5, marginBottom: 6 }}>✨ {L.aiRead}</div>
-                  <textarea value={aiText[a.id] || ''} onChange={(e) => setAiText((p: any) => ({ ...p, [a.id]: e.target.value }))} placeholder={L.aiPlaceholder}
+                  <div className="muted" style={{ fontSize: 12.5, marginBottom: 8 }}>✨ {L.aiRead}</div>
+                  {/* Adjuntar contrato: foto o PDF. La IA lo lee igual que el texto. */}
+                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, border: '1.5px dashed rgba(124,140,255,.5)', borderRadius: 10, padding: '13px', cursor: busy === 'ai' + a.id ? 'default' : 'pointer', fontSize: 12.5, color: 'var(--soft-brand)', background: 'rgba(124,140,255,.06)', marginBottom: 8 }}>
+                    <OnyxIcon emoji="📎" size={15} /> {busy === 'ai' + a.id ? (lang === 'es' ? 'Leyendo…' : 'Reading…') : (lang === 'es' ? 'Adjuntar contrato (foto o PDF)' : 'Attach contract (photo or PDF)')}
+                    <input type="file" accept="image/*,application/pdf" style={{ display: 'none' }} disabled={busy === 'ai' + a.id}
+                      onChange={(e) => { const f = e.target.files?.[0]; if (f) readFile(a.id, f); e.currentTarget.value = ''; }} />
+                  </label>
+                  <div className="muted" style={{ fontSize: 11, textAlign: 'center', margin: '2px 0 8px' }}>{lang === 'es' ? '— o pega el texto —' : '— or paste the text —'}</div>
+                  <textarea value={aiText[a.id] || ''} maxLength={15000} onChange={(e) => setAiText((p: any) => ({ ...p, [a.id]: e.target.value }))} placeholder={L.aiPlaceholder}
                     style={{ width: '100%', minHeight: 70, padding: '9px 11px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--tx)', fontSize: 13, fontFamily: 'inherit', resize: 'vertical' }} />
-                  <button className="btn btn-ghost" style={{ marginTop: 8 }} onClick={() => readRules(a.id)} disabled={busy === 'ai' + a.id}>{busy === 'ai' + a.id ? '…' : '✨ ' + L.aiBtn}</button>
+                  <div className="row between" style={{ marginTop: 8 }}>
+                    <button className="btn btn-ghost" onClick={() => readRules(a.id)} disabled={busy === 'ai' + a.id}>{busy === 'ai' + a.id ? '…' : '✨ ' + L.aiBtn}</button>
+                    <span className="muted" style={{ fontSize: 11 }}>{(aiText[a.id] || '').length} / 15.000</span>
+                  </div>
                 </div>
 
                 <div style={grp}>{L.secFirm}</div>
