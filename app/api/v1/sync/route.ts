@@ -158,6 +158,17 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // ¿El trader pidió re-sincronizar TODO el historial de esta cuenta?
+    // Se lo diremos al EA (resyncHistory) y limpiamos la marca para que sea 1 vez.
+    let resyncHistory = false;
+    try {
+      const { data: rs } = await supabaseAdmin.from('trading_accounts').select('resync_history').eq('id', accountId).maybeSingle();
+      if ((rs as any)?.resync_history) {
+        resyncHistory = true;
+        await supabaseAdmin.from('trading_accounts').update({ resync_history: false }).eq('id', accountId);
+      }
+    } catch { /* si la columna no existe aún, no pasa nada */ }
+
     // --- Operaciones cerradas (idempotente por ticket) ---
     const closed = Array.isArray(body.closedTrades) ? body.closedTrades : [];
     if (closed.length) {
@@ -453,7 +464,7 @@ export async function POST(req: NextRequest) {
       (verdict as any).resume_in_sec = Math.max(0, Math.round((new Date((verdict as any).resume_at).getTime() - Date.now()) / 1000));
     }
 
-    return NextResponse.json({ ok: true, received: closed.length, accountId, config: managerCfg, verdict, challenge, commands, features, news, newsTimes });
+    return NextResponse.json({ ok: true, received: closed.length, accountId, config: managerCfg, verdict, challenge, commands, features, news, newsTimes, resyncHistory });
   } catch (e: any) {
     console.error('sync error', e);
     await logError('ea_sync', e);

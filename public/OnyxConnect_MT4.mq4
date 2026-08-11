@@ -1046,6 +1046,14 @@ void Sync()
    ParseNewsTimes(resp);
    DrawNewsLines();
    HandleCommands(resp);
+
+   // Re-sincronizar historial pedido desde la web: reiniciamos la marca para que
+   // el próximo envío vuelva a subir TODAS las operaciones desde el principio.
+   if(JsonBool(resp, "resyncHistory", false))
+   {
+      g_lastClose = 0;
+      GlobalVariableSet(PREFIX + "lc_" + IntegerToString(AccountNumber()), 0.0);
+   }
   }
 
 //==================== PARCIALES: MEMORIA ==========================

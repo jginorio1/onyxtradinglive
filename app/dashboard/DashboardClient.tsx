@@ -93,7 +93,7 @@ const D = {
     lsTitle: 'Largos vs Cortos', longs: '🟢 Largos', shorts: '🔴 Cortos', distTitle: 'Distribución de resultados', noData: 'Sin datos.',
     topPairsT: 'Top 5 mejores pares', botPairsT: 'Top 5 peores pares', noPos: 'Sin pares en positivo.', noNeg: 'Sin pares en negativo.',
     byWeekday: 'Por día de la semana', bySession: 'Por sesión', byHour: 'Por hora del día', byMonth: 'Por mes',
-    accCard: 'Cuentas y portafolio', balTotal: 'Balance total', accounts: 'Cuentas', opsTotal: 'Operaciones', th_acc: 'Cuenta', th_broker: 'Bróker', th_bal: 'Balance', th_net: 'Neto', th_win: 'Win', nickPh: 'Ej: FTMO 50K', nameBtn: '✏️ Nombre',
+    accCard: 'Cuentas y portafolio', balTotal: 'Balance total', accounts: 'Cuentas', opsTotal: 'Operaciones', th_acc: 'Cuenta', th_broker: 'Bróker', th_bal: 'Balance', th_net: 'Neto', th_win: 'Win', nickPh: 'Ej: FTMO 50K', nameBtn: '✏️ Nombre', resyncBtn: '🔄 Re-sincronizar historial', resyncing: 'Enviando…', resyncOk: '✓ Pedido. El EA subirá todo en su próximo sync.',
     fundTitle: '🏆 Reglas de fondeo', fundEdit: '⚙️ Configurar reglas', fundHide: 'Ocultar', fundTarget: 'Objetivo de fondeo ($)', fundMaxDaily: 'Pérdida diaria máx ($)', fundMaxTotal: 'Pérdida total máx ($)', fundStart: 'Balance inicial ($)', fundSave: 'Guardar reglas', fundProfitBar: 'Progreso al objetivo de fondeo', fundDDBar: 'Uso de pérdida máxima', fundHint: 'El profit que te pide tu cuenta de fondeo.',
     ranges: { d1: 'Hoy', d7: '7d', d30: '30d', mo: 'Mes', yr: 'Año', all: 'Todo' },
     radarTitle: 'Perfil del trader', bubbleTitle: 'Pares · volumen y resultado', rWR: 'Win rate', rPF: 'P. factor', rPayoff: 'Payoff', rConsist: 'Consistencia', rRisk: 'Riesgo', demo: 'Demo', demoOn: '🎬 Viendo datos de ejemplo (no reales)', customRange: 'Rango de fechas', from: 'Desde', to: 'Hasta',
@@ -124,7 +124,7 @@ const D = {
     lsTitle: 'Longs vs Shorts', longs: '🟢 Longs', shorts: '🔴 Shorts', distTitle: 'Results distribution', noData: 'No data.',
     topPairsT: 'Top 5 best pairs', botPairsT: 'Top 5 worst pairs', noPos: 'No pairs in profit.', noNeg: 'No pairs in loss.',
     byWeekday: 'By weekday', bySession: 'By session', byHour: 'By hour of day', byMonth: 'By month',
-    accCard: 'Accounts & portfolio', balTotal: 'Total balance', accounts: 'Accounts', opsTotal: 'Trades', th_acc: 'Account', th_broker: 'Broker', th_bal: 'Balance', th_net: 'Net', th_win: 'Win', nickPh: 'e.g. FTMO 50K', nameBtn: '✏️ Name',
+    accCard: 'Accounts & portfolio', balTotal: 'Total balance', accounts: 'Accounts', opsTotal: 'Trades', th_acc: 'Account', th_broker: 'Broker', th_bal: 'Balance', th_net: 'Net', th_win: 'Win', nickPh: 'e.g. FTMO 50K', nameBtn: '✏️ Name', resyncBtn: '🔄 Re-sync history', resyncing: 'Sending…', resyncOk: '✓ Requested. The EA will upload everything on its next sync.',
     fundTitle: '🏆 Prop-firm rules', fundEdit: '⚙️ Set rules', fundHide: 'Hide', fundTarget: 'Prop-firm target ($)', fundMaxDaily: 'Max daily loss ($)', fundMaxTotal: 'Max total loss ($)', fundStart: 'Starting balance ($)', fundSave: 'Save rules', fundProfitBar: 'Progress to prop-firm target', fundDDBar: 'Max loss used', fundHint: 'The profit your prop firm requires.',
     ranges: { d1: 'Today', d7: '7d', d30: '30d', mo: 'Month', yr: 'Year', all: 'All' },
     radarTitle: 'Trader profile', bubbleTitle: 'Pairs · volume and result', rWR: 'Win rate', rPF: 'P. factor', rPayoff: 'Payoff', rConsist: 'Consistency', rRisk: 'Risk', demo: 'Demo', demoOn: '🎬 Viewing example data (not real)', customRange: 'Date range', from: 'From', to: 'To',
@@ -296,6 +296,8 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
   const demoTrades = useMemo(() => genDemo(accs0[0]?.id || 'demo'), []);
   const [editing, setEditing] = useState<string>('');
   const [nick, setNick] = useState('');
+  const [resyncing, setResyncing] = useState('');
+  const [resyncDone, setResyncDone] = useState('');
   const [lastUpdate, setLastUpdate] = useState<number>(Date.now());
   const [, setTick] = useState(0);
   const [plans, setPlans] = useState<any[]>([]);
@@ -400,6 +402,13 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
   const sessName = (key: string) => (SESS[key] ? SESS[key][lang] : key);
   function accStats(id: string) { const ts = ranged.filter((t) => t.account_id === id); let net = 0, w = 0; for (const t of ts) { const p = +t.net_profit || 0; net += p; if (p >= 0) w++; } return { net, ops: ts.length, wr: ts.length ? Math.round(100 * w / ts.length) : 0 }; }
   async function saveNick(id: string) { await fetch('/api/accounts', { method: 'PATCH', body: JSON.stringify({ id, nickname: nick }) }); setAccounts(accounts.map((x) => (x.id === id ? { ...x, nickname: nick } : x))); setEditing(''); }
+  // Pide re-subir TODO el historial de la cuenta: el EA lo recibe en su próximo sync.
+  async function resyncHistory(id: string) {
+    setResyncing(id);
+    try { await fetch('/api/accounts', { method: 'POST', body: JSON.stringify({ action: 'resync', id }) }); setResyncDone(id); }
+    catch {}
+    setResyncing(''); setTimeout(() => setResyncDone(''), 6000);
+  }
 
   const weekOrder = [1, 2, 3, 4, 5, 6, 0];
   const weekdayData = weekOrder.map((i) => ({ label: WDS[lang][i], b: a.byWeekday[String(i)] || { net: 0, count: 0, wins: 0 } }));
@@ -813,7 +822,10 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                       <td style={{ textAlign: 'right' }}>${Number(x.balance || 0).toLocaleString()}</td>
                       <td style={{ textAlign: 'right' }}><span className={'jchip ' + (st.net >= 0 ? 'pos' : 'neg')}>{money(st.net)}</span></td>
                       <td style={{ textAlign: 'right' }} className="muted">{st.wr}%</td>
-                      <td style={{ textAlign: 'right' }}>{editing !== x.id && <button className="btn btn-ghost" onClick={() => { setEditing(x.id); setNick(x.nickname || ''); }}>{L.nameBtn}</button>}</td>
+                      <td style={{ textAlign: 'right' }}>{editing !== x.id && <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        <button className="btn btn-ghost" onClick={() => { setEditing(x.id); setNick(x.nickname || ''); }}>{L.nameBtn}</button>
+                        <button className="btn btn-ghost" onClick={() => resyncHistory(x.id)} disabled={resyncing === x.id} title={L.resyncOk}>{resyncing === x.id ? L.resyncing : L.resyncBtn}</button>
+                      </span>}{resyncDone === x.id && <div style={{ color: 'var(--green)', fontSize: 11.5, marginTop: 4 }}>{L.resyncOk}</div>}</td>
                     </tr>); })}</tbody>
                 </table>
               </Card>

@@ -1116,6 +1116,14 @@ void Sync()
    ParseNewsTimes(resp);
    DrawNewsLines();
    HandleCommands(resp);
+
+   // Re-sincronizar historial: el trader lo pidió desde la web. Borramos la marca
+   // de backfill para que el próximo envío vuelva a subir TODO el historial.
+   if(JsonBool(resp, "resyncHistory", false))
+   {
+      string bfk = "OnyxBF_" + IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN));
+      if(GlobalVariableCheck(bfk)) GlobalVariableDel(bfk);
+   }
 }
 
 //==================== GESTION DE POSICIONES =======================

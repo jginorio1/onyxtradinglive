@@ -336,6 +336,10 @@ namespace cAlgo.Robots
             ParseFeatures(resp);
             ParseNews(resp);
             ParseNewsTimes(resp);
+            // Re-sincronizar historial pedido desde la web: en el próximo sync
+            // volvemos a mandar TODO el historial desde el principio.
+            if (resp.IndexOf("\"resyncHistory\":true", StringComparison.Ordinal) >= 0)
+                _bfDone = false;
             DrawNewsLines();
             HandleCommands(resp);
         }
