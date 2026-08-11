@@ -72,10 +72,11 @@ export default function HubVitals({ net, netPos, netLabel, vitals, tiles }: {
           background:color-mix(in srgb,var(--tc) 20%,transparent);filter:drop-shadow(0 0 5px color-mix(in srgb,var(--tc) 55%,transparent))}
       `}</style>
 
-      {/* Titular: resultado del periodo, grande y encendido */}
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+      {/* Titular: resultado del periodo — tarjeta compacta alineada a la izquierda
+          (antes se estiraba de borde a borde y el número quedaba lejísimos). */}
+      <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 12, marginBottom: 12, padding: '9px 16px', background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 14, maxWidth: '100%', flexWrap: 'wrap' }}>
         <span className="muted" style={{ fontSize: 13 }}>{netLabel}</span>
-        <span style={{ fontSize: 30, fontWeight: 800, color: netColor, textShadow: `0 0 18px ${netPos ? 'rgba(52,226,160,.55)' : 'rgba(255,107,125,.55)'}` }}>{net}</span>
+        <span style={{ fontSize: 28, fontWeight: 800, color: netColor, textShadow: `0 0 18px ${netPos ? 'rgba(52,226,160,.55)' : 'rgba(255,107,125,.55)'}` }}>{net}</span>
       </div>
 
       {/* Anillos vitales */}
