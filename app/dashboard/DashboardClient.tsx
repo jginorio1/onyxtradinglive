@@ -516,7 +516,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
   const heroChips: { icon: string; label: string }[] = [];
   if (profile?.trade_style && L.styleMap[profile.trade_style]) heroChips.push({ icon: STYLE_EMOJI[profile.trade_style] || '📈', label: L.styleMap[profile.trade_style] });
   if (profile?.experience && L.rankMap[profile.experience]) heroChips.push({ icon: '🏅', label: L.rankMap[profile.experience] });
-  if (profile?.platform && platformLabel(profile.platform, lang)) heroChips.push({ icon: '🖥️', label: platformLabel(profile.platform, lang) });
+  // La plataforma ("Several"/"Varias") se quitó del hero: es dato de perfil, no diario.
   if (profile?.goal && L.goalMap[profile.goal]) heroChips.push({ icon: '🎯', label: L.goalMap[profile.goal] });
 
   return (
@@ -545,6 +545,15 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                 <Link href="/onboarding" className="pill" style={{ background: 'rgba(124,140,255,.14)', color: 'var(--soft-brand)' }}>{L.completeProfile}</Link>
               )}
             </div>
+            {/* Balance del portafolio: compacto, al lado del nombre (con separador).
+                Al vivir aquí, se elimina la banda de balance de abajo y el dashboard sube. */}
+            <div style={{ borderLeft: '1px solid var(--line)', paddingLeft: 16, alignSelf: 'center' }}>
+              <div className="muted" style={{ fontSize: 11 }}>{lang === 'es' ? 'Balance del portafolio' : 'Portfolio balance'} · {accounts.length} {L.accountsWord}</div>
+              <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 7 }}>
+                <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.3px' }}>${totalBalance.toLocaleString()}</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: GREEN }}><span className="livedot" style={{ width: 7, height: 7 }} /> {updatedTxt}</span>
+              </div>
+            </div>
           </div>
           {/* Exportar reporte del período filtrado: menú compacto arriba a la derecha
               (antes era una banda completa que cargaba la vista). Solo planes de pago. */}
@@ -561,16 +570,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
             </details>
           )}
         </div>
-        {/* Balance del portafolio: tarjeta propia con etiqueta clara y número grande
-            (antes iba como texto pequeño en la línea de metadatos y pasaba desapercibido). */}
-        <div style={{ display: 'inline-flex', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap', margin: '2px 0 6px', padding: '12px 16px', background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 12, maxWidth: '100%' }}>
-          <div>
-            <div className="muted" style={{ fontSize: 12 }}>{lang === 'es' ? 'Balance del portafolio' : 'Portfolio balance'} · {accounts.length} {L.accountsWord}</div>
-            <div style={{ fontSize: 28, fontWeight: 800, marginTop: 2, letterSpacing: '-.5px' }}>${totalBalance.toLocaleString()}</div>
-          </div>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: GREEN, marginBottom: 5 }}><span className="livedot" style={{ width: 8, height: 8 }} /> {updatedTxt}</span>
-        </div>
-        <p className="muted" style={{ fontSize: 11.5, margin: '0 0 14px' }}>{email}</p>
+        <p className="muted" style={{ fontSize: 11.5, margin: '-4px 0 14px' }}>{email}</p>
 
         {/* Onboarding grande: solo cuando aún NO hay cuentas — se queda a lo ancho para
             que el trader nuevo lo vea prominente. Con cuentas, el lanzador compacto,
