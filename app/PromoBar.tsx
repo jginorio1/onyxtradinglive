@@ -26,9 +26,13 @@ export default function PromoBar({
   const [narrow, setNarrow] = useState(false);  // móvil: CTA como flecha, cupón compacto
   const [reduce, setReduce] = useState(false);  // "reducir movimiento" del sistema
   const [dur, setDur] = useState(22);           // segundos por vuelta (velocidad constante)
+  const [deskCopies, setDeskCopies] = useState(6); // copias en escritorio: llenan el ancho
   const wrapRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const stickyTop = position === 'top' && sticky;
+  // En móvil pocas copias (GPU iOS/iPad); en escritorio, las que hagan falta para
+  // que el texto llene de lado a lado en cualquier monitor (se calcula midiendo).
+  const COPIES = narrow ? 3 : deskCopies;
 
   // Móvil (< 560px) y preferencia de movimiento del sistema.
   useEffect(() => {
@@ -59,7 +63,16 @@ export default function PromoBar({
   useEffect(() => {
     if (!scrolling) return;
     const measure = () => {
+      const cW = wrapRef.current?.offsetWidth || 360;
       const tW = trackRef.current?.scrollWidth || 800;
+      const rendered = narrow ? 3 : deskCopies;
+      const copyW = Math.max(120, tW / (rendered * 2));   // ancho de una copia (con guarda)
+      // En escritorio, tantas copias como hagan falta para que media pista ≥ el ancho
+      // del contenedor (así no queda hueco y el texto va de lado a lado). Tope 24.
+      if (!narrow) {
+        const need = Math.min(24, Math.max(4, Math.ceil(cW / copyW) + 2));
+        if (need !== deskCopies) setDeskCopies(need);
+      }
       const half = tW / 2;
       const px = SPEED_PX[speed] || 62;
       setDur(Math.min(45, Math.max(8, half / px)));
@@ -67,7 +80,7 @@ export default function PromoBar({
     const t = setTimeout(measure, 60);      // tras el layout de fuentes
     window.addEventListener('resize', measure);
     return () => { clearTimeout(t); window.removeEventListener('resize', measure); };
-  }, [scrolling, text, coupon, narrow, speed]);
+  }, [scrolling, text, coupon, narrow, speed, deskCopies]);
 
   const key = useMemo(() => 'onyx_promo_' + btoa(unescape(encodeURIComponent((text || '') + '|' + (endsAt || '')))).slice(0, 24), [text, endsAt]);
 
@@ -126,7 +139,6 @@ export default function PromoBar({
     ...(stickyTop ? { top: 0, left: 0, right: 0, paddingTop: 'env(safe-area-inset-top, 0px)' } : {}),
   };
   const linkAttrs = { href: link || '#', onClick, target: newTab ? '_blank' : undefined, rel: newTab ? 'noopener noreferrer' : undefined } as any;
-  const COPIES = narrow ? 3 : 6;   // menos en móvil (GPU iOS/iPad), más en escritorio
   const px = { paddingLeft: 'max(12px, env(safe-area-inset-left, 0px))', paddingRight: 'max(8px, env(safe-area-inset-right, 0px))' } as any;
 
   return (
