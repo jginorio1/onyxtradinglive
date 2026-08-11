@@ -106,8 +106,12 @@ export default function Challenge({ lang }: { lang: Lang }) {
     const j = await r.json();
     if (!r.ok) { toast(j.error || 'Error'); return; }
     const ru = j.rules || {};
-    // Firma detectada → si coincide con el catálogo, la preselecciona (rellena sus números).
-    if (ru.firm) {
+    // Firma nueva que la IA añadió al catálogo → la metemos en la lista y la seleccionamos.
+    if (j.addedFirm) {
+      setData((d: any) => d ? ({ ...d, firms: [...(d.firms || []), j.addedFirm] }) : d);
+      toast(lang === 'es' ? `Añadí "${j.addedFirm.name}" al catálogo de firmas.` : `Added "${j.addedFirm.name}" to the firm catalog.`, 'ok');
+    } else if (ru.firm) {
+      // Firma detectada que ya está en el catálogo → la preselecciona.
       const match = (data?.firms || []).find((x: any) => {
         const n = String(x.name || '').toLowerCase(), en = String(x.name_en || '').toLowerCase(), f = String(ru.firm).toLowerCase();
         return n && (n.includes(f) || f.includes(n) || (en && (en.includes(f) || f.includes(en))));
@@ -117,6 +121,7 @@ export default function Challenge({ lang }: { lang: Lang }) {
     setDraft((p: any) => {
       const cur = { ...p[id] };
       const set = (k: string, v: any) => { if (v !== undefined) cur[k] = v; };
+      if (j.addedFirm) { cur.firm = j.addedFirm.id; cur.base = j.addedFirm.base; cur.reset_hour = j.addedFirm.reset_hour; }
       set('daily_loss', ru.daily_loss); set('daily_loss_pct', ru.daily_loss_pct);
       set('total_loss', ru.total_loss); set('total_loss_pct', ru.total_loss_pct);
       set('profit_target', ru.profit_target); set('profit_target_pct', ru.profit_target_pct);
@@ -235,11 +240,11 @@ export default function Challenge({ lang }: { lang: Lang }) {
                       onChange={(e) => { const f = e.target.files?.[0]; if (f) readFile(a.id, f); e.currentTarget.value = ''; }} />
                   </label>
                   <div className="muted" style={{ fontSize: 11, textAlign: 'center', margin: '2px 0 8px' }}>{lang === 'es' ? '— o pega el texto —' : '— or paste the text —'}</div>
-                  <textarea value={aiText[a.id] || ''} maxLength={15000} onChange={(e) => setAiText((p: any) => ({ ...p, [a.id]: e.target.value }))} placeholder={L.aiPlaceholder}
+                  <textarea value={aiText[a.id] || ''} maxLength={30000} onChange={(e) => setAiText((p: any) => ({ ...p, [a.id]: e.target.value }))} placeholder={L.aiPlaceholder}
                     style={{ width: '100%', minHeight: 70, padding: '9px 11px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--tx)', fontSize: 13, fontFamily: 'inherit', resize: 'vertical' }} />
                   <div className="row between" style={{ marginTop: 8 }}>
                     <button className="btn btn-ghost" onClick={() => readRules(a.id)} disabled={busy === 'ai' + a.id}>{busy === 'ai' + a.id ? '…' : '✨ ' + L.aiBtn}</button>
-                    <span className="muted" style={{ fontSize: 11 }}>{(aiText[a.id] || '').length} / 15.000</span>
+                    <span className="muted" style={{ fontSize: 11 }}>{(aiText[a.id] || '').length} / 30.000</span>
                   </div>
                 </div>
 

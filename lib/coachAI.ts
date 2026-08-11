@@ -231,11 +231,15 @@ Rules: percentages → the number without % and the _pct flag true (e.g. "5% dai
     const content: any[] = [block, { type: 'text', text: instr + (inp.text ? `\n${inp.text}` : '') }];
     raw = await aiRaw(system, content, 500, isPdf ? 'pdfs-2024-09-25' : undefined);
   } else {
-    raw = await ai(system, inp.text || '', 500);
+    raw = await aiRaw(system, (inp.text || '').slice(0, 30000), 500);
   }
   if (!raw) return { ok: false, reason: 'error' };
   try {
-    const j = JSON.parse(raw.replace(/```json/gi, '').replace(/```/g, '').trim());
+    // La IA a veces envuelve el JSON en texto ("Aquí están las reglas: {...}").
+    // Extraemos el objeto entre la primera { y la última } para no fallar por eso.
+    const cleaned = raw.replace(/```json/gi, '').replace(/```/g, '').trim();
+    const s = cleaned.indexOf('{'); const e = cleaned.lastIndexOf('}');
+    const j = JSON.parse(s >= 0 && e > s ? cleaned.slice(s, e + 1) : cleaned);
     const num = (v: any) => (v === undefined || v === null || isNaN(Number(v)) ? undefined : Number(v));
     const rules: Rules = {
       firm: j.firm ? String(j.firm).slice(0, 40) : undefined,
