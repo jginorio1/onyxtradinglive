@@ -13,7 +13,6 @@ import CompareAccounts from './CompareAccounts';
 import { typeMeta } from '@/lib/accountMeta';
 import { Ring, MiniArea, MiniDonut, MiniBars, MiniHeat, RadarChart, Bubbles, healthScore } from './Modern';
 import MarketHours from './MarketHours';
-import ReferralBanner from './ReferralBanner';
 import PlanHabits from './PlanHabits';
 import DailyCheckinPopup from './DailyCheckinPopup';
 import HubVitals, { StatCard, type Vital, type Tile } from './HubVitals';
@@ -613,44 +612,6 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
             {histDays > 0 && <div style={{ background: 'rgba(124,140,255,.10)', border: '1px solid var(--brand)', color: 'var(--soft-brand2)', borderRadius: 10, padding: '9px 14px', fontSize: 13, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>{L.histCap} <Link href="/pricing" style={{ color: '#fff', fontWeight: 700 }}>{L.proLockCta}</Link></div>}
 
             {view === 'hub' && (<>
-              <ReferralBanner />
-              {/* Onyx te dice + Neto: una sola fila. Onyx says destacado (acento morado)
-                  con cada consejo en su propio color e iluminación; el neto a la derecha,
-                  también alumbrado según su signo. En estrecho, el neto baja debajo. */}
-              {(() => {
-                // Paleta que rota por posición (rojo · ámbar · verde · morado · cyan),
-                // así cada consejo se enciende distinto sirva para 1, 3 o 5 consejos.
-                const GLOW = ['255,107,125', '255,192,77', '52,226,160', '124,140,255', '80,190,255'];
-                const netGlow = a.net >= 0 ? '52,226,160' : '255,107,125';
-                return (
-                  <div style={{ display: 'flex', alignItems: 'stretch', gap: 12, flexWrap: 'wrap' }}>
-                    {insights.length > 0 && (
-                      <div style={{ flex: '1 1 320px', minWidth: 280, background: 'var(--card)', border: '1px solid rgba(124,140,255,.35)', borderLeft: '3px solid var(--brand)', borderRadius: 12, padding: '12px 15px' }}>
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, marginBottom: 11 }}>
-                          <span style={{ width: 24, height: 24, borderRadius: 8, background: 'rgba(124,140,255,.18)', color: 'var(--soft-brand)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><OnyxIcon emoji="💡" size={14} /></span>
-                          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--soft-brand)' }}>{L.insights}</span>
-                        </div>
-                        <div style={{ display: 'flex', gap: 9, flexWrap: 'wrap' }}>
-                          {insights.map((x, i) => {
-                            const c = GLOW[i % GLOW.length];
-                            return (
-                              <span key={i} style={{ display: 'inline-flex', gap: 7, alignItems: 'center', background: `rgba(${c},.12)`, border: `1px solid rgba(${c},.55)`, boxShadow: `0 0 10px -1px rgba(${c},.4)`, borderRadius: 999, padding: '6px 12px', fontSize: 12.5, whiteSpace: 'nowrap' }}>
-                                <span style={{ display: 'inline-flex', color: `rgb(${c})` }}><OnyxIcon emoji={x.icon} size={14} /></span>
-                                <span style={{ color: `rgb(${c})` }}>{x.txt}</span>
-                              </span>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-                    <div style={{ flex: 'none', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2, padding: '12px 18px', background: 'var(--card)', border: `1px solid rgba(${netGlow},.5)`, boxShadow: `0 0 16px -3px rgba(${netGlow},.45)`, borderRadius: 12, minWidth: 160 }}>
-                      <span className="muted" style={{ fontSize: 12 }}>{L.kNet}</span>
-                      <span style={{ fontSize: 26, fontWeight: 800, color: `rgb(${netGlow})`, textShadow: `0 0 18px rgba(${netGlow},.55)` }}>{money2(a.net)}</span>
-                    </div>
-                  </div>
-                );
-              })()}
-
               {/* Cabecera vital: anillos encendidos + mosaicos de navegación */}
               {(() => {
                 const semWR = a.winRate >= 50 ? GREEN : a.winRate >= 40 ? GOLD : RED;
