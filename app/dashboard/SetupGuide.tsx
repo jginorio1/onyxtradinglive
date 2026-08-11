@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useLang } from '@/lib/lang';
 import { mkL } from '@/lib/i18n';
@@ -26,6 +27,8 @@ export default function SetupGuide() {
   const [newPlat, setNewPlat] = useState('MT5');
   const [busy, setBusy] = useState('');
   const [celebrate, setCelebrate] = useState(false);
+  const [mounted, setMounted] = useState(false);   // para portalar los modales al <body> (evita que el riel sticky los tape)
+  useEffect(() => { setMounted(true); }, []);
 
   const load = () => fetch('/api/setup').then((r) => r.json()).then(setData).catch(() => setData({ caps: {}, accounts: [] }));
   useEffect(() => { load(); const iv = setInterval(load, 12000); return () => clearInterval(iv); }, []);
@@ -203,8 +206,8 @@ export default function SetupGuide() {
         </div>
       )}
 
-      {open && (
-        <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '6vh 16px', overflow: 'auto' }}>
+      {open && mounted && createPortal(
+        <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 3000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '6vh 16px', overflow: 'auto' }}>
           <div onClick={(e) => e.stopPropagation()} className="card" style={{ width: '100%', maxWidth: 480, padding: 20 }}>
             <div className="row between" style={{ alignItems: 'center', marginBottom: 4 }}>
               <b style={{ fontSize: 16 }}>{L('Configurar cuenta', 'Configure account')}</b>
@@ -238,10 +241,10 @@ export default function SetupGuide() {
             </>)}
           </div>
         </div>
-      )}
+      , document.body)}
 
-      {celebrate && (
-        <div onClick={dismissCelebrate} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6vh 16px' }}>
+      {celebrate && mounted && createPortal(
+        <div onClick={dismissCelebrate} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 3001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6vh 16px' }}>
           <div onClick={(e) => e.stopPropagation()} className="card" style={{ width: '100%', maxWidth: 380, padding: 26, textAlign: 'center', border: '2px solid var(--green)', boxShadow: '0 0 40px rgba(52,226,160,.3)' }}>
             <div style={{ fontSize: 40, marginBottom: 6 }}>🎉</div>
             <h3 style={{ marginBottom: 8 }}>{L('¡Todo listo!', 'All set!')}</h3>
@@ -249,7 +252,7 @@ export default function SetupGuide() {
             <button className="btn btn-primary" onClick={dismissCelebrate}>{L('Entendido', 'Got it')}</button>
           </div>
         </div>
-      )}
+      , document.body)}
     </>
   );
 }

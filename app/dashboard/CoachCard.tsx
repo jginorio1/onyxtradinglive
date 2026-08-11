@@ -1,6 +1,7 @@
 'use client';
 import { mkL } from '@/lib/i18n';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useLang } from '@/lib/lang';
 import OnyxIcon from '@/app/components/OnyxIcon';
 
@@ -40,6 +41,8 @@ export default function CoachCard({ from, to, account, rail = false }: { from?: 
   const [open, setOpen] = useState(true);
   const [sum, setSum] = useState<any>(null);
   const [actions, setActions] = useState<{ label: string; href: string }[]>([]);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
   async function gen() {
     setBusy(true); setMsg(''); setTxt(''); setSum(null); setActions([]);
@@ -101,8 +104,8 @@ export default function CoachCard({ from, to, account, rail = false }: { from?: 
 
       {/* Repaso EN PANEL CENTRAL (modo riel): el texto es largo y se leería apretado
           en una columna estrecha, así que se abre en un modal ancho y legible. */}
-      {rail && txt && open && (
-        <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '6vh 16px', overflow: 'auto' }}>
+      {rail && txt && open && mounted && createPortal(
+        <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 3000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '6vh 16px', overflow: 'auto' }}>
           <div onClick={(e) => e.stopPropagation()} className="card" style={{ width: '100%', maxWidth: 660, padding: 20 }}>
             <div className="row between" style={{ alignItems: 'center', marginBottom: 12 }}>
               <b style={{ fontSize: 16, display: 'inline-flex', alignItems: 'center', gap: 8 }}><OnyxIcon emoji="✨" size={18} /> Onyx Coach</b>
@@ -111,7 +114,7 @@ export default function CoachCard({ from, to, account, rail = false }: { from?: 
             {reviewBody}
           </div>
         </div>
-      )}
+      , document.body)}
     </div>
   );
 }
