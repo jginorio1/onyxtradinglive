@@ -671,7 +671,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
               />
             </>)}
 
-            {view !== 'hub' && <button className="btn btn-ghost" style={{ alignSelf: 'flex-start' }} onClick={() => setView('hub')}>{L.back}</button>}
+            {view !== 'hub' && <button className="btn" style={{ alignSelf: 'flex-start', background: 'rgba(124,140,255,.12)', border: '1px solid rgba(124,140,255,.6)', color: 'var(--soft-brand)', fontWeight: 500, boxShadow: '0 0 16px -2px rgba(124,140,255,.5)' }} onClick={() => setView('hub')}>{L.back}</button>}
 
             {view === 'rendimiento' && (() => {
               const sWR = a.winRate >= 50 ? GREEN : a.winRate >= 40 ? GOLD : RED;
