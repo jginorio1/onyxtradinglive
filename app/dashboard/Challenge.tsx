@@ -162,7 +162,7 @@ export default function Challenge({ lang }: { lang: Lang }) {
     const r = await fetch('/api/challenge', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ account_id: id, ...draft[id] }) });
     const j = await r.json().catch(() => ({})); setBusy('');
     if (!r.ok) { toast(errMsg(j, lang)); return; }
-    toast(L.saved, 'ok'); load();
+    toast(L.saved, 'ok'); setEdit((p: any) => ({ ...p, [id]: false })); load();
   }
 
   if (!data) return <div className="card muted">…</div>;
