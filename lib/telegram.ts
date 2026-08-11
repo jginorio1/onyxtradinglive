@@ -11,6 +11,12 @@ const API = (method: string) =>
 
 export const telegramEnabled = () => !!process.env.TELEGRAM_BOT_TOKEN;
 
+// Nombre de la cuenta tal como se ve en la web: apodo, o "Broker · #login".
+// Se usa para que cada aviso identifique claramente de qué cuenta habla.
+export function accName(a: any): string {
+  return a?.nickname || (a?.broker ? `${a.broker} · #${a.login}` : `#${a?.login}`);
+}
+
 // Nombre de usuario del bot, para armar el enlace de vinculación.
 // t.me/<bot>?start=<codigo> abre Telegram con el /start ya rellenado.
 export const BOT_USERNAME = process.env.TELEGRAM_BOT_USERNAME || 'OnyxGuardianLive_bot';

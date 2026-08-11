@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { makeLinkCode, BOT_USERNAME, telegramEnabled, sendMessage, sendPhoto, sendPhotoFile, sendDocument } from '@/lib/telegram';
+import { makeLinkCode, BOT_USERNAME, telegramEnabled, sendMessage, sendPhoto, sendPhotoFile, sendDocument, accName } from '@/lib/telegram';
 import { computeTraderReport, traderCsv, traderChartUrl, traderCardPng, traderPdf } from '@/lib/traderReport';
 
 export const dynamic = 'force-dynamic';
@@ -75,6 +75,26 @@ export async function POST(req: Request) {
       const ok = await sendMessage(p.telegram_chat_id,
         '✅ Onyx Guardian\nEsto es un mensaje de prueba. Si lo ves, tus avisos están funcionando.');
       return NextResponse.json({ ok });
+    }
+
+    // Probar el aviso CON el nombre de la cuenta. Envía un aviso de Guardian de
+    // prueba por cada cuenta (máx 3), para confirmar que el nombre sale bien.
+    if (b.action === 'test_account') {
+      const { data: p } = await supabaseAdmin.from('profiles')
+        .select('telegram_chat_id').eq('id', user.id).maybeSingle() as any;
+      if (!p?.telegram_chat_id) return NextResponse.json({ error: 'Telegram no está vinculado.', code: 'not_linked' }, { status: 400 });
+      const { data: accs } = await supabaseAdmin.from('trading_accounts')
+        .select('nickname,login,broker').eq('user_id', user.id).order('created_at', { ascending: true }).limit(3);
+      if (!accs || !accs.length) {
+        await sendMessage(p.telegram_chat_id, '🛡️ <b>Onyx Guardian</b>\nPrueba de aviso. Aún no tienes cuentas conectadas, así que no puedo mostrarte el nombre de una cuenta todavía.');
+        return NextResponse.json({ ok: true, accounts: 0 });
+      }
+      for (const a of accs) {
+        await sendMessage(p.telegram_chat_id,
+          `🛡️ <b>Onyx Guardian · ${accName(a)}</b>\nMensaje de prueba: así se identificará esta cuenta en tus avisos (bloqueos, límites y fondeo).`,
+          { kind: 'status', userId: user.id });
+      }
+      return NextResponse.json({ ok: true, accounts: accs.length });
     }
 
     // Enviar un reporte de rendimiento de prueba (texto + gráfico + PDF + CSV)
