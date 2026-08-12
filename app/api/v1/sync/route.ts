@@ -452,7 +452,7 @@ export async function POST(req: NextRequest) {
               // Título con nombre de cuenta y fase (si la hay): "FTMO-50K · Fase 1"
               const tag = sb.name + (sb.phaseEs ? ` · ${sb.phaseEs} / ${sb.phaseEn}` : '');
               const fired = await alertOncePerDay(userId, 'funding', 'challenge_' + sb.verdict, `🏁 Onyx · ${tag}\n${head}${near}.`).catch(() => false);
-              if (fired) sendPush(userId, { title: `Onyx · ${sb.name}${sb.phaseEs ? ' · ' + sb.phaseEs : ''}`, body: head, url: '/dashboard' }).catch(() => {});
+              if (fired) sendPush(userId, { title: `Onyx · ${sb.name}${sb.phaseEs ? ' · ' + sb.phaseEs : ''}`, body: head, url: '/dashboard?view=reto' }).catch(() => {});
             }
           }
         } catch { /* el marcador nunca rompe el sync */ }

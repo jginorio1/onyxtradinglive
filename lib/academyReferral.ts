@@ -98,7 +98,7 @@ export async function qualifyReferral(o: { mentorId: string; referredId: string;
       status: 'pending', rail: s.rail, stripe_ref: o.ref, kind: o.kind, available_at: availableAt,
     }, { onConflict: 'mentor_id,stripe_ref', ignoreDuplicates: true }).select('id').maybeSingle();
     if (error || !data) return;                          // duplicado ignorado → no re-notifica
-    await notify(referrerId, { kind: 'info', title: '🎉 Ganaste una recompensa por referido', body: 'Tu invitado pagó. Estará disponible tras la ventana de espera.', url: '/dashboard/academy' });
+    { const { emitNotif } = await import('@/lib/emitNotif'); await emitNotif(referrerId, 'referral_reward', { url: '/dashboard/academy' }).catch(() => {}); }
   } catch { /* nunca bloquea el pago */ }
 }
 

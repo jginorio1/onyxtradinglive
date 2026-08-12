@@ -14,7 +14,15 @@ export default function NotifBell() {
   const [pinned, setPinned] = useState(false);
   const [items, setItems] = useState<any[]>([]);
   const [unread, setUnread] = useState(0);
+  const [narrow, setNarrow] = useState(false);
   const box = useRef<HTMLDivElement>(null);
+
+  // En móvil fijamos el panel al viewport para que no se salga por la izquierda.
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width:520px)');
+    const upd = () => setNarrow(mq.matches);
+    upd(); mq.addEventListener('change', upd); return () => mq.removeEventListener('change', upd);
+  }, []);
 
   async function load() {
     try { const r = await fetch('/api/notifications'); const j = await r.json(); setItems(j.items || []); setUnread(j.unread || 0); } catch {}
@@ -46,7 +54,9 @@ export default function NotifBell() {
       </button>
 
       {open && (
-        <div style={{ position: 'absolute', top: 'calc(100% + 10px)', right: 0, width: 340, maxWidth: '90vw', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, boxShadow: '0 12px 34px rgba(0,0,0,.35)', zIndex: 1000, overflow: 'hidden' }}>
+        <div style={narrow
+          ? { position: 'fixed', top: 62, left: 8, right: 8, width: 'auto', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, boxShadow: '0 12px 34px rgba(0,0,0,.35)', zIndex: 1000, overflow: 'hidden' }
+          : { position: 'absolute', top: 'calc(100% + 10px)', right: 0, width: 340, maxWidth: 'calc(100vw - 16px)', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, boxShadow: '0 12px 34px rgba(0,0,0,.35)', zIndex: 1000, overflow: 'hidden' }}>
           <div className="row between" style={{ padding: '11px 14px', borderBottom: '1px solid var(--line)' }}>
             <b style={{ fontSize: 14, display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ display: 'inline-flex', color: 'var(--brand)' }}><OnyxIcon name="bell" size={16} /></span>{L('Mensajes', 'Messages')}</b>
             <span className="row" style={{ gap: 10 }}>

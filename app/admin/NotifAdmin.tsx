@@ -1,0 +1,99 @@
+'use client';
+import { useEffect, useState } from 'react';
+import { toast } from '@/lib/toast';
+
+// Admin → Notificaciones. El dueño edite, por cada tipo de aviso: on/off, canales
+// (campana / push / Telegram) y los textos ES/EN. Los "extra" nacen apagados.
+function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
+  return <span className="toggle" onClick={onClick} style={{ background: on ? 'var(--green)' : '#556080', boxShadow: on ? 'none' : 'inset 0 0 0 1px rgba(255,255,255,.12)' }}><span className="knob" style={{ left: on ? 21 : 3 }} /></span>;
+}
+
+export default function NotifAdmin({ lang }: { lang: 'es' | 'en' }) {
+  const es = lang === 'es';
+  const [cat, setCat] = useState<any[]>([]);
+  const [ov, setOv] = useState<Record<string, any>>({});
+  const [busy, setBusy] = useState(false);
+
+  async function load() {
+    try {
+      const r = await fetch('/api/admin/notifications'); const j = await r.json();
+      setCat(j.catalog || []);
+      // Semilla: parte de los valores por defecto del catálogo mezclados con overrides.
+      const seed: Record<string, any> = {};
+      for (const d of (j.catalog || [])) {
+        const o = (j.overrides || {})[d.key] || {};
+        seed[d.key] = {
+          on: o.on ?? !d.extra,
+          bell: o.bell ?? d.bell, push: o.push ?? d.push, telegram: o.telegram ?? d.telegram,
+          title_es: o.title_es ?? d.es.title, title_en: o.title_en ?? d.en.title,
+          body_es: o.body_es ?? d.es.body, body_en: o.body_en ?? d.en.body,
+        };
+      }
+      setOv(seed);
+    } catch {}
+  }
+  useEffect(() => { load(); }, []);
+
+  const set = (k: string, f: string, v: any) => setOv((p) => ({ ...p, [k]: { ...p[k], [f]: v } }));
+  async function save() {
+    setBusy(true);
+    try {
+      const r = await fetch('/api/admin/notifications', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ overrides: ov }) });
+      if (r.ok) toast(es ? 'Guardado' : 'Saved', 'ok'); else toast('Error');
+    } catch { toast('Error'); }
+    setBusy(false);
+  }
+
+  const groups = Array.from(new Set(cat.map((d) => d.group)));
+  const inp = { width: '100%', padding: '7px 9px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 12.5, fontFamily: 'inherit', margin: 0 } as any;
+  const chLabel = (c: string) => c === 'bell' ? (es ? 'Campana' : 'Bell') : c === 'push' ? 'Push' : 'Telegram';
+
+  return (
+    <div style={{ maxWidth: 900 }}>
+      <div className="row between" style={{ marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
+        <div>
+          <h2 style={{ fontSize: 18, margin: 0 }}>🔔 {es ? 'Notificaciones' : 'Notifications'}</h2>
+          <p className="muted" style={{ fontSize: 12.5, margin: '2px 0 0' }}>{es ? 'Prende/apaga cada aviso, elige sus canales y edita el texto. Usa {llaves} como variables.' : 'Turn each alert on/off, pick its channels and edit the text. Use {braces} as variables.'}</p>
+        </div>
+        <button className="btn btn-primary" onClick={save} disabled={busy}>{busy ? '…' : (es ? 'Guardar cambios' : 'Save changes')}</button>
+      </div>
+
+      {groups.map((g) => (
+        <div key={g} style={{ marginBottom: 18 }}>
+          <div style={{ fontSize: 11, color: 'var(--mut)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 8 }}>{g}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {cat.filter((d) => d.group === g).map((d) => {
+              const o = ov[d.key] || {};
+              const chans: string[] = d.editableChannels || ['bell', 'push', 'telegram'];
+              return (
+                <div key={d.key} className="card" style={{ padding: 12, opacity: o.on ? 1 : 0.6 }}>
+                  <div className="row between" style={{ alignItems: 'center', gap: 8 }}>
+                    <b style={{ fontSize: 13.5 }}>{es ? o.title_es : o.title_en} {d.extra && <span className="pill" style={{ fontSize: 10, background: 'rgba(124,140,255,.15)', color: 'var(--soft-brand)' }}>{es ? 'extra' : 'extra'}</span>}</b>
+                    <label className="row" style={{ gap: 6, fontSize: 12, cursor: 'pointer' }}><Toggle on={!!o.on} onClick={() => set(d.key, 'on', !o.on)} /> {o.on ? (es ? 'Activo' : 'On') : (es ? 'Apagado' : 'Off')}</label>
+                  </div>
+                  <div className="row" style={{ gap: 14, margin: '8px 0 2px', flexWrap: 'wrap' }}>
+                    {chans.map((c) => (
+                      <label key={c} className="row" style={{ gap: 6, fontSize: 12, cursor: 'pointer' }}><Toggle on={!!o[c]} onClick={() => set(d.key, c, !o[c])} /> {chLabel(c)}</label>
+                    ))}
+                  </div>
+                  <div className="grid g2" style={{ gap: 8, marginTop: 8 }}>
+                    <div>
+                      <div className="muted" style={{ fontSize: 11, marginBottom: 3 }}>Título (ES)</div>
+                      <input style={inp} value={o.title_es || ''} onChange={(e) => set(d.key, 'title_es', e.target.value)} />
+                      <textarea style={{ ...inp, marginTop: 6, minHeight: 42, resize: 'vertical' }} value={o.body_es || ''} onChange={(e) => set(d.key, 'body_es', e.target.value)} />
+                    </div>
+                    <div>
+                      <div className="muted" style={{ fontSize: 11, marginBottom: 3 }}>Title (EN)</div>
+                      <input style={inp} value={o.title_en || ''} onChange={(e) => set(d.key, 'title_en', e.target.value)} />
+                      <textarea style={{ ...inp, marginTop: 6, minHeight: 42, resize: 'vertical' }} value={o.body_en || ''} onChange={(e) => set(d.key, 'body_en', e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}

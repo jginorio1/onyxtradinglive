@@ -118,8 +118,11 @@ export async function PATCH(req: Request) {
           `${body}${attachments.length ? `\n\n(${attachments.length} ${attachments.length === 1 ? 'archivo adjunto' : 'archivos adjuntos'} en tu Centro de soporte)` : ''}\n\n—\nEquipo de Onyx Trading Live\nResponde a este correo o entra a tu Centro de soporte para seguir la conversación.`,
         );
       }
-      // Notificación dentro de la app (campana) para el trader con cuenta.
-      if ((tk as any)?.user_id) await notify((tk as any).user_id, { kind: 'support', title: 'Respondimos tu consulta', body: `${tk?.subject ? tk.subject + ': ' : ''}${body.slice(0, 90)}`, url: `/dashboard/soporte?ticket=${ticketId}` });
+      // Notificación al trader (campana/push según lo que el dueño dejó activo).
+      if ((tk as any)?.user_id) {
+        const { emitNotif } = await import('@/lib/emitNotif');
+        await emitNotif((tk as any).user_id, 'support_reply', { vars: { body: `${tk?.subject ? tk.subject + ': ' : ''}${body.slice(0, 90)}` }, url: `/dashboard/soporte?ticket=${ticketId}` }).catch(() => {});
+      }
       await logAdmin(user?.email || '', 'support_reply', ticketId, { emailed });
     }
 
