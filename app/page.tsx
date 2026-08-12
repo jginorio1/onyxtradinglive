@@ -86,7 +86,9 @@ function Counter({ to, prefix = '', suffix = '', compact = true }: { to: number;
     return () => { if (io) io.disconnect(); clearTimeout(timer); };
   }, []);
 
-  return <div ref={ref} style={{ fontSize: 'clamp(28px, 6vw, 44px)', fontWeight: 800, letterSpacing: '-1px', lineHeight: 1.05, whiteSpace: 'nowrap', background: 'var(--grad)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>{prefix}{compact ? fmtCompact(n) : n.toLocaleString()}{suffix}</div>;
+  // padding horizontal + overflow visible: con background-clip:text y letter-spacing
+  // negativo, WebKit recorta el último glifo (el "+"). El margen lo evita siempre.
+  return <div ref={ref} style={{ fontSize: 'clamp(28px, 6vw, 44px)', fontWeight: 800, letterSpacing: '-1px', lineHeight: 1.15, whiteSpace: 'nowrap', padding: '2px 8px', overflow: 'visible', background: 'var(--grad)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>{prefix}{compact ? fmtCompact(n) : n.toLocaleString()}{suffix}</div>;
 }
 
 const dict = {

@@ -8,8 +8,8 @@ type Ev = { title: string; currency: string; impact: string; date: string; forec
 const FLAG: Record<string, string> = { USD: '🇺🇸', EUR: '🇪🇺', GBP: '🇬🇧', JPY: '🇯🇵', AUD: '🇦🇺', CAD: '🇨🇦', CHF: '🇨🇭', NZD: '🇳🇿', CNY: '🇨🇳' };
 
 const T = {
-  es: { title: '📰 Noticias', next: 'PRÓXIMA DE ALTO IMPACTO', in: 'en', med: '+ Medio', today: 'Hoy', prev: 'Prev', fcst: 'Fcst', none: 'No hay noticias próximas.', unavail: 'Calendario no disponible ahora.', warn: 'en menos de 30 min — cuidado', loading: 'Cargando…', all: 'Ver todas', hide: 'Ocultar', more: 'más esta semana', credit: 'By Forex Factory' },
-  en: { title: '📰 News', next: 'NEXT HIGH-IMPACT', in: 'in', med: '+ Medium', today: 'Today', prev: 'Prev', fcst: 'Fcst', none: 'No upcoming news.', unavail: 'Calendar unavailable now.', warn: 'in under 30 min — careful', loading: 'Loading…', all: 'See all', hide: 'Hide', more: 'more this week', credit: 'By Forex Factory' },
+  es: { title: '📰 Noticias', next: 'PRÓXIMA DE ALTO IMPACTO', in: 'en', med: '+ Medio', today: 'Hoy', prev: 'Prev', fcst: 'Fcst', none: 'No hay noticias próximas.', unavail: 'Calendario no disponible ahora.', warn: 'en menos de 30 min — cuidado', loading: 'Cargando…', all: 'Ver todas', hide: 'Ocultar', more: 'más esta semana', credit: 'By Forex Factory', localTz: 'hora local', tzNote: 'Horas en tu hora local' },
+  en: { title: '📰 News', next: 'NEXT HIGH-IMPACT', in: 'in', med: '+ Medium', today: 'Today', prev: 'Prev', fcst: 'Fcst', none: 'No upcoming news.', unavail: 'Calendar unavailable now.', warn: 'in under 30 min — careful', loading: 'Loading…', all: 'See all', hide: 'Hide', more: 'more this week', credit: 'By Forex Factory', localTz: 'local time', tzNote: 'Times in your local time' },
 };
 
 export default function News({ lang }: { lang: Lang }) {
@@ -38,6 +38,8 @@ export default function News({ lang }: { lang: Lang }) {
   const dots = (imp: string) => imp === 'High' ? <span style={{ color: 'var(--red)', fontSize: 14, letterSpacing: -2 }}>●●●</span> : <span style={{ color: 'var(--amber)', fontSize: 14, letterSpacing: -2 }}>●●</span>;
   const fmtTime = (ms: number) => new Date(ms).toLocaleTimeString(lang === 'es' ? 'es-ES' : 'en-US', { hour: '2-digit', minute: '2-digit' });
   const fmtDay = (ms: number) => { const d = new Date(ms); return d.toDateString() === new Date().toDateString() ? t.today : d.toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US', { weekday: 'short', day: 'numeric' }); };
+  // Desfase horario del navegador, ej. "GMT+2" o "GMT-5:30".
+  const tzOff = (() => { const o = -new Date().getTimezoneOffset(); const s = o >= 0 ? '+' : '-'; const h = Math.floor(Math.abs(o) / 60), m = Math.abs(o) % 60; return `GMT${s}${h}${m ? ':' + String(m).padStart(2, '0') : ''}`; })();
   const cd = (ms: number) => { const s = Math.max(0, Math.floor((ms - now) / 1000)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60; return (h > 0 ? h + 'h ' : '') + m + 'm ' + ss + 's'; };
   const warnSoon = featured && featured.impact === 'High' && (featured.ms - now) < 30 * 60000;
 
@@ -54,7 +56,7 @@ export default function News({ lang }: { lang: Lang }) {
           <div style={{ fontSize: 9, color: 'var(--soft-brand2)', fontWeight: 700, marginBottom: 4 }}>{t.next} {dots('High')}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 24 }}>{FLAG[featured.currency] || '🏳️'}</span>
-            <div style={{ minWidth: 0 }}><div style={{ fontSize: 14, fontWeight: 800 }}>{featured.title}</div><div style={{ fontSize: 11, color: 'var(--mut)' }}>{featured.currency} · {fmtDay(featured.ms)} {fmtTime(featured.ms)}</div></div>
+            <div style={{ minWidth: 0 }}><div style={{ fontSize: 14, fontWeight: 800 }}>{featured.title}</div><div style={{ fontSize: 11, color: 'var(--mut)' }}>{featured.currency} · {fmtDay(featured.ms)} {fmtTime(featured.ms)} · {t.localTz} ({tzOff})</div></div>
           </div>
           <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--soft-brand2)', marginTop: 6 }}>{t.in} {cd(featured.ms)}</div>
           <div style={{ fontSize: 11, color: 'var(--mut)', marginTop: 2 }}>{t.prev}: {featured.previous || '—'} · {t.fcst}: {featured.forecast || '—'}</div>
