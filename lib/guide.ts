@@ -18,7 +18,9 @@ export type Block =
   | { tip: string; title?: string }  // recuadro verde de consejo
   | { img: string; alt: string; caption?: string } // ilustración o captura
   | { list: string[] }
-  | { steps: string[] };
+  | { steps: string[] }
+  // Recorrido visual: cada paso con título, detalle, imagen y consejo opcionales.
+  | { walk: { t: string; d?: string; img?: string; alt?: string; tip?: string }[] };
 
 export type Article = {
   slug: string;
@@ -47,7 +49,7 @@ export const ARTICLES: Article[] = [
   // ---------- PRIMEROS PASOS ----------
   {
     slug: 'conectar-cuenta',
-    cat: 'start', icon: '🔌',
+    cat: 'start', icon: '🔌', cover: '/guia/key.svg',
     title: { es: 'Conectar tu cuenta de MetaTrader', en: 'Connecting your MetaTrader account' },
     summary: {
       es: 'Qué es la clave API, por qué una por cuenta, y qué pasa si te equivocas.',
@@ -86,15 +88,15 @@ export const ARTICLES: Article[] = [
     cta: { href: '/dashboard/keys', label: { es: 'Abrir el asistente', en: 'Open the wizard' } },
     body: {
       es: [
-        { p: 'En Cuentas tienes un asistente que te lleva paso a paso y espera hasta confirmar que funcionó. Esto es el resumen por si prefieres ir por tu cuenta.' },
-        { steps: [
-          'Descarga el archivo de tu plataforma: .mq5 para MT5, .mq4 para MT4.',
-          'En MetaTrader: Archivo → Abrir carpeta de datos → carpeta Experts.',
-          'Abre MetaEditor (F4), abre el archivo y pulsa Compilar (F7).',
-          'Navegador → Asesores Expertos → arrastra Onyx a cualquier gráfico.',
-          'Pega tu clave API y deja la URL del servidor como viene.',
-          'Herramientas → Opciones → Asesores Expertos → permite la URL de Onyx.',
-          'Enciende AlgoTrading. En segundos el panel del gráfico dirá "Conectado".',
+        { p: 'En Cuentas tienes un asistente que te lleva paso a paso y espera hasta confirmar que funcionó. Aquí lo tienes todo explicado con imágenes por si prefieres ir por tu cuenta. Tardas unos 3 minutos la primera vez.' },
+        { walk: [
+          { t: 'Descarga el archivo de tu plataforma', d: 'En la pantalla de instalación, pulsa descargar: .mq5 si usas MetaTrader 5, .mq4 si usas MetaTrader 4. Es un archivo pequeño; fíjate en tu carpeta de Descargas.' },
+          { t: 'Abre la carpeta Experts de MetaTrader', d: 'En MetaTrader, arriba: Archivo → Abrir carpeta de datos. Se abre una ventana del explorador; entra en la carpeta MQL5 (o MQL4) y luego en Experts. Copia ahí el archivo que descargaste.', img: '/guia/ea-experts.svg', alt: 'Menú Archivo, Abrir carpeta de datos, y la carpeta Experts' },
+          { t: 'Compílalo en MetaEditor', d: 'Pulsa F4 para abrir MetaEditor. En la lista de la izquierda haz doble clic en el archivo de Onyx y pulsa Compilar (F7). Abajo debe decir "0 errors": eso significa que quedó listo.', img: '/guia/ea-compile.svg', alt: 'MetaEditor con el botón Compilar (F7) y 0 errores' },
+          { t: 'Arrastra Onyx a un gráfico', d: 'Vuelve a MetaTrader. Abre el Navegador (Ctrl+N), despliega Asesores Expertos, y arrastra "Onyx" encima de cualquier gráfico abierto. Da igual el par o la temporalidad.', img: '/guia/ea-drag.svg', alt: 'Arrastrar el EA Onyx desde el Navegador hasta un gráfico' },
+          { t: 'Pega tu clave API', d: 'Al soltarlo se abre una ventana. En la pestaña de parámetros, pega tu clave API (la que copiaste en Cuentas) y deja la URL del servidor tal como viene. Pulsa Aceptar.', tip: 'Copia y pega la clave entera; un espacio de más al principio o al final hace que no conecte.' },
+          { t: 'Permite la URL de Onyx', d: 'Arriba: Herramientas → Opciones → Asesores Expertos. Marca "Permitir WebRequest" y añade la URL de Onyx a la lista. Es lo que deja que el EA nos envíe tus operaciones.' },
+          { t: 'Enciende AlgoTrading', d: 'Pulsa el botón "AlgoTrading" de la barra superior hasta que se ponga verde. En unos segundos el panel dentro del gráfico dirá "Conectado".', img: '/guia/ea-connected.svg', alt: 'Botón AlgoTrading en verde y el panel del gráfico diciendo Conectado', tip: 'Si en la esquina del gráfico ves una carita triste en vez de sonriente, AlgoTrading no está activo aún.' },
         ] },
         { h: 'Si no sincroniza' },
         { p: 'Casi siempre es una de estas cuatro, en este orden de probabilidad:' },
@@ -107,15 +109,15 @@ export const ARTICLES: Article[] = [
         { warn: 'Un EA solo funciona con MetaTrader abierto y con conexión. Si apagas el ordenador, deja de registrar y deja de proteger. Si operas en serio, plantéate un VPS.' },
       ],
       en: [
-        { p: 'In Accounts there is a wizard that walks you through it and waits until it confirms it worked. This is the summary in case you prefer doing it yourself.' },
-        { steps: [
-          'Download the file for your platform: .mq5 for MT5, .mq4 for MT4.',
-          'In MetaTrader: File → Open Data Folder → Experts folder.',
-          'Open MetaEditor (F4), open the file and click Compile (F7).',
-          'Navigator → Expert Advisors → drag Onyx onto any chart.',
-          'Paste your API key and leave the server URL as it comes.',
-          'Tools → Options → Expert Advisors → allow the Onyx URL.',
-          'Turn on AlgoTrading. Within seconds the chart panel will say "Connected".',
+        { p: 'In Accounts there is a wizard that walks you through it and waits until it confirms it worked. Here is everything explained with images in case you prefer doing it yourself. It takes about 3 minutes the first time.' },
+        { walk: [
+          { t: 'Download the file for your platform', d: 'On the install screen, hit download: .mq5 if you use MetaTrader 5, .mq4 if you use MetaTrader 4. It is a small file; check your Downloads folder.' },
+          { t: 'Open MetaTrader’s Experts folder', d: 'In MetaTrader, top menu: File → Open Data Folder. A file explorer opens; go into the MQL5 (or MQL4) folder and then Experts. Copy the file you downloaded there.', img: '/guia/ea-experts.svg', alt: 'File menu, Open Data Folder, and the Experts folder' },
+          { t: 'Compile it in MetaEditor', d: 'Press F4 to open MetaEditor. In the left list double-click the Onyx file and press Compile (F7). The bottom should say "0 errors": that means it is ready.', img: '/guia/ea-compile.svg', alt: 'MetaEditor with the Compile (F7) button and 0 errors' },
+          { t: 'Drag Onyx onto a chart', d: 'Back in MetaTrader, open the Navigator (Ctrl+N), expand Expert Advisors, and drag "Onyx" onto any open chart. The pair or timeframe does not matter.', img: '/guia/ea-drag.svg', alt: 'Dragging the Onyx EA from the Navigator onto a chart' },
+          { t: 'Paste your API key', d: 'When you drop it, a window opens. On the inputs tab, paste your API key (the one you copied in Accounts) and leave the server URL as it comes. Click OK.', tip: 'Copy and paste the whole key; an extra space at the start or end will stop it from connecting.' },
+          { t: 'Allow the Onyx URL', d: 'Top menu: Tools → Options → Expert Advisors. Tick "Allow WebRequest" and add the Onyx URL to the list. That is what lets the EA send us your trades.' },
+          { t: 'Turn on AlgoTrading', d: 'Press the "AlgoTrading" button in the top bar until it turns green. Within seconds the panel inside the chart will say "Connected".', img: '/guia/ea-connected.svg', alt: 'AlgoTrading button green and the chart panel saying Connected', tip: 'If you see a sad face instead of a smiley in the chart corner, AlgoTrading is not active yet.' },
         ] },
         { h: 'If it does not sync' },
         { p: 'It is almost always one of these four, in this order of likelihood:' },
@@ -655,10 +657,10 @@ export const ARTICLES: Article[] = [
       es: [
         { p: 'Onyx puede avisarte por Telegram sin que tengas que abrir la web. Vinculas tu cuenta una vez y eliges qué avisos quieres recibir.' },
         { h: 'Cómo se conecta' },
-        { steps: [
-          'Entra en Mi cuenta → Avisos → Conectar Telegram.',
-          'Se abre el bot con un código ya puesto: pulsa Iniciar.',
-          'Listo. El bot te confirma y empiezas a recibir lo que tengas activado.',
+        { walk: [
+          { t: 'Abre Conectar Telegram', d: 'En Mi cuenta → Avisos, pulsa "Conectar Telegram". Si es la primera vez, te pedirá abrir la app de Telegram.' },
+          { t: 'Pulsa Iniciar en el bot', d: 'Se abre el bot de Onyx con un código de vinculación ya escrito. Solo tienes que pulsar el botón Iniciar (o /start): no tecleas nada.', img: '/guia/tg-start.svg', alt: 'El bot de Telegram abierto con el código puesto y el botón Iniciar' },
+          { t: 'Listo, ya estás vinculado', d: 'El bot te confirma con un mensaje. A partir de ahí recibes los avisos que tengas encendidos en Mi cuenta → Avisos.' },
         ] },
         { h: 'Qué te puede avisar' },
         { list: [
@@ -679,10 +681,10 @@ export const ARTICLES: Article[] = [
       en: [
         { p: 'Onyx can alert you on Telegram without you opening the web. You link your account once and choose which alerts you want.' },
         { h: 'How to connect' },
-        { steps: [
-          'Go to My account → Alerts → Connect Telegram.',
-          'The bot opens with a code already filled in: tap Start.',
-          'Done. The bot confirms and you start getting whatever you turned on.',
+        { walk: [
+          { t: 'Open Connect Telegram', d: 'In My account → Alerts, tap "Connect Telegram". The first time, it will ask to open the Telegram app.' },
+          { t: 'Tap Start in the bot', d: 'The Onyx bot opens with a linking code already typed. You just tap the Start button (or /start): you type nothing.', img: '/guia/tg-start.svg', alt: 'The Telegram bot open with the code filled in and the Start button' },
+          { t: 'Done, you are linked', d: 'The bot confirms with a message. From then on you get the alerts you have turned on in My account → Alerts.' },
         ] },
         { h: 'What it can alert you about' },
         { list: [
@@ -835,11 +837,11 @@ export const ARTICLES: Article[] = [
       es: [
         { p: 'Onyx funciona igual en cTrader que en MetaTrader: lee tus operaciones en solo lectura, nunca opera ni toca tu dinero. La diferencia es que en cTrader el conector se llama cBot (en MetaTrader es EA), pero hace lo mismo.' },
         { h: 'Pasos' },
-        { steps: [
-          'En Onyx, en Conectar cuenta, elige la plataforma cTrader.',
-          'Descarga el cBot de Onyx (archivo .algo o el código .cs).',
-          'En cTrader Desktop: pega el cBot en Automate, compílalo y añádelo a tu gráfico.',
-          'Pega tu clave API de Onyx en los parámetros del cBot y pulsa Play (con el botón global de automatización activado).',
+        { walk: [
+          { t: 'Elige la plataforma cTrader', d: 'En Onyx, en Conectar cuenta, selecciona cTrader. Verás el botón para descargar el conector y el sitio donde crear tu clave API.' },
+          { t: 'Descarga el cBot de Onyx', d: 'Baja el conector: el archivo .algo (listo para usar) o el código .cs si prefieres compilarlo tú. Guárdalo a mano.' },
+          { t: 'Añádelo en Automate', d: 'Abre cTrader Desktop y ve a la pestaña Automate. Importa o pega el cBot de Onyx, compílalo y arrástralo a cualquier gráfico.' },
+          { t: 'Pega tu clave y pulsa Play', d: 'En los parámetros del cBot pega tu clave API de Onyx. Asegúrate de que el botón global de automatización de cTrader está activado, y pulsa Play.', tip: 'Si Play está en gris, activa primero el interruptor global de automatización arriba a la derecha de cTrader.' },
         ] },
         { note: 'Cuando el cBot reporte, tu cuenta aparecerá conectada y verás tus estadísticas en segundos.', title: 'Confirmación' },
         { p: 'El Onyx Guardian y el copy trading también existen para cTrader, como cBots separados, con los mismos ajustes que en MetaTrader.' },
@@ -847,11 +849,11 @@ export const ARTICLES: Article[] = [
       en: [
         { p: 'Onyx works the same on cTrader as on MetaTrader: it reads your trades read-only, never trades or touches your money. The difference is that in cTrader the connector is a cBot (in MetaTrader it\'s an EA), but it does the same thing.' },
         { h: 'Steps' },
-        { steps: [
-          'In Onyx, on Connect account, pick the cTrader platform.',
-          'Download the Onyx cBot (.algo file or the .cs source).',
-          'In cTrader Desktop: paste the cBot into Automate, compile it and add it to your chart.',
-          'Paste your Onyx API key into the cBot parameters and hit Play (with the global automation button on).',
+        { walk: [
+          { t: 'Pick the cTrader platform', d: 'In Onyx, on Connect account, select cTrader. You will see the button to download the connector and where to create your API key.' },
+          { t: 'Download the Onyx cBot', d: 'Grab the connector: the .algo file (ready to use) or the .cs source if you prefer compiling it yourself. Keep it handy.' },
+          { t: 'Add it in Automate', d: 'Open cTrader Desktop and go to the Automate tab. Import or paste the Onyx cBot, compile it and drag it onto any chart.' },
+          { t: 'Paste your key and hit Play', d: 'In the cBot parameters paste your Onyx API key. Make sure cTrader’s global automation button is on, and hit Play.', tip: 'If Play is greyed out, first turn on the global automation switch at the top right of cTrader.' },
         ] },
         { note: 'When the cBot reports, your account shows as connected and your stats appear in seconds.', title: 'Confirmation' },
         { p: 'Onyx Guardian and copy trading also exist for cTrader, as separate cBots, with the same settings as on MetaTrader.' },
@@ -879,12 +881,12 @@ export const ARTICLES: Article[] = [
           'Una cuenta de TradingView de pago (los webhooks no están en su plan gratis).',
         ] },
         { h: 'Pasos' },
-        { steps: [
-          'En Onyx, entra en TradingView y activa la función para tu cuenta.',
-          'Copia tu URL de webhook y pégala en la alerta de TradingView (Notificaciones → Webhook URL).',
-          'Copia el mensaje JSON y pégalo en el campo Mensaje de la alerta.',
-          'Fija tu lote por defecto, lote máximo y símbolos permitidos.',
-          'Envía una señal de prueba para ver la ejecución.',
+        { walk: [
+          { t: 'Activa TradingView en Onyx', d: 'En Onyx entra en TradingView y enciende la función para tu cuenta. Te dará una URL de webhook y un mensaje JSON únicos, tuyos.' },
+          { t: 'Pega tu URL de webhook', d: 'Al crear una alerta en TradingView, ve a la pestaña Notificaciones, marca "Webhook URL" y pega la URL que te dio Onyx.', img: '/guia/tv-webhook.svg', alt: 'Campo Webhook URL de una alerta de TradingView con la URL de Onyx pegada' },
+          { t: 'Pega el mensaje JSON', d: 'Copia el mensaje JSON de Onyx y pégalo en el campo "Mensaje" de la alerta. Ese texto le dice a Onyx qué operar y en qué sentido.' },
+          { t: 'Fija tus límites', d: 'En Onyx pon tu lote por defecto, tu lote máximo y los símbolos permitidos. Así una señal nunca abre más de lo que tú decides.' },
+          { t: 'Manda una señal de prueba', d: 'Dispara la alerta una vez para comprobar que la operación entra en tu cuenta con tu Guardian y tu Stop Loss aplicados.', tip: 'La ejecución respeta tu Guardian: si estás en tu límite del día, la señal no abre.' },
         ] },
         { note: '🛡️ El Onyx Guardian sigue vigilando esa cuenta: si tu pérdida diaria está alcanzada, el EA no abrirá aunque llegue la señal.', title: 'Seguridad' },
         { warn: 'El token del webhook no es la clave del EA. Si se filtra, solo permite mandar señales con tope de lote, y lo puedes rotar con un clic.' },
@@ -898,12 +900,12 @@ export const ARTICLES: Article[] = [
           'A paid TradingView account (webhooks aren\'t in their free plan).',
         ] },
         { h: 'Steps' },
-        { steps: [
-          'In Onyx, open TradingView and enable it for your account.',
-          'Copy your webhook URL and paste it into your TradingView alert (Notifications → Webhook URL).',
-          'Copy the JSON message and paste it into the alert Message field.',
-          'Set your default lot, max lot and allowed symbols.',
-          'Send a test signal to see the execution.',
+        { walk: [
+          { t: 'Enable TradingView in Onyx', d: 'In Onyx open TradingView and turn it on for your account. It gives you a unique webhook URL and JSON message, yours only.' },
+          { t: 'Paste your webhook URL', d: 'When creating an alert in TradingView, go to the Notifications tab, tick "Webhook URL" and paste the URL Onyx gave you.', img: '/guia/tv-webhook.svg', alt: 'Webhook URL field of a TradingView alert with the Onyx URL pasted' },
+          { t: 'Paste the JSON message', d: 'Copy the JSON message from Onyx and paste it into the alert’s "Message" field. That text tells Onyx what to trade and in which direction.' },
+          { t: 'Set your limits', d: 'In Onyx set your default lot, your max lot and the allowed symbols. That way a signal never opens more than you decide.' },
+          { t: 'Send a test signal', d: 'Fire the alert once to check the trade lands in your account with your Guardian and Stop Loss applied.', tip: 'Execution respects your Guardian: if you are at your daily limit, the signal will not open.' },
         ] },
         { note: '🛡️ Onyx Guardian still watches that account: if your daily loss is hit, the EA won\'t open even if a signal arrives.', title: 'Safety' },
         { warn: 'The webhook token isn\'t the EA key. If leaked, it only allows sending signals with a lot cap, and you can rotate it with one click.' },
@@ -971,12 +973,12 @@ export const ARTICLES: Article[] = [
       es: [
         { p: 'Desde el dashboard entras a Onyx Academy y creas tu academia con un asistente. Puedes tenerla lista en minutos y mejorarla con calma después.' },
         { h: 'Paso a paso' },
-        { steps: [
-          'Ponle nombre a tu academia y un lema corto.',
-          'Sube tu logo y una portada (así se ve con tu marca, no la de Onyx).',
-          'Crea tu primer curso: añádele secciones y, dentro, lecciones con vídeo (YouTube/Vimeo/.mp4), PDF y notas.',
-          'Programa una clase en vivo desde el calendario: pega el link de Zoom/Meet o YouTube Live y elige día y hora. Puedes marcar varios días a la vez.',
-          'Comparte el enlace público de tu academia para que la gente entre.',
+        { walk: [
+          { t: 'Ponle nombre y lema', d: 'Dale a tu academia un nombre claro y una frase corta que diga a quién ayudas. Es lo primero que ve tu alumno.' },
+          { t: 'Sube tu logo y portada', d: 'Sube tu logo y una imagen de portada. A partir de ahí todo se ve con tu marca (nombre, colores), no con la de Onyx.' },
+          { t: 'Crea tu primer curso', d: 'Añade un curso, divídelo en secciones y, dentro, mete lecciones con vídeo (YouTube, Vimeo o .mp4), PDF y notas. El alumno ve su progreso a medida que avanza.' },
+          { t: 'Programa una clase en vivo', d: 'Desde el calendario, pega tu enlace de Zoom/Meet o YouTube Live y elige día y hora. Puedes marcar varios días de golpe para una serie de clases.' },
+          { t: 'Comparte tu enlace público', d: 'Copia el enlace público de tu academia y compártelo. Cualquiera puede entrar a ver la portada y apuntarse a tus niveles.' },
         ] },
         { h: 'Clases en vivo' },
         { p: 'El alumno ve una cuenta regresiva y un aviso EN VIVO cuando empiezas. Cada uno la ve en SU hora local. Después puedes añadir la grabación al mismo evento.' },
@@ -1487,7 +1489,7 @@ export function searchArticles(q: string, lang: Lang): Article[] {
   return ARTICLES.filter((a) => {
     const hay = [
       a.title[lang], a.summary[lang],
-      ...a.body[lang].map((b: any) => b.p || b.h || b.note || b.warn || b.tip || b.caption || (b.list || b.steps || []).join(' ')),
+      ...a.body[lang].map((b: any) => b.p || b.h || b.note || b.warn || b.tip || b.caption || (b.list || b.steps || []).join(' ') || (b.walk ? b.walk.map((s: any) => (s.t || '') + ' ' + (s.d || '')).join(' ') : '')),
     ].join(' ').toLowerCase();
     return hay.includes(needle);
   });

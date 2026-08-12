@@ -24,7 +24,7 @@ const T: any = {
 
 // Tiempo de lectura aproximado a partir del texto de los bloques.
 function readMins(body: any[]): number {
-  const words = body.map((b: any) => (b.p || b.h || b.note || b.warn || b.tip || b.caption || (b.list || b.steps || []).join(' ') || '')).join(' ').trim().split(/\s+/).length;
+  const words = body.map((b: any) => (b.p || b.h || b.note || b.warn || b.tip || b.caption || (b.list || b.steps || []).join(' ') || (b.walk ? b.walk.map((s: any) => (s.t || '') + ' ' + (s.d || '')).join(' ') : '') || '')).join(' ').trim().split(/\s+/).length;
   return Math.max(1, Math.round(words / 180));
 }
 
@@ -173,6 +173,29 @@ function BlockView({ b }: { b: Block }) {
         <li key={i} style={{ fontSize: 15, lineHeight: 1.8, color: 'var(--tx)', marginBottom: 7 }}>{x}</li>
       ))}
     </ul>
+  );
+
+  if (any.walk) return (
+    <div style={{ marginBottom: 18 }}>
+      {any.walk.map((s: any, i: number) => (
+        <div key={i} className="row" style={{ gap: 13, alignItems: 'stretch' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 'none' }}>
+            <span style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--grad)', color: '#fff', fontSize: 12.5, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>{i + 1}</span>
+            {i < any.walk.length - 1 && <span style={{ width: 2, flex: 1, background: 'var(--line)', marginTop: 6, minHeight: 14 }} />}
+          </div>
+          <div style={{ flex: 1, minWidth: 0, paddingBottom: 18 }}>
+            <div style={{ fontSize: 15, fontWeight: 600, marginBottom: s.d ? 4 : 0 }}>{s.t}</div>
+            {s.d && <div className="muted" style={{ fontSize: 14, lineHeight: 1.7 }}>{s.d}</div>}
+            {s.img && <img src={s.img} alt={s.alt || ''} loading="lazy" style={{ width: '100%', maxWidth: 440, height: 'auto', borderRadius: 10, border: '1px solid var(--line)', marginTop: 10, display: 'block' }} />}
+            {s.tip && (
+              <div style={{ marginTop: 10, background: 'rgba(52,226,160,.08)', border: '1px solid var(--green)', borderRadius: 10, padding: '9px 12px', fontSize: 13, lineHeight: 1.6, color: 'var(--tx)' }}>
+                <span style={{ color: 'var(--green)' }}>💡</span> {s.tip}
+              </div>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
   );
 
   if (any.steps) return (
