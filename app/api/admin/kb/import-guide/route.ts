@@ -1,17 +1,34 @@
 import { NextResponse } from 'next/server';
 import { requirePerm, logAdmin } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { ARTICLES, type Article, type Lang } from '@/lib/guide';
+import { type Article, type Lang } from '@/lib/guide';
+import { getAllArticles } from '@/lib/guideStore';
 import { logError } from '@/lib/errlog';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
+// Aplana un bloque de guía a texto plano, cubriendo TODOS los tipos (incluidos
+// los nuevos: walk, tip, img). Defensivo: nunca lanza.
+function blockText(b: any): string {
+  if (!b || typeof b !== 'object') return '';
+  if (b.p) return String(b.p);
+  if (b.h) return String(b.h);
+  if (b.tip) return (b.title ? String(b.title) + ': ' : '') + String(b.tip);
+  if (b.note) return (b.title ? String(b.title) + ': ' : '') + String(b.note);
+  if (b.warn) return String(b.warn);
+  if (Array.isArray(b.list)) return b.list.map(String).join(' · ');
+  if (Array.isArray(b.steps)) return b.steps.map(String).join(' · ');
+  if (Array.isArray(b.walk)) return b.walk.map((s: any) => [s?.t, s?.d, s?.tip].filter(Boolean).map(String).join(' — ')).join('\n');
+  if (b.img) return b.caption ? String(b.caption) : String(b.alt || '');
+  return '';
+}
+
 // Aplana un artículo de la Guía a texto plano para la Base IA.
 function flatten(a: Article, lang: Lang): string {
-  const blocks = (a.body[lang] || []) as any[];
-  const parts = blocks.map((b) => b.p || b.h || b.note || b.warn || (b.list || b.steps || []).join(' · ') || '');
-  return `${a.summary[lang]}\n${parts.filter(Boolean).join('\n')}`.slice(0, 8000);
+  const blocks = Array.isArray(a.body?.[lang]) ? (a.body[lang] as any[]) : [];
+  const parts = blocks.map(blockText).filter(Boolean);
+  return `${a.summary?.[lang] || ''}\n${parts.join('\n')}`.slice(0, 8000);
 }
 
 // Saca la clave estable "guide:slug:lang" de la cadena de etiquetas de un artículo.
@@ -43,12 +60,13 @@ export async function POST() {
       if (k) (byKey[k] = byKey[k] || []).push(r.id);
     });
 
-    // 2) Lo que DEBERÍA haber según la Guía actual.
+    // 2) Lo que DEBERÍA haber según la Guía actual (código + tus guías del editor).
+    const all = await getAllArticles();
     const desired = new Map<string, { title: string; body: string; tags: string }>();
-    for (const a of ARTICLES) {
+    for (const a of all) {
       for (const lang of ['es', 'en'] as Lang[]) {
         const key = `guide:${a.slug}:${lang}`;
-        desired.set(key, { title: a.title[lang], body: flatten(a, lang), tags: `${key}, ${a.cat}, ${lang}` });
+        desired.set(key, { title: a.title?.[lang] || a.slug, body: flatten(a, lang), tags: `${key}, ${a.cat}, ${lang}` });
       }
     }
 
