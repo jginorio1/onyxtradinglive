@@ -254,16 +254,19 @@ export type PlanStats = {
   adherence: number; streak: number; checkinRate: number; tradeDiscipline: number;
   overtradingDays: number; winRateRespect: number | null; winRateBroken: number | null; days: number;
   guardianActive: boolean; blocks: number; overrides: number; // conducta real medida por el Guardian
+  daysCompliant: number; rangeDays: number; // días con check-in "bueno" dentro del rango elegido
 };
 
 // Calcula racha y adherencia. Mezcla el cumplimiento de hábitos (check-ins) con la
 // disciplina real de las operaciones (respetar el máximo de operaciones por día).
-export async function computeStats(userId: string, plan: Plan): Promise<PlanStats> {
+// rangeDays define la ventana (7 / 30 / 90) para adherencia, disciplina y eventos.
+export async function computeStats(userId: string, plan: Plan, rangeDays = 30): Promise<PlanStats> {
+  const R = Math.max(1, Math.min(365, Math.round(rangeDays)));
   const habitIds = planHabitIds(plan);
   const enabled = habitIds.length || 1;
 
-  // --- Check-ins de los últimos 14 días ---
-  const from = dayStr(new Date(Date.now() - 14 * DAY));
+  // --- Check-ins de la ventana elegida ---
+  const from = dayStr(new Date(Date.now() - R * DAY));
   const { data: checks } = await supabaseAdmin.from('plan_checkins').select('day,items').eq('user_id', userId).gte('day', from).order('day', { ascending: false });
   const byDay: Record<string, number> = {};   // completion 0..1 por día
   for (const c of (checks || []) as any[]) {
@@ -273,6 +276,7 @@ export async function computeStats(userId: string, plan: Plan): Promise<PlanStat
   }
   const vals = Object.values(byDay);
   const checkinRate = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+  const daysCompliant = vals.filter((v) => v >= 0.8).length;
 
   // Racha: días consecutivos (desde hoy o ayer) con check-in "bueno" (≥80%).
   let streak = 0;

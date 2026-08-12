@@ -60,6 +60,8 @@ const T: any = {
     adherence: 'Adherencia al plan', streak: 'Días de racha', checkin: 'Check-in de hoy',
     histT: 'Cumplimiento · 30 días', monthAdh: 'Adherencia del mes', blockedN: 'Te frenó el Guardian', overrodeN: 'Te lo saltaste', noHist: 'Aún sin historial; se llena cada día.', gOff: 'Enciende el Guardian para medir tu disciplina real.', hmLeg1: 'Cumplido', hmLeg2: 'Flojo', hmLeg3: 'Regla rota',
     momentT: 'Momento del día', mBefore: '☀️ Antes', mDuring: '🕒 Durante', mClose: '🌙 Al cerrar',
+    statsT: 'Estadísticas del plan', daysOk: 'Días cumplidos', daysUnit: 'días', hoverHint: 'Cada celda es un día · pásale el cursor para el detalle', avgAdh: 'Adherencia media', winRk: 'Win respetando', winBk: 'Win rompiendo',
+    protTitle: 'Protegiendo', protApplies: 'Se aplicará solo a', protSave: 'Guardar y proteger', protOkTail: 'protegida', protStep1: 'Paso 1', protStep2: 'Paso 2', dayDet: 'Adherencia', habDet: 'hábitos',
     myPlan: 'Mi plan', edit: 'Editar', save: 'Guardar', cancel: 'Cancelar',
     style: 'Estilo', risk: 'Riesgo por operación', ddl: 'Pérdida diaria máx.', maxt: 'Máx. operaciones/día', sessions: 'Sesiones', pairs: 'Pares/mercados', goal: 'Mi objetivo', rules: 'Mis reglas', addRule: 'Añadir regla', habitsSel: 'Hábitos que quiero seguir',
     checkinT: 'Check-in de hoy', checkinTap: 'Toca cada hábito para marcarlo', saveCheck: 'Guardar check-in', savedCheck: 'Check-in guardado', note: 'Nota del día (opcional)',
@@ -91,6 +93,8 @@ const T: any = {
     adherence: 'Plan adherence', streak: 'Day streak', checkin: 'Today check-in',
     histT: 'Compliance · 30 days', monthAdh: 'Month adherence', blockedN: 'Guardian stopped you', overrodeN: 'You overrode it', noHist: 'No history yet; it fills daily.', gOff: 'Turn on the Guardian to measure your real discipline.', hmLeg1: 'On track', hmLeg2: 'Weak', hmLeg3: 'Rule broken',
     momentT: 'Time of day', mBefore: '☀️ Before', mDuring: '🕒 During', mClose: '🌙 At close',
+    statsT: 'Plan stats', daysOk: 'Days on track', daysUnit: 'days', hoverHint: 'Each cell is a day · hover for detail', avgAdh: 'Avg adherence', winRk: 'Win respecting', winBk: 'Win breaking',
+    protTitle: 'Protecting', protApplies: 'Will apply only to', protSave: 'Save and protect', protOkTail: 'protected', protStep1: 'Step 1', protStep2: 'Step 2', dayDet: 'Adherence', habDet: 'habits',
     myPlan: 'My plan', edit: 'Edit', save: 'Save', cancel: 'Cancel',
     style: 'Style', risk: 'Risk per trade', ddl: 'Max daily loss', maxt: 'Max trades/day', sessions: 'Sessions', pairs: 'Pairs/markets', goal: 'My goal', rules: 'My rules', addRule: 'Add rule', habitsSel: 'Habits I want to track',
     checkinT: 'Today check-in', checkinTap: 'Tap each habit to mark it', saveCheck: 'Save check-in', savedCheck: 'Check-in saved', note: 'Day note (optional)',
@@ -140,6 +144,10 @@ export default function PlanHabits({ lang, onGoGuardian }: { lang: Lang; onGoGua
   const [lim, setLim] = useState<any>({ dl: 3, mt: 0, mode: 'all', accountId: '', accType: 'challenge' });
   const [limBusy, setLimBusy] = useState(false);
   const [done, setDone] = useState<any>(null); // { count, accounts } | 'no_acc' | 'no_mgr'
+  const [range, setRange] = useState(30);      // ventana de estadísticas: 7 | 30 | 90
+  const [protect, setProtect] = useState<any>(null); // { account, dl, mt } — editor guiado por cuenta
+  const [hoverDay, setHoverDay] = useState<any>(null); // celda del mapa bajo el cursor
+  const [toast, setToast] = useState('');      // aviso de éxito tras proteger
 
   useEffect(() => { load(); }, []);
   async function load() {
@@ -241,15 +249,32 @@ export default function PlanHabits({ lang, onGoGuardian }: { lang: Lang; onGoGua
       if (j.ok) { setD({ ...d, plan: j.plan, stats: j.stats, guardian: j.guardian }); setDone({ count: j.updated, accounts: (j.guardian?.accounts || []) }); }
     } catch {} finally { setLimBusy(false); }
   }
-  // Preselecciona el editor de límites para UNA cuenta (desde avisos o la lista).
+  // Abre el editor guiado para UNA cuenta (desde avisos o la lista). Ya no salta
+  // a un editor lejano: aparece un modal claro con 2 pasos y "Guardar y proteger".
   function editAccount(a: any) {
-    setLim({
-      dl: a.daily_loss_pct != null ? a.daily_loss_pct : (p.max_daily_loss_pct || 3),
-      mt: a.max_trades_day != null ? a.max_trades_day : (p.max_trades_day || 0),
-      mode: 'account', accountId: a.id, accType: a.acc_type || 'challenge',
+    setProtect({
+      account: a,
+      dl: a.daily_loss_pct != null ? a.daily_loss_pct : (p.max_daily_loss_pct || 1),
+      mt: a.max_trades_day != null ? a.max_trades_day : (p.max_trades_day || 5),
     });
-    setTab('limites');
-    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  // Guarda los 2 números de ESA cuenta en el Guardian y confirma con un aviso.
+  async function saveProtect() {
+    const pr = protect; if (!pr) return;
+    setLimBusy(true);
+    try {
+      const body = { daily_loss_pct: Number(pr.dl), max_trades_day: Number(pr.mt), mode: 'account', account_id: pr.account.id };
+      const r = await fetch('/api/plan/guardian', { method: 'POST', body: JSON.stringify(body) });
+      if (r.status === 403) { setProtect(null); setDone('no_mgr'); return; }
+      if (r.status === 400) { setProtect(null); setDone('no_acc'); return; }
+      const j = await r.json();
+      if (j.ok) { setD({ ...d, plan: j.plan, stats: j.stats, guardian: j.guardian }); setProtect(null); setToast(pr.account.name); setTimeout(() => setToast(''), 4000); }
+    } catch {} finally { setLimBusy(false); }
+  }
+  // Cambia la ventana de estadísticas (7/30/90) y recalcula stats + mapa.
+  async function changeRange(rn: number) {
+    setRange(rn);
+    try { const r = await fetch('/api/plan?range=' + rn); const j = await r.json(); setD((old: any) => ({ ...old, stats: j.stats, history: j.history })); } catch {}
   }
 
   const overlay: React.CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 };
@@ -297,28 +322,58 @@ export default function PlanHabits({ lang, onGoGuardian }: { lang: Lang; onGoGua
             </div>
           </div>
 
-          {/* Cumplimiento · 30 días (foto diaria + Guardian real) */}
+          {/* Estadísticas del plan: KPIs + mapa interactivo con selector de rango */}
           {(() => {
             const hist: any[] = (d as any).history || [];
-            const monthAdh = hist.length ? Math.round(hist.reduce((a, b) => a + (b.adherence || 0), 0) / hist.length) : (s.adherence || 0);
+            const avgAdh = hist.length ? Math.round(hist.reduce((a, b) => a + (b.adherence || 0), 0) / hist.length) : (s.adherence || 0);
             const cellColor = (r: any) => (r.blocked > 0 || r.overrode > 0) ? '#e24b4a' : (r.adherence >= 70 ? '#1d9e75' : r.adherence >= 45 ? '#ef9f27' : '#c0492b');
-            const cell = (r: any) => `${r.day}: ${r.adherence}%${(r.blocked || r.overrode) ? ' · ' + t.hmLeg3 : ''}`;
+            const cols = range <= 7 ? 7 : 15;
+            const kpi = (val: any, label: string, color?: string) => (
+              <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: '10px 12px', minWidth: 96 }}>
+                <div className="muted" style={{ fontSize: 11 }}>{label}</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: color || 'var(--tx)' }}>{val}</div>
+              </div>
+            );
             return (
               <div className="card">
-                <div className="row between" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
-                  <b style={{ fontSize: 14 }}>🗓️ {t.histT}</b>
-                  <div className="row" style={{ gap: 14, flexWrap: 'wrap' }}>
-                    <div style={{ textAlign: 'right' }}><div style={{ fontSize: 16, fontWeight: 800, color: adColor }}>{monthAdh}%</div><div className="muted" style={{ fontSize: 10 }}>{t.monthAdh}</div></div>
-                    <div style={{ textAlign: 'right' }}><div style={{ fontSize: 16, fontWeight: 800, color: 'var(--red)' }}>{s.blocks || 0}</div><div className="muted" style={{ fontSize: 10 }}>{t.blockedN}</div></div>
-                    <div style={{ textAlign: 'right' }}><div style={{ fontSize: 16, fontWeight: 800, color: 'var(--amber)' }}>{s.overrides || 0}</div><div className="muted" style={{ fontSize: 10 }}>{t.overrodeN}</div></div>
+                <div className="row between" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+                  <b style={{ fontSize: 14 }}>📊 {t.statsT}</b>
+                  <div style={{ display: 'inline-flex', border: '1px solid var(--line)', borderRadius: 9, overflow: 'hidden' }}>
+                    {[7, 30, 90].map((rn) => (
+                      <button key={rn} onClick={() => changeRange(rn)} style={{ fontSize: 12, padding: '5px 11px', border: 'none', cursor: 'pointer', background: range === rn ? 'var(--grad)' : 'transparent', color: range === rn ? '#fff' : 'var(--mut)' }}>{rn} {t.daysUnit}</button>
+                    ))}
                   </div>
                 </div>
+
+                {/* Tarjetas KPI */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(96px,1fr))', gap: 10, marginBottom: 14 }}>
+                  {kpi((avgAdh) + '%', t.avgAdh, adColor)}
+                  {kpi(`${s.daysCompliant || 0}/${s.rangeDays || range}`, t.daysOk)}
+                  {kpi(s.streak || 0, t.streak, 'var(--amber)')}
+                  {kpi(s.blocks || 0, t.blockedN, 'var(--red)')}
+                  {kpi(s.winRateRespect != null ? s.winRateRespect + '%' : '—', t.winRk, 'var(--green)')}
+                  {kpi(s.winRateBroken != null ? s.winRateBroken + '%' : '—', t.winBk, 'var(--red)')}
+                </div>
+
                 {hist.length ? (
                   <>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(15,1fr)', gap: 5, maxWidth: 430 }}>
-                      {hist.slice(-30).map((r) => <div key={r.day} title={cell(r)} style={{ aspectRatio: '1', borderRadius: 4, background: cellColor(r), opacity: 0.92 }} />)}
+                    <div className="muted" style={{ fontSize: 11.5, marginBottom: 8 }}>{t.hoverHint}</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols},1fr)`, gap: 5, maxWidth: 430 }}>
+                      {hist.map((r) => (
+                        <div key={r.day} onMouseEnter={() => setHoverDay(r)} onMouseLeave={() => setHoverDay(null)} onClick={() => setHoverDay(r)}
+                          style={{ aspectRatio: '1', borderRadius: 4, background: cellColor(r), opacity: hoverDay && hoverDay.day === r.day ? 1 : 0.9, cursor: 'pointer', outline: hoverDay && hoverDay.day === r.day ? '2px solid var(--brand)' : 'none' }} />
+                      ))}
                     </div>
-                    <div className="row" style={{ gap: 14, marginTop: 10, fontSize: 11, flexWrap: 'wrap' }}>
+                    {/* Detalle del día bajo el cursor */}
+                    <div style={{ minHeight: 22, marginTop: 8 }}>
+                      {hoverDay && (
+                        <span style={{ fontSize: 12.5, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 8, padding: '5px 10px', display: 'inline-block' }}>
+                          <b>{hoverDay.day}</b> · {t.dayDet}: {hoverDay.adherence}% · {hoverDay.checkin_rate}% {t.habDet}
+                          {(hoverDay.blocked || hoverDay.overrode) ? <span style={{ color: 'var(--red)' }}> · {t.hmLeg3}</span> : null}
+                        </span>
+                      )}
+                    </div>
+                    <div className="row" style={{ gap: 14, marginTop: 8, fontSize: 11, flexWrap: 'wrap' }}>
                       <span className="row" style={{ gap: 5 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: '#1d9e75' }} /> {t.hmLeg1}</span>
                       <span className="row" style={{ gap: 5 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: '#ef9f27' }} /> {t.hmLeg2}</span>
                       <span className="row" style={{ gap: 5 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: '#e24b4a' }} /> {t.hmLeg3}</span>
@@ -579,6 +634,56 @@ export default function PlanHabits({ lang, onGoGuardian }: { lang: Lang; onGoGua
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ===== Proteger: editor guiado por cuenta (2 pasos + guardar) ===== */}
+      {protect && (
+        <div style={overlay} onClick={() => setProtect(null)}>
+          <div style={modal} onClick={(e) => e.stopPropagation()}>
+            <div className="row" style={{ gap: 9, alignItems: 'center', flexWrap: 'wrap' }}>
+              <span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon emoji="🛡️" size={20} /></span>
+              <div style={{ fontSize: 16, fontWeight: 800 }}>{t.protTitle}: {protect.account.name}</div>
+            </div>
+            <p className="muted" style={{ fontSize: 12.5, margin: '6px 0 14px' }}>{t.limitsSub}</p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 12 }}>
+              <div style={{ background: 'var(--bg2)', borderRadius: 12, padding: 14, textAlign: 'center' }}>
+                <div className="muted" style={{ fontSize: 11.5, marginBottom: 8 }}>{t.protStep1} · 🐷 {t.limDL}</div>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+                  <button style={stepBtn} onClick={() => setProtect({ ...protect, dl: Math.max(0, r1(Number(protect.dl) - 0.5)) })}>−</button>
+                  <b style={{ fontSize: 24, minWidth: 62 }}>{protect.dl}%</b>
+                  <button style={stepBtn} onClick={() => setProtect({ ...protect, dl: r1(Number(protect.dl) + 0.5) })}>+</button>
+                </div>
+                <div className="muted" style={{ fontSize: 10.5, marginTop: 6 }}>{t.limDLh}</div>
+              </div>
+              <div style={{ background: 'var(--bg2)', borderRadius: 12, padding: 14, textAlign: 'center' }}>
+                <div className="muted" style={{ fontSize: 11.5, marginBottom: 8 }}>{t.protStep2} · 🎚️ {t.limMT}</div>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+                  <button style={stepBtn} onClick={() => setProtect({ ...protect, mt: Math.max(0, Number(protect.mt) - 1) })}>−</button>
+                  <b style={{ fontSize: 24, minWidth: 40 }}>{Number(protect.mt) === 0 ? t.off : protect.mt}</b>
+                  <button style={stepBtn} onClick={() => setProtect({ ...protect, mt: Number(protect.mt) + 1 })}>+</button>
+                </div>
+                <div className="muted" style={{ fontSize: 10.5, marginTop: 6 }}>{t.limMTh}</div>
+              </div>
+            </div>
+
+            <div className="row" style={{ gap: 8, alignItems: 'center', marginTop: 14, fontSize: 12.5, background: 'rgba(124,140,255,.10)', border: '1px solid var(--brand)', borderRadius: 10, padding: '9px 12px' }}>
+              <span>ℹ️</span><span>{t.protApplies} <b>{protect.account.name}</b>.</span>
+            </div>
+
+            <div className="row" style={{ gap: 8, marginTop: 14 }}>
+              <button className="btn btn-ghost" style={{ flex: 'none' }} onClick={() => setProtect(null)}>{t.cancel}</button>
+              <button className="btn btn-primary" style={{ flex: 1 }} onClick={saveProtect} disabled={limBusy}>{limBusy ? t.saving : '🛡️ ' + t.protSave}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast de éxito tras proteger */}
+      {toast && (
+        <div style={{ position: 'fixed', left: '50%', bottom: 24, transform: 'translateX(-50%)', zIndex: 1100, background: 'var(--card)', border: '1px solid var(--green)', borderRadius: 12, padding: '11px 16px', display: 'flex', gap: 9, alignItems: 'center', fontSize: 13, boxShadow: '0 6px 24px rgba(0,0,0,.35)' }}>
+          <span style={{ color: 'var(--green)' }}>✓</span> <b>{toast}</b> {t.protOkTail}
         </div>
       )}
 

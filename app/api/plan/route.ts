@@ -21,12 +21,15 @@ async function aiEnabled(userId: string): Promise<boolean> {
 }
 
 // GET · mi plan + check-in de hoy + estadísticas (racha, adherencia).
-export async function GET() {
+// Acepta ?range=7|30|90 para la ventana de las estadísticas y el mapa.
+export async function GET(req: Request) {
   const user = await me();
   if (!user) return NextResponse.json({ error: 'no autorizado' }, { status: 401 });
+  const rq = Number(new URL(req.url).searchParams.get('range')) || 30;
+  const range = [7, 30, 90].includes(rq) ? rq : 30;
   const plan = await getPlan(user.id);
   const [checkin, stats, ai, guardian, planRow] = await Promise.all([
-    getCheckin(user.id), computeStats(user.id, plan), aiEnabled(user.id), guardianSummary(user.id),
+    getCheckin(user.id), computeStats(user.id, plan, range), aiEnabled(user.id), guardianSummary(user.id),
     supabaseAdmin.from('trading_plans').select('user_id').eq('user_id', user.id).maybeSingle(),
   ]);
 
@@ -57,7 +60,7 @@ export async function GET() {
     }
   } catch { /* sin auto-marcado */ }
 
-  const history = await getPlanHistory(user.id, 30).catch(() => []);
+  const history = await getPlanHistory(user.id, range).catch(() => []);
   return NextResponse.json({ plan, checkin, stats, aiEnabled: ai, habitKeys: HABIT_KEYS, guardian, hasPlan: !!(planRow as any)?.data, auto, history });
 }
 
