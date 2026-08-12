@@ -32,6 +32,10 @@ export default function ArticleView({ slug }: { slug: string }) {
   const { lang } = useLang();
   const t = dictFor(T, lang);
   const [voted, setVoted] = useState(false);
+  // Visor de imagen a pantalla completa (zoom sin perder calidad: muestra el
+  // archivo original, alterna entre ajustar y tamaño real).
+  const [zoom, setZoom] = useState<{ src: string; alt: string } | null>(null);
+  const [full, setFull] = useState(false);
 
   // Guías fusionadas (código + las del dueño). Partimos de las del código para
   // pintar al instante, y traemos la lista completa del servidor.
@@ -79,11 +83,23 @@ export default function ArticleView({ slug }: { slug: string }) {
 
       {/* Imagen de portada del artículo */}
       {(a as any).cover && (
-        <img src={(a as any).cover} alt={a.title[lang]} loading="lazy"
-          style={{ width: '100%', height: 'auto', borderRadius: 14, border: '1px solid var(--line)', marginBottom: 22, display: 'block' }} />
+        <img src={(a as any).cover} alt={a.title[lang]} loading="lazy" onClick={() => { setZoom({ src: (a as any).cover, alt: a.title[lang] }); setFull(false); }}
+          style={{ width: '100%', height: 'auto', borderRadius: 14, border: '1px solid var(--line)', marginBottom: 22, display: 'block', cursor: 'zoom-in' }} />
       )}
 
-      {a.body[lang].map((b, i) => <BlockView key={i} b={b} />)}
+      {a.body[lang].map((b, i) => <BlockView key={i} b={b} onZoom={(src, alt) => { setZoom({ src, alt }); setFull(false); }} />)}
+
+      {/* Visor de imagen (lightbox) con zoom */}
+      {zoom && (
+        <div onClick={() => setZoom(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.9)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'auto', padding: 20 }}>
+          <img src={zoom.src} alt={zoom.alt} onClick={(e) => { e.stopPropagation(); setFull((f) => !f); }}
+            style={full
+              ? { maxWidth: 'none', width: 'auto', height: 'auto', cursor: 'zoom-out' }
+              : { maxWidth: '95vw', maxHeight: '90vh', width: 'auto', height: 'auto', cursor: 'zoom-in', borderRadius: 8 }} />
+          <button onClick={() => setZoom(null)} aria-label="Cerrar" style={{ position: 'fixed', top: 16, right: 18, background: 'rgba(255,255,255,.12)', border: 'none', color: '#fff', width: 40, height: 40, borderRadius: '50%', fontSize: 20, cursor: 'pointer' }}>×</button>
+          <div style={{ position: 'fixed', bottom: 16, left: '50%', transform: 'translateX(-50%)', color: 'rgba(255,255,255,.75)', fontSize: 12.5, background: 'rgba(0,0,0,.4)', padding: '5px 12px', borderRadius: 20 }}>{full ? (lang === 'en' ? 'Click to fit' : 'Clic para ajustar') : (lang === 'en' ? 'Click to zoom 100%' : 'Clic para tamaño real')}</div>
+        </div>
+      )}
 
       {a.cta && (
         <div style={{ marginTop: 24, paddingTop: 18, borderTop: '1px solid var(--line)' }}>
@@ -131,7 +147,7 @@ export default function ArticleView({ slug }: { slug: string }) {
   );
 }
 
-function BlockView({ b }: { b: Block }) {
+function BlockView({ b, onZoom }: { b: Block; onZoom?: (src: string, alt: string) => void }) {
   const any = b as any;
 
   if (any.h) return <h2 style={{ fontSize: 18, margin: '26px 0 10px' }}>{any.h}</h2>;
@@ -172,8 +188,8 @@ function BlockView({ b }: { b: Block }) {
 
   if (any.img) return (
     <figure style={{ margin: '4px 0 20px' }}>
-      <img src={any.img} alt={any.alt || ''} loading="lazy"
-        style={{ width: '100%', height: 'auto', borderRadius: 12, border: '1px solid var(--line)', display: 'block' }} />
+      <img src={any.img} alt={any.alt || ''} loading="lazy" onClick={() => onZoom?.(any.img, any.alt || '')}
+        style={{ width: '100%', height: 'auto', borderRadius: 12, border: '1px solid var(--line)', display: 'block', cursor: 'zoom-in' }} />
       {any.caption && <figcaption className="muted" style={{ fontSize: 12.5, lineHeight: 1.6, marginTop: 8, textAlign: 'center' }}>{any.caption}</figcaption>}
     </figure>
   );
@@ -197,7 +213,7 @@ function BlockView({ b }: { b: Block }) {
           <div style={{ flex: 1, minWidth: 0, paddingBottom: 18 }}>
             <div style={{ fontSize: 15, fontWeight: 600, marginBottom: s.d ? 4 : 0 }}>{s.t}</div>
             {s.d && <div className="muted" style={{ fontSize: 14, lineHeight: 1.7 }}>{s.d}</div>}
-            {s.img && <img src={s.img} alt={s.alt || ''} loading="lazy" style={{ width: '100%', maxWidth: 440, height: 'auto', borderRadius: 10, border: '1px solid var(--line)', marginTop: 10, display: 'block' }} />}
+            {s.img && <img src={s.img} alt={s.alt || ''} loading="lazy" onClick={() => onZoom?.(s.img, s.alt || '')} style={{ width: '100%', maxWidth: 440, height: 'auto', borderRadius: 10, border: '1px solid var(--line)', marginTop: 10, display: 'block', cursor: 'zoom-in' }} />}
             {s.tip && (
               <div style={{ marginTop: 10, background: 'rgba(52,226,160,.08)', border: '1px solid var(--green)', borderRadius: 10, padding: '9px 12px', fontSize: 13, lineHeight: 1.6, color: 'var(--tx)' }}>
                 <span style={{ color: 'var(--green)' }}>💡</span> {s.tip}

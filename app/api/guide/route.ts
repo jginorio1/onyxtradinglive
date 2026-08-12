@@ -44,6 +44,16 @@ export async function POST(req: Request) {
     },
     ...(art.cover ? { cover: String(art.cover).slice(0, 300) } : {}),
     ...(art.updated ? { updated: true } : {}),
+    ...(art.seo && typeof art.seo === 'object' ? {
+      seo: {
+        title: { es: String(art.seo.title?.es || '').slice(0, 180), en: String(art.seo.title?.en || '').slice(0, 180) },
+        desc: { es: String(art.seo.desc?.es || '').slice(0, 300), en: String(art.seo.desc?.en || '').slice(0, 300) },
+        keywords: {
+          es: Array.isArray(art.seo.keywords?.es) ? art.seo.keywords.es.map((k: any) => String(k).slice(0, 60)).slice(0, 12) : [],
+          en: Array.isArray(art.seo.keywords?.en) ? art.seo.keywords.en.map((k: any) => String(k).slice(0, 60)).slice(0, 12) : [],
+        },
+      },
+    } : {}),
     ...(art.cta && art.cta.href ? { cta: { href: String(art.cta.href).slice(0, 300), label: { es: String(art.cta.label?.es || '').slice(0, 80), en: String(art.cta.label?.en || art.cta.label?.es || '').slice(0, 80) } } } : {}),
   };
 

@@ -32,6 +32,8 @@ export type Article = {
   cta?: { href: string; label: Record<Lang, string> };
   cover?: string;    // imagen de portada del artículo (ruta en /public)
   updated?: boolean; // marca "Nuevo/Actualizado" en la portada
+  // SEO on-page (opcional): meta título/descr y keywords por idioma.
+  seo?: { title?: Record<Lang, string>; desc?: Record<Lang, string>; keywords?: Record<Lang, string[]> };
 };
 
 export const CATEGORIES = [

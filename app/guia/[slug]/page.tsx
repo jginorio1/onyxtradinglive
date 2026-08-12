@@ -17,9 +17,11 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   const a = (await getArticleServer(params.slug)) || bySlug(params.slug);
   if (!a) return { title: 'Guía de Onyx' };
   const lang: Lang = serverLang();
+  const kws = a.seo?.keywords?.[lang];
   return {
-    title: `${a.title[lang]} · Guía de Onyx`,
-    description: a.summary[lang],
+    title: a.seo?.title?.[lang] || `${a.title[lang]} · Guía de Onyx`,
+    description: a.seo?.desc?.[lang] || a.summary[lang],
+    ...(kws && kws.length ? { keywords: kws } : {}),
     alternates: localeAlternates(`/guia/${a.slug}`),
   };
 }
