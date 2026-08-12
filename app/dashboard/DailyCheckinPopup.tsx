@@ -17,7 +17,8 @@ const HAB: Record<string, [string, string]> = {
 // Momento por defecto de cada hábito; el trader puede cambiarlo en "Mi plan".
 const MOMENT_DEF: Record<string, 'before' | 'during' | 'close'> = {
   reviewed_calendar: 'before', defined_risk: 'before', followed_plan: 'before',
-  journaled: 'during', stopped_at_limit: 'during', no_revenge: 'during', respected_sessions: 'during',
+  stopped_at_limit: 'during', no_revenge: 'during', respected_sessions: 'during',
+  journaled: 'close',
 };
 
 const T: any = {

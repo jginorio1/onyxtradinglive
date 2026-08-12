@@ -196,7 +196,7 @@ export default function PlanHabits({ lang, onGoGuardian }: { lang: Lang; onGoGua
     setNewHabit('');
   }
   // Momento de cada hábito (antes/durante/al cerrar) — con defaults sensatos.
-  const MOMENT_DEF_UI: any = { reviewed_calendar: 'before', defined_risk: 'before', followed_plan: 'before', journaled: 'during', stopped_at_limit: 'during', no_revenge: 'during', respected_sessions: 'during' };
+  const MOMENT_DEF_UI: any = { reviewed_calendar: 'before', defined_risk: 'before', followed_plan: 'before', stopped_at_limit: 'during', no_revenge: 'during', respected_sessions: 'during', journaled: 'close' };
   const momOf = (id: string) => (form?.habit_moments?.[id]) || MOMENT_DEF_UI[id] || 'during';
   const setMom = (id: string, m: string) => setForm({ ...form, habit_moments: { ...(form.habit_moments || {}), [id]: m } });
   const MomentPick = (id: string) => (
@@ -282,8 +282,11 @@ export default function PlanHabits({ lang, onGoGuardian }: { lang: Lang; onGoGua
       {tab === 'hoy' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-            <div style={{ width: 84, height: 84, borderRadius: '50%', background: `conic-gradient(${adColor} 0 ${s.adherence || 0}%, var(--line) ${s.adherence || 0}% 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
-              <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--card)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}><b style={{ fontSize: 18 }}>{s.adherence || 0}%</b><span className="muted" style={{ fontSize: 9 }}>{t.adherence}</span></div>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flex: 'none' }}>
+              <div style={{ width: 84, height: 84, borderRadius: '50%', background: `conic-gradient(${adColor} 0 ${s.adherence || 0}%, var(--line) ${s.adherence || 0}% 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--card)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><b style={{ fontSize: 21 }}>{s.adherence || 0}%</b></div>
+              </div>
+              <span className="muted" style={{ fontSize: 11, textAlign: 'center', maxWidth: 96, lineHeight: 1.2 }}>{t.adherence}</span>
             </div>
             <div style={{ flex: 1, minWidth: 170 }}>
               <div style={{ display: 'flex', gap: 16, marginBottom: 10 }}>

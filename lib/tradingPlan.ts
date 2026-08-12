@@ -36,7 +36,8 @@ export const HABIT_KEYS = ['reviewed_calendar', 'defined_risk', 'followed_plan',
 // Momento por defecto de cada hábito predefinido; los propios son "durante".
 export const MOMENT_DEFAULT: Record<string, 'before' | 'during' | 'close'> = {
   reviewed_calendar: 'before', defined_risk: 'before', followed_plan: 'before',
-  journaled: 'during', stopped_at_limit: 'during', no_revenge: 'during', respected_sessions: 'during',
+  stopped_at_limit: 'during', no_revenge: 'during', respected_sessions: 'during',
+  journaled: 'close', // registrar operaciones es cierre del día
 };
 export function habitMoment(plan: Plan, id: string): 'before' | 'during' | 'close' {
   const m = plan.habit_moments?.[id];
