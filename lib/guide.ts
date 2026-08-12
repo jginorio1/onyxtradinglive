@@ -77,7 +77,7 @@ export const ARTICLES: Article[] = [
   },
   {
     slug: 'instalar-ea',
-    cat: 'start', icon: '⚙️',
+    cat: 'start', icon: '⚙️', cover: '/guia/instalar-ea.svg',
     title: { es: 'Instalar el EA en MetaTrader', en: 'Installing the EA in MetaTrader' },
     summary: {
       es: 'Los siete pasos, y las cuatro cosas que fallan cuando no sincroniza.',
@@ -644,7 +644,7 @@ export const ARTICLES: Article[] = [
   // ---------- AVISOS Y SOPORTE ----------
   {
     slug: 'avisos-telegram',
-    cat: 'alerts', icon: '📣',
+    cat: 'alerts', icon: '📣', cover: '/guia/notificaciones.svg',
     title: { es: 'Avisos por Telegram', en: 'Telegram alerts' },
     summary: {
       es: 'Recibe en el móvil lo importante: límites, EA caído, resumen del día e informe semanal.',
@@ -824,7 +824,7 @@ export const ARTICLES: Article[] = [
   // ---------- cTrader ----------
   {
     slug: 'conectar-ctrader',
-    cat: 'start', icon: '🔌',
+    cat: 'start', icon: '🔌', cover: '/guia/ctrader.svg',
     title: { es: 'Conectar tu cuenta de cTrader', en: 'Connecting your cTrader account' },
     summary: {
       es: 'En cTrader no se usa un EA sino un cBot. Es el mismo Onyx, escrito para cTrader.',
@@ -862,7 +862,7 @@ export const ARTICLES: Article[] = [
   // ---------- TradingView → EA ----------
   {
     slug: 'tradingview-senales',
-    cat: 'start', icon: '📈',
+    cat: 'start', icon: '📈', cover: '/guia/tradingview.svg',
     title: { es: 'TradingView → Onyx: ejecutar tus alertas', en: 'TradingView → Onyx: execute your alerts' },
     summary: {
       es: 'Haz que tus alertas de TradingView abran la operación en tu cuenta real, solas.',
@@ -960,7 +960,7 @@ export const ARTICLES: Article[] = [
   },
   {
     slug: 'academia-crear-mentor',
-    cat: 'academy', icon: '🧑‍🏫',
+    cat: 'academy', icon: '🧑‍🏫', cover: '/guia/academia-mentor.svg',
     title: { es: 'Montar tu academia (mentor)', en: 'Set up your academy (mentor)' },
     summary: {
       es: 'De cero a publicada: nombre y marca, cursos, clases en vivo y comunidad.',
