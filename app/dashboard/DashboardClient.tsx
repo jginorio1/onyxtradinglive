@@ -814,7 +814,8 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                   <StatCard icon="🗂️" label={L.accounts} value={String(accounts.length)} accent={PURPLE} />
                   <StatCard icon="📊" label={L.opsTotal} value={String(ranged.length)} accent={CYAN} />
                 </div>
-                <table className="jtbl"><thead><tr><th>{L.th_acc}</th><th>{L.th_broker}</th><th style={{ textAlign: 'right' }}>{L.th_bal}</th><th style={{ textAlign: 'right' }}>{L.th_net}</th><th style={{ textAlign: 'right' }}>{L.th_win}</th><th></th></tr></thead>
+                <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                <table className="jtbl" style={{ minWidth: 620 }}><thead><tr><th>{L.th_acc}</th><th>{L.th_broker}</th><th style={{ textAlign: 'right' }}>{L.th_bal}</th><th style={{ textAlign: 'right' }}>{L.th_net}</th><th style={{ textAlign: 'right' }}>{L.th_win}</th><th></th></tr></thead>
                   <tbody>{accounts.map((x) => { const st = accStats(x.id); return (
                     <tr key={x.id}>
                       <td>{editing === x.id ? (<span style={{ display: 'flex', gap: 6 }}><input value={nick} onChange={(e) => setNick(e.target.value)} placeholder={L.nickPh} style={{ width: 140, marginTop: 0, padding: '6px 8px' }} /><button className="btn btn-primary" onClick={() => saveNick(x.id)}>✓</button><button className="btn btn-ghost" onClick={() => setEditing('')}>✕</button></span>) : (<span>{accName(x)} {typeMeta(x.acc_type) && <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 10, background: typeMeta(x.acc_type)!.color + '22', color: typeMeta(x.acc_type)!.color }}>{lang === 'es' ? typeMeta(x.acc_type)!.es : typeMeta(x.acc_type)!.en}</span>} <span className="muted" style={{ fontSize: 12 }}>· {x.platform} · #{x.login}</span></span>)}</td>
@@ -828,6 +829,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                       </span>}{resyncDone === x.id && <div style={{ color: 'var(--green)', fontSize: 11.5, marginTop: 4 }}>{L.resyncOk}</div>}</td>
                     </tr>); })}</tbody>
                 </table>
+                </div>
               </Card>
               {accounts.length >= 2 && (!canCompare ? <ProLock L={L} plan={upC.name} desc={L.dLock2} price={upC.price} preview={<PreviewCompare />} /> : <CompareAccounts accounts={accounts} trades={ranged} lang={lang} />)}
               {sel !== 'all' && cur && !canFunding && <ProLock L={L} plan={upF.name} desc={L.dLock3} price={upF.price} preview={<PreviewFunding />} />}
