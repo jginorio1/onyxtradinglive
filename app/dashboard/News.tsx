@@ -8,8 +8,8 @@ type Ev = { title: string; currency: string; impact: string; date: string; forec
 const FLAG: Record<string, string> = { USD: '🇺🇸', EUR: '🇪🇺', GBP: '🇬🇧', JPY: '🇯🇵', AUD: '🇦🇺', CAD: '🇨🇦', CHF: '🇨🇭', NZD: '🇳🇿', CNY: '🇨🇳' };
 
 const T = {
-  es: { title: '📰 Noticias', next: 'PRÓXIMA DE ALTO IMPACTO', in: 'en', med: '+ Medio', today: 'Hoy', prev: 'Prev', fcst: 'Fcst', none: 'No hay noticias próximas.', unavail: 'Calendario no disponible ahora.', warn: 'en menos de 30 min — cuidado', loading: 'Cargando…', all: 'Ver todas', hide: 'Ocultar', more: 'más esta semana', credit: 'By Forex Factory', localTz: 'hora local', tzNote: 'Horas en tu hora local' },
-  en: { title: '📰 News', next: 'NEXT HIGH-IMPACT', in: 'in', med: '+ Medium', today: 'Today', prev: 'Prev', fcst: 'Fcst', none: 'No upcoming news.', unavail: 'Calendar unavailable now.', warn: 'in under 30 min — careful', loading: 'Loading…', all: 'See all', hide: 'Hide', more: 'more this week', credit: 'By Forex Factory', localTz: 'local time', tzNote: 'Times in your local time' },
+  es: { title: '📰 Noticias', next: 'PRÓXIMA DE ALTO IMPACTO', in: 'en', med: '+ Medio', low: '+ Bajo', today: 'Hoy', prev: 'Prev', fcst: 'Fcst', none: 'No hay noticias próximas.', unavail: 'Calendario no disponible ahora.', warn: 'en menos de 30 min — cuidado', loading: 'Cargando…', all: 'Ver todas', hide: 'Ocultar', more: 'más esta semana', credit: 'By Forex Factory', localTz: 'hora local', tzNote: 'Horas en tu hora local' },
+  en: { title: '📰 News', next: 'NEXT HIGH-IMPACT', in: 'in', med: '+ Medium', low: '+ Low', today: 'Today', prev: 'Prev', fcst: 'Fcst', none: 'No upcoming news.', unavail: 'Calendar unavailable now.', warn: 'in under 30 min — careful', loading: 'Loading…', all: 'See all', hide: 'Hide', more: 'more this week', credit: 'By Forex Factory', localTz: 'local time', tzNote: 'Times in your local time' },
 };
 
 export default function News({ lang }: { lang: Lang }) {
@@ -17,6 +17,7 @@ export default function News({ lang }: { lang: Lang }) {
   const [events, setEvents] = useState<Ev[] | null>(null);
   const [open, setOpen] = useState(false);
   const [showMed, setShowMed] = useState(false);
+  const [showLow, setShowLow] = useState(false);
   const [, setTick] = useState(0);
 
   useEffect(() => {
@@ -31,11 +32,11 @@ export default function News({ lang }: { lang: Lang }) {
 
   const now = Date.now();
   const all = events.map((e) => ({ ...e, ms: new Date(e.date).getTime() })).filter((e) => e.ms >= now - 30 * 60000).sort((a, b) => a.ms - b.ms);
-  const list = all.filter((e) => showMed || e.impact === 'High');
+  const list = all.filter((e) => e.impact === 'High' || (showMed && e.impact === 'Medium') || (showLow && e.impact === 'Low'));
   const featured = list.find((e) => e.impact === 'High' && e.ms > now) || list.find((e) => e.ms > now);
   const rest = list.filter((e) => e !== featured);
 
-  const dots = (imp: string) => imp === 'High' ? <span style={{ color: 'var(--red)', fontSize: 14, letterSpacing: -2 }}>●●●</span> : <span style={{ color: 'var(--amber)', fontSize: 14, letterSpacing: -2 }}>●●</span>;
+  const dots = (imp: string) => imp === 'High' ? <span style={{ color: 'var(--red)', fontSize: 14, letterSpacing: -2 }}>●●●</span> : imp === 'Medium' ? <span style={{ color: 'var(--amber)', fontSize: 14, letterSpacing: -2 }}>●●</span> : <span style={{ color: 'var(--mut)', fontSize: 14, letterSpacing: -2 }}>●</span>;
   const fmtTime = (ms: number) => new Date(ms).toLocaleTimeString(lang === 'es' ? 'es-ES' : 'en-US', { hour: '2-digit', minute: '2-digit' });
   const fmtDay = (ms: number) => { const d = new Date(ms); return d.toDateString() === new Date().toDateString() ? t.today : d.toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US', { weekday: 'short', day: 'numeric' }); };
   // Desfase horario del navegador, ej. "GMT+2" o "GMT-5:30".
@@ -47,7 +48,10 @@ export default function News({ lang }: { lang: Lang }) {
     <div className="card" style={{ padding: 14 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, gap: 8 }}>
         <div style={{ fontSize: 15, fontWeight: 700 }}>{t.title}</div>
-        <button className={'btn ' + (showMed ? 'btn-primary' : 'btn-ghost')} style={{ padding: '4px 9px', fontSize: 11 }} onClick={() => setShowMed(!showMed)}>{t.med}</button>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button className={'btn ' + (showMed ? 'btn-primary' : 'btn-ghost')} style={{ padding: '4px 9px', fontSize: 11 }} onClick={() => setShowMed(!showMed)}>{t.med}</button>
+          <button className={'btn ' + (showLow ? 'btn-primary' : 'btn-ghost')} style={{ padding: '4px 9px', fontSize: 11 }} onClick={() => setShowLow(!showLow)}>{t.low}</button>
+        </div>
       </div>
 
       {!featured ? <p className="muted" style={{ fontSize: 13 }}>{events.length ? t.none : t.unavail}</p> : (<>

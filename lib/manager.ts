@@ -72,7 +72,7 @@ export const DEFAULT_CONFIG = {
   // ---- Fase 2: noticias ----
   news: {
     on: false,
-    impact: 'high',        // high | high_medium
+    impact: 'high',        // high | high_medium | high_medium_low
     before_min: 15,
     after_min: 15,
     action: 'block_new',   // warn | block_new | close_and_block
@@ -241,7 +241,7 @@ export function sanitize(input: any): ManagerConfig {
   // --- noticias ---
   const n = c.news;
   n.on = !!n.on;
-  n.impact = ['high', 'high_medium'].includes(n.impact) ? n.impact : 'high';
+  n.impact = ['high', 'high_medium', 'high_medium_low'].includes(n.impact) ? n.impact : 'high';
   n.before_min = num(n.before_min, 0, 240, 15);
   n.after_min = num(n.after_min, 0, 240, 15);
   n.action = BREACH.includes(n.action) ? n.action : 'block_new';

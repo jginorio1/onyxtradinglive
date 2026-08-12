@@ -12,8 +12,11 @@ export async function GET() {
     });
     if (!r.ok) return NextResponse.json({ events: [], error: 'feed no disponible' });
     const data = await r.json();
+    // Mismo calendario que Forex Factory (faireconomy). Traemos alto, medio y
+    // bajo (fuera festivos/sin impacto); el filtro de qué mostrar/bloquear se
+    // decide luego en la tarjeta y en el Guardian.
     const events = (Array.isArray(data) ? data : [])
-      .filter((e: any) => e && (e.impact === 'High' || e.impact === 'Medium'))
+      .filter((e: any) => e && (e.impact === 'High' || e.impact === 'Medium' || e.impact === 'Low'))
       .map((e: any) => ({
         title: e.title || '',
         currency: e.country || '',

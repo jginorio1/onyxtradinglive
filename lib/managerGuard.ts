@@ -402,7 +402,7 @@ export async function registerClosedTrades(accountId: string, serverOffsetMin: n
 // ------------------------------------------------------------
 export function newsNear(events: any[], cfg: ManagerConfig, at = new Date()): string | null {
   if (!cfg.news.on || !Array.isArray(events)) return null;
-  const wanted = cfg.news.impact === 'high' ? ['High'] : ['High', 'Medium'];
+  const wanted = cfg.news.impact === 'high' ? ['High'] : cfg.news.impact === 'high_medium_low' ? ['High', 'Medium', 'Low'] : ['High', 'Medium'];
   const beforeMs = cfg.news.before_min * 60000;
   const afterMs = cfg.news.after_min * 60000;
 
