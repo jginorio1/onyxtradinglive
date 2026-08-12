@@ -296,7 +296,7 @@ export default function PlanHabits({ lang, onGoGuardian }: { lang: Lang; onGoGua
 
           {/* Cumplimiento · 30 días (foto diaria + Guardian real) */}
           {(() => {
-            const hist: any[] = (data as any).history || [];
+            const hist: any[] = (d as any).history || [];
             const monthAdh = hist.length ? Math.round(hist.reduce((a, b) => a + (b.adherence || 0), 0) / hist.length) : (s.adherence || 0);
             const cellColor = (r: any) => (r.blocked > 0 || r.overrode > 0) ? '#e24b4a' : (r.adherence >= 70 ? '#1d9e75' : r.adherence >= 45 ? '#ef9f27' : '#c0492b');
             const cell = (r: any) => `${r.day}: ${r.adherence}%${(r.blocked || r.overrode) ? ' · ' + t.hmLeg3 : ''}`;
