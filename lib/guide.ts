@@ -1510,6 +1510,67 @@ export const ARTICLES: Article[] = [
       ],
     },
   },
+  {
+    slug: 'vps-que-es',
+    cat: 'tools', icon: '🖥️', updated: true, cover: '/guia/vps.svg',
+    title: { es: 'Qué es un VPS y qué tipos hay', en: 'What a VPS is and which types exist' },
+    summary: {
+      es: 'Un ordenador en la nube encendido 24/7 para que tu EA, tu copy y tu Guardian nunca se apaguen. Ventajas y tipos.',
+      en: 'A cloud computer on 24/7 so your EA, copy and Guardian never stop. Advantages and types.',
+    },
+    body: {
+      es: [
+        { p: 'Onyx (y tu MetaTrader) solo funcionan mientras el ordenador está encendido y con internet. Si lo apagas, cierras la tapa del portátil o se te va la luz, el EA deja de reportar, el copy deja de copiar y el Guardian deja de proteger. Un VPS resuelve eso.' },
+        { img: '/guia/vps.svg', alt: 'Tu ordenador apagado mientras un VPS en la nube mantiene MetaTrader encendido y Onyx recibiendo', caption: 'Apagas tu ordenador; el VPS sigue con tu MetaTrader encendido y Onyx recibiendo.' },
+        { h: 'Qué es' },
+        { p: 'Un VPS (Servidor Virtual Privado) es un ordenador que vive en un centro de datos y está encendido siempre, con internet estable. Te conectas a él desde tu móvil u ordenador, instalas tu MetaTrader y el EA de Onyx dentro, y lo dejas corriendo. Aunque cierres tu equipo, el VPS sigue.' },
+        { h: 'Ventajas para ti' },
+        { list: [
+          '24/7: tu EA, tu copy y tu Guardian nunca se apagan, aunque tu ordenador esté apagado.',
+          'Menos latencia: si el VPS está cerca del servidor de tu bróker, tus órdenes (y el copy) entran más rápido.',
+          'Estabilidad: internet y luz del centro de datos, no de tu casa. Nada de cortes ni WiFi flojo.',
+          'Ahorro de energía y ruido: no dejas tu PC encendido toda la noche.',
+          'Independencia: puedes revisar Onyx desde el móvil sin depender de tu ordenador.',
+        ] },
+        { h: 'Tipos de VPS' },
+        { walk: [
+          { t: 'VPS Forex (especializado)', d: 'Pensado para trading: viene con Windows, baja latencia hacia los brókers y a veces MetaTrader preinstalado. Es el más fácil para empezar. Ejemplos: ForexVPS, Cloudzy, FXVM.' },
+          { t: 'VPS del bróker (a veces gratis)', d: 'Muchos brókers regalan un VPS si operas cierto volumen o mantienes un saldo. Cómodo, pero atado a ese bróker. Pregunta a tu bróker si lo ofrece.' },
+          { t: 'VPS en la nube general', d: 'Proveedores como Vultr, DigitalOcean, AWS o Contabo. Más barato y flexible, pero lo configuras tú. Elige uno con Windows si quieres MetaTrader con su ventana de siempre.' },
+          { t: 'Windows vs Linux', d: 'Para MetaTrader lo normal es un VPS con Windows (la plataforma es un programa de Windows). En Linux también se puede, pero con un envoltorio, y es más técnico.' },
+        ] },
+        { tip: 'Para MetaTrader/cTrader con Onyx, un VPS Windows pequeño (1–2 núcleos, 2 GB de RAM) suele bastar. No necesitas uno caro.', title: 'Cuánto VPS necesitas' },
+        { h: 'Cómo lo usas con Onyx' },
+        { p: 'Es igual que en tu ordenador: te conectas al VPS, instalas MetaTrader y el EA de Onyx (con tu clave API), enciendes AlgoTrading y lo dejas. A partir de ahí Onyx recibe tus operaciones sin parar. Tienes el paso a paso en la guía de instalar el EA.' },
+        { warn: 'Un VPS es un ordenador de verdad: mantenlo actualizado y con una contraseña fuerte. Nunca compartas su acceso, igual que no compartes tu MetaTrader.' },
+      ],
+      en: [
+        { p: 'Onyx (and your MetaTrader) only work while the computer is on and online. If you turn it off, close the laptop lid or lose power, the EA stops reporting, copy stops copying and the Guardian stops protecting. A VPS fixes that.' },
+        { img: '/guia/vps.svg', alt: 'Your computer off while a cloud VPS keeps MetaTrader on and Onyx receiving', caption: 'You turn your computer off; the VPS keeps your MetaTrader on and Onyx receiving.' },
+        { h: 'What it is' },
+        { p: 'A VPS (Virtual Private Server) is a computer living in a data center, always on, with stable internet. You connect to it from your phone or computer, install your MetaTrader and the Onyx EA inside, and leave it running. Even if you close your device, the VPS keeps going.' },
+        { h: 'Advantages for you' },
+        { list: [
+          '24/7: your EA, copy and Guardian never stop, even with your computer off.',
+          'Lower latency: if the VPS is near your broker’s server, your orders (and copy) land faster.',
+          'Stability: the data center’s internet and power, not your home’s. No outages or weak WiFi.',
+          'Save energy and noise: you don’t leave your PC on all night.',
+          'Independence: check Onyx from your phone without relying on your computer.',
+        ] },
+        { h: 'Types of VPS' },
+        { walk: [
+          { t: 'Forex VPS (specialized)', d: 'Built for trading: comes with Windows, low latency to brokers and sometimes MetaTrader preinstalled. Easiest to start. Examples: ForexVPS, Cloudzy, FXVM.' },
+          { t: 'Broker VPS (sometimes free)', d: 'Many brokers give you a VPS if you trade a certain volume or keep a balance. Convenient, but tied to that broker. Ask your broker if they offer one.' },
+          { t: 'General cloud VPS', d: 'Providers like Vultr, DigitalOcean, AWS or Contabo. Cheaper and flexible, but you configure it. Pick one with Windows if you want MetaTrader with its usual window.' },
+          { t: 'Windows vs Linux', d: 'For MetaTrader you normally use a Windows VPS (the platform is a Windows program). Linux works too, but via a wrapper, and it is more technical.' },
+        ] },
+        { tip: 'For MetaTrader/cTrader with Onyx, a small Windows VPS (1–2 cores, 2 GB RAM) is usually enough. You do not need an expensive one.', title: 'How much VPS you need' },
+        { h: 'How you use it with Onyx' },
+        { p: 'It is just like on your computer: connect to the VPS, install MetaTrader and the Onyx EA (with your API key), turn on AlgoTrading and leave it. From then on Onyx receives your trades non-stop. The step by step is in the install-the-EA guide.' },
+        { warn: 'A VPS is a real computer: keep it updated and with a strong password. Never share its access, just as you don’t share your MetaTrader.' },
+      ],
+    },
+  },
 ];
 
 // Búsqueda simple sobre título, resumen y texto

@@ -33,6 +33,17 @@ export default function ArticleView({ slug }: { slug: string }) {
   const t = dictFor(T, lang);
   const [voted, setVoted] = useState(false);
 
+  // Guías fusionadas (código + las del dueño). Partimos de las del código para
+  // pintar al instante, y traemos la lista completa del servidor.
+  const [arts, setArts] = useState<Article[]>(ARTICLES);
+  const [cats, setCats] = useState<any[]>(CATEGORIES);
+  useEffect(() => {
+    fetch('/api/guide').then((r) => r.json()).then((j) => {
+      if (Array.isArray(j.articles)) setArts(j.articles);
+      if (Array.isArray(j.categories)) setCats(j.categories);
+    }).catch(() => {});
+  }, []);
+
   // Si el CTA lleva a una zona con sesión y el visitante no la tiene,
   // enviarlo a registrarse en vez de rebotar contra el login.
   const [authed, setAuthed] = useState<boolean | null>(null);
@@ -40,11 +51,11 @@ export default function ArticleView({ slug }: { slug: string }) {
     fetch('/api/install/status').then((r) => setAuthed(r.status !== 401)).catch(() => setAuthed(false));
   }, []);
 
-  const a = ARTICLES.find((x) => x.slug === slug);
+  const a = arts.find((x) => x.slug === slug);
   if (!a) return null;
 
-  const cat = CATEGORIES.find((c) => c.id === a.cat);
-  const siblings = ARTICLES.filter((x) => x.cat === a.cat);
+  const cat = cats.find((c) => c.id === a.cat);
+  const siblings = arts.filter((x) => x.cat === a.cat);
   const idx = siblings.findIndex((x) => x.slug === slug);
   const prev = idx > 0 ? siblings[idx - 1] : null;
   const next = idx < siblings.length - 1 ? siblings[idx + 1] : null;

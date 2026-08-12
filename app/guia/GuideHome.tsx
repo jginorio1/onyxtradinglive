@@ -53,6 +53,24 @@ export default function GuideHome() {
   const [state, setState] = useState<'guest' | 'noAcc' | 'noMgr' | 'ready'>('guest');
   const [selCat, setSelCat] = useState<string>(CATEGORIES[0]?.id || 'start');
 
+  // Guías fusionadas (código + las del dueño). Partimos de las del código.
+  const [arts, setArts] = useState<any[]>(ARTICLES);
+  const [cats, setCats] = useState<any[]>(CATEGORIES);
+  useEffect(() => {
+    fetch('/api/guide').then((r) => r.json()).then((j) => {
+      if (Array.isArray(j.articles)) setArts(j.articles);
+      if (Array.isArray(j.categories) && j.categories.length) setCats(j.categories);
+    }).catch(() => {});
+  }, []);
+  const byCatL = (c: string) => arts.filter((a) => a.cat === c);
+  const searchL = (q: string, lg: string) => {
+    const needle = q.trim().toLowerCase(); if (needle.length < 2) return [];
+    return arts.filter((a) => {
+      const hay = [a.title?.[lg], a.summary?.[lg], ...(a.body?.[lg] || []).map((b: any) => b.p || b.h || b.note || b.warn || b.tip || b.caption || (b.list || b.steps || []).join(' ') || (b.walk ? b.walk.map((s: any) => (s.t || '') + ' ' + (s.d || '')).join(' ') : ''))].join(' ').toLowerCase();
+      return hay.includes(needle);
+    });
+  };
+
   // Respuesta de Onyx (IA sobre la guía)
   const [asked, setAsked] = useState('');
   const [answer, setAnswer] = useState('');
@@ -76,7 +94,7 @@ export default function GuideHome() {
     })();
   }, []);
 
-  const found = useMemo(() => (q.trim().length >= 2 && !asked ? searchArticles(q, lang) : null), [q, lang, asked]);
+  const found = useMemo(() => (q.trim().length >= 2 && !asked ? searchL(q, lang) : null), [q, lang, asked, arts]);
   const next = NEXT[lang][state];
   const stage = STAGE[state] ?? 0;
 
@@ -129,7 +147,7 @@ export default function GuideHome() {
           {refs.length > 0 && (
             <div style={{ marginBottom: 16 }}>
               <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>{t.sources}</div>
-              {refs.map((a) => <ArticleRow key={a.slug} a={ARTICLES.find((x) => x.slug === a.slug) || { slug: a.slug, icon: '📖', title: { [lang]: a.title }, summary: { [lang]: '' } }} lang={lang} />)}
+              {refs.map((a) => <ArticleRow key={a.slug} a={arts.find((x) => x.slug === a.slug) || { slug: a.slug, icon: '📖', title: { [lang]: a.title }, summary: { [lang]: '' } }} lang={lang} />)}
             </div>
           )}
           <button className="btn btn-ghost" onClick={reset}>{t.clear}</button>
@@ -178,7 +196,7 @@ export default function GuideHome() {
           {/* Chips de categoría (filtran, no apilan) */}
           <div style={{ fontSize: 11, color: 'var(--mut)', letterSpacing: '.05em', marginBottom: 10 }}>{t.explore}</div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
-            {CATEGORIES.map((c) => {
+            {cats.map((c) => {
               const active = c.id === selCat;
               return (
                 <button key={c.id} onClick={() => setSelCat(c.id)} style={{
@@ -189,7 +207,7 @@ export default function GuideHome() {
                 }}>
                   <span style={{ color: active ? 'var(--brand)' : (c.color || 'var(--brand)'), display: 'inline-flex' }}><OnyxIcon emoji={c.icon} size={16} /></span>
                   {(c.name as any)[lang]}
-                  <span className="muted" style={{ fontSize: 11 }}>{byCat(c.id).length}</span>
+                  <span className="muted" style={{ fontSize: 11 }}>{byCatL(c.id).length}</span>
                 </button>
               );
             })}
@@ -197,7 +215,7 @@ export default function GuideHome() {
 
           {/* Artículos de la categoría elegida */}
           <div>
-            {byCat(selCat).map((a) => <ArticleRow key={a.slug} a={a} lang={lang} />)}
+            {byCatL(selCat).map((a) => <ArticleRow key={a.slug} a={a} lang={lang} />)}
           </div>
         </>
       )}
