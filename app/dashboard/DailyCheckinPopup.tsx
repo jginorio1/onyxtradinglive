@@ -14,21 +14,24 @@ const HAB: Record<string, [string, string]> = {
   no_revenge: ['No operé por venganza', 'No revenge trading'],
   respected_sessions: ['Operé solo en mis sesiones', 'Traded only in my sessions'],
 };
-// Hábitos de "antes de operar" (ritual previo). El resto son de "durante/después".
-const PRE = new Set(['reviewed_calendar', 'defined_risk', 'followed_plan']);
+// Momento por defecto de cada hábito; el trader puede cambiarlo en "Mi plan".
+const MOMENT_DEF: Record<string, 'before' | 'during' | 'close'> = {
+  reviewed_calendar: 'before', defined_risk: 'before', followed_plan: 'before',
+  journaled: 'during', stopped_at_limit: 'during', no_revenge: 'during', respected_sessions: 'during',
+};
 
 const T: any = {
   es: {
     title: 'Tu check-in de hoy', sub: 'Márcalo cuando lo hagas — puedes volver durante el día. Así cuidas tu racha.',
     adherence: 'Adherencia', streak: 'Racha', ddl: 'Tu tope de pérdida hoy',
-    before: 'Antes de operar', during: 'Durante y después', auto: 'auto',
+    before: 'Antes de operar', during: 'Durante y después', close: 'Al cerrar el día', auto: 'auto',
     saved: 'Guardado', later: 'Ahora no', done: 'Listo por hoy', allDone: '¡Completo por hoy! 💪',
     seePlan: 'Ver mi plan completo', reminder: 'Recuerda tu regla de oro:', autoHint: 'Onyx premarcó lo que ya detectó. Ajusta lo que quieras.',
   },
   en: {
     title: 'Your check-in today', sub: 'Tick each as you do it — you can come back during the day. That keeps your streak alive.',
     adherence: 'Adherence', streak: 'Streak', ddl: 'Your loss limit today',
-    before: 'Before trading', during: 'During and after', auto: 'auto',
+    before: 'Before trading', during: 'During and after', close: 'At end of day', auto: 'auto',
     saved: 'Saved', later: 'Not now', done: 'Done for today', allDone: 'All done today! 💪',
     seePlan: 'See my full plan', reminder: 'Remember your golden rule:', autoHint: 'Onyx pre-ticked what it detected. Adjust anything you want.',
   },
@@ -61,10 +64,15 @@ export default function DailyCheckinPopup({ lang, onState }: { lang: Lang; onSta
     })();
   }, []);
 
-  // Lista de hábitos activos del trader.
-  const allHabits: { id: string; label: string; pre: boolean; auto: boolean }[] = d?.plan ? [
-    ...((d.plan.habits || []) as string[]).map((k) => ({ id: k, label: HAB[k]?.[i] || k, pre: PRE.has(k), auto: !!d.auto?.[k] })),
-    ...((d.plan.custom_habits || []) as any[]).map((h) => ({ id: h.id, label: h.label, pre: false, auto: false })),
+  // Momento de un hábito: lo elegido en el plan, o el defecto (propios → durante).
+  const momentOf = (id: string): 'before' | 'during' | 'close' => {
+    const m = d?.plan?.habit_moments?.[id];
+    return m === 'before' || m === 'during' || m === 'close' ? m : (MOMENT_DEF[id] || 'during');
+  };
+  // Lista de hábitos activos del trader, con su momento.
+  const allHabits: { id: string; label: string; moment: 'before' | 'during' | 'close'; auto: boolean }[] = d?.plan ? [
+    ...((d.plan.habits || []) as string[]).map((k) => ({ id: k, label: HAB[k]?.[i] || k, moment: momentOf(k), auto: !!d.auto?.[k] })),
+    ...((d.plan.custom_habits || []) as any[]).map((h) => ({ id: h.id, label: h.label, moment: momentOf(h.id), auto: false })),
   ] : [];
   const total = allHabits.length;
   const done = allHabits.filter((h) => items[h.id]).length;
@@ -146,17 +154,15 @@ export default function DailyCheckinPopup({ lang, onState }: { lang: Lang; onSta
           </div>
         )}
 
-        {/* Antes de operar */}
-        {allHabits.some((h) => h.pre) && <>
-          <div style={{ fontSize: 10.5, color: 'var(--mut)', textTransform: 'uppercase', letterSpacing: '.04em', margin: '2px 0 6px' }}>☀️ {t.before}</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>{allHabits.filter((h) => h.pre).map(Row)}</div>
-        </>}
-
-        {/* Durante y después */}
-        {allHabits.some((h) => !h.pre) && <>
-          <div style={{ fontSize: 10.5, color: 'var(--mut)', textTransform: 'uppercase', letterSpacing: '.04em', margin: '2px 0 6px' }}>🕒 {t.during}</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>{allHabits.filter((h) => !h.pre).map(Row)}</div>
-        </>}
+        {/* Tres momentos: antes / durante-después / al cerrar */}
+        {([['before', '☀️ ' + t.before], ['during', '🕒 ' + t.during], ['close', '🌙 ' + t.close]] as const).map(([mk, label]) => (
+          allHabits.some((h) => h.moment === mk) ? (
+            <div key={mk}>
+              <div style={{ fontSize: 10.5, color: 'var(--mut)', textTransform: 'uppercase', letterSpacing: '.04em', margin: '2px 0 6px' }}>{label}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>{allHabits.filter((h) => h.moment === mk).map(Row)}</div>
+            </div>
+          ) : null
+        ))}
 
         {hasAuto && <p className="muted" style={{ fontSize: 11, margin: '0 0 10px' }}>✨ {t.autoHint}</p>}
 

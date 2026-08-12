@@ -58,6 +58,8 @@ const T: any = {
   es: { title: 'Mi plan y hábitos', sub: 'Tus reglas, tu check-in diario, y qué tan bien las cumples.',
     tabToday: 'Hoy', tabPlan: 'Mi plan', tabLimits: 'Límites y cuentas',
     adherence: 'Adherencia al plan', streak: 'Días de racha', checkin: 'Check-in de hoy',
+    histT: 'Cumplimiento · 30 días', monthAdh: 'Adherencia del mes', blockedN: 'Te frenó el Guardian', overrodeN: 'Te lo saltaste', noHist: 'Aún sin historial; se llena cada día.', gOff: 'Enciende el Guardian para medir tu disciplina real.', hmLeg1: 'Cumplido', hmLeg2: 'Flojo', hmLeg3: 'Regla rota',
+    momentT: 'Momento del día', mBefore: '☀️ Antes', mDuring: '🕒 Durante', mClose: '🌙 Al cerrar',
     myPlan: 'Mi plan', edit: 'Editar', save: 'Guardar', cancel: 'Cancelar',
     style: 'Estilo', risk: 'Riesgo por operación', ddl: 'Pérdida diaria máx.', maxt: 'Máx. operaciones/día', sessions: 'Sesiones', pairs: 'Pares/mercados', goal: 'Mi objetivo', rules: 'Mis reglas', addRule: 'Añadir regla', habitsSel: 'Hábitos que quiero seguir',
     checkinT: 'Check-in de hoy', checkinTap: 'Toca cada hábito para marcarlo', saveCheck: 'Guardar check-in', savedCheck: 'Check-in guardado', note: 'Nota del día (opcional)',
@@ -87,6 +89,8 @@ const T: any = {
   en: { title: 'My plan and habits', sub: 'Your rules, your daily check-in, and how well you follow them.',
     tabToday: 'Today', tabPlan: 'My plan', tabLimits: 'Limits & accounts',
     adherence: 'Plan adherence', streak: 'Day streak', checkin: 'Today check-in',
+    histT: 'Compliance · 30 days', monthAdh: 'Month adherence', blockedN: 'Guardian stopped you', overrodeN: 'You overrode it', noHist: 'No history yet; it fills daily.', gOff: 'Turn on the Guardian to measure your real discipline.', hmLeg1: 'On track', hmLeg2: 'Weak', hmLeg3: 'Rule broken',
+    momentT: 'Time of day', mBefore: '☀️ Before', mDuring: '🕒 During', mClose: '🌙 At close',
     myPlan: 'My plan', edit: 'Edit', save: 'Save', cancel: 'Cancel',
     style: 'Style', risk: 'Risk per trade', ddl: 'Max daily loss', maxt: 'Max trades/day', sessions: 'Sessions', pairs: 'Pairs/markets', goal: 'My goal', rules: 'My rules', addRule: 'Add rule', habitsSel: 'Habits I want to track',
     checkinT: 'Today check-in', checkinTap: 'Tap each habit to mark it', saveCheck: 'Save check-in', savedCheck: 'Check-in saved', note: 'Day note (optional)',
@@ -191,6 +195,18 @@ export default function PlanHabits({ lang, onGoGuardian }: { lang: Lang; onGoGua
     setForm({ ...form, custom_habits: [...(form.custom_habits || []), { id: '', label }] });
     setNewHabit('');
   }
+  // Momento de cada hábito (antes/durante/al cerrar) — con defaults sensatos.
+  const MOMENT_DEF_UI: any = { reviewed_calendar: 'before', defined_risk: 'before', followed_plan: 'before', journaled: 'during', stopped_at_limit: 'during', no_revenge: 'during', respected_sessions: 'during' };
+  const momOf = (id: string) => (form?.habit_moments?.[id]) || MOMENT_DEF_UI[id] || 'during';
+  const setMom = (id: string, m: string) => setForm({ ...form, habit_moments: { ...(form.habit_moments || {}), [id]: m } });
+  const MomentPick = (id: string) => (
+    <span style={{ display: 'inline-flex', gap: 3, flex: 'none' }}>
+      {([['before', '☀️'], ['during', '🕒'], ['close', '🌙']] as const).map(([m, icon]) => {
+        const on = momOf(id) === m;
+        return <button key={m} title={m} onClick={(e) => { e.preventDefault(); setMom(id, m); }} style={{ fontSize: 11, padding: '2px 6px', borderRadius: 8, border: '1px solid', borderColor: on ? 'var(--brand)' : 'var(--line)', background: on ? 'rgba(124,140,255,.16)' : 'transparent', color: on ? 'var(--soft-brand)' : 'var(--mut)', cursor: 'pointer' }}>{icon}</button>;
+      })}
+    </span>
+  );
   async function savePlan() {
     setBusy('plan');
     const r = await fetch('/api/plan', { method: 'PATCH', body: JSON.stringify({ plan: { ...form } }) });
@@ -277,6 +293,39 @@ export default function PlanHabits({ lang, onGoGuardian }: { lang: Lang; onGoGua
               <div style={{ height: 8, background: 'var(--bg2)', borderRadius: 6, overflow: 'hidden' }}><div style={{ width: (doneToday / enabled) * 100 + '%', height: '100%', background: 'var(--brand)', transition: 'width .2s' }} /></div>
             </div>
           </div>
+
+          {/* Cumplimiento · 30 días (foto diaria + Guardian real) */}
+          {(() => {
+            const hist: any[] = (data as any).history || [];
+            const monthAdh = hist.length ? Math.round(hist.reduce((a, b) => a + (b.adherence || 0), 0) / hist.length) : (s.adherence || 0);
+            const cellColor = (r: any) => (r.blocked > 0 || r.overrode > 0) ? '#e24b4a' : (r.adherence >= 70 ? '#1d9e75' : r.adherence >= 45 ? '#ef9f27' : '#c0492b');
+            const cell = (r: any) => `${r.day}: ${r.adherence}%${(r.blocked || r.overrode) ? ' · ' + t.hmLeg3 : ''}`;
+            return (
+              <div className="card">
+                <div className="row between" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+                  <b style={{ fontSize: 14 }}>🗓️ {t.histT}</b>
+                  <div className="row" style={{ gap: 14, flexWrap: 'wrap' }}>
+                    <div style={{ textAlign: 'right' }}><div style={{ fontSize: 16, fontWeight: 800, color: adColor }}>{monthAdh}%</div><div className="muted" style={{ fontSize: 10 }}>{t.monthAdh}</div></div>
+                    <div style={{ textAlign: 'right' }}><div style={{ fontSize: 16, fontWeight: 800, color: 'var(--red)' }}>{s.blocks || 0}</div><div className="muted" style={{ fontSize: 10 }}>{t.blockedN}</div></div>
+                    <div style={{ textAlign: 'right' }}><div style={{ fontSize: 16, fontWeight: 800, color: 'var(--amber)' }}>{s.overrides || 0}</div><div className="muted" style={{ fontSize: 10 }}>{t.overrodeN}</div></div>
+                  </div>
+                </div>
+                {hist.length ? (
+                  <>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(15,1fr)', gap: 5, maxWidth: 430 }}>
+                      {hist.slice(-30).map((r) => <div key={r.day} title={cell(r)} style={{ aspectRatio: '1', borderRadius: 4, background: cellColor(r), opacity: 0.92 }} />)}
+                    </div>
+                    <div className="row" style={{ gap: 14, marginTop: 10, fontSize: 11, flexWrap: 'wrap' }}>
+                      <span className="row" style={{ gap: 5 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: '#1d9e75' }} /> {t.hmLeg1}</span>
+                      <span className="row" style={{ gap: 5 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: '#ef9f27' }} /> {t.hmLeg2}</span>
+                      <span className="row" style={{ gap: 5 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: '#e24b4a' }} /> {t.hmLeg3}</span>
+                    </div>
+                  </>
+                ) : <p className="muted" style={{ fontSize: 12.5, margin: 0 }}>{t.noHist}</p>}
+                {s.guardianActive === false && <p className="muted" style={{ fontSize: 11.5, margin: '10px 0 0' }}>🛡️ {t.gOff}</p>}
+              </div>
+            );
+          })()}
 
           <div className="card">
             <b style={{ fontSize: 14 }}>{t.checkinT}</b>
@@ -379,10 +428,13 @@ export default function PlanHabits({ lang, onGoGuardian }: { lang: Lang; onGoGua
                 <button className="btn btn-ghost" style={{ fontSize: 12, marginTop: 6 }} onClick={() => setForm({ ...form, rules: [...form.rules, ''] })}>＋ {t.addRule}</button>
               </div>
               <div>
-                <span className="muted" style={{ fontSize: 12 }}>{t.habitsSel}</span>
+                <span className="muted" style={{ fontSize: 12 }}>{t.habitsSel} <span style={{ opacity: .7 }}>· {t.momentT}</span></span>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
                   {Object.keys(HAB).map((hk) => { const on = form.habits.includes(hk); return (
-                    <label key={hk} className="row" style={{ gap: 8, fontSize: 13, cursor: 'pointer' }}><input type="checkbox" checked={on} onChange={() => setForm({ ...form, habits: on ? form.habits.filter((x: string) => x !== hk) : [...form.habits, hk] })} style={{ width: 'auto', margin: 0 }} /> {HAB[hk][i]}</label>
+                    <div key={hk} className="row between" style={{ gap: 8 }}>
+                      <label className="row" style={{ gap: 8, fontSize: 13, cursor: 'pointer', flex: 1 }}><input type="checkbox" checked={on} onChange={() => setForm({ ...form, habits: on ? form.habits.filter((x: string) => x !== hk) : [...form.habits, hk] })} style={{ width: 'auto', margin: 0 }} /> {HAB[hk][i]}</label>
+                      {on && MomentPick(hk)}
+                    </div>
                   ); })}
                 </div>
               </div>
@@ -392,6 +444,7 @@ export default function PlanHabits({ lang, onGoGuardian }: { lang: Lang; onGoGua
                   <div key={k} className="row" style={{ gap: 6, marginTop: 4 }}>
                     <span style={{ color: 'var(--brand)' }}>✚</span>
                     <input value={h.label} onChange={(e) => { const cc = [...form.custom_habits]; cc[k] = { ...cc[k], label: e.target.value }; setForm({ ...form, custom_habits: cc }); }} style={{ flex: 1, margin: 0, fontSize: 13 }} />
+                    {h.id ? MomentPick(h.id) : null}
                     <button className="btn btn-ghost" style={{ padding: '4px 9px', color: 'var(--red)' }} onClick={() => setForm({ ...form, custom_habits: form.custom_habits.filter((_: any, j: number) => j !== k) })}>✕</button>
                   </div>
                 ))}

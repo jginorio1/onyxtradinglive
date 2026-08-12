@@ -25,6 +25,7 @@ export type Plan = {
   rules: string[];           // reglas propias (texto libre)
   habits: string[];          // claves de hábitos predefinidos que quiere seguir
   custom_habits: CustomHabit[]; // hábitos propios que el trader escribe
+  habit_moments?: Record<string, 'before' | 'during' | 'close'>; // momento del día por hábito
   scope: 'primary' | 'all';  // el plan mide UNA cuenta principal, o TODAS (sin duplicar copias)
   primary_account_id: string | null; // cuál es la cuenta principal (para scope=primary)
 };
@@ -32,11 +33,22 @@ export type Plan = {
 // Hábitos disponibles (claves estables; las etiquetas bilingües viven en la UI).
 export const HABIT_KEYS = ['reviewed_calendar', 'defined_risk', 'followed_plan', 'journaled', 'stopped_at_limit', 'no_revenge', 'respected_sessions'];
 
+// Momento por defecto de cada hábito predefinido; los propios son "durante".
+export const MOMENT_DEFAULT: Record<string, 'before' | 'during' | 'close'> = {
+  reviewed_calendar: 'before', defined_risk: 'before', followed_plan: 'before',
+  journaled: 'during', stopped_at_limit: 'during', no_revenge: 'during', respected_sessions: 'during',
+};
+export function habitMoment(plan: Plan, id: string): 'before' | 'during' | 'close' {
+  const m = plan.habit_moments?.[id];
+  return m === 'before' || m === 'during' || m === 'close' ? m : (MOMENT_DEFAULT[id] || 'during');
+}
+
 export const DEFAULT_PLAN: Plan = {
   style: 'day', risk_per_trade: 1, max_daily_loss_pct: 3, max_trades_day: 3,
   sessions: ['london', 'ny'], pairs: '', goal: '', rules: [],
   habits: ['reviewed_calendar', 'defined_risk', 'followed_plan', 'journaled', 'no_revenge'],
   custom_habits: [],
+  habit_moments: {},
   scope: 'primary',
   primary_account_id: null,
 };
@@ -159,6 +171,12 @@ export async function savePlan(userId: string, plan: Partial<Plan>) {
           .filter((h: CustomHabit) => h.id && h.label)
           .slice(0, 12)
       : cur.custom_habits,
+    habit_moments: (() => {
+      const src = (plan.habit_moments && typeof plan.habit_moments === 'object') ? plan.habit_moments : cur.habit_moments || {};
+      const out: Record<string, 'before' | 'during' | 'close'> = {};
+      for (const [k, v] of Object.entries(src)) if (v === 'before' || v === 'during' || v === 'close') out[String(k).slice(0, 40)] = v;
+      return out;
+    })(),
     scope: plan.scope === 'all' || plan.scope === 'primary' ? plan.scope : cur.scope,
     primary_account_id: plan.primary_account_id === undefined ? cur.primary_account_id : (plan.primary_account_id ? String(plan.primary_account_id) : null),
   };
@@ -234,6 +252,7 @@ async function accountIds(userId: string): Promise<string[]> {
 export type PlanStats = {
   adherence: number; streak: number; checkinRate: number; tradeDiscipline: number;
   overtradingDays: number; winRateRespect: number | null; winRateBroken: number | null; days: number;
+  guardianActive: boolean; blocks: number; overrides: number; // conducta real medida por el Guardian
 };
 
 // Calcula racha y adherencia. Mezcla el cumplimiento de hábitos (check-ins) con la
@@ -298,8 +317,78 @@ export async function computeStats(userId: string, plan: Plan): Promise<PlanStat
     }
   }
 
-  const adherence = Math.round((checkinRate * 0.6 + tradeDiscipline * 0.4) * 100);
-  return { adherence, streak, checkinRate: Math.round(checkinRate * 100), tradeDiscipline: Math.round(tradeDiscipline * 100), overtradingDays, winRateRespect, winRateBroken, days: tradingDays };
+  // --- Guardian real (conducta): frenos y overrides de los últimos 21 días ---
+  // Solo aplica si el trader tiene Guardian. Si no, esta parte NO penaliza.
+  let blocks = 0, overrides = 0; const breachDays = new Set<string>();
+  try {
+    const since = new Date(Date.now() - 21 * DAY).toISOString();
+    const { data: evs } = await supabaseAdmin.from('manager_events')
+      .select('kind,created_at').eq('user_id', userId).in('kind', ['blocked', 'override']).gte('created_at', since).limit(5000);
+    for (const e of (evs || []) as any[]) {
+      if (e.kind === 'blocked') blocks++; else if (e.kind === 'override') overrides++;
+      if (e.created_at) breachDays.add(String(e.created_at).slice(0, 10));
+    }
+  } catch { /* sin Guardian, sin eventos */ }
+  const guardianActive = !!summary.linked || (blocks + overrides) > 0;
+
+  // Adherencia adaptativa: base = autoreporte + disciplina de operaciones. Si hay
+  // Guardian, sus frenos/overrides descuentan (penaliza días en que rompiste una
+  // regla dura de verdad). Sin Guardian, no hay penalización que no aplique.
+  let adh = checkinRate * 0.55 + tradeDiscipline * 0.45;
+  if (guardianActive && tradingDays > 0) {
+    const breachRate = Math.min(1, breachDays.size / tradingDays);
+    adh = adh * (1 - 0.35 * breachRate);
+  }
+  const adherence = Math.round(adh * 100);
+  return { adherence, streak, checkinRate: Math.round(checkinRate * 100), tradeDiscipline: Math.round(tradeDiscipline * 100), overtradingDays, winRateRespect, winRateBroken, days: tradingDays, guardianActive, blocks, overrides };
+}
+
+// ---- Foto diaria: calcula el cumplimiento de UN día concreto para guardarlo. ----
+export async function computeDaySnapshot(userId: string, day: string): Promise<{ adherence: number; checkin_rate: number; discipline: number; blocked: number; overrode: number; guardian_active: boolean }> {
+  const plan = await getPlan(userId);
+  const habitIds = planHabitIds(plan);
+  const enabled = habitIds.length || 1;
+  const dayStartISO = day + 'T00:00:00.000Z';
+  const dayEndISO = day + 'T23:59:59.999Z';
+
+  // Hábitos marcados ese día.
+  const { data: ck } = await supabaseAdmin.from('plan_checkins').select('items').eq('user_id', userId).eq('day', day).maybeSingle();
+  const items = (ck as any)?.items || {};
+  const checkinRate = habitIds.filter((h) => items[h]).length / enabled;
+
+  // Disciplina de operaciones ese día (respetó el máximo de ops).
+  const summary = await guardianSummary(userId);
+  const { ids, threshold } = resolveMeasured(plan, summary);
+  let discipline = -1; // -1 = no operó ese día
+  if (ids.length && threshold > 0) {
+    const { count } = await supabaseAdmin.from('trades').select('*', { count: 'exact', head: true })
+      .in('account_id', ids).gte('close_time', dayStartISO).lte('close_time', dayEndISO);
+    const n = count || 0;
+    if (n > 0) discipline = n <= threshold ? 100 : 0;
+  }
+
+  // Guardian real: frenos/overrides ese día.
+  let blocked = 0, overrode = 0;
+  try {
+    const { data: evs } = await supabaseAdmin.from('manager_events').select('kind').eq('user_id', userId)
+      .in('kind', ['blocked', 'override']).gte('created_at', dayStartISO).lte('created_at', dayEndISO).limit(1000);
+    for (const e of (evs || []) as any[]) { if (e.kind === 'blocked') blocked++; else overrode++; }
+  } catch {}
+  const guardianActive = !!summary.linked || (blocked + overrode) > 0;
+
+  const respectedFlag = discipline < 0 ? 1 : discipline / 100; // no operar no penaliza
+  let adh = checkinRate * 0.55 + respectedFlag * 0.45;
+  if (guardianActive && (blocked + overrode) > 0) adh *= 0.65;   // rompiste una regla dura ese día
+  return { adherence: Math.round(adh * 100), checkin_rate: Math.round(checkinRate * 100), discipline, blocked, overrode, guardian_active: guardianActive };
+}
+
+// ---- Historial: últimas N fotos diarias para el mapa de 30 días. ----
+export async function getPlanHistory(userId: string, days = 30): Promise<any[]> {
+  const from = dayStr(new Date(Date.now() - days * DAY));
+  const { data } = await supabaseAdmin.from('plan_daily')
+    .select('day,adherence,checkin_rate,discipline,blocked,overrode,guardian_active')
+    .eq('user_id', userId).gte('day', from).order('day', { ascending: true });
+  return (data as any[]) || [];
 }
 
 // Repaso de Onyx AI: cruza el plan con la conducta real y da coaching breve.

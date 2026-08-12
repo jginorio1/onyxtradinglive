@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { getPlan, savePlan, getCheckin, saveCheckin, computeStats, HABIT_KEYS, guardianSummary, planHabitIds } from '@/lib/tradingPlan';
+import { getPlan, savePlan, getCheckin, saveCheckin, computeStats, HABIT_KEYS, guardianSummary, planHabitIds, getPlanHistory } from '@/lib/tradingPlan';
+
+// Ventanas de sesión (aprox, en horas UTC) para auto-verificar "respeté mi sesión".
+const SESSION_UTC: Record<string, [number, number]> = { asia: [0, 9], london: [7, 16], ny: [12, 21] };
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -28,25 +31,34 @@ export async function GET() {
   ]);
 
   // Auto-marcado: lo que Onyx ya sabe de hoy, para premarcar hábitos y que el
-  // trader solo confirme. Silencioso si algo falla.
+  // trader solo confirme. Funciona con o sin Guardian. Silencioso si algo falla.
   const auto: Record<string, boolean> = {};
   try {
     const dayStart = new Date(); dayStart.setUTCHours(0, 0, 0, 0);
     const { data: accs } = await supabaseAdmin.from('trading_accounts').select('id').eq('user_id', user.id);
     const ids = (accs || []).map((a: any) => a.id);
-    let tradesToday = 0;
+    let rows: any[] = [];
     if (ids.length) {
-      const { count } = await supabaseAdmin.from('trades').select('*', { count: 'exact', head: true })
-        .in('account_id', ids).gte('close_time', dayStart.toISOString());
-      tradesToday = count || 0;
+      const r = await supabaseAdmin.from('trades').select('open_time,close_time')
+        .in('account_id', ids).gte('close_time', dayStart.toISOString()).limit(1000);
+      rows = r.data || [];
     }
+    const tradesToday = rows.length;
     const { count: blockedToday } = await supabaseAdmin.from('manager_events').select('*', { count: 'exact', head: true })
       .eq('user_id', user.id).eq('kind', 'blocked').gte('created_at', dayStart.toISOString());
     auto.journaled = tradesToday > 0;                                   // operaciones sincronizadas = registradas
     auto.stopped_at_limit = tradesToday > 0 && !(blockedToday || 0);    // operó y no lo frenaron por límite
+    // Respeté mi sesión: todas las operaciones de hoy abrieron dentro de alguna
+    // de las sesiones del plan (aprox por hora UTC).
+    const wins = (plan.sessions || []).map((s: string) => SESSION_UTC[s]).filter(Boolean) as [number, number][];
+    if (tradesToday > 0 && wins.length) {
+      const inSession = (t: any) => { const ts = t.open_time || t.close_time; if (!ts) return false; const h = new Date(ts).getUTCHours(); return wins.some(([a, b]) => h >= a && h < b); };
+      auto.respected_sessions = rows.every(inSession);
+    }
   } catch { /* sin auto-marcado */ }
 
-  return NextResponse.json({ plan, checkin, stats, aiEnabled: ai, habitKeys: HABIT_KEYS, guardian, hasPlan: !!(planRow as any)?.data, auto });
+  const history = await getPlanHistory(user.id, 30).catch(() => []);
+  return NextResponse.json({ plan, checkin, stats, aiEnabled: ai, habitKeys: HABIT_KEYS, guardian, hasPlan: !!(planRow as any)?.data, auto, history });
 }
 
 // PATCH · guardar el plan.
