@@ -1016,46 +1016,147 @@ export const ARTICLES: Article[] = [
   },
   {
     slug: 'academia-cobrar-mentor',
-    cat: 'academy', icon: '💳',
-    title: { es: 'Cobrar por tu academia (mentor)', en: 'Charge for your academy (mentor)' },
+    cat: 'academy', icon: '💳', cover: '/guia/academy-pay-cover.svg', updated: true,
+    title: { es: 'Cómo cobran los mentores (Stripe)', en: 'How mentors get paid (Stripe)' },
     summary: {
-      es: 'Membresía de pago, cobros con Stripe, cupones, certificados y afiliados.',
-      en: 'Paid membership, Stripe payouts, coupons, certificates and affiliates.',
+      es: 'Explicado a fondo: conectar Stripe, qué te llega y cuándo, la comisión de Onyx, y el modelo técnico (Connect, destination charge, webhook y comisiones).',
+      en: 'Explained in depth: connecting Stripe, what you receive and when, Onyx\'s fee, and the technical model (Connect, destination charge, webhook and commissions).',
     },
     cta: { href: '/dashboard/academy', label: { es: 'Configurar cobros', en: 'Set up payments' } },
+    seo: {
+      title: { es: 'Cómo cobran los mentores en Onyx Academy · Stripe Connect', en: 'How Onyx Academy mentors get paid · Stripe Connect' },
+      desc: { es: 'Guía completa del cobro de mentores en Onyx: Stripe Connect, destination charge, comisión de Onyx, renovaciones, reembolsos y el libro de comisiones.', en: 'Full guide to mentor payouts in Onyx: Stripe Connect, destination charge, Onyx fee, renewals, refunds and the commission ledger.' },
+      keywords: { es: ['cobrar academia', 'stripe connect mentor', 'comisión onyx academy', 'destination charge', 'pagos mentor'], en: ['academy payouts', 'stripe connect mentor', 'onyx academy fee', 'destination charge', 'mentor payments'] },
+    },
     body: {
       es: [
-        { p: 'Puedes ofrecer tu academia gratis o de pago. Para cobrar, conectas tu cuenta de Stripe (Stripe Connect): el dinero de tus alumnos entra en TU cuenta de Stripe, no en la de Onyx.' },
-        { h: 'Poner precio' },
-        { list: [
-          'Defines el precio de la membresía (mensual y/o anual) en dólares.',
-          'Puedes abrir o cerrar las inscripciones cuando quieras.',
-          'Puedes crear cupones de descuento para campañas o para tu comunidad.',
+        { p: 'Tu academia puede ser gratis o de pago. Cuando cobras, el dinero de tus alumnos entra en TU propia cuenta de Stripe, no en la de Onyx. Onyx solo retiene su comisión de plataforma, de forma automática, en la misma transacción. Esta guía tiene dos partes: primero lo esencial para el mentor, y al final el detalle técnico del modelo que tenemos montado.' },
+        { img: '/guia/academy-pay-cover.svg', alt: 'El alumno paga, Stripe procesa, y el neto llega a tu cuenta de Stripe menos la comisión de Onyx', caption: 'El recorrido del dinero: alumno → Stripe → tu cuenta, menos comisiones.' },
+
+        { h: '① Para el mentor: lo esencial' },
+        { p: 'Para poder cobrar solo tienes que conectar tu cuenta de Stripe una vez. Es un proceso de Stripe (no de Onyx) y toma un par de minutos.' },
+        { img: '/guia/academy-pay-connect.svg', alt: 'Tres pasos: conectar con Stripe, completar tus datos, y quedar habilitado para cobrar', caption: 'Conectar tu cobro es de una sola vez.' },
+        { steps: [
+          'En el panel de tu academia → Cobros, pulsa "Conectar con Stripe".',
+          'Stripe te crea una cuenta Express y te pide tus datos: nombre o negocio, país, identidad y tu cuenta bancaria. Eso lo pide Stripe, no Onyx.',
+          'Cuando Stripe te marca como habilitado (charges_enabled), tu academia ya puede vender. Verás el estado "listo para cobrar" en tu panel.',
         ] },
-        { h: 'Cobros y comisión' },
-        { p: 'Los pagos se procesan con Stripe. Onyx aplica una comisión de plataforma sobre las ventas (el porcentaje lo ves en tu panel). Las comisiones de Stripe y esa comisión se descuentan automáticamente; el resto llega a tu Stripe.' },
-        { h: 'Afiliados' },
-        { p: 'Puedes activar un programa de afiliados: tus alumnos comparten su enlace y ganan una comisión por cada suscriptor que traigan. Tú fijas el porcentaje y ves los pagos pendientes y hechos en tu panel.' },
-        { h: 'Certificados' },
-        { p: 'Al terminar un curso, el alumno recibe un certificado con el nombre de TU academia.' },
-        { note: 'Todo esto se gestiona desde el panel de la academia (Cobros y Afiliados). No necesitas saber de programación.', title: 'Dónde' },
+
+        { h: 'Qué te llega y cuándo' },
+        { p: 'De cada venta se descuentan dos cosas: la comisión de Stripe (su tarifa por procesar el pago) y la comisión de Onyx (el porcentaje de plataforma que ves en tu panel). El resto es tuyo y queda en tu saldo de Stripe. Luego Stripe hace el pago a tu banco según su calendario de pagos (payout), que tú controlas desde tu propio panel de Stripe.' },
+        { img: '/guia/academy-pay-split.svg', alt: 'Reparto de una venta de 100 dólares: comisión de Stripe, comisión de Onyx del 10 por ciento, y el neto para el mentor', caption: 'Ejemplo con comisión del 10%. Las cifras de Stripe son aproximadas y dependen de tu país.' },
+        { list: [
+          'El precio lo pones tú, en dólares (mensual, anual y/o pagos únicos por nivel).',
+          'Puedes abrir o cerrar inscripciones y crear cupones de descuento cuando quieras.',
+          'En cada renovación mensual/anual se repite el mismo reparto automáticamente.',
+          'Onyx nunca guarda el dinero: solo separa su comisión en la misma transacción.',
+        ] },
+
+        { h: 'Ver tus cobros' },
+        { p: 'Desde tu panel tienes un enlace directo a tu panel de Stripe (Express), donde ves cada cobro, tus pagos al banco y tus facturas. Tus ingresos y la comisión retenida por Onyx también se resumen en tu panel de la academia.' },
+
+        { h: 'Renovaciones, cancelaciones y reembolsos' },
+        { p: 'Si un alumno cancela, deja de renovar y pierde el acceso al final del periodo pagado. Si haces un reembolso, la comisión de esa venta se marca como revertida en el libro (no cuenta como ingreso). Todo esto es automático.' },
+        { tip: 'La comisión de Onyx puede bajar según tu plan de Onyx: a mejor plan, menor porcentaje. Lo verás reflejado como tu porcentaje efectivo en el panel.' },
+
+        { h: '② Cómo funciona por dentro (técnico)' },
+        { p: 'Esta parte es para ti y tu equipo. Explica el modelo real que está implementado, por si necesitas auditarlo o dar soporte.' },
+
+        { h: 'Stripe Connect + destination charge' },
+        { p: 'Cada mentor tiene una cuenta Stripe Connect de tipo Express (capacidades transfers y card_payments). Los cobros se crean como "destination charge" en la plataforma de Onyx y se transfieren al mentor:' },
+        { list: [
+          'transfer_data.destination = cuenta del mentor → el neto va a su cuenta.',
+          'on_behalf_of = cuenta del mentor → el mentor es el comercio de registro, así absorbe el fee de Stripe y la comisión de Onyx queda limpia y separada.',
+          'Pagos únicos: application_fee_amount = precio × %. Suscripciones (niveles, membresía y copy del mentor): application_fee_percent = %.',
+          'allow_promotion_codes activo → el alumno puede aplicar tus cupones de Stripe.',
+        ] },
+
+        { h: 'La comisión de Onyx (jerarquía)' },
+        { p: 'El porcentaje que retiene Onyx se resuelve con feeForMentor(), de lo más específico a lo más general, y siempre se limita a un rango de 0–50%:' },
+        { list: [
+          '1) Override manual por mentor (mentors.fee_pct), si el dueño fijó uno.',
+          '2) Comisión de su plan de Onyx (plans.capabilities.academy_fee_pct): baja al subir de plan.',
+          '3) Porcentaje global por defecto (ajuste app_settings academy_fee).',
+          '4) Valor de entorno (ONYX_ACADEMY_FEE_PCT, por defecto 10%).',
+        ] },
+
+        { h: 'El libro de comisiones' },
+        { p: 'Un webhook dedicado (firmado con ACADEMY_WEBHOOK_SECRET) escucha los eventos de Stripe y anota cada comisión en la tabla onyx_commissions, de forma idempotente por (mentor_id, stripe_ref) para que los reintentos no dupliquen.' },
+        { img: '/guia/academy-pay-ledger.svg', alt: 'Stripe envía eventos al webhook, que registra cada comisión de forma idempotente en el libro onyx_commissions', caption: 'Del evento de Stripe al libro de comisiones.' },
+        { list: [
+          'checkout.session.completed: da el acceso; en pago único anota la comisión atada al payment_intent.',
+          'invoice.paid / payment_succeeded: anota la comisión de cada factura, incluidas las renovaciones.',
+          'charge.refunded: marca la comisión como "reversed" (no la borra; corrige el libro).',
+          'subscription.updated / deleted: actualiza el estado (activa, past_due, cancelada).',
+          'account.updated: refresca charges_enabled del mentor.',
+        ] },
+        { p: 'Tus ingresos del panel salen de ese libro: bruto y comisión sumados sobre las filas que no están revertidas, y el neto es bruto − comisión.' },
+
         { warn: 'Cumplir las leyes fiscales y las condiciones de Stripe de tu país es tu responsabilidad. Onyx te da la herramienta de cobro, no asesoría fiscal.' },
       ],
       en: [
-        { p: 'You can offer your academy free or paid. To charge, you connect your Stripe account (Stripe Connect): your students\' money goes into YOUR Stripe account, not Onyx\'s.' },
-        { h: 'Set a price' },
-        { list: [
-          'Set the membership price (monthly and/or yearly) in US dollars.',
-          'Open or close enrollments whenever you want.',
-          'Create discount coupons for campaigns or for your community.',
+        { p: 'Your academy can be free or paid. When you charge, your students\' money goes into YOUR own Stripe account, not Onyx\'s. Onyx only keeps its platform fee, automatically, in the same transaction. This guide has two parts: first the essentials for the mentor, and at the end the technical detail of the model we run.' },
+        { img: '/guia/academy-pay-cover.svg', alt: 'The student pays, Stripe processes, and the net lands in your Stripe account minus Onyx\'s fee', caption: 'The money path: student → Stripe → your account, minus fees.' },
+
+        { h: '① For the mentor: the essentials' },
+        { p: 'To start charging you only connect your Stripe account once. It is a Stripe process (not Onyx) and takes a couple of minutes.' },
+        { img: '/guia/academy-pay-connect.svg', alt: 'Three steps: connect with Stripe, complete your details, and become enabled to charge', caption: 'Connecting your payouts is a one-time setup.' },
+        { steps: [
+          'In your academy panel → Payments, click "Connect with Stripe".',
+          'Stripe creates an Express account and asks for your details: name or business, country, identity and your bank account. Stripe asks for this, not Onyx.',
+          'Once Stripe marks you as enabled (charges_enabled), your academy can sell. You will see "ready to charge" in your panel.',
         ] },
-        { h: 'Payouts and fee' },
-        { p: 'Payments are processed by Stripe. Onyx applies a platform fee on sales (you see the percentage in your panel). Stripe\'s fees and that fee are deducted automatically; the rest lands in your Stripe.' },
-        { h: 'Affiliates' },
-        { p: 'You can turn on an affiliate program: your students share their link and earn a commission for every subscriber they bring. You set the percentage and see pending and paid amounts in your panel.' },
-        { h: 'Certificates' },
-        { p: 'When a student finishes a course, they get a certificate with YOUR academy\'s name.' },
-        { note: 'All of this is managed from the academy panel (Payments and Affiliates). No coding needed.', title: 'Where' },
+
+        { h: 'What you receive and when' },
+        { p: 'Two things are deducted from each sale: Stripe\'s fee (their charge for processing the payment) and Onyx\'s fee (the platform percentage you see in your panel). The rest is yours and stays in your Stripe balance. Stripe then pays out to your bank on its payout schedule, which you control from your own Stripe panel.' },
+        { img: '/guia/academy-pay-split.svg', alt: 'Split of a 100 dollar sale: Stripe fee, Onyx 10 percent fee, and the net for the mentor', caption: 'Example with a 10% fee. Stripe figures are approximate and depend on your country.' },
+        { list: [
+          'You set the price, in US dollars (monthly, yearly and/or one-time per tier).',
+          'You can open or close enrollments and create discount coupons anytime.',
+          'Each monthly/yearly renewal repeats the same split automatically.',
+          'Onyx never holds the money: it only separates its fee within the same transaction.',
+        ] },
+
+        { h: 'See your payments' },
+        { p: 'From your panel you get a direct link to your Stripe (Express) dashboard, where you see every charge, your bank payouts and your invoices. Your earnings and Onyx\'s retained fee are also summarized in your academy panel.' },
+
+        { h: 'Renewals, cancellations and refunds' },
+        { p: 'If a student cancels, they stop renewing and lose access at the end of the paid period. If you issue a refund, that sale\'s commission is marked reversed in the ledger (it does not count as income). All of this is automatic.' },
+        { tip: 'Onyx\'s fee can drop with your Onyx plan: a better plan means a lower percentage. You will see it as your effective percentage in the panel.' },
+
+        { h: '② How it works under the hood (technical)' },
+        { p: 'This part is for you and your team. It explains the model actually implemented, in case you need to audit it or give support.' },
+
+        { h: 'Stripe Connect + destination charge' },
+        { p: 'Each mentor has a Stripe Connect Express account (transfers and card_payments capabilities). Charges are created as a "destination charge" on the Onyx platform and transferred to the mentor:' },
+        { list: [
+          'transfer_data.destination = mentor account → the net goes to their account.',
+          'on_behalf_of = mentor account → the mentor is the merchant of record, so they absorb the Stripe fee and Onyx\'s fee stays clean and separate.',
+          'One-time payments: application_fee_amount = price × %. Subscriptions (tiers, membership and mentor copy): application_fee_percent = %.',
+          'allow_promotion_codes on → the student can apply your Stripe coupons.',
+        ] },
+
+        { h: 'Onyx\'s fee (hierarchy)' },
+        { p: 'The percentage Onyx keeps is resolved by feeForMentor(), from most specific to most general, and is always clamped to a 0–50% range:' },
+        { list: [
+          '1) Manual per-mentor override (mentors.fee_pct), if the owner set one.',
+          '2) Their Onyx plan fee (plans.capabilities.academy_fee_pct): lower on higher plans.',
+          '3) Global default percentage (app_settings academy_fee).',
+          '4) Environment value (ONYX_ACADEMY_FEE_PCT, default 10%).',
+        ] },
+
+        { h: 'The commission ledger' },
+        { p: 'A dedicated webhook (signed with ACADEMY_WEBHOOK_SECRET) listens to Stripe events and records each commission in the onyx_commissions table, idempotently by (mentor_id, stripe_ref) so retries never duplicate.' },
+        { img: '/guia/academy-pay-ledger.svg', alt: 'Stripe sends events to the webhook, which records each commission idempotently in the onyx_commissions ledger', caption: 'From the Stripe event to the commission ledger.' },
+        { list: [
+          'checkout.session.completed: grants access; for one-time it records the commission tied to the payment_intent.',
+          'invoice.paid / payment_succeeded: records the commission for each invoice, including renewals.',
+          'charge.refunded: marks the commission as "reversed" (does not delete it; it corrects the ledger).',
+          'subscription.updated / deleted: updates the status (active, past_due, canceled).',
+          'account.updated: refreshes the mentor\'s charges_enabled.',
+        ] },
+        { p: 'Your panel earnings come from that ledger: gross and fee summed over the non-reversed rows, and the net is gross − fee.' },
+
         { warn: 'Complying with tax laws and Stripe\'s terms in your country is your responsibility. Onyx gives you the payment tool, not tax advice.' },
       ],
     },
