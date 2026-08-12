@@ -31,6 +31,13 @@ export const NOTIF_CATALOG: NotifDef[] = [
     editableChannels: ['bell', 'push', 'telegram'],
   },
   {
+    key: 'checkin_evening', group: 'Plan y hábitos', extra: true,
+    es: { title: '🌙 Cierra tu check-in', body: 'Antes de terminar el día, marca los hábitos que te falten y guarda tu racha.' },
+    en: { title: '🌙 Close your check-in', body: 'Before the day ends, tick your remaining habits and keep your streak.' },
+    bell: true, push: false, telegram: false, tgKind: 'daily', url: '/dashboard?view=plan',
+    editableChannels: ['bell', 'push', 'telegram'],
+  },
+  {
     key: 'no_trade', group: 'Plan y hábitos', extra: true,
     es: { title: '📉 Llevas {days} días sin operar', body: 'Vuelve cuando tu plan lo diga; la paciencia también es estrategia.' },
     en: { title: '📉 {days} days without trading', body: 'Come back when your plan says so — patience is a strategy too.' },

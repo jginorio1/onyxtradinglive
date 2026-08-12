@@ -280,7 +280,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
   const [view, setView] = useState<View>('hub');
   const [railOpen, setRailOpen] = useState(false);   // móvil: menú del panel personal (cuentas/mercado/neto/coach)
   // Recordatorio de check-in del plan → píldora iluminada en la cápsula del saludo.
-  const [checkin, setCheckin] = useState<{ pending: boolean; open: () => void } | null>(null);
+  const [checkin, setCheckin] = useState<{ pending: boolean; open: () => void; done?: number; total?: number } | null>(null);
   // Deep-link: /dashboard?view=plan abre directo esa vista (p.ej. desde el Guardian).
   useEffect(() => {
     try {
@@ -545,7 +545,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                 {checkin?.pending && (
                   <button onClick={() => checkin.open()} title={lang === 'en' ? 'Review your plan today' : 'Revisa tu plan hoy'}
                     style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid var(--amber)', background: 'rgba(245,158,11,.12)', color: 'var(--amber)', borderRadius: 16, padding: '4px 11px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', animation: 'onyxGlow 1.9s ease-in-out infinite' }}>
-                    <OnyxIcon emoji="⏳" size={13} /> {lang === 'en' ? 'Review plan' : 'Revisar plan'}
+                    <OnyxIcon emoji="✅" size={13} /> {lang === 'en' ? 'Check-in' : 'Check-in'}{typeof checkin.total === 'number' && checkin.total > 0 ? ` ${checkin.done}/${checkin.total}` : ''}
                   </button>
                 )}
               </h1>

@@ -35,14 +35,17 @@ export async function GET(req: Request) {
     const langOf: Record<string, string> = {};
     (profs || []).forEach((p: any) => { langOf[p.id] = p.lang === 'es' ? 'es' : 'en'; });
 
+    // slot=evening → usa el recordatorio de tarde (tipo aparte, editable en Admin).
+    const slot = new URL(req.url).searchParams.get('slot');
+    const key = slot === 'evening' ? 'checkin_evening' : 'checkin';
     // Config de notificaciones (textos + canales que dejó el dueño), una vez.
     const cfg = await loadNotifConfig();
     let sent = 0;
     for (const uid of pending) {
-      await emitNotif(uid, 'checkin', { lang: langOf[uid], cfg });
+      await emitNotif(uid, key, { lang: langOf[uid], cfg });
       sent++;
     }
-    return NextResponse.json({ ok: true, sent });
+    return NextResponse.json({ ok: true, sent, slot: slot === 'evening' ? 'evening' : 'morning' });
   } catch (e: any) {
     await logError('checkin_reminder', e);
     return NextResponse.json({ ok: false, error: e?.message || 'error' }, { status: 500 });

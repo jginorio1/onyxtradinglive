@@ -26,7 +26,27 @@ export async function GET() {
     getCheckin(user.id), computeStats(user.id, plan), aiEnabled(user.id), guardianSummary(user.id),
     supabaseAdmin.from('trading_plans').select('user_id').eq('user_id', user.id).maybeSingle(),
   ]);
-  return NextResponse.json({ plan, checkin, stats, aiEnabled: ai, habitKeys: HABIT_KEYS, guardian, hasPlan: !!(planRow as any)?.data });
+
+  // Auto-marcado: lo que Onyx ya sabe de hoy, para premarcar hábitos y que el
+  // trader solo confirme. Silencioso si algo falla.
+  const auto: Record<string, boolean> = {};
+  try {
+    const dayStart = new Date(); dayStart.setUTCHours(0, 0, 0, 0);
+    const { data: accs } = await supabaseAdmin.from('trading_accounts').select('id').eq('user_id', user.id);
+    const ids = (accs || []).map((a: any) => a.id);
+    let tradesToday = 0;
+    if (ids.length) {
+      const { count } = await supabaseAdmin.from('trades').select('*', { count: 'exact', head: true })
+        .in('account_id', ids).gte('close_time', dayStart.toISOString());
+      tradesToday = count || 0;
+    }
+    const { count: blockedToday } = await supabaseAdmin.from('manager_events').select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id).eq('kind', 'blocked').gte('created_at', dayStart.toISOString());
+    auto.journaled = tradesToday > 0;                                   // operaciones sincronizadas = registradas
+    auto.stopped_at_limit = tradesToday > 0 && !(blockedToday || 0);    // operó y no lo frenaron por límite
+  } catch { /* sin auto-marcado */ }
+
+  return NextResponse.json({ plan, checkin, stats, aiEnabled: ai, habitKeys: HABIT_KEYS, guardian, hasPlan: !!(planRow as any)?.data, auto });
 }
 
 // PATCH · guardar el plan.
