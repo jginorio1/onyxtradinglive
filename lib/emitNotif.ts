@@ -2,6 +2,7 @@ import { notify } from '@/lib/notify';
 import { sendPush } from '@/lib/push';
 import { alertUser } from '@/lib/telegram';
 import { loadNotifConfig } from '@/lib/notifConfig';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 // Envía UN aviso por los canales que el dueño dejó activos (campana / push /
 // Telegram), con los textos configurados en Admin → Notificaciones. Si el tipo
@@ -23,8 +24,17 @@ export async function emitNotif(
     const body = sub(opts.body ?? d[lang].body);
     const url = opts.url || d.url;
 
-    if (d.bell) { try { await notify(userId, { kind: key, title, body, url }); } catch {} }
-    if (d.push) { try { await sendPush(userId, { title, body, url }); } catch {} }
+    // Preferencias del propio trader: puede apagar campana/push de un tipo. Si no
+    // ha tocado nada, recibe lo que el dueño dejó activo. (Telegram lo controla
+    // aparte con sus interruptores de Mi cuenta → Avisos.)
+    let pref: any = {};
+    try {
+      const { data } = await supabaseAdmin.from('profiles').select('notif_prefs').eq('id', userId).maybeSingle();
+      pref = (data as any)?.notif_prefs?.[key] || {};
+    } catch { /* si no existe la columna aún, no filtra */ }
+
+    if (d.bell && pref.bell !== false) { try { await notify(userId, { kind: key, title, body, url }); } catch {} }
+    if (d.push && pref.push !== false) { try { await sendPush(userId, { title, body, url }); } catch {} }
     if (d.telegram) { try { await alertUser(userId, d.tgKind as any, `<b>${title}</b>\n${body}`); } catch {} }
   } catch { /* nunca romper el flujo que llamó */ }
 }

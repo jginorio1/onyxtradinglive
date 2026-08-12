@@ -35,6 +35,19 @@ export default function NotifAdmin({ lang }: { lang: 'es' | 'en' }) {
   useEffect(() => { load(); }, []);
 
   const set = (k: string, f: string, v: any) => setOv((p) => ({ ...p, [k]: { ...p[k], [f]: v } }));
+  const [aiKey, setAiKey] = useState('');       // qué tarjeta tiene abierta la IA
+  const [aiText, setAiText] = useState<Record<string, string>>({});
+  const [aiBusy, setAiBusy] = useState('');
+  async function runAi(k: string) {
+    setAiBusy(k);
+    try {
+      const r = await fetch('/api/admin/notifications/ai', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ key: k, instruction: aiText[k] || '' }) });
+      const j = await r.json();
+      if (!r.ok) { toast(j.error || 'Error'); }
+      else { setOv((p) => ({ ...p, [k]: { ...p[k], title_es: j.title_es, title_en: j.title_en, body_es: j.body_es, body_en: j.body_en } })); toast(es ? 'Redactado ✨' : 'Drafted ✨', 'ok'); }
+    } catch { toast('Error'); }
+    setAiBusy('');
+  }
   async function save() {
     setBusy(true);
     try {
@@ -75,6 +88,17 @@ export default function NotifAdmin({ lang }: { lang: 'es' | 'en' }) {
                     {chans.map((c) => (
                       <label key={c} className="row" style={{ gap: 6, fontSize: 12, cursor: 'pointer' }}><Toggle on={!!o[c]} onClick={() => set(d.key, c, !o[c])} /> {chLabel(c)}</label>
                     ))}
+                  </div>
+                  <div style={{ marginTop: 8, background: 'rgba(124,140,255,.08)', border: '1px solid rgba(124,140,255,.25)', borderRadius: 8, padding: 8 }}>
+                    {aiKey === d.key ? (
+                      <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+                        <input placeholder={es ? 'Instrucción (ej: más motivador y corto)' : 'Instruction (e.g. more motivating and short)'} value={aiText[d.key] || ''} onChange={(e) => setAiText((p) => ({ ...p, [d.key]: e.target.value }))} style={{ ...inp, flex: 1, minWidth: 160 }} />
+                        <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={() => runAi(d.key)} disabled={aiBusy === d.key}>{aiBusy === d.key ? '…' : (es ? 'Redactar' : 'Draft')}</button>
+                        <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setAiKey('')}>✕</button>
+                      </div>
+                    ) : (
+                      <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setAiKey(d.key)}>✨ {es ? 'Redactar con IA' : 'Write with AI'}</button>
+                    )}
                   </div>
                   <div className="grid g2" style={{ gap: 8, marginTop: 8 }}>
                     <div>

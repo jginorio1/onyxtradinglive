@@ -16,6 +16,7 @@ import Ambassador from './Ambassador';
 import ReferralCard from './ReferralCard';
 import CancelFlow from './CancelFlow';
 import TelegramCard from './TelegramCard';
+import NotifPrefs from './NotifPrefs';
 import BillingCard from './BillingCard';
 import EmbeddedCheckoutModal from '@/app/EmbeddedCheckoutModal';
 import InstallApp from '@/app/dashboard/InstallApp';
@@ -760,6 +761,7 @@ export default function AccountClient({ email }: { email: string }) {
                   </div>
                 </div>
                 <div className="card"><TelegramCard lang={lang} /></div>
+                <div className="card"><NotifPrefs lang={lang} /></div>
               </Section>
             )}
 
