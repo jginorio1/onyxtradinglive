@@ -15,6 +15,8 @@ export type Block =
   | { h: string }                    // subtítulo
   | { note: string; title?: string } // recuadro con ejemplo o aviso
   | { warn: string; title?: string } // recuadro de advertencia honesta
+  | { tip: string; title?: string }  // recuadro verde de consejo
+  | { img: string; alt: string; caption?: string } // ilustración o captura
   | { list: string[] }
   | { steps: string[] };
 
@@ -26,6 +28,8 @@ export type Article = {
   summary: Record<Lang, string>;
   body: Record<Lang, Block[]>;
   cta?: { href: string; label: Record<Lang, string> };
+  cover?: string;    // imagen de portada del artículo (ruta en /public)
+  updated?: boolean; // marca "Nuevo/Actualizado" en la portada
 };
 
 export const CATEGORIES = [
@@ -127,7 +131,7 @@ export const ARTICLES: Article[] = [
   },
   {
     slug: 'que-hace-onyx',
-    cat: 'start', icon: '👁️',
+    cat: 'start', icon: '👁️', cover: '/guia/onyx-flujo.svg',
     title: { es: 'Qué hace Onyx y qué no hace', en: 'What Onyx does and does not do' },
     summary: {
       es: 'Los límites reales, dichos antes de que te lleves una sorpresa.',
@@ -1248,6 +1252,232 @@ export const ARTICLES: Article[] = [
       ],
     },
   },
+
+  // ---------- NOVEDADES (con imágenes) ----------
+  {
+    slug: 'plan-habitos-checkin',
+    cat: 'manager', icon: '🎯', updated: true, cover: '/guia/plan-adherencia.svg',
+    title: { es: 'Tu plan, hábitos y check-in diario', en: 'Your plan, habits and daily check-in' },
+    summary: {
+      es: 'Marca tus hábitos cada día, mide tu adherencia real y sigue tu progreso en un mapa de 30 días.',
+      en: 'Tick your habits daily, measure your real adherence and track progress on a 30-day map.',
+    },
+    cta: { href: '/dashboard?view=plan', label: { es: 'Abrir Mi plan', en: 'Open My plan' } },
+    body: {
+      es: [
+        { p: 'Onyx no solo mide tus números: también mide tu disciplina. Escribes tu plan (estilo, riesgo, sesiones y reglas), eliges los hábitos que quieres seguir, y cada día haces un check-in rápido. Con eso Onyx calcula tu adherencia.' },
+        { img: '/guia/plan-adherencia.svg', alt: 'Anillo de adherencia, lista de check-in y mapa de cumplimiento de 30 días', caption: 'Tu adherencia combina tus hábitos con tu disciplina real en las operaciones.' },
+        { h: 'El check-in de hoy' },
+        { p: 'Cada mañana aparece un popup con tus hábitos agrupados por momento: ☀️ antes de operar, 🕒 durante y después, y 🌙 al cerrar el día. Marca cada uno cuando lo hagas; puedes volver a lo largo del día sin perder tu racha.' },
+        { tip: 'Onyx premarca solo lo que ya detecta de tus operaciones (por ejemplo, que registraste y respetaste tus sesiones). Tú solo confirmas.', title: 'Se marca solo' },
+        { h: 'Adherencia adaptativa' },
+        { p: 'Tu adherencia mezcla lo que reportas con tu disciplina real (respetar tu máximo de operaciones). Si tienes el Guardian activo, sus frenos también cuentan. Si no lo tienes, esa parte simplemente no te penaliza.' },
+        { h: 'El mapa de 30 días' },
+        { p: 'En la pestaña Hoy verás un mapa con una celda por día: verde si cumpliste, ámbar si flojeaste, rojo si rompiste una regla. Cambia el rango a 7, 30 o 90 días y todos los números se recalculan.' },
+        { note: 'El mapa se llena a partir de una foto diaria automática. Los primeros días puede verse vacío; es normal, se completa solo.', title: 'Se llena cada día' },
+      ],
+      en: [
+        { p: 'Onyx measures more than your numbers: it measures your discipline too. You write your plan (style, risk, sessions and rules), pick the habits you want to keep, and do a quick check-in each day. From that, Onyx computes your adherence.' },
+        { img: '/guia/plan-adherencia.svg', alt: 'Adherence ring, check-in list and a 30-day compliance map', caption: 'Your adherence blends your habits with your real trading discipline.' },
+        { h: 'Today check-in' },
+        { p: 'Each morning a popup shows your habits grouped by moment: ☀️ before trading, 🕒 during and after, and 🌙 at end of day. Tick each as you do it; you can come back through the day without losing your streak.' },
+        { tip: 'Onyx pre-ticks what it already detects from your trades (for example, that you journaled and respected your sessions). You just confirm.', title: 'Auto-ticked' },
+        { h: 'Adaptive adherence' },
+        { p: 'Your adherence blends what you report with your real discipline (respecting your max trades). If the Guardian is on, its stops count too. If you do not have it, that part simply does not penalize you.' },
+        { h: 'The 30-day map' },
+        { p: 'On the Today tab you get a map with one cell per day: green if you followed through, amber if weak, red if you broke a rule. Switch the range to 7, 30 or 90 days and every number recomputes.' },
+        { note: 'The map fills from an automatic daily snapshot. The first days may look empty; that is normal, it completes on its own.', title: 'Fills daily' },
+      ],
+    },
+  },
+  {
+    slug: 'proteger-cuenta-guardian',
+    cat: 'manager', icon: '🛡️', updated: true, cover: '/guia/proteger.svg',
+    title: { es: 'Proteger una cuenta con el Guardian', en: 'Protecting an account with the Guardian' },
+    summary: {
+      es: 'Pon dos números —pérdida diaria y máximo de operaciones— y Onyx Guardian frena esa cuenta cuando los rompes.',
+      en: 'Set two numbers —daily loss and max trades— and Onyx Guardian stops that account when you break them.',
+    },
+    cta: { href: '/dashboard?view=plan&tab=limites', label: { es: 'Ir a Límites y cuentas', en: 'Go to Limits & accounts' } },
+    body: {
+      es: [
+        { p: 'En Mi plan → Límites y cuentas verás todas tus cuentas con un semáforo. Rojo: sin proteger. Al pulsar Proteger se abre un editor guiado, sin saltos ni pantallas raras.' },
+        { img: '/guia/proteger.svg', alt: 'Editor guiado para proteger una cuenta con pérdida diaria y máximo de operaciones', caption: 'Dos pasos: pérdida diaria máxima y máximo de operaciones. Guardas y listo.' },
+        { h: 'Los dos números' },
+        { steps: [
+          'Paso 1 · Pérdida diaria máxima: el % de tu balance que estás dispuesto a perder en un día. Si lo tocas, el Guardian frena la cuenta.',
+          'Paso 2 · Máximo de operaciones al día: cuántas operaciones te permites. 0 significa sin tope.',
+          'Guardar y proteger: se aplica solo a esa cuenta y el punto pasa a verde.',
+        ] },
+        { tip: 'Empieza suave: 1% de pérdida diaria es un buen punto de partida. Siempre puedes subirlo cuando cojas ritmo.', title: 'Consejo' },
+        { h: 'A qué cuenta se aplica' },
+        { p: 'El editor te dice con claridad a qué cuenta afecta. Si quieres el mismo límite en todas, usa "Todas"; o "Por tipo" para aplicarlo solo a las de fondeo, por ejemplo.' },
+        { warn: 'Si la cuenta recibe copias (es esclava), el límite se pone en la cuenta maestra. Onyx te avisa con un aviso ámbar cuando toca hacerlo así.' },
+      ],
+      en: [
+        { p: 'In My plan → Limits & accounts you see all your accounts with a traffic light. Red: unprotected. Tapping Protect opens a guided editor, with no jumps or odd screens.' },
+        { img: '/guia/proteger.svg', alt: 'Guided editor to protect an account with daily loss and max trades', caption: 'Two steps: max daily loss and max trades. Save and you are done.' },
+        { h: 'The two numbers' },
+        { steps: [
+          'Step 1 · Max daily loss: the % of your balance you are willing to lose in a day. If you hit it, the Guardian stops the account.',
+          'Step 2 · Max trades per day: how many trades you allow yourself. 0 means no cap.',
+          'Save and protect: it applies only to that account and the dot turns green.',
+        ] },
+        { tip: 'Start gentle: 1% daily loss is a good starting point. You can always raise it once you find your rhythm.', title: 'Tip' },
+        { h: 'Which account it applies to' },
+        { p: 'The editor clearly states which account it affects. For the same limit everywhere use "All"; or "By type" to apply it only to funded accounts, for example.' },
+        { warn: 'If the account receives copies (it is a follower), set the limit on the master account. Onyx shows an amber notice when that is the case.' },
+      ],
+    },
+  },
+  {
+    slug: 'notificaciones-onyx',
+    cat: 'alerts', icon: '🔔', updated: true, cover: '/guia/notificaciones.svg',
+    title: { es: 'Notificaciones: campana, push y Telegram', en: 'Notifications: bell, push and Telegram' },
+    summary: {
+      es: 'Las tres formas en que Onyx te avisa, qué llega por cada una y cómo enciendes solo lo que quieres.',
+      en: 'The three ways Onyx alerts you, what arrives on each and how to turn on only what you want.',
+    },
+    cta: { href: '/account', label: { es: 'Configurar mis avisos', en: 'Configure my alerts' } },
+    body: {
+      es: [
+        { p: 'Onyx te avisa por tres canales, y tú decides cuáles enciendes para cada tipo de aviso.' },
+        { img: '/guia/notificaciones.svg', alt: 'Campana del panel, notificación push en el móvil y mensaje de Telegram', caption: 'Campana dentro del panel · push en el móvil · Telegram al vincular tu cuenta.' },
+        { h: 'La campana' },
+        { p: 'Es el icono arriba a la derecha del panel. Guarda tus avisos: check-in del día, respuestas de soporte, recompensas de referidos y avisos del bot. Al pulsar cualquiera te lleva a la pantalla exacta.' },
+        { h: 'Push en el móvil' },
+        { p: 'Si instalas Onyx como app y aceptas los permisos, recibes notificaciones aunque no tengas la web abierta. Ideal para el recordatorio del check-in o cuando el Guardian te frena.' },
+        { h: 'Telegram' },
+        { p: 'Al vincular tu cuenta de Telegram, el bot te manda lo importante fuera de la app: límites, EA caído, resumen del día. Cada mensaje lleva la marca Onyx Trading Live.' },
+        { tip: 'En Mi cuenta → Avisos tienes un panel de interruptores: enciende la campana y el push por separado, para cada tipo de aviso.', title: 'Tú mandas' },
+        { note: 'Push y Telegram pueden depender de tu plan. La campana está siempre disponible.', title: 'Según tu plan' },
+      ],
+      en: [
+        { p: 'Onyx alerts you on three channels, and you decide which you turn on for each type of alert.' },
+        { img: '/guia/notificaciones.svg', alt: 'Dashboard bell, mobile push notification and a Telegram message', caption: 'Bell inside the dashboard · push on your phone · Telegram once you link your account.' },
+        { h: 'The bell' },
+        { p: 'It is the icon at the top right of the dashboard. It keeps your alerts: daily check-in, support replies, referral rewards and bot alerts. Tapping any takes you to the exact screen.' },
+        { h: 'Push on your phone' },
+        { p: 'If you install Onyx as an app and accept permissions, you get notifications even with the web closed. Great for the check-in reminder or when the Guardian stops you.' },
+        { h: 'Telegram' },
+        { p: 'Once you link your Telegram account, the bot sends what matters outside the app: limits, EA down, daily summary. Every message carries the Onyx Trading Live brand.' },
+        { tip: 'In My account → Alerts there is a switch panel: turn the bell and push on separately, for each type of alert.', title: 'You are in charge' },
+        { note: 'Push and Telegram may depend on your plan. The bell is always available.', title: 'Depends on your plan' },
+      ],
+    },
+  },
+  {
+    slug: 'resincronizar-costes',
+    cat: 'numbers', icon: '🔄', updated: true, cover: '/guia/resync.svg',
+    title: { es: 'Re-sincronizar: que los costes cuadren', en: 'Re-sync: making costs match' },
+    summary: {
+      es: 'Si comisiones o swaps no coinciden con tu plataforma, un botón vuelve a leer todo tu historial y lo cuadra.',
+      en: 'If commissions or swaps do not match your platform, one button re-reads your whole history and reconciles it.',
+    },
+    cta: { href: '/dashboard', label: { es: 'Ir a mis cuentas', en: 'Go to my accounts' } },
+    body: {
+      es: [
+        { p: 'Tu neto en Onyx debe ser idéntico al de tu MetaTrader o cTrader, comisiones y swaps incluidos. Si por lo que sea no cuadra, no hay que borrar nada: se vuelve a sincronizar el historial completo.' },
+        { img: '/guia/resync.svg', alt: 'Los costes de MetaTrader 5 y de Onyx, lado a lado, cuadrando al céntimo', caption: 'Tras re-sincronizar, comisión, swap y neto coinciden al céntimo con tu plataforma.' },
+        { h: 'Cómo se hace' },
+        { steps: [
+          'En tu panel, abre la cuenta que no cuadra.',
+          'Pulsa "Re-sincronizar historial".',
+          'Deja tu MetaTrader/cTrader abierto un momento: el EA vuelve a enviar todas las operaciones desde el principio.',
+        ] },
+        { tip: 'En MetaTrader 5 la comisión de una operación se reparte entre la entrada y la salida. El EA de Onyx suma las dos partes, por eso el total cuadra.', title: 'Por qué antes fallaba' },
+        { warn: 'Re-sincronizar no borra tu historial ni tus notas: solo recalcula los costes con los datos frescos de la plataforma.' },
+      ],
+      en: [
+        { p: 'Your net in Onyx should be identical to your MetaTrader or cTrader, commissions and swaps included. If for some reason it does not match, nothing gets deleted: the full history is re-synced.' },
+        { img: '/guia/resync.svg', alt: 'MetaTrader 5 and Onyx costs side by side, matching to the cent', caption: 'After re-syncing, commission, swap and net match your platform to the cent.' },
+        { h: 'How to do it' },
+        { steps: [
+          'In your dashboard, open the account that does not match.',
+          'Tap "Re-sync history".',
+          'Keep your MetaTrader/cTrader open a moment: the EA re-sends every trade from the start.',
+        ] },
+        { tip: 'On MetaTrader 5 a trade commission is split between entry and exit. The Onyx EA adds both parts, which is why the total matches.', title: 'Why it used to be off' },
+        { warn: 'Re-syncing does not delete your history or notes: it only recomputes costs with fresh data from the platform.' },
+      ],
+    },
+  },
+  {
+    slug: 'reto-lectura-ia',
+    cat: 'funded', icon: '📄', updated: true, cover: '/guia/reto-ia.svg',
+    title: { es: 'Tu reto, leído por la IA', en: 'Your challenge, read by AI' },
+    summary: {
+      es: 'Sube el contrato de tu reto (PDF o foto) y Onyx detecta firma, fase y reglas, y te sigue el marcador.',
+      en: 'Upload your challenge contract (PDF or photo) and Onyx detects firm, phase and rules, and tracks your scoreboard.',
+    },
+    cta: { href: '/dashboard?view=reto', label: { es: 'Abrir Mi reto', en: 'Open My challenge' } },
+    body: {
+      es: [
+        { p: 'Cada firma de fondeo tiene sus reglas: objetivo, pérdida diaria, pérdida total, días mínimos… En vez de copiarlas a mano, deja que Onyx las lea por ti.' },
+        { img: '/guia/reto-ia.svg', alt: 'Un contrato en PDF que la IA convierte en firma, fase, objetivo y pérdida máxima', caption: 'Subes el contrato y la IA rellena firma, fase y reglas; tú solo confirmas.' },
+        { h: 'Leer con IA' },
+        { steps: [
+          'En Mi reto, pulsa "Leer con IA".',
+          'Sube el PDF o una foto del contrato (o pega el texto).',
+          'La IA detecta la firma, si es Fase 1, Fase 2 o cuenta fondeada, y todas las reglas. Revisas y guardas.',
+        ] },
+        { h: 'La fase importa' },
+        { p: 'Onyx muestra en tu tarjeta y en los avisos si estás en Fase 1, Fase 2 o ya fondeado, porque las reglas y el objetivo cambian en cada una.' },
+        { tip: 'Si el contrato está en otro idioma, la IA igual lo entiende. Y si algo no queda claro, puedes ajustar cualquier regla a mano antes de guardar.', title: 'Sin teclear reglas' },
+        { warn: 'La lectura es una ayuda, no un sustituto del reglamento oficial. Ante la duda, manda siempre lo que diga tu firma.' },
+      ],
+      en: [
+        { p: 'Every prop firm has its own rules: target, daily loss, total loss, minimum days… Instead of copying them by hand, let Onyx read them for you.' },
+        { img: '/guia/reto-ia.svg', alt: 'A PDF contract the AI turns into firm, phase, target and max loss', caption: 'Upload the contract and the AI fills firm, phase and rules; you just confirm.' },
+        { h: 'Read with AI' },
+        { steps: [
+          'In My challenge, tap "Read with AI".',
+          'Upload the PDF or a photo of the contract (or paste the text).',
+          'The AI detects the firm, whether it is Phase 1, Phase 2 or funded, and all the rules. You review and save.',
+        ] },
+        { h: 'The phase matters' },
+        { p: 'Onyx shows on your card and in alerts whether you are in Phase 1, Phase 2 or already funded, because the rules and the target change in each.' },
+        { tip: 'If the contract is in another language, the AI still understands it. And if anything is unclear, you can adjust any rule by hand before saving.', title: 'No typing rules' },
+        { warn: 'The reading is a help, not a replacement for the official rulebook. When in doubt, your firm always has the final word.' },
+      ],
+    },
+  },
+  {
+    slug: 'instalar-app-avisos',
+    cat: 'alerts', icon: '📲', updated: true, cover: '/guia/instalar-app.svg',
+    title: { es: 'Instala Onyx como app en tu móvil', en: 'Install Onyx as an app on your phone' },
+    summary: {
+      es: 'Se abre como una aplicación, va más rápido y puede enviarte notificaciones push.',
+      en: 'It opens like an app, runs faster and can send you push notifications.',
+    },
+    cta: { href: '/dashboard', label: { es: 'Abrir Onyx', en: 'Open Onyx' } },
+    body: {
+      es: [
+        { p: 'Onyx funciona como app sin pasar por ninguna tienda. Se instala desde el propio navegador en unos segundos.' },
+        { img: '/guia/instalar-app.svg', alt: 'Tres pasos para instalar Onyx como app en el móvil y activar avisos', caption: 'Abre Onyx, pulsa Instalar app y activa las notificaciones. Ya está.' },
+        { h: 'Pasos' },
+        { steps: [
+          'Abre Onyx en el navegador de tu móvil.',
+          'Pulsa "Instalar app" (en iPhone: Compartir → Añadir a inicio).',
+          'Acepta las notificaciones para recibir avisos push.',
+        ] },
+        { tip: 'Con la app instalada llega el recordatorio del check-in y los avisos del Guardian aunque no tengas Onyx abierto.', title: 'Por qué merece la pena' },
+        { note: 'En iPhone las notificaciones push necesitan que la app esté añadida a la pantalla de inicio; el navegador solo no basta.', title: 'Nota para iPhone' },
+      ],
+      en: [
+        { p: 'Onyx works as an app without any store. You install it from the browser itself in seconds.' },
+        { img: '/guia/instalar-app.svg', alt: 'Three steps to install Onyx as an app on your phone and enable alerts', caption: 'Open Onyx, tap Install app and enable notifications. Done.' },
+        { h: 'Steps' },
+        { steps: [
+          'Open Onyx in your phone browser.',
+          'Tap "Install app" (on iPhone: Share → Add to Home Screen).',
+          'Accept notifications to receive push alerts.',
+        ] },
+        { tip: 'With the app installed, the check-in reminder and Guardian alerts reach you even with Onyx closed.', title: 'Why it is worth it' },
+        { note: 'On iPhone, push notifications require the app added to the Home Screen; the browser alone is not enough.', title: 'iPhone note' },
+      ],
+    },
+  },
 ];
 
 // Búsqueda simple sobre título, resumen y texto
@@ -1257,7 +1487,7 @@ export function searchArticles(q: string, lang: Lang): Article[] {
   return ARTICLES.filter((a) => {
     const hay = [
       a.title[lang], a.summary[lang],
-      ...a.body[lang].map((b: any) => b.p || b.h || b.note || b.warn || (b.list || b.steps || []).join(' ')),
+      ...a.body[lang].map((b: any) => b.p || b.h || b.note || b.warn || b.tip || b.caption || (b.list || b.steps || []).join(' ')),
     ].join(' ').toLowerCase();
     return hay.includes(needle);
   });

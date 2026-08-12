@@ -1,0 +1,38 @@
+<svg viewBox="0 0 820 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Proteger una cuenta: pon la pérdida diaria y el máximo de operaciones, y guarda">
+  <rect width="820" height="340" rx="18" fill="#0e121b"/>
+  <rect x="1" y="1" width="818" height="338" rx="18" fill="none" stroke="#232a3d"/>
+  <text x="40" y="46" fill="#e8ecf4" font-family="Arial" font-size="18" font-weight="bold">Proteger una cuenta: 2 números y listo</text>
+  <!-- Escudo -->
+  <g transform="translate(70,110)">
+    <path d="M60 0 L120 22 V70 C120 118 92 150 60 168 C28 150 0 118 0 70 V22 Z" fill="#161b2e" stroke="#7c8cff" stroke-width="2"/>
+    <path d="M38 84 l16 16 l30 -38" stroke="#34e2a0" stroke-width="7" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="60" y="196" text-anchor="middle" fill="#8b93a7" font-family="Arial" font-size="13">Onyx Guardian</text>
+  </g>
+  <!-- Paso 1 -->
+  <g>
+    <rect x="250" y="96" width="250" height="80" rx="12" fill="#151a26" stroke="#2b3350"/>
+    <circle cx="278" cy="136" r="15" fill="#7c8cff"/><text x="278" y="141" text-anchor="middle" fill="#0e121b" font-family="Arial" font-size="14" font-weight="bold">1</text>
+    <text x="306" y="128" fill="#8b93a7" font-family="Arial" font-size="12.5">Pérdida diaria máx.</text>
+    <text x="306" y="158" fill="#e8ecf4" font-family="Arial" font-size="24" font-weight="bold">1.0%</text>
+    <g fill="#222a3e"><rect x="430" y="118" width="30" height="30" rx="7"/><rect x="466" y="118" width="30" height="30" rx="7"/></g>
+    <text x="445" y="139" text-anchor="middle" fill="#8b93a7" font-family="Arial" font-size="18">−</text>
+    <text x="481" y="139" text-anchor="middle" fill="#8b93a7" font-family="Arial" font-size="18">+</text>
+  </g>
+  <!-- Paso 2 -->
+  <g>
+    <rect x="250" y="188" width="250" height="80" rx="12" fill="#151a26" stroke="#2b3350"/>
+    <circle cx="278" cy="228" r="15" fill="#7c8cff"/><text x="278" y="233" text-anchor="middle" fill="#0e121b" font-family="Arial" font-size="14" font-weight="bold">2</text>
+    <text x="306" y="220" fill="#8b93a7" font-family="Arial" font-size="12.5">Máx. operaciones/día</text>
+    <text x="306" y="250" fill="#e8ecf4" font-family="Arial" font-size="24" font-weight="bold">5</text>
+    <g fill="#222a3e"><rect x="430" y="210" width="30" height="30" rx="7"/><rect x="466" y="210" width="30" height="30" rx="7"/></g>
+    <text x="445" y="231" text-anchor="middle" fill="#8b93a7" font-family="Arial" font-size="18">−</text>
+    <text x="481" y="231" text-anchor="middle" fill="#8b93a7" font-family="Arial" font-size="18">+</text>
+  </g>
+  <!-- Botón guardar -->
+  <g>
+    <rect x="536" y="150" width="230" height="56" rx="12" fill="#7c8cff"/>
+    <text x="651" y="184" text-anchor="middle" fill="#0e121b" font-family="Arial" font-size="16" font-weight="bold">Guardar y proteger</text>
+    <rect x="536" y="216" width="230" height="42" rx="10" fill="#12331f" stroke="#1d9e75"/>
+    <text x="651" y="242" text-anchor="middle" fill="#34e2a0" font-family="Arial" font-size="13">✓ Cuenta protegida</text>
+  </g>
+</svg>

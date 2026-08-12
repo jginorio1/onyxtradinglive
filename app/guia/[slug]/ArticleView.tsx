@@ -11,14 +11,22 @@ const T: any = {
     helpful: '¿Te sirvió?', thanks: 'Gracias por decírnoslo.',
     next: 'Siguiente', prev: 'Anterior',
     signup: 'Crea tu cuenta gratis',
+    min: 'min de lectura', updated: 'Nuevo',
   },
   en: {
     guide: 'Guide', back: '← Back to the guide',
     helpful: 'Was this useful?', thanks: 'Thanks for telling us.',
     next: 'Next', prev: 'Previous',
     signup: 'Create your free account',
+    min: 'min read', updated: 'New',
   },
 };
+
+// Tiempo de lectura aproximado a partir del texto de los bloques.
+function readMins(body: any[]): number {
+  const words = body.map((b: any) => (b.p || b.h || b.note || b.warn || b.tip || b.caption || (b.list || b.steps || []).join(' ') || '')).join(' ').trim().split(/\s+/).length;
+  return Math.max(1, Math.round(words / 180));
+}
 
 export default function ArticleView({ slug }: { slug: string }) {
   const { lang } = useLang();
@@ -50,7 +58,19 @@ export default function ArticleView({ slug }: { slug: string }) {
       <div className="muted" style={{ fontSize: 12, margin: '18px 0 10px' }}>
         {t.guide} · {cat ? (cat.name as any)[lang] : ''}
       </div>
-      <h1 style={{ fontSize: 26, letterSpacing: '-.4px', marginBottom: 18, lineHeight: 1.3 }}>{a.title[lang]}</h1>
+      <h1 style={{ fontSize: 26, letterSpacing: '-.4px', marginBottom: 10, lineHeight: 1.3 }}>{a.title[lang]}</h1>
+
+      {/* Meta: tiempo de lectura + badge de novedad */}
+      <div className="row" style={{ gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+        <span className="pill" style={{ fontSize: 11.5, background: 'var(--bg2)', border: '1px solid var(--line)', color: 'var(--mut)' }}>🕒 {readMins(a.body[lang])} {t.min}</span>
+        {(a as any).updated && <span className="pill" style={{ fontSize: 11.5, background: 'rgba(124,140,255,.15)', color: 'var(--soft-brand)' }}>✨ {t.updated}</span>}
+      </div>
+
+      {/* Imagen de portada del artículo */}
+      {(a as any).cover && (
+        <img src={(a as any).cover} alt={a.title[lang]} loading="lazy"
+          style={{ width: '100%', height: 'auto', borderRadius: 14, border: '1px solid var(--line)', marginBottom: 22, display: 'block' }} />
+      )}
 
       {a.body[lang].map((b, i) => <BlockView key={i} b={b} />)}
 
@@ -127,6 +147,24 @@ function BlockView({ b }: { b: Block }) {
       {any.title && <div style={{ color: 'var(--red)', fontSize: 12, marginBottom: 5 }}>{any.title}</div>}
       <div style={{ fontSize: 14, lineHeight: 1.75, color: '#e8d5d8' }}>{any.warn}</div>
     </div>
+  );
+
+  if (any.tip) return (
+    <div style={{
+      background: 'rgba(52,226,160,.08)', border: '1px solid var(--green)',
+      padding: '13px 15px', marginBottom: 16, borderRadius: 10,
+    }}>
+      <div style={{ color: 'var(--green)', fontSize: 12, marginBottom: 5 }}>💡 {any.title || 'Consejo'}</div>
+      <div style={{ fontSize: 14, lineHeight: 1.75, color: 'var(--tx)' }}>{any.tip}</div>
+    </div>
+  );
+
+  if (any.img) return (
+    <figure style={{ margin: '4px 0 20px' }}>
+      <img src={any.img} alt={any.alt || ''} loading="lazy"
+        style={{ width: '100%', height: 'auto', borderRadius: 12, border: '1px solid var(--line)', display: 'block' }} />
+      {any.caption && <figcaption className="muted" style={{ fontSize: 12.5, lineHeight: 1.6, marginTop: 8, textAlign: 'center' }}>{any.caption}</figcaption>}
+    </figure>
   );
 
   if (any.list) return (

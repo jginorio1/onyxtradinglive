@@ -211,13 +211,18 @@ function ArticleRow({ a, lang }: any) {
       display: 'block', padding: '13px 15px', marginBottom: 8,
       background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 12,
     }}>
-      <div className="row" style={{ gap: 11, alignItems: 'flex-start' }}>
-        <span style={{ color: 'var(--brand)', display: 'inline-flex', marginTop: 1, flex: 'none' }}><OnyxIcon emoji={a.icon} size={18} /></span>
+      <div className="row" style={{ gap: 11, alignItems: 'center' }}>
+        {a.cover
+          ? <img src={a.cover} alt="" loading="lazy" style={{ width: 58, height: 40, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--line)', flex: 'none' }} />
+          : <span style={{ color: 'var(--brand)', display: 'inline-flex', flex: 'none' }}><OnyxIcon emoji={a.icon} size={18} /></span>}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14.5, marginBottom: 2 }}>{a.title[lang]}</div>
+          <div className="row" style={{ gap: 7, alignItems: 'center', marginBottom: 2, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 14.5 }}>{a.title[lang]}</span>
+            {a.updated && <span className="pill" style={{ fontSize: 9.5, color: 'var(--soft-brand)', background: 'rgba(124,140,255,.15)' }}>{lang === 'en' ? 'New' : 'Nuevo'}</span>}
+          </div>
           {a.summary?.[lang] && <div className="muted" style={{ fontSize: 13, lineHeight: 1.6 }}>{a.summary[lang]}</div>}
         </div>
-        <span className="muted" style={{ fontSize: 15 }}>→</span>
+        <span className="muted" style={{ fontSize: 15, flex: 'none' }}>→</span>
       </div>
     </Link>
   );
