@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import GuideBody from '../guia/GuideBody';
 
 // Editor de guías (solo dueño): IA para redactar, subir imágenes con visor/zoom,
 // SEO (meta título/descr + keywords), y lista agrupada por categoría.
@@ -63,6 +64,7 @@ export default function GuideEditor({ lang }: { lang: 'es' | 'en' }) {
   const [aiTopic, setAiTopic] = useState('');
   const [aiKw, setAiKw] = useState('');
   const [aiBusy, setAiBusy] = useState(false);
+  const [view, setView] = useState<'both' | 'edit' | 'preview'>('both');
   const fileRef = useRef<HTMLInputElement>(null);
   const cbRef = useRef<((url: string) => void) | null>(null);
 
@@ -202,6 +204,19 @@ export default function GuideEditor({ lang }: { lang: 'es' | 'en' }) {
         {!form ? (
           <div className="card muted" style={{ fontSize: 13 }}>{lang === 'en' ? 'Pick a guide or create a new one.' : 'Elige una guía o crea una nueva.'}</div>
         ) : (
+        <div>
+          {/* Barra: editar / vista previa / ambos */}
+          <div className="row between" style={{ marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
+            <div style={{ display: 'inline-flex', border: '1px solid var(--line)', borderRadius: 9, overflow: 'hidden' }}>
+              {([['edit', lang === 'en' ? 'Editor' : 'Editor'], ['both', lang === 'en' ? 'Split' : 'Dividir'], ['preview', lang === 'en' ? 'Preview' : 'Vista previa']] as const).map(([v, l]) => (
+                <button key={v} onClick={() => setView(v as any)} style={{ fontSize: 12.5, padding: '5px 13px', border: 'none', cursor: 'pointer', background: view === v ? 'var(--grad)' : 'transparent', color: view === v ? '#fff' : 'var(--mut)' }}>{l}</button>
+              ))}
+            </div>
+            <span className="muted" style={{ fontSize: 11.5 }}>{lang === 'en' ? 'The preview is exactly what the trader sees.' : 'La vista previa es exactamente lo que ve el trader.'}</span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: view === 'both' ? 'repeat(auto-fit,minmax(320px,1fr))' : '1fr', gap: 14, alignItems: 'start' }}>
+          {view !== 'preview' && (
           <div className="card">
             {/* Barra IA */}
             <div style={{ background: 'var(--bg2)', border: '1px solid var(--brand)', borderRadius: 10, padding: 10, marginBottom: 12 }}>
@@ -310,6 +325,17 @@ export default function GuideEditor({ lang }: { lang: 'es' | 'en' }) {
               {form.slug && <a className="btn btn-ghost" href={`/guia/${form.slug}`} target="_blank" rel="noreferrer" style={{ fontSize: 13 }}>{t.preview}</a>}
             </div>
           </div>
+          )}
+
+          {/* Vista previa en vivo (render exacto de la guía) */}
+          {view !== 'edit' && (
+            <div className="card" style={{ maxWidth: view === 'preview' ? 700 : 'none', margin: view === 'preview' ? '0 auto' : 0 }}>
+              <div className="muted" style={{ fontSize: 11.5, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '.04em' }}>👁️ {lang === 'en' ? 'Live preview' : 'Vista previa'}</div>
+              <GuideBody article={form} lang={ed} />
+            </div>
+          )}
+          </div>
+        </div>
         )}
       </div>
     </div>
