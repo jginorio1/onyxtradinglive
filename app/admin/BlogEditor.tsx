@@ -3,6 +3,7 @@ import { useEffect, useState, type ChangeEvent } from 'react';
 import { toast } from '@/lib/toast';
 import { useLang } from '@/lib/lang';
 import BlogKeywords from './BlogKeywords';
+import BlogPreview from './previews/BlogPreview';
 
 // Calendario de un solo día, mismo estilo que el de la academia (mes grande,
 // día sombreado, navegación de mes, días pasados deshabilitados).
@@ -211,6 +212,7 @@ export default function BlogEditor() {
 
   // Sube una imagen al Storage y devuelve su URL pública (o '' si falla).
   const [imgBusy, setImgBusy] = useState<'' | 'cover' | 'body'>('');
+  const [showPrev, setShowPrev] = useState(true);   // vista previa del artículo en vivo
   async function uploadImage(file: File): Promise<string> {
     if (file.size > 6 * 1024 * 1024) { toast(es ? 'Imagen muy grande (máx 6 MB).' : 'Image too large (max 6 MB).'); return ''; }
     const data = await fileToDataUrl(file);
@@ -530,6 +532,24 @@ export default function BlogEditor() {
         </div>
         <div><span className="muted" style={{ fontSize: 12 }}>Cuerpo (ES) · markdown</span><textarea value={f.body_es} onChange={(e) => set('body_es', e.target.value)} rows={10} style={{ width: '100%', margin: '4px 0 0', fontFamily: 'ui-monospace,monospace', fontSize: 13 }} /></div>
         <div><span className="muted" style={{ fontSize: 12 }}>Body (EN) · markdown</span><textarea value={f.body_en} onChange={(e) => set('body_en', e.target.value)} rows={10} style={{ width: '100%', margin: '4px 0 0', fontFamily: 'ui-monospace,monospace', fontSize: 13 }} /></div>
+
+        {/* Vista previa en vivo del artículo, tal como se publica (mismo render que /blog). */}
+        <div className="card">
+          <div className="row between" style={{ alignItems: 'center', marginBottom: showPrev ? 8 : 0 }}>
+            <span className="muted" style={{ fontSize: 12.5 }}>{es ? '👁 Vista previa (así se publica)' : '👁 Preview (as published)'}</span>
+            <button type="button" className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setShowPrev((v) => !v)}>{showPrev ? (es ? 'Ocultar' : 'Hide') : (es ? 'Mostrar' : 'Show')}</button>
+          </div>
+          {showPrev && (
+            <BlogPreview
+              title={es ? f.title_es : f.title_en}
+              cover={f.cover_url}
+              coverAlt={es ? f.cover_alt_es : f.cover_alt_en}
+              body={es ? f.body_es : f.body_en}
+              es={es}
+            />
+          )}
+        </div>
+
         <div><span className="muted" style={{ fontSize: 12 }}>{es ? 'Etiquetas (coma)' : 'Tags (comma)'}</span><input value={f.tags} onChange={(e) => set('tags', e.target.value)} style={{ margin: '4px 0 0' }} /></div>
 
         {/* Portada: subir imagen o URL + texto alternativo (alt) bilingüe con IA */}

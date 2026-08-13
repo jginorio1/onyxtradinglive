@@ -5,6 +5,7 @@ import { toast, toastErr } from '@/lib/toast';
 import { useLang } from '@/lib/lang';
 import ConfirmNote from './ConfirmNote';
 import DateTimePicker from '@/app/components/DateTimePicker';
+import EmailPreview from './previews/EmailPreview';
 
 // ============================================================
 // Admin → Campañas. Correos de seguimiento automáticos a la base de traders +
@@ -317,10 +318,13 @@ function ManualComposer({ segs, manuals, L, lang, segLabel, reload, onEdit, ask 
         <span className="muted" style={{ fontSize: 11 }}>{L('El pie con enlace de baja se añade solo.', 'The unsubscribe footer is added automatically.')}</span>
       </div>
       {showPrev && (
-        <div style={{ marginTop: 8, background: 'var(--card)', border: '1px solid var(--brand)', borderRadius: 10, padding: '10px 12px' }}>
-          <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>{L('Ejemplo con Jerry · plan Pro', 'Example with Jerry · Pro plan')}</div>
-          <div style={{ fontWeight: 700, fontSize: 13.5 }}>{fillPreview(lang === 'en' ? (f.subject_en || f.subject_es) : f.subject_es) || '—'}</div>
-          <div style={{ whiteSpace: 'pre-wrap', fontSize: 12.5, marginTop: 4 }}>{fillPreview(lang === 'en' ? (f.body_en || f.body_es) : f.body_es)}</div>
+        <div style={{ marginTop: 8 }}>
+          <div className="muted" style={{ fontSize: 11, marginBottom: 5 }}>{L('Ejemplo con Jerry · plan Pro', 'Example with Jerry · Pro plan')}</div>
+          <EmailPreview
+            subject={fillPreview(lang === 'en' ? (f.subject_en || f.subject_es) : f.subject_es)}
+            body={fillPreview(lang === 'en' ? (f.body_en || f.body_es) : f.body_es)}
+            es={lang !== 'en'}
+          />
         </div>
       )}
 
@@ -455,10 +459,13 @@ function Editor({ c, segs, L, lang, onClose, onSaved }: any) {
           <span className="muted" style={{ fontSize: 11 }}>{L('Variables: {{nombre}} {{plan}} {{sitio}}', 'Variables: {{nombre}} {{plan}} {{sitio}}')}</span>
         </div>
         {showPrev && (
-          <div style={{ marginTop: 8, background: 'var(--card)', border: '1px solid var(--brand)', borderRadius: 10, padding: '10px 12px' }}>
-            <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>{L('Ejemplo con Jerry · plan Pro', 'Example with Jerry · Pro plan')}</div>
-            <div style={{ fontWeight: 700, fontSize: 13.5 }}>{fillPreview(lang === 'en' ? (f.subject_en || f.subject_es) : f.subject_es) || '—'}</div>
-            <div style={{ whiteSpace: 'pre-wrap', fontSize: 12.5, marginTop: 4 }}>{fillPreview(lang === 'en' ? (f.body_en || f.body_es) : f.body_es)}</div>
+          <div style={{ marginTop: 8 }}>
+            <div className="muted" style={{ fontSize: 11, marginBottom: 5 }}>{L('Ejemplo con Jerry · plan Pro', 'Example with Jerry · Pro plan')}</div>
+            <EmailPreview
+              subject={fillPreview(lang === 'en' ? (f.subject_en || f.subject_es) : f.subject_es)}
+              body={fillPreview(lang === 'en' ? (f.body_en || f.body_es) : f.body_es)}
+              es={lang !== 'en'}
+            />
           </div>
         )}
 

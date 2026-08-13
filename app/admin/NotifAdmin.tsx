@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { toast } from '@/lib/toast';
+import NotifPreview from './previews/NotifPreview';
 
 // Admin → Notificaciones. El dueño edite, por cada tipo de aviso: on/off, canales
 // (campana / push / Telegram) y los textos ES/EN. Los "extra" nacen apagados.
@@ -111,6 +112,17 @@ export default function NotifAdmin({ lang }: { lang: 'es' | 'en' }) {
                       <input style={inp} value={o.title_en || ''} onChange={(e) => set(d.key, 'title_en', e.target.value)} />
                       <textarea style={{ ...inp, marginTop: 6, minHeight: 42, resize: 'vertical' }} value={o.body_en || ''} onChange={(e) => set(d.key, 'body_en', e.target.value)} />
                     </div>
+                  </div>
+                  <div style={{ marginTop: 10 }}>
+                    <div className="muted" style={{ fontSize: 11, marginBottom: 5 }}>{es ? 'Vista previa (como le llega al trader)' : 'Preview (as the trader receives it)'}</div>
+                    <NotifPreview
+                      title={es ? o.title_es : o.title_en}
+                      body={es ? o.body_es : o.body_en}
+                      bell={chans.includes('bell') ? !!o.bell : false}
+                      push={chans.includes('push') ? !!o.push : false}
+                      telegram={chans.includes('telegram') ? !!o.telegram : false}
+                      es={es}
+                    />
                   </div>
                 </div>
               );
