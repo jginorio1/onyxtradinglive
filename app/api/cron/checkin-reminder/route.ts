@@ -42,7 +42,8 @@ export async function GET(req: Request) {
     const cfg = await loadNotifConfig();
     let sent = 0;
     for (const uid of pending) {
-      await emitNotif(uid, key, { lang: langOf[uid], cfg });
+      // once por franja: si el cron se dispara dos veces en la misma franja, no reavisa.
+      await emitNotif(uid, key, { lang: langOf[uid], cfg, once: key });
       sent++;
     }
     return NextResponse.json({ ok: true, sent, slot: slot === 'evening' ? 'evening' : 'morning' });

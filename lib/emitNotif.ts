@@ -10,12 +10,25 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 export async function emitNotif(
   userId: string,
   key: string,
-  opts: { lang?: string; url?: string; vars?: Record<string, string | number>; cfg?: any; title?: string; body?: string } = {}
+  opts: { lang?: string; url?: string; vars?: Record<string, string | number>; cfg?: any; title?: string; body?: string; once?: string } = {}
 ): Promise<void> {
   try {
     const all = opts.cfg || (await loadNotifConfig());
     const d = all[key];
     if (!d || !d.on) return;
+
+    // Dedup opcional por día (para crons que podrían dispararse dos veces en la
+    // misma franja): si `once` ya se marcó hoy en profiles.tg_sent, no reenvía.
+    if (opts.once) {
+      try {
+        const { data } = await supabaseAdmin.from('profiles').select('tg_sent').eq('id', userId).maybeSingle();
+        const sent = ((data as any)?.tg_sent as any) || {};
+        const today = new Date().toISOString().slice(0, 10);
+        if (sent[opts.once] === today) return;   // ya avisado hoy
+        sent[opts.once] = today;
+        await supabaseAdmin.from('profiles').update({ tg_sent: sent }).eq('id', userId);
+      } catch { /* si no existe la columna, seguimos sin dedup */ }
+    }
     const lang = opts.lang === 'en' ? 'en' : 'es';
     const sub = (s: string) => String(s || '').replace(/\{(\w+)\}/g, (_, k) => String(opts.vars?.[k] ?? ''));
     // Si el que llama pasa un texto específico (p. ej. el motivo del robot), se usa
