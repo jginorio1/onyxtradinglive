@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
+import EmailPreview from './previews/EmailPreview';
 
 // Editor de plantillas de correo transaccional (dueño). Cambia asunto y cuerpo
 // en ES/EN; deja un campo vacío para volver al texto por defecto. Variables
@@ -47,16 +48,24 @@ export default function EmailTemplatesControl() {
               <span className="muted" style={{ fontSize: 11 }}>{(it.vars || []).map((v: string) => `{${v}}`).join(' ')}</span>
             </button>
             {open === it.id && (
-              <div style={{ padding: '0 12px 12px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                {(['es', 'en'] as const).map((l) => (
-                  <div key={l}>
-                    <div className="muted" style={{ fontSize: 11.5, fontWeight: 700, margin: '4px 0 6px' }}>{l.toUpperCase()}</div>
-                    <span className="muted" style={{ fontSize: 11 }}>{L('Asunto', 'Subject')}</span>
-                    <input value={it[l].subject} onChange={(e) => set(it.id, l, 'subject', e.target.value)} style={{ ...inp, margin: '3px 0 8px' }} placeholder={it[l].defSubject} />
-                    <span className="muted" style={{ fontSize: 11 }}>{L('Cuerpo', 'Body')}</span>
-                    <textarea value={it[l].body} onChange={(e) => set(it.id, l, 'body', e.target.value)} rows={5} style={{ ...inp, margin: '3px 0 0', fontFamily: 'inherit' }} placeholder={it[l].defBody} />
-                  </div>
-                ))}
+              <div style={{ padding: '0 12px 12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  {(['es', 'en'] as const).map((l) => (
+                    <div key={l}>
+                      <div className="muted" style={{ fontSize: 11.5, fontWeight: 700, margin: '4px 0 6px' }}>{l.toUpperCase()}</div>
+                      <span className="muted" style={{ fontSize: 11 }}>{L('Asunto', 'Subject')}</span>
+                      <input value={it[l].subject} onChange={(e) => set(it.id, l, 'subject', e.target.value)} style={{ ...inp, margin: '3px 0 8px' }} placeholder={it[l].defSubject} />
+                      <span className="muted" style={{ fontSize: 11 }}>{L('Cuerpo', 'Body')}</span>
+                      <textarea value={it[l].body} onChange={(e) => set(it.id, l, 'body', e.target.value)} rows={5} style={{ ...inp, margin: '3px 0 0', fontFamily: 'inherit' }} placeholder={it[l].defBody} />
+                    </div>
+                  ))}
+                </div>
+                <div style={{ marginTop: 10 }}>
+                  <div className="muted" style={{ fontSize: 11, marginBottom: 5 }}>{L('Vista previa (como llega el correo)', 'Preview (as the email arrives)')}</div>
+                  {(() => { const l = lang === 'en' ? 'en' : 'es'; return (
+                    <EmailPreview subject={it[l].subject || it[l].defSubject} body={it[l].body || it[l].defBody} es={l === 'es'} />
+                  ); })()}
+                </div>
               </div>
             )}
           </div>

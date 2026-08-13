@@ -8,6 +8,7 @@ import BrandIcon, { BRAND_COLOR } from '@/app/components/BrandIcon';
 import ShareRow from '@/app/components/ShareRow';
 import StudentBilling from '@/app/components/StudentBilling';
 import LangToggle from '@/app/LangToggle';
+import EmailPreview from '@/app/admin/previews/EmailPreview';
 import { COUNTRIES, flagOf, countryName } from '@/app/components/countries';
 import JoinQR from '@/app/components/JoinQR';
 import ScholarshipPanel from './ScholarshipPanel';
@@ -2738,6 +2739,10 @@ function MentorEmails({ lang, L }: { lang: string; L: (a: string, b: string) => 
         <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder={L('Asunto', 'Subject')} style={{ margin: '0 0 8px' }} />
         <div className="row between" style={{ alignItems: 'center' }}><span className="muted" style={{ fontSize: 12 }}>{L('Mensaje', 'Message')}</span><AiBtn kind="post" onText={(t: string) => setBody(t)} L={L} /></div>
         <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={6} placeholder={L('Escribe tu correo o pulsa ✨ IA…', 'Write your email or hit ✨ AI…')} style={{ width: '100%', margin: '4px 0 0' }} />
+        <div style={{ marginTop: 10 }}>
+          <div className="muted" style={{ fontSize: 11, marginBottom: 5 }}>{L('Vista previa (como le llega al alumno)', 'Preview (as the student receives it)')}</div>
+          <EmailPreview subject={subject} body={body} es={L('es', 'en') === 'es'} />
+        </div>
         <div className="row" style={{ gap: 8, margin: '10px 0', flexWrap: 'wrap', alignItems: 'center' }}>
           <span className="muted" style={{ fontSize: 12 }}>{L('Enviar a', 'Send to')}:</span>
           {AUD.map(([k, lbl, n]) => <button key={k} className={'btn ' + (audience === k ? 'btn-primary' : 'btn-ghost')} style={{ fontSize: 12.5, padding: '5px 10px' }} onClick={() => setAudience(k)}>{lbl} ({n ?? 0})</button>)}
@@ -2784,6 +2789,10 @@ function MentorEmails({ lang, L }: { lang: string; L: (a: string, b: string) => 
                   <textarea value={a.body || ''} onChange={(e) => setAuto(k, 'body', e.target.value)} rows={4} style={{ width: '100%', margin: '4px 0 0' }} />
                   {timing === 'lead_min' && <div className="row" style={{ gap: 8, marginTop: 8, alignItems: 'center' }}><span className="muted" style={{ fontSize: 12 }}>{L('Enviar', 'Send')}</span><input type="number" min={5} max={1440} value={a.lead_min ?? 60} onChange={(e) => setAuto(k, 'lead_min', Number(e.target.value))} style={{ margin: 0, width: 90 }} /><span className="muted" style={{ fontSize: 12 }}>{L('min antes de la clase', 'min before class')}</span></div>}
                   {timing === 'days_before' && <div className="row" style={{ gap: 8, marginTop: 8, alignItems: 'center' }}><span className="muted" style={{ fontSize: 12 }}>{L('Avisar', 'Notify')}</span><input type="number" min={1} max={30} value={a.days_before ?? 3} onChange={(e) => setAuto(k, 'days_before', Number(e.target.value))} style={{ margin: 0, width: 90 }} /><span className="muted" style={{ fontSize: 12 }}>{L('días antes de vencer', 'days before expiry')}</span></div>}
+                  <div style={{ marginTop: 10 }}>
+                    <div className="muted" style={{ fontSize: 11, marginBottom: 5 }}>{L('Vista previa (como le llega al alumno)', 'Preview (as the student receives it)')}</div>
+                    <EmailPreview subject={a.subject} body={a.body} es={L('es', 'en') === 'es'} />
+                  </div>
                 </>)}
               </div>
             );
