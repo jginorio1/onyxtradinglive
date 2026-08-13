@@ -142,20 +142,43 @@ export function fallbackReview(s: CoachSummary, lang: Lang): string {
 }
 
 // ---- Imán de leads: analiza un reporte pegado ----
-export async function analyzeStatement(text: string, lang: Lang): Promise<{ ok: boolean; findings?: string[]; reason?: string }> {
+// Devuelve un análisis ENRIQUECIDO: 3 hallazgos + 1 acción rápida + un score de
+// disciplina (0-100) + estadísticas estimadas (win rate, profit factor,
+// expectativa en R, drawdown). Los números son la mejor estimación con lo que
+// pegó el usuario; si no se pueden derivar, van a null y la UI los oculta.
+export type AnalyzeStats = { winRate?: string | null; profitFactor?: string | null; expectancyR?: string | null; maxDrawdown?: string | null };
+export type AnalyzeResult = { ok: boolean; findings?: string[]; quickWin?: string; score?: number | null; summary?: string; stats?: AnalyzeStats; reason?: string };
+export async function analyzeStatement(text: string, lang: Lang): Promise<AnalyzeResult> {
   if (!process.env.ANTHROPIC_API_KEY) return { ok: false, reason: 'no_key' };
   if (!text || text.trim().length < 30) return { ok: false, reason: 'short' };
+  const shape = `{"score":<0-100 discipline score, integer>,"summary":"<one honest sentence>","stats":{"winRate":"<e.g. 54%|null>","profitFactor":"<e.g. 1.38|null>","expectancyR":"<e.g. 0.21R|null>","maxDrawdown":"<e.g. -8.4%|null>"},"findings":["...","...","..."],"quickWin":"<one concrete action they can apply today>"}`;
   const system = (enBase(lang)
-    ? `You are Onyx AI analyzing a trader's pasted MT4/MT5 statement or trade list. Return EXACTLY 3 short, specific, useful findings about their trading (patterns, risk, best/worst pairs or hours, over-trading, win rate reality). If the data is thin, infer what you honestly can and say what more Onyx would show once connected. ${NO_ADVICE.en}`
-    : `Eres Onyx AI analizando el reporte de MT4/MT5 o lista de operaciones que pegó un trader. Devuelve EXACTAMENTE 3 hallazgos cortos, específicos y útiles sobre su trading (patrones, riesgo, mejores/peores pares u horas, sobreoperar, la realidad de su win rate). Si los datos son pocos, infiere lo que puedas con honestidad y di qué más mostraría Onyx al conectarse. ${NO_ADVICE.es}`)
-    + `\n\nDevuelve SOLO un JSON: {"findings":["...","...","..."]}` + aiLangDirective(lang);
-  const raw = await ai(system, text, 600);
+    ? `You are Onyx AI analyzing a trader's pasted MT4/MT5/cTrader statement or trade list. Estimate their numbers as best you can from the data; if a metric can't be derived, use null (never invent precise figures). Give a discipline score from 0-100 based on risk consistency, over-trading and rule-keeping. Return EXACTLY 3 short, specific findings (patterns, risk, best/worst pairs or hours, over-trading, win-rate reality) plus one concrete quick win. If data is thin, infer honestly and note what more Onyx shows once connected. ${NO_ADVICE.en}`
+    : `Eres Onyx AI analizando el reporte de MT4/MT5/cTrader o la lista de operaciones que pegó un trader. Estima sus números lo mejor posible con los datos; si una métrica no se puede derivar, usa null (nunca inventes cifras exactas). Da un score de disciplina de 0-100 según la consistencia del riesgo, el sobreoperar y el respeto de reglas. Devuelve EXACTAMENTE 3 hallazgos cortos y específicos (patrones, riesgo, mejores/peores pares u horas, sobreoperar, la realidad del win rate) y una acción rápida concreta. Si los datos son pocos, infiere con honestidad y di qué más muestra Onyx al conectarse. ${NO_ADVICE.es}`)
+    + `\n\nDevuelve SOLO un JSON con esta forma exacta: ${shape}` + aiLangDirective(lang);
+  const raw = await ai(system, text, 800);
   if (!raw) return { ok: false, reason: 'error' };
   try {
-    const j = JSON.parse(raw.replace(/```json/gi, '').replace(/```/g, '').trim());
+    const cleaned = raw.replace(/```json/gi, '').replace(/```/g, '').trim();
+    const s = cleaned.indexOf('{'), e = cleaned.lastIndexOf('}');
+    const j = JSON.parse(s >= 0 && e > s ? cleaned.slice(s, e + 1) : cleaned);
     const f = (j.findings || []).map((x: any) => String(x)).slice(0, 3);
     if (!f.length) return { ok: false, reason: 'empty' };
-    return { ok: true, findings: f };
+    const clean = (v: any) => { const t = String(v ?? '').trim(); return (!t || t.toLowerCase() === 'null' || t === '-') ? null : t; };
+    const sc = Number(j.score);
+    return {
+      ok: true,
+      findings: f,
+      quickWin: j.quickWin ? String(j.quickWin) : undefined,
+      summary: j.summary ? String(j.summary) : undefined,
+      score: Number.isFinite(sc) ? Math.max(0, Math.min(100, Math.round(sc))) : null,
+      stats: {
+        winRate: clean(j?.stats?.winRate),
+        profitFactor: clean(j?.stats?.profitFactor),
+        expectancyR: clean(j?.stats?.expectancyR),
+        maxDrawdown: clean(j?.stats?.maxDrawdown),
+      },
+    };
   } catch { return { ok: false, reason: 'parse' }; }
 }
 
