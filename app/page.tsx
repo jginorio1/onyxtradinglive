@@ -90,7 +90,7 @@ function Counter({ to, prefix = '', suffix = '', compact = true }: { to: number;
   // relleno con degradado) es el que recorta el último glifo en WebKit. Aquí usamos
   // COLOR SÓLIDO de marca (sin clip): imposible que recorte, en cualquier navegador.
   return (
-    <div ref={ref} style={{ fontSize: 'clamp(28px, 6vw, 44px)', fontWeight: 800, lineHeight: 1.15, whiteSpace: 'nowrap', color: 'var(--soft-brand, #7c8cff)' }}>{prefix}{compact ? fmtCompact(n) : n.toLocaleString()}{suffix}</div>
+    <div ref={ref} style={{ fontSize: 'clamp(28px, 6vw, 44px)', fontWeight: 800, lineHeight: 1.15, whiteSpace: 'nowrap', color: 'var(--green, #34e2a0)' }}>{prefix}{compact ? fmtCompact(n) : n.toLocaleString()}{suffix}</div>
   );
 }
 
