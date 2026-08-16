@@ -1,7 +1,7 @@
 'use client';
 import { mkL } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { useLang } from '@/lib/lang';
 import Link from 'next/link';
 import OnyxIcon from '@/app/components/OnyxIcon';
@@ -35,6 +35,8 @@ function embed(url: string): string | null {
 
 export default function AcademiaPublic() {
   const { code } = useParams<{ code: string }>();
+  const sp = useSearchParams();
+  const ref = sp.get('ref') || '';   // afiliado que trajo al prospecto (atribución)
   const { lang } = useLang();
   const L = mkL(lang);
   const [a, setA] = useState<any>(null);
@@ -61,7 +63,7 @@ export default function AcademiaPublic() {
 
   const money = (cents: number, curr: string) => { const cur = (curr || 'usd').toUpperCase(); const sym = cur === 'USD' ? '$' : cur === 'EUR' ? '€' : ''; const amt = (cents / 100).toLocaleString(undefined, { minimumFractionDigits: cents % 100 ? 2 : 0, maximumFractionDigits: 2 }); return sym ? sym + amt : amt + ' ' + cur; };
   const tierPrice = (p: any) => money(p.price_cents, p.currency) + (p.kind === 'one_time' ? ' · ' + L('pago único', 'one-time') : '/' + (p.interval === 'year' ? L('año', 'yr') : L('mes', 'mo')));
-  const join = `/dashboard/academy?join=${code}`;
+  const join = `/dashboard/academy?join=${code}` + (ref ? `&ref=${encodeURIComponent(ref)}` : '');
 
   if (state === 'loading') return <div className="wrap" style={{ padding: '60px 22px' }}><p className="muted">…</p></div>;
   if (state === 'missing') return (

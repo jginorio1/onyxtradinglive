@@ -91,10 +91,7 @@ function Counter({ to, prefix = '', suffix = '', compact = true }: { to: number;
   // normal + su propio margen a la derecha), con el contenedor a ancho de contenido y overflow
   // visible. Así el glifo final siempre entra dentro del área pintada, en cualquier navegador.
   return (
-    <div ref={ref} style={{ display: 'inline-block', width: 'max-content', maxWidth: '100%', fontSize: 'clamp(28px, 6vw, 44px)', fontWeight: 800, lineHeight: 1.15, whiteSpace: 'nowrap', overflow: 'visible', padding: '2px 2px', background: 'var(--grad)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>
-      <span style={{ letterSpacing: '-1px' }}>{prefix}{compact ? fmtCompact(n) : n.toLocaleString()}</span>
-      {suffix ? <span style={{ letterSpacing: 'normal', paddingRight: '0.14em' }}>{suffix}</span> : null}
-    </div>
+    <div ref={ref} style={{ display: 'inline-block', width: 'max-content', maxWidth: '100%', fontSize: 'clamp(28px, 6vw, 44px)', fontWeight: 800, letterSpacing: 'normal', lineHeight: 1.15, whiteSpace: 'nowrap', overflow: 'visible', paddingRight: '0.18em', background: 'var(--grad)', WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent', color: 'transparent' }}>{prefix}{compact ? fmtCompact(n) : n.toLocaleString()}{suffix}</div>
   );
 }
 

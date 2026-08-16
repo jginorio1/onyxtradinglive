@@ -2169,7 +2169,9 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
   if (!d) return <div className="card muted">…</div>;
   if (d.error) return <div className="sk-card"><b>{L('Academia no disponible en tu plan', 'Academy not on your plan')}</b><p className="muted" style={{ marginTop: 6 }}>{L('El módulo Mentor está en el plan Mentor o como add-on.', 'The Mentor module is on the Mentor plan or as an add-on.')}</p></div>;
 
-  const link = typeof window !== 'undefined' ? `${window.location.origin}/dashboard/academy?join=${d.mentor.code}` : '';
+  // Enlace público de VENTAS: el prospecto ve primero la landing de la academia
+  // y se registra desde ahí (no lo mandamos directo al registro).
+  const link = typeof window !== 'undefined' ? `${window.location.origin}/academia/${d.mentor.code}` : '';
 
   return (
     <div className="sk-wrap" style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 4 }}>
@@ -3909,7 +3911,8 @@ function ReferralEarnings({ active, L }: any) {
   const hasReward = !!s && (s.reward_cents > 0 || (s.type === 'pct' && s.pct > 0));
   const money = (c: number) => '$' + Math.round((c || 0) / 100).toLocaleString();
   const rewardLabel = s ? (s.type === 'pct' ? `${s.pct}%` : money(s.reward_cents)) : '';
-  const refLink = typeof window !== 'undefined' ? `${window.location.origin}/dashboard/academy?join=${active.code}&ref=${active.myUserId}` : '';
+  // Enlace de afiliado: también a la landing pública, con el ref para atribuir la comisión.
+  const refLink = typeof window !== 'undefined' ? `${window.location.origin}/academia/${active.code}?ref=${active.myUserId}` : '';
 
   async function loadDetail() {
     const d = await fetch('/api/academy/affiliate?m=' + active.mentor_id).then((x) => x.json()).catch(() => null);
