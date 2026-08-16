@@ -86,9 +86,16 @@ function Counter({ to, prefix = '', suffix = '', compact = true }: { to: number;
     return () => { if (io) io.disconnect(); clearTimeout(timer); };
   }, []);
 
-  // padding horizontal + overflow visible: con background-clip:text y letter-spacing
-  // negativo, WebKit recorta el último glifo (el "+"). El margen lo evita siempre.
-  return <div ref={ref} style={{ fontSize: 'clamp(28px, 6vw, 44px)', fontWeight: 800, letterSpacing: '-1px', lineHeight: 1.15, whiteSpace: 'nowrap', padding: '2px 8px', overflow: 'visible', background: 'var(--grad)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>{prefix}{compact ? fmtCompact(n) : n.toLocaleString()}{suffix}</div>;
+  // Solución definitiva al corte del "+"/"%": el letter-spacing negativo + background-clip:text
+  // recorta el último glifo en WebKit. Separamos el NÚMERO (apretado) del SUFIJO (interletrado
+  // normal + su propio margen a la derecha), con el contenedor a ancho de contenido y overflow
+  // visible. Así el glifo final siempre entra dentro del área pintada, en cualquier navegador.
+  return (
+    <div ref={ref} style={{ display: 'inline-block', width: 'max-content', maxWidth: '100%', fontSize: 'clamp(28px, 6vw, 44px)', fontWeight: 800, lineHeight: 1.15, whiteSpace: 'nowrap', overflow: 'visible', padding: '2px 2px', background: 'var(--grad)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>
+      <span style={{ letterSpacing: '-1px' }}>{prefix}{compact ? fmtCompact(n) : n.toLocaleString()}</span>
+      {suffix ? <span style={{ letterSpacing: 'normal', paddingRight: '0.14em' }}>{suffix}</span> : null}
+    </div>
+  );
 }
 
 const dict = {

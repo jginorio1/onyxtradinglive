@@ -97,7 +97,10 @@ function strongEnough(p: string): boolean {
 function LoginInner() {
   const router = useRouter();
   const params = useSearchParams();
-  const [signup, setSignup] = useState(params.get('mode') === 'signup');
+  // Abre en "crear cuenta" si lo pide el modo, o si el destino es unirse a una
+  // academia de un mentor (?join=) o traer un referido (?ref=): el prospecto casi
+  // siempre es nuevo, así que le mostramos el registro primero.
+  const [signup, setSignup] = useState(params.get('mode') === 'signup' || /[?&](join|ref)=/.test(params.get('next') || ''));
   const [name, setName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
