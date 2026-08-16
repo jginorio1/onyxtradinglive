@@ -86,12 +86,11 @@ function Counter({ to, prefix = '', suffix = '', compact = true }: { to: number;
     return () => { if (io) io.disconnect(); clearTimeout(timer); };
   }, []);
 
-  // Solución definitiva al corte del "+"/"%": el letter-spacing negativo + background-clip:text
-  // recorta el último glifo en WebKit. Separamos el NÚMERO (apretado) del SUFIJO (interletrado
-  // normal + su propio margen a la derecha), con el contenedor a ancho de contenido y overflow
-  // visible. Así el glifo final siempre entra dentro del área pintada, en cualquier navegador.
+  // Solución definitiva al corte del "+"/"%": el truco background-clip:text (texto
+  // relleno con degradado) es el que recorta el último glifo en WebKit. Aquí usamos
+  // COLOR SÓLIDO de marca (sin clip): imposible que recorte, en cualquier navegador.
   return (
-    <div ref={ref} style={{ display: 'inline-block', width: 'max-content', maxWidth: '100%', fontSize: 'clamp(28px, 6vw, 44px)', fontWeight: 800, letterSpacing: 'normal', lineHeight: 1.15, whiteSpace: 'nowrap', overflow: 'visible', paddingRight: '0.18em', background: 'var(--grad)', WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent', color: 'transparent' }}>{prefix}{compact ? fmtCompact(n) : n.toLocaleString()}{suffix}</div>
+    <div ref={ref} style={{ fontSize: 'clamp(28px, 6vw, 44px)', fontWeight: 800, lineHeight: 1.15, whiteSpace: 'nowrap', color: 'var(--soft-brand, #7c8cff)' }}>{prefix}{compact ? fmtCompact(n) : n.toLocaleString()}{suffix}</div>
   );
 }
 

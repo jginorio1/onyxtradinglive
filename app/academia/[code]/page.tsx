@@ -1,7 +1,7 @@
 'use client';
 import { mkL } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useLang } from '@/lib/lang';
 import Link from 'next/link';
 import OnyxIcon from '@/app/components/OnyxIcon';
@@ -35,9 +35,11 @@ function embed(url: string): string | null {
 
 export default function AcademiaPublic() {
   const { code } = useParams<{ code: string }>();
-  const sp = useSearchParams();
-  const ref = sp.get('ref') || '';   // afiliado que trajo al prospecto (atribución)
   const { lang } = useLang();
+  // Afiliado que trajo al prospecto (atribución). Leído del navegador para NO
+  // depender de useSearchParams (que exige <Suspense> y rompía la página).
+  const [ref, setRef] = useState('');
+  useEffect(() => { try { setRef(new URLSearchParams(window.location.search).get('ref') || ''); } catch {} }, []);
   const L = mkL(lang);
   const [a, setA] = useState<any>(null);
   const [state, setState] = useState<'loading' | 'ok' | 'missing'>('loading');
