@@ -1,31 +1,60 @@
 // Resolución del descuento AUTOMÁTICO del checkout, en un solo sitio (lo usan el
 // checkout y el diagnóstico del admin, para que nunca se desincronicen).
 //
-// Devuelve la opción lista para Stripe (`discountOpt`) + un diagnóstico de por qué.
+// PRIORIDAD (Stripe solo permite UN descuento por pago):
+//   1) Código explícito que trae el cliente (enlace ?promo=CODE o cupón de embajador)
+//   2) Promo general de una barra en modo 'auto' activa ahora
+//   3) Campo manual (allow_promotion_codes) → el cliente pega su propio cupón
+//   4) Precio completo
+//
+// Modos por barra:  'auto' = para todos durante la promo · 'link' = solo por enlace.
+// Flag global promo_flags.letCustomerCoupon = true → aunque haya promo 'auto', NO se
+// fuerza: se deja el campo manual para que el cliente use su propio cupón.
 import { getSetting } from '@/lib/settings';
 import { type Promo, type PromoQueue } from '@/lib/promo';
 
-// Cupón de la barra activa AHORA (encendida + dentro de fechas + con cupón).
-// Ignora página/público: si algo se promociona, el descuento aplica igual.
+export type PromoFlags = { letCustomerCoupon: boolean };
+export const PROMO_FLAGS_DEFAULT: PromoFlags = { letCustomerCoupon: false };
+export const promoFlags = () => getSetting<PromoFlags>('promo_flags', PROMO_FLAGS_DEFAULT);
+
+async function loadBars(): Promise<Promo[]> {
+  const q = await getSetting<PromoQueue | null>('promo_queue', null as any);
+  let bars = (q?.bars || []) as Promo[];
+  if (!bars.length) { const old = await getSetting<Promo | null>('promo', null as any); if (old) bars = [old]; }
+  return bars;
+}
+const withinWindow = (b: Promo, now: number) =>
+  !!b && !!b.on &&
+  !(b.startsAt && new Date(b.startsAt).getTime() > now) &&
+  !(b.endsAt && new Date(b.endsAt).getTime() <= now);
+
+// Cupón de la barra 'auto' activa AHORA (para todos). Las de modo 'link' NO cuentan aquí.
 export async function activeBarCoupon(): Promise<{ code: string; barName: string; reason: string }> {
   try {
-    const q = await getSetting<PromoQueue | null>('promo_queue', null as any);
-    let bars = (q?.bars || []) as Promo[];
-    if (!bars.length) { const old = await getSetting<Promo | null>('promo', null as any); if (old) bars = [old]; }
+    const bars = await loadBars();
     if (!bars.length) return { code: '', barName: '', reason: 'no_bars' };
     const now = Date.now();
     let sawActiveNoCoupon = false;
     for (const b of bars) {
-      if (!b || !b.on) continue;
-      if (b.startsAt && new Date(b.startsAt).getTime() > now) continue;   // aún no empieza
-      if (b.endsAt && new Date(b.endsAt).getTime() <= now) continue;      // ya terminó
+      if (!withinWindow(b, now)) continue;
+      if ((b.mode || 'auto') === 'link') continue;                 // 'solo por enlace' no aplica a todos
       if (!b.coupon || !String(b.coupon).trim()) { sawActiveNoCoupon = true; continue; }
       return { code: String(b.coupon).trim(), barName: b.name || '', reason: 'ok' };
     }
     return { code: '', barName: '', reason: sawActiveNoCoupon ? 'active_bar_without_coupon' : 'no_active_bar' };
-  } catch (e: any) {
-    return { code: '', barName: '', reason: 'error:' + (e?.message || '') };
-  }
+  } catch (e: any) { return { code: '', barName: '', reason: 'error:' + (e?.message || '') }; }
+}
+
+// ¿El código de un enlace ?promo= corresponde a una barra activa (cualquier modo)?
+// Solo para saber el nombre; el descuento se valida contra Stripe igual.
+async function barNameForCode(code: string): Promise<string> {
+  try {
+    const bars = await loadBars();
+    const now = Date.now();
+    const up = code.toUpperCase();
+    const b = bars.find((x) => withinWindow(x, now) && String(x.coupon || '').toUpperCase() === up);
+    return b?.name || '';
+  } catch { return ''; }
 }
 
 export type DiscountResolution = {
@@ -35,34 +64,49 @@ export type DiscountResolution = {
   couponId: string | null;
   percent: number | null;
   discountOpt: any;   // { discounts:[...] }  o  { allow_promotion_codes:true }
-  reason: string;     // por qué (ver abajo)
+  reason: string;
 };
 
-// Resuelve el descuento a aplicar. `explicitCode` gana (p. ej. cupón de embajador).
-// Prioridad: 1) Promotion Code activo con ese texto → discounts:[{promotion_code}]
-//            2) Coupon "Onyx {CODE}" válido       → discounts:[{coupon}]
-//            3) nada → allow_promotion_codes (campo manual)
-export async function resolveActiveDiscount(stripe: any, explicitCode?: string): Promise<DiscountResolution> {
-  const fromBar = explicitCode && explicitCode.trim() ? { code: explicitCode.trim(), barName: '(cliente)', reason: 'ok' } : await activeBarCoupon();
-  const base: DiscountResolution = { code: fromBar.code, barName: fromBar.barName, promotionCodeId: null, couponId: null, percent: null, discountOpt: { allow_promotion_codes: true }, reason: fromBar.reason };
-  if (!fromBar.code) return { ...base, reason: fromBar.reason };  // no hay barra/cupón
-
-  const up = fromBar.code.toUpperCase();
-
-  // 1) Promotion Code activo con ese texto.
+// Busca el código en Stripe (Promotion Code activo, o Coupon "Onyx {CODE}" válido).
+async function resolveCodeInStripe(stripe: any, up: string, barName: string): Promise<DiscountResolution | null> {
   try {
     const r = await stripe.promotionCodes.list({ code: up, active: true, limit: 1 });
     const pc: any = r.data[0];
-    if (pc) return { code: up, barName: fromBar.barName, promotionCodeId: pc.id, couponId: pc.coupon?.id || null, percent: pc.coupon?.percent_off ?? null, discountOpt: { discounts: [{ promotion_code: pc.id }] }, reason: 'promotion_code' };
-  } catch (e: any) { return { ...base, code: up, reason: 'stripe_error:' + (e?.message || '') }; }
-
-  // 2) Cupón suelto "Onyx {CODE}" (por si existe el coupon pero no el promotion code).
+    if (pc) return { code: up, barName, promotionCodeId: pc.id, couponId: pc.coupon?.id || null, percent: pc.coupon?.percent_off ?? null, discountOpt: { discounts: [{ promotion_code: pc.id }] }, reason: 'promotion_code' };
+  } catch (e: any) { return { code: up, barName, promotionCodeId: null, couponId: null, percent: null, discountOpt: { allow_promotion_codes: true }, reason: 'stripe_error:' + (e?.message || '') }; }
   try {
     const cs = await stripe.coupons.list({ limit: 100 });
     const c: any = cs.data.find((x: any) => x.valid && String(x.name || '').toUpperCase() === `ONYX ${up}`);
-    if (c) return { code: up, barName: fromBar.barName, promotionCodeId: null, couponId: c.id, percent: c.percent_off ?? null, discountOpt: { discounts: [{ coupon: c.id }] }, reason: 'coupon' };
+    if (c) return { code: up, barName, promotionCodeId: null, couponId: c.id, percent: c.percent_off ?? null, discountOpt: { discounts: [{ coupon: c.id }] }, reason: 'coupon' };
   } catch {}
+  return null;
+}
 
-  // 3) No existe en Stripe → campo manual.
-  return { ...base, code: up, reason: 'not_in_stripe' };
+// Resuelve el descuento a aplicar. `explicitCode` = enlace ?promo= o cupón del cliente.
+export async function resolveActiveDiscount(stripe: any, explicitCode?: string): Promise<DiscountResolution> {
+  const manual: DiscountResolution = { code: '', barName: '', promotionCodeId: null, couponId: null, percent: null, discountOpt: { allow_promotion_codes: true }, reason: 'manual' };
+
+  // 1) Código explícito del cliente (enlace o embajador) → máxima prioridad.
+  const explicit = (explicitCode || '').trim();
+  if (explicit) {
+    const up = explicit.toUpperCase();
+    const found = await resolveCodeInStripe(stripe, up, await barNameForCode(up) || '(enlace)');
+    if (found) return found;
+    // Si el código explícito no existe en Stripe, seguimos a la promo general.
+  }
+
+  // 2) Promo general 'auto' activa — salvo que el dueño prefiera dejar cupón manual.
+  const flags = await promoFlags().catch(() => PROMO_FLAGS_DEFAULT);
+  if (!flags.letCustomerCoupon) {
+    const bar = await activeBarCoupon();
+    if (bar.code) {
+      const found = await resolveCodeInStripe(stripe, bar.code.toUpperCase(), bar.barName);
+      if (found) return found;
+      return { ...manual, code: bar.code.toUpperCase(), barName: bar.barName, reason: 'not_in_stripe' };
+    }
+    return { ...manual, reason: bar.reason };   // no_active_bar / active_bar_without_coupon / no_bars
+  }
+
+  // 3) El dueño deja que el cliente use su propio cupón → campo manual.
+  return { ...manual, reason: 'let_customer_coupon' };
 }

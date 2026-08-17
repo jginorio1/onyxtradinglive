@@ -10,8 +10,8 @@ import { clearPending } from '@/lib/pendingCheckout';
 // ============================================================
 
 export default function EmbeddedCheckoutModal({
-  plan, annual, lang, onClose,
-}: { plan: string; annual: boolean; lang: 'es' | 'en'; onClose: () => void }) {
+  plan, annual, lang, onClose, coupon,
+}: { plan: string; annual: boolean; lang: 'es' | 'en'; onClose: () => void; coupon?: string }) {
   const box = useRef<HTMLDivElement>(null);
   const [err, setErr] = useState('');
   const checkoutRef = useRef<any>(null);
@@ -21,11 +21,11 @@ export default function EmbeddedCheckoutModal({
     (async () => {
       try {
         const stripe = await getStripe();
-        const r = await fetch('/api/stripe/checkout', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ plan, annual, embedded: true }) });
+        const r = await fetch('/api/stripe/checkout', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ plan, annual, embedded: true, coupon: coupon || undefined }) });
         // Invitado sin sesión: lo mandamos a REGISTRARSE conservando el plan (y si es
-        // anual). Tras crear la cuenta vuelve a /pricing?plan=… y el checkout se abre
-        // solo, con el descuento de la barra ya aplicado. Así no se pierde la compra.
-        if (r.status === 401) { window.location.href = `/login?mode=signup&plan=${encodeURIComponent(plan)}${annual ? '&annual=1' : ''}`; return; }
+        // anual, y el cupón del enlace). Tras crear la cuenta vuelve a /pricing?plan=…
+        // y el checkout se abre solo, con el descuento ya aplicado. No se pierde nada.
+        if (r.status === 401) { window.location.href = `/login?mode=signup&plan=${encodeURIComponent(plan)}${annual ? '&annual=1' : ''}${coupon ? `&promo=${encodeURIComponent(coupon)}` : ''}`; return; }
         const j = await r.json();
         if (!r.ok || !j.clientSecret) { setErr(j.error || 'Error'); return; }
         if (cancelled) return;

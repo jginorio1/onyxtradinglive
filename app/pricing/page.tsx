@@ -66,6 +66,9 @@ export default function Pricing() {
 
   // Checkout embebido: se abre dentro de Onyx (mismo diseño), sin redirigir a Stripe.
   const [co, setCo] = useState<{ plan: string } | null>(null);
+  // Cupón del enlace ?promo=CODE (descuento "solo por enlace"). Se pasa al checkout.
+  const [promo, setPromo] = useState('');
+  useEffect(() => { if (typeof window !== 'undefined') setPromo((new URLSearchParams(window.location.search).get('promo') || '').replace(/[^a-z0-9_-]/gi, '').slice(0, 40)); }, []);
 
   // Si llegamos con ?plan=<id> (desde el landing de mentores tras registrarse),
   // abrimos el checkout de ese plan automáticamente. Solo una vez.
@@ -114,7 +117,7 @@ export default function Pricing() {
         <PlansCompareTable plans={shown as any} lang={lang} annual={annual} loadingId={loading}
           onChoose={(id, price) => subscribe(id, price)} />
       </div>
-      {co && <EmbeddedCheckoutModal plan={co.plan} annual={annual} lang={lang} onClose={() => setCo(null)} />}
+      {co && <EmbeddedCheckoutModal plan={co.plan} annual={annual} lang={lang} coupon={promo} onClose={() => setCo(null)} />}
     </>
   );
 }

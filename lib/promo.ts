@@ -11,6 +11,7 @@ export type Promo = {
   link: string; newTab: boolean; // abrir el enlace en pestaña nueva
   cta_es: string; cta_en: string;
   coupon: string;                // código de cupón copiable ('' = sin cupón)
+  mode?: 'auto' | 'link';        // 'auto' = descuento para todos durante la promo; 'link' = solo quien llega con ?promo=CODE
   bg: string; bg2: string; gradient: boolean; fg: string; // fondo sólido o degradado
   position: 'top' | 'bottom';
   sticky: boolean;               // (position 'top') se queda fija al hacer scroll
@@ -38,7 +39,7 @@ export function blankPromo(): Promo {
     text_es: '', text_en: '',
     link: '', newTab: false,
     cta_es: '', cta_en: '',
-    coupon: '',
+    coupon: '', mode: 'auto',
     bg: '#7c8cff', bg2: '#9a6bff', gradient: false, fg: '#0a0d14',
     position: 'top', sticky: true, anim: 'slide', speed: 'normal',
     countdown: true, countdownFmt: 'dhms',

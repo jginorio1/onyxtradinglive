@@ -282,7 +282,11 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
 /* Red de seguridad móvil: ninguna tarjeta o rejilla hace scroll lateral la página.
    Las tablas y el heatmap tienen su propio contenedor con scroll interno, así que
    esto no las afecta; solo evita el desbordamiento accidental del ancho de pantalla. */
-@media(max-width:640px){ body{overflow-x:hidden;} .card > *{max-width:100%;} }
+/* IMPORTANTE: usamos overflow-x:clip (no hidden). 'hidden' convierte al body en
+   contenedor de scroll y ROMPE el position:sticky de la barra superior en móvil
+   (se iba hacia arriba y no se quedaba fija). 'clip' recorta igual el desborde
+   lateral pero sin crear contenedor de scroll, así el sticky sigue funcionando. */
+@media(max-width:640px){ html,body{overflow-x:clip;} .card > *{max-width:100%;} }
 @media(max-width:760px){ .heroPreview{grid-template-columns:1fr!important;} }
 
 /* Bloque con fondo oscuro FIJO (capturas, mockups, bandas de CTA). Fija las
@@ -630,6 +634,7 @@ html[data-theme="dark"] .sk-code, :root:not([data-theme="light"]) .sk-code{text-
   .topbar .logo{ font-size:15px; }
   .logo-text{ display:none; }   /* en móvil solo el símbolo; el texto se ve en desktop */
 }
+
 
 /* Tablets (iPad): el nombre se amontona en el header, así que se oculta y
    queda solo el símbolo, igual que en móvil. El nombre completo aparece

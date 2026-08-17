@@ -12,12 +12,14 @@ export async function GET(req: Request) {
   const { ok } = await requirePerm('ajustes', 'manage');
   if (!ok) return NextResponse.json({ error: 'Solo el Owner.' }, { status: 403 });
 
-  // ?check=1 → ejecuta la MISMA lógica que el checkout y explica el resultado:
-  // qué barra está activa, qué cupón, si Stripe lo encuentra y qué % aplicaría.
-  if (new URL(req.url).searchParams.get('check') === '1') {
-    const d = await resolveActiveDiscount(stripe);
+  // ?check=1 → ejecuta la MISMA lógica que el checkout y explica el resultado.
+  // ?check=1&code=VIP50 → simula un enlace ?promo=VIP50 (descuento por enlace).
+  const url = new URL(req.url);
+  if (url.searchParams.get('check') === '1') {
+    const code = (url.searchParams.get('code') || '').trim();
+    const d = await resolveActiveDiscount(stripe, code || undefined);
     const applies = d.reason === 'promotion_code' || d.reason === 'coupon';
-    return NextResponse.json({ ok: true, check: { ...d, applies } });
+    return NextResponse.json({ ok: true, check: { ...d, applies, testedCode: code || null } });
   }
 
   try {
