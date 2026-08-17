@@ -91,6 +91,10 @@ export default function Onboarding() {
       await fetch('/api/onboarding', { method: 'POST', body: JSON.stringify(body) });
     } catch { /* aunque falle, no bloqueamos al usuario */ }
     // ¿Venía a comprar un plan? Lo llevamos directo al checkout; si no, al panel.
+    // El plan puede venir por la URL (duradero, del correo) o del respaldo local.
+    const qs = new URLSearchParams(window.location.search);
+    const planUrl = (qs.get('plan') || '').replace(/[^a-z0-9_-]/gi, '');
+    if (planUrl) { window.location.href = `/pricing?plan=${planUrl}${qs.get('annual') === '1' ? '&annual=1' : ''}`; return; }
     const pend = getPending();
     if (pend) { window.location.href = pendingPricingUrl(pend); return; }
     router.push('/dashboard'); router.refresh();

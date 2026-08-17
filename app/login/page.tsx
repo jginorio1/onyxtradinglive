@@ -170,22 +170,23 @@ function LoginInner() {
     const cap = captcha || undefined;
     try {
       if (signup) {
-        // Guarda la intención de compra de forma DURADERA (sobrevive a la
-        // confirmación de email y al onboarding). Así, aunque los parámetros de la
-        // URL se pierdan, llevamos al usuario al checkout de su plan al volver.
+        // Respaldo local (por si el correo se abre en el mismo navegador).
         if (planParam) setPending(planParam, annualParam);
-        // Tras confirmar el email, Supabase redirige aquí; el gate del dashboard
-        // envía a /onboarding la primera vez.
+        // DURADERO: el plan viaja por la URL del correo. Tras confirmar, Supabase
+        // vuelve a /confirmado (página de bienvenida con login rápido) llevando el
+        // idioma y el plan; de ahí al onboarding y al checkout. Así no se pierde
+        // aunque el correo se abra en otro dispositivo/navegador.
+        const planQS = planParam ? `&plan=${planParam}${annualParam ? '&annual=1' : ''}` : '';
+        const onbDest = planParam ? `/onboarding?plan=${planParam}${annualParam ? '&annual=1' : ''}` : '/onboarding';
         const emailRedirectTo = typeof window !== 'undefined'
-          ? `${window.location.origin}${planDest || '/onboarding'}` : undefined;
+          ? `${window.location.origin}/confirmado?lang=${lang}${planQS}` : undefined;
         const { data, error } = await sb.auth.signUp({
-          email: email.trim(), password: pass, options: { emailRedirectTo, data: { full_name: fullName, first_name: name.trim(), last_name: lastName.trim() }, captchaToken: cap },
+          email: email.trim(), password: pass, options: { emailRedirectTo, data: { full_name: fullName, first_name: name.trim(), last_name: lastName.trim(), lang }, captchaToken: cap },
         });
         if (error) throw error;
-        // Si la confirmación de email está ACTIVADA, no hay sesión todavía →
-        // mostramos la pantalla de "revisa tu correo". Si está desactivada,
-        // ya hay sesión y entramos directo al onboarding.
-        if (data.session) { router.push(planDest || '/onboarding'); router.refresh(); }
+        // Confirmación ACTIVADA → aún sin sesión: "revisa tu correo". Si está
+        // desactivada, ya hay sesión y entramos directo al onboarding con el plan.
+        if (data.session) { router.push(onbDest); router.refresh(); }
         else { setSent(true); }
       } else {
         const { error } = await sb.auth.signInWithPassword({ email: email.trim(), password: pass, options: { captchaToken: cap } });
@@ -206,7 +207,8 @@ function LoginInner() {
   async function resend() {
     setResent(false);
     try {
-      const emailRedirectTo = typeof window !== 'undefined' ? `${window.location.origin}${planDest || '/onboarding'}` : undefined;
+      const planQS = planParam ? `&plan=${planParam}${annualParam ? '&annual=1' : ''}` : '';
+      const emailRedirectTo = typeof window !== 'undefined' ? `${window.location.origin}/confirmado?lang=${lang}${planQS}` : undefined;
       await sb.auth.resend({ type: 'signup', email: email.trim(), options: { emailRedirectTo } });
       setResent(true);
     } catch { setResent(true); }
