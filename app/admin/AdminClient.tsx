@@ -87,6 +87,25 @@ function PromoControl() {
     setCodesBusy(true); setCodesErr('');
     fetch('/api/admin/promo/coupon').then((r) => r.json()).then((d) => { if (d.error) setCodesErr(d.error); setCodes(d.codes || []); }).catch(() => setCodesErr('Error')).finally(() => setCodesBusy(false));
   };
+  // Diagnóstico: ejecuta la MISMA lógica del checkout y explica el resultado.
+  const [check, setCheck] = useState<{ ok: boolean; text: string } | null>(null);
+  const [checkBusy, setCheckBusy] = useState(false);
+  const runCheck = () => {
+    setCheckBusy(true); setCheck(null);
+    fetch('/api/admin/promo/coupon?check=1').then((r) => r.json()).then((d) => {
+      const c = d.check || {};
+      const reasons: Record<string, string> = {
+        promotion_code: L(`✓ Se aplicará ${c.code} (−${c.percent}%) automáticamente en el checkout.`, `✓ ${c.code} (−${c.percent}%) will auto-apply at checkout.`),
+        coupon: L(`✓ Se aplicará el cupón ${c.code} (−${c.percent}%) automáticamente.`, `✓ Coupon ${c.code} (−${c.percent}%) will auto-apply.`),
+        no_bars: L('No hay ninguna barra creada.', 'No bars created.'),
+        no_active_bar: L('No hay ninguna barra activa ahora (revisa encendido y fechas).', 'No bar is active right now (check ON + dates).'),
+        active_bar_without_coupon: L('La barra activa no tiene cupón en el campo "Cupón (copiable)".', 'The active bar has no coupon in the "Coupon" field.'),
+        not_in_stripe: L(`La barra activa usa "${c.code}", pero ese código NO existe activo en Stripe. Pulsa "Crear/validar en Stripe" en esa barra.`, `The active bar uses "${c.code}", but that code is NOT active in Stripe. Press "Create/validate in Stripe" on that bar.`),
+      };
+      const text = reasons[c.reason] || (String(c.reason || '').startsWith('stripe_error') ? L('Error de Stripe: ', 'Stripe error: ') + c.reason : L('Resultado: ', 'Result: ') + (c.reason || '—'));
+      setCheck({ ok: !!c.applies, text });
+    }).catch(() => setCheck({ ok: false, text: 'Error' })).finally(() => setCheckBusy(false));
+  };
   useEffect(() => { fetch('/api/admin/promo').then((r) => r.json()).then((d) => { setBars(d.bars || []); setStats(d.stats || {}); }).catch(() => {}); loadCodes(); }, []);
 
   const upd = (id: string, k: string, v: any) => setBars((bs) => bs.map((b) => (b.id === id ? { ...b, [k]: v } : b)));
@@ -144,6 +163,13 @@ function PromoControl() {
         </span>
       </div>
       <p className="muted" style={{ fontSize: 13, marginBottom: 8 }}>{L('Programa varias barras por temporada. El sitio muestra sola la que toca por fecha.', 'Schedule several bars by season. The site shows the one that fits the date automatically.')}</p>
+
+      {/* Diagnóstico del descuento automático (misma lógica que el checkout) */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10, padding: 10, border: '1px dashed var(--line)', borderRadius: 10 }}>
+        <button className="btn btn-ghost" style={{ fontSize: 12.5 }} disabled={checkBusy} onClick={runCheck}>{checkBusy ? '…' : '🔎 ' + L('Probar descuento del checkout', 'Test checkout discount')}</button>
+        {check && <span style={{ fontSize: 12.5, color: check.ok ? 'var(--soft-green)' : 'var(--amber)' }}>{check.text}</span>}
+        {!check && <span className="muted" style={{ fontSize: 12 }}>{L('Comprueba si el descuento se aplicará solo en el pago.', 'Checks whether the discount will auto-apply at checkout.')}</span>}
+      </div>
 
       {/* Biblioteca de temas */}
       <div style={{ marginBottom: 10 }}>

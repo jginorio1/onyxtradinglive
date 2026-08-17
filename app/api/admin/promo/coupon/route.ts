@@ -1,15 +1,25 @@
 import { NextResponse } from 'next/server';
 import { requirePerm } from '@/lib/admin';
 import { stripe } from '@/lib/stripe';
+import { resolveActiveDiscount } from '@/lib/promoDiscount';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 // GET · lista los códigos promocionales ACTIVOS en Stripe para mostrarlos en el
 // panel (el dueño ve de un vistazo qué cupones existen y con qué %).
-export async function GET() {
+export async function GET(req: Request) {
   const { ok } = await requirePerm('ajustes', 'manage');
   if (!ok) return NextResponse.json({ error: 'Solo el Owner.' }, { status: 403 });
+
+  // ?check=1 → ejecuta la MISMA lógica que el checkout y explica el resultado:
+  // qué barra está activa, qué cupón, si Stripe lo encuentra y qué % aplicaría.
+  if (new URL(req.url).searchParams.get('check') === '1') {
+    const d = await resolveActiveDiscount(stripe);
+    const applies = d.reason === 'promotion_code' || d.reason === 'coupon';
+    return NextResponse.json({ ok: true, check: { ...d, applies } });
+  }
+
   try {
     const r = await stripe.promotionCodes.list({ active: true, limit: 100 });
     const codes = r.data.map((p: any) => ({
