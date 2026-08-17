@@ -49,10 +49,18 @@ function Inner() {
     const qs = new URLSearchParams(window.location.search);
     setLang(qs.get('lang') === 'en' ? 'en' : 'es');
     const plan = (qs.get('plan') || '').replace(/[^a-z0-9_-]/gi, '');
-    setDest(plan ? `/onboarding?plan=${plan}${qs.get('annual') === '1' ? '&annual=1' : ''}` : '/onboarding');
+    const annual = qs.get('annual') === '1';
+    setDest(plan ? `/onboarding?plan=${plan}${annual ? '&annual=1' : ''}` : '/onboarding');
+    // Guarda el plan en la cuenta (BD) en cuanto haya sesión: así el checkout se
+    // alcanza aunque más adelante se pierda la URL. Se hace una sola vez.
+    let saved = false;
+    const savePlan = () => {
+      if (saved || !plan) return; saved = true;
+      fetch('/api/pending-plan', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ plan, annual }) }).catch(() => {});
+    };
     // La sesión puede tardar un instante en establecerse desde el enlace del correo.
-    sb.auth.getSession().then(({ data }) => setAuthed(!!data.session?.user));
-    const { data: sub } = sb.auth.onAuthStateChange((_e, session) => setAuthed(!!session?.user));
+    sb.auth.getSession().then(({ data }) => { const ok = !!data.session?.user; setAuthed(ok); if (ok) savePlan(); });
+    const { data: sub } = sb.auth.onAuthStateChange((_e, session) => { const ok = !!session?.user; setAuthed(ok); if (ok) savePlan(); });
     return () => { try { sub.subscription.unsubscribe(); } catch {} };
   }, []);
 

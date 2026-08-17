@@ -15,6 +15,24 @@ export default async function Dashboard() {
 
   const { data: profile } = await supabaseAdmin.from('profiles').select('plan,academy_guardian,academy_guardian_tier').eq('id', user.id).maybeSingle();
 
+  // ¿Se registró para comprar un plan y aún no lo pagó? Lo llevamos al checkout de
+  // ese plan (con el descuento de la barra). Atado a la cuenta → funciona aunque el
+  // correo se abriera en otro navegador. Se limpia al reenviar para no repetir.
+  // OJO: redirect() lanza una excepción interna → va FUERA del try/catch, si no,
+  // el catch se la traga y no redirige. Tolerante si la columna aún no existe.
+  let pendingDest = '';
+  if ((profile?.plan || 'free') === 'free') {
+    try {
+      const { data: pend } = await supabaseAdmin.from('profiles').select('pending_plan,pending_plan_annual').eq('id', user.id).maybeSingle();
+      const pp = (pend as any)?.pending_plan as string | null;
+      if (pp && pp !== 'free') {
+        await supabaseAdmin.from('profiles').update({ pending_plan: null }).eq('id', user.id);
+        pendingDest = `/pricing?plan=${encodeURIComponent(pp)}${(pend as any)?.pending_plan_annual ? '&annual=1' : ''}`;
+      }
+    } catch { /* columna aún no creada: ignorar */ }
+  }
+  if (pendingDest) redirect(pendingDest);
+
   // Perfil de trader (para el saludo personalizado). Tolerante si onboarding_v1.sql aún no corrió.
   let tp: any = {};
   try {
