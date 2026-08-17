@@ -47,12 +47,16 @@ export default function PromoBar({
   useEffect(() => {
     const root = document.documentElement;
     const setH = () => {
-      if (stickyTop && !closed && !gone && text && wrapRef.current) root.style.setProperty('--promo-h', wrapRef.current.offsetHeight + 'px');
+      const shown = stickyTop && !closed && !gone && text && !!wrapRef.current;
+      if (shown && wrapRef.current) root.style.setProperty('--promo-h', wrapRef.current.offsetHeight + 'px');
       else root.style.setProperty('--promo-h', '0px');
+      // Marca si hay barra promo arriba: la barra ya consume el safe-area, así que
+      // la TopBar NO debe añadirlo también (si no, quedaría doble espacio).
+      root.classList.toggle('promo-on', shown);
     };
     setH();
     window.addEventListener('resize', setH);
-    return () => { window.removeEventListener('resize', setH); root.style.setProperty('--promo-h', '0px'); };
+    return () => { window.removeEventListener('resize', setH); root.style.setProperty('--promo-h', '0px'); root.classList.remove('promo-on'); };
   }, [stickyTop, closed, gone, text, left]);
 
   const scrolling = (anim === 'slide' || anim === 'marquee') && !reduce;
