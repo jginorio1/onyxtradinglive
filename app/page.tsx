@@ -858,11 +858,11 @@ export default function Home() {
           <button className={'btn ' + (!annual ? 'btn-primary' : 'btn-ghost')} onClick={() => setAnnual(false)}>{lang === 'es' ? 'Mensual' : 'Monthly'}</button>
           <button className={'btn ' + (annual ? 'btn-primary' : 'btn-ghost')} onClick={() => setAnnual(true)}>{lang === 'es' ? 'Anual · ahorra 2 meses' : 'Annual · save 2 months'}</button>
         </div>
-        <PlanCards plans={shownPlans} lang={lang} annual={annual} onChoose={() => { window.location.href = '/login?mode=signup'; }} />
+        <PlanCards plans={shownPlans} lang={lang} annual={annual} onChoose={(id: string, price: number) => { window.location.href = (price > 0 && id && id !== 'free') ? `/login?mode=signup&plan=${id}${annual ? '&annual=1' : ''}` : '/login?mode=signup'; }} />
 
         {/* Tabla comparativa (componente compartido con /pricing) */}
-        <PlansCompareTable plans={shownPlans} lang={lang} annual={false} loadingId=""
-          onChoose={() => { window.location.href = '/login?mode=signup'; }} />
+        <PlansCompareTable plans={shownPlans} lang={lang} annual={annual} loadingId=""
+          onChoose={(id: string, price: number) => { window.location.href = (price > 0 && id && id !== 'free') ? `/login?mode=signup&plan=${id}${annual ? '&annual=1' : ''}` : '/login?mode=signup'; }} />
       </div>
 
       {/* Embajadores */}

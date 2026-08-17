@@ -180,8 +180,16 @@ function LoginInner() {
         const onbDest = planParam ? `/onboarding?plan=${planParam}${annualParam ? '&annual=1' : ''}` : '/onboarding';
         const emailRedirectTo = typeof window !== 'undefined'
           ? `${window.location.origin}/confirmado?lang=${lang}${planQS}` : undefined;
+        // CLAVE: guardamos el plan pendiente en los METADATOS de la cuenta, en el
+        // mismo instante del registro (momento garantizado). El servidor del
+        // dashboard lo lee y lleva al checkout. Esto NO depende del navegador, del
+        // dispositivo, de /confirmado ni de que haya sesión al confirmar el email.
         const { data, error } = await sb.auth.signUp({
-          email: email.trim(), password: pass, options: { emailRedirectTo, data: { full_name: fullName, first_name: name.trim(), last_name: lastName.trim(), lang }, captchaToken: cap },
+          email: email.trim(), password: pass, options: {
+            emailRedirectTo,
+            data: { full_name: fullName, first_name: name.trim(), last_name: lastName.trim(), lang, pending_plan: planParam || null, pending_plan_annual: annualParam },
+            captchaToken: cap,
+          },
         });
         if (error) throw error;
         // Confirmación ACTIVADA → aún sin sesión: "revisa tu correo". Si está

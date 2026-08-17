@@ -16,20 +16,34 @@ export default async function Dashboard() {
   const { data: profile } = await supabaseAdmin.from('profiles').select('plan,academy_guardian,academy_guardian_tier').eq('id', user.id).maybeSingle();
 
   // ¿Se registró para comprar un plan y aún no lo pagó? Lo llevamos al checkout de
-  // ese plan (con el descuento de la barra). Atado a la cuenta → funciona aunque el
-  // correo se abriera en otro navegador. Se limpia al reenviar para no repetir.
+  // ese plan (con el descuento de la barra). Se busca en dos sitios, ambos atados a
+  // la CUENTA (funciona aunque el correo se abra en otro navegador/dispositivo):
+  //   1) metadatos del usuario  ← escrito al registrarse (el más fiable)
+  //   2) columna profiles.pending_plan ← respaldo (lo escribe /confirmado)
+  // Se limpia al reenviar para no repetir.
   // OJO: redirect() lanza una excepción interna → va FUERA del try/catch, si no,
-  // el catch se la traga y no redirige. Tolerante si la columna aún no existe.
+  // el catch se la traga y no redirige.
+  const planPay = (v: string, annual: any) => `/pricing?plan=${encodeURIComponent(v)}${annual ? '&annual=1' : ''}`;
   let pendingDest = '';
   if ((profile?.plan || 'free') === 'free') {
-    try {
-      const { data: pend } = await supabaseAdmin.from('profiles').select('pending_plan,pending_plan_annual').eq('id', user.id).maybeSingle();
-      const pp = (pend as any)?.pending_plan as string | null;
-      if (pp && pp !== 'free') {
-        await supabaseAdmin.from('profiles').update({ pending_plan: null }).eq('id', user.id);
-        pendingDest = `/pricing?plan=${encodeURIComponent(pp)}${(pend as any)?.pending_plan_annual ? '&annual=1' : ''}`;
-      }
-    } catch { /* columna aún no creada: ignorar */ }
+    // 1) Metadatos de la cuenta (garantizado desde el registro).
+    const meta: any = user.user_metadata || {};
+    const mp = typeof meta.pending_plan === 'string' ? meta.pending_plan : '';
+    if (mp && mp !== 'free') {
+      pendingDest = planPay(mp, meta.pending_plan_annual);
+      try { await supabaseAdmin.auth.admin.updateUserById(user.id, { user_metadata: { ...meta, pending_plan: null } }); } catch {}
+    }
+    // 2) Respaldo en profiles (por si acaso).
+    if (!pendingDest) {
+      try {
+        const { data: pend } = await supabaseAdmin.from('profiles').select('pending_plan,pending_plan_annual').eq('id', user.id).maybeSingle();
+        const pp = (pend as any)?.pending_plan as string | null;
+        if (pp && pp !== 'free') {
+          await supabaseAdmin.from('profiles').update({ pending_plan: null }).eq('id', user.id);
+          pendingDest = planPay(pp, (pend as any)?.pending_plan_annual);
+        }
+      } catch { /* columna aún no creada: ignorar */ }
+    }
   }
   if (pendingDest) redirect(pendingDest);
 
