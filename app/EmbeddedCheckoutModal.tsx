@@ -21,7 +21,10 @@ export default function EmbeddedCheckoutModal({
       try {
         const stripe = await getStripe();
         const r = await fetch('/api/stripe/checkout', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ plan, annual, embedded: true }) });
-        if (r.status === 401) { window.location.href = '/login'; return; }
+        // Invitado sin sesión: lo mandamos a REGISTRARSE conservando el plan (y si es
+        // anual). Tras crear la cuenta vuelve a /pricing?plan=… y el checkout se abre
+        // solo, con el descuento de la barra ya aplicado. Así no se pierde la compra.
+        if (r.status === 401) { window.location.href = `/login?mode=signup&plan=${encodeURIComponent(plan)}${annual ? '&annual=1' : ''}`; return; }
         const j = await r.json();
         if (!r.ok || !j.clientSecret) { setErr(j.error || 'Error'); return; }
         if (cancelled) return;

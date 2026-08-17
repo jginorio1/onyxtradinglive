@@ -80,7 +80,14 @@ function PromoControl() {
   const [pct, setPct] = useState<Record<string, string>>({});
   const [cpMsg, setCpMsg] = useState<Record<string, string>>({});
   const [cpBusy, setCpBusy] = useState('');
-  useEffect(() => { fetch('/api/admin/promo').then((r) => r.json()).then((d) => { setBars(d.bars || []); setStats(d.stats || {}); }).catch(() => {}); }, []);
+  const [codes, setCodes] = useState<any[]>([]);     // cupones ACTIVOS en Stripe
+  const [codesBusy, setCodesBusy] = useState(false);
+  const [codesErr, setCodesErr] = useState('');
+  const loadCodes = () => {
+    setCodesBusy(true); setCodesErr('');
+    fetch('/api/admin/promo/coupon').then((r) => r.json()).then((d) => { if (d.error) setCodesErr(d.error); setCodes(d.codes || []); }).catch(() => setCodesErr('Error')).finally(() => setCodesBusy(false));
+  };
+  useEffect(() => { fetch('/api/admin/promo').then((r) => r.json()).then((d) => { setBars(d.bars || []); setStats(d.stats || {}); }).catch(() => {}); loadCodes(); }, []);
 
   const upd = (id: string, k: string, v: any) => setBars((bs) => bs.map((b) => (b.id === id ? { ...b, [k]: v } : b)));
   const addBar = (patch: any = {}) => { const nb = { ...blankPromo(), id: newId(), ...patch }; setBars((bs) => [...bs, nb]); setOpenId(nb.id); };
@@ -108,6 +115,7 @@ function PromoControl() {
       else if (d.created) setCpMsg((m) => ({ ...m, [b.id]: L(`✓ Creado en Stripe (−${d.percent}%)`, `✓ Created in Stripe (−${d.percent}%)`) }));
       else if (d.existed) setCpMsg((m) => ({ ...m, [b.id]: L(`✓ Ya existe en Stripe${d.percent ? ` (−${d.percent}%)` : ''}`, `✓ Already in Stripe${d.percent ? ` (−${d.percent}%)` : ''}`) }));
       else setCpMsg((m) => ({ ...m, [b.id]: L('No existe. Pon el % y créalo.', "Doesn't exist. Set % and create it.") }));
+      if (r.ok) loadCodes(); // refresca la lista de cupones activos
     } finally { setCpBusy(''); }
   }
 
@@ -200,6 +208,33 @@ function PromoControl() {
                       <button className="btn btn-ghost" style={{ fontSize: 12.5 }} disabled={cpBusy === b.id} onClick={() => stripeCoupon(b)}>{cpBusy === b.id ? '…' : L('Crear/validar en Stripe', 'Create/validate in Stripe')}</button>
                     </div>
                     {cpMsg[b.id] && <div style={{ fontSize: 12, marginTop: 6, color: cpMsg[b.id].startsWith('✓') ? 'var(--soft-green)' : 'var(--amber)' }}>{cpMsg[b.id]}</div>}
+                    {/* Cupones ACTIVOS en Stripe — visibles aquí mismo. Clic = rellena esta barra. */}
+                    <div style={{ marginTop: 10, borderTop: '1px dashed var(--line)', paddingTop: 8 }}>
+                      <div className="row between" style={{ alignItems: 'center', marginBottom: 6 }}>
+                        <span className="muted" style={{ fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.4px' }}>🎟 {L('Códigos activos en Stripe', 'Active codes in Stripe')}</span>
+                        <button className="btn btn-ghost" style={{ padding: '3px 8px', fontSize: 11.5 }} disabled={codesBusy} onClick={loadCodes}>{codesBusy ? '…' : L('↻ Actualizar', '↻ Refresh')}</button>
+                      </div>
+                      {codesErr && <div style={{ fontSize: 11.5, color: 'var(--amber)' }}>{codesErr}</div>}
+                      {!codesErr && !codes.length && <div className="muted" style={{ fontSize: 11.5 }}>{codesBusy ? L('Cargando…', 'Loading…') : L('Aún no hay cupones activos.', 'No active coupons yet.')}</div>}
+                      {!!codes.length && (
+                        <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+                          {codes.map((c: any) => {
+                            const off = c.percent != null ? `−${c.percent}%` : (c.amountOff != null ? `−${c.amountOff}${(c.currency || '').toUpperCase()}` : '');
+                            const exp = c.expiresAt && c.expiresAt <= now;
+                            return (
+                              <button key={c.code} type="button" title={L('Usar este código en esta barra', 'Use this code in this bar')}
+                                onClick={() => { upd(b.id, 'coupon', c.code); if (c.percent != null) setPct((m) => ({ ...m, [b.id]: String(c.percent) })); }}
+                                style={{ cursor: 'pointer', border: '1px solid var(--line)', background: 'var(--bg)', color: 'var(--tx)', borderRadius: 20, padding: '4px 10px', fontSize: 12, display: 'inline-flex', gap: 6, alignItems: 'center', opacity: exp ? 0.5 : 1 }}>
+                                <b style={{ letterSpacing: '.3px' }}>{c.code}</b>
+                                {off && <span style={{ color: 'var(--soft-green)', fontWeight: 700 }}>{off}</span>}
+                                {c.fromBar && <span title={L('Creado desde la barra', 'Created from the bar')} style={{ fontSize: 10, color: 'var(--soft-brand)' }}>◆</span>}
+                                {exp && <span className="muted" style={{ fontSize: 10 }}>{L('venc.', 'exp.')}</span>}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                     <label className="row" style={{ gap: 8, marginTop: 10, fontSize: 13, alignItems: 'center', cursor: 'pointer' }}>
                       <input type="checkbox" checked={!!b.newTab} onChange={(e) => upd(b.id, 'newTab', e.target.checked)} style={{ width: 'auto', margin: 0 }} /> {L('Abrir el enlace en pestaña nueva', 'Open link in a new tab')}
                     </label>

@@ -5,6 +5,31 @@ import { stripe } from '@/lib/stripe';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
+// GET · lista los códigos promocionales ACTIVOS en Stripe para mostrarlos en el
+// panel (el dueño ve de un vistazo qué cupones existen y con qué %).
+export async function GET() {
+  const { ok } = await requirePerm('ajustes', 'manage');
+  if (!ok) return NextResponse.json({ error: 'Solo el Owner.' }, { status: 403 });
+  try {
+    const r = await stripe.promotionCodes.list({ active: true, limit: 100 });
+    const codes = r.data.map((p: any) => ({
+      code: p.code,
+      percent: p.coupon?.percent_off ?? null,
+      amountOff: p.coupon?.amount_off != null ? p.coupon.amount_off / 100 : null,
+      currency: p.coupon?.currency || null,
+      name: p.coupon?.name || '',
+      fromBar: String(p.coupon?.name || '').startsWith('Onyx '), // creado desde la barra
+      expiresAt: p.expires_at ? p.expires_at * 1000 : null,
+      redemptions: p.times_redeemed ?? 0,
+    }));
+    // Primero los de la barra, luego alfabético.
+    codes.sort((a, b) => (Number(b.fromBar) - Number(a.fromBar)) || a.code.localeCompare(b.code));
+    return NextResponse.json({ ok: true, codes });
+  } catch (e: any) {
+    return NextResponse.json({ error: `Stripe: ${e?.message || 'error'}`, codes: [] }, { status: 500 });
+  }
+}
+
 // POST · crea, valida o ACTUALIZA un código promocional en Stripe para que el
 // descuento se aplique solo en el checkout (allow_promotion_codes ya está activo).
 // Stripe no permite dos códigos activos con el mismo texto: si existe uno con otro

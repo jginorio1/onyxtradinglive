@@ -132,7 +132,8 @@ function LoginInner() {
   // Plan preseleccionado (desde el landing de mentores). Si viene, tras registrarse
   // o entrar lo mandamos directo al checkout de ese plan en /pricing.
   const planParam = (params.get('plan') || '').replace(/[^a-z0-9_-]/gi, '').slice(0, 40);
-  const planDest = planParam ? '/pricing?plan=' + planParam : '';
+  const annualParam = params.get('annual') === '1';
+  const planDest = planParam ? '/pricing?plan=' + planParam + (annualParam ? '&annual=1' : '') : '';
 
   // A dónde vuelve el usuario tras confirmar el email o tras entrar.
   const nextRaw = params.get('next') || planDest || '/dashboard';

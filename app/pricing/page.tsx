@@ -71,12 +71,15 @@ export default function Pricing() {
   const [autoTried, setAutoTried] = useState(false);
   useEffect(() => {
     if (autoTried || typeof window === 'undefined') return;
-    const pid = (new URLSearchParams(window.location.search).get('plan') || '').replace(/[^a-z0-9_-]/gi, '');
+    const qs = new URLSearchParams(window.location.search);
+    const pid = (qs.get('plan') || '').replace(/[^a-z0-9_-]/gi, '');
     if (!pid) return;
     const p = shown.find((x) => x.id === pid);
     if (!p) return;                                  // esperamos a que carguen los planes
+    const wantAnnual = qs.get('annual') === '1';     // respeta el periodo elegido antes del registro
+    if (wantAnnual && !annual) setAnnual(true);
     setAutoTried(true);
-    const price = annual ? p.price_year : p.price_month;
+    const price = wantAnnual ? p.price_year : p.price_month;
     if (price > 0) setCo({ plan: p.id });
   }, [plans, autoTried, annual]);
   async function subscribe(plan: string, price: number) {
