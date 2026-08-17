@@ -28,6 +28,11 @@ const TEMPLATES: Record<string, Entry> = {
     es: { subject: 'Tu beca en {academia} ha finalizado', body: 'Tu beca en **{academia}** ha llegado a su fin y el acceso se ha cerrado.\n\nSi quieres seguir aprendiendo, continúa con una suscripción:\n{enlace}' },
     en: { subject: 'Your scholarship in {academia} has ended', body: 'Your scholarship in **{academia}** has ended and access is now closed.\n\nIf you want to keep learning, continue with a subscription:\n{enlace}' },
   },
+  // Prueba de pago (cortesía) por vencer -------------------------------
+  comp_reminder: {
+    es: { subject: 'Tu prueba del plan {plan} vence en {dias} día(s)', body: 'Hola,\n\nTu prueba del plan **{plan}** en Onyx Trading Live vence en **{dias} día(s)**. Cuando termine, tu cuenta volverá al plan gratis.\n\nSi quieres seguir sin interrupción, elige tu plan y suscríbete aquí:\n{enlace}\n\nGracias por probar Onyx.' },
+    en: { subject: 'Your {plan} trial ends in {dias} day(s)', body: 'Hi,\n\nYour **{plan}** trial at Onyx Trading Live ends in **{dias} day(s)**. When it ends, your account will go back to the free plan.\n\nTo keep going without interruption, pick your plan and subscribe here:\n{enlace}\n\nThanks for trying Onyx.' },
+  },
 };
 
 function fill(s: string, vars: Record<string, string | number>): string {
@@ -49,6 +54,7 @@ export const TEMPLATE_META: { id: string; label: string; vars: string[] }[] = [
   { id: 'sch_denied', label: 'Beca · rechazada (al alumno)', vars: ['academia', 'enlace'] },
   { id: 'sch_reminder', label: 'Beca · vence pronto (al alumno)', vars: ['academia', 'enlace', 'dias'] },
   { id: 'sch_expired', label: 'Beca · finalizó (al alumno)', vars: ['academia', 'enlace'] },
+  { id: 'comp_reminder', label: 'Prueba de pago · vence pronto (al usuario)', vars: ['plan', 'dias', 'enlace'] },
 ];
 
 export function defaultTemplates(): Record<string, Entry> { return TEMPLATES; }

@@ -629,6 +629,15 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
   }
 
   async function userAction(id: string, action: string, value?: any, note?: string) { setBusy(id + action); const r = await fetch('/api/admin/users', { method: 'PATCH', body: JSON.stringify({ id, action, value, note }) }); const j = await r.json(); if (!r.ok) toastErr(j); await loadUsers(); setBusy(''); }
+  // Conceder una prueba de pago (cortesía) por N días, sin tarjeta.
+  async function grantTrial(u: any) {
+    const plan = (window.prompt(lang === 'en' ? 'Trial plan: pro, elite or black' : 'Plan de prueba: pro, elite o black', 'pro') || '').trim().toLowerCase();
+    if (!['pro', 'elite', 'black'].includes(plan)) return;
+    const days = parseInt(window.prompt(lang === 'en' ? 'How many days?' : '¿Cuántos días de prueba?', '30') || '0', 10);
+    if (!days || days < 1) return;
+    await userAction(u.id, 'comp_grant', { plan, days });
+    toast(lang === 'en' ? `Trial granted (${days} days).` : `Prueba concedida (${days} días).`);
+  }
   async function delUser(u: User) {
     setPendAct({ title: (lang === 'en' ? 'Delete ' : 'Borrar ') + u.email + (lang === 'en' ? ' and ALL their data?' : ' y TODOS sus datos?'), danger: true, run: async (note) => {
       setBusy(u.id + 'del'); const r = await fetch('/api/admin/users', { method: 'DELETE', body: JSON.stringify({ id: u.id, note }) }); const j = await r.json(); if (!r.ok) toastErr(j); await loadUsers(); setBusy('');
@@ -860,6 +869,9 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                                       { ic: '✏️', label: lang === 'en' ? 'Edit name' : 'Editar nombre', on: () => { setMenuFor(null); const nn = window.prompt(lang === 'en' ? 'Full name for ' + u.email : 'Nombre para ' + u.email, u.full_name || ''); if (nn !== null) userAction(u.id, 'name', nn.trim()); } },
                                       ...(u.email_confirmed === false ? [{ ic: '✉️', label: lang === 'en' ? 'Resend confirmation' : 'Reenviar confirmación', on: async () => { setMenuFor(null); await userAction(u.id, 'resend_confirm'); toast(lang === 'en' ? 'Confirmation email sent.' : 'Correo de confirmación enviado.'); } }] : []),
                                       { ic: '🔑', label: lang === 'en' ? 'Reset password' : 'Restablecer contraseña', on: () => { setMenuFor(null); resetPass(u); } },
+                                      (u.comp_until && new Date(u.comp_until).getTime() > Date.now())
+                                        ? { ic: '⛔', label: lang === 'en' ? 'Remove paid trial' : 'Quitar prueba de pago', on: () => { setMenuFor(null); userAction(u.id, 'comp_revoke'); toast(lang === 'en' ? 'Trial removed.' : 'Prueba quitada.'); } }
+                                        : { ic: '🎁', label: lang === 'en' ? 'Give paid trial' : 'Dar prueba de pago', on: () => { setMenuFor(null); grantTrial(u); } },
                                       u.banned
                                         ? { ic: '✅', label: lang === 'en' ? 'Unban account' : 'Desbloquear cuenta', on: () => { setMenuFor(null); askAction((lang === 'en' ? 'Unban ' : 'Desbloquear ') + u.email, false, u.id, 'unban'); } }
                                         : { ic: '🚫', label: lang === 'en' ? 'Ban account' : 'Bloquear cuenta', on: () => { setMenuFor(null); askAction((lang === 'en' ? 'Ban ' : 'Bloquear ') + u.email, true, u.id, 'ban'); } },

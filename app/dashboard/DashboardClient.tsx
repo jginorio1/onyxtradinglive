@@ -15,6 +15,7 @@ import { Ring, MiniArea, MiniDonut, MiniBars, MiniHeat, RadarChart, Bubbles, hea
 import MarketHours from './MarketHours';
 import PlanHabits from './PlanHabits';
 import DailyCheckinPopup from './DailyCheckinPopup';
+import CompTrialPopup from './CompTrialPopup';
 import HubVitals, { StatCard, type Vital, type Tile } from './HubVitals';
 import SetupGuide from './SetupGuide';
 import OnyxIcon from '@/app/components/OnyxIcon';
@@ -533,6 +534,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
 
   return (
     <>
+      <CompTrialPopup />
       <DailyCheckinPopup lang={lang} onState={setCheckin} />
 
       <div className="wrap-wide" style={{ padding: '24px clamp(16px,1.6vw,40px)' }}>
