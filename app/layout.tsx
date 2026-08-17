@@ -18,6 +18,7 @@ import EnvBanner from './EnvBanner';
 import { serverBeta } from '@/lib/betaServer';
 import PromoBar from './PromoBar';
 import OnlineNow from './OnlineNow';
+import VisitorBeacon from './VisitorBeacon';
 import PendingCheckoutGate from './PendingCheckoutGate';
 import { getSetting, onlineNowSettings, chatWidgetSettings } from '@/lib/settings';
 import { getSeoMeta, seoFor } from '@/lib/seo';
@@ -174,6 +175,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <OnlineNow min={online.min} max={online.max} speed={online.speed} color={online.color} hideMobile={online.hideMobile} label={lang === 'es' ? online.label_es : online.label_en} />
             )}
             <PendingCheckoutGate />
+            <VisitorBeacon />
             <Toaster />
             <PWARegister />
             <ChunkReload />
