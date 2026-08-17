@@ -21,10 +21,10 @@ const PLANS = ['pro', 'elite', 'black'];
 export async function grantComp(userId: string, plan: string, days: number) {
   const p = String(plan || '').toLowerCase();
   if (!PLANS.includes(p)) throw new Error('plan no válido');
-  const d = Math.max(1, Math.min(365, Math.round(Number(days) || 0)));
+  const d = Math.max(1, Math.min(90, Math.round(Number(days) || 0)));
   const until = new Date(Date.now() + d * 864e5).toISOString();
   await supabaseAdmin.from('profiles').update({
-    plan: p, comp_plan: p, comp_until: until, comp_warned: false, comp_expired_seen: false,
+    plan: p, comp_plan: p, comp_until: until, comp_days: d, comp_warned: false, comp_expired_seen: false,
   }).eq('id', userId);
   return { plan: p, until, days: d };
 }

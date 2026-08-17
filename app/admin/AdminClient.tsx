@@ -629,14 +629,16 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
   }
 
   async function userAction(id: string, action: string, value?: any, note?: string) { setBusy(id + action); const r = await fetch('/api/admin/users', { method: 'PATCH', body: JSON.stringify({ id, action, value, note }) }); const j = await r.json(); if (!r.ok) toastErr(j); await loadUsers(); setBusy(''); }
-  // Conceder una prueba de pago (cortesía) por N días, sin tarjeta.
-  async function grantTrial(u: any) {
-    const plan = (window.prompt(lang === 'en' ? 'Trial plan: pro, elite or black' : 'Plan de prueba: pro, elite o black', 'pro') || '').trim().toLowerCase();
-    if (!['pro', 'elite', 'black'].includes(plan)) return;
-    const days = parseInt(window.prompt(lang === 'en' ? 'How many days?' : '¿Cuántos días de prueba?', '30') || '0', 10);
-    if (!days || days < 1) return;
-    await userAction(u.id, 'comp_grant', { plan, days });
-    toast(lang === 'en' ? `Trial granted (${days} days).` : `Prueba concedida (${days} días).`);
+  // Prueba de pago (cortesía): modal para elegir plan + días (1–90).
+  const [trialFor, setTrialFor] = useState<any>(null);
+  const [trialPlan, setTrialPlan] = useState<'pro' | 'elite' | 'black'>('pro');
+  const [trialDays, setTrialDays] = useState(30);
+  const grantTrial = (u: any) => { setTrialPlan((u.comp_plan as any) || 'pro'); setTrialDays(u.comp_days || 30); setTrialFor(u); };
+  async function confirmTrial() {
+    if (!trialFor) return;
+    const u = trialFor; setTrialFor(null);
+    await userAction(u.id, 'comp_grant', { plan: trialPlan, days: trialDays });
+    toast(lang === 'en' ? `Trial granted (${trialDays} days).` : `Prueba concedida (${trialDays} días).`);
   }
   async function delUser(u: User) {
     setPendAct({ title: (lang === 'en' ? 'Delete ' : 'Borrar ') + u.email + (lang === 'en' ? ' and ALL their data?' : ' y TODOS sus datos?'), danger: true, run: async (note) => {
@@ -892,6 +894,32 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                             </div>
                           </div></td>
                         </tr>
+                        {u.comp_until && new Date(u.comp_until).getTime() > Date.now() && (() => {
+                          const total = u.comp_days || 30;
+                          const left = Math.max(0, Math.ceil((new Date(u.comp_until).getTime() - Date.now()) / 864e5));
+                          const pct = Math.max(4, Math.min(100, Math.round((left / total) * 100)));
+                          const col = left <= 1 ? 'var(--red)' : left <= 5 ? 'var(--amber)' : 'var(--soft-green,var(--green))';
+                          const pn = plans.find((p) => p.id === u.comp_plan)?.name || u.comp_plan;
+                          return (
+                            <tr>
+                              <td colSpan={6} style={{ padding: '2px 12px 12px' }}>
+                                <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '8px 12px', maxWidth: 520 }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12.5, marginBottom: 6, gap: 8 }}>
+                                    <span className="muted">🎁 {lang === 'en' ? 'Trial' : 'Prueba'} {pn} · {total} {lang === 'en' ? 'days' : 'días'}</span>
+                                    <span style={{ fontWeight: 600, color: col, whiteSpace: 'nowrap' }}>{left === 0 ? (lang === 'en' ? 'Expired' : 'Vencida') : (lang === 'en' ? `${left} day(s) left` : `Quedan ${left} día(s)`)}</span>
+                                  </div>
+                                  <div style={{ height: 6, borderRadius: 6, background: 'var(--line)', overflow: 'hidden' }}>
+                                    <div style={{ height: '100%', width: pct + '%', background: col, borderRadius: 6 }} />
+                                  </div>
+                                  <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 6 }}>
+                                    <button className="btn btn-ghost" style={{ padding: '3px 9px', fontSize: 11.5 }} onClick={() => grantTrial(u)}>{lang === 'en' ? 'Extend' : 'Extender'}</button>
+                                    <button className="btn btn-ghost" style={{ padding: '3px 9px', fontSize: 11.5, color: 'var(--red)' }} onClick={() => { userAction(u.id, 'comp_revoke'); toast(lang === 'en' ? 'Trial removed.' : 'Prueba quitada.'); }}>{lang === 'en' ? 'Remove' : 'Quitar'}</button>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })()}
                         </Fragment>
                       ))}
                     </tbody>
@@ -942,6 +970,65 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                 </div>
               </div>
             )}
+            {/* Conceder prueba de pago: escoger plan + días (1–90) con presets y fecha fin */}
+            {trialFor && (() => {
+              const PLAN_IDS: Array<'pro' | 'elite' | 'black'> = ['pro', 'elite', 'black'];
+              const nameOf = (id: string) => plans.find((p) => p.id === id)?.name || id.charAt(0).toUpperCase() + id.slice(1);
+              const endDate = new Date(Date.now() + trialDays * 864e5);
+              const endStr = endDate.toLocaleDateString(lang === 'en' ? 'en-US' : 'es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+              const presets = [7, 14, 30, 60, 90];
+              return (
+                <div onClick={() => setTrialFor(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(4,6,16,.62)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)', zIndex: 210, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+                  <div onClick={(e) => e.stopPropagation()} style={{ maxWidth: 460, width: '100%', borderRadius: 16, padding: '20px 22px',
+                    background: 'linear-gradient(180deg, color-mix(in srgb,var(--card) 92%, #fff 8%), var(--card))',
+                    border: '2px solid var(--brand)', boxShadow: '0 0 0 4px color-mix(in srgb,var(--brand) 16%,transparent), 0 24px 60px -18px var(--brand)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                      <span style={{ display: 'grid', placeItems: 'center', width: 34, height: 34, borderRadius: 10, flexShrink: 0, fontSize: 17, background: 'rgba(124,140,255,.18)' }}>🎁</span>
+                      <div style={{ fontWeight: 700, fontSize: 15.5 }}>{lang === 'en' ? 'Grant paid trial' : 'Dar prueba de pago'}</div>
+                    </div>
+                    <div className="muted" style={{ fontSize: 12.5, marginBottom: 14 }}>{trialFor.email}</div>
+
+                    <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{lang === 'en' ? 'Plan' : 'Plan'}</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 16 }}>
+                      {PLAN_IDS.map((id) => {
+                        const on = trialPlan === id;
+                        return (
+                          <button key={id} onClick={() => setTrialPlan(id)} style={{ cursor: 'pointer', padding: '10px 6px', borderRadius: 12, textAlign: 'center', fontWeight: 700, fontSize: 13,
+                            border: '2px solid ' + (on ? 'var(--brand)' : 'var(--line)'), color: on ? 'var(--tx)' : 'var(--muted)',
+                            background: on ? 'color-mix(in srgb,var(--brand) 16%,transparent)' : 'transparent' }}>{nameOf(id)}</button>
+                        );
+                      })}
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+                      <span className="muted" style={{ fontSize: 12 }}>{lang === 'en' ? 'Duration' : 'Duración'}</span>
+                      <span style={{ fontWeight: 800, fontSize: 15, color: 'var(--brand)' }}>{trialDays} {lang === 'en' ? 'days' : 'días'}</span>
+                    </div>
+                    <input type="range" min={1} max={90} value={trialDays} onChange={(e) => setTrialDays(Number(e.target.value))} style={{ width: '100%', accentColor: 'var(--brand)', margin: '0 0 10px' }} />
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
+                      {presets.map((d) => {
+                        const on = trialDays === d;
+                        return (
+                          <button key={d} onClick={() => setTrialDays(d)} style={{ cursor: 'pointer', padding: '4px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600,
+                            border: '1px solid ' + (on ? 'var(--brand)' : 'var(--line)'), color: on ? 'var(--tx)' : 'var(--muted)',
+                            background: on ? 'color-mix(in srgb,var(--brand) 16%,transparent)' : 'transparent' }}>{d}{lang === 'en' ? 'd' : 'd'}</button>
+                        );
+                      })}
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderRadius: 10, background: 'var(--bg2)', border: '1px solid var(--line)', marginBottom: 16, fontSize: 12.5 }}>
+                      <span className="muted">{lang === 'en' ? 'Ends on' : 'Vence el'}</span>
+                      <span style={{ fontWeight: 700 }}>{endStr}</span>
+                    </div>
+
+                    <div className="row" style={{ gap: 8, justifyContent: 'flex-end' }}>
+                      <button className="btn btn-ghost" onClick={() => setTrialFor(null)}>{lang === 'en' ? 'Cancel' : 'Cancelar'}</button>
+                      <button className="btn btn-primary" onClick={confirmTrial}>{lang === 'en' ? 'Grant' : 'Conceder'}</button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
             {tab === 'planes' && <PlansTab plans={plans} reload={loadPlans} />}
             {tab === 'landing' && <LandingBuilder />}
             {tab === 'equipo' && <Equipo team={team} role={role} meEmail={meEmail} reload={loadTeam} canManage={role === 'owner' || perms.equipo === 'manage'} />}
