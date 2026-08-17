@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { getStripe } from '@/lib/stripeClient';
+import { clearPending } from '@/lib/pendingCheckout';
 
 // ============================================================
 // Checkout EMBEBIDO de Stripe dentro de Onyx (mismo diseño, sin salir).
@@ -28,6 +29,8 @@ export default function EmbeddedCheckoutModal({
         const j = await r.json();
         if (!r.ok || !j.clientSecret) { setErr(j.error || 'Error'); return; }
         if (cancelled) return;
+        clearPending(); // el checkout ya abrió con sesión: intención consumida
+
         const checkout = await stripe.initEmbeddedCheckout({ clientSecret: j.clientSecret });
         checkout.mount(box.current);
         checkoutRef.current = checkout;
@@ -40,12 +43,15 @@ export default function EmbeddedCheckoutModal({
     return () => { cancelled = true; try { checkoutRef.current?.destroy(); } catch {} };
   }, [plan, annual]);
 
+  // Al cerrar, damos por consumida la intención para no reencaminar en bucle.
+  const close = () => { clearPending(); onClose(); };
+
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 80, padding: 16, overflowY: 'auto' }}>
+    <div onClick={close} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 80, padding: 16, overflowY: 'auto' }}>
       <div onClick={(e) => e.stopPropagation()} className="card" style={{ maxWidth: 760, width: '100%', marginTop: 24 }}>
         <div className="row between" style={{ marginBottom: 12, alignItems: 'center' }}>
           <b style={{ fontSize: 15 }}>{lang === 'es' ? 'Finaliza tu suscripción' : 'Complete your subscription'}</b>
-          <button className="btn btn-ghost" style={{ padding: '4px 12px', fontSize: 13 }} onClick={onClose}>✕</button>
+          <button className="btn btn-ghost" style={{ padding: '4px 12px', fontSize: 13 }} onClick={close}>✕</button>
         </div>
         {err ? <div style={{ color: 'var(--red)', fontSize: 13 }}>{err}</div> : <div ref={box} style={{ minHeight: 260 }} />}
       </div>

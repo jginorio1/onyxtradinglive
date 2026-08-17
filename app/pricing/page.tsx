@@ -8,6 +8,7 @@ import PlansCompareTable from '@/app/PlansCompareTable';
 import EmbeddedCheckoutModal from '@/app/EmbeddedCheckoutModal';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import PlanCards from '@/app/PlanCards';
+import { getPending } from '@/lib/pendingCheckout';
 
 type Plan = { id: string; name: string; name_en: string; desc_es: string | null; desc_en: string | null; price_month: number; price_year: number; max_accounts: number; features: string[]; features_en: string[]; badge: string | null; badge_en: string | null };
 type Lang = 'es' | 'en';
@@ -72,13 +73,18 @@ export default function Pricing() {
   useEffect(() => {
     if (autoTried || typeof window === 'undefined') return;
     const qs = new URLSearchParams(window.location.search);
-    const pid = (qs.get('plan') || '').replace(/[^a-z0-9_-]/gi, '');
+    // Plan desde la URL o, como respaldo, la intención guardada en el navegador.
+    const pend = getPending();
+    const pid = ((qs.get('plan') || pend?.plan || '')).replace(/[^a-z0-9_-]/gi, '');
     if (!pid) return;
     const p = shown.find((x) => x.id === pid);
     if (!p) return;                                  // esperamos a que carguen los planes
-    const wantAnnual = qs.get('annual') === '1';     // respeta el periodo elegido antes del registro
+    const wantAnnual = qs.get('annual') === '1' || !!pend?.annual;  // periodo elegido antes del registro
     if (wantAnnual && !annual) setAnnual(true);
     setAutoTried(true);
+    // La intención se limpia cuando el checkout ABRE de verdad (con sesión), dentro
+    // del modal. Así, si aquí faltara la sesión (recién confirmado el email) y el
+    // checkout devuelve 401, no la perdemos y el flujo de registro sigue vivo.
     const price = wantAnnual ? p.price_year : p.price_month;
     if (price > 0) setCo({ plan: p.id });
   }, [plans, autoTried, annual]);

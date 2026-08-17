@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { supabaseBrowser, passkeySupported } from '@/lib/supabaseBrowser';
 import TwoFactor from '@/app/TwoFactor';
 import Turnstile, { TURNSTILE_KEY } from '@/app/Turnstile';
+import { setPending } from '@/lib/pendingCheckout';
 
 type Lang = 'es' | 'en';
 
@@ -169,6 +170,10 @@ function LoginInner() {
     const cap = captcha || undefined;
     try {
       if (signup) {
+        // Guarda la intención de compra de forma DURADERA (sobrevive a la
+        // confirmación de email y al onboarding). Así, aunque los parámetros de la
+        // URL se pierdan, llevamos al usuario al checkout de su plan al volver.
+        if (planParam) setPending(planParam, annualParam);
         // Tras confirmar el email, Supabase redirige aquí; el gate del dashboard
         // envía a /onboarding la primera vez.
         const emailRedirectTo = typeof window !== 'undefined'
