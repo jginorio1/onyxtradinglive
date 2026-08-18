@@ -69,14 +69,11 @@ export default function SocialShare({ post, es }: { post: any; es: boolean }) {
   }
 
   const doCopy = (text: string) => { try { navigator.clipboard.writeText(text); toast(es ? 'Copiado.' : 'Copied.'); } catch {} };
-  // Abre sin romper en la app instalada (Safari standalone no soporta target=_blank).
-  function openExternal(link: string) {
-    try {
-      const standalone = (navigator as any).standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
-      if (standalone) { window.location.assign(link); return; }
-      const w = window.open(link, '_blank', 'noopener');
-      if (!w) window.location.assign(link);
-    } catch { try { window.location.assign(link); } catch {} }
+  // Abre una red EXTERNA en pestaña/ventana nueva. NUNCA navega la app a la red
+  // (eso cargaba Facebook dentro de la app y se quedaba en "Posting"). Devuelve
+  // false si no se pudo abrir (p. ej. app instalada que bloquea ventanas nuevas).
+  function openExternal(link: string): boolean {
+    try { const w = window.open(link, '_blank', 'noopener'); return !!w; } catch { return false; }
   }
   // Redes que NO permiten rellenar el texto por enlace (Facebook y LinkedIn solo
   // aceptan la URL). Para ellas copiamos el texto CON hashtags y abrimos la red
@@ -85,13 +82,18 @@ export default function SocialShare({ post, es }: { post: any; es: boolean }) {
   const doShare = (id: string, text: string) => {
     const link = shareUrl(id, url, text);
     if (!link) { doCopy(text); return; }        // instagram/tiktok/threads → copiar caption
+    const label = LABEL[id] || id;
     if (PASTE.has(id)) {
       try { navigator.clipboard.writeText(text); } catch {}
-      openExternal(link);
-      toast(es ? '📋 Copiamos el texto con hashtags. Pégalo (Ctrl/Cmd+V) en el cuadro de la publicación.' : '📋 We copied the text with hashtags. Paste it (Ctrl/Cmd+V) in the post box.');
+      const ok = openExternal(link);
+      toast(ok
+        ? (es ? `📋 Copiamos el texto con hashtags. Pégalo (Ctrl/Cmd+V) en ${label}.` : `📋 We copied the text with hashtags. Paste it (Ctrl/Cmd+V) in ${label}.`)
+        : (es ? `📋 Texto copiado. Abre ${label} y pega (Ctrl/Cmd+V).` : `📋 Text copied. Open ${label} and paste (Ctrl/Cmd+V).`));
       return;
     }
-    openExternal(link);                          // x/telegram/whatsapp/reddit → el texto se rellena solo
+    // x/telegram/whatsapp/reddit → el texto se rellena solo al abrir.
+    const ok = openExternal(link);
+    if (!ok) { try { navigator.clipboard.writeText(`${text}\n\n${url}`); } catch {} toast(es ? `Texto copiado. Abre ${label} y pega.` : `Text copied. Open ${label} and paste.`); }
   };
 
   async function schedule(id: string) {
