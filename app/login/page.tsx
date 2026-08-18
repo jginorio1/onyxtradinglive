@@ -37,6 +37,11 @@ const T = {
     resend: 'Reenviar enlace', resent: 'Enlace reenviado.', gotoLogin: 'Ya lo confirmé, entrar',
     // Si la confirmación está desactivada y ya hay sesión
     createdNow: 'Cuenta creada. Entrando…',
+    // Recuperar contraseña
+    forgot: '¿Olvidaste tu contraseña?', forgotT: 'Recuperar contraseña',
+    forgotH: 'Escribe tu email y te enviamos un enlace para poner una nueva contraseña.',
+    forgotSend: 'Enviar enlace', forgotSent: 'Te enviamos un correo con el enlace. Revisa spam si no lo ves.',
+    forgotBack: '← Volver a entrar',
   },
   en: {
     signupT: 'Create account', loginT: 'Sign in', email: 'Email', pass: 'Password',
@@ -61,6 +66,10 @@ const T = {
     checkSpam: "Don't see it? Check spam or promotions. It may take 1-2 minutes.",
     resend: 'Resend link', resent: 'Link resent.', gotoLogin: 'I confirmed it, sign in',
     createdNow: 'Account created. Signing in…',
+    forgot: 'Forgot your password?', forgotT: 'Reset password',
+    forgotH: 'Enter your email and we will send you a link to set a new password.',
+    forgotSend: 'Send link', forgotSent: 'We sent you an email with the link. Check spam if you do not see it.',
+    forgotBack: '← Back to sign in',
   },
 };
 
@@ -119,6 +128,8 @@ function LoginInner() {
   const [hp, setHp] = useState('');               // honeypot: humanos lo dejan vacío
   const [captcha, setCaptcha] = useState('');     // token de Turnstile (si está activo)
   const capRef = useRef<TurnstileHandle>(null);   // para acuñar un token fresco tras cada intento
+  const [forgot, setForgot] = useState(false);    // pantalla "recuperar contraseña"
+  const [forgotOk, setForgotOk] = useState(false);
   const [showPass, setShowPass] = useState(false); // mostrar/ocultar contraseña
   const [pkOk, setPkOk] = useState(false);         // navegador+SDK soportan passkey
   useEffect(() => { setPkOk(passkeySupported()); }, []);
@@ -239,6 +250,17 @@ function LoginInner() {
     } finally { setLoading(false); }
   }
 
+  // Enviar el correo de recuperación → lleva a /reset-password para poner la nueva.
+  async function sendReset() {
+    if (!mailOk) { setMsg(t.errMail); return; }
+    setLoading(true); setMsg('');
+    try {
+      const redirectTo = typeof window !== 'undefined' ? `${window.location.origin}/reset-password` : undefined;
+      await sb.auth.resetPasswordForEmail(email.trim(), { redirectTo });
+      setForgotOk(true);   // por seguridad mostramos éxito aunque el email no exista
+    } catch { setForgotOk(true); } finally { setLoading(false); }
+  }
+
   async function resend() {
     setResent(false);
     try {
@@ -290,6 +312,33 @@ function LoginInner() {
     );
   }
 
+  // ── Pantalla "recuperar contraseña" ──────────────────────────
+  if (forgot) {
+    return (
+      <div className="center">
+        <Link className="logo" href="/" style={{ justifyContent: 'center', marginBottom: 24 }}>
+          <img src="/onyx-symbol.png" alt="Onyx" style={{ width: 30, height: 30, objectFit: 'contain' }} /> Onyx Trading Live
+        </Link>
+        <div className="card">
+          <h2 style={{ marginBottom: 8 }}>{t.forgotT}</h2>
+          {forgotOk ? (
+            <p className="muted" style={{ fontSize: 14 }}>{t.forgotSent}</p>
+          ) : (
+            <>
+              <p className="muted" style={{ fontSize: 14, marginBottom: 14 }}>{t.forgotH}</p>
+              <label>{t.email}</label>
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required inputMode="email" autoComplete="username"
+                onKeyDown={(e) => { if (e.key === 'Enter') sendReset(); }} />
+              {msg && <p className="muted" style={{ marginTop: 12, fontSize: 13, color: 'var(--red)' }}>{msg}</p>}
+              <button className="btn btn-primary" style={{ width: '100%', marginTop: 16 }} disabled={loading || !mailOk} onClick={sendReset}>{loading ? '…' : t.forgotSend}</button>
+            </>
+          )}
+          <button className="btn btn-ghost" style={{ width: '100%', marginTop: 10, fontSize: 13 }} onClick={() => { setForgot(false); setForgotOk(false); setMsg(''); }}>{t.forgotBack}</button>
+        </div>
+      </div>
+    );
+  }
+
   // ── Formulario de entrar / crear cuenta ──────────────────────
   const barColors = ['#e2531f', '#e2531f', '#f0a020', 'var(--green)', 'var(--green)'];
   return (
@@ -328,6 +377,12 @@ function LoginInner() {
               )}
             </button>
           </div>
+
+          {!signup && (
+            <div style={{ textAlign: 'right', marginTop: 8 }}>
+              <a style={{ color: 'var(--brand)', cursor: 'pointer', fontSize: 13 }} onClick={() => { setForgot(true); setMsg(''); }}>{t.forgot}</a>
+            </div>
+          )}
 
           {signup && pass.length > 0 && (
             <div style={{ marginTop: 8 }}>
