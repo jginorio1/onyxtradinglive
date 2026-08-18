@@ -147,7 +147,7 @@ export async function enhanceArticle(
 const SOCIAL_KEYS = ['facebook', 'instagram', 'youtube', 'whatsapp', 'x', 'linkedin', 'telegram', 'tiktok', 'reddit', 'threads'];
 // Reglas SIN hashtags de ejemplo con idioma fijo (para no mezclar idiomas).
 const SOCIAL_RULES = `Reglas por red (gancho en la 1ª línea, valor, CTA claro, hashtags DONDE aportan; nada de clickbait falso ni promesas de ganancia):
-- facebook: 2-4 frases cercanas que aporten valor + 1 pregunta que invite a comentar + 2-3 hashtags. CTA para leer la guía completa. No incluyas la URL.
+- facebook: 2-4 frases cercanas que aporten valor + 1 pregunta que invite a comentar + CTA para leer la guía completa + SIEMPRE 3-5 hashtags al final (obligatorio). No incluyas la URL.
 - instagram: caption con GANCHO potente en la 1ª línea + 2-3 frases con emojis con criterio + CTA que diga "enlace en bio" + 8-12 hashtags mezclando amplios y de nicho del trading. No incluyas la URL.
 - youtube: para publicación de Comunidad / descripción. Gancho + 2-3 frases de valor + CTA "enlace en el primer comentario / descripción" + 4-6 hashtags. No incluyas la URL.
 - whatsapp: 1-2 frases muy directas con 1 emoji, ideal para Estado o difusión. Sin hashtags. No incluyas la URL.

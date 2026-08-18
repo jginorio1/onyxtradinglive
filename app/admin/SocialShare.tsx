@@ -78,7 +78,21 @@ export default function SocialShare({ post, es }: { post: any; es: boolean }) {
       if (!w) window.location.assign(link);
     } catch { try { window.location.assign(link); } catch {} }
   }
-  const doShare = (id: string, text: string) => { const link = shareUrl(id, url, text); if (link) openExternal(link); else doCopy(text); };
+  // Redes que NO permiten rellenar el texto por enlace (Facebook y LinkedIn solo
+  // aceptan la URL). Para ellas copiamos el texto CON hashtags y abrimos la red
+  // para que el usuario solo pegue (Ctrl/Cmd+V).
+  const PASTE = new Set(['facebook', 'linkedin']);
+  const doShare = (id: string, text: string) => {
+    const link = shareUrl(id, url, text);
+    if (!link) { doCopy(text); return; }        // instagram/tiktok/threads → copiar caption
+    if (PASTE.has(id)) {
+      try { navigator.clipboard.writeText(text); } catch {}
+      openExternal(link);
+      toast(es ? '📋 Copiamos el texto con hashtags. Pégalo (Ctrl/Cmd+V) en el cuadro de la publicación.' : '📋 We copied the text with hashtags. Paste it (Ctrl/Cmd+V) in the post box.');
+      return;
+    }
+    openExternal(link);                          // x/telegram/whatsapp/reddit → el texto se rellena solo
+  };
 
   async function schedule(id: string) {
     if (!when) { toast(es ? 'Elige fecha y hora arriba.' : 'Pick date and time above.'); return; }
