@@ -140,19 +140,32 @@ export async function enhanceArticle(
   };
 }
 
-// ---- Copy para redes sociales, optimizado por red ----
+// ---- Copy para redes sociales, optimizado por red (social SEO manager) ----
 // Genera un texto distinto para cada red a partir del artículo, en el idioma pedido.
-export async function socialCopy(title: string, excerpt: string, url: string, lang: Lang = 'es'): Promise<{ ok: boolean; copy?: Record<string, string>; reason?: string }> {
+// `only` regenera una sola red (más barato y no pisa lo editado en las demás).
+const SOCIAL_KEYS = ['facebook', 'instagram', 'youtube', 'whatsapp', 'x', 'linkedin', 'telegram', 'tiktok', 'reddit', 'threads'];
+const SOCIAL_RULES = `Reglas por red (gancho en la 1ª línea, valor, CTA claro, hashtags DONDE aportan; nada de clickbait falso ni promesas de ganancia):
+- facebook: 2-4 frases cercanas que aporten valor + 1 pregunta que invite a comentar + 2-3 hashtags. CTA "Lee la guía completa 👇". No incluyas la URL.
+- instagram: caption con GANCHO potente en la 1ª línea + 2-3 frases con emojis con criterio + CTA "Guía completa, enlace en bio 🔗" + 8-12 hashtags mezclando amplios y de nicho (#trading #forex #trader #fondeo #propfirm #gestionderiesgo #daytrading …). No incluyas la URL.
+- youtube: para publicación de Comunidad / descripción. Gancho + 2-3 frases de valor + CTA "Enlace en el primer comentario / descripción" + 4-6 hashtags. No incluyas la URL.
+- whatsapp: 1-2 frases muy directas con 1 emoji, ideal para Estado o difusión. Sin hashtags. No incluyas la URL.
+- x: máx 240 caracteres (deja hueco para el enlace), gancho fuerte + 2-3 hashtags. No incluyas la URL.
+- linkedin: 3-5 frases profesionales que enseñen algo accionable + 3 hashtags al final. No incluyas la URL.
+- telegram: 1-2 frases directas de canal con 1 emoji. No incluyas la URL.
+- tiktok: caption corto con gancho + 3-5 hashtags virales del nicho. No incluyas la URL.
+- reddit: un título honesto y descriptivo estilo Reddit (sin hashtags ni emojis).
+- threads: 1-2 frases conversacionales + 0-2 hashtags. No incluyas la URL.`;
+export async function socialCopy(title: string, excerpt: string, url: string, lang: Lang = 'es', only?: string): Promise<{ ok: boolean; copy?: Record<string, string>; reason?: string }> {
   if (!process.env.ANTHROPIC_API_KEY) return { ok: false, reason: 'no_key' };
   const es = lang !== 'en';
-  const L = es
-    ? 'Escribe TODO en ESPAÑOL.'
-    : 'Write EVERYTHING in ENGLISH.';
-  const system = `Eres el social media manager de Onyx Trading Live. ${GUARDRAIL}\n\n${L} A partir del artículo, escribe un texto para CADA red, optimizado a su estilo y límites. Nada de clickbait falso ni promesas. Reglas por red:\n- x: máx 240 caracteres (deja hueco para el enlace), gancho + 2-3 hashtags relevantes. No incluyas la URL (se añade aparte).\n- linkedin: 2-4 frases profesionales, aporta valor, 2-3 hashtags al final. No incluyas la URL.\n- facebook: 1-3 frases cercanas, 0-2 hashtags. No incluyas la URL.\n- telegram: 1-2 frases directas con 1 emoji, tono de canal. No incluyas la URL.\n- whatsapp: 1 frase muy corta con gancho. No incluyas la URL.\n- reddit: un título honesto y descriptivo (sin hashtags, sin emojis), estilo Reddit.\n- instagram: caption con gancho + 1-2 emojis + 5-8 hashtags; termina con "enlace en bio". No incluyas la URL.\n- tiktok: caption corto con gancho + 3-5 hashtags. No incluyas la URL.\n- threads: 1-2 frases conversacionales, 0-2 hashtags. No incluyas la URL.\n\nDevuelve SOLO este JSON: {"x":"...","linkedin":"...","facebook":"...","telegram":"...","whatsapp":"...","reddit":"...","instagram":"...","tiktok":"...","threads":"..."}`;
+  const L = es ? 'Escribe TODO en ESPAÑOL.' : 'Write EVERYTHING in ENGLISH.';
+  const keys = only && SOCIAL_KEYS.includes(only) ? [only] : SOCIAL_KEYS;
+  const rules = only ? SOCIAL_RULES.split('\n').filter((l) => l.includes(`- ${only}:`)).join('\n') : SOCIAL_RULES;
+  const jsonShape = '{' + keys.map((k) => `"${k}":"..."`).join(',') + '}';
+  const system = `Eres un SOCIAL SEO MANAGER experto de Onyx Trading Live: escribes copies que hacen crecer las cuentas (gancho + valor + CTA + hashtags precisos), sin sonar a anuncio. ${GUARDRAIL}\n\n${L} A partir del artículo escribe el texto para ${only ? `la red "${only}"` : 'CADA red'}, optimizado a su estilo, longitud y algoritmo.\n${rules}\n\nDevuelve SOLO este JSON: ${jsonShape}`;
   const user = `Título: ${title}\nResumen: ${excerpt}\nURL (solo de referencia, NO la incluyas en el texto salvo que la red lo pida): ${url}`;
-  const out = parseJson(await aiRaw(system, user, 1400));
+  const out = parseJson(await aiRaw(system, user, only ? 500 : 1600));
   if (!out) return { ok: false, reason: 'ai_failed' };
-  const keys = ['x', 'linkedin', 'facebook', 'telegram', 'whatsapp', 'reddit', 'instagram', 'tiktok', 'threads'];
   const copy: Record<string, string> = {};
   for (const k of keys) if (out[k]) copy[k] = String(out[k]).slice(0, 3000);
   if (!Object.keys(copy).length) return { ok: false, reason: 'ai_failed' };

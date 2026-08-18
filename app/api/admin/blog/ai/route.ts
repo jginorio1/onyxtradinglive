@@ -117,7 +117,8 @@ export async function POST(req: Request) {
       const title = (lang === 'en' ? post.title_en : post.title_es) || post.title_es || post.title_en || '';
       const excerpt = (lang === 'en' ? post.excerpt_en : post.excerpt_es) || post.excerpt_es || post.excerpt_en || '';
       const url = articleUrl(SITE, post.slug, lang);
-      const r = await socialCopy(title, excerpt, url, lang);
+      const only = b.only ? String(b.only) : undefined;
+      const r = await socialCopy(title, excerpt, url, lang, only);
       if (!r.ok) return NextResponse.json({ error: r.reason || 'ai', code: r.reason }, { status: 502 });
       return NextResponse.json({ copy: r.copy, url, slug: post.slug });
     }

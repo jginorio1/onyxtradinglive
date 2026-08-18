@@ -5,17 +5,18 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 // (modo recordatorio). El copy lo genera blogAI.socialCopy por red e idioma.
 // ============================================================
 
-export type Network = 'x' | 'linkedin' | 'facebook' | 'telegram' | 'whatsapp' | 'instagram' | 'tiktok' | 'reddit' | 'threads';
+export type Network = 'x' | 'linkedin' | 'facebook' | 'telegram' | 'whatsapp' | 'instagram' | 'youtube' | 'tiktok' | 'reddit' | 'threads';
 
 export const NETWORKS: Array<{ id: Network; label: string; color: string; icon: string; canShareLink: boolean; note?: string }> = [
+  { id: 'facebook', label: 'Facebook', color: '#1877f2', icon: 'f', canShareLink: true, note: 'Facebook solo pasa el enlace; pega el copy al publicar.' },
+  { id: 'instagram', label: 'Instagram', color: '#bc1888', icon: '◎', canShareLink: false, note: 'No permite compartir enlace: copia el caption y pega (enlace en bio).' },
+  { id: 'youtube', label: 'YouTube', color: '#ff0000', icon: '▶', canShareLink: false, note: 'Pega en la publicación de Comunidad o en la descripción (enlace en 1er comentario).' },
+  { id: 'whatsapp', label: 'WhatsApp', color: '#25d366', icon: '✆', canShareLink: true },
   { id: 'x', label: 'X / Twitter', color: '#1d9bf0', icon: '𝕏', canShareLink: true },
   { id: 'linkedin', label: 'LinkedIn', color: '#0a66c2', icon: 'in', canShareLink: true, note: 'LinkedIn solo pasa el enlace; pega el copy al publicar.' },
-  { id: 'facebook', label: 'Facebook', color: '#1877f2', icon: 'f', canShareLink: true, note: 'Facebook solo pasa el enlace; pega el copy al publicar.' },
   { id: 'telegram', label: 'Telegram', color: '#26a5e4', icon: '✈', canShareLink: true },
-  { id: 'whatsapp', label: 'WhatsApp', color: '#25d366', icon: '✆', canShareLink: true },
-  { id: 'reddit', label: 'Reddit', color: '#ff4500', icon: 'r', canShareLink: true },
-  { id: 'instagram', label: 'Instagram', color: '#bc1888', icon: '◎', canShareLink: false, note: 'No permite compartir enlace: copia el caption y pega (enlace en bio).' },
   { id: 'tiktok', label: 'TikTok', color: '#000000', icon: '♪', canShareLink: false, note: 'No permite compartir enlace: copia el caption.' },
+  { id: 'reddit', label: 'Reddit', color: '#ff4500', icon: 'r', canShareLink: true },
   { id: 'threads', label: 'Threads', color: '#000000', icon: '@', canShareLink: false, note: 'Copia el texto para pegar.' },
 ];
 export const NETWORK_LABEL: Record<string, string> = Object.fromEntries(NETWORKS.map((n) => [n.id, n.label]));
