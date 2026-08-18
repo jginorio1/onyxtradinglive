@@ -69,11 +69,27 @@ export default function SocialShare({ post, es }: { post: any; es: boolean }) {
   }
 
   const doCopy = (text: string) => { try { navigator.clipboard.writeText(text); toast(es ? 'Copiado.' : 'Copied.'); } catch {} };
-  // Abre una red EXTERNA en pestaña/ventana nueva. NUNCA navega la app a la red
-  // (eso cargaba Facebook dentro de la app y se quedaba en "Posting"). Devuelve
-  // false si no se pudo abrir (p. ej. app instalada que bloquea ventanas nuevas).
+  // Abre el diálogo de compartir de la red. CLAVE para Facebook/LinkedIn: su
+  // ventana (sharer.php) está pensada para AUTOCERRARSE al terminar de publicar.
+  // Si la abrimos como pestaña normal, no puede cerrarse y se queda en "Posting"
+  // para siempre. Por eso la abrimos como VENTANA EMERGENTE con tamaño y SIN
+  // noopener (el sharer necesita poder cerrarse solo). Si estamos en la app
+  // instalada (standalone) o el navegador bloquea el popup, caemos a abrir una
+  // pestaña con un <a target=_blank> (ahí el usuario cierra la pestaña al final).
   function openExternal(link: string): boolean {
-    try { const w = window.open(link, '_blank', 'noopener'); return !!w; } catch { return false; }
+    const standalone = typeof window !== 'undefined' && (((window as any).matchMedia && window.matchMedia('(display-mode: standalone)').matches) || (navigator as any).standalone === true);
+    if (!standalone) {
+      try {
+        const w = window.open(link, 'onyx_share', 'popup=yes,width=626,height=690,menubar=no,toolbar=no');
+        if (w) { try { w.focus(); } catch {} return true; }
+      } catch { /* seguimos al fallback */ }
+    }
+    try {
+      const a = document.createElement('a');
+      a.href = link; a.target = '_blank'; a.rel = 'noopener noreferrer';
+      document.body.appendChild(a); a.click(); a.remove();
+      return true;
+    } catch { return false; }
   }
   // Redes que NO permiten rellenar el texto por enlace (Facebook y LinkedIn solo
   // aceptan la URL). Para ellas copiamos el texto CON hashtags y abrimos la red
@@ -82,7 +98,7 @@ export default function SocialShare({ post, es }: { post: any; es: boolean }) {
   const doShare = (id: string, text: string) => {
     const link = shareUrl(id, url, text);
     if (!link) { doCopy(text); return; }        // instagram/tiktok/threads → copiar caption
-    const label = LABEL[id] || id;
+    const label = NETS[id]?.label || id;
     if (PASTE.has(id)) {
       try { navigator.clipboard.writeText(text); } catch {}
       const ok = openExternal(link);
@@ -140,9 +156,8 @@ export default function SocialShare({ post, es }: { post: any; es: boolean }) {
         </div>
         <div className="row" style={{ gap: 6, padding: '9px 12px 11px', marginTop: 'auto', flexWrap: 'wrap' }}>
           {n.link
-            ? <a className="btn btn-ghost" style={{ fontSize: 11.5, padding: '5px 10px', color: text ? 'var(--brand)' : 'var(--mut)', borderColor: 'color-mix(in srgb,var(--brand) 40%,var(--line))', pointerEvents: text ? 'auto' : 'none', textDecoration: 'none' }}
-                href={text ? (shareUrl(id, url, text) || '#') : '#'} target="_blank" rel="noopener noreferrer"
-                onClick={() => { if (PASTE.has(id) && text) { try { navigator.clipboard.writeText(text); } catch {} toast(es ? '📋 Copiamos el texto con hashtags. Pégalo (Ctrl/Cmd+V) al abrirse la ventana.' : '📋 We copied the text with hashtags. Paste it (Ctrl/Cmd+V) in the window.'); } }}>{es ? 'Compartir' : 'Share'}</a>
+            ? <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '5px 10px', color: text ? 'var(--brand)' : 'var(--mut)', borderColor: 'color-mix(in srgb,var(--brand) 40%,var(--line))' }}
+                disabled={!text} onClick={() => doShare(id, text)}>{es ? 'Compartir' : 'Share'}</button>
             : <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '5px 10px', color: 'var(--brand)' }} disabled={!text} onClick={() => doCopy(text)}>{es ? 'Copiar caption' : 'Copy caption'}</button>}
           {n.link && <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '5px 10px' }} disabled={!text} onClick={() => doCopy(text)}>{es ? 'Copiar' : 'Copy'}</button>}
           {tags.length > 0 && <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '5px 10px' }} onClick={() => doCopy(tags.join(' '))}>{es ? '# Hashtags' : '# Hashtags'}</button>}
