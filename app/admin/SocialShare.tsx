@@ -96,18 +96,6 @@ export default function SocialShare({ post, es }: { post: any; es: boolean }) {
   // para que el usuario solo pegue (Ctrl/Cmd+V).
   const PASTE = new Set(['facebook', 'linkedin']);
   const doShare = (id: string, text: string) => {
-    // FACEBOOK: el diálogo sharer.php se queda colgado en "Posting" en muchas
-    // cuentas de Página. Como publicar normal SÍ funciona, copiamos el texto CON
-    // el enlace y abrimos Facebook directo: el usuario pega en una publicación
-    // nueva (Facebook genera la vista previa del enlace al pegar la URL).
-    if (id === 'facebook') {
-      try { navigator.clipboard.writeText(`${text}\n\n${url}`); } catch {}
-      const ok = openExternal('https://www.facebook.com/');
-      toast(ok
-        ? (es ? '📋 Copiamos el texto y el enlace. En Facebook pulsa “Crear publicación” y pega (Ctrl/Cmd+V).' : '📋 Copied text and link. In Facebook click “Create post” and paste (Ctrl/Cmd+V).')
-        : (es ? '📋 Texto y enlace copiados. Abre Facebook y pega en una publicación nueva.' : '📋 Text and link copied. Open Facebook and paste into a new post.'));
-      return;
-    }
     const link = shareUrl(id, url, text);
     if (!link) { doCopy(text); return; }        // instagram/tiktok/threads → copiar caption
     const label = NETS[id]?.label || id;
