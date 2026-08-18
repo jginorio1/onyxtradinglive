@@ -384,6 +384,19 @@ export default function BlogEditor() {
     } finally { setAi(false); }
   }
 
+  // Completa el idioma que le falte a UN post (traduce del que tiene).
+  async function completeOne(p: any) {
+    setAi(true);
+    try {
+      const r = await fetch('/api/admin/blog/ai', { method: 'POST', body: JSON.stringify({ mode: 'complete', id: p.id }) });
+      const j = await r.json();
+      if (r.ok && j.patch && Object.keys(j.patch).length) {
+        await fetch('/api/admin/blog', { method: 'POST', body: JSON.stringify({ ...p, ...j.patch }) });
+        toast(es ? '🌐 Idioma completado.' : '🌐 Language completed.'); await load();
+      } else toast(j.code === 'no_key' ? (es ? 'IA no configurada.' : 'AI not configured.') : (es ? 'No se pudo completar.' : 'Could not complete.'));
+    } finally { setAi(false); }
+  }
+
   // Sube una imagen al Storage y devuelve su URL pública (o '' si falla).
   const [imgBusy, setImgBusy] = useState<'' | 'cover' | 'body'>('');
   const [showPrev, setShowPrev] = useState(true);   // vista previa del artículo en vivo
@@ -637,6 +650,7 @@ export default function BlogEditor() {
                 <div className="row" style={{ gap: 6 }}>
                   {p.status === 'scheduled' && <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--green)' }} onClick={() => publishNow(p)}>⚡ {es ? 'Publicar ahora' : 'Publish now'}</button>}
                   {(p.status === 'published' || p.status === 'scheduled') && <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--brand)' }} onClick={() => enhanceSeo(p)} disabled={ai} title={es ? 'Añadir enlaces internos, FAQ e imagen sin reescribir el texto' : 'Add internal links, FAQ and image without rewriting'}>✨ {es ? 'Mejorar SEO' : 'Improve SEO'}</button>}
+                  {(!!(p.body_es && String(p.body_es).trim())) !== (!!(p.body_en && String(p.body_en).trim())) && <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--amber)' }} onClick={() => completeOne(p)} disabled={ai} title={es ? 'Le falta un idioma: traducir para completar ES y EN' : 'Missing a language: translate to complete ES and EN'}>🌐 {es ? 'Completar idioma' : 'Complete language'}</button>}
                   {p.status === 'published' && <a className="btn btn-ghost" style={{ fontSize: 12 }} href={postUrl(p)} onClick={(e) => { e.preventDefault(); openPost(postUrl(p)); }}>{es ? 'Ver' : 'View'}</a>}
                   <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => edit(p)}>✎ {es ? 'Editar' : 'Edit'}</button>
                   <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--red)' }} onClick={() => del(p.id)}>✕</button>

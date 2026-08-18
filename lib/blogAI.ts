@@ -185,18 +185,23 @@ export async function completeLanguages(post: {
   const hasEn = !!(post.body_en && post.body_en.trim());
   if (hasEs === hasEn) return { ok: true, patch: {} };   // ambos o ninguno → nada que traducir
   const src = hasEs ? 'es' : 'en';                        // idioma origen (el que tiene cuerpo)
-  const dstName = src === 'es' ? 'inglés' : 'español';
+  const dstName = src === 'es' ? 'inglés (English)' : 'español (Spanish)';
   const t = (k: 'title' | 'excerpt' | 'body' | 'cover_alt') => (post as any)[`${k}_${src}`] || '';
-  const system = `Eres traductor profesional del blog de Onyx Trading Live. Traduce el artículo del ${src === 'es' ? 'español' : 'inglés'} al ${dstName} de forma NATURAL y fluida. CONSERVA EXACTAMENTE la estructura markdown: encabezados "## ", listas "- ", **negritas**. En los enlaces internos [texto](/blog/slug) traduce SOLO el texto y deja la MISMA ruta. En bloques :::chart mantén los números de x/y y traduce title/alt/source. En :::faq traduce las líneas Q: y A:. En :::figure traduce kicker/title/alt. No añadas ni quites contenido.\n\nDevuelve SOLO este JSON: {"title":"...","excerpt":"...","body":"markdown traducido","cover_alt":"..."}`;
+  // Formato con SEPARADORES (no JSON) → no se rompe aunque el cuerpo tenga muchos
+  // saltos de línea, comillas o markdown.
+  const system = `Eres traductor profesional del blog de Onyx Trading Live. Traduce el artículo del ${src === 'es' ? 'español' : 'inglés'} al ${dstName} de forma NATURAL y fluida. CONSERVA EXACTAMENTE la estructura markdown: encabezados "## ", listas "- ", **negritas**. En los enlaces internos [texto](/blog/slug) traduce SOLO el texto visible y deja la MISMA ruta. En bloques :::chart mantén los números x/y y traduce title/alt/source. En :::faq traduce las líneas Q: y A:. En :::figure traduce kicker/title/alt. No añadas ni quites contenido.\n\nDevuelve EXACTAMENTE en este formato (sin JSON, sin comentarios):\n===TITLE===\n<título traducido>\n===EXCERPT===\n<resumen traducido>\n===COVER_ALT===\n<alt traducido>\n===BODY===\n<cuerpo markdown traducido completo>`;
   const user = `TÍTULO: ${t('title')}\nEXCERPT: ${t('excerpt')}\nCOVER_ALT: ${t('cover_alt')}\n\nBODY:\n${t('body').slice(0, 9000)}`;
-  const out = parseJson(await aiRaw(system, user, 4500));
-  if (!out || !out.body) return { ok: false, reason: 'ai_failed' };
+  const raw = await aiRaw(system, user, 7000);
+  if (!raw) return { ok: false, reason: 'ai_failed' };
+  const sec = (name: string) => { const m = raw.match(new RegExp('===\\s*' + name + '\\s*===\\s*([\\s\\S]*?)(?=\\n===|$)')); return m ? m[1].trim() : ''; };
+  const body = sec('BODY');
+  if (!body) return { ok: false, reason: 'ai_failed' };
   const dst = src === 'es' ? 'en' : 'es';
   const patch: any = {};
-  patch[`title_${dst}`] = String(out.title || (post as any)[`title_${src}`] || '').slice(0, 200);
-  patch[`excerpt_${dst}`] = String(out.excerpt || '').slice(0, 400);
-  patch[`body_${dst}`] = String(out.body || '').slice(0, 20000);
-  patch[`cover_alt_${dst}`] = String(out.cover_alt || '').slice(0, 300);
+  patch[`title_${dst}`] = (sec('TITLE') || (post as any)[`title_${src}`] || '').slice(0, 200);
+  patch[`excerpt_${dst}`] = sec('EXCERPT').slice(0, 400);
+  patch[`body_${dst}`] = body.slice(0, 20000);
+  patch[`cover_alt_${dst}`] = sec('COVER_ALT').slice(0, 300);
   return { ok: true, patch };
 }
 
