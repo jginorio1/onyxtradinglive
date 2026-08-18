@@ -14,10 +14,14 @@ import type { Lang } from '@/lib/navText';
 async function aiRaw(system: string, user: string, maxTokens: number): Promise<string | null> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return null;
+  // Cortamos la llamada a los 50s para no agotar la función serverless (que
+  // devolvería 502). Si tarda más, devolvemos null y la ruta responde limpio.
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 50000);
   try {
     const model = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5';
     const r = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
+      method: 'POST', signal: ctrl.signal,
       headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({ model, max_tokens: maxTokens, system, messages: [{ role: 'user', content: user.slice(0, 6000) }] }),
     });
@@ -26,6 +30,7 @@ async function aiRaw(system: string, user: string, maxTokens: number): Promise<s
     import('@/lib/aiCost').then((m) => m.logAiUsage('blog', d)).catch(() => {});
     return (d?.content || []).map((c: any) => c.text || '').join('\n').trim() || null;
   } catch { return null; }
+  finally { clearTimeout(timer); }
 }
 
 // Intenta extraer el primer bloque JSON de la respuesta del modelo.
@@ -132,13 +137,41 @@ export async function enhanceArticle(
   const relList = (related || []).slice(0, 12).map((r) => `- /blog/${r.slug} — ${(r.title_es || r.title_en || '').slice(0, 70)}${r.tags ? ` (${r.tags})` : ''}`).join('\n') || '(no hay otros artículos aún — omite los enlaces internos)';
   const system = `Eres el editor SEO de Onyx Trading Live. ${GUARDRAIL}\n\nTe doy un artículo YA escrito en español e inglés. NO lo reescribas: conserva EXACTAMENTE el texto, el orden y el tono. Solo aplica estas mejoras (las mismas en ambos idiomas, usando la MISMA ruta /blog/slug):\n${jobs.join('\n')}\n\nArtículos disponibles para enlazar (usa solo estas rutas, no inventes):\n${relList}\n\nDevuelve SOLO este JSON: {"body_es":"markdown ES mejorado","body_en":"markdown EN mejorado"}`;
   const user = `TÍTULO: ${title}\n\n=== BODY_ES ===\n${bodyEs.slice(0, 8000)}\n\n=== BODY_EN ===\n${bodyEn.slice(0, 8000)}`;
-  const out = parseJson(await aiRaw(system, user, 6000));
+  const out = parseJson(await aiRaw(system, user, 4500));
   if (!out || (!out.body_es && !out.body_en)) return { ok: false, reason: 'ai_failed' };
   return {
     ok: true,
     body_es: String(out.body_es || bodyEs).slice(0, 20000),
     body_en: String(out.body_en || bodyEn).slice(0, 20000),
   };
+}
+
+// ---- Completar el idioma que falte (traducción fiel, conserva estructura) ----
+// Dado un artículo, si le falta el cuerpo en un idioma lo genera traduciendo del
+// otro, conservando markdown y bloques (:::chart datos, :::faq Q/A, :::figure,
+// enlaces internos con la MISMA ruta). Devuelve solo los campos que rellena.
+export async function completeLanguages(post: {
+  title_es?: string; title_en?: string; excerpt_es?: string; excerpt_en?: string;
+  body_es?: string; body_en?: string; cover_alt_es?: string; cover_alt_en?: string;
+}): Promise<{ ok: boolean; patch?: any; reason?: string }> {
+  if (!process.env.ANTHROPIC_API_KEY) return { ok: false, reason: 'no_key' };
+  const hasEs = !!(post.body_es && post.body_es.trim());
+  const hasEn = !!(post.body_en && post.body_en.trim());
+  if (hasEs === hasEn) return { ok: true, patch: {} };   // ambos o ninguno → nada que traducir
+  const src = hasEs ? 'es' : 'en';                        // idioma origen (el que tiene cuerpo)
+  const dstName = src === 'es' ? 'inglés' : 'español';
+  const t = (k: 'title' | 'excerpt' | 'body' | 'cover_alt') => (post as any)[`${k}_${src}`] || '';
+  const system = `Eres traductor profesional del blog de Onyx Trading Live. Traduce el artículo del ${src === 'es' ? 'español' : 'inglés'} al ${dstName} de forma NATURAL y fluida. CONSERVA EXACTAMENTE la estructura markdown: encabezados "## ", listas "- ", **negritas**. En los enlaces internos [texto](/blog/slug) traduce SOLO el texto y deja la MISMA ruta. En bloques :::chart mantén los números de x/y y traduce title/alt/source. En :::faq traduce las líneas Q: y A:. En :::figure traduce kicker/title/alt. No añadas ni quites contenido.\n\nDevuelve SOLO este JSON: {"title":"...","excerpt":"...","body":"markdown traducido","cover_alt":"..."}`;
+  const user = `TÍTULO: ${t('title')}\nEXCERPT: ${t('excerpt')}\nCOVER_ALT: ${t('cover_alt')}\n\nBODY:\n${t('body').slice(0, 9000)}`;
+  const out = parseJson(await aiRaw(system, user, 4500));
+  if (!out || !out.body) return { ok: false, reason: 'ai_failed' };
+  const dst = src === 'es' ? 'en' : 'es';
+  const patch: any = {};
+  patch[`title_${dst}`] = String(out.title || (post as any)[`title_${src}`] || '').slice(0, 200);
+  patch[`excerpt_${dst}`] = String(out.excerpt || '').slice(0, 400);
+  patch[`body_${dst}`] = String(out.body || '').slice(0, 20000);
+  patch[`cover_alt_${dst}`] = String(out.cover_alt || '').slice(0, 300);
+  return { ok: true, patch };
 }
 
 // ---- Copy para redes sociales, optimizado por red (social SEO manager) ----

@@ -16,7 +16,10 @@ const abs = (u: string) => (u.startsWith('http') ? u : `${SITE}${u}`);
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const p = await getPublishedBySlug(params.slug);
   if (!p) return { title: 'Blog · Onyx Trading Live' };
-  const es = serverLang() === 'es';
+  const hasEs = !!(p.body_es && p.body_es.trim()), hasEn = !!(p.body_en && p.body_en.trim());
+  let es = serverLang() === 'es';
+  if (es && !hasEs && hasEn) es = false;
+  if (!es && !hasEn && hasEs) es = true;
   const title = pref(es ? p.title_es : p.title_en, es ? p.title_en : p.title_es);
   const desc = pref(es ? p.excerpt_es : p.excerpt_en, es ? p.excerpt_en : p.excerpt_es);
   const cover = abs(blogCoverUrl(p, es ? 'es' : 'en'));
@@ -44,7 +47,13 @@ export default async function BlogArticle({ params }: { params: { slug: string }
     if (to && to !== params.slug) permanentRedirect(`/blog/${to}`);
     notFound();
   }
-  const es = serverLang() === 'es';
+  // Idioma CONSISTENTE: si el idioma pedido no tiene cuerpo, mostramos TODO el
+  // artículo en el idioma que sí está (evita mezclar título EN + cuerpo ES).
+  const hasEs = !!(p.body_es && p.body_es.trim());
+  const hasEn = !!(p.body_en && p.body_en.trim());
+  let es = serverLang() === 'es';
+  if (es && !hasEs && hasEn) es = false;
+  if (!es && !hasEn && hasEs) es = true;
   const title = pref(es ? p.title_es : p.title_en, es ? p.title_en : p.title_es);
   const excerpt = pref(es ? p.excerpt_es : p.excerpt_en, es ? p.excerpt_en : p.excerpt_es);
   const body = pref(es ? p.body_es : p.body_en, es ? p.body_en : p.body_es);

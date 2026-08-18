@@ -298,15 +298,20 @@ export default function BlogEditor() {
       ? `Onyx AI mejorará el SEO de ${list.length} artículo(s) (publicados y programados): enlaces internos a otros posts, FAQ, imagen de contenido y slug corto en español e inglés. NO reescribe tu texto. Conserva el estado y la fecha de cada uno. Los cambios de URL en los ya publicados crean redirección 301. ¿Continuar?`
       : `Onyx AI will improve SEO of ${list.length} article(s) (published and scheduled): internal links, FAQ, content image and short slug in Spanish and English. It won't rewrite your text. It keeps each one's status and date. URL changes on already-published ones create a 301 redirect. Continue?`)) return;
     setBulk({ running: true, done: 0, total: list.length });
-    let ok = 0;
+    let ok = 0, aiOk = 0, noKey = false;
     for (const p of list) {
       try {
-        let bodyEs = p.body_es, bodyEn = p.body_en, suggested = '';
+        let bodyEs = p.body_es, bodyEn = p.body_en, suggested = '', changed = false;
         try {
           const r = await fetch('/api/admin/blog/ai', { method: 'POST', body: JSON.stringify({ mode: 'enhance', id: p.id }) });
           const j = await r.json();
-          if (r.ok && (j.body_es || j.body_en)) { bodyEs = j.body_es || bodyEs; bodyEn = j.body_en || bodyEn; suggested = j.suggestedSlug || ''; }
+          if (j?.code === 'no_key') noKey = true;
+          if (r.ok && (j.body_es || j.body_en)) {
+            if ((j.body_es && j.body_es !== p.body_es) || (j.body_en && j.body_en !== p.body_en)) changed = true;
+            bodyEs = j.body_es || bodyEs; bodyEn = j.body_en || bodyEn; suggested = j.suggestedSlug || '';
+          }
         } catch {}
+        if (changed) aiOk++;
         const kw = (p.tags || '').split(',')[0] || '';
         const slug = suggested || clientShortSlug(p.title_es || p.title_en || '', kw) || p.slug;
         const slug_en = clientShortSlug(p.title_en || p.title_es || '', kw) || '';
@@ -317,7 +322,47 @@ export default function BlogEditor() {
       setBulk((b) => ({ ...b, done: b.done + 1 }));
     }
     setBulk({ running: false, done: 0, total: 0 });
-    toast(es ? `✓ Listo: ${ok}/${list.length} artículos mejorados.` : `✓ Done: ${ok}/${list.length} articles improved.`);
+    if (noKey || aiOk === 0) {
+      toast(es
+        ? `Slug ES/EN aplicado a ${ok}/${list.length}. Pero la IA no añadió enlaces/FAQ/imagen (0 mejorados). Revisa que ANTHROPIC_API_KEY esté configurada.`
+        : `ES/EN slug applied to ${ok}/${list.length}. But AI did not add links/FAQ/image (0 enhanced). Check that ANTHROPIC_API_KEY is set.`);
+    } else {
+      toast(es
+        ? `✓ Listo: ${aiOk}/${list.length} mejorados con IA (enlaces, FAQ, imagen) · slug ES/EN en ${ok}.`
+        : `✓ Done: ${aiOk}/${list.length} enhanced by AI (links, FAQ, image) · ES/EN slug on ${ok}.`);
+    }
+    await load();
+  }
+
+  // Completa el idioma que falte en TODOS los artículos: si a un post le falta el
+  // cuerpo en ES o EN, lo traduce del que sí tiene (evita mezclar idiomas).
+  async function bulkComplete() {
+    const gap = posts.filter((p) => {
+      const es2 = !!(p.body_es && String(p.body_es).trim()), en = !!(p.body_en && String(p.body_en).trim());
+      return es2 !== en; // tiene uno pero no el otro
+    });
+    if (!gap.length) { toast(es ? 'Todos los artículos ya están en ambos idiomas. ✓' : 'All articles already have both languages. ✓'); return; }
+    if (!confirm(es
+      ? `${gap.length} artículo(s) tienen un idioma incompleto. Onyx AI traducirá el que falta (ES↔EN) conservando estructura, enlaces, FAQ e imágenes. ¿Continuar?`
+      : `${gap.length} article(s) are missing a language. Onyx AI will translate the missing one (ES↔EN), keeping structure, links, FAQ and images. Continue?`)) return;
+    setBulk({ running: true, done: 0, total: gap.length });
+    let ok = 0, noKey = false;
+    for (const p of gap) {
+      try {
+        const r = await fetch('/api/admin/blog/ai', { method: 'POST', body: JSON.stringify({ mode: 'complete', id: p.id }) });
+        const j = await r.json();
+        if (j?.code === 'no_key') noKey = true;
+        if (r.ok && j.patch && Object.keys(j.patch).length) {
+          await fetch('/api/admin/blog', { method: 'POST', body: JSON.stringify({ ...p, ...j.patch }) });
+          ok++;
+        }
+      } catch {}
+      setBulk((b) => ({ ...b, done: b.done + 1 }));
+    }
+    setBulk({ running: false, done: 0, total: 0 });
+    toast(noKey && ok === 0
+      ? (es ? 'La IA no está configurada (ANTHROPIC_API_KEY).' : 'AI is not configured (ANTHROPIC_API_KEY).')
+      : (es ? `✓ Idiomas completados en ${ok}/${gap.length} artículos.` : `✓ Languages completed on ${ok}/${gap.length} articles.`));
     await load();
   }
 
@@ -520,6 +565,7 @@ export default function BlogEditor() {
               ))}
             </div>
             <a className="btn btn-ghost" href={`${origin}${es ? '/blog' : '/en/blog'}`} onClick={(e) => { e.preventDefault(); openPost(`${origin}${es ? '/blog' : '/en/blog'}`); }} title={es ? 'Abrir el blog público en la web' : 'Open the public blog on the web'}>👁 {es ? 'Ver blog' : 'View blog'}</a>
+            <button className="btn btn-ghost" style={{ color: 'var(--brand)' }} onClick={bulkComplete} disabled={bulk.running} title={es ? 'Completa el idioma que falte (traduce ES↔EN) en los artículos incompletos' : 'Fill the missing language (translate ES↔EN) on incomplete articles'}>{bulk.running ? `⏳ ${bulk.done}/${bulk.total}` : (es ? '🌐 Completar idiomas' : '🌐 Complete languages')}</button>
             <button className="btn btn-ghost" style={{ color: 'var(--brand)' }} onClick={bulkEnhance} disabled={bulk.running} title={es ? 'Mejora SEO de todos los publicados: enlaces internos, FAQ, imagen y slug corto ES/EN' : 'Improve SEO of all published: internal links, FAQ, image and short ES/EN slug'}>{bulk.running ? `⏳ ${bulk.done}/${bulk.total}` : (es ? '✨ Mejorar SEO de todos' : '✨ Improve SEO of all')}</button>
             <button className="btn btn-primary" onClick={() => { setTitles([]); setTopic(''); setF({ ...blank }); }}>＋ {es ? 'Nuevo' : 'New'}</button>
           </div>
