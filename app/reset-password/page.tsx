@@ -1,7 +1,7 @@
 'use client';
 import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useLang } from '@/lib/lang';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 import TwoFactor from '@/app/TwoFactor';
@@ -49,6 +49,7 @@ const barColors = ['#e2531f', '#e2531f', '#f0a020', 'var(--green)', 'var(--green
 
 function ResetInner() {
   const router = useRouter();
+  const params = useSearchParams();
   const { lang } = useLang();
   const es = lang !== 'en';
   const t = T[es ? 'es' : 'en'];
@@ -80,8 +81,26 @@ function ResetInner() {
     let alive = true;
     const onReady = async () => { if (!alive) return; setReady(true); setChecking(false); await checkMfa(); };
     const { data: sub } = sb.auth.onAuthStateChange((_e, session) => { if (session?.user && alive && !ready) onReady(); });
-    sb.auth.getSession().then(({ data }) => { if (!alive) return; if (data.session?.user) onReady(); else setChecking(false); });
-    const to = setTimeout(() => { if (alive) setChecking(false); }, 4000);
+
+    (async () => {
+      // 1) Enlace nuevo con token_hash: se verifica AQUÍ con verifyOtp. Funciona en
+      //    cualquier navegador (incluido el visor del correo) y NO lo consumen los
+      //    escáneres de enlaces (ellos no ejecutan este JavaScript).
+      const th = params.get('token_hash');
+      const type = (params.get('type') || 'recovery') as any;
+      if (th) {
+        const { data, error } = await sb.auth.verifyOtp({ type, token_hash: th });
+        if (!alive) return;
+        if (!error && data?.session?.user) { onReady(); return; }
+        setChecking(false); return;   // token vencido/usado → mostramos aviso
+      }
+      // 2) Respaldo: enlace viejo (?code PKCE / #hash) o sesión ya presente.
+      const { data } = await sb.auth.getSession();
+      if (!alive) return;
+      if (data.session?.user) onReady(); else setChecking(false);
+    })();
+
+    const to = setTimeout(() => { if (alive) setChecking(false); }, 5000);
     return () => { alive = false; clearTimeout(to); sub.subscription.unsubscribe(); };
   }, []);
 
