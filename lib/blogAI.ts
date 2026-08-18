@@ -70,17 +70,41 @@ export async function suggestTitles(topic: string, lang: Lang = 'es', target?: s
   return { ok: true, titles };
 }
 
+// Tipos de post que rankean bien / atraen backlinks. Cada uno pide una estructura.
+export type BlogKind = 'guide' | 'comparison' | 'list' | 'mistakes';
+export type RelatedPost = { slug: string; title_es?: string; title_en?: string; tags?: string };
+
+const KIND_BLOCK: Record<BlogKind, string> = {
+  guide: 'TIPO: Guía práctica. Estructura: introducción con el problema, 3-5 secciones "## " accionables, y un cierre con los puntos clave.',
+  comparison: 'TIPO: Comparativa. Estructura: introducción, una sección "## " por cada opción con sus pros y contras (listas), una sección "## ¿Cuál elegir?" con un veredicto honesto por perfil de trader. Sé imparcial y concreto. (No uses tablas markdown, usa listas.)',
+  list: 'TIPO: Lista/Ranking (listicle). Estructura: introducción breve, un subtítulo "## 1) …", "## 2) …" por cada elemento (numéralos en el propio subtítulo), con 2-3 frases cada uno. Título con número (ej. "5 …", "10 …").',
+  mistakes: 'TIPO: Errores frecuentes. Estructura: introducción, un subtítulo "## " por cada error explicando por qué duele y cómo evitarlo, cierre con un checklist en lista "- ".',
+};
+
+// Bloque de enlazado interno: le damos la lista de posts anteriores y pedimos 2-4 enlaces contextuales.
+function relatedBlock(related?: RelatedPost[]): string {
+  if (!related || !related.length) return '';
+  const lines = related.slice(0, 12).map((r) => `- [${(r.title_es || r.title_en || '').slice(0, 80)}](/blog/${r.slug})${r.tags ? ` (temas: ${r.tags})` : ''}`);
+  return `\n\nENLAZADO INTERNO (MUY IMPORTANTE para SEO): teje de forma NATURAL entre 2 y 4 enlaces a estos artículos existentes, SOLO donde el tema encaje, usando el texto del enlace descriptivo (no "haz clic aquí"). Usa la MISMA ruta /blog/slug en ambos idiomas. Estos son los artículos disponibles:\n${lines.join('\n')}\nNo inventes rutas que no estén en esta lista. Si ninguno encaja, no fuerces enlaces.`;
+}
+
+const FAQ_BLOCK = '\n\nFAQ (recomendado, ayuda a ganar resultados enriquecidos en Google): añade AL FINAL un bloque de 3-4 preguntas frecuentes con este formato EXACTO (traducido en cada idioma):\n:::faq\nQ: Pregunta corta y real que busca la gente\nA: Respuesta clara de 1-3 frases\nQ: Otra pregunta\nA: Otra respuesta\n:::';
+
+const FIGURE_BLOCK = '\n\nIMAGEN DE CONTENIDO (recomendado): inserta UNA vez, a media altura del artículo, un banner on-brand con este formato (traduce kicker/title/alt):\n:::figure\nkicker: ETIQUETA CORTA DEL TEMA\ntitle: Frase potente que resume una idea del artículo\nalt: Descripción para accesibilidad y SEO\n:::';
+
 // ---- Artículo completo bilingüe ----
-export async function generateArticle(title: string, kw?: KwGuide): Promise<{ ok: boolean; article?: any; reason?: string }> {
+export async function generateArticle(title: string, kw?: KwGuide, opts?: { related?: RelatedPost[]; kind?: BlogKind }): Promise<{ ok: boolean; article?: any; reason?: string }> {
   if (!process.env.ANTHROPIC_API_KEY) return { ok: false, reason: 'no_key' };
-  const system = `Eres redactor de contenido SEO de Onyx Trading Live. ${GUARDRAIL}\n\nCONTEXTO DE MARCA (úsalo con naturalidad, sin sonar a anuncio):\n${await brandBrief('es')}${kwBlock(kw)}\n\nEscribe un artículo de blog COMPLETO sobre el título dado, en ESPAÑOL e INGLÉS. Formato markdown: usa subtítulos "## ", listas con "- " y **negritas** con moderación. 600-900 palabras por idioma, tono cercano y profesional para traders. Cierra invitando suavemente a usar Onyx (sin promesas).\n\nGRÁFICAS (opcional, solo si de verdad aportan): puedes incluir UNA gráfica ilustrativa dentro del cuerpo con este bloque exacto (mismo contenido en ambos idiomas, traduciendo title/alt/source):\n:::chart\ntype: line\ntitle: Título corto de la gráfica\nalt: Descripción de lo que muestra la gráfica (para accesibilidad y SEO)\nsource: Datos de ejemplo · Onyx Trading Live\nx: [Etiqueta1, Etiqueta2, Etiqueta3]\ny: [10, 8, 5]\n:::\nReglas de la gráfica: type puede ser line, bar o doughnut. SIEMPRE datos de EJEMPLO/ilustrativos (nunca rendimientos reales, señales ni promesas) y por eso source siempre incluye "Datos de ejemplo". Máx 12 puntos. Si no encaja de forma natural, NO la pongas.\n\nNO inventes imágenes con URL (![...](...)) porque no tienes archivos reales; el editor las sube aparte. En su lugar, describe una imagen de portada apropiada en cover_alt.\n\nDevuelve SOLO este JSON (sin texto fuera):\n{"title_es":"...","title_en":"...","excerpt_es":"resumen 1-2 frases","excerpt_en":"1-2 sentence summary","body_es":"markdown en español (puede incluir un bloque :::chart)","body_en":"markdown in English (may include a :::chart block)","cover_alt_es":"texto alternativo de la imagen de portada en español, describiendo la escena, ~12 palabras","cover_alt_en":"cover image alt text in English, ~12 words","tags":"3-6 palabras clave EN ESPAÑOL separadas por coma (solo español, nunca en inglés)"}`;
-  const out = parseJson(await aiRaw(system, `Título: ${title}`, 4200));
+  const kind = opts?.kind && KIND_BLOCK[opts.kind] ? opts.kind : 'guide';
+  const system = `Eres redactor de contenido SEO de Onyx Trading Live. ${GUARDRAIL}\n\nCONTEXTO DE MARCA (úsalo con naturalidad, sin sonar a anuncio):\n${await brandBrief('es')}${kwBlock(kw)}\n\nEscribe un artículo de blog COMPLETO sobre el título dado, en ESPAÑOL e INGLÉS. Formato markdown: usa subtítulos "## ", listas con "- " y **negritas** con moderación. 700-1000 palabras por idioma, tono cercano y profesional para traders. Cierra invitando suavemente a usar Onyx (sin promesas).\n\n${KIND_BLOCK[kind]}${relatedBlock(opts?.related)}${FIGURE_BLOCK}${FAQ_BLOCK}\n\nGRÁFICAS (opcional, solo si de verdad aportan): puedes incluir UNA gráfica ilustrativa dentro del cuerpo con este bloque exacto (mismo contenido en ambos idiomas, traduciendo title/alt/source):\n:::chart\ntype: line\ntitle: Título corto de la gráfica\nalt: Descripción de lo que muestra la gráfica (para accesibilidad y SEO)\nsource: Datos de ejemplo · Onyx Trading Live\nx: [Etiqueta1, Etiqueta2, Etiqueta3]\ny: [10, 8, 5]\n:::\nReglas de la gráfica: type puede ser line, bar o doughnut. SIEMPRE datos de EJEMPLO/ilustrativos (nunca rendimientos reales, señales ni promesas) y por eso source siempre incluye "Datos de ejemplo". Máx 12 puntos.\n\nNO inventes imágenes con URL (![...](...)); usa el bloque :::figure para la imagen de contenido. Describe la portada en cover_alt.\n\nDevuelve SOLO este JSON (sin texto fuera):\n{"title_es":"...","title_en":"...","slug":"slug-corto-en-espanol-3-a-6-palabras-con-la-keyword","excerpt_es":"resumen 1-2 frases","excerpt_en":"1-2 sentence summary","body_es":"markdown en español (con enlaces internos, :::figure y :::faq)","body_en":"markdown in English (with internal links, :::figure and :::faq)","cover_alt_es":"alt de la portada en español ~12 palabras","cover_alt_en":"cover alt in English ~12 words","tags":"3-6 palabras clave EN ESPAÑOL separadas por coma (solo español)"}`;
+  const out = parseJson(await aiRaw(system, `Título: ${title}`, 5000));
   if (!out || !out.body_es || !out.body_en) return { ok: false, reason: 'ai_failed' };
   return {
     ok: true,
     article: {
       title_es: String(out.title_es || title).slice(0, 200),
       title_en: String(out.title_en || title).slice(0, 200),
+      slug: String(out.slug || '').slice(0, 90),
       excerpt_es: String(out.excerpt_es || '').slice(0, 400),
       excerpt_en: String(out.excerpt_en || '').slice(0, 400),
       body_es: String(out.body_es || '').slice(0, 20000),

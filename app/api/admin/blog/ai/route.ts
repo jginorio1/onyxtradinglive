@@ -1,8 +1,15 @@
 import { NextResponse } from 'next/server';
 import { requirePerm } from '@/lib/admin';
-import { suggestTitles, generateArticle, generateAlt, type KwGuide } from '@/lib/blogAI';
+import { suggestTitles, generateArticle, generateAlt, type KwGuide, type BlogKind, type RelatedPost } from '@/lib/blogAI';
 import { blogKeywordsSettings } from '@/lib/settings';
 import { listAllPosts } from '@/lib/blog';
+
+const KIND_HINT: Record<string, string> = {
+  comparison: ' (formato comparativa "X vs Y")',
+  list: ' (formato lista/ranking con número, ej. "5 mejores…")',
+  mistakes: ' (formato "errores que…")',
+  guide: '',
+};
 import { logError } from '@/lib/errlog';
 
 export const dynamic = 'force-dynamic';
@@ -48,9 +55,11 @@ export async function POST(req: Request) {
     const mode = String(b.mode || '');
     const override = b.keyword ? String(b.keyword).slice(0, 80) : undefined;
 
+    const kind: BlogKind = ['guide', 'comparison', 'list', 'mistakes'].includes(b.kind) ? b.kind : 'guide';
+
     if (mode === 'titles') {
-      const topic = String(b.topic || '').slice(0, 300);
-      if (!topic) return NextResponse.json({ error: 'falta tema' }, { status: 400 });
+      const topic = String(b.topic || '').slice(0, 300) + (KIND_HINT[kind] || '');
+      if (!topic.trim()) return NextResponse.json({ error: 'falta tema' }, { status: 400 });
       const lang = b.lang === 'en' ? 'en' : 'es';
       const g = await buildGuide(override);
       const target = g ? (lang === 'en' ? g.targetEn : g.targetEs) : undefined;
@@ -63,7 +72,14 @@ export async function POST(req: Request) {
       const title = String(b.title || '').slice(0, 200);
       if (!title) return NextResponse.json({ error: 'falta título' }, { status: 400 });
       const g = await buildGuide(override);
-      const r = await generateArticle(title, g);
+      // Artículos publicados existentes → enlazado interno automático.
+      let related: RelatedPost[] = [];
+      try {
+        const posts = await listAllPosts();
+        related = posts.filter((p: any) => p.status === 'published').slice(0, 12)
+          .map((p: any) => ({ slug: p.slug, title_es: p.title_es, title_en: p.title_en, tags: p.tags }));
+      } catch {}
+      const r = await generateArticle(title, g, { related, kind });
       if (!r.ok) return NextResponse.json({ error: r.reason || 'ai', code: r.reason }, { status: 502 });
       return NextResponse.json({ article: r.article, target: g ? { es: g.targetEs, en: g.targetEn } : null });
     }

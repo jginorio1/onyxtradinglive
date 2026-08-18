@@ -17,11 +17,31 @@ export type BlogPost = {
   author: string | null; created_at: string; updated_at: string;
 };
 
-// Convierte un texto en un slug limpio para la URL.
-export function slugify(s: string): string {
-  return String(s || '')
+// Convierte un texto en un slug limpio para la URL. Corta a L\u00cdMITE DE PALABRA
+// (nunca a media palabra) para no dejar slugs rotos como "...debe-do".
+export function slugify(s: string, max = 70): string {
+  const clean = String(s || '')
     .toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80) || 'articulo';
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  if (!clean) return 'articulo';
+  if (clean.length <= max) return clean;
+  const cut = clean.slice(0, max);
+  const at = cut.lastIndexOf('-');              // retrocede a la \u00faltima palabra completa
+  return (at > 20 ? cut.slice(0, at) : cut).replace(/-+$/, '') || 'articulo';
+}
+
+// Palabras vac\u00edas que no aportan a un slug (se quitan para dejarlo corto y con keyword).
+const STOP = new Set('a al ante bajo cabe con contra de del desde durante e el en entre hacia hasta la las lo los mas m\u00e1s o para por que se segun seg\u00fan sin so sobre tras un una unas unos y the a an of to for and or in on que como debe todo tu su es al is are be to your you how what why'.split(' '));
+
+// Slug corto y con keyword (3-6 palabras). Prefiere un slug propuesto; si no,
+// lo deriva de la keyword + t\u00edtulo quitando palabras vac\u00edas. M\u00e1x ~6 palabras.
+export function shortSlug(proposed: string, title: string, keyword?: string, words = 6): string {
+  if (proposed && proposed.trim()) return slugify(proposed, 70);
+  const base = `${keyword || ''} ${title || ''}`;
+  const parts = slugify(base, 120).split('-').filter((w) => w && !STOP.has(w));
+  const seen = new Set<string>(); const picked: string[] = [];
+  for (const w of parts) { if (seen.has(w)) continue; seen.add(w); picked.push(w); if (picked.length >= words) break; }
+  return (picked.join('-') || slugify(title)).slice(0, 70).replace(/-+$/, '') || 'articulo';
 }
 
 // Garantiza un slug único (agrega -2, -3… si choca). Excluye el propio id al editar.
@@ -35,7 +55,33 @@ export async function uniqueSlug(base: string, excludeId?: string): Promise<stri
   }
 }
 
-const PUB_COLS = 'id,slug,title_es,title_en,excerpt_es,excerpt_en,body_es,body_en,cover_url,cover_alt_es,cover_alt_en,tags,published_at';
+const PUB_COLS = 'id,slug,title_es,title_en,excerpt_es,excerpt_en,body_es,body_en,cover_url,cover_alt_es,cover_alt_en,tags,author,published_at,updated_at';
+
+// URL de portada: la subida por el editor, o una portada ON-BRAND generada al vuelo
+// (degradado Onyx + tema) para que TODO artículo tenga imagen coherente sin coste.
+export function blogCoverUrl(post: any, lang: 'es' | 'en' = 'es'): string {
+  if (post?.cover_url) return post.cover_url;
+  const title = (lang === 'es' ? post?.title_es : post?.title_en) || post?.title_es || post?.title_en || 'Onyx';
+  const kicker = String(post?.tags || '').split(',')[0].trim();
+  const qs = new URLSearchParams({ t: title.slice(0, 90), k: kicker.slice(0, 24), id: String(post?.id || post?.slug || '') });
+  return `/api/blog-cover?${qs.toString()}`;
+}
+
+// Artículos relacionados por etiquetas compartidas (para "Sigue leyendo" e internal links).
+export async function relatedByTags(post: any, limit = 3) {
+  const nowIso = new Date().toISOString();
+  const { data } = await supabaseAdmin.from('blog_posts')
+    .select('id,slug,title_es,title_en,excerpt_es,excerpt_en,cover_url,tags,published_at')
+    .eq('status', 'published').lte('published_at', nowIso).neq('id', post.id)
+    .order('published_at', { ascending: false }).limit(40);
+  const mine = new Set(String(post.tags || '').toLowerCase().split(',').map((s: string) => s.trim()).filter(Boolean));
+  const scored = (data || []).map((p: any) => {
+    const tg = String(p.tags || '').toLowerCase().split(',').map((s) => s.trim());
+    const overlap = tg.filter((t) => mine.has(t)).length;
+    return { p, overlap };
+  }).sort((a, b) => b.overlap - a.overlap || new Date(b.p.published_at).getTime() - new Date(a.p.published_at).getTime());
+  return scored.slice(0, limit).map((s) => s.p);
+}
 
 // Lista de artículos ya publicados (para la página pública /blog).
 export async function listPublished(limit = 60) {
@@ -57,8 +103,9 @@ export async function getPublishedBySlug(slug: string) {
 // Slugs publicados (para generateStaticParams y el sitemap).
 export async function publishedSlugs(): Promise<{ slug: string; updated: string }[]> {
   const { data } = await supabaseAdmin.from('blog_posts')
-    .select('slug,published_at').eq('status', 'published').limit(500);
-  return (data || []).map((r: any) => ({ slug: r.slug, updated: r.published_at || new Date().toISOString() }));
+    .select('slug,published_at,updated_at').eq('status', 'published').limit(500);
+  // lastmod real = updated_at (o published_at si es más reciente) para el sitemap.
+  return (data || []).map((r: any) => ({ slug: r.slug, updated: r.updated_at || r.published_at || new Date().toISOString() }));
 }
 
 // ---- Admin ----
@@ -84,11 +131,14 @@ export async function savePost(b: any) {
   if (status === 'published') row.published_at = b.published_at ? new Date(b.published_at).toISOString() : new Date().toISOString();
 
   if (b.id) {
+    // Al editar NO cambiamos el slug salvo que el editor lo pida (evita romper URLs ya indexadas).
     if (b.slug) row.slug = await uniqueSlug(b.slug, b.id);
     await supabaseAdmin.from('blog_posts').update(row).eq('id', b.id);
     return { id: b.id };
   }
-  row.slug = await uniqueSlug(b.slug || b.title_es || b.title_en || 'articulo');
+  // Post NUEVO: slug corto con keyword (3-6 palabras), cortado a palabra completa.
+  const base = shortSlug(b.slug || '', b.title_es || b.title_en || 'articulo', b.keyword);
+  row.slug = await uniqueSlug(base);
   row.author = b.author ? String(b.author).slice(0, 120) : null;
   const { data, error } = await supabaseAdmin.from('blog_posts').insert(row).select('id').single();
   if (error) throw new Error(error.message);

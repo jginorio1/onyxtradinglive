@@ -167,6 +167,20 @@ export type BlogKeywords = {
 const BK: BlogKeywords = { enabled: false, intensity: 'normal', variants: true, internalLinks: true, es: [], en: [] };
 export const blogKeywordsSettings = () => getSetting<BlogKeywords>('blog_keywords', BK);
 
+// Autor del blog (E-E-A-T). Se muestra la firma con foto, cargo y bio, y alimenta
+// el schema BlogPosting (author Person con jobTitle). Clave para YMYL/finanzas.
+export type BlogAuthor = {
+  name: string; role_es: string; role_en: string;
+  bio_es: string; bio_en: string; avatar_url: string; url: string;
+};
+const BA: BlogAuthor = {
+  name: 'Equipo Onyx', role_es: 'Analistas de trading en Onyx', role_en: 'Trading analysts at Onyx',
+  bio_es: 'Escribimos sobre disciplina, gestión de riesgo y cuentas de fondeo con años de experiencia operando y acompañando a traders.',
+  bio_en: 'We write about discipline, risk management and funded accounts, with years of experience trading and coaching traders.',
+  avatar_url: '', url: '',
+};
+export const blogAuthorSettings = () => getSetting<BlogAuthor>('blog_author', BA);
+
 // Onyx Academy · comisión por defecto (editable por el dueño en el panel).
 export type AcademyFee = { default_pct: number };
 const AF: AcademyFee = { default_pct: Number(process.env.ONYX_ACADEMY_FEE_PCT || 10) };

@@ -85,6 +85,53 @@ function Countdown({ iso, es, compact = false }: { iso: string; es: boolean; com
   return <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', fontWeight: urgent ? 800 : 600, ...(urgent ? { color: 'var(--red)' } : {}) }}>⏳ {compact ? '' : (es ? 'en ' : '')}{txt}</span>;
 }
 
+// Firma del autor (E-E-A-T): nombre, cargo, bio y foto. Alimenta la firma visible
+// del artículo y el schema BlogPosting (author Person). Clave en finanzas (YMYL).
+function BlogAuthorCard({ es }: { es: boolean }) {
+  const [a, setA] = useState<any>(null);
+  const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(false);
+  useEffect(() => { fetch('/api/admin/blog/author').then((r) => r.json()).then(setA).catch(() => {}); }, []);
+  const set = (k: string, v: string) => setA((s: any) => ({ ...s, [k]: v }));
+  async function save() {
+    setBusy(true);
+    try {
+      const r = await fetch('/api/admin/blog/author', { method: 'PATCH', body: JSON.stringify(a) });
+      if (r.ok) toast(es ? 'Autor guardado.' : 'Author saved.'); else toast(es ? 'No se pudo guardar.' : 'Could not save.');
+    } finally { setBusy(false); }
+  }
+  if (!a) return null;
+  return (
+    <div className="card" style={{ marginBottom: 12 }}>
+      <div className="row between" style={{ alignItems: 'center', cursor: 'pointer' }} onClick={() => setOpen((o) => !o)}>
+        <div>
+          <b style={{ fontSize: 14 }}>✍️ {es ? 'Autor del blog (E-E-A-T)' : 'Blog author (E-E-A-T)'}</b>
+          <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>{es ? 'Firma con foto, cargo y bio. Google la valora mucho en finanzas.' : 'Byline with photo, role and bio. Google values it a lot in finance.'} · <b style={{ color: 'var(--tx)' }}>{a.name}</b></div>
+        </div>
+        <span className="btn btn-ghost" style={{ fontSize: 12 }}>{open ? (es ? 'Ocultar' : 'Hide') : (es ? 'Editar' : 'Edit')}</span>
+      </div>
+      {open && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
+          <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 200px' }}><span className="muted" style={{ fontSize: 12 }}>{es ? 'Nombre' : 'Name'}</span><input value={a.name} onChange={(e) => set('name', e.target.value)} style={{ margin: '4px 0 0' }} /></div>
+            <div style={{ flex: '1 1 200px' }}><span className="muted" style={{ fontSize: 12 }}>{es ? 'Foto (URL)' : 'Photo (URL)'}</span><input value={a.avatar_url} onChange={(e) => set('avatar_url', e.target.value)} placeholder="https://…" style={{ margin: '4px 0 0' }} /></div>
+          </div>
+          <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 200px' }}><span className="muted" style={{ fontSize: 12 }}>{es ? 'Cargo (ES)' : 'Role (ES)'}</span><input value={a.role_es} onChange={(e) => set('role_es', e.target.value)} style={{ margin: '4px 0 0' }} /></div>
+            <div style={{ flex: '1 1 200px' }}><span className="muted" style={{ fontSize: 12 }}>{es ? 'Cargo (EN)' : 'Role (EN)'}</span><input value={a.role_en} onChange={(e) => set('role_en', e.target.value)} style={{ margin: '4px 0 0' }} /></div>
+          </div>
+          <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 260px' }}><span className="muted" style={{ fontSize: 12 }}>{es ? 'Bio (ES)' : 'Bio (ES)'}</span><textarea value={a.bio_es} onChange={(e) => set('bio_es', e.target.value)} rows={3} style={{ width: '100%', margin: '4px 0 0' }} /></div>
+            <div style={{ flex: '1 1 260px' }}><span className="muted" style={{ fontSize: 12 }}>{es ? 'Bio (EN)' : 'Bio (EN)'}</span><textarea value={a.bio_en} onChange={(e) => set('bio_en', e.target.value)} rows={3} style={{ width: '100%', margin: '4px 0 0' }} /></div>
+          </div>
+          <div><span className="muted" style={{ fontSize: 12 }}>{es ? 'Enlace del autor (opcional, p. ej. LinkedIn)' : 'Author link (optional, e.g. LinkedIn)'}</span><input value={a.url} onChange={(e) => set('url', e.target.value)} placeholder="https://…" style={{ margin: '4px 0 0' }} /></div>
+          <div><button className="btn btn-primary" onClick={save} disabled={busy} style={{ fontSize: 13 }}>{busy ? '…' : (es ? 'Guardar autor' : 'Save author')}</button></div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function BlogEditor() {
   const { lang } = useLang() as { lang: 'es' | 'en' };
   const es = lang !== 'en';
@@ -94,6 +141,7 @@ export default function BlogEditor() {
   const [ai, setAi] = useState(false);
   const [topic, setTopic] = useState('');
   const [titles, setTitles] = useState<string[]>([]);
+  const [kind, setKind] = useState<'guide' | 'comparison' | 'list' | 'mistakes'>('guide');
   const [view, setView] = useState<'cal' | 'list'>('cal');   // vista del blog: calendario o lista
   const [cursor, setCursor] = useState(() => { const d = new Date(); return { y: d.getFullYear(), m: d.getMonth() }; });
   const [dragId, setDragId] = useState('');                  // id del artículo que se arrastra
@@ -186,7 +234,7 @@ export default function BlogEditor() {
     if (!t) { toast(es ? 'Escribe un tema o título primero.' : 'Type a topic or title first.'); return; }
     setAi(true);
     try {
-      const r = await fetch('/api/admin/blog/ai', { method: 'POST', body: JSON.stringify({ mode: 'titles', topic: t, lang }) });
+      const r = await fetch('/api/admin/blog/ai', { method: 'POST', body: JSON.stringify({ mode: 'titles', topic: t, lang, kind }) });
       const j = await r.json();
       if (r.ok && j.titles) setTitles(j.titles);
       else toast(j.code === 'no_key' ? (es ? 'IA no configurada (falta ANTHROPIC_API_KEY).' : 'AI not configured (missing ANTHROPIC_API_KEY).') : (es ? 'La IA no pudo sugerir.' : 'AI could not suggest.'));
@@ -199,7 +247,7 @@ export default function BlogEditor() {
     if (!confirm(es ? 'Onyx AI escribirá el artículo en español e inglés a partir del título. ¿Continuar?' : 'Onyx AI will write the article in Spanish and English from the title. Continue?')) return;
     setAi(true);
     try {
-      const r = await fetch('/api/admin/blog/ai', { method: 'POST', body: JSON.stringify({ mode: 'generate', title: t }) });
+      const r = await fetch('/api/admin/blog/ai', { method: 'POST', body: JSON.stringify({ mode: 'generate', title: t, kind }) });
       const j = await r.json();
       if (r.ok && j.article) {
         setF((s: any) => ({ ...s, ...j.article }));
@@ -396,6 +444,7 @@ export default function BlogEditor() {
         </div>
 
         <BlogKeywords />
+        <BlogAuthorCard es={es} />
 
         {posts.length === 0 && <div className="card muted">{es ? 'Aún no hay artículos.' : 'No articles yet.'}</div>}
 
@@ -511,8 +560,19 @@ export default function BlogEditor() {
 
         {/* IA: generar artículo completo */}
         <div className="card" style={{ background: 'color-mix(in srgb,var(--brand) 6%, var(--card))' }}>
+          <div className="muted" style={{ fontSize: 12.5, marginBottom: 8 }}>{es ? '2) Elige el tipo de post y Onyx AI escribe el artículo completo (ES/EN) con enlaces internos a tus posts, FAQ e imagen de contenido.' : '2) Pick the post type and Onyx AI writes the full article (ES/EN) with internal links to your posts, FAQ and a content image.'}</div>
+          <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+            {([
+              ['guide', es ? '📘 Guía' : '📘 Guide'],
+              ['comparison', es ? '⚖ Comparativa' : '⚖ Comparison'],
+              ['list', es ? '🔟 Lista/Ranking' : '🔟 List/Ranking'],
+              ['mistakes', es ? '⚠ Errores' : '⚠ Mistakes'],
+            ] as const).map(([v, l]) => (
+              <button key={v} type="button" onClick={() => setKind(v)} className="btn btn-ghost" style={{ fontSize: 12.5, border: '1px solid ' + (kind === v ? 'var(--brand)' : 'var(--line)'), background: kind === v ? 'color-mix(in srgb,var(--brand) 18%,transparent)' : 'transparent' }}>{l}</button>
+            ))}
+          </div>
           <div className="row between" style={{ alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-            <div className="muted" style={{ fontSize: 12.5 }}>{es ? '2) Onyx AI escribe el artículo completo en español e inglés a partir del título.' : '2) Onyx AI writes the full article in Spanish and English from the title.'}</div>
+            <span className="muted" style={{ fontSize: 11.5 }}>{kind === 'comparison' ? (es ? 'Comparará opciones con pros/contras y veredicto.' : 'Compares options with pros/cons and a verdict.') : kind === 'list' ? (es ? 'Título con número; un punto por elemento.' : 'Numbered title; one point per item.') : kind === 'mistakes' ? (es ? 'Errores frecuentes + cómo evitarlos.' : 'Common mistakes + how to avoid them.') : (es ? 'Guía práctica por secciones.' : 'Practical how-to guide.')}</span>
             <button className="btn btn-primary" onClick={generate} disabled={ai}>{ai ? '…' : (es ? '✨ Generar artículo (ES/EN)' : '✨ Generate article (ES/EN)')}</button>
           </div>
         </div>
