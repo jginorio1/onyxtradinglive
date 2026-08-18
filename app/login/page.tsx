@@ -1,12 +1,12 @@
 'use client';
 import { dictFor } from '@/lib/i18n';
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabaseBrowser, passkeySupported } from '@/lib/supabaseBrowser';
 import TwoFactor from '@/app/TwoFactor';
-import Turnstile, { TURNSTILE_KEY } from '@/app/Turnstile';
+import Turnstile, { TURNSTILE_KEY, type TurnstileHandle } from '@/app/Turnstile';
 import { setPending } from '@/lib/pendingCheckout';
 
 type Lang = 'es' | 'en';
@@ -24,6 +24,7 @@ const T = {
     errMail: 'Escribe un email válido.',
     errTerms: 'Debes aceptar los términos para crear la cuenta.',
     errCaptcha: 'Completa la verificación de seguridad.',
+    errCaptchaStale: 'La verificación de seguridad caducó. Vuelve a intentarlo.',
     errGeneric: 'No pudimos completar la operación. Inténtalo de nuevo.',
     strength: ['Muy débil', 'Débil', 'Aceptable', 'Fuerte', 'Excelente'],
     strengthHint: 'Usa 10+ caracteres con al menos una letra y un número.',
@@ -49,6 +50,7 @@ const T = {
     errMail: 'Enter a valid email address.',
     errTerms: 'You must accept the terms to create an account.',
     errCaptcha: 'Complete the security check.',
+    errCaptchaStale: 'The security check expired. Please try again.',
     errGeneric: 'We could not complete the request. Please try again.',
     strength: ['Very weak', 'Weak', 'Okay', 'Strong', 'Excellent'],
     strengthHint: 'Use 10+ characters with at least one letter and one number.',
@@ -65,6 +67,8 @@ const T = {
 // Traduce los mensajes que devuelve Supabase (siempre vienen en inglés)
 function authMsg(raw: string, t: any) {
   const m = (raw || '').toLowerCase();
+  // El token de Turnstile ya se usó o caducó: pedimos reintentar con uno nuevo.
+  if (m.includes('captcha') || m.includes('timeout-or-duplicate')) return t.errCaptchaStale;
   if (m.includes('invalid login')) return t.errBad;
   if (m.includes('already registered') || m.includes('already been registered') || m.includes('user already')) return t.errExists;
   if (m.includes('password') && (m.includes('6') || m.includes('8') || m.includes('short') || m.includes('least'))) return t.errShort;
@@ -114,6 +118,7 @@ function LoginInner() {
   const [mfa, setMfa] = useState(false);          // pide el código de 2 pasos
   const [hp, setHp] = useState('');               // honeypot: humanos lo dejan vacío
   const [captcha, setCaptcha] = useState('');     // token de Turnstile (si está activo)
+  const capRef = useRef<TurnstileHandle>(null);   // para acuñar un token fresco tras cada intento
   const [showPass, setShowPass] = useState(false); // mostrar/ocultar contraseña
   const [pkOk, setPkOk] = useState(false);         // navegador+SDK soportan passkey
   useEffect(() => { setPkOk(passkeySupported()); }, []);
@@ -156,6 +161,7 @@ function LoginInner() {
       router.push(nextDest); router.refresh();
     } catch (e: any) {
       setMsg(authMsg(e?.message || '', t));
+      capRef.current?.reset();   // token consumido → acuñar uno nuevo para el reintento
     } finally { setLoading(false); }
   }
 
@@ -211,6 +217,7 @@ function LoginInner() {
       }
     } catch (e: any) {
       setMsg(authMsg(e?.message || '', t));
+      capRef.current?.reset();   // token consumido → acuñar uno nuevo para el reintento
     } finally { setLoading(false); }
   }
 
@@ -324,7 +331,7 @@ function LoginInner() {
             </label>
           )}
 
-          <Turnstile onToken={setCaptcha} />
+          <Turnstile ref={capRef} onToken={setCaptcha} />
 
           <div style={{ height: 18 }} />
           <button className="btn btn-primary" style={{ width: '100%', opacity: formOk ? 1 : .5 }} disabled={loading || !formOk}>
