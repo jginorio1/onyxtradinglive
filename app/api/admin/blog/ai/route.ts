@@ -114,7 +114,7 @@ export async function POST(req: Request) {
       try { posts = await listAllPosts(); } catch {}
       const post = posts.find((p) => p.id === id);
       if (!post) return NextResponse.json({ error: 'no encontrado' }, { status: 404 });
-      const r = await completeLanguages(post);
+      const r = await completeLanguages(post, { force: !!b.force });
       if (!r.ok) return NextResponse.json({ error: r.reason || 'ai', code: r.reason }, { status: 200 });
       return NextResponse.json({ patch: r.patch || {} });
     }

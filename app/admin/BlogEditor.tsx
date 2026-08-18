@@ -384,16 +384,20 @@ export default function BlogEditor() {
     } finally { setAi(false); }
   }
 
-  // Completa el idioma que le falte a UN post (traduce del que tiene).
+  // Completa/traduce el idioma que falte de UN post. Si ya tiene ambos, pregunta y
+  // fuerza (regenera el idioma más corto a partir del más largo).
   async function completeOne(p: any) {
+    const lenEs = String(p.body_es || '').trim().length, lenEn = String(p.body_en || '').trim().length;
+    const both = lenEs > 0 && lenEn > 0;
+    if (both && !confirm(es ? 'Este artículo ya tiene texto en los dos idiomas. ¿Volver a traducir el idioma más corto a partir del más completo?' : 'This article already has text in both languages. Re-translate the shorter one from the more complete one?')) return;
     setAi(true);
     try {
-      const r = await fetch('/api/admin/blog/ai', { method: 'POST', body: JSON.stringify({ mode: 'complete', id: p.id }) });
+      const r = await fetch('/api/admin/blog/ai', { method: 'POST', body: JSON.stringify({ mode: 'complete', id: p.id, force: both }) });
       const j = await r.json();
       if (r.ok && j.patch && Object.keys(j.patch).length) {
         await fetch('/api/admin/blog', { method: 'POST', body: JSON.stringify({ ...p, ...j.patch }) });
         toast(es ? '🌐 Idioma completado.' : '🌐 Language completed.'); await load();
-      } else toast(j.code === 'no_key' ? (es ? 'IA no configurada.' : 'AI not configured.') : (es ? 'No se pudo completar.' : 'Could not complete.'));
+      } else toast(j.code === 'no_key' ? (es ? 'IA no configurada.' : 'AI not configured.') : j.code === 'empty' ? (es ? 'El artículo está vacío.' : 'The article is empty.') : (es ? 'No se pudo completar.' : 'Could not complete.'));
     } finally { setAi(false); }
   }
 
@@ -650,7 +654,7 @@ export default function BlogEditor() {
                 <div className="row" style={{ gap: 6 }}>
                   {p.status === 'scheduled' && <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--green)' }} onClick={() => publishNow(p)}>⚡ {es ? 'Publicar ahora' : 'Publish now'}</button>}
                   {(p.status === 'published' || p.status === 'scheduled') && <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--brand)' }} onClick={() => enhanceSeo(p)} disabled={ai} title={es ? 'Añadir enlaces internos, FAQ e imagen sin reescribir el texto' : 'Add internal links, FAQ and image without rewriting'}>✨ {es ? 'Mejorar SEO' : 'Improve SEO'}</button>}
-                  {(!!(p.body_es && String(p.body_es).trim())) !== (!!(p.body_en && String(p.body_en).trim())) && <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--amber)' }} onClick={() => completeOne(p)} disabled={ai} title={es ? 'Le falta un idioma: traducir para completar ES y EN' : 'Missing a language: translate to complete ES and EN'}>🌐 {es ? 'Completar idioma' : 'Complete language'}</button>}
+                  {(() => { const miss = (!!(p.body_es && String(p.body_es).trim())) !== (!!(p.body_en && String(p.body_en).trim())); return <button className="btn btn-ghost" style={{ fontSize: 12, color: miss ? 'var(--amber)' : 'var(--mut)' }} onClick={() => completeOne(p)} disabled={ai} title={es ? 'Traducir/completar ES y EN' : 'Translate/complete ES and EN'}>🌐 {miss ? (es ? 'Completar idioma' : 'Complete language') : (es ? 'Idiomas' : 'Languages')}</button>; })()}
                   {p.status === 'published' && <a className="btn btn-ghost" style={{ fontSize: 12 }} href={postUrl(p)} onClick={(e) => { e.preventDefault(); openPost(postUrl(p)); }}>{es ? 'Ver' : 'View'}</a>}
                   <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => edit(p)}>✎ {es ? 'Editar' : 'Edit'}</button>
                   <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--red)' }} onClick={() => del(p.id)}>✕</button>

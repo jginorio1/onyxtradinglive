@@ -179,12 +179,14 @@ export async function enhanceArticle(
 export async function completeLanguages(post: {
   title_es?: string; title_en?: string; excerpt_es?: string; excerpt_en?: string;
   body_es?: string; body_en?: string; cover_alt_es?: string; cover_alt_en?: string;
-}): Promise<{ ok: boolean; patch?: any; reason?: string }> {
+}, opts?: { force?: boolean }): Promise<{ ok: boolean; patch?: any; reason?: string }> {
   if (!process.env.ANTHROPIC_API_KEY) return { ok: false, reason: 'no_key' };
-  const hasEs = !!(post.body_es && post.body_es.trim());
-  const hasEn = !!(post.body_en && post.body_en.trim());
-  if (hasEs === hasEn) return { ok: true, patch: {} };   // ambos o ninguno → nada que traducir
-  const src = hasEs ? 'es' : 'en';                        // idioma origen (el que tiene cuerpo)
+  const lenEs = (post.body_es || '').trim().length, lenEn = (post.body_en || '').trim().length;
+  const hasEs = lenEs > 0, hasEn = lenEn > 0;
+  if (!hasEs && !hasEn) return { ok: false, reason: 'empty' };   // no hay nada que traducir
+  if (!opts?.force && hasEs && hasEn) return { ok: true, patch: {} };   // ya están ambos (sin forzar)
+  // Con force o con uno vacío: el ORIGEN es el idioma con más texto.
+  const src = lenEs >= lenEn ? 'es' : 'en';
   const dstName = src === 'es' ? 'inglés (English)' : 'español (Spanish)';
   const t = (k: 'title' | 'excerpt' | 'body' | 'cover_alt') => (post as any)[`${k}_${src}`] || '';
   // Formato con SEPARADORES (no JSON) → no se rompe aunque el cuerpo tenga muchos
