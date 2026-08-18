@@ -69,7 +69,16 @@ export default function SocialShare({ post, es }: { post: any; es: boolean }) {
   }
 
   const doCopy = (text: string) => { try { navigator.clipboard.writeText(text); toast(es ? 'Copiado.' : 'Copied.'); } catch {} };
-  const doShare = (id: string, text: string) => { const link = shareUrl(id, url, text); if (link) window.open(link, '_blank', 'noopener'); else doCopy(text); };
+  // Abre sin romper en la app instalada (Safari standalone no soporta target=_blank).
+  function openExternal(link: string) {
+    try {
+      const standalone = (navigator as any).standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+      if (standalone) { window.location.assign(link); return; }
+      const w = window.open(link, '_blank', 'noopener');
+      if (!w) window.location.assign(link);
+    } catch { try { window.location.assign(link); } catch {} }
+  }
+  const doShare = (id: string, text: string) => { const link = shareUrl(id, url, text); if (link) openExternal(link); else doCopy(text); };
 
   async function schedule(id: string) {
     if (!when) { toast(es ? 'Elige fecha y hora arriba.' : 'Pick date and time above.'); return; }
