@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { requirePerm } from '@/lib/admin';
-import { suggestTitles, generateArticle, enhanceArticle, generateAlt, type KwGuide, type BlogKind, type RelatedPost } from '@/lib/blogAI';
+import { suggestTitles, generateArticle, enhanceArticle, socialCopy, generateAlt, type KwGuide, type BlogKind, type RelatedPost } from '@/lib/blogAI';
 import { blogKeywordsSettings } from '@/lib/settings';
 import { listAllPosts, shortSlug } from '@/lib/blog';
+import { articleUrl } from '@/lib/social';
 
 const KIND_HINT: Record<string, string> = {
   comparison: ' (formato comparativa "X vs Y")',
@@ -102,6 +103,23 @@ export async function POST(req: Request) {
       const kw = g ? (g.targetEs || g.targetEn) : (String(post.tags || '').split(',')[0] || '');
       const suggestedSlug = shortSlug('', post.title_es || post.title_en || '', kw);
       return NextResponse.json({ body_es: r.body_es, body_en: r.body_en, suggestedSlug, currentSlug: post.slug });
+    }
+
+    // Copy para redes por idioma (a partir de un post existente).
+    if (mode === 'social') {
+      const id = String(b.id || '');
+      const lang = b.lang === 'en' ? 'en' : 'es';
+      if (!id) return NextResponse.json({ error: 'falta id' }, { status: 400 });
+      let posts: any[] = [];
+      try { posts = await listAllPosts(); } catch {}
+      const post = posts.find((p) => p.id === id);
+      if (!post) return NextResponse.json({ error: 'no encontrado' }, { status: 404 });
+      const title = (lang === 'en' ? post.title_en : post.title_es) || post.title_es || post.title_en || '';
+      const excerpt = (lang === 'en' ? post.excerpt_en : post.excerpt_es) || post.excerpt_es || post.excerpt_en || '';
+      const url = articleUrl(SITE, post.slug, lang);
+      const r = await socialCopy(title, excerpt, url, lang);
+      if (!r.ok) return NextResponse.json({ error: r.reason || 'ai', code: r.reason }, { status: 502 });
+      return NextResponse.json({ copy: r.copy, url, slug: post.slug });
     }
 
     if (mode === 'alt') {

@@ -140,6 +140,25 @@ export async function enhanceArticle(
   };
 }
 
+// ---- Copy para redes sociales, optimizado por red ----
+// Genera un texto distinto para cada red a partir del artículo, en el idioma pedido.
+export async function socialCopy(title: string, excerpt: string, url: string, lang: Lang = 'es'): Promise<{ ok: boolean; copy?: Record<string, string>; reason?: string }> {
+  if (!process.env.ANTHROPIC_API_KEY) return { ok: false, reason: 'no_key' };
+  const es = lang !== 'en';
+  const L = es
+    ? 'Escribe TODO en ESPAÑOL.'
+    : 'Write EVERYTHING in ENGLISH.';
+  const system = `Eres el social media manager de Onyx Trading Live. ${GUARDRAIL}\n\n${L} A partir del artículo, escribe un texto para CADA red, optimizado a su estilo y límites. Nada de clickbait falso ni promesas. Reglas por red:\n- x: máx 240 caracteres (deja hueco para el enlace), gancho + 2-3 hashtags relevantes. No incluyas la URL (se añade aparte).\n- linkedin: 2-4 frases profesionales, aporta valor, 2-3 hashtags al final. No incluyas la URL.\n- facebook: 1-3 frases cercanas, 0-2 hashtags. No incluyas la URL.\n- telegram: 1-2 frases directas con 1 emoji, tono de canal. No incluyas la URL.\n- whatsapp: 1 frase muy corta con gancho. No incluyas la URL.\n- reddit: un título honesto y descriptivo (sin hashtags, sin emojis), estilo Reddit.\n- instagram: caption con gancho + 1-2 emojis + 5-8 hashtags; termina con "enlace en bio". No incluyas la URL.\n- tiktok: caption corto con gancho + 3-5 hashtags. No incluyas la URL.\n- threads: 1-2 frases conversacionales, 0-2 hashtags. No incluyas la URL.\n\nDevuelve SOLO este JSON: {"x":"...","linkedin":"...","facebook":"...","telegram":"...","whatsapp":"...","reddit":"...","instagram":"...","tiktok":"...","threads":"..."}`;
+  const user = `Título: ${title}\nResumen: ${excerpt}\nURL (solo de referencia, NO la incluyas en el texto salvo que la red lo pida): ${url}`;
+  const out = parseJson(await aiRaw(system, user, 1400));
+  if (!out) return { ok: false, reason: 'ai_failed' };
+  const keys = ['x', 'linkedin', 'facebook', 'telegram', 'whatsapp', 'reddit', 'instagram', 'tiktok', 'threads'];
+  const copy: Record<string, string> = {};
+  for (const k of keys) if (out[k]) copy[k] = String(out[k]).slice(0, 3000);
+  if (!Object.keys(copy).length) return { ok: false, reason: 'ai_failed' };
+  return { ok: true, copy };
+}
+
 // ---- Texto alternativo (alt) de una imagen, bilingüe ----
 // Describe la imagen para accesibilidad y SEO, integrando la keyword si encaja.
 // context = título/tema del artículo; hint = nombre de archivo o pista opcional.

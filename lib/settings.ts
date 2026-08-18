@@ -181,6 +181,11 @@ const BA: BlogAuthor = {
 };
 export const blogAuthorSettings = () => getSetting<BlogAuthor>('blog_author', BA);
 
+// A dónde llega el "recordatorio" con el copy listo para pegar a la hora programada.
+export type SocialReminder = { viaTelegram: boolean; telegramChatId: string; viaEmail: boolean; email: string };
+const SR2: SocialReminder = { viaTelegram: false, telegramChatId: '', viaEmail: true, email: '' };
+export const socialReminderSettings = () => getSetting<SocialReminder>('social_reminder', SR2);
+
 // Onyx Academy · comisión por defecto (editable por el dueño en el panel).
 export type AcademyFee = { default_pct: number };
 const AF: AcademyFee = { default_pct: Number(process.env.ONYX_ACADEMY_FEE_PCT || 10) };

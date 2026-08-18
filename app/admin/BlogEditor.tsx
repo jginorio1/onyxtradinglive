@@ -4,6 +4,7 @@ import { toast } from '@/lib/toast';
 import { useLang } from '@/lib/lang';
 import BlogKeywords from './BlogKeywords';
 import BlogPreview from './previews/BlogPreview';
+import SocialShare from './SocialShare';
 
 // Calendario de un solo día, mismo estilo que el de la academia (mes grande,
 // día sombreado, navegación de mes, días pasados deshabilitados).
@@ -686,6 +687,10 @@ export default function BlogEditor() {
             </div>
           </div>
         </div>
+
+        {/* Compartir en redes (solo con el artículo ya guardado) */}
+        {f.id ? <SocialShare post={{ id: f.id, slug: f.slug, title_es: f.title_es, title_en: f.title_en }} es={es} />
+          : <div className="muted" style={{ fontSize: 12.5, border: '1px dashed var(--line)', borderRadius: 12, padding: '12px 14px' }}>🔗 {es ? 'Guarda el artículo para compartirlo en redes con copy por red y programación.' : 'Save the article to share it on social with per-network copy and scheduling.'}</div>}
 
         {/* Estado + programación */}
         <div className="card">
