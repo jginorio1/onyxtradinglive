@@ -123,27 +123,53 @@ export async function generateArticle(title: string, kw?: KwGuide, opts?: { rela
 }
 
 // ---- Mejorar un artículo YA existente SIN reescribir su contenido ----
-// Solo añade: enlaces internos a posts relacionados, una imagen :::figure y un
-// bloque :::faq. Respeta el texto tal cual (mismas frases, mismo orden).
+// La IA devuelve SOLO lo nuevo (enlaces, imagen, FAQ) en un JSON PEQUEÑO — así no
+// se trunca en artículos largos — y aquí lo insertamos en el texto original.
+const escRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+function applyEnhance(body: string, lang: 'es' | 'en', out: any): string {
+  let b = body || '';
+  // 1) Enlaces internos: envolver una frase EXACTA existente (1ª aparición, si no está ya enlazada).
+  for (const lk of (Array.isArray(out.links) ? out.links : [])) {
+    const anchor = lang === 'es' ? lk.anchor_es : lk.anchor_en;
+    const slug = String(lk.slug || '').replace(/[^a-z0-9-]/gi, '');
+    if (!anchor || !slug || !b.includes(anchor)) continue;
+    if (new RegExp('\\[' + escRe(anchor) + '\\]').test(b)) continue;      // ya enlazado
+    b = b.replace(anchor, `[${anchor}](/blog/${slug})`);
+  }
+  // 2) Imagen de contenido (si no hay ninguna): insertar antes del 2º "## " o al final.
+  if (!/:::figure/.test(b) && out.figure) {
+    const kicker = (lang === 'es' ? out.figure.kicker_es : out.figure.kicker_en) || '';
+    const title = (lang === 'es' ? out.figure.title_es : out.figure.title_en) || '';
+    const alt = (lang === 'es' ? out.figure.alt_es : out.figure.alt_en) || title;
+    if (title) {
+      const block = `:::figure\nkicker: ${kicker}\ntitle: ${title}\nalt: ${alt}\n:::`;
+      const heads = [...b.matchAll(/^##\s+/gm)];
+      if (heads.length >= 2) { const at = heads[1].index!; b = b.slice(0, at) + block + '\n\n' + b.slice(at); }
+      else b = b.replace(/\s*$/, '') + '\n\n' + block + '\n';
+    }
+  }
+  // 3) FAQ (si no hay): al final.
+  if (!/:::faq/.test(b)) {
+    const faq = (lang === 'es' ? out.faq_es : out.faq_en) || [];
+    if (Array.isArray(faq) && faq.length) {
+      let block = '\n\n:::faq\n';
+      for (const f of faq) if (f && f.q && f.a) block += `Q: ${String(f.q).trim()}\nA: ${String(f.a).trim()}\n`;
+      block += ':::\n';
+      if (/Q:/.test(block)) b = b.replace(/\s*$/, '') + block;
+    }
+  }
+  return b.slice(0, 20000);
+}
 export async function enhanceArticle(
   title: string, bodyEs: string, bodyEn: string, related?: RelatedPost[],
 ): Promise<{ ok: boolean; body_es?: string; body_en?: string; reason?: string }> {
   if (!process.env.ANTHROPIC_API_KEY) return { ok: false, reason: 'no_key' };
-  const hasFaqEs = /:::faq/.test(bodyEs), hasFigEs = /:::figure/.test(bodyEs);
-  const jobs: string[] = [];
-  jobs.push('1) Convierte entre 2 y 4 frases YA existentes en enlaces internos markdown [texto](/blog/slug) hacia los artículos relacionados, SOLO donde el tema encaje de verdad. No cambies las palabras: solo envuelve el texto que ya está con el enlace.');
-  if (!hasFigEs) jobs.push('2) Inserta UNA vez, a media altura, un banner on-brand:\n:::figure\nkicker: ETIQUETA CORTA\ntitle: frase que resuma una idea DEL PROPIO artículo\nalt: descripción para accesibilidad\n:::');
-  if (!hasFaqEs) jobs.push('3) Añade AL FINAL un bloque de 3-4 preguntas frecuentes basadas en el contenido:\n:::faq\nQ: pregunta\nA: respuesta 1-3 frases\n:::');
-  const relList = (related || []).slice(0, 12).map((r) => `- /blog/${r.slug} — ${(r.title_es || r.title_en || '').slice(0, 70)}${r.tags ? ` (${r.tags})` : ''}`).join('\n') || '(no hay otros artículos aún — omite los enlaces internos)';
-  const system = `Eres el editor SEO de Onyx Trading Live. ${GUARDRAIL}\n\nTe doy un artículo YA escrito en español e inglés. NO lo reescribas: conserva EXACTAMENTE el texto, el orden y el tono. Solo aplica estas mejoras (las mismas en ambos idiomas, usando la MISMA ruta /blog/slug):\n${jobs.join('\n')}\n\nArtículos disponibles para enlazar (usa solo estas rutas, no inventes):\n${relList}\n\nDevuelve SOLO este JSON: {"body_es":"markdown ES mejorado","body_en":"markdown EN mejorado"}`;
-  const user = `TÍTULO: ${title}\n\n=== BODY_ES ===\n${bodyEs.slice(0, 8000)}\n\n=== BODY_EN ===\n${bodyEn.slice(0, 8000)}`;
-  const out = parseJson(await aiRaw(system, user, 4500));
-  if (!out || (!out.body_es && !out.body_en)) return { ok: false, reason: 'ai_failed' };
-  return {
-    ok: true,
-    body_es: String(out.body_es || bodyEs).slice(0, 20000),
-    body_en: String(out.body_en || bodyEn).slice(0, 20000),
-  };
+  const relList = (related || []).slice(0, 12).map((r) => `- slug: ${r.slug} — ${(r.title_es || r.title_en || '').slice(0, 70)}${r.tags ? ` (${r.tags})` : ''}`).join('\n') || '(no hay otros artículos — deja links vacío)';
+  const system = `Eres el editor SEO de Onyx Trading Live. ${GUARDRAIL}\n\nTe doy un artículo en español e inglés. NO reescribas el texto. Solo propón añadidos, y devuelve un JSON PEQUEÑO (sin repetir el artículo):\n- "links": 2-4 objetos {"slug":"...","anchor_es":"frase EXACTA copiada del cuerpo español","anchor_en":"frase EXACTA copiada del cuerpo inglés"} para enlazar a artículos relacionados donde el tema encaje. Las frases deben existir TAL CUAL en el cuerpo. Usa solo estos slugs (no inventes):\n${relList}\n- "figure": {"kicker_es","title_es","alt_es","kicker_en","title_en","alt_en"} una imagen-banner que resuma una idea del artículo.\n- "faq_es" y "faq_en": 3-4 objetos {"q","a"} de preguntas frecuentes basadas en el contenido (respuestas 1-3 frases).\n\nDevuelve SOLO ese JSON.`;
+  const user = `TÍTULO: ${title}\n\n=== CUERPO ES ===\n${(bodyEs || '').slice(0, 6000)}\n\n=== CUERPO EN ===\n${(bodyEn || '').slice(0, 6000)}`;
+  const out = parseJson(await aiRaw(system, user, 1800));
+  if (!out) return { ok: false, reason: 'ai_failed' };
+  return { ok: true, body_es: applyEnhance(bodyEs, 'es', out), body_en: applyEnhance(bodyEn, 'en', out) };
 }
 
 // ---- Completar el idioma que falte (traducción fiel, conserva estructura) ----
