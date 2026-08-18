@@ -287,6 +287,38 @@ export default function BlogEditor() {
     } finally { setAi(false); }
   }
 
+  // Mejora TODOS los publicados de una vez: enlaces internos + FAQ + imagen + slug
+  // corto ES/EN. Procesa uno a uno (sin timeout) con barra de progreso.
+  const [bulk, setBulk] = useState<{ running: boolean; done: number; total: number }>({ running: false, done: 0, total: 0 });
+  async function bulkEnhance() {
+    const pub = posts.filter((p) => p.status === 'published');
+    if (!pub.length) { toast(es ? 'No hay artículos publicados.' : 'No published articles.'); return; }
+    if (!confirm(es
+      ? `Onyx AI mejorará el SEO de ${pub.length} artículo(s): enlaces internos a otros posts, FAQ, imagen de contenido y slug corto en español e inglés. NO reescribe tu texto. Los cambios de URL crean redirección 301 automática. ¿Continuar?`
+      : `Onyx AI will improve SEO of ${pub.length} article(s): internal links, FAQ, content image and short slug in Spanish and English. It won't rewrite your text. URL changes create an automatic 301 redirect. Continue?`)) return;
+    setBulk({ running: true, done: 0, total: pub.length });
+    let ok = 0;
+    for (const p of pub) {
+      try {
+        let bodyEs = p.body_es, bodyEn = p.body_en, suggested = '';
+        try {
+          const r = await fetch('/api/admin/blog/ai', { method: 'POST', body: JSON.stringify({ mode: 'enhance', id: p.id }) });
+          const j = await r.json();
+          if (r.ok && (j.body_es || j.body_en)) { bodyEs = j.body_es || bodyEs; bodyEn = j.body_en || bodyEn; suggested = j.suggestedSlug || ''; }
+        } catch {}
+        const kw = (p.tags || '').split(',')[0] || '';
+        const slug = suggested || clientShortSlug(p.title_es || p.title_en || '', kw) || p.slug;
+        const slug_en = clientShortSlug(p.title_en || p.title_es || '', kw) || '';
+        await fetch('/api/admin/blog', { method: 'POST', body: JSON.stringify({ ...p, body_es: bodyEs, body_en: bodyEn, slug, slug_en, status: 'published', published_at: p.published_at }) });
+        ok++;
+      } catch {}
+      setBulk((b) => ({ ...b, done: b.done + 1 }));
+    }
+    setBulk({ running: false, done: 0, total: 0 });
+    toast(es ? `✓ Listo: ${ok}/${pub.length} artículos mejorados.` : `✓ Done: ${ok}/${pub.length} articles improved.`);
+    await load();
+  }
+
   // Mejora un post EXISTENTE sin reescribirlo: enlaces internos + FAQ + imagen.
   // Abre el editor con el resultado para revisar antes de guardar.
   async function enhanceSeo(p: any) {
@@ -486,6 +518,7 @@ export default function BlogEditor() {
               ))}
             </div>
             <a className="btn btn-ghost" href={`${origin}${es ? '/blog' : '/en/blog'}`} onClick={(e) => { e.preventDefault(); openPost(`${origin}${es ? '/blog' : '/en/blog'}`); }} title={es ? 'Abrir el blog público en la web' : 'Open the public blog on the web'}>👁 {es ? 'Ver blog' : 'View blog'}</a>
+            <button className="btn btn-ghost" style={{ color: 'var(--brand)' }} onClick={bulkEnhance} disabled={bulk.running} title={es ? 'Mejora SEO de todos los publicados: enlaces internos, FAQ, imagen y slug corto ES/EN' : 'Improve SEO of all published: internal links, FAQ, image and short ES/EN slug'}>{bulk.running ? `⏳ ${bulk.done}/${bulk.total}` : (es ? '✨ Mejorar SEO de todos' : '✨ Improve SEO of all')}</button>
             <button className="btn btn-primary" onClick={() => { setTitles([]); setTopic(''); setF({ ...blank }); }}>＋ {es ? 'Nuevo' : 'New'}</button>
           </div>
         </div>
