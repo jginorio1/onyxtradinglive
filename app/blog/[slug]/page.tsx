@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { getPublishedBySlug, relatedByTags, blogCoverUrl, findRedirect, slugFor } from '@/lib/blog';
 import { mdToHtml, parseFaq } from '@/lib/md';
-import { blogAuthorSettings } from '@/lib/settings';
+import { blogAuthorsSettings, resolveBlogAuthor } from '@/lib/settings';
 import { serverLang, localeAlternates, SITE } from '@/lib/locale';
 import JsonLd from '../../JsonLd';
 import BlogCharts from '../BlogCharts';
@@ -62,8 +62,12 @@ export default async function BlogArticle({ params }: { params: { slug: string }
   const coverAlt = pref(es ? p.cover_alt_es : p.cover_alt_en, es ? p.cover_alt_en : p.cover_alt_es) || title;
 
   const selfPath = es ? `/blog/${p.slug}` : `/en/blog/${slugFor(p, 'en')}`;
-  const author = await blogAuthorSettings();
-  const authorRole = es ? author.role_es : author.role_en;
+  // Autor del ARTÍCULO (por su author_id); si no tiene, el por defecto del plantel.
+  const authorRoster = await blogAuthorsSettings();
+  const author = resolveBlogAuthor(authorRoster, p.author_id);
+  const trader = es ? author.trader_es : author.trader_en;
+  const exp = es ? author.experience_es : author.experience_en;
+  const authorRole = [trader, exp].filter(Boolean).join(' · ');   // "Analista · 8 años en forex"
   const authorBio = es ? author.bio_es : author.bio_en;
   const related = await relatedByTags(p, 3).catch(() => []);
   const faqs = parseFaq(body);

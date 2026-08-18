@@ -59,7 +59,7 @@ function clientShortSlug(title: string, keyword = '', words = 6): string {
 }
 
 const TIMES = Array.from({ length: 48 }, (_, i) => `${String(Math.floor(i / 2)).padStart(2, '0')}:${i % 2 ? '30' : '00'}`);
-const blank = { id: '', slug: '', slug_en: '', title_es: '', title_en: '', excerpt_es: '', excerpt_en: '', body_es: '', body_en: '', cover_url: '', cover_alt_es: '', cover_alt_en: '', tags: '', status: 'draft', pubDate: '', pubTime: '09:00' };
+const blank = { id: '', slug: '', slug_en: '', author_id: '', title_es: '', title_en: '', excerpt_es: '', excerpt_en: '', body_es: '', body_en: '', cover_url: '', cover_alt_es: '', cover_alt_en: '', tags: '', status: 'draft', pubDate: '', pubTime: '09:00' };
 
 // Lee un File como data URL base64 (para subir la imagen al Storage).
 function fileToDataUrl(file: File): Promise<string> {
@@ -97,47 +97,67 @@ function Countdown({ iso, es, compact = false }: { iso: string; es: boolean; com
   return <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', fontWeight: urgent ? 800 : 600, ...(urgent ? { color: 'var(--red)' } : {}) }}>⏳ {compact ? '' : (es ? 'en ' : '')}{txt}</span>;
 }
 
-// Firma del autor (E-E-A-T): nombre, cargo, bio y foto. Alimenta la firma visible
-// del artículo y el schema BlogPosting (author Person). Clave en finanzas (YMYL).
-function BlogAuthorCard({ es }: { es: boolean }) {
-  const [a, setA] = useState<any>(null);
-  const [busy, setBusy] = useState(false);
+// Plantel de AUTORES del blog (varios). Cada uno con perfil: nombre, tipo de trader,
+// tiempo/experiencia, bio y foto. Alimenta la firma del artículo y el schema Person.
+function BlogAuthorCard({ es, roster, reload }: { es: boolean; roster: any; reload: () => void }) {
   const [open, setOpen] = useState(false);
-  useEffect(() => { fetch('/api/admin/blog/author').then((r) => r.json()).then(setA).catch(() => {}); }, []);
-  const set = (k: string, v: string) => setA((s: any) => ({ ...s, [k]: v }));
+  const [list, setList] = useState<any[]>([]);
+  const [defaultId, setDefaultId] = useState('');
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { if (roster) { setList(roster.list || []); setDefaultId(roster.defaultId || ''); } }, [roster]);
+  const rid = () => 'a' + Math.random().toString(36).slice(2, 8);
+  const setA = (id: string, k: string, v: string) => setList((L) => L.map((a) => (a.id === id ? { ...a, [k]: v } : a)));
+  const addA = () => setList((L) => [...L, { id: rid(), name: es ? 'Nuevo autor' : 'New author', trader_es: '', trader_en: '', experience_es: '', experience_en: '', bio_es: '', bio_en: '', avatar_url: '', url: '' }]);
+  const delA = (id: string) => { if (list.length <= 1) { toast(es ? 'Debe quedar al menos un autor.' : 'At least one author required.'); return; } setList((L) => L.filter((a) => a.id !== id)); if (defaultId === id) setDefaultId(list.find((a) => a.id !== id)?.id || ''); };
   async function save() {
     setBusy(true);
     try {
-      const r = await fetch('/api/admin/blog/author', { method: 'PATCH', body: JSON.stringify(a) });
-      if (r.ok) toast(es ? 'Autor guardado.' : 'Author saved.'); else toast(es ? 'No se pudo guardar.' : 'Could not save.');
+      const r = await fetch('/api/admin/blog/author', { method: 'PATCH', body: JSON.stringify({ list, defaultId }) });
+      if (r.ok) { toast(es ? 'Autores guardados.' : 'Authors saved.'); reload(); } else toast(es ? 'No se pudo guardar.' : 'Could not save.');
     } finally { setBusy(false); }
   }
-  if (!a) return null;
   return (
     <div className="card" style={{ marginBottom: 12 }}>
       <div className="row between" style={{ alignItems: 'center', cursor: 'pointer' }} onClick={() => setOpen((o) => !o)}>
         <div>
-          <b style={{ fontSize: 14 }}>✍️ {es ? 'Autor del blog (E-E-A-T)' : 'Blog author (E-E-A-T)'}</b>
-          <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>{es ? 'Firma con foto, cargo y bio. Google la valora mucho en finanzas.' : 'Byline with photo, role and bio. Google values it a lot in finance.'} · <b style={{ color: 'var(--tx)' }}>{a.name}</b></div>
+          <b style={{ fontSize: 14 }}>✍️ {es ? 'Autores del blog (E-E-A-T)' : 'Blog authors (E-E-A-T)'}</b>
+          <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>{es ? 'Varios autores con perfil (tipo de trader, experiencia, bio, foto). Cada artículo guarda su autor.' : 'Multiple authors with profile (trader type, experience, bio, photo). Each article keeps its author.'} · {list.length} {es ? 'autores' : 'authors'}</div>
         </div>
-        <span className="btn btn-ghost" style={{ fontSize: 12 }}>{open ? (es ? 'Ocultar' : 'Hide') : (es ? 'Editar' : 'Edit')}</span>
+        <span className="btn btn-ghost" style={{ fontSize: 12 }}>{open ? (es ? 'Ocultar' : 'Hide') : (es ? 'Gestionar' : 'Manage')}</span>
       </div>
       {open && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
-          <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-            <div style={{ flex: '1 1 200px' }}><span className="muted" style={{ fontSize: 12 }}>{es ? 'Nombre' : 'Name'}</span><input value={a.name} onChange={(e) => set('name', e.target.value)} style={{ margin: '4px 0 0' }} /></div>
-            <div style={{ flex: '1 1 200px' }}><span className="muted" style={{ fontSize: 12 }}>{es ? 'Foto (URL)' : 'Photo (URL)'}</span><input value={a.avatar_url} onChange={(e) => set('avatar_url', e.target.value)} placeholder="https://…" style={{ margin: '4px 0 0' }} /></div>
+        <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {list.map((a) => (
+            <div key={a.id} style={{ border: '1px solid var(--line)', borderRadius: 12, padding: 12, background: 'var(--bg2)' }}>
+              <div className="row between" style={{ alignItems: 'center', marginBottom: 8 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+                  <input type="radio" name="defAuthor" checked={defaultId === a.id} onChange={() => setDefaultId(a.id)} /> {es ? 'Por defecto' : 'Default'}
+                </label>
+                <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--red)' }} onClick={() => delA(a.id)}>✕</button>
+              </div>
+              <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+                <div style={{ flex: '1 1 200px' }}><span className="muted" style={{ fontSize: 12 }}>{es ? 'Nombre' : 'Name'}</span><input value={a.name} onChange={(e) => setA(a.id, 'name', e.target.value)} style={{ margin: '4px 0 0' }} /></div>
+                <div style={{ flex: '1 1 200px' }}><span className="muted" style={{ fontSize: 12 }}>{es ? 'Foto (URL)' : 'Photo (URL)'}</span><input value={a.avatar_url} onChange={(e) => setA(a.id, 'avatar_url', e.target.value)} placeholder="https://…" style={{ margin: '4px 0 0' }} /></div>
+              </div>
+              <div className="row" style={{ gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
+                <div style={{ flex: '1 1 160px' }}><span className="muted" style={{ fontSize: 12 }}>{es ? 'Tipo de trader (ES)' : 'Trader type (ES)'}</span><input value={a.trader_es} onChange={(e) => setA(a.id, 'trader_es', e.target.value)} placeholder={es ? 'Day trader, analista…' : ''} style={{ margin: '4px 0 0' }} /></div>
+                <div style={{ flex: '1 1 160px' }}><span className="muted" style={{ fontSize: 12 }}>{es ? 'Tipo de trader (EN)' : 'Trader type (EN)'}</span><input value={a.trader_en} onChange={(e) => setA(a.id, 'trader_en', e.target.value)} placeholder="Day trader, analyst…" style={{ margin: '4px 0 0' }} /></div>
+              </div>
+              <div className="row" style={{ gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
+                <div style={{ flex: '1 1 160px' }}><span className="muted" style={{ fontSize: 12 }}>{es ? 'Experiencia/tiempo (ES)' : 'Experience/time (ES)'}</span><input value={a.experience_es} onChange={(e) => setA(a.id, 'experience_es', e.target.value)} placeholder={es ? '8 años en forex' : ''} style={{ margin: '4px 0 0' }} /></div>
+                <div style={{ flex: '1 1 160px' }}><span className="muted" style={{ fontSize: 12 }}>{es ? 'Experiencia/tiempo (EN)' : 'Experience/time (EN)'}</span><input value={a.experience_en} onChange={(e) => setA(a.id, 'experience_en', e.target.value)} placeholder="8 years in forex" style={{ margin: '4px 0 0' }} /></div>
+              </div>
+              <div className="row" style={{ gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
+                <div style={{ flex: '1 1 260px' }}><span className="muted" style={{ fontSize: 12 }}>{es ? 'Bio (ES)' : 'Bio (ES)'}</span><textarea value={a.bio_es} onChange={(e) => setA(a.id, 'bio_es', e.target.value)} rows={2} style={{ width: '100%', margin: '4px 0 0' }} /></div>
+                <div style={{ flex: '1 1 260px' }}><span className="muted" style={{ fontSize: 12 }}>{es ? 'Bio (EN)' : 'Bio (EN)'}</span><textarea value={a.bio_en} onChange={(e) => setA(a.id, 'bio_en', e.target.value)} rows={2} style={{ width: '100%', margin: '4px 0 0' }} /></div>
+              </div>
+              <div style={{ marginTop: 6 }}><span className="muted" style={{ fontSize: 12 }}>{es ? 'Enlace (opcional, LinkedIn…)' : 'Link (optional, LinkedIn…)'}</span><input value={a.url} onChange={(e) => setA(a.id, 'url', e.target.value)} placeholder="https://…" style={{ margin: '4px 0 0' }} /></div>
+            </div>
+          ))}
+          <div className="row" style={{ gap: 8 }}>
+            <button className="btn btn-ghost" onClick={addA} style={{ fontSize: 13 }}>＋ {es ? 'Añadir autor' : 'Add author'}</button>
+            <button className="btn btn-primary" onClick={save} disabled={busy} style={{ fontSize: 13 }}>{busy ? '…' : (es ? 'Guardar autores' : 'Save authors')}</button>
           </div>
-          <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-            <div style={{ flex: '1 1 200px' }}><span className="muted" style={{ fontSize: 12 }}>{es ? 'Cargo (ES)' : 'Role (ES)'}</span><input value={a.role_es} onChange={(e) => set('role_es', e.target.value)} style={{ margin: '4px 0 0' }} /></div>
-            <div style={{ flex: '1 1 200px' }}><span className="muted" style={{ fontSize: 12 }}>{es ? 'Cargo (EN)' : 'Role (EN)'}</span><input value={a.role_en} onChange={(e) => set('role_en', e.target.value)} style={{ margin: '4px 0 0' }} /></div>
-          </div>
-          <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-            <div style={{ flex: '1 1 260px' }}><span className="muted" style={{ fontSize: 12 }}>{es ? 'Bio (ES)' : 'Bio (ES)'}</span><textarea value={a.bio_es} onChange={(e) => set('bio_es', e.target.value)} rows={3} style={{ width: '100%', margin: '4px 0 0' }} /></div>
-            <div style={{ flex: '1 1 260px' }}><span className="muted" style={{ fontSize: 12 }}>{es ? 'Bio (EN)' : 'Bio (EN)'}</span><textarea value={a.bio_en} onChange={(e) => set('bio_en', e.target.value)} rows={3} style={{ width: '100%', margin: '4px 0 0' }} /></div>
-          </div>
-          <div><span className="muted" style={{ fontSize: 12 }}>{es ? 'Enlace del autor (opcional, p. ej. LinkedIn)' : 'Author link (optional, e.g. LinkedIn)'}</span><input value={a.url} onChange={(e) => set('url', e.target.value)} placeholder="https://…" style={{ margin: '4px 0 0' }} /></div>
-          <div><button className="btn btn-primary" onClick={save} disabled={busy} style={{ fontSize: 13 }}>{busy ? '…' : (es ? 'Guardar autor' : 'Save author')}</button></div>
         </div>
       )}
     </div>
@@ -159,7 +179,9 @@ export default function BlogEditor() {
   const [dragId, setDragId] = useState('');                  // id del artículo que se arrastra
   const [overDay, setOverDay] = useState('');                // día resaltado al arrastrar encima
   const [origin, setOrigin] = useState('');                  // origen absoluto (para abrir enlaces desde la app instalada)
-  useEffect(() => { try { setOrigin(window.location.origin); } catch {} }, []);
+  const [authors, setAuthors] = useState<any>(null);         // plantel de autores
+  const loadAuthors = () => { fetch('/api/admin/blog/author').then((r) => r.json()).then(setAuthors).catch(() => {}); };
+  useEffect(() => { try { setOrigin(window.location.origin); } catch {} loadAuthors(); }, []);
   // URL pública absoluta de un artículo. Absoluta = evita el error "dirección no válida"
   // al abrir target=_blank dentro de la app instalada (Safari standalone).
   const postUrl = (p: any) => es ? `${origin}/blog/${p.slug || ''}` : `${origin}/en/blog/${p.slug_en || p.slug || ''}`;
@@ -592,7 +614,7 @@ export default function BlogEditor() {
         </div>
 
         <BlogKeywords />
-        <BlogAuthorCard es={es} />
+        <BlogAuthorCard es={es} roster={authors} reload={loadAuthors} />
 
         {posts.length === 0 && <div className="card muted">{es ? 'Aún no hay artículos.' : 'No articles yet.'}</div>}
 
@@ -822,6 +844,18 @@ export default function BlogEditor() {
         {/* Compartir en redes (solo con el artículo ya guardado) */}
         {f.id ? <SocialShare post={{ id: f.id, slug: f.slug, title_es: f.title_es, title_en: f.title_en }} es={es} />
           : <div className="muted" style={{ fontSize: 12.5, border: '1px dashed var(--line)', borderRadius: 12, padding: '12px 14px' }}>🔗 {es ? 'Guarda el artículo para compartirlo en redes con copy por red y programación.' : 'Save the article to share it on social with per-network copy and scheduling.'}</div>}
+
+        {/* Autor del artículo */}
+        <div className="card">
+          <div className="row between" style={{ alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+            <span className="muted" style={{ fontSize: 12.5 }}>{es ? '✍️ Autor de este artículo' : '✍️ Author of this article'}</span>
+            <select value={f.author_id || ''} onChange={(e) => set('author_id', e.target.value)} style={{ margin: 0, width: 'auto', minWidth: 200 }}>
+              <option value="">{es ? 'Por defecto' : 'Default'}{authors?.list?.length ? ` (${authors.list.find((a: any) => a.id === authors.defaultId)?.name || ''})` : ''}</option>
+              {(authors?.list || []).map((a: any) => <option key={a.id} value={a.id}>{a.name}{(es ? a.trader_es : a.trader_en) ? ` · ${es ? a.trader_es : a.trader_en}` : ''}</option>)}
+            </select>
+          </div>
+          <div className="muted" style={{ fontSize: 11.5, marginTop: 4 }}>{es ? 'Se guarda con el artículo. Cambiar el autor por defecto no afecta a los ya asignados. Gestiona el plantel en “Autores del blog”.' : 'Saved with the article. Changing the default author does not affect assigned ones. Manage the roster in “Blog authors”.'}</div>
+        </div>
 
         {/* Estado + programación */}
         <div className="card">

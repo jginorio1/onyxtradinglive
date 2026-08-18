@@ -181,6 +181,29 @@ const BA: BlogAuthor = {
 };
 export const blogAuthorSettings = () => getSetting<BlogAuthor>('blog_author', BA);
 
+// Plantel de autores del blog (varios). Cada artículo guarda el id del autor.
+export type BlogAuthorProfile = {
+  id: string; name: string;
+  trader_es: string; trader_en: string;      // qué tipo de trader es
+  experience_es: string; experience_en: string; // tiempo / experiencia
+  bio_es: string; bio_en: string; avatar_url: string; url: string;
+};
+export type BlogAuthors = { list: BlogAuthorProfile[]; defaultId: string };
+const BAS: BlogAuthors = {
+  defaultId: 'onyx',
+  list: [{
+    id: 'onyx', name: 'Equipo Onyx',
+    trader_es: 'Analistas de trading', trader_en: 'Trading analysts',
+    experience_es: 'años operando y acompañando traders', experience_en: 'years trading and coaching traders',
+    bio_es: BA.bio_es, bio_en: BA.bio_en, avatar_url: '', url: '',
+  }],
+};
+export const blogAuthorsSettings = () => getSetting<BlogAuthors>('blog_authors', BAS);
+// Resuelve el autor de un artículo por id (o el por defecto).
+export function resolveBlogAuthor(a: BlogAuthors, id?: string | null): BlogAuthorProfile {
+  return a.list.find((x) => x.id === id) || a.list.find((x) => x.id === a.defaultId) || a.list[0] || BAS.list[0];
+}
+
 // A dónde llega el "recordatorio" con el copy listo para pegar a la hora programada.
 export type SocialReminder = { viaTelegram: boolean; telegramChatId: string; viaEmail: boolean; email: string };
 const SR2: SocialReminder = { viaTelegram: false, telegramChatId: '', viaEmail: true, email: '' };

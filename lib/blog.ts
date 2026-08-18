@@ -56,7 +56,7 @@ export async function uniqueSlug(base: string, excludeId?: string): Promise<stri
 }
 
 const PUB_COLS = 'id,slug,title_es,title_en,excerpt_es,excerpt_en,body_es,body_en,cover_url,cover_alt_es,cover_alt_en,tags,author,published_at,updated_at';
-const PUB_COLS2 = PUB_COLS + ',slug_en';   // con slug propio en inglés
+const PUB_COLS2 = PUB_COLS + ',slug_en,author_id';   // con slug EN y autor por artículo
 
 // slug_en único (agrega -2, -3…). Tolerante si la columna aún no existe.
 export async function uniqueSlugEn(base: string, excludeId?: string): Promise<string> {
@@ -71,10 +71,10 @@ export async function uniqueSlugEn(base: string, excludeId?: string): Promise<st
   return root;
 }
 
-// Update tolerante: si falla por slug_en (columna no creada), reintenta sin ella.
+// Update tolerante: si falla por columnas nuevas (slug_en / author_id aún no creadas), reintenta sin ellas.
 async function updateTolerant(id: string, row: any) {
   let r = await supabaseAdmin.from('blog_posts').update(row).eq('id', id);
-  if (r.error && 'slug_en' in row) { const { slug_en, ...rest } = row; r = await supabaseAdmin.from('blog_posts').update(rest).eq('id', id); }
+  if (r.error && ('slug_en' in row || 'author_id' in row)) { const { slug_en, author_id, ...rest } = row; r = await supabaseAdmin.from('blog_posts').update(rest).eq('id', id); }
   return r;
 }
 
@@ -190,6 +190,8 @@ export async function savePost(b: any) {
   };
   // published_at: se fija al pasar a 'published'; scheduled lo dejará el cron.
   if (status === 'published') row.published_at = b.published_at ? new Date(b.published_at).toISOString() : new Date().toISOString();
+  // Autor por artículo (id del plantel). Guardado tolerante si la columna no existe.
+  if (b.author_id !== undefined) row.author_id = b.author_id ? String(b.author_id).slice(0, 60) : null;
 
   // slug_en (idioma inglés). Solo se incluye cuando corresponde; guardado tolerante
   // si la columna aún no existe.
@@ -218,7 +220,7 @@ export async function savePost(b: any) {
   row.slug = await uniqueSlug(base);
   row.author = b.author ? String(b.author).slice(0, 120) : null;
   let ins = await supabaseAdmin.from('blog_posts').insert(row).select('id').single();
-  if (ins.error && 'slug_en' in row) { delete row.slug_en; ins = await supabaseAdmin.from('blog_posts').insert(row).select('id').single(); }
+  if (ins.error && ('slug_en' in row || 'author_id' in row)) { delete row.slug_en; delete row.author_id; ins = await supabaseAdmin.from('blog_posts').insert(row).select('id').single(); }
   if (ins.error) throw new Error(ins.error.message);
   return { id: (ins.data as any).id, slug: row.slug };
 }
