@@ -291,14 +291,15 @@ export default function BlogEditor() {
   // corto ES/EN. Procesa uno a uno (sin timeout) con barra de progreso.
   const [bulk, setBulk] = useState<{ running: boolean; done: number; total: number }>({ running: false, done: 0, total: 0 });
   async function bulkEnhance() {
-    const pub = posts.filter((p) => p.status === 'published');
-    if (!pub.length) { toast(es ? 'No hay artículos publicados.' : 'No published articles.'); return; }
+    // Publicados Y programados (los borradores se dejan fuera).
+    const list = posts.filter((p) => p.status === 'published' || p.status === 'scheduled');
+    if (!list.length) { toast(es ? 'No hay artículos publicados ni programados.' : 'No published or scheduled articles.'); return; }
     if (!confirm(es
-      ? `Onyx AI mejorará el SEO de ${pub.length} artículo(s): enlaces internos a otros posts, FAQ, imagen de contenido y slug corto en español e inglés. NO reescribe tu texto. Los cambios de URL crean redirección 301 automática. ¿Continuar?`
-      : `Onyx AI will improve SEO of ${pub.length} article(s): internal links, FAQ, content image and short slug in Spanish and English. It won't rewrite your text. URL changes create an automatic 301 redirect. Continue?`)) return;
-    setBulk({ running: true, done: 0, total: pub.length });
+      ? `Onyx AI mejorará el SEO de ${list.length} artículo(s) (publicados y programados): enlaces internos a otros posts, FAQ, imagen de contenido y slug corto en español e inglés. NO reescribe tu texto. Conserva el estado y la fecha de cada uno. Los cambios de URL en los ya publicados crean redirección 301. ¿Continuar?`
+      : `Onyx AI will improve SEO of ${list.length} article(s) (published and scheduled): internal links, FAQ, content image and short slug in Spanish and English. It won't rewrite your text. It keeps each one's status and date. URL changes on already-published ones create a 301 redirect. Continue?`)) return;
+    setBulk({ running: true, done: 0, total: list.length });
     let ok = 0;
-    for (const p of pub) {
+    for (const p of list) {
       try {
         let bodyEs = p.body_es, bodyEn = p.body_en, suggested = '';
         try {
@@ -309,13 +310,14 @@ export default function BlogEditor() {
         const kw = (p.tags || '').split(',')[0] || '';
         const slug = suggested || clientShortSlug(p.title_es || p.title_en || '', kw) || p.slug;
         const slug_en = clientShortSlug(p.title_en || p.title_es || '', kw) || '';
-        await fetch('/api/admin/blog', { method: 'POST', body: JSON.stringify({ ...p, body_es: bodyEs, body_en: bodyEn, slug, slug_en, status: 'published', published_at: p.published_at }) });
+        // Conserva estado y fecha propios de cada post (no publica los programados).
+        await fetch('/api/admin/blog', { method: 'POST', body: JSON.stringify({ ...p, body_es: bodyEs, body_en: bodyEn, slug, slug_en }) });
         ok++;
       } catch {}
       setBulk((b) => ({ ...b, done: b.done + 1 }));
     }
     setBulk({ running: false, done: 0, total: 0 });
-    toast(es ? `✓ Listo: ${ok}/${pub.length} artículos mejorados.` : `✓ Done: ${ok}/${pub.length} articles improved.`);
+    toast(es ? `✓ Listo: ${ok}/${list.length} artículos mejorados.` : `✓ Done: ${ok}/${list.length} articles improved.`);
     await load();
   }
 
