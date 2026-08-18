@@ -151,8 +151,11 @@ function LoginInner() {
   async function signInPasskey() {
     if (TURNSTILE_KEY && !captcha) { setMsg(t.errCaptcha); return; }   // espera al captcha
     setLoading(true); setMsg('');
+    // Token FRESCO en el instante del envío (evita "timeout-or-duplicate").
+    const cap = TURNSTILE_KEY ? (await capRef.current?.getToken()) || captcha : undefined;
+    if (TURNSTILE_KEY && !cap) { setMsg(t.errCaptchaStale); setLoading(false); return; }
     try {
-      const { error } = await (sb as any).auth.signInWithPasskey(captcha ? { options: { captchaToken: captcha } } : undefined);
+      const { error } = await (sb as any).auth.signInWithPasskey(cap ? { options: { captchaToken: cap } } : undefined);
       if (error) throw error;
       try {
         const { data: aal } = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
@@ -175,7 +178,9 @@ function LoginInner() {
     if (signup && !terms) { setMsg(t.errTerms); return; }
     if (TURNSTILE_KEY && !captcha) { setMsg(t.errCaptcha); return; }
     setLoading(true); setMsg('');
-    const cap = captcha || undefined;
+    // Token FRESCO en el instante del envío (evita "timeout-or-duplicate").
+    const cap = TURNSTILE_KEY ? ((await capRef.current?.getToken()) || captcha || undefined) : undefined;
+    if (TURNSTILE_KEY && !cap) { setMsg(t.errCaptchaStale); setLoading(false); return; }
     try {
       if (signup) {
         // Respaldo local (por si el correo se abre en el mismo navegador).
