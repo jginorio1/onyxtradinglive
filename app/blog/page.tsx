@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { listPublished, blogCoverUrl } from '@/lib/blog';
+import { listPublished, blogCoverUrl, slugFor } from '@/lib/blog';
 import { serverLang, localeAlternates } from '@/lib/locale';
 
 export const dynamic = 'force-dynamic'; // se renderiza en cada visita (contenido siempre fresco)
@@ -45,7 +45,7 @@ export default async function BlogIndex() {
           const title = pref(es ? p.title_es : p.title_en, es ? p.title_en : p.title_es);
           const excerpt = pref(es ? p.excerpt_es : p.excerpt_en, es ? p.excerpt_en : p.excerpt_es);
           return (
-            <Link key={p.id} href={`/blog/${p.slug}`} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8, textDecoration: 'none', color: 'inherit', overflow: 'hidden', padding: 0 }}>
+            <Link key={p.id} href={es ? `/blog/${p.slug}` : `/en/blog/${slugFor(p, 'en')}`} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8, textDecoration: 'none', color: 'inherit', overflow: 'hidden', padding: 0 }}>
               <img src={blogCoverUrl(p, es ? 'es' : 'en')} alt="" style={{ width: '100%', height: 150, objectFit: 'cover' }} />
               <div style={{ padding: '4px 16px 16px', display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
                 <div className="muted" style={{ fontSize: 12 }}>{fmtDate(p.published_at, es)}</div>

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, permanentRedirect } from 'next/navigation';
-import { getPublishedBySlug, relatedByTags, blogCoverUrl, findRedirect } from '@/lib/blog';
+import { getPublishedBySlug, relatedByTags, blogCoverUrl, findRedirect, slugFor } from '@/lib/blog';
 import { mdToHtml, parseFaq } from '@/lib/md';
 import { blogAuthorSettings } from '@/lib/settings';
 import { serverLang, localeAlternates, SITE } from '@/lib/locale';
@@ -20,10 +20,13 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   const title = pref(es ? p.title_es : p.title_en, es ? p.title_en : p.title_es);
   const desc = pref(es ? p.excerpt_es : p.excerpt_en, es ? p.excerpt_en : p.excerpt_es);
   const cover = abs(blogCoverUrl(p, es ? 'es' : 'en'));
+  // hreflang con el slug propio de cada idioma.
+  const esUrl = `${SITE}/blog/${p.slug}`;
+  const enUrl = `${SITE}/en/blog/${slugFor(p, 'en')}`;
   return {
     title: `${title} · Onyx Trading Live`,
     description: desc || title,
-    alternates: localeAlternates(`/blog/${p.slug}`),
+    alternates: { canonical: es ? esUrl : enUrl, languages: { es: esUrl, en: enUrl, 'x-default': esUrl } },
     openGraph: { title, description: desc || title, type: 'article', images: [cover] },
     twitter: { card: 'summary_large_image', title, description: desc || title, images: [cover] },
   };
@@ -49,6 +52,7 @@ export default async function BlogArticle({ params }: { params: { slug: string }
   const cover = blogCoverUrl(p, es ? 'es' : 'en');
   const coverAlt = pref(es ? p.cover_alt_es : p.cover_alt_en, es ? p.cover_alt_en : p.cover_alt_es) || title;
 
+  const selfPath = es ? `/blog/${p.slug}` : `/en/blog/${slugFor(p, 'en')}`;
   const author = await blogAuthorSettings();
   const authorRole = es ? author.role_es : author.role_en;
   const authorBio = es ? author.bio_es : author.bio_en;
@@ -70,7 +74,7 @@ export default async function BlogArticle({ params }: { params: { slug: string }
     headline: title, description: excerpt, inLanguage: es ? 'es' : 'en',
     datePublished: p.published_at, dateModified: updated,
     image: [abs(cover)], wordCount,
-    mainEntityOfPage: `${SITE}/blog/${p.slug}`,
+    mainEntityOfPage: `${SITE}${selfPath}`,
     author: authorLd,
     publisher: { '@type': 'Organization', name: 'Onyx Trading Live', logo: { '@type': 'ImageObject', url: `${SITE}/onyx-symbol.png` } },
   };
@@ -79,7 +83,7 @@ export default async function BlogArticle({ params }: { params: { slug: string }
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: es ? 'Inicio' : 'Home', item: SITE },
       { '@type': 'ListItem', position: 2, name: 'Blog', item: `${SITE}/blog` },
-      { '@type': 'ListItem', position: 3, name: title, item: `${SITE}/blog/${p.slug}` },
+      { '@type': 'ListItem', position: 3, name: title, item: `${SITE}${selfPath}` },
     ],
   };
   const faqLd = faqs.length ? {
@@ -147,7 +151,7 @@ export default async function BlogArticle({ params }: { params: { slug: string }
             {related.map((r: any) => {
               const rt = pref(es ? r.title_es : r.title_en, es ? r.title_en : r.title_es);
               return (
-                <Link key={r.id} href={`/blog/${r.slug}`} className="card" style={{ padding: 0, overflow: 'hidden', textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column' }}>
+                <Link key={r.id} href={es ? `/blog/${r.slug}` : `/en/blog/${slugFor(r, 'en')}`} className="card" style={{ padding: 0, overflow: 'hidden', textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column' }}>
                   <img src={blogCoverUrl(r, es ? 'es' : 'en')} alt="" style={{ width: '100%', height: 96, objectFit: 'cover' }} />
                   <div style={{ padding: '10px 12px' }}>
                     <div style={{ fontSize: 13.5, fontWeight: 600, lineHeight: 1.35 }}>{rt}</div>

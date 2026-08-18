@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { requirePerm } from '@/lib/admin';
 import { suggestTitles, generateArticle, enhanceArticle, socialCopy, generateAlt, type KwGuide, type BlogKind, type RelatedPost } from '@/lib/blogAI';
 import { blogKeywordsSettings } from '@/lib/settings';
-import { listAllPosts, shortSlug } from '@/lib/blog';
+import { listAllPosts, shortSlug, slugFor } from '@/lib/blog';
 import { articleUrl } from '@/lib/social';
 
 const KIND_HINT: Record<string, string> = {
@@ -116,7 +116,7 @@ export async function POST(req: Request) {
       if (!post) return NextResponse.json({ error: 'no encontrado' }, { status: 404 });
       const title = (lang === 'en' ? post.title_en : post.title_es) || post.title_es || post.title_en || '';
       const excerpt = (lang === 'en' ? post.excerpt_en : post.excerpt_es) || post.excerpt_es || post.excerpt_en || '';
-      const url = articleUrl(SITE, post.slug, lang);
+      const url = articleUrl(SITE, slugFor(post, lang), lang);
       const only = b.only ? String(b.only) : undefined;
       const r = await socialCopy(title, excerpt, url, lang, only);
       if (!r.ok) return NextResponse.json({ error: r.reason || 'ai', code: r.reason }, { status: 502 });

@@ -59,7 +59,7 @@ function clientShortSlug(title: string, keyword = '', words = 6): string {
 }
 
 const TIMES = Array.from({ length: 48 }, (_, i) => `${String(Math.floor(i / 2)).padStart(2, '0')}:${i % 2 ? '30' : '00'}`);
-const blank = { id: '', slug: '', title_es: '', title_en: '', excerpt_es: '', excerpt_en: '', body_es: '', body_en: '', cover_url: '', cover_alt_es: '', cover_alt_en: '', tags: '', status: 'draft', pubDate: '', pubTime: '09:00' };
+const blank = { id: '', slug: '', slug_en: '', title_es: '', title_en: '', excerpt_es: '', excerpt_en: '', body_es: '', body_en: '', cover_url: '', cover_alt_es: '', cover_alt_en: '', tags: '', status: 'draft', pubDate: '', pubTime: '09:00' };
 
 // Lee un File como data URL base64 (para subir la imagen al Storage).
 function fileToDataUrl(file: File): Promise<string> {
@@ -162,7 +162,7 @@ export default function BlogEditor() {
   useEffect(() => { try { setOrigin(window.location.origin); } catch {} }, []);
   // URL pública absoluta de un artículo. Absoluta = evita el error "dirección no válida"
   // al abrir target=_blank dentro de la app instalada (Safari standalone).
-  const postUrl = (p: any) => `${origin}${es ? '' : '/en'}/blog/${p.slug || ''}`;
+  const postUrl = (p: any) => es ? `${origin}/blog/${p.slug || ''}` : `${origin}/en/blog/${p.slug_en || p.slug || ''}`;
   const set = (k: string, v: any) => setF((s: any) => ({ ...s, [k]: v }));
 
   // Acción rápida "＋ Post" del panel admin (botón contextual de la barra lateral).
@@ -666,6 +666,18 @@ export default function BlogEditor() {
               ⚠ {es ? `Se creará una redirección 301 de /blog/${f._origSlug} a la nueva URL.` : `A 301 redirect will be created from /blog/${f._origSlug} to the new URL.`}
             </div>
           )}
+          {/* Slug propio para inglés → /en/blog/… en inglés */}
+          <div className="row between" style={{ alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
+            <span className="muted" style={{ fontSize: 12 }}>{es ? 'URL en inglés (slug EN)' : 'English URL (EN slug)'}</span>
+            <button type="button" className="btn btn-ghost" style={{ fontSize: 11.5, padding: '3px 8px' }}
+              onClick={() => { const sug = clientShortSlug(f.title_en || f.title_es || '', (f.tags || '').split(',')[0] || ''); if (sug) set('slug_en', sug); }}>
+              {es ? '✨ Sugerir corto (EN)' : '✨ Suggest short (EN)'}
+            </button>
+          </div>
+          <div className="row" style={{ gap: 6, alignItems: 'center', marginTop: 4 }}>
+            <span className="muted" style={{ fontSize: 12.5 }}>/en/blog/</span>
+            <input value={f.slug_en || ''} onChange={(e) => set('slug_en', e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-'))} placeholder={es ? 'my-article (si vacío, usa el slug español)' : 'my-article (empty = uses Spanish slug)'} style={{ margin: 0, flex: '1 1 240px' }} />
+          </div>
         </div>
 
         {/* Portada: subir imagen o URL + texto alternativo (alt) bilingüe con IA */}

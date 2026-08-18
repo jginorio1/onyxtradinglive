@@ -29,12 +29,12 @@ function entriesFor(path: string, opts: { lastModified: Date; changeFrequency: a
   }));
 }
 
-// Entrada de blog: solo ES + EN (el contenido del blog es bilingüe, no en los 6 idiomas).
-function blogEntries(path: string, lastModified: Date) {
-  const languages: Record<string, string> = { 'x-default': `${url}${path}`, es: `${url}${path}`, en: `${url}/en${path}` };
+// Entrada de blog: ES + EN con su slug propio por idioma (URLs localizadas).
+function blogEntries(esPath: string, enPath: string, lastModified: Date) {
+  const languages: Record<string, string> = { 'x-default': `${url}${esPath}`, es: `${url}${esPath}`, en: `${url}/en${enPath}` };
   return [
-    { url: `${url}${path}`, lastModified, changeFrequency: 'weekly' as const, priority: 0.7, alternates: { languages } },
-    { url: `${url}/en${path}`, lastModified, changeFrequency: 'weekly' as const, priority: 0.6, alternates: { languages } },
+    { url: `${url}${esPath}`, lastModified, changeFrequency: 'weekly' as const, priority: 0.7, alternates: { languages } },
+    { url: `${url}/en${enPath}`, lastModified, changeFrequency: 'weekly' as const, priority: 0.6, alternates: { languages } },
   ];
 }
 
@@ -56,7 +56,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   let blog: MetadataRoute.Sitemap = [];
   try {
     const posts = await publishedSlugs();
-    blog = posts.flatMap((p) => blogEntries(`/blog/${p.slug}`, new Date(p.updated)));
+    blog = posts.flatMap((p) => blogEntries(`/blog/${p.slug}`, `/blog/${p.slugEn}`, new Date(p.updated)));
   } catch { blog = []; }
   return [...pages, ...articles, ...blog];
 }

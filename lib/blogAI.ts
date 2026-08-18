@@ -96,7 +96,7 @@ const FIGURE_BLOCK = '\n\nIMAGEN DE CONTENIDO (recomendado): inserta UNA vez, a 
 export async function generateArticle(title: string, kw?: KwGuide, opts?: { related?: RelatedPost[]; kind?: BlogKind }): Promise<{ ok: boolean; article?: any; reason?: string }> {
   if (!process.env.ANTHROPIC_API_KEY) return { ok: false, reason: 'no_key' };
   const kind = opts?.kind && KIND_BLOCK[opts.kind] ? opts.kind : 'guide';
-  const system = `Eres redactor de contenido SEO de Onyx Trading Live. ${GUARDRAIL}\n\nCONTEXTO DE MARCA (úsalo con naturalidad, sin sonar a anuncio):\n${await brandBrief('es')}${kwBlock(kw)}\n\nEscribe un artículo de blog COMPLETO sobre el título dado, en ESPAÑOL e INGLÉS. Formato markdown: usa subtítulos "## ", listas con "- " y **negritas** con moderación. 700-1000 palabras por idioma, tono cercano y profesional para traders. Cierra invitando suavemente a usar Onyx (sin promesas).\n\n${KIND_BLOCK[kind]}${relatedBlock(opts?.related)}${FIGURE_BLOCK}${FAQ_BLOCK}\n\nGRÁFICAS (opcional, solo si de verdad aportan): puedes incluir UNA gráfica ilustrativa dentro del cuerpo con este bloque exacto (mismo contenido en ambos idiomas, traduciendo title/alt/source):\n:::chart\ntype: line\ntitle: Título corto de la gráfica\nalt: Descripción de lo que muestra la gráfica (para accesibilidad y SEO)\nsource: Datos de ejemplo · Onyx Trading Live\nx: [Etiqueta1, Etiqueta2, Etiqueta3]\ny: [10, 8, 5]\n:::\nReglas de la gráfica: type puede ser line, bar o doughnut. SIEMPRE datos de EJEMPLO/ilustrativos (nunca rendimientos reales, señales ni promesas) y por eso source siempre incluye "Datos de ejemplo". Máx 12 puntos.\n\nNO inventes imágenes con URL (![...](...)); usa el bloque :::figure para la imagen de contenido. Describe la portada en cover_alt.\n\nDevuelve SOLO este JSON (sin texto fuera):\n{"title_es":"...","title_en":"...","slug":"slug-corto-en-espanol-3-a-6-palabras-con-la-keyword","excerpt_es":"resumen 1-2 frases","excerpt_en":"1-2 sentence summary","body_es":"markdown en español (con enlaces internos, :::figure y :::faq)","body_en":"markdown in English (with internal links, :::figure and :::faq)","cover_alt_es":"alt de la portada en español ~12 palabras","cover_alt_en":"cover alt in English ~12 words","tags":"3-6 palabras clave EN ESPAÑOL separadas por coma (solo español)"}`;
+  const system = `Eres redactor de contenido SEO de Onyx Trading Live. ${GUARDRAIL}\n\nCONTEXTO DE MARCA (úsalo con naturalidad, sin sonar a anuncio):\n${await brandBrief('es')}${kwBlock(kw)}\n\nEscribe un artículo de blog COMPLETO sobre el título dado, en ESPAÑOL e INGLÉS. Formato markdown: usa subtítulos "## ", listas con "- " y **negritas** con moderación. 700-1000 palabras por idioma, tono cercano y profesional para traders. Cierra invitando suavemente a usar Onyx (sin promesas).\n\n${KIND_BLOCK[kind]}${relatedBlock(opts?.related)}${FIGURE_BLOCK}${FAQ_BLOCK}\n\nGRÁFICAS (opcional, solo si de verdad aportan): puedes incluir UNA gráfica ilustrativa dentro del cuerpo con este bloque exacto (mismo contenido en ambos idiomas, traduciendo title/alt/source):\n:::chart\ntype: line\ntitle: Título corto de la gráfica\nalt: Descripción de lo que muestra la gráfica (para accesibilidad y SEO)\nsource: Datos de ejemplo · Onyx Trading Live\nx: [Etiqueta1, Etiqueta2, Etiqueta3]\ny: [10, 8, 5]\n:::\nReglas de la gráfica: type puede ser line, bar o doughnut. SIEMPRE datos de EJEMPLO/ilustrativos (nunca rendimientos reales, señales ni promesas) y por eso source siempre incluye "Datos de ejemplo". Máx 12 puntos.\n\nNO inventes imágenes con URL (![...](...)); usa el bloque :::figure para la imagen de contenido. Describe la portada en cover_alt.\n\nDevuelve SOLO este JSON (sin texto fuera):\n{"title_es":"...","title_en":"...","slug":"slug-corto-en-espanol-3-a-6-palabras-con-la-keyword","slug_en":"short-english-slug-3-to-6-words-with-the-keyword","excerpt_es":"resumen 1-2 frases","excerpt_en":"1-2 sentence summary","body_es":"markdown en español (con enlaces internos, :::figure y :::faq)","body_en":"markdown in English (with internal links, :::figure and :::faq)","cover_alt_es":"alt de la portada en español ~12 palabras","cover_alt_en":"cover alt in English ~12 words","tags":"3-6 palabras clave EN ESPAÑOL separadas por coma (solo español)"}`;
   const out = parseJson(await aiRaw(system, `Título: ${title}`, 5000));
   if (!out || !out.body_es || !out.body_en) return { ok: false, reason: 'ai_failed' };
   return {
@@ -105,6 +105,7 @@ export async function generateArticle(title: string, kw?: KwGuide, opts?: { rela
       title_es: String(out.title_es || title).slice(0, 200),
       title_en: String(out.title_en || title).slice(0, 200),
       slug: String(out.slug || '').slice(0, 90),
+      slug_en: String(out.slug_en || '').slice(0, 90),
       excerpt_es: String(out.excerpt_es || '').slice(0, 400),
       excerpt_en: String(out.excerpt_en || '').slice(0, 400),
       body_es: String(out.body_es || '').slice(0, 20000),
@@ -144,10 +145,11 @@ export async function enhanceArticle(
 // Genera un texto distinto para cada red a partir del artículo, en el idioma pedido.
 // `only` regenera una sola red (más barato y no pisa lo editado en las demás).
 const SOCIAL_KEYS = ['facebook', 'instagram', 'youtube', 'whatsapp', 'x', 'linkedin', 'telegram', 'tiktok', 'reddit', 'threads'];
+// Reglas SIN hashtags de ejemplo con idioma fijo (para no mezclar idiomas).
 const SOCIAL_RULES = `Reglas por red (gancho en la 1ª línea, valor, CTA claro, hashtags DONDE aportan; nada de clickbait falso ni promesas de ganancia):
-- facebook: 2-4 frases cercanas que aporten valor + 1 pregunta que invite a comentar + 2-3 hashtags. CTA "Lee la guía completa 👇". No incluyas la URL.
-- instagram: caption con GANCHO potente en la 1ª línea + 2-3 frases con emojis con criterio + CTA "Guía completa, enlace en bio 🔗" + 8-12 hashtags mezclando amplios y de nicho (#trading #forex #trader #fondeo #propfirm #gestionderiesgo #daytrading …). No incluyas la URL.
-- youtube: para publicación de Comunidad / descripción. Gancho + 2-3 frases de valor + CTA "Enlace en el primer comentario / descripción" + 4-6 hashtags. No incluyas la URL.
+- facebook: 2-4 frases cercanas que aporten valor + 1 pregunta que invite a comentar + 2-3 hashtags. CTA para leer la guía completa. No incluyas la URL.
+- instagram: caption con GANCHO potente en la 1ª línea + 2-3 frases con emojis con criterio + CTA que diga "enlace en bio" + 8-12 hashtags mezclando amplios y de nicho del trading. No incluyas la URL.
+- youtube: para publicación de Comunidad / descripción. Gancho + 2-3 frases de valor + CTA "enlace en el primer comentario / descripción" + 4-6 hashtags. No incluyas la URL.
 - whatsapp: 1-2 frases muy directas con 1 emoji, ideal para Estado o difusión. Sin hashtags. No incluyas la URL.
 - x: máx 240 caracteres (deja hueco para el enlace), gancho fuerte + 2-3 hashtags. No incluyas la URL.
 - linkedin: 3-5 frases profesionales que enseñen algo accionable + 3 hashtags al final. No incluyas la URL.
@@ -158,11 +160,14 @@ const SOCIAL_RULES = `Reglas por red (gancho en la 1ª línea, valor, CTA claro,
 export async function socialCopy(title: string, excerpt: string, url: string, lang: Lang = 'es', only?: string): Promise<{ ok: boolean; copy?: Record<string, string>; reason?: string }> {
   if (!process.env.ANTHROPIC_API_KEY) return { ok: false, reason: 'no_key' };
   const es = lang !== 'en';
-  const L = es ? 'Escribe TODO en ESPAÑOL.' : 'Write EVERYTHING in ENGLISH.';
+  // Consistencia de idioma: el texto Y LOS HASHTAGS deben ir en el idioma elegido.
+  const L = es
+    ? 'Escribe TODO en ESPAÑOL, incluidos los hashtags (p. ej. #GestiónDeRiesgo, #Fondeo). PROHIBIDO mezclar inglés.'
+    : 'Write EVERYTHING in ENGLISH, including the hashtags (e.g. #RiskManagement, #FundedTrader). Do NOT mix any Spanish. Every hashtag must be an English word.';
   const keys = only && SOCIAL_KEYS.includes(only) ? [only] : SOCIAL_KEYS;
   const rules = only ? SOCIAL_RULES.split('\n').filter((l) => l.includes(`- ${only}:`)).join('\n') : SOCIAL_RULES;
   const jsonShape = '{' + keys.map((k) => `"${k}":"..."`).join(',') + '}';
-  const system = `Eres un SOCIAL SEO MANAGER experto de Onyx Trading Live: escribes copies que hacen crecer las cuentas (gancho + valor + CTA + hashtags precisos), sin sonar a anuncio. ${GUARDRAIL}\n\n${L} A partir del artículo escribe el texto para ${only ? `la red "${only}"` : 'CADA red'}, optimizado a su estilo, longitud y algoritmo.\n${rules}\n\nDevuelve SOLO este JSON: ${jsonShape}`;
+  const system = `Eres un SOCIAL SEO MANAGER experto de Onyx Trading Live: escribes copies que hacen crecer las cuentas (gancho + valor + CTA + hashtags precisos), sin sonar a anuncio. ${GUARDRAIL}\n\n${L} A partir del artículo escribe el texto para ${only ? `la red "${only}"` : 'CADA red'}, optimizado a su estilo, longitud y algoritmo. El copy y los hashtags SIEMPRE en el mismo idioma (${es ? 'español' : 'inglés'}); no traduzcas a medias ni dejes hashtags en el otro idioma.\n${rules}\n\nDevuelve SOLO este JSON: ${jsonShape}`;
   const user = `Título: ${title}\nResumen: ${excerpt}\nURL (solo de referencia, NO la incluyas en el texto salvo que la red lo pida): ${url}`;
   const out = parseJson(await aiRaw(system, user, only ? 500 : 1600));
   if (!out) return { ok: false, reason: 'ai_failed' };

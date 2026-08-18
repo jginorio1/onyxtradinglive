@@ -56,6 +56,34 @@ export async function uniqueSlug(base: string, excludeId?: string): Promise<stri
 }
 
 const PUB_COLS = 'id,slug,title_es,title_en,excerpt_es,excerpt_en,body_es,body_en,cover_url,cover_alt_es,cover_alt_en,tags,author,published_at,updated_at';
+const PUB_COLS2 = PUB_COLS + ',slug_en';   // con slug propio en inglés
+
+// slug_en único (agrega -2, -3…). Tolerante si la columna aún no existe.
+export async function uniqueSlugEn(base: string, excludeId?: string): Promise<string> {
+  const root = slugify(base);
+  let slug = root, i = 1;
+  for (let n = 0; n < 50; n++) {
+    const r = await supabaseAdmin.from('blog_posts').select('id').eq('slug_en', slug).maybeSingle();
+    if (r.error) return root;   // columna no creada: devolvemos el base sin comprobar
+    if (!r.data || (excludeId && (r.data as any).id === excludeId)) return slug;
+    i++; slug = `${root}-${i}`;
+  }
+  return root;
+}
+
+// Update tolerante: si falla por slug_en (columna no creada), reintenta sin ella.
+async function updateTolerant(id: string, row: any) {
+  let r = await supabaseAdmin.from('blog_posts').update(row).eq('id', id);
+  if (r.error && 'slug_en' in row) { const { slug_en, ...rest } = row; r = await supabaseAdmin.from('blog_posts').update(rest).eq('id', id); }
+  return r;
+}
+
+const sanSlug = (s: string) => String(s || '').replace(/[^a-z0-9-]/gi, '').toLowerCase();
+
+// Slug del artículo según idioma: inglés usa slug_en (o cae al español).
+export function slugFor(post: any, lang: string): string {
+  return lang === 'en' ? (post?.slug_en || post?.slug) : post?.slug;
+}
 
 // URL de portada: la subida por el editor, o una portada ON-BRAND generada al vuelo
 // (degradado Onyx + tema) para que TODO artículo tenga imagen coherente sin coste.
@@ -89,10 +117,15 @@ export async function findRedirect(slug: string): Promise<string | null> {
 // Artículos relacionados por etiquetas compartidas (para "Sigue leyendo" e internal links).
 export async function relatedByTags(post: any, limit = 3) {
   const nowIso = new Date().toISOString();
-  const { data } = await supabaseAdmin.from('blog_posts')
-    .select('id,slug,title_es,title_en,excerpt_es,excerpt_en,cover_url,tags,published_at')
+  let rr = await supabaseAdmin.from('blog_posts')
+    .select('id,slug,slug_en,title_es,title_en,excerpt_es,excerpt_en,cover_url,tags,published_at')
     .eq('status', 'published').lte('published_at', nowIso).neq('id', post.id)
     .order('published_at', { ascending: false }).limit(40);
+  if (rr.error) rr = await supabaseAdmin.from('blog_posts')
+    .select('id,slug,title_es,title_en,excerpt_es,excerpt_en,cover_url,tags,published_at')
+    .eq('status', 'published').lte('published_at', nowIso).neq('id', post.id)
+    .order('published_at', { ascending: false }).limit(40) as any;
+  const { data } = rr;
   const mine = new Set(String(post.tags || '').toLowerCase().split(',').map((s: string) => s.trim()).filter(Boolean));
   const scored = (data || []).map((p: any) => {
     const tg = String(p.tags || '').toLowerCase().split(',').map((s) => s.trim());
@@ -105,26 +138,35 @@ export async function relatedByTags(post: any, limit = 3) {
 // Lista de artículos ya publicados (para la página pública /blog).
 export async function listPublished(limit = 60) {
   const nowIso = new Date().toISOString();
-  const { data } = await supabaseAdmin.from('blog_posts')
-    .select(PUB_COLS).eq('status', 'published').lte('published_at', nowIso)
+  let r = await supabaseAdmin.from('blog_posts')
+    .select(PUB_COLS2).eq('status', 'published').lte('published_at', nowIso)
     .order('published_at', { ascending: false }).limit(limit);
-  return (data || []) as any[];
+  if (r.error) r = await supabaseAdmin.from('blog_posts')   // sin slug_en (columna aún no creada)
+    .select(PUB_COLS).eq('status', 'published').lte('published_at', nowIso)
+    .order('published_at', { ascending: false }).limit(limit) as any;
+  return (r.data || []) as any[];
 }
 
-// Un artículo publicado por su slug (para /blog/[slug]).
+// Un artículo publicado por su slug — matchea el slug ES o el slug EN.
 export async function getPublishedBySlug(slug: string) {
-  const { data } = await supabaseAdmin.from('blog_posts')
-    .select(PUB_COLS + ',status').eq('slug', slug).maybeSingle();
-  if (!data || (data as any).status !== 'published') return null;
-  return data as any;
+  const s = sanSlug(slug);
+  let data: any = null;
+  const r = await supabaseAdmin.from('blog_posts')
+    .select(PUB_COLS2 + ',status').or(`slug.eq.${s},slug_en.eq.${s}`).limit(1);
+  if (r.error) {
+    const r2 = await supabaseAdmin.from('blog_posts').select(PUB_COLS + ',status').eq('slug', s).maybeSingle();
+    data = r2.data;
+  } else data = (r.data || [])[0] || null;
+  if (!data || data.status !== 'published') return null;
+  return data;
 }
 
 // Slugs publicados (para generateStaticParams y el sitemap).
-export async function publishedSlugs(): Promise<{ slug: string; updated: string }[]> {
-  const { data } = await supabaseAdmin.from('blog_posts')
-    .select('slug,published_at,updated_at').eq('status', 'published').limit(500);
+export async function publishedSlugs(): Promise<{ slug: string; slugEn: string; updated: string }[]> {
+  let r = await supabaseAdmin.from('blog_posts').select('slug,slug_en,published_at,updated_at').eq('status', 'published').limit(500);
+  if (r.error) r = await supabaseAdmin.from('blog_posts').select('slug,published_at,updated_at').eq('status', 'published').limit(500) as any;
   // lastmod real = updated_at (o published_at si es más reciente) para el sitemap.
-  return (data || []).map((r: any) => ({ slug: r.slug, updated: r.updated_at || r.published_at || new Date().toISOString() }));
+  return (r.data || []).map((x: any) => ({ slug: x.slug, slugEn: x.slug_en || x.slug, updated: x.updated_at || x.published_at || new Date().toISOString() }));
 }
 
 // ---- Admin ----
@@ -149,6 +191,16 @@ export async function savePost(b: any) {
   // published_at: se fija al pasar a 'published'; scheduled lo dejará el cron.
   if (status === 'published') row.published_at = b.published_at ? new Date(b.published_at).toISOString() : new Date().toISOString();
 
+  // slug_en (idioma inglés). Solo se incluye cuando corresponde; guardado tolerante
+  // si la columna aún no existe.
+  if (b.slug_en !== undefined) {
+    const se = sanSlug(b.slug_en);
+    row.slug_en = se ? await uniqueSlugEn(se, b.id) : null;
+  } else if (!b.id) {
+    const se = shortSlug('', b.title_en || b.title_es || 'article', b.keyword);
+    if (se) row.slug_en = await uniqueSlugEn(se);
+  }
+
   if (b.id) {
     // Al editar NO cambiamos el slug salvo que el editor lo pida. Si cambia, guardamos
     // una redirección 301 de la URL vieja a la nueva (no perder posicionamiento).
@@ -158,16 +210,17 @@ export async function savePost(b: any) {
       if ((cur as any)?.slug && (cur as any).slug !== newSlug && (cur as any).status === 'published') await addRedirect((cur as any).slug, newSlug);
       row.slug = newSlug;
     }
-    await supabaseAdmin.from('blog_posts').update(row).eq('id', b.id);
+    await updateTolerant(b.id, row);
     return { id: b.id };
   }
   // Post NUEVO: slug corto con keyword (3-6 palabras), cortado a palabra completa.
   const base = shortSlug(b.slug || '', b.title_es || b.title_en || 'articulo', b.keyword);
   row.slug = await uniqueSlug(base);
   row.author = b.author ? String(b.author).slice(0, 120) : null;
-  const { data, error } = await supabaseAdmin.from('blog_posts').insert(row).select('id').single();
-  if (error) throw new Error(error.message);
-  return { id: (data as any).id, slug: row.slug };
+  let ins = await supabaseAdmin.from('blog_posts').insert(row).select('id').single();
+  if (ins.error && 'slug_en' in row) { delete row.slug_en; ins = await supabaseAdmin.from('blog_posts').insert(row).select('id').single(); }
+  if (ins.error) throw new Error(ins.error.message);
+  return { id: (ins.data as any).id, slug: row.slug };
 }
 
 export async function deletePost(id: string) {
