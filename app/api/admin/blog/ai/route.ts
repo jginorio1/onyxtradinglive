@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { requirePerm } from '@/lib/admin';
-import { suggestTitles, generateArticle, generateAlt, type KwGuide, type BlogKind, type RelatedPost } from '@/lib/blogAI';
+import { suggestTitles, generateArticle, enhanceArticle, generateAlt, type KwGuide, type BlogKind, type RelatedPost } from '@/lib/blogAI';
 import { blogKeywordsSettings } from '@/lib/settings';
-import { listAllPosts } from '@/lib/blog';
+import { listAllPosts, shortSlug } from '@/lib/blog';
 
 const KIND_HINT: Record<string, string> = {
   comparison: ' (formato comparativa "X vs Y")',
@@ -82,6 +82,26 @@ export async function POST(req: Request) {
       const r = await generateArticle(title, g, { related, kind });
       if (!r.ok) return NextResponse.json({ error: r.reason || 'ai', code: r.reason }, { status: 502 });
       return NextResponse.json({ article: r.article, target: g ? { es: g.targetEs, en: g.targetEn } : null });
+    }
+
+    // Mejora un post EXISTENTE sin reescribirlo: enlaces internos + figure + faq,
+    // y sugiere un slug corto (para arreglar los rotos, con redirección al guardar).
+    if (mode === 'enhance') {
+      const id = String(b.id || '');
+      if (!id) return NextResponse.json({ error: 'falta id' }, { status: 400 });
+      let posts: any[] = [];
+      try { posts = await listAllPosts(); } catch {}
+      const post = posts.find((p) => p.id === id);
+      if (!post) return NextResponse.json({ error: 'no encontrado' }, { status: 404 });
+      const related: RelatedPost[] = posts
+        .filter((p) => p.status === 'published' && p.id !== id).slice(0, 12)
+        .map((p) => ({ slug: p.slug, title_es: p.title_es, title_en: p.title_en, tags: p.tags }));
+      const g = await buildGuide();
+      const r = await enhanceArticle(post.title_es || post.title_en || '', post.body_es || '', post.body_en || '', related);
+      if (!r.ok) return NextResponse.json({ error: r.reason || 'ai', code: r.reason }, { status: 502 });
+      const kw = g ? (g.targetEs || g.targetEn) : (String(post.tags || '').split(',')[0] || '');
+      const suggestedSlug = shortSlug('', post.title_es || post.title_en || '', kw);
+      return NextResponse.json({ body_es: r.body_es, body_en: r.body_en, suggestedSlug, currentSlug: post.slug });
     }
 
     if (mode === 'alt') {

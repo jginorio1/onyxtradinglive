@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
-import { getPublishedBySlug, relatedByTags, blogCoverUrl } from '@/lib/blog';
+import { notFound, permanentRedirect } from 'next/navigation';
+import { getPublishedBySlug, relatedByTags, blogCoverUrl, findRedirect } from '@/lib/blog';
 import { mdToHtml, parseFaq } from '@/lib/md';
 import { blogAuthorSettings } from '@/lib/settings';
 import { serverLang, localeAlternates, SITE } from '@/lib/locale';
@@ -35,7 +35,12 @@ function fmtDate(iso: string, es: boolean) {
 
 export default async function BlogArticle({ params }: { params: { slug: string } }) {
   const p = await getPublishedBySlug(params.slug);
-  if (!p) notFound();
+  if (!p) {
+    // ¿Slug viejo? Redirige 301 a la URL nueva; si no, 404.
+    const to = await findRedirect(params.slug);
+    if (to && to !== params.slug) permanentRedirect(`/blog/${to}`);
+    notFound();
+  }
   const es = serverLang() === 'es';
   const title = pref(es ? p.title_es : p.title_en, es ? p.title_en : p.title_es);
   const excerpt = pref(es ? p.excerpt_es : p.excerpt_en, es ? p.excerpt_en : p.excerpt_es);

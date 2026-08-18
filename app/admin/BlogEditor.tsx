@@ -46,6 +46,17 @@ function DayCalendar({ value, onChange, es }: { value: string; onChange: (d: str
   );
 }
 
+// Slug corto en el navegador (para la sugerencia del editor). El servidor lo
+// vuelve a normalizar y garantiza que sea único al guardar.
+const STOP_W = new Set('a al ante bajo con de del desde el en entre hacia hasta la las lo los mas o para por que se sin sobre un una unos y the a an of to for and or in on how what why your you is are'.split(' '));
+function clientShortSlug(title: string, keyword = '', words = 6): string {
+  const base = `${keyword} ${title}`.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  const parts = base.split('-').filter((w) => w && !STOP_W.has(w));
+  const seen = new Set<string>(); const out: string[] = [];
+  for (const w of parts) { if (seen.has(w)) continue; seen.add(w); out.push(w); if (out.length >= words) break; }
+  return out.join('-').slice(0, 70).replace(/-+$/, '');
+}
+
 const TIMES = Array.from({ length: 48 }, (_, i) => `${String(Math.floor(i / 2)).padStart(2, '0')}:${i % 2 ? '30' : '00'}`);
 const blank = { id: '', slug: '', title_es: '', title_en: '', excerpt_es: '', excerpt_en: '', body_es: '', body_en: '', cover_url: '', cover_alt_es: '', cover_alt_en: '', tags: '', status: 'draft', pubDate: '', pubTime: '09:00' };
 
@@ -221,7 +232,7 @@ export default function BlogEditor() {
     const pad = (n: number) => String(n).padStart(2, '0');
     setTitles([]); setTopic('');
     setF({
-      ...blank, ...p,
+      ...blank, ...p, _origSlug: p.slug || '',
       cover_url: p.cover_url || '',
       cover_alt_es: p.cover_alt_es || '', cover_alt_en: p.cover_alt_en || '',
       pubDate: d ? `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` : '',
@@ -255,6 +266,24 @@ export default function BlogEditor() {
         toast((es ? 'Artículo generado. Revísalo antes de publicar.' : 'Article generated. Review before publishing.') + (tgt ? (es ? ` Keyword objetivo: “${tgt}”.` : ` Target keyword: “${tgt}”.`) : ''));
       }
       else toast(j.code === 'no_key' ? (es ? 'IA no configurada (falta ANTHROPIC_API_KEY).' : 'AI not configured (missing ANTHROPIC_API_KEY).') : (es ? 'La IA no pudo generar.' : 'AI could not generate.'));
+    } finally { setAi(false); }
+  }
+
+  // Mejora un post EXISTENTE sin reescribirlo: enlaces internos + FAQ + imagen.
+  // Abre el editor con el resultado para revisar antes de guardar.
+  async function enhanceSeo(p: any) {
+    if (!confirm(es
+      ? 'Onyx AI añadirá enlaces internos a otros posts, una imagen de contenido y una sección de preguntas frecuentes, SIN reescribir tu texto. Revisa el resultado antes de guardar. ¿Continuar?'
+      : 'Onyx AI will add internal links to other posts, a content image and an FAQ section WITHOUT rewriting your text. Review before saving. Continue?')) return;
+    setAi(true);
+    try {
+      const r = await fetch('/api/admin/blog/ai', { method: 'POST', body: JSON.stringify({ mode: 'enhance', id: p.id }) });
+      const j = await r.json();
+      if (r.ok && (j.body_es || j.body_en)) {
+        edit(p);
+        setF((s: any) => ({ ...s, body_es: j.body_es || s.body_es, body_en: j.body_en || s.body_en, _suggestedSlug: j.suggestedSlug || '' }));
+        toast(es ? '✨ Mejorado. Revisa el texto y guarda.' : '✨ Enhanced. Review and save.');
+      } else toast(j.code === 'no_key' ? (es ? 'IA no configurada.' : 'AI not configured.') : (es ? 'La IA no pudo mejorar.' : 'AI could not enhance.'));
     } finally { setAi(false); }
   }
 
@@ -508,6 +537,7 @@ export default function BlogEditor() {
                 </div>
                 <div className="row" style={{ gap: 6 }}>
                   {p.status === 'scheduled' && <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--green)' }} onClick={() => publishNow(p)}>⚡ {es ? 'Publicar ahora' : 'Publish now'}</button>}
+                  {p.status === 'published' && <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--brand)' }} onClick={() => enhanceSeo(p)} disabled={ai} title={es ? 'Añadir enlaces internos, FAQ e imagen sin reescribir el texto' : 'Add internal links, FAQ and image without rewriting'}>✨ {es ? 'Mejorar SEO' : 'Improve SEO'}</button>}
                   {p.status === 'published' && <a className="btn btn-ghost" style={{ fontSize: 12 }} href={`/blog/${p.slug}`} target="_blank" rel="noreferrer">{es ? 'Ver' : 'View'}</a>}
                   <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => edit(p)}>✎ {es ? 'Editar' : 'Edit'}</button>
                   <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--red)' }} onClick={() => del(p.id)}>✕</button>
@@ -611,6 +641,26 @@ export default function BlogEditor() {
         </div>
 
         <div><span className="muted" style={{ fontSize: 12 }}>{es ? 'Etiquetas (coma)' : 'Tags (comma)'}</span><input value={f.tags} onChange={(e) => set('tags', e.target.value)} style={{ margin: '4px 0 0' }} /></div>
+
+        {/* URL / slug — corto con keyword. Cambiarlo en un post publicado crea una redirección 301. */}
+        <div>
+          <div className="row between" style={{ alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+            <span className="muted" style={{ fontSize: 12 }}>{es ? 'URL del artículo (slug)' : 'Article URL (slug)'}</span>
+            <button type="button" className="btn btn-ghost" style={{ fontSize: 11.5, padding: '3px 8px' }}
+              onClick={() => { const sug = f._suggestedSlug || clientShortSlug(f.title_es || f.title_en || '', (f.tags || '').split(',')[0] || ''); if (sug) set('slug', sug); }}>
+              {es ? '✨ Sugerir corto' : '✨ Suggest short'}
+            </button>
+          </div>
+          <div className="row" style={{ gap: 6, alignItems: 'center', marginTop: 4 }}>
+            <span className="muted" style={{ fontSize: 12.5 }}>/blog/</span>
+            <input value={f.slug || ''} onChange={(e) => set('slug', e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-'))} placeholder="mi-articulo" style={{ margin: 0, flex: '1 1 240px' }} />
+          </div>
+          {f.id && f.status === 'published' && f._origSlug && f.slug !== f._origSlug && (
+            <div className="muted" style={{ fontSize: 11.5, marginTop: 4, color: 'var(--amber)' }}>
+              ⚠ {es ? `Se creará una redirección 301 de /blog/${f._origSlug} a la nueva URL.` : `A 301 redirect will be created from /blog/${f._origSlug} to the new URL.`}
+            </div>
+          )}
+        </div>
 
         {/* Portada: subir imagen o URL + texto alternativo (alt) bilingüe con IA */}
         <div className="card">

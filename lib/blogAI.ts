@@ -116,6 +116,30 @@ export async function generateArticle(title: string, kw?: KwGuide, opts?: { rela
   };
 }
 
+// ---- Mejorar un artículo YA existente SIN reescribir su contenido ----
+// Solo añade: enlaces internos a posts relacionados, una imagen :::figure y un
+// bloque :::faq. Respeta el texto tal cual (mismas frases, mismo orden).
+export async function enhanceArticle(
+  title: string, bodyEs: string, bodyEn: string, related?: RelatedPost[],
+): Promise<{ ok: boolean; body_es?: string; body_en?: string; reason?: string }> {
+  if (!process.env.ANTHROPIC_API_KEY) return { ok: false, reason: 'no_key' };
+  const hasFaqEs = /:::faq/.test(bodyEs), hasFigEs = /:::figure/.test(bodyEs);
+  const jobs: string[] = [];
+  jobs.push('1) Convierte entre 2 y 4 frases YA existentes en enlaces internos markdown [texto](/blog/slug) hacia los artículos relacionados, SOLO donde el tema encaje de verdad. No cambies las palabras: solo envuelve el texto que ya está con el enlace.');
+  if (!hasFigEs) jobs.push('2) Inserta UNA vez, a media altura, un banner on-brand:\n:::figure\nkicker: ETIQUETA CORTA\ntitle: frase que resuma una idea DEL PROPIO artículo\nalt: descripción para accesibilidad\n:::');
+  if (!hasFaqEs) jobs.push('3) Añade AL FINAL un bloque de 3-4 preguntas frecuentes basadas en el contenido:\n:::faq\nQ: pregunta\nA: respuesta 1-3 frases\n:::');
+  const relList = (related || []).slice(0, 12).map((r) => `- /blog/${r.slug} — ${(r.title_es || r.title_en || '').slice(0, 70)}${r.tags ? ` (${r.tags})` : ''}`).join('\n') || '(no hay otros artículos aún — omite los enlaces internos)';
+  const system = `Eres el editor SEO de Onyx Trading Live. ${GUARDRAIL}\n\nTe doy un artículo YA escrito en español e inglés. NO lo reescribas: conserva EXACTAMENTE el texto, el orden y el tono. Solo aplica estas mejoras (las mismas en ambos idiomas, usando la MISMA ruta /blog/slug):\n${jobs.join('\n')}\n\nArtículos disponibles para enlazar (usa solo estas rutas, no inventes):\n${relList}\n\nDevuelve SOLO este JSON: {"body_es":"markdown ES mejorado","body_en":"markdown EN mejorado"}`;
+  const user = `TÍTULO: ${title}\n\n=== BODY_ES ===\n${bodyEs.slice(0, 8000)}\n\n=== BODY_EN ===\n${bodyEn.slice(0, 8000)}`;
+  const out = parseJson(await aiRaw(system, user, 6000));
+  if (!out || (!out.body_es && !out.body_en)) return { ok: false, reason: 'ai_failed' };
+  return {
+    ok: true,
+    body_es: String(out.body_es || bodyEs).slice(0, 20000),
+    body_en: String(out.body_en || bodyEn).slice(0, 20000),
+  };
+}
+
 // ---- Texto alternativo (alt) de una imagen, bilingüe ----
 // Describe la imagen para accesibilidad y SEO, integrando la keyword si encaja.
 // context = título/tema del artículo; hint = nombre de archivo o pista opcional.

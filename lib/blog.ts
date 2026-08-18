@@ -67,6 +67,25 @@ export function blogCoverUrl(post: any, lang: 'es' | 'en' = 'es'): string {
   return `/api/blog-cover?${qs.toString()}`;
 }
 
+// ---- Redirecciones 301 (al cambiar un slug ya publicado) ----
+// Registra vieja→nueva y limpia posibles cadenas/loops.
+export async function addRedirect(from: string, to: string) {
+  const f = String(from || '').trim(), t = String(to || '').trim();
+  if (!f || !t || f === t) return;
+  try {
+    // Si algo apuntaba a la vieja, reapúntalo a la nueva (evita cadenas 301→301).
+    await supabaseAdmin.from('blog_redirects').update({ to_slug: t }).eq('to_slug', f);
+    await supabaseAdmin.from('blog_redirects').delete().eq('from_slug', t); // la nueva ya existe: sin redirección
+    await supabaseAdmin.from('blog_redirects').upsert({ from_slug: f, to_slug: t }, { onConflict: 'from_slug' });
+  } catch { /* tabla no creada aún: no rompemos el guardado */ }
+}
+export async function findRedirect(slug: string): Promise<string | null> {
+  try {
+    const { data } = await supabaseAdmin.from('blog_redirects').select('to_slug').eq('from_slug', slug).maybeSingle();
+    return (data as any)?.to_slug || null;
+  } catch { return null; }
+}
+
 // Artículos relacionados por etiquetas compartidas (para "Sigue leyendo" e internal links).
 export async function relatedByTags(post: any, limit = 3) {
   const nowIso = new Date().toISOString();
@@ -131,8 +150,14 @@ export async function savePost(b: any) {
   if (status === 'published') row.published_at = b.published_at ? new Date(b.published_at).toISOString() : new Date().toISOString();
 
   if (b.id) {
-    // Al editar NO cambiamos el slug salvo que el editor lo pida (evita romper URLs ya indexadas).
-    if (b.slug) row.slug = await uniqueSlug(b.slug, b.id);
+    // Al editar NO cambiamos el slug salvo que el editor lo pida. Si cambia, guardamos
+    // una redirección 301 de la URL vieja a la nueva (no perder posicionamiento).
+    if (b.slug) {
+      const { data: cur } = await supabaseAdmin.from('blog_posts').select('slug,status').eq('id', b.id).maybeSingle();
+      const newSlug = await uniqueSlug(b.slug, b.id);
+      if ((cur as any)?.slug && (cur as any).slug !== newSlug && (cur as any).status === 'published') await addRedirect((cur as any).slug, newSlug);
+      row.slug = newSlug;
+    }
     await supabaseAdmin.from('blog_posts').update(row).eq('id', b.id);
     return { id: b.id };
   }
