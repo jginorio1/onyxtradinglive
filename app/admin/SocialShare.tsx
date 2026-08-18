@@ -139,7 +139,11 @@ export default function SocialShare({ post, es }: { post: any; es: boolean }) {
           {n.hint && <div className="muted" style={{ fontSize: 10.5, marginTop: 6 }}>{n.hint}</div>}
         </div>
         <div className="row" style={{ gap: 6, padding: '9px 12px 11px', marginTop: 'auto', flexWrap: 'wrap' }}>
-          <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '5px 10px', color: 'var(--brand)', borderColor: 'color-mix(in srgb,var(--brand) 40%,var(--line))' }} disabled={!text} onClick={() => doShare(id, text)}>{n.link ? (es ? 'Compartir' : 'Share') : (es ? 'Copiar caption' : 'Copy caption')}</button>
+          {n.link
+            ? <a className="btn btn-ghost" style={{ fontSize: 11.5, padding: '5px 10px', color: text ? 'var(--brand)' : 'var(--mut)', borderColor: 'color-mix(in srgb,var(--brand) 40%,var(--line))', pointerEvents: text ? 'auto' : 'none', textDecoration: 'none' }}
+                href={text ? (shareUrl(id, url, text) || '#') : '#'} target="_blank" rel="noopener noreferrer"
+                onClick={() => { if (PASTE.has(id) && text) { try { navigator.clipboard.writeText(text); } catch {} toast(es ? '📋 Copiamos el texto con hashtags. Pégalo (Ctrl/Cmd+V) al abrirse la ventana.' : '📋 We copied the text with hashtags. Paste it (Ctrl/Cmd+V) in the window.'); } }}>{es ? 'Compartir' : 'Share'}</a>
+            : <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '5px 10px', color: 'var(--brand)' }} disabled={!text} onClick={() => doCopy(text)}>{es ? 'Copiar caption' : 'Copy caption'}</button>}
           {n.link && <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '5px 10px' }} disabled={!text} onClick={() => doCopy(text)}>{es ? 'Copiar' : 'Copy'}</button>}
           {tags.length > 0 && <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '5px 10px' }} onClick={() => doCopy(tags.join(' '))}>{es ? '# Hashtags' : '# Hashtags'}</button>}
           <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '5px 10px', marginLeft: 'auto' }} disabled={!text || !when} onClick={() => schedule(id)}>⏰ {es ? 'Programar' : 'Schedule'}</button>
