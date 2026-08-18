@@ -167,10 +167,10 @@ function LoginInner() {
   // Entrar con passkey (huella/Face ID). El autenticador resuelve la cuenta solo.
   async function signInPasskey() {
     setLoading(true); setMsg('');
-    // Captcha "mejor esfuerzo": intentamos un token fresco, pero NUNCA bloqueamos
-    // el login por él. Si Supabase tiene el CAPTCHA desactivado, se entra igual;
-    // si lo exige y falta/está mal, Supabase responde y mostramos el mensaje.
-    const cap = TURNSTILE_KEY ? ((await capRef.current?.getToken()) || captcha || undefined) : undefined;
+    // Captcha PASIVO: usamos el token que el widget ya resolvió al cargar (si hay).
+    // No reseteamos el widget (eso obligaba a "marcar de nuevo" en cada intento) y
+    // NUNCA bloqueamos por él: si Supabase lo tiene desactivado, se entra igual.
+    const cap = TURNSTILE_KEY ? (captcha || undefined) : undefined;
     try {
       const { error } = await (sb as any).auth.signInWithPasskey(cap ? { options: { captchaToken: cap } } : undefined);
       if (error) throw error;
@@ -178,7 +178,9 @@ function LoginInner() {
       router.push(nextDest); router.refresh();
     } catch (e: any) {
       setMsg(authMsg(e?.message || '', t));
-      capRef.current?.reset();   // token consumido → acuñar uno nuevo para el reintento
+      // Solo si FALLÓ: acuñamos un token fresco en silencio para el reintento (un
+      // widget "Managed" se resuelve solo, sin pedir marcar de nuevo).
+      if (TURNSTILE_KEY) capRef.current?.reset();
     } finally { setLoading(false); }
   }
 
@@ -191,9 +193,10 @@ function LoginInner() {
     if (signup && !passStrong) { setMsg(t.errWeak); return; }
     if (signup && !terms) { setMsg(t.errTerms); return; }
     setLoading(true); setMsg('');
-    // Captcha "mejor esfuerzo": intentamos un token fresco, pero NUNCA bloqueamos
-    // el login/registro por él. Si Supabase lo tiene desactivado, se entra igual.
-    const cap = TURNSTILE_KEY ? ((await capRef.current?.getToken()) || captcha || undefined) : undefined;
+    // Captcha PASIVO: usamos el token que el widget ya resolvió al cargar (si hay).
+    // No reseteamos el widget ni bloqueamos por él. Si Supabase lo tiene
+    // desactivado, se entra igual.
+    const cap = TURNSTILE_KEY ? (captcha || undefined) : undefined;
     try {
       if (signup) {
         // Respaldo local (por si el correo se abre en el mismo navegador).
@@ -231,7 +234,8 @@ function LoginInner() {
       }
     } catch (e: any) {
       setMsg(authMsg(e?.message || '', t));
-      capRef.current?.reset();   // token consumido → acuñar uno nuevo para el reintento
+      // Solo si FALLÓ: token fresco en silencio para el reintento.
+      if (TURNSTILE_KEY) capRef.current?.reset();
     } finally { setLoading(false); }
   }
 
