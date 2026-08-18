@@ -147,20 +147,34 @@ function LoginInner() {
   const nextRaw = params.get('next') || planDest || '/dashboard';
   const nextDest = nextRaw.startsWith('/') && !nextRaw.startsWith('//') ? nextRaw : '/dashboard';
 
+  // ¿La cuenta necesita el código de 2 pasos antes de entrar? Robusto: primero
+  // el nivel de aseguramiento (AAL); si por una condición de carrera aún no
+  // refleja el factor, caemos a mirar si hay un factor TOTP verificado. Así nunca
+  // saltamos el 2FA y mandamos al dashboard (lo que se veía como un "refresh").
+  async function needsMfa(): Promise<boolean> {
+    try {
+      const { data: aal } = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (aal && aal.currentLevel === 'aal2') return false;          // ya verificado en esta sesión
+      if (aal && aal.nextLevel === 'aal2') return true;              // requiere el código
+    } catch { /* seguimos al respaldo */ }
+    try {
+      const { data: f } = await sb.auth.mfa.listFactors();
+      if ((f?.totp || []).some((x: any) => x.status === 'verified')) return true;
+    } catch { /* si falla, no bloqueamos */ }
+    return false;
+  }
+
   // Entrar con passkey (huella/Face ID). El autenticador resuelve la cuenta solo.
   async function signInPasskey() {
-    if (TURNSTILE_KEY && !captcha) { setMsg(t.errCaptcha); return; }   // espera al captcha
     setLoading(true); setMsg('');
-    // Token FRESCO en el instante del envío (evita "timeout-or-duplicate").
-    const cap = TURNSTILE_KEY ? (await capRef.current?.getToken()) || captcha : undefined;
-    if (TURNSTILE_KEY && !cap) { setMsg(t.errCaptchaStale); setLoading(false); return; }
+    // Captcha "mejor esfuerzo": intentamos un token fresco, pero NUNCA bloqueamos
+    // el login por él. Si Supabase tiene el CAPTCHA desactivado, se entra igual;
+    // si lo exige y falta/está mal, Supabase responde y mostramos el mensaje.
+    const cap = TURNSTILE_KEY ? ((await capRef.current?.getToken()) || captcha || undefined) : undefined;
     try {
       const { error } = await (sb as any).auth.signInWithPasskey(cap ? { options: { captchaToken: cap } } : undefined);
       if (error) throw error;
-      try {
-        const { data: aal } = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
-        if (aal && aal.nextLevel === 'aal2' && aal.currentLevel !== 'aal2') { setMfa(true); return; }
-      } catch { /* seguimos */ }
+      if (await needsMfa()) { setMfa(true); return; }
       router.push(nextDest); router.refresh();
     } catch (e: any) {
       setMsg(authMsg(e?.message || '', t));
@@ -176,11 +190,10 @@ function LoginInner() {
     if (!passOk) { setMsg(t.errShort); return; }
     if (signup && !passStrong) { setMsg(t.errWeak); return; }
     if (signup && !terms) { setMsg(t.errTerms); return; }
-    if (TURNSTILE_KEY && !captcha) { setMsg(t.errCaptcha); return; }
     setLoading(true); setMsg('');
-    // Token FRESCO en el instante del envío (evita "timeout-or-duplicate").
+    // Captcha "mejor esfuerzo": intentamos un token fresco, pero NUNCA bloqueamos
+    // el login/registro por él. Si Supabase lo tiene desactivado, se entra igual.
     const cap = TURNSTILE_KEY ? ((await capRef.current?.getToken()) || captcha || undefined) : undefined;
-    if (TURNSTILE_KEY && !cap) { setMsg(t.errCaptchaStale); setLoading(false); return; }
     try {
       if (signup) {
         // Respaldo local (por si el correo se abre en el mismo navegador).
@@ -212,12 +225,8 @@ function LoginInner() {
       } else {
         const { error } = await sb.auth.signInWithPassword({ email: email.trim(), password: pass, options: { captchaToken: cap } });
         if (error) throw error;
-        // ¿Tiene verificación en dos pasos? Si el nivel requerido es aal2 y aún
-        // no lo alcanzó, pedimos el código antes de entrar.
-        try {
-          const { data: aal } = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
-          if (aal && aal.nextLevel === 'aal2' && aal.currentLevel !== 'aal2') { setMfa(true); return; }
-        } catch { /* si falla la comprobación, seguimos */ }
+        // ¿Tiene verificación en dos pasos? Pedimos el código antes de entrar.
+        if (await needsMfa()) { setMfa(true); return; }
         router.push(nextDest); router.refresh();
       }
     } catch (e: any) {

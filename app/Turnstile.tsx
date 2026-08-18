@@ -39,12 +39,15 @@ const Turnstile = forwardRef<TurnstileHandle, { onToken: (t: string) => void }>(
       return new Promise<string>((resolve) => {
         if (!TURNSTILE_KEY) return resolve('');
         const tw = (window as any).turnstile;
-        if (!tw || widget.current == null) return resolve(last.current || '');
+        const prev = last.current;                                   // token previo = respaldo
+        if (!tw || widget.current == null) return resolve(prev || '');
         if (waiter.current) { clearTimeout(waiter.current.timer); waiter.current = null; }
-        const timer = setTimeout(() => { waiter.current = null; resolve(last.current || ''); }, 6000);
+        // Intentamos acuñar uno nuevo, PERO nunca bloqueamos: si el reto no se
+        // re-resuelve rápido, devolvemos el token que ya teníamos.
+        const timer = setTimeout(() => { waiter.current = null; resolve(last.current || prev || ''); }, 3500);
         waiter.current = { resolve, timer };
-        try { last.current = ''; cb.current(''); tw.reset(widget.current); }
-        catch { clearTimeout(timer); waiter.current = null; resolve(''); }
+        try { tw.reset(widget.current); }                            // NO borramos el previo
+        catch { clearTimeout(timer); waiter.current = null; resolve(prev || ''); }
       });
     },
   }), []);
