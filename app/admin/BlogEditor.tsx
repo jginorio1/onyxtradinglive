@@ -337,19 +337,22 @@ export default function BlogEditor() {
   // Completa el idioma que falte en TODOS los artículos: si a un post le falta el
   // cuerpo en ES o EN, lo traduce del que sí tiene (evita mezclar idiomas).
   async function bulkComplete() {
+    // Incompletos = falta un idioma O uno está mucho más corto que el otro (stub/mezclado).
     const gap = posts.filter((p) => {
-      const es2 = !!(p.body_es && String(p.body_es).trim()), en = !!(p.body_en && String(p.body_en).trim());
-      return es2 !== en; // tiene uno pero no el otro
+      const lenEs = String(p.body_es || '').trim().length, lenEn = String(p.body_en || '').trim().length;
+      const max = Math.max(lenEs, lenEn), min = Math.min(lenEs, lenEn);
+      if (max === 0) return false;
+      return min === 0 || min < max * 0.6;
     });
-    if (!gap.length) { toast(es ? 'Todos los artículos ya están en ambos idiomas. ✓' : 'All articles already have both languages. ✓'); return; }
+    if (!gap.length) { toast(es ? 'Todos los artículos ya están completos en ambos idiomas. ✓' : 'All articles already complete in both languages. ✓'); return; }
     if (!confirm(es
-      ? `${gap.length} artículo(s) tienen un idioma incompleto. Onyx AI traducirá el que falta (ES↔EN) conservando estructura, enlaces, FAQ e imágenes. ¿Continuar?`
-      : `${gap.length} article(s) are missing a language. Onyx AI will translate the missing one (ES↔EN), keeping structure, links, FAQ and images. Continue?`)) return;
+      ? `${gap.length} artículo(s) tienen un idioma incompleto o desbalanceado. Onyx AI lo traducirá/regenerará (ES↔EN) a partir del idioma más completo, conservando estructura, enlaces, FAQ e imágenes. ¿Continuar?`
+      : `${gap.length} article(s) have an incomplete or unbalanced language. Onyx AI will translate/regenerate it (ES↔EN) from the more complete language, keeping structure, links, FAQ and images. Continue?`)) return;
     setBulk({ running: true, done: 0, total: gap.length });
     let ok = 0, noKey = false;
     for (const p of gap) {
       try {
-        const r = await fetch('/api/admin/blog/ai', { method: 'POST', body: JSON.stringify({ mode: 'complete', id: p.id }) });
+        const r = await fetch('/api/admin/blog/ai', { method: 'POST', body: JSON.stringify({ mode: 'complete', id: p.id, force: true }) });
         const j = await r.json();
         if (j?.code === 'no_key') noKey = true;
         if (r.ok && j.patch && Object.keys(j.patch).length) {
