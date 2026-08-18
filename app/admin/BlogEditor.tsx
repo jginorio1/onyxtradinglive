@@ -636,7 +636,7 @@ export default function BlogEditor() {
                 </div>
                 <div className="row" style={{ gap: 6 }}>
                   {p.status === 'scheduled' && <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--green)' }} onClick={() => publishNow(p)}>⚡ {es ? 'Publicar ahora' : 'Publish now'}</button>}
-                  {p.status === 'published' && <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--brand)' }} onClick={() => enhanceSeo(p)} disabled={ai} title={es ? 'Añadir enlaces internos, FAQ e imagen sin reescribir el texto' : 'Add internal links, FAQ and image without rewriting'}>✨ {es ? 'Mejorar SEO' : 'Improve SEO'}</button>}
+                  {(p.status === 'published' || p.status === 'scheduled') && <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--brand)' }} onClick={() => enhanceSeo(p)} disabled={ai} title={es ? 'Añadir enlaces internos, FAQ e imagen sin reescribir el texto' : 'Add internal links, FAQ and image without rewriting'}>✨ {es ? 'Mejorar SEO' : 'Improve SEO'}</button>}
                   {p.status === 'published' && <a className="btn btn-ghost" style={{ fontSize: 12 }} href={postUrl(p)} onClick={(e) => { e.preventDefault(); openPost(postUrl(p)); }}>{es ? 'Ver' : 'View'}</a>}
                   <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => edit(p)}>✎ {es ? 'Editar' : 'Edit'}</button>
                   <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--red)' }} onClick={() => del(p.id)}>✕</button>
