@@ -158,6 +158,11 @@ export default function BlogEditor() {
   const [cursor, setCursor] = useState(() => { const d = new Date(); return { y: d.getFullYear(), m: d.getMonth() }; });
   const [dragId, setDragId] = useState('');                  // id del artículo que se arrastra
   const [overDay, setOverDay] = useState('');                // día resaltado al arrastrar encima
+  const [origin, setOrigin] = useState('');                  // origen absoluto (para abrir enlaces desde la app instalada)
+  useEffect(() => { try { setOrigin(window.location.origin); } catch {} }, []);
+  // URL pública absoluta de un artículo. Absoluta = evita el error "dirección no válida"
+  // al abrir target=_blank dentro de la app instalada (Safari standalone).
+  const postUrl = (p: any) => `${origin}${es ? '' : '/en'}/blog/${p.slug || ''}`;
   const set = (k: string, v: any) => setF((s: any) => ({ ...s, [k]: v }));
 
   // Acción rápida "＋ Post" del panel admin (botón contextual de la barra lateral).
@@ -424,8 +429,8 @@ export default function BlogEditor() {
           {missingLangs(p).length > 0 && <span style={{ flex: 'none', color: 'var(--amber)' }} title={(es ? 'Falta: ' : 'Missing: ') + missingLangs(p).join(', ')}>⚠</span>}
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: '1 1 auto', minWidth: 0 }}>{timeLbl}{p.title_es || p.title_en}</span>
           {sched && <span style={{ flex: 'none', fontSize: 9.5 }}><Countdown iso={p.publish_at} es={es} compact /></span>}
-          {p.status === 'published' && p.slug && (
-            <a href={`/blog/${p.slug}`} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} title={es ? 'Ver en la web' : 'View on the web'} style={{ flex: 'none', textDecoration: 'none', color: 'inherit', opacity: .8 }}>👁</a>
+          {p.status === 'published' && p.slug && origin && (
+            <a href={postUrl(p)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} title={es ? 'Ver en la web' : 'View on the web'} style={{ flex: 'none', textDecoration: 'none', color: 'inherit', opacity: .8 }}>👁</a>
           )}
         </div>
       );
@@ -468,7 +473,7 @@ export default function BlogEditor() {
                 <button key={v} type="button" onClick={() => setView(v)} className="btn" style={{ padding: '4px 12px', fontSize: 12.5, border: 'none', borderRadius: 15, background: view === v ? 'var(--brand)' : 'transparent', color: view === v ? '#0a0d14' : 'var(--mut)' }}>{l}</button>
               ))}
             </div>
-            <a className="btn btn-ghost" href={es ? '/blog' : '/en/blog'} target="_blank" rel="noreferrer" title={es ? 'Abrir el blog público en la web' : 'Open the public blog on the web'}>👁 {es ? 'Ver blog' : 'View blog'}</a>
+            <a className="btn btn-ghost" href={`${origin}${es ? '/blog' : '/en/blog'}`} target="_blank" rel="noreferrer" title={es ? 'Abrir el blog público en la web' : 'Open the public blog on the web'}>👁 {es ? 'Ver blog' : 'View blog'}</a>
             <button className="btn btn-primary" onClick={() => { setTitles([]); setTopic(''); setF({ ...blank }); }}>＋ {es ? 'Nuevo' : 'New'}</button>
           </div>
         </div>
@@ -539,7 +544,7 @@ export default function BlogEditor() {
                 <div className="row" style={{ gap: 6 }}>
                   {p.status === 'scheduled' && <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--green)' }} onClick={() => publishNow(p)}>⚡ {es ? 'Publicar ahora' : 'Publish now'}</button>}
                   {p.status === 'published' && <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--brand)' }} onClick={() => enhanceSeo(p)} disabled={ai} title={es ? 'Añadir enlaces internos, FAQ e imagen sin reescribir el texto' : 'Add internal links, FAQ and image without rewriting'}>✨ {es ? 'Mejorar SEO' : 'Improve SEO'}</button>}
-                  {p.status === 'published' && <a className="btn btn-ghost" style={{ fontSize: 12 }} href={`/blog/${p.slug}`} target="_blank" rel="noreferrer">{es ? 'Ver' : 'View'}</a>}
+                  {p.status === 'published' && <a className="btn btn-ghost" style={{ fontSize: 12 }} href={postUrl(p)} target="_blank" rel="noreferrer">{es ? 'Ver' : 'View'}</a>}
                   <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => edit(p)}>✎ {es ? 'Editar' : 'Edit'}</button>
                   <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--red)' }} onClick={() => del(p.id)}>✕</button>
                 </div>
