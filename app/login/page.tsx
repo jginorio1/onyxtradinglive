@@ -251,12 +251,16 @@ function LoginInner() {
   }
 
   // Enviar el correo de recuperación → lleva a /reset-password para poner la nueva.
+  // Con el CAPTCHA activo en Supabase, esta llamada TAMBIÉN necesita el token.
   async function sendReset() {
     if (!mailOk) { setMsg(t.errMail); return; }
     setLoading(true); setMsg('');
     try {
       const redirectTo = typeof window !== 'undefined' ? `${window.location.origin}/reset-password` : undefined;
-      await sb.auth.resetPasswordForEmail(email.trim(), { redirectTo });
+      const captchaToken = TURNSTILE_KEY ? (captcha || undefined) : undefined;
+      const { error } = await sb.auth.resetPasswordForEmail(email.trim(), { redirectTo, captchaToken } as any);
+      // Si falla por el captcha, avisamos y pedimos otro token (no fingimos éxito).
+      if (error && /captcha|human|turnstile/i.test(error.message || '')) { setMsg(t.errCaptcha); capRef.current?.reset(); return; }
       setForgotOk(true);   // por seguridad mostramos éxito aunque el email no exista
     } catch { setForgotOk(true); } finally { setLoading(false); }
   }
@@ -329,6 +333,7 @@ function LoginInner() {
               <label>{t.email}</label>
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required inputMode="email" autoComplete="username"
                 onKeyDown={(e) => { if (e.key === 'Enter') sendReset(); }} />
+              <Turnstile ref={capRef} onToken={setCaptcha} />
               {msg && <p className="muted" style={{ marginTop: 12, fontSize: 13, color: 'var(--red)' }}>{msg}</p>}
               <button className="btn btn-primary" style={{ width: '100%', marginTop: 16 }} disabled={loading || !mailOk} onClick={sendReset}>{loading ? '…' : t.forgotSend}</button>
             </>
