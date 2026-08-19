@@ -2,6 +2,7 @@ import type { MetadataRoute } from 'next';
 import { ARTICLES } from '@/lib/guide';
 import { LANGS } from '@/lib/navText';
 import { publishedSlugs } from '@/lib/blog';
+import { PROP_FIRMS } from '@/lib/propFirms';
 
 // Sitemap: le dice a Google qué páginas existen para que las descubra rápido.
 // Para cada página incluimos las variantes de los 6 idiomas con hreflang, para
@@ -43,6 +44,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticPaths: { p: string; pr: number; f: 'weekly' | 'monthly' | 'yearly' }[] = [
     { p: '', pr: 1, f: 'weekly' },
     { p: '/pricing', pr: 0.9, f: 'weekly' },
+    { p: '/prop-firms', pr: 0.85, f: 'weekly' },
     { p: '/blog', pr: 0.8, f: 'weekly' },
     { p: '/embajadores', pr: 0.7, f: 'monthly' },
     { p: '/invita', pr: 0.7, f: 'monthly' },
@@ -53,10 +55,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
   const pages = staticPaths.flatMap((s) => entriesFor(s.p, { lastModified: now, changeFrequency: s.f, priority: s.pr }));
   const articles = ARTICLES.flatMap((a) => entriesFor(`/guia/${a.slug}`, { lastModified: now, changeFrequency: 'monthly', priority: 0.6 }));
+  const firms = PROP_FIRMS.flatMap((f) => entriesFor(`/prop-firms/${f.slug}`, { lastModified: now, changeFrequency: 'weekly', priority: 0.75 }));
   let blog: MetadataRoute.Sitemap = [];
   try {
     const posts = await publishedSlugs();
     blog = posts.flatMap((p) => blogEntries(`/blog/${p.slug}`, `/blog/${p.slugEn}`, new Date(p.updated)));
   } catch { blog = []; }
-  return [...pages, ...articles, ...blog];
+  return [...pages, ...firms, ...articles, ...blog];
 }
