@@ -49,9 +49,9 @@ export async function generateMetadata(): Promise<Metadata> {
   const es = serverLang() === 'es';
   // Overrides de título/descripción que el owner edita en Admin → SEO (si vacío, usa el default).
   const seo = seoFor(await getSeoMeta(), 'home', es,
-    es ? 'Onyx Trading Live · Tu diario de trading conectado a MT4/MT5' : 'Onyx Trading Live · Your trading journal connected to MT4/MT5',
-    es ? 'Conecta tus cuentas de MetaTrader (MT4/MT5) o cTrader y analiza tu trading automáticamente: estadísticas, calendario, sesiones, pares, seguimiento de fondeo, copy trading y academia. Empieza gratis.'
-       : 'Connect your MetaTrader (MT4/MT5) or cTrader accounts and analyze your trading automatically: stats, calendar, sessions, pairs, funding tracking, copy trading and academy. Start free.');
+    es ? 'Onyx Trading Live · El sistema operativo del trader de fondeo' : 'Onyx Trading Live · The operating system for funded traders',
+    es ? 'Conecta MT4, MT5 y cTrader, sigue las reglas de tu prop firm en vivo, protege tu riesgo con el Onyx Guardian y copia entre cuentas. Journal, analítica y ganancia neta. Empieza gratis.'
+       : 'Connect MT4, MT5 and cTrader, track your prop-firm rules live, protect your risk with Onyx Guardian and copy across accounts. Journal, analytics and net profit. Start free.');
   const gVer = process.env.GOOGLE_SITE_VERIFICATION;
   const bVer = process.env.BING_SITE_VERIFICATION;
   return {
@@ -65,15 +65,15 @@ export async function generateMetadata(): Promise<Metadata> {
     appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'Onyx' },
     icons: { icon: '/onyx-symbol.png', apple: '/apple-touch-icon.png' },
     openGraph: {
-      title: es ? 'Onyx Trading Live · Tu diario de trading inteligente' : 'Onyx Trading Live · Your smart trading journal',
+      title: es ? 'Onyx Trading Live · El sistema operativo del trader de fondeo' : 'Onyx Trading Live · The operating system for funded traders',
       description: es
-        ? 'Conecta MT4/MT5 y analiza cada operación. Estadísticas, calendario y portafolio en tiempo real.'
-        : 'Connect MT4/MT5 and analyze every trade. Stats, calendar and portfolio in real time.',
+        ? 'MT4, MT5 y cTrader: sigue las reglas de tu prop firm, protégete con el Guardian y copia entre cuentas. Mucho más que un diario.'
+        : 'MT4, MT5 and cTrader: track your prop-firm rules, protect yourself with Guardian and copy across accounts. Much more than a journal.',
       url, siteName: 'Onyx Trading Live', type: 'website', images: ['/onyx-symbol.png'],
     },
     twitter: {
       card: 'summary_large_image', title: 'Onyx Trading Live',
-      description: es ? 'Tu diario de trading conectado a MT4/MT5.' : 'Your trading journal connected to MT4/MT5.',
+      description: es ? 'El sistema operativo del trader de fondeo: journal, Guardian, prop firms y copy.' : 'The operating system for funded traders: journal, Guardian, prop firms and copy.',
       images: ['/onyx-symbol.png'],
     },
   };
