@@ -13,6 +13,9 @@ const T: any = {
     next: 'Siguiente', prev: 'Anterior',
     signup: 'Crea tu cuenta gratis',
     min: 'min de lectura', updated: 'Nuevo',
+    closeT: '¿Listo para operar con datos, no con corazonadas?',
+    closeD: 'Onyx analiza cada operación, cuida tu riesgo con el Guardian y te muestra tus números reales. Empieza gratis y sube de plan cuando quieras.',
+    seePlans: 'Ver planes', startFree: 'Empezar gratis',
   },
   en: {
     guide: 'Guide', back: '← Back to the guide',
@@ -20,6 +23,9 @@ const T: any = {
     next: 'Next', prev: 'Previous',
     signup: 'Create your free account',
     min: 'min read', updated: 'New',
+    closeT: 'Ready to trade with data, not gut feeling?',
+    closeD: 'Onyx analyzes every trade, protects your risk with Guardian and shows your real numbers. Start free and upgrade whenever you want.',
+    seePlans: 'See plans', startFree: 'Start free',
   },
 };
 
@@ -75,6 +81,18 @@ export default function ArticleView({ slug }: { slug: string }) {
             : <Link className="btn btn-primary" href={a.cta.href}>{a.cta.label[lang]}</Link>}
         </div>
       )}
+
+      {/* Cierre persuasivo (upsell equilibrado): aparece en todos los artículos.
+          A visitantes sin sesión los lleva a registrarse/planes; a los logueados,
+          a ver planes por si quieren subir de plan. */}
+      <div className="card" style={{ marginTop: 26, textAlign: 'center', padding: 24, background: 'linear-gradient(180deg, color-mix(in srgb,var(--brand) 8%,transparent), transparent)' }}>
+        <h3 style={{ margin: '0 0 8px' }}>{t.closeT}</h3>
+        <p className="muted" style={{ fontSize: 14, maxWidth: 500, margin: '0 auto 16px' }}>{t.closeD}</p>
+        <div className="row" style={{ gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+          <Link className="btn btn-primary" href={authed === false ? '/login?mode=signup' : '/pricing'}>{authed === false ? t.startFree : t.seePlans}</Link>
+          <Link className="btn btn-ghost" href="/pricing">{t.seePlans}</Link>
+        </div>
+      </div>
 
       {/* Navegación entre artículos de la misma categoría.
           Dos tarjetas que se apilan bien en móvil, en vez de dos botones

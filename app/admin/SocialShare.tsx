@@ -52,6 +52,9 @@ export default function SocialShare({ post, es }: { post: any; es: boolean }) {
   const [items, setItems] = useState<any[]>([]);
   const [rem, setRem] = useState<any>(null);
   const [remOpen, setRemOpen] = useState(false);
+  const [fbPage, setFbPage] = useState('');       // URL de tu Página de Facebook (recordada)
+  useEffect(() => { try { setFbPage(localStorage.getItem('onyx_fb_page') || ''); } catch {} }, []);
+  const saveFbPage = (v: string) => { setFbPage(v); try { localStorage.setItem('onyx_fb_page', v); } catch {} };
 
   async function loadSchedule() {
     try { const r = await fetch('/api/admin/blog/social?post=' + post.id); const j = await r.json(); setItems(j.items || []); setRem(j.reminder || null); } catch {}
@@ -96,6 +99,19 @@ export default function SocialShare({ post, es }: { post: any; es: boolean }) {
   // para que el usuario solo pegue (Ctrl/Cmd+V).
   const PASTE = new Set(['facebook', 'linkedin']);
   const doShare = (id: string, text: string) => {
+    // FACEBOOK → publicar en la PÁGINA de Onyx. El diálogo sharer.php se cuelga en
+    // "Posting" al publicar en Páginas (bug de Facebook). Como publicar manual sí
+    // funciona: copiamos el texto CON el enlace y abrimos tu Página; tú pulsas
+    // "Crear publicación" y pegas (Facebook genera la vista previa al pegar la URL).
+    if (id === 'facebook') {
+      try { navigator.clipboard.writeText(`${text}\n\n${url}`); } catch {}
+      const target = fbPage.trim() || 'https://www.facebook.com/';
+      const ok = openExternal(target);
+      toast(ok
+        ? (es ? '📋 Copiamos el texto y el enlace. En tu Página pulsa “Crear publicación” y pega (Ctrl/Cmd+V).' : '📋 Copied text and link. On your Page click “Create post” and paste (Ctrl/Cmd+V).')
+        : (es ? '📋 Texto y enlace copiados. Abre tu Página y pega en una publicación nueva.' : '📋 Text and link copied. Open your Page and paste into a new post.'));
+      return;
+    }
     const link = shareUrl(id, url, text);
     if (!link) { doCopy(text); return; }        // instagram/tiktok/threads → copiar caption
     const label = NETS[id]?.label || id;
@@ -195,6 +211,12 @@ export default function SocialShare({ post, es }: { post: any; es: boolean }) {
             <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               <span className="muted" style={{ fontSize: 12 }}>{es ? 'Programar a:' : 'Schedule at:'}</span>
               <input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} style={{ margin: 0, width: 'auto' }} />
+            </div>
+            <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap', flexBasis: '100%' }}>
+              <span style={{ width: 18, height: 18, borderRadius: 5, background: '#1877f2', color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 11 }}>f</span>
+              <span className="muted" style={{ fontSize: 12 }}>{es ? 'Tu Página de Facebook:' : 'Your Facebook Page:'}</span>
+              <input type="url" value={fbPage} onChange={(e) => saveFbPage(e.target.value)} placeholder="https://www.facebook.com/OnyxTradingLive" style={{ margin: 0, flex: '1 1 260px', fontSize: 12.5 }} />
+              <span className="muted" style={{ fontSize: 11 }}>{es ? 'Al compartir en Facebook, copiamos el texto+enlace y abrimos tu Página para pegar.' : 'When sharing to Facebook, we copy the text+link and open your Page to paste.'}</span>
             </div>
           </div>
 

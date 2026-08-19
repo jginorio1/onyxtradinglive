@@ -1689,5 +1689,217 @@ export function searchArticles(q: string, lang: Lang): Article[] {
   });
 }
 
+// ============================================================
+// SEO por artículo (título, descripción y keywords, ES/EN).
+// Se fusiona en cada Article (si no traía `seo` propio). La página del
+// artículo ya pinta estos metadatos + JSON-LD, así que rellenar esto mejora
+// el posicionamiento en Google sin tocar el cuerpo de cada guía.
+// ============================================================
+type Seo = NonNullable<Article['seo']>;
+const S = (t: [string, string], d: [string, string], kEs: string[], kEn: string[]): Seo => ({
+  title: { es: t[0], en: t[1] }, desc: { es: d[0], en: d[1] }, keywords: { es: kEs, en: kEn },
+});
+
+export const SEO_MAP: Record<string, Seo> = {
+  'conectar-cuenta': S(
+    ['Conectar MetaTrader a Onyx: clave API paso a paso', 'Connect MetaTrader to Onyx: API key step by step'],
+    ['Aprende a conectar tu cuenta de MetaTrader 4/5 a Onyx con una clave API, por qué es una por cuenta y cómo evitar errores.', 'Learn to connect your MetaTrader 4/5 account to Onyx with an API key, why it is one per account, and how to avoid mistakes.'],
+    ['conectar metatrader', 'clave api metatrader', 'onyx trading', 'diario de trading', 'sincronizar cuenta mt4 mt5'],
+    ['connect metatrader', 'metatrader api key', 'onyx trading', 'trading journal', 'sync mt4 mt5 account']),
+  'instalar-ea': S(
+    ['Instalar el EA de Onyx en MetaTrader (MT4/MT5)', 'Install the Onyx EA on MetaTrader (MT4/MT5)'],
+    ['Guía para instalar el Expert Advisor de Onyx en MetaTrader y empezar a sincronizar tus operaciones automáticamente.', 'Guide to install the Onyx Expert Advisor on MetaTrader and start syncing your trades automatically.'],
+    ['instalar ea metatrader', 'expert advisor onyx', 'ea mt4 mt5', 'sincronizar operaciones', 'autotrading'],
+    ['install ea metatrader', 'onyx expert advisor', 'ea mt4 mt5', 'sync trades', 'autotrading']),
+  'que-hace-onyx': S(
+    ['Qué es Onyx: diario y análisis de trading real', 'What Onyx is: real trading journal and analytics'],
+    ['Onyx analiza cada operación, cuida tu riesgo con el Guardian y te muestra tus números reales. Descubre qué hace y qué no.', 'Onyx analyzes every trade, protects your risk with Guardian and shows your real numbers. See what it does and doesn’t.'],
+    ['diario de trading', 'analisis de trading', 'journal forex', 'gestion de riesgo', 'onyx trading live'],
+    ['trading journal', 'trading analytics', 'forex journal', 'risk management', 'onyx trading live']),
+  'profit-factor': S(
+    ['Profit factor: qué es y cuándo te engaña', 'Profit factor: what it is and when it misleads you'],
+    ['Qué mide el profit factor, qué valor es bueno y por qué a veces engaña. Ejemplos claros para traders.', 'What profit factor measures, what value is good, and why it sometimes misleads. Clear examples for traders.'],
+    ['profit factor', 'que es profit factor', 'metricas de trading', 'rentabilidad trading', 'estadisticas forex'],
+    ['profit factor', 'what is profit factor', 'trading metrics', 'trading profitability', 'forex statistics']),
+  'expectancy': S(
+    ['Expectancy: cuánto ganas por operación de media', 'Expectancy: how much you win per trade on average'],
+    ['Qué es la esperanza matemática (expectancy) en trading, cómo se calcula y por qué manda más que el % de aciertos.', 'What expectancy is in trading, how to calculate it, and why it matters more than win rate.'],
+    ['expectancy trading', 'esperanza matematica', 'ganancia por operacion', 'winrate', 'metricas de trading'],
+    ['trading expectancy', 'expected value trading', 'profit per trade', 'win rate', 'trading metrics']),
+  'que-es-r': S(
+    ['Qué es 1R en trading y por qué deberías usarlo', 'What is 1R in trading and why you should use it'],
+    ['1R es tu unidad de riesgo. Aprende a medir tus operaciones en R para comparar y mejorar con datos.', '1R is your risk unit. Learn to measure trades in R to compare and improve with data.'],
+    ['que es 1r', 'unidad de riesgo', 'riesgo beneficio', 'ratio r trading', 'gestion de riesgo'],
+    ['what is 1r', 'risk unit', 'risk reward', 'r multiple trading', 'risk management']),
+  'drawdown': S(
+    ['Drawdown: la métrica que decide si aguantas', 'Drawdown: the metric that decides if you survive'],
+    ['Qué es el drawdown, la diferencia entre máximo y diario, y cómo usarlo para no reventar tu cuenta.', 'What drawdown is, max vs daily, and how to use it so you don’t blow your account.'],
+    ['drawdown trading', 'que es drawdown', 'drawdown maximo', 'perdida maxima', 'gestion de riesgo'],
+    ['trading drawdown', 'what is drawdown', 'max drawdown', 'daily drawdown', 'risk management']),
+  'costes-reales': S(
+    ['Comisiones y swap: el dinero que no ves en trading', 'Commissions and swap: the money you don’t see'],
+    ['Comisiones, spread y swap se comen tu rentabilidad. Aprende a verlos y a calcular tu ganancia neta real.', 'Commissions, spread and swap eat your returns. Learn to see them and compute your real net profit.'],
+    ['comisiones trading', 'swap forex', 'spread', 'costes de trading', 'ganancia neta'],
+    ['trading commissions', 'forex swap', 'spread', 'trading costs', 'net profit']),
+  'break-even': S(
+    ['Break even en trading: qué es de verdad', 'Break even in trading: what it really means'],
+    ['Qué es el break even real (incluyendo costes), por qué no es tu precio de entrada y cómo usarlo bien.', 'What real break even means (including costs), why it’s not your entry price, and how to use it.'],
+    ['break even trading', 'punto de equilibrio', 'sl a break even', 'gestion de operacion', 'costes'],
+    ['break even trading', 'breakeven point', 'move sl to breakeven', 'trade management', 'costs']),
+  'trailing-stop': S(
+    ['Trailing stop: asegurar sin cortar demasiado pronto', 'Trailing stop: lock profit without cutting too early'],
+    ['Cómo funciona el trailing stop, cuándo usarlo y cómo evitar que te saque antes de tiempo de tus operaciones.', 'How a trailing stop works, when to use it, and how to avoid getting stopped out too soon.'],
+    ['trailing stop', 'stop dinamico', 'asegurar ganancias', 'gestion de salida', 'stop loss'],
+    ['trailing stop', 'dynamic stop', 'lock in profit', 'exit management', 'stop loss']),
+  'plan-de-trading': S(
+    ['Plan de trading: horarios, rachas y disciplina', 'Trading plan: hours, streaks and discipline'],
+    ['Crea un plan de trading realista: horarios, límites de rachas y menos fricción para operar con disciplina.', 'Build a realistic trading plan: hours, streak limits and less friction to trade with discipline.'],
+    ['plan de trading', 'disciplina trading', 'reglas de trading', 'psicologia trading', 'rutina de trading'],
+    ['trading plan', 'trading discipline', 'trading rules', 'trading psychology', 'trading routine']),
+  'limites-cuenta': S(
+    ['Límites de cuenta: base de cálculo y hora de reinicio', 'Account limits: calculation base and reset time'],
+    ['Configura tus límites de pérdida diaria y total: sobre qué se calculan y a qué hora se reinician.', 'Set your daily and total loss limits: what they’re based on and when they reset.'],
+    ['limites de cuenta', 'perdida diaria', 'limite de perdida', 'reglas de fondeo', 'gestion de riesgo'],
+    ['account limits', 'daily loss', 'loss limit', 'funded rules', 'risk management']),
+  'parciales': S(
+    ['Cierres parciales: cómo cobrar tus operaciones por partes', 'Partial closes: how to bank trades in pieces'],
+    ['Qué son los cierres parciales, cuándo tienen sentido y cómo los mide Onyx (TP completo vs parcial).', 'What partial closes are, when they make sense, and how Onyx measures full vs partial TP.'],
+    ['cierres parciales', 'tomar parciales', 'gestion de salida', 'take profit', 'gestion de operacion'],
+    ['partial closes', 'scaling out', 'exit management', 'take profit', 'trade management']),
+  'reglas-fondeo': S(
+    ['Reglas de prop firm: cómo pasar y no romperlas', 'Prop firm rules: how to pass without breaking them'],
+    ['Drawdown, pérdida diaria y consistencia: entiende las reglas de tu prop firm y sigue el marcador con Onyx.', 'Drawdown, daily loss and consistency: understand your prop firm rules and track them with Onyx.'],
+    ['reglas prop firm', 'cuenta de fondeo', 'pasar el reto', 'drawdown fondeo', 'trader fondeado'],
+    ['prop firm rules', 'funded account', 'pass the challenge', 'funded drawdown', 'funded trader']),
+  'varias-cuentas': S(
+    ['Llevar varias cuentas de trading a la vez en Onyx', 'Manage multiple trading accounts at once in Onyx'],
+    ['Cómo gestionar varias cuentas de MetaTrader/cTrader en Onyx, verlas por separado y no mezclar tus números.', 'How to manage several MetaTrader/cTrader accounts in Onyx, view them separately and keep numbers clean.'],
+    ['varias cuentas trading', 'multi cuenta metatrader', 'gestionar cuentas', 'cuentas de fondeo', 'onyx'],
+    ['multiple trading accounts', 'multi account metatrader', 'manage accounts', 'funded accounts', 'onyx']),
+  'planes-y-pagos': S(
+    ['Planes de Onyx: cambios, pagos y cancelación', 'Onyx plans: changes, billing and cancellation'],
+    ['Cómo cambiar de plan, gestionar pagos y cancelar en Onyx, con los efectos de subir o bajar de plan.', 'How to change plan, manage billing and cancel in Onyx, and what happens on upgrade or downgrade.'],
+    ['planes onyx', 'cambiar de plan', 'cancelar suscripcion', 'precios trading', 'facturacion'],
+    ['onyx plans', 'change plan', 'cancel subscription', 'trading pricing', 'billing']),
+  'privacidad-seguridad': S(
+    ['Seguridad en Onyx: datos, contraseña y verificación 2 pasos', 'Onyx security: data, password and 2-step verification'],
+    ['Qué datos guarda Onyx y qué no, cómo restablecer tu contraseña y activar la verificación en dos pasos (2FA).', 'What data Onyx stores and what it doesn’t, how to reset your password and enable two-step verification (2FA).'],
+    ['seguridad cuenta', 'restablecer contraseña', 'verificacion dos pasos', '2fa trading', 'privacidad datos'],
+    ['account security', 'reset password', 'two-step verification', '2fa trading', 'data privacy']),
+  'avisos-telegram': S(
+    ['Avisos de trading por Telegram con Onyx', 'Trading alerts on Telegram with Onyx'],
+    ['Recibe alertas de fondeo, riesgo, noticias y metas por Telegram. Conecta tu cuenta en un clic.', 'Get funding, risk, news and goal alerts on Telegram. Connect your account in one click.'],
+    ['alertas telegram trading', 'avisos de fondeo', 'notificaciones trading', 'telegram forex', 'onyx'],
+    ['telegram trading alerts', 'funding alerts', 'trading notifications', 'telegram forex', 'onyx']),
+  'soporte-onyx-ai': S(
+    ['Onyx AI: soporte y ayuda instantánea para traders', 'Onyx AI: instant support and help for traders'],
+    ['Pide ayuda a Onyx AI, resuelve dudas al instante o abre un ticket con el equipo de soporte.', 'Ask Onyx AI, get instant answers, or open a ticket with the support team.'],
+    ['soporte onyx', 'ayuda trading', 'chat ia trading', 'ticket soporte', 'onyx ai'],
+    ['onyx support', 'trading help', 'trading ai chat', 'support ticket', 'onyx ai']),
+  'programa-embajadores': S(
+    ['Programa de embajadores de Onyx: gana por referir', 'Onyx ambassador program: earn by referring'],
+    ['Cómo funciona el programa de embajadores de Onyx: comisiones, enlace de referido y cobros.', 'How the Onyx ambassador program works: commissions, referral link and payouts.'],
+    ['programa embajadores', 'referidos trading', 'ganar comisiones', 'afiliados onyx', 'referir'],
+    ['ambassador program', 'trading referrals', 'earn commissions', 'onyx affiliates', 'refer']),
+  'precios-planes': S(
+    ['Precios y planes de Onyx Trading Live', 'Onyx Trading Live pricing and plans'],
+    ['Compara los planes de Onyx y elige el que encaja con tu trading: funciones, límites y precios.', 'Compare Onyx plans and pick the one that fits your trading: features, limits and pricing.'],
+    ['precios onyx', 'planes trading', 'onyx trading live precio', 'diario de trading precio', 'suscripcion'],
+    ['onyx pricing', 'trading plans', 'onyx trading live price', 'trading journal price', 'subscription']),
+  'conectar-ctrader': S(
+    ['Conectar cTrader a Onyx paso a paso', 'Connect cTrader to Onyx step by step'],
+    ['Guía para conectar tu cuenta de cTrader a Onyx con el cBot y sincronizar tus operaciones.', 'Guide to connect your cTrader account to Onyx with the cBot and sync your trades.'],
+    ['conectar ctrader', 'cbot onyx', 'ctrader diario', 'sincronizar ctrader', 'onyx'],
+    ['connect ctrader', 'onyx cbot', 'ctrader journal', 'sync ctrader', 'onyx']),
+  'tradingview-senales': S(
+    ['TradingView a Onyx: ejecuta tus alertas', 'TradingView to Onyx: execute your alerts'],
+    ['Conecta las alertas de TradingView con Onyx para ejecutar señales en tu cuenta de forma automática.', 'Connect TradingView alerts to Onyx to execute signals on your account automatically.'],
+    ['tradingview a metatrader', 'ejecutar alertas tradingview', 'señales tradingview', 'webhook trading', 'onyx'],
+    ['tradingview to metatrader', 'execute tradingview alerts', 'tradingview signals', 'trading webhook', 'onyx']),
+  'academia-que-es': S(
+    ['Onyx Academy: qué es y cómo funciona', 'Onyx Academy: what it is and how it works'],
+    ['Onyx Academy es la comunidad y formación de trading estilo Skool: cursos, clases en vivo y mentores.', 'Onyx Academy is the Skool-style trading community and education: courses, live classes and mentors.'],
+    ['onyx academy', 'comunidad de trading', 'formacion trading', 'academia forex', 'cursos de trading'],
+    ['onyx academy', 'trading community', 'trading education', 'forex academy', 'trading courses']),
+  'academia-crear-mentor': S(
+    ['Crea tu academia de trading en Onyx (mentor)', 'Build your trading academy on Onyx (mentor)'],
+    ['Monta tu academia como mentor en Onyx: cursos, membresías, clases en vivo y tu comunidad.', 'Launch your academy as a mentor on Onyx: courses, memberships, live classes and your community.'],
+    ['crear academia trading', 'ser mentor de trading', 'vender cursos trading', 'comunidad de pago', 'onyx academy'],
+    ['create trading academy', 'become trading mentor', 'sell trading courses', 'paid community', 'onyx academy']),
+  'academia-cobrar-mentor': S(
+    ['Cómo cobran los mentores en Onyx Academy (Stripe)', 'How mentors get paid on Onyx Academy (Stripe)'],
+    ['Cobra tus membresías y cursos con Stripe Connect en Onyx Academy: comisiones, pagos y facturación.', 'Charge for memberships and courses with Stripe Connect on Onyx Academy: fees, payouts and billing.'],
+    ['cobrar cursos trading', 'stripe connect', 'pagos mentor', 'membresias academia', 'monetizar comunidad'],
+    ['charge trading courses', 'stripe connect', 'mentor payouts', 'academy memberships', 'monetize community']),
+  'academia-alumno': S(
+    ['Usar Onyx Academy como alumno', 'Using Onyx Academy as a student'],
+    ['Cómo unirte a una academia, seguir los cursos, entrar a clases en vivo y participar en la comunidad.', 'How to join an academy, follow courses, attend live classes and take part in the community.'],
+    ['academia de trading', 'aprender trading', 'cursos de trading', 'clases en vivo trading', 'onyx academy'],
+    ['trading academy', 'learn trading', 'trading courses', 'live trading classes', 'onyx academy']),
+  'copy-sin-baneos': S(
+    ['Copy trading sin baneos: buenas prácticas', 'Copy trading without bans: best practices'],
+    ['Cómo hacer copy trading entre tus cuentas evitando baneos de prop firms: retardos, filtros y buenas prácticas.', 'How to copy trade across accounts while avoiding prop-firm bans: delays, filters and best practices.'],
+    ['copy trading sin baneo', 'copy trading prop firm', 'copiar operaciones', 'evitar baneo fondeo', 'onyx copy'],
+    ['copy trading no ban', 'copy trading prop firm', 'copy trades', 'avoid funded ban', 'onyx copy']),
+  'mis-robots': S(
+    ['Mis robots: sigue tus EAs por magic number', 'My robots: track your EAs by magic number'],
+    ['Controla el rendimiento de cada robot (EA) por magic number: estados, pares y métricas en Onyx.', 'Track each robot (EA) by magic number: status, pairs and metrics in Onyx.'],
+    ['seguir ea', 'magic number', 'rendimiento robot trading', 'monitor ea', 'onyx robots'],
+    ['track ea', 'magic number', 'ea performance', 'monitor ea', 'onyx robots']),
+  'ganancia-neta': S(
+    ['Ganancia neta: lo que ganaste de verdad', 'Net profit: what you really earned'],
+    ['Resta comisiones, swap y gastos de tu bruto para ver tu ganancia neta real en Onyx.', 'Subtract commissions, swap and expenses from your gross to see your real net profit in Onyx.'],
+    ['ganancia neta trading', 'beneficio real', 'rentabilidad neta', 'costes de trading', 'onyx'],
+    ['net trading profit', 'real profit', 'net profitability', 'trading costs', 'onyx']),
+  'metas-ganancia': S(
+    ['Metas de ganancia: semanal, mensual y anual', 'Profit goals: weekly, monthly and yearly'],
+    ['Fija metas de ganancia y sígueles el paso semana a semana, mes a mes y año a año con Onyx.', 'Set profit goals and track them week by week, month by month and year by year with Onyx.'],
+    ['metas de trading', 'objetivos de ganancia', 'meta mensual trading', 'seguimiento de metas', 'onyx'],
+    ['trading goals', 'profit targets', 'monthly trading goal', 'goal tracking', 'onyx']),
+  'academia-copiar-mentor': S(
+    ['Copiar a tu mentor en la academia', 'Copy your mentor in the academy'],
+    ['Sigue y copia las operaciones de tu mentor dentro de Onyx Academy de forma segura.', 'Follow and copy your mentor’s trades inside Onyx Academy safely.'],
+    ['copiar mentor', 'copy trading mentor', 'señales de mentor', 'academia trading', 'onyx academy'],
+    ['copy mentor', 'mentor copy trading', 'mentor signals', 'trading academy', 'onyx academy']),
+  'plan-habitos-checkin': S(
+    ['Plan, hábitos y check-in diario de trading', 'Trading plan, habits and daily check-in'],
+    ['Construye hábitos de trading y haz tu check-in diario para operar con disciplina y medir tu constancia.', 'Build trading habits and do your daily check-in to trade with discipline and measure consistency.'],
+    ['habitos de trading', 'check in diario', 'disciplina trading', 'rutina de trader', 'psicologia trading'],
+    ['trading habits', 'daily check-in', 'trading discipline', 'trader routine', 'trading psychology']),
+  'proteger-cuenta-guardian': S(
+    ['Proteger tu cuenta con Onyx Guardian', 'Protect your account with Onyx Guardian'],
+    ['El Guardian cuida tu riesgo: límites de pérdida, freno automático y reglas para no reventar tu cuenta.', 'Guardian protects your risk: loss limits, auto stop and rules so you don’t blow your account.'],
+    ['proteger cuenta trading', 'gestion de riesgo automatica', 'limite de perdida', 'onyx guardian', 'stop diario'],
+    ['protect trading account', 'automatic risk management', 'loss limit', 'onyx guardian', 'daily stop']),
+  'notificaciones-onyx': S(
+    ['Notificaciones de Onyx: campana, push y Telegram', 'Onyx notifications: bell, push and Telegram'],
+    ['Configura tus avisos en Onyx: campana dentro de la app, notificaciones push y alertas por Telegram.', 'Set up your alerts in Onyx: in-app bell, push notifications and Telegram alerts.'],
+    ['notificaciones trading', 'push trading', 'alertas telegram', 'avisos onyx', 'configurar avisos'],
+    ['trading notifications', 'trading push', 'telegram alerts', 'onyx alerts', 'configure alerts']),
+  'resincronizar-costes': S(
+    ['Re-sincronizar en Onyx: que los costes cuadren', 'Re-sync in Onyx: make your costs match'],
+    ['Cuándo y cómo re-sincronizar tu historial para que comisiones, swap y ganancia neta cuadren.', 'When and how to re-sync your history so commissions, swap and net profit match.'],
+    ['resincronizar operaciones', 'cuadrar costes', 'historial metatrader', 'sincronizar trading', 'onyx'],
+    ['re-sync trades', 'reconcile costs', 'metatrader history', 'sync trading', 'onyx']),
+  'reto-lectura-ia': S(
+    ['Tu reto de fondeo, leído por la IA de Onyx', 'Your funded challenge, read by Onyx AI'],
+    ['Sube el contrato de tu reto y deja que la IA de Onyx detecte firma, fase y reglas para seguir el marcador.', 'Upload your challenge contract and let Onyx AI detect firm, phase and rules to track the scoreboard.'],
+    ['reto de fondeo', 'reglas prop firm ia', 'leer contrato reto', 'marcador de reto', 'trader fondeado'],
+    ['funded challenge', 'prop firm rules ai', 'read challenge contract', 'challenge scoreboard', 'funded trader']),
+  'instalar-app-avisos': S(
+    ['Instala Onyx como app en tu móvil (PWA)', 'Install Onyx as an app on your phone (PWA)'],
+    ['Instala Onyx como aplicación en iPhone o Android para recibir avisos y abrir tu panel más rápido.', 'Install Onyx as an app on iPhone or Android to get alerts and open your dashboard faster.'],
+    ['instalar app onyx', 'pwa trading', 'app de trading movil', 'notificaciones push', 'onyx app'],
+    ['install onyx app', 'trading pwa', 'mobile trading app', 'push notifications', 'onyx app']),
+  'vps-que-es': S(
+    ['Qué es un VPS para trading y qué tipos hay', 'What a trading VPS is and what types exist'],
+    ['Un VPS mantiene tu MetaTrader y tus robots encendidos 24/7. Aprende qué es, para qué sirve y cómo elegirlo.', 'A VPS keeps your MetaTrader and robots running 24/7. Learn what it is, why it helps and how to choose one.'],
+    ['vps trading', 'vps forex', 'que es un vps', 'metatrader 24/7', 'servidor para robots'],
+    ['trading vps', 'forex vps', 'what is a vps', 'metatrader 24/7', 'server for robots']),
+};
+
+// Fusiona el SEO en cada artículo que no traiga uno propio.
+for (const a of ARTICLES) { if (!a.seo && SEO_MAP[a.slug]) a.seo = SEO_MAP[a.slug]; }
+
 export const bySlug = (slug: string) => ARTICLES.find((a) => a.slug === slug) || null;
 export const byCat = (cat: string) => ARTICLES.filter((a) => a.cat === cat);
