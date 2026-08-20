@@ -1,6 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { computeStats } from '@/lib/stats';
-import { alertUser } from '@/lib/telegram';
+import { alertUser, alertOncePerDay } from '@/lib/telegram';
 import { getPlan, computeStats as planStats } from '@/lib/tradingPlan';
 
 // ============================================================
@@ -91,12 +91,17 @@ export async function sendWeeklyReports(): Promise<{ users: number; sent: number
   const { data: users } = await supabaseAdmin.from('profiles')
     .select('id').eq('tg_weekly', true).not('telegram_chat_id', 'is', null);
 
+  const { emitNotif, loadNotifConfig } = await import('@/lib/emitNotif');
+  const cfg = await loadNotifConfig();
   let sent = 0;
   for (const u of users || []) {
     const msg = await buildWeeklyReport(u.id);
     if (!msg) continue;
-    const ok = await alertUser(u.id, 'weekly', msg);
+    // once/día: evita duplicar el informe si el cron se dispara dos veces.
+    const ok = await alertOncePerDay(u.id, 'weekly', 'weekly_report', msg);
     if (ok) sent++;
+    // Aviso opcional de "resumen semanal" en campana/push (si el dueño lo activó).
+    await emitNotif(u.id, 'weekly_summary', { cfg, once: 'weekly_summary' }).catch(() => {});
   }
   return { users: (users || []).length, sent };
 }

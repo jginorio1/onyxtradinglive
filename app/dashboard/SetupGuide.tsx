@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useLang } from '@/lib/lang';
 import { mkL } from '@/lib/i18n';
@@ -26,6 +27,9 @@ export default function SetupGuide() {
   const [newPlat, setNewPlat] = useState('MT5');
   const [busy, setBusy] = useState('');
   const [celebrate, setCelebrate] = useState(false);
+  const [mounted, setMounted] = useState(false);   // para portalar los modales al <body> (evita que el riel sticky los tape)
+  useEffect(() => { setMounted(true); }, []);
+  const [nick, setNick] = useState('');            // apodo editable de la cuenta seleccionada
 
   const load = () => fetch('/api/setup').then((r) => r.json()).then(setData).catch(() => setData({ caps: {}, accounts: [] }));
   useEffect(() => { load(); const iv = setInterval(load, 12000); return () => clearInterval(iv); }, []);
@@ -43,10 +47,18 @@ export default function SetupGuide() {
   ].filter((g) => g.always || g.show)), [caps, lang]);
 
   const acc = useMemo(() => accounts.find((a) => a.id === sel) || null, [accounts, sel]);
+  // Al cambiar de cuenta en el popup, precarga su apodo en el campo editable.
+  useEffect(() => { setNick(acc?.nickname || ''); }, [acc]);
 
   async function saveGoals(accountId: string, goals: Record<string, boolean>) {
     setBusy('goals');
     try { await fetch('/api/setup', { method: 'PATCH', body: JSON.stringify({ accountId, goals }) }); await load(); }
+    finally { setBusy(''); }
+  }
+  // Renombra la cuenta (apodo). Se guarda en trading_accounts.nickname y se refleja en todos lados.
+  async function saveNick(accountId: string, name: string) {
+    setBusy('nick');
+    try { await fetch('/api/accounts', { method: 'PATCH', body: JSON.stringify({ id: accountId, nickname: name.trim() }) }); await load(); }
     finally { setBusy(''); }
   }
   function toggleGoal(a: Acc, k: string) {
@@ -113,7 +125,8 @@ export default function SetupGuide() {
     return s;
   }
 
-  const accLabel = (a: Acc) => (a.nickname || a.broker || 'MT') + ' · ' + a.login;
+  // Muestra el apodo (si el trader se lo puso) + bróker + número de cuenta.
+  const accLabel = (a: Acc) => (a.nickname ? a.nickname + ' · ' : '') + (a.broker || 'MT') + ' · ' + a.login;
   const goalsOf = (a: Acc) => ({ journal: true, guardian: !!a.goals?.guardian, copy: !!a.goals?.copy, tv: !!a.goals?.tv });
   const accDone = (a: Acc) => stepsFor(a, a.platform, goalsOf(a)).every((s) => s.done);
   const allDone = hasAcc && accounts.every(accDone);
@@ -202,8 +215,8 @@ export default function SetupGuide() {
         </div>
       )}
 
-      {open && (
-        <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '6vh 16px', overflow: 'auto' }}>
+      {open && mounted && createPortal(
+        <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 3000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '6vh 16px', overflow: 'auto' }}>
           <div onClick={(e) => e.stopPropagation()} className="card" style={{ width: '100%', maxWidth: 480, padding: 20 }}>
             <div className="row between" style={{ alignItems: 'center', marginBottom: 4 }}>
               <b style={{ fontSize: 16 }}>{L('Configurar cuenta', 'Configure account')}</b>
@@ -217,6 +230,17 @@ export default function SetupGuide() {
               </select>
               <Link className="btn btn-ghost" href="/dashboard/keys" style={{ fontSize: 13 }}>＋ {L('Nueva', 'New')}</Link>
             </div>
+
+            {acc && (
+              <div style={{ marginBottom: 14 }}>
+                <div className="muted" style={{ fontSize: 12, marginBottom: 5 }}>{L('Nombre de la cuenta (apodo)', 'Account name (nickname)')}</div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <input value={nick} onChange={(e) => setNick(e.target.value)} placeholder={L('Ej: FTMO 100K fase 1', 'Eg: FTMO 100K phase 1')} style={{ margin: 0, flex: 1 }} onKeyDown={(e) => { if (e.key === 'Enter') saveNick(acc.id, nick); }} />
+                  <button className="btn btn-primary" disabled={busy === 'nick' || nick.trim() === (acc.nickname || '')} onClick={() => saveNick(acc.id, nick)}>{busy === 'nick' ? '…' : L('Guardar', 'Save')}</button>
+                </div>
+                <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{L('Aparece en el dashboard, el selector y aquí.', 'Shows in the dashboard, the selector and here.')}</div>
+              </div>
+            )}
 
             {acc && (<>
               <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{L('¿Qué harás con esta cuenta?', 'What will you do with this account?')} · {acc.platform}</div>
@@ -237,10 +261,10 @@ export default function SetupGuide() {
             </>)}
           </div>
         </div>
-      )}
+      , document.body)}
 
-      {celebrate && (
-        <div onClick={dismissCelebrate} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6vh 16px' }}>
+      {celebrate && mounted && createPortal(
+        <div onClick={dismissCelebrate} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 3001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6vh 16px' }}>
           <div onClick={(e) => e.stopPropagation()} className="card" style={{ width: '100%', maxWidth: 380, padding: 26, textAlign: 'center', border: '2px solid var(--green)', boxShadow: '0 0 40px rgba(52,226,160,.3)' }}>
             <div style={{ fontSize: 40, marginBottom: 6 }}>🎉</div>
             <h3 style={{ marginBottom: 8 }}>{L('¡Todo listo!', 'All set!')}</h3>
@@ -248,7 +272,7 @@ export default function SetupGuide() {
             <button className="btn btn-primary" onClick={dismissCelebrate}>{L('Entendido', 'Got it')}</button>
           </div>
         </div>
-      )}
+      , document.body)}
     </>
   );
 }

@@ -11,6 +11,12 @@ const API = (method: string) =>
 
 export const telegramEnabled = () => !!process.env.TELEGRAM_BOT_TOKEN;
 
+// Nombre de la cuenta tal como se ve en la web: apodo, o "Broker · #login".
+// Se usa para que cada aviso identifique claramente de qué cuenta habla.
+export function accName(a: any): string {
+  return a?.nickname || (a?.broker ? `${a.broker} · #${a.login}` : `#${a?.login}`);
+}
+
 // Nombre de usuario del bot, para armar el enlace de vinculación.
 // t.me/<bot>?start=<codigo> abre Telegram con el /start ya rellenado.
 export const BOT_USERNAME = process.env.TELEGRAM_BOT_USERNAME || 'OnyxGuardianLive_bot';
@@ -21,9 +27,19 @@ async function logSend(kind: string, ok: boolean, userId?: string | null, error?
   try { await supabaseAdmin.from('telegram_log').insert({ kind, ok, user_id: userId || null, error: error || null }); } catch {}
 }
 
+// Branding "Onyx Trading Live" en cada mensaje: encabezado arriba + dominio al
+// pie (opción elegida). Centralizado aquí para que TODO aviso lo lleve sin tener
+// que tocar cada punto de envío. Pasa meta.plain=true para omitirlo (raro).
+const BRAND_TOP = '⬢ <b>ONYX TRADING LIVE</b>';
+const BRAND_DIV = '──────────';
+const BRAND_FOOT = '<i>onyxtradinglive.com</i>';
+function brandWrap(text: string): string {
+  return `${BRAND_TOP}\n${BRAND_DIV}\n${text}\n${BRAND_DIV}\n${BRAND_FOOT}`;
+}
+
 // Envía un mensaje a un chat. Nunca lanza: si falla, lo registra y sigue.
 // `meta` (opcional) permite anotar el tipo de mensaje y a quién, para las métricas.
-export async function sendMessage(chatId: string, text: string, meta?: { kind?: string; userId?: string | null }) {
+export async function sendMessage(chatId: string, text: string, meta?: { kind?: string; userId?: string | null; plain?: boolean }) {
   if (!telegramEnabled() || !chatId) return false;
   const kind = meta?.kind || 'message';
   try {
@@ -32,7 +48,7 @@ export async function sendMessage(chatId: string, text: string, meta?: { kind?: 
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         chat_id: chatId,
-        text,
+        text: meta?.plain ? text : brandWrap(text),
         parse_mode: 'HTML',
         disable_web_page_preview: true,
       }),

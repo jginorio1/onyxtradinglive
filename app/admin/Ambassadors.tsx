@@ -1,6 +1,6 @@
 'use client';
 import { mkL } from '@/lib/i18n';
-import { toast, toastErr } from '@/lib/toast';
+import { toast, toastErr, confirmDialog } from '@/lib/toast';
 import { useEffect, useState } from 'react';
 import { useT } from '@/lib/adminText';
 import { useLang } from '@/lib/lang';
@@ -34,7 +34,7 @@ function Recruit({ lang }: { lang: 'es' | 'en' }) {
     try { const r = await fetch('/api/admin/ambassadors/prospects', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(form) }); if (!r.ok) { toastErr(await r.json()); return; } setForm({ name: '', platform: 'youtube', niche: 'prop', email: '' }); load(); } finally { setBusy(''); }
   }
   async function setStatus(id: string, status: string) { await fetch('/api/admin/ambassadors/prospects', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, status }) }); load(); }
-  async function del(id: string) { if (!confirm(L('¿Quitar prospecto?', 'Remove prospect?'))) return; await fetch('/api/admin/ambassadors/prospects', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id }) }); load(); if (sel?.id === id) { setSel(null); setDraft({ subject: '', body: '' }); } }
+  async function del(id: string) { if (!(await confirmDialog(L('¿Quitar prospecto?', 'Remove prospect?')))) return; await fetch('/api/admin/ambassadors/prospects', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id }) }); load(); if (sel?.id === id) { setSel(null); setDraft({ subject: '', body: '' }); } }
 
   function pick(p: any) { setSel(p); setDraft({ subject: '', body: '' }); }
   async function generate() {

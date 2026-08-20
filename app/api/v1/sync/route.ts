@@ -18,6 +18,20 @@ export const runtime = 'nodejs';
 const toISO = (s?: number) =>
   s && s > 0 ? new Date(s * 1000).toISOString() : null;
 
+// Normaliza el motivo de salida que reportan los distintos EAs a un set fijo.
+const REASONS = new Set(['tp', 'sl', 'trailing', 'manual', 'so', 'other']);
+function normReason(v: any): string | null {
+  if (v == null) return null;
+  const s = String(v).toLowerCase().trim();
+  if (REASONS.has(s)) return s;
+  if (s === 'take_profit' || s === 'takeprofit' || s === 'take-profit') return 'tp';
+  if (s === 'stop_loss' || s === 'stoploss' || s === 'stop-loss') return 'sl';
+  if (s === 'stopout' || s === 'stop_out') return 'so';
+  if (s === 'trail' || s === 'trailing_stop') return 'trailing';
+  if (s === 'client' || s === 'expert' || s === 'mobile' || s === 'web' || s === 'close') return 'manual';
+  return 'other';
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -31,7 +45,7 @@ export async function POST(req: NextRequest) {
 
     const { data: keyRow } = await supabaseAdmin
       .from('api_keys')
-      .select('id,user_id,revoked,account_login,acc_type,acc_size,broker,kind')
+      .select('id,user_id,revoked,account_login,acc_type,acc_size,broker,kind,label')
       .eq('key', apiKey)
       .maybeSingle();
 
@@ -127,15 +141,33 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Datos declarados al crear la clave (tipo y tamaño de la cuenta).
+    // Datos declarados al crear la clave (tipo, tamaño y NOMBRE de la cuenta).
     // Solo se rellenan si el usuario aún no los ha puesto a mano en el panel.
-    if (keyRow.acc_type || keyRow.acc_size) {
-      const { data: cur } = await supabaseAdmin.from('trading_accounts').select('acc_type,acc_size').eq('id', accountId).maybeSingle();
+    // Nombre único: el "label" que el trader puso a la clave se usa como apodo de
+    // la cuenta, así aparece igual en dashboard, selector y "Tus cuentas".
+    if (keyRow.acc_type || keyRow.acc_size || keyRow.label) {
+      const { data: cur } = await supabaseAdmin.from('trading_accounts').select('acc_type,acc_size,nickname').eq('id', accountId).maybeSingle();
       const patch: any = {};
       if (keyRow.acc_type && !cur?.acc_type) patch.acc_type = keyRow.acc_type;
       if (keyRow.acc_size && !cur?.acc_size) patch.acc_size = keyRow.acc_size;
-      if (Object.keys(patch).length) await supabaseAdmin.from('trading_accounts').update(patch).eq('id', accountId);
+      if (keyRow.label && !cur?.nickname) patch.nickname = String(keyRow.label).slice(0, 60);
+      if (Object.keys(patch).length) {
+        const upd = await supabaseAdmin.from('trading_accounts').update(patch).eq('id', accountId);
+        // Tolerante: si aún no existe la columna nickname, reintenta sin ella.
+        if (upd.error && patch.nickname) { delete patch.nickname; if (Object.keys(patch).length) await supabaseAdmin.from('trading_accounts').update(patch).eq('id', accountId); }
+      }
     }
+
+    // ¿El trader pidió re-sincronizar TODO el historial de esta cuenta?
+    // Se lo diremos al EA (resyncHistory) y limpiamos la marca para que sea 1 vez.
+    let resyncHistory = false;
+    try {
+      const { data: rs } = await supabaseAdmin.from('trading_accounts').select('resync_history').eq('id', accountId).maybeSingle();
+      if ((rs as any)?.resync_history) {
+        resyncHistory = true;
+        await supabaseAdmin.from('trading_accounts').update({ resync_history: false }).eq('id', accountId);
+      }
+    } catch { /* si la columna no existe aún, no pasa nada */ }
 
     // --- Operaciones cerradas (idempotente por ticket) ---
     const closed = Array.isArray(body.closedTrades) ? body.closedTrades : [];
@@ -156,15 +188,24 @@ export async function POST(req: NextRequest) {
         net_profit: t.netProfit,
         magic: t.magic != null ? Number(t.magic) : null,
         ea_comment: t.comment ? String(t.comment).slice(0, 120) : null,
+        // Ganancias parciales: agrupar por posición y motivo de salida.
+        position_id: t.positionId != null ? String(t.positionId).slice(0, 40) : null,
+        exit_reason: normReason(t.exitReason),
+        closed_volume: t.closedVolume != null ? Number(t.closedVolume) : (t.volume != null ? Number(t.volume) : null),
       }));
       const up = await supabaseAdmin
         .from('trades')
         .upsert(rows, { onConflict: 'account_id,ticket' });
-      // Tolerante: si aún no existen las columnas magic/ea_comment (bots.sql sin
+      // Tolerante: si aún no existen columnas nuevas (bots.sql / partials.sql sin
       // correr), reintentamos sin ellas para no perder ninguna operación.
       if (up.error) {
-        const bare = rows.map(({ magic, ea_comment, ...r }: any) => r);
-        await supabaseAdmin.from('trades').upsert(bare, { onConflict: 'account_id,ticket' });
+        const bare = rows.map(({ magic, ea_comment, position_id, exit_reason, closed_volume, ...r }: any) => r);
+        const up2 = await supabaseAdmin.from('trades').upsert(bare, { onConflict: 'account_id,ticket' });
+        // Segundo intento tolerante: puede faltar solo partials.sql (sí existe magic).
+        if (up2.error) {
+          const bare2 = rows.map(({ position_id, exit_reason, closed_volume, ...r }: any) => r);
+          await supabaseAdmin.from('trades').upsert(bare2, { onConflict: 'account_id,ticket' });
+        }
       }
     }
 
@@ -250,14 +291,17 @@ export async function POST(req: NextRequest) {
 
       // Avisos a Telegram por lo que hizo el gestor con la operación abierta.
       // Solo los tres tipos que interesa notificar; el resto se queda en el historial.
+      // Se incluye SIEMPRE la cuenta (apodo o número) para que, con varias cuentas
+      // conectadas, el trader sepa a cuál se refiere cada aviso.
+      const accTag = String(keyRow.label || acc.login);
       for (const e of clean) {
         if (e.kind === 'breakeven' || e.kind === 'trailing' || e.kind === 'partial') {
           const icon = e.kind === 'partial' ? '💰' : '🎯';
           const line = e.symbol ? `${e.detail} · ${e.symbol}` : e.detail;
-          alertUser(userId, 'manager', `${icon} Onyx Guardian\n${line}`).catch(() => {});
+          alertUser(userId, 'manager', `${icon} Onyx Guardian · ${accTag}\n${line}`).catch(() => {});
         } else if (e.kind === 'override') {
           // "Te saltaste una regla" — deja constancia
-          alertUser(userId, 'blocks', `⚠️ Onyx Guardian\n${e.detail || 'Te saltaste una regla del plan.'}`).catch(() => {});
+          alertUser(userId, 'blocks', `⚠️ Onyx Guardian · ${accTag}\n${e.detail || 'Te saltaste una regla del plan.'}`).catch(() => {});
         }
       }
     }
@@ -283,7 +327,7 @@ export async function POST(req: NextRequest) {
         if (pnl >= target) {
           const name = fa.nickname || fa.login;
           alertUser(userId, 'goal',
-            `🏆 Onyx Guardian\n¡Objetivo alcanzado en ${name}! Llevas +$${pnl.toFixed(0)} sobre tu inicio de $${start.toFixed(0)}.\nAhora protege lo conseguido: activa tus límites y no lo devuelvas.`).catch(() => {});
+            `🏆 Onyx Guardian\n¡Llegaste al objetivo de fondeo en ${name}! Llevas +$${pnl.toFixed(0)} sobre tu inicio de $${start.toFixed(0)}.\nAhora protege lo conseguido: activa tus límites y no lo devuelvas.`).catch(() => {});
           await supabaseAdmin.from('trading_accounts')
             .update({ goal_notified_at: new Date().toISOString() }).eq('id', accountId);
         }
@@ -401,12 +445,14 @@ export async function POST(req: NextRequest) {
         try {
           const sb = await loadChallenge(userId, accountId);
           if (sb) {
-            challenge = { verdict: sb.verdict, title: sb.name, lines: sb.lines };
+            challenge = { verdict: sb.verdict, title: sb.name, phaseEs: sb.phaseEs, phaseEn: sb.phaseEn, lines: sb.lines };
             if (sb.verdict === 'watch' || sb.verdict === 'breach') {
               const near = sb.closest ? ` (${sb.closest.es} / ${sb.closest.en})` : '';
               const head = sb.verdict === 'breach' ? '❌ Regla del reto rota / Challenge rule broken' : '⚠️ Cerca de romper una regla / Close to breaking a rule';
-              const fired = await alertOncePerDay(userId, 'funding', 'challenge_' + sb.verdict, `🏁 Onyx · ${sb.name}\n${head}${near}.`).catch(() => false);
-              if (fired) sendPush(userId, { title: `Onyx · ${sb.name}`, body: head, url: '/dashboard' }).catch(() => {});
+              // Título con nombre de cuenta y fase (si la hay): "FTMO-50K · Fase 1"
+              const tag = sb.name + (sb.phaseEs ? ` · ${sb.phaseEs} / ${sb.phaseEn}` : '');
+              const fired = await alertOncePerDay(userId, 'funding', 'challenge_' + sb.verdict, `🏁 Onyx · ${tag}\n${head}${near}.`).catch(() => false);
+              if (fired) sendPush(userId, { title: `Onyx · ${sb.name}${sb.phaseEs ? ' · ' + sb.phaseEs : ''}`, body: head, url: '/dashboard?view=reto' }).catch(() => {});
             }
           }
         } catch { /* el marcador nunca rompe el sync */ }
@@ -418,7 +464,7 @@ export async function POST(req: NextRequest) {
       (verdict as any).resume_in_sec = Math.max(0, Math.round((new Date((verdict as any).resume_at).getTime() - Date.now()) / 1000));
     }
 
-    return NextResponse.json({ ok: true, received: closed.length, accountId, config: managerCfg, verdict, challenge, commands, features, news, newsTimes });
+    return NextResponse.json({ ok: true, received: closed.length, accountId, config: managerCfg, verdict, challenge, commands, features, news, newsTimes, resyncHistory });
   } catch (e: any) {
     console.error('sync error', e);
     await logError('ea_sync', e);

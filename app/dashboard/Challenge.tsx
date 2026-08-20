@@ -1,5 +1,6 @@
 'use client';
 import { dictFor } from '@/lib/i18n';
+import OnyxIcon from '@/app/components/OnyxIcon';
 import { toast } from '@/lib/toast';
 import { useEffect, useState } from 'react';
 import { errMsg } from '@/lib/i18nErrors';
@@ -71,30 +72,67 @@ export default function Challenge({ lang }: { lang: Lang }) {
   const [busy, setBusy] = useState('');
   const [draft, setDraft] = useState<any>({});   // account_id -> rules en edición
   const [aiText, setAiText] = useState<any>({});  // account_id -> texto de reglas para el lector AI
+  const [edit, setEdit] = useState<any>({});      // account_id -> ¿está abierto el editor de reglas?
 
   useEffect(() => { load(); }, []);
 
+  // Convierte un File a base64 (sin el prefijo data:).
+  function fileToB64(file: File): Promise<{ media_type: string; data: string }> {
+    return new Promise((resolve, reject) => {
+      const rd = new FileReader();
+      rd.onload = () => { const s = String(rd.result || ''); resolve({ media_type: file.type || 'application/octet-stream', data: s.slice(s.indexOf(',') + 1) }); };
+      rd.onerror = reject; rd.readAsDataURL(file);
+    });
+  }
+  // Adjunta un contrato (foto o PDF) y lo lee con IA para prellenar el reto.
+  async function readFile(id: string, file: File) {
+    if (!file) return;
+    if (file.size > 8 * 1024 * 1024) { toast(lang === 'es' ? 'El archivo es muy grande (máx 8 MB).' : 'File too large (max 8 MB).'); return; }
+    setBusy('ai' + id);
+    try {
+      const f = await fileToB64(file);
+      await sendParse(id, { file: f, text: String(aiText[id] || '') });
+    } catch { toast('Error'); } finally { setBusy(''); }
+  }
   // Lee las reglas pegadas con AI y prellena los campos (el trader confirma y guarda).
   async function readRules(id: string) {
     const text = String(aiText[id] || '');
     if (text.trim().length < 15) { toast(L.aiPlaceholder); return; }
     setBusy('ai' + id);
-    try {
-      const r = await fetch('/api/challenge/parse', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text, lang }) });
-      const j = await r.json();
-      if (!r.ok) { toast(j.error || 'Error'); return; }
-      const ru = j.rules || {};
-      setDraft((p: any) => {
-        const cur = { ...p[id] };
-        const set = (k: string, v: any) => { if (v !== undefined) cur[k] = v; };
-        set('daily_loss', ru.daily_loss); set('daily_loss_pct', ru.daily_loss_pct);
-        set('total_loss', ru.total_loss); set('total_loss_pct', ru.total_loss_pct);
-        set('profit_target', ru.profit_target); set('profit_target_pct', ru.profit_target_pct);
-        set('min_days', ru.min_days); set('consistency', ru.consistency);
-        return { ...p, [id]: cur };
+    try { await sendParse(id, { text }); } finally { setBusy(''); }
+  }
+  // Envía texto y/o archivo a la IA y aplica las reglas (incluida firma y fase).
+  async function sendParse(id: string, body: { text?: string; file?: { media_type: string; data: string } }) {
+    const r = await fetch('/api/challenge/parse', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...body, lang }) });
+    const j = await r.json();
+    if (!r.ok) { toast(j.error || 'Error'); return; }
+    const ru = j.rules || {};
+    // Firma nueva que la IA añadió al catálogo → la metemos en la lista y la seleccionamos.
+    if (j.addedFirm) {
+      setData((d: any) => d ? ({ ...d, firms: [...(d.firms || []), j.addedFirm] }) : d);
+      toast(lang === 'es' ? `Añadí "${j.addedFirm.name}" al catálogo de firmas.` : `Added "${j.addedFirm.name}" to the firm catalog.`, 'ok');
+    } else if (ru.firm) {
+      // Firma detectada que ya está en el catálogo → la preselecciona.
+      const match = (data?.firms || []).find((x: any) => {
+        const n = String(x.name || '').toLowerCase(), en = String(x.name_en || '').toLowerCase(), f = String(ru.firm).toLowerCase();
+        return n && (n.includes(f) || f.includes(n) || (en && (en.includes(f) || f.includes(en))));
       });
-      toast(L.aiDone, 'ok');
-    } finally { setBusy(''); }
+      if (match) applyFirm(id, match.id);
+    }
+    setDraft((p: any) => {
+      const cur = { ...p[id] };
+      const set = (k: string, v: any) => { if (v !== undefined) cur[k] = v; };
+      if (j.addedFirm) { cur.firm = j.addedFirm.id; cur.base = j.addedFirm.base; cur.reset_hour = j.addedFirm.reset_hour; }
+      set('daily_loss', ru.daily_loss); set('daily_loss_pct', ru.daily_loss_pct);
+      set('total_loss', ru.total_loss); set('total_loss_pct', ru.total_loss_pct);
+      set('profit_target', ru.profit_target); set('profit_target_pct', ru.profit_target_pct);
+      set('min_days', ru.min_days); set('consistency', ru.consistency);
+      set('no_weekend_hold', ru.weekend_flat);
+      // Fase detectada: p1→'1', p2→'2', funded→'funded'
+      if (ru.phase) set('phase', ru.phase === 'p1' ? '1' : ru.phase === 'p2' ? '2' : 'funded');
+      return { ...p, [id]: cur };
+    });
+    toast(L.aiDone, 'ok');
   }
   async function load() {
     try {
@@ -106,6 +144,7 @@ export default function Challenge({ lang }: { lang: Lang }) {
     } catch { setData({ boards: [], accounts: [] }); }
   }
   const boardFor = (id: string) => (data?.boards || []).find((b: any) => b.accountId === id);
+  const phaseLbl = (p: string, lg: string) => p === '2' ? (lg === 'es' ? 'Fase 2' : 'Phase 2') : p === 'funded' ? (lg === 'es' ? 'Fondeada' : 'Funded') : (lg === 'es' ? 'Fase 1' : 'Phase 1');
 
   function applyFirm(id: string, firmId: string) {
     const f = (data?.firms || []).find((x: any) => x.id === firmId);
@@ -123,7 +162,7 @@ export default function Challenge({ lang }: { lang: Lang }) {
     const r = await fetch('/api/challenge', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ account_id: id, ...draft[id] }) });
     const j = await r.json().catch(() => ({})); setBusy('');
     if (!r.ok) { toast(errMsg(j, lang)); return; }
-    toast(L.saved, 'ok'); load();
+    toast(L.saved, 'ok'); setEdit((p: any) => ({ ...p, [id]: false })); load();
   }
 
   if (!data) return <div className="card muted">…</div>;
@@ -142,10 +181,12 @@ export default function Challenge({ lang }: { lang: Lang }) {
 
   return (
     <div style={{ maxWidth: 860, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ textAlign: 'center', marginBottom: 2 }}>
-        <span style={{ display: 'inline-flex', width: 44, height: 44, borderRadius: 13, background: 'rgba(124,140,255,.16)', alignItems: 'center', justifyContent: 'center', fontSize: 21, marginBottom: 8 }}>🏁</span>
-        <h2 style={{ fontSize: 20, marginBottom: 2 }}>{L.title}</h2>
-        <p className="muted" style={{ fontSize: 13, margin: 0 }}>{L.sub}</p>
+      <div className="row" style={{ gap: 12, alignItems: 'center' }}>
+        <span style={{ display: 'inline-flex', width: 34, height: 34, borderRadius: 9, background: 'rgba(124,140,255,.16)', alignItems: 'center', justifyContent: 'center', fontSize: 17, flex: 'none' }}>🏁</span>
+        <div>
+          <h2 style={{ fontSize: 18, margin: 0 }}>{L.title}</h2>
+          <p className="muted" style={{ fontSize: 12.5, margin: 0 }}>{L.sub}</p>
+        </div>
       </div>
 
       {!data.accounts?.length && <div className="card muted">{L.none}</div>}
@@ -161,6 +202,7 @@ export default function Challenge({ lang }: { lang: Lang }) {
             <div className="row between" style={{ flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
               <b style={{ fontSize: 15 }}>{a.name} <span className="muted" style={{ fontWeight: 400, fontSize: 12.5 }}>· #{a.login}</span></b>
               <div className="row" style={{ gap: 10, alignItems: 'center' }}>
+                {d.phase && <span className="pill" style={{ color: 'var(--soft-brand)', background: 'rgba(124,140,255,.15)' }}>{phaseLbl(d.phase, lang)}</span>}
                 {vpill && <span className="pill" style={{ color: vpill.c, background: vpill.bg }}>{vpill.t}</span>}
                 <label className="row" style={{ gap: 6, cursor: 'pointer', fontSize: 13 }}>
                   <input type="checkbox" checked={!!d.on} onChange={(e) => setF(a.id, 'on', e.target.checked)} style={{ width: 'auto', margin: 0 }} /> {L.on}
@@ -188,17 +230,35 @@ export default function Challenge({ lang }: { lang: Lang }) {
               </div>
             )}
 
-            {/* Editor de reglas */}
+            {/* Botón para abrir/cerrar el editor de reglas (plegado por defecto) */}
             {d.on && (
+              <button className="btn btn-ghost" style={{ marginTop: 12, fontSize: 12.5 }}
+                onClick={() => setEdit((p: any) => ({ ...p, [a.id]: !p[a.id] }))}>
+                {edit[a.id] ? (lang === 'es' ? '▲ Cerrar reglas' : '▲ Close rules') : '⚙️ ' + (lang === 'es' ? 'Editar reglas' : 'Edit rules')}
+              </button>
+            )}
+
+            {/* Editor de reglas (se abre con el botón) */}
+            {d.on && edit[a.id] && (
               <div style={{ borderTop: '1px solid var(--line)', marginTop: 12, paddingTop: 12 }}>
                 <div style={{ background: 'rgba(124,140,255,.10)', border: '1px solid rgba(124,140,255,.25)', borderRadius: 8, padding: '9px 11px', fontSize: 12.5, color: 'var(--soft-brand)', lineHeight: 1.4 }}>ℹ️ {L.intro}</div>
 
                 {/* Lector de reglas con AI */}
                 <div style={{ marginTop: 12, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: 12 }}>
-                  <div className="muted" style={{ fontSize: 12.5, marginBottom: 6 }}>✨ {L.aiRead}</div>
-                  <textarea value={aiText[a.id] || ''} onChange={(e) => setAiText((p: any) => ({ ...p, [a.id]: e.target.value }))} placeholder={L.aiPlaceholder}
+                  <div className="muted" style={{ fontSize: 12.5, marginBottom: 8 }}>✨ {L.aiRead}</div>
+                  {/* Adjuntar contrato: foto o PDF. La IA lo lee igual que el texto. */}
+                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, border: '1.5px dashed rgba(124,140,255,.5)', borderRadius: 10, padding: '13px', cursor: busy === 'ai' + a.id ? 'default' : 'pointer', fontSize: 12.5, color: 'var(--soft-brand)', background: 'rgba(124,140,255,.06)', marginBottom: 8 }}>
+                    <OnyxIcon emoji="📎" size={15} /> {busy === 'ai' + a.id ? (lang === 'es' ? 'Leyendo…' : 'Reading…') : (lang === 'es' ? 'Adjuntar contrato (foto o PDF)' : 'Attach contract (photo or PDF)')}
+                    <input type="file" accept="image/*,application/pdf" style={{ display: 'none' }} disabled={busy === 'ai' + a.id}
+                      onChange={(e) => { const f = e.target.files?.[0]; if (f) readFile(a.id, f); e.currentTarget.value = ''; }} />
+                  </label>
+                  <div className="muted" style={{ fontSize: 11, textAlign: 'center', margin: '2px 0 8px' }}>{lang === 'es' ? '— o pega el texto —' : '— or paste the text —'}</div>
+                  <textarea value={aiText[a.id] || ''} maxLength={200000} onChange={(e) => setAiText((p: any) => ({ ...p, [a.id]: e.target.value }))} placeholder={L.aiPlaceholder}
                     style={{ width: '100%', minHeight: 70, padding: '9px 11px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--tx)', fontSize: 13, fontFamily: 'inherit', resize: 'vertical' }} />
-                  <button className="btn btn-ghost" style={{ marginTop: 8 }} onClick={() => readRules(a.id)} disabled={busy === 'ai' + a.id}>{busy === 'ai' + a.id ? '…' : '✨ ' + L.aiBtn}</button>
+                  <div className="row between" style={{ marginTop: 8 }}>
+                    <button className="btn btn-ghost" onClick={() => readRules(a.id)} disabled={busy === 'ai' + a.id}>{busy === 'ai' + a.id ? '…' : '✨ ' + L.aiBtn}</button>
+                    <span className="muted" style={{ fontSize: 11 }}>{(aiText[a.id] || '').length} / 200.000</span>
+                  </div>
                 </div>
 
                 <div style={grp}>{L.secFirm}</div>

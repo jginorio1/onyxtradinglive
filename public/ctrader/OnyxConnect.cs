@@ -89,6 +89,7 @@ namespace cAlgo.Robots
 
         private readonly StringBuilder _events = new StringBuilder();
         private readonly StringBuilder _doneCmds = new StringBuilder();
+        private bool _bfDone = false;   // ¿ya se envió el historial completo (backfill) esta sesión?
         private readonly HashSet<string> _partialDone = new HashSet<string>();
 
         private string L(string en, string es) { return (Lang != null && Lang.ToUpper().StartsWith("ES")) ? es : en; }
@@ -115,6 +116,7 @@ namespace cAlgo.Robots
         private TextBlock _txState;
         private TextBlock _pAutoTxt; private Border _pAuto;
         private TextBlock _pSpreadTxt; private TextBlock _pSessTxt;
+        private TextBlock _pMktTxt; private StackPanel _pMktWrap;
         private StackPanel _guardWrap;
         private Border _statusPill; private TextBlock _statusTxt;
         private Border _blockBox; private TextBlock _blockTop, _blockMsgL, _blockNum;
@@ -264,18 +266,26 @@ namespace cAlgo.Robots
 
             s.Append("\"closedTrades\":[");
             bool f2 = true; int count = 0;
-            var from = Server.Time.AddDays(-3);
+            // Primera vez del cBot: manda el HISTORIAL COMPLETO (backfill); despues, 3 dias.
+            // La nube hace upsert por ticket, asi que reenviar no duplica.
+            var from = _bfDone ? Server.Time.AddDays(-3) : Server.Time.AddYears(-10);
+            int cap = _bfDone ? 300 : 5000;
             foreach (var h in History)
             {
                 if (h.ClosingTime < from) continue;
-                if (count >= 300) break;
+                if (count >= cap) break;
                 var sym = Symbols.GetSymbol(h.SymbolName);
                 double vol = sym != null ? sym.VolumeInUnitsToQuantity(h.VolumeInUnits) : h.VolumeInUnits;
+                // Ganancias parciales: cada cierre parcial es un HistoricalTrade con
+                // el MISMO PositionId. Usamos ClosingDealId como ticket unico (asi no
+                // se pisan en la nube) y PositionId para agruparlos (TP1/TP2/runner).
                 if (!f2) s.Append(","); f2 = false;
-                s.Append("{\"ticket\":").Append(h.PositionId)
+                s.Append("{\"ticket\":").Append(h.ClosingDealId)
+                 .Append(",\"positionId\":\"").Append(h.PositionId).Append("\"")
                  .Append(",\"symbol\":\"").Append(h.SymbolName).Append("\"")
                  .Append(",\"side\":\"").Append(h.TradeType == TradeType.Buy ? "buy" : "sell").Append("\"")
                  .Append(",\"volume\":").Append(F(vol))
+                 .Append(",\"closedVolume\":").Append(F(vol))
                  .Append(",\"openTime\":").Append(ToEpoch(h.EntryTime))
                  .Append(",\"openPrice\":").Append(F(h.EntryPrice, 5))
                  .Append(",\"closeTime\":").Append(ToEpoch(h.ClosingTime))
@@ -289,6 +299,7 @@ namespace cAlgo.Robots
                 count++;
             }
             s.Append("]");
+            _bfDone = true;   // backfill hecho: los proximos syncs solo mandan 3 dias
 
             if (_events.Length > 0) s.Append(",\"events\":[").Append(_events).Append("]");
             if (_doneCmds.Length > 0) s.Append(",\"doneCommands\":[").Append(_doneCmds).Append("]");
@@ -325,6 +336,10 @@ namespace cAlgo.Robots
             ParseFeatures(resp);
             ParseNews(resp);
             ParseNewsTimes(resp);
+            // Re-sincronizar historial pedido desde la web: en el próximo sync
+            // volvemos a mandar TODO el historial desde el principio.
+            if (resp.IndexOf("\"resyncHistory\":true", StringComparison.Ordinal) >= 0)
+                _bfDone = false;
             DrawNewsLines();
             HandleCommands(resp);
         }
@@ -717,6 +732,12 @@ namespace cAlgo.Robots
             sessWrap.AddChild(Pill(_pSessTxt, TB));
             root.AddChild(sessWrap);
 
+            // Estado del mercado (cerrado + cuenta atras a la apertura)
+            _pMktTxt = Txt("", TRt, 10);
+            _pMktWrap = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 8), IsVisible = false };
+            _pMktWrap.AddChild(Pill(_pMktTxt, TR));
+            root.AddChild(_pMktWrap);
+
             // Guardian
             _guardWrap = new StackPanel { Orientation = Orientation.Vertical, IsVisible = false };
             _guardWrap.AddChild(Txt(L("GUARDIAN · MY PLAN", "GUARDIAN · MI PLAN"), C_MUT, 9));
@@ -832,6 +853,22 @@ namespace cAlgo.Robots
             int spreadPips = (int)Math.Round(Symbol.Spread / Symbol.PipSize);
             _pSpreadTxt.Text = spreadPips + " pips";
             _pSessTxt.Text = SessionName() + " · " + Server.TimeInUtc.ToString("HH:mm") + " · " + Symbol.Name;
+
+            // Estado del mercado: cerrado + cuenta atras a la apertura (cTrader lo da exacto).
+            try
+            {
+                var mh = Symbol.MarketHours;
+                bool open = mh.IsOpened();
+                if (!open)
+                {
+                    var tt = mh.TimeTillOpen();
+                    string cd = (tt.Days > 0 ? tt.Days + "d " : "") + tt.ToString(@"hh\:mm\:ss");
+                    _pMktTxt.Text = L("Market closed · opens in ", "Mercado cerrado · abre en ") + cd;
+                    _pMktWrap.IsVisible = true;
+                }
+                else _pMktWrap.IsVisible = false;
+            }
+            catch { _pMktWrap.IsVisible = false; }
 
             // guardian
             _guardWrap.IsVisible = _guardOn;

@@ -3,6 +3,7 @@ import { mkL } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 import { toast, toastErr } from '@/lib/toast';
 import { useLang } from '@/lib/lang';
+import VisitorsLive from './VisitorsLive';
 
 // ============================================================
 // Admin → SEO. Todo el SEO en un sitio:
@@ -72,6 +73,9 @@ export default function SeoPanel() {
         <div className="th-row"><span className="th-ic">🔎</span><span className="th-t">SEO</span></div>
         <div className="th-s">{L('Rendimiento en Google, meta por página y keywords con IA. El sitemap y robots.txt ya funcionan solos.', 'Google performance, per-page meta and AI keywords. Sitemap and robots.txt already run on their own.')}</div>
       </div>
+
+      {/* Pulso en vivo de visitantes (datos reales, propios) */}
+      <VisitorsLive />
 
       {/* Estado + setup */}
       <div className="card" style={{ marginBottom: 14 }}>

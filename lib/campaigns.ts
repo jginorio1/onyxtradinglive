@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendEmailId } from '@/lib/mail';
 import { resolveSegment, type Recipient } from '@/lib/segments';
+import { logError } from '@/lib/errlog';
 
 // ============================================================
 // Motor de campañas de correo. Dos modos:
@@ -92,10 +93,20 @@ export async function ensureDefaultCampaigns() {
 
 // Sustituye variables de plantilla: {{nombre}} {{plan}} {{sitio}}.
 export function renderTemplate(text: string, r: Recipient): string {
-  return String(text || '')
-    .replace(/\{\{\s*(nombre|name)\s*\}\}/gi, r.name || (r.lang === 'en' ? 'there' : ''))
+  const name = (r.name || '').trim();
+  let t = String(text || '');
+  // Si NO hay nombre, quita el saludo con nombre para que no quede ", conecta..."
+  // ni "Hola  ,". Ej: "{{nombre}}, conecta" -> "conecta"; "Hola {{nombre}}," -> "Hola,".
+  if (!name) {
+    t = t.replace(/\{\{\s*(nombre|name)\s*\}\}\s*,\s*/gi, '')
+         .replace(/\b(hola|hi)\s+\{\{\s*(nombre|name)\s*\}\}/gi, '$1');
+  }
+  t = t
+    .replace(/\{\{\s*(nombre|name)\s*\}\}/gi, name || (r.lang === 'en' ? 'there' : ''))
     .replace(/\{\{\s*plan\s*\}\}/gi, r.plan || 'free')
     .replace(/\{\{\s*(sitio|site)\s*\}\}/gi, SITE);
+  // Capitaliza la primera letra por si quedó en minúscula tras quitar el nombre.
+  return t.replace(/^(\s*)([a-záéíóúñ])/, (_m, s, c) => s + c.toUpperCase());
 }
 
 // Enlace de baja de un clic. Genera y guarda un token si el usuario no tiene.
@@ -129,7 +140,11 @@ async function sendOne(c: { id?: string; key?: string | null; kind: string }, r:
       await supabaseAdmin.from('campaign_sends').insert({
         campaign_id: c.id || null, campaign_key: c.key || null, user_id: r.id, email: r.email, status: ok ? 'sent' : 'failed',
       });
-    } catch {}
+    } catch (e: any) {
+      // Si NO se registra el envío, el anti-repetición no funciona y el correo se
+      // repetiría. Lo dejamos visible en el diagnóstico (suele faltar campaigns.sql).
+      await logError('campaign_send_log', e, { code: 'no_dedupe' });
+    }
   }
   return ok;
 }
@@ -165,6 +180,13 @@ export async function runCampaigns(dryRun = false): Promise<{ sent: number; deta
       const interval = Number(c.trigger?.everyDays) || SCHEDULED_INTERVAL_DAYS;
       const since = c.last_run_at ? (Date.now() - new Date(c.last_run_at).getTime()) / 86400000 : Infinity;
       if (since < interval) { detail.push({ campaign: c.key || c.name, sent: 0 }); continue; }
+    }
+    // Candado diario para las 'trigger': aunque el cron corra cada hora, cada campaña
+    // de disparo se evalúa como mucho una vez al día. Red de seguridad ante cualquier
+    // fallo del anti-repetición (evita reenviar el mismo correo cada hora).
+    if (c.kind === 'trigger') {
+      const since = c.last_run_at ? (Date.now() - new Date(c.last_run_at).getTime()) / 86400000 : Infinity;
+      if (since < 0.9) { detail.push({ campaign: c.key || c.name, sent: 0 }); continue; }
     }
 
     const recips = await resolveSegment(c.segment, c.trigger || {});

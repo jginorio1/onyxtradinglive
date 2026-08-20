@@ -140,7 +140,10 @@ th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);}
 th{color:var(--mut);font-weight:600;}
 .pill{font-size:12px;padding:3px 10px;border-radius:20px;background:var(--card2);color:var(--mut);}
 .pill.green{background:rgba(52,226,160,.15);color:var(--green);}
-.topbar{border-bottom:1px solid var(--line);background:rgba(8,10,16,.7);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);position:sticky;top:var(--promo-h,0);z-index:40;}
+.topbar{border-bottom:1px solid var(--line);background:rgba(8,10,16,.7);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);position:sticky;top:var(--promo-h,0);z-index:40;padding-top:env(safe-area-inset-top,0px);}
+/* Si hay barra promo arriba, ella ya consume el safe-area del notch/estado del
+   teléfono; la TopBar no debe añadirlo de nuevo. */
+.promo-on .topbar{padding-top:0;}
 .topbar .wrap,.topbar .wrap-wide{height:64px;display:flex;align-items:center;justify-content:space-between;}
 .navl{display:flex;gap:22px;color:var(--mut);font-size:15px;}
 .navl a:hover{color:#fff;}
@@ -153,7 +156,8 @@ th{color:var(--mut);font-weight:600;}
 .langseg.on{background:var(--brand);color:#111726;}
 
 /* Anclas del landing: segunda fila, pegada bajo la barra principal */
-.secnav{position:sticky;top:calc(64px + var(--promo-h,0));z-index:35;border-bottom:1px solid var(--line);background:rgba(8,10,16,.92);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);}
+.secnav{position:sticky;top:calc(64px + var(--promo-h,0) + env(safe-area-inset-top,0px));z-index:35;border-bottom:1px solid var(--line);background:rgba(8,10,16,.92);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);}
+.promo-on .secnav{top:calc(64px + var(--promo-h,0));}
 .secnav-items{display:flex;gap:2px;padding:8px 0;overflow-x:auto;}
 .secnav-item{font-size:14px;color:var(--mut);padding:6px 12px;border-radius:8px;white-space:nowrap;transition:.15s;}
 .secnav-item:hover{color:#fff;}
@@ -187,7 +191,10 @@ section[id],div[id]{scroll-margin-top:120px;}
 .planpill.free{background:var(--card2);color:var(--mut);border-color:var(--line);}
 .planpill.free:hover{color:#fff;border-color:var(--brand);}
 
-.ea-dot{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--mut);padding:4px 9px;border-radius:20px;background:var(--card2);}
+/* Brillo suave para el recordatorio de revisar el plan (píldora del saludo). */
+@keyframes onyxGlow{0%,100%{box-shadow:0 0 0 1px rgba(245,158,11,.28),0 0 7px rgba(245,158,11,.30);}50%{box-shadow:0 0 0 1px rgba(245,158,11,.55),0 0 18px rgba(245,158,11,.60);}}
+.ea-dot{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--mut);padding:4px 10px;border-radius:20px;background:var(--card2);white-space:nowrap;flex:none;}
+.ea-dot-tx{white-space:nowrap;}
 .ea-dot .dot{width:7px;height:7px;border-radius:50%;flex:none;}
 
 .avatar{width:32px;height:32px;border-radius:50%;background:var(--card2);border:1px solid var(--line);color:var(--tx);font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:.15s;}
@@ -243,6 +250,32 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
 }
 @media(min-width:2200px){ .cockpit{gap:22px;} .cockpit .rail-left{flex-basis:300px;} .cockpit .rail-right{flex-basis:330px;} }
 
+/* Panel personal (cuentas/mercado/neto/coach): botón-menú solo en móvil */
+.rail-body{display:flex;flex-direction:column;gap:12px;}
+.rail-menu-btn{display:none;}
+@media(max-width:1279px){
+  /* Estadísticas arriba del todo en móvil (antes quedaban muy abajo) */
+  .cockpit .center{order:-1;}
+  /* El panel personal se convierte en un menú plegable, como el de Mi cuenta */
+  .rail-menu-btn{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;
+    padding:12px 14px;border-radius:12px;cursor:pointer;font-size:13.5px;font-weight:700;color:var(--tx);
+    background:var(--card);border:1px solid var(--line);}
+  .rail-body{display:none;}
+  .rail-body.open{display:flex;}
+}
+
+/* Cabecera del dashboard en móvil: apilar en vertical para que no se amontone */
+@media(max-width:640px){
+  .hero-row{flex-direction:column;align-items:stretch;}
+  .hero-left{width:100%;}
+  .hero-name h1{font-size:22px !important;}
+  /* El balance deja de ir "al lado del nombre": pasa a tarjeta a lo ancho */
+  .hero-balance{border-left:0 !important;padding:11px 14px !important;width:100%;
+    background:var(--bg2);border:1px solid var(--line);border-radius:12px;margin-top:2px;align-self:stretch !important;}
+  .hero-export{width:100%;}
+  .hero-export > summary{width:100%;}
+}
+
 /* Responsive por tamaño de pantalla */
 @media(max-width:1024px){ .g4{grid-template-columns:repeat(2,1fr);} .g3{grid-template-columns:repeat(2,1fr);} }
 /* Cuando los enlaces no caben se recogen en el menú de la hamburguesa.
@@ -250,7 +283,22 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
    navegación en cuanto la ventana era algo estrecha. */
 @media(max-width:900px){ .navl{display:none;} .navburger-wrap{display:block;} }
 @media(max-width:640px){ .g4,.g3,.g2{grid-template-columns:1fr;} h1{font-size:26px;} .wrap,.wrap-wide{padding:0 15px;} .card{padding:16px;} }
+/* Red de seguridad móvil: ninguna tarjeta o rejilla hace scroll lateral la página.
+   Las tablas y el heatmap tienen su propio contenedor con scroll interno, así que
+   esto no las afecta; solo evita el desbordamiento accidental del ancho de pantalla. */
+/* IMPORTANTE: usamos overflow-x:clip (no hidden). 'hidden' convierte al body en
+   contenedor de scroll y ROMPE el position:sticky de la barra superior en móvil
+   (se iba hacia arriba y no se quedaba fija). 'clip' recorta igual el desborde
+   lateral pero sin crear contenedor de scroll, así el sticky sigue funcionando. */
+@media(max-width:640px){ html,body{overflow-x:clip;} .card > *{max-width:100%;} }
 @media(max-width:760px){ .heroPreview{grid-template-columns:1fr!important;} }
+
+/* Bloque con fondo oscuro FIJO (capturas, mockups, bandas de CTA). Fija las
+   variables de tema a valores oscuros dentro del bloque para que el texto sea
+   SIEMPRE claro y legible en ambos temas. Evita el bug de texto oscuro sobre
+   fondo oscuro en tema claro. Úsalo en cualquier panel con background hardcodeado. */
+.fixed-dark{--tx:#eef1f7;--mut:#97a1b6;--line:rgba(255,255,255,.10);--card2:#151a28;color:var(--tx);}
+.fixed-dark h1,.fixed-dark h2,.fixed-dark h3{color:var(--tx);}
 
 /* Panel de admin con barra lateral */
 .adminlayout{display:grid;grid-template-columns:220px 1fr;gap:18px;align-items:start;}
@@ -591,6 +639,7 @@ html[data-theme="dark"] .sk-code, :root:not([data-theme="light"]) .sk-code{text-
   .logo-text{ display:none; }   /* en móvil solo el símbolo; el texto se ve en desktop */
 }
 
+
 /* Tablets (iPad): el nombre se amontona en el header, así que se oculta y
    queda solo el símbolo, igual que en móvil. El nombre completo aparece
    únicamente en computadoras (>=1025px). */
@@ -629,6 +678,12 @@ details[open] > summary > span:first-child { transform: rotate(90deg); }
 .blog-body li{margin:6px 0;}
 .blog-body a{color:var(--brand);text-decoration:underline;}
 .blog-body strong{color:var(--tx);font-weight:700;}
+.blog-body figure{margin:22px 0;}
+.blog-body figure.blog-img img{width:100%;height:auto;border-radius:12px;display:block;border:1px solid var(--line);}
+.blog-body figure figcaption{font-size:12.5px;color:var(--mut);text-align:center;margin-top:8px;}
+.blog-body figure.blog-chart{background:var(--card2,var(--bg2));border:1px solid var(--line);border-radius:14px;padding:14px 14px 6px;}
+.blog-body .blog-chart-canvas{position:relative;height:280px;}
+@media(max-width:640px){.blog-body .blog-chart-canvas{height:220px;}}
 
 /* ---- Onyx Guardian: tarjetas iluminadas dentro de la academia ---- */
 .gdn-wrap{position:relative;overflow:hidden;border:1px solid color-mix(in srgb,var(--gold) 30%,var(--line,#2a2f45));}

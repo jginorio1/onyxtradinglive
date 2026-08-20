@@ -11,8 +11,8 @@ insert into plans (id, name, name_en, price_month, price_year, max_accounts,
                    features, features_en, badge, badge_en, capabilities, active, sort)
 values (
   'black', 'Black Onyx', 'Black Onyx', 119, 1190, 999,
-  '["Todo ilimitado","Cuentas MT ilimitadas","Copy trading ilimitado (masters y esclavas)","Onyx Guardian completo","Telegram y reportes","Soporte prioritario"]'::jsonb,
-  '["Everything unlimited","Unlimited MT accounts","Unlimited copy trading (masters & slaves)","Full Onyx Guardian","Telegram & reports","Priority support"]'::jsonb,
+  '["Copy trading ilimitado (masters y esclavas)","Todo sin límites","Soporte prioritario"]'::jsonb,
+  '["Unlimited copy trading (masters & slaves)","Everything with no limits","Priority support"]'::jsonb,
   'High-ticket', 'High-ticket',
   '{"journal":true,"compare":true,"funding":true,"costs":true,"export":true,"reports":true,"telegram":true,"manager":true,"manager_advanced":true,"manager_news":true,"copy":true,"copy_slaves":0,"copy_masters":0,"history_days":0}'::jsonb,
   true, 3

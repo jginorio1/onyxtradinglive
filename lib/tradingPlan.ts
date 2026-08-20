@@ -25,6 +25,7 @@ export type Plan = {
   rules: string[];           // reglas propias (texto libre)
   habits: string[];          // claves de hábitos predefinidos que quiere seguir
   custom_habits: CustomHabit[]; // hábitos propios que el trader escribe
+  habit_moments?: Record<string, 'before' | 'during' | 'close'>; // momento del día por hábito
   scope: 'primary' | 'all';  // el plan mide UNA cuenta principal, o TODAS (sin duplicar copias)
   primary_account_id: string | null; // cuál es la cuenta principal (para scope=primary)
 };
@@ -32,11 +33,23 @@ export type Plan = {
 // Hábitos disponibles (claves estables; las etiquetas bilingües viven en la UI).
 export const HABIT_KEYS = ['reviewed_calendar', 'defined_risk', 'followed_plan', 'journaled', 'stopped_at_limit', 'no_revenge', 'respected_sessions'];
 
+// Momento por defecto de cada hábito predefinido; los propios son "durante".
+export const MOMENT_DEFAULT: Record<string, 'before' | 'during' | 'close'> = {
+  reviewed_calendar: 'before', defined_risk: 'before', followed_plan: 'before',
+  stopped_at_limit: 'during', no_revenge: 'during', respected_sessions: 'during',
+  journaled: 'close', // registrar operaciones es cierre del día
+};
+export function habitMoment(plan: Plan, id: string): 'before' | 'during' | 'close' {
+  const m = plan.habit_moments?.[id];
+  return m === 'before' || m === 'during' || m === 'close' ? m : (MOMENT_DEFAULT[id] || 'during');
+}
+
 export const DEFAULT_PLAN: Plan = {
   style: 'day', risk_per_trade: 1, max_daily_loss_pct: 3, max_trades_day: 3,
   sessions: ['london', 'ny'], pairs: '', goal: '', rules: [],
   habits: ['reviewed_calendar', 'defined_risk', 'followed_plan', 'journaled', 'no_revenge'],
   custom_habits: [],
+  habit_moments: {},
   scope: 'primary',
   primary_account_id: null,
 };
@@ -159,6 +172,12 @@ export async function savePlan(userId: string, plan: Partial<Plan>) {
           .filter((h: CustomHabit) => h.id && h.label)
           .slice(0, 12)
       : cur.custom_habits,
+    habit_moments: (() => {
+      const src = (plan.habit_moments && typeof plan.habit_moments === 'object') ? plan.habit_moments : cur.habit_moments || {};
+      const out: Record<string, 'before' | 'during' | 'close'> = {};
+      for (const [k, v] of Object.entries(src)) if (v === 'before' || v === 'during' || v === 'close') out[String(k).slice(0, 40)] = v;
+      return out;
+    })(),
     scope: plan.scope === 'all' || plan.scope === 'primary' ? plan.scope : cur.scope,
     primary_account_id: plan.primary_account_id === undefined ? cur.primary_account_id : (plan.primary_account_id ? String(plan.primary_account_id) : null),
   };
@@ -234,16 +253,20 @@ async function accountIds(userId: string): Promise<string[]> {
 export type PlanStats = {
   adherence: number; streak: number; checkinRate: number; tradeDiscipline: number;
   overtradingDays: number; winRateRespect: number | null; winRateBroken: number | null; days: number;
+  guardianActive: boolean; blocks: number; overrides: number; // conducta real medida por el Guardian
+  daysCompliant: number; rangeDays: number; // días con check-in "bueno" dentro del rango elegido
 };
 
 // Calcula racha y adherencia. Mezcla el cumplimiento de hábitos (check-ins) con la
 // disciplina real de las operaciones (respetar el máximo de operaciones por día).
-export async function computeStats(userId: string, plan: Plan): Promise<PlanStats> {
+// rangeDays define la ventana (7 / 30 / 90) para adherencia, disciplina y eventos.
+export async function computeStats(userId: string, plan: Plan, rangeDays = 30): Promise<PlanStats> {
+  const R = Math.max(1, Math.min(365, Math.round(rangeDays)));
   const habitIds = planHabitIds(plan);
   const enabled = habitIds.length || 1;
 
-  // --- Check-ins de los últimos 14 días ---
-  const from = dayStr(new Date(Date.now() - 14 * DAY));
+  // --- Check-ins de la ventana elegida ---
+  const from = dayStr(new Date(Date.now() - R * DAY));
   const { data: checks } = await supabaseAdmin.from('plan_checkins').select('day,items').eq('user_id', userId).gte('day', from).order('day', { ascending: false });
   const byDay: Record<string, number> = {};   // completion 0..1 por día
   for (const c of (checks || []) as any[]) {
@@ -253,6 +276,7 @@ export async function computeStats(userId: string, plan: Plan): Promise<PlanStat
   }
   const vals = Object.values(byDay);
   const checkinRate = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+  const daysCompliant = vals.filter((v) => v >= 0.8).length;
 
   // Racha: días consecutivos (desde hoy o ayer) con check-in "bueno" (≥80%).
   let streak = 0;
@@ -298,8 +322,78 @@ export async function computeStats(userId: string, plan: Plan): Promise<PlanStat
     }
   }
 
-  const adherence = Math.round((checkinRate * 0.6 + tradeDiscipline * 0.4) * 100);
-  return { adherence, streak, checkinRate: Math.round(checkinRate * 100), tradeDiscipline: Math.round(tradeDiscipline * 100), overtradingDays, winRateRespect, winRateBroken, days: tradingDays };
+  // --- Guardian real (conducta): frenos y overrides de los últimos 21 días ---
+  // Solo aplica si el trader tiene Guardian. Si no, esta parte NO penaliza.
+  let blocks = 0, overrides = 0; const breachDays = new Set<string>();
+  try {
+    const since = new Date(Date.now() - 21 * DAY).toISOString();
+    const { data: evs } = await supabaseAdmin.from('manager_events')
+      .select('kind,created_at').eq('user_id', userId).in('kind', ['blocked', 'override']).gte('created_at', since).limit(5000);
+    for (const e of (evs || []) as any[]) {
+      if (e.kind === 'blocked') blocks++; else if (e.kind === 'override') overrides++;
+      if (e.created_at) breachDays.add(String(e.created_at).slice(0, 10));
+    }
+  } catch { /* sin Guardian, sin eventos */ }
+  const guardianActive = !!summary.linked || (blocks + overrides) > 0;
+
+  // Adherencia adaptativa: base = autoreporte + disciplina de operaciones. Si hay
+  // Guardian, sus frenos/overrides descuentan (penaliza días en que rompiste una
+  // regla dura de verdad). Sin Guardian, no hay penalización que no aplique.
+  let adh = checkinRate * 0.55 + tradeDiscipline * 0.45;
+  if (guardianActive && tradingDays > 0) {
+    const breachRate = Math.min(1, breachDays.size / tradingDays);
+    adh = adh * (1 - 0.35 * breachRate);
+  }
+  const adherence = Math.round(adh * 100);
+  return { adherence, streak, checkinRate: Math.round(checkinRate * 100), tradeDiscipline: Math.round(tradeDiscipline * 100), overtradingDays, winRateRespect, winRateBroken, days: tradingDays, guardianActive, blocks, overrides };
+}
+
+// ---- Foto diaria: calcula el cumplimiento de UN día concreto para guardarlo. ----
+export async function computeDaySnapshot(userId: string, day: string): Promise<{ adherence: number; checkin_rate: number; discipline: number; blocked: number; overrode: number; guardian_active: boolean }> {
+  const plan = await getPlan(userId);
+  const habitIds = planHabitIds(plan);
+  const enabled = habitIds.length || 1;
+  const dayStartISO = day + 'T00:00:00.000Z';
+  const dayEndISO = day + 'T23:59:59.999Z';
+
+  // Hábitos marcados ese día.
+  const { data: ck } = await supabaseAdmin.from('plan_checkins').select('items').eq('user_id', userId).eq('day', day).maybeSingle();
+  const items = (ck as any)?.items || {};
+  const checkinRate = habitIds.filter((h) => items[h]).length / enabled;
+
+  // Disciplina de operaciones ese día (respetó el máximo de ops).
+  const summary = await guardianSummary(userId);
+  const { ids, threshold } = resolveMeasured(plan, summary);
+  let discipline = -1; // -1 = no operó ese día
+  if (ids.length && threshold > 0) {
+    const { count } = await supabaseAdmin.from('trades').select('*', { count: 'exact', head: true })
+      .in('account_id', ids).gte('close_time', dayStartISO).lte('close_time', dayEndISO);
+    const n = count || 0;
+    if (n > 0) discipline = n <= threshold ? 100 : 0;
+  }
+
+  // Guardian real: frenos/overrides ese día.
+  let blocked = 0, overrode = 0;
+  try {
+    const { data: evs } = await supabaseAdmin.from('manager_events').select('kind').eq('user_id', userId)
+      .in('kind', ['blocked', 'override']).gte('created_at', dayStartISO).lte('created_at', dayEndISO).limit(1000);
+    for (const e of (evs || []) as any[]) { if (e.kind === 'blocked') blocked++; else overrode++; }
+  } catch {}
+  const guardianActive = !!summary.linked || (blocked + overrode) > 0;
+
+  const respectedFlag = discipline < 0 ? 1 : discipline / 100; // no operar no penaliza
+  let adh = checkinRate * 0.55 + respectedFlag * 0.45;
+  if (guardianActive && (blocked + overrode) > 0) adh *= 0.65;   // rompiste una regla dura ese día
+  return { adherence: Math.round(adh * 100), checkin_rate: Math.round(checkinRate * 100), discipline, blocked, overrode, guardian_active: guardianActive };
+}
+
+// ---- Historial: últimas N fotos diarias para el mapa de 30 días. ----
+export async function getPlanHistory(userId: string, days = 30): Promise<any[]> {
+  const from = dayStr(new Date(Date.now() - days * DAY));
+  const { data } = await supabaseAdmin.from('plan_daily')
+    .select('day,adherence,checkin_rate,discipline,blocked,overrode,guardian_active')
+    .eq('user_id', userId).gte('day', from).order('day', { ascending: true });
+  return (data as any[]) || [];
 }
 
 // Repaso de Onyx AI: cruza el plan con la conducta real y da coaching breve.
@@ -311,8 +405,34 @@ export async function planReview(plan: Plan, stats: PlanStats, lang: 'es' | 'en'
     + `ADHERENCIA: ${stats.adherence}% · Racha: ${stats.streak} días · Cumplimiento de hábitos: ${stats.checkinRate}% · Disciplina en operaciones: ${stats.tradeDiscipline}% · Días de sobre-operar: ${stats.overtradingDays}\n`
     + `Win rate cuando respetó el límite: ${stats.winRateRespect ?? '—'}% · cuando lo rompió: ${stats.winRateBroken ?? '—'}%`;
   const system = (lang === 'en'
-    ? `You are Onyx AI, a trading discipline coach. Read the trader's PLAN and their real BEHAVIOR below and give a short, concrete review (max 5 short bullet points): what they're doing well, where they break their own rules, and one action for tomorrow. Be direct and encouraging. Use the numbers. NEVER predict the market, give signals or promise profits. No sign-off.`
-    : `Eres Onyx AI, un coach de disciplina de trading. Lee el PLAN del trader y su CONDUCTA real de abajo y da un repaso corto y concreto (máx 5 viñetas cortas): qué hace bien, dónde rompe sus propias reglas, y una acción para mañana. Sé directo y motivador. Usa los números. NUNCA predigas el mercado, des señales ni prometas ganancias. Sin despedida.`)
+    ? `You are Onyx AI, a trading discipline coach. Read the trader's PLAN and their real BEHAVIOR and write a short, warm, concrete review.
+
+WRITE IT WITH THIS EXACT STRUCTURE — four sections, each starting with the emoji + title shown, then ONE short sentence (max two) under it:
+
+✅ What's working
+🚩 Where you break your rules
+🧠 The pattern
+🎯 Your move for tomorrow
+
+Hard rules for formatting:
+- Use PLAIN TEXT only. NEVER use *, **, #, -, •, backticks or any markdown. No bold markup — the app renders the emoji headers.
+- Keep each section to one or two short sentences. Use the real numbers.
+- Be direct but encouraging, human, no jargon.
+- NEVER predict the market, give signals or promise profits. No greeting, no sign-off.`
+    : `Eres Onyx AI, un coach de disciplina de trading. Lee el PLAN del trader y su CONDUCTA real y escribe un repaso corto, cálido y concreto.
+
+ESCRÍBELO CON ESTA ESTRUCTURA EXACTA — cuatro secciones, cada una empieza con el emoji + título mostrado, y debajo UNA frase corta (máx dos):
+
+✅ Lo que funciona
+🚩 Dónde rompes tus reglas
+🧠 El patrón
+🎯 Tu acción para mañana
+
+Reglas estrictas de formato:
+- Usa SOLO TEXTO PLANO. NUNCA uses *, **, #, -, •, comillas invertidas ni markdown. Nada de negritas con símbolos — la app ya resalta los títulos con emoji.
+- Cada sección: una o dos frases cortas. Usa los números reales.
+- Directo pero motivador, humano, sin tecnicismos.
+- NUNCA predigas el mercado, des señales ni prometas ganancias. Sin saludo ni despedida.`)
     + `\n\n=== ${lang === 'en' ? 'PLAN AND BEHAVIOR' : 'PLAN Y CONDUCTA'} ===\n${ctx}`;
   try {
     const model = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5';
@@ -323,6 +443,11 @@ export async function planReview(plan: Plan, stats: PlanStats, lang: 'es' | 'en'
     if (!r.ok) return lang === 'en' ? 'Could not review right now.' : 'No pude repasar ahora mismo.';
     const data = await r.json();
     import('@/lib/aiCost').then((m) => m.logAiUsage('coach', data)).catch(() => {});
-    return (data?.content || []).map((c: any) => c.text || '').join('\n').trim() || (lang === 'en' ? 'No review available.' : 'Sin repaso disponible.');
+    const raw = (data?.content || []).map((c: any) => c.text || '').join('\n').trim();
+    // Defensa: quita cualquier markdown que se le escape al modelo (**, #, viñetas -/•).
+    const clean = raw
+      .replace(/\*\*([^*]+)\*\*/g, '$1').replace(/\*([^*]+)\*/g, '$1').replace(/[*`]/g, '')
+      .replace(/^#{1,6}\s*/gm, '').replace(/^\s*[-•]\s+/gm, '').trim();
+    return clean || (lang === 'en' ? 'No review available.' : 'Sin repaso disponible.');
   } catch { return lang === 'en' ? 'Could not review right now.' : 'No pude repasar ahora mismo.'; }
 }

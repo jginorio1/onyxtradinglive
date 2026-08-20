@@ -4,27 +4,55 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import Link from 'next/link';
 import { analyze, bestOf, worstOf, topPairs, fmtDur, type T, type Bucket } from '@/lib/analytics';
-import RangeBar, { type Range, defaultRange } from '@/app/admin/RangeBar';
-import Journal from './Journal';
-import LotCalculator from './LotCalculator';
-import Challenge from './Challenge';
-import Costs from './Costs';
-import AccountExtras from './AccountExtras';
-import CompareAccounts from './CompareAccounts';
+import dynamic from 'next/dynamic';
 import { typeMeta } from '@/lib/accountMeta';
 import { Ring, MiniArea, MiniDonut, MiniBars, MiniHeat, RadarChart, Bubbles, healthScore } from './Modern';
 import MarketHours from './MarketHours';
-import ReferralBanner from './ReferralBanner';
-import PlanHabits from './PlanHabits';
-import DailyCheckinPopup from './DailyCheckinPopup';
 import HubVitals, { StatCard, type Vital, type Tile } from './HubVitals';
 import SetupGuide from './SetupGuide';
 import OnyxIcon from '@/app/components/OnyxIcon';
+import Achievements from './Achievements';
+import MarketClock from './MarketClock';
+import Nudge from './Nudge';
+// Laterales SIEMPRE visibles en el hub → import normal (no diferido). Antes eran
+// dynamic(ssr:false) y su trozo a veces no se montaba, dejando Neto real / Coach
+// en blanco. Son 'use client' y el portal de Coach está protegido con `mounted`,
+// así que el render en servidor es seguro.
 import News from './News';
 import NetRealCard from './NetRealCard';
 import CoachCard from './CoachCard';
-import Achievements from './Achievements';
-import Nudge from './Nudge';
+
+// ── Carga bajo demanda ──────────────────────────────────────────────
+// Todo lo que vive detrás de un tile, colapsado o en pop-up se carga sólo
+// cuando hace falta: el hub (KPIs) hidrata más ligero y el primer clic responde.
+// OJO: next/dynamic exige que las OPCIONES sean un objeto literal escrito en la
+// misma llamada (no una constante compartida) — si no, el build de Next falla
+// con "options must be an object literal". Por eso el { ssr, loading } va en
+// línea en cada dynamic(); el placeholder sí puede ser una función con nombre.
+const lazyLoad = () => <div className="muted" style={{ padding: 16, fontSize: 13 }}>…</div>;
+// Funciones de import reutilizadas por next/dynamic Y por la precarga (mismo
+// especificador → el navegador cachea el módulo una sola vez). Así, cuando el
+// usuario pulsa un tile, el código ya está descargado y abre al instante.
+const impJournal = () => import('./Journal');
+const impChallenge = () => import('./Challenge');
+const impCosts = () => import('./Costs');
+const impCompare = () => import('./CompareAccounts');
+const impPlan = () => import('./PlanHabits');
+const Journal = dynamic(impJournal, { ssr: false, loading: lazyLoad });
+const LotCalculator = dynamic(() => import('./LotCalculator'), { ssr: false, loading: lazyLoad });
+const Challenge = dynamic(impChallenge, { ssr: false, loading: lazyLoad });
+const Costs = dynamic(impCosts, { ssr: false, loading: lazyLoad });
+const AccountExtras = dynamic(() => import('./AccountExtras'), { ssr: false, loading: lazyLoad });
+const CompareAccounts = dynamic(impCompare, { ssr: false, loading: lazyLoad });
+const PlanHabits = dynamic(impPlan, { ssr: false, loading: lazyLoad });
+// Precarga en reposo: cuando el navegador está libre, bajamos las secciones más
+// usadas (reto, plan, journal, costos, comparar) para que abran sin espera.
+const _preloadViews = () => { try { impChallenge(); impPlan(); impJournal(); impCosts(); impCompare(); } catch {} };
+// Precarga puntual de UNA sección al pasar el cursor/tocar su tile.
+const PRELOAD: Record<string, () => Promise<any>> = { reto: impChallenge, plan: impPlan, operaciones: impJournal, costes: impCosts, cuentas: impCompare };
+// Pop-ups: no bloquean el render inicial (sin placeholder visible).
+const DailyCheckinPopup = dynamic(() => import('./DailyCheckinPopup'), { ssr: false });
+const CompTrialPopup = dynamic(() => import('./CompTrialPopup'), { ssr: false });
 import { platformLabel, platformsPhrase } from '@/lib/platforms';
 import { useCatalog } from '@/lib/useCatalog';
 
@@ -58,6 +86,8 @@ type View = 'hub' | 'rendimiento' | 'calendario' | 'operaciones' | 'costes' | 'c
 
 function money(n: number, dec = 0) { return (n >= 0 ? '+$' : '-$') + Math.abs(n).toLocaleString('en-US', { maximumFractionDigits: dec }); }
 function money2(n: number) { return (n >= 0 ? '+$' : '-$') + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+// Formato compacto para celdas estrechas (calendario en móvil): +$1.9K, -$430.
+function money2k(n: number) { const s = n >= 0 ? '+$' : '-$'; const a = Math.abs(n); if (a >= 1000) return s + (a / 1000).toFixed(a >= 10000 ? 0 : 1) + 'K'; return s + a.toFixed(a >= 100 ? 0 : 2); }
 const GREEN = 'var(--green)', RED = 'var(--red)', BLUE = 'var(--brand)', PURPLE = 'var(--purple)', GOLD = 'var(--gold)', CYAN = 'var(--cyan)';
 
 const WDL = { es: ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'], en: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] };
@@ -85,13 +115,15 @@ const D = {
     kNet: 'Ganancia neta', kWR: 'Win rate', kPF: 'Profit factor', kExp: 'Expectancy', kAvgW: 'Ganancia media', kAvgL: 'Pérdida media', kPayoff: 'Payoff', kDur: 'Duración media', kOps: 'Operaciones', kBest: 'Mejor trade', kWorst: 'Peor trade', kBE: 'Break even',
     equity: 'Curva de equity', notEnough: 'Aún no hay suficientes operaciones.', ddMax: 'Drawdown máx:', streakMax: 'Racha máx:',
     donutTitle: 'Resultado de operaciones', dWin: 'Ganadoras', dLoss: 'Perdedoras', dBE: 'Break even', dCenter: 'ganadoras',
-    calTitle: 'Calendario de resultados', month: 'Mes', year: 'Año', monthTotal: 'Total mes:', ops: 'ops', dayOps: 'Operaciones del',
+    pExitTitle: 'Salidas · Full TP vs parciales', pFullTP: 'Full TP', pFullTPsub: 'llegó al objetivo completo', pPartial: 'Cierre parcial', pPartialSub: 'cerró antes del objetivo', pPartialProfit: 'Ganancia parcial', pPartialProfitSub: 'banqueado en TP1/TP2', pRunner: 'Aporte del runner', pRunnerSub: 'lo que dejó correr', pReasons: 'Motivo de salida', rTP: 'Objetivo (TP)', rTrailing: 'Trailing', rManual: 'Manual', rSL: 'Stop (SL)', rSO: 'Stop out', rOther: 'Otro', pNoData: 'Actualiza tu EA a la última versión para ver el desglose de cierres parciales.',
+    pOfN: (n: number) => `de ${n} operaciones con datos de salida`, pNoPartials: 'Aún no usas cierres parciales en estas operaciones.',
+    calTitle: 'Calendario de resultados', month: 'Mes', year: 'Año', monthTotal: 'Total mes:', ops: 'operaciones', dayOps: 'Operaciones del',
     bestDay: 'Mejor día', bestHour: 'Mejor hora', bestSess: 'Mejor sesión', bestPair: 'Mejor par', worstDay: 'Peor día', worstHour: 'Peor hora', worstSess: 'Peor sesión', worstPair: 'Peor par',
     lsTitle: 'Largos vs Cortos', longs: '🟢 Largos', shorts: '🔴 Cortos', distTitle: 'Distribución de resultados', noData: 'Sin datos.',
     topPairsT: 'Top 5 mejores pares', botPairsT: 'Top 5 peores pares', noPos: 'Sin pares en positivo.', noNeg: 'Sin pares en negativo.',
     byWeekday: 'Por día de la semana', bySession: 'Por sesión', byHour: 'Por hora del día', byMonth: 'Por mes',
-    accCard: 'Cuentas y portafolio', balTotal: 'Balance total', accounts: 'Cuentas', opsTotal: 'Operaciones', th_acc: 'Cuenta', th_broker: 'Bróker', th_bal: 'Balance', th_net: 'Neto', th_win: 'Win', nickPh: 'Ej: FTMO 50K', nameBtn: '✏️ Nombre',
-    fundTitle: '🏆 Reglas de fondeo', fundEdit: '⚙️ Configurar reglas', fundHide: 'Ocultar', fundTarget: 'Objetivo de profit ($)', fundMaxDaily: 'Pérdida diaria máx ($)', fundMaxTotal: 'Pérdida total máx ($)', fundStart: 'Balance inicial ($)', fundSave: 'Guardar reglas', fundProfitBar: 'Progreso al objetivo', fundDDBar: 'Uso de pérdida máxima',
+    accCard: 'Cuentas y portafolio', balTotal: 'Balance total', accounts: 'Cuentas', opsTotal: 'Operaciones', th_acc: 'Cuenta', th_broker: 'Bróker', th_bal: 'Balance', th_net: 'Neto', th_win: 'Win', nickPh: 'Ej: FTMO 50K', nameBtn: '✏️ Nombre', resyncBtn: '🔄 Re-sincronizar historial', resyncing: 'Enviando…', resyncOk: '✓ Pedido. El EA subirá todo en su próximo sync.',
+    fundTitle: '🏆 Reglas de fondeo', fundEdit: '⚙️ Configurar reglas', fundHide: 'Ocultar', fundTarget: 'Objetivo de fondeo ($)', fundMaxDaily: 'Pérdida diaria máx ($)', fundMaxTotal: 'Pérdida total máx ($)', fundStart: 'Balance inicial ($)', fundSave: 'Guardar reglas', fundProfitBar: 'Progreso al objetivo de fondeo', fundDDBar: 'Uso de pérdida máxima', fundHint: 'El profit que te pide tu cuenta de fondeo.',
     ranges: { d1: 'Hoy', d7: '7d', d30: '30d', mo: 'Mes', yr: 'Año', all: 'Todo' },
     radarTitle: 'Perfil del trader', bubbleTitle: 'Pares · volumen y resultado', rWR: 'Win rate', rPF: 'P. factor', rPayoff: 'Payoff', rConsist: 'Consistencia', rRisk: 'Riesgo', demo: 'Demo', demoOn: '🎬 Viendo datos de ejemplo (no reales)', customRange: 'Rango de fechas', from: 'Desde', to: 'Hasta',
     proLockT: 'Función Pro', proLockD: 'Mejora tu plan para desbloquear esta sección.', proLockCta: 'Ver planes →', histCap: '🔒 En el plan Free ves solo los últimos 30 días. Desbloquea tu historial completo con Pro.', available: 'Disponible en', upgradeTo: 'Mejorar a', perMo: 'mes', dLock1: 'Diario con fotos, notas y etiquetas por operación.', dLock2: 'Compara tus cuentas lado a lado.', dLock3: 'Reglas de fondeo, retiros y documentos de la cuenta.',
@@ -114,13 +146,15 @@ const D = {
     kNet: 'Net profit', kWR: 'Win rate', kPF: 'Profit factor', kExp: 'Expectancy', kAvgW: 'Avg win', kAvgL: 'Avg loss', kPayoff: 'Payoff', kDur: 'Avg duration', kOps: 'Trades', kBest: 'Best trade', kWorst: 'Worst trade', kBE: 'Break even',
     equity: 'Equity curve', notEnough: 'Not enough trades yet.', ddMax: 'Max drawdown:', streakMax: 'Max streak:',
     donutTitle: 'Trade outcome', dWin: 'Winners', dLoss: 'Losers', dBE: 'Break even', dCenter: 'winners',
+    pExitTitle: 'Exits · Full TP vs partials', pFullTP: 'Full TP', pFullTPsub: 'reached the full target', pPartial: 'Partial close', pPartialSub: 'closed before target', pPartialProfit: 'Partial profit', pPartialProfitSub: 'banked at TP1/TP2', pRunner: 'Runner contribution', pRunnerSub: 'what you let run', pReasons: 'Exit reason', rTP: 'Target (TP)', rTrailing: 'Trailing', rManual: 'Manual', rSL: 'Stop (SL)', rSO: 'Stop out', rOther: 'Other', pNoData: 'Update your EA to the latest version to see the partial-close breakdown.',
+    pOfN: (n: number) => `of ${n} trades with exit data`, pNoPartials: "You haven't used partial closes on these trades yet.",
     calTitle: 'Results calendar', month: 'Month', year: 'Year', monthTotal: 'Month total:', ops: 'trades', dayOps: 'Trades on',
     bestDay: 'Best day', bestHour: 'Best hour', bestSess: 'Best session', bestPair: 'Best pair', worstDay: 'Worst day', worstHour: 'Worst hour', worstSess: 'Worst session', worstPair: 'Worst pair',
     lsTitle: 'Longs vs Shorts', longs: '🟢 Longs', shorts: '🔴 Shorts', distTitle: 'Results distribution', noData: 'No data.',
     topPairsT: 'Top 5 best pairs', botPairsT: 'Top 5 worst pairs', noPos: 'No pairs in profit.', noNeg: 'No pairs in loss.',
     byWeekday: 'By weekday', bySession: 'By session', byHour: 'By hour of day', byMonth: 'By month',
-    accCard: 'Accounts & portfolio', balTotal: 'Total balance', accounts: 'Accounts', opsTotal: 'Trades', th_acc: 'Account', th_broker: 'Broker', th_bal: 'Balance', th_net: 'Net', th_win: 'Win', nickPh: 'e.g. FTMO 50K', nameBtn: '✏️ Name',
-    fundTitle: '🏆 Prop-firm rules', fundEdit: '⚙️ Set rules', fundHide: 'Hide', fundTarget: 'Profit target ($)', fundMaxDaily: 'Max daily loss ($)', fundMaxTotal: 'Max total loss ($)', fundStart: 'Starting balance ($)', fundSave: 'Save rules', fundProfitBar: 'Progress to target', fundDDBar: 'Max loss used',
+    accCard: 'Accounts & portfolio', balTotal: 'Total balance', accounts: 'Accounts', opsTotal: 'Trades', th_acc: 'Account', th_broker: 'Broker', th_bal: 'Balance', th_net: 'Net', th_win: 'Win', nickPh: 'e.g. FTMO 50K', nameBtn: '✏️ Name', resyncBtn: '🔄 Re-sync history', resyncing: 'Sending…', resyncOk: '✓ Requested. The EA will upload everything on its next sync.',
+    fundTitle: '🏆 Prop-firm rules', fundEdit: '⚙️ Set rules', fundHide: 'Hide', fundTarget: 'Prop-firm target ($)', fundMaxDaily: 'Max daily loss ($)', fundMaxTotal: 'Max total loss ($)', fundStart: 'Starting balance ($)', fundSave: 'Save rules', fundProfitBar: 'Progress to prop-firm target', fundDDBar: 'Max loss used', fundHint: 'The profit your prop firm requires.',
     ranges: { d1: 'Today', d7: '7d', d30: '30d', mo: 'Month', yr: 'Year', all: 'All' },
     radarTitle: 'Trader profile', bubbleTitle: 'Pairs · volume and result', rWR: 'Win rate', rPF: 'P. factor', rPayoff: 'Payoff', rConsist: 'Consistency', rRisk: 'Risk', demo: 'Demo', demoOn: '🎬 Viewing example data (not real)', customRange: 'Date range', from: 'From', to: 'To',
     proLockT: 'Pro feature', proLockD: 'Upgrade your plan to unlock this section.', proLockCta: 'See plans →', histCap: '🔒 On the Free plan you see only the last 30 days. Unlock your full history with Pro.', available: 'Available in', upgradeTo: 'Upgrade to', perMo: 'mo', dLock1: 'Trade journal with photos, notes and tags.', dLock2: 'Compare your accounts side by side.', dLock3: 'Funding rules, payouts and account documents.',
@@ -193,7 +227,7 @@ function FundCard({ acc, net, maxDD, L, onSave }: { acc: Acc; net: number; maxDD
       </>)}
       {edit && (<div style={{ marginTop: hasRules ? 16 : 0 }}>
         <div className="grid g2">
-          <div><span style={lbl}>{L.fundTarget}</span><input type="number" value={f.fund_target} onChange={(e) => set('fund_target', e.target.value)} style={{ margin: 0 }} /></div>
+          <div><span style={lbl}>{L.fundTarget}</span><input type="number" value={f.fund_target} onChange={(e) => set('fund_target', e.target.value)} style={{ margin: 0 }} /><span className="muted" style={{ fontSize: 11.5, display: 'block', marginTop: 4 }}>{L.fundHint}</span></div>
           <div><span style={lbl}>{L.fundMaxTotal}</span><input type="number" value={f.fund_max_total} onChange={(e) => set('fund_max_total', e.target.value)} style={{ margin: 0 }} /></div>
           <div><span style={lbl}>{L.fundMaxDaily}</span><input type="number" value={f.fund_max_daily} onChange={(e) => set('fund_max_daily', e.target.value)} style={{ margin: 0 }} /></div>
           <div><span style={lbl}>{L.fundStart}</span><input type="number" value={f.fund_start} onChange={(e) => set('fund_start', e.target.value)} style={{ margin: 0 }} /></div>
@@ -269,11 +303,13 @@ function PlanBadge({ plan }: { plan: string }) {
 export default function DashboardClient({ email = '', plan = 'free', capOverride, profile, trades = [], accounts: accs0 = [] }: { email?: string; plan?: string; capOverride?: Record<string, any>; profile?: { full_name?: string; trade_style?: string; experience?: string; platform?: string; goal?: string }; trades?: TT[]; accounts?: Acc[] }) {
   const isFree = (plan || 'free') === 'free';
   const { lang, setLang } = useLang();
-  const [rRange, setRRange] = useState<Range>(() => defaultRange('month'));
   const [accounts, setAccounts] = useState<Acc[]>(accs0 || []);
   const [tradesS, setTradesS] = useState<TT[]>(trades || []);
   const [sel, setSel] = useState<string>('all');
   const [view, setView] = useState<View>('hub');
+  const [railOpen, setRailOpen] = useState(false);   // móvil: menú del panel personal (cuentas/mercado/neto/coach)
+  // Recordatorio de check-in del plan → píldora iluminada en la cápsula del saludo.
+  const [checkin, setCheckin] = useState<{ pending: boolean; open: () => void; done?: number; total?: number } | null>(null);
   // Deep-link: /dashboard?view=plan abre directo esa vista (p.ej. desde el Guardian).
   useEffect(() => {
     try {
@@ -282,6 +318,34 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
       if (v && (ok as string[]).includes(v)) setView(v as View);
     } catch {}
   }, []);
+
+  // Diario: set de operaciones YA documentadas (para la bandeja "sin diario").
+  const [docIds, setDocIds] = useState<Set<string>>(new Set());
+  const [journalUndoc, setJournalUndoc] = useState(false);
+  useEffect(() => {
+    fetch('/api/journal').then((r) => r.json()).then((j) => {
+      const s = new Set<string>();
+      (j.entries || []).forEach((e: any) => {
+        const has = e.grade || e.emotion || (e.notes && String(e.notes).trim()) || e.image_url
+          || (e.tags && e.tags.length) || (e.market_tags && e.market_tags.length) || (e.error_tags && e.error_tags.length);
+        if (has) s.add(e.trade_id);
+      });
+      setDocIds(s);
+    }).catch(() => {});
+  }, []);
+  // Cuántas operaciones recientes (últimos 21 días) están sin documentar. Se
+  // limita a lo reciente: documentar trades de hace meses no aporta.
+  const undocCount = useMemo(() => {
+    const cut = new Date(Date.now() - 21 * 864e5).toISOString().slice(0, 10);
+    return (tradesS || []).filter((x: any) => x.close_time.slice(0, 10) >= cut && !docIds.has(x.id)).length;
+  }, [tradesS, docIds]);
+  // Precarga en reposo de las secciones tras un tile: cuando el navegador está
+  // libre (o a 1.2s como respaldo), bajamos su código para que abran al instante.
+  useEffect(() => {
+    const ric = (window as any).requestIdleCallback as undefined | ((cb: () => void, o?: any) => number);
+    if (ric) { const id = ric(_preloadViews, { timeout: 2500 }); return () => (window as any).cancelIdleCallback?.(id); }
+    const t = setTimeout(_preloadViews, 1200); return () => clearTimeout(t);
+  }, []);
   const [range, setRange] = useState<string>('all');
   const [cFrom, setCFrom] = useState('');
   const [cTo, setCTo] = useState('');
@@ -289,6 +353,8 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
   const demoTrades = useMemo(() => genDemo(accs0[0]?.id || 'demo'), []);
   const [editing, setEditing] = useState<string>('');
   const [nick, setNick] = useState('');
+  const [resyncing, setResyncing] = useState('');
+  const [resyncDone, setResyncDone] = useState('');
   const [lastUpdate, setLastUpdate] = useState<number>(Date.now());
   const [, setTick] = useState(0);
   const [plans, setPlans] = useState<any[]>([]);
@@ -359,6 +425,25 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
     });
   }, [tradesS, demo, demoTrades, range, cFrom, cTo, histDays]);
 
+  // Fechas (YYYY-MM-DD) del filtro activo. UN SOLO control de fecha manda: alimenta
+  // al Coach y al export, para que "filtrar" signifique lo mismo en toda la pantalla.
+  const rangeDates = useMemo<{ from?: string; to?: string }>(() => {
+    const iso = (d: Date) => d.toISOString().slice(0, 10);
+    const now = new Date();
+    if (range === 'custom') return { from: cFrom || undefined, to: cTo || undefined };
+    if (range === 'd1') return { from: iso(new Date(Date.now() - 864e5)) };
+    if (range === 'd7') return { from: iso(new Date(Date.now() - 7 * 864e5)) };
+    if (range === 'd30') return { from: iso(new Date(Date.now() - 30 * 864e5)) };
+    if (range === 'mo') return { from: iso(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))) };
+    if (range === 'yr') return { from: iso(new Date(Date.UTC(now.getUTCFullYear(), 0, 1))) };
+    return {}; // 'all' → sin límite (el Coach cae a 90 días)
+  }, [range, cFrom, cTo]);
+  // URLs de descarga del reporte para el período filtrado (con topes seguros).
+  const expFrom = rangeDates.from || '2000-01-01';
+  const expTo = rangeDates.to || new Date().toISOString().slice(0, 10);
+  const pdfHref = `/api/dashboard/report?from=${expFrom}&to=${expTo}&lang=${lang}`;
+  const csvHref = `/api/dashboard/report?export=csv&from=${expFrom}&to=${expTo}&lang=${lang}`;
+
   // Cuántas operaciones suyas quedan fuera por el límite de historial de su plan
   const hiddenTrades = useMemo(() => {
     if (!histDays || demo) return 0;
@@ -370,10 +455,17 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
   const a = useMemo(() => analyze(filtered), [filtered]);
 
   const totalBalance = accounts.reduce((s, x) => s + Number(x.balance || 0), 0);
-  const accName = (x: Acc) => x.nickname || `#${x.login}`;
+  const accName = (x: Acc) => x.nickname || (x.broker ? `${x.broker} · #${x.login}` : `#${x.login}`);
   const sessName = (key: string) => (SESS[key] ? SESS[key][lang] : key);
   function accStats(id: string) { const ts = ranged.filter((t) => t.account_id === id); let net = 0, w = 0; for (const t of ts) { const p = +t.net_profit || 0; net += p; if (p >= 0) w++; } return { net, ops: ts.length, wr: ts.length ? Math.round(100 * w / ts.length) : 0 }; }
   async function saveNick(id: string) { await fetch('/api/accounts', { method: 'PATCH', body: JSON.stringify({ id, nickname: nick }) }); setAccounts(accounts.map((x) => (x.id === id ? { ...x, nickname: nick } : x))); setEditing(''); }
+  // Pide re-subir TODO el historial de la cuenta: el EA lo recibe en su próximo sync.
+  async function resyncHistory(id: string) {
+    setResyncing(id);
+    try { await fetch('/api/accounts', { method: 'POST', body: JSON.stringify({ action: 'resync', id }) }); setResyncDone(id); }
+    catch {}
+    setResyncing(''); setTimeout(() => setResyncDone(''), 6000);
+  }
 
   const weekOrder = [1, 2, 3, 4, 5, 6, 0];
   const weekdayData = weekOrder.map((i) => ({ label: WDS[lang][i], b: a.byWeekday[String(i)] || { net: 0, count: 0, wins: 0 } }));
@@ -445,7 +537,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
     const maxTotal = Number(cur.fund_max_total) || 0, target = Number(cur.fund_target) || 0;
     const es = lang === 'es';
     if (maxTotal > 0 && a.maxDD / maxTotal >= 0.8) return { type: 'danger', txt: es ? `⚠ Cuidado: has usado el ${Math.round(a.maxDD / maxTotal * 100)}% de tu pérdida máxima en ${accName(cur)}.` : `⚠ Careful: you've used ${Math.round(a.maxDD / maxTotal * 100)}% of your max loss on ${accName(cur)}.` };
-    if (target > 0 && a.net / target >= 1) return { type: 'ok', txt: es ? `🎉 ¡Objetivo alcanzado en ${accName(cur)}! (${money2(a.net)})` : `🎉 Target reached on ${accName(cur)}! (${money2(a.net)})` };
+    if (target > 0 && a.net / target >= 1) return { type: 'ok', txt: es ? `🎉 ¡Llegaste al objetivo de fondeo en ${accName(cur)}! (${money2(a.net)})` : `🎉 You hit the prop-firm target on ${accName(cur)}! (${money2(a.net)})` };
     return null;
   })();
 
@@ -493,55 +585,86 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
   const heroChips: { icon: string; label: string }[] = [];
   if (profile?.trade_style && L.styleMap[profile.trade_style]) heroChips.push({ icon: STYLE_EMOJI[profile.trade_style] || '📈', label: L.styleMap[profile.trade_style] });
   if (profile?.experience && L.rankMap[profile.experience]) heroChips.push({ icon: '🏅', label: L.rankMap[profile.experience] });
-  if (profile?.platform && platformLabel(profile.platform, lang)) heroChips.push({ icon: '🖥️', label: platformLabel(profile.platform, lang) });
+  // La plataforma ("Several"/"Varias") se quitó del hero: es dato de perfil, no diario.
   if (profile?.goal && L.goalMap[profile.goal]) heroChips.push({ icon: '🎯', label: L.goalMap[profile.goal] });
 
   return (
     <>
-      <DailyCheckinPopup lang={lang} />
+      <CompTrialPopup />
+      <DailyCheckinPopup lang={lang} onState={setCheckin} />
 
       <div className="wrap-wide" style={{ padding: '24px clamp(16px,1.6vw,40px)' }}>
         {/* Info del trader: alineada a la izquierda */}
-        <div className="row between" style={{ marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
-          <div className="row" style={{ gap: 14, alignItems: 'center' }}>
+        <div className="row between hero-row" style={{ marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+          <div className="row hero-left" style={{ gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
             <div style={{ width: 52, height: 52, borderRadius: 14, background: 'var(--grad)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 700, flex: 'none' }}>{heroInitials}</div>
-            <div>
-              <h1 style={{ marginBottom: 6, lineHeight: 1.15, display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>{heroTitle} <span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="hand" size={22} /></span></h1>
+            <div className="hero-name">
+              <h1 style={{ marginBottom: 6, lineHeight: 1.15, display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>{heroTitle} <span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="hand" size={22} /></span>
+                {checkin?.pending && (
+                  <button onClick={() => checkin.open()} title={lang === 'en' ? 'Review your plan today' : 'Revisa tu plan hoy'}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid var(--amber)', background: 'rgba(245,158,11,.12)', color: 'var(--amber)', borderRadius: 16, padding: '4px 11px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', animation: 'onyxGlow 1.9s ease-in-out infinite' }}>
+                    <OnyxIcon emoji="✅" size={13} /> {lang === 'en' ? 'Check-in' : 'Check-in'}{typeof checkin.total === 'number' && checkin.total > 0 ? ` ${checkin.done}/${checkin.total}` : ''}
+                  </button>
+                )}
+              </h1>
               {heroChips.length ? (
-                <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-                  {heroChips.map((c, i) => <span key={i} className="pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(124,140,255,.14)', color: 'var(--soft-brand)', fontWeight: 500 }}><OnyxIcon emoji={c.icon} size={13} /> {c.label}</span>)}
+                <div className="row" style={{ gap: 10, flexWrap: 'wrap', marginTop: 3 }}>
+                  {heroChips.map((c, i) => <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--mut)' }}><OnyxIcon emoji={c.icon} size={12} /> {c.label}</span>)}
                 </div>
               ) : (
                 <Link href="/onboarding" className="pill" style={{ background: 'rgba(124,140,255,.14)', color: 'var(--soft-brand)' }}>{L.completeProfile}</Link>
               )}
             </div>
+            {/* Balance del portafolio: compacto, al lado del nombre (con separador).
+                Al vivir aquí, se elimina la banda de balance de abajo y el dashboard sube. */}
+            <div className="hero-balance" style={{ borderLeft: '1px solid var(--line)', paddingLeft: 16, alignSelf: 'center' }}>
+              <div className="muted" style={{ fontSize: 11 }}>{lang === 'es' ? 'Balance del portafolio' : 'Portfolio balance'} · {accounts.length} {L.accountsWord}</div>
+              <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 7 }}>
+                <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.3px' }}>${totalBalance.toLocaleString()}</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: GREEN }}><span className="livedot" style={{ width: 7, height: 7 }} /> {updatedTxt}</span>
+              </div>
+            </div>
           </div>
-          {/* El botón viejo de "Conectar cuenta" se quitó: ahora se usa el sistema
-              nuevo de abajo (SetupGuide) — barra "Tus cuentas" + "Añadir cuenta". */}
+          {/* Exportar reporte del período filtrado: menú compacto arriba a la derecha
+              (antes era una banda completa que cargaba la vista). Solo planes de pago. */}
+          {!isFree && (
+            <details className="hero-export" style={{ position: 'relative', flex: 'none' }}>
+              <summary style={{ listStyle: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--tx)', borderRadius: 10, padding: '8px 13px', fontSize: 13 }}>
+                <OnyxIcon emoji="⬇️" size={14} /> {lang === 'es' ? 'Exportar' : 'Export'} <span style={{ fontSize: 11, color: 'var(--mut)' }}>▾</span>
+              </summary>
+              <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', zIndex: 40, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 8, minWidth: 220, boxShadow: '0 12px 34px rgba(0,0,0,.4)' }}>
+                <div className="muted" style={{ fontSize: 11, padding: '4px 8px 8px' }}>{lang === 'es' ? 'Reporte del período filtrado' : 'Report for the filtered period'}</div>
+                <a className="btn btn-ghost" href={pdfHref} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="📄" size={14} /> PDF</a>
+                <a className="btn btn-ghost" href={csvHref} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%' }}><OnyxIcon emoji="📊" size={14} /> CSV</a>
+              </div>
+            </details>
+          )}
         </div>
-        <p className="muted" style={{ fontSize: 13, margin: '-6px 0 14px', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>{email} · {accounts.length} {L.accountsWord} · {L.balance} ${totalBalance.toLocaleString()} · <span className="livedot" style={{ width: 8, height: 8 }} /><span style={{ color: GREEN }}>{updatedTxt}</span></p>
 
-        {/* Guía de configuración adaptativa (onboarding + añadir cuentas, con confirmación en vivo) */}
-        <SetupGuide />
-
-        {/* Ganancia neta + Onyx Coach: rejilla fluida (lado a lado en ancho, apiladas en móvil) */}
-        {(caps?.expenses || caps?.coach) && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(320px,1fr))', gap: 12, alignItems: 'stretch', marginBottom: 14 }}>
-            {caps?.expenses ? <NetRealCard /> : null}
-            {caps?.coach ? <CoachCard /> : null}
-          </div>
-        )}
-
-        {!isFree && (
-          <RangeBar value={rRange} onChange={setRRange}
-            label={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12.5, color: 'var(--tx)' }}><OnyxIcon emoji="📄" size={15} /> {lang === 'es' ? 'Reporte de rendimiento' : 'Performance report'} <span className="muted" style={{ fontSize: 11 }}>· {lang === 'es' ? 'fondeo, impuestos o análisis' : 'funding, taxes or analysis'}</span></span>}
-            pdfUrl={(f, tt) => `/api/dashboard/report?from=${f}&to=${tt}&lang=${lang}`}
-            csvUrl={(f, tt) => `/api/dashboard/report?export=csv&from=${f}&to=${tt}&lang=${lang}`} />
-        )}
+        {/* Onboarding grande: solo cuando aún NO hay cuentas — se queda a lo ancho para
+            que el trader nuevo lo vea prominente. Con cuentas, el lanzador compacto,
+            el reloj de mercado, el neto y el Coach viven en el riel derecho (abajo). */}
+        {!hasAccounts && <SetupGuide />}
 
         <div className="cockpit">
-          <div className="rail-left"><MarketHours lang={lang} compact /><details style={{ marginTop: 12 }}><summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 700, color: 'var(--tx)', padding: '10px 12px', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, listStyle: 'none', display: 'flex', alignItems: 'center', gap: 8 }}><OnyxIcon name="lots" size={16} /> {lang === 'en' ? 'Lot size calculator' : 'Calculadora de lotes'}</summary><div style={{ marginTop: 10 }}><LotCalculator lang={lang} balance={Number(cur?.balance) || totalBalance || undefined} /></div></details></div>
-          <div className="rail-right"><News lang={lang} /></div>
+          {/* Riel derecho = panel personal de vistazo (cuentas · mercado · neto · coach).
+              En escritorio va a la derecha (order:3, sticky); en móvil, por el orden del
+              DOM, sube al tope — justo lo que se pidió: las bandas dejan de empujar el
+              contenido hacia abajo y el dashboard sube. */}
+          <div className="rail-right" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {/* En móvil este panel se pliega en un menú (como Mi cuenta): las estadísticas
+                quedan arriba y estas tarjetas se abren al tocar. En escritorio siempre visible. */}
+            <button type="button" className="rail-menu-btn" onClick={() => setRailOpen((o) => !o)} aria-expanded={railOpen}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><OnyxIcon emoji="🧭" size={15} /> {lang === 'es' ? 'Cuentas · Mercado · Neto · Coach' : 'Accounts · Market · Net · Coach'}</span>
+              <span style={{ color: 'var(--mut)' }}>{railOpen ? '▲' : '▼'}</span>
+            </button>
+            <div className={'rail-body' + (railOpen ? ' open' : '')}>
+              {hasAccounts && <SetupGuide />}
+              <MarketClock />
+              {caps?.expenses ? <NetRealCard /> : null}
+              {caps?.coach ? <CoachCard rail from={rangeDates.from} to={rangeDates.to} account={sel} /> : null}
+            </div>
+          </div>
           <div className="center">
         {!hasAccounts ? (
           <div className="card" style={{ textAlign: 'center', padding: '30px 20px' }}>
@@ -577,19 +700,6 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
             {histDays > 0 && <div style={{ background: 'rgba(124,140,255,.10)', border: '1px solid var(--brand)', color: 'var(--soft-brand2)', borderRadius: 10, padding: '9px 14px', fontSize: 13, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>{L.histCap} <Link href="/pricing" style={{ color: '#fff', fontWeight: 700 }}>{L.proLockCta}</Link></div>}
 
             {view === 'hub' && (<>
-              <ReferralBanner />
-              {/* Onyx te dice — tira compacta de consejos (una sola fila que hace scroll) */}
-              {insights.length > 0 && (
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'nowrap', overflowX: 'auto', paddingBottom: 2 }}>
-                  <span className="muted" style={{ fontSize: 12, fontWeight: 700, flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--brand)' }}><OnyxIcon emoji="💡" size={15} /> {L.insights}</span>
-                  {insights.map((x, i) => (
-                    <span key={i} style={{ display: 'inline-flex', gap: 7, alignItems: 'center', background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 999, padding: '6px 12px', fontSize: 12.5, whiteSpace: 'nowrap', flex: 'none' }}>
-                      <span style={{ display: 'inline-flex', color: 'var(--brand)' }}><OnyxIcon emoji={x.icon} size={14} /></span>{x.txt}
-                    </span>
-                  ))}
-                </div>
-              )}
-
               {/* Cabecera vital: anillos encendidos + mosaicos de navegación */}
               {(() => {
                 const semWR = a.winRate >= 50 ? GREEN : a.winRate >= 40 ? GOLD : RED;
@@ -603,14 +713,32 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                 ];
                 const tiles: Tile[] = SECTIONS.map((s) => ({
                   key: s.key, icon: s.icon, label: s.label, metric: s.metric, mc: s.mc, color: s.color,
-                  onClick: () => setView(s.key),
+                  onClick: () => { if (s.key === 'operaciones') setJournalUndoc(false); setView(s.key); }, preload: PRELOAD[s.key],
                   badge: s.pro && !canJournal ? <PlanBadge plan={upJ.name} /> : undefined,
                 }));
-                tiles.push({ key: 'plan', icon: '🎯', label: lang === 'en' ? 'My plan' : 'Mi plan', metric: lang === 'en' ? 'Habits' : 'Hábitos', mc: 'var(--soft-brand)', color: PURPLE, onClick: () => setView('plan') });
-                return <HubVitals net={money2(a.net)} netPos={a.net >= 0} netLabel={L.kNet} vitals={vitals} tiles={tiles} />;
+                tiles.push({ key: 'plan', icon: '🎯', label: lang === 'en' ? 'My plan' : 'Mi plan', metric: lang === 'en' ? 'Habits' : 'Hábitos', mc: 'var(--soft-brand)', color: PURPLE, onClick: () => setView('plan'), preload: PRELOAD.plan });
+                return <HubVitals net={money2(a.net)} netPos={a.net >= 0} netLabel={L.kNet} vitals={vitals} tiles={tiles} hideNet />;
               })()}
 
-              <Achievements a={a} accounts={accounts} lang={lang} />
+              {/* Bandeja "sin diario": persigue al trader para que documente */}
+              {canJournal && !demo && undocCount > 0 && (
+                <div
+                  onMouseEnter={() => PRELOAD.operaciones?.()}
+                  onClick={() => { setJournalUndoc(true); setView('operaciones'); }}
+                  style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 16px', borderRadius: 14, background: 'rgba(255,192,77,.10)', border: '1px solid var(--amber)' }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
+                    <OnyxIcon emoji="📓" size={20} />
+                    <div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--amber)' }}>{undocCount} {lang === 'en' ? (undocCount === 1 ? 'trade without a journal' : 'trades without a journal') : (undocCount === 1 ? 'operación sin diario' : 'operaciones sin diario')}</div>
+                      <div className="muted" style={{ fontSize: 12.5 }}>{lang === 'en' ? 'Document them while you remember' : 'Documéntalas mientras las recuerdas'}</div>
+                    </div>
+                  </div>
+                  <span className="btn" style={{ background: 'rgba(255,192,77,.14)', border: '1px solid var(--amber)', color: 'var(--amber)', fontWeight: 600, fontSize: 13.5, whiteSpace: 'nowrap' }}>{lang === 'en' ? 'Document now' : 'Documentar ahora'} →</span>
+                </div>
+              )}
+
+              <Achievements a={a} accounts={accounts} trades={demo ? demoTrades : tradesS} lang={lang} />
 
               <Nudge
                 lang={lang}
@@ -628,7 +756,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
               />
             </>)}
 
-            {view !== 'hub' && <button className="btn btn-ghost" style={{ alignSelf: 'flex-start' }} onClick={() => setView('hub')}>{L.back}</button>}
+            {view !== 'hub' && <button className="btn" style={{ alignSelf: 'flex-start', background: 'rgba(124,140,255,.12)', border: '1px solid rgba(124,140,255,.6)', color: 'var(--soft-brand)', fontWeight: 500, boxShadow: '0 0 16px -2px rgba(124,140,255,.5)' }} onClick={() => setView('hub')}>{L.back}</button>}
 
             {view === 'rendimiento' && (() => {
               const sWR = a.winRate >= 50 ? GREEN : a.winRate >= 40 ? GOLD : RED;
@@ -665,6 +793,43 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                 </Card>
                 <Card title={L.donutTitle} icon="🍩"><Donut win={a.catWin} loss={a.catLoss} be={a.catBE} L={L} /></Card>
               </div>
+              {/* Ganancias parciales: Full TP vs cierres parciales + motivo de salida */}
+              <Card title={L.pExitTitle} icon="🎯">
+                {a.hasReasons ? (
+                  <>
+                    {(() => {
+                      const rn = a.reasonN || 0;                       // ops con dato de salida (denominador correcto)
+                      const hasPartials = a.partialTrades > 0;
+                      const pct = (v: number) => rn ? `${Math.round(100 * v / rn)}%` : '—';
+                      return (
+                        <div className="grid g4" style={{ marginBottom: 12 }}>
+                          <StatCard icon="🎯" label={L.pFullTP} value={`${a.fullTP}`} sub={`${pct(a.fullTP)} · ${L.pOfN(rn)}`} accent={GREEN} color={GREEN} bar={rn ? a.fullTP / rn : 0} />
+                          <StatCard icon="✂️" label={L.pPartial} value={`${a.partialTrades}`} sub={`${pct(a.partialTrades)} · ${L.pPartialSub}`} accent={BLUE} color={BLUE} bar={rn ? a.partialTrades / rn : 0} />
+                          {/* Ganancia parcial y runner solo tienen sentido si usó parciales; si no, se atenúan con una nota. */}
+                          <StatCard icon="💰" label={L.pPartialProfit} value={hasPartials ? money(a.partialProfit) : '—'} sub={hasPartials ? L.pPartialProfitSub : L.pNoPartials} accent={a.partialProfit >= 0 ? GREEN : RED} color={hasPartials ? (a.partialProfit >= 0 ? GREEN : RED) : 'var(--mut)'} />
+                          <StatCard icon="🏃" label={L.pRunner} value={hasPartials ? money(a.runnerProfit) : '—'} sub={hasPartials ? L.pRunnerSub : L.pNoPartials} accent={a.runnerProfit >= 0 ? GREEN : RED} color={hasPartials ? (a.runnerProfit >= 0 ? GREEN : RED) : 'var(--mut)'} />
+                        </div>
+                      );
+                    })()}
+                    <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{L.pReasons}</div>
+                    {(() => {
+                      const er = a.exitReasons as Record<string, number>;
+                      const total = Object.values(er).reduce((s, v) => s + v, 0) || 1;
+                      const rows: [string, number, string][] = [
+                        [L.rTP, er.tp || 0, GREEN], [L.rTrailing, er.trailing || 0, BLUE],
+                        [L.rManual, er.manual || 0, GOLD], [L.rSL, (er.sl || 0) + (er.so || 0), RED], [L.rOther, er.other || 0, 'var(--mut)'],
+                      ];
+                      return rows.filter((r) => r[1] > 0).map(([label, val, col], i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '5px 0' }}>
+                          <span style={{ flex: '0 0 96px', fontSize: 12.5, color: 'var(--mut)' }}>{label}</span>
+                          <div style={{ flex: 1, height: 10, background: 'var(--bg2)', borderRadius: 6, overflow: 'hidden' }}><div style={{ width: `${Math.round(100 * val / total)}%`, height: '100%', background: col }} /></div>
+                          <span style={{ flex: '0 0 66px', textAlign: 'right', fontSize: 12, color: 'var(--mut)' }}>{val} · {Math.round(100 * val / total)}%</span>
+                        </div>
+                      ));
+                    })()}
+                  </>
+                ) : <p className="muted" style={{ fontSize: 13, margin: 0 }}>{L.pNoData}</p>}
+              </Card>
               <div className="grid g4">
                 <StatCard icon="📅" label={L.bestDay} value={bWD ? WDL[lang][+bWD[0]] : '—'} accent={GREEN} color={GREEN} sub={bWD ? money(bWD[1].net) : ''} />
                 <StatCard icon="⏰" label={L.bestHour} value={bH ? `${bH[0]}:00` : '—'} accent={GREEN} color={GREEN} sub={bH ? money(bH[1].net) : ''} />
@@ -702,18 +867,18 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                 {vw === 'mes' ? (<>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 6 }}>
                     {DAYH[lang].map((d, i) => <div key={i} style={{ textAlign: 'center', fontSize: 11, color: 'var(--mut)' }}>{d}</div>)}
-                    {cells.map((d, i) => { if (d === null) return <div key={i} />; const b = a.daily[dayKey(d)]; const net = b?.net || 0; const inten = b ? Math.min(1, Math.abs(net) / maxDay) : 0; const glowC = net >= 0 ? '52,226,160' : '255,107,125'; const bg = !b ? 'var(--bg2)' : `rgba(${glowC},${.2 + inten * .6})`; const key = dayKey(d); const isSel = key === selDay; return (<div key={i} onClick={() => b && setSelDay(isSel ? null : key)} style={{ background: bg, border: isSel ? '2px solid ' + BLUE : '1px solid var(--line)', borderRadius: 12, minHeight: 56, padding: 7, cursor: b ? 'pointer' : 'default', transition: 'transform .12s, box-shadow .14s', boxShadow: b && inten > 0.28 ? `0 0 14px -3px rgba(${glowC},${0.55})` : 'none' }}><div style={{ fontSize: 11, color: b ? (net >= 0 ? '#04150d' : '#2a060c') : 'var(--mut)', fontWeight: b ? 600 : 400 }}>{d}</div>{b && <div style={{ fontSize: 12, fontWeight: 800, marginTop: 4, color: net >= 0 ? '#04150d' : '#2a060c' }}>{money2(net)}</div>}{b && <div style={{ fontSize: 10, color: net >= 0 ? '#04150d' : '#2a060c', opacity: .8 }}>{b.count} {L.ops}</div>}</div>); })}
+                    {cells.map((d, i) => { if (d === null) return <div key={i} />; const b = a.daily[dayKey(d)]; const net = b?.net || 0; const inten = b ? Math.min(1, Math.abs(net) / maxDay) : 0; const glowC = net >= 0 ? '52,226,160' : '255,107,125'; const bg = !b ? 'var(--bg2)' : `rgba(${glowC},${.2 + inten * .6})`; const key = dayKey(d); const isSel = key === selDay; return (<div key={i} onClick={() => b && setSelDay(isSel ? null : key)} style={{ minWidth: 0, overflow: 'hidden', background: bg, border: isSel ? '2px solid ' + BLUE : '1px solid var(--line)', borderRadius: 12, minHeight: 56, padding: 7, cursor: b ? 'pointer' : 'default', transition: 'transform .12s, box-shadow .14s', boxShadow: b && inten > 0.28 ? `0 0 14px -3px rgba(${glowC},${0.55})` : 'none' }}><div style={{ fontSize: 11, color: b ? (net >= 0 ? '#04150d' : '#2a060c') : 'var(--mut)', fontWeight: b ? 600 : 400 }}>{d}</div>{b && <div style={{ fontSize: 12, fontWeight: 800, marginTop: 4, color: net >= 0 ? '#04150d' : '#2a060c', whiteSpace: 'nowrap' }}>{money2k(net)}</div>}{b && <div style={{ fontSize: 10, color: net >= 0 ? '#04150d' : '#2a060c', opacity: .8, whiteSpace: 'nowrap' }}>{b.count}</div>}</div>); })}
                   </div>
                   {selDay && (<div style={{ marginTop: 14, borderTop: '1px solid var(--line)', paddingTop: 12 }}><b>{L.dayOps} {selDay}</b><table className="jtbl" style={{ marginTop: 8 }}><tbody>{dayTrades.map((t, i) => (<tr key={i} className="jrow"><td style={{ fontWeight: 600 }}>{t.symbol}</td><td><span className={'jside ' + (t.side === 'buy' ? 'buy' : 'sell')}>{t.side}</span></td><td className="muted" style={{ textAlign: 'right' }}>{(+t.volume).toFixed(2)}</td><td className="muted">{new Date(t.close_time).toUTCString().slice(17, 22)}</td><td style={{ textAlign: 'right' }}><span className={'jchip ' + (+t.net_profit >= 0 ? 'pos' : 'neg')}>{money2(+t.net_profit)}</span></td></tr>))}</tbody></table></div>)}
                 </>) : (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
-                    {MOL[lang].map((m, i) => { const key = `${calY}-${String(i + 1).padStart(2, '0')}`; const b = a.byMonth[key]; const net = b?.net || 0; const ac = b ? (net >= 0 ? GREEN : RED) : 'var(--line)'; return (<div key={i} className="statcard" style={{ ['--ac' as any]: ac, padding: 12 }}><div className="sc-lbl" style={{ marginTop: 0 }}>{m}</div><div className="sc-val" style={{ fontSize: 16, color: b ? (net >= 0 ? GREEN : RED) : 'var(--mut)' }}>{b ? money2(net) : '—'}</div>{b && <div className="sc-sub">{b.count} {L.ops} · {Math.round(100 * b.wins / b.count)}%</div>}</div>); })}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(130px,1fr))', gap: 10 }}>
+                    {MOL[lang].map((m, i) => { const key = `${calY}-${String(i + 1).padStart(2, '0')}`; const b = a.byMonth[key]; const net = b?.net || 0; const ac = b ? (net >= 0 ? GREEN : RED) : 'var(--line)'; return (<div key={i} className="statcard" style={{ ['--ac' as any]: ac, padding: 12, minWidth: 0 }}><div className="sc-lbl" style={{ marginTop: 0 }}>{m}</div><div className="sc-val" style={{ fontSize: 16, color: b ? (net >= 0 ? GREEN : RED) : 'var(--mut)' }}>{b ? money2(net) : '—'}</div>{b && <div className="sc-sub">{b.count} {L.ops} · {Math.round(100 * b.wins / b.count)}%</div>}</div>); })}
                   </div>
                 )}
               </Card>
             )}
 
-            {view === 'operaciones' && (!canJournal ? <ProLock L={L} plan={upJ.name} desc={L.dLock1} price={upJ.price} preview={<PreviewJournal />} /> : <Journal trades={filtered} lang={lang} />)}
+            {view === 'operaciones' && (!canJournal ? <ProLock L={L} plan={upJ.name} desc={L.dLock1} price={upJ.price} preview={<PreviewJournal />} /> : <Journal trades={filtered} lang={lang} focusUndoc={journalUndoc} />)}
             {view === 'costes' && <Costs trades={filtered} lang={lang} />}
             {view === 'reto' && <Challenge lang={lang} />}
             {view === 'plan' && <PlanHabits lang={lang} />}
@@ -725,17 +890,22 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                   <StatCard icon="🗂️" label={L.accounts} value={String(accounts.length)} accent={PURPLE} />
                   <StatCard icon="📊" label={L.opsTotal} value={String(ranged.length)} accent={CYAN} />
                 </div>
-                <table className="jtbl"><thead><tr><th>{L.th_acc}</th><th>{L.th_broker}</th><th style={{ textAlign: 'right' }}>{L.th_bal}</th><th style={{ textAlign: 'right' }}>{L.th_net}</th><th style={{ textAlign: 'right' }}>{L.th_win}</th><th></th></tr></thead>
+                <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                <table className="jtbl" style={{ minWidth: 620 }}><thead><tr><th>{L.th_acc}</th><th>{L.th_broker}</th><th style={{ textAlign: 'right' }}>{L.th_bal}</th><th style={{ textAlign: 'right' }}>{L.th_net}</th><th style={{ textAlign: 'right' }}>{L.th_win}</th><th></th></tr></thead>
                   <tbody>{accounts.map((x) => { const st = accStats(x.id); return (
                     <tr key={x.id}>
                       <td>{editing === x.id ? (<span style={{ display: 'flex', gap: 6 }}><input value={nick} onChange={(e) => setNick(e.target.value)} placeholder={L.nickPh} style={{ width: 140, marginTop: 0, padding: '6px 8px' }} /><button className="btn btn-primary" onClick={() => saveNick(x.id)}>✓</button><button className="btn btn-ghost" onClick={() => setEditing('')}>✕</button></span>) : (<span>{accName(x)} {typeMeta(x.acc_type) && <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 10, background: typeMeta(x.acc_type)!.color + '22', color: typeMeta(x.acc_type)!.color }}>{lang === 'es' ? typeMeta(x.acc_type)!.es : typeMeta(x.acc_type)!.en}</span>} <span className="muted" style={{ fontSize: 12 }}>· {x.platform} · #{x.login}</span></span>)}</td>
                       <td className="muted">{x.broker}</td>
                       <td style={{ textAlign: 'right' }}>${Number(x.balance || 0).toLocaleString()}</td>
-                      <td style={{ textAlign: 'right' }}><span className={'jchip ' + (st.net >= 0 ? 'pos' : 'neg')}>{money(st.net)}</span></td>
+                      <td style={{ textAlign: 'right' }}><span className={'jchip ' + (st.net >= 0 ? 'pos' : 'neg')}>{money2(st.net)}</span></td>
                       <td style={{ textAlign: 'right' }} className="muted">{st.wr}%</td>
-                      <td style={{ textAlign: 'right' }}>{editing !== x.id && <button className="btn btn-ghost" onClick={() => { setEditing(x.id); setNick(x.nickname || ''); }}>{L.nameBtn}</button>}</td>
+                      <td style={{ textAlign: 'right' }}>{editing !== x.id && <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        <button className="btn btn-ghost" onClick={() => { setEditing(x.id); setNick(x.nickname || ''); }}>{L.nameBtn}</button>
+                        <button className="btn btn-ghost" onClick={() => resyncHistory(x.id)} disabled={resyncing === x.id} title={L.resyncOk}>{resyncing === x.id ? L.resyncing : L.resyncBtn}</button>
+                      </span>}{resyncDone === x.id && <div style={{ color: 'var(--green)', fontSize: 11.5, marginTop: 4 }}>{L.resyncOk}</div>}</td>
                     </tr>); })}</tbody>
                 </table>
+                </div>
               </Card>
               {accounts.length >= 2 && (!canCompare ? <ProLock L={L} plan={upC.name} desc={L.dLock2} price={upC.price} preview={<PreviewCompare />} /> : <CompareAccounts accounts={accounts} trades={ranged} lang={lang} />)}
               {sel !== 'all' && cur && !canFunding && <ProLock L={L} plan={upF.name} desc={L.dLock3} price={upF.price} preview={<PreviewFunding />} />}
@@ -746,6 +916,9 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
           </div>
         )}
           </div>
+          {/* Riel izquierdo: contexto de mercado (sesiones · calculadora de lotes · noticias).
+              En escritorio va a la izquierda (order:1, sticky); en móvil baja al final. */}
+          <div className="rail-left"><MarketHours lang={lang} compact /><details style={{ marginTop: 12 }}><summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 700, color: 'var(--tx)', padding: '10px 12px', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, listStyle: 'none', display: 'flex', alignItems: 'center', gap: 8 }}><OnyxIcon name="lots" size={16} /> {lang === 'en' ? 'Lot size calculator' : 'Calculadora de lotes'}</summary><div style={{ marginTop: 10 }}><LotCalculator lang={lang} balance={Number(cur?.balance) || totalBalance || undefined} /></div></details><div style={{ marginTop: 12 }}><News lang={lang} /></div></div>
         </div>
       </div>
     </>

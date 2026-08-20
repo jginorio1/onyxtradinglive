@@ -24,6 +24,7 @@ function clean(b: any, prev: Promo): Promo {
     cta_es: String(b.cta_es ?? prev.cta_es).slice(0, 40),
     cta_en: String(b.cta_en ?? prev.cta_en).slice(0, 40),
     coupon: String(b.coupon ?? prev.coupon).slice(0, 40),
+    mode: oneOf(b.mode, ['auto', 'link'], (prev.mode as any) || 'auto'),
     bg: String(b.bg ?? prev.bg).slice(0, 20),
     bg2: String(b.bg2 ?? prev.bg2).slice(0, 20),
     gradient: !!b.gradient,
@@ -57,7 +58,8 @@ export async function GET() {
   if (!ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
   const queue = await loadQueue();
   const stats = await getSetting<Stats>('promo_stats', {} as Stats);
-  return NextResponse.json({ bars: queue.bars, stats });
+  const flags = await getSetting('promo_flags', { letCustomerCoupon: false });
+  return NextResponse.json({ bars: queue.bars, stats, flags });
 }
 
 // PATCH · guardar la cola completa (owner). { bars: Promo[], resetStatsId? }
@@ -69,6 +71,11 @@ export async function PATCH(req: Request) {
   const bars: Promo[] = incoming.slice(0, 40).map((x: any) => clean(x, blankPromo()));
   await saveSetting('promo_queue', { bars });
 
+  // Flag global: ¿dejar que el cliente use su propio cupón aunque haya promo?
+  if (b.flags && typeof b.flags === 'object') {
+    await saveSetting('promo_flags', { letCustomerCoupon: !!b.flags.letCustomerCoupon });
+  }
+
   // Reiniciar métricas de una barra concreta si se pide.
   if (b.resetStatsId) {
     const stats = await getSetting<Stats>('promo_stats', {} as Stats);
@@ -76,5 +83,6 @@ export async function PATCH(req: Request) {
     await saveSetting('promo_stats', stats);
   }
   const stats = await getSetting<Stats>('promo_stats', {} as Stats);
-  return NextResponse.json({ ok: true, bars, stats });
+  const flags = await getSetting('promo_flags', { letCustomerCoupon: false });
+  return NextResponse.json({ ok: true, bars, stats, flags });
 }

@@ -167,6 +167,48 @@ export type BlogKeywords = {
 const BK: BlogKeywords = { enabled: false, intensity: 'normal', variants: true, internalLinks: true, es: [], en: [] };
 export const blogKeywordsSettings = () => getSetting<BlogKeywords>('blog_keywords', BK);
 
+// Autor del blog (E-E-A-T). Se muestra la firma con foto, cargo y bio, y alimenta
+// el schema BlogPosting (author Person con jobTitle). Clave para YMYL/finanzas.
+export type BlogAuthor = {
+  name: string; role_es: string; role_en: string;
+  bio_es: string; bio_en: string; avatar_url: string; url: string;
+};
+const BA: BlogAuthor = {
+  name: 'Equipo Onyx', role_es: 'Analistas de trading en Onyx', role_en: 'Trading analysts at Onyx',
+  bio_es: 'Escribimos sobre disciplina, gestión de riesgo y cuentas de fondeo con años de experiencia operando y acompañando a traders.',
+  bio_en: 'We write about discipline, risk management and funded accounts, with years of experience trading and coaching traders.',
+  avatar_url: '', url: '',
+};
+export const blogAuthorSettings = () => getSetting<BlogAuthor>('blog_author', BA);
+
+// Plantel de autores del blog (varios). Cada artículo guarda el id del autor.
+export type BlogAuthorProfile = {
+  id: string; name: string;
+  trader_es: string; trader_en: string;      // qué tipo de trader es
+  experience_es: string; experience_en: string; // tiempo / experiencia
+  bio_es: string; bio_en: string; avatar_url: string; url: string;
+};
+export type BlogAuthors = { list: BlogAuthorProfile[]; defaultId: string };
+const BAS: BlogAuthors = {
+  defaultId: 'onyx',
+  list: [{
+    id: 'onyx', name: 'Equipo Onyx',
+    trader_es: 'Analistas de trading', trader_en: 'Trading analysts',
+    experience_es: 'años operando y acompañando traders', experience_en: 'years trading and coaching traders',
+    bio_es: BA.bio_es, bio_en: BA.bio_en, avatar_url: '', url: '',
+  }],
+};
+export const blogAuthorsSettings = () => getSetting<BlogAuthors>('blog_authors', BAS);
+// Resuelve el autor de un artículo por id (o el por defecto).
+export function resolveBlogAuthor(a: BlogAuthors, id?: string | null): BlogAuthorProfile {
+  return a.list.find((x) => x.id === id) || a.list.find((x) => x.id === a.defaultId) || a.list[0] || BAS.list[0];
+}
+
+// A dónde llega el "recordatorio" con el copy listo para pegar a la hora programada.
+export type SocialReminder = { viaTelegram: boolean; telegramChatId: string; viaEmail: boolean; email: string };
+const SR2: SocialReminder = { viaTelegram: false, telegramChatId: '', viaEmail: true, email: '' };
+export const socialReminderSettings = () => getSetting<SocialReminder>('social_reminder', SR2);
+
 // Onyx Academy · comisión por defecto (editable por el dueño en el panel).
 export type AcademyFee = { default_pct: number };
 const AF: AcademyFee = { default_pct: Number(process.env.ONYX_ACADEMY_FEE_PCT || 10) };

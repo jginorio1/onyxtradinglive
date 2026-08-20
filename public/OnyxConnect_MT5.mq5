@@ -382,6 +382,44 @@ string MMSS(int secs)
    return (m < 10 ? "0" : "") + IntegerToString(m) + ":" + (s < 10 ? "0" : "") + IntegerToString(s);
 }
 
+// ===== Mercado cerrado + cuenta atras hasta la apertura (sesiones reales) =====
+// Formatea segundos como "Xd HH:MM:SS" (o HH:MM:SS si es menos de un dia).
+string FmtCountdown(long s)
+{
+   if(s < 0) s = 0;
+   long d = s / 86400; s -= d * 86400;
+   long h = s / 3600;  s -= h * 3600;
+   long m = s / 60;    long sec = s - m * 60;
+   string hhmmss = StringFormat("%02d:%02d:%02d", (int)h, (int)m, (int)sec);
+   return d > 0 ? (IntegerToString((int)d) + "d " + hhmmss) : hhmmss;
+}
+
+// ¿El mercado del simbolo esta abierto? Si no, cuando abre (server time).
+// Usa las sesiones de TRADE reales que publica el broker por dia de la semana.
+bool MarketState(string sym, bool &isOpen, datetime &opensAt)
+{
+   datetime now = TimeTradeServer();
+   MqlDateTime mt; TimeToStruct(now, mt);
+   datetime midnight = now - (mt.hour * 3600 + mt.min * 60 + mt.sec);
+   isOpen = false; datetime best = 0;
+   for(int d = 0; d < 8; d++)
+   {
+      int dow = (mt.day_of_week + d) % 7;
+      datetime dayMid = midnight + (datetime)d * 86400;
+      for(uint si = 0; si < 8; si++)
+      {
+         datetime f, t;
+         if(!SymbolInfoSessionTrade(sym, (ENUM_DAY_OF_WEEK)dow, si, f, t)) break;
+         datetime sOpen  = dayMid + (datetime)f;
+         datetime sClose = dayMid + (datetime)t;
+         if(d == 0 && now >= sOpen && now < sClose) { isOpen = true; return true; }
+         if(sOpen > now && (best == 0 || sOpen < best)) best = sOpen;
+      }
+   }
+   opensAt = best;
+   return best > 0 || isOpen;
+}
+
 void DrawPanel()
 {
    int X = 12, W = 250, y = 22;
@@ -451,6 +489,21 @@ void DrawPanel()
       y += 20;
       PanelChip("lss", OnyxSession() + " · " + TimeToString(TimeCurrent(), TIME_MINUTES) + " · " + _Symbol, X + 12, y, TB, TBt);
       y += 22;
+      // Estado del mercado: si esta cerrado, cuenta atras a la apertura (HH:MM:SS).
+      {
+         bool mOpen; datetime mOpenAt;
+         if(MarketState(_Symbol, mOpen, mOpenAt))
+         {
+            if(!mOpen && mOpenAt > 0)
+            {
+               long secs = (long)(mOpenAt - TimeTradeServer());
+               PanelChip("mkt", T("Mercado cerrado · abre en ", "Market closed · opens in ") + FmtCountdown(secs), X + 12, y, TR, TRt);
+               y += 22;
+            }
+            else { ObjectDelete(0, PREFIX + "mktb"); ObjectDelete(0, PREFIX + "mktt"); }
+         }
+         else { ObjectDelete(0, PREFIX + "mktb"); ObjectDelete(0, PREFIX + "mktt"); }
+      }
    }
 
    bool ta = ((bool)MQLInfoInteger(MQL_TRADE_ALLOWED)) && ((bool)TerminalInfoInteger(TERMINAL_TRADE_ALLOWED));
@@ -659,10 +712,34 @@ string BuildBody()
 
    s += "\"closedTrades\":[";
    int m = 0;
-   datetime from = TimeCurrent() - 3 * 24 * 3600;
+   // Primera conexion de ESTA cuenta: envia el HISTORIAL COMPLETO una sola vez (backfill).
+   // Despues, en cada sync bastan los ultimos 3 dias (la nube hace upsert idempotente por ticket).
+   string bfKey = "OnyxBF_" + IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN));
+   bool   bfNeed = !GlobalVariableCheck(bfKey);
+   datetime from = bfNeed ? (datetime)0 : (TimeCurrent() - 3 * 24 * 3600);
+   int    cap  = bfNeed ? 5000 : 300;
    if(HistorySelect(from, TimeCurrent()))
    {
       int deals = HistoryDealsTotal();
+      // Pre-pase: acumula comision y swap de los deals que NO son de salida (la
+      // entrada, sobre todo). Muchos brokers cobran la mitad de la comision al
+      // abrir; si solo leyeramos el deal de salida, la comision saldria a la
+      // mitad. Asi el total cuadra exacto con MT5. Se añade una sola vez por posicion.
+      long   posIds[]; double posInComm[]; double posInSwap[]; bool posApplied[];
+      int    np = 0;
+      for(int i = 0; i < deals; i++)
+      {
+         ulong d = HistoryDealGetTicket(i);
+         if(d == 0) continue;
+         if(HistoryDealGetInteger(d, DEAL_ENTRY) == DEAL_ENTRY_OUT) continue;   // solo entradas/ajustes
+         long pid = (long)HistoryDealGetInteger(d, DEAL_POSITION_ID);
+         if(pid == 0) continue;
+         int idx = -1;
+         for(int k = 0; k < np; k++) { if(posIds[k] == pid) { idx = k; break; } }
+         if(idx < 0) { np++; ArrayResize(posIds, np); ArrayResize(posInComm, np); ArrayResize(posInSwap, np); ArrayResize(posApplied, np); idx = np - 1; posIds[idx] = pid; posInComm[idx] = 0; posInSwap[idx] = 0; posApplied[idx] = false; }
+         posInComm[idx] += HistoryDealGetDouble(d, DEAL_COMMISSION);
+         posInSwap[idx] += HistoryDealGetDouble(d, DEAL_SWAP);
+      }
       for(int i = 0; i < deals; i++)
       {
          ulong dt = HistoryDealGetTicket(i);
@@ -672,19 +749,31 @@ string BuildBody()
          double comm = HistoryDealGetDouble(dt, DEAL_COMMISSION);
          double swap = HistoryDealGetDouble(dt, DEAL_SWAP);
          double prof = HistoryDealGetDouble(dt, DEAL_PROFIT);
-         s += StringFormat("{\"ticket\":%I64u,\"symbol\":\"%s\",\"side\":\"%s\",\"volume\":%.2f,\"closeTime\":%I64d,\"closePrice\":%.5f,\"profit\":%.2f,\"commission\":%.2f,\"swap\":%.2f,\"netProfit\":%.2f,\"magic\":%I64d}",
-               dt,
+         // Ganancias parciales: id de la posicion (agrupa TP1/TP2/runner) + motivo de salida.
+         long   posId  = (long)HistoryDealGetInteger(dt, DEAL_POSITION_ID);
+         // Añade la comision/swap de la entrada una sola vez por posicion.
+         for(int k = 0; k < np; k++) { if(posIds[k] == posId) { if(!posApplied[k]) { comm += posInComm[k]; swap += posInSwap[k]; posApplied[k] = true; } break; } }
+         long   reason = (long)HistoryDealGetInteger(dt, DEAL_REASON);
+         string er = "manual";
+         if(reason == DEAL_REASON_TP) er = "tp";
+         else if(reason == DEAL_REASON_SL) er = "sl";
+         else if(reason == DEAL_REASON_SO) er = "so";
+         double dvol = HistoryDealGetDouble(dt, DEAL_VOLUME);
+         s += StringFormat("{\"ticket\":%I64u,\"positionId\":\"%I64d\",\"symbol\":\"%s\",\"side\":\"%s\",\"volume\":%.2f,\"closedVolume\":%.2f,\"closeTime\":%I64d,\"closePrice\":%.5f,\"profit\":%.2f,\"commission\":%.2f,\"swap\":%.2f,\"netProfit\":%.2f,\"exitReason\":\"%s\",\"magic\":%I64d}",
+               dt, posId,
                HistoryDealGetString(dt, DEAL_SYMBOL),
                (HistoryDealGetInteger(dt, DEAL_TYPE) == DEAL_TYPE_SELL ? "buy" : "sell"),
-               HistoryDealGetDouble(dt, DEAL_VOLUME),
+               dvol, dvol,
                (long)HistoryDealGetInteger(dt, DEAL_TIME),
                HistoryDealGetDouble(dt, DEAL_PRICE),
-               prof, comm, swap, prof + comm + swap,
+               prof, comm, swap, prof + comm + swap, er,
                (long)HistoryDealGetInteger(dt, DEAL_MAGIC));
          m++;
-         if(m >= 300) break;
+         if(m >= cap) break;
       }
    }
+   // Marca el backfill como hecho para no reenviar todo el historial en cada sync.
+   if(bfNeed) GlobalVariableSet(bfKey, (double)TimeCurrent());
    s += "]";
 
    if(g_events   != "") s += ",\"events\":["       + g_events   + "]";
@@ -1048,6 +1137,14 @@ void Sync()
    ParseNewsTimes(resp);
    DrawNewsLines();
    HandleCommands(resp);
+
+   // Re-sincronizar historial: el trader lo pidió desde la web. Borramos la marca
+   // de backfill para que el próximo envío vuelva a subir TODO el historial.
+   if(JsonBool(resp, "resyncHistory", false))
+   {
+      string bfk = "OnyxBF_" + IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN));
+      if(GlobalVariableCheck(bfk)) GlobalVariableDel(bfk);
+   }
 }
 
 //==================== GESTION DE POSICIONES =======================

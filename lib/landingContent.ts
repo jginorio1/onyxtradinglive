@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { unstable_cache, revalidateTag } from 'next/cache';
 
 // Contenido editable del landing (Landing Builder). Se guarda en app_settings
 // key 'landing_content'. Las páginas lo leen POR ENCIMA del texto en código:
@@ -30,13 +31,18 @@ export type LandingContent = {
   legal?: { terms_es?: string; terms_en?: string; privacy_es?: string; privacy_en?: string };
 };
 
-export async function landingContent(): Promise<LandingContent> {
+async function _landingContent(): Promise<LandingContent> {
   try {
     const { data } = await supabaseAdmin.from('app_settings').select('value').eq('key', 'landing_content').maybeSingle();
     return (data?.value as LandingContent) || {};
   } catch { return {}; }
 }
+// Cacheado en el servidor (se lee en CADA página pública, hero + footer). Evita
+// idas y vueltas a Supabase y baja la latencia. Se refresca solo cada 2 min, y
+// al guardar en Admin invalidamos la etiqueta para que el cambio salga al momento.
+export const landingContent = unstable_cache(_landingContent, ['landing_content_v1'], { revalidate: 120, tags: ['landing_content'] });
 
 export async function saveLandingContent(v: LandingContent) {
   await supabaseAdmin.from('app_settings').upsert({ key: 'landing_content', value: v, updated_at: new Date().toISOString() });
+  try { revalidateTag('landing_content'); } catch {}
 }

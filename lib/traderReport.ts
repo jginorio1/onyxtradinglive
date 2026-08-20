@@ -50,7 +50,7 @@ export function traderCsv(rep: TraderReport): string {
   const net = (t: any) => Number(t.net_profit ?? t.profit ?? 0) || 0;
   return toCsvRows([
     ['close_time', 'symbol', 'side', 'volume', 'net_profit', 'commission', 'swap'],
-    ...rep.trades.map((t) => [(t.close_time || '').slice(0, 19).replace('T', ' '), t.symbol || '', t.side || '', String(t.volume ?? ''), r2(net(t)), String(t.commission ?? ''), String(t.swap ?? '')]),
+    ...rep.trades.map((t) => [(t.close_time || '').slice(0, 19).replace('T', ' '), t.symbol || '', t.side || '', (t.volume != null ? Number(t.volume).toFixed(2) : ''), r2(net(t)).toFixed(2), (t.commission != null ? Number(t.commission).toFixed(2) : ''), (t.swap != null ? Number(t.swap).toFixed(2) : '')]),
   ]);
 }
 
@@ -66,7 +66,9 @@ export function traderChartUrl(rep: TraderReport, es = true): string {
 }
 
 const esc = (s: any) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' } as any)[c]);
-const money0 = (n: number) => (n >= 0 ? '+' : '−') + '$' + Math.abs(Math.round(n)).toLocaleString('en-US');
+// Dinero con 2 decimales SIEMPRE, para que la imagen sea congruente con el texto,
+// el PDF y el CSV (antes redondeaba a enteros: +$118 vs +$118.15).
+const money0 = (n: number) => (n >= 0 ? '+' : '−') + '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 // Tarjeta de reporte con la estética Onyx (SVG oscuro), lista para rasterizar.
 export function traderCardSvg(rep: TraderReport, opts: { name?: string; from: string; to: string; es?: boolean }): string {

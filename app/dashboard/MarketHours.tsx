@@ -1,6 +1,7 @@
 'use client';
 import { dictFor } from '@/lib/i18n';
 import { Fragment, useEffect, useState } from 'react';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 type Lang = 'es' | 'en';
 const SES = [
@@ -10,8 +11,8 @@ const SES = [
   { n: { es: 'Nueva York', en: 'New York' }, flag: '🇺🇸', o: 13, c: 22, col: 'var(--green)' },
 ];
 const T = {
-  es: { title: '🕐 Sesiones del mercado', now: 'Ahora', open: '● ABIERTA', closed: 'cerrada', none: 'Mercado tranquilo', localTz: 'tu hora local', legend: 'Línea = tu hora actual · verde/amarillo/rojo = volumen típico', expand: 'Ver detalle', collapse: 'Ocultar', opensIn: 'abre en', closesIn: 'cierra en', next: 'Próximo' },
-  en: { title: '🕐 Market sessions', now: 'Now', open: '● OPEN', closed: 'closed', none: 'Quiet market', localTz: 'your local time', legend: 'Line = your current time · green/amber/red = typical volume', expand: 'Details', collapse: 'Hide', opensIn: 'opens in', closesIn: 'closes in', next: 'Next' },
+  es: { title: '🕐 Sesiones del mercado', now: 'Ahora', open: '● ABIERTA', closed: 'cerrada', none: 'Mercado tranquilo', localTz: 'tu hora local', legend: 'Línea = tu hora actual · verde/amarillo/rojo = volumen típico', expand: 'Ver detalle', collapse: 'Ocultar', opensIn: 'abre en', closesIn: 'cierra en', next: 'Próximo', closedMkt: 'Mercado cerrado', opensSun: 'Abre el domingo · faltan' },
+  en: { title: '🕐 Market sessions', now: 'Now', open: '● OPEN', closed: 'closed', none: 'Quiet market', localTz: 'your local time', legend: 'Line = your current time · green/amber/red = typical volume', expand: 'Details', collapse: 'Hide', opensIn: 'opens in', closesIn: 'closes in', next: 'Next', closedMkt: 'Market closed', opensSun: 'Opens Sunday · in' },
 };
 
 export default function MarketHours({ lang, compact }: { lang: Lang; compact?: boolean }) {
@@ -24,7 +25,14 @@ export default function MarketHours({ lang, compact }: { lang: Lang; compact?: b
   const offset = -now.getTimezoneOffset() / 60;
   const hUTC = now.getUTCHours() + now.getUTCMinutes() / 60;
   const hLoc = (hUTC + offset + 24) % 24;
-  const isActive = (s: typeof SES[0]) => (s.o < s.c ? (hUTC >= s.o && hUTC < s.c) : (hUTC >= s.o || hUTC < s.c));
+  // El forex cierra el viernes 22:00 UTC (cierre de Nueva York) y abre el domingo
+  // 22:00 UTC (apertura de Sídney). Sin esto, la tarjeta pintaba sesiones "abiertas"
+  // un sábado solo por la hora del día.
+  const day = now.getUTCDay(); // 0=domingo … 6=sábado
+  const marketClosed = (day === 5 && hUTC >= 22) || day === 6 || (day === 0 && hUTC < 22);
+  const openAt = (() => { const d = new Date(now); d.setUTCHours(22, 0, 0, 0); while (d.getUTCDay() !== 0 || d.getTime() <= now.getTime()) d.setUTCDate(d.getUTCDate() + 1); return d.getTime(); })();
+  const fmtLong = (ms: number) => { const s = Math.max(0, Math.floor(ms / 1000)); const dd = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60); return (dd > 0 ? dd + 'd ' : '') + h + 'h ' + m + 'm'; };
+  const isActive = (s: typeof SES[0]) => !marketClosed && (s.o < s.c ? (hUTC >= s.o && hUTC < s.c) : (hUTC >= s.o || hUTC < s.c));
   const locOC = (s: typeof SES[0]) => [(s.o + offset + 24) % 24, (s.c + offset + 24) % 24];
   const seg = (o: number, c: number) => (o < c ? [[o, c]] : [[o, 24], [0, c]]);
   const activeList = SES.filter(isActive);
@@ -37,7 +45,18 @@ export default function MarketHours({ lang, compact }: { lang: Lang; compact?: b
   const events = SES.map((s) => { const on = isActive(s); const target = on ? nextAt(s.c) : nextAt(s.o); return { on, rem: target - now.getTime(), evt: on ? t.closesIn : t.opensIn }; });
   const soonest = events.map((e, i) => ({ ...e, s: SES[i] })).sort((x, y) => x.rem - y.rem)[0];
 
-  const nowLabel = activeList.length ? activeList.map((s) => `${s.flag} ${s.n[lang]}`).join('  +  ') : t.none;
+  const nowLabel = marketClosed ? t.closedMkt : (activeList.length ? activeList.map((s) => `${s.flag} ${s.n[lang]}`).join('  +  ') : t.none);
+
+  // Banner de mercado cerrado (fin de semana) con cuenta atrás a la apertura del domingo.
+  const closedBanner = marketClosed ? (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 12, padding: '10px 12px', marginBottom: 12 }}>
+      <span style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--card2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--amber)', flex: 'none' }}><OnyxIcon name="moon" size={16} glow={false} /></span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--amber)' }}>{t.closedMkt}</div>
+        <div className="muted" style={{ fontSize: 11.5 }}>{t.opensSun} {fmtLong(openAt - now.getTime())}</div>
+      </div>
+    </div>
+  ) : null;
 
   if (compact) return (
     <div className="card" style={{ padding: 14 }}>
@@ -45,7 +64,8 @@ export default function MarketHours({ lang, compact }: { lang: Lang; compact?: b
         <span style={{ fontSize: 14, fontWeight: 700 }}>{t.title}</span>
         <span style={{ fontSize: 13, fontWeight: 800 }}>{clock}</span>
       </div>
-      <div style={{ position: 'relative', height: 8, background: 'var(--bg2)', borderRadius: 5, overflow: 'hidden', marginBottom: 12 }}>
+      {closedBanner}
+      <div style={{ position: 'relative', height: 8, background: 'var(--bg2)', borderRadius: 5, overflow: 'hidden', marginBottom: 12, opacity: marketClosed ? .4 : 1 }}>
         {SES.map((s, i) => { const [lo, lc] = locOC(s); const on = isActive(s); return seg(lo, lc).map((g, j) => <div key={i + '-' + j} style={{ position: 'absolute', left: g[0] / 24 * 100 + '%', width: (g[1] - g[0]) / 24 * 100 + '%', top: 0, height: '100%', background: on ? s.col : s.col + '44' }} />); })}
         <div style={{ position: 'absolute', top: -2, bottom: -2, left: np + '%', width: 2, background: 'var(--brand2)' }} />
       </div>
@@ -53,7 +73,7 @@ export default function MarketHours({ lang, compact }: { lang: Lang; compact?: b
         {SES.map((s, i) => { const on = isActive(s); const ev = events[i]; return (
           <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 13 }}>{s.flag} {s.n[lang]}</span>
-            <span style={{ fontSize: 11, textAlign: 'right', lineHeight: 1.3 }}><span style={{ fontWeight: 700, color: on ? s.col : 'var(--mut)' }}>{on ? t.open : t.closed}</span><br /><span style={{ color: 'var(--mut)', fontSize: 10 }}>{ev.evt} {fmtDur(ev.rem)}</span></span>
+            <span style={{ fontSize: 11, textAlign: 'right', lineHeight: 1.3 }}><span style={{ fontWeight: 700, color: on ? s.col : 'var(--mut)' }}>{on ? t.open : t.closed}</span>{!marketClosed && <><br /><span style={{ color: 'var(--mut)', fontSize: 10 }}>{ev.evt} {fmtDur(ev.rem)}</span></>}</span>
           </div>); })}
       </div>
     </div>
@@ -67,7 +87,7 @@ export default function MarketHours({ lang, compact }: { lang: Lang; compact?: b
           <span style={{ fontSize: 14, fontWeight: 700 }}>{t.title}</span>
           <span className="muted" style={{ fontSize: 13 }}>{t.now}:</span>
           <b style={{ fontSize: 14 }}>{nowLabel}</b>
-          {soonest && <span className="muted" style={{ fontSize: 12 }}>· {t.next}: {soonest.s.flag} {soonest.s.n[lang]} {soonest.evt} <b style={{ color: 'var(--tx)' }}>{fmtDur(soonest.rem)}</b></span>}
+          {!marketClosed && soonest && <span className="muted" style={{ fontSize: 12 }}>· {t.next}: {soonest.s.flag} {soonest.s.n[lang]} {soonest.evt} <b style={{ color: 'var(--tx)' }}>{fmtDur(soonest.rem)}</b></span>}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ fontSize: 15, fontWeight: 800 }}>{clock} <span className="muted" style={{ fontSize: 11, fontWeight: 400 }}>{t.localTz}</span></span>
@@ -75,9 +95,10 @@ export default function MarketHours({ lang, compact }: { lang: Lang; compact?: b
         </div>
       </div>
 
+      {closedBanner}
       {/* mini timeline siempre visible */}
       {!open && (
-        <div style={{ position: 'relative', height: 8, marginTop: 12, background: 'var(--bg2)', borderRadius: 5, overflow: 'hidden' }}>
+        <div style={{ position: 'relative', height: 8, marginTop: 12, background: 'var(--bg2)', borderRadius: 5, overflow: 'hidden', opacity: marketClosed ? .4 : 1 }}>
           {SES.map((s, i) => { const [lo, lc] = locOC(s); const on = isActive(s); return seg(lo, lc).map((g, j) => <div key={i + '-' + j} style={{ position: 'absolute', left: g[0] / 24 * 100 + '%', width: (g[1] - g[0]) / 24 * 100 + '%', top: 0, height: '100%', background: on ? s.col : s.col + '44' }} />); })}
           <div style={{ position: 'absolute', top: -2, bottom: -2, left: np + '%', width: 2, background: 'var(--brand2)' }} />
         </div>

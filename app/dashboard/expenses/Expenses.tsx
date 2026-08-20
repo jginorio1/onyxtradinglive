@@ -2,7 +2,7 @@
 import { mkL } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { toast, toastErr } from '@/lib/toast';
+import { toast, toastErr, confirmDialog } from '@/lib/toast';
 import { useLang } from '@/lib/lang';
 import OnyxIcon from '@/app/components/OnyxIcon';
 
@@ -115,7 +115,7 @@ export default function Expenses() {
       acc_size: e.acc_size ? String(e.acc_size) : '', phase: e.phase || 'p1', account_id: e.account_id || '', refundable: e.refundable, recovered: e.recovered ? String(e.recovered) : '' });
     if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
   }
-  async function del(id: string) { if (!confirm(L('¿Borrar este gasto?', 'Delete this expense?'))) return; await fetch('/api/expenses', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id }) }); if (f.id === id) setF(emptyForm(month)); load(); }
+  async function del(id: string) { if (!(await confirmDialog(L('¿Borrar este gasto?', 'Delete this expense?')))) return; await fetch('/api/expenses', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id }) }); if (f.id === id) setF(emptyForm(month)); load(); }
 
   const monthLabel = (() => { const [y, mo] = month.split('-').map(Number); return new Date(y, mo - 1, 1).toLocaleDateString(lang === 'en' ? 'en-US' : 'es-ES', { month: 'long', year: 'numeric' }); })();
   const inp = { padding: '8px 10px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', width: '100%' } as any;

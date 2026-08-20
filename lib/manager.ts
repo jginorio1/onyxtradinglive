@@ -23,11 +23,14 @@ export const DEFAULT_CONFIG = {
   },
   partials: {
     on: false,
+    // Los 3 primeros son TP parciales (cierran un % del tamaño ORIGINAL).
+    // El último es el RUNNER: no lleva % propio, cierra "el resto" (100 − suma de
+    // los TP) o se queda corriendo con el trailing si ride=true.
     levels: [
-      { at: 20, close: 50, on: true },
+      { at: 20, close: 40, on: true },
       { at: 40, close: 30, on: false },
       { at: 60, close: 20, on: false },
-      { at: 80, close: 0, on: false },
+      { at: 80, close: 0, on: false, ride: true },   // runner
     ],
   },
 
@@ -69,7 +72,7 @@ export const DEFAULT_CONFIG = {
   // ---- Fase 2: noticias ----
   news: {
     on: false,
-    impact: 'high',        // high | high_medium
+    impact: 'high',        // high | high_medium | high_medium_low
     before_min: 15,
     after_min: 15,
     action: 'block_new',   // warn | block_new | close_and_block
@@ -183,11 +186,16 @@ export function sanitize(input: any): ManagerConfig {
 
   // --- parciales ---
   c.partials.on = !!c.partials.on;
-  c.partials.levels = c.partials.levels.slice(0, 4).map((l: any) => ({
-    at: num(l.at, 0, 100000, 20),
-    close: num(l.close, 0, 100, 0),
-    on: !!l.on,
-  }));
+  const rawLevels = c.partials.levels.slice(0, 4);
+  c.partials.levels = rawLevels.map((l: any, i: number) => {
+    const isRunner = i === rawLevels.length - 1;
+    return {
+      at: num(l.at, 0, 100000, 20),
+      close: num(l.close, 0, 100, 0),
+      on: !!l.on,
+      ...(isRunner ? { ride: l.ride !== false } : {}),   // el runner por defecto deja correr
+    };
+  });
 
   // --- mi plan de trading ---
   const p = c.plan;
@@ -233,7 +241,7 @@ export function sanitize(input: any): ManagerConfig {
   // --- noticias ---
   const n = c.news;
   n.on = !!n.on;
-  n.impact = ['high', 'high_medium'].includes(n.impact) ? n.impact : 'high';
+  n.impact = ['high', 'high_medium', 'high_medium_low'].includes(n.impact) ? n.impact : 'high';
   n.before_min = num(n.before_min, 0, 240, 15);
   n.after_min = num(n.after_min, 0, 240, 15);
   n.action = BREACH.includes(n.action) ? n.action : 'block_new';
@@ -254,9 +262,27 @@ export function sanitize(input: any): ManagerConfig {
   return c;
 }
 
-// Suma de porcentajes de los TP parciales activos (debe quedar en 100 o menos)
+// Niveles TP (todos menos el último, que es el runner) y el runner.
+export function tpLevels(c: ManagerConfig): any[] { return (c.partials.levels || []).slice(0, -1); }
+export function runnerLevel(c: ManagerConfig): any { const lv = c.partials.levels || []; return lv[lv.length - 1]; }
+
+// Suma de % de los TP parciales ACTIVOS (sin contar el runner). Debe ser ≤ 100.
 export function partialsTotal(c: ManagerConfig) {
-  return c.partials.levels.filter((l: any) => l.on).reduce((t: number, l: any) => t + Number(l.close || 0), 0);
+  return tpLevels(c).filter((l: any) => l.on).reduce((t: number, l: any) => t + Number(l.close || 0), 0);
+}
+
+// El runner cierra "el resto": 100 − suma de los TP (nunca negativo).
+export function runnerPct(c: ManagerConfig) {
+  return Math.max(0, Math.min(100, 100 - partialsTotal(c)));
+}
+
+// Niveles que se envían al EA: los TP activos + el runner. Si el runner "deja
+// correr" (ride) no se fuerza cierre y lo maneja el trailing; si no, cierra el resto.
+export function eaPartials(c: ManagerConfig): any[] {
+  const out = tpLevels(c).filter((l: any) => l.on && l.close > 0).map((l: any) => ({ at: l.at, close: l.close }));
+  const r = runnerLevel(c);
+  if (r && r.on && !r.ride) { const p = runnerPct(c); if (p > 0) out.push({ at: r.at, close: p, runner: true }); }
+  return out;
 }
 
 // Avisos honestos sobre la configuración: cosas que el trader debería revisar
@@ -322,8 +348,8 @@ export function forEA(row: any, caps: any) {
     units: row.units || 'pips',
     breakeven: c.breakeven.on ? c.breakeven : { on: false },
     trailing: c.trailing.on ? c.trailing : { on: false },
-    // los TP parciales son del plan avanzado
-    partials: advanced && c.partials.on ? c.partials.levels.filter((l: any) => l.on && l.close > 0) : [],
+    // los TP parciales son del plan avanzado (TP activos + runner con el resto)
+    partials: advanced && c.partials.on ? eaPartials(c) : [],
     // fase 2 · disciplina y límites (el plan avanzado añade noticias)
     plan: c.plan.on ? {
       on: true,

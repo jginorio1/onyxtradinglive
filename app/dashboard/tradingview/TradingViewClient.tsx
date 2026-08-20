@@ -1,4 +1,5 @@
 'use client';
+import { toast, confirmDialog } from '@/lib/toast';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useLang } from '@/lib/lang';
@@ -147,7 +148,7 @@ export default function TradingViewClient() {
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <input readOnly value={webhookUrl} onFocus={(e) => e.target.select()} style={{ flex: 1, minWidth: 200, fontFamily: 'monospace', fontSize: 12 }} />
                   <button className="btn btn-ghost" onClick={() => copy(webhookUrl, 'url')}>{copied === 'url' ? L('✓', '✓') : L('Copiar', 'Copy')}</button>
-                  <button className="btn btn-ghost" onClick={() => { if (confirm(L('¿Token nuevo? La URL anterior deja de servir.', 'New token? The old URL stops working.'))) patch({ action: 'rotate' }); }} disabled={!!busy}>{L('Rotar', 'Rotate')}</button>
+                  <button className="btn btn-ghost" onClick={async () => { if (await confirmDialog(L('¿Token nuevo? La URL anterior deja de servir.', 'New token? The old URL stops working.'))) patch({ action: 'rotate' }); }} disabled={!!busy}>{L('Rotar', 'Rotate')}</button>
                 </div>
               </div>
               <div>

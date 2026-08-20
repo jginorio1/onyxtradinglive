@@ -5,6 +5,7 @@ import { useLang } from '@/lib/lang';
 import Link from 'next/link';
 import SectionNav from './SectionNav';
 import PlansCompareTable from './PlansCompareTable';
+import PlanCards from './PlanCards';
 import OnyxIcon from '@/app/components/OnyxIcon';
 
 type Lang = 'es' | 'en';
@@ -34,7 +35,21 @@ const LOGOS = [
   { n: 'Pepperstone', c: '#e2531f' }, { n: 'Exness', c: '#ffcf5c' },
 ];
 
-function Counter({ to, prefix = '', suffix = '' }: { to: number; prefix?: string; suffix?: string }) {
+// Formato compacto universal (17.4K, 1.2M, 100M, 1.2B). Mantiene cortos los
+// números por muchos que crezcan, así el "+" nunca se corta. < 1000 = exacto.
+function fmtCompact(n: number): string {
+  const abs = Math.abs(n);
+  const cut = (v: number, suf: string) => {
+    const s = (Math.round(v * 10) / 10).toFixed(1).replace(/\.0$/, '');
+    return s + suf;
+  };
+  if (abs >= 1e9) return cut(n / 1e9, 'B');
+  if (abs >= 1e6) return cut(n / 1e6, 'M');
+  if (abs >= 1e3) return cut(n / 1e3, 'K');
+  return String(Math.round(n));
+}
+
+function Counter({ to, prefix = '', suffix = '', compact = true }: { to: number; prefix?: string; suffix?: string; compact?: boolean }) {
   const [n, setN] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
   const seen = useRef(false);        // ¿ya entró en pantalla alguna vez?
@@ -71,7 +86,12 @@ function Counter({ to, prefix = '', suffix = '' }: { to: number; prefix?: string
     return () => { if (io) io.disconnect(); clearTimeout(timer); };
   }, []);
 
-  return <div ref={ref} style={{ fontSize: 44, fontWeight: 800, letterSpacing: '-1px', background: 'var(--grad)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>{prefix}{n.toLocaleString()}{suffix}</div>;
+  // Solución definitiva al corte del "+"/"%": el truco background-clip:text (texto
+  // relleno con degradado) es el que recorta el último glifo en WebKit. Aquí usamos
+  // COLOR SÓLIDO de marca (sin clip): imposible que recorte, en cualquier navegador.
+  return (
+    <div ref={ref} style={{ fontSize: 'clamp(28px, 6vw, 44px)', fontWeight: 800, lineHeight: 1.15, whiteSpace: 'nowrap', color: 'var(--green, #34e2a0)' }}>{prefix}{compact ? fmtCompact(n) : n.toLocaleString()}{suffix}</div>
+  );
 }
 
 const dict = {
@@ -107,9 +127,9 @@ const dict = {
       ],
     },
     hero: {
-      badge: '🔗 MetaTrader, cTrader y más · Sincronización automática',
-      h1a: 'Opera con datos,', h1b: 'no con memoria',
-      sub: 'Conecta tu cuenta de MetaTrader, cTrader o de fondeo y deja que Onyx analice cada operación: sesiones y noticias en vivo, costes, calendario y reglas de fondeo. Todo en un panel.',
+      badge: '🧩 Journal · Guardian · Copy · Prop firms',
+      h1a: 'El sistema operativo', h1b: 'del trader de fondeo',
+      sub: 'Conecta MT4, MT5 y cTrader, sigue las reglas de tu prop firm en vivo, protege tu riesgo con el Onyx Guardian y copia entre cuentas. Analítica real y ganancia neta. Mucho más que un diario.',
       cta1: 'Empieza gratis →', cta2: 'Ver precios', note: 'Sin tarjeta para empezar · Cancela cuando quieras',
     },
     trust: ['✅ MT4, MT5 y cTrader', '🔒 Conexión de solo lectura', '💳 Pagos seguros con Stripe'],
@@ -162,13 +182,16 @@ const dict = {
     },
     cmpT: 'Onyx vs lo de siempre',
     cmp: {
-      head: ['', 'Excel a mano', 'Onyx'],
+      head: ['', 'Sin Onyx', 'Onyx'],
       rows: [
         ['Sincronización automática', '❌', '✅'],
-        ['Estadísticas avanzadas', 'Limitado', '✅'],
+        ['Estadísticas avanzadas (15+)', 'Limitado', '✅'],
         ['Calendario y gráficas', '❌', '✅'],
         ['Multi-cuenta y portafolio', 'Difícil', '✅'],
-        ['Reglas de fondeo', '❌', '✅'],
+        ['Reglas de prop firm', '❌', '✅'],
+        ['Freno de riesgo (Onyx Guardian)', '❌', '✅'],
+        ['Copy trading y robots (EA)', '❌', '✅'],
+        ['Ganancia neta y alertas en vivo', 'Manual', '✅'],
       ],
     },
     secT: 'Seguro por diseño',
@@ -177,9 +200,9 @@ const dict = {
     monthly: 'Mensual', annual: 'Anual (2 meses gratis)',
     plans: [
       { n: 'Free', p: 0, items: ['1 cuenta conectada', 'Estadísticas básicas', '30 días de historial'], cta: 'Empezar gratis', pop: false },
-      { n: 'Pro', p: 19, items: ['5 cuentas conectadas', 'Todas las estadísticas', 'Historial ilimitado', 'Calendario y gráficas', 'Reglas de fondeo'], cta: 'Elegir Pro', pop: true },
-      { n: 'Elite', p: 39, items: ['Cuentas ilimitadas', 'Todo lo de Pro', 'Copy trading anti-baneo', 'Informes automáticos', 'Alertas por Telegram', 'Soporte prioritario'], cta: 'Elegir Elite', pop: false },
-      { n: 'Black Onyx', p: 79, items: ['Todo lo de Elite', 'Copy trading ilimitado', 'Robots y cuentas sin límite', 'Acceso anticipado a novedades'], cta: 'Elegir Black Onyx', pop: false },
+      { n: 'Pro', p: 19, items: ['5 cuentas conectadas', 'Onyx Guardian: freno de riesgo', 'Historial ilimitado y reglas de fondeo', 'Diario, costes y exportar CSV', 'Crea tu academia (Onyx Academy)'], cta: 'Elegir Pro', pop: true },
+      { n: 'Elite', p: 79, items: ['Cuentas ilimitadas', 'Copy trading (1 master · 5 esclavas)', 'Cierres parciales y bloqueo por noticias', 'Alertas e informe por Telegram', 'Soporte prioritario'], cta: 'Elegir Elite', pop: false },
+      { n: 'Black Onyx', p: 199, items: ['Copy trading ilimitado (masters y esclavas)', 'Todo sin límites', 'Soporte prioritario'], cta: 'Elegir Black Onyx', pop: false },
     ],
     amb: {
       t: '¿Tienes una comunidad de trading?',
@@ -241,9 +264,9 @@ const dict = {
       ],
     },
     hero: {
-      badge: '🔗 MetaTrader, cTrader & more · Automatic sync',
-      h1a: 'Trade with data,', h1b: 'not memory',
-      sub: 'Connect your MetaTrader, cTrader or funded account and let Onyx analyze every trade: live sessions and news, costs, calendar and prop-firm rules. All in one panel.',
+      badge: '🧩 Journal · Guardian · Copy · Prop firms',
+      h1a: 'The operating system', h1b: 'for funded traders',
+      sub: 'Connect MT4, MT5 and cTrader, track your prop-firm rules live, protect your risk with Onyx Guardian and copy across accounts. Real analytics and net profit. Much more than a journal.',
       cta1: 'Start free →', cta2: 'See pricing', note: 'No card to start · Cancel anytime',
     },
     trust: ['✅ MT4, MT5 & cTrader', '🔒 Read-only connection', '💳 Secure payments with Stripe'],
@@ -296,13 +319,16 @@ const dict = {
     },
     cmpT: 'Onyx vs the usual',
     cmp: {
-      head: ['', 'Manual Excel', 'Onyx'],
+      head: ['', 'Without Onyx', 'Onyx'],
       rows: [
         ['Automatic sync', '❌', '✅'],
-        ['Advanced stats', 'Limited', '✅'],
+        ['Advanced stats (15+)', 'Limited', '✅'],
         ['Calendar & charts', '❌', '✅'],
         ['Multi-account & portfolio', 'Hard', '✅'],
         ['Prop-firm rules', '❌', '✅'],
+        ['Risk brake (Onyx Guardian)', '❌', '✅'],
+        ['Copy trading & robots (EA)', '❌', '✅'],
+        ['Net profit & live alerts', 'Manual', '✅'],
       ],
     },
     secT: 'Secure by design',
@@ -311,9 +337,9 @@ const dict = {
     monthly: 'Monthly', annual: 'Annual (2 months free)',
     plans: [
       { n: 'Free', p: 0, items: ['1 connected account', 'Basic stats', '30 days of history'], cta: 'Start free', pop: false },
-      { n: 'Pro', p: 19, items: ['5 connected accounts', 'All stats', 'Unlimited history', 'Calendar & charts', 'Prop-firm rules'], cta: 'Choose Pro', pop: true },
-      { n: 'Elite', p: 39, items: ['Unlimited accounts', 'Everything in Pro', 'Ban-safe copy trading', 'Automatic reports', 'Telegram alerts', 'Priority support'], cta: 'Choose Elite', pop: false },
-      { n: 'Black Onyx', p: 79, items: ['Everything in Elite', 'Unlimited copy trading', 'Unlimited robots and accounts', 'Early access to new features'], cta: 'Choose Black Onyx', pop: false },
+      { n: 'Pro', p: 19, items: ['5 connected accounts', 'Onyx Guardian: risk brake', 'Unlimited history & funding rules', 'Journal, costs & CSV export', 'Build your academy (Onyx Academy)'], cta: 'Choose Pro', pop: true },
+      { n: 'Elite', p: 79, items: ['Unlimited accounts', 'Copy trading (1 master · 5 slaves)', 'Partial closes & news blackout', 'Telegram alerts & report', 'Priority support'], cta: 'Choose Elite', pop: false },
+      { n: 'Black Onyx', p: 199, items: ['Unlimited copy trading (masters & slaves)', 'Everything with no limits', 'Priority support'], cta: 'Choose Black Onyx', pop: false },
     ],
     amb: {
       t: 'Do you have a trading community?',
@@ -410,9 +436,10 @@ export default function Home() {
   }, []);
   // Si la BD aún no devolvió planes, mostramos unos por defecto (nunca vacío).
   const FALLBACK_PLANS: any[] = [
-    { id: 'free', name: 'Free', name_en: 'Free', price_month: 0, price_year: 0, features: t.plans[0].items, features_en: dict.en.plans[0].items, badge: null, badge_en: null },
-    { id: 'pro', name: 'Pro', name_en: 'Pro', price_month: 19, price_year: 190, features: t.plans[1].items, features_en: dict.en.plans[1].items, badge: lang === 'es' ? 'Más popular' : 'Most popular', badge_en: 'Most popular' },
-    { id: 'elite', name: 'Elite', name_en: 'Elite', price_month: 39, price_year: 390, features: t.plans[2].items, features_en: dict.en.plans[2].items, badge: null, badge_en: null },
+    { id: 'free', name: 'Free', name_en: 'Free', price_month: 0, price_year: 0, max_accounts: 1, features: t.plans[0].items, features_en: dict.en.plans[0].items, badge: null, badge_en: null },
+    { id: 'pro', name: 'Pro', name_en: 'Pro', price_month: 19, price_year: 190, max_accounts: 5, features: t.plans[1].items, features_en: dict.en.plans[1].items, badge: lang === 'es' ? 'Más popular' : 'Most popular', badge_en: 'Most popular' },
+    { id: 'elite', name: 'Elite', name_en: 'Elite', price_month: 79, price_year: 790, max_accounts: 999, features: t.plans[2].items, features_en: dict.en.plans[2].items, badge: null, badge_en: null },
+    { id: 'black', name: 'Black Onyx', name_en: 'Black Onyx', price_month: 199, price_year: 1990, max_accounts: 999, features: t.plans[3].items, features_en: dict.en.plans[3].items, badge: null, badge_en: null },
   ];
   const shownPlans = dbPlans.length ? dbPlans : FALLBACK_PLANS;
   const f = FIRMS[firm];
@@ -447,6 +474,17 @@ export default function Home() {
     : t.steps;
   const trustBadges: string[] = lc?.trust?.[lang]?.length ? lc.trust[lang] : t.trust;
 
+  // Celda de la comparativa con iconos de línea: ✅ → check verde en pastilla,
+  // ❌ → cruz gris tenue, y "Limitado/Difícil/Manual" → texto ámbar suave.
+  const cmpCell = (v: string) =>
+    v === '✅' ? <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: 7, background: 'var(--green)', color: '#04120b' }}><OnyxIcon name="check" size={15} glow={false} /></span>
+      : v === '❌' ? <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: 7, background: 'var(--card2)', color: 'var(--mut)', fontSize: 14 }}>✕</span>
+        : <span style={{ fontSize: 13, color: 'var(--amber)' }}>{v}</span>;
+  // Fila de confianza: mapea el emoji inicial a un icono de línea.
+  const TRUST_ICON: Record<string, { name: string; color: string }> = {
+    '✅': { name: 'link', color: 'var(--green)' }, '🔒': { name: 'lock', color: 'var(--brand)' }, '💳': { name: 'card', color: 'var(--gold)' },
+  };
+
   // ── Contadores 100% deterministas y monótonos ──────────────────────────────
   // El número NO depende del fetch (que varía o falla): es una función pura del
   // reloj. Con una base alta y un crecimiento fijo por tiempo, SIEMPRE sube y
@@ -479,14 +517,15 @@ export default function Home() {
 
   // Etiquetas del menú editables desde el Landing Builder (vacío = texto del código).
   const nv = (k: string, fb: string) => lc?.nav?.[k]?.[lang] || fb;
+  // Anclas de secciones del landing. NO repetimos aquí "Precios" ni "Embajadores":
+  // ya están en la barra de arriba (Plans / Ambassadors), y salir dos veces
+  // recargaba el menú.
   const SECTIONS = [
     { id: 'features', label: nv('features', t.nav.features) },
     { id: 'eco', label: nv('eco', t.nav.eco) },
     { id: 'how', label: nv('how', t.nav.how) },
     { id: 'fondeo', label: nv('fondeo', t.nav.fondeo) },
     { id: 'gestor', label: nv('gestor', t.nav.gestor) },
-    { id: 'pricing', label: nv('pricing', t.nav.pricing) },
-    { id: 'embajadores', label: nv('amb', t.nav.amb) },
     { id: 'faq', label: nv('faq', t.nav.faq) },
   ];
 
@@ -515,7 +554,8 @@ export default function Home() {
         <p className="muted" style={{ fontSize: 13, marginTop: 14 }}>{t.hero.note}</p>
 
         {/* vista previa moderna del dashboard (cabina) */}
-        <div className="card" style={{ maxWidth: 940, margin: '46px auto 0', padding: 16, background: '#0b0f18' }}>
+        {/* Cabina = "captura" siempre oscura → .fixed-dark mantiene el texto claro en ambos temas */}
+        <div className="card fixed-dark" style={{ maxWidth: 940, margin: '46px auto 0', padding: 16, background: '#0b0f18' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr 160px', gap: 10, textAlign: 'left' }} className="heroPreview">
             {/* sesiones */}
             <div style={{ background: '#151a28', borderRadius: 12, padding: 12, fontSize: 11 }}>
@@ -556,7 +596,7 @@ export default function Home() {
       {/* TRUST */}
       <div className="wrap" style={{ padding: '10px 22px 30px' }}>
         <div className="row" style={{ justifyContent: 'center', gap: 34, flexWrap: 'wrap', color: 'var(--mut)', fontSize: 15 }}>
-          {trustBadges.map((x, i) => <span key={i}>{x}</span>)}
+          {trustBadges.map((x, i) => { const first = [...x][0]; const meta = TRUST_ICON[first]; const text = meta ? x.slice(first.length).trim() : x; return <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>{meta && <span style={{ color: meta.color, display: 'inline-flex' }}><OnyxIcon name={meta.name} size={16} glow={false} /></span>}{text}</span>; })}
         </div>
       </div>
 
@@ -710,7 +750,7 @@ export default function Home() {
               border: i === firm ? `2px solid ${fm.color}` : `1px solid ${fm.color}55`,
               background: i === firm ? fm.color + '2e' : fm.color + '14', color: 'inherit', transition: 'all .2s' }}>
               <span style={{ width: 12, height: 12, borderRadius: '50%', background: fm.color, flex: 'none', boxShadow: i === firm ? `0 0 8px ${fm.color}` : 'none' }} />
-              <b style={{ fontSize: 15, color: i === firm ? '#fff' : fm.color }}>{fm.name}</b>
+              <b style={{ fontSize: 15, color: i === firm ? 'var(--tx)' : fm.color }}>{fm.name}</b>
             </button>
           ))}
         </div>
@@ -774,7 +814,7 @@ export default function Home() {
         <div className="card">
           <table>
             <thead><tr>{t.cmp.head.map((h, i) => <th key={i} style={{ textAlign: i === 0 ? 'left' : 'center', fontSize: 15 }}>{h}</th>)}</tr></thead>
-            <tbody>{t.cmp.rows.map((r, i) => (<tr key={i}><td>{r[0]}</td><td style={{ textAlign: 'center' }} className="muted">{r[1]}</td><td style={{ textAlign: 'center' }}>{r[2]}</td></tr>))}</tbody>
+            <tbody>{t.cmp.rows.map((r, i) => (<tr key={i}><td>{r[0]}</td><td style={{ textAlign: 'center' }}>{cmpCell(r[1])}</td><td style={{ textAlign: 'center' }}>{cmpCell(r[2])}</td></tr>))}</tbody>
           </table>
         </div>
       </div>
@@ -818,35 +858,11 @@ export default function Home() {
           <button className={'btn ' + (!annual ? 'btn-primary' : 'btn-ghost')} onClick={() => setAnnual(false)}>{lang === 'es' ? 'Mensual' : 'Monthly'}</button>
           <button className={'btn ' + (annual ? 'btn-primary' : 'btn-ghost')} onClick={() => setAnnual(true)}>{lang === 'es' ? 'Anual · ahorra 2 meses' : 'Annual · save 2 months'}</button>
         </div>
-        <div style={{ alignItems: 'start', display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', maxWidth: 760, margin: '0 auto' }}>
-          {shownPlans.map((p, i) => {
-            const price = annual ? p.price_year : p.price_month;
-            const name = lang === 'es' ? p.name : (p.name_en || p.name);
-            const desc = lang === 'es' ? p.desc_es : (p.desc_en || p.desc_es);
-            const feats = (lang === 'es' ? p.features : (p.features_en?.length ? p.features_en : p.features)) || [];
-            const badge = lang === 'es' ? p.badge : (p.badge_en || p.badge);
-            const pop = !!badge;
-            const prev = shownPlans[i - 1];
-            const prevName = prev ? (lang === 'es' ? prev.name : (prev.name_en || prev.name)) : '';
-            return (
-              <div key={p.id} className="card" style={pop ? { border: '2px solid var(--brand)', boxShadow: '0 0 30px rgba(124,140,255,.25)', position: 'relative' } : { position: 'relative' }}>
-                {pop && <span style={{ position: 'absolute', top: -13, left: '50%', transform: 'translateX(-50%)', background: 'var(--grad)', color: '#fff', fontSize: 11, fontWeight: 800, padding: '4px 14px', borderRadius: 20, whiteSpace: 'nowrap' }}>★ {badge}</span>}
-                <h3 style={{ marginTop: pop ? 6 : 0 }}>{name}</h3>
-                {desc && <p className="muted" style={{ fontSize: 13, marginTop: 4 }}>{desc}</p>}
-                <div style={{ fontSize: 42, fontWeight: 800, margin: '10px 0 2px' }}>${price}<span className="muted" style={{ fontSize: 15, fontWeight: 500 }}>/{annual ? (lang === 'es' ? 'año' : 'yr') : (lang === 'es' ? 'mes' : 'mo')}</span></div>
-                <ul style={{ listStyle: 'none', margin: '16px 0' }}>
-                  {i > 0 && <li style={{ padding: '7px 0', color: 'var(--mut)', fontWeight: 700, fontSize: 13 }}>{lang === 'es' ? `Todo lo de ${prevName}, y además:` : `Everything in ${prevName}, and more:`}</li>}
-                  {feats.map((it: string, j: number) => <li key={j} style={{ padding: '7px 0', color: '#d6dae6' }}><span style={{ color: 'var(--green)' }}>✓</span> {it}</li>)}
-                </ul>
-                <Link className={'btn ' + (pop ? 'btn-primary' : 'btn-ghost')} href="/login?mode=signup" style={{ display: 'block', textAlign: 'center' }}>{price === 0 ? (lang === 'es' ? 'Empezar gratis' : 'Start free') : (lang === 'es' ? 'Elegir ' : 'Choose ') + name}</Link>
-              </div>
-            );
-          })}
-        </div>
+        <PlanCards plans={shownPlans} lang={lang} annual={annual} onChoose={(id: string, price: number) => { window.location.href = (price > 0 && id && id !== 'free') ? `/login?mode=signup&plan=${id}${annual ? '&annual=1' : ''}` : '/login?mode=signup'; }} />
 
         {/* Tabla comparativa (componente compartido con /pricing) */}
-        <PlansCompareTable plans={shownPlans} lang={lang} annual={false} loadingId=""
-          onChoose={() => { window.location.href = '/login?mode=signup'; }} />
+        <PlansCompareTable plans={shownPlans} lang={lang} annual={annual} loadingId=""
+          onChoose={(id: string, price: number) => { window.location.href = (price > 0 && id && id !== 'free') ? `/login?mode=signup&plan=${id}${annual ? '&annual=1' : ''}` : '/login?mode=signup'; }} />
       </div>
 
       {/* Embajadores */}
@@ -878,7 +894,8 @@ export default function Home() {
 
       {/* FINAL CTA */}
       <div className="wrap section">
-        <div className="card" style={{ textAlign: 'center', padding: '54px 30px', background: 'linear-gradient(120deg,#1a1f30,#141826)' }}>
+        {/* Banda de degradado oscuro FIJO → .fixed-dark evita título oscuro-sobre-oscuro en tema claro */}
+        <div className="card fixed-dark" style={{ textAlign: 'center', padding: '54px 30px', background: 'linear-gradient(120deg,#1a1f30,#141826)' }}>
           <h2 style={{ marginBottom: 20 }}>{finalTitle}</h2>
           <Link className="btn btn-primary" href="/login?mode=signup" style={{ padding: '15px 34px', fontSize: 17 }}>{finalBtn}</Link>
         </div>

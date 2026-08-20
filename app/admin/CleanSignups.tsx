@@ -1,5 +1,5 @@
 'use client';
-import { toast, toastErr } from '@/lib/toast';
+import { toast, toastErr, confirmDialog } from '@/lib/toast';
 import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
 
@@ -15,7 +15,7 @@ export default function CleanSignups() {
     try { const r = await fetch('/api/admin/clean-signups'); const j = await r.json(); setCount(Number(j.count || 0)); } catch { setCount(0); }
   }
   async function clean() {
-    if (!confirm(es ? '¿Borrar todas las cuentas sin confirmar de más de 7 días? Son bots o registros abandonados.' : 'Delete all unconfirmed accounts older than 7 days? These are bots or abandoned sign-ups.')) return;
+    if (!(await confirmDialog(es ? '¿Borrar todas las cuentas sin confirmar de más de 7 días? Son bots o registros abandonados.' : 'Delete all unconfirmed accounts older than 7 days? These are bots or abandoned sign-ups.'))) return;
     setBusy(true);
     try {
       const r = await fetch('/api/admin/clean-signups', { method: 'POST' });

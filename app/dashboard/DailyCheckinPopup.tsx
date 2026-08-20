@@ -1,6 +1,6 @@
 'use client';
 import { dictFor } from '@/lib/i18n';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import OnyxIcon from '@/app/components/OnyxIcon';
 
 type Lang = 'es' | 'en';
@@ -14,93 +14,118 @@ const HAB: Record<string, [string, string]> = {
   no_revenge: ['No operé por venganza', 'No revenge trading'],
   respected_sessions: ['Operé solo en mis sesiones', 'Traded only in my sessions'],
 };
+// Momento por defecto de cada hábito; el trader puede cambiarlo en "Mi plan".
+const MOMENT_DEF: Record<string, 'before' | 'during' | 'close'> = {
+  reviewed_calendar: 'before', defined_risk: 'before', followed_plan: 'before',
+  stopped_at_limit: 'during', no_revenge: 'during', respected_sessions: 'during',
+  journaled: 'close',
+};
 
 const T: any = {
   es: {
-    title: 'Antes de operar hoy', sub: 'Un minuto para repasar tu plan y marcar tus hábitos. Así cuidas tu racha.',
+    title: 'Tu check-in de hoy', sub: 'Márcalo cuando lo hagas — puedes volver durante el día. Así cuidas tu racha.',
     adherence: 'Adherencia', streak: 'Racha', ddl: 'Tu tope de pérdida hoy',
-    save: 'Guardar mi check-in', saved: '¡Listo por hoy! 💪', later: 'Ahora no',
-    seePlan: 'Ver mi plan completo', reminder: 'Recuerda tu regla de oro:',
-    barText: 'Aún no revisaste tu plan hoy', barCta: 'Revisar ahora',
+    before: 'Antes de operar', during: 'Durante y después', close: 'Al cerrar el día', auto: 'auto',
+    saved: 'Guardado', later: 'Ahora no', done: 'Listo por hoy', allDone: '¡Completo por hoy! 💪',
+    seePlan: 'Ver mi plan completo', reminder: 'Recuerda tu regla de oro:', autoHint: 'Onyx premarcó lo que ya detectó. Ajusta lo que quieras.',
   },
   en: {
-    title: 'Before trading today', sub: 'One minute to review your plan and tick your habits. That keeps your streak alive.',
+    title: 'Your check-in today', sub: 'Tick each as you do it — you can come back during the day. That keeps your streak alive.',
     adherence: 'Adherence', streak: 'Streak', ddl: 'Your loss limit today',
-    save: 'Save my check-in', saved: 'Done for today! 💪', later: 'Not now',
-    seePlan: 'See my full plan', reminder: 'Remember your golden rule:',
-    barText: 'You haven’t reviewed your plan today', barCta: 'Review now',
+    before: 'Before trading', during: 'During and after', close: 'At end of day', auto: 'auto',
+    saved: 'Saved', later: 'Not now', done: 'Done for today', allDone: 'All done today! 💪',
+    seePlan: 'See my full plan', reminder: 'Remember your golden rule:', autoHint: 'Onyx pre-ticked what it detected. Adjust anything you want.',
   },
 };
 
-function todayLocal() { return new Date().toLocaleDateString('en-CA'); } // YYYY-MM-DD local
+function todayLocal() { return new Date().toLocaleDateString('en-CA'); }
 
-export default function DailyCheckinPopup({ lang }: { lang: Lang }) {
+export default function DailyCheckinPopup({ lang, onState }: { lang: Lang; onState?: (s: { pending: boolean; open: () => void; done?: number; total?: number }) => void }) {
   const t = dictFor(T, lang); const i = lang === 'en' ? 1 : 0;
   const [d, setD] = useState<any>(null);
   const [items, setItems] = useState<Record<string, boolean>>({});
+  const [note, setNote] = useState('');
   const [phase, setPhase] = useState<'hidden' | 'popup' | 'bar'>('hidden');
-  const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
+  const saveTimer = useRef<any>(null);
 
   useEffect(() => {
     (async () => {
       try {
-        const today = todayLocal();
-        // Si ya lo GUARDÓ hoy → nada.
-        if (localStorage.getItem('onyx_checkin_done') === today) return;
         const r = await fetch('/api/plan'); const j = await r.json();
-        if (!j || !j.hasPlan) return; // solo a quien ya usa el plan
-        const done = j.checkin?.items && Object.values(j.checkin.items).some(Boolean);
-        if (done) { localStorage.setItem('onyx_checkin_done', today); return; }
-        setD(j); setItems(j.checkin?.items || {});
-        // Si ya lo saltó hoy → mostramos solo la tira; si no, el popup.
-        setPhase(localStorage.getItem('onyx_checkin_skip') === today ? 'bar' : 'popup');
+        if (!j || !j.hasPlan || !j.plan) return; // solo a quien usa el plan
+        const it: Record<string, boolean> = { ...(j.checkin?.items || {}) };
+        // Auto-marcado: premarca lo detectado que aún no estaba puesto.
+        const auto = j.auto || {};
+        for (const k of Object.keys(auto)) if (auto[k] && it[k] === undefined) it[k] = true;
+        setD(j); setItems(it); setNote(j.checkin?.note || '');
+        // Primera vez del día → popup; si ya lo cerró hoy → solo la píldora.
+        setPhase(localStorage.getItem('onyx_checkin_skip') === todayLocal() ? 'bar' : 'popup');
       } catch { /* silencioso */ }
     })();
   }, []);
 
-  if (phase === 'hidden' || !d || !d.plan) return null;
+  // Momento de un hábito: lo elegido en el plan, o el defecto (propios → durante).
+  const momentOf = (id: string): 'before' | 'during' | 'close' => {
+    const m = d?.plan?.habit_moments?.[id];
+    return m === 'before' || m === 'during' || m === 'close' ? m : (MOMENT_DEF[id] || 'during');
+  };
+  // Lista de hábitos activos del trader, con su momento.
+  const allHabits: { id: string; label: string; moment: 'before' | 'during' | 'close'; auto: boolean }[] = d?.plan ? [
+    ...((d.plan.habits || []) as string[]).map((k) => ({ id: k, label: HAB[k]?.[i] || k, moment: momentOf(k), auto: !!d.auto?.[k] })),
+    ...((d.plan.custom_habits || []) as any[]).map((h) => ({ id: h.id, label: h.label, moment: momentOf(h.id), auto: false })),
+  ] : [];
+  const total = allHabits.length;
+  const done = allHabits.filter((h) => items[h.id]).length;
+  const allDone = total > 0 && done === total;
+
+  // Avisamos al dashboard: pendiente mientras falte algo; con progreso X/Y.
+  useEffect(() => {
+    onState?.({ pending: !!d?.plan && !allDone, open: () => setPhase('popup'), done, total });
+  }, [d, done, total, allDone]);
+
+  // Guarda (con pequeño debounce) sin cerrar el popup.
+  function persist(next: Record<string, boolean>, nt: string) {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(async () => {
+      try { await fetch('/api/plan', { method: 'POST', body: JSON.stringify({ items: next, note: nt }) }); setSaved(true); setTimeout(() => setSaved(false), 1300); } catch {}
+    }, 350);
+  }
+  function toggle(id: string) {
+    const next = { ...items, [id]: !items[id] };
+    setItems(next); persist(next, note);
+  }
+  function closeForNow(markDone: boolean) {
+    if (markDone) { try { localStorage.setItem('onyx_checkin_skip', todayLocal()); } catch {} }
+    else { try { localStorage.setItem('onyx_checkin_skip', todayLocal()); } catch {} }
+    setPhase('bar');
+  }
+
+  if (phase !== 'popup' || !d || !d.plan) return null;
   const p = d.plan; const s = d.stats || {}; const g = d.guardian || {};
-  const allHabits: { id: string; label: string }[] = [
-    ...(p.habits || []).map((k: string) => ({ id: k, label: HAB[k]?.[i] || k })),
-    ...((p.custom_habits || []) as any[]).map((h) => ({ id: h.id, label: h.label })),
-  ];
   const adColor = s.adherence >= 75 ? 'var(--green)' : s.adherence >= 50 ? 'var(--amber)' : 'var(--red)';
   const goldenRule = (p.rules && p.rules[0]) ? p.rules[0] : '';
-
-  // Saltar: cierra el popup pero deja la tira arriba hasta que lo haga.
-  function dismiss() { try { localStorage.setItem('onyx_checkin_skip', todayLocal()); } catch {} setPhase('bar'); }
-  async function save() {
-    setBusy(true);
-    try {
-      await fetch('/api/plan', { method: 'POST', body: JSON.stringify({ items, note: '' }) });
-      try { localStorage.setItem('onyx_checkin_done', todayLocal()); } catch {}
-      setSaved(true);
-      setTimeout(() => setPhase('hidden'), 1100);
-    } catch {} finally { setBusy(false); }
-  }
-
-  // ---- Tira fija arriba: aparece si saltó el popup, hasta que haga el check-in ----
-  if (phase === 'bar') {
-    return (
-      <div style={{ position: 'sticky', top: 8, zIndex: 60, display: 'flex', justifyContent: 'center', padding: '8px 12px', pointerEvents: 'none' }}>
-        <div style={{ pointerEvents: 'auto', display: 'inline-flex', alignItems: 'center', gap: 10, maxWidth: 'calc(100vw - 24px)', background: 'var(--card)', border: '1px solid var(--amber)', borderRadius: 999, padding: '6px 8px 6px 14px', boxShadow: '0 8px 24px rgba(0,0,0,.28)', WebkitBackdropFilter: 'blur(6px)', backdropFilter: 'blur(6px)' }}>
-          <span style={{ display: 'inline-flex', color: 'var(--amber)', flex: 'none' }}><OnyxIcon emoji="⏳" size={16} /></span>
-          <span style={{ fontSize: 13, color: 'var(--amber)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.barText}</span>
-          <button className="btn btn-primary" style={{ fontSize: 12.5, padding: '5px 13px', display: 'inline-flex', alignItems: 'center', gap: 6, flex: 'none' }} onClick={() => setPhase('popup')}><OnyxIcon emoji="🎯" size={14} /> {t.barCta}</button>
-        </div>
-      </div>
-    );
-  }
+  const hasAuto = allHabits.some((h) => h.auto);
 
   const overlay: React.CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: 16 };
-  const modal: React.CSSProperties = { background: 'var(--card)', border: '1px solid var(--brand)', borderRadius: 18, maxWidth: 440, width: '100%', padding: 22, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 0 0 1px rgba(124,140,255,.5), 0 0 40px rgba(124,140,255,.35)' };
+  const modal: React.CSSProperties = { background: 'var(--card)', border: '1px solid var(--brand)', borderRadius: 18, maxWidth: 448, width: '100%', padding: 22, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 0 0 1px rgba(124,140,255,.5), 0 0 40px rgba(124,140,255,.35)' };
+
+  const Row = (h: { id: string; label: string; auto: boolean }) => (
+    <button key={h.id} onClick={() => toggle(h.id)} style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', textAlign: 'left', padding: '9px 11px', borderRadius: 10, cursor: 'pointer', fontSize: 13.5, border: '1px solid', borderColor: items[h.id] ? 'var(--green)' : 'var(--line)', background: items[h.id] ? 'color-mix(in srgb,var(--green) 12%,transparent)' : 'var(--bg2)', color: 'var(--tx)' }}>
+      <span style={{ color: items[h.id] ? 'var(--green)' : 'var(--mut)', fontSize: 15 }}>{items[h.id] ? '✓' : '○'}</span>
+      <span style={{ flex: 1 }}>{h.label}</span>
+      {h.auto && <span className="pill" style={{ fontSize: 9.5, color: 'var(--soft-brand)', background: 'rgba(124,140,255,.16)' }}>{t.auto}</span>}
+    </button>
+  );
 
   return (
-    <div style={overlay} onClick={dismiss}>
+    <div style={overlay} onClick={() => closeForNow(false)}>
       <div style={modal} onClick={(e) => e.stopPropagation()}>
-        <div style={{ fontSize: 19, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ display: 'inline-flex', color: 'var(--brand)' }}><OnyxIcon emoji="🎯" size={20} /></span> {t.title}</div>
-        <p className="muted" style={{ fontSize: 13, margin: '6px 0 14px' }}>{t.sub}</p>
+        <div className="row between" style={{ alignItems: 'center' }}>
+          <div style={{ fontSize: 18, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ display: 'inline-flex', color: 'var(--brand)' }}><OnyxIcon emoji="🎯" size={20} /></span> {t.title}</div>
+          <span className="pill" style={{ fontSize: 12, background: allDone ? 'rgba(52,226,160,.15)' : 'rgba(124,140,255,.15)', color: allDone ? 'var(--green)' : 'var(--soft-brand)' }}>{done}/{total}</span>
+        </div>
+        <p className="muted" style={{ fontSize: 13, margin: '6px 0 14px' }}>{allDone ? t.allDone : t.sub}</p>
 
         {/* Mini resumen del plan */}
         <div className="row" style={{ gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
@@ -130,20 +155,26 @@ export default function DailyCheckinPopup({ lang }: { lang: Lang }) {
           </div>
         )}
 
-        {/* Checklist */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginBottom: 14 }}>
-          {allHabits.map((h) => (
-            <label key={h.id} className="row" style={{ gap: 9, fontSize: 13.5, cursor: 'pointer' }}>
-              <input type="checkbox" checked={!!items[h.id]} onChange={(e) => setItems({ ...items, [h.id]: e.target.checked })} style={{ width: 'auto', margin: 0 }} />
-              <span style={{ opacity: items[h.id] ? 1 : .85 }}>{h.label}</span>
-            </label>
-          ))}
+        {/* Tres momentos: antes / durante-después / al cerrar */}
+        {([['before', '☀️ ' + t.before], ['during', '🕒 ' + t.during], ['close', '🌙 ' + t.close]] as const).map(([mk, label]) => (
+          allHabits.some((h) => h.moment === mk) ? (
+            <div key={mk}>
+              <div style={{ fontSize: 10.5, color: 'var(--mut)', textTransform: 'uppercase', letterSpacing: '.04em', margin: '2px 0 6px' }}>{label}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>{allHabits.filter((h) => h.moment === mk).map(Row)}</div>
+            </div>
+          ) : null
+        ))}
+
+        {hasAuto && <p className="muted" style={{ fontSize: 11, margin: '0 0 10px' }}>✨ {t.autoHint}</p>}
+
+        <div style={{ position: 'relative', height: 8, marginBottom: 12 }}>
+          {saved && <span style={{ position: 'absolute', right: 0, top: -2, color: 'var(--green)', fontSize: 11.5 }}>✓ {t.saved}</span>}
         </div>
 
-        <button className="btn btn-primary" onClick={save} disabled={busy || saved} style={{ width: '100%', marginBottom: 8 }}>{saved ? t.saved : busy ? '…' : t.save}</button>
+        <button className="btn btn-primary" onClick={() => closeForNow(true)} style={{ width: '100%', marginBottom: 8 }}>{allDone ? t.allDone : t.done}</button>
         <div className="row between" style={{ alignItems: 'center' }}>
           <a href="/dashboard?view=plan" className="muted" style={{ fontSize: 12.5, textDecoration: 'underline' }}>{t.seePlan}</a>
-          <button className="btn btn-ghost" style={{ fontSize: 12.5, padding: '5px 12px' }} onClick={dismiss}>{t.later}</button>
+          <button className="btn btn-ghost" style={{ fontSize: 12.5, padding: '5px 12px' }} onClick={() => closeForNow(false)}>{t.later}</button>
         </div>
       </div>
     </div>

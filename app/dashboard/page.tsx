@@ -15,6 +15,38 @@ export default async function Dashboard() {
 
   const { data: profile } = await supabaseAdmin.from('profiles').select('plan,academy_guardian,academy_guardian_tier').eq('id', user.id).maybeSingle();
 
+  // ¿Se registró para comprar un plan y aún no lo pagó? Lo llevamos al checkout de
+  // ese plan (con el descuento de la barra). Se busca en dos sitios, ambos atados a
+  // la CUENTA (funciona aunque el correo se abra en otro navegador/dispositivo):
+  //   1) metadatos del usuario  ← escrito al registrarse (el más fiable)
+  //   2) columna profiles.pending_plan ← respaldo (lo escribe /confirmado)
+  // Se limpia al reenviar para no repetir.
+  // OJO: redirect() lanza una excepción interna → va FUERA del try/catch, si no,
+  // el catch se la traga y no redirige.
+  const planPay = (v: string, annual: any, promo?: any) => `/pricing?plan=${encodeURIComponent(v)}${annual ? '&annual=1' : ''}${promo ? `&promo=${encodeURIComponent(String(promo))}` : ''}`;
+  let pendingDest = '';
+  if ((profile?.plan || 'free') === 'free') {
+    // 1) Metadatos de la cuenta (garantizado desde el registro).
+    const meta: any = user.user_metadata || {};
+    const mp = typeof meta.pending_plan === 'string' ? meta.pending_plan : '';
+    if (mp && mp !== 'free') {
+      pendingDest = planPay(mp, meta.pending_plan_annual, meta.pending_promo);
+      try { await supabaseAdmin.auth.admin.updateUserById(user.id, { user_metadata: { ...meta, pending_plan: null, pending_promo: null } }); } catch {}
+    }
+    // 2) Respaldo en profiles (por si acaso).
+    if (!pendingDest) {
+      try {
+        const { data: pend } = await supabaseAdmin.from('profiles').select('pending_plan,pending_plan_annual').eq('id', user.id).maybeSingle();
+        const pp = (pend as any)?.pending_plan as string | null;
+        if (pp && pp !== 'free') {
+          await supabaseAdmin.from('profiles').update({ pending_plan: null }).eq('id', user.id);
+          pendingDest = planPay(pp, (pend as any)?.pending_plan_annual);
+        }
+      } catch { /* columna aún no creada: ignorar */ }
+    }
+  }
+  if (pendingDest) redirect(pendingDest);
+
   // Perfil de trader (para el saludo personalizado). Tolerante si onboarding_v1.sql aún no corrió.
   let tp: any = {};
   try {
@@ -48,9 +80,15 @@ export default async function Dashboard() {
 
   let trades: any[] = [];
   if (accIds.length) {
-    const { data } = await supabaseAdmin.from('trades')
-      .select('id,account_id,symbol,side,volume,open_time,close_time,net_profit,profit,commission,swap')
+    let { data, error } = await supabaseAdmin.from('trades')
+      .select('id,account_id,symbol,side,volume,open_time,close_time,net_profit,profit,commission,swap,position_id,exit_reason,closed_volume')
       .in('account_id', accIds).order('close_time', { ascending: false }).limit(5000);
+    if (error) {
+      const r2 = await supabaseAdmin.from('trades')
+        .select('id,account_id,symbol,side,volume,open_time,close_time,net_profit,profit,commission,swap')
+        .in('account_id', accIds).order('close_time', { ascending: false }).limit(5000);
+      data = r2.data as any[];
+    }
     trades = data || [];
   }
 

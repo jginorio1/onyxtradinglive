@@ -18,9 +18,17 @@ export async function GET() {
 
     let trades: any[] = [];
     if (accIds.length) {
-      const { data } = await sb.from('trades')
-        .select('id,account_id,symbol,side,volume,open_time,close_time,net_profit,profit,commission,swap')
-        .in('account_id', accIds).order('close_time', { ascending: false }).limit(5000);
+      const FULL = 'id,account_id,symbol,side,volume,open_time,close_time,net_profit,profit,commission,swap,position_id,exit_reason,closed_volume';
+      const BASE = 'id,account_id,symbol,side,volume,open_time,close_time,net_profit,profit,commission,swap';
+      let { data, error } = await sb.from('trades')
+        .select(FULL).in('account_id', accIds).order('close_time', { ascending: false }).limit(5000);
+      // Tolerante: si aún no existen las columnas de parciales (partials.sql sin correr),
+      // reintentamos con las columnas base para no dejar el dashboard vacío.
+      if (error) {
+        const r2 = await sb.from('trades')
+          .select(BASE).in('account_id', accIds).order('close_time', { ascending: false }).limit(5000);
+        data = r2.data as any[];
+      }
       trades = data || [];
     }
     return NextResponse.json({ accounts: accounts || [], trades });

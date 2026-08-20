@@ -400,6 +400,27 @@ string MMSS(int secs)
    return (m < 10 ? "0" : "") + IntegerToString(m) + ":" + (s < 10 ? "0" : "") + IntegerToString(s);
   }
 
+// ===== Mercado cerrado + cuenta atras (MT4: sin API de sesiones) =====
+string FmtCountdown(long s)
+  {
+   if(s < 0) s = 0;
+   long d = s / 86400; s -= d * 86400;
+   long h = s / 3600;  s -= h * 3600;
+   long m = s / 60;    long sec = s - m * 60;
+   string hhmmss = StringFormat("%02d:%02d:%02d", (int)h, (int)m, (int)sec);
+   return d > 0 ? (IntegerToString((int)d) + "d " + hhmmss) : hhmmss;
+  }
+bool MarketClosedMT4() { return MarketInfo(Symbol(), MODE_TRADEALLOWED) < 0.5; }
+datetime NextForexOpen()
+  {
+   datetime now = TimeCurrent();
+   int dow = TimeDayOfWeek(now);
+   datetime mid = now - (TimeHour(now) * 3600 + TimeMinute(now) * 60 + TimeSeconds(now));
+   if(dow == 6) return mid + 86400 + 22 * 3600;
+   if(dow == 0) { datetime o = mid + 22 * 3600; if(now < o) return o; }
+   return 0;
+  }
+
 void DrawPanel()
   {
    int X = 12, W = 250, y = 22;
@@ -464,6 +485,16 @@ void DrawPanel()
       y += 20;
       PanelChip("lss", OnyxSession() + " · " + TimeToString(TimeCurrent(), TIME_MINUTES) + " · " + Symbol(), X + 12, y, TB, TBt);
       y += 22;
+      // Estado del mercado: cerrado + cuenta atras a la apertura (aprox. fin de semana).
+      if(MarketClosedMT4())
+      {
+         datetime openT = NextForexOpen();
+         string txt = T("Mercado cerrado", "Market closed");
+         if(openT > 0) txt += T(" · abre en ", " · opens in ") + FmtCountdown((long)(openT - TimeCurrent()));
+         PanelChip("mkt", txt, X + 12, y, TR, TRt);
+         y += 22;
+      }
+      else { ObjectDelete(0, PREFIX + "mktb"); ObjectDelete(0, PREFIX + "mktt"); }
    }
 
    bool ta = (IsExpertEnabled() && IsTradeAllowed());
@@ -683,13 +714,37 @@ string BuildBody()
       if(ct > maxClose) maxClose = ct;
 
       double prof = OrderProfit(), comm = OrderCommission(), sw = OrderSwap();
+
+      // --- Ganancias parciales (MT4, mejor esfuerzo) ---
+      // MT4 no tiene posiciones: un cierre parcial abre una nueva orden para el
+      // resto y deja un comentario "from #<orig>" / "to #<nuevo>". Agrupamos por
+      // el ticket mas pequeno de la cadena. El motivo se deduce del precio de cierre.
+      string cmt = OrderComment();
+      long posId = OrderTicket();
+      int hash = StringFind(cmt, "#");
+      if(hash >= 0)
+        {
+         string num = "";
+         for(int c = hash + 1; c < StringLen(cmt); c++)
+           { string ch = StringSubstr(cmt, c, 1); if(ch >= "0" && ch <= "9") num += ch; else break; }
+         long ref = (long)StringToInteger(num);
+         if(ref > 0 && ref < posId) posId = ref;   // el mas viejo es la posicion
+        }
+      double tp = OrderTakeProfit(), sl = OrderStopLoss(), cp = OrderClosePrice();
+      double tol = 3 * MarketInfo(OrderSymbol(), MODE_POINT);
+      string er = "manual";
+      if(tp > 0 && MathAbs(cp - tp) <= tol) er = "tp";
+      else if(sl > 0 && MathAbs(cp - sl) <= tol) er = "sl";
+
       if(!first) s += ",";
       first = false;
       s += "{";
       s += "\"ticket\":"     + IntegerToString(OrderTicket()) + ",";
+      s += "\"positionId\":\"" + IntegerToString((int)posId) + "\",";
       s += "\"symbol\":\""   + Esc(OrderSymbol()) + "\",";
       s += "\"side\":\""     + (OrderType() == OP_BUY ? "buy" : "sell") + "\",";
       s += "\"volume\":"     + DoubleToString(OrderLots(), 2) + ",";
+      s += "\"closedVolume\":" + DoubleToString(OrderLots(), 2) + ",";
       s += "\"openTime\":"   + IntegerToString((int)OrderOpenTime()) + ",";
       s += "\"openPrice\":"  + DoubleToString(OrderOpenPrice(), 5) + ",";
       s += "\"closeTime\":"  + IntegerToString((int)ct) + ",";
@@ -698,6 +753,7 @@ string BuildBody()
       s += "\"commission\":" + DoubleToString(comm, 2) + ",";
       s += "\"swap\":"       + DoubleToString(sw, 2) + ",";
       s += "\"netProfit\":"  + DoubleToString(prof + comm + sw, 2) + ",";
+      s += "\"exitReason\":\"" + er + "\",";
       s += "\"magic\":"      + IntegerToString(OrderMagicNumber()) + ",";
       s += "\"comment\":\""  + Esc(OrderComment()) + "\"";
       s += "}";
@@ -990,6 +1046,14 @@ void Sync()
    ParseNewsTimes(resp);
    DrawNewsLines();
    HandleCommands(resp);
+
+   // Re-sincronizar historial pedido desde la web: reiniciamos la marca para que
+   // el próximo envío vuelva a subir TODAS las operaciones desde el principio.
+   if(JsonBool(resp, "resyncHistory", false))
+   {
+      g_lastClose = 0;
+      GlobalVariableSet(PREFIX + "lc_" + IntegerToString(AccountNumber()), 0.0);
+   }
   }
 
 //==================== PARCIALES: MEMORIA ==========================
@@ -1361,7 +1425,7 @@ int OnInit()
    // desde cuando pedir historial la primera vez
    string k = PREFIX + "lc_" + IntegerToString(AccountNumber());
    if(GlobalVariableCheck(k)) g_lastClose = (datetime)GlobalVariableGet(k);
-   else                       g_lastClose = TimeCurrent() - 120 * 86400;
+   else                       g_lastClose = 0;   // primera conexion: envia el HISTORIAL COMPLETO (backfill una sola vez)
 
    CleanOldPartials();
    EventSetTimer(1);            // 1s: el panel y el contador laten cada segundo

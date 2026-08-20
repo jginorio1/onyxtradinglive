@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
+import EmailPreview from './previews/EmailPreview';
 
 // Editor de plantillas de correo transaccional (dueño). Cambia asunto y cuerpo
 // en ES/EN; deja un campo vacío para volver al texto por defecto. Variables
@@ -12,8 +13,15 @@ export default function EmailTemplatesControl() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const [open, setOpen] = useState('');
+  const [warnDays, setWarnDays] = useState(5);   // aviso de "prueba por vencer"
+  const [wdMsg, setWdMsg] = useState('');
 
   useEffect(() => { fetch('/api/admin/email-templates').then((r) => r.json()).then((d) => { if (!d.error) setItems(d.items || []); }).catch(() => {}); }, []);
+  useEffect(() => { fetch('/api/admin/comp-settings').then((r) => r.json()).then((d) => { if (d?.warnDays) setWarnDays(d.warnDays); }).catch(() => {}); }, []);
+  async function saveWarnDays() {
+    setWdMsg('');
+    try { const r = await fetch('/api/admin/comp-settings', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ warnDays }) }); const d = await r.json(); if (d?.warnDays) setWarnDays(d.warnDays); setWdMsg(L('Guardado ✓', 'Saved ✓')); } catch { setWdMsg('Error'); }
+  }
   const set = (id: string, l: 'es' | 'en', k: 'subject' | 'body', v: string) =>
     setItems((its) => its.map((it) => (it.id === id ? { ...it, [l]: { ...it[l], [k]: v } } : it)));
 
@@ -39,6 +47,15 @@ export default function EmailTemplatesControl() {
            'Edit the subject and body of automated emails (ES/EN). Leave a field empty to use the default text. Variables: {academia}, {enlace}, {dias}.')}
       </p>
 
+      {/* Ajuste de la prueba de pago: días de antelación del aviso (email + popup). */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 12, padding: 10, border: '1px dashed var(--line)', borderRadius: 10 }}>
+        <span style={{ fontSize: 12.5 }}>🎁 {L('Prueba de pago: avisar', 'Paid trial: notify')}</span>
+        <input type="number" min={1} max={60} value={warnDays} onChange={(e) => setWarnDays(Math.max(1, Math.min(60, Number(e.target.value) || 5)))} style={{ width: 70, margin: 0 }} />
+        <span style={{ fontSize: 12.5 }}>{L('día(s) antes (email y popup)', 'day(s) before (email & popup)')}</span>
+        <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={saveWarnDays}>{L('Guardar', 'Save')}</button>
+        {wdMsg && <span className="muted" style={{ fontSize: 12 }}>{wdMsg}</span>}
+      </div>
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {items.map((it) => (
           <div key={it.id} style={{ border: '1px solid var(--line)', borderRadius: 10 }}>
@@ -47,16 +64,24 @@ export default function EmailTemplatesControl() {
               <span className="muted" style={{ fontSize: 11 }}>{(it.vars || []).map((v: string) => `{${v}}`).join(' ')}</span>
             </button>
             {open === it.id && (
-              <div style={{ padding: '0 12px 12px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                {(['es', 'en'] as const).map((l) => (
-                  <div key={l}>
-                    <div className="muted" style={{ fontSize: 11.5, fontWeight: 700, margin: '4px 0 6px' }}>{l.toUpperCase()}</div>
-                    <span className="muted" style={{ fontSize: 11 }}>{L('Asunto', 'Subject')}</span>
-                    <input value={it[l].subject} onChange={(e) => set(it.id, l, 'subject', e.target.value)} style={{ ...inp, margin: '3px 0 8px' }} placeholder={it[l].defSubject} />
-                    <span className="muted" style={{ fontSize: 11 }}>{L('Cuerpo', 'Body')}</span>
-                    <textarea value={it[l].body} onChange={(e) => set(it.id, l, 'body', e.target.value)} rows={5} style={{ ...inp, margin: '3px 0 0', fontFamily: 'inherit' }} placeholder={it[l].defBody} />
-                  </div>
-                ))}
+              <div style={{ padding: '0 12px 12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  {(['es', 'en'] as const).map((l) => (
+                    <div key={l}>
+                      <div className="muted" style={{ fontSize: 11.5, fontWeight: 700, margin: '4px 0 6px' }}>{l.toUpperCase()}</div>
+                      <span className="muted" style={{ fontSize: 11 }}>{L('Asunto', 'Subject')}</span>
+                      <input value={it[l].subject} onChange={(e) => set(it.id, l, 'subject', e.target.value)} style={{ ...inp, margin: '3px 0 8px' }} placeholder={it[l].defSubject} />
+                      <span className="muted" style={{ fontSize: 11 }}>{L('Cuerpo', 'Body')}</span>
+                      <textarea value={it[l].body} onChange={(e) => set(it.id, l, 'body', e.target.value)} rows={5} style={{ ...inp, margin: '3px 0 0', fontFamily: 'inherit' }} placeholder={it[l].defBody} />
+                    </div>
+                  ))}
+                </div>
+                <div style={{ marginTop: 10 }}>
+                  <div className="muted" style={{ fontSize: 11, marginBottom: 5 }}>{L('Vista previa (como llega el correo)', 'Preview (as the email arrives)')}</div>
+                  {(() => { const l = lang === 'en' ? 'en' : 'es'; return (
+                    <EmailPreview subject={it[l].subject || it[l].defSubject} body={it[l].body || it[l].defBody} es={l === 'es'} />
+                  ); })()}
+                </div>
               </div>
             )}
           </div>
