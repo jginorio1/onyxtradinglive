@@ -4,27 +4,34 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import Link from 'next/link';
 import { analyze, bestOf, worstOf, topPairs, fmtDur, type T, type Bucket } from '@/lib/analytics';
-import Journal from './Journal';
-import LotCalculator from './LotCalculator';
-import Challenge from './Challenge';
-import Costs from './Costs';
-import AccountExtras from './AccountExtras';
-import CompareAccounts from './CompareAccounts';
+import dynamic from 'next/dynamic';
 import { typeMeta } from '@/lib/accountMeta';
 import { Ring, MiniArea, MiniDonut, MiniBars, MiniHeat, RadarChart, Bubbles, healthScore } from './Modern';
 import MarketHours from './MarketHours';
-import PlanHabits from './PlanHabits';
-import DailyCheckinPopup from './DailyCheckinPopup';
-import CompTrialPopup from './CompTrialPopup';
 import HubVitals, { StatCard, type Vital, type Tile } from './HubVitals';
 import SetupGuide from './SetupGuide';
 import OnyxIcon from '@/app/components/OnyxIcon';
-import News from './News';
-import NetRealCard from './NetRealCard';
-import CoachCard from './CoachCard';
 import Achievements from './Achievements';
 import MarketClock from './MarketClock';
 import Nudge from './Nudge';
+
+// ── Carga bajo demanda ──────────────────────────────────────────────
+// Todo lo que vive detrás de un tile, colapsado o en pop-up se carga sólo
+// cuando hace falta: el hub (KPIs) hidrata más ligero y el primer clic responde.
+const _lazy = { ssr: false as const, loading: () => <div className="muted" style={{ padding: 16, fontSize: 13 }}>…</div> };
+const Journal = dynamic(() => import('./Journal'), _lazy);
+const LotCalculator = dynamic(() => import('./LotCalculator'), _lazy);
+const Challenge = dynamic(() => import('./Challenge'), _lazy);
+const Costs = dynamic(() => import('./Costs'), _lazy);
+const AccountExtras = dynamic(() => import('./AccountExtras'), _lazy);
+const CompareAccounts = dynamic(() => import('./CompareAccounts'), _lazy);
+const PlanHabits = dynamic(() => import('./PlanHabits'), _lazy);
+const News = dynamic(() => import('./News'), _lazy);
+const NetRealCard = dynamic(() => import('./NetRealCard'), _lazy);
+const CoachCard = dynamic(() => import('./CoachCard'), _lazy);
+// Pop-ups: no bloquean el render inicial (sin placeholder visible).
+const DailyCheckinPopup = dynamic(() => import('./DailyCheckinPopup'), { ssr: false });
+const CompTrialPopup = dynamic(() => import('./CompTrialPopup'), { ssr: false });
 import { platformLabel, platformsPhrase } from '@/lib/platforms';
 import { useCatalog } from '@/lib/useCatalog';
 
