@@ -14,6 +14,12 @@ import OnyxIcon from '@/app/components/OnyxIcon';
 import Achievements from './Achievements';
 import MarketClock from './MarketClock';
 import Nudge from './Nudge';
+// Laterales SIEMPRE visibles en el hub → carga inmediata (no diferida): así
+// aparecen con la primera pintada, sin "…" ni espera de descarga. Su único
+// retraso posible es su propio fetch a la API, que ya muestran por dentro.
+import News from './News';
+import NetRealCard from './NetRealCard';
+import CoachCard from './CoachCard';
 
 // ── Carga bajo demanda ──────────────────────────────────────────────
 // Todo lo que vive detrás de un tile, colapsado o en pop-up se carga sólo
@@ -34,9 +40,6 @@ const Costs = dynamic(impCosts, _lazy);
 const AccountExtras = dynamic(() => import('./AccountExtras'), _lazy);
 const CompareAccounts = dynamic(impCompare, _lazy);
 const PlanHabits = dynamic(impPlan, _lazy);
-const News = dynamic(() => import('./News'), _lazy);
-const NetRealCard = dynamic(() => import('./NetRealCard'), _lazy);
-const CoachCard = dynamic(() => import('./CoachCard'), _lazy);
 // Precarga en reposo: cuando el navegador está libre, bajamos las secciones más
 // usadas (reto, plan, journal, costos, comparar) para que abran sin espera.
 const _preloadViews = () => { try { impChallenge(); impPlan(); impJournal(); impCosts(); impCompare(); } catch {} };
