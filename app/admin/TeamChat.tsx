@@ -15,6 +15,24 @@ type Member = { id: string; name: string; email: string; role: string; available
 
 const initials = (n?: string) => (n || '?').trim().split(/\s+/).slice(0, 2).map((s) => s[0]).join('').toUpperCase();
 
+// Avatares de color por nombre (consistentes) — para la lista tipo WhatsApp.
+const AV = [
+  { bg: 'rgba(124,140,255,.20)', fg: '#8f9bff' }, { bg: 'rgba(52,226,160,.20)', fg: '#34e2a0' },
+  { bg: 'rgba(255,192,77,.20)', fg: '#ffc04d' }, { bg: 'rgba(255,107,125,.20)', fg: '#ff8a97' },
+  { bg: 'rgba(94,207,255,.20)', fg: '#5ecfff' }, { bg: 'rgba(197,132,255,.20)', fg: '#c584ff' },
+];
+const avatarOf = (s?: string) => AV[Math.abs([...String(s || '?')].reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7)) % AV.length];
+// Hora corta relativa para la lista (hoy → HH:MM, ayer → "ayer", antes → dd/mm)
+function shortWhen(iso?: string, en?: boolean) {
+  if (!iso) return '';
+  const d = new Date(iso); const now = new Date();
+  const same = (a: Date, b: Date) => a.toDateString() === b.toDateString();
+  const y = new Date(now); y.setDate(now.getDate() - 1);
+  if (same(d, now)) return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  if (same(d, y)) return en ? 'yest.' : 'ayer';
+  return d.toLocaleDateString(en ? 'en-US' : 'es-ES', { day: '2-digit', month: '2-digit' });
+}
+
 function roleLabel(role: string, en: boolean) {
   const m: any = { owner: en ? 'Owner' : 'Dueño', admin: 'Admin', support: en ? 'Support' : 'Soporte', marketing: 'Marketing', custom: en ? 'Team' : 'Equipo' };
   return m[role] || (en ? 'Team' : 'Equipo');
@@ -75,6 +93,10 @@ function TeamChatInner() {
   const [newCh, setNewCh] = useState('');
   const [showNew, setShowNew] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
+  const [filter, setFilter] = useState('');            // buscador de conversaciones
+  const [showCompose, setShowCompose] = useState(false); // panel "nueva conversación"
+  const [showDate, setShowDate] = useState(false);     // buscar por día (toggle)
+  const [mobileOpen, setMobileOpen] = useState(false); // en móvil: chat a pantalla completa
   const [docks, setDocks] = useState<string[]>([]);   // canales abiertos como ventanas
   const loadedOnce = useRef(false);
 
@@ -115,6 +137,22 @@ function TeamChatInner() {
   const mapped = toChat(msgs, me);
   const typingLabel = typing.length ? `${typing.slice(0, 2).join(', ')} ${L('está escribiendo…', 'is typing…')}` : '';
 
+  // Lista de conversaciones (canales + DMs) para la lista tipo WhatsApp, filtrable.
+  const convos = channels.map((c) => {
+    const isDm = c.kind === 'dm';
+    const otherId = isDm ? (c.members.find((id) => id !== me) || '') : '';
+    const display = isDm ? (teamById[otherId]?.name || c.name) : c.name;
+    return { ...c, isDm, otherId, display };
+  }).filter((c) => c.display.toLowerCase().includes(filter.trim().toLowerCase()));
+  const dmOther = activeCh?.kind === 'dm' ? (activeCh.members.find((id) => id !== me) || '') : '';
+  const headerName = activeCh ? (activeCh.kind === 'dm' ? (teamById[dmOther]?.name || activeCh.name) : activeCh.name) : '';
+  const headerStatus = typingLabel ? typingLabel
+    : activeCh ? (activeCh.kind === 'dm'
+        ? (onlineIds.has(dmOther) ? L('en línea', 'online') : L('desconectado', 'offline'))
+        : `${team.length} ${L('miembros', 'members')} · ${online.length} ${L('en línea', 'online')}`)
+    : '';
+  const iconBtn: any = { background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--mut)', padding: '5px 6px', lineHeight: 1 };
+
   // Miembros de la conversación (con nombre + rol). Canal abierto = todo el equipo.
   const convoMembers: Member[] = activeCh
     ? (activeCh.kind === 'dm' ? activeCh.members.map((id) => teamById[id]).filter(Boolean) : team)
@@ -151,102 +189,86 @@ function TeamChatInner() {
         <span className="pill" style={{ fontSize: 12, color: 'var(--soft-green)', background: 'rgba(52,226,160,.15)' }}>● {online.length} {L('en línea', 'online')}</span>
       </div>
 
-      {/* Qué puede hacer el Onyx interno */}
-      <div className="card" style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '10px 14px', marginBottom: 12 }}>
-        <span style={{ fontSize: 18 }}>🤖</span>
-        <div style={{ fontSize: 12.5, lineHeight: 1.5 }}>
-          <b>{L('Escribe @Onyx para preguntar de conjunto:', 'Type @Onyx to ask across everything:')}</b>{' '}
-          <span className="muted">{L('«¿cuántas consultas de fondeo hay?», «¿qué tickets llevan más de 24h esperando?», «historial de juan@correo.com». Solo lee tickets/clientes del equipo; nunca da secretos ni consejo financiero.', '“how many funding tickets are there?”, “which tickets have waited over 24h?”, “history of juan@email.com”. It only reads team tickets/clients; never secrets or financial advice.')}</span>
-        </div>
-      </div>
-
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', minHeight: 540 }} className="teamchat-grid">
-          {/* Canales + equipo */}
-          <div className="teamchat-side" style={{ borderRight: '1px solid var(--line)', display: 'flex', flexDirection: 'column' }}>
-            <div className="row between" style={{ padding: '11px 12px', borderBottom: '1px solid var(--line)' }}>
-              <b style={{ fontSize: 13 }}># {L('Canales', 'Channels')}</b>
-              <button className="btn btn-ghost" style={{ padding: '3px 8px', fontSize: 16, lineHeight: 1 }} onClick={() => setShowNew((s) => !s)} title={L('Nuevo canal', 'New channel')}>+</button>
+        <div style={{ display: 'grid', gridTemplateColumns: '290px 1fr', height: 560 }} className="teamchat-grid">
+          {/* Lista de conversaciones (tipo WhatsApp) */}
+          <div className={'teamchat-side' + (mobileOpen ? ' tc-hidden-m' : '')} style={{ borderRight: '1px solid var(--line)', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+            <div style={{ padding: '10px 12px 8px', display: 'flex', gap: 8, alignItems: 'center' }}>
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 999, padding: '7px 12px' }}>
+                <span style={{ opacity: .6, fontSize: 13 }}>🔍</span>
+                <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder={L('Buscar', 'Search')} style={{ margin: 0, border: 'none', background: 'transparent', padding: 0, fontSize: 13, width: '100%' }} />
+              </div>
+              <button className="btn btn-primary" onClick={() => setShowCompose((s) => !s)} title={L('Nueva conversación', 'New chat')} style={{ width: 36, height: 36, padding: 0, borderRadius: '50%', fontSize: 18, lineHeight: 1, flex: 'none' }}>＋</button>
             </div>
-            {showNew && (
-              <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--line)' }}>
-                <input value={newCh} onChange={(e) => setNewCh(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') createChannel(); }} placeholder={L('nombre-del-canal', 'channel-name')} style={{ margin: 0, fontSize: 13 }} />
+            {showCompose && (
+              <div style={{ padding: '4px 12px 10px', borderBottom: '1px solid var(--line)' }}>
+                <div className="muted" style={{ fontSize: 11, margin: '2px 0 6px' }}>{L('Nuevo canal', 'New channel')}</div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input value={newCh} onChange={(e) => setNewCh(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { createChannel(); setShowCompose(false); } }} placeholder={L('nombre-del-canal', 'channel-name')} style={{ margin: 0, fontSize: 13 }} />
+                  <button className="btn btn-ghost" onClick={() => { createChannel(); setShowCompose(false); }} style={{ padding: '0 12px', flex: 'none' }}>{L('Crear', 'Create')}</button>
+                </div>
+                <div className="muted" style={{ fontSize: 11, margin: '10px 0 4px' }}>{L('Mensaje directo con…', 'Direct message with…')}</div>
+                <div style={{ maxHeight: 150, overflowY: 'auto' }}>
+                  {team.filter((t) => t.id !== me).map((t) => { const av = avatarOf(t.name); return (
+                    <button key={t.id} onClick={() => { openDM(t.id); setShowCompose(false); }} style={{ display: 'flex', gap: 9, alignItems: 'center', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', padding: '6px 4px', cursor: 'pointer', color: 'var(--tx)', borderRadius: 8 }}>
+                      <span style={{ position: 'relative', width: 30, height: 30, borderRadius: '50%', background: av.bg, color: av.fg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flex: 'none' }}>{initials(t.name)}
+                        <span style={{ position: 'absolute', right: -1, bottom: -1, width: 8, height: 8, borderRadius: '50%', background: onlineIds.has(t.id) ? 'var(--soft-green)' : 'var(--mut)', border: '1.5px solid var(--card)' }} />
+                      </span>
+                      <span style={{ flex: 1, minWidth: 0 }}><span style={{ fontSize: 13, display: 'block' }}>{t.name}</span><span className="muted" style={{ fontSize: 10.5 }}>{roleLabel(t.role, en)}</span></span>
+                    </button>
+                  ); })}
+                </div>
               </div>
             )}
-            <div style={{ overflowY: 'auto', flex: 1 }}>
-              {channels.filter((c) => c.kind !== 'dm').map((c) => (
-                <ChannelRow key={c.id} c={c} active={c.id === active} onClick={() => setActive(c.id)} onPop={() => openDock(c.id)} popTitle={L('Abrir en ventana', 'Open in window')} />
-              ))}
-              {channels.some((c) => c.kind === 'dm') && <div className="muted" style={{ fontSize: 11, padding: '10px 12px 4px' }}>{L('Directos', 'Direct')}</div>}
-              {channels.filter((c) => c.kind === 'dm').map((c) => {
-                const other = c.members.find((id) => id !== me);
-                const nm = teamById[other || '']?.name || c.name;
-                return <ChannelRow key={c.id} c={{ ...c, name: nm }} active={c.id === active} onClick={() => setActive(c.id)} onPop={() => openDock(c.id)} popTitle={L('Abrir en ventana', 'Open in window')} dm />;
-              })}
-            </div>
-            {/* Equipo con nombre + rol + presencia. Doble clic abre un DM. */}
-            <div style={{ borderTop: '1px solid var(--line)', padding: '8px 10px', maxHeight: 190, overflowY: 'auto' }}>
-              <div className="muted" style={{ fontSize: 11, marginBottom: 5 }}>{L('Equipo', 'Team')} · {L('doble clic = mensaje directo', 'double-click = direct message')}</div>
-              {team.map((t) => (
-                <div key={t.id} className="row" style={{ gap: 7, alignItems: 'center', padding: '4px 0', cursor: t.id === me ? 'default' : 'pointer', borderRadius: 8 }} onDoubleClick={() => { if (t.id !== me) openDM(t.id); }} title={t.id === me ? '' : L('Doble clic: mensaje directo', 'Double-click: direct message')}>
-                  <span style={{ position: 'relative', width: 26, height: 26, borderRadius: '50%', background: 'var(--bg2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9.5, fontWeight: 700, color: 'var(--mut)', flex: 'none' }}>
-                    {initials(t.name)}
-                    <span style={{ position: 'absolute', right: -1, bottom: -1, width: 8, height: 8, borderRadius: '50%', background: onlineIds.has(t.id) ? 'var(--soft-green)' : 'var(--mut)', border: '1.5px solid var(--card)' }} />
-                  </span>
-                  <span style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ fontSize: 12.5, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.name}{t.id === me && <span className="muted"> ({L('tú', 'you')})</span>}</span>
-                    <span className="muted" style={{ fontSize: 10.5 }}>{roleLabel(t.role, en)} · {onlineIds.has(t.id) ? L('en línea', 'online') : L('desconectado', 'offline')}</span>
-                  </span>
-                </div>
+            <div style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
+              {convos.length === 0 && <div className="muted" style={{ fontSize: 12, padding: 18, textAlign: 'center' }}>{L('Sin conversaciones.', 'No chats.')}</div>}
+              {convos.map((c) => (
+                <ConvCard key={c.id} c={c} active={c.id === active} online={c.isDm ? onlineIds.has(c.otherId) : undefined} en={en} onClick={() => { setActive(c.id); setMobileOpen(true); }} />
               ))}
             </div>
           </div>
 
-          {/* Conversación principal */}
-          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-            <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--line)' }}>
-              <div className="row between" style={{ flexWrap: 'wrap', gap: 8 }}>
-                <div style={{ minWidth: 0 }}>
-                  <b style={{ fontSize: 14 }}>{activeCh ? (activeCh.kind === 'dm' ? '' : '# ') + (activeCh.kind === 'dm' ? (teamById[activeCh.members.find((id) => id !== me) || '']?.name || activeCh.name) : activeCh.name) : L('Elige un canal', 'Pick a channel')}</b>
-                  {activeCh?.topic && <span className="muted" style={{ fontSize: 12 }}> · {activeCh.topic}</span>}
+          {/* Panel de chat */}
+          <div className={'teamchat-main' + (mobileOpen ? ' tc-fs-m' : ' tc-hidden-m')} style={{ display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0 }}>
+            {activeCh ? (<>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: '1px solid var(--line)' }}>
+                <button className="tc-back" onClick={() => setMobileOpen(false)} style={{ display: 'none', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 22, color: 'var(--tx)', lineHeight: 1, padding: 0 }}>‹</button>
+                {(() => { const av = avatarOf(headerName); const dm = activeCh.kind === 'dm'; return (
+                  <span style={{ width: 38, height: 38, borderRadius: '50%', flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: dm ? 12 : 17, fontWeight: 700, background: dm ? av.bg : 'rgba(124,140,255,.14)', color: dm ? av.fg : 'var(--soft-brand)' }}>{dm ? initials(headerName) : '#'}</span>
+                ); })()}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{(activeCh.kind === 'dm' ? '' : '# ') + headerName}</div>
+                  <div style={{ fontSize: 11.5, color: typingLabel ? 'var(--soft-green)' : 'var(--mut)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{headerStatus}</div>
                 </div>
-                <div className="row" style={{ gap: 6, alignItems: 'center' }}>
-                  {activeCh && <button className="btn btn-ghost" style={{ padding: '4px 8px', fontSize: 12 }} onClick={() => openDock(active)} title={L('Abrir en ventana aparte', 'Open in a separate window')}>⧉ {L('Ventana', 'Window')}</button>}
-                  {activeCh && <div style={{ position: 'relative' }}>
-                    <button className="btn btn-ghost" style={{ padding: '4px 8px', fontSize: 12 }} onClick={() => setShowAdd((s) => !s)} title={L('Añadir compañero', 'Add teammate')}>＋ {L('Añadir', 'Add')}</button>
-                    {showAdd && (
-                      <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 6, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, boxShadow: '0 12px 30px rgba(0,0,0,.3)', zIndex: 30, width: 220, maxHeight: 240, overflowY: 'auto' }}>
-                        {(activeCh.kind === 'dm' ? canAdd : team.filter((t) => t.id !== me)).map((t) => (
-                          <button key={t.id} onClick={() => addMember(t.id)} style={{ display: 'flex', gap: 8, alignItems: 'center', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', borderBottom: '1px solid var(--line)', padding: '8px 11px', cursor: 'pointer', color: 'var(--tx)' }}>
-                            <span style={{ fontSize: 12, fontWeight: 700 }}>{initials(t.name)}</span>
-                            <span style={{ fontSize: 12.5, flex: 1 }}>{t.name}<span className="muted" style={{ fontSize: 11 }}> · {roleLabel(t.role, en)}</span></span>
-                          </button>
-                        ))}
-                        {activeCh.kind === 'dm' && !canAdd.length && <div className="muted" style={{ fontSize: 12, padding: 10 }}>{L('Ya están todos.', 'Everyone is in.')}</div>}
-                      </div>
-                    )}
-                  </div>}
-                  <input type="date" value={date} onChange={(e) => setDate(e.target.value)} title={L('Buscar por día', 'Search by day')} style={{ margin: 0, fontSize: 12, padding: '5px 8px' }} />
+                <button title={L('Buscar por día', 'Search by day')} onClick={() => setShowDate((s) => !s)} style={iconBtn}>📅</button>
+                <div style={{ position: 'relative' }}>
+                  <button title={L('Añadir compañero', 'Add teammate')} onClick={() => setShowAdd((s) => !s)} style={iconBtn}>＋</button>
+                  {showAdd && (
+                    <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 6, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, boxShadow: '0 12px 30px rgba(0,0,0,.3)', zIndex: 30, width: 230, maxHeight: 260, overflowY: 'auto' }}>
+                      {(activeCh.kind === 'dm' ? canAdd : team.filter((t) => t.id !== me)).map((t) => { const av = avatarOf(t.name); return (
+                        <button key={t.id} onClick={() => addMember(t.id)} style={{ display: 'flex', gap: 8, alignItems: 'center', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', borderBottom: '1px solid var(--line)', padding: '8px 11px', cursor: 'pointer', color: 'var(--tx)' }}>
+                          <span style={{ width: 26, height: 26, borderRadius: '50%', background: av.bg, color: av.fg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, flex: 'none' }}>{initials(t.name)}</span>
+                          <span style={{ fontSize: 12.5, flex: 1 }}>{t.name}<span className="muted" style={{ fontSize: 11 }}> · {roleLabel(t.role, en)}</span></span>
+                        </button>
+                      ); })}
+                      {activeCh.kind === 'dm' && !canAdd.length && <div className="muted" style={{ fontSize: 12, padding: 10 }}>{L('Ya están todos.', 'Everyone is in.')}</div>}
+                    </div>
+                  )}
+                </div>
+                <button title={L('Abrir en ventana', 'Open in window')} onClick={() => openDock(active)} style={iconBtn}>⧉</button>
+              </div>
+              {showDate && (
+                <div style={{ padding: '8px 14px', borderBottom: '1px solid var(--line)', display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={{ margin: 0, fontSize: 12, padding: '5px 8px' }} />
                   {date && <button className="btn btn-ghost" style={{ padding: '4px 8px', fontSize: 12 }} onClick={() => setDate('')}>{L('Todo', 'All')}</button>}
                 </div>
-              </div>
-              {/* Miembros de la conversación con su rol */}
-              {activeCh && (
-                <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
-                  {activeCh.kind !== 'dm' && <span className="muted" style={{ fontSize: 11 }}>{L('Canal abierto · todo el equipo:', 'Open channel · whole team:')}</span>}
-                  {convoMembers.slice(0, 8).map((mem) => (
-                    <span key={mem.id} className="pill" style={{ fontSize: 11, background: 'var(--bg2)', color: 'var(--mut)' }}>{mem.name} · {roleLabel(mem.role, en)}</span>
-                  ))}
-                </div>
               )}
-            </div>
-            <div style={{ padding: '10px 14px', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-              {active ? (
+              <div style={{ padding: '10px 14px', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
                 <ChatThread messages={mapped} lang={lang as any} onSend={send} onTyping={sendTyping} mentionSource={mentionSource} showAuthors height={410} typingLabel={typingLabel}
                   placeholder={L('Escribe… @ para etiquetar, @Onyx para la IA', 'Type… @ to tag, @Onyx for AI')}
                   emptyText={date ? L('Sin mensajes ese día.', 'No messages that day.') : L('Sé el primero en escribir 👋', 'Be the first to write 👋')} />
-              ) : <div className="muted" style={{ margin: 'auto', fontSize: 13 }}>{L('Crea o elige un canal para empezar.', 'Create or pick a channel to start.')}</div>}
-            </div>
+              </div>
+            </>) : <div className="muted" style={{ margin: 'auto', fontSize: 13, padding: 24, textAlign: 'center' }}>{L('Elige una conversación para empezar.', 'Pick a chat to start.')}</div>}
           </div>
         </div>
       </div>
@@ -262,8 +284,12 @@ function TeamChatInner() {
 
       <style>{`
         @media(max-width:720px){
-          .teamchat-grid{grid-template-columns:1fr !important; min-height:auto !important}
-          .teamchat-side{max-height:240px; overflow-y:auto; border-right:none !important; border-bottom:1px solid var(--line)}
+          .teamchat-grid{grid-template-columns:1fr !important; height:auto !important}
+          .teamchat-side{height:70vh; border-right:none !important}
+          .teamchat-main{display:none}
+          .tc-hidden-m{display:none !important}
+          .tc-fs-m{display:flex !important; height:80vh}
+          .tc-back{display:block !important}
         }
         @media(max-width:560px){
           .teamchat-docks{left:0 !important; right:0 !important; bottom:0 !important; gap:0 !important; padding:0 8px; flex-direction:column; align-items:stretch}
@@ -275,18 +301,26 @@ function TeamChatInner() {
   );
 }
 
-function ChannelRow({ c, active, onClick, onPop, popTitle, dm }: { c: Channel; active: boolean; onClick: () => void; onPop: () => void; popTitle: string; dm?: boolean }) {
+// Tarjeta de conversación (lista tipo WhatsApp): avatar de color, nombre, última
+// línea, hora, no leídos y punto de "en línea" (en los directos).
+function ConvCard({ c, active, online, en, onClick }: { c: any; active: boolean; online?: boolean; en: boolean; onClick: () => void }) {
+  const av = avatarOf(c.display);
   return (
-    <div style={{ display: 'flex', alignItems: 'center', background: active ? 'var(--bg2)' : 'transparent', borderLeft: active ? '3px solid var(--brand)' : '3px solid transparent' }}>
-      <button onClick={onClick} style={{ display: 'flex', gap: 8, alignItems: 'center', flex: 1, minWidth: 0, textAlign: 'left', background: 'transparent', border: 'none', padding: '10px 4px 10px 11px', cursor: 'pointer', color: 'var(--tx)' }}>
-        <span style={{ fontSize: 14 }}>{dm ? '👤' : '#'}</span>
-        <span style={{ flex: 1, minWidth: 0 }}>
-          <span style={{ fontSize: 13, fontWeight: c.unread ? 700 : 500, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</span>
-          {c.last && <span className="muted" style={{ fontSize: 11, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>{c.last.body || '📎'}</span>}
+    <div onClick={onClick} style={{ display: 'flex', gap: 11, alignItems: 'center', padding: '10px 12px', cursor: 'pointer', background: active ? 'var(--bg2)' : 'transparent', borderLeft: active ? '3px solid var(--brand)' : '3px solid transparent' }}>
+      <span style={{ position: 'relative', width: 42, height: 42, borderRadius: '50%', flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: c.isDm ? 14 : 19, fontWeight: 700, background: c.isDm ? av.bg : 'rgba(124,140,255,.14)', color: c.isDm ? av.fg : 'var(--soft-brand)' }}>
+        {c.isDm ? initials(c.display) : '#'}
+        {c.isDm && <span style={{ position: 'absolute', right: 0, bottom: 0, width: 11, height: 11, borderRadius: '50%', background: online ? 'var(--soft-green)' : 'var(--mut)', border: '2px solid var(--card)' }} />}
+      </span>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ display: 'flex', justifyContent: 'space-between', gap: 6 }}>
+          <span style={{ fontSize: 13.5, fontWeight: c.unread ? 700 : 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.display}</span>
+          <span style={{ fontSize: 11, color: c.unread ? 'var(--soft-brand)' : 'var(--mut)', flex: 'none' }}>{shortWhen(c.last?.created_at, en)}</span>
         </span>
-        {c.unread > 0 && <span style={{ background: 'var(--red)', color: '#fff', fontSize: 10, fontWeight: 700, minWidth: 16, height: 16, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>{c.unread}</span>}
-      </button>
-      <button onClick={onPop} title={popTitle} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--mut)', fontSize: 13, padding: '0 8px' }}>⧉</button>
+        <span style={{ display: 'flex', justifyContent: 'space-between', gap: 6, alignItems: 'center', marginTop: 1 }}>
+          <span className="muted" style={{ fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.last ? (c.last.body || (en ? '📎 attachment' : '📎 adjunto')) : (en ? 'No messages' : 'Sin mensajes')}</span>
+          {c.unread > 0 && <span style={{ background: 'var(--brand)', color: '#fff', fontSize: 10.5, fontWeight: 700, minWidth: 18, height: 18, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px', flex: 'none' }}>{c.unread}</span>}
+        </span>
+      </span>
     </div>
   );
 }
