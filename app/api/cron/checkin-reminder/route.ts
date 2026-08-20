@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { emitNotif, loadNotifConfig } from '@/lib/emitNotif';
+import { notify } from '@/lib/notify';
+import { alertUser } from '@/lib/telegram';
 import { logError } from '@/lib/errlog';
 
 export const dynamic = 'force-dynamic';
@@ -35,18 +36,23 @@ export async function GET(req: Request) {
     const langOf: Record<string, string> = {};
     (profs || []).forEach((p: any) => { langOf[p.id] = p.lang === 'es' ? 'es' : 'en'; });
 
-    // slot=evening → usa el recordatorio de tarde (tipo aparte, editable en Admin).
-    const slot = new URL(req.url).searchParams.get('slot');
-    const key = slot === 'evening' ? 'checkin_evening' : 'checkin';
-    // Config de notificaciones (textos + canales que dejó el dueño), una vez.
-    const cfg = await loadNotifConfig();
     let sent = 0;
     for (const uid of pending) {
-      // once por franja: si el cron se dispara dos veces en la misma franja, no reavisa.
-      await emitNotif(uid, key, { lang: langOf[uid], cfg, once: key });
+      const en = langOf[uid] === 'en';
+      await notify(uid, {
+        kind: 'info',
+        title: en ? '✅ Your daily check-in' : '✅ Tu check-in de hoy',
+        body: en ? 'Mark your habits to keep your streak alive.' : 'Marca tus hábitos para no perder tu racha.',
+        url: '/dashboard',
+      });
+      try {
+        await alertUser(uid, 'daily', en
+          ? '✅ <b>Daily check-in</b>\nMark today\'s habits in Onyx to keep your streak.'
+          : '✅ <b>Check-in de hoy</b>\nMarca tus hábitos en Onyx para mantener tu racha.');
+      } catch { /* sin Telegram vinculado, se ignora */ }
       sent++;
     }
-    return NextResponse.json({ ok: true, sent, slot: slot === 'evening' ? 'evening' : 'morning' });
+    return NextResponse.json({ ok: true, sent });
   } catch (e: any) {
     await logError('checkin_reminder', e);
     return NextResponse.json({ ok: false, error: e?.message || 'error' }, { status: 500 });

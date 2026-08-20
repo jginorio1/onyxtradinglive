@@ -24,16 +24,6 @@ function socialUrl(key: string, val: string): string {
   const map: Record<string, string> = { whatsapp: 'https://wa.me/' + v.replace(/[^\d]/g, ''), instagram: 'https://instagram.com/' + h, facebook: 'https://facebook.com/' + h, youtube: 'https://youtube.com/@' + h, tiktok: 'https://tiktok.com/@' + h, telegram: 'https://t.me/' + h, x: 'https://x.com/' + h };
   return map[key] || v;
 }
-// Formatea la fecha de reapertura SIN mezclar dateStyle/timeStyle con timeZoneName
-// (esa combinación lanza TypeError en toLocaleString). Usa opciones por componente
-// y nunca revienta: si algo falla, devuelve una cadena vacía.
-function fmtReopen(v: any, lang: string): string {
-  try {
-    const d = new Date(v);
-    if (isNaN(d.getTime())) return '';
-    return d.toLocaleString(lang === 'en' ? 'en-US' : 'es-ES', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-  } catch { return ''; }
-}
 function embed(url: string): string | null {
   if (!url) return null;
   const yt = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]{11})/);
@@ -46,10 +36,6 @@ function embed(url: string): string | null {
 export default function AcademiaPublic() {
   const { code } = useParams<{ code: string }>();
   const { lang } = useLang();
-  // Afiliado que trajo al prospecto (atribución). Leído del navegador para NO
-  // depender de useSearchParams (que exige <Suspense> y rompía la página).
-  const [ref, setRef] = useState('');
-  useEffect(() => { try { setRef(new URLSearchParams(window.location.search).get('ref') || ''); } catch {} }, []);
   const L = mkL(lang);
   const [a, setA] = useState<any>(null);
   const [state, setState] = useState<'loading' | 'ok' | 'missing'>('loading');
@@ -75,7 +61,7 @@ export default function AcademiaPublic() {
 
   const money = (cents: number, curr: string) => { const cur = (curr || 'usd').toUpperCase(); const sym = cur === 'USD' ? '$' : cur === 'EUR' ? '€' : ''; const amt = (cents / 100).toLocaleString(undefined, { minimumFractionDigits: cents % 100 ? 2 : 0, maximumFractionDigits: 2 }); return sym ? sym + amt : amt + ' ' + cur; };
   const tierPrice = (p: any) => money(p.price_cents, p.currency) + (p.kind === 'one_time' ? ' · ' + L('pago único', 'one-time') : '/' + (p.interval === 'year' ? L('año', 'yr') : L('mes', 'mo')));
-  const join = `/dashboard/academy?join=${code}` + (ref ? `&ref=${encodeURIComponent(ref)}` : '');
+  const join = `/dashboard/academy?join=${code}`;
 
   if (state === 'loading') return <div className="wrap" style={{ padding: '60px 22px' }}><p className="muted">…</p></div>;
   if (state === 'missing') return (
@@ -90,7 +76,8 @@ export default function AcademiaPublic() {
   const priceLabel = paid ? money(a.membership_price_cents, a.membership_currency) + '/' + (a.membership_interval === 'year' ? L('año', 'yr') : L('mes', 'mo')) : L('Gratis', 'Free');
   const hasYear = (a.membership_year_cents || 0) > 0;
   const yearLabel = hasYear ? money(a.membership_year_cents, a.membership_currency) + '/' + L('año', 'yr') : '';
-  const reviews = Array.isArray(a.reviews) ? a.reviews : [];
+  const reviews = a.reviews || [];
+  const totalFree = (a.modules || []).reduce((s: number, m: any) => s + m.freeCount, 0);
   const Stars = ({ n, size = 15 }: { n: number; size?: number }) => (
     <span style={{ display: 'inline-flex', gap: 1 }}>{[1, 2, 3, 4, 5].map((i) => <span key={i} style={{ color: i <= Math.round(n) ? 'var(--gold)' : 'var(--line)', fontSize: size, lineHeight: 1 }}>★</span>)}</span>
   );
@@ -131,7 +118,7 @@ export default function AcademiaPublic() {
         <div className="card" style={{ border: '1px solid color-mix(in srgb,var(--gold) 40%,transparent)', textAlign: 'center' }}>
           <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--gold)' }}>{L('Inscripciones cerradas', 'Enrollment closed')}</div>
           {a.subs_closed_note && <div className="muted" style={{ fontSize: 13.5, marginTop: 4 }}>{a.subs_closed_note}</div>}
-          {a.subs_reopen_at && <div style={{ marginTop: 8, fontSize: 14 }}>{L('Reabre el', 'Reopens on')} <b>{fmtReopen(a.subs_reopen_at, lang)}</b> <span style={{ opacity: .7 }}>({L('tu hora', 'your time')})</span></div>}
+          {a.subs_reopen_at && <div style={{ marginTop: 8, fontSize: 14 }}>{L('Reabre el', 'Reopens on')} <b>{new Date(a.subs_reopen_at).toLocaleString(lang === 'en' ? 'en-US' : 'es-ES', { dateStyle: 'medium', timeStyle: 'short', timeZoneName: 'short' })}</b> <span style={{ opacity: .7 }}>({L('tu hora', 'your time')})</span></div>}
           <Link className="btn btn-primary" href={join} style={{ fontSize: 15, padding: '11px 24px', marginTop: 12 }}>{L('Avísame cuando reabra', 'Notify me when it reopens')}</Link>
         </div>
       ) : (<>

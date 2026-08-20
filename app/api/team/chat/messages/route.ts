@@ -77,9 +77,8 @@ export async function POST(req: Request) {
     if (askedAI) {
       const question = body.replace(/@onyx( ai)?/ig, '').trim() || body;
       const lang = pickLang((prof as any)?.lang);
-      const tz = typeof b.tz === 'string' && b.tz ? b.tz : undefined; // zona horaria del admin
       // Onyx interno: responde con datos de conjunto (tickets, pendientes, historial de un cliente).
-      const answer = await onyxTeamAnswer({ question, lang: lang as any, tz });
+      const answer = await onyxTeamAnswer({ question, lang: lang as any });
       const { data: aiMsg } = await supabaseAdmin.from('chat_messages')
         .insert({ channel_id: channel, sender_id: null, sender_name: 'Onyx AI', body: answer, attachments: [], mentions: [] })
         .select('id,created_at,sender_id,sender_name,body,attachments,mentions,channel_id').single();

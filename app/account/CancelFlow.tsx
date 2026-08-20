@@ -1,6 +1,6 @@
 'use client';
 import { dictFor } from '@/lib/i18n';
-import { toast, confirmDialog } from '@/lib/toast';
+import { toast } from '@/lib/toast';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import { useEffect, useState } from 'react';
 import { errMsg } from '@/lib/i18nErrors';
@@ -168,7 +168,7 @@ export default function CancelFlow({ lang, canceling, planName, onDone, openTick
           ))}
 
           <div className="row" style={{ gap: 8, marginTop: 8 }}>
-            <button className="btn btn-danger" style={{ fontSize: 13 }} onClick={async () => { if (await confirmDialog(t.conf)) accept('cancel'); }} disabled={busy === 'cancel'}>{busy === 'cancel' ? '...' : t.anyway}</button>
+            <button className="btn btn-danger" style={{ fontSize: 13 }} onClick={() => { if (confirm(t.conf)) accept('cancel'); }} disabled={busy === 'cancel'}>{busy === 'cancel' ? '...' : t.anyway}</button>
             <button className="btn btn-ghost" onClick={() => setStep(0)}>{t.back}</button>
           </div>
         </>

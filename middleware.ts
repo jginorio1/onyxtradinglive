@@ -64,13 +64,9 @@ export async function middleware(req: NextRequest) {
     if (path === '/admin' || path.startsWith('/admin/')) {
       return new NextResponse(null, { status: 404 });
     }
-    // Conservamos pathname + query (p. ej. ?join=CODE de la academia de un mentor)
-    // para que, tras registrarse/entrar, el prospecto vuelva aquí y se auto-inscriba.
-    const dest = path + (req.nextUrl.search || '');
     const url = req.nextUrl.clone();
     url.pathname = '/login';
-    url.search = '';                       // limpiamos params heredados
-    url.searchParams.set('next', dest);    // para volver aquí (con su query) tras entrar
+    url.searchParams.set('next', path);   // para volver aquí tras entrar
     return NextResponse.redirect(url);
   }
 

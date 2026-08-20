@@ -6,9 +6,6 @@ import Link from 'next/link';
 import { errMsg } from '@/lib/i18nErrors';
 import PlansCompareTable from '@/app/PlansCompareTable';
 import EmbeddedCheckoutModal from '@/app/EmbeddedCheckoutModal';
-import OnyxIcon from '@/app/components/OnyxIcon';
-import PlanCards from '@/app/PlanCards';
-import { getPending } from '@/lib/pendingCheckout';
 
 type Plan = { id: string; name: string; name_en: string; desc_es: string | null; desc_en: string | null; price_month: number; price_year: number; max_accounts: number; features: string[]; features_en: string[]; badge: string | null; badge_en: string | null };
 type Lang = 'es' | 'en';
@@ -26,14 +23,14 @@ const DEFAULT_PLANS: Plan[] = [
     features: ['1 cuenta conectada', 'Estadísticas básicas', '30 días de historial'],
     features_en: ['1 connected account', 'Basic stats', '30 days of history'], badge: null, badge_en: null },
   { id: 'pro', name: 'Pro', name_en: 'Pro', desc_es: null, desc_en: null, price_month: 19, price_year: 190, max_accounts: 5,
-    features: ['5 cuentas conectadas', 'Onyx Guardian: freno de riesgo', 'Historial ilimitado y reglas de fondeo', 'Diario, costes y exportar CSV', 'Crea tu academia (Onyx Academy)'],
-    features_en: ['5 connected accounts', 'Onyx Guardian: risk brake', 'Unlimited history & funding rules', 'Journal, costs & CSV export', 'Build your academy (Onyx Academy)'], badge: 'Más popular', badge_en: 'Most popular' },
-  { id: 'elite', name: 'Elite', name_en: 'Elite', desc_es: null, desc_en: null, price_month: 79, price_year: 790, max_accounts: 999,
-    features: ['Cuentas ilimitadas', 'Copy trading (1 master · 5 esclavas)', 'Cierres parciales y bloqueo por noticias', 'Alertas e informe por Telegram', 'Soporte prioritario'],
-    features_en: ['Unlimited accounts', 'Copy trading (1 master · 5 slaves)', 'Partial closes & news blackout', 'Telegram alerts & report', 'Priority support'], badge: null, badge_en: null },
-  { id: 'black', name: 'Black Onyx', name_en: 'Black Onyx', desc_es: null, desc_en: null, price_month: 199, price_year: 1990, max_accounts: 999,
-    features: ['Copy trading ilimitado (masters y esclavas)', 'Todo sin límites', 'Soporte prioritario'],
-    features_en: ['Unlimited copy trading (masters & slaves)', 'Everything with no limits', 'Priority support'], badge: null, badge_en: null },
+    features: ['5 cuentas conectadas', 'Todas las estadísticas', 'Historial ilimitado', 'Calendario y gráficas', 'Reglas de fondeo'],
+    features_en: ['5 connected accounts', 'All stats', 'Unlimited history', 'Calendar & charts', 'Prop-firm rules'], badge: 'Más popular', badge_en: 'Most popular' },
+  { id: 'elite', name: 'Elite', name_en: 'Elite', desc_es: null, desc_en: null, price_month: 39, price_year: 390, max_accounts: 999,
+    features: ['Cuentas ilimitadas', 'Todo lo de Pro', 'Informes automáticos', 'Alertas por Telegram', 'Soporte prioritario'],
+    features_en: ['Unlimited accounts', 'Everything in Pro', 'Automatic reports', 'Telegram alerts', 'Priority support'], badge: null, badge_en: null },
+  { id: 'black', name: 'Black Onyx', name_en: 'Black Onyx', desc_es: null, desc_en: null, price_month: 99, price_year: 990, max_accounts: 999,
+    features: ['Todo ilimitado', 'Copy trading ilimitado', 'Onyx Guardian completo', 'Academia + Telegram', 'Soporte prioritario'],
+    features_en: ['Everything unlimited', 'Unlimited copy trading', 'Full Onyx Guardian', 'Academy + Telegram', 'Priority support'], badge: null, badge_en: null },
 ];
 
 
@@ -66,29 +63,18 @@ export default function Pricing() {
 
   // Checkout embebido: se abre dentro de Onyx (mismo diseño), sin redirigir a Stripe.
   const [co, setCo] = useState<{ plan: string } | null>(null);
-  // Cupón del enlace ?promo=CODE (descuento "solo por enlace"). Se pasa al checkout.
-  const [promo, setPromo] = useState('');
-  useEffect(() => { if (typeof window !== 'undefined') setPromo((new URLSearchParams(window.location.search).get('promo') || '').replace(/[^a-z0-9_-]/gi, '').slice(0, 40)); }, []);
 
   // Si llegamos con ?plan=<id> (desde el landing de mentores tras registrarse),
   // abrimos el checkout de ese plan automáticamente. Solo una vez.
   const [autoTried, setAutoTried] = useState(false);
   useEffect(() => {
     if (autoTried || typeof window === 'undefined') return;
-    const qs = new URLSearchParams(window.location.search);
-    // Plan desde la URL o, como respaldo, la intención guardada en el navegador.
-    const pend = getPending();
-    const pid = ((qs.get('plan') || pend?.plan || '')).replace(/[^a-z0-9_-]/gi, '');
+    const pid = (new URLSearchParams(window.location.search).get('plan') || '').replace(/[^a-z0-9_-]/gi, '');
     if (!pid) return;
     const p = shown.find((x) => x.id === pid);
     if (!p) return;                                  // esperamos a que carguen los planes
-    const wantAnnual = qs.get('annual') === '1' || !!pend?.annual;  // periodo elegido antes del registro
-    if (wantAnnual && !annual) setAnnual(true);
     setAutoTried(true);
-    // La intención se limpia cuando el checkout ABRE de verdad (con sesión), dentro
-    // del modal. Así, si aquí faltara la sesión (recién confirmado el email) y el
-    // checkout devuelve 401, no la perdemos y el flujo de registro sigue vivo.
-    const price = wantAnnual ? p.price_year : p.price_month;
+    const price = annual ? p.price_year : p.price_month;
     if (price > 0) setCo({ plan: p.id });
   }, [plans, autoTried, annual]);
   async function subscribe(plan: string, price: number) {
@@ -108,8 +94,34 @@ export default function Pricing() {
           <button className="btn" style={{ borderRadius: 30, background: annual ? 'var(--grad)' : 'transparent', color: annual ? '#fff' : 'var(--mut)' }} onClick={() => setAnnual(true)}>{t.annual} · {t.save}</button>
         </div>
 
-        {/* Tarjetas (componente compartido con el landing) */}
-        <PlanCards plans={shown as any} lang={lang} annual={annual} loadingId={loading} onChoose={(id, price) => subscribe(id, price)} />
+        {/* Tarjetas */}
+        <div className="pricing-grid" style={{ textAlign: 'left', alignItems: 'start', display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', maxWidth: 760, margin: '0 auto' }}>
+          {shown.map((p, i) => {
+            const price = annual ? p.price_year : p.price_month;
+            const name = lang === 'es' ? p.name : (p.name_en || p.name);
+            const desc = lang === 'es' ? p.desc_es : (p.desc_en || p.desc_es);
+            const feats = (lang === 'es' ? p.features : (p.features_en?.length ? p.features_en : p.features)) || [];
+            const badge = lang === 'es' ? p.badge : (p.badge_en || p.badge);
+            const pop = !!badge;
+            const prev = shown[i - 1];
+            const prevName = prev ? (lang === 'es' ? prev.name : (prev.name_en || prev.name)) : '';
+            return (
+              <div key={p.id} className="card" style={pop ? { border: '2px solid var(--brand)', boxShadow: '0 0 30px rgba(124,140,255,.25)', position: 'relative' } : { position: 'relative' }}>
+                {pop && <span style={{ position: 'absolute', top: -13, left: '50%', transform: 'translateX(-50%)', background: 'var(--grad)', color: '#fff', fontSize: 11, fontWeight: 800, padding: '4px 14px', borderRadius: 20, whiteSpace: 'nowrap' }}>★ {badge}</span>}
+                <h3 style={{ marginTop: pop ? 6 : 0 }}>{name}</h3>
+                {desc && <p className="muted" style={{ fontSize: 13, marginTop: 4 }}>{desc}</p>}
+                <div style={{ fontSize: 40, fontWeight: 800, margin: '10px 0 4px' }}>${price}<span className="muted" style={{ fontSize: 15, fontWeight: 500 }}>/{annual ? t.yr : t.mo}</span></div>
+                <ul style={{ listStyle: 'none', margin: '16px 0' }}>
+                  {i > 0 && <li style={{ padding: '7px 0', color: 'var(--mut)', fontWeight: 700, fontSize: 13 }}>{t.allOf} {prevName}, {t.andMore}</li>}
+                  {feats.map((it, j) => <li key={j} style={{ padding: '7px 0', color: '#cdd3e0' }}><span style={{ color: 'var(--green)' }}>✓</span> {it}</li>)}
+                </ul>
+                <button className={'btn ' + (pop ? 'btn-primary' : 'btn-ghost')} style={{ width: '100%' }} onClick={() => subscribe(p.id, price)} disabled={loading === p.id}>
+                  {loading === p.id ? '...' : (price === 0 ? t.free : t.choose + ' ' + name)}
+                </button>
+              </div>
+            );
+          })}
+        </div>
 
         <p className="muted" style={{ textAlign: 'center', fontSize: 12.5, margin: '14px auto 0', maxWidth: 620 }}>➕ {t.addonNote}</p>
 
@@ -117,7 +129,7 @@ export default function Pricing() {
         <PlansCompareTable plans={shown as any} lang={lang} annual={annual} loadingId={loading}
           onChoose={(id, price) => subscribe(id, price)} />
       </div>
-      {co && <EmbeddedCheckoutModal plan={co.plan} annual={annual} lang={lang} coupon={promo} onClose={() => setCo(null)} />}
+      {co && <EmbeddedCheckoutModal plan={co.plan} annual={annual} lang={lang} onClose={() => setCo(null)} />}
     </>
   );
 }

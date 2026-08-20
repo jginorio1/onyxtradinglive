@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { stripe, priceIdForPlan } from '@/lib/stripe';
-import { resolveActiveDiscount } from '@/lib/promoDiscount';
 
 export async function POST(req: Request) {
   try {
@@ -10,15 +9,9 @@ export async function POST(req: Request) {
     const { data: { user } } = await sb.auth.getUser();
     if (!user) return NextResponse.json({ error: 'You must sign in to subscribe.', code: 'no_auth' }, { status: 401 });
 
-    const { plan, annual, embedded, coupon } = await req.json();
+    const { plan, annual, embedded } = await req.json();
     const priceId = await priceIdForPlan(plan, !!annual);
     if (!priceId) return NextResponse.json({ error: `Plan "${plan}" has no Stripe Price ID configured (${annual ? 'yearly' : 'monthly'}).`, code: 'no_price' }, { status: 400 });
-
-    // Descuento AUTOMÁTICO: cupón explícito del cliente (p. ej. embajador) o, si no,
-    // el de la barra activa. La misma lógica que usa el diagnóstico del admin.
-    const disc = await resolveActiveDiscount(stripe, typeof coupon === 'string' ? coupon : undefined);
-    const discountOpt: any = disc.discountOpt;
-    console.log('[checkout] descuento:', disc.reason, 'code=', disc.code, 'percent=', disc.percent, 'bar=', disc.barName);
 
     // La URL base debe ser absoluta; si falta o está mal, Stripe rechaza la sesión.
     let base = (process.env.NEXT_PUBLIC_APP_URL || '').trim().replace(/\/+$/, '');
@@ -41,7 +34,7 @@ export async function POST(req: Request) {
         ui_mode: 'embedded',
         customer,
         line_items: [{ price: priceId, quantity: 1 }],
-        ...discountOpt, // descuento auto (barra/embajador) o dejar pegar a mano
+        allow_promotion_codes: true,
         return_url: `${base}/dashboard?checkout=success`,
         metadata: { userId: user.id },
       } as any);
@@ -52,7 +45,7 @@ export async function POST(req: Request) {
       mode: 'subscription',
       customer,
       line_items: [{ price: priceId, quantity: 1 }],
-      ...discountOpt, // descuento auto (barra/embajador) o dejar pegar el cupón a mano
+      allow_promotion_codes: true, // deja usar el cupón del embajador
       success_url: `${base}/dashboard?checkout=success`,
       cancel_url: `${base}/pricing?checkout=cancel`,
       metadata: { userId: user.id },

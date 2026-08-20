@@ -137,7 +137,7 @@ export default function OnlineNow({
     <div aria-hidden="true" style={{
       position: 'fixed', left: 16, bottom: 'calc(16px + env(safe-area-inset-bottom, 0px))', zIndex: 60,
       display: 'flex', alignItems: 'center', gap: 11,
-      background: 'var(--card, #121829)', color: 'var(--tx, #e8ecff)', border: '1px solid var(--line)',
+      background: 'var(--card, #121829)', color: 'var(--text, #e8ecff)',
       borderRadius: 13, padding: '11px 34px 11px 14px', overflow: 'hidden',
       animation: 'onyxOnGlow 2.6s ease-in-out infinite',
     }}>

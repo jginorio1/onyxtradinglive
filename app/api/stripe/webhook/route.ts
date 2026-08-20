@@ -24,17 +24,14 @@ async function setByCustomer(customerId: string, fields: any) {
 async function applyPlanTransition(customerId: string, newPlan: string) {
   const { data: prof } = await supabaseAdmin.from('profiles')
     .select('id,plan,pending_plan').eq('stripe_customer_id', customerId).maybeSingle() as any;
-  // Pagó con tarjeta: la suscripción real manda. Limpiamos cualquier prueba de
-  // cortesía para que no la revierta el cron ni le salga el popup de "expiró".
-  const compClear = { comp_plan: null, comp_until: null, comp_warned: false, comp_expired_seen: true };
-  if (!prof) { await setByCustomer(customerId, { plan: newPlan, ...compClear }); return; }
+  if (!prof) { await setByCustomer(customerId, { plan: newPlan }); return; }
 
   const oldPlan = prof.plan;
   const rank = await planRank();
   const isDown = (rank[newPlan] ?? 0) < (rank[oldPlan] ?? 0);
 
   // Guardar el plan nuevo y, si era un downgrade programado que ya llegó, limpiar.
-  const fields: any = { plan: newPlan, ...compClear };
+  const fields: any = { plan: newPlan };
   if (prof.pending_plan === newPlan) {
     Object.assign(fields, { pending_plan: null, pending_plan_at: null, pending_schedule_id: null, pending_notified_3d: false, pending_keep: null });
   }
@@ -149,7 +146,6 @@ export async function POST(req: Request) {
           plan: await planFromPriceId(priceId),
           subscription_status: sub.status,
           stripe_subscription_id: sub.id,
-          comp_plan: null, comp_until: null, comp_warned: false, comp_expired_seen: true,   // fin de la prueba: pagó
         });
       }
     } else if (event.type === 'invoice.paid' || event.type === 'invoice.payment_succeeded') {

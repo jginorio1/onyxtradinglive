@@ -155,7 +155,6 @@ export default async function TopBar() {
 
             <NotifBell />
             <ThemeToggle />
-            <LangToggle compact />
             <TopBarMenu email={user.email || ''} initial={initial} isAdmin={isAdmin} t={t} />
           </div>
         ) : (

@@ -66,7 +66,7 @@ export const P2: any = {
 
     // --- Noticias ---
     newsT: 'Bloqueo por noticias', newsD: 'Evita operar alrededor de datos de alto impacto.',
-    impact: 'Qué noticias', iHigh: 'Solo alto impacto', iBoth: 'Alto y medio', iAll: 'Alto, medio y bajo',
+    impact: 'Qué noticias', iHigh: 'Solo alto impacto', iBoth: 'Alto y medio',
     before: 'Minutos antes', after: 'Minutos después',
     onlySym: 'Solo si afecta a la divisa del par', onlySymD: 'Si lo apagas, bloquea con cualquier noticia relevante.',
     newsWarn: 'El calendario viene de un proveedor externo. Puede fallar o mover una hora sin avisar. No lo uses como única protección.',
@@ -129,7 +129,7 @@ export const P2: any = {
     zero: '0 = no limit',
 
     newsT: 'News blackout', newsD: 'Avoid trading around high-impact releases.',
-    impact: 'Which news', iHigh: 'High impact only', iBoth: 'High and medium', iAll: 'High, medium and low',
+    impact: 'Which news', iHigh: 'High impact only', iBoth: 'High and medium',
     before: 'Minutes before', after: 'Minutes after',
     onlySym: 'Only if it affects the pair currency', onlySymD: 'Turn it off to block on any relevant release.',
     newsWarn: 'The calendar comes from an external provider. It can fail or shift a time without notice. Do not rely on it alone.',
@@ -480,7 +480,6 @@ export function NewsTab({ cfg, set, t, canNews, advLabel }: any) {
           <div className="row" style={{ gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
             <button className={'btn ' + (n.impact === 'high' ? 'btn-primary' : 'btn-ghost')} style={{ padding: '6px 12px' }} onClick={() => set('news.impact', 'high')}>{t.iHigh}</button>
             <button className={'btn ' + (n.impact === 'high_medium' ? 'btn-primary' : 'btn-ghost')} style={{ padding: '6px 12px' }} onClick={() => set('news.impact', 'high_medium')}>{t.iBoth}</button>
-            <button className={'btn ' + (n.impact === 'high_medium_low' ? 'btn-primary' : 'btn-ghost')} style={{ padding: '6px 12px' }} onClick={() => set('news.impact', 'high_medium_low')}>{t.iAll}</button>
           </div>
 
           <div className="row" style={{ gap: 18, flexWrap: 'wrap', marginBottom: 16 }}>

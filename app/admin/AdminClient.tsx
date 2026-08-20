@@ -1,56 +1,44 @@
 'use client';
-import { toast, toastErr, confirmDialog } from '@/lib/toast';
+import { toast, toastErr } from '@/lib/toast';
 import { fmtDate, fmtDateTime } from '@/lib/fmtDate';
 import { useEffect, useMemo, useState, Fragment } from 'react';
 import Link from 'next/link';
-import dynamic from 'next/dynamic';
-// Eager (ligeros o parte de la cáscara: se ven siempre o son modales).
+import Ambassadors from './Ambassadors';
+import Retention from './Retention';
 import Addons from './Addons';
 import CleanSignups from './CleanSignups';
 import UserDrawer from './UserDrawer';
 import { describeLog, CAT_STYLE } from '@/lib/logFormat';
 import ConfirmNote from './ConfirmNote';
+import Emails from './Emails';
+import Campaigns from './Campaigns';
+import SeoPanel from './SeoPanel';
+import TestConsole from './TestConsole';
+import Firms from './Firms';
+import CatalogAdmin from './CatalogAdmin';
+import SupportInbox from './SupportInbox';
+import Diagnostics from './Diagnostics';
+import Resources from './Resources';
+import KbEditor from './KbEditor';
+import BlogEditor from './BlogEditor';
+import Backups from './Backups';
+import Audit from './Audit';
+import Optimize from './Optimize';
 import AdminLock from './AdminLock';
+import Revenue from './Revenue';
+import Finanzas from './Finanzas';
+import AcademyAdmin from './AcademyAdmin';
+import Facturacion from './Facturacion';
 import OnyxIcon from '@/app/components/OnyxIcon';
-import NavSelect from '@/app/components/NavSelect';
+import LandingBuilder from './LandingBuilder';
 import EnvSwitch from './EnvSwitch';
 import ChatWidgetEditor from './ChatWidgetEditor';
 import EmailTemplatesControl from './EmailTemplatesControl';
 import OnlineNowControl from './OnlineNowControl';
 import AdminLeadAlert from './AdminLeadAlert';
+import TeamChat from './TeamChat';
 import BackupCodes from './BackupCodes';
 import RangeBar, { type Range, defaultRange } from './RangeBar';
-
-// Paneles PESADOS: se cargan SOLO al abrir su pestaña (code-splitting). Reduce
-// mucho el JavaScript inicial del panel → hidrata rápido y el primer clic responde.
-// next/dynamic exige que las OPCIONES sean un objeto literal en la misma llamada
-// (si no, el build de Next falla). Por eso el { ssr, loading } va en línea abajo;
-// el placeholder sí puede ser una función con nombre reutilizada.
-const tabLoad = () => <div className="muted" style={{ padding: '32px 0', textAlign: 'center', fontSize: 13 }}>…</div>;
-const Ambassadors = dynamic(() => import('./Ambassadors'), { ssr: false, loading: tabLoad });
-const Retention = dynamic(() => import('./Retention'), { ssr: false, loading: tabLoad });
-const Emails = dynamic(() => import('./Emails'), { ssr: false, loading: tabLoad });
-const Campaigns = dynamic(() => import('./Campaigns'), { ssr: false, loading: tabLoad });
-const SeoPanel = dynamic(() => import('./SeoPanel'), { ssr: false, loading: tabLoad });
-const TestConsole = dynamic(() => import('./TestConsole'), { ssr: false, loading: tabLoad });
-const Firms = dynamic(() => import('./Firms'), { ssr: false, loading: tabLoad });
-const CatalogAdmin = dynamic(() => import('./CatalogAdmin'), { ssr: false, loading: tabLoad });
-const SupportInbox = dynamic(() => import('./SupportInbox'), { ssr: false, loading: tabLoad });
-const Diagnostics = dynamic(() => import('./Diagnostics'), { ssr: false, loading: tabLoad });
-const Resources = dynamic(() => import('./Resources'), { ssr: false, loading: tabLoad });
-const KbEditor = dynamic(() => import('./KbEditor'), { ssr: false, loading: tabLoad });
-const BlogEditor = dynamic(() => import('./BlogEditor'), { ssr: false, loading: tabLoad });
-const Backups = dynamic(() => import('./Backups'), { ssr: false, loading: tabLoad });
-const Audit = dynamic(() => import('./Audit'), { ssr: false, loading: tabLoad });
-const Optimize = dynamic(() => import('./Optimize'), { ssr: false, loading: tabLoad });
-const Revenue = dynamic(() => import('./Revenue'), { ssr: false, loading: tabLoad });
-const Finanzas = dynamic(() => import('./Finanzas'), { ssr: false, loading: tabLoad });
-const AcademyAdmin = dynamic(() => import('./AcademyAdmin'), { ssr: false, loading: tabLoad });
-const Facturacion = dynamic(() => import('./Facturacion'), { ssr: false, loading: tabLoad });
-const LandingBuilder = dynamic(() => import('./LandingBuilder'), { ssr: false, loading: tabLoad });
-const NotifAdmin = dynamic(() => import('./NotifAdmin'), { ssr: false, loading: tabLoad });
-const GuideEditor = dynamic(() => import('./GuideEditor'), { ssr: false, loading: tabLoad });
-const TeamChat = dynamic(() => import('./TeamChat'), { ssr: false, loading: tabLoad });
 import { AREAS, effectivePerms } from '@/lib/perms';
 import { useT } from '@/lib/adminText';
 import { useLang } from '@/lib/lang';
@@ -59,7 +47,7 @@ import { blankPromo, newId, THEMES, pickActiveBar } from '@/lib/promo';
 type Plan = { id: string; name: string; name_en: string; desc_es: string | null; desc_en: string | null; price_month: number; price_year: number; stripe_price_id: string | null; stripe_price_id_year: string | null; max_accounts: number; features: string[]; features_en: string[]; badge: string | null; badge_en: string | null; active: boolean; sort: number; capabilities: any };
 type User = { id: string; email: string; full_name?: string | null; plan: string; subscription_status: string | null; banned: boolean; is_admin: boolean; created_at: string; accounts: number; lastSync: string | null; email_confirmed?: boolean };
 type Team = { id: string; email: string; role: string | null; is_admin: boolean; perms?: any; available?: boolean; last_active?: string | null };
-type Tab = 'resumen' | 'facturacion' | 'ingresos' | 'finanzas' | 'academy' | 'usuarios' | 'correos' | 'campanas' | 'blog' | 'seo' | 'planes' | 'landing' | 'equipo' | 'embajadores' | 'retencion' | 'pruebas' | 'firms' | 'catalogos' | 'modulos' | 'soporte' | 'chat' | 'kb' | 'diag' | 'recursos' | 'backups' | 'audit' | 'optim' | 'notif' | 'guias' | 'ajustes';
+type Tab = 'resumen' | 'facturacion' | 'ingresos' | 'finanzas' | 'academy' | 'usuarios' | 'correos' | 'campanas' | 'blog' | 'seo' | 'planes' | 'landing' | 'equipo' | 'embajadores' | 'retencion' | 'pruebas' | 'firms' | 'catalogos' | 'modulos' | 'soporte' | 'chat' | 'kb' | 'diag' | 'recursos' | 'backups' | 'audit' | 'optim' | 'ajustes';
 
 const CAPS: string[] = ['journal', 'compare', 'funding', 'costs', 'export', 'reports', 'telegram', 'manager', 'manager_advanced', 'manager_news', 'copy', 'tv', 'algo', 'expenses', 'coach', 'academy'];
 const CAP_FALLBACK: Record<string, string> = { tv: 'TradingView (señales → EA)' };
@@ -89,38 +77,7 @@ function PromoControl() {
   const [pct, setPct] = useState<Record<string, string>>({});
   const [cpMsg, setCpMsg] = useState<Record<string, string>>({});
   const [cpBusy, setCpBusy] = useState('');
-  const [codes, setCodes] = useState<any[]>([]);     // cupones ACTIVOS en Stripe
-  const [codesBusy, setCodesBusy] = useState(false);
-  const [codesErr, setCodesErr] = useState('');
-  const [flags, setFlags] = useState<{ letCustomerCoupon: boolean }>({ letCustomerCoupon: false });
-  const [testCode, setTestCode] = useState('');      // código a simular (modo enlace)
-  const loadCodes = () => {
-    setCodesBusy(true); setCodesErr('');
-    fetch('/api/admin/promo/coupon').then((r) => r.json()).then((d) => { if (d.error) setCodesErr(d.error); setCodes(d.codes || []); }).catch(() => setCodesErr('Error')).finally(() => setCodesBusy(false));
-  };
-  // Diagnóstico: ejecuta la MISMA lógica del checkout y explica el resultado.
-  const [check, setCheck] = useState<{ ok: boolean; text: string } | null>(null);
-  const [checkBusy, setCheckBusy] = useState(false);
-  const runCheck = () => {
-    setCheckBusy(true); setCheck(null);
-    const tc = testCode.trim();
-    fetch('/api/admin/promo/coupon?check=1' + (tc ? '&code=' + encodeURIComponent(tc) : '')).then((r) => r.json()).then((d) => {
-      const c = d.check || {};
-      const reasons: Record<string, string> = {
-        promotion_code: L(`✓ Se aplicará ${c.code} (−${c.percent}%) automáticamente en el checkout.`, `✓ ${c.code} (−${c.percent}%) will auto-apply at checkout.`),
-        coupon: L(`✓ Se aplicará el cupón ${c.code} (−${c.percent}%) automáticamente.`, `✓ Coupon ${c.code} (−${c.percent}%) will auto-apply.`),
-        no_bars: L('No hay ninguna barra creada.', 'No bars created.'),
-        no_active_bar: L('No hay ninguna barra activa ahora (revisa encendido y fechas).', 'No bar is active right now (check ON + dates).'),
-        active_bar_without_coupon: L('La barra activa no tiene cupón en el campo "Cupón (copiable)".', 'The active bar has no coupon in the "Coupon" field.'),
-        not_in_stripe: L(`El código "${c.code}" NO existe activo en Stripe. Pulsa "Crear/validar en Stripe" en la barra.`, `Code "${c.code}" is NOT active in Stripe. Press "Create/validate in Stripe" on the bar.`),
-        manual: L('No hay descuento automático: se mostrará el campo manual para pegar un cupón.', 'No auto discount: the manual code field will be shown.'),
-        let_customer_coupon: L('Configurado para dejar el cupón manual (el cliente pega el suyo).', 'Configured to show the manual field (customer pastes their own).'),
-      };
-      const text = reasons[c.reason] || (String(c.reason || '').startsWith('stripe_error') ? L('Error de Stripe: ', 'Stripe error: ') + c.reason : L('Resultado: ', 'Result: ') + (c.reason || '—'));
-      setCheck({ ok: !!c.applies, text });
-    }).catch(() => setCheck({ ok: false, text: 'Error' })).finally(() => setCheckBusy(false));
-  };
-  useEffect(() => { fetch('/api/admin/promo').then((r) => r.json()).then((d) => { setBars(d.bars || []); setStats(d.stats || {}); if (d.flags) setFlags(d.flags); }).catch(() => {}); loadCodes(); }, []);
+  useEffect(() => { fetch('/api/admin/promo').then((r) => r.json()).then((d) => { setBars(d.bars || []); setStats(d.stats || {}); }).catch(() => {}); }, []);
 
   const upd = (id: string, k: string, v: any) => setBars((bs) => bs.map((b) => (b.id === id ? { ...b, [k]: v } : b)));
   const addBar = (patch: any = {}) => { const nb = { ...blankPromo(), id: newId(), ...patch }; setBars((bs) => [...bs, nb]); setOpenId(nb.id); };
@@ -131,9 +88,9 @@ function PromoControl() {
   async function save(extra?: any) {
     setBusy(true); setMsg('');
     try {
-      const r = await fetch('/api/admin/promo', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ bars, flags, ...(extra || {}) }) });
+      const r = await fetch('/api/admin/promo', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ bars, ...(extra || {}) }) });
       const d = await r.json();
-      if (!r.ok) setMsg(d.error || 'Error'); else { setBars(d.bars || []); setStats(d.stats || {}); if (d.flags) setFlags(d.flags); setMsg(t.pr_saved); }
+      if (!r.ok) setMsg(d.error || 'Error'); else { setBars(d.bars || []); setStats(d.stats || {}); setMsg(t.pr_saved); }
     } finally { setBusy(false); }
   }
   // Crea o valida el cupón en Stripe para que el descuento se aplique solo.
@@ -148,7 +105,6 @@ function PromoControl() {
       else if (d.created) setCpMsg((m) => ({ ...m, [b.id]: L(`✓ Creado en Stripe (−${d.percent}%)`, `✓ Created in Stripe (−${d.percent}%)`) }));
       else if (d.existed) setCpMsg((m) => ({ ...m, [b.id]: L(`✓ Ya existe en Stripe${d.percent ? ` (−${d.percent}%)` : ''}`, `✓ Already in Stripe${d.percent ? ` (−${d.percent}%)` : ''}`) }));
       else setCpMsg((m) => ({ ...m, [b.id]: L('No existe. Pon el % y créalo.', "Doesn't exist. Set % and create it.") }));
-      if (r.ok) loadCodes(); // refresca la lista de cupones activos
     } finally { setCpBusy(''); }
   }
 
@@ -177,22 +133,6 @@ function PromoControl() {
         </span>
       </div>
       <p className="muted" style={{ fontSize: 13, marginBottom: 8 }}>{L('Programa varias barras por temporada. El sitio muestra sola la que toca por fecha.', 'Schedule several bars by season. The site shows the one that fits the date automatically.')}</p>
-
-      {/* Diagnóstico del descuento automático (misma lógica que el checkout) */}
-      <div style={{ marginBottom: 10, padding: 10, border: '1px dashed var(--line)', borderRadius: 10 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <button className="btn btn-ghost" style={{ fontSize: 12.5 }} disabled={checkBusy} onClick={runCheck}>{checkBusy ? '…' : '🔎 ' + L('Probar descuento', 'Test discount')}</button>
-          <input value={testCode} onChange={(e) => setTestCode(e.target.value.toUpperCase())} placeholder={L('código de enlace (opcional)', 'link code (optional)')} style={{ ...inp, width: 200, marginTop: 0 }} />
-        </div>
-        {check && <div style={{ fontSize: 12.5, marginTop: 8, color: check.ok ? 'var(--soft-green)' : 'var(--amber)' }}>{check.text}</div>}
-        {!check && <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>{L('Comprueba qué se aplicará en el pago. Escribe un código para simular un enlace ?promo=', 'Checks what will apply at checkout. Type a code to simulate a ?promo= link.')}</div>}
-
-        {/* Flag global de prioridad */}
-        <label className="row" style={{ gap: 8, marginTop: 10, fontSize: 12.5, alignItems: 'flex-start', cursor: 'pointer' }}>
-          <input type="checkbox" checked={!!flags.letCustomerCoupon} onChange={(e) => setFlags({ letCustomerCoupon: e.target.checked })} style={{ width: 'auto', margin: '2px 0 0' }} />
-          <span>{L('Dejar que el cliente use su propio cupón aunque haya promo (muestra el campo manual en vez de forzar la promo). Guarda para aplicar.', "Let customers use their own coupon even during a promo (shows the manual field instead of forcing the promo). Save to apply.")}</span>
-        </label>
-      </div>
 
       {/* Biblioteca de temas */}
       <div style={{ marginBottom: 10 }}>
@@ -257,51 +197,6 @@ function PromoControl() {
                       <button className="btn btn-ghost" style={{ fontSize: 12.5 }} disabled={cpBusy === b.id} onClick={() => stripeCoupon(b)}>{cpBusy === b.id ? '…' : L('Crear/validar en Stripe', 'Create/validate in Stripe')}</button>
                     </div>
                     {cpMsg[b.id] && <div style={{ fontSize: 12, marginTop: 6, color: cpMsg[b.id].startsWith('✓') ? 'var(--soft-green)' : 'var(--amber)' }}>{cpMsg[b.id]}</div>}
-
-                    {/* Modo de aplicación del descuento */}
-                    <div style={{ marginTop: 10 }}>
-                      <label className="muted" style={{ fontSize: 12 }}>{L('Aplicar el descuento a', 'Apply the discount to')}
-                        <select value={b.mode || 'auto'} onChange={(e) => upd(b.id, 'mode', e.target.value)} style={inp}>
-                          <option value="auto">{L('Todos automáticamente (durante la promo)', 'Everyone automatically (during the promo)')}</option>
-                          <option value="link">{L('Solo por enlace (?promo=)', 'Only via link (?promo=)')}</option>
-                        </select>
-                      </label>
-                      {(b.mode || 'auto') === 'link' && b.coupon && (
-                        <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                          <code style={{ fontSize: 11.5, background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 6, padding: '5px 8px', wordBreak: 'break-all' }}>
-                            {(typeof window !== 'undefined' ? window.location.origin : '') + '/pricing?promo=' + b.coupon}
-                          </code>
-                          <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => { try { navigator.clipboard.writeText((typeof window !== 'undefined' ? window.location.origin : '') + '/pricing?promo=' + b.coupon); } catch {} }}>{L('Copiar enlace', 'Copy link')}</button>
-                        </div>
-                      )}
-                    </div>
-                    {/* Cupones ACTIVOS en Stripe — visibles aquí mismo. Clic = rellena esta barra. */}
-                    <div style={{ marginTop: 10, borderTop: '1px dashed var(--line)', paddingTop: 8 }}>
-                      <div className="row between" style={{ alignItems: 'center', marginBottom: 6 }}>
-                        <span className="muted" style={{ fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.4px' }}>🎟 {L('Códigos activos en Stripe', 'Active codes in Stripe')}</span>
-                        <button className="btn btn-ghost" style={{ padding: '3px 8px', fontSize: 11.5 }} disabled={codesBusy} onClick={loadCodes}>{codesBusy ? '…' : L('↻ Actualizar', '↻ Refresh')}</button>
-                      </div>
-                      {codesErr && <div style={{ fontSize: 11.5, color: 'var(--amber)' }}>{codesErr}</div>}
-                      {!codesErr && !codes.length && <div className="muted" style={{ fontSize: 11.5 }}>{codesBusy ? L('Cargando…', 'Loading…') : L('Aún no hay cupones activos.', 'No active coupons yet.')}</div>}
-                      {!!codes.length && (
-                        <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-                          {codes.map((c: any) => {
-                            const off = c.percent != null ? `−${c.percent}%` : (c.amountOff != null ? `−${c.amountOff}${(c.currency || '').toUpperCase()}` : '');
-                            const exp = c.expiresAt && c.expiresAt <= now;
-                            return (
-                              <button key={c.code} type="button" title={L('Usar este código en esta barra', 'Use this code in this bar')}
-                                onClick={() => { upd(b.id, 'coupon', c.code); if (c.percent != null) setPct((m) => ({ ...m, [b.id]: String(c.percent) })); }}
-                                style={{ cursor: 'pointer', border: '1px solid var(--line)', background: 'var(--bg)', color: 'var(--tx)', borderRadius: 20, padding: '4px 10px', fontSize: 12, display: 'inline-flex', gap: 6, alignItems: 'center', opacity: exp ? 0.5 : 1 }}>
-                                <b style={{ letterSpacing: '.3px' }}>{c.code}</b>
-                                {off && <span style={{ color: 'var(--soft-green)', fontWeight: 700 }}>{off}</span>}
-                                {c.fromBar && <span title={L('Creado desde la barra', 'Created from the bar')} style={{ fontSize: 10, color: 'var(--soft-brand)' }}>◆</span>}
-                                {exp && <span className="muted" style={{ fontSize: 10 }}>{L('venc.', 'exp.')}</span>}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
                     <label className="row" style={{ gap: 8, marginTop: 10, fontSize: 13, alignItems: 'center', cursor: 'pointer' }}>
                       <input type="checkbox" checked={!!b.newTab} onChange={(e) => upd(b.id, 'newTab', e.target.checked)} style={{ width: 'auto', margin: 0 }} /> {L('Abrir el enlace en pestaña nueva', 'Open link in a new tab')}
                     </label>
@@ -638,17 +533,6 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
   }
 
   async function userAction(id: string, action: string, value?: any, note?: string) { setBusy(id + action); const r = await fetch('/api/admin/users', { method: 'PATCH', body: JSON.stringify({ id, action, value, note }) }); const j = await r.json(); if (!r.ok) toastErr(j); await loadUsers(); setBusy(''); }
-  // Prueba de pago (cortesía): modal para elegir plan + días (1–90).
-  const [trialFor, setTrialFor] = useState<any>(null);
-  const [trialPlan, setTrialPlan] = useState<'pro' | 'elite' | 'black'>('pro');
-  const [trialDays, setTrialDays] = useState(30);
-  const grantTrial = (u: any) => { setTrialPlan((u.comp_plan as any) || 'pro'); setTrialDays(u.comp_days || 30); setTrialFor(u); };
-  async function confirmTrial() {
-    if (!trialFor) return;
-    const u = trialFor; setTrialFor(null);
-    await userAction(u.id, 'comp_grant', { plan: trialPlan, days: trialDays });
-    toast(lang === 'en' ? `Trial granted (${trialDays} days).` : `Prueba concedida (${trialDays} días).`);
-  }
   async function delUser(u: User) {
     setPendAct({ title: (lang === 'en' ? 'Delete ' : 'Borrar ') + u.email + (lang === 'en' ? ' and ALL their data?' : ' y TODOS sus datos?'), danger: true, run: async (note) => {
       setBusy(u.id + 'del'); const r = await fetch('/api/admin/users', { method: 'DELETE', body: JSON.stringify({ id: u.id, note }) }); const j = await r.json(); if (!r.ok) toastErr(j); await loadUsers(); setBusy('');
@@ -689,7 +573,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
     { g: t.g_op, items: [['resumen', '📊', t.nav_resumen], ['facturacion', '💳', lang === 'en' ? 'Billing' : 'Facturación'], ['usuarios', '👥', t.nav_usuarios], ['correos', '✉️', t.nav_correos], ['soporte', '🎫', t.nav_soporte], ['chat', '💬', lang === 'en' ? 'Team chat' : 'Chat equipo'], ['equipo', '🛡️', t.nav_equipo]] },
     { g: t.g_prod, items: [['planes', '💳', t.nav_planes], ['landing', '🧩', lang === 'en' ? 'Landing Builder' : 'Landing Builder'], ['modulos', '🧩', t.nav_modulos], ['firms', '🏛️', t.nav_firms], ['catalogos', '🗂️', lang === 'en' ? 'Catalogs' : 'Catálogos']] },
     { g: t.g_growth, items: [['campanas', '📣', lang === 'en' ? 'Campaigns' : 'Campañas'], ['blog', '📝', 'Blog'], ['seo', '🔎', 'SEO'], ['embajadores', '🎁', t.nav_embajadores], ['retencion', '🛟', t.nav_retencion]] },
-    { g: t.g_sys, items: [['notif', '🔔', lang === 'en' ? 'Notifications' : 'Notificaciones'], ['guias', '📚', lang === 'en' ? 'Guides' : 'Guías'], ['kb', '🧠', t.nav_kb], ['diag', '🩺', t.nav_diag], ['recursos', '📟', lang === 'en' ? 'Resources' : 'Recursos'], ['backups', '🗄️', t.nav_backups], ['audit', '📈', t.nav_audit], ['optim', '🚀', t.nav_optim], ['pruebas', '🧪', t.nav_pruebas], ['ajustes', '⚙️', t.nav_ajustes]] },
+    { g: t.g_sys, items: [['kb', '🧠', t.nav_kb], ['diag', '🩺', t.nav_diag], ['recursos', '📟', lang === 'en' ? 'Resources' : 'Recursos'], ['backups', '🗄️', t.nav_backups], ['audit', '📈', t.nav_audit], ['optim', '🚀', t.nav_optim], ['pruebas', '🧪', t.nav_pruebas], ['ajustes', '⚙️', t.nav_ajustes]] },
   ];
   const groups = NAV_GROUPS.map((gr) => ({ ...gr, items: gr.items.filter(([k]) => canSee(k)) })).filter((gr) => gr.items.length);
   const flatNav = groups.flatMap((gr) => gr.items);
@@ -740,12 +624,14 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
               <button className="btn btn-ghost" style={{ flex: 1, minWidth: 120, fontSize: 12.5, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 6 }} onClick={() => { setPalQ(''); setPal(true); }}>🔎 {lang === 'en' ? 'Search' : 'Buscar'} <span style={{ opacity: .55, fontSize: 11 }}>⌘K</span></button>
               {(tab === 'blog' || tab === 'campanas') && <button className="btn btn-primary" style={{ fontSize: 12.5 }} onClick={() => window.dispatchEvent(new CustomEvent('admin-quick-create', { detail: tab }))}>＋ {tab === 'blog' ? (lang === 'en' ? 'Post' : 'Post') : (lang === 'en' ? 'Campaign' : 'Campaña')}</button>}
             </div>
-            {/* Móvil: menú propio con iconos (OnyxIcon) en cada fila y cerrado */}
-            <NavSelect
-              value={tab}
-              onChange={(v) => setTab(v as any)}
-              groups={groups.map((gr) => ({ label: gr.g, items: gr.items.map(([k, ic, label]) => ({ value: k, label, icon: ic, emoji: true, badge: navBadges[k]?.n })) }))}
-            />
+            {/* Móvil: selector agrupado (se adapta como el menú de arriba) */}
+            <select className="adminnav-mobile" value={tab} onChange={(e) => setTab(e.target.value)} style={{ margin: 0, width: '100%' }}>
+              {groups.map((gr) => (
+                <optgroup key={gr.g} label={gr.g}>
+                  {gr.items.map(([k, ic, label]) => <option key={k} value={k}>{`${ic}  ${label}`}</option>)}
+                </optgroup>
+              ))}
+            </select>
             <div className="adminnav-items adminnav-grouped">
               {groups.map((gr) => (
                 <div key={gr.g}>
@@ -880,9 +766,6 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                                       { ic: '✏️', label: lang === 'en' ? 'Edit name' : 'Editar nombre', on: () => { setMenuFor(null); const nn = window.prompt(lang === 'en' ? 'Full name for ' + u.email : 'Nombre para ' + u.email, u.full_name || ''); if (nn !== null) userAction(u.id, 'name', nn.trim()); } },
                                       ...(u.email_confirmed === false ? [{ ic: '✉️', label: lang === 'en' ? 'Resend confirmation' : 'Reenviar confirmación', on: async () => { setMenuFor(null); await userAction(u.id, 'resend_confirm'); toast(lang === 'en' ? 'Confirmation email sent.' : 'Correo de confirmación enviado.'); } }] : []),
                                       { ic: '🔑', label: lang === 'en' ? 'Reset password' : 'Restablecer contraseña', on: () => { setMenuFor(null); resetPass(u); } },
-                                      (u.comp_until && new Date(u.comp_until).getTime() > Date.now())
-                                        ? { ic: '⛔', label: lang === 'en' ? 'Remove paid trial' : 'Quitar prueba de pago', on: () => { setMenuFor(null); userAction(u.id, 'comp_revoke'); toast(lang === 'en' ? 'Trial removed.' : 'Prueba quitada.'); } }
-                                        : { ic: '🎁', label: lang === 'en' ? 'Give paid trial' : 'Dar prueba de pago', on: () => { setMenuFor(null); grantTrial(u); } },
                                       u.banned
                                         ? { ic: '✅', label: lang === 'en' ? 'Unban account' : 'Desbloquear cuenta', on: () => { setMenuFor(null); askAction((lang === 'en' ? 'Unban ' : 'Desbloquear ') + u.email, false, u.id, 'unban'); } }
                                         : { ic: '🚫', label: lang === 'en' ? 'Ban account' : 'Bloquear cuenta', on: () => { setMenuFor(null); askAction((lang === 'en' ? 'Ban ' : 'Bloquear ') + u.email, true, u.id, 'ban'); } },
@@ -903,32 +786,6 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                             </div>
                           </div></td>
                         </tr>
-                        {u.comp_until && new Date(u.comp_until).getTime() > Date.now() && (() => {
-                          const total = u.comp_days || 30;
-                          const left = Math.max(0, Math.ceil((new Date(u.comp_until).getTime() - Date.now()) / 864e5));
-                          const pct = Math.max(4, Math.min(100, Math.round((left / total) * 100)));
-                          const col = left <= 1 ? 'var(--red)' : left <= 5 ? 'var(--amber)' : 'var(--soft-green,var(--green))';
-                          const pn = plans.find((p) => p.id === u.comp_plan)?.name || u.comp_plan;
-                          return (
-                            <tr>
-                              <td colSpan={6} style={{ padding: '2px 12px 12px' }}>
-                                <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '8px 12px', maxWidth: 520 }}>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12.5, marginBottom: 6, gap: 8 }}>
-                                    <span className="muted">🎁 {lang === 'en' ? 'Trial' : 'Prueba'} {pn} · {total} {lang === 'en' ? 'days' : 'días'}</span>
-                                    <span style={{ fontWeight: 600, color: col, whiteSpace: 'nowrap' }}>{left === 0 ? (lang === 'en' ? 'Expired' : 'Vencida') : (lang === 'en' ? `${left} day(s) left` : `Quedan ${left} día(s)`)}</span>
-                                  </div>
-                                  <div style={{ height: 6, borderRadius: 6, background: 'var(--line)', overflow: 'hidden' }}>
-                                    <div style={{ height: '100%', width: pct + '%', background: col, borderRadius: 6 }} />
-                                  </div>
-                                  <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 6 }}>
-                                    <button className="btn btn-ghost" style={{ padding: '3px 9px', fontSize: 11.5 }} onClick={() => grantTrial(u)}>{lang === 'en' ? 'Extend' : 'Extender'}</button>
-                                    <button className="btn btn-ghost" style={{ padding: '3px 9px', fontSize: 11.5, color: 'var(--red)' }} onClick={() => { userAction(u.id, 'comp_revoke'); toast(lang === 'en' ? 'Trial removed.' : 'Prueba quitada.'); }}>{lang === 'en' ? 'Remove' : 'Quitar'}</button>
-                                  </div>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })()}
                         </Fragment>
                       ))}
                     </tbody>
@@ -979,65 +836,6 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                 </div>
               </div>
             )}
-            {/* Conceder prueba de pago: escoger plan + días (1–90) con presets y fecha fin */}
-            {trialFor && (() => {
-              const PLAN_IDS: Array<'pro' | 'elite' | 'black'> = ['pro', 'elite', 'black'];
-              const nameOf = (id: string) => plans.find((p) => p.id === id)?.name || id.charAt(0).toUpperCase() + id.slice(1);
-              const endDate = new Date(Date.now() + trialDays * 864e5);
-              const endStr = endDate.toLocaleDateString(lang === 'en' ? 'en-US' : 'es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
-              const presets = [7, 14, 30, 60, 90];
-              return (
-                <div onClick={() => setTrialFor(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(4,6,16,.62)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)', zIndex: 210, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-                  <div onClick={(e) => e.stopPropagation()} style={{ maxWidth: 460, width: '100%', borderRadius: 16, padding: '20px 22px',
-                    background: 'linear-gradient(180deg, color-mix(in srgb,var(--card) 92%, #fff 8%), var(--card))',
-                    border: '2px solid var(--brand)', boxShadow: '0 0 0 4px color-mix(in srgb,var(--brand) 16%,transparent), 0 24px 60px -18px var(--brand)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                      <span style={{ display: 'grid', placeItems: 'center', width: 34, height: 34, borderRadius: 10, flexShrink: 0, fontSize: 17, background: 'rgba(124,140,255,.18)' }}>🎁</span>
-                      <div style={{ fontWeight: 700, fontSize: 15.5 }}>{lang === 'en' ? 'Grant paid trial' : 'Dar prueba de pago'}</div>
-                    </div>
-                    <div className="muted" style={{ fontSize: 12.5, marginBottom: 14 }}>{trialFor.email}</div>
-
-                    <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{lang === 'en' ? 'Plan' : 'Plan'}</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 16 }}>
-                      {PLAN_IDS.map((id) => {
-                        const on = trialPlan === id;
-                        return (
-                          <button key={id} onClick={() => setTrialPlan(id)} style={{ cursor: 'pointer', padding: '10px 6px', borderRadius: 12, textAlign: 'center', fontWeight: 700, fontSize: 13,
-                            border: '2px solid ' + (on ? 'var(--brand)' : 'var(--line)'), color: on ? 'var(--tx)' : 'var(--muted)',
-                            background: on ? 'color-mix(in srgb,var(--brand) 16%,transparent)' : 'transparent' }}>{nameOf(id)}</button>
-                        );
-                      })}
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
-                      <span className="muted" style={{ fontSize: 12 }}>{lang === 'en' ? 'Duration' : 'Duración'}</span>
-                      <span style={{ fontWeight: 800, fontSize: 15, color: 'var(--brand)' }}>{trialDays} {lang === 'en' ? 'days' : 'días'}</span>
-                    </div>
-                    <input type="range" min={1} max={90} value={trialDays} onChange={(e) => setTrialDays(Number(e.target.value))} style={{ width: '100%', accentColor: 'var(--brand)', margin: '0 0 10px' }} />
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
-                      {presets.map((d) => {
-                        const on = trialDays === d;
-                        return (
-                          <button key={d} onClick={() => setTrialDays(d)} style={{ cursor: 'pointer', padding: '4px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600,
-                            border: '1px solid ' + (on ? 'var(--brand)' : 'var(--line)'), color: on ? 'var(--tx)' : 'var(--muted)',
-                            background: on ? 'color-mix(in srgb,var(--brand) 16%,transparent)' : 'transparent' }}>{d}{lang === 'en' ? 'd' : 'd'}</button>
-                        );
-                      })}
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderRadius: 10, background: 'var(--bg2)', border: '1px solid var(--line)', marginBottom: 16, fontSize: 12.5 }}>
-                      <span className="muted">{lang === 'en' ? 'Ends on' : 'Vence el'}</span>
-                      <span style={{ fontWeight: 700 }}>{endStr}</span>
-                    </div>
-
-                    <div className="row" style={{ gap: 8, justifyContent: 'flex-end' }}>
-                      <button className="btn btn-ghost" onClick={() => setTrialFor(null)}>{lang === 'en' ? 'Cancel' : 'Cancelar'}</button>
-                      <button className="btn btn-primary" onClick={confirmTrial}>{lang === 'en' ? 'Grant' : 'Conceder'}</button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
             {tab === 'planes' && <PlansTab plans={plans} reload={loadPlans} />}
             {tab === 'landing' && <LandingBuilder />}
             {tab === 'equipo' && <Equipo team={team} role={role} meEmail={meEmail} reload={loadTeam} canManage={role === 'owner' || perms.equipo === 'manage'} />}
@@ -1070,8 +868,6 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
             {tab === 'blog' && <BlogEditor />}
 
             {tab === 'diag' && <Diagnostics />}
-            {tab === 'notif' && <NotifAdmin lang={lang} />}
-            {tab === 'guias' && <GuideEditor lang={lang} />}
             {tab === 'recursos' && <Resources />}
 
             {tab === 'backups' && <Backups />}
@@ -1414,7 +1210,7 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
   async function add() { if (!email) return; setBusy(true); const r = await fetch('/api/admin/team', { method: 'POST', body: JSON.stringify({ email, role: newRole }) }); const j = await r.json(); setBusy(false); if (!r.ok) { toastErr(j); return; } setEmail(''); reload(); loadSec(); if (j.tempPin) toast((j.emailed ? t.t_addedEmailed : t.t_addedNoMail).replace('{pin}', j.tempPin)); }
   async function changeRole(id: string, r2: string) { const r = await fetch('/api/admin/team', { method: 'PATCH', body: JSON.stringify({ id, role: r2 }) }); const j = await r.json(); if (!r.ok) { toastErr(j); return; } reload(); }
   async function savePerm(id: string, area: string, level: string, current: any) { const perms = { ...(current || {}), [area]: level }; const r = await fetch('/api/admin/team', { method: 'PATCH', body: JSON.stringify({ id, perms }) }); const j = await r.json(); if (!r.ok) { toastErr(j); return; } reload(); }
-  async function remove(id: string) { if (!(await confirmDialog(lang === 'en' ? 'Remove admin access from this person?' : '¿Quitar acceso de administrador a esta persona?'))) return; const r = await fetch('/api/admin/team', { method: 'DELETE', body: JSON.stringify({ id }) }); const j = await r.json(); if (!r.ok) { toastErr(j); return; } reload(); }
+  async function remove(id: string) { if (!confirm(lang === 'en' ? 'Remove admin access from this person?' : '¿Quitar acceso de administrador a esta persona?')) return; const r = await fetch('/api/admin/team', { method: 'DELETE', body: JSON.stringify({ id }) }); const j = await r.json(); if (!r.ok) { toastErr(j); return; } reload(); }
   async function loadLog(member = '') { setLogMember(member); const r = await fetch('/api/admin/activity' + (member ? '?member=' + encodeURIComponent(member) : '')); const j = await r.json(); setLog(j.log || []); }
   useEffect(() => { loadLog(); }, []);
 

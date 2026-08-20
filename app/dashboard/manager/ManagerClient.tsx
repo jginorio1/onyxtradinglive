@@ -1,6 +1,6 @@
 'use client';
 import { dictFor } from '@/lib/i18n';
-import { toast, confirmDialog } from '@/lib/toast';
+import { toast } from '@/lib/toast';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import { useEffect, useMemo, useState } from 'react';
 import { useLang } from '@/lib/lang';
@@ -41,13 +41,8 @@ const T: any = {
 
     ptT: 'Take profits parciales', ptD: 'Cierra la posición por partes según avanza a tu favor.',
     lvlOn: 'Activo', lvlOff: 'Inactivo',
-    ptAt: 'Al llegar a', ptClose: 'Cierro', ptTotal: 'Total parciales', ptOver: 'Los TP no pueden pasar de 100%.',
+    ptAt: 'Al llegar a', ptClose: 'Cierro', ptTotal: 'Total cerrado', ptOver: 'La suma no puede pasar de 100%.',
     ptMinLot: 'Ojo: si tu operación es de 0.01 lotes, el bróker no deja partirla. Los parciales se saltarán.',
-    ptPctOf: '% del tamaño original de la posición',
-    rnName: 'Runner', rnD: 'El trozo final que dejas correr para capturar el movimiento grande.',
-    rnRide: 'Dejar correr con el trailing', rnRideD: 'No cierra en un nivel: se queda montado y lo protege el trailing.',
-    rnCloseHere: 'Cerrar el resto al llegar a', rnRest: 'El resto',
-    rnFull: 'Con esto no queda runner: los TP suman 100%.',
 
     qaT: 'Acciones rápidas', qaD: 'Se ejecutan en tu plataforma (MetaTrader o cTrader) en unos segundos.',
     qaBe: 'Poner SL en break even', qaHalf: 'Cerrar la mitad', qaProfit: 'Cerrar solo las ganadoras', qaAll: 'Cerrar todo',
@@ -87,13 +82,8 @@ const T: any = {
 
     ptT: 'Partial take profits', ptD: 'Closes the position in parts as it moves your way.',
     lvlOn: 'On', lvlOff: 'Off',
-    ptAt: 'When it reaches', ptClose: 'Close', ptTotal: 'Partials total', ptOver: 'TPs cannot exceed 100%.',
+    ptAt: 'When it reaches', ptClose: 'Close', ptTotal: 'Total closed', ptOver: 'The sum cannot exceed 100%.',
     ptMinLot: 'Heads up: with 0.01 lots your broker will not let it be split. Partials will be skipped.',
-    ptPctOf: '% of the original position size',
-    rnName: 'Runner', rnD: 'The final piece you let run to catch the big move.',
-    rnRide: 'Let it run with the trailing', rnRideD: "It doesn't close at a level: it stays on and the trailing protects it.",
-    rnCloseHere: 'Close the rest when it reaches', rnRest: 'The rest',
-    rnFull: 'No runner left here: your TPs add up to 100%.',
 
     qaT: 'Quick actions', qaD: 'They run in your platform (MetaTrader or cTrader) within seconds.',
     qaBe: 'Move SL to break even', qaHalf: 'Close half', qaProfit: 'Close winners only', qaAll: 'Close everything',
@@ -219,13 +209,7 @@ export default function ManagerClient() {
     const levels = cfg.partials.levels.map((l: any, ix: number) => (ix === i ? { ...l, [k]: v } : l));
     setCfg({ ...cfg, partials: { ...cfg.partials, levels } });
   };
-  // El último nivel es el RUNNER: no suma en "Total parciales" (cierra el resto).
-  const pLevels = (cfg?.partials?.levels || []);
-  const tpLevels = pLevels.slice(0, -1);              // TP1..TPn
-  const runnerIdx = pLevels.length - 1;
-  const runner = pLevels[runnerIdx];
-  const totalClose = tpLevels.filter((l: any) => l.on).reduce((s: number, l: any) => s + Number(l.close || 0), 0);
-  const runnerPct = Math.max(0, Math.min(100, 100 - totalClose));
+  const totalClose = (cfg?.partials?.levels || []).filter((l: any) => l.on).reduce((s: number, l: any) => s + Number(l.close || 0), 0);
 
   async function save() {
     setBusy('save'); setMsg('');
@@ -243,7 +227,7 @@ export default function ManagerClient() {
     router.refresh(); // refresca el punto verde del Guardian en la barra al instante
   }
   async function command(cmd: string) {
-    if (!(await confirmDialog(t.qaConfirm))) return;
+    if (!confirm(t.qaConfirm)) return;
     setBusy(cmd);
     const r = await fetch('/api/manager/command', { method: 'POST', body: JSON.stringify({ account_id: sel, command: cmd }) });
     const j = await r.json(); setBusy('');
@@ -458,9 +442,7 @@ export default function ManagerClient() {
 
           {advanced && cfg?.partials?.on && (
             <div style={{ borderTop: '1px solid var(--line)', paddingTop: 14 }}>
-              <div className="muted" style={{ fontSize: 12, marginBottom: 10 }}>{t.ptPctOf}</div>
-              {/* TP parciales (todos menos el último) */}
-              {tpLevels.map((l: any, i: number) => (
+              {cfg.partials.levels.map((l: any, i: number) => (
                 <div key={i} className="row" style={{ gap: 12, marginBottom: 8, flexWrap: 'wrap', alignItems: 'center', border: '1px solid var(--line)', borderRadius: 10, padding: '8px 12px' }}>
                   <div className="row" style={{ gap: 8, alignItems: 'center', minWidth: 120 }}>
                     <Toggle on={!!l.on} onClick={() => setLevel(i, 'on', !l.on)} />
@@ -471,36 +453,11 @@ export default function ManagerClient() {
                   <div><span style={lbl}>{t.ptClose}</span><UnitInput value={l.close} onChange={(v) => setLevel(i, 'close', v)} unit="%" width={110} /></div>
                 </div>
               ))}
-
-              {/* Runner: el último nivel. No lleva % propio, cierra "el resto". */}
-              {runner && (
-                <div className="row" style={{ gap: 12, marginBottom: 8, flexWrap: 'wrap', alignItems: 'center', border: '1px solid var(--brand)', borderRadius: 10, padding: '10px 12px', background: 'color-mix(in srgb,var(--brand) 7%,transparent)' }}>
-                  <div className="row" style={{ gap: 8, alignItems: 'center', minWidth: 130 }}>
-                    <Toggle on={!!runner.on} onClick={() => setLevel(runnerIdx, 'on', !runner.on)} />
-                    <b style={{ fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 5 }}><OnyxIcon emoji="🏃" size={15} /> {t.rnName}</b>
-                    <StateLabel on={!!runner.on} on1={t.lvlOn} off1={t.lvlOff} />
-                  </div>
-                  <div style={{ flex: '1 1 100%', order: 5 }}><span className="muted" style={{ fontSize: 12 }}>{t.rnD}</span></div>
-                  <div className="row" style={{ gap: 8, alignItems: 'center' }}>
-                    <Toggle on={runner.ride !== false} onClick={() => setLevel(runnerIdx, 'ride', !(runner.ride !== false))} />
-                    <span style={{ fontSize: 13 }}>{t.rnRide}</span>
-                  </div>
-                  {runner.ride !== false
-                    ? <div className="muted" style={{ fontSize: 12.5 }}>{t.rnRideD}</div>
-                    : <div><span style={lbl}>{t.rnCloseHere}</span><UnitInput value={runner.at} onChange={(v) => setLevel(runnerIdx, 'at', v)} unit={uShort} width={130} /></div>}
-                  <div style={{ marginLeft: 'auto' }}><span style={lbl}>{t.rnRest}</span><b style={{ fontSize: 15, color: 'var(--brand)' }}>{runnerPct}%</b></div>
-                </div>
-              )}
-
               <div className="row between" style={{ borderTop: '1px solid var(--line)', paddingTop: 10, marginTop: 6 }}>
                 <span className="muted" style={{ fontSize: 13 }}>{t.ptTotal}</span>
-                <span style={{ fontSize: 13 }}>
-                  <b style={{ color: totalClose > 100 ? 'var(--red)' : 'var(--tx)' }}>{totalClose}%</b>
-                  <span className="muted"> · {t.rnName} </span><b style={{ color: 'var(--brand)' }}>{runnerPct}%</b>
-                </span>
+                <b style={{ color: totalClose > 100 ? 'var(--red)' : 'var(--tx)' }}>{totalClose}%</b>
               </div>
               {totalClose > 100 && <div style={{ color: 'var(--red)', fontSize: 13, marginTop: 6 }}>{t.ptOver}</div>}
-              {totalClose === 100 && runner?.on && <div style={{ color: 'var(--amber)', fontSize: 12.5, marginTop: 6 }}>{t.rnFull}</div>}
               <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>{t.ptMinLot}</div>
             </div>
           )}

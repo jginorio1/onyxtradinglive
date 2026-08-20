@@ -1,13 +1,11 @@
 'use client';
 import { dictFor } from '@/lib/i18n';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useLang } from '@/lib/lang';
 import CountrySelect from '@/app/components/CountrySelect';
 import { useCatalog } from '@/lib/useCatalog';
-import { getPending, pendingPricingUrl } from '@/lib/pendingCheckout';
-import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 const T = {
   es: {
@@ -70,17 +68,6 @@ export default function Onboarding() {
   const [goal, setGoal] = useState('');
   const [busy, setBusy] = useState(false);
 
-  // Prefill del nombre con lo que puso en el registro (para no volver a pedírselo).
-  useEffect(() => {
-    (async () => {
-      try {
-        const { data } = await supabaseBrowser().auth.getUser();
-        const fn = (data?.user?.user_metadata as any)?.full_name;
-        if (fn) setName((v) => v || String(fn));
-      } catch {}
-    })();
-  }, []);
-
   async function finish(skip: boolean) {
     setBusy(true);
     try {
@@ -90,14 +77,6 @@ export default function Onboarding() {
       };
       await fetch('/api/onboarding', { method: 'POST', body: JSON.stringify(body) });
     } catch { /* aunque falle, no bloqueamos al usuario */ }
-    // ¿Venía a comprar un plan? Lo llevamos directo al checkout; si no, al panel.
-    // El plan puede venir por la URL (duradero, del correo) o del respaldo local.
-    const qs = new URLSearchParams(window.location.search);
-    const planUrl = (qs.get('plan') || '').replace(/[^a-z0-9_-]/gi, '');
-    const promoUrl = (qs.get('promo') || '').replace(/[^a-z0-9_-]/gi, '');
-    if (planUrl) { window.location.href = `/pricing?plan=${planUrl}${qs.get('annual') === '1' ? '&annual=1' : ''}${promoUrl ? `&promo=${promoUrl}` : ''}`; return; }
-    const pend = getPending();
-    if (pend) { window.location.href = pendingPricingUrl(pend); return; }
     router.push('/dashboard'); router.refresh();
   }
 

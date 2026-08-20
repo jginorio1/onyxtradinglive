@@ -2,7 +2,6 @@
 import { mkL } from '@/lib/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { useLang } from '@/lib/lang';
-import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Campana de mensajes del trader: badge con no leídas + nota sticky con pin.
 const ICON: Record<string, string> = { support: '💬', funding: '⚠️', manager: '🛡️', goal: '🎯', offline: '🔌', info: '🔔' };
@@ -14,15 +13,7 @@ export default function NotifBell() {
   const [pinned, setPinned] = useState(false);
   const [items, setItems] = useState<any[]>([]);
   const [unread, setUnread] = useState(0);
-  const [narrow, setNarrow] = useState(false);
   const box = useRef<HTMLDivElement>(null);
-
-  // En móvil fijamos el panel al viewport para que no se salga por la izquierda.
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width:520px)');
-    const upd = () => setNarrow(mq.matches);
-    upd(); mq.addEventListener('change', upd); return () => mq.removeEventListener('change', upd);
-  }, []);
 
   async function load() {
     try { const r = await fetch('/api/notifications'); const j = await r.json(); setItems(j.items || []); setUnread(j.unread || 0); } catch {}
@@ -48,17 +39,15 @@ export default function NotifBell() {
   return (
     <div ref={box} style={{ position: 'relative' }}>
       <button onClick={() => { const n = !open; setOpen(n); if (n && unread) markAll(); }} title={L('Mensajes', 'Messages')}
-        style={{ position: 'relative', background: 'transparent', border: 'none', cursor: 'pointer', lineHeight: 1, padding: 4, color: 'var(--tx)', display: 'inline-flex', alignItems: 'center' }}>
-        <OnyxIcon name="bell" size={19} />
+        style={{ position: 'relative', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 19, lineHeight: 1, padding: 4, color: 'var(--tx)' }}>
+        🔔
         {unread > 0 && <span style={{ position: 'absolute', top: -2, right: -2, background: 'var(--red)', color: '#fff', fontSize: 10, fontWeight: 700, minWidth: 16, height: 16, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>{unread > 9 ? '9+' : unread}</span>}
       </button>
 
       {open && (
-        <div style={narrow
-          ? { position: 'fixed', top: 62, left: 8, right: 8, width: 'auto', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, boxShadow: '0 12px 34px rgba(0,0,0,.35)', zIndex: 1000, overflow: 'hidden' }
-          : { position: 'absolute', top: 'calc(100% + 10px)', right: 0, width: 340, maxWidth: 'calc(100vw - 16px)', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, boxShadow: '0 12px 34px rgba(0,0,0,.35)', zIndex: 1000, overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: 'calc(100% + 10px)', right: 0, width: 340, maxWidth: '90vw', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, boxShadow: '0 12px 34px rgba(0,0,0,.35)', zIndex: 1000, overflow: 'hidden' }}>
           <div className="row between" style={{ padding: '11px 14px', borderBottom: '1px solid var(--line)' }}>
-            <b style={{ fontSize: 14, display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ display: 'inline-flex', color: 'var(--brand)' }}><OnyxIcon name="bell" size={16} /></span>{L('Mensajes', 'Messages')}</b>
+            <b style={{ fontSize: 14 }}>🔔 {L('Mensajes', 'Messages')}</b>
             <span className="row" style={{ gap: 10 }}>
               <button onClick={togglePin} title={L('Fijar', 'Pin')} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 15, color: pinned ? 'var(--soft-brand)' : 'var(--mut)' }}>📌</button>
               <button onClick={() => setOpen(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 15, color: 'var(--mut)' }}>✕</button>

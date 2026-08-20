@@ -1,5 +1,4 @@
 'use client';
-import { toast, confirmDialog } from '@/lib/toast';
 import { mkL } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 import OnyxIcon from '@/app/components/OnyxIcon';
@@ -52,7 +51,7 @@ export default function StudentBilling({ lang = 'es', mentorId }: { lang?: 'es' 
     setBusy(mid + action);
     const r = await fetch('/api/academy/billing', { method: 'POST', body: JSON.stringify({ action, mentor_id: mid }) });
     const j = await r.json(); setBusy('');
-    if (action === 'portal') { if (j.url) window.location.href = j.url; else toast(L('No se pudo abrir el portal de pago.', 'Could not open the billing portal.')); return; }
+    if (action === 'portal') { if (j.url) window.location.href = j.url; else alert(L('No se pudo abrir el portal de pago.', 'Could not open the billing portal.')); return; }
     await load();
   }
 

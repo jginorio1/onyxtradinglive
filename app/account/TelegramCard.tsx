@@ -44,12 +44,10 @@ const T: any = {
     reportHint: 'Recibe tu resumen, tu gráfico, tu PDF y tu CSV de operaciones directo en Telegram.',
     off: 'Los avisos generales están apagados. Enciéndelos arriba para recibir nada por Telegram.',
     saved: 'Guardado', test: 'Enviar prueba', testOk: 'Enviado ✓', testSending: '...',
-    testAcc: '🛡️ Probar aviso de cuenta', testAccSending: 'Enviando…', testAccOk: '✓ Enviado a tu Telegram', testAccNone: 'Enviado. Conecta una cuenta para ver su nombre.',
     rtestBtn: '📤 Enviarme un reporte de prueba ahora', rtestSending: 'Enviando…', rtestOk: '✓ Enviado a tu Telegram', rtestEmpty: 'Enviado, pero no tienes operaciones esta semana.',
     grpGuardian: 'Guardian', grpRisk: 'Riesgo y fondeo', grpSummary: 'Resúmenes', grpCopy: 'Copy trading',
     cmdsT: 'Comandos del bot',
-    cmdCuentas: 'Lista de tus cuentas con saldo y estado.',
-    cmdEstado: 'Resumen de tus últimas 24h, por cuenta, sin abrir la web.',
+    cmdEstado: 'Resumen de tus últimas 24h, sin abrir la web.',
     cmdInforme: 'Reporte de la semana con gráfico, PDF y CSV.',
     cmdMes: 'Reporte del mes con gráfico, PDF y CSV.',
     cmdCopy: 'Estado del copy: activo o pausado.',
@@ -90,12 +88,10 @@ const T: any = {
     reportHint: 'Get your summary, chart, PDF and trades CSV straight to Telegram.',
     off: 'General alerts are off. Turn them on above to receive anything on Telegram.',
     saved: 'Saved', test: 'Send a test', testOk: 'Sent ✓', testSending: '...',
-    testAcc: '🛡️ Test account alert', testAccSending: 'Sending…', testAccOk: '✓ Sent to your Telegram', testAccNone: 'Sent. Connect an account to see its name.',
     rtestBtn: '📤 Send me a test report now', rtestSending: 'Sending…', rtestOk: '✓ Sent to your Telegram', rtestEmpty: 'Sent, but you have no trades this week.',
     grpGuardian: 'Guardian', grpRisk: 'Risk and funding', grpSummary: 'Summaries', grpCopy: 'Copy trading',
     cmdsT: 'Bot commands',
-    cmdCuentas: 'List of your accounts with balance and status.',
-    cmdEstado: 'A summary of your last 24h, per account, without opening the web.',
+    cmdEstado: 'A summary of your last 24h, without opening the web.',
     cmdInforme: 'Week report with chart, PDF and CSV.',
     cmdMes: 'Month report with chart, PDF and CSV.',
     cmdCopy: 'Copy status: active or paused.',
@@ -185,16 +181,6 @@ export default function TelegramCard({ lang }: { lang: 'es' | 'en' }) {
     const r = await fetch('/api/account/telegram', { method: 'POST', body: JSON.stringify({ action: 'test' }) });
     setTested(r.ok ? 'ok' : ''); setTimeout(() => setTested(''), 2500);
   }
-  const [atest, setAtest] = useState('');
-  async function sendAccTest() {
-    setAtest('sending');
-    try {
-      const r = await fetch('/api/account/telegram', { method: 'POST', body: JSON.stringify({ action: 'test_account' }) });
-      const j = await r.json().catch(() => ({}));
-      setAtest(r.ok ? (j.accounts > 0 ? 'ok' : 'none') : '');
-    } catch { setAtest(''); }
-    setTimeout(() => setAtest(''), 3500);
-  }
   const [rtest, setRtest] = useState('');
   async function sendReportTest() {
     setRtest('sending');
@@ -277,19 +263,14 @@ export default function TelegramCard({ lang }: { lang: 'es' | 'en' }) {
                 <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={sendTest} disabled={tested === 'sending'}>
                   {tested === 'ok' ? t.testOk : tested === 'sending' ? t.testSending : t.test}
                 </button>
-                <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={sendAccTest} disabled={atest === 'sending'}>
-                  {atest === 'sending' ? t.testAccSending : t.testAcc}
-                </button>
                 {saved && <span style={{ color: 'var(--green)', fontSize: 12 }}>{t.saved}</span>}
               </div>
-              {atest === 'ok' && <div style={{ color: 'var(--green)', fontSize: 12.5, marginTop: 6 }}>{t.testAccOk}</div>}
-              {atest === 'none' && <div className="muted" style={{ fontSize: 12.5, marginTop: 6 }}>{t.testAccNone}</div>}
             </div>
 
             {/* Comandos del bot */}
             <div>
               <div style={{ fontSize: 13, marginBottom: 10 }}>{t.cmdsT}</div>
-              {([['/estado', t.cmdEstado], ['/cuentas', t.cmdCuentas], ['/report', t.cmdInforme], ['/mes', t.cmdMes], ['/copy', t.cmdCopy], ['/copyoff', t.cmdCopyOff], ['/copyon', t.cmdCopyOn], ['/stop', t.cmdStop]] as [string, string][]).map(([cmd, desc]) => (
+              {([['/estado', t.cmdEstado], ['/report', t.cmdInforme], ['/mes', t.cmdMes], ['/copy', t.cmdCopy], ['/copyoff', t.cmdCopyOff], ['/copyon', t.cmdCopyOn], ['/stop', t.cmdStop]] as [string, string][]).map(([cmd, desc]) => (
                 <div key={cmd} className="row" style={{ gap: 8, marginBottom: 9, alignItems: 'flex-start' }}>
                   <code style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 7, padding: '3px 9px', color: '#aeb7ff', fontSize: 12.5, flex: 'none' }}>{cmd}</code>
                   <span className="muted" style={{ fontSize: 12.5 }}>{desc}</span>

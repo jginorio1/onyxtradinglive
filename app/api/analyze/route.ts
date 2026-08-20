@@ -23,7 +23,7 @@ export async function POST(req: Request) {
         : (lang === 'en' ? "Couldn't analyze that. Try pasting your closed trades list." : 'No se pudo analizar. Prueba pegando tu lista de operaciones cerradas.');
       return NextResponse.json({ error: msg }, { status: 400 });
     }
-    return NextResponse.json({ ok: true, findings: r.findings, quickWin: r.quickWin, score: r.score, summary: r.summary, stats: r.stats });
+    return NextResponse.json({ ok: true, findings: r.findings });
   } catch (e: any) {
     await logError('analyze_post', e);
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });

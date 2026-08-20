@@ -65,7 +65,7 @@ export default function Costs({ trades, lang }: { trades: TT[]; lang: Lang }) {
   const icV = t.vsTitle.split(' ')[0], vsTx = t.vsTitle.split(' ').slice(1).join(' ');
 
   return (
-    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ maxWidth: 1040, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div className="card">
         <h3 style={{ marginBottom: 4, display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic"><OnyxIcon emoji={ic} size={16} /></span> {titleTx}</h3>
         <p className="muted" style={{ fontSize: 12, marginBottom: 12 }}>{t.note}</p>
@@ -82,38 +82,26 @@ export default function Costs({ trades, lang }: { trades: TT[]; lang: Lang }) {
         </div>
       </div>
 
-      <div className="grid g2" style={{ alignItems: 'stretch' }}>
-        <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
-          <h3 style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic"><OnyxIcon emoji={icV} size={16} /></span> {vsTx}</h3>
-          {/* Métricas grandes, mismo peso que Lot statistics */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
-            {[
-              { l: t.gross, v: money2(data.gross), c: data.gross >= 0 ? 'var(--green)' : 'var(--red)' },
-              { l: t.costs, v: money2(data.netCost), c: data.netCost >= 0 ? 'var(--green)' : 'var(--red)' },
-              { l: t.eaten, v: `${data.eaten}%`, c: 'var(--amber)' },
-              { l: t.net, v: money2(data.net), c: data.net >= 0 ? 'var(--green)' : 'var(--red)' },
-            ].map((m, i) => (
-              <div key={i} style={{ background: 'var(--bg2)', borderRadius: 12, padding: '12px 14px' }}>
-                <div className="muted" style={{ fontSize: 12 }}>{m.l}</div>
-                <div style={{ fontSize: 20, fontWeight: 800, color: m.c, marginTop: 2, letterSpacing: '-.3px' }}>{m.v}</div>
-              </div>
-            ))}
+      <div className="grid g2">
+        <div className="card">
+          <h3 style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic"><OnyxIcon emoji={icV} size={16} /></span> {vsTx}</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 14 }}>
+            <div className="row between"><span className="muted">{t.gross}</span><b className={cls(data.gross)}>{money2(data.gross)}</b></div>
+            <div className="row between"><span className="muted">{t.costs}</span><b className={cls(data.netCost)}>{money2(data.netCost)}</b></div>
+            <div className="row between"><span className="muted">{t.eaten}</span><b style={{ color: 'var(--amber)' }}>{data.eaten}%</b></div>
+            <div style={{ height: 8, background: 'var(--bg2)', borderRadius: 8, overflow: 'hidden' }}><div style={{ width: data.eaten + '%', height: '100%', borderRadius: 8, background: 'linear-gradient(90deg,var(--amber),var(--red))', boxShadow: '0 0 12px -2px rgba(255,107,125,.6)' }} /></div>
+            <div className="row between" style={{ marginTop: 4, paddingTop: 8, borderTop: '1px solid var(--line)' }}><span>{t.net}</span><b className={cls(data.net)} style={{ fontSize: 16 }}>{money2(data.net)}</b></div>
           </div>
-          <div style={{ height: 10, background: 'var(--bg2)', borderRadius: 8, overflow: 'hidden', marginTop: 'auto' }}><div style={{ width: data.eaten + '%', height: '100%', borderRadius: 8, background: 'linear-gradient(90deg,var(--amber),var(--red))', boxShadow: '0 0 12px -2px rgba(255,107,125,.6)' }} /></div>
         </div>
-        <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
-          <h3 style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic"><OnyxIcon emoji="💱" size={16} /></span> {t.byPair}</h3>
-          {data.pairs.length ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {data.pairs.map(([sym, v]) => (
-                <div key={sym} style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--bg2)', borderRadius: 12, padding: '11px 14px' }}>
-                  <div style={{ width: 96, fontSize: 13, fontWeight: 500 }}>{sym}</div>
-                  <div style={{ flex: 1, background: 'var(--card)', borderRadius: 8, height: 12, overflow: 'hidden' }}><div style={{ width: `${Math.max(4, (Math.abs(v) / data.maxP) * 100)}%`, height: '100%', borderRadius: 8, background: v >= 0 ? 'linear-gradient(90deg,var(--green2),var(--green))' : 'linear-gradient(90deg,var(--red2),var(--red))', boxShadow: v >= 0 ? '0 0 12px -2px rgba(52,226,160,.6)' : '0 0 12px -2px rgba(255,107,125,.6)' }} /></div>
-                  <div style={{ width: 84, textAlign: 'right', fontSize: 15, fontWeight: 700 }} className={cls(v)}>{money2(v)}</div>
-                </div>
-              ))}
+        <div className="card">
+          <h3 style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic"><OnyxIcon emoji="💱" size={16} /></span> {t.byPair}</h3>
+          {data.pairs.length ? data.pairs.map(([sym, v]) => (
+            <div key={sym} style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '7px 0' }}>
+              <div style={{ width: 84, fontSize: 13 }}>{sym}</div>
+              <div style={{ flex: 1, background: 'var(--bg2)', borderRadius: 8, height: 18, overflow: 'hidden' }}><div style={{ width: `${Math.max(4, (Math.abs(v) / data.maxP) * 100)}%`, height: '100%', borderRadius: 8, background: v >= 0 ? 'linear-gradient(90deg,var(--green2),var(--green))' : 'linear-gradient(90deg,var(--red2),var(--red))', boxShadow: v >= 0 ? '0 0 12px -2px rgba(52,226,160,.6)' : '0 0 12px -2px rgba(255,107,125,.6)' }} /></div>
+              <div style={{ width: 76, textAlign: 'right', fontSize: 12 }} className={cls(v)}>{money2(v)}</div>
             </div>
-          ) : <p className="muted">{t.noData}</p>}
+          )) : <p className="muted">{t.noData}</p>}
         </div>
       </div>
     </div>

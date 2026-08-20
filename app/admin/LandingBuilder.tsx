@@ -1,5 +1,4 @@
 'use client';
-import { toast, confirmDialog } from '@/lib/toast';
 import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import OnyxIcon from '@/app/components/OnyxIcon';
@@ -191,7 +190,7 @@ export default function LandingBuilder() {
           ))}
           <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
             <button className="btn btn-ghost" onClick={() => setFaq([...faqRows, ['', '', '', '']])}>＋ {L('Añadir pregunta', 'Add question')}</button>
-            <button className="btn btn-ghost" onClick={async () => { if (await confirmDialog(L('¿Restaurar las FAQ del código para esta página?', 'Reset to the code FAQ for this page?'))) setFaq(defaults.faq?.[faqPage] || []); }}>{L('Restaurar', 'Reset')}</button>
+            <button className="btn btn-ghost" onClick={() => { if (confirm(L('¿Restaurar las FAQ del código para esta página?', 'Reset to the code FAQ for this page?'))) setFaq(defaults.faq?.[faqPage] || []); }}>{L('Restaurar', 'Reset')}</button>
             <button className="btn btn-primary" onClick={() => save({ faq: { ...(content.faq || {}), [faqPage]: faqRows.filter((r) => (r[0] || '').trim() || (r[2] || '').trim()) } })} disabled={busy}>{busy ? '…' : L('Guardar FAQ', 'Save FAQ')}</button>
           </div>
         </div>
@@ -222,7 +221,7 @@ export default function LandingBuilder() {
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
             <button className="btn btn-ghost" onClick={() => setCompare([...compareRows, { es: '', en: '', v: [false, false, false, false] }])}>＋ {L('Añadir fila', 'Add row')}</button>
-            <button className="btn btn-ghost" onClick={async () => { if (await confirmDialog(L('¿Volver a las filas del código?', 'Reset to code rows?'))) setCompare(defaults.compare || []); }}>{L('Restaurar por defecto', 'Reset to default')}</button>
+            <button className="btn btn-ghost" onClick={() => { if (confirm(L('¿Volver a las filas del código?', 'Reset to code rows?'))) setCompare(defaults.compare || []); }}>{L('Restaurar por defecto', 'Reset to default')}</button>
             <button className="btn btn-primary" onClick={() => save({ compare: compareRows })} disabled={busy}>{busy ? '…' : L('Guardar comparación', 'Save comparison')}</button>
           </div>
         </div>
@@ -238,7 +237,7 @@ export default function LandingBuilder() {
           <CardList es={es} showIcon cards={features.cards || []} onChange={(c) => setFeatures({ cards: c })}
             addLabel={L('Añadir función', 'Add feature')} tLabel={L('Título', 'Title')} dLabel={L('Descripción', 'Description')} />
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-            <button className="btn btn-ghost" onClick={async () => { if (await confirmDialog(L('¿Volver al texto del código?', 'Reset to code text?'))) setContent({ ...content, features: defaults.features }); }}>{L('Restaurar', 'Reset')}</button>
+            <button className="btn btn-ghost" onClick={() => { if (confirm(L('¿Volver al texto del código?', 'Reset to code text?'))) setContent({ ...content, features: defaults.features }); }}>{L('Restaurar', 'Reset')}</button>
             <button className="btn btn-primary" onClick={() => save({ features })} disabled={busy}>{busy ? '…' : L('Guardar funciones', 'Save features')}</button>
           </div>
         </div>
@@ -258,7 +257,7 @@ export default function LandingBuilder() {
           <CardList es={es} showIcon cards={eco.cards || []} onChange={(c) => setEco({ cards: c })}
             addLabel={L('Añadir tarjeta', 'Add card')} tLabel={L('Título', 'Title')} dLabel={L('Descripción', 'Description')} />
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-            <button className="btn btn-ghost" onClick={async () => { if (await confirmDialog(L('¿Volver al texto del código?', 'Reset to code text?'))) setContent({ ...content, eco: defaults.eco }); }}>{L('Restaurar', 'Reset')}</button>
+            <button className="btn btn-ghost" onClick={() => { if (confirm(L('¿Volver al texto del código?', 'Reset to code text?'))) setContent({ ...content, eco: defaults.eco }); }}>{L('Restaurar', 'Reset')}</button>
             <button className="btn btn-primary" onClick={() => save({ eco })} disabled={busy}>{busy ? '…' : L('Guardar ecosistema', 'Save ecosystem')}</button>
           </div>
         </div>
@@ -275,7 +274,7 @@ export default function LandingBuilder() {
           <CardList es={es} showIcon={false} cards={how.steps || []} onChange={(c) => setHow({ steps: c })}
             addLabel={L('Añadir paso', 'Add step')} tLabel={L('Título del paso', 'Step title')} dLabel={L('Detalle', 'Detail')} />
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-            <button className="btn btn-ghost" onClick={async () => { if (await confirmDialog(L('¿Volver al texto del código?', 'Reset to code text?'))) setContent({ ...content, how: defaults.how }); }}>{L('Restaurar', 'Reset')}</button>
+            <button className="btn btn-ghost" onClick={() => { if (confirm(L('¿Volver al texto del código?', 'Reset to code text?'))) setContent({ ...content, how: defaults.how }); }}>{L('Restaurar', 'Reset')}</button>
             <button className="btn btn-primary" onClick={() => save({ how })} disabled={busy}>{busy ? '…' : L('Guardar pasos', 'Save steps')}</button>
           </div>
         </div>

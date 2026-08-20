@@ -23,7 +23,6 @@ export default function SiteFooter() {
   const defLinks: [string, string][] = [
     ['/', L('Inicio', 'Home')],
     ['/pricing', L('Planes', 'Plans')],
-    ['/prop-firms', L('Prop firms', 'Prop firms')],
     ['/guia', L('Guía', 'Guide')],
     ['/blog', L('Blog', 'Blog')],
     ['/embajadores', L('Embajadores', 'Ambassadors')],

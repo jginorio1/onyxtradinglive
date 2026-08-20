@@ -1,35 +1,10 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { sendMessage, sendPhoto, sendPhotoFile, sendDocument, accName } from '@/lib/telegram';
+import { sendMessage, sendPhoto, sendPhotoFile, sendDocument } from '@/lib/telegram';
 import { computeTraderReport, traderCsv, traderChartUrl, traderCardPng, traderPdf } from '@/lib/traderReport';
 import { copyPinHas, copyPinCheck } from '@/lib/copyPin';
 
 const APP = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.onyxtradinglive.com').replace(/\/$/, '');
-
-const money = (n: number) => (n >= 0 ? '+' : '−') + '$' + Math.abs(n).toFixed(2);
-
-// Desglose por cuenta del resultado neto en un rango. Devuelve una línea por
-// cuenta con actividad, ordenadas de mejor a peor. Vacío si hay 0 o 1 cuenta.
-async function perAccountLines(userId: string, fromISO: string, toISO: string): Promise<string[]> {
-  const { data: accs } = await supabaseAdmin.from('trading_accounts')
-    .select('id,nickname,login,broker').eq('user_id', userId);
-  if (!accs || accs.length < 2) return [];
-  const ids = accs.map((a: any) => a.id);
-  const { data: tr } = await supabaseAdmin.from('trades')
-    .select('account_id,profit,commission,swap,net_profit')
-    .in('account_id', ids).gte('close_time', fromISO).lte('close_time', toISO);
-  const agg: Record<string, { n: number; net: number }> = {};
-  for (const t of tr || []) {
-    const v = t.net_profit != null ? Number(t.net_profit)
-      : Number(t.profit || 0) + Number(t.commission || 0) + Number(t.swap || 0);
-    const a = (agg[t.account_id] ||= { n: 0, net: 0 }); a.n++; a.net += v;
-  }
-  return accs
-    .filter((a: any) => agg[a.id])
-    .map((a: any) => ({ name: accName(a), ...agg[a.id] }))
-    .sort((x, y) => y.net - x.net)
-    .map((x) => `• <b>${x.name}</b> — ${x.n} ${x.n === 1 ? 'operación' : 'operaciones'} · ${money(x.net)}`);
-}
 
 // Envía el reporte completo (texto + gráfico + PDF + CSV) para un rango.
 async function sendFullReport(chatId: string, prof: any, days: number, label: string) {
@@ -37,15 +12,13 @@ async function sendFullReport(chatId: string, prof: any, days: number, label: st
   const toISO = new Date().toISOString();
   const rep = await computeTraderReport(supabaseAdmin, prof.id, fromISO, toISO);
   const cur = rep.currency;
-  const accLines = rep.total > 0 ? await perAccountLines(prof.id, fromISO, toISO) : [];
   await sendMessage(chatId,
     `📊 <b>Tu reporte ${label}</b>\n\n`
-    + `Resultado neto: <b>${rep.netTotal >= 0 ? '+' : '−'}$${Math.abs(rep.netTotal).toFixed(2)}</b>\n`
+    + `Resultado neto: <b>${cur} ${rep.netTotal.toFixed(2)}</b>\n`
     + `Operaciones: ${rep.total}\n`
     + `Aciertos: ${rep.winRate}%\n`
-    + `Factor de beneficio: ${rep.pf}\n`
-    + (accLines.length ? `\n<b>Por cuenta</b>\n${accLines.join('\n')}\n` : '')
-    + `\nReporte completo: ${APP}/dashboard`, { kind: 'report', userId: prof.id });
+    + `Factor de beneficio: ${rep.pf}\n\n`
+    + `Reporte completo: ${APP}/dashboard`, { kind: 'report', userId: prof.id });
   if (rep.total > 0) {
     try {
       const card = await traderCardPng(rep, { name: prof.full_name || '', from: fromISO.slice(0, 10), to: toISO.slice(0, 10), es: true });
@@ -119,7 +92,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true });
     }
 
-    // /estado  → resumen rápido del día, sin abrir la web (desglosado por cuenta)
+    // /estado  → resumen rápido del día, sin abrir la web
     if (text === '/estado' || text === '/status') {
       const { data: prof } = await supabaseAdmin.from('profiles')
         .select('id').eq('telegram_chat_id', chatId).maybeSingle();
@@ -128,68 +101,20 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: true });
       }
       const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
-      const { data: accs } = await supabaseAdmin.from('trading_accounts')
-        .select('id,nickname,login,broker').eq('user_id', prof.id);
+      const { data: accs } = await supabaseAdmin.from('trading_accounts').select('id').eq('user_id', prof.id);
       const ids = (accs || []).map((a: any) => a.id);
       let n = 0, net = 0;
-      const agg: Record<string, { n: number; net: number }> = {};
       if (ids.length) {
         const { data: tr } = await supabaseAdmin.from('trades')
-          .select('account_id,profit,commission,swap,net_profit').in('account_id', ids).gte('close_time', since);
-        for (const t of tr || []) {
-          const v = t.net_profit != null ? Number(t.net_profit) : Number(t.profit || 0) + Number(t.commission || 0) + Number(t.swap || 0);
-          const a = (agg[t.account_id] ||= { n: 0, net: 0 }); a.n++; a.net += v; n++; net += v;
-        }
+          .select('profit,commission,swap').in('account_id', ids).gte('close_time', since);
+        n = (tr || []).length;
+        net = (tr || []).reduce((s: number, t: any) => s + Number(t.profit || 0) + Number(t.commission || 0) + Number(t.swap || 0), 0);
       }
       const { count: blocks } = await supabaseAdmin.from('manager_events')
         .select('*', { count: 'exact', head: true }).eq('user_id', prof.id).eq('kind', 'blocked').gte('created_at', since);
-      // Líneas por cuenta (solo con actividad), de mejor a peor. Solo si hay >1.
-      let perAcc = '';
-      if ((accs || []).length > 1) {
-        const lines = (accs || []).filter((a: any) => agg[a.id])
-          .map((a: any) => ({ name: accName(a), ...agg[a.id] }))
-          .sort((x, y) => y.net - x.net)
-          .map((x) => `• <b>${x.name}</b> — ${x.n} ${x.n === 1 ? 'operación' : 'operaciones'} · ${money(x.net)}`);
-        if (lines.length) perAcc = `\n\n<b>Por cuenta</b>\n${lines.join('\n')}`;
-      }
+      const sign = net >= 0 ? '+' : '-';
       await sendMessage(chatId,
-        `📊 <b>Últimas 24h</b>\n`
-        + `Operaciones: ${n}\nResultado: ${money(net)}\nEl Guardian te frenó: ${blocks || 0} vez(ces)`
-        + perAcc,
-        { kind: 'status', userId: prof.id });
-      return NextResponse.json({ ok: true });
-    }
-
-    // /cuentas  → lista de cuentas conectadas con su nombre, saldo y estado
-    if (text === '/cuentas' || text === '/accounts') {
-      const { data: prof } = await supabaseAdmin.from('profiles')
-        .select('id').eq('telegram_chat_id', chatId).maybeSingle();
-      if (!prof) {
-        await sendMessage(chatId, 'No reconozco este chat. Conéctate primero desde tu cuenta → Avisos.');
-        return NextResponse.json({ ok: true });
-      }
-      const { data: accs } = await supabaseAdmin.from('trading_accounts')
-        .select('nickname,login,broker,balance,equity,trade_allowed,last_sync_at')
-        .eq('user_id', prof.id).order('created_at', { ascending: true });
-      if (!accs || !accs.length) {
-        await sendMessage(chatId, 'Todavía no tienes cuentas conectadas. Conéctalas desde tu cuenta → Conectar cuenta.');
-        return NextResponse.json({ ok: true });
-      }
-      const ago = (iso?: string) => {
-        if (!iso) return 'sin señal';
-        const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
-        if (m < 1) return 'ahora';
-        if (m < 60) return `hace ${m} min`;
-        const h = Math.round(m / 60); if (h < 24) return `hace ${h} h`;
-        return `hace ${Math.round(h / 24)} d`;
-      };
-      const body = accs.map((a: any) => {
-        const bal = a.balance != null ? `$${Number(a.balance).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—';
-        const op = a.trade_allowed === false ? 'AutoTrading OFF ⏸' : 'operando ✓';
-        return `• <b>${accName(a)}</b>\n  ${a.broker || 'MT'} · #${a.login}\n  Saldo: ${bal} · ${op} · señal ${ago(a.last_sync_at)}`;
-      }).join('\n\n');
-      await sendMessage(chatId,
-        `🗂️ <b>Tus cuentas (${accs.length})</b>\n\n${body}`,
+        `📊 <b>Últimas 24h</b>\nOperaciones: ${n}\nResultado: ${sign}$${Math.abs(net).toFixed(2)}\nEl Guardian te frenó: ${blocks || 0} vez(ces)`,
         { kind: 'status', userId: prof.id });
       return NextResponse.json({ ok: true });
     }
@@ -284,7 +209,7 @@ export async function POST(req: Request) {
 
     // /start sin código, o cualquier otra cosa: ayuda
     await sendMessage(chatId,
-      'Hola 👋 Soy Onyx Guardian.\nPara conectarte, entra en onyxtradinglive.com → Mi cuenta → Avisos → Conectar Telegram, y pega aquí el código que te dé.\n\nComandos: /estado (día, por cuenta) · /cuentas (tus cuentas) · /report (semana, con PDF y gráfico) · /mes (mes) · /copy (control copy trading) · /copyoff · /copyon · /stop (dejar de recibir).');
+      'Hola 👋 Soy Onyx Guardian.\nPara conectarte, entra en onyxtradinglive.com → Mi cuenta → Avisos → Conectar Telegram, y pega aquí el código que te dé.\n\nComandos: /estado (día) · /report (semana, con PDF y gráfico) · /mes (mes) · /copy (control copy trading) · /copyoff · /copyon · /stop (dejar de recibir).');
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     // Devolvemos 200 igualmente: si respondemos error, Telegram reintenta en bucle

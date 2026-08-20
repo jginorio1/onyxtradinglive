@@ -1,16 +1,15 @@
 import { NextResponse } from 'next/server';
-import { APP_VERSION } from '@/lib/version';
+import { appVersion } from '@/lib/appVersion';
 
-// Devuelve la versión del build que corre AHORA en el servidor. El cliente la
-// compara con la suya (la que quedó horneada en su bundle): si difieren, el
-// cliente está corriendo código viejo (típico en PWA instalada) y se recarga
-// una sola vez. Nunca se cachea, para que siempre diga la verdad.
-export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
+// Público: la versión que ve todo el mundo (production). Para el footer.
 export async function GET() {
-  return NextResponse.json(
-    { v: APP_VERSION },
-    { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate', 'CDN-Cache-Control': 'no-store' } },
-  );
+  try {
+    const v = await appVersion();
+    return NextResponse.json({ version: v.production || '1.0' }, { headers: { 'Cache-Control': 'no-store' } });
+  } catch {
+    return NextResponse.json({ version: '1.0' }, { headers: { 'Cache-Control': 'no-store' } });
+  }
 }

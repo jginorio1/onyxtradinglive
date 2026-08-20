@@ -46,22 +46,6 @@ function spark(cumNets: number[], points = 24): number[] {
   return out;
 }
 
-// Par que MÁS opera un bot (símbolo dominante) + cuántos símbolos distintos toca.
-// Limpia el sufijo del bróker (EURUSD.pro → EURUSD) para mostrarlo bonito.
-function domSymbol(list: any[]): { pair: string | null; symbols: string[] } {
-  const counts: Record<string, number> = {};
-  for (const t of list) {
-    let s = String(t.symbol || '').trim().toUpperCase();
-    if (!s) continue;
-    s = s.replace(/[._-][A-Z0-9]{1,4}$/i, '');          // quita sufijos del bróker (.pro, .m, -ecn…)
-    counts[s] = (counts[s] || 0) + 1;
-  }
-  const keys = Object.keys(counts);
-  if (!keys.length) return { pair: null, symbols: [] };
-  keys.sort((a, b) => counts[b] - counts[a]);
-  return { pair: keys[0], symbols: keys };
-}
-
 export async function loadBots(userId: string) {
   const { data: accs } = await supabaseAdmin
     .from('trading_accounts').select('id,acc_type,last_sync_at,nickname,login').eq('user_id', userId);
@@ -71,7 +55,7 @@ export async function loadBots(userId: string) {
   const accIds = accList.map((a: any) => a.id);
 
   const { data: trades, error } = await supabaseAdmin
-    .from('trades').select('account_id,magic,ea_comment,net_profit,open_time,close_time,symbol')
+    .from('trades').select('account_id,magic,ea_comment,net_profit,open_time,close_time')
     .in('account_id', accIds).not('magic', 'is', null).neq('magic', 0)
     .order('close_time', { ascending: true }).limit(30000);
   if (error) return { bots: [], hasData: false, needsMigration: true };
@@ -116,7 +100,7 @@ export async function loadBots(userId: string) {
       const criteria: BotCriteria = { ...DEFAULT_CRITERIA, ...(cfgRow.criteria || {}) };
       return {
         magic: Number(magic), key, accountId: accId, accName: accName(acc), accOnline: online,
-        name: cfgRow.name || `Bot #${magic}`, mode, pair: null, symbols: [],
+        name: cfgRow.name || `Bot #${magic}`, mode,
         net: 0, trades: 0, winRate: 0, pf: 0, expectancy: 0, dd: 0, ddPct: 0, recovery: 0, days: 0, tradesPerDay: 0,
         running: isRunning, status: (isRunning ? 'operando' : online ? 'espera' : 'inactivo') as 'operando' | 'espera' | 'inactivo',
         open: openByKey[key] || { count: 0, profit: 0 },
@@ -212,10 +196,9 @@ export async function loadBots(userId: string) {
 
     const name = cfg.name || (list.find((t) => t.ea_comment)?.ea_comment) || `Bot #${magic}`;
 
-    const sym = domSymbol(list);
     return {
       magic: Number(magic), key, accountId: accId, accName: accName(acc), accOnline: online,
-      name, mode, pair: sym.pair, symbols: sym.symbols,
+      name, mode,
       net: Math.round(net), trades: n, winRate: Math.round(winRate),
       pf: r2(pf), expectancy: r2(expectancy), dd: Math.round(dd), ddPct: r1(ddPct),
       recovery: r1(recovery), days, tradesPerDay: r1(tradesPerDay),
@@ -322,39 +305,10 @@ export async function loadPortfolio(userId: string) {
 
   // curva combinada (suma de todos los bots en vivo)
   let cum = 0;
-  const curveFull = days.map((d) => { cum += magics.reduce((s: number, m: number) => s + (byMagicDay[m][d] || 0), 0); return cum; });
-
-  // ── KPIs de portafolio ────────────────────────────────────────────────
-  // Neto combinado, PF combinado (todas las operaciones en vivo), peor caída
-  // sobre la curva combinada, y "diversificación" = qué tan independientes son
-  // los bots entre sí (100 = totalmente independientes; 0 = bajan/suben juntos).
-  const allNets = (trades || []).map((t: any) => Number(t.net_profit || 0));
-  const gw = allNets.filter((x) => x > 0).reduce((s, x) => s + x, 0);
-  const gl = Math.abs(allNets.filter((x) => x < 0).reduce((s, x) => s + x, 0));
-  const combinedNet = Math.round(allNets.reduce((s, x) => s + x, 0));
-  const combinedPF = gl > 0 ? r2(gw / gl) : (gw > 0 ? 99 : 0);
-  let peak = 0, worstDD = 0; for (const v of curveFull) { if (v > peak) peak = v; const dd = peak - v; if (dd > worstDD) worstDD = dd; }
-
-  // Media de correlación absoluta entre pares distintos + par más y menos correlacionado.
-  let sumAbs = 0, pairsN = 0, hi = -2, lo = 2, hiIJ = [0, 0], loIJ = [0, 0];
-  for (let i = 0; i < magics.length; i++) for (let j = i + 1; j < magics.length; j++) {
-    const c = matrix[i][j]; sumAbs += Math.abs(c); pairsN++;
-    if (c > hi) { hi = c; hiIJ = [i, j]; }
-    if (c < lo) { lo = c; loIJ = [i, j]; }
-  }
-  const avgAbs = pairsN ? sumAbs / pairsN : 0;
-  const diversification = Math.round((1 - avgAbs) * 100);
-  const nm = (i: number) => (live[i]?.pair || live[i]?.name || `#${magics[i]}`);
+  const curve = days.map((d) => { cum += magics.reduce((s: number, m: number) => s + (byMagicDay[m][d] || 0), 0); return Math.round(cum); });
 
   return {
-    bots: live.map((b: any) => ({ magic: b.magic, name: b.name, net: b.net, pair: b.pair })),
-    matrix, curve: spark(curveFull.map((x) => Math.round(x)), 40),
-    kpis: {
-      combinedNet, combinedPF, worstDD: Math.round(worstDD), diversification,
-      mostCorr: pairsN ? { a: nm(hiIJ[0]), b: nm(hiIJ[1]), v: hi } : null,
-      leastCorr: pairsN ? { a: nm(loIJ[0]), b: nm(loIJ[1]), v: lo } : null,
-      liveCount: live.length,
-    },
-    hasData: true,
+    bots: live.map((b: any) => ({ magic: b.magic, name: b.name, net: b.net })),
+    matrix, curve: spark(curve, 40), hasData: true,
   };
 }

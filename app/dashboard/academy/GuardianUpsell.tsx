@@ -1,5 +1,4 @@
 'use client';
-import { toast, confirmDialog } from '@/lib/toast';
 import { useEffect, useState } from 'react';
 import OnyxIcon from '@/app/components/OnyxIcon';
 
@@ -25,8 +24,8 @@ export default function GuardianUpsell({ L }: { L: L }) {
       const r = await fetch('/api/academy/guardian', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ tier }) });
       const j = await r.json();
       if (j.url) { window.location.href = j.url; return; }
-      toast(j.error || 'Error');
-    } catch { toast('Error'); }
+      alert(j.error || 'Error');
+    } catch { alert('Error'); }
     setBusy('');
   }
 

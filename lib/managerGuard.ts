@@ -355,14 +355,8 @@ async function finish(v: Verdict, r: {
     // este bloqueo, así que no lo repetimos en cada heartbeat.
     // Las pérdidas límite van como 'limits'; el resto como 'blocks'.
     const kind = (r.reason === 'daily_loss' || r.reason === 'total_loss' || r.reason === 'target') ? 'limits' : 'blocks';
-    // Incluye la cuenta (apodo o número) para que el trader sepa a cuál se refiere.
-    let accTag = '';
-    try { const { data: an } = await supabaseAdmin.from('trading_accounts').select('nickname,login').eq('id', opts.accountId).maybeSingle(); accTag = String((an as any)?.nickname || (an as any)?.login || ''); } catch {}
-    const head = (kind === 'limits' ? '🛑 Onyx Guardian' : '⏸️ Onyx Guardian') + (accTag ? ` · ${accTag}` : '');
-    // Dedup fuerte por día (guardado en profiles.tg_sent), por si el estado del
-    // bloqueo se reinicia entre heartbeats (recálculo del día del broker, offset
-    // del EA que fluctúa…): así jamás se repite el mismo aviso en el mismo día.
-    alertOncePerDay(opts.userId, kind, `block_${r.reason}_${opts.accountId}`, `${head}\n${r.es}`).catch(() => {});
+    const head = kind === 'limits' ? '🛑 Onyx Guardian' : '⏸️ Onyx Guardian';
+    alertUser(opts.userId, kind, `${head}\n${r.es}`).catch(() => {});
   }
   return v;
 }
@@ -405,7 +399,7 @@ export async function registerClosedTrades(accountId: string, serverOffsetMin: n
 // ------------------------------------------------------------
 export function newsNear(events: any[], cfg: ManagerConfig, at = new Date()): string | null {
   if (!cfg.news.on || !Array.isArray(events)) return null;
-  const wanted = cfg.news.impact === 'high' ? ['High'] : cfg.news.impact === 'high_medium_low' ? ['High', 'Medium', 'Low'] : ['High', 'Medium'];
+  const wanted = cfg.news.impact === 'high' ? ['High'] : ['High', 'Medium'];
   const beforeMs = cfg.news.before_min * 60000;
   const afterMs = cfg.news.after_min * 60000;
 

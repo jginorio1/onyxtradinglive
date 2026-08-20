@@ -1,12 +1,11 @@
 'use client';
 import { dictFor } from '@/lib/i18n';
-import { toast, confirmDialog } from '@/lib/toast';
+import { toast } from '@/lib/toast';
 import { fmtDate, fmtDateTime } from '@/lib/fmtDate';
 import { useEffect, useMemo, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import Link from 'next/link';
 import OnyxIcon from '@/app/components/OnyxIcon';
-import NavSelect from '@/app/components/NavSelect';
 import CountrySelect from '@/app/components/CountrySelect';
 import StudentBilling from '@/app/components/StudentBilling';
 import { useCatalog } from '@/lib/useCatalog';
@@ -16,7 +15,6 @@ import Ambassador from './Ambassador';
 import ReferralCard from './ReferralCard';
 import CancelFlow from './CancelFlow';
 import TelegramCard from './TelegramCard';
-import NotifPrefs from './NotifPrefs';
 import BillingCard from './BillingCard';
 import EmbeddedCheckoutModal from '@/app/EmbeddedCheckoutModal';
 import InstallApp from '@/app/dashboard/InstallApp';
@@ -243,16 +241,12 @@ export default function AccountClient({ email }: { email: string }) {
   const catLabel = (c: { es: string; en: string }) => (lang === 'en' ? (c.en || c.es) : c.es);
   const pending = data?.pending || null;
 
-  const [keys, setKeys] = useState<any[]>([]);   // claves API por cuenta (una por cuenta)
   useEffect(() => {
     load();
-    fetch('/api/keys').then((r) => r.ok ? r.json() : null).then((j) => setKeys(j?.keys || [])).catch(() => {});
   }, []);
   async function load() {
     try { const r = await fetch('/api/account'); const j = await r.json(); setData(j); setP(j.profile || {}); setExtraQty(Number(j.limit?.extra || 0)); } catch {}
   }
-  // Clave de una cuenta concreta (por número de cuenta).
-  const keyForLogin = (login: any) => keys.find((k) => k.account_login != null && String(k.account_login) === String(login));
 
   const plans: any[] = data?.plans || [];
   const accounts: any[] = data?.accounts || [];
@@ -278,7 +272,7 @@ export default function AccountClient({ email }: { email: string }) {
 
   async function mtAction(acc: any, mode: 'disconnect' | 'delete') {
     const q = mode === 'delete' ? L.mtDelQ : L.mtDiscQ;
-    if (!(await confirmDialog(q))) return;
+    if (!confirm(q)) return;
     setBusy('mt' + acc.id);
     const r = await fetch('/api/account/mt', { method: 'POST', body: JSON.stringify({ account_id: acc.id, mode }) });
     const j = await r.json(); setBusy('');
@@ -351,12 +345,10 @@ export default function AccountClient({ email }: { email: string }) {
             </div>
             {/* Buscador rápido (⌘K) */}
             <button className="btn btn-ghost" style={{ width: '100%', justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, marginBottom: 10 }} onClick={() => { setPalQ(''); setPal(true); }}><OnyxIcon name="search" size={14} glow={false} /> {lang === 'en' ? 'Search' : 'Buscar'} <span style={{ opacity: .55, fontSize: 11 }}>⌘K</span></button>
-            {/* Móvil: menú propio con iconos (OnyxIcon) en cada fila y cerrado */}
-            <NavSelect
-              value={tab}
-              onChange={(v) => setTab(v as Tab)}
-              groups={NAV_GROUPS.map((gr) => ({ label: gr.g, items: gr.items.map(([k, icon]) => ({ value: k, label: L.nav[k], icon, emoji: true, badge: (k === 'plan' && pending) ? '•' : undefined })) }))}
-            />
+            {/* Móvil: selector (solo las principales) */}
+            <select className="adminnav-mobile" value={tab} onChange={(e) => setTab(e.target.value as Tab)} style={{ margin: 0, width: '100%' }}>
+              {NAV_FLAT.map(([k]) => <option key={k} value={k}>{L.nav[k]}</option>)}
+            </select>
             <div className="adminnav-items">
               {NAV_GROUPS.map((gr) => (
                 <div key={gr.g}>
@@ -676,9 +668,9 @@ export default function AccountClient({ email }: { email: string }) {
                   {!!accounts.length && <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{L.mtHelp}</div>}
                   {accounts.map((a) => (
                     <div key={a.id} className="row between" style={{ borderTop: '1px solid var(--line)', padding: '10px 0', flexWrap: 'wrap', gap: 8 }}>
-                      <div style={{ flex: '1 1 320px', minWidth: 260 }}>
+                      <div>
                         <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                          <span style={{ fontWeight: 700 }}>{a.nickname || keyForLogin(a.login)?.label || a.login} <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}>{a.broker || a.server || ''} · #{a.login}</span></span>
+                          <span style={{ fontWeight: 700 }}>{a.login} <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}>{a.broker || a.server || ''}</span></span>
                           {(() => {
                             const live = a.last_sync_at && (Date.now() - new Date(a.last_sync_at).getTime()) < 120000;
                             const st = !a.last_sync_at ? { txt: L.mtNever, col: 'var(--mut)', bg: 'var(--card2)' }
@@ -690,16 +682,6 @@ export default function AccountClient({ email }: { email: string }) {
                         </div>
                         <div className="muted" style={{ fontSize: 12 }}>{platformLabel(a.platform, lang) || 'MetaTrader 5'} · {L.lastSync}: {a.last_sync_at ? fmtDateTime(a.last_sync_at, lang) : L.never}</div>
                         {a.plan_paused && <div style={{ fontSize: 11.5, color: 'var(--amber)', marginTop: 2 }}>{L.pausedNote}</div>}
-                        {(() => {
-                          const k = keyForLogin(a.login);
-                          return k ? (
-                            <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 8 }}>
-                              <span className="muted" style={{ fontSize: 11, flex: 'none' }}>{L.apiK}:</span>
-                              <span className="code" style={{ maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{k.key}</span>
-                              <button className="btn btn-ghost" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => { navigator.clipboard.writeText(k.key); setMsg(L.copied); setTimeout(() => setMsg(''), 2000); }}>{msg === L.copied ? L.copied : L.copy}</button>
-                            </div>
-                          ) : null;
-                        })()}
                       </div>
                       <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
                         <div style={{ fontWeight: 700 }}>{a.balance != null ? '$' + Number(a.balance).toLocaleString() : ''}</div>
@@ -729,11 +711,14 @@ export default function AccountClient({ email }: { email: string }) {
                     </div>
                   </div>
                 )}
-                {/* La clave ahora se muestra en cada cuenta arriba (una por cuenta).
-                    Aquí solo dejamos la nota de dónde pegarla y el acceso a gestionarlas. */}
-                {!!accounts.length && (
+                {data.apiKey && (
                   <div className="card">
-                    <p className="muted" style={{ fontSize: 13, margin: 0 }}>{L.apiTxt} <Link href="/dashboard/keys" style={{ color: 'var(--soft-brand)' }}>{lang === 'es' ? 'Gestionar claves →' : 'Manage keys →'}</Link></p>
+                    <h3 style={{ marginBottom: 6 }}>{L.apiK}</h3>
+                    <p className="muted" style={{ fontSize: 13, marginBottom: 10 }}>{L.apiTxt}</p>
+                    <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+                      <span className="code" style={{ flex: 1, minWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis' }}>{data.apiKey}</span>
+                      <button className="btn btn-ghost" onClick={() => { navigator.clipboard.writeText(data.apiKey); setMsg(L.copied); setTimeout(() => setMsg(''), 2000); }}>{msg === L.copied ? L.copied : L.copy}</button>
+                    </div>
                   </div>
                 )}
               </Section>
@@ -761,7 +746,6 @@ export default function AccountClient({ email }: { email: string }) {
                   </div>
                 </div>
                 <div className="card"><TelegramCard lang={lang} /></div>
-                <div className="card"><NotifPrefs lang={lang} /></div>
               </Section>
             )}
 
@@ -869,7 +853,7 @@ function Security({ L, lang, only }: { L: any; lang: Lang; only?: 'password' | '
     setPw1(''); setPw2(''); setOk(L.pwOk); setTimeout(() => setOk(''), 3000);
   }
   async function delAcc() {
-    if (!(await confirmDialog(L.dTxt))) return;
+    if (!confirm(L.dTxt)) return;
     setBusy('del');
     const r = await fetch('/api/account/delete', { method: 'POST', body: JSON.stringify({ confirm: conf }) });
     const j = await r.json(); setBusy('');

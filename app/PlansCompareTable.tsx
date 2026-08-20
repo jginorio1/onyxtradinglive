@@ -47,14 +47,14 @@ export default function PlansCompareTable({
   const name = (p?: Plan, id?: string) => p ? (lang === 'es' ? p.name : (p.name_en || p.name)) : (id || '');
   const isPro = (p?: Plan) => !!(p && (lang === 'es' ? p.badge : p.badge_en));
   const acc = (id: string) => {
-    const p = byId(id); if (!p || p.max_accounts == null) return '—';
+    const p = byId(id); if (!p) return '—';
     return p.max_accounts >= 999 ? (lang === 'es' ? 'Ilimitadas' : 'Unlimited') : String(p.max_accounts);
   };
   const chk = (v: boolean | string) => typeof v === 'string'
     ? <span style={{ fontSize: 13 }}>{v}</span>
     : v
-      ? <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: 6, background: 'var(--green)', color: '#04120b' }}><OnyxIcon name="check" size={14} glow={false} /></span>
-      : <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: 6, background: 'var(--card2)', color: 'var(--mut)' }}><OnyxIcon name="lock" size={13} glow={false} /></span>;
+      ? <span style={{ color: 'var(--green)', display: 'inline-flex' }}><OnyxIcon name="check" size={17} glow={false} /></span>
+      : <span style={{ color: '#66708a', display: 'inline-flex' }}><OnyxIcon name="lock" size={15} glow={false} /></span>;
 
   return (
     <div style={{ marginTop: 46 }}>
@@ -66,15 +66,12 @@ export default function PlansCompareTable({
               <th style={{ textAlign: 'left', padding: '14px 16px' }}></th>
               {cols.map((id) => {
                 const p = byId(id);
-                const price = p ? (annual ? p.price_year : p.price_month) : null;
+                const price = p ? (annual ? p.price_year : p.price_month) : 0;
                 const per = annual ? (lang === 'es' ? '/año' : '/yr') : (lang === 'es' ? '/mes' : '/mo');
-                // "Gratis" solo para el Free real; si falta el plan mostramos "—" (nunca "Gratis" por error).
-                const priceLabel = price == null ? '—' : (price === 0 && id === 'free') ? (lang === 'es' ? 'Gratis' : 'Free') : `$${price}`;
-                const showPer = price != null && price > 0;
                 return (
                   <th key={id} style={{ textAlign: 'center', padding: '14px 16px', color: isPro(p) ? 'var(--brand)' : 'var(--tx)', fontSize: 15 }}>
                     <div>{name(p, id)}</div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--tx)' }}>{priceLabel}<span style={{ fontSize: 11, color: 'var(--mut)', fontWeight: 500 }}>{showPer ? per : ''}</span></div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--tx)' }}>{price === 0 ? (lang === 'es' ? 'Gratis' : 'Free') : `$${price}`}<span style={{ fontSize: 11, color: 'var(--mut)', fontWeight: 500 }}>{price === 0 ? '' : per}</span></div>
                   </th>
                 );
               })}
@@ -104,16 +101,15 @@ export default function PlansCompareTable({
               </td>
               {cols.map((id) => {
                 const p = byId(id);
-                const price = p ? (annual ? p.price_year : p.price_month) : null;
-                // "Empezar gratis" SOLO para el Free real; los de pago dicen "Elegir …".
-                const isFree = id === 'free';
-                const label = isFree ? (lang === 'es' ? 'Empezar gratis' : 'Start free')
+                const price = p ? (annual ? p.price_year : p.price_month) : 0;
+                const free = id === 'free' || price === 0;
+                const label = free ? (lang === 'es' ? 'Empezar gratis' : 'Start free')
                   : (lang === 'es' ? 'Elegir ' : 'Choose ') + name(p, id);
                 return (
                   <td key={id} style={{ textAlign: 'center', padding: '18px 12px 16px' }}>
                     <button className={'btn ' + (isPro(p) ? 'btn-primary' : 'btn-ghost')}
                       style={{ fontSize: 13, padding: '8px 14px', whiteSpace: 'nowrap' }}
-                      onClick={() => onChoose(id, price ?? 0)} disabled={loadingId === id || (!isFree && price == null)}>
+                      onClick={() => onChoose(id, price)} disabled={loadingId === id}>
                       {loadingId === id ? '...' : label}
                     </button>
                   </td>

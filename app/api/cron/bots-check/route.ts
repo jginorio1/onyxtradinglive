@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { loadBots } from '@/lib/bots';
 import { alertOncePerDay } from '@/lib/telegram';
-import { emitNotif, loadNotifConfig } from '@/lib/emitNotif';
+import { sendPush } from '@/lib/push';
 import { logError } from '@/lib/errlog';
 
 export const dynamic = 'force-dynamic';
@@ -27,7 +27,6 @@ export async function GET(req: Request) {
     if (!algoPlans.length) return NextResponse.json({ ok: true, users: 0 });
 
     const { data: users } = await supabaseAdmin.from('profiles').select('id').in('plan', algoPlans).limit(1000);
-    const cfg = await loadNotifConfig();
     let alerts = 0;
 
     for (const u of users || []) {
@@ -39,13 +38,13 @@ export async function GET(req: Request) {
         if (b.ddPct > b.criteria.maxDD) {
           const ok = await alertOncePerDay((u as any).id, 'funding', `bot_dd_${b.magic}`,
             `🤖 Onyx · ${b.name}\n⚠️ Drawdown ${b.ddPct}% supera tu tope de ${b.criteria.maxDD}%. Revisa el bot.`).catch(() => false);
-          if (ok) { alerts++; emitNotif((u as any).id, 'bot_alert', { cfg, title: `Onyx · ${b.name}`, body: `Drawdown ${b.ddPct}% > ${b.criteria.maxDD}%`, url: '/dashboard/bots' }).catch(() => {}); }
+          if (ok) { alerts++; sendPush((u as any).id, { title: `Onyx · ${b.name}`, body: `Drawdown ${b.ddPct}% > ${b.criteria.maxDD}%`, url: '/dashboard/bots' }).catch(() => {}); }
         }
 
         if (b.divergence?.status === 'diverge') {
           const ok = await alertOncePerDay((u as any).id, 'funding', `bot_div_${b.magic}`,
             `🤖 Onyx · ${b.name}\n⚠️ Diverge del backtest (PF vivo ${b.divergence.pfLive} vs ${b.divergence.pfExp}). Posible sobreoptimización.`).catch(() => false);
-          if (ok) { alerts++; emitNotif((u as any).id, 'bot_alert', { cfg, title: `Onyx · ${b.name}`, body: 'Diverge del backtest', url: '/dashboard/bots' }).catch(() => {}); }
+          if (ok) { alerts++; sendPush((u as any).id, { title: `Onyx · ${b.name}`, body: 'Diverge del backtest', url: '/dashboard/bots' }).catch(() => {}); }
         }
       }
     }

@@ -1,13 +1,12 @@
 'use client';
 import { dictFor } from '@/lib/i18n';
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabaseBrowser, passkeySupported } from '@/lib/supabaseBrowser';
 import TwoFactor from '@/app/TwoFactor';
-import Turnstile, { TURNSTILE_KEY, type TurnstileHandle } from '@/app/Turnstile';
-import { setPending } from '@/lib/pendingCheckout';
+import Turnstile, { TURNSTILE_KEY } from '@/app/Turnstile';
 
 type Lang = 'es' | 'en';
 
@@ -24,7 +23,6 @@ const T = {
     errMail: 'Escribe un email válido.',
     errTerms: 'Debes aceptar los términos para crear la cuenta.',
     errCaptcha: 'Completa la verificación de seguridad.',
-    errCaptchaStale: 'La verificación de seguridad caducó. Vuelve a intentarlo.',
     errGeneric: 'No pudimos completar la operación. Inténtalo de nuevo.',
     strength: ['Muy débil', 'Débil', 'Aceptable', 'Fuerte', 'Excelente'],
     strengthHint: 'Usa 10+ caracteres con al menos una letra y un número.',
@@ -37,11 +35,6 @@ const T = {
     resend: 'Reenviar enlace', resent: 'Enlace reenviado.', gotoLogin: 'Ya lo confirmé, entrar',
     // Si la confirmación está desactivada y ya hay sesión
     createdNow: 'Cuenta creada. Entrando…',
-    // Recuperar contraseña
-    forgot: '¿Olvidaste tu contraseña?', forgotT: 'Recuperar contraseña',
-    forgotH: 'Escribe tu email y te enviamos un enlace para poner una nueva contraseña.',
-    forgotSend: 'Enviar enlace', forgotSent: 'Te enviamos un correo con el enlace. Revisa spam si no lo ves.',
-    forgotBack: '← Volver a entrar',
   },
   en: {
     signupT: 'Create account', loginT: 'Sign in', email: 'Email', pass: 'Password',
@@ -55,7 +48,6 @@ const T = {
     errMail: 'Enter a valid email address.',
     errTerms: 'You must accept the terms to create an account.',
     errCaptcha: 'Complete the security check.',
-    errCaptchaStale: 'The security check expired. Please try again.',
     errGeneric: 'We could not complete the request. Please try again.',
     strength: ['Very weak', 'Weak', 'Okay', 'Strong', 'Excellent'],
     strengthHint: 'Use 10+ characters with at least one letter and one number.',
@@ -66,18 +58,12 @@ const T = {
     checkSpam: "Don't see it? Check spam or promotions. It may take 1-2 minutes.",
     resend: 'Resend link', resent: 'Link resent.', gotoLogin: 'I confirmed it, sign in',
     createdNow: 'Account created. Signing in…',
-    forgot: 'Forgot your password?', forgotT: 'Reset password',
-    forgotH: 'Enter your email and we will send you a link to set a new password.',
-    forgotSend: 'Send link', forgotSent: 'We sent you an email with the link. Check spam if you do not see it.',
-    forgotBack: '← Back to sign in',
   },
 };
 
 // Traduce los mensajes que devuelve Supabase (siempre vienen en inglés)
 function authMsg(raw: string, t: any) {
   const m = (raw || '').toLowerCase();
-  // El token de Turnstile ya se usó o caducó: pedimos reintentar con uno nuevo.
-  if (m.includes('captcha') || m.includes('timeout-or-duplicate')) return t.errCaptchaStale;
   if (m.includes('invalid login')) return t.errBad;
   if (m.includes('already registered') || m.includes('already been registered') || m.includes('user already')) return t.errExists;
   if (m.includes('password') && (m.includes('6') || m.includes('8') || m.includes('short') || m.includes('least'))) return t.errShort;
@@ -111,10 +97,7 @@ function strongEnough(p: string): boolean {
 function LoginInner() {
   const router = useRouter();
   const params = useSearchParams();
-  // Abre en "crear cuenta" si lo pide el modo, o si el destino es unirse a una
-  // academia de un mentor (?join=) o traer un referido (?ref=): el prospecto casi
-  // siempre es nuevo, así que le mostramos el registro primero.
-  const [signup, setSignup] = useState(params.get('mode') === 'signup' || /[?&](join|ref)=/.test(params.get('next') || ''));
+  const [signup, setSignup] = useState(params.get('mode') === 'signup');
   const [name, setName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -127,9 +110,6 @@ function LoginInner() {
   const [mfa, setMfa] = useState(false);          // pide el código de 2 pasos
   const [hp, setHp] = useState('');               // honeypot: humanos lo dejan vacío
   const [captcha, setCaptcha] = useState('');     // token de Turnstile (si está activo)
-  const capRef = useRef<TurnstileHandle>(null);   // para acuñar un token fresco tras cada intento
-  const [forgot, setForgot] = useState(false);    // pantalla "recuperar contraseña"
-  const [forgotOk, setForgotOk] = useState(false);
   const [showPass, setShowPass] = useState(false); // mostrar/ocultar contraseña
   const [pkOk, setPkOk] = useState(false);         // navegador+SDK soportan passkey
   useEffect(() => { setPkOk(passkeySupported()); }, []);
@@ -149,49 +129,26 @@ function LoginInner() {
   // Plan preseleccionado (desde el landing de mentores). Si viene, tras registrarse
   // o entrar lo mandamos directo al checkout de ese plan en /pricing.
   const planParam = (params.get('plan') || '').replace(/[^a-z0-9_-]/gi, '').slice(0, 40);
-  const annualParam = params.get('annual') === '1';
-  const promoParam = (params.get('promo') || '').replace(/[^a-z0-9_-]/gi, '').slice(0, 40);   // cupón del enlace
-  const promoQ = promoParam ? '&promo=' + promoParam : '';
-  const planDest = planParam ? '/pricing?plan=' + planParam + (annualParam ? '&annual=1' : '') + promoQ : '';
+  const planDest = planParam ? '/pricing?plan=' + planParam : '';
 
   // A dónde vuelve el usuario tras confirmar el email o tras entrar.
   const nextRaw = params.get('next') || planDest || '/dashboard';
   const nextDest = nextRaw.startsWith('/') && !nextRaw.startsWith('//') ? nextRaw : '/dashboard';
 
-  // ¿La cuenta necesita el código de 2 pasos antes de entrar? Robusto: primero
-  // el nivel de aseguramiento (AAL); si por una condición de carrera aún no
-  // refleja el factor, caemos a mirar si hay un factor TOTP verificado. Así nunca
-  // saltamos el 2FA y mandamos al dashboard (lo que se veía como un "refresh").
-  async function needsMfa(): Promise<boolean> {
-    try {
-      const { data: aal } = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
-      if (aal && aal.currentLevel === 'aal2') return false;          // ya verificado en esta sesión
-      if (aal && aal.nextLevel === 'aal2') return true;              // requiere el código
-    } catch { /* seguimos al respaldo */ }
-    try {
-      const { data: f } = await sb.auth.mfa.listFactors();
-      if ((f?.totp || []).some((x: any) => x.status === 'verified')) return true;
-    } catch { /* si falla, no bloqueamos */ }
-    return false;
-  }
-
   // Entrar con passkey (huella/Face ID). El autenticador resuelve la cuenta solo.
   async function signInPasskey() {
+    if (TURNSTILE_KEY && !captcha) { setMsg(t.errCaptcha); return; }   // espera al captcha
     setLoading(true); setMsg('');
-    // Captcha PASIVO: usamos el token que el widget ya resolvió al cargar (si hay).
-    // No reseteamos el widget (eso obligaba a "marcar de nuevo" en cada intento) y
-    // NUNCA bloqueamos por él: si Supabase lo tiene desactivado, se entra igual.
-    const cap = TURNSTILE_KEY ? (captcha || undefined) : undefined;
     try {
-      const { error } = await (sb as any).auth.signInWithPasskey(cap ? { options: { captchaToken: cap } } : undefined);
+      const { error } = await (sb as any).auth.signInWithPasskey(captcha ? { options: { captchaToken: captcha } } : undefined);
       if (error) throw error;
-      if (await needsMfa()) { setMfa(true); return; }
+      try {
+        const { data: aal } = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (aal && aal.nextLevel === 'aal2' && aal.currentLevel !== 'aal2') { setMfa(true); return; }
+      } catch { /* seguimos */ }
       router.push(nextDest); router.refresh();
     } catch (e: any) {
       setMsg(authMsg(e?.message || '', t));
-      // Solo si FALLÓ: acuñamos un token fresco en silencio para el reintento (un
-      // widget "Managed" se resuelve solo, sin pedir marcar de nuevo).
-      if (TURNSTILE_KEY) capRef.current?.reset();
     } finally { setLoading(false); }
   }
 
@@ -203,73 +160,44 @@ function LoginInner() {
     if (!passOk) { setMsg(t.errShort); return; }
     if (signup && !passStrong) { setMsg(t.errWeak); return; }
     if (signup && !terms) { setMsg(t.errTerms); return; }
+    if (TURNSTILE_KEY && !captcha) { setMsg(t.errCaptcha); return; }
     setLoading(true); setMsg('');
-    // Captcha PASIVO: usamos el token que el widget ya resolvió al cargar (si hay).
-    // No reseteamos el widget ni bloqueamos por él. Si Supabase lo tiene
-    // desactivado, se entra igual.
-    const cap = TURNSTILE_KEY ? (captcha || undefined) : undefined;
+    const cap = captcha || undefined;
     try {
       if (signup) {
-        // Respaldo local (por si el correo se abre en el mismo navegador).
-        if (planParam) setPending(planParam, annualParam);
-        // DURADERO: el plan viaja por la URL del correo. Tras confirmar, Supabase
-        // vuelve a /confirmado (página de bienvenida con login rápido) llevando el
-        // idioma y el plan; de ahí al onboarding y al checkout. Así no se pierde
-        // aunque el correo se abra en otro dispositivo/navegador.
-        const planQS = planParam ? `&plan=${planParam}${annualParam ? '&annual=1' : ''}${promoQ}` : '';
-        const onbDest = planParam ? `/onboarding?plan=${planParam}${annualParam ? '&annual=1' : ''}${promoQ}` : '/onboarding';
+        // Tras confirmar el email, Supabase redirige aquí; el gate del dashboard
+        // envía a /onboarding la primera vez.
         const emailRedirectTo = typeof window !== 'undefined'
-          ? `${window.location.origin}/confirmado?lang=${lang}${planQS}` : undefined;
-        // CLAVE: guardamos plan y cupón pendientes en los METADATOS de la cuenta, en
-        // el mismo instante del registro (momento garantizado). El servidor del
-        // dashboard los lee y lleva al checkout con el descuento. NO depende del
-        // navegador, del dispositivo, de /confirmado ni de la sesión al confirmar.
+          ? `${window.location.origin}${planDest || '/onboarding'}` : undefined;
         const { data, error } = await sb.auth.signUp({
-          email: email.trim(), password: pass, options: {
-            emailRedirectTo,
-            data: { full_name: fullName, first_name: name.trim(), last_name: lastName.trim(), lang, pending_plan: planParam || null, pending_plan_annual: annualParam, pending_promo: promoParam || null },
-            captchaToken: cap,
-          },
+          email: email.trim(), password: pass, options: { emailRedirectTo, data: { full_name: fullName, first_name: name.trim(), last_name: lastName.trim() }, captchaToken: cap },
         });
         if (error) throw error;
-        // Confirmación ACTIVADA → aún sin sesión: "revisa tu correo". Si está
-        // desactivada, ya hay sesión y entramos directo al onboarding con el plan.
-        if (data.session) { router.push(onbDest); router.refresh(); }
+        // Si la confirmación de email está ACTIVADA, no hay sesión todavía →
+        // mostramos la pantalla de "revisa tu correo". Si está desactivada,
+        // ya hay sesión y entramos directo al onboarding.
+        if (data.session) { router.push(planDest || '/onboarding'); router.refresh(); }
         else { setSent(true); }
       } else {
         const { error } = await sb.auth.signInWithPassword({ email: email.trim(), password: pass, options: { captchaToken: cap } });
         if (error) throw error;
-        // ¿Tiene verificación en dos pasos? Pedimos el código antes de entrar.
-        if (await needsMfa()) { setMfa(true); return; }
+        // ¿Tiene verificación en dos pasos? Si el nivel requerido es aal2 y aún
+        // no lo alcanzó, pedimos el código antes de entrar.
+        try {
+          const { data: aal } = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
+          if (aal && aal.nextLevel === 'aal2' && aal.currentLevel !== 'aal2') { setMfa(true); return; }
+        } catch { /* si falla la comprobación, seguimos */ }
         router.push(nextDest); router.refresh();
       }
     } catch (e: any) {
       setMsg(authMsg(e?.message || '', t));
-      // Solo si FALLÓ: token fresco en silencio para el reintento.
-      if (TURNSTILE_KEY) capRef.current?.reset();
     } finally { setLoading(false); }
-  }
-
-  // Enviar el correo de recuperación → lleva a /reset-password para poner la nueva.
-  // Con el CAPTCHA activo en Supabase, esta llamada TAMBIÉN necesita el token.
-  async function sendReset() {
-    if (!mailOk) { setMsg(t.errMail); return; }
-    setLoading(true); setMsg('');
-    try {
-      const redirectTo = typeof window !== 'undefined' ? `${window.location.origin}/reset-password` : undefined;
-      const captchaToken = TURNSTILE_KEY ? (captcha || undefined) : undefined;
-      const { error } = await sb.auth.resetPasswordForEmail(email.trim(), { redirectTo, captchaToken } as any);
-      // Si falla por el captcha, avisamos y pedimos otro token (no fingimos éxito).
-      if (error && /captcha|human|turnstile/i.test(error.message || '')) { setMsg(t.errCaptcha); capRef.current?.reset(); return; }
-      setForgotOk(true);   // por seguridad mostramos éxito aunque el email no exista
-    } catch { setForgotOk(true); } finally { setLoading(false); }
   }
 
   async function resend() {
     setResent(false);
     try {
-      const planQS = planParam ? `&plan=${planParam}${annualParam ? '&annual=1' : ''}${promoQ}` : '';
-      const emailRedirectTo = typeof window !== 'undefined' ? `${window.location.origin}/confirmado?lang=${lang}${planQS}` : undefined;
+      const emailRedirectTo = typeof window !== 'undefined' ? `${window.location.origin}${planDest || '/onboarding'}` : undefined;
       await sb.auth.resend({ type: 'signup', email: email.trim(), options: { emailRedirectTo } });
       setResent(true);
     } catch { setResent(true); }
@@ -316,34 +244,6 @@ function LoginInner() {
     );
   }
 
-  // ── Pantalla "recuperar contraseña" ──────────────────────────
-  if (forgot) {
-    return (
-      <div className="center">
-        <Link className="logo" href="/" style={{ justifyContent: 'center', marginBottom: 24 }}>
-          <img src="/onyx-symbol.png" alt="Onyx" style={{ width: 30, height: 30, objectFit: 'contain' }} /> Onyx Trading Live
-        </Link>
-        <div className="card">
-          <h2 style={{ marginBottom: 8 }}>{t.forgotT}</h2>
-          {forgotOk ? (
-            <p className="muted" style={{ fontSize: 14 }}>{t.forgotSent}</p>
-          ) : (
-            <>
-              <p className="muted" style={{ fontSize: 14, marginBottom: 14 }}>{t.forgotH}</p>
-              <label>{t.email}</label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required inputMode="email" autoComplete="username"
-                onKeyDown={(e) => { if (e.key === 'Enter') sendReset(); }} />
-              <Turnstile ref={capRef} onToken={setCaptcha} />
-              {msg && <p className="muted" style={{ marginTop: 12, fontSize: 13, color: 'var(--red)' }}>{msg}</p>}
-              <button className="btn btn-primary" style={{ width: '100%', marginTop: 16 }} disabled={loading || !mailOk} onClick={sendReset}>{loading ? '…' : t.forgotSend}</button>
-            </>
-          )}
-          <button className="btn btn-ghost" style={{ width: '100%', marginTop: 10, fontSize: 13 }} onClick={() => { setForgot(false); setForgotOk(false); setMsg(''); }}>{t.forgotBack}</button>
-        </div>
-      </div>
-    );
-  }
-
   // ── Formulario de entrar / crear cuenta ──────────────────────
   const barColors = ['#e2531f', '#e2531f', '#f0a020', 'var(--green)', 'var(--green)'];
   return (
@@ -383,12 +283,6 @@ function LoginInner() {
             </button>
           </div>
 
-          {!signup && (
-            <div style={{ textAlign: 'right', marginTop: 8 }}>
-              <a style={{ color: 'var(--brand)', cursor: 'pointer', fontSize: 13 }} onClick={() => { setForgot(true); setMsg(''); }}>{t.forgot}</a>
-            </div>
-          )}
-
           {signup && pass.length > 0 && (
             <div style={{ marginTop: 8 }}>
               <div style={{ display: 'flex', gap: 5 }}>
@@ -409,7 +303,7 @@ function LoginInner() {
             </label>
           )}
 
-          <Turnstile ref={capRef} onToken={setCaptcha} />
+          <Turnstile onToken={setCaptcha} />
 
           <div style={{ height: 18 }} />
           <button className="btn btn-primary" style={{ width: '100%', opacity: formOk ? 1 : .5 }} disabled={loading || !formOk}>

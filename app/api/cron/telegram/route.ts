@@ -94,8 +94,7 @@ async function dailySummary() {
       `Resultado: ${sign}$${Math.abs(net).toFixed(2)}\n` +
       `Te frenó: ${blocks || 0} vez(ces)\n` +
       `Te lo saltaste: ${overrides || 0} vez(ces)`;
-    // once/día: si el cron del resumen se dispara dos veces, no repite.
-    const ok = await alertOncePerDay(u.id, 'daily', 'daily_summary', msg);
+    const ok = await alertUser(u.id, 'daily', msg);
     if (ok) sent++;
   }
   return NextResponse.json({ job: 'daily', users: (users || []).length, sent });

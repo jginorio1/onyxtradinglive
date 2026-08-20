@@ -1,6 +1,6 @@
 'use client';
 import { dictFor } from '@/lib/i18n';
-import { toast, confirmDialog } from '@/lib/toast';
+import { toast } from '@/lib/toast';
 import { fmtDate, fmtDateTime } from '@/lib/fmtDate';
 import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
@@ -289,7 +289,7 @@ export default function KeysPage() {
     await load(); setLoading(false);
   }
   async function revoke(id: string) {
-    if (!(await confirmDialog(t.confirmRevoke))) return;
+    if (!confirm(t.confirmRevoke)) return;
     await fetch('/api/keys', { method: 'PATCH', body: JSON.stringify({ id }) });
     await load();
   }

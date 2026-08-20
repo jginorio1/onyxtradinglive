@@ -11,7 +11,6 @@ export type Promo = {
   link: string; newTab: boolean; // abrir el enlace en pestaña nueva
   cta_es: string; cta_en: string;
   coupon: string;                // código de cupón copiable ('' = sin cupón)
-  mode?: 'auto' | 'link';        // 'auto' = descuento para todos durante la promo; 'link' = solo quien llega con ?promo=CODE
   bg: string; bg2: string; gradient: boolean; fg: string; // fondo sólido o degradado
   position: 'top' | 'bottom';
   sticky: boolean;               // (position 'top') se queda fija al hacer scroll
@@ -39,7 +38,7 @@ export function blankPromo(): Promo {
     text_es: '', text_en: '',
     link: '', newTab: false,
     cta_es: '', cta_en: '',
-    coupon: '', mode: 'auto',
+    coupon: '',
     bg: '#7c8cff', bg2: '#9a6bff', gradient: false, fg: '#0a0d14',
     position: 'top', sticky: true, anim: 'slide', speed: 'normal',
     countdown: true, countdownFmt: 'dhms',
@@ -77,9 +76,7 @@ export function pickActiveBar(
 ): Promo | null {
   for (const b of bars) {
     if (!b || !b.on) continue;
-    // Texto del idioma del visitante; si ese idioma está vacío, cae al OTRO idioma
-    // para que la barra no desaparezca en dispositivos cuyo idioma no llenaste.
-    const text = (ctx.lang === 'es' ? b.text_es : b.text_en) || (ctx.lang === 'es' ? b.text_en : b.text_es);
+    const text = ctx.lang === 'es' ? b.text_es : b.text_en;
     if (!text) continue;
     if (b.startsAt && new Date(b.startsAt).getTime() > now) continue;
     if (b.endsAt && new Date(b.endsAt).getTime() <= now) continue;

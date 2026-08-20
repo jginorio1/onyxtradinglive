@@ -1,5 +1,5 @@
 'use client';
-import { toast, confirmDialog } from '@/lib/toast';
+import { toast } from '@/lib/toast';
 import { useEffect, useState } from 'react';
 import { useT } from '@/lib/adminText';
 import { useLang } from '@/lib/lang';
@@ -35,7 +35,7 @@ export default function KbEditor() {
   // Importa toda la Guía a la Base IA (idempotente). Así la IA la tiene aquí y
   // puedes editarla desde el panel sin desplegar.
   async function importGuide() {
-    if (!(await confirmDialog(es ? 'Sincronizar la Guía con la Base IA? Actualiza las que ya existen, añade las nuevas y quita duplicados. No toca tus artículos escritos a mano.' : 'Sync the Guide into the Knowledge Base? Updates existing ones, adds new ones and removes duplicates. Your hand-written articles are untouched.'))) return;
+    if (!confirm(es ? 'Sincronizar la Guía con la Base IA? Actualiza las que ya existen, añade las nuevas y quita duplicados. No toca tus artículos escritos a mano.' : 'Sync the Guide into the Knowledge Base? Updates existing ones, adds new ones and removes duplicates. Your hand-written articles are untouched.')) return;
     setImporting(true);
     try {
       const r = await fetch('/api/admin/kb/import-guide', { method: 'POST' });
@@ -90,7 +90,7 @@ export default function KbEditor() {
           <div>
             <div className="row between" style={{ alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
               <div style={{ fontWeight: 600, fontSize: 13.5 }}>{es ? 'Conocimiento de marca (qué es Onyx, funciones, cómo conectar)' : 'Brand knowledge (what Onyx is, features, how to connect)'}</div>
-              <button className="btn btn-ghost" style={{ fontSize: 11.5 }} onClick={async () => { if (await confirmDialog(es ? '¿Cargar el texto por defecto? Reemplaza lo que haya en estos dos campos.' : 'Load the default text? It replaces what is in these two fields.')) setPf({ ...pf, brief_es: pf.defaultBrief_es || '', brief_en: pf.defaultBrief_en || '' }); }}>{es ? '↺ Cargar el texto por defecto' : '↺ Load the default text'}</button>
+              <button className="btn btn-ghost" style={{ fontSize: 11.5 }} onClick={() => { if (confirm(es ? '¿Cargar el texto por defecto? Reemplaza lo que haya en estos dos campos.' : 'Load the default text? It replaces what is in these two fields.')) setPf({ ...pf, brief_es: pf.defaultBrief_es || '', brief_en: pf.defaultBrief_en || '' }); }}>{es ? '↺ Cargar el texto por defecto' : '↺ Load the default text'}</button>
             </div>
             <div className="muted" style={{ fontSize: 12, margin: '4px 0 6px' }}>{es ? 'Si lo dejas VACÍO, la IA usa el texto interno por defecto. Si escribes aquí, REEMPLAZA ese texto (tú controlas los hechos que da sobre Onyx).' : 'If you leave it EMPTY, the AI uses the built-in default. If you write here, it REPLACES that text (you control the facts it gives about Onyx).'}</div>
             <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>

@@ -8,29 +8,6 @@ export const runtime = 'nodejs';
 const ACC_TYPES = ['own', 'demo', 'challenge', 'funded'];
 const CH_STATUS = ['none', 'phase1', 'phase2', 'passed', 'failed', 'funded'];
 
-// POST · pide re-sincronizar TODO el historial de una cuenta. Marca la cuenta;
-// en el próximo sync el EA recibe la orden, reinicia su marca de backfill y
-// vuelve a subir todas las operaciones desde el principio.
-export async function POST(req: Request) {
-  try {
-    const sb = createSupabaseServer();
-    const { data: { user } } = await sb.auth.getUser();
-    if (!user) return NextResponse.json({ error: 'Not signed in.', code: 'no_auth' }, { status: 401 });
-    const b = await req.json().catch(() => ({} as any));
-    if (b.action !== 'resync') return NextResponse.json({ error: 'unknown action', code: 'generic' }, { status: 400 });
-    const id = String(b.id || '').trim();
-    if (!id) return NextResponse.json({ error: 'Missing account.', code: 'missing_data' }, { status: 400 });
-    const { data: updated, error } = await supabaseAdmin
-      .from('trading_accounts').update({ resync_history: true })
-      .eq('id', id).eq('user_id', user.id).select('id');
-    if (error) return NextResponse.json({ error: error.message, code: 'no_column' }, { status: 500 });
-    if (!updated?.length) return NextResponse.json({ error: 'Account not found.', code: 'not_found' }, { status: 404 });
-    return NextResponse.json({ ok: true });
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message || 'error', code: 'generic' }, { status: 500 });
-  }
-}
-
 // Renombrar y configurar una cuenta del usuario
 export async function PATCH(req: Request) {
   try {

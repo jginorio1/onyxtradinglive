@@ -34,7 +34,7 @@ export function StatCard({ icon, label, value, color, accent, sub, bar }: {
     </div>
   );
 }
-export type Tile = { key: string; icon: string; label: string; metric?: string; mc?: string; color: string; onClick: () => void; preload?: () => void; badge?: React.ReactNode };
+export type Tile = { key: string; icon: string; label: string; metric?: string; mc?: string; color: string; onClick: () => void; badge?: React.ReactNode };
 
 function GlowRing({ v }: { v: Vital }) {
   const size = 96; const r = size / 2 - 9; const c = 2 * Math.PI * r;
@@ -52,8 +52,8 @@ function GlowRing({ v }: { v: Vital }) {
   );
 }
 
-export default function HubVitals({ net, netPos, netLabel, vitals, tiles, hideNet = false }: {
-  net: string; netPos: boolean; netLabel: string; vitals: Vital[]; tiles: Tile[]; hideNet?: boolean;
+export default function HubVitals({ net, netPos, netLabel, vitals, tiles }: {
+  net: string; netPos: boolean; netLabel: string; vitals: Vital[]; tiles: Tile[];
 }) {
   const netColor = netPos ? 'var(--green)' : 'var(--red)';
   return (
@@ -72,14 +72,11 @@ export default function HubVitals({ net, netPos, netLabel, vitals, tiles, hideNe
           background:color-mix(in srgb,var(--tc) 20%,transparent);filter:drop-shadow(0 0 5px color-mix(in srgb,var(--tc) 55%,transparent))}
       `}</style>
 
-      {/* Titular del neto: ahora se pinta en la fila de "Onyx te dice" (DashboardClient),
-          por eso aquí se puede ocultar con hideNet para no duplicarlo. */}
-      {!hideNet && (
-        <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 12, marginBottom: 12, padding: '9px 16px', background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 14, maxWidth: '100%', flexWrap: 'wrap' }}>
-          <span className="muted" style={{ fontSize: 13 }}>{netLabel}</span>
-          <span style={{ fontSize: 28, fontWeight: 800, color: netColor, textShadow: `0 0 18px ${netPos ? 'rgba(52,226,160,.55)' : 'rgba(255,107,125,.55)'}` }}>{net}</span>
-        </div>
-      )}
+      {/* Titular: resultado del periodo, grande y encendido */}
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+        <span className="muted" style={{ fontSize: 13 }}>{netLabel}</span>
+        <span style={{ fontSize: 30, fontWeight: 800, color: netColor, textShadow: `0 0 18px ${netPos ? 'rgba(52,226,160,.55)' : 'rgba(255,107,125,.55)'}` }}>{net}</span>
+      </div>
 
       {/* Anillos vitales */}
       <div className="hv-vitals">
@@ -89,7 +86,7 @@ export default function HubVitals({ net, netPos, netLabel, vitals, tiles, hideNe
       {/* Mosaicos de navegación */}
       <div className="hv-tiles">
         {tiles.map((t) => (
-          <button key={t.key} onClick={t.onClick} onMouseEnter={t.preload} onTouchStart={t.preload} className="navtile" style={{ ['--tc' as any]: t.color }}>
+          <button key={t.key} onClick={t.onClick} className="navtile" style={{ ['--tc' as any]: t.color }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span className="navtile-ic"><Ic icon={t.icon} size={19} /></span>
               {t.badge ? t.badge : <span style={{ color: 'var(--mut)', fontSize: 15 }}>→</span>}

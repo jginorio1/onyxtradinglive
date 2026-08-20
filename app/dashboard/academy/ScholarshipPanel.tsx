@@ -1,5 +1,4 @@
 'use client';
-import { toast, confirmDialog } from '@/lib/toast';
 import { useEffect, useState } from 'react';
 
 // Panel de becas del mentor (Fase 1): conceder directa o por código, ver activas
@@ -50,7 +49,7 @@ export default function ScholarshipPanel({ L }: { L: L }) {
     } finally { setBusy(false); }
   }
   async function revoke(id: string) {
-    if (!(await confirmDialog(L('¿Revocar esta beca? El alumno perderá el acceso.', 'Revoke this scholarship? The student loses access.')))) return;
+    if (!confirm(L('¿Revocar esta beca? El alumno perderá el acceso.', 'Revoke this scholarship? The student loses access.'))) return;
     await fetch('/api/academy/scholarships', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'revoke', id }) });
     await load();
   }
@@ -63,7 +62,7 @@ export default function ScholarshipPanel({ L }: { L: L }) {
   async function doRaffle() {
     const n = Number(prompt(L('¿Cuántas becas sortear entre las solicitudes pendientes?', 'How many scholarships to raffle among pending requests?'), '1')) || 0;
     if (n < 1) return;
-    if (!(await confirmDialog(L(`Se sortearán ${n} beca(s) al azar entre los solicitantes y se les concederá (${appDays} días). ¿Continuar?`, `${n} scholarship(s) will be raffled among applicants and granted (${appDays} days). Continue?`)))) return;
+    if (!confirm(L(`Se sortearán ${n} beca(s) al azar entre los solicitantes y se les concederá (${appDays} días). ¿Continuar?`, `${n} scholarship(s) will be raffled among applicants and granted (${appDays} days). Continue?`))) return;
     await fetch('/api/academy/scholarships', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'raffle', count: n, days: appDays }) });
     await load();
   }

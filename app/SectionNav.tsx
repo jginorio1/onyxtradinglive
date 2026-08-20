@@ -6,10 +6,6 @@ import { useEffect, useState } from 'react';
 // Se marca sola la sección que estás mirando.
 export default function SectionNav({ items }: { items: { id: string; label: string }[] }) {
   const [active, setActive] = useState(items[0]?.id || '');
-  // Con sesión, la barra de la app ya está arriba (lleva la píldora de plan).
-  // No apilamos encima la sub-barra de marketing: sería doble menú.
-  const [hide, setHide] = useState(false);
-  useEffect(() => { try { setHide(!!document.querySelector('.planpill')); } catch {} }, []);
 
   useEffect(() => {
     const nodes = items.map((i) => document.getElementById(i.id)).filter(Boolean) as HTMLElement[];
@@ -28,7 +24,6 @@ export default function SectionNav({ items }: { items: { id: string; label: stri
     return () => io.disconnect();
   }, [items]);
 
-  if (hide) return null;
   return (
     <div className="secnav">
       <div className="wrap-wide secnav-items">

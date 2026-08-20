@@ -15,12 +15,8 @@ export type Block =
   | { h: string }                    // subtítulo
   | { note: string; title?: string } // recuadro con ejemplo o aviso
   | { warn: string; title?: string } // recuadro de advertencia honesta
-  | { tip: string; title?: string }  // recuadro verde de consejo
-  | { img: string; alt: string; caption?: string } // ilustración o captura
   | { list: string[] }
-  | { steps: string[] }
-  // Recorrido visual: cada paso con título, detalle, imagen y consejo opcionales.
-  | { walk: { t: string; d?: string; img?: string; alt?: string; tip?: string }[] };
+  | { steps: string[] };
 
 export type Article = {
   slug: string;
@@ -30,10 +26,6 @@ export type Article = {
   summary: Record<Lang, string>;
   body: Record<Lang, Block[]>;
   cta?: { href: string; label: Record<Lang, string> };
-  cover?: string;    // imagen de portada del artículo (ruta en /public)
-  updated?: boolean; // marca "Nuevo/Actualizado" en la portada
-  // SEO on-page (opcional): meta título/descr y keywords por idioma.
-  seo?: { title?: Record<Lang, string>; desc?: Record<Lang, string>; keywords?: Record<Lang, string[]> };
 };
 
 export const CATEGORIES = [
@@ -43,7 +35,6 @@ export const CATEGORIES = [
   { id: 'funded',  icon: '🏆', color: 'var(--purple)', name: { es: 'Cuentas de fondeo',     en: 'Funded accounts' } },
   { id: 'account', icon: '⚙️', color: 'var(--cyan)',   name: { es: 'Tu cuenta y tu plan',   en: 'Your account and plan' } },
   { id: 'alerts',  icon: '📣', color: 'var(--brand2)', name: { es: 'Avisos y soporte',      en: 'Alerts and support' } },
-  { id: 'tools',   icon: '🧰', color: 'var(--green)',  name: { es: 'Herramientas del panel', en: 'Dashboard tools' } },
   { id: 'academy', icon: '🎓', color: 'var(--gold)',   name: { es: 'Onyx Academy',           en: 'Onyx Academy' } },
 ];
 
@@ -51,7 +42,7 @@ export const ARTICLES: Article[] = [
   // ---------- PRIMEROS PASOS ----------
   {
     slug: 'conectar-cuenta',
-    cat: 'start', icon: '🔌', cover: '/guia/key.svg',
+    cat: 'start', icon: '🔌',
     title: { es: 'Conectar tu cuenta de MetaTrader', en: 'Connecting your MetaTrader account' },
     summary: {
       es: 'Qué es la clave API, por qué una por cuenta, y qué pasa si te equivocas.',
@@ -81,7 +72,7 @@ export const ARTICLES: Article[] = [
   },
   {
     slug: 'instalar-ea',
-    cat: 'start', icon: '⚙️', cover: '/guia/instalar-ea.svg',
+    cat: 'start', icon: '⚙️',
     title: { es: 'Instalar el EA en MetaTrader', en: 'Installing the EA in MetaTrader' },
     summary: {
       es: 'Los siete pasos, y las cuatro cosas que fallan cuando no sincroniza.',
@@ -90,19 +81,16 @@ export const ARTICLES: Article[] = [
     cta: { href: '/dashboard/keys', label: { es: 'Abrir el asistente', en: 'Open the wizard' } },
     body: {
       es: [
-        { p: 'En Cuentas tienes un asistente que te lleva paso a paso y espera hasta confirmar que funcionó. Aquí lo tienes todo explicado con imágenes por si prefieres ir por tu cuenta. Tardas unos 3 minutos la primera vez.' },
-        { walk: [
-          { t: 'Descarga el archivo de tu plataforma', d: 'En la pantalla de instalación, pulsa descargar: .mq5 si usas MetaTrader 5, .mq4 si usas MetaTrader 4. Es un archivo pequeño; fíjate en tu carpeta de Descargas.' },
-          { t: 'Abre la carpeta Experts de MetaTrader', d: 'En MetaTrader, arriba: Archivo → Abrir carpeta de datos. Se abre una ventana del explorador; entra en la carpeta MQL5 (o MQL4) y luego en Experts. Copia ahí el archivo que descargaste.', img: '/guia/ea-experts.svg', alt: 'Menú Archivo, Abrir carpeta de datos, y la carpeta Experts' },
-          { t: 'Compílalo en MetaEditor', d: 'Pulsa F4 para abrir MetaEditor. En la lista de la izquierda haz doble clic en el archivo de Onyx y pulsa Compilar (F7). Abajo debe decir "0 errors": eso significa que quedó listo.', img: '/guia/ea-compile.svg', alt: 'MetaEditor con el botón Compilar (F7) y 0 errores' },
-          { t: 'Arrastra Onyx a un gráfico', d: 'Vuelve a MetaTrader. Abre el Navegador (Ctrl+N), despliega Asesores Expertos, y arrastra "Onyx" encima de cualquier gráfico abierto. Da igual el par o la temporalidad.', img: '/guia/ea-drag.svg', alt: 'Arrastrar el EA Onyx desde el Navegador hasta un gráfico' },
-          { t: 'Pega tu clave API', d: 'Al soltarlo se abre una ventana. En la pestaña de parámetros, pega tu clave API (la que copiaste en Cuentas) y deja la URL del servidor tal como viene. Pulsa Aceptar.', tip: 'Copia y pega la clave entera; un espacio de más al principio o al final hace que no conecte.' },
-          { t: 'Permite la URL de Onyx', d: 'Arriba: Herramientas → Opciones → Asesores Expertos. Marca "Permitir WebRequest" y añade la URL de Onyx a la lista. Es lo que deja que el EA nos envíe tus operaciones.' },
-          { t: 'Enciende AlgoTrading', d: 'Pulsa el botón "AlgoTrading" de la barra superior hasta que se ponga verde. En unos segundos el panel dentro del gráfico dirá "Conectado".', img: '/guia/ea-connected.svg', alt: 'Botón AlgoTrading en verde y el panel del gráfico diciendo Conectado', tip: 'Si en la esquina del gráfico ves una carita triste en vez de sonriente, AlgoTrading no está activo aún.' },
+        { p: 'En Cuentas tienes un asistente que te lleva paso a paso y espera hasta confirmar que funcionó. Esto es el resumen por si prefieres ir por tu cuenta.' },
+        { steps: [
+          'Descarga el archivo de tu plataforma: .mq5 para MT5, .mq4 para MT4.',
+          'En MetaTrader: Archivo → Abrir carpeta de datos → carpeta Experts.',
+          'Abre MetaEditor (F4), abre el archivo y pulsa Compilar (F7).',
+          'Navegador → Asesores Expertos → arrastra Onyx a cualquier gráfico.',
+          'Pega tu clave API y deja la URL del servidor como viene.',
+          'Herramientas → Opciones → Asesores Expertos → permite la URL de Onyx.',
+          'Enciende AlgoTrading. En segundos el panel del gráfico dirá "Conectado".',
         ] },
-        { h: '⌨️ Las teclas F4, F7 y Ctrl+N' },
-        { p: 'F4 y F7 son teclas de función: están en la fila de arriba del teclado (F1, F2, F3…). Ctrl+N significa mantener pulsada la tecla Ctrl y, sin soltarla, pulsar la N.' },
-        { note: 'En Windows: pulsa F4 y F7 directamente.\nEn Mac: MetaTrader es un programa de Windows, así que corre dentro de un envoltorio (el que da tu bróker, o PlayOnMac/Wine). Ahí puede que necesites pulsar Fn + F4 o Fn + F7 para que funcionen las teclas de función, y en algunos casos Cmd en vez de Ctrl. Todos los menús (Archivo, Herramientas…) están igual, así que siempre puedes usar el ratón en vez de las teclas.', title: 'Windows vs Mac' },
         { h: 'Si no sincroniza' },
         { p: 'Casi siempre es una de estas cuatro, en este orden de probabilidad:' },
         { list: [
@@ -114,19 +102,16 @@ export const ARTICLES: Article[] = [
         { warn: 'Un EA solo funciona con MetaTrader abierto y con conexión. Si apagas el ordenador, deja de registrar y deja de proteger. Si operas en serio, plantéate un VPS.' },
       ],
       en: [
-        { p: 'In Accounts there is a wizard that walks you through it and waits until it confirms it worked. Here is everything explained with images in case you prefer doing it yourself. It takes about 3 minutes the first time.' },
-        { walk: [
-          { t: 'Download the file for your platform', d: 'On the install screen, hit download: .mq5 if you use MetaTrader 5, .mq4 if you use MetaTrader 4. It is a small file; check your Downloads folder.' },
-          { t: 'Open MetaTrader’s Experts folder', d: 'In MetaTrader, top menu: File → Open Data Folder. A file explorer opens; go into the MQL5 (or MQL4) folder and then Experts. Copy the file you downloaded there.', img: '/guia/ea-experts.svg', alt: 'File menu, Open Data Folder, and the Experts folder' },
-          { t: 'Compile it in MetaEditor', d: 'Press F4 to open MetaEditor. In the left list double-click the Onyx file and press Compile (F7). The bottom should say "0 errors": that means it is ready.', img: '/guia/ea-compile.svg', alt: 'MetaEditor with the Compile (F7) button and 0 errors' },
-          { t: 'Drag Onyx onto a chart', d: 'Back in MetaTrader, open the Navigator (Ctrl+N), expand Expert Advisors, and drag "Onyx" onto any open chart. The pair or timeframe does not matter.', img: '/guia/ea-drag.svg', alt: 'Dragging the Onyx EA from the Navigator onto a chart' },
-          { t: 'Paste your API key', d: 'When you drop it, a window opens. On the inputs tab, paste your API key (the one you copied in Accounts) and leave the server URL as it comes. Click OK.', tip: 'Copy and paste the whole key; an extra space at the start or end will stop it from connecting.' },
-          { t: 'Allow the Onyx URL', d: 'Top menu: Tools → Options → Expert Advisors. Tick "Allow WebRequest" and add the Onyx URL to the list. That is what lets the EA send us your trades.' },
-          { t: 'Turn on AlgoTrading', d: 'Press the "AlgoTrading" button in the top bar until it turns green. Within seconds the panel inside the chart will say "Connected".', img: '/guia/ea-connected.svg', alt: 'AlgoTrading button green and the chart panel saying Connected', tip: 'If you see a sad face instead of a smiley in the chart corner, AlgoTrading is not active yet.' },
+        { p: 'In Accounts there is a wizard that walks you through it and waits until it confirms it worked. This is the summary in case you prefer doing it yourself.' },
+        { steps: [
+          'Download the file for your platform: .mq5 for MT5, .mq4 for MT4.',
+          'In MetaTrader: File → Open Data Folder → Experts folder.',
+          'Open MetaEditor (F4), open the file and click Compile (F7).',
+          'Navigator → Expert Advisors → drag Onyx onto any chart.',
+          'Paste your API key and leave the server URL as it comes.',
+          'Tools → Options → Expert Advisors → allow the Onyx URL.',
+          'Turn on AlgoTrading. Within seconds the chart panel will say "Connected".',
         ] },
-        { h: '⌨️ The F4, F7 and Ctrl+N keys' },
-        { p: 'F4 and F7 are function keys: they sit on the top row of your keyboard (F1, F2, F3…). Ctrl+N means hold the Ctrl key and, without releasing it, press N.' },
-        { note: 'On Windows: press F4 and F7 directly.\nOn Mac: MetaTrader is a Windows program, so it runs inside a wrapper (your broker’s, or PlayOnMac/Wine). There you may need to press Fn + F4 or Fn + F7 for the function keys to work, and in some cases Cmd instead of Ctrl. All menus (File, Tools…) are the same, so you can always use the mouse instead of the keys.', title: 'Windows vs Mac' },
         { h: 'If it does not sync' },
         { p: 'It is almost always one of these four, in this order of likelihood:' },
         { list: [
@@ -141,7 +126,7 @@ export const ARTICLES: Article[] = [
   },
   {
     slug: 'que-hace-onyx',
-    cat: 'start', icon: '👁️', cover: '/guia/onyx-flujo.svg',
+    cat: 'start', icon: '👁️',
     title: { es: 'Qué hace Onyx y qué no hace', en: 'What Onyx does and does not do' },
     summary: {
       es: 'Los límites reales, dichos antes de que te lleves una sorpresa.',
@@ -496,15 +481,12 @@ export const ARTICLES: Article[] = [
     cta: { href: '/dashboard/manager', label: { es: 'Configurar parciales', en: 'Set up partials' } },
     body: {
       es: [
-        { p: 'Puedes cerrar tu posición en tres tramos (TP1, TP2, TP3) según avanza a tu favor. Por ejemplo: el 40% al llegar a 20 pips, el 30% a 40 pips, el 20% a 60 pips. Los porcentajes son del tamaño ORIGINAL de la posición y deben sumar 100% o menos.' },
-        { h: 'El Runner: el trozo que dejas correr' },
-        { p: 'El último bloque ya no es un TP más: es el Runner. No lleva porcentaje propio, cierra "el resto" (100% menos la suma de tus TP). Puedes dejarlo correr con el trailing para capturar un movimiento grande, o cerrarlo al llegar a una distancia. Si tus TP suman 100%, no queda runner y Onyx te avisa.' },
-        { p: 'La ventaja psicológica es real: aseguras algo pronto, y eso te quita la ansiedad de ver una ganancia evaporarse. La desventaja también: si cierras demasiado pronto, tus operaciones ganadoras se quedan pequeñas y tu expectancy baja. Por eso existe el runner: banqueas parte y dejas correr el resto.' },
-        { note: 'En el dashboard, la tarjeta "Salidas · Full TP vs parciales" te muestra cuántas cerraste al objetivo completo, cuántas por partes, la ganancia banqueada en TP1/TP2 y el aporte del runner, más el motivo de cada salida.', title: 'Lo ves en tus estadísticas' },
+        { p: 'Puedes cerrar tu posición en hasta cuatro tramos según avanza a tu favor. Por ejemplo: el 50% al llegar a 20 pips, el 30% a 40 pips, y dejas correr el resto.' },
+        { p: 'La ventaja psicológica es real: aseguras algo pronto, y eso te quita la ansiedad de ver una ganancia evaporarse. La desventaja también: si cierras demasiado pronto, tus operaciones ganadoras se quedan pequeñas y tu expectancy baja.' },
         { warn: 'Si tu operación es de 0,01 lotes, el bróker no deja partirla: no existe media unidad. En ese caso el parcial se salta y Onyx lo apunta en el historial para que sepas por qué no pasó nada.' },
-        { h: 'Un detalle de MT4 y del trailing' },
-        { p: 'En MT4, al cerrar parte de una posición el resto recibe un número de ticket nuevo; Onyx lo agrupa por otro camino. Y en MetaTrader un cierre por trailing figura como "Stop (SL)" en el motivo de salida, porque un trailing es un stop que se movió: la plataforma no los distingue.' },
-        { p: 'Los cierres parciales están disponibles en el plan Elite. Para ver el desglose necesitas la última versión del EA instalada.' },
+        { h: 'Un detalle solo de MT4' },
+        { p: 'En MT4, al cerrar parte de una posición el resto recibe un número de ticket nuevo. Onyx lo tiene en cuenta y sigue la pista por otro camino, pero si ves algo raro en el historial, avísanos.' },
+        { p: 'Los cierres parciales están disponibles en el plan Elite.' },
       ],
       en: [
         { p: 'You can close your position in up to four chunks as it moves your way. For example: 50% at 20 pips, 30% at 40 pips, and let the rest run.' },
@@ -654,7 +636,7 @@ export const ARTICLES: Article[] = [
   // ---------- AVISOS Y SOPORTE ----------
   {
     slug: 'avisos-telegram',
-    cat: 'alerts', icon: '📣', cover: '/guia/notificaciones.svg',
+    cat: 'alerts', icon: '📣',
     title: { es: 'Avisos por Telegram', en: 'Telegram alerts' },
     summary: {
       es: 'Recibe en el móvil lo importante: límites, EA caído, resumen del día e informe semanal.',
@@ -665,10 +647,10 @@ export const ARTICLES: Article[] = [
       es: [
         { p: 'Onyx puede avisarte por Telegram sin que tengas que abrir la web. Vinculas tu cuenta una vez y eliges qué avisos quieres recibir.' },
         { h: 'Cómo se conecta' },
-        { walk: [
-          { t: 'Abre Conectar Telegram', d: 'En Mi cuenta → Avisos, pulsa "Conectar Telegram". Si es la primera vez, te pedirá abrir la app de Telegram.' },
-          { t: 'Pulsa Iniciar en el bot', d: 'Se abre el bot de Onyx con un código de vinculación ya escrito. Solo tienes que pulsar el botón Iniciar (o /start): no tecleas nada.', img: '/guia/tg-start.svg', alt: 'El bot de Telegram abierto con el código puesto y el botón Iniciar' },
-          { t: 'Listo, ya estás vinculado', d: 'El bot te confirma con un mensaje. A partir de ahí recibes los avisos que tengas encendidos en Mi cuenta → Avisos.' },
+        { steps: [
+          'Entra en Mi cuenta → Avisos → Conectar Telegram.',
+          'Se abre el bot con un código ya puesto: pulsa Iniciar.',
+          'Listo. El bot te confirma y empiezas a recibir lo que tengas activado.',
         ] },
         { h: 'Qué te puede avisar' },
         { list: [
@@ -689,10 +671,10 @@ export const ARTICLES: Article[] = [
       en: [
         { p: 'Onyx can alert you on Telegram without you opening the web. You link your account once and choose which alerts you want.' },
         { h: 'How to connect' },
-        { walk: [
-          { t: 'Open Connect Telegram', d: 'In My account → Alerts, tap "Connect Telegram". The first time, it will ask to open the Telegram app.' },
-          { t: 'Tap Start in the bot', d: 'The Onyx bot opens with a linking code already typed. You just tap the Start button (or /start): you type nothing.', img: '/guia/tg-start.svg', alt: 'The Telegram bot open with the code filled in and the Start button' },
-          { t: 'Done, you are linked', d: 'The bot confirms with a message. From then on you get the alerts you have turned on in My account → Alerts.' },
+        { steps: [
+          'Go to My account → Alerts → Connect Telegram.',
+          'The bot opens with a code already filled in: tap Start.',
+          'Done. The bot confirms and you start getting whatever you turned on.',
         ] },
         { h: 'What it can alert you about' },
         { list: [
@@ -834,7 +816,7 @@ export const ARTICLES: Article[] = [
   // ---------- cTrader ----------
   {
     slug: 'conectar-ctrader',
-    cat: 'start', icon: '🔌', cover: '/guia/ctrader.svg',
+    cat: 'start', icon: '🔌',
     title: { es: 'Conectar tu cuenta de cTrader', en: 'Connecting your cTrader account' },
     summary: {
       es: 'En cTrader no se usa un EA sino un cBot. Es el mismo Onyx, escrito para cTrader.',
@@ -845,11 +827,11 @@ export const ARTICLES: Article[] = [
       es: [
         { p: 'Onyx funciona igual en cTrader que en MetaTrader: lee tus operaciones en solo lectura, nunca opera ni toca tu dinero. La diferencia es que en cTrader el conector se llama cBot (en MetaTrader es EA), pero hace lo mismo.' },
         { h: 'Pasos' },
-        { walk: [
-          { t: 'Elige la plataforma cTrader', d: 'En Onyx, en Conectar cuenta, selecciona cTrader. Verás el botón para descargar el conector y el sitio donde crear tu clave API.' },
-          { t: 'Descarga el cBot de Onyx', d: 'Baja el conector: el archivo .algo (listo para usar) o el código .cs si prefieres compilarlo tú. Guárdalo a mano.' },
-          { t: 'Añádelo en Automate', d: 'Abre cTrader Desktop y ve a la pestaña Automate. Importa o pega el cBot de Onyx, compílalo y arrástralo a cualquier gráfico.' },
-          { t: 'Pega tu clave y pulsa Play', d: 'En los parámetros del cBot pega tu clave API de Onyx. Asegúrate de que el botón global de automatización de cTrader está activado, y pulsa Play.', tip: 'Si Play está en gris, activa primero el interruptor global de automatización arriba a la derecha de cTrader.' },
+        { steps: [
+          'En Onyx, en Conectar cuenta, elige la plataforma cTrader.',
+          'Descarga el cBot de Onyx (archivo .algo o el código .cs).',
+          'En cTrader Desktop: pega el cBot en Automate, compílalo y añádelo a tu gráfico.',
+          'Pega tu clave API de Onyx en los parámetros del cBot y pulsa Play (con el botón global de automatización activado).',
         ] },
         { note: 'Cuando el cBot reporte, tu cuenta aparecerá conectada y verás tus estadísticas en segundos.', title: 'Confirmación' },
         { p: 'El Onyx Guardian y el copy trading también existen para cTrader, como cBots separados, con los mismos ajustes que en MetaTrader.' },
@@ -857,11 +839,11 @@ export const ARTICLES: Article[] = [
       en: [
         { p: 'Onyx works the same on cTrader as on MetaTrader: it reads your trades read-only, never trades or touches your money. The difference is that in cTrader the connector is a cBot (in MetaTrader it\'s an EA), but it does the same thing.' },
         { h: 'Steps' },
-        { walk: [
-          { t: 'Pick the cTrader platform', d: 'In Onyx, on Connect account, select cTrader. You will see the button to download the connector and where to create your API key.' },
-          { t: 'Download the Onyx cBot', d: 'Grab the connector: the .algo file (ready to use) or the .cs source if you prefer compiling it yourself. Keep it handy.' },
-          { t: 'Add it in Automate', d: 'Open cTrader Desktop and go to the Automate tab. Import or paste the Onyx cBot, compile it and drag it onto any chart.' },
-          { t: 'Paste your key and hit Play', d: 'In the cBot parameters paste your Onyx API key. Make sure cTrader’s global automation button is on, and hit Play.', tip: 'If Play is greyed out, first turn on the global automation switch at the top right of cTrader.' },
+        { steps: [
+          'In Onyx, on Connect account, pick the cTrader platform.',
+          'Download the Onyx cBot (.algo file or the .cs source).',
+          'In cTrader Desktop: paste the cBot into Automate, compile it and add it to your chart.',
+          'Paste your Onyx API key into the cBot parameters and hit Play (with the global automation button on).',
         ] },
         { note: 'When the cBot reports, your account shows as connected and your stats appear in seconds.', title: 'Confirmation' },
         { p: 'Onyx Guardian and copy trading also exist for cTrader, as separate cBots, with the same settings as on MetaTrader.' },
@@ -872,7 +854,7 @@ export const ARTICLES: Article[] = [
   // ---------- TradingView → EA ----------
   {
     slug: 'tradingview-senales',
-    cat: 'start', icon: '📈', cover: '/guia/tradingview.svg',
+    cat: 'start', icon: '📈',
     title: { es: 'TradingView → Onyx: ejecutar tus alertas', en: 'TradingView → Onyx: execute your alerts' },
     summary: {
       es: 'Haz que tus alertas de TradingView abran la operación en tu cuenta real, solas.',
@@ -889,12 +871,12 @@ export const ARTICLES: Article[] = [
           'Una cuenta de TradingView de pago (los webhooks no están en su plan gratis).',
         ] },
         { h: 'Pasos' },
-        { walk: [
-          { t: 'Activa TradingView en Onyx', d: 'En Onyx entra en TradingView y enciende la función para tu cuenta. Te dará una URL de webhook y un mensaje JSON únicos, tuyos.' },
-          { t: 'Pega tu URL de webhook', d: 'Al crear una alerta en TradingView, ve a la pestaña Notificaciones, marca "Webhook URL" y pega la URL que te dio Onyx.', img: '/guia/tv-webhook.svg', alt: 'Campo Webhook URL de una alerta de TradingView con la URL de Onyx pegada' },
-          { t: 'Pega el mensaje JSON', d: 'Copia el mensaje JSON de Onyx y pégalo en el campo "Mensaje" de la alerta. Ese texto le dice a Onyx qué operar y en qué sentido.' },
-          { t: 'Fija tus límites', d: 'En Onyx pon tu lote por defecto, tu lote máximo y los símbolos permitidos. Así una señal nunca abre más de lo que tú decides.' },
-          { t: 'Manda una señal de prueba', d: 'Dispara la alerta una vez para comprobar que la operación entra en tu cuenta con tu Guardian y tu Stop Loss aplicados.', tip: 'La ejecución respeta tu Guardian: si estás en tu límite del día, la señal no abre.' },
+        { steps: [
+          'En Onyx, entra en TradingView y activa la función para tu cuenta.',
+          'Copia tu URL de webhook y pégala en la alerta de TradingView (Notificaciones → Webhook URL).',
+          'Copia el mensaje JSON y pégalo en el campo Mensaje de la alerta.',
+          'Fija tu lote por defecto, lote máximo y símbolos permitidos.',
+          'Envía una señal de prueba para ver la ejecución.',
         ] },
         { note: '🛡️ El Onyx Guardian sigue vigilando esa cuenta: si tu pérdida diaria está alcanzada, el EA no abrirá aunque llegue la señal.', title: 'Seguridad' },
         { warn: 'El token del webhook no es la clave del EA. Si se filtra, solo permite mandar señales con tope de lote, y lo puedes rotar con un clic.' },
@@ -908,12 +890,12 @@ export const ARTICLES: Article[] = [
           'A paid TradingView account (webhooks aren\'t in their free plan).',
         ] },
         { h: 'Steps' },
-        { walk: [
-          { t: 'Enable TradingView in Onyx', d: 'In Onyx open TradingView and turn it on for your account. It gives you a unique webhook URL and JSON message, yours only.' },
-          { t: 'Paste your webhook URL', d: 'When creating an alert in TradingView, go to the Notifications tab, tick "Webhook URL" and paste the URL Onyx gave you.', img: '/guia/tv-webhook.svg', alt: 'Webhook URL field of a TradingView alert with the Onyx URL pasted' },
-          { t: 'Paste the JSON message', d: 'Copy the JSON message from Onyx and paste it into the alert’s "Message" field. That text tells Onyx what to trade and in which direction.' },
-          { t: 'Set your limits', d: 'In Onyx set your default lot, your max lot and the allowed symbols. That way a signal never opens more than you decide.' },
-          { t: 'Send a test signal', d: 'Fire the alert once to check the trade lands in your account with your Guardian and Stop Loss applied.', tip: 'Execution respects your Guardian: if you are at your daily limit, the signal will not open.' },
+        { steps: [
+          'In Onyx, open TradingView and enable it for your account.',
+          'Copy your webhook URL and paste it into your TradingView alert (Notifications → Webhook URL).',
+          'Copy the JSON message and paste it into the alert Message field.',
+          'Set your default lot, max lot and allowed symbols.',
+          'Send a test signal to see the execution.',
         ] },
         { note: '🛡️ Onyx Guardian still watches that account: if your daily loss is hit, the EA won\'t open even if a signal arrives.', title: 'Safety' },
         { warn: 'The webhook token isn\'t the EA key. If leaked, it only allows sending signals with a lot cap, and you can rotate it with one click.' },
@@ -970,7 +952,7 @@ export const ARTICLES: Article[] = [
   },
   {
     slug: 'academia-crear-mentor',
-    cat: 'academy', icon: '🧑‍🏫', cover: '/guia/academia-mentor.svg',
+    cat: 'academy', icon: '🧑‍🏫',
     title: { es: 'Montar tu academia (mentor)', en: 'Set up your academy (mentor)' },
     summary: {
       es: 'De cero a publicada: nombre y marca, cursos, clases en vivo y comunidad.',
@@ -981,12 +963,12 @@ export const ARTICLES: Article[] = [
       es: [
         { p: 'Desde el dashboard entras a Onyx Academy y creas tu academia con un asistente. Puedes tenerla lista en minutos y mejorarla con calma después.' },
         { h: 'Paso a paso' },
-        { walk: [
-          { t: 'Ponle nombre y lema', d: 'Dale a tu academia un nombre claro y una frase corta que diga a quién ayudas. Es lo primero que ve tu alumno.' },
-          { t: 'Sube tu logo y portada', d: 'Sube tu logo y una imagen de portada. A partir de ahí todo se ve con tu marca (nombre, colores), no con la de Onyx.' },
-          { t: 'Crea tu primer curso', d: 'Añade un curso, divídelo en secciones y, dentro, mete lecciones con vídeo (YouTube, Vimeo o .mp4), PDF y notas. El alumno ve su progreso a medida que avanza.' },
-          { t: 'Programa una clase en vivo', d: 'Desde el calendario, pega tu enlace de Zoom/Meet o YouTube Live y elige día y hora. Puedes marcar varios días de golpe para una serie de clases.' },
-          { t: 'Comparte tu enlace público', d: 'Copia el enlace público de tu academia y compártelo. Cualquiera puede entrar a ver la portada y apuntarse a tus niveles.' },
+        { steps: [
+          'Ponle nombre a tu academia y un lema corto.',
+          'Sube tu logo y una portada (así se ve con tu marca, no la de Onyx).',
+          'Crea tu primer curso: añádele secciones y, dentro, lecciones con vídeo (YouTube/Vimeo/.mp4), PDF y notas.',
+          'Programa una clase en vivo desde el calendario: pega el link de Zoom/Meet o YouTube Live y elige día y hora. Puedes marcar varios días a la vez.',
+          'Comparte el enlace público de tu academia para que la gente entre.',
         ] },
         { h: 'Clases en vivo' },
         { p: 'El alumno ve una cuenta regresiva y un aviso EN VIVO cuando empiezas. Cada uno la ve en SU hora local. Después puedes añadir la grabación al mismo evento.' },
@@ -1016,147 +998,46 @@ export const ARTICLES: Article[] = [
   },
   {
     slug: 'academia-cobrar-mentor',
-    cat: 'academy', icon: '💳', cover: '/guia/academy-pay-cover.svg', updated: true,
-    title: { es: 'Cómo cobran los mentores (Stripe)', en: 'How mentors get paid (Stripe)' },
+    cat: 'academy', icon: '💳',
+    title: { es: 'Cobrar por tu academia (mentor)', en: 'Charge for your academy (mentor)' },
     summary: {
-      es: 'Explicado a fondo: conectar Stripe, qué te llega y cuándo, la comisión de Onyx, y el modelo técnico (Connect, destination charge, webhook y comisiones).',
-      en: 'Explained in depth: connecting Stripe, what you receive and when, Onyx\'s fee, and the technical model (Connect, destination charge, webhook and commissions).',
+      es: 'Membresía de pago, cobros con Stripe, cupones, certificados y afiliados.',
+      en: 'Paid membership, Stripe payouts, coupons, certificates and affiliates.',
     },
     cta: { href: '/dashboard/academy', label: { es: 'Configurar cobros', en: 'Set up payments' } },
-    seo: {
-      title: { es: 'Cómo cobran los mentores en Onyx Academy · Stripe Connect', en: 'How Onyx Academy mentors get paid · Stripe Connect' },
-      desc: { es: 'Guía completa del cobro de mentores en Onyx: Stripe Connect, destination charge, comisión de Onyx, renovaciones, reembolsos y el libro de comisiones.', en: 'Full guide to mentor payouts in Onyx: Stripe Connect, destination charge, Onyx fee, renewals, refunds and the commission ledger.' },
-      keywords: { es: ['cobrar academia', 'stripe connect mentor', 'comisión onyx academy', 'destination charge', 'pagos mentor'], en: ['academy payouts', 'stripe connect mentor', 'onyx academy fee', 'destination charge', 'mentor payments'] },
-    },
     body: {
       es: [
-        { p: 'Tu academia puede ser gratis o de pago. Cuando cobras, el dinero de tus alumnos entra en TU propia cuenta de Stripe, no en la de Onyx. Onyx solo retiene su comisión de plataforma, de forma automática, en la misma transacción. Esta guía tiene dos partes: primero lo esencial para el mentor, y al final el detalle técnico del modelo que tenemos montado.' },
-        { img: '/guia/academy-pay-cover.svg', alt: 'El alumno paga, Stripe procesa, y el neto llega a tu cuenta de Stripe menos la comisión de Onyx', caption: 'El recorrido del dinero: alumno → Stripe → tu cuenta, menos comisiones.' },
-
-        { h: '① Para el mentor: lo esencial' },
-        { p: 'Para poder cobrar solo tienes que conectar tu cuenta de Stripe una vez. Es un proceso de Stripe (no de Onyx) y toma un par de minutos.' },
-        { img: '/guia/academy-pay-connect.svg', alt: 'Tres pasos: conectar con Stripe, completar tus datos, y quedar habilitado para cobrar', caption: 'Conectar tu cobro es de una sola vez.' },
-        { steps: [
-          'En el panel de tu academia → Cobros, pulsa "Conectar con Stripe".',
-          'Stripe te crea una cuenta Express y te pide tus datos: nombre o negocio, país, identidad y tu cuenta bancaria. Eso lo pide Stripe, no Onyx.',
-          'Cuando Stripe te marca como habilitado (charges_enabled), tu academia ya puede vender. Verás el estado "listo para cobrar" en tu panel.',
-        ] },
-
-        { h: 'Qué te llega y cuándo' },
-        { p: 'De cada venta se descuentan dos cosas: la comisión de Stripe (su tarifa por procesar el pago) y la comisión de Onyx (el porcentaje de plataforma que ves en tu panel). El resto es tuyo y queda en tu saldo de Stripe. Luego Stripe hace el pago a tu banco según su calendario de pagos (payout), que tú controlas desde tu propio panel de Stripe.' },
-        { img: '/guia/academy-pay-split.svg', alt: 'Reparto de una venta de 100 dólares: comisión de Stripe, comisión de Onyx del 10 por ciento, y el neto para el mentor', caption: 'Ejemplo con comisión del 10%. Las cifras de Stripe son aproximadas y dependen de tu país.' },
+        { p: 'Puedes ofrecer tu academia gratis o de pago. Para cobrar, conectas tu cuenta de Stripe (Stripe Connect): el dinero de tus alumnos entra en TU cuenta de Stripe, no en la de Onyx.' },
+        { h: 'Poner precio' },
         { list: [
-          'El precio lo pones tú, en dólares (mensual, anual y/o pagos únicos por nivel).',
-          'Puedes abrir o cerrar inscripciones y crear cupones de descuento cuando quieras.',
-          'En cada renovación mensual/anual se repite el mismo reparto automáticamente.',
-          'Onyx nunca guarda el dinero: solo separa su comisión en la misma transacción.',
+          'Defines el precio de la membresía (mensual y/o anual) en dólares.',
+          'Puedes abrir o cerrar las inscripciones cuando quieras.',
+          'Puedes crear cupones de descuento para campañas o para tu comunidad.',
         ] },
-
-        { h: 'Ver tus cobros' },
-        { p: 'Desde tu panel tienes un enlace directo a tu panel de Stripe (Express), donde ves cada cobro, tus pagos al banco y tus facturas. Tus ingresos y la comisión retenida por Onyx también se resumen en tu panel de la academia.' },
-
-        { h: 'Renovaciones, cancelaciones y reembolsos' },
-        { p: 'Si un alumno cancela, deja de renovar y pierde el acceso al final del periodo pagado. Si haces un reembolso, la comisión de esa venta se marca como revertida en el libro (no cuenta como ingreso). Todo esto es automático.' },
-        { tip: 'La comisión de Onyx puede bajar según tu plan de Onyx: a mejor plan, menor porcentaje. Lo verás reflejado como tu porcentaje efectivo en el panel.' },
-
-        { h: '② Cómo funciona por dentro (técnico)' },
-        { p: 'Esta parte es para ti y tu equipo. Explica el modelo real que está implementado, por si necesitas auditarlo o dar soporte.' },
-
-        { h: 'Stripe Connect + destination charge' },
-        { p: 'Cada mentor tiene una cuenta Stripe Connect de tipo Express (capacidades transfers y card_payments). Los cobros se crean como "destination charge" en la plataforma de Onyx y se transfieren al mentor:' },
-        { list: [
-          'transfer_data.destination = cuenta del mentor → el neto va a su cuenta.',
-          'on_behalf_of = cuenta del mentor → el mentor es el comercio de registro, así absorbe el fee de Stripe y la comisión de Onyx queda limpia y separada.',
-          'Pagos únicos: application_fee_amount = precio × %. Suscripciones (niveles, membresía y copy del mentor): application_fee_percent = %.',
-          'allow_promotion_codes activo → el alumno puede aplicar tus cupones de Stripe.',
-        ] },
-
-        { h: 'La comisión de Onyx (jerarquía)' },
-        { p: 'El porcentaje que retiene Onyx se resuelve con feeForMentor(), de lo más específico a lo más general, y siempre se limita a un rango de 0–50%:' },
-        { list: [
-          '1) Override manual por mentor (mentors.fee_pct), si el dueño fijó uno.',
-          '2) Comisión de su plan de Onyx (plans.capabilities.academy_fee_pct): baja al subir de plan.',
-          '3) Porcentaje global por defecto (ajuste app_settings academy_fee).',
-          '4) Valor de entorno (ONYX_ACADEMY_FEE_PCT, por defecto 10%).',
-        ] },
-
-        { h: 'El libro de comisiones' },
-        { p: 'Un webhook dedicado (firmado con ACADEMY_WEBHOOK_SECRET) escucha los eventos de Stripe y anota cada comisión en la tabla onyx_commissions, de forma idempotente por (mentor_id, stripe_ref) para que los reintentos no dupliquen.' },
-        { img: '/guia/academy-pay-ledger.svg', alt: 'Stripe envía eventos al webhook, que registra cada comisión de forma idempotente en el libro onyx_commissions', caption: 'Del evento de Stripe al libro de comisiones.' },
-        { list: [
-          'checkout.session.completed: da el acceso; en pago único anota la comisión atada al payment_intent.',
-          'invoice.paid / payment_succeeded: anota la comisión de cada factura, incluidas las renovaciones.',
-          'charge.refunded: marca la comisión como "reversed" (no la borra; corrige el libro).',
-          'subscription.updated / deleted: actualiza el estado (activa, past_due, cancelada).',
-          'account.updated: refresca charges_enabled del mentor.',
-        ] },
-        { p: 'Tus ingresos del panel salen de ese libro: bruto y comisión sumados sobre las filas que no están revertidas, y el neto es bruto − comisión.' },
-
+        { h: 'Cobros y comisión' },
+        { p: 'Los pagos se procesan con Stripe. Onyx aplica una comisión de plataforma sobre las ventas (el porcentaje lo ves en tu panel). Las comisiones de Stripe y esa comisión se descuentan automáticamente; el resto llega a tu Stripe.' },
+        { h: 'Afiliados' },
+        { p: 'Puedes activar un programa de afiliados: tus alumnos comparten su enlace y ganan una comisión por cada suscriptor que traigan. Tú fijas el porcentaje y ves los pagos pendientes y hechos en tu panel.' },
+        { h: 'Certificados' },
+        { p: 'Al terminar un curso, el alumno recibe un certificado con el nombre de TU academia.' },
+        { note: 'Todo esto se gestiona desde el panel de la academia (Cobros y Afiliados). No necesitas saber de programación.', title: 'Dónde' },
         { warn: 'Cumplir las leyes fiscales y las condiciones de Stripe de tu país es tu responsabilidad. Onyx te da la herramienta de cobro, no asesoría fiscal.' },
       ],
       en: [
-        { p: 'Your academy can be free or paid. When you charge, your students\' money goes into YOUR own Stripe account, not Onyx\'s. Onyx only keeps its platform fee, automatically, in the same transaction. This guide has two parts: first the essentials for the mentor, and at the end the technical detail of the model we run.' },
-        { img: '/guia/academy-pay-cover.svg', alt: 'The student pays, Stripe processes, and the net lands in your Stripe account minus Onyx\'s fee', caption: 'The money path: student → Stripe → your account, minus fees.' },
-
-        { h: '① For the mentor: the essentials' },
-        { p: 'To start charging you only connect your Stripe account once. It is a Stripe process (not Onyx) and takes a couple of minutes.' },
-        { img: '/guia/academy-pay-connect.svg', alt: 'Three steps: connect with Stripe, complete your details, and become enabled to charge', caption: 'Connecting your payouts is a one-time setup.' },
-        { steps: [
-          'In your academy panel → Payments, click "Connect with Stripe".',
-          'Stripe creates an Express account and asks for your details: name or business, country, identity and your bank account. Stripe asks for this, not Onyx.',
-          'Once Stripe marks you as enabled (charges_enabled), your academy can sell. You will see "ready to charge" in your panel.',
-        ] },
-
-        { h: 'What you receive and when' },
-        { p: 'Two things are deducted from each sale: Stripe\'s fee (their charge for processing the payment) and Onyx\'s fee (the platform percentage you see in your panel). The rest is yours and stays in your Stripe balance. Stripe then pays out to your bank on its payout schedule, which you control from your own Stripe panel.' },
-        { img: '/guia/academy-pay-split.svg', alt: 'Split of a 100 dollar sale: Stripe fee, Onyx 10 percent fee, and the net for the mentor', caption: 'Example with a 10% fee. Stripe figures are approximate and depend on your country.' },
+        { p: 'You can offer your academy free or paid. To charge, you connect your Stripe account (Stripe Connect): your students\' money goes into YOUR Stripe account, not Onyx\'s.' },
+        { h: 'Set a price' },
         { list: [
-          'You set the price, in US dollars (monthly, yearly and/or one-time per tier).',
-          'You can open or close enrollments and create discount coupons anytime.',
-          'Each monthly/yearly renewal repeats the same split automatically.',
-          'Onyx never holds the money: it only separates its fee within the same transaction.',
+          'Set the membership price (monthly and/or yearly) in US dollars.',
+          'Open or close enrollments whenever you want.',
+          'Create discount coupons for campaigns or for your community.',
         ] },
-
-        { h: 'See your payments' },
-        { p: 'From your panel you get a direct link to your Stripe (Express) dashboard, where you see every charge, your bank payouts and your invoices. Your earnings and Onyx\'s retained fee are also summarized in your academy panel.' },
-
-        { h: 'Renewals, cancellations and refunds' },
-        { p: 'If a student cancels, they stop renewing and lose access at the end of the paid period. If you issue a refund, that sale\'s commission is marked reversed in the ledger (it does not count as income). All of this is automatic.' },
-        { tip: 'Onyx\'s fee can drop with your Onyx plan: a better plan means a lower percentage. You will see it as your effective percentage in the panel.' },
-
-        { h: '② How it works under the hood (technical)' },
-        { p: 'This part is for you and your team. It explains the model actually implemented, in case you need to audit it or give support.' },
-
-        { h: 'Stripe Connect + destination charge' },
-        { p: 'Each mentor has a Stripe Connect Express account (transfers and card_payments capabilities). Charges are created as a "destination charge" on the Onyx platform and transferred to the mentor:' },
-        { list: [
-          'transfer_data.destination = mentor account → the net goes to their account.',
-          'on_behalf_of = mentor account → the mentor is the merchant of record, so they absorb the Stripe fee and Onyx\'s fee stays clean and separate.',
-          'One-time payments: application_fee_amount = price × %. Subscriptions (tiers, membership and mentor copy): application_fee_percent = %.',
-          'allow_promotion_codes on → the student can apply your Stripe coupons.',
-        ] },
-
-        { h: 'Onyx\'s fee (hierarchy)' },
-        { p: 'The percentage Onyx keeps is resolved by feeForMentor(), from most specific to most general, and is always clamped to a 0–50% range:' },
-        { list: [
-          '1) Manual per-mentor override (mentors.fee_pct), if the owner set one.',
-          '2) Their Onyx plan fee (plans.capabilities.academy_fee_pct): lower on higher plans.',
-          '3) Global default percentage (app_settings academy_fee).',
-          '4) Environment value (ONYX_ACADEMY_FEE_PCT, default 10%).',
-        ] },
-
-        { h: 'The commission ledger' },
-        { p: 'A dedicated webhook (signed with ACADEMY_WEBHOOK_SECRET) listens to Stripe events and records each commission in the onyx_commissions table, idempotently by (mentor_id, stripe_ref) so retries never duplicate.' },
-        { img: '/guia/academy-pay-ledger.svg', alt: 'Stripe sends events to the webhook, which records each commission idempotently in the onyx_commissions ledger', caption: 'From the Stripe event to the commission ledger.' },
-        { list: [
-          'checkout.session.completed: grants access; for one-time it records the commission tied to the payment_intent.',
-          'invoice.paid / payment_succeeded: records the commission for each invoice, including renewals.',
-          'charge.refunded: marks the commission as "reversed" (does not delete it; it corrects the ledger).',
-          'subscription.updated / deleted: updates the status (active, past_due, canceled).',
-          'account.updated: refreshes the mentor\'s charges_enabled.',
-        ] },
-        { p: 'Your panel earnings come from that ledger: gross and fee summed over the non-reversed rows, and the net is gross − fee.' },
-
+        { h: 'Payouts and fee' },
+        { p: 'Payments are processed by Stripe. Onyx applies a platform fee on sales (you see the percentage in your panel). Stripe\'s fees and that fee are deducted automatically; the rest lands in your Stripe.' },
+        { h: 'Affiliates' },
+        { p: 'You can turn on an affiliate program: your students share their link and earn a commission for every subscriber they bring. You set the percentage and see pending and paid amounts in your panel.' },
+        { h: 'Certificates' },
+        { p: 'When a student finishes a course, they get a certificate with YOUR academy\'s name.' },
+        { note: 'All of this is managed from the academy panel (Payments and Affiliates). No coding needed.', title: 'Where' },
         { warn: 'Complying with tax laws and Stripe\'s terms in your country is your responsibility. Onyx gives you the payment tool, not tax advice.' },
       ],
     },
@@ -1241,439 +1122,6 @@ export const ARTICLES: Article[] = [
       ],
     },
   },
-
-  // ---------- HERRAMIENTAS DEL PANEL ----------
-  {
-    slug: 'mis-robots',
-    cat: 'tools', icon: '🤖',
-    title: { es: 'Mis robots: seguir tus EAs por magic number', en: 'My robots: tracking your EAs by magic number' },
-    summary: {
-      es: 'Cómo Onyx separa las operaciones de cada robot y qué significan sus tres estados.',
-      en: 'How Onyx separates each robot\'s trades and what its three states mean.',
-    },
-    cta: { href: '/dashboard/bots', label: { es: 'Ver Mis robots', en: 'Open My robots' } },
-    body: {
-      es: [
-        { p: 'Si operas con EAs (robots), Onyx los separa solos. Cada robot marca sus operaciones con un número identificador —el magic number— y Onyx agrupa por cuenta y por magic, así ves el rendimiento de cada robot por separado, no todo mezclado.' },
-        { h: 'Los tres estados' },
-        { list: ['Operando: tiene una posición abierta ahora mismo.', 'En línea: tu EA sincroniza y el robot está presente (ya operó o lo registraste), pero sin posición abierta.', 'Sin actividad: no hay señal reciente de ese robot.'] },
-        { h: 'Añadir un robot a mano' },
-        { p: 'Si tu robot aún no ha operado, puedes registrarlo por su magic number para verlo desde ya. Al añadirlo, Onyx te muestra los magics que detectó en tu cuenta para que no tengas que adivinar.' },
-        { note: 'Cada operación se atribuye al robot por su magic. Si dos robots comparten el mismo magic, Onyx no puede separarlos: ponle un magic distinto a cada uno en su configuración.', title: 'Por qué importa el magic' },
-        { warn: 'Onyx solo mide y monitorea tus robots: nunca los enciende, apaga ni cambia su configuración. Eso lo haces tú en tu MetaTrader.' },
-      ],
-      en: [
-        { p: 'If you trade with EAs (robots), Onyx separates them for you. Each robot tags its trades with an identifier —the magic number— and Onyx groups by account and by magic, so you see each robot\'s performance on its own, not all mixed together.' },
-        { h: 'The three states' },
-        { list: ['Running: it has an open position right now.', 'Online: your EA is syncing and the robot is present (it has traded or you registered it), but with no open position.', 'No activity: no recent signal from that robot.'] },
-        { h: 'Adding a robot manually' },
-        { p: 'If your robot has not traded yet, you can register it by its magic number to see it right away. When you add it, Onyx shows the magics it detected on your account so you do not have to guess.' },
-        { note: 'Each trade is attributed to a robot by its magic. If two robots share the same magic, Onyx cannot separate them: give each one a different magic in its settings.', title: 'Why the magic matters' },
-        { warn: 'Onyx only measures and monitors your robots: it never starts, stops or changes their settings. You do that in your MetaTrader.' },
-      ],
-    },
-  },
-  {
-    slug: 'ganancia-neta',
-    cat: 'tools', icon: '🧮',
-    title: { es: 'Ganancia neta: lo que ganaste de verdad', en: 'Net profit: what you actually kept' },
-    summary: {
-      es: 'Resta tus gastos (retos, comisiones de firma, herramientas) a tu ganancia de trading.',
-      en: 'Subtract your costs (challenges, firm fees, tools) from your trading profit.',
-    },
-    cta: { href: '/dashboard/expenses', label: { es: 'Ver Ganancia neta', en: 'Open Net profit' } },
-    body: {
-      es: [
-        { p: 'Tu ganancia de trading no es lo que te queda. Entre medio están el costo de los challenges, las comisiones de la prop firm, tus herramientas y suscripciones. Ganancia neta los resta para enseñarte el número real: bruto de trading menos gastos.' },
-        { h: 'Qué apuntar' },
-        { list: ['El costo de cada challenge o cuenta de fondeo (y si te lo reembolsaron al pasar).', 'Comisiones o cuotas de la firma.', 'Herramientas, datos, VPS y suscripciones.'] },
-        { note: 'Ejemplo: ganaste $3.000 de trading pero pagaste tres challenges de $200 y un VPS de $30. Tu neto real es $3.000 − $630 = $2.370. Eso es lo que de verdad entró.', title: 'Con números' },
-        { h: 'ROI por prop firm' },
-        { p: 'Como registras qué gastaste con cada firma y cuánto ganaste con sus cuentas, Onyx te calcula el retorno por firma: cuáles te salen a cuenta y cuáles solo te comen challenges.' },
-        { warn: 'Ganancia neta está en los planes de pago. Es solo para tu control: Onyx no te cobra por gasto ni comparte estos números.' },
-      ],
-      en: [
-        { p: 'Your trading profit is not what you keep. In between sit the cost of challenges, prop-firm fees, your tools and subscriptions. Net profit subtracts them to show the real number: trading gross minus costs.' },
-        { h: 'What to log' },
-        { list: ['The cost of each challenge or funded account (and whether it was refunded on passing).', 'Firm fees or charges.', 'Tools, data, VPS and subscriptions.'] },
-        { note: 'Example: you made $3,000 trading but paid three $200 challenges and a $30 VPS. Your real net is $3,000 − $630 = $2,370. That is what actually came in.', title: 'With numbers' },
-        { h: 'ROI per prop firm' },
-        { p: 'Because you log what you spent with each firm and how much you made on its accounts, Onyx computes the return per firm: which ones pay off and which only eat challenges.' },
-        { warn: 'Net profit is on paid plans. It is for your own tracking only: Onyx does not charge per expense or share these numbers.' },
-      ],
-    },
-  },
-  {
-    slug: 'metas-ganancia',
-    cat: 'tools', icon: '🎯',
-    title: { es: 'Mis metas de ganancia: semanal, mensual y anual', en: 'My profit goals: weekly, monthly and annual' },
-    summary: {
-      es: 'Fija cuánto quieres ganar por período y sigue tu progreso y lo que te falta.',
-      en: 'Set how much you want to make per period and track your progress and what is left.',
-    },
-    cta: { href: '/dashboard', label: { es: 'Ver mis metas', en: 'See my goals' } },
-    body: {
-      es: [
-        { p: 'En Logros y metas fijas tres objetivos de ganancia: semanal, mensual y anual. Cada uno muestra un anillo de progreso, lo que llevas en el período y una etiqueta de "Te faltan $X" para saber de un vistazo cuánto te queda.' },
-        { h: 'Suman todas tus cuentas' },
-        { p: 'Son metas personales, así que juntan el resultado de todas tus cuentas. No las confundas con el "Objetivo de fondeo", que es el profit que te pide una cuenta de prop firm concreta.' },
-        { h: 'En tu zona horaria' },
-        { p: 'El progreso se calcula con la hora de tu propio dispositivo: la semana va de lunes a domingo, y el mes y el año cortan a tu medianoche local. Un cierre a las 11 de la noche cuenta en tu día, no en el siguiente.' },
-        { note: 'Tus metas se guardan en tu cuenta, no en el navegador. Por eso ya no se borran al limpiar la caché, cambiar de dispositivo o al salir una versión nueva.', title: 'Se guardan de verdad' },
-      ],
-      en: [
-        { p: 'In Achievements & goals you set three profit targets: weekly, monthly and annual. Each shows a progress ring, what you have made in the period and a "$X to go" tag so you can see at a glance how much is left.' },
-        { h: 'They add up all your accounts' },
-        { p: 'These are personal goals, so they combine the result of all your accounts. Do not confuse them with the "Prop-firm target", which is the profit a specific funded account requires.' },
-        { h: 'In your timezone' },
-        { p: 'Progress is computed using your own device clock: the week runs Monday to Sunday, and the month and year cut at your local midnight. A trade closed at 11 PM counts on your day, not the next.' },
-        { note: 'Your goals are saved to your account, not the browser. That is why they no longer disappear when you clear the cache, switch devices or a new version ships.', title: 'Saved for real' },
-      ],
-    },
-  },
-  {
-    slug: 'academia-copiar-mentor',
-    cat: 'academy', icon: '🔁',
-    title: { es: 'Copiar a tu mentor en la academia', en: 'Copying your mentor in the academy' },
-    summary: {
-      es: 'Cómo funciona el copy del mentor, qué controla Onyx y qué nunca ve tu mentor.',
-      en: 'How mentor copy works, what Onyx controls and what your mentor never sees.',
-    },
-    cta: { href: '/dashboard/academy', label: { es: 'Ir a Onyx Academy', en: 'Go to Onyx Academy' } },
-    body: {
-      es: [
-        { p: 'Si tu mentor ofrece copy, al suscribirte y conectar tu cuenta, Onyx replica sus operaciones en la tuya, escaladas por tu capital. Usa el mismo motor de copy de las cuentas normales, con los mismos filtros de riesgo.' },
-        { h: 'Nadie ve ni toca tu cuenta' },
-        { p: 'Tú nunca compartes tu contraseña, y tu mentor nunca ve ni opera tu cuenta. Solo se copian las señales; el dinero y el control siguen siendo tuyos.' },
-        { h: 'Ajustado a tu riesgo' },
-        { list: ['Escala proporcional por capital: si tienes menos que el mentor, se copia más pequeño.', 'Un multiplicador de riesgo (0,1× a 3×) que tú ajustas.', 'Guardian y Stop Loss obligatorios; en cuentas de fondeo se usan límites al 80% de la regla de la firma.'] },
-        { note: 'Tu cuenta no puede recibir de dos fuentes a la vez ni ser máster y esclava al mismo tiempo: es la misma regla que en el copy normal, para no cruzar órdenes.', title: 'Una sola fuente' },
-        { p: 'Pausar o cancelar tu suscripción apaga la copia al instante, sin borrar nada. Al reactivar, vuelve a copiar.' },
-        { warn: 'Copiar a otro trader puede estar prohibido por tu prop firm. Lee su reglamento antes de conectar una cuenta de fondeo.' },
-      ],
-      en: [
-        { p: 'If your mentor offers copy, when you subscribe and connect your account, Onyx replicates their trades on yours, scaled to your capital. It uses the same copy engine as normal accounts, with the same risk filters.' },
-        { h: 'Nobody sees or touches your account' },
-        { p: 'You never share your password, and your mentor never sees or trades your account. Only the signals are copied; the money and the control stay yours.' },
-        { h: 'Fitted to your risk' },
-        { list: ['Proportional scaling by capital: if you have less than the mentor, it copies smaller.', 'A risk multiplier (0.1× to 3×) that you adjust.', 'Guardian and Stop Loss required; on funded accounts limits are set to 80% of the firm rule.'] },
-        { note: 'Your account cannot receive from two sources at once, nor be master and follower at the same time: same rule as normal copy, to avoid crossed orders.', title: 'One source only' },
-        { p: 'Pausing or cancelling your subscription turns copy off instantly, without deleting anything. When you reactivate, it copies again.' },
-        { warn: 'Copying another trader may be forbidden by your prop firm. Read its rulebook before connecting a funded account.' },
-      ],
-    },
-  },
-
-  // ---------- NOVEDADES (con imágenes) ----------
-  {
-    slug: 'plan-habitos-checkin',
-    cat: 'manager', icon: '🎯', updated: true, cover: '/guia/plan-adherencia.svg',
-    title: { es: 'Tu plan, hábitos y check-in diario', en: 'Your plan, habits and daily check-in' },
-    summary: {
-      es: 'Marca tus hábitos cada día, mide tu adherencia real y sigue tu progreso en un mapa de 30 días.',
-      en: 'Tick your habits daily, measure your real adherence and track progress on a 30-day map.',
-    },
-    cta: { href: '/dashboard?view=plan', label: { es: 'Abrir Mi plan', en: 'Open My plan' } },
-    body: {
-      es: [
-        { p: 'Onyx no solo mide tus números: también mide tu disciplina. Escribes tu plan (estilo, riesgo, sesiones y reglas), eliges los hábitos que quieres seguir, y cada día haces un check-in rápido. Con eso Onyx calcula tu adherencia.' },
-        { img: '/guia/plan-adherencia.svg', alt: 'Anillo de adherencia, lista de check-in y mapa de cumplimiento de 30 días', caption: 'Tu adherencia combina tus hábitos con tu disciplina real en las operaciones.' },
-        { h: 'El check-in de hoy' },
-        { p: 'Cada mañana aparece un popup con tus hábitos agrupados por momento: ☀️ antes de operar, 🕒 durante y después, y 🌙 al cerrar el día. Marca cada uno cuando lo hagas; puedes volver a lo largo del día sin perder tu racha.' },
-        { tip: 'Onyx premarca solo lo que ya detecta de tus operaciones (por ejemplo, que registraste y respetaste tus sesiones). Tú solo confirmas.', title: 'Se marca solo' },
-        { h: 'Adherencia adaptativa' },
-        { p: 'Tu adherencia mezcla lo que reportas con tu disciplina real (respetar tu máximo de operaciones). Si tienes el Guardian activo, sus frenos también cuentan. Si no lo tienes, esa parte simplemente no te penaliza.' },
-        { h: 'El mapa de 30 días' },
-        { p: 'En la pestaña Hoy verás un mapa con una celda por día: verde si cumpliste, ámbar si flojeaste, rojo si rompiste una regla. Cambia el rango a 7, 30 o 90 días y todos los números se recalculan.' },
-        { note: 'El mapa se llena a partir de una foto diaria automática. Los primeros días puede verse vacío; es normal, se completa solo.', title: 'Se llena cada día' },
-      ],
-      en: [
-        { p: 'Onyx measures more than your numbers: it measures your discipline too. You write your plan (style, risk, sessions and rules), pick the habits you want to keep, and do a quick check-in each day. From that, Onyx computes your adherence.' },
-        { img: '/guia/plan-adherencia.svg', alt: 'Adherence ring, check-in list and a 30-day compliance map', caption: 'Your adherence blends your habits with your real trading discipline.' },
-        { h: 'Today check-in' },
-        { p: 'Each morning a popup shows your habits grouped by moment: ☀️ before trading, 🕒 during and after, and 🌙 at end of day. Tick each as you do it; you can come back through the day without losing your streak.' },
-        { tip: 'Onyx pre-ticks what it already detects from your trades (for example, that you journaled and respected your sessions). You just confirm.', title: 'Auto-ticked' },
-        { h: 'Adaptive adherence' },
-        { p: 'Your adherence blends what you report with your real discipline (respecting your max trades). If the Guardian is on, its stops count too. If you do not have it, that part simply does not penalize you.' },
-        { h: 'The 30-day map' },
-        { p: 'On the Today tab you get a map with one cell per day: green if you followed through, amber if weak, red if you broke a rule. Switch the range to 7, 30 or 90 days and every number recomputes.' },
-        { note: 'The map fills from an automatic daily snapshot. The first days may look empty; that is normal, it completes on its own.', title: 'Fills daily' },
-      ],
-    },
-  },
-  {
-    slug: 'proteger-cuenta-guardian',
-    cat: 'manager', icon: '🛡️', updated: true, cover: '/guia/proteger.svg',
-    title: { es: 'Proteger una cuenta con el Guardian', en: 'Protecting an account with the Guardian' },
-    summary: {
-      es: 'Pon dos números —pérdida diaria y máximo de operaciones— y Onyx Guardian frena esa cuenta cuando los rompes.',
-      en: 'Set two numbers —daily loss and max trades— and Onyx Guardian stops that account when you break them.',
-    },
-    cta: { href: '/dashboard?view=plan&tab=limites', label: { es: 'Ir a Límites y cuentas', en: 'Go to Limits & accounts' } },
-    body: {
-      es: [
-        { p: 'En Mi plan → Límites y cuentas verás todas tus cuentas con un semáforo. Rojo: sin proteger. Al pulsar Proteger se abre un editor guiado, sin saltos ni pantallas raras.' },
-        { img: '/guia/proteger.svg', alt: 'Editor guiado para proteger una cuenta con pérdida diaria y máximo de operaciones', caption: 'Dos pasos: pérdida diaria máxima y máximo de operaciones. Guardas y listo.' },
-        { h: 'Los dos números' },
-        { steps: [
-          'Paso 1 · Pérdida diaria máxima: el % de tu balance que estás dispuesto a perder en un día. Si lo tocas, el Guardian frena la cuenta.',
-          'Paso 2 · Máximo de operaciones al día: cuántas operaciones te permites. 0 significa sin tope.',
-          'Guardar y proteger: se aplica solo a esa cuenta y el punto pasa a verde.',
-        ] },
-        { tip: 'Empieza suave: 1% de pérdida diaria es un buen punto de partida. Siempre puedes subirlo cuando cojas ritmo.', title: 'Consejo' },
-        { h: 'A qué cuenta se aplica' },
-        { p: 'El editor te dice con claridad a qué cuenta afecta. Si quieres el mismo límite en todas, usa "Todas"; o "Por tipo" para aplicarlo solo a las de fondeo, por ejemplo.' },
-        { warn: 'Si la cuenta recibe copias (es esclava), el límite se pone en la cuenta maestra. Onyx te avisa con un aviso ámbar cuando toca hacerlo así.' },
-      ],
-      en: [
-        { p: 'In My plan → Limits & accounts you see all your accounts with a traffic light. Red: unprotected. Tapping Protect opens a guided editor, with no jumps or odd screens.' },
-        { img: '/guia/proteger.svg', alt: 'Guided editor to protect an account with daily loss and max trades', caption: 'Two steps: max daily loss and max trades. Save and you are done.' },
-        { h: 'The two numbers' },
-        { steps: [
-          'Step 1 · Max daily loss: the % of your balance you are willing to lose in a day. If you hit it, the Guardian stops the account.',
-          'Step 2 · Max trades per day: how many trades you allow yourself. 0 means no cap.',
-          'Save and protect: it applies only to that account and the dot turns green.',
-        ] },
-        { tip: 'Start gentle: 1% daily loss is a good starting point. You can always raise it once you find your rhythm.', title: 'Tip' },
-        { h: 'Which account it applies to' },
-        { p: 'The editor clearly states which account it affects. For the same limit everywhere use "All"; or "By type" to apply it only to funded accounts, for example.' },
-        { warn: 'If the account receives copies (it is a follower), set the limit on the master account. Onyx shows an amber notice when that is the case.' },
-      ],
-    },
-  },
-  {
-    slug: 'notificaciones-onyx',
-    cat: 'alerts', icon: '🔔', updated: true, cover: '/guia/notificaciones.svg',
-    title: { es: 'Notificaciones: campana, push y Telegram', en: 'Notifications: bell, push and Telegram' },
-    summary: {
-      es: 'Las tres formas en que Onyx te avisa, qué llega por cada una y cómo enciendes solo lo que quieres.',
-      en: 'The three ways Onyx alerts you, what arrives on each and how to turn on only what you want.',
-    },
-    cta: { href: '/account', label: { es: 'Configurar mis avisos', en: 'Configure my alerts' } },
-    body: {
-      es: [
-        { p: 'Onyx te avisa por tres canales, y tú decides cuáles enciendes para cada tipo de aviso.' },
-        { img: '/guia/notificaciones.svg', alt: 'Campana del panel, notificación push en el móvil y mensaje de Telegram', caption: 'Campana dentro del panel · push en el móvil · Telegram al vincular tu cuenta.' },
-        { h: 'La campana' },
-        { p: 'Es el icono arriba a la derecha del panel. Guarda tus avisos: check-in del día, respuestas de soporte, recompensas de referidos y avisos del bot. Al pulsar cualquiera te lleva a la pantalla exacta.' },
-        { h: 'Push en el móvil' },
-        { p: 'Si instalas Onyx como app y aceptas los permisos, recibes notificaciones aunque no tengas la web abierta. Ideal para el recordatorio del check-in o cuando el Guardian te frena.' },
-        { h: 'Telegram' },
-        { p: 'Al vincular tu cuenta de Telegram, el bot te manda lo importante fuera de la app: límites, EA caído, resumen del día. Cada mensaje lleva la marca Onyx Trading Live.' },
-        { tip: 'En Mi cuenta → Avisos tienes un panel de interruptores: enciende la campana y el push por separado, para cada tipo de aviso.', title: 'Tú mandas' },
-        { note: 'Push y Telegram pueden depender de tu plan. La campana está siempre disponible.', title: 'Según tu plan' },
-      ],
-      en: [
-        { p: 'Onyx alerts you on three channels, and you decide which you turn on for each type of alert.' },
-        { img: '/guia/notificaciones.svg', alt: 'Dashboard bell, mobile push notification and a Telegram message', caption: 'Bell inside the dashboard · push on your phone · Telegram once you link your account.' },
-        { h: 'The bell' },
-        { p: 'It is the icon at the top right of the dashboard. It keeps your alerts: daily check-in, support replies, referral rewards and bot alerts. Tapping any takes you to the exact screen.' },
-        { h: 'Push on your phone' },
-        { p: 'If you install Onyx as an app and accept permissions, you get notifications even with the web closed. Great for the check-in reminder or when the Guardian stops you.' },
-        { h: 'Telegram' },
-        { p: 'Once you link your Telegram account, the bot sends what matters outside the app: limits, EA down, daily summary. Every message carries the Onyx Trading Live brand.' },
-        { tip: 'In My account → Alerts there is a switch panel: turn the bell and push on separately, for each type of alert.', title: 'You are in charge' },
-        { note: 'Push and Telegram may depend on your plan. The bell is always available.', title: 'Depends on your plan' },
-      ],
-    },
-  },
-  {
-    slug: 'resincronizar-costes',
-    cat: 'numbers', icon: '🔄', updated: true, cover: '/guia/resync.svg',
-    title: { es: 'Re-sincronizar: que los costes cuadren', en: 'Re-sync: making costs match' },
-    summary: {
-      es: 'Si comisiones o swaps no coinciden con tu plataforma, un botón vuelve a leer todo tu historial y lo cuadra.',
-      en: 'If commissions or swaps do not match your platform, one button re-reads your whole history and reconciles it.',
-    },
-    cta: { href: '/dashboard', label: { es: 'Ir a mis cuentas', en: 'Go to my accounts' } },
-    body: {
-      es: [
-        { p: 'Tu neto en Onyx debe ser idéntico al de tu MetaTrader o cTrader, comisiones y swaps incluidos. Si por lo que sea no cuadra, no hay que borrar nada: se vuelve a sincronizar el historial completo.' },
-        { img: '/guia/resync.svg', alt: 'Los costes de MetaTrader 5 y de Onyx, lado a lado, cuadrando al céntimo', caption: 'Tras re-sincronizar, comisión, swap y neto coinciden al céntimo con tu plataforma.' },
-        { h: 'Cómo se hace' },
-        { steps: [
-          'En tu panel, abre la cuenta que no cuadra.',
-          'Pulsa "Re-sincronizar historial".',
-          'Deja tu MetaTrader/cTrader abierto un momento: el EA vuelve a enviar todas las operaciones desde el principio.',
-        ] },
-        { tip: 'En MetaTrader 5 la comisión de una operación se reparte entre la entrada y la salida. El EA de Onyx suma las dos partes, por eso el total cuadra.', title: 'Por qué antes fallaba' },
-        { warn: 'Re-sincronizar no borra tu historial ni tus notas: solo recalcula los costes con los datos frescos de la plataforma.' },
-      ],
-      en: [
-        { p: 'Your net in Onyx should be identical to your MetaTrader or cTrader, commissions and swaps included. If for some reason it does not match, nothing gets deleted: the full history is re-synced.' },
-        { img: '/guia/resync.svg', alt: 'MetaTrader 5 and Onyx costs side by side, matching to the cent', caption: 'After re-syncing, commission, swap and net match your platform to the cent.' },
-        { h: 'How to do it' },
-        { steps: [
-          'In your dashboard, open the account that does not match.',
-          'Tap "Re-sync history".',
-          'Keep your MetaTrader/cTrader open a moment: the EA re-sends every trade from the start.',
-        ] },
-        { tip: 'On MetaTrader 5 a trade commission is split between entry and exit. The Onyx EA adds both parts, which is why the total matches.', title: 'Why it used to be off' },
-        { warn: 'Re-syncing does not delete your history or notes: it only recomputes costs with fresh data from the platform.' },
-      ],
-    },
-  },
-  {
-    slug: 'reto-lectura-ia',
-    cat: 'funded', icon: '📄', updated: true, cover: '/guia/reto-ia.svg',
-    title: { es: 'Tu reto, leído por la IA', en: 'Your challenge, read by AI' },
-    summary: {
-      es: 'Sube el contrato de tu reto (PDF o foto) y Onyx detecta firma, fase y reglas, y te sigue el marcador.',
-      en: 'Upload your challenge contract (PDF or photo) and Onyx detects firm, phase and rules, and tracks your scoreboard.',
-    },
-    cta: { href: '/dashboard?view=reto', label: { es: 'Abrir Mi reto', en: 'Open My challenge' } },
-    body: {
-      es: [
-        { p: 'Cada firma de fondeo tiene sus reglas: objetivo, pérdida diaria, pérdida total, días mínimos… En vez de copiarlas a mano, deja que Onyx las lea por ti.' },
-        { img: '/guia/reto-ia.svg', alt: 'Un contrato en PDF que la IA convierte en firma, fase, objetivo y pérdida máxima', caption: 'Subes el contrato y la IA rellena firma, fase y reglas; tú solo confirmas.' },
-        { h: 'Leer con IA' },
-        { steps: [
-          'En Mi reto, pulsa "Leer con IA".',
-          'Sube el PDF o una foto del contrato (o pega el texto).',
-          'La IA detecta la firma, si es Fase 1, Fase 2 o cuenta fondeada, y todas las reglas. Revisas y guardas.',
-        ] },
-        { h: 'La fase importa' },
-        { p: 'Onyx muestra en tu tarjeta y en los avisos si estás en Fase 1, Fase 2 o ya fondeado, porque las reglas y el objetivo cambian en cada una.' },
-        { tip: 'Si el contrato está en otro idioma, la IA igual lo entiende. Y si algo no queda claro, puedes ajustar cualquier regla a mano antes de guardar.', title: 'Sin teclear reglas' },
-        { warn: 'La lectura es una ayuda, no un sustituto del reglamento oficial. Ante la duda, manda siempre lo que diga tu firma.' },
-      ],
-      en: [
-        { p: 'Every prop firm has its own rules: target, daily loss, total loss, minimum days… Instead of copying them by hand, let Onyx read them for you.' },
-        { img: '/guia/reto-ia.svg', alt: 'A PDF contract the AI turns into firm, phase, target and max loss', caption: 'Upload the contract and the AI fills firm, phase and rules; you just confirm.' },
-        { h: 'Read with AI' },
-        { steps: [
-          'In My challenge, tap "Read with AI".',
-          'Upload the PDF or a photo of the contract (or paste the text).',
-          'The AI detects the firm, whether it is Phase 1, Phase 2 or funded, and all the rules. You review and save.',
-        ] },
-        { h: 'The phase matters' },
-        { p: 'Onyx shows on your card and in alerts whether you are in Phase 1, Phase 2 or already funded, because the rules and the target change in each.' },
-        { tip: 'If the contract is in another language, the AI still understands it. And if anything is unclear, you can adjust any rule by hand before saving.', title: 'No typing rules' },
-        { warn: 'The reading is a help, not a replacement for the official rulebook. When in doubt, your firm always has the final word.' },
-      ],
-    },
-  },
-  {
-    slug: 'instalar-app-avisos',
-    cat: 'alerts', icon: '📲', updated: true, cover: '/guia/instalar-app.svg',
-    title: { es: 'Instala Onyx como app en tu móvil', en: 'Install Onyx as an app on your phone' },
-    summary: {
-      es: 'Se abre como una aplicación, va más rápido y puede enviarte notificaciones push.',
-      en: 'It opens like an app, runs faster and can send you push notifications.',
-    },
-    cta: { href: '/dashboard', label: { es: 'Abrir Onyx', en: 'Open Onyx' } },
-    body: {
-      es: [
-        { p: 'Onyx funciona como app sin pasar por ninguna tienda. Se instala desde el propio navegador en unos segundos. Los pasos cambian según tu sistema: busca el tuyo abajo.' },
-        { img: '/guia/instalar-app.svg', alt: 'Tres pasos para instalar Onyx como app en el móvil y activar avisos', caption: 'Abre Onyx, pulsa Instalar app y activa las notificaciones. Ya está.' },
-        { h: '🍏 En iPhone o iPad (iOS)' },
-        { walk: [
-          { t: 'Abre Onyx en Safari', d: 'En iOS la instalación solo funciona desde Safari (no desde Chrome ni otro navegador). Entra a onyxtradinglive.com e inicia sesión.' },
-          { t: 'Pulsa el botón Compartir', d: 'Es el cuadradito con la flecha hacia arriba, en la barra de abajo (o arriba en iPad).' },
-          { t: 'Añadir a pantalla de inicio', d: 'En el menú que se abre, baja y toca "Añadir a pantalla de inicio". Confirma con "Añadir". Aparece el icono de Onyx en tu pantalla.' },
-          { t: 'Abre Onyx desde el icono y permite avisos', d: 'Ábrela desde ese icono (no desde Safari). Ve a activar notificaciones y acepta el permiso cuando iOS lo pida.', tip: 'En iPhone los avisos push SOLO llegan si abres Onyx desde el icono de inicio; desde Safari no funcionan. Necesitas iOS 16.4 o superior.' },
-        ] },
-        { h: '🤖 En Android' },
-        { walk: [
-          { t: 'Abre Onyx en Chrome', d: 'Entra a onyxtradinglive.com en Chrome e inicia sesión.' },
-          { t: 'Pulsa "Instalar app"', d: 'Verás el botón dentro de Onyx, o el aviso "Instalar aplicación" de Chrome (también en el menú de tres puntos → Instalar aplicación / Añadir a pantalla).' },
-          { t: 'Acepta las notificaciones', d: 'Abre la app instalada y acepta el permiso de notificaciones para recibir avisos push.' },
-        ] },
-        { h: '🖥️ En Windows o Mac (ordenador)' },
-        { walk: [
-          { t: 'Abre Onyx en Chrome o Edge', d: 'Entra a onyxtradinglive.com e inicia sesión.' },
-          { t: 'Pulsa el icono de instalar', d: 'En la barra de direcciones, a la derecha, aparece un icono de instalar (una pantallita con una flecha). También está en el botón "Instalar app" dentro de Onyx.' },
-          { t: 'Se abre como programa', d: 'Onyx se abre en su propia ventana, como cualquier aplicación, y queda en tu escritorio o menú de inicio. Acepta las notificaciones si quieres avisos.' },
-        ] },
-        { tip: 'Con la app instalada llega el recordatorio del check-in y los avisos del Guardian aunque no tengas Onyx abierto.', title: 'Por qué merece la pena' },
-      ],
-      en: [
-        { p: 'Onyx works as an app without any store. You install it from the browser itself in seconds. The steps depend on your system: find yours below.' },
-        { img: '/guia/instalar-app.svg', alt: 'Three steps to install Onyx as an app on your phone and enable alerts', caption: 'Open Onyx, tap Install app and enable notifications. Done.' },
-        { h: '🍏 On iPhone or iPad (iOS)' },
-        { walk: [
-          { t: 'Open Onyx in Safari', d: 'On iOS installing only works from Safari (not Chrome or another browser). Go to onyxtradinglive.com and sign in.' },
-          { t: 'Tap the Share button', d: 'It is the little square with an up arrow, in the bottom bar (or top on iPad).' },
-          { t: 'Add to Home Screen', d: 'In the menu that opens, scroll down and tap "Add to Home Screen". Confirm with "Add". The Onyx icon appears on your screen.' },
-          { t: 'Open Onyx from the icon and allow alerts', d: 'Open it from that icon (not from Safari). Go to enable notifications and accept the permission when iOS asks.', tip: 'On iPhone push alerts ONLY arrive if you open Onyx from the home-screen icon; from Safari they do not work. You need iOS 16.4 or later.' },
-        ] },
-        { h: '🤖 On Android' },
-        { walk: [
-          { t: 'Open Onyx in Chrome', d: 'Go to onyxtradinglive.com in Chrome and sign in.' },
-          { t: 'Tap "Install app"', d: 'You will see the button inside Onyx, or Chrome’s "Install app" prompt (also in the three-dot menu → Install app / Add to Home screen).' },
-          { t: 'Accept notifications', d: 'Open the installed app and accept the notification permission to get push alerts.' },
-        ] },
-        { h: '🖥️ On Windows or Mac (desktop)' },
-        { walk: [
-          { t: 'Open Onyx in Chrome or Edge', d: 'Go to onyxtradinglive.com and sign in.' },
-          { t: 'Click the install icon', d: 'In the address bar, on the right, an install icon appears (a small screen with an arrow). It is also in the "Install app" button inside Onyx.' },
-          { t: 'It opens as a program', d: 'Onyx opens in its own window, like any app, and stays on your desktop or Start menu. Accept notifications if you want alerts.' },
-        ] },
-        { tip: 'With the app installed, the check-in reminder and Guardian alerts reach you even with Onyx closed.', title: 'Why it is worth it' },
-      ],
-    },
-  },
-  {
-    slug: 'vps-que-es',
-    cat: 'tools', icon: '🖥️', updated: true, cover: '/guia/vps.svg',
-    title: { es: 'Qué es un VPS y qué tipos hay', en: 'What a VPS is and which types exist' },
-    summary: {
-      es: 'Un ordenador en la nube encendido 24/7 para que tu EA, tu copy y tu Guardian nunca se apaguen. Ventajas y tipos.',
-      en: 'A cloud computer on 24/7 so your EA, copy and Guardian never stop. Advantages and types.',
-    },
-    body: {
-      es: [
-        { p: 'Onyx (y tu MetaTrader) solo funcionan mientras el ordenador está encendido y con internet. Si lo apagas, cierras la tapa del portátil o se te va la luz, el EA deja de reportar, el copy deja de copiar y el Guardian deja de proteger. Un VPS resuelve eso.' },
-        { img: '/guia/vps.svg', alt: 'Tu ordenador apagado mientras un VPS en la nube mantiene MetaTrader encendido y Onyx recibiendo', caption: 'Apagas tu ordenador; el VPS sigue con tu MetaTrader encendido y Onyx recibiendo.' },
-        { h: 'Qué es' },
-        { p: 'Un VPS (Servidor Virtual Privado) es un ordenador que vive en un centro de datos y está encendido siempre, con internet estable. Te conectas a él desde tu móvil u ordenador, instalas tu MetaTrader y el EA de Onyx dentro, y lo dejas corriendo. Aunque cierres tu equipo, el VPS sigue.' },
-        { h: 'Ventajas para ti' },
-        { list: [
-          '24/7: tu EA, tu copy y tu Guardian nunca se apagan, aunque tu ordenador esté apagado.',
-          'Menos latencia: si el VPS está cerca del servidor de tu bróker, tus órdenes (y el copy) entran más rápido.',
-          'Estabilidad: internet y luz del centro de datos, no de tu casa. Nada de cortes ni WiFi flojo.',
-          'Ahorro de energía y ruido: no dejas tu PC encendido toda la noche.',
-          'Independencia: puedes revisar Onyx desde el móvil sin depender de tu ordenador.',
-        ] },
-        { h: 'Tipos de VPS' },
-        { walk: [
-          { t: 'VPS Forex (especializado)', d: 'Pensado para trading: viene con Windows, baja latencia hacia los brókers y a veces MetaTrader preinstalado. Es el más fácil para empezar. Ejemplos: ForexVPS, Cloudzy, FXVM.' },
-          { t: 'VPS del bróker (a veces gratis)', d: 'Muchos brókers regalan un VPS si operas cierto volumen o mantienes un saldo. Cómodo, pero atado a ese bróker. Pregunta a tu bróker si lo ofrece.' },
-          { t: 'VPS en la nube general', d: 'Proveedores como Vultr, DigitalOcean, AWS o Contabo. Más barato y flexible, pero lo configuras tú. Elige uno con Windows si quieres MetaTrader con su ventana de siempre.' },
-          { t: 'Windows vs Linux', d: 'Para MetaTrader lo normal es un VPS con Windows (la plataforma es un programa de Windows). En Linux también se puede, pero con un envoltorio, y es más técnico.' },
-        ] },
-        { tip: 'Para MetaTrader/cTrader con Onyx, un VPS Windows pequeño (1–2 núcleos, 2 GB de RAM) suele bastar. No necesitas uno caro.', title: 'Cuánto VPS necesitas' },
-        { h: 'Cómo lo usas con Onyx' },
-        { p: 'Es igual que en tu ordenador: te conectas al VPS, instalas MetaTrader y el EA de Onyx (con tu clave API), enciendes AlgoTrading y lo dejas. A partir de ahí Onyx recibe tus operaciones sin parar. Tienes el paso a paso en la guía de instalar el EA.' },
-        { warn: 'Un VPS es un ordenador de verdad: mantenlo actualizado y con una contraseña fuerte. Nunca compartas su acceso, igual que no compartes tu MetaTrader.' },
-      ],
-      en: [
-        { p: 'Onyx (and your MetaTrader) only work while the computer is on and online. If you turn it off, close the laptop lid or lose power, the EA stops reporting, copy stops copying and the Guardian stops protecting. A VPS fixes that.' },
-        { img: '/guia/vps.svg', alt: 'Your computer off while a cloud VPS keeps MetaTrader on and Onyx receiving', caption: 'You turn your computer off; the VPS keeps your MetaTrader on and Onyx receiving.' },
-        { h: 'What it is' },
-        { p: 'A VPS (Virtual Private Server) is a computer living in a data center, always on, with stable internet. You connect to it from your phone or computer, install your MetaTrader and the Onyx EA inside, and leave it running. Even if you close your device, the VPS keeps going.' },
-        { h: 'Advantages for you' },
-        { list: [
-          '24/7: your EA, copy and Guardian never stop, even with your computer off.',
-          'Lower latency: if the VPS is near your broker’s server, your orders (and copy) land faster.',
-          'Stability: the data center’s internet and power, not your home’s. No outages or weak WiFi.',
-          'Save energy and noise: you don’t leave your PC on all night.',
-          'Independence: check Onyx from your phone without relying on your computer.',
-        ] },
-        { h: 'Types of VPS' },
-        { walk: [
-          { t: 'Forex VPS (specialized)', d: 'Built for trading: comes with Windows, low latency to brokers and sometimes MetaTrader preinstalled. Easiest to start. Examples: ForexVPS, Cloudzy, FXVM.' },
-          { t: 'Broker VPS (sometimes free)', d: 'Many brokers give you a VPS if you trade a certain volume or keep a balance. Convenient, but tied to that broker. Ask your broker if they offer one.' },
-          { t: 'General cloud VPS', d: 'Providers like Vultr, DigitalOcean, AWS or Contabo. Cheaper and flexible, but you configure it. Pick one with Windows if you want MetaTrader with its usual window.' },
-          { t: 'Windows vs Linux', d: 'For MetaTrader you normally use a Windows VPS (the platform is a Windows program). Linux works too, but via a wrapper, and it is more technical.' },
-        ] },
-        { tip: 'For MetaTrader/cTrader with Onyx, a small Windows VPS (1–2 cores, 2 GB RAM) is usually enough. You do not need an expensive one.', title: 'How much VPS you need' },
-        { h: 'How you use it with Onyx' },
-        { p: 'It is just like on your computer: connect to the VPS, install MetaTrader and the Onyx EA (with your API key), turn on AlgoTrading and leave it. From then on Onyx receives your trades non-stop. The step by step is in the install-the-EA guide.' },
-        { warn: 'A VPS is a real computer: keep it updated and with a strong password. Never share its access, just as you don’t share your MetaTrader.' },
-      ],
-    },
-  },
 ];
 
 // Búsqueda simple sobre título, resumen y texto
@@ -1683,223 +1131,11 @@ export function searchArticles(q: string, lang: Lang): Article[] {
   return ARTICLES.filter((a) => {
     const hay = [
       a.title[lang], a.summary[lang],
-      ...a.body[lang].map((b: any) => b.p || b.h || b.note || b.warn || b.tip || b.caption || (b.list || b.steps || []).join(' ') || (b.walk ? b.walk.map((s: any) => (s.t || '') + ' ' + (s.d || '')).join(' ') : '')),
+      ...a.body[lang].map((b: any) => b.p || b.h || b.note || b.warn || (b.list || b.steps || []).join(' ')),
     ].join(' ').toLowerCase();
     return hay.includes(needle);
   });
 }
-
-// ============================================================
-// SEO por artículo (título, descripción y keywords, ES/EN).
-// Se fusiona en cada Article (si no traía `seo` propio). La página del
-// artículo ya pinta estos metadatos + JSON-LD, así que rellenar esto mejora
-// el posicionamiento en Google sin tocar el cuerpo de cada guía.
-// ============================================================
-type Seo = NonNullable<Article['seo']>;
-const S = (t: [string, string], d: [string, string], kEs: string[], kEn: string[]): Seo => ({
-  title: { es: t[0], en: t[1] }, desc: { es: d[0], en: d[1] }, keywords: { es: kEs, en: kEn },
-});
-
-export const SEO_MAP: Record<string, Seo> = {
-  'conectar-cuenta': S(
-    ['Conectar MetaTrader a Onyx: clave API paso a paso', 'Connect MetaTrader to Onyx: API key step by step'],
-    ['Aprende a conectar tu cuenta de MetaTrader 4/5 a Onyx con una clave API, por qué es una por cuenta y cómo evitar errores.', 'Learn to connect your MetaTrader 4/5 account to Onyx with an API key, why it is one per account, and how to avoid mistakes.'],
-    ['conectar metatrader', 'clave api metatrader', 'onyx trading', 'diario de trading', 'sincronizar cuenta mt4 mt5'],
-    ['connect metatrader', 'metatrader api key', 'onyx trading', 'trading journal', 'sync mt4 mt5 account']),
-  'instalar-ea': S(
-    ['Instalar el EA de Onyx en MetaTrader (MT4/MT5)', 'Install the Onyx EA on MetaTrader (MT4/MT5)'],
-    ['Guía para instalar el Expert Advisor de Onyx en MetaTrader y empezar a sincronizar tus operaciones automáticamente.', 'Guide to install the Onyx Expert Advisor on MetaTrader and start syncing your trades automatically.'],
-    ['instalar ea metatrader', 'expert advisor onyx', 'ea mt4 mt5', 'sincronizar operaciones', 'autotrading'],
-    ['install ea metatrader', 'onyx expert advisor', 'ea mt4 mt5', 'sync trades', 'autotrading']),
-  'que-hace-onyx': S(
-    ['Qué es Onyx: diario y análisis de trading real', 'What Onyx is: real trading journal and analytics'],
-    ['Onyx analiza cada operación, cuida tu riesgo con el Guardian y te muestra tus números reales. Descubre qué hace y qué no.', 'Onyx analyzes every trade, protects your risk with Guardian and shows your real numbers. See what it does and doesn’t.'],
-    ['diario de trading', 'analisis de trading', 'journal forex', 'gestion de riesgo', 'onyx trading live'],
-    ['trading journal', 'trading analytics', 'forex journal', 'risk management', 'onyx trading live']),
-  'profit-factor': S(
-    ['Profit factor: qué es y cuándo te engaña', 'Profit factor: what it is and when it misleads you'],
-    ['Qué mide el profit factor, qué valor es bueno y por qué a veces engaña. Ejemplos claros para traders.', 'What profit factor measures, what value is good, and why it sometimes misleads. Clear examples for traders.'],
-    ['profit factor', 'que es profit factor', 'metricas de trading', 'rentabilidad trading', 'estadisticas forex'],
-    ['profit factor', 'what is profit factor', 'trading metrics', 'trading profitability', 'forex statistics']),
-  'expectancy': S(
-    ['Expectancy: cuánto ganas por operación de media', 'Expectancy: how much you win per trade on average'],
-    ['Qué es la esperanza matemática (expectancy) en trading, cómo se calcula y por qué manda más que el % de aciertos.', 'What expectancy is in trading, how to calculate it, and why it matters more than win rate.'],
-    ['expectancy trading', 'esperanza matematica', 'ganancia por operacion', 'winrate', 'metricas de trading'],
-    ['trading expectancy', 'expected value trading', 'profit per trade', 'win rate', 'trading metrics']),
-  'que-es-r': S(
-    ['Qué es 1R en trading y por qué deberías usarlo', 'What is 1R in trading and why you should use it'],
-    ['1R es tu unidad de riesgo. Aprende a medir tus operaciones en R para comparar y mejorar con datos.', '1R is your risk unit. Learn to measure trades in R to compare and improve with data.'],
-    ['que es 1r', 'unidad de riesgo', 'riesgo beneficio', 'ratio r trading', 'gestion de riesgo'],
-    ['what is 1r', 'risk unit', 'risk reward', 'r multiple trading', 'risk management']),
-  'drawdown': S(
-    ['Drawdown: la métrica que decide si aguantas', 'Drawdown: the metric that decides if you survive'],
-    ['Qué es el drawdown, la diferencia entre máximo y diario, y cómo usarlo para no reventar tu cuenta.', 'What drawdown is, max vs daily, and how to use it so you don’t blow your account.'],
-    ['drawdown trading', 'que es drawdown', 'drawdown maximo', 'perdida maxima', 'gestion de riesgo'],
-    ['trading drawdown', 'what is drawdown', 'max drawdown', 'daily drawdown', 'risk management']),
-  'costes-reales': S(
-    ['Comisiones y swap: el dinero que no ves en trading', 'Commissions and swap: the money you don’t see'],
-    ['Comisiones, spread y swap se comen tu rentabilidad. Aprende a verlos y a calcular tu ganancia neta real.', 'Commissions, spread and swap eat your returns. Learn to see them and compute your real net profit.'],
-    ['comisiones trading', 'swap forex', 'spread', 'costes de trading', 'ganancia neta'],
-    ['trading commissions', 'forex swap', 'spread', 'trading costs', 'net profit']),
-  'break-even': S(
-    ['Break even en trading: qué es de verdad', 'Break even in trading: what it really means'],
-    ['Qué es el break even real (incluyendo costes), por qué no es tu precio de entrada y cómo usarlo bien.', 'What real break even means (including costs), why it’s not your entry price, and how to use it.'],
-    ['break even trading', 'punto de equilibrio', 'sl a break even', 'gestion de operacion', 'costes'],
-    ['break even trading', 'breakeven point', 'move sl to breakeven', 'trade management', 'costs']),
-  'trailing-stop': S(
-    ['Trailing stop: asegurar sin cortar demasiado pronto', 'Trailing stop: lock profit without cutting too early'],
-    ['Cómo funciona el trailing stop, cuándo usarlo y cómo evitar que te saque antes de tiempo de tus operaciones.', 'How a trailing stop works, when to use it, and how to avoid getting stopped out too soon.'],
-    ['trailing stop', 'stop dinamico', 'asegurar ganancias', 'gestion de salida', 'stop loss'],
-    ['trailing stop', 'dynamic stop', 'lock in profit', 'exit management', 'stop loss']),
-  'plan-de-trading': S(
-    ['Plan de trading: horarios, rachas y disciplina', 'Trading plan: hours, streaks and discipline'],
-    ['Crea un plan de trading realista: horarios, límites de rachas y menos fricción para operar con disciplina.', 'Build a realistic trading plan: hours, streak limits and less friction to trade with discipline.'],
-    ['plan de trading', 'disciplina trading', 'reglas de trading', 'psicologia trading', 'rutina de trading'],
-    ['trading plan', 'trading discipline', 'trading rules', 'trading psychology', 'trading routine']),
-  'limites-cuenta': S(
-    ['Límites de cuenta: base de cálculo y hora de reinicio', 'Account limits: calculation base and reset time'],
-    ['Configura tus límites de pérdida diaria y total: sobre qué se calculan y a qué hora se reinician.', 'Set your daily and total loss limits: what they’re based on and when they reset.'],
-    ['limites de cuenta', 'perdida diaria', 'limite de perdida', 'reglas de fondeo', 'gestion de riesgo'],
-    ['account limits', 'daily loss', 'loss limit', 'funded rules', 'risk management']),
-  'parciales': S(
-    ['Cierres parciales: cómo cobrar tus operaciones por partes', 'Partial closes: how to bank trades in pieces'],
-    ['Qué son los cierres parciales, cuándo tienen sentido y cómo los mide Onyx (TP completo vs parcial).', 'What partial closes are, when they make sense, and how Onyx measures full vs partial TP.'],
-    ['cierres parciales', 'tomar parciales', 'gestion de salida', 'take profit', 'gestion de operacion'],
-    ['partial closes', 'scaling out', 'exit management', 'take profit', 'trade management']),
-  'reglas-fondeo': S(
-    ['Reglas de prop firm: cómo pasar y no romperlas', 'Prop firm rules: how to pass without breaking them'],
-    ['Drawdown, pérdida diaria y consistencia: entiende las reglas de tu prop firm y sigue el marcador con Onyx.', 'Drawdown, daily loss and consistency: understand your prop firm rules and track them with Onyx.'],
-    ['reglas prop firm', 'cuenta de fondeo', 'pasar el reto', 'drawdown fondeo', 'trader fondeado'],
-    ['prop firm rules', 'funded account', 'pass the challenge', 'funded drawdown', 'funded trader']),
-  'varias-cuentas': S(
-    ['Llevar varias cuentas de trading a la vez en Onyx', 'Manage multiple trading accounts at once in Onyx'],
-    ['Cómo gestionar varias cuentas de MetaTrader/cTrader en Onyx, verlas por separado y no mezclar tus números.', 'How to manage several MetaTrader/cTrader accounts in Onyx, view them separately and keep numbers clean.'],
-    ['varias cuentas trading', 'multi cuenta metatrader', 'gestionar cuentas', 'cuentas de fondeo', 'onyx'],
-    ['multiple trading accounts', 'multi account metatrader', 'manage accounts', 'funded accounts', 'onyx']),
-  'planes-y-pagos': S(
-    ['Planes de Onyx: cambios, pagos y cancelación', 'Onyx plans: changes, billing and cancellation'],
-    ['Cómo cambiar de plan, gestionar pagos y cancelar en Onyx, con los efectos de subir o bajar de plan.', 'How to change plan, manage billing and cancel in Onyx, and what happens on upgrade or downgrade.'],
-    ['planes onyx', 'cambiar de plan', 'cancelar suscripcion', 'precios trading', 'facturacion'],
-    ['onyx plans', 'change plan', 'cancel subscription', 'trading pricing', 'billing']),
-  'privacidad-seguridad': S(
-    ['Seguridad en Onyx: datos, contraseña y verificación 2 pasos', 'Onyx security: data, password and 2-step verification'],
-    ['Qué datos guarda Onyx y qué no, cómo restablecer tu contraseña y activar la verificación en dos pasos (2FA).', 'What data Onyx stores and what it doesn’t, how to reset your password and enable two-step verification (2FA).'],
-    ['seguridad cuenta', 'restablecer contraseña', 'verificacion dos pasos', '2fa trading', 'privacidad datos'],
-    ['account security', 'reset password', 'two-step verification', '2fa trading', 'data privacy']),
-  'avisos-telegram': S(
-    ['Avisos de trading por Telegram con Onyx', 'Trading alerts on Telegram with Onyx'],
-    ['Recibe alertas de fondeo, riesgo, noticias y metas por Telegram. Conecta tu cuenta en un clic.', 'Get funding, risk, news and goal alerts on Telegram. Connect your account in one click.'],
-    ['alertas telegram trading', 'avisos de fondeo', 'notificaciones trading', 'telegram forex', 'onyx'],
-    ['telegram trading alerts', 'funding alerts', 'trading notifications', 'telegram forex', 'onyx']),
-  'soporte-onyx-ai': S(
-    ['Onyx AI: soporte y ayuda instantánea para traders', 'Onyx AI: instant support and help for traders'],
-    ['Pide ayuda a Onyx AI, resuelve dudas al instante o abre un ticket con el equipo de soporte.', 'Ask Onyx AI, get instant answers, or open a ticket with the support team.'],
-    ['soporte onyx', 'ayuda trading', 'chat ia trading', 'ticket soporte', 'onyx ai'],
-    ['onyx support', 'trading help', 'trading ai chat', 'support ticket', 'onyx ai']),
-  'programa-embajadores': S(
-    ['Programa de embajadores de Onyx: gana por referir', 'Onyx ambassador program: earn by referring'],
-    ['Cómo funciona el programa de embajadores de Onyx: comisiones, enlace de referido y cobros.', 'How the Onyx ambassador program works: commissions, referral link and payouts.'],
-    ['programa embajadores', 'referidos trading', 'ganar comisiones', 'afiliados onyx', 'referir'],
-    ['ambassador program', 'trading referrals', 'earn commissions', 'onyx affiliates', 'refer']),
-  'precios-planes': S(
-    ['Precios y planes de Onyx Trading Live', 'Onyx Trading Live pricing and plans'],
-    ['Compara los planes de Onyx y elige el que encaja con tu trading: funciones, límites y precios.', 'Compare Onyx plans and pick the one that fits your trading: features, limits and pricing.'],
-    ['precios onyx', 'planes trading', 'onyx trading live precio', 'diario de trading precio', 'suscripcion'],
-    ['onyx pricing', 'trading plans', 'onyx trading live price', 'trading journal price', 'subscription']),
-  'conectar-ctrader': S(
-    ['Conectar cTrader a Onyx paso a paso', 'Connect cTrader to Onyx step by step'],
-    ['Guía para conectar tu cuenta de cTrader a Onyx con el cBot y sincronizar tus operaciones.', 'Guide to connect your cTrader account to Onyx with the cBot and sync your trades.'],
-    ['conectar ctrader', 'cbot onyx', 'ctrader diario', 'sincronizar ctrader', 'onyx'],
-    ['connect ctrader', 'onyx cbot', 'ctrader journal', 'sync ctrader', 'onyx']),
-  'tradingview-senales': S(
-    ['TradingView a Onyx: ejecuta tus alertas', 'TradingView to Onyx: execute your alerts'],
-    ['Conecta las alertas de TradingView con Onyx para ejecutar señales en tu cuenta de forma automática.', 'Connect TradingView alerts to Onyx to execute signals on your account automatically.'],
-    ['tradingview a metatrader', 'ejecutar alertas tradingview', 'señales tradingview', 'webhook trading', 'onyx'],
-    ['tradingview to metatrader', 'execute tradingview alerts', 'tradingview signals', 'trading webhook', 'onyx']),
-  'academia-que-es': S(
-    ['Onyx Academy: qué es y cómo funciona', 'Onyx Academy: what it is and how it works'],
-    ['Onyx Academy es la comunidad y formación de trading estilo Skool: cursos, clases en vivo y mentores.', 'Onyx Academy is the Skool-style trading community and education: courses, live classes and mentors.'],
-    ['onyx academy', 'comunidad de trading', 'formacion trading', 'academia forex', 'cursos de trading'],
-    ['onyx academy', 'trading community', 'trading education', 'forex academy', 'trading courses']),
-  'academia-crear-mentor': S(
-    ['Crea tu academia de trading en Onyx (mentor)', 'Build your trading academy on Onyx (mentor)'],
-    ['Monta tu academia como mentor en Onyx: cursos, membresías, clases en vivo y tu comunidad.', 'Launch your academy as a mentor on Onyx: courses, memberships, live classes and your community.'],
-    ['crear academia trading', 'ser mentor de trading', 'vender cursos trading', 'comunidad de pago', 'onyx academy'],
-    ['create trading academy', 'become trading mentor', 'sell trading courses', 'paid community', 'onyx academy']),
-  'academia-cobrar-mentor': S(
-    ['Cómo cobran los mentores en Onyx Academy (Stripe)', 'How mentors get paid on Onyx Academy (Stripe)'],
-    ['Cobra tus membresías y cursos con Stripe Connect en Onyx Academy: comisiones, pagos y facturación.', 'Charge for memberships and courses with Stripe Connect on Onyx Academy: fees, payouts and billing.'],
-    ['cobrar cursos trading', 'stripe connect', 'pagos mentor', 'membresias academia', 'monetizar comunidad'],
-    ['charge trading courses', 'stripe connect', 'mentor payouts', 'academy memberships', 'monetize community']),
-  'academia-alumno': S(
-    ['Usar Onyx Academy como alumno', 'Using Onyx Academy as a student'],
-    ['Cómo unirte a una academia, seguir los cursos, entrar a clases en vivo y participar en la comunidad.', 'How to join an academy, follow courses, attend live classes and take part in the community.'],
-    ['academia de trading', 'aprender trading', 'cursos de trading', 'clases en vivo trading', 'onyx academy'],
-    ['trading academy', 'learn trading', 'trading courses', 'live trading classes', 'onyx academy']),
-  'copy-sin-baneos': S(
-    ['Copy trading sin baneos: buenas prácticas', 'Copy trading without bans: best practices'],
-    ['Cómo hacer copy trading entre tus cuentas evitando baneos de prop firms: retardos, filtros y buenas prácticas.', 'How to copy trade across accounts while avoiding prop-firm bans: delays, filters and best practices.'],
-    ['copy trading sin baneo', 'copy trading prop firm', 'copiar operaciones', 'evitar baneo fondeo', 'onyx copy'],
-    ['copy trading no ban', 'copy trading prop firm', 'copy trades', 'avoid funded ban', 'onyx copy']),
-  'mis-robots': S(
-    ['Mis robots: sigue tus EAs por magic number', 'My robots: track your EAs by magic number'],
-    ['Controla el rendimiento de cada robot (EA) por magic number: estados, pares y métricas en Onyx.', 'Track each robot (EA) by magic number: status, pairs and metrics in Onyx.'],
-    ['seguir ea', 'magic number', 'rendimiento robot trading', 'monitor ea', 'onyx robots'],
-    ['track ea', 'magic number', 'ea performance', 'monitor ea', 'onyx robots']),
-  'ganancia-neta': S(
-    ['Ganancia neta: lo que ganaste de verdad', 'Net profit: what you really earned'],
-    ['Resta comisiones, swap y gastos de tu bruto para ver tu ganancia neta real en Onyx.', 'Subtract commissions, swap and expenses from your gross to see your real net profit in Onyx.'],
-    ['ganancia neta trading', 'beneficio real', 'rentabilidad neta', 'costes de trading', 'onyx'],
-    ['net trading profit', 'real profit', 'net profitability', 'trading costs', 'onyx']),
-  'metas-ganancia': S(
-    ['Metas de ganancia: semanal, mensual y anual', 'Profit goals: weekly, monthly and yearly'],
-    ['Fija metas de ganancia y sígueles el paso semana a semana, mes a mes y año a año con Onyx.', 'Set profit goals and track them week by week, month by month and year by year with Onyx.'],
-    ['metas de trading', 'objetivos de ganancia', 'meta mensual trading', 'seguimiento de metas', 'onyx'],
-    ['trading goals', 'profit targets', 'monthly trading goal', 'goal tracking', 'onyx']),
-  'academia-copiar-mentor': S(
-    ['Copiar a tu mentor en la academia', 'Copy your mentor in the academy'],
-    ['Sigue y copia las operaciones de tu mentor dentro de Onyx Academy de forma segura.', 'Follow and copy your mentor’s trades inside Onyx Academy safely.'],
-    ['copiar mentor', 'copy trading mentor', 'señales de mentor', 'academia trading', 'onyx academy'],
-    ['copy mentor', 'mentor copy trading', 'mentor signals', 'trading academy', 'onyx academy']),
-  'plan-habitos-checkin': S(
-    ['Plan, hábitos y check-in diario de trading', 'Trading plan, habits and daily check-in'],
-    ['Construye hábitos de trading y haz tu check-in diario para operar con disciplina y medir tu constancia.', 'Build trading habits and do your daily check-in to trade with discipline and measure consistency.'],
-    ['habitos de trading', 'check in diario', 'disciplina trading', 'rutina de trader', 'psicologia trading'],
-    ['trading habits', 'daily check-in', 'trading discipline', 'trader routine', 'trading psychology']),
-  'proteger-cuenta-guardian': S(
-    ['Proteger tu cuenta con Onyx Guardian', 'Protect your account with Onyx Guardian'],
-    ['El Guardian cuida tu riesgo: límites de pérdida, freno automático y reglas para no reventar tu cuenta.', 'Guardian protects your risk: loss limits, auto stop and rules so you don’t blow your account.'],
-    ['proteger cuenta trading', 'gestion de riesgo automatica', 'limite de perdida', 'onyx guardian', 'stop diario'],
-    ['protect trading account', 'automatic risk management', 'loss limit', 'onyx guardian', 'daily stop']),
-  'notificaciones-onyx': S(
-    ['Notificaciones de Onyx: campana, push y Telegram', 'Onyx notifications: bell, push and Telegram'],
-    ['Configura tus avisos en Onyx: campana dentro de la app, notificaciones push y alertas por Telegram.', 'Set up your alerts in Onyx: in-app bell, push notifications and Telegram alerts.'],
-    ['notificaciones trading', 'push trading', 'alertas telegram', 'avisos onyx', 'configurar avisos'],
-    ['trading notifications', 'trading push', 'telegram alerts', 'onyx alerts', 'configure alerts']),
-  'resincronizar-costes': S(
-    ['Re-sincronizar en Onyx: que los costes cuadren', 'Re-sync in Onyx: make your costs match'],
-    ['Cuándo y cómo re-sincronizar tu historial para que comisiones, swap y ganancia neta cuadren.', 'When and how to re-sync your history so commissions, swap and net profit match.'],
-    ['resincronizar operaciones', 'cuadrar costes', 'historial metatrader', 'sincronizar trading', 'onyx'],
-    ['re-sync trades', 'reconcile costs', 'metatrader history', 'sync trading', 'onyx']),
-  'reto-lectura-ia': S(
-    ['Tu reto de fondeo, leído por la IA de Onyx', 'Your funded challenge, read by Onyx AI'],
-    ['Sube el contrato de tu reto y deja que la IA de Onyx detecte firma, fase y reglas para seguir el marcador.', 'Upload your challenge contract and let Onyx AI detect firm, phase and rules to track the scoreboard.'],
-    ['reto de fondeo', 'reglas prop firm ia', 'leer contrato reto', 'marcador de reto', 'trader fondeado'],
-    ['funded challenge', 'prop firm rules ai', 'read challenge contract', 'challenge scoreboard', 'funded trader']),
-  'instalar-app-avisos': S(
-    ['Instala Onyx como app en tu móvil (PWA)', 'Install Onyx as an app on your phone (PWA)'],
-    ['Instala Onyx como aplicación en iPhone o Android para recibir avisos y abrir tu panel más rápido.', 'Install Onyx as an app on iPhone or Android to get alerts and open your dashboard faster.'],
-    ['instalar app onyx', 'pwa trading', 'app de trading movil', 'notificaciones push', 'onyx app'],
-    ['install onyx app', 'trading pwa', 'mobile trading app', 'push notifications', 'onyx app']),
-  'vps-que-es': S(
-    ['Qué es un VPS para trading y qué tipos hay', 'What a trading VPS is and what types exist'],
-    ['Un VPS mantiene tu MetaTrader y tus robots encendidos 24/7. Aprende qué es, para qué sirve y cómo elegirlo.', 'A VPS keeps your MetaTrader and robots running 24/7. Learn what it is, why it helps and how to choose one.'],
-    ['vps trading', 'vps forex', 'que es un vps', 'metatrader 24/7', 'servidor para robots'],
-    ['trading vps', 'forex vps', 'what is a vps', 'metatrader 24/7', 'server for robots']),
-};
-
-// Fusiona el SEO en cada artículo que no traiga uno propio.
-for (const a of ARTICLES) { if (!a.seo && SEO_MAP[a.slug]) a.seo = SEO_MAP[a.slug]; }
 
 export const bySlug = (slug: string) => ARTICLES.find((a) => a.slug === slug) || null;
 export const byCat = (cat: string) => ARTICLES.filter((a) => a.cat === cat);

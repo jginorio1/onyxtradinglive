@@ -24,21 +24,11 @@ export type Scoreboard = {
   login: any;
   name: string;
   firm: string;
-  phaseEs?: string; phaseEn?: string;   // Fase 1 / Fase 2 / Fondeada (vacío si no aplica)
   verdict: 'on_track' | 'watch' | 'breach';
   rules: ChallengeRule[];
   closest?: { es: string; en: string };
   lines: string[];             // resumen compacto en inglés para el panel del EA
 };
-
-// Etiqueta legible de la fase, a partir de lo guardado ('1' | '2' | 'funded').
-export function phaseLabel(phase: any): { es: string; en: string } {
-  const p = String(phase || '');
-  if (p === '1') return { es: 'Fase 1', en: 'Phase 1' };
-  if (p === '2') return { es: 'Fase 2', en: 'Phase 2' };
-  if (p === 'funded') return { es: 'Fondeada', en: 'Funded' };
-  return { es: '', en: '' };
-}
 
 const m2 = (n: number) => '$' + Math.round(n).toLocaleString('en-US');
 
@@ -158,8 +148,7 @@ export function computeChallenge(input: {
   // Resumen compacto para el panel del EA (inglés, idioma por defecto de la EA)
   const lines = rules.filter((r) => r.status !== 'na').map((r) => `${r.en}: ${r.valEn}`);
 
-  const ph = phaseLabel(ch.phase);
-  return { accountId: input.accountId, login: input.login, name: input.name, firm: ch.firm || 'custom', phaseEs: ph.es, phaseEn: ph.en, verdict, rules, closest, lines };
+  return { accountId: input.accountId, login: input.login, name: input.name, firm: ch.firm || 'custom', verdict, rules, closest, lines };
 }
 
 // Trae los datos de una cuenta y calcula su marcador. null si no aplica.
