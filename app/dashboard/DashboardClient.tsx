@@ -320,6 +320,27 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
   // Laterales del hub: precarga INMEDIATA al montar → su código baja en paralelo
   // con el resto y aparecen enseguida (sin "…" y sin riesgo de SSR).
   useEffect(() => { try { impNews(); impNet(); impCoach(); } catch {} }, []);
+
+  // Diario: set de operaciones YA documentadas (para la bandeja "sin diario").
+  const [docIds, setDocIds] = useState<Set<string>>(new Set());
+  const [journalUndoc, setJournalUndoc] = useState(false);
+  useEffect(() => {
+    fetch('/api/journal').then((r) => r.json()).then((j) => {
+      const s = new Set<string>();
+      (j.entries || []).forEach((e: any) => {
+        const has = e.grade || e.emotion || (e.notes && String(e.notes).trim()) || e.image_url
+          || (e.tags && e.tags.length) || (e.market_tags && e.market_tags.length) || (e.error_tags && e.error_tags.length);
+        if (has) s.add(e.trade_id);
+      });
+      setDocIds(s);
+    }).catch(() => {});
+  }, []);
+  // Cuántas operaciones recientes (últimos 21 días) están sin documentar. Se
+  // limita a lo reciente: documentar trades de hace meses no aporta.
+  const undocCount = useMemo(() => {
+    const cut = new Date(Date.now() - 21 * 864e5).toISOString().slice(0, 10);
+    return (tradesS || []).filter((x: any) => x.close_time.slice(0, 10) >= cut && !docIds.has(x.id)).length;
+  }, [tradesS, docIds]);
   // Precarga en reposo de las secciones tras un tile: cuando el navegador está
   // libre (o a 1.2s como respaldo), bajamos su código para que abran al instante.
   useEffect(() => {
@@ -694,12 +715,30 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                 ];
                 const tiles: Tile[] = SECTIONS.map((s) => ({
                   key: s.key, icon: s.icon, label: s.label, metric: s.metric, mc: s.mc, color: s.color,
-                  onClick: () => setView(s.key), preload: PRELOAD[s.key],
+                  onClick: () => { if (s.key === 'operaciones') setJournalUndoc(false); setView(s.key); }, preload: PRELOAD[s.key],
                   badge: s.pro && !canJournal ? <PlanBadge plan={upJ.name} /> : undefined,
                 }));
                 tiles.push({ key: 'plan', icon: '🎯', label: lang === 'en' ? 'My plan' : 'Mi plan', metric: lang === 'en' ? 'Habits' : 'Hábitos', mc: 'var(--soft-brand)', color: PURPLE, onClick: () => setView('plan'), preload: PRELOAD.plan });
                 return <HubVitals net={money2(a.net)} netPos={a.net >= 0} netLabel={L.kNet} vitals={vitals} tiles={tiles} hideNet />;
               })()}
+
+              {/* Bandeja "sin diario": persigue al trader para que documente */}
+              {canJournal && !demo && undocCount > 0 && (
+                <div
+                  onMouseEnter={() => PRELOAD.operaciones?.()}
+                  onClick={() => { setJournalUndoc(true); setView('operaciones'); }}
+                  style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 16px', borderRadius: 14, background: 'rgba(255,192,77,.10)', border: '1px solid var(--amber)' }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
+                    <OnyxIcon emoji="📓" size={20} />
+                    <div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--amber)' }}>{undocCount} {lang === 'en' ? (undocCount === 1 ? 'trade without a journal' : 'trades without a journal') : (undocCount === 1 ? 'operación sin diario' : 'operaciones sin diario')}</div>
+                      <div className="muted" style={{ fontSize: 12.5 }}>{lang === 'en' ? 'Document them while you remember' : 'Documéntalas mientras las recuerdas'}</div>
+                    </div>
+                  </div>
+                  <span className="btn" style={{ background: 'rgba(255,192,77,.14)', border: '1px solid var(--amber)', color: 'var(--amber)', fontWeight: 600, fontSize: 13.5, whiteSpace: 'nowrap' }}>{lang === 'en' ? 'Document now' : 'Documentar ahora'} →</span>
+                </div>
+              )}
 
               <Achievements a={a} accounts={accounts} trades={demo ? demoTrades : tradesS} lang={lang} />
 
@@ -841,7 +880,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
               </Card>
             )}
 
-            {view === 'operaciones' && (!canJournal ? <ProLock L={L} plan={upJ.name} desc={L.dLock1} price={upJ.price} preview={<PreviewJournal />} /> : <Journal trades={filtered} lang={lang} />)}
+            {view === 'operaciones' && (!canJournal ? <ProLock L={L} plan={upJ.name} desc={L.dLock1} price={upJ.price} preview={<PreviewJournal />} /> : <Journal trades={filtered} lang={lang} focusUndoc={journalUndoc} />)}
             {view === 'costes' && <Costs trades={filtered} lang={lang} />}
             {view === 'reto' && <Challenge lang={lang} />}
             {view === 'plan' && <PlanHabits lang={lang} />}
