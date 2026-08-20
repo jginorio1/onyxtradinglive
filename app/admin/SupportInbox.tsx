@@ -13,6 +13,13 @@ const stColor: any = { open: 'var(--brand)', in_progress: 'var(--amber)', resolv
 const stBg: any = { open: 'rgba(124,140,255,.15)', in_progress: 'rgba(255,192,77,.15)', resolved: 'rgba(52,226,160,.15)' };
 const prioColor: any = { high: 'var(--red)', normal: 'var(--mut)', low: 'var(--line)' };
 const initials = (email: string) => (email || '?').replace(/@.*/, '').slice(0, 2).toUpperCase();
+// Avatares de color por email (consistentes) — para la lista tipo WhatsApp.
+const AV = [
+  { bg: 'rgba(124,140,255,.20)', fg: '#8f9bff' }, { bg: 'rgba(52,226,160,.20)', fg: '#34e2a0' },
+  { bg: 'rgba(255,192,77,.20)', fg: '#ffc04d' }, { bg: 'rgba(255,107,125,.20)', fg: '#ff8a97' },
+  { bg: 'rgba(94,207,255,.20)', fg: '#5ecfff' }, { bg: 'rgba(197,132,255,.20)', fg: '#c584ff' },
+];
+const avatarOf = (s?: string) => AV[Math.abs([...String(s || '?')].reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7)) % AV.length];
 const EMO = ['👍', '🙏', '✅', '🔥', '🎉', '😀', '😅', '😎', '🤝', '👌', '💪', '🚀', '💰', '📈', '🛡️', '🤖', '❤️', '👀', '⏳', '⚠️'];
 
 // Tiempo relativo corto: "hace 5m", "hace 2h", "ayer"…
@@ -76,6 +83,7 @@ export default function SupportInbox() {
   const [filter, setFilter] = useState<'all' | 'open' | 'in_progress' | 'resolved' | 'mine' | 'unassigned'>('open');
   const [q, setQ] = useState('');
   const [openId, setOpenId] = useState('');
+  const [mobileOpen, setMobileOpen] = useState(false); // en móvil: chat a pantalla completa
   const [text, setText] = useState('');
   const [atts, setAtts] = useState<Att[]>([]);
   const [mode, setMode] = useState<'reply' | 'note'>('reply');
@@ -199,7 +207,16 @@ export default function SupportInbox() {
         .wa-fil{font-size:12.5px;padding:6px 13px;border-radius:20px;border:1px solid var(--line);background:var(--card2);color:var(--mut);cursor:pointer;transition:all .12s}
         .wa-fil:hover{color:var(--tx)} .wa-fil.on{background:var(--brand);border-color:var(--brand);color:#fff}
         .wa2{display:grid;grid-template-columns:300px minmax(0,1fr);gap:14px;align-items:stretch}
-        @media(max-width:860px){.wa2{grid-template-columns:1fr}.wa-list{max-height:340px}}
+        .wa-search{display:flex;align-items:center;gap:8px;background:var(--bg2);border:1px solid var(--line);border-radius:999px;padding:6px 12px;margin-left:auto;max-width:260px;flex:1}
+        .wa-back{display:none}
+        @media(max-width:860px){
+          .wa2{grid-template-columns:1fr}
+          .wa-list{max-height:none;height:66vh}
+          .wa-chat{display:none}
+          .wa-hide-m{display:none !important}
+          .wa-fs-m{display:flex !important;min-height:0;height:82vh}
+          .wa-back{display:inline-flex !important}
+        }
         .wa-list{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:6px;max-height:640px;overflow-y:auto}
         .wa-item{display:flex;gap:10px;align-items:flex-start;padding:9px 10px;border-radius:12px;cursor:pointer;border-left:3px solid transparent}
         .wa-item:hover{background:var(--bg2)} .wa-item.on{background:var(--bg2);border-left-color:var(--brand)}
@@ -235,12 +252,12 @@ export default function SupportInbox() {
         {([['mine', l.fMine, mineCount], ['unassigned', l.fUnassigned, unassignedCount], ['open', t.s_open, counts.open], ['in_progress', t.s_inprogress, counts.in_progress], ['resolved', t.s_resolved, counts.resolved], ['all', t.s_all, null]] as any).map(([k, lab, c]: any) => (
           <button key={k} className={'wa-fil' + (filter === k ? ' on' : '')} onClick={() => setFilter(k)}>{lab}{c != null ? ` ${c}` : ''}</button>
         ))}
-        <input placeholder={t.s_search} value={q} onChange={(e) => setQ(e.target.value)} style={{ margin: 0, maxWidth: 240, marginLeft: 'auto' }} />
+        <div className="wa-search"><span style={{ opacity: .6, fontSize: 13 }}>🔍</span><input placeholder={t.s_search} value={q} onChange={(e) => setQ(e.target.value)} style={{ margin: 0, border: 'none', background: 'transparent', padding: 0, fontSize: 13, width: '100%' }} /></div>
       </div>
 
       <div className="wa2">
         {/* Lista de conversaciones estilo WhatsApp */}
-        <div className="wa-list">
+        <div className={'wa-list' + (mobileOpen ? ' wa-hide-m' : '')}>
           {!list.length && <p className="muted" style={{ fontSize: 13, padding: '10px 8px' }}>{t.s_empty}</p>}
           {list.map((it) => {
             const parts = participants.filter((p) => p.ticket_id === it.id);
@@ -249,8 +266,8 @@ export default function SupportInbox() {
             const lm = lastMsgOf[it.id];
             const preview = lm ? ((lm.sender === 'note' ? '📝 ' : lm.sender === 'user' ? '' : '✓ ') + (lm.body || (lm.attachments?.length ? '📎 ' + (es ? 'archivo' : 'file') : ''))) : (it.subject || '');
             return (
-              <div key={it.id} className={'wa-item' + (openId === it.id ? ' on' : '')} onClick={() => setOpenId(it.id)}>
-                <span className="wa-avs">{initials(it.email || '?')}</span>
+              <div key={it.id} className={'wa-item' + (openId === it.id ? ' on' : '')} onClick={() => { setOpenId(it.id); setMobileOpen(true); }}>
+                <span className="wa-avs" style={{ background: avatarOf(it.email).bg, color: avatarOf(it.email).fg }}>{initials(it.email || '?')}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="row between" style={{ gap: 6 }}>
                     <b style={{ fontSize: 13, fontWeight: nr ? 700 : 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.subject || who}</b>
@@ -271,7 +288,7 @@ export default function SupportInbox() {
         </div>
 
         {/* Panel de conversación */}
-        <div className="wa-chat">
+        <div className={'wa-chat' + (mobileOpen ? ' wa-fs-m' : ' wa-hide-m')}>
           {!tk && <div className="muted" style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', fontSize: 14, textAlign: 'center', padding: 20 }}>{t.s_pickOne}</div>}
           {tk && (() => {
             const tm = msgs.filter((m) => m.ticket_id === tk.id);
@@ -292,7 +309,8 @@ export default function SupportInbox() {
               <>
                 {/* Cabecera WhatsApp */}
                 <div className="wa-head">
-                  <span className="wa-av">{initials(tk.email || '?')}</span>
+                  <button className="wa-hb wa-back" onClick={() => setMobileOpen(false)} title={es ? 'Volver' : 'Back'} style={{ fontSize: 22, lineHeight: 1 }}>‹</button>
+                  <span className="wa-av" style={{ background: avatarOf(tk.email).bg, color: avatarOf(tk.email).fg }}>{initials(tk.email || '?')}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tk.email || t.s_visitor}</div>
                     <div className="muted" style={{ fontSize: 11.5 }}>
