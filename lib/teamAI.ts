@@ -81,8 +81,37 @@ function stripMd(s: string): string {
     .replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
 }
 
-function fmtDT(iso: string, en: boolean): string {
-  try { return new Date(iso).toLocaleString(en ? 'en-US' : 'es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }); } catch { return iso; }
+function fmtDT(iso: string, en: boolean, tz?: string): string {
+  try { return new Date(iso).toLocaleString(en ? 'en-US' : 'es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false, ...(tz ? { timeZone: tz } : {}) }); } catch { return iso; }
+}
+
+// ── Fechas conscientes de la ZONA HORARIA del admin ──────────────────
+// Sin librerías: usamos Intl para saber cuánto va adelantada la zona respecto
+// a UTC en un instante dado, y con eso calculamos "hoy/ayer/semana" en su hora.
+function zOffMs(date: Date, tz: string): number {
+  try {
+    const dtf = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const p: any = {}; for (const x of dtf.formatToParts(date)) if (x.type !== 'literal') p[x.type] = x.value;
+    const asUTC = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour === 24 ? 0 : +p.hour, +p.minute, +p.second);
+    return asUTC - date.getTime();
+  } catch { return 0; }
+}
+// Partes de reloj de pared (en tz) de un instante: {y,m,d,H,dow}
+function zWall(date: Date, tz: string) {
+  const l = new Date(date.getTime() + zOffMs(date, tz));
+  return { y: l.getUTCFullYear(), m: l.getUTCMonth(), d: l.getUTCDate(), H: l.getUTCHours(), dow: l.getUTCDay() };
+}
+// Instante UTC para la medianoche (en tz) del día y-m-d de pared.
+function zToUTC(y: number, m: number, d: number, tz: string): Date {
+  const guess = Date.UTC(y, m, d, 0, 0, 0);
+  let off = zOffMs(new Date(guess), tz); let inst = guess - off;
+  const off2 = zOffMs(new Date(inst), tz); if (off2 !== off) inst = guess - off2;
+  return new Date(inst);
+}
+// Inicio del día (en tz) desplazado N días hacia atrás.
+function zStartOfDay(now: Date, tz: string, minusDays: number): Date {
+  const w = zWall(now, tz); const local = new Date(Date.UTC(w.y, w.m, w.d)); local.setUTCDate(local.getUTCDate() - minusDays);
+  return zToUTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate(), tz);
 }
 
 const STATUS_LABEL: any = { open: { es: 'Abierto', en: 'Open' }, in_progress: { es: 'En curso', en: 'In progress' }, resolved: { es: 'Resuelto', en: 'Resolved' } };
@@ -90,22 +119,22 @@ const WEEKDAYS = ['domingo|sunday', 'lunes|monday', 'martes|tuesday', 'miércole
 
 // Interpreta la pregunta: extrae email, nombre, rango de días/horas, estado,
 // categoría y banderas (pendientes / sin asignar / leads / "muéstrame").
-function parseQuery(question: string) {
+function parseQuery(question: string, tz: string) {
   const q = ' ' + question.toLowerCase() + ' ';
   const now = new Date();
-  const sod = (d: Date) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
+  const dow0 = zWall(now, tz).dow; // día de la semana (0=domingo) en la zona del admin
   let from: Date | undefined, to: Date | undefined, windowLabel = '';
 
   const email = (question.match(/[\w.+-]+@[\w-]+\.[\w.-]+/) || [])[0]?.toLowerCase();
 
-  if (/\bhoy\b|\btoday\b/.test(q)) { from = sod(now); to = now; windowLabel = 'hoy'; }
-  else if (/\banteayer\b|\bantes de ayer\b/.test(q)) { const d = sod(now); d.setDate(d.getDate() - 2); from = d; to = new Date(d.getTime() + 864e5); windowLabel = 'anteayer'; }
-  else if (/\bayer\b|\byesterday\b/.test(q)) { const d = sod(now); d.setDate(d.getDate() - 1); from = d; to = sod(now); windowLabel = 'ayer'; }
-  else if (/semana pasada|last week/.test(q)) { const d = sod(now); const dow = (d.getDay() + 6) % 7; const mon = new Date(d); mon.setDate(d.getDate() - dow - 7); from = mon; to = new Date(mon.getTime() + 7 * 864e5); windowLabel = 'la semana pasada'; }
-  else if (/esta semana|this week/.test(q)) { const d = sod(now); const dow = (d.getDay() + 6) % 7; const mon = new Date(d); mon.setDate(d.getDate() - dow); from = mon; to = now; windowLabel = 'esta semana'; }
-  else if (/este mes|this month/.test(q)) { const d = new Date(now.getFullYear(), now.getMonth(), 1); from = d; to = now; windowLabel = 'este mes'; }
-  else { const m = q.match(/(?:últim[oa]s?|ultim[oa]s?|last|en los últimos|hace)\s+(\d{1,3})\s*(d[ií]as?|days?|horas?|hours?|h)\b/); if (m) { const n = parseInt(m[1], 10); const unitH = /hora|hour|^h$/.test(m[2]); const ms = unitH ? n * H : n * 864e5; from = new Date(now.getTime() - ms); to = now; windowLabel = `últim${unitH ? 'as ' + n + 'h' : 'os ' + n + ' días'}`; } }
-  if (!from) { for (let i = 0; i < 7; i++) { if (new RegExp('\\b(' + WEEKDAYS[i] + ')\\b').test(q)) { const d = sod(now); const diff = (d.getDay() - i + 7) % 7 || 7; d.setDate(d.getDate() - diff); from = d; to = new Date(d.getTime() + 864e5); windowLabel = 'el ' + WEEKDAYS[i].split('|')[0]; break; } } }
+  if (/\bhoy\b|\btoday\b/.test(q)) { from = zStartOfDay(now, tz, 0); to = now; windowLabel = 'hoy'; }
+  else if (/\banteayer\b|\bantes de ayer\b/.test(q)) { from = zStartOfDay(now, tz, 2); to = zStartOfDay(now, tz, 1); windowLabel = 'anteayer'; }
+  else if (/\bayer\b|\byesterday\b/.test(q)) { from = zStartOfDay(now, tz, 1); to = zStartOfDay(now, tz, 0); windowLabel = 'ayer'; }
+  else if (/semana pasada|last week/.test(q)) { const mondayThis = (dow0 + 6) % 7; from = zStartOfDay(now, tz, mondayThis + 7); to = zStartOfDay(now, tz, mondayThis); windowLabel = 'la semana pasada'; }
+  else if (/esta semana|this week/.test(q)) { const mondayThis = (dow0 + 6) % 7; from = zStartOfDay(now, tz, mondayThis); to = now; windowLabel = 'esta semana'; }
+  else if (/este mes|this month/.test(q)) { const w = zWall(now, tz); from = zToUTC(w.y, w.m, 1, tz); to = now; windowLabel = 'este mes'; }
+  else { const m = q.match(/(?:últim[oa]s?|ultim[oa]s?|last|en los últimos|hace)\s+(\d{1,3})\s*(d[ií]as?|days?|horas?|hours?|h)\b/); if (m) { const n = parseInt(m[1], 10); const unitH = /hora|hour|^h$/.test(m[2]); if (unitH) { from = new Date(now.getTime() - n * H); } else { from = zStartOfDay(now, tz, n - 1); } to = now; windowLabel = `últim${unitH ? 'as ' + n + 'h' : 'os ' + n + ' días'}`; } }
+  if (!from) { for (let i = 0; i < 7; i++) { if (new RegExp('\\b(' + WEEKDAYS[i] + ')\\b').test(q)) { const diff = (dow0 - i + 7) % 7 || 7; from = zStartOfDay(now, tz, diff); to = zStartOfDay(now, tz, diff - 1); windowLabel = 'el ' + WEEKDAYS[i].split('|')[0]; break; } } }
 
   // Rango de horas: "entre las 14 y 16", "de 2 a 4 pm", "a las 3 pm"
   let hFrom: number | undefined, hTo: number | undefined;
@@ -156,10 +185,11 @@ async function resolveNameEmails(names: string[]): Promise<string[]> {
 // Arma la respuesta del Onyx interno. Recupera PRIMERO los tickets/mensajes
 // exactos según los filtros de la pregunta (email, nombre, día, hora, estado,
 // categoría) y responde con datos precisos y en texto plano (sin asteriscos).
-export async function onyxTeamAnswer(opts: { question: string; lang: Lang }): Promise<string> {
+export async function onyxTeamAnswer(opts: { question: string; lang: Lang; tz?: string }): Promise<string> {
   const { question, lang } = opts;
   const en = enBase(lang);
-  const P = parseQuery(question);
+  const tz = opts.tz || 'UTC'; // zona horaria del admin (del navegador); si falta, UTC
+  const P = parseQuery(question, tz);
   const hasFilter = !!(P.email || P.names.length || P.from || P.status || P.category || P.hFrom !== undefined || P.leadsOnly);
 
   // ============ RUTA PRECISA: hay filtros → traer tickets + mensajes exactos ============
@@ -187,9 +217,9 @@ export async function onyxTeamAnswer(opts: { question: string; lang: Lang }): Pr
       if (P.to) q2 = q2.lte('created_at', P.to.toISOString());
       const r2 = await q2; rows = (r2.data || []) as any[];
     }
-    // Filtro por hora (en el servidor)
+    // Filtro por hora (en la zona horaria del admin)
     if (P.hFrom !== undefined && P.hTo !== undefined) {
-      rows = rows.filter((t) => { const h = new Date(t.created_at).getHours(); return h >= P.hFrom! && h < P.hTo!; });
+      rows = rows.filter((t) => { const h = zWall(new Date(t.created_at), tz).H; return h >= P.hFrom! && h < P.hTo!; });
     }
 
     // Mensajes de esos tickets (texto completo)
@@ -217,9 +247,9 @@ export async function onyxTeamAnswer(opts: { question: string; lang: Lang }): Pr
     rows.slice(0, 15).forEach((t) => {
       const cliente = t.email || (en ? 'lead' : 'lead');
       const st = STATUS_LABEL[t.status]?.[en ? 'en' : 'es'] || t.status;
-      lines.push(`· "${t.subject || '—'}" — ${cliente} — ${fmtDT(t.created_at, en)} — ${st}${t.category ? ' — ' + t.category : ''}`);
+      lines.push(`· "${t.subject || '—'}" — ${cliente} — ${fmtDT(t.created_at, en, tz)} — ${st}${t.category ? ' — ' + t.category : ''}`);
       const ms = (msgsByTicket[t.id] || []).slice(-4);
-      ms.forEach((m) => lines.push(`    ${m.sender === 'user' ? (en ? 'Cliente' : 'Cliente') : (en ? 'Support' : 'Soporte')} ${fmtDT(m.created_at, en)}: "${String(m.body || '').replace(/\s+/g, ' ').slice(0, 400)}"`));
+      ms.forEach((m) => lines.push(`    ${m.sender === 'user' ? (en ? 'Cliente' : 'Cliente') : (en ? 'Support' : 'Soporte')} ${fmtDT(m.created_at, en, tz)}: "${String(m.body || '').replace(/\s+/g, ' ').slice(0, 400)}"`));
     });
     const facts = lines.join('\n');
 

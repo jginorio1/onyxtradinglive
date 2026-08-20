@@ -36,7 +36,8 @@ const mentionSource = async (q: string): Promise<MentionItem[]> => {
 async function postMessage(channel: string, text: string, attachments: Att[]) {
   const mentions: any[] = [];
   if (/@onyx/i.test(text)) mentions.push({ type: 'user', id: 'onyx', label: 'Onyx AI' });
-  const r = await fetch('/api/team/chat/messages', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ channel, body: text, attachments, mentions }) });
+  const tz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return ''; } })();
+  const r = await fetch('/api/team/chat/messages', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ channel, body: text, attachments, mentions, tz }) });
   return r.json().catch(() => ({}));
 }
 
