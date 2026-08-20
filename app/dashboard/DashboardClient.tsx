@@ -19,16 +19,29 @@ import Nudge from './Nudge';
 // Todo lo que vive detrás de un tile, colapsado o en pop-up se carga sólo
 // cuando hace falta: el hub (KPIs) hidrata más ligero y el primer clic responde.
 const _lazy = { ssr: false as const, loading: () => <div className="muted" style={{ padding: 16, fontSize: 13 }}>…</div> };
-const Journal = dynamic(() => import('./Journal'), _lazy);
+// Funciones de import reutilizadas por next/dynamic Y por la precarga (mismo
+// especificador → el navegador cachea el módulo una sola vez). Así, cuando el
+// usuario pulsa un tile, el código ya está descargado y abre al instante.
+const impJournal = () => import('./Journal');
+const impChallenge = () => import('./Challenge');
+const impCosts = () => import('./Costs');
+const impCompare = () => import('./CompareAccounts');
+const impPlan = () => import('./PlanHabits');
+const Journal = dynamic(impJournal, _lazy);
 const LotCalculator = dynamic(() => import('./LotCalculator'), _lazy);
-const Challenge = dynamic(() => import('./Challenge'), _lazy);
-const Costs = dynamic(() => import('./Costs'), _lazy);
+const Challenge = dynamic(impChallenge, _lazy);
+const Costs = dynamic(impCosts, _lazy);
 const AccountExtras = dynamic(() => import('./AccountExtras'), _lazy);
-const CompareAccounts = dynamic(() => import('./CompareAccounts'), _lazy);
-const PlanHabits = dynamic(() => import('./PlanHabits'), _lazy);
+const CompareAccounts = dynamic(impCompare, _lazy);
+const PlanHabits = dynamic(impPlan, _lazy);
 const News = dynamic(() => import('./News'), _lazy);
 const NetRealCard = dynamic(() => import('./NetRealCard'), _lazy);
 const CoachCard = dynamic(() => import('./CoachCard'), _lazy);
+// Precarga en reposo: cuando el navegador está libre, bajamos las secciones más
+// usadas (reto, plan, journal, costos, comparar) para que abran sin espera.
+const _preloadViews = () => { try { impChallenge(); impPlan(); impJournal(); impCosts(); impCompare(); } catch {} };
+// Precarga puntual de UNA sección al pasar el cursor/tocar su tile.
+const PRELOAD: Record<string, () => Promise<any>> = { reto: impChallenge, plan: impPlan, operaciones: impJournal, costes: impCosts, cuentas: impCompare };
 // Pop-ups: no bloquean el render inicial (sin placeholder visible).
 const DailyCheckinPopup = dynamic(() => import('./DailyCheckinPopup'), { ssr: false });
 const CompTrialPopup = dynamic(() => import('./CompTrialPopup'), { ssr: false });
@@ -296,6 +309,13 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
       const ok: View[] = ['hub', 'rendimiento', 'calendario', 'operaciones', 'costes', 'cuentas', 'reto', 'plan'];
       if (v && (ok as string[]).includes(v)) setView(v as View);
     } catch {}
+  }, []);
+  // Precarga en reposo de las secciones más usadas: cuando el navegador está
+  // libre (o a 1.2s como respaldo), bajamos su código para que abran al instante.
+  useEffect(() => {
+    const ric = (window as any).requestIdleCallback as undefined | ((cb: () => void, o?: any) => number);
+    if (ric) { const id = ric(_preloadViews, { timeout: 2500 }); return () => (window as any).cancelIdleCallback?.(id); }
+    const t = setTimeout(_preloadViews, 1200); return () => clearTimeout(t);
   }, []);
   const [range, setRange] = useState<string>('all');
   const [cFrom, setCFrom] = useState('');
@@ -664,10 +684,10 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                 ];
                 const tiles: Tile[] = SECTIONS.map((s) => ({
                   key: s.key, icon: s.icon, label: s.label, metric: s.metric, mc: s.mc, color: s.color,
-                  onClick: () => setView(s.key),
+                  onClick: () => setView(s.key), preload: PRELOAD[s.key],
                   badge: s.pro && !canJournal ? <PlanBadge plan={upJ.name} /> : undefined,
                 }));
-                tiles.push({ key: 'plan', icon: '🎯', label: lang === 'en' ? 'My plan' : 'Mi plan', metric: lang === 'en' ? 'Habits' : 'Hábitos', mc: 'var(--soft-brand)', color: PURPLE, onClick: () => setView('plan') });
+                tiles.push({ key: 'plan', icon: '🎯', label: lang === 'en' ? 'My plan' : 'Mi plan', metric: lang === 'en' ? 'Habits' : 'Hábitos', mc: 'var(--soft-brand)', color: PURPLE, onClick: () => setView('plan'), preload: PRELOAD.plan });
                 return <HubVitals net={money2(a.net)} netPos={a.net >= 0} netLabel={L.kNet} vitals={vitals} tiles={tiles} hideNet />;
               })()}
 

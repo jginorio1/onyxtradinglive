@@ -34,7 +34,7 @@ export function StatCard({ icon, label, value, color, accent, sub, bar }: {
     </div>
   );
 }
-export type Tile = { key: string; icon: string; label: string; metric?: string; mc?: string; color: string; onClick: () => void; badge?: React.ReactNode };
+export type Tile = { key: string; icon: string; label: string; metric?: string; mc?: string; color: string; onClick: () => void; preload?: () => void; badge?: React.ReactNode };
 
 function GlowRing({ v }: { v: Vital }) {
   const size = 96; const r = size / 2 - 9; const c = 2 * Math.PI * r;
@@ -89,7 +89,7 @@ export default function HubVitals({ net, netPos, netLabel, vitals, tiles, hideNe
       {/* Mosaicos de navegación */}
       <div className="hv-tiles">
         {tiles.map((t) => (
-          <button key={t.key} onClick={t.onClick} className="navtile" style={{ ['--tc' as any]: t.color }}>
+          <button key={t.key} onClick={t.onClick} onMouseEnter={t.preload} onTouchStart={t.preload} className="navtile" style={{ ['--tc' as any]: t.color }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span className="navtile-ic"><Ic icon={t.icon} size={19} /></span>
               {t.badge ? t.badge : <span style={{ color: 'var(--mut)', fontSize: 15 }}>→</span>}
