@@ -14,6 +14,13 @@ import OnyxIcon from '@/app/components/OnyxIcon';
 import Achievements from './Achievements';
 import MarketClock from './MarketClock';
 import Nudge from './Nudge';
+// Laterales SIEMPRE visibles en el hub → import normal (no diferido). Antes eran
+// dynamic(ssr:false) y su trozo a veces no se montaba, dejando Neto real / Coach
+// en blanco. Son 'use client' y el portal de Coach está protegido con `mounted`,
+// así que el render en servidor es seguro.
+import News from './News';
+import NetRealCard from './NetRealCard';
+import CoachCard from './CoachCard';
 
 // ── Carga bajo demanda ──────────────────────────────────────────────
 // Todo lo que vive detrás de un tile, colapsado o en pop-up se carga sólo
@@ -38,15 +45,6 @@ const Costs = dynamic(impCosts, { ssr: false, loading: lazyLoad });
 const AccountExtras = dynamic(() => import('./AccountExtras'), { ssr: false, loading: lazyLoad });
 const CompareAccounts = dynamic(impCompare, { ssr: false, loading: lazyLoad });
 const PlanHabits = dynamic(impPlan, { ssr: false, loading: lazyLoad });
-// Laterales del hub (Noticias, Neto real, Coach): solo-navegador (usan portal,
-// idioma y fetch). Se cargan en cliente (ssr:false) SIN placeholder "…" y se
-// precargan de inmediato al montar (ver useEffect) para que aparezcan rápido.
-const impNews = () => import('./News');
-const impNet = () => import('./NetRealCard');
-const impCoach = () => import('./CoachCard');
-const News = dynamic(impNews, { ssr: false });
-const NetRealCard = dynamic(impNet, { ssr: false });
-const CoachCard = dynamic(impCoach, { ssr: false });
 // Precarga en reposo: cuando el navegador está libre, bajamos las secciones más
 // usadas (reto, plan, journal, costos, comparar) para que abran sin espera.
 const _preloadViews = () => { try { impChallenge(); impPlan(); impJournal(); impCosts(); impCompare(); } catch {} };
@@ -320,9 +318,6 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
       if (v && (ok as string[]).includes(v)) setView(v as View);
     } catch {}
   }, []);
-  // Laterales del hub: precarga INMEDIATA al montar → su código baja en paralelo
-  // con el resto y aparecen enseguida (sin "…" y sin riesgo de SSR).
-  useEffect(() => { try { impNews(); impNet(); impCoach(); } catch {} }, []);
 
   // Diario: set de operaciones YA documentadas (para la bandeja "sin diario").
   const [docIds, setDocIds] = useState<Set<string>>(new Set());
