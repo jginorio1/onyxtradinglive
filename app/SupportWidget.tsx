@@ -165,16 +165,16 @@ export default function SupportWidget({ loggedIn = false, cfg }: { loggedIn?: bo
 
       {open && (
         <div className="onyx-panel" style={{ position: 'fixed', [side]: ox, bottom: oy, zIndex: 61, width: 344, maxWidth: 'calc(100vw - 24px)', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, boxShadow: '0 14px 40px rgba(0,0,0,.45)', overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 40px)' }}>
-          <div style={{ background: 'var(--grad)', color: cfg.fg || '#fff', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ background: 'var(--grad)', color: cfg.fg || '#fff', padding: 'calc(12px + env(safe-area-inset-top)) 14px 12px', display: 'flex', alignItems: 'center', gap: 10, flex: 'none' }}>
             {avatar(30)}
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 700, fontSize: 14 }}>{human ? x.humanTitle : x.title}</div>
               <div style={{ fontSize: 11, opacity: .9, display: 'flex', alignItems: 'center', gap: 5 }}>
                 {cfg.showPulse && <span className="onyx-pulse" style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--green)' }} />}
                 {x.online}
               </div>
             </div>
-            <button onClick={() => setOpen(false)} aria-label="close" style={{ background: 'none', border: 'none', color: cfg.fg || '#fff', fontSize: 20, cursor: 'pointer', lineHeight: 1 }}>×</button>
+            <button onClick={() => setOpen(false)} aria-label="close" style={{ background: 'rgba(255,255,255,.15)', border: 'none', color: cfg.fg || '#fff', fontSize: 20, cursor: 'pointer', lineHeight: 1, width: 34, height: 34, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>×</button>
           </div>
 
           <div style={{ flex: 1, overflowY: 'auto', padding: 12, background: 'var(--bg2)', display: 'flex', flexDirection: 'column', gap: 8, minHeight: 200 }}>
