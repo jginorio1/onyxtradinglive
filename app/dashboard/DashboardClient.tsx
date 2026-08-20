@@ -14,12 +14,6 @@ import OnyxIcon from '@/app/components/OnyxIcon';
 import Achievements from './Achievements';
 import MarketClock from './MarketClock';
 import Nudge from './Nudge';
-// Laterales SIEMPRE visibles en el hub → carga inmediata (no diferida): así
-// aparecen con la primera pintada, sin "…" ni espera de descarga. Su único
-// retraso posible es su propio fetch a la API, que ya muestran por dentro.
-import News from './News';
-import NetRealCard from './NetRealCard';
-import CoachCard from './CoachCard';
 
 // ── Carga bajo demanda ──────────────────────────────────────────────
 // Todo lo que vive detrás de un tile, colapsado o en pop-up se carga sólo
@@ -40,6 +34,16 @@ const Costs = dynamic(impCosts, _lazy);
 const AccountExtras = dynamic(() => import('./AccountExtras'), _lazy);
 const CompareAccounts = dynamic(impCompare, _lazy);
 const PlanHabits = dynamic(impPlan, _lazy);
+// Laterales del hub (Noticias, Neto real, Coach): solo-navegador (usan portal,
+// idioma y fetch). Se cargan en cliente (ssr:false) SIN placeholder "…" y se
+// precargan de inmediato al montar (ver useEffect) para que aparezcan rápido.
+const _rail = { ssr: false as const, loading: () => null };
+const impNews = () => import('./News');
+const impNet = () => import('./NetRealCard');
+const impCoach = () => import('./CoachCard');
+const News = dynamic(impNews, _rail);
+const NetRealCard = dynamic(impNet, _rail);
+const CoachCard = dynamic(impCoach, _rail);
 // Precarga en reposo: cuando el navegador está libre, bajamos las secciones más
 // usadas (reto, plan, journal, costos, comparar) para que abran sin espera.
 const _preloadViews = () => { try { impChallenge(); impPlan(); impJournal(); impCosts(); impCompare(); } catch {} };
@@ -313,7 +317,10 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
       if (v && (ok as string[]).includes(v)) setView(v as View);
     } catch {}
   }, []);
-  // Precarga en reposo de las secciones más usadas: cuando el navegador está
+  // Laterales del hub: precarga INMEDIATA al montar → su código baja en paralelo
+  // con el resto y aparecen enseguida (sin "…" y sin riesgo de SSR).
+  useEffect(() => { try { impNews(); impNet(); impCoach(); } catch {} }, []);
+  // Precarga en reposo de las secciones tras un tile: cuando el navegador está
   // libre (o a 1.2s como respaldo), bajamos su código para que abran al instante.
   useEffect(() => {
     const ric = (window as any).requestIdleCallback as undefined | ((cb: () => void, o?: any) => number);
