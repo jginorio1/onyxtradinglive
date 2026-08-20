@@ -1,4 +1,5 @@
 'use client';
+import { toast, confirmDialog } from '@/lib/toast';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import GuideBody from '../guia/GuideBody';
 
@@ -112,7 +113,7 @@ export default function GuideEditor({ lang }: { lang: 'es' | 'en' }) {
           body: { es: Array.isArray(a.body?.es) ? a.body.es : form.body.es, en: Array.isArray(a.body?.en) ? a.body.en : form.body.en },
           seo: a.seo ? { title: a.seo.title || { es: '', en: '' }, desc: a.seo.desc || { es: '', en: '' }, keywords: a.seo.keywords || { es: [], en: [] } } : form.seo,
         });
-      } else { alert(j.reason || (lang === 'en' ? 'AI unavailable' : 'IA no disponible')); }
+      } else { toast(j.reason || (lang === 'en' ? 'AI unavailable' : 'IA no disponible')); }
     } catch {} finally { setAiBusy(false); }
   }
 
@@ -124,7 +125,7 @@ export default function GuideEditor({ lang }: { lang: 'es' | 'en' }) {
     try {
       const r = await fetch('/api/admin/blog/upload', { method: 'POST', body: JSON.stringify({ name: f.name, data }) });
       const j = await r.json();
-      if (j.url) cbRef.current?.(j.url); else alert(j.message || j.error || 'error');
+      if (j.url) cbRef.current?.(j.url); else toast(j.message || j.error || 'error');
     } catch {}
   }
   async function altAI(context: string, i: number) {

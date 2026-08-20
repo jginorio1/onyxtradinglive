@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState, type ChangeEvent } from 'react';
-import { toast } from '@/lib/toast';
+import { toast, confirmDialog } from '@/lib/toast';
 import { useLang } from '@/lib/lang';
 import BlogKeywords from './BlogKeywords';
 import BlogPreview from './previews/BlogPreview';
@@ -260,7 +260,7 @@ export default function BlogEditor() {
 
   // Publicar un programado ahora mismo (manual, adelantándose a su hora).
   async function publishNow(p: any) {
-    if (!confirm(es ? '¿Publicar ahora este artículo?' : 'Publish this article now?')) return;
+    if (!(await confirmDialog(es ? '¿Publicar ahora este artículo?' : 'Publish this article now?'))) return;
     const iso = new Date().toISOString();
     setPosts((ps) => ps.map((x) => (x.id === p.id ? { ...x, status: 'published', published_at: iso } : x)));
     try { await fetch('/api/admin/blog', { method: 'POST', body: JSON.stringify({ ...p, status: 'published', published_at: iso }) }); } catch {}
@@ -295,7 +295,7 @@ export default function BlogEditor() {
   async function generate() {
     const t = f?.title_es || f?.title_en || topic;
     if (!t) { toast(es ? 'Pon un título primero (o genera uno).' : 'Set a title first (or generate one).'); return; }
-    if (!confirm(es ? 'Onyx AI escribirá el artículo en español e inglés a partir del título. ¿Continuar?' : 'Onyx AI will write the article in Spanish and English from the title. Continue?')) return;
+    if (!(await confirmDialog(es ? 'Onyx AI escribirá el artículo en español e inglés a partir del título. ¿Continuar?' : 'Onyx AI will write the article in Spanish and English from the title. Continue?'))) return;
     setAi(true);
     try {
       const r = await fetch('/api/admin/blog/ai', { method: 'POST', body: JSON.stringify({ mode: 'generate', title: t, kind }) });
@@ -316,7 +316,7 @@ export default function BlogEditor() {
     // Publicados Y programados (los borradores se dejan fuera).
     const list = posts.filter((p) => p.status === 'published' || p.status === 'scheduled');
     if (!list.length) { toast(es ? 'No hay artículos publicados ni programados.' : 'No published or scheduled articles.'); return; }
-    if (!confirm(es
+    if (!await confirmDialog(es
       ? `Onyx AI mejorará el SEO de ${list.length} artículo(s) (publicados y programados): enlaces internos a otros posts, FAQ, imagen de contenido y slug corto en español e inglés. NO reescribe tu texto. Conserva el estado y la fecha de cada uno. Los cambios de URL en los ya publicados crean redirección 301. ¿Continuar?`
       : `Onyx AI will improve SEO of ${list.length} article(s) (published and scheduled): internal links, FAQ, content image and short slug in Spanish and English. It won't rewrite your text. It keeps each one's status and date. URL changes on already-published ones create a 301 redirect. Continue?`)) return;
     setBulk({ running: true, done: 0, total: list.length });
@@ -367,7 +367,7 @@ export default function BlogEditor() {
       return min === 0 || min < max * 0.6;
     });
     if (!gap.length) { toast(es ? 'Todos los artículos ya están completos en ambos idiomas. ✓' : 'All articles already complete in both languages. ✓'); return; }
-    if (!confirm(es
+    if (!await confirmDialog(es
       ? `${gap.length} artículo(s) tienen un idioma incompleto o desbalanceado. Onyx AI lo traducirá/regenerará (ES↔EN) a partir del idioma más completo, conservando estructura, enlaces, FAQ e imágenes. ¿Continuar?`
       : `${gap.length} article(s) have an incomplete or unbalanced language. Onyx AI will translate/regenerate it (ES↔EN) from the more complete language, keeping structure, links, FAQ and images. Continue?`)) return;
     setBulk({ running: true, done: 0, total: gap.length });
@@ -394,7 +394,7 @@ export default function BlogEditor() {
   // Mejora un post EXISTENTE sin reescribirlo: enlaces internos + FAQ + imagen.
   // Abre el editor con el resultado para revisar antes de guardar.
   async function enhanceSeo(p: any) {
-    if (!confirm(es
+    if (!await confirmDialog(es
       ? 'Onyx AI añadirá enlaces internos a otros posts, una imagen de contenido y una sección de preguntas frecuentes, SIN reescribir tu texto. Revisa el resultado antes de guardar. ¿Continuar?'
       : 'Onyx AI will add internal links to other posts, a content image and an FAQ section WITHOUT rewriting your text. Review before saving. Continue?')) return;
     setAi(true);
@@ -414,7 +414,7 @@ export default function BlogEditor() {
   async function completeOne(p: any) {
     const lenEs = String(p.body_es || '').trim().length, lenEn = String(p.body_en || '').trim().length;
     const both = lenEs > 0 && lenEn > 0;
-    if (both && !confirm(es ? 'Este artículo ya tiene texto en los dos idiomas. ¿Volver a traducir el idioma más corto a partir del más completo?' : 'This article already has text in both languages. Re-translate the shorter one from the more complete one?')) return;
+    if (both && !await confirmDialog(es ? 'Este artículo ya tiene texto en los dos idiomas. ¿Volver a traducir el idioma más corto a partir del más completo?' : 'This article already has text in both languages. Re-translate the shorter one from the more complete one?')) return;
     setAi(true);
     try {
       const r = await fetch('/api/admin/blog/ai', { method: 'POST', body: JSON.stringify({ mode: 'complete', id: p.id, force: both }) });
@@ -497,7 +497,7 @@ export default function BlogEditor() {
     // Avisar si se va a publicar/programar sin contenido en algún idioma.
     const gaps = missingLangs(f);
     if (gaps.length && f.status !== 'draft') {
-      const ok = confirm(es
+      const ok = await confirmDialog(es
         ? `Le falta contenido en un idioma: ${gaps.join(', ')}.\nSi publicas así, esa URL mostrará el otro idioma. ¿Publicar de todos modos?`
         : `Missing content in a language: ${gaps.join(', ')}.\nIf you publish like this, that URL will show the other language. Publish anyway?`);
       if (!ok) return;
@@ -517,7 +517,7 @@ export default function BlogEditor() {
   }
 
   async function del(id: string) {
-    if (!confirm(es ? '¿Borrar este artículo?' : 'Delete this article?')) return;
+    if (!(await confirmDialog(es ? '¿Borrar este artículo?' : 'Delete this article?'))) return;
     await fetch('/api/admin/blog', { method: 'DELETE', body: JSON.stringify({ id }) }); await load();
   }
 

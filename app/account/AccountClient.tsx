@@ -1,6 +1,6 @@
 'use client';
 import { dictFor } from '@/lib/i18n';
-import { toast } from '@/lib/toast';
+import { toast, confirmDialog } from '@/lib/toast';
 import { fmtDate, fmtDateTime } from '@/lib/fmtDate';
 import { useEffect, useMemo, useState } from 'react';
 import { useLang } from '@/lib/lang';
@@ -278,7 +278,7 @@ export default function AccountClient({ email }: { email: string }) {
 
   async function mtAction(acc: any, mode: 'disconnect' | 'delete') {
     const q = mode === 'delete' ? L.mtDelQ : L.mtDiscQ;
-    if (!confirm(q)) return;
+    if (!(await confirmDialog(q))) return;
     setBusy('mt' + acc.id);
     const r = await fetch('/api/account/mt', { method: 'POST', body: JSON.stringify({ account_id: acc.id, mode }) });
     const j = await r.json(); setBusy('');
@@ -869,7 +869,7 @@ function Security({ L, lang, only }: { L: any; lang: Lang; only?: 'password' | '
     setPw1(''); setPw2(''); setOk(L.pwOk); setTimeout(() => setOk(''), 3000);
   }
   async function delAcc() {
-    if (!confirm(L.dTxt)) return;
+    if (!(await confirmDialog(L.dTxt))) return;
     setBusy('del');
     const r = await fetch('/api/account/delete', { method: 'POST', body: JSON.stringify({ confirm: conf }) });
     const j = await r.json(); setBusy('');

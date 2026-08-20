@@ -49,6 +49,16 @@ export function toastErr(apiJson: any, kind: Kind = 'error') {
   toast({ api: apiJson } as ToastMsg, kind);
 }
 
+// ── Confirmación (reemplaza el confirm() del navegador) ──────────────
+// Uso:  if (await confirmDialog('¿Borrar?', { danger: true })) { ... }
+// Devuelve una promesa que resuelve true/false. Modal CENTRADO e iluminado.
+type ConfirmReq = { id: number; msg: ToastMsg; danger?: boolean; okLabel?: ToastMsg; cancelLabel?: ToastMsg; resolve: (v: boolean) => void };
+let confirmReq: ConfirmReq | null = null;
+export function confirmDialog(msg: ToastMsg, opts: { danger?: boolean; okLabel?: ToastMsg; cancelLabel?: ToastMsg } = {}): Promise<boolean> {
+  return new Promise((resolve) => { confirmReq = { id: seq++, msg, resolve, ...opts }; emit(); });
+}
+function settleConfirm(v: boolean) { const r = confirmReq; confirmReq = null; emit(); try { r?.resolve(v); } catch {} }
+
 const L = (es: string, en: string, lang: string) => (lang === 'es' ? es : en);
 
 export function Toaster() {
@@ -121,6 +131,22 @@ export function Toaster() {
           ); })()}
         </div>
       )}
+
+      {/* Confirmación centrada (reemplaza confirm() del navegador) */}
+      {confirmReq && (() => { const c = confirmReq!; const dc = c.danger ? '#ff6b7d' : '#7c8cff'; return (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 3200, background: 'rgba(6,9,16,.62)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18 }} onClick={() => settleConfirm(false)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(94vw,410px)', background: 'var(--card,#141a29)', border: '1px solid ' + dc, borderRadius: 18, padding: 22, boxShadow: '0 0 0 1px ' + dc + ', 0 0 40px -8px ' + dc + ', 0 24px 60px rgba(0,0,0,.5)', animation: 'onyxModal .18s ease' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+              <span style={{ width: 40, height: 40, borderRadius: 11, background: c.danger ? 'rgba(255,107,125,.14)' : 'rgba(124,140,255,.16)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: dc, fontSize: 21, fontWeight: 800, flexShrink: 0 }}>?</span>
+              <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--tx,#e6ebf2)', lineHeight: 1.5 }}>{resolve(c.msg)}</div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
+              <button onClick={() => settleConfirm(false)} style={{ cursor: 'pointer', fontSize: 13.5, padding: '9px 16px', borderRadius: 9, border: '1px solid var(--line,#2a3346)', background: 'transparent', color: 'var(--tx,#e6ebf2)' }}>{c.cancelLabel ? resolve(c.cancelLabel) : L('Cancelar', 'Cancel', lang)}</button>
+              <button onClick={() => settleConfirm(true)} style={{ cursor: 'pointer', fontSize: 13.5, padding: '9px 20px', borderRadius: 9, border: 'none', background: dc, color: '#fff', fontWeight: 600 }}>{c.okLabel ? resolve(c.okLabel) : L('Confirmar', 'Confirm', lang)}</button>
+            </div>
+          </div>
+        </div>
+      ); })()}
 
       <style>{`@keyframes onyxPill{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}@keyframes onyxModal{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}`}</style>
     </>

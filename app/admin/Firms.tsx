@@ -1,5 +1,5 @@
 'use client';
-import { toast, toastErr } from '@/lib/toast';
+import { toast, toastErr, confirmDialog } from '@/lib/toast';
 import { useEffect, useState } from 'react';
 import { useT } from '@/lib/adminText';
 import { useLang } from '@/lib/lang';
@@ -41,7 +41,7 @@ export default function Firms() {
     setMsg(t.fi_saved); setTimeout(() => setMsg(''), 2500);
   }
   async function reset() {
-    if (!confirm(t.fi_confirmReset)) return;
+    if (!(await confirmDialog(t.fi_confirmReset))) return;
     setBusy('reset');
     const r = await fetch('/api/admin/firms', { method: 'POST', body: JSON.stringify({ action: 'reset' }) });
     const j = await r.json(); setBusy('');

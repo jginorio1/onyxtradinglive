@@ -1,6 +1,6 @@
 'use client';
 import { dictFor } from '@/lib/i18n';
-import { toast } from '@/lib/toast';
+import { toast, confirmDialog } from '@/lib/toast';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import { useEffect, useMemo, useState } from 'react';
 import { useLang } from '@/lib/lang';
@@ -243,7 +243,7 @@ export default function ManagerClient() {
     router.refresh(); // refresca el punto verde del Guardian en la barra al instante
   }
   async function command(cmd: string) {
-    if (!confirm(t.qaConfirm)) return;
+    if (!(await confirmDialog(t.qaConfirm))) return;
     setBusy(cmd);
     const r = await fetch('/api/manager/command', { method: 'POST', body: JSON.stringify({ account_id: sel, command: cmd }) });
     const j = await r.json(); setBusy('');

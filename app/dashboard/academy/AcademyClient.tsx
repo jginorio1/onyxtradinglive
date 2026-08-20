@@ -1,4 +1,5 @@
 'use client';
+import { toast, confirmDialog } from '@/lib/toast';
 import { mkL } from '@/lib/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { useLang } from '@/lib/lang';
@@ -74,7 +75,7 @@ function ImageUpload({ value, onChange, L, label }: any) {
         <input ref={ref} type="file" accept="image/*" style={{ display: 'none' }} onChange={async (e) => {
           const f = e.target.files?.[0]; if (!f) return; setBusy(true);
           const url = await uploadImage(f); setBusy(false);
-          if (url) onChange(url); else alert(L('No se pudo subir la imagen.', 'Could not upload image.'));
+          if (url) onChange(url); else toast(L('No se pudo subir la imagen.', 'Could not upload image.'));
         }} />
         <button className="btn btn-ghost" disabled={busy} onClick={() => ref.current?.click()}>{busy ? '…' : (L('Subir imagen', 'Upload image'))}</button>
         {value && <button className="btn btn-ghost" style={{ color: 'var(--red)' }} onClick={() => onChange('')}>{L('Quitar', 'Remove')}</button>}
@@ -91,12 +92,12 @@ function AiBtn({ kind, getInput, onText, L }: any) {
   async function go() {
     let input = getInput ? getInput() : '';
     if (kind === 'post') { const idea = window.prompt(L('¿Sobre qué es el post? (ej: bienvenida, lección del día, motivación)', 'What is the post about? (e.g. welcome, lesson of the day, motivation)')); if (idea === null) return; input = idea; }
-    if (!input || !String(input).trim()) { alert(L('Escribe primero un título/nombre para dar contexto a la IA.', 'Write a title/name first so the AI has context.')); return; }
+    if (!input || !String(input).trim()) { toast(L('Escribe primero un título/nombre para dar contexto a la IA.', 'Write a title/name first so the AI has context.')); return; }
     setBusy(true);
     const r = await fetch('/api/academy/ai', { method: 'POST', body: JSON.stringify({ kind, input, lang }) });
     const j = await r.json().catch(() => ({})); setBusy(false);
     if (j.ok && j.text) onText(j.text);
-    else alert(j.error === 'no_key' ? L('La IA no está configurada (falta ANTHROPIC_API_KEY en Vercel).', 'AI not configured (ANTHROPIC_API_KEY missing in Vercel).') : L('No se pudo generar. Intenta de nuevo.', 'Could not generate. Try again.'));
+    else toast(j.error === 'no_key' ? L('La IA no está configurada (falta ANTHROPIC_API_KEY en Vercel).', 'AI not configured (ANTHROPIC_API_KEY missing in Vercel).') : L('No se pudo generar. Intenta de nuevo.', 'Could not generate. Try again.'));
   }
   return <button type="button" className="btn btn-ghost ai-btn" style={{ fontSize: 12, padding: '4px 10px' }} disabled={busy} onClick={go}>{busy ? '…' : '✨ ' + L('IA', 'AI')}</button>;
 }
@@ -123,7 +124,7 @@ function ImgAttach({ onUrl, L }: any) {
       <input ref={ref} type="file" accept="image/*" style={{ display: 'none' }} onChange={async (e) => {
         const f = e.target.files?.[0]; if (!f) return; setBusy(true);
         const url = await uploadImage(f); setBusy(false); if (ref.current) ref.current.value = '';
-        if (url) onUrl(url); else alert(L('No se pudo subir la imagen (puede estar bloqueada por moderación).', 'Could not upload image (it may be blocked by moderation).'));
+        if (url) onUrl(url); else toast(L('No se pudo subir la imagen (puede estar bloqueada por moderación).', 'Could not upload image (it may be blocked by moderation).'));
       }} />
       <button type="button" className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 15 }} disabled={busy} onClick={() => ref.current?.click()} title={L('Adjuntar foto', 'Attach photo')}>{busy ? '…' : '📷'}</button>
     </>
@@ -138,7 +139,7 @@ function PdfUpload({ onUrl, L }: any) {
       <input ref={ref} type="file" accept="application/pdf,.pdf" style={{ display: 'none' }} onChange={async (e) => {
         const f = e.target.files?.[0]; if (!f) return; setBusy(true);
         const url = await uploadImage(f); setBusy(false); if (ref.current) ref.current.value = '';
-        if (url) onUrl(url); else alert(L('No se pudo subir el PDF.', 'Could not upload the PDF.'));
+        if (url) onUrl(url); else toast(L('No se pudo subir el PDF.', 'Could not upload the PDF.'));
       }} />
       <button type="button" className="btn btn-ghost" style={{ fontSize: 12, padding: '4px 10px' }} disabled={busy} onClick={() => ref.current?.click()}>{busy ? '…' : '📄 ' + L('Subir PDF', 'Upload PDF')}</button>
     </>
@@ -338,12 +339,12 @@ function InstallBanner({ L }: { L: (a: string, b: string) => string }) {
     setBusy(true);
     try {
       const perm = await Notification.requestPermission();
-      if (perm !== 'granted') { alert(L('Bloqueaste las notificaciones. Actívalas en los ajustes del navegador.', 'You blocked notifications. Enable them in your browser settings.')); return; }
+      if (perm !== 'granted') { toast(L('Bloqueaste las notificaciones. Actívalas en los ajustes del navegador.', 'You blocked notifications. Enable them in your browser settings.')); return; }
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64(pubKey) });
       await fetch('/api/push', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ subscription: sub.toJSON() }) });
       dismiss();
-    } catch { alert(L('No se pudo activar. Intenta de nuevo.', 'Could not enable. Try again.')); }
+    } catch { toast(L('No se pudo activar. Intenta de nuevo.', 'Could not enable. Try again.')); }
     finally { setBusy(false); }
   }
   if (!show) return null;
@@ -393,8 +394,8 @@ export default function AcademyClient() {
     const r = await fetch('/api/academy/enroll', { method: 'POST', body: JSON.stringify({ code: joinCode.trim() }) });
     const j = await r.json(); setJoinCode('');
     if (j.ok) { await load(); openAcademy(j.mentor_id); }
-    else if (j.closed) alert(j.note || L('Esta academia tiene las inscripciones cerradas por ahora.', 'This academy has enrollment closed right now.') + (j.reopenAt ? ' ' + L('Reabre pronto.', 'Reopens soon.') : ''));
-    else alert(L('Código no válido.', 'Invalid code.'));
+    else if (j.closed) toast(j.note || L('Esta academia tiene las inscripciones cerradas por ahora.', 'This academy has enrollment closed right now.') + (j.reopenAt ? ' ' + L('Reabre pronto.', 'Reopens soon.') : ''));
+    else toast(L('Código no válido.', 'Invalid code.'));
   }
 
   if (!d) return <div className="card muted">…</div>;
@@ -584,7 +585,7 @@ function Paywall({ pw, lang, onBack }: any) {
     if (j.url) window.location.href = j.url;
     else if (j.free || j.already) window.location.reload();
     else if (j.closed) { setBusy(false); setClosed(j); }
-    else { setBusy(false); alert(j.error === 'mentor_not_ready' ? L('El mentor aún no ha activado los cobros.', 'The mentor has not enabled payments yet.') : L('No se pudo iniciar el pago.', 'Could not start checkout.')); }
+    else { setBusy(false); toast(j.error === 'mentor_not_ready' ? L('El mentor aún no ha activado los cobros.', 'The mentor has not enabled payments yet.') : L('No se pudo iniciar el pago.', 'Could not start checkout.')); }
   }
   if (closed) return <ClosedDoors pw={pw} closed={closed} lang={lang} onBack={onBack} />;
   return (
@@ -683,12 +684,12 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
   async function api(body: any) { const r = await fetch('/api/academy', { method: 'POST', body: JSON.stringify(body) }); return r.json().catch(() => ({})); }
   async function sendPost() { if (!post.trim() && !postImg) return { ok: false }; const res = await api({ action: 'post', mentor_id: active.mentor_id, body: post, image_url: postImg, kind: postKind, win_kind: postKind === 'win' ? postWinKind : undefined, announcement: postAnn, pinned: postAnn }); setPost(''); setPostImg(''); setPostKind('community'); setPostAnn(false); reload(); return res || {}; }
   async function like(t: string, id: string) { await api({ action: 'like', mentor_id: active.mentor_id, target_type: t, target_id: id }); reload(); }
-  async function comment(pid: string, body: string, image?: string) { const r = await api({ action: 'comment', post_id: pid, mentor_id: active.mentor_id, body, image_url: image || '' }); if (r?.error === 'blocked') alert((r.message || L('Tu comentario no cumple las normas.', 'Your comment does not meet the rules.')) + escalMsg(r.escalated, L)); else if (r?.error === 'muted') alert(L('Estás silenciado temporalmente y no puedes comentar ahora.', 'You are temporarily muted and cannot comment right now.')); reload(); }
+  async function comment(pid: string, body: string, image?: string) { const r = await api({ action: 'comment', post_id: pid, mentor_id: active.mentor_id, body, image_url: image || '' }); if (r?.error === 'blocked') toast((r.message || L('Tu comentario no cumple las normas.', 'Your comment does not meet the rules.')) + escalMsg(r.escalated, L)); else if (r?.error === 'muted') toast(L('Estás silenciado temporalmente y no puedes comentar ahora.', 'You are temporarily muted and cannot comment right now.')); reload(); }
   // Reportar un contenido (post/comentario) para que lo revise el equipo.
   async function report(targetType: string, id: string) {
     const reason = prompt(L('¿Por qué reportas esto? (opcional)', 'Why are you reporting this? (optional)')) ?? '';
     await fetch('/api/academy/moderation', { method: 'POST', body: JSON.stringify({ action: 'report', mentor_id: active.mentor_id, target_type: targetType, target_id: id, reason }) });
-    alert(L('Gracias. El equipo lo revisará.', 'Thanks. The team will review it.'));
+    toast(L('Gracias. El equipo lo revisará.', 'Thanks. The team will review it.'), 'ok');
   }
   // Moderar (dueño/colaborador): ocultar o borrar un post/comentario directo desde el feed.
   async function modDelete(type: string, id: string) {
@@ -703,7 +704,7 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
   }
   async function selfEdit(type: 'post' | 'comment', id: string, body: string) {
     const r = await api({ action: type === 'post' ? 'edit_post' : 'edit_comment', id, mentor_id: active.mentor_id, body });
-    if (r?.error === 'blocked') { alert((r.message || L('El texto no cumple las normas.', 'The text does not meet the rules.')) + escalMsg(r.escalated, L)); return false; }
+    if (r?.error === 'blocked') { toast((r.message || L('El texto no cumple las normas.', 'The text does not meet the rules.')) + escalMsg(r.escalated, L)); return false; }
     reload(); return true;
   }
   async function toggleLesson(l: any, done: boolean) { await api({ action: 'lesson', lesson_id: l.id, done }); reload(); }
@@ -711,7 +712,7 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
     const r = await fetch('/api/academy/checkout', { method: 'POST', body: JSON.stringify({ product_id: productId }) });
     const j = await r.json();
     if (j.url) window.location.href = j.url;
-    else alert(j.error === 'mentor_not_ready' ? L('El mentor aún no ha activado los cobros.', 'The mentor has not enabled payments yet.') : L('No se pudo iniciar el pago.', 'Could not start checkout.'));
+    else toast(j.error === 'mentor_not_ready' ? L('El mentor aún no ha activado los cobros.', 'The mentor has not enabled payments yet.') : L('No se pudo iniciar el pago.', 'Could not start checkout.'));
   }
   // Clic en un nombre: si soy el mentor de esta academia, abro el panel de gestión
   // del alumno (editar/banear/quitar). Si no, abro su perfil como siempre.
@@ -763,7 +764,7 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
           )}
           <div className="row" style={{ gap: 8, marginTop: 14, justifyContent: 'flex-end' }}>
             <button className="btn btn-ghost" onClick={() => setComposeOpen(false)}>{L('Cancelar', 'Cancel')}</button>
-            <button className="btn btn-primary" onClick={async () => { const res = await sendPost(); setComposeOpen(false); if (res?.error === 'blocked') { alert((res.message || L('Tu publicación no cumple las normas de la comunidad.', 'Your post does not meet the community rules.')) + escalMsg(res.escalated, L)); return; } if (res?.error === 'muted') { alert(L('Estás silenciado temporalmente y no puedes publicar ahora.', 'You are temporarily muted and cannot post right now.')); return; } setSentPending(!!res?.pending); setSentToast(true); setTimeout(() => setSentToast(false), 2800); }}>{postKind === 'win' ? L('Publicar logro', 'Post win') : L('Publicar', 'Post')}</button>
+            <button className="btn btn-primary" onClick={async () => { const res = await sendPost(); setComposeOpen(false); if (res?.error === 'blocked') { toast((res.message || L('Tu publicación no cumple las normas de la comunidad.', 'Your post does not meet the community rules.')) + escalMsg(res.escalated, L)); return; } if (res?.error === 'muted') { toast(L('Estás silenciado temporalmente y no puedes publicar ahora.', 'You are temporarily muted and cannot post right now.')); return; } setSentPending(!!res?.pending); setSentToast(true); setTimeout(() => setSentToast(false), 2800); }}>{postKind === 'win' ? L('Publicar logro', 'Post win') : L('Publicar', 'Post')}</button>
           </div>
         </div></Modal>
       )}
@@ -923,7 +924,7 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
               <div style={{ flex: 1 }}><div style={{ fontWeight: 800, fontSize: 18 }}>{(active.content || []).length}</div><div className="muted" style={{ fontSize: 11 }}>{L('Aulas', 'Classrooms')}</div></div>
               <div style={{ flex: 1 }}><div style={{ fontWeight: 800, fontSize: 18, color: 'var(--gold)' }}>{active.me?.level ?? 1}</div><div className="muted" style={{ fontSize: 11 }}>{L('Tu nivel', 'Your level')}</div></div>
             </div>
-            <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => { navigator.clipboard.writeText(link); alert(L('Enlace de invitación copiado.', 'Invite link copied.')); }}><OnyxIcon emoji="🔗" size={14} /> {L('Invitar', 'Invite')}</button>
+            <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => { navigator.clipboard.writeText(link); toast(L('Enlace de invitación copiado.', 'Invite link copied.')); }}><OnyxIcon emoji="🔗" size={14} /> {L('Invitar', 'Invite')}</button>
           </div>
 
           {!active.isMentorHere && <CopyPanel mentorId={active.mentor_id} isMentor={false} L={L} />}
@@ -1138,7 +1139,7 @@ function CourseView({ course, mentorId, progress, onBack, onPick, L }: any) {
     const r = await fetch('/api/academy/certificate', { method: 'POST', body: JSON.stringify({ mentor_id: mentorId, module_id: course.id }) });
     const j = await r.json(); setCertBusy(false);
     if (j.ok && j.code) window.open('/certificado/' + j.code, '_blank');
-    else alert(L('Completa todas las lecciones para tu certificado.', 'Complete all lessons to get your certificate.'));
+    else toast(L('Completa todas las lecciones para tu certificado.', 'Complete all lessons to get your certificate.'));
   }
   return (
     <div>
@@ -1317,7 +1318,7 @@ function ProfileView({ mentorId, userId, me, lang, onDm, onBack }: any) {
   async function toggleShare(on: boolean) { await fetch('/api/academy/profile', { method: 'POST', body: JSON.stringify({ share: on }) }); reloadP(); }
   async function saveCountry(code: string) { await fetch('/api/academy/profile', { method: 'POST', body: JSON.stringify({ country: code }) }); reloadP(); }
   async function saveAvatar(url: string) { await fetch('/api/academy/profile', { method: 'POST', body: JSON.stringify({ avatar_url: url || null }) }); reloadP(); }
-  async function saveName() { const r = await fetch('/api/academy/profile', { method: 'POST', body: JSON.stringify({ display_name: nm, mentor_id: mentorId }) }); const j = await r.json().catch(() => ({})); if (j?.error === 'blocked') { alert(L('Ese nombre no cumple las normas.', 'That name does not meet the rules.')); return; } setEditP(false); reloadP(); }
+  async function saveName() { const r = await fetch('/api/academy/profile', { method: 'POST', body: JSON.stringify({ display_name: nm, mentor_id: mentorId }) }); const j = await r.json().catch(() => ({})); if (j?.error === 'blocked') { toast(L('Ese nombre no cumple las normas.', 'That name does not meet the rules.')); return; } setEditP(false); reloadP(); }
   if (!p) return <div className="sk-card muted">…</div>;
   const v = p.verified || {};
   const isSelf = userId === me;
@@ -1812,7 +1813,7 @@ function WinsWall({ active, lang, reload, L }: any) {
     if (form.amount) body.amount_cents = Math.round(Number(form.amount) * 100);
     await fetch('/api/academy/wins', { method: 'POST', body: JSON.stringify(body) });
     setBusy(false); setForm(null);
-    alert(L('¡Enviado! Tu logro aparecerá cuando tu mentor lo apruebe.', 'Sent! Your win will show once your mentor approves it.'));
+    toast(L('¡Enviado! Tu logro aparecerá cuando tu mentor lo apruebe.', 'Sent! Your win will show once your mentor approves it.'), 'ok');
   }
   async function like(id: string) { await fetch('/api/academy/wins', { method: 'POST', body: JSON.stringify({ action: 'like', mentor_id: mentorId, win_id: id }) }); reload(); }
   async function review(id: string, decision: string, verified = false) { await fetch('/api/academy/wins', { method: 'POST', body: JSON.stringify({ action: 'review', mentor_id: mentorId, win_id: id, decision, verified }) }); loadPending(); reload(); }
@@ -2314,7 +2315,7 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
           </div>
           <div className="row" style={{ marginTop: 8, alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <span className="muted" style={{ fontSize: 12.5, flex: 1 }}>{L('¿Empezar rápido? Añade aulas de ejemplo con la plantilla Academia Onyx.', 'Want a quick start? Add sample classrooms with the Onyx Academy template.')}</span>
-            <button className="btn btn-ghost" onClick={() => { if (confirm(L('Se añadirán aulas de ejemplo (Empieza aquí, Fundamentos, Estrategia) a tu academia. ¿Continuar?', 'Sample classrooms (Start here, Fundamentals, Strategy) will be added to your academy. Continue?'))) api({ action: 'template', force: true, lang: L('es', 'en') }, L('Plantilla aplicada', 'Template applied')); }}><OnyxIcon name="graduation" size={14} /> {L('Usar plantilla Academia Onyx', 'Use Onyx Academy template')}</button>
+            <button className="btn btn-ghost" onClick={async () => { if (await confirmDialog(L('Se añadirán aulas de ejemplo (Empieza aquí, Fundamentos, Estrategia) a tu academia. ¿Continuar?', 'Sample classrooms (Start here, Fundamentals, Strategy) will be added to your academy. Continue?'))) api({ action: 'template', force: true, lang: L('es', 'en') }, L('Plantilla aplicada', 'Template applied')); }}><OnyxIcon name="graduation" size={14} /> {L('Usar plantilla Academia Onyx', 'Use Onyx Academy template')}</button>
           </div>
         </div>
         {(d.content || []).map((m: any) => (
@@ -2496,7 +2497,7 @@ function StudentRow({ s, total, lang, L, api }: any) {
     const r = await fetch('/api/academy/audit', { method: 'POST', body: JSON.stringify({ student_id: s.id, period: '30d', lang: L('es', 'en') }) });
     const j = await r.json(); setBusy(false);
     if (j.ok) setAudit(j.text);
-    else alert(j.error === 'no_addon' ? L('El alumno no tiene el add-on de auditoría activo. Véndelo en Cobros → Add-on auditoría.', 'The student has no active audit add-on. Sell it in Payments → Audit add-on.') : j.error === 'no_consent' ? L('El alumno no ha dado su consentimiento en su comunidad.', 'The student hasn’t given consent in their community.') : j.error === 'no_data' ? L('El alumno no tiene suficientes operaciones.', 'Not enough trades for this student.') : L('No se pudo generar (¿IA configurada?).', 'Could not generate (AI configured?).'));
+    else toast(j.error === 'no_addon' ? L('El alumno no tiene el add-on de auditoría activo. Véndelo en Cobros → Add-on auditoría.', 'The student has no active audit add-on. Sell it in Payments → Audit add-on.') : j.error === 'no_consent' ? L('El alumno no ha dado su consentimiento en su comunidad.', 'The student hasn’t given consent in their community.') : j.error === 'no_data' ? L('El alumno no tiene suficientes operaciones.', 'Not enough trades for this student.') : L('No se pudo generar (¿IA configurada?).', 'Could not generate (AI configured?).'));
   }
   function saveName() { api({ action: 'student_name', student_id: s.id, name }, L('Nombre actualizado', 'Name updated')); setEditing(false); }
   async function toggleBan() {
@@ -2567,7 +2568,7 @@ function MentorAudit({ mentorId, lang, L }: { mentorId: string; lang: string; L:
     const r = await fetch('/api/academy/audit', { method: 'POST', body: JSON.stringify({ student_id: cur.student_id, period, lang: L('es', 'en') }) });
     const j = await r.json(); setBusy('');
     if (j.ok) { setReport({ text: j.text, metrics: j.metrics, created_at: new Date().toISOString(), period }); load(); }
-    else alert(j.error === 'no_consent' ? L('El alumno no ha dado su consentimiento.', 'The student hasn’t given consent.') : j.error === 'no_addon' ? L('El alumno no tiene el add-on activo.', 'The student has no active add-on.') : j.error === 'no_data' ? L('No hay suficientes operaciones (mín. 5).', 'Not enough trades (min 5).') : L('No se pudo generar (¿IA configurada?).', 'Could not generate (AI set up?).'));
+    else toast(j.error === 'no_consent' ? L('El alumno no ha dado su consentimiento.', 'The student hasn’t given consent.') : j.error === 'no_addon' ? L('El alumno no tiene el add-on activo.', 'The student has no active add-on.') : j.error === 'no_data' ? L('No hay suficientes operaciones (mín. 5).', 'Not enough trades (min 5).') : L('No se pudo generar (¿IA configurada?).', 'Could not generate (AI set up?).'));
   }
   async function saveNote() { if (!cur) return; setBusy('note'); await fetch('/api/academy/audit', { method: 'POST', body: JSON.stringify({ action: 'note', student_id: cur.student_id, notes }) }); setBusy(''); flash(L('Nota guardada', 'Note saved')); }
   async function verify(on: boolean) { if (!cur) return; await fetch('/api/academy/audit', { method: 'POST', body: JSON.stringify({ action: 'verify', student_id: cur.student_id, on }) }); load(); }
@@ -2711,7 +2712,7 @@ function MentorEmails({ lang, L }: { lang: string; L: (a: string, b: string) => 
     const r = await fetch('/api/academy/emails', { method: 'POST', body: JSON.stringify({ action: schedule ? 'schedule' : 'send', subject, body, audience, scheduled_at: schedule ? when : undefined }) });
     const j = await r.json(); setBusy(false);
     if (j.ok) { setSubject(''); setBody(''); setWhen(''); flash(schedule ? L('Campaña programada', 'Campaign scheduled') : L(`Enviado a ${j.sent} alumnos`, `Sent to ${j.sent} students`)); load(); }
-    else alert(j.error === 'fecha_invalida' ? L('Elige una fecha futura.', 'Pick a future date.') : L('No se pudo. ¿Configuraste Resend?', 'Failed. Is Resend configured?'));
+    else toast(j.error === 'fecha_invalida' ? L('Elige una fecha futura.', 'Pick a future date.') : L('No se pudo. ¿Configuraste Resend?', 'Failed. Is Resend configured?'));
   }
   async function del(id: string) { await fetch('/api/academy/emails', { method: 'POST', body: JSON.stringify({ action: 'delete', id }) }); load(); }
   function startEdit(k: any) { setEditing(k.id); setSubject(k.subject || ''); setBody(k.body || ''); setAudience(k.audience || 'all'); setWhen(k.scheduled_at ? new Date(k.scheduled_at).toISOString().slice(0, 16) : ''); if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' }); }
@@ -2721,7 +2722,7 @@ function MentorEmails({ lang, L }: { lang: string; L: (a: string, b: string) => 
     const r = await fetch('/api/academy/emails', { method: 'POST', body: JSON.stringify({ action: 'edit', id: editing, subject, body, audience, scheduled_at: when }) });
     const j = await r.json(); setBusy(false);
     if (j.ok) { flash(L('Campaña actualizada', 'Campaign updated')); cancelEdit(); load(); }
-    else alert(j.error === 'fecha_invalida' ? L('Elige una fecha futura.', 'Pick a future date.') : L('No se pudo editar.', 'Could not edit.'));
+    else toast(j.error === 'fecha_invalida' ? L('Elige una fecha futura.', 'Pick a future date.') : L('No se pudo editar.', 'Could not edit.'));
   }
   async function saveAutos() { await fetch('/api/academy/emails', { method: 'POST', body: JSON.stringify({ action: 'automations', automations: autos }) }); flash(L('Automáticos guardados', 'Automations saved')); load(); }
 
@@ -2977,9 +2978,9 @@ function GuidedTour({ stepKey, o, L, onGoto, onFinish, onClose, academyName }: a
         window.dispatchEvent(new CustomEvent('onyx-ai-fill', { detail: { field: ai.field, text: j.text } }));
         setAiFilled(true);
       } else {
-        alert(j.error === 'no_key' ? L('La IA no está configurada (falta ANTHROPIC_API_KEY en Vercel).', 'AI not configured (ANTHROPIC_API_KEY missing in Vercel).') : L('No se pudo generar. Intenta de nuevo.', 'Could not generate. Try again.'));
+        toast(j.error === 'no_key' ? L('La IA no está configurada (falta ANTHROPIC_API_KEY en Vercel).', 'AI not configured (ANTHROPIC_API_KEY missing in Vercel).') : L('No se pudo generar. Intenta de nuevo.', 'Could not generate. Try again.'));
       }
-    } catch { alert(L('No se pudo generar. Intenta de nuevo.', 'Could not generate. Try again.')); }
+    } catch { toast(L('No se pudo generar. Intenta de nuevo.', 'Could not generate. Try again.')); }
     setAiBusy(false);
   }
 
@@ -3696,7 +3697,7 @@ function MentorPayments({ modules, L, onChanged }: { modules: any[]; L: (a: stri
     if (a && a.settings) { setAffData(a); const s = a.settings; setAffForm({ type: s.type, reward: (s.reward_cents / 100).toString(), pct: String(s.pct || 0), recurring: !!s.recurring, hold_days: String(s.hold_days), min: (s.min_cents / 100).toString(), rail: s.rail, methods: s.payout_methods && s.payout_methods.length ? s.payout_methods : ['paypal', 'zelle', 'crypto'] }); }
   }
   useEffect(() => { load(); }, []);
-  async function connect() { setBusy('connect'); const r = await fetch('/api/academy/connect', { method: 'POST' }); const j = await r.json(); if (j.url) window.location.href = j.url; else { setBusy(''); alert(L('No se pudo conectar Stripe.', 'Could not connect Stripe.')); } }
+  async function connect() { setBusy('connect'); const r = await fetch('/api/academy/connect', { method: 'POST' }); const j = await r.json(); if (j.url) window.location.href = j.url; else { setBusy(''); toast(L('No se pudo conectar Stripe.', 'Could not connect Stripe.')); } }
   async function saveProd(f: any) { setBusy('prod'); const body: any = { ...f, price_cents: Math.round(Number(f.price) * 100) }; delete body.price; await fetch('/api/academy/products', { method: 'POST', body: JSON.stringify(body) }); setBusy(''); setForm(null); load(); onChanged?.(); }
   async function delProd(id: string) { if (!await confirmDelete({ title: L('¿Borrar nivel?', 'Delete tier?'), message: L('Se dejará de vender este nivel.', 'This tier will stop being sold.') })) return; await fetch('/api/academy/products', { method: 'POST', body: JSON.stringify({ action: 'delete', id }) }); load(); onChanged?.(); }
   async function saveAff() {
@@ -3943,7 +3944,7 @@ function ReferralEarnings({ active, L }: any) {
           <div style={{ flex: 1 }}><div style={{ fontWeight: 800, color: 'var(--soft-green)' }}>{money(t.paidCents)}</div><div className="muted" style={{ fontSize: 10.5 }}>{L('Pagado', 'Paid')}</div></div>
         </div>
         <div className="row" style={{ gap: 6 }}>
-          <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => { navigator.clipboard.writeText(refLink); alert(L('Tu enlace de afiliado copiado.', 'Your affiliate link copied.')); }}>{L('Copiar enlace', 'Copy link')}</button>
+          <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => { navigator.clipboard.writeText(refLink); toast(L('Tu enlace de afiliado copiado.', 'Your affiliate link copied.')); }}>{L('Copiar enlace', 'Copy link')}</button>
           <button className="btn btn-primary" style={{ flex: 1 }} onClick={openModal}>{L('Mis pagos', 'My payouts')}</button>
         </div>
       </div>

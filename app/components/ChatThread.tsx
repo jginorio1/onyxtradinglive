@@ -1,4 +1,5 @@
 'use client';
+import { toast, confirmDialog } from '@/lib/toast';
 import { mkL } from '@/lib/i18n';
 // ============================================================
 // ChatThread — motor de chat estilo WhatsApp compartido por:
@@ -95,14 +96,14 @@ export default function ChatThread({
 
   async function uploadFiles(files: FileList) {
     for (const f of Array.from(files).slice(0, 5)) {
-      if (f.size > 8 * 1024 * 1024) { alert(L('Máximo 8 MB por archivo.', 'Max 8 MB per file.')); continue; }
+      if (f.size > 8 * 1024 * 1024) { toast(L('Máximo 8 MB por archivo.', 'Max 8 MB per file.')); continue; }
       const b64: string = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = rej; r.readAsDataURL(f); });
       try {
         const r = await fetch('/api/chat/upload', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: f.name, type: f.type, data: b64 }) });
         const j = await r.json();
         if (j.url) setAtts((a) => [...a, { name: f.name, url: j.url, type: f.type, size: f.size }]);
-        else alert(j.error || L('No se pudo subir el archivo.', 'Upload failed.'));
-      } catch { alert(L('No se pudo subir el archivo.', 'Upload failed.')); }
+        else toast(j.error || L('No se pudo subir el archivo.', 'Upload failed.'));
+      } catch { toast(L('No se pudo subir el archivo.', 'Upload failed.')); }
     }
   }
 

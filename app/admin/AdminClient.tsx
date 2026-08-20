@@ -1,5 +1,5 @@
 'use client';
-import { toast, toastErr } from '@/lib/toast';
+import { toast, toastErr, confirmDialog } from '@/lib/toast';
 import { fmtDate, fmtDateTime } from '@/lib/fmtDate';
 import { useEffect, useMemo, useState, Fragment } from 'react';
 import Link from 'next/link';
@@ -1414,7 +1414,7 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
   async function add() { if (!email) return; setBusy(true); const r = await fetch('/api/admin/team', { method: 'POST', body: JSON.stringify({ email, role: newRole }) }); const j = await r.json(); setBusy(false); if (!r.ok) { toastErr(j); return; } setEmail(''); reload(); loadSec(); if (j.tempPin) toast((j.emailed ? t.t_addedEmailed : t.t_addedNoMail).replace('{pin}', j.tempPin)); }
   async function changeRole(id: string, r2: string) { const r = await fetch('/api/admin/team', { method: 'PATCH', body: JSON.stringify({ id, role: r2 }) }); const j = await r.json(); if (!r.ok) { toastErr(j); return; } reload(); }
   async function savePerm(id: string, area: string, level: string, current: any) { const perms = { ...(current || {}), [area]: level }; const r = await fetch('/api/admin/team', { method: 'PATCH', body: JSON.stringify({ id, perms }) }); const j = await r.json(); if (!r.ok) { toastErr(j); return; } reload(); }
-  async function remove(id: string) { if (!confirm(lang === 'en' ? 'Remove admin access from this person?' : '¿Quitar acceso de administrador a esta persona?')) return; const r = await fetch('/api/admin/team', { method: 'DELETE', body: JSON.stringify({ id }) }); const j = await r.json(); if (!r.ok) { toastErr(j); return; } reload(); }
+  async function remove(id: string) { if (!(await confirmDialog(lang === 'en' ? 'Remove admin access from this person?' : '¿Quitar acceso de administrador a esta persona?'))) return; const r = await fetch('/api/admin/team', { method: 'DELETE', body: JSON.stringify({ id }) }); const j = await r.json(); if (!r.ok) { toastErr(j); return; } reload(); }
   async function loadLog(member = '') { setLogMember(member); const r = await fetch('/api/admin/activity' + (member ? '?member=' + encodeURIComponent(member) : '')); const j = await r.json(); setLog(j.log || []); }
   useEffect(() => { loadLog(); }, []);
 
