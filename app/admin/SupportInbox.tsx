@@ -84,6 +84,9 @@ export default function SupportInbox() {
   const [q, setQ] = useState('');
   const [openId, setOpenId] = useState('');
   const [mobileOpen, setMobileOpen] = useState(false); // en móvil: chat a pantalla completa
+  const [vh, setVh] = useState(820);                   // alto de ventana → chat full screen
+  useEffect(() => { const f = () => setVh(window.innerHeight); f(); window.addEventListener('resize', f); return () => window.removeEventListener('resize', f); }, []);
+  const paneH = Math.max(460, vh - 250);               // alto de los dos paneles (deja sitio a filtros/nav)
   const [text, setText] = useState('');
   const [atts, setAtts] = useState<Att[]>([]);
   const [mode, setMode] = useState<'reply' | 'note'>('reply');
@@ -217,12 +220,12 @@ export default function SupportInbox() {
           .wa-fs-m{display:flex !important;min-height:0;height:82vh}
           .wa-back{display:inline-flex !important}
         }
-        .wa-list{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:6px;max-height:640px;overflow-y:auto}
+        .wa-list{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:6px;overflow-y:auto}
         .wa-item{display:flex;gap:10px;align-items:flex-start;padding:9px 10px;border-radius:12px;cursor:pointer;border-left:3px solid transparent}
-        .wa-item:hover{background:var(--bg2)} .wa-item.on{background:var(--bg2);border-left-color:var(--brand)}
-        .wa-chat{background:var(--card);border:1px solid var(--line);border-radius:14px;min-height:600px;display:flex;flex-direction:column;overflow:hidden}
-        .wa-head{display:flex;gap:10px;align-items:center;padding:11px 14px;border-bottom:1px solid var(--line);background:var(--bg2);flex-wrap:wrap}
-        .wa-body{flex:1;min-height:0;padding:6px 14px;display:flex;flex-direction:column}
+        .wa-item:hover{background:var(--bg2)} .wa-item.on{background:linear-gradient(90deg,rgba(124,140,255,.14),transparent 80%);border-left-color:var(--brand)}
+        .wa-chat{background:var(--card);border:1px solid var(--line);border-radius:14px;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+        .wa-head{display:flex;gap:10px;align-items:center;padding:11px 14px;border-bottom:1px solid var(--line);background:linear-gradient(90deg,rgba(124,140,255,.12),var(--bg2) 70%);flex-wrap:wrap}
+        .wa-body{flex:1;min-height:0;padding:6px 14px;display:flex;flex-direction:column;background:radial-gradient(120% 70% at 100% 0%,rgba(124,140,255,.06),transparent 60%),radial-gradient(120% 70% at 0% 100%,rgba(52,226,160,.05),transparent 55%)}
         .wa-comp{border-top:1px solid var(--line);padding:10px 12px;position:relative}
         .wa-chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:6px 11px;border-radius:20px;border:1px solid var(--line);background:var(--card2);color:var(--tx);cursor:pointer}
         .wa-chip:hover{border-color:var(--brand)}
@@ -257,7 +260,7 @@ export default function SupportInbox() {
 
       <div className="wa2">
         {/* Lista de conversaciones estilo WhatsApp */}
-        <div className={'wa-list' + (mobileOpen ? ' wa-hide-m' : '')}>
+        <div className={'wa-list' + (mobileOpen ? ' wa-hide-m' : '')} style={{ height: paneH }}>
           {!list.length && <p className="muted" style={{ fontSize: 13, padding: '10px 8px' }}>{t.s_empty}</p>}
           {list.map((it) => {
             const parts = participants.filter((p) => p.ticket_id === it.id);
@@ -288,7 +291,7 @@ export default function SupportInbox() {
         </div>
 
         {/* Panel de conversación */}
-        <div className={'wa-chat' + (mobileOpen ? ' wa-fs-m' : ' wa-hide-m')}>
+        <div className={'wa-chat' + (mobileOpen ? ' wa-fs-m' : ' wa-hide-m')} style={{ height: paneH }}>
           {!tk && <div className="muted" style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', fontSize: 14, textAlign: 'center', padding: 20 }}>{t.s_pickOne}</div>}
           {tk && (() => {
             const tm = msgs.filter((m) => m.ticket_id === tk.id);
@@ -357,7 +360,7 @@ export default function SupportInbox() {
                 {/* Hilo estilo WhatsApp (burbujas izq/der, palomitas, adjuntos) */}
                 <div className="wa-body">
                   <ChatThread messages={chatMsgs} lang={lang as any} onSend={() => {}} canReply={false} showAuthors
-                    typingLabel={traderTyping ? `${t.sender_trader} ${l.typing}` : ''} height={430} />
+                    typingLabel={traderTyping ? `${t.sender_trader} ${l.typing}` : ''} height={Math.max(240, paneH - 250)} />
                 </div>
 
                 {/* Compositor */}

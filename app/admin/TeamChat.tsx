@@ -98,6 +98,9 @@ function TeamChatInner() {
   const [showDate, setShowDate] = useState(false);     // buscar por día (toggle)
   const [mobileOpen, setMobileOpen] = useState(false); // en móvil: chat a pantalla completa
   const [docks, setDocks] = useState<string[]>([]);   // canales abiertos como ventanas
+  const [vh, setVh] = useState(760);                   // alto de ventana → chat full screen
+  useEffect(() => { const f = () => setVh(window.innerHeight); f(); window.addEventListener('resize', f); return () => window.removeEventListener('resize', f); }, []);
+  const gridH = Math.max(440, vh - 190);               // alto del panel (deja sitio a cabecera/nav)
   const loadedOnce = useRef(false);
 
   const teamById = useMemo(() => Object.fromEntries(team.map((t) => [t.id, t])), [team]);
@@ -190,7 +193,7 @@ function TeamChatInner() {
       </div>
 
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '290px 1fr', height: 560 }} className="teamchat-grid">
+        <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', height: gridH }} className="teamchat-grid">
           {/* Lista de conversaciones (tipo WhatsApp) */}
           <div className={'teamchat-side' + (mobileOpen ? ' tc-hidden-m' : '')} style={{ borderRight: '1px solid var(--line)', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
             <div style={{ padding: '10px 12px 8px', display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -231,7 +234,7 @@ function TeamChatInner() {
           {/* Panel de chat */}
           <div className={'teamchat-main' + (mobileOpen ? ' tc-fs-m' : ' tc-hidden-m')} style={{ display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0 }}>
             {activeCh ? (<>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: '1px solid var(--line)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', borderBottom: '1px solid var(--line)', background: 'linear-gradient(90deg, rgba(124,140,255,.10), transparent 70%)' }}>
                 <button className="tc-back" onClick={() => setMobileOpen(false)} style={{ display: 'none', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 22, color: 'var(--tx)', lineHeight: 1, padding: 0 }}>‹</button>
                 {(() => { const av = avatarOf(headerName); const dm = activeCh.kind === 'dm'; return (
                   <span style={{ width: 38, height: 38, borderRadius: '50%', flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: dm ? 12 : 17, fontWeight: 700, background: dm ? av.bg : 'rgba(124,140,255,.14)', color: dm ? av.fg : 'var(--soft-brand)' }}>{dm ? initials(headerName) : '#'}</span>
@@ -263,8 +266,8 @@ function TeamChatInner() {
                   {date && <button className="btn btn-ghost" style={{ padding: '4px 8px', fontSize: 12 }} onClick={() => setDate('')}>{L('Todo', 'All')}</button>}
                 </div>
               )}
-              <div style={{ padding: '10px 14px', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-                <ChatThread messages={mapped} lang={lang as any} onSend={send} onTyping={sendTyping} mentionSource={mentionSource} showAuthors height={410} typingLabel={typingLabel}
+              <div style={{ padding: '10px 14px', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, background: 'radial-gradient(120% 80% at 100% 0%, rgba(124,140,255,.06), transparent 60%), radial-gradient(120% 80% at 0% 100%, rgba(52,226,160,.05), transparent 55%)' }}>
+                <ChatThread messages={mapped} lang={lang as any} onSend={send} onTyping={sendTyping} mentionSource={mentionSource} showAuthors height={Math.max(240, gridH - 150)} typingLabel={typingLabel}
                   placeholder={L('Escribe… @ para etiquetar, @Onyx para la IA', 'Type… @ to tag, @Onyx for AI')}
                   emptyText={date ? L('Sin mensajes ese día.', 'No messages that day.') : L('Sé el primero en escribir 👋', 'Be the first to write 👋')} />
               </div>
