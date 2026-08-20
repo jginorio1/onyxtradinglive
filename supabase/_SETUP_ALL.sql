@@ -2988,21 +2988,3 @@ alter table if exists public.copy_commands
   add column if not exists execute_after timestamptz;
 create index if not exists idx_copy_commands_slave_due
   on public.copy_commands (slave_account_id, status, execute_after);
-
--- Metas de profit del trader (semanal / mensual / anual) — persistidas en el perfil.
-alter table if exists public.profiles
-  add column if not exists goal_week  numeric not null default 0,
-  add column if not exists goal_month numeric not null default 0,
-  add column if not exists goal_year  numeric not null default 0;
-
--- Blog · texto alternativo (alt) bilingüe de la imagen de portada.
-alter table if exists public.blog_posts
-  add column if not exists cover_alt_es text default '',
-  add column if not exists cover_alt_en text default '';
-
--- Ganancias parciales: agrupar cierres por posición y saber el motivo de salida.
-alter table if exists public.trades
-  add column if not exists position_id   text,
-  add column if not exists exit_reason   text,
-  add column if not exists closed_volume numeric;
-create index if not exists idx_trades_position on public.trades (account_id, position_id);
