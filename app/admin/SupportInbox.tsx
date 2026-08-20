@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from '@/lib/toast';
 import { useT } from '@/lib/adminText';
 import { useLang } from '@/lib/lang';
@@ -8,6 +8,7 @@ import RangeBar, { type Range, defaultRange } from './RangeBar';
 import UserDrawer from './UserDrawer';
 import { useChatRealtime } from '@/lib/chatRealtime';
 import ChatThread, { type Att, type ChatMsg } from '@/app/components/ChatThread';
+import Icon from '@/app/components/Icons';
 
 const stColor: any = { open: 'var(--brand)', in_progress: 'var(--amber)', resolved: 'var(--green)' };
 const stBg: any = { open: 'rgba(124,140,255,.15)', in_progress: 'rgba(255,192,77,.15)', resolved: 'rgba(52,226,160,.15)' };
@@ -84,9 +85,15 @@ export default function SupportInbox() {
   const [q, setQ] = useState('');
   const [openId, setOpenId] = useState('');
   const [mobileOpen, setMobileOpen] = useState(false); // en móvil: chat a pantalla completa
-  const [vh, setVh] = useState(820);                   // alto de ventana → chat full screen
-  useEffect(() => { const f = () => setVh(window.innerHeight); f(); window.addEventListener('resize', f); return () => window.removeEventListener('resize', f); }, []);
-  const paneH = Math.max(460, vh - 250);               // alto de los dos paneles (deja sitio a filtros/nav)
+  // Alto medido: los paneles llenan desde su borde superior hasta el fondo de la
+  // ventana → el composer SIEMPRE queda visible pase lo que pase arriba.
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [paneH, setPaneH] = useState(560);
+  useEffect(() => {
+    const f = () => { const top = wrapRef.current?.getBoundingClientRect().top ?? 220; setPaneH(Math.max(440, window.innerHeight - top - 16)); };
+    f(); window.addEventListener('resize', f); const iv = setInterval(f, 1000);
+    return () => { window.removeEventListener('resize', f); clearInterval(iv); };
+  }, []);
   const [text, setText] = useState('');
   const [atts, setAtts] = useState<Att[]>([]);
   const [mode, setMode] = useState<'reply' | 'note'>('reply');
@@ -205,12 +212,12 @@ export default function SupportInbox() {
   const traderTyping = typing.length > 0;
 
   return (
-    <div style={{ maxWidth: 1140, margin: '0 auto' }}>
+    <div style={{ width: '100%' }}>
       <style>{`
         .wa-fil{font-size:12.5px;padding:6px 13px;border-radius:20px;border:1px solid var(--line);background:var(--card2);color:var(--mut);cursor:pointer;transition:all .12s}
         .wa-fil:hover{color:var(--tx)} .wa-fil.on{background:var(--brand);border-color:var(--brand);color:#fff}
-        .wa2{display:grid;grid-template-columns:300px minmax(0,1fr);gap:14px;align-items:stretch}
-        .wa-search{display:flex;align-items:center;gap:8px;background:var(--bg2);border:1px solid var(--line);border-radius:999px;padding:6px 12px;margin-left:auto;max-width:260px;flex:1}
+        .wa2{display:grid;grid-template-columns:320px minmax(0,1fr);gap:14px;align-items:stretch}
+        .wa-search{display:flex;align-items:center;gap:8px;background:var(--bg2);border:1px solid var(--line);border-radius:999px;padding:6px 12px;margin-left:auto;max-width:260px;flex:1;color:var(--mut)}
         .wa-back{display:none}
         @media(max-width:860px){
           .wa2{grid-template-columns:1fr}
@@ -220,28 +227,28 @@ export default function SupportInbox() {
           .wa-fs-m{display:flex !important;min-height:0;height:82vh}
           .wa-back{display:inline-flex !important}
         }
-        .wa-list{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:6px;overflow-y:auto}
-        .wa-item{display:flex;gap:10px;align-items:flex-start;padding:9px 10px;border-radius:12px;cursor:pointer;border-left:3px solid transparent}
-        .wa-item:hover{background:var(--bg2)} .wa-item.on{background:linear-gradient(90deg,rgba(124,140,255,.14),transparent 80%);border-left-color:var(--brand)}
-        .wa-chat{background:var(--card);border:1px solid var(--line);border-radius:14px;min-height:0;display:flex;flex-direction:column;overflow:hidden}
-        .wa-head{display:flex;gap:10px;align-items:center;padding:11px 14px;border-bottom:1px solid var(--line);background:linear-gradient(90deg,rgba(124,140,255,.12),var(--bg2) 70%);flex-wrap:wrap}
-        .wa-body{flex:1;min-height:0;padding:6px 14px;display:flex;flex-direction:column;background:radial-gradient(120% 70% at 100% 0%,rgba(124,140,255,.06),transparent 60%),radial-gradient(120% 70% at 0% 100%,rgba(52,226,160,.05),transparent 55%)}
-        .wa-comp{border-top:1px solid var(--line);padding:10px 12px;position:relative}
+        .wa-list{background:var(--bg2);border:1px solid var(--line);border-radius:16px;padding:6px;overflow-y:auto}
+        .wa-item{display:flex;gap:10px;align-items:flex-start;padding:10px;border-radius:12px;cursor:pointer;box-shadow:inset 0 0 0 0 var(--brand)}
+        .wa-item:hover{background:var(--card)} .wa-item.on{background:linear-gradient(90deg,rgba(124,140,255,.16),transparent 82%);box-shadow:inset 2px 0 0 var(--brand)}
+        .wa-chat{background:var(--card);border:1px solid var(--line);border-radius:16px;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+        .wa-head{display:flex;gap:10px;align-items:center;padding:11px 14px;border-bottom:1px solid var(--line);background:linear-gradient(90deg,rgba(124,140,255,.12),var(--card) 70%);flex-wrap:wrap;flex:none}
+        .wa-body{flex:1;min-height:0;padding:6px 14px;display:flex;flex-direction:column;background:radial-gradient(120% 70% at 100% 0%,rgba(124,140,255,.07),transparent 60%),radial-gradient(120% 70% at 0% 100%,rgba(52,226,160,.05),transparent 55%)}
+        .wa-comp{border-top:1px solid var(--line);padding:10px 12px;position:relative;flex:none;background:var(--bg2)}
         .wa-chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:6px 11px;border-radius:20px;border:1px solid var(--line);background:var(--card2);color:var(--tx);cursor:pointer}
         .wa-chip:hover{border-color:var(--brand)}
-        .wa-av{width:40px;height:40px;border-radius:50%;background:rgba(124,140,255,.18);color:var(--brand);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;flex:none}
-        .wa-avs{width:38px;height:38px;border-radius:50%;background:rgba(124,140,255,.18);color:var(--brand);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex:none}
-        .wa-hb{background:transparent;border:none;cursor:pointer;color:var(--mut);font-size:16px;padding:4px 6px;border-radius:8px}
-        .wa-hb:hover{background:var(--card);color:var(--tx)}
+        .wa-av{width:40px;height:40px;border-radius:12px;background:rgba(124,140,255,.18);color:var(--brand);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;flex:none}
+        .wa-avs{width:40px;height:40px;border-radius:12px;background:rgba(124,140,255,.18);color:var(--brand);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex:none}
+        .wa-hb{background:var(--card2);border:1px solid var(--line);cursor:pointer;color:var(--mut);display:inline-flex;align-items:center;justify-content:center;padding:8px;border-radius:10px}
+        .wa-hb:hover{color:var(--tx);border-color:var(--brand)}
       `}</style>
-      <div className="tabhead"><div className="th-row"><span className="th-ic">🎫</span><span className="th-t">{t.h_soporte_t}</span></div><div className="th-s">{t.h_soporte_s}</div></div>
+      <div className="tabhead"><div className="th-row"><span className="th-ic" style={{ display: 'inline-flex' }}><Icon name="ticket" size={18} /></span><span className="th-t">{t.h_soporte_t}</span></div><div className="th-s">{t.h_soporte_s}</div></div>
       <RangeBar value={range} onChange={setRange}
         pdfUrl={(f, tt) => `/api/admin/support/report?from=${f}&to=${tt}&lang=${lang}`}
         csvUrl={(f, tt) => `/api/admin/support/report?export=csv&from=${f}&to=${tt}&lang=${lang}`} />
 
       {/* Interruptor de auto-respuesta IA */}
       <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', marginBottom: 12, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 18 }}>🤖</span>
+        <span style={{ width: 30, height: 30, borderRadius: 9, flex: 'none', background: 'linear-gradient(135deg,#34e2a0,#7c8cff)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0b0d17' }}><Icon name="sparkles" size={17} /></span>
         <div style={{ flex: 1, minWidth: 180 }}>
           <div style={{ fontWeight: 600, fontSize: 13 }}>{l.aiAuto}</div>
           <div className="muted" style={{ fontSize: 12 }}>{aiOn === false ? l.aiAutoOff : l.aiAutoOn}</div>
@@ -255,10 +262,10 @@ export default function SupportInbox() {
         {([['mine', l.fMine, mineCount], ['unassigned', l.fUnassigned, unassignedCount], ['open', t.s_open, counts.open], ['in_progress', t.s_inprogress, counts.in_progress], ['resolved', t.s_resolved, counts.resolved], ['all', t.s_all, null]] as any).map(([k, lab, c]: any) => (
           <button key={k} className={'wa-fil' + (filter === k ? ' on' : '')} onClick={() => setFilter(k)}>{lab}{c != null ? ` ${c}` : ''}</button>
         ))}
-        <div className="wa-search"><span style={{ opacity: .6, fontSize: 13 }}>🔍</span><input placeholder={t.s_search} value={q} onChange={(e) => setQ(e.target.value)} style={{ margin: 0, border: 'none', background: 'transparent', padding: 0, fontSize: 13, width: '100%' }} /></div>
+        <div className="wa-search"><Icon name="search" size={15} /><input placeholder={t.s_search} value={q} onChange={(e) => setQ(e.target.value)} style={{ margin: 0, border: 'none', background: 'transparent', padding: 0, fontSize: 13, width: '100%', color: 'var(--tx)' }} /></div>
       </div>
 
-      <div className="wa2">
+      <div className="wa2" ref={wrapRef}>
         {/* Lista de conversaciones estilo WhatsApp */}
         <div className={'wa-list' + (mobileOpen ? ' wa-hide-m' : '')} style={{ height: paneH }}>
           {!list.length && <p className="muted" style={{ fontSize: 13, padding: '10px 8px' }}>{t.s_empty}</p>}
@@ -281,8 +288,8 @@ export default function SupportInbox() {
                     <span className="pill" style={{ color: stColor[it.status], background: stBg[it.status], fontSize: 10.5 }}>● {ST[it.status]}</span>
                     {it.is_lead && <span className="pill brand" style={{ fontSize: 10.5 }}>Lead</span>}
                     {it.priority && it.priority !== 'normal' && <span title={it.priority} style={{ width: 7, height: 7, borderRadius: '50%', background: prioColor[it.priority] }} />}
-                    {parts.length > 0 && <span className="pill gray" style={{ fontSize: 10.5 }}>👥 {parts.length}</span>}
-                    {nr && <span style={{ marginLeft: 'auto', background: 'var(--amber)', color: '#3a2a00', fontSize: 10, fontWeight: 700, borderRadius: 10, padding: '1px 7px' }}>↩</span>}
+                    {parts.length > 0 && <span className="pill gray" style={{ fontSize: 10.5, display: 'inline-flex', alignItems: 'center', gap: 3 }}><Icon name="users" size={12} /> {parts.length}</span>}
+                    {nr && <span title={l.needsReply} style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', background: 'var(--amber)', color: '#3a2a00', borderRadius: 999, padding: '2px 5px' }}><Icon name="back" size={12} stroke={2.4} /></span>}
                   </div>
                 </div>
               </div>
@@ -312,26 +319,26 @@ export default function SupportInbox() {
               <>
                 {/* Cabecera WhatsApp */}
                 <div className="wa-head">
-                  <button className="wa-hb wa-back" onClick={() => setMobileOpen(false)} title={es ? 'Volver' : 'Back'} style={{ fontSize: 22, lineHeight: 1 }}>‹</button>
+                  <button className="wa-hb wa-back" onClick={() => setMobileOpen(false)} title={es ? 'Volver' : 'Back'}><Icon name="back" size={20} /></button>
                   <span className="wa-av" style={{ background: avatarOf(tk.email).bg, color: avatarOf(tk.email).fg }}>{initials(tk.email || '?')}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tk.email || t.s_visitor}</div>
                     <div className="muted" style={{ fontSize: 11.5 }}>
                       {CATS[tk.category] || tk.category} · {CH[tk.channel] || tk.channel}{tk.is_lead ? ' · Lead' : ''}
-                      {traderTyping && <span style={{ color: 'var(--soft-green)' }}> · ✍️ {l.typing}</span>}
+                      {traderTyping && <span style={{ color: 'var(--soft-green)' }}> · {l.typing}</span>}
                     </div>
                   </div>
                   <select value={tk.priority || 'normal'} onChange={(e) => act(tk.id, { priority: e.target.value })} style={{ margin: 0, fontSize: 12, padding: '5px 8px' }} title={l.prio}>
-                    <option value="high">🔴 {l.pHigh}</option>
-                    <option value="normal">⚪ {l.pNormal}</option>
-                    <option value="low">⚫ {l.pLow}</option>
+                    <option value="high">{l.pHigh}</option>
+                    <option value="normal">{l.pNormal}</option>
+                    <option value="low">{l.pLow}</option>
                   </select>
-                  {!tk.assignee_id && <button className="wa-hb" title={t.s_take} onClick={() => act(tk.id, { take: true })}>🙋</button>}
-                  <button className="wa-hb" title={l.invTitle} onClick={() => setShowInvite((v) => !v)}>👥</button>
-                  {ctx?.user_id && <button className="wa-hb" title={l.ficha} onClick={() => setDrawerUser({ id: ctx.user_id, email: ctx.email || tk.email || '' })}>ℹ️</button>}
+                  {!tk.assignee_id && <button className="wa-hb" title={t.s_take} onClick={() => act(tk.id, { take: true })}><Icon name="hand" size={17} /></button>}
+                  <button className="wa-hb" title={l.invTitle} onClick={() => setShowInvite((v) => !v)}><Icon name="userPlus" size={17} /></button>
+                  {ctx?.user_id && <button className="wa-hb" title={l.ficha} onClick={() => setDrawerUser({ id: ctx.user_id, email: ctx.email || tk.email || '' })}><Icon name="info" size={17} /></button>}
                   {tk.status !== 'resolved'
-                    ? <button className="wa-hb" title={t.s_resolve} style={{ color: 'var(--green)' }} onClick={() => act(tk.id, { status: 'resolved' })}>✓</button>
-                    : <button className="wa-hb" title={t.s_reopen} onClick={() => act(tk.id, { status: 'open' })}>↺</button>}
+                    ? <button className="wa-hb" title={t.s_resolve} style={{ color: 'var(--green)' }} onClick={() => act(tk.id, { status: 'resolved' })}><Icon name="check" size={17} /></button>
+                    : <button className="wa-hb" title={t.s_reopen} onClick={() => act(tk.id, { status: 'open' })}><Icon name="refresh" size={17} /></button>}
                 </div>
 
                 {/* Invitar (desplegable) */}
@@ -360,7 +367,7 @@ export default function SupportInbox() {
                 {/* Hilo estilo WhatsApp (burbujas izq/der, palomitas, adjuntos) */}
                 <div className="wa-body">
                   <ChatThread messages={chatMsgs} lang={lang as any} onSend={() => {}} canReply={false} showAuthors
-                    typingLabel={traderTyping ? `${t.sender_trader} ${l.typing}` : ''} height={Math.max(240, paneH - 250)} />
+                    typingLabel={traderTyping ? `${t.sender_trader} ${l.typing}` : ''} height={Math.max(220, paneH - 196)} />
                 </div>
 
                 {/* Compositor */}
@@ -368,20 +375,20 @@ export default function SupportInbox() {
                   <div className="row between" style={{ gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
                     <div className="seg">
                       <button className={'segbtn' + (mode === 'reply' ? ' on-view' : '')} onClick={() => setMode('reply')}>{t.s_reply}</button>
-                      <button className={'segbtn' + (mode === 'note' ? ' on-view' : '')} onClick={() => setMode('note')}>🔒 {t.s_note}</button>
+                      <button className={'segbtn' + (mode === 'note' ? ' on-view' : '')} onClick={() => setMode('note')} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Icon name="lock" size={13} /> {t.s_note}</button>
                     </div>
                     {mode === 'reply' && (
                       <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-                        <button className="wa-chip" onClick={() => setShowCanned((v) => !v)}>＋ {l.canned}</button>
-                        <button className="wa-chip" onClick={() => draft(tk.id, firstUser)} disabled={busy === 'ai' + tk.id}>🤖 {busy === 'ai' + tk.id ? '…' : t.s_aiDraft}</button>
-                        <button className="wa-chip" title={l.saveKb} onClick={() => saveKnowledge(tk.subject, tm)}>💡</button>
+                        <button className="wa-chip" onClick={() => setShowCanned((v) => !v)}><Icon name="plus" size={14} /> {l.canned}</button>
+                        <button className="wa-chip" onClick={() => draft(tk.id, firstUser)} disabled={busy === 'ai' + tk.id}><Icon name="sparkles" size={14} /> {busy === 'ai' + tk.id ? '…' : t.s_aiDraft}</button>
+                        <button className="wa-chip" title={l.saveKb} onClick={() => saveKnowledge(tk.subject, tm)}><Icon name="bulb" size={15} /></button>
                       </div>
                     )}
                   </div>
 
                   {/* Respuestas guardadas */}
                   {showCanned && mode === 'reply' && (
-                    <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: 10, marginBottom: 8 }}>
+                    <div style={{ position: 'absolute', bottom: '100%', left: 12, right: 12, marginBottom: 8, zIndex: 20, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 10, boxShadow: '0 12px 30px rgba(0,0,0,.3)' }}>
                       {!newC && (
                         <>
                           {!cannedList.length && <div className="muted" style={{ fontSize: 12.5, marginBottom: 8 }}>{l.cEmpty}</div>}
@@ -394,7 +401,7 @@ export default function SupportInbox() {
                                 </div>
                                 <div className="row" style={{ gap: 4, flex: 'none' }}>
                                   <button className="btn btn-primary" style={{ fontSize: 11.5, padding: '4px 10px' }} onClick={() => { setText(c.body); setShowCanned(false); }}>{l.insert}</button>
-                                  <button className="btn btn-ghost" style={{ fontSize: 12, padding: '4px 8px', color: 'var(--red)' }} title={l.cDel} onClick={() => delCanned(c.id)}>🗑</button>
+                                  <button className="btn btn-ghost" style={{ fontSize: 12, padding: '4px 8px', color: 'var(--red)', display: 'inline-flex' }} title={l.cDel} onClick={() => delCanned(c.id)}><Icon name="trash" size={15} /></button>
                                 </div>
                               </div>
                             ))}
@@ -408,7 +415,7 @@ export default function SupportInbox() {
                           <textarea placeholder={l.cBody} value={newC.body} onChange={(e) => setNewC({ ...newC, body: e.target.value })} rows={3} style={{ width: '100%', margin: 0 }} />
                           <div className="row" style={{ gap: 6 }}>
                             <button className="btn btn-primary" style={{ fontSize: 12.5 }} onClick={saveCanned} disabled={!newC.title.trim() || !newC.body.trim()}>{l.cSave}</button>
-                            <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={() => setNewC(null)}>✕</button>
+                            <button className="btn btn-ghost" style={{ fontSize: 12.5, display: 'inline-flex' }} onClick={() => setNewC(null)}><Icon name="x" size={15} /></button>
                           </div>
                         </div>
                       )}
@@ -419,9 +426,9 @@ export default function SupportInbox() {
                   {mode === 'reply' && !!atts.length && (
                     <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
                       {atts.map((a, i) => (
-                        <span key={i} style={{ display: 'inline-flex', gap: 6, alignItems: 'center', background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 8, padding: '4px 8px', fontSize: 12 }}>
-                          {a.type.startsWith('image/') ? '🖼️' : '📄'} {a.name.slice(0, 24)}
-                          <button onClick={() => setAtts((x) => x.filter((_, j) => j !== i))} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--mut)' }}>✕</button>
+                        <span key={i} style={{ display: 'inline-flex', gap: 6, alignItems: 'center', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 8, padding: '4px 8px', fontSize: 12 }}>
+                          <Icon name={a.type.startsWith('image/') ? 'image' : 'file'} size={14} /> {a.name.slice(0, 24)}
+                          <button onClick={() => setAtts((x) => x.filter((_, j) => j !== i))} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--mut)', display: 'flex' }}><Icon name="x" size={13} /></button>
                         </span>
                       ))}
                     </div>
@@ -429,25 +436,29 @@ export default function SupportInbox() {
 
                   {/* Emojis */}
                   {showEmoji && mode === 'reply' && (
-                    <div style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 8, marginBottom: 6, display: 'grid', gridTemplateColumns: 'repeat(10,1fr)', gap: 3 }}>
+                    <div style={{ position: 'absolute', bottom: '100%', left: 12, marginBottom: 8, zIndex: 20, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 8, boxShadow: '0 12px 30px rgba(0,0,0,.3)', display: 'grid', gridTemplateColumns: 'repeat(10,1fr)', gap: 3, width: 320 }}>
                       {EMO.map((e) => <button key={e} onClick={() => { setText((v) => v + e); setShowEmoji(false); }} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 18, padding: 3 }}>{e}</button>)}
                     </div>
                   )}
 
                   {/* Fila de entrada estilo WhatsApp */}
-                  <div className="row" style={{ gap: 6, alignItems: 'flex-end' }}>
-                    {mode === 'reply' && <>
-                      <button className="wa-hb" title={l.emoji} onClick={() => setShowEmoji((v) => !v)}>😊</button>
-                      <label className="wa-hb" title={l.attach} style={{ cursor: 'pointer' }}>📎
-                        <input type="file" multiple accept="image/*,application/pdf,.doc,.docx,.csv,.xlsx,.txt" style={{ display: 'none' }} onChange={(e) => { if (e.target.files) uploadAtt(e.target.files); e.currentTarget.value = ''; }} />
-                      </label>
-                    </>}
-                    <textarea value={text} onChange={(e) => { setText(e.target.value); if (mode === 'reply') sendTyping(); }}
-                      onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (mode === 'reply') { if (text.trim() || atts.length) act(tk.id, { body: text, attachments: atts }); } else if (text.trim()) act(tk.id, { note: text }); } }}
-                      rows={1} placeholder={mode === 'note' ? t.s_notePh : t.s_replyPh} style={{ flex: 1, margin: 0, resize: 'none', minHeight: 40, maxHeight: 120, padding: '10px 12px', borderRadius: 18 }} />
-                    {mode === 'reply'
-                      ? <button className="btn btn-primary" style={{ borderRadius: 20, padding: '9px 15px' }} onClick={() => act(tk.id, { body: text, attachments: atts })} disabled={busy === tk.id || (!text.trim() && !atts.length)}>{t.s_sendReply}</button>
-                      : <button className="btn btn-primary" style={{ borderRadius: 20, padding: '9px 15px' }} onClick={() => act(tk.id, { note: text })} disabled={busy === tk.id || !text.trim()}>{t.s_saveNote}</button>}
+                  <div className="row" style={{ gap: 8, alignItems: 'flex-end' }}>
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', gap: 2, background: mode === 'note' ? 'rgba(255,192,77,.10)' : 'var(--card)', border: '1px solid ' + (mode === 'note' ? 'rgba(255,192,77,.4)' : 'var(--line)'), borderRadius: 16, padding: '3px 4px' }}>
+                      {mode === 'reply' && <>
+                        <button className="ci-btn" title={l.emoji} onClick={() => setShowEmoji((v) => !v)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--mut)', padding: '8px 6px', display: 'flex' }}><Icon name="smile" size={19} /></button>
+                        <label className="ci-btn" title={l.attach} style={{ cursor: 'pointer', color: 'var(--mut)', padding: '8px 6px', display: 'flex' }}><Icon name="paperclip" size={18} />
+                          <input type="file" multiple accept="image/*,application/pdf,.doc,.docx,.csv,.xlsx,.txt" style={{ display: 'none' }} onChange={(e) => { if (e.target.files) uploadAtt(e.target.files); e.currentTarget.value = ''; }} />
+                        </label>
+                      </>}
+                      <textarea value={text} onChange={(e) => { setText(e.target.value); if (mode === 'reply') sendTyping(); }}
+                        onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (mode === 'reply') { if (text.trim() || atts.length) act(tk.id, { body: text, attachments: atts }); } else if (text.trim()) act(tk.id, { note: text }); } }}
+                        rows={1} placeholder={mode === 'note' ? t.s_notePh : t.s_replyPh} style={{ flex: 1, margin: 0, resize: 'none', minHeight: 36, maxHeight: 120, padding: '9px 6px', border: 'none', background: 'transparent', fontSize: 14 }} />
+                    </div>
+                    <button onClick={() => mode === 'reply' ? act(tk.id, { body: text, attachments: atts }) : act(tk.id, { note: text })}
+                      disabled={busy === tk.id || (mode === 'reply' ? (!text.trim() && !atts.length) : !text.trim())} title={mode === 'reply' ? t.s_sendReply : t.s_saveNote}
+                      style={{ width: 44, height: 44, flex: 'none', borderRadius: 14, border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0b0d17', cursor: 'pointer', background: mode === 'note' ? 'linear-gradient(135deg,#ffc04d,#ff9f45)' : 'linear-gradient(135deg,#7c8cff,#34e2a0)', boxShadow: '0 8px 20px rgba(124,140,255,.3)' }}>
+                      {mode === 'note' ? <Icon name="lock" size={18} /> : <Icon name="send" size={19} />}
+                    </button>
                   </div>
                 </div>
               </>

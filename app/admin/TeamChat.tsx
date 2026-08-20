@@ -8,6 +8,7 @@ import { mkL } from '@/lib/i18n';
 import { Component, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useLang } from '@/lib/lang';
 import ChatThread, { type ChatMsg, type Att, type MentionItem } from '@/app/components/ChatThread';
+import Icon from '@/app/components/Icons';
 import { useChatRealtime, type Presence } from '@/lib/chatRealtime';
 
 type Channel = { id: string; name: string; kind: string; topic?: string; unread: number; last: any; members: string[] };
@@ -98,9 +99,15 @@ function TeamChatInner() {
   const [showDate, setShowDate] = useState(false);     // buscar por día (toggle)
   const [mobileOpen, setMobileOpen] = useState(false); // en móvil: chat a pantalla completa
   const [docks, setDocks] = useState<string[]>([]);   // canales abiertos como ventanas
-  const [vh, setVh] = useState(760);                   // alto de ventana → chat full screen
-  useEffect(() => { const f = () => setVh(window.innerHeight); f(); window.addEventListener('resize', f); return () => window.removeEventListener('resize', f); }, []);
-  const gridH = Math.max(440, vh - 190);               // alto del panel (deja sitio a cabecera/nav)
+  // Alto medido: el panel llena desde su borde superior hasta el fondo de la
+  // ventana. Así el composer SIEMPRE queda visible, sin importar la cabecera.
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [gridH, setGridH] = useState(520);
+  useEffect(() => {
+    const f = () => { const top = wrapRef.current?.getBoundingClientRect().top ?? 180; setGridH(Math.max(420, window.innerHeight - top - 16)); };
+    f(); window.addEventListener('resize', f); const iv = setInterval(f, 1000);
+    return () => { window.removeEventListener('resize', f); clearInterval(iv); };
+  }, []);
   const loadedOnce = useRef(false);
 
   const teamById = useMemo(() => Object.fromEntries(team.map((t) => [t.id, t])), [team]);
@@ -183,25 +190,24 @@ function TeamChatInner() {
   function closeDock(id: string) { setDocks((d) => d.filter((x) => x !== id)); }
 
   return (
-    <div style={{ maxWidth: 1140, margin: '0 auto' }}>
-      <div className="row between" style={{ marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-        <div>
-          <h2 style={{ margin: 0 }}>💬 {L('Chat del equipo', 'Team chat')}</h2>
-          <div className="muted" style={{ fontSize: 13 }}>{L('Habla con tu equipo, etiqueta clientes y tickets, y pregunta a @Onyx AI.', 'Talk to your team, tag clients and tickets, and ask @Onyx AI.')}</div>
-        </div>
-        <span className="pill" style={{ fontSize: 12, color: 'var(--soft-green)', background: 'rgba(52,226,160,.15)' }}>● {online.length} {L('en línea', 'online')}</span>
-      </div>
-
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', height: gridH }} className="teamchat-grid">
+    <div ref={wrapRef} style={{ width: '100%' }}>
+      <div className="card" style={{ padding: 0, overflow: 'hidden', borderRadius: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', height: gridH }} className="teamchat-grid">
           {/* Lista de conversaciones (tipo WhatsApp) */}
-          <div className={'teamchat-side' + (mobileOpen ? ' tc-hidden-m' : '')} style={{ borderRight: '1px solid var(--line)', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-            <div style={{ padding: '10px 12px 8px', display: 'flex', gap: 8, alignItems: 'center' }}>
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 999, padding: '7px 12px' }}>
-                <span style={{ opacity: .6, fontSize: 13 }}>🔍</span>
-                <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder={L('Buscar', 'Search')} style={{ margin: 0, border: 'none', background: 'transparent', padding: 0, fontSize: 13, width: '100%' }} />
+          <div className={'teamchat-side' + (mobileOpen ? ' tc-hidden-m' : '')} style={{ borderRight: '1px solid var(--line)', display: 'flex', flexDirection: 'column', minHeight: 0, background: 'var(--bg2)' }}>
+            <div style={{ padding: '14px 14px 10px', display: 'flex', gap: 10, alignItems: 'center' }}>
+              <span style={{ width: 34, height: 34, borderRadius: 10, flex: 'none', background: 'linear-gradient(135deg,#7c8cff,#34e2a0)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0b0d17' }}><Icon name="message" size={18} /></span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 15, fontWeight: 700 }}>{L('Equipo', 'Team')}</div>
+                <div className="muted" style={{ fontSize: 11 }}><span style={{ color: 'var(--soft-green)' }}>●</span> {online.length} {L('en línea', 'online')}</div>
               </div>
-              <button className="btn btn-primary" onClick={() => setShowCompose((s) => !s)} title={L('Nueva conversación', 'New chat')} style={{ width: 36, height: 36, padding: 0, borderRadius: '50%', fontSize: 18, lineHeight: 1, flex: 'none' }}>＋</button>
+            </div>
+            <div style={{ padding: '0 12px 8px', display: 'flex', gap: 8, alignItems: 'center' }}>
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 999, padding: '7px 12px', color: 'var(--mut)' }}>
+                <Icon name="search" size={15} />
+                <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder={L('Buscar', 'Search')} style={{ margin: 0, border: 'none', background: 'transparent', padding: 0, fontSize: 13, width: '100%', color: 'var(--tx)' }} />
+              </div>
+              <button className="btn btn-primary" onClick={() => setShowCompose((s) => !s)} title={L('Nueva conversación', 'New chat')} style={{ width: 36, height: 36, padding: 0, borderRadius: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}><Icon name="plus" size={19} /></button>
             </div>
             {showCompose && (
               <div style={{ padding: '4px 12px 10px', borderBottom: '1px solid var(--line)' }}>
@@ -235,17 +241,17 @@ function TeamChatInner() {
           <div className={'teamchat-main' + (mobileOpen ? ' tc-fs-m' : ' tc-hidden-m')} style={{ display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0 }}>
             {activeCh ? (<>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', borderBottom: '1px solid var(--line)', background: 'linear-gradient(90deg, rgba(124,140,255,.10), transparent 70%)' }}>
-                <button className="tc-back" onClick={() => setMobileOpen(false)} style={{ display: 'none', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 22, color: 'var(--tx)', lineHeight: 1, padding: 0 }}>‹</button>
+                <button className="tc-back" onClick={() => setMobileOpen(false)} style={{ display: 'none', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--tx)', lineHeight: 1, padding: '4px 2px' }}><Icon name="back" size={22} /></button>
                 {(() => { const av = avatarOf(headerName); const dm = activeCh.kind === 'dm'; return (
-                  <span style={{ width: 38, height: 38, borderRadius: '50%', flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: dm ? 12 : 17, fontWeight: 700, background: dm ? av.bg : 'rgba(124,140,255,.14)', color: dm ? av.fg : 'var(--soft-brand)' }}>{dm ? initials(headerName) : '#'}</span>
+                  <span style={{ width: 38, height: 38, borderRadius: 12, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: dm ? 12 : 17, fontWeight: 700, background: dm ? av.bg : 'rgba(124,140,255,.14)', color: dm ? av.fg : 'var(--soft-brand)' }}>{dm ? initials(headerName) : <Icon name="hash" size={18} />}</span>
                 ); })()}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{(activeCh.kind === 'dm' ? '' : '# ') + headerName}</div>
                   <div style={{ fontSize: 11.5, color: typingLabel ? 'var(--soft-green)' : 'var(--mut)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{headerStatus}</div>
                 </div>
-                <button title={L('Buscar por día', 'Search by day')} onClick={() => setShowDate((s) => !s)} style={iconBtn}>📅</button>
+                <button title={L('Buscar por día', 'Search by day')} onClick={() => setShowDate((s) => !s)} style={iconBtn}><Icon name="calendar" size={18} /></button>
                 <div style={{ position: 'relative' }}>
-                  <button title={L('Añadir compañero', 'Add teammate')} onClick={() => setShowAdd((s) => !s)} style={iconBtn}>＋</button>
+                  <button title={L('Añadir compañero', 'Add teammate')} onClick={() => setShowAdd((s) => !s)} style={iconBtn}><Icon name="userPlus" size={18} /></button>
                   {showAdd && (
                     <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 6, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, boxShadow: '0 12px 30px rgba(0,0,0,.3)', zIndex: 30, width: 230, maxHeight: 260, overflowY: 'auto' }}>
                       {(activeCh.kind === 'dm' ? canAdd : team.filter((t) => t.id !== me)).map((t) => { const av = avatarOf(t.name); return (
@@ -258,7 +264,7 @@ function TeamChatInner() {
                     </div>
                   )}
                 </div>
-                <button title={L('Abrir en ventana', 'Open in window')} onClick={() => openDock(active)} style={iconBtn}>⧉</button>
+                <button title={L('Abrir en ventana', 'Open in window')} onClick={() => openDock(active)} style={iconBtn}><Icon name="window" size={18} /></button>
               </div>
               {showDate && (
                 <div style={{ padding: '8px 14px', borderBottom: '1px solid var(--line)', display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -309,10 +315,10 @@ function TeamChatInner() {
 function ConvCard({ c, active, online, en, onClick }: { c: any; active: boolean; online?: boolean; en: boolean; onClick: () => void }) {
   const av = avatarOf(c.display);
   return (
-    <div onClick={onClick} style={{ display: 'flex', gap: 11, alignItems: 'center', padding: '10px 12px', cursor: 'pointer', background: active ? 'var(--bg2)' : 'transparent', borderLeft: active ? '3px solid var(--brand)' : '3px solid transparent' }}>
-      <span style={{ position: 'relative', width: 42, height: 42, borderRadius: '50%', flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: c.isDm ? 14 : 19, fontWeight: 700, background: c.isDm ? av.bg : 'rgba(124,140,255,.14)', color: c.isDm ? av.fg : 'var(--soft-brand)' }}>
-        {c.isDm ? initials(c.display) : '#'}
-        {c.isDm && <span style={{ position: 'absolute', right: 0, bottom: 0, width: 11, height: 11, borderRadius: '50%', background: online ? 'var(--soft-green)' : 'var(--mut)', border: '2px solid var(--card)' }} />}
+    <div onClick={onClick} style={{ display: 'flex', gap: 11, alignItems: 'center', margin: '0 8px', padding: '10px', borderRadius: 12, cursor: 'pointer', background: active ? 'linear-gradient(90deg,rgba(124,140,255,.18),transparent 85%)' : 'transparent', boxShadow: active ? 'inset 2px 0 0 var(--brand)' : 'none' }}>
+      <span style={{ position: 'relative', width: 42, height: 42, borderRadius: 13, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: c.isDm ? 14 : 18, fontWeight: 700, background: c.isDm ? av.bg : 'rgba(124,140,255,.14)', color: c.isDm ? av.fg : 'var(--soft-brand)' }}>
+        {c.isDm ? initials(c.display) : <Icon name="hash" size={18} />}
+        {c.isDm && <span style={{ position: 'absolute', right: -1, bottom: -1, width: 11, height: 11, borderRadius: '50%', background: online ? 'var(--soft-green)' : 'var(--mut)', border: '2px solid var(--bg2)' }} />}
       </span>
       <span style={{ flex: 1, minWidth: 0 }}>
         <span style={{ display: 'flex', justifyContent: 'space-between', gap: 6 }}>
