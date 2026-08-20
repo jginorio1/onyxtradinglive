@@ -48,10 +48,19 @@ export async function POST(req: Request) {
     const tradeId = String(b.trade_id || '').trim();
     if (!tradeId) return NextResponse.json({ error: 'Missing trade.', code: 'missing_data' }, { status: 400 });
 
-    // La operación tiene que ser suya. Sin esta comprobación cualquiera podría
-    // sobrescribir el diario de otro usuario adivinando un id.
-    const { data: own } = await supabaseAdmin
-      .from('trades').select('id').eq('id', tradeId).eq('user_id', user.id).maybeSingle();
+    // La operación tiene que ser suya. OJO: la tabla `trades` NO tiene user_id
+    // (se ata a la cuenta, no al usuario). Antes se comprobaba trades.user_id,
+    // columna inexistente → SIEMPRE daba "not found" y no se podía guardar nada.
+    // Ahora se valida por la cadena trade → cuenta → user_id.
+    const { data: tr } = await supabaseAdmin
+      .from('trades').select('account_id').eq('id', tradeId).maybeSingle();
+    const accId = (tr as any)?.account_id;
+    let own = false;
+    if (accId) {
+      const { data: acc } = await supabaseAdmin
+        .from('trading_accounts').select('id').eq('id', accId).eq('user_id', user.id).maybeSingle();
+      own = !!acc;
+    }
     if (!own) return NextResponse.json({ error: 'Trade not found.', code: 'not_found' }, { status: 404 });
 
     const row: any = { user_id: user.id, trade_id: tradeId, updated_at: new Date().toISOString() };

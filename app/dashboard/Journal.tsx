@@ -44,6 +44,7 @@ const J = {
     add: 'Añadir', addPh: 'Escribe y Enter', minHint: 'Con grado + 1 emoción ya cuenta como documentada',
     undoc: 'Sin diario', pendingTitle: 'operaciones sin diario', pendingSub: 'Documéntalas mientras las recuerdas', docNow: 'Documentar ahora',
     streak: 'Racha', days: 'días', day: 'día',
+    delTitle: 'Borrar el tag', delBody: 'Se quita de tu lista y ya no aparecerá al documentar. Las operaciones que ya etiquetaste con él no cambian.', delCancel: 'Cancelar', delOk: 'Borrar tag',
   },
   en: {
     lotTitle: '📦 Lot statistics', volToday: 'Today', volWeek: 'Week', volMonth: 'Month', volYear: 'Year', volTotal: 'Total', lots: 'lots', byPair: 'Volume by pair',
@@ -62,6 +63,7 @@ const J = {
     add: 'Add', addPh: 'Type and Enter', minHint: 'Grade + 1 emotion already counts as documented',
     undoc: 'No journal', pendingTitle: 'trades without a journal', pendingSub: 'Document them while you remember', docNow: 'Document now',
     streak: 'Streak', days: 'days', day: 'day',
+    delTitle: 'Delete tag', delBody: 'It leaves your list and won’t appear when documenting. Trades you already tagged with it don’t change.', delCancel: 'Cancel', delOk: 'Delete tag',
   },
 };
 
@@ -91,6 +93,10 @@ export default function Journal({ trades, lang, focusUndoc = false }: { trades: 
     }).catch(() => {});
   }, []);
 
+  // Persiste la lista de un grupo (helper común de añadir/renombrar/borrar).
+  function persistGroup(group: keyof CustomTags, list: string[]) {
+    fetch('/api/journal/tags', { method: 'POST', body: JSON.stringify({ [group]: list }) }).catch(() => {});
+  }
   // Guarda un tag nuevo del trader (persistente) y lo deja disponible al vuelo.
   function addCustomTag(group: keyof CustomTags, value: string) {
     const v = value.trim().slice(0, 40);
@@ -98,7 +104,25 @@ export default function Journal({ trades, lang, focusUndoc = false }: { trades: 
     setCustomTags((c) => {
       if (c[group].some((x) => x.toLowerCase() === v.toLowerCase())) return c;
       const next = { ...c, [group]: [...c[group], v] };
-      fetch('/api/journal/tags', { method: 'POST', body: JSON.stringify({ [group]: next[group] }) }).catch(() => {});
+      persistGroup(group, next[group]);
+      return next;
+    });
+  }
+  // Renombra un tag propio (los ya guardados en operaciones no cambian).
+  function renameCustomTag(group: keyof CustomTags, oldV: string, newV: string) {
+    const v = newV.trim().slice(0, 40);
+    if (!v || v === oldV) return;
+    setCustomTags((c) => {
+      const next = { ...c, [group]: c[group].map((x) => (x === oldV ? v : x)) };
+      persistGroup(group, next[group]);
+      return next;
+    });
+  }
+  // Borra un tag propio de tu lista (no toca las operaciones ya etiquetadas).
+  function deleteCustomTag(group: keyof CustomTags, v: string) {
+    setCustomTags((c) => {
+      const next = { ...c, [group]: c[group].filter((x) => x !== v) };
+      persistGroup(group, next[group]);
       return next;
     });
   }
@@ -293,7 +317,7 @@ export default function Journal({ trades, lang, focusUndoc = false }: { trades: 
         ) : <p className="muted">{t.noTrades}</p>}
       </div>
 
-      {open && <TradeModal trade={open} entry={entries[open.id]} lang={lang} customTags={customTags} onAddTag={addCustomTag} onClose={() => setOpen(null)} onSaved={(e) => setEntries({ ...entries, [open.id]: e })} />}
+      {open && <TradeModal trade={open} entry={entries[open.id]} lang={lang} customTags={customTags} onAddTag={addCustomTag} onRenameTag={renameCustomTag} onDeleteTag={deleteCustomTag} onClose={() => setOpen(null)} onSaved={(e) => setEntries({ ...entries, [open.id]: e })} />}
     </>
   );
 }
@@ -301,24 +325,43 @@ export default function Journal({ trades, lang, focusUndoc = false }: { trades: 
 // Grupo de tags reutilizable con selección múltiple (o única) y "+ Añadir".
 // Combina los tags por defecto con los propios del trader; el que crea se
 // guarda y queda seleccionado. accent controla el color del chip activo.
-function TagGroup({ label, hint, options, custom, selected, multi, accent, onToggle, onAdd, addLabel, addPh }: {
+function TagGroup({ label, hint, options, custom, selected, multi, accent, groupKey, lang, onToggle, onAdd, onRename, onAskDelete, addLabel, addPh }: {
   label: string; hint?: string; options: string[]; custom: string[]; selected: string[]; multi: boolean;
-  accent: string; onToggle: (v: string) => void; onAdd: (v: string) => void; addLabel: string; addPh: string;
+  accent: string; groupKey: keyof CustomTags; lang: Lang; onToggle: (v: string) => void; onAdd: (v: string) => void;
+  onRename: (g: keyof CustomTags, oldV: string, newV: string) => void; onAskDelete: (g: keyof CustomTags, v: string) => void;
+  addLabel: string; addPh: string;
 }) {
   const [adding, setAdding] = useState(false);
   const [val, setVal] = useState('');
+  const [editing, setEditing] = useState<string | null>(null); // tag en modo renombrar
+  const [editVal, setEditVal] = useState('');
+  const isCustom = (s: string) => custom.some((c) => c === s) && !options.some((o) => o.toLowerCase() === s.toLowerCase());
   const all = [...options, ...custom.filter((c) => !options.some((o) => o.toLowerCase() === c.toLowerCase()))];
-  const commit = () => { const v = val.trim(); if (v) { onAdd(v); if (!multi) { /* selección única: onAdd no selecciona */ } } setVal(''); setAdding(false); };
+  const commit = () => { const v = val.trim(); if (v) onAdd(v); setVal(''); setAdding(false); };
+  const commitEdit = (oldV: string) => { const v = editVal.trim(); if (v && v !== oldV) onRename(groupKey, oldV, v); setEditing(null); setEditVal(''); };
   const tint = accent === GREEN ? 'rgba(52,226,160,.15)' : accent === RED ? 'rgba(255,107,125,.15)' : accent === AMBER ? 'rgba(255,192,77,.15)' : 'rgba(124,140,255,.18)';
   return (
     <div style={{ margin: '14px 0 0' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
         <span style={{ fontSize: 13, color: 'var(--tx)', fontWeight: 600 }}>{label}{hint ? <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}> · {hint}</span> : null}</span>
       </div>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        {all.map((s) => { const on = selected.includes(s); return (
-          <button key={s} onClick={() => onToggle(s)} style={{ cursor: 'pointer', padding: '5px 11px', borderRadius: 8, fontSize: 13, border: '1px solid ' + (on ? accent : 'var(--line)'), background: on ? tint : 'transparent', color: 'var(--tx)' }}>{s}</button>
-        ); })}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+        {all.map((s) => { const on = selected.includes(s); const mine = isCustom(s);
+          if (editing === s) return (
+            <input key={s} autoFocus value={editVal} onChange={(e) => setEditVal(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') commitEdit(s); if (e.key === 'Escape') { setEditing(null); setEditVal(''); } }} onBlur={() => commitEdit(s)} style={{ margin: 0, width: 120, padding: '4px 9px', fontSize: 13 }} />
+          );
+          return (
+            <span key={s} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: mine ? '5px 7px 5px 11px' : '5px 11px', borderRadius: 8, fontSize: 13, border: '1px solid ' + (on ? accent : 'var(--line)'), background: on ? tint : 'transparent', color: 'var(--tx)' }}>
+              <span onClick={() => onToggle(s)} style={{ cursor: 'pointer' }}>{s}</span>
+              {mine && (
+                <span style={{ display: 'inline-flex', gap: 2, opacity: .75 }}>
+                  <span title={lang === 'es' ? 'Renombrar' : 'Rename'} onClick={(e) => { e.stopPropagation(); setEditing(s); setEditVal(s); }} style={{ cursor: 'pointer', fontSize: 11 }}>✎</span>
+                  <span title={lang === 'es' ? 'Borrar' : 'Delete'} onClick={(e) => { e.stopPropagation(); onAskDelete(groupKey, s); }} style={{ cursor: 'pointer', fontSize: 12 }}>✕</span>
+                </span>
+              )}
+            </span>
+          );
+        })}
         {adding ? (
           <input autoFocus value={val} onChange={(e) => setVal(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') { setAdding(false); setVal(''); } }} onBlur={commit} placeholder={addPh} style={{ margin: 0, width: 130, padding: '4px 9px', fontSize: 13 }} />
         ) : (
@@ -343,8 +386,9 @@ function Segment({ label, opts, value, onPick }: { label: string; opts: { v: str
   );
 }
 
-function TradeModal({ trade, entry, lang, customTags, onAddTag, onClose, onSaved }: { trade: TT; entry?: Entry; lang: Lang; customTags: CustomTags; onAddTag: (g: keyof CustomTags, v: string) => void; onClose: () => void; onSaved: (e: Entry) => void }) {
+function TradeModal({ trade, entry, lang, customTags, onAddTag, onRenameTag, onDeleteTag, onClose, onSaved }: { trade: TT; entry?: Entry; lang: Lang; customTags: CustomTags; onAddTag: (g: keyof CustomTags, v: string) => void; onRenameTag: (g: keyof CustomTags, oldV: string, newV: string) => void; onDeleteTag: (g: keyof CustomTags, v: string) => void; onClose: () => void; onSaved: (e: Entry) => void }) {
   const t = dictFor(J, lang);
+  const [confirmDel, setConfirmDel] = useState<{ group: keyof CustomTags; value: string } | null>(null);
   const [notes, setNotes] = useState(entry?.notes || '');
   const [tags, setTags] = useState<string[]>(entry?.tags || []);
   const [emotion, setEmotion] = useState(entry?.emotion || '');
@@ -401,13 +445,13 @@ function TradeModal({ trade, entry, lang, customTags, onAddTag, onClose, onSaved
           <Segment label={t.planQ} value={planF} onPick={setPlanF} opts={[{ v: 'yes', t: t.planYes, c: GREEN }, { v: 'partial', t: t.planPartial, c: AMBER }, { v: 'no', t: t.planNo, c: RED }]} />
         </div>
 
-        <TagGroup label={t.strat} hint={t.adapts} options={STRATS} custom={customTags.setups} selected={tags} multi accent={BLUE} onToggle={(s) => toggle(tags, setTags, s)} onAdd={(v) => { onAddTag('setups', v); setTags((a) => a.includes(v) ? a : [...a, v]); }} addLabel={t.add} addPh={t.addPh} />
+        <TagGroup label={t.strat} hint={t.adapts} options={STRATS} custom={customTags.setups} selected={tags} multi accent={BLUE} groupKey="setups" lang={lang} onToggle={(s) => toggle(tags, setTags, s)} onAdd={(v) => { onAddTag('setups', v); setTags((a) => a.includes(v) ? a : [...a, v]); }} onRename={onRenameTag} onAskDelete={(g, v) => setConfirmDel({ group: g, value: v })} addLabel={t.add} addPh={t.addPh} />
 
-        <TagGroup label={t.market} options={t.markets} custom={customTags.markets} selected={markets} multi accent={BLUE} onToggle={(s) => toggle(markets, setMarkets, s)} onAdd={(v) => { onAddTag('markets', v); setMarkets((a) => a.includes(v) ? a : [...a, v]); }} addLabel={t.add} addPh={t.addPh} />
+        <TagGroup label={t.market} options={t.markets} custom={customTags.markets} selected={markets} multi accent={BLUE} groupKey="markets" lang={lang} onToggle={(s) => toggle(markets, setMarkets, s)} onAdd={(v) => { onAddTag('markets', v); setMarkets((a) => a.includes(v) ? a : [...a, v]); }} onRename={onRenameTag} onAskDelete={(g, v) => setConfirmDel({ group: g, value: v })} addLabel={t.add} addPh={t.addPh} />
 
-        <TagGroup label={t.emotion} options={t.emotions} custom={customTags.emotions} selected={emotion ? [emotion] : []} multi={false} accent={GREEN} onToggle={(s) => setEmotion(emotion === s ? '' : s)} onAdd={(v) => { onAddTag('emotions', v); setEmotion(v); }} addLabel={t.add} addPh={t.addPh} />
+        <TagGroup label={t.emotion} options={t.emotions} custom={customTags.emotions} selected={emotion ? [emotion] : []} multi={false} accent={GREEN} groupKey="emotions" lang={lang} onToggle={(s) => setEmotion(emotion === s ? '' : s)} onAdd={(v) => { onAddTag('emotions', v); setEmotion(v); }} onRename={onRenameTag} onAskDelete={(g, v) => setConfirmDel({ group: g, value: v })} addLabel={t.add} addPh={t.addPh} />
 
-        <TagGroup label={t.whatFailed} hint={t.optional} options={t.errors} custom={customTags.errors} selected={errs} multi accent={RED} onToggle={(s) => toggle(errs, setErrs, s)} onAdd={(v) => { onAddTag('errors', v); setErrs((a) => a.includes(v) ? a : [...a, v]); }} addLabel={t.add} addPh={t.addPh} />
+        <TagGroup label={t.whatFailed} hint={t.optional} options={t.errors} custom={customTags.errors} selected={errs} multi accent={RED} groupKey="errors" lang={lang} onToggle={(s) => toggle(errs, setErrs, s)} onAdd={(v) => { onAddTag('errors', v); setErrs((a) => a.includes(v) ? a : [...a, v]); }} onRename={onRenameTag} onAskDelete={(g, v) => setConfirmDel({ group: g, value: v })} addLabel={t.add} addPh={t.addPh} />
 
         <span style={lbl}>{t.notes} <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· {t.optional}</span></span>
         <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} placeholder={t.notesPh} style={{ width: '100%', padding: '10px 12px', background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, color: 'var(--tx)', fontSize: 14, fontFamily: 'inherit' }} />
@@ -425,6 +469,23 @@ function TradeModal({ trade, entry, lang, customTags, onAddTag, onClose, onSaved
           </div>
         </div>
       </div>
+
+      {/* Confirmación iluminada al borrar un tag propio */}
+      {confirmDel && (
+        <div onClick={() => setConfirmDel(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(6,9,16,.62)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18, zIndex: 200 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(94vw,400px)', background: 'var(--card)', border: '1px solid var(--amber)', borderRadius: 18, padding: 22, boxShadow: '0 0 0 1px var(--amber), 0 0 38px -8px var(--amber), 0 24px 60px rgba(0,0,0,.5)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+              <span style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(255,192,77,.14)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--amber)', fontSize: 19 }}>🗑</span>
+              <div style={{ fontSize: 16, fontWeight: 700 }}>{t.delTitle} “{confirmDel.value}”</div>
+            </div>
+            <div style={{ fontSize: 13.5, color: 'var(--mut)', lineHeight: 1.6 }}>{t.delBody}</div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 18 }}>
+              <button className="btn btn-ghost" onClick={() => setConfirmDel(null)}>{t.delCancel}</button>
+              <button className="btn" style={{ background: RED, border: 'none', color: '#fff', fontWeight: 600 }} onClick={() => { onDeleteTag(confirmDel.group, confirmDel.value); setConfirmDel(null); }}>{t.delOk}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
