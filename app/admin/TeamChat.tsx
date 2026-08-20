@@ -284,10 +284,10 @@ function TeamChatInner() {
 
       {/* Ventanas acopladas: varios chats abiertos a la vez */}
       <div className="teamchat-docks" style={{ position: 'fixed', right: 16, bottom: 12, display: 'flex', gap: 12, alignItems: 'flex-end', zIndex: 1500 }}>
-        {docks.map((id) => {
+        {docks.map((id, i) => {
           const c = channels.find((x) => x.id === id); if (!c) return null;
           const title = c.kind === 'dm' ? (teamById[c.members.find((m) => m !== me) || '']?.name || c.name) : '# ' + c.name;
-          return <DockWindow key={id} channelId={id} title={title} me={meP} lang={lang as any} onClose={() => closeDock(id)} onActivity={loadChannels} />;
+          return <DockWindow key={id} channelId={id} title={title} me={meP} lang={lang as any} onClose={() => closeDock(id)} onActivity={loadChannels} index={i} />;
         })}
       </div>
 
@@ -334,10 +334,29 @@ function ConvCard({ c, active, online, en, onClick }: { c: any; active: boolean;
   );
 }
 
-// Ventana de chat acoplada (mini). Tiene su propio estado y tiempo real.
-function DockWindow({ channelId, title, me, lang, onClose, onActivity }: { channelId: string; title: string; me: Presence | null; lang: 'es' | 'en'; onClose: () => void; onActivity: () => void }) {
+// Ventana de chat acoplada (flotante). Estado y tiempo real propios.
+// El empleado la puede MOVER (arrastrando la cabecera), AGRANDAR (esquina o
+// botón expandir) y RECOGER (chevron). Nunca se sale de la pantalla y recuerda
+// su tamaño y posición entre sesiones (localStorage). En móvil se ancla abajo.
+type Box = { x: number; y: number; w: number; h: number };
+const DOCK_MIN_W = 260, DOCK_MIN_H = 240, DOCK_DEF_W = 320, DOCK_DEF_H = 440, DOCK_BAR = 42, DOCK_PAD = 12;
+const clampBox = (b: Box): Box => {
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const w = Math.max(DOCK_MIN_W, Math.min(b.w, vw - 16));
+  const h = Math.max(DOCK_MIN_H, Math.min(b.h, vh - 16));
+  const x = Math.max(8, Math.min(b.x, vw - w - 8));
+  const y = Math.max(8, Math.min(b.y, vh - h - 8));
+  return { x, y, w, h };
+};
+
+function DockWindow({ channelId, title, me, lang, onClose, onActivity, index }: { channelId: string; title: string; me: Presence | null; lang: 'es' | 'en'; onClose: () => void; onActivity: () => void; index: number }) {
   const [rows, setRows] = useState<any[]>([]);
   const [min, setMin] = useState(false);
+  const [mobile, setMobile] = useState(false);
+  const [box, setBox] = useState<Box>({ x: 0, y: 0, w: DOCK_DEF_W, h: DOCK_DEF_H });
+  const prevBox = useRef<Box | null>(null);   // para el botón expandir (recuerda el tamaño anterior)
+  const KEY = 'onyx_dock_' + channelId;
+
   async function load() {
     try { const r = await fetch('/api/team/chat/messages?channel=' + channelId); const j = await r.json(); setRows(j.messages || []); } catch {}
     try { await fetch('/api/team/chat/read', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ channel: channelId }) }); } catch {}
@@ -347,20 +366,69 @@ function DockWindow({ channelId, title, me, lang, onClose, onActivity }: { chann
   async function send(text: string, attachments: Att[]) { const j = await postMessage(channelId, text, attachments); if (j.ok) { await load(); ping(); onActivity(); } }
   const typingLabel = typing.length ? `${typing[0]} ${lang === 'en' ? 'is typing…' : 'está escribiendo…'}` : '';
 
+  // Al montar: leer tamaño/posición guardados; si no hay, esquina inferior derecha (apilando).
+  useEffect(() => {
+    const isM = window.innerWidth <= 560; setMobile(isM);
+    if (isM) return;
+    let s: any = null; try { s = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch {}
+    const w = s?.w || DOCK_DEF_W, h = s?.h || DOCK_DEF_H;
+    const off = index * 30;
+    const x = s?.x != null ? s.x : window.innerWidth - w - 16 - off;
+    const y = s?.y != null ? s.y : window.innerHeight - h - 16 - off;
+    setBox(clampBox({ x, y, w, h }));
+  }, []);
+  // Si cambia el tamaño de la ventana del navegador, reacomodar dentro de la pantalla.
+  useEffect(() => {
+    const f = () => { const isM = window.innerWidth <= 560; setMobile(isM); if (!isM) setBox((b) => clampBox(b)); };
+    window.addEventListener('resize', f); return () => window.removeEventListener('resize', f);
+  }, []);
+  const persist = (b: Box) => { try { localStorage.setItem(KEY, JSON.stringify(b)); } catch {} };
+
+  // Arrastrar desde la cabecera.
+  function startDrag(e: React.PointerEvent) {
+    if (mobile) return;
+    const sx = e.clientX, sy = e.clientY, ox = box.x, oy = box.y;
+    const move = (ev: PointerEvent) => setBox((b) => clampBox({ ...b, x: ox + (ev.clientX - sx), y: oy + (ev.clientY - sy) }));
+    const up = () => { document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up); document.body.style.userSelect = ''; setBox((b) => { persist(b); return b; }); };
+    document.addEventListener('pointermove', move); document.addEventListener('pointerup', up); document.body.style.userSelect = 'none';
+  }
+  // Redimensionar desde la esquina inferior derecha.
+  function startResize(e: React.PointerEvent) {
+    e.stopPropagation();
+    const sx = e.clientX, sy = e.clientY, ow = box.w, oh = box.h;
+    const move = (ev: PointerEvent) => setBox((b) => clampBox({ ...b, w: ow + (ev.clientX - sx), h: oh + (ev.clientY - sy) }));
+    const up = () => { document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up); document.body.style.userSelect = ''; setBox((b) => { persist(b); return b; }); };
+    document.addEventListener('pointermove', move); document.addEventListener('pointerup', up); document.body.style.userSelect = 'none';
+  }
+  // Expandir / restaurar.
+  function toggleExpand() {
+    if (prevBox.current) { const b = clampBox(prevBox.current); prevBox.current = null; setBox(b); persist(b); }
+    else { prevBox.current = box; const b = clampBox({ x: 8, y: 8, w: Math.min(760, window.innerWidth - 16), h: window.innerHeight - 16 }); setBox(b); persist(b); }
+  }
+
+  const barBtn: any = { width: 28, height: 28, borderRadius: 8, background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--mut)', display: 'flex', alignItems: 'center', justifyContent: 'center' };
+  const frame: any = mobile
+    ? { width: '100%', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: '14px 14px 0 0', boxShadow: '0 -6px 30px rgba(0,0,0,.35)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }
+    : { position: 'fixed', left: box.x, top: box.y, width: box.w, height: min ? undefined : box.h, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, boxShadow: '0 18px 50px rgba(0,0,0,.5)', overflow: 'hidden', display: 'flex', flexDirection: 'column', zIndex: 1600 };
+  const innerH = Math.max(160, box.h - DOCK_BAR - 60);
+
   return (
-    <div className="teamchat-dock" style={{ width: 300, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: '12px 12px 0 0', boxShadow: '0 -6px 30px rgba(0,0,0,.35)', overflow: 'hidden' }}>
-      <div className="row between" style={{ padding: '8px 11px', borderBottom: min ? 'none' : '1px solid var(--line)', background: 'var(--bg2)', cursor: 'pointer' }} onClick={() => setMin((m) => !m)}>
-        <b style={{ fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</b>
-        <span className="row" style={{ gap: 8 }}>
-          <span style={{ fontSize: 13, color: 'var(--mut)' }}>{min ? '▴' : '▾'}</span>
-          <button onClick={(e) => { e.stopPropagation(); onClose(); }} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--mut)', fontSize: 14 }}>✕</button>
-        </span>
+    <div className="teamchat-dock" style={frame}>
+      <div onPointerDown={startDrag} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderBottom: min ? 'none' : '1px solid var(--line)', background: 'var(--bg2)', cursor: mobile ? 'default' : 'grab', flex: 'none', touchAction: 'none' }}>
+        {!mobile && <span style={{ color: 'var(--mut)', display: 'flex' }}><Icon name="grip" size={16} /></span>}
+        <b style={{ fontSize: 13, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</b>
+        {!mobile && <button title={prevBox.current ? (lang === 'en' ? 'Restore' : 'Restaurar') : (lang === 'en' ? 'Expand' : 'Expandir')} onPointerDown={(e) => e.stopPropagation()} onClick={toggleExpand} style={barBtn}><Icon name="expand" size={15} /></button>}
+        <button title={min ? (lang === 'en' ? 'Open' : 'Abrir') : (lang === 'en' ? 'Collapse' : 'Recoger')} onPointerDown={(e) => e.stopPropagation()} onClick={() => setMin((m) => !m)} style={barBtn}><Icon name="chevronDown" size={16} style={{ transform: min ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }} /></button>
+        <button title={lang === 'en' ? 'Close' : 'Cerrar'} onPointerDown={(e) => e.stopPropagation()} onClick={onClose} style={barBtn}><Icon name="x" size={15} /></button>
       </div>
       {!min && (
-        <div style={{ padding: '8px 10px' }}>
-          <ChatThread messages={toChat(rows, me?.id || '')} lang={lang} onSend={send} onTyping={sendTyping} mentionSource={mentionSource} showAuthors height={260} typingLabel={typingLabel}
+        <div style={{ flex: 1, minHeight: 0, padding: '8px 10px', display: 'flex', flexDirection: 'column' }}>
+          <ChatThread messages={toChat(rows, me?.id || '')} lang={lang} onSend={send} onTyping={sendTyping} mentionSource={mentionSource} showAuthors height={mobile ? 300 : innerH} typingLabel={typingLabel}
             placeholder={lang === 'en' ? 'Type…' : 'Escribe…'} />
         </div>
+      )}
+      {!min && !mobile && (
+        <div onPointerDown={startResize} title={lang === 'en' ? 'Resize' : 'Cambiar tamaño'} style={{ position: 'absolute', right: 2, bottom: 2, width: 18, height: 18, cursor: 'nwse-resize', color: 'var(--mut)', display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end', touchAction: 'none' }}><Icon name="resize" size={16} /></div>
       )}
     </div>
   );

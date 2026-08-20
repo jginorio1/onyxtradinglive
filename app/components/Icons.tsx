@@ -9,7 +9,7 @@ export type IconName =
   | 'userPlus' | 'window' | 'back' | 'sparkles' | 'hash' | 'info' | 'check'
   | 'refresh' | 'hand' | 'lock' | 'trash' | 'x' | 'bulb' | 'image' | 'file'
   | 'clock' | 'ticket' | 'shield' | 'user' | 'dots' | 'chevronDown' | 'bell'
-  | 'message' | 'flag';
+  | 'message' | 'flag' | 'expand' | 'grip' | 'resize';
 
 const P: Record<IconName, JSX.Element> = {
   search: <><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></>,
@@ -43,6 +43,9 @@ const P: Record<IconName, JSX.Element> = {
   bell: <><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6z" /><path d="M10.5 20a1.8 1.8 0 0 0 3 0" /></>,
   message: <path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9A1.5 1.5 0 0 1 18.5 16H9l-4 4V5.5z" />,
   flag: <><path d="M5 21V4M5 4h11l-2 4 2 4H5" /></>,
+  expand: <><path d="M4 14v6h6M20 10V4h-6M14 10l6-6M10 14l-6 6" /></>,
+  grip: <><path d="M8 6h.01M8 12h.01M8 18h.01M14 6h.01M14 12h.01M14 18h.01" /></>,
+  resize: <><path d="M20 9L9 20M20 15l-5 5" /></>,
 };
 
 export default function Icon({ name, size = 18, stroke = 1.8, style, className }: {
