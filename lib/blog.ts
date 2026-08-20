@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { unstable_cache, revalidateTag } from 'next/cache';
 
 // ============================================================
 // Blog público. Artículos bilingües (ES/EN) con programación de publicación.
@@ -136,7 +137,7 @@ export async function relatedByTags(post: any, limit = 3) {
 }
 
 // Lista de artículos ya publicados (para la página pública /blog).
-export async function listPublished(limit = 60) {
+async function _listPublished(limit = 60) {
   const nowIso = new Date().toISOString();
   let r = await supabaseAdmin.from('blog_posts')
     .select(PUB_COLS2).eq('status', 'published').lte('published_at', nowIso)
@@ -146,6 +147,9 @@ export async function listPublished(limit = 60) {
     .order('published_at', { ascending: false }).limit(limit) as any;
   return (r.data || []) as any[];
 }
+// Cacheado en el servidor (la lista se lee en cada visita al blog). Se refresca
+// solo cada 2 min; al guardar/publicar un post invalidamos la etiqueta.
+export const listPublished = unstable_cache(_listPublished, ['blog_published'], { revalidate: 120, tags: ['blog_posts'] });
 
 // Un artículo publicado por su slug — matchea el slug ES o el slug EN.
 export async function getPublishedBySlug(slug: string) {
@@ -213,6 +217,7 @@ export async function savePost(b: any) {
       row.slug = newSlug;
     }
     await updateTolerant(b.id, row);
+    try { revalidateTag('blog_posts'); } catch {}
     return { id: b.id };
   }
   // Post NUEVO: slug corto con keyword (3-6 palabras), cortado a palabra completa.
@@ -222,6 +227,7 @@ export async function savePost(b: any) {
   let ins = await supabaseAdmin.from('blog_posts').insert(row).select('id').single();
   if (ins.error && ('slug_en' in row || 'author_id' in row)) { delete row.slug_en; delete row.author_id; ins = await supabaseAdmin.from('blog_posts').insert(row).select('id').single(); }
   if (ins.error) throw new Error(ins.error.message);
+  try { revalidateTag('blog_posts'); } catch {}
   return { id: (ins.data as any).id, slug: row.slug };
 }
 
@@ -237,5 +243,6 @@ export async function publishDuePosts() {
   const ids = (data || []).map((r: any) => r.id);
   if (!ids.length) return 0;
   await supabaseAdmin.from('blog_posts').update({ status: 'published', published_at: nowIso }).in('id', ids);
+  try { revalidateTag('blog_posts'); } catch {}
   return ids.length;
 }

@@ -46,7 +46,7 @@ export default async function BlogIndex() {
           const excerpt = pref(es ? p.excerpt_es : p.excerpt_en, es ? p.excerpt_en : p.excerpt_es);
           return (
             <Link key={p.id} href={es ? `/blog/${p.slug}` : `/en/blog/${slugFor(p, 'en')}`} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8, textDecoration: 'none', color: 'inherit', overflow: 'hidden', padding: 0 }}>
-              <img src={blogCoverUrl(p, es ? 'es' : 'en')} alt="" style={{ width: '100%', height: 150, objectFit: 'cover' }} />
+              <img src={blogCoverUrl(p, es ? 'es' : 'en')} alt="" loading="lazy" decoding="async" width={400} height={150} style={{ width: '100%', height: 150, objectFit: 'cover' }} />
               <div style={{ padding: '4px 16px 16px', display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
                 <div className="muted" style={{ fontSize: 12 }}>{fmtDate(p.published_at, es)}</div>
                 <h3 style={{ fontSize: 17, lineHeight: 1.3 }}>{title}</h3>

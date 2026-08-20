@@ -138,7 +138,7 @@ export default async function BlogArticle({ params }: { params: { slug: string }
         </div>
       </div>
 
-      <img src={cover} alt={coverAlt} style={{ width: '100%', borderRadius: 14, margin: '4px 0 18px' }} />
+      <img src={cover} alt={coverAlt} decoding="async" fetchPriority="high" width={760} height={399} style={{ width: '100%', height: 'auto', borderRadius: 14, margin: '4px 0 18px' }} />
       <article className="blog-body" dangerouslySetInnerHTML={{ __html: html }} />
       <BlogCharts />
 
@@ -165,7 +165,7 @@ export default async function BlogArticle({ params }: { params: { slug: string }
               const rt = pref(es ? r.title_es : r.title_en, es ? r.title_en : r.title_es);
               return (
                 <Link key={r.id} href={es ? `/blog/${r.slug}` : `/en/blog/${slugFor(r, 'en')}`} className="card" style={{ padding: 0, overflow: 'hidden', textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column' }}>
-                  <img src={blogCoverUrl(r, es ? 'es' : 'en')} alt="" style={{ width: '100%', height: 96, objectFit: 'cover' }} />
+                  <img src={blogCoverUrl(r, es ? 'es' : 'en')} alt="" loading="lazy" decoding="async" width={260} height={96} style={{ width: '100%', height: 96, objectFit: 'cover' }} />
                   <div style={{ padding: '10px 12px' }}>
                     <div style={{ fontSize: 13.5, fontWeight: 600, lineHeight: 1.35 }}>{rt}</div>
                     <span style={{ color: 'var(--brand)', fontSize: 12.5, fontWeight: 600 }}>{es ? 'Leer →' : 'Read →'}</span>
