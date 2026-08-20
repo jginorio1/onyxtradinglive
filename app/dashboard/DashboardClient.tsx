@@ -18,7 +18,11 @@ import Nudge from './Nudge';
 // ── Carga bajo demanda ──────────────────────────────────────────────
 // Todo lo que vive detrás de un tile, colapsado o en pop-up se carga sólo
 // cuando hace falta: el hub (KPIs) hidrata más ligero y el primer clic responde.
-const _lazy = { ssr: false as const, loading: () => <div className="muted" style={{ padding: 16, fontSize: 13 }}>…</div> };
+// OJO: next/dynamic exige que las OPCIONES sean un objeto literal escrito en la
+// misma llamada (no una constante compartida) — si no, el build de Next falla
+// con "options must be an object literal". Por eso el { ssr, loading } va en
+// línea en cada dynamic(); el placeholder sí puede ser una función con nombre.
+const lazyLoad = () => <div className="muted" style={{ padding: 16, fontSize: 13 }}>…</div>;
 // Funciones de import reutilizadas por next/dynamic Y por la precarga (mismo
 // especificador → el navegador cachea el módulo una sola vez). Así, cuando el
 // usuario pulsa un tile, el código ya está descargado y abre al instante.
@@ -27,23 +31,22 @@ const impChallenge = () => import('./Challenge');
 const impCosts = () => import('./Costs');
 const impCompare = () => import('./CompareAccounts');
 const impPlan = () => import('./PlanHabits');
-const Journal = dynamic(impJournal, _lazy);
-const LotCalculator = dynamic(() => import('./LotCalculator'), _lazy);
-const Challenge = dynamic(impChallenge, _lazy);
-const Costs = dynamic(impCosts, _lazy);
-const AccountExtras = dynamic(() => import('./AccountExtras'), _lazy);
-const CompareAccounts = dynamic(impCompare, _lazy);
-const PlanHabits = dynamic(impPlan, _lazy);
+const Journal = dynamic(impJournal, { ssr: false, loading: lazyLoad });
+const LotCalculator = dynamic(() => import('./LotCalculator'), { ssr: false, loading: lazyLoad });
+const Challenge = dynamic(impChallenge, { ssr: false, loading: lazyLoad });
+const Costs = dynamic(impCosts, { ssr: false, loading: lazyLoad });
+const AccountExtras = dynamic(() => import('./AccountExtras'), { ssr: false, loading: lazyLoad });
+const CompareAccounts = dynamic(impCompare, { ssr: false, loading: lazyLoad });
+const PlanHabits = dynamic(impPlan, { ssr: false, loading: lazyLoad });
 // Laterales del hub (Noticias, Neto real, Coach): solo-navegador (usan portal,
 // idioma y fetch). Se cargan en cliente (ssr:false) SIN placeholder "…" y se
 // precargan de inmediato al montar (ver useEffect) para que aparezcan rápido.
-const _rail = { ssr: false as const, loading: () => null };
 const impNews = () => import('./News');
 const impNet = () => import('./NetRealCard');
 const impCoach = () => import('./CoachCard');
-const News = dynamic(impNews, _rail);
-const NetRealCard = dynamic(impNet, _rail);
-const CoachCard = dynamic(impCoach, _rail);
+const News = dynamic(impNews, { ssr: false });
+const NetRealCard = dynamic(impNet, { ssr: false });
+const CoachCard = dynamic(impCoach, { ssr: false });
 // Precarga en reposo: cuando el navegador está libre, bajamos las secciones más
 // usadas (reto, plan, journal, costos, comparar) para que abran sin espera.
 const _preloadViews = () => { try { impChallenge(); impPlan(); impJournal(); impCosts(); impCompare(); } catch {} };
