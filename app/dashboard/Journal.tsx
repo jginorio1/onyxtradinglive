@@ -43,6 +43,7 @@ const J = {
     market: 'Condición de mercado', whatFailed: '¿Qué falló?', optional: 'opcional', adapts: 'se adapta a tu estilo',
     add: 'Añadir', addPh: 'Escribe y Enter', minHint: 'Con grado + 1 emoción ya cuenta como documentada',
     undoc: 'Sin diario', pendingTitle: 'operaciones sin diario', pendingSub: 'Documéntalas mientras las recuerdas', docNow: 'Documentar ahora',
+    streak: 'Racha', days: 'días', day: 'día',
   },
   en: {
     lotTitle: '📦 Lot statistics', volToday: 'Today', volWeek: 'Week', volMonth: 'Month', volYear: 'Year', volTotal: 'Total', lots: 'lots', byPair: 'Volume by pair',
@@ -60,6 +61,7 @@ const J = {
     market: 'Market condition', whatFailed: 'What went wrong?', optional: 'optional', adapts: 'adapts to your style',
     add: 'Add', addPh: 'Type and Enter', minHint: 'Grade + 1 emotion already counts as documented',
     undoc: 'No journal', pendingTitle: 'trades without a journal', pendingSub: 'Document them while you remember', docNow: 'Document now',
+    streak: 'Streak', days: 'days', day: 'day',
   },
 };
 
@@ -165,6 +167,28 @@ export default function Journal({ trades, lang, focusUndoc = false }: { trades: 
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'onyx_operaciones.csv'; a.click();
   }
 
+  // Calificar en 1 toque desde la tabla, sin abrir el modal. Guarda al instante.
+  function quickGrade(id: string, g: string) {
+    const cur: any = entries[id] || { trade_id: id, notes: null, tags: [], emotion: null, image_url: null };
+    const grade = cur.grade === g ? '' : g;
+    setEntries({ ...entries, [id]: { ...cur, grade: grade || null } });
+    fetch('/api/journal', { method: 'POST', body: JSON.stringify({ trade_id: id, grade }) }).catch(() => {});
+  }
+
+  // Racha de diario: días seguidos (hasta hoy o ayer) documentando al menos una
+  // operación. Motiva el hábito sin castigar si aún no documentó hoy.
+  const streak = useMemo(() => {
+    const days = new Set<string>();
+    Object.values(entries).forEach((e: any) => { if (isDocumented(e) && e.updated_at) days.add(String(e.updated_at).slice(0, 10)); });
+    if (!days.size) return 0;
+    const iso = (d: Date) => d.toISOString().slice(0, 10);
+    const cur = new Date(iso(new Date()));
+    if (!days.has(iso(cur))) { cur.setUTCDate(cur.getUTCDate() - 1); if (!days.has(iso(cur))) return 0; }
+    let n = 0;
+    while (days.has(iso(cur))) { n++; cur.setUTCDate(cur.getUTCDate() - 1); }
+    return n;
+  }, [entries]);
+
   const inp = { margin: 0, padding: '7px 9px', width: 'auto', fontSize: 13 } as any;
   const box = { background: 'var(--bg2)', borderRadius: 12, padding: 14, textAlign: 'center' as const };
 
@@ -214,7 +238,10 @@ export default function Journal({ trades, lang, focusUndoc = false }: { trades: 
       <div className="card">
         <div className="row between" style={{ marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
           <h3 style={{ display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic"><OnyxIcon emoji="📋" size={16} /></span> {t.trades.replace('📋 ', '')} <span className="muted" style={{ fontSize: 13, fontWeight: 400 }}>· {t.showing} {view.length}</span></h3>
-          <button className="btn btn-ghost" onClick={exportCSV}>⬇ {t.export}</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            {streak > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 11px', borderRadius: 999, fontSize: 13, fontWeight: 600, background: 'rgba(255,192,77,.12)', border: '1px solid var(--amber)', color: 'var(--amber)' }}><OnyxIcon emoji="🔥" size={14} /> {t.streak}: {streak} {streak === 1 ? t.day : t.days}</span>}
+            <button className="btn btn-ghost" onClick={exportCSV}>⬇ {t.export}</button>
+          </div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
           <select value={fSym} onChange={(e) => setFSym(e.target.value)} className="jfilter"><option value="all">{t.pair}: {t.all}</option>{symbols.map((s) => <option key={s} value={s}>{s}</option>)}</select>
@@ -251,7 +278,14 @@ export default function Journal({ trades, lang, focusUndoc = false }: { trades: 
                     <td style={{ textAlign: 'right' }}>{(+x.volume).toFixed(2)}</td>
                     <td style={{ textAlign: 'right' }}><span className={'jchip ' + (gross >= 0 ? 'pos' : 'neg')}>{money2(gross)}</span></td>
                     <td style={{ textAlign: 'right' }}><span className={'jchip ' + (net >= 0 ? 'pos' : 'neg')}>{money2(net)}</span></td>
-                    <td style={{ textAlign: 'center' }}>{e?.grade ? <span style={{ fontSize: 11, fontWeight: 800, padding: '2px 7px', borderRadius: 6, border: '1px solid ' + (e.grade === 'A' ? GREEN : e.grade === 'B' ? GOLD : RED), color: e.grade === 'A' ? GREEN : e.grade === 'B' ? GOLD : RED }}>{e.grade}</span> : has ? (e?.image_url ? '🖼️' : t.hasNote) : <span style={{ color: 'var(--amber)', fontSize: 15 }}>•</span>}</td>
+                    <td style={{ textAlign: 'center' }}>
+                      <div onClick={(ev) => ev.stopPropagation()} style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                        {(['A', 'B', 'C'] as const).map((g) => { const on = e?.grade === g; const gc = g === 'A' ? GREEN : g === 'B' ? GOLD : RED; return (
+                          <button key={g} onClick={() => quickGrade(x.id, g)} title={g} style={{ cursor: 'pointer', width: 22, height: 22, padding: 0, borderRadius: 6, fontSize: 11, fontWeight: 800, lineHeight: 1, border: '1px solid ' + (on ? gc : 'var(--line)'), background: on ? (g === 'A' ? 'rgba(52,226,160,.18)' : g === 'B' ? 'rgba(255,192,77,.18)' : 'rgba(255,107,125,.18)') : 'transparent', color: on ? gc : 'var(--mut)' }}>{g}</button>
+                        ); })}
+                        {(e?.notes || e?.image_url) ? <span style={{ marginLeft: 3, fontSize: 12 }}>{e?.image_url ? '🖼️' : t.hasNote}</span> : (!has && <span style={{ marginLeft: 2, color: 'var(--amber)', fontSize: 14 }}>•</span>)}
+                      </div>
+                    </td>
                   </tr>); })}
               </tbody>
             </table>

@@ -45,6 +45,13 @@ export const NOTIF_CATALOG: NotifDef[] = [
     editableChannels: ['bell', 'push', 'telegram'],
   },
   {
+    key: 'journal_reminder', group: 'Plan y hábitos',
+    es: { title: '📓 Tienes operaciones sin diario', body: '{count} operaciones esperan tu diario. Documéntalas mientras las recuerdas.' },
+    en: { title: '📓 You have trades without a journal', body: '{count} trades are waiting for your journal. Document them while you remember.' },
+    bell: true, push: false, telegram: false, tgKind: 'daily', url: '/dashboard?view=operaciones',
+    editableChannels: ['bell', 'push', 'telegram'],
+  },
+  {
     key: 'weekly_summary', group: 'Resúmenes', extra: true,
     es: { title: '📈 Tu semana en Onyx', body: 'Ya tienes tu resumen semanal listo para revisar.' },
     en: { title: '📈 Your week on Onyx', body: 'Your weekly recap is ready to review.' },
