@@ -107,12 +107,18 @@ async function refreshFollowerCount(providerId: string) {
   await supabaseAdmin.from('strategy_providers').update({ followers: count || 0 }).eq('id', providerId);
 }
 
-// Webhook: activar una suscripción de copia (checkout completado). Crea el enlace.
-export async function activateFollow(o: { followId: string; subId?: string }) {
+// Webhook: activar una suscripción de copia (checkout completado). Crea el enlace
+// y guarda la marca de agua (F4): el % de comisión por rendimiento del proveedor,
+// el cliente de Stripe (para cobrarla) y desde cuándo se mide la ganancia nueva.
+export async function activateFollow(o: { followId: string; subId?: string; customerId?: string }) {
   const { data: f } = await supabaseAdmin.from('copy_follows').select('*').eq('id', o.followId).maybeSingle();
   if (!f) return;
   const linkId = await ensureLink(f);
-  await supabaseAdmin.from('copy_follows').update({ status: 'active', link_id: linkId, stripe_sub_id: o.subId || (f as any).stripe_sub_id, updated_at: new Date().toISOString() }).eq('id', o.followId);
+  const { data: prov } = await supabaseAdmin.from('strategy_providers').select('perf_fee_pct').eq('id', (f as any).provider_id).maybeSingle();
+  const patch: any = { status: 'active', link_id: linkId, stripe_sub_id: o.subId || (f as any).stripe_sub_id, perf_fee_pct: Number((prov as any)?.perf_fee_pct) || 0, updated_at: new Date().toISOString() };
+  if (o.customerId) patch.stripe_customer_id = o.customerId;
+  if (!(f as any).perf_started_at) patch.perf_started_at = new Date().toISOString();
+  await supabaseAdmin.from('copy_follows').update(patch).eq('id', o.followId);
   await refreshFollowerCount((f as any).provider_id);
 }
 

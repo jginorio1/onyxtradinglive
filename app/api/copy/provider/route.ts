@@ -13,7 +13,7 @@ export async function GET() {
     const { data: { user } } = await sb.auth.getUser();
     if (!user) return NextResponse.json({ error: 'no autorizado', code: 'no_auth' }, { status: 401 });
     const [{ data: providers }, { data: accounts }] = await Promise.all([
-      supabaseAdmin.from('strategy_providers').select('id,account_id,display_name,tier,score,pillars,stats,followers,fee_month,verified,listed,status,scored_at').eq('user_id', user.id),
+      supabaseAdmin.from('strategy_providers').select('id,account_id,display_name,tier,score,pillars,stats,followers,fee_month,perf_fee_pct,flags,verified,listed,auto_delisted,status,scored_at').eq('user_id', user.id),
       supabaseAdmin.from('trading_accounts').select('id,nickname,broker,platform').eq('user_id', user.id),
     ]);
     return NextResponse.json({ ok: true, providers: providers || [], accounts: accounts || [] });
@@ -48,11 +48,12 @@ export async function POST(req: Request) {
     const displayName = String(b.display_name || (existing as any)?.display_name || (prof as any)?.full_name || (acc as any).nickname || 'Onyx Trader').slice(0, 40);
     const feeMonth = b.fee_month === undefined ? (existing as any)?.fee_month ?? null : (b.fee_month === '' || b.fee_month == null ? null : Math.max(0, Math.min(999, Number(b.fee_month) || 0)));
     const listed = b.listed === undefined ? ((existing as any)?.listed ?? true) : !!b.listed;
+    const perfFee = b.perf_fee_pct === undefined ? ((existing as any)?.perf_fee_pct ?? 0) : Math.max(0, Math.min(30, Number(b.perf_fee_pct) || 0));
 
     const row: any = {
       user_id: user.id, account_id: accountId, display_name: displayName,
-      score: res.score, tier: res.tier, pillars: res.pillars, stats: res.stats,
-      fee_month: feeMonth, listed, status: (existing as any)?.status || 'active',
+      score: res.score, tier: res.tier, pillars: res.pillars, stats: res.stats, flags: res.flags,
+      fee_month: feeMonth, perf_fee_pct: perfFee, listed, status: (existing as any)?.status || 'active',
       scored_at: new Date().toISOString(), updated_at: new Date().toISOString(),
     };
     const { data: saved, error } = await supabaseAdmin.from('strategy_providers').upsert(row, { onConflict: 'account_id' }).select('id,account_id,display_name,tier,score,pillars,stats,followers,fee_month,verified,listed,status,scored_at').maybeSingle();

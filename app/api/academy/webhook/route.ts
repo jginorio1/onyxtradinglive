@@ -31,7 +31,7 @@ export async function POST(req: Request) {
       const md = s.metadata || {};
       if (md.onyx_kind === 'copyfollow' && md.onyx_follow) {
         // Onyx Copy marketplace: activa la copia y crea el enlace master→slave.
-        await activateFollow({ followId: md.onyx_follow, subId: s.subscription || undefined });
+        await activateFollow({ followId: md.onyx_follow, subId: s.subscription || undefined, customerId: s.customer || undefined });
       } else if (md.onyx_mentor && md.onyx_student && md.onyx_kind === 'copy') {
         // Copy del mentor: activa la suscripción (queda pendiente de que conecte
         // su cuenta). La comisión se registra por factura (abajo).

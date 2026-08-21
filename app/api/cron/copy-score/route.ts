@@ -17,19 +17,26 @@ export async function GET(req: Request) {
   }
   try {
     const { data: providers } = await supabaseAdmin.from('strategy_providers')
-      .select('id,user_id,account_id,verified,tier').eq('status', 'active').limit(1000);
-    let updated = 0; const errors: string[] = [];
+      .select('id,user_id,account_id,verified,tier,listed,auto_delisted').eq('status', 'active').limit(1000);
+    let updated = 0, delisted = 0, relisted = 0; const errors: string[] = [];
     for (const p of (providers || []) as any[]) {
       try {
         const res = await computeScoreForAccount(p.user_id, p.account_id, { verified: !!p.verified });
-        await supabaseAdmin.from('strategy_providers').update({
-          score: res.score, tier: res.tier, pillars: res.pillars, stats: res.stats,
+        // Circuit breaker: si rompe el drawdown de Silver o cae a 'none', se retira
+        // del ranking automáticamente. Si se recupera, se vuelve a listar (solo si
+        // el retiro fue automático, para no pisar una pausa manual del trader).
+        const breach = res.stats.maxDDpct > 15 || res.tier === 'none';
+        const patch: any = {
+          score: res.score, tier: res.tier, pillars: res.pillars, stats: res.stats, flags: res.flags,
           scored_at: new Date().toISOString(), updated_at: new Date().toISOString(),
-        }).eq('id', p.id);
+        };
+        if (breach && p.listed) { patch.listed = false; patch.auto_delisted = true; delisted++; }
+        else if (!breach && p.auto_delisted && !p.listed) { patch.listed = true; patch.auto_delisted = false; relisted++; }
+        await supabaseAdmin.from('strategy_providers').update(patch).eq('id', p.id);
         updated++;
       } catch (e: any) { errors.push(String(p.id) + ': ' + (e?.message || 'error')); }
     }
-    return NextResponse.json({ ok: true, updated, total: (providers || []).length, errors: errors.slice(0, 10) });
+    return NextResponse.json({ ok: true, updated, delisted, relisted, total: (providers || []).length, errors: errors.slice(0, 10) });
   } catch (e: any) {
     await logError('cron_copy_score', e);
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });

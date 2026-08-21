@@ -32,7 +32,7 @@ export default function OnyxCopyHub() {
     myEmpty: 'Aún no copias a nadie.', stop: 'Dejar de copiar', status: 'Estado',
     st_active: 'Activa', st_pending: 'Pendiente de pago', st_past_due: 'Pago pendiente', st_paused: 'Pausada', st_canceled: 'Cancelada',
     apply: 'Postular una cuenta', applyH: 'Onyx AI la califica y, si pasa, aparece en el ranking.', score: 'score', recompute: 'Recalcular',
-    price: 'Precio mensual ($)', save: 'Guardar', connectT: 'Cobra tus copias', connectD: 'Conecta tu cuenta con Stripe para recibir tu parte de cada seguidor.',
+    price: 'Precio mensual ($)', perfFee: 'Comisión rendimiento (%)', perfNote: 'de tus ganancias nuevas', perfEarn: 'De rendimiento', hwm: 'high-water mark', save: 'Guardar', connectT: 'Cobra tus copias', connectD: 'Conecta tu cuenta con Stripe para recibir tu parte de cada seguidor.',
     connectBtn: 'Conectar con Stripe', connected: 'Conectado y cobrando', pending: 'Conectado (completa datos)',
     earn: 'Tus cobros', net: 'Para ti (neto)', gross: 'Cobrado', fee: 'Comisión Onyx', followers: 'seguidores',
     tierGate: 'Para Gold/Diamond hace falta cuenta verificada (lo aprueba Onyx).',
@@ -48,7 +48,7 @@ export default function OnyxCopyHub() {
     myEmpty: 'You are not copying anyone yet.', stop: 'Stop copying', status: 'Status',
     st_active: 'Active', st_pending: 'Pending payment', st_past_due: 'Payment due', st_paused: 'Paused', st_canceled: 'Canceled',
     apply: 'List an account', applyH: 'Onyx AI grades it and, if it passes, it appears in the ranking.', score: 'score', recompute: 'Recompute',
-    price: 'Monthly price ($)', save: 'Save', connectT: 'Get paid for your copies', connectD: 'Connect your account with Stripe to receive your share of each follower.',
+    price: 'Monthly price ($)', perfFee: 'Performance fee (%)', perfNote: 'of your new profits', perfEarn: 'Performance', hwm: 'high-water mark', save: 'Save', connectT: 'Get paid for your copies', connectD: 'Connect your account with Stripe to receive your share of each follower.',
     connectBtn: 'Connect with Stripe', connected: 'Connected and billing', pending: 'Connected (complete details)',
     earn: 'Your earnings', net: 'For you (net)', gross: 'Charged', fee: 'Onyx fee', followers: 'followers',
     tierGate: 'Gold/Diamond require a verified account (approved by Onyx).',
@@ -112,8 +112,8 @@ export default function OnyxCopyHub() {
     if (j.ok) { toast(es ? '✓ Cuenta calificada.' : '✓ Account graded.', 'ok'); loadAll(); }
     else toast(j.error || 'Error', 'error');
   }
-  async function savePrice(p: any, fee: string) {
-    const r = await fetch('/api/copy/provider', { method: 'POST', body: JSON.stringify({ account_id: p.account_id, fee_month: fee }) });
+  async function saveProviderField(p: any, patch: any) {
+    const r = await fetch('/api/copy/provider', { method: 'POST', body: JSON.stringify({ account_id: p.account_id, ...patch }) });
     const j = await r.json();
     if (j.ok) { toast(es ? '✓ Guardado.' : '✓ Saved.', 'ok'); loadAll(); } else toast(j.error || 'Error', 'error');
   }
@@ -156,6 +156,7 @@ export default function OnyxCopyHub() {
                 <div style={{ textAlign: 'center' }}><div style={{ fontSize: 22, fontWeight: 800, color: TIERC[p.tier] }}>{p.score}</div><div className="muted" style={{ fontSize: 10 }}>{T.score}</div></div>
                 <div style={{ textAlign: 'right', minWidth: 96 }}>
                   {p.fee_month ? <div style={{ fontSize: 12 }}>{T.from} ${p.fee_month}/{T.mo}</div> : <div className="muted" style={{ fontSize: 11 }}>{T.notPayable}</div>}
+                  {p.perf_fee_pct > 0 && <div className="muted" style={{ fontSize: 10.5 }}>+{p.perf_fee_pct}% {T.perfNote}</div>}
                   <button className="btn btn-primary" style={{ fontSize: 12, marginTop: 6 }} onClick={() => openConfig(p)}>{T.copy}</button>
                 </div>
               </div>
@@ -208,7 +209,10 @@ export default function OnyxCopyHub() {
                       <>
                         <div style={{ textAlign: 'center' }}><div style={{ fontWeight: 800, color: TIERC[prov.tier] }}>{prov.score}</div><div className="muted" style={{ fontSize: 10 }}>{T.score}</div></div>
                         {badge(prov.tier, prov.tier === 'none' ? (es ? 'En evaluación' : 'In review') : prov.tier)}
-                        <input defaultValue={prov.fee_month || ''} placeholder={T.price} onBlur={(e) => { if (e.target.value !== String(prov.fee_month || '')) savePrice(prov, e.target.value); }} style={{ width: 110, margin: 0, padding: '7px 9px', fontSize: 13 }} />
+                        <input defaultValue={prov.fee_month || ''} placeholder={T.price} title={T.price} onBlur={(e) => { if (e.target.value !== String(prov.fee_month || '')) saveProviderField(prov, { fee_month: e.target.value }); }} style={{ width: 96, margin: 0, padding: '7px 9px', fontSize: 13 }} />
+                        <input defaultValue={prov.perf_fee_pct || ''} placeholder={T.perfFee} title={T.perfFee + ' (' + T.hwm + ')'} onBlur={(e) => { if (e.target.value !== String(prov.perf_fee_pct || '')) saveProviderField(prov, { perf_fee_pct: e.target.value }); }} style={{ width: 70, margin: 0, padding: '7px 9px', fontSize: 13 }} />
+                        {Array.isArray(prov.flags) && prov.flags.length > 0 && <span title={prov.flags.join(', ')} style={{ fontSize: 11, color: 'var(--amber)' }}>⚠ {prov.flags.length}</span>}
+                        {prov.auto_delisted && <span style={{ fontSize: 11, color: 'var(--red)' }}>{es ? 'retirado (drawdown)' : 'delisted (drawdown)'}</span>}
                         <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => applyAccount(a.id)} disabled={busy}>↻ {T.recompute}</button>
                       </>
                     ) : (
@@ -229,7 +233,7 @@ export default function OnyxCopyHub() {
               <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: 12, textAlign: 'center' }}><div className="muted" style={{ fontSize: 11 }}>{T.gross}</div><b style={{ fontSize: 18 }}>{money(earnings.totals?.gross_cents || 0)}</b></div>
               <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: 12, textAlign: 'center' }}><div className="muted" style={{ fontSize: 11 }}>{T.fee}</div><b style={{ fontSize: 18 }}>{money(earnings.totals?.fee_cents || 0)}</b></div>
             </div>
-            <div className="muted" style={{ fontSize: 12 }}>{(myProviders.reduce((s, p) => s + (p.followers || 0), 0))} {T.followers}</div>
+            <div className="muted" style={{ fontSize: 12 }}>{(myProviders.reduce((s, p) => s + (p.followers || 0), 0))} {T.followers}{earnings.totals?.perf_net_cents ? ` · ${T.perfEarn}: ${money(earnings.totals.perf_net_cents)}` : ''}</div>
           </div>
         </div>
       )}
@@ -255,6 +259,9 @@ export default function OnyxCopyHub() {
             <div style={{ display: 'flex', gap: 16, margin: '10px 0' }}>
               <label style={{ fontSize: 13, display: 'flex', gap: 6, alignItems: 'center' }}><input type="checkbox" checked={cfg.require_sl} onChange={(e) => setCfg({ ...cfg, require_sl: e.target.checked })} /> {T.reqSl}</label>
               <label style={{ fontSize: 13, display: 'flex', gap: 6, alignItems: 'center' }}><input type="checkbox" checked={cfg.reverse} onChange={(e) => setCfg({ ...cfg, reverse: e.target.checked })} /> {T.reverse}</label>
+            </div>
+            <div className="muted" style={{ fontSize: 12, marginTop: 8, padding: '8px 10px', background: 'var(--bg2)', borderRadius: 8 }}>
+              {cfg.provider.fee_month ? `$${cfg.provider.fee_month}/${T.mo}` : ''}{cfg.provider.perf_fee_pct > 0 ? ` · +${cfg.provider.perf_fee_pct}% ${T.perfNote} (${T.hwm})` : ''}
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
               <button className="btn btn-ghost" onClick={() => setCfg(null)}>{T.cancel}</button>
