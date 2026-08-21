@@ -1,6 +1,41 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { toast } from '@/lib/toast';
+
+// Interruptor moderno (pastilla iluminada).
+function Switch({ on, accent = '#34e2a0' }: { on: boolean; accent?: string }) {
+  return (
+    <span style={{ width: 42, height: 24, borderRadius: 999, flex: 'none', position: 'relative', transition: 'all .18s',
+      background: on ? accent : 'var(--line)', boxShadow: on ? `0 0 14px -2px ${accent}` : 'none' }}>
+      <span style={{ position: 'absolute', top: 3, left: on ? 21 : 3, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left .18s', boxShadow: '0 2px 5px rgba(0,0,0,.35)' }} />
+    </span>
+  );
+}
+// Tarjeta-interruptor iluminada: icono + título + descripción + switch.
+function ToggleCard({ on, onToggle, accent, icon, title, desc }: { on: boolean; onToggle: () => void; accent: string; icon: string; title: string; desc: string }) {
+  return (
+    <div onClick={onToggle} style={{ cursor: 'pointer', display: 'flex', gap: 12, alignItems: 'flex-start', padding: 14, borderRadius: 14,
+      background: on ? `linear-gradient(160deg, ${accent}1f, var(--bg2) 70%)` : 'var(--bg2)',
+      border: `1px solid ${on ? accent + '66' : 'var(--line)'}`,
+      boxShadow: on ? `0 0 0 1px ${accent}22, 0 12px 28px -16px ${accent}` : 'none', transition: 'all .18s' }}>
+      <span style={{ width: 34, height: 34, borderRadius: 10, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, background: `${accent}22`, border: `1px solid ${accent}55` }}>{icon}</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13.5, fontWeight: 700, marginBottom: 3 }}>{title}</div>
+        <div className="muted" style={{ fontSize: 12, lineHeight: 1.45 }}>{desc}</div>
+      </div>
+      <Switch on={on} accent={accent} />
+    </div>
+  );
+}
+// Fila-interruptor compacta (dentro de otra tarjeta).
+function ToggleRow({ on, onToggle, label }: { on: boolean; onToggle: () => void; label: string }) {
+  return (
+    <div onClick={onToggle} style={{ cursor: 'pointer', display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'space-between' }}>
+      <span style={{ fontSize: 13 }}>{label}</span>
+      <Switch on={on} accent="#c584ff" />
+    </div>
+  );
+}
 
 // Piloto automático del blog: llena el calendario con las fechas del mes (día sí,
 // día no) y el cron genera cada artículo justo antes de publicarlo.
@@ -45,6 +80,17 @@ export default function BlogAutopilot({ es, onChanged }: { es: boolean; onChange
     } catch { toast(es ? 'No se pudo planificar.' : 'Could not plan.'); }
     setBusy('');
   }
+  async function expandTopics() {
+    setBusy('topics');
+    await save({});   // guarda la lista actual antes de ampliar (para no duplicar)
+    try {
+      const r = await fetch('/api/admin/blog/autopilot', { method: 'POST', body: JSON.stringify({ action: 'topics', count: 60 }) });
+      const j = await r.json();
+      if (j.ok) { setTopicsText((j.topics || []).join('\n')); if (cfg) setCfg({ ...cfg, topics: j.topics || [] }); toast(es ? `🧠 ${j.added} temas nuevos añadidos.` : `🧠 ${j.added} new topics added.`, 'ok'); }
+      else toast((es ? 'La IA no pudo sugerir temas.' : 'AI could not suggest topics.') + (j.detail ? ` · ${j.detail}` : ''));
+    } catch { toast(es ? 'No se pudo.' : 'Could not.'); }
+    setBusy('');
+  }
   async function fillNow() {
     setBusy('fill');
     try {
@@ -86,64 +132,85 @@ export default function BlogAutopilot({ es, onChanged }: { es: boolean; onChange
         </div>
       </div>
 
-      {open && (
-        <div style={{ padding: '0 14px 14px', borderTop: '1px solid var(--line)' }}>
-          {/* Ajustes */}
-          <div className="row" style={{ gap: 14, flexWrap: 'wrap', alignItems: 'flex-end', margin: '12px 0' }}>
-            <label className="row" style={{ gap: 8, alignItems: 'center', cursor: 'pointer' }}>
-              <input type="checkbox" checked={cfg.enabled} onChange={(e) => save({ enabled: e.target.checked })} />
-              <span style={{ fontSize: 13 }}>{lbl('Generar y publicar automático', 'Auto-generate and publish')}</span>
-            </label>
-            <label className="row" style={{ gap: 8, alignItems: 'center', cursor: 'pointer' }}>
-              <input type="checkbox" checked={cfg.autoReplenish} onChange={(e) => save({ autoReplenish: e.target.checked })} />
-              <span style={{ fontSize: 13 }}>{lbl('Reponer el mes solo al agotarse', 'Auto-refill the month when it runs low')}</span>
-            </label>
+      {open && (() => {
+        const nTopics = topicsText.split('\n').map((s) => s.trim()).filter(Boolean).length;
+        const runwayMonths = Math.round((nTopics * (cfg.everyNDays || 2)) / 30 * 10) / 10;
+        const glow = (c: string) => ({ background: 'var(--bg2)', border: `1px solid ${c}40`, borderRadius: 14, padding: 14, boxShadow: `0 0 0 1px ${c}14, 0 10px 26px -14px ${c}, inset 0 1px 0 rgba(255,255,255,.03)` } as const);
+        const fieldL: CSSProperties = { fontSize: 11.5, color: 'var(--mut)', display: 'block', marginBottom: 5, fontWeight: 600, letterSpacing: .2 };
+        return (
+        <div style={{ padding: 14, borderTop: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* Interruptores como tarjetas iluminadas */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(250px,1fr))', gap: 10 }}>
+            <ToggleCard on={cfg.enabled} onToggle={() => save({ enabled: !cfg.enabled })} accent="#34e2a0" icon="⚡"
+              title={lbl('Generar y publicar automático', 'Auto-generate and publish')}
+              desc={lbl('El cron escribe y publica un artículo cada 2 días, solo.', 'The cron writes and publishes an article every 2 days, automatically.')} />
+            <ToggleCard on={cfg.autoReplenish} onToggle={() => save({ autoReplenish: !cfg.autoReplenish })} accent="#7c8cff" icon="♾️"
+              title={lbl('Reponer el mes solo', 'Auto-refill the month')}
+              desc={lbl('Cuando quedan pocas fechas, planifica el siguiente lote. Nunca se detiene.', 'When few dates remain, it plans the next batch. It never stops.')} />
           </div>
-          <div className="row" style={{ gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
-            <div><div className="muted" style={{ fontSize: 12 }}>{lbl('Cadencia', 'Cadence')}</div>
-              <select value={cfg.everyNDays} onChange={(e) => save({ everyNDays: Number(e.target.value) })} style={{ margin: '4px 0 0', fontSize: 13 }}>
-                <option value={1}>{lbl('Todos los días', 'Every day')}</option>
-                <option value={2}>{lbl('Día sí, día no', 'Every other day')}</option>
-                <option value={3}>{lbl('Cada 3 días', 'Every 3 days')}</option>
-                <option value={7}>{lbl('Una vez por semana', 'Once a week')}</option>
-              </select>
-            </div>
-            <div><div className="muted" style={{ fontSize: 12 }}>{lbl('Hora', 'Hour')}</div>
-              <input type="number" min={0} max={23} value={cfg.hour} onChange={(e) => save({ hour: Number(e.target.value) })} style={{ margin: '4px 0 0', width: 80, fontSize: 13 }} />
-            </div>
-            <div><div className="muted" style={{ fontSize: 12 }}>{lbl('Fechas por lote', 'Dates per batch')}</div>
-              <input type="number" min={1} max={40} value={cfg.perMonth} onChange={(e) => save({ perMonth: Number(e.target.value) })} style={{ margin: '4px 0 0', width: 80, fontSize: 13 }} />
+
+          {/* Ajustes de cadencia */}
+          <div style={glow('#5ecfff')}>
+            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}><span>🗓️</span>{lbl('Ritmo de publicación', 'Publishing rhythm')}</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 12 }}>
+              <div><label style={fieldL}>{lbl('Cadencia', 'Cadence')}</label>
+                <select value={cfg.everyNDays} onChange={(e) => save({ everyNDays: Number(e.target.value) })} style={{ margin: 0, fontSize: 13, width: '100%' }}>
+                  <option value={1}>{lbl('Todos los días', 'Every day')}</option>
+                  <option value={2}>{lbl('Día sí, día no', 'Every other day')}</option>
+                  <option value={3}>{lbl('Cada 3 días', 'Every 3 days')}</option>
+                  <option value={7}>{lbl('Una vez por semana', 'Once a week')}</option>
+                </select>
+              </div>
+              <div><label style={fieldL}>{lbl('Hora del día', 'Hour of day')}</label>
+                <input type="number" min={0} max={23} value={cfg.hour} onChange={(e) => save({ hour: Number(e.target.value) })} style={{ margin: 0, width: '100%', fontSize: 13 }} />
+              </div>
+              <div><label style={fieldL}>{lbl('Fechas por lote', 'Dates per batch')}</label>
+                <input type="number" min={1} max={40} value={cfg.perMonth} onChange={(e) => save({ perMonth: Number(e.target.value) })} style={{ margin: 0, width: '100%', fontSize: 13 }} />
+              </div>
             </div>
           </div>
 
-          {/* Fuente de temas */}
-          <label className="row" style={{ gap: 8, alignItems: 'center', cursor: 'pointer', marginBottom: 6 }}>
-            <input type="checkbox" checked={cfg.useKeywords} onChange={(e) => save({ useKeywords: e.target.checked })} />
-            <span style={{ fontSize: 13 }}>{lbl('Usar también mis keywords SEO (rotación)', 'Also use my SEO keywords (rotation)')}</span>
-          </label>
-          <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{lbl('Lista de temas (uno por línea). Se combinan con las keywords y se eligen al azar:', 'Topic list (one per line). Combined with keywords and picked at random:')}</div>
-          <textarea value={topicsText} onChange={(e) => setTopicsText(e.target.value)} onBlur={() => save({})} rows={4}
-            placeholder={lbl('Ej.\nCómo pasar un reto de fondeo\nErrores de gestión de riesgo\nQué es el drawdown', 'e.g.\nHow to pass a funded challenge\nRisk management mistakes\nWhat is drawdown')}
-            style={{ width: '100%', margin: 0, fontSize: 13 }} />
+          {/* Temas / fuente de contenido */}
+          <div style={glow('#c584ff')}>
+            <div className="row between" style={{ marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}><span>🧠</span>{lbl('Temas de los artículos', 'Article topics')}</div>
+              <span style={{ fontSize: 11.5, color: runwayMonths >= 12 ? 'var(--soft-green)' : 'var(--amber)', background: runwayMonths >= 12 ? 'rgba(52,226,160,.14)' : 'rgba(255,192,77,.14)', border: '1px solid ' + (runwayMonths >= 12 ? 'rgba(52,226,160,.4)' : 'rgba(255,192,77,.4)'), padding: '3px 10px', borderRadius: 999, fontWeight: 600 }}>
+                {nTopics} {lbl('temas · ~', 'topics · ~')}{runwayMonths} {lbl('meses', 'months')}
+              </span>
+            </div>
+            <ToggleRow on={cfg.useKeywords} onToggle={() => save({ useKeywords: !cfg.useKeywords })}
+              label={lbl('Usar también mis keywords SEO (rotación automática)', 'Also use my SEO keywords (auto rotation)')} />
+            <div className="muted" style={{ fontSize: 12, margin: '10px 0 5px' }}>{lbl('Lista de temas (uno por línea). Se combinan con las keywords y se eligen al azar:', 'Topic list (one per line). Combined with keywords and picked at random:')}</div>
+            <textarea value={topicsText} onChange={(e) => setTopicsText(e.target.value)} onBlur={() => save({})} rows={4}
+              placeholder={lbl('Ej.\nCómo pasar un reto de fondeo\nErrores de gestión de riesgo\nQué es el drawdown', 'e.g.\nHow to pass a funded challenge\nRisk management mistakes\nWhat is drawdown')}
+              style={{ width: '100%', margin: 0, fontSize: 13 }} />
+            <button className="btn btn-ghost" style={{ color: 'var(--brand)', fontSize: 12.5, marginTop: 8 }} onClick={expandTopics} disabled={busy === 'topics'}
+              title={lbl('Onyx AI propone 60 temas nuevos de tu nicho y los añade (sin repetir)', 'Onyx AI proposes 60 fresh topics for your niche and adds them (no repeats)')}>
+              {busy === 'topics' ? '…' : `🧠 ${lbl('Ampliar temas con IA (+60)', 'Expand topics with AI (+60)')}`}
+            </button>
+          </div>
 
-          {/* Acciones */}
-          <div className="row" style={{ gap: 8, margin: '12px 0', flexWrap: 'wrap' }}>
-            <button className="btn btn-primary" onClick={planMonth} disabled={busy === 'plan'}>{busy === 'plan' ? '…' : `📅 ${lbl('Planificar el mes', 'Plan the month')}`}</button>
+          {/* Acciones principales */}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <button className="btn btn-primary" onClick={planMonth} disabled={busy === 'plan'} style={{ boxShadow: '0 8px 20px -8px var(--brand)' }}>{busy === 'plan' ? '…' : `📅 ${lbl('Planificar el mes', 'Plan the month')}`}</button>
             <button className="btn btn-ghost" onClick={fillNow} disabled={busy === 'fill'} title={lbl('Genera ahora el contenido de la próxima fecha pendiente (prueba)', 'Generate the next pending date now (test)')}>{busy === 'fill' ? '…' : `✨ ${lbl('Generar la próxima ahora', 'Generate next now')}`}</button>
+            {pending > 0 && <span className="muted" style={{ fontSize: 12 }}>⏳ {pending} {lbl('pendiente(s) de generar', 'pending to generate')}</span>}
           </div>
-
-          {pending > 0 && <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>⏳ {pending} {lbl('fecha(s) esperando a que el cron genere su contenido.', 'date(s) waiting for the cron to generate content.')}</div>}
 
           {/* Calendario del mes lleno */}
-          {months.map(({ y, m }) => (
-            <MonthGrid key={`${y}-${m}`} y={y} m={m} marks={marks} es={es} />
-          ))}
-          <div className="row" style={{ gap: 14, marginTop: 6, flexWrap: 'wrap' }}>
-            <span className="row" style={{ gap: 6, fontSize: 11.5, color: 'var(--mut)' }}><i style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--soft-green)', display: 'inline-block' }} /> {lbl('Listo', 'Ready')}</span>
-            <span className="row" style={{ gap: 6, fontSize: 11.5, color: 'var(--mut)' }}><i style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--amber)', display: 'inline-block' }} /> {lbl('Programado (se genera solo)', 'Scheduled (auto-generates)')}</span>
+          <div style={glow('#34e2a0')}>
+            <div className="row between" style={{ marginBottom: 4, flexWrap: 'wrap', gap: 8 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}><span>📅</span>{lbl('Calendario del mes', 'Month calendar')}</div>
+              <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+                <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: 11.5, color: 'var(--mut)' }}><i style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--soft-green)' }} /> {lbl('Listo', 'Ready')}</span>
+                <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: 11.5, color: 'var(--mut)' }}><i style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--amber)' }} /> {lbl('Programado (se genera solo)', 'Scheduled (auto-generates)')}</span>
+              </div>
+            </div>
+            {months.map(({ y, m }) => (<MonthGrid key={`${y}-${m}`} y={y} m={m} marks={marks} es={es} />))}
           </div>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

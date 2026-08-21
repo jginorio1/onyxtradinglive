@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { requirePerm } from '@/lib/admin';
-import { getSetting, saveSetting, blogAutopilotSettings, type BlogAutopilot } from '@/lib/settings';
+import { getSetting, saveSetting, blogAutopilotSettings, blogKeywordsSettings, type BlogAutopilot } from '@/lib/settings';
 import { listAllPosts } from '@/lib/blog';
 import { planMonth, fillDueSlots, nextDates } from '@/lib/blogAutopilot';
+import { suggestTopics, lastAiError } from '@/lib/blogAI';
 import { logError } from '@/lib/errlog';
 
 export const dynamic = 'force-dynamic';
@@ -66,6 +67,17 @@ export async function POST(req: Request) {
     if (action === 'fill') {
       const r = await fillDueSlots(1);
       return NextResponse.json({ ok: true, ...r });
+    }
+    // Ampliar el pool de temas con IA (para que dure meses/años sin repetir).
+    if (action === 'topics') {
+      const cfg = await blogAutopilotSettings();
+      const kw = await blogKeywordsSettings();
+      const count = clampN(b.count, 10, 120, 60);
+      const r = await suggestTopics(count, cfg.topics || [], [...(kw.es || []), ...(kw.en || [])]);
+      if (!r.ok || !r.topics?.length) return NextResponse.json({ error: r.reason || 'ai', code: r.reason, detail: lastAiError() }, { status: 200 });
+      const merged = [...(cfg.topics || []), ...r.topics].slice(0, 500);
+      await saveSetting('blog_autopilot', { ...cfg, topics: merged });
+      return NextResponse.json({ ok: true, added: r.topics.length, topics: merged });
     }
     return NextResponse.json({ error: 'acción inválida' }, { status: 400 });
   } catch (e: any) {

@@ -81,6 +81,24 @@ function kwBlock(kw?: KwGuide): string {
   return L.join('\n');
 }
 
+// ---- Ideas de TEMAS para el piloto automático (llenar el pool de meses/años) ----
+// Devuelve una lista de temas concretos (en español) para artículos, evitando los
+// que ya existen. Cada tema es una idea de artículo, no un título final.
+export async function suggestTopics(count: number, existing: string[] = [], keywords: string[] = []): Promise<{ ok: boolean; topics?: string[]; reason?: string }> {
+  if (!process.env.ANTHROPIC_API_KEY) return { ok: false, reason: 'no_key' };
+  const n = Math.max(10, Math.min(count || 60, 120));
+  const avoid = existing.slice(0, 200).map((t) => `- ${t}`).join('\n');
+  const kw = keywords.slice(0, 30).join(', ');
+  const system = `Eres el estratega de contenido SEO de Onyx Trading Live (plataforma para traders: prop firms, gestión de riesgo, copy trading, robots/EAs, psicología del trading, retos de fondeo, herramientas Onyx). ${GUARDRAIL}\n\nCONTEXTO DE MARCA:\n${await brandBrief('es')}\n\nGenera ${n} TEMAS de artículo de blog, concretos y variados (guías, comparativas, listas, errores comunes, preguntas que busca la gente), en ESPAÑOL. Cada tema debe ser evergreen y con intención de búsqueda real. NADA de predicciones de mercado, señales ni promesas.${kw ? `\n\nCuando encajen de forma natural, cubre estas keywords: ${kw}.` : ''}${avoid ? `\n\nNO repitas ni parafrasees estos temas ya existentes:\n${avoid}` : ''}\n\nDevuelve SOLO un JSON: {"topics": ["tema 1", "tema 2", ...]} — frases cortas (5-12 palabras), sin numerar, sin comillas internas.`;
+  const out = parseJson(await aiRaw(system, `Dame ${n} temas nuevos y distintos.`, 3000));
+  let topics = Array.isArray(out?.topics) ? out.topics.map((t: any) => String(t).trim()).filter(Boolean) : null;
+  if (!topics || !topics.length) return { ok: false, reason: 'ai_failed' };
+  // Quitar duplicados y los que ya existían (case-insensitive).
+  const seen = new Set(existing.map((t) => t.toLowerCase().trim()));
+  topics = topics.filter((t: string) => { const k = t.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, n);
+  return { ok: true, topics };
+}
+
 // ---- Sugerencias de título ----
 export async function suggestTitles(topic: string, lang: Lang = 'es', target?: string): Promise<{ ok: boolean; titles?: string[]; reason?: string }> {
   if (!process.env.ANTHROPIC_API_KEY) return { ok: false, reason: 'no_key' };
