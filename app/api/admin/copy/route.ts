@@ -17,7 +17,7 @@ export async function GET() {
   try {
     const config = await getSetting<CopyConfig>('copy_config', DEFAULT_COPY_CONFIG);
     const { data: providers } = await supabaseAdmin.from('strategy_providers')
-      .select('id,user_id,account_id,display_name,tier,score,stats,flags,followers,fee_month,perf_fee_pct,verified,listed,auto_delisted,status,scored_at')
+      .select('id,user_id,account_id,display_name,tier,score,pillars,stats,flags,followers,fee_month,perf_fee_pct,verified,listed,auto_delisted,status,scored_at')
       .order('score', { ascending: false }).limit(500);
     const fees = { subscription: Number(process.env.ONYX_COPY_FEE_PCT || 30) };
     return NextResponse.json({ ok: true, config, providers: providers || [], fees });
