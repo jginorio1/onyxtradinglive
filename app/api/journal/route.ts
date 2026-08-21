@@ -75,6 +75,8 @@ export async function POST(req: Request) {
     if (b.plan_followed !== undefined) row.plan_followed = PLAN.includes(b.plan_followed) ? (b.plan_followed || null) : null;
     if (b.market_tags !== undefined) row.market_tags = cleanTags(b.market_tags);
     if (b.error_tags !== undefined) row.error_tags = cleanTags(b.error_tags);
+    // Riesgo $ del trade (opcional). Vacío o inválido → null; nunca negativo.
+    if (b.risk_amount !== undefined) { const n = Number(b.risk_amount); row.risk_amount = (b.risk_amount === '' || b.risk_amount == null || !isFinite(n) || n < 0) ? null : Math.min(n, 1e9); }
 
     const { error } = await supabaseAdmin.from('trade_journal').upsert(row, { onConflict: 'trade_id' });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });

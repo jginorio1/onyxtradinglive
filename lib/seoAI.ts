@@ -34,7 +34,7 @@ export async function pageMeta(page: string, keywordsEs: string[] = [], keywords
   const kwEn = keywordsEn.slice(0, 8).join(', ');
   const system = `Eres especialista SEO de Onyx Trading Live (diario de trading + Onyx Guardian, copy trading, academia; MT4/MT5/cTrader). Escribe el TÍTULO y la META DESCRIPCIÓN para ${what}, en ESPAÑOL e INGLÉS. Optimizado para clic en Google. NUNCA prometas ganancias ni predigas el mercado.
 
-Reglas de longitud (respétalas): title 50-60 caracteres; description 140-155 caracteres. Incluye la marca "Onyx Trading Live" en el título cuando quepa.
+Reglas de longitud ESTRICTAS (cuéntalas): el título NO debe pasar de 60 caracteres (apunta a 52-58 para dejar margen); la descripción NO debe pasar de 155 caracteres (apunta a 145-152). Si dudas, quédate CORTO. Incluye la marca "Onyx Trading Live" en el título cuando quepa.
 CONGRUENCIA: integra de forma NATURAL las keywords prioritarias (sin forzar ni repetir). Español: ${kwEs || '(usa términos del nicho)'}. English: ${kwEn || '(use niche terms)'}.
 
 Devuelve SOLO JSON válido, sin texto extra:

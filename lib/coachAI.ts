@@ -278,3 +278,45 @@ Rules: percentages → the number without % and the _pct flag true (e.g. "5% dai
     return { ok: true, rules };
   } catch { return { ok: false, reason: 'parse' }; }
 }
+
+// ---- Coach POR OPERACIÓN: una sola línea, honesta y accionable ----
+// Recibe los datos de UNA operación + lo que el trader documentó + un poco de
+// contexto de sus últimas ops (para detectar patrones tipo "cierras antes las
+// ganadoras"). Nunca predice el mercado. Si la IA falla, devuelve una lectura
+// determinista con los mismos datos → SIEMPRE responde algo útil.
+export type TradeInsightInput = {
+  symbol: string; side: string; net: number; grade?: string; planFollowed?: string;
+  emotion?: string; setups?: string[]; markets?: string[]; errors?: string[];
+  rMultiple?: number | null; durationMin?: number | null; session?: string;
+  // contexto ligero de las últimas operaciones documentadas del trader:
+  ctx?: { winRate?: number; earlyCloseWins?: number; revengeCount?: number; sameSetupWin?: number | null };
+};
+export function fallbackTradeInsight(t: TradeInsightInput, lang: Lang): string {
+  const es = !enBase(lang);
+  const win = t.net >= 0;
+  const parts: string[] = [];
+  if (t.errors?.length) parts.push(es ? `Marcaste "${t.errors[0]}"` : `You flagged "${t.errors[0]}"`);
+  if (t.emotion && /revanch|revenge|fomo|miedo|fear|impacien|impatien|dud|doubt/i.test(t.emotion))
+    parts.push(es ? `entraste con ${t.emotion.toLowerCase()}` : `you entered on ${t.emotion.toLowerCase()}`);
+  if (t.planFollowed === 'no') parts.push(es ? 'y fuera de tu plan' : 'and off your plan');
+  const head = parts.length
+    ? (parts.join(es ? ', ' : ', ') + '. ')
+    : (win ? (es ? 'Operación ganadora limpia. ' : 'Clean winning trade. ') : (es ? 'Pérdida controlada. ' : 'Controlled loss. '));
+  let tail = '';
+  if (t.rMultiple != null && isFinite(t.rMultiple)) tail = es ? `Resultado ${t.rMultiple.toFixed(2)}R.` : `Result ${t.rMultiple.toFixed(2)}R.`;
+  else if (win && t.planFollowed === 'yes') tail = es ? 'Repite este proceso.' : 'Repeat this process.';
+  else if (!win) tail = es ? 'Anota qué la habría evitado.' : 'Note what would have avoided it.';
+  else tail = es ? 'Documenta el porqué para poder repetirlo.' : 'Document the why so you can repeat it.';
+  return (head + tail).trim();
+}
+export async function tradeInsight(t: TradeInsightInput, lang: Lang): Promise<{ ok: boolean; text: string }> {
+  const fb = fallbackTradeInsight(t, lang);
+  if (!process.env.ANTHROPIC_API_KEY) return { ok: true, text: fb };
+  const es = !enBase(lang);
+  const system = (es
+    ? `Eres Onyx Coach. Te doy UNA operación del trader y lo que documentó. Escribe UNA sola frase (máx 30 palabras), honesta y accionable, sobre su PROCESO (disciplina, emoción, gestión), no sobre el mercado. Sin emojis. ${NO_ADVICE.es}`
+    : `You are Onyx Coach. I give you ONE of the trader's trades and what they journaled. Write ONE sentence (max 30 words), honest and actionable, about their PROCESS (discipline, emotion, management), not the market. No emojis. ${NO_ADVICE.en}`) + aiLangDirective(lang);
+  const text = await ai(system, JSON.stringify(t), 160);
+  const clean = (text || '').replace(/^["“]|["”]$/g, '').trim();
+  return { ok: true, text: clean && clean.length > 4 ? clean : fb };
+}

@@ -7,7 +7,8 @@ import { StatCard } from './HubVitals';
 import OnyxIcon from '@/app/components/OnyxIcon';
 
 type TT = { id: string; account_id: string; symbol: string; side: string; volume: number; open_time: string | null; close_time: string; net_profit: number; commission?: number; swap?: number; profit?: number };
-type Entry = { trade_id: string; notes: string | null; tags: string[] | null; emotion: string | null; image_url: string | null; grade?: string | null; plan_followed?: string | null; market_tags?: string[] | null; error_tags?: string[] | null };
+type Acc = { id: string; nickname?: string | null; broker?: string; platform?: string; fund_max_daily?: number | null; fund_max_total?: number | null };
+type Entry = { trade_id: string; notes: string | null; tags: string[] | null; emotion: string | null; image_url: string | null; grade?: string | null; plan_followed?: string | null; market_tags?: string[] | null; error_tags?: string[] | null; risk_amount?: number | null };
 type CustomTags = { setups: string[]; emotions: string[]; markets: string[]; errors: string[] };
 type Lang = 'es' | 'en';
 
@@ -45,6 +46,10 @@ const J = {
     undoc: 'Sin diario', pendingTitle: 'operaciones sin diario', pendingSub: 'Documéntalas mientras las recuerdas', docNow: 'Documentar ahora',
     streak: 'Racha', days: 'días', day: 'día',
     delTitle: 'Borrar el tag', delBody: 'Se quita de tu lista y ya no aparecerá al documentar. Las operaciones que ya etiquetaste con él no cambian.', delCancel: 'Cancelar', delOk: 'Borrar tag',
+    mDuration: 'Duración', mSession: 'Sesión', risk: 'Riesgo', riskPh: 'Ej: 100', riskHint: 'Cuánto arriesgaste ($). Con esto calculamos el resultado en R.', result: 'Resultado',
+    removePhoto: 'Quitar foto', zoomHint: 'click para ampliar', coach: 'Coach IA', coaching: 'Analizando…', coachErr: 'No se pudo analizar ahora. Inténtalo de nuevo.',
+    rulesTitle: 'Chequeo de reglas', rulesOk: 'Sin alertas: este trade y el día respetan las reglas de tu cuenta.', rulesNoRules: 'Añade el límite diario/total en Fondeo para chequear reglas.',
+    ruleTradeOverDaily: 'Este trade arriesgó más que tu límite diario', ruleDayOverDaily: 'El día superó el límite diario de la cuenta', ruleRiskOverDaily: 'El riesgo que anotaste supera el límite diario',
   },
   en: {
     lotTitle: '📦 Lot statistics', volToday: 'Today', volWeek: 'Week', volMonth: 'Month', volYear: 'Year', volTotal: 'Total', lots: 'lots', byPair: 'Volume by pair',
@@ -64,11 +69,45 @@ const J = {
     undoc: 'No journal', pendingTitle: 'trades without a journal', pendingSub: 'Document them while you remember', docNow: 'Document now',
     streak: 'Streak', days: 'days', day: 'day',
     delTitle: 'Delete tag', delBody: 'It leaves your list and won’t appear when documenting. Trades you already tagged with it don’t change.', delCancel: 'Cancel', delOk: 'Delete tag',
+    mDuration: 'Duration', mSession: 'Session', risk: 'Risk', riskPh: 'e.g. 100', riskHint: 'How much you risked ($). We use it to show the result in R.', result: 'Result',
+    removePhoto: 'Remove photo', zoomHint: 'click to zoom', coach: 'AI Coach', coaching: 'Analyzing…', coachErr: 'Couldn’t analyze right now. Try again.',
+    rulesTitle: 'Rule check', rulesOk: 'No alerts: this trade and the day respect your account rules.', rulesNoRules: 'Add your daily/total limit in Funding to check rules.',
+    ruleTradeOverDaily: 'This trade risked more than your daily limit', ruleDayOverDaily: 'The day exceeded the account daily limit', ruleRiskOverDaily: 'The risk you logged exceeds the daily limit',
   },
 };
 
-export default function Journal({ trades, lang, focusUndoc = false }: { trades: TT[]; lang: Lang; focusUndoc?: boolean }) {
+// Sesión de mercado por la hora UTC de apertura (aprox., forex).
+function sessionOf(iso: string | null, es: boolean): string {
+  if (!iso) return '—';
+  const h = new Date(iso).getUTCHours();
+  if (h >= 0 && h < 7) return es ? 'Asia' : 'Asia';
+  if (h < 12) return es ? 'Londres' : 'London';
+  if (h < 16) return es ? 'Londres/NY' : 'London/NY';
+  if (h < 21) return 'NY';
+  return es ? 'Sídney' : 'Sydney';
+}
+// Duración legible entre apertura y cierre.
+function durationOf(openIso: string | null, closeIso: string): string {
+  if (!openIso) return '—';
+  const m = Math.round((new Date(closeIso).getTime() - new Date(openIso).getTime()) / 60000);
+  if (!isFinite(m) || m < 0) return '—';
+  if (m < 60) return m + 'm';
+  const h = Math.floor(m / 60), mm = m % 60;
+  return mm ? `${h}h ${mm}m` : `${h}h`;
+}
+// Nombre bonito de la plataforma para el chip del encabezado.
+function platLabel(p?: string): string {
+  const k = String(p || '').toLowerCase();
+  if (k.includes('mt5') || k === 'metatrader5') return 'MT5';
+  if (k.includes('mt4') || k === 'metatrader4') return 'MT4';
+  if (k.includes('ctrader')) return 'cTrader';
+  if (k.includes('match')) return 'Match-Trader';
+  return p ? p.slice(0, 14) : '';
+}
+
+export default function Journal({ trades, lang, focusUndoc = false, accounts = [] }: { trades: TT[]; lang: Lang; focusUndoc?: boolean; accounts?: Acc[] }) {
   const t = dictFor(J, lang);
+  const accMap = useMemo(() => { const m: Record<string, Acc> = {}; (accounts || []).forEach((a) => { m[a.id] = a; }); return m; }, [accounts]);
   const WD = lang === 'es' ? ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'] : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   const [entries, setEntries] = useState<Record<string, Entry>>({});
   const [customTags, setCustomTags] = useState<CustomTags>({ setups: [], emotions: [], markets: [], errors: [] });
@@ -317,7 +356,7 @@ export default function Journal({ trades, lang, focusUndoc = false }: { trades: 
         ) : <p className="muted">{t.noTrades}</p>}
       </div>
 
-      {open && <TradeModal trade={open} entry={entries[open.id]} lang={lang} customTags={customTags} onAddTag={addCustomTag} onRenameTag={renameCustomTag} onDeleteTag={deleteCustomTag} onClose={() => setOpen(null)} onSaved={(e) => setEntries({ ...entries, [open.id]: e })} />}
+      {open && <TradeModal trade={open} entry={entries[open.id]} acc={accMap[open.account_id]} allTrades={trades} lang={lang} customTags={customTags} onAddTag={addCustomTag} onRenameTag={renameCustomTag} onDeleteTag={deleteCustomTag} onClose={() => setOpen(null)} onSaved={(e) => setEntries({ ...entries, [open.id]: e })} />}
     </>
   );
 }
@@ -386,8 +425,9 @@ function Segment({ label, opts, value, onPick }: { label: string; opts: { v: str
   );
 }
 
-function TradeModal({ trade, entry, lang, customTags, onAddTag, onRenameTag, onDeleteTag, onClose, onSaved }: { trade: TT; entry?: Entry; lang: Lang; customTags: CustomTags; onAddTag: (g: keyof CustomTags, v: string) => void; onRenameTag: (g: keyof CustomTags, oldV: string, newV: string) => void; onDeleteTag: (g: keyof CustomTags, v: string) => void; onClose: () => void; onSaved: (e: Entry) => void }) {
+function TradeModal({ trade, entry, acc, allTrades, lang, customTags, onAddTag, onRenameTag, onDeleteTag, onClose, onSaved }: { trade: TT; entry?: Entry; acc?: Acc; allTrades: TT[]; lang: Lang; customTags: CustomTags; onAddTag: (g: keyof CustomTags, v: string) => void; onRenameTag: (g: keyof CustomTags, oldV: string, newV: string) => void; onDeleteTag: (g: keyof CustomTags, v: string) => void; onClose: () => void; onSaved: (e: Entry) => void }) {
   const t = dictFor(J, lang);
+  const es = lang === 'es';
   const [confirmDel, setConfirmDel] = useState<{ group: keyof CustomTags; value: string } | null>(null);
   const [notes, setNotes] = useState(entry?.notes || '');
   const [tags, setTags] = useState<string[]>(entry?.tags || []);
@@ -397,12 +437,41 @@ function TradeModal({ trade, entry, lang, customTags, onAddTag, onRenameTag, onD
   const [grade, setGrade] = useState(entry?.grade || '');
   const [planF, setPlanF] = useState(entry?.plan_followed || '');
   const [img, setImg] = useState(entry?.image_url || '');
+  const [risk, setRisk] = useState(entry?.risk_amount != null ? String(entry.risk_amount) : '');
   const [saving, setSaving] = useState(false);
   const [ok, setOk] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [zoom, setZoom] = useState(false);
+  const [coach, setCoach] = useState('');
+  const [coaching, setCoaching] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const toggle = (arr: string[], set: (v: string[]) => void, s: string) => set(arr.includes(s) ? arr.filter((x) => x !== s) : [...arr, s]);
+
+  const net = +trade.net_profit;
+  const riskNum = Number(risk);
+  const rMultiple = (isFinite(riskNum) && riskNum > 0) ? net / riskNum : null;
+  const durTxt = durationOf(trade.open_time, trade.close_time);
+  const durMin = trade.open_time ? Math.round((new Date(trade.close_time).getTime() - new Date(trade.open_time).getTime()) / 60000) : null;
+  const sess = sessionOf(trade.open_time, es);
+  const plat = platLabel(acc?.platform);
+  const accName = acc?.nickname || acc?.broker || '';
+
+  // Chequeo de reglas: usa el límite diario de la cuenta (Fondeo) y el neto del
+  // día en esa cuenta (de las operaciones ya cargadas). Sin límite → sin chequeo.
+  const rules = useMemo(() => {
+    const daily = Number(acc?.fund_max_daily) || 0;
+    if (!(daily > 0)) return { has: false, alerts: [] as string[] };
+    const day = trade.close_time.slice(0, 10);
+    let dayNet = 0;
+    for (const x of allTrades) if (x.account_id === trade.account_id && x.close_time.slice(0, 10) === day) dayNet += +x.net_profit || 0;
+    const alerts: string[] = [];
+    const tradeLoss = net < 0 ? -net : 0;
+    if (tradeLoss > daily) alerts.push(t.ruleTradeOverDaily);
+    if (dayNet < -daily) alerts.push(t.ruleDayOverDaily);
+    if (isFinite(riskNum) && riskNum > daily) alerts.push(t.ruleRiskOverDaily);
+    return { has: true, alerts };
+  }, [acc, allTrades, trade, net, riskNum, t]);
 
   async function upload(f: File) {
     setUploading(true);
@@ -411,55 +480,132 @@ function TradeModal({ trade, entry, lang, customTags, onAddTag, onRenameTag, onD
     const j = await r.json(); setUploading(false);
     if (j.url) setImg(j.url); else toast(errMsg(j, lang));
   }
+  async function askCoach() {
+    setCoaching(true); setCoach('');
+    try {
+      const r = await fetch('/api/journal/coach', { method: 'POST', body: JSON.stringify({
+        trade_id: trade.id, symbol: trade.symbol, side: trade.side, net,
+        grade, planFollowed: planF, emotion, setups: tags, markets, errors: errs,
+        rMultiple, durationMin: durMin, session: sess, lang,
+      }) });
+      const j = await r.json();
+      setCoach(j?.text || t.coachErr);
+    } catch { setCoach(t.coachErr); }
+    setCoaching(false);
+  }
   async function save() {
     setSaving(true);
-    const e: Entry = { trade_id: trade.id, notes, tags, emotion, image_url: img, grade: grade || null, plan_followed: planF || null, market_tags: markets, error_tags: errs };
-    const r = await fetch('/api/journal', { method: 'POST', body: JSON.stringify(e) });
+    const e: Entry = { trade_id: trade.id, notes, tags, emotion, image_url: img, grade: grade || null, plan_followed: planF || null, market_tags: markets, error_tags: errs, risk_amount: (isFinite(riskNum) && riskNum > 0) ? riskNum : null };
+    const r = await fetch('/api/journal', { method: 'POST', body: JSON.stringify({ ...e, risk_amount: risk === '' ? '' : riskNum }) });
     setSaving(false);
     if (!r.ok) { const j = await r.json(); toast(errMsg(j, lang)); return; }
-    setOk(true); setTimeout(() => setOk(false), 1500);
     onSaved(e);
+    setOk(true);
+    setTimeout(() => onClose(), 650); // guarda y CIERRA solo
   }
 
   const lbl = { fontSize: 13, color: 'var(--mut)', margin: '14px 0 6px', display: 'block', fontWeight: 600 } as any;
+  const chip = (bg: string, br: string, cl: string) => ({ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 9px', borderRadius: 8, fontSize: 12, fontWeight: 600, background: bg, border: '1px solid ' + br, color: cl }) as any;
 
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 16px', zIndex: 100, overflowY: 'auto' }}>
-      <div onClick={(e) => e.stopPropagation()} className="card" style={{ maxWidth: 560, width: '100%' }}>
-        <div className="row between" style={{ marginBottom: 8 }}>
-          <h3>{t.mTitle}: {trade.symbol}</h3>
+      <div onClick={(e) => e.stopPropagation()} className="card" style={{ maxWidth: 780, width: '100%' }}>
+        <div className="row between" style={{ marginBottom: 8, gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <h3 style={{ margin: 0 }}>{t.mTitle}: {trade.symbol}</h3>
+            {plat && <span style={chip('rgba(124,140,255,.14)', BLUE, 'var(--soft-brand)')}>{plat}</span>}
+            {accName && <span style={chip('var(--bg2)', 'var(--line)', 'var(--mut)')}>{accName}</span>}
+          </div>
           <button className="btn btn-ghost" onClick={onClose}>✕</button>
         </div>
-        <div className="grid g4" style={{ marginBottom: 10 }}>
+
+        {/* Resumen: lote, neto, duración, sesión + tira de tiempos/costes */}
+        <div className="grid g4" style={{ marginBottom: 6 }}>
           <div><div className="muted" style={{ fontSize: 11 }}>{t.mLots}</div><b>{(+trade.volume).toFixed(2)}</b></div>
-          <div><div className="muted" style={{ fontSize: 11 }}>{t.mNet}</div><b className={+trade.net_profit >= 0 ? 'pos' : 'neg'}>{money2(+trade.net_profit)}</b></div>
-          <div><div className="muted" style={{ fontSize: 11 }}>{t.mComm}</div><b className={+(trade.commission || 0) >= 0 ? 'pos' : 'neg'}>{money2(+(trade.commission || 0))}</b></div>
-          <div><div className="muted" style={{ fontSize: 11 }}>{t.mSwap}</div><b className={+(trade.swap || 0) >= 0 ? 'pos' : 'neg'}>{money2(+(trade.swap || 0))}</b></div>
-          <div><div className="muted" style={{ fontSize: 11 }}>{t.mOpen}</div><b style={{ fontSize: 12 }}>{(trade.open_time || '').slice(0, 16).replace('T', ' ') || '—'}</b></div>
-          <div><div className="muted" style={{ fontSize: 11 }}>{t.mClose}</div><b style={{ fontSize: 12 }}>{trade.close_time.slice(0, 16).replace('T', ' ')}</b></div>
+          <div><div className="muted" style={{ fontSize: 11 }}>{t.mNet}</div><b className={net >= 0 ? 'pos' : 'neg'}>{money2(net)}</b></div>
+          <div><div className="muted" style={{ fontSize: 11 }}>{t.mDuration}</div><b style={{ fontSize: 13 }}>{durTxt}</b></div>
+          <div><div className="muted" style={{ fontSize: 11 }}>{t.mSession}</div><b style={{ fontSize: 13 }}>{sess}</b></div>
+        </div>
+        <div className="muted" style={{ fontSize: 11.5, marginBottom: 12 }}>
+          {t.mOpen}: {(trade.open_time || '').slice(0, 16).replace('T', ' ') || '—'} · {t.mClose}: {trade.close_time.slice(0, 16).replace('T', ' ')} · {t.mComm} {money2(+(trade.commission || 0))} · {t.mSwap} {money2(+(trade.swap || 0))}
         </div>
 
-        {/* Grado + adherencia: dos toques que resumen la calidad del trade */}
-        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', padding: '10px 12px', background: 'var(--bg2)', borderRadius: 10 }}>
-          <Segment label={t.quality} value={grade} onPick={setGrade} opts={[{ v: 'A', t: 'A', c: GREEN }, { v: 'B', t: 'B', c: GOLD }, { v: 'C', t: 'C', c: RED }]} />
-          <Segment label={t.planQ} value={planF} onPick={setPlanF} opts={[{ v: 'yes', t: t.planYes, c: GREEN }, { v: 'partial', t: t.planPartial, c: AMBER }, { v: 'no', t: t.planNo, c: RED }]} />
+        {/* Dos columnas: izquierda documentación · derecha foto (se apilan en móvil) */}
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+          <div style={{ flex: '1 1 340px', minWidth: 0 }}>
+            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', padding: '10px 12px', background: 'var(--bg2)', borderRadius: 10 }}>
+              <Segment label={t.quality} value={grade} onPick={setGrade} opts={[{ v: 'A', t: 'A', c: GREEN }, { v: 'B', t: 'B', c: GOLD }, { v: 'C', t: 'C', c: RED }]} />
+              <Segment label={t.planQ} value={planF} onPick={setPlanF} opts={[{ v: 'yes', t: t.planYes, c: GREEN }, { v: 'partial', t: t.planPartial, c: AMBER }, { v: 'no', t: t.planNo, c: RED }]} />
+            </div>
+
+            <TagGroup label={t.strat} hint={t.adapts} options={STRATS} custom={customTags.setups} selected={tags} multi accent={BLUE} groupKey="setups" lang={lang} onToggle={(s) => toggle(tags, setTags, s)} onAdd={(v) => { onAddTag('setups', v); setTags((a) => a.includes(v) ? a : [...a, v]); }} onRename={onRenameTag} onAskDelete={(g, v) => setConfirmDel({ group: g, value: v })} addLabel={t.add} addPh={t.addPh} />
+            <TagGroup label={t.market} options={t.markets} custom={customTags.markets} selected={markets} multi accent={BLUE} groupKey="markets" lang={lang} onToggle={(s) => toggle(markets, setMarkets, s)} onAdd={(v) => { onAddTag('markets', v); setMarkets((a) => a.includes(v) ? a : [...a, v]); }} onRename={onRenameTag} onAskDelete={(g, v) => setConfirmDel({ group: g, value: v })} addLabel={t.add} addPh={t.addPh} />
+            <TagGroup label={t.emotion} options={t.emotions} custom={customTags.emotions} selected={emotion ? [emotion] : []} multi={false} accent={GREEN} groupKey="emotions" lang={lang} onToggle={(s) => setEmotion(emotion === s ? '' : s)} onAdd={(v) => { onAddTag('emotions', v); setEmotion(v); }} onRename={onRenameTag} onAskDelete={(g, v) => setConfirmDel({ group: g, value: v })} addLabel={t.add} addPh={t.addPh} />
+            <TagGroup label={t.whatFailed} hint={t.optional} options={t.errors} custom={customTags.errors} selected={errs} multi accent={RED} groupKey="errors" lang={lang} onToggle={(s) => toggle(errs, setErrs, s)} onAdd={(v) => { onAddTag('errors', v); setErrs((a) => a.includes(v) ? a : [...a, v]); }} onRename={onRenameTag} onAskDelete={(g, v) => setConfirmDel({ group: g, value: v })} addLabel={t.add} addPh={t.addPh} />
+
+            {/* Riesgo → Resultado en R */}
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, margin: '14px 0 0', flexWrap: 'wrap' }}>
+              <div>
+                <span style={{ ...lbl, margin: '0 0 6px' }}>{t.risk} <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· $</span></span>
+                <input value={risk} onChange={(e) => setRisk(e.target.value.replace(/[^\d.]/g, ''))} inputMode="decimal" placeholder={t.riskPh} style={{ margin: 0, width: 120, padding: '8px 10px', background: '#fff', border: '1px solid var(--line)', borderRadius: 10, color: '#15181f', fontSize: 14 }} />
+              </div>
+              {rMultiple != null && (
+                <div style={{ padding: '6px 12px', borderRadius: 10, background: rMultiple >= 0 ? 'rgba(52,226,160,.14)' : 'rgba(255,107,125,.14)', border: '1px solid ' + (rMultiple >= 0 ? GREEN : RED) }}>
+                  <div className="muted" style={{ fontSize: 11 }}>{t.result}</div>
+                  <b style={{ color: rMultiple >= 0 ? GREEN : RED, fontSize: 17 }}>{(rMultiple >= 0 ? '+' : '') + rMultiple.toFixed(2)}R</b>
+                </div>
+              )}
+            </div>
+            <div className="muted" style={{ fontSize: 11.5, marginTop: 5 }}>{t.riskHint}</div>
+
+            <span style={lbl}>{t.notes} <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· {t.optional}</span></span>
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} placeholder={t.notesPh} style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', resize: 'vertical', padding: '10px 12px', background: '#fff', border: '1px solid var(--line)', borderRadius: 10, color: '#15181f', fontSize: 14, fontFamily: 'inherit' }} />
+
+            {/* Chequeo de reglas */}
+            <div style={{ marginTop: 14, borderRadius: 12, border: '1px solid ' + (rules.has && rules.alerts.length ? RED : 'var(--line)'), background: rules.has && rules.alerts.length ? 'rgba(255,107,125,.08)' : 'var(--bg2)', padding: '10px 12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: rules.has ? 6 : 0 }}>
+                <OnyxIcon emoji={rules.has && rules.alerts.length ? '⚠️' : '🛡️'} size={16} />
+                <b style={{ fontSize: 13 }}>{t.rulesTitle}</b>
+              </div>
+              {!rules.has ? (
+                <div className="muted" style={{ fontSize: 12.5 }}>{t.rulesNoRules}</div>
+              ) : rules.alerts.length ? (
+                <ul style={{ margin: 0, paddingLeft: 18 }}>{rules.alerts.map((a, i) => <li key={i} style={{ color: RED, fontSize: 12.5, lineHeight: 1.6 }}>{a}</li>)}</ul>
+              ) : (
+                <div style={{ color: GREEN, fontSize: 12.5 }}>✓ {t.rulesOk}</div>
+              )}
+            </div>
+
+            {/* Coach IA por trade */}
+            <div style={{ marginTop: 12 }}>
+              <button className="btn btn-ghost" onClick={askCoach} disabled={coaching} style={{ fontSize: 13 }}>{coaching ? t.coaching : '✨ ' + t.coach}</button>
+              {coach && (
+                <div style={{ marginTop: 8, padding: '10px 12px', borderRadius: 12, background: 'rgba(124,140,255,.10)', border: '1px solid var(--brand)', fontSize: 13.5, lineHeight: 1.6, color: 'var(--tx)' }}>{coach}</div>
+              )}
+            </div>
+          </div>
+
+          {/* Columna derecha: foto grande con zoom + quitar */}
+          <div style={{ flex: '1 1 250px', minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+              <span style={{ fontSize: 13, color: 'var(--tx)', fontWeight: 600 }}>{t.photo}</span>
+              {img && <span className="muted" style={{ fontSize: 11.5 }}>🔍 {t.zoomHint}</span>}
+            </div>
+            {img ? (
+              <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', border: '1px solid var(--line)', cursor: 'zoom-in' }} onClick={() => setZoom(true)}>
+                <img src={img} alt="trade" style={{ width: '100%', display: 'block', maxHeight: 320, objectFit: 'cover' }} />
+                <span style={{ position: 'absolute', right: 8, bottom: 8, background: 'rgba(0,0,0,.55)', color: '#fff', borderRadius: 999, padding: '5px 9px', fontSize: 13 }}>🔍</span>
+              </div>
+            ) : (
+              <div style={{ borderRadius: 12, border: '1px dashed var(--line)', background: 'var(--bg2)', height: 150, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--mut)', fontSize: 26 }}>🖼️</div>
+            )}
+            <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f); }} />
+            <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+              <button className="btn btn-ghost" onClick={() => fileRef.current?.click()} disabled={uploading} style={{ flex: 1, fontSize: 13 }}>{uploading ? t.uploading : (img ? t.replace : t.upload)}</button>
+              {img && <button className="btn btn-ghost" onClick={() => setImg('')} style={{ fontSize: 13, color: RED, borderColor: 'rgba(255,107,125,.5)' }}>🗑 {t.removePhoto}</button>}
+            </div>
+          </div>
         </div>
-
-        <TagGroup label={t.strat} hint={t.adapts} options={STRATS} custom={customTags.setups} selected={tags} multi accent={BLUE} groupKey="setups" lang={lang} onToggle={(s) => toggle(tags, setTags, s)} onAdd={(v) => { onAddTag('setups', v); setTags((a) => a.includes(v) ? a : [...a, v]); }} onRename={onRenameTag} onAskDelete={(g, v) => setConfirmDel({ group: g, value: v })} addLabel={t.add} addPh={t.addPh} />
-
-        <TagGroup label={t.market} options={t.markets} custom={customTags.markets} selected={markets} multi accent={BLUE} groupKey="markets" lang={lang} onToggle={(s) => toggle(markets, setMarkets, s)} onAdd={(v) => { onAddTag('markets', v); setMarkets((a) => a.includes(v) ? a : [...a, v]); }} onRename={onRenameTag} onAskDelete={(g, v) => setConfirmDel({ group: g, value: v })} addLabel={t.add} addPh={t.addPh} />
-
-        <TagGroup label={t.emotion} options={t.emotions} custom={customTags.emotions} selected={emotion ? [emotion] : []} multi={false} accent={GREEN} groupKey="emotions" lang={lang} onToggle={(s) => setEmotion(emotion === s ? '' : s)} onAdd={(v) => { onAddTag('emotions', v); setEmotion(v); }} onRename={onRenameTag} onAskDelete={(g, v) => setConfirmDel({ group: g, value: v })} addLabel={t.add} addPh={t.addPh} />
-
-        <TagGroup label={t.whatFailed} hint={t.optional} options={t.errors} custom={customTags.errors} selected={errs} multi accent={RED} groupKey="errors" lang={lang} onToggle={(s) => toggle(errs, setErrs, s)} onAdd={(v) => { onAddTag('errors', v); setErrs((a) => a.includes(v) ? a : [...a, v]); }} onRename={onRenameTag} onAskDelete={(g, v) => setConfirmDel({ group: g, value: v })} addLabel={t.add} addPh={t.addPh} />
-
-        <span style={lbl}>{t.notes} <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· {t.optional}</span></span>
-        <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} placeholder={t.notesPh} style={{ width: '100%', padding: '10px 12px', background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, color: 'var(--tx)', fontSize: 14, fontFamily: 'inherit' }} />
-
-        <span style={lbl}>{t.photo} <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· {t.optional}</span></span>
-        {img ? <img src={img} alt="trade" style={{ width: '100%', borderRadius: 10, border: '1px solid var(--line)', marginBottom: 8 }} /> : null}
-        <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f); }} />
-        <button className="btn btn-ghost" onClick={() => fileRef.current?.click()} disabled={uploading}>{uploading ? t.uploading : (img ? t.replace : t.upload)}</button>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--line)', flexWrap: 'wrap' }}>
           <span className="muted" style={{ fontSize: 12 }}>✓ {t.minHint}</span>
@@ -469,6 +615,14 @@ function TradeModal({ trade, entry, lang, customTags, onAddTag, onRenameTag, onD
           </div>
         </div>
       </div>
+
+      {/* Lightbox: foto en grande */}
+      {zoom && img && (
+        <div onClick={(e) => { e.stopPropagation(); setZoom(false); }} style={{ position: 'fixed', inset: 0, background: 'rgba(3,6,12,.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 300, cursor: 'zoom-out' }}>
+          <img src={img} alt="trade" style={{ maxWidth: '96vw', maxHeight: '92vh', borderRadius: 12, boxShadow: '0 20px 60px rgba(0,0,0,.6)' }} />
+          <button onClick={(e) => { e.stopPropagation(); setZoom(false); }} aria-label="close" style={{ position: 'fixed', top: 16, right: 18, width: 40, height: 40, borderRadius: 999, border: 'none', background: 'rgba(255,255,255,.14)', color: '#fff', fontSize: 20, cursor: 'pointer' }}>✕</button>
+        </div>
+      )}
 
       {/* Confirmación iluminada al borrar un tag propio */}
       {confirmDel && (
