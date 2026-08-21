@@ -29,7 +29,21 @@ let subs: Array<() => void> = [];
 let seq = 1;
 const emit = () => subs.forEach((f) => f());
 
-export function toast(msg: ToastMsg, kind: Kind = 'error') {
+// Clasificador: si NO se especifica el tipo, deducimos por el texto si es éxito
+// (píldora verde) o problema (modal). Así todo el histórico de avisos que no
+// pasaba un tipo deja de salir en rojo por defecto. Las llamadas que SÍ pasan
+// tipo ('ok' | 'info' | 'warn' | 'error') se respetan tal cual.
+const BAD_RE = /(no se pudo|no pudo|no puede|hubo un|ocurri[oó]|error|fall(o|ó|a |aron|amos)|inv[aá]lid|no v[aá]lid|m[aá]ximo|m[ií]nimo|requiere|obligatori|falta[n ]|faltan|no hay|no queda|debe[ns]? |no configurad|no encontr|no se encontr|sin conexi|no autoriz|permiso|elige |selecciona|escribe |introduce |pon (un|el|la|tu) |primero|failed|could ?n.?t|could not|cannot|can.?t |invalid|required|missing|too (large|big|many)|must be|must have|not configured|not found|denied|unauthorized|please (enter|select|choose|pick|add|type)|pick (a|an|the)|choose (a|an|the)|enter (a|an|the|your)|select (a|an|the))/i;
+function autoKind(msg: ToastMsg): Kind {
+  try {
+    if (msg && typeof msg === 'object' && 'api' in (msg as any)) return 'error'; // toastErr → error
+    const s = typeof msg === 'string' ? msg : `${(msg as any).es || ''} ${(msg as any).en || ''}`;
+    return BAD_RE.test(s) ? 'error' : 'ok';
+  } catch { return 'ok'; }
+}
+
+export function toast(msg: ToastMsg, kind?: Kind) {
+  if (kind === undefined) kind = autoKind(msg);
   const id = seq++;
   // Guardamos código y ruta al crear el aviso (para "Copiar detalle").
   let code: string | undefined;

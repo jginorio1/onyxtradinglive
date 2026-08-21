@@ -113,7 +113,7 @@ function BlogAuthorCard({ es, roster, reload }: { es: boolean; roster: any; relo
     setBusy(true);
     try {
       const r = await fetch('/api/admin/blog/author', { method: 'PATCH', body: JSON.stringify({ list, defaultId }) });
-      if (r.ok) { toast(es ? 'Autores guardados.' : 'Authors saved.'); reload(); } else toast(es ? 'No se pudo guardar.' : 'Could not save.');
+      if (r.ok) { toast(es ? 'Autores guardados.' : 'Authors saved.', 'ok'); reload(); } else toast(es ? 'No se pudo guardar.' : 'Could not save.');
     } finally { setBusy(false); }
   }
   return (
@@ -303,7 +303,7 @@ export default function BlogEditor() {
       if (r.ok && j.article) {
         setF((s: any) => ({ ...s, ...j.article }));
         const tgt = j.target ? (es ? j.target.es : j.target.en) : '';
-        toast((es ? 'Artículo generado. Revísalo antes de publicar.' : 'Article generated. Review before publishing.') + (tgt ? (es ? ` Keyword objetivo: “${tgt}”.` : ` Target keyword: “${tgt}”.`) : ''));
+        toast((es ? 'Artículo generado. Revísalo antes de publicar.' : 'Article generated. Review before publishing.') + (tgt ? (es ? ` Keyword objetivo: “${tgt}”.` : ` Target keyword: “${tgt}”.`) : ''), 'ok');
       }
       else toast(j.code === 'no_key' ? (es ? 'IA no configurada (falta ANTHROPIC_API_KEY).' : 'AI not configured (missing ANTHROPIC_API_KEY).') : (es ? 'La IA no pudo generar.' : 'AI could not generate.'));
     } finally { setAi(false); }
@@ -347,11 +347,11 @@ export default function BlogEditor() {
     if (noKey || aiOk === 0) {
       toast(es
         ? `Slug ES/EN aplicado a ${ok}/${list.length}. Pero la IA no añadió enlaces/FAQ/imagen (0 mejorados). Revisa que ANTHROPIC_API_KEY esté configurada.`
-        : `ES/EN slug applied to ${ok}/${list.length}. But AI did not add links/FAQ/image (0 enhanced). Check that ANTHROPIC_API_KEY is set.`);
+        : `ES/EN slug applied to ${ok}/${list.length}. But AI did not add links/FAQ/image (0 enhanced). Check that ANTHROPIC_API_KEY is set.`, 'warn');
     } else {
       toast(es
         ? `✓ Listo: ${aiOk}/${list.length} mejorados con IA (enlaces, FAQ, imagen) · slug ES/EN en ${ok}.`
-        : `✓ Done: ${aiOk}/${list.length} enhanced by AI (links, FAQ, image) · ES/EN slug on ${ok}.`);
+        : `✓ Done: ${aiOk}/${list.length} enhanced by AI (links, FAQ, image) · ES/EN slug on ${ok}.`, 'ok');
     }
     await load();
   }
@@ -366,7 +366,7 @@ export default function BlogEditor() {
       if (max === 0) return false;
       return min === 0 || min < max * 0.6;
     });
-    if (!gap.length) { toast(es ? 'Todos los artículos ya están completos en ambos idiomas. ✓' : 'All articles already complete in both languages. ✓'); return; }
+    if (!gap.length) { toast(es ? 'Todos los artículos ya están completos en ambos idiomas. ✓' : 'All articles already complete in both languages. ✓', 'ok'); return; }
     if (!await confirmDialog(es
       ? `${gap.length} artículo(s) tienen un idioma incompleto o desbalanceado. Onyx AI lo traducirá/regenerará (ES↔EN) a partir del idioma más completo, conservando estructura, enlaces, FAQ e imágenes. ¿Continuar?`
       : `${gap.length} article(s) have an incomplete or unbalanced language. Onyx AI will translate/regenerate it (ES↔EN) from the more complete language, keeping structure, links, FAQ and images. Continue?`)) return;
@@ -387,7 +387,7 @@ export default function BlogEditor() {
     setBulk({ running: false, done: 0, total: 0 });
     toast(noKey && ok === 0
       ? (es ? 'La IA no está configurada (ANTHROPIC_API_KEY).' : 'AI is not configured (ANTHROPIC_API_KEY).')
-      : (es ? `✓ Idiomas completados en ${ok}/${gap.length} artículos.` : `✓ Languages completed on ${ok}/${gap.length} articles.`));
+      : (es ? `✓ Idiomas completados en ${ok}/${gap.length} artículos.` : `✓ Languages completed on ${ok}/${gap.length} articles.`), (noKey && ok === 0) ? 'error' : 'ok');
     await load();
   }
 
@@ -404,7 +404,7 @@ export default function BlogEditor() {
       if (r.ok && (j.body_es || j.body_en)) {
         edit(p);
         setF((s: any) => ({ ...s, body_es: j.body_es || s.body_es, body_en: j.body_en || s.body_en, _suggestedSlug: j.suggestedSlug || '' }));
-        toast(es ? '✨ Mejorado. Revisa el texto y guarda.' : '✨ Enhanced. Review and save.');
+        toast(es ? '✨ Mejorado. Revisa el texto y guarda.' : '✨ Enhanced. Review and save.', 'ok');
       } else toast(j.code === 'no_key' ? (es ? 'IA no configurada.' : 'AI not configured.') : (es ? 'La IA no pudo mejorar.' : 'AI could not enhance.'));
     } finally { setAi(false); }
   }
@@ -421,7 +421,7 @@ export default function BlogEditor() {
       const j = await r.json();
       if (r.ok && j.patch && Object.keys(j.patch).length) {
         await fetch('/api/admin/blog', { method: 'POST', body: JSON.stringify({ ...p, ...j.patch }) });
-        toast(es ? '🌐 Idioma completado.' : '🌐 Language completed.'); await load();
+        toast(es ? '🌐 Idioma completado.' : '🌐 Language completed.', 'ok'); await load();
       } else toast(j.code === 'no_key' ? (es ? 'IA no configurada.' : 'AI not configured.') : j.code === 'empty' ? (es ? 'El artículo está vacío.' : 'The article is empty.') : (es ? 'No se pudo completar.' : 'Could not complete.'));
     } finally { setAi(false); }
   }
@@ -478,7 +478,7 @@ export default function BlogEditor() {
         body_es: (s.body_es ? s.body_es.replace(/\s*$/, '') + '\n\n' : '') + `![${altEs || altEn}](${url})\n`,
         body_en: (s.body_en ? s.body_en.replace(/\s*$/, '') + '\n\n' : '') + `![${altEn || altEs}](${url})\n`,
       }));
-      toast(es ? 'Imagen insertada en el cuerpo (ES y EN).' : 'Image inserted in the body (ES and EN).');
+      toast(es ? 'Imagen insertada en el cuerpo (ES y EN).' : 'Image inserted in the body (ES and EN).', 'ok');
     } finally { setImgBusy(''); }
   }
 
@@ -489,7 +489,7 @@ export default function BlogEditor() {
       body_es: (s.body_es ? s.body_es.replace(/\s*$/, '') + '\n\n' : '') + CHART_TPL + '\n',
       body_en: (s.body_en ? s.body_en.replace(/\s*$/, '') + '\n\n' : '') + CHART_TPL + '\n',
     }));
-    toast(es ? 'Plantilla de gráfica añadida. Edita los datos.' : 'Chart template added. Edit the data.');
+    toast(es ? 'Plantilla de gráfica añadida. Edita los datos.' : 'Chart template added. Edit the data.', 'ok');
   }
 
   async function save() {
@@ -511,7 +511,7 @@ export default function BlogEditor() {
     try {
       const r = await fetch('/api/admin/blog', { method: 'POST', body: JSON.stringify(body) });
       const j = await r.json();
-      if (r.ok) { toast(es ? 'Guardado.' : 'Saved.'); setF(null); await load(); }
+      if (r.ok) { toast(es ? 'Guardado.' : 'Saved.', 'ok'); setF(null); await load(); }
       else toast((es ? 'No se pudo guardar: ' : 'Could not save: ') + (j.error || ''));
     } finally { setBusy(false); }
   }
