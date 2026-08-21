@@ -100,23 +100,37 @@ export default function BlogAutopilot({ es, onChanged }: { es: boolean; onChange
     } catch { toast(es ? 'No se pudo.' : 'Could not.'); }
     setBusy('');
   }
-  // Genera TODAS las fechas vacías, una por una (bucle desde el navegador con barra
-  // de progreso, para no chocar con el timeout serverless de la función).
+  // Reordena TODAS las fechas en secuencia limpia día-sí/día-no desde mañana.
+  async function normalize() {
+    setBusy('norm');
+    try {
+      const r = await fetch('/api/admin/blog/autopilot', { method: 'POST', body: JSON.stringify({ action: 'normalize' }) });
+      const j = await r.json();
+      if (j.ok) { toast(es ? `📅 ${j.count} fechas reordenadas (día sí, día no).` : `📅 ${j.count} dates reordered (every other day).`, 'ok'); await load(); onChanged?.(); }
+      else toast(es ? 'No se pudo reprogramar.' : 'Could not reschedule.');
+    } catch { toast(es ? 'No se pudo reprogramar.' : 'Could not reschedule.'); }
+    setBusy('');
+  }
+  const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
+  // Genera TODAS las fechas vacías, una por una (bucle en el navegador con barra de
+  // progreso). Tolerante a límites de la API: pausa entre cada una y hace backoff
+  // (espera creciente) si falla, en vez de rendirse a las pocas.
   async function fillAll() {
     const total = slots.filter((s) => !s.ready).length;
     if (!total) { toast(es ? 'No hay fechas vacías. Planifica el mes primero.' : 'No empty dates. Plan the month first.'); return; }
     setGen({ running: true, done: 0, total });
     let done = 0, fails = 0, lastErr = '';
-    for (let i = 0; i < total * 2 + 10; i++) {
+    for (let i = 0; i < total * 3 + 20; i++) {
+      let ok = false, remaining = -1;
       try {
         const r = await fetch('/api/admin/blog/autopilot', { method: 'POST', body: JSON.stringify({ action: 'fill', all: true }) });
         const j = await r.json();
-        if (!j.ok) { lastErr = j.error || ''; fails++; }
-        else if (j.filled) { done++; fails = 0; setGen({ running: true, done, total }); refreshSlots(); }
-        else { fails++; lastErr = j.errors?.[0] || ''; }        // reintenta la misma fecha
-        if (j.ok && j.remaining === 0) break;                    // ya no queda nada vacío
-        if (fails >= 3) { toast((es ? 'La IA no pudo generar una fecha.' : 'AI could not generate a date.') + (lastErr ? ` · ${lastErr}` : '')); break; }
-      } catch { fails++; if (fails >= 3) { toast(es ? 'Se interrumpió la generación.' : 'Generation interrupted.'); break; } }
+        if (j.ok && j.filled) { done++; fails = 0; ok = true; remaining = j.remaining ?? -1; setGen({ running: true, done, total }); refreshSlots(); }
+        else { fails++; lastErr = j.errors?.[0] || j.error || ''; }
+      } catch { fails++; lastErr = 'red'; }
+      if (ok && remaining === 0) break;                          // ya no queda nada vacío
+      if (fails >= 8) { toast((es ? 'La IA se detuvo (posible límite de la API). Espera un momento y pulsa Reanudar.' : 'AI stopped (possible API limit). Wait and press Resume.') + (lastErr ? ` · ${lastErr}` : '')); break; }
+      await sleep(fails > 0 ? Math.min(15000, 2000 * fails) : 600);   // pausa corta; backoff tras fallo
     }
     setGen({ running: false, done: 0, total: 0 });
     if (done) toast(es ? `✅ ${done} artículo(s) generado(s).` : `✅ ${done} article(s) generated.`, 'ok');
@@ -228,6 +242,7 @@ export default function BlogAutopilot({ es, onChanged }: { es: boolean; onChange
               {gen.running ? `⏳ ${gen.done}/${gen.total}` : (pending > 0 && slots.some((s) => s.ready) ? `⚡ ${lbl('Reanudar', 'Resume')} (${pending})` : `⚡ ${lbl('Generar todas ahora', 'Generate all now')}`)}
             </button>
             <button className="btn btn-ghost" onClick={fillNow} disabled={busy === 'fill' || gen.running} title={lbl('Genera solo la próxima fecha pendiente (prueba)', 'Generate just the next pending date (test)')}>{busy === 'fill' ? '…' : `✨ ${lbl('Solo la próxima', 'Just the next')}`}</button>
+            {slots.length > 0 && <button className="btn btn-ghost" onClick={normalize} disabled={busy === 'norm' || gen.running} title={lbl('Reordena TODAS las fechas en secuencia día sí/día no desde mañana (arregla huecos y horas)', 'Reorder ALL dates into a clean every-other-day sequence from tomorrow (fixes gaps and times)')}>{busy === 'norm' ? '…' : `🔁 ${lbl('Reprogramar día sí/día no', 'Reschedule every other day')}`}</button>}
           </div>
 
           {/* Barra de progreso PERSISTENTE: se calcula desde la base (listos/total),

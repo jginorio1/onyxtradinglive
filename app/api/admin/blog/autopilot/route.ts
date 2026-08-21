@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { requirePerm } from '@/lib/admin';
 import { getSetting, saveSetting, blogAutopilotSettings, blogKeywordsSettings, type BlogAutopilot } from '@/lib/settings';
 import { listAllPosts } from '@/lib/blog';
-import { planMonth, fillDueSlots, nextDates } from '@/lib/blogAutopilot';
+import { planMonth, fillDueSlots, nextDates, normalizeDates } from '@/lib/blogAutopilot';
 import { suggestTopics, lastAiError } from '@/lib/blogAI';
 import { logError } from '@/lib/errlog';
 
@@ -70,6 +70,11 @@ export async function POST(req: Request) {
       // desde el navegador: 1 por petición para no chocar con el timeout serverless).
       const r = await fillDueSlots(1, { all: !!b.all });
       return NextResponse.json({ ok: true, ...r });
+    }
+    // Reordena todo el calendario en secuencia limpia día-sí/día-no.
+    if (action === 'normalize') {
+      const r = await normalizeDates();
+      return NextResponse.json({ ok: true, count: r.count });
     }
     // Ampliar el pool de temas con IA (para que dure meses/años sin repetir).
     if (action === 'topics') {

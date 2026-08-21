@@ -231,6 +231,11 @@ export async function savePost(b: any) {
   return { id: (ins.data as any).id, slug: row.slug };
 }
 
+// Reprograma SOLO la fecha/hora de un post (para normalizar el calendario).
+export async function setPublishAt(id: string, iso: string) {
+  await supabaseAdmin.from('blog_posts').update({ publish_at: iso }).eq('id', id);
+}
+
 export async function deletePost(id: string) {
   await supabaseAdmin.from('blog_posts').delete().eq('id', id);
 }

@@ -9,7 +9,7 @@
 // ============================================================
 import { blogAutopilotSettings, blogKeywordsSettings, saveSetting, type BlogAutopilot } from '@/lib/settings';
 import { generateArticle, lastAiError, type KwGuide, type RelatedPost } from '@/lib/blogAI';
-import { listAllPosts, savePost } from '@/lib/blog';
+import { listAllPosts, savePost, setPublishAt } from '@/lib/blog';
 
 const DAY = 24 * 3600 * 1000;
 const empty = (p: any) => !String(p.body_es || '').trim() && !String(p.body_en || '').trim();
@@ -127,6 +127,25 @@ export async function fillDueSlots(max = 1, opts?: { all?: boolean }): Promise<{
     } else { errors.push(lastAiError() || r.reason || 'ai_failed'); }
   }
   return { filled, tried: due.length, remaining: Math.max(0, pending.length - filled), errors };
+}
+
+// Reordena TODAS las fechas programadas en una secuencia limpia día-sí/día-no
+// (cadencia actual), empezando mañana a la hora configurada. Arregla huecos,
+// horas mezcladas por zona horaria y solapes. Conserva el orden actual.
+export async function normalizeDates(): Promise<{ count: number }> {
+  const cfg = await blogAutopilotSettings();
+  let posts: any[] = [];
+  try { posts = await listAllPosts(); } catch {}
+  const slots = posts.filter((p) => p.status === 'scheduled' && p.publish_at)
+    .sort((a, b) => new Date(a.publish_at).getTime() - new Date(b.publish_at).getTime());
+  if (!slots.length) return { count: 0 };
+  const firstDay = new Date(Date.now() + DAY);
+  let count = 0;
+  for (let i = 0; i < slots.length; i++) {
+    const d = atLocalHour(new Date(firstDay.getTime() + i * cfg.everyNDays * DAY), cfg);
+    try { await setPublishAt(slots[i].id, d.toISOString()); count++; } catch {}
+  }
+  return { count };
 }
 
 // Cuántas fechas futuras (programadas) quedan — para reponer solo.
