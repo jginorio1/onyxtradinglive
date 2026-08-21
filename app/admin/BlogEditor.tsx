@@ -288,7 +288,7 @@ export default function BlogEditor() {
       const r = await fetch('/api/admin/blog/ai', { method: 'POST', body: JSON.stringify({ mode: 'titles', topic: t, lang, kind }) });
       const j = await r.json();
       if (r.ok && j.titles) setTitles(j.titles);
-      else toast(j.code === 'no_key' ? (es ? 'IA no configurada (falta ANTHROPIC_API_KEY).' : 'AI not configured (missing ANTHROPIC_API_KEY).') : (es ? 'La IA no pudo sugerir.' : 'AI could not suggest.'));
+      else toast(j.code === 'no_key' ? (es ? 'IA no configurada (falta ANTHROPIC_API_KEY).' : 'AI not configured (missing ANTHROPIC_API_KEY).') : ((es ? 'La IA no pudo sugerir.' : 'AI could not suggest.') + (j.detail ? ` · ${j.detail}` : '')));
     } finally { setAi(false); }
   }
 
@@ -305,7 +305,7 @@ export default function BlogEditor() {
         const tgt = j.target ? (es ? j.target.es : j.target.en) : '';
         toast((es ? 'Artículo generado. Revísalo antes de publicar.' : 'Article generated. Review before publishing.') + (tgt ? (es ? ` Keyword objetivo: “${tgt}”.` : ` Target keyword: “${tgt}”.`) : ''), 'ok');
       }
-      else toast(j.code === 'no_key' ? (es ? 'IA no configurada (falta ANTHROPIC_API_KEY).' : 'AI not configured (missing ANTHROPIC_API_KEY).') : (es ? 'La IA no pudo generar.' : 'AI could not generate.'));
+      else toast(j.code === 'no_key' ? (es ? 'IA no configurada (falta ANTHROPIC_API_KEY).' : 'AI not configured (missing ANTHROPIC_API_KEY).') : ((es ? 'La IA no pudo generar.' : 'AI could not generate.') + (j.detail ? ` · ${j.detail}` : '')));
     } finally { setAi(false); }
   }
 

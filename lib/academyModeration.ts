@@ -129,7 +129,7 @@ export async function aiModerate(text: string): Promise<{ flag: 'none' | 'low' |
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return { flag: 'none', category: 'none' };
   try {
-    const model = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5';
+    const model = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5-20251001';
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },

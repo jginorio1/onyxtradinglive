@@ -203,7 +203,7 @@ Nunca des consejo financiero/de mercado ni predigas el mercado. Si la pregunta e
   // Instrucciones extra del admin (tono, reglas propias) — se añaden al final del persona.
   const personaFull = persona + aiLangDirective(lang) + (adminExtra ? `\n\n${en ? 'EXTRA INSTRUCTIONS (from admin)' : 'INSTRUCCIONES EXTRA (del admin)'}:\n${adminExtra}` : '');
 
-  const model = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5';
+  const model = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5-20251001';
   const headers: any = { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' };
   // Historial de conversación (para seguimientos como "¿y en iPhone?") + la pregunta nueva.
   const prior = (Array.isArray(history) ? history : [])

@@ -225,6 +225,7 @@ export const academyPerksSettings = () => getSetting<AcademyPerks>('academy_perk
 export type AiPrices = { [model: string]: { in: number; out: number } };
 const AI_PRICES_DEF: AiPrices = {
   'claude-haiku-4-5': { in: 1.0, out: 5.0 },
+  'claude-haiku-4-5-20251001': { in: 1.0, out: 5.0 },
   'default': { in: 1.0, out: 5.0 },
 };
 export const aiPricesSettings = () => getSetting<AiPrices>('ai_prices', AI_PRICES_DEF);

@@ -3,7 +3,7 @@
 // El cuerpo usa SOLO los tipos de bloque que el editor entiende:
 //   { p } { h } { tip } { note } { warn } { list:[] } { steps:[] }
 
-const MODEL = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5';
+const MODEL = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5-20251001';
 
 async function ai(system: string, user: string, maxTokens = 2200): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;

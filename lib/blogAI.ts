@@ -11,25 +11,43 @@ import type { Lang } from '@/lib/navText';
 // riesgo, herramientas de Onyx, prop firms, psicología, etc.
 // ============================================================
 
+// Guardamos el ÚLTIMO error de la IA (HTTP, timeout, etc.) para poder mostrarlo
+// en el popup del editor y en Diagnóstico. Sin esto, un fallo de la API se veía
+// como un genérico "la IA no pudo generar" sin causa.
+let _lastAiErr = '';
+export function lastAiError() { return _lastAiErr; }
+
 async function aiRaw(system: string, user: string, maxTokens: number): Promise<string | null> {
+  _lastAiErr = '';
   const key = process.env.ANTHROPIC_API_KEY;
-  if (!key) return null;
+  if (!key) { _lastAiErr = 'Falta ANTHROPIC_API_KEY'; return null; }
+  const model = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5-20251001';
   // Cortamos la llamada a los 50s para no agotar la función serverless (que
   // devolvería 502). Si tarda más, devolvemos null y la ruta responde limpio.
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 50000);
   try {
-    const model = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5';
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST', signal: ctrl.signal,
       headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({ model, max_tokens: maxTokens, system, messages: [{ role: 'user', content: user.slice(0, 6000) }] }),
     });
-    if (!r.ok) return null;
+    if (!r.ok) {
+      // Sacamos el mensaje real de la API (modelo inválido, sin crédito, límite…).
+      let body = ''; try { body = await r.text(); } catch {}
+      let msg = ''; try { msg = JSON.parse(body)?.error?.message || ''; } catch {}
+      _lastAiErr = `HTTP ${r.status} · ${model} · ${(msg || body || '').slice(0, 240)}`.trim();
+      return null;
+    }
     const d = await r.json();
     import('@/lib/aiCost').then((m) => m.logAiUsage('blog', d)).catch(() => {});
-    return (d?.content || []).map((c: any) => c.text || '').join('\n').trim() || null;
-  } catch { return null; }
+    const txt = (d?.content || []).map((c: any) => c.text || '').join('\n').trim();
+    if (!txt) _lastAiErr = 'La IA respondió vacío';
+    return txt || null;
+  } catch (e: any) {
+    _lastAiErr = e?.name === 'AbortError' ? 'La IA tardó demasiado (timeout 50s)' : `Fallo de red: ${String(e?.message || e).slice(0, 200)}`;
+    return null;
+  }
   finally { clearTimeout(timer); }
 }
 

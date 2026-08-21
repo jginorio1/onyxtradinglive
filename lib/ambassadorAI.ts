@@ -15,7 +15,7 @@ async function anthropic(system: string, user: string, maxTokens = 900): Promise
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return null;
   try {
-    const model = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5';
+    const model = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5-20251001';
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },

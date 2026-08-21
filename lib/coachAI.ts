@@ -16,7 +16,7 @@ async function aiRaw(system: string, content: any, maxTokens: number, beta?: str
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return null;
   try {
-    const model = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5';
+    const model = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5-20251001';
     const headers: any = { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' };
     if (beta) headers['anthropic-beta'] = beta;
     const r = await fetch('https://api.anthropic.com/v1/messages', {

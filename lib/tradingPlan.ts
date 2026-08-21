@@ -435,7 +435,7 @@ Reglas estrictas de formato:
 - NUNCA predigas el mercado, des señales ni prometas ganancias. Sin saludo ni despedida.`)
     + `\n\n=== ${lang === 'en' ? 'PLAN AND BEHAVIOR' : 'PLAN Y CONDUCTA'} ===\n${ctx}`;
   try {
-    const model = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5';
+    const model = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5-20251001';
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({ model, max_tokens: 500, system, messages: [{ role: 'user', content: lang === 'en' ? 'Review my discipline.' : 'Repasa mi disciplina.' }] }),

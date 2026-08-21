@@ -16,7 +16,7 @@ async function ai(system: string, user: string, maxTokens = 700): Promise<string
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return null;
   try {
-    const model = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5';
+    const model = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5-20251001';
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
@@ -56,7 +56,7 @@ export async function moderateImage(mediaType: string, base64Data: string): Prom
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return { safe: true, checked: false };
   try {
-    const model = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5';
+    const model = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5-20251001';
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },

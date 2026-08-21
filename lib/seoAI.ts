@@ -30,7 +30,7 @@ Da 10 keywords y 4 clusters (grupos temáticos para pilar de contenido).
 ${await brandBrief(lang)}`;
   const user = `Tema: "${topic}". Devuelve keywords de intención + títulos y clusters.`;
   try {
-    const model = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5';
+    const model = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5-20251001';
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },

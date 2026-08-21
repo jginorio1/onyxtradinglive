@@ -269,7 +269,7 @@ export async function onyxTeamAnswer(opts: { question: string; lang: Lang; tz?: 
       : `Eres Onyx AI para el EQUIPO de soporte interno (solo empleados). Responde usando SOLO los datos exactos de tickets de abajo. Sé preciso y específico: cita asuntos, clientes y horas cuando aplique. Texto plano: sin asteriscos, sin markdown, sin #, sin negritas. Usa "· " para listas. Si los datos no responden, dilo. Nunca reveles secretos. Sin despedida.`)
       + `\n\n=== ${en ? 'EXACT TICKETS' : 'TICKETS EXACTOS'} (${rows.length}) ===\n${facts}` + aiLangDirective(lang);
     try {
-      const model = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5';
+      const model = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5-20251001';
       const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model, max_tokens: 800, system, messages: [{ role: 'user', content: question.slice(0, 1500) }] }) });
       if (!r.ok) return stripMd(facts);
       const data = await r.json();
@@ -311,7 +311,7 @@ export async function onyxTeamAnswer(opts: { question: string; lang: Lang; tz?: 
     : `Eres Onyx AI para el EQUIPO de soporte interno (solo empleados). Responde con los DATOS agregados de abajo. Cifras reales, listas cortas. Texto plano: sin asteriscos, sin markdown, sin #, sin negritas. Usa "· " para listas. Si faltan datos, dilo. Nunca reveles secretos. Sin despedida.`)
     + `\n\n=== ${en ? 'SUPPORT DATA' : 'DATOS DE SOPORTE'} ===\n${ctx}` + aiLangDirective(lang);
   try {
-    const model = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5';
+    const model = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5-20251001';
     const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model, max_tokens: 700, system, messages: [{ role: 'user', content: question.slice(0, 1500) }] }) });
     if (!r.ok) return en ? 'Sorry, I could not process that right now.' : 'Perdona, no pude procesar eso ahora mismo.';
     const data = await r.json();

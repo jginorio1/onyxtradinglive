@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requirePerm } from '@/lib/admin';
-import { suggestTitles, generateArticle, enhanceArticle, completeLanguages, socialCopy, generateAlt, type KwGuide, type BlogKind, type RelatedPost } from '@/lib/blogAI';
+import { suggestTitles, generateArticle, enhanceArticle, completeLanguages, socialCopy, generateAlt, lastAiError, type KwGuide, type BlogKind, type RelatedPost } from '@/lib/blogAI';
 import { blogKeywordsSettings } from '@/lib/settings';
 import { listAllPosts, shortSlug, slugFor } from '@/lib/blog';
 import { articleUrl } from '@/lib/social';
@@ -66,7 +66,7 @@ export async function POST(req: Request) {
       const g = await buildGuide(override);
       const target = g ? (lang === 'en' ? g.targetEn : g.targetEs) : undefined;
       const r = await suggestTitles(topic, lang, target);
-      if (!r.ok) return NextResponse.json({ error: r.reason || 'ai', code: r.reason }, { status: 200 });
+      if (!r.ok) return NextResponse.json({ error: r.reason || 'ai', code: r.reason, detail: lastAiError() }, { status: 200 });
       return NextResponse.json({ titles: r.titles, target });
     }
 
@@ -82,7 +82,11 @@ export async function POST(req: Request) {
           .map((p: any) => ({ slug: p.slug, title_es: p.title_es, title_en: p.title_en, tags: p.tags }));
       } catch {}
       const r = await generateArticle(title, g, { related, kind });
-      if (!r.ok) return NextResponse.json({ error: r.reason || 'ai', code: r.reason }, { status: 200 });
+      if (!r.ok) {
+        const detail = lastAiError();
+        if (r.reason !== 'no_key') { try { await logError('blog_ai_generate', new Error(detail || r.reason || 'ai_failed')); } catch {} }
+        return NextResponse.json({ error: r.reason || 'ai', code: r.reason, detail }, { status: 200 });
+      }
       return NextResponse.json({ article: r.article, target: g ? { es: g.targetEs, en: g.targetEn } : null });
     }
 
@@ -100,7 +104,7 @@ export async function POST(req: Request) {
         .map((p) => ({ slug: p.slug, title_es: p.title_es, title_en: p.title_en, tags: p.tags }));
       const g = await buildGuide();
       const r = await enhanceArticle(post.title_es || post.title_en || '', post.body_es || '', post.body_en || '', related);
-      if (!r.ok) return NextResponse.json({ error: r.reason || 'ai', code: r.reason }, { status: 200 });
+      if (!r.ok) return NextResponse.json({ error: r.reason || 'ai', code: r.reason, detail: lastAiError() }, { status: 200 });
       const kw = g ? (g.targetEs || g.targetEn) : (String(post.tags || '').split(',')[0] || '');
       const suggestedSlug = shortSlug('', post.title_es || post.title_en || '', kw);
       return NextResponse.json({ body_es: r.body_es, body_en: r.body_en, suggestedSlug, currentSlug: post.slug });
@@ -115,7 +119,7 @@ export async function POST(req: Request) {
       const post = posts.find((p) => p.id === id);
       if (!post) return NextResponse.json({ error: 'no encontrado' }, { status: 404 });
       const r = await completeLanguages(post, { force: !!b.force });
-      if (!r.ok) return NextResponse.json({ error: r.reason || 'ai', code: r.reason }, { status: 200 });
+      if (!r.ok) return NextResponse.json({ error: r.reason || 'ai', code: r.reason, detail: lastAiError() }, { status: 200 });
       return NextResponse.json({ patch: r.patch || {} });
     }
 
@@ -133,7 +137,7 @@ export async function POST(req: Request) {
       const url = articleUrl(SITE, slugFor(post, lang), lang);
       const only = b.only ? String(b.only) : undefined;
       const r = await socialCopy(title, excerpt, url, lang, only);
-      if (!r.ok) return NextResponse.json({ error: r.reason || 'ai', code: r.reason }, { status: 200 });
+      if (!r.ok) return NextResponse.json({ error: r.reason || 'ai', code: r.reason, detail: lastAiError() }, { status: 200 });
       return NextResponse.json({ copy: r.copy, url, slug: post.slug });
     }
 
@@ -144,7 +148,7 @@ export async function POST(req: Request) {
       const g = await buildGuide(override);
       const kw = g ? (g.targetEs || g.targetEn) : override;
       const r = await generateAlt(context || (hint as string), hint, kw);
-      if (!r.ok) return NextResponse.json({ error: r.reason || 'ai', code: r.reason }, { status: 200 });
+      if (!r.ok) return NextResponse.json({ error: r.reason || 'ai', code: r.reason, detail: lastAiError() }, { status: 200 });
       return NextResponse.json({ alt_es: r.alt_es, alt_en: r.alt_en });
     }
 
