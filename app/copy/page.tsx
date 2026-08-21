@@ -181,7 +181,7 @@ export default async function CopyLanding() {
                 <div style={{ textAlign: 'right', flex: '0 0 auto', minWidth: 92 }}>
                   <div className="muted" style={{ fontSize: 12 }}>{p.followers || 0} {L.copies}</div>
                   {p.fee_month ? <div style={{ fontSize: 12, marginTop: 2 }}>{L.from} {money(p.fee_month)}/{L.month}</div> : null}
-                  <span className="btn btn-ghost" style={{ fontSize: 12, marginTop: 6, opacity: .7, cursor: 'default' }}>{L.copyBtn} · {L.soon}</span>
+                  <Link href={`/copy/t/${p.id}`} className="btn btn-ghost" style={{ fontSize: 12, marginTop: 6, display: 'inline-block' }}>{es ? 'Ver certificado →' : 'View certificate →'}</Link>
                 </div>
               </div>
             );

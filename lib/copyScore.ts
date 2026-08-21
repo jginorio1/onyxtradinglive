@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { getSetting } from '@/lib/settings';
 
 // ============================================================
 // Onyx Score — motor DETERMINISTA para calificar a un trader (copy marketplace).
@@ -34,17 +35,29 @@ export const TIER_GATES = {
   diamond: { score: 88, trades: 150, days: 120, pf: 1.5, maxDD: 10, verified: true },
 } as const;
 
-function tierFor(score: number, s: ScoreStats, verified: boolean, blockDiamond = false): { tier: Tier; reasons: string[] } {
+// Configuración de calificación EDITABLE desde Admin (Onyx Copy). Si el dueño no
+// cambia nada, se usan estos valores por defecto (los mismos de arriba).
+export type Gate = { score: number; trades: number; days: number; pf: number; maxDD: number; verified: boolean };
+export type Weights = { discipline: number; risk: number; performance: number; consistency: number };
+export type CopyConfig = { weights: Weights; gates: { silver: Gate; gold: Gate; diamond: Gate }; windowDays: number };
+export const DEFAULT_COPY_CONFIG: CopyConfig = {
+  weights: { discipline: 0.30, risk: 0.25, performance: 0.25, consistency: 0.20 },
+  gates: { silver: { ...TIER_GATES.silver }, gold: { ...TIER_GATES.gold }, diamond: { ...TIER_GATES.diamond } },
+  windowDays: 180,
+};
+export const copyConfig = () => getSetting<CopyConfig>('copy_config', DEFAULT_COPY_CONFIG);
+
+function tierFor(score: number, s: ScoreStats, verified: boolean, blockDiamond = false, gates = DEFAULT_COPY_CONFIG.gates): { tier: Tier; reasons: string[] } {
   const order: Tier[] = ['diamond', 'gold', 'silver'];
   for (const tier of order) {
     if (tier === 'diamond' && blockDiamond) continue;   // regla de consistencia: un día no puede pesar demasiado
-    const g = (TIER_GATES as any)[tier];
+    const g = (gates as any)[tier];
     if (score >= g.score && s.trades >= g.trades && s.tradingDays >= g.days && s.pf >= g.pf && s.maxDDpct <= g.maxDD && (!g.verified || verified)) {
       return { tier, reasons: [] };
     }
   }
   // ¿Qué falta para Silver? (para el panel del trader)
-  const g = TIER_GATES.silver; const reasons: string[] = [];
+  const g = gates.silver; const reasons: string[] = [];
   if (score < g.score) reasons.push(`score ${round(score)}/${g.score}`);
   if (s.trades < g.trades) reasons.push(`${s.trades}/${g.trades} ops`);
   if (s.tradingDays < g.days) reasons.push(`${s.tradingDays}/${g.days} días`);
@@ -67,7 +80,7 @@ export function riskFlags(stats: ScoreStats, g: { maxDayShare: number; biggestLo
 }
 
 // Score puro a partir de KPIs + adherencia. Separado del IO para poder testear.
-export function scoreFrom(stats: ScoreStats, adh: { adherence: number; gradeScore: number | null; docRatio: number; hasPlan: boolean; breaks: number }, guards: { maxDayShare?: number; flags?: string[] } = {}): { score: number; pillars: Pillars } {
+export function scoreFrom(stats: ScoreStats, adh: { adherence: number; gradeScore: number | null; docRatio: number; hasPlan: boolean; breaks: number }, guards: { maxDayShare?: number; flags?: string[] } = {}, weights: Weights = DEFAULT_COPY_CONFIG.weights): { score: number; pillars: Pillars } {
   const flags = guards.flags || [];
   // Disciplina (30%): ¿sigue su plan? ¿califica sus trades? ¿tiene plan escrito?
   const discipline = clamp(100 * (0.5 * adh.adherence + 0.3 * (adh.gradeScore ?? 0.5) + 0.2 * adh.docRatio) + (adh.hasPlan ? 8 : 0));
@@ -92,14 +105,18 @@ export function scoreFrom(stats: ScoreStats, adh: { adherence: number; gradeScor
   else if (share > 0.3) consistency = Math.min(consistency, 65);
   if (flags.includes('martingale') || flags.includes('huge_loss')) performance = Math.min(performance, 55);
 
-  const score = round(0.30 * discipline + 0.25 * risk + 0.25 * performance + 0.20 * consistency);
+  const w = weights || DEFAULT_COPY_CONFIG.weights;
+  const wsum = (w.discipline + w.risk + w.performance + w.consistency) || 1;
+  const score = round((w.discipline * discipline + w.risk * risk + w.performance * performance + w.consistency * consistency) / wsum);
   return { score, pillars: { discipline: round(discipline), risk: round(risk), performance: round(performance), consistency: round(consistency) } };
 }
 
 // Calcula el Onyx Score de UNA cuenta (últimos ~180 días). Lee trades + diario +
 // plan del trader. Tolerante: si algo falta, no rompe (score bajo).
 export async function computeScoreForAccount(userId: string, accountId: string, opts: { verified?: boolean } = {}): Promise<ScoreResult> {
-  const since = new Date(Date.now() - 180 * 86400000).toISOString();
+  const cfg = await copyConfig().catch(() => DEFAULT_COPY_CONFIG);
+  const winDays = Number(cfg?.windowDays) > 0 ? Number(cfg.windowDays) : 180;
+  const since = new Date(Date.now() - winDays * 86400000).toISOString();
   const [accR, trR, jR, pR] = await Promise.all([
     supabaseAdmin.from('trading_accounts').select('balance').eq('id', accountId).eq('user_id', userId).maybeSingle(),
     supabaseAdmin.from('trades').select('net_profit,close_time').eq('account_id', accountId).gte('close_time', since).order('close_time', { ascending: true }).limit(50000),
@@ -149,8 +166,8 @@ export async function computeScoreForAccount(userId: string, accountId: string, 
   const docRatio = n ? Math.min(1, documented.length / Math.max(1, Math.min(n, 50))) : 0;
   const hasPlan = !!((pR.data as any)?.data);
 
-  const { score, pillars } = scoreFrom(stats, { adherence, gradeScore, docRatio, hasPlan, breaks }, { maxDayShare, flags });
-  const { tier, reasons } = tierFor(score, stats, !!opts.verified, maxDayShare > 0.3);
+  const { score, pillars } = scoreFrom(stats, { adherence, gradeScore, docRatio, hasPlan, breaks }, { maxDayShare, flags }, cfg?.weights);
+  const { tier, reasons } = tierFor(score, stats, !!opts.verified, maxDayShare > 0.3, cfg?.gates || DEFAULT_COPY_CONFIG.gates);
   return { score, tier, pillars, stats, reasons, flags };
 }
 

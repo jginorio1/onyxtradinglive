@@ -126,6 +126,7 @@ export default async function TopBar() {
         // había ninguna otra forma de volver al landing.
         { href: '/', label: t.home },
         { href: '/analiza', label: lang === 'en' ? 'Free analysis' : 'Analiza gratis' },
+        { href: '/copy', label: 'Onyx Copy' },
         { href: '/pricing', label: t.plans },
         { href: '/embajadores', label: t.ambassadors },
         { href: '/guia', label: t.guide },
