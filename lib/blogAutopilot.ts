@@ -94,15 +94,18 @@ export async function planMonth(count?: number): Promise<{ created: { date: stri
   return { created };
 }
 
-// Genera el contenido de las fechas próximas (<=30h) cuyo cuerpo sigue vacío.
-export async function fillDueSlots(max = 1): Promise<{ filled: number; tried: number; errors: string[] }> {
+// Genera el contenido de las fechas programadas cuyo cuerpo sigue vacío.
+//   · normal → solo las próximas (<=30h), para el cron.
+//   · opts.all → cualquier fecha programada vacía (para "generar todas ahora").
+// Devuelve también `remaining` = fechas vacías que aún quedan (para el bucle de la UI).
+export async function fillDueSlots(max = 1, opts?: { all?: boolean }): Promise<{ filled: number; tried: number; remaining: number; errors: string[] }> {
   let posts: any[] = [];
   try { posts = await listAllPosts(); } catch {}
-  const due = posts
-    .filter((p) => p.status === 'scheduled' && p.publish_at && empty(p) && new Date(p.publish_at).getTime() <= Date.now() + 30 * 3600 * 1000)
-    .sort((a, b) => new Date(a.publish_at).getTime() - new Date(b.publish_at).getTime())
-    .slice(0, Math.max(1, max));
-  if (!due.length) return { filled: 0, tried: 0, errors: [] };
+  const pending = posts
+    .filter((p) => p.status === 'scheduled' && p.publish_at && empty(p) && (opts?.all || new Date(p.publish_at).getTime() <= Date.now() + 30 * 3600 * 1000))
+    .sort((a, b) => new Date(a.publish_at).getTime() - new Date(b.publish_at).getTime());
+  const due = pending.slice(0, Math.max(1, max));
+  if (!due.length) return { filled: 0, tried: 0, remaining: 0, errors: [] };
   const guide = await guideFor();
   const related: RelatedPost[] = posts.filter((p) => p.status === 'published').slice(0, 12)
     .map((p) => ({ slug: p.slug, title_es: p.title_es, title_en: p.title_en, tags: p.tags }));
@@ -116,7 +119,7 @@ export async function fillDueSlots(max = 1): Promise<{ filled: number; tried: nu
       catch (e: any) { errors.push(String(e?.message || e)); }
     } else { errors.push(lastAiError() || r.reason || 'ai_failed'); }
   }
-  return { filled, tried: due.length, errors };
+  return { filled, tried: due.length, remaining: Math.max(0, pending.length - filled), errors };
 }
 
 // Cuántas fechas futuras (programadas) quedan — para reponer solo.

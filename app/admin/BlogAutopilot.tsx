@@ -52,6 +52,7 @@ export default function BlogAutopilot({ es, onChanged }: { es: boolean; onChange
   const [topicsText, setTopicsText] = useState('');
   const [slots, setSlots] = useState<Slot[]>([]);
   const [busy, setBusy] = useState('');
+  const [gen, setGen] = useState({ running: false, done: 0, total: 0 });
 
   async function load() {
     try {
@@ -90,6 +91,27 @@ export default function BlogAutopilot({ es, onChanged }: { es: boolean; onChange
       else toast((es ? 'La IA no pudo sugerir temas.' : 'AI could not suggest topics.') + (j.detail ? ` · ${j.detail}` : ''));
     } catch { toast(es ? 'No se pudo.' : 'Could not.'); }
     setBusy('');
+  }
+  // Genera TODAS las fechas vacías, una por una (bucle desde el navegador con barra
+  // de progreso, para no chocar con el timeout serverless de la función).
+  async function fillAll() {
+    const total = slots.filter((s) => !s.ready).length;
+    if (!total) { toast(es ? 'No hay fechas vacías. Planifica el mes primero.' : 'No empty dates. Plan the month first.'); return; }
+    setGen({ running: true, done: 0, total });
+    let done = 0;
+    for (let i = 0; i < total + 5; i++) {
+      try {
+        const r = await fetch('/api/admin/blog/autopilot', { method: 'POST', body: JSON.stringify({ action: 'fill', all: true }) });
+        const j = await r.json();
+        if (!j.ok) { toast(es ? 'No se pudo generar.' : 'Could not generate.'); break; }
+        if (j.filled) { done++; setGen({ running: true, done, total }); }
+        if (!j.filled) { toast((es ? 'La IA no pudo generar una fecha.' : 'AI could not generate a date.') + (j.errors?.[0] ? ` · ${j.errors[0]}` : '')); break; }
+        if (j.remaining === 0) break;
+      } catch { toast(es ? 'Se interrumpió la generación.' : 'Generation interrupted.'); break; }
+    }
+    setGen({ running: false, done: 0, total: 0 });
+    if (done) toast(es ? `✅ ${done} artículo(s) generado(s).` : `✅ ${done} article(s) generated.`, 'ok');
+    await load(); onChanged?.();
   }
   async function fillNow() {
     setBusy('fill');
@@ -192,9 +214,12 @@ export default function BlogAutopilot({ es, onChanged }: { es: boolean; onChange
 
           {/* Acciones principales */}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-            <button className="btn btn-primary" onClick={planMonth} disabled={busy === 'plan'} style={{ boxShadow: '0 8px 20px -8px var(--brand)' }}>{busy === 'plan' ? '…' : `📅 ${lbl('Planificar el mes', 'Plan the month')}`}</button>
-            <button className="btn btn-ghost" onClick={fillNow} disabled={busy === 'fill'} title={lbl('Genera ahora el contenido de la próxima fecha pendiente (prueba)', 'Generate the next pending date now (test)')}>{busy === 'fill' ? '…' : `✨ ${lbl('Generar la próxima ahora', 'Generate next now')}`}</button>
-            {pending > 0 && <span className="muted" style={{ fontSize: 12 }}>⏳ {pending} {lbl('pendiente(s) de generar', 'pending to generate')}</span>}
+            <button className="btn btn-primary" onClick={planMonth} disabled={busy === 'plan' || gen.running} style={{ boxShadow: '0 8px 20px -8px var(--brand)' }}>{busy === 'plan' ? '…' : `📅 ${lbl('Planificar el mes', 'Plan the month')}`}</button>
+            <button className="btn btn-primary" onClick={fillAll} disabled={gen.running || pending === 0} title={lbl('Genera YA el contenido de todas las fechas vacías (una por una)', 'Generate ALL empty dates now (one by one)')} style={{ background: 'linear-gradient(135deg,#7c8cff,#34e2a0)', color: '#0b0d17', boxShadow: '0 8px 20px -8px #34e2a0' }}>
+              {gen.running ? `⏳ ${gen.done}/${gen.total}` : `⚡ ${lbl('Generar todas ahora', 'Generate all now')}`}
+            </button>
+            <button className="btn btn-ghost" onClick={fillNow} disabled={busy === 'fill' || gen.running} title={lbl('Genera solo la próxima fecha pendiente (prueba)', 'Generate just the next pending date (test)')}>{busy === 'fill' ? '…' : `✨ ${lbl('Solo la próxima', 'Just the next')}`}</button>
+            {pending > 0 && !gen.running && <span className="muted" style={{ fontSize: 12 }}>⏳ {pending} {lbl('pendiente(s) de generar', 'pending to generate')}</span>}
           </div>
 
           {/* Calendario del mes lleno */}

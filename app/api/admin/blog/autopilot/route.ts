@@ -65,7 +65,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, created: r.created });
     }
     if (action === 'fill') {
-      const r = await fillDueSlots(1);
+      // all=true genera cualquier fecha vacía (para "Generar todas ahora", en bucle
+      // desde el navegador: 1 por petición para no chocar con el timeout serverless).
+      const r = await fillDueSlots(1, { all: !!b.all });
       return NextResponse.json({ ok: true, ...r });
     }
     // Ampliar el pool de temas con IA (para que dure meses/años sin repetir).
