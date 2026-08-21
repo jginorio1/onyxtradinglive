@@ -84,7 +84,9 @@ export async function planMonth(count?: number): Promise<{ created: { date: stri
     used.push(pick.t);
     const d = new Date(start.getTime() + i * cfg.everyNDays * DAY); d.setHours(cfg.hour || 9, 0, 0, 0);
     try {
-      await savePost({ title_es: pick.t, title_en: pick.t, body_es: '', body_en: '', excerpt_es: '', excerpt_en: '', tags: pick.kw || '', status: 'scheduled', publish_at: d.toISOString() });
+      // title_en vacío a propósito: es solo un marcador del TEMA (en español). El
+      // cron lo reemplaza por el título real ES/EN al generar el artículo.
+      await savePost({ title_es: pick.t, title_en: '', body_es: '', body_en: '', excerpt_es: '', excerpt_en: '', tags: pick.kw || '', status: 'scheduled', publish_at: d.toISOString() });
       created.push({ date: d.toISOString(), topic: pick.t });
     } catch {}
   }
