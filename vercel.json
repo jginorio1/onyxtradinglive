@@ -21,6 +21,7 @@
     { "path": "/api/cron/journal-reminder", "schedule": "0 22 * * *" },
     { "path": "/api/cron/scholarships", "schedule": "0 * * * *" },
     { "path": "/api/cron/comp-trials", "schedule": "0 14 * * *" },
-    { "path": "/api/cron/social", "schedule": "*/15 * * * *" }
+    { "path": "/api/cron/social", "schedule": "*/15 * * * *" },
+    { "path": "/api/cron/copy-score", "schedule": "0 6 * * *" }
   ]
 }

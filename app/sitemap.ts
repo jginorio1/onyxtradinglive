@@ -45,6 +45,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { p: '', pr: 1, f: 'weekly' },
     { p: '/pricing', pr: 0.9, f: 'weekly' },
     { p: '/prop-firms', pr: 0.85, f: 'weekly' },
+    { p: '/copy', pr: 0.85, f: 'weekly' },
     { p: '/blog', pr: 0.8, f: 'weekly' },
     { p: '/embajadores', pr: 0.7, f: 'monthly' },
     { p: '/invita', pr: 0.7, f: 'monthly' },
