@@ -320,3 +320,44 @@ export async function tradeInsight(t: TradeInsightInput, lang: Lang): Promise<{ 
   const clean = (text || '').replace(/^["“]|["”]$/g, '').trim();
   return { ok: true, text: clean && clean.length > 4 ? clean : fb };
 }
+
+// ---- Verificación de cuenta (Onyx Copy): lee un estado de cuenta del bróker ----
+// Extrae de un texto, PDF o captura del bróker: número de cuenta, bróker, si es
+// LIVE (no demo) y el balance. Sirve para verificar automáticamente a un trader
+// del marketplace (comparando el número con su cuenta conectada). No inventa.
+export type StatementCheck = { login?: string; broker?: string; server?: string; live?: boolean; balance?: number; currency?: string };
+export async function verifyStatement(input: string | RulesInput, lang: Lang): Promise<{ ok: boolean; data?: StatementCheck; reason?: string }> {
+  if (!process.env.ANTHROPIC_API_KEY) return { ok: false, reason: 'no_key' };
+  const inp: RulesInput = typeof input === 'string' ? { text: input } : (input || {});
+  if (!inp.file && (!inp.text || inp.text.trim().length < 15)) return { ok: false, reason: 'short' };
+  const system = `You read a broker/trading account statement or account screenshot (MetaTrader 4/5, cTrader, or a prop-firm dashboard), in any language. Return ONLY a JSON object with what you find, omitting anything you cannot determine:
+{"login":"account number as string","broker":"broker or firm name","server":"server if shown","live":true|false,"balance":number,"currency":"USD"}
+Rules: "login" is the trading account number/ID. "live" is true if it is a REAL/LIVE/funded account and false if it says DEMO/practice/contest. "balance" is the account balance as a number (no currency symbol). Do NOT invent values you cannot see.`;
+  let raw: string | null;
+  if (inp.file) {
+    const isPdf = inp.file.media_type === 'application/pdf';
+    const block = isPdf
+      ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: inp.file.data } }
+      : { type: 'image', source: { type: 'base64', media_type: inp.file.media_type, data: inp.file.data } };
+    const content: any[] = [block, { type: 'text', text: 'Extract the account number, broker, whether it is live or demo, and the balance.' + (inp.text ? `\n${inp.text}` : '') }];
+    raw = await aiRaw(system, content, 400, isPdf ? 'pdfs-2024-09-25' : undefined);
+  } else {
+    raw = await aiRaw(system, (inp.text || '').slice(0, 200000), 400);
+  }
+  if (!raw) return { ok: false, reason: 'error' };
+  try {
+    const cleaned = raw.replace(/```json/gi, '').replace(/```/g, '').trim();
+    const s = cleaned.indexOf('{'); const e = cleaned.lastIndexOf('}');
+    const j = JSON.parse(s >= 0 && e > s ? cleaned.slice(s, e + 1) : cleaned);
+    const data: StatementCheck = {
+      login: j.login != null ? String(j.login).slice(0, 40) : undefined,
+      broker: j.broker ? String(j.broker).slice(0, 60) : undefined,
+      server: j.server ? String(j.server).slice(0, 60) : undefined,
+      live: typeof j.live === 'boolean' ? j.live : undefined,
+      balance: j.balance != null && !isNaN(Number(j.balance)) ? Number(j.balance) : undefined,
+      currency: j.currency ? String(j.currency).slice(0, 8) : undefined,
+    };
+    if (data.login === undefined && data.live === undefined) return { ok: false, reason: 'empty' };
+    return { ok: true, data };
+  } catch { return { ok: false, reason: 'parse' }; }
+}

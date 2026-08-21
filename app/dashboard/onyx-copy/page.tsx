@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import { toast } from '@/lib/toast';
 
@@ -20,6 +20,9 @@ export default function OnyxCopyHub() {
   const [earnings, setEarnings] = useState<any>({ totals: { net_cents: 0, gross_cents: 0, fee_cents: 0 }, recent: [] });
   const [cfg, setCfg] = useState<any>(null);      // proveedor que se está por copiar
   const [busy, setBusy] = useState(false);
+  const [verifying, setVerifying] = useState('');  // account_id en verificación
+  const vfileRef = useRef<HTMLInputElement>(null);
+  const vAccRef = useRef<string>('');
 
   const T = es ? {
     title: 'Onyx Copy', sub: 'Copia a traders calificados o pon tu cuenta a calificar.',
@@ -35,7 +38,12 @@ export default function OnyxCopyHub() {
     price: 'Precio mensual ($)', perfFee: 'Comisión rendimiento (%)', perfNote: 'de tus ganancias nuevas', perfEarn: 'De rendimiento', hwm: 'high-water mark', save: 'Guardar', connectT: 'Cobra tus copias', connectD: 'Conecta tu cuenta con Stripe para recibir tu parte de cada seguidor.',
     connectBtn: 'Conectar con Stripe', connected: 'Conectado y cobrando', pending: 'Conectado (completa datos)',
     earn: 'Tus cobros', net: 'Para ti (neto)', gross: 'Cobrado', fee: 'Comisión Onyx', followers: 'seguidores',
-    tierGate: 'Para Gold/Diamond hace falta cuenta verificada (lo aprueba Onyx).',
+    tierGate: 'Para Gold/Diamond hace falta cuenta verificada. Súbela abajo y Onyx AI la verifica al instante.',
+    verify: 'Verificar', verifying: 'Verificando…', verifiedTxt: 'Verificada',
+    verifyOk: '✓ ¡Verificada! Tu cuenta quedó confirmada como live.',
+    verifyNotLive: 'El estado de cuenta parece de una cuenta demo, no live.',
+    verifyMismatch: 'El número de cuenta del documento no coincide con esta cuenta.',
+    verifyBad: 'No pude leer el documento. Prueba con una captura o PDF más claro del bróker.',
     riskNote: 'Copiar conlleva riesgo. Mantienes tus propios límites; Onyx no gestiona tu dinero.',
   } : {
     title: 'Onyx Copy', sub: 'Copy graded traders or list your account to get graded.',
@@ -51,7 +59,12 @@ export default function OnyxCopyHub() {
     price: 'Monthly price ($)', perfFee: 'Performance fee (%)', perfNote: 'of your new profits', perfEarn: 'Performance', hwm: 'high-water mark', save: 'Save', connectT: 'Get paid for your copies', connectD: 'Connect your account with Stripe to receive your share of each follower.',
     connectBtn: 'Connect with Stripe', connected: 'Connected and billing', pending: 'Connected (complete details)',
     earn: 'Your earnings', net: 'For you (net)', gross: 'Charged', fee: 'Onyx fee', followers: 'followers',
-    tierGate: 'Gold/Diamond require a verified account (approved by Onyx).',
+    tierGate: 'Gold/Diamond require a verified account. Upload it below and Onyx AI verifies it instantly.',
+    verify: 'Verify', verifying: 'Verifying…', verifiedTxt: 'Verified',
+    verifyOk: '✓ Verified! Your account was confirmed as live.',
+    verifyNotLive: 'The statement looks like a demo account, not live.',
+    verifyMismatch: 'The account number in the document does not match this account.',
+    verifyBad: 'Couldn\'t read the document. Try a clearer broker screenshot or PDF.',
     riskNote: 'Copying carries risk. You keep your own limits; Onyx does not manage your money.',
   };
   const stLabel = (s: string) => (T as any)['st_' + s] || s;
@@ -116,6 +129,21 @@ export default function OnyxCopyHub() {
     const r = await fetch('/api/copy/provider', { method: 'POST', body: JSON.stringify({ account_id: p.account_id, ...patch }) });
     const j = await r.json();
     if (j.ok) { toast(es ? '✓ Guardado.' : '✓ Saved.', 'ok'); loadAll(); } else toast(j.error || 'Error', 'error');
+  }
+  function startVerify(accountId: string) { vAccRef.current = accountId; vfileRef.current?.click(); }
+  async function onVerifyFile(file: File) {
+    const accountId = vAccRef.current; if (!accountId) return;
+    setVerifying(accountId);
+    try {
+      const fd = new FormData(); fd.append('file', file); fd.append('account_id', accountId); fd.append('lang', lang);
+      const r = await fetch('/api/copy/verify', { method: 'POST', body: fd });
+      const j = await r.json();
+      if (j.verified) { toast(T.verifyOk, 'ok'); loadAll(); }
+      else if (j.reason === 'not_live') toast(T.verifyNotLive, 'warn');
+      else if (j.reason === 'login_mismatch') toast(T.verifyMismatch, 'warn');
+      else toast(j.error || T.verifyBad, 'warn');
+    } catch { toast(T.verifyBad, 'error'); }
+    setVerifying('');
   }
   async function doConnect() {
     const r = await fetch('/api/copy/connect', { method: 'POST' });
@@ -199,6 +227,7 @@ export default function OnyxCopyHub() {
             <div style={{ fontWeight: 700 }}>{T.apply}</div>
             <p className="muted" style={{ fontSize: 13, margin: '4px 0 12px' }}>{T.applyH}</p>
             {accounts.length === 0 && <div className="muted" style={{ fontSize: 13 }}>{T.noAcc}</div>}
+            <input ref={vfileRef} type="file" accept="image/*,application/pdf" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) onVerifyFile(f); e.currentTarget.value = ''; }} />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {accounts.map((a) => {
                 const prov = myProviders.find((p) => p.account_id === a.id);
@@ -213,6 +242,9 @@ export default function OnyxCopyHub() {
                         <input defaultValue={prov.perf_fee_pct || ''} placeholder={T.perfFee} title={T.perfFee + ' (' + T.hwm + ')'} onBlur={(e) => { if (e.target.value !== String(prov.perf_fee_pct || '')) saveProviderField(prov, { perf_fee_pct: e.target.value }); }} style={{ width: 70, margin: 0, padding: '7px 9px', fontSize: 13 }} />
                         {Array.isArray(prov.flags) && prov.flags.length > 0 && <span title={prov.flags.join(', ')} style={{ fontSize: 11, color: 'var(--amber)' }}>⚠ {prov.flags.length}</span>}
                         {prov.auto_delisted && <span style={{ fontSize: 11, color: 'var(--red)' }}>{es ? 'retirado (drawdown)' : 'delisted (drawdown)'}</span>}
+                        {prov.verified
+                          ? <span style={{ fontSize: 11.5, color: 'var(--green)' }}>✓ {T.verifiedTxt}</span>
+                          : <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => startVerify(a.id)} disabled={verifying === a.id}>{verifying === a.id ? T.verifying : '🛡 ' + T.verify}</button>}
                         <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => applyAccount(a.id)} disabled={busy}>↻ {T.recompute}</button>
                       </>
                     ) : (
