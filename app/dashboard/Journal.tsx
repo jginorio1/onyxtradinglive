@@ -8,7 +8,7 @@ import OnyxIcon from '@/app/components/OnyxIcon';
 
 type TT = { id: string; account_id: string; symbol: string; side: string; volume: number; open_time: string | null; close_time: string; net_profit: number; commission?: number; swap?: number; profit?: number };
 type Acc = { id: string; nickname?: string | null; broker?: string; platform?: string; fund_max_daily?: number | null; fund_max_total?: number | null };
-type Entry = { trade_id: string; notes: string | null; tags: string[] | null; emotion: string | null; image_url: string | null; grade?: string | null; plan_followed?: string | null; market_tags?: string[] | null; error_tags?: string[] | null; risk_amount?: number | null };
+type Entry = { trade_id: string; notes: string | null; tags: string[] | null; emotion: string | null; image_url: string | null; image_url_exit?: string | null; grade?: string | null; plan_followed?: string | null; market_tags?: string[] | null; error_tags?: string[] | null; risk_amount?: number | null };
 type CustomTags = { setups: string[]; emotions: string[]; markets: string[]; errors: string[] };
 type Lang = 'es' | 'en';
 
@@ -50,6 +50,7 @@ const J = {
     removePhoto: 'Quitar foto', zoomHint: 'click para ampliar', coach: 'Coach IA', coaching: 'Analizando…', coachErr: 'No se pudo analizar ahora. Inténtalo de nuevo.',
     rulesTitle: 'Chequeo de reglas', rulesOk: 'Sin alertas: este trade y el día respetan las reglas de tu cuenta.', rulesNoRules: 'Añade el límite diario/total en Fondeo para chequear reglas.',
     ruleTradeOverDaily: 'Este trade arriesgó más que tu límite diario', ruleDayOverDaily: 'El día superó el límite diario de la cuenta', ruleRiskOverDaily: 'El riesgo que anotaste supera el límite diario',
+    shots: 'Capturas', entryShot: 'Entrada', exitShot: 'Salida',
   },
   en: {
     lotTitle: '📦 Lot statistics', volToday: 'Today', volWeek: 'Week', volMonth: 'Month', volYear: 'Year', volTotal: 'Total', lots: 'lots', byPair: 'Volume by pair',
@@ -73,6 +74,7 @@ const J = {
     removePhoto: 'Remove photo', zoomHint: 'click to zoom', coach: 'AI Coach', coaching: 'Analyzing…', coachErr: 'Couldn’t analyze right now. Try again.',
     rulesTitle: 'Rule check', rulesOk: 'No alerts: this trade and the day respect your account rules.', rulesNoRules: 'Add your daily/total limit in Funding to check rules.',
     ruleTradeOverDaily: 'This trade risked more than your daily limit', ruleDayOverDaily: 'The day exceeded the account daily limit', ruleRiskOverDaily: 'The risk you logged exceeds the daily limit',
+    shots: 'Screenshots', entryShot: 'Entry', exitShot: 'Exit',
   },
 };
 
@@ -425,6 +427,32 @@ function Segment({ label, opts, value, onPick }: { label: string; opts: { v: str
   );
 }
 
+// Una ranura de captura (entrada o salida): miniatura con zoom + subir/cambiar/quitar.
+function ImgSlot({ url, label, busy, tt, onUploadClick, onRemove, onZoom }: { url: string; label: string; busy: boolean; tt: any; onUploadClick: () => void; onRemove: () => void; onZoom: () => void }) {
+  return (
+    <div style={{ marginBottom: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+        <span style={{ fontSize: 12.5, color: 'var(--tx)', fontWeight: 600 }}>{label}</span>
+        {url && <span className="muted" style={{ fontSize: 11 }}>🔍 {tt.zoomHint}</span>}
+      </div>
+      {url ? (
+        <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', border: '1px solid var(--line)', cursor: 'zoom-in' }} onClick={onZoom}>
+          <img src={url} alt={label} style={{ width: '100%', display: 'block', maxHeight: 200, objectFit: 'cover' }} />
+          <span style={{ position: 'absolute', right: 8, bottom: 8, background: 'rgba(0,0,0,.55)', color: '#fff', borderRadius: 999, padding: '4px 8px', fontSize: 12 }}>🔍</span>
+        </div>
+      ) : (
+        <div onClick={onUploadClick} style={{ borderRadius: 12, border: '1px dashed var(--line)', background: 'var(--bg2)', height: 108, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--mut)', fontSize: 13, cursor: 'pointer' }}>
+          <span style={{ fontSize: 20 }}>🖼️</span> {tt.upload}
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
+        <button className="btn btn-ghost" onClick={onUploadClick} disabled={busy} style={{ flex: 1, fontSize: 12.5, padding: '6px 10px' }}>{busy ? tt.uploading : (url ? tt.replace : tt.upload)}</button>
+        {url && <button className="btn btn-ghost" onClick={onRemove} style={{ fontSize: 12.5, padding: '6px 10px', color: 'var(--red)', borderColor: 'rgba(255,107,125,.5)' }}>🗑</button>}
+      </div>
+    </div>
+  );
+}
+
 function TradeModal({ trade, entry, acc, allTrades, lang, customTags, onAddTag, onRenameTag, onDeleteTag, onClose, onSaved }: { trade: TT; entry?: Entry; acc?: Acc; allTrades: TT[]; lang: Lang; customTags: CustomTags; onAddTag: (g: keyof CustomTags, v: string) => void; onRenameTag: (g: keyof CustomTags, oldV: string, newV: string) => void; onDeleteTag: (g: keyof CustomTags, v: string) => void; onClose: () => void; onSaved: (e: Entry) => void }) {
   const t = dictFor(J, lang);
   const es = lang === 'es';
@@ -437,14 +465,16 @@ function TradeModal({ trade, entry, acc, allTrades, lang, customTags, onAddTag, 
   const [grade, setGrade] = useState(entry?.grade || '');
   const [planF, setPlanF] = useState(entry?.plan_followed || '');
   const [img, setImg] = useState(entry?.image_url || '');
+  const [imgExit, setImgExit] = useState(entry?.image_url_exit || '');
   const [risk, setRisk] = useState(entry?.risk_amount != null ? String(entry.risk_amount) : '');
   const [saving, setSaving] = useState(false);
   const [ok, setOk] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [zoom, setZoom] = useState(false);
+  const [uploading, setUploading] = useState<'' | 'entry' | 'exit'>('');
+  const [zoom, setZoom] = useState('');  // url que se está viendo en grande
   const [coach, setCoach] = useState('');
   const [coaching, setCoaching] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const fileEntry = useRef<HTMLInputElement>(null);
+  const fileExit = useRef<HTMLInputElement>(null);
 
   const toggle = (arr: string[], set: (v: string[]) => void, s: string) => set(arr.includes(s) ? arr.filter((x) => x !== s) : [...arr, s]);
 
@@ -473,12 +503,12 @@ function TradeModal({ trade, entry, acc, allTrades, lang, customTags, onAddTag, 
     return { has: true, alerts };
   }, [acc, allTrades, trade, net, riskNum, t]);
 
-  async function upload(f: File) {
-    setUploading(true);
-    const fd = new FormData(); fd.append('file', f); fd.append('trade_id', trade.id);
+  async function upload(f: File, slot: 'entry' | 'exit') {
+    setUploading(slot);
+    const fd = new FormData(); fd.append('file', f); fd.append('trade_id', trade.id); fd.append('slot', slot);
     const r = await fetch('/api/journal/upload', { method: 'POST', body: fd });
-    const j = await r.json(); setUploading(false);
-    if (j.url) setImg(j.url); else toast(errMsg(j, lang));
+    const j = await r.json(); setUploading('');
+    if (j.url) { slot === 'exit' ? setImgExit(j.url) : setImg(j.url); } else toast(errMsg(j, lang));
   }
   async function askCoach() {
     setCoaching(true); setCoach('');
@@ -495,8 +525,8 @@ function TradeModal({ trade, entry, acc, allTrades, lang, customTags, onAddTag, 
   }
   async function save() {
     setSaving(true);
-    const e: Entry = { trade_id: trade.id, notes, tags, emotion, image_url: img, grade: grade || null, plan_followed: planF || null, market_tags: markets, error_tags: errs, risk_amount: (isFinite(riskNum) && riskNum > 0) ? riskNum : null };
-    const r = await fetch('/api/journal', { method: 'POST', body: JSON.stringify({ ...e, risk_amount: risk === '' ? '' : riskNum }) });
+    const e: Entry = { trade_id: trade.id, notes, tags, emotion, image_url: img, image_url_exit: imgExit || null, grade: grade || null, plan_followed: planF || null, market_tags: markets, error_tags: errs, risk_amount: (isFinite(riskNum) && riskNum > 0) ? riskNum : null };
+    const r = await fetch('/api/journal', { method: 'POST', body: JSON.stringify({ ...e, image_url_exit: imgExit, risk_amount: risk === '' ? '' : riskNum }) });
     setSaving(false);
     if (!r.ok) { const j = await r.json(); toast(errMsg(j, lang)); return; }
     onSaved(e);
@@ -585,25 +615,13 @@ function TradeModal({ trade, entry, acc, allTrades, lang, customTags, onAddTag, 
             </div>
           </div>
 
-          {/* Columna derecha: foto grande con zoom + quitar */}
+          {/* Columna derecha: capturas de entrada y salida con zoom + quitar */}
           <div style={{ flex: '1 1 250px', minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-              <span style={{ fontSize: 13, color: 'var(--tx)', fontWeight: 600 }}>{t.photo}</span>
-              {img && <span className="muted" style={{ fontSize: 11.5 }}>🔍 {t.zoomHint}</span>}
-            </div>
-            {img ? (
-              <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', border: '1px solid var(--line)', cursor: 'zoom-in' }} onClick={() => setZoom(true)}>
-                <img src={img} alt="trade" style={{ width: '100%', display: 'block', maxHeight: 320, objectFit: 'cover' }} />
-                <span style={{ position: 'absolute', right: 8, bottom: 8, background: 'rgba(0,0,0,.55)', color: '#fff', borderRadius: 999, padding: '5px 9px', fontSize: 13 }}>🔍</span>
-              </div>
-            ) : (
-              <div style={{ borderRadius: 12, border: '1px dashed var(--line)', background: 'var(--bg2)', height: 150, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--mut)', fontSize: 26 }}>🖼️</div>
-            )}
-            <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f); }} />
-            <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-              <button className="btn btn-ghost" onClick={() => fileRef.current?.click()} disabled={uploading} style={{ flex: 1, fontSize: 13 }}>{uploading ? t.uploading : (img ? t.replace : t.upload)}</button>
-              {img && <button className="btn btn-ghost" onClick={() => setImg('')} style={{ fontSize: 13, color: RED, borderColor: 'rgba(255,107,125,.5)' }}>🗑 {t.removePhoto}</button>}
-            </div>
+            <span style={{ fontSize: 13, color: 'var(--tx)', fontWeight: 600, display: 'block', marginBottom: 8 }}>{t.shots} <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· {t.optional}</span></span>
+            <input ref={fileEntry} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f, 'entry'); e.currentTarget.value = ''; }} />
+            <input ref={fileExit} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f, 'exit'); e.currentTarget.value = ''; }} />
+            <ImgSlot url={img} label={t.entryShot} busy={uploading === 'entry'} tt={t} onUploadClick={() => fileEntry.current?.click()} onRemove={() => setImg('')} onZoom={() => setZoom(img)} />
+            <ImgSlot url={imgExit} label={t.exitShot} busy={uploading === 'exit'} tt={t} onUploadClick={() => fileExit.current?.click()} onRemove={() => setImgExit('')} onZoom={() => setZoom(imgExit)} />
           </div>
         </div>
 
@@ -617,10 +635,10 @@ function TradeModal({ trade, entry, acc, allTrades, lang, customTags, onAddTag, 
       </div>
 
       {/* Lightbox: foto en grande */}
-      {zoom && img && (
-        <div onClick={(e) => { e.stopPropagation(); setZoom(false); }} style={{ position: 'fixed', inset: 0, background: 'rgba(3,6,12,.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 300, cursor: 'zoom-out' }}>
-          <img src={img} alt="trade" style={{ maxWidth: '96vw', maxHeight: '92vh', borderRadius: 12, boxShadow: '0 20px 60px rgba(0,0,0,.6)' }} />
-          <button onClick={(e) => { e.stopPropagation(); setZoom(false); }} aria-label="close" style={{ position: 'fixed', top: 16, right: 18, width: 40, height: 40, borderRadius: 999, border: 'none', background: 'rgba(255,255,255,.14)', color: '#fff', fontSize: 20, cursor: 'pointer' }}>✕</button>
+      {zoom && (
+        <div onClick={(e) => { e.stopPropagation(); setZoom(''); }} style={{ position: 'fixed', inset: 0, background: 'rgba(3,6,12,.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 300, cursor: 'zoom-out' }}>
+          <img src={zoom} alt="trade" style={{ maxWidth: '96vw', maxHeight: '92vh', borderRadius: 12, boxShadow: '0 20px 60px rgba(0,0,0,.6)' }} />
+          <button onClick={(e) => { e.stopPropagation(); setZoom(''); }} aria-label="close" style={{ position: 'fixed', top: 16, right: 18, width: 40, height: 40, borderRadius: 999, border: 'none', background: 'rgba(255,255,255,.14)', color: '#fff', fontSize: 20, cursor: 'pointer' }}>✕</button>
         </div>
       )}
 

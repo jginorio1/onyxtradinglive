@@ -27,6 +27,7 @@ export async function POST(req: Request) {
   const form = await req.formData();
   const file = form.get('file') as File | null;
   const tradeId = String(form.get('trade_id') || '');
+  const slot = String(form.get('slot') || 'entry') === 'exit' ? 'exit' : 'entry';   // entrada (por defecto) o salida
   if (!file || !tradeId) return NextResponse.json({ error: 'falta archivo o trade_id' }, { status: 400 });
   if (file.size > 6 * 1024 * 1024) return NextResponse.json({ error: 'la imagen supera 6 MB' }, { status: 400 });
 
@@ -47,9 +48,10 @@ export async function POST(req: Request) {
   const { data: pub } = supabaseAdmin.storage.from(BUCKET).getPublicUrl(path);
   const url = pub.publicUrl;
 
-  // Guardar la URL en el diario de esa operación
+  // Guardar la URL en el diario de esa operación, en la ranura correcta.
+  const col = slot === 'exit' ? 'image_url_exit' : 'image_url';
   await supabaseAdmin.from('trade_journal').upsert(
-    { user_id: user.id, trade_id: tradeId, image_url: url, updated_at: new Date().toISOString() },
+    { user_id: user.id, trade_id: tradeId, [col]: url, updated_at: new Date().toISOString() },
     { onConflict: 'trade_id' }
   );
 

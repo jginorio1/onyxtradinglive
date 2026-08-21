@@ -71,6 +71,7 @@ export async function POST(req: Request) {
     // texto corto, para que los tags propios del trader se guarden.
     if (b.emotion !== undefined) row.emotion = b.emotion ? String(b.emotion).slice(0, 40) : null;
     if (b.image_url !== undefined) row.image_url = b.image_url ? String(b.image_url).slice(0, 500) : null;
+    if (b.image_url_exit !== undefined) row.image_url_exit = b.image_url_exit ? String(b.image_url_exit).slice(0, 500) : null;
     if (b.grade !== undefined) row.grade = GRADES.includes(b.grade) ? (b.grade || null) : null;
     if (b.plan_followed !== undefined) row.plan_followed = PLAN.includes(b.plan_followed) ? (b.plan_followed || null) : null;
     if (b.market_tags !== undefined) row.market_tags = cleanTags(b.market_tags);
