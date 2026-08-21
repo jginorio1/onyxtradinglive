@@ -239,8 +239,10 @@ export async function deletePost(id: string) {
 export async function publishDuePosts() {
   const nowIso = new Date().toISOString();
   const { data } = await supabaseAdmin.from('blog_posts')
-    .select('id').eq('status', 'scheduled').lte('publish_at', nowIso).limit(100);
-  const ids = (data || []).map((r: any) => r.id);
+    .select('id,body_es,body_en').eq('status', 'scheduled').lte('publish_at', nowIso).limit(100);
+  // Nunca publicar una fecha del piloto automático cuyo contenido aún no se generó
+  // (cuerpo vacío en ambos idiomas). Se queda programada y el cron la rellenará.
+  const ids = (data || []).filter((r: any) => String(r.body_es || '').trim() || String(r.body_en || '').trim()).map((r: any) => r.id);
   if (!ids.length) return 0;
   await supabaseAdmin.from('blog_posts').update({ status: 'published', published_at: nowIso }).in('id', ids);
   try { revalidateTag('blog_posts'); } catch {}

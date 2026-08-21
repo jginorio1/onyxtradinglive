@@ -3,6 +3,7 @@ import { useEffect, useState, type ChangeEvent } from 'react';
 import { toast, confirmDialog } from '@/lib/toast';
 import { useLang } from '@/lib/lang';
 import BlogKeywords from './BlogKeywords';
+import BlogAutopilot from './BlogAutopilot';
 import BlogPreview from './previews/BlogPreview';
 import SocialShare from './SocialShare';
 
@@ -614,6 +615,7 @@ export default function BlogEditor() {
         </div>
 
         <BlogKeywords />
+        <BlogAutopilot es={es} onChanged={load} />
         <BlogAuthorCard es={es} roster={authors} reload={loadAuthors} />
 
         {posts.length === 0 && <div className="card muted">{es ? 'Aún no hay artículos.' : 'No articles yet.'}</div>}
