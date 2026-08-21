@@ -179,8 +179,9 @@ export type BlogAutopilot = {
   topics: string[];        // lista de temas/títulos que pega el dueño
   usedTopics: string[];    // temas ya usados (no repetir hasta agotar)
   autoReplenish: boolean;  // al quedar pocas fechas futuras, planifica el siguiente lote solo
+  tzOffset: number;        // desfase del navegador (getTimezoneOffset, min) → hora local real
 };
-const AUTO: BlogAutopilot = { enabled: false, everyNDays: 2, hour: 9, perMonth: 15, useKeywords: true, topics: [], usedTopics: [], autoReplenish: true };
+const AUTO: BlogAutopilot = { enabled: false, everyNDays: 2, hour: 9, perMonth: 15, useKeywords: true, topics: [], usedTopics: [], autoReplenish: true, tzOffset: 0 };
 export const blogAutopilotSettings = () => getSetting<BlogAutopilot>('blog_autopilot', AUTO);
 
 // Autor del blog (E-E-A-T). Se muestra la firma con foto, cargo y bio, y alimenta

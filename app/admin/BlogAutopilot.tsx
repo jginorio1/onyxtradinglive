@@ -61,13 +61,21 @@ export default function BlogAutopilot({ es, onChanged }: { es: boolean; onChange
       setSlots(j.scheduled || []);
     } catch {}
   }
+  // Refresco ligero: SOLO actualiza las fechas (no pisa lo que estás escribiendo).
+  async function refreshSlots() {
+    try { const r = await fetch('/api/admin/blog/autopilot'); const j = await r.json(); if (Array.isArray(j.scheduled)) setSlots(j.scheduled); } catch {}
+  }
   useEffect(() => { load(); }, []);
+  // Mientras el panel esté abierto, refresca el progreso cada 10s (para ver avanzar
+  // al cron aunque no estés generando, y que sobreviva a un refresh de página).
+  useEffect(() => { if (!open) return; const iv = setInterval(refreshSlots, 10000); return () => clearInterval(iv); }, [open]);
 
   async function save(patch: Partial<Cfg>) {
     if (!cfg) return;
     const next = { ...cfg, ...patch, topics: topicsText.split('\n').map((s) => s.trim()).filter(Boolean) };
     setCfg(next);
-    try { await fetch('/api/admin/blog/autopilot', { method: 'PATCH', body: JSON.stringify(next) }); } catch {}
+    // tzOffset: para que la "hora" se interprete en TU zona horaria, no en UTC.
+    try { await fetch('/api/admin/blog/autopilot', { method: 'PATCH', body: JSON.stringify({ ...next, tzOffset: new Date().getTimezoneOffset() }) }); } catch {}
   }
   async function planMonth() {
     setBusy('plan');
@@ -104,7 +112,7 @@ export default function BlogAutopilot({ es, onChanged }: { es: boolean; onChange
         const r = await fetch('/api/admin/blog/autopilot', { method: 'POST', body: JSON.stringify({ action: 'fill', all: true }) });
         const j = await r.json();
         if (!j.ok) { lastErr = j.error || ''; fails++; }
-        else if (j.filled) { done++; fails = 0; setGen({ running: true, done, total }); }
+        else if (j.filled) { done++; fails = 0; setGen({ running: true, done, total }); refreshSlots(); }
         else { fails++; lastErr = j.errors?.[0] || ''; }        // reintenta la misma fecha
         if (j.ok && j.remaining === 0) break;                    // ya no queda nada vacío
         if (fails >= 3) { toast((es ? 'La IA no pudo generar una fecha.' : 'AI could not generate a date.') + (lastErr ? ` · ${lastErr}` : '')); break; }
@@ -217,11 +225,29 @@ export default function BlogAutopilot({ es, onChanged }: { es: boolean; onChange
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <button className="btn btn-primary" onClick={planMonth} disabled={busy === 'plan' || gen.running} style={{ boxShadow: '0 8px 20px -8px var(--brand)' }}>{busy === 'plan' ? '…' : `📅 ${lbl('Planificar el mes', 'Plan the month')}`}</button>
             <button className="btn btn-primary" onClick={fillAll} disabled={gen.running || pending === 0} title={lbl('Genera YA el contenido de todas las fechas vacías (una por una)', 'Generate ALL empty dates now (one by one)')} style={{ background: 'linear-gradient(135deg,#7c8cff,#34e2a0)', color: '#0b0d17', boxShadow: '0 8px 20px -8px #34e2a0' }}>
-              {gen.running ? `⏳ ${gen.done}/${gen.total}` : `⚡ ${lbl('Generar todas ahora', 'Generate all now')}`}
+              {gen.running ? `⏳ ${gen.done}/${gen.total}` : (pending > 0 && slots.some((s) => s.ready) ? `⚡ ${lbl('Reanudar', 'Resume')} (${pending})` : `⚡ ${lbl('Generar todas ahora', 'Generate all now')}`)}
             </button>
             <button className="btn btn-ghost" onClick={fillNow} disabled={busy === 'fill' || gen.running} title={lbl('Genera solo la próxima fecha pendiente (prueba)', 'Generate just the next pending date (test)')}>{busy === 'fill' ? '…' : `✨ ${lbl('Solo la próxima', 'Just the next')}`}</button>
-            {pending > 0 && !gen.running && <span className="muted" style={{ fontSize: 12 }}>⏳ {pending} {lbl('pendiente(s) de generar', 'pending to generate')}</span>}
           </div>
+
+          {/* Barra de progreso PERSISTENTE: se calcula desde la base (listos/total),
+              así sobrevive a un refresh y muestra al cron avanzar aunque no generes. */}
+          {slots.length > 0 && (() => {
+            const ready = slots.filter((s) => s.ready).length;
+            const pct = Math.round((ready / slots.length) * 100);
+            return (
+              <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 12, padding: 12 }}>
+                <div className="row between" style={{ marginBottom: 8, flexWrap: 'wrap', gap: 6 }}>
+                  <span style={{ fontSize: 12.5, fontWeight: 600 }}>{gen.running ? `⏳ ${lbl('Generando…', 'Generating…')}` : (pct === 100 ? `✅ ${lbl('Todo generado', 'All generated')}` : lbl('Progreso de generación', 'Generation progress'))}</span>
+                  <span className="muted" style={{ fontSize: 12 }}>{ready}/{slots.length} · {pct}%</span>
+                </div>
+                <div style={{ height: 8, borderRadius: 999, background: 'var(--line)', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${pct}%`, background: 'linear-gradient(90deg,#7c8cff,#34e2a0)', boxShadow: pct > 0 ? '0 0 12px -2px #34e2a0' : 'none', transition: 'width .3s' }} />
+                </div>
+                {pending > 0 && !gen.running && <div className="muted" style={{ fontSize: 11.5, marginTop: 8 }}>{lbl('Puedes cerrar esta pestaña: el cron sigue generando 1 cada pocas horas. O pulsa "Reanudar" para terminarlas todas ahora.', 'You can close this tab: the cron keeps generating 1 every few hours. Or press "Resume" to finish them all now.')}</div>}
+              </div>
+            );
+          })()}
 
           {/* Calendario del mes lleno */}
           <div style={glow('#34e2a0')}>

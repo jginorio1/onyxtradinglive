@@ -44,6 +44,7 @@ export async function PATCH(req: Request) {
     topics: b.topics == null ? prev.topics : cleanList(b.topics),
     usedTopics: prev.usedTopics || [],
     autoReplenish: b.autoReplenish == null ? prev.autoReplenish : !!b.autoReplenish,
+    tzOffset: Number.isFinite(Number(b.tzOffset)) ? Math.round(Number(b.tzOffset)) : (prev.tzOffset || 0),
   };
   await saveSetting('blog_autopilot', value);
   return NextResponse.json({ ok: true, settings: value });

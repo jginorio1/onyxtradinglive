@@ -14,6 +14,16 @@ import { listAllPosts, savePost } from '@/lib/blog';
 const DAY = 24 * 3600 * 1000;
 const empty = (p: any) => !String(p.body_es || '').trim() && !String(p.body_en || '').trim();
 
+// Instante UTC que corresponde a la HORA LOCAL del dueño (cfg.hour) en el día
+// calendario local de `day`. tzOffset = getTimezoneOffset() del navegador (min).
+// Ej: hora 9, tz UTC-4 (offset 240) → 13:00 UTC, que al mostrarse local es 9am.
+function atLocalHour(day: Date, cfg: any): Date {
+  const off = Number(cfg.tzOffset || 0);
+  const local = new Date(day.getTime() - off * 60000);          // reloj de pared del dueño
+  const ms = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate(), cfg.hour || 9, 0, 0) + off * 60000;
+  return new Date(ms);
+}
+
 // Guía SEO (keyword objetivo = la menos cubierta) para el generador.
 async function guideFor(): Promise<KwGuide | undefined> {
   const s = await blogKeywordsSettings();
@@ -52,7 +62,7 @@ export async function nextDates(count: number): Promise<string[]> {
   const cfg = await blogAutopilotSettings();
   const start = await startAfterLast(cfg);
   const out: string[] = [];
-  for (let i = 0; i < count; i++) { const d = new Date(start.getTime() + i * cfg.everyNDays * DAY); out.push(d.toISOString()); }
+  for (let i = 0; i < count; i++) { const d = atLocalHour(new Date(start.getTime() + i * cfg.everyNDays * DAY), cfg); out.push(d.toISOString()); }
   return out;
 }
 
@@ -61,11 +71,8 @@ async function startAfterLast(cfg: BlogAutopilot): Promise<Date> {
   let posts: any[] = [];
   try { posts = await listAllPosts(); } catch {}
   const future = posts.filter((p) => p.status === 'scheduled' && p.publish_at).map((p) => new Date(p.publish_at).getTime());
-  let start: Date;
-  if (future.length) { start = new Date(Math.max(...future) + cfg.everyNDays * DAY); }
-  else { start = new Date(Date.now() + DAY); }
-  start.setHours(cfg.hour || 9, 0, 0, 0);
-  return start;
+  const baseDay = future.length ? new Date(Math.max(...future) + cfg.everyNDays * DAY) : new Date(Date.now() + DAY);
+  return atLocalHour(baseDay, cfg);
 }
 
 // Planifica un lote: crea `count` fechas programadas con su tema (cuerpo vacío).
@@ -82,7 +89,7 @@ export async function planMonth(count?: number): Promise<{ created: { date: stri
     if (!pick) break;
     if (used.length >= pool.length) used = [];      // reinicia rotación si ya usó todo
     used.push(pick.t);
-    const d = new Date(start.getTime() + i * cfg.everyNDays * DAY); d.setHours(cfg.hour || 9, 0, 0, 0);
+    const d = atLocalHour(new Date(start.getTime() + i * cfg.everyNDays * DAY), cfg);
     try {
       // title_en vacío a propósito: es solo un marcador del TEMA (en español). El
       // cron lo reemplaza por el título real ES/EN al generar el artículo.
