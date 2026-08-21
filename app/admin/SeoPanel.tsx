@@ -14,9 +14,13 @@ import VisitorsLive from './VisitorsLive';
 // ============================================================
 
 type SeoMeta = Record<string, { title_es?: string; title_en?: string; desc_es?: string; desc_en?: string }>;
-const PAGES: Array<[string, string, string]> = [
-  ['home', 'Inicio (landing)', 'Home (landing)'],
-  ['pricing', 'Planes y precios', 'Pricing'],
+const PAGES: Array<[string, string, string, string]> = [
+  ['home', 'Inicio (landing)', 'Home (landing)', ''],
+  ['pricing', 'Planes y precios', 'Pricing', '/pricing'],
+  ['guia', 'Guía', 'Guide', '/guia'],
+  ['blog', 'Blog (portada)', 'Blog (home)', '/blog'],
+  ['embajadores', 'Embajadores', 'Ambassadors', '/embajadores'],
+  ['contacto', 'Contacto', 'Contact', '/contacto'],
 ];
 
 export default function SeoPanel() {
@@ -45,6 +49,18 @@ export default function SeoPanel() {
       const r = await fetch('/api/admin/seo', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ meta }) });
       const j = await r.json(); if (!r.ok) { toastErr(j); return; }
       toast(L('Meta SEO guardado ✓', 'SEO meta saved ✓'), 'ok');
+    } finally { setBusy(''); }
+  }
+  // Genera con IA el título + descripción (ES/EN) de UNA página, congruente con
+  // las keywords prioritarias. Rellena los campos; el dueño revisa y guarda.
+  async function genPageMeta(page: string) {
+    setBusy('meta:' + page);
+    try {
+      const r = await fetch('/api/admin/seo', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'pagemeta', page }) });
+      const j = await r.json(); if (!r.ok) { toastErr(j); return; }
+      const m = j.meta || {};
+      setMeta((o) => ({ ...o, [page]: { title_es: m.title_es || '', title_en: m.title_en || '', desc_es: m.desc_es || '', desc_en: m.desc_en || '' } }));
+      toast(L('Meta generado con IA. Revísalo y pulsa Guardar.', 'Meta generated with AI. Review it and press Save.'), 'ok');
     } finally { setBusy(''); }
   }
   async function genKeywords() {
@@ -169,13 +185,19 @@ export default function SeoPanel() {
       <div className="card">
         <h3 style={{ marginBottom: 4 }}>🏷️ {L('Meta por página (título + descripción)', 'Per-page meta (title + description)')}</h3>
         <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{L('Lo que ve Google y la gente en los resultados. Vacío = usa el texto por defecto. Título ~60, descripción ~155 caracteres. El blog edita su meta desde Admin → Blog.', 'What Google and people see in results. Empty = uses the default. Title ~60, description ~155 chars. The blog edits its meta in Admin → Blog.')}</p>
-        {PAGES.map(([id, esN, enN]) => {
+        {PAGES.map(([id, esN, enN, path]) => {
           const o = meta[id] || {};
           const title = (es ? o.title_es : o.title_en) || '';
           const desc = (es ? o.desc_es : o.desc_en) || '';
           return (
             <div key={id} style={{ borderTop: '1px solid var(--line)', paddingTop: 12, marginTop: 12 }}>
-              <b style={{ fontSize: 14 }}>{es ? esN : enN}</b>
+              <div className="row between" style={{ flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                <b style={{ fontSize: 14 }}>{es ? esN : enN}</b>
+                <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--brand)' }} onClick={() => genPageMeta(id)} disabled={busy === 'meta:' + id}
+                  title={L('Onyx AI escribe el título y la descripción (ES/EN) usando tus keywords prioritarias', 'Onyx AI writes the title and description (ES/EN) using your priority keywords')}>
+                  {busy === 'meta:' + id ? '…' : `✨ ${L('Generar con IA', 'Generate with AI')}`}
+                </button>
+              </div>
               <div className="grid g2" style={{ gap: 12, marginTop: 6 }}>
                 <label className="muted" style={{ fontSize: 12 }}>{L('Título (ES)', 'Title (ES)')} <span style={{ color: (o.title_es || '').length > 60 ? 'var(--amber)' : 'var(--mut)' }}>{(o.title_es || '').length}/60</span><input value={o.title_es || ''} onChange={(e) => setM(id, 'title_es', e.target.value)} style={inp} /></label>
                 <label className="muted" style={{ fontSize: 12 }}>{L('Título (EN)', 'Title (EN)')} <span style={{ color: (o.title_en || '').length > 60 ? 'var(--amber)' : 'var(--mut)' }}>{(o.title_en || '').length}/60</span><input value={o.title_en || ''} onChange={(e) => setM(id, 'title_en', e.target.value)} style={inp} /></label>
@@ -185,7 +207,7 @@ export default function SeoPanel() {
               {/* Vista previa del snippet de Google */}
               {(title || desc) && (
                 <div style={{ marginTop: 8, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 10, padding: '10px 12px', maxWidth: 560 }}>
-                  <div style={{ fontSize: 12, color: 'var(--green)' }}>{site.replace(/^https?:\/\//, '')}{id === 'pricing' ? '/pricing' : ''}</div>
+                  <div style={{ fontSize: 12, color: 'var(--green)' }}>{site.replace(/^https?:\/\//, '')}{path || ''}</div>
                   <div style={{ color: 'var(--soft-brand,#7c8cff)', fontSize: 16, margin: '2px 0' }}>{title || '—'}</div>
                   <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.4 }}>{desc || '—'}</div>
                 </div>

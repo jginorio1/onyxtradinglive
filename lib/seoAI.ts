@@ -16,6 +16,53 @@ function parseJson(txt: string | null): any | null {
   try { return JSON.parse(m[0]); } catch { return null; }
 }
 
+// Meta (título + descripción) optimizado para UNA página, en ES e INGLÉS a la vez,
+// congruente con las KEYWORDS prioritarias que el dueño ya trabaja (SEO del blog).
+const PAGE_DESC: Record<string, string> = {
+  home: 'la página de inicio / landing principal de la plataforma',
+  pricing: 'la página de planes y precios (Gratis, Pro, Elite)',
+  guia: 'la guía/centro de ayuda con artículos de instalación, métricas y reglas de prop firms',
+  blog: 'la portada del blog (artículos de trading, disciplina, prop firms)',
+  embajadores: 'la página del programa de embajadores/afiliados (comisión recurrente)',
+  contacto: 'la página de contacto y soporte',
+};
+export async function pageMeta(page: string, keywordsEs: string[] = [], keywordsEn: string[] = []): Promise<{ ok: boolean; meta?: { title_es: string; title_en: string; desc_es: string; desc_en: string }; reason?: string }> {
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) return { ok: false, reason: 'no_key' };
+  const what = PAGE_DESC[page] || `la página "${page}"`;
+  const kwEs = keywordsEs.slice(0, 8).join(', ');
+  const kwEn = keywordsEn.slice(0, 8).join(', ');
+  const system = `Eres especialista SEO de Onyx Trading Live (diario de trading + Onyx Guardian, copy trading, academia; MT4/MT5/cTrader). Escribe el TÍTULO y la META DESCRIPCIÓN para ${what}, en ESPAÑOL e INGLÉS. Optimizado para clic en Google. NUNCA prometas ganancias ni predigas el mercado.
+
+Reglas de longitud (respétalas): title 50-60 caracteres; description 140-155 caracteres. Incluye la marca "Onyx Trading Live" en el título cuando quepa.
+CONGRUENCIA: integra de forma NATURAL las keywords prioritarias (sin forzar ni repetir). Español: ${kwEs || '(usa términos del nicho)'}. English: ${kwEn || '(use niche terms)'}.
+
+Devuelve SOLO JSON válido, sin texto extra:
+{"title_es":"...","title_en":"...","desc_es":"...","desc_en":"..."}
+
+=== CONOCIMIENTO DE ONYX ===
+${await brandBrief('es')}`;
+  try {
+    const model = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5-20251001';
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model, max_tokens: 600, system, messages: [{ role: 'user', content: `Meta para: ${what}.` }] }),
+    });
+    if (!r.ok) return { ok: false, reason: 'error' };
+    const d = await r.json();
+    import('@/lib/aiCost').then((m) => m.logAiUsage('seo', d)).catch(() => {});
+    const parsed = parseJson((d?.content || []).map((c: any) => c.text || '').join('\n').trim());
+    if (!parsed) return { ok: false, reason: 'parse' };
+    const meta = {
+      title_es: String(parsed.title_es || '').slice(0, 70), title_en: String(parsed.title_en || '').slice(0, 70),
+      desc_es: String(parsed.desc_es || '').slice(0, 170), desc_en: String(parsed.desc_en || '').slice(0, 170),
+    };
+    if (!meta.title_es && !meta.title_en) return { ok: false, reason: 'empty' };
+    return { ok: true, meta };
+  } catch { return { ok: false, reason: 'error' }; }
+}
+
 export async function keywordIdeas(topic: string, lang: 'es' | 'en'): Promise<{ ok: boolean; ideas?: SeoIdeas; reason?: string }> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return { ok: false, reason: 'no_key' };

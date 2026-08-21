@@ -7,7 +7,7 @@ import { unstable_cache, revalidateTag } from 'next/cache';
 // defecto del código. Guardado en app_settings key 'seo_meta'.
 // ============================================================
 
-export type SeoPage = 'home' | 'pricing' | 'guia' | 'blog' | 'embajadores';
+export type SeoPage = 'home' | 'pricing' | 'guia' | 'blog' | 'embajadores' | 'contacto';
 export type SeoMeta = Record<string, { title_es?: string; title_en?: string; desc_es?: string; desc_en?: string }>;
 
 async function _getSeoMeta(): Promise<SeoMeta> {

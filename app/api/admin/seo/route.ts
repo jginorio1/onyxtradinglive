@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { requirePerm, logAdmin } from '@/lib/admin';
 import { getSeoMeta, saveSeoMeta, type SeoMeta } from '@/lib/seo';
 import { gscConfigured, gscOverview } from '@/lib/seoSearchConsole';
-import { keywordIdeas } from '@/lib/seoAI';
+import { keywordIdeas, pageMeta } from '@/lib/seoAI';
+import { blogKeywordsSettings } from '@/lib/settings';
 import { logError } from '@/lib/errlog';
 
 export const dynamic = 'force-dynamic';
@@ -48,6 +49,21 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: msg, reason: r.reason }, { status: 400 });
       }
       return NextResponse.json({ ok: true, ideas: r.ideas });
+    }
+
+    // Generar meta (título+descripción ES/EN) para UNA página, con IA, congruente
+    // con las keywords prioritarias del blog. No guarda: la UI lo rellena y el
+    // dueño revisa y pulsa "Guardar meta".
+    if (b.action === 'pagemeta') {
+      const page = String(b.page || '').trim();
+      if (!page) return NextResponse.json({ error: 'Falta la página.' }, { status: 400 });
+      const kw = await blogKeywordsSettings();
+      const r = await pageMeta(page, kw.es || [], kw.en || []);
+      if (!r.ok) {
+        const msg = r.reason === 'no_key' ? 'La IA no está configurada: falta ANTHROPIC_API_KEY.' : 'La IA no pudo generar el meta. Inténtalo otra vez.';
+        return NextResponse.json({ error: msg, reason: r.reason }, { status: 400 });
+      }
+      return NextResponse.json({ ok: true, meta: r.meta });
     }
 
     // Guardar meta (title/desc por página, ES/EN). Sanea longitudes.

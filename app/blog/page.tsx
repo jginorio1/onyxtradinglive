@@ -2,18 +2,17 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { listPublished, blogCoverUrl, slugFor } from '@/lib/blog';
 import { serverLang, localeAlternates } from '@/lib/locale';
+import { getSeoMeta, seoFor } from '@/lib/seo';
 
 export const dynamic = 'force-dynamic'; // se renderiza en cada visita (contenido siempre fresco)
 
-export function generateMetadata(): Metadata {
+export async function generateMetadata(): Promise<Metadata> {
   const es = serverLang() === 'es';
-  return {
-    title: es ? 'Blog de Onyx Trading Live · Trading, disciplina y prop firms' : 'Onyx Trading Live Blog · Trading, discipline & prop firms',
-    description: es
-      ? 'Artículos sobre gestión de riesgo, psicología, métricas, cuentas de fondeo y cómo sacarle partido a tu diario de trading.'
-      : 'Articles on risk management, psychology, metrics, funded accounts and how to get the most out of your trading journal.',
-    alternates: localeAlternates('/blog'),
-  };
+  const seo = seoFor(await getSeoMeta(), 'blog', es,
+    es ? 'Blog de Onyx Trading Live · Trading, disciplina y prop firms' : 'Onyx Trading Live Blog · Trading, discipline & prop firms',
+    es ? 'Artículos sobre gestión de riesgo, psicología, métricas, cuentas de fondeo y cómo sacarle partido a tu diario de trading.'
+       : 'Articles on risk management, psychology, metrics, funded accounts and how to get the most out of your trading journal.');
+  return { title: seo.title, description: seo.description, alternates: localeAlternates('/blog') };
 }
 
 function fmtDate(iso: string, es: boolean) {
