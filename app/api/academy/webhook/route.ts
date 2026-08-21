@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { grantPurchase, setPurchaseStatus, feeForMentor, grantMembership, setMembershipStatus, recordInvoiceCommission, reverseCommissionByRef } from '@/lib/academyPay';
 import { qualifyReferral, qualifyReferralByInvoice, reverseRewardsByRef } from '@/lib/academyReferral';
 import { activateSub as activateCopySub, cancelBySub as cancelCopyBySub, syncCopyStatusBySub, recordCopyCommission } from '@/lib/academyCopy';
+import { activateFollow, cancelFollowBySub, syncFollowStatusBySub, recordFollowCommission } from '@/lib/copyFollow';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -28,7 +29,10 @@ export async function POST(req: Request) {
     if (event.type === 'checkout.session.completed') {
       const s = event.data.object;
       const md = s.metadata || {};
-      if (md.onyx_mentor && md.onyx_student && md.onyx_kind === 'copy') {
+      if (md.onyx_kind === 'copyfollow' && md.onyx_follow) {
+        // Onyx Copy marketplace: activa la copia y crea el enlace master→slave.
+        await activateFollow({ followId: md.onyx_follow, subId: s.subscription || undefined });
+      } else if (md.onyx_mentor && md.onyx_student && md.onyx_kind === 'copy') {
         // Copy del mentor: activa la suscripción (queda pendiente de que conecte
         // su cuenta). La comisión se registra por factura (abajo).
         await activateCopySub({ mentorId: md.onyx_mentor, studentId: md.onyx_student, subId: s.subscription || undefined });
@@ -59,6 +63,8 @@ export async function POST(req: Request) {
         await recordInvoiceCommission({ subId: String(inv.subscription), grossCents: Number(inv.amount_paid || 0), currency: inv.currency || 'usd', invoiceId: String(inv.id) });
         // Copy del mentor: registra su comisión (idempotente; si no es copy, no hace nada).
         await recordCopyCommission({ subId: String(inv.subscription), grossCents: Number(inv.amount_paid || 0), currency: inv.currency || 'usd', invoiceId: String(inv.id) });
+        // Onyx Copy marketplace: registra la comisión de la copia (idempotente).
+        await recordFollowCommission({ subId: String(inv.subscription), grossCents: Number(inv.amount_paid || 0), currency: inv.currency || 'usd', invoiceId: String(inv.id) });
         // Recompensa del referido en RENOVACIONES (solo si el mentor activó recurrente).
         // El primer pago (subscription_create) ya se registró en checkout.session.completed.
         if (inv.billing_reason === 'subscription_cycle') {
@@ -77,15 +83,19 @@ export async function POST(req: Request) {
       await setPurchaseStatus(event.data.object.id, 'canceled');
       await setMembershipStatus(event.data.object.id, 'canceled');
       await cancelCopyBySub(event.data.object.id);
+      await cancelFollowBySub(event.data.object.id);
     } else if (event.type === 'customer.subscription.updated') {
       const sub = event.data.object;
       const status = sub.status === 'active' || sub.status === 'trialing' ? 'active' : (sub.status === 'past_due' ? 'past_due' : 'canceled');
       await setPurchaseStatus(sub.id, status, sub.current_period_end);
       await setMembershipStatus(sub.id, status, sub.current_period_end);
       await syncCopyStatusBySub(sub.id, sub.status, sub.current_period_end);
+      await syncFollowStatusBySub(sub.id, sub.status);
     } else if (event.type === 'account.updated') {
       const acct = event.data.object;
       await supabaseAdmin.from('mentors').update({ charges_enabled: !!acct.charges_enabled }).eq('stripe_account_id', acct.id);
+      // Trader calificado del marketplace: refleja si ya puede cobrar copias.
+      await supabaseAdmin.from('profiles').update({ copy_charges_enabled: !!acct.charges_enabled }).eq('copy_stripe_account_id', acct.id);
     }
   } catch (e: any) {
     return NextResponse.json({ received: true, warn: e?.message }, { status: 200 });

@@ -108,7 +108,7 @@ export default async function CopyLanding() {
         <p className="muted" style={{ fontSize: 17, marginTop: 12, maxWidth: 660, marginInline: 'auto' }}>{L.sub}</p>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 20, flexWrap: 'wrap' }}>
           <a className="btn btn-primary" href="#ranking">{L.ctaCopy}</a>
-          <Link className="btn btn-ghost" href="/dashboard">{L.ctaApply}</Link>
+          <Link className="btn btn-ghost" href="/dashboard/onyx-copy">{L.ctaApply}</Link>
         </div>
       </div>
 
@@ -209,7 +209,7 @@ export default async function CopyLanding() {
       <p className="muted" style={{ fontSize: 12, textAlign: 'center', maxWidth: 720, marginInline: 'auto' }}>{L.riskNote}</p>
 
       <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 24, flexWrap: 'wrap' }}>
-        <Link className="btn btn-primary" href="/dashboard">{L.ctaApply}</Link>
+        <Link className="btn btn-primary" href="/dashboard/onyx-copy">{L.ctaApply}</Link>
         <Link className="btn btn-ghost" href="/pricing">{es ? 'Ver planes' : 'See plans'}</Link>
       </div>
     </div>
