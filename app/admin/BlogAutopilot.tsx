@@ -98,16 +98,17 @@ export default function BlogAutopilot({ es, onChanged }: { es: boolean; onChange
     const total = slots.filter((s) => !s.ready).length;
     if (!total) { toast(es ? 'No hay fechas vacías. Planifica el mes primero.' : 'No empty dates. Plan the month first.'); return; }
     setGen({ running: true, done: 0, total });
-    let done = 0;
-    for (let i = 0; i < total + 5; i++) {
+    let done = 0, fails = 0, lastErr = '';
+    for (let i = 0; i < total * 2 + 10; i++) {
       try {
         const r = await fetch('/api/admin/blog/autopilot', { method: 'POST', body: JSON.stringify({ action: 'fill', all: true }) });
         const j = await r.json();
-        if (!j.ok) { toast(es ? 'No se pudo generar.' : 'Could not generate.'); break; }
-        if (j.filled) { done++; setGen({ running: true, done, total }); }
-        if (!j.filled) { toast((es ? 'La IA no pudo generar una fecha.' : 'AI could not generate a date.') + (j.errors?.[0] ? ` · ${j.errors[0]}` : '')); break; }
-        if (j.remaining === 0) break;
-      } catch { toast(es ? 'Se interrumpió la generación.' : 'Generation interrupted.'); break; }
+        if (!j.ok) { lastErr = j.error || ''; fails++; }
+        else if (j.filled) { done++; fails = 0; setGen({ running: true, done, total }); }
+        else { fails++; lastErr = j.errors?.[0] || ''; }        // reintenta la misma fecha
+        if (j.ok && j.remaining === 0) break;                    // ya no queda nada vacío
+        if (fails >= 3) { toast((es ? 'La IA no pudo generar una fecha.' : 'AI could not generate a date.') + (lastErr ? ` · ${lastErr}` : '')); break; }
+      } catch { fails++; if (fails >= 3) { toast(es ? 'Se interrumpió la generación.' : 'Generation interrupted.'); break; } }
     }
     setGen({ running: false, done: 0, total: 0 });
     if (done) toast(es ? `✅ ${done} artículo(s) generado(s).` : `✅ ${done} article(s) generated.`, 'ok');
