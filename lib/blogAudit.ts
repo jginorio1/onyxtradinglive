@@ -8,9 +8,10 @@
 // Devuelve además un mapa de keywords (cobertura + canibalización) y la salud global.
 // La IA solo entra cuando el dueño pulsa un arreglo (híbrido = local marca, IA corrige).
 // ============================================================
-import { listAllPosts } from './blog';
-import { blogKeywordsSettings } from './settings';
+import { listAllPosts, savePost } from './blog';
+import { blogKeywordsSettings, getSetting } from './settings';
 import { gscConfigured, gscOverview } from './seoSearchConsole';
+import { enhanceArticle, type RelatedPost } from './blogAI';
 
 const STOP = new Set('the and for that with your you are our their has have will from this into como para que con los las una del una por más muy sin son sus est esta este estos estas cuando donde porque también según entre sobre cada todo toda todos todas hace hacer tras trader trading onyx blog'.split(/\s+/));
 
@@ -193,4 +194,36 @@ export async function runAudit(): Promise<AuditResult> {
     posts: posts.sort((a, b) => a.score - b.score),   // peores primero (para arreglar)
     keywordMap,
   };
+}
+
+// ── Auto-mejora en segundo plano (cron, sin depender del navegador) ─────────
+export type AutoFixCfg = { enabled: boolean; threshold: number };
+export const AUTOFIX_DEFAULT: AutoFixCfg = { enabled: false, threshold: 70 };
+export const autoFixCfg = () => getSetting<AutoFixCfg>('blog_autofix', AUTOFIX_DEFAULT);
+
+// Mejora UN artículo: el de peor SEO on-page por debajo del umbral que NO se haya
+// tocado en los últimos 3 días (para no re-arreglar en bucle). Barato: no hace el
+// escaneo completo ni GSC; solo el chequeo SEO local. Devuelve si arregló + cuántos quedan.
+export async function autoFixOne(threshold = 70): Promise<{ ok: boolean; fixed: boolean; slug?: string; remaining: number; reason?: string }> {
+  const all = (await listAllPosts()).filter((p: any) => p.status === 'published' || p.status === 'scheduled');
+  const kwCfg = await blogKeywordsSettings().catch(() => ({ es: [], en: [] } as any));
+  const kws = [...(kwCfg.es || []), ...(kwCfg.en || [])].map(String);
+  const DAY = 86400000; const now = Date.now();
+  const cand = all.map((p: any) => {
+    const kw = targetKw(p, kws); const sc = seoScore(p, kw).score;
+    const recent = p.updated_at && (now - new Date(p.updated_at).getTime()) < 3 * DAY;
+    return { p, kw, sc, recent };
+  }).filter((c) => c.sc < threshold && !c.recent).sort((a, b) => a.sc - b.sc);
+  const remaining = cand.length;
+  if (!remaining) return { ok: true, fixed: false, remaining: 0 };
+  const { p, kw } = cand[0];
+  const related: RelatedPost[] = all.filter((x: any) => x.id !== p.id && x.status === 'published').slice(0, 12)
+    .map((x: any) => ({ slug: x.slug, title_es: x.title_es, title_en: x.title_en, tags: x.tags }));
+  const r = await enhanceArticle(p.title_es || p.title_en || '', p.body_es || '', p.body_en || '', related, kw);
+  if (!r.ok) return { ok: false, fixed: false, remaining, reason: r.reason };
+  const patch: any = { ...p, body_es: r.body_es ?? p.body_es, body_en: r.body_en ?? p.body_en, updated_at: new Date().toISOString() };
+  if (r.excerpt_es) patch.excerpt_es = r.excerpt_es;
+  if (r.excerpt_en) patch.excerpt_en = r.excerpt_en;
+  await savePost(patch);
+  return { ok: true, fixed: true, slug: p.slug, remaining: remaining - 1 };
 }

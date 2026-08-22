@@ -58,6 +58,9 @@ export default function BlogAudit({ es, onChanged }: { es: boolean; onChanged?: 
     setFix('');
   }
 
+  async function toggleAuto(enabled: boolean) {
+    try { const r = await fetch('/api/admin/blog/audit', { method: 'POST', body: JSON.stringify({ action: 'set_autofix', enabled }) }); const j = await r.json(); if (j.ok) setData((d: any) => ({ ...d, autofix: j.autofix })); } catch {}
+  }
   const clr = (n: number) => (n >= 75 ? 'var(--green)' : n >= 55 ? 'var(--amber)' : 'var(--red)');
   const posts = data?.posts || [];
   const shown = showAll ? posts : posts.slice(0, 25);
@@ -111,6 +114,18 @@ export default function BlogAudit({ es, onChanged }: { es: boolean; onChanged?: 
                 ].map((c: any, i) => (
                   <div key={i} style={{ background: 'var(--bg2)', borderRadius: 10, padding: 10 }}><div className="muted" style={{ fontSize: 11 }}>{c[0]}</div><div style={{ fontSize: 19, fontWeight: 700, color: c[2] }}>{c[1]}</div></div>
                 ))}
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', background: 'var(--bg2)', borderRadius: 10, padding: '10px 12px', marginBottom: 12 }}>
+                <div>
+                  <div style={{ fontSize: 12.5, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="🔁" size={14} /> {L('Auto-mejorar en segundo plano', 'Auto-improve in the background')}</div>
+                  <div className="muted" style={{ fontSize: 11.5 }}>{L('El servidor mejora los artículos flojos solo, sin tener la pestaña abierta. Sobrevive a refrescos.', 'The server improves weak articles on its own, no open tab needed. Survives refreshes.')}</div>
+                </div>
+                <label style={{ position: 'relative', display: 'inline-block', width: 42, height: 24, flex: '0 0 auto' }}>
+                  <input type="checkbox" checked={!!data.autofix?.enabled} onChange={(e) => toggleAuto(e.target.checked)} style={{ opacity: 0, width: 0, height: 0 }} />
+                  <span style={{ position: 'absolute', inset: 0, borderRadius: 999, background: data.autofix?.enabled ? 'var(--green)' : 'var(--line)', transition: '.2s' }} />
+                  <span style={{ position: 'absolute', top: 3, left: data.autofix?.enabled ? 21 : 3, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: '.2s' }} />
+                </label>
               </div>
 
               {data.keywordMap?.some((k: any) => k.count > 1) && (

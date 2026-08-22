@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { requirePerm } from '@/lib/admin';
-import { runAudit } from '@/lib/blogAudit';
+import { runAudit, autoFixCfg, AUTOFIX_DEFAULT } from '@/lib/blogAudit';
 import { listAllPosts, savePost } from '@/lib/blog';
 import { enhanceArticle, suggestTitles, lastAiError, type RelatedPost } from '@/lib/blogAI';
+import { saveSetting } from '@/lib/settings';
 import { logError } from '@/lib/errlog';
 
 export const dynamic = 'force-dynamic';
@@ -13,7 +14,7 @@ export const maxDuration = 60;
 export async function GET() {
   const { ok } = await requirePerm('modulos', 'view');
   if (!ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
-  try { return NextResponse.json(await runAudit()); }
+  try { const r = await runAudit(); const autofix = await autoFixCfg().catch(() => AUTOFIX_DEFAULT); return NextResponse.json({ ...r, autofix }); }
   catch (e: any) { await logError('blog_audit', e); return NextResponse.json({ ok: false, error: e?.message || 'error' }, { status: 500 }); }
 }
 
@@ -42,6 +43,12 @@ export async function POST(req: Request) {
       if (r.excerpt_en) patch.excerpt_en = r.excerpt_en;
       await savePost(patch);
       return NextResponse.json({ ok: true, applied: action });
+    }
+    if (action === 'set_autofix') {
+      const cur = await autoFixCfg().catch(() => AUTOFIX_DEFAULT);
+      const next = { enabled: b.enabled == null ? cur.enabled : !!b.enabled, threshold: Number.isFinite(Number(b.threshold)) ? Math.max(40, Math.min(90, Math.round(Number(b.threshold)))) : (cur.threshold || 70) };
+      await saveSetting('blog_autofix', next);
+      return NextResponse.json({ ok: true, autofix: next });
     }
     if (action === 'suggest_angle') {
       const kw = String(b.kw || '');
