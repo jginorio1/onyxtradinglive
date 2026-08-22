@@ -616,6 +616,7 @@ export default function BlogEditor() {
 
         <BlogKeywords />
         <BlogAutopilot es={es} onChanged={load} />
+        <BlogAudit es={es} onChanged={load} />
         <BlogAuthorCard es={es} roster={authors} reload={loadAuthors} />
 
         {posts.length === 0 && <div className="card muted">{es ? 'Aún no hay artículos.' : 'No articles yet.'}</div>}
