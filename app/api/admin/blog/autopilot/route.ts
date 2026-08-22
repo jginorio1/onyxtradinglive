@@ -58,6 +58,12 @@ export async function POST(req: Request) {
   try {
     const b = await req.json().catch(() => ({} as any));
     const action = String(b.action || '');
+    // Persistimos la zona horaria REAL del navegador antes de planificar/reprogramar,
+    // para que la "hora del día" se calcule en la hora local del dueño y no en UTC.
+    if ((action === 'plan' || action === 'normalize') && Number.isFinite(Number(b.tzOffset))) {
+      const cur = await blogAutopilotSettings();
+      if (cur.tzOffset !== Math.round(Number(b.tzOffset))) await saveSetting('blog_autopilot', { ...cur, tzOffset: Math.round(Number(b.tzOffset)) });
+    }
     if (action === 'plan') {
       const cfg = await blogAutopilotSettings();
       if (!(cfg.topics?.length) && !cfg.useKeywords) return NextResponse.json({ error: 'sin_temas', code: 'sin_temas' }, { status: 200 });

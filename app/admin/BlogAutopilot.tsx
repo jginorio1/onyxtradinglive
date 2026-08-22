@@ -81,7 +81,7 @@ export default function BlogAutopilot({ es, onChanged }: { es: boolean; onChange
     setBusy('plan');
     await save({});   // asegura que la lista de temas quede guardada antes de planificar
     try {
-      const r = await fetch('/api/admin/blog/autopilot', { method: 'POST', body: JSON.stringify({ action: 'plan' }) });
+      const r = await fetch('/api/admin/blog/autopilot', { method: 'POST', body: JSON.stringify({ action: 'plan', tzOffset: new Date().getTimezoneOffset() }) });
       const j = await r.json();
       if (j.ok) { toast(es ? `📅 ${j.created.length} fechas añadidas al calendario.` : `📅 ${j.created.length} dates added to the calendar.`, 'ok'); await load(); onChanged?.(); }
       else if (j.code === 'sin_temas') toast(es ? 'Añade temas (lista) o activa las keywords primero.' : 'Add topics (list) or enable keywords first.');
@@ -104,7 +104,7 @@ export default function BlogAutopilot({ es, onChanged }: { es: boolean; onChange
   async function normalize() {
     setBusy('norm');
     try {
-      const r = await fetch('/api/admin/blog/autopilot', { method: 'POST', body: JSON.stringify({ action: 'normalize' }) });
+      const r = await fetch('/api/admin/blog/autopilot', { method: 'POST', body: JSON.stringify({ action: 'normalize', tzOffset: new Date().getTimezoneOffset() }) });
       const j = await r.json();
       if (j.ok) { toast(es ? `📅 ${j.count} fechas reordenadas (día sí, día no).` : `📅 ${j.count} dates reordered (every other day).`, 'ok'); await load(); onChanged?.(); }
       else toast(es ? 'No se pudo reprogramar.' : 'Could not reschedule.');
