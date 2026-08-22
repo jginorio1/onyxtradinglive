@@ -14,6 +14,31 @@ export default function BlogAudit({ es, onChanged }: { es: boolean; onChanged?: 
   const [exp, setExp] = useState<string | null>(null);
   const [fix, setFix] = useState<string>('');
   const [angles, setAngles] = useState<Record<string, string[]>>({});
+  const [batch, setBatch] = useState<{ running: boolean; done: number; total: number }>({ running: false, done: 0, total: 0 });
+
+  // Arreglo en LOTE: mejora todos los artículos por debajo del umbral, uno a uno
+  // en segundo plano, con barra de progreso y tolerancia a límites de la API.
+  async function batchFix(threshold = 70) {
+    const targets = (data?.posts || []).filter((p: any) => p.score < threshold);
+    if (!targets.length) { toast(L('Nada por debajo del umbral. ¡Buen trabajo!', 'Nothing below the threshold. Nice!')); return; }
+    setBatch({ running: true, done: 0, total: targets.length });
+    let done = 0, fails = 0, last = '';
+    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    for (let i = 0; i < targets.length; i++) {
+      const p = targets[i]; let ok = false, rl = false;
+      try {
+        const r = await fetch('/api/admin/blog/audit', { method: 'POST', body: JSON.stringify({ action: 'fix_seo', id: p.id, kw: p.kw }) });
+        const j = await r.json();
+        if (j.ok) { ok = true; done++; fails = 0; setBatch({ running: true, done, total: targets.length }); }
+        else { fails++; last = j.error || ''; rl = /429|rate|limit|overload|529/i.test(last); }
+      } catch { fails++; last = 'red'; }
+      if (fails >= 20) { toast((L('La IA se detuvo (posible límite). Espera unos minutos y pulsa "Arreglar todos" otra vez; retoma donde quedó.', 'AI stopped (limit). Wait a few minutes and press "Fix all" again; it resumes.')) + (last ? ` · ${last}` : '')); break; }
+      await sleep(ok ? 2500 : (rl ? Math.min(60000, 15000 * fails) : Math.min(20000, 3000 * fails)));
+    }
+    setBatch({ running: false, done: 0, total: 0 });
+    if (done) toast(L(`✓ ${done} artículo(s) mejorado(s).`, `✓ ${done} article(s) improved.`), 'ok');
+    await scan(); onChanged?.();
+  }
 
   async function scan() {
     setBusy(true);
@@ -54,11 +79,22 @@ export default function BlogAudit({ es, onChanged }: { es: boolean; onChanged?: 
             <div className="muted" style={{ fontSize: 12 }}>{L('Escanea todos los artículos: unicidad, SEO, enlaces y frescura. Arregla con IA.', 'Scans every article: uniqueness, SEO, links and freshness. Fix with AI.')}</div>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           {data && <span style={{ fontSize: 22, fontWeight: 800, color: clr(data.health) }}>{data.health}<span className="muted" style={{ fontSize: 11, fontWeight: 400 }}>/100</span></span>}
-          <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={(e) => { e.stopPropagation(); scan(); }} disabled={busy}>{busy ? '…' : `↻ ${L('Auditar', 'Audit')}`}</button>
+          {data && (data.posts || []).some((p: any) => p.score < 70) && (
+            <button className="btn btn-primary" style={{ fontSize: 12, background: 'linear-gradient(135deg,#7c8cff,#34e2a0)', color: '#0b0d17' }} disabled={batch.running || busy} onClick={(e) => { e.stopPropagation(); batchFix(70); }}>
+              {batch.running ? `⏳ ${batch.done}/${batch.total}` : <><OnyxIcon emoji="✨" size={13} /> {L('Arreglar todos', 'Fix all')} ({(data.posts || []).filter((p: any) => p.score < 70).length})</>}
+            </button>
+          )}
+          <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={(e) => { e.stopPropagation(); scan(); }} disabled={busy || batch.running}>{busy ? '…' : `↻ ${L('Auditar', 'Audit')}`}</button>
         </div>
       </div>
+      {batch.running && (
+        <div style={{ padding: '0 14px 12px' }}>
+          <div style={{ height: 6, borderRadius: 99, background: 'var(--bg2)', overflow: 'hidden' }}><div style={{ height: '100%', width: `${Math.round((batch.done / Math.max(1, batch.total)) * 100)}%`, background: 'linear-gradient(90deg,#7c8cff,#34e2a0)', transition: 'width .3s' }} /></div>
+          <div className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>{L('Mejorando en lote… no cierres la pestaña. Si se detiene por límite, vuelve a pulsar "Arreglar todos" y retoma.', 'Batch improving… keep this tab open. If it stops on a limit, press "Fix all" again to resume.')}</div>
+        </div>
+      )}
 
       {open && (
         <div style={{ padding: '0 14px 14px' }}>
@@ -114,8 +150,8 @@ export default function BlogAudit({ es, onChanged }: { es: boolean; onChanged?: 
                           </div>
                         )}
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                          <button className="btn btn-ghost" style={{ fontSize: 12 }} disabled={!!fix} onClick={() => action(p.id, 'fix_seo')}>{fix === p.id + 'fix_seo' ? '…' : <><OnyxIcon emoji="✨" size={13} /> {L('Mejorar SEO', 'Fix SEO')}</>}</button>
-                          <button className="btn btn-ghost" style={{ fontSize: 12 }} disabled={!!fix} onClick={() => action(p.id, 'refresh')}>{fix === p.id + 'refresh' ? '…' : <>↻ {L('Refrescar', 'Refresh')}</>}</button>
+                          <button className="btn btn-ghost" style={{ fontSize: 12 }} disabled={!!fix} onClick={() => action(p.id, 'fix_seo', p.kw)}>{fix === p.id + 'fix_seo' ? '…' : <><OnyxIcon emoji="✨" size={13} /> {L('Mejorar SEO', 'Fix SEO')}</>}</button>
+                          <button className="btn btn-ghost" style={{ fontSize: 12 }} disabled={!!fix} onClick={() => action(p.id, 'refresh', p.kw)}>{fix === p.id + 'refresh' ? '…' : <>↻ {L('Refrescar', 'Refresh')}</>}</button>
                           {(p.sim || p.kw) && <button className="btn btn-ghost" style={{ fontSize: 12 }} disabled={!!fix} onClick={() => action(p.id, 'suggest_angle', p.kw)}>{fix === p.id + 'suggest_angle' ? '…' : <><OnyxIcon emoji="🔁" size={13} /> {L('Diferenciar ángulo', 'Differentiate')}</>}</button>}
                           <a className="btn btn-ghost" style={{ fontSize: 12 }} href={`/blog/${p.slug}`} target="_blank" rel="noreferrer">{L('Ver', 'View')} →</a>
                         </div>

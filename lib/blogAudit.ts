@@ -152,7 +152,8 @@ export async function runAudit(): Promise<AuditResult> {
     const ageDays = pub ? Math.round((now - new Date(pub).getTime()) / DAY) : 0;
     const updatedDays = p.updated_at ? Math.round((now - new Date(p.updated_at).getTime()) / DAY) : ageDays;
     const g = gscMap.get(p.slug) || null;
-    const indexed = gscOk ? (g ? g.impressions > 0 : false) : null;
+    // Solo tiene sentido "indexado" en artículos YA publicados (los programados aún no existen en Google).
+    const indexed = (gscOk && p.status === 'published') ? (g ? g.impressions > 0 : false) : null;
     let fresh = 100;
     if (p.status === 'published') {
       if (ageDays > 270 && updatedDays > 180) { fresh -= 30; issues.push({ pillar: 'fresh', text_es: `Sin actualizar en ${updatedDays} días. Refréscalo.`, text_en: `Not updated in ${updatedDays} days. Refresh it.` }); }

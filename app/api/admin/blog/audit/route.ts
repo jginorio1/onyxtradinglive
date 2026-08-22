@@ -35,9 +35,11 @@ export async function POST(req: Request) {
       .slice(0, 12).map((x: any) => ({ slug: x.slug, title_es: x.title_es, title_en: x.title_en, tags: x.tags }));
 
     if (action === 'fix_seo' || action === 'refresh') {
-      const r = await enhanceArticle(p.title_es || p.title_en || '', p.body_es || '', p.body_en || '', related);
+      const r = await enhanceArticle(p.title_es || p.title_en || '', p.body_es || '', p.body_en || '', related, String(b.kw || ''));
       if (!r.ok) return NextResponse.json({ ok: false, error: lastAiError() || r.reason || 'ai' }, { status: 200 });
       const patch: any = { ...p, body_es: r.body_es ?? p.body_es, body_en: r.body_en ?? p.body_en, updated_at: new Date().toISOString() };
+      if (r.excerpt_es) patch.excerpt_es = r.excerpt_es;
+      if (r.excerpt_en) patch.excerpt_en = r.excerpt_en;
       await savePost(patch);
       return NextResponse.json({ ok: true, applied: action });
     }

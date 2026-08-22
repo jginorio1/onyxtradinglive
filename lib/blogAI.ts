@@ -236,15 +236,17 @@ function applyEnhance(body: string, lang: 'es' | 'en', out: any): string {
   return b.slice(0, 20000);
 }
 export async function enhanceArticle(
-  title: string, bodyEs: string, bodyEn: string, related?: RelatedPost[],
-): Promise<{ ok: boolean; body_es?: string; body_en?: string; reason?: string }> {
+  title: string, bodyEs: string, bodyEn: string, related?: RelatedPost[], kw?: string,
+): Promise<{ ok: boolean; body_es?: string; body_en?: string; excerpt_es?: string; excerpt_en?: string; reason?: string }> {
   if (!process.env.ANTHROPIC_API_KEY) return { ok: false, reason: 'no_key' };
   const relList = (related || []).slice(0, 12).map((r) => `- slug: ${r.slug} — ${(r.title_es || r.title_en || '').slice(0, 70)}${r.tags ? ` (${r.tags})` : ''}`).join('\n') || '(no hay otros artículos — deja links vacío)';
-  const system = `Eres el editor SEO de Onyx Trading Live. ${GUARDRAIL}\n\nTe doy un artículo en español e inglés. NO reescribas el texto. Solo propón añadidos, y devuelve un JSON PEQUEÑO (sin repetir el artículo):\n- "links": 2-4 objetos {"slug":"...","anchor_es":"frase EXACTA copiada del cuerpo español","anchor_en":"frase EXACTA copiada del cuerpo inglés"} para enlazar a artículos relacionados donde el tema encaje. Las frases deben existir TAL CUAL en el cuerpo. Usa solo estos slugs (no inventes):\n${relList}\n- "figure": {"kicker_es","title_es","alt_es","kicker_en","title_en","alt_en"} una imagen-banner que resuma una idea del artículo.\n- "faq_es" y "faq_en": 3-4 objetos {"q","a"} de preguntas frecuentes basadas en el contenido (respuestas 1-3 frases).\n\nDevuelve SOLO ese JSON.`;
+  const kwLine = kw ? `\n- "excerpt_es" y "excerpt_en": meta-descripción SEO de 140-160 caracteres, natural y con gancho, que INCLUYA la keyword «${kw}» (traducida al inglés en excerpt_en). Una sola frase por idioma.` : '';
+  const system = `Eres el editor SEO de Onyx Trading Live. ${GUARDRAIL}\n\nTe doy un artículo en español e inglés. NO reescribas el cuerpo. Solo propón añadidos, y devuelve un JSON PEQUEÑO (sin repetir el artículo):\n- "links": 2-4 objetos {"slug":"...","anchor_es":"frase EXACTA copiada del cuerpo español","anchor_en":"frase EXACTA copiada del cuerpo inglés"} para enlazar a artículos relacionados donde el tema encaje. Las frases deben existir TAL CUAL en el cuerpo. Usa solo estos slugs (no inventes):\n${relList}\n- "figure": {"kicker_es","title_es","alt_es","kicker_en","title_en","alt_en"} una imagen-banner que resuma una idea del artículo.\n- "faq_es" y "faq_en": 3-4 objetos {"q","a"} de preguntas frecuentes basadas en el contenido (respuestas 1-3 frases).${kwLine}\n\nDevuelve SOLO ese JSON.`;
   const user = `TÍTULO: ${title}\n\n=== CUERPO ES ===\n${(bodyEs || '').slice(0, 6000)}\n\n=== CUERPO EN ===\n${(bodyEn || '').slice(0, 6000)}`;
   const out = parseJson(await aiRaw(system, user, 1800));
   if (!out) return { ok: false, reason: 'ai_failed' };
-  return { ok: true, body_es: applyEnhance(bodyEs, 'es', out), body_en: applyEnhance(bodyEn, 'en', out) };
+  const ex = (v: any) => { const s = String(v || '').trim(); return s.length >= 80 && s.length <= 200 ? s : ''; };
+  return { ok: true, body_es: applyEnhance(bodyEs, 'es', out), body_en: applyEnhance(bodyEn, 'en', out), excerpt_es: ex(out.excerpt_es), excerpt_en: ex(out.excerpt_en) };
 }
 
 // ---- Completar el idioma que falte (traducción fiel, conserva estructura) ----
