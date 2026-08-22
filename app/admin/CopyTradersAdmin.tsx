@@ -91,7 +91,7 @@ export default function CopyTradersAdmin() {
       <div className="card" style={glow('var(--green)')}>
         <div style={{ fontWeight: 700, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}><OnyxIcon emoji="💵" size={16} /> {L('Monetización y acceso', 'Monetization & access')}</div>
         <p className="muted" style={{ fontSize: 12.5, marginBottom: 12 }}>{L('Define cuánto se queda Onyx de cada suscripción, si permites comisión por rendimiento y quién puede copiar.', 'Set how much Onyx keeps from each subscription, whether to allow performance fees, and who can copy.')}</p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 14 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,220px),1fr))', gap: 14 }}>
           <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: 12 }}>
             <div style={{ fontSize: 12.5, fontWeight: 600, marginBottom: 6 }}>{L('Comisión de Onyx (%)', 'Onyx fee (%)')}</div>
             <input value={config.feePct ?? 30} onChange={(e) => setConfig({ ...config, feePct: Number(e.target.value) || 0 })} style={{ ...inp, width: 80 }} />
@@ -203,7 +203,7 @@ export default function CopyTradersAdmin() {
 
       {/* Traders — fichas enriquecidas */}
       <div>
-        {secHead('👤', L('Traders calificados', 'Graded traders') + ` (${providers.length})`, L('Cada ficha muestra el desglose por pilar, sus banderas y su verificación.', 'Each card shows the pillar breakdown, flags and verification.'))}
+        {secHead('👤', L('Traders y cuentas postuladas', 'Traders & listed accounts') + ` (${providers.length})`, L('Cada cuenta postulada: su tier (o "En evaluación"), el desglose por pilar, banderas y verificación.', 'Each listed account: its tier (or "In review"), pillar breakdown, flags and verification.'))}
         {providers.length === 0 && <div className="card muted" style={{ textAlign: 'center', padding: 24 }}>{L('Aún nadie ha postulado su cuenta.', 'No one has listed an account yet.')}</div>}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {providers.map((p) => {
@@ -217,6 +217,7 @@ export default function CopyTradersAdmin() {
                   <div style={{ flex: '1 1 260px', minWidth: 0 }}>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                       <b>{p.display_name}</b>
+                      {p.account_label && <span className="muted" style={{ fontSize: 11.5, padding: '1px 7px', borderRadius: 6, background: 'var(--bg2)' }}>{p.account_label}</span>}
                       <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 999, color: tc, border: `1px solid ${tc}` }}>{p.tier === 'none' ? L('En evaluación', 'In review') : p.tier}</span>
                       {p.verified && <span style={{ fontSize: 11, color: 'var(--green)' }}>✓ {L('verificada', 'verified')}</span>}
                       {Array.isArray(p.flags) && p.flags.map((f: string) => <span key={f} style={{ fontSize: 10.5, padding: '1px 7px', borderRadius: 999, background: 'rgba(255,192,77,.12)', border: '1px solid var(--amber)', color: 'var(--amber)', display: 'inline-flex', alignItems: 'center', gap: 4 }}><OnyxIcon emoji="⚠" size={11} /> {f}</span>)}
@@ -232,11 +233,13 @@ export default function CopyTradersAdmin() {
                   </div>
                   <div style={{ textAlign: 'center', flex: '0 0 auto' }}><div style={{ fontSize: 30, fontWeight: 800, color: tc }}>{p.score}</div><div className="muted" style={{ fontSize: 10 }}>Onyx Score</div></div>
                 </div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--line)' }}>
-                  <label style={{ fontSize: 12, display: 'flex', gap: 5, alignItems: 'center' }}><input type="checkbox" checked={!!p.verified} onChange={(e) => provAction(p.id, { verified: e.target.checked })} /> {L('Verificada', 'Verified')}</label>
-                  <label style={{ fontSize: 12, display: 'flex', gap: 5, alignItems: 'center' }}><input type="checkbox" checked={!!p.listed} onChange={(e) => provAction(p.id, { listed: e.target.checked })} /> {L('En ranking', 'Listed')}</label>
-                  <button className="btn btn-ghost" style={{ fontSize: 12, marginLeft: 'auto' }} onClick={() => provAction(p.id, { action: 'recompute' })}>↻ {L('Recalcular', 'Recompute')}</button>
-                  <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--red)', borderColor: 'rgba(255,107,125,.5)' }} onClick={() => { if (confirm(L('¿Quitar del marketplace?', 'Remove from marketplace?'))) provAction(p.id, { status: 'removed', listed: false }); }}>✕</button>
+                <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap', marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--line)' }}>
+                  <label style={{ fontSize: 12.5, display: 'inline-flex', gap: 6, alignItems: 'center', whiteSpace: 'nowrap', flex: '0 0 auto', cursor: 'pointer' }}><input type="checkbox" checked={!!p.verified} onChange={(e) => provAction(p.id, { verified: e.target.checked })} style={{ width: 15, height: 15, margin: 0, flex: '0 0 auto' }} /> {L('Verificada', 'Verified')}</label>
+                  <label style={{ fontSize: 12.5, display: 'inline-flex', gap: 6, alignItems: 'center', whiteSpace: 'nowrap', flex: '0 0 auto', cursor: 'pointer' }}><input type="checkbox" checked={!!p.listed} onChange={(e) => provAction(p.id, { listed: e.target.checked })} style={{ width: 15, height: 15, margin: 0, flex: '0 0 auto' }} /> {L('En el ranking', 'In ranking')}</label>
+                  <div style={{ display: 'flex', gap: 8, marginLeft: 'auto', flex: '0 0 auto' }}>
+                    <button className="btn btn-ghost" style={{ fontSize: 12, whiteSpace: 'nowrap' }} onClick={() => provAction(p.id, { action: 'recompute' })}>↻ {L('Recalcular', 'Recompute')}</button>
+                    <button className="btn btn-ghost" title={L('Quitar del marketplace', 'Remove from marketplace')} style={{ fontSize: 12, color: 'var(--red)', borderColor: 'rgba(255,107,125,.5)' }} onClick={() => { if (confirm(L('¿Quitar del marketplace?', 'Remove from marketplace?'))) provAction(p.id, { status: 'removed', listed: false }); }}>✕</button>
+                  </div>
                 </div>
               </div>
             );

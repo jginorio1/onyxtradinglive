@@ -195,3 +195,30 @@ export function tierLabel(t: Tier, lang: 'es' | 'en' = 'es'): string {
   const map: Record<Tier, string> = { none: lang === 'es' ? 'En evaluación' : 'In review', silver: 'Onyx Silver', gold: 'Onyx Gold', diamond: 'Onyx Diamond' };
   return map[t] || map.none;
 }
+
+// ── Escalera de calificación (determinista, sin IA) ────────────────────────
+// Devuelve, para el SIGUIENTE tier, cada requisito con: valor actual, exigido,
+// si ya lo cumple y un % de avance. El hub lo pinta como checklist con barras.
+export type ReqRow = { key: string; label_es: string; label_en: string; cur: number; req: number; ok: boolean; unit?: string; pct: number };
+export type Qualify = { current: Tier; next: Tier; reqs: ReqRow[]; done: boolean };
+
+export function qualifyToward(score: number, s: ScoreStats, verified: boolean, tier: Tier, gates: CopyConfig['gates'] = DEFAULT_COPY_CONFIG.gates): Qualify {
+  const next: Tier = tier === 'none' ? 'silver' : tier === 'silver' ? 'gold' : 'diamond';
+  const g: Gate = (gates as any)[next] || gates.silver;
+  const reqs: ReqRow[] = [];
+  const add = (key: string, le: string, len: string, cur: number, req: number, ok: boolean, kind: 'min' | 'max', unit?: string) => {
+    let pct = 100;
+    if (!ok) {
+      if (kind === 'max') pct = req > 0 ? clamp((req / Math.max(cur, 0.01)) * 100) : 0;
+      else pct = req > 0 ? clamp((cur / req) * 100) : 100;
+    }
+    reqs.push({ key, label_es: le, label_en: len, cur, req, ok, unit, pct: Math.round(pct) });
+  };
+  add('score', 'Onyx Score', 'Onyx Score', round(score), g.score, score >= g.score, 'min');
+  add('trades', 'Operaciones', 'Trades', s.trades, g.trades, s.trades >= g.trades, 'min');
+  add('days', 'Días operados', 'Trading days', s.tradingDays, g.days, s.tradingDays >= g.days, 'min');
+  if (g.pf > 0) add('pf', 'Profit factor', 'Profit factor', r2(s.pf), g.pf, s.pf >= g.pf, 'min');
+  add('dd', 'Drawdown máx.', 'Max drawdown', r2(s.maxDDpct), g.maxDD, s.maxDDpct <= g.maxDD, 'max', '%');
+  if (g.verified) add('verified', 'Cuenta verificada', 'Verified account', verified ? 1 : 0, 1, verified, 'min');
+  return { current: tier, next, reqs, done: reqs.every((r) => r.ok) };
+}

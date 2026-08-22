@@ -10,6 +10,36 @@ const TIERC: Record<string, string> = { diamond: '#378ADD', gold: 'var(--gold)',
 
 function money(cents: number) { return '$' + ((cents || 0) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
+// Banderas anti-gaming explicadas en lenguaje simple (para el trader).
+const FLAG_INFO: Record<string, { es: [string, string]; en: [string, string] }> = {
+  small_sample: { es: ['Muestra pequeña', 'Menos de 20 operaciones: aún no hay datos suficientes para confiar. Se limpia sola al operar más.'], en: ['Small sample', 'Fewer than 20 trades: not enough data to trust yet. It clears on its own as you trade more.'] },
+  single_day: { es: ['Un día domina', 'Una sola jornada concentra gran parte de la ganancia. Reparte tus resultados en varios días.'], en: ['One day dominates', 'A single day holds most of the profit. Spread your results across more days.'] },
+  martingale: { es: ['Posible martingala', 'Win rate muy alto con una relación riesgo/beneficio muy baja. Sube tu R:R.'], en: ['Possible martingale', 'Very high win rate with a tiny risk/reward. Raise your R:R.'] },
+  huge_loss: { es: ['Pérdida atroz', 'Tu peor pérdida es enorme frente a tu ganancia media. Respeta tu stop.'], en: ['Huge loss', 'Your worst loss is huge vs your average win. Respect your stop.'] },
+};
+const tierName = (t: string, es: boolean) => t === 'silver' ? 'Onyx Silver' : t === 'gold' ? 'Onyx Gold' : t === 'diamond' ? 'Onyx Diamond' : (es ? 'calificar' : 'qualify');
+
+// Sugerencias deterministas: se arman de los requisitos que faltan + banderas.
+function buildSug(prov: any, es: boolean): string[] {
+  const out: string[] = [];
+  const reqs = prov?.qualify?.reqs || [];
+  const miss = (k: string) => reqs.find((r: any) => r.key === k && !r.ok);
+  const mt = miss('trades'), md = miss('days');
+  if (mt || md) {
+    const parts: string[] = [];
+    if (mt) parts.push(`${mt.req - mt.cur} ${es ? 'operaciones' : 'trades'}`);
+    if (md) parts.push(`${md.req - md.cur} ${es ? 'días' : 'days'}`);
+    out.push(es ? `Sigue operando tu plan: te faltan ${parts.join(' y ')}.` : `Keep trading your plan: you need ${parts.join(' and ')} more.`);
+  }
+  if (miss('score')) out.push(es ? 'Documenta cada trade en el Diario y cumple tu plan — sube tu Onyx Score.' : 'Journal every trade and follow your plan — it lifts your Onyx Score.');
+  if (miss('dd')) out.push(es ? 'Baja tu drawdown: reduce lotes y respeta tu stop.' : 'Lower your drawdown: cut lot size and respect your stop.');
+  if (miss('pf')) out.push(es ? 'Sube tu profit factor: corta pérdidas antes y deja correr las ganancias.' : 'Raise your profit factor: cut losers sooner, let winners run.');
+  if (miss('verified')) out.push(es ? 'Verifica tu cuenta (súbela abajo) para acceder a Gold y Diamond.' : 'Verify your account (upload it below) to reach Gold and Diamond.');
+  if ((prov?.flags || []).includes('single_day')) out.push(es ? 'Evita concentrar la ganancia en un solo día para quitar esa bandera.' : 'Avoid putting all profit in one day to clear that flag.');
+  if (!out.length) out.push(es ? 'Vas bien. Mantén la constancia para asegurar el siguiente nivel.' : 'You are on track. Keep it steady to lock the next tier.');
+  return out.slice(0, 4);
+}
+
 export default function OnyxCopyHub() {
   const { lang } = useLang();
   const es = lang === 'es';
@@ -19,6 +49,7 @@ export default function OnyxCopyHub() {
   const [accounts, setAccounts] = useState<any[]>([]);
   const [myProviders, setMyProviders] = useState<any[]>([]);
   const [connect, setConnect] = useState<any>({ connected: false, chargesEnabled: false });
+  const [openQual, setOpenQual] = useState<string | null>(null);
   const [perfEnabled, setPerfEnabled] = useState(false);
   const [feePct, setFeePct] = useState(30);
   const [earnings, setEarnings] = useState<any>({ totals: { net_cents: 0, gross_cents: 0, fee_cents: 0 }, recent: [] });
@@ -48,7 +79,8 @@ export default function OnyxCopyHub() {
     st_active: 'Activa', st_pending: 'Pendiente de pago', st_past_due: 'Pago pendiente', st_paused: 'Pausada', st_canceled: 'Cancelada',
     apply: 'Postular una cuenta', applyH: 'Onyx AI la califica y, si pasa, aparece en el ranking.', score: 'score', recompute: 'Recalcular',
     price: 'Precio mensual ($)', perfFee: 'Comisión rendimiento (%)', perfNote: 'de tus ganancias nuevas', perfEarn: 'De rendimiento', hwm: 'high-water mark', save: 'Guardar', connectT: 'Cobra tus copias', connectD: 'Conecta tu cuenta con Stripe para recibir tu parte de cada seguidor.',
-    connectBtn: 'Conectar con Stripe', connected: 'Conectado y cobrando', pending: 'Conectado (completa datos)',
+    connectBtn: 'Conectar con Stripe', connected: 'Conectado y cobrando', pending: 'Falta terminar en Stripe', finishBtn: 'Continuar en Stripe', notConnected: 'Sin conectar',
+    qToward: 'Qué te falta para', qFlags: 'Tus banderas, explicadas', qSug: 'Sugerencias de Onyx AI', qNext: 'Próximo recálculo', qAuto: 'Onyx AI recalifica cada día automáticamente', qShow: 'Qué me falta', qHide: 'Ocultar', qDone: 'Cumples todo para', qOf: 'de', qMissing: 'faltan', qReq: 'exige', qRecalcHint: 'También puedes pulsar Recalcular ahora.',
     earn: 'Tus cobros', net: 'Para ti (neto)', gross: 'Cobrado', fee: 'Comisión Onyx', followers: 'seguidores',
     tierGate: 'Para Gold/Diamond hace falta cuenta verificada. Súbela abajo y Onyx AI la verifica al instante.',
     verify: 'Verificar', verifying: 'Verificando…', verifiedTxt: 'Verificada',
@@ -70,7 +102,8 @@ export default function OnyxCopyHub() {
     st_active: 'Active', st_pending: 'Pending payment', st_past_due: 'Payment due', st_paused: 'Paused', st_canceled: 'Canceled',
     apply: 'List an account', applyH: 'Onyx AI grades it and, if it passes, it appears in the ranking.', score: 'score', recompute: 'Recompute',
     price: 'Monthly price ($)', perfFee: 'Performance fee (%)', perfNote: 'of your new profits', perfEarn: 'Performance', hwm: 'high-water mark', save: 'Save', connectT: 'Get paid for your copies', connectD: 'Connect your account with Stripe to receive your share of each follower.',
-    connectBtn: 'Connect with Stripe', connected: 'Connected and billing', pending: 'Connected (complete details)',
+    connectBtn: 'Connect with Stripe', connected: 'Connected and billing', pending: 'Finish setup in Stripe', finishBtn: 'Continue in Stripe', notConnected: 'Not connected',
+    qToward: 'What you need for', qFlags: 'Your flags, explained', qSug: 'Onyx AI suggestions', qNext: 'Next recompute', qAuto: 'Onyx AI re-grades automatically every day', qShow: 'What I need', qHide: 'Hide', qDone: 'You meet everything for', qOf: 'of', qMissing: 'missing', qReq: 'needs', qRecalcHint: 'You can also hit Recompute now.',
     earn: 'Your earnings', net: 'For you (net)', gross: 'Charged', fee: 'Onyx fee', followers: 'followers',
     tierGate: 'Gold/Diamond require a verified account. Upload it below and Onyx AI verifies it instantly.',
     verify: 'Verify', verifying: 'Verifying…', verifiedTxt: 'Verified',
@@ -236,9 +269,11 @@ export default function OnyxCopyHub() {
           <div className="card">
             <div style={{ fontWeight: 700, marginBottom: 4 }}>{T.connectT}</div>
             <p className="muted" style={{ fontSize: 13, marginBottom: 10 }}>{T.connectD}</p>
-            {connect.chargesEnabled ? <span style={{ color: 'var(--green)', fontSize: 13 }}>✓ {T.connected}</span>
-              : connect.connected ? <div><span style={{ color: 'var(--amber)', fontSize: 13 }}>{T.pending}</span> <button className="btn btn-ghost" style={{ fontSize: 12, marginLeft: 8 }} onClick={doConnect}>{T.connectBtn}</button></div>
-              : <button className="btn btn-primary" style={{ fontSize: 13 }} onClick={doConnect}>{T.connectBtn}</button>}
+            {connect.chargesEnabled
+              ? <span style={{ color: 'var(--green)', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--green)' }} /> {T.connected}</span>
+              : connect.connected
+                ? <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}><span style={{ color: 'var(--amber)', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--amber)' }} /> {T.pending}</span> <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={doConnect}>{T.finishBtn}</button></div>
+                : <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}><span style={{ color: 'var(--mut)', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--mut)' }} /> {T.notConnected}</span> <button className="btn btn-primary" style={{ fontSize: 13 }} onClick={doConnect}>{T.connectBtn}</button></div>}
           </div>
 
           {/* Postular cuentas */}
@@ -251,7 +286,8 @@ export default function OnyxCopyHub() {
               {accounts.map((a) => {
                 const prov = myProviders.find((p) => p.account_id === a.id);
                 return (
-                  <div key={a.id} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', padding: '10px 12px', background: 'var(--bg2)', borderRadius: 10 }}>
+                  <div key={a.id} style={{ background: 'var(--bg2)', borderRadius: 10, overflow: 'hidden' }}>
+                   <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', padding: '10px 12px' }}>
                     <div style={{ flex: '1 1 160px' }}><b>{a.nickname || a.broker || a.id.slice(0, 6)}</b> <span className="muted" style={{ fontSize: 12 }}>{a.platform}</span></div>
                     {prov ? (
                       <>
@@ -265,10 +301,63 @@ export default function OnyxCopyHub() {
                           ? <span style={{ fontSize: 11.5, color: 'var(--green)' }}>✓ {T.verifiedTxt}</span>
                           : <button className="btn btn-ghost" style={{ fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 5 }} onClick={() => startVerify(a.id)} disabled={verifying === a.id}>{verifying === a.id ? T.verifying : <><OnyxIcon emoji="🛡" size={13} /> {T.verify}</>}</button>}
                         <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => applyAccount(a.id)} disabled={busy}>↻ {T.recompute}</button>
+                        <button className="btn btn-ghost" style={{ fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 5 }} onClick={() => setOpenQual(openQual === a.id ? null : a.id)}><OnyxIcon emoji={openQual === a.id ? '📈' : '🎯'} size={13} /> {openQual === a.id ? T.qHide : T.qShow}</button>
                       </>
                     ) : (
                       <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={() => applyAccount(a.id)} disabled={busy}>{T.apply}</button>
                     )}
+                   </div>
+                   {prov && openQual === a.id && (() => {
+                     const q = prov.qualify; const nextT = q?.next || 'silver';
+                     const flags: string[] = Array.isArray(prov.flags) ? prov.flags : [];
+                     const sug = buildSug(prov, es);
+                     return (
+                       <div style={{ borderTop: '1px solid var(--bd)', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+                         {q && (
+                           <div>
+                             <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 9, display: 'flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="🎯" size={14} /> {q.done ? `${T.qDone} ${tierName(nextT, es)}` : `${T.qToward} ${tierName(nextT, es)}`}</div>
+                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                               {q.reqs.map((r: any) => (
+                                 <div key={r.key}>
+                                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, marginBottom: 3 }}>
+                                     <span style={{ color: 'var(--mut)', display: 'inline-flex', alignItems: 'center', gap: 5 }}><OnyxIcon emoji={r.ok ? '✓' : '⚠'} size={13} /> {es ? r.label_es : r.label_en}</span>
+                                     <span style={{ color: r.ok ? 'var(--green)' : 'var(--amber)' }}>{r.key === 'verified' ? (r.ok ? (es ? 'Sí' : 'Yes') : 'No') : `${r.cur}${r.unit || ''} / ${r.req}${r.unit || ''}`}{!r.ok && r.key !== 'verified' && r.key !== 'dd' && r.key !== 'score' && r.key !== 'pf' ? ` · ${T.qMissing} ${r.req - r.cur}` : ''}</span>
+                                   </div>
+                                   <div style={{ height: 6, borderRadius: 99, background: 'var(--card)', overflow: 'hidden' }}><div style={{ height: '100%', width: `${r.pct}%`, background: r.ok ? 'var(--green)' : 'var(--amber)' }} /></div>
+                                 </div>
+                               ))}
+                             </div>
+                             {q.next !== 'silver' && <div style={{ fontSize: 11, color: 'var(--mut)', marginTop: 7 }}>{es ? 'Gold y Diamond exigen cuenta verificada.' : 'Gold and Diamond require a verified account.'}</div>}
+                           </div>
+                         )}
+
+                         {flags.length > 0 && (
+                           <div>
+                             <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6, color: 'var(--amber)' }}><OnyxIcon emoji="⚠" size={14} /> {T.qFlags}</div>
+                             <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                               {flags.map((f) => { const info = FLAG_INFO[f]; const t = info ? (es ? info.es : info.en) : [f, '']; return (
+                                 <div key={f} style={{ background: 'rgba(255,192,77,.1)', borderRadius: 8, padding: '7px 10px' }}>
+                                   <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--amber)' }}>{t[0]}</div>
+                                   <div style={{ fontSize: 12, color: 'var(--amber)', opacity: .85 }}>{t[1]}</div>
+                                 </div>
+                               ); })}
+                             </div>
+                           </div>
+                         )}
+
+                         <div>
+                           <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 7, display: 'flex', alignItems: 'center', gap: 6, color: 'var(--soft-brand)' }}><OnyxIcon emoji="✨" size={14} /> {T.qSug}</div>
+                           <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12.5, color: 'var(--mut)', lineHeight: 1.7 }}>
+                             {sug.map((s, i) => <li key={i}>{s}</li>)}
+                           </ul>
+                         </div>
+
+                         <div style={{ fontSize: 11.5, color: 'var(--mut)', borderTop: '1px solid var(--bd)', paddingTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                           <OnyxIcon emoji="🔁" size={13} /> {T.qAuto}. {T.qRecalcHint}
+                         </div>
+                       </div>
+                     );
+                   })()}
                   </div>
                 );
               })}

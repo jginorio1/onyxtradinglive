@@ -19,8 +19,16 @@ export async function GET() {
     const { data: providers } = await supabaseAdmin.from('strategy_providers')
       .select('id,user_id,account_id,display_name,tier,score,pillars,stats,flags,followers,fee_month,perf_fee_pct,verified,listed,auto_delisted,status,scored_at')
       .order('score', { ascending: false }).limit(500);
+    // Etiqueta de cuenta (apodo/bróker) para distinguir varias cuentas del mismo trader.
+    const accIds = Array.from(new Set((providers || []).map((p: any) => p.account_id).filter(Boolean)));
+    const accMap: Record<string, string> = {};
+    if (accIds.length) {
+      const { data: accs } = await supabaseAdmin.from('trading_accounts').select('id,nickname,broker,platform').in('id', accIds);
+      (accs || []).forEach((a: any) => { accMap[a.id] = a.nickname || a.broker || (a.platform ? a.platform + ' ' + String(a.id).slice(0, 4) : String(a.id).slice(0, 6)); });
+    }
+    const withLabel = (providers || []).map((p: any) => ({ ...p, account_label: accMap[p.account_id] || '' }));
     const fees = { subscription: Number(process.env.ONYX_COPY_FEE_PCT || 30) };
-    return NextResponse.json({ ok: true, config, providers: providers || [], fees });
+    return NextResponse.json({ ok: true, config, providers: withLabel, fees });
   } catch (e: any) {
     await logError('admin_copy_get', e);
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });

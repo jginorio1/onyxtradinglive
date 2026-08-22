@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { computeScoreForAccount, copyConfig } from '@/lib/copyScore';
+import { computeScoreForAccount, copyConfig, qualifyToward, DEFAULT_COPY_CONFIG } from '@/lib/copyScore';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -17,7 +17,16 @@ export async function GET() {
       supabaseAdmin.from('trading_accounts').select('id,nickname,broker,platform').eq('user_id', user.id),
     ]);
     const cfg: any = await copyConfig().catch(() => ({}));
-    return NextResponse.json({ ok: true, providers: providers || [], accounts: accounts || [], perfEnabled: !!cfg?.perfEnabled, feePct: Number(cfg?.feePct) >= 0 ? Number(cfg.feePct) : 30 });
+    const gates = cfg?.gates || DEFAULT_COPY_CONFIG.gates;
+    // Adjunta la escalera de calificación (qué falta para el siguiente tier) a cada proveedor.
+    const withQual = (providers || []).map((p: any) => {
+      let qualify = null;
+      try {
+        if (p?.stats && typeof p.score === 'number') qualify = qualifyToward(p.score, p.stats, !!p.verified, p.tier || 'none', gates);
+      } catch { qualify = null; }
+      return { ...p, qualify };
+    });
+    return NextResponse.json({ ok: true, providers: withQual, accounts: accounts || [], perfEnabled: !!cfg?.perfEnabled, feePct: Number(cfg?.feePct) >= 0 ? Number(cfg.feePct) : 30 });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
   }
