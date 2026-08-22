@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { computeScoreForAccount } from '@/lib/copyScore';
+import { computeScoreForAccount, copyConfig } from '@/lib/copyScore';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -16,7 +16,8 @@ export async function GET() {
       supabaseAdmin.from('strategy_providers').select('id,account_id,display_name,tier,score,pillars,stats,followers,fee_month,perf_fee_pct,flags,verified,listed,auto_delisted,status,scored_at').eq('user_id', user.id),
       supabaseAdmin.from('trading_accounts').select('id,nickname,broker,platform').eq('user_id', user.id),
     ]);
-    return NextResponse.json({ ok: true, providers: providers || [], accounts: accounts || [] });
+    const cfg: any = await copyConfig().catch(() => ({}));
+    return NextResponse.json({ ok: true, providers: providers || [], accounts: accounts || [], perfEnabled: !!cfg?.perfEnabled });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
   }
@@ -48,7 +49,9 @@ export async function POST(req: Request) {
     const displayName = String(b.display_name || (existing as any)?.display_name || (prof as any)?.full_name || (acc as any).nickname || 'Onyx Trader').slice(0, 40);
     const feeMonth = b.fee_month === undefined ? (existing as any)?.fee_month ?? null : (b.fee_month === '' || b.fee_month == null ? null : Math.max(0, Math.min(999, Number(b.fee_month) || 0)));
     const listed = b.listed === undefined ? ((existing as any)?.listed ?? true) : !!b.listed;
-    const perfFee = b.perf_fee_pct === undefined ? ((existing as any)?.perf_fee_pct ?? 0) : Math.max(0, Math.min(30, Number(b.perf_fee_pct) || 0));
+    const cfg: any = await copyConfig().catch(() => ({}));
+    let perfFee = b.perf_fee_pct === undefined ? ((existing as any)?.perf_fee_pct ?? 0) : Math.max(0, Math.min(30, Number(b.perf_fee_pct) || 0));
+    if (!cfg?.perfEnabled) perfFee = 0;   // comisión por rendimiento desactivada globalmente
 
     const row: any = {
       user_id: user.id, account_id: accountId, display_name: displayName,

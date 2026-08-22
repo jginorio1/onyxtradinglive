@@ -17,12 +17,21 @@ export default function OnyxCopyHub() {
   const [accounts, setAccounts] = useState<any[]>([]);
   const [myProviders, setMyProviders] = useState<any[]>([]);
   const [connect, setConnect] = useState<any>({ connected: false, chargesEnabled: false });
+  const [perfEnabled, setPerfEnabled] = useState(false);
   const [earnings, setEarnings] = useState<any>({ totals: { net_cents: 0, gross_cents: 0, fee_cents: 0 }, recent: [] });
   const [cfg, setCfg] = useState<any>(null);      // proveedor que se está por copiar
   const [busy, setBusy] = useState(false);
   const [verifying, setVerifying] = useState('');  // account_id en verificación
+  const [block, setBlock] = useState<any>(null);   // popup: cuenta ya ocupada por otro trader
   const vfileRef = useRef<HTMLInputElement>(null);
   const vAccRef = useRef<string>('');
+
+  // Cuentas ya ocupadas copiando a otro trader (una cuenta = un trader).
+  const busyMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    (follows || []).forEach((f: any) => { if (['active', 'pending', 'past_due'].includes(f.status)) m[f.follower_account_id] = f.provider?.display_name || '—'; });
+    return m;
+  }, [follows]);
 
   const T = es ? {
     title: 'Onyx Copy', sub: 'Copia a traders calificados o pon tu cuenta a calificar.',
@@ -44,6 +53,7 @@ export default function OnyxCopyHub() {
     verifyNotLive: 'El estado de cuenta parece de una cuenta demo, no live.',
     verifyMismatch: 'El número de cuenta del documento no coincide con esta cuenta.',
     verifyBad: 'No pude leer el documento. Prueba con una captura o PDF más claro del bróker.',
+    busyTitle: 'Esta cuenta ya está copiando', busyGo: 'Ir a Mis copias', busyClose: 'Entendido', busyOpt: 'copiando a',
     riskNote: 'Copiar conlleva riesgo. Mantienes tus propios límites; Onyx no gestiona tu dinero.',
   } : {
     title: 'Onyx Copy', sub: 'Copy graded traders or list your account to get graded.',
@@ -65,6 +75,7 @@ export default function OnyxCopyHub() {
     verifyNotLive: 'The statement looks like a demo account, not live.',
     verifyMismatch: 'The account number in the document does not match this account.',
     verifyBad: 'Couldn\'t read the document. Try a clearer broker screenshot or PDF.',
+    busyTitle: 'This account is already copying', busyGo: 'Go to My copies', busyClose: 'Got it', busyOpt: 'copying',
     riskNote: 'Copying carries risk. You keep your own limits; Onyx does not manage your money.',
   };
   const stLabel = (s: string) => (T as any)['st_' + s] || s;
@@ -80,6 +91,7 @@ export default function OnyxCopyHub() {
       setFollows(mf.follows || []);
       setAccounts(pv.accounts || []);
       setMyProviders(pv.providers || []);
+      setPerfEnabled(!!pv.perfEnabled);
     } catch {}
   }
   async function loadTrader() {
@@ -100,7 +112,8 @@ export default function OnyxCopyHub() {
 
   function openConfig(p: any) {
     if (!accounts.length) { toast(T.noAcc, 'warn'); return; }
-    setCfg({ provider: p, follower_account_id: accounts[0].id, lot_mode: 'balance', lot_value: 1, max_lot: 2, max_drawdown_pct: 0, require_sl: false, reverse: false });
+    const free = accounts.find((a) => !busyMap[a.id] || busyMap[a.id] === p.display_name) || accounts[0];
+    setCfg({ provider: p, follower_account_id: free.id, lot_mode: 'balance', lot_value: 1, max_lot: 2, max_drawdown_pct: 0, require_sl: false, reverse: false });
   }
   async function startCopy() {
     if (!cfg) return;
@@ -109,6 +122,8 @@ export default function OnyxCopyHub() {
       const r = await fetch('/api/copy/follow', { method: 'POST', body: JSON.stringify({ provider_id: cfg.provider.id, ...cfg, provider: undefined }) });
       const j = await r.json();
       if (j.url) { window.location.href = j.url; return; }
+      if (j.code === 'account_busy') { setBlock({ trader: cfg.provider.display_name, other: j.busyWith }); setCfg(null); setBusy(false); return; }
+      if (j.code === 'plan_gate') { toast(es ? 'Tu plan no incluye copy. Sube a Pro para copiar traders.' : 'Your plan doesn\'t include copy. Upgrade to Pro to copy traders.', 'warn'); setCfg(null); setBusy(false); return; }
       toast(j.error || 'Error', j.code === 'not_payable' ? 'warn' : 'error');
     } catch { toast('Error', 'error'); }
     setBusy(false);
@@ -239,7 +254,7 @@ export default function OnyxCopyHub() {
                         <div style={{ textAlign: 'center' }}><div style={{ fontWeight: 800, color: TIERC[prov.tier] }}>{prov.score}</div><div className="muted" style={{ fontSize: 10 }}>{T.score}</div></div>
                         {badge(prov.tier, prov.tier === 'none' ? (es ? 'En evaluación' : 'In review') : prov.tier)}
                         <input defaultValue={prov.fee_month || ''} placeholder={T.price} title={T.price} onBlur={(e) => { if (e.target.value !== String(prov.fee_month || '')) saveProviderField(prov, { fee_month: e.target.value }); }} style={{ width: 96, margin: 0, padding: '7px 9px', fontSize: 13 }} />
-                        <input defaultValue={prov.perf_fee_pct || ''} placeholder={T.perfFee} title={T.perfFee + ' (' + T.hwm + ')'} onBlur={(e) => { if (e.target.value !== String(prov.perf_fee_pct || '')) saveProviderField(prov, { perf_fee_pct: e.target.value }); }} style={{ width: 70, margin: 0, padding: '7px 9px', fontSize: 13 }} />
+                        {perfEnabled && <input defaultValue={prov.perf_fee_pct || ''} placeholder={T.perfFee} title={T.perfFee + ' (' + T.hwm + ')'} onBlur={(e) => { if (e.target.value !== String(prov.perf_fee_pct || '')) saveProviderField(prov, { perf_fee_pct: e.target.value }); }} style={{ width: 70, margin: 0, padding: '7px 9px', fontSize: 13 }} />}
                         {Array.isArray(prov.flags) && prov.flags.length > 0 && <span title={prov.flags.join(', ')} style={{ fontSize: 11, color: 'var(--amber)' }}>⚠ {prov.flags.length}</span>}
                         {prov.auto_delisted && <span style={{ fontSize: 11, color: 'var(--red)' }}>{es ? 'retirado (drawdown)' : 'delisted (drawdown)'}</span>}
                         {prov.verified
@@ -276,9 +291,12 @@ export default function OnyxCopyHub() {
           <div onClick={(e) => e.stopPropagation()} className="card" style={{ maxWidth: 460, width: '100%' }}>
             <div className="row between" style={{ marginBottom: 8 }}><h3 style={{ margin: 0 }}>{T.cfgTitle}: {cfg.provider.display_name}</h3><button className="btn btn-ghost" onClick={() => setCfg(null)}>✕</button></div>
             <label className="muted" style={{ fontSize: 12 }}>{T.account}</label>
-            <select value={cfg.follower_account_id} onChange={(e) => setCfg({ ...cfg, follower_account_id: e.target.value })} style={{ width: '100%', margin: '4px 0 12px', padding: '8px 10px' }}>
-              {accounts.map((a) => <option key={a.id} value={a.id}>{a.nickname || a.broker || a.id.slice(0, 6)} · {a.platform}</option>)}
+            <select value={cfg.follower_account_id} onChange={(e) => setCfg({ ...cfg, follower_account_id: e.target.value })} style={{ width: '100%', margin: '4px 0 6px', padding: '8px 10px' }}>
+              {accounts.map((a) => { const b = busyMap[a.id]; const busyOther = b && b !== cfg.provider.display_name; return <option key={a.id} value={a.id}>{a.nickname || a.broker || a.id.slice(0, 6)} · {a.platform}{busyOther ? ` · ${T.busyOpt} ${b}` : ''}</option>; })}
             </select>
+            {(() => { const b = busyMap[cfg.follower_account_id]; return b && b !== cfg.provider.display_name ? (
+              <div style={{ fontSize: 12, color: 'var(--amber)', background: 'rgba(255,192,77,.1)', border: '1px solid var(--amber)', borderRadius: 8, padding: '7px 10px', marginBottom: 10 }}>⚠ {es ? `Esta cuenta ya copia a ${b}. Elige otra cuenta o deja de copiarlo primero.` : `This account already copies ${b}. Pick another account or stop copying first.`}</div>
+            ) : null; })()}
             <label className="muted" style={{ fontSize: 12 }}>{T.lotMode}</label>
             <select value={cfg.lot_mode} onChange={(e) => setCfg({ ...cfg, lot_mode: e.target.value })} style={{ width: '100%', margin: '4px 0 12px', padding: '8px 10px' }}>
               <option value="balance">{T.mBalance}</option><option value="multiplier">{T.mMult}</option><option value="fixed">{T.mFixed}</option><option value="risk">{T.mRisk}</option>
@@ -298,6 +316,27 @@ export default function OnyxCopyHub() {
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
               <button className="btn btn-ghost" onClick={() => setCfg(null)}>{T.cancel}</button>
               <button className="btn btn-primary" onClick={startCopy} disabled={busy}>{busy ? '...' : T.pay}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Popup: una cuenta = un trader */}
+      {block && (
+        <div onClick={() => setBlock(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(6,9,16,.62)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18, zIndex: 200 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(94vw,430px)', background: 'var(--card)', border: '1px solid var(--amber)', borderRadius: 18, padding: 22, boxShadow: '0 0 0 1px var(--amber), 0 0 38px -8px var(--amber), 0 24px 60px rgba(0,0,0,.5)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+              <span style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(255,192,77,.14)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--amber)', fontSize: 19 }}>⚠</span>
+              <div style={{ fontSize: 16, fontWeight: 700 }}>{T.busyTitle}</div>
+            </div>
+            <div style={{ fontSize: 13.5, color: 'var(--mut)', lineHeight: 1.6 }}>
+              {es
+                ? <>No puedes copiar a <b style={{ color: 'var(--tx)' }}>{block.trader}</b> con esta cuenta porque ya está copiando a <b style={{ color: 'var(--tx)' }}>{block.other}</b>. Cada cuenta solo puede copiar a un trader. Para conectarla a <b style={{ color: 'var(--tx)' }}>{block.trader}</b>, primero deja de copiar a <b style={{ color: 'var(--tx)' }}>{block.other}</b> en “Mis copias” (o usa otra cuenta).</>
+                : <>You can’t copy <b style={{ color: 'var(--tx)' }}>{block.trader}</b> with this account because it’s already copying <b style={{ color: 'var(--tx)' }}>{block.other}</b>. Each account can copy only one trader. To connect it to <b style={{ color: 'var(--tx)' }}>{block.trader}</b>, first stop copying <b style={{ color: 'var(--tx)' }}>{block.other}</b> in “My copies” (or use another account).</>}
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 18 }}>
+              <button className="btn btn-ghost" onClick={() => setBlock(null)}>{T.busyClose}</button>
+              <button className="btn btn-primary" onClick={() => { setBlock(null); setTab('mine'); }}>{T.busyGo}</button>
             </div>
           </div>
         </div>

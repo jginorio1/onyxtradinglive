@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { checkoutForFollow, cancelFollowById } from '@/lib/copyFollow';
+import { copyConfig } from '@/lib/copyScore';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -42,6 +43,15 @@ export async function POST(req: Request) {
     const accountId = String(b.follower_account_id || '').trim();
     if (!providerId || !accountId) return NextResponse.json({ error: 'faltan datos', code: 'missing_data' }, { status: 400 });
 
+    // Gating por plan (configurable en Admin → Onyx Copy). 'all' = cualquiera puede
+    // copiar; 'copy' = solo planes con la capacidad de copy.
+    const cfg: any = await copyConfig();
+    if (cfg?.followGate === 'copy') {
+      const { data: prof } = await supabaseAdmin.from('profiles').select('plan').eq('id', user.id).maybeSingle();
+      const { data: plan } = await supabaseAdmin.from('plans').select('capabilities').eq('id', (prof as any)?.plan || 'free').maybeSingle();
+      if (!((plan?.capabilities as any) || {}).copy) return NextResponse.json({ error: 'tu plan no permite copiar', code: 'plan_gate' }, { status: 403 });
+    }
+
     // La cuenta esclava tiene que ser suya.
     const { data: acc } = await supabaseAdmin.from('trading_accounts').select('id').eq('id', accountId).eq('user_id', user.id).maybeSingle();
     if (!acc) return NextResponse.json({ error: 'cuenta no encontrada', code: 'not_found' }, { status: 404 });
@@ -50,6 +60,17 @@ export async function POST(req: Request) {
     const { data: prov } = await supabaseAdmin.from('strategy_providers').select('id,user_id,display_name,fee_month,listed,status').eq('id', providerId).maybeSingle();
     if (!prov || !(prov as any).listed || (prov as any).status !== 'active') return NextResponse.json({ error: 'trader no disponible', code: 'not_found' }, { status: 404 });
     if ((prov as any).user_id === user.id) return NextResponse.json({ error: 'no puedes copiarte a ti mismo', code: 'self' }, { status: 400 });
+
+    // Una cuenta = un trader. Si esta cuenta ya copia a OTRO trader activo/pendiente,
+    // se bloquea (para no apilar estrategias ni sobre-apalancar). Debe dejar de copiar
+    // al actual antes de conectarla a otro.
+    const { data: busy } = await supabaseAdmin.from('copy_follows')
+      .select('provider_id,status').eq('follower_account_id', accountId)
+      .in('status', ['active', 'pending', 'past_due']).neq('provider_id', providerId).limit(1);
+    if (busy && busy.length) {
+      const { data: other } = await supabaseAdmin.from('strategy_providers').select('display_name').eq('id', (busy[0] as any).provider_id).maybeSingle();
+      return NextResponse.json({ error: 'cuenta ocupada', code: 'account_busy', busyWith: (other as any)?.display_name || '—' }, { status: 409 });
+    }
 
     // Precio y cuenta Connect del proveedor.
     const price = Number((prov as any).fee_month) || 0;

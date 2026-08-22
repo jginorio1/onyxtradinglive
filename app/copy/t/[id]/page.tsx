@@ -74,6 +74,29 @@ export default async function TraderCertificate({ params }: { params: { id: stri
         <div className="muted" style={{ fontSize: 12.5, marginTop: 16 }}>{L('Calificado por Onyx AI el', 'Graded by Onyx AI on')} {issued} · {s.trades ?? 0} {L('operaciones', 'trades')} · {s.tradingDays ?? 0} {L('días', 'days')} · {p.followers || 0} {L('copiándolo', 'copying')}</div>
       </div>
 
+      {/* Curva de equity (forma normalizada, sin cifras) */}
+      {Array.isArray(s.curve) && s.curve.length >= 2 && (() => {
+        const W = 640, H = 96, pad = 6;
+        const c: number[] = s.curve;
+        const up = c[c.length - 1] >= 0;
+        const col = up ? 'var(--green)' : 'var(--red)';
+        const x = (i: number) => pad + (i / (c.length - 1)) * (W - pad * 2);
+        const y = (v: number) => H / 2 - v * (H / 2 - pad);   // v en ±1
+        const d = c.map((v, i) => `${i === 0 ? 'M' : 'L'} ${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(' ');
+        const area = d + ` L ${x(c.length - 1).toFixed(1)} ${(H / 2).toFixed(1)} L ${x(0).toFixed(1)} ${(H / 2).toFixed(1)} Z`;
+        return (
+          <div className="card" style={{ marginTop: 14 }}>
+            <div style={{ fontWeight: 700, marginBottom: 4 }}>{L('Curva de resultados', 'Equity curve')}</div>
+            <div className="muted" style={{ fontSize: 11.5, marginBottom: 8 }}>{L('Evolución de su P&L acumulado en la ventana analizada (forma, sin cifras de la cuenta).', 'Cumulative P&L over the analyzed window (shape only, no account figures).')}</div>
+            <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="96" preserveAspectRatio="none" style={{ display: 'block' }}>
+              <line x1="0" y1={H / 2} x2={W} y2={H / 2} stroke="var(--line)" strokeWidth="1" strokeDasharray="4 4" />
+              <path d={area} fill={col} opacity="0.12" />
+              <path d={d} fill="none" stroke={col} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+            </svg>
+          </div>
+        );
+      })()}
+
       {/* Desglose */}
       <div className="card" style={{ marginTop: 14 }}>
         <div style={{ fontWeight: 700, marginBottom: 10 }}>{L('Desglose del Onyx Score', 'Onyx Score breakdown')}</div>

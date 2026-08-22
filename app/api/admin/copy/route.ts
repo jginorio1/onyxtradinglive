@@ -56,6 +56,9 @@ export async function POST(req: Request) {
         diamond: gate(c.gates?.diamond, DEFAULT_COPY_CONFIG.gates.diamond),
       },
       windowDays: Math.max(30, Math.min(730, Math.round(num(c.windowDays, DEFAULT_COPY_CONFIG.windowDays)))),
+      feePct: Math.max(0, Math.min(95, num(c.feePct, DEFAULT_COPY_CONFIG.feePct as number))),
+      perfEnabled: !!c.perfEnabled,
+      followGate: c.followGate === 'copy' ? 'copy' : 'all',
     };
     await saveSetting('copy_config', config);
     await logAdmin('copy_config_save', {});
