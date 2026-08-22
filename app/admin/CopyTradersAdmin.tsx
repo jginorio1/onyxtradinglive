@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { toast } from '@/lib/toast';
 import { useLang } from '@/lib/lang';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 const TIERC: Record<string, string> = { diamond: '#5aa0e6', gold: 'var(--gold)', silver: '#aab0bd', none: 'var(--mut)' };
 // Color de cada pilar (para las tarjetas iluminadas y las barras).
@@ -43,7 +44,7 @@ export default function CopyTradersAdmin() {
   const inp = { width: 64, margin: 0, padding: '6px 8px', fontSize: 13 } as any;
   const secHead = (icon: string, title: string, sub?: string) => (
     <div style={{ marginBottom: 12 }}>
-      <h3 style={{ fontSize: 18, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ fontSize: 16 }}>{icon}</span> {title}</h3>
+      <h3 style={{ fontSize: 18, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}><OnyxIcon emoji={icon} size={17} /> {title}</h3>
       {sub && <p className="muted" style={{ fontSize: 12.5, margin: '4px 0 0' }}>{sub}</p>}
     </div>
   );
@@ -54,7 +55,7 @@ export default function CopyTradersAdmin() {
       what: L('¿Cumple su plan y documenta sus operaciones?', 'Does he follow his plan and journal his trades?'),
       from: L('Diario del trader', 'Trader journal'),
       detail: L('Adherencia al plan (sí/parcial) · calidad autoevaluada A/B/C · cuánto documenta · +8 si tiene plan escrito.', 'Plan adherence (yes/partial) · self-grade A/B/C · how much he journals · +8 if he has a written plan.') },
-    { k: 'risk', ic: '🛡️', name: L('Gestión de riesgo', 'Risk management'), w: '25%',
+    { k: 'risk', ic: '🛡', name: L('Gestión de riesgo', 'Risk management'), w: '25%',
       what: L('¿Controla su drawdown y respeta sus reglas?', 'Does he control drawdown and respect his rules?'),
       from: L('Curva de equity + diario', 'Equity curve + journal'),
       detail: L('Drawdown máx % (menos es más) · penaliza cada regla rota marcada en el diario (moví SL, sobreoperé…).', 'Max drawdown % (lower is better) · penalizes each broken rule flagged in the journal.') },
@@ -88,7 +89,7 @@ export default function CopyTradersAdmin() {
 
       {/* Monetización y acceso */}
       <div className="card" style={glow('var(--green)')}>
-        <div style={{ fontWeight: 700, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>💵 {L('Monetización y acceso', 'Monetization & access')}</div>
+        <div style={{ fontWeight: 700, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}><OnyxIcon emoji="💵" size={16} /> {L('Monetización y acceso', 'Monetization & access')}</div>
         <p className="muted" style={{ fontSize: 12.5, marginBottom: 12 }}>{L('Define cuánto se queda Onyx de cada suscripción, si permites comisión por rendimiento y quién puede copiar.', 'Set how much Onyx keeps from each subscription, whether to allow performance fees, and who can copy.')}</p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 14 }}>
           <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: 12 }}>
@@ -124,7 +125,7 @@ export default function CopyTradersAdmin() {
             return (
               <div key={p.k} className="card" style={{ ...glow(c), display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontWeight: 700, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}><span>{p.ic}</span> {p.name}</span>
+                  <span style={{ fontWeight: 700, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji={p.ic} size={15} /> {p.name}</span>
                   <span style={{ fontSize: 20, fontWeight: 800, color: c }}>{config.weights[p.k] != null ? Math.round((config.weights[p.k] / ((config.weights.discipline + config.weights.risk + config.weights.performance + config.weights.consistency) || 1)) * 100) + '%' : p.w}</span>
                 </div>
                 <div style={{ fontSize: 12.5, color: 'var(--tx)' }}>{p.what}</div>
@@ -153,7 +154,7 @@ export default function CopyTradersAdmin() {
           </div>
         </div>
         <div className="card" style={glow('var(--amber)')}>
-          <div style={{ fontWeight: 700, marginBottom: 8, color: 'var(--amber)' }}>⚠ {L('Anti-gaming', 'Anti-gaming')}</div>
+          <div style={{ fontWeight: 700, marginBottom: 8, color: 'var(--amber)', display: 'flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="⚠" size={15} /> {L('Anti-gaming', 'Anti-gaming')}</div>
           <p className="muted" style={{ fontSize: 12, marginBottom: 8 }}>{L('Patrones que castigan el score o retiran del ranking:', 'Patterns that penalize the score or delist:')}</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {[L('día dominante', 'dominant day'), L('martingala', 'martingale'), L('pérdida atroz', 'huge loss'), L('muestra corta', 'small sample')].map((f) => (
@@ -166,7 +167,7 @@ export default function CopyTradersAdmin() {
 
       {/* Parámetros editables */}
       <div className="card">
-        {secHead('⚙️', L('Editar parámetros de calificación', 'Edit grading parameters'), L('Cambia los pesos y los requisitos. Se aplican en el próximo recálculo (cron diario o botón Recalcular).', 'Change weights and requirements. Applied on the next recompute (daily cron or Recompute button).'))}
+        {secHead('⚙', L('Editar parámetros de calificación', 'Edit grading parameters'), L('Cambia los pesos y los requisitos. Se aplican en el próximo recálculo (cron diario o botón Recalcular).', 'Change weights and requirements. Applied on the next recompute (daily cron or Recompute button).'))}
         <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: 12, marginBottom: 12 }}>
           <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>{L('Pesos del score (se normalizan solos)', 'Score weights (auto-normalized)')}</div>
           <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
@@ -218,7 +219,7 @@ export default function CopyTradersAdmin() {
                       <b>{p.display_name}</b>
                       <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 999, color: tc, border: `1px solid ${tc}` }}>{p.tier === 'none' ? L('En evaluación', 'In review') : p.tier}</span>
                       {p.verified && <span style={{ fontSize: 11, color: 'var(--green)' }}>✓ {L('verificada', 'verified')}</span>}
-                      {Array.isArray(p.flags) && p.flags.map((f: string) => <span key={f} style={{ fontSize: 10.5, padding: '1px 7px', borderRadius: 999, background: 'rgba(255,192,77,.12)', border: '1px solid var(--amber)', color: 'var(--amber)' }}>⚠ {f}</span>)}
+                      {Array.isArray(p.flags) && p.flags.map((f: string) => <span key={f} style={{ fontSize: 10.5, padding: '1px 7px', borderRadius: 999, background: 'rgba(255,192,77,.12)', border: '1px solid var(--amber)', color: 'var(--amber)', display: 'inline-flex', alignItems: 'center', gap: 4 }}><OnyxIcon emoji="⚠" size={11} /> {f}</span>)}
                       {p.auto_delisted && <span style={{ fontSize: 10.5, color: 'var(--red)' }}>{L('retirado (drawdown)', 'delisted (drawdown)')}</span>}
                     </div>
                     <div className="muted" style={{ fontSize: 12, marginTop: 3 }}>Win {s.winRate ?? 0}% · PF {s.pf ?? 0} · R:R {s.rr ?? 0} · DD {s.maxDDpct ?? 0}% · {s.trades ?? 0} ops · {s.tradingDays ?? 0} {L('días', 'days')} · {p.followers || 0} {L('copian', 'copying')}{p.fee_month ? ` · $${p.fee_month}/mo` : ''}{p.perf_fee_pct ? ` · ${p.perf_fee_pct}% perf` : ''}</div>

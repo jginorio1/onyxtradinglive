@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import { toast } from '@/lib/toast';
 import CopyEarningsCalc from '@/app/copy/CopyEarningsCalc';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 type Lang = 'es' | 'en';
 const TIERC: Record<string, string> = { diamond: '#378ADD', gold: 'var(--gold)', silver: '#9aa0ac', none: 'var(--mut)' };
@@ -258,11 +259,11 @@ export default function OnyxCopyHub() {
                         {badge(prov.tier, prov.tier === 'none' ? (es ? 'En evaluación' : 'In review') : prov.tier)}
                         <input defaultValue={prov.fee_month || ''} placeholder={T.price} title={T.price} onBlur={(e) => { if (e.target.value !== String(prov.fee_month || '')) saveProviderField(prov, { fee_month: e.target.value }); }} style={{ width: 96, margin: 0, padding: '7px 9px', fontSize: 13 }} />
                         {perfEnabled && <input defaultValue={prov.perf_fee_pct || ''} placeholder={T.perfFee} title={T.perfFee + ' (' + T.hwm + ')'} onBlur={(e) => { if (e.target.value !== String(prov.perf_fee_pct || '')) saveProviderField(prov, { perf_fee_pct: e.target.value }); }} style={{ width: 70, margin: 0, padding: '7px 9px', fontSize: 13 }} />}
-                        {Array.isArray(prov.flags) && prov.flags.length > 0 && <span title={prov.flags.join(', ')} style={{ fontSize: 11, color: 'var(--amber)' }}>⚠ {prov.flags.length}</span>}
+                        {Array.isArray(prov.flags) && prov.flags.length > 0 && <span title={prov.flags.join(', ')} style={{ fontSize: 11, color: 'var(--amber)', display: 'inline-flex', alignItems: 'center', gap: 3 }}><OnyxIcon emoji="⚠" size={12} /> {prov.flags.length}</span>}
                         {prov.auto_delisted && <span style={{ fontSize: 11, color: 'var(--red)' }}>{es ? 'retirado (drawdown)' : 'delisted (drawdown)'}</span>}
                         {prov.verified
                           ? <span style={{ fontSize: 11.5, color: 'var(--green)' }}>✓ {T.verifiedTxt}</span>
-                          : <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => startVerify(a.id)} disabled={verifying === a.id}>{verifying === a.id ? T.verifying : '🛡 ' + T.verify}</button>}
+                          : <button className="btn btn-ghost" style={{ fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 5 }} onClick={() => startVerify(a.id)} disabled={verifying === a.id}>{verifying === a.id ? T.verifying : <><OnyxIcon emoji="🛡" size={13} /> {T.verify}</>}</button>}
                         <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => applyAccount(a.id)} disabled={busy}>↻ {T.recompute}</button>
                       </>
                     ) : (
@@ -306,7 +307,7 @@ export default function OnyxCopyHub() {
               {accounts.map((a) => { const b = busyMap[a.id]; const busyOther = b && b !== cfg.provider.display_name; return <option key={a.id} value={a.id}>{a.nickname || a.broker || a.id.slice(0, 6)} · {a.platform}{busyOther ? ` · ${T.busyOpt} ${b}` : ''}</option>; })}
             </select>
             {(() => { const b = busyMap[cfg.follower_account_id]; return b && b !== cfg.provider.display_name ? (
-              <div style={{ fontSize: 12, color: 'var(--amber)', background: 'rgba(255,192,77,.1)', border: '1px solid var(--amber)', borderRadius: 8, padding: '7px 10px', marginBottom: 10 }}>⚠ {es ? `Esta cuenta ya copia a ${b}. Elige otra cuenta o deja de copiarlo primero.` : `This account already copies ${b}. Pick another account or stop copying first.`}</div>
+              <div style={{ fontSize: 12, color: 'var(--amber)', background: 'rgba(255,192,77,.1)', border: '1px solid var(--amber)', borderRadius: 8, padding: '7px 10px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="⚠" size={14} /> {es ? `Esta cuenta ya copia a ${b}. Elige otra cuenta o deja de copiarlo primero.` : `This account already copies ${b}. Pick another account or stop copying first.`}</div>
             ) : null; })()}
             <label className="muted" style={{ fontSize: 12 }}>{T.lotMode}</label>
             <select value={cfg.lot_mode} onChange={(e) => setCfg({ ...cfg, lot_mode: e.target.value })} style={{ width: '100%', margin: '4px 0 12px', padding: '8px 10px' }}>
@@ -337,7 +338,7 @@ export default function OnyxCopyHub() {
         <div onClick={() => setBlock(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(6,9,16,.62)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18, zIndex: 200 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(94vw,430px)', background: 'var(--card)', border: '1px solid var(--amber)', borderRadius: 18, padding: 22, boxShadow: '0 0 0 1px var(--amber), 0 0 38px -8px var(--amber), 0 24px 60px rgba(0,0,0,.5)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-              <span style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(255,192,77,.14)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--amber)', fontSize: 19 }}>⚠</span>
+              <span style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(255,192,77,.14)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--amber)' }}><OnyxIcon emoji="⚠" size={20} /></span>
               <div style={{ fontSize: 16, fontWeight: 700 }}>{T.busyTitle}</div>
             </div>
             <div style={{ fontSize: 13.5, color: 'var(--mut)', lineHeight: 1.6 }}>

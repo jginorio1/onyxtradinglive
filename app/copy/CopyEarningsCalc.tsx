@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Calculadora de ganancias del TRADER calificado: copiadores × precio × (1 − comisión Onyx).
 // Muestra su parte (recurrente) y lo que retiene Onyx. Usada en el landing /copy
@@ -20,7 +21,7 @@ export default function CopyEarningsCalc({ feePct = 30, subs0 = 40, price0 = 29,
 
   return (
     <div className="card" style={{ border: '1px solid var(--green)', boxShadow: '0 0 0 1px var(--green), 0 0 30px -14px var(--green)' }}>
-      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '5px 11px', borderRadius: 999, background: 'rgba(52,226,160,.12)', border: '1px solid var(--green)', color: 'var(--soft-green)', fontSize: 12.5, fontWeight: 600, marginBottom: 16 }}>🧮 {live ? (es ? 'Tus ingresos' : 'Your earnings') : (es ? 'Calcula lo que ganarías' : 'Calculate what you\'d earn')}</div>
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '5px 11px', borderRadius: 999, background: 'rgba(52,226,160,.12)', border: '1px solid var(--green)', color: 'var(--soft-green)', fontSize: 12.5, fontWeight: 600, marginBottom: 16 }}><OnyxIcon emoji="🧮" size={14} /> {live ? (es ? 'Tus ingresos' : 'Your earnings') : (es ? 'Calcula lo que ganarías' : 'Calculate what you\'d earn')}</div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
         <span style={label}>{es ? 'Copiadores' : 'Copiers'}</span>

@@ -63,6 +63,9 @@ const G: Record<string, Els> = {
   optim: (<><path d="M6 18 c-1 -6 3 -12 9 -12 c0 6 -6 10 -9 12 z" /><circle cx="13" cy="9" r="1.4" fill="currentColor" stroke="none" /><path d="M6 18 l3 -1 M6 18 l1 -3" /></>),
   tests: (<><path d="M9 3 h6 M10 3 v6 l-4 8 a2 2 0 0 0 2 3 h8 a2 2 0 0 0 2 -3 l-4 -8 V3" /><line x1="8" y1="15" x2="16" y2="15" /></>),
   settings: (<><circle cx="12" cy="12" r="3" /><path d="M12 3 v3 M12 18 v3 M4.5 7 l2.5 1.5 M17 15.5 l2.5 1.5 M4.5 17 l2.5 -1.5 M17 8.5 l2.5 -1.5" /></>),
+  search: (<><circle cx="11" cy="11" r="6" /><line x1="15.5" y1="15.5" x2="20" y2="20" /></>),
+  warn: (<><path d="M12 4 L21 19 H3 z" /><line x1="12" y1="10" x2="12" y2="14" /><circle cx="12" cy="16.6" r="0.6" fill="currentColor" stroke="none" /></>),
+  print: (<><path d="M7 9 V4 h10 v5" /><rect x="4" y="9" width="16" height="7" rx="2" /><rect x="7" y="14" width="10" height="6" /><circle cx="17" cy="12" r="0.7" fill="currentColor" stroke="none" /></>),
   install: (<><path d="M12 4 v10 M8 11 l4 4 4 -4" /><path d="M5 18 h14" /></>),
   telegram: (<><path d="M21 5 L3 12 l6 2 2 6 3 -4 4 3 z" /><path d="M9 14 l9 -7" /></>),
   qr: (<><rect x="4" y="4" width="6" height="6" rx="1" /><rect x="14" y="4" width="6" height="6" rx="1" /><rect x="4" y="14" width="6" height="6" rx="1" /><path d="M14 14 h3 v3 M20 14 v6 M14 20 h3" /></>),
@@ -95,7 +98,7 @@ const G: Record<string, Els> = {
 
 // Emoji → nombre de glifo (se normaliza quitando el selector de variación).
 const EMOJI: Record<string, string> = {
-  '🎯': 'plan', '📈': 'performance', '🗓': 'calendar', '📅': 'calendar', '📆': 'calendar',
+  '🎯': 'plan', '📈': 'performance', '🗓': 'calendar', '📅': 'calendar', '📆': 'calendar', '💵': 'money', '🔍': 'search',
   '📋': 'trades', '💸': 'costs', '🗂': 'accounts', '🏁': 'challenge', '🛡': 'guardian',
   '🤖': 'ai', '✨': 'ai', '🧮': 'balance', '🧠': 'coach', '🔥': 'streak', '🌍': 'sessions',
   '📰': 'news', '💰': 'money', '⚖': 'scale', '📐': 'ruler', '🟢': 'up', '🔻': 'down',
@@ -107,7 +110,7 @@ const EMOJI: Record<string, string> = {
   '🎓': 'graduation', '💎': 'gem', '🪙': 'coins', '🛒': 'cart', '🛍': 'cart',
   // Barra superior y varios
   '🔌': 'accounts', '🛠': 'settings', '🔧': 'settings', '💡': 'ai', '🌱': 'up',
-  '⚠': 'bell', '🏅': 'trophy', '🖥': 'modules', '🎬': 'trades', '🔒': 'guardian',
+  '⚠': 'warn', '⚠️': 'warn', '🖨': 'print', '🖨️': 'print', '🏅': 'trophy', '🖥': 'modules', '🎬': 'trades', '🔒': 'guardian',
   '👤': 'users', '🧾': 'card', '🔐': 'guardian', '⭐': 'trophy', '📝': 'coach', '✍': 'coach',
   '⏳': 'duration', '⏰': 'duration', '💪': 'trophy', '🟢': 'up', '🎁': 'gift',
   '⚡': 'up', '🌊': 'performance', '🏔': 'performance', '✈': 'telegram', '🚧': 'settings',
