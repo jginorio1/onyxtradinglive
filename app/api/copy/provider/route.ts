@@ -14,8 +14,13 @@ export async function GET() {
     if (!user) return NextResponse.json({ error: 'no autorizado', code: 'no_auth' }, { status: 401 });
     const [{ data: providers }, { data: accounts }] = await Promise.all([
       supabaseAdmin.from('strategy_providers').select('id,account_id,display_name,tier,score,pillars,stats,followers,fee_month,perf_fee_pct,flags,verified,listed,auto_delisted,status,scored_at').eq('user_id', user.id),
-      supabaseAdmin.from('trading_accounts').select('id,nickname,broker,platform').eq('user_id', user.id),
+      supabaseAdmin.from('trading_accounts').select('id,nickname,broker,platform,last_sync_at').eq('user_id', user.id),
     ]);
+    // Una cuenta está "conectada" si su EA reportó hace poco (últimos 15 min).
+    // Si la desconectaste o revocaste la clave, deja de sincronizar → no conectada.
+    const FRESH_MS = 15 * 60 * 1000;
+    const nowMs = Date.now();
+    const accs = (accounts || []).map((a: any) => ({ ...a, connected: !!a.last_sync_at && (nowMs - new Date(a.last_sync_at).getTime()) < FRESH_MS }));
     const cfg: any = await copyConfig().catch(() => ({}));
     const gates = cfg?.gates || DEFAULT_COPY_CONFIG.gates;
     // Adjunta la escalera de calificación (qué falta para el siguiente tier) a cada proveedor.
@@ -26,7 +31,7 @@ export async function GET() {
       } catch { qualify = null; }
       return { ...p, qualify };
     });
-    return NextResponse.json({ ok: true, providers: withQual, accounts: accounts || [], perfEnabled: !!cfg?.perfEnabled, feePct: Number(cfg?.feePct) >= 0 ? Number(cfg.feePct) : 30 });
+    return NextResponse.json({ ok: true, providers: withQual, accounts: accs, perfEnabled: !!cfg?.perfEnabled, feePct: Number(cfg?.feePct) >= 0 ? Number(cfg.feePct) : 30 });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
   }
@@ -46,8 +51,15 @@ export async function POST(req: Request) {
     if (!accountId) return NextResponse.json({ error: 'falta la cuenta', code: 'missing_data' }, { status: 400 });
 
     // La cuenta tiene que ser suya.
-    const { data: acc } = await supabaseAdmin.from('trading_accounts').select('id,nickname,broker').eq('id', accountId).eq('user_id', user.id).maybeSingle();
+    const { data: acc } = await supabaseAdmin.from('trading_accounts').select('id,nickname,broker,last_sync_at').eq('id', accountId).eq('user_id', user.id).maybeSingle();
     if (!acc) return NextResponse.json({ error: 'cuenta no encontrada', code: 'not_found' }, { status: 404 });
+    // No se puede postular una cuenta desconectada (EA sin reportar / clave revocada).
+    const lastSync = (acc as any).last_sync_at ? new Date((acc as any).last_sync_at).getTime() : 0;
+    const connected = lastSync > 0 && (Date.now() - lastSync) < 15 * 60 * 1000;
+    const { data: existingProv } = await supabaseAdmin.from('strategy_providers').select('id').eq('account_id', accountId).maybeSingle();
+    if (!connected && !existingProv) {
+      return NextResponse.json({ error: 'Conecta la cuenta antes de postularla al ranking.', code: 'not_connected' }, { status: 409 });
+    }
 
     // Proveedor existente (para respetar verified/listed/fee ya guardados).
     const { data: existing } = await supabaseAdmin.from('strategy_providers').select('*').eq('account_id', accountId).maybeSingle();

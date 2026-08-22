@@ -81,6 +81,7 @@ export default function OnyxCopyHub() {
     price: 'Precio mensual ($)', perfFee: 'Comisión rendimiento (%)', perfNote: 'de tus ganancias nuevas', perfEarn: 'De rendimiento', hwm: 'high-water mark', save: 'Guardar', connectT: 'Cobra tus copias', connectD: 'Conecta tu cuenta con Stripe para recibir tu parte de cada seguidor.',
     connectBtn: 'Conectar con Stripe', connected: 'Conectado y cobrando', pending: 'Falta terminar en Stripe', finishBtn: 'Continuar en Stripe', notConnected: 'Sin conectar',
     qToward: 'Qué te falta para', qFlags: 'Tus banderas, explicadas', qSug: 'Sugerencias de Onyx AI', qNext: 'Próximo recálculo', qAuto: 'Onyx AI recalifica cada día automáticamente', qShow: 'Qué me falta', qHide: 'Ocultar', qDone: 'Cumples todo para', qOf: 'de', qMissing: 'faltan', qReq: 'exige', qRecalcHint: 'También puedes pulsar Recalcular ahora.',
+    offline: 'Sin conexión', offlineHint: 'Esta cuenta no está reportando. Conéctala para postularla.', reconnect: 'Conectar cuenta', offlineProv: 'sin conexión',
     earn: 'Tus cobros', net: 'Para ti (neto)', gross: 'Cobrado', fee: 'Comisión Onyx', followers: 'seguidores',
     tierGate: 'Para Gold/Diamond hace falta cuenta verificada. Súbela abajo y Onyx AI la verifica al instante.',
     verify: 'Verificar', verifying: 'Verificando…', verifiedTxt: 'Verificada',
@@ -104,6 +105,7 @@ export default function OnyxCopyHub() {
     price: 'Monthly price ($)', perfFee: 'Performance fee (%)', perfNote: 'of your new profits', perfEarn: 'Performance', hwm: 'high-water mark', save: 'Save', connectT: 'Get paid for your copies', connectD: 'Connect your account with Stripe to receive your share of each follower.',
     connectBtn: 'Connect with Stripe', connected: 'Connected and billing', pending: 'Finish setup in Stripe', finishBtn: 'Continue in Stripe', notConnected: 'Not connected',
     qToward: 'What you need for', qFlags: 'Your flags, explained', qSug: 'Onyx AI suggestions', qNext: 'Next recompute', qAuto: 'Onyx AI re-grades automatically every day', qShow: 'What I need', qHide: 'Hide', qDone: 'You meet everything for', qOf: 'of', qMissing: 'missing', qReq: 'needs', qRecalcHint: 'You can also hit Recompute now.',
+    offline: 'Offline', offlineHint: 'This account isn\'t reporting. Connect it to list it.', reconnect: 'Connect account', offlineProv: 'offline',
     earn: 'Your earnings', net: 'For you (net)', gross: 'Charged', fee: 'Onyx fee', followers: 'followers',
     tierGate: 'Gold/Diamond require a verified account. Upload it below and Onyx AI verifies it instantly.',
     verify: 'Verify', verifying: 'Verifying…', verifiedTxt: 'Verified',
@@ -288,7 +290,7 @@ export default function OnyxCopyHub() {
                 return (
                   <div key={a.id} style={{ background: 'var(--bg2)', borderRadius: 10, overflow: 'hidden' }}>
                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', padding: '10px 12px' }}>
-                    <div style={{ flex: '1 1 160px' }}><b>{a.nickname || a.broker || a.id.slice(0, 6)}</b> <span className="muted" style={{ fontSize: 12 }}>{a.platform}</span></div>
+                    <div style={{ flex: '1 1 160px' }}><b>{a.nickname || a.broker || a.id.slice(0, 6)}</b> <span className="muted" style={{ fontSize: 12 }}>{a.platform}</span>{!a.connected && <span title={T.offlineHint} style={{ marginLeft: 6, fontSize: 10.5, padding: '1px 7px', borderRadius: 999, color: 'var(--mut)', border: '1px solid var(--bd)', display: 'inline-flex', alignItems: 'center', gap: 4 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--mut)' }} /> {T.offline}</span>}</div>
                     {prov ? (
                       <>
                         <div style={{ textAlign: 'center' }}><div style={{ fontWeight: 800, color: TIERC[prov.tier] }}>{prov.score}</div><div className="muted" style={{ fontSize: 10 }}>{T.score}</div></div>
@@ -303,8 +305,10 @@ export default function OnyxCopyHub() {
                         <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => applyAccount(a.id)} disabled={busy}>↻ {T.recompute}</button>
                         <button className="btn btn-ghost" style={{ fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 5 }} onClick={() => setOpenQual(openQual === a.id ? null : a.id)}><OnyxIcon emoji={openQual === a.id ? '📈' : '🎯'} size={13} /> {openQual === a.id ? T.qHide : T.qShow}</button>
                       </>
-                    ) : (
+                    ) : a.connected ? (
                       <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={() => applyAccount(a.id)} disabled={busy}>{T.apply}</button>
+                    ) : (
+                      <a className="btn btn-ghost" href="/dashboard?view=connect" style={{ fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 5 }} title={T.offlineHint}><OnyxIcon emoji="🔌" size={13} /> {T.reconnect}</a>
                     )}
                    </div>
                    {prov && openQual === a.id && (() => {
