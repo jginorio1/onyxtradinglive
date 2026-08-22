@@ -14,6 +14,15 @@ import { listAllPosts, savePost, setPublishAt } from '@/lib/blog';
 const DAY = 24 * 3600 * 1000;
 const empty = (p: any) => !String(p.body_es || '').trim() && !String(p.body_en || '').trim();
 
+// Anti-repetición eficiente: tokeniza título+tags (palabras ≥4, sin acentos) y mide
+// cuántas comparten dos textos. Barato (local, O(N)); sirve para hallar los "vecinos".
+const NB_STOP = new Set('para que con los las una del por más sin como onyx trading trader blog forex'.split(' '));
+function neighborTokens(s: string): Set<string> {
+  return new Set(String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((w) => w.length >= 4 && !NB_STOP.has(w)));
+}
+function overlap(a: Set<string>, b: Set<string>): number { let n = 0; a.forEach((x) => { if (b.has(x)) n++; }); return n; }
+
 // Instante UTC que corresponde a la HORA LOCAL del dueño (cfg.hour) en el día
 // calendario local de `day`. tzOffset = getTimezoneOffset() del navegador (min).
 // Ej: hora 9, tz UTC-4 (offset 240) → 13:00 UTC, que al mostrarse local es 9am.
@@ -116,11 +125,19 @@ export async function fillDueSlots(max = 1, opts?: { all?: boolean }): Promise<{
   const guide = await guideFor();
   const related: RelatedPost[] = posts.filter((p) => p.status === 'published').slice(0, 12)
     .map((p) => ({ slug: p.slug, title_es: p.title_es, title_en: p.title_en, tags: p.tags }));
+  // Índice ligero para anti-repetición: título+tags tokenizados por post (una sola vez).
+  const idx = posts.map((p) => ({ p, toks: neighborTokens((p.title_es || p.title_en || '') + ' ' + (p.tags || '')) }));
   let filled = 0; const errors: string[] = [];
   for (const slot of due) {
     const topic = slot.title_es || slot.title_en || slot.tags || '';
     if (!topic) continue;
-    const r = await generateArticle(topic, guide, { related });
+    // Vecinos: los artículos con más solape de tema (no todo el blog) → ángulos a evitar.
+    const tt = neighborTokens(topic);
+    const avoid = idx.filter((x) => x.p.id !== slot.id)
+      .map((x) => ({ x, n: overlap(tt, x.toks) })).filter((z) => z.n >= 2)
+      .sort((a, b) => b.n - a.n).slice(0, 8)
+      .map(({ x }) => `${(x.p.title_es || x.p.title_en || '').slice(0, 90)}${x.p.tags ? ` — temas: ${String(x.p.tags).slice(0, 60)}` : ''}`);
+    const r = await generateArticle(topic, guide, { related, avoid });
     if (r.ok && r.article) {
       try { await savePost({ id: slot.id, ...r.article, status: 'scheduled', publish_at: slot.publish_at }); filled++; }
       catch (e: any) { errors.push(String(e?.message || e)); }

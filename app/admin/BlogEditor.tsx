@@ -4,6 +4,7 @@ import { toast, confirmDialog } from '@/lib/toast';
 import { useLang } from '@/lib/lang';
 import BlogKeywords from './BlogKeywords';
 import BlogAutopilot from './BlogAutopilot';
+import BlogAudit from './BlogAudit';
 import BlogPreview from './previews/BlogPreview';
 import SocialShare from './SocialShare';
 
