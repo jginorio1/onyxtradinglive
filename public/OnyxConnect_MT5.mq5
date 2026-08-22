@@ -725,7 +725,7 @@ string BuildBody()
       // entrada, sobre todo). Muchos brokers cobran la mitad de la comision al
       // abrir; si solo leyeramos el deal de salida, la comision saldria a la
       // mitad. Asi el total cuadra exacto con MT5. Se añade una sola vez por posicion.
-      long   posIds[]; double posInComm[]; double posInSwap[]; bool posApplied[];
+      long   posIds[]; double posInComm[]; double posInSwap[]; bool posApplied[]; long posOpen[];
       int    np = 0;
       for(int i = 0; i < deals; i++)
       {
@@ -736,9 +736,11 @@ string BuildBody()
          if(pid == 0) continue;
          int idx = -1;
          for(int k = 0; k < np; k++) { if(posIds[k] == pid) { idx = k; break; } }
-         if(idx < 0) { np++; ArrayResize(posIds, np); ArrayResize(posInComm, np); ArrayResize(posInSwap, np); ArrayResize(posApplied, np); idx = np - 1; posIds[idx] = pid; posInComm[idx] = 0; posInSwap[idx] = 0; posApplied[idx] = false; }
+         if(idx < 0) { np++; ArrayResize(posIds, np); ArrayResize(posInComm, np); ArrayResize(posInSwap, np); ArrayResize(posApplied, np); ArrayResize(posOpen, np); idx = np - 1; posIds[idx] = pid; posInComm[idx] = 0; posInSwap[idx] = 0; posApplied[idx] = false; posOpen[idx] = 0; }
          posInComm[idx] += HistoryDealGetDouble(d, DEAL_COMMISSION);
          posInSwap[idx] += HistoryDealGetDouble(d, DEAL_SWAP);
+         long dtm = (long)HistoryDealGetInteger(d, DEAL_TIME);   // hora de apertura de la posicion (primer deal de entrada)
+         if(dtm > 0 && (posOpen[idx] == 0 || dtm < posOpen[idx])) posOpen[idx] = dtm;
       }
       for(int i = 0; i < deals; i++)
       {
@@ -751,19 +753,21 @@ string BuildBody()
          double prof = HistoryDealGetDouble(dt, DEAL_PROFIT);
          // Ganancias parciales: id de la posicion (agrupa TP1/TP2/runner) + motivo de salida.
          long   posId  = (long)HistoryDealGetInteger(dt, DEAL_POSITION_ID);
-         // Añade la comision/swap de la entrada una sola vez por posicion.
-         for(int k = 0; k < np; k++) { if(posIds[k] == posId) { if(!posApplied[k]) { comm += posInComm[k]; swap += posInSwap[k]; posApplied[k] = true; } break; } }
+         // Añade la comision/swap de la entrada una sola vez por posicion + recupera su hora de apertura.
+         long   otime  = 0;
+         for(int k = 0; k < np; k++) { if(posIds[k] == posId) { if(!posApplied[k]) { comm += posInComm[k]; swap += posInSwap[k]; posApplied[k] = true; } otime = posOpen[k]; break; } }
          long   reason = (long)HistoryDealGetInteger(dt, DEAL_REASON);
          string er = "manual";
          if(reason == DEAL_REASON_TP) er = "tp";
          else if(reason == DEAL_REASON_SL) er = "sl";
          else if(reason == DEAL_REASON_SO) er = "so";
          double dvol = HistoryDealGetDouble(dt, DEAL_VOLUME);
-         s += StringFormat("{\"ticket\":%I64u,\"positionId\":\"%I64d\",\"symbol\":\"%s\",\"side\":\"%s\",\"volume\":%.2f,\"closedVolume\":%.2f,\"closeTime\":%I64d,\"closePrice\":%.5f,\"profit\":%.2f,\"commission\":%.2f,\"swap\":%.2f,\"netProfit\":%.2f,\"exitReason\":\"%s\",\"magic\":%I64d}",
+         s += StringFormat("{\"ticket\":%I64u,\"positionId\":\"%I64d\",\"symbol\":\"%s\",\"side\":\"%s\",\"volume\":%.2f,\"closedVolume\":%.2f,\"openTime\":%I64d,\"closeTime\":%I64d,\"closePrice\":%.5f,\"profit\":%.2f,\"commission\":%.2f,\"swap\":%.2f,\"netProfit\":%.2f,\"exitReason\":\"%s\",\"magic\":%I64d}",
                dt, posId,
                HistoryDealGetString(dt, DEAL_SYMBOL),
                (HistoryDealGetInteger(dt, DEAL_TYPE) == DEAL_TYPE_SELL ? "buy" : "sell"),
                dvol, dvol,
+               otime,
                (long)HistoryDealGetInteger(dt, DEAL_TIME),
                HistoryDealGetDouble(dt, DEAL_PRICE),
                prof, comm, swap, prof + comm + swap, er,
