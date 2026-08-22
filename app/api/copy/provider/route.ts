@@ -17,7 +17,7 @@ export async function GET() {
       supabaseAdmin.from('trading_accounts').select('id,nickname,broker,platform').eq('user_id', user.id),
     ]);
     const cfg: any = await copyConfig().catch(() => ({}));
-    return NextResponse.json({ ok: true, providers: providers || [], accounts: accounts || [], perfEnabled: !!cfg?.perfEnabled });
+    return NextResponse.json({ ok: true, providers: providers || [], accounts: accounts || [], perfEnabled: !!cfg?.perfEnabled, feePct: Number(cfg?.feePct) >= 0 ? Number(cfg.feePct) : 30 });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
   }

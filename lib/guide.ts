@@ -48,6 +48,54 @@ export const CATEGORIES = [
 ];
 
 export const ARTICLES: Article[] = [
+  // ---------- ONYX COPY (marketplace) ----------
+  {
+    slug: 'onyx-copy',
+    cat: 'tools', icon: '🏆', updated: true,
+    title: { es: 'Onyx Copy: copiar traders calificados', en: 'Onyx Copy: copy graded traders' },
+    summary: { es: 'Cómo funciona el ranking de traders, cómo copiar, la seguridad y cómo cobra el trader.', en: 'How the trader ranking works, how to copy, security and how the trader gets paid.' },
+    cta: { href: '/copy', label: { es: 'Ver el ranking', en: 'See the ranking' } },
+    seo: {
+      title: { es: 'Onyx Copy: copia a traders calificados por IA · Guía', en: 'Onyx Copy: copy AI-graded traders · Guide' },
+      desc: { es: 'Guía de Onyx Copy: cómo se califica a cada trader, cómo copiar con tus controles de riesgo, seguridad y cómo cobra el trader.', en: 'Onyx Copy guide: how each trader is graded, how to copy with your own risk controls, security and how the trader gets paid.' },
+      keywords: { es: ['copy trading', 'copiar traders', 'onyx copy', 'traders calificados'], en: ['copy trading', 'copy traders', 'onyx copy', 'graded traders'] },
+    },
+    body: {
+      es: [
+        { p: 'Onyx Copy es un marketplace de traders calificados por Onyx AI. Cada trader recibe un Onyx Score (0–100) según su disciplina, su gestión de riesgo, sus KPIs y su consistencia, y se ubica en un ranking por niveles: Onyx Silver, Onyx Gold y Onyx Diamond. Tú eliges a quién copiar y sus operaciones se replican en tu propia cuenta.' },
+        { h: 'Cómo encuentras a los traders' },
+        { p: 'El ranking está abierto en onyxtradinglive.com/copy y también dentro de la app en Dashboard → Onyx Copy. De cada trader ves su nivel, su Onyx Score, win rate, profit factor, drawdown máximo, operaciones, cuántos lo copian y su curva de resultados. Nunca ves su número de cuenta ni su balance real, solo porcentajes y ratios.' },
+        { h: 'Cómo empiezas a copiar' },
+        { steps: ['Entra a Dashboard → Onyx Copy → Copiar traders.', 'Pulsa “Copiar” en el trader que elijas.', 'Elige en cuál de TUS cuentas quieres copiar y ajusta tu riesgo: tamaño de lote, lote máximo, drawdown máximo, exigir SL.', 'Paga la suscripción y tu cuenta empieza a copiar (con el EA Onyx Connect como esclavo).'] },
+        { h: 'Cómo dejas de copiar' },
+        { p: 'En Dashboard → Onyx Copy → Mis copias, cada trader tiene “Dejar de copiar”: cancela la suscripción y detiene la copia al instante. Puedes ajustar tu riesgo cuando quieras sin dejar de copiar.' },
+        { h: 'Seguridad' },
+        { list: ['El trader nunca ve tu cuenta, tus fondos ni tus credenciales: solo se replican las señales (símbolo, lado, volumen).', 'Onyx no gestiona tu dinero: todo se ejecuta en tu propia MT4/MT5/cTrader, en tu bróker.', 'Mantienes tus propios topes de riesgo (lote máx, drawdown máx, exigir SL) y puedes pausar cuando quieras.'] },
+        { h: '¿A cuántos traders puedo copiar?' },
+        { p: 'A los que quieras, pagando una suscripción por cada uno. Lo recomendable es una cuenta por trader: si metes varios en la misma cuenta, sus operaciones se apilan y te sobre-apalancas. Por eso el sistema no te deja copiar a dos traders en la misma cuenta.' },
+        { h: 'Cómo cobra el trader' },
+        { p: 'El seguidor paga una suscripción con su tarjeta; Stripe reparte automáticamente en el mismo pago: una parte para Onyx y el resto para el trader (a su cuenta Stripe Connect). Nadie manda dinero a nadie: el pago se divide en el origen.' },
+        { warn: 'Copiar operaciones conlleva riesgo. Los resultados pasados no garantizan resultados futuros. Tú mantienes el control y tus propios límites de riesgo.' },
+      ],
+      en: [
+        { p: 'Onyx Copy is a marketplace of traders graded by Onyx AI. Each trader gets an Onyx Score (0–100) based on discipline, risk management, KPIs and consistency, and is ranked into tiers: Onyx Silver, Onyx Gold and Onyx Diamond. You choose who to copy and their trades are replicated on your own account.' },
+        { h: 'How you find traders' },
+        { p: 'The ranking is open at onyxtradinglive.com/copy and inside the app in Dashboard → Onyx Copy. For each trader you see their tier, Onyx Score, win rate, profit factor, max drawdown, trades, how many copy them and their equity curve. You never see their account number or real balance — only percentages and ratios.' },
+        { h: 'How you start copying' },
+        { steps: ['Go to Dashboard → Onyx Copy → Copy traders.', 'Press “Copy” on your chosen trader.', 'Pick which of YOUR accounts to copy on and set your risk: lot size, max lot, max drawdown, require SL.', 'Pay the subscription and your account starts copying (with the Onyx Connect EA as slave).'] },
+        { h: 'How you stop copying' },
+        { p: 'In Dashboard → Onyx Copy → My copies, each trader has “Stop copying”: it cancels the subscription and stops copying instantly. You can adjust your risk anytime without stopping.' },
+        { h: 'Security' },
+        { list: ['The trader never sees your account, funds or credentials — only the signals are replicated (symbol, side, volume).', 'Onyx does not manage your money: everything runs on your own MT4/MT5/cTrader at your broker.', 'You keep your own risk caps (max lot, max drawdown, require SL) and can pause anytime.'] },
+        { h: 'How many traders can I copy?' },
+        { p: 'As many as you want, paying one subscription each. We recommend one account per trader: mixing several on the same account stacks their trades and over-leverages you. That’s why the system won’t let you copy two traders on the same account.' },
+        { h: 'How the trader gets paid' },
+        { p: 'The follower pays a subscription with their card; Stripe splits it automatically in the same payment: a share to Onyx and the rest to the trader (to their Stripe Connect account). Nobody sends money to anyone — the payment is split at the source.' },
+        { warn: 'Copy trading carries risk. Past results do not guarantee future results. You keep control and your own risk limits.' },
+      ],
+    },
+  },
+
   // ---------- PRIMEROS PASOS ----------
   {
     slug: 'conectar-cuenta',

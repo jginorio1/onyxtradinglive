@@ -2,7 +2,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { serverLang, localeAlternates, SITE } from '@/lib/locale';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { tierLabel, type Tier } from '@/lib/copyScore';
+import { tierLabel, copyConfig, type Tier } from '@/lib/copyScore';
+import CopyEarningsCalc from './CopyEarningsCalc';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,6 +27,8 @@ function money(n: any) { const v = Number(n) || 0; return '$' + v.toLocaleString
 
 export default async function CopyLanding() {
   const es = serverLang() === 'es';
+  let feePct = 30;
+  try { const c: any = await copyConfig(); if (Number(c?.feePct) >= 0) feePct = Number(c.feePct); } catch {}
   let providers: any[] = [];
   try {
     const { data } = await supabaseAdmin.from('strategy_providers')
@@ -190,9 +193,18 @@ export default async function CopyLanding() {
       )}
 
       {/* Cómo ganamos los dos */}
-      <div className="card" style={{ textAlign: 'center', marginBottom: 34 }}>
+      <div className="card" style={{ textAlign: 'center', marginBottom: 20 }}>
         <h2 style={{ fontSize: 22 }}>{L.moneyT}</h2>
         <p className="muted" style={{ fontSize: 15, marginTop: 8, maxWidth: 680, marginInline: 'auto' }}>{L.moneyD}</p>
+      </div>
+
+      {/* Calculadora para el trader */}
+      <div style={{ textAlign: 'center', marginBottom: 12 }}>
+        <h2 style={{ fontSize: 22 }}>{es ? '¿Operas con disciplina? Calcula lo que ganarías' : 'Trade with discipline? Calculate what you\'d earn'}</h2>
+        <p className="muted" style={{ fontSize: 14, marginTop: 6 }}>{es ? 'Pon tu cuenta a calificar y cobra por cada copiador, mes a mes.' : 'List your account and earn from each copier, month after month.'}</p>
+      </div>
+      <div style={{ maxWidth: 560, marginInline: 'auto', marginBottom: 34 }}>
+        <CopyEarningsCalc feePct={feePct} subs0={40} price0={29} lang={es ? 'es' : 'en'} />
       </div>
 
       {/* FAQ */}

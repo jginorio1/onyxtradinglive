@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import { toast } from '@/lib/toast';
+import CopyEarningsCalc from '@/app/copy/CopyEarningsCalc';
 
 type Lang = 'es' | 'en';
 const TIERC: Record<string, string> = { diamond: '#378ADD', gold: 'var(--gold)', silver: '#9aa0ac', none: 'var(--mut)' };
@@ -18,6 +19,7 @@ export default function OnyxCopyHub() {
   const [myProviders, setMyProviders] = useState<any[]>([]);
   const [connect, setConnect] = useState<any>({ connected: false, chargesEnabled: false });
   const [perfEnabled, setPerfEnabled] = useState(false);
+  const [feePct, setFeePct] = useState(30);
   const [earnings, setEarnings] = useState<any>({ totals: { net_cents: 0, gross_cents: 0, fee_cents: 0 }, recent: [] });
   const [cfg, setCfg] = useState<any>(null);      // proveedor que se está por copiar
   const [busy, setBusy] = useState(false);
@@ -92,6 +94,7 @@ export default function OnyxCopyHub() {
       setAccounts(pv.accounts || []);
       setMyProviders(pv.providers || []);
       setPerfEnabled(!!pv.perfEnabled);
+      if (Number(pv.feePct) >= 0) setFeePct(Number(pv.feePct));
     } catch {}
   }
   async function loadTrader() {
@@ -282,6 +285,14 @@ export default function OnyxCopyHub() {
             </div>
             <div className="muted" style={{ fontSize: 12 }}>{(myProviders.reduce((s, p) => s + (p.followers || 0), 0))} {T.followers}{earnings.totals?.perf_net_cents ? ` · ${T.perfEarn}: ${money(earnings.totals.perf_net_cents)}` : ''}</div>
           </div>
+
+          {/* Calculadora precargada con sus números reales */}
+          {(() => {
+            const primary = [...myProviders].sort((a, b) => (b.followers || 0) - (a.followers || 0))[0];
+            const subs0 = primary?.followers || myProviders.reduce((s, p) => s + (p.followers || 0), 0) || 0;
+            const price0 = Number(primary?.fee_month) || 29;
+            return <CopyEarningsCalc feePct={feePct} subs0={subs0} price0={price0} lang={es ? 'es' : 'en'} live />;
+          })()}
         </div>
       )}
 
