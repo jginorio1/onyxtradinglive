@@ -264,7 +264,7 @@ export default function BlogAutopilot({ es, onChanged }: { es: boolean; onChange
                 <div style={{ height: 8, borderRadius: 999, background: 'var(--line)', overflow: 'hidden' }}>
                   <div style={{ height: '100%', width: `${pct}%`, background: 'linear-gradient(90deg,#7c8cff,#34e2a0)', boxShadow: pct > 0 ? '0 0 12px -2px #34e2a0' : 'none', transition: 'width .3s' }} />
                 </div>
-                {pending > 0 && !gen.running && <div className="muted" style={{ fontSize: 11.5, marginTop: 8 }}>{lbl('Puedes cerrar esta pestaña: el cron sigue generando 1 cada pocas horas. O pulsa "Reanudar" para terminarlas todas ahora.', 'You can close this tab: the cron keeps generating 1 every few hours. Or press "Resume" to finish them all now.')}</div>}
+                {pending > 0 && !gen.running && <div className="muted" style={{ fontSize: 11.5, marginTop: 8 }}>{lbl('Puedes cerrar esta pestaña o refrescar: el servidor sigue generando solo (unos cada hora) hasta terminarlas. "Reanudar" solo acelera desde tu navegador; si lo cierras, no pasa nada.', 'You can close this tab or refresh: the server keeps generating on its own (a few per hour) until done. "Resume" only speeds it up from your browser; closing it is fine.')}</div>}
               </div>
             );
           })()}

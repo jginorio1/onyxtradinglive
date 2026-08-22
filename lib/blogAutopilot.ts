@@ -156,10 +156,14 @@ export async function futureScheduledCount(): Promise<number> {
 }
 
 // Una pasada del cron: genera lo que toca y, si quedan pocas fechas, repone el lote.
-export async function runAutopilot(): Promise<{ filled: number; tried: number; replenished: number; errors: string[] }> {
+export async function runAutopilot(): Promise<{ filled: number; tried: number; remaining: number; replenished: number; errors: string[] }> {
   const cfg = await blogAutopilotSettings();
-  if (!cfg.enabled) return { filled: 0, tried: 0, replenished: 0, errors: ['disabled'] };
-  const fill = await fillDueSlots(1);
+  if (!cfg.enabled) return { filled: 0, tried: 0, remaining: 0, replenished: 0, errors: ['disabled'] };
+  // all:true → drena el backlog en segundo plano (genera la fecha vacía más
+  // cercana aunque aún no toque publicarse). Así se van llenando solas sin
+  // depender de que el navegador quede abierto. 1 por pasada para no exceder
+  // el timeout serverless; el cron corre seguido y las termina en horas.
+  const fill = await fillDueSlots(1, { all: true });
   let replenished = 0;
   if (cfg.autoReplenish) {
     const left = await futureScheduledCount();
