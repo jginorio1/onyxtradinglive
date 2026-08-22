@@ -26,24 +26,37 @@ async function aiRaw(system: string, user: string, maxTokens: number): Promise<s
   // devolvería 502). Si tarda más, devolvemos null y la ruta responde limpio.
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 50000);
+  const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
   try {
-    const r = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST', signal: ctrl.signal,
-      headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model, max_tokens: maxTokens, system, messages: [{ role: 'user', content: user.slice(0, 6000) }] }),
-    });
-    if (!r.ok) {
-      // Sacamos el mensaje real de la API (modelo inválido, sin crédito, límite…).
+    // Reintenta en límites de tasa (429) o sobrecarga (529): espera el retry-after
+    // que indica la API (o un backoff corto) para no rendirse a la primera y así
+    // el generador en lote no se detiene tras 1 artículo.
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST', signal: ctrl.signal,
+        headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({ model, max_tokens: maxTokens, system, messages: [{ role: 'user', content: user.slice(0, 6000) }] }),
+      });
+      if (r.ok) {
+        const d = await r.json();
+        import('@/lib/aiCost').then((m) => m.logAiUsage('blog', d)).catch(() => {});
+        const txt = (d?.content || []).map((c: any) => c.text || '').join('\n').trim();
+        if (!txt) _lastAiErr = 'La IA respondió vacío';
+        return txt || null;
+      }
       let body = ''; try { body = await r.text(); } catch {}
       let msg = ''; try { msg = JSON.parse(body)?.error?.message || ''; } catch {}
       _lastAiErr = `HTTP ${r.status} · ${model} · ${(msg || body || '').slice(0, 240)}`.trim();
+      // Solo reintenta en límite/sobrecarga; los demás errores (401, 400, sin crédito) son definitivos.
+      if ((r.status === 429 || r.status === 529) && attempt < 3) {
+        const ra = Number(r.headers.get('retry-after'));
+        const waitMs = Math.min(20000, (Number.isFinite(ra) && ra > 0 ? ra * 1000 : 3000 * (attempt + 1)));
+        await sleep(waitMs);
+        continue;
+      }
       return null;
     }
-    const d = await r.json();
-    import('@/lib/aiCost').then((m) => m.logAiUsage('blog', d)).catch(() => {});
-    const txt = (d?.content || []).map((c: any) => c.text || '').join('\n').trim();
-    if (!txt) _lastAiErr = 'La IA respondió vacío';
-    return txt || null;
+    return null;
   } catch (e: any) {
     _lastAiErr = e?.name === 'AbortError' ? 'La IA tardó demasiado (timeout 50s)' : `Fallo de red: ${String(e?.message || e).slice(0, 200)}`;
     return null;

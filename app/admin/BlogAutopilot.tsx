@@ -120,17 +120,22 @@ export default function BlogAutopilot({ es, onChanged }: { es: boolean; onChange
     if (!total) { toast(es ? 'No hay fechas vacías. Planifica el mes primero.' : 'No empty dates. Plan the month first.'); return; }
     setGen({ running: true, done: 0, total });
     let done = 0, fails = 0, lastErr = '';
-    for (let i = 0; i < total * 3 + 20; i++) {
-      let ok = false, remaining = -1;
+    for (let i = 0; i < total * 4 + 40; i++) {
+      let ok = false, remaining = -1; let rateLimited = false;
       try {
         const r = await fetch('/api/admin/blog/autopilot', { method: 'POST', body: JSON.stringify({ action: 'fill', all: true }) });
         const j = await r.json();
         if (j.ok && j.filled) { done++; fails = 0; ok = true; remaining = j.remaining ?? -1; setGen({ running: true, done, total }); refreshSlots(); }
-        else { fails++; lastErr = j.errors?.[0] || j.error || ''; }
+        else { fails++; lastErr = j.errors?.[0] || j.error || ''; rateLimited = /429|rate|limit|overload|529/i.test(lastErr); }
       } catch { fails++; lastErr = 'red'; }
       if (ok && remaining === 0) break;                          // ya no queda nada vacío
-      if (fails >= 8) { toast((es ? 'La IA se detuvo (posible límite de la API). Espera un momento y pulsa Reanudar.' : 'AI stopped (possible API limit). Wait and press Resume.') + (lastErr ? ` · ${lastErr}` : '')); break; }
-      await sleep(fails > 0 ? Math.min(15000, 2000 * fails) : 600);   // pausa corta; backoff tras fallo
+      // Solo se rinde tras MUCHOS fallos seguidos (los límites de la nube se resuelven
+      // esperando ~1 min). Antes de eso, sigue reintentando con esperas crecientes.
+      if (fails >= 20) { toast((es ? 'La IA se detuvo (posible límite de la API). Espera unos minutos y pulsa Reanudar; retoma donde quedó.' : 'AI stopped (possible API limit). Wait a few minutes and press Resume; it picks up where it left off.') + (lastErr ? ` · ${lastErr}` : '')); break; }
+      // Ritmo: pausa base entre éxitos para no saturar el límite por minuto; backoff
+      // largo si hay límite de tasa (hasta 60s) para dejar que la ventana se reponga.
+      const wait = fails === 0 ? 2500 : (rateLimited ? Math.min(60000, 15000 * fails) : Math.min(20000, 3000 * fails));
+      await sleep(wait);
     }
     setGen({ running: false, done: 0, total: 0 });
     if (done) toast(es ? `✅ ${done} artículo(s) generado(s).` : `✅ ${done} article(s) generated.`, 'ok');
