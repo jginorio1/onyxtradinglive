@@ -48,6 +48,10 @@ export async function POST(req: Request) {
       const patch: any = { ...p, body_es: r.body_es ?? p.body_es, body_en: r.body_en ?? p.body_en, updated_at: new Date().toISOString() };
       if (r.excerpt_es) patch.excerpt_es = r.excerpt_es;
       if (r.excerpt_en) patch.excerpt_en = r.excerpt_en;
+      if (r.title_es) patch.title_es = r.title_es;
+      if (r.title_en) patch.title_en = r.title_en;
+      if (!String(p.cover_alt_es || '').trim() && r.cover_alt_es) patch.cover_alt_es = r.cover_alt_es;
+      if (!String(p.cover_alt_en || '').trim() && r.cover_alt_en) patch.cover_alt_en = r.cover_alt_en;
       await savePost(patch);
       return NextResponse.json({ ok: true, applied: action });
     }

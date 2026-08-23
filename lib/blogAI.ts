@@ -235,19 +235,40 @@ function applyEnhance(body: string, lang: 'es' | 'en', out: any): string {
   }
   return b.slice(0, 20000);
 }
+// Reemplaza el PRIMER párrafo real (no encabezado ni bloque) por una intro nueva
+// que incluye la keyword (para el chequeo "keyword en el primer párrafo").
+function applyIntro(body: string, newIntro: any): string {
+  const intro = String(newIntro || '').trim();
+  if (!intro || intro.length < 40 || intro.length > 800) return body || '';
+  const parts = (body || '').split(/\n\n+/);
+  const idx = parts.findIndex((p) => p.trim() && !/^#/.test(p.trim()) && !/^:::/.test(p.trim()) && !/^[-*]\s/.test(p.trim()));
+  if (idx < 0) return body || '';
+  parts[idx] = intro;
+  return parts.join('\n\n').slice(0, 20000);
+}
 export async function enhanceArticle(
   title: string, bodyEs: string, bodyEn: string, related?: RelatedPost[], kw?: string,
-): Promise<{ ok: boolean; body_es?: string; body_en?: string; excerpt_es?: string; excerpt_en?: string; reason?: string }> {
+): Promise<{ ok: boolean; body_es?: string; body_en?: string; excerpt_es?: string; excerpt_en?: string; title_es?: string; title_en?: string; cover_alt_es?: string; cover_alt_en?: string; reason?: string }> {
   if (!process.env.ANTHROPIC_API_KEY) return { ok: false, reason: 'no_key' };
   const relList = (related || []).slice(0, 12).map((r) => `- slug: ${r.slug} — ${(r.title_es || r.title_en || '').slice(0, 70)}${r.tags ? ` (${r.tags})` : ''}`).join('\n') || '(no hay otros artículos — deja links vacío)';
-  const kwLine = kw ? `\n- "excerpt_es" y "excerpt_en": meta-descripción SEO de 140-160 caracteres, natural y con gancho, que INCLUYA la keyword «${kw}» (traducida al inglés en excerpt_en). Una sola frase por idioma.` : '';
-  const system = `Eres el editor SEO de Onyx Trading Live. ${GUARDRAIL}\n\nTe doy un artículo en español e inglés. NO reescribas el cuerpo. Solo propón añadidos, y devuelve un JSON PEQUEÑO (sin repetir el artículo):\n- "links": 2-4 objetos {"slug":"...","anchor_es":"frase EXACTA copiada del cuerpo español","anchor_en":"frase EXACTA copiada del cuerpo inglés"} para enlazar a artículos relacionados donde el tema encaje. Las frases deben existir TAL CUAL en el cuerpo. Usa solo estos slugs (no inventes):\n${relList}\n- "figure": {"kicker_es","title_es","alt_es","kicker_en","title_en","alt_en"} una imagen-banner que resuma una idea del artículo.\n- "faq_es" y "faq_en": 3-4 objetos {"q","a"} de preguntas frecuentes basadas en el contenido (respuestas 1-3 frases).${kwLine}\n\nDevuelve SOLO ese JSON.`;
+  const kwLine = kw ? `\n- "excerpt_es" y "excerpt_en": meta-descripción SEO de 140-160 caracteres, natural y con gancho, que INCLUYA la keyword «${kw}» (traducida al inglés en excerpt_en). Una sola frase por idioma.\n- "title_es" y "title_en": SOLO si el título actual NO contiene la keyword «${kw}», propón un título nuevo de 45-60 caracteres que la incluya de forma natural y con gancho (title_en en inglés). Si el título ya la contiene, OMITE estos campos.\n- "intro_es" y "intro_en": SOLO si la keyword no aparece en el PRIMER párrafo, reescribe SOLO ese primer párrafo (2-4 frases) conservando la idea original e incluyendo la keyword al inicio de forma natural. Si ya aparece, omítelos.` : '';
+  const altLine = `\n- "cover_alt_es" y "cover_alt_en": texto ALT de la portada (~12 palabras, describe la imagen para accesibilidad y SEO).`;
+  const system = `Eres el editor SEO de Onyx Trading Live. ${GUARDRAIL}\n\nTe doy un artículo en español e inglés. NO reescribas el cuerpo (salvo el primer párrafo si te lo pido). Solo propón añadidos, y devuelve un JSON PEQUEÑO (sin repetir el artículo):\n- "links": 2-4 objetos {"slug":"...","anchor_es":"frase EXACTA copiada del cuerpo español","anchor_en":"frase EXACTA copiada del cuerpo inglés"} para enlazar a artículos relacionados donde el tema encaje. Las frases deben existir TAL CUAL en el cuerpo. Usa solo estos slugs (no inventes):\n${relList}\n- "figure": {"kicker_es","title_es","alt_es","kicker_en","title_en","alt_en"} una imagen-banner que resuma una idea del artículo.\n- "faq_es" y "faq_en": 3-4 objetos {"q","a"} de preguntas frecuentes basadas en el contenido (respuestas 1-3 frases).${kwLine}${altLine}\n\nDevuelve SOLO ese JSON.`;
   const user = `TÍTULO: ${title}\n\n=== CUERPO ES ===\n${(bodyEs || '').slice(0, 6000)}\n\n=== CUERPO EN ===\n${(bodyEn || '').slice(0, 6000)}`;
-  const out = parseJson(await aiRaw(system, user, 1800));
+  const out = parseJson(await aiRaw(system, user, 2000));
   if (!out) return { ok: false, reason: 'ai_failed' };
   // Solo aceptamos la nueva meta si cae en el rango ideal (110-165); si no, dejamos la original.
   const ex = (v: any) => { const s = String(v || '').trim(); return s.length >= 110 && s.length <= 165 ? s : ''; };
-  return { ok: true, body_es: applyEnhance(bodyEs, 'es', out), body_en: applyEnhance(bodyEn, 'en', out), excerpt_es: ex(out.excerpt_es), excerpt_en: ex(out.excerpt_en) };
+  const tt = (v: any) => { const s = String(v || '').trim(); return s.length >= 30 && s.length <= 72 ? s : ''; };
+  const al = (v: any) => { const s = String(v || '').trim(); return s.length >= 12 && s.length <= 160 ? s : ''; };
+  return {
+    ok: true,
+    body_es: applyIntro(applyEnhance(bodyEs, 'es', out), out.intro_es),
+    body_en: applyIntro(applyEnhance(bodyEn, 'en', out), out.intro_en),
+    excerpt_es: ex(out.excerpt_es), excerpt_en: ex(out.excerpt_en),
+    title_es: tt(out.title_es), title_en: tt(out.title_en),
+    cover_alt_es: al(out.cover_alt_es), cover_alt_en: al(out.cover_alt_en),
+  };
 }
 
 // ---- Completar el idioma que falte (traducción fiel, conserva estructura) ----
