@@ -59,7 +59,13 @@ export default function BlogAudit({ es, onChanged }: { es: boolean; onChanged?: 
   }
 
   async function toggleAuto(enabled: boolean) {
-    try { const r = await fetch('/api/admin/blog/audit', { method: 'POST', body: JSON.stringify({ action: 'set_autofix', enabled }) }); const j = await r.json(); if (j.ok) setData((d: any) => ({ ...d, autofix: j.autofix })); } catch {}
+    setData((d: any) => ({ ...d, autofix: { ...(d?.autofix || {}), enabled } }));   // optimista
+    try {
+      const r = await fetch('/api/admin/blog/audit', { method: 'POST', body: JSON.stringify({ action: 'set_autofix', enabled }) });
+      const j = await r.json();
+      if (j.ok) { setData((d: any) => ({ ...d, autofix: j.autofix })); toast(enabled ? L('✓ Auto-mejora activada.', '✓ Auto-improve on.') : L('Auto-mejora desactivada.', 'Auto-improve off.'), 'ok'); }
+      else { setData((d: any) => ({ ...d, autofix: { ...(d?.autofix || {}), enabled: !enabled } })); toast(j.error || 'Error', 'error'); }
+    } catch { setData((d: any) => ({ ...d, autofix: { ...(d?.autofix || {}), enabled: !enabled } })); toast(L('No se pudo guardar.', 'Could not save.')); }
   }
   const clr = (n: number) => (n >= 75 ? 'var(--green)' : n >= 55 ? 'var(--amber)' : 'var(--red)');
   const posts = data?.posts || [];

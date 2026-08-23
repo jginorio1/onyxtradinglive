@@ -29,6 +29,13 @@ export async function POST(req: Request) {
     const b = await req.json().catch(() => ({} as any));
     const action = String(b.action || '');
     const id = String(b.id || '');
+    // Acciones sin artículo (no requieren id) → manejar antes del lookup.
+    if (action === 'set_autofix') {
+      const cur = await autoFixCfg().catch(() => AUTOFIX_DEFAULT);
+      const next = { enabled: b.enabled == null ? cur.enabled : !!b.enabled, threshold: Number.isFinite(Number(b.threshold)) ? Math.max(40, Math.min(90, Math.round(Number(b.threshold)))) : (cur.threshold || 70) };
+      await saveSetting('blog_autofix', next);
+      return NextResponse.json({ ok: true, autofix: next });
+    }
     const all = await listAllPosts();
     const p: any = all.find((x: any) => x.id === id);
     if (!p && action !== 'suggest_angle') return NextResponse.json({ ok: false, error: 'no encontrado' }, { status: 404 });
@@ -43,12 +50,6 @@ export async function POST(req: Request) {
       if (r.excerpt_en) patch.excerpt_en = r.excerpt_en;
       await savePost(patch);
       return NextResponse.json({ ok: true, applied: action });
-    }
-    if (action === 'set_autofix') {
-      const cur = await autoFixCfg().catch(() => AUTOFIX_DEFAULT);
-      const next = { enabled: b.enabled == null ? cur.enabled : !!b.enabled, threshold: Number.isFinite(Number(b.threshold)) ? Math.max(40, Math.min(90, Math.round(Number(b.threshold)))) : (cur.threshold || 70) };
-      await saveSetting('blog_autofix', next);
-      return NextResponse.json({ ok: true, autofix: next });
     }
     if (action === 'suggest_angle') {
       const kw = String(b.kw || '');
