@@ -18,8 +18,10 @@ export default function BlogAudit({ es, onChanged }: { es: boolean; onChanged?: 
 
   // Arreglo en LOTE: mejora todos los artículos por debajo del umbral, uno a uno
   // en segundo plano, con barra de progreso y tolerancia a límites de la API.
-  async function batchFix(threshold = 70) {
-    const targets = (data?.posts || []).filter((p: any) => p.score < threshold);
+  // Solo son "arreglables" con IA los que fallan en SEO o enlaces (enhance no toca la unicidad).
+  const fixable = (p: any) => p.score < 70 && (p.pillars.seo < 70 || p.pillars.links < 70);
+  async function batchFix(_threshold = 70) {
+    const targets = (data?.posts || []).filter(fixable);
     if (!targets.length) { toast(L('Nada por debajo del umbral. ¡Buen trabajo!', 'Nothing below the threshold. Nice!')); return; }
     setBatch({ running: true, done: 0, total: targets.length });
     let done = 0, fails = 0, last = '';
@@ -90,9 +92,9 @@ export default function BlogAudit({ es, onChanged }: { es: boolean; onChanged?: 
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           {data && <span style={{ fontSize: 22, fontWeight: 800, color: clr(data.health) }}>{data.health}<span className="muted" style={{ fontSize: 11, fontWeight: 400 }}>/100</span></span>}
-          {data && (data.posts || []).some((p: any) => p.score < 70) && (
+          {data && (data.posts || []).some(fixable) && (
             <button className="btn btn-primary" style={{ fontSize: 12, background: 'linear-gradient(135deg,#7c8cff,#34e2a0)', color: '#0b0d17' }} disabled={batch.running || busy} onClick={(e) => { e.stopPropagation(); batchFix(70); }}>
-              {batch.running ? `⏳ ${batch.done}/${batch.total}` : <><OnyxIcon emoji="✨" size={13} /> {L('Arreglar todos', 'Fix all')} ({(data.posts || []).filter((p: any) => p.score < 70).length})</>}
+              {batch.running ? `⏳ ${batch.done}/${batch.total}` : <><OnyxIcon emoji="✨" size={13} /> {L('Arreglar todos', 'Fix all')} ({(data.posts || []).filter(fixable).length})</>}
             </button>
           )}
           <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={(e) => { e.stopPropagation(); scan(); }} disabled={busy || batch.running}>{busy ? '…' : `↻ ${L('Auditar', 'Audit')}`}</button>
@@ -134,9 +136,9 @@ export default function BlogAudit({ es, onChanged }: { es: boolean; onChanged?: 
                 </label>
               </div>
 
-              {data.keywordMap?.some((k: any) => k.count > 1) && (
+              {data.keywordMap?.some((k: any) => k.count > 1 && k.count <= 8) && (
                 <div style={{ background: 'rgba(255,192,77,.08)', border: '1px solid var(--amber)', borderRadius: 10, padding: '8px 10px', marginBottom: 12, fontSize: 12 }}>
-                  <b style={{ color: 'var(--amber)' }}>{L('Canibalización de keywords', 'Keyword cannibalization')}:</b> {data.keywordMap.filter((k: any) => k.count > 1).slice(0, 6).map((k: any) => `«${k.kw}» ×${k.count}`).join(' · ')}
+                  <b style={{ color: 'var(--amber)' }}>{L('Canibalización de keywords', 'Keyword cannibalization')}:</b> {data.keywordMap.filter((k: any) => k.count > 1 && k.count <= 8).slice(0, 6).map((k: any) => `«${k.kw}» ×${k.count}`).join(' · ')}
                 </div>
               )}
 

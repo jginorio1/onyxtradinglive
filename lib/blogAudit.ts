@@ -120,18 +120,23 @@ export async function runAudit(): Promise<AuditResult> {
   const out = all.map((p: any) => new Set(Array.from((String(p.body_es || '') + String(p.body_en || '')).matchAll(/\]\(\/blog\/([^)]+)\)/g)).map((m) => String(m[1]).split(/[#?]/)[0])));
   const inbound = new Map<string, number>();
   out.forEach((set) => set.forEach((slug) => inbound.set(slug, (inbound.get(slug) || 0) + 1)));
+  // Cuántos artículos comparten cada keyword objetivo. Si son MUCHOS (>8) es un
+  // TEMA PILAR, no canibalización; solo un grupo pequeño (2-8) es canibalización real.
+  const kwCount = new Map<string, number>();
+  kwOf.forEach((k) => kwCount.set(k, (kwCount.get(k) || 0) + 1));
 
   const posts: AuditPost[] = all.map((p: any, i: number) => {
     // Unicidad: máxima similitud contra cualquier otro.
     let best = { j: -1, pct: 0 };
     for (let k = 0; k < all.length; k++) { if (k === i) continue; const s = jaccard(sh[i], sh[k]); if (s > best.pct) best = { j: k, pct: s }; }
     const dupePct = Math.round(best.pct * 100);
-    // Canibalización: mismo keyword objetivo que otro artículo.
-    const sameKw = all.some((q: any, k: number) => k !== i && kwOf[k] === kwOf[i]);
+    // Canibalización REAL: 2-8 artículos con la misma keyword. Más de 8 = tema pilar (no penaliza).
+    const grp = kwCount.get(kwOf[i]) || 1;
+    const cannib = grp >= 2 && grp <= 8;
     let uniq = Math.max(0, 100 - dupePct * 1.6);
     const issues: Issue[] = [];
     if (dupePct >= 30 && best.j >= 0) { issues.push({ pillar: 'unique', text_es: `Se parece ${dupePct}% a «${all[best.j].title_es || all[best.j].title_en}». Diferencia el ángulo.`, text_en: `${dupePct}% similar to “${all[best.j].title_en || all[best.j].title_es}”. Differentiate the angle.` }); }
-    if (sameKw) { uniq = Math.min(uniq, 55); issues.push({ pillar: 'unique', text_es: `Otro artículo apunta a la misma keyword «${kwOf[i]}» (canibalización).`, text_en: `Another article targets the same keyword “${kwOf[i]}” (cannibalization).` }); }
+    if (cannib) { uniq = Math.min(uniq, 65); issues.push({ pillar: 'unique', text_es: `${grp} artículos apuntan a la misma keyword «${kwOf[i]}» (canibalización).`, text_en: `${grp} articles target the same keyword “${kwOf[i]}” (cannibalization).` }); }
 
     const seo = seoScore(p, kwOf[i]);
     issues.push(...seo.issues);

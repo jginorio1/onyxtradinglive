@@ -245,7 +245,8 @@ export async function enhanceArticle(
   const user = `TÍTULO: ${title}\n\n=== CUERPO ES ===\n${(bodyEs || '').slice(0, 6000)}\n\n=== CUERPO EN ===\n${(bodyEn || '').slice(0, 6000)}`;
   const out = parseJson(await aiRaw(system, user, 1800));
   if (!out) return { ok: false, reason: 'ai_failed' };
-  const ex = (v: any) => { const s = String(v || '').trim(); return s.length >= 80 && s.length <= 200 ? s : ''; };
+  // Solo aceptamos la nueva meta si cae en el rango ideal (110-165); si no, dejamos la original.
+  const ex = (v: any) => { const s = String(v || '').trim(); return s.length >= 110 && s.length <= 165 ? s : ''; };
   return { ok: true, body_es: applyEnhance(bodyEs, 'es', out), body_en: applyEnhance(bodyEn, 'en', out), excerpt_es: ex(out.excerpt_es), excerpt_en: ex(out.excerpt_en) };
 }
 
