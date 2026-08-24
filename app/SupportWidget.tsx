@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useLang } from '@/lib/lang';
+import OnyxIcon from '@/app/components/OnyxIcon';
 import type { ChatWidget } from '@/lib/settings';
 
 // Textos fijos del flujo (captura de correo/ticket). El resto (marca, saludo,
@@ -130,7 +131,7 @@ export default function SupportWidget({ loggedIn = false, cfg }: { loggedIn?: bo
 
   const avatar = (sz: number) => cfg.avatarUrl
     ? <img src={cfg.avatarUrl} alt="" style={{ width: sz, height: sz, borderRadius: 8, objectFit: 'cover', flex: 'none' }} />
-    : <span style={{ width: sz, height: sz, borderRadius: 8, background: 'rgba(255,255,255,.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none', fontSize: sz * 0.53 }}>{human ? '🙋' : (cfg.headerEmoji || '🤖')}</span>;
+    : <span style={{ width: sz, height: sz, borderRadius: 8, background: 'rgba(255,255,255,.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none', color: '#fff' }}><OnyxIcon emoji={human ? '🙋' : (cfg.headerEmoji || '🤖')} size={Math.round(sz * 0.6)} glow={false} /></span>;
 
   return (
     <div style={themeVars}>
@@ -156,7 +157,7 @@ export default function SupportWidget({ loggedIn = false, cfg }: { loggedIn?: bo
           <button onClick={launch} aria-label={x.help}
             style={{ display: 'flex', alignItems: 'center', gap: 8, border: 'none', background: 'none', cursor: 'pointer', flexDirection: side === 'left' ? 'row-reverse' : 'row' }}>
             {x.help && <span style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 20, padding: '7px 13px', fontSize: 13, color: 'var(--tx)', boxShadow: '0 6px 18px rgba(0,0,0,.3)' }}>{x.help}</span>}
-            <span style={{ position: 'relative', width: lsz, height: lsz, borderRadius: '50%', background: 'var(--grad)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: lsz * 0.48, boxShadow: '0 8px 22px rgba(0,0,0,.35)' }}>{cfg.launcher || '💬'}
+            <span style={{ position: 'relative', width: lsz, height: lsz, borderRadius: '50%', background: 'var(--grad)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 22px rgba(0,0,0,.35)' }}><OnyxIcon emoji={cfg.launcher || '💬'} size={Math.round(lsz * 0.5)} glow={false} />
               {cfg.showPulse && <span className="onyx-pulse" style={{ position: 'absolute', top: 2, right: 2, width: 13, height: 13, borderRadius: '50%', background: 'var(--green)', border: '2px solid var(--bg)' }} />}
             </span>
           </button>
@@ -207,9 +208,9 @@ export default function SupportWidget({ loggedIn = false, cfg }: { loggedIn?: bo
             )}
             {showEmail && !sent && (
               <div style={{ background: 'rgba(124,140,255,.10)', border: '1px solid var(--brand)', borderRadius: 10, padding: 10, marginTop: 4 }}>
-                <div style={{ fontSize: 12, color: 'var(--tx)', marginBottom: 6 }}>💬 {t.msgT}</div>
+                <div style={{ fontSize: 12, color: 'var(--tx)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="💬" size={14} glow={false} /> {t.msgT}</div>
                 <textarea value={leadMsg} onChange={(e) => setLeadMsg(e.target.value)} placeholder={t.msgPh} rows={3} style={{ width: '100%', margin: '0 0 8px', fontSize: 13, resize: 'vertical' }} />
-                <div style={{ fontSize: 12, color: 'var(--tx)', marginBottom: 6 }}>📧 {t.emailT}</div>
+                <div style={{ fontSize: 12, color: 'var(--tx)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="📧" size={14} glow={false} /> {t.emailT}</div>
                 <div className="row" style={{ gap: 6 }}>
                   <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t.emailPh} style={{ flex: 1, margin: 0, fontSize: 13 }} />
                   <button className="btn btn-primary" style={{ padding: '8px 12px', fontSize: 13 }} onClick={sendLead} disabled={busy}>{t.send}</button>
@@ -219,7 +220,7 @@ export default function SupportWidget({ loggedIn = false, cfg }: { loggedIn?: bo
             )}
             {sent && (
               <div style={{ background: 'rgba(52,226,160,.10)', border: '1px solid var(--green)', borderRadius: 10, padding: 12, marginTop: 4, textAlign: 'center' }}>
-                <div style={{ fontWeight: 700, color: 'var(--green)' }}>✓ {t.sentT}</div>
+                <div style={{ fontWeight: 700, color: 'var(--green)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}><OnyxIcon name="check" size={16} glow={false} /> {t.sentT}</div>
                 <div className="muted" style={{ fontSize: 12, marginTop: 3 }}>{t.sentD}</div>
                 {!loggedIn && <Link href="/login?mode=signup" className="btn btn-ghost" style={{ marginTop: 10, fontSize: 13 }}>{t.createAcc}</Link>}
               </div>
@@ -237,7 +238,7 @@ export default function SupportWidget({ loggedIn = false, cfg }: { loggedIn?: bo
               )}
               <div className="row" style={{ gap: 6 }}>
                 <input value={ask} onChange={(e) => setAsk(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') sendAI(); }} placeholder={x.ph} style={{ flex: 1, margin: 0, fontSize: 13 }} />
-                <button className="btn btn-primary" style={{ padding: '9px 13px' }} onClick={() => sendAI()} disabled={busy || !ask.trim()}>➤</button>
+                <button className="btn btn-primary" style={{ padding: '9px 13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => sendAI()} disabled={busy || !ask.trim()} aria-label={t.send}><OnyxIcon name="send" size={16} glow={false} /></button>
               </div>
             </div>
           )}

@@ -94,6 +94,8 @@ const G: Record<string, Els> = {
   // Luna (tema oscuro) y sol (tema claro).
   moon: (<><path d="M20 14.5 A8.5 8.5 0 0 1 9.5 4 A7 7 0 1 0 20 14.5 z" /></>),
   sun: (<><circle cx="12" cy="12" r="4.2" /><path d="M12 2.5 v2.4 M12 19.1 v2.4 M2.5 12 h2.4 M19.1 12 h2.4 M5.1 5.1 l1.7 1.7 M17.2 17.2 l1.7 1.7 M18.9 5.1 l-1.7 1.7 M6.8 17.2 l-1.7 1.7" /></>),
+  // Avión de papel (enviar mensaje).
+  send: (<><path d="M21 4 L3 11 l6 2.5 L11.5 20 l3 -6 z" /><path d="M9 13.5 L21 4" /></>),
 };
 
 // Emoji → nombre de glifo (se normaliza quitando el selector de variación).
@@ -119,6 +121,8 @@ const EMOJI: Record<string, string> = {
   // Llave y mano
   '🔑': 'key', '🗝': 'key', '🔓': 'key',
   '✋': 'hand', '🤚': 'hand', '👋': 'hand', '🖐': 'hand', '🖖': 'hand',
+  // Widget de soporte
+  '🙋': 'users', '🙋‍♂️': 'users', '🙋‍♀️': 'users', '➤': 'send', '📤': 'send', '📨': 'send', '➡': 'send',
   // Landing (metáforas propias, no genéricas)
   '🔗': 'link', '📲': 'telegram', '🏦': 'firms', '👥': 'users', '🏛': 'firms',
   // Guía
