@@ -92,19 +92,19 @@ export default function CopyTradersAdmin() {
         <div style={{ fontWeight: 700, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}><OnyxIcon emoji="💵" size={16} /> {L('Monetización y acceso', 'Monetization & access')}</div>
         <p className="muted" style={{ fontSize: 12.5, marginBottom: 12 }}>{L('Define cuánto se queda Onyx de cada suscripción, si permites comisión por rendimiento y quién puede copiar.', 'Set how much Onyx keeps from each subscription, whether to allow performance fees, and who can copy.')}</p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,220px),1fr))', gap: 14 }}>
-          <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: 12 }}>
+          <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: 12, minWidth: 0, overflow: 'hidden' }}>
             <div style={{ fontSize: 12.5, fontWeight: 600, marginBottom: 6 }}>{L('Comisión de Onyx (%)', 'Onyx fee (%)')}</div>
             <input value={config.feePct ?? 30} onChange={(e) => setConfig({ ...config, feePct: Number(e.target.value) || 0 })} style={{ ...inp, width: 80 }} />
             <div className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>{L('Onyx retiene', 'Onyx keeps')} <b style={{ color: 'var(--green)' }}>{config.feePct ?? 30}%</b> · {L('trader recibe', 'trader gets')} <b style={{ color: 'var(--tx)' }}>{Math.max(0, 100 - (config.feePct ?? 30))}%</b>. {L('Ponlo en 50+ para quedarte con la mayoría.', 'Set 50+ to keep the majority.')}</div>
           </div>
-          <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: 12 }}>
+          <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: 12, minWidth: 0, overflow: 'hidden' }}>
             <div style={{ fontSize: 12.5, fontWeight: 600, marginBottom: 6 }}>{L('Comisión por rendimiento', 'Performance fee')}</div>
             <label style={{ fontSize: 13, display: 'flex', gap: 6, alignItems: 'center' }}><input type="checkbox" checked={!!config.perfEnabled} onChange={(e) => setConfig({ ...config, perfEnabled: e.target.checked })} /> {config.perfEnabled ? L('Permitida', 'Allowed') : L('Desactivada (solo suscripción)', 'Off (subscription only)')}</label>
             <div className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>{L('Recomendado apagada: la ganancia está en el bróker del copiador (se cobraría a su tarjeta y da fricción).', 'Recommended off: the profit sits in the copier\'s broker (would be billed to their card and causes friction).')}</div>
           </div>
-          <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: 12 }}>
+          <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: 12, minWidth: 0, overflow: 'hidden' }}>
             <div style={{ fontSize: 12.5, fontWeight: 600, marginBottom: 6 }}>{L('¿Quién puede copiar?', 'Who can copy?')}</div>
-            <select value={config.followGate || 'all'} onChange={(e) => setConfig({ ...config, followGate: e.target.value })} style={{ width: '100%', margin: 0, padding: '7px 9px', fontSize: 13 }}>
+            <select value={config.followGate || 'all'} onChange={(e) => setConfig({ ...config, followGate: e.target.value })} style={{ width: '100%', maxWidth: '100%', margin: 0, padding: '7px 9px', fontSize: 13, textOverflow: 'ellipsis' }}>
               <option value="all">{L('Todos (incluye Free) — más ingresos', 'Everyone (incl. Free) — more revenue')}</option>
               <option value="copy">{L('Solo planes con copy (Pro+)', 'Only plans with copy (Pro+)')}</option>
             </select>
