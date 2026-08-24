@@ -15,6 +15,7 @@ import OnyxIcon from '@/app/components/OnyxIcon';
 import NavSelect from '@/app/components/NavSelect';
 import EnvSwitch from './EnvSwitch';
 import ChatWidgetEditor from './ChatWidgetEditor';
+import ReportsEditor from './ReportsEditor';
 import EmailTemplatesControl from './EmailTemplatesControl';
 import OnlineNowControl from './OnlineNowControl';
 import AdminLeadAlert from './AdminLeadAlert';
@@ -1354,6 +1355,8 @@ function Modules() {
       )}
 
       <ChatWidgetEditor />
+
+      <ReportsEditor es={es} />
 
       <div className="muted" style={{ fontSize: 12, gridColumn: '1 / -1' }}>{t.mo_needLog}</div>
     </div>

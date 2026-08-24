@@ -19,6 +19,7 @@ import { serverBeta } from '@/lib/betaServer';
 import PromoBar from './PromoBar';
 import OnlineNow from './OnlineNow';
 import VisitorBeacon from './VisitorBeacon';
+import TzSync from './TzSync';
 import PendingCheckoutGate from './PendingCheckoutGate';
 import { getSetting, onlineNowSettings, chatWidgetSettings } from '@/lib/settings';
 import { getSeoMeta, seoFor } from '@/lib/seo';
@@ -176,6 +177,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             )}
             <PendingCheckoutGate />
             <VisitorBeacon />
+            <TzSync />
             <Toaster />
             <PWARegister />
             <ChunkReload />
