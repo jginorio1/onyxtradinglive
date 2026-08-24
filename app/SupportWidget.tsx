@@ -122,6 +122,13 @@ export default function SupportWidget({ loggedIn = false, cfg }: { loggedIn?: bo
   };
   const topics = (loggedIn ? cfg.topicsUser : cfg.topicsGuest).map((tp) => [es ? tp.q_es : tp.q_en, es ? tp.label_es : tp.label_en] as [string, string]).filter(([, l]) => l);
 
+  // Separa un emoji inicial de la etiqueta y lo pinta como icono de línea.
+  const iconLabel = (label: string, size = 14) => {
+    const m = (label || '').match(/^([\p{Extended_Pictographic}\uFE0F\u200D]+)\s*([\s\S]*)$/u);
+    const ic = m ? m[1] : ''; const tx = m ? m[2] : (label || '');
+    return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>{ic && <OnyxIcon emoji={ic} size={size} glow={false} />}{tx}</span>;
+  };
+
   // Colores del tema del chat (variables locales que heredan los hijos fijos).
   const grad = cfg.gradient ? `linear-gradient(135deg, ${cfg.c1}, ${cfg.c2})` : cfg.c1;
   const themeVars: any = { ['--grad']: grad, ['--brand']: cfg.accent };
@@ -185,9 +192,9 @@ export default function SupportWidget({ loggedIn = false, cfg }: { loggedIn?: bo
                 <div style={{ fontSize: 11, color: 'var(--mut)', margin: '2px 0 6px' }}>{x.topicsT}</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
                   {topics.map(([q, label]) => (
-                    <button key={label} className="btn btn-ghost" style={{ padding: '8px 10px', fontSize: 12, textAlign: 'left' }} onClick={() => sendAI(q)}>{label}</button>
+                    <button key={label} className="btn btn-ghost" style={{ padding: '8px 10px', fontSize: 12 }} onClick={() => sendAI(q)}>{iconLabel(label)}</button>
                   ))}
-                  {!loggedIn && cfg.showHuman && <button className="btn btn-ghost" style={{ padding: '8px 10px', fontSize: 12, textAlign: 'left', gridColumn: '1 / -1' }} onClick={openEmail}>{x.human}</button>}
+                  {!loggedIn && cfg.showHuman && <button className="btn btn-ghost" style={{ padding: '8px 10px', fontSize: 12, gridColumn: '1 / -1' }} onClick={openEmail}>{iconLabel(x.human)}</button>}
                 </div>
               </div>
             )}
@@ -203,7 +210,7 @@ export default function SupportWidget({ loggedIn = false, cfg }: { loggedIn?: bo
             )}
             {refs.length > 0 && (
               <div style={{ alignSelf: 'flex-start', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {refs.map((a) => <Link key={a.slug} href={`/guia/${a.slug}`} className="pill" style={{ color: 'var(--brand)', background: 'rgba(124,140,255,.12)' }}>{t.seeArt}: {a.title}</Link>)}
+                {refs.map((a) => <Link key={a.slug} href={`/guia/${a.slug}`} onClick={() => setOpen(false)} className="pill" style={{ color: 'var(--brand)', background: 'rgba(124,140,255,.12)' }}>{t.seeArt}: {a.title}</Link>)}
               </div>
             )}
             {showEmail && !sent && (
@@ -222,7 +229,7 @@ export default function SupportWidget({ loggedIn = false, cfg }: { loggedIn?: bo
               <div style={{ background: 'rgba(52,226,160,.10)', border: '1px solid var(--green)', borderRadius: 10, padding: 12, marginTop: 4, textAlign: 'center' }}>
                 <div style={{ fontWeight: 700, color: 'var(--green)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}><OnyxIcon name="check" size={16} glow={false} /> {t.sentT}</div>
                 <div className="muted" style={{ fontSize: 12, marginTop: 3 }}>{t.sentD}</div>
-                {!loggedIn && <Link href="/login?mode=signup" className="btn btn-ghost" style={{ marginTop: 10, fontSize: 13 }}>{t.createAcc}</Link>}
+                {!loggedIn && <Link href="/login?mode=signup" onClick={() => setOpen(false)} className="btn btn-ghost" style={{ marginTop: 10, fontSize: 13 }}>{t.createAcc}</Link>}
               </div>
             )}
             <div ref={end} />
@@ -232,8 +239,8 @@ export default function SupportWidget({ loggedIn = false, cfg }: { loggedIn?: bo
             <div style={{ padding: '10px 10px calc(10px + env(safe-area-inset-bottom))', borderTop: '1px solid var(--line)', background: 'var(--card)' }}>
               {loggedIn && cfg.showTicket && (
                 <div className="row" style={{ gap: 6, marginBottom: 8 }}>
-                  <Link href="/dashboard/soporte" className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }}>{t.openTicket}</Link>
-                  <Link href="/dashboard/soporte" className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }}>{t.center}</Link>
+                  <Link href="/dashboard/soporte" onClick={() => setOpen(false)} className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }}>{t.openTicket}</Link>
+                  <Link href="/dashboard/soporte" onClick={() => setOpen(false)} className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }}>{t.center}</Link>
                 </div>
               )}
               <div className="row" style={{ gap: 6 }}>
