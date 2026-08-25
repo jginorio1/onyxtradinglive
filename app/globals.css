@@ -162,6 +162,12 @@ th{color:var(--mut);font-weight:600;}
 .secnav-item{font-size:14px;color:var(--mut);padding:6px 12px;border-radius:8px;white-space:nowrap;transition:.15s;}
 .secnav-item:hover{color:#fff;}
 .secnav-item.on{color:var(--tx);background:var(--card2);}
+/* Home: centrar las dos filas SOLO en escritorio (móvil se queda igual). */
+@media(min-width:901px){ .secnav-items{justify-content:center;} }
+@media(min-width:1024px){
+  .topbar.center-nav .wrap-wide{position:relative;}
+  .topbar.center-nav .navl{position:absolute;left:50%;transform:translateX(-50%);}
+}
 /* Que los anclajes no queden tapados por las dos barras al saltar */
 section[id],div[id]{scroll-margin-top:120px;}
 

@@ -18,7 +18,7 @@ import MainNav from './MainNav';
 // servidor y decide qué enseñar. Si estás dentro, la ves en todas
 // partes — landing incluido.
 // ============================================================
-export default async function TopBar() {
+export default async function TopBar({ home = false }: { home?: boolean }) {
   const lang: Lang = serverLang();
   const t = dictFor(NAV_T, lang);
 
@@ -134,7 +134,7 @@ export default async function TopBar() {
       ];
 
   return (
-    <div className="topbar">
+    <div className={'topbar' + (home ? ' center-nav' : '')}>
       <div className="wrap-wide">
         {/* El logo siempre vuelve al inicio. Para el panel ya está "Panel". */}
         <Link className="logo" href="/" aria-label="Onyx Trading Live">
