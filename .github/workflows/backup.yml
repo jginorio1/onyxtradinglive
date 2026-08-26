@@ -45,7 +45,25 @@ jobs:
           b2 file upload "${{ secrets.B2_BUCKET }}" "$FILE" "backups/$FILE" \
             || b2 upload-file "${{ secrets.B2_BUCKET }}" "$FILE" "backups/$FILE"
 
+      - name: Subir a Google Drive (misma copia completa, via rclone)
+        env:
+          RCLONE_CONF_GDRIVE: ${{ secrets.RCLONE_CONF_GDRIVE }}
+          GDRIVE_DIR: ${{ secrets.GDRIVE_DIR }}
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "${RCLONE_CONF_GDRIVE:-}" ]; then echo "Sin RCLONE_CONF_GDRIVE: no se sube a Drive."; exit 0; fi
+          curl -fsSL https://rclone.org/install.sh | sudo bash
+          mkdir -p ~/.config/rclone
+          printf '%s' "$RCLONE_CONF_GDRIVE" > ~/.config/rclone/rclone.conf
+          DIR="${GDRIVE_DIR:-OnyxBackups}"
+          rclone copyto "$FILE" "gdrive:$DIR/$FILE" --drive-chunk-size 32M
+          curl -s -X POST "$APP_URL/api/admin/backup" \
+            -H "x-cron-secret: $CRON_SECRET" -H "content-type: application/json" \
+            -d "{\"size\": ${SIZE:-0}, \"dest\": \"Google Drive\", \"file\": \"${FILE:-}\"}" || true
+
       - name: Avisar a la app (estado en el panel)
+        if: always()
         env:
           APP_URL: ${{ secrets.APP_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
