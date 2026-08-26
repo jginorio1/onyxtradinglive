@@ -1,6 +1,15 @@
 /**
- * Onyx Trading Live — Backup automático a Google Drive
+ * Onyx Trading Live — Backup automático a Google Drive (EXPORTACIÓN LIGERA · JSON)
  * ----------------------------------------------------
+ * OBSOLETO si ya activaste la copia COMPLETA a Drive (el .sql.gz que sube la
+ * tarea de GitHub vía rclone). Esta versión solo guarda un JSON parcial y sin
+ * secretos, útil para revisar, pero NO restaura toda la base.
+ *
+ * Para dejar SOLO la copia completa en Drive: abre este proyecto en
+ * script.google.com y ejecuta UNA vez la función  desinstalarDisparador  (más
+ * abajo). Eso apaga la copia diaria en JSON. La copia completa seguirá llegando
+ * desde la tarea de GitHub.
+ *
  * Corre en TU cuenta de Gmail (Google Apps Script). Cada día baja el backup
  * de Onyx y lo guarda en una carpeta de tu Drive, borrando las copias viejas.
  * Las llaves de Google se quedan en tu cuenta; no viven en tu servidor.
@@ -64,6 +73,15 @@ function instalarDisparadorDiario() {
   });
   ScriptApp.newTrigger('backupNow').timeBased().everyDays(1).atHour(4).create(); // ~4am
   Logger.log('Disparador diario instalado (todos los días alrededor de las 4am).');
+}
+
+/** Apaga la copia diaria en JSON (córrela UNA vez para dejar solo la copia completa). */
+function desinstalarDisparador() {
+  var n = 0;
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === 'backupNow') { ScriptApp.deleteTrigger(t); n++; }
+  });
+  Logger.log('Disparadores de backupNow eliminados: ' + n + '. Ya no se guardará el JSON diario.');
 }
 
 // ------------------------- utilidades -------------------------
