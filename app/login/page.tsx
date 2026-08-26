@@ -428,7 +428,12 @@ function LoginInner() {
             </>
           )}
         </form>
-        {msg && <p className="muted" style={{ marginTop: 14, fontSize: 14 }}>{msg}</p>}
+        {msg && (
+          <div role="alert" aria-live="assertive" style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 9, background: 'rgba(255,90,110,.13)', border: '1px solid var(--red)', color: 'var(--red)', borderRadius: 10, padding: '11px 13px', fontSize: 14, fontWeight: 600, lineHeight: 1.4 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none' }}><circle cx="12" cy="12" r="9" /><line x1="12" y1="8" x2="12" y2="12.5" /><circle cx="12" cy="16" r="0.6" fill="currentColor" stroke="none" /></svg>
+            <span>{msg}</span>
+          </div>
+        )}
         <p className="muted" style={{ marginTop: 18, fontSize: 14 }}>
           {signup ? t.haveAcc : t.noAcc}{' '}
           <a style={{ color: 'var(--brand)', cursor: 'pointer' }} onClick={() => { setSignup(!signup); setMsg(''); }}>
