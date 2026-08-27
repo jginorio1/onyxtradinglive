@@ -4,10 +4,27 @@ import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { ARTICLES, searchArticles, type Lang } from '@/lib/guide';
 import { supportChatReply } from '@/lib/supportAI';
+import { getSupportContext, contextToPrompt } from '@/lib/supportContext';
 import { logError } from '@/lib/errlog';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+
+// GET · señales de rol del usuario logueado, para que el widget muestre temas
+// rápidos por rol (trader / embajador / mentor). Solo estados, sin datos sensibles.
+export async function GET() {
+  try {
+    const sb = createSupabaseServer();
+    const { data: { user } } = await sb.auth.getUser();
+    if (!user) return NextResponse.json({ loggedIn: false });
+    const ctx = await getSupportContext(user.id);
+    return NextResponse.json({
+      loggedIn: true,
+      name: ctx.name,
+      roles: { trader: ctx.roles.trader, ambassador: ctx.roles.ambassador, mentor: ctx.roles.mentor },
+    });
+  } catch { return NextResponse.json({ loggedIn: false }); }
+}
 
 // Chat público de Onyx AI (el widget de la web). Usa el MISMO cerebro que el resto:
 // lee toda la Guía + Base IA + blog, respeta el prompt editable del admin, responde en
@@ -39,16 +56,11 @@ export async function POST(req: Request) {
     }
 
     // Contexto de la cuenta (solo con sesión), para respuestas conscientes.
+    // Fase 1: roles (trader/embajador/mentor) + estados, sin cifras ni datos de terceros.
     let acctContext = '';
     if (user) {
-      const { data: prof } = await supabaseAdmin.from('profiles').select('plan').eq('id', user.id).maybeSingle();
-      const { data: accs } = await supabaseAdmin.from('trading_accounts')
-        .select('last_sync_at').eq('user_id', user.id)
-        .order('last_sync_at', { ascending: false, nullsFirst: false }).limit(1);
-      const last = accs?.[0]?.last_sync_at;
-      const live = last && (Date.now() - new Date(last).getTime()) < 120000;
-      const eaState = !last ? 'aún no ha conectado ningún EA' : live ? 'su EA está reportando ahora' : `su EA no reporta desde ${new Date(last).toLocaleString()}`;
-      acctContext = `=== CONTEXTO DEL USUARIO (úsalo para personalizar, no lo repitas literal) ===\nTiene cuenta. Plan: ${prof?.plan || 'free'}. Estado del EA: ${eaState}.`;
+      const ctx = await getSupportContext(user.id);
+      acctContext = contextToPrompt(ctx, lang === 'en');
     } else {
       acctContext = lang === 'en'
         ? `=== CONTEXT ===\nThis is a VISITOR without an account. If it fits, naturally invite them to create a free account or leave their email so we can reply. Do not be pushy.`

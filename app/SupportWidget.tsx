@@ -47,6 +47,7 @@ export default function SupportWidget({ loggedIn = false, cfg }: { loggedIn?: bo
   const [err, setErr] = useState('');
   const [device, setDevice] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
   const [tease, setTease] = useState(false);
+  const [roleInfo, setRoleInfo] = useState<any>(null);   // { name, roles } del usuario logueado
   const end = useRef<HTMLDivElement>(null);
   const started = chat.length > 0;
 
@@ -57,6 +58,11 @@ export default function SupportWidget({ loggedIn = false, cfg }: { loggedIn?: bo
   }, []);
 
   useEffect(() => { fetch('/api/support/availability').then((r) => r.json()).then((j) => setHuman(!!j.online)).catch(() => {}); }, [open]);
+  // Al abrir con sesión: trae rol + nombre para personalizar saludo y temas rápidos.
+  useEffect(() => {
+    if (!open || !loggedIn) return;
+    fetch('/api/support/ai').then((r) => r.json()).then((j) => { if (j?.loggedIn) setRoleInfo(j); }).catch(() => {});
+  }, [open, loggedIn]);
   useEffect(() => { end.current?.scrollIntoView({ behavior: 'smooth' }); }, [chat, busy, showEmail, sent]);
 
   // Mensaje proactivo: globo sobre el botón tras unos segundos (una vez por sesión).
@@ -120,7 +126,15 @@ export default function SupportWidget({ loggedIn = false, cfg }: { loggedIn?: bo
     ph: p(cfg.placeholder_es, cfg.placeholder_en), human: p(cfg.humanLabel_es, cfg.humanLabel_en),
     proactive: p(cfg.proactive_es, cfg.proactive_en),
   };
-  const topics = (loggedIn ? cfg.topicsUser : cfg.topicsGuest).map((tp) => [es ? tp.q_es : tp.q_en, es ? tp.label_es : tp.label_en] as [string, string]).filter(([, l]) => l);
+  const baseTopics = (loggedIn ? cfg.topicsUser : cfg.topicsGuest).map((tp) => [es ? tp.q_es : tp.q_en, es ? tp.label_es : tp.label_en] as [string, string]).filter(([, l]) => l);
+  // Temas rápidos POR ROL (solo con sesión y según roleInfo del usuario).
+  const roleTopics: [string, string][] = [];
+  const rr = roleInfo?.roles;
+  if (rr?.ambassador && rr.ambassador !== 'none') roleTopics.push([es ? '¿Cómo veo mi enlace y comisión de embajador?' : 'How do I see my ambassador link and commission?', es ? '🎯 Mi enlace y comisión' : '🎯 My link & commission']);
+  if (rr?.mentor) roleTopics.push([es ? '¿Cómo cobro como mentor y conecto mi Stripe?' : 'How do I get paid as a mentor and connect Stripe?', es ? '🎓 Cobros de mentor' : '🎓 Mentor payouts']);
+  const topics = [...roleTopics, ...baseTopics];
+  // Saludo personalizado por nombre si hay sesión.
+  const greet = roleInfo?.name ? `${es ? '¡Hola' : 'Hi'} ${roleInfo.name}! ${x.hi}` : x.hi;
 
   // Separa un emoji inicial de la etiqueta y lo pinta como icono de línea.
   const iconLabel = (label: string, size = 14) => {
@@ -186,7 +200,7 @@ export default function SupportWidget({ loggedIn = false, cfg }: { loggedIn?: bo
           </div>
 
           <div style={{ flex: 1, overflowY: 'auto', padding: 12, background: 'var(--bg2)', display: 'flex', flexDirection: 'column', gap: 8, minHeight: 200 }}>
-            <div style={{ maxWidth: '86%', padding: '8px 11px', fontSize: 13, lineHeight: 1.5, ...bubble('assistant') }}>{x.hi}</div>
+            <div style={{ maxWidth: '86%', padding: '8px 11px', fontSize: 13, lineHeight: 1.5, ...bubble('assistant') }}>{greet}</div>
             {!started && cfg.showTopics && topics.length > 0 && (
               <div>
                 <div style={{ fontSize: 11, color: 'var(--mut)', margin: '2px 0 6px' }}>{x.topicsT}</div>

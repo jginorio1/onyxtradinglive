@@ -4,6 +4,7 @@ import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { notifyNewTicket } from '@/lib/supportNotify';
 import { autoHandleTicket } from '@/lib/supportAI';
+import { getSupportContext } from '@/lib/supportContext';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -61,6 +62,13 @@ export async function POST(req: Request) {
     if (error || !ticket) return NextResponse.json({ error: error?.message || 'error' }, { status: 500 });
 
     await supabaseAdmin.from('support_messages').insert({ ticket_id: ticket.id, sender: 'user', body });
+    // Nota interna con roles/plan/estado del usuario (solo la ve el equipo, no el trader).
+    try {
+      const ctx = await getSupportContext(user.id);
+      const roles = [ctx.roles.trader && 'trader', ctx.roles.ambassador !== 'none' && `embajador(${ctx.roles.ambassador})`, ctx.roles.mentor && `mentor(${ctx.roles.mentorConnected ? 'stripe ok' : 'sin stripe'})`].filter(Boolean).join(', ');
+      const note = `🧭 Contexto: ${roles || 'usuario'} · Plan ${ctx.plan} · Conector ${ctx.ea} · Guardian ${ctx.guardianOn ? 'ON' : 'off'} · Copy ${ctx.copyActive ? 'activo' : 'inactivo'} · Facturación ${ctx.billing}`;
+      await supabaseAdmin.from('support_messages').insert({ ticket_id: ticket.id, sender: 'note', body: note });
+    } catch { /* la nota es opcional */ }
     await notifyNewTicket({ email: user.email || '', subject, isLead: false });
 
     // Triage + auto-respuesta con IA, en el idioma del trader
