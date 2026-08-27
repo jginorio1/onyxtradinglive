@@ -4,12 +4,17 @@ export type AmbSettings = {
   enabled: boolean; base_rate: number; tier_rate: number; tier_threshold: number;
   hold_days: number; min_payout: number; coupon_percent: number; coupon_months: number;
   commission_months: number; // meses de comisión por suscriptor; 0 = ilimitado (∞)
+  // Automatización (simple + protegido + escalable):
+  auto_promote: boolean;      // al llegar al umbral de referidos, vuelve embajador solo
+  auto_payout: boolean;       // paga solo cuando el saldo madura (retención + mínimo + Stripe verificado)
+  review_before_pay: boolean; // freno global: encola el pago pero lo apruebas tú (apagado por defecto)
 };
 
 const DEFAULTS: AmbSettings = {
   enabled: true, base_rate: 20, tier_rate: 30, tier_threshold: 10,
   hold_days: 30, min_payout: 50, coupon_percent: 20, coupon_months: 1,
   commission_months: 0,
+  auto_promote: true, auto_payout: true, review_before_pay: false,
 };
 
 // Ajustes del programa (los edita el admin desde el panel)

@@ -5,6 +5,7 @@ import { stripe } from '@/lib/stripe';
 import { notify } from '@/lib/notify';
 import { sendEmail } from '@/lib/mail';
 import { sendMessage } from '@/lib/telegram';
+import { autoPromote } from '@/lib/ambassadorPayout';
 
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.onyxtradinglive.com').replace(/\/$/, '');
 
@@ -103,9 +104,16 @@ export async function qualifyOnPaid(invoice: any) {
     const { count: qualified } = await supabaseAdmin.from('member_rewards').select('*', { count: 'exact', head: true }).eq('referrer_id', referrerId).eq('kind', 'referrer');
     const q = qualified || 0;
     await notify(referrerId, { kind: 'info', title: '🎉 ¡Ganaste crédito por un referido!', body: `Tu amigo se suscribió. Tu crédito se aplica en unos días.`, url: '/account#referidos' });
-    // Al alcanzar el umbral, avisamos por los 3 canales (in-app + correo + Telegram).
+    // Al alcanzar el umbral: AUTO-ASCENSO a embajador (si está activado). Si se
+    // ascendió, se le avisa que ya cobra en efectivo; si no (apagado o ya lo era),
+    // se le manda la invitación por los 3 canales como antes.
     if (s.bridge_threshold > 0 && q === s.bridge_threshold) {
-      await notifyBridge(referrerId, q);
+      const promo = await autoPromote(referrerId).catch(() => ({ promoted: false } as any));
+      if (promo?.promoted) {
+        await notify(referrerId, { kind: 'success', title: '🚀 ¡Ya eres Embajador!', body: `Trajiste ${q} amigos. Ahora ganas comisión en efectivo por cada suscriptor. Conecta tu cobro para retirar.`, url: '/account?tab=ambassador' });
+      } else {
+        await notifyBridge(referrerId, q);
+      }
     }
   } catch { /* silencioso */ }
 }

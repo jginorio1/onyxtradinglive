@@ -100,6 +100,14 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ ok: true });
     }
 
+    // Retener / soltar los pagos automáticos de UN embajador (freno por persona).
+    if (b.action === 'hold') {
+      try { await supabaseAdmin.from('ambassadors').update({ on_hold: !!b.value }).eq('id', b.id); }
+      catch { return NextResponse.json({ error: 'Falta la columna on_hold (corre amb_on_hold.sql).', code: 'no_column' }, { status: 400 }); }
+      await logAdmin(user.email, 'amb_hold', b.id, { on_hold: !!b.value });
+      return NextResponse.json({ ok: true });
+    }
+
     if (b.action === 'rate') {
       const rate = b.value === '' || b.value == null ? null : Number(b.value);
       await supabaseAdmin.from('ambassadors').update({ rate }).eq('id', b.id);

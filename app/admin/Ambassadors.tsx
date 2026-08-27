@@ -237,6 +237,23 @@ export default function Ambassadors() {
         <label className="row" style={{ gap: 8, marginTop: 14, cursor: 'pointer' }}>
           <input type="checkbox" checked={s.enabled !== false} onChange={(e) => setS({ ...s, enabled: e.target.checked })} style={{ width: 'auto', margin: 0 }} /> {t.am_open}
         </label>
+
+        {/* Automatización: simple + protegido + escalable */}
+        <div style={{ marginTop: 14, background: 'var(--bg2)', borderRadius: 10, padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <label className="row" style={{ gap: 8, cursor: 'pointer', alignItems: 'flex-start' }}>
+            <input type="checkbox" checked={s.auto_promote !== false} onChange={(e) => setS({ ...s, auto_promote: e.target.checked })} style={{ width: 'auto', margin: '3px 0 0' }} />
+            <span>{L('Auto-ascenso a Embajador', 'Auto-promote to Ambassador')}<br /><span className="muted" style={{ fontSize: 12 }}>{L('Al llegar al umbral de referidos, el usuario se vuelve embajador solo (reversible).', 'On hitting the referral threshold, the user becomes an ambassador automatically (reversible).')}</span></span>
+          </label>
+          <label className="row" style={{ gap: 8, cursor: 'pointer', alignItems: 'flex-start' }}>
+            <input type="checkbox" checked={s.auto_payout !== false} onChange={(e) => setS({ ...s, auto_payout: e.target.checked })} style={{ width: 'auto', margin: '3px 0 0' }} />
+            <span>{L('Pago automático', 'Automatic payout')}<br /><span className="muted" style={{ fontSize: 12 }}>{L('Paga solo cuando el saldo madura: pasó retención, supera el mínimo y Stripe está verificado.', 'Pays only when the balance matures: retention passed, above minimum and Stripe verified.')}</span></span>
+          </label>
+          <label className="row" style={{ gap: 8, cursor: 'pointer', alignItems: 'flex-start' }}>
+            <input type="checkbox" checked={s.review_before_pay === true} onChange={(e) => setS({ ...s, review_before_pay: e.target.checked })} style={{ width: 'auto', margin: '3px 0 0' }} />
+            <span>{L('Revisar antes de pagar (freno global)', 'Review before paying (global brake)')}<br /><span className="muted" style={{ fontSize: 12 }}>{L('Encola el pago pero lo apruebas tú. Apagado = pago 100% automático.', 'Queues the payout for you to approve. Off = fully automatic.')}</span></span>
+          </label>
+        </div>
+
         <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={() => act('settings', undefined, s)} disabled={busy === 'settings'}>{t.am_saveRules}</button>
         <p className="muted" style={{ fontSize: 12, marginTop: 8 }}>{t.am_couponNote}</p>
       </div>
@@ -257,6 +274,7 @@ export default function Ambassadors() {
                   <b>{a.email || '—'}</b>
                   <span className="pill" style={{ color: st.c, background: st.c + '22' }}>{st.t}</span>
                   {a.status === 'approved' && <span className="pill" style={{ color: a.tier === 'gold' ? 'var(--gold)' : '#c7ccd6' }}>{a.tier === 'gold' ? t.am_gold : t.am_silver} · {a.rate}%</span>}
+                  {a.on_hold && <span className="pill" style={{ color: 'var(--amber)', background: 'rgba(255,192,77,.15)' }}>{L('Pago retenido', 'Payout held')}</span>}
                 </div>
                 <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
                   {t.am_code} <b>{a.code}</b> · {METHOD[a.payout_method] || '—'} {a.payout_details ? `· ${a.payout_details}` : ''} {a.followers ? `· ${Number(a.followers).toLocaleString()} ${t.am_followers}` : ''}
@@ -267,6 +285,7 @@ export default function Ambassadors() {
                   <button className="btn btn-primary" style={{ padding: '5px 10px', fontSize: 12 }} onClick={() => act('approve', a.id)} disabled={busy === a.id}>{t.am_approve}</button>
                   <button className="btn btn-ghost" style={{ padding: '5px 10px', fontSize: 12 }} onClick={() => act('status', a.id, 'rejected')}>{t.am_reject}</button>
                 </>}
+                {a.status === 'approved' && <button className="btn btn-ghost" style={{ padding: '5px 10px', fontSize: 12, color: a.on_hold ? 'var(--green)' : 'var(--amber)' }} onClick={() => act('hold', a.id, !a.on_hold)} disabled={busy === a.id} title={L('Retiene o reanuda el pago automático de este embajador', 'Holds or resumes this ambassador’s automatic payout')}>{a.on_hold ? L('Reanudar pago', 'Resume payout') : L('Retener pago', 'Hold payout')}</button>}
                 {a.status === 'approved' && <button className="btn btn-ghost" style={{ padding: '5px 10px', fontSize: 12 }} onClick={() => act('status', a.id, 'paused')}>{t.am_pause}</button>}
                 {(a.status === 'paused' || a.status === 'rejected') && <button className="btn btn-ghost" style={{ padding: '5px 10px', fontSize: 12 }} onClick={() => act('status', a.id, 'approved')}>{t.am_reactivate}</button>}
               </div>

@@ -1,5 +1,6 @@
 import { stripe } from '@/lib/stripe';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { ambSettings, balances, codeFromEmail, type AmbSettings } from '@/lib/ambassadors';
 
 // ============================================================
 // Pagos a EMBAJADORES.
@@ -121,6 +122,104 @@ export async function runPayout(payoutId: string): Promise<PayResult> {
 
   // usdt / manual → lo marca el admin con referencia (markPaidManual)
   return { ok: false, error: 'manual_method' };
+}
+
+// Crea el cupón de descuento del embajador en Stripe (no rompe si falla).
+export async function createAmbPromo(code: string, s: AmbSettings): Promise<string | null> {
+  try {
+    const percent = Number(s.coupon_percent) || 0;
+    if (percent <= 0) return null;
+    const months = Number(s.coupon_months) || 1;
+    const coupon = await stripe.coupons.create(
+      months > 1
+        ? { percent_off: percent, duration: 'repeating', duration_in_months: months, name: `Embajador ${code}` }
+        : { percent_off: percent, duration: 'once', name: `Embajador ${code}` },
+    );
+    const promo = await stripe.promotionCodes.create({ coupon: coupon.id, code: code.toUpperCase() });
+    return promo.id;
+  } catch { return null; }
+}
+
+// AUTO-ASCENSO: al llegar al umbral de referidos, el usuario se vuelve embajador
+// SOLO (aprobado), reversible. Se puede apagar con settings.auto_promote.
+export async function autoPromote(userId: string): Promise<{ promoted: boolean; reason?: string }> {
+  try {
+    const s = await ambSettings();
+    if (!s.enabled || s.auto_promote === false) return { promoted: false, reason: 'disabled' };
+    const { data: prev } = await supabaseAdmin.from('ambassadors').select('id').eq('user_id', userId).maybeSingle();
+    if (prev) return { promoted: false, reason: 'exists' };
+    const { data: prof } = await supabaseAdmin.from('profiles').select('email').eq('id', userId).maybeSingle();
+    const email = (prof as any)?.email || '';
+    let code = codeFromEmail(email);
+    for (let i = 0; i < 6; i++) {
+      const { data: taken } = await supabaseAdmin.from('ambassadors').select('id').eq('code', code).maybeSingle();
+      if (!taken) break; code = codeFromEmail(email);
+    }
+    const promoId = await createAmbPromo(code, s);
+    const { error } = await supabaseAdmin.from('ambassadors').insert({
+      user_id: userId, code, status: 'approved', approved_at: new Date().toISOString(),
+      payout_method: 'stripe', promo_code_id: promoId,
+      audience: 'Auto: alcanzó el umbral de referidos',
+    });
+    if (error) return { promoted: false, reason: error.message };
+    return { promoted: true };
+  } catch (e: any) { return { promoted: false, reason: e?.message || 'error' }; }
+}
+
+// AUTO-PAGO: recorre embajadores aprobados y paga SOLO el saldo maduro.
+// Reglas-candado: pasó retención (available_at), supera el mínimo, Stripe verificado
+// (payouts_enabled) o método crédito; respeta on_hold y el freno global review_before_pay.
+export async function autoPayoutDue(): Promise<{ checked: number; paid: number; queued: number }> {
+  const s = await ambSettings();
+  if (s.auto_payout === false) return { checked: 0, paid: 0, queued: 0 };
+  const review = s.review_before_pay === true;
+  const min = Number(s.min_payout) || 50;
+
+  // Trae embajadores aprobados (tolerante a que aún no exista la columna on_hold).
+  let ambs: any[] = [];
+  const withHold = await supabaseAdmin.from('ambassadors')
+    .select('id,user_id,payout_method,payout_details,stripe_account_id,payouts_enabled,on_hold').eq('status', 'approved');
+  if (withHold.error) {
+    const base = await supabaseAdmin.from('ambassadors')
+      .select('id,user_id,payout_method,payout_details,stripe_account_id,payouts_enabled').eq('status', 'approved');
+    ambs = (base.data as any[]) || [];
+  } else ambs = (withHold.data as any[]) || [];
+
+  let checked = 0, paid = 0, queued = 0;
+  const now = new Date().toISOString();
+  for (const a of ambs) {
+    if (a.on_hold) continue;            // freno por embajador
+    checked++;
+    const bal = await balances(a.id);
+    if (bal.available < min) continue;   // aún no llega al mínimo
+    const method = a.payout_method || 'stripe';
+
+    // ¿Ya hay un pago encolado? Si no hay freno y es auto, ejecútalo.
+    const { data: open } = await supabaseAdmin.from('ambassador_payouts').select('id').eq('ambassador_id', a.id).eq('status', 'requested').maybeSingle();
+    if (open) {
+      if (!review && method !== 'usdt') { const r = await runPayout(open.id); if (r.ok) paid++; else queued++; }
+      else queued++;
+      continue;
+    }
+
+    // Verificación por método antes de crear el pago.
+    if (method === 'stripe' && !(a.stripe_account_id && a.payouts_enabled)) continue; // sin Stripe verificado → espera
+    if (method === 'usdt' && !a.payout_details) continue;
+
+    // Crea el pago y reserva las comisiones maduras.
+    const { data: pay } = await supabaseAdmin.from('ambassador_payouts')
+      .insert({ ambassador_id: a.id, amount: bal.available, method, details: a.payout_details || null, status: 'requested' })
+      .select('id').single();
+    if (!pay) continue;
+    await supabaseAdmin.from('commissions').update({ payout_id: pay.id })
+      .eq('ambassador_id', a.id).in('status', ['pending', 'available']).lte('available_at', now).is('payout_id', null);
+
+    // Con freno global o método manual (cripto): queda en la cola del admin.
+    if (review || method === 'usdt') { queued++; continue; }
+    const r = await runPayout(pay.id);
+    if (r.ok) paid++; else queued++;
+  }
+  return { checked, paid, queued };
 }
 
 // Marca un payout como pagado a mano (cripto/otro), guardando la referencia.
