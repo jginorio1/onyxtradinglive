@@ -45,7 +45,7 @@ export default function MemberReferralSettings() {
         <div><span style={lbl}>{es ? 'Máx. por mes / invitador' : 'Max per month / referrer'}</span><input type="number" value={r.max_per_month ?? 0} onChange={(e) => setR({ ...r, max_per_month: Number(e.target.value) })} style={num} /></div>
         <div><span style={lbl}>{es ? 'Máx. de por vida / invitador' : 'Max lifetime / referrer'}</span><input type="number" value={r.max_lifetime ?? 0} onChange={(e) => setR({ ...r, max_lifetime: Number(e.target.value) })} style={num} /></div>
       </div>
-      <div className="muted" style={{ fontSize: 11.5, marginTop: 8 }}>{es ? '0 = sin límite.' : '0 = no limit.'}</div>
+      <div className="muted" style={{ fontSize: 11.5, marginTop: 8 }}>{es ? '0 = sin límite. Si el auto-ascenso está activo, el crédito se detiene al volverse Embajador (en el umbral): a partir de ahí gana comisión en efectivo, no crédito. Así el máx. de por vida rige solo para quien no llega al umbral.' : '0 = no limit. With auto-promotion on, credit stops once they become an Ambassador (at the threshold): from there they earn cash commission, not credit. So the lifetime cap only applies to those who never reach the threshold.'}</div>
       <label className="row" style={{ gap: 8, marginTop: 12, cursor: 'pointer' }}>
         <input type="checkbox" checked={r.enabled !== false} onChange={(e) => setR({ ...r, enabled: e.target.checked })} style={{ width: 'auto', margin: 0 }} /> {es ? 'Programa activo' : 'Program enabled'}
       </label>

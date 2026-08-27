@@ -77,6 +77,14 @@ export async function qualifyOnPaid(invoice: any) {
     const referrerId = (prof as any).member_ref_by;
     if (referrerId === prof.id) return;
 
+    // Si el invitador YA es Embajador, cobra en EFECTIVO (comisión), no en crédito.
+    // Esto evita el doble pago y hace que el "máx. de por vida" de crédito se
+    // detenga naturalmente en el umbral (a partir de ahí gana comisión, no crédito).
+    try {
+      const { data: ambRow } = await supabaseAdmin.from('ambassadors').select('status').eq('user_id', referrerId).maybeSingle();
+      if (ambRow && (ambRow as any).status === 'approved') return;
+    } catch { /* si falla la consulta, seguimos con el flujo normal */ }
+
     // ¿ya se recompensó a este referido? (solo su primer pago cuenta)
     const { data: existing } = await supabaseAdmin.from('member_rewards').select('id').eq('referred_id', prof.id).limit(1);
     if (existing && existing.length) return;
