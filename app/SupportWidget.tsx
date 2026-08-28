@@ -320,12 +320,15 @@ export default function SupportWidget({ loggedIn = false, cfg }: { loggedIn?: bo
               </HBtn>
             )}
             {!isMobile && (
-              <HBtn onClick={toggleBig} label={big ? (es ? 'Reducir' : 'Shrink') : (es ? 'Expandir' : 'Expand')}>
+              <button onClick={toggleBig} aria-label={big ? (es ? 'Reducir' : 'Shrink') : (es ? 'Ampliar' : 'Expand')} title={big ? (es ? 'Reducir el chat' : 'Shrink the chat') : (es ? 'Ampliar el chat a pantalla completa' : 'Expand the chat to full screen')}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 28, padding: '0 11px', border: 'none', borderRadius: 8, background: '#fff', color: cfg.c2 || cfg.c1 || 'var(--brand)', fontSize: 12, fontWeight: 600, cursor: 'pointer', flex: 'none' }}>
                 {big
-                  ? <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M9 3 L9 7 L13 7 M7 13 L7 9 L3 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                  : <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M9 3 L13 3 L13 7 M7 13 L3 13 L3 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
-              </HBtn>
+                  ? <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M9 3 L9 7 L13 7 M7 13 L7 9 L3 9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  : <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M9 3 L13 3 L13 7 M7 13 L3 13 L3 9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                {big ? (es ? 'Reducir' : 'Shrink') : (es ? 'Ampliar' : 'Expand')}
+              </button>
             )}
+            {!isMobile && <span style={{ width: 1, height: 20, background: 'rgba(255,255,255,.28)', flex: 'none' }} />}
             <button onClick={() => setOpen(false)} aria-label="close" style={{ background: 'rgba(255,255,255,.15)', border: 'none', color: cfg.fg || '#fff', fontSize: 20, cursor: 'pointer', lineHeight: 1, width: 34, height: 34, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>×</button>
           </div>
 
