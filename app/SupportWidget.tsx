@@ -55,6 +55,7 @@ export default function SupportWidget({ loggedIn = false, cfg }: { loggedIn?: bo
   const [big, setBig] = useState(false);
   const [sideOv, setSideOv] = useState<'left' | 'right' | null>(null);
   const [dim, setDim] = useState<{ w: number; h: number } | null>(null);
+  const [menu, setMenu] = useState(false);   // menú "⋯" de la cabecera
   const end = useRef<HTMLDivElement>(null);
   const started = chat.length > 0;
 
@@ -80,6 +81,13 @@ export default function SupportWidget({ loggedIn = false, cfg }: { loggedIn?: bo
     } catch {}
   }, [chat]);
   function clearChat() { setChat([]); setRefs([]); setActions([]); setShowEmail(false); setSent(false); setAttach(null); try { localStorage.removeItem('onyx_chat_log'); } catch {} }
+  // Cerrar el menú "⋯" al hacer clic fuera (se engancha tras el clic que lo abrió).
+  useEffect(() => {
+    if (!menu) return;
+    const h = () => setMenu(false);
+    const id = setTimeout(() => window.addEventListener('click', h), 0);
+    return () => { clearTimeout(id); window.removeEventListener('click', h); };
+  }, [menu]);
 
   // Dispositivo actual (para ocultar/posicionar según la pantalla).
   useEffect(() => {
@@ -240,6 +248,7 @@ export default function SupportWidget({ loggedIn = false, cfg }: { loggedIn?: bo
     window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
   }
   const toggleBig = () => setBig((b) => { const n = !b; persistUi({ big: n }); return n; });
+  const toggleSide = () => { const n: 'left' | 'right' = sideC === 'right' ? 'left' : 'right'; setSideOv(n); persistUi({ side: n }); };
   // Hay tirador de tamaño (esquina superior interior) solo en escritorio/tablet sin expandir.
   const gripOn = !isMobile && !big;
   const headPadL = gripOn && sideC === 'right' ? 30 : 14;
@@ -312,10 +321,28 @@ export default function SupportWidget({ loggedIn = false, cfg }: { loggedIn?: bo
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{x.online}</span>
               </div>
             </div>
-            {started && (
-              <HBtn onClick={clearChat} label={es ? 'Nueva conversación' : 'New conversation'}>
-                <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3 6h10M6.5 6V4.5h3V6M5 6l.6 7h4.8L11 6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
-              </HBtn>
+            {(!isMobile || started) && (
+              <div style={{ position: 'relative', flex: 'none' }}>
+                <HBtn onClick={() => setMenu((m) => !m)} label={es ? 'Más opciones' : 'More options'}>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="3" r="1.4" /><circle cx="8" cy="8" r="1.4" /><circle cx="8" cy="13" r="1.4" /></svg>
+                </HBtn>
+                {menu && (
+                  <div style={{ position: 'absolute', top: 36, [sideC === 'right' ? 'right' : 'left']: 0, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 10, boxShadow: '0 10px 26px rgba(0,0,0,.4)', padding: 6, zIndex: 20, minWidth: 196 }}>
+                    {!isMobile && (
+                    <button className="btn btn-ghost" style={{ width: '100%', justifyContent: 'flex-start', display: 'flex', alignItems: 'center', gap: 9, fontSize: 13, padding: '8px 10px' }} onClick={() => { toggleSide(); setMenu(false); }}>
+                      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" style={{ transform: sideC === 'right' ? 'none' : 'scaleX(-1)' }}><path d="M10 3 L5 8 L10 13" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                      {sideC === 'right' ? (es ? 'Mover a la izquierda' : 'Move to the left') : (es ? 'Mover a la derecha' : 'Move to the right')}
+                    </button>
+                    )}
+                    {started && (
+                      <button className="btn btn-ghost" style={{ width: '100%', justifyContent: 'flex-start', display: 'flex', alignItems: 'center', gap: 9, fontSize: 13, padding: '8px 10px' }} onClick={() => { clearChat(); setMenu(false); }}>
+                        <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3 6h10M6.5 6V4.5h3V6M5 6l.6 7h4.8L11 6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                        {es ? 'Nueva conversación' : 'New conversation'}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
             {!isMobile && (
               <button onClick={toggleBig} aria-label={big ? (es ? 'Reducir' : 'Shrink') : (es ? 'Ampliar' : 'Expand')} title={big ? (es ? 'Reducir el chat' : 'Shrink the chat') : (es ? 'Ampliar el chat a pantalla completa' : 'Expand the chat to full screen')}
