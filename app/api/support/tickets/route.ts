@@ -53,7 +53,11 @@ export async function POST(req: Request) {
     const subject = String(b.subject || '').trim().slice(0, 160);
     const body = String(b.body || '').trim().slice(0, 4000);
     const category = CATS.includes(String(b.category)) ? String(b.category) : 'general';
-    if (!subject || !body) return NextResponse.json({ error: 'faltan datos', code: 'missing' }, { status: 400 });
+    // Adjuntos (URLs ya subidas por /api/chat/upload). Máx 3.
+    const attachments = (Array.isArray(b.attachments) ? b.attachments : []).slice(0, 3)
+      .filter((a: any) => a && typeof a.url === 'string');
+    // Se permite un ticket con solo captura (sin texto) siempre que haya asunto.
+    if (!subject || (!body && !attachments.length)) return NextResponse.json({ error: 'faltan datos', code: 'missing' }, { status: 400 });
 
     const { data: ticket, error } = await supabaseAdmin
       .from('support_tickets')
@@ -61,7 +65,10 @@ export async function POST(req: Request) {
       .select('id').single();
     if (error || !ticket) return NextResponse.json({ error: error?.message || 'error' }, { status: 500 });
 
-    await supabaseAdmin.from('support_messages').insert({ ticket_id: ticket.id, sender: 'user', body });
+    const firstMsg: any = { ticket_id: ticket.id, sender: 'user', body };
+    if (attachments.length) firstMsg.attachments = attachments;
+    const im = await supabaseAdmin.from('support_messages').insert(firstMsg);
+    if ((im as any)?.error && attachments.length) await supabaseAdmin.from('support_messages').insert({ ticket_id: ticket.id, sender: 'user', body });
     // Nota interna con roles/plan/estado del usuario (solo la ve el equipo, no el trader).
     try {
       const ctx = await getSupportContext(user.id);

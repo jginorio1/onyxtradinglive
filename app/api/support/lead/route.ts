@@ -9,6 +9,29 @@ import { autoHandleTicket } from '@/lib/supportAI';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
+// Sube UNA imagen del visitante (data URL) al Storage y devuelve su URL pública.
+// Solo imágenes y con tope de tamaño; el visitante no tiene sesión, por eso la
+// subida es server-side y va a una carpeta "anon/". Nunca rompe el flujo del lead.
+const IMG_OK = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+const IMG_MAX = 6 * 1024 * 1024;
+async function uploadAnonImage(att: any): Promise<{ url: string; name: string; type: string } | null> {
+  try {
+    const data = String(att?.data || '');
+    const m = /^data:([^;]+);base64,([\s\S]+)$/.exec(data);
+    if (!m) return null;
+    const mediaType = m[1];
+    if (!IMG_OK.includes(mediaType)) return null;
+    const buf = Buffer.from(m[2], 'base64');
+    if (buf.byteLength > IMG_MAX) return null;
+    const name = String(att?.name || 'captura').replace(/[^\w.\- ]+/g, '_').slice(0, 80);
+    const path = `anon/${Date.now()}-${name}`;
+    const up = await supabaseAdmin.storage.from('chat-uploads').upload(path, buf, { contentType: mediaType, upsert: false });
+    if (up.error) return null;
+    const { data: pub } = supabaseAdmin.storage.from('chat-uploads').getPublicUrl(path);
+    return { url: pub.publicUrl, name, type: mediaType };
+  } catch { return null; }
+}
+
 // Captura de un visitante SIN cuenta: crea un ticket-lead con su correo.
 // Endpoint público (no requiere sesión), acotado para evitar abuso.
 export async function POST(req: Request) {
@@ -33,6 +56,10 @@ export async function POST(req: Request) {
       .select('id').single();
     if (error || !ticket) return NextResponse.json({ error: error?.message || 'error' }, { status: 500 });
 
+    // Adjunto opcional: una sola imagen (captura). Se sube server-side.
+    const img = b.attachment ? await uploadAnonImage(b.attachment) : null;
+    const attList = img ? [{ url: img.url, name: img.name, type: img.type }] : [];
+
     // Guardamos TODA la conversación con la IA en el hilo del ticket. Así el
     // equipo ve exactamente qué preguntó y qué respondió Onyx AI.
     const rows = history
@@ -40,9 +67,18 @@ export async function POST(req: Request) {
       .map((m) => ({ ticket_id: ticket.id, sender: m.role === 'assistant' ? 'ai' : 'user', body: String(m.content).slice(0, 4000) }));
 
     if (rows.length) {
-      await supabaseAdmin.from('support_messages').insert(rows);
-    } else if (message) {
-      await supabaseAdmin.from('support_messages').insert({ ticket_id: ticket.id, sender: 'user', body: message });
+      // La captura se adjunta al último mensaje del usuario (o al primero si no hay).
+      if (attList.length) {
+        for (let i = rows.length - 1; i >= 0; i--) { if (rows[i].sender === 'user') { (rows[i] as any).attachments = attList; break; } }
+        if (!rows.some((r: any) => r.attachments)) (rows[0] as any).attachments = attList;
+      }
+      const r = await supabaseAdmin.from('support_messages').insert(rows);
+      if ((r as any)?.error && attList.length) await supabaseAdmin.from('support_messages').insert(rows.map(({ attachments, ...m }: any) => m));
+    } else if (message || attList.length) {
+      const one: any = { ticket_id: ticket.id, sender: 'user', body: message || (lang === 'en' ? '(screenshot attached)' : '(captura adjunta)') };
+      if (attList.length) one.attachments = attList;
+      const r = await supabaseAdmin.from('support_messages').insert(one);
+      if ((r as any)?.error) await supabaseAdmin.from('support_messages').insert({ ticket_id: ticket.id, sender: 'user', body: one.body });
     } else {
       // Ni conversación ni mensaje: dejó su correo sin escribir. No dejamos el
       // hilo vacío, para que el equipo sepa qué pasó.

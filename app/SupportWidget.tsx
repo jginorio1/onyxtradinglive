@@ -46,6 +46,8 @@ export default function SupportWidget({ loggedIn = false, cfg }: { loggedIn?: bo
   const [leadMsg, setLeadMsg] = useState('');
   const [sent, setSent] = useState(false);
   const [err, setErr] = useState('');
+  const [attach, setAttach] = useState<{ data: string; name: string; type: string } | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const [device, setDevice] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
   const [tease, setTease] = useState(false);
   const [roleInfo, setRoleInfo] = useState<any>(null);   // { name, roles } del usuario logueado
@@ -61,6 +63,23 @@ export default function SupportWidget({ loggedIn = false, cfg }: { loggedIn?: bo
     try { const s = JSON.parse(localStorage.getItem('onyx_chat_ui') || 'null'); if (s) { if (s.big) setBig(true); if (s.side) setSideOv(s.side); if (s.w && s.h) setDim({ w: s.w, h: s.h }); } } catch {}
   }, []);
   const persistUi = (patch: any) => { try { const cur = JSON.parse(localStorage.getItem('onyx_chat_ui') || '{}'); localStorage.setItem('onyx_chat_ui', JSON.stringify({ ...cur, ...patch })); } catch {} };
+
+  // Memoria de la conversación entre sesiones (7 días). Solo en este navegador.
+  const CHAT_TTL = 7 * 864e5;
+  useEffect(() => {
+    try {
+      const s = JSON.parse(localStorage.getItem('onyx_chat_log') || 'null');
+      if (s && Array.isArray(s.msgs) && s.t && (Date.now() - s.t) < CHAT_TTL) setChat(s.msgs.slice(-30));
+      else localStorage.removeItem('onyx_chat_log');
+    } catch {}
+  }, []);
+  useEffect(() => {
+    try {
+      if (chat.length) localStorage.setItem('onyx_chat_log', JSON.stringify({ t: Date.now(), msgs: chat.slice(-30) }));
+      else localStorage.removeItem('onyx_chat_log');
+    } catch {}
+  }, [chat]);
+  function clearChat() { setChat([]); setRefs([]); setActions([]); setShowEmail(false); setSent(false); setAttach(null); try { localStorage.removeItem('onyx_chat_log'); } catch {} }
 
   // Dispositivo actual (para ocultar/posicionar según la pantalla).
   useEffect(() => {
@@ -108,15 +127,46 @@ export default function SupportWidget({ loggedIn = false, cfg }: { loggedIn?: bo
     setBusy(false);
   }
 
-  async function sendLead() {
+  // Elegir una captura (imagen) para adjuntar al ticket. Abre el panel de contacto.
+  function pickFile() { fileRef.current?.click(); }
+  function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0]; e.target.value = '';
+    if (!f) return;
+    if (!/^image\//.test(f.type)) { setErr(es ? 'Solo imágenes.' : 'Images only.'); setShowEmail(true); return; }
+    if (f.size > 6 * 1024 * 1024) { setErr(es ? 'La imagen supera 6 MB.' : 'Image over 6 MB.'); setShowEmail(true); return; }
+    const rd = new FileReader();
+    rd.onload = () => { setAttach({ data: String(rd.result), name: f.name, type: f.type }); setErr(''); setShowEmail(true); };
+    rd.readAsDataURL(f);
+  }
+
+  // Enviar a soporte. Con sesión → crea un ticket (con la captura si hay). Sin
+  // sesión → deja un lead con su correo (la captura se sube en el servidor).
+  async function sendContact() {
+    const msg = leadMsg.trim();
+    if (loggedIn) {
+      if (!msg && !attach) { setErr(t.errMsg); return; }
+      setErr(''); setBusy(true);
+      try {
+        let atts: any[] = [];
+        if (attach) {
+          const up = await fetch('/api/chat/upload', { method: 'POST', body: JSON.stringify({ data: attach.data, name: attach.name, type: attach.type }) });
+          const uj = await up.json().catch(() => ({}));
+          if (up.ok && uj.url) atts = [{ url: uj.url, name: uj.name, type: uj.type }];
+        }
+        const lastQ = [...chat].reverse().find((m) => m.role === 'user')?.content || msg;
+        const subject = (lastQ || msg || (es ? 'Consulta desde el chat' : 'Chat question')).slice(0, 120);
+        await fetch('/api/support/tickets', { method: 'POST', body: JSON.stringify({ subject, body: msg, category: 'general', attachments: atts }) });
+      } catch {}
+      setBusy(false); setSent(true); setShowEmail(false); setAttach(null);
+      return;
+    }
     const e = email.trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e)) { setErr(t.errMail); return; }
-    const msg = leadMsg.trim();
-    if (!msg) { setErr(t.errMsg); return; }
+    if (!msg && !attach) { setErr(t.errMsg); return; }
     setErr(''); setBusy(true);
     const history = chat.filter((m) => m.role === 'user' || m.role === 'assistant').map((m) => ({ role: m.role, content: m.content }));
-    await fetch('/api/support/lead', { method: 'POST', body: JSON.stringify({ email: e, message: msg, history, lang }) });
-    setBusy(false); setSent(true); setShowEmail(false);
+    await fetch('/api/support/lead', { method: 'POST', body: JSON.stringify({ email: e, message: msg, history, lang, attachment: attach ? { data: attach.data, name: attach.name, type: attach.type } : null }) });
+    setBusy(false); setSent(true); setShowEmail(false); setAttach(null);
   }
 
   const bubble = (role: string) => role === 'user'
@@ -259,6 +309,11 @@ export default function SupportWidget({ loggedIn = false, cfg }: { loggedIn?: bo
                 {x.online}
               </div>
             </div>
+            {started && (
+              <HBtn onClick={clearChat} label={es ? 'Nueva conversación' : 'New conversation'}>
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3 6h10M6.5 6V4.5h3V6M5 6l.6 7h4.8L11 6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              </HBtn>
+            )}
             {!isMobile && (
               <HBtn onClick={toggleSide} label={sideC === 'right' ? (es ? 'Mover a la izquierda' : 'Move left') : (es ? 'Mover a la derecha' : 'Move right')}>
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ transform: sideC === 'right' ? 'none' : 'scaleX(-1)' }}><path d="M10 3 L5 8 L10 13" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -315,10 +370,28 @@ export default function SupportWidget({ loggedIn = false, cfg }: { loggedIn?: bo
               <div style={{ background: 'rgba(124,140,255,.10)', border: '1px solid var(--brand)', borderRadius: 10, padding: 10, marginTop: 4 }}>
                 <div style={{ fontSize: 12, color: 'var(--tx)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="💬" size={14} glow={false} /> {t.msgT}</div>
                 <textarea value={leadMsg} onChange={(e) => setLeadMsg(e.target.value)} placeholder={t.msgPh} rows={3} style={{ width: '100%', margin: '0 0 8px', fontSize: 13, resize: 'vertical' }} />
-                <div style={{ fontSize: 12, color: 'var(--tx)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="📧" size={14} glow={false} /> {t.emailT}</div>
+
+                {/* Captura adjunta: previsualización + quitar */}
+                {attach && (
+                  <div className="row" style={{ gap: 8, alignItems: 'center', marginBottom: 8, background: 'var(--card2)', border: '1px solid var(--line)', borderRadius: 8, padding: 6 }}>
+                    <img src={attach.data} alt="" style={{ width: 42, height: 42, borderRadius: 6, objectFit: 'cover', flex: 'none' }} />
+                    <span style={{ fontSize: 12, color: 'var(--tx)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{attach.name}</span>
+                    <button onClick={() => setAttach(null)} aria-label="remove" style={{ background: 'none', border: 'none', color: 'var(--mut)', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>×</button>
+                  </div>
+                )}
+                {/* Botón adjuntar captura */}
+                <button className="btn btn-ghost" style={{ padding: '6px 10px', fontSize: 12, marginBottom: 8, display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={pickFile} type="button">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M12 7l-4.5 4.5a2.5 2.5 0 0 1-3.5-3.5L8.5 3.5a1.6 1.6 0 0 1 2.3 2.3L6.3 10.3a.8.8 0 0 1-1.1-1.1L9 5.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  {attach ? (es ? 'Cambiar captura' : 'Change screenshot') : (es ? 'Adjuntar captura' : 'Attach screenshot')}
+                </button>
+
+                {!loggedIn && <>
+                  <div style={{ fontSize: 12, color: 'var(--tx)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="📧" size={14} glow={false} /> {t.emailT}</div>
+                  <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t.emailPh} style={{ width: '100%', margin: '0 0 8px', fontSize: 13 }} />
+                </>}
                 <div className="row" style={{ gap: 6 }}>
-                  <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t.emailPh} style={{ flex: 1, margin: 0, fontSize: 13 }} />
-                  <button className="btn btn-primary" style={{ padding: '8px 12px', fontSize: 13 }} onClick={sendLead} disabled={busy}>{t.send}</button>
+                  <span style={{ flex: 1, fontSize: 11, color: 'var(--mut)' }}>{es ? 'No incluyas contraseñas ni números de tarjeta en la captura.' : 'Don\'t include passwords or card numbers in the screenshot.'}</span>
+                  <button className="btn btn-primary" style={{ padding: '8px 12px', fontSize: 13 }} onClick={sendContact} disabled={busy}>{busy ? '…' : t.send}</button>
                 </div>
                 {err && <div style={{ color: 'var(--amber)', fontSize: 12, marginTop: 6 }}>{err}</div>}
               </div>
@@ -342,6 +415,10 @@ export default function SupportWidget({ loggedIn = false, cfg }: { loggedIn?: bo
                 </div>
               )}
               <div className="row" style={{ gap: 6 }}>
+                <input ref={fileRef} type="file" accept="image/*" onChange={onFile} style={{ display: 'none' }} />
+                <button className="btn btn-ghost" style={{ padding: '9px 11px', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }} onClick={() => { openEmail(); pickFile(); }} disabled={busy} aria-label={es ? 'Adjuntar captura' : 'Attach screenshot'} title={es ? 'Adjuntar captura' : 'Attach screenshot'} type="button">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M12 7l-4.5 4.5a2.5 2.5 0 0 1-3.5-3.5L8.5 3.5a1.6 1.6 0 0 1 2.3 2.3L6.3 10.3a.8.8 0 0 1-1.1-1.1L9 5.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                </button>
                 <input value={ask} onChange={(e) => setAsk(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') sendAI(); }} placeholder={x.ph} style={{ flex: 1, margin: 0, fontSize: 13 }} />
                 <button className="btn btn-primary" style={{ padding: '9px 13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => sendAI()} disabled={busy || !ask.trim()} aria-label={t.send}><OnyxIcon name="send" size={16} glow={false} /></button>
               </div>
