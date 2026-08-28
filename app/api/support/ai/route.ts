@@ -4,7 +4,8 @@ import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { ARTICLES, searchArticles, type Lang } from '@/lib/guide';
 import { supportChatReply } from '@/lib/supportAI';
-import { getSupportContext, contextToPrompt } from '@/lib/supportContext';
+import { getSupportContext, contextToPrompt, proactiveRules, suggestActions } from '@/lib/supportContext';
+import { chatWidgetSettings } from '@/lib/settings';
 import { logError } from '@/lib/errlog';
 
 export const dynamic = 'force-dynamic';
@@ -58,9 +59,16 @@ export async function POST(req: Request) {
     // Contexto de la cuenta (solo con sesión), para respuestas conscientes.
     // Fase 1: roles (trader/embajador/mentor) + estados, sin cifras ni datos de terceros.
     let acctContext = '';
+    let actions: Array<{ label: string; url: string }> = [];
     if (user) {
+      const cfg = await chatWidgetSettings().catch(() => null as any);
+      const wantProactive = cfg?.aiProactive !== false;
+      const wantUpsell = cfg?.aiUpsell !== false;
       const ctx = await getSupportContext(user.id);
       acctContext = contextToPrompt(ctx, lang === 'en');
+      if (wantProactive) acctContext += `\n\n${proactiveRules(lang === 'en', wantUpsell)}`;
+      // Botones de acción (deep-links) según estado + intención de la pregunta.
+      try { actions = suggestActions(ctx, question, lang === 'en', wantUpsell); } catch { actions = []; }
     } else {
       acctContext = lang === 'en'
         ? `=== CONTEXT ===\nThis is a VISITOR without an account. If it fits, naturally invite them to create a free account or leave their email so we can reply. Do not be pushy.`
@@ -84,7 +92,7 @@ export async function POST(req: Request) {
         : `El asistente está ocupado ahora. Mientras tanto, este artículo debería ayudarte: "${top.title.es}". También puedes abrir un ticket.`;
       return NextResponse.json({ answer, articles: refs, escalate: true, mode: 'fallback' });
     }
-    return NextResponse.json({ answer: r.answer, articles: refs, escalate: false, mode: 'ai' });
+    return NextResponse.json({ answer: r.answer, articles: refs, actions, escalate: false, mode: 'ai' });
   } catch (e: any) {
     await logError('support_ai', e);
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });

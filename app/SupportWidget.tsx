@@ -40,6 +40,7 @@ export default function SupportWidget({ loggedIn = false, cfg }: { loggedIn?: bo
   const [ask, setAsk] = useState('');
   const [busy, setBusy] = useState(false);
   const [refs, setRefs] = useState<any[]>([]);
+  const [actions, setActions] = useState<Array<{ label: string; url: string }>>([]);
   const [showEmail, setShowEmail] = useState(false);
   const [email, setEmail] = useState('');
   const [leadMsg, setLeadMsg] = useState('');
@@ -48,8 +49,18 @@ export default function SupportWidget({ loggedIn = false, cfg }: { loggedIn?: bo
   const [device, setDevice] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
   const [tease, setTease] = useState(false);
   const [roleInfo, setRoleInfo] = useState<any>(null);   // { name, roles } del usuario logueado
+  // Preferencias de ventana (escritorio/tablet): tamaño, expandido y lado. Se recuerdan.
+  const [big, setBig] = useState(false);
+  const [sideOv, setSideOv] = useState<'left' | 'right' | null>(null);
+  const [dim, setDim] = useState<{ w: number; h: number } | null>(null);
   const end = useRef<HTMLDivElement>(null);
   const started = chat.length > 0;
+
+  // Cargar preferencias guardadas una vez.
+  useEffect(() => {
+    try { const s = JSON.parse(localStorage.getItem('onyx_chat_ui') || 'null'); if (s) { if (s.big) setBig(true); if (s.side) setSideOv(s.side); if (s.w && s.h) setDim({ w: s.w, h: s.h }); } } catch {}
+  }, []);
+  const persistUi = (patch: any) => { try { const cur = JSON.parse(localStorage.getItem('onyx_chat_ui') || '{}'); localStorage.setItem('onyx_chat_ui', JSON.stringify({ ...cur, ...patch })); } catch {} };
 
   // Dispositivo actual (para ocultar/posicionar según la pantalla).
   useEffect(() => {
@@ -85,12 +96,13 @@ export default function SupportWidget({ loggedIn = false, cfg }: { loggedIn?: bo
   async function sendAI(q?: string) {
     const question = (q ?? ask).trim(); if (!question || busy) return;
     const next = [...chat, { role: 'user', content: question }];
-    setChat(next); setAsk(''); setBusy(true); setRefs([]);
+    setChat(next); setAsk(''); setBusy(true); setRefs([]); setActions([]);
     try {
       const r = await fetch('/api/support/ai', { method: 'POST', body: JSON.stringify({ question, history: chat, lang }) });
       const j = await r.json();
       setChat([...next, { role: 'assistant', content: j.answer || '…' }]);
       setRefs(j.articles || []);
+      setActions(Array.isArray(j.actions) ? j.actions : []);
       if (!loggedIn && j.escalate) openEmail();
     } catch { setChat([...next, { role: 'assistant', content: '…' }]); }
     setBusy(false);
@@ -133,8 +145,11 @@ export default function SupportWidget({ loggedIn = false, cfg }: { loggedIn?: bo
   if (rr?.ambassador && rr.ambassador !== 'none') roleTopics.push([es ? '¿Cómo veo mi enlace y comisión de embajador?' : 'How do I see my ambassador link and commission?', es ? '🎯 Mi enlace y comisión' : '🎯 My link & commission']);
   if (rr?.mentor) roleTopics.push([es ? '¿Cómo cobro como mentor y conecto mi Stripe?' : 'How do I get paid as a mentor and connect Stripe?', es ? '🎓 Cobros de mentor' : '🎓 Mentor payouts']);
   const topics = [...roleTopics, ...baseTopics];
-  // Saludo personalizado por nombre si hay sesión.
-  const greet = roleInfo?.name ? `${es ? '¡Hola' : 'Hi'} ${roleInfo.name}! ${x.hi}` : x.hi;
+  // Saludo personalizado por nombre si hay sesión. Evita "¡Hola! ¡Hola!" quitando
+  // el saludo inicial que ya trae el texto configurado antes de anteponer el nombre.
+  const greet = roleInfo?.name
+    ? `${es ? '¡Hola' : 'Hi'} ${roleInfo.name}! ` + x.hi.replace(/^\s*(¡?\s*hola\s*!?|hi\s*!?|hello\s*!?|hey\s*!?)[,\s]*/i, '')
+    : x.hi;
 
   // Separa un emoji inicial de la etiqueta y lo pinta como icono de línea.
   const iconLabel = (label: string, size = 14) => {
@@ -147,8 +162,46 @@ export default function SupportWidget({ loggedIn = false, cfg }: { loggedIn?: bo
   const grad = cfg.gradient ? `linear-gradient(135deg, ${cfg.c1}, ${cfg.c2})` : cfg.c1;
   const themeVars: any = { ['--grad']: grad, ['--brand']: cfg.accent };
   const side = cfg.side === 'left' ? 'left' : 'right';
+  const sideC: 'left' | 'right' = sideOv || side;   // lado efectivo del panel (con override)
   const ox = Math.max(0, cfg.offsetX ?? 18), oy = Math.max(0, cfg.offsetY ?? 18);
   const lsz = Math.min(80, Math.max(40, cfg.launcherSize ?? 54));
+  const isMobile = device === 'mobile';
+
+  // Redimensionar (solo escritorio/tablet, no expandido). Ancla abajo-lado, así que
+  // el tirador vive en la esquina superior interior y crece hacia el centro.
+  function onResizeDown(e: React.PointerEvent) {
+    if (isMobile || big) return;
+    e.preventDefault(); e.stopPropagation();
+    const startX = e.clientX, startY = e.clientY;
+    const startW = dim?.w ?? 344;
+    const startH = dim?.h ?? Math.min((typeof window !== 'undefined' ? window.innerHeight : 800) - 40, 560);
+    const move = (ev: PointerEvent) => {
+      const dw = sideC === 'right' ? (startX - ev.clientX) : (ev.clientX - startX);
+      const dh = startY - ev.clientY;
+      const vw = window.innerWidth, vh = window.innerHeight;
+      const w = Math.round(Math.min(Math.min(560, vw - 24), Math.max(320, startW + dw)));
+      const h = Math.round(Math.min(vh - 40, Math.max(400, startH + dh)));
+      setDim({ w, h });
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up);
+      setDim((d) => { if (d) persistUi({ w: d.w, h: d.h }); return d; });
+    };
+    window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
+  }
+  const toggleBig = () => setBig((b) => { const n = !b; persistUi({ big: n }); return n; });
+  const toggleSide = () => { const n: 'left' | 'right' = sideC === 'right' ? 'left' : 'right'; setSideOv(n); persistUi({ side: n }); };
+
+  // Estilo del panel según dispositivo / expandido / tamaño recordado.
+  const panelBase: any = { zIndex: 61, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, boxShadow: '0 14px 40px rgba(0,0,0,.45)', overflow: 'hidden', display: 'flex', flexDirection: 'column' };
+  const panelStyle: any = big && !isMobile
+    ? { ...panelBase, position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 'min(640px, 94vw)', height: 'min(88vh, 900px)', maxHeight: '88vh' }
+    : { ...panelBase, position: 'fixed', [sideC]: ox, bottom: oy, width: dim?.w ?? 344, maxWidth: 'calc(100vw - 24px)', ...(dim?.h ? { height: dim.h } : { maxHeight: 'calc(100vh - 40px)' }) };
+
+  // Botón de icono en la cabecera (expandir / anclar), en línea moderna.
+  const HBtn = ({ onClick, label, children }: any) => (
+    <button onClick={onClick} aria-label={label} title={label} style={{ background: 'rgba(255,255,255,.15)', border: 'none', color: cfg.fg || '#fff', cursor: 'pointer', width: 30, height: 30, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>{children}</button>
+  );
 
   const avatar = (sz: number) => cfg.avatarUrl
     ? <img src={cfg.avatarUrl} alt="" style={{ width: sz, height: sz, borderRadius: 8, objectFit: 'cover', flex: 'none' }} />
@@ -162,8 +215,9 @@ export default function SupportWidget({ loggedIn = false, cfg }: { loggedIn?: bo
         @keyframes onyxTease{0%{opacity:0;transform:translateY(6px)}100%{opacity:1;transform:translateY(0)}}
         .onyx-pulse{animation:onyxPulse 1.4s ease-in-out infinite}
         .onyx-d1{animation:onyxType 1.2s infinite}.onyx-d2{animation:onyxType 1.2s .2s infinite}.onyx-d3{animation:onyxType 1.2s .4s infinite}
-        @media(max-width:520px){.onyx-panel{right:0!important;left:0!important;top:0!important;bottom:0!important;width:100%!important;max-width:100%!important;height:100dvh!important;max-height:100dvh!important;border-radius:0!important}
-        .onyx-panel input,.onyx-panel textarea{font-size:16px!important}}
+        @media(max-width:520px){.onyx-panel{right:0!important;left:0!important;top:0!important;bottom:0!important;transform:none!important;width:100%!important;max-width:100%!important;height:100dvh!important;max-height:100dvh!important;border-radius:0!important}
+        .onyx-panel input,.onyx-panel textarea{font-size:16px!important}
+        .onyx-resize{display:none!important}}
       `}</style>
 
       {!open && (
@@ -186,7 +240,16 @@ export default function SupportWidget({ loggedIn = false, cfg }: { loggedIn?: bo
       )}
 
       {open && (
-        <div className="onyx-panel" style={{ position: 'fixed', [side]: ox, bottom: oy, zIndex: 61, width: 344, maxWidth: 'calc(100vw - 24px)', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, boxShadow: '0 14px 40px rgba(0,0,0,.45)', overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 40px)' }}>
+        <div className="onyx-panel" style={panelStyle}>
+          {/* Tirador para redimensionar (escritorio/tablet, no expandido) */}
+          {!isMobile && !big && (
+            <div className="onyx-resize" onPointerDown={onResizeDown}
+              style={{ position: 'absolute', top: 5, [sideC === 'right' ? 'left' : 'right']: 5, width: 18, height: 18, cursor: sideC === 'right' ? 'nwse-resize' : 'nesw-resize', zIndex: 6, color: cfg.fg || '#fff', opacity: .85, touchAction: 'none' }} aria-label={es ? 'Redimensionar' : 'Resize'} title={es ? 'Arrastra para redimensionar' : 'Drag to resize'}>
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" style={{ transform: sideC === 'right' ? 'none' : 'scaleX(-1)' }}>
+                <path d="M4 14 L14 4 M4 9 L9 4 M4 14 L14 14 L14 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" opacity=".55" />
+              </svg>
+            </div>
+          )}
           <div style={{ background: 'var(--grad)', color: cfg.fg || '#fff', padding: 'calc(12px + env(safe-area-inset-top)) 14px 12px', display: 'flex', alignItems: 'center', gap: 10, flex: 'none' }}>
             {avatar(30)}
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -196,6 +259,18 @@ export default function SupportWidget({ loggedIn = false, cfg }: { loggedIn?: bo
                 {x.online}
               </div>
             </div>
+            {!isMobile && (
+              <HBtn onClick={toggleSide} label={sideC === 'right' ? (es ? 'Mover a la izquierda' : 'Move left') : (es ? 'Mover a la derecha' : 'Move right')}>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ transform: sideC === 'right' ? 'none' : 'scaleX(-1)' }}><path d="M10 3 L5 8 L10 13" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              </HBtn>
+            )}
+            {!isMobile && (
+              <HBtn onClick={toggleBig} label={big ? (es ? 'Reducir' : 'Shrink') : (es ? 'Expandir' : 'Expand')}>
+                {big
+                  ? <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M9 3 L9 7 L13 7 M7 13 L7 9 L3 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  : <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M9 3 L13 3 L13 7 M7 13 L3 13 L3 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+              </HBtn>
+            )}
             <button onClick={() => setOpen(false)} aria-label="close" style={{ background: 'rgba(255,255,255,.15)', border: 'none', color: cfg.fg || '#fff', fontSize: 20, cursor: 'pointer', lineHeight: 1, width: 34, height: 34, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>×</button>
           </div>
 
@@ -220,6 +295,15 @@ export default function SupportWidget({ loggedIn = false, cfg }: { loggedIn?: bo
                 <span className="onyx-d1" style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: 'var(--mut)', margin: '0 2px' }} />
                 <span className="onyx-d2" style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: 'var(--mut)', margin: '0 2px' }} />
                 <span className="onyx-d3" style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: 'var(--mut)', margin: '0 2px' }} />
+              </div>
+            )}
+            {actions.length > 0 && (
+              <div style={{ alignSelf: 'flex-start', display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
+                {actions.map((a) => (
+                  <Link key={a.url} href={a.url} onClick={() => setOpen(false)} className="btn btn-primary" style={{ padding: '7px 12px', fontSize: 12.5, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    {a.label} <OnyxIcon name="send" size={13} glow={false} />
+                  </Link>
+                ))}
               </div>
             )}
             {refs.length > 0 && (

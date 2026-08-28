@@ -157,6 +157,21 @@ export default function ChatWidgetEditor() {
             </div>
           </Sec>
 
+          <Sec ic="🧠" title={L('IA consciente del estado (usuarios logueados)', 'State-aware AI (logged-in users)')}>
+            <p style={{ fontSize: 12.5, color: 'var(--mut)', margin: '0 0 10px' }}>
+              {L('Usa el estado real del usuario (plan, conector, roles) para adivinar su problema y sugerir el siguiente paso con botones. Solo estados, nunca saldos ni datos de terceros.',
+                 'Uses the user\'s real state (plan, connector, roles) to guess their problem and suggest the next step with buttons. States only, never balances or third-party data.')}
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--card2)', borderRadius: 8, padding: '8px 11px' }}>
+                <span style={{ fontSize: 13 }}>{L('Sugerencias proactivas (siguiente paso + botones)', 'Proactive suggestions (next step + buttons)')}</span><Tog on={c.aiProactive !== false} set={(v) => u('aiProactive', v)} />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--card2)', borderRadius: 8, padding: '8px 11px' }}>
+                <span style={{ fontSize: 13 }}>{L('Permitir sugerir subir de plan (medido, solo si es relevante)', 'Allow plan-upgrade nudges (measured, only when relevant)')}</span><Tog on={c.aiUpsell !== false} set={(v) => u('aiUpsell', v)} />
+              </div>
+            </div>
+          </Sec>
+
           <Sec ic="📱" title={L('Por dispositivo', 'Per device')}>
             <div style={{ ...two, gridTemplateColumns: '1fr 1fr' }}>
               <div><span style={lbl}>{L('Lado', 'Side')}</span>
