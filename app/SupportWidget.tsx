@@ -240,7 +240,10 @@ export default function SupportWidget({ loggedIn = false, cfg }: { loggedIn?: bo
     window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
   }
   const toggleBig = () => setBig((b) => { const n = !b; persistUi({ big: n }); return n; });
-  const toggleSide = () => { const n: 'left' | 'right' = sideC === 'right' ? 'left' : 'right'; setSideOv(n); persistUi({ side: n }); };
+  // Hay tirador de tamaño (esquina superior interior) solo en escritorio/tablet sin expandir.
+  const gripOn = !isMobile && !big;
+  const headPadL = gripOn && sideC === 'right' ? 30 : 14;
+  const headPadR = gripOn && sideC === 'left' ? 30 : 14;
 
   // Estilo del panel según dispositivo / expandido / tamaño recordado.
   const panelBase: any = { zIndex: 61, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, boxShadow: '0 14px 40px rgba(0,0,0,.45)', overflow: 'hidden', display: 'flex', flexDirection: 'column' };
@@ -291,32 +294,27 @@ export default function SupportWidget({ loggedIn = false, cfg }: { loggedIn?: bo
 
       {open && (
         <div className="onyx-panel" style={panelStyle}>
-          {/* Tirador para redimensionar (escritorio/tablet, no expandido) */}
-          {!isMobile && !big && (
+          {/* Tirador para redimensionar (escritorio/tablet, no expandido) — chip visible en la esquina interior */}
+          {gripOn && (
             <div className="onyx-resize" onPointerDown={onResizeDown}
-              style={{ position: 'absolute', top: 5, [sideC === 'right' ? 'left' : 'right']: 5, width: 18, height: 18, cursor: sideC === 'right' ? 'nwse-resize' : 'nesw-resize', zIndex: 6, color: cfg.fg || '#fff', opacity: .85, touchAction: 'none' }} aria-label={es ? 'Redimensionar' : 'Resize'} title={es ? 'Arrastra para redimensionar' : 'Drag to resize'}>
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" style={{ transform: sideC === 'right' ? 'none' : 'scaleX(-1)' }}>
-                <path d="M4 14 L14 4 M4 9 L9 4 M4 14 L14 14 L14 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" opacity=".55" />
+              style={{ position: 'absolute', top: 8, [sideC === 'right' ? 'left' : 'right']: 8, width: 20, height: 20, borderRadius: 6, background: 'rgba(255,255,255,.16)', border: '0.5px solid rgba(255,255,255,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: sideC === 'right' ? 'nwse-resize' : 'nesw-resize', zIndex: 6, color: '#fff', touchAction: 'none' }} aria-label={es ? 'Estirar el chat' : 'Resize'} title={es ? 'Arrastra para estirar el chat' : 'Drag to resize'}>
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style={{ transform: sideC === 'right' ? 'none' : 'scaleX(-1)' }}>
+                <path d="M13 3 L3 13 M13 7 L7 13 M13 11 L11 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
               </svg>
             </div>
           )}
-          <div style={{ background: 'var(--grad)', color: cfg.fg || '#fff', padding: 'calc(12px + env(safe-area-inset-top)) 14px 12px', display: 'flex', alignItems: 'center', gap: 10, flex: 'none' }}>
+          <div style={{ background: 'var(--grad)', color: cfg.fg || '#fff', padding: `calc(12px + env(safe-area-inset-top)) ${headPadR}px 12px ${headPadL}px`, display: 'flex', alignItems: 'center', gap: 9, flex: 'none' }}>
             {avatar(30)}
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 700, fontSize: 14 }}>{human ? x.humanTitle : x.title}</div>
-              <div style={{ fontSize: 11, opacity: .9, display: 'flex', alignItems: 'center', gap: 5 }}>
-                {cfg.showPulse && <span className="onyx-pulse" style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--green)' }} />}
-                {x.online}
+              <div style={{ fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{human ? x.humanTitle : x.title}</div>
+              <div style={{ fontSize: 11, opacity: .9, display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap', overflow: 'hidden' }}>
+                {cfg.showPulse && <span className="onyx-pulse" style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--green)', flex: 'none' }} />}
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{x.online}</span>
               </div>
             </div>
             {started && (
               <HBtn onClick={clearChat} label={es ? 'Nueva conversación' : 'New conversation'}>
                 <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3 6h10M6.5 6V4.5h3V6M5 6l.6 7h4.8L11 6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
-              </HBtn>
-            )}
-            {!isMobile && (
-              <HBtn onClick={toggleSide} label={sideC === 'right' ? (es ? 'Mover a la izquierda' : 'Move left') : (es ? 'Mover a la derecha' : 'Move right')}>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ transform: sideC === 'right' ? 'none' : 'scaleX(-1)' }}><path d="M10 3 L5 8 L10 13" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
               </HBtn>
             )}
             {!isMobile && (
