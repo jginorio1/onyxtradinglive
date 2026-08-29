@@ -49,7 +49,7 @@ export async function GET() {
 
     // Base editable de las cifras del landing (lo que el admin fija a mano).
     // La cifra que se muestra = base + real, y sube en vivo con el uso.
-    let lbase = { trades_base: 0, blocks_base: 0, accounts_base: 0, bots_built_base: 0, platforms: 4, readonly: 100 };
+    let lbase: any = { trades_base: 0, blocks_base: 0, accounts_base: 0, bots_built_base: 0, platforms: 4, readonly: 100, reviews: [] };
     try {
       const { data: ls } = await supabaseAdmin.from('app_settings').select('value').eq('key', 'landing_stats').maybeSingle();
       if (ls?.value) lbase = {
@@ -59,6 +59,7 @@ export async function GET() {
         bots_built_base: Number(ls.value.bots_built_base || 0),
         platforms: ls.value.platforms != null ? Number(ls.value.platforms) : 4,
         readonly: ls.value.readonly != null ? Number(ls.value.readonly) : 100,
+        reviews: Array.isArray(ls.value.reviews) ? ls.value.reviews : [],
       };
     } catch {}
     // Robots construidos en el Constructor (para la cifra del landing).
@@ -107,6 +108,16 @@ export async function PATCH(req: Request) {
     // Conserva las claves existentes (ej. copied_base) y solo actualiza lo enviado.
     let cur: any = {};
     try { const { data } = await supabaseAdmin.from('app_settings').select('value').eq('key', 'landing_stats').maybeSingle(); cur = data?.value || {}; } catch {}
+    // Reseñas del landing: solo si vienen en el body. Se saneen a 6 máx.
+    let reviews = Array.isArray(cur.reviews) ? cur.reviews : [];
+    if (Array.isArray(b.reviews)) {
+      reviews = b.reviews.slice(0, 6).map((r: any) => ({
+        name: String(r?.name || '').slice(0, 60),
+        result: String(r?.result || '').slice(0, 60),
+        text: String(r?.text || '').slice(0, 280),
+        stars: Math.max(1, Math.min(5, Math.round(Number(r?.stars) || 5))),
+      })).filter((r: any) => r.name && r.text);
+    }
     const value = {
       ...cur,
       trades_base: Math.max(0, Math.round(Number(b.trades_base) || 0)),
@@ -115,6 +126,7 @@ export async function PATCH(req: Request) {
       bots_built_base: Math.max(0, Math.round(Number(b.bots_built_base) || 0)),
       platforms: Math.max(0, Math.round(Number(b.platforms != null ? b.platforms : 4))),
       readonly: Math.max(0, Math.min(100, Math.round(Number(b.readonly != null ? b.readonly : 100)))),
+      reviews,
     };
     await supabaseAdmin.from('app_settings').upsert({ key: 'landing_stats', value, updated_at: new Date().toISOString() });
     return NextResponse.json({ ok: true });

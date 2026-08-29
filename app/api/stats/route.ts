@@ -54,6 +54,7 @@ export async function GET() {
     // Base editable de las cifras del landing (desde Admin → Módulos).
     // La cifra pública = base + real, y sube en vivo con el uso de todos.
     let tBase = 0, bBase = 0, aBase = 0, cBase = 0, builtBase = 0, platforms = 5, readonly = 100;
+    let reviews: any[] = [];   // reseñas del landing del constructor (editables desde Admin)
     try {
       const { data: ls } = await supabaseAdmin.from('app_settings').select('value').eq('key', 'landing_stats').maybeSingle();
       if (ls?.value) {
@@ -61,6 +62,7 @@ export async function GET() {
         cBase = Number(ls.value.copied_base || 0); builtBase = Number(ls.value.bots_built_base || 0);
         if (ls.value.platforms != null) platforms = Number(ls.value.platforms);
         if (ls.value.readonly != null) readonly = Number(ls.value.readonly);
+        if (Array.isArray(ls.value.reviews)) reviews = ls.value.reviews.slice(0, 6);
       }
     } catch {}
 
@@ -80,6 +82,7 @@ export async function GET() {
       copied: c > 0 ? c : SEED.copied,
       bots: bots > 0 ? bots : 1200,
       botsBuilt: (builtBase + botsBuiltReal) > 0 ? (builtBase + botsBuiltReal) : 500,
+      reviews,                      // reseñas del landing (vacío = sección oculta)
       platforms, readonly,          // valores fijos editables desde admin
       ambRate, ambCoupon, ambBase, ambMinPayout,
     }, { headers: NO_CACHE });

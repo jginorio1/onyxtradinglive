@@ -1168,7 +1168,7 @@ function Modules() {
     const load = () => fetch('/api/admin/modules').then((r) => r.json()).then((d: any) => {
       setM(d);
       // Solo la primera vez, para no pisar lo que el admin esté escribiendo.
-      setLf((prev: any) => prev ?? { trades_base: d.landing?.trades_base || 0, blocks_base: d.landing?.blocks_base || 0, accounts_base: d.landing?.accounts_base || 0, bots_built_base: d.landing?.bots_built_base || 0, platforms: d.landing?.platforms ?? 4, readonly: d.landing?.readonly ?? 100 });
+      setLf((prev: any) => prev ?? { trades_base: d.landing?.trades_base || 0, blocks_base: d.landing?.blocks_base || 0, accounts_base: d.landing?.accounts_base || 0, bots_built_base: d.landing?.bots_built_base || 0, platforms: d.landing?.platforms ?? 4, readonly: d.landing?.readonly ?? 100, reviews: Array.isArray(d.landing?.reviews) ? d.landing.reviews : [] });
     }).catch(() => setM((v: any) => v || {}));
     load(); const iv = setInterval(load, 20000); return () => clearInterval(iv);
   }, []);
@@ -1277,9 +1277,30 @@ function Modules() {
               <div className="muted" style={{ fontSize: 11.5, marginTop: 5 }}>{es ? 'Se muestra como' : 'Shows as'}: <b style={{ color: 'var(--soft-brand)' }}>{Number(lf.readonly ?? 100)}%</b></div>
             </div>
           </div>
-          <button className="btn btn-primary" style={{ marginTop: 14 }} onClick={saveLanding} disabled={savingL}>
-            {savingL ? (es ? 'Guardando…' : 'Saving…') : savedL ? (es ? '✓ Guardado' : '✓ Saved') : (es ? 'Guardar cifras' : 'Save numbers')}
-          </button>
+          {/* Reseñas del landing del constructor (/bot-builder). Vacío = sección oculta. */}
+          <div className="muted" style={{ fontSize: 12, margin: '18px 0 6px', fontWeight: 700 }}>{es ? 'Reseñas del landing (Constructor)' : 'Landing reviews (Builder)'}</div>
+          <p className="muted" style={{ fontSize: 11.5, marginBottom: 10 }}>{es ? 'Usa reseñas reales de tus traders. Si dejas todo vacío, la sección no aparece. Máx. 6.' : 'Use real reviews from your traders. Leave all empty to hide the section. Max 6.'}</p>
+          <div style={{ display: 'grid', gap: 10 }}>
+            {(lf.reviews && lf.reviews.length ? lf.reviews : [{ name: '', result: '', text: '', stars: 5 }]).map((rv: any, i: number) => (
+              <div key={i} style={{ border: '1px solid var(--line)', borderRadius: 10, padding: 10, display: 'grid', gridTemplateColumns: '1fr 1fr auto auto', gap: 8, alignItems: 'center' }}>
+                <input placeholder={es ? 'Nombre' : 'Name'} value={rv.name || ''} style={{ margin: 0 }} onChange={(e) => { const a = [...(lf.reviews || [])]; a[i] = { ...(a[i] || {}), name: e.target.value }; setLf({ ...lf, reviews: a }); }} />
+                <input placeholder={es ? 'Resultado (ej. Reto 50K pasado)' : 'Result (e.g. 50K challenge passed)'} value={rv.result || ''} style={{ margin: 0 }} onChange={(e) => { const a = [...(lf.reviews || [])]; a[i] = { ...(a[i] || {}), result: e.target.value }; setLf({ ...lf, reviews: a }); }} />
+                <select value={rv.stars || 5} style={{ margin: 0, width: 70 }} onChange={(e) => { const a = [...(lf.reviews || [])]; a[i] = { ...(a[i] || {}), stars: Number(e.target.value) }; setLf({ ...lf, reviews: a }); }}>
+                  {[5, 4, 3, 2, 1].map((s) => <option key={s} value={s}>{s}★</option>)}
+                </select>
+                <button className="btn btn-ghost" style={{ padding: '6px 10px' }} onClick={() => { const a = [...(lf.reviews || [])]; a.splice(i, 1); setLf({ ...lf, reviews: a }); }}>✕</button>
+                <textarea placeholder={es ? 'Texto de la reseña' : 'Review text'} value={rv.text || ''} rows={2} style={{ margin: 0, gridColumn: '1 / -1', width: '100%' }} onChange={(e) => { const a = [...(lf.reviews || [])]; a[i] = { ...(a[i] || {}), text: e.target.value }; setLf({ ...lf, reviews: a }); }} />
+              </div>
+            ))}
+          </div>
+          {(lf.reviews?.length || 0) < 6 && (
+            <button className="btn btn-ghost" style={{ marginTop: 8, padding: '6px 12px' }} onClick={() => setLf({ ...lf, reviews: [...(lf.reviews || []), { name: '', result: '', text: '', stars: 5 }] })}>{es ? '+ Añadir reseña' : '+ Add review'}</button>
+          )}
+          <div style={{ marginTop: 14 }}>
+            <button className="btn btn-primary" onClick={saveLanding} disabled={savingL}>
+              {savingL ? (es ? 'Guardando…' : 'Saving…') : savedL ? (es ? '✓ Guardado' : '✓ Saved') : (es ? 'Guardar cifras' : 'Save numbers')}
+            </button>
+          </div>
         </div>
       )}
 
