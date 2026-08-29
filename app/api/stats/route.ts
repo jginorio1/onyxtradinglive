@@ -36,6 +36,10 @@ export async function GET() {
     let bots = 0;
     try { const { count } = await supabaseAdmin.from('bots').select('*', { count: 'exact', head: true }); bots = Number(count || 0); } catch { /* tabla puede no existir */ }
 
+    // Robots construidos en el Constructor (cada receta guardada = un bot creado)
+    let botsBuiltReal = 0;
+    try { const { count } = await supabaseAdmin.from('bots_built').select('*', { count: 'exact', head: true }); botsBuiltReal = Number(count || 0); } catch { /* tabla puede no existir aún */ }
+
     // Comisión y cupón del embajador (del panel admin) para que el landing
     // muestre siempre las cifras reales: si las cambias en admin, cambian aquí.
     let ambRate = 30, ambCoupon = 20, ambBase = 20, ambMinPayout = 50;
@@ -49,12 +53,12 @@ export async function GET() {
 
     // Base editable de las cifras del landing (desde Admin → Módulos).
     // La cifra pública = base + real, y sube en vivo con el uso de todos.
-    let tBase = 0, bBase = 0, aBase = 0, cBase = 0, platforms = 5, readonly = 100;
+    let tBase = 0, bBase = 0, aBase = 0, cBase = 0, builtBase = 0, platforms = 5, readonly = 100;
     try {
       const { data: ls } = await supabaseAdmin.from('app_settings').select('value').eq('key', 'landing_stats').maybeSingle();
       if (ls?.value) {
         tBase = Number(ls.value.trades_base || 0); bBase = Number(ls.value.blocks_base || 0); aBase = Number(ls.value.accounts_base || 0);
-        cBase = Number(ls.value.copied_base || 0);
+        cBase = Number(ls.value.copied_base || 0); builtBase = Number(ls.value.bots_built_base || 0);
         if (ls.value.platforms != null) platforms = Number(ls.value.platforms);
         if (ls.value.readonly != null) readonly = Number(ls.value.readonly);
       }
@@ -75,10 +79,11 @@ export async function GET() {
       accounts: a > 0 ? a : SEED.accounts,
       copied: c > 0 ? c : SEED.copied,
       bots: bots > 0 ? bots : 1200,
+      botsBuilt: (builtBase + botsBuiltReal) > 0 ? (builtBase + botsBuiltReal) : 500,
       platforms, readonly,          // valores fijos editables desde admin
       ambRate, ambCoupon, ambBase, ambMinPayout,
     }, { headers: NO_CACHE });
   } catch {
-    return NextResponse.json({ trades: 1000, blocks: 80, accounts: 40, copied: 300, platforms: 5, readonly: 100, ambRate: 30, ambCoupon: 20, ambBase: 20, ambMinPayout: 50 }, { headers: NO_CACHE });
+    return NextResponse.json({ trades: 1000, blocks: 80, accounts: 40, copied: 300, bots: 1200, botsBuilt: 500, platforms: 5, readonly: 100, ambRate: 30, ambCoupon: 20, ambBase: 20, ambMinPayout: 50 }, { headers: NO_CACHE });
   }
 }

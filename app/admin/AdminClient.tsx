@@ -1047,11 +1047,11 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
               <div className="card">
                 <div className="row between" style={{ marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
                   <div className="row" style={{ gap: 10 }}><span style={{ fontSize: 18 }}>✨</span><h3>{lang === 'en' ? 'New landing (preview)' : 'Landing nueva (vista previa)'}</h3></div>
-                  <a className="btn btn-primary" href={`/lp.html?lang=${lang === 'en' ? 'en' : 'es'}`} target="_blank" rel="noopener">{lang === 'en' ? 'Open in new tab' : 'Abrir en pestaña'} ↗</a>
+                  <a className="btn btn-primary" href="/constructor" target="_blank" rel="noopener">{lang === 'en' ? 'Open in new tab' : 'Abrir en pestaña'} ↗</a>
                 </div>
-                <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{lang === 'en' ? 'Modern bilingual sales landing served at /lp.html (ES/EN switch). It does not replace your current homepage.' : 'Landing moderna y bilingüe servida en /lp.html (cambia ES/EN). No reemplaza tu página de inicio actual.'}</p>
-                <div style={{ border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden', background: '#0a0b12' }}>
-                  <iframe src={`/lp.html?lang=${lang === 'en' ? 'en' : 'es'}`} title="Landing nueva" style={{ width: '100%', height: 620, border: 0, display: 'block' }} />
+                <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{lang === 'en' ? 'Native bilingual landing at /constructor: line icons, live "bots built" counter and pricing from your Admin. Linked in the public menu. It does not replace your current homepage.' : 'Landing nativa y bilingüe en /constructor: iconos de línea, contador de "robots construidos" en vivo y precios desde tu Admin. Enlazada en el menú público. No reemplaza tu página de inicio actual.'}</p>
+                <div style={{ border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden', background: 'var(--bg2)' }}>
+                  <iframe src="/constructor" title="Landing constructor" style={{ width: '100%', height: 620, border: 0, display: 'block' }} />
                 </div>
               </div>
             )}
@@ -1168,7 +1168,7 @@ function Modules() {
     const load = () => fetch('/api/admin/modules').then((r) => r.json()).then((d: any) => {
       setM(d);
       // Solo la primera vez, para no pisar lo que el admin esté escribiendo.
-      setLf((prev: any) => prev ?? { trades_base: d.landing?.trades_base || 0, blocks_base: d.landing?.blocks_base || 0, accounts_base: d.landing?.accounts_base || 0, platforms: d.landing?.platforms ?? 4, readonly: d.landing?.readonly ?? 100 });
+      setLf((prev: any) => prev ?? { trades_base: d.landing?.trades_base || 0, blocks_base: d.landing?.blocks_base || 0, accounts_base: d.landing?.accounts_base || 0, bots_built_base: d.landing?.bots_built_base || 0, platforms: d.landing?.platforms ?? 4, readonly: d.landing?.readonly ?? 100 });
     }).catch(() => setM((v: any) => v || {}));
     load(); const iv = setInterval(load, 20000); return () => clearInterval(iv);
   }, []);
@@ -1253,6 +1253,7 @@ function Modules() {
               ['trades_base', es ? 'Operaciones analizadas' : 'Trades analyzed', m?.landing?.realTrades ?? 0],
               ['blocks_base', es ? 'Frenos del Guardian' : 'Guardian blocks', m?.landing?.realBlocks ?? 0],
               ['accounts_base', es ? 'Cuentas conectadas' : 'Connected accounts', m?.landing?.realAccounts ?? 0],
+              ['bots_built_base', es ? 'Robots construidos' : 'Bots built', m?.landing?.realBotsBuilt ?? 0],
             ].map(([k, label, real]: any) => (
               <div key={k}>
                 <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{label}</div>
