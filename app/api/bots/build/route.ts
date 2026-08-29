@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { cleanSpec, toSetFile, summarize, type BotSpec } from '@/lib/botSpec';
+import { renderMT5 } from '@/lib/botGen';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -14,14 +15,20 @@ export async function GET(req: Request) {
     if (!user) return NextResponse.json({ error: 'no autorizado' }, { status: 401 });
 
     const url = new URL(req.url);
-    const dl = url.searchParams.get('download');
+    const dl = url.searchParams.get('download') || url.searchParams.get('code');
     if (dl) {
+      const asCode = !!url.searchParams.get('code');
       const { data: bot } = await supabaseAdmin.from('bots_built').select('*').eq('id', dl).eq('user_id', user.id).maybeSingle();
       if (!bot) return NextResponse.json({ error: 'no encontrado' }, { status: 404 });
       const spec = cleanSpec((bot as any).spec);
+      const safe = (spec.name || 'bot').replace(/[^\w.\- ]+/g, '_').slice(0, 40);
+      if (asCode) {
+        // Fase 2: EA MT5 autónomo generado desde el spec.
+        const src = renderMT5(spec);
+        return new NextResponse(src, { headers: { 'content-type': 'text/plain; charset=utf-8', 'content-disposition': `attachment; filename="${safe}.mq5"` } });
+      }
       const set = toSetFile(spec);
-      const fname = (spec.name || 'bot').replace(/[^\w.\- ]+/g, '_').slice(0, 40) + '.set';
-      return new NextResponse(set, { headers: { 'content-type': 'text/plain; charset=utf-8', 'content-disposition': `attachment; filename="${fname}"` } });
+      return new NextResponse(set, { headers: { 'content-type': 'text/plain; charset=utf-8', 'content-disposition': `attachment; filename="${safe}.set"` } });
     }
 
     const { data } = await supabaseAdmin.from('bots_built').select('id,name,platform,magic,spec,created_at,updated_at').eq('user_id', user.id).order('updated_at', { ascending: false }).limit(100);

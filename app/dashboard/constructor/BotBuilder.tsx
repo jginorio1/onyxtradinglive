@@ -131,7 +131,8 @@ export default function BotBuilder() {
         <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12.5, background: 'var(--bg2)', borderRadius: 10, padding: 12, margin: 0, fontFamily: 'inherit', lineHeight: 1.6 }}>{summary}</pre>
         <div className="row" style={{ gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
           <button className="btn btn-primary" onClick={save} disabled={busy}>{busy ? '…' : (id ? L('Guardar cambios', 'Save changes') : L('Guardar bot', 'Save bot'))}</button>
-          {id && <a className="btn btn-ghost" href={`/api/bots/build?download=${id}`}>{L('Descargar .set (MT5)', 'Download .set (MT5)')} ↓</a>}
+          {id && <a className="btn btn-ghost" href={`/api/bots/build?code=${id}`}>{L('Descargar EA (.mq5)', 'Download EA (.mq5)')} ↓</a>}
+          {id && <a className="btn btn-ghost" href={`/api/bots/build?download=${id}`}>{L('Descargar config (.set)', 'Download config (.set)')} ↓</a>}
           {id && <button className="btn btn-ghost" onClick={nuevo}>{L('Nuevo bot', 'New bot')}</button>}
         </div>
         <p className="muted" style={{ fontSize: 11.5, marginTop: 10, lineHeight: 1.6 }}>{L('El .set configura tu EA base con estas reglas. Prueba SIEMPRE en DEMO antes de real. El código generado y su resultado son responsabilidad del trader; sin promesas de rentabilidad.', 'The .set configures your base EA with these rules. ALWAYS test on DEMO before going live. Generated code and its results are the trader\'s responsibility; no profit promises.')}</p>
