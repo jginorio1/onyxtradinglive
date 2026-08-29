@@ -1047,11 +1047,11 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
               <div className="card">
                 <div className="row between" style={{ marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
                   <div className="row" style={{ gap: 10 }}><span style={{ fontSize: 18 }}>✨</span><h3>{lang === 'en' ? 'New landing (preview)' : 'Landing nueva (vista previa)'}</h3></div>
-                  <a className="btn btn-primary" href="/lp.html" target="_blank" rel="noopener">{lang === 'en' ? 'Open in new tab' : 'Abrir en pestaña'} ↗</a>
+                  <a className="btn btn-primary" href={`/lp.html?lang=${lang === 'en' ? 'en' : 'es'}`} target="_blank" rel="noopener">{lang === 'en' ? 'Open in new tab' : 'Abrir en pestaña'} ↗</a>
                 </div>
-                <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{lang === 'en' ? 'Modern sales landing served at /lp.html. It does not replace your current homepage.' : 'Landing moderna de ventas servida en /lp.html. No reemplaza tu página de inicio actual.'}</p>
+                <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{lang === 'en' ? 'Modern bilingual sales landing served at /lp.html (ES/EN switch). It does not replace your current homepage.' : 'Landing moderna y bilingüe servida en /lp.html (cambia ES/EN). No reemplaza tu página de inicio actual.'}</p>
                 <div style={{ border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden', background: '#0a0b12' }}>
-                  <iframe src="/lp.html" title="Landing nueva" style={{ width: '100%', height: 620, border: 0, display: 'block' }} />
+                  <iframe src={`/lp.html?lang=${lang === 'en' ? 'en' : 'es'}`} title="Landing nueva" style={{ width: '100%', height: 620, border: 0, display: 'block' }} />
                 </div>
               </div>
             )}
