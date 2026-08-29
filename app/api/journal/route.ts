@@ -63,6 +63,14 @@ export async function POST(req: Request) {
     }
     if (!own) return NextResponse.json({ error: 'Trade not found.', code: 'not_found' }, { status: 404 });
 
+    // Quitar del diario: borra la entrada completa para que la operación vuelva a
+    // "sin documentar" (se usa al desmarcar todo o desde el botón "Quitar del diario").
+    if (b.clear === true) {
+      const { error } = await supabaseAdmin.from('trade_journal').delete().eq('trade_id', tradeId).eq('user_id', user.id);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ ok: true, cleared: true });
+    }
+
     const row: any = { user_id: user.id, trade_id: tradeId, updated_at: new Date().toISOString() };
     if (b.notes !== undefined) row.notes = String(b.notes || '').slice(0, 4000);
     if (b.tags !== undefined) row.tags = cleanTags(b.tags);

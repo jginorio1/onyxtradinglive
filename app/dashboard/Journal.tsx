@@ -70,6 +70,7 @@ const J = {
     add: 'Añadir', addPh: 'Escribe y Enter', minHint: 'Con grado + 1 emoción ya cuenta como documentada',
     undoc: 'Sin diario', pendingTitle: 'operaciones sin diario', pendingSub: 'Documéntalas mientras las recuerdas', docNow: 'Documentar ahora',
     stDone: 'Registrado', stRecent: 'Reciente · aún tienes tiempo', stPending: 'Documentar', stPendingT: 'Pasó su ventana para documentar', stLate: 'Atrasado', stLateT: 'Muy atrasado: documenta antes de olvidarlo',
+    stDoneT: 'Registrado · clic para quitar del diario', clearConfirm: '¿Quitar esta operación del diario? Se borra su registro (grado, nota, tags…).', clearBtn: 'Quitar del diario',
     streak: 'Racha', days: 'días', day: 'día',
     delTitle: 'Borrar el tag', delBody: 'Se quita de tu lista y ya no aparecerá al documentar. Las operaciones que ya etiquetaste con él no cambian.', delCancel: 'Cancelar', delOk: 'Borrar tag',
     mDuration: 'Duración', mSession: 'Sesión', risk: 'Riesgo', riskPh: 'Ej: 100', riskHint: 'Cuánto arriesgaste ($). Con esto calculamos el resultado en R.',
@@ -95,6 +96,7 @@ const J = {
     add: 'Add', addPh: 'Type and Enter', minHint: 'Grade + 1 emotion already counts as documented',
     undoc: 'No journal', pendingTitle: 'trades without a journal', pendingSub: 'Document them while you remember', docNow: 'Document now',
     stDone: 'Logged', stRecent: 'Recent · still time', stPending: 'Document', stPendingT: 'Past its window to document', stLate: 'Overdue', stLateT: 'Overdue: document before you forget',
+    stDoneT: 'Logged · click to remove from journal', clearConfirm: 'Remove this trade from the journal? Its entry (grade, note, tags…) will be deleted.', clearBtn: 'Remove from journal',
     streak: 'Streak', days: 'days', day: 'day',
     delTitle: 'Delete tag', delBody: 'It leaves your list and won’t appear when documenting. Trades you already tagged with it don’t change.', delCancel: 'Cancel', delOk: 'Delete tag',
     mDuration: 'Duration', mSession: 'Session', risk: 'Risk', riskPh: 'e.g. 100', riskHint: 'How much you risked ($). We use it to show the result in R.',
@@ -260,11 +262,20 @@ export default function Journal({ trades, lang, focusUndoc = false, accounts = [
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'onyx_operaciones.csv'; a.click();
   }
 
+  // Quitar TODO el diario de una operación → vuelve a "sin documentar".
+  function clearEntry(id: string) {
+    setEntries((prev) => { const n = { ...prev }; delete n[id]; return n; });
+    fetch('/api/journal', { method: 'POST', body: JSON.stringify({ trade_id: id, clear: true }) }).catch(() => {});
+  }
   // Calificar en 1 toque desde la tabla, sin abrir el modal. Guarda al instante.
+  // Si al quitar el grado la entrada queda vacía, se borra la fila para que
+  // la operación vuelva a "sin documentar" (y desaparezca el check verde).
   function quickGrade(id: string, g: string) {
     const cur: any = entries[id] || { trade_id: id, notes: null, tags: [], emotion: null, image_url: null };
     const grade = cur.grade === g ? '' : g;
-    setEntries({ ...entries, [id]: { ...cur, grade: grade || null } });
+    const next: any = { ...cur, grade: grade || null };
+    if (!isDocumented(next)) { clearEntry(id); return; }
+    setEntries({ ...entries, [id]: next });
     fetch('/api/journal', { method: 'POST', body: JSON.stringify({ trade_id: id, grade }) }).catch(() => {});
   }
 
@@ -378,7 +389,7 @@ export default function Journal({ trades, lang, focusUndoc = false, accounts = [
                             <button key={g} onClick={() => quickGrade(x.id, g)} title={g} style={{ cursor: 'pointer', width: 22, height: 22, padding: 0, borderRadius: 6, fontSize: 11, fontWeight: 800, lineHeight: 1, border: '1px solid ' + (on ? gc : 'var(--line)'), background: on ? (g === 'A' ? 'rgba(52,226,160,.18)' : g === 'B' ? 'rgba(255,192,77,.18)' : 'rgba(255,107,125,.18)') : 'transparent', color: on ? gc : 'var(--mut)' }}>{g}</button>
                           ); })}
                         </div>
-                        <JStatus st={st} t={t} />
+                        <JStatus st={st} t={t} onClear={() => { if (typeof window !== 'undefined' && window.confirm(t.clearConfirm)) clearEntry(x.id); }} />
                       </div>
                     </td>
                   </tr>); })}
@@ -395,8 +406,8 @@ export default function Journal({ trades, lang, focusUndoc = false, accounts = [
 
 // Estado del diario del trade en la fila: check (registrado), reloj (reciente),
 // pastilla ámbar (por documentar) o roja (atrasado). El tooltip explica el porqué.
-function JStatus({ st, t }: { st: JState; t: any }) {
-  if (st === 'done') return <span title={t.stDone} style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--green)' }}><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3.5 8.5l2.6 2.6L12.5 5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg></span>;
+function JStatus({ st, t, onClear }: { st: JState; t: any; onClear?: () => void }) {
+  if (st === 'done') return <button onClick={onClear} title={t.stDoneT} aria-label={t.clearBtn} style={{ background: 'none', border: 'none', padding: 2, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', color: 'var(--green)' }}><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3.5 8.5l2.6 2.6L12.5 5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg></button>;
   if (st === 'recent') return <span title={t.stRecent} style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--mut)' }}><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.4" /><path d="M8 5v3.2l2 1.2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg></span>;
   const amber = st === 'pending';
   return (
