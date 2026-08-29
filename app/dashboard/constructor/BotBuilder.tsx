@@ -50,6 +50,21 @@ export default function BotBuilder() {
   const Sel = ({ k, t, opts }: any) => (<div><span style={lbl}>{t}</span><select value={(s as any)[k]} onChange={(e) => set(k, isNaN(Number(e.target.value)) ? e.target.value : Number(e.target.value))} style={inp}>{opts.map(([v, o]: any) => <option key={String(v)} value={v}>{o}</option>)}</select></div>);
   const Chk = ({ k, t }: any) => (<label className="row" style={{ gap: 8, cursor: 'pointer', alignItems: 'center' }}><input type="checkbox" checked={!!(s as any)[k]} onChange={(e) => set(k, e.target.checked)} style={{ width: 'auto', margin: 0 }} /> <span style={{ fontSize: 13 }}>{t}</span></label>);
   const TFS: any = [['M1', 'M1'], ['M5', 'M5'], ['M15', 'M15'], ['M30', 'M30'], ['H1', 'H1'], ['H4', 'H4'], ['D1', 'D1']];
+  // Valor + unidad: el trader elige $ / % / pips / R (× ATR) donde aplique.
+  const U_RISK: any = [['pct', '%'], ['money', '$']];
+  const U_SL: any = [['pips', 'pips'], ['atr', '× ATR'], ['pct', L('% precio', '% price')]];
+  const U_TP: any = [['rr', 'R (RR)'], ['pips', 'pips'], ['pct', L('% precio', '% price')], ['money', '$']];
+  const U_RUN: any = [...U_TP, ['structure', L('estructura', 'structure')]];
+  const U_TRAIL: any = [['atr', '× ATR'], ['pips', 'pips'], ['pct', L('% precio', '% price')]];
+  const ValU = ({ vk, uk, t, opts, step = 0.1, min }: any) => (
+    <div>
+      <span style={lbl}>{t}</span>
+      <div style={{ display: 'flex', gap: 6 }}>
+        <input type="number" step={step} min={min} value={(s as any)[vk]} onChange={(e) => set(vk, e.target.value === '' ? '' : Number(e.target.value))} style={{ ...inp, flex: 1, minWidth: 0 }} />
+        <select value={(s as any)[uk]} onChange={(e) => set(uk, e.target.value)} style={{ ...inp, width: 104, flex: 'none' }}>{opts.map(([v, o]: any) => <option key={v} value={v}>{o}</option>)}</select>
+      </div>
+    </div>
+  );
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
@@ -77,21 +92,22 @@ export default function BotBuilder() {
         <Num k="signalToH" t={L('Hora fin señales', 'Signals to (h)')} />
       </Sec>
 
-      <Sec ic="🚪" title={L('Salidas y gestión', 'Exits & management')}>
-        <Num k="slBufferATR" t={L('SL: colchón (× ATR)', 'SL buffer (× ATR)')} step={0.1} />
-        <Num k="tp1R" t={L('TP1 (en R)', 'TP1 (in R)')} step={0.1} />
-        <Num k="partialPct" t={L('% parcial en TP1', '% partial at TP1')} />
-        <Sel k="tpMode" t={L('Runner (objetivo)', 'Runner target')} opts={[[0, L('R fijo', 'Fixed R')], [1, L('Estructura', 'Structure')]]} />
-        <Num k="runnerMaxR" t={L('Tope del runner (R)', 'Runner cap (R)')} step={0.5} />
-        <Num k="trailATRcoef" t={L('Trailing (× ATR)', 'Trailing (× ATR)')} step={0.1} />
+      <Sec ic="🚪" title={L('Salidas y gestión', 'Exits & management')} sub={L('Cada objetivo lleva su unidad: $, %, pips o R. El bot la convierte a distancia de precio en tiempo real.', 'Each target has its own unit: $, %, pips or R. The bot converts it to a price distance in real time.')}>
+        <ValU vk="slVal" uk="slUnit" t={L('Stop loss', 'Stop loss')} opts={U_SL} />
+        <ValU vk="tp1Val" uk="tp1Unit" t={L('TP1 (parcial)', 'TP1 (partial)')} opts={U_TP} />
+        <Num k="partialPct" t={L('% que cierra en TP1', '% closed at TP1')} step={5} />
+        <ValU vk="runnerVal" uk="runnerUnit" t={L('Runner / TP final', 'Runner / final TP')} opts={U_RUN} />
+        <ValU vk="trailVal" uk="trailUnit" t={L('Trailing', 'Trailing')} opts={U_TRAIL} />
+        <Num k="beOffsetR" t={L('Break even (en R, 0=BE)', 'Break even (in R, 0=BE)')} step={0.1} />
         <Num k="timeStopBars" t={L('Time-stop (velas, 0=off)', 'Time-stop (bars, 0=off)')} />
         <div style={{ paddingTop: 22 }}><Chk k="useTrail" t={L('Activar trailing', 'Enable trailing')} /></div>
       </Sec>
 
-      <Sec ic="🛡️" title={L('Riesgo', 'Risk')} sub={L('Tope de seguridad: máximo 5% por operación desde el constructor.', 'Safety cap: max 5% per trade from the builder.')}>
-        <Num k="riskPct" t={L('Riesgo por operación (%)', 'Risk per trade (%)')} step={0.05} min={0.01} />
+      <Sec ic="🛡️" title={L('Riesgo', 'Risk')} sub={L('Elige la unidad del riesgo y de los límites diarios. En % el tope de seguridad es 5% por operación.', 'Choose the unit for risk and daily limits. In %, the safety cap is 5% per trade.')}>
+        <ValU vk="riskVal" uk="riskUnit" t={L('Riesgo por operación', 'Risk per trade')} opts={U_RISK} step={0.05} min={0.01} />
         <Num k="maxLots" t={L('Tope de lotes', 'Max lots')} step={0.01} />
-        <Num k="dailyLossCapPct" t={L('Cap de pérdida diaria (%)', 'Daily loss cap (%)')} step={0.1} />
+        <ValU vk="dailyLossVal" uk="dailyLossUnit" t={L('Cap de pérdida diaria', 'Daily loss cap')} opts={U_RISK} />
+        <ValU vk="dailyProfitVal" uk="dailyProfitUnit" t={L('Objetivo diario (0=off)', 'Daily target (0=off)')} opts={U_RISK} />
       </Sec>
 
       <Sec ic="🏦" title={L('Reglas del fondeo (prop firm)', 'Prop-firm rules')}>
