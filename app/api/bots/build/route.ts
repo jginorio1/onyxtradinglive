@@ -3,6 +3,7 @@ import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { cleanSpec, toSetFile, summarize, type BotSpec } from '@/lib/botSpec';
 import { renderMT5 } from '@/lib/botGen';
+import { buildGuideHTML } from '@/lib/botGuide';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -15,6 +16,22 @@ export async function GET(req: Request) {
     if (!user) return NextResponse.json({ error: 'no autorizado' }, { status: 401 });
 
     const url = new URL(req.url);
+    const guideId = url.searchParams.get('guide');
+    if (guideId) {
+      // Guía visual personalizada (HTML imprimible a PDF).
+      const { data: bot } = await supabaseAdmin.from('bots_built').select('*').eq('id', guideId).eq('user_id', user.id).maybeSingle();
+      if (!bot) return NextResponse.json({ error: 'no encontrado' }, { status: 404 });
+      const spec = cleanSpec((bot as any).spec);
+      const en = url.searchParams.get('lang') === 'en';
+      let trader = '';
+      try {
+        const { data: prof } = await supabaseAdmin.from('profiles').select('name, full_name').eq('id', user.id).maybeSingle();
+        trader = String((prof as any)?.name || (prof as any)?.full_name || (user.email || '').split('@')[0] || '');
+      } catch { trader = (user.email || '').split('@')[0] || ''; }
+      const html = buildGuideHTML(spec, trader, !en);
+      return new NextResponse(html, { headers: { 'content-type': 'text/html; charset=utf-8' } });
+    }
+
     const dl = url.searchParams.get('download') || url.searchParams.get('code');
     if (dl) {
       const asCode = !!url.searchParams.get('code');

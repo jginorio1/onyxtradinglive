@@ -116,8 +116,19 @@ export function cleanSpec(inp: any): BotSpec {
   return s;
 }
 
-const TF_ENUM: Record<string, number> = { M1: 1, M5: 5, M15: 15, M30: 30, H1: 16385, H4: 16388, D1: 16408 };
+// Todas las temporalidades MT5, de 1 minuto a 1 mes (valores ENUM_TIMEFRAMES).
+const TF_ENUM: Record<string, number> = {
+  M1: 1, M2: 2, M3: 3, M4: 4, M5: 5, M6: 6, M10: 10, M12: 12, M15: 15, M20: 20, M30: 30,
+  H1: 16385, H2: 16386, H3: 16387, H4: 16388, H6: 16390, H8: 16392, H12: 16396,
+  D1: 16408, W1: 32769, MN1: 49153,
+};
 const tfEnum = (tf: string) => TF_ENUM[tf] ?? 5;
+export const TF_LIST: [string, string][] = [
+  ['M1', '1 min'], ['M2', '2 min'], ['M3', '3 min'], ['M4', '4 min'], ['M5', '5 min'], ['M6', '6 min'],
+  ['M10', '10 min'], ['M12', '12 min'], ['M15', '15 min'], ['M20', '20 min'], ['M30', '30 min'],
+  ['H1', '1 h'], ['H2', '2 h'], ['H3', '3 h'], ['H4', '4 h'], ['H6', '6 h'], ['H8', '8 h'], ['H12', '12 h'],
+  ['D1', '1 día'], ['W1', '1 semana'], ['MN1', '1 mes'],
+];
 const bl = (v: boolean) => (v ? 'true' : 'false');
 
 export function toSetFile(s: BotSpec): string {
