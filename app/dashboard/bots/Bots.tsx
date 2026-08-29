@@ -313,9 +313,12 @@ export default function Bots() {
 
   return (
     <div className="wrap" style={{ padding: '24px 0 60px', maxWidth: 1180, fontSize: 15 }}>
-      <div style={{ padding: '0 4px', marginBottom: 16 }}>
-        <h1 style={{ fontSize: 24 }}><OnyxIcon emoji="🤖" size={16} /> {t.title}</h1>
-        <p className="muted" style={{ marginTop: 6 }}>{t.sub}</p>
+      <div className="row between" style={{ padding: '0 4px', marginBottom: 16, flexWrap: 'wrap', gap: 10, alignItems: 'flex-end' }}>
+        <div>
+          <h1 style={{ fontSize: 24 }}><OnyxIcon emoji="🤖" size={16} /> {t.title}</h1>
+          <p className="muted" style={{ marginTop: 6 }}>{t.sub}</p>
+        </div>
+        <Link href="/dashboard/constructor" className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}><OnyxIcon emoji="🤖" size={14} glow={false} /> {lang === 'es' ? 'Constructor de bots' : 'Bot builder'}</Link>
       </div>
 
       {!d && <div className="card muted">…</div>}
