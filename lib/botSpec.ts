@@ -34,9 +34,9 @@ export type BotSpec = {
   // Objetivo de cuenta (fase)
   accountMode: number; initBalance: number; targetP1: number; targetP2: number;
   // Horario / cierre
-  useDayClose: boolean; forceCloseHourNY: number; forceCloseMinNY: number; noWeekend: boolean;
+  useDayClose: boolean; forceCloseHourNY: number; forceCloseMinNY: number; noWeekend: boolean; serverGmt: number;
   // Noticias
-  useNewsFilter: boolean; newsCurrencies: string;
+  useNewsFilter: boolean; newsCurrencies: string; newsImpact: string; newsBefore: number; newsAfter: number;
 };
 
 export const DEFAULT_SPEC: BotSpec = {
@@ -53,8 +53,8 @@ export const DEFAULT_SPEC: BotSpec = {
   firmName: 'FTMO', ddType: 1, firmDailyLimitPct: 5, firmTotalLimitPct: 10,
   acctSoftStopPct: 2, acctDailyStopPct: 3, acctMaxDDPct: 8,
   accountMode: 0, initBalance: 0, targetP1: 10, targetP2: 5,
-  useDayClose: true, forceCloseHourNY: 20, forceCloseMinNY: 30, noWeekend: true,
-  useNewsFilter: true, newsCurrencies: 'USD',
+  useDayClose: true, forceCloseHourNY: 20, forceCloseMinNY: 30, noWeekend: true, serverGmt: 3,
+  useNewsFilter: true, newsCurrencies: 'USD', newsImpact: 'high', newsBefore: 15, newsAfter: 15,
 };
 
 // MISMO set de unidades en toda la zona de salidas (SL, TP, runner, trailing).
@@ -106,6 +106,9 @@ export function cleanSpec(inp: any): BotSpec {
   s.targetP1 = clamp(num(inp?.targetP1, 10), 0, 100); s.targetP2 = clamp(num(inp?.targetP2, 5), 0, 100);
   s.forceCloseHourNY = clamp(Math.round(num(inp?.forceCloseHourNY, 20)), 0, 23); s.forceCloseMinNY = clamp(Math.round(num(inp?.forceCloseMinNY, 30)), 0, 59);
   s.newsCurrencies = String(inp?.newsCurrencies || 'USD').slice(0, 40).toUpperCase();
+  s.newsImpact = oneOf(inp?.newsImpact, ['high', 'med', 'all'], 'high');
+  s.newsBefore = clamp(Math.round(num(inp?.newsBefore, 15)), 0, 240); s.newsAfter = clamp(Math.round(num(inp?.newsAfter, 15)), 0, 240);
+  s.serverGmt = clamp(Math.round(num(inp?.serverGmt, 3)), -12, 14);
   s.allowLongs = inp?.allowLongs !== false; s.allowShorts = inp?.allowShorts !== false;
   s.useDayClose = inp?.useDayClose !== false; s.noWeekend = inp?.noWeekend !== false; s.useNewsFilter = inp?.useNewsFilter !== false;
   return s;
@@ -118,12 +121,16 @@ const TF_ENUM: Record<string, number> = {
   D1: 16408, W1: 32769, MN1: 49153,
 };
 const tfEnum = (tf: string) => TF_ENUM[tf] ?? 5;
-export const TF_LIST: [string, string][] = [
-  ['M1', '1 min'], ['M2', '2 min'], ['M3', '3 min'], ['M4', '4 min'], ['M5', '5 min'], ['M6', '6 min'],
-  ['M10', '10 min'], ['M12', '12 min'], ['M15', '15 min'], ['M20', '20 min'], ['M30', '30 min'],
-  ['H1', '1 h'], ['H2', '2 h'], ['H3', '3 h'], ['H4', '4 h'], ['H6', '6 h'], ['H8', '8 h'], ['H12', '12 h'],
-  ['D1', '1 día'], ['W1', '1 semana'], ['MN1', '1 mes'],
+// [código, etiqueta ES, etiqueta EN] — para menús bilingües.
+export const TF_LIST3: [string, string, string][] = [
+  ['M1', '1 min', '1 min'], ['M2', '2 min', '2 min'], ['M3', '3 min', '3 min'], ['M4', '4 min', '4 min'], ['M5', '5 min', '5 min'], ['M6', '6 min', '6 min'],
+  ['M10', '10 min', '10 min'], ['M12', '12 min', '12 min'], ['M15', '15 min', '15 min'], ['M20', '20 min', '20 min'], ['M30', '30 min', '30 min'],
+  ['H1', '1 h', '1 h'], ['H2', '2 h', '2 h'], ['H3', '3 h', '3 h'], ['H4', '4 h', '4 h'], ['H6', '6 h', '6 h'], ['H8', '8 h', '8 h'], ['H12', '12 h', '12 h'],
+  ['D1', '1 día', '1 day'], ['W1', '1 semana', '1 week'], ['MN1', '1 mes', '1 month'],
 ];
+export const tfOptions = (en: boolean): [string, string][] => TF_LIST3.map(([v, es, e]) => [v, en ? e : es]);
+// Símbolos comunes (con alias por broker) para sugerir en el menú del instrumento.
+export const SYMBOL_HINTS = ['XAUUSD', 'XAGUSD', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD', 'US30', 'NAS100', 'SPX500', 'GER40', 'UK100', 'US2000', 'USOIL', 'BTCUSD', 'ETHUSD'];
 const bl = (v: boolean) => (v ? 'true' : 'false');
 
 export function toSetFile(s: BotSpec): string {
@@ -146,6 +153,7 @@ export function toSetFile(s: BotSpec): string {
   P('InpAcctSoftStopPct', s.acctSoftStopPct); P('InpAcctDailyStopPct', s.acctDailyStopPct); P('InpAcctMaxDDPct', s.acctMaxDDPct);
   P('InpAccountMode', s.accountMode); P('InpInitBalance', s.initBalance); P('InpTargetP1', s.targetP1); P('InpTargetP2', s.targetP2);
   P('InpUseDayClose', bl(s.useDayClose)); P('InpForceCloseHourNY', s.forceCloseHourNY); P('InpForceCloseMinNY', s.forceCloseMinNY); P('InpNoWeekend', bl(s.noWeekend));
+  P('InpUseNews', bl(s.useNewsFilter)); P('InpNewsCur', s.newsCurrencies); P('InpNewsImpact', { high: 0, med: 1, all: 2 }[s.newsImpact] ?? 0); P('InpNewsBefore', s.newsBefore); P('InpNewsAfter', s.newsAfter);
   return L.join('\r\n') + '\r\n';
 }
 
