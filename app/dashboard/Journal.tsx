@@ -23,6 +23,31 @@ function isDocumented(e?: Entry): boolean {
     || (e.tags && e.tags.length) || (e.market_tags && e.market_tags.length) || (e.error_tags && e.error_tags.length));
 }
 
+// Ventana para documentar SEGÚN cuánto estuvo abierta la operación (estilo real
+// del trade): un scalp se documenta pronto; un swing puede esperar semanas. Si no
+// hay hora de apertura, se usa una ventana por defecto de 2 días.
+const H_MS = 3600e3, D_MS = 864e5;
+function docWindowMs(x: TT): number {
+  const openT = x.open_time ? new Date(x.open_time).getTime() : NaN;
+  const closeT = new Date(x.close_time).getTime();
+  const holdMin = isFinite(openT) ? (closeT - openT) / 60000 : NaN;
+  if (!isFinite(holdMin)) return 2 * D_MS;   // sin hora de apertura
+  if (holdMin < 15) return 2 * H_MS;         // scalp
+  if (holdMin < 1440) return 2 * D_MS;       // intradía
+  return 14 * D_MS;                          // swing
+}
+// Estado del diario del trade: 'done' (registrado) · 'recent' (aún en ventana) ·
+// 'pending' (pasó la ventana) · 'late' (muy atrasado, > 3× la ventana).
+type JState = 'done' | 'recent' | 'pending' | 'late';
+function journalState(x: TT, e: Entry | undefined, nowMs: number): JState {
+  if (isDocumented(e)) return 'done';
+  const w = docWindowMs(x);
+  const age = nowMs - new Date(x.close_time).getTime();
+  if (age < w) return 'recent';
+  if (age < w * 3) return 'pending';
+  return 'late';
+}
+
 function money2(n: number) {
   return (n >= 0 ? '+$' : '-$') + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
@@ -44,9 +69,10 @@ const J = {
     market: 'Condición de mercado', whatFailed: '¿Qué falló?', optional: 'opcional', adapts: 'se adapta a tu estilo',
     add: 'Añadir', addPh: 'Escribe y Enter', minHint: 'Con grado + 1 emoción ya cuenta como documentada',
     undoc: 'Sin diario', pendingTitle: 'operaciones sin diario', pendingSub: 'Documéntalas mientras las recuerdas', docNow: 'Documentar ahora',
+    stDone: 'Registrado', stRecent: 'Reciente · aún tienes tiempo', stPending: 'Documentar', stPendingT: 'Pasó su ventana para documentar', stLate: 'Atrasado', stLateT: 'Muy atrasado: documenta antes de olvidarlo',
     streak: 'Racha', days: 'días', day: 'día',
     delTitle: 'Borrar el tag', delBody: 'Se quita de tu lista y ya no aparecerá al documentar. Las operaciones que ya etiquetaste con él no cambian.', delCancel: 'Cancelar', delOk: 'Borrar tag',
-    mDuration: 'Duración', mSession: 'Sesión', risk: 'Riesgo', riskPh: 'Ej: 100', riskHint: 'Cuánto arriesgaste ($). Con esto calculamos el resultado en R.', result: 'Resultado',
+    mDuration: 'Duración', mSession: 'Sesión', risk: 'Riesgo', riskPh: 'Ej: 100', riskHint: 'Cuánto arriesgaste ($). Con esto calculamos el resultado en R.',
     removePhoto: 'Quitar foto', zoomHint: 'click para ampliar', coach: 'Coach IA', coaching: 'Analizando…', coachErr: 'No se pudo analizar ahora. Inténtalo de nuevo.',
     rulesTitle: 'Chequeo de reglas', rulesOk: 'Sin alertas: este trade y el día respetan las reglas de tu cuenta.', rulesNoRules: 'Añade el límite diario/total en Fondeo para chequear reglas.',
     ruleTradeOverDaily: 'Este trade arriesgó más que tu límite diario', ruleDayOverDaily: 'El día superó el límite diario de la cuenta', ruleRiskOverDaily: 'El riesgo que anotaste supera el límite diario',
@@ -68,9 +94,10 @@ const J = {
     market: 'Market condition', whatFailed: 'What went wrong?', optional: 'optional', adapts: 'adapts to your style',
     add: 'Add', addPh: 'Type and Enter', minHint: 'Grade + 1 emotion already counts as documented',
     undoc: 'No journal', pendingTitle: 'trades without a journal', pendingSub: 'Document them while you remember', docNow: 'Document now',
+    stDone: 'Logged', stRecent: 'Recent · still time', stPending: 'Document', stPendingT: 'Past its window to document', stLate: 'Overdue', stLateT: 'Overdue: document before you forget',
     streak: 'Streak', days: 'days', day: 'day',
     delTitle: 'Delete tag', delBody: 'It leaves your list and won’t appear when documenting. Trades you already tagged with it don’t change.', delCancel: 'Cancel', delOk: 'Delete tag',
-    mDuration: 'Duration', mSession: 'Session', risk: 'Risk', riskPh: 'e.g. 100', riskHint: 'How much you risked ($). We use it to show the result in R.', result: 'Result',
+    mDuration: 'Duration', mSession: 'Session', risk: 'Risk', riskPh: 'e.g. 100', riskHint: 'How much you risked ($). We use it to show the result in R.',
     removePhoto: 'Remove photo', zoomHint: 'click to zoom', coach: 'AI Coach', coaching: 'Analyzing…', coachErr: 'Couldn’t analyze right now. Try again.',
     rulesTitle: 'Rule check', rulesOk: 'No alerts: this trade and the day respect your account rules.', rulesNoRules: 'Add your daily/total limit in Funding to check rules.',
     ruleTradeOverDaily: 'This trade risked more than your daily limit', ruleDayOverDaily: 'The day exceeded the account daily limit', ruleRiskOverDaily: 'The risk you logged exceeds the daily limit',
@@ -168,7 +195,8 @@ export default function Journal({ trades, lang, focusUndoc = false, accounts = [
     });
   }
 
-  const pending = useMemo(() => trades.filter((x) => !isDocumented(entries[x.id])).length, [trades, entries]);
+  // Solo cuentan las que ya PASARON su ventana (pending + late), no las recientes.
+  const pending = useMemo(() => { const n = Date.now(); return trades.filter((x) => { const s = journalState(x, entries[x.id], n); return s === 'pending' || s === 'late'; }).length; }, [trades, entries]);
 
   const symbols = useMemo(() => Array.from(new Set(trades.map((x) => x.symbol))).sort(), [trades]);
   const allTags = useMemo(() => { const s = new Set<string>(); Object.values(entries).forEach((e) => (e.tags || []).forEach((x) => s.add(x))); return Array.from(s).sort(); }, [entries]);
@@ -179,7 +207,7 @@ export default function Journal({ trades, lang, focusUndoc = false, accounts = [
     if (fRes === 'win' && +x.net_profit < 0) return false;
     if (fRes === 'loss' && +x.net_profit >= 0) return false;
     if (fTag !== 'all' && !((entries[x.id]?.tags) || []).includes(fTag)) return false;
-    if (fDoc === 'undoc' && isDocumented(entries[x.id])) return false;
+    if (fDoc === 'undoc') { const s = journalState(x, entries[x.id], Date.now()); if (s === 'done' || s === 'recent') return false; }
     const d = x.close_time.slice(0, 10);
     if (fFrom && d < fFrom) return false;
     if (fTo && d > fTo) return false;
@@ -335,8 +363,8 @@ export default function Journal({ trades, lang, focusUndoc = false, accounts = [
             <table className="jtbl">
               <thead><tr><th>{t.thDate}</th><th>{t.thPair}</th><th>{t.thSide}</th><th style={{ textAlign: 'right' }}>{t.thLots}</th><th style={{ textAlign: 'right' }}>{t.thGross}</th><th style={{ textAlign: 'right' }}>{t.thNet}</th><th style={{ textAlign: 'center' }}>{t.thNote}</th></tr></thead>
               <tbody>
-                {view.slice(0, 300).map((x) => { const e = entries[x.id]; const has = isDocumented(e); const gross = +(x.profit ?? x.net_profit); const net = +x.net_profit; const isBuy = x.side === 'buy'; return (
-                  <tr key={x.id} className="jrow" onClick={() => setOpen(x)}>
+                {view.slice(0, 300).map((x) => { const e = entries[x.id]; const gross = +(x.profit ?? x.net_profit); const net = +x.net_profit; const isBuy = x.side === 'buy'; const st = journalState(x, e, Date.now()); const accent = st === 'pending' ? AMBER : st === 'late' ? RED : 'transparent'; return (
+                  <tr key={x.id} className="jrow" onClick={() => setOpen(x)} style={{ borderLeft: '3px solid ' + accent, background: st === 'pending' ? 'rgba(255,192,77,.05)' : st === 'late' ? 'rgba(255,107,125,.06)' : undefined }}>
                     <td className="muted" style={{ fontSize: 13, whiteSpace: 'nowrap' }}>{x.close_time.slice(0, 16).replace('T', ' ')}</td>
                     <td style={{ fontWeight: 600 }}>{x.symbol}</td>
                     <td><span className={'jside ' + (isBuy ? 'buy' : 'sell')}>{x.side}</span></td>
@@ -344,11 +372,13 @@ export default function Journal({ trades, lang, focusUndoc = false, accounts = [
                     <td style={{ textAlign: 'right' }}><span className={'jchip ' + (gross >= 0 ? 'pos' : 'neg')}>{money2(gross)}</span></td>
                     <td style={{ textAlign: 'right' }}><span className={'jchip ' + (net >= 0 ? 'pos' : 'neg')}>{money2(net)}</span></td>
                     <td style={{ textAlign: 'center' }}>
-                      <div onClick={(ev) => ev.stopPropagation()} style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                        {(['A', 'B', 'C'] as const).map((g) => { const on = e?.grade === g; const gc = g === 'A' ? GREEN : g === 'B' ? GOLD : RED; return (
-                          <button key={g} onClick={() => quickGrade(x.id, g)} title={g} style={{ cursor: 'pointer', width: 22, height: 22, padding: 0, borderRadius: 6, fontSize: 11, fontWeight: 800, lineHeight: 1, border: '1px solid ' + (on ? gc : 'var(--line)'), background: on ? (g === 'A' ? 'rgba(52,226,160,.18)' : g === 'B' ? 'rgba(255,192,77,.18)' : 'rgba(255,107,125,.18)') : 'transparent', color: on ? gc : 'var(--mut)' }}>{g}</button>
-                        ); })}
-                        {(e?.notes || e?.image_url) ? <span style={{ marginLeft: 3, fontSize: 12 }}>{e?.image_url ? '🖼️' : t.hasNote}</span> : (!has && <span style={{ marginLeft: 2, color: 'var(--amber)', fontSize: 14 }}>•</span>)}
+                      <div onClick={(ev) => ev.stopPropagation()} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                          {(['A', 'B', 'C'] as const).map((g) => { const on = e?.grade === g; const gc = g === 'A' ? GREEN : g === 'B' ? GOLD : RED; return (
+                            <button key={g} onClick={() => quickGrade(x.id, g)} title={g} style={{ cursor: 'pointer', width: 22, height: 22, padding: 0, borderRadius: 6, fontSize: 11, fontWeight: 800, lineHeight: 1, border: '1px solid ' + (on ? gc : 'var(--line)'), background: on ? (g === 'A' ? 'rgba(52,226,160,.18)' : g === 'B' ? 'rgba(255,192,77,.18)' : 'rgba(255,107,125,.18)') : 'transparent', color: on ? gc : 'var(--mut)' }}>{g}</button>
+                          ); })}
+                        </div>
+                        <JStatus st={st} t={t} />
                       </div>
                     </td>
                   </tr>); })}
@@ -360,6 +390,22 @@ export default function Journal({ trades, lang, focusUndoc = false, accounts = [
 
       {open && <TradeModal trade={open} entry={entries[open.id]} acc={accMap[open.account_id]} allTrades={trades} lang={lang} customTags={customTags} onAddTag={addCustomTag} onRenameTag={renameCustomTag} onDeleteTag={deleteCustomTag} onClose={() => setOpen(null)} onSaved={(e) => setEntries({ ...entries, [open.id]: e })} />}
     </>
+  );
+}
+
+// Estado del diario del trade en la fila: check (registrado), reloj (reciente),
+// pastilla ámbar (por documentar) o roja (atrasado). El tooltip explica el porqué.
+function JStatus({ st, t }: { st: JState; t: any }) {
+  if (st === 'done') return <span title={t.stDone} style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--green)' }}><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3.5 8.5l2.6 2.6L12.5 5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg></span>;
+  if (st === 'recent') return <span title={t.stRecent} style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--mut)' }}><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.4" /><path d="M8 5v3.2l2 1.2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg></span>;
+  const amber = st === 'pending';
+  return (
+    <span title={amber ? t.stPendingT : t.stLateT} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap', fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 20, color: amber ? 'var(--amber)' : 'var(--red)', background: amber ? 'rgba(255,192,77,.14)' : 'rgba(255,107,125,.14)', border: '1px solid ' + (amber ? 'var(--amber)' : 'var(--red)') }}>
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none">{amber
+        ? <path d="M11 2l3 3-8 8-3.6.6.6-3.6 8-8z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+        : <><path d="M8 2 1.5 13.5h13L8 2z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /><path d="M8 6.5v3M8 11.4v.1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></>}</svg>
+      {amber ? t.stPending : t.stLate}
+    </span>
   );
 }
 
