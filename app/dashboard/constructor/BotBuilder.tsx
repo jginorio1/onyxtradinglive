@@ -165,6 +165,28 @@ export default function BotBuilder() {
   const secStatus = (k: string) => k === 'general' ? (s.name?.trim() && s.symbol?.trim() ? 'ok' : 'warn') : k === 'exits' ? (nz(s.slVal) && nz(s.tp1Val) && nz(s.runnerVal) ? 'ok' : 'warn') : k === 'risk' ? (nz(s.riskVal) ? 'ok' : 'warn') : 'ok';
   const go = (v: string) => { setView(v); window.scrollTo({ top: 0, behavior: 'smooth' }); };
 
+  // Datos legibles para el resumen visual del bot.
+  const uu = (x: string) => (({ pct: '%', money: '$', pips: 'pips', atr: '× ATR', rr: 'R', structure: L('estructura', 'structure') } as any)[x] || x);
+  const trigLbl = ({ breakout_swing: L('Ruptura de swing + pullback', 'Swing breakout + pullback'), ma_cross: L('Cruce de medias', 'MA cross'), rsi: 'RSI', donchian: 'Donchian', time: L('Hora fija', 'Fixed time') } as any)[s.entryTrigger] || s.entryTrigger;
+  const biasLbl = [L('Media', 'MA'), L('Estructura', 'Structure'), 'Donchian'][s.trendMode] || '';
+  const phaseLbl = [L('Fase 1', 'Phase 1'), L('Fase 2', 'Phase 2'), L('Real', 'Real')][s.accountMode] || '';
+  const ddLbl = [L('Trailing', 'Trailing'), L('Estático', 'Static'), 'Trailing→BE'][s.ddType] || '';
+  const tgPct = s.accountMode === 0 ? s.targetP1 : s.accountMode === 1 ? s.targetP2 : 0;
+  const sumPills = [
+    `${L('Riesgo', 'Risk')} ${s.riskVal} ${uu(s.riskUnit)}`,
+    `R:R ${est.rrTxt}`,
+    `${L('Cap diario', 'Daily cap')} ${s.dailyLossVal} ${uu(s.dailyLossUnit)}`,
+    `${s.firmName} · ${phaseLbl}`,
+  ];
+  const sumRows: [string, string, string][] = [
+    ['🎯', L('Entrada', 'Entry'), `${trigLbl} · ${L('sesgo', 'bias')} ${biasLbl} ${s.trendTF}`],
+    ['🛡️', L('Stop loss', 'Stop loss'), `${s.slVal} ${uu(s.slUnit)}`],
+    ['🚪', L('Salidas', 'Exits'), `TP1 ${s.tp1Val} ${uu(s.tp1Unit)} (${s.partialPct}%) · runner ${s.runnerVal} ${uu(s.runnerUnit)} · ${s.useTrail ? `trailing ${s.trailVal} ${uu(s.trailUnit)}` : L('sin trailing', 'no trailing')}`],
+    ['🏦', L('Fondeo y frenos', 'Firm & brakes'), `${s.firmName} · DD ${ddLbl} ${s.firmTotalLimitPct}% · ${L('frenos', 'brakes')} ${s.acctSoftStopPct}/${s.acctDailyStopPct}/${s.acctMaxDDPct}%`],
+    ['🕐', L('Horario', 'Schedule'), `${hhmm(s.signalFromH, s.signalFromM)}–${hhmm(s.signalToH, s.signalToM)}${s.noWeekend ? L(' · sin fin de semana', ' · no weekend') : ''}${s.useNewsFilter ? L(' · frena en noticias', ' · pauses on news') : ''}`],
+    ['🏁', L('Objetivo', 'Target'), `${phaseLbl}${tgPct ? ` · +${tgPct}%` : ''} · magic ${s.magic}`],
+  ];
+
   return (
     <BB.Provider value={{ s, set, es }}>
     <div className="bbx" style={{ maxWidth: big ? 1500 : 1120, margin: '0 auto' }}>
@@ -418,7 +440,23 @@ export default function BotBuilder() {
       {/* Resumen + acciones */}
       <div className="bbx-panel">
         <div className="bbx-panel-h"><span className="bbx-ic"><OnyxIcon emoji="📋" size={16} /></span> {L('Resumen de tu bot', 'Your bot summary')}</div>
-        <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12.5, background: 'rgba(0,0,0,.28)', border: '1px solid var(--line)', borderRadius: 11, padding: 13, margin: 0, fontFamily: 'inherit', lineHeight: 1.6, color: 'var(--ink)' }}>{summary}</pre>
+        <div style={{ background: 'linear-gradient(135deg,rgba(139,147,255,.14),rgba(255,255,255,.03))', border: '1px solid rgba(139,147,255,.3)', borderRadius: 13, padding: '15px 16px', marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span className="bbx-ic" style={{ background: 'linear-gradient(135deg,#6f77ea,#5b63d3)', color: '#fff', boxShadow: '0 0 16px rgba(139,147,255,.4)' }}><OnyxIcon emoji="🤖" size={17} /></span>
+            <div><div style={{ fontSize: 16, fontWeight: 600, color: 'var(--ink)' }}>{s.name || L('Bot sin nombre', 'Unnamed bot')}</div><div style={{ fontSize: 12, color: 'var(--mut)' }}>{s.platform.toUpperCase()} · {s.symbol} · magic {s.magic}</div></div>
+          </div>
+          <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 12 }}>
+            {sumPills.map((p, i) => <span key={i} style={{ fontSize: 12, padding: '4px 11px', borderRadius: 99, background: 'rgba(255,255,255,.05)', border: '1px solid rgba(139,147,255,.35)', color: '#c8ccff' }}>{p}</span>)}
+          </div>
+        </div>
+        <div className="bbx-grid" style={{ gap: 8 }}>
+          {sumRows.map(([ic, t, d], i) => (
+            <div key={i} style={{ display: 'flex', gap: 10, background: 'var(--surface-2,rgba(255,255,255,.04))', border: '1px solid var(--line)', borderRadius: 10, padding: '10px 12px' }}>
+              <span style={{ flex: 'none' }}><OnyxIcon emoji={ic} size={16} /></span>
+              <div><div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--ink)' }}>{t}</div><div style={{ fontSize: 12, color: 'var(--mut)', lineHeight: 1.4 }}>{d}</div></div>
+            </div>
+          ))}
+        </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
           <button className="bbx-btn primary" onClick={saveChecked} disabled={busy}>{busy ? '…' : (id ? L('Guardar cambios', 'Save changes') : L('Guardar bot', 'Save bot'))}</button>
           <button className="bbx-btn" onClick={saveTpl}><OnyxIcon emoji="🗂️" size={14} /> {L('Guardar plantilla', 'Save template')}</button>
