@@ -61,7 +61,7 @@ import { blankPromo, newId, THEMES, pickActiveBar } from '@/lib/promo';
 type Plan = { id: string; name: string; name_en: string; desc_es: string | null; desc_en: string | null; price_month: number; price_year: number; stripe_price_id: string | null; stripe_price_id_year: string | null; max_accounts: number; features: string[]; features_en: string[]; badge: string | null; badge_en: string | null; active: boolean; sort: number; capabilities: any };
 type User = { id: string; email: string; full_name?: string | null; plan: string; subscription_status: string | null; banned: boolean; is_admin: boolean; created_at: string; accounts: number; lastSync: string | null; email_confirmed?: boolean };
 type Team = { id: string; email: string; role: string | null; is_admin: boolean; perms?: any; available?: boolean; last_active?: string | null };
-type Tab = 'resumen' | 'facturacion' | 'ingresos' | 'finanzas' | 'academy' | 'usuarios' | 'correos' | 'campanas' | 'blog' | 'seo' | 'planes' | 'landing' | 'equipo' | 'embajadores' | 'retencion' | 'pruebas' | 'firms' | 'catalogos' | 'modulos' | 'soporte' | 'chat' | 'kb' | 'diag' | 'recursos' | 'backups' | 'audit' | 'optim' | 'notif' | 'guias' | 'copytraders' | 'ajustes';
+type Tab = 'resumen' | 'facturacion' | 'ingresos' | 'finanzas' | 'academy' | 'usuarios' | 'correos' | 'campanas' | 'blog' | 'seo' | 'planes' | 'landing' | 'landingnew' | 'equipo' | 'embajadores' | 'retencion' | 'pruebas' | 'firms' | 'catalogos' | 'modulos' | 'soporte' | 'chat' | 'kb' | 'diag' | 'recursos' | 'backups' | 'audit' | 'optim' | 'notif' | 'guias' | 'copytraders' | 'ajustes';
 
 const CAPS: string[] = ['journal', 'compare', 'funding', 'costs', 'export', 'reports', 'telegram', 'manager', 'manager_advanced', 'manager_news', 'copy', 'tv', 'algo', 'expenses', 'coach', 'academy'];
 const CAP_FALLBACK: Record<string, string> = { tv: 'TradingView (señales → EA)' };
@@ -689,7 +689,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
   };
   const NAV_GROUPS: { g: string; items: [Tab, string, string][] }[] = [
     { g: t.g_op, items: [['resumen', '📊', t.nav_resumen], ['facturacion', '💳', lang === 'en' ? 'Billing' : 'Facturación'], ['usuarios', '👥', t.nav_usuarios], ['correos', '✉️', t.nav_correos], ['soporte', '🎫', t.nav_soporte], ['chat', '💬', lang === 'en' ? 'Team chat' : 'Chat equipo'], ['equipo', '🛡️', t.nav_equipo]] },
-    { g: t.g_prod, items: [['planes', '💳', t.nav_planes], ['landing', '🧩', lang === 'en' ? 'Landing Builder' : 'Landing Builder'], ['modulos', '🧩', t.nav_modulos], ['firms', '🏛️', t.nav_firms], ['catalogos', '🗂️', lang === 'en' ? 'Catalogs' : 'Catálogos']] },
+    { g: t.g_prod, items: [['planes', '💳', t.nav_planes], ['landing', '🧩', lang === 'en' ? 'Landing Builder' : 'Landing Builder'], ['landingnew', '✨', lang === 'en' ? 'New landing' : 'Landing nueva'], ['modulos', '🧩', t.nav_modulos], ['firms', '🏛️', t.nav_firms], ['catalogos', '🗂️', lang === 'en' ? 'Catalogs' : 'Catálogos']] },
     { g: t.g_growth, items: [['campanas', '📣', lang === 'en' ? 'Campaigns' : 'Campañas'], ['blog', '📝', 'Blog'], ['seo', '🔎', 'SEO'], ['copytraders', '🏆', 'Onyx Copy'], ['embajadores', '🎁', t.nav_embajadores], ['retencion', '🛟', t.nav_retencion]] },
     { g: t.g_sys, items: [['notif', '🔔', lang === 'en' ? 'Notifications' : 'Notificaciones'], ['guias', '📚', lang === 'en' ? 'Guides' : 'Guías'], ['kb', '🧠', t.nav_kb], ['diag', '🩺', t.nav_diag], ['recursos', '📟', lang === 'en' ? 'Resources' : 'Recursos'], ['backups', '🗄️', t.nav_backups], ['audit', '📈', t.nav_audit], ['optim', '🚀', t.nav_optim], ['pruebas', '🧪', t.nav_pruebas], ['ajustes', '⚙️', t.nav_ajustes]] },
   ];
@@ -1043,6 +1043,18 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
             })()}
             {tab === 'planes' && <PlansTab plans={plans} reload={loadPlans} />}
             {tab === 'landing' && <LandingBuilder />}
+            {tab === 'landingnew' && (
+              <div className="card">
+                <div className="row between" style={{ marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+                  <div className="row" style={{ gap: 10 }}><span style={{ fontSize: 18 }}>✨</span><h3>{lang === 'en' ? 'New landing (preview)' : 'Landing nueva (vista previa)'}</h3></div>
+                  <a className="btn btn-primary" href="/lp.html" target="_blank" rel="noopener">{lang === 'en' ? 'Open in new tab' : 'Abrir en pestaña'} ↗</a>
+                </div>
+                <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{lang === 'en' ? 'Modern sales landing served at /lp.html. It does not replace your current homepage.' : 'Landing moderna de ventas servida en /lp.html. No reemplaza tu página de inicio actual.'}</p>
+                <div style={{ border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden', background: '#0a0b12' }}>
+                  <iframe src="/lp.html" title="Landing nueva" style={{ width: '100%', height: 620, border: 0, display: 'block' }} />
+                </div>
+              </div>
+            )}
             {tab === 'equipo' && <Equipo team={team} role={role} meEmail={meEmail} reload={loadTeam} canManage={role === 'owner' || perms.equipo === 'manage'} />}
             {tab === 'embajadores' && <Ambassadors />}
             {tab === 'retencion' && <Retention />}
