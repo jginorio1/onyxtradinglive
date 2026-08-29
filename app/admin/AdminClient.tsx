@@ -1047,11 +1047,11 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
               <div className="card">
                 <div className="row between" style={{ marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
                   <div className="row" style={{ gap: 10 }}><span style={{ fontSize: 18 }}>✨</span><h3>{lang === 'en' ? 'New landing (preview)' : 'Landing nueva (vista previa)'}</h3></div>
-                  <a className="btn btn-primary" href="/constructor" target="_blank" rel="noopener">{lang === 'en' ? 'Open in new tab' : 'Abrir en pestaña'} ↗</a>
+                  <a className="btn btn-primary" href="/bot-builder" target="_blank" rel="noopener">{lang === 'en' ? 'Open in new tab' : 'Abrir en pestaña'} ↗</a>
                 </div>
-                <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{lang === 'en' ? 'Native bilingual landing at /constructor: line icons, live "bots built" counter and pricing from your Admin. Linked in the public menu. It does not replace your current homepage.' : 'Landing nativa y bilingüe en /constructor: iconos de línea, contador de "robots construidos" en vivo y precios desde tu Admin. Enlazada en el menú público. No reemplaza tu página de inicio actual.'}</p>
+                <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{lang === 'en' ? 'Native bilingual landing at /bot-builder: line icons, live "bots built" counter and pricing from your Admin. Linked in the public menu. It does not replace your current homepage.' : 'Landing nativa y bilingüe en /bot-builder: iconos de línea, contador de "robots construidos" en vivo y precios desde tu Admin. Enlazada en el menú público. No reemplaza tu página de inicio actual.'}</p>
                 <div style={{ border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden', background: 'var(--bg2)' }}>
-                  <iframe src="/constructor" title="Landing constructor" style={{ width: '100%', height: 620, border: 0, display: 'block' }} />
+                  <iframe src="/bot-builder" title="Landing constructor" style={{ width: '100%', height: 620, border: 0, display: 'block' }} />
                 </div>
               </div>
             )}
