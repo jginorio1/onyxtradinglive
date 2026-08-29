@@ -8,7 +8,7 @@ export type Platform = 'mt5' | 'mt4' | 'ctrader';
 
 export type BotSpec = {
   // General
-  name: string; platform: Platform; symbol: string; magic: number; tf: string;
+  name: string; platform: Platform; symbol: string; magic: number; tf: string; botLang: string;
   // Entrada
   entryTrigger: string; microSwing: number; trendMode: number; trendTF: string;
   allowLongs: boolean; allowShorts: boolean; maxTradesPerDay: number;
@@ -40,7 +40,7 @@ export type BotSpec = {
 };
 
 export const DEFAULT_SPEC: BotSpec = {
-  name: 'Mi bot', platform: 'mt5', symbol: 'XAUUSD', magic: 991000, tf: 'M5',
+  name: 'Mi bot', platform: 'mt5', symbol: 'XAUUSD', magic: 991000, tf: 'M5', botLang: 'es',
   entryTrigger: 'breakout_swing', microSwing: 2, trendMode: 1, trendTF: 'H1', allowLongs: true, allowShorts: true,
   maxTradesPerDay: 20, signalFromH: 8, signalFromM: 0, signalToH: 20, signalToM: 0,
   riskVal: 0.2, riskUnit: 'pct', maxLots: 50,
@@ -57,23 +57,17 @@ export const DEFAULT_SPEC: BotSpec = {
   useNewsFilter: true, newsCurrencies: 'USD',
 };
 
-// Unidades permitidas por campo (para validar y para el formulario).
+// MISMO set de unidades en toda la zona de salidas (SL, TP, runner, trailing).
+export const EXIT_UNITS = ['pips', 'rr', 'pct', 'money', 'atr'];
 export const UNITS = {
   risk: ['pct', 'money'],
-  sl: ['pips', 'atr', 'pct'],
-  tp: ['rr', 'pips', 'pct', 'money'],
-  runner: ['rr', 'pips', 'pct', 'money', 'structure'],
-  trail: ['atr', 'pips', 'pct'],
+  sl: EXIT_UNITS, tp: EXIT_UNITS, runner: EXIT_UNITS, trail: EXIT_UNITS,
   acct: ['pct', 'money'],
 };
-// Codificación entera de la unidad para el .set / EA.
-export const UNIT_CODE: Record<string, number> = { pips: 0, atr: 1, pct: 2, rr: 0, money: 3, structure: 4 };
-// Ojo: risk/acct usan pct=0, money=1 (distinto). Helpers dedicados abajo.
-const codeRisk = (u: string) => (u === 'money' ? 1 : 0);
-const codeSL = (u: string) => ({ pips: 0, atr: 1, pct: 2 } as any)[u] ?? 1;
-const codeTP = (u: string) => ({ rr: 0, pips: 1, pct: 2, money: 3 } as any)[u] ?? 0;
-const codeRun = (u: string) => ({ rr: 0, pips: 1, pct: 2, money: 3, structure: 4 } as any)[u] ?? 0;
-const codeTrail = (u: string) => ({ atr: 0, pips: 1, pct: 2 } as any)[u] ?? 0;
+// Código entero unificado de la unidad de salida para el .set / EA.
+const codeRisk = (u: string) => (u === 'money' ? 1 : 0);       // risk/acct: pct=0, money=1
+const codeU = (u: string) => ({ pips: 0, rr: 1, pct: 2, money: 3, atr: 4 } as any)[u] ?? 0;
+const codeSL = codeU, codeTP = codeU, codeRun = codeU, codeTrail = codeU;
 
 const num = (v: any, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
@@ -83,6 +77,7 @@ export function cleanSpec(inp: any): BotSpec {
   const s: BotSpec = { ...DEFAULT_SPEC, ...(inp || {}) };
   s.name = String(inp?.name || 'Mi bot').slice(0, 40).trim() || 'Mi bot';
   s.platform = (['mt5', 'mt4', 'ctrader'].includes(inp?.platform) ? inp.platform : 'mt5');
+  s.botLang = inp?.botLang === 'en' ? 'en' : 'es';
   s.symbol = String(inp?.symbol || 'XAUUSD').slice(0, 80).trim();
   s.magic = clamp(Math.round(num(inp?.magic, 991000)), 1, 2147483000);
   s.tf = String(inp?.tf || 'M5'); s.trendTF = String(inp?.trendTF || 'H1');

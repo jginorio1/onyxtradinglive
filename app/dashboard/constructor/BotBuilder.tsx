@@ -17,38 +17,35 @@ export default function BotBuilder() {
   const [tpls, setTpls] = useState<any[]>([]);
   const [busy, setBusy] = useState(false);
   const [big, setBig] = useState(false);
-  const [off, setOff] = useState<Record<string, boolean>>({});
-  const [warn, setWarn] = useState<{ key: string; label: string; opt: boolean }[]>([]);
+  const [warn, setWarn] = useState<{ key: string; label: string }[]>([]);
   const [showWarn, setShowWarn] = useState(false);
   const [bal, setBal] = useState<number>(10000);
-  const set = (k: keyof BotSpec, v: any) => setS((p) => ({ ...p, [k]: v }));
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const set = (k: keyof BotSpec, v: any) => { setTouched((t) => ({ ...t, [k as string]: true })); setS((p) => ({ ...p, [k]: v })); };
+  const touchAll = () => setTouched(Object.fromEntries(Object.keys(DEFAULT_SPEC).map((k) => [k, true])));
 
-  useEffect(() => { load(); loadTpls(); }, []);
+  useEffect(() => { load(); loadTpls(); setS((p) => ({ ...p, botLang: es ? 'es' : 'en' })); }, []);
   async function load() { try { const r = await fetch('/api/bots/build'); const j = await r.json(); setList(j.bots || []); } catch {} }
   async function loadTpls() { try { const r = await fetch('/api/bots/templates'); const j = await r.json(); setTpls(j.templates || []); } catch {} }
 
   const summary = useMemo(() => summarize(s, !es), [s, es]);
   const nz = (x: any) => typeof x === 'number' && x > 0;
 
-  const REQ: { key: keyof BotSpec; label: string; opt?: boolean }[] = [
+  // Campos obligatorios del bot (sin estos no opera). Los opcionales tienen su switch.
+  const REQ: { key: keyof BotSpec; label: string }[] = [
     { key: 'name', label: L('Nombre del bot', 'Bot name') },
     { key: 'symbol', label: L('Instrumento', 'Instrument') },
     { key: 'slVal', label: L('Stop loss', 'Stop loss') },
     { key: 'tp1Val', label: 'TP1' },
     { key: 'runnerVal', label: L('Runner / TP final', 'Runner / final TP') },
     { key: 'riskVal', label: L('Riesgo por operación', 'Risk per trade') },
-    { key: 'dailyLossVal', label: L('Cap de pérdida diaria', 'Daily loss cap'), opt: true },
   ];
-  function findMissing() {
-    const m: { key: string; label: string; opt: boolean }[] = [];
-    for (const r of REQ) {
-      if (off[r.key as string]) continue;
-      const v = (s as any)[r.key];
-      const empty = v === '' || v == null || (typeof v === 'number' && !(v > 0) && r.key !== 'name' && r.key !== 'symbol') || (typeof v === 'string' && !v.trim());
-      if (empty) m.push({ key: r.key as string, label: r.label, opt: !!r.opt });
-    }
-    return m;
-  }
+  const isEmpty = (key: keyof BotSpec) => { const v = (s as any)[key]; return v === '' || v == null || (typeof v === 'number' && !(v > 0) && key !== 'name' && key !== 'symbol') || (typeof v === 'string' && !v.trim()); };
+  function findMissing() { return REQ.filter((r) => isEmpty(r.key)).map((r) => ({ key: r.key as string, label: r.label })); }
+  // Progreso = campos obligatorios que TÚ has revisado y son válidos (arranca en 0).
+  const reviewed = REQ.filter((r) => touched[r.key as string] && !isEmpty(r.key)).length;
+  const pct = Math.round(100 * reviewed / REQ.length);
+  const missCount = findMissing().length;
 
   const issues = useMemo(() => {
     const out: string[] = [];
@@ -84,10 +81,10 @@ export default function BotBuilder() {
     const name = prompt(L('Nombre de la plantilla:', 'Template name:'), s.name); if (!name) return;
     try { const r = await fetch('/api/bots/templates', { method: 'POST', body: JSON.stringify({ name, spec: s }) }); const j = await r.json(); if (!r.ok) { toastErr(j); return; } toast(L('Plantilla guardada.', 'Template saved.')); loadTpls(); } catch { toastErr(L('No se pudo guardar.', 'Could not save.')); }
   }
-  function applyTpl(t: any) { setS({ ...DEFAULT_SPEC, ...(t.spec || {}) }); setId(''); setOff({}); window.scrollTo({ top: 0, behavior: 'smooth' }); toast(L('Plantilla cargada.', 'Template loaded.')); }
+  function applyTpl(t: any) { setS({ ...DEFAULT_SPEC, ...(t.spec || {}) }); setId(''); touchAll(); window.scrollTo({ top: 0, behavior: 'smooth' }); toast(L('Plantilla cargada.', 'Template loaded.')); }
   async function delTpl(tid: string) { if (!confirm(L('¿Borrar esta plantilla?', 'Delete this template?'))) return; await fetch('/api/bots/templates?id=' + tid, { method: 'DELETE' }); loadTpls(); }
-  function edit(b: any) { setS({ ...DEFAULT_SPEC, ...(b.spec || {}) }); setId(b.id); setOff({}); window.scrollTo({ top: 0, behavior: 'smooth' }); }
-  function nuevo() { setS({ ...DEFAULT_SPEC }); setId(''); setOff({}); }
+  function edit(b: any) { setS({ ...DEFAULT_SPEC, ...(b.spec || {}) }); setId(b.id); touchAll(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+  function nuevo() { setS({ ...DEFAULT_SPEC }); setId(''); setTouched({}); }
   async function del(bid: string) { if (!confirm(L('¿Borrar este bot?', 'Delete this bot?'))) return; await fetch('/api/bots/build?id=' + bid, { method: 'DELETE' }); if (id === bid) nuevo(); load(); }
   async function openGuide() { let bid = id; if (!bid) { bid = (await save()) || ''; } if (bid) window.open(`/api/bots/build?guide=${bid}&lang=${es ? 'es' : 'en'}`, '_blank'); }
 
@@ -105,36 +102,37 @@ export default function BotBuilder() {
   const Sel = ({ k, opts }: any) => (<select className="bbx-in bbx-sel" value={(s as any)[k]} onChange={(e) => set(k, isNaN(Number(e.target.value)) ? e.target.value : Number(e.target.value))}>{opts.map(([v, o]: any) => <option key={String(v)} value={v}>{o}</option>)}</select>);
   const Fld = ({ t, k, opts, type, step, min, ph }: any) => (<div><span className="bbx-lbl">{t}</span>{opts ? <Sel k={k} opts={opts} /> : <In k={k} type={type || 'text'} step={step} min={min} ph={ph} />}</div>);
   const Toggle = ({ k, t }: any) => (<button type="button" className={'bbx-tg' + ((s as any)[k] ? ' on' : '')} onClick={() => set(k, !(s as any)[k])}><OnyxIcon emoji={(s as any)[k] ? '✅' : '⭕'} size={13} /> {t}</button>);
+  const Switch = ({ on, onClick }: any) => (<button type="button" className={'bbx-sw' + (on ? ' on' : '')} onClick={onClick} aria-label="toggle"><span /></button>);
 
   const U_RISK: any = [['pct', '%'], ['money', '$']];
-  const U_SL: any = [['pips', 'pips'], ['atr', '× ATR'], ['pct', L('% precio', '% price')]];
-  const U_TP: any = [['rr', 'R'], ['pips', 'pips'], ['pct', L('% precio', '% price')], ['money', '$']];
-  const U_RUN: any = [...U_TP, ['structure', L('estructura', 'structure')]];
-  const U_TRAIL: any = [['atr', '× ATR'], ['pips', 'pips'], ['pct', L('% precio', '% price')]];
+  // Mismo set de unidades en TODA la zona de salidas (SL, TP, runner, trailing).
+  const U_EXIT: any = [['pips', 'pips'], ['rr', 'R (RR)'], ['pct', L('% precio', '% price')], ['money', '$'], ['atr', '× ATR']];
 
   const chip = (status: string) => status === 'off' ? { c: 'off', t: L('Desactivado', 'Disabled') } : status === 'warn' ? { c: 'warn', t: L('Sin definir', 'Undefined') } : { c: 'ok', t: L('Activo', 'Active') };
-  // Tarjeta iluminada de un parámetro con valor + unidad.
-  const ParamU = ({ ic, t, vk, uk, opts, step = 0.1, min, disabled }: any) => {
-    const status = off[vk] || disabled ? 'off' : nz((s as any)[vk]) ? 'ok' : 'warn';
+  // Tarjeta iluminada con valor + unidad. tgl = {on, toggle} para activar/desactivar.
+  const ParamU = ({ ic, t, vk, uk, opts, step = 0.1, min, tgl }: any) => {
+    const dis = tgl ? !tgl.on : false;
+    const status = dis ? 'off' : nz((s as any)[vk]) ? 'ok' : 'warn';
     const ch = chip(status);
     return (
       <div className={'bbx-pc bbx-pc-' + status}>
-        <div className="bbx-pc-h"><span className="bbx-ic sm"><OnyxIcon emoji={ic} size={14} /></span><span className="bbx-pc-t">{t}</span><span className={'bbx-chip bbx-chip-' + ch.c}>{ch.t}</span></div>
+        <div className="bbx-pc-h"><span className="bbx-ic sm"><OnyxIcon emoji={ic} size={14} /></span><span className="bbx-pc-t">{t}</span><span className={'bbx-chip bbx-chip-' + ch.c}>{ch.t}</span>{tgl && <Switch on={tgl.on} onClick={tgl.toggle} />}</div>
         <div className="bbx-row">
-          <input className="bbx-in" data-fld={vk} type="number" step={step} min={min} style={{ flex: 1, minWidth: 0 }} value={(s as any)[vk]} onChange={(e) => set(vk, e.target.value === '' ? '' : Number(e.target.value))} />
-          <select className="bbx-in bbx-sel" style={{ width: 96, flex: 'none' }} value={(s as any)[uk]} onChange={(e) => set(uk, e.target.value)}>{opts.map(([v, o]: any) => <option key={v} value={v}>{o}</option>)}</select>
+          <input className="bbx-in" data-fld={vk} type="number" step={step} min={min} disabled={dis} style={{ flex: 1, minWidth: 0 }} value={(s as any)[vk]} onChange={(e) => set(vk, e.target.value === '' ? '' : Number(e.target.value))} />
+          <select className="bbx-in bbx-sel" style={{ width: 96, flex: 'none' }} disabled={dis} value={(s as any)[uk]} onChange={(e) => set(uk, e.target.value)}>{opts.map(([v, o]: any) => <option key={v} value={v}>{o}</option>)}</select>
         </div>
       </div>
     );
   };
-  // Tarjeta iluminada de un parámetro numérico simple.
-  const ParamN = ({ ic, t, k, step = 1, min, optional }: any) => {
-    const status = off[k] ? 'off' : nz((s as any)[k]) ? 'ok' : (optional ? 'off' : 'warn');
+  // Tarjeta iluminada de un parámetro numérico simple. tgl opcional.
+  const ParamN = ({ ic, t, k, step = 1, min, tgl }: any) => {
+    const dis = tgl ? !tgl.on : false;
+    const status = dis ? 'off' : nz((s as any)[k]) ? 'ok' : 'warn';
     const ch = chip(status);
     return (
       <div className={'bbx-pc bbx-pc-' + status}>
-        <div className="bbx-pc-h"><span className="bbx-ic sm"><OnyxIcon emoji={ic} size={14} /></span><span className="bbx-pc-t">{t}</span><span className={'bbx-chip bbx-chip-' + ch.c}>{ch.t}</span></div>
-        <input className="bbx-in" data-fld={k} type="number" step={step} min={min} value={(s as any)[k]} onChange={(e) => set(k, e.target.value === '' ? '' : Number(e.target.value))} />
+        <div className="bbx-pc-h"><span className="bbx-ic sm"><OnyxIcon emoji={ic} size={14} /></span><span className="bbx-pc-t">{t}</span><span className={'bbx-chip bbx-chip-' + ch.c}>{ch.t}</span>{tgl && <Switch on={tgl.on} onClick={tgl.toggle} />}</div>
+        <input className="bbx-in" data-fld={k} type="number" step={step} min={min} disabled={dis} value={(s as any)[k]} onChange={(e) => set(k, e.target.value === '' ? '' : Number(e.target.value))} />
       </div>
     );
   };
@@ -145,8 +143,7 @@ export default function BotBuilder() {
     </div>
   );
 
-  const missCount = findMissing().length;
-  const pct = Math.round(100 * (REQ.length - missCount) / REQ.length);
+  const allReviewed = pct === 100;
 
   return (
     <div className="bbx" style={{ maxWidth: big ? 1500 : 1120, margin: '0 auto' }}>
@@ -191,6 +188,11 @@ export default function BotBuilder() {
       .bbx-metric b{font-size:19px;color:var(--ink);display:block;margin-top:2px}
       .bbx-tplchip{display:inline-flex;align-items:center;gap:2px;background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:99px;padding:3px 4px 3px 6px}
       .bbx-tplchip button{border:none;background:none;cursor:pointer}
+      .bbx-sw{width:34px;height:19px;border-radius:99px;background:rgba(255,255,255,.14);border:none;cursor:pointer;position:relative;transition:.15s;flex:none;padding:0}
+      .bbx-sw.on{background:linear-gradient(90deg,#6f77ea,#5b63d3);box-shadow:0 0 12px rgba(139,147,255,.5)}
+      .bbx-sw span{position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:#fff;transition:.15s}
+      .bbx-sw.on span{left:17px}
+      .bbx-in:disabled{opacity:.45;cursor:not-allowed}
       `}</style>
 
       {/* Hero */}
@@ -203,8 +205,8 @@ export default function BotBuilder() {
           <button className="bbx-btn" onClick={() => setBig((v) => !v)}><OnyxIcon emoji={big ? '🗕' : '🗖'} size={14} /> {big ? L('Reducir', 'Shrink') : L('Pantalla ancha', 'Wide screen')}</button>
         </div>
         <div style={{ marginTop: 14 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 12.5, color: '#fff' }}><span style={{ fontWeight: 600 }}>{L('Completado', 'Completed')} {pct}%</span><span style={{ color: 'rgba(255,255,255,.8)' }}>{missCount ? L(`${missCount} campo(s) sin definir`, `${missCount} field(s) undefined`) : L('Todo listo', 'All set')}</span></div>
-          <div className={'bbx-prog' + (pct === 100 ? ' full' : '')}><i style={{ width: pct + '%' }} /></div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 12.5, color: '#fff' }}><span style={{ fontWeight: 600 }}>{L('Revisado', 'Reviewed')} {pct}%</span><span style={{ color: 'rgba(255,255,255,.8)' }}>{missCount ? L(`${missCount} campo(s) sin definir`, `${missCount} field(s) undefined`) : allReviewed ? L('Todo listo', 'All set') : L('Revisa y ajusta tus campos', 'Review and adjust your fields')}</span></div>
+          <div className={'bbx-prog' + (allReviewed ? ' full' : '')}><i style={{ width: pct + '%' }} /></div>
         </div>
       </div>
 
@@ -229,6 +231,7 @@ export default function BotBuilder() {
         <Fld t={L('Instrumento', 'Instrument')} k="symbol" ph="XAUUSD" />
         <Fld t={L('Magic (identificador)', 'Magic (id)')} k="magic" type="number" />
         <Fld t={L('Temporalidad de entrada', 'Entry timeframe')} k="tf" opts={TF_LIST} />
+        <Fld t={L('Idioma del bot (panel y EA)', 'Bot language (panel & EA)')} k="botLang" opts={[['es', 'Español'], ['en', 'English']]} />
       </Panel>
 
       <Panel ic="🎯" title={L('Entrada', 'Entry')} sub={L('El bot ejecuta la entrada en la plataforma. Elige el gatillo, el sesgo y la sesión.', 'The bot executes the entry on the platform. Pick the trigger, bias and session.')}>
@@ -255,17 +258,16 @@ export default function BotBuilder() {
 
       {/* Salidas — tarjetas iluminadas */}
       <div className="bbx-panel">
-        <div className="bbx-panel-h"><span className="bbx-ic"><OnyxIcon emoji="🚪" size={16} /></span><div><div>{L('Salidas y gestión', 'Exits & management')}</div><div className="bbx-sub">{L('Cada objetivo lleva su unidad: $, %, pips o R. El bot la convierte a distancia de precio en tiempo real.', 'Each target has its own unit: $, %, pips or R. The bot converts it to a price distance in real time.')}</div></div></div>
+        <div className="bbx-panel-h"><span className="bbx-ic"><OnyxIcon emoji="🚪" size={16} /></span><div><div>{L('Salidas y gestión', 'Exits & management')}</div><div className="bbx-sub">{L('Mismas unidades en todos: pips, R, %, $ o × ATR. El bot las convierte a distancia de precio en tiempo real. Usa el interruptor para activar o desactivar lo opcional.', 'Same units everywhere: pips, R, %, $ or × ATR. The bot converts them to a price distance in real time. Use the switch to enable or disable optional items.')}</div></div></div>
         <div className="bbx-grid">
-          <ParamU ic="🛡️" t={L('Stop loss', 'Stop loss')} vk="slVal" uk="slUnit" opts={U_SL} />
-          <ParamU ic="🎯" t={L('TP1 (parcial)', 'TP1 (partial)')} vk="tp1Val" uk="tp1Unit" opts={U_TP} />
+          <ParamU ic="🛡️" t={L('Stop loss', 'Stop loss')} vk="slVal" uk="slUnit" opts={U_EXIT} />
+          <ParamU ic="🎯" t={L('TP1 (parcial)', 'TP1 (partial)')} vk="tp1Val" uk="tp1Unit" opts={U_EXIT} />
           <ParamN ic="✂️" t={L('% que cierra en TP1', '% closed at TP1')} k="partialPct" step={5} />
-          <ParamU ic="🏃" t={L('Runner / TP final', 'Runner / final TP')} vk="runnerVal" uk="runnerUnit" opts={U_RUN} />
-          <ParamU ic="📈" t={L('Trailing', 'Trailing')} vk="trailVal" uk="trailUnit" opts={U_TRAIL} disabled={!s.useTrail} />
-          <ParamN ic="⚖️" t={L('Break even (en R, 0=BE)', 'Break even (in R, 0=BE)')} k="beOffsetR" step={0.1} optional />
-          <ParamN ic="⏱️" t={L('Time-stop (velas, 0=off)', 'Time-stop (bars, 0=off)')} k="timeStopBars" optional />
+          <ParamU ic="🏃" t={L('Runner / TP final', 'Runner / final TP')} vk="runnerVal" uk="runnerUnit" opts={U_EXIT} />
+          <ParamU ic="📈" t={L('Trailing', 'Trailing')} vk="trailVal" uk="trailUnit" opts={U_EXIT} tgl={{ on: s.useTrail, toggle: () => set('useTrail', !s.useTrail) }} />
+          <ParamN ic="⚖️" t={L('Break even (en R, 0=BE)', 'Break even (in R, 0=BE)')} k="beOffsetR" step={0.1} />
+          <ParamN ic="⏱️" t={L('Time-stop (velas)', 'Time-stop (bars)')} k="timeStopBars" tgl={{ on: nz(s.timeStopBars), toggle: () => set('timeStopBars', nz(s.timeStopBars) ? 0 : 12) }} />
         </div>
-        <div style={{ marginTop: 10 }}><Toggle k="useTrail" t={L('Activar trailing', 'Enable trailing')} /></div>
       </div>
 
       {/* Riesgo — tarjetas iluminadas */}
@@ -274,8 +276,8 @@ export default function BotBuilder() {
         <div className="bbx-grid">
           <ParamU ic="💠" t={L('Riesgo por operación', 'Risk per trade')} vk="riskVal" uk="riskUnit" opts={U_RISK} step={0.05} min={0.01} />
           <ParamN ic="📦" t={L('Tope de lotes', 'Max lots')} k="maxLots" step={0.01} />
-          <ParamU ic="🧯" t={L('Cap de pérdida diaria', 'Daily loss cap')} vk="dailyLossVal" uk="dailyLossUnit" opts={U_RISK} />
-          <ParamU ic="🎁" t={L('Objetivo diario (0=off)', 'Daily target (0=off)')} vk="dailyProfitVal" uk="dailyProfitUnit" opts={U_RISK} />
+          <ParamU ic="🧯" t={L('Cap de pérdida diaria', 'Daily loss cap')} vk="dailyLossVal" uk="dailyLossUnit" opts={U_RISK} tgl={{ on: nz(s.dailyLossVal), toggle: () => set('dailyLossVal', nz(s.dailyLossVal) ? 0 : 1.5) }} />
+          <ParamU ic="🎁" t={L('Objetivo diario', 'Daily target')} vk="dailyProfitVal" uk="dailyProfitUnit" opts={U_RISK} tgl={{ on: nz(s.dailyProfitVal), toggle: () => set('dailyProfitVal', nz(s.dailyProfitVal) ? 0 : 2) }} />
         </div>
       </div>
 
@@ -377,7 +379,6 @@ export default function BotBuilder() {
                     <b style={{ fontSize: 13, color: 'var(--ink)' }}>{w.label}</b>
                     <div style={{ display: 'flex', gap: 6 }}>
                       <button className="bbx-btn" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => { setShowWarn(false); const el = document.querySelector(`[data-fld="${w.key}"]`) as HTMLElement; el?.scrollIntoView({ behavior: 'smooth', block: 'center' }); el?.focus(); }}>{L('Completar', 'Complete')}</button>
-                      {w.opt && <button className="bbx-btn" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setOff((p) => ({ ...p, [w.key]: true }))}>{L('Desactivar', 'Disable')}</button>}
                     </div>
                   </div>
                 ))}
