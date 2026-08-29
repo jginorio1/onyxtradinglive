@@ -879,7 +879,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
             )}
 
             {view === 'operaciones' && (!canJournal ? <ProLock L={L} plan={upJ.name} desc={L.dLock1} price={upJ.price} preview={<PreviewJournal />} /> : <Journal trades={filtered} lang={lang} focusUndoc={journalUndoc} accounts={accounts} />)}
-            {view === 'costes' && <Costs trades={filtered} lang={lang} />}
+            {view === 'costes' && <Costs trades={filtered} lang={lang} accounts={accounts} />}
             {view === 'reto' && <Challenge lang={lang} />}
             {view === 'plan' && <PlanHabits lang={lang} />}
 
