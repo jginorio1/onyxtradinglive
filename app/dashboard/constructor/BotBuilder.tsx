@@ -60,6 +60,7 @@ export default function BotBuilder() {
   const [tpls, setTpls] = useState<any[]>([]);
   const [busy, setBusy] = useState(false);
   const [big, setBig] = useState(false);
+  const [view, setView] = useState('home'); // 'home' = tablero de tarjetas; o la clave de una sección
   const [warn, setWarn] = useState<{ key: string; label: string }[]>([]);
   const [showWarn, setShowWarn] = useState(false);
   const [bal, setBal] = useState<number>(10000);
@@ -152,6 +153,17 @@ export default function BotBuilder() {
   const TFS = tfOptions(!es);
 
   const allReviewed = pct === 100;
+  // Tarjetas del tablero: [clave, icono, título, subtítulo].
+  const CARDS: [string, string, string, string][] = [
+    ['general', '⚙️', L('General', 'General'), L('Nombre, símbolo, TF, idioma', 'Name, symbol, TF, language')],
+    ['entry', '🎯', L('Entrada', 'Entry'), L('Gatillo, sesgo, sesión', 'Trigger, bias, session')],
+    ['exits', '🚪', L('Salidas y gestión', 'Exits & management'), L('SL, TP, runner, trailing', 'SL, TP, runner, trailing')],
+    ['risk', '🛡️', L('Riesgo', 'Risk'), L('Riesgo, cap diario, objetivo', 'Risk, daily cap, target')],
+    ['firm', '🏦', L('Fondeo y frenos', 'Firm & brakes'), L('Firm, DD, objetivo de fase', 'Firm, DD, phase target')],
+    ['schedule', '🕐', L('Horario y noticias', 'Schedule & news'), L('Sesión, cierre, noticias', 'Session, close, news')],
+  ];
+  const secStatus = (k: string) => k === 'general' ? (s.name?.trim() && s.symbol?.trim() ? 'ok' : 'warn') : k === 'exits' ? (nz(s.slVal) && nz(s.tp1Val) && nz(s.runnerVal) ? 'ok' : 'warn') : k === 'risk' ? (nz(s.riskVal) ? 'ok' : 'warn') : 'ok';
+  const go = (v: string) => { setView(v); window.scrollTo({ top: 0, behavior: 'smooth' }); };
 
   return (
     <BB.Provider value={{ s, set, es }}>
@@ -203,6 +215,14 @@ export default function BotBuilder() {
       .bbx-sw.on span{left:17px}
       .bbx-in:disabled{opacity:.45;cursor:not-allowed}
       .bbx-hint{font-size:11px;color:var(--mut);margin-top:4px;line-height:1.45}
+      .bbx-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px;margin-bottom:14px}
+      .bbx-card{text-align:left;background:linear-gradient(180deg,rgba(34,37,54,.72),rgba(23,25,38,.72));border:1.5px solid rgba(255,255,255,.08);border-radius:14px;padding:15px;cursor:pointer;transition:.15s;font:inherit}
+      .bbx-card:hover{transform:translateY(-2px);border-color:rgba(139,147,255,.6);box-shadow:0 0 24px rgba(139,147,255,.14)}
+      .bbx-card-ok{border-color:rgba(139,147,255,.38)}
+      .bbx-card-warn{border-color:rgba(242,194,101,.5);box-shadow:0 0 22px rgba(242,194,101,.12)}
+      .bbx-card-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+      .bbx-card-t{font-size:14px;font-weight:600;color:var(--ink)}
+      .bbx-card-s{font-size:11.5px;color:var(--mut);margin-top:2px;line-height:1.4}
       `}</style>
 
       {/* Hero */}
@@ -235,6 +255,26 @@ export default function BotBuilder() {
         </div>
       )}
 
+      {/* Tablero de tarjetas */}
+      {view === 'home' ? (
+        <div className="bbx-cards">
+          {CARDS.map(([k, ic, ti, su]) => { const st = secStatus(k); const ch = st === 'warn' ? { c: 'warn', t: L('Revisar', 'Review') } : { c: 'ok', t: L('Listo', 'Ready') };
+            return (
+              <button key={k} className={'bbx-card bbx-card-' + st} onClick={() => go(k)}>
+                <div className="bbx-card-h"><span className="bbx-ic"><OnyxIcon emoji={ic} size={16} /></span><span style={{ color: 'var(--mut)', fontSize: 16 }}>›</span></div>
+                <div className="bbx-card-t">{ti}</div><div className="bbx-card-s">{su}</div>
+                <span className={'bbx-chip bbx-chip-' + ch.c} style={{ marginTop: 10, display: 'inline-block' }}>{ch.t}</span>
+              </button>);
+          })}
+        </div>
+      ) : (
+      <>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+        <button className="bbx-btn" onClick={() => go('home')}>← {L('Todas las secciones', 'All sections')}</button>
+        <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>{CARDS.find((c) => c[0] === view)?.[2]}</span>
+      </div>
+
+      {view === 'general' && (
       <Panel ic="⚙️" title={L('General', 'General')}>
         <Fld t={L('Nombre de tu bot', 'Your bot name')} k="name" ph={L('Ej: Mi cazador de Londres', 'e.g. My London hunter')} />
         <Fld t={L('Plataforma', 'Platform')} k="platform" opts={[['mt5', 'MetaTrader 5'], ['mt4', 'MetaTrader 4'], ['ctrader', 'cTrader']]} />
@@ -244,7 +284,9 @@ export default function BotBuilder() {
         <Fld t={L('Temporalidad de entrada', 'Entry timeframe')} k="tf" opts={TFS} hint={L('Ritmo de las velas que analiza para entrar.', 'Candle rhythm it reads to enter.')} />
         <Fld t={L('Idioma del bot (panel y EA)', 'Bot language (panel & EA)')} k="botLang" opts={[['es', 'Español'], ['en', 'English']]} />
       </Panel>
+      )}
 
+      {view === 'entry' && (<>
       <Panel ic="🎯" title={L('Entrada', 'Entry')} sub={L('El bot ejecuta la entrada en la plataforma. Elige el gatillo, el sesgo y la sesión.', 'The bot executes the entry on the platform. Pick the trigger, bias and session.')}>
         <Fld t={L('Gatillo de entrada', 'Entry trigger')} k="entryTrigger" opts={[['breakout_swing', L('Ruptura de swing + pullback', 'Swing breakout + pullback')], ['ma_cross', L('Cruce de medias', 'MA cross')], ['rsi', 'RSI'], ['donchian', 'Donchian'], ['time', L('Hora fija', 'Fixed time')]]} />
         <Fld t={L('Sesgo / tendencia', 'Bias / trend')} k="trendMode" opts={[[0, L('Media', 'Moving average')], [1, L('Estructura (HH/HL)', 'Structure (HH/HL)')], [2, 'Donchian']]} />
@@ -271,8 +313,9 @@ export default function BotBuilder() {
           <Fld t={L('GMT del servidor del bróker', 'Broker server GMT')} k="serverGmt" opts={GMT_OPTS} hint={L('Míralo en MetaTrader: la hora del reloj del mercado. Sirve para las noticias y para tu hora local.', 'Check it in MetaTrader: the market watch clock. Used for news and your local time.')} />
         </div>
       </div>
+      </>)}
 
-      {/* Salidas — tarjetas iluminadas */}
+      {view === 'exits' && (
       <div className="bbx-panel">
         <div className="bbx-panel-h"><span className="bbx-ic"><OnyxIcon emoji="🚪" size={16} /></span><div><div>{L('Salidas y gestión', 'Exits & management')}</div><div className="bbx-sub">{L('Mismas unidades en todos: pips, R, %, $ o × ATR. El bot las convierte a distancia de precio en tiempo real. Usa el interruptor para activar o desactivar lo opcional.', 'Same units everywhere: pips, R, %, $ or × ATR. The bot converts them to a price distance in real time. Use the switch to enable or disable optional items.')}</div></div></div>
         <div className="bbx-grid">
@@ -285,8 +328,9 @@ export default function BotBuilder() {
           <ParamN ic="⏱️" t={L('Time-stop (velas)', 'Time-stop (bars)')} k="timeStopBars" tgl={{ on: nz(s.timeStopBars), toggle: () => set('timeStopBars', nz(s.timeStopBars) ? 0 : 12) }} />
         </div>
       </div>
+      )}
 
-      {/* Riesgo — tarjetas iluminadas */}
+      {view === 'risk' && (<>
       <div className="bbx-panel">
         <div className="bbx-panel-h"><span className="bbx-ic"><OnyxIcon emoji="🛡️" size={16} /></span><div><div>{L('Riesgo', 'Risk')}</div><div className="bbx-sub">{L('Elige la unidad del riesgo y de los límites diarios. En % el tope de seguridad es 5% por operación.', 'Choose the unit for risk and daily limits. In %, the safety cap is 5% per trade.')}</div></div></div>
         <div className="bbx-grid">
@@ -315,7 +359,9 @@ export default function BotBuilder() {
           <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, lineHeight: 1.7, color: 'var(--ink)' }}>{issues.map((x, i) => <li key={i}>{x}</li>)}</ul>
         </div>
       )}
+      </>)}
 
+      {view === 'firm' && (<>
       <Panel ic="🏦" title={L('Reglas del fondeo (prop firm)', 'Prop-firm rules')}>
         <Fld t={L('Nombre del fondeo', 'Firm name')} k="firmName" ph="FTMO" />
         <Fld t={L('Tipo de DD total', 'Total DD type')} k="ddType" opts={[[0, L('Trailing (desde el pico)', 'Trailing (from peak)')], [1, L('Estático (balance inicial)', 'Static (initial balance)')], [2, L('Trailing hasta BE, luego fijo', 'Trailing to BE, then fixed')]]} />
@@ -335,7 +381,9 @@ export default function BotBuilder() {
         <Fld t={L('Objetivo Fase 1 (%)', 'Phase 1 target (%)')} k="targetP1" type="number" step={0.5} />
         <Fld t={L('Objetivo Fase 2 (%)', 'Phase 2 target (%)')} k="targetP2" type="number" step={0.5} />
       </Panel>
+      </>)}
 
+      {view === 'schedule' && (<>
       <Panel ic="🕐" title={L('Horario', 'Schedule')}>
         <Fld t={L('Cierre de sesión (hora)', 'Session close (h)')} k="forceCloseHourNY" type="number" hint={L('Hora del servidor a la que cierra lo abierto.', 'Server hour when it closes open trades.')} />
         <Fld t={L('Cierre de sesión (min)', 'Session close (m)')} k="forceCloseMinNY" type="number" />
@@ -358,6 +406,14 @@ export default function BotBuilder() {
           </div>
         )}
       </div>
+      </>)}
+
+      {/* Botón para volver al tablero desde una sección */}
+      {view !== 'home' && (
+        <div style={{ marginBottom: 14 }}><button className="bbx-btn primary" onClick={() => go('home')}>✓ {L('Listo, volver al tablero', 'Done, back to board')}</button></div>
+      )}
+      </>
+      )}
 
       {/* Resumen + acciones */}
       <div className="bbx-panel">
