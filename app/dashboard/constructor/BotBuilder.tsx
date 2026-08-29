@@ -1,9 +1,52 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import { toast, toastErr } from '@/lib/toast';
 import OnyxIcon from '@/app/components/OnyxIcon';
-import { DEFAULT_SPEC, summarize, TF_LIST, type BotSpec } from '@/lib/botSpec';
+import { DEFAULT_SPEC, summarize, tfOptions, SYMBOL_HINTS, type BotSpec } from '@/lib/botSpec';
+
+// Contexto para los controles: evita recrear componentes en cada render (lo que
+// desmontaba los inputs y saltaba el scroll al inicio al escribir).
+const BB = createContext<any>({ s: {}, set: () => {}, es: true });
+const nz = (x: any) => typeof x === 'number' && x > 0;
+const Lc = (es: boolean, a: string, b: string) => (es ? a : b);
+const chipOf = (status: string, es: boolean) => status === 'off' ? { c: 'off', t: Lc(es, 'Desactivado', 'Disabled') } : status === 'warn' ? { c: 'warn', t: Lc(es, 'Sin definir', 'Undefined') } : { c: 'ok', t: Lc(es, 'Activo', 'Active') };
+
+function Fld({ t, k, opts, type, step, min, ph, hint, list }: any) {
+  const { s, set } = useContext(BB);
+  return (<div><span className="bbx-lbl">{t}</span>
+    {opts
+      ? <select className="bbx-in bbx-sel" value={s[k]} onChange={(e) => set(k, isNaN(Number(e.target.value)) ? e.target.value : Number(e.target.value))}>{opts.map(([v, o]: any) => <option key={String(v)} value={v}>{o}</option>)}</select>
+      : <input className="bbx-in" data-fld={k} type={type || 'text'} step={step} min={min} list={list} value={s[k]} placeholder={ph} onChange={(e) => set(k, type === 'number' ? (e.target.value === '' ? '' : Number(e.target.value)) : e.target.value)} />}
+    {hint && <div className="bbx-hint">{hint}</div>}</div>);
+}
+function Toggle({ k, t }: any) { const { s, set } = useContext(BB); return <button type="button" className={'bbx-tg' + (s[k] ? ' on' : '')} onClick={() => set(k, !s[k])}><OnyxIcon emoji={s[k] ? '✅' : '⭕'} size={13} /> {t}</button>; }
+function Switch({ on, onClick }: any) { return <button type="button" className={'bbx-sw' + (on ? ' on' : '')} onClick={onClick} aria-label="toggle"><span /></button>; }
+function ParamU({ ic, t, vk, uk, opts, step = 0.1, min, tgl, hint }: any) {
+  const { s, set, es } = useContext(BB); const dis = tgl ? !tgl.on : false;
+  const status = dis ? 'off' : nz(s[vk]) ? 'ok' : 'warn'; const ch = chipOf(status, es);
+  return (<div className={'bbx-pc bbx-pc-' + status}>
+    <div className="bbx-pc-h"><span className="bbx-ic sm"><OnyxIcon emoji={ic} size={14} /></span><span className="bbx-pc-t">{t}</span><span className={'bbx-chip bbx-chip-' + ch.c}>{ch.t}</span>{tgl && <Switch on={tgl.on} onClick={tgl.toggle} />}</div>
+    <div className="bbx-row">
+      <input className="bbx-in" data-fld={vk} type="number" step={step} min={min} disabled={dis} style={{ flex: 1, minWidth: 0 }} value={s[vk]} onChange={(e) => set(vk, e.target.value === '' ? '' : Number(e.target.value))} />
+      <select className="bbx-in bbx-sel" style={{ width: 96, flex: 'none' }} disabled={dis} value={s[uk]} onChange={(e) => set(uk, e.target.value)}>{opts.map(([v, o]: any) => <option key={v} value={v}>{o}</option>)}</select>
+    </div>
+    {hint && <div className="bbx-hint">{hint}</div>}</div>);
+}
+function ParamN({ ic, t, k, step = 1, min, tgl, hint }: any) {
+  const { s, set, es } = useContext(BB); const dis = tgl ? !tgl.on : false;
+  const status = dis ? 'off' : nz(s[k]) ? 'ok' : 'warn'; const ch = chipOf(status, es);
+  return (<div className={'bbx-pc bbx-pc-' + status}>
+    <div className="bbx-pc-h"><span className="bbx-ic sm"><OnyxIcon emoji={ic} size={14} /></span><span className="bbx-pc-t">{t}</span><span className={'bbx-chip bbx-chip-' + ch.c}>{ch.t}</span>{tgl && <Switch on={tgl.on} onClick={tgl.toggle} />}</div>
+    <input className="bbx-in" data-fld={k} type="number" step={step} min={min} disabled={dis} value={s[k]} onChange={(e) => set(k, e.target.value === '' ? '' : Number(e.target.value))} />
+    {hint && <div className="bbx-hint">{hint}</div>}</div>);
+}
+function Panel({ ic, title, sub, children }: any) {
+  return (<div className="bbx-panel">
+    <div className="bbx-panel-h"><span className="bbx-ic"><OnyxIcon emoji={ic} size={16} /></span><div><div>{title}</div>{sub && <div className="bbx-sub">{sub}</div>}</div></div>
+    <div className="bbx-grid">{children}</div>
+  </div>);
+}
 
 // Constructor "cabina": tarjetas iluminadas con glow, chips de estado, sesión en
 // píldoras, aviso de incompletos, estimador, semáforo de coherencia y plantillas.
@@ -96,56 +139,22 @@ export default function BotBuilder() {
   ];
   const activeSession = SESSIONS.find(([, , fh, fm, th, tm]) => s.signalFromH === fh && s.signalFromM === fm && s.signalToH === th && s.signalToM === tm)?.[0] || 'custom';
   function applySession(fh: number, fm: number, th: number, tm: number) { setS((p) => ({ ...p, signalFromH: fh, signalFromM: fm, signalToH: th, signalToM: tm })); }
+  // Conversión hora servidor → hora local del trader (el bot siempre usa la del servidor).
+  const GMT_OPTS: any = Array.from({ length: 27 }, (_, i) => { const g = i - 12; return [g, `GMT${g >= 0 ? '+' : ''}${g}`]; });
+  const localGmt = -new Date().getTimezoneOffset() / 60;
+  const hhmm = (h: number, m: number) => `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  const toLocal = (h: number, m: number) => { let t = h * 60 + m + (localGmt - (s.serverGmt || 0)) * 60; t = ((t % 1440) + 1440) % 1440; return hhmm(Math.floor(t / 60), Math.round(t % 60)); };
 
-  // ---- Controles ----
-  const In = ({ k, ph, type = 'text', step, min }: any) => (<input className="bbx-in" data-fld={k} type={type} step={step} min={min} value={(s as any)[k]} placeholder={ph} onChange={(e) => set(k, type === 'number' ? (e.target.value === '' ? '' : Number(e.target.value)) : e.target.value)} />);
-  const Sel = ({ k, opts }: any) => (<select className="bbx-in bbx-sel" value={(s as any)[k]} onChange={(e) => set(k, isNaN(Number(e.target.value)) ? e.target.value : Number(e.target.value))}>{opts.map(([v, o]: any) => <option key={String(v)} value={v}>{o}</option>)}</select>);
-  const Fld = ({ t, k, opts, type, step, min, ph }: any) => (<div><span className="bbx-lbl">{t}</span>{opts ? <Sel k={k} opts={opts} /> : <In k={k} type={type || 'text'} step={step} min={min} ph={ph} />}</div>);
-  const Toggle = ({ k, t }: any) => (<button type="button" className={'bbx-tg' + ((s as any)[k] ? ' on' : '')} onClick={() => set(k, !(s as any)[k])}><OnyxIcon emoji={(s as any)[k] ? '✅' : '⭕'} size={13} /> {t}</button>);
-  const Switch = ({ on, onClick }: any) => (<button type="button" className={'bbx-sw' + (on ? ' on' : '')} onClick={onClick} aria-label="toggle"><span /></button>);
-
+  // ---- Unidades ----
   const U_RISK: any = [['pct', '%'], ['money', '$']];
   // Mismo set de unidades en TODA la zona de salidas (SL, TP, runner, trailing).
   const U_EXIT: any = [['pips', 'pips'], ['rr', 'R (RR)'], ['pct', L('% precio', '% price')], ['money', '$'], ['atr', '× ATR']];
-
-  const chip = (status: string) => status === 'off' ? { c: 'off', t: L('Desactivado', 'Disabled') } : status === 'warn' ? { c: 'warn', t: L('Sin definir', 'Undefined') } : { c: 'ok', t: L('Activo', 'Active') };
-  // Tarjeta iluminada con valor + unidad. tgl = {on, toggle} para activar/desactivar.
-  const ParamU = ({ ic, t, vk, uk, opts, step = 0.1, min, tgl }: any) => {
-    const dis = tgl ? !tgl.on : false;
-    const status = dis ? 'off' : nz((s as any)[vk]) ? 'ok' : 'warn';
-    const ch = chip(status);
-    return (
-      <div className={'bbx-pc bbx-pc-' + status}>
-        <div className="bbx-pc-h"><span className="bbx-ic sm"><OnyxIcon emoji={ic} size={14} /></span><span className="bbx-pc-t">{t}</span><span className={'bbx-chip bbx-chip-' + ch.c}>{ch.t}</span>{tgl && <Switch on={tgl.on} onClick={tgl.toggle} />}</div>
-        <div className="bbx-row">
-          <input className="bbx-in" data-fld={vk} type="number" step={step} min={min} disabled={dis} style={{ flex: 1, minWidth: 0 }} value={(s as any)[vk]} onChange={(e) => set(vk, e.target.value === '' ? '' : Number(e.target.value))} />
-          <select className="bbx-in bbx-sel" style={{ width: 96, flex: 'none' }} disabled={dis} value={(s as any)[uk]} onChange={(e) => set(uk, e.target.value)}>{opts.map(([v, o]: any) => <option key={v} value={v}>{o}</option>)}</select>
-        </div>
-      </div>
-    );
-  };
-  // Tarjeta iluminada de un parámetro numérico simple. tgl opcional.
-  const ParamN = ({ ic, t, k, step = 1, min, tgl }: any) => {
-    const dis = tgl ? !tgl.on : false;
-    const status = dis ? 'off' : nz((s as any)[k]) ? 'ok' : 'warn';
-    const ch = chip(status);
-    return (
-      <div className={'bbx-pc bbx-pc-' + status}>
-        <div className="bbx-pc-h"><span className="bbx-ic sm"><OnyxIcon emoji={ic} size={14} /></span><span className="bbx-pc-t">{t}</span><span className={'bbx-chip bbx-chip-' + ch.c}>{ch.t}</span>{tgl && <Switch on={tgl.on} onClick={tgl.toggle} />}</div>
-        <input className="bbx-in" data-fld={k} type="number" step={step} min={min} disabled={dis} value={(s as any)[k]} onChange={(e) => set(k, e.target.value === '' ? '' : Number(e.target.value))} />
-      </div>
-    );
-  };
-  const Panel = ({ ic, title, sub, children }: any) => (
-    <div className="bbx-panel">
-      <div className="bbx-panel-h"><span className="bbx-ic"><OnyxIcon emoji={ic} size={16} /></span><div><div>{title}</div>{sub && <div className="bbx-sub">{sub}</div>}</div></div>
-      <div className="bbx-grid">{children}</div>
-    </div>
-  );
+  const TFS = tfOptions(!es);
 
   const allReviewed = pct === 100;
 
   return (
+    <BB.Provider value={{ s, set, es }}>
     <div className="bbx" style={{ maxWidth: big ? 1500 : 1120, margin: '0 auto' }}>
       <style>{`
       .bbx{--ac:#8b93ff;--ac2:#5b63d3;--ok:#5fe0aa;--wn:#f2c265;--ink:#eef0fa;--mut:#98a0b8;--line:rgba(255,255,255,.09)}
@@ -193,6 +202,7 @@ export default function BotBuilder() {
       .bbx-sw span{position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:#fff;transition:.15s}
       .bbx-sw.on span{left:17px}
       .bbx-in:disabled{opacity:.45;cursor:not-allowed}
+      .bbx-hint{font-size:11px;color:var(--mut);margin-top:4px;line-height:1.45}
       `}</style>
 
       {/* Hero */}
@@ -228,16 +238,17 @@ export default function BotBuilder() {
       <Panel ic="⚙️" title={L('General', 'General')}>
         <Fld t={L('Nombre de tu bot', 'Your bot name')} k="name" ph={L('Ej: Mi cazador de Londres', 'e.g. My London hunter')} />
         <Fld t={L('Plataforma', 'Platform')} k="platform" opts={[['mt5', 'MetaTrader 5'], ['mt4', 'MetaTrader 4'], ['ctrader', 'cTrader']]} />
-        <Fld t={L('Instrumento', 'Instrument')} k="symbol" ph="XAUUSD" />
+        <Fld t={L('Instrumento', 'Instrument')} k="symbol" ph="XAUUSD" list="bbx-syms" hint={L('El bot encuentra el símbolo aunque tu broker use otro nombre o sufijo (GOLD, XAUUSD.m, etc.).', 'The bot finds the symbol even if your broker uses another name or suffix (GOLD, XAUUSD.m, etc.).')} />
+        <datalist id="bbx-syms">{SYMBOL_HINTS.map((x) => <option key={x} value={x} />)}</datalist>
         <Fld t={L('Magic (identificador)', 'Magic (id)')} k="magic" type="number" />
-        <Fld t={L('Temporalidad de entrada', 'Entry timeframe')} k="tf" opts={TF_LIST} />
+        <Fld t={L('Temporalidad de entrada', 'Entry timeframe')} k="tf" opts={TFS} hint={L('Ritmo de las velas que analiza para entrar.', 'Candle rhythm it reads to enter.')} />
         <Fld t={L('Idioma del bot (panel y EA)', 'Bot language (panel & EA)')} k="botLang" opts={[['es', 'Español'], ['en', 'English']]} />
       </Panel>
 
       <Panel ic="🎯" title={L('Entrada', 'Entry')} sub={L('El bot ejecuta la entrada en la plataforma. Elige el gatillo, el sesgo y la sesión.', 'The bot executes the entry on the platform. Pick the trigger, bias and session.')}>
         <Fld t={L('Gatillo de entrada', 'Entry trigger')} k="entryTrigger" opts={[['breakout_swing', L('Ruptura de swing + pullback', 'Swing breakout + pullback')], ['ma_cross', L('Cruce de medias', 'MA cross')], ['rsi', 'RSI'], ['donchian', 'Donchian'], ['time', L('Hora fija', 'Fixed time')]]} />
         <Fld t={L('Sesgo / tendencia', 'Bias / trend')} k="trendMode" opts={[[0, L('Media', 'Moving average')], [1, L('Estructura (HH/HL)', 'Structure (HH/HL)')], [2, 'Donchian']]} />
-        <Fld t={L('Temporalidad del sesgo', 'Bias timeframe')} k="trendTF" opts={TF_LIST} />
+        <Fld t={L('Temporalidad del sesgo', 'Bias timeframe')} k="trendTF" opts={TFS} hint={L('Marco mayor para leer la tendencia.', 'Higher timeframe to read the trend.')} />
         <Fld t={L('Tamaño del swing', 'Swing size')} k="microSwing" type="number" />
         <Fld t={L('Máx. ops/día (0=∞)', 'Max trades/day (0=∞)')} k="maxTradesPerDay" type="number" />
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', paddingTop: 20 }}><Toggle k="allowLongs" t={L('Largos', 'Longs')} /><Toggle k="allowShorts" t={L('Cortos', 'Shorts')} /></div>
@@ -245,14 +256,19 @@ export default function BotBuilder() {
 
       {/* Sesión */}
       <div className="bbx-panel">
-        <div className="bbx-panel-h" style={{ marginBottom: 12 }}><span className="bbx-ic"><OnyxIcon emoji="🕐" size={16} /></span><div><div>{L('Sesión de operación', 'Trading session')}</div><div className="bbx-sub">{L('Hora del servidor de tu bróker.', 'Your broker\'s server time.')}</div></div></div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+        <div className="bbx-panel-h" style={{ marginBottom: 12 }}><span className="bbx-ic"><OnyxIcon emoji="🕐" size={16} /></span><div><div>{L('Sesión de operación', 'Trading session')}</div><div className="bbx-sub">{L('El bot opera con la HORA DEL SERVIDOR de tu bróker. Abajo te mostramos a qué hora local tuya corresponde.', 'The bot runs on your broker\'s SERVER time. Below we show what your local time that is.')}</div></div></div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
           {SESSIONS.map(([kk, nm, fh, fm, th, tm]) => <button key={kk} className={'bbx-ses' + (activeSession === kk ? ' on' : '')} onClick={() => applySession(fh, fm, th, tm)}>{nm}</button>)}
-          <span className={'bbx-ses' + (activeSession === 'custom' ? ' on' : '')}>{L('Personalizado', 'Custom')} · {String(s.signalFromH).padStart(2, '0')}:{String(s.signalFromM).padStart(2, '0')}–{String(s.signalToH).padStart(2, '0')}:{String(s.signalToM).padStart(2, '0')}</span>
+          <span className={'bbx-ses' + (activeSession === 'custom' ? ' on' : '')}>{L('Personalizado', 'Custom')}</span>
+        </div>
+        <div style={{ background: 'rgba(139,147,255,.10)', border: '1px solid rgba(139,147,255,.25)', borderRadius: 10, padding: '9px 12px', marginBottom: 12, fontSize: 12.5, color: 'var(--ink)' }}>
+          <span style={{ color: 'var(--mut)' }}>{L('Servidor', 'Server')} (GMT{s.serverGmt >= 0 ? '+' : ''}{s.serverGmt}): </span><b>{hhmm(s.signalFromH, s.signalFromM)}–{hhmm(s.signalToH, s.signalToM)}</b>
+          <span style={{ color: 'var(--mut)' }}>   ·   {L('Tu hora local', 'Your local time')}: </span><b style={{ color: '#8b93ff' }}>{toLocal(s.signalFromH, s.signalFromM)}–{toLocal(s.signalToH, s.signalToM)}</b>
         </div>
         <div className="bbx-grid">
-          <Fld t={L('Hora inicio', 'From (h)')} k="signalFromH" type="number" /><Fld t={L('Min inicio', 'From (m)')} k="signalFromM" type="number" />
-          <Fld t={L('Hora fin', 'To (h)')} k="signalToH" type="number" /><Fld t={L('Min fin', 'To (m)')} k="signalToM" type="number" />
+          <Fld t={L('Hora inicio (servidor)', 'From, server (h)')} k="signalFromH" type="number" /><Fld t={L('Min inicio', 'From (m)')} k="signalFromM" type="number" />
+          <Fld t={L('Hora fin (servidor)', 'To, server (h)')} k="signalToH" type="number" /><Fld t={L('Min fin', 'To (m)')} k="signalToM" type="number" />
+          <Fld t={L('GMT del servidor del bróker', 'Broker server GMT')} k="serverGmt" opts={GMT_OPTS} hint={L('Míralo en MetaTrader: la hora del reloj del mercado. Sirve para las noticias y para tu hora local.', 'Check it in MetaTrader: the market watch clock. Used for news and your local time.')} />
         </div>
       </div>
 
@@ -320,16 +336,28 @@ export default function BotBuilder() {
         <Fld t={L('Objetivo Fase 2 (%)', 'Phase 2 target (%)')} k="targetP2" type="number" step={0.5} />
       </Panel>
 
-      <Panel ic="🕐" title={L('Horario y noticias', 'Schedule & news')}>
-        <Fld t={L('Cierre de sesión (hora)', 'Session close (h)')} k="forceCloseHourNY" type="number" />
+      <Panel ic="🕐" title={L('Horario', 'Schedule')}>
+        <Fld t={L('Cierre de sesión (hora)', 'Session close (h)')} k="forceCloseHourNY" type="number" hint={L('Hora del servidor a la que cierra lo abierto.', 'Server hour when it closes open trades.')} />
         <Fld t={L('Cierre de sesión (min)', 'Session close (m)')} k="forceCloseMinNY" type="number" />
-        <Fld t={L('Monedas de noticias', 'News currencies')} k="newsCurrencies" ph="USD" />
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', paddingTop: 20 }}>
           <Toggle k="useDayClose" t={L('Cerrar fin de sesión', 'Close at session end')} />
           <Toggle k="noWeekend" t={L('Sin fin de semana', 'No weekend')} />
-          <Toggle k="useNewsFilter" t={L('Frenar en noticias', 'Pause on news')} />
         </div>
       </Panel>
+
+      {/* Noticias */}
+      <div className="bbx-panel">
+        <div className="bbx-panel-h"><span className="bbx-ic"><OnyxIcon emoji="📰" size={16} /></span><div><div>{L('Noticias (Forex Factory)', 'News (Forex Factory)')}</div><div className="bbx-sub">{L('El bot deja de abrir alrededor de noticias de alto impacto. Requiere permitir la URL en MetaTrader (Opciones → Asesores expertos → WebRequest para https://nfs.faireconomy.media).', 'The bot stops opening around high-impact news. Requires allowing the URL in MetaTrader (Options → Expert Advisors → WebRequest for https://nfs.faireconomy.media).')}</div></div></div>
+        <div style={{ marginBottom: 12 }}><Toggle k="useNewsFilter" t={L('Frenar en noticias', 'Pause on news')} /></div>
+        {s.useNewsFilter && (
+          <div className="bbx-grid">
+            <Fld t={L('Monedas', 'Currencies')} k="newsCurrencies" ph="USD,EUR" hint={L('Separadas por coma. Solo frena si la noticia es de estas monedas.', 'Comma-separated. Only pauses for these currencies.')} />
+            <Fld t={L('Impacto', 'Impact')} k="newsImpact" opts={[['high', L('Solo alto', 'High only')], ['med', L('Alto + medio', 'High + medium')], ['all', L('Todos', 'All')]]} />
+            <Fld t={L('Minutos antes', 'Minutes before')} k="newsBefore" type="number" hint={L('Deja de abrir estos minutos antes de la noticia.', 'Stops opening this many minutes before.')} />
+            <Fld t={L('Minutos después', 'Minutes after')} k="newsAfter" type="number" hint={L('Sigue frenado estos minutos después.', 'Stays paused this many minutes after.')} />
+          </div>
+        )}
+      </div>
 
       {/* Resumen + acciones */}
       <div className="bbx-panel">
@@ -392,5 +420,6 @@ export default function BotBuilder() {
         </div>
       )}
     </div>
+    </BB.Provider>
   );
 }
