@@ -144,7 +144,9 @@ export default function LandingConstructor() {
       .lpc .revbar{flex:1;height:8px;border-radius:99px;background:rgba(128,128,128,.18);overflow:hidden}
       .lpc .revbar>i{display:block;height:100%;background:#f2c265}
       @keyframes lpcscroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-      .lpc .revmask{overflow:hidden;margin-top:20px;-webkit-mask-image:linear-gradient(90deg,transparent,#000 5%,#000 95%,transparent);mask-image:linear-gradient(90deg,transparent,#000 5%,#000 95%,transparent)}
+      /* Carrusel de borde a borde: rompe el contenedor centrado y ocupa todo el ancho */
+      .lpc .revmask{overflow:hidden;margin-top:22px;width:100vw;margin-left:calc(50% - 50vw);margin-right:calc(50% - 50vw);-webkit-mask-image:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent);mask-image:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent)}
+      .lpc .revtrack{padding:0 14px}
       .lpc .revtrack{display:flex;gap:14px;width:max-content;animation:lpcscroll 45s linear infinite}
       .lpc .revmask:hover .revtrack{animation-play-state:paused}
       .lpc .revcard{width:320px;flex:none}

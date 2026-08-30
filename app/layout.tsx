@@ -168,7 +168,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               />
             )}
             <BetaBanner />
-            <TopBar home={path === '/' || path === '/en' || path === '/en/'} />
+            <TopBar home={['/', '/en', '/en/', '/bot-builder', '/en/bot-builder'].includes(path)} />
             {children}
             {!path.startsWith('/admin') && <SiteFooter />}
             {!path.startsWith('/admin') && <SupportWidget loggedIn={loggedIn} cfg={chatCfg} />}
