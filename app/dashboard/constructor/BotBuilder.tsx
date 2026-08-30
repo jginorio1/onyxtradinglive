@@ -63,10 +63,15 @@ export default function BotBuilder() {
   const [view, setView] = useState('home'); // 'home' = tablero de tarjetas; o la clave de una sección
   const [warn, setWarn] = useState<{ key: string; label: string }[]>([]);
   const [showWarn, setShowWarn] = useState(false);
+  const [creating, setCreating] = useState(false);       // animación "creando robot"
+  const [cSecs, setCSecs] = useState(0);                  // countdown de la animación
+  const [doneModal, setDoneModal] = useState<{ id: string; name: string; platform: string } | null>(null); // popup de instalación
+  const [copied, setCopied] = useState('');              // URL copiada al portapapeles
   const [bal, setBal] = useState<number>(10000);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const set = (k: keyof BotSpec, v: any) => { setTouched((t) => ({ ...t, [k as string]: true })); setS((p) => ({ ...p, [k]: v })); };
   const touchAll = () => setTouched(Object.fromEntries(Object.keys(DEFAULT_SPEC).map((k) => [k, true])));
+  const BUILD_SECS = 7;   // duración de la animación de creación (segundos)
 
   // Genera un magic ÚNICO de 7 dígitos, evitando los magics de robots ya guardados.
   // El magic identifica cada robot; si dos coinciden se mezclan sus operaciones.
@@ -132,6 +137,19 @@ export default function BotBuilder() {
     } catch { toastErr(L('No se pudo guardar.', 'Could not save.')); setBusy(false); return null; }
   }
   async function saveChecked() { const m = findMissing(); if (m.length) { setWarn(m); setShowWarn(true); return; } await save(); }
+
+  // Crear robot: valida, muestra la animación "creando…" con countdown, guarda en paralelo
+  // y al terminar abre el popup de instalación (advertencia + pasos + URLs del WebRequest).
+  async function createBot() {
+    const m = findMissing(); if (m.length) { setWarn(m); setShowWarn(true); return; }
+    if (!s.name.trim()) { toastErr(L('Ponle un nombre a tu bot.', 'Give your bot a name.')); return; }
+    setCreating(true); setCSecs(BUILD_SECS);
+    const savedP = save();
+    await new Promise<void>((res) => { let n = BUILD_SECS; const iv = setInterval(() => { n -= 1; setCSecs(n); if (n <= 0) { clearInterval(iv); res(); } }, 1000); });
+    const bid = (await savedP) || id;
+    setCreating(false);
+    if (bid) setDoneModal({ id: bid, name: s.name || 'Bot', platform: s.platform });
+  }
   async function saveTpl() {
     const name = prompt(L('Nombre de la plantilla:', 'Template name:'), s.name); if (!name) return;
     try { const r = await fetch('/api/bots/templates', { method: 'POST', body: JSON.stringify({ name, spec: s }) }); const j = await r.json(); if (!r.ok) { toastErr(j); return; } toast(L('Plantilla guardada.', 'Template saved.')); loadTpls(); } catch { toastErr(L('No se pudo guardar.', 'Could not save.')); }
@@ -535,7 +553,8 @@ export default function BotBuilder() {
           ))}
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-          <button className="bbx-btn primary" onClick={saveChecked} disabled={busy}>{busy ? '…' : (id ? L('Guardar cambios', 'Save changes') : L('Guardar bot', 'Save bot'))}</button>
+          <button className="bbx-btn primary" onClick={createBot} disabled={busy || creating} style={{ fontWeight: 700 }}><OnyxIcon emoji="🤖" size={14} glow={false} /> {L('Crear robot', 'Create robot')}</button>
+          <button className="bbx-btn" onClick={saveChecked} disabled={busy}>{busy ? '…' : L('Solo guardar', 'Save only')}</button>
           <button className="bbx-btn" onClick={saveTpl}><OnyxIcon emoji="🗂️" size={14} /> {L('Guardar plantilla', 'Save template')}</button>
           <button className="bbx-btn" onClick={openGuide}><OnyxIcon emoji="📖" size={14} /> {L('Guía visual (PDF)', 'Visual guide (PDF)')}</button>
           {id && <a className="bbx-btn" href={`/api/bots/build?code=${id}`}>{L('EA (.mq5)', 'EA (.mq5)')} ↓</a>}
@@ -590,6 +609,75 @@ export default function BotBuilder() {
           </div>
         </div>
       )}
+
+      {/* Animación "creando robot": círculo verde iluminado + countdown. No se puede cerrar. */}
+      {creating && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(6,8,16,.72)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 80, padding: 16 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, textAlign: 'center' }}>
+            <div className="bbxglow"><div className="bbxring" /></div>
+            <div style={{ fontSize: 18, fontWeight: 600, color: '#eaf6ef' }}>{L('Creando tu robot…', 'Creating your robot…')}</div>
+            <div style={{ fontSize: 13, color: 'var(--mut)' }}>{cSecs > BUILD_SECS * 0.6 ? L('Leyendo tus reglas', 'Reading your rules') : cSecs > BUILD_SECS * 0.3 ? L('Escribiendo el motor', 'Writing the engine') : L('Empaquetando', 'Packaging')}</div>
+            <div style={{ fontSize: 30, fontWeight: 600, color: '#22d68c', letterSpacing: 1 }}>00:{String(Math.max(0, cSecs)).padStart(2, '0')}</div>
+            <div style={{ width: 230, height: 6, borderRadius: 99, background: 'rgba(255,255,255,.08)', overflow: 'hidden' }}><div style={{ width: `${Math.round((BUILD_SECS - cSecs) / BUILD_SECS * 100)}%`, height: '100%', background: '#22d68c', transition: 'width 1s linear' }} /></div>
+          </div>
+        </div>
+      )}
+
+      {/* Popup de instalación: advertencia + pasos + URLs del WebRequest + descargas. */}
+      {doneModal && (() => {
+        const plat = doneModal.platform;
+        const isMT = plat === 'mt4' || plat === 'mt5';
+        const ext = plat === 'mt4' ? '.mq4' : plat === 'ctrader' ? '.cs' : '.mq5';
+        const editor = plat === 'ctrader' ? 'cTrader Automate' : 'MetaEditor';
+        const SITE = (typeof window !== 'undefined' ? window.location.origin : 'https://www.onyxtradinglive.com');
+        const urls = [SITE, 'https://nfs.faireconomy.media'];
+        const copy = (u: string) => { try { navigator.clipboard?.writeText(u); } catch {} setCopied(u); setTimeout(() => setCopied(''), 1500); };
+        return (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(6,8,16,.62)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 80, padding: 16 }} onClick={() => setDoneModal(null)}>
+            <div className="bbx" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480, width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+              <div className="bbx-panel" style={{ margin: 0, border: '1px solid rgba(34,214,140,.4)', boxShadow: '0 0 40px rgba(34,214,140,.15)' }}>
+                <div className="row between" style={{ alignItems: 'center', marginBottom: 10 }}>
+                  <div className="row" style={{ gap: 9, alignItems: 'center' }}><span className="bbx-ic" style={{ background: 'rgba(34,214,140,.16)', color: 'var(--green,#22d68c)' }}><OnyxIcon emoji="✅" size={16} /></span><b style={{ fontSize: 16 }}>{L('Tu robot está listo', 'Your robot is ready')}</b></div>
+                  <div className="row" style={{ gap: 8, alignItems: 'center' }}><span style={{ fontSize: 11, background: 'rgba(139,147,255,.16)', color: '#8b93ff', padding: '3px 9px', borderRadius: 99 }}>{plat.toUpperCase()}</span><button className="bbx-btn" style={{ padding: '3px 9px' }} onClick={() => setDoneModal(null)}>✕</button></div>
+                </div>
+
+                <div style={{ background: 'rgba(242,194,101,.12)', border: '1px solid rgba(242,194,101,.4)', borderRadius: 10, padding: '9px 11px', fontSize: 12.5, color: 'var(--wn)', marginBottom: 12 }}>
+                  <OnyxIcon emoji="⚠️" size={13} /> {L('Pruébalo primero en DEMO. Pega tu clave Onyx en InpApiKey (necesaria en demo y en real). El trading conlleva riesgo.', 'Test it on DEMO first. Paste your Onyx key in InpApiKey (required on demo and live). Trading involves risk.')}
+                </div>
+
+                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>{L('Pasos', 'Steps')}</div>
+                <ol style={{ margin: '0 0 12px', paddingLeft: 18, fontSize: 12.5, color: 'var(--mut)', lineHeight: 1.85 }}>
+                  <li>{L(`Descarga el archivo y ábrelo en ${editor} → Compilar.`, `Download the file and open it in ${editor} → Compile.`)}</li>
+                  <li>{L('Arrástralo al gráfico del par. Pega tu clave Onyx en', 'Drag it onto the pair chart. Paste your Onyx key in')} <code>InpApiKey</code>.</li>
+                  {isMT
+                    ? <li>{L('Permite las URLs de abajo (una sola vez) y activa AutoTrading.', 'Allow the URLs below (once) and enable AutoTrading.')}</li>
+                    : <li>{L('En cTrader Automate, permite el acceso a internet del cBot e inícialo.', 'In cTrader Automate, allow the cBot internet access and start it.')}</li>}
+                </ol>
+
+                {isMT && (<>
+                  <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>{L('Permitir en MetaTrader (Opciones → Asesores expertos → WebRequest)', 'Allow in MetaTrader (Options → Expert Advisors → WebRequest)')}</div>
+                  <div style={{ display: 'grid', gap: 6, marginBottom: 12 }}>
+                    {urls.map((u) => (
+                      <div key={u} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,.04)', border: '1px solid var(--line)', borderRadius: 10, padding: '7px 10px' }}>
+                        <code style={{ flex: 1, fontSize: 12, color: '#8b93ff', wordBreak: 'break-all' }}>{u}</code>
+                        <button className="bbx-btn" style={{ padding: '3px 9px', fontSize: 12 }} onClick={() => copy(u)}>{copied === u ? L('Copiado ✓', 'Copied ✓') : L('Copiar', 'Copy')}</button>
+                      </div>
+                    ))}
+                  </div>
+                </>)}
+
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+                  <a className="bbx-btn primary" href={`/api/bots/build?code=${doneModal.id}`} style={{ fontWeight: 700 }}><OnyxIcon emoji="⬇️" size={13} glow={false} /> {L('Descargar robot', 'Download robot')} ({ext})</a>
+                  <a className="bbx-btn" href={`/api/bots/build?download=${doneModal.id}`}>{L('Config', 'Config')} (.set) ↓</a>
+                  <button className="bbx-btn" onClick={openGuide}><OnyxIcon emoji="📖" size={13} /> {L('Guía PDF', 'PDF guide')}</button>
+                </div>
+
+                <div style={{ fontSize: 11.5, color: 'var(--mut)', lineHeight: 1.6 }}>{L('Para verlo enseguida en Mis robots, ve a “Añadir por magic” — tu robot ya aparece en la lista para registrarlo con un clic.', 'To see it right away in My robots, go to “Add by magic” — your robot already shows in the list to register it in one click.')}</div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
     </BB.Provider>
   );
