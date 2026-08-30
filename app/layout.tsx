@@ -1,6 +1,7 @@
 import './globals.css';
 import type { Metadata, Viewport } from 'next';
 import TopBar from './TopBar';
+import SectionNav from './SectionNav';
 import SiteFooter from './SiteFooter';
 import PWARegister from './PWARegister';
 import ChunkReload from './ChunkReload';
@@ -169,6 +170,17 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             )}
             <BetaBanner />
             <TopBar home={['/', '/en', '/en/', '/bot-builder', '/en/bot-builder'].includes(path)} />
+            {/* Segundo menú GLOBAL: siempre visible en las páginas públicas (se auto-oculta
+                con sesión). Enlaza a las secciones de la home desde cualquier tab. */}
+            {(() => {
+              const en = path.startsWith('/en');
+              const priv = ['/dashboard', '/admin', '/account', '/login', '/onboarding', '/en/dashboard', '/en/admin', '/en/account', '/en/login', '/en/onboarding'].some((p) => path === p || path.startsWith(p + '/'));
+              if (priv) return null;
+              const items = en
+                ? [{ id: 'features', label: 'Features' }, { id: 'eco', label: 'Ecosystem' }, { id: 'how', label: 'How it works' }, { id: 'fondeo', label: 'Funding' }, { id: 'gestor', label: 'Guardian' }, { id: 'faq', label: 'FAQ' }]
+                : [{ id: 'features', label: 'Funciones' }, { id: 'eco', label: 'Ecosistema' }, { id: 'how', label: 'Cómo funciona' }, { id: 'fondeo', label: 'Fondeo' }, { id: 'gestor', label: 'Guardian' }, { id: 'faq', label: 'FAQ' }];
+              return <SectionNav items={items} hrefBase={en ? '/en' : '/'} />;
+            })()}
             {children}
             {!path.startsWith('/admin') && <SiteFooter />}
             {!path.startsWith('/admin') && <SupportWidget loggedIn={loggedIn} cfg={chatCfg} />}

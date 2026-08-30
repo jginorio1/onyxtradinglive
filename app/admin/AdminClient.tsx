@@ -1321,7 +1321,12 @@ function Modules() {
                 }}>✨ {es ? 'Generar reseña con IA' : 'Generate review with AI'} · {lng.toUpperCase()}</button>
             ))}
           </div>
-          <div style={{ display: 'grid', gap: 10 }}>
+          <div className="row between" style={{ marginBottom: 6 }}>
+            <span className="muted" style={{ fontSize: 12 }}>{(lf.reviews?.length || 0)} {es ? 'reseñas' : 'reviews'}</span>
+            {(lf.reviews?.length || 0) > 0 && <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => { if (confirm(es ? '¿Borrar todas las reseñas?' : 'Delete all reviews?')) setLf({ ...lf, reviews: [] }); }}>{es ? 'Vaciar todo' : 'Clear all'}</button>}
+          </div>
+          {/* Lista con altura fija y scroll para que no sea interminable en el editor. */}
+          <div style={{ display: 'grid', gap: 10, maxHeight: 380, overflowY: 'auto', paddingRight: 4 }}>
             {(lf.reviews && lf.reviews.length ? lf.reviews : [{ name: '', result: '', text: '', stars: 5, date: '' }]).map((rv: any, i: number) => (
               <div key={i} style={{ border: '1px solid var(--line)', borderRadius: 10, padding: 10, display: 'grid', gridTemplateColumns: '1fr 1fr 96px 60px 62px 62px auto', gap: 8, alignItems: 'center' }}>
                 <input placeholder={es ? 'Nombre' : 'Name'} value={rv.name || ''} style={{ margin: 0 }} onChange={(e) => { const a = [...(lf.reviews || [])]; a[i] = { ...(a[i] || {}), name: e.target.value }; setLf({ ...lf, reviews: a }); }} />

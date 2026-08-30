@@ -21,7 +21,9 @@ async function anthropic(system: string, user: string, maxTokens = 400): Promise
   } catch { return null; }
 }
 
-const FIRMS = ['FTMO 25K', 'FTMO 100K', 'FTMO 200K', 'FundedNext 50K', 'FundedNext 100K', 'The5ers', 'FundingPips 25K', 'Multi-broker', '2 cuentas', 'Demo → real'];
+// Contexto/resultado de cada reseña: prop firms y brókers reales (incluye AXI,
+// Forex.com y Oanda).
+const FIRMS = ['FTMO 25K', 'FTMO 100K', 'FTMO 200K', 'FundedNext 50K', 'FundedNext 100K', 'The5ers', 'FundingPips 25K', 'AXI', 'Forex.com', 'Oanda', 'Multi-broker', '2 cuentas', 'Demo → real'];
 
 // Perfiles (nombre + país) — el nombre lo ponemos NOSOTROS para que no se repita
 // entre reseñas (la IA solo redacta el texto). Variados por idioma/región.

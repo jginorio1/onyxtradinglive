@@ -535,7 +535,7 @@ export default function Home() {
 
   return (
     <>
-      <SectionNav items={SECTIONS} />
+      {/* La barra de secciones ahora es global (en el layout), visible en todas las páginas. */}
 
       {/* HERO */}
       <div className="wrap" style={{ textAlign: 'center', padding: '78px 22px 30px' }}>
