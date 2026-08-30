@@ -68,7 +68,18 @@ export default function BotBuilder() {
   const set = (k: keyof BotSpec, v: any) => { setTouched((t) => ({ ...t, [k as string]: true })); setS((p) => ({ ...p, [k]: v })); };
   const touchAll = () => setTouched(Object.fromEntries(Object.keys(DEFAULT_SPEC).map((k) => [k, true])));
 
+  // Genera un magic ÚNICO de 7 dígitos, evitando los magics de robots ya guardados.
+  // El magic identifica cada robot; si dos coinciden se mezclan sus operaciones.
+  function genMagic(against: any[] = list): number {
+    const used = new Set((against || []).map((b: any) => Number(b?.magic ?? b?.spec?.magic)).filter(Boolean));
+    for (let i = 0; i < 60; i++) { const c = 1000000 + Math.floor(Math.random() * 8999999); if (!used.has(c)) return c; }
+    return 1000000 + (Date.now() % 8999999);
+  }
+
   useEffect(() => { load(); loadTpls(); setS((p) => ({ ...p, botLang: es ? 'es' : 'en' })); }, []);
+  // Al abrir un robot NUEVO (sin id) le asignamos un magic único apenas carga la lista
+  // de robots existentes, para que nunca choque con otro. Si el trader lo edita, se respeta.
+  useEffect(() => { if (!id && list.length) setS((p) => (Number(p.magic) === DEFAULT_SPEC.magic ? { ...p, magic: genMagic(list) } : p)); }, [list]);
   async function load() { try { const r = await fetch('/api/bots/build'); const j = await r.json(); setList(j.bots || []); } catch {} }
   async function loadTpls() { try { const r = await fetch('/api/bots/templates'); const j = await r.json(); setTpls(j.templates || []); } catch {} }
 
@@ -125,10 +136,10 @@ export default function BotBuilder() {
     const name = prompt(L('Nombre de la plantilla:', 'Template name:'), s.name); if (!name) return;
     try { const r = await fetch('/api/bots/templates', { method: 'POST', body: JSON.stringify({ name, spec: s }) }); const j = await r.json(); if (!r.ok) { toastErr(j); return; } toast(L('Plantilla guardada.', 'Template saved.')); loadTpls(); } catch { toastErr(L('No se pudo guardar.', 'Could not save.')); }
   }
-  function applyTpl(t: any) { setS({ ...DEFAULT_SPEC, ...(t.spec || {}) }); setId(''); touchAll(); window.scrollTo({ top: 0, behavior: 'smooth' }); toast(L('Plantilla cargada.', 'Template loaded.')); }
+  function applyTpl(t: any) { setS({ ...DEFAULT_SPEC, ...(t.spec || {}), magic: genMagic() }); setId(''); touchAll(); window.scrollTo({ top: 0, behavior: 'smooth' }); toast(L('Plantilla cargada.', 'Template loaded.')); }
   async function delTpl(tid: string) { if (!confirm(L('¿Borrar esta plantilla?', 'Delete this template?'))) return; await fetch('/api/bots/templates?id=' + tid, { method: 'DELETE' }); loadTpls(); }
   function edit(b: any) { setS({ ...DEFAULT_SPEC, ...(b.spec || {}) }); setId(b.id); touchAll(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
-  function nuevo() { setS({ ...DEFAULT_SPEC }); setId(''); setTouched({}); }
+  function nuevo() { setS({ ...DEFAULT_SPEC, magic: genMagic() }); setId(''); setTouched({}); }
   async function del(bid: string) { if (!confirm(L('¿Borrar este bot?', 'Delete this bot?'))) return; await fetch('/api/bots/build?id=' + bid, { method: 'DELETE' }); if (id === bid) nuevo(); load(); }
   async function openGuide() { let bid = id; if (!bid) { bid = (await save()) || ''; } if (bid) window.open(`/api/bots/build?guide=${bid}&lang=${es ? 'es' : 'en'}`, '_blank'); }
 
@@ -302,7 +313,15 @@ export default function BotBuilder() {
         <Fld t={L('Plataforma', 'Platform')} k="platform" opts={[['mt5', 'MetaTrader 5'], ['mt4', 'MetaTrader 4'], ['ctrader', 'cTrader']]} />
         <Fld t={L('Instrumento', 'Instrument')} k="symbol" ph="XAUUSD" list="bbx-syms" hint={L('El bot encuentra el símbolo aunque tu broker use otro nombre o sufijo (GOLD, XAUUSD.m, etc.).', 'The bot finds the symbol even if your broker uses another name or suffix (GOLD, XAUUSD.m, etc.).')} />
         <datalist id="bbx-syms">{SYMBOL_HINTS.map((x) => <option key={x} value={x} />)}</datalist>
-        <Fld t={L('Magic (identificador)', 'Magic (id)')} k="magic" type="number" />
+        {/* Magic con generador: se asigna uno único automáticamente y se puede regenerar. */}
+        <div>
+          <span className="bbx-lbl">{L('Magic (identificador)', 'Magic (id)')}</span>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
+            <input className="bbx-in" data-fld="magic" type="number" min={1} style={{ flex: 1, minWidth: 0 }} value={s.magic} onChange={(e) => set('magic', e.target.value === '' ? '' : Number(e.target.value))} />
+            <button type="button" className="bbx-btn" title={L('Generar un magic único al azar', 'Generate a unique random magic')} style={{ flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', padding: '0 12px' }} onClick={() => set('magic', genMagic())}><OnyxIcon emoji="🎲" size={14} glow={false} /> {L('Generar', 'Generate')}</button>
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--mut)', marginTop: 4 }}>{L('Se asigna uno único automáticamente. Cámbialo si quieres uno específico.', 'A unique one is set automatically. Change it if you want a specific one.')}</div>
+        </div>
         <Fld t={L('Temporalidad de entrada', 'Entry timeframe')} k="tf" opts={TFS} hint={L('Ritmo de las velas que analiza para entrar.', 'Candle rhythm it reads to enter.')} />
         <Fld t={L('Idioma del bot (panel y EA)', 'Bot language (panel & EA)')} k="botLang" opts={[['es', 'Español'], ['en', 'English']]} />
       </Panel>
