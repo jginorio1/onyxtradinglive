@@ -1298,37 +1298,39 @@ function Modules() {
           {/* Reseñas del landing del constructor (/bot-builder). Vacío = sección oculta.
               Con fecha por reseña y botón de IA para generarlas en ES/EN. */}
           <div className="muted" style={{ fontSize: 12, margin: '18px 0 6px', fontWeight: 700 }}>{es ? 'Reseñas del landing (Crea tu bot)' : 'Landing reviews (Build a bot)'}</div>
-          <p className="muted" style={{ fontSize: 11.5, marginBottom: 10 }}>{es ? 'Usa reseñas reales o genéralas con IA y edítalas. Si dejas todo vacío, la sección no aparece. Máx. 10.' : 'Use real reviews or generate them with AI and edit. Leave all empty to hide the section. Max 10.'}</p>
+          <p className="muted" style={{ fontSize: 11.5, marginBottom: 10 }}>{es ? 'Ilimitadas. Usa reseñas reales o genéralas con IA (ES/EN) y edítalas. País = código ISO2 (MX, US, ES…) → bandera. Si dejas todo vacío, la sección no aparece.' : 'Unlimited. Use real reviews or generate them with AI (ES/EN) and edit. Country = ISO2 code (MX, US, ES…) → flag. Leave all empty to hide the section.'}</p>
           <div className="row" style={{ gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
             {(['es', 'en'] as const).map((lng) => (
-              <button key={lng} className="btn btn-primary" style={{ padding: '7px 14px' }} disabled={(lf.reviews?.length || 0) >= 10}
+              <button key={lng} className="btn btn-primary" style={{ padding: '7px 14px' }}
                 onClick={async () => {
                   try {
                     const r = await fetch('/api/admin/reviews-ai', { method: 'POST', body: JSON.stringify({ lang: lng }) });
                     const j = await r.json();
                     if (!r.ok || !j.review) { alert(j.hint || j.error || 'IA no disponible'); return; }
-                    setLf((p: any) => ({ ...p, reviews: [...(p.reviews || []), j.review].slice(0, 10) }));
+                    setLf((p: any) => ({ ...p, reviews: [...(p.reviews || []), j.review] }));
                   } catch { alert('Error'); }
                 }}>✨ {es ? 'Generar reseña con IA' : 'Generate review with AI'} · {lng.toUpperCase()}</button>
             ))}
           </div>
           <div style={{ display: 'grid', gap: 10 }}>
             {(lf.reviews && lf.reviews.length ? lf.reviews : [{ name: '', result: '', text: '', stars: 5, date: '' }]).map((rv: any, i: number) => (
-              <div key={i} style={{ border: '1px solid var(--line)', borderRadius: 10, padding: 10, display: 'grid', gridTemplateColumns: '1fr 1fr 110px auto auto', gap: 8, alignItems: 'center' }}>
+              <div key={i} style={{ border: '1px solid var(--line)', borderRadius: 10, padding: 10, display: 'grid', gridTemplateColumns: '1fr 1fr 96px 60px 62px 62px auto', gap: 8, alignItems: 'center' }}>
                 <input placeholder={es ? 'Nombre' : 'Name'} value={rv.name || ''} style={{ margin: 0 }} onChange={(e) => { const a = [...(lf.reviews || [])]; a[i] = { ...(a[i] || {}), name: e.target.value }; setLf({ ...lf, reviews: a }); }} />
                 <input placeholder={es ? 'Resultado (ej. Reto 50K pasado)' : 'Result (e.g. 50K challenge passed)'} value={rv.result || ''} style={{ margin: 0 }} onChange={(e) => { const a = [...(lf.reviews || [])]; a[i] = { ...(a[i] || {}), result: e.target.value }; setLf({ ...lf, reviews: a }); }} />
                 <input placeholder={es ? 'Fecha' : 'Date'} value={rv.date || ''} style={{ margin: 0 }} onChange={(e) => { const a = [...(lf.reviews || [])]; a[i] = { ...(a[i] || {}), date: e.target.value }; setLf({ ...lf, reviews: a }); }} />
-                <select value={rv.stars || 5} style={{ margin: 0, width: 70 }} onChange={(e) => { const a = [...(lf.reviews || [])]; a[i] = { ...(a[i] || {}), stars: Number(e.target.value) }; setLf({ ...lf, reviews: a }); }}>
+                <input placeholder={es ? 'País' : 'Country'} maxLength={2} value={rv.country || ''} style={{ margin: 0, textTransform: 'uppercase' }} title={es ? 'Código de país ISO2, ej. MX, US, ES' : 'ISO2 country code, e.g. MX, US, ES'} onChange={(e) => { const a = [...(lf.reviews || [])]; a[i] = { ...(a[i] || {}), country: e.target.value.toUpperCase() }; setLf({ ...lf, reviews: a }); }} />
+                <select value={rv.stars || 5} style={{ margin: 0 }} onChange={(e) => { const a = [...(lf.reviews || [])]; a[i] = { ...(a[i] || {}), stars: Number(e.target.value) }; setLf({ ...lf, reviews: a }); }}>
                   {[5, 4, 3, 2, 1].map((s) => <option key={s} value={s}>{s}★</option>)}
+                </select>
+                <select value={rv.lang || 'es'} style={{ margin: 0 }} title={es ? 'Idioma de la reseña' : 'Review language'} onChange={(e) => { const a = [...(lf.reviews || [])]; a[i] = { ...(a[i] || {}), lang: e.target.value }; setLf({ ...lf, reviews: a }); }}>
+                  <option value="es">ES</option><option value="en">EN</option>
                 </select>
                 <button className="btn btn-ghost" style={{ padding: '6px 10px' }} onClick={() => { const a = [...(lf.reviews || [])]; a.splice(i, 1); setLf({ ...lf, reviews: a }); }}>✕</button>
                 <textarea placeholder={es ? 'Texto de la reseña' : 'Review text'} value={rv.text || ''} rows={2} style={{ margin: 0, gridColumn: '1 / -1', width: '100%' }} onChange={(e) => { const a = [...(lf.reviews || [])]; a[i] = { ...(a[i] || {}), text: e.target.value }; setLf({ ...lf, reviews: a }); }} />
               </div>
             ))}
           </div>
-          {(lf.reviews?.length || 0) < 10 && (
-            <button className="btn btn-ghost" style={{ marginTop: 8, padding: '6px 12px' }} onClick={() => setLf({ ...lf, reviews: [...(lf.reviews || []), { name: '', result: '', text: '', stars: 5, date: '' }] })}>{es ? '+ Añadir reseña' : '+ Add review'}</button>
-          )}
+          <button className="btn btn-ghost" style={{ marginTop: 8, padding: '6px 12px' }} onClick={() => setLf({ ...lf, reviews: [...(lf.reviews || []), { name: '', result: '', text: '', stars: 5, date: '', country: '', lang: es ? 'es' : 'en' }] })}>{es ? '+ Añadir reseña' : '+ Add review'}</button>
           <div style={{ marginTop: 14 }}>
             <button className="btn btn-primary" onClick={saveLanding} disabled={savingL}>
               {savingL ? (es ? 'Guardando…' : 'Saving…') : savedL ? (es ? '✓ Guardado' : '✓ Saved') : (es ? 'Guardar cifras' : 'Save numbers')}

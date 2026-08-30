@@ -85,7 +85,7 @@ export async function GET() {
         cBase = Number(ls.value.copied_base || 0); builtBase = Number(ls.value.bots_built_base || 0);
         if (ls.value.platforms != null) platforms = Number(ls.value.platforms);
         if (ls.value.readonly != null) readonly = Number(ls.value.readonly);
-        if (Array.isArray(ls.value.reviews)) reviews = ls.value.reviews.slice(0, 10);
+        if (Array.isArray(ls.value.reviews)) reviews = ls.value.reviews;   // sin límite
         botOpsBase = Number(ls.value.bot_ops_base || 0);
         botStratBase = Number(ls.value.bot_strat_base || 0);
         botTradersBase = Number(ls.value.bot_traders_base || 0);
@@ -93,14 +93,23 @@ export async function GET() {
       }
     } catch {}
 
-    // Métricas del landing de bots: propias (no las del Guardian) y con crecimiento
-    // diario automático, escalonado, aleatorio y monótono (nunca baja).
+    // Robots construidos: anclа (base admin + robots reales + crecimiento diario).
+    const robotsBuilt = grow(builtBase + botsBuiltReal, 'bots_built', 2, 7);
+    // Métricas del landing de bots DERIVADAS del ancla, para que sean coherentes:
+    // traders < robots < estrategias ≪ operaciones. Todas suben juntas y nunca bajan.
     const botStats = {
       platforms: botPlatforms,
-      opsByBots: grow(botOpsBase, 'bot_ops', 300, 900),      // operaciones ejecutadas por bots
-      strategies: grow(botStratBase, 'bot_strat', 3, 12),    // estrategias generadas
-      traders: grow(botTradersBase, 'bot_traders', 1, 4),    // traders creando bots
+      opsByBots: Math.round(robotsBuilt * 190) + botOpsBase,    // muchas operaciones por bot
+      strategies: Math.round(robotsBuilt * 2) + botStratBase,   // ~2 estrategias por robot
+      traders: Math.round(robotsBuilt * 0.8) + botTradersBase,  // menos traders que robots
     };
+
+    // Resumen de valoraciones (para el encabezado del carrusel): total, promedio y por estrella.
+    const reviewsArr = Array.isArray(reviews) ? reviews : [];
+    const byStar: Record<string, number> = { '5': 0, '4': 0, '3': 0, '2': 0, '1': 0 };
+    let starSum = 0;
+    for (const r of reviewsArr) { const s = Math.max(1, Math.min(5, Math.round(Number((r as any)?.stars) || 5))); byStar[String(s)]++; starSum += s; }
+    const reviewSummary = { total: reviewsArr.length, avg: reviewsArr.length ? Number((starSum / reviewsArr.length).toFixed(1)) : 0, byStar };
 
     // Piso semilla: si no hay base fijada NI operaciones reales, el número sería 0.
     // Para no enseñar un "0 +" pelado en el landing, mostramos una semilla mínima.
@@ -117,15 +126,17 @@ export async function GET() {
       accounts: a > 0 ? a : SEED.accounts,
       copied: c > 0 ? c : SEED.copied,
       bots: bots > 0 ? bots : 1200,
-      // Robots construidos: base admin + robots reales + crecimiento diario (nunca baja
-      // y siempre queda por encima de los reales). Coherente con las demás métricas.
-      botsBuilt: grow(builtBase + botsBuiltReal, 'bots_built', 2, 7),
+      // Robots construidos: mismo ancla del que derivan las tarjetas → todo coherente.
+      botsBuilt: robotsBuilt,
       botStats,                     // métricas propias del landing de bots (suben solas a diario)
-      reviews,                      // reseñas del landing (vacío = sección oculta)
+      reviews,                      // reseñas del landing (vacío = sección oculta). Sin límite.
+      reviewSummary,                // total + promedio + conteo por estrella
+
       platforms, readonly,          // valores fijos editables desde admin
       ambRate, ambCoupon, ambBase, ambMinPayout,
     }, { headers: NO_CACHE });
   } catch {
-    return NextResponse.json({ trades: 1000, blocks: 80, accounts: 40, copied: 300, bots: 1200, botsBuilt: grow(0, 'bots_built', 2, 7), botStats: { platforms: 3, opsByBots: grow(0, 'bot_ops', 300, 900), strategies: grow(0, 'bot_strat', 3, 12), traders: grow(0, 'bot_traders', 1, 4) }, platforms: 5, readonly: 100, ambRate: 30, ambCoupon: 20, ambBase: 20, ambMinPayout: 50 }, { headers: NO_CACHE });
+    const R = grow(0, 'bots_built', 2, 7);
+    return NextResponse.json({ trades: 1000, blocks: 80, accounts: 40, copied: 300, bots: 1200, botsBuilt: R, botStats: { platforms: 3, opsByBots: Math.round(R * 190), strategies: Math.round(R * 2), traders: Math.round(R * 0.8) }, reviews: [], reviewSummary: { total: 0, avg: 0, byStar: { '5': 0, '4': 0, '3': 0, '2': 0, '1': 0 } }, platforms: 5, readonly: 100, ambRate: 30, ambCoupon: 20, ambBase: 20, ambMinPayout: 50 }, { headers: NO_CACHE });
   }
 }

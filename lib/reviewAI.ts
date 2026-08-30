@@ -23,15 +23,15 @@ async function anthropic(system: string, user: string, maxTokens = 400): Promise
 
 const FIRMS = ['FTMO 25K', 'FTMO 100K', 'FTMO 200K', 'FundedNext 50K', 'FundedNext 100K', 'The5ers', 'FundingPips 25K', 'Multi-broker', '2 cuentas', 'Demo → real'];
 
-export type ReviewDraft = { name: string; result: string; text: string; stars: number; date: string };
+export type ReviewDraft = { name: string; result: string; text: string; stars: number; date: string; country: string; lang: 'es' | 'en' };
 
-// Genera 1 reseña. lang: 'es' | 'en'. Fecha = hoy (editable después).
+// Genera 1 reseña. lang: 'es' | 'en'. Fecha = hoy. País (ISO2) inferido del nombre.
 export async function draftReview(lang: 'es' | 'en'): Promise<ReviewDraft | null> {
   const firm = FIRMS[Math.floor(Math.random() * FIRMS.length)];
   const stars = Math.random() < 0.8 ? 5 : 4;
   const system = lang === 'es'
-    ? 'Eres un generador de reseñas realistas para una herramienta que crea bots de trading (sin programar) para cuentas de fondeo (prop firms), compatible con MT4, MT5 y cTrader. El bot lleva dentro las reglas de riesgo, filtro de noticias y de sesión, y registra las operaciones en un panel. Escribe reseñas creíbles, en primera persona, tono natural de trader latino/español, SIN emojis, SIN promesas de ganancias garantizadas, de 1 a 2 frases. Devuelve SOLO un JSON válido: {"name":"Nombre Apellido inicial.","text":"la reseña"}. Nada más.'
-    : 'You generate realistic reviews for a no-code tool that builds trading bots for funded accounts (prop firms), for MT4, MT5 and cTrader. The bot carries risk rules, news and session filters inside, and logs trades to a dashboard. Write believable first-person reviews, natural trader tone, NO emojis, NO guaranteed-profit claims, 1 to 2 sentences. Return ONLY valid JSON: {"name":"First L.","text":"the review"}. Nothing else.';
+    ? 'Eres un generador de reseñas realistas para una herramienta que crea bots de trading (sin programar) para cuentas de fondeo (prop firms), compatible con MT4, MT5 y cTrader. El bot lleva dentro las reglas de riesgo, filtro de noticias y de sesión, y registra las operaciones en un panel. Escribe reseñas creíbles, en primera persona, tono natural de trader latino/español, SIN emojis, SIN promesas de ganancias garantizadas, de 1 a 2 frases. Elige un país plausible para el nombre y devuelve su código ISO-3166 alpha-2. Devuelve SOLO un JSON válido: {"name":"Nombre Apellido inicial.","text":"la reseña","country":"MX"}. Nada más.'
+    : 'You generate realistic reviews for a no-code tool that builds trading bots for funded accounts (prop firms), for MT4, MT5 and cTrader. The bot carries risk rules, news and session filters inside, and logs trades to a dashboard. Write believable first-person reviews, natural trader tone, NO emojis, NO guaranteed-profit claims, 1 to 2 sentences. Pick a plausible country for the name and return its ISO-3166 alpha-2 code. Return ONLY valid JSON: {"name":"First L.","text":"the review","country":"US"}. Nothing else.';
   const user = lang === 'es'
     ? `Genera una reseña para un usuario cuyo resultado/contexto es: "${firm}". Estrellas: ${stars}.`
     : `Generate a review for a user whose result/context is: "${firm}". Stars: ${stars}.`;
@@ -50,6 +50,8 @@ export async function draftReview(lang: 'es' | 'en'): Promise<ReviewDraft | null
       text: String(j.text || '').slice(0, 280),
       stars,
       date,
+      country: String(j.country || '').slice(0, 2).toUpperCase(),
+      lang,
     };
   } catch { return null; }
 }

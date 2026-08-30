@@ -115,12 +115,14 @@ export async function PATCH(req: Request) {
     // Reseñas del landing: solo si vienen en el body. Se saneen a 6 máx.
     let reviews = Array.isArray(cur.reviews) ? cur.reviews : [];
     if (Array.isArray(b.reviews)) {
-      reviews = b.reviews.slice(0, 10).map((r: any) => ({
+      reviews = b.reviews.slice(0, 200).map((r: any) => ({   // reseñas ilimitadas (tope de seguridad 200)
         name: String(r?.name || '').slice(0, 60),
         result: String(r?.result || '').slice(0, 60),
         text: String(r?.text || '').slice(0, 280),
         stars: Math.max(1, Math.min(5, Math.round(Number(r?.stars) || 5))),
-        date: String(r?.date || '').slice(0, 20),   // fecha visible de la reseña (texto libre)
+        date: String(r?.date || '').slice(0, 20),            // fecha visible (texto libre)
+        country: String(r?.country || '').slice(0, 2).toUpperCase(),   // ISO2 → bandera
+        lang: r?.lang === 'en' ? 'en' : 'es',                // idioma de la reseña
       })).filter((r: any) => r.name && r.text);
     }
     const value = {

@@ -54,7 +54,18 @@ export default function LandingConstructor() {
     [L('¿Puedo probar sin arriesgar dinero?', 'Can I test without risking money?'), L('Sí. Todo se prueba primero en cuenta demo. Recomendamos validar la estrategia en demo antes de pasar a real.', 'Yes. Everything is tested first on a demo account. We recommend validating the strategy on demo before going live.')],
     [L('¿El bot garantiza ganancias?', 'Does the bot guarantee profit?'), L('No. Ninguna herramienta puede garantizar resultados. Onyx te da control, reglas automáticas y protección, pero el trading siempre conlleva riesgo.', 'No. No tool can guarantee results. Onyx gives you control, automatic rules and protection, but trading always carries risk.')],
   ];
-  const reviews: any[] = Array.isArray(stats?.reviews) ? stats.reviews : [];
+  const allReviews: any[] = Array.isArray(stats?.reviews) ? stats.reviews : [];
+  // Muestra reseñas del idioma actual; si hay pocas, completa con el resto.
+  const curLang = es ? 'es' : 'en';
+  const langReviews = allReviews.filter((r: any) => (r?.lang || 'es') === curLang);
+  const reviews: any[] = langReviews.length >= 3 ? langReviews : allReviews;
+  const rsum = stats?.reviewSummary || { total: 0, avg: 0, byStar: { '5': 0, '4': 0, '3': 0, '2': 0, '1': 0 } };
+  // Código de país ISO2 → emoji bandera (indicadores regionales).
+  const flag = (cc: string) => {
+    const c = String(cc || '').trim().toUpperCase();
+    if (c.length !== 2 || !/^[A-Z]{2}$/.test(c)) return '';
+    return String.fromCodePoint(...[...c].map((ch) => 0x1f1e6 + ch.charCodeAt(0) - 65));
+  };
   // Si existe el plan de bot dedicado ('trader' = "Onyx Bot"), el landing muestra
   // SOLO los planes de bot (Gratis + Onyx Bot) — 2 planes por escala. El resto
   // (Pro/Elite/Black, para trading manual) vive en "ver comparación completa".
@@ -121,9 +132,23 @@ export default function LandingConstructor() {
       .lpc .qa{border:1px solid var(--line,rgba(128,128,128,.16));border-radius:12px;padding:14px 16px;margin-top:10px;background:var(--card);cursor:pointer}
       .lpc .qa .q{display:flex;justify-content:space-between;align-items:center;gap:12px;font-weight:700;font-size:15px}
       .lpc .qa .a{color:var(--mut);font-size:14px;margin-top:9px;line-height:1.6}
-      /* Reseñas */
-      .lpc .reviews{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:24px}
-      @media(max-width:820px){.lpc .reviews{grid-template-columns:1fr}}
+      /* Reseñas: resumen + carrusel */
+      .lpc .revsum{display:flex;gap:26px;align-items:center;justify-content:center;flex-wrap:wrap;max-width:560px;margin:20px auto 6px}
+      .lpc .revavg{text-align:center}
+      .lpc .revavg .n{font-size:42px;font-weight:800;line-height:1;color:var(--tx)}
+      .lpc .revavg .stars{color:#f2c265;letter-spacing:2px;font-size:14px;margin-top:4px}
+      .lpc .revbars{display:grid;gap:6px;min-width:240px;flex:1;max-width:320px}
+      .lpc .revbarrow{display:flex;align-items:center;gap:8px;font-size:12px}
+      .lpc .revbarrow .k{color:var(--mut);width:24px}
+      .lpc .revbarrow .v{color:var(--mut);width:34px;text-align:right}
+      .lpc .revbar{flex:1;height:8px;border-radius:99px;background:rgba(128,128,128,.18);overflow:hidden}
+      .lpc .revbar>i{display:block;height:100%;background:#f2c265}
+      @keyframes lpcscroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+      .lpc .revmask{overflow:hidden;margin-top:20px;-webkit-mask-image:linear-gradient(90deg,transparent,#000 5%,#000 95%,transparent);mask-image:linear-gradient(90deg,transparent,#000 5%,#000 95%,transparent)}
+      .lpc .revtrack{display:flex;gap:14px;width:max-content;animation:lpcscroll 45s linear infinite}
+      .lpc .revmask:hover .revtrack{animation-play-state:paused}
+      .lpc .revcard{width:320px;flex:none}
+      @media(max-width:520px){.lpc .revcard{width:260px}}
       .lpc .rev .revtop{display:flex;align-items:center;justify-content:space-between}
       .lpc .rev .stars{color:#f2c265;font-size:14px;letter-spacing:2px}
       .lpc .rev .staroff{color:var(--line,rgba(128,128,128,.35))}
@@ -256,25 +281,51 @@ export default function LandingConstructor() {
         </div>
       </section>
 
-      {/* Reseñas (editables desde Admin → Módulos). Si no hay, se oculta. */}
+      {/* Reseñas: resumen (promedio + total + por estrella) + carrusel en movimiento
+          (derecha→izquierda), con bandera por país. Editables desde Admin. */}
       {reviews.length > 0 && (
         <section className="sec" id="resenas">
           <div style={{ textAlign: 'center' }}><span className="eyebrow">{L('Lo que dicen', 'What people say')}</span><h2>{L('Traders que ya operan con Onyx', 'Traders already using Onyx')}</h2></div>
-          <div className="reviews">
-            {reviews.slice(0, 9).map((r: any, i: number) => {
-              const name = String(r.name || r.n || '');
-              const text = String(r.text || r.t || '');
-              const meta = String(r.result || r.r || '');
-              const date = String(r.date || '');
-              const st = Math.max(1, Math.min(5, Number(r.stars || 5)));
-              return (
-                <div key={i} className="card rev">
-                  <div className="revtop"><span className="stars">{'★'.repeat(st)}<span className="staroff">{'★'.repeat(5 - st)}</span></span>{date && <span className="revdate">{date}</span>}</div>
-                  <div className="txt">“{text}”</div>
-                  <div className="who"><span className="ava">{(name[0] || '?').toUpperCase()}</span><span><b>{name}</b>{meta ? ` · ${meta}` : ''}</span></div>
-                </div>
-              );
-            })}
+
+          {/* Resumen de valoraciones */}
+          {rsum.total > 0 && (
+            <div className="revsum">
+              <div className="revavg">
+                <div className="n">{Number(rsum.avg || 0).toFixed(1)}</div>
+                <div className="stars">{'★'.repeat(Math.round(rsum.avg))}<span className="staroff">{'★'.repeat(5 - Math.round(rsum.avg))}</span></div>
+                <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>{Number(rsum.total).toLocaleString()} {L('reseñas', 'reviews')}</div>
+              </div>
+              <div className="revbars">
+                {[5, 4, 3, 2, 1].map((s) => {
+                  const n = Number(rsum.byStar?.[String(s)] || 0);
+                  const pct = rsum.total ? Math.round((n / rsum.total) * 100) : 0;
+                  return (
+                    <div key={s} className="revbarrow"><span className="k">{s}★</span><span className="revbar"><i style={{ width: pct + '%' }} /></span><span className="v">{n}</span></div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Carrusel en movimiento (duplicado para bucle sin cortes; pausa al pasar el mouse) */}
+          <div className="revmask">
+            <div className="revtrack">
+              {[...reviews, ...reviews].map((r: any, i: number) => {
+                const name = String(r.name || '');
+                const text = String(r.text || '');
+                const meta = String(r.result || '');
+                const date = String(r.date || '');
+                const fl = flag(r.country || '');
+                const st = Math.max(1, Math.min(5, Number(r.stars || 5)));
+                return (
+                  <div key={i} className="card rev revcard">
+                    <div className="revtop"><span className="stars">{'★'.repeat(st)}<span className="staroff">{'★'.repeat(5 - st)}</span></span>{date && <span className="revdate">{date}</span>}</div>
+                    <div className="txt">“{text}”</div>
+                    <div className="who"><span className="ava">{(name[0] || '?').toUpperCase()}</span><span>{fl ? fl + ' ' : ''}<b>{name}</b>{meta ? ` · ${meta}` : ''}</span></div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </section>
       )}
