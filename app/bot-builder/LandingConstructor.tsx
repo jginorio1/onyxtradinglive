@@ -32,28 +32,38 @@ export default function LandingConstructor() {
     return () => clearInterval(iv);
   }, [stats?.botsBuilt]);
 
+  // El bot es AUTÓNOMO: trae dentro sus reglas de fondeo, filtro de noticias y de
+  // sesión. Lo único que necesita de Onyx es registrar las operaciones en tu panel.
   const feats = [
-    ['🤖', L('Constructor de bots', 'Bot builder'), L('Por campos, con EA y guía en PDF.', 'By fields, with EA and PDF guide.')],
-    ['🛡️', 'Onyx Guardian', L('Frena antes de romper tu reto.', 'Stops before you break your challenge.')],
-    ['👥', L('Copy trading', 'Copy trading'), L('Copia a verificados o comparte.', 'Copy verified traders or share.')],
-    ['📊', L('Diario y métricas', 'Journal & metrics'), L('Costos por par, R:R, parciales.', 'Cost per pair, R:R, partials.')],
-    ['📰', L('Filtro de noticias', 'News filter'), L('Deja de abrir en alto impacto.', 'Stops opening on high impact.')],
-    ['🌐', L('Multi-broker + bilingüe', 'Multi-broker & bilingual'), L('Encuentra tu símbolo solo.', 'Finds your symbol on its own.')],
+    ['🤖', L('Constructor de bots', 'Bot builder'), L('Por campos, con EA y guía en PDF. Sin programar.', 'By fields, with EA and PDF guide. No coding.')],
+    ['🛡️', L('Protección integrada', 'Built-in protection'), L('Tus reglas de fondeo van dentro del bot: pérdida diaria, drawdown y objetivo. Se frena solo.', 'Your firm rules live inside the bot: daily loss, drawdown and target. It stops itself.')],
+    ['📰', L('Filtro de noticias integrado', 'Built-in news filter'), L('El bot evita operar en alto impacto por sí mismo.', 'The bot avoids high-impact news on its own.')],
+    ['⏰', L('Filtro de sesión', 'Session filter'), L('Opera solo en tu horario (Londres/NY), dentro del EA.', 'Trades only in your session (London/NY), inside the EA.')],
+    ['🔄', L('Registro automático', 'Automatic logging'), L('Cada operación llega a tu panel: diario, métricas y portafolio.', 'Every trade reaches your dashboard: journal, metrics and portfolio.')],
+    ['🌐', L('Multi-broker + bilingüe', 'Multi-broker & bilingual'), L('Encuentra tu símbolo solo. MT4 · MT5 · cTrader.', 'Finds your symbol on its own. MT4 · MT5 · cTrader.')],
   ];
   const steps = [
     [L('Arma tu receta', 'Build your recipe'), L('Completa las tarjetas: entrada, stop, TP, riesgo y reglas de fondeo.', 'Fill the cards: entry, stop, TP, risk and firm rules.')],
     [L('Descarga el EA', 'Download the EA'), L('Onyx genera el robot (.mq5), la config y una guía. Compilas y pruebas en demo.', 'Onyx generates the robot (.mq5), config and a guide. Compile and test on demo.')],
-    [L('Opera protegido', 'Trade protected'), L('El bot ejecuta y reporta. Guardian frena antes de que rompas la cuenta.', 'The bot executes and reports. Guardian stops before you break the account.')],
+    [L('Opera y registra', 'Trade and log'), L('El bot ejecuta con sus propias reglas y registra cada operación en tu panel.', 'The bot runs with its own rules and logs every trade to your dashboard.')],
   ];
   const faqs = [
     [L('¿Necesito saber programar?', 'Do I need to know how to code?'), L('No. Armas el bot por campos (entrada, stop, TP, riesgo) y Onyx genera el robot listo para MT4, MT5 o cTrader, junto con una guía en PDF paso a paso.', 'No. You build the bot by fields (entry, stop, TP, risk) and Onyx generates the ready robot for MT4, MT5 or cTrader, plus a step-by-step PDF guide.')],
-    [L('¿Funciona con mi prop firm?', 'Does it work with my prop firm?'), L('Sí. Defines las reglas de tu reto (pérdida diaria, drawdown, objetivo) y el bot las respeta. Onyx Guardian frena antes de que rompas la cuenta.', 'Yes. You set your challenge rules (daily loss, drawdown, target) and the bot respects them. Onyx Guardian stops before you break the account.')],
+    [L('¿Funciona con mi prop firm?', 'Does it work with my prop firm?'), L('Sí. Defines las reglas de tu reto (pérdida diaria, drawdown, objetivo) y el bot las lleva dentro: se frena solo antes de romperlas. No necesitas activar ningún servicio extra.', 'Yes. You set your challenge rules (daily loss, drawdown, target) and the bot carries them inside: it stops itself before breaking them. No extra service to enable.')],
     [L('¿En qué plataformas corre?', 'Which platforms does it run on?'), L('MetaTrader 4, MetaTrader 5 y cTrader. El mismo constructor genera el archivo correcto para cada una.', 'MetaTrader 4, MetaTrader 5 and cTrader. The same builder generates the correct file for each.')],
     [L('¿Puedo probar sin arriesgar dinero?', 'Can I test without risking money?'), L('Sí. Todo se prueba primero en cuenta demo. Recomendamos validar la estrategia en demo antes de pasar a real.', 'Yes. Everything is tested first on a demo account. We recommend validating the strategy on demo before going live.')],
     [L('¿El bot garantiza ganancias?', 'Does the bot guarantee profit?'), L('No. Ninguna herramienta puede garantizar resultados. Onyx te da control, reglas automáticas y protección, pero el trading siempre conlleva riesgo.', 'No. No tool can guarantee results. Onyx gives you control, automatic rules and protection, but trading always carries risk.')],
   ];
   const reviews: any[] = Array.isArray(stats?.reviews) ? stats.reviews : [];
   const shown = useMemo(() => plans, [plans]);
+  // Plan "para bots": si existe el plan dedicado 'trader', ese; si no, el pagado
+  // más barato (el de entrada). Solo marca visual en este landing.
+  const botPlanId = useMemo(() => {
+    if (plans.some((p: any) => p.id === 'trader')) return 'trader';
+    const paid = plans.filter((p: any) => p.id !== 'free' && Number(p.price_month) > 0)
+      .sort((a: any, b: any) => Number(a.price_month) - Number(b.price_month));
+    return paid[0]?.id || '';
+  }, [plans]);
   const num = (n: number) => Number(n || 0).toLocaleString();
 
   return (
@@ -68,6 +78,8 @@ export default function LandingConstructor() {
       .lpc .cta{display:flex;gap:12px;justify-content:center;margin-top:24px;flex-wrap:wrap}
       .lpc .trust{display:flex;gap:18px;justify-content:center;flex-wrap:wrap;margin-top:20px;color:var(--mut);font-size:13px}
       .lpc .trust span{display:inline-flex;align-items:center;gap:6px;color:var(--green)}
+      .lpc .pricenote{display:flex;gap:12px;align-items:center;margin:22px auto 0;max-width:760px;padding:14px 16px;border:1px dashed color-mix(in srgb,var(--brand) 45%,transparent);border-radius:12px;background:rgba(124,140,255,.06);background:color-mix(in srgb,var(--brand) 8%,transparent);font-size:13px;color:var(--tx)}
+      .lpc .pricenote>span{color:var(--mut)}
       .lpc .sec{padding:44px 0}
       .lpc .eyebrow{font-size:12.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--brand,#5b63d3);font-weight:700}
       .lpc h2{font-size:clamp(24px,3.5vw,34px);font-weight:800;margin-top:10px}
@@ -189,14 +201,14 @@ export default function LandingConstructor() {
             <div className="bar"><i style={{ width: '32%', background: 'linear-gradient(90deg,#5fe0aa,#54e6d0)' }} /></div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#d7d9e0' }}><span>{L('Objetivo', 'Target')}</span><span>6.1% / 8%</span></div>
             <div className="bar"><i style={{ width: '76%', background: 'linear-gradient(90deg,#6f77ea,#8b93ff)' }} /></div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, color: '#8ff0cf', marginTop: 4 }}><span>● {L('Guardian activo', 'Guardian on')}</span><span>{L('Noticias: filtrando', 'News: filtering')}</span></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, color: '#8ff0cf', marginTop: 4 }}><span>● {L('Reglas del reto activas', 'Challenge rules on')}</span><span>{L('Noticias: filtrando', 'News: filtering')}</span></div>
           </div>
           <div>
             <span className="eyebrow">Traders</span>
             <h2 style={{ marginTop: 8 }}>{L('Hecho para pasar retos, no para romperlos', 'Made to pass challenges, not break them')}</h2>
             <div className="li"><i>✦</i> {L('El panel del bot muestra tu firma y el tamaño de tu cuenta.', 'The bot panel shows your firm and account size.')}</div>
             <div className="li"><i>✦</i> {L('Barras de drawdown y objetivo en vivo sobre el gráfico.', 'Live drawdown and target bars right on the chart.')}</div>
-            <div className="li"><i>✦</i> {L('Onyx Guardian frena antes de que rompas la cuenta.', 'Onyx Guardian stops before you break the account.')}</div>
+            <div className="li"><i>✦</i> {L('El bot se frena solo antes de romper tu reto — sin servicios extra.', 'The bot stops itself before breaking your challenge — no extra services.')}</div>
           </div>
         </div>
       </section>
@@ -211,9 +223,11 @@ export default function LandingConstructor() {
         </div>
       </section>
 
-      {/* Precios (desde Admin) */}
+      {/* Precios (desde Admin). Mensaje centrado en el bot: pagas por escala, no
+          por lo que el bot ya hace solo. Guardian no se le cobra al de bots. */}
       <section className="sec" id="precios">
-        <div style={{ textAlign: 'center' }}><span className="eyebrow">{L('Precios', 'Pricing')}</span><h2>{L('Empieza gratis. Escala cuando quieras.', 'Start free. Scale when you want.')}</h2>
+        <div style={{ textAlign: 'center' }}><span className="eyebrow">{L('Precios', 'Pricing')}</span><h2>{L('Paga por escala, no por lo que tu bot ya hace', 'Pay for scale, not for what your bot already does')}</h2>
+          <p className="lead" style={{ maxWidth: 620, margin: '12px auto 0' }}>{L('El bot trae protección, noticias y sesión adentro. Solo pagas por construir más bots y registrar más cuentas.', 'The bot carries protection, news and session inside. You only pay to build more bots and register more accounts.')}</p>
           <div style={{ display: 'inline-flex', gap: 8, marginTop: 14, alignItems: 'center' }}>
             <button className={'btn btn-ghost' + (!annual ? ' btn-primary' : '')} style={{ padding: '6px 14px' }} onClick={() => setAnnual(false)}>{L('Mensual', 'Monthly')}</button>
             <button className={'btn btn-ghost' + (annual ? ' btn-primary' : '')} style={{ padding: '6px 14px' }} onClick={() => setAnnual(true)}>{L('Anual', 'Annual')}</button>
@@ -221,8 +235,12 @@ export default function LandingConstructor() {
         </div>
         <div style={{ marginTop: 26 }}>
           {shown.length > 0
-            ? <PlanCards plans={shown} lang={es ? 'es' : 'en'} annual={annual} onChoose={(id: string, price: number) => { window.location.href = (price > 0 && id && id !== 'free') ? `/login?mode=signup&plan=${id}${annual ? '&annual=1' : ''}` : '/login?mode=signup'; }} />
+            ? <PlanCards plans={shown} lang={es ? 'es' : 'en'} annual={annual} botTagId={botPlanId} onChoose={(id: string, price: number) => { window.location.href = (price > 0 && id && id !== 'free') ? `/login?mode=signup&plan=${id}${annual ? '&annual=1' : ''}` : '/login?mode=signup'; }} />
             : <p className="muted" style={{ textAlign: 'center' }}>{L('Cargando planes…', 'Loading plans…')}</p>}
+          <div className="pricenote">
+            <OnyxIcon emoji="🤖" size={18} />
+            <span>{L('Si solo quieres bots, el plan de entrada te basta: tu robot ya se frena solo, filtra noticias y respeta tu sesión. Onyx Guardian es un extra para quien también opera manual — no se le cobra al que usa bots.', 'If you only want bots, the entry plan is enough: your robot stops itself, filters news and respects your session. Onyx Guardian is an extra for those who also trade manually — bot users are not charged for it.')}</span>
+          </div>
           <p className="muted" style={{ textAlign: 'center', fontSize: 13, marginTop: 14 }}><a href="/pricing" style={{ color: 'var(--brand,#5b63d3)' }}>{L('Ver comparación completa de planes', 'See full plan comparison')} →</a></p>
         </div>
       </section>

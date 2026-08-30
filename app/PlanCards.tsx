@@ -16,10 +16,12 @@ type Plan = {
 };
 
 export default function PlanCards({
-  plans, lang, annual, onChoose, loadingId = '',
+  plans, lang, annual, onChoose, loadingId = '', botTagId = '',
 }: {
   plans: Plan[]; lang: 'es' | 'en'; annual: boolean;
   onChoose: (planId: string, price: number) => void; loadingId?: string;
+  // Marca opcional "Para bots" en un plan (solo landing del constructor). Vacío = sin marca.
+  botTagId?: string;
 }) {
   const t = {
     yr: lang === 'es' ? 'año' : 'yr', mo: lang === 'es' ? 'mes' : 'mo',
@@ -41,9 +43,11 @@ export default function PlanCards({
         const prev = plans[i - 1];
         const prevName = prev ? (lang === 'es' ? prev.name : (prev.name_en || prev.name)) : '';
         const isFree = p.id === 'free' || price === 0;
+        const botTag = !!botTagId && p.id === botTagId;
         return (
-          <div key={p.id} className="card" style={pop ? { border: '2px solid var(--brand)', boxShadow: '0 0 30px rgba(124,140,255,.25)', position: 'relative' } : { position: 'relative' }}>
+          <div key={p.id} className="card" style={(pop || botTag) ? { border: '2px solid var(--brand)', boxShadow: '0 0 30px rgba(124,140,255,.25)', position: 'relative' } : { position: 'relative' }}>
             {pop && <span style={{ position: 'absolute', top: -13, left: '50%', transform: 'translateX(-50%)', background: 'var(--grad)', color: '#fff', fontSize: 11, fontWeight: 800, padding: '4px 14px', borderRadius: 20, whiteSpace: 'nowrap' }}>★ {badge}</span>}
+            {botTag && <span style={{ position: 'absolute', top: 12, right: 12, background: 'color-mix(in srgb,var(--brand) 18%,transparent)', color: 'var(--brand)', fontSize: 10.5, fontWeight: 800, padding: '3px 9px', borderRadius: 99, border: '1px solid color-mix(in srgb,var(--brand) 40%,transparent)', whiteSpace: 'nowrap' }}>★ {lang === 'es' ? 'Para bots' : 'For bots'}</span>}
             <h3 style={{ marginTop: pop ? 6 : 0 }}>{name}</h3>
             {desc && <p className="muted" style={{ fontSize: 13, marginTop: 4 }}>{desc}</p>}
             <div style={{ fontSize: 40, fontWeight: 800, margin: '10px 0 4px' }}>${price}<span className="muted" style={{ fontSize: 15, fontWeight: 500 }}>/{annual ? t.yr : t.mo}</span></div>
