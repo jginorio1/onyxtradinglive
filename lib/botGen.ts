@@ -166,8 +166,10 @@ void Activate(){
    string q=CharToString((uchar)34);
    string body="{"+q+"key"+q+":"+q+InpApiKey+q+","+q+"account"+q+":"+(string)AccountInfoInteger(ACCOUNT_LOGIN)+","
       +q+"magic"+q+":"+(string)InpMagic+","+q+"build"+q+":"+q+ONYX_BUILD+q+","+q+"creator"+q+":"+q+ONYX_CREATOR+q+"}";
-   char post[]; StringToCharArray(body,post,0,StringLen(body),CP_UTF8); char res[]; string rh="Content-Type: application/json\r\n"; ResetLastError();
-   int r=WebRequest("POST",ONYX_SITE+"/api/v1/activate",rh,5000,post,res,rh);
+   char post[], res[]; string headers="Content-Type: application/json\\r\\n";
+   int blen=StringToCharArray(body,post,0,WHOLE_ARRAY,CP_UTF8)-1; if(blen<0) blen=0; ArrayResize(post,blen);
+   string resH; ResetLastError();
+   int r=WebRequest("POST",ONYX_SITE+"/api/v1/activate",headers,5000,post,res,resH);
    if(r!=200){
       // Sin conexión: conserva la última autorización buena dentro del periodo de gracia.
       if(gAuthLastOk>0 && TimeCurrent()-gAuthLastOk<72*3600){ gAuthMsg="${T('Sin conexion (en gracia)', 'Offline (grace)')}"; return; }
