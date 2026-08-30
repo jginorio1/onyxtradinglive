@@ -181,7 +181,7 @@ export default function LandingConstructor() {
       <section className="sec" id="constructor">
         <div className="split">
           <div>
-            <span className="eyebrow">{L('Constructor', 'Builder')}</span>
+            <span className="eyebrow">{L('Crea tu bot', 'Build a bot')}</span>
             <h2 style={{ marginTop: 8 }}>{L('Diseña estrategias, no líneas de código', 'Design strategies, not lines of code')}</h2>
             <div className="li"><i>✦</i> {L('Entrada, stop y TP por campos — en pips, RR, $ o %.', 'Entry, stop and TP by fields — in pips, RR, $ or %.')}</div>
             <div className="li"><i>✦</i> {L('Reglas de fondeo integradas (pérdida diaria, drawdown, objetivo).', 'Firm rules built in (daily loss, drawdown, target).')}</div>

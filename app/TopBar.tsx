@@ -126,7 +126,7 @@ export default async function TopBar({ home = false }: { home?: boolean }) {
         // sabe que un logo se puede pulsar, y desde Planes o Embajadores no
         // había ninguna otra forma de volver al landing.
         { href: '/', label: t.home },
-        { href: '/bot-builder', label: lang === 'en' ? 'Bot builder' : 'Constructor', icon: '🤖' },
+        { href: '/bot-builder', label: lang === 'en' ? 'Build a bot' : 'Crea tu bot', icon: '🤖' },
         { href: '/analiza', label: lang === 'en' ? 'Free analysis' : 'Analiza gratis' },
         { href: '/copy', label: 'Onyx Copy' },
         { href: '/pricing', label: t.plans },
