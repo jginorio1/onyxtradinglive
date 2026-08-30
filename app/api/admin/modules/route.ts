@@ -118,7 +118,7 @@ export async function PATCH(req: Request) {
       reviews = b.reviews.slice(0, 200).map((r: any) => ({   // reseñas ilimitadas (tope de seguridad 200)
         name: String(r?.name || '').slice(0, 60),
         result: String(r?.result || '').slice(0, 60),
-        text: String(r?.text || '').slice(0, 280),
+        text: String(r?.text || '').slice(0, 320),
         stars: Math.max(1, Math.min(5, Math.round(Number(r?.stars) || 5))),
         date: String(r?.date || '').slice(0, 20),            // fecha visible (texto libre)
         country: String(r?.country || '').slice(0, 2).toUpperCase(),   // ISO2 → bandera
