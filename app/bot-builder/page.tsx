@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { serverLang } from '@/lib/locale';
+import SectionNav from '@/app/SectionNav';
 import LandingConstructor from './LandingConstructor';
 
 const SITE = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.onyxtradinglive.com').replace(/\/$/, '');
@@ -92,10 +93,26 @@ export default function ConstructorPage() {
       },
     ],
   };
+  // Barra de secciones propia de esta página (segundo menú), como en la home,
+  // para que no desaparezca al estar en "Crea tu bot".
+  const sections = es
+    ? [
+        { id: 'funciones', label: 'Funciones' }, { id: 'constructor', label: 'Estrategias' },
+        { id: 'traders', label: 'Traders' }, { id: 'como', label: 'Cómo funciona' },
+        { id: 'precios', label: 'Precios' }, { id: 'resenas', label: 'Reseñas' }, { id: 'faq', label: 'FAQ' },
+      ]
+    : [
+        { id: 'funciones', label: 'Features' }, { id: 'constructor', label: 'Strategies' },
+        { id: 'traders', label: 'Traders' }, { id: 'como', label: 'How it works' },
+        { id: 'precios', label: 'Pricing' }, { id: 'resenas', label: 'Reviews' }, { id: 'faq', label: 'FAQ' },
+      ];
   return (
-    <div className="wrap-wide" style={{ padding: '0 18px' }}>
+    <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }} />
-      <LandingConstructor />
-    </div>
+      <SectionNav items={sections} />
+      <div className="wrap-wide" style={{ padding: '0 18px' }}>
+        <LandingConstructor />
+      </div>
+    </>
   );
 }
