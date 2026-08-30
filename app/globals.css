@@ -404,6 +404,11 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
 .logostrip-track{display:flex;width:max-content;animation:scrollx 26s linear infinite;will-change:transform;}
 .logostrip-track>*{margin-right:48px;}
 .logostrip:hover .logostrip-track{animation-play-state:paused;}
+/* Animación "creando robot": círculo verde iluminado (pulso) + anillo girando. */
+@keyframes bbxspin{to{transform:rotate(360deg)}}
+@keyframes bbxpulse{0%,100%{box-shadow:0 0 0 2px rgba(34,214,140,.5),0 0 26px 4px rgba(34,214,140,.35)}50%{box-shadow:0 0 0 2px rgba(34,214,140,.85),0 0 44px 12px rgba(34,214,140,.6)}}
+.bbxglow{width:104px;height:104px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 50% 40%, rgba(34,214,140,.35), rgba(34,214,140,.05));animation:bbxpulse 1.6s ease-in-out infinite;}
+.bbxring{width:70px;height:70px;border-radius:50%;border:3px solid rgba(34,214,140,.22);border-top-color:#22d68c;animation:bbxspin .9s linear infinite;}
 /* aparición al hacer scroll */
 .reveal{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease;}
 .reveal.in{opacity:1;transform:none;}

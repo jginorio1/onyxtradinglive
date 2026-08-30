@@ -13,6 +13,9 @@ export type BotSpec = {
   entryTrigger: string; microSwing: number; trendMode: number; trendTF: string;
   allowLongs: boolean; allowShorts: boolean; maxTradesPerDay: number;
   signalFromH: number; signalFromM: number; signalToH: number; signalToM: number;
+  // Varias ventanas/sesiones de operación (hora del servidor). El bot busca entradas
+  // si la hora cae dentro de CUALQUIER ventana. signalFrom/To arriba = espejo de la 1ª.
+  windows: { fh: number; fm: number; th: number; tm: number }[];
   // Días en que opera (bitmask sobre DayOfWeek 0=Dom..6=Sáb). Default Lun-Vie = 62.
   tradeDays: number;
   // Riesgo (valor + unidad: pct | money)
@@ -44,7 +47,7 @@ export type BotSpec = {
 export const DEFAULT_SPEC: BotSpec = {
   name: 'Mi bot', platform: 'mt5', symbol: 'XAUUSD', magic: 991000, tf: 'M5', botLang: 'es',
   entryTrigger: 'breakout_swing', microSwing: 2, trendMode: 1, trendTF: 'H1', allowLongs: true, allowShorts: true,
-  maxTradesPerDay: 20, signalFromH: 8, signalFromM: 0, signalToH: 20, signalToM: 0, tradeDays: 62,
+  maxTradesPerDay: 20, signalFromH: 8, signalFromM: 0, signalToH: 20, signalToM: 0, windows: [{ fh: 8, fm: 0, th: 20, tm: 0 }], tradeDays: 62,
   riskVal: 0.2, riskUnit: 'pct', maxLots: 50,
   slVal: 0.5, slUnit: 'atr',
   tp1Val: 1.0, tp1Unit: 'rr', partialPct: 50,
@@ -90,6 +93,17 @@ export function cleanSpec(inp: any): BotSpec {
   s.signalFromH = clamp(Math.round(num(inp?.signalFromH, 8)), 0, 23); s.signalFromM = clamp(Math.round(num(inp?.signalFromM, 0)), 0, 59);
   s.signalToH = clamp(Math.round(num(inp?.signalToH, 20)), 0, 23); s.signalToM = clamp(Math.round(num(inp?.signalToM, 0)), 0, 59);
   s.tradeDays = clamp(Math.round(num(inp?.tradeDays, 62)), 0, 127) || 62;   // días operables (bitmask); nunca 0 (sería nunca operar)
+  // Ventanas de operación: lista de {fh,fm,th,tm} saneada. Si no vienen, se arma una
+  // desde signalFrom/To (compatibilidad). Máx. 6 ventanas. La 1ª se refleja en signal*.
+  const rawW = Array.isArray(inp?.windows) ? inp.windows : [];
+  let wins = rawW.slice(0, 6).map((w: any) => ({
+    fh: clamp(Math.round(num(w?.fh, 8)), 0, 23), fm: clamp(Math.round(num(w?.fm, 0)), 0, 59),
+    th: clamp(Math.round(num(w?.th, 20)), 0, 23), tm: clamp(Math.round(num(w?.tm, 0)), 0, 59),
+  }));
+  if (!wins.length) wins = [{ fh: s.signalFromH, fm: s.signalFromM, th: s.signalToH, tm: s.signalToM }];
+  s.windows = wins;
+  // La 1ª ventana alimenta signal* para lectores antiguos (resumen, guía).
+  s.signalFromH = wins[0].fh; s.signalFromM = wins[0].fm; s.signalToH = wins[0].th; s.signalToM = wins[0].tm;
   // Riesgo: si es %, tope duro 5%.
   s.riskUnit = oneOf(inp?.riskUnit, UNITS.risk, 'pct');
   s.riskVal = s.riskUnit === 'pct' ? clamp(num(inp?.riskVal, 0.2), 0.01, 5) : clamp(num(inp?.riskVal, 100), 0.01, 1e7);
@@ -144,6 +158,8 @@ export function toSetFile(s: BotSpec): string {
   P('InpMicroSwing', s.microSwing); P('InpTrendMode', s.trendMode); P('InpTrendTF', tfEnum(s.trendTF));
   P('InpAllowLongs', bl(s.allowLongs)); P('InpAllowShorts', bl(s.allowShorts)); P('InpMaxTradesPerDay', s.maxTradesPerDay);
   P('InpSignalFromH', s.signalFromH); P('InpSignalFromM', s.signalFromM); P('InpSignalToH', s.signalToH); P('InpSignalToM', s.signalToM);
+  // Ventanas como "fMin-tMin,fMin-tMin" en minutos del servidor (varias sesiones).
+  P('InpWindows', (s.windows || []).map((w) => `${w.fh * 60 + w.fm}-${w.th * 60 + w.tm}`).join(','));
   P('InpTradeDays', s.tradeDays);
   P('InpRiskUnit', codeRisk(s.riskUnit)); P('InpRiskValue', s.riskVal); P('InpMaxLots', s.maxLots);
   P('InpSLUnit', codeSL(s.slUnit)); P('InpSLValue', s.slVal);

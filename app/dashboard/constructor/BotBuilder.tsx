@@ -337,23 +337,6 @@ export default function BotBuilder() {
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', paddingTop: 20 }}><Toggle k="allowLongs" t={L('Largos', 'Longs')} /><Toggle k="allowShorts" t={L('Cortos', 'Shorts')} /></div>
       </Panel>
 
-      {/* Sesión */}
-      <div className="bbx-panel">
-        <div className="bbx-panel-h" style={{ marginBottom: 12 }}><span className="bbx-ic"><OnyxIcon emoji="🕐" size={16} /></span><div><div>{L('Sesión de operación', 'Trading session')}</div><div className="bbx-sub">{L('El bot opera con la HORA DEL SERVIDOR de tu bróker. Abajo te mostramos a qué hora local tuya corresponde.', 'The bot runs on your broker\'s SERVER time. Below we show what your local time that is.')}</div></div></div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
-          {SESSIONS.map(([kk, nm, fh, fm, th, tm]) => <button key={kk} className={'bbx-ses' + (activeSession === kk ? ' on' : '')} onClick={() => applySession(fh, fm, th, tm)}>{nm}</button>)}
-          <span className={'bbx-ses' + (activeSession === 'custom' ? ' on' : '')}>{L('Personalizado', 'Custom')}</span>
-        </div>
-        <div style={{ background: 'rgba(139,147,255,.10)', border: '1px solid rgba(139,147,255,.25)', borderRadius: 10, padding: '9px 12px', marginBottom: 12, fontSize: 12.5, color: 'var(--ink)' }}>
-          <span style={{ color: 'var(--mut)' }}>{L('Servidor', 'Server')} (GMT{s.serverGmt >= 0 ? '+' : ''}{s.serverGmt}): </span><b>{hhmm(s.signalFromH, s.signalFromM)}–{hhmm(s.signalToH, s.signalToM)}</b>
-          <span style={{ color: 'var(--mut)' }}>   ·   {L('Tu hora local', 'Your local time')}: </span><b style={{ color: '#8b93ff' }}>{toLocal(s.signalFromH, s.signalFromM)}–{toLocal(s.signalToH, s.signalToM)}</b>
-        </div>
-        <div className="bbx-grid">
-          <Fld t={L('Hora inicio (servidor)', 'From, server (h)')} k="signalFromH" type="number" /><Fld t={L('Min inicio', 'From (m)')} k="signalFromM" type="number" />
-          <Fld t={L('Hora fin (servidor)', 'To, server (h)')} k="signalToH" type="number" /><Fld t={L('Min fin', 'To (m)')} k="signalToM" type="number" />
-          <Fld t={L('GMT del servidor del bróker', 'Broker server GMT')} k="serverGmt" opts={GMT_OPTS} hint={L('Míralo en MetaTrader: la hora del reloj del mercado. Sirve para las noticias y para tu hora local.', 'Check it in MetaTrader: the market watch clock. Used for news and your local time.')} />
-        </div>
-      </div>
       </>)}
 
       {view === 'exits' && (
@@ -426,26 +409,86 @@ export default function BotBuilder() {
 
       {view === 'schedule' && (<>
       <Panel ic="🕐" title={L('Horario', 'Schedule')}>
-        <Fld t={L('Cierre de sesión (hora)', 'Session close (h)')} k="forceCloseHourNY" type="number" hint={L('Hora del servidor a la que cierra lo abierto.', 'Server hour when it closes open trades.')} />
-        <Fld t={L('Cierre de sesión (min)', 'Session close (m)')} k="forceCloseMinNY" type="number" />
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', paddingTop: 20 }}>
-          <Toggle k="useDayClose" t={L('Cerrar fin de sesión', 'Close at session end')} />
-          <Toggle k="noWeekend" t={L('Sin fin de semana', 'No weekend')} />
-        </div>
-        {/* Días operables: el trader elige en qué días de la semana opera el bot (bitmask). */}
-        <div style={{ gridColumn: '1 / -1', paddingTop: 16 }}>
-          <span className="bbx-lbl">{L('Días en que opera', 'Trading days')}</span>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
-            {(L('D,L,M,X,J,V,S', 'Su,Mo,Tu,We,Th,Fr,Sa').split(',')).map((lbl, d) => {
-              const on = (((s.tradeDays ?? 62) >> d) & 1) === 1;
-              return (
-                <button key={d} type="button" onClick={() => set('tradeDays', ((s.tradeDays ?? 62) ^ (1 << d)) || 62)}
-                  title={['Domingo/Sunday','Lunes/Monday','Martes/Tuesday','Miércoles/Wednesday','Jueves/Thursday','Viernes/Friday','Sábado/Saturday'][d]}
-                  style={{ minWidth: 40, padding: '8px 0', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer', color: on ? '#fff' : 'var(--mut)', background: on ? 'var(--brand)' : 'var(--card2, rgba(255,255,255,.03))', border: '1px solid ' + (on ? 'var(--brand)' : 'var(--line)') }}>{lbl}</button>
-              );
-            })}
+        {/* Bloque único a todo el ancho: 1) días  2) divisor  3) cierre + reglas de fin de semana. */}
+        <div style={{ gridColumn: '1 / -1', display: 'grid', gap: 16 }}>
+          {/* 1 · Días operables (rejilla pareja de 7). El trader elige qué días opera (bitmask). */}
+          <div>
+            <span className="bbx-lbl">{L('Días en que opera', 'Trading days')}</span>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 8, marginTop: 8 }}>
+              {(L('Do,Lu,Ma,Mi,Ju,Vi,Sá', 'Su,Mo,Tu,We,Th,Fr,Sa').split(',')).map((lbl, d) => {
+                const on = (((s.tradeDays ?? 62) >> d) & 1) === 1;
+                return (
+                  <button key={d} type="button" onClick={() => set('tradeDays', ((s.tradeDays ?? 62) ^ (1 << d)) || 62)}
+                    title={[L('Domingo', 'Sunday'), L('Lunes', 'Monday'), L('Martes', 'Tuesday'), L('Miércoles', 'Wednesday'), L('Jueves', 'Thursday'), L('Viernes', 'Friday'), L('Sábado', 'Saturday')][d]}
+                    style={{ textAlign: 'center', padding: '10px 0', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer', color: on ? '#fff' : 'var(--mut)', background: on ? 'var(--brand)' : 'var(--card2, rgba(255,255,255,.03))', border: (on ? '1px solid var(--brand)' : '1px dashed var(--line)') }}>{lbl}</button>
+                );
+              })}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--mut)', marginTop: 6 }}>{L('El bot solo busca entradas en los días marcados. El mercado abre el domingo y cierra el viernes; el sábado está cerrado.', 'The bot only seeks entries on the marked days. The market opens Sunday and closes Friday; Saturday is closed.')}</div>
           </div>
-          <div style={{ fontSize: 11, color: 'var(--mut)', marginTop: 6 }}>{L('El bot solo busca entradas en los días marcados. El mercado abre el domingo y cierra el viernes; el sábado está cerrado.', 'The bot only seeks entries on the marked days. The market opens Sunday and closes Friday; Saturday is closed.')}</div>
+
+          <div style={{ height: 1, background: 'var(--line)' }} />
+
+          {/* 1.5 · Horarios de operación (VARIAS sesiones/ventanas, hora del servidor). */}
+          {(() => {
+            const wins: any[] = (Array.isArray(s.windows) && s.windows.length) ? s.windows : [{ fh: s.signalFromH, fm: s.signalFromM, th: s.signalToH, tm: s.signalToM }];
+            const setW = (a: any[]) => set('windows', a.length ? a.slice(0, 6) : [{ fh: 8, fm: 0, th: 20, tm: 0 }]);
+            const upd = (i: number, patch: any) => setW(wins.map((w, j) => (j === i ? { ...w, ...patch } : w)));
+            const num2 = (v: string) => (v === '' ? 0 : Math.max(0, Number(v)));
+            return (
+              <div>
+                <div className="row between" style={{ alignItems: 'baseline' }}>
+                  <span className="bbx-lbl">{L('Horarios de operación (hora del servidor)', 'Trading hours (server time)')}</span>
+                  <span style={{ fontSize: 11, color: 'var(--mut)' }}>{L('Puedes añadir varias sesiones', 'You can add several sessions')}</span>
+                </div>
+                {/* Presets: cada uno AÑADE una sesión. */}
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '8px 0 10px' }}>
+                  {SESSIONS.map(([kk, nm, fh, fm, th, tm]: any) => (
+                    <button key={kk} type="button" className="bbx-ses" title={L('Añadir esta sesión', 'Add this session')} onClick={() => setW([...wins, { fh, fm, th, tm }])}>+ {nm}</button>
+                  ))}
+                </div>
+                {/* Lista de ventanas: cada una editable + hora local + borrar. */}
+                <div style={{ display: 'grid', gap: 8 }}>
+                  {wins.map((w, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', border: '1px solid var(--line)', borderRadius: 10, padding: '8px 10px', background: 'var(--card2, rgba(255,255,255,.02))' }}>
+                      <span style={{ fontSize: 12, color: 'var(--mut)', minWidth: 58 }}>{L('Sesión', 'Session')} {i + 1}</span>
+                      <input className="bbx-in" type="number" min={0} max={23} value={w.fh} style={{ width: 64 }} onChange={(e) => upd(i, { fh: Math.min(23, num2(e.target.value)) })} />
+                      <span style={{ color: 'var(--mut)' }}>:</span>
+                      <input className="bbx-in" type="number" min={0} max={59} value={w.fm} style={{ width: 64 }} onChange={(e) => upd(i, { fm: Math.min(59, num2(e.target.value)) })} />
+                      <span style={{ color: 'var(--mut)', padding: '0 2px' }}>→</span>
+                      <input className="bbx-in" type="number" min={0} max={23} value={w.th} style={{ width: 64 }} onChange={(e) => upd(i, { th: Math.min(23, num2(e.target.value)) })} />
+                      <span style={{ color: 'var(--mut)' }}>:</span>
+                      <input className="bbx-in" type="number" min={0} max={59} value={w.tm} style={{ width: 64 }} onChange={(e) => upd(i, { tm: Math.min(59, num2(e.target.value)) })} />
+                      <span style={{ fontSize: 11.5, color: '#8b93ff', marginLeft: 4 }}>{L('local', 'local')} {toLocal(w.fh, w.fm)}–{toLocal(w.th, w.tm)}</span>
+                      {wins.length > 1 && <button type="button" className="bbx-btn" style={{ marginLeft: 'auto', padding: '4px 9px', fontSize: 12, color: 'var(--wn)' }} onClick={() => setW(wins.filter((_, j) => j !== i))}>✕</button>}
+                    </div>
+                  ))}
+                </div>
+                <div className="row" style={{ gap: 10, alignItems: 'center', marginTop: 10, flexWrap: 'wrap' }}>
+                  {wins.length < 6 && <button type="button" className="bbx-btn" onClick={() => setW([...wins, { fh: 8, fm: 0, th: 20, tm: 0 }])}><OnyxIcon emoji="➕" size={13} glow={false} /> {L('Añadir horario', 'Add window')}</button>}
+                  <div style={{ minWidth: 220 }}><Fld t={L('GMT del servidor del bróker', 'Broker server GMT')} k="serverGmt" opts={GMT_OPTS} /></div>
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--mut)', marginTop: 6 }}>{L('El bot busca entradas si la hora cae dentro de CUALQUIER sesión. El GMT sirve para convertir a tu hora local y para las noticias.', 'The bot seeks entries if the time falls inside ANY session. The GMT is used for your local time and the news filter.')}</div>
+              </div>
+            );
+          })()}
+
+          <div style={{ height: 1, background: 'var(--line)' }} />
+
+          {/* 2 · Cierre de sesión (hora:min del servidor) + reglas de fin de semana, en una fila. */}
+          <div>
+            <span className="bbx-lbl">{L('Cierre de sesión (hora del servidor)', 'Session close (server time)')}</span>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 8 }}>
+              <input className="bbx-in" data-fld="forceCloseHourNY" type="number" min={0} max={23} value={s.forceCloseHourNY} style={{ width: 84 }} onChange={(e) => set('forceCloseHourNY', e.target.value === '' ? '' : Number(e.target.value))} />
+              <span style={{ color: 'var(--mut)' }}>:</span>
+              <input className="bbx-in" data-fld="forceCloseMinNY" type="number" min={0} max={59} value={s.forceCloseMinNY} style={{ width: 84 }} onChange={(e) => set('forceCloseMinNY', e.target.value === '' ? '' : Number(e.target.value))} />
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginLeft: 4 }}>
+                <Toggle k="useDayClose" t={L('Cerrar al fin de sesión', 'Close at session end')} />
+                <Toggle k="noWeekend" t={L('Sin fin de semana', 'No weekend')} />
+              </div>
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--mut)', marginTop: 6 }}>{L('Hora del servidor a la que el bot cierra lo que tenga abierto.', 'Server time when the bot closes any open trades.')}</div>
+          </div>
         </div>
       </Panel>
 

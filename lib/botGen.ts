@@ -27,6 +27,8 @@ export function renderMT5(spec: BotSpec, meta?: { userId?: string; buildId?: str
   const site = String(meta?.site || 'https://www.onyxtradinglive.com').replace(/\/$/, '');
   const creator = String(meta?.userId || '').replace(/[^\w-]/g, '');
   const buildId = String(meta?.buildId || '').replace(/[^\w-]/g, '');
+  // Ventanas de operación (varias sesiones) como "fMin-tMin,fMin-tMin" en minutos del servidor.
+  const windowsStr = (s.windows || []).map((w) => `${w.fh * 60 + w.fm}-${w.th * 60 + w.tm}`).join(',') || `${s.signalFromH * 60 + s.signalFromM}-${s.signalToH * 60 + s.signalToM}`;
   const trig = { breakout_swing: 0, ma_cross: 1, rsi: 2, donchian: 3, time: 4 }[s.entryTrigger] ?? 1;
   const nImpact = ({ high: 0, med: 1, all: 2 } as any)[s.newsImpact] ?? 0;
   return `//+------------------------------------------------------------------+
@@ -77,6 +79,7 @@ input int     InpSignalFromH  = ${s.signalFromH};
 input int     InpSignalFromM  = ${s.signalFromM};
 input int     InpSignalToH    = ${s.signalToH};
 input int     InpSignalToM    = ${s.signalToM};
+input string  InpWindows      = "${windowsStr}";   // ${T('Ventanas de operación en minutos del servidor: "f-t,f-t" (varias sesiones)', 'Trading windows in server minutes: "f-t,f-t" (multiple sessions)')}
 input int     InpTradeDays    = ${s.tradeDays ?? 62};   // ${T('Días operables (bitmask 0=Dom..6=Sáb). Mercado abre Dom, cierra Vie', 'Trading days (bitmask 0=Sun..6=Sat). Market opens Sun, closes Fri')}
 input int     InpMaxTradesPerDay = ${s.maxTradesPerDay};
 
@@ -157,13 +160,12 @@ datetime nwT[]; int nwImp[]; string nwCur[]; datetime nwLast=0; bool nwFail=fals
 #define ONYX_BUILD   "${buildId}"
 bool     gAuth=false; datetime gAuthUntil=0, gAuthLastOk=0, gAuthLastTry=0;
 string   gAuthMsg="${T('Verificando activacion...', 'Checking activation...')}";
-bool IsDemo(){ return (AccountInfoInteger(ACCOUNT_TRADE_MODE)==ACCOUNT_TRADE_MODE_DEMO); }
-// Consulta a Onyx si esta cuenta+clave puede operar este robot. Tolerante a caídas
-// de red: mantiene la última autorización válida hasta 72h (no atrapa al trader).
+// Consulta a Onyx si esta cuenta+clave puede operar este robot. Requiere clave activa
+// SIEMPRE (también en demo y en cuentas de fondeo). Tolerante a caídas de red: mantiene
+// la última autorización válida hasta 72h (no atrapa al trader).
 void Activate(){
    gAuthLastTry=TimeCurrent();
-   if(IsDemo()){ gAuth=true; gAuthUntil=TimeCurrent()+86400; gAuthMsg="${T('Demo (libre)', 'Demo (free)')}"; return; }
-   if(StringLen(InpApiKey)<8){ gAuth=false; gAuthMsg="${T('Pega tu clave Onyx (real)', 'Paste your Onyx key (live)')}"; return; }
+   if(StringLen(InpApiKey)<8){ gAuth=false; gAuthMsg="${T('Pega tu clave Onyx en InpApiKey', 'Paste your Onyx key in InpApiKey')}"; return; }
    string q=CharToString((uchar)34);
    string body="{"+q+"key"+q+":"+q+InpApiKey+q+","+q+"account"+q+":"+(string)AccountInfoInteger(ACCOUNT_LOGIN)+","
       +q+"magic"+q+":"+(string)InpMagic+","+q+"build"+q+":"+q+ONYX_BUILD+q+","+q+"creator"+q+":"+q+ONYX_CREATOR+q+"}";
@@ -185,7 +187,14 @@ datetime SrvNow(){ return TimeCurrent(); }
 int DayId(){ MqlDateTime d; TimeToStruct(SrvNow(),d); return d.year*1000+d.day_of_year; }
 int RefMin(){ MqlDateTime d; TimeToStruct(SrvNow(),d); return d.hour*60+d.min; }
 int RefDow(){ MqlDateTime d; TimeToStruct(SrvNow(),d); return d.day_of_week; }
-bool InWindow(){ int m=RefMin(), f=InpSignalFromH*60+InpSignalFromM, t=InpSignalToH*60+InpSignalToM; return (f<=t)?(m>=f&&m<=t):(m>=f||m<=t); }
+bool InRange(int m,int f,int t){ return (f<=t)?(m>=f&&m<=t):(m>=f||m<=t); }
+// Dentro de CUALQUIER ventana de InpWindows ("f-t,f-t" en minutos). Si está vacío, usa
+// el rango simple InpSignalFrom/To (compatibilidad).
+bool InWindow(){ int m=RefMin();
+   if(StringLen(InpWindows)<3) return InRange(m, InpSignalFromH*60+InpSignalFromM, InpSignalToH*60+InpSignalToM);
+   string parts[]; int n=StringSplit(InpWindows,',',parts);
+   for(int i=0;i<n;i++){ string ab[]; if(StringSplit(parts[i],'-',ab)==2){ if(InRange(m,(int)StringToInteger(ab[0]),(int)StringToInteger(ab[1]))) return true; } }
+   return false; }
 // Días operables por bitmask (bit w = DayOfWeek w, 0=Dom..6=Sáb). El trader elige.
 bool DayOperable(){ int w=RefDow(); return ((InpTradeDays>>w)&1)==1; }
 bool ForceClose(){ if(!InpUseDayClose) return false; return RefMin()>=InpForceCloseHourNY*60+InpForceCloseMinNY; }
