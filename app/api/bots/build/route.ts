@@ -40,8 +40,10 @@ export async function GET(req: Request) {
       const spec = cleanSpec((bot as any).spec);
       const safe = (spec.name || 'bot').replace(/[^\w.\- ]+/g, '_').slice(0, 40);
       if (asCode) {
-        // Fase 2: EA MT5 autónomo generado desde el spec.
-        const src = renderMT5(spec);
+        // Fase 2: EA MT5 generado desde el spec, con candado de activación Onyx
+        // (huella creador+build + URL del sitio para el ping de /api/v1/activate).
+        const SITE = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.onyxtradinglive.com').replace(/\/$/, '');
+        const src = renderMT5(spec, { userId: user.id, buildId: String(dl), site: SITE });
         return new NextResponse(src, { headers: { 'content-type': 'text/plain; charset=utf-8', 'content-disposition': `attachment; filename="${safe}.mq5"` } });
       }
       const set = toSetFile(spec);

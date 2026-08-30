@@ -18,10 +18,15 @@ const cRisk = (u: string) => (u === 'money' ? 1 : 0);
 const cU = (u: string) => ({ pips: 0, rr: 1, pct: 2, money: 3, atr: 4 } as any)[u] ?? 0;
 const cSL = cU, cTP = cU, cRun = cU, cTrail = cU;
 
-export function renderMT5(spec: BotSpec): string {
+export function renderMT5(spec: BotSpec, meta?: { userId?: string; buildId?: string; site?: string }): string {
   const s = spec;
   const en = s.botLang === 'en';
   const T = (a: string, b: string) => (en ? b : a); // textos visibles al trader, en su idioma
+  // Datos para el candado de activación: URL de Onyx + huella (creador + build) que
+  // permite rastrear cualquier archivo filtrado. Se incrustan como constantes del EA.
+  const site = String(meta?.site || 'https://www.onyxtradinglive.com').replace(/\/$/, '');
+  const creator = String(meta?.userId || '').replace(/[^\w-]/g, '');
+  const buildId = String(meta?.buildId || '').replace(/[^\w-]/g, '');
   const trig = { breakout_swing: 0, ma_cross: 1, rsi: 2, donchian: 3, time: 4 }[s.entryTrigger] ?? 1;
   const nImpact = ({ high: 0, med: 1, all: 2 } as any)[s.newsImpact] ?? 0;
   return `//+------------------------------------------------------------------+
@@ -48,6 +53,7 @@ enum ENUM_U         { U_PIPS=0, U_RR=1, U_PCT=2, U_MONEY=3, U_ATR=4 }; // pips |
 input string  InpComment      = ${q(s.name)};
 input string  InpSymbol       = ${q(s.symbol)};
 input long    InpMagic        = ${s.magic};
+input string  InpApiKey       = "";   // ${T('Tu clave Onyx (Conectar cuenta). Requerida en cuentas reales.', 'Your Onyx key (Connect account). Required on live accounts.')}
 input ENUM_TIMEFRAMES InpTF    = ${tf(s.tf)};
 
 input ENUM_ENTRY InpEntry     = ${trig};
@@ -141,6 +147,36 @@ datetime lastBar=0; int gTradesToday=0, curDayId=-1; double dayStartEq=0, gInitB
 bool dayLocked=false, gTargetHit=false, gDayGoal=false; string PFX="OBX_"; string noReason="${T('Iniciando', 'Starting')}";
 int stTrades=0, stWins=0; double stNet=0, stWR=0;
 datetime nwT[]; int nwImp[]; string nwCur[]; datetime nwLast=0; bool nwFail=false; bool gInNews=false;
+
+//====================== ACTIVACION ONYX ======================
+// Huella del EA (creador + build) e identidad del sitio. La operación en cuentas
+// REALES requiere una clave Onyx activa; en DEMO se permite probar sin clave.
+#define ONYX_SITE    "${site}"
+#define ONYX_CREATOR "${creator}"
+#define ONYX_BUILD   "${buildId}"
+bool     gAuth=false; datetime gAuthUntil=0, gAuthLastOk=0, gAuthLastTry=0;
+string   gAuthMsg="${T('Verificando activacion...', 'Checking activation...')}";
+bool IsDemo(){ return (AccountInfoInteger(ACCOUNT_TRADE_MODE)==ACCOUNT_TRADE_MODE_DEMO); }
+// Consulta a Onyx si esta cuenta+clave puede operar este robot. Tolerante a caídas
+// de red: mantiene la última autorización válida hasta 72h (no atrapa al trader).
+void Activate(){
+   gAuthLastTry=TimeCurrent();
+   if(IsDemo()){ gAuth=true; gAuthUntil=TimeCurrent()+86400; gAuthMsg="${T('Demo (libre)', 'Demo (free)')}"; return; }
+   if(StringLen(InpApiKey)<8){ gAuth=false; gAuthMsg="${T('Pega tu clave Onyx (real)', 'Paste your Onyx key (live)')}"; return; }
+   string q=CharToString((uchar)34);
+   string body="{"+q+"key"+q+":"+q+InpApiKey+q+","+q+"account"+q+":"+(string)AccountInfoInteger(ACCOUNT_LOGIN)+","
+      +q+"magic"+q+":"+(string)InpMagic+","+q+"build"+q+":"+q+ONYX_BUILD+q+","+q+"creator"+q+":"+q+ONYX_CREATOR+q+"}";
+   char post[]; StringToCharArray(body,post,0,StringLen(body),CP_UTF8); char res[]; string rh="Content-Type: application/json\r\n"; ResetLastError();
+   int r=WebRequest("POST",ONYX_SITE+"/api/v1/activate",rh,5000,post,res,rh);
+   if(r!=200){
+      // Sin conexión: conserva la última autorización buena dentro del periodo de gracia.
+      if(gAuthLastOk>0 && TimeCurrent()-gAuthLastOk<72*3600){ gAuthMsg="${T('Sin conexion (en gracia)', 'Offline (grace)')}"; return; }
+      gAuth=false; gAuthMsg="${T('Permite la URL de Onyx en Opciones > Asesores expertos', 'Allow the Onyx URL in Options > Expert Advisors')}"; return; }
+   string j=CharArrayToString(res,0,WHOLE_ARRAY,CP_UTF8);
+   bool allowed=(StringFind(j,q+"allowed"+q+":true")>=0);
+   if(allowed){ gAuth=true; gAuthLastOk=TimeCurrent(); gAuthUntil=TimeCurrent()+24*3600; gAuthMsg="${T('Activo', 'Active')}"; }
+   else { gAuth=false; gAuthMsg="${T('Clave/plan no activo para esta cuenta', 'Key/plan not active for this account')}"; }
+}
 
 datetime SrvNow(){ return TimeCurrent(); }
 int DayId(){ MqlDateTime d; TimeToStruct(SrvNow(),d); return d.year*1000+d.day_of_year; }
@@ -288,13 +324,14 @@ int OnInit(){ S=ResolveSymbol(InpSymbol); if(!SymbolSelect(S,true)){ Print("Simb
    trade.SetExpertMagicNumber(InpMagic); trade.SetTypeFillingBySymbol(S); trade.SetDeviationInPoints(20);
    curDayId=DayId(); dayStartEq=AccountInfoDouble(ACCOUNT_EQUITY); gPeakEq=AccountInfoDouble(ACCOUNT_EQUITY);
    gInitBal=(InpInitBalance>0)?InpInitBalance:AccountInfoDouble(ACCOUNT_BALANCE);
-   ComputeStats(); if(InpUseNews) FetchNews(); EventSetTimer(2); Print(${q(s.name)},"${T(' iniciado en ', ' started on ')}",S); return INIT_SUCCEEDED; }
+   ComputeStats(); if(InpUseNews) FetchNews(); Activate(); EventSetTimer(2); Print(${q(s.name)},"${T(' iniciado en ', ' started on ')}",S); return INIT_SUCCEEDED; }
 void OnDeinit(const int reason){ EventKillTimer(); if(atrH!=INVALID_HANDLE) IndicatorRelease(atrH); if(maF!=INVALID_HANDLE) IndicatorRelease(maF); if(maS!=INVALID_HANDLE) IndicatorRelease(maS); if(rsiH!=INVALID_HANDLE) IndicatorRelease(rsiH); if(trendH!=INVALID_HANDLE) IndicatorRelease(trendH); ObjectsDeleteAll(0,PFX); }
 void OnTimer(){ Engine(); Panel(); }
 void OnTick(){ Engine(); Panel(); }
 void DailyReset(){ int d=DayId(); if(d!=curDayId){ curDayId=d; gTradesToday=0; dayLocked=false; gDayGoal=false; dayStartEq=AccountInfoDouble(ACCOUNT_EQUITY); } }
 
 void Engine(){ if(atrH==INVALID_HANDLE) return; DailyReset(); bool nb=NewBar(); Manage();
+   if(TimeCurrent()-gAuthLastTry>3600) Activate();   // re-verifica activación cada hora
    double eq=AccountInfoDouble(ACCOUNT_EQUITY); if(eq>gPeakEq) gPeakEq=eq;
    if(TimeCurrent()%30==0) ComputeStats();
    if(InpUseNews && TimeCurrent()-nwLast>1800) FetchNews(); gInNews=InNews();
@@ -310,10 +347,10 @@ void Engine(){ if(atrH==INVALID_HANDLE) return; DailyReset(); bool nb=NewBar(); 
    bool totHalt=(InpAcctMaxDDPct>0 && eq<=DDFloor());
    if((hardDay||totHalt) && CountMine()>0){ CloseMine("Guardian de cuenta"); dayLocked=true; }
    if(InpHaltAtTarget && TargetPct()>0 && gInitBal>0 && !gTargetHit && ProfitPct()>=TargetPct()) gTargetHit=true;
-   bool blocked = dayLocked||soft||gTargetHit||gDayGoal||gInNews||FridayCut()||!DayOperable()||!InWindow()||(InpMaxTradesPerDay>0 && gTradesToday>=InpMaxTradesPerDay);
+   bool blocked = !gAuth||dayLocked||soft||gTargetHit||gDayGoal||gInNews||FridayCut()||!DayOperable()||!InWindow()||(InpMaxTradesPerDay>0 && gTradesToday>=InpMaxTradesPerDay);
    if(nb && !blocked && CountMine()==0){ int bias=TrendDir(); int sig=EntrySignal(); int dir=(InpEntry==ENT_TIME)?bias:sig;
       if(dir!=0 && (bias==0 || (dir>0?bias>0:bias<0))){ if(dir>0 && InpAllowLongs) OpenTrade(1); else if(dir<0 && InpAllowShorts) OpenTrade(-1); } }
-   if(gTargetHit) noReason="${T('Objetivo alcanzado', 'Target reached')}"; else if(dayLocked) noReason="${T('Dia bloqueado', 'Day locked')}"; else if(gInNews) noReason="${T('En noticias', 'News window')}"; else if(gDayGoal) noReason="${T('Objetivo diario hecho', 'Daily target done')}"; else if(soft) noReason="${T('Freno suave', 'Soft brake')}"; else if(!DayOperable()||FridayCut()) noReason="${T('Fuera de sesion', 'Out of session')}"; else if(!InWindow()) noReason="${T('Fuera de horario', 'Out of hours')}"; else if(CountMine()>0) noReason="${T('En operacion', 'In trade')}"; else noReason="${T('Buscando entrada', 'Seeking entry')}"; }
+   if(!gAuth) noReason=gAuthMsg; else if(gTargetHit) noReason="${T('Objetivo alcanzado', 'Target reached')}"; else if(dayLocked) noReason="${T('Dia bloqueado', 'Day locked')}"; else if(gInNews) noReason="${T('En noticias', 'News window')}"; else if(gDayGoal) noReason="${T('Objetivo diario hecho', 'Daily target done')}"; else if(soft) noReason="${T('Freno suave', 'Soft brake')}"; else if(!DayOperable()||FridayCut()) noReason="${T('Fuera de sesion', 'Out of session')}"; else if(!InWindow()) noReason="${T('Fuera de horario', 'Out of hours')}"; else if(CountMine()>0) noReason="${T('En operacion', 'In trade')}"; else noReason="${T('Buscando entrada', 'Seeking entry')}"; }
 
 //====================== PANEL ======================
 void L(string n,int x,int y,string txt,color c,int fs=9,bool bold=false){ string nm=PFX+n; if(ObjectFind(0,nm)<0) ObjectCreate(0,nm,OBJ_LABEL,0,0,0);
