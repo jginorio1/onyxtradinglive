@@ -49,7 +49,7 @@ export async function GET() {
 
     // Base editable de las cifras del landing (lo que el admin fija a mano).
     // La cifra que se muestra = base + real, y sube en vivo con el uso.
-    let lbase: any = { trades_base: 0, blocks_base: 0, accounts_base: 0, bots_built_base: 0, platforms: 4, readonly: 100, reviews: [] };
+    let lbase: any = { trades_base: 0, blocks_base: 0, accounts_base: 0, bots_built_base: 0, platforms: 4, readonly: 100, reviews: [], bot_ops_base: 0, bot_strat_base: 0, bot_traders_base: 0, bot_platforms: 3 };
     try {
       const { data: ls } = await supabaseAdmin.from('app_settings').select('value').eq('key', 'landing_stats').maybeSingle();
       if (ls?.value) lbase = {
@@ -60,6 +60,10 @@ export async function GET() {
         platforms: ls.value.platforms != null ? Number(ls.value.platforms) : 4,
         readonly: ls.value.readonly != null ? Number(ls.value.readonly) : 100,
         reviews: Array.isArray(ls.value.reviews) ? ls.value.reviews : [],
+        bot_ops_base: Number(ls.value.bot_ops_base || 0),
+        bot_strat_base: Number(ls.value.bot_strat_base || 0),
+        bot_traders_base: Number(ls.value.bot_traders_base || 0),
+        bot_platforms: ls.value.bot_platforms != null ? Number(ls.value.bot_platforms) : 3,
       };
     } catch {}
     // Robots construidos en el Constructor (para la cifra del landing).
@@ -127,6 +131,10 @@ export async function PATCH(req: Request) {
       platforms: Math.max(0, Math.round(Number(b.platforms != null ? b.platforms : 4))),
       readonly: Math.max(0, Math.min(100, Math.round(Number(b.readonly != null ? b.readonly : 100)))),
       reviews,
+      bot_ops_base: Math.max(0, Math.round(Number(b.bot_ops_base) || 0)),
+      bot_strat_base: Math.max(0, Math.round(Number(b.bot_strat_base) || 0)),
+      bot_traders_base: Math.max(0, Math.round(Number(b.bot_traders_base) || 0)),
+      bot_platforms: Math.max(0, Math.round(Number(b.bot_platforms != null ? b.bot_platforms : 3))),
     };
     await supabaseAdmin.from('app_settings').upsert({ key: 'landing_stats', value, updated_at: new Date().toISOString() });
     return NextResponse.json({ ok: true });

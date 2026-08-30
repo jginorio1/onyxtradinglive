@@ -1168,7 +1168,7 @@ function Modules() {
     const load = () => fetch('/api/admin/modules').then((r) => r.json()).then((d: any) => {
       setM(d);
       // Solo la primera vez, para no pisar lo que el admin esté escribiendo.
-      setLf((prev: any) => prev ?? { trades_base: d.landing?.trades_base || 0, blocks_base: d.landing?.blocks_base || 0, accounts_base: d.landing?.accounts_base || 0, bots_built_base: d.landing?.bots_built_base || 0, platforms: d.landing?.platforms ?? 4, readonly: d.landing?.readonly ?? 100, reviews: Array.isArray(d.landing?.reviews) ? d.landing.reviews : [] });
+      setLf((prev: any) => prev ?? { trades_base: d.landing?.trades_base || 0, blocks_base: d.landing?.blocks_base || 0, accounts_base: d.landing?.accounts_base || 0, bots_built_base: d.landing?.bots_built_base || 0, platforms: d.landing?.platforms ?? 4, readonly: d.landing?.readonly ?? 100, reviews: Array.isArray(d.landing?.reviews) ? d.landing.reviews : [], bot_ops_base: d.landing?.bot_ops_base || 0, bot_strat_base: d.landing?.bot_strat_base || 0, bot_traders_base: d.landing?.bot_traders_base || 0, bot_platforms: d.landing?.bot_platforms ?? 3 });
     }).catch(() => setM((v: any) => v || {}));
     load(); const iv = setInterval(load, 20000); return () => clearInterval(iv);
   }, []);
@@ -1277,6 +1277,24 @@ function Modules() {
               <div className="muted" style={{ fontSize: 11.5, marginTop: 5 }}>{es ? 'Se muestra como' : 'Shows as'}: <b style={{ color: 'var(--soft-brand)' }}>{Number(lf.readonly ?? 100)}%</b></div>
             </div>
           </div>
+          {/* Métricas propias del landing de bots (/bot-builder). Son distintas a las del
+              Guardian y suben SOLAS cada día (base + incremento diario aleatorio, nunca bajan). */}
+          <div className="muted" style={{ fontSize: 12, margin: '18px 0 6px', fontWeight: 700 }}>{es ? 'Métricas del landing de bots (suben solas a diario)' : 'Bot landing metrics (grow daily on their own)'}</div>
+          <p className="muted" style={{ fontSize: 11.5, marginBottom: 10 }}>{es ? 'Pon la base de arranque de cada una. Suben automáticamente cada día con un incremento aleatorio escalonado y nunca bajan.' : 'Set the starting base for each. They grow automatically every day by a staggered random amount and never go down.'}</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 14 }}>
+            {[
+              ['bot_ops_base', es ? 'Operaciones de bots (base)' : 'Bot trades (base)'],
+              ['bot_strat_base', es ? 'Estrategias generadas (base)' : 'Strategies generated (base)'],
+              ['bot_traders_base', es ? 'Traders creando bots (base)' : 'Traders building bots (base)'],
+              ['bot_platforms', es ? 'Plataformas (fijo)' : 'Platforms (fixed)'],
+            ].map(([k, label]: any) => (
+              <div key={k}>
+                <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{label}</div>
+                <input type="number" min={0} value={lf[k] ?? 0} onChange={(e) => setLf({ ...lf, [k]: Math.max(0, Number(e.target.value) || 0) })} style={{ margin: 0, width: '100%' }} />
+              </div>
+            ))}
+          </div>
+
           {/* Reseñas del landing del constructor (/bot-builder). Vacío = sección oculta. */}
           <div className="muted" style={{ fontSize: 12, margin: '18px 0 6px', fontWeight: 700 }}>{es ? 'Reseñas del landing (Constructor)' : 'Landing reviews (Builder)'}</div>
           <p className="muted" style={{ fontSize: 11.5, marginBottom: 10 }}>{es ? 'Usa reseñas reales de tus traders. Si dejas todo vacío, la sección no aparece. Máx. 6.' : 'Use real reviews from your traders. Leave all empty to hide the section. Max 6.'}</p>

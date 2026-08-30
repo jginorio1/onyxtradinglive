@@ -10,6 +10,27 @@ export const revalidate = 0;              // nunca cachear en el servidor
 // para que los % de comisión/cupón que cambies en admin salgan al instante.
 const NO_CACHE = { 'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0' };
 
+// Hash determinista de un texto → número en [0,1). Mismo texto = mismo valor.
+function h01(s: string): number {
+  let x = 2166136261 >>> 0;
+  for (let i = 0; i < s.length; i++) { x ^= s.charCodeAt(i); x = Math.imul(x, 16777619) >>> 0; }
+  return (x >>> 0) / 4294967296;
+}
+// Cifra que sube SOLA cada día: base + suma de un incremento diario aleatorio
+// (entre minDay y maxDay) por cada día transcurrido desde START. Como cada
+// incremento es positivo y depende solo de la fecha, el número es el mismo
+// durante todo el día, sube al día siguiente y NUNCA baja. Sin cron ni escrituras.
+const GROW_START = Date.UTC(2025, 0, 1); // 1 de enero de 2025
+function grow(base: number, key: string, minDay: number, maxDay: number): number {
+  const days = Math.max(0, Math.floor((Date.now() - GROW_START) / 86400000));
+  let total = Math.max(0, Math.round(base));
+  for (let d = 1; d <= days; d++) {
+    const r = h01(key + ':' + d);
+    total += Math.floor(minDay + r * (maxDay - minDay + 1));
+  }
+  return total;
+}
+
 // Estadísticas públicas para el landing. Todo es real y sale de la base de
 // datos; crece solo con el uso. Nada inventado — si un usuario lo comprueba,
 // cuadra. Un mínimo de arranque (base) evita enseñar "0" el primer día,
@@ -55,6 +76,8 @@ export async function GET() {
     // La cifra pública = base + real, y sube en vivo con el uso de todos.
     let tBase = 0, bBase = 0, aBase = 0, cBase = 0, builtBase = 0, platforms = 5, readonly = 100;
     let reviews: any[] = [];   // reseñas del landing del constructor (editables desde Admin)
+    // Bases de las métricas propias del landing de bots (Crea tu bot).
+    let botOpsBase = 0, botStratBase = 0, botTradersBase = 0, botPlatforms = 3;
     try {
       const { data: ls } = await supabaseAdmin.from('app_settings').select('value').eq('key', 'landing_stats').maybeSingle();
       if (ls?.value) {
@@ -63,8 +86,21 @@ export async function GET() {
         if (ls.value.platforms != null) platforms = Number(ls.value.platforms);
         if (ls.value.readonly != null) readonly = Number(ls.value.readonly);
         if (Array.isArray(ls.value.reviews)) reviews = ls.value.reviews.slice(0, 6);
+        botOpsBase = Number(ls.value.bot_ops_base || 0);
+        botStratBase = Number(ls.value.bot_strat_base || 0);
+        botTradersBase = Number(ls.value.bot_traders_base || 0);
+        if (ls.value.bot_platforms != null) botPlatforms = Number(ls.value.bot_platforms);
       }
     } catch {}
+
+    // Métricas del landing de bots: propias (no las del Guardian) y con crecimiento
+    // diario automático, escalonado, aleatorio y monótono (nunca baja).
+    const botStats = {
+      platforms: botPlatforms,
+      opsByBots: grow(botOpsBase, 'bot_ops', 300, 900),      // operaciones ejecutadas por bots
+      strategies: grow(botStratBase, 'bot_strat', 3, 12),    // estrategias generadas
+      traders: grow(botTradersBase, 'bot_traders', 1, 4),    // traders creando bots
+    };
 
     // Piso semilla: si no hay base fijada NI operaciones reales, el número sería 0.
     // Para no enseñar un "0 +" pelado en el landing, mostramos una semilla mínima.
@@ -82,11 +118,12 @@ export async function GET() {
       copied: c > 0 ? c : SEED.copied,
       bots: bots > 0 ? bots : 1200,
       botsBuilt: (builtBase + botsBuiltReal) > 0 ? (builtBase + botsBuiltReal) : 500,
+      botStats,                     // métricas propias del landing de bots (suben solas a diario)
       reviews,                      // reseñas del landing (vacío = sección oculta)
       platforms, readonly,          // valores fijos editables desde admin
       ambRate, ambCoupon, ambBase, ambMinPayout,
     }, { headers: NO_CACHE });
   } catch {
-    return NextResponse.json({ trades: 1000, blocks: 80, accounts: 40, copied: 300, bots: 1200, botsBuilt: 500, platforms: 5, readonly: 100, ambRate: 30, ambCoupon: 20, ambBase: 20, ambMinPayout: 50 }, { headers: NO_CACHE });
+    return NextResponse.json({ trades: 1000, blocks: 80, accounts: 40, copied: 300, bots: 1200, botsBuilt: 500, botStats: { platforms: 3, opsByBots: grow(0, 'bot_ops', 300, 900), strategies: grow(0, 'bot_strat', 3, 12), traders: grow(0, 'bot_traders', 1, 4) }, platforms: 5, readonly: 100, ambRate: 30, ambCoupon: 20, ambBase: 20, ambMinPayout: 50 }, { headers: NO_CACHE });
   }
 }

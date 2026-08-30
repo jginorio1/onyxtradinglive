@@ -156,10 +156,10 @@ export default function LandingConstructor() {
           <div className="live"><i /> {L('subiendo en vivo', 'growing live')}</div>
         </div>
         <div className="metrics">
-          <div className="metric" style={{ ['--ac' as any]: 'var(--brand)' }}><b>3</b><span>{L('Plataformas', 'Platforms')}: MT4 · MT5 · cTrader</span></div>
-          <div className="metric" style={{ ['--ac' as any]: 'var(--green)' }}><b>{num(stats?.trades)}</b><span>{L('Operaciones analizadas', 'Trades analyzed')}</span></div>
-          <div className="metric" style={{ ['--ac' as any]: 'var(--amber)' }}><b>{num(stats?.blocks)}</b><span>{L('Frenos del Guardian', 'Guardian blocks')}</span></div>
-          <div className="metric" style={{ ['--ac' as any]: 'var(--cyan)' }}><b>{num(stats?.accounts)}</b><span>{L('Cuentas conectadas', 'Connected accounts')}</span></div>
+          <div className="metric" style={{ ['--ac' as any]: 'var(--brand)' }}><b>{num(stats?.botStats?.platforms ?? 3)}</b><span>{L('Plataformas', 'Platforms')}: MT4 · MT5 · cTrader</span></div>
+          <div className="metric" style={{ ['--ac' as any]: 'var(--green)' }}><b>{num(stats?.botStats?.opsByBots)}</b><span>{L('Operaciones de bots', 'Bot trades')}</span></div>
+          <div className="metric" style={{ ['--ac' as any]: 'var(--amber)' }}><b>{num(stats?.botStats?.strategies)}</b><span>{L('Estrategias generadas', 'Strategies generated')}</span></div>
+          <div className="metric" style={{ ['--ac' as any]: 'var(--cyan)' }}><b>{num(stats?.botStats?.traders)}</b><span>{L('Traders creando bots', 'Traders building bots')}</span></div>
         </div>
       </section>
 
