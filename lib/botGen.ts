@@ -77,6 +77,7 @@ input int     InpSignalFromH  = ${s.signalFromH};
 input int     InpSignalFromM  = ${s.signalFromM};
 input int     InpSignalToH    = ${s.signalToH};
 input int     InpSignalToM    = ${s.signalToM};
+input int     InpTradeDays    = ${s.tradeDays ?? 62};   // ${T('Días operables (bitmask 0=Dom..6=Sáb). Mercado abre Dom, cierra Vie', 'Trading days (bitmask 0=Sun..6=Sat). Market opens Sun, closes Fri')}
 input int     InpMaxTradesPerDay = ${s.maxTradesPerDay};
 
 // RIESGO por operacion (elige unidad)
@@ -185,7 +186,8 @@ int DayId(){ MqlDateTime d; TimeToStruct(SrvNow(),d); return d.year*1000+d.day_o
 int RefMin(){ MqlDateTime d; TimeToStruct(SrvNow(),d); return d.hour*60+d.min; }
 int RefDow(){ MqlDateTime d; TimeToStruct(SrvNow(),d); return d.day_of_week; }
 bool InWindow(){ int m=RefMin(), f=InpSignalFromH*60+InpSignalFromM, t=InpSignalToH*60+InpSignalToM; return (f<=t)?(m>=f&&m<=t):(m>=f||m<=t); }
-bool DayOperable(){ int w=RefDow(); return (w>=1&&w<=5); }
+// Días operables por bitmask (bit w = DayOfWeek w, 0=Dom..6=Sáb). El trader elige.
+bool DayOperable(){ int w=RefDow(); return ((InpTradeDays>>w)&1)==1; }
 bool ForceClose(){ if(!InpUseDayClose) return false; return RefMin()>=InpForceCloseHourNY*60+InpForceCloseMinNY; }
 bool FridayCut(){ if(!InpNoWeekend) return false; if(RefDow()!=5) return false; return RefMin()>=InpFridayHour*60; }
 bool NewBar(){ datetime t[]; if(CopyTime(S,InpTF,0,1,t)<=0) return false; if(t[0]!=lastBar){ lastBar=t[0]; return true; } return false; }

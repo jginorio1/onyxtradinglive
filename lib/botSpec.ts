@@ -13,6 +13,8 @@ export type BotSpec = {
   entryTrigger: string; microSwing: number; trendMode: number; trendTF: string;
   allowLongs: boolean; allowShorts: boolean; maxTradesPerDay: number;
   signalFromH: number; signalFromM: number; signalToH: number; signalToM: number;
+  // Días en que opera (bitmask sobre DayOfWeek 0=Dom..6=Sáb). Default Lun-Vie = 62.
+  tradeDays: number;
   // Riesgo (valor + unidad: pct | money)
   riskVal: number; riskUnit: string; maxLots: number;
   // Stop loss (valor + unidad: pips | atr | pct)
@@ -42,7 +44,7 @@ export type BotSpec = {
 export const DEFAULT_SPEC: BotSpec = {
   name: 'Mi bot', platform: 'mt5', symbol: 'XAUUSD', magic: 991000, tf: 'M5', botLang: 'es',
   entryTrigger: 'breakout_swing', microSwing: 2, trendMode: 1, trendTF: 'H1', allowLongs: true, allowShorts: true,
-  maxTradesPerDay: 20, signalFromH: 8, signalFromM: 0, signalToH: 20, signalToM: 0,
+  maxTradesPerDay: 20, signalFromH: 8, signalFromM: 0, signalToH: 20, signalToM: 0, tradeDays: 62,
   riskVal: 0.2, riskUnit: 'pct', maxLots: 50,
   slVal: 0.5, slUnit: 'atr',
   tp1Val: 1.0, tp1Unit: 'rr', partialPct: 50,
@@ -87,6 +89,7 @@ export function cleanSpec(inp: any): BotSpec {
   s.maxTradesPerDay = clamp(Math.round(num(inp?.maxTradesPerDay, 20)), 0, 500);
   s.signalFromH = clamp(Math.round(num(inp?.signalFromH, 8)), 0, 23); s.signalFromM = clamp(Math.round(num(inp?.signalFromM, 0)), 0, 59);
   s.signalToH = clamp(Math.round(num(inp?.signalToH, 20)), 0, 23); s.signalToM = clamp(Math.round(num(inp?.signalToM, 0)), 0, 59);
+  s.tradeDays = clamp(Math.round(num(inp?.tradeDays, 62)), 0, 127) || 62;   // días operables (bitmask); nunca 0 (sería nunca operar)
   // Riesgo: si es %, tope duro 5%.
   s.riskUnit = oneOf(inp?.riskUnit, UNITS.risk, 'pct');
   s.riskVal = s.riskUnit === 'pct' ? clamp(num(inp?.riskVal, 0.2), 0.01, 5) : clamp(num(inp?.riskVal, 100), 0.01, 1e7);
@@ -141,6 +144,7 @@ export function toSetFile(s: BotSpec): string {
   P('InpMicroSwing', s.microSwing); P('InpTrendMode', s.trendMode); P('InpTrendTF', tfEnum(s.trendTF));
   P('InpAllowLongs', bl(s.allowLongs)); P('InpAllowShorts', bl(s.allowShorts)); P('InpMaxTradesPerDay', s.maxTradesPerDay);
   P('InpSignalFromH', s.signalFromH); P('InpSignalFromM', s.signalFromM); P('InpSignalToH', s.signalToH); P('InpSignalToM', s.signalToM);
+  P('InpTradeDays', s.tradeDays);
   P('InpRiskUnit', codeRisk(s.riskUnit)); P('InpRiskValue', s.riskVal); P('InpMaxLots', s.maxLots);
   P('InpSLUnit', codeSL(s.slUnit)); P('InpSLValue', s.slVal);
   P('InpTP1Unit', codeTP(s.tp1Unit)); P('InpTP1Value', s.tp1Val); P('InpPartialPct', s.partialPct);

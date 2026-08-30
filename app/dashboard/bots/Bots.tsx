@@ -36,7 +36,7 @@ const T: any = {
     create: 'Registrar', cancel: 'Cancelar', pendingBadge: 'Sin operaciones aún', online: 'EA en línea', offline: 'EA desconectado',
     addBotHint: 'Escribe el magic number de tu EA para verlo aquí desde ya, aunque todavía no opere.', dupBot: 'Ya tienes un bot con ese magic en esta cuenta.', bots: 'robots',
     openNowLbl: 'abierta(s) ahora', floatLbl: 'flotante', closedHint: 'Los números (Neto, PF, aciertos) suman solo operaciones cerradas.', del: 'Eliminar',
-    detectedLbl: 'Magics detectados en esta cuenta (toca para usar):', detectedNone: 'Aún no se detecta ningún magic en esta cuenta. Si la operación fue manual, no lleva magic (es 0) y no cuenta como robot.', detectedTip: 'Usa el magic exacto que tu EA tiene en sus inputs. Si el EA ya operó, aparece aquí abajo.',
+    detectedLbl: 'Magics detectados en esta cuenta (toca para usar):', detectedNone: 'Aún no se detecta ningún magic en esta cuenta. Si la operación fue manual, no lleva magic (es 0) y no cuenta como robot.', detectedTip: 'Usa el magic exacto que tu EA tiene en sus inputs. Si el EA ya operó, aparece aquí abajo.', builtLbl: 'Tus robots creados (toca para registrarlo):',
     noPair: 'Sin par', sortNet: 'Neto', noneHere: 'Nada en este filtro.',
   },
   en: {
@@ -67,7 +67,7 @@ const T: any = {
     create: 'Register', cancel: 'Cancel', pendingBadge: 'No trades yet', online: 'EA online', offline: 'EA offline',
     addBotHint: 'Type your EA magic number to see it here right away, even before it trades.', dupBot: 'You already have a bot with that magic in this account.', bots: 'robots',
     openNowLbl: 'open now', floatLbl: 'floating', closedHint: 'The numbers (Net, PF, win) only add up closed trades.', del: 'Delete',
-    detectedLbl: 'Magics detected on this account (tap to use):', detectedNone: 'No magic detected on this account yet. If the trade was manual it has no magic (0) and does not count as a robot.', detectedTip: 'Use the exact magic your EA has in its inputs. If the EA already traded, it shows below.',
+    detectedLbl: 'Magics detected on this account (tap to use):', detectedNone: 'No magic detected on this account yet. If the trade was manual it has no magic (0) and does not count as a robot.', detectedTip: 'Use the exact magic your EA has in its inputs. If the EA already traded, it shows below.', builtLbl: 'Your created robots (tap to register):',
     noPair: 'No pair', sortNet: 'Net', noneHere: 'Nothing in this filter.',
   },
 };
@@ -105,12 +105,16 @@ export default function Bots() {
   const [filter, setFilter] = useState<'all' | 'live' | 'testing'>('all');
   const [addFor, setAddFor] = useState<any>(null);
   const [addForm, setAddForm] = useState<any>({ magic: '', name: '', mode: 'testing' });
+  const [built, setBuilt] = useState<any[]>([]);   // bots creados en el constructor (bots_built)
 
   async function load() {
     try { const r = await fetch('/api/bots'); setD(await r.json()); } catch { setD({ bots: [] }); }
     try { const r = await fetch('/api/bots?view=portfolio'); setPort(await r.json()); } catch {}
   }
-  useEffect(() => { load(); const iv = setInterval(load, 20000); return () => clearInterval(iv); }, []);
+  async function loadBuilt() {
+    try { const r = await fetch('/api/bots/build'); const j = await r.json(); setBuilt(Array.isArray(j.bots) ? j.bots : []); } catch {}
+  }
+  useEffect(() => { load(); loadBuilt(); const iv = setInterval(load, 20000); return () => clearInterval(iv); }, []);
 
   async function save(b: any, patch: any) {
     setBusy(true);
@@ -500,6 +504,25 @@ export default function Bots() {
             <p className="muted" style={{ fontSize: 12.5, marginBottom: 12 }}>{t.accountL}: <b style={{ color: 'var(--tx)' }}>{addFor.accName}</b></p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div><span className="muted" style={{ fontSize: 12 }}>{t.magicL}</span><input type="number" value={addForm.magic} onChange={(e) => setAddForm({ ...addForm, magic: e.target.value })} placeholder="12345" style={{ margin: '4px 0 0' }} /></div>
+              {/* Tus robots creados en el constructor: registra el magic con un clic (sin esperar a que opere). */}
+              {(() => {
+                const already = new Set((d?.bots || []).filter((x: any) => x.accountId === addFor.accountId).map((x: any) => Number(x.magic)));
+                const mine = built.filter((b: any) => Number(b.magic) && !already.has(Number(b.magic)));
+                if (!mine.length) return null;
+                return (
+                  <div style={{ background: 'color-mix(in srgb,var(--brand) 6%, var(--bg2))', border: '1px solid color-mix(in srgb,var(--brand) 30%, var(--line))', borderRadius: 10, padding: '8px 10px' }}>
+                    <div className="muted" style={{ fontSize: 11.5, marginBottom: 6 }}>{t.builtLbl}</div>
+                    <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+                      {mine.map((b: any) => (
+                        <button key={b.id} type="button" onClick={() => setAddForm({ ...addForm, magic: String(b.magic), name: b.name || `Bot #${b.magic}` })}
+                          style={{ fontSize: 12, padding: '4px 10px', borderRadius: 999, cursor: 'pointer', border: '1px solid ' + (String(b.magic) === String(addForm.magic) ? 'var(--brand)' : 'var(--line)'), background: String(b.magic) === String(addForm.magic) ? 'color-mix(in srgb,var(--brand) 22%,transparent)' : 'var(--card)', color: 'var(--tx)' }}>
+                          <OnyxIcon emoji="🤖" size={11} glow={false} /> {b.name || `#${b.magic}`} <span className="muted">· #{b.magic}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
               {(() => {
                 const accMagics: number[] = (d?.accounts || []).find((a: any) => a.id === addFor.accountId)?.magics || [];
                 return (

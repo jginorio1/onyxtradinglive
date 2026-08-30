@@ -432,6 +432,21 @@ export default function BotBuilder() {
           <Toggle k="useDayClose" t={L('Cerrar fin de sesión', 'Close at session end')} />
           <Toggle k="noWeekend" t={L('Sin fin de semana', 'No weekend')} />
         </div>
+        {/* Días operables: el trader elige en qué días de la semana opera el bot (bitmask). */}
+        <div style={{ gridColumn: '1 / -1', paddingTop: 16 }}>
+          <span className="bbx-lbl">{L('Días en que opera', 'Trading days')}</span>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+            {(L('D,L,M,X,J,V,S', 'Su,Mo,Tu,We,Th,Fr,Sa').split(',')).map((lbl, d) => {
+              const on = (((s.tradeDays ?? 62) >> d) & 1) === 1;
+              return (
+                <button key={d} type="button" onClick={() => set('tradeDays', ((s.tradeDays ?? 62) ^ (1 << d)) || 62)}
+                  title={['Domingo/Sunday','Lunes/Monday','Martes/Tuesday','Miércoles/Wednesday','Jueves/Thursday','Viernes/Friday','Sábado/Saturday'][d]}
+                  style={{ minWidth: 40, padding: '8px 0', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer', color: on ? '#fff' : 'var(--mut)', background: on ? 'var(--brand)' : 'var(--card2, rgba(255,255,255,.03))', border: '1px solid ' + (on ? 'var(--brand)' : 'var(--line)') }}>{lbl}</button>
+              );
+            })}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--mut)', marginTop: 6 }}>{L('El bot solo busca entradas en los días marcados. El mercado abre el domingo y cierra el viernes; el sábado está cerrado.', 'The bot only seeks entries on the marked days. The market opens Sunday and closes Friday; Saturday is closed.')}</div>
+        </div>
       </Panel>
 
       {/* Noticias */}
