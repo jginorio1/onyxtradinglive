@@ -251,7 +251,7 @@ export default function BotBuilder() {
       <div className="bbx-hero">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 10 }}>
           <div>
-            <h2 className="bbx-h2"><OnyxIcon emoji="🤖" size={22} /> {L('Constructor de bots', 'Bot builder')}</h2>
+            <h2 className="bbx-h2"><OnyxIcon emoji="🤖" size={22} /> {L('Crear robot', 'Create robot')}</h2>
             <p style={{ fontSize: 13, margin: '6px 0 0', color: 'rgba(255,255,255,.82)' }}>{L('Arma tu bot por campos, elige qué usar y descarga EA, config y guía.', 'Build your bot by fields, choose what to use, and download EA, config and guide.')}</p>
           </div>
           <button className="bbx-btn" onClick={() => setBig((v) => !v)}><OnyxIcon emoji={big ? '🗕' : '🗖'} size={14} /> {big ? L('Reducir', 'Shrink') : L('Pantalla ancha', 'Wide screen')}</button>

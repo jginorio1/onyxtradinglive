@@ -312,14 +312,17 @@ export default function LandingConstructor() {
 
           {/* Carrusel en movimiento (duplicado para bucle sin cortes; pausa al pasar el mouse) */}
           <div className="revmask">
-            <div className="revtrack">
-              {(() => {
-                // Base con suficientes tarjetas para llenar pantallas anchas; luego se
-                // DUPLICA para el bucle (-50%). Así nunca queda hueco a la derecha.
-                let base = reviews;
-                while (base.length && base.length < 8) base = [...base, ...reviews];
-                return [...base, ...base];
-              })().map((r: any, i: number) => {
+            {(() => {
+              // Base con suficientes tarjetas para llenar pantallas anchas; luego se
+              // DUPLICA para el bucle (-50%). Así nunca queda hueco a la derecha.
+              let base = reviews;
+              while (base.length && base.length < 8) base = [...base, ...reviews];
+              // La DURACIÓN escala con el nº de tarjetas por copia → velocidad en pantalla
+              // constante y suave, aunque haya muchas reseñas (no se acelera).
+              const dur = Math.min(240, Math.max(40, Math.round(base.length * 5)));
+              return (
+            <div className="revtrack" style={{ animationDuration: `${dur}s` }}>
+              {[...base, ...base].map((r: any, i: number) => {
                 const name = String(r.name || '');
                 const text = String(r.text || '');
                 const meta = String(r.result || '');
@@ -335,6 +338,8 @@ export default function LandingConstructor() {
                 );
               })}
             </div>
+              );
+            })()}
           </div>
         </section>
       )}

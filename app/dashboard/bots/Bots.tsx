@@ -318,7 +318,7 @@ export default function Bots() {
           <h1 style={{ fontSize: 24 }}><OnyxIcon emoji="🤖" size={16} /> {t.title}</h1>
           <p className="muted" style={{ marginTop: 6 }}>{t.sub}</p>
         </div>
-        <Link href="/dashboard/constructor" className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}><OnyxIcon emoji="🤖" size={14} glow={false} /> {lang === 'es' ? 'Constructor de bots' : 'Bot builder'}</Link>
+        <Link href="/dashboard/constructor" className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontWeight: 700, padding: '11px 20px', boxShadow: '0 0 0 1px var(--brand), 0 6px 18px color-mix(in srgb, var(--brand) 45%, transparent)' }}><OnyxIcon emoji="➕" size={15} glow={false} /> {lang === 'es' ? 'Crear robot' : 'Create robot'}</Link>
       </div>
 
       {!d && <div className="card muted">…</div>}
@@ -395,7 +395,23 @@ export default function Bots() {
 
                 <div style={{ padding: 14 }}>
                   {shown.length === 0
-                    ? <div className="muted" style={{ fontSize: 12.5, padding: 4 }}>{mine.length === 0 ? (lang === 'es' ? 'Aún no hay robots en esta cuenta. Añade uno por su magic number.' : 'No robots on this account yet. Add one by its magic number.') : t.noneHere}</div>
+                    ? (mine.length === 0
+                        // Cuenta SIN robots: franja que invita a crear el primero (acceso directo
+                        // al armador justo donde el trader lo necesita) + opción de añadir por magic.
+                        ? <div className="row between" style={{ flexWrap: 'wrap', gap: 12, alignItems: 'center', border: '1px dashed color-mix(in srgb,var(--brand) 45%,var(--line))', borderRadius: 12, padding: '13px 15px', background: 'color-mix(in srgb,var(--brand) 5%, transparent)' }}>
+                            <div className="row" style={{ gap: 11, alignItems: 'center' }}>
+                              <span style={{ width: 38, height: 38, borderRadius: 10, display: 'grid', placeItems: 'center', background: 'color-mix(in srgb,var(--brand) 15%, transparent)', color: 'var(--brand)' }}><OnyxIcon emoji="🤖" size={18} glow={false} /></span>
+                              <div>
+                                <div style={{ fontWeight: 700, fontSize: 13.5 }}>{lang === 'es' ? 'Aún sin robots en esta cuenta' : 'No robots on this account yet'}</div>
+                                <div className="muted" style={{ fontSize: 12 }}>{lang === 'es' ? 'Arma tu primer robot sin programar y pruébalo en demo.' : 'Build your first robot without coding and test it on demo.'}</div>
+                              </div>
+                            </div>
+                            <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+                              <Link href="/dashboard/constructor" className="btn btn-primary" style={{ fontSize: 12.5, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="➕" size={13} glow={false} /> {lang === 'es' ? 'Crear robot' : 'Create robot'}</Link>
+                              <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={() => { setAddFor({ accountId: acc.id, accName: acc.name }); setAddForm({ magic: '', name: '', mode: 'testing' }); }}>＋ {t.addBot}</button>
+                            </div>
+                          </div>
+                        : <div className="muted" style={{ fontSize: 12.5, padding: 4 }}>{t.noneHere}</div>)
                     : <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(248px,1fr))', gap: 12, alignItems: 'start' }}>
                         {shown.map((b: any) => <Card key={b.key} b={b} />)}
                       </div>}

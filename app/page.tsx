@@ -639,14 +639,21 @@ export default function Home() {
         <p className="muted" style={{ textAlign: 'center', fontSize: 14 }}>{t.logosT}</p>
       </div>
       <div className="logostrip">
-        <div className="logostrip-track">
-          {/* Repetimos la lista hasta que UNA copia sea más ancha que cualquier
-              monitor (incl. 4K/ultra-wide) y luego la duplicamos ×2. Así el bucle
-              -50% nunca se queda sin logos por la derecha (continuo de borde a borde). */}
-          {(() => { let base = LOGOS; while (base.length < 24) base = [...base, ...LOGOS]; return [...base, ...base]; })().map((l, i) => (
-            <span key={i} style={{ color: l.c, fontWeight: 800, fontSize: 20, whiteSpace: 'nowrap' }}>{l.n}</span>
-          ))}
-        </div>
+        {/* Repetimos la lista hasta que UNA copia sea más ancha que cualquier monitor
+            (incl. 4K/ultra-wide) y la duplicamos ×2 → el bucle -50% nunca se corta por la
+            derecha. La DURACIÓN escala con la cantidad de logos por copia para que la
+            velocidad en pantalla sea constante y suave (no se acelera al repetir más). */}
+        {(() => {
+          let base = LOGOS; while (base.length < 24) base = [...base, ...LOGOS];
+          const dur = Math.round(base.length * 3);   // ~3s por logo → calmado
+          return (
+            <div className="logostrip-track" style={{ animationDuration: `${dur}s` }}>
+              {[...base, ...base].map((l, i) => (
+                <span key={i} style={{ color: l.c, fontWeight: 800, fontSize: 20, whiteSpace: 'nowrap' }}>{l.n}</span>
+              ))}
+            </div>
+          );
+        })()}
       </div>
 
       {/* PROBLEM */}
