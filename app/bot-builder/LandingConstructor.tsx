@@ -143,14 +143,15 @@ export default function LandingConstructor() {
       .lpc .revbarrow .v{color:var(--mut);width:34px;text-align:right}
       .lpc .revbar{flex:1;height:8px;border-radius:99px;background:rgba(128,128,128,.18);overflow:hidden}
       .lpc .revbar>i{display:block;height:100%;background:#f2c265}
+      /* Bucle infinito perfecto: la pista tiene el contenido DUPLICADO y se mueve
+         exactamente -50% (una copia). La separación va como margin-right en cada
+         tarjeta (no gap) para que el -50% caiga justo al inicio de la 2ª copia. */
       @keyframes lpcscroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-      /* Carrusel de borde a borde: rompe el contenedor centrado y ocupa todo el ancho */
       .lpc .revmask{overflow:hidden;margin-top:22px;width:100vw;margin-left:calc(50% - 50vw);margin-right:calc(50% - 50vw);-webkit-mask-image:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent);mask-image:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent)}
-      .lpc .revtrack{padding:0 14px}
-      .lpc .revtrack{display:flex;gap:14px;width:max-content;animation:lpcscroll 45s linear infinite}
+      .lpc .revtrack{display:flex;width:max-content;animation:lpcscroll 60s linear infinite;will-change:transform}
       .lpc .revmask:hover .revtrack{animation-play-state:paused}
-      .lpc .revcard{width:320px;flex:none}
-      @media(max-width:520px){.lpc .revcard{width:260px}}
+      .lpc .revcard{width:320px;flex:none;margin-right:14px}
+      @media(max-width:520px){.lpc .revcard{width:260px;margin-right:12px}}
       .lpc .rev .revtop{display:flex;align-items:center;justify-content:space-between}
       .lpc .rev .stars{color:#f2c265;font-size:14px;letter-spacing:2px}
       .lpc .rev .staroff{color:var(--line,rgba(128,128,128,.35))}
@@ -312,7 +313,13 @@ export default function LandingConstructor() {
           {/* Carrusel en movimiento (duplicado para bucle sin cortes; pausa al pasar el mouse) */}
           <div className="revmask">
             <div className="revtrack">
-              {[...reviews, ...reviews].map((r: any, i: number) => {
+              {(() => {
+                // Base con suficientes tarjetas para llenar pantallas anchas; luego se
+                // DUPLICA para el bucle (-50%). Así nunca queda hueco a la derecha.
+                let base = reviews;
+                while (base.length && base.length < 8) base = [...base, ...reviews];
+                return [...base, ...base];
+              })().map((r: any, i: number) => {
                 const name = String(r.name || '');
                 const text = String(r.text || '');
                 const meta = String(r.result || '');
