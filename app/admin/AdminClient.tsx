@@ -1300,6 +1300,15 @@ function Modules() {
           <div className="muted" style={{ fontSize: 12, margin: '18px 0 6px', fontWeight: 700 }}>{es ? 'Reseñas del landing (Crea tu bot)' : 'Landing reviews (Build a bot)'}</div>
           <p className="muted" style={{ fontSize: 11.5, marginBottom: 10 }}>{es ? 'Ilimitadas. Usa reseñas reales o genéralas con IA (ES/EN) y edítalas. País = código ISO2 (MX, US, ES…) → bandera. Si dejas todo vacío, la sección no aparece.' : 'Unlimited. Use real reviews or generate them with AI (ES/EN) and edit. Country = ISO2 code (MX, US, ES…) → flag. Leave all empty to hide the section.'}</p>
           <div className="row" style={{ gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+            <button className="btn btn-primary" style={{ padding: '7px 14px' }}
+              onClick={async () => {
+                try {
+                  const r = await fetch('/api/admin/reviews-ai', { method: 'POST', body: JSON.stringify({ batch: true }) });
+                  const j = await r.json();
+                  if (!r.ok || !Array.isArray(j.reviews) || !j.reviews.length) { alert(j.hint || j.error || 'IA no disponible'); return; }
+                  setLf((p: any) => ({ ...p, reviews: [...(p.reviews || []), ...j.reviews] }));
+                } catch { alert('Error'); }
+              }}>✨ {es ? 'Generar 5 con IA (ES/EN)' : 'Generate 5 with AI (ES/EN)'}</button>
             {(['es', 'en'] as const).map((lng) => (
               <button key={lng} className="btn btn-primary" style={{ padding: '7px 14px' }}
                 onClick={async () => {
