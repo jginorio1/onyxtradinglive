@@ -16,7 +16,7 @@
 insert into plans (id, name, name_en, price_month, price_year, max_accounts,
                    features, features_en, badge, badge_en, capabilities, active, sort)
 values (
-  'trader', 'Trader', 'Trader', 15, 150, 3,
+  'trader', 'Onyx Bot', 'Onyx Bot', 15, 150, 3,
   '["Bots ilimitados","Hasta 3 cuentas","Registro automático de operaciones","Diario, métricas y portafolio","Filtro de noticias y sesión (dentro del bot)","Multi-broker: MT4 · MT5 · cTrader"]'::jsonb,
   '["Unlimited bots","Up to 3 accounts","Automatic trade logging","Journal, metrics and portfolio","News and session filter (inside the bot)","Multi-broker: MT4 · MT5 · cTrader"]'::jsonb,
   null, null,

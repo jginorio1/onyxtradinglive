@@ -55,7 +55,15 @@ export default function LandingConstructor() {
     [L('¿El bot garantiza ganancias?', 'Does the bot guarantee profit?'), L('No. Ninguna herramienta puede garantizar resultados. Onyx te da control, reglas automáticas y protección, pero el trading siempre conlleva riesgo.', 'No. No tool can guarantee results. Onyx gives you control, automatic rules and protection, but trading always carries risk.')],
   ];
   const reviews: any[] = Array.isArray(stats?.reviews) ? stats.reviews : [];
-  const shown = useMemo(() => plans, [plans]);
+  // Si existe el plan de bot dedicado ('trader' = "Onyx Bot"), el landing muestra
+  // SOLO los planes de bot (Gratis + Onyx Bot) — 2 planes por escala. El resto
+  // (Pro/Elite/Black, para trading manual) vive en "ver comparación completa".
+  const shown = useMemo(() => {
+    if (plans.some((p: any) => p.id === 'trader')) {
+      return plans.filter((p: any) => p.id === 'free' || p.id === 'trader');
+    }
+    return plans;
+  }, [plans]);
   // Plan "para bots": si existe el plan dedicado 'trader', ese; si no, el pagado
   // más barato (el de entrada). Solo marca visual en este landing.
   const botPlanId = useMemo(() => {
