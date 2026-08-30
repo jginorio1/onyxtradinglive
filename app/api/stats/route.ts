@@ -85,7 +85,7 @@ export async function GET() {
         cBase = Number(ls.value.copied_base || 0); builtBase = Number(ls.value.bots_built_base || 0);
         if (ls.value.platforms != null) platforms = Number(ls.value.platforms);
         if (ls.value.readonly != null) readonly = Number(ls.value.readonly);
-        if (Array.isArray(ls.value.reviews)) reviews = ls.value.reviews.slice(0, 6);
+        if (Array.isArray(ls.value.reviews)) reviews = ls.value.reviews.slice(0, 10);
         botOpsBase = Number(ls.value.bot_ops_base || 0);
         botStratBase = Number(ls.value.bot_strat_base || 0);
         botTradersBase = Number(ls.value.bot_traders_base || 0);
@@ -117,13 +117,15 @@ export async function GET() {
       accounts: a > 0 ? a : SEED.accounts,
       copied: c > 0 ? c : SEED.copied,
       bots: bots > 0 ? bots : 1200,
-      botsBuilt: (builtBase + botsBuiltReal) > 0 ? (builtBase + botsBuiltReal) : 500,
+      // Robots construidos: base admin + robots reales + crecimiento diario (nunca baja
+      // y siempre queda por encima de los reales). Coherente con las demás métricas.
+      botsBuilt: grow(builtBase + botsBuiltReal, 'bots_built', 2, 7),
       botStats,                     // métricas propias del landing de bots (suben solas a diario)
       reviews,                      // reseñas del landing (vacío = sección oculta)
       platforms, readonly,          // valores fijos editables desde admin
       ambRate, ambCoupon, ambBase, ambMinPayout,
     }, { headers: NO_CACHE });
   } catch {
-    return NextResponse.json({ trades: 1000, blocks: 80, accounts: 40, copied: 300, bots: 1200, botsBuilt: 500, botStats: { platforms: 3, opsByBots: grow(0, 'bot_ops', 300, 900), strategies: grow(0, 'bot_strat', 3, 12), traders: grow(0, 'bot_traders', 1, 4) }, platforms: 5, readonly: 100, ambRate: 30, ambCoupon: 20, ambBase: 20, ambMinPayout: 50 }, { headers: NO_CACHE });
+    return NextResponse.json({ trades: 1000, blocks: 80, accounts: 40, copied: 300, bots: 1200, botsBuilt: grow(0, 'bots_built', 2, 7), botStats: { platforms: 3, opsByBots: grow(0, 'bot_ops', 300, 900), strategies: grow(0, 'bot_strat', 3, 12), traders: grow(0, 'bot_traders', 1, 4) }, platforms: 5, readonly: 100, ambRate: 30, ambCoupon: 20, ambBase: 20, ambMinPayout: 50 }, { headers: NO_CACHE });
   }
 }

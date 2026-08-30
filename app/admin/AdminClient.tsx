@@ -1295,14 +1295,29 @@ function Modules() {
             ))}
           </div>
 
-          {/* Reseñas del landing del constructor (/bot-builder). Vacío = sección oculta. */}
-          <div className="muted" style={{ fontSize: 12, margin: '18px 0 6px', fontWeight: 700 }}>{es ? 'Reseñas del landing (Constructor)' : 'Landing reviews (Builder)'}</div>
-          <p className="muted" style={{ fontSize: 11.5, marginBottom: 10 }}>{es ? 'Usa reseñas reales de tus traders. Si dejas todo vacío, la sección no aparece. Máx. 6.' : 'Use real reviews from your traders. Leave all empty to hide the section. Max 6.'}</p>
+          {/* Reseñas del landing del constructor (/bot-builder). Vacío = sección oculta.
+              Con fecha por reseña y botón de IA para generarlas en ES/EN. */}
+          <div className="muted" style={{ fontSize: 12, margin: '18px 0 6px', fontWeight: 700 }}>{es ? 'Reseñas del landing (Crea tu bot)' : 'Landing reviews (Build a bot)'}</div>
+          <p className="muted" style={{ fontSize: 11.5, marginBottom: 10 }}>{es ? 'Usa reseñas reales o genéralas con IA y edítalas. Si dejas todo vacío, la sección no aparece. Máx. 10.' : 'Use real reviews or generate them with AI and edit. Leave all empty to hide the section. Max 10.'}</p>
+          <div className="row" style={{ gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+            {(['es', 'en'] as const).map((lng) => (
+              <button key={lng} className="btn btn-primary" style={{ padding: '7px 14px' }} disabled={(lf.reviews?.length || 0) >= 10}
+                onClick={async () => {
+                  try {
+                    const r = await fetch('/api/admin/reviews-ai', { method: 'POST', body: JSON.stringify({ lang: lng }) });
+                    const j = await r.json();
+                    if (!r.ok || !j.review) { alert(j.hint || j.error || 'IA no disponible'); return; }
+                    setLf((p: any) => ({ ...p, reviews: [...(p.reviews || []), j.review].slice(0, 10) }));
+                  } catch { alert('Error'); }
+                }}>✨ {es ? 'Generar reseña con IA' : 'Generate review with AI'} · {lng.toUpperCase()}</button>
+            ))}
+          </div>
           <div style={{ display: 'grid', gap: 10 }}>
-            {(lf.reviews && lf.reviews.length ? lf.reviews : [{ name: '', result: '', text: '', stars: 5 }]).map((rv: any, i: number) => (
-              <div key={i} style={{ border: '1px solid var(--line)', borderRadius: 10, padding: 10, display: 'grid', gridTemplateColumns: '1fr 1fr auto auto', gap: 8, alignItems: 'center' }}>
+            {(lf.reviews && lf.reviews.length ? lf.reviews : [{ name: '', result: '', text: '', stars: 5, date: '' }]).map((rv: any, i: number) => (
+              <div key={i} style={{ border: '1px solid var(--line)', borderRadius: 10, padding: 10, display: 'grid', gridTemplateColumns: '1fr 1fr 110px auto auto', gap: 8, alignItems: 'center' }}>
                 <input placeholder={es ? 'Nombre' : 'Name'} value={rv.name || ''} style={{ margin: 0 }} onChange={(e) => { const a = [...(lf.reviews || [])]; a[i] = { ...(a[i] || {}), name: e.target.value }; setLf({ ...lf, reviews: a }); }} />
                 <input placeholder={es ? 'Resultado (ej. Reto 50K pasado)' : 'Result (e.g. 50K challenge passed)'} value={rv.result || ''} style={{ margin: 0 }} onChange={(e) => { const a = [...(lf.reviews || [])]; a[i] = { ...(a[i] || {}), result: e.target.value }; setLf({ ...lf, reviews: a }); }} />
+                <input placeholder={es ? 'Fecha' : 'Date'} value={rv.date || ''} style={{ margin: 0 }} onChange={(e) => { const a = [...(lf.reviews || [])]; a[i] = { ...(a[i] || {}), date: e.target.value }; setLf({ ...lf, reviews: a }); }} />
                 <select value={rv.stars || 5} style={{ margin: 0, width: 70 }} onChange={(e) => { const a = [...(lf.reviews || [])]; a[i] = { ...(a[i] || {}), stars: Number(e.target.value) }; setLf({ ...lf, reviews: a }); }}>
                   {[5, 4, 3, 2, 1].map((s) => <option key={s} value={s}>{s}★</option>)}
                 </select>
@@ -1311,8 +1326,8 @@ function Modules() {
               </div>
             ))}
           </div>
-          {(lf.reviews?.length || 0) < 6 && (
-            <button className="btn btn-ghost" style={{ marginTop: 8, padding: '6px 12px' }} onClick={() => setLf({ ...lf, reviews: [...(lf.reviews || []), { name: '', result: '', text: '', stars: 5 }] })}>{es ? '+ Añadir reseña' : '+ Add review'}</button>
+          {(lf.reviews?.length || 0) < 10 && (
+            <button className="btn btn-ghost" style={{ marginTop: 8, padding: '6px 12px' }} onClick={() => setLf({ ...lf, reviews: [...(lf.reviews || []), { name: '', result: '', text: '', stars: 5, date: '' }] })}>{es ? '+ Añadir reseña' : '+ Add review'}</button>
           )}
           <div style={{ marginTop: 14 }}>
             <button className="btn btn-primary" onClick={saveLanding} disabled={savingL}>

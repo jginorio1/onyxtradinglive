@@ -124,7 +124,10 @@ export default function LandingConstructor() {
       /* Reseñas */
       .lpc .reviews{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:24px}
       @media(max-width:820px){.lpc .reviews{grid-template-columns:1fr}}
+      .lpc .rev .revtop{display:flex;align-items:center;justify-content:space-between}
       .lpc .rev .stars{color:#f2c265;font-size:14px;letter-spacing:2px}
+      .lpc .rev .staroff{color:var(--line,rgba(128,128,128,.35))}
+      .lpc .rev .revdate{font-size:11.5px;color:var(--mut)}
       .lpc .rev .txt{font-size:14px;margin-top:8px;line-height:1.6}
       .lpc .rev .who{font-size:12.5px;color:var(--mut);margin-top:10px;display:flex;align-items:center;gap:8px}
       .lpc .rev .who b{color:var(--tx)}
@@ -258,13 +261,15 @@ export default function LandingConstructor() {
         <section className="sec" id="resenas">
           <div style={{ textAlign: 'center' }}><span className="eyebrow">{L('Lo que dicen', 'What people say')}</span><h2>{L('Traders que ya operan con Onyx', 'Traders already using Onyx')}</h2></div>
           <div className="reviews">
-            {reviews.slice(0, 6).map((r: any, i: number) => {
+            {reviews.slice(0, 9).map((r: any, i: number) => {
               const name = String(r.name || r.n || '');
               const text = String(r.text || r.t || '');
               const meta = String(r.result || r.r || '');
+              const date = String(r.date || '');
+              const st = Math.max(1, Math.min(5, Number(r.stars || 5)));
               return (
                 <div key={i} className="card rev">
-                  <div className="stars">{'★'.repeat(Math.max(1, Math.min(5, Number(r.stars || 5))))}</div>
+                  <div className="revtop"><span className="stars">{'★'.repeat(st)}<span className="staroff">{'★'.repeat(5 - st)}</span></span>{date && <span className="revdate">{date}</span>}</div>
                   <div className="txt">“{text}”</div>
                   <div className="who"><span className="ava">{(name[0] || '?').toUpperCase()}</span><span><b>{name}</b>{meta ? ` · ${meta}` : ''}</span></div>
                 </div>

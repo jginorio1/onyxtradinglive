@@ -115,11 +115,12 @@ export async function PATCH(req: Request) {
     // Reseñas del landing: solo si vienen en el body. Se saneen a 6 máx.
     let reviews = Array.isArray(cur.reviews) ? cur.reviews : [];
     if (Array.isArray(b.reviews)) {
-      reviews = b.reviews.slice(0, 6).map((r: any) => ({
+      reviews = b.reviews.slice(0, 10).map((r: any) => ({
         name: String(r?.name || '').slice(0, 60),
         result: String(r?.result || '').slice(0, 60),
         text: String(r?.text || '').slice(0, 280),
         stars: Math.max(1, Math.min(5, Math.round(Number(r?.stars) || 5))),
+        date: String(r?.date || '').slice(0, 20),   // fecha visible de la reseña (texto libre)
       })).filter((r: any) => r.name && r.text);
     }
     const value = {
