@@ -61,17 +61,19 @@ export default function LandingConstructor() {
       <style>{`
       .lpc{max-width:1120px;margin:0 auto;padding:8px 0 40px}
       .lpc .hero{text-align:center;padding:44px 0 8px}
-      .lpc .chip{display:inline-flex;align-items:center;gap:7px;font-size:13px;padding:6px 13px;border-radius:99px;background:var(--soft-brand);border:1px solid rgba(124,140,255,.4);color:var(--brand,#5b63d3)}
+      .lpc .chip{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:600;padding:6px 14px;border-radius:99px;background:rgba(124,140,255,.14);background:color-mix(in srgb,var(--brand) 15%,transparent);border:1px solid color-mix(in srgb,var(--brand) 40%,transparent);color:var(--brand,#5b6cff)}
       .lpc h1{font-size:clamp(30px,5vw,50px);font-weight:800;line-height:1.12;margin:18px 0 0}
-      .lpc .grad{background:linear-gradient(90deg,#8b93ff,#54e6d0);-webkit-background-clip:text;background-clip:text;color:transparent}
+      .lpc .grad{background:linear-gradient(90deg,#7c8cff,#12b981);-webkit-background-clip:text;background-clip:text;color:transparent}
       .lpc .sub{color:var(--mut);font-size:clamp(15px,2vw,19px);max-width:620px;margin:16px auto 0}
       .lpc .cta{display:flex;gap:12px;justify-content:center;margin-top:24px;flex-wrap:wrap}
+      .lpc .trust{display:flex;gap:18px;justify-content:center;flex-wrap:wrap;margin-top:20px;color:var(--mut);font-size:13px}
+      .lpc .trust span{display:inline-flex;align-items:center;gap:6px;color:var(--green)}
       .lpc .sec{padding:44px 0}
       .lpc .eyebrow{font-size:12.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--brand,#5b63d3);font-weight:700}
       .lpc h2{font-size:clamp(24px,3.5vw,34px);font-weight:800;margin-top:10px}
       .lpc .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:28px}
       @media(max-width:820px){.lpc .grid{grid-template-columns:1fr}}
-      .lpc .feat .fic{width:44px;height:44px;border-radius:12px;background:var(--soft-brand);display:flex;align-items:center;justify-content:center;color:var(--brand,#5b63d3);margin-bottom:12px}
+      .lpc .feat .fic{width:44px;height:44px;border-radius:12px;background:rgba(124,140,255,.14);background:color-mix(in srgb,var(--brand) 15%,transparent);display:flex;align-items:center;justify-content:center;color:var(--brand,#5b6cff);margin-bottom:12px}
       .lpc .stepn{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#6f77ea,#5b63d3);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;margin-bottom:12px}
       /* Contador y CTA: degradado OSCURO con texto claro (contraste arreglado) */
       .lpc .banner{position:relative;border-radius:18px;padding:30px 20px;text-align:center;background:linear-gradient(135deg,#3a2f7a 0%,#211a45 55%,#141428 100%);border:1px solid rgba(139,147,255,.5);box-shadow:0 24px 60px rgba(30,20,80,.35)}
@@ -81,8 +83,8 @@ export default function LandingConstructor() {
       .lpc .live i{width:8px;height:8px;border-radius:50%;background:#5fe0aa;box-shadow:0 0 9px #5fe0aa;display:inline-block}
       .lpc .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:22px}
       @media(max-width:680px){.lpc .metrics{grid-template-columns:1fr 1fr}}
-      .lpc .metric{border-radius:14px;padding:18px 10px;text-align:center;border:1px solid}
-      .lpc .metric b{font-size:26px;font-weight:800;display:block}
+      .lpc .metric{border-radius:14px;padding:18px 10px;text-align:center;border:1px solid rgba(124,140,255,.3);border:1px solid color-mix(in srgb,var(--ac,var(--brand)) 35%,transparent);background:rgba(124,140,255,.08);background:color-mix(in srgb,var(--ac,var(--brand)) 10%,transparent)}
+      .lpc .metric b{font-size:26px;font-weight:800;display:block;color:var(--ac,var(--brand))}
       .lpc .metric span{font-size:12px;color:var(--mut)}
       /* Secciones split (constructor / panel EA) */
       .lpc .split{display:grid;grid-template-columns:1.05fr .95fr;gap:34px;align-items:center;margin-top:26px}
@@ -105,8 +107,8 @@ export default function LandingConstructor() {
       .lpc .rev .stars{color:#f2c265;font-size:14px;letter-spacing:2px}
       .lpc .rev .txt{font-size:14px;margin-top:8px;line-height:1.6}
       .lpc .rev .who{font-size:12.5px;color:var(--mut);margin-top:10px;display:flex;align-items:center;gap:8px}
-      .lpc .rev .who b{color:var(--ink,#12141a)}
-      .lpc .rev .ava{width:30px;height:30px;border-radius:50%;background:var(--soft-brand);color:var(--brand,#5b63d3);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px}
+      .lpc .rev .who b{color:var(--tx)}
+      .lpc .rev .ava{width:30px;height:30px;border-radius:50%;background:rgba(124,140,255,.16);background:color-mix(in srgb,var(--brand) 18%,transparent);color:var(--brand,#5b6cff);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px}
       `}</style>
 
       {/* Hero */}
@@ -118,6 +120,12 @@ export default function LandingConstructor() {
           <a className="btn btn-primary" href="/login?mode=signup">{L('Empezar gratis', 'Start free')} →</a>
           <a className="btn btn-ghost" href="#como">{L('Cómo funciona', 'How it works')}</a>
         </div>
+        <div className="trust">
+          <span><OnyxIcon emoji="✅" size={13} /> {L('Sin tarjeta', 'No card')}</span>
+          <span><OnyxIcon emoji="✅" size={13} /> {L('Prueba en demo', 'Test on demo')}</span>
+          <span><OnyxIcon emoji="✅" size={13} /> {L('Cancela cuando quieras', 'Cancel anytime')}</span>
+          <span><OnyxIcon emoji="✅" size={13} /> {L('En español y en inglés', 'Spanish and English')}</span>
+        </div>
       </section>
 
       {/* Contador de robots + métricas */}
@@ -128,10 +136,10 @@ export default function LandingConstructor() {
           <div className="live"><i /> {L('subiendo en vivo', 'growing live')}</div>
         </div>
         <div className="metrics">
-          <div className="metric" style={{ background: 'rgba(139,147,255,.08)', borderColor: 'rgba(139,147,255,.3)' }}><b style={{ color: '#7b83e6' }}>3</b><span>{L('Plataformas', 'Platforms')}: MT4 · MT5 · cTrader</span></div>
-          <div className="metric" style={{ background: 'rgba(29,158,117,.08)', borderColor: 'rgba(29,158,117,.3)' }}><b style={{ color: '#1d9e75' }}>{num(stats?.trades)}</b><span>{L('Operaciones analizadas', 'Trades analyzed')}</span></div>
-          <div className="metric" style={{ background: 'rgba(186,117,23,.08)', borderColor: 'rgba(186,117,23,.3)' }}><b style={{ color: '#ba7517' }}>{num(stats?.blocks)}</b><span>{L('Frenos del Guardian', 'Guardian blocks')}</span></div>
-          <div className="metric" style={{ background: 'rgba(15,110,86,.08)', borderColor: 'rgba(15,110,86,.3)' }}><b style={{ color: '#0f6e56' }}>{num(stats?.accounts)}</b><span>{L('Cuentas conectadas', 'Connected accounts')}</span></div>
+          <div className="metric" style={{ ['--ac' as any]: 'var(--brand)' }}><b>3</b><span>{L('Plataformas', 'Platforms')}: MT4 · MT5 · cTrader</span></div>
+          <div className="metric" style={{ ['--ac' as any]: 'var(--green)' }}><b>{num(stats?.trades)}</b><span>{L('Operaciones analizadas', 'Trades analyzed')}</span></div>
+          <div className="metric" style={{ ['--ac' as any]: 'var(--amber)' }}><b>{num(stats?.blocks)}</b><span>{L('Frenos del Guardian', 'Guardian blocks')}</span></div>
+          <div className="metric" style={{ ['--ac' as any]: 'var(--cyan)' }}><b>{num(stats?.accounts)}</b><span>{L('Cuentas conectadas', 'Connected accounts')}</span></div>
         </div>
       </section>
 
