@@ -1140,6 +1140,8 @@ function Modules() {
   const [m, setM] = useState<any>(null);
   const [lf, setLf] = useState<any>(null);          // base editable de las cifras del landing
   const [savingL, setSavingL] = useState(false);
+  const [revQ, setRevQ] = useState('');             // texto de búsqueda de reseñas (nombre/país/texto)
+  const [revStars, setRevStars] = useState('');     // filtro por estrellas ('' = todas)
   const [savedL, setSavedL] = useState(false);
   const [ver, setVer] = useState<any>(null);        // versión de la app (canales)
   const [verBusy, setVerBusy] = useState('');
@@ -1321,29 +1323,57 @@ function Modules() {
                 }}>✨ {es ? 'Generar reseña con IA' : 'Generate review with AI'} · {lng.toUpperCase()}</button>
             ))}
           </div>
-          <div className="row between" style={{ marginBottom: 6 }}>
-            <span className="muted" style={{ fontSize: 12 }}>{(lf.reviews?.length || 0)} {es ? 'reseñas' : 'reviews'}</span>
-            {(lf.reviews?.length || 0) > 0 && <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => { if (confirm(es ? '¿Borrar todas las reseñas?' : 'Delete all reviews?')) setLf({ ...lf, reviews: [] }); }}>{es ? 'Vaciar todo' : 'Clear all'}</button>}
+          {/* Buscador: filtra por nombre, alias, país, texto o fecha; y por estrellas.
+              Sin búsqueda mostramos SOLO las últimas 5 (la lista no es interminable). */}
+          <div className="row" style={{ gap: 8, marginBottom: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <input placeholder={es ? '🔎 Buscar por nombre, alias, país, fecha o texto' : '🔎 Search by name, alias, country, date or text'} value={revQ} style={{ margin: 0, flex: 1, minWidth: 220 }} onChange={(e) => setRevQ(e.target.value)} />
+            <select value={revStars} style={{ margin: 0, width: 120 }} title={es ? 'Filtrar por estrellas' : 'Filter by stars'} onChange={(e) => setRevStars(e.target.value)}>
+              <option value="">{es ? 'Estrellas' : 'Stars'}</option>
+              {[5, 4, 3, 2, 1].map((s) => <option key={s} value={String(s)}>{s}★</option>)}
+            </select>
+            {(revQ || revStars) && <button className="btn btn-ghost" style={{ padding: '6px 10px', fontSize: 12 }} onClick={() => { setRevQ(''); setRevStars(''); }}>{es ? 'Limpiar' : 'Clear'}</button>}
           </div>
-          {/* Lista con altura fija y scroll para que no sea interminable en el editor. */}
-          <div style={{ display: 'grid', gap: 10, maxHeight: 380, overflowY: 'auto', paddingRight: 4 }}>
-            {(lf.reviews && lf.reviews.length ? lf.reviews : [{ name: '', result: '', text: '', stars: 5, date: '' }]).map((rv: any, i: number) => (
-              <div key={i} style={{ border: '1px solid var(--line)', borderRadius: 10, padding: 10, display: 'grid', gridTemplateColumns: '1fr 1fr 96px 60px 62px 62px auto', gap: 8, alignItems: 'center' }}>
-                <input placeholder={es ? 'Nombre' : 'Name'} value={rv.name || ''} style={{ margin: 0 }} onChange={(e) => { const a = [...(lf.reviews || [])]; a[i] = { ...(a[i] || {}), name: e.target.value }; setLf({ ...lf, reviews: a }); }} />
-                <input placeholder={es ? 'Resultado (ej. Reto 50K pasado)' : 'Result (e.g. 50K challenge passed)'} value={rv.result || ''} style={{ margin: 0 }} onChange={(e) => { const a = [...(lf.reviews || [])]; a[i] = { ...(a[i] || {}), result: e.target.value }; setLf({ ...lf, reviews: a }); }} />
-                <input placeholder={es ? 'Fecha' : 'Date'} value={rv.date || ''} style={{ margin: 0 }} onChange={(e) => { const a = [...(lf.reviews || [])]; a[i] = { ...(a[i] || {}), date: e.target.value }; setLf({ ...lf, reviews: a }); }} />
-                <input placeholder={es ? 'País' : 'Country'} maxLength={2} value={rv.country || ''} style={{ margin: 0, textTransform: 'uppercase' }} title={es ? 'Código de país ISO2, ej. MX, US, ES' : 'ISO2 country code, e.g. MX, US, ES'} onChange={(e) => { const a = [...(lf.reviews || [])]; a[i] = { ...(a[i] || {}), country: e.target.value.toUpperCase() }; setLf({ ...lf, reviews: a }); }} />
-                <select value={rv.stars || 5} style={{ margin: 0 }} onChange={(e) => { const a = [...(lf.reviews || [])]; a[i] = { ...(a[i] || {}), stars: Number(e.target.value) }; setLf({ ...lf, reviews: a }); }}>
-                  {[5, 4, 3, 2, 1].map((s) => <option key={s} value={s}>{s}★</option>)}
-                </select>
-                <select value={rv.lang || 'es'} style={{ margin: 0 }} title={es ? 'Idioma de la reseña' : 'Review language'} onChange={(e) => { const a = [...(lf.reviews || [])]; a[i] = { ...(a[i] || {}), lang: e.target.value }; setLf({ ...lf, reviews: a }); }}>
-                  <option value="es">ES</option><option value="en">EN</option>
-                </select>
-                <button className="btn btn-ghost" style={{ padding: '6px 10px' }} onClick={() => { const a = [...(lf.reviews || [])]; a.splice(i, 1); setLf({ ...lf, reviews: a }); }}>✕</button>
-                <textarea placeholder={es ? 'Texto de la reseña' : 'Review text'} value={rv.text || ''} rows={2} style={{ margin: 0, gridColumn: '1 / -1', width: '100%' }} onChange={(e) => { const a = [...(lf.reviews || [])]; a[i] = { ...(a[i] || {}), text: e.target.value }; setLf({ ...lf, reviews: a }); }} />
-              </div>
-            ))}
-          </div>
+          {(() => {
+            const all: any[] = Array.isArray(lf.reviews) ? lf.reviews : [];
+            const q = revQ.trim().toLowerCase();
+            // Emparejamos cada reseña con su índice REAL en lf.reviews para editar/borrar bien.
+            let pairs = all.map((rv: any, idx: number) => ({ rv, idx }));
+            const filtering = !!q || !!revStars;
+            if (revStars) pairs = pairs.filter((p) => String(p.rv.stars || 5) === revStars);
+            if (q) pairs = pairs.filter((p) => [p.rv.name, p.rv.country, p.rv.text, p.rv.result, p.rv.date].some((v: any) => String(v || '').toLowerCase().includes(q)));
+            // Sin filtro: solo las últimas 5 (las más nuevas están al final del array).
+            const shown = filtering ? pairs : pairs.slice(-5).reverse();
+            return (
+              <>
+                <div className="row between" style={{ marginBottom: 6 }}>
+                  <span className="muted" style={{ fontSize: 12 }}>
+                    {filtering
+                      ? (es ? `${shown.length} de ${all.length} reseñas` : `${shown.length} of ${all.length} reviews`)
+                      : (es ? `Mostrando las últimas 5 de ${all.length} · busca para ver el resto` : `Showing last 5 of ${all.length} · search to see the rest`)}
+                  </span>
+                </div>
+                <div style={{ display: 'grid', gap: 10 }}>
+                  {shown.length === 0 && <div className="muted" style={{ fontSize: 12, padding: '8px 2px' }}>{es ? 'Sin coincidencias.' : 'No matches.'}</div>}
+                  {shown.map(({ rv, idx: i }) => (
+                    <div key={i} style={{ border: '1px solid var(--line)', borderRadius: 10, padding: 10, display: 'grid', gridTemplateColumns: '1fr 1fr 96px 60px 62px 62px auto', gap: 8, alignItems: 'center' }}>
+                      <input placeholder={es ? 'Nombre' : 'Name'} value={rv.name || ''} style={{ margin: 0 }} onChange={(e) => { const a = [...(lf.reviews || [])]; a[i] = { ...(a[i] || {}), name: e.target.value }; setLf({ ...lf, reviews: a }); }} />
+                      <input placeholder={es ? 'Resultado (ej. Reto 50K pasado)' : 'Result (e.g. 50K challenge passed)'} value={rv.result || ''} style={{ margin: 0 }} onChange={(e) => { const a = [...(lf.reviews || [])]; a[i] = { ...(a[i] || {}), result: e.target.value }; setLf({ ...lf, reviews: a }); }} />
+                      <input placeholder={es ? 'Fecha' : 'Date'} value={rv.date || ''} style={{ margin: 0 }} onChange={(e) => { const a = [...(lf.reviews || [])]; a[i] = { ...(a[i] || {}), date: e.target.value }; setLf({ ...lf, reviews: a }); }} />
+                      <input placeholder={es ? 'País' : 'Country'} maxLength={2} value={rv.country || ''} style={{ margin: 0, textTransform: 'uppercase' }} title={es ? 'Código de país ISO2, ej. MX, US, ES' : 'ISO2 country code, e.g. MX, US, ES'} onChange={(e) => { const a = [...(lf.reviews || [])]; a[i] = { ...(a[i] || {}), country: e.target.value.toUpperCase() }; setLf({ ...lf, reviews: a }); }} />
+                      <select value={rv.stars || 5} style={{ margin: 0 }} onChange={(e) => { const a = [...(lf.reviews || [])]; a[i] = { ...(a[i] || {}), stars: Number(e.target.value) }; setLf({ ...lf, reviews: a }); }}>
+                        {[5, 4, 3, 2, 1].map((s) => <option key={s} value={s}>{s}★</option>)}
+                      </select>
+                      <select value={rv.lang || 'es'} style={{ margin: 0 }} title={es ? 'Idioma de la reseña' : 'Review language'} onChange={(e) => { const a = [...(lf.reviews || [])]; a[i] = { ...(a[i] || {}), lang: e.target.value }; setLf({ ...lf, reviews: a }); }}>
+                        <option value="es">ES</option><option value="en">EN</option>
+                      </select>
+                      <button className="btn btn-ghost" style={{ padding: '6px 10px' }} onClick={() => { const a = [...(lf.reviews || [])]; a.splice(i, 1); setLf({ ...lf, reviews: a }); }}>✕</button>
+                      <textarea placeholder={es ? 'Texto de la reseña' : 'Review text'} value={rv.text || ''} rows={2} style={{ margin: 0, gridColumn: '1 / -1', width: '100%' }} onChange={(e) => { const a = [...(lf.reviews || [])]; a[i] = { ...(a[i] || {}), text: e.target.value }; setLf({ ...lf, reviews: a }); }} />
+                    </div>
+                  ))}
+                </div>
+              </>
+            );
+          })()}
           <button className="btn btn-ghost" style={{ marginTop: 8, padding: '6px 12px' }} onClick={() => setLf({ ...lf, reviews: [...(lf.reviews || []), { name: '', result: '', text: '', stars: 5, date: '', country: '', lang: es ? 'es' : 'en' }] })}>{es ? '+ Añadir reseña' : '+ Add review'}</button>
           <div style={{ marginTop: 14 }}>
             <button className="btn btn-primary" onClick={saveLanding} disabled={savingL}>

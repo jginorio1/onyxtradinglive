@@ -640,7 +640,10 @@ export default function Home() {
       </div>
       <div className="logostrip">
         <div className="logostrip-track">
-          {[...LOGOS, ...LOGOS].map((l, i) => (
+          {/* Repetimos la lista hasta que UNA copia sea más ancha que cualquier
+              monitor (incl. 4K/ultra-wide) y luego la duplicamos ×2. Así el bucle
+              -50% nunca se queda sin logos por la derecha (continuo de borde a borde). */}
+          {(() => { let base = LOGOS; while (base.length < 24) base = [...base, ...LOGOS]; return [...base, ...base]; })().map((l, i) => (
             <span key={i} style={{ color: l.c, fontWeight: 800, fontSize: 20, whiteSpace: 'nowrap' }}>{l.n}</span>
           ))}
         </div>
