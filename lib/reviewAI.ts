@@ -66,6 +66,46 @@ const EN_PROFILES: Profile[] = [
 ];
 function shuffle<T>(a: T[]): T[] { const b = a.slice(); for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; }
 
+// ── Generador de nombres ÚNICOS ─────────────────────────────────────────────
+// Bancos para componer nombres nuevos cuando se agota el grupo de perfiles fijos.
+// Así, aunque generes cientos de reseñas, nunca se repite un nombre exacto.
+const ES_FIRST = ['Andrés', 'Camila', 'Diego', 'Valentina', 'Mateo', 'Lucía', 'Javier', 'Daniela', 'Sergio', 'Paula', 'Marco', 'Renata', 'Bruno', 'Carla', 'Iván', 'Noelia', 'Hugo', 'Alba', 'Tomás', 'Elena', 'Nicolás', 'Sara', 'Pablo', 'Aitana'];
+const EN_FIRST = ['Ryan', 'Chloe', 'Marcus', 'Sophie', 'Liam', 'Grace', 'Ethan', 'Ava', 'Noah', 'Zoe', 'Dylan', 'Ruby', 'Owen', 'Mia', 'Caleb', 'Ivy', 'Jack', 'Nora', 'Leo', 'Faye', 'Adam', 'Isla', 'Ben', 'Maya'];
+const INITIALS = 'ABCDGHKLMNPRSTV'.split('');
+const ES_COUNTRIES = ['MX', 'AR', 'ES', 'CO', 'CL', 'PE', 'UY', 'EC'];
+const EN_COUNTRIES = ['US', 'GB', 'CA', 'AU', 'ZA', 'NZ', 'IE'];
+const ALIAS_ES = ['Pips', 'Scalper', 'Nocturno', 'Riesgo', 'Onda', 'fx', 'Trader', 'Swing', 'London', 'Cero'];
+const ALIAS_EN = ['Pip', 'Swing', 'NoStop', 'London', 'Risk', 'fx', 'Quiet', 'Night', 'Fund', 'Scalp'];
+function pick<T>(a: T[]): T { return a[Math.floor(Math.random() * a.length)]; }
+
+// Compone UN nombre nuevo con estilo variado (nombre+inicial, solo nombre, o alias).
+function composeName(lang: 'es' | 'en'): string {
+  const first = lang === 'es' ? ES_FIRST : EN_FIRST;
+  const style = Math.floor(Math.random() * 3);
+  if (style === 0) return `${pick(first)} ${pick(INITIALS)}.`;            // nombre + inicial
+  if (style === 1) return pick(first);                                    // solo nombre
+  const parts = lang === 'es' ? ALIAS_ES : ALIAS_EN;                      // alias de trader
+  const a = pick(parts), b = pick(parts.filter((x) => x !== a));
+  const tail = Math.random() < 0.5 ? `_${10 + Math.floor(Math.random() * 89)}` : '';
+  return Math.random() < 0.5 ? `${a}${b}${tail}` : `${a}${pick(first)}${tail}`;
+}
+
+// Devuelve un perfil {name,country} cuyo NOMBRE no esté en `used` (case-insensitive).
+// Primero intenta el grupo fijo; si todos están usados, compone uno nuevo garantizando
+// unicidad (hasta 40 intentos, luego añade un sufijo para forzar que sea distinto).
+function uniqueProfile(lang: 'es' | 'en', used: Set<string>): Profile {
+  const pool = shuffle(lang === 'es' ? ES_PROFILES : EN_PROFILES);
+  for (const p of pool) if (!used.has(p.name.toLowerCase())) { used.add(p.name.toLowerCase()); return p; }
+  const countries = lang === 'es' ? ES_COUNTRIES : EN_COUNTRIES;
+  for (let i = 0; i < 40; i++) {
+    const name = composeName(lang);
+    if (!used.has(name.toLowerCase())) { used.add(name.toLowerCase()); return { name, country: pick(countries) }; }
+  }
+  const name = `${composeName(lang)}_${Math.floor(Math.random() * 9000 + 1000)}`;
+  used.add(name.toLowerCase());
+  return { name, country: pick(countries) };
+}
+
 // Fecha reciente aleatoria (entre 3 y ~130 días atrás), formateada por idioma.
 // Así las reseñas no llevan todas la misma fecha (ni todas "hoy").
 function recentDate(lang: 'es' | 'en', daysAgo = 3 + Math.floor(Math.random() * 128)): string {
@@ -89,13 +129,13 @@ function trimText(t: string, max = 300): string {
 
 export type ReviewDraft = { name: string; result: string; text: string; stars: number; date: string; country: string; lang: 'es' | 'en' };
 
-// Genera 1 reseña. El nombre/país vienen de un perfil dado (o aleatorio) → no se
-// repiten. La IA solo escribe el texto (corto y completo) acorde a las estrellas.
+// Genera 1 reseña. El nombre/país vienen de un perfil dado o de uno ÚNICO (que no
+// esté en `used`, la lista de nombres ya existentes). La IA solo escribe el texto.
 // La fecha es reciente y aleatoria (o la que se pase).
-export async function draftReview(lang: 'es' | 'en', stars: number = (Math.random() < 0.8 ? 5 : 4), profile?: Profile, date?: string): Promise<ReviewDraft | null> {
+export async function draftReview(lang: 'es' | 'en', stars: number = (Math.random() < 0.8 ? 5 : 4), profile?: Profile, date?: string, used?: Set<string>): Promise<ReviewDraft | null> {
   const firm = FIRMS[Math.floor(Math.random() * FIRMS.length)];
   const st = Math.max(1, Math.min(5, Math.round(stars)));
-  const p = profile || (lang === 'es' ? ES_PROFILES : EN_PROFILES)[Math.floor(Math.random() * (lang === 'es' ? ES_PROFILES : EN_PROFILES).length)];
+  const p = profile || uniqueProfile(lang, used || new Set());
   const toneEs = st >= 5
     ? 'Tono muy positivo y entusiasta, recomienda sin reservas.'
     : 'Tono positivo pero con UN pequeño matiz o crítica menor (ej. curva de aprendizaje, algo que mejorar), sin ser negativa.';
@@ -120,16 +160,16 @@ export async function draftReview(lang: 'es' | 'en', stars: number = (Math.rando
 }
 
 // Genera un LOTE de 5 reseñas: 4 de 5★ y 1 de 4★, idiomas ES/EN aleatorios,
-// con nombres DISTINTOS (perfiles barajados), FECHAS distintas y tono acorde.
-export async function draftReviewBatch(): Promise<ReviewDraft[]> {
+// con nombres ÚNICOS (distintos entre sí Y distintos de `usedNames`, los que ya
+// existen guardados), FECHAS distintas y tono acorde a las estrellas.
+export async function draftReviewBatch(usedNames: string[] = []): Promise<ReviewDraft[]> {
   const plan = [5, 5, 5, 5, 4];
   const langsPlan: ('es' | 'en')[] = plan.map(() => (Math.random() < 0.5 ? 'es' : 'en'));
-  const esPool = shuffle(ES_PROFILES); const enPool = shuffle(EN_PROFILES);
+  const used = new Set(usedNames.map((n) => String(n || '').toLowerCase()).filter(Boolean));
   const days = shuffle([7, 19, 34, 58, 91, 12, 26, 47, 73, 105]);   // días atrás distintos
-  let ei = 0, ni = 0;
   const jobs = plan.map((s, i) => {
     const lang = langsPlan[i];
-    const profile = lang === 'es' ? esPool[ei++ % esPool.length] : enPool[ni++ % enPool.length];
+    const profile = uniqueProfile(lang, used);   // reserva el nombre (marca en `used`) antes de lanzar
     return draftReview(lang, s, profile, recentDate(lang, days[i]));
   });
   const results = await Promise.all(jobs);

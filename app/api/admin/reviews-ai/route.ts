@@ -15,13 +15,15 @@ export async function POST(req: Request) {
     const _p = await requirePerm('modulos', 'view'); if (!_p.ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
 
     const body = await req.json().catch(() => ({}));
+    // `used`: nombres que ya existen en el landing → el generador los evita para no repetir.
+    const used: string[] = Array.isArray(body?.used) ? body.used.map((n: any) => String(n || '')).filter(Boolean) : [];
     if (body?.batch) {
-      const reviews = await draftReviewBatch();
+      const reviews = await draftReviewBatch(used);
       if (!reviews.length) return NextResponse.json({ error: 'no_ai', hint: 'Falta ANTHROPIC_API_KEY o la IA no respondió.' }, { status: 502 });
       return NextResponse.json({ ok: true, reviews });
     }
     const l = body?.lang === 'en' ? 'en' : 'es';
-    const review = await draftReview(l);
+    const review = await draftReview(l, undefined, undefined, undefined, new Set(used.map((n) => n.toLowerCase())));
     if (!review) return NextResponse.json({ error: 'no_ai', hint: 'Falta ANTHROPIC_API_KEY o la IA no respondió.' }, { status: 502 });
     return NextResponse.json({ ok: true, review });
   } catch (e: any) {

@@ -1142,6 +1142,7 @@ function Modules() {
   const [savingL, setSavingL] = useState(false);
   const [revQ, setRevQ] = useState('');             // texto de búsqueda de reseñas (nombre/país/texto)
   const [revStars, setRevStars] = useState('');     // filtro por estrellas ('' = todas)
+  const [revDupOnly, setRevDupOnly] = useState(false); // mostrar solo reseñas con nombre duplicado
   const [savedL, setSavedL] = useState(false);
   const [ver, setVer] = useState<any>(null);        // versión de la app (canales)
   const [verBusy, setVerBusy] = useState('');
@@ -1305,7 +1306,8 @@ function Modules() {
             <button className="btn btn-primary" style={{ padding: '7px 14px' }}
               onClick={async () => {
                 try {
-                  const r = await fetch('/api/admin/reviews-ai', { method: 'POST', body: JSON.stringify({ batch: true }) });
+                  const used = (lf.reviews || []).map((rv: any) => rv.name).filter(Boolean);
+                  const r = await fetch('/api/admin/reviews-ai', { method: 'POST', body: JSON.stringify({ batch: true, used }) });
                   const j = await r.json();
                   if (!r.ok || !Array.isArray(j.reviews) || !j.reviews.length) { alert(j.hint || j.error || 'IA no disponible'); return; }
                   setLf((p: any) => ({ ...p, reviews: [...(p.reviews || []), ...j.reviews] }));
@@ -1315,7 +1317,8 @@ function Modules() {
               <button key={lng} className="btn btn-primary" style={{ padding: '7px 14px' }}
                 onClick={async () => {
                   try {
-                    const r = await fetch('/api/admin/reviews-ai', { method: 'POST', body: JSON.stringify({ lang: lng }) });
+                    const used = (lf.reviews || []).map((rv: any) => rv.name).filter(Boolean);
+                    const r = await fetch('/api/admin/reviews-ai', { method: 'POST', body: JSON.stringify({ lang: lng, used }) });
                     const j = await r.json();
                     if (!r.ok || !j.review) { alert(j.hint || j.error || 'IA no disponible'); return; }
                     setLf((p: any) => ({ ...p, reviews: [...(p.reviews || []), j.review] }));
@@ -1331,31 +1334,51 @@ function Modules() {
               <option value="">{es ? 'Estrellas' : 'Stars'}</option>
               {[5, 4, 3, 2, 1].map((s) => <option key={s} value={String(s)}>{s}★</option>)}
             </select>
-            {(revQ || revStars) && <button className="btn btn-ghost" style={{ padding: '6px 10px', fontSize: 12 }} onClick={() => { setRevQ(''); setRevStars(''); }}>{es ? 'Limpiar' : 'Clear'}</button>}
+            {(revQ || revStars || revDupOnly) && <button className="btn btn-ghost" style={{ padding: '6px 10px', fontSize: 12 }} onClick={() => { setRevQ(''); setRevStars(''); setRevDupOnly(false); }}>{es ? 'Limpiar' : 'Clear'}</button>}
           </div>
           {(() => {
             const all: any[] = Array.isArray(lf.reviews) ? lf.reviews : [];
+            // Cuenta cuántas veces aparece cada nombre (case-insensitive) → detecta duplicados.
+            const counts: Record<string, number> = {};
+            for (const rv of all) { const k = String(rv.name || '').trim().toLowerCase(); if (k) counts[k] = (counts[k] || 0) + 1; }
+            const isDup = (rv: any) => { const k = String(rv.name || '').trim().toLowerCase(); return !!k && counts[k] > 1; };
+            const dupCount = all.filter(isDup).length;
             const q = revQ.trim().toLowerCase();
             // Emparejamos cada reseña con su índice REAL en lf.reviews para editar/borrar bien.
             let pairs = all.map((rv: any, idx: number) => ({ rv, idx }));
-            const filtering = !!q || !!revStars;
+            const filtering = !!q || !!revStars || revDupOnly;
+            if (revDupOnly) pairs = pairs.filter((p) => isDup(p.rv));
             if (revStars) pairs = pairs.filter((p) => String(p.rv.stars || 5) === revStars);
             if (q) pairs = pairs.filter((p) => [p.rv.name, p.rv.country, p.rv.text, p.rv.result, p.rv.date].some((v: any) => String(v || '').toLowerCase().includes(q)));
+            // Con "solo duplicados" ordenamos por nombre para ver juntos los que se repiten.
+            if (revDupOnly) pairs.sort((a, b) => String(a.rv.name || '').toLowerCase().localeCompare(String(b.rv.name || '').toLowerCase()));
             // Sin filtro: solo las últimas 5 (las más nuevas están al final del array).
             const shown = filtering ? pairs : pairs.slice(-5).reverse();
             return (
               <>
-                <div className="row between" style={{ marginBottom: 6 }}>
+                <div className="row between" style={{ marginBottom: 6, flexWrap: 'wrap', gap: 8 }}>
                   <span className="muted" style={{ fontSize: 12 }}>
                     {filtering
                       ? (es ? `${shown.length} de ${all.length} reseñas` : `${shown.length} of ${all.length} reviews`)
                       : (es ? `Mostrando las últimas 5 de ${all.length} · busca para ver el resto` : `Showing last 5 of ${all.length} · search to see the rest`)}
                   </span>
+                  {/* Auditor de duplicados: avisa cuántos nombres se repiten y filtra solo esos. */}
+                  <button
+                    className={'btn ' + (revDupOnly ? 'btn-primary' : 'btn-ghost')}
+                    style={{ padding: '4px 10px', fontSize: 12, ...(dupCount > 0 && !revDupOnly ? { borderColor: 'var(--amber)', color: 'var(--amber)' } : {}) }}
+                    onClick={() => setRevDupOnly((v) => !v)}
+                    title={es ? 'Muestra solo las reseñas cuyo nombre está repetido' : 'Show only reviews whose name is duplicated'}
+                  >
+                    {dupCount > 0
+                      ? (revDupOnly ? (es ? 'Ver todas' : 'Show all') : (es ? `⚠ ${dupCount} con nombre duplicado` : `⚠ ${dupCount} with duplicate name`))
+                      : (es ? '✓ Sin duplicados' : '✓ No duplicates')}
+                  </button>
                 </div>
                 <div style={{ display: 'grid', gap: 10 }}>
                   {shown.length === 0 && <div className="muted" style={{ fontSize: 12, padding: '8px 2px' }}>{es ? 'Sin coincidencias.' : 'No matches.'}</div>}
                   {shown.map(({ rv, idx: i }) => (
-                    <div key={i} style={{ border: '1px solid var(--line)', borderRadius: 10, padding: 10, display: 'grid', gridTemplateColumns: '1fr 1fr 96px 60px 62px 62px auto', gap: 8, alignItems: 'center' }}>
+                    <div key={i} style={{ border: isDup(rv) ? '1px solid var(--amber)' : '1px solid var(--line)', borderRadius: 10, padding: 10, display: 'grid', gridTemplateColumns: '1fr 1fr 96px 60px 62px 62px auto', gap: 8, alignItems: 'center', position: 'relative' }}>
+                      {isDup(rv) && <span style={{ position: 'absolute', top: -8, left: 10, fontSize: 10, fontWeight: 700, color: '#1a1400', background: 'var(--amber)', borderRadius: 6, padding: '1px 6px' }}>{es ? 'DUPLICADO' : 'DUPLICATE'}</span>}
                       <input placeholder={es ? 'Nombre' : 'Name'} value={rv.name || ''} style={{ margin: 0 }} onChange={(e) => { const a = [...(lf.reviews || [])]; a[i] = { ...(a[i] || {}), name: e.target.value }; setLf({ ...lf, reviews: a }); }} />
                       <input placeholder={es ? 'Resultado (ej. Reto 50K pasado)' : 'Result (e.g. 50K challenge passed)'} value={rv.result || ''} style={{ margin: 0 }} onChange={(e) => { const a = [...(lf.reviews || [])]; a[i] = { ...(a[i] || {}), result: e.target.value }; setLf({ ...lf, reviews: a }); }} />
                       <input placeholder={es ? 'Fecha' : 'Date'} value={rv.date || ''} style={{ margin: 0 }} onChange={(e) => { const a = [...(lf.reviews || [])]; a[i] = { ...(a[i] || {}), date: e.target.value }; setLf({ ...lf, reviews: a }); }} />
