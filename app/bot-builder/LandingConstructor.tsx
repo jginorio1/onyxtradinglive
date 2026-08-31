@@ -48,11 +48,16 @@ export default function LandingConstructor() {
     [L('Opera y registra', 'Trade and log'), L('El bot ejecuta con sus propias reglas y registra cada operación en tu panel.', 'The bot runs with its own rules and logs every trade to your dashboard.')],
   ];
   const faqs = [
-    [L('¿Necesito saber programar?', 'Do I need to know how to code?'), L('No. Armas el bot por campos (entrada, stop, TP, riesgo) y Onyx genera el robot listo para MT4, MT5 o cTrader, junto con una guía en PDF paso a paso.', 'No. You build the bot by fields (entry, stop, TP, risk) and Onyx generates the ready robot for MT4, MT5 or cTrader, plus a step-by-step PDF guide.')],
-    [L('¿Funciona con mi prop firm?', 'Does it work with my prop firm?'), L('Sí. Defines las reglas de tu reto (pérdida diaria, drawdown, objetivo) y el bot las lleva dentro: se frena solo antes de romperlas. No necesitas activar ningún servicio extra.', 'Yes. You set your challenge rules (daily loss, drawdown, target) and the bot carries them inside: it stops itself before breaking them. No extra service to enable.')],
-    [L('¿En qué plataformas corre?', 'Which platforms does it run on?'), L('MetaTrader 4, MetaTrader 5 y cTrader. El mismo constructor genera el archivo correcto para cada una.', 'MetaTrader 4, MetaTrader 5 and cTrader. The same builder generates the correct file for each.')],
-    [L('¿Puedo probar sin arriesgar dinero?', 'Can I test without risking money?'), L('Sí. Todo se prueba primero en cuenta demo. Recomendamos validar la estrategia en demo antes de pasar a real.', 'Yes. Everything is tested first on a demo account. We recommend validating the strategy on demo before going live.')],
-    [L('¿El bot garantiza ganancias?', 'Does the bot guarantee profit?'), L('No. Ninguna herramienta puede garantizar resultados. Onyx te da control, reglas automáticas y protección, pero el trading siempre conlleva riesgo.', 'No. No tool can guarantee results. Onyx gives you control, automatic rules and protection, but trading always carries risk.')],
+    [L('¿Necesito saber programar?', 'Do I need to know how to code?'), L('No, para nada. Armas el bot eligiendo opciones en tarjetas: qué par opera, cómo entra, dónde pone el stop y el take profit, cuánto arriesga y las reglas de tu fondeo. Al terminar, Onyx genera el robot listo (.mq5, .mq4 o .cs) y una guía en PDF con capturas para instalarlo paso a paso.', 'Not at all. You build the bot by picking options on cards: which pair it trades, how it enters, where it puts the stop and take profit, how much it risks and your firm rules. When you finish, Onyx generates the ready robot (.mq5, .mq4 or .cs) and a PDF guide with screenshots to install it step by step.')],
+    [L('¿Cómo instalo el robot y lo pongo a operar?', 'How do I install the robot and get it trading?'), L('Descargas el archivo, lo abres en MetaTrader (MetaEditor → Compilar) o en cTrader (Automate → Build), lo arrastras al gráfico de tu par y pegas tu clave Onyx. Listo. La guía PDF personalizada de cada robot te lleva por cada paso, incluidas las URLs que hay que permitir en MetaTrader.', 'You download the file, open it in MetaTrader (MetaEditor → Compile) or cTrader (Automate → Build), drag it onto your pair chart and paste your Onyx key. Done. Each robot\'s personalized PDF guide walks you through every step, including the URLs to allow in MetaTrader.')],
+    [L('¿Para qué sirve la clave Onyx y de dónde sale?', 'What is the Onyx key for and where does it come from?'), L('Es tu licencia personal: el robot la pide para activarse (en demo y en real) y así nadie puede revender tu bot. La sacas en Conectar cuenta; cada clave queda atada a un número de cuenta y el sistema la verifica al arrancar.', 'It\'s your personal license: the robot needs it to activate (on demo and live) so nobody can resell your bot. You get it in Connect account; each key is tied to an account number and the system verifies it on start.')],
+    [L('¿Funciona con mi prop firm (FTMO, etc.)?', 'Does it work with my prop firm (FTMO, etc.)?'), L('Sí. Defines las reglas de tu reto —pérdida diaria, drawdown total, objetivo de fase— y el bot las lleva dentro: se frena solo antes de romperlas, con frenos suave, duro y total por debajo del límite del firm. No necesitas activar ningún servicio extra.', 'Yes. You set your challenge rules —daily loss, total drawdown, phase target— and the bot carries them inside: it stops itself before breaking them, with soft, hard and total brakes below the firm limit. No extra service to enable.')],
+    [L('¿En qué plataformas corre?', 'Which platforms does it run on?'), L('MetaTrader 4, MetaTrader 5 y cTrader. El mismo constructor genera el archivo correcto para cada una, y el robot encuentra tu símbolo aunque tu broker use otro nombre o sufijo (GOLD, XAUUSD.m, etc.).', 'MetaTrader 4, MetaTrader 5 and cTrader. The same builder generates the correct file for each, and the robot finds your symbol even if your broker uses another name or suffix (GOLD, XAUUSD.m, etc.).')],
+    [L('¿Puedo probar sin arriesgar dinero?', 'Can I test without risking money?'), L('Sí, y lo recomendamos. Todo se prueba primero en cuenta demo. En el módulo Mis robots verás los KPIs de cada robot (PF, aciertos, drawdown), un estado “Listo para vivo” con criterios de graduación, y podrás pasarlo a real con un clic cuando estés seguro.', 'Yes, and we recommend it. Everything is tested first on a demo account. In the My robots module you\'ll see each robot\'s KPIs (PF, win rate, drawdown), a “Ready for live” status with graduation criteria, and you can promote it to live in one click when you\'re confident.')],
+    [L('¿Dónde veo cómo va cada robot?', 'Where do I see how each robot is doing?'), L('En Mis robots: cada cuenta es una tarjeta con su neto, mejor y peor bot y diversificación; entras y ves los KPIs por robot y sus métricas avanzadas (Sharpe, Sortino, Monte Carlo, walk-forward). Además hay un Laboratorio de portafolio para combinar robots y ver su correlación.', 'In My robots: each account is a card with its net, best and worst bot and diversification; you enter and see per-robot KPIs and advanced metrics (Sharpe, Sortino, Monte Carlo, walk-forward). There\'s also a Portfolio lab to combine robots and see their correlation.')],
+    [L('¿Cuántos robots y cuentas puedo tener?', 'How many robots and accounts can I have?'), L('En Gratis creas 1 robot y conectas 1 cuenta. En Trader los robots son ilimitados y conectas hasta 3 cuentas. En Black Onyx, cuentas ilimitadas. Puedes ver el detalle en la tabla comparativa de arriba.', 'On Free you create 1 robot and connect 1 account. On Trader robots are unlimited and you connect up to 3 accounts. On Black Onyx, unlimited accounts. See the details in the comparison table above.')],
+    [L('¿Puedo cambiar de plan o cancelar cuando quiera?', 'Can I change plan or cancel anytime?'), L('Sí. Subes o bajas de plan cuando quieras desde tu cuenta; los cambios se aplican según tu ciclo de cobro y no pierdes tu historial ni tus robots creados.', 'Yes. You upgrade or downgrade anytime from your account; changes apply according to your billing cycle and you don\'t lose your history or created robots.')],
+    [L('¿El bot garantiza ganancias?', 'Does the bot guarantee profit?'), L('No. Ninguna herramienta puede garantizar resultados. Onyx te da control, reglas automáticas y protección, pero el trading siempre conlleva riesgo. Prueba en demo, opera con responsabilidad y usa solo capital que puedas permitirte arriesgar.', 'No. No tool can guarantee results. Onyx gives you control, automatic rules and protection, but trading always carries risk. Test on demo, trade responsibly and only use capital you can afford to risk.')],
   ];
   const allReviews: any[] = Array.isArray(stats?.reviews) ? stats.reviews : [];
   // Muestra reseñas del idioma actual; si hay pocas, completa con el resto.
@@ -276,6 +281,75 @@ export default function LandingConstructor() {
           {shown.length > 0
             ? <PlanCards plans={shown} lang={es ? 'es' : 'en'} annual={annual} botTagId={botPlanId} onChoose={(id: string, price: number) => { window.location.href = (price > 0 && id && id !== 'free') ? `/login?mode=signup&plan=${id}${annual ? '&annual=1' : ''}` : '/login?mode=signup'; }} />
             : <p className="muted" style={{ textAlign: 'center' }}>{L('Cargando planes…', 'Loading plans…')}</p>}
+          {/* Comparación de 3 niveles: todo lo del Bot Builder, fila por fila */}
+          {(() => {
+            const pT = plans.find((p: any) => p.id === 'trader');
+            const pB = plans.find((p: any) => ['black', 'black_onyx', 'blackonyx'].includes(String(p.id)));
+            const prc = (p: any, def: number) => p ? (annual ? Number(p.price_year) : Number(p.price_month)) : def;
+            const tiers = [
+              { id: 'free', name: 'Gratis', price: 0 },
+              { id: 'trader', name: 'Trader', price: prc(pT, 15), hi: true },
+              { id: pB?.id || 'black', name: 'Black Onyx', price: prc(pB, annual ? 390 : 39) },
+            ];
+            const CH = <OnyxIcon name="check" size={13} glow={false} />;
+            const rows: [string, any, any, any][] = [
+              [L('Robots que creas', 'Robots you create'), '1', '∞', '∞'],
+              [L('Cuentas conectadas', 'Connected accounts'), '1', '3', '∞'],
+              [L('Plataformas MT4 · MT5 · cTrader', 'Platforms MT4 · MT5 · cTrader'), true, true, true],
+              [L('Gatillos, salidas, riesgo y frenos', 'Triggers, exits, risk & brakes'), true, true, true],
+              [L('Reglas de fondeo + candado de activación', 'Firm rules + activation lock'), true, true, true],
+              [L('Múltiples sesiones y días operables', 'Multiple sessions & trading days'), true, true, true],
+              [L('Filtro de noticias integrado', 'Built-in news filter'), true, true, true],
+              [L('Guía PDF personalizada + plantillas', 'Personalized PDF guide + templates'), true, true, true],
+              [L('Descarga del EA (.mq5/.mq4/.cs) + .set', 'EA download (.mq5/.mq4/.cs) + .set'), true, true, true],
+              [L('Mis robots: KPIs, pruebas vs vivo, graduación', 'My robots: KPIs, testing vs live, graduation'), true, true, true],
+              [L('Registro automático de operaciones', 'Automatic trade logging'), true, true, true],
+              [L('Historial de operaciones', 'Trade history'), L('30 días', '30 days'), L('completo', 'full'), L('completo', 'full')],
+              [L('Métricas avanzadas (Sharpe, Monte Carlo, walk-forward)', 'Advanced metrics (Sharpe, Monte Carlo, walk-forward)'), false, true, true],
+              [L('Laboratorio de portafolio + correlación + sugerencias', 'Portfolio lab + correlation + suggestions'), false, true, true],
+              [L('Copy trading incluido', 'Copy trading included'), false, false, true],
+              [L('Soporte prioritario', 'Priority support'), false, false, true],
+            ];
+            const cell = (v: any) => v === true ? CH : v === false ? <span style={{ color: 'var(--mut)' }}>—</span> : <span style={{ fontSize: 12.5 }}>{v}</span>;
+            const go = (id: string, price: number) => { window.location.href = (price > 0 && id !== 'free') ? `/login?mode=signup&plan=${id}${annual ? '&annual=1' : ''}` : '/login?mode=signup'; };
+            return (
+              <div style={{ maxWidth: 760, margin: '26px auto 0', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden', background: 'var(--card)' }}>
+                <div style={{ textAlign: 'center', padding: '12px 14px 4px', fontWeight: 700, fontSize: 14 }}>{L('Todo lo que trae el Bot Builder', 'Everything the Bot Builder includes')}</div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', minWidth: 520, borderCollapse: 'collapse', fontSize: 13 }}>
+                    <thead><tr>
+                      <th style={{ textAlign: 'left', padding: '10px 14px' }}></th>
+                      {tiers.map((tr) => (
+                        <th key={tr.id} style={{ padding: '10px 8px', textAlign: 'center', width: 108, background: tr.hi ? 'color-mix(in srgb,var(--brand) 10%,transparent)' : 'transparent' }}>
+                          <div style={{ fontWeight: 800, color: tr.hi ? 'var(--brand)' : 'var(--tx)' }}>{tr.name}</div>
+                          <div style={{ fontSize: 15, fontWeight: 800 }}>${tr.price}<span className="muted" style={{ fontSize: 10 }}>/{annual ? (es ? 'año' : 'yr') : (es ? 'mes' : 'mo')}</span></div>
+                        </th>
+                      ))}
+                    </tr></thead>
+                    <tbody>
+                      {rows.map((r, i) => (
+                        <tr key={i} style={{ borderTop: '1px solid var(--line)' }}>
+                          <td style={{ padding: '9px 14px', color: 'var(--tx)' }}>{r[0]}</td>
+                          <td style={{ padding: '9px 8px', textAlign: 'center' }}>{cell(r[1])}</td>
+                          <td style={{ padding: '9px 8px', textAlign: 'center', background: 'color-mix(in srgb,var(--brand) 6%,transparent)' }}>{cell(r[2])}</td>
+                          <td style={{ padding: '9px 8px', textAlign: 'center' }}>{cell(r[3])}</td>
+                        </tr>
+                      ))}
+                      <tr style={{ borderTop: '1px solid var(--line)' }}>
+                        <td style={{ padding: '12px 14px' }}></td>
+                        {tiers.map((tr) => (
+                          <td key={tr.id} style={{ padding: '10px 8px', textAlign: 'center', background: tr.hi ? 'color-mix(in srgb,var(--brand) 6%,transparent)' : 'transparent' }}>
+                            <button className={'btn ' + (tr.hi ? 'btn-primary' : 'btn-ghost')} style={{ fontSize: 11.5, padding: '6px 10px', width: '100%' }} onClick={() => go(tr.id, tr.price)}>{tr.price === 0 ? L('Empezar', 'Start') : L('Elegir', 'Choose')}</button>
+                          </td>
+                        ))}
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })()}
+
           <div className="pricenote">
             <OnyxIcon emoji="🤖" size={18} />
             <span>{L('Si solo quieres bots, el plan de entrada te basta: tu robot ya se frena solo, filtra noticias y respeta tu sesión. Onyx Guardian es un extra para quien también opera manual — no se le cobra al que usa bots.', 'If you only want bots, the entry plan is enough: your robot stops itself, filters news and respects your session. Onyx Guardian is an extra for those who also trade manually — bot users are not charged for it.')}</span>
