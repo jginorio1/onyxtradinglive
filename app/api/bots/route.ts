@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { loadBots, loadPortfolio } from '@/lib/bots';
-import { hasAlgo, addonSettings, botCapsForUser } from '@/lib/settings';
+import { hasAlgo, addonSettings, botCapsForUser, accountLimit } from '@/lib/settings';
 import { logError } from '@/lib/errlog';
 
 export const dynamic = 'force-dynamic';
@@ -82,6 +82,16 @@ export async function PATCH(req: Request) {
       };
     }
 
+    // Límite de robots = cuentas del plan del usuario (incluye add-ons). Solo aplica
+    // al REGISTRAR un robot nuevo; editar/activar uno ya existente no cuenta.
+    const lim = await accountLimit(user.id);
+    const { count: botCount } = await supabaseAdmin.from('bots').select('*', { count: 'exact', head: true }).eq('user_id', user.id);
+    const overLimit = !lim.unlimited && Number(botCount || 0) >= Number(lim.max || 1);
+    const limitResp = () => NextResponse.json({
+      error: 'bot_limit', code: 'bot_limit', max: lim.max,
+      message: `Tu plan permite ${lim.max} robot${lim.max === 1 ? '' : 's'} (según tus cuentas). Conecta una cuenta más o sube de plan para activar otro.`,
+    }, { status: 403 });
+
     // Upsert por (usuario, cuenta, magic). Hacemos el "existe? update : insert" a mano para no
     // depender de un índice único parcial (account_id puede ser null en filas antiguas).
     if (account_id) {
@@ -92,12 +102,15 @@ export async function PATCH(req: Request) {
         const { error } = await supabaseAdmin.from('bots').update(patch).eq('id', (ex as any).id);
         if (error) return NextResponse.json({ error: error.message }, { status: 500 });
       } else {
+        if (overLimit) return limitResp();   // robot NUEVO por encima del tope de cuentas
         const { error } = await supabaseAdmin.from('bots').insert(patch);
         if (error) return NextResponse.json({ error: error.message }, { status: 500 });
       }
       return NextResponse.json({ ok: true });
     }
-    // Legacy (sin cuenta): mantenemos el upsert antiguo por (usuario, magic).
+    // Legacy (sin cuenta): upsert por (usuario, magic). Si es alta nueva, respeta el tope.
+    const { data: exLegacy } = await supabaseAdmin.from('bots').select('id').eq('user_id', user.id).eq('magic', magic).maybeSingle();
+    if (!exLegacy && overLimit) return limitResp();
     const { error } = await supabaseAdmin.from('bots').upsert(patch, { onConflict: 'user_id,magic' });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true });

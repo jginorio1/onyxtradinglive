@@ -176,6 +176,7 @@ export default function Bots() {
     try {
       const r = await fetch('/api/bots', { method: 'PATCH', body: JSON.stringify({ magic: b.magic, account_id: b.accountId, ...patch }) });
       if (r.ok) { toast(t.saved, 'ok'); setEdit(null); await load(); }
+      else { const j = await r.json().catch(() => ({})); toast(j.message || j.error || 'error'); }
     } finally { setBusy(false); }
   }
   function openEdit(b: any) {
@@ -199,7 +200,7 @@ export default function Bots() {
     try {
       const r = await fetch('/api/bots', { method: 'PATCH', body: JSON.stringify({ magic, account_id: addFor.accountId, name: addForm.name || `Bot #${magic}`, mode: addForm.mode }) });
       if (r.ok) { toast(t.saved, 'ok'); setAddFor(null); setAddForm({ magic: '', name: '', mode: 'testing' }); await load(); }
-      else { const j = await r.json().catch(() => ({})); toast(j.error || 'error'); }
+      else { const j = await r.json().catch(() => ({})); toast(j.message || j.error || 'error'); }
     } finally { setBusy(false); }
   }
   async function buyAddon() {
