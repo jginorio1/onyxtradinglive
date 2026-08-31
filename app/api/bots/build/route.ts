@@ -3,6 +3,7 @@ import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { cleanSpec, toSetFile, summarize, type BotSpec } from '@/lib/botSpec';
 import { renderMT5, renderMT4 } from '@/lib/botGen';
+import { renderCT } from '@/lib/botGenCT';
 import { buildGuideHTML } from '@/lib/botGuide';
 
 export const dynamic = 'force-dynamic';
@@ -28,7 +29,8 @@ export async function GET(req: Request) {
         const { data: prof } = await supabaseAdmin.from('profiles').select('name, full_name').eq('id', user.id).maybeSingle();
         trader = String((prof as any)?.name || (prof as any)?.full_name || (user.email || '').split('@')[0] || '');
       } catch { trader = (user.email || '').split('@')[0] || ''; }
-      const html = buildGuideHTML(spec, trader, !en);
+      const SITE_G = (process.env.NEXT_PUBLIC_APP_URL || url.origin || 'https://www.onyxtradinglive.com').replace(/\/$/, '');
+      const html = buildGuideHTML(spec, trader, !en, SITE_G);
       return new NextResponse(html, { headers: { 'content-type': 'text/html; charset=utf-8' } });
     }
 
@@ -45,8 +47,8 @@ export async function GET(req: Request) {
         const SITE = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.onyxtradinglive.com').replace(/\/$/, '');
         const meta = { userId: user.id, buildId: String(dl), site: SITE };
         const plat = String(spec.platform || 'mt5');
-        const src = plat === 'mt4' ? renderMT4(spec, meta) : renderMT5(spec, meta);
-        const fileExt = plat === 'mt4' ? 'mq4' : 'mq5';
+        const src = plat === 'ctrader' ? renderCT(spec, meta) : plat === 'mt4' ? renderMT4(spec, meta) : renderMT5(spec, meta);
+        const fileExt = plat === 'ctrader' ? 'cs' : plat === 'mt4' ? 'mq4' : 'mq5';
         return new NextResponse(src, { headers: { 'content-type': 'text/plain; charset=utf-8', 'content-disposition': `attachment; filename="${safe}.${fileExt}"` } });
       }
       const set = toSetFile(spec);

@@ -20,6 +20,14 @@ const TF4: Record<string, string> = {
   D1: 'PERIOD_D1', W1: 'PERIOD_W1', MN1: 'PERIOD_MN1',
 };
 const tf4 = (x: string) => TF4[x] || 'PERIOD_M5';
+// cTrader (cAlgo) TimeFrame por TF del spec.
+const TFCT: Record<string, string> = {
+  M1: 'Minute', M2: 'Minute2', M3: 'Minute3', M4: 'Minute4', M5: 'Minute5', M6: 'Minute6',
+  M10: 'Minute10', M12: 'Minute15', M15: 'Minute15', M20: 'Minute20', M30: 'Minute30',
+  H1: 'Hour', H2: 'Hour2', H3: 'Hour3', H4: 'Hour4', H6: 'Hour6', H8: 'Hour8', H12: 'Hour12',
+  D1: 'Daily', W1: 'Weekly', MN1: 'Monthly',
+};
+const tfct = (x: string) => 'TimeFrame.' + (TFCT[x] || 'Minute5');
 const q = (s: string) => '"' + String(s).replace(/"/g, "'") + '"';
 const cRisk = (u: string) => (u === 'money' ? 1 : 0);
 // Código unificado de unidad de salida: pips=0, R=1, %=2, $=3, ATR=4.

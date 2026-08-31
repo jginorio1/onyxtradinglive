@@ -51,30 +51,85 @@ function paramRows(s: BotSpec, es: boolean): [string, string, string][] {
 }
 function pad(n: number) { return String(n).padStart(2, '0'); }
 
-// Pasos de instalación por plataforma.
-function installSteps(s: BotSpec, es: boolean): [string, string][] {
-  const P5 = s.platform;
-  if (P5 === 'ctrader') return [
-    [P(es, 'Descarga el archivo', 'Download the file'), P(es, 'Descarga el cBot (.cs) de tu bot desde Onyx.', 'Download your bot\'s cBot (.cs) from Onyx.')],
-    [P(es, 'Abre cTrader Automate', 'Open cTrader Automate'), P(es, 'Ve a la pestaña Automate y crea un cBot nuevo; pega el código.', 'Go to the Automate tab and create a new cBot; paste the code.')],
-    [P(es, 'Compila (Build)', 'Build'), P(es, 'Pulsa Build y espera que compile sin errores.', 'Press Build and wait for it to compile with no errors.')],
-    [P(es, 'Añádelo al gráfico', 'Add it to the chart'), P(es, `Abre el gráfico de ${esc(s.symbol)} en ${tfLabel(s.tf)} y añade el cBot con los parámetros.`, `Open the ${esc(s.symbol)} chart at ${tfLabel(s.tf)} and add the cBot with the parameters.`)],
-    [P(es, 'Dale Play', 'Press Play'), P(es, 'Pulsa Play para que empiece a operar.', 'Press Play so it starts trading.')],
-    [P(es, 'Prueba en DEMO', 'Test on DEMO'), P(es, 'Úsalo primero en una cuenta demo antes de real.', 'Run it on a demo account first, before real.')],
-  ];
-  const folder = P5 === 'mt4' ? 'MQL4/Experts' : 'MQL5/Experts';
-  const ext = P5 === 'mt4' ? '.mq4' : '.mq5';
-  return [
-    [P(es, 'Descarga los archivos', 'Download the files'), P(es, `Descarga el EA (${ext}) y la config (.set) de tu bot desde Onyx.`, `Download your bot\'s EA (${ext}) and config (.set) from Onyx.`)],
-    [P(es, `Cópialo en ${folder}`, `Copy it to ${folder}`), P(es, `En la plataforma abre Archivo → Abrir carpeta de datos y pega el EA en ${folder}.`, `In the platform open File → Open Data Folder and paste the EA into ${folder}.`)],
-    [P(es, 'Compila con F7', 'Compile with F7'), P(es, 'Abre MetaEditor, abre el EA y pulsa F7 para compilar sin errores.', 'Open MetaEditor, open the EA and press F7 to compile with no errors.')],
-    [P(es, 'Arrástralo al gráfico', 'Drag it onto the chart'), P(es, `Abre el gráfico de ${esc(s.symbol)} en ${tfLabel(s.tf)} y arrastra el EA; en la ventana carga tu archivo .set.`, `Open the ${esc(s.symbol)} chart at ${tfLabel(s.tf)} and drag the EA; in the dialog load your .set file.`)],
-    [P(es, 'Activa AutoTrading', 'Enable AutoTrading'), P(es, 'Pulsa el botón AutoTrading (arriba) para que quede verde.', 'Click the AutoTrading button (top) so it turns green.')],
-    [P(es, 'Prueba en DEMO', 'Test on DEMO'), P(es, 'Pruébalo en el Probador de estrategias y en una cuenta demo antes de real.', 'Test it in the Strategy Tester and on a demo account before going live.')],
-  ];
+// Bloque de instalación de UNA plataforma: título, pasos detallados y (para MT) las URLs de WebRequest.
+type PlatBlock = { key: string; label: string; sub: string; steps: [string, string][]; urls?: string[] };
+
+function mtBlock(s: BotSpec, es: boolean, mt4: boolean, site: string): PlatBlock {
+  const folder = mt4 ? 'MQL4\\Experts' : 'MQL5\\Experts';
+  const ext = mt4 ? '.mq4' : '.mq5';
+  const name = mt4 ? 'MetaTrader 4' : 'MetaTrader 5';
+  const sym = esc(s.symbol); const tf = tfLabel(s.tf);
+  return {
+    key: mt4 ? 'mt4' : 'mt5', label: name,
+    sub: P(es, `Para cuentas y brokers que usan ${name}.`, `For accounts and brokers using ${name}.`),
+    urls: [site, 'https://nfs.faireconomy.media'],
+    steps: [
+      [P(es, `1) Descarga los archivos (${ext} y .set)`, `1) Download the files (${ext} and .set)`),
+       P(es, `En Onyx, en la ventana “Tu robot está listo”, pulsa “Descargar robot (${ext})” y también “Config (.set)”. Guárdalos donde los encuentres fácil (por ejemplo, el Escritorio).`, `In Onyx, on the “Your robot is ready” window, click “Download robot (${ext})” and also “Config (.set)”. Save them somewhere easy to find (e.g. the Desktop).`)],
+      [P(es, '2) Abre la carpeta de datos de la plataforma', '2) Open the platform data folder'),
+       P(es, `Abre ${name}. Arriba ve a Archivo → Abrir carpeta de datos. Se abre una ventana del explorador de archivos.`, `Open ${name}. At the top go to File → Open Data Folder. A file-explorer window opens.`)],
+      [P(es, `3) Copia el robot en ${folder}`, `3) Copy the robot into ${folder}`),
+       P(es, `Dentro de esa ventana entra en la carpeta ${folder} y pega ahí el archivo ${ext}. Puedes crear una subcarpeta “Onyx” para tenerlo ordenado.`, `Inside that window open the ${folder} folder and paste the ${ext} file there. You can make an “Onyx” subfolder to keep it tidy.`)],
+      [P(es, '4) Actualiza el Navegador', '4) Refresh the Navigator'),
+       P(es, `Vuelve a ${name}. En el panel “Navegador” (izquierda), clic derecho sobre “Asesores Expertos” → Actualizar. Ahora deberías ver tu robot en la lista.`, `Back in ${name}, in the “Navigator” panel (left), right-click “Expert Advisors” → Refresh. You should now see your robot in the list.`)],
+      [P(es, '5) Compila con F7 (0 errores)', '5) Compile with F7 (0 errors)'),
+       P(es, 'Haz doble clic en el robot: se abre MetaEditor. Pulsa F7 (Compilar). Abajo debe decir “0 errores, 0 advertencias”. Si hay errores, cópialos y pásamelos.', 'Double-click the robot: MetaEditor opens. Press F7 (Compile). At the bottom it must say “0 errors, 0 warnings”. If there are errors, copy them and send them to me.')],
+      [P(es, '6) Permite las URLs (WebRequest)', '6) Allow the URLs (WebRequest)'),
+       P(es, 'En la plataforma ve a Herramientas → Opciones → pestaña “Asesores Expertos”. Marca “Permitir WebRequest para las siguientes URL” y añade las dos URLs de abajo (una por línea). Pulsa Aceptar. Esto permite la activación de tu clave Onyx y el filtro de noticias.', 'In the platform go to Tools → Options → “Expert Advisors” tab. Tick “Allow WebRequest for listed URL” and add the two URLs below (one per line). Click OK. This lets your Onyx key activate and the news filter work.')],
+      [P(es, `7) Abre el gráfico de ${sym} en ${tf}`, `7) Open the ${sym} chart at ${tf}`),
+       P(es, `Abre el gráfico del par ${sym} y ponlo en la temporalidad ${tf} (arriba, la barra de periodos). El robot opera el símbolo del gráfico donde lo pongas.`, `Open the ${sym} chart and set it to the ${tf} timeframe (top periods bar). The robot trades the symbol of the chart you place it on.`)],
+      [P(es, '8) Arrastra el robot y carga tu .set', '8) Drag the robot and load your .set'),
+       P(es, 'Desde el Navegador, arrastra el robot encima del gráfico. Se abre una ventana; en la pestaña “Parámetros de entrada” pulsa “Cargar” y elige tu archivo .set (así quedan puestos todos tus valores).', 'From the Navigator, drag the robot onto the chart. A window opens; on the “Inputs” tab click “Load” and pick your .set file (this fills in all your values).')],
+      [P(es, '9) Pega tu clave Onyx en InpApiKey', '9) Paste your Onyx key in InpApiKey'),
+       P(es, 'En esa misma lista de parámetros busca “InpApiKey” y pega tu clave de Onyx. Es obligatoria SIEMPRE, tanto en demo como en real (las cuentas de fondeo también corren en demo). Sin clave válida el robot no abre operaciones.', 'In that same parameter list find “InpApiKey” and paste your Onyx key. It is ALWAYS required, on demo and live (funded accounts also run on demo). Without a valid key the robot won’t open trades.')],
+      [P(es, '10) Activa el AutoTrading', '10) Enable AutoTrading'),
+       P(es, 'En la ventana, marca “Permitir trading algorítmico” y pulsa Aceptar. Luego pulsa el botón “AutoTrading” de la barra superior hasta que quede verde. En la esquina del gráfico verás una carita 😀 y el panel del robot.', 'In the window, tick “Allow Algo Trading” and click OK. Then press the top-bar “AutoTrading” button until it turns green. In the chart corner you’ll see a smiley 😀 and the robot’s panel.')],
+      [P(es, '11) Prueba en DEMO unos días', '11) Test on DEMO for a few days'),
+       P(es, 'Déjalo en una cuenta demo primero. Revisa el panel del robot en el gráfico y la pestaña “Expertos”/“Diario” abajo para ver qué hace. Cuando estés seguro, pásalo a real.', 'Run it on a demo account first. Check the robot panel on the chart and the “Experts”/“Journal” tab below to see what it does. When you’re confident, move it to live.')],
+    ],
+  };
 }
 
-export function buildGuideHTML(s: BotSpec, trader: string, es = true): string {
+function ctBlock(s: BotSpec, es: boolean): PlatBlock {
+  const sym = esc(s.symbol); const tf = tfLabel(s.tf);
+  return {
+    key: 'ctrader', label: 'cTrader',
+    sub: P(es, 'Para cuentas y brokers que usan cTrader (cBot en C#).', 'For accounts and brokers using cTrader (C# cBot).'),
+    steps: [
+      [P(es, '1) Descarga el archivo .cs', '1) Download the .cs file'),
+       P(es, 'En Onyx, en la ventana “Tu robot está listo”, pulsa “Descargar robot (.cs)”. En cTrader no se usa archivo .set: los valores ya vienen dentro del código.', 'In Onyx, on the “Your robot is ready” window, click “Download robot (.cs)”. cTrader doesn’t use a .set file: your values are baked into the code.')],
+      [P(es, '2) Abre la pestaña Automate', '2) Open the Automate tab'),
+       P(es, 'Abre cTrader y arriba pulsa la pestaña “Automate” (el icono del robot / código).', 'Open cTrader and at the top click the “Automate” tab (the robot / code icon).')],
+      [P(es, '3) Crea un cBot nuevo', '3) Create a new cBot'),
+       P(es, 'En la lista de cBots pulsa el “+” (New cBot). Se abre el editor de código con un ejemplo.', 'In the cBots list press “+” (New cBot). The code editor opens with a sample.')],
+      [P(es, '4) Pega TODO el código', '4) Paste ALL the code'),
+       P(es, 'Selecciona y borra el código de ejemplo, abre tu archivo .cs con el Bloc de notas, copia todo y pégalo en el editor de cTrader.', 'Select and delete the sample code, open your .cs file with Notepad, copy everything and paste it into the cTrader editor.')],
+      [P(es, '5) Compila (Build)', '5) Build'),
+       P(es, 'Pulsa “Build” (o F6). Abajo debe decir “Build succeeded” sin errores. Si hay errores, cópialos y pásamelos.', 'Press “Build” (or F6). At the bottom it must say “Build succeeded” with no errors. If there are errors, copy them and send them to me.')],
+      [P(es, `6) Abre el gráfico de ${sym} en ${tf}`, `6) Open the ${sym} chart at ${tf}`),
+       P(es, `Abre el gráfico del símbolo ${sym} en la temporalidad ${tf}. El cBot opera el símbolo del gráfico donde lo añadas.`, `Open the ${sym} chart at the ${tf} timeframe. The cBot trades the symbol of the chart you add it to.`)],
+      [P(es, '7) Añade el cBot al gráfico', '7) Add the cBot to the chart'),
+       P(es, 'En el gráfico, en el panel de abajo, elige tu cBot en la lista y pulsa “Add” (o desde Automate selecciónalo y añádelo al gráfico).', 'On the chart, in the bottom panel, pick your cBot from the list and press “Add” (or from Automate select it and add it to the chart).')],
+      [P(es, '8) Pega tu clave en “Onyx API Key”', '8) Paste your key in “Onyx API Key”'),
+       P(es, 'En los parámetros del cBot busca “Onyx API Key” y pega tu clave de Onyx. Es obligatoria SIEMPRE (demo y real; el fondeo también es demo). El resto de valores ya vienen fijados.', 'In the cBot parameters find “Onyx API Key” and paste your Onyx key. It is ALWAYS required (demo and live; funding is demo too). The rest of the values are already set.')],
+      [P(es, '9) Permite el acceso a internet', '9) Allow internet access'),
+       P(es, 'La primera vez, cTrader pedirá permiso de “Full Access” / acceso a internet: acéptalo. Es necesario para activar tu clave Onyx y para el filtro de noticias.', 'The first time, cTrader will ask for “Full Access” / internet permission: accept it. It’s needed to activate your Onyx key and for the news filter.')],
+      [P(es, '10) Dale Play', '10) Press Play'),
+       P(es, 'Pulsa el botón “Play” del cBot. Empezará a operar según tus reglas. En el gráfico verás el panel del robot con su estado.', 'Press the cBot’s “Play” button. It will start trading by your rules. On the chart you’ll see the robot panel with its status.')],
+      [P(es, '11) Prueba en DEMO unos días', '11) Test on DEMO for a few days'),
+       P(es, 'Úsalo primero en una cuenta demo. Mira el texto del panel en el gráfico para confirmar que hace lo esperado antes de pasarlo a real.', 'Run it on a demo account first. Watch the panel text on the chart to confirm it does what you expect before going live.')],
+    ],
+  };
+}
+
+// Los tres bloques, con la plataforma elegida del bot primero.
+function installBlocks(s: BotSpec, es: boolean, site: string): PlatBlock[] {
+  const all = [mtBlock(s, es, false, site), mtBlock(s, es, true, site), ctBlock(s, es)];
+  const own = s.platform === 'mt4' ? 'mt4' : s.platform === 'ctrader' ? 'ctrader' : 'mt5';
+  return all.sort((a, b) => (a.key === own ? -1 : b.key === own ? 1 : 0));
+}
+
+export function buildGuideHTML(s: BotSpec, trader: string, es = true, site = 'https://www.onyxtradinglive.com'): string {
   const u = (x: string) => unitLabel(x, !es);
   const bias = TREND[s.trendMode][es ? 0 : 1];
   const trig = (TRIG[s.entryTrigger] || TRIG.ma_cross)[es ? 0 : 1];
@@ -83,9 +138,10 @@ export function buildGuideHTML(s: BotSpec, trader: string, es = true): string {
     `Tu bot “${esc(s.name)}” opera en ${esc(s.symbol)} usando velas de ${tfLabel(s.tf)}. Primero mira la tendencia con ${bias} en ${tfLabel(s.trendTF)} para decidir el sesgo. Cuando el precio confirma ${trig} a favor de ese sesgo, entra al mercado (${dir}). Ya dentro, gestiona la operación: cierra una parte en el primer objetivo (TP1) para asegurar ganancia, deja correr el resto y, si activaste el trailing, va subiendo el stop detrás del precio. Cada día respeta un tope de pérdida y los frenos de la cuenta, para cuidar tu fondeo.`,
     `Your bot “${esc(s.name)}” trades ${esc(s.symbol)} on ${tfLabel(s.tf)} candles. It first reads the trend using ${bias} on ${tfLabel(s.trendTF)} to set its bias. When price confirms ${trig} in favor of that bias, it enters (${dir}). Once in, it manages the trade: it closes part at the first target (TP1) to lock in profit, lets the rest run, and — if trailing is on — trails the stop behind price. Every day it respects a loss cap and the account brakes to protect your funding.`);
   const rows = paramRows(s, es);
-  const steps = installSteps(s, es);
+  const blocks = installBlocks(s, es, site);
   const pill = (t: string) => `<span class="pill">${esc(t)}</span>`;
   const plat = s.platform.toUpperCase();
+  const ownKey = s.platform === 'mt4' ? 'mt4' : s.platform === 'ctrader' ? 'ctrader' : 'mt5';
 
   return `<!doctype html><html lang="${es ? 'es' : 'en'}"><head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -118,6 +174,16 @@ export function buildGuideHTML(s: BotSpec, trader: string, es = true): string {
   ol.steps li::before{content:counter(s);position:absolute;left:14px;top:12px;width:26px;height:26px;border-radius:8px;background:var(--brandbg);color:var(--brand);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px}
   ol.steps li b{display:block;margin-bottom:2px}
   ol.steps li span{color:var(--mut);font-size:13.5px}
+  .platblock{margin:0 0 18px;padding:16px 18px;border:1px solid var(--bd);border-radius:14px;background:var(--card)}
+  .platblock.own{border-color:var(--brand);box-shadow:0 0 0 3px var(--brandbg)}
+  .plathead{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--bd)}
+  .platname{font-size:17px;font-weight:700}
+  .platbadge{background:var(--brand);color:#fff;border-radius:99px;padding:3px 10px;font-size:11px;font-weight:700;letter-spacing:.02em}
+  .platsub{color:var(--mut);font-size:13px;flex-basis:100%}
+  .urlbox{margin-top:12px;background:#f0f2fb;border:1px solid #d6dbf5;border-radius:12px;padding:12px 14px}
+  .urlt{font-size:12.5px;font-weight:600;color:var(--brand);margin-bottom:8px}
+  .urlbox code{display:block;background:#fff;border:1px solid var(--bd);border-radius:8px;padding:8px 10px;font-size:13px;color:#3a3f8f;word-break:break-all;margin-bottom:6px}
+  .urlbox code:last-child{margin-bottom:0}
   .note{background:var(--okbg);border:1px solid #9fe1cb;color:#0f6e56;border-radius:12px;padding:12px 14px;font-size:13.5px;margin-top:16px}
   .warn{background:#faeeda;border:1px solid #fac775;color:#854f0b;border-radius:12px;padding:12px 14px;font-size:13px;margin-top:12px}
   .print{position:fixed;top:16px;right:16px;background:var(--brand);color:#fff;border:none;border-radius:10px;padding:10px 16px;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 4px 14px rgba(91,99,211,.4)}
@@ -144,9 +210,19 @@ export function buildGuideHTML(s: BotSpec, trader: string, es = true): string {
   <h2><span class="n">2</span>${P(es, 'Para qué sirve cada parámetro', 'What each parameter is for')}</h2>
   <table><tbody>${rows.map(([k, v, d]) => `<tr><td class="k">${esc(k)}</td><td class="v">${esc(v)}</td><td class="d">${esc(d)}</td></tr>`).join('')}</tbody></table>
 
-  <h2><span class="n">3</span>${P(es, `Instalación en ${plat}, paso a paso`, `Install on ${plat}, step by step`)}</h2>
-  <ol class="steps">${steps.map(([t, d]) => `<li><b>${esc(t)}</b><span>${esc(d)}</span></li>`).join('')}</ol>
-  <div class="note">${P(es, 'Consejo: deja el bot corriendo unos días en DEMO y revisa que abra y cierre como esperas antes de pasarlo a real.', 'Tip: let the bot run a few days on DEMO and check it opens and closes as expected before going live.')}</div>
+  <h2><span class="n">3</span>${P(es, 'Instalación paso a paso', 'Install step by step')}</h2>
+  <div class="note" style="margin-top:0;margin-bottom:14px">${P(es, `Tu robot está hecho para <b>${plat}</b>, así que esa plataforma va primero. Abajo tienes también las otras dos por si cambias de broker. Los pasos son los mismos para cualquier robot que crees.`, `Your robot is built for <b>${plat}</b>, so that platform comes first. Below you also have the other two in case you switch brokers. The steps are the same for any robot you create.`)}</div>
+  ${blocks.map((bl) => `
+  <div class="platblock${bl.key === ownKey ? ' own' : ''}">
+    <div class="plathead">
+      <span class="platname">${esc(bl.label)}</span>
+      ${bl.key === ownKey ? `<span class="platbadge">${P(es, 'tu plataforma', 'your platform')}</span>` : ''}
+      <span class="platsub">${esc(bl.sub)}</span>
+    </div>
+    <ol class="steps">${bl.steps.map(([t, d]) => `<li><b>${esc(t)}</b><span>${esc(d)}</span></li>`).join('')}</ol>
+    ${bl.urls ? `<div class="urlbox"><div class="urlt">${P(es, 'URLs para el WebRequest (paso 6) — cópialas tal cual:', 'WebRequest URLs (step 6) — copy them exactly:')}</div>${bl.urls.map((x) => `<code>${esc(x)}</code>`).join('')}</div>` : ''}
+  </div>`).join('')}
+  <div class="note">${P(es, 'Consejo: deja el robot corriendo unos días en DEMO y revisa que abra y cierre como esperas antes de pasarlo a real. Recuerda: el mercado abre el domingo por la tarde y cierra el viernes.', 'Tip: let the robot run a few days on DEMO and check it opens and closes as expected before going live. Remember: the market opens Sunday afternoon and closes Friday.')}</div>
   <div class="warn">${P(es, 'Aviso: el trading conlleva riesgo. Esta guía describe tu configuración; no promete resultados. Compila y prueba siempre en demo. La operación es responsabilidad del trader.', 'Notice: trading carries risk. This guide describes your setup; it does not promise results. Always compile and test on demo. Trading is the trader\'s responsibility.')}</div>
 
   <div class="foot">${P(es, 'Generado por Onyx Bot Builder', 'Generated by Onyx Bot Builder')} · ${esc(s.name)}</div>

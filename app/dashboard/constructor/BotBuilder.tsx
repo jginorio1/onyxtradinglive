@@ -668,7 +668,7 @@ export default function BotBuilder() {
 
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
                   <a className="bbx-btn primary" href={`/api/bots/build?code=${doneModal.id}`} style={{ fontWeight: 700 }}><OnyxIcon emoji="⬇️" size={13} glow={false} /> {L('Descargar robot', 'Download robot')} ({ext})</a>
-                  <a className="bbx-btn" href={`/api/bots/build?download=${doneModal.id}`}>{L('Config', 'Config')} (.set) ↓</a>
+                  {isMT && <a className="bbx-btn" href={`/api/bots/build?download=${doneModal.id}`}>{L('Config', 'Config')} (.set) ↓</a>}
                   <button className="bbx-btn" onClick={openGuide}><OnyxIcon emoji="📖" size={13} /> {L('Guía PDF', 'PDF guide')}</button>
                 </div>
 
