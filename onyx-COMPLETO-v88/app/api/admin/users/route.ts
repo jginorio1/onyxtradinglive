@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAdmin, logAdmin, requirePerm } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { grantComp, revokeComp } from '@/lib/compTrial';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -102,6 +103,12 @@ export async function PATCH(req: Request) {
       const from = (tprof as any)?.plan || 'free';
       await supabaseAdmin.from('profiles').update({ plan: value }).eq('id', id);
       meta.from = from; meta.to = value; meta.dir = await planDir(from, value);
+    } else if (action === 'comp_grant') {
+      // Prueba de pago (cortesía) por N días, sin tarjeta.
+      const g = await grantComp(id, value?.plan, value?.days);
+      meta.plan = g.plan; meta.days = g.days; meta.until = g.until;
+    } else if (action === 'comp_revoke') {
+      await revokeComp(id);
     } else if (action === 'ban') {
       await supabaseAdmin.auth.admin.updateUserById(id, { ban_duration: '876000h' });
       await supabaseAdmin.from('profiles').update({ banned: true }).eq('id', id);

@@ -36,12 +36,15 @@ export default function PlanCards({
     andMore: lang === 'es' ? 'y además:' : 'and more:',
   };
 
-  // Ancho máximo según cuántos planes hay: en pantalla ancha caben todos en fila
-  // (hasta ~270px cada uno) y, al achicar la pantalla, auto-fit los va apilando solo.
+  // Rejilla FLEX con ajuste centrado, TOPE de 3 por fila: en pantalla ancha van
+  // 3 arriba y las 2 restantes centradas debajo; al achicar pasan a 2+2+1 y
+  // luego apiladas. Limitamos el ancho a ~3 tarjetas para que nunca queden 5
+  // en una sola línea. flex-wrap + justify-content:center centra la última fila.
   const cols = Math.max(1, plans.length);
-  const maxW = Math.min(1280, Math.max(360, cols * 268));
+  const perRow = Math.min(3, cols);
+  const maxW = perRow * 272 + (perRow - 1) * 16;
   return (
-    <div className="pricing-grid" style={{ textAlign: 'left', alignItems: 'stretch', display: 'grid', gap: 16, gridTemplateColumns: `repeat(auto-fit, minmax(230px, 1fr))`, maxWidth: maxW, margin: '0 auto' }}>
+    <div className="pricing-grid" style={{ textAlign: 'left', display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'stretch', gap: 16, maxWidth: maxW, margin: '0 auto' }}>
       {plans.map((p, i) => {
         const price = annual ? p.price_year : p.price_month;
         const name = lang === 'es' ? p.name : (p.name_en || p.name);
@@ -54,7 +57,7 @@ export default function PlanCards({
         const isFree = p.id === 'free' || price === 0;
         const botTag = !!botTagId && p.id === botTagId;
         return (
-          <div key={p.id} className="card" style={{ display: 'flex', flexDirection: 'column', height: '100%', ...((pop || botTag) ? { border: '2px solid var(--brand)', boxShadow: '0 0 30px rgba(124,140,255,.25)', position: 'relative' } : { position: 'relative' }) }}>
+          <div key={p.id} className="card" style={{ flex: '1 1 240px', minWidth: 230, maxWidth: 320, display: 'flex', flexDirection: 'column', ...((pop || botTag) ? { border: '2px solid var(--brand)', boxShadow: '0 0 30px rgba(124,140,255,.25)', position: 'relative' } : { position: 'relative' }) }}>
             {pop && <span style={{ position: 'absolute', top: -13, left: '50%', transform: 'translateX(-50%)', background: 'var(--grad)', color: '#fff', fontSize: 11, fontWeight: 800, padding: '4px 14px', borderRadius: 20, whiteSpace: 'nowrap' }}>★ {badge}</span>}
             {botTag && <span style={{ position: 'absolute', top: 12, right: 12, background: 'color-mix(in srgb,var(--brand) 18%,transparent)', color: 'var(--brand)', fontSize: 10.5, fontWeight: 800, padding: '3px 9px', borderRadius: 99, border: '1px solid color-mix(in srgb,var(--brand) 40%,transparent)', whiteSpace: 'nowrap' }}>★ {lang === 'es' ? 'Para bots' : 'For bots'}</span>}
             <h3 style={{ marginTop: pop ? 6 : 0 }}>{name}</h3>

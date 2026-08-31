@@ -42,8 +42,26 @@ export default function PlansCompareTable({
 
   if (!plans.length) return null;
 
-  const cols = ['free', 'pro', 'elite', 'black'];
   const byId = (id: string) => plans.find((p) => p.id === id);
+  // Columnas = TODOS los planes reales, ordenados por precio (Gratis → … → Black).
+  // Así el plan de bots (o cualquier plan nuevo) aparece automáticamente.
+  const cols = [...plans].sort((a, b) => Number(a.price_month) - Number(b.price_month)).map((p) => p.id);
+  // Las filas de PLAN_ROWS traen 4 valores en orden [free, pro, elite, black].
+  // Para un plan fuera de ese orden (p. ej. el de bots), tomamos el valor de la
+  // banda de precio más cercana: gratis, entrada de pago, medio o tope.
+  const BASE_ORDER = ['free', 'pro', 'elite', 'black'];
+  const baseIdx = (id: string): number => {
+    const i = BASE_ORDER.indexOf(id); if (i >= 0) return i;
+    const price = Number(byId(id)?.price_month || 0);
+    if (price <= 0) return 0;
+    const elite = Number(byId('elite')?.price_month || 79);
+    const black = Number(byId('black')?.price_month || 199);
+    if (price < elite) return 1; if (price < black) return 2; return 3;
+  };
+  const rowVal = (r: any, id: string): boolean | string => {
+    const idx = baseIdx(id);
+    return Array.isArray(r.v) ? (r.v[idx] ?? r.v[r.v.length - 1]) : r.v;
+  };
   const name = (p?: Plan, id?: string) => p ? (lang === 'es' ? p.name : (p.name_en || p.name)) : (id || '');
   const isPro = (p?: Plan) => !!(p && (lang === 'es' ? p.badge : p.badge_en));
   const acc = (id: string) => {
@@ -87,13 +105,13 @@ export default function PlansCompareTable({
             </tr>
 
             {rows.map((r, ri) => r.head
-              ? (<tr key={ri}><td colSpan={5} style={{ padding: '16px 16px 8px', color: 'var(--brand)', fontWeight: 700, fontSize: 13, letterSpacing: '.02em' }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}><OnyxIcon name={sectionIcon(r.es)} size={16} /> {lang === 'es' ? r.es : r.en}</span></td></tr>)
-              : (<tr key={ri}><td style={{ padding: '12px 16px', color: 'var(--mut)' }}>{lang === 'es' ? r.es : r.en}</td>{r.v.map((v, ci) => {
+              ? (<tr key={ri}><td colSpan={cols.length + 1} style={{ padding: '16px 16px 8px', color: 'var(--brand)', fontWeight: 700, fontSize: 13, letterSpacing: '.02em' }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}><OnyxIcon name={sectionIcon(r.es)} size={16} /> {lang === 'es' ? r.es : r.en}</span></td></tr>)
+              : (<tr key={ri}><td style={{ padding: '12px 16px', color: 'var(--mut)' }}>{lang === 'es' ? r.es : r.en}</td>{cols.map((id) => {
                   // Fila de comisión: lee el % por plan del admin (capabilities.academy_fee_pct) → se actualiza solo.
                   const isFee = /por venta|per sale/i.test(r.es + r.en);
-                  let cell: boolean | string = v;
-                  if (isFee) { const pct = (byId(cols[ci]) as any)?.capabilities?.academy_fee_pct; if (pct != null && !isNaN(Number(pct))) cell = `${Number(pct)}%`; }
-                  return <td key={ci} style={{ textAlign: 'center', padding: '12px 16px' }}>{chk(cell)}</td>;
+                  let cell: boolean | string = rowVal(r, id);
+                  if (isFee) { const pct = (byId(id) as any)?.capabilities?.academy_fee_pct; if (pct != null && !isNaN(Number(pct))) cell = `${Number(pct)}%`; }
+                  return <td key={id} style={{ textAlign: 'center', padding: '12px 16px' }}>{chk(cell)}</td>;
                 })}</tr>))}
 
             {/* Botones de compra al final, alineados con cada columna */}
