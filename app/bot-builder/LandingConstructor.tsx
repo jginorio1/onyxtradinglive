@@ -75,12 +75,16 @@ export default function LandingConstructor() {
   // SOLO los planes de bot (Gratis + Onyx Bot) — 2 planes por escala. El resto
   // (Pro/Elite/Black, para trading manual) vive en "ver comparación completa".
   const shown = useMemo(() => {
-    // El landing de bots muestra el MISMO set completo que el home (todos los
-    // planes), para que el trader vea dónde encaja el plan de bots frente a los
-    // demás. Solo enriquecemos el copy del plan Gratis y del plan de bots.
-    const base = plans;
-    // Id del plan dedicado a bots (para el subtítulo). Prioriza 'bots', luego 'trader'.
-    const botId = plans.some((p: any) => p.id === 'bots') ? 'bots' : (plans.some((p: any) => p.id === 'trader') ? 'trader' : '');
+    // Id del plan dedicado a bots. Prioriza 'bots', luego 'trader', y si no,
+    // el plan de pago más barato (Onyx Builder es el de entrada).
+    const botId = plans.some((p: any) => p.id === 'bots') ? 'bots'
+      : plans.some((p: any) => p.id === 'trader') ? 'trader'
+      : (plans.filter((p: any) => p.id !== 'free' && Number(p.price_month) > 0)
+          .sort((a: any, b: any) => Number(a.price_month) - Number(b.price_month))[0]?.id || '');
+    // En el landing de "crea tu robot" solo mostramos DOS planes: Gratis (para
+    // empezar) y el plan de bots (Onyx Builder). Los demás planes viven en el
+    // home / pricing; aquí sobran y distraen del gancho del constructor.
+    const base = plans.filter((p: any) => p.id === 'free' || p.id === botId);
     // En el landing de bots, el plan Gratis debe dejar clarísimo el gancho: puedes
     // CREAR Y CONECTAR 1 robot gratis. Lo forzamos como primera viñeta (y ajustamos
     // el subtítulo al mensaje del constructor) sin tocar lo que el admin configuró.
