@@ -814,6 +814,7 @@ export default function BotBuilder() {
                     <li>{L('Descarga e instala el robot (arriba).', 'Download and install the robot (above).')}</li>
                     <li>{L('Pega tu clave Onyx en InpApiKey.', 'Paste your Onyx key in InpApiKey.')}</li>
                     <li>{L('Cuando opere, sus KPIs aparecen en Mis robots.', 'Once it trades, its KPIs show in My robots.')}</li>
+                    <li>{L('Las métricas avanzadas (Monte Carlo, walk-forward) se activan tras ~20 operaciones.', 'Advanced metrics (Monte Carlo, walk-forward) unlock after ~20 trades.')}</li>
                   </ol>
                   <a href="/dashboard/bots" className="bbx-btn primary" style={{ marginTop: 8, fontSize: 12.5, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="📊" size={13} glow={false} /> {L('Ir a Mis robots', 'Go to My robots')} →</a>
                 </div>

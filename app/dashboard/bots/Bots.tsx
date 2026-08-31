@@ -263,6 +263,14 @@ export default function Bots() {
           <span className="muted">{t.ops} <b style={{ color: 'var(--tx)' }}>{b.trades}</b></span>
         </div>
 
+        {/* Por qué no está "operando": el EA no ha reportado. Explica el siguiente paso. */}
+        {!b.pending && b.status !== 'operando' && (b.open?.count || 0) === 0 && (
+          <div style={{ marginBottom: 8, fontSize: 11, display: 'flex', alignItems: 'flex-start', gap: 6, color: 'var(--amber)', background: 'color-mix(in srgb,var(--amber) 9%,transparent)', border: '1px solid color-mix(in srgb,var(--amber) 28%,transparent)', borderRadius: 8, padding: '5px 8px' }}>
+            <OnyxIcon emoji="ℹ️" size={11} />
+            <span>{L('El EA no ha reportado. Revisa que esté puesto en esta cuenta, con su número magic y con AutoTrading activo.', 'The EA hasn\'t reported. Check it\'s attached to this account, with its magic number and AutoTrading on.')}</span>
+          </div>
+        )}
+
         {b.open?.count > 0 && (
           <div style={{ marginBottom: 8, fontSize: 11.5, display: 'flex', alignItems: 'center', gap: 7, color: 'var(--green)', background: 'color-mix(in srgb,var(--green) 12%,transparent)', border: '1px solid color-mix(in srgb,var(--green) 32%,transparent)', borderRadius: 8, padding: '5px 8px' }}>
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--green)', boxShadow: '0 0 0 3px color-mix(in srgb,var(--green) 22%,transparent)' }} />
@@ -279,6 +287,24 @@ export default function Bots() {
             <div style={{ height: 5, borderRadius: 5, background: 'var(--bg2)', overflow: 'hidden' }}>
               <div style={{ width: `${(b.passed / (b.total || 4)) * 100}%`, height: '100%', background: b.passed === b.total ? 'var(--green)' : 'linear-gradient(90deg,var(--amber),#ffd36b)' }} />
             </div>
+            {/* Qué le falta para graduarse: cada criterio con ✓/✗ y su meta (para que sepa qué mejorar) */}
+            {b.passed < b.total && Array.isArray(b.checks) && (() => {
+              const CRIT_LBL: Record<string, string> = {
+                minDays: L(`${b.days || 0}/${b.criteria?.minDays} días`, `${b.days || 0}/${b.criteria?.minDays} days`),
+                minTrades: L(`${b.trades}/${b.criteria?.minTrades} ops`, `${b.trades}/${b.criteria?.minTrades} trades`),
+                pf: `PF ${num2(b.pf)}/${b.criteria?.pf}`,
+                maxDD: L(`DD ${pct1(b.ddPct)}%/máx ${b.criteria?.maxDD}%`, `DD ${pct1(b.ddPct)}%/max ${b.criteria?.maxDD}%`),
+              };
+              return (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 6 }}>
+                  {b.checks.map((c: any) => (
+                    <span key={c.k} style={{ fontSize: 10, padding: '2px 7px', borderRadius: 99, display: 'inline-flex', alignItems: 'center', gap: 4, color: c.ok ? 'var(--green)' : 'var(--amber)', background: `color-mix(in srgb,${c.ok ? 'var(--green)' : 'var(--amber)'} 12%,transparent)`, border: `1px solid color-mix(in srgb,${c.ok ? 'var(--green)' : 'var(--amber)'} 32%,transparent)` }}>
+                      <OnyxIcon emoji={c.ok ? '✓' : '•'} size={9} glow={false} /> {CRIT_LBL[c.k] || c.k}
+                    </span>
+                  ))}
+                </div>
+              );
+            })()}
             {b.passed === b.total && b.trades > 0 && <button className="btn btn-primary" style={{ width: '100%', marginTop: 8, fontSize: 12 }} onClick={() => save(b, { mode: 'live' })} disabled={busy}>↗ {t.promote}</button>}
           </div>
         )}
@@ -289,7 +315,7 @@ export default function Bots() {
         )}
 
         <div className="row" style={{ gap: 6, marginTop: 'auto', flexWrap: 'wrap' }}>
-          <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '5px 10px' }} onClick={() => { setDetail(detail === b.key ? null : b.key); setEdit(null); }} disabled={b.trades === 0}><OnyxIcon emoji="📊" size={15} /> {t.detail}</button>
+          <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '5px 10px' }} title={b.trades === 0 ? L('Disponible cuando el robot tenga su primera operación.', 'Available once the robot has its first trade.') : ''} onClick={() => { setDetail(detail === b.key ? null : b.key); setEdit(null); }} disabled={b.trades === 0}><OnyxIcon emoji="📊" size={15} /> {t.detail}</button>
           <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '5px 10px' }} onClick={() => (edit === b.key ? setEdit(null) : openEdit(b))}><OnyxIcon emoji="⚙" size={15} /> {t.config}</button>
           <button className="btn btn-ghost" title={L('Añadir/quitar del laboratorio de portafolio', 'Add/remove from the portfolio lab')} style={{ fontSize: 11.5, padding: '5px 10px', color: sel.has(botKey(b)) ? 'var(--brand)' : 'var(--mut)', borderColor: sel.has(botKey(b)) ? 'var(--brand)' : undefined }} onClick={() => toggleSel(botKey(b))}><OnyxIcon emoji="🧩" size={14} /> {sel.has(botKey(b)) ? L('En portafolio', 'In portfolio') : L('Al portafolio', 'To portfolio')}</button>
           {b.pending && <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '5px 10px', color: 'var(--red)', marginLeft: 'auto' }} onClick={() => delBot(b)} disabled={busy}><OnyxIcon emoji="🗑" size={14} /></button>}
@@ -308,7 +334,7 @@ export default function Bots() {
               <Metric k={t.annual} v={money(m.annualNet)} /><Metric k={t.avgWin} v={money(m.avgWin)} /><Metric k={t.avgLoss} v={money(-m.avgLoss)} />
               <Metric k={t.stability} v={m.stability} /><Metric k={t.retDD} v={m.retDD} /><Metric k={t.rec} v={b.recovery} />
             </div>
-            {m.mc && (
+            {m.mc ? (
               <div style={{ marginTop: 10 }}>
                 <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>{t.mcT}</div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 6 }}>
@@ -316,8 +342,10 @@ export default function Bots() {
                 </div>
                 <p className="muted" style={{ fontSize: 10.5, margin: '4px 0 0' }}>{t.mcNote}</p>
               </div>
+            ) : (
+              <p className="muted" style={{ fontSize: 10.5, marginTop: 10 }}><OnyxIcon emoji="🎲" size={11} /> {L('El análisis Monte Carlo aparece cuando el robot acumula 20+ operaciones cerradas.', 'The Monte Carlo analysis appears once the robot has 20+ closed trades.')}</p>
             )}
-            {Array.isArray(m.wf) && m.wf.length > 0 && (
+            {Array.isArray(m.wf) && m.wf.length > 0 ? (
               <div style={{ marginTop: 10 }}>
                 <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>{t.wfT}</div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -330,6 +358,8 @@ export default function Bots() {
                   ))}
                 </div>
               </div>
+            ) : (
+              <p className="muted" style={{ fontSize: 10.5, marginTop: 10 }}><OnyxIcon emoji="📆" size={11} /> {t.wfT}: {t.wfNoData}</p>
             )}
           </div>
         )}
@@ -461,6 +491,7 @@ export default function Bots() {
         <div>
           <h1 style={{ fontSize: 24 }}><OnyxIcon emoji="🤖" size={16} /> {t.title}</h1>
           <p className="muted" style={{ marginTop: 6 }}>{t.sub}</p>
+          <p className="muted" style={{ marginTop: 4, fontSize: 12.5, display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="💡" size={12} /> {L('Tus robots aparecen aquí solos cuando su EA opera con su número magic en una cuenta conectada.', 'Your robots show up here automatically when their EA trades with its magic number on a connected account.')}</p>
         </div>
         <Link href="/dashboard/constructor" className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontWeight: 700, padding: '11px 20px', boxShadow: '0 0 0 1px var(--brand), 0 6px 18px color-mix(in srgb, var(--brand) 45%, transparent)' }}><OnyxIcon emoji="➕" size={15} glow={false} /> {lang === 'es' ? 'Crear robot' : 'Create robot'}</Link>
       </div>
