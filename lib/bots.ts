@@ -216,7 +216,7 @@ export async function loadBots(userId: string) {
     return {
       magic: Number(magic), key, accountId: accId, accName: accName(acc), accOnline: online,
       name, mode, pair: sym.pair, symbols: sym.symbols,
-      net: Math.round(net), trades: n, winRate: Math.round(winRate),
+      net: r2(net), trades: n, winRate: Math.round(winRate),
       pf: r2(pf), expectancy: r2(expectancy), dd: Math.round(dd), ddPct: r1(ddPct),
       recovery: r1(recovery), days, tradesPerDay: r1(tradesPerDay),
       running: isRunning, status: (isRunning ? 'operando' : online ? 'espera' : 'inactivo') as 'operando' | 'espera' | 'inactivo',

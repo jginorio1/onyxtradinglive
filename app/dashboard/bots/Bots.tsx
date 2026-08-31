@@ -372,17 +372,18 @@ export default function Bots() {
   }, [selBots]);
 
   // ---- Sugerencias: universo = bots con curva y expectativa positiva ----
-  const universe = useMemo(() => bots.filter((b: any) => (b.spark?.length || 0) >= 3 && b.trades > 0), [bots]);
+  const canCorr = (b: any) => (b.spark?.length || 0) >= 3 && b.trades > 0;   // se puede correlacionar
+  const universe = useMemo(() => bots.filter(canCorr), [bots]);
   const avgCorrOf = (arr: any[]) => { const d2 = diversification(arr); return d2 == null ? null : (100 - d2) / 100; };
-  function greedyLowCorr(pool: any[], size: number) {
+  function greedyLowCorr(pool: any[], size: number, seed?: any) {
     if (!pool.length) return [];
-    const chosen = [pool.slice().sort((a, b) => (b.net || 0) - (a.net || 0))[0]];
+    const chosen = [seed || pool.slice().sort((a, b) => (b.net || 0) - (a.net || 0))[0]];
     while (chosen.length < size && chosen.length < pool.length) {
       let best: any = null, bestScore = Infinity;
       for (const c of pool) {
         if (chosen.includes(c)) continue;
         const sc = avgCorrOf([...chosen, c]);
-        const score = (sc == null ? 0.5 : sc) - (c.net > 0 ? 0.05 : 0);   // premia expectativa positiva
+        const score = (sc == null ? 0.5 : sc) - (c.net > 0 ? 0.05 : 0);   // premia baja correlación + expectativa positiva
         if (score < bestScore) { bestScore = score; best = c; }
       }
       if (!best) break; chosen.push(best);
@@ -392,11 +393,17 @@ export default function Bots() {
   const suggestions = useMemo(() => {
     const pos = universe.filter((b: any) => (b.net || 0) > 0);
     const pool = pos.length >= 2 ? pos : universe;
-    const defensive = greedyLowCorr(pool, 3);
-    const balanced = greedyLowCorr(pool, Math.min(4, pool.length));
-    const aggressive = pool.slice().sort((a, b) => (b.net || 0) - (a.net || 0)).slice(0, 3);
-    const pack = (arr: any[]) => ({ bots: arr, div: diversification(arr), dd: maxDD(combinedCurve(arr.map((b) => b.spark || []))), net: arr.reduce((s, b) => s + (b.net || 0), 0) });
-    return pool.length >= 2 ? { defensive: pack(defensive), balanced: pack(balanced), aggressive: pack(aggressive) } : null;
+    if (pool.length < 2) return null;
+    const pack = (arr: any[]) => ({ bots: arr, div: diversification(arr), dd: maxDD(combinedCurve(arr.map((b) => b.spark || []))), net: arr.reduce((s, b) => s + (b.net || 0), 0), key: arr.map((b) => b.magic).sort().join(',') });
+    // Defensivo: arranca del bot de menor DD y añade poco correlacionados (más estabilidad).
+    const seedLowDD = pool.slice().sort((a, b) => (Number(a.ddPct) || 0) - (Number(b.ddPct) || 0))[0];
+    const defensive = pack(greedyLowCorr(pool, Math.min(3, pool.length), seedLowDD));
+    // Equilibrado: mayor mezcla de expectativa + diversificación (hasta 4).
+    const balanced = pack(greedyLowCorr(pool, Math.min(4, pool.length)));
+    // Agresivo: los de mayor ganancia (sin mirar correlación).
+    const aggressive = pack(pool.slice().sort((a, b) => (b.net || 0) - (a.net || 0)).slice(0, Math.min(3, pool.length)));
+    const distinct = new Set([defensive.key, balanced.key, aggressive.key]).size > 1;
+    return { defensive, balanced, aggressive, distinct, best: balanced };
   }, [universe]);
   // Bot que más diversifica: el que más sube la diversificación del portafolio actual.
   const bestToAdd = useMemo(() => {
@@ -525,8 +532,8 @@ export default function Bots() {
                   </div>
                   {curve.length >= 2 ? <AreaSpark pts={curve} color={accent} /> : <div style={{ height: 42 }} />}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                    <div style={{ background: 'var(--bg2)', borderRadius: 9, padding: '7px 9px' }}><div className="muted" style={{ fontSize: 10.5 }}>{L('Mejor bot', 'Best bot')}</div><div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--green)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{best ? `${best.pair || best.name} ${money(best.net)}` : '—'}</div></div>
-                    <div style={{ background: 'var(--bg2)', borderRadius: 9, padding: '7px 9px' }}><div className="muted" style={{ fontSize: 10.5 }}>{L('Peor bot', 'Worst bot')}</div><div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--red)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{worst ? `${worst.pair || worst.name} ${money(worst.net)}` : '—'}</div></div>
+                    <div style={{ background: 'var(--bg2)', borderRadius: 9, padding: '7px 9px' }}><div className="muted" style={{ fontSize: 10.5 }}>{L('Mejor bot', 'Best bot')}</div><div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--green)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{best ? `${best.pair || best.name} ${money2(best.net)}` : '—'}</div></div>
+                    <div style={{ background: 'var(--bg2)', borderRadius: 9, padding: '7px 9px' }}><div className="muted" style={{ fontSize: 10.5 }}>{L('Peor bot', 'Worst bot')}</div><div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--red)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{worst ? `${worst.pair || worst.name} ${money2(worst.net)}` : '—'}</div></div>
                     <div style={{ background: 'var(--bg2)', borderRadius: 9, padding: '7px 9px' }}><div className="muted" style={{ fontSize: 10.5 }}>{L('DD máx.', 'Max DD')}</div><div style={{ fontSize: 12.5, fontWeight: 700, color: ddMax > 10 ? 'var(--amber)' : 'var(--tx)' }}>{pct1(ddMax)}%</div></div>
                     <div style={{ background: 'var(--bg2)', borderRadius: 9, padding: '7px 9px' }}><div className="muted" style={{ fontSize: 10.5 }}>{L('Diversificación', 'Diversification')}</div><div style={{ fontSize: 12.5, fontWeight: 700, color: divCol(diversification(mine)) }}>{divTxt(diversification(mine))}</div></div>
                   </div>
@@ -539,16 +546,32 @@ export default function Bots() {
           {/* ====== LABORATORIO DE PORTAFOLIO ====== */}
           <div className="card" style={{ padding: '16px 16px 18px', marginBottom: 16 }}>
             <h3 style={{ marginBottom: 4 }}><OnyxIcon emoji="🧪" size={16} /> {L('Laboratorio de portafolio', 'Portfolio lab')}</h3>
-            <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{L('Elige los bots que quieras (de cualquier cuenta) y compara su correlación, curva y caída combinadas. Frío = diversifican; cálido = se mueven juntos.', 'Pick any bots (from any account) and compare their combined correlation, curve and drawdown. Cool = they diversify; warm = they move together.')}</p>
+            <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{L('Prueba combinaciones de tus robots sin arriesgar dinero: mira si se diversifican (se mueven por separado) o si caen juntos.', 'Test combinations of your robots without risking money: see if they diversify (move separately) or fall together.')}</p>
 
-            {/* Chips de selección */}
+            {/* Cómo usarlo, en 3 pasos simples */}
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
+              {[
+                { n: '1', tx: L('Toca los robots que quieras juntar', 'Tap the robots you want together') },
+                { n: '2', tx: L('Mira la “Diversificación”: verde = bien, rojo = caen juntos', 'Check “Diversification”: green = good, red = fall together') },
+                { n: '3', tx: L('¿No sabes cuáles? Usa un portafolio sugerido abajo', 'Not sure which? Use a suggested portfolio below') },
+              ].map((s) => (
+                <div key={s.n} style={{ flex: '1 1 180px', minWidth: 170, display: 'flex', gap: 8, alignItems: 'flex-start', background: 'var(--bg2)', borderRadius: 10, padding: '9px 11px' }}>
+                  <span style={{ flex: 'none', width: 20, height: 20, borderRadius: 6, background: 'color-mix(in srgb,var(--brand) 20%,transparent)', color: 'var(--brand)', display: 'grid', placeItems: 'center', fontSize: 12, fontWeight: 700 }}>{s.n}</span>
+                  <span style={{ fontSize: 12, lineHeight: 1.4 }}>{s.tx}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Contador que cuadra con las cuentas + chips (todos los bots; sin datos = deshabilitado) */}
+            <div className="muted" style={{ fontSize: 11.5, marginBottom: 7 }}>{L(`Elige tus robots · ${universe.length} de ${bots.length} tienen operaciones (los demás aún no se pueden comparar)`, `Pick your robots · ${universe.length} of ${bots.length} have trades (the rest can\'t be compared yet)`)}</div>
             <div className="row" style={{ gap: 7, flexWrap: 'wrap', marginBottom: 14 }}>
-              {universe.length === 0 && <span className="muted" style={{ fontSize: 12.5 }}>{L('Aún no hay bots con operaciones para armar un portafolio.', 'No bots with trades yet to build a portfolio.')}</span>}
-              {universe.map((b: any) => {
-                const on = sel.has(botKey(b));
+              {bots.length === 0 && <span className="muted" style={{ fontSize: 12.5 }}>{L('Aún no hay robots.', 'No robots yet.')}</span>}
+              {[...bots].sort((a, b) => Number(canCorr(b)) - Number(canCorr(a))).map((b: any) => {
+                const on = sel.has(botKey(b)); const ok = canCorr(b);
                 return (
-                  <button key={b.key} onClick={() => toggleSel(botKey(b))} style={{ fontSize: 12.5, padding: '6px 11px', borderRadius: 999, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid ' + (on ? 'color-mix(in srgb,var(--green) 55%,transparent)' : 'var(--line)'), background: on ? 'color-mix(in srgb,var(--green) 16%,transparent)' : 'var(--bg2)', color: on ? 'var(--green)' : 'var(--mut)' }}>
-                    <OnyxIcon emoji={on ? '✅' : '➕'} size={12} /> {chipLabel(b)} <span style={{ opacity: .7 }}>#{b.magic}</span>
+                  <button key={b.key} disabled={!ok} title={ok ? '' : L('Aún sin operaciones — no se puede comparar', 'No trades yet — can\'t be compared')} onClick={() => ok && toggleSel(botKey(b))}
+                    style={{ fontSize: 12.5, padding: '6px 11px', borderRadius: 999, cursor: ok ? 'pointer' : 'not-allowed', opacity: ok ? 1 : 0.45, display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid ' + (on ? 'color-mix(in srgb,var(--green) 55%,transparent)' : 'var(--line)'), background: on ? 'color-mix(in srgb,var(--green) 16%,transparent)' : 'var(--bg2)', color: on ? 'var(--green)' : 'var(--mut)' }}>
+                    <OnyxIcon emoji={on ? '✅' : ok ? '➕' : '⏳'} size={12} /> {chipLabel(b)} <span style={{ opacity: .7 }}>#{b.magic}</span>
                   </button>
                 );
               })}
@@ -561,10 +584,17 @@ export default function Bots() {
               <>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(130px,1fr))', gap: 10, marginBottom: 14 }}>
                   <div style={{ background: 'var(--bg2)', borderRadius: 12, padding: '11px 13px' }}><div className="muted" style={{ fontSize: 11 }}>{L('Net combinado', 'Combined net')}</div><div style={{ fontSize: 20, fontWeight: 800, color: (labStats!.net) >= 0 ? 'var(--green)' : 'var(--red)' }}>{money2(labStats!.net)}</div></div>
-                  <div style={{ background: 'var(--bg2)', borderRadius: 12, padding: '11px 13px' }}><div className="muted" style={{ fontSize: 11 }}>{L('PF del combo', 'Combined PF')}</div><div style={{ fontSize: 20, fontWeight: 800 }}>{num2(labStats!.pf)}</div></div>
+                  <div style={{ background: 'var(--bg2)', borderRadius: 12, padding: '11px 13px' }}><div className="muted" style={{ fontSize: 11 }}>{L('Robots en el combo', 'Robots in combo')}</div><div style={{ fontSize: 20, fontWeight: 800 }}>{selBots.length}</div></div>
                   <div style={{ background: 'var(--bg2)', borderRadius: 12, padding: '11px 13px' }}><div className="muted" style={{ fontSize: 11 }}>{L('DD del combo', 'Combo drawdown')}</div><div style={{ fontSize: 20, fontWeight: 800, color: 'var(--red)' }}>−${Math.round(labStats!.dd).toLocaleString()}</div></div>
                   <div style={{ background: 'var(--bg2)', borderRadius: 12, padding: '11px 13px' }}><div className="muted" style={{ fontSize: 11 }}>{L('Diversificación', 'Diversification')}</div><div style={{ fontSize: 20, fontWeight: 800, color: divCol(labStats!.div) }}>{divTxt(labStats!.div)}</div></div>
                 </div>
+
+                {/* Veredicto en lenguaje simple */}
+                {labStats!.div != null && (
+                  <div style={{ fontSize: 12.5, marginBottom: 12, background: `color-mix(in srgb,${divCol(labStats!.div)} 9%,var(--bg2))`, border: `1px solid color-mix(in srgb,${divCol(labStats!.div)} 30%,transparent)`, borderRadius: 10, padding: '9px 12px' }}>
+                    <b style={{ color: divCol(labStats!.div) }}>{labStats!.div}% {L('de diversificación', 'diversification')}</b> — {labStats!.div >= 60 ? L('muy bien: estos robots se mueven por separado, así que rara vez caen todos a la vez.', 'great: these robots move separately, so they rarely all fall at once.') : labStats!.div >= 35 ? L('aceptable: algunos tienden a moverse juntos. Cambia uno por otro menos parecido para mejorar.', 'okay: some tend to move together. Swap one for a less similar bot to improve.') : L('ojo: se mueven casi igual. Sus caídas se suman — no estás diversificando de verdad.', 'careful: they move almost the same. Their drawdowns stack — you\'re not really diversifying.')}
+                  </div>
+                )}
 
                 {/* Aviso si dos bots en vivo se mueven juntos */}
                 {(() => {
@@ -615,12 +645,15 @@ export default function Bots() {
             <div className="card" style={{ padding: '16px 16px 18px' }}>
               <h3 style={{ marginBottom: 4 }}><OnyxIcon emoji="✨" size={16} /> {L('Portafolios sugeridos', 'Suggested portfolios')}</h3>
               <p className="muted" style={{ fontSize: 13, marginBottom: 14 }}>{L('Onyx elige combinaciones de bots poco correlacionados y con expectativa positiva. Toca “Aplicar” para cargarlos al laboratorio.', 'Onyx picks combinations of low-correlated, positive-expectancy bots. Tap “Apply” to load them into the lab.')}</p>
+              {!suggestions.distinct && <div style={{ fontSize: 12.5, color: 'var(--amber)', background: 'color-mix(in srgb,var(--amber) 10%,transparent)', border: '1px solid color-mix(in srgb,var(--amber) 32%,transparent)', borderRadius: 10, padding: '9px 12px', marginBottom: 12 }}><OnyxIcon emoji="ℹ️" size={12} /> {L('Todavía tienes pocos robots con historial, por eso las tres opciones coincidían. Cuando más robots tengan operaciones, verás Defensivo, Equilibrado y Agresivo distintos.', 'You still have few robots with history, so the three options matched. With more robots that have trades, you\'ll see distinct Defensive, Balanced and Aggressive.')}</div>}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(210px,1fr))', gap: 12 }}>
-                {[
+                {(suggestions.distinct ? [
                   { key: 'defensive', icon: '🛡️', title: L('Defensivo', 'Defensive'), sub: L('Menor riesgo, más estable', 'Lower risk, steadier'), p: suggestions.defensive, hi: false },
                   { key: 'balanced', icon: '⚖️', title: L('Equilibrado', 'Balanced'), sub: L('Mejor balance riesgo/retorno', 'Best risk/return balance'), p: suggestions.balanced, hi: true },
                   { key: 'aggressive', icon: '🔥', title: L('Agresivo', 'Aggressive'), sub: L('Más retorno, más varianza', 'More return, more variance'), p: suggestions.aggressive, hi: false },
-                ].map((s) => (
+                ] : [
+                  { key: 'best', icon: '✨', title: L('Mejor combinación disponible', 'Best available combo'), sub: L('Con los robots que tienen historial', 'From robots that have history'), p: suggestions.best, hi: true },
+                ]).map((s) => (
                   <div key={s.key} style={{ background: 'var(--card)', border: s.hi ? '2px solid var(--brand)' : '1px solid var(--line)', borderRadius: 12, padding: 14, boxShadow: s.hi ? '0 0 0 1px color-mix(in srgb,var(--brand) 25%,transparent)' : 'none' }}>
                     {s.hi && <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--brand)', background: 'color-mix(in srgb,var(--brand) 14%,transparent)', padding: '2px 8px', borderRadius: 99 }}>{L('Recomendado', 'Recommended')}</span>}
                     <div style={{ fontSize: 15, fontWeight: 700, margin: '6px 0 2px' }}><OnyxIcon emoji={s.icon} size={14} /> {s.title}</div>
