@@ -263,12 +263,18 @@ export default function Bots() {
           <span className="muted">{t.ops} <b style={{ color: 'var(--tx)' }}>{b.trades}</b></span>
         </div>
 
-        {/* Por qué no está "operando": el EA no ha reportado. Explica el siguiente paso. */}
+        {/* Aviso según el estado real del robot: "en espera" (conectado, sin señal)
+            → informativo/calmado; "desconectado" (EA no reporta) → acción. */}
         {!b.pending && b.status !== 'operando' && (b.open?.count || 0) === 0 && (
-          <div style={{ marginBottom: 8, fontSize: 11, display: 'flex', alignItems: 'flex-start', gap: 6, color: 'var(--amber)', background: 'color-mix(in srgb,var(--amber) 9%,transparent)', border: '1px solid color-mix(in srgb,var(--amber) 28%,transparent)', borderRadius: 8, padding: '5px 8px' }}>
-            <OnyxIcon emoji="ℹ️" size={11} />
-            <span>{L('El EA no ha reportado. Revisa que esté puesto en esta cuenta, con su número magic y con AutoTrading activo.', 'The EA hasn\'t reported. Check it\'s attached to this account, with its magic number and AutoTrading on.')}</span>
-          </div>
+          b.status === 'espera'
+            ? <div style={{ marginBottom: 8, fontSize: 11, display: 'flex', alignItems: 'flex-start', gap: 6, color: 'var(--mut)', background: 'rgba(255,255,255,.04)', border: '1px solid var(--line)', borderRadius: 8, padding: '5px 8px' }}>
+                <OnyxIcon emoji="⏳" size={11} glow={false} />
+                <span>{L('En espera: el robot está conectado pero no hay señal ahora. Suele ser porque está fuera de su horario/sesión o aún no aparece su entrada.', 'On standby: the robot is connected but there\'s no signal right now. Usually it\'s outside its session/hours or its setup hasn\'t appeared yet.')}</span>
+              </div>
+            : <div style={{ marginBottom: 8, fontSize: 11, display: 'flex', alignItems: 'flex-start', gap: 6, color: 'var(--amber)', background: 'color-mix(in srgb,var(--amber) 9%,transparent)', border: '1px solid color-mix(in srgb,var(--amber) 28%,transparent)', borderRadius: 8, padding: '5px 8px' }}>
+                <OnyxIcon emoji="🔌" size={11} glow={false} />
+                <span>{L('Sin conexión: el EA no ha reportado. Ponlo en esta cuenta con su número magic y AutoTrading activo.', 'No connection: the EA hasn\'t reported. Attach it to this account with its magic number and AutoTrading on.')}</span>
+              </div>
         )}
 
         {b.open?.count > 0 && (
