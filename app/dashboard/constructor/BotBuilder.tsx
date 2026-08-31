@@ -69,6 +69,8 @@ export default function BotBuilder() {
   const [copied, setCopied] = useState('');              // URL copiada al portapapeles
   const [bal, setBal] = useState<number>(10000);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [visited, setVisited] = useState<Record<string, boolean>>({}); // secciones que TÚ abriste
+  const [myKey, setMyKey] = useState<string>('');   // tu clave Onyx activa (para el popup)
   const set = (k: keyof BotSpec, v: any) => { setTouched((t) => ({ ...t, [k as string]: true })); setS((p) => ({ ...p, [k]: v })); };
   const touchAll = () => setTouched(Object.fromEntries(Object.keys(DEFAULT_SPEC).map((k) => [k, true])));
   const BUILD_SECS = 7;   // duración de la animación de creación (segundos)
@@ -81,7 +83,9 @@ export default function BotBuilder() {
     return 1000000 + (Date.now() % 8999999);
   }
 
-  useEffect(() => { load(); loadTpls(); setS((p) => ({ ...p, botLang: es ? 'es' : 'en' })); }, []);
+  useEffect(() => { load(); loadTpls(); loadMyKey(); setS((p) => ({ ...p, botLang: es ? 'es' : 'en' })); }, []);
+  // Trae tu clave Onyx activa (no revocada, no de copia) para ofrecerla en el popup.
+  async function loadMyKey() { try { const r = await fetch('/api/keys'); const j = await r.json(); const k = (j.keys || []).find((x: any) => !x.revoked && x.kind !== 'copy') || (j.keys || [])[0]; if (k?.key) setMyKey(String(k.key)); } catch {} }
   // Al abrir un robot NUEVO (sin id) le asignamos un magic único apenas carga la lista
   // de robots existentes, para que nunca choque con otro. Si el trader lo edita, se respeta.
   useEffect(() => { if (!id && list.length) setS((p) => (Number(p.magic) === DEFAULT_SPEC.magic ? { ...p, magic: genMagic(list) } : p)); }, [list]);
@@ -154,10 +158,11 @@ export default function BotBuilder() {
     const name = prompt(L('Nombre de la plantilla:', 'Template name:'), s.name); if (!name) return;
     try { const r = await fetch('/api/bots/templates', { method: 'POST', body: JSON.stringify({ name, spec: s }) }); const j = await r.json(); if (!r.ok) { toastErr(j); return; } toast(L('Plantilla guardada.', 'Template saved.')); loadTpls(); } catch { toastErr(L('No se pudo guardar.', 'Could not save.')); }
   }
-  function applyTpl(t: any) { setS({ ...DEFAULT_SPEC, ...(t.spec || {}), magic: genMagic() }); setId(''); touchAll(); window.scrollTo({ top: 0, behavior: 'smooth' }); toast(L('Plantilla cargada.', 'Template loaded.')); }
+  const visitAll = () => setVisited(Object.fromEntries(['general', 'entry', 'exits', 'risk', 'firm', 'schedule'].map((k) => [k, true])));
+  function applyTpl(t: any) { setS({ ...DEFAULT_SPEC, ...(t.spec || {}), magic: genMagic() }); setId(''); touchAll(); visitAll(); window.scrollTo({ top: 0, behavior: 'smooth' }); toast(L('Plantilla cargada.', 'Template loaded.')); }
   async function delTpl(tid: string) { if (!confirm(L('¿Borrar esta plantilla?', 'Delete this template?'))) return; await fetch('/api/bots/templates?id=' + tid, { method: 'DELETE' }); loadTpls(); }
-  function edit(b: any) { setS({ ...DEFAULT_SPEC, ...(b.spec || {}) }); setId(b.id); touchAll(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
-  function nuevo() { setS({ ...DEFAULT_SPEC, magic: genMagic() }); setId(''); setTouched({}); }
+  function edit(b: any) { setS({ ...DEFAULT_SPEC, ...(b.spec || {}) }); setId(b.id); touchAll(); visitAll(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+  function nuevo() { setS({ ...DEFAULT_SPEC, magic: genMagic() }); setId(''); setTouched({}); setVisited({}); go('home'); }
   async function del(bid: string) { if (!confirm(L('¿Borrar este bot?', 'Delete this bot?'))) return; await fetch('/api/bots/build?id=' + bid, { method: 'DELETE' }); if (id === bid) nuevo(); load(); }
   async function openGuide() { let bid = id; if (!bid) { bid = (await save()) || ''; } if (bid) window.open(`/api/bots/build?guide=${bid}&lang=${es ? 'es' : 'en'}`, '_blank'); }
 
@@ -191,8 +196,13 @@ export default function BotBuilder() {
     ['firm', '🏦', L('Fondeo y frenos', 'Firm & brakes'), L('Firm, DD, objetivo de fase', 'Firm, DD, phase target')],
     ['schedule', '🕐', L('Horario y noticias', 'Schedule & news'), L('Sesión, cierre, noticias', 'Session, close, news')],
   ];
-  const secStatus = (k: string) => k === 'general' ? (s.name?.trim() && s.symbol?.trim() ? 'ok' : 'warn') : k === 'exits' ? (nz(s.slVal) && nz(s.tp1Val) && nz(s.runnerVal) ? 'ok' : 'warn') : k === 'risk' ? (nz(s.riskVal) ? 'ok' : 'warn') : 'ok';
-  const go = (v: string) => { setView(v); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  // ¿Los campos clave de una sección son válidos? (independiente de si la abriste)
+  const secValid = (k: string) => k === 'general' ? !!(s.name?.trim() && s.symbol?.trim()) : k === 'exits' ? (nz(s.slVal) && nz(s.tp1Val) && nz(s.runnerVal)) : k === 'risk' ? nz(s.riskVal) : true;
+  // Estado real de la tarjeta: gris si no la abriste, ámbar si falta algo, verde si la revisaste y está bien.
+  const secStatus = (k: string): 'idle' | 'warn' | 'ok' => !visited[k] ? 'idle' : (secValid(k) ? 'ok' : 'warn');
+  const reviewedSecs = ['general', 'entry', 'exits', 'risk', 'firm', 'schedule'].filter((k) => visited[k]).length;
+  const secPct = Math.round(100 * reviewedSecs / 6);
+  const go = (v: string) => { setView(v); if (v !== 'home') setVisited((p) => ({ ...p, [v]: true })); window.scrollTo({ top: 0, behavior: 'smooth' }); };
 
   // Datos legibles para el resumen visual del bot.
   const uu = (x: string) => (({ pct: '%', money: '$', pips: 'pips', atr: '× ATR', rr: 'R', structure: L('estructura', 'structure') } as any)[x] || x);
@@ -269,8 +279,9 @@ export default function BotBuilder() {
       .bbx-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px;margin-bottom:14px}
       .bbx-card{text-align:left;background:linear-gradient(180deg,rgba(34,37,54,.72),rgba(23,25,38,.72));border:1.5px solid rgba(255,255,255,.08);border-radius:14px;padding:15px;cursor:pointer;transition:.15s;font:inherit}
       .bbx-card:hover{transform:translateY(-2px);border-color:rgba(139,147,255,.6);box-shadow:0 0 24px rgba(139,147,255,.14)}
-      .bbx-card-ok{border-color:rgba(139,147,255,.38)}
+      .bbx-card-ok{border-color:rgba(95,224,170,.42);box-shadow:0 0 22px rgba(45,210,150,.10)}
       .bbx-card-warn{border-color:rgba(242,194,101,.5);box-shadow:0 0 22px rgba(242,194,101,.12)}
+      .bbx-card-idle{border-color:rgba(255,255,255,.08);border-style:dashed}
       .bbx-card-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
       .bbx-card-t{font-size:14px;font-weight:600;color:var(--ink)}
       .bbx-card-s{font-size:11.5px;color:var(--mut);margin-top:2px;line-height:1.4}
@@ -286,8 +297,8 @@ export default function BotBuilder() {
           <button className="bbx-btn" onClick={() => setBig((v) => !v)}><OnyxIcon emoji={big ? '🗕' : '🗖'} size={14} /> {big ? L('Reducir', 'Shrink') : L('Pantalla ancha', 'Wide screen')}</button>
         </div>
         <div style={{ marginTop: 14 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 12.5, color: '#fff' }}><span style={{ fontWeight: 600 }}>{L('Revisado', 'Reviewed')} {pct}%</span><span style={{ color: 'rgba(255,255,255,.8)' }}>{missCount ? L(`${missCount} campo(s) sin definir`, `${missCount} field(s) undefined`) : allReviewed ? L('Todo listo', 'All set') : L('Revisa y ajusta tus campos', 'Review and adjust your fields')}</span></div>
-          <div className={'bbx-prog' + (allReviewed ? ' full' : '')}><i style={{ width: pct + '%' }} /></div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 12.5, color: '#fff' }}><span style={{ fontWeight: 600 }}>{L(`${reviewedSecs} de 6 secciones revisadas`, `${reviewedSecs} of 6 sections reviewed`)}</span><span style={{ color: 'rgba(255,255,255,.8)' }}>{missCount ? L(`${missCount} campo(s) sin definir`, `${missCount} field(s) undefined`) : reviewedSecs === 6 ? L('Todo revisado', 'All reviewed') : L('Abre cada sección para revisarla', 'Open each section to review it')}</span></div>
+          <div className={'bbx-prog' + (reviewedSecs === 6 && !missCount ? ' full' : '')}><i style={{ width: secPct + '%' }} /></div>
         </div>
       </div>
 
@@ -309,7 +320,8 @@ export default function BotBuilder() {
       {/* Tablero de tarjetas */}
       {view === 'home' ? (
         <div className="bbx-cards">
-          {CARDS.map(([k, ic, ti, su]) => { const st = secStatus(k); const ch = st === 'warn' ? { c: 'warn', t: L('Revisar', 'Review') } : { c: 'ok', t: L('Listo', 'Ready') };
+          {CARDS.map(([k, ic, ti, su]) => { const st = secStatus(k);
+            const ch = st === 'warn' ? { c: 'warn', t: L('Revisar', 'Review') } : st === 'ok' ? { c: 'ok', t: L('Listo', 'Ready') } : { c: 'off', t: L('Sin revisar', 'Not reviewed') };
             return (
               <button key={k} className={'bbx-card bbx-card-' + st} onClick={() => go(k)}>
                 <div className="bbx-card-h"><span className="bbx-ic"><OnyxIcon emoji={ic} size={16} /></span><span style={{ color: 'var(--mut)', fontSize: 16 }}>›</span></div>
@@ -327,8 +339,8 @@ export default function BotBuilder() {
 
       {view === 'general' && (
       <Panel ic="⚙️" title={L('General', 'General')}>
-        <Fld t={L('Nombre de tu bot', 'Your bot name')} k="name" ph={L('Ej: Mi cazador de Londres', 'e.g. My London hunter')} />
-        <Fld t={L('Plataforma', 'Platform')} k="platform" opts={[['mt5', 'MetaTrader 5'], ['mt4', 'MetaTrader 4'], ['ctrader', 'cTrader']]} />
+        <Fld t={L('Nombre de tu bot', 'Your bot name')} k="name" ph={L('Ej: Mi cazador de Londres', 'e.g. My London hunter')} hint={L('Solo para identificarlo en tu lista. Ponle algo que reconozcas.', 'Just to identify it in your list. Use something you\'ll recognize.')} />
+        <Fld t={L('Plataforma', 'Platform')} k="platform" opts={[['mt5', 'MetaTrader 5'], ['mt4', 'MetaTrader 4'], ['ctrader', 'cTrader']]} hint={L('La app donde correrá el robot. Genera el archivo correcto (.mq5, .mq4 o .cs).', 'The app the robot will run on. Generates the right file (.mq5, .mq4 or .cs).')} />
         <Fld t={L('Instrumento', 'Instrument')} k="symbol" ph="XAUUSD" list="bbx-syms" hint={L('El bot encuentra el símbolo aunque tu broker use otro nombre o sufijo (GOLD, XAUUSD.m, etc.).', 'The bot finds the symbol even if your broker uses another name or suffix (GOLD, XAUUSD.m, etc.).')} />
         <datalist id="bbx-syms">{SYMBOL_HINTS.map((x) => <option key={x} value={x} />)}</datalist>
         {/* Magic con generador: se asigna uno único automáticamente y se puede regenerar. */}
@@ -341,18 +353,18 @@ export default function BotBuilder() {
           <div style={{ fontSize: 11, color: 'var(--mut)', marginTop: 4 }}>{L('Se asigna uno único automáticamente. Cámbialo si quieres uno específico.', 'A unique one is set automatically. Change it if you want a specific one.')}</div>
         </div>
         <Fld t={L('Temporalidad de entrada', 'Entry timeframe')} k="tf" opts={TFS} hint={L('Ritmo de las velas que analiza para entrar.', 'Candle rhythm it reads to enter.')} />
-        <Fld t={L('Idioma del bot (panel y EA)', 'Bot language (panel & EA)')} k="botLang" opts={[['es', 'Español'], ['en', 'English']]} />
+        <Fld t={L('Idioma del bot (panel y EA)', 'Bot language (panel & EA)')} k="botLang" opts={[['es', 'Español'], ['en', 'English']]} hint={L('Idioma del panel del robot en el gráfico y de sus mensajes.', 'Language of the robot\'s on-chart panel and its messages.')} />
       </Panel>
       )}
 
       {view === 'entry' && (<>
       <Panel ic="🎯" title={L('Entrada', 'Entry')} sub={L('El bot ejecuta la entrada en la plataforma. Elige el gatillo, el sesgo y la sesión.', 'The bot executes the entry on the platform. Pick the trigger, bias and session.')}>
-        <Fld t={L('Gatillo de entrada', 'Entry trigger')} k="entryTrigger" opts={[['breakout_swing', L('Ruptura de swing + pullback', 'Swing breakout + pullback')], ['ma_cross', L('Cruce de medias', 'MA cross')], ['rsi', 'RSI'], ['donchian', 'Donchian'], ['time', L('Hora fija', 'Fixed time')]]} />
-        <Fld t={L('Sesgo / tendencia', 'Bias / trend')} k="trendMode" opts={[[0, L('Media', 'Moving average')], [1, L('Estructura (HH/HL)', 'Structure (HH/HL)')], [2, 'Donchian']]} />
+        <Fld t={L('Gatillo de entrada', 'Entry trigger')} k="entryTrigger" opts={[['breakout_swing', L('Ruptura de swing + pullback', 'Swing breakout + pullback')], ['ma_cross', L('Cruce de medias', 'MA cross')], ['rsi', 'RSI'], ['donchian', 'Donchian'], ['time', L('Hora fija', 'Fixed time')]]} hint={L('La señal que dispara la entrada. Es el “cuándo entra” el robot.', 'The signal that fires the entry. It\'s the robot\'s “when to enter”.')} />
+        <Fld t={L('Sesgo / tendencia', 'Bias / trend')} k="trendMode" opts={[[0, L('Media', 'Moving average')], [1, L('Estructura (HH/HL)', 'Structure (HH/HL)')], [2, 'Donchian']]} hint={L('Cómo decide la dirección. Solo opera a favor de esta tendencia.', 'How it reads direction. It only trades in favor of this trend.')} />
         <Fld t={L('Temporalidad del sesgo', 'Bias timeframe')} k="trendTF" opts={TFS} hint={L('Marco mayor para leer la tendencia.', 'Higher timeframe to read the trend.')} />
-        <Fld t={L('Tamaño del swing', 'Swing size')} k="microSwing" type="number" />
-        <Fld t={L('Máx. ops/día (0=∞)', 'Max trades/day (0=∞)')} k="maxTradesPerDay" type="number" />
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', paddingTop: 20 }}><Toggle k="allowLongs" t={L('Largos', 'Longs')} /><Toggle k="allowShorts" t={L('Cortos', 'Shorts')} /></div>
+        <Fld t={L('Tamaño del swing', 'Swing size')} k="microSwing" type="number" hint={L('Cuántas velas mira a cada lado para marcar un máximo/mínimo. Más grande = señales más filtradas.', 'How many candles it checks each side to mark a high/low. Bigger = more filtered signals.')} />
+        <Fld t={L('Máx. ops/día (0=∞)', 'Max trades/day (0=∞)')} k="maxTradesPerDay" type="number" hint={L('Límite de operaciones por día. 0 = sin límite.', 'Cap of trades per day. 0 = no limit.')} />
+        <div><div style={{ display: 'flex', gap: 10, alignItems: 'center', paddingTop: 20 }}><Toggle k="allowLongs" t={L('Largos', 'Longs')} /><Toggle k="allowShorts" t={L('Cortos', 'Shorts')} /></div><div className="bbx-hint">{L('Permite que el robot compre (largos) y/o venda (cortos). Deja ambos para operar en las dos direcciones.', 'Lets the robot buy (longs) and/or sell (shorts). Keep both to trade both ways.')}</div></div>
       </Panel>
 
       </>)}
@@ -361,13 +373,13 @@ export default function BotBuilder() {
       <div className="bbx-panel">
         <div className="bbx-panel-h"><span className="bbx-ic"><OnyxIcon emoji="🚪" size={16} /></span><div><div>{L('Salidas y gestión', 'Exits & management')}</div><div className="bbx-sub">{L('Mismas unidades en todos: pips, R, %, $ o × ATR. El bot las convierte a distancia de precio en tiempo real. Usa el interruptor para activar o desactivar lo opcional.', 'Same units everywhere: pips, R, %, $ or × ATR. The bot converts them to a price distance in real time. Use the switch to enable or disable optional items.')}</div></div></div>
         <div className="bbx-grid">
-          <ParamU ic="🛡️" t={L('Stop loss', 'Stop loss')} vk="slVal" uk="slUnit" opts={U_EXIT} />
-          <ParamU ic="🎯" t={L('TP1 (parcial)', 'TP1 (partial)')} vk="tp1Val" uk="tp1Unit" opts={U_EXIT} />
-          <ParamN ic="✂️" t={L('% que cierra en TP1', '% closed at TP1')} k="partialPct" step={5} />
-          <ParamU ic="🏃" t={L('Runner / TP final', 'Runner / final TP')} vk="runnerVal" uk="runnerUnit" opts={U_EXIT} />
-          <ParamU ic="📈" t={L('Trailing', 'Trailing')} vk="trailVal" uk="trailUnit" opts={U_EXIT} tgl={{ on: s.useTrail, toggle: () => set('useTrail', !s.useTrail) }} />
-          <ParamN ic="⚖️" t={L('Break even (en R, 0=BE)', 'Break even (in R, 0=BE)')} k="beOffsetR" step={0.1} />
-          <ParamN ic="⏱️" t={L('Time-stop (velas)', 'Time-stop (bars)')} k="timeStopBars" tgl={{ on: nz(s.timeStopBars), toggle: () => set('timeStopBars', nz(s.timeStopBars) ? 0 : 12) }} />
+          <ParamU ic="🛡️" t={L('Stop loss', 'Stop loss')} vk="slVal" uk="slUnit" opts={U_EXIT} hint={L('Dónde corta la pérdida y cierra para protegerte.', 'Where it cuts the loss and closes to protect you.')} />
+          <ParamU ic="🎯" t={L('TP1 (parcial)', 'TP1 (partial)')} vk="tp1Val" uk="tp1Unit" opts={U_EXIT} hint={L('Primer objetivo: cierra una parte y asegura ganancia.', 'First target: closes part and locks in profit.')} />
+          <ParamN ic="✂️" t={L('% que cierra en TP1', '% closed at TP1')} k="partialPct" step={5} hint={L('Qué porcentaje cierra en el TP1. El resto sigue como runner.', 'What percent closes at TP1. The rest continues as runner.')} />
+          <ParamU ic="🏃" t={L('Runner / TP final', 'Runner / final TP')} vk="runnerVal" uk="runnerUnit" opts={U_EXIT} hint={L('Objetivo del resto de la posición, para dejar correr la ganancia.', 'Target for the rest of the position, to let the profit run.')} />
+          <ParamU ic="📈" t={L('Trailing', 'Trailing')} vk="trailVal" uk="trailUnit" opts={U_EXIT} tgl={{ on: s.useTrail, toggle: () => set('useTrail', !s.useTrail) }} hint={L('Sube el stop detrás del precio para no devolver ganancia. Interruptor para activarlo.', 'Trails the stop behind price so you don\'t give profit back. Switch to enable.')} />
+          <ParamN ic="⚖️" t={L('Break even (en R, 0=BE)', 'Break even (in R, 0=BE)')} k="beOffsetR" step={0.1} hint={L('Cuando la ganancia llega a este múltiplo del riesgo, mueve el stop a la entrada. 0 = justo en la entrada.', 'When profit reaches this multiple of risk, moves the stop to entry. 0 = exactly at entry.')} />
+          <ParamN ic="⏱️" t={L('Time-stop (velas)', 'Time-stop (bars)')} k="timeStopBars" tgl={{ on: nz(s.timeStopBars), toggle: () => set('timeStopBars', nz(s.timeStopBars) ? 0 : 12) }} hint={L('Si tras estas velas la operación no avanza, la cierra. Interruptor para activarlo.', 'If after this many bars the trade isn\'t moving, it closes it. Switch to enable.')} />
         </div>
       </div>
       )}
@@ -376,10 +388,10 @@ export default function BotBuilder() {
       <div className="bbx-panel">
         <div className="bbx-panel-h"><span className="bbx-ic"><OnyxIcon emoji="🛡️" size={16} /></span><div><div>{L('Riesgo', 'Risk')}</div><div className="bbx-sub">{L('Elige la unidad del riesgo y de los límites diarios. En % el tope de seguridad es 5% por operación.', 'Choose the unit for risk and daily limits. In %, the safety cap is 5% per trade.')}</div></div></div>
         <div className="bbx-grid">
-          <ParamU ic="💠" t={L('Riesgo por operación', 'Risk per trade')} vk="riskVal" uk="riskUnit" opts={U_RISK} step={0.05} min={0.01} />
-          <ParamN ic="📦" t={L('Tope de lotes', 'Max lots')} k="maxLots" step={0.01} />
-          <ParamU ic="🧯" t={L('Cap de pérdida diaria', 'Daily loss cap')} vk="dailyLossVal" uk="dailyLossUnit" opts={U_RISK} tgl={{ on: nz(s.dailyLossVal), toggle: () => set('dailyLossVal', nz(s.dailyLossVal) ? 0 : 1.5) }} />
-          <ParamU ic="🎁" t={L('Objetivo diario', 'Daily target')} vk="dailyProfitVal" uk="dailyProfitUnit" opts={U_RISK} tgl={{ on: nz(s.dailyProfitVal), toggle: () => set('dailyProfitVal', nz(s.dailyProfitVal) ? 0 : 2) }} />
+          <ParamU ic="💠" t={L('Riesgo por operación', 'Risk per trade')} vk="riskVal" uk="riskUnit" opts={U_RISK} step={0.05} min={0.01} hint={L('Cuánto arriesga en cada entrada. De aquí calcula el tamaño del lote automáticamente.', 'How much it risks per entry. It sizes the lot from this automatically.')} />
+          <ParamN ic="📦" t={L('Tope de lotes', 'Max lots')} k="maxLots" step={0.01} hint={L('Lote máximo permitido, por seguridad, aunque el cálculo de riesgo pida más.', 'Maximum lot allowed, as a safety cap, even if the risk math asks for more.')} />
+          <ParamU ic="🧯" t={L('Cap de pérdida diaria', 'Daily loss cap')} vk="dailyLossVal" uk="dailyLossUnit" opts={U_RISK} tgl={{ on: nz(s.dailyLossVal), toggle: () => set('dailyLossVal', nz(s.dailyLossVal) ? 0 : 1.5) }} hint={L('Si pierde esto en un día, deja de operar hasta el día siguiente. Interruptor para activarlo.', 'If it loses this in a day, it stops until next day. Switch to enable.')} />
+          <ParamU ic="🎁" t={L('Objetivo diario', 'Daily target')} vk="dailyProfitVal" uk="dailyProfitUnit" opts={U_RISK} tgl={{ on: nz(s.dailyProfitVal), toggle: () => set('dailyProfitVal', nz(s.dailyProfitVal) ? 0 : 2) }} hint={L('Al ganar esto en un día, deja de abrir para no devolverlo. Interruptor para activarlo.', 'Once it wins this in a day, it stops opening to keep it. Switch to enable.')} />
         </div>
       </div>
 
@@ -405,23 +417,23 @@ export default function BotBuilder() {
 
       {view === 'firm' && (<>
       <Panel ic="🏦" title={L('Reglas del fondeo (prop firm)', 'Prop-firm rules')}>
-        <Fld t={L('Nombre del fondeo', 'Firm name')} k="firmName" ph="FTMO" />
-        <Fld t={L('Tipo de DD total', 'Total DD type')} k="ddType" opts={[[0, L('Trailing (desde el pico)', 'Trailing (from peak)')], [1, L('Estático (balance inicial)', 'Static (initial balance)')], [2, L('Trailing hasta BE, luego fijo', 'Trailing to BE, then fixed')]]} />
-        <Fld t={L('Límite diario del firm (%)', 'Firm daily limit (%)')} k="firmDailyLimitPct" type="number" step={0.5} />
-        <Fld t={L('Límite total del firm (%)', 'Firm total limit (%)')} k="firmTotalLimitPct" type="number" step={0.5} />
+        <Fld t={L('Nombre del fondeo', 'Firm name')} k="firmName" ph="FTMO" hint={L('Solo para mostrarlo en el panel. Escribe el nombre de tu prop firm.', 'Just to show it on the panel. Type your prop firm\'s name.')} />
+        <Fld t={L('Tipo de DD total', 'Total DD type')} k="ddType" opts={[[0, L('Trailing (desde el pico)', 'Trailing (from peak)')], [1, L('Estático (balance inicial)', 'Static (initial balance)')], [2, L('Trailing hasta BE, luego fijo', 'Trailing to BE, then fixed')]]} hint={L('Cómo mide tu firm la pérdida máxima total: desde el punto más alto (trailing) o desde el balance inicial (estático). Revisa tu contrato.', 'How your firm measures total max loss: from the peak (trailing) or from the initial balance (static). Check your contract.')} />
+        <Fld t={L('Límite diario del firm (%)', 'Firm daily limit (%)')} k="firmDailyLimitPct" type="number" step={0.5} hint={L('Pérdida diaria máxima que permite tu firm antes de romper la cuenta.', 'Max daily loss your firm allows before breaching the account.')} />
+        <Fld t={L('Límite total del firm (%)', 'Firm total limit (%)')} k="firmTotalLimitPct" type="number" step={0.5} hint={L('Pérdida total máxima (drawdown) permitida por tu firm.', 'Max total loss (drawdown) your firm allows.')} />
       </Panel>
 
-      <Panel ic="🧯" title={L('Frenos del bot (por debajo del firm)', 'Bot brakes (below firm)')}>
-        <Fld t={L('Freno suave diario (%)', 'Soft daily brake (%)')} k="acctSoftStopPct" type="number" step={0.5} />
-        <Fld t={L('Freno duro diario (%)', 'Hard daily brake (%)')} k="acctDailyStopPct" type="number" step={0.5} />
-        <Fld t={L('Freno total (%)', 'Total brake (%)')} k="acctMaxDDPct" type="number" step={0.5} />
+      <Panel ic="🧯" title={L('Frenos del bot (por debajo del firm)', 'Bot brakes (below firm)')} sub={L('Colchones propios del robot, siempre por debajo del límite del firm, para no acercarte al filo.', 'The robot\'s own cushions, always below the firm limit, so you don\'t get near the edge.')}>
+        <Fld t={L('Freno suave diario (%)', 'Soft daily brake (%)')} k="acctSoftStopPct" type="number" step={0.5} hint={L('Al llegar a esta pérdida del día, deja de abrir nuevas (deja correr las abiertas).', 'At this daily loss, it stops opening new trades (lets open ones run).')} />
+        <Fld t={L('Freno duro diario (%)', 'Hard daily brake (%)')} k="acctDailyStopPct" type="number" step={0.5} hint={L('Al llegar a esta pérdida del día, cierra todo y bloquea hasta mañana.', 'At this daily loss, it closes everything and locks until tomorrow.')} />
+        <Fld t={L('Freno total (%)', 'Total brake (%)')} k="acctMaxDDPct" type="number" step={0.5} hint={L('Pérdida total máxima que tú toleras. El robot para antes de tocar el límite del firm.', 'Max total loss you tolerate. The robot halts before hitting the firm limit.')} />
       </Panel>
 
       <Panel ic="🏁" title={L('Objetivo de cuenta', 'Account target')}>
-        <Fld t={L('Fase de la cuenta', 'Account phase')} k="accountMode" opts={[[0, L('Fase 1 (reto)', 'Phase 1 (challenge)')], [1, L('Fase 2 (verificación)', 'Phase 2 (verification)')], [2, L('Real (fondeada)', 'Real (funded)')]]} />
-        <Fld t={L('Balance inicial (0=auto)', 'Initial balance (0=auto)')} k="initBalance" type="number" />
-        <Fld t={L('Objetivo Fase 1 (%)', 'Phase 1 target (%)')} k="targetP1" type="number" step={0.5} />
-        <Fld t={L('Objetivo Fase 2 (%)', 'Phase 2 target (%)')} k="targetP2" type="number" step={0.5} />
+        <Fld t={L('Fase de la cuenta', 'Account phase')} k="accountMode" opts={[[0, L('Fase 1 (reto)', 'Phase 1 (challenge)')], [1, L('Fase 2 (verificación)', 'Phase 2 (verification)')], [2, L('Real (fondeada)', 'Real (funded)')]]} hint={L('En qué etapa está tu cuenta. Define el objetivo de ganancia al que el robot deja de abrir.', 'What stage your account is in. Sets the profit target where the robot stops opening.')} />
+        <Fld t={L('Balance inicial (0=auto)', 'Initial balance (0=auto)')} k="initBalance" type="number" hint={L('Balance de arranque de la cuenta. 0 = lo toma solo de la plataforma.', 'Account starting balance. 0 = it reads it from the platform automatically.')} />
+        <Fld t={L('Objetivo Fase 1 (%)', 'Phase 1 target (%)')} k="targetP1" type="number" step={0.5} hint={L('Ganancia para pasar la Fase 1. Al llegar, el robot deja de abrir.', 'Profit to pass Phase 1. Once reached, the robot stops opening.')} />
+        <Fld t={L('Objetivo Fase 2 (%)', 'Phase 2 target (%)')} k="targetP2" type="number" step={0.5} hint={L('Ganancia para pasar la Fase 2. Al llegar, el robot deja de abrir.', 'Profit to pass Phase 2. Once reached, the robot stops opening.')} />
       </Panel>
       </>)}
 
@@ -484,7 +496,7 @@ export default function BotBuilder() {
                 </div>
                 <div className="row" style={{ gap: 10, alignItems: 'center', marginTop: 10, flexWrap: 'wrap' }}>
                   {wins.length < 6 && <button type="button" className="bbx-btn" onClick={() => setW([...wins, { fh: 8, fm: 0, th: 20, tm: 0 }])}><OnyxIcon emoji="➕" size={13} glow={false} /> {L('Añadir horario', 'Add window')}</button>}
-                  <div style={{ minWidth: 220 }}><Fld t={L('GMT del servidor del bróker', 'Broker server GMT')} k="serverGmt" opts={GMT_OPTS} /></div>
+                  <div style={{ minWidth: 220 }}><Fld t={L('GMT del servidor del bróker', 'Broker server GMT')} k="serverGmt" opts={GMT_OPTS} hint={L('Zona horaria del servidor de tu bróker. El robot usa esta hora; sirve para mostrarte la equivalencia en tu hora local.', 'Your broker server\'s time zone. The robot uses this time; it\'s used to show you the equivalent in your local time.')} /></div>
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--mut)', marginTop: 6 }}>{L('El bot busca entradas si la hora cae dentro de CUALQUIER sesión. El GMT sirve para convertir a tu hora local y para las noticias.', 'The bot seeks entries if the time falls inside ANY session. The GMT is used for your local time and the news filter.')}</div>
               </div>
@@ -517,7 +529,7 @@ export default function BotBuilder() {
         {s.useNewsFilter && (
           <div className="bbx-grid">
             <Fld t={L('Monedas', 'Currencies')} k="newsCurrencies" ph="USD,EUR" hint={L('Separadas por coma. Solo frena si la noticia es de estas monedas.', 'Comma-separated. Only pauses for these currencies.')} />
-            <Fld t={L('Impacto', 'Impact')} k="newsImpact" opts={[['high', L('Solo alto', 'High only')], ['med', L('Alto + medio', 'High + medium')], ['all', L('Todos', 'All')]]} />
+            <Fld t={L('Impacto', 'Impact')} k="newsImpact" opts={[['high', L('Solo alto', 'High only')], ['med', L('Alto + medio', 'High + medium')], ['all', L('Todos', 'All')]]} hint={L('Qué tan fuerte debe ser la noticia para frenar. “Solo alto” = únicamente las de alto impacto.', 'How strong the news must be to pause. “High only” = only high-impact events.')} />
             <Fld t={L('Minutos antes', 'Minutes before')} k="newsBefore" type="number" hint={L('Deja de abrir estos minutos antes de la noticia.', 'Stops opening this many minutes before.')} />
             <Fld t={L('Minutos después', 'Minutes after')} k="newsAfter" type="number" hint={L('Sigue frenado estos minutos después.', 'Stays paused this many minutes after.')} />
           </div>
@@ -525,9 +537,9 @@ export default function BotBuilder() {
       </div>
       </>)}
 
-      {/* Botón para volver al tablero desde una sección */}
+      {/* Volver al tablero desde una sección (secundario; el botón principal es Crear robot abajo) */}
       {view !== 'home' && (
-        <div style={{ marginBottom: 14 }}><button className="bbx-btn primary" onClick={() => go('home')}>✓ {L('Listo, volver al tablero', 'Done, back to board')}</button></div>
+        <div style={{ marginBottom: 14 }}><button className="bbx-btn" onClick={() => go('home')}>← {L('Volver al tablero', 'Back to board')}</button></div>
       )}
       </>
       )}
@@ -552,16 +564,20 @@ export default function BotBuilder() {
             </div>
           ))}
         </div>
-        <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-          <button className="bbx-btn primary" onClick={createBot} disabled={busy || creating} style={{ fontWeight: 700 }}><OnyxIcon emoji="🤖" size={14} glow={false} /> {L('Crear robot', 'Create robot')}</button>
-          <button className="bbx-btn" onClick={saveChecked} disabled={busy}>{busy ? '…' : L('Solo guardar', 'Save only')}</button>
-          <button className="bbx-btn" onClick={saveTpl}><OnyxIcon emoji="🗂️" size={14} /> {L('Guardar plantilla', 'Save template')}</button>
-          <button className="bbx-btn" onClick={openGuide}><OnyxIcon emoji="📖" size={14} /> {L('Guía visual (PDF)', 'Visual guide (PDF)')}</button>
-          {id && <a className="bbx-btn" href={`/api/bots/build?code=${id}`}>{L('EA (.mq5)', 'EA (.mq5)')} ↓</a>}
-          {id && <a className="bbx-btn" href={`/api/bots/build?download=${id}`}>{L('Config (.set)', 'Config (.set)')} ↓</a>}
-          {id && <button className="bbx-btn" onClick={nuevo}>{L('Nuevo bot', 'New bot')}</button>}
+        {/* Acción principal única */}
+        <div style={{ marginTop: 14 }}>
+          <button className="bbx-btn primary" onClick={createBot} disabled={busy || creating} style={{ fontWeight: 700, fontSize: 15, padding: '12px 26px' }}><OnyxIcon emoji="🤖" size={16} glow={false} /> {L('Crear robot', 'Create robot')}</button>
+          <div style={{ fontSize: 11.5, color: 'var(--mut)', marginTop: 7 }}>{L('Genera el archivo del robot listo para instalar y te muestra los pasos.', 'Generates your ready-to-install robot file and shows you the steps.')}</div>
         </div>
-        <p style={{ fontSize: 11.5, marginTop: 10, lineHeight: 1.6, color: 'var(--mut)' }}>{L('El .set configura tu EA base con estas reglas. Prueba SIEMPRE en DEMO antes de real. El código generado y su resultado son responsabilidad del trader; sin promesas de rentabilidad.', 'The .set configures your base EA with these rules. ALWAYS test on DEMO before going live. Generated code and its results are the trader\'s responsibility; no profit promises.')}</p>
+        {/* Acciones secundarias, discretas */}
+        <div style={{ display: 'flex', gap: 6, marginTop: 12, flexWrap: 'wrap', alignItems: 'center', paddingTop: 12, borderTop: '1px solid var(--line)' }}>
+          <button className="bbx-btn" style={{ padding: '6px 11px', fontSize: 12 }} onClick={saveChecked} disabled={busy}>{busy ? '…' : <><OnyxIcon emoji="💾" size={13} /> {L('Guardar borrador', 'Save draft')}</>}</button>
+          <button className="bbx-btn" style={{ padding: '6px 11px', fontSize: 12 }} onClick={saveTpl}><OnyxIcon emoji="🗂️" size={13} /> {L('Plantilla', 'Template')}</button>
+          <button className="bbx-btn" style={{ padding: '6px 11px', fontSize: 12 }} onClick={openGuide}><OnyxIcon emoji="📖" size={13} /> {L('Guía PDF', 'PDF guide')}</button>
+          {id && <a className="bbx-btn" style={{ padding: '6px 11px', fontSize: 12 }} href={`/api/bots/build?code=${id}`}>{L('Descargar', 'Download')} ↓</a>}
+          {id && <button className="bbx-btn" style={{ padding: '6px 11px', fontSize: 12 }} onClick={nuevo}>{L('Nuevo', 'New')}</button>}
+        </div>
+        <p style={{ fontSize: 11.5, marginTop: 10, lineHeight: 1.6, color: 'var(--mut)' }}>{L('Prueba SIEMPRE en DEMO antes de real. El código generado y su resultado son responsabilidad del trader; sin promesas de rentabilidad.', 'ALWAYS test on DEMO before going live. Generated code and its results are the trader\'s responsibility; no profit promises.')}</p>
       </div>
 
       {list.length > 0 && (
@@ -643,6 +659,19 @@ export default function BotBuilder() {
 
                 <div style={{ background: 'rgba(242,194,101,.12)', border: '1px solid rgba(242,194,101,.4)', borderRadius: 10, padding: '9px 11px', fontSize: 12.5, color: 'var(--wn)', marginBottom: 12 }}>
                   <OnyxIcon emoji="⚠️" size={13} /> {L('Pruébalo primero en DEMO. Pega tu clave Onyx en InpApiKey (necesaria en demo y en real). El trading conlleva riesgo.', 'Test it on DEMO first. Paste your Onyx key in InpApiKey (required on demo and live). Trading involves risk.')}
+                </div>
+
+                {/* Qué es la clave Onyx + de dónde sacarla (amigable) */}
+                <div style={{ background: 'rgba(139,147,255,.12)', border: '1px solid rgba(139,147,255,.4)', borderRadius: 10, padding: '11px 13px', marginBottom: 12 }}>
+                  <div style={{ fontSize: 12.5, color: '#c8ccff', lineHeight: 1.55, marginBottom: 9 }}>
+                    <b style={{ color: '#dfe2ff' }}><OnyxIcon emoji="🔑" size={13} /> {L('¿Qué es la clave Onyx?', 'What is the Onyx key?')}</b> {L('Es tu licencia personal. El robot la pide para activarse (en demo y en real). Sin ella no abre operaciones.', 'It\'s your personal license. The robot needs it to activate (on demo and live). Without it, it won\'t open trades.')}
+                  </div>
+                  <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
+                    <a className="bbx-btn" href="/dashboard/keys" target="_blank" style={{ padding: '6px 12px', fontSize: 12.5 }}><OnyxIcon emoji="↗️" size={13} /> {L('¿Dónde saco mi clave?', 'Where do I get my key?')}</a>
+                    {myKey
+                      ? <button className="bbx-btn" style={{ padding: '6px 12px', fontSize: 12.5 }} onClick={() => copy(myKey)}>{copied === myKey ? L('Clave copiada ✓', 'Key copied ✓') : <><OnyxIcon emoji="📋" size={13} /> {L('Copiar mi clave activa', 'Copy my active key')}</>}</button>
+                      : <a className="bbx-btn" href="/dashboard/keys" target="_blank" style={{ padding: '6px 12px', fontSize: 12.5, color: 'var(--wn)' }}>{L('Aún no tienes clave → conéctala', 'No key yet → connect one')}</a>}
+                  </div>
                 </div>
 
                 <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>{L('Pasos', 'Steps')}</div>
