@@ -10,23 +10,33 @@ import { DEFAULT_SPEC, summarize, tfOptions, SYMBOL_HINTS, type BotSpec } from '
 const BB = createContext<any>({ s: {}, set: () => {}, es: true });
 const nz = (x: any) => typeof x === 'number' && x > 0;
 const Lc = (es: boolean, a: string, b: string) => (es ? a : b);
+// Un bot NUEVO arranca con los campos críticos en blanco para forzar una elección
+// consciente (símbolo, gatillo de entrada y fase de la cuenta). El resto mantiene default.
+const blankReq = (sp: any) => ({ ...sp, symbol: '', entryTrigger: '', accountMode: '' as any });
 const chipOf = (status: string, es: boolean) => status === 'off' ? { c: 'off', t: Lc(es, 'Desactivado', 'Disabled') } : status === 'warn' ? { c: 'warn', t: Lc(es, 'Sin definir', 'Undefined') } : { c: 'ok', t: Lc(es, 'Activo', 'Active') };
 
+// Punto de "obligatorio": rojo si aún no lo elegiste, verde si ya está.
+function ReqDot({ show, ok }: any) {
+  if (!show) return null;
+  return <span title="Obligatorio" style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: ok ? 'var(--ok,#5fe0aa)' : '#ff7a7a', marginRight: 6, verticalAlign: 'middle', boxShadow: ok ? '0 0 6px rgba(95,224,170,.7)' : '0 0 6px rgba(255,122,122,.7)' }} />;
+}
 function Fld({ t, k, opts, type, step, min, ph, hint, list }: any) {
-  const { s, set } = useContext(BB);
-  return (<div><span className="bbx-lbl">{t}</span>
+  const { s, set, reqKeys, okKey } = useContext(BB);
+  const req = !!reqKeys?.has?.(k);
+  return (<div><span className="bbx-lbl"><ReqDot show={req} ok={req && okKey?.(k)} />{t}</span>
     {opts
-      ? <select className="bbx-in bbx-sel" value={s[k]} onChange={(e) => set(k, isNaN(Number(e.target.value)) ? e.target.value : Number(e.target.value))}>{opts.map(([v, o]: any) => <option key={String(v)} value={v}>{o}</option>)}</select>
+      ? <select className="bbx-in bbx-sel" data-fld={k} value={s[k]} onChange={(e) => set(k, e.target.value === '' ? '' : isNaN(Number(e.target.value)) ? e.target.value : Number(e.target.value))}>{opts.map(([v, o]: any) => <option key={String(v)} value={v}>{o}</option>)}</select>
       : <input className="bbx-in" data-fld={k} type={type || 'text'} step={step} min={min} list={list} value={s[k]} placeholder={ph} onChange={(e) => set(k, type === 'number' ? (e.target.value === '' ? '' : Number(e.target.value)) : e.target.value)} />}
     {hint && <div className="bbx-hint">{hint}</div>}</div>);
 }
 function Toggle({ k, t }: any) { const { s, set } = useContext(BB); return <button type="button" className={'bbx-tg' + (s[k] ? ' on' : '')} onClick={() => set(k, !s[k])}><OnyxIcon emoji={s[k] ? '✅' : '⭕'} size={13} /> {t}</button>; }
 function Switch({ on, onClick }: any) { return <button type="button" className={'bbx-sw' + (on ? ' on' : '')} onClick={onClick} aria-label="toggle"><span /></button>; }
 function ParamU({ ic, t, vk, uk, opts, step = 0.1, min, tgl, hint }: any) {
-  const { s, set, es } = useContext(BB); const dis = tgl ? !tgl.on : false;
+  const { s, set, es, reqKeys, okKey } = useContext(BB); const dis = tgl ? !tgl.on : false;
+  const req = !!reqKeys?.has?.(vk);
   const status = dis ? 'off' : nz(s[vk]) ? 'ok' : 'warn'; const ch = chipOf(status, es);
   return (<div className={'bbx-pc bbx-pc-' + status}>
-    <div className="bbx-pc-h"><span className="bbx-ic sm"><OnyxIcon emoji={ic} size={14} /></span><span className="bbx-pc-t">{t}</span><span className={'bbx-chip bbx-chip-' + ch.c}>{ch.t}</span>{tgl && <Switch on={tgl.on} onClick={tgl.toggle} />}</div>
+    <div className="bbx-pc-h"><span className="bbx-ic sm"><OnyxIcon emoji={ic} size={14} /></span><span className="bbx-pc-t"><ReqDot show={req} ok={req && okKey?.(vk)} />{t}</span><span className={'bbx-chip bbx-chip-' + ch.c}>{ch.t}</span>{tgl && <Switch on={tgl.on} onClick={tgl.toggle} />}</div>
     <div className="bbx-row">
       <input className="bbx-in" data-fld={vk} type="number" step={step} min={min} disabled={dis} style={{ flex: 1, minWidth: 0 }} value={s[vk]} onChange={(e) => set(vk, e.target.value === '' ? '' : Number(e.target.value))} />
       <select className="bbx-in bbx-sel" style={{ width: 96, flex: 'none' }} disabled={dis} value={s[uk]} onChange={(e) => set(uk, e.target.value)}>{opts.map(([v, o]: any) => <option key={v} value={v}>{o}</option>)}</select>
@@ -34,10 +44,11 @@ function ParamU({ ic, t, vk, uk, opts, step = 0.1, min, tgl, hint }: any) {
     {hint && <div className="bbx-hint">{hint}</div>}</div>);
 }
 function ParamN({ ic, t, k, step = 1, min, tgl, hint }: any) {
-  const { s, set, es } = useContext(BB); const dis = tgl ? !tgl.on : false;
+  const { s, set, es, reqKeys, okKey } = useContext(BB); const dis = tgl ? !tgl.on : false;
+  const req = !!reqKeys?.has?.(k);
   const status = dis ? 'off' : nz(s[k]) ? 'ok' : 'warn'; const ch = chipOf(status, es);
   return (<div className={'bbx-pc bbx-pc-' + status}>
-    <div className="bbx-pc-h"><span className="bbx-ic sm"><OnyxIcon emoji={ic} size={14} /></span><span className="bbx-pc-t">{t}</span><span className={'bbx-chip bbx-chip-' + ch.c}>{ch.t}</span>{tgl && <Switch on={tgl.on} onClick={tgl.toggle} />}</div>
+    <div className="bbx-pc-h"><span className="bbx-ic sm"><OnyxIcon emoji={ic} size={14} /></span><span className="bbx-pc-t"><ReqDot show={req} ok={req && okKey?.(k)} />{t}</span><span className={'bbx-chip bbx-chip-' + ch.c}>{ch.t}</span>{tgl && <Switch on={tgl.on} onClick={tgl.toggle} />}</div>
     <input className="bbx-in" data-fld={k} type="number" step={step} min={min} disabled={dis} value={s[k]} onChange={(e) => set(k, e.target.value === '' ? '' : Number(e.target.value))} />
     {hint && <div className="bbx-hint">{hint}</div>}</div>);
 }
@@ -54,14 +65,14 @@ export default function BotBuilder() {
   const { lang } = useLang();
   const es = lang !== 'en';
   const L = (a: string, b: string) => (es ? a : b);
-  const [s, setS] = useState<BotSpec>({ ...DEFAULT_SPEC });
+  const [s, setS] = useState<BotSpec>(blankReq({ ...DEFAULT_SPEC }));
   const [id, setId] = useState('');
   const [list, setList] = useState<any[]>([]);
   const [tpls, setTpls] = useState<any[]>([]);
   const [busy, setBusy] = useState(false);
   const [big, setBig] = useState(false);
   const [view, setView] = useState('home'); // 'home' = tablero de tarjetas; o la clave de una sección
-  const [warn, setWarn] = useState<{ key: string; label: string }[]>([]);
+  const [warn, setWarn] = useState<{ key: string; label: string; section?: string }[]>([]);
   const [showWarn, setShowWarn] = useState(false);
   const [creating, setCreating] = useState(false);       // animación "creando robot"
   const [cSecs, setCSecs] = useState(0);                  // countdown de la animación
@@ -93,23 +104,37 @@ export default function BotBuilder() {
   async function load() { try { const r = await fetch('/api/bots/build'); const j = await r.json(); setList(j.bots || []); } catch {} }
   async function loadTpls() { try { const r = await fetch('/api/bots/templates'); const j = await r.json(); setTpls(j.templates || []); } catch {} }
 
-  const summary = useMemo(() => summarize(s, !es), [s, es]);
+  // Copia "segura" para funciones que asumen valores válidos (los críticos pueden estar en blanco).
+  const sSafe = useMemo(() => ({ ...s, accountMode: typeof (s as any).accountMode === 'number' ? s.accountMode : 0, entryTrigger: s.entryTrigger || 'breakout_swing' }), [s]);
+  const summary = useMemo(() => summarize(sSafe, !es), [sSafe, es]);
   const nz = (x: any) => typeof x === 'number' && x > 0;
 
   // Campos obligatorios del bot (sin estos no opera). Los opcionales tienen su switch.
-  const REQ: { key: keyof BotSpec; label: string }[] = [
-    { key: 'name', label: L('Nombre del bot', 'Bot name') },
-    { key: 'symbol', label: L('Instrumento', 'Instrument') },
-    { key: 'slVal', label: L('Stop loss', 'Stop loss') },
-    { key: 'tp1Val', label: 'TP1' },
-    { key: 'runnerVal', label: L('Runner / TP final', 'Runner / final TP') },
-    { key: 'riskVal', label: L('Riesgo por operación', 'Risk per trade') },
+  // Campos OBLIGATORIOS: bloquean crear el robot. Cada uno con la sección donde vive.
+  const REQ: { key: keyof BotSpec; label: string; section: string }[] = [
+    { key: 'name', label: L('Nombre del bot', 'Bot name'), section: 'general' },
+    { key: 'symbol', label: L('Instrumento', 'Instrument'), section: 'general' },
+    { key: 'platform', label: L('Plataforma', 'Platform'), section: 'general' },
+    { key: 'tf', label: L('Temporalidad de entrada', 'Entry timeframe'), section: 'general' },
+    { key: 'entryTrigger', label: L('Gatillo de entrada', 'Entry trigger'), section: 'entry' },
+    { key: 'slVal', label: L('Stop loss', 'Stop loss'), section: 'exits' },
+    { key: 'tp1Val', label: 'TP1', section: 'exits' },
+    { key: 'runnerVal', label: L('Runner / TP final', 'Runner / final TP'), section: 'exits' },
+    { key: 'riskVal', label: L('Riesgo por operación', 'Risk per trade'), section: 'risk' },
+    { key: 'dailyLossVal', label: L('Cap de pérdida diaria', 'Daily loss cap'), section: 'risk' },
+    { key: 'accountMode', label: L('Fase de la cuenta', 'Account phase'), section: 'firm' },
+    { key: 'firmTotalLimitPct', label: L('Límite total del fondeo', 'Firm total limit'), section: 'firm' },
   ];
-  const isEmpty = (key: keyof BotSpec) => { const v = (s as any)[key]; return v === '' || v == null || (typeof v === 'number' && !(v > 0) && key !== 'name' && key !== 'symbol') || (typeof v === 'string' && !v.trim()); };
-  function findMissing() { return REQ.filter((r) => isEmpty(r.key)).map((r) => ({ key: r.key as string, label: r.label })); }
-  // Progreso = campos obligatorios que TÚ has revisado y son válidos (arranca en 0).
-  const reviewed = REQ.filter((r) => touched[r.key as string] && !isEmpty(r.key)).length;
-  const pct = Math.round(100 * reviewed / REQ.length);
+  const NUM_REQ = new Set(['slVal', 'tp1Val', 'runnerVal', 'riskVal', 'dailyLossVal', 'firmTotalLimitPct']);
+  const reqKeys = new Set(REQ.map((r) => r.key as string));           // para pintar el punto en cada campo
+  const CRIT = new Set(['symbol', 'entryTrigger', 'accountMode', 'name']); // arrancan en blanco: valen solo si eliges
+  const okVal = (k: string) => { const v = (s as any)[k];
+    if (k === 'accountMode') return typeof v === 'number';
+    if (NUM_REQ.has(k)) return typeof v === 'number' && v > 0;
+    return String(v ?? '').trim() !== ''; };
+  // Pendiente si: (crítico) no tiene valor; o (no crítico) su sección no se ha abierto o su valor no es válido.
+  const isPending = (r: { key: string; section: string }) => CRIT.has(r.key) ? !okVal(r.key) : (!visited[r.section] || !okVal(r.key));
+  function findMissing() { return REQ.filter((r) => isPending(r as any)).map((r) => ({ key: r.key as string, label: r.label, section: r.section })); }
   const missCount = findMissing().length;
 
   const issues = useMemo(() => {
@@ -163,7 +188,7 @@ export default function BotBuilder() {
   function applyTpl(t: any) { setS({ ...DEFAULT_SPEC, ...(t.spec || {}), magic: genMagic() }); setId(''); touchAll(); visitAll(); window.scrollTo({ top: 0, behavior: 'smooth' }); toast(L('Plantilla cargada.', 'Template loaded.')); }
   async function delTpl(tid: string) { if (!confirm(L('¿Borrar esta plantilla?', 'Delete this template?'))) return; await fetch('/api/bots/templates?id=' + tid, { method: 'DELETE' }); loadTpls(); }
   function edit(b: any) { setS({ ...DEFAULT_SPEC, ...(b.spec || {}) }); setId(b.id); touchAll(); visitAll(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
-  function nuevo() { setS({ ...DEFAULT_SPEC, magic: genMagic() }); setId(''); setTouched({}); setVisited({}); go('home'); }
+  function nuevo() { setS(blankReq({ ...DEFAULT_SPEC, magic: genMagic() })); setId(''); setTouched({}); setVisited({}); go('home'); }
   async function del(bid: string) { if (!confirm(L('¿Borrar este bot?', 'Delete this bot?'))) return; await fetch('/api/bots/build?id=' + bid, { method: 'DELETE' }); if (id === bid) nuevo(); load(); }
   async function openGuide() { let bid = id; if (!bid) { bid = (await save()) || ''; } if (bid) window.open(`/api/bots/build?guide=${bid}&lang=${es ? 'es' : 'en'}`, '_blank'); }
 
@@ -187,7 +212,7 @@ export default function BotBuilder() {
   const U_EXIT: any = [['pips', 'pips'], ['rr', 'R (RR)'], ['pct', L('% precio', '% price')], ['money', '$'], ['atr', '× ATR']];
   const TFS = tfOptions(!es);
 
-  const allReviewed = pct === 100;
+  const allReviewed = missCount === 0;
   // Tarjetas del tablero: [clave, icono, título, subtítulo].
   const CARDS: [string, string, string, string][] = [
     ['general', '⚙️', L('General', 'General'), L('Nombre, símbolo, TF, idioma', 'Name, symbol, TF, language')],
@@ -197,8 +222,8 @@ export default function BotBuilder() {
     ['firm', '🏦', L('Fondeo y frenos', 'Firm & brakes'), L('Firm, DD, objetivo de fase', 'Firm, DD, phase target')],
     ['schedule', '🕐', L('Horario y noticias', 'Schedule & news'), L('Sesión, cierre, noticias', 'Session, close, news')],
   ];
-  // ¿Los campos clave de una sección son válidos? (independiente de si la abriste)
-  const secValid = (k: string) => k === 'general' ? !!(s.name?.trim() && s.symbol?.trim()) : k === 'exits' ? (nz(s.slVal) && nz(s.tp1Val) && nz(s.runnerVal)) : k === 'risk' ? nz(s.riskVal) : true;
+  // ¿Los campos OBLIGATORIOS de una sección son válidos? (independiente de si la abriste)
+  const secValid = (k: string) => REQ.filter((r) => r.section === k).every((r) => okVal(r.key as string));
   // Estado real de la tarjeta: gris si no la abriste, ámbar si falta algo, verde si la revisaste y está bien.
   const secStatus = (k: string): 'idle' | 'warn' | 'ok' => !visited[k] ? 'idle' : (secValid(k) ? 'ok' : 'warn');
   const reviewedSecs = ['general', 'entry', 'exits', 'risk', 'firm', 'schedule'].filter((k) => visited[k]).length;
@@ -228,7 +253,7 @@ export default function BotBuilder() {
   ];
 
   return (
-    <BB.Provider value={{ s, set, es }}>
+    <BB.Provider value={{ s, set, es, reqKeys, okKey: okVal }}>
     <div className="bbx" style={{ maxWidth: big ? 1500 : 1120, margin: '0 auto' }}>
       <style>{`
       .bbx{--ac:#8b93ff;--ac2:#5b63d3;--ok:#5fe0aa;--wn:#f2c265;--ink:#eef0fa;--mut:#98a0b8;--line:rgba(255,255,255,.09)}
@@ -360,7 +385,7 @@ export default function BotBuilder() {
 
       {view === 'entry' && (<>
       <Panel ic="🎯" title={L('Entrada', 'Entry')} sub={L('El bot ejecuta la entrada en la plataforma. Elige el gatillo, el sesgo y la sesión.', 'The bot executes the entry on the platform. Pick the trigger, bias and session.')}>
-        <Fld t={L('Gatillo de entrada', 'Entry trigger')} k="entryTrigger" opts={[['breakout_swing', L('Ruptura de swing + pullback', 'Swing breakout + pullback')], ['ma_cross', L('Cruce de medias', 'MA cross')], ['rsi', 'RSI'], ['donchian', 'Donchian'], ['time', L('Hora fija', 'Fixed time')]]} hint={L('La señal que dispara la entrada. Es el “cuándo entra” el robot.', 'The signal that fires the entry. It\'s the robot\'s “when to enter”.')} />
+        <Fld t={L('Gatillo de entrada', 'Entry trigger')} k="entryTrigger" opts={[['', L('Elige…', 'Choose…')], ['breakout_swing', L('Ruptura de swing + pullback', 'Swing breakout + pullback')], ['ma_cross', L('Cruce de medias', 'MA cross')], ['rsi', 'RSI'], ['donchian', 'Donchian'], ['time', L('Hora fija', 'Fixed time')]]} hint={L('La señal que dispara la entrada. Es el “cuándo entra” el robot.', 'The signal that fires the entry. It\'s the robot\'s “when to enter”.')} />
         <Fld t={L('Sesgo / tendencia', 'Bias / trend')} k="trendMode" opts={[[0, L('Media', 'Moving average')], [1, L('Estructura (HH/HL)', 'Structure (HH/HL)')], [2, 'Donchian']]} hint={L('Cómo decide la dirección. Solo opera a favor de esta tendencia.', 'How it reads direction. It only trades in favor of this trend.')} />
         <Fld t={L('Temporalidad del sesgo', 'Bias timeframe')} k="trendTF" opts={TFS} hint={L('Marco mayor para leer la tendencia.', 'Higher timeframe to read the trend.')} />
         <Fld t={L('Tamaño del swing', 'Swing size')} k="microSwing" type="number" hint={L('Cuántas velas mira a cada lado para marcar un máximo/mínimo. Más grande = señales más filtradas.', 'How many candles it checks each side to mark a high/low. Bigger = more filtered signals.')} />
@@ -431,7 +456,7 @@ export default function BotBuilder() {
       </Panel>
 
       <Panel ic="🏁" title={L('Objetivo de cuenta', 'Account target')}>
-        <Fld t={L('Fase de la cuenta', 'Account phase')} k="accountMode" opts={[[0, L('Fase 1 (reto)', 'Phase 1 (challenge)')], [1, L('Fase 2 (verificación)', 'Phase 2 (verification)')], [2, L('Real (fondeada)', 'Real (funded)')]]} hint={L('En qué etapa está tu cuenta. Define el objetivo de ganancia al que el robot deja de abrir.', 'What stage your account is in. Sets the profit target where the robot stops opening.')} />
+        <Fld t={L('Fase de la cuenta', 'Account phase')} k="accountMode" opts={[['', L('Elige…', 'Choose…')], [0, L('Fase 1 (reto)', 'Phase 1 (challenge)')], [1, L('Fase 2 (verificación)', 'Phase 2 (verification)')], [2, L('Real (fondeada)', 'Real (funded)')]]} hint={L('En qué etapa está tu cuenta. Define el objetivo de ganancia al que el robot deja de abrir.', 'What stage your account is in. Sets the profit target where the robot stops opening.')} />
         <Fld t={L('Balance inicial (0=auto)', 'Initial balance (0=auto)')} k="initBalance" type="number" hint={L('Balance de arranque de la cuenta. 0 = lo toma solo de la plataforma.', 'Account starting balance. 0 = it reads it from the platform automatically.')} />
         <Fld t={L('Objetivo Fase 1 (%)', 'Phase 1 target (%)')} k="targetP1" type="number" step={0.5} hint={L('Ganancia para pasar la Fase 1. Al llegar, el robot deja de abrir.', 'Profit to pass Phase 1. Once reached, the robot stops opening.')} />
         <Fld t={L('Objetivo Fase 2 (%)', 'Phase 2 target (%)')} k="targetP2" type="number" step={0.5} hint={L('Ganancia para pasar la Fase 2. Al llegar, el robot deja de abrir.', 'Profit to pass Phase 2. Once reached, the robot stops opening.')} />
@@ -567,12 +592,12 @@ export default function BotBuilder() {
         </div>
         {/* Acción principal única */}
         <div style={{ marginTop: 14 }}>
-          <button className="bbx-btn primary" onClick={createBot} disabled={busy || creating} style={{ fontWeight: 700, fontSize: 15, padding: '12px 26px' }}><OnyxIcon emoji="🤖" size={16} glow={false} /> {L('Crear robot', 'Create robot')}</button>
-          <div style={{ fontSize: 11.5, color: 'var(--mut)', marginTop: 7 }}>{L('Genera el archivo del robot listo para instalar y te muestra los pasos.', 'Generates your ready-to-install robot file and shows you the steps.')}</div>
+          <button className="bbx-btn primary" onClick={createBot} disabled={busy || creating} style={{ fontWeight: 700, fontSize: 15, padding: '12px 26px', opacity: missCount ? 0.6 : 1 }}><OnyxIcon emoji="🤖" size={16} glow={false} /> {L('Crear robot', 'Create robot')}</button>
+          <div style={{ fontSize: 11.5, marginTop: 7, color: missCount ? 'var(--wn)' : 'var(--mut)' }}>{missCount ? <><OnyxIcon emoji="⚠️" size={12} /> {L(`Faltan ${missCount} campo(s) obligatorio(s). Al crear te mostraremos cuáles.`, `${missCount} required field(s) missing. We'll show you which when you create.`)}</> : L('Genera el archivo del robot listo para instalar y te muestra los pasos.', 'Generates your ready-to-install robot file and shows you the steps.')}</div>
         </div>
         {/* Acciones secundarias, discretas */}
         <div style={{ display: 'flex', gap: 6, marginTop: 12, flexWrap: 'wrap', alignItems: 'center', paddingTop: 12, borderTop: '1px solid var(--line)' }}>
-          <button className="bbx-btn" style={{ padding: '6px 11px', fontSize: 12 }} onClick={saveChecked} disabled={busy}>{busy ? '…' : <><OnyxIcon emoji="💾" size={13} /> {L('Guardar borrador', 'Save draft')}</>}</button>
+          <button className="bbx-btn" style={{ padding: '6px 11px', fontSize: 12 }} onClick={() => save()} disabled={busy}>{busy ? '…' : <><OnyxIcon emoji="💾" size={13} /> {L('Guardar borrador', 'Save draft')}</>}</button>
           <button className="bbx-btn" style={{ padding: '6px 11px', fontSize: 12 }} onClick={saveTpl}><OnyxIcon emoji="🗂️" size={13} /> {L('Plantilla', 'Template')}</button>
           <button className="bbx-btn" style={{ padding: '6px 11px', fontSize: 12 }} onClick={openGuide}><OnyxIcon emoji="📖" size={13} /> {L('Guía PDF', 'PDF guide')}</button>
           {id && <a className="bbx-btn" style={{ padding: '6px 11px', fontSize: 12 }} href={`/api/bots/build?code=${id}`}>{L('Descargar', 'Download')} ↓</a>}
@@ -606,22 +631,32 @@ export default function BotBuilder() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(6,8,16,.6)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: 16 }} onClick={() => setShowWarn(false)}>
           <div className="bbx" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 430, width: '100%' }}>
             <div className="bbx-panel" style={{ margin: 0, border: '1px solid rgba(242,194,101,.5)', boxShadow: '0 0 40px rgba(242,194,101,.18)' }}>
-              <div className="bbx-panel-h"><span className="bbx-ic" style={{ background: 'rgba(242,194,101,.16)', color: 'var(--wn)' }}><OnyxIcon emoji="⚠️" size={16} /></span> {L('Campos sin completar', 'Unfinished fields')}</div>
-              <p style={{ fontSize: 13, marginTop: 0, marginBottom: 12, color: 'var(--mut)' }}>{L('Faltan estos campos. Puedes completarlos, desactivarlos o guardar de todas formas.', 'These fields are missing. You can complete them, disable them or save anyway.')}</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
-                {warn.map((w) => (
-                  <div key={w.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,.04)', border: '1px solid var(--line)', borderRadius: 10, padding: '8px 12px', gap: 8, flexWrap: 'wrap' }}>
-                    <b style={{ fontSize: 13, color: 'var(--ink)' }}>{w.label}</b>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <button className="bbx-btn" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => { setShowWarn(false); const el = document.querySelector(`[data-fld="${w.key}"]`) as HTMLElement; el?.scrollIntoView({ behavior: 'smooth', block: 'center' }); el?.focus(); }}>{L('Completar', 'Complete')}</button>
+              <div className="bbx-panel-h"><span className="bbx-ic" style={{ background: 'rgba(242,194,101,.16)', color: 'var(--wn)' }}><OnyxIcon emoji="⚠️" size={16} /></span> {L(`Faltan ${warn.length} campo(s) por elegir`, `${warn.length} field(s) left to choose`)}</div>
+              <p style={{ fontSize: 13, marginTop: 0, marginBottom: 12, color: 'var(--mut)' }}>{L('Antes de crear el robot, elige estos campos obligatorios. Toca “Completar” para ir directo a cada uno.', 'Before creating the robot, choose these required fields. Tap “Complete” to jump straight to each one.')}</p>
+              {/* Agrupados por sección, en el orden del tablero. */}
+              {['general', 'entry', 'exits', 'risk', 'firm'].map((sec) => {
+                const items = warn.filter((w) => (w.section || '') === sec);
+                if (!items.length) return null;
+                const secTitle = CARDS.find((c) => c[0] === sec)?.[2] || sec;
+                return (
+                  <div key={sec} style={{ marginBottom: 10 }}>
+                    <div style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--mut)', margin: '2px 0 6px' }}>{secTitle}</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {items.map((w) => (
+                        <div key={w.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,.04)', border: '1px solid var(--line)', borderRadius: 10, padding: '8px 12px', gap: 8, flexWrap: 'wrap' }}>
+                          <b style={{ fontSize: 13, color: 'var(--ink)' }}>{w.label}</b>
+                          <button className="bbx-btn" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => { setShowWarn(false); go(w.section || 'home'); setTimeout(() => { const el = document.querySelector(`[data-fld="${w.key}"]`) as HTMLElement; el?.scrollIntoView({ behavior: 'smooth', block: 'center' }); el?.focus(); }, 380); }}>{L('Completar', 'Complete')} →</button>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                ))}
-              </div>
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                );
+              })}
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 6 }}>
                 <button className="bbx-btn" onClick={() => setShowWarn(false)}>{L('Seguir editando', 'Keep editing')}</button>
-                <button className="bbx-btn primary" onClick={async () => { setShowWarn(false); await save(); }}>{L('Guardar de todas formas', 'Save anyway')}</button>
+                <button className="bbx-btn" onClick={async () => { setShowWarn(false); await save(); }}>{L('Guardar borrador igual', 'Save draft anyway')}</button>
               </div>
+              <div style={{ fontSize: 11, color: 'var(--mut)', textAlign: 'right', marginTop: 6 }}>{L('“Crear robot” se activa cuando completes todos.', '“Create robot” unlocks once you complete them all.')}</div>
             </div>
           </div>
         </div>
