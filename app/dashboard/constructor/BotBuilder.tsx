@@ -70,7 +70,7 @@ export default function BotBuilder() {
   const [bal, setBal] = useState<number>(10000);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [visited, setVisited] = useState<Record<string, boolean>>({}); // secciones que TÚ abriste
-  const [myKey, setMyKey] = useState<string>('');   // tu clave Onyx activa (para el popup)
+  const [myKeys, setMyKeys] = useState<any[]>([]);   // tus claves Onyx activas (para el popup)
   const set = (k: keyof BotSpec, v: any) => { setTouched((t) => ({ ...t, [k as string]: true })); setS((p) => ({ ...p, [k]: v })); };
   const touchAll = () => setTouched(Object.fromEntries(Object.keys(DEFAULT_SPEC).map((k) => [k, true])));
   const BUILD_SECS = 7;   // duración de la animación de creación (segundos)
@@ -84,8 +84,9 @@ export default function BotBuilder() {
   }
 
   useEffect(() => { load(); loadTpls(); loadMyKey(); setS((p) => ({ ...p, botLang: es ? 'es' : 'en' })); }, []);
-  // Trae tu clave Onyx activa (no revocada, no de copia) para ofrecerla en el popup.
-  async function loadMyKey() { try { const r = await fetch('/api/keys'); const j = await r.json(); const k = (j.keys || []).find((x: any) => !x.revoked && x.kind !== 'copy') || (j.keys || [])[0]; if (k?.key) setMyKey(String(k.key)); } catch {} }
+  // Trae TODAS tus claves Onyx activas (la API ya filtra revocadas y de copia). Cada clave
+  // está atada a una cuenta; por eso, si hay varias, dejamos que el trader elija la correcta.
+  async function loadMyKey() { try { const r = await fetch('/api/keys'); const j = await r.json(); setMyKeys((j.keys || []).filter((x: any) => x?.key)); } catch {} }
   // Al abrir un robot NUEVO (sin id) le asignamos un magic único apenas carga la lista
   // de robots existentes, para que nunca choque con otro. Si el trader lo edita, se respeta.
   useEffect(() => { if (!id && list.length) setS((p) => (Number(p.magic) === DEFAULT_SPEC.magic ? { ...p, magic: genMagic(list) } : p)); }, [list]);
@@ -668,10 +669,32 @@ export default function BotBuilder() {
                   </div>
                   <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
                     <a className="bbx-btn" href="/dashboard/keys" target="_blank" style={{ padding: '6px 12px', fontSize: 12.5 }}><OnyxIcon emoji="↗️" size={13} /> {L('¿Dónde saco mi clave?', 'Where do I get my key?')}</a>
-                    {myKey
-                      ? <button className="bbx-btn" style={{ padding: '6px 12px', fontSize: 12.5 }} onClick={() => copy(myKey)}>{copied === myKey ? L('Clave copiada ✓', 'Key copied ✓') : <><OnyxIcon emoji="📋" size={13} /> {L('Copiar mi clave activa', 'Copy my active key')}</>}</button>
-                      : <a className="bbx-btn" href="/dashboard/keys" target="_blank" style={{ padding: '6px 12px', fontSize: 12.5, color: 'var(--wn)' }}>{L('Aún no tienes clave → conéctala', 'No key yet → connect one')}</a>}
+                    {/* 1 sola clave: botón directo. Varias: lista para elegir la de la cuenta correcta. */}
+                    {myKeys.length === 1 &&
+                      <button className="bbx-btn" style={{ padding: '6px 12px', fontSize: 12.5 }} onClick={() => copy(myKeys[0].key)}>{copied === myKeys[0].key ? L('Clave copiada ✓', 'Key copied ✓') : <><OnyxIcon emoji="📋" size={13} /> {L('Copiar mi clave', 'Copy my key')}</>}</button>}
+                    {myKeys.length === 0 &&
+                      <a className="bbx-btn" href="/dashboard/keys" target="_blank" style={{ padding: '6px 12px', fontSize: 12.5, color: 'var(--wn)' }}>{L('Aún no tienes clave → conéctala', 'No key yet → connect one')}</a>}
                   </div>
+                  {/* Una clave: te decimos a qué cuenta pertenece. */}
+                  {myKeys.length === 1 && (myKeys[0].account_login || myKeys[0].label) &&
+                    <div style={{ fontSize: 11, color: 'var(--mut)', marginTop: 7 }}>{L('Es la clave de', 'This is the key for')} <b style={{ color: '#c8ccff' }}>{myKeys[0].label || L('tu cuenta', 'your account')}{myKeys[0].account_login ? ` · ${myKeys[0].account_login}` : ''}</b>. {L('Debe ser la de la cuenta donde pondrás el robot.', 'It must be the one for the account where you\'ll run the robot.')}</div>}
+                  {/* Varias claves: elige la correcta por cuenta. */}
+                  {myKeys.length > 1 &&
+                    <div style={{ marginTop: 9 }}>
+                      <div style={{ fontSize: 11.5, color: 'var(--wn)', marginBottom: 6 }}><OnyxIcon emoji="⚠️" size={12} /> {L('Tienes varias claves. Copia la de la cuenta donde vas a poner este robot:', 'You have several keys. Copy the one for the account where you\'ll run this robot:')}</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {myKeys.map((k) => (
+                          <div key={k.id || k.key} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,.04)', border: '1px solid var(--line)', borderRadius: 9, padding: '7px 10px' }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{k.label || L('Clave', 'Key')}</div>
+                              <div style={{ fontSize: 11, color: 'var(--mut)' }}>{k.account_login ? `${L('cuenta', 'account')} ${k.account_login}` : L('sin cuenta asignada', 'no account assigned')}{k.broker ? ` · ${k.broker}` : ''}{k.acc_type ? ` · ${k.acc_type}` : ''}</div>
+                            </div>
+                            <button className="bbx-btn" style={{ padding: '5px 10px', fontSize: 12, flex: 'none' }} onClick={() => copy(k.key)}>{copied === k.key ? L('Copiada ✓', 'Copied ✓') : L('Copiar', 'Copy')}</button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>}
+                  <div style={{ fontSize: 10.5, color: 'var(--mut)', marginTop: 8, lineHeight: 1.5 }}>{L('Onyx verifica que la clave sea de la cuenta donde corre el robot. Si no coincide, no se activa.', 'Onyx checks the key belongs to the account running the robot. If it doesn\'t match, it won\'t activate.')}</div>
                 </div>
 
                 <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>{L('Pasos', 'Steps')}</div>
