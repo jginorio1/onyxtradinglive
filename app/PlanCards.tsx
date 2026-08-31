@@ -36,8 +36,12 @@ export default function PlanCards({
     andMore: lang === 'es' ? 'y además:' : 'and more:',
   };
 
+  // Ancho máximo según cuántos planes hay: en pantalla ancha caben todos en fila
+  // (hasta ~270px cada uno) y, al achicar la pantalla, auto-fit los va apilando solo.
+  const cols = Math.max(1, plans.length);
+  const maxW = Math.min(1280, Math.max(360, cols * 268));
   return (
-    <div className="pricing-grid" style={{ textAlign: 'left', alignItems: 'stretch', display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', maxWidth: 760, margin: '0 auto' }}>
+    <div className="pricing-grid" style={{ textAlign: 'left', alignItems: 'stretch', display: 'grid', gap: 16, gridTemplateColumns: `repeat(auto-fit, minmax(230px, 1fr))`, maxWidth: maxW, margin: '0 auto' }}>
       {plans.map((p, i) => {
         const price = annual ? p.price_year : p.price_month;
         const name = lang === 'es' ? p.name : (p.name_en || p.name);
