@@ -51,8 +51,8 @@ namespace cAlgo.Robots
         const int    InpMagic = ${s.magic};
         const string InpComment = ${q(s.name)};
         const int    InpEntry = ${trig};
-        const int    InpMAfast = 12, InpMAslow = 50, InpRSIperiod = 14, InpDonchN = 20, InpMicroSwing = ${s.microSwing}, InpEntryHour = 9;
-        const double InpRSIos = 30, InpRSIob = 70;
+        const int    InpMAfast = ${s.maFast}, InpMAslow = ${s.maSlow}, InpRSIperiod = ${s.rsiPeriod}, InpDonchN = ${s.donchN}, InpMicroSwing = ${s.microSwing}, InpEntryHour = ${s.entryHour};
+        const double InpRSIos = ${s.rsiOS}, InpRSIob = ${s.rsiOB};
         const int    InpTrendMode = ${s.trendMode}, InpTrendMA = 50, InpTrendSwing = 6, InpTrendDonchN = 20;
         const bool   InpAllowLongs = ${b(s.allowLongs)}, InpAllowShorts = ${b(s.allowShorts)};
         const string InpWindows = "${windowsStr}";

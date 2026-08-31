@@ -75,14 +75,14 @@ input string  InpApiKey       = "";   // ${T('Tu clave Onyx (Conectar cuenta). R
 input ENUM_TIMEFRAMES InpTF    = ${tf(s.tf)};
 
 input ENUM_ENTRY InpEntry     = ${trig};
-input int     InpMAfast       = 12;
-input int     InpMAslow       = 50;
-input int     InpRSIperiod    = 14;
-input double  InpRSIos        = 30;
-input double  InpRSIob        = 70;
-input int     InpDonchN       = 20;
+input int     InpMAfast       = ${s.maFast};
+input int     InpMAslow       = ${s.maSlow};
+input int     InpRSIperiod    = ${s.rsiPeriod};
+input double  InpRSIos        = ${s.rsiOS};
+input double  InpRSIob        = ${s.rsiOB};
+input int     InpDonchN       = ${s.donchN};
 input int     InpMicroSwing   = ${s.microSwing};
-input int     InpEntryHour    = 9;
+input int     InpEntryHour    = ${s.entryHour};
 
 input int     InpTrendMode    = ${s.trendMode};
 input ENUM_TIMEFRAMES InpTrendTF = ${tf(s.trendTF)};
@@ -440,14 +440,14 @@ input int     InpMagic        = ${s.magic};
 input string  InpApiKey       = "";   // ${T('Tu clave Onyx (Conectar cuenta). Requerida siempre.', 'Your Onyx key (Connect account). Always required.')}
 input ENUM_TIMEFRAMES InpTF   = ${tf4(s.tf)};
 input int     InpEntry        = ${trig};   // 0=swing 1=MA 2=RSI 3=Donchian 4=hora
-input int     InpMAfast       = 12;
-input int     InpMAslow       = 50;
-input int     InpRSIperiod    = 14;
-input double  InpRSIos        = 30;
-input double  InpRSIob        = 70;
-input int     InpDonchN       = 20;
+input int     InpMAfast       = ${s.maFast};
+input int     InpMAslow       = ${s.maSlow};
+input int     InpRSIperiod    = ${s.rsiPeriod};
+input double  InpRSIos        = ${s.rsiOS};
+input double  InpRSIob        = ${s.rsiOB};
+input int     InpDonchN       = ${s.donchN};
 input int     InpMicroSwing   = ${s.microSwing};
-input int     InpEntryHour    = 9;
+input int     InpEntryHour    = ${s.entryHour};
 input int     InpTrendMode    = ${s.trendMode};   // 0=MA 1=swing 2=Donchian
 input ENUM_TIMEFRAMES InpTrendTF = ${tf4(s.trendTF)};
 input int     InpTrendMA      = 50;

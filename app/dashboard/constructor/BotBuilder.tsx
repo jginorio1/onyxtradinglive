@@ -12,7 +12,7 @@ const nz = (x: any) => typeof x === 'number' && x > 0;
 const Lc = (es: boolean, a: string, b: string) => (es ? a : b);
 // Un bot NUEVO arranca con los campos críticos en blanco para forzar una elección
 // consciente (símbolo, gatillo de entrada y fase de la cuenta). El resto mantiene default.
-const blankReq = (sp: any) => ({ ...sp, symbol: '', entryTrigger: '', accountMode: '' as any });
+const blankReq = (sp: any) => ({ ...sp, name: '', platform: '' as any, symbol: '', entryTrigger: '', accountMode: '' as any });
 const chipOf = (status: string, es: boolean) => status === 'off' ? { c: 'off', t: Lc(es, 'Desactivado', 'Disabled') } : status === 'warn' ? { c: 'warn', t: Lc(es, 'Sin definir', 'Undefined') } : { c: 'ok', t: Lc(es, 'Activo', 'Active') };
 
 // Punto de "obligatorio": rojo si aún no lo elegiste, verde si ya está.
@@ -124,10 +124,17 @@ export default function BotBuilder() {
     { key: 'dailyLossVal', label: L('Cap de pérdida diaria', 'Daily loss cap'), section: 'risk' },
     { key: 'accountMode', label: L('Fase de la cuenta', 'Account phase'), section: 'firm' },
     { key: 'firmTotalLimitPct', label: L('Límite total del fondeo', 'Firm total limit'), section: 'firm' },
+    // Parámetros del gatillo elegido (obligatorios según el gatillo).
+    ...(s.entryTrigger === 'ma_cross' ? [{ key: 'maFast' as keyof BotSpec, label: L('Media rápida', 'Fast MA'), section: 'entry' }, { key: 'maSlow' as keyof BotSpec, label: L('Media lenta', 'Slow MA'), section: 'entry' }]
+      : s.entryTrigger === 'rsi' ? [{ key: 'rsiPeriod' as keyof BotSpec, label: L('Periodo RSI', 'RSI period'), section: 'entry' }, { key: 'rsiOS' as keyof BotSpec, label: L('RSI sobreventa', 'RSI oversold'), section: 'entry' }, { key: 'rsiOB' as keyof BotSpec, label: L('RSI sobrecompra', 'RSI overbought'), section: 'entry' }]
+      : s.entryTrigger === 'donchian' ? [{ key: 'donchN' as keyof BotSpec, label: L('Periodo Donchian', 'Donchian period'), section: 'entry' }]
+      : s.entryTrigger === 'breakout_swing' ? [{ key: 'microSwing' as keyof BotSpec, label: L('Tamaño del swing', 'Swing size'), section: 'entry' }]
+      : s.entryTrigger === 'time' ? [{ key: 'entryHour' as keyof BotSpec, label: L('Hora de entrada', 'Entry hour'), section: 'entry' }]
+      : []),
   ];
-  const NUM_REQ = new Set(['slVal', 'tp1Val', 'runnerVal', 'riskVal', 'dailyLossVal', 'firmTotalLimitPct']);
+  const NUM_REQ = new Set(['slVal', 'tp1Val', 'runnerVal', 'riskVal', 'dailyLossVal', 'firmTotalLimitPct', 'maFast', 'maSlow', 'rsiPeriod', 'rsiOS', 'rsiOB', 'donchN', 'microSwing']);
   const reqKeys = new Set(REQ.map((r) => r.key as string));           // para pintar el punto en cada campo
-  const CRIT = new Set(['symbol', 'entryTrigger', 'accountMode', 'name']); // arrancan en blanco: valen solo si eliges
+  const CRIT = new Set(['symbol', 'entryTrigger', 'accountMode', 'name', 'platform']); // arrancan en blanco: valen solo si eliges
   const okVal = (k: string) => { const v = (s as any)[k];
     if (k === 'accountMode') return typeof v === 'number';
     if (NUM_REQ.has(k)) return typeof v === 'number' && v > 0;
@@ -366,7 +373,7 @@ export default function BotBuilder() {
       {view === 'general' && (
       <Panel ic="⚙️" title={L('General', 'General')}>
         <Fld t={L('Nombre de tu bot', 'Your bot name')} k="name" ph={L('Ej: Mi cazador de Londres', 'e.g. My London hunter')} hint={L('Solo para identificarlo en tu lista. Ponle algo que reconozcas.', 'Just to identify it in your list. Use something you\'ll recognize.')} />
-        <Fld t={L('Plataforma', 'Platform')} k="platform" opts={[['mt5', 'MetaTrader 5'], ['mt4', 'MetaTrader 4'], ['ctrader', 'cTrader']]} hint={L('La app donde correrá el robot. Genera el archivo correcto (.mq5, .mq4 o .cs).', 'The app the robot will run on. Generates the right file (.mq5, .mq4 or .cs).')} />
+        <Fld t={L('Plataforma', 'Platform')} k="platform" opts={[['', L('Elige…', 'Choose…')], ['mt5', 'MetaTrader 5'], ['mt4', 'MetaTrader 4'], ['ctrader', 'cTrader']]} hint={L('La app donde correrá el robot. Genera el archivo correcto (.mq5, .mq4 o .cs).', 'The app the robot will run on. Generates the right file (.mq5, .mq4 or .cs).')} />
         <Fld t={L('Instrumento', 'Instrument')} k="symbol" ph="XAUUSD" list="bbx-syms" hint={L('El bot encuentra el símbolo aunque tu broker use otro nombre o sufijo (GOLD, XAUUSD.m, etc.).', 'The bot finds the symbol even if your broker uses another name or suffix (GOLD, XAUUSD.m, etc.).')} />
         <datalist id="bbx-syms">{SYMBOL_HINTS.map((x) => <option key={x} value={x} />)}</datalist>
         {/* Magic con generador: se asigna uno único automáticamente y se puede regenerar. */}
@@ -388,7 +395,20 @@ export default function BotBuilder() {
         <Fld t={L('Gatillo de entrada', 'Entry trigger')} k="entryTrigger" opts={[['', L('Elige…', 'Choose…')], ['breakout_swing', L('Ruptura de swing + pullback', 'Swing breakout + pullback')], ['ma_cross', L('Cruce de medias', 'MA cross')], ['rsi', 'RSI'], ['donchian', 'Donchian'], ['time', L('Hora fija', 'Fixed time')]]} hint={L('La señal que dispara la entrada. Es el “cuándo entra” el robot.', 'The signal that fires the entry. It\'s the robot\'s “when to enter”.')} />
         <Fld t={L('Sesgo / tendencia', 'Bias / trend')} k="trendMode" opts={[[0, L('Media', 'Moving average')], [1, L('Estructura (HH/HL)', 'Structure (HH/HL)')], [2, 'Donchian']]} hint={L('Cómo decide la dirección. Solo opera a favor de esta tendencia.', 'How it reads direction. It only trades in favor of this trend.')} />
         <Fld t={L('Temporalidad del sesgo', 'Bias timeframe')} k="trendTF" opts={TFS} hint={L('Marco mayor para leer la tendencia.', 'Higher timeframe to read the trend.')} />
-        <Fld t={L('Tamaño del swing', 'Swing size')} k="microSwing" type="number" hint={L('Cuántas velas mira a cada lado para marcar un máximo/mínimo. Más grande = señales más filtradas.', 'How many candles it checks each side to mark a high/low. Bigger = more filtered signals.')} />
+        {/* Parámetros del gatillo elegido (obligatorios). Cambian según entryTrigger. */}
+        {s.entryTrigger === 'ma_cross' && <>
+          <Fld t={L('Media rápida (periodo)', 'Fast MA (period)')} k="maFast" type="number" min={1} hint={L('Periodo de la media rápida. Cuando cruza por encima de la lenta = compra; por debajo = venta.', 'Fast MA period. When it crosses above the slow MA = buy; below = sell.')} />
+          <Fld t={L('Media lenta (periodo)', 'Slow MA (period)')} k="maSlow" type="number" min={2} hint={L('Periodo de la media lenta. Es la referencia del cruce; debe ser mayor que la rápida.', 'Slow MA period. It\'s the cross reference; should be larger than the fast one.')} />
+        </>}
+        {s.entryTrigger === 'rsi' && <>
+          <Fld t={L('Periodo del RSI', 'RSI period')} k="rsiPeriod" type="number" min={2} hint={L('Cuántas velas usa el RSI para medir la fuerza del movimiento.', 'How many candles the RSI uses to measure momentum.')} />
+          <Fld t={L('RSI sobreventa', 'RSI oversold')} k="rsiOS" type="number" min={1} hint={L('Nivel bajo (ej. 30). Al salir de aquí hacia arriba, entra en compra.', 'Low level (e.g. 30). Leaving it upward triggers a buy.')} />
+          <Fld t={L('RSI sobrecompra', 'RSI overbought')} k="rsiOB" type="number" min={51} hint={L('Nivel alto (ej. 70). Al salir de aquí hacia abajo, entra en venta.', 'High level (e.g. 70). Leaving it downward triggers a sell.')} />
+        </>}
+        {s.entryTrigger === 'donchian' && <Fld t={L('Periodo del canal Donchian', 'Donchian channel period')} k="donchN" type="number" min={2} hint={L('Cuántas velas mira para el máximo/mínimo del canal. Romper el canal = entrada.', 'How many candles it scans for the channel high/low. Breaking it = entry.')} />}
+        {s.entryTrigger === 'breakout_swing' && <Fld t={L('Tamaño del swing', 'Swing size')} k="microSwing" type="number" min={1} hint={L('Cuántas velas a cada lado definen el swing a romper. Más grande = señales más filtradas.', 'How many candles each side define the swing to break. Bigger = more filtered signals.')} />}
+        {s.entryTrigger === 'time' && <Fld t={L('Hora de entrada (servidor)', 'Entry hour (server)')} k="entryHour" type="number" min={0} hint={L('Hora fija del servidor a la que abre (0–23).', 'Fixed server hour when it opens (0–23).')} />}
+        {!s.entryTrigger && <div style={{ gridColumn: '1 / -1', fontSize: 12, color: 'var(--wn)' }}><OnyxIcon emoji="⬆️" size={12} /> {L('Elige primero el gatillo de entrada para ver y ajustar sus parámetros.', 'Pick the entry trigger first to see and adjust its parameters.')}</div>}
         <Fld t={L('Máx. ops/día (0=∞)', 'Max trades/day (0=∞)')} k="maxTradesPerDay" type="number" hint={L('Límite de operaciones por día. 0 = sin límite.', 'Cap of trades per day. 0 = no limit.')} />
         <div><div style={{ display: 'flex', gap: 10, alignItems: 'center', paddingTop: 20 }}><Toggle k="allowLongs" t={L('Largos', 'Longs')} /><Toggle k="allowShorts" t={L('Cortos', 'Shorts')} /></div><div className="bbx-hint">{L('Permite que el robot compre (largos) y/o venda (cortos). Deja ambos para operar en las dos direcciones.', 'Lets the robot buy (longs) and/or sell (shorts). Keep both to trade both ways.')}</div></div>
       </Panel>

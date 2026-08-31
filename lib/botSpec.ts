@@ -11,6 +11,8 @@ export type BotSpec = {
   name: string; platform: Platform; symbol: string; magic: number; tf: string; botLang: string;
   // Entrada
   entryTrigger: string; microSwing: number; trendMode: number; trendTF: string;
+  // Parámetros del gatillo (según entryTrigger): medias, RSI, Donchian, hora fija.
+  maFast: number; maSlow: number; rsiPeriod: number; rsiOS: number; rsiOB: number; donchN: number; entryHour: number;
   allowLongs: boolean; allowShorts: boolean; maxTradesPerDay: number;
   signalFromH: number; signalFromM: number; signalToH: number; signalToM: number;
   // Varias ventanas/sesiones de operación (hora del servidor). El bot busca entradas
@@ -47,6 +49,7 @@ export type BotSpec = {
 export const DEFAULT_SPEC: BotSpec = {
   name: 'Mi bot', platform: 'mt5', symbol: 'XAUUSD', magic: 991000, tf: 'M5', botLang: 'es',
   entryTrigger: 'breakout_swing', microSwing: 2, trendMode: 1, trendTF: 'H1', allowLongs: true, allowShorts: true,
+  maFast: 12, maSlow: 50, rsiPeriod: 14, rsiOS: 30, rsiOB: 70, donchN: 20, entryHour: 9,
   maxTradesPerDay: 20, signalFromH: 8, signalFromM: 0, signalToH: 20, signalToM: 0, windows: [{ fh: 8, fm: 0, th: 20, tm: 0 }], tradeDays: 62,
   riskVal: 0.2, riskUnit: 'pct', maxLots: 50,
   slVal: 0.5, slUnit: 'atr',
@@ -88,6 +91,14 @@ export function cleanSpec(inp: any): BotSpec {
   s.tf = String(inp?.tf || 'M5'); s.trendTF = String(inp?.trendTF || 'H1');
   s.entryTrigger = String(inp?.entryTrigger || 'breakout_swing');
   s.microSwing = clamp(Math.round(num(inp?.microSwing, 2)), 1, 10);
+  // Parámetros del gatillo (saneados con topes razonables).
+  s.maFast = clamp(Math.round(num(inp?.maFast, 12)), 1, 500);
+  s.maSlow = clamp(Math.round(num(inp?.maSlow, 50)), 2, 1000);
+  s.rsiPeriod = clamp(Math.round(num(inp?.rsiPeriod, 14)), 2, 200);
+  s.rsiOS = clamp(Math.round(num(inp?.rsiOS, 30)), 1, 49);
+  s.rsiOB = clamp(Math.round(num(inp?.rsiOB, 70)), 51, 99);
+  s.donchN = clamp(Math.round(num(inp?.donchN, 20)), 2, 500);
+  s.entryHour = clamp(Math.round(num(inp?.entryHour, 9)), 0, 23);
   s.trendMode = clamp(Math.round(num(inp?.trendMode, 1)), 0, 2);
   s.maxTradesPerDay = clamp(Math.round(num(inp?.maxTradesPerDay, 20)), 0, 500);
   s.signalFromH = clamp(Math.round(num(inp?.signalFromH, 8)), 0, 23); s.signalFromM = clamp(Math.round(num(inp?.signalFromM, 0)), 0, 59);
@@ -155,6 +166,7 @@ export function toSetFile(s: BotSpec): string {
   const P = (k: string, v: any) => L.push(`${k}=${v}`);
   P('InpSymbol', s.symbol); P('InpMagic', s.magic); P('InpComment', s.name); P('InpTF', tfEnum(s.tf));
   P('InpEntry', { breakout_swing: 0, ma_cross: 1, rsi: 2, donchian: 3, time: 4 }[s.entryTrigger] ?? 1);
+  P('InpMAfast', s.maFast); P('InpMAslow', s.maSlow); P('InpRSIperiod', s.rsiPeriod); P('InpRSIos', s.rsiOS); P('InpRSIob', s.rsiOB); P('InpDonchN', s.donchN); P('InpEntryHour', s.entryHour);
   P('InpMicroSwing', s.microSwing); P('InpTrendMode', s.trendMode); P('InpTrendTF', tfEnum(s.trendTF));
   P('InpAllowLongs', bl(s.allowLongs)); P('InpAllowShorts', bl(s.allowShorts)); P('InpMaxTradesPerDay', s.maxTradesPerDay);
   P('InpSignalFromH', s.signalFromH); P('InpSignalFromM', s.signalFromM); P('InpSignalToH', s.signalToH); P('InpSignalToM', s.signalToM);
