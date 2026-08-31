@@ -75,10 +75,31 @@ export default function LandingConstructor() {
   // SOLO los planes de bot (Gratis + Onyx Bot) — 2 planes por escala. El resto
   // (Pro/Elite/Black, para trading manual) vive en "ver comparación completa".
   const shown = useMemo(() => {
-    if (plans.some((p: any) => p.id === 'trader')) {
-      return plans.filter((p: any) => p.id === 'free' || p.id === 'trader');
-    }
-    return plans;
+    const base = plans.some((p: any) => p.id === 'trader')
+      ? plans.filter((p: any) => p.id === 'free' || p.id === 'trader')
+      : plans;
+    // En el landing de bots, el plan Gratis debe dejar clarísimo el gancho: puedes
+    // CREAR Y CONECTAR 1 robot gratis. Lo forzamos como primera viñeta (y ajustamos
+    // el subtítulo al mensaje del constructor) sin tocar lo que el admin configuró.
+    return base.map((p: any) => {
+      // Trader: subtítulo que ancla el valor concreto (no un lema vago).
+      if (p.id === 'trader') {
+        return { ...p, desc_es: 'Robots ilimitados en hasta 3 cuentas', desc_en: 'Unlimited robots on up to 3 accounts' };
+      }
+      if (p.id !== 'free') return p;
+      const leadEs = 'Crea y conecta 1 robot';
+      const leadEn = 'Build & connect 1 robot';
+      const has = (arr: any[]) => Array.isArray(arr) && arr.some((f) => String(f).toLowerCase().includes('robot') || String(f).toLowerCase().includes('bot'));
+      const fEs = Array.isArray(p.features) ? p.features.slice() : [];
+      const fEn = Array.isArray(p.features_en) ? p.features_en.slice() : [];
+      return {
+        ...p,
+        desc_es: 'Construye tu primer robot gratis',
+        desc_en: 'Build your first robot free',
+        features: has(fEs) ? fEs : [leadEs, ...fEs],
+        features_en: has(fEn) ? fEn : [leadEn, ...fEn],
+      };
+    });
   }, [plans]);
   // Plan "para bots": si existe el plan dedicado 'trader', ese; si no, el pagado
   // más barato (el de entrada). Solo marca visual en este landing.
@@ -279,7 +300,11 @@ export default function LandingConstructor() {
         </div>
         <div style={{ marginTop: 26 }}>
           {shown.length > 0
-            ? <PlanCards plans={shown} lang={es ? 'es' : 'en'} annual={annual} botTagId={botPlanId} onChoose={(id: string, price: number) => { window.location.href = (price > 0 && id && id !== 'free') ? `/login?mode=signup&plan=${id}${annual ? '&annual=1' : ''}` : '/login?mode=signup'; }} />
+            ? <PlanCards plans={shown} lang={es ? 'es' : 'en'} annual={annual} botTagId={botPlanId}
+                freeLabel={L('Crear mi primer robot', 'Build my first robot')}
+                trust
+                anchors={botPlanId ? { [botPlanId]: { es: 'Menos que un café a la semana · un robot a medida cuesta $300+', en: 'Less than a weekly coffee · a custom bot costs $300+' } } : undefined}
+                onChoose={(id: string, price: number) => { window.location.href = (price > 0 && id && id !== 'free') ? `/login?mode=signup&plan=${id}${annual ? '&annual=1' : ''}` : '/login?mode=signup'; }} />
             : <p className="muted" style={{ textAlign: 'center' }}>{L('Cargando planes…', 'Loading plans…')}</p>}
           {/* Comparación de 3 niveles: todo lo del Bot Builder, fila por fila.
               Se dibuja desde la matriz editable en Admin (stats.botPlanMatrix +

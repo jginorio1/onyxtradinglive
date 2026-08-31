@@ -134,7 +134,9 @@ function LoginInner() {
   // o entrar lo mandamos directo al checkout de ese plan en /pricing.
   const planParam = (params.get('plan') || '').replace(/[^a-z0-9_-]/gi, '').slice(0, 40);
   const annualParam = params.get('annual') === '1';
-  const planDest = planParam ? '/pricing?plan=' + planParam + (annualParam ? '&annual=1' : '') : '';
+  const promoParam = (params.get('promo') || '').replace(/[^a-z0-9_-]/gi, '').slice(0, 40);   // cupón del enlace
+  const promoQ = promoParam ? '&promo=' + promoParam : '';
+  const planDest = planParam ? '/pricing?plan=' + planParam + (annualParam ? '&annual=1' : '') + promoQ : '';
 
   // A dónde vuelve el usuario tras confirmar el email o tras entrar.
   const nextRaw = params.get('next') || planDest || '/dashboard';
@@ -176,18 +178,18 @@ function LoginInner() {
         // vuelve a /confirmado (página de bienvenida con login rápido) llevando el
         // idioma y el plan; de ahí al onboarding y al checkout. Así no se pierde
         // aunque el correo se abra en otro dispositivo/navegador.
-        const planQS = planParam ? `&plan=${planParam}${annualParam ? '&annual=1' : ''}` : '';
-        const onbDest = planParam ? `/onboarding?plan=${planParam}${annualParam ? '&annual=1' : ''}` : '/onboarding';
+        const planQS = planParam ? `&plan=${planParam}${annualParam ? '&annual=1' : ''}${promoQ}` : '';
+        const onbDest = planParam ? `/onboarding?plan=${planParam}${annualParam ? '&annual=1' : ''}${promoQ}` : '/onboarding';
         const emailRedirectTo = typeof window !== 'undefined'
           ? `${window.location.origin}/confirmado?lang=${lang}${planQS}` : undefined;
-        // CLAVE: guardamos el plan pendiente en los METADATOS de la cuenta, en el
-        // mismo instante del registro (momento garantizado). El servidor del
-        // dashboard lo lee y lleva al checkout. Esto NO depende del navegador, del
-        // dispositivo, de /confirmado ni de que haya sesión al confirmar el email.
+        // CLAVE: guardamos plan y cupón pendientes en los METADATOS de la cuenta, en
+        // el mismo instante del registro (momento garantizado). El servidor del
+        // dashboard los lee y lleva al checkout con el descuento. NO depende del
+        // navegador, del dispositivo, de /confirmado ni de la sesión al confirmar.
         const { data, error } = await sb.auth.signUp({
           email: email.trim(), password: pass, options: {
             emailRedirectTo,
-            data: { full_name: fullName, first_name: name.trim(), last_name: lastName.trim(), lang, pending_plan: planParam || null, pending_plan_annual: annualParam },
+            data: { full_name: fullName, first_name: name.trim(), last_name: lastName.trim(), lang, pending_plan: planParam || null, pending_plan_annual: annualParam, pending_promo: promoParam || null },
             captchaToken: cap,
           },
         });
@@ -215,7 +217,7 @@ function LoginInner() {
   async function resend() {
     setResent(false);
     try {
-      const planQS = planParam ? `&plan=${planParam}${annualParam ? '&annual=1' : ''}` : '';
+      const planQS = planParam ? `&plan=${planParam}${annualParam ? '&annual=1' : ''}${promoQ}` : '';
       const emailRedirectTo = typeof window !== 'undefined' ? `${window.location.origin}/confirmado?lang=${lang}${planQS}` : undefined;
       await sb.auth.resend({ type: 'signup', email: email.trim(), options: { emailRedirectTo } });
       setResent(true);

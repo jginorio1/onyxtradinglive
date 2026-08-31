@@ -83,6 +83,8 @@ function PromoControl() {
   const [codes, setCodes] = useState<any[]>([]);     // cupones ACTIVOS en Stripe
   const [codesBusy, setCodesBusy] = useState(false);
   const [codesErr, setCodesErr] = useState('');
+  const [flags, setFlags] = useState<{ letCustomerCoupon: boolean }>({ letCustomerCoupon: false });
+  const [testCode, setTestCode] = useState('');      // código a simular (modo enlace)
   const loadCodes = () => {
     setCodesBusy(true); setCodesErr('');
     fetch('/api/admin/promo/coupon').then((r) => r.json()).then((d) => { if (d.error) setCodesErr(d.error); setCodes(d.codes || []); }).catch(() => setCodesErr('Error')).finally(() => setCodesBusy(false));
@@ -92,7 +94,8 @@ function PromoControl() {
   const [checkBusy, setCheckBusy] = useState(false);
   const runCheck = () => {
     setCheckBusy(true); setCheck(null);
-    fetch('/api/admin/promo/coupon?check=1').then((r) => r.json()).then((d) => {
+    const tc = testCode.trim();
+    fetch('/api/admin/promo/coupon?check=1' + (tc ? '&code=' + encodeURIComponent(tc) : '')).then((r) => r.json()).then((d) => {
       const c = d.check || {};
       const reasons: Record<string, string> = {
         promotion_code: L(`✓ Se aplicará ${c.code} (−${c.percent}%) automáticamente en el checkout.`, `✓ ${c.code} (−${c.percent}%) will auto-apply at checkout.`),
@@ -100,13 +103,15 @@ function PromoControl() {
         no_bars: L('No hay ninguna barra creada.', 'No bars created.'),
         no_active_bar: L('No hay ninguna barra activa ahora (revisa encendido y fechas).', 'No bar is active right now (check ON + dates).'),
         active_bar_without_coupon: L('La barra activa no tiene cupón en el campo "Cupón (copiable)".', 'The active bar has no coupon in the "Coupon" field.'),
-        not_in_stripe: L(`La barra activa usa "${c.code}", pero ese código NO existe activo en Stripe. Pulsa "Crear/validar en Stripe" en esa barra.`, `The active bar uses "${c.code}", but that code is NOT active in Stripe. Press "Create/validate in Stripe" on that bar.`),
+        not_in_stripe: L(`El código "${c.code}" NO existe activo en Stripe. Pulsa "Crear/validar en Stripe" en la barra.`, `Code "${c.code}" is NOT active in Stripe. Press "Create/validate in Stripe" on the bar.`),
+        manual: L('No hay descuento automático: se mostrará el campo manual para pegar un cupón.', 'No auto discount: the manual code field will be shown.'),
+        let_customer_coupon: L('Configurado para dejar el cupón manual (el cliente pega el suyo).', 'Configured to show the manual field (customer pastes their own).'),
       };
       const text = reasons[c.reason] || (String(c.reason || '').startsWith('stripe_error') ? L('Error de Stripe: ', 'Stripe error: ') + c.reason : L('Resultado: ', 'Result: ') + (c.reason || '—'));
       setCheck({ ok: !!c.applies, text });
     }).catch(() => setCheck({ ok: false, text: 'Error' })).finally(() => setCheckBusy(false));
   };
-  useEffect(() => { fetch('/api/admin/promo').then((r) => r.json()).then((d) => { setBars(d.bars || []); setStats(d.stats || {}); }).catch(() => {}); loadCodes(); }, []);
+  useEffect(() => { fetch('/api/admin/promo').then((r) => r.json()).then((d) => { setBars(d.bars || []); setStats(d.stats || {}); if (d.flags) setFlags(d.flags); }).catch(() => {}); loadCodes(); }, []);
 
   const upd = (id: string, k: string, v: any) => setBars((bs) => bs.map((b) => (b.id === id ? { ...b, [k]: v } : b)));
   const addBar = (patch: any = {}) => { const nb = { ...blankPromo(), id: newId(), ...patch }; setBars((bs) => [...bs, nb]); setOpenId(nb.id); };
@@ -117,9 +122,9 @@ function PromoControl() {
   async function save(extra?: any) {
     setBusy(true); setMsg('');
     try {
-      const r = await fetch('/api/admin/promo', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ bars, ...(extra || {}) }) });
+      const r = await fetch('/api/admin/promo', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ bars, flags, ...(extra || {}) }) });
       const d = await r.json();
-      if (!r.ok) setMsg(d.error || 'Error'); else { setBars(d.bars || []); setStats(d.stats || {}); setMsg(t.pr_saved); }
+      if (!r.ok) setMsg(d.error || 'Error'); else { setBars(d.bars || []); setStats(d.stats || {}); if (d.flags) setFlags(d.flags); setMsg(t.pr_saved); }
     } finally { setBusy(false); }
   }
   // Crea o valida el cupón en Stripe para que el descuento se aplique solo.
@@ -165,10 +170,19 @@ function PromoControl() {
       <p className="muted" style={{ fontSize: 13, marginBottom: 8 }}>{L('Programa varias barras por temporada. El sitio muestra sola la que toca por fecha.', 'Schedule several bars by season. The site shows the one that fits the date automatically.')}</p>
 
       {/* Diagnóstico del descuento automático (misma lógica que el checkout) */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10, padding: 10, border: '1px dashed var(--line)', borderRadius: 10 }}>
-        <button className="btn btn-ghost" style={{ fontSize: 12.5 }} disabled={checkBusy} onClick={runCheck}>{checkBusy ? '…' : '🔎 ' + L('Probar descuento del checkout', 'Test checkout discount')}</button>
-        {check && <span style={{ fontSize: 12.5, color: check.ok ? 'var(--soft-green)' : 'var(--amber)' }}>{check.text}</span>}
-        {!check && <span className="muted" style={{ fontSize: 12 }}>{L('Comprueba si el descuento se aplicará solo en el pago.', 'Checks whether the discount will auto-apply at checkout.')}</span>}
+      <div style={{ marginBottom: 10, padding: 10, border: '1px dashed var(--line)', borderRadius: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <button className="btn btn-ghost" style={{ fontSize: 12.5 }} disabled={checkBusy} onClick={runCheck}>{checkBusy ? '…' : '🔎 ' + L('Probar descuento', 'Test discount')}</button>
+          <input value={testCode} onChange={(e) => setTestCode(e.target.value.toUpperCase())} placeholder={L('código de enlace (opcional)', 'link code (optional)')} style={{ ...inp, width: 200, marginTop: 0 }} />
+        </div>
+        {check && <div style={{ fontSize: 12.5, marginTop: 8, color: check.ok ? 'var(--soft-green)' : 'var(--amber)' }}>{check.text}</div>}
+        {!check && <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>{L('Comprueba qué se aplicará en el pago. Escribe un código para simular un enlace ?promo=', 'Checks what will apply at checkout. Type a code to simulate a ?promo= link.')}</div>}
+
+        {/* Flag global de prioridad */}
+        <label className="row" style={{ gap: 8, marginTop: 10, fontSize: 12.5, alignItems: 'flex-start', cursor: 'pointer' }}>
+          <input type="checkbox" checked={!!flags.letCustomerCoupon} onChange={(e) => setFlags({ letCustomerCoupon: e.target.checked })} style={{ width: 'auto', margin: '2px 0 0' }} />
+          <span>{L('Dejar que el cliente use su propio cupón aunque haya promo (muestra el campo manual en vez de forzar la promo). Guarda para aplicar.', "Let customers use their own coupon even during a promo (shows the manual field instead of forcing the promo). Save to apply.")}</span>
+        </label>
       </div>
 
       {/* Biblioteca de temas */}
@@ -234,6 +248,24 @@ function PromoControl() {
                       <button className="btn btn-ghost" style={{ fontSize: 12.5 }} disabled={cpBusy === b.id} onClick={() => stripeCoupon(b)}>{cpBusy === b.id ? '…' : L('Crear/validar en Stripe', 'Create/validate in Stripe')}</button>
                     </div>
                     {cpMsg[b.id] && <div style={{ fontSize: 12, marginTop: 6, color: cpMsg[b.id].startsWith('✓') ? 'var(--soft-green)' : 'var(--amber)' }}>{cpMsg[b.id]}</div>}
+
+                    {/* Modo de aplicación del descuento */}
+                    <div style={{ marginTop: 10 }}>
+                      <label className="muted" style={{ fontSize: 12 }}>{L('Aplicar el descuento a', 'Apply the discount to')}
+                        <select value={b.mode || 'auto'} onChange={(e) => upd(b.id, 'mode', e.target.value)} style={inp}>
+                          <option value="auto">{L('Todos automáticamente (durante la promo)', 'Everyone automatically (during the promo)')}</option>
+                          <option value="link">{L('Solo por enlace (?promo=)', 'Only via link (?promo=)')}</option>
+                        </select>
+                      </label>
+                      {(b.mode || 'auto') === 'link' && b.coupon && (
+                        <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <code style={{ fontSize: 11.5, background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 6, padding: '5px 8px', wordBreak: 'break-all' }}>
+                            {(typeof window !== 'undefined' ? window.location.origin : '') + '/pricing?promo=' + b.coupon}
+                          </code>
+                          <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => { try { navigator.clipboard.writeText((typeof window !== 'undefined' ? window.location.origin : '') + '/pricing?promo=' + b.coupon); } catch {} }}>{L('Copiar enlace', 'Copy link')}</button>
+                        </div>
+                      )}
+                    </div>
                     {/* Cupones ACTIVOS en Stripe — visibles aquí mismo. Clic = rellena esta barra. */}
                     <div style={{ marginTop: 10, borderTop: '1px dashed var(--line)', paddingTop: 8 }}>
                       <div className="row between" style={{ alignItems: 'center', marginBottom: 6 }}>

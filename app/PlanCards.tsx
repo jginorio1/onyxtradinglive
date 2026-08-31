@@ -16,12 +16,17 @@ type Plan = {
 };
 
 export default function PlanCards({
-  plans, lang, annual, onChoose, loadingId = '', botTagId = '',
+  plans, lang, annual, onChoose, loadingId = '', botTagId = '', freeLabel = '', anchors, trust = false,
 }: {
   plans: Plan[]; lang: 'es' | 'en'; annual: boolean;
   onChoose: (planId: string, price: number) => void; loadingId?: string;
   // Marca opcional "Para bots" en un plan (solo landing del constructor). Vacío = sin marca.
   botTagId?: string;
+  // Ventas (opcional, solo donde se pasen): CTA del plan gratis, ancla de precio por
+  // plan (id → {es,en}) y micro-sellos de confianza bajo el botón.
+  freeLabel?: string;
+  anchors?: Record<string, { es: string; en: string }>;
+  trust?: boolean;
 }) {
   const t = {
     yr: lang === 'es' ? 'año' : 'yr', mo: lang === 'es' ? 'mes' : 'mo',
@@ -32,7 +37,7 @@ export default function PlanCards({
   };
 
   return (
-    <div className="pricing-grid" style={{ textAlign: 'left', alignItems: 'start', display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', maxWidth: 760, margin: '0 auto' }}>
+    <div className="pricing-grid" style={{ textAlign: 'left', alignItems: 'stretch', display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', maxWidth: 760, margin: '0 auto' }}>
       {plans.map((p, i) => {
         const price = annual ? p.price_year : p.price_month;
         const name = lang === 'es' ? p.name : (p.name_en || p.name);
@@ -45,13 +50,14 @@ export default function PlanCards({
         const isFree = p.id === 'free' || price === 0;
         const botTag = !!botTagId && p.id === botTagId;
         return (
-          <div key={p.id} className="card" style={(pop || botTag) ? { border: '2px solid var(--brand)', boxShadow: '0 0 30px rgba(124,140,255,.25)', position: 'relative' } : { position: 'relative' }}>
+          <div key={p.id} className="card" style={{ display: 'flex', flexDirection: 'column', height: '100%', ...((pop || botTag) ? { border: '2px solid var(--brand)', boxShadow: '0 0 30px rgba(124,140,255,.25)', position: 'relative' } : { position: 'relative' }) }}>
             {pop && <span style={{ position: 'absolute', top: -13, left: '50%', transform: 'translateX(-50%)', background: 'var(--grad)', color: '#fff', fontSize: 11, fontWeight: 800, padding: '4px 14px', borderRadius: 20, whiteSpace: 'nowrap' }}>★ {badge}</span>}
             {botTag && <span style={{ position: 'absolute', top: 12, right: 12, background: 'color-mix(in srgb,var(--brand) 18%,transparent)', color: 'var(--brand)', fontSize: 10.5, fontWeight: 800, padding: '3px 9px', borderRadius: 99, border: '1px solid color-mix(in srgb,var(--brand) 40%,transparent)', whiteSpace: 'nowrap' }}>★ {lang === 'es' ? 'Para bots' : 'For bots'}</span>}
             <h3 style={{ marginTop: pop ? 6 : 0 }}>{name}</h3>
             {desc && <p className="muted" style={{ fontSize: 13, marginTop: 4 }}>{desc}</p>}
             <div style={{ fontSize: 40, fontWeight: 800, margin: '10px 0 4px' }}>${price}<span className="muted" style={{ fontSize: 15, fontWeight: 500 }}>/{annual ? t.yr : t.mo}</span></div>
-            <ul style={{ listStyle: 'none', margin: '16px 0' }}>
+            {anchors?.[p.id] && <div className="muted" style={{ fontSize: 12, marginBottom: 2, lineHeight: 1.4 }}>{lang === 'es' ? anchors[p.id].es : anchors[p.id].en}</div>}
+            <ul style={{ listStyle: 'none', margin: '16px 0', flexGrow: 1 }}>
               {i > 0 && <li style={{ padding: '7px 0', color: 'var(--mut)', fontWeight: 700, fontSize: 13 }}>{t.allOf} {prevName}, {t.andMore}</li>}
               {feats.map((it, j) => (
                 <li key={j} style={{ padding: '7px 0', color: 'var(--tx)', display: 'flex', alignItems: 'flex-start', gap: 9 }}>
@@ -60,8 +66,11 @@ export default function PlanCards({
               ))}
             </ul>
             <button className={'btn ' + (pop ? 'btn-primary' : 'btn-ghost')} style={{ width: '100%' }} onClick={() => onChoose(p.id, price)} disabled={loadingId === p.id}>
-              {loadingId === p.id ? '...' : (isFree ? t.free : t.choose + ' ' + name)}
+              {loadingId === p.id ? '...' : (isFree ? (freeLabel || t.free) : t.choose + ' ' + name)}
             </button>
+            {trust && <div className="muted" style={{ fontSize: 11.5, textAlign: 'center', marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+              <OnyxIcon name="check" size={11} glow={false} /> {isFree ? (lang === 'es' ? 'Sin tarjeta · Sin compromiso' : 'No card · No commitment') : (lang === 'es' ? 'Cancela cuando quieras' : 'Cancel anytime')}
+            </div>}
           </div>
         );
       })}

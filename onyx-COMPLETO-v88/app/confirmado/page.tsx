@@ -50,7 +50,8 @@ function Inner() {
     setLang(qs.get('lang') === 'en' ? 'en' : 'es');
     const plan = (qs.get('plan') || '').replace(/[^a-z0-9_-]/gi, '');
     const annual = qs.get('annual') === '1';
-    setDest(plan ? `/onboarding?plan=${plan}${annual ? '&annual=1' : ''}` : '/onboarding');
+    const promo = (qs.get('promo') || '').replace(/[^a-z0-9_-]/gi, '');
+    setDest(plan ? `/onboarding?plan=${plan}${annual ? '&annual=1' : ''}${promo ? `&promo=${promo}` : ''}` : '/onboarding');
     // Guarda el plan en la cuenta (BD) en cuanto haya sesión: así el checkout se
     // alcanza aunque más adelante se pierda la URL. Se hace una sola vez.
     let saved = false;

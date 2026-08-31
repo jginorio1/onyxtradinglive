@@ -94,7 +94,8 @@ export default function Onboarding() {
     // El plan puede venir por la URL (duradero, del correo) o del respaldo local.
     const qs = new URLSearchParams(window.location.search);
     const planUrl = (qs.get('plan') || '').replace(/[^a-z0-9_-]/gi, '');
-    if (planUrl) { window.location.href = `/pricing?plan=${planUrl}${qs.get('annual') === '1' ? '&annual=1' : ''}`; return; }
+    const promoUrl = (qs.get('promo') || '').replace(/[^a-z0-9_-]/gi, '');
+    if (planUrl) { window.location.href = `/pricing?plan=${planUrl}${qs.get('annual') === '1' ? '&annual=1' : ''}${promoUrl ? `&promo=${promoUrl}` : ''}`; return; }
     const pend = getPending();
     if (pend) { window.location.href = pendingPricingUrl(pend); return; }
     router.push('/dashboard'); router.refresh();

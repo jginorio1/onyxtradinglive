@@ -23,15 +23,15 @@ export default async function Dashboard() {
   // Se limpia al reenviar para no repetir.
   // OJO: redirect() lanza una excepción interna → va FUERA del try/catch, si no,
   // el catch se la traga y no redirige.
-  const planPay = (v: string, annual: any) => `/pricing?plan=${encodeURIComponent(v)}${annual ? '&annual=1' : ''}`;
+  const planPay = (v: string, annual: any, promo?: any) => `/pricing?plan=${encodeURIComponent(v)}${annual ? '&annual=1' : ''}${promo ? `&promo=${encodeURIComponent(String(promo))}` : ''}`;
   let pendingDest = '';
   if ((profile?.plan || 'free') === 'free') {
     // 1) Metadatos de la cuenta (garantizado desde el registro).
     const meta: any = user.user_metadata || {};
     const mp = typeof meta.pending_plan === 'string' ? meta.pending_plan : '';
     if (mp && mp !== 'free') {
-      pendingDest = planPay(mp, meta.pending_plan_annual);
-      try { await supabaseAdmin.auth.admin.updateUserById(user.id, { user_metadata: { ...meta, pending_plan: null } }); } catch {}
+      pendingDest = planPay(mp, meta.pending_plan_annual, meta.pending_promo);
+      try { await supabaseAdmin.auth.admin.updateUserById(user.id, { user_metadata: { ...meta, pending_plan: null, pending_promo: null } }); } catch {}
     }
     // 2) Respaldo en profiles (por si acaso).
     if (!pendingDest) {
