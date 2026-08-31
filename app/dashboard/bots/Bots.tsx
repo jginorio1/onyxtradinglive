@@ -1,6 +1,6 @@
 'use client';
 import { dictFor } from '@/lib/i18n';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import Link from 'next/link';
 import { useLang } from '@/lib/lang';
@@ -144,6 +144,8 @@ export default function Bots() {
   const [viewAcc, setViewAcc] = useState<string | null>(null);   // cuenta abierta (detalle aparte)
   const [sel, setSel] = useState<Set<string>>(new Set());        // bots elegidos para el laboratorio
   const [tourHide, setTourHide] = useState(true);                // franja de 5 pasos (oculta hasta leer localStorage)
+  const clearedRef = useRef(false);                              // el usuario limpió a propósito (no auto-rellenar)
+  const autoDoneRef = useRef(false);                             // ya intentamos auto-cargar la sugerencia esta sesión
 
   async function load() {
     try { const r = await fetch('/api/bots'); setD(await r.json()); } catch { setD({ bots: [] }); }
@@ -154,10 +156,17 @@ export default function Bots() {
   }
   useEffect(() => {
     try { const s = JSON.parse(localStorage.getItem('onyx_port_sel') || '[]'); if (Array.isArray(s)) setSel(new Set(s)); } catch {}
+    try { clearedRef.current = localStorage.getItem('onyx_port_cleared') === '1'; } catch {}
     try { setTourHide(localStorage.getItem('onyx_bots_tour') === 'hide'); } catch { setTourHide(false); }
     load(); loadBuilt(); const iv = setInterval(load, 20000); return () => clearInterval(iv);
   }, []);
-  useEffect(() => { try { localStorage.setItem('onyx_port_sel', JSON.stringify([...sel])); } catch {} }, [sel]);
+  // Persistimos la selección. Si el usuario eligió algo, olvidamos la marca de "limpié".
+  useEffect(() => {
+    try {
+      localStorage.setItem('onyx_port_sel', JSON.stringify([...sel]));
+      if (sel.size > 0) { clearedRef.current = false; localStorage.removeItem('onyx_port_cleared'); }
+    } catch {}
+  }, [sel]);
 
   // Llaves de gating de la matriz de planes (editable en Admin). Si aún no cargó,
   // asumimos habilitado para no parpadear un bloqueo falso mientras llega el fetch.
@@ -469,6 +478,17 @@ export default function Bots() {
   }, [selBots, universe, sel]);
 
   const applyPreset = (arr: any[]) => setSel(new Set(arr.map(botKey)));
+  // Carga la mejor combinación sugerida (usada por "Auto" y el estado vacío).
+  const applySuggested = () => { const best = suggestions?.best?.bots; if (best && best.length >= 2) applyPreset(best); };
+  // Auto-cargar la sugerencia la PRIMERA vez: si el laboratorio está vacío y el
+  // usuario no lo limpió a propósito, arranca ya con una combinación útil (no vacío).
+  useEffect(() => {
+    if (autoDoneRef.current) return;
+    if (sel.size > 0) { autoDoneRef.current = true; return; }   // ya hay selección guardada
+    if (clearedRef.current) return;                            // el usuario limpió a propósito
+    const best = suggestions?.best?.bots;
+    if (best && best.length >= 2) { applyPreset(best); autoDoneRef.current = true; }
+  }, [suggestions, sel]);
   const chipLabel = (b: any) => `${b.pair || b.name?.slice(0, 8) || '#' + b.magic}`;
   const divTxt = (v: number | null) => v == null ? '—' : `${v}%`;
   const divCol = (v: number | null) => v == null ? 'var(--mut)' : v >= 60 ? 'var(--green)' : v >= 35 ? 'var(--amber)' : 'var(--red)';
@@ -682,11 +702,15 @@ export default function Bots() {
                   </button>
                 );
               })}
-              {sel.size > 0 && <button onClick={() => setSel(new Set())} className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 10px' }}>{L('Limpiar', 'Clear')}</button>}
+              {suggestions?.best?.bots?.length >= 2 && <button onClick={applySuggested} className="btn btn-ghost" title={L('Carga la mejor combinación sugerida', 'Load the best suggested combo')} style={{ fontSize: 12, padding: '5px 10px', color: 'var(--brand)', borderColor: 'color-mix(in srgb,var(--brand) 45%,transparent)' }}><OnyxIcon emoji="✨" size={12} glow={false} /> {L('Auto', 'Auto')}</button>}
+              {sel.size > 0 && <button onClick={() => { setSel(new Set()); clearedRef.current = true; try { localStorage.setItem('onyx_port_cleared', '1'); } catch {} }} className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 10px' }}>{L('Limpiar', 'Clear')}</button>}
             </div>
 
             {selBots.length < 2 ? (
-              <div className="muted" style={{ fontSize: 12.5, background: 'var(--bg2)', borderRadius: 10, padding: '11px 13px' }}>{L('Elige al menos 2 bots para ver su correlación y curva combinada.', 'Pick at least 2 bots to see their correlation and combined curve.')}</div>
+              <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: '12px 14px', display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', justifyContent: 'space-between' }}>
+                <span className="muted" style={{ fontSize: 12.5 }}>{L('Elige al menos 2 robots para ver su correlación y curva combinada.', 'Pick at least 2 robots to see their correlation and combined curve.')}</span>
+                {suggestions?.best?.bots?.length >= 2 && <button onClick={applySuggested} className="btn btn-primary" style={{ fontSize: 12.5, padding: '7px 14px', whiteSpace: 'nowrap' }}><OnyxIcon emoji="✨" size={13} glow={false} /> {L('Cargar portafolio sugerido', 'Load suggested portfolio')}</button>}
+              </div>
             ) : (
               <>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(130px,1fr))', gap: 10, marginBottom: 14 }}>
