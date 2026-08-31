@@ -13,6 +13,7 @@ const Lc = (es: boolean, a: string, b: string) => (es ? a : b);
 // Un bot NUEVO arranca con los campos críticos en blanco para forzar una elección
 // consciente (símbolo, gatillo de entrada y fase de la cuenta). El resto mantiene default.
 const blankReq = (sp: any) => ({ ...sp, name: '', platform: '' as any, symbol: '', entryTrigger: '', accountMode: '' as any });
+const SECS = ['general', 'entry', 'exits', 'risk', 'firm', 'schedule'];   // orden del modo guiado
 const chipOf = (status: string, es: boolean) => status === 'off' ? { c: 'off', t: Lc(es, 'Desactivado', 'Disabled') } : status === 'warn' ? { c: 'warn', t: Lc(es, 'Sin definir', 'Undefined') } : { c: 'ok', t: Lc(es, 'Activo', 'Active') };
 
 // Punto de "obligatorio": rojo si aún no lo elegiste, verde si ya está.
@@ -320,6 +321,12 @@ export default function BotBuilder() {
       .bbx-card-s{font-size:11.5px;color:var(--mut);margin-top:2px;line-height:1.4}
       `}</style>
 
+      {/* Barra de regreso: siempre visible para volver a Mis robots */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
+        <a href="/dashboard/bots" className="bbx-btn" style={{ textDecoration: 'none' }}><OnyxIcon emoji="←" size={13} glow={false} /> {L('Mis robots', 'My robots')}</a>
+        <span style={{ fontSize: 12.5, color: 'var(--mut)' }}>{L('Mis robots', 'My robots')} › <span style={{ color: 'var(--ink)' }}>{L('Crear robot', 'Create robot')}</span></span>
+      </div>
+
       {/* Hero */}
       <div className="bbx-hero">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 10 }}>
@@ -352,6 +359,16 @@ export default function BotBuilder() {
 
       {/* Tablero de tarjetas */}
       {view === 'home' ? (
+        <>
+        {/* Guía paso a paso: para quien no quiere elegir tarjetas sueltas */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', background: 'linear-gradient(135deg,rgba(60,52,137,.35),rgba(91,99,211,.20))', border: '1px solid rgba(139,147,255,.35)', borderRadius: 14, padding: '13px 16px', marginBottom: 14 }}>
+          <span className="bbx-ic" style={{ background: 'rgba(139,147,255,.18)', color: '#c8ccff' }}><OnyxIcon emoji="🧭" size={16} /></span>
+          <div style={{ flex: 1, minWidth: 180 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink)' }}>{L('¿Primera vez? Ve paso a paso', 'First time? Go step by step')}</div>
+            <div style={{ fontSize: 12, color: 'var(--mut)' }}>{L('Te llevamos por cada sección con Siguiente → Siguiente. También puedes tocar las tarjetas de abajo.', 'We walk you through each section with Next → Next. You can also tap the cards below.')}</div>
+          </div>
+          <button className="bbx-btn primary" style={{ fontWeight: 700 }} onClick={() => go('general')}><OnyxIcon emoji="▶️" size={13} glow={false} /> {L('Empezar guía', 'Start guide')}</button>
+        </div>
         <div className="bbx-cards">
           {CARDS.map(([k, ic, ti, su]) => { const st = secStatus(k);
             const ch = st === 'warn' ? { c: 'warn', t: L('Revisar', 'Review') } : st === 'ok' ? { c: 'ok', t: L('Listo', 'Ready') } : { c: 'off', t: L('Sin revisar', 'Not reviewed') };
@@ -363,11 +380,13 @@ export default function BotBuilder() {
               </button>);
           })}
         </div>
+        </>
       ) : (
       <>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
         <button className="bbx-btn" onClick={() => go('home')}>← {L('Todas las secciones', 'All sections')}</button>
         <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>{CARDS.find((c) => c[0] === view)?.[2]}</span>
+        <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--mut)' }}>{L(`Paso ${SECS.indexOf(view) + 1} de ${SECS.length}`, `Step ${SECS.indexOf(view) + 1} of ${SECS.length}`)}</span>
       </div>
 
       {view === 'general' && (
@@ -583,10 +602,19 @@ export default function BotBuilder() {
       </div>
       </>)}
 
-      {/* Volver al tablero desde una sección (secundario; el botón principal es Crear robot abajo) */}
-      {view !== 'home' && (
-        <div style={{ marginBottom: 14 }}><button className="bbx-btn" onClick={() => go('home')}>← {L('Volver al tablero', 'Back to board')}</button></div>
-      )}
+      {/* Navegación guiada Anterior / Siguiente entre secciones + volver al tablero */}
+      {view !== 'home' && (() => {
+        const idx = SECS.indexOf(view); const last = idx >= SECS.length - 1;
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+            {idx > 0 && <button className="bbx-btn" onClick={() => go(SECS[idx - 1])}>← {L('Anterior', 'Previous')}</button>}
+            <button className="bbx-btn" onClick={() => go('home')} style={{ color: 'var(--mut)' }}>{L('Ver todas', 'View all')}</button>
+            {!last
+              ? <button className="bbx-btn primary" style={{ marginLeft: 'auto', fontWeight: 700 }} onClick={() => go(SECS[idx + 1])}>{L('Siguiente', 'Next')} → <span className="bbx-sub" style={{ color: 'rgba(255,255,255,.85)' }}>{CARDS.find((c) => c[0] === SECS[idx + 1])?.[2]}</span></button>
+              : <button className="bbx-btn primary" style={{ marginLeft: 'auto', fontWeight: 700 }} onClick={() => go('home')}>{L('Terminar → ver resumen', 'Finish → see summary')} ✓</button>}
+          </div>
+        );
+      })()}
       </>
       )}
 
@@ -779,7 +807,16 @@ export default function BotBuilder() {
                   <button className="bbx-btn" onClick={openGuide}><OnyxIcon emoji="📖" size={13} /> {L('Guía PDF', 'PDF guide')}</button>
                 </div>
 
-                <div style={{ fontSize: 11.5, color: 'var(--mut)', lineHeight: 1.6 }}>{L('Para verlo enseguida en Mis robots, ve a “Añadir por magic” — tu robot ya aparece en la lista para registrarlo con un clic.', 'To see it right away in My robots, go to “Add by magic” — your robot already shows in the list to register it in one click.')}</div>
+                {/* Qué sigue: checklist con enlace directo a Mis robots */}
+                <div style={{ background: 'rgba(255,255,255,.04)', border: '1px solid var(--line)', borderRadius: 10, padding: '10px 12px', marginTop: 4 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>{L('Qué sigue', 'What\'s next')}</div>
+                  <ol style={{ margin: 0, paddingLeft: 18, fontSize: 11.5, color: 'var(--mut)', lineHeight: 1.8 }}>
+                    <li>{L('Descarga e instala el robot (arriba).', 'Download and install the robot (above).')}</li>
+                    <li>{L('Pega tu clave Onyx en InpApiKey.', 'Paste your Onyx key in InpApiKey.')}</li>
+                    <li>{L('Cuando opere, sus KPIs aparecen en Mis robots.', 'Once it trades, its KPIs show in My robots.')}</li>
+                  </ol>
+                  <a href="/dashboard/bots" className="bbx-btn primary" style={{ marginTop: 8, fontSize: 12.5, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="📊" size={13} glow={false} /> {L('Ir a Mis robots', 'Go to My robots')} →</a>
+                </div>
               </div>
             </div>
           </div>

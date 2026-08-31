@@ -143,6 +143,7 @@ export default function Bots() {
   const [built, setBuilt] = useState<any[]>([]);
   const [viewAcc, setViewAcc] = useState<string | null>(null);   // cuenta abierta (detalle aparte)
   const [sel, setSel] = useState<Set<string>>(new Set());        // bots elegidos para el laboratorio
+  const [tourHide, setTourHide] = useState(true);                // franja de 5 pasos (oculta hasta leer localStorage)
 
   async function load() {
     try { const r = await fetch('/api/bots'); setD(await r.json()); } catch { setD({ bots: [] }); }
@@ -153,6 +154,7 @@ export default function Bots() {
   }
   useEffect(() => {
     try { const s = JSON.parse(localStorage.getItem('onyx_port_sel') || '[]'); if (Array.isArray(s)) setSel(new Set(s)); } catch {}
+    try { setTourHide(localStorage.getItem('onyx_bots_tour') === 'hide'); } catch { setTourHide(false); }
     load(); loadBuilt(); const iv = setInterval(load, 20000); return () => clearInterval(iv);
   }, []);
   useEffect(() => { try { localStorage.setItem('onyx_port_sel', JSON.stringify([...sel])); } catch {} }, [sel]);
@@ -419,6 +421,24 @@ export default function Bots() {
   const divTxt = (v: number | null) => v == null ? '—' : `${v}%`;
   const divCol = (v: number | null) => v == null ? 'var(--mut)' : v >= 60 ? 'var(--green)' : v >= 35 ? 'var(--amber)' : 'var(--red)';
 
+  // Progreso aproximado del recorrido de 5 pasos.
+  const hasCreated = built.length > 0;
+  const hasRegistered = bots.length > 0;          // un bot aparece aquí cuando el EA reporta (ya instalado + con clave)
+  const hasTrades = bots.some((b: any) => b.trades > 0);
+  const tourDone = hasRegistered ? (hasTrades ? 5 : 4) : (hasCreated ? 1 : 0);
+  const hideTour = () => { setTourHide(true); try { localStorage.setItem('onyx_bots_tour', 'hide'); } catch {} };
+  const tourSteps = [
+    { ic: '➕', tx: L('Crea el robot', 'Create the robot') },
+    { ic: '⬇️', tx: L('Descárgalo', 'Download it') },
+    { ic: '🔌', tx: L('Instálalo', 'Install it') },
+    { ic: '🔑', tx: L('Pega tu clave', 'Paste your key') },
+    { ic: '📊', tx: L('Ve tus KPIs', 'See your KPIs') },
+  ];
+  const tourNote = tourDone >= 5 ? L('¡Listo! Tus robots ya operan; aquí ves sus KPIs.', 'Done! Your robots are trading; you see their KPIs here.')
+    : tourDone >= 4 ? L('Instalado y conectado. Cuando el robot cierre operaciones, verás sus KPIs aquí abajo.', 'Installed and connected. Once the robot closes trades, you\'ll see its KPIs below.')
+    : tourDone >= 1 ? L('Ya creaste un robot. Descárgalo e instálalo en tu plataforma, pega tu clave Onyx y empezará a operar.', 'You created a robot. Download and install it, paste your Onyx key and it will start trading.')
+    : L('Empieza creando tu primer robot. Te guiamos paso a paso hasta verlo operar aquí.', 'Start by creating your first robot. We guide you step by step until you see it trading here.');
+
   return (
     <div className="wrap" style={{ padding: '24px 0 60px', maxWidth: 1180, fontSize: 15 }}>
       <div className="row between" style={{ padding: '0 4px', marginBottom: 16, flexWrap: 'wrap', gap: 10, alignItems: 'flex-end' }}>
@@ -462,7 +482,8 @@ export default function Bots() {
         <div className="card" style={{ textAlign: 'center', padding: 28 }}>
           <div style={{ fontSize: 34, marginBottom: 8 }}><OnyxIcon emoji="📡" size={16} /></div>
           <h3 style={{ marginBottom: 6 }}>{t.emptyT}</h3>
-          <p className="muted" style={{ fontSize: 14, maxWidth: 520, margin: '0 auto' }}>{t.emptyD}</p>
+          <p className="muted" style={{ fontSize: 14, maxWidth: 520, margin: '0 auto 16px' }}>{t.emptyD}</p>
+          <Link href="/dashboard/constructor" className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontWeight: 700, padding: '11px 22px' }}><OnyxIcon emoji="➕" size={14} glow={false} /> {L('Crea tu primer robot', 'Create your first robot')}</Link>
         </div>
       )}
 
@@ -506,6 +527,32 @@ export default function Bots() {
       {/* ====== TABLERO: CUENTAS COMO TARJETAS GRANDES ====== */}
       {d && !d.locked && !d.needsMigration && !viewAcc && !!(d.accounts?.length) && (
         <>
+          {/* Recorrido guiado de 5 pasos: dónde estás y qué sigue */}
+          {!tourHide && (
+            <div className="card" style={{ marginBottom: 16, borderColor: 'color-mix(in srgb,var(--brand) 30%,var(--line))' }}>
+              <div className="row between" style={{ alignItems: 'center', marginBottom: 10 }}>
+                <span style={{ fontWeight: 700, fontSize: 14 }}><OnyxIcon emoji="🗺️" size={14} /> {L('Cómo tener tu robot operando', 'How to get your robot trading')}</span>
+                <span className="muted" style={{ fontSize: 12 }}>{L(`Paso ${Math.min(tourDone + 1, 5)} de 5`, `Step ${Math.min(tourDone + 1, 5)} of 5`)} <button onClick={hideTour} title={L('Ocultar', 'Hide')} style={{ background: 'none', border: 'none', color: 'var(--mut)', cursor: 'pointer', marginLeft: 6, fontSize: 13 }}>✕</button></span>
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {tourSteps.map((s, i) => {
+                  const done = i < tourDone, cur = i === tourDone;
+                  return (
+                    <div key={i} style={{ flex: '1 1 120px', minWidth: 118, borderRadius: 10, padding: '9px 10px', background: done ? 'color-mix(in srgb,var(--green) 12%,transparent)' : cur ? 'color-mix(in srgb,var(--brand) 15%,transparent)' : 'var(--bg2)', border: '1px solid ' + (cur ? 'color-mix(in srgb,var(--brand) 45%,transparent)' : 'transparent') }}>
+                      <div style={{ fontSize: 12, fontWeight: cur ? 700 : 600, color: done ? 'var(--green)' : cur ? 'var(--brand)' : 'var(--mut)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <OnyxIcon emoji={done ? '✅' : s.ic} size={12} /> {i + 1} · {s.tx}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="muted" style={{ fontSize: 12.5, marginTop: 11, background: 'var(--bg2)', borderRadius: 10, padding: '9px 12px', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                <span><OnyxIcon emoji="💡" size={12} /> {tourNote}</span>
+                {tourDone < 1 && <Link href="/dashboard/constructor" className="btn btn-primary" style={{ fontSize: 12.5, marginLeft: 'auto' }}><OnyxIcon emoji="➕" size={12} glow={false} /> {L('Crear mi primer robot', 'Create my first robot')}</Link>}
+              </div>
+            </div>
+          )}
+
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(320px,1fr))', gap: 14, marginBottom: 22 }}>
             {accountsSorted.map((acc: any) => {
               const mine = botsOfAcc(acc.id);
@@ -537,7 +584,7 @@ export default function Bots() {
                     <div style={{ background: 'var(--bg2)', borderRadius: 9, padding: '7px 9px' }}><div className="muted" style={{ fontSize: 10.5 }}>{L('DD máx.', 'Max DD')}</div><div style={{ fontSize: 12.5, fontWeight: 700, color: ddMax > 10 ? 'var(--amber)' : 'var(--tx)' }}>{pct1(ddMax)}%</div></div>
                     <div style={{ background: 'var(--bg2)', borderRadius: 9, padding: '7px 9px' }}><div className="muted" style={{ fontSize: 10.5 }}>{L('Diversificación', 'Diversification')}</div><div style={{ fontSize: 12.5, fontWeight: 700, color: divCol(diversification(mine)) }}>{divTxt(diversification(mine))}</div></div>
                   </div>
-                  <div className="btn btn-ghost" style={{ marginTop: 10, textAlign: 'center', fontSize: 12.5, fontWeight: 600, pointerEvents: 'none' }}>{L(`Entrar a los ${mine.length} robots`, `Enter the ${mine.length} robots`)} →</div>
+                  <div style={{ marginTop: 11, textAlign: 'center', fontSize: 13.5, fontWeight: 700, color: '#fff', background: 'linear-gradient(90deg,#6f77ea,#5b63d3)', borderRadius: 11, padding: '10px', boxShadow: '0 6px 16px color-mix(in srgb,var(--brand) 40%,transparent)', pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}><OnyxIcon emoji="📊" size={14} glow={false} /> {L(`Ver los ${mine.length} robots`, `See the ${mine.length} robots`)} →</div>
                 </button>
               );
             })}
