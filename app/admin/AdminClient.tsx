@@ -1733,7 +1733,81 @@ function PlansTab({ plans, reload }: { plans: Plan[]; reload: () => void }) {
       {creating && <PlanCard plan={{ id: '', name: '', name_en: '', desc_es: '', desc_en: '', price_month: 0, price_year: 0, stripe_price_id: '', stripe_price_id_year: '', max_accounts: 1, features: [], features_en: [], badge: '', badge_en: '', active: true, sort: plans.length, capabilities: {} } as any} isNew reload={() => { setCreating(false); reload(); }} onCancel={() => setCreating(false)} />}
       <div className="grid g3">{plans.map((p) => <PlanCard key={p.id} plan={p} reload={reload} />)}</div>
       <Addons />
+      <BotPlanMatrixEditor />
     </>
+  );
+}
+
+// Editor de la matriz de planes de bots (capacidad × plan). Controla la tabla
+// comparativa del landing del constructor y las llaves de gating (métricas
+// avanzadas, laboratorio de portafolio, etc.). Fuente única en app_settings.
+function BotPlanMatrixEditor() {
+  const { lang } = useLang();
+  const es = lang !== 'en';
+  const [matrix, setMatrix] = useState<any>(null);
+  const [meta, setMeta] = useState<any[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState('');
+  useEffect(() => { (async () => {
+    try { const r = await fetch('/api/admin/bot-plans'); const j = await r.json(); if (r.ok) { setMatrix(j.matrix); setMeta(j.meta || []); } } catch {}
+  })(); }, []);
+  if (!matrix) return null;
+  const tiers: any[] = matrix.tiers || [];
+  const setCap = (key: string, tierId: string, v: any) => setMatrix((m: any) => ({ ...m, caps: { ...m.caps, [key]: { ...(m.caps?.[key] || {}), [tierId]: v } } }));
+  const setTier = (i: number, k: 'es' | 'en', v: string) => setMatrix((m: any) => { const ts = m.tiers.slice(); ts[i] = { ...ts[i], [k]: v }; return { ...m, tiers: ts }; });
+  async function save() {
+    setSaving(true); setMsg('');
+    try {
+      const r = await fetch('/api/admin/bot-plans', { method: 'PATCH', body: JSON.stringify({ tiers: matrix.tiers, caps: matrix.caps }) });
+      const j = await r.json(); setSaving(false);
+      if (!r.ok) { setMsg(j?.error || 'Error'); return; }
+      setMatrix(j.matrix); setMsg(es ? 'Guardado ✓' : 'Saved ✓'); setTimeout(() => setMsg(''), 2500);
+    } catch { setSaving(false); setMsg('Error'); }
+  }
+  const ip = { width: '100%', padding: '5px 7px', background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--tx)', fontSize: 12, textAlign: 'center' as const };
+  return (
+    <div className="card" style={{ marginTop: 18 }}>
+      <div className="row between" style={{ flexWrap: 'wrap', gap: 8 }}>
+        <div>
+          <div style={{ fontWeight: 800, fontSize: 15 }}>🤖 {es ? 'Planes del Bot Builder' : 'Bot Builder plans'}</div>
+          <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>{es ? 'Controla la tabla comparativa del landing y qué desbloquea cada plan (métricas avanzadas, laboratorio, etc.).' : 'Controls the landing comparison table and what each plan unlocks (advanced metrics, portfolio lab, etc.).'}</div>
+        </div>
+        <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+          {msg && <span style={{ fontSize: 12.5, color: 'var(--brand)' }}>{msg}</span>}
+          <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? '…' : (es ? 'Guardar' : 'Save')}</button>
+        </div>
+      </div>
+      <div style={{ overflowX: 'auto', marginTop: 12 }}>
+        <table style={{ width: '100%', minWidth: 520, borderCollapse: 'collapse', fontSize: 13 }}>
+          <thead><tr>
+            <th style={{ textAlign: 'left', padding: '6px 10px' }}></th>
+            {tiers.map((tr, i) => (
+              <th key={tr.id} style={{ padding: '6px 8px', width: 130 }}>
+                <input value={es ? tr.es : tr.en} onChange={(e) => setTier(i, es ? 'es' : 'en', e.target.value)} style={{ ...ip, fontWeight: 800 }} />
+                <div className="muted" style={{ fontSize: 10, marginTop: 3 }}>{tr.id}</div>
+              </th>
+            ))}
+          </tr></thead>
+          <tbody>
+            {meta.map((m) => (
+              <tr key={m.key} style={{ borderTop: '1px solid var(--line)' }}>
+                <td style={{ padding: '7px 10px', color: 'var(--tx)' }}>{es ? m.es : m.en}</td>
+                {tiers.map((tr) => {
+                  const v = matrix.caps?.[m.key]?.[tr.id];
+                  return (
+                    <td key={tr.id} style={{ padding: '7px 8px', textAlign: 'center' }}>
+                      {m.type === 'bool'
+                        ? <input type="checkbox" checked={!!v} onChange={(e) => setCap(m.key, tr.id, e.target.checked)} style={{ width: 18, height: 18, cursor: 'pointer' }} />
+                        : <input value={v == null ? '' : String(v)} onChange={(e) => setCap(m.key, tr.id, e.target.value)} style={ip} />}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
 

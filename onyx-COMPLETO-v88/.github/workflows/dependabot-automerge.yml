@@ -1,0 +1,30 @@
+name: Dependabot auto-merge
+
+# Auto-fusiona solo las actualizaciones seguras que abre Dependabot:
+# parches (x.y.Z) y arreglos de seguridad. El resto los apruebas tú a mano.
+
+on: pull_request
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  automerge:
+    runs-on: ubuntu-latest
+    if: ${{ github.actor == 'dependabot[bot]' }}
+    steps:
+      - name: Datos del PR
+        id: meta
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Aprobar y auto-fusionar parches/seguridad
+        if: ${{ steps.meta.outputs.update-type == 'version-update:semver-patch' }}
+        run: |
+          gh pr review --approve "$PR_URL"
+          gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

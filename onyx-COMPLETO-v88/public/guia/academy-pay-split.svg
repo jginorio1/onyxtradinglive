@@ -1,0 +1,32 @@
+<svg viewBox="0 0 820 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Reparto de una venta de 100 dolares: comision de Stripe, comision de Onyx y neto para el mentor">
+  <rect width="820" height="320" rx="18" fill="#0e121b"/>
+  <rect x="1" y="1" width="818" height="318" rx="18" fill="none" stroke="#232a3d"/>
+  <text x="40" y="46" fill="#e8ecf4" font-family="Arial" font-size="18" font-weight="bold">Ejemplo: venta de $100 (comisión Onyx 10%)</text>
+  <text x="40" y="70" fill="#8b93a7" font-family="Arial" font-size="13">Los números de Stripe son aproximados y dependen de tu país y tipo de tarjeta.</text>
+
+  <!-- barra total -->
+  <text x="40" y="112" fill="#c9d0e6" font-family="Arial" font-size="13" font-weight="bold">Paga el alumno</text>
+  <rect x="40" y="122" width="740" height="34" rx="8" fill="#1b2233" stroke="#2b3350"/>
+  <text x="410" y="144" text-anchor="middle" fill="#e8ecf4" font-family="Arial" font-size="14" font-weight="bold">$100.00</text>
+
+  <!-- reparto -->
+  <text x="40" y="196" fill="#c9d0e6" font-family="Arial" font-size="13" font-weight="bold">Se reparte así</text>
+  <g transform="translate(40,206)">
+    <!-- stripe fee -->
+    <rect x="0" y="0" width="180" height="60" rx="8" fill="#241014" stroke="#ff6b7d"/>
+    <text x="14" y="26" fill="#ff9aa6" font-family="Arial" font-size="12">Comisión Stripe</text>
+    <text x="14" y="48" fill="#ff6b7d" font-family="Arial" font-size="16" font-weight="bold">≈ $3.20</text>
+    <!-- onyx fee -->
+    <rect x="192" y="0" width="180" height="60" rx="8" fill="#241d10" stroke="#e0a83a"/>
+    <text x="206" y="26" fill="#f0c674" font-family="Arial" font-size="12">Comisión Onyx (10%)</text>
+    <text x="206" y="48" fill="#e0a83a" font-family="Arial" font-size="16" font-weight="bold">$10.00</text>
+    <!-- neto mentor -->
+    <rect x="384" y="0" width="356" height="60" rx="8" fill="#0f2a1c" stroke="#1d9e75"/>
+    <text x="398" y="26" fill="#7fe3b6" font-family="Arial" font-size="12">Neto para ti (a tu Stripe)</text>
+    <text x="398" y="48" fill="#34e2a0" font-family="Arial" font-size="16" font-weight="bold">≈ $86.80</text>
+  </g>
+
+  <!-- nota -->
+  <rect x="40" y="286" width="740" height="18" rx="9" fill="#151a26"/>
+  <text x="52" y="299" fill="#8b93a7" font-family="Arial" font-size="11">Como eres el comercio de registro (on_behalf_of), la comisión de Stripe sale de tu lado; la de Onyx queda limpia y separada.</text>
+</svg>

@@ -159,6 +159,18 @@ export default function Bots() {
   }, []);
   useEffect(() => { try { localStorage.setItem('onyx_port_sel', JSON.stringify([...sel])); } catch {} }, [sel]);
 
+  // Llaves de gating de la matriz de planes (editable en Admin). Si aún no cargó,
+  // asumimos habilitado para no parpadear un bloqueo falso mientras llega el fetch.
+  const caps = { advMetrics: d?.caps ? !!d.caps.advMetrics : true, portfolioLab: d?.caps ? !!d.caps.portfolioLab : true };
+  // Tarjeta de upsell reutilizable cuando una capacidad no está en el plan.
+  const UpsellBox = ({ title, desc }: { title: string; desc: string }) => (
+    <div style={{ marginTop: 8, border: '1px dashed color-mix(in srgb,var(--brand) 45%,transparent)', background: 'color-mix(in srgb,var(--brand) 7%,transparent)', borderRadius: 12, padding: '14px 16px', textAlign: 'center' }}>
+      <div style={{ fontWeight: 800, fontSize: 13.5 }}>🔒 {title}</div>
+      <div className="muted" style={{ fontSize: 12, margin: '6px 0 10px' }}>{desc}</div>
+      <a href="/dashboard/cuenta?upgrade=1" className="btn btn-primary" style={{ fontSize: 12, padding: '6px 14px' }}>{L('Mejorar plan', 'Upgrade plan')}</a>
+    </div>
+  );
+
   async function save(b: any, patch: any) {
     setBusy(true);
     try {
@@ -282,7 +294,10 @@ export default function Bots() {
           {b.pending && <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '5px 10px', color: 'var(--red)', marginLeft: 'auto' }} onClick={() => delBot(b)} disabled={busy}><OnyxIcon emoji="🗑" size={14} /></button>}
         </div>
 
-        {detail === b.key && (
+        {detail === b.key && !caps.advMetrics && (
+          <UpsellBox title={L('Métricas avanzadas', 'Advanced metrics')} desc={L('Sharpe, Sortino, Monte Carlo y walk-forward están disponibles en Trader y Black Onyx.', 'Sharpe, Sortino, Monte Carlo and walk-forward are available on Trader and Black Onyx.')} />
+        )}
+        {detail === b.key && caps.advMetrics && (
           <div style={{ marginTop: 8, borderTop: '1px solid var(--line)', paddingTop: 10 }}>
             <div className="muted" style={{ fontSize: 11, marginBottom: 6 }}>{t.metrics}</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6 }}>
@@ -591,6 +606,13 @@ export default function Bots() {
           </div>
 
           {/* ====== LABORATORIO DE PORTAFOLIO ====== */}
+          {!caps.portfolioLab && (
+            <div className="card" style={{ padding: '18px 16px', marginBottom: 16, textAlign: 'center' }}>
+              <h3 style={{ marginBottom: 4 }}><OnyxIcon emoji="🧪" size={16} /> {L('Laboratorio de portafolio', 'Portfolio lab')}</h3>
+              <UpsellBox title={L('Laboratorio de portafolio + correlación', 'Portfolio lab + correlation')} desc={L('Combina tus robots, mira su correlación y recibe portafolios sugeridos. Disponible en Trader y Black Onyx.', 'Combine your robots, see their correlation and get suggested portfolios. Available on Trader and Black Onyx.')} />
+            </div>
+          )}
+          {caps.portfolioLab && (
           <div className="card" style={{ padding: '16px 16px 18px', marginBottom: 16 }}>
             <h3 style={{ marginBottom: 4 }}><OnyxIcon emoji="🧪" size={16} /> {L('Laboratorio de portafolio', 'Portfolio lab')}</h3>
             <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{L('Prueba combinaciones de tus robots sin arriesgar dinero: mira si se diversifican (se mueven por separado) o si caen juntos.', 'Test combinations of your robots without risking money: see if they diversify (move separately) or fall together.')}</p>
@@ -686,9 +708,10 @@ export default function Bots() {
               </>
             )}
           </div>
+          )}
 
           {/* ====== SUGERENCIAS DE PORTAFOLIO ====== */}
-          {suggestions && (
+          {caps.portfolioLab && suggestions && (
             <div className="card" style={{ padding: '16px 16px 18px' }}>
               <h3 style={{ marginBottom: 4 }}><OnyxIcon emoji="✨" size={16} /> {L('Portafolios sugeridos', 'Suggested portfolios')}</h3>
               <p className="muted" style={{ fontSize: 13, marginBottom: 14 }}>{L('Onyx elige combinaciones de bots poco correlacionados y con expectativa positiva. Toca “Aplicar” para cargarlos al laboratorio.', 'Onyx picks combinations of low-correlated, positive-expectancy bots. Tap “Apply” to load them into the lab.')}</p>

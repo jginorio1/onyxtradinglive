@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Copy Trading Onyx — Guía para principiantes</title>
+<style>
+  :root{
+    --bg:#0b0d12; --card:#12151d; --card2:#171b25; --ink:#eaf0f7; --muted:#9aa6b8;
+    --line:#232936; --accent:#5eead4; --accent2:#38bdf8; --warn:#fbbf24; --danger:#f87171; --ok:#4ade80;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.6}
+  .wrap{max-width:820px;margin:0 auto;padding:32px 20px 80px}
+  h1{font-size:30px;line-height:1.2;margin:0 0 6px}
+  .sub{color:var(--muted);margin:0 0 28px;font-size:15px}
+  h2{font-size:21px;margin:38px 0 4px;display:flex;align-items:center;gap:10px}
+  h2 .n{display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04121a;font-weight:800;font-size:15px}
+  h3{font-size:16px;margin:20px 0 6px;color:var(--accent)}
+  p{margin:8px 0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:14px 0}
+  ol.steps{counter-reset:s;list-style:none;padding:0;margin:10px 0}
+  ol.steps>li{counter-increment:s;position:relative;padding:10px 0 10px 42px;border-bottom:1px dashed var(--line)}
+  ol.steps>li:last-child{border-bottom:none}
+  ol.steps>li::before{content:counter(s);position:absolute;left:0;top:9px;width:28px;height:28px;border-radius:8px;background:var(--card2);border:1px solid var(--line);color:var(--accent);font-weight:700;display:flex;align-items:center;justify-content:center;font-size:14px}
+  code,.k{background:#0a1a1f;border:1px solid #14343d;color:var(--accent);padding:1px 7px;border-radius:6px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13.5px}
+  .field{background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:2px 8px;font-weight:600}
+  .note{border-left:3px solid var(--accent2);background:#0e1a24;padding:12px 16px;border-radius:0 10px 10px 0;margin:14px 0;font-size:14.5px}
+  .warn{border-left:3px solid var(--warn);background:#211c0c;padding:12px 16px;border-radius:0 10px 10px 0;margin:14px 0;font-size:14.5px}
+  .danger{border-left:3px solid var(--danger);background:#25100f;padding:12px 16px;border-radius:0 10px 10px 0;margin:14px 0;font-size:14.5px}
+  .ok{border-left:3px solid var(--ok);background:#0f1f14;padding:12px 16px;border-radius:0 10px 10px 0;margin:14px 0;font-size:14.5px}
+  .pill{display:inline-block;font-size:12px;font-weight:700;padding:3px 10px;border-radius:99px;margin-right:6px}
+  .pill.m{background:#0b2a3a;color:#7dd3fc;border:1px solid #14425a}
+  .pill.s{background:#2a1233;color:#e9a8ff;border:1px solid #4a1c5a}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:14px}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:var(--card2);color:var(--muted);font-weight:600}
+  .tag{color:var(--muted);font-size:13px}
+  .divider{height:1px;background:var(--line);margin:34px 0}
+  .toc{columns:2;column-gap:24px;font-size:14px}
+  .toc a{color:var(--accent2);text-decoration:none;display:block;padding:3px 0}
+  .big{font-size:15.5px}
+  b.hl{color:var(--accent)}
+  @media(max-width:640px){.toc{columns:1}h1{font-size:25px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Copy Trading Onyx — Guía para principiantes</h1>
+  <p class="sub">Cómo dejar que una cuenta (la <b>Master</b>) copie sus operaciones en otra (la <b>Esclava</b>), paso a paso, sin conocimientos técnicos. Pensada para configurarlo la primera vez sin equivocarte.</p>
+
+  <div class="card">
+    <b>Índice</b>
+    <div class="toc" style="margin-top:8px">
+      <a href="#idea">1. La idea en 30 segundos</a>
+      <a href="#antes">2. Antes de empezar</a>
+      <a href="#nube-vs-local">3. Dos formas de copiar</a>
+      <a href="#dashboard">4. Configurar en el dashboard</a>
+      <a href="#mt-master">5. Instalar en MetaTrader (Master)</a>
+      <a href="#mt-slave">6. Instalar en MetaTrader (Esclava)</a>
+      <a href="#enlace">7. Crear el enlace y arrancar</a>
+      <a href="#sufijos">8. Símbolos y sufijos (importante)</a>
+      <a href="#control">9. Pausar y controlar</a>
+      <a href="#problemas">10. Si algo no copia</a>
+      <a href="#local">11. Modo Local (avanzado)</a>
+    </div>
+  </div>
+
+  <h2 id="idea"><span class="n">1</span> La idea en 30 segundos</h2>
+  <div class="card big">
+    <p>Hay <b>dos papeles</b>:</p>
+    <p><span class="pill m">MASTER</span> La cuenta que <b>manda</b>. Cuando abre o cierra una operación, la orden viaja a la nube.</p>
+    <p><span class="pill s">ESCLAVA</span> La cuenta que <b>recibe</b>. Copia esa misma operación en su propio broker, con el tamaño de lote que tú decidas.</p>
+    <p style="margin-top:12px">Tú eres dueño de las dos. Configuras el <b>enlace</b> en la web (quién copia a quién y con cuánto), instalas un pequeño programa (EA) en cada MetaTrader, y listo: lo que haga la Master aparece en la Esclava.</p>
+  </div>
+
+  <h2 id="antes"><span class="n">2</span> Antes de empezar</h2>
+  <div class="card">
+    <ol class="steps">
+      <li>Ten <b>MetaTrader 4 o 5 abierto</b> en cada cuenta (pueden estar en el mismo ordenador o en distintos).</li>
+      <li>Entra a tu cuenta en <span class="field">onyxtradinglive.com</span> → <b>Dashboard</b>.</li>
+      <li>Ten claro cuál cuenta será la <b>Master</b> (la buena, la que ya opera) y cuál la <b>Esclava</b> (la que va a copiar).</li>
+    </ol>
+    <div class="warn"><b>Regla de oro:</b> la primera vez, usa cuentas <b>DEMO</b> en las dos. Solo pasa a real cuando veas que copia bien. Esto mueve dinero de verdad; no hay marcha atrás en una operación ya copiada.</div>
+  </div>
+
+  <h2 id="nube-vs-local"><span class="n">3</span> Dos formas de copiar</h2>
+  <div class="card">
+    <table>
+      <tr><th>Modo</th><th>Cuándo usarlo</th><th>Qué configuras</th></tr>
+      <tr><td><b>Nube</b> (normal)</td><td>Cuentas en distintos brokers, ordenadores o ubicaciones. Es lo recomendado para empezar.</td><td>Todo desde la web (el enlace) + pegar una clave en el EA.</td></tr>
+      <tr><td><b>Local</b> (avanzado)</td><td>Master y Esclava en el <b>mismo VPS/ordenador</b> y quieres copia en milisegundos.</td><td>Se explica al final, en la sección 11.</td></tr>
+    </table>
+    <p class="tag">Empieza por <b>Nube</b>. Si no sabes qué es un VPS, ese es tu modo.</p>
+  </div>
+
+  <h2 id="dashboard"><span class="n">4</span> Configurar en el dashboard</h2>
+  <div class="card">
+    <p>Ve a <span class="field">Dashboard → Copy trading</span>. Verás la sección <span class="field">Cómo activar el copy trading</span>. Lo primero es dar de alta tus dos cuentas y sacar sus <b>Claves Copy</b>.</p>
+    <h3>4.1 · Generar la Clave Copy de cada cuenta</h3>
+    <ol class="steps">
+      <li>En el bloque <span class="field">Claves Copy</span> pulsa <span class="field">Generar clave</span> para tu cuenta Master. Aparece una clave que empieza por <code>onyx_copy_...</code></li>
+      <li>Pulsa <span class="field">Copiar</span> para guardarla (la pegarás en MetaTrader en un momento).</li>
+      <li>Repite lo mismo para la cuenta Esclava. <b>Cada cuenta tiene su propia clave.</b></li>
+    </ol>
+    <div class="note">La Clave Copy es como la contraseña que une esa cuenta de MetaTrader con tu panel. Es distinta de la clave del Guardian. No la compartas.</div>
+  </div>
+
+  <h2 id="mt-master"><span class="n">5</span> Instalar en MetaTrader — cuenta Master</h2>
+  <div class="card">
+    <div class="ok"><b>Buena noticia:</b> el <b>Master ya va integrado en tu EA “Onyx Connect”</b>. Si esa cuenta ya usa Onyx Connect para el panel/Guardian, <b>no instalas nada aparte</b>: solo activas el copy con su clave. Igualmente incluimos un EA Master suelto para quien lo quiera separado.</p></div>
+    <p>Desde la web, en la fila de tu cuenta Master, pulsa <span class="field">Instalar</span>. El asistente te guía. En resumen:</p>
+    <ol class="steps">
+      <li>Elige <span class="field">¿En qué plataforma va esta cuenta?</span> → MT4, MT5 o cTrader.</li>
+      <li>Descarga el EA que te indica (<span class="field">EA Master (.mq5)</span> o usa tu Onyx Connect).</li>
+      <li>En MetaTrader: <b>Archivo → Abrir carpeta de datos → MQL5 → Experts</b>, pega el archivo ahí. Cierra y vuelve a abrir MetaTrader (o pulsa Actualizar en el Navegador).</li>
+      <li>Arrastra el EA a un gráfico cualquiera (por ejemplo EURUSD).</li>
+      <li>En la ventana que se abre, pestaña <b>Entradas (Inputs)</b>, busca el campo <span class="field">Copy API key</span> (o <code>ApiKey</code>) y <b>pega la Clave Copy de la Master</b>.</li>
+      <li>Marca <b>“Permitir Algo Trading / WebRequest”</b> y pulsa Aceptar. Cuando el asistente diga <span class="field">¡Conectada! Ya puedes copiar</span>, está lista.</li>
+    </ol>
+    <div class="warn">Si MetaTrader pide permitir una URL, autoriza <code>https://www.onyxtradinglive.com</code> en <b>Herramientas → Opciones → Expert Advisors → WebRequest</b>.</div>
+  </div>
+
+  <h2 id="mt-slave"><span class="n">6</span> Instalar en MetaTrader — cuenta Esclava</h2>
+  <div class="card">
+    <p>Lo mismo, pero con el <b>EA Esclava</b> y la clave de la Esclava. Desde la web, en la fila de la cuenta Esclava, pulsa <span class="field">Instalar</span>.</p>
+    <ol class="steps">
+      <li>Descarga <span class="field">EA Esclava (.mq5)</span> (o <code>.mq4</code> si usas MT4).</li>
+      <li>Cópialo en <b>MQL5 → Experts</b> igual que antes y actualiza el Navegador.</li>
+      <li>Arrástralo a un gráfico. En <b>Entradas</b>, pega en <span class="field">Copy API key</span> la <b>Clave Copy de la Esclava</b> (¡no la de la Master!).</li>
+      <li>Permite Algo Trading y acepta. El asistente confirmará <span class="field">¡Conectada!</span></li>
+    </ol>
+    <div class="note">Deja el EA Esclava en <b>un solo gráfico</b>. Él solo se encarga de todos los símbolos que le lleguen; no hace falta uno por par.</div>
+  </div>
+
+  <h2 id="enlace"><span class="n">7</span> Crear el enlace y arrancar</h2>
+  <div class="card">
+    <p>Con las dos cuentas conectadas, vuelve a <span class="field">Copy trading</span> y crea el enlace <span class="field">Master → Esclava</span>:</p>
+    <ol class="steps">
+      <li>En <span class="field">Masters</span> elige tu cuenta Master. En <span class="field">Esclavas</span> elige la Esclava.</li>
+      <li>Elige <b>cómo se calcula el lote</b> en la Esclava:
+        <table style="margin-top:8px">
+          <tr><th>Modo</th><th>Qué hace</th></tr>
+          <tr><td><span class="field">Multiplicador</span></td><td>Copia el lote de la Master × un número. <code>1.0</code> = mismo lote. <code>0.5</code> = la mitad.</td></tr>
+          <tr><td><span class="field">Balance %</span></td><td>Ajusta el lote según la diferencia de saldo entre las dos cuentas (recomendado si tienen tamaños distintos).</td></tr>
+          <tr><td><span class="field">Riesgo % (RR)</span></td><td>Calcula el lote para arriesgar un % del saldo por operación (necesita stop loss).</td></tr>
+        </table>
+      </li>
+      <li>Opcional pero recomendado: pon un <span class="field">Lote máx</span> como tope de seguridad.</li>
+      <li>Pulsa <span class="field">Crear enlace</span>.</li>
+      <li>Aparecerá un <b>aviso de confirmación</b> que dice, con los nombres de tus cuentas: <i>“Desde ahora cada operación de la Master se copia en la Esclava”</i>, con recordatorios (opera dinero real, prueba en demo, puedes pausar, cuidado con prop firms). Pulsa <span class="field">Entiendo, crear enlace</span>.</li>
+    </ol>
+    <div class="ok"><b>Listo.</b> Haz una operación pequeña en la Master (en demo). En unos segundos debe aparecer copiada en la Esclava. Si aparece → ¡funciona!</div>
+  </div>
+
+  <h2 id="sufijos"><span class="n">8</span> Símbolos y sufijos — por qué a veces no copia un par</h2>
+  <div class="card">
+    <p>Cada broker nombra los instrumentos a su manera. El mismo EUR/USD puede llamarse <code>EURUSD</code>, <code>EURUSD.pro</code>, <code>EURUSDm</code>, <code>EURUSD_i</code> o <code>EURUSD-ECN</code>. Y un índice puede ser <code>US100</code> en un broker y <code>NAS100</code> en otro.</p>
+    <div class="ok"><b>El EA Esclava lo resuelve solo.</b> Cuando llega una orden, busca el símbolo en TU broker en este orden:
+      <br>1) nombre exacto → 2) mismo par con o sin <b>sufijo de letras</b> (<code>EURUSDm</code>, <code>.pro</code>, <code>ecn</code>…) → 3) <b>tabla de equivalencias</b> para índices y metales (<code>GOLD↔XAUUSD</code>, <code>US100↔NAS100</code>, <code>GER40↔DE40</code>, <code>US30↔DJ30</code>, <code>US500↔SPX500</code>, <code>USOIL↔WTI</code>…).</div>
+    <p>Si aun así no encuentra el instrumento en tu broker, <b>no inventa</b>: se salta esa operación (falla seguro) y lo deja anotado, en vez de abrir en el par equivocado.</p>
+    <div class="warn"><b>Consejo:</b> antes de operar en real, abre el <b>Market Watch (Observación del Mercado)</b> del broker Esclava y asegúrate de que el instrumento existe ahí.</div>
+
+    <h3>8.1 · Tabla de símbolos master → esclava (para nombres muy raros)</h3>
+    <div class="ok"><b>Ahora en el dashboard.</b> Dentro de cada enlace (al crear o editar) tienes la <b>Tabla de símbolos en dos columnas</b> ("En la master" / "En la esclava") con su propio botón <span class="field">Guardar tabla</span>. Se guarda en la nube y la aplican por igual <b>MT4, MT5 y cTrader</b>. Es lo más cómodo y no hay que tocar MetaTrader.</div>
+    <p>Alternativa 100% local: si copias por archivo local (mismo VPS), en los <b>Inputs</b> del EA Esclava sigue estando el campo:</p>
+    <table>
+      <tr><th>Campo del EA</th><th>Qué escribir</th></tr>
+      <tr><td><code>SymbolMap</code></td><td>Pares <b>NOMBRE_MASTER=NOMBRE_ESCLAVA</b> separados por punto y coma.</td></tr>
+    </table>
+    <p>Ejemplo: si en tu Master el índice es <code>US100</code> y en la Esclava se llama <code>NAS100.pro</code>, y el oro es <code>GOLD</code> en la Master y <code>XAUUSD</code> en la Esclava, escribes:</p>
+    <p style="text-align:center;margin:10px 0"><code>US100=NAS100.pro;GOLD=XAUUSD;EURUSD=EURUSDm</code></p>
+    <div class="note">Esta tabla <b>manda por encima de todo</b>: si pones una equivalencia, el EA la usa sin dudar. Si dejas <code>SymbolMap</code> vacío, funciona la detección automática de la sección 8. Es exactamente la tabla de "nombre en la master / nombre en la esclava" que traen los copiadores clásicos.</div>
+  </div>
+
+  <h2 id="control"><span class="n">9</span> Pausar y controlar sin tocar MetaTrader</h2>
+  <div class="card">
+    <p>En <span class="field">Copy trading → Control de copia</span> tienes el mando a distancia:</p>
+    <ul>
+      <li><span class="field">Pausar todo</span> — detiene todas las copias al instante (útil en noticias fuertes).</li>
+      <li>Pausar por cuenta o por enlace, en modo <span class="field">MASTER</span>, <span class="field">ESCLAVA</span> o <span class="field">MASTER + ESCLAVA</span>.</li>
+      <li>Para reanudar, verás <span class="field">¿Reanudar la copia en vivo?</span> y confirmas.</li>
+    </ul>
+    <div class="note">Pausar <b>no cierra</b> las operaciones ya abiertas; solo deja de copiar nuevas. Las abiertas las gestionas tú o la Master normalmente.</div>
+  </div>
+
+  <h2 id="problemas"><span class="n">10</span> Si algo no copia — lista rápida</h2>
+  <div class="card">
+    <table>
+      <tr><th>Síntoma</th><th>Qué revisar</th></tr>
+      <tr><td>La Esclava no abre nada</td><td>¿El EA tiene la carita sonriente 🙂 en el gráfico? ¿Está activado <b>Algo Trading</b> (botón verde arriba)? ¿Pegaste la clave correcta?</td></tr>
+      <tr><td>Copia unos pares sí y otros no</td><td>Es tema de <b>símbolos</b> (sección 8): ese instrumento no existe en el broker Esclava o tiene un nombre no reconocido.</td></tr>
+      <tr><td>Sale error de WebRequest / URL</td><td>Autoriza <code>https://www.onyxtradinglive.com</code> en Opciones → Expert Advisors → WebRequest.</td></tr>
+      <tr><td>El lote sale muy grande o muy chico</td><td>Revisa el <b>modo de lote</b> del enlace (Multiplicador / Balance % / Riesgo) y el <b>Lote máx</b>.</td></tr>
+      <tr><td>No estás seguro de qué pasó</td><td>Mira la pestaña <b>Expertos</b> y <b>Diario (Journal)</b> abajo en MetaTrader; ahí el EA escribe lo que hace.</td></tr>
+    </table>
+    <div class="danger"><b>Prop firms:</b> muchas firmas de fondeo prohíben el copy trading entre cuentas o el uso de EAs. Antes de conectar una cuenta de reto o fondeada, revisa sus reglas. Onyx no se hace responsable de una cuenta baneada por incumplir su prop firm.</div>
+  </div>
+
+  <h2 id="local"><span class="n">11</span> Modo Local — solo si Master y Esclava están en el mismo VPS</h2>
+  <div class="card">
+    <p>Si ambas cuentas corren en el <b>mismo ordenador o VPS</b> y quieres copia casi instantánea sin pasar por internet, usa el <b>Modo Local</b>. En los <b>Inputs</b> del EA Esclava:</p>
+    <table>
+      <tr><th>Campo</th><th>Ponlo así</th></tr>
+      <tr><td><code>LocalMode</code></td><td><b>true</b> (activa el modo local)</td></tr>
+      <tr><td><code>CopyChannel</code></td><td>Un nombre libre, ej. <code>onyx1</code>. <b>El mismo</b> en la Master y la Esclava del mismo VPS.</td></tr>
+      <tr><td><code>CopyApiKey</code></td><td>Puedes dejarla; si la pones, la Esclava <b>lee la configuración del enlace desde la web</b> (modo, multiplicador, riesgo, topes). Si la dejas en blanco, usa los campos <code>Local...</code> de abajo.</td></tr>
+    </table>
+    <p>Campos <code>LocalSizing</code>, <code>LocalMult</code>, <code>LocalMaxLot</code>, <code>LocalMaxSpread</code>, <code>LocalDailyLoss</code> y <code>LocalMaxDd</code> solo se usan si <b>no</b> pusiste clave (copia 100% local sin nube).</p>
+    <div class="note">En Modo Local la Esclava ya sondea rápido sola; no tienes que tocar tiempos. Es una opción avanzada: si dudas, quédate con el modo Nube de las secciones 4–7.</div>
+  </div>
+
+  <div class="divider"></div>
+  <p class="tag">Guía de configuración · Onyx Trading Live · Copy Trading. Los nombres de campos coinciden con tu dashboard y con los EA. Prueba siempre en demo antes de operar en real.</p>
+
+</div>
+</body>
+</html>

@@ -281,36 +281,58 @@ export default function LandingConstructor() {
           {shown.length > 0
             ? <PlanCards plans={shown} lang={es ? 'es' : 'en'} annual={annual} botTagId={botPlanId} onChoose={(id: string, price: number) => { window.location.href = (price > 0 && id && id !== 'free') ? `/login?mode=signup&plan=${id}${annual ? '&annual=1' : ''}` : '/login?mode=signup'; }} />
             : <p className="muted" style={{ textAlign: 'center' }}>{L('Cargando planes…', 'Loading plans…')}</p>}
-          {/* Comparación de 3 niveles: todo lo del Bot Builder, fila por fila */}
+          {/* Comparación de 3 niveles: todo lo del Bot Builder, fila por fila.
+              Se dibuja desde la matriz editable en Admin (stats.botPlanMatrix +
+              stats.botCapMeta). Si aún no cargó, cae a los defaults de aquí. */}
           {(() => {
-            const pT = plans.find((p: any) => p.id === 'trader');
-            const pB = plans.find((p: any) => ['black', 'black_onyx', 'blackonyx'].includes(String(p.id)));
-            const prc = (p: any, def: number) => p ? (annual ? Number(p.price_year) : Number(p.price_month)) : def;
-            const tiers = [
-              { id: 'free', name: 'Gratis', price: 0 },
-              { id: 'trader', name: 'Trader', price: prc(pT, 15), hi: true },
-              { id: pB?.id || 'black', name: 'Black Onyx', price: prc(pB, annual ? 390 : 39) },
+            // Precio por tier: primero busca el plan real (por id o alias), luego un default.
+            const prc = (ids: string[], def: number) => {
+              const p = plans.find((pl: any) => ids.includes(String(pl.id)));
+              return p ? (annual ? Number(p.price_year) : Number(p.price_month)) : def;
+            };
+            const priceFor = (id: string): number => {
+              const k = String(id).toLowerCase();
+              if (k === 'free') return 0;
+              if (k === 'trader') return prc(['trader'], 15);
+              if (['black', 'black_onyx', 'blackonyx'].includes(k)) return prc(['black', 'black_onyx', 'blackonyx'], annual ? 390 : 39);
+              return prc([id], 0);
+            };
+            // Matriz desde Admin (con fallback a los defaults estáticos bilingües).
+            const mtx: any = stats?.botPlanMatrix;
+            const meta: any[] = Array.isArray(stats?.botCapMeta) ? stats.botCapMeta : [];
+            const DEF_TIERS = [
+              { id: 'free', es: 'Gratis', en: 'Free' },
+              { id: 'trader', es: 'Trader', en: 'Trader' },
+              { id: 'black', es: 'Black Onyx', en: 'Black Onyx' },
             ];
+            const mtxTiers: any[] = (mtx?.tiers && Array.isArray(mtx.tiers) && mtx.tiers.length) ? mtx.tiers : DEF_TIERS;
+            // El tier del medio (índice 1) se resalta como "popular".
+            const hiId = mtxTiers[1]?.id;
+            const tiers = mtxTiers.slice(0, 3).map((t: any) => ({ id: t.id, name: es ? t.es : (t.en || t.es), price: priceFor(t.id), hi: t.id === hiId }));
             const CH = <OnyxIcon name="check" size={13} glow={false} />;
-            const rows: [string, any, any, any][] = [
-              [L('Robots que creas', 'Robots you create'), '1', '∞', '∞'],
-              [L('Cuentas conectadas', 'Connected accounts'), '1', '3', '∞'],
-              [L('Plataformas MT4 · MT5 · cTrader', 'Platforms MT4 · MT5 · cTrader'), true, true, true],
-              [L('Gatillos, salidas, riesgo y frenos', 'Triggers, exits, risk & brakes'), true, true, true],
-              [L('Reglas de fondeo + candado de activación', 'Firm rules + activation lock'), true, true, true],
-              [L('Múltiples sesiones y días operables', 'Multiple sessions & trading days'), true, true, true],
-              [L('Filtro de noticias integrado', 'Built-in news filter'), true, true, true],
-              [L('Guía PDF personalizada + plantillas', 'Personalized PDF guide + templates'), true, true, true],
-              [L('Descarga del EA (.mq5/.mq4/.cs) + .set', 'EA download (.mq5/.mq4/.cs) + .set'), true, true, true],
-              [L('Mis robots: KPIs, pruebas vs vivo, graduación', 'My robots: KPIs, testing vs live, graduation'), true, true, true],
-              [L('Registro automático de operaciones', 'Automatic trade logging'), true, true, true],
-              [L('Historial de operaciones', 'Trade history'), L('30 días', '30 days'), L('completo', 'full'), L('completo', 'full')],
-              [L('Métricas avanzadas (Sharpe, Monte Carlo, walk-forward)', 'Advanced metrics (Sharpe, Monte Carlo, walk-forward)'), false, true, true],
-              [L('Laboratorio de portafolio + correlación + sugerencias', 'Portfolio lab + correlation + suggestions'), false, true, true],
-              [L('Copy trading incluido', 'Copy trading included'), false, false, true],
-              [L('Soporte prioritario', 'Priority support'), false, false, true],
+            // Filas: desde botCapMeta si viene; si no, las estáticas de respaldo.
+            const DEF_ROWS: { es: string; en: string; vals: any[] }[] = [
+              { es: 'Robots que creas', en: 'Robots you create', vals: ['1', '∞', '∞'] },
+              { es: 'Cuentas conectadas', en: 'Connected accounts', vals: ['1', '3', '∞'] },
+              { es: 'Plataformas MT4 · MT5 · cTrader', en: 'Platforms MT4 · MT5 · cTrader', vals: [true, true, true] },
+              { es: 'Gatillos, salidas, riesgo y frenos', en: 'Triggers, exits, risk & brakes', vals: [true, true, true] },
+              { es: 'Reglas de fondeo + candado de activación', en: 'Firm rules + activation lock', vals: [true, true, true] },
+              { es: 'Múltiples sesiones y días operables', en: 'Multiple sessions & trading days', vals: [true, true, true] },
+              { es: 'Filtro de noticias integrado', en: 'Built-in news filter', vals: [true, true, true] },
+              { es: 'Guía PDF personalizada + plantillas', en: 'Personalized PDF guide + templates', vals: [true, true, true] },
+              { es: 'Descarga del EA (.mq5/.mq4/.cs) + .set', en: 'EA download (.mq5/.mq4/.cs) + .set', vals: [true, true, true] },
+              { es: 'Mis robots: KPIs, pruebas vs vivo, graduación', en: 'My robots: KPIs, testing vs live, graduation', vals: [true, true, true] },
+              { es: 'Registro automático de operaciones', en: 'Automatic trade logging', vals: [true, true, true] },
+              { es: 'Historial de operaciones', en: 'Trade history', vals: [es ? '30 días' : '30 days', es ? 'completo' : 'full', es ? 'completo' : 'full'] },
+              { es: 'Métricas avanzadas (Sharpe, Monte Carlo, walk-forward)', en: 'Advanced metrics (Sharpe, Monte Carlo, walk-forward)', vals: [false, true, true] },
+              { es: 'Laboratorio de portafolio + correlación + sugerencias', en: 'Portfolio lab + correlation + suggestions', vals: [false, true, true] },
+              { es: 'Copy trading incluido', en: 'Copy trading included', vals: [false, false, true] },
+              { es: 'Soporte prioritario', en: 'Priority support', vals: [false, false, true] },
             ];
-            const cell = (v: any) => v === true ? CH : v === false ? <span style={{ color: 'var(--mut)' }}>—</span> : <span style={{ fontSize: 12.5 }}>{v}</span>;
+            const rows: { label: string; vals: any[] }[] = (meta.length && mtx?.caps)
+              ? meta.map((m: any) => ({ label: es ? m.es : (m.en || m.es), vals: tiers.map((tr: any) => mtx.caps?.[m.key]?.[tr.id]) }))
+              : DEF_ROWS.map((r) => ({ label: es ? r.es : r.en, vals: r.vals }));
+            const cell = (v: any) => v === true ? CH : (v === false || v == null || v === '') ? <span style={{ color: 'var(--mut)' }}>—</span> : <span style={{ fontSize: 12.5 }}>{String(v)}</span>;
             const go = (id: string, price: number) => { window.location.href = (price > 0 && id !== 'free') ? `/login?mode=signup&plan=${id}${annual ? '&annual=1' : ''}` : '/login?mode=signup'; };
             return (
               <div style={{ maxWidth: 760, margin: '26px auto 0', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden', background: 'var(--card)' }}>
@@ -319,7 +341,7 @@ export default function LandingConstructor() {
                   <table style={{ width: '100%', minWidth: 520, borderCollapse: 'collapse', fontSize: 13 }}>
                     <thead><tr>
                       <th style={{ textAlign: 'left', padding: '10px 14px' }}></th>
-                      {tiers.map((tr) => (
+                      {tiers.map((tr: any) => (
                         <th key={tr.id} style={{ padding: '10px 8px', textAlign: 'center', width: 108, background: tr.hi ? 'color-mix(in srgb,var(--brand) 10%,transparent)' : 'transparent' }}>
                           <div style={{ fontWeight: 800, color: tr.hi ? 'var(--brand)' : 'var(--tx)' }}>{tr.name}</div>
                           <div style={{ fontSize: 15, fontWeight: 800 }}>${tr.price}<span className="muted" style={{ fontSize: 10 }}>/{annual ? (es ? 'año' : 'yr') : (es ? 'mes' : 'mo')}</span></div>
@@ -329,15 +351,15 @@ export default function LandingConstructor() {
                     <tbody>
                       {rows.map((r, i) => (
                         <tr key={i} style={{ borderTop: '1px solid var(--line)' }}>
-                          <td style={{ padding: '9px 14px', color: 'var(--tx)' }}>{r[0]}</td>
-                          <td style={{ padding: '9px 8px', textAlign: 'center' }}>{cell(r[1])}</td>
-                          <td style={{ padding: '9px 8px', textAlign: 'center', background: 'color-mix(in srgb,var(--brand) 6%,transparent)' }}>{cell(r[2])}</td>
-                          <td style={{ padding: '9px 8px', textAlign: 'center' }}>{cell(r[3])}</td>
+                          <td style={{ padding: '9px 14px', color: 'var(--tx)' }}>{r.label}</td>
+                          {tiers.map((tr: any, ci: number) => (
+                            <td key={tr.id} style={{ padding: '9px 8px', textAlign: 'center', background: tr.hi ? 'color-mix(in srgb,var(--brand) 6%,transparent)' : 'transparent' }}>{cell(r.vals[ci])}</td>
+                          ))}
                         </tr>
                       ))}
                       <tr style={{ borderTop: '1px solid var(--line)' }}>
                         <td style={{ padding: '12px 14px' }}></td>
-                        {tiers.map((tr) => (
+                        {tiers.map((tr: any) => (
                           <td key={tr.id} style={{ padding: '10px 8px', textAlign: 'center', background: tr.hi ? 'color-mix(in srgb,var(--brand) 6%,transparent)' : 'transparent' }}>
                             <button className={'btn ' + (tr.hi ? 'btn-primary' : 'btn-ghost')} style={{ fontSize: 11.5, padding: '6px 10px', width: '100%' }} onClick={() => go(tr.id, tr.price)}>{tr.price === 0 ? L('Empezar', 'Start') : L('Elegir', 'Choose')}</button>
                           </td>

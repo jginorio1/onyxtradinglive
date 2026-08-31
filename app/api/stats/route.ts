@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { ambSettings } from '@/lib/ambassadors';
+import { botPlanMatrixSettings, BOT_CAP_META, BOT_PLAN_MATRIX_DEF } from '@/lib/settings';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';   // en vivo; no se prerenderea en el build
@@ -111,6 +112,11 @@ export async function GET() {
     for (const r of reviewsArr) { const s = Math.max(1, Math.min(5, Math.round(Number((r as any)?.stars) || 5))); byStar[String(s)]++; starSum += s; }
     const reviewSummary = { total: reviewsArr.length, avg: reviewsArr.length ? Number((starSum / reviewsArr.length).toFixed(1)) : 0, byStar };
 
+    // Matriz de planes de bots (capacidad × plan) editable desde Admin, para que
+    // el landing dibuje la tabla comparativa desde aquí (fuente única).
+    let botPlanMatrix: any = BOT_PLAN_MATRIX_DEF;
+    try { botPlanMatrix = await botPlanMatrixSettings(); } catch { /* fallback a los defaults */ }
+
     // Piso semilla: si no hay base fijada NI operaciones reales, el número sería 0.
     // Para no enseñar un "0 +" pelado en el landing, mostramos una semilla mínima.
     // En cuanto el admin ponga una base o entren operaciones reales, manda eso.
@@ -134,9 +140,10 @@ export async function GET() {
 
       platforms, readonly,          // valores fijos editables desde admin
       ambRate, ambCoupon, ambBase, ambMinPayout,
+      botPlanMatrix, botCapMeta: BOT_CAP_META,   // tabla comparativa de planes de bots (Admin)
     }, { headers: NO_CACHE });
   } catch {
     const R = grow(0, 'bots_built', 2, 7);
-    return NextResponse.json({ trades: 1000, blocks: 80, accounts: 40, copied: 300, bots: 1200, botsBuilt: R, botStats: { platforms: 3, opsByBots: Math.round(R * 190), strategies: Math.round(R * 2), traders: Math.round(R * 0.8) }, reviews: [], reviewSummary: { total: 0, avg: 0, byStar: { '5': 0, '4': 0, '3': 0, '2': 0, '1': 0 } }, platforms: 5, readonly: 100, ambRate: 30, ambCoupon: 20, ambBase: 20, ambMinPayout: 50 }, { headers: NO_CACHE });
+    return NextResponse.json({ trades: 1000, blocks: 80, accounts: 40, copied: 300, bots: 1200, botsBuilt: R, botStats: { platforms: 3, opsByBots: Math.round(R * 190), strategies: Math.round(R * 2), traders: Math.round(R * 0.8) }, reviews: [], reviewSummary: { total: 0, avg: 0, byStar: { '5': 0, '4': 0, '3': 0, '2': 0, '1': 0 } }, platforms: 5, readonly: 100, ambRate: 30, ambCoupon: 20, ambBase: 20, ambMinPayout: 50, botPlanMatrix: BOT_PLAN_MATRIX_DEF, botCapMeta: BOT_CAP_META }, { headers: NO_CACHE });
   }
 }

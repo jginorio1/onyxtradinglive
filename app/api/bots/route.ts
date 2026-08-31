@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { loadBots, loadPortfolio } from '@/lib/bots';
-import { hasAlgo, addonSettings } from '@/lib/settings';
+import { hasAlgo, addonSettings, botCapsForUser } from '@/lib/settings';
 import { logError } from '@/lib/errlog';
 
 export const dynamic = 'force-dynamic';
@@ -20,11 +20,20 @@ export async function GET(req: Request) {
       return NextResponse.json({ locked: true, bots: [], addon: { enabled: s.algo_enabled && !!s.algo_price_id, price: s.algo_price } });
     }
 
+    // Gates de la matriz de planes de bots (editable en Admin): métricas
+    // avanzadas y laboratorio de portafolio. El plan de entrada no los trae.
+    const caps = await botCapsForUser(user.id);
+
     const view = new URL(req.url).searchParams.get('view');
-    if (view === 'portfolio') return NextResponse.json({ locked: false, ...(await loadPortfolio(user.id)) });
+    if (view === 'portfolio') {
+      // El laboratorio de portafolio requiere el gate; si el plan no lo trae,
+      // devolvemos "capLocked" para que la UI muestre el upsell en vez del lab.
+      if (!caps.portfolioLab) return NextResponse.json({ locked: false, capLocked: 'portfolioLab', caps });
+      return NextResponse.json({ locked: false, caps, ...(await loadPortfolio(user.id)) });
+    }
 
     const r = await loadBots(user.id);
-    return NextResponse.json({ locked: false, ...r });
+    return NextResponse.json({ locked: false, caps, ...r });
   } catch (e: any) {
     await logError('bots_get', e);
     return NextResponse.json({ error: e?.message || 'error', bots: [] }, { status: 500 });

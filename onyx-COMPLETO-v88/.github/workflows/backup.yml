@@ -1,0 +1,72 @@
+name: Backup
+
+# Copia de seguridad semanal de la base de datos.
+#   - Corre cada domingo a las 06:00 UTC (o a mano desde la pestaña Actions).
+#   - Hace un pg_dump comprimido, lo sube a tu almacén externo y avisa a la app.
+#
+# Secretos que hay que crear en:  GitHub → Settings → Secrets and variables → Actions
+#   DATABASE_URL   Cadena de conexión de Supabase (Project Settings → Database →
+#                  Connection string → URI, la "Direct connection", puerto 5432).
+#   B2_KEY_ID      keyID de Backblaze B2.
+#   B2_APP_KEY     applicationKey de Backblaze B2.
+#   B2_BUCKET      Nombre del bucket de B2 donde guardar las copias.
+#   APP_URL        https://www.onyxtradinglive.com
+#   CRON_SECRET    El mismo valor que tienes en Vercel (para que la app confíe en el aviso).
+
+on:
+  schedule:
+    - cron: '0 6 * * *'   # todos los días a las 6:00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Instalar herramientas
+        run: |
+          # Instala pg_dump 17 (el de por defecto es 16 y no puede copiar Postgres 17).
+          sudo apt-get update -qq
+          sudo apt-get install -y curl ca-certificates gnupg lsb-release
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+            | sudo gpg --dearmor -o /usr/share/keyrings/pgdg.gpg
+          echo "deb [signed-by=/usr/share/keyrings/pgdg.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-client-17
+          pip install --quiet b2
+
+      - name: Volcado de la base de datos
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          set -euo pipefail   # si pg_dump falla, el paso falla (no crea copias vacías)
+          PGDUMP=$(ls -1 /usr/lib/postgresql/*/bin/pg_dump | sort -V | tail -1)  # el 17
+          STAMP=$(date +%Y%m%d-%H%M)
+          FILE="onyx-backup-$STAMP.sql.gz"
+          "$PGDUMP" "$DATABASE_URL" --no-owner --no-privileges | gzip > "$FILE"
+          SIZE=$(stat -c%s "$FILE")
+          if [ "$SIZE" -lt 1000 ]; then echo "Volcado vacío o fallido ($SIZE bytes)"; exit 1; fi
+          echo "FILE=$FILE" >> "$GITHUB_ENV"
+          echo "SIZE=$SIZE" >> "$GITHUB_ENV"
+
+      - name: Subir a Backblaze B2
+        env:
+          B2_APPLICATION_KEY_ID: ${{ secrets.B2_KEY_ID }}
+          B2_APPLICATION_KEY: ${{ secrets.B2_APP_KEY }}
+        run: |
+          b2 account authorize "$B2_APPLICATION_KEY_ID" "$B2_APPLICATION_KEY" \
+            || b2 authorize-account "$B2_APPLICATION_KEY_ID" "$B2_APPLICATION_KEY"
+          b2 file upload "${{ secrets.B2_BUCKET }}" "$FILE" "backups/$FILE" \
+            || b2 upload-file "${{ secrets.B2_BUCKET }}" "$FILE" "backups/$FILE"
+          # ¿Prefieres otro almacén? Sustituye este paso por aws s3 cp, rclone o gdrive.
+
+      - name: Avisar a la app (estado en el panel)
+        if: always()
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl -s -X POST "$APP_URL/api/admin/backup" \
+            -H "x-cron-secret: $CRON_SECRET" \
+            -H "content-type: application/json" \
+            -d "{\"size\": ${SIZE:-0}, \"dest\": \"Backblaze B2\", \"file\": \"${FILE:-}\"}" || true

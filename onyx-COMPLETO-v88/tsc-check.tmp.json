@@ -1,0 +1,2 @@
+{ "compilerOptions": { "noEmit": true, "skipLibCheck": true, "jsx": "react-jsx", "module": "esnext", "target": "esnext", "moduleResolution": "bundler", "baseUrl": ".", "paths": { "@/*": ["./*"] }, "types": [], "allowJs": true, "strict": true, "noImplicitAny": false },
+  "include": ["lib/seo.ts","lib/seoSearchConsole.ts","lib/seoAI.ts","app/api/admin/seo/route.ts","app/admin/SeoPanel.tsx","app/admin/AdminClient.tsx","app/layout.tsx","app/pricing/layout.tsx","lib/logFormat.ts"] }

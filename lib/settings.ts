@@ -45,6 +45,80 @@ export async function getSetting<T>(key: string, fallback: T): Promise<T> {
 export async function saveSetting(key: string, value: any) {
   await supabaseAdmin.from('app_settings').upsert({ key, value, updated_at: new Date().toISOString() });
 }
+// ===== Matriz de planes de bots (capacidad × plan) — landing + gating =====
+// Cada capacidad tiene un valor por plan: boolean (✓/—) o texto/número (límite).
+export type BotPlanMatrix = {
+  tiers: { id: string; es: string; en: string }[];
+  caps: Record<string, Record<string, any>>;
+};
+// Metadatos (etiquetas bilingües + tipo) de cada capacidad. Fuente única para
+// el landing (tabla comparativa) y el editor del admin.
+export const BOT_CAP_META: { key: string; es: string; en: string; type: 'bool' | 'text' }[] = [
+  { key: 'robots', es: 'Robots que creas', en: 'Robots you create', type: 'text' },
+  { key: 'accounts', es: 'Cuentas conectadas', en: 'Connected accounts', type: 'text' },
+  { key: 'platforms', es: 'Plataformas MT4 · MT5 · cTrader', en: 'Platforms MT4 · MT5 · cTrader', type: 'bool' },
+  { key: 'core', es: 'Gatillos, salidas, riesgo y frenos', en: 'Triggers, exits, risk & brakes', type: 'bool' },
+  { key: 'firmLock', es: 'Reglas de fondeo + candado de activación', en: 'Firm rules + activation lock', type: 'bool' },
+  { key: 'sessions', es: 'Múltiples sesiones y días operables', en: 'Multiple sessions & trading days', type: 'bool' },
+  { key: 'news', es: 'Filtro de noticias integrado', en: 'Built-in news filter', type: 'bool' },
+  { key: 'guide', es: 'Guía PDF personalizada + plantillas', en: 'Personalized PDF guide + templates', type: 'bool' },
+  { key: 'download', es: 'Descarga del EA (.mq5/.mq4/.cs) + .set', en: 'EA download (.mq5/.mq4/.cs) + .set', type: 'bool' },
+  { key: 'myrobots', es: 'Mis robots: KPIs, pruebas vs vivo, graduación', en: 'My robots: KPIs, testing vs live, graduation', type: 'bool' },
+  { key: 'autolog', es: 'Registro automático de operaciones', en: 'Automatic trade logging', type: 'bool' },
+  { key: 'history', es: 'Historial de operaciones', en: 'Trade history', type: 'text' },
+  { key: 'advMetrics', es: 'Métricas avanzadas (Sharpe, Monte Carlo, walk-forward)', en: 'Advanced metrics (Sharpe, Monte Carlo, walk-forward)', type: 'bool' },
+  { key: 'portfolioLab', es: 'Laboratorio de portafolio + correlación + sugerencias', en: 'Portfolio lab + correlation + suggestions', type: 'bool' },
+  { key: 'copy', es: 'Copy trading incluido', en: 'Copy trading included', type: 'bool' },
+  { key: 'prioritySupport', es: 'Soporte prioritario', en: 'Priority support', type: 'bool' },
+];
+export const BOT_PLAN_MATRIX_DEF: BotPlanMatrix = {
+  tiers: [{ id: 'free', es: 'Gratis', en: 'Free' }, { id: 'trader', es: 'Trader', en: 'Trader' }, { id: 'black', es: 'Black Onyx', en: 'Black Onyx' }],
+  caps: {
+    robots: { free: '1', trader: '∞', black: '∞' },
+    accounts: { free: '1', trader: '3', black: '∞' },
+    platforms: { free: true, trader: true, black: true },
+    core: { free: true, trader: true, black: true },
+    firmLock: { free: true, trader: true, black: true },
+    sessions: { free: true, trader: true, black: true },
+    news: { free: true, trader: true, black: true },
+    guide: { free: true, trader: true, black: true },
+    download: { free: true, trader: true, black: true },
+    myrobots: { free: true, trader: true, black: true },
+    autolog: { free: true, trader: true, black: true },
+    history: { free: '30 días', trader: 'completo', black: 'completo' },
+    advMetrics: { free: false, trader: true, black: true },
+    portfolioLab: { free: false, trader: true, black: true },
+    copy: { free: false, trader: false, black: true },
+    prioritySupport: { free: false, trader: false, black: true },
+  },
+};
+export const botPlanMatrixSettings = () => getSetting<BotPlanMatrix>('bot_plan_matrix', BOT_PLAN_MATRIX_DEF);
+
+// Resuelve las llaves de gating de bots para un usuario según su plan y la matriz.
+// Mapea el id del plan a un tier de la matriz (con alias de Black Onyx) y, si no
+// hay coincidencia, cae a 'trader' si el plan trae bots o a 'free'. Devuelve los
+// dos gates que consume el módulo Mis robots: métricas avanzadas y laboratorio.
+export async function botCapsForUser(userId: string): Promise<{ tier: string; advMetrics: boolean; portfolioLab: boolean }> {
+  const mtx = await botPlanMatrixSettings();
+  const ids = (mtx.tiers || []).map((t) => String(t.id));
+  let planId = 'free';
+  try {
+    const { data: prof } = await supabaseAdmin.from('profiles').select('plan,addon_algo').eq('id', userId).maybeSingle();
+    planId = String((prof as any)?.plan || 'free').toLowerCase();
+  } catch { /* fallback free */ }
+  // Resolver tier: match exacto, alias black, o heurística por add-on/plan pago.
+  let tier = ids.includes(planId) ? planId : '';
+  if (!tier && ['black', 'black_onyx', 'blackonyx'].includes(planId)) tier = ids.find((i) => i.toLowerCase().startsWith('black')) || '';
+  if (!tier) {
+    // Si su plan desbloquea bots (capabilities.algo o add-on), tratamos como el
+    // tier de pago del medio; si no, como el gratuito.
+    const hasBots = await hasAlgo(userId).catch(() => false);
+    tier = hasBots ? (ids[1] || ids[ids.length - 1] || 'trader') : (ids[0] || 'free');
+  }
+  const caps = mtx.caps || {};
+  return { tier, advMetrics: !!caps.advMetrics?.[tier], portfolioLab: !!caps.portfolioLab?.[tier] };
+}
+
 export const retentionSettings = () => getSetting<Retention>('retention', R);
 export const addonSettings = () => getSetting<Addons>('addons', A);
 

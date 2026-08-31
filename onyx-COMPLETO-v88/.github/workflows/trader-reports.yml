@@ -1,0 +1,25 @@
+name: Trader reports
+
+# Envía a cada trader (con Telegram vinculado y plan que lo incluya) su reporte
+# de rendimiento: resumen + gráfico + PDF + CSV. Corre a diario; el sistema
+# decide a quién toca hoy (lunes = semanal, día 1 = mensual).
+#
+# Secretos: APP_URL, CRON_SECRET (los mismos de las otras tareas).
+
+on:
+  schedule:
+    - cron: '30 6 * * *'   # cada día a las 06:30 UTC
+  workflow_dispatch: {}
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enviar reportes
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl -s -X POST "$APP_URL/api/cron/trader-reports" \
+            -H "x-cron-secret: $CRON_SECRET" \
+            -H "content-type: application/json" || true

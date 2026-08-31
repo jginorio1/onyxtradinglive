@@ -1,0 +1,26 @@
+name: Alerts
+
+# Vigilante de métricas: toma una foto diaria y avisa por Telegram si algo
+# cruza un límite (pagos fallidos, cancelaciones, errores, backup viejo, MRR).
+#
+# Secretos (ya deberías tenerlos de otras tareas):
+#   APP_URL       https://www.onyxtradinglive.com
+#   CRON_SECRET   el mismo valor que en Vercel
+
+on:
+  schedule:
+    - cron: '0 7 * * *'   # cada día a las 07:00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Revisar alertas
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl -s -X POST "$APP_URL/api/admin/alerts" \
+            -H "x-cron-secret: $CRON_SECRET" \
+            -H "content-type: application/json" || true

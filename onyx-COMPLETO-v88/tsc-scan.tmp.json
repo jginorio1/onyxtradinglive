@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "noEmit": true, "skipLibCheck": true, "jsx": "react-jsx",
+    "module": "esnext", "target": "esnext", "moduleResolution": "bundler",
+    "baseUrl": ".", "paths": { "@/*": ["./*"] }, "types": [],
+    "allowJs": true, "strict": true, "noImplicitAny": false
+  },
+  "include": ["app/**/*.ts","app/**/*.tsx","lib/**/*.ts"]
+}
