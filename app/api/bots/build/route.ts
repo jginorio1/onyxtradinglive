@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { cleanSpec, toSetFile, summarize, type BotSpec } from '@/lib/botSpec';
-import { renderMT5 } from '@/lib/botGen';
+import { renderMT5, renderMT4 } from '@/lib/botGen';
 import { buildGuideHTML } from '@/lib/botGuide';
 
 export const dynamic = 'force-dynamic';
@@ -40,11 +40,14 @@ export async function GET(req: Request) {
       const spec = cleanSpec((bot as any).spec);
       const safe = (spec.name || 'bot').replace(/[^\w.\- ]+/g, '_').slice(0, 40);
       if (asCode) {
-        // Fase 2: EA MT5 generado desde el spec, con candado de activación Onyx
-        // (huella creador+build + URL del sitio para el ping de /api/v1/activate).
+        // EA generado desde el spec, con candado de activación Onyx (huella creador+build
+        // + URL del sitio para el ping de /api/v1/activate). Elige el generador por plataforma.
         const SITE = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.onyxtradinglive.com').replace(/\/$/, '');
-        const src = renderMT5(spec, { userId: user.id, buildId: String(dl), site: SITE });
-        return new NextResponse(src, { headers: { 'content-type': 'text/plain; charset=utf-8', 'content-disposition': `attachment; filename="${safe}.mq5"` } });
+        const meta = { userId: user.id, buildId: String(dl), site: SITE };
+        const plat = String(spec.platform || 'mt5');
+        const src = plat === 'mt4' ? renderMT4(spec, meta) : renderMT5(spec, meta);
+        const fileExt = plat === 'mt4' ? 'mq4' : 'mq5';
+        return new NextResponse(src, { headers: { 'content-type': 'text/plain; charset=utf-8', 'content-disposition': `attachment; filename="${safe}.${fileExt}"` } });
       }
       const set = toSetFile(spec);
       return new NextResponse(set, { headers: { 'content-type': 'text/plain; charset=utf-8', 'content-disposition': `attachment; filename="${safe}.set"` } });
