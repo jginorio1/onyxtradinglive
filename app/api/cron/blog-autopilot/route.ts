@@ -12,8 +12,14 @@ export const maxDuration = 60;   // la generación con IA puede tardar
 // Recomendado ejecutarlo 2-4 veces al día en Vercel.
 export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET;
-  if (secret && new URL(req.url).searchParams.get('key') !== secret) {
-    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  if (secret) {
+    // Vercel Cron autentica con el header Authorization: Bearer <CRON_SECRET>.
+    // Aceptamos ese header O ?key=<secret> (para pruebas manuales).
+    const auth = req.headers.get('authorization') || '';
+    const q = new URL(req.url).searchParams.get('key') || '';
+    if (auth !== `Bearer ${secret}` && q !== secret) {
+      return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+    }
   }
   try {
     const r = await runAutopilot();
