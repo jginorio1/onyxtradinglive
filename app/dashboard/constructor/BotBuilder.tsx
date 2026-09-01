@@ -291,6 +291,19 @@ export default function BotBuilder() {
       .bbx-tg{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;padding:7px 12px;border-radius:9px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--mut);cursor:pointer;transition:.15s}
       .bbx-tg.on{border-color:rgba(139,147,255,.6);background:rgba(139,147,255,.14);color:#c8ccff;box-shadow:0 0 14px rgba(139,147,255,.2)}
       .bbx-hero{background:linear-gradient(135deg,rgba(60,52,137,.55),rgba(91,99,211,.32));border:1px solid rgba(139,147,255,.4);border-radius:16px;padding:18px 20px;margin-bottom:14px;box-shadow:0 12px 34px rgba(50,40,120,.28)}
+      .bbx-rail{display:flex;gap:6px;flex-wrap:wrap;margin-top:14px}
+      .bbx-step{flex:1 1 84px;min-width:74px;border-radius:10px;padding:7px 6px;text-align:center;font-size:10.5px;cursor:pointer;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);color:rgba(255,255,255,.72);transition:.15s}
+      .bbx-step:hover{background:rgba(255,255,255,.09)}
+      .bbx-step .d{width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;margin-bottom:3px;background:rgba(255,255,255,.16);color:#fff}
+      .bbx-step.ok{border-color:rgba(52,226,160,.6);background:rgba(52,226,160,.15);color:#8ff0cf}
+      .bbx-step.ok .d{background:#1d9e75;color:#04120b}
+      .bbx-step.warn{border-color:rgba(245,181,68,.6);background:rgba(245,181,68,.15);color:#ffd488}
+      .bbx-step.warn .d{background:#f5b544;color:#3a2a06}
+      .bbx-step.cur{box-shadow:0 0 0 2px rgba(139,147,255,.75),0 0 18px rgba(139,147,255,.4)}
+      .bbx-live{background:linear-gradient(135deg,rgba(60,52,137,.3),rgba(91,99,211,.16));border:1px solid rgba(139,147,255,.34);border-radius:14px;padding:12px 15px;margin-bottom:14px}
+      .bbx-livechip{font-size:11.5px;padding:4px 10px;border-radius:99px;background:rgba(139,147,255,.16);border:1px solid rgba(139,147,255,.32);color:#d7dbff;white-space:nowrap}
+      .bbx-ready{box-shadow:0 0 0 1px var(--brand),0 0 26px color-mix(in srgb,var(--brand) 60%,transparent)!important;animation:bbxpulse 1.9s ease-in-out infinite}
+      @keyframes bbxpulse{0%,100%{box-shadow:0 0 0 1px var(--brand),0 0 16px color-mix(in srgb,var(--brand) 45%,transparent)}50%{box-shadow:0 0 0 1px var(--brand),0 0 30px color-mix(in srgb,var(--brand) 78%,transparent)}}
       .bbx-h2{margin:0;font-size:18px;font-weight:700;color:#fff;display:flex;align-items:center;gap:10px}
       .bbx-prog{height:8px;border-radius:99px;background:rgba(255,255,255,.07);overflow:hidden}
       .bbx-prog>i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#8b93ff,#5b63d3);box-shadow:0 0 16px rgba(139,147,255,.65);transition:width .3s}
@@ -340,6 +353,32 @@ export default function BotBuilder() {
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 12.5, color: '#fff' }}><span style={{ fontWeight: 600 }}>{L(`${reviewedSecs} de 6 secciones revisadas`, `${reviewedSecs} of 6 sections reviewed`)}</span><span style={{ color: 'rgba(255,255,255,.8)' }}>{missCount ? L(`${missCount} campo(s) sin definir`, `${missCount} field(s) undefined`) : reviewedSecs === 6 ? L('Todo revisado', 'All reviewed') : L('Abre cada sección para revisarla', 'Open each section to review it')}</span></div>
           <div className={'bbx-prog' + (reviewedSecs === 6 && !missCount ? ' full' : '')}><i style={{ width: secPct + '%' }} /></div>
         </div>
+        {/* Riel de pasos iluminado: cada sección con su estado (✓ listo / • pendiente),
+            el paso actual brilla. Tocar salta directo a esa sección. */}
+        <div className="bbx-rail">
+          {SECS.map((k, i) => {
+            const st = secStatus(k); const cur = view === k;
+            const lbl: Record<string, string> = { general: L('General', 'General'), entry: L('Entrada', 'Entry'), exits: L('Salidas', 'Exits'), risk: L('Riesgo', 'Risk'), firm: L('Fondeo', 'Firm'), schedule: L('Sesión', 'Session') };
+            return (
+              <button key={k} type="button" className={'bbx-step' + (st === 'ok' ? ' ok' : st === 'warn' ? ' warn' : '') + (cur ? ' cur' : '')} onClick={() => go(k)}>
+                <div className="d">{st === 'ok' ? '✓' : i + 1}</div>
+                <div>{lbl[k]}</div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Vista previa en vivo: resume el robot mientras lo armas (se actualiza solo). */}
+      <div className="bbx-live">
+        <div style={{ fontSize: 12, color: '#c8ccff', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 7, fontWeight: 600 }}><OnyxIcon emoji="👁️" size={13} glow={false} /> {L('Vista previa en vivo', 'Live preview')}</div>
+        <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 8 }}>
+          <span className="bbx-livechip">{s.symbol || L('Instrumento —', 'Instrument —')}</span>
+          <span className="bbx-livechip">{s.platform ? (s.platform === 'ctrader' ? 'cTrader' : String(s.platform).toUpperCase()) : L('Plataforma —', 'Platform —')}</span>
+          <span className="bbx-livechip">{s.tf ? `TF ${s.tf}` : 'TF —'}</span>
+          <span className="bbx-livechip">{L('Riesgo', 'Risk')} {s.riskVal ? `${s.riskVal}%` : '—'}</span>
+        </div>
+        <p style={{ fontSize: 12.5, margin: 0, color: 'rgba(255,255,255,.86)', lineHeight: 1.5 }}>{summary}</p>
       </div>
 
       {/* Plantillas */}
@@ -640,7 +679,7 @@ export default function BotBuilder() {
         </div>
         {/* Acción principal única */}
         <div style={{ marginTop: 14 }}>
-          <button className="bbx-btn primary" onClick={createBot} disabled={busy || creating} style={{ fontWeight: 700, fontSize: 15, padding: '12px 26px', opacity: missCount ? 0.6 : 1 }}><OnyxIcon emoji="🤖" size={16} glow={false} /> {L('Crear robot', 'Create robot')}</button>
+          <button className={'bbx-btn primary' + (!missCount && !busy && !creating ? ' bbx-ready' : '')} onClick={createBot} disabled={busy || creating} style={{ fontWeight: 700, fontSize: 15, padding: '12px 26px', opacity: missCount ? 0.6 : 1 }}><OnyxIcon emoji="🤖" size={16} glow={false} /> {missCount ? L('Crear robot', 'Create robot') : L('Crear mi robot', 'Create my robot')}</button>
           <div style={{ fontSize: 11.5, marginTop: 7, color: missCount ? 'var(--wn)' : 'var(--mut)' }}>{missCount ? <><OnyxIcon emoji="⚠️" size={12} /> {L(`Faltan ${missCount} campo(s) obligatorio(s). Al crear te mostraremos cuáles.`, `${missCount} required field(s) missing. We'll show you which when you create.`)}</> : L('Genera el archivo del robot listo para instalar y te muestra los pasos.', 'Generates your ready-to-install robot file and shows you the steps.')}</div>
         </div>
         {/* Acciones secundarias, discretas */}
