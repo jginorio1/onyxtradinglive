@@ -73,6 +73,8 @@ export default function BotBuilder() {
   const [busy, setBusy] = useState(false);
   const [big, setBig] = useState(false);
   const [view, setView] = useState('home'); // 'home' = tablero de tarjetas; o la clave de una sección
+  const [mode, setMode] = useState<'simple' | 'expert'>('simple'); // 'simple' = guiado paso a paso (primerizos); 'expert' = tablero completo
+  const [showGlos, setShowGlos] = useState(false); // glosario de términos (¿qué es?) en el resumen
   const [warn, setWarn] = useState<{ key: string; label: string; section?: string }[]>([]);
   const [showWarn, setShowWarn] = useState(false);
   const [creating, setCreating] = useState(false);       // animación "creando robot"
@@ -113,7 +115,7 @@ export default function BotBuilder() {
   // Campos obligatorios del bot (sin estos no opera). Los opcionales tienen su switch.
   // Campos OBLIGATORIOS: bloquean crear el robot. Cada uno con la sección donde vive.
   const REQ: { key: keyof BotSpec; label: string; section: string }[] = [
-    { key: 'name', label: L('Nombre del bot', 'Bot name'), section: 'general' },
+    { key: 'name', label: L('Nombre del robot', 'Robot name'), section: 'general' },
     { key: 'symbol', label: L('Instrumento', 'Instrument'), section: 'general' },
     { key: 'platform', label: L('Plataforma', 'Platform'), section: 'general' },
     { key: 'tf', label: L('Temporalidad de entrada', 'Entry timeframe'), section: 'general' },
@@ -166,12 +168,12 @@ export default function BotBuilder() {
   }, [s, bal]);
 
   async function save(): Promise<string | null> {
-    if (!s.name.trim()) { toastErr(L('Ponle un nombre a tu bot.', 'Give your bot a name.')); return null; }
+    if (!s.name.trim()) { toastErr(L('Ponle un nombre a tu robot.', 'Give your robot a name.')); return null; }
     setBusy(true);
     try {
       const r = await fetch('/api/bots/build', { method: 'POST', body: JSON.stringify({ id: id || undefined, spec: s, lang: es ? 'es' : 'en' }) });
       const j = await r.json(); if (!r.ok) { toastErr(j); setBusy(false); return null; }
-      setId(j.id); toast(L('Bot guardado.', 'Bot saved.')); load(); setBusy(false); return j.id as string;
+      setId(j.id); toast(L('Robot guardado.', 'Robot saved.')); load(); setBusy(false); return j.id as string;
     } catch { toastErr(L('No se pudo guardar.', 'Could not save.')); setBusy(false); return null; }
   }
   async function saveChecked() { const m = findMissing(); if (m.length) { setWarn(m); setShowWarn(true); return; } await save(); }
@@ -180,7 +182,7 @@ export default function BotBuilder() {
   // y al terminar abre el popup de instalación (advertencia + pasos + URLs del WebRequest).
   async function createBot() {
     const m = findMissing(); if (m.length) { setWarn(m); setShowWarn(true); return; }
-    if (!s.name.trim()) { toastErr(L('Ponle un nombre a tu bot.', 'Give your bot a name.')); return; }
+    if (!s.name.trim()) { toastErr(L('Ponle un nombre a tu robot.', 'Give your robot a name.')); return; }
     setCreating(true); setCSecs(BUILD_SECS);
     const savedP = save();
     await new Promise<void>((res) => { let n = BUILD_SECS; const iv = setInterval(() => { n -= 1; setCSecs(n); if (n <= 0) { clearInterval(iv); res(); } }, 1000); });
@@ -197,7 +199,7 @@ export default function BotBuilder() {
   async function delTpl(tid: string) { if (!confirm(L('¿Borrar esta plantilla?', 'Delete this template?'))) return; await fetch('/api/bots/templates?id=' + tid, { method: 'DELETE' }); loadTpls(); }
   function edit(b: any) { setS({ ...DEFAULT_SPEC, ...(b.spec || {}) }); setId(b.id); touchAll(); visitAll(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
   function nuevo() { setS(blankReq({ ...DEFAULT_SPEC, magic: genMagic() })); setId(''); setTouched({}); setVisited({}); go('home'); }
-  async function del(bid: string) { if (!confirm(L('¿Borrar este bot?', 'Delete this bot?'))) return; await fetch('/api/bots/build?id=' + bid, { method: 'DELETE' }); if (id === bid) nuevo(); load(); }
+  async function del(bid: string) { if (!confirm(L('¿Borrar este robot?', 'Delete this robot?'))) return; await fetch('/api/bots/build?id=' + bid, { method: 'DELETE' }); if (id === bid) nuevo(); load(); }
   async function openGuide() { let bid = id; if (!bid) { bid = (await save()) || ''; } if (bid) window.open(`/api/bots/build?guide=${bid}&lang=${es ? 'es' : 'en'}`, '_blank'); }
 
   const SESSIONS: [string, string, number, number, number, number][] = [
@@ -237,6 +239,12 @@ export default function BotBuilder() {
   const reviewedSecs = ['general', 'entry', 'exits', 'risk', 'firm', 'schedule'].filter((k) => visited[k]).length;
   const secPct = Math.round(100 * reviewedSecs / 6);
   const go = (v: string) => { setView(v); if (v !== 'home') setVisited((p) => ({ ...p, [v]: true })); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  // En modo sencillo nunca mostramos el tablero: si el view cae en 'home', lo llevamos al primer paso.
+  useEffect(() => { if (mode === 'simple' && view === 'home') setView('general'); }, [mode, view]);
+  // Cambiar de modo: sencillo arranca en el primer paso; experto muestra el tablero de tarjetas.
+  const switchMode = (m: 'simple' | 'expert') => { setMode(m); setView(m === 'simple' ? 'general' : 'home'); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  // Terminar el guiado en sencillo: baja al resumen (no hay tablero al que "volver").
+  const finishFlow = () => { if (mode === 'simple') { document.getElementById('bbx-summary')?.scrollIntoView({ behavior: 'smooth' }); } else { go('home'); } };
 
   // Datos legibles para el resumen visual del bot.
   const uu = (x: string) => (({ pct: '%', money: '$', pips: 'pips', atr: '× ATR', rr: 'R', structure: L('estructura', 'structure') } as any)[x] || x);
@@ -313,6 +321,12 @@ export default function BotBuilder() {
       .bbx-btn{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:600;padding:9px 15px;border-radius:10px;cursor:pointer;border:1px solid var(--line);background:rgba(255,255,255,.05);color:#e2e5f4;transition:.15s}
       .bbx-btn:hover{background:rgba(255,255,255,.09)}
       .bbx-btn.primary{background:linear-gradient(90deg,#6f77ea,#5b63d3);border:none;color:#fff;box-shadow:0 8px 22px rgba(91,99,211,.4)}
+      .bbx-seg{display:inline-flex;background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:11px;padding:3px;gap:3px}
+      .bbx-segb{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;padding:7px 13px;border-radius:8px;border:none;background:transparent;color:var(--mut);cursor:pointer;transition:.15s}
+      .bbx-segb.on{background:linear-gradient(90deg,#6f77ea,#5b63d3);color:#fff;box-shadow:0 4px 14px rgba(91,99,211,.35)}
+      .bbx-qbtn{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:4px 10px;border-radius:99px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--mut);cursor:pointer;font-weight:600}
+      .bbx-qbtn:hover{color:#c8ccff;border-color:rgba(139,147,255,.5)}
+      .bbx-qbox{font-size:11.5px;color:rgba(255,255,255,.82);line-height:1.55;background:rgba(139,147,255,.08);border:1px solid rgba(139,147,255,.25);border-radius:10px;padding:10px 12px}
       .bbx-metric{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:11px;padding:9px 13px}
       .bbx-metric b{font-size:19px;color:var(--ink);display:block;margin-top:2px}
       .bbx-tplchip{display:inline-flex;align-items:center;gap:2px;background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:99px;padding:3px 4px 3px 6px}
@@ -345,10 +359,17 @@ export default function BotBuilder() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 10 }}>
           <div>
             <h2 className="bbx-h2"><OnyxIcon emoji="🤖" size={22} /> {L('Crear robot', 'Create robot')}</h2>
-            <p style={{ fontSize: 13, margin: '6px 0 0', color: 'rgba(255,255,255,.82)' }}>{L('Arma tu bot por campos, elige qué usar y descarga EA, config y guía.', 'Build your bot by fields, choose what to use, and download EA, config and guide.')}</p>
+            <p style={{ fontSize: 13, margin: '6px 0 0', color: 'rgba(255,255,255,.82)' }}>{L('Arma tu robot paso a paso y descarga el archivo listo para instalar, con su guía.', 'Build your robot step by step and download the ready-to-install file, with its guide.')}</p>
           </div>
-          <button className="bbx-btn" onClick={() => setBig((v) => !v)}><OnyxIcon emoji={big ? '🗕' : '🗖'} size={14} /> {big ? L('Reducir', 'Shrink') : L('Pantalla ancha', 'Wide screen')}</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <div className="bbx-seg" role="tablist" aria-label={L('Modo', 'Mode')}>
+              <button type="button" role="tab" aria-selected={mode === 'simple'} className={'bbx-segb' + (mode === 'simple' ? ' on' : '')} onClick={() => switchMode('simple')}><OnyxIcon emoji="✨" size={13} glow={false} /> {L('Sencillo', 'Simple')}</button>
+              <button type="button" role="tab" aria-selected={mode === 'expert'} className={'bbx-segb' + (mode === 'expert' ? ' on' : '')} onClick={() => switchMode('expert')}><OnyxIcon emoji="🎛️" size={13} glow={false} /> {L('Experto', 'Expert')}</button>
+            </div>
+            <button className="bbx-btn" onClick={() => setBig((v) => !v)}><OnyxIcon emoji={big ? '🗕' : '🗖'} size={14} /> {big ? L('Reducir', 'Shrink') : L('Pantalla ancha', 'Wide screen')}</button>
+          </div>
         </div>
+        {mode === 'simple' && <div style={{ fontSize: 12, color: 'rgba(255,255,255,.82)', marginTop: 9, display: 'flex', alignItems: 'center', gap: 7 }}><OnyxIcon emoji="🧭" size={13} glow={false} /> {L('Modo sencillo: te preguntamos una cosa a la vez, en palabras claras. ¿Ya tienes experiencia? Cambia a Experto.', 'Simple mode: one thing at a time, in plain words. Already experienced? Switch to Expert.')}</div>}
         <div style={{ marginTop: 14 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 12.5, color: '#fff' }}><span style={{ fontWeight: 600 }}>{L(`${reviewedSecs} de 6 secciones revisadas`, `${reviewedSecs} of 6 sections reviewed`)}</span><span style={{ color: 'rgba(255,255,255,.8)' }}>{missCount ? L(`${missCount} campo(s) sin definir`, `${missCount} field(s) undefined`) : reviewedSecs === 6 ? L('Todo revisado', 'All reviewed') : L('Abre cada sección para revisarla', 'Open each section to review it')}</span></div>
           <div className={'bbx-prog' + (reviewedSecs === 6 && !missCount ? ' full' : '')}><i style={{ width: secPct + '%' }} /></div>
@@ -369,7 +390,9 @@ export default function BotBuilder() {
         </div>
       </div>
 
-      {/* Vista previa en vivo: resume el robot mientras lo armas (se actualiza solo). */}
+      {/* Vista previa en vivo: solo en modo experto. En sencillo, el resumen de abajo
+          es la única fuente (evitamos mostrar la misma info dos veces). */}
+      {mode === 'expert' && (
       <div className="bbx-live">
         <div style={{ fontSize: 12, color: '#c8ccff', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 7, fontWeight: 600 }}><OnyxIcon emoji="👁️" size={13} glow={false} /> {L('Vista previa en vivo', 'Live preview')}</div>
         <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 8 }}>
@@ -380,6 +403,7 @@ export default function BotBuilder() {
         </div>
         <p style={{ fontSize: 12.5, margin: 0, color: 'rgba(255,255,255,.86)', lineHeight: 1.5 }}>{summary}</p>
       </div>
+      )}
 
       {/* Plantillas */}
       {tpls.length > 0 && (
@@ -423,14 +447,14 @@ export default function BotBuilder() {
       ) : (
       <>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
-        <button className="bbx-btn" onClick={() => go('home')}>← {L('Todas las secciones', 'All sections')}</button>
+        {mode === 'expert' && <button className="bbx-btn" onClick={() => go('home')}>← {L('Todas las secciones', 'All sections')}</button>}
         <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>{CARDS.find((c) => c[0] === view)?.[2]}</span>
         <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--mut)' }}>{L(`Paso ${SECS.indexOf(view) + 1} de ${SECS.length}`, `Step ${SECS.indexOf(view) + 1} of ${SECS.length}`)}</span>
       </div>
 
       {view === 'general' && (
       <Panel ic="⚙️" title={L('General', 'General')}>
-        <Fld t={L('Nombre de tu bot', 'Your bot name')} k="name" ph={L('Ej: Mi cazador de Londres', 'e.g. My London hunter')} hint={L('Solo para identificarlo en tu lista. Ponle algo que reconozcas.', 'Just to identify it in your list. Use something you\'ll recognize.')} />
+        <Fld t={L('Nombre de tu robot', 'Your robot name')} k="name" ph={L('Ej: Mi cazador de Londres', 'e.g. My London hunter')} hint={L('Solo para identificarlo en tu lista. Ponle algo que reconozcas.', 'Just to identify it in your list. Use something you\'ll recognize.')} />
         <Fld t={L('Plataforma', 'Platform')} k="platform" opts={[['', L('Elige…', 'Choose…')], ['mt5', 'MetaTrader 5'], ['mt4', 'MetaTrader 4'], ['ctrader', 'cTrader']]} hint={L('La app donde correrá el robot. Genera el archivo correcto (.mq5, .mq4 o .cs).', 'The app the robot will run on. Generates the right file (.mq5, .mq4 or .cs).')} />
         <Fld t={L('Instrumento', 'Instrument')} k="symbol" ph="XAUUSD" list="bbx-syms" hint={L('El bot encuentra el símbolo aunque tu broker use otro nombre o sufijo (GOLD, XAUUSD.m, etc.).', 'The bot finds the symbol even if your broker uses another name or suffix (GOLD, XAUUSD.m, etc.).')} />
         <datalist id="bbx-syms">{SYMBOL_HINTS.map((x) => <option key={x} value={x} />)}</datalist>
@@ -647,23 +671,38 @@ export default function BotBuilder() {
         return (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
             {idx > 0 && <button className="bbx-btn" onClick={() => go(SECS[idx - 1])}>← {L('Anterior', 'Previous')}</button>}
-            <button className="bbx-btn" onClick={() => go('home')} style={{ color: 'var(--mut)' }}>{L('Ver todas', 'View all')}</button>
+            {mode === 'expert' && <button className="bbx-btn" onClick={() => go('home')} style={{ color: 'var(--mut)' }}>{L('Ver todas', 'View all')}</button>}
             {!last
               ? <button className="bbx-btn primary" style={{ marginLeft: 'auto', fontWeight: 700 }} onClick={() => go(SECS[idx + 1])}>{L('Siguiente', 'Next')} → <span className="bbx-sub" style={{ color: 'rgba(255,255,255,.85)' }}>{CARDS.find((c) => c[0] === SECS[idx + 1])?.[2]}</span></button>
-              : <button className="bbx-btn primary" style={{ marginLeft: 'auto', fontWeight: 700 }} onClick={() => go('home')}>{L('Terminar → ver resumen', 'Finish → see summary')} ✓</button>}
+              : <button className="bbx-btn primary" style={{ marginLeft: 'auto', fontWeight: 700 }} onClick={finishFlow}>{L('Terminar → ver resumen', 'Finish → see summary')} ✓</button>}
           </div>
         );
       })()}
       </>
       )}
 
-      {/* Resumen + acciones */}
-      <div className="bbx-panel">
-        <div className="bbx-panel-h"><span className="bbx-ic"><OnyxIcon emoji="📋" size={16} /></span> {L('Resumen de tu bot', 'Your bot summary')}</div>
+      {/* Resumen + acciones (única fuente: fusiona la vista previa) */}
+      <div className="bbx-panel" id="bbx-summary">
+        <div className="bbx-panel-h" style={{ justifyContent: 'space-between' }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 11 }}><span className="bbx-ic"><OnyxIcon emoji="📋" size={16} /></span> {L('Resumen de tu robot', 'Your robot summary')}</span>
+          <button type="button" className="bbx-qbtn" onClick={() => setShowGlos((v) => !v)}><OnyxIcon emoji="❓" size={12} glow={false} /> {L('¿Qué significan los términos?', 'What do the terms mean?')}</button>
+        </div>
+        {showGlos && (
+          <div className="bbx-qbox" style={{ marginBottom: 12 }}>
+            {([
+              [L('Riesgo por operación', 'Risk per trade'), L('Cuánto de tu cuenta pones en juego en cada operación. Mientras más bajo, más seguro.', 'How much of your account you put at stake per trade. Lower is safer.')],
+              ['R:R', L('Por cada $1 que arriesgas, cuánto buscas ganar. R:R 1:2 = arriesgas 1 para ganar 2.', 'For every $1 you risk, how much you aim to win. R:R 1:2 = risk 1 to win 2.')],
+              ['ATR', L('Una medida de cuánto se mueve el precio. Sirve para poner el stop a una distancia real, no fija.', 'A measure of how much price moves. Lets the stop sit at a real distance, not a fixed one.')],
+              [L('DD (drawdown)', 'DD (drawdown)'), L('La pérdida máxima que tu prop firm permite. El robot la vigila para no romperla.', 'The max loss your prop firm allows. The robot watches it so it isn\'t broken.')],
+              ['Trailing', L('El freno de pérdida que sube solo detrás del precio para proteger lo ganado.', 'A stop that moves up behind price to protect your gains.')],
+              ['Runner', L('La parte de la operación que dejas correr para ganar más si sigue a favor.', 'The part of the trade you let run to win more if it keeps going your way.')],
+            ] as [string, string][]).map(([t, d], i) => <div key={i} style={{ marginBottom: i < 5 ? 6 : 0 }}><b style={{ color: '#c8ccff' }}>{t}:</b> {d}</div>)}
+          </div>
+        )}
         <div style={{ background: 'linear-gradient(135deg,rgba(139,147,255,.14),rgba(255,255,255,.03))', border: '1px solid rgba(139,147,255,.3)', borderRadius: 13, padding: '15px 16px', marginBottom: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <span className="bbx-ic" style={{ background: 'linear-gradient(135deg,#6f77ea,#5b63d3)', color: '#fff', boxShadow: '0 0 16px rgba(139,147,255,.4)' }}><OnyxIcon emoji="🤖" size={17} /></span>
-            <div><div style={{ fontSize: 16, fontWeight: 600, color: 'var(--ink)' }}>{s.name || L('Bot sin nombre', 'Unnamed bot')}</div><div style={{ fontSize: 12, color: 'var(--mut)' }}>{s.platform.toUpperCase()} · {s.symbol} · magic {s.magic}</div></div>
+            <div><div style={{ fontSize: 16, fontWeight: 600, color: 'var(--ink)' }}>{s.name || L('Robot sin nombre', 'Unnamed robot')}</div><div style={{ fontSize: 12, color: 'var(--mut)' }}>{s.platform.toUpperCase()} · {s.symbol} · magic {s.magic}</div></div>
           </div>
           <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 12 }}>
             {sumPills.map((p, i) => <span key={i} style={{ fontSize: 12, padding: '4px 11px', borderRadius: 99, background: 'rgba(255,255,255,.05)', border: '1px solid rgba(139,147,255,.35)', color: '#c8ccff' }}>{p}</span>)}
@@ -695,7 +734,7 @@ export default function BotBuilder() {
 
       {list.length > 0 && (
         <div className="bbx-panel">
-          <div className="bbx-panel-h"><span className="bbx-ic"><OnyxIcon emoji="🗂️" size={16} /></span> {L('Mis bots', 'My bots')}</div>
+          <div className="bbx-panel-h"><span className="bbx-ic"><OnyxIcon emoji="🗂️" size={16} /></span> {L('Mis robots', 'My robots')}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {list.map((b) => (
               <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,.04)', border: '1px solid var(--line)', borderRadius: 11, padding: '10px 13px', flexWrap: 'wrap', gap: 8 }}>
