@@ -419,13 +419,16 @@ export default function AccountClient({ email }: { email: string }) {
                   {sub && <div style={{ borderTop: '1px solid var(--line)', paddingTop: 14, marginTop: 14 }}><BillingCard lang={lang} /></div>}
 
                   {/* Cambiar de plan (upgrade / downgrade) sobre la misma suscripción */}
-                  {sub && allPlans.length > 0 && (() => {
+                  {sub && (plans.length > 0 || allPlans.length > 0) && (() => {
                     const myPlanId = p.plan || 'free';
-                    const curPrice = Number(allPlans.find((pl: any) => pl.id === myPlanId)?.price_month ?? 0);
+                    // Fuente robusta: usa los planes que YA vienen con la cuenta (data.plans);
+                    // si por alguna razón no están, cae a los del panel (/api/admin/plans).
+                    const cat = plans.length ? plans : allPlans;
+                    const curPrice = Number(cat.find((pl: any) => pl.id === myPlanId)?.price_month ?? 0);
                     // Mismo patrón que /pricing: TODOS los planes ordenados por precio, el actual
                     // marcado ("✓ Tu plan"), dorado en el recomendado y acento premium en los
                     // demás con badge. Free solo aparece si hay retención (bajar a Free = cancelar) o si es el actual.
-                    const list = allPlans
+                    const list = cat
                       .filter((pl: any) => pl.id === myPlanId || pl.id !== 'free' || !!data.retention?.enabled)
                       .slice()
                       .sort((a: any, b: any) => Number(a.price_month || 0) - Number(b.price_month || 0));
