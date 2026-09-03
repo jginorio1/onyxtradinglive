@@ -422,27 +422,49 @@ export default function AccountClient({ email }: { email: string }) {
                   {sub && allPlans.length > 0 && (() => {
                     const myPlanId = p.plan || 'free';
                     const curPrice = Number(allPlans.find((pl: any) => pl.id === myPlanId)?.price_month ?? 0);
-                    // Incluimos Free (bajar a Free = cancelar al final del periodo, vía el flujo con ofertas).
-                    const others = allPlans.filter((pl: any) => pl.id !== myPlanId && (pl.id !== 'free' || !!data.retention?.enabled));
-                    if (!others.length) return null;
+                    // Mismo patrón que /pricing: TODOS los planes ordenados por precio, el actual
+                    // marcado ("✓ Tu plan"), dorado en el recomendado y acento premium en los
+                    // demás con badge. Free solo aparece si hay retención (bajar a Free = cancelar) o si es el actual.
+                    const list = allPlans
+                      .filter((pl: any) => pl.id === myPlanId || pl.id !== 'free' || !!data.retention?.enabled)
+                      .slice()
+                      .sort((a: any, b: any) => Number(a.price_month || 0) - Number(b.price_month || 0));
+                    if (list.length < 2) return null;
+                    const gold = 'var(--gold, #e8b923)', goldDark = '#3a2a06';
                     return (
                       <div id="change-plan" style={{ borderTop: '1px solid var(--line)', paddingTop: 14, marginTop: 14, scrollMarginTop: 80 }}>
                         <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>{L.changePlanT}</div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10 }}>
-                          {others.map((p: any) => {
-                            const up = Number(p.price_month) > curPrice;
-                            const nm = lang === 'es' ? p.name : (p.name_en || p.name);
+                          {list.map((pl: any) => {
+                            const isCurrent = pl.id === myPlanId;
+                            const up = Number(pl.price_month) > curPrice;
+                            const nm = lang === 'es' ? pl.name : (pl.name_en || pl.name);
+                            const badgeRaw = lang === 'es' ? pl.badge : (pl.badge_en || pl.badge);
+                            const isPopular = /popular/i.test(badgeRaw || '');
+                            const badgeText = /high[\s-]?ticket|alto\s*valor/i.test(badgeRaw || '') ? (lang === 'es' ? 'El definitivo' : 'The ultimate') : badgeRaw;
+                            const cardStyle: any = isCurrent
+                              ? { border: '2px solid var(--brand)', boxShadow: '0 0 20px rgba(124,140,255,.18)' }
+                              : isPopular ? { border: `2px solid ${gold}`, boxShadow: '0 0 20px rgba(232,185,35,.20)' }
+                              : badgeRaw ? { border: '2px solid var(--brand)', boxShadow: '0 0 20px rgba(124,140,255,.18)' }
+                              : { border: '0.5px solid var(--line)' };
                             return (
-                              <div key={p.id} style={{ border: '0.5px solid var(--line)', borderRadius: 10, padding: 12 }}>
-                                <div style={{ fontSize: 13, fontWeight: 600 }}>{nm}</div>
-                                <div style={{ fontSize: 18, fontWeight: 800 }}>${p.price_month}<span className="muted" style={{ fontSize: 11, fontWeight: 400 }}>{L.chMo}</span></div>
-                                <button className={'btn ' + (up ? 'btn-primary' : 'btn-ghost')} style={{ width: '100%', marginTop: 8, fontSize: 12.5, padding: '6px 0' }}
-                                  onClick={() => {
-                                    if (p.id === 'free') { setCancelTick((x) => x + 1); setTimeout(() => document.getElementById('cancel-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 60); return; }
-                                    setChErr(''); setChTarget({ id: p.id, name: nm, up });
-                                  }}>
-                                  {up ? '↑ ' + L.chUp : '↓ ' + L.chDown}
-                                </button>
+                              <div key={pl.id} style={{ position: 'relative', borderRadius: 10, padding: 12, ...cardStyle }}>
+                                {isCurrent
+                                  ? <span style={{ position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)', background: 'var(--grad)', color: '#fff', fontSize: 10, fontWeight: 800, padding: '2px 9px', borderRadius: 99, whiteSpace: 'nowrap' }}>✓ {lang === 'es' ? 'Tu plan' : 'Your plan'}</span>
+                                  : badgeRaw && (isPopular
+                                      ? <span style={{ position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)', background: gold, color: goldDark, fontSize: 10, fontWeight: 800, padding: '2px 9px', borderRadius: 99, whiteSpace: 'nowrap' }}>★ {badgeText}</span>
+                                      : <span style={{ position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)', background: 'var(--grad)', color: '#fff', fontSize: 10, fontWeight: 800, padding: '2px 9px', borderRadius: 99, whiteSpace: 'nowrap' }}>◆ {badgeText}</span>)}
+                                <div style={{ fontSize: 13, fontWeight: 600, marginTop: (isCurrent || badgeRaw) ? 4 : 0 }}>{nm}</div>
+                                <div style={{ fontSize: 18, fontWeight: 800 }}>${pl.price_month}<span className="muted" style={{ fontSize: 11, fontWeight: 400 }}>{L.chMo}</span></div>
+                                {isCurrent
+                                  ? <div className="btn btn-ghost" style={{ width: '100%', marginTop: 8, fontSize: 12.5, padding: '6px 0', textAlign: 'center', opacity: .7, cursor: 'default' }}>{L.chCurrent}</div>
+                                  : <button className={'btn ' + (isPopular ? '' : up ? 'btn-primary' : 'btn-ghost')} style={isPopular ? { width: '100%', marginTop: 8, fontSize: 12.5, padding: '6px 0', background: gold, color: goldDark, border: 'none', fontWeight: 800 } : { width: '100%', marginTop: 8, fontSize: 12.5, padding: '6px 0' }}
+                                      onClick={() => {
+                                        if (pl.id === 'free') { setCancelTick((x) => x + 1); setTimeout(() => document.getElementById('cancel-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 60); return; }
+                                        setChErr(''); setChTarget({ id: pl.id, name: nm, up });
+                                      }}>
+                                      {up ? '↑ ' + L.chUp : '↓ ' + L.chDown}
+                                    </button>}
                               </div>
                             );
                           })}
