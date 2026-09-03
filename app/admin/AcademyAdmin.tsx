@@ -284,34 +284,26 @@ export default function AcademyAdmin({ canManage = false }: { canManage?: boolea
         </label>
       </div>
 
-      {/* Guardian DE PAGO dentro de la academia (cobro a Onyx) */}
+      {/* Mostrar los planes de Onyx dentro de la academia (mismos nombres/precios que /pricing) */}
       <div className="card">
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
           <div className="card-ic"><OnyxIcon name="guardian" /></div>
-          <b>{L('Vender Onyx Guardian dentro de la academia', 'Sell Onyx Guardian inside the academy')}</b>
+          <b>{L('Mostrar planes de Onyx en la academia', 'Show Onyx plans in the academy')}</b>
         </div>
         <p className="muted" style={{ margin: '0 0 12px' }}>
-          {L('El alumno se suscribe a Guardian (Pro o Elite) desde la comunidad y el cobro va a TU cuenta de Stripe (no a la del mentor). Al cancelar, Guardian se apaga solo. Fija los precios mensuales; si un alumno ya tiene ese nivel por su plan de Onyx, no se le ofrece.',
-             'The student subscribes to Guardian (Pro or Elite) from the community and the charge goes to YOUR Stripe account (not the mentor’s). On cancel, Guardian turns off automatically. Set monthly prices; if a student already has that level from their Onyx plan, it isn’t offered.')}
+          {L('Cuando está activo, los alumnos que YA se unieron a una academia ven tus planes de Onyx (Pro, Elite, Black Onyx) —con los mismos nombres y precios que la página de precios, que ya incluyen Onyx Guardian— y pueden suscribirse. No se muestra a quien ya tiene Guardian por su plan.',
+             'When on, students who ALREADY joined an academy see your Onyx plans (Pro, Elite, Black Onyx) —same names and prices as the pricing page, which already include Onyx Guardian— and can subscribe. It is not shown to anyone who already has Guardian from their plan.')}
         </p>
         <label className="row" style={{ gap: 10, alignItems: 'center', fontSize: 14, marginBottom: 12 }}>
           <input type="checkbox" checked={gEnabled} disabled={!canManage} onChange={(e) => setGEnabled(e.target.checked)} style={{ width: 'auto', margin: 0 }} />
-          {L('Mostrar la oferta de Guardian en la academia', 'Show the Guardian offer in the academy')}
+          {L('Mostrar los planes en la academia', 'Show the plans in the academy')}
         </label>
-        <div className="row" style={{ gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <label style={{ fontSize: 12.5 }}>{L('Guardian Pro · $/mes', 'Guardian Pro · $/mo')}
-            <input type="number" min={0} step="1" value={gPro} disabled={!canManage} onChange={(e) => setGPro(e.target.value)} placeholder="19" style={{ display: 'block', width: 120, marginTop: 4 }} />
-          </label>
-          <label style={{ fontSize: 12.5 }}>{L('Guardian Elite · $/mes', 'Guardian Elite · $/mo')}
-            <input type="number" min={0} step="1" value={gElite} disabled={!canManage} onChange={(e) => setGElite(e.target.value)} placeholder="39" style={{ display: 'block', width: 120, marginTop: 4 }} />
-          </label>
-          <button className="btn btn-primary" disabled={!canManage || busy === 'guardian'} onClick={saveGuardianPricing}>
-            {busy === 'guardian' ? '…' : L('Guardar', 'Save')}
-          </button>
-        </div>
+        <button className="btn btn-primary" disabled={!canManage || busy === 'guardian'} onClick={saveGuardianPricing}>
+          {busy === 'guardian' ? '…' : L('Guardar', 'Save')}
+        </button>
         <p className="muted" style={{ margin: '10px 0 0', fontSize: 12 }}>
-          {L('Pro = Guardian básico. Elite = completo (cierres parciales, bloqueo por noticias, alertas por Telegram).',
-             'Pro = basic Guardian. Elite = complete (partial closes, news blackout, Telegram alerts).')}
+          {L('Los nombres y precios se editan en Admin → Planes (una sola fuente para toda la app).',
+             'Names and prices are edited in Admin → Plans (a single source for the whole app).')}
         </p>
       </div>
 
