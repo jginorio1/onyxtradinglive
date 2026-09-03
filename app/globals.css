@@ -164,7 +164,10 @@ th{color:var(--mut);font-weight:600;}
 .secnav-item.on{color:var(--tx);background:var(--card2);}
 /* Home: centrar las dos filas SOLO en escritorio (móvil se queda igual). */
 @media(min-width:901px){ .secnav-items{justify-content:center;} }
-@media(min-width:1024px){
+/* Centrado del nav: desde 901px, EL MISMO punto en que el nav horizontal se muestra
+   (arriba se pasa a menú hamburguesa). Así el menú queda SIEMPRE centrado y no se
+   corre a la derecha en anchos medianos (901–1023px). */
+@media(min-width:901px){
   .topbar.center-nav .wrap-wide{position:relative;}
   .topbar.center-nav .navl{position:absolute;left:50%;transform:translateX(-50%);}
 }
