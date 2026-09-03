@@ -35,6 +35,10 @@ html[data-theme="light"]{
 }
 
 *{box-sizing:border-box;margin:0;padding:0;}
+/* Reserva SIEMPRE el espacio de la barra de scroll. Sin esto, al cambiar de idioma
+   (o al navegar a una página más corta/larga) aparece o desaparece el scroll vertical
+   y todo lo centrado —header, footer, contenido— se corre ~15px a la derecha. */
+html{scrollbar-gutter:stable;}
 body{background:radial-gradient(1200px 600px at 50% -200px, rgba(124,140,255,.10), transparent 60%), var(--bg);color:var(--tx);font-family:"Segoe UI",system-ui,-apple-system,Arial,sans-serif;line-height:1.6;}
 /* Tipografía para chino y japonés (se activa por el atributo lang del <html>). */
 html[lang="zh"] body{font-family:"Noto Sans SC","Segoe UI",system-ui,-apple-system,Arial,sans-serif;}
