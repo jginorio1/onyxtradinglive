@@ -25,11 +25,18 @@ async function aiEnabled(userId: string): Promise<boolean> {
 export async function GET(req: Request) {
   const user = await me();
   if (!user) return NextResponse.json({ error: 'no autorizado' }, { status: 401 });
-  const rq = Number(new URL(req.url).searchParams.get('range')) || 30;
+  const sp = new URL(req.url).searchParams;
+  const rq = Number(sp.get('range')) || 30;
   const range = [7, 30, 90].includes(rq) ? rq : 30;
   const plan = await getPlan(user.id);
+  // Alcance de la MEDICIÓN según la cuenta elegida arriba (un solo control): 'all' = todas;
+  // un id = solo esa cuenta. Solo afecta la respuesta (no cambia el plan guardado).
+  const acc = sp.get('account');
+  const planForStats = !acc ? plan
+    : acc === 'all' ? { ...plan, scope: 'all' as const }
+    : { ...plan, scope: 'primary' as const, primary_account_id: acc };
   const [checkin, stats, ai, guardian, planRow] = await Promise.all([
-    getCheckin(user.id), computeStats(user.id, plan, range), aiEnabled(user.id), guardianSummary(user.id),
+    getCheckin(user.id), computeStats(user.id, planForStats, range), aiEnabled(user.id), guardianSummary(user.id),
     supabaseAdmin.from('trading_plans').select('user_id').eq('user_id', user.id).maybeSingle(),
   ]);
 

@@ -125,7 +125,7 @@ const T: any = {
 
 const TYPE_LABEL: Record<string, [string, string]> = { challenge: ['challenge', 'challenge'], funded: ['fondeada', 'funded'], own: ['propia', 'own'], demo: ['demo', 'demo'] };
 
-export default function PlanHabits({ lang, onGoGuardian }: { lang: Lang; onGoGuardian?: () => void }) {
+export default function PlanHabits({ lang, onGoGuardian, account = 'all', accountName }: { lang: Lang; onGoGuardian?: () => void; account?: string; accountName?: string }) {
   const t = dictFor(T, lang); const i = lang === 'en' ? 1 : 0;
   const [tab, setTab] = useState<'hoy' | 'plan' | 'limites'>(() => {
     if (typeof window !== 'undefined') { const q = new URLSearchParams(window.location.search).get('tab'); if (q === 'plan' || q === 'limites' || q === 'hoy') return q; }
@@ -149,10 +149,10 @@ export default function PlanHabits({ lang, onGoGuardian }: { lang: Lang; onGoGua
   const [hoverDay, setHoverDay] = useState<any>(null); // celda del mapa bajo el cursor
   const [toast, setToast] = useState('');      // aviso de éxito tras proteger
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [account]);   // recarga al cambiar la cuenta elegida arriba
   async function load() {
     try {
-      const r = await fetch('/api/plan'); const j = await r.json();
+      const r = await fetch('/api/plan?account=' + encodeURIComponent(account || 'all')); const j = await r.json();
       setD(j); setItems(j.checkin?.items || {}); setNote(j.checkin?.note || '');
     } catch {}
   }
@@ -337,7 +337,10 @@ export default function PlanHabits({ lang, onGoGuardian }: { lang: Lang; onGoGua
             return (
               <div className="card">
                 <div className="row between" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-                  <b style={{ fontSize: 14 }}>📊 {t.statsT}</b>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <b style={{ fontSize: 14 }}>📊 {t.statsT}</b>
+                    <span style={{ fontSize: 11, padding: '2px 9px', borderRadius: 99, background: 'rgba(139,147,255,.14)', border: '1px solid rgba(139,147,255,.34)', color: '#c8ccff', whiteSpace: 'nowrap' }}>{lang === 'es' ? 'Midiendo' : 'Measuring'}: {account && account !== 'all' ? (accountName || (lang === 'es' ? 'la cuenta elegida' : 'selected account')) : (lang === 'es' ? 'Portafolio (todas)' : 'Portfolio (all)')}</span>
+                  </span>
                   <div style={{ display: 'inline-flex', border: '1px solid var(--line)', borderRadius: 9, overflow: 'hidden' }}>
                     {[7, 30, 90].map((rn) => (
                       <button key={rn} onClick={() => changeRange(rn)} style={{ fontSize: 12, padding: '5px 11px', border: 'none', cursor: 'pointer', background: range === rn ? 'var(--grad)' : 'transparent', color: range === rn ? '#fff' : 'var(--mut)' }}>{rn} {t.daysUnit}</button>
@@ -615,22 +618,14 @@ export default function PlanHabits({ lang, onGoGuardian }: { lang: Lang; onGoGua
                 ))}
               </div>
 
-              {/* Alcance: qué cuenta MIDE el plan */}
+              {/* Alcance del plan: ahora lo maneja el selector de cuenta de ARRIBA (un solo control). */}
               <div style={{ marginTop: 14 }}>
                 <div className="muted" style={{ fontSize: 12, marginBottom: 5 }}>{t.scopeT}</div>
-                <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-                  <button className={'btn ' + (p.scope !== 'all' ? 'btn-primary' : 'btn-ghost')} style={{ fontSize: 12, padding: '5px 10px' }} onClick={() => saveScope({ scope: 'primary' })}>🎯 {t.scopePrimary}</button>
-                  <button className={'btn ' + (p.scope === 'all' ? 'btn-primary' : 'btn-ghost')} style={{ fontSize: 12, padding: '5px 10px' }} onClick={() => saveScope({ scope: 'all' })}>🗂️ {t.scopeAll}</button>
+                <div style={{ fontSize: 12, padding: '9px 12px', borderRadius: 10, background: 'rgba(139,147,255,.10)', border: '1px solid rgba(139,147,255,.28)', color: 'var(--tx)', lineHeight: 1.55 }}>
+                  {lang === 'es'
+                    ? <>El plan mide la <b>cuenta que elijas arriba</b>. Elige <b>Portafolio</b> para medir todas tus cuentas (sin duplicar copias).</>
+                    : <>The plan measures the <b>account you pick above</b>. Choose <b>Portfolio</b> to measure all your accounts (no copy double-count).</>}
                 </div>
-                {p.scope !== 'all' && g.accounts.length > 1 && (
-                  <div className="row" style={{ gap: 6, marginTop: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <span className="muted" style={{ fontSize: 12 }}>{t.primaryPick}</span>
-                    <select value={p.primary_account_id || (g.accounts.find((a: any) => a.copy_role === 'master')?.id || g.accounts[0]?.id || '')} onChange={(e) => saveScope({ primary_account_id: e.target.value })} style={{ margin: 0, width: 'auto', minWidth: 160, fontSize: 12.5 }}>
-                      {g.accounts.map((a: any) => <option key={a.id} value={a.id}>{a.name}{a.copy_role === 'master' ? ' (master)' : ''}</option>)}
-                    </select>
-                  </div>
-                )}
-                <div className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>{t.scopeHint}</div>
               </div>
             </div>
           )}

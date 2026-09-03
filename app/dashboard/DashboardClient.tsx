@@ -894,18 +894,18 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
             {view === 'operaciones' && (!canJournal ? <ProLock L={L} plan={upJ.name} desc={L.dLock1} price={upJ.price} preview={<PreviewJournal />} /> : <Journal trades={filtered} lang={lang} focusUndoc={journalUndoc} accounts={accounts} />)}
             {view === 'costes' && <Costs trades={filtered} lang={lang} accounts={accounts} />}
             {view === 'reto' && <Challenge lang={lang} />}
-            {view === 'plan' && <PlanHabits lang={lang} />}
+            {view === 'plan' && <PlanHabits lang={lang} account={sel} accountName={curName} />}
 
             {view === 'cuentas' && (<>
               <Card title={L.accCard} icon="🗂️">
                 <div className="grid g3" style={{ marginBottom: 14 }}>
-                  <StatCard icon="💰" label={L.balTotal} value={'$' + totalBalance.toLocaleString()} accent={BLUE} />
-                  <StatCard icon="🗂️" label={L.accounts} value={String(accounts.length)} accent={PURPLE} />
-                  <StatCard icon="📊" label={L.opsTotal} value={String(ranged.length)} accent={CYAN} />
+                  <StatCard icon="💰" label={L.balTotal} value={'$' + (sel === 'all' ? totalBalance : Number(cur?.balance || 0)).toLocaleString()} accent={BLUE} />
+                  <StatCard icon="🗂️" label={L.accounts} value={String(sel === 'all' ? accounts.length : 1)} accent={PURPLE} />
+                  <StatCard icon="📊" label={L.opsTotal} value={String(sel === 'all' ? ranged.length : filtered.length)} accent={CYAN} />
                 </div>
                 <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
                 <table className="jtbl" style={{ minWidth: 620 }}><thead><tr><th>{L.th_acc}</th><th>{L.th_broker}</th><th style={{ textAlign: 'right' }}>{L.th_bal}</th><th style={{ textAlign: 'right' }}>{L.th_net}</th><th style={{ textAlign: 'right' }}>{L.th_win}</th><th></th></tr></thead>
-                  <tbody>{accounts.map((x) => { const st = accStats(x.id); return (
+                  <tbody>{(sel === 'all' ? accounts : accounts.filter((z) => z.id === sel)).map((x) => { const st = accStats(x.id); return (
                     <tr key={x.id}>
                       <td>{editing === x.id ? (<span style={{ display: 'flex', gap: 6 }}><input value={nick} onChange={(e) => setNick(e.target.value)} placeholder={L.nickPh} style={{ width: 140, marginTop: 0, padding: '6px 8px' }} /><button className="btn btn-primary" onClick={() => saveNick(x.id)}>✓</button><button className="btn btn-ghost" onClick={() => setEditing('')}>✕</button></span>) : (<span>{accName(x)} {typeMeta(x.acc_type) && <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 10, background: typeMeta(x.acc_type)!.color + '22', color: typeMeta(x.acc_type)!.color }}>{lang === 'es' ? typeMeta(x.acc_type)!.es : typeMeta(x.acc_type)!.en}</span>} <span className="muted" style={{ fontSize: 12 }}>· {x.platform} · #{x.login}</span></span>)}</td>
                       <td className="muted">{x.broker}</td>
@@ -920,7 +920,8 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                 </table>
                 </div>
               </Card>
-              {accounts.length >= 2 && (!canCompare ? <ProLock L={L} plan={upC.name} desc={L.dLock2} price={upC.price} preview={<PreviewCompare />} /> : <CompareAccounts accounts={accounts} trades={ranged} lang={lang} />)}
+              {/* Comparar cuentas solo tiene sentido en Portafolio (todas). Con una cuenta seleccionada se oculta. */}
+              {sel === 'all' && accounts.length >= 2 && (!canCompare ? <ProLock L={L} plan={upC.name} desc={L.dLock2} price={upC.price} preview={<PreviewCompare />} /> : <CompareAccounts accounts={accounts} trades={ranged} lang={lang} />)}
               {sel !== 'all' && cur && !canFunding && <ProLock L={L} plan={upF.name} desc={L.dLock3} price={upF.price} preview={<PreviewFunding />} />}
               {sel !== 'all' && cur && canFunding && <FundCard acc={cur} net={a.net} maxDD={a.maxDD} L={L} onSave={(fields) => { const toNum = (v: any) => (v === '' || v == null ? null : Number(v)); setAccounts(accounts.map((x) => (x.id === cur.id ? { ...x, fund_target: toNum(fields.fund_target), fund_max_daily: toNum(fields.fund_max_daily), fund_max_total: toNum(fields.fund_max_total), fund_start: toNum(fields.fund_start) } : x))); }} />}
               {sel !== 'all' && cur && canFunding && <AccountExtras acc={cur} net={a.net} lang={lang} onSaved={(fields) => setAccounts(accounts.map((x) => (x.id === cur.id ? { ...x, acc_type: fields.acc_type || null, challenge_status: fields.challenge_status || null, challenge_cost: fields.challenge_cost === '' ? null : Number(fields.challenge_cost) } : x)))} />}
