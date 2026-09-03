@@ -426,7 +426,7 @@ export default function AcademyClient() {
 
       <RedeemBeca L={L} onDone={(mid: string) => { load(); openAcademy(mid); }} />
 
-      <GuardianUpsell L={L} />
+      <GuardianUpsell L={L} inAcademy={(d.academies || []).length > 0} />
 
       {d.isMentor && d.myMentorId && (
         <div>
