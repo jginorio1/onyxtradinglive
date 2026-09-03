@@ -74,7 +74,9 @@ export default async function Dashboard() {
   const { data: accounts } = await supabaseAdmin
     .from('trading_accounts')
     .select('id,login,nickname,broker,platform,balance,currency,fund_target,fund_max_daily,fund_max_total,fund_start,acc_type,challenge_status,challenge_cost')
-    .eq('user_id', user.id);
+    .eq('user_id', user.id)
+    // Mismo orden estable que /api/dashboard, para que la carga inicial y los refrescos coincidan.
+    .order('created_at', { ascending: true }).order('id', { ascending: true });
 
   const accIds = (accounts || []).map((a: any) => a.id);
 

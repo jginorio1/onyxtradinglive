@@ -300,6 +300,19 @@ function PlanBadge({ plan }: { plan: string }) {
   return <span style={{ fontSize: 10, fontWeight: 800, background: elite ? 'rgba(52,226,160,.15)' : 'rgba(160,107,255,.2)', color: elite ? 'var(--soft-green)' : 'var(--soft-purple)', border: '1px solid ' + (elite ? 'var(--green)' : 'var(--brand2)'), borderRadius: 20, padding: '2px 8px', whiteSpace: 'nowrap' }}>🔒 {plan.toUpperCase()}</span>;
 }
 
+// Fusiona la lista nueva de cuentas con la anterior SIN cambiar el orden ya visible:
+// refresca los datos de las que siguen y agrega al final las nuevas. Así los chips
+// NO "saltan" de posición en cada auto-refresco (el orden lo fija la carga inicial).
+function mergeAccounts(prev: Acc[], next: Acc[]): Acc[] {
+  if (!prev.length) return next;
+  const byId = new Map(next.map((a) => [a.id, a]));
+  const out: Acc[] = [];
+  const seen = new Set<string>();
+  for (const a of prev) { const n = byId.get(a.id); if (n) { out.push(n); seen.add(a.id); } }
+  for (const a of next) { if (!seen.has(a.id)) out.push(a); }
+  return out;
+}
+
 export default function DashboardClient({ email = '', plan = 'free', capOverride, profile, trades = [], accounts: accs0 = [] }: { email?: string; plan?: string; capOverride?: Record<string, any>; profile?: { full_name?: string; trade_style?: string; experience?: string; platform?: string; goal?: string }; trades?: TT[]; accounts?: Acc[] }) {
   const isFree = (plan || 'free') === 'free';
   const { lang, setLang } = useLang();
@@ -395,7 +408,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
   useEffect(() => {
     let stop = false;
     async function refresh() {
-      try { const r = await fetch('/api/dashboard'); const j = await r.json(); if (!stop && j.trades) { setTradesS(j.trades); if (j.accounts) setAccounts(j.accounts); setLastUpdate(Date.now()); } } catch {}
+      try { const r = await fetch('/api/dashboard'); const j = await r.json(); if (!stop && j.trades) { setTradesS(j.trades); if (j.accounts) setAccounts((prev) => mergeAccounts(prev, j.accounts)); setLastUpdate(Date.now()); } } catch {}
     }
     const iv = setInterval(refresh, 30000);
     const onFocus = () => refresh();

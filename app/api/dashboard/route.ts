@@ -13,7 +13,9 @@ export async function GET() {
 
     const { data: accounts } = await sb.from('trading_accounts')
       .select('id,login,nickname,broker,platform,balance,currency,fund_target,fund_max_daily,fund_max_total,fund_start,acc_type,challenge_status,challenge_cost')
-      .eq('user_id', user.id);
+      .eq('user_id', user.id)
+      // Orden ESTABLE (por creación) para que los chips no se reordenen en cada refresco.
+      .order('created_at', { ascending: true }).order('id', { ascending: true });
     const accIds = (accounts || []).map((a: any) => a.id);
 
     let trades: any[] = [];
