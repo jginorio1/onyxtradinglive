@@ -375,8 +375,8 @@ export default function LandingConstructor() {
                     <thead><tr>
                       <th style={{ textAlign: 'left', padding: '10px 14px' }}></th>
                       {tiers.map((tr: any) => (
-                        <th key={tr.id} style={{ padding: '10px 8px', textAlign: 'center', width: 108, background: tr.hi ? 'color-mix(in srgb,var(--brand) 10%,transparent)' : 'transparent' }}>
-                          <div style={{ fontWeight: 800, color: tr.hi ? 'var(--brand)' : 'var(--tx)' }}>{tr.name}</div>
+                        <th key={tr.id} style={{ padding: '10px 8px', textAlign: 'center', width: 108, background: tr.hi ? 'color-mix(in srgb, var(--gold, #e8b923) 14%, transparent)' : 'transparent' }}>
+                          <div style={{ fontWeight: 800, color: tr.hi ? 'var(--gold, #e8b923)' : 'var(--tx)' }}>{tr.name}</div>
                           <div style={{ fontSize: 15, fontWeight: 800 }}>${tr.price}<span className="muted" style={{ fontSize: 10 }}>/{annual ? (es ? 'año' : 'yr') : (es ? 'mes' : 'mo')}</span></div>
                         </th>
                       ))}
@@ -386,15 +386,15 @@ export default function LandingConstructor() {
                         <tr key={i} style={{ borderTop: '1px solid var(--line)' }}>
                           <td style={{ padding: '9px 14px', color: 'var(--tx)' }}>{r.label}</td>
                           {tiers.map((tr: any, ci: number) => (
-                            <td key={tr.id} style={{ padding: '9px 8px', textAlign: 'center', background: tr.hi ? 'color-mix(in srgb,var(--brand) 6%,transparent)' : 'transparent' }}>{cell(r.vals[ci])}</td>
+                            <td key={tr.id} style={{ padding: '9px 8px', textAlign: 'center', background: tr.hi ? 'color-mix(in srgb, var(--gold, #e8b923) 9%, transparent)' : 'transparent' }}>{cell(r.vals[ci])}</td>
                           ))}
                         </tr>
                       ))}
                       <tr style={{ borderTop: '1px solid var(--line)' }}>
                         <td style={{ padding: '12px 14px' }}></td>
                         {tiers.map((tr: any) => (
-                          <td key={tr.id} style={{ padding: '10px 8px', textAlign: 'center', background: tr.hi ? 'color-mix(in srgb,var(--brand) 6%,transparent)' : 'transparent' }}>
-                            <button className={'btn ' + (tr.hi ? 'btn-primary' : 'btn-ghost')} style={{ fontSize: 11.5, padding: '6px 10px', width: '100%' }} onClick={() => go(tr.id, tr.price)}>{tr.price === 0 ? L('Empezar', 'Start') : L('Elegir', 'Choose')}</button>
+                          <td key={tr.id} style={{ padding: '10px 8px', textAlign: 'center', background: tr.hi ? 'color-mix(in srgb, var(--gold, #e8b923) 9%, transparent)' : 'transparent' }}>
+                            <button className={'btn ' + (tr.hi ? '' : 'btn-ghost')} style={tr.hi ? { fontSize: 11.5, padding: '6px 10px', width: '100%', background: 'var(--gold, #e8b923)', color: '#3a2a06', border: 'none', fontWeight: 800 } : { fontSize: 11.5, padding: '6px 10px', width: '100%' }} onClick={() => go(tr.id, tr.price)}>{tr.price === 0 ? L('Empezar', 'Start') : L('Elegir', 'Choose')}</button>
                           </td>
                         ))}
                       </tr>

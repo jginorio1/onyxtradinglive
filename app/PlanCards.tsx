@@ -65,12 +65,13 @@ export default function PlanCards({
         const prevName = prev ? (lang === 'es' ? prev.name : (prev.name_en || prev.name)) : '';
         const isFree = p.id === 'free' || price === 0;
         const botTag = !!botTagId && p.id === botTagId;
+        const goldHi = isPopular || botTag;   // recomendado en DORADO: "popular" en /pricing, "Para bots" en el constructor
         return (
-          <div key={p.id} className="card" style={{ flex: '1 1 240px', minWidth: 230, maxWidth: 320, display: 'flex', flexDirection: 'column', ...(isPopular ? { border: `2px solid ${gold}`, boxShadow: '0 0 30px rgba(232,185,35,.28)', position: 'relative' } : (hasBadge || botTag) ? { border: '2px solid var(--brand)', boxShadow: '0 0 30px rgba(124,140,255,.25)', position: 'relative' } : { position: 'relative' }) }}>
+          <div key={p.id} className="card" style={{ flex: '1 1 240px', minWidth: 230, maxWidth: 320, display: 'flex', flexDirection: 'column', ...(goldHi ? { border: `2px solid ${gold}`, boxShadow: '0 0 30px rgba(232,185,35,.28)', position: 'relative' } : hasBadge ? { border: '2px solid var(--brand)', boxShadow: '0 0 30px rgba(124,140,255,.25)', position: 'relative' } : { position: 'relative' }) }}>
             {hasBadge && (isPopular
               ? <span style={{ position: 'absolute', top: -13, left: '50%', transform: 'translateX(-50%)', background: gold, color: goldDark, fontSize: 11, fontWeight: 800, padding: '4px 14px', borderRadius: 20, whiteSpace: 'nowrap' }}>★ {badgeText}</span>
               : <span style={{ position: 'absolute', top: -13, left: '50%', transform: 'translateX(-50%)', background: 'var(--grad)', color: '#fff', fontSize: 11, fontWeight: 800, padding: '4px 14px', borderRadius: 20, whiteSpace: 'nowrap' }}>◆ {badgeText}</span>)}
-            {botTag && <span style={{ position: 'absolute', top: 12, right: 12, background: 'color-mix(in srgb,var(--brand) 18%,transparent)', color: 'var(--brand)', fontSize: 10.5, fontWeight: 800, padding: '3px 9px', borderRadius: 99, border: '1px solid color-mix(in srgb,var(--brand) 40%,transparent)', whiteSpace: 'nowrap' }}>★ {lang === 'es' ? 'Para bots' : 'For bots'}</span>}
+            {botTag && <span style={{ position: 'absolute', top: 12, right: 12, background: 'color-mix(in srgb, var(--gold, #e8b923) 20%, transparent)', color: 'var(--gold, #e8b923)', fontSize: 10.5, fontWeight: 800, padding: '3px 9px', borderRadius: 99, border: '1px solid color-mix(in srgb, var(--gold, #e8b923) 45%, transparent)', whiteSpace: 'nowrap' }}>★ {lang === 'es' ? 'Para bots' : 'For bots'}</span>}
             <h3 style={{ marginTop: hasBadge ? 6 : 0 }}>{name}</h3>
             {desc && <p className="muted" style={{ fontSize: 13, marginTop: 4 }}>{desc}</p>}
             <div style={{ fontSize: 40, fontWeight: 800, margin: '10px 0 4px' }}>${price}<span className="muted" style={{ fontSize: 15, fontWeight: 500 }}>/{annual ? t.yr : t.mo}</span></div>
@@ -83,7 +84,7 @@ export default function PlanCards({
                 </li>
               ))}
             </ul>
-            <button className={'btn ' + (isPopular ? '' : hasBadge ? 'btn-primary' : 'btn-ghost')} style={isPopular ? { width: '100%', background: gold, color: goldDark, border: 'none', fontWeight: 800 } : { width: '100%' }} onClick={() => onChoose(p.id, price)} disabled={loadingId === p.id}>
+            <button className={'btn ' + (goldHi ? '' : hasBadge ? 'btn-primary' : 'btn-ghost')} style={goldHi ? { width: '100%', background: gold, color: goldDark, border: 'none', fontWeight: 800 } : { width: '100%' }} onClick={() => onChoose(p.id, price)} disabled={loadingId === p.id}>
               {loadingId === p.id ? '...' : (isFree ? (freeLabel || t.free) : t.choose + ' ' + name)}
             </button>
             {trust && <div className="muted" style={{ fontSize: 11.5, textAlign: 'center', marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
