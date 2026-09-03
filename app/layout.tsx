@@ -176,9 +176,16 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               const en = path.startsWith('/en');
               const priv = ['/dashboard', '/admin', '/account', '/login', '/onboarding', '/en/dashboard', '/en/admin', '/en/account', '/en/login', '/en/onboarding'].some((p) => path === p || path.startsWith(p + '/'));
               if (priv) return null;
-              const items = en
-                ? [{ id: 'features', label: 'Features' }, { id: 'eco', label: 'Ecosystem' }, { id: 'how', label: 'How it works' }, { id: 'fondeo', label: 'Funding' }, { id: 'gestor', label: 'Guardian' }, { id: 'faq', label: 'FAQ' }]
-                : [{ id: 'features', label: 'Funciones' }, { id: 'eco', label: 'Ecosistema' }, { id: 'how', label: 'Cómo funciona' }, { id: 'fondeo', label: 'Fondeo' }, { id: 'gestor', label: 'Guardian' }, { id: 'faq', label: 'FAQ' }];
+              // Etiquetas en AMBOS idiomas: SectionNav (cliente) elige con el idioma actual
+              // (cookie/contexto), así el submenú cambia AL INSTANTE al togglear, sin depender de la URL /en.
+              const items = [
+                { id: 'features', es: 'Funciones', en: 'Features' },
+                { id: 'eco', es: 'Ecosistema', en: 'Ecosystem' },
+                { id: 'how', es: 'Cómo funciona', en: 'How it works' },
+                { id: 'fondeo', es: 'Fondeo', en: 'Funding' },
+                { id: 'gestor', es: 'Guardian', en: 'Guardian' },
+                { id: 'faq', es: 'FAQ', en: 'FAQ' },
+              ];
               return <SectionNav items={items} hrefBase={en ? '/en' : '/'} />;
             })()}
             {children}
