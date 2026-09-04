@@ -36,9 +36,12 @@ html[data-theme="light"]{
 
 *{box-sizing:border-box;margin:0;padding:0;}
 /* Reserva SIEMPRE el espacio de la barra de scroll. Sin esto, al cambiar de idioma
-   (o al navegar a una página más corta/larga) aparece o desaparece el scroll vertical
-   y todo lo centrado —header, footer, contenido— se corre ~15px a la derecha. */
-html{scrollbar-gutter:stable;}
+   (el español es más largo que el inglés) aparece la barra vertical que antes no
+   estaba, el ancho útil se encoge ~15px y TODO lo centrado —header, footer, menú—
+   se corre a la derecha. 'overflow-y:scroll' fuerza la barra a estar SIEMPRE visible
+   (soportado por TODOS los navegadores, incluidos los que ignoran scrollbar-gutter),
+   así el ancho nunca cambia. 'scrollbar-gutter:stable' es el refuerzo moderno. */
+html{overflow-y:scroll;scrollbar-gutter:stable;}
 /* Recorta CUALQUIER desborde lateral en TODAS las pantallas (antes solo en móvil).
    En el blog y otras páginas hay bloques a pantalla completa con width:100vw; como
    100vw incluye el ancho de la barra de scroll (ya reservada arriba), esos bloques
