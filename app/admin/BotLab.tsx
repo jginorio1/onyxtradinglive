@@ -12,6 +12,7 @@ export default function BotLab({ canManage = true }: { canManage?: boolean }) {
   const { lang } = useLang(); const es = lang === 'es';
   const [d, setD] = useState<any>(null);
   const [set, setSet] = useState<any>(null);
+  const [sub, setSub] = useState<'marketplace' | 'servicios' | 'pagos' | 'creadores' | 'ajustes'>('marketplace');
 
   async function load() { try { const r = await fetch('/api/admin/botlab'); const j = await r.json(); setD(j); setSet(j.settings); } catch {} }
   useEffect(() => { load(); }, []);
@@ -33,8 +34,15 @@ export default function BotLab({ canManage = true }: { canManage?: boolean }) {
         ))}
       </div>
 
+      {/* Sub-pestañas: el producto entero vive en un solo hub */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', borderBottom: '1px solid var(--line)', paddingBottom: 10 }}>
+        {([['marketplace', es ? 'Marketplace' : 'Marketplace'], ['servicios', es ? 'Servicios' : 'Services'], ['pagos', es ? 'Pagos USDT' : 'USDT payments'], ['creadores', es ? 'Creadores' : 'Creators'], ['ajustes', es ? 'Ajustes' : 'Settings']] as [any, string][]).map(([k, lbl]) => (
+          <button key={k} onClick={() => setSub(k)} style={{ padding: '8px 14px', borderRadius: 10, fontSize: 13.5, fontWeight: 700, cursor: 'pointer', border: '1px solid ' + (sub === k ? 'var(--brand)' : 'var(--line)'), background: sub === k ? 'color-mix(in srgb,var(--brand) 16%,transparent)' : 'transparent', color: sub === k ? 'var(--brand)' : 'var(--tx)' }}>{lbl}</button>
+        ))}
+      </div>
+
       {/* Ajustes */}
-      {set && (
+      {sub === 'ajustes' && set && (
         <div style={card}>
           <h3 style={{ marginTop: 0 }}>{es ? 'Ajustes' : 'Settings'}</h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: 12 }}>
@@ -50,7 +58,7 @@ export default function BotLab({ canManage = true }: { canManage?: boolean }) {
       )}
 
       {/* Robots por revisar */}
-      <div style={card}>
+      {sub === 'marketplace' && <div style={card}>
         <h3 style={{ marginTop: 0 }}>{es ? 'Robots por revisar' : 'Robots to review'} {pend.length ? `(${pend.length})` : ''}</h3>
         {!pend.length && <div className="muted" style={{ fontSize: 13 }}>{es ? 'Nada pendiente.' : 'Nothing pending.'}</div>}
         <div style={{ display: 'grid', gap: 8 }}>
@@ -64,12 +72,13 @@ export default function BotLab({ canManage = true }: { canManage?: boolean }) {
             </div>
           ))}
         </div>
-      </div>
+      </div>}
 
       {/* Pagos USDT por confirmar */}
-      {(d.crypto || []).length > 0 && (
+      {sub === 'pagos' && (
         <div style={card}>
           <h3 style={{ marginTop: 0 }}>{es ? 'Pagos USDT por confirmar' : 'USDT payments to confirm'}</h3>
+          {!(d.crypto || []).length && <div className="muted" style={{ fontSize: 13 }}>{es ? 'Sin pagos pendientes.' : 'No pending payments.'}</div>}
           <div style={{ display: 'grid', gap: 8 }}>
             {(d.crypto || []).map((c: any) => (
               <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', borderTop: '1px solid var(--line)', paddingTop: 8 }}>
@@ -85,7 +94,7 @@ export default function BotLab({ canManage = true }: { canManage?: boolean }) {
       )}
 
       {/* Leads de servicios */}
-      <div style={card}>
+      {sub === 'servicios' && <div style={card}>
         <h3 style={{ marginTop: 0 }}>{es ? 'Solicitudes de servicio' : 'Service requests'}</h3>
         {!(d.leads || []).length && <div className="muted" style={{ fontSize: 13 }}>{es ? 'Sin solicitudes.' : 'No requests.'}</div>}
         <div style={{ display: 'grid', gap: 8 }}>
@@ -101,10 +110,10 @@ export default function BotLab({ canManage = true }: { canManage?: boolean }) {
             </div>
           ))}
         </div>
-      </div>
+      </div>}
 
       {/* Payouts */}
-      <div style={card}>
+      {sub === 'creadores' && <div style={card}>
         <h3 style={{ marginTop: 0 }}>{es ? 'Pagos a creadores' : 'Creator payouts'}</h3>
         {!(d.payouts || []).length && <div className="muted" style={{ fontSize: 13 }}>{es ? 'Sin retiros.' : 'No payouts.'}</div>}
         <div style={{ display: 'grid', gap: 8 }}>
@@ -116,7 +125,7 @@ export default function BotLab({ canManage = true }: { canManage?: boolean }) {
             </div>
           ))}
         </div>
-      </div>
+      </div>}
     </div>
   );
 }

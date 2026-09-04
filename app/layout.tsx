@@ -3,6 +3,8 @@ import type { Metadata, Viewport } from 'next';
 import TopBar from './TopBar';
 import SectionNav from './SectionNav';
 import SiteFooter from './SiteFooter';
+import BotLabHeader from './bot-lab/BotLabHeader';
+import BotLabFooter from './bot-lab/BotLabFooter';
 import PWARegister from './PWARegister';
 import ChunkReload from './ChunkReload';
 import LiveNavRefresh from './LiveNavRefresh';
@@ -89,6 +91,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   // Barra de descuentos: solo en páginas públicas (no en dashboard/admin/cuenta).
   const path = headers().get('x-onyx-path') || '/';
+  // ¿Estamos dentro del "producto" Onyx Bot Lab? Ahí mostramos su barra y pie
+  // propios (mismo login/BD) para que se sienta un producto aparte.
+  const inBotLab = ['/bot-lab', '/dashboard/bot-lab', '/en/bot-lab', '/en/dashboard/bot-lab'].some((p) => path === p || path.startsWith(p + '/'));
   const isPublic = !/^\/(dashboard|admin|account|onboarding)/.test(path);
   // ¿Hay sesión? La burbuja de soporte se comporta distinto para trader o visitante.
   let loggedIn = false, userPlan = 'free';
@@ -169,10 +174,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               />
             )}
             <BetaBanner />
-            <TopBar home={['/', '/en', '/en/', '/bot-builder', '/en/bot-builder'].includes(path)} />
+            {inBotLab ? <BotLabHeader loggedIn={loggedIn} /> : <TopBar home={['/', '/en', '/en/', '/bot-builder', '/en/bot-builder'].includes(path)} />}
             {/* Segundo menú GLOBAL: siempre visible en las páginas públicas (se auto-oculta
-                con sesión). Enlaza a las secciones de la home desde cualquier tab. */}
-            {(() => {
+                con sesión). En Bot Lab NO se muestra: usa su propia barra. */}
+            {!inBotLab && (() => {
               const en = path.startsWith('/en');
               const priv = ['/dashboard', '/admin', '/account', '/login', '/onboarding', '/en/dashboard', '/en/admin', '/en/account', '/en/login', '/en/onboarding'].some((p) => path === p || path.startsWith(p + '/'));
               if (priv) return null;
@@ -189,7 +194,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               return <SectionNav items={items} hrefBase={en ? '/en' : '/'} />;
             })()}
             {children}
-            {!path.startsWith('/admin') && <SiteFooter />}
+            {!path.startsWith('/admin') && (inBotLab ? <BotLabFooter /> : <SiteFooter />)}
             {!path.startsWith('/admin') && <SupportWidget loggedIn={loggedIn} cfg={chatCfg} />}
             {online && online.enabled && (
               <OnlineNow min={online.min} max={online.max} speed={online.speed} color={online.color} hideMobile={online.hideMobile} label={lang === 'es' ? online.label_es : online.label_en} />
