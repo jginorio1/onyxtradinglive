@@ -39,6 +39,17 @@ html[data-theme="light"]{
    (o al navegar a una página más corta/larga) aparece o desaparece el scroll vertical
    y todo lo centrado —header, footer, contenido— se corre ~15px a la derecha. */
 html{scrollbar-gutter:stable;}
+/* Recorta CUALQUIER desborde lateral en TODAS las pantallas (antes solo en móvil).
+   En el blog y otras páginas hay bloques a pantalla completa con width:100vw; como
+   100vw incluye el ancho de la barra de scroll (ya reservada arriba), esos bloques
+   sobresalían ~15px y empujaban el footer/menú a la derecha al cambiar de idioma.
+   IMPORTANTE: el clip va SOLO en <body>, NO en <html>. Si se pone en <html>, este
+   deja de ser el contenedor de scroll y se ANULA el scrollbar-gutter de arriba (la
+   barra vuelve a aparecer/desaparecer al cambiar de idioma y el layout se corre).
+   Con html reservando la barra + body recortando el sobrante, el ancho útil es
+   constante. Usamos 'clip' (no 'hidden') para no romper el position:sticky de la
+   barra superior. Navegadores viejos lo ignoran sin problema. */
+body{overflow-x:clip;}
 body{background:radial-gradient(1200px 600px at 50% -200px, rgba(124,140,255,.10), transparent 60%), var(--bg);color:var(--tx);font-family:"Segoe UI",system-ui,-apple-system,Arial,sans-serif;line-height:1.6;}
 /* Tipografía para chino y japonés (se activa por el atributo lang del <html>). */
 html[lang="zh"] body{font-family:"Noto Sans SC","Segoe UI",system-ui,-apple-system,Arial,sans-serif;}
