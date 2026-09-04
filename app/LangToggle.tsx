@@ -13,9 +13,8 @@ import { LANGS, LANG_META } from '@/lib/navText';
 const PREFIXES = ['en', 'zh', 'ja', 'pt', 'vi'];
 
 export default function LangToggle({ compact = false, label = '' }: { compact?: boolean; label?: string }) {
-  const { lang, setLang } = useLang();
+  const { lang } = useLang();
   const pathname = usePathname() || '/';
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
 
@@ -31,15 +30,25 @@ export default function LangToggle({ compact = false, label = '' }: { compact?: 
   function go(l: Lang) {
     setOpen(false);
     if (l === lang) return;
-    setLang(l);
+    // RECARGA COMPLETA al cambiar de idioma (no un refresco suave).
+    //
+    // Antes hacíamos router.push / router.refresh: cambiaba el idioma SIN recargar.
+    // En monitores con barra de scroll clásica (Windows, pantallas grandes) eso dejaba
+    // TODO el contenido corrido a la derecha, y solo se arreglaba con un hard refresh.
+    // Recargar de verdad reconstruye el layout desde el servidor en el idioma nuevo:
+    // es justo lo que hacía el hard refresh, pero automático. Escribimos la cookie
+    // primero para que el servidor renderice ya en el idioma elegido.
+    try {
+      document.cookie = `onyx_lang=${l}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
+      localStorage.setItem('onyx_lang', l);
+    } catch { /* sin cookies/localStorage: seguimos igual, la URL basta */ }
     const seg = pathname.split('/')[1];
     const base = PREFIXES.includes(seg) ? (pathname.slice(seg.length + 1) || '/') : pathname;
     const PUBLIC = ['/pricing', '/embajadores', '/guia', '/login', '/terms', '/mentores'];
     const isPublic = base === '/' || PUBLIC.some((p) => base === p || base.startsWith(p + '/'));
-    if (isPublic) {
-      const target = l === 'es' ? base : (base === '/' ? `/${l}` : `/${l}${base}`);
-      if (target !== pathname) router.push(target);
-    }
+    // En páginas públicas con variante /xx cambiamos la URL; en el resto recargamos la misma.
+    const target = isPublic ? (l === 'es' ? base : (base === '/' ? `/${l}` : `/${l}${base}`)) : pathname;
+    window.location.assign(target);
   }
 
   const dropdown = (
