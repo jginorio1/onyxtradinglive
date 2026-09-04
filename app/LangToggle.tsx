@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useLang, Lang } from '@/lib/lang';
 import { LANGS, LANG_META } from '@/lib/navText';
 
