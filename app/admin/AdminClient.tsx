@@ -15,6 +15,7 @@ import OnyxIcon from '@/app/components/OnyxIcon';
 import NavSelect from '@/app/components/NavSelect';
 import EnvSwitch from './EnvSwitch';
 import ChatWidgetEditor from './ChatWidgetEditor';
+import BotLab from './BotLab';
 import ReportsEditor from './ReportsEditor';
 import EmailTemplatesControl from './EmailTemplatesControl';
 import OnlineNowControl from './OnlineNowControl';
@@ -61,7 +62,7 @@ import { blankPromo, newId, THEMES, pickActiveBar } from '@/lib/promo';
 type Plan = { id: string; name: string; name_en: string; desc_es: string | null; desc_en: string | null; price_month: number; price_year: number; stripe_price_id: string | null; stripe_price_id_year: string | null; max_accounts: number; features: string[]; features_en: string[]; badge: string | null; badge_en: string | null; active: boolean; sort: number; capabilities: any };
 type User = { id: string; email: string; full_name?: string | null; plan: string; subscription_status: string | null; banned: boolean; is_admin: boolean; created_at: string; accounts: number; lastSync: string | null; email_confirmed?: boolean };
 type Team = { id: string; email: string; role: string | null; is_admin: boolean; perms?: any; available?: boolean; last_active?: string | null };
-type Tab = 'resumen' | 'facturacion' | 'ingresos' | 'finanzas' | 'academy' | 'usuarios' | 'correos' | 'campanas' | 'blog' | 'seo' | 'planes' | 'landing' | 'landingnew' | 'equipo' | 'embajadores' | 'retencion' | 'pruebas' | 'firms' | 'catalogos' | 'modulos' | 'soporte' | 'chat' | 'kb' | 'diag' | 'recursos' | 'backups' | 'audit' | 'optim' | 'notif' | 'guias' | 'copytraders' | 'ajustes';
+type Tab = 'resumen' | 'facturacion' | 'ingresos' | 'finanzas' | 'academy' | 'usuarios' | 'correos' | 'campanas' | 'blog' | 'seo' | 'planes' | 'landing' | 'landingnew' | 'equipo' | 'embajadores' | 'retencion' | 'pruebas' | 'firms' | 'catalogos' | 'modulos' | 'soporte' | 'chat' | 'kb' | 'diag' | 'recursos' | 'backups' | 'audit' | 'optim' | 'notif' | 'guias' | 'copytraders' | 'botlab' | 'ajustes';
 
 const CAPS: string[] = ['journal', 'compare', 'funding', 'costs', 'export', 'reports', 'telegram', 'manager', 'manager_advanced', 'manager_news', 'copy', 'tv', 'algo', 'expenses', 'coach', 'academy'];
 const CAP_FALLBACK: Record<string, string> = { tv: 'TradingView (señales → EA)' };
@@ -563,7 +564,7 @@ function BetaControl() {
 export default function AdminClient({ meEmail, role, perms = {}, accounts, trades, hasPin = false, idleMin = 20 }: { meEmail: string; role: string; perms?: Record<string, string>; accounts: number; trades: number; hasPin?: boolean; idleMin?: number }) {
   const t = useT();
   // Qué áreas puede ver este admin (owner ve todo). Mapa tab → área de permiso.
-  const areaOf: Record<string, string> = { resumen: 'resumen', facturacion: 'planes', ingresos: 'planes', finanzas: 'finanzas', academy: 'academy', usuarios: 'usuarios', correos: 'usuarios', campanas: 'campanas', planes: 'planes', landing: 'planes', equipo: 'equipo', embajadores: 'embajadores', retencion: 'retencion', pruebas: 'diag', firms: 'firms', catalogos: 'catalogos', modulos: 'modulos', blog: 'modulos', soporte: 'soporte', chat: 'chat', kb: 'soporte', diag: 'diag', recursos: 'diag', backups: 'ajustes', audit: 'ajustes', optim: 'ajustes', ajustes: 'ajustes', seo: 'ajustes' };
+  const areaOf: Record<string, string> = { resumen: 'resumen', facturacion: 'planes', ingresos: 'planes', finanzas: 'finanzas', academy: 'academy', usuarios: 'usuarios', correos: 'usuarios', campanas: 'campanas', planes: 'planes', landing: 'planes', equipo: 'equipo', embajadores: 'embajadores', retencion: 'retencion', pruebas: 'diag', firms: 'firms', catalogos: 'catalogos', modulos: 'modulos', botlab: 'modulos', blog: 'modulos', soporte: 'soporte', chat: 'chat', kb: 'soporte', diag: 'diag', recursos: 'diag', backups: 'ajustes', audit: 'ajustes', optim: 'ajustes', ajustes: 'ajustes', seo: 'ajustes' };
   const has = (a: string) => role === 'owner' || (perms[a] && perms[a] !== 'none');
   // Facturación (hub) es visible si el admin puede ver CUALQUIERA de las tres áreas.
   const canBilling = has('planes') || has('finanzas') || has('academy');
@@ -689,7 +690,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
   };
   const NAV_GROUPS: { g: string; items: [Tab, string, string][] }[] = [
     { g: t.g_op, items: [['resumen', '📊', t.nav_resumen], ['facturacion', '💳', lang === 'en' ? 'Billing' : 'Facturación'], ['usuarios', '👥', t.nav_usuarios], ['correos', '✉️', t.nav_correos], ['soporte', '🎫', t.nav_soporte], ['chat', '💬', lang === 'en' ? 'Team chat' : 'Chat equipo'], ['equipo', '🛡️', t.nav_equipo]] },
-    { g: t.g_prod, items: [['planes', '💳', t.nav_planes], ['academy', '🎓', lang === 'en' ? 'Academy' : 'Academia'], ['landing', '🧩', lang === 'en' ? 'Landing Builder' : 'Landing Builder'], ['landingnew', '✨', lang === 'en' ? 'New landing' : 'Landing nueva'], ['modulos', '🧩', t.nav_modulos], ['firms', '🏛️', t.nav_firms], ['catalogos', '🗂️', lang === 'en' ? 'Catalogs' : 'Catálogos']] },
+    { g: t.g_prod, items: [['planes', '💳', t.nav_planes], ['academy', '🎓', lang === 'en' ? 'Academy' : 'Academia'], ['landing', '🧩', lang === 'en' ? 'Landing Builder' : 'Landing Builder'], ['landingnew', '✨', lang === 'en' ? 'New landing' : 'Landing nueva'], ['modulos', '🧩', t.nav_modulos], ['botlab', '🤖', 'Onyx Bot Lab'], ['firms', '🏛️', t.nav_firms], ['catalogos', '🗂️', lang === 'en' ? 'Catalogs' : 'Catálogos']] },
     { g: t.g_growth, items: [['campanas', '📣', lang === 'en' ? 'Campaigns' : 'Campañas'], ['blog', '📝', 'Blog'], ['seo', '🔎', 'SEO'], ['copytraders', '🏆', 'Onyx Copy'], ['embajadores', '🎁', t.nav_embajadores], ['retencion', '🛟', t.nav_retencion]] },
     { g: t.g_sys, items: [['notif', '🔔', lang === 'en' ? 'Notifications' : 'Notificaciones'], ['guias', '📚', lang === 'en' ? 'Guides' : 'Guías'], ['kb', '🧠', t.nav_kb], ['diag', '🩺', t.nav_diag], ['recursos', '📟', lang === 'en' ? 'Resources' : 'Recursos'], ['backups', '🗄️', t.nav_backups], ['audit', '📈', t.nav_audit], ['optim', '🚀', t.nav_optim], ['pruebas', '🧪', t.nav_pruebas], ['ajustes', '⚙️', t.nav_ajustes]] },
   ];
@@ -1076,6 +1077,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
             {tab === 'academy' && <AcademyAdmin canManage={role === 'owner' || perms.academy === 'manage'} />}
 
             {tab === 'modulos' && <Modules />}
+            {tab === 'botlab' && <BotLab canManage={role === 'owner' || perms.modulos === 'manage'} />}
 
             {tab === 'soporte' && <SupportInbox />}
 

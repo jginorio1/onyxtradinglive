@@ -44,6 +44,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticPaths: { p: string; pr: number; f: 'weekly' | 'monthly' | 'yearly' }[] = [
     { p: '', pr: 1, f: 'weekly' },
     { p: '/bot-builder', pr: 0.9, f: 'weekly' },
+    { p: '/bot-lab', pr: 0.9, f: 'weekly' },
     { p: '/pricing', pr: 0.9, f: 'weekly' },
     { p: '/prop-firms', pr: 0.85, f: 'weekly' },
     { p: '/copy', pr: 0.85, f: 'weekly' },
