@@ -79,7 +79,7 @@ export default function BotBuilder() {
   const [showWarn, setShowWarn] = useState(false);
   const [creating, setCreating] = useState(false);       // animación "creando robot"
   const [cSecs, setCSecs] = useState(0);                  // countdown de la animación
-  const [doneModal, setDoneModal] = useState<{ id: string; name: string; platform: string } | null>(null); // popup de instalación
+  const [doneModal, setDoneModal] = useState<{ id: string; name: string; platform: string; magic?: number } | null>(null); // popup de instalación
   const [copied, setCopied] = useState('');              // URL copiada al portapapeles
   const [bal, setBal] = useState<number>(10000);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -89,12 +89,26 @@ export default function BotBuilder() {
   const touchAll = () => setTouched(Object.fromEntries(Object.keys(DEFAULT_SPEC).map((k) => [k, true])));
   const BUILD_SECS = 7;   // duración de la animación de creación (segundos)
 
-  // Genera un magic ÚNICO de 7 dígitos, evitando los magics de robots ya guardados.
+  // Genera un magic ÚNICO de 9 dígitos, evitando los magics de robots ya guardados.
   // El magic identifica cada robot; si dos coinciden se mezclan sus operaciones.
   function genMagic(against: any[] = list): number {
     const used = new Set((against || []).map((b: any) => Number(b?.magic ?? b?.spec?.magic)).filter(Boolean));
-    for (let i = 0; i < 60; i++) { const c = 1000000 + Math.floor(Math.random() * 8999999); if (!used.has(c)) return c; }
-    return 1000000 + (Date.now() % 8999999);
+    for (let i = 0; i < 80; i++) { const c = 100000000 + Math.floor(Math.random() * 899999999); if (!used.has(c)) return c; } // 9 dígitos
+    return 100000000 + (Date.now() % 899999999);
+  }
+  // Verifica en la BASE DE DATOS que el magic no exista (en TODA la plataforma) y,
+  // si choca, sigue generando hasta hallar uno libre. Así nunca hay confusión.
+  async function assignUniqueMagic() {
+    let m = genMagic();
+    for (let i = 0; i < 10; i++) {
+      try {
+        const r = await fetch('/api/bots/build?checkMagic=' + m);
+        const j = await r.json();
+        if (!j.taken) break;
+      } catch { break; }
+      m = genMagic();
+    }
+    setS((p) => ({ ...p, magic: m }));
   }
 
   useEffect(() => { load(); loadTpls(); loadMyKey(); setS((p) => ({ ...p, botLang: es ? 'es' : 'en' })); }, []);
@@ -103,7 +117,7 @@ export default function BotBuilder() {
   async function loadMyKey() { try { const r = await fetch('/api/keys'); const j = await r.json(); setMyKeys((j.keys || []).filter((x: any) => x?.key)); } catch {} }
   // Al abrir un robot NUEVO (sin id) le asignamos un magic único apenas carga la lista
   // de robots existentes, para que nunca choque con otro. Si el trader lo edita, se respeta.
-  useEffect(() => { if (!id && list.length) setS((p) => (Number(p.magic) === DEFAULT_SPEC.magic ? { ...p, magic: genMagic(list) } : p)); }, [list]);
+  useEffect(() => { if (!id && Number(s.magic) === DEFAULT_SPEC.magic) assignUniqueMagic(); }, [list]); // eslint-disable-line
   async function load() { try { const r = await fetch('/api/bots/build'); const j = await r.json(); setList(j.bots || []); } catch {} }
   async function loadTpls() { try { const r = await fetch('/api/bots/templates'); const j = await r.json(); setTpls(j.templates || []); } catch {} }
 
@@ -188,17 +202,17 @@ export default function BotBuilder() {
     await new Promise<void>((res) => { let n = BUILD_SECS; const iv = setInterval(() => { n -= 1; setCSecs(n); if (n <= 0) { clearInterval(iv); res(); } }, 1000); });
     const bid = (await savedP) || id;
     setCreating(false);
-    if (bid) setDoneModal({ id: bid, name: s.name || 'Bot', platform: s.platform });
+    if (bid) setDoneModal({ id: bid, name: s.name || 'Bot', platform: s.platform, magic: Number(s.magic) });
   }
   async function saveTpl() {
     const name = prompt(L('Nombre de la plantilla:', 'Template name:'), s.name); if (!name) return;
     try { const r = await fetch('/api/bots/templates', { method: 'POST', body: JSON.stringify({ name, spec: s }) }); const j = await r.json(); if (!r.ok) { toastErr(j); return; } toast(L('Plantilla guardada.', 'Template saved.')); loadTpls(); } catch { toastErr(L('No se pudo guardar.', 'Could not save.')); }
   }
   const visitAll = () => setVisited(Object.fromEntries(['general', 'entry', 'exits', 'risk', 'firm', 'schedule'].map((k) => [k, true])));
-  function applyTpl(t: any) { setS({ ...DEFAULT_SPEC, ...(t.spec || {}), magic: genMagic() }); setId(''); touchAll(); visitAll(); window.scrollTo({ top: 0, behavior: 'smooth' }); toast(L('Plantilla cargada.', 'Template loaded.')); }
+  function applyTpl(t: any) { setS({ ...DEFAULT_SPEC, ...(t.spec || {}), magic: genMagic() }); setId(''); touchAll(); visitAll(); assignUniqueMagic(); window.scrollTo({ top: 0, behavior: 'smooth' }); toast(L('Plantilla cargada.', 'Template loaded.')); }
   async function delTpl(tid: string) { if (!confirm(L('¿Borrar esta plantilla?', 'Delete this template?'))) return; await fetch('/api/bots/templates?id=' + tid, { method: 'DELETE' }); loadTpls(); }
   function edit(b: any) { setS({ ...DEFAULT_SPEC, ...(b.spec || {}) }); setId(b.id); touchAll(); visitAll(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
-  function nuevo() { setS(blankReq({ ...DEFAULT_SPEC, magic: genMagic() })); setId(''); setTouched({}); setVisited({}); go('home'); }
+  function nuevo() { setS(blankReq({ ...DEFAULT_SPEC, magic: genMagic() })); setId(''); setTouched({}); setVisited({}); assignUniqueMagic(); go('home'); }
   async function del(bid: string) { if (!confirm(L('¿Borrar este robot?', 'Delete this robot?'))) return; await fetch('/api/bots/build?id=' + bid, { method: 'DELETE' }); if (id === bid) nuevo(); load(); }
   async function openGuide() { let bid = id; if (!bid) { bid = (await save()) || ''; } if (bid) window.open(`/api/bots/build?guide=${bid}&lang=${es ? 'es' : 'en'}`, '_blank'); }
 
@@ -458,14 +472,16 @@ export default function BotBuilder() {
         <Fld t={L('Plataforma', 'Platform')} k="platform" opts={[['', L('Elige…', 'Choose…')], ['mt5', 'MetaTrader 5'], ['mt4', 'MetaTrader 4'], ['ctrader', 'cTrader']]} hint={L('La app donde correrá el robot. Genera el archivo correcto (.mq5, .mq4 o .cs).', 'The app the robot will run on. Generates the right file (.mq5, .mq4 or .cs).')} />
         <Fld t={L('Instrumento', 'Instrument')} k="symbol" ph="XAUUSD" list="bbx-syms" hint={L('El bot encuentra el símbolo aunque tu broker use otro nombre o sufijo (GOLD, XAUUSD.m, etc.).', 'The bot finds the symbol even if your broker uses another name or suffix (GOLD, XAUUSD.m, etc.).')} />
         <datalist id="bbx-syms">{SYMBOL_HINTS.map((x) => <option key={x} value={x} />)}</datalist>
-        {/* Magic con generador: se asigna uno único automáticamente y se puede regenerar. */}
+        {/* Magic: Onyx asigna uno ÚNICO de 9 dígitos, verificado en la base de datos.
+            NO es editable: es la identidad del robot y evita que dos se mezclen. */}
         <div>
-          <span className="bbx-lbl">{L('Magic (identificador)', 'Magic (id)')}</span>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
-            <input className="bbx-in" data-fld="magic" type="number" min={1} style={{ flex: 1, minWidth: 0 }} value={s.magic} onChange={(e) => set('magic', e.target.value === '' ? '' : Number(e.target.value))} />
-            <button type="button" className="bbx-btn" title={L('Generar un magic único al azar', 'Generate a unique random magic')} style={{ flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', padding: '0 12px' }} onClick={() => set('magic', genMagic())}><OnyxIcon emoji="🎲" size={14} glow={false} /> {L('Generar', 'Generate')}</button>
+          <span className="bbx-lbl">{L('Magic (identidad del robot)', 'Magic (robot identity)')}</span>
+          <div data-fld="magic" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, border: '1px solid var(--line, #38455f)', background: 'rgba(255,255,255,.04)' }}>
+            <OnyxIcon emoji="🔒" size={15} glow={false} />
+            <span style={{ fontFamily: 'monospace', fontSize: 18, fontWeight: 800, letterSpacing: '.08em' }}>{s.magic || '—'}</span>
+            <span style={{ marginLeft: 'auto', fontSize: 10.5, fontWeight: 800, letterSpacing: '.06em', color: 'var(--green,#34e2a0)', border: '1px solid color-mix(in srgb,var(--green,#34e2a0) 40%,transparent)', borderRadius: 99, padding: '2px 9px' }}>{L('ÚNICO', 'UNIQUE')}</span>
           </div>
-          <div style={{ fontSize: 11, color: 'var(--mut)', marginTop: 4 }}>{L('Se asigna uno único automáticamente. Cámbialo si quieres uno específico.', 'A unique one is set automatically. Change it if you want a specific one.')}</div>
+          <div style={{ fontSize: 11, color: 'var(--mut)', marginTop: 4 }}>{L('Onyx lo asigna automáticamente y verifica que no exista. No se puede cambiar: es lo que identifica a tu robot en toda la plataforma.', 'Onyx assigns it automatically and checks it does not exist. It cannot be changed: it identifies your robot across the platform.')}</div>
         </div>
         <Fld t={L('Temporalidad de entrada', 'Entry timeframe')} k="tf" opts={TFS} hint={L('Ritmo de las velas que analiza para entrar.', 'Candle rhythm it reads to enter.')} />
         <Fld t={L('Idioma del bot (panel y EA)', 'Bot language (panel & EA)')} k="botLang" opts={[['es', 'Español'], ['en', 'English']]} hint={L('Idioma del panel del robot en el gráfico y de sus mensajes.', 'Language of the robot\'s on-chart panel and its messages.')} />
@@ -886,7 +902,7 @@ export default function BotBuilder() {
                 </div>
 
                 {/* Puente DESTACADO al marketplace: convierte el robot recién creado en un producto a la venta. */}
-                <a href={`/dashboard/bot-lab?new=1&name=${encodeURIComponent(doneModal.name)}&platform=${encodeURIComponent(doneModal.platform || 'mt5')}`}
+                <a href={`/dashboard/bot-lab?new=1&name=${encodeURIComponent(doneModal.name)}&platform=${encodeURIComponent(doneModal.platform || 'mt5')}&magic=${encodeURIComponent(doneModal.magic ?? '')}`}
                    style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none', margin: '6px 0 4px', padding: '13px 15px', borderRadius: 14, background: 'linear-gradient(120deg, rgba(255,212,94,.16), rgba(255,176,32,.10))', border: '1px solid rgba(255,212,94,.55)', boxShadow: '0 0 0 1px rgba(255,212,94,.15), 0 8px 26px rgba(255,176,32,.18)' }}>
                   <span style={{ width: 40, height: 40, flex: 'none', borderRadius: 11, background: 'linear-gradient(120deg,#ffd45e,#ffb020)', color: '#3a2a06', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 800, boxShadow: '0 6px 16px rgba(255,176,32,.4)' }}>◆</span>
                   <span style={{ flex: 1, minWidth: 0 }}>

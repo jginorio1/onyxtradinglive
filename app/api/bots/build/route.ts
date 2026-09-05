@@ -17,6 +17,14 @@ export async function GET(req: Request) {
     if (!user) return NextResponse.json({ error: 'no autorizado' }, { status: 401 });
 
     const url = new URL(req.url);
+    // ¿El magic ya existe en la plataforma? (para asignar uno único de 9 dígitos).
+    const checkMagic = url.searchParams.get('checkMagic');
+    if (checkMagic) {
+      const m = Number(checkMagic);
+      if (!m || Number.isNaN(m)) return NextResponse.json({ taken: false });
+      const { data: hit } = await supabaseAdmin.from('bots_built').select('id').eq('magic', m).limit(1).maybeSingle();
+      return NextResponse.json({ taken: !!hit });
+    }
     const guideId = url.searchParams.get('guide');
     if (guideId) {
       // Guía visual personalizada (HTML imprimible a PDF).

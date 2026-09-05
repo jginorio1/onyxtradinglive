@@ -46,17 +46,34 @@ export function emptyScore(flags: string[] = []): BotScore {
 
 export async function botScore(input: { sellerId?: string | null; accountId?: string | null; magic?: number | null; text?: string }): Promise<BotScore> {
   const textFlgs = textFlags(input.text);
-  if (!input.accountId || input.magic == null) return emptyScore(textFlgs);
+  const magic = input.magic == null || input.magic === ('' as any) ? null : Number(input.magic);
+  if (magic == null || Number.isNaN(magic)) return emptyScore(textFlgs);
 
-  // La cuenta debe ser del vendedor (anti-suplantación).
-  let accQ = supabaseAdmin.from('trading_accounts').select('id,user_id,balance').eq('id', input.accountId);
-  if (input.sellerId) accQ = accQ.eq('user_id', input.sellerId);
-  const { data: acc } = await accQ.maybeSingle();
-  if (!acc) return emptyScore([...textFlgs, 'cuenta no verificada']);
+  // Resolvemos la cuenta: la explícita (si es del vendedor) o, si falta, la del
+  // vendedor donde ese magic tenga más operaciones. Así funciona aunque el
+  // producto solo haya guardado el magic.
+  let acc: any = null;
+  if (input.accountId) {
+    let accQ = supabaseAdmin.from('trading_accounts').select('id,user_id,balance').eq('id', input.accountId);
+    if (input.sellerId) accQ = accQ.eq('user_id', input.sellerId);
+    acc = (await accQ.maybeSingle()).data;
+  }
+  if (!acc && input.sellerId) {
+    const { data: accs } = await supabaseAdmin.from('trading_accounts').select('id,balance').eq('user_id', input.sellerId);
+    const ids = (accs || []).map((a: any) => a.id);
+    if (ids.length) {
+      const { data: tr } = await supabaseAdmin.from('trades').select('account_id').in('account_id', ids).eq('magic', magic).limit(5000);
+      const cnt: Record<string, number> = {};
+      (tr || []).forEach((t: any) => { cnt[t.account_id] = (cnt[t.account_id] || 0) + 1; });
+      const bestId = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0];
+      if (bestId) acc = (accs || []).find((a: any) => a.id === bestId);
+    }
+  }
+  if (!acc) return emptyScore([...textFlgs, 'sin operaciones aún']);
 
   const { data: trades } = await supabaseAdmin
     .from('trades').select('net_profit,open_time,close_time')
-    .eq('account_id', input.accountId).eq('magic', input.magic)
+    .eq('account_id', acc.id).eq('magic', magic)
     .order('close_time', { ascending: true }).limit(5000);
 
   const rows = (trades || []).filter((t: any) => t.close_time);
