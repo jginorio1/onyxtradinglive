@@ -7,6 +7,8 @@ import {
   botLabSettings, botLabAdminStats,
 } from '@/lib/botlab';
 import { listCryptoPayments, confirmCryptoPayment, rejectCryptoPayment } from '@/lib/cryptoPay';
+import { botScore } from '@/lib/botScore';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -22,7 +24,14 @@ export async function GET() {
   const [products, leads, crypto, payouts, settings, stats] = await Promise.all([
     adminListProducts(), listServiceRequests(), listCryptoPayments('pending'), listPayouts(), botLabSettings(), botLabAdminStats(),
   ]);
-  return NextResponse.json({ products, leads, crypto, payouts, settings, stats, canManage: canManage(role, perms) });
+  // Score de verificación con operaciones REALES (solo para los que hay que revisar/mostrar).
+  const scored = await Promise.all((products as any[]).map(async (p) => {
+    if (p.status !== 'pending' && p.status !== 'active') return p;
+    const text = [p.name, p.tagline, p.description].filter(Boolean).join(' \n ');
+    const _score = await botScore({ sellerId: p.seller_id, accountId: p.bot_account, magic: p.bot_magic, text });
+    return { ...p, _score };
+  }));
+  return NextResponse.json({ products: scored, leads, crypto, payouts, settings, stats, canManage: canManage(role, perms) });
 }
 
 // POST · acciones del dueño/gestor.
@@ -32,7 +41,24 @@ export async function POST(req: Request) {
   const b = await req.json().catch(() => ({}));
   const a = b.action;
 
-  if (a === 'product_status') { await setProductStatus(String(b.id), { status: b.status, verified: b.verified, is_official: b.is_official, position: b.position, review_note: b.review_note }); await logAdmin(user.email || '', 'botlab_product_status', String(b.id), { status: b.status }); return NextResponse.json({ ok: true }); }
+  if (a === 'product_status') {
+    await setProductStatus(String(b.id), { status: b.status, verified: b.verified, is_official: b.is_official, position: b.position, review_note: b.review_note });
+    // Al aprobar, congelamos el track record real en el producto (para mostrarlo en el marketplace).
+    if (b.status === 'active') {
+      const { data: p } = await supabaseAdmin.from('bot_products').select('id,seller_id,bot_account,bot_magic,name,tagline,description').eq('id', b.id).maybeSingle();
+      if (p) {
+        const s = await botScore({ sellerId: (p as any).seller_id, accountId: (p as any).bot_account, magic: (p as any).bot_magic });
+        if (s.hasData) {
+          await supabaseAdmin.from('bot_products').update({
+            verify_score: s.score, verify_at: new Date().toISOString(),
+            perf: { score: s.score, winrate: s.winRate, dd: s.ddPct, pf: s.pf, trades: s.trades, days: s.days, live: s.live },
+          }).eq('id', b.id);
+        }
+      }
+    }
+    await logAdmin(user.email || '', 'botlab_product_status', String(b.id), { status: b.status });
+    return NextResponse.json({ ok: true });
+  }
   if (a === 'product_save') { const r = await saveProduct('', b.product || {}, true); return NextResponse.json({ ok: true, id: r?.id }); }
   if (a === 'product_delete') { await deleteProduct('', String(b.id), true); return NextResponse.json({ ok: true }); }
   if (a === 'lead_status') { await setServiceStatus(String(b.id), String(b.status)); return NextResponse.json({ ok: true }); }

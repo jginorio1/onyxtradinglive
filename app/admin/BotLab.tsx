@@ -150,26 +150,95 @@ export default function BotLab({ canManage = true }: { canManage?: boolean }) {
 
 function btn(c: string): any { return { padding: '7px 12px', borderRadius: 8, cursor: 'pointer', fontWeight: 800, fontSize: 12.5, border: `1px solid color-mix(in srgb,${c} 40%,transparent)`, background: `color-mix(in srgb,${c} 10%,transparent)`, color: c }; }
 
-// Tarjeta de revisión de un robot: TODO lo que necesitas para decidir + acciones.
+// Medidor circular del score (0–100) con color según veredicto.
+function ScoreGauge({ score, color }: { score: number; color: string }) {
+  const r = 34, c = 2 * Math.PI * r, off = c * (1 - Math.max(0, Math.min(100, score)) / 100);
+  return (
+    <div style={{ position: 'relative', width: 88, height: 88, flex: 'none' }}>
+      <svg width="88" height="88" viewBox="0 0 88 88" style={{ transform: 'rotate(-90deg)' }}>
+        <circle cx="44" cy="44" r={r} fill="none" stroke="var(--line)" strokeWidth="8" />
+        <circle cx="44" cy="44" r={r} fill="none" stroke={color} strokeWidth="8" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={off} style={{ filter: `drop-shadow(0 0 6px ${color})`, transition: 'stroke-dashoffset .6s' }} />
+      </svg>
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <span style={{ fontSize: 24, fontWeight: 800, color, lineHeight: 1 }}>{score}</span>
+        <span className="muted" style={{ fontSize: 9, letterSpacing: '.06em' }}>SCORE</span>
+      </div>
+    </div>
+  );
+}
+
+// Tarjeta de revisión: score con OPERACIONES REALES + KPIs + desglose + acciones.
 function ReviewCard({ p, es, canManage, act }: any) {
   const [reason, setReason] = useState('');
-  const money2 = (c: number) => '$' + ((c || 0) / 100).toLocaleString('en-US');
+  const [open, setOpen] = useState(false);
+  const money2 = (cc: number) => '$' + ((cc || 0) / 100).toLocaleString('en-US');
   const meta = [p.platform && p.platform !== 'any' ? String(p.platform).toUpperCase() : null, p.kind === 'subscription' ? (es ? 'renta ' + (p.interval === 'year' ? 'anual' : 'mensual') : 'rental') : (es ? 'pago único' : 'one-time'), p.category].filter(Boolean).join(' · ');
+  const s = p._score || { hasData: false, score: 0, verdict: 'review', flags: [], parts: [] };
+  const color = !s.hasData ? 'var(--mut)' : s.verdict === 'approve' ? 'var(--green)' : s.verdict === 'review' ? 'var(--amber)' : 'var(--red)';
+  const verdictTx = !s.hasData ? (es ? 'Sin datos reales' : 'No real data') : s.verdict === 'approve' ? (es ? 'Recomendado aprobar' : 'Recommended approve') : s.verdict === 'review' ? (es ? 'Revisar a fondo' : 'Review closely') : (es ? 'No recomendado' : 'Not recommended');
+  const kpi = (k: string, v: any, c?: string) => (
+    <div style={{ background: 'var(--bg2)', borderRadius: 9, padding: '7px 9px', textAlign: 'center', minWidth: 62 }}>
+      <div style={{ fontSize: 14.5, fontWeight: 800, color: c || 'var(--tx)' }}>{v}</div>
+      <div className="muted" style={{ fontSize: 10 }}>{k}</div>
+    </div>
+  );
   return (
-    <div style={{ border: '1px solid var(--line)', borderRadius: 12, padding: 14 }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-        <b style={{ fontSize: 15 }}>{p.name}</b>
-        <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--gold)' }}>{money2(p.price_cents)}</span>
-        <span className="muted" style={{ fontSize: 12 }}>· {es ? 'por' : 'by'} {p.seller_name}</span>
+    <div style={{ border: `1px solid ${s.hasData ? `color-mix(in srgb,${color} 45%,var(--line))` : 'var(--line)'}`, borderRadius: 14, padding: 14, background: s.hasData ? `linear-gradient(180deg, color-mix(in srgb,${color} 6%,transparent), transparent 60%)` : 'transparent' }}>
+      <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+        <ScoreGauge score={s.hasData ? s.score : 0} color={color} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+            <b style={{ fontSize: 15 }}>{p.name}</b>
+            <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--gold)' }}>{money2(p.price_cents)}</span>
+            <span className="muted" style={{ fontSize: 12 }}>· {es ? 'por' : 'by'} {p.seller_name}</span>
+          </div>
+          <div style={{ marginTop: 5, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 10px', borderRadius: 99, background: `color-mix(in srgb,${color} 15%,transparent)`, border: `1px solid color-mix(in srgb,${color} 45%,transparent)`, color, fontSize: 12, fontWeight: 800 }}>
+            {s.hasData ? (s.verdict === 'approve' ? '✓' : s.verdict === 'review' ? '◐' : '✕') : '○'} {verdictTx}
+          </div>
+          {p.tagline && <div style={{ fontSize: 13, marginTop: 6 }}>{p.tagline}</div>}
+          <div className="muted" style={{ fontSize: 12, marginTop: 3 }}>{meta}</div>
+        </div>
       </div>
-      {p.tagline && <div style={{ fontSize: 13, marginTop: 4 }}>{p.tagline}</div>}
-      <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{meta}</div>
-      {p.description && <div style={{ fontSize: 13, marginTop: 8, whiteSpace: 'pre-wrap', color: 'var(--tx)' }}>{p.description}</div>}
-      <div style={{ display: 'flex', gap: 14, marginTop: 10, flexWrap: 'wrap', fontSize: 12.5 }}>
-        {p.proof_url
-          ? <a href={p.proof_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand)', fontWeight: 700 }}>🔗 {es ? 'Ver prueba de rendimiento' : 'View performance proof'}</a>
-          : <span style={{ color: 'var(--amber)' }}>⚠ {es ? 'Sin prueba de rendimiento' : 'No performance proof'}</span>}
-      </div>
+
+      {/* KPIs reales medidos por nosotros */}
+      {s.hasData ? (
+        <div style={{ display: 'flex', gap: 7, marginTop: 12, flexWrap: 'wrap' }}>
+          {kpi(es ? 'Operac.' : 'Trades', s.trades)}
+          {kpi(es ? 'Días' : 'Days', s.days)}
+          {kpi('Profit factor', s.pf, s.pf >= 1.3 ? 'var(--green)' : s.pf >= 1 ? 'var(--amber)' : 'var(--red)')}
+          {kpi(es ? 'Aciertos' : 'Win', s.winRate + '%')}
+          {kpi('Drawdown', s.ddPct + '%', s.ddPct <= 15 ? 'var(--green)' : 'var(--red)')}
+          {kpi(es ? 'Neto' : 'Net', '$' + s.netProfit.toLocaleString('en-US'), s.netProfit >= 0 ? 'var(--green)' : 'var(--red)')}
+          {kpi(es ? 'Cuenta' : 'Acct', s.live ? (es ? 'Real' : 'Live') : 'Demo', s.live ? 'var(--green)' : 'var(--mut)')}
+        </div>
+      ) : (
+        <div style={{ marginTop: 12, fontSize: 12.5, color: 'var(--amber)', background: 'color-mix(in srgb,var(--amber) 10%,transparent)', border: '1px solid color-mix(in srgb,var(--amber) 35%,transparent)', borderRadius: 10, padding: '9px 11px' }}>
+          ⚠ {es ? 'Este robot no está ligado a operaciones reales en la plataforma (o aún no ha operado). Revísalo manualmente o pídele al creador que lo corra en una cuenta conectada.' : 'This robot is not linked to real trades on the platform (or has not traded yet). Review manually or ask the creator to run it on a connected account.'}
+          {p.proof_url && <> · <a href={p.proof_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand)', fontWeight: 700 }}>{es ? 'Ver prueba externa' : 'View external proof'}</a></>}
+        </div>
+      )}
+
+      {/* Desglose del score + banderas (plegable) */}
+      {s.hasData && (
+        <div style={{ marginTop: 8 }}>
+          <button onClick={() => setOpen((o) => !o)} className="muted" style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, color: 'var(--brand)' }}>{open ? '▾' : '▸'} {es ? 'Cómo se calculó' : 'How it scored'}{s.flags?.length ? ` · ${s.flags.length} ⚠` : ''}</button>
+          {open && (
+            <div style={{ marginTop: 8, display: 'grid', gap: 6 }}>
+              {s.parts.map((pt: any) => (
+                <div key={pt.k} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+                  <span style={{ width: 96, color: 'var(--mut)' }}>{pt.k}</span>
+                  <span style={{ flex: 1, height: 7, borderRadius: 4, background: 'var(--bg2)', overflow: 'hidden' }}><span style={{ display: 'block', height: '100%', width: `${(pt.v / pt.max) * 100}%`, background: color }} /></span>
+                  <span style={{ width: 66, textAlign: 'right' }}>{pt.v}/{pt.max} <span className="muted">· {pt.note}</span></span>
+                </div>
+              ))}
+              {s.flags?.length > 0 && <div style={{ fontSize: 12, color: 'var(--red)', marginTop: 2 }}>⚠ {s.flags.join(' · ')}</div>}
+            </div>
+          )}
+        </div>
+      )}
+
+      {p.description && <div style={{ fontSize: 13, marginTop: 10, whiteSpace: 'pre-wrap', color: 'var(--tx)' }}>{p.description}</div>}
+
       {canManage && (
         <div style={{ marginTop: 12, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <button onClick={() => act({ action: 'product_status', id: p.id, status: 'active', verified: true }, es ? 'Aprobado y verificado' : 'Approved & verified')} style={btn('var(--green)')}>{es ? 'Aprobar ✓ verificado' : 'Approve ✓ verified'}</button>

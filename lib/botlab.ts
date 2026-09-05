@@ -90,6 +90,8 @@ export async function saveProduct(sellerId: string, b: any, isAdmin = false) {
     cover_url: b.cover_url ? String(b.cover_url).slice(0, 400) : null,
     proof_url: b.proof_url ? String(b.proof_url).slice(0, 400) : null,
     bot_id: b.bot_id || null,
+    bot_account: b.bot_account || null,           // liga al robot real (cuenta + magic)
+    bot_magic: b.bot_magic != null && b.bot_magic !== '' ? Number(b.bot_magic) : null,
     accepts_card: b.accepts_card !== false,
     accepts_crypto: b.accepts_crypto !== false,
   };

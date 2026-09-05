@@ -34,6 +34,7 @@ export default function BotLabDashboard() {
           name: sp.get('name') || '', platform: sp.get('platform') || 'mt5',
           tagline: sp.get('tagline') || '', description: sp.get('desc') || '',
           kind: 'subscription', interval: 'month', price: 29, category: sp.get('category') || '',
+          bot_magic: sp.get('magic') || '', bot_account: sp.get('account') || '',
           accepts_card: true, accepts_crypto: true,
         });
         window.history.replaceState({}, '', '/dashboard/bot-lab?tab=vender');
@@ -95,12 +96,26 @@ export default function BotLabDashboard() {
                   <div key={p.id} style={card}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 8 }}>
                       <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(120deg,var(--brand),var(--brand2,#a06bff))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>{(p.name || '?').slice(0, 1)}</div>
-                      <div style={{ minWidth: 0 }}><div style={{ fontSize: 14.5, fontWeight: 800, lineHeight: 1.1 }}>{p.name}</div><div className="muted" style={{ fontSize: 11.5 }}>{p.seller_name}{p.verified ? ' · ✓' : ''}</div></div>
+                      <div style={{ minWidth: 0 }}><div style={{ fontSize: 14.5, fontWeight: 800, lineHeight: 1.1 }}>{p.name}</div><div className="muted" style={{ fontSize: 11.5 }}>{p.seller_name}</div></div>
                     </div>
+                    {/* Sello de verificación con track record REAL medido por Onyx */}
+                    {p.verified && (
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 800, color: GOLD, background: `color-mix(in srgb,${GOLD} 12%,transparent)`, border: `1px solid color-mix(in srgb,${GOLD} 45%,transparent)`, padding: '3px 9px', borderRadius: 99, marginBottom: 8 }}>◆ {es ? 'Verificado por Onyx' : 'Verified by Onyx'}{p.perf?.score != null ? ` · ${p.perf.score}` : ''}</div>
+                    )}
                     {p.tagline && <p className="muted" style={{ fontSize: 12.5, margin: '2px 0 8px' }}>{p.tagline}</p>}
+                    {/* Mini track record real (si está ligado a un robot con operaciones) */}
+                    {p.perf?.trades != null && (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 5, marginBottom: 10 }}>
+                        {[[es ? 'Aciertos' : 'Win', (p.perf.winrate ?? 0) + '%'], ['Profit factor', p.perf.pf ?? '—'], ['Drawdown', (p.perf.dd ?? 0) + '%']].map(([k, v]: any) => (
+                          <div key={k} style={{ background: 'var(--bg2)', borderRadius: 8, padding: '5px 4px', textAlign: 'center' }}>
+                            <div style={{ fontSize: 13, fontWeight: 800 }}>{v}</div><div className="muted" style={{ fontSize: 9.5 }}>{k}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-                      {p.perf?.score != null && <span style={{ fontSize: 11, fontWeight: 800, color: GOLD, border: `1px solid color-mix(in srgb,${GOLD} 35%,transparent)`, padding: '2px 7px', borderRadius: 7 }}>Score {p.perf.score}</span>}
                       {p.platform && p.platform !== 'any' && <span className="muted" style={{ fontSize: 11, border: '1px solid var(--line)', padding: '2px 7px', borderRadius: 7 }}>{String(p.platform).toUpperCase()}</span>}
+                      {p.perf?.days != null && <span className="muted" style={{ fontSize: 11, border: '1px solid var(--line)', padding: '2px 7px', borderRadius: 7 }}>{p.perf.days} {es ? 'días' : 'days'}</span>}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
                       <b style={{ fontSize: 18 }}>{money(p.price_cents)}</b><span className="muted" style={{ fontSize: 12 }}>{p.kind === 'subscription' ? (es ? '/mes' : '/mo') : (es ? 'único' : 'once')}</span>
@@ -243,7 +258,7 @@ function ProductModal({ es, product, onClose, onSaved }: any) {
     if (!f.name?.trim()) { toastErr(es ? 'Ponle nombre a tu robot.' : 'Name your robot.'); return; }
     setSaving(true);
     try {
-      const body = { action: 'save', product: { id: product?.id, name: f.name, tagline: f.tagline, description: f.description, kind: f.kind, interval: f.interval, price_cents: Math.round(Number(f.price) * 100), platform: f.platform, category: f.category, proof_url: f.proof_url, accepts_card: f.accepts_card, accepts_crypto: f.accepts_crypto } };
+      const body = { action: 'save', product: { id: product?.id, name: f.name, tagline: f.tagline, description: f.description, kind: f.kind, interval: f.interval, price_cents: Math.round(Number(f.price) * 100), platform: f.platform, category: f.category, proof_url: f.proof_url, bot_magic: f.bot_magic || null, bot_account: f.bot_account || null, accepts_card: f.accepts_card, accepts_crypto: f.accepts_crypto } };
       const r = await fetch('/api/botlab/sell', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const j = await r.json(); if (!r.ok) throw new Error(j.error);
       toast(es ? 'Enviado a revisión.' : 'Sent for review.'); onSaved();
