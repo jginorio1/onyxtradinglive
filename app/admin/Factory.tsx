@@ -5,6 +5,7 @@ import { useLang } from '@/lib/lang';
 import FactoryLab from './FactoryLab';
 import FactoryPipeline from './FactoryPipeline';
 import StratGenerator from './StratGenerator';
+import FactoryEngine from './FactoryEngine';
 
 // ============================================================
 // Onyx Bot Factory · Fase 1 (solo admin)
@@ -146,7 +147,7 @@ function Ring({ score, color, size = 120, label }: any) {
 export default function Factory({ canManage = true }: { canManage?: boolean }) {
   const { lang } = useLang(); const es = lang !== 'en';
   const [d, setD] = useState<any>(null);
-  const [sub, setSub] = useState<'datos' | 'constructor' | 'laboratorio' | 'pipeline' | 'robots'>('datos');
+  const [sub, setSub] = useState<'datos' | 'constructor' | 'motor' | 'laboratorio' | 'pipeline' | 'robots'>('datos');
 
   async function load() { try { const r = await fetch('/api/admin/factory'); const j = await r.json(); setD(j); } catch {} }
   useEffect(() => { load(); }, []);
@@ -167,7 +168,7 @@ export default function Factory({ canManage = true }: { canManage?: boolean }) {
       </div>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        {([['datos', es ? 'Puerta 0 · Datos' : 'Gate 0 · Data'], ['constructor', es ? 'Constructor' : 'Builder'], ['laboratorio', es ? 'Laboratorio' : 'Lab'], ['pipeline', es ? 'Pipeline' : 'Pipeline'], ['robots', es ? 'Robots' : 'Robots']] as [any, string][]).map(([k, lbl]) => {
+        {([['datos', es ? 'Puerta 0 · Datos' : 'Gate 0 · Data'], ['constructor', es ? 'Constructor' : 'Builder'], ['motor', es ? 'Motor' : 'Engine'], ['laboratorio', es ? 'Laboratorio' : 'Lab'], ['pipeline', es ? 'Pipeline' : 'Pipeline'], ['robots', es ? 'Robots' : 'Robots']] as [any, string][]).map(([k, lbl]) => {
           const on = sub === k;
           return <button key={k} onClick={() => setSub(k)} style={{ padding: '9px 15px', borderRadius: 12, fontSize: 13.5, fontWeight: 700, cursor: 'pointer', border: '1px solid ' + (on ? 'var(--brand)' : 'var(--line)'), background: on ? 'color-mix(in srgb,var(--brand) 18%,transparent)' : 'var(--card)', color: on ? 'var(--brand)' : 'var(--tx)' }}>{lbl}</button>;
         })}
@@ -175,6 +176,7 @@ export default function Factory({ canManage = true }: { canManage?: boolean }) {
 
       {sub === 'datos' && <DataGate es={es} canManage={canManage} post={post} reload={load} datasets={d.datasets || []} />}
       {sub === 'constructor' && <Builder es={es} canManage={canManage} post={post} reload={load} nextName={d.nextName} datasets={d.datasets || []} />}
+      {sub === 'motor' && <FactoryEngine es={es} canManage={canManage} post={post} reload={load} />}
       {sub === 'laboratorio' && <FactoryLab es={es} canManage={canManage} post={post} reload={load} bots={d.bots || []} />}
       {sub === 'pipeline' && <FactoryPipeline es={es} canManage={canManage} post={post} />}
       {sub === 'robots' && <BotList es={es} canManage={canManage} post={post} reload={load} bots={d.bots || []} />}
