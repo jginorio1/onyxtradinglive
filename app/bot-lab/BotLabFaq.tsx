@@ -102,7 +102,8 @@ export default function BotLabFaq() {
         {active.items.map((it, i) => (
           <details key={i} open={i === 0} style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, marginBottom: 10, overflow: 'hidden' }}>
             <summary style={{ listStyle: 'none', cursor: 'pointer', padding: '16px 18px', fontWeight: 700, fontSize: 15.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-              <span>{it.q}</span><span style={{ flex: 'none', color: GOLD, fontSize: 20 }}>+</span>
+              <div style={{ flex: 1, minWidth: 0 }}>{it.q}</div>
+              <b style={{ flex: 'none', color: GOLD, fontSize: 20, fontWeight: 400 }}>+</b>
             </summary>
             <div style={{ padding: '0 18px 18px', color: 'var(--mut)', fontSize: 14.5, lineHeight: 1.7 }}>{it.a}</div>
           </details>

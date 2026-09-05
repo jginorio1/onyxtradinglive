@@ -41,7 +41,7 @@ export default function BotLabHeader({ loggedIn = false }: { loggedIn?: boolean 
 
       {/* Barra propia */}
       <div className="topbar">
-        <div className="wrap-wide" style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+        <div className="wrap-wide" style={{ display: 'flex', alignItems: 'center', gap: 18, position: 'relative' }}>
           <Link href="/bot-lab" className="logo" aria-label="Onyx Bot Lab" style={{ gap: 11 }}>
             <span style={{ width: 32, height: 32, borderRadius: 9, background: 'linear-gradient(120deg,var(--gold,#ffd45e),#ffb020)', color: '#3a2a06', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, fontWeight: 800, boxShadow: '0 6px 18px rgba(255,212,94,.4)' }}>◆</span>
             <span style={{ lineHeight: 1.05 }}>
@@ -50,8 +50,8 @@ export default function BotLabHeader({ loggedIn = false }: { loggedIn?: boolean 
             </span>
           </Link>
 
-          {/* Nav de escritorio */}
-          <nav className="botlab-nav" style={{ display: 'flex', gap: 22, marginLeft: 8 }}>
+          {/* Nav de escritorio, centrado en la barra */}
+          <nav className="botlab-nav" style={{ display: 'flex', gap: 22, position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>
             {items.map((i) => (
               <Link key={i.href} href={i.href} style={i.on ? linkOn : link} onMouseEnter={(e) => { if (!i.on) (e.currentTarget as HTMLElement).style.color = 'var(--tx)'; }} onMouseLeave={(e) => { if (!i.on) (e.currentTarget as HTMLElement).style.color = 'var(--mut)'; }}>{i.label}</Link>
             ))}

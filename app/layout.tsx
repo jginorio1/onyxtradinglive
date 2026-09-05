@@ -163,7 +163,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <EnvBanner />
         <LanguageProvider initial={lang}>
           <BetaProvider initial={beta}>
-            {promoLive && promo && (
+            {promoLive && promo && !inBotLab && (
               <PromoBar
                 id={promo.id}
                 text={(lang === 'es' ? promo.text_es : promo.text_en) || (lang === 'es' ? promo.text_en : promo.text_es)}

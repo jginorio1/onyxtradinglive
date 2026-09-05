@@ -3,19 +3,20 @@ import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import { toast, toastErr } from '@/lib/toast';
 
-type Tab = 'market' | 'licencias' | 'vender';
+type View = 'market' | 'licencias' | 'vender' | 'ganancias';
 const GOLD = 'var(--gold, #ffd45e)';
 function money(cents: number) { return '$' + ((cents || 0) / 100).toLocaleString('en-US', { maximumFractionDigits: 2 }); }
+const card: any = { background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, padding: 16 };
 
 export default function BotLabDashboard() {
   const { lang } = useLang();
   const es = lang === 'es';
-  const [tab, setTab] = useState<Tab>('market');
+  const [view, setView] = useState<View>('market');
   const [products, setProducts] = useState<any[]>([]);
   const [licenses, setLicenses] = useState<any[]>([]);
   const [sell, setSell] = useState<any>(null);
-  const [crypto, setCrypto] = useState<any>(null);     // pago USDT en curso
-  const [editing, setEditing] = useState<any>(null);   // producto en edición
+  const [crypto, setCrypto] = useState<any>(null);
+  const [editing, setEditing] = useState<any>(null);
 
   async function loadMarket() { try { const r = await fetch('/api/botlab/products?limit=60'); const j = await r.json(); setProducts(j.products || []); } catch {} }
   async function loadLicenses() { try { const r = await fetch('/api/botlab/licenses'); const j = await r.json(); setLicenses(j.licenses || []); } catch {} }
@@ -25,11 +26,11 @@ export default function BotLabDashboard() {
     loadMarket(); loadLicenses(); loadSell();
     try {
       const sp = new URLSearchParams(window.location.search);
-      const t = sp.get('tab'); if (t === 'vender' || t === 'licencias' || t === 'market') setTab(t as Tab);
+      const t = sp.get('tab'); if (t === 'vender' || t === 'licencias' || t === 'market' || t === 'ganancias') setView(t as View);
       const bought = sp.get('bought');
       if (bought) {
         fetch('/api/botlab/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: bought }) })
-          .then((r) => r.json()).then((j) => { if (j.ok) { toast(es ? '¡Robot activado!' : 'Robot activated!'); loadLicenses(); setTab('licencias'); } });
+          .then((r) => r.json()).then((j) => { if (j.ok) { toast(es ? '¡Robot activado!' : 'Robot activated!'); loadLicenses(); setView('licencias'); } });
         window.history.replaceState({}, '', '/dashboard/bot-lab');
       }
     } catch {}
@@ -45,125 +46,118 @@ export default function BotLabDashboard() {
     } catch (e: any) { toastErr(e?.message || 'error'); }
   }
 
-  const wrap: any = { maxWidth: 1080, margin: '0 auto' };
-  const card: any = { background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, padding: 16 };
-  const tabBtn = (t: Tab, label: string) => (
-    <button onClick={() => setTab(t)} style={{ padding: '9px 16px', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', border: '1px solid ' + (tab === t ? 'var(--brand)' : 'var(--line)'), background: tab === t ? 'color-mix(in srgb,var(--brand) 16%,transparent)' : 'transparent', color: tab === t ? 'var(--brand)' : 'var(--tx)' }}>{label}</button>
-  );
+  const NAV: [View, string, string][] = [
+    ['market', '🛒', es ? 'Marketplace' : 'Marketplace'],
+    ['licencias', '🤖', es ? 'Mis robots' : 'My robots'],
+    ['vender', '🏷️', es ? 'Vender' : 'Sell'],
+    ['ganancias', '💰', es ? 'Ganancias' : 'Earnings'],
+  ];
 
   return (
-    <div style={{ ...wrap, padding: '10px 4px 60px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
-        <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0 }}>Onyx Bot Lab</h1>
-        <a href="/bot-lab" target="_blank" className="muted" style={{ fontSize: 13, marginLeft: 'auto' }}>{es ? 'Ver página pública ↗' : 'View public page ↗'}</a>
-      </div>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
-        {tabBtn('market', es ? 'Marketplace' : 'Marketplace')}
-        {tabBtn('licencias', es ? 'Mis robots' : 'My robots')}
-        {tabBtn('vender', es ? 'Vender y ganar' : 'Sell & earn')}
-      </div>
+    <div className="bl-shell" style={{ maxWidth: 1120, margin: '0 auto', padding: '10px 4px 60px', display: 'flex', gap: 20, alignItems: 'flex-start' }}>
+      {/* Barra lateral propia */}
+      <aside className="bl-side" style={{ flex: '0 0 210px', position: 'sticky', top: 78 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '4px 8px 14px' }}>
+          <span style={{ width: 30, height: 30, borderRadius: 8, background: `linear-gradient(120deg,${GOLD},#ffb020)`, color: '#3a2a06', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>◆</span>
+          <b style={{ fontSize: 15 }}>Bot Lab</b>
+        </div>
+        <nav className="bl-nav" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {NAV.map(([k, ic, lbl]) => (
+            <button key={k} onClick={() => setView(k)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', textAlign: 'left', width: '100%', border: 'none', background: view === k ? 'color-mix(in srgb,var(--brand) 16%,transparent)' : 'transparent', color: view === k ? 'var(--brand)' : 'var(--tx)' }}>
+              <span style={{ fontSize: 17 }}>{ic}</span>{lbl}
+            </button>
+          ))}
+        </nav>
+        <a href="/bot-lab" target="_blank" className="muted" style={{ display: 'block', padding: '12px 12px 0', fontSize: 12.5 }}>{es ? 'Página pública ↗' : 'Public page ↗'}</a>
+      </aside>
 
-      {/* MARKETPLACE */}
-      {tab === 'market' && (
-        <div>
-          {!products.length && <div style={{ ...card, textAlign: 'center', color: 'var(--mut)' }}>{es ? 'Aún no hay robots publicados. Vuelve pronto o publica el tuyo.' : 'No robots published yet. Check back soon or publish yours.'}</div>}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(230px,1fr))', gap: 14 }}>
-            {products.map((p) => {
-              const owned = licenses.some((l) => l.product_id === p.id && l.status === 'active');
-              return (
-                <div key={p.id} style={card}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 8 }}>
-                    <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(120deg,var(--brand),var(--brand2,#a06bff))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>{(p.name || '?').slice(0, 1)}</div>
-                    <div style={{ minWidth: 0 }}><div style={{ fontSize: 14.5, fontWeight: 800, lineHeight: 1.1 }}>{p.name}</div><div className="muted" style={{ fontSize: 11.5 }}>{p.seller_name}{p.verified ? ' · ✓' : ''}</div></div>
-                  </div>
-                  {p.tagline && <p className="muted" style={{ fontSize: 12.5, margin: '2px 0 8px' }}>{p.tagline}</p>}
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-                    {p.perf?.score != null && <span style={{ fontSize: 11, fontWeight: 800, color: GOLD, border: `1px solid color-mix(in srgb,${GOLD} 35%,transparent)`, padding: '2px 7px', borderRadius: 7 }}>Score {p.perf.score}</span>}
-                    {p.platform && p.platform !== 'any' && <span className="muted" style={{ fontSize: 11, border: '1px solid var(--line)', padding: '2px 7px', borderRadius: 7 }}>{String(p.platform).toUpperCase()}</span>}
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
-                    <b style={{ fontSize: 18 }}>{money(p.price_cents)}</b><span className="muted" style={{ fontSize: 12 }}>{p.kind === 'subscription' ? (es ? '/mes' : '/mo') : (es ? 'único' : 'once')}</span>
-                  </div>
-                  {owned ? (
-                    <div style={{ textAlign: 'center', fontSize: 13, fontWeight: 800, color: 'var(--green)', padding: 8, border: '1px solid color-mix(in srgb,var(--green) 35%,transparent)', borderRadius: 9 }}>✓ {es ? 'Ya es tuyo' : 'Owned'}</div>
-                  ) : (
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      {p.accepts_card && <button onClick={() => buy(p, 'card')} style={{ flex: 1, padding: 9, borderRadius: 9, border: 'none', fontWeight: 800, fontSize: 12.5, cursor: 'pointer', background: 'var(--brand)', color: '#0b1020' }}>💳 {es ? 'Tarjeta' : 'Card'}</button>}
-                      {p.accepts_crypto && <button onClick={() => buy(p, 'usdt')} style={{ flex: 1, padding: 9, borderRadius: 9, cursor: 'pointer', fontWeight: 800, fontSize: 12.5, border: '1px solid color-mix(in srgb,var(--green) 40%,transparent)', background: 'color-mix(in srgb,var(--green) 10%,transparent)', color: 'var(--green)' }}>₮ USDT</button>}
+      {/* Contenido */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {view === 'market' && (
+          <div>
+            {!products.length && <div style={{ ...card, textAlign: 'center', color: 'var(--mut)' }}>{es ? 'Aún no hay robots publicados. Vuelve pronto o publica el tuyo.' : 'No robots published yet. Check back soon or publish yours.'}</div>}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(230px,1fr))', gap: 14 }}>
+              {products.map((p) => {
+                const owned = licenses.some((l) => l.product_id === p.id && l.status === 'active');
+                return (
+                  <div key={p.id} style={card}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 8 }}>
+                      <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(120deg,var(--brand),var(--brand2,#a06bff))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>{(p.name || '?').slice(0, 1)}</div>
+                      <div style={{ minWidth: 0 }}><div style={{ fontSize: 14.5, fontWeight: 800, lineHeight: 1.1 }}>{p.name}</div><div className="muted" style={{ fontSize: 11.5 }}>{p.seller_name}{p.verified ? ' · ✓' : ''}</div></div>
                     </div>
-                  )}
-                </div>
-              );
-            })}
+                    {p.tagline && <p className="muted" style={{ fontSize: 12.5, margin: '2px 0 8px' }}>{p.tagline}</p>}
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+                      {p.perf?.score != null && <span style={{ fontSize: 11, fontWeight: 800, color: GOLD, border: `1px solid color-mix(in srgb,${GOLD} 35%,transparent)`, padding: '2px 7px', borderRadius: 7 }}>Score {p.perf.score}</span>}
+                      {p.platform && p.platform !== 'any' && <span className="muted" style={{ fontSize: 11, border: '1px solid var(--line)', padding: '2px 7px', borderRadius: 7 }}>{String(p.platform).toUpperCase()}</span>}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
+                      <b style={{ fontSize: 18 }}>{money(p.price_cents)}</b><span className="muted" style={{ fontSize: 12 }}>{p.kind === 'subscription' ? (es ? '/mes' : '/mo') : (es ? 'único' : 'once')}</span>
+                    </div>
+                    {owned ? (
+                      <div style={{ textAlign: 'center', fontSize: 13, fontWeight: 800, color: 'var(--green)', padding: 8, border: '1px solid color-mix(in srgb,var(--green) 35%,transparent)', borderRadius: 9 }}>✓ {es ? 'Ya es tuyo' : 'Owned'}</div>
+                    ) : (
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        {p.accepts_card && <button onClick={() => buy(p, 'card')} style={{ flex: 1, padding: 9, borderRadius: 9, border: 'none', fontWeight: 800, fontSize: 12.5, cursor: 'pointer', background: 'var(--brand)', color: '#0b1020' }}>💳 {es ? 'Tarjeta' : 'Card'}</button>}
+                        {p.accepts_crypto && <button onClick={() => buy(p, 'usdt')} style={{ flex: 1, padding: 9, borderRadius: 9, cursor: 'pointer', fontWeight: 800, fontSize: 12.5, border: '1px solid color-mix(in srgb,var(--green) 40%,transparent)', background: 'color-mix(in srgb,var(--green) 10%,transparent)', color: 'var(--green)' }}>₮ USDT</button>}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* MIS LICENCIAS */}
-      {tab === 'licencias' && (
-        <div>
-          {!licenses.length && <div style={{ ...card, textAlign: 'center', color: 'var(--mut)' }}>{es ? 'Aún no tienes robots. Explora el Marketplace.' : 'No robots yet. Browse the Marketplace.'}</div>}
-          <div style={{ display: 'grid', gap: 10 }}>
-            {licenses.map((l) => (
-              <div key={l.id} style={{ ...card, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                <div style={{ width: 38, height: 38, borderRadius: 10, background: 'linear-gradient(120deg,var(--brand),var(--brand2,#a06bff))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>{(l.product?.name || '?').slice(0, 1)}</div>
-                <div style={{ flex: 1, minWidth: 160 }}>
-                  <div style={{ fontWeight: 800 }}>{l.product?.name || (es ? 'Robot' : 'Robot')}</div>
-                  <div className="muted" style={{ fontSize: 12 }}>{l.method === 'usdt' ? 'USDT' : (es ? 'Tarjeta' : 'Card')} · {l.kind === 'subscription' ? (es ? 'suscripción' : 'subscription') : (es ? 'pago único' : 'one-time')}</div>
+        {view === 'licencias' && (
+          <div>
+            {!licenses.length && <div style={{ ...card, textAlign: 'center', color: 'var(--mut)' }}>{es ? 'Aún no tienes robots. Explora el Marketplace.' : 'No robots yet. Browse the Marketplace.'}</div>}
+            <div style={{ display: 'grid', gap: 10 }}>
+              {licenses.map((l) => (
+                <div key={l.id} style={{ ...card, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <div style={{ width: 38, height: 38, borderRadius: 10, background: 'linear-gradient(120deg,var(--brand),var(--brand2,#a06bff))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>{(l.product?.name || '?').slice(0, 1)}</div>
+                  <div style={{ flex: 1, minWidth: 160 }}>
+                    <div style={{ fontWeight: 800 }}>{l.product?.name || (es ? 'Robot' : 'Robot')}</div>
+                    <div className="muted" style={{ fontSize: 12 }}>{l.method === 'usdt' ? 'USDT' : (es ? 'Tarjeta' : 'Card')} · {l.kind === 'subscription' ? (es ? 'suscripción' : 'subscription') : (es ? 'pago único' : 'one-time')}</div>
+                  </div>
+                  <span style={{ fontSize: 12, fontWeight: 800, padding: '4px 10px', borderRadius: 99, color: l.status === 'active' ? 'var(--green)' : 'var(--amber)', border: '1px solid ' + (l.status === 'active' ? 'color-mix(in srgb,var(--green) 40%,transparent)' : 'color-mix(in srgb,var(--amber) 40%,transparent)') }}>
+                    {l.status === 'active' ? (es ? 'Activo' : 'Active') : l.status === 'pending' ? (es ? 'Pendiente' : 'Pending') : l.status}
+                  </span>
+                  <a href="/dashboard/constructor" className="muted" style={{ fontSize: 12.5, fontWeight: 700 }}>{es ? 'Descargar / instalar →' : 'Download / install →'}</a>
                 </div>
-                <span style={{ fontSize: 12, fontWeight: 800, padding: '4px 10px', borderRadius: 99, color: l.status === 'active' ? 'var(--green)' : 'var(--amber)', border: '1px solid ' + (l.status === 'active' ? 'color-mix(in srgb,var(--green) 40%,transparent)' : 'color-mix(in srgb,var(--amber) 40%,transparent)') }}>
-                  {l.status === 'active' ? (es ? 'Activo' : 'Active') : l.status === 'pending' ? (es ? 'Pendiente' : 'Pending') : l.status}
-                </span>
-                <a href="/dashboard/constructor" className="muted" style={{ fontSize: 12.5, fontWeight: 700 }}>{es ? 'Descargar / instalar →' : 'Download / install →'}</a>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* VENDER */}
-      {tab === 'vender' && sell && (
-        <SellPanel es={es} sell={sell} reload={loadSell} onEdit={setEditing} />
-      )}
+        {view === 'vender' && sell && <SellPanel es={es} sell={sell} reload={loadSell} onEdit={setEditing} />}
+        {view === 'ganancias' && sell && <EarningsPanel es={es} sell={sell} reload={loadSell} />}
+      </div>
 
-      {/* MODAL: pago USDT */}
       {crypto && <CryptoModal es={es} crypto={crypto} onClose={() => setCrypto(null)} onDone={() => { setCrypto(null); toast(es ? 'Recibido. Activamos tu robot al confirmar el pago.' : 'Received. Your robot activates once the payment is confirmed.'); loadLicenses(); }} />}
-      {/* MODAL: editar/crear producto */}
       {editing && <ProductModal es={es} product={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); loadSell(); }} />}
+
+      <style>{`@media(max-width:820px){.bl-shell{flex-direction:column}.bl-side{position:static!important;flex:none!important;width:100%}.bl-nav{flex-direction:row!important;flex-wrap:wrap}}`}</style>
     </div>
   );
 }
 
 // ---------------------------------------------------------------- Vender
 function SellPanel({ es, sell, reload, onEdit }: any) {
-  const e = sell.earnings || {}; const connect = sell.connect || {};
-  const card: any = { background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, padding: 16 };
+  const connect = sell.connect || {};
   async function connectPay() {
     try { const r = await fetch('/api/botlab/sell', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'connect' }) }); const j = await r.json(); if (j.url) window.location.href = j.url; else toastErr(j.error || 'error'); } catch (er: any) { toastErr(er?.message); }
-  }
-  async function payout() {
-    try { const r = await fetch('/api/botlab/sell', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'payout', method: 'stripe' }) }); const j = await r.json(); if (!r.ok) throw new Error(j.error); toast(es ? 'Retiro solicitado.' : 'Payout requested.'); reload(); } catch (er: any) { toastErr(er?.message); }
   }
   async function del(id: string) {
     try { await fetch('/api/botlab/sell', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'delete', id }) }); reload(); } catch {}
   }
   return (
     <div style={{ display: 'grid', gap: 16 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 12 }}>
-        {[[es ? 'Disponible' : 'Available', money(e.availableCents || 0), 'var(--green)'], [es ? 'Ventas' : 'Sales', String(e.sales || 0), 'var(--tx)'], [es ? 'Bruto' : 'Gross', money(e.grossCents || 0), 'var(--tx)'], [es ? 'Pagado' : 'Paid', money(e.paidCents || 0), 'var(--mut)']].map(([l, v, c], i) => (
-          <div key={i} style={{ background: 'var(--bg2)', borderRadius: 12, padding: 14 }}><div className="muted" style={{ fontSize: 12 }}>{l}</div><div style={{ fontSize: 22, fontWeight: 800, color: c as string }}>{v}</div></div>
-        ))}
-      </div>
-
       <div style={{ ...card, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <div>
           <b>{es ? 'Cobro' : 'Payouts'}</b>
           <div className="muted" style={{ fontSize: 13 }}>{connect.chargesEnabled ? (es ? '✓ Listo para recibir pagos' : '✓ Ready to receive payments') : (es ? 'Conecta tu cobro para vender con tarjeta.' : 'Connect your payouts to sell by card.')}</div>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {!connect.chargesEnabled && <button onClick={connectPay} style={{ padding: '10px 16px', borderRadius: 10, border: 'none', fontWeight: 800, cursor: 'pointer', background: 'var(--brand)', color: '#0b1020' }}>{es ? 'Conectar cobro' : 'Connect payouts'}</button>}
-          {(e.availableCents || 0) >= 1000 && <button onClick={payout} style={{ padding: '10px 16px', borderRadius: 10, cursor: 'pointer', fontWeight: 800, border: '1px solid var(--line)', background: 'transparent', color: 'var(--tx)' }}>{es ? 'Retirar' : 'Withdraw'}</button>}
-        </div>
+        {!connect.chargesEnabled && <button onClick={connectPay} style={{ padding: '10px 16px', borderRadius: 10, border: 'none', fontWeight: 800, cursor: 'pointer', background: 'var(--brand)', color: '#0b1020' }}>{es ? 'Conectar cobro' : 'Connect payouts'}</button>}
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -182,6 +176,39 @@ function SellPanel({ es, sell, reload, onEdit }: any) {
             <button onClick={() => del(p.id)} className="muted" style={{ fontSize: 13, fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red)' }}>{es ? 'Borrar' : 'Delete'}</button>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- Ganancias
+function EarningsPanel({ es, sell, reload }: any) {
+  const e = sell.earnings || {};
+  async function payout() {
+    try { const r = await fetch('/api/botlab/sell', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'payout', method: 'stripe' }) }); const j = await r.json(); if (!r.ok) throw new Error(j.error); toast(es ? 'Retiro solicitado.' : 'Payout requested.'); reload(); } catch (er: any) { toastErr(er?.message); }
+  }
+  return (
+    <div style={{ display: 'grid', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 12 }}>
+        {[[es ? 'Disponible' : 'Available', money(e.availableCents || 0), 'var(--green)'], [es ? 'Ventas' : 'Sales', String(e.sales || 0), 'var(--tx)'], [es ? 'Bruto' : 'Gross', money(e.grossCents || 0), 'var(--tx)'], [es ? 'Pagado' : 'Paid', money(e.paidCents || 0), 'var(--mut)']].map(([l, v, c], i) => (
+          <div key={i} style={{ background: 'var(--bg2)', borderRadius: 12, padding: 14 }}><div className="muted" style={{ fontSize: 12 }}>{l}</div><div style={{ fontSize: 22, fontWeight: 800, color: c as string }}>{v}</div></div>
+        ))}
+      </div>
+      <div style={{ ...card, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+        <div><b>{es ? 'Retirar tus ganancias' : 'Withdraw your earnings'}</b><div className="muted" style={{ fontSize: 13 }}>{es ? 'Desde $10 disponibles. Te pagamos a tu banco o en USDT.' : 'From $10 available. We pay to your bank or in USDT.'}</div></div>
+        <button onClick={payout} disabled={(e.availableCents || 0) < 1000} style={{ padding: '10px 18px', borderRadius: 10, border: 'none', fontWeight: 800, cursor: (e.availableCents || 0) < 1000 ? 'not-allowed' : 'pointer', opacity: (e.availableCents || 0) < 1000 ? .5 : 1, background: `linear-gradient(120deg,${GOLD},#ffb020)`, color: '#3a2a06' }}>{es ? 'Solicitar retiro' : 'Request payout'}</button>
+      </div>
+      <div style={card}>
+        <h3 style={{ marginTop: 0 }}>{es ? 'Historial de retiros' : 'Payout history'}</h3>
+        {!(sell.payouts || []).length && <div className="muted" style={{ fontSize: 13 }}>{es ? 'Aún no has pedido retiros.' : 'No payouts requested yet.'}</div>}
+        <div style={{ display: 'grid', gap: 8 }}>
+          {(sell.payouts || []).map((p: any) => (
+            <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', borderTop: '1px solid var(--line)', paddingTop: 8 }}>
+              <div style={{ flex: 1, minWidth: 140 }}><b>{money(p.amount_cents)}</b> <span className="muted" style={{ fontSize: 12 }}>· {p.method}</span></div>
+              <span style={{ fontSize: 11.5, fontWeight: 800, color: p.status === 'paid' ? 'var(--green)' : 'var(--amber)' }}>{p.status === 'paid' ? (es ? 'Pagado' : 'Paid') : (es ? 'En proceso' : 'Processing')}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
