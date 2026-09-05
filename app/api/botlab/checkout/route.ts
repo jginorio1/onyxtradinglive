@@ -23,7 +23,9 @@ export async function POST(req: Request) {
   if (method === 'usdt') {
     if (!product.accepts_crypto) return NextResponse.json({ error: 'Este robot no acepta cripto.' }, { status: 400 });
     if (!(await cryptoEnabled())) return NextResponse.json({ error: 'Pago en cripto no disponible por ahora.' }, { status: 400 });
-    const pay = await createCryptoPayment({ userId: user.id, purpose: 'license', refId: product.id, amountUsd: (product.price_cents || 0) / 100 });
+    const pay = await createCryptoPayment({ userId: user.id, purpose: 'license', refId: product.id, amountUsd: (product.price_cents || 0) / 100, name: product.name });
+    // Con Coinbase Commerce: redirige al checkout hospedado (confirmación automática).
+    if (pay.hosted_url) return NextResponse.json({ url: pay.hosted_url });
     return NextResponse.json({ crypto: { id: pay.id, address: pay.address, network: pay.network, amountUsd: pay.amount_usd, asset: 'USDT' } });
   }
 

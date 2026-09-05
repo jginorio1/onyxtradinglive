@@ -16,15 +16,18 @@ const clampPct = (n: any) => Math.max(0, Math.min(50, Number(n) || 0));
 
 export type BotLabSettings = {
   fee_pct: number;            // comisión de Onyx sobre ventas de creadores (%)
-  usdt_address: string;       // wallet para cobrar en USDT (modo manual)
+  usdt_address: string;       // wallet para cobrar en USDT (modo manual, si no hay Coinbase)
   usdt_network: string;       // trc20 | erc20 | bep20
   service_automate_from: number; // precio "desde" del servicio a medida (USD)
   service_install_price: number; // instalación asistida por sesión (USD)
   service_elite_from: number;    // programa elite (USD)
+  notify_email: string;       // correo donde llegan las propuestas (leads)
+  telegram_chat: string;      // chat de Telegram para avisos (opcional)
 };
 const DEF: BotLabSettings = {
   fee_pct: 20, usdt_address: '', usdt_network: 'trc20',
   service_automate_from: 1500, service_install_price: 99, service_elite_from: 6000,
+  notify_email: '', telegram_chat: '',
 };
 export async function botLabSettings(): Promise<BotLabSettings> {
   const s = await getSetting<Partial<BotLabSettings>>('bot_lab', {});
@@ -304,6 +307,38 @@ export async function createServiceRequest(o: { userId?: string | null; email?: 
   }).select('id').single();
   return data as any;
 }
+// Avisa al dueño (correo + Telegram) cuando entra una propuesta high-ticket.
+// Silencioso: nunca bloquea la creación del lead.
+export async function notifyNewLead(o: { service: string; name?: string; email?: string; platform?: string; budget?: string; message?: string; lang?: string }) {
+  try {
+    const s = await botLabSettings();
+    const to = s.notify_email || (process.env.ADMIN_EMAILS || '').split(',').map((x) => x.trim()).filter(Boolean)[0];
+    const svc = o.service === 'automate' ? 'Automatiza tu estrategia' : o.service === 'install' ? 'Instalación asistida' : 'Elite / privado';
+    const lines = [
+      `Nueva solicitud en Onyx Bot Lab · ${svc}`,
+      '',
+      `Nombre: ${o.name || '—'}`,
+      `Correo: ${o.email || '—'}`,
+      `Plataforma: ${o.platform || '—'}`,
+      `Presupuesto: ${o.budget || '—'}`,
+      `Idioma: ${o.lang || 'es'}`,
+      '',
+      `Mensaje:`,
+      o.message || '(sin mensaje)',
+      '',
+      `Ábrela en Admin → Onyx Bot Lab → Servicios.`,
+    ].join('\n');
+    if (to) {
+      const { sendEmail } = await import('@/lib/mail');
+      await sendEmail(to, `🤖 Propuesta Bot Lab · ${svc}`, lines, { from: 'Onyx Bot Lab <botlab@onyxtradinglive.com>' });
+    }
+    if (s.telegram_chat) {
+      const { sendMessage } = await import('@/lib/telegram');
+      await sendMessage(s.telegram_chat, `🤖 *Nueva propuesta Bot Lab* · ${svc}\n${o.name || ''} ${o.email || ''}\n${o.platform || ''} · ${o.budget || ''}\n${(o.message || '').slice(0, 300)}`);
+    }
+  } catch { /* silencioso */ }
+}
+
 export async function listServiceRequests(status?: string) {
   let q = supabaseAdmin.from('bot_service_requests').select('*').order('created_at', { ascending: false });
   if (status) q = q.eq('status', status);

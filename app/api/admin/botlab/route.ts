@@ -48,6 +48,8 @@ export async function POST(req: Request) {
       service_automate_from: Math.max(0, Number(b.service_automate_from ?? cur.service_automate_from)),
       service_install_price: Math.max(0, Number(b.service_install_price ?? cur.service_install_price)),
       service_elite_from: Math.max(0, Number(b.service_elite_from ?? cur.service_elite_from)),
+      notify_email: String(b.notify_email ?? cur.notify_email ?? '').slice(0, 120),
+      telegram_chat: String(b.telegram_chat ?? cur.telegram_chat ?? '').slice(0, 40),
     };
     await saveSetting('bot_lab', next);
     return NextResponse.json({ ok: true, settings: next });

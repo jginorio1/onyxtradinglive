@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { botLabSettings, getProduct, grantLicense } from '@/lib/botlab';
+import { coinbaseEnabled, createCharge } from '@/lib/coinbase';
 
 // ============================================================
 // Pago en USDT (cripto). Dos modos:
@@ -12,19 +13,44 @@ import { botLabSettings, getProduct, grantLicense } from '@/lib/botlab';
 
 export async function cryptoEnabled(): Promise<boolean> {
   const s = await botLabSettings();
-  return !!s.usdt_address || !!process.env.NOWPAYMENTS_API_KEY;
+  return coinbaseEnabled() || !!s.usdt_address;
 }
 
-// Crea una intención de pago en USDT y devuelve la dirección a la que pagar.
-export async function createCryptoPayment(o: { userId?: string | null; purpose: 'license' | 'service'; refId: string; amountUsd: number }) {
+// Crea una intención de pago en USDT. Si hay Coinbase Commerce, genera un charge
+// y devuelve su hosted_url (checkout automático, confirmación on-chain por webhook).
+// Si no, cae al modo manual: muestra la wallet y el cliente reporta el hash.
+export async function createCryptoPayment(o: { userId?: string | null; purpose: 'license' | 'service'; refId: string; amountUsd: number; name?: string }) {
   const s = await botLabSettings();
   const { data } = await supabaseAdmin.from('crypto_payments').insert({
     user_id: o.userId || null, purpose: o.purpose, ref_id: o.refId,
     amount_usd: Math.max(0, Number(o.amountUsd) || 0), asset: 'USDT',
     network: s.usdt_network || 'trc20', address: s.usdt_address || null,
-    status: 'pending', provider: 'manual',
+    status: 'pending', provider: coinbaseEnabled() ? 'coinbase' : 'manual',
   }).select('*').single();
-  return data as any;
+  const row = data as any;
+  if (row && coinbaseEnabled()) {
+    try {
+      const charge = await createCharge({
+        name: o.name || (o.purpose === 'license' ? 'Onyx Bot Lab · Robot' : 'Onyx Bot Lab · Servicio'),
+        description: o.purpose === 'license' ? 'Licencia de robot' : 'Servicio a medida',
+        amountUsd: o.amountUsd,
+        metadata: { payment_id: row.id, purpose: o.purpose, ref_id: o.refId, user_id: o.userId || '' },
+        redirectPath: '/dashboard/bot-lab?paid=1',
+      });
+      if (charge) {
+        await supabaseAdmin.from('crypto_payments').update({ provider_id: charge.id, hosted_url: charge.hostedUrl }).eq('id', row.id);
+        row.provider_id = charge.id; row.hosted_url = charge.hostedUrl;
+      }
+    } catch { /* si Coinbase falla, queda como pendiente manual */ }
+  }
+  return row;
+}
+
+// Confirma por id de charge de Coinbase (lo llama el webhook). Idempotente.
+export async function confirmByProviderId(chargeId: string) {
+  const { data } = await supabaseAdmin.from('crypto_payments').select('id,status').eq('provider_id', chargeId).maybeSingle();
+  if (!data || (data as any).status === 'confirmed') return { ok: false };
+  return confirmCryptoPayment((data as any).id);
 }
 
 // El cliente reporta el hash de su transacción (queda pendiente de confirmar).

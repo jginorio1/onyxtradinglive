@@ -12,7 +12,7 @@ export default function BotLab({ canManage = true }: { canManage?: boolean }) {
   const { lang } = useLang(); const es = lang === 'es';
   const [d, setD] = useState<any>(null);
   const [set, setSet] = useState<any>(null);
-  const [sub, setSub] = useState<'marketplace' | 'servicios' | 'pagos' | 'creadores' | 'ajustes'>('marketplace');
+  const [sub, setSub] = useState<'resumen' | 'marketplace' | 'servicios' | 'pagos' | 'creadores' | 'chat' | 'ajustes'>('resumen');
 
   async function load() { try { const r = await fetch('/api/admin/botlab'); const j = await r.json(); setD(j); setSet(j.settings); } catch {} }
   useEffect(() => { load(); }, []);
@@ -36,10 +36,28 @@ export default function BotLab({ canManage = true }: { canManage?: boolean }) {
 
       {/* Sub-pestañas: el producto entero vive en un solo hub */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', borderBottom: '1px solid var(--line)', paddingBottom: 10 }}>
-        {([['marketplace', es ? 'Marketplace' : 'Marketplace'], ['servicios', es ? 'Servicios' : 'Services'], ['pagos', es ? 'Pagos USDT' : 'USDT payments'], ['creadores', es ? 'Creadores' : 'Creators'], ['ajustes', es ? 'Ajustes' : 'Settings']] as [any, string][]).map(([k, lbl]) => (
+        {([['resumen', es ? 'Resumen' : 'Overview'], ['marketplace', es ? 'Marketplace' : 'Marketplace'], ['servicios', es ? 'Servicios' : 'Services'], ['pagos', es ? 'Pagos USDT' : 'USDT payments'], ['creadores', es ? 'Creadores' : 'Creators'], ['chat', es ? 'Chat' : 'Chat'], ['ajustes', es ? 'Ajustes' : 'Settings']] as [any, string][]).map(([k, lbl]) => (
           <button key={k} onClick={() => setSub(k)} style={{ padding: '8px 14px', borderRadius: 10, fontSize: 13.5, fontWeight: 700, cursor: 'pointer', border: '1px solid ' + (sub === k ? 'var(--brand)' : 'var(--line)'), background: sub === k ? 'color-mix(in srgb,var(--brand) 16%,transparent)' : 'transparent', color: sub === k ? 'var(--brand)' : 'var(--tx)' }}>{lbl}</button>
         ))}
       </div>
+
+      {/* Resumen */}
+      {sub === 'resumen' && (
+        <div style={card}>
+          <h3 style={{ marginTop: 0 }}>{es ? 'Centro de mando de Onyx Bot Lab' : 'Onyx Bot Lab command center'}</h3>
+          <p className="muted" style={{ fontSize: 13.5 }}>{es ? 'Desde aquí gestionas todo el producto: aprueba robots, atiende las propuestas high-ticket, confirma pagos en USDT, paga a los creadores y responde el chat con traducción automática.' : 'Manage the whole product here: approve robots, handle high-ticket proposals, confirm USDT payments, pay creators and answer the auto-translated chat.'}</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10, marginTop: 14 }}>
+            {([['servicios', es ? 'Ver propuestas' : 'View proposals', stat.newLeads], ['pagos', es ? 'Pagos USDT' : 'USDT payments', (d.crypto || []).length], ['marketplace', es ? 'Aprobar robots' : 'Approve robots', stat.pendingProducts], ['chat', es ? 'Chat' : 'Chat', 0]] as [any, string, number][]).map(([k, lbl, n]) => (
+              <button key={k} onClick={() => setSub(k)} style={{ textAlign: 'left', padding: 14, borderRadius: 12, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', cursor: 'pointer' }}>
+                <div style={{ fontSize: 22, fontWeight: 800 }}>{n || 0}</div><div className="muted" style={{ fontSize: 12.5 }}>{lbl} →</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Chat traducido */}
+      {sub === 'chat' && <ChatInbox es={es} canManage={canManage} />}
 
       {/* Ajustes */}
       {sub === 'ajustes' && set && (
@@ -52,7 +70,10 @@ export default function BotLab({ canManage = true }: { canManage?: boolean }) {
             <Field label={es ? 'A medida desde ($)' : 'Bespoke from ($)'} value={set.service_automate_from} onChange={(v: any) => setSet({ ...set, service_automate_from: v })} />
             <Field label={es ? 'Instalación ($)' : 'Install ($)'} value={set.service_install_price} onChange={(v: any) => setSet({ ...set, service_install_price: v })} />
             <Field label={es ? 'Elite desde ($)' : 'Elite from ($)'} value={set.service_elite_from} onChange={(v: any) => setSet({ ...set, service_elite_from: v })} />
+            <Field label={es ? 'Correo de avisos (propuestas)' : 'Notify email (leads)'} value={set.notify_email} onChange={(v: any) => setSet({ ...set, notify_email: v })} wide />
+            <Field label={es ? 'Chat de Telegram para avisos' : 'Telegram chat for alerts'} value={set.telegram_chat} onChange={(v: any) => setSet({ ...set, telegram_chat: v })} />
           </div>
+          <p className="muted" style={{ fontSize: 11.5, marginTop: 8 }}>{es ? 'La wallet USDT solo se usa si NO configuras Coinbase Commerce (COINBASE_COMMERCE_API_KEY). Con Coinbase, los pagos se confirman solos.' : 'The USDT wallet is only used if Coinbase Commerce is not configured. With Coinbase, payments confirm automatically.'}</p>
           {canManage && <button onClick={() => act({ action: 'settings', ...set }, es ? 'Ajustes guardados' : 'Settings saved')} style={{ marginTop: 12, padding: '9px 16px', borderRadius: 10, border: 'none', fontWeight: 800, cursor: 'pointer', background: 'var(--brand)', color: '#0b1020' }}>{es ? 'Guardar' : 'Save'}</button>}
         </div>
       )}
@@ -136,4 +157,65 @@ function Field({ label, value, onChange, wide }: any) {
 }
 function SelectField({ label, value, onChange, opts }: any) {
   return <label style={{ display: 'block' }}><span className="muted" style={{ fontSize: 12 }}>{label}</span><select value={value} onChange={(e) => onChange(e.target.value)} style={{ width: '100%', marginTop: 4, padding: '9px 11px', borderRadius: 9, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 13.5 }}>{opts.map((o: string) => <option key={o} value={o}>{o.toUpperCase()}</option>)}</select></label>;
+}
+
+// Bandeja de chat traducido: tú ves y respondes en español; el cliente lo recibe en su idioma.
+function ChatInbox({ es, canManage }: { es: boolean; canManage: boolean }) {
+  const [threads, setThreads] = useState<any[]>([]);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [msgs, setMsgs] = useState<any[]>([]);
+  const [text, setText] = useState('');
+  const [sending, setSending] = useState(false);
+
+  async function loadThreads() { try { const r = await fetch('/api/admin/botlab/chat'); const j = await r.json(); setThreads(j.threads || []); } catch {} }
+  async function openThread(id: string) { setOpenId(id); try { const r = await fetch('/api/admin/botlab/chat?thread=' + id); const j = await r.json(); setMsgs(j.messages || []); loadThreads(); } catch {} }
+  useEffect(() => { loadThreads(); const iv = setInterval(() => { loadThreads(); if (openId) openThread(openId); }, 10000); return () => clearInterval(iv); }, [openId]); // eslint-disable-line
+
+  async function reply() {
+    const t = text.trim(); if (!t || !openId) return; setText(''); setSending(true);
+    try { const r = await fetch('/api/admin/botlab/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ thread: openId, text: t }) }); const j = await r.json(); if (!r.ok) throw new Error(j.error); setMsgs(j.messages || []); } catch (e: any) { toastErr(e?.message); } finally { setSending(false); }
+  }
+
+  const card: any = { background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14 };
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 14, minHeight: 420 }}>
+      {/* Lista de conversaciones */}
+      <div style={{ ...card, padding: 8, overflowY: 'auto', maxHeight: 520 }}>
+        {!threads.length && <div className="muted" style={{ fontSize: 13, padding: 12 }}>{es ? 'Sin conversaciones aún.' : 'No conversations yet.'}</div>}
+        {threads.map((t) => (
+          <button key={t.id} onClick={() => openThread(t.id)} style={{ width: '100%', textAlign: 'left', padding: 10, borderRadius: 10, border: 'none', cursor: 'pointer', marginBottom: 4, background: openId === t.id ? 'color-mix(in srgb,var(--brand) 16%,transparent)' : 'transparent', color: 'var(--tx)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <b style={{ fontSize: 13.5, flex: 1 }}>{t.who}</b>
+              {t.lang && <span className="muted" style={{ fontSize: 10.5, textTransform: 'uppercase' }}>{t.lang}</span>}
+              {t.unread_admin > 0 && <span style={{ background: 'var(--red)', color: '#fff', fontSize: 10, fontWeight: 800, borderRadius: 99, padding: '1px 6px' }}>{t.unread_admin}</span>}
+            </div>
+            <div className="muted" style={{ fontSize: 11.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.preview || '—'}</div>
+          </button>
+        ))}
+      </div>
+      {/* Conversación */}
+      <div style={{ ...card, display: 'flex', flexDirection: 'column' }}>
+        {!openId ? (
+          <div className="muted" style={{ margin: 'auto', fontSize: 13 }}>{es ? 'Elige una conversación.' : 'Pick a conversation.'}</div>
+        ) : (
+          <>
+            <div style={{ flex: 1, overflowY: 'auto', padding: 14, display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 440 }}>
+              {msgs.map((m, i) => (
+                <div key={i} style={{ maxWidth: '80%', alignSelf: m.sender === 'admin' ? 'flex-end' : 'flex-start' }}>
+                  <div style={{ padding: '9px 12px', borderRadius: 12, fontSize: 13.5, background: m.sender === 'admin' ? 'linear-gradient(120deg,var(--brand),var(--brand2,#a06bff))' : 'var(--bg2)', color: m.sender === 'admin' ? '#0b1020' : 'var(--tx)', border: m.sender === 'admin' ? 'none' : '1px solid var(--line)' }}>{m.es}</div>
+                  {m.sender === 'user' && m.lang && m.lang !== 'es' && <div className="muted" style={{ fontSize: 10.5, marginTop: 2 }}>{es ? 'original' : 'original'} ({m.lang}): {m.orig}</div>}
+                </div>
+              ))}
+            </div>
+            {canManage && (
+              <div style={{ display: 'flex', gap: 8, padding: 10, borderTop: '1px solid var(--line)' }}>
+                <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') reply(); }} placeholder={es ? 'Responde en español…' : 'Reply in Spanish…'} style={{ flex: 1, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '9px 12px', color: 'var(--tx)', fontSize: 13.5, outline: 'none' }} />
+                <button onClick={reply} disabled={sending} style={{ padding: '9px 16px', borderRadius: 10, border: 'none', fontWeight: 800, cursor: 'pointer', background: 'var(--brand)', color: '#0b1020' }}>{es ? 'Enviar' : 'Send'}</button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
 }

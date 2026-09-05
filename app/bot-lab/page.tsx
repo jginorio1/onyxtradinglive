@@ -132,9 +132,9 @@ export default async function BotLabLanding() {
       <section style={{ ...wrap, padding: '50px 22px' }} id="construye">
         <div style={secHead}><span style={kicker}>{L.pathsK}</span><h2 style={{ fontSize: 30, fontWeight: 800, margin: '8px 0' }}>{L.pathsH}</h2></div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16 }} className="g3">
-          {[[L.p1t, L.p1d, L.p1p, '🛠️', '/bot-builder'], [L.p2t, L.p2d, L.p2p, '🛒', '#market'], [L.p3t, L.p3d, L.p3p, '✨', '#servicio']].map(([t, d, p, ic, href], i) => (
+          {[[L.p1t, L.p1d, L.p1p, <path key="w" d="M14.7 6.3a4 4 0 0 0-5.2 5.2L3 18l3 3 6.5-6.5a4 4 0 0 0 5.2-5.2l-2.5 2.5-2.8-.4-.4-2.8z" />, '/bot-builder'], [L.p2t, L.p2d, L.p2p, <path key="s" d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0" />, '#market'], [L.p3t, L.p3d, L.p3p, <path key="sp" d="M12 3l1.9 4.6L18.5 9l-4.6 1.9L12 15l-1.9-4.1L5.5 9l4.6-1.4zM19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z" />, '#servicio']].map(([t, d, p, ic, href], i) => (
             <a key={i} href={href as string} style={{ ...card }}>
-              <div style={{ width: 46, height: 46, borderRadius: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, background: 'color-mix(in srgb,var(--brand) 14%,transparent)', border: '1px solid color-mix(in srgb,var(--brand) 30%,transparent)', marginBottom: 12 }}>{ic}</div>
+              <div style={{ width: 46, height: 46, borderRadius: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'color-mix(in srgb,var(--brand) 14%,transparent)', border: '1px solid color-mix(in srgb,var(--brand) 30%,transparent)', marginBottom: 12, color: 'var(--brand)' }}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">{ic}</svg></div>
               <h3 style={{ margin: 0, fontSize: 18 }}>{t}</h3>
               <p className="muted" style={{ fontSize: 13.5, marginTop: 6 }}>{d}</p>
               <div style={{ marginTop: 14, fontWeight: 800, color: i === 2 ? GOLD : 'var(--tx)' }}>{p}</div>

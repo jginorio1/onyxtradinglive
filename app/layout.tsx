@@ -195,7 +195,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             })()}
             {children}
             {!path.startsWith('/admin') && (inBotLab ? <BotLabFooter /> : <SiteFooter />)}
-            {!path.startsWith('/admin') && <SupportWidget loggedIn={loggedIn} cfg={chatCfg} />}
+            {!path.startsWith('/admin') && !inBotLab && <SupportWidget loggedIn={loggedIn} cfg={chatCfg} />}
             {online && online.enabled && (
               <OnlineNow min={online.min} max={online.max} speed={online.speed} color={online.color} hideMobile={online.hideMobile} label={lang === 'es' ? online.label_es : online.label_en} />
             )}

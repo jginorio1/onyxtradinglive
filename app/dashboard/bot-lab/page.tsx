@@ -46,11 +46,12 @@ export default function BotLabDashboard() {
     } catch (e: any) { toastErr(e?.message || 'error'); }
   }
 
-  const NAV: [View, string, string][] = [
-    ['market', '🛒', es ? 'Marketplace' : 'Marketplace'],
-    ['licencias', '🤖', es ? 'Mis robots' : 'My robots'],
-    ['vender', '🏷️', es ? 'Vender' : 'Sell'],
-    ['ganancias', '💰', es ? 'Ganancias' : 'Earnings'],
+  const svg = (d: string) => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={d} /></svg>;
+  const NAV: [View, JSX.Element, string][] = [
+    ['market', svg('M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0'), es ? 'Marketplace' : 'Marketplace'],
+    ['licencias', svg('M12 3l7 9-7 9-7-9z'), es ? 'Mis robots' : 'My robots'],
+    ['vender', svg('M3 3v18h18M7 14l4-4 3 3 5-6'), es ? 'Vender' : 'Sell'],
+    ['ganancias', svg('M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'), es ? 'Ganancias' : 'Earnings'],
   ];
 
   return (
@@ -64,7 +65,7 @@ export default function BotLabDashboard() {
         <nav className="bl-nav" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           {NAV.map(([k, ic, lbl]) => (
             <button key={k} onClick={() => setView(k)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', textAlign: 'left', width: '100%', border: 'none', background: view === k ? 'color-mix(in srgb,var(--brand) 16%,transparent)' : 'transparent', color: view === k ? 'var(--brand)' : 'var(--tx)' }}>
-              <span style={{ fontSize: 17 }}>{ic}</span>{lbl}
+              <span style={{ display: 'inline-flex' }}>{ic}</span>{lbl}
             </button>
           ))}
         </nav>
@@ -96,10 +97,7 @@ export default function BotLabDashboard() {
                     {owned ? (
                       <div style={{ textAlign: 'center', fontSize: 13, fontWeight: 800, color: 'var(--green)', padding: 8, border: '1px solid color-mix(in srgb,var(--green) 35%,transparent)', borderRadius: 9 }}>✓ {es ? 'Ya es tuyo' : 'Owned'}</div>
                     ) : (
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        {p.accepts_card && <button onClick={() => buy(p, 'card')} style={{ flex: 1, padding: 9, borderRadius: 9, border: 'none', fontWeight: 800, fontSize: 12.5, cursor: 'pointer', background: 'var(--brand)', color: '#0b1020' }}>💳 {es ? 'Tarjeta' : 'Card'}</button>}
-                        {p.accepts_crypto && <button onClick={() => buy(p, 'usdt')} style={{ flex: 1, padding: 9, borderRadius: 9, cursor: 'pointer', fontWeight: 800, fontSize: 12.5, border: '1px solid color-mix(in srgb,var(--green) 40%,transparent)', background: 'color-mix(in srgb,var(--green) 10%,transparent)', color: 'var(--green)' }}>₮ USDT</button>}
-                      </div>
+                      <button onClick={() => buy(p, 'usdt')} style={{ width: '100%', padding: 10, borderRadius: 9, cursor: 'pointer', fontWeight: 800, fontSize: 13, border: '1px solid color-mix(in srgb,var(--green) 40%,transparent)', background: 'color-mix(in srgb,var(--green) 12%,transparent)', color: 'var(--green)' }}>₮ {es ? 'Pagar con USDT' : 'Pay with USDT'}</button>
                     )}
                   </div>
                 );
