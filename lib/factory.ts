@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { robustnessRun, compareBacktest, type Trade, type Grid } from '@/lib/robustness';
 import { robustnessAudit } from '@/lib/factoryAI';
+import { computeSpace, sampleCandidates, type GenConfig } from '@/lib/stratgen';
 
 // ============================================================
 // Onyx Bot Factory · Fase 1
@@ -263,6 +264,24 @@ export async function advanceToDemo(botId: string) {
   if (b.bt_divergence > 25) throw new Error('El backtest de MetaTrader no se parece lo suficiente al esperado (divergencia alta). Revisa antes de pasar a demo.');
   await supabaseAdmin.from('factory_bots').update({ demo_ready: true, stage: 'demo' }).eq('id', botId);
   return { ok: true };
+}
+
+// ============================================================
+// Generador de estrategias (Fase 4B)
+// ============================================================
+export async function saveGenRun(o: { userId: string; config: GenConfig; n: number }) {
+  const space = computeSpace(o.config);
+  const n = Math.max(1, Math.min(20000, Math.round(o.n) || 1000));
+  const candidates = sampleCandidates(o.config, n);
+  const { data } = await supabaseAdmin.from('factory_genruns').insert({
+    config: o.config, space_size: space, sampled: candidates.length,
+    candidates: candidates.slice(0, 2000), created_by: o.userId,
+  }).select('id,created_at').single();
+  return { id: data?.id, space, sampled: candidates.length, candidates };
+}
+export async function listGenRuns(limit = 15) {
+  const { data } = await supabaseAdmin.from('factory_genruns').select('id,space_size,sampled,config,created_at').order('created_at', { ascending: false }).limit(limit);
+  return (data || []) as any[];
 }
 
 export async function factoryStats() {

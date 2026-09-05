@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAdmin, logAdmin } from '@/lib/admin';
-import { listBots, listDatasets, factoryStats, saveDataset, createBot, deleteBot, genUniqueName, validateMetrics, runLab, listLabRuns, compareBt, advanceToDemo } from '@/lib/factory';
+import { listBots, listDatasets, factoryStats, saveDataset, createBot, deleteBot, genUniqueName, validateMetrics, runLab, listLabRuns, compareBt, advanceToDemo, saveGenRun, listGenRuns } from '@/lib/factory';
 import { pipelineBoard, runPipelineOnce, linkDemo, stageOverride, approveReal } from '@/lib/pipeline';
 
 export const dynamic = 'force-dynamic';
@@ -75,5 +75,7 @@ export async function POST(req: Request) {
   if (a === 'link_demo') { try { const r = await linkDemo(String(b.botId || ''), Number(b.magic || 0), b.account || undefined); await logAdmin(user.email || '', 'factory_link_demo', String(b.botId || ''), { magic: b.magic }); return NextResponse.json(r); } catch (e: any) { return NextResponse.json({ error: e?.message || 'error' }, { status: 400 }); } }
   if (a === 'stage_override') { try { const r = await stageOverride(String(b.botId || ''), b.dir === 'archive' ? 'archive' : 'advance'); await logAdmin(user.email || '', 'factory_stage_override', String(b.botId || ''), { dir: b.dir }); return NextResponse.json(r); } catch (e: any) { return NextResponse.json({ error: e?.message || 'error' }, { status: 400 }); } }
   if (a === 'approve_real') { try { const r = await approveReal(String(b.botId || '')); await logAdmin(user.email || '', 'factory_approve_real', String(b.botId || ''), {}); return NextResponse.json(r); } catch (e: any) { return NextResponse.json({ error: e?.message || 'error' }, { status: 400 }); } }
+  if (a === 'gen_run') { try { const r = await saveGenRun({ userId: user.id, config: b.config || {}, n: Number(b.n || 1000) }); await logAdmin(user.email || '', 'factory_gen_run', r.id || '', { space: r.space, sampled: r.sampled }); return NextResponse.json(r); } catch (e: any) { return NextResponse.json({ error: e?.message || 'error' }, { status: 400 }); } }
+  if (a === 'gen_list') { const runs = await listGenRuns(); return NextResponse.json({ runs }); }
   return NextResponse.json({ error: 'acción no válida' }, { status: 400 });
 }

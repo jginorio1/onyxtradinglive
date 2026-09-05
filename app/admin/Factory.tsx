@@ -4,6 +4,7 @@ import { toast, toastErr } from '@/lib/toast';
 import { useLang } from '@/lib/lang';
 import FactoryLab from './FactoryLab';
 import FactoryPipeline from './FactoryPipeline';
+import StratGenerator from './StratGenerator';
 
 // ============================================================
 // Onyx Bot Factory · Fase 1 (solo admin)
@@ -276,6 +277,7 @@ function Builder({ es, canManage, post, reload, nextName, datasets }: any) {
   const [datasetId, setDatasetId] = useState('');
   const [anyBroker, setAnyBroker] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [showGen, setShowGen] = useState(false);
   const usable = (datasets as any[]).filter((d) => d.verdict !== 'rechazada');
 
   async function create() {
@@ -289,10 +291,12 @@ function Builder({ es, canManage, post, reload, nextName, datasets }: any) {
 
   return (
     <div style={{ ...card, background: 'linear-gradient(150deg, color-mix(in srgb,var(--brand) 8%,var(--card)), color-mix(in srgb,#a06bff 7%,var(--card)) 70%, var(--card))', borderColor: 'color-mix(in srgb,var(--brand) 30%,var(--line))' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4, flexWrap: 'wrap' }}>
         <span style={{ display: 'inline-flex', width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg,var(--brand),#a06bff)', color: '#0b1020', fontSize: 18 }}>🛠</span>
-        <h3 style={{ margin: 0 }}>{es ? 'Constructor de robots (solo admin)' : 'Robot builder (admin only)'}</h3>
+        <h3 style={{ margin: 0, flex: 1 }}>{es ? 'Constructor de robots (solo admin)' : 'Robot builder (admin only)'}</h3>
+        {canManage && <button onClick={() => setShowGen(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 15px', borderRadius: 10, cursor: 'pointer', fontWeight: 800, fontSize: 13, border: `1px solid color-mix(in srgb,${VIOLET} 45%,transparent)`, background: `color-mix(in srgb,${VIOLET} 14%,transparent)`, color: VIOLET }}>🧬 {es ? 'Generador de estrategias' : 'Strategy generator'}</button>}
       </div>
+      {showGen && <StratGenerator es={es} post={post} onClose={() => setShowGen(false)} />}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg2)', borderRadius: 12, padding: '12px 14px', marginBottom: 14, border: `1px solid color-mix(in srgb,${VIOLET} 30%,var(--line))` }}>
         <div style={{ flex: 1 }}>
           <div className="muted" style={{ fontSize: 12 }}>{es ? 'Nombre + magic automáticos (no editables, nunca se repiten)' : 'Automatic name + magic (locked, never repeat)'}</div>
