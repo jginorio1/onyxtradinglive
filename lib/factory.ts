@@ -1,4 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { robustnessRun, compareBacktest, type Trade, type Grid } from '@/lib/robustness';
+import { robustnessAudit } from '@/lib/factoryAI';
 
 // ============================================================
 // Onyx Bot Factory · Fase 1
@@ -184,6 +186,65 @@ export async function listBots(limit = 100) {
 
 export async function deleteBot(id: string) {
   await supabaseAdmin.from('factory_bots').delete().eq('id', id);
+  return { ok: true };
+}
+
+// ============================================================
+// Laboratorio de robustez (Fase 2)
+// ============================================================
+
+// Ejecuta el laboratorio sobre las operaciones de un backtest, guarda la corrida
+// y refleja el resultado en el robot. Llama a Claude para la interpretación.
+export async function runLab(o: { userId: string; botId: string; trades: Trade[]; grid?: Grid; paramCount?: number; lang?: 'es' | 'en' }) {
+  if (!o.trades || o.trades.length < 20) throw new Error('Sube al menos 20 operaciones cerradas del backtest.');
+  const { data: bot } = await supabaseAdmin.from('factory_bots').select('*').eq('id', o.botId).maybeSingle();
+  if (!bot) throw new Error('Robot no encontrado.');
+  const r = robustnessRun(o.trades, { grid: o.grid, paramCount: o.paramCount });
+  let ai: { audit: string; mutations: string[] } | null = null;
+  try { ai = await robustnessAudit(bot, r, o.lang || 'es'); } catch { ai = null; }
+
+  const { data: run, error } = await supabaseAdmin.from('factory_labruns').insert({
+    bot_id: o.botId, trades: r.trades, net: r.net, pf: r.pf, maxdd: r.maxdd,
+    is_pf: r.isPf, oos_pf: r.oosPf, oos_retention: r.retention, wfo_consistency: r.wfoConsistency,
+    mc_loss_prob: r.mc.lossProb, mc_median_dd: r.mc.medianDD, mc_p95_dd: r.mc.p95DD,
+    sensitivity: r.sensitivity, param_count: r.paramCount, robustness_score: r.score, verdict: r.verdict,
+    flags: r.flags, charts: r.charts, expected: r.expected, ai_audit: ai?.audit || null, mutations: ai?.mutations || [],
+    created_by: o.userId,
+  }).select('*').single();
+  if (error) throw new Error(error.message);
+
+  await supabaseAdmin.from('factory_bots').update({
+    robustness_score: r.score, robustness_verdict: r.verdict, stage: 'lab', lab_at: new Date().toISOString(),
+  }).eq('id', o.botId);
+
+  return { run, robustness: r, ai };
+}
+
+export async function listLabRuns(botId: string, limit = 10) {
+  const { data } = await supabaseAdmin.from('factory_labruns').select('*').eq('bot_id', botId).order('created_at', { ascending: false }).limit(limit);
+  return (data || []) as any[];
+}
+
+// Compara los KPIs del laboratorio con el backtest REAL de MetaTrader.
+export async function compareBt(o: { runId: string; botId: string; mt: any }) {
+  const { data: run } = await supabaseAdmin.from('factory_labruns').select('id,expected').eq('id', o.runId).maybeSingle();
+  if (!run) throw new Error('Corrida no encontrada.');
+  const cmp = compareBacktest((run as any).expected || {}, o.mt || {});
+  await supabaseAdmin.from('factory_labruns').update({ mt_backtest: o.mt, divergence: cmp.divergence }).eq('id', o.runId);
+  await supabaseAdmin.from('factory_bots').update({ bt_divergence: cmp.divergence }).eq('id', o.botId);
+  return cmp;
+}
+
+// Compuerta: pasa el robot a demo si es robusto/moderado y el backtest de
+// MetaTrader se parece al esperado (divergencia baja).
+export async function advanceToDemo(botId: string) {
+  const { data: bot } = await supabaseAdmin.from('factory_bots').select('robustness_verdict,bt_divergence').eq('id', botId).maybeSingle();
+  if (!bot) throw new Error('Robot no encontrado.');
+  const b = bot as any;
+  if (b.robustness_verdict === 'fragil' || b.robustness_verdict == null) throw new Error('El robot debe pasar el laboratorio (robusto o moderado) antes de ir a demo.');
+  if (b.bt_divergence == null) throw new Error('Primero compara con el backtest de MetaTrader.');
+  if (b.bt_divergence > 25) throw new Error('El backtest de MetaTrader no se parece lo suficiente al esperado (divergencia alta). Revisa antes de pasar a demo.');
+  await supabaseAdmin.from('factory_bots').update({ demo_ready: true, stage: 'demo' }).eq('id', botId);
   return { ok: true };
 }
 

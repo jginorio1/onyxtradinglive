@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAdmin, logAdmin } from '@/lib/admin';
-import { listBots, listDatasets, factoryStats, saveDataset, createBot, deleteBot, genUniqueName, validateMetrics } from '@/lib/factory';
+import { listBots, listDatasets, factoryStats, saveDataset, createBot, deleteBot, genUniqueName, validateMetrics, runLab, listLabRuns, compareBt, advanceToDemo } from '@/lib/factory';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -49,6 +49,25 @@ export async function POST(req: Request) {
     await deleteBot(String(b.id || ''));
     await logAdmin(user.email || '', 'factory_bot_delete', String(b.id || ''), {});
     return NextResponse.json({ ok: true });
+  }
+  if (a === 'lab_runs') {
+    const runs = await listLabRuns(String(b.botId || ''));
+    return NextResponse.json({ runs });
+  }
+  if (a === 'lab_run') {
+    try {
+      const r = await runLab({ userId: user.id, botId: String(b.botId || ''), trades: b.trades || [], grid: b.grid, paramCount: b.paramCount, lang: b.lang === 'en' ? 'en' : 'es' });
+      await logAdmin(user.email || '', 'factory_lab_run', String(b.botId || ''), { score: r.robustness.score, verdict: r.robustness.verdict });
+      return NextResponse.json(r);
+    } catch (e: any) { return NextResponse.json({ error: e?.message || 'error' }, { status: 400 }); }
+  }
+  if (a === 'lab_compare') {
+    try { const cmp = await compareBt({ runId: String(b.runId || ''), botId: String(b.botId || ''), mt: b.mt || {} }); return NextResponse.json(cmp); }
+    catch (e: any) { return NextResponse.json({ error: e?.message || 'error' }, { status: 400 }); }
+  }
+  if (a === 'lab_advance') {
+    try { const r = await advanceToDemo(String(b.botId || '')); await logAdmin(user.email || '', 'factory_advance_demo', String(b.botId || ''), {}); return NextResponse.json(r); }
+    catch (e: any) { return NextResponse.json({ error: e?.message || 'error' }, { status: 400 }); }
   }
   return NextResponse.json({ error: 'acción no válida' }, { status: 400 });
 }

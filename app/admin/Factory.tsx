@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { toast, toastErr } from '@/lib/toast';
 import { useLang } from '@/lib/lang';
+import FactoryLab from './FactoryLab';
 
 // ============================================================
 // Onyx Bot Factory · Fase 1 (solo admin)
@@ -143,7 +144,7 @@ function Ring({ score, color, size = 120, label }: any) {
 export default function Factory({ canManage = true }: { canManage?: boolean }) {
   const { lang } = useLang(); const es = lang !== 'en';
   const [d, setD] = useState<any>(null);
-  const [sub, setSub] = useState<'datos' | 'constructor' | 'robots'>('datos');
+  const [sub, setSub] = useState<'datos' | 'constructor' | 'laboratorio' | 'robots'>('datos');
 
   async function load() { try { const r = await fetch('/api/admin/factory'); const j = await r.json(); setD(j); } catch {} }
   useEffect(() => { load(); }, []);
@@ -164,7 +165,7 @@ export default function Factory({ canManage = true }: { canManage?: boolean }) {
       </div>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        {([['datos', es ? 'Puerta 0 · Datos' : 'Gate 0 · Data'], ['constructor', es ? 'Constructor' : 'Builder'], ['robots', es ? 'Robots' : 'Robots']] as [any, string][]).map(([k, lbl]) => {
+        {([['datos', es ? 'Puerta 0 · Datos' : 'Gate 0 · Data'], ['constructor', es ? 'Constructor' : 'Builder'], ['laboratorio', es ? 'Laboratorio' : 'Lab'], ['robots', es ? 'Robots' : 'Robots']] as [any, string][]).map(([k, lbl]) => {
           const on = sub === k;
           return <button key={k} onClick={() => setSub(k)} style={{ padding: '9px 15px', borderRadius: 12, fontSize: 13.5, fontWeight: 700, cursor: 'pointer', border: '1px solid ' + (on ? 'var(--brand)' : 'var(--line)'), background: on ? 'color-mix(in srgb,var(--brand) 18%,transparent)' : 'var(--card)', color: on ? 'var(--brand)' : 'var(--tx)' }}>{lbl}</button>;
         })}
@@ -172,6 +173,7 @@ export default function Factory({ canManage = true }: { canManage?: boolean }) {
 
       {sub === 'datos' && <DataGate es={es} canManage={canManage} post={post} reload={load} datasets={d.datasets || []} />}
       {sub === 'constructor' && <Builder es={es} canManage={canManage} post={post} reload={load} nextName={d.nextName} datasets={d.datasets || []} />}
+      {sub === 'laboratorio' && <FactoryLab es={es} canManage={canManage} post={post} reload={load} bots={d.bots || []} />}
       {sub === 'robots' && <BotList es={es} canManage={canManage} post={post} reload={load} bots={d.bots || []} />}
     </div>
   );
@@ -322,7 +324,9 @@ function BotList({ es, canManage, post, reload, bots }: any) {
               <b style={{ fontSize: 15, fontFamily: 'monospace', color: VIOLET }}>{b.name}</b>
               <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>{String(b.platform || '').toUpperCase()} · {b.symbol || '—'} · {b.timeframe || '—'} · {b.strategy?.family || '—'} · {es ? 'etapa' : 'stage'} {b.stage}</div>
             </div>
-            <span style={{ fontSize: 11, fontWeight: 800, padding: '3px 10px', borderRadius: 99, background: 'color-mix(in srgb,var(--brand) 14%,transparent)', color: 'var(--brand)' }}>{es ? 'génesis' : 'genesis'}</span>
+            {b.robustness_verdict && <span style={{ fontSize: 11, fontWeight: 800, padding: '3px 10px', borderRadius: 99, background: `color-mix(in srgb,${b.robustness_verdict === 'robusto' ? GREEN : b.robustness_verdict === 'moderado' ? AMBER : RED} 16%,transparent)`, color: b.robustness_verdict === 'robusto' ? GREEN : b.robustness_verdict === 'moderado' ? AMBER : RED }}>{b.robustness_score} · {b.robustness_verdict}</span>}
+            {b.demo_ready && <span style={{ fontSize: 11, fontWeight: 800, padding: '3px 10px', borderRadius: 99, background: `color-mix(in srgb,${GREEN} 16%,transparent)`, color: GREEN }}>{es ? '🚀 en demo' : '🚀 in demo'}</span>}
+            <span style={{ fontSize: 11, fontWeight: 800, padding: '3px 10px', borderRadius: 99, background: 'color-mix(in srgb,var(--brand) 14%,transparent)', color: 'var(--brand)' }}>{b.stage}</span>
             {canManage && <button onClick={() => del(b.id)} style={btn(RED)}>{es ? 'Borrar' : 'Delete'}</button>}
           </div>
         ))}
