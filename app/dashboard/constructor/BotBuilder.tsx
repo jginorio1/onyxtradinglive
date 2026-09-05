@@ -883,6 +883,8 @@ export default function BotBuilder() {
                   <a className="bbx-btn primary" href={`/api/bots/build?code=${doneModal.id}`} style={{ fontWeight: 700 }}><OnyxIcon emoji="⬇️" size={13} glow={false} /> {L('Descargar robot', 'Download robot')} ({ext})</a>
                   {isMT && <a className="bbx-btn" href={`/api/bots/build?download=${doneModal.id}`}>{L('Config', 'Config')} (.set) ↓</a>}
                   <button className="bbx-btn" onClick={openGuide}><OnyxIcon emoji="📖" size={13} /> {L('Guía PDF', 'PDF guide')}</button>
+                  {/* Puente al marketplace: abre "Vender" en Bot Lab ya prellenado con este robot. */}
+                  <a className="bbx-btn" href={`/dashboard/bot-lab?new=1&name=${encodeURIComponent(doneModal.name)}&platform=${encodeURIComponent(doneModal.platform || 'mt5')}`} style={{ fontWeight: 700 }}><OnyxIcon emoji="💰" size={13} glow={false} /> {L('Vender este robot', 'Sell this robot')}</a>
                 </div>
 
                 {/* Qué sigue: checklist con enlace directo a Mis robots */}

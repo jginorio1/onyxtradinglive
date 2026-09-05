@@ -82,16 +82,13 @@ export default function BotLab({ canManage = true }: { canManage?: boolean }) {
       {sub === 'marketplace' && <div style={card}>
         <h3 style={{ marginTop: 0 }}>{es ? 'Robots por revisar' : 'Robots to review'} {pend.length ? `(${pend.length})` : ''}</h3>
         {!pend.length && <div className="muted" style={{ fontSize: 13 }}>{es ? 'Nada pendiente.' : 'Nothing pending.'}</div>}
-        <div style={{ display: 'grid', gap: 8 }}>
-          {pend.map((p: any) => (
-            <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', borderTop: '1px solid var(--line)', paddingTop: 8 }}>
-              <div style={{ flex: 1, minWidth: 160 }}><b>{p.name}</b> <span className="muted" style={{ fontSize: 12 }}>· {p.seller_name} · {money(p.price_cents)}</span><div className="muted" style={{ fontSize: 12 }}>{p.tagline}</div></div>
-              {canManage && <>
-                <button onClick={() => act({ action: 'product_status', id: p.id, status: 'active', verified: true }, es ? 'Aprobado' : 'Approved')} style={btn('var(--green)')}>{es ? 'Aprobar' : 'Approve'}</button>
-                <button onClick={() => act({ action: 'product_status', id: p.id, status: 'rejected' })} style={btn('var(--red)')}>{es ? 'Rechazar' : 'Reject'}</button>
-              </>}
-            </div>
-          ))}
+        {pend.length > 0 && (
+          <div style={{ fontSize: 12, color: 'var(--mut)', background: 'var(--bg2)', borderRadius: 10, padding: 10, margin: '4px 0 12px' }}>
+            {es ? 'Aprueba solo si: la estrategia está descrita, hay prueba de rendimiento (Myfxbook/backtest), es honesto (sin “ganancias garantizadas”), muestra riesgo/drawdown, y no es copia ni spam.' : 'Approve only if: the strategy is described, there is performance proof (Myfxbook/backtest), it is honest (no “guaranteed profits”), shows risk/drawdown, and it is not a copy or spam.'}
+          </div>
+        )}
+        <div style={{ display: 'grid', gap: 10 }}>
+          {pend.map((p: any) => <ReviewCard key={p.id} p={p} es={es} canManage={canManage} act={act} />)}
         </div>
       </div>}
 
@@ -152,6 +149,38 @@ export default function BotLab({ canManage = true }: { canManage?: boolean }) {
 }
 
 function btn(c: string): any { return { padding: '7px 12px', borderRadius: 8, cursor: 'pointer', fontWeight: 800, fontSize: 12.5, border: `1px solid color-mix(in srgb,${c} 40%,transparent)`, background: `color-mix(in srgb,${c} 10%,transparent)`, color: c }; }
+
+// Tarjeta de revisión de un robot: TODO lo que necesitas para decidir + acciones.
+function ReviewCard({ p, es, canManage, act }: any) {
+  const [reason, setReason] = useState('');
+  const money2 = (c: number) => '$' + ((c || 0) / 100).toLocaleString('en-US');
+  const meta = [p.platform && p.platform !== 'any' ? String(p.platform).toUpperCase() : null, p.kind === 'subscription' ? (es ? 'renta ' + (p.interval === 'year' ? 'anual' : 'mensual') : 'rental') : (es ? 'pago único' : 'one-time'), p.category].filter(Boolean).join(' · ');
+  return (
+    <div style={{ border: '1px solid var(--line)', borderRadius: 12, padding: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+        <b style={{ fontSize: 15 }}>{p.name}</b>
+        <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--gold)' }}>{money2(p.price_cents)}</span>
+        <span className="muted" style={{ fontSize: 12 }}>· {es ? 'por' : 'by'} {p.seller_name}</span>
+      </div>
+      {p.tagline && <div style={{ fontSize: 13, marginTop: 4 }}>{p.tagline}</div>}
+      <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{meta}</div>
+      {p.description && <div style={{ fontSize: 13, marginTop: 8, whiteSpace: 'pre-wrap', color: 'var(--tx)' }}>{p.description}</div>}
+      <div style={{ display: 'flex', gap: 14, marginTop: 10, flexWrap: 'wrap', fontSize: 12.5 }}>
+        {p.proof_url
+          ? <a href={p.proof_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand)', fontWeight: 700 }}>🔗 {es ? 'Ver prueba de rendimiento' : 'View performance proof'}</a>
+          : <span style={{ color: 'var(--amber)' }}>⚠ {es ? 'Sin prueba de rendimiento' : 'No performance proof'}</span>}
+      </div>
+      {canManage && (
+        <div style={{ marginTop: 12, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <button onClick={() => act({ action: 'product_status', id: p.id, status: 'active', verified: true }, es ? 'Aprobado y verificado' : 'Approved & verified')} style={btn('var(--green)')}>{es ? 'Aprobar ✓ verificado' : 'Approve ✓ verified'}</button>
+          <button onClick={() => act({ action: 'product_status', id: p.id, status: 'active', verified: false }, es ? 'Publicado (sin verificar)' : 'Published (unverified)')} style={btn('var(--brand)')}>{es ? 'Aprobar sin verificar' : 'Approve unverified'}</button>
+          <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder={es ? 'Motivo de rechazo (opcional)' : 'Reject reason (optional)'} style={{ flex: 1, minWidth: 160, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 12.5 }} />
+          <button onClick={() => act({ action: 'product_status', id: p.id, status: 'rejected', review_note: reason })} style={btn('var(--red)')}>{es ? 'Rechazar' : 'Reject'}</button>
+        </div>
+      )}
+    </div>
+  );
+}
 function Field({ label, value, onChange, wide }: any) {
   return <label style={{ display: 'block', gridColumn: wide ? 'span 2' : 'auto' }}><span className="muted" style={{ fontSize: 12 }}>{label}</span><input value={value ?? ''} onChange={(e) => onChange(e.target.value)} style={{ width: '100%', marginTop: 4, padding: '9px 11px', borderRadius: 9, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 13.5 }} /></label>;
 }

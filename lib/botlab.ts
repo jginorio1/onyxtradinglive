@@ -88,6 +88,7 @@ export async function saveProduct(sellerId: string, b: any, isAdmin = false) {
     pair: b.pair ? String(b.pair).slice(0, 20) : null,
     category: b.category ? String(b.category).slice(0, 24) : null,
     cover_url: b.cover_url ? String(b.cover_url).slice(0, 400) : null,
+    proof_url: b.proof_url ? String(b.proof_url).slice(0, 400) : null,
     bot_id: b.bot_id || null,
     accepts_card: b.accepts_card !== false,
     accepts_crypto: b.accepts_crypto !== false,
@@ -128,12 +129,13 @@ export async function adminListProducts(status?: string) {
   const names = await sellerNames(rows.map((r) => r.seller_id));
   return rows.map((r) => ({ ...r, seller_name: r.is_official ? 'Onyx oficial' : (names[r.seller_id] || 'Trader') }));
 }
-export async function setProductStatus(id: string, patch: { status?: string; verified?: boolean; is_official?: boolean; position?: number }) {
+export async function setProductStatus(id: string, patch: { status?: string; verified?: boolean; is_official?: boolean; position?: number; review_note?: string }) {
   const up: any = {};
   if (patch.status) up.status = patch.status;
   if (patch.verified != null) up.verified = !!patch.verified;
   if (patch.is_official != null) up.is_official = !!patch.is_official;
   if (patch.position != null) up.position = Number(patch.position) || 0;
+  if (patch.review_note != null) up.review_note = String(patch.review_note).slice(0, 400);
   await supabaseAdmin.from('bot_products').update(up).eq('id', id);
 }
 

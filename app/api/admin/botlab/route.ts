@@ -32,7 +32,7 @@ export async function POST(req: Request) {
   const b = await req.json().catch(() => ({}));
   const a = b.action;
 
-  if (a === 'product_status') { await setProductStatus(String(b.id), { status: b.status, verified: b.verified, is_official: b.is_official, position: b.position }); await logAdmin(user.email || '', 'botlab_product_status', String(b.id), { status: b.status }); return NextResponse.json({ ok: true }); }
+  if (a === 'product_status') { await setProductStatus(String(b.id), { status: b.status, verified: b.verified, is_official: b.is_official, position: b.position, review_note: b.review_note }); await logAdmin(user.email || '', 'botlab_product_status', String(b.id), { status: b.status }); return NextResponse.json({ ok: true }); }
   if (a === 'product_save') { const r = await saveProduct('', b.product || {}, true); return NextResponse.json({ ok: true, id: r?.id }); }
   if (a === 'product_delete') { await deleteProduct('', String(b.id), true); return NextResponse.json({ ok: true }); }
   if (a === 'lead_status') { await setServiceStatus(String(b.id), String(b.status)); return NextResponse.json({ ok: true }); }

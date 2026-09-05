@@ -27,6 +27,17 @@ export default function BotLabDashboard() {
     try {
       const sp = new URLSearchParams(window.location.search);
       const t = sp.get('tab'); if (t === 'vender' || t === 'licencias' || t === 'market' || t === 'ganancias') setView(t as View);
+      // Viene del constructor con "Vender este robot": abre el formulario ya prellenado.
+      if (sp.get('new') === '1') {
+        setView('vender');
+        setEditing({
+          name: sp.get('name') || '', platform: sp.get('platform') || 'mt5',
+          tagline: sp.get('tagline') || '', description: sp.get('desc') || '',
+          kind: 'subscription', interval: 'month', price: 29, category: sp.get('category') || '',
+          accepts_card: true, accepts_crypto: true,
+        });
+        window.history.replaceState({}, '', '/dashboard/bot-lab?tab=vender');
+      }
       const bought = sp.get('bought');
       if (bought) {
         fetch('/api/botlab/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: bought }) })
@@ -221,7 +232,7 @@ function ProductModal({ es, product, onClose, onSaved }: any) {
     if (!f.name?.trim()) { toastErr(es ? 'Ponle nombre a tu robot.' : 'Name your robot.'); return; }
     setSaving(true);
     try {
-      const body = { action: 'save', product: { id: product?.id, name: f.name, tagline: f.tagline, description: f.description, kind: f.kind, interval: f.interval, price_cents: Math.round(Number(f.price) * 100), platform: f.platform, category: f.category, accepts_card: f.accepts_card, accepts_crypto: f.accepts_crypto } };
+      const body = { action: 'save', product: { id: product?.id, name: f.name, tagline: f.tagline, description: f.description, kind: f.kind, interval: f.interval, price_cents: Math.round(Number(f.price) * 100), platform: f.platform, category: f.category, proof_url: f.proof_url, accepts_card: f.accepts_card, accepts_crypto: f.accepts_crypto } };
       const r = await fetch('/api/botlab/sell', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const j = await r.json(); if (!r.ok) throw new Error(j.error);
       toast(es ? 'Enviado a revisión.' : 'Sent for review.'); onSaved();
@@ -243,6 +254,8 @@ function ProductModal({ es, product, onClose, onSaved }: any) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span className="muted" style={{ fontSize: 14 }}>$</span><input type="number" style={inp} value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} /></div>
             <input style={inp} placeholder={es ? 'Categoría (scalping…)' : 'Category (scalping…)'} value={f.category || ''} onChange={(e) => setF({ ...f, category: e.target.value })} />
           </div>
+          <input style={inp} placeholder={es ? 'Prueba de rendimiento (Myfxbook, backtest, statement…)' : 'Performance proof (Myfxbook, backtest, statement…)'} value={f.proof_url || ''} onChange={(e) => setF({ ...f, proof_url: e.target.value })} />
+          <span className="muted" style={{ fontSize: 11.5, marginTop: -4 }}>{es ? 'Un enlace a tu track record real ayuda a que aprobemos tu robot más rápido.' : 'A link to your real track record helps us approve your robot faster.'}</span>
           <div style={{ display: 'flex', gap: 16, fontSize: 13 }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer' }}><input type="checkbox" checked={f.accepts_card !== false} onChange={(e) => setF({ ...f, accepts_card: e.target.checked })} /> {es ? 'Acepta tarjeta' : 'Card'}</label>
             <label style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer' }}><input type="checkbox" checked={f.accepts_crypto !== false} onChange={(e) => setF({ ...f, accepts_crypto: e.target.checked })} /> {es ? 'Acepta USDT' : 'USDT'}</label>
