@@ -92,11 +92,11 @@ export default function BotLab({ canManage = true }: { canManage?: boolean }) {
 
       {sub === 'resumen' && <Overview es={es} d={d} stat={stat} crypto={crypto} pend={pend} leads={leads} pendingPayouts={pendingPayouts} go={setSub} />}
       {sub === 'marketplace' && <Marketplace es={es} d={d} canManage={canManage} act={act} />}
-      {sub === 'servicios' && <Leads es={es} leads={leads} stat={stat} canManage={canManage} act={act} />}
+      {sub === 'servicios' && <Leads es={es} d={d} leads={leads} canManage={canManage} act={act} />}
       {sub === 'pagos' && <CryptoPayments es={es} crypto={crypto} canManage={canManage} act={act} />}
       {sub === 'creadores' && <Payouts es={es} payouts={payouts} canManage={canManage} act={act} />}
       {sub === 'chat' && <ChatInbox es={es} canManage={canManage} />}
-      {sub === 'ajustes' && set && <Settings es={es} set={set} setSet={setSet} canManage={canManage} act={act} />}
+      {sub === 'ajustes' && set && <Settings es={es} set={set} setSet={setSet} canManage={canManage} act={act} mail={d.mail} />}
     </div>
   );
 }
@@ -262,59 +262,222 @@ const LEAD_STATES: [string, string, string, string][] = [
 ];
 function leadColor(s: string) { return (LEAD_STATES.find((x) => x[0] === s) || LEAD_STATES[0])[3]; }
 
-function Leads({ es, leads, stat, canManage, act }: any) {
+async function postBL(body: any) {
+  const r = await fetch('/api/admin/botlab', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const j = await r.json(); if (!r.ok) throw new Error(j.error || 'error'); return j;
+}
+
+function Leads({ es, d, leads, canManage, act }: any) {
   const [q, setQ] = useState('');
   const [f, setF] = useState<string>('all');
+  const [sel, setSel] = useState<string | null>(null);
   const filtered = useMemo(() => {
     const t = q.trim().toLowerCase();
     return (leads as any[]).filter((l) => (f === 'all' || l.status === f) && (!t || [l.name, l.email, l.service, l.platform, l.message].some((x) => String(x || '').toLowerCase().includes(t))));
   }, [leads, q, f]);
   const counts: Record<string, number> = { all: leads.length };
   LEAD_STATES.forEach(([k]) => { counts[k] = (leads as any[]).filter((l) => l.status === k).length; });
+  const current = (leads as any[]).find((l) => l.id === sel) || null;
+  const mail = d.mail || {};
 
   return (
-    <div style={card}>
-      <SectionHead icon="inbox" color={CYAN} title={es ? 'Servicios y leads' : 'Services & leads'} desc={es ? 'Propuestas high-ticket: instalación, automatización a medida, Elite.' : 'High-ticket proposals: install, bespoke automation, Elite.'}
-        right={<input value={q} onChange={(e) => setQ(e.target.value)} placeholder={es ? 'Buscar…' : 'Search…'} style={{ padding: '8px 12px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 13, minWidth: 150 }} />} />
+    <div style={{ display: 'grid', gap: 16 }}>
+      <div style={card}>
+        <SectionHead icon="inbox" color={CYAN} title={es ? 'Servicios y leads' : 'Services & leads'} desc={es ? 'Propuestas high-ticket: instalación, a medida, Elite. Escríbeles por correo desde aquí.' : 'High-ticket proposals: install, bespoke, Elite. Email them right here.'} />
 
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
-        {(['all', ...LEAD_STATES.map((s) => s[0])]).map((k) => {
-          const on = f === k;
-          const c = k === 'all' ? 'var(--brand)' : leadColor(k);
-          const lbl = k === 'all' ? (es ? 'Todos' : 'All') : (() => { const s = LEAD_STATES.find((x) => x[0] === k)!; return es ? s[1] : s[2]; })();
-          return <button key={k} onClick={() => setF(k)} style={{ padding: '6px 12px', borderRadius: 99, fontSize: 12.5, fontWeight: 800, cursor: 'pointer', border: `1px solid ${on ? c : 'var(--line)'}`, background: on ? `color-mix(in srgb,${c} 16%,transparent)` : 'transparent', color: on ? c : 'var(--tx)' }}>{lbl} · {counts[k] || 0}</button>;
-        })}
+        {mail.checked && mail.verified === false && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: 'var(--amber)', background: 'color-mix(in srgb,var(--amber) 10%,transparent)', border: '1px solid color-mix(in srgb,var(--amber) 35%,transparent)', borderRadius: 10, padding: '9px 11px', marginBottom: 12 }}>
+            <Ic n="bell" s={16} c="var(--amber)" /> {es ? `El dominio ${mail.domain} no está verificado en Resend: los correos podrían no salir o caer en spam.` : `Domain ${mail.domain} is not verified in Resend: emails may not send or may land in spam.`}
+          </div>
+        )}
+
+        {/* Toolbar en su propia fila: buscador + filtros (ya no se encima con el título) */}
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, border: '1px solid var(--line)', borderRadius: 10, background: 'var(--bg2)', padding: '0 10px', height: 34, flex: '1 1 200px', maxWidth: 280 }}>
+            <Ic n="inbox" s={15} c="var(--mut)" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={es ? 'Buscar lead…' : 'Search lead…'} style={{ flex: 1, border: 'none', background: 'transparent', color: 'var(--tx)', fontSize: 13, outline: 'none' }} />
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {(['all', ...LEAD_STATES.map((s) => s[0])]).map((k) => {
+              const on = f === k;
+              const c = k === 'all' ? 'var(--brand)' : leadColor(k);
+              const lbl = k === 'all' ? (es ? 'Todos' : 'All') : (() => { const s = LEAD_STATES.find((x) => x[0] === k)!; return es ? s[1] : s[2]; })();
+              return <button key={k} onClick={() => setF(k)} style={{ padding: '6px 11px', borderRadius: 99, fontSize: 12, fontWeight: 800, cursor: 'pointer', border: `1px solid ${on ? c : 'var(--line)'}`, background: on ? `color-mix(in srgb,${c} 16%,transparent)` : 'transparent', color: on ? c : 'var(--tx)' }}>{lbl} · {counts[k] || 0}</button>;
+            })}
+          </div>
+        </div>
+
+        {/* Master-detail: lista a la izquierda, ficha del lead a la derecha */}
+        <div style={{ display: 'grid', gridTemplateColumns: '230px minmax(0,1fr)', gap: 14 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 560, overflowY: 'auto' }}>
+            {!filtered.length && <div className="muted" style={{ fontSize: 13, padding: '8px 2px' }}>{es ? 'Sin resultados.' : 'No results.'}</div>}
+            {filtered.slice(0, 100).map((l: any) => <LeadRow key={l.id} l={l} es={es} active={l.id === sel} onClick={() => setSel(l.id)} />)}
+          </div>
+          {current
+            ? <LeadDetail key={current.id} l={current} es={es} canManage={canManage} act={act} />
+            : <div style={{ border: '1px dashed var(--line)', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 260, color: 'var(--mut)', fontSize: 13.5 }}>{es ? 'Elige un lead para ver su ficha y escribirle.' : 'Pick a lead to open it and write.'}</div>}
+        </div>
       </div>
 
-      {!filtered.length && <div className="muted" style={{ fontSize: 13, padding: '8px 0' }}>{es ? 'Sin resultados.' : 'No results.'}</div>}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(300px,1fr))', gap: 12 }}>
-        {filtered.slice(0, 60).map((l: any) => <LeadCard key={l.id} l={l} es={es} canManage={canManage} act={act} />)}
-      </div>
+      <Broadcast es={es} audience={d.audience || {}} mail={mail} canManage={canManage} />
     </div>
   );
 }
 
-function LeadCard({ l, es, canManage, act }: any) {
+// Fila compacta de lead en la lista.
+function LeadRow({ l, es, active, onClick }: any) {
   const c = leadColor(l.status);
   const when = l.created_at ? new Date(l.created_at).toLocaleDateString(es ? 'es' : 'en', { day: '2-digit', month: 'short' }) : '';
-  const stLabel = (() => { const s = LEAD_STATES.find((x) => x[0] === l.status) || LEAD_STATES[0]; return es ? s[1] : s[2]; })();
   return (
-    <div style={{ position: 'relative', overflow: 'hidden', padding: 15, borderRadius: 14, border: `1px solid color-mix(in srgb,${c} 30%,var(--line))`, background: `linear-gradient(150deg,color-mix(in srgb,${c} 8%,var(--bg2)),var(--bg2))` }}>
-      <div style={{ position: 'absolute', top: 0, left: 0, width: 4, height: '100%', background: c }} />
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-        <span style={{ fontSize: 10.5, fontWeight: 800, padding: '3px 9px', borderRadius: 99, background: 'color-mix(in srgb,var(--brand) 15%,transparent)', color: 'var(--brand)', textTransform: 'uppercase', letterSpacing: '.03em' }}>{l.service || (es ? 'servicio' : 'service')}</span>
-        <span style={{ marginLeft: 'auto', fontSize: 10.5, fontWeight: 800, padding: '3px 9px', borderRadius: 99, background: `color-mix(in srgb,${c} 18%,transparent)`, color: c }}>{stLabel}</span>
+    <button onClick={onClick} style={{ textAlign: 'left', cursor: 'pointer', padding: '10px 11px', borderRadius: 11, border: `1px solid ${active ? 'var(--brand)' : 'var(--line)'}`, background: active ? 'color-mix(in srgb,var(--brand) 12%,transparent)' : 'var(--bg2)', color: 'var(--tx)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+        <span style={{ width: 8, height: 8, borderRadius: '50%', background: c, flex: 'none' }} />
+        <b style={{ fontSize: 13.5, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{l.name || l.email || 'Lead'}</b>
+        <span className="muted" style={{ fontSize: 10.5 }}>{when}</span>
       </div>
-      <div style={{ fontSize: 15, fontWeight: 800 }}>{l.name || l.email || (es ? 'Lead' : 'Lead')}</div>
-      <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
-        {[l.email, l.platform, l.budget && `💰 ${l.budget}`, when].filter(Boolean).join(' · ')}
+      <div className="muted" style={{ fontSize: 11.5, marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{[l.service, l.budget].filter(Boolean).join(' · ') || (l.email || '—')}</div>
+    </button>
+  );
+}
+
+// Ficha del lead: contacto + pipeline + hilo de correo + composer + notas.
+function LeadDetail({ l, es, canManage, act }: any) {
+  const [msgs, setMsgs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [subject, setSubject] = useState('');
+  const [body, setBody] = useState('');
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  async function loadThread() { setLoading(true); try { const j = await postBL({ action: 'lead_thread', id: l.id }); setMsgs(j.messages || []); } catch {} setLoading(false); }
+  useEffect(() => { loadThread(); /* eslint-disable-next-line */ }, [l.id]);
+
+  const c = leadColor(l.status);
+  const when = l.created_at ? new Date(l.created_at).toLocaleString(es ? 'es' : 'en', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+
+  async function sendEmail() {
+    const b = body.trim(); if (!b) return; setBusy(true);
+    try { await postBL({ action: 'lead_email', id: l.id, subject: subject.trim(), body: b }); setBody(''); setSubject(''); toast(es ? 'Correo enviado' : 'Email sent'); await loadThread(); }
+    catch (e: any) { toastErr(e?.message); } finally { setBusy(false); }
+  }
+  async function addNote() {
+    const b = note.trim(); if (!b) return; setBusy(true);
+    try { await postBL({ action: 'lead_note', id: l.id, body: b }); setNote(''); toast(es ? 'Nota guardada' : 'Note saved'); await loadThread(); }
+    catch (e: any) { toastErr(e?.message); } finally { setBusy(false); }
+  }
+
+  return (
+    <div style={{ border: '1px solid var(--line)', borderRadius: 14, background: 'var(--card)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {/* Cabecera de contacto */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '13px 15px', borderBottom: '1px solid var(--line)' }}>
+        <div style={{ width: 40, height: 40, borderRadius: '50%', flex: 'none', background: `color-mix(in srgb,${c} 20%,transparent)`, color: c, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 16 }}>{String(l.name || l.email || '?').trim().charAt(0).toUpperCase()}</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 800, fontSize: 15 }}>{l.name || l.email || 'Lead'}</div>
+          <div className="muted" style={{ fontSize: 12 }}>{[l.email, l.platform, l.budget && `${l.budget}`, when].filter(Boolean).join(' · ')}</div>
+        </div>
+        {l.service && <span style={{ fontSize: 10.5, fontWeight: 800, padding: '3px 9px', borderRadius: 99, background: 'color-mix(in srgb,var(--brand) 15%,transparent)', color: 'var(--brand)', textTransform: 'uppercase' }}>{l.service}</span>}
       </div>
-      {l.message && <div style={{ fontSize: 13, marginTop: 9, color: 'var(--tx)', background: 'var(--card)', borderRadius: 10, padding: '9px 11px', maxHeight: 120, overflow: 'auto' }}>{l.message}</div>}
+
+      {/* Pipeline de estado */}
       {canManage && (
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 11 }}>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', padding: '10px 15px', borderBottom: '1px solid var(--line)' }}>
           {LEAD_STATES.map(([k, e2, en, kc]) => (
-            <button key={k} onClick={() => act({ action: 'lead_status', id: l.id, status: k }, es ? 'Estado actualizado' : 'Status updated')} disabled={l.status === k} style={{ padding: '5px 9px', borderRadius: 8, fontSize: 11.5, fontWeight: 800, cursor: l.status === k ? 'default' : 'pointer', border: `1px solid color-mix(in srgb,${kc} ${l.status === k ? 60 : 25}%,var(--line))`, background: l.status === k ? kc : 'transparent', color: l.status === k ? '#0b1020' : kc, opacity: l.status === k ? 1 : 0.85 }}>{es ? e2 : en}</button>
+            <button key={k} onClick={() => act({ action: 'lead_status', id: l.id, status: k }, es ? 'Estado actualizado' : 'Status updated')} disabled={l.status === k} style={{ padding: '5px 10px', borderRadius: 8, fontSize: 11.5, fontWeight: 800, cursor: l.status === k ? 'default' : 'pointer', border: `1px solid color-mix(in srgb,${kc} ${l.status === k ? 60 : 25}%,var(--line))`, background: l.status === k ? kc : 'transparent', color: l.status === k ? '#0b1020' : kc }}>{es ? e2 : en}</button>
           ))}
+        </div>
+      )}
+
+      {/* Solicitud original + hilo */}
+      <div style={{ padding: '12px 15px', display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 300, overflowY: 'auto' }}>
+        {l.message && (
+          <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 11, padding: '9px 12px', fontSize: 13 }}>
+            <div className="muted" style={{ fontSize: 10.5, marginBottom: 3, textTransform: 'uppercase', letterSpacing: '.04em' }}>{es ? 'Su mensaje' : 'Their message'}</div>
+            {l.message}
+          </div>
+        )}
+        {loading && <div className="muted" style={{ fontSize: 12.5 }}>{es ? 'Cargando hilo…' : 'Loading thread…'}</div>}
+        {msgs.map((m) => m.kind === 'note' ? (
+          <div key={m.id} style={{ alignSelf: 'stretch', background: 'color-mix(in srgb,var(--amber) 9%,transparent)', border: '1px solid color-mix(in srgb,var(--amber) 30%,transparent)', borderRadius: 10, padding: '8px 11px', fontSize: 12.5 }}>
+            <span style={{ color: 'var(--amber)', fontWeight: 800 }}>{es ? 'Nota interna' : 'Internal note'}</span> <span className="muted" style={{ fontSize: 11 }}>· {es ? 'no la ve el cliente' : 'hidden from client'}</span>
+            <div style={{ marginTop: 3 }}>{m.body}</div>
+          </div>
+        ) : (
+          <div key={m.id} style={{ alignSelf: m.kind === 'inbound' ? 'flex-start' : 'flex-end', maxWidth: '85%' }}>
+            <div style={{ padding: '9px 12px', borderRadius: 12, fontSize: 13, background: m.kind === 'inbound' ? 'var(--bg2)' : 'linear-gradient(120deg,var(--brand),' + VIOLET + ')', color: m.kind === 'inbound' ? 'var(--tx)' : '#0b1020', border: m.kind === 'inbound' ? '1px solid var(--line)' : 'none' }}>
+              {m.subject && <div style={{ fontWeight: 800, fontSize: 12, marginBottom: 3, opacity: .85 }}>{m.subject}</div>}
+              {m.body}
+            </div>
+            <div className="muted" style={{ fontSize: 10.5, marginTop: 2, textAlign: m.kind === 'inbound' ? 'left' : 'right' }}>{m.kind === 'inbound' ? (es ? 'respuesta del lead' : 'lead reply') : (es ? 'enviado por correo' : 'sent by email')} · {m.created_at ? new Date(m.created_at).toLocaleDateString(es ? 'es' : 'en', { day: '2-digit', month: 'short' }) : ''}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Composer de correo + nota */}
+      {canManage && (
+        <div style={{ borderTop: '1px solid var(--line)', padding: 12, display: 'grid', gap: 8 }}>
+          {!l.email && <div style={{ fontSize: 12, color: 'var(--amber)' }}>{es ? 'Este lead no dejó correo, no se le puede escribir.' : 'This lead left no email; you cannot write to them.'}</div>}
+          <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder={es ? 'Asunto (opcional)' : 'Subject (optional)'} disabled={!l.email} style={{ padding: '8px 11px', borderRadius: 9, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 13 }} />
+          <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder={es ? 'Escribe tu respuesta al cliente…' : 'Write your reply to the client…'} disabled={!l.email} rows={3} style={{ padding: '9px 11px', borderRadius: 9, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 13, resize: 'vertical', fontFamily: 'inherit' }} />
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <button onClick={sendEmail} disabled={busy || !l.email || !body.trim()} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 15px', borderRadius: 10, border: 'none', fontWeight: 800, fontSize: 13, cursor: busy || !l.email ? 'default' : 'pointer', background: 'linear-gradient(135deg,var(--brand),' + VIOLET + ')', color: '#0b1020', opacity: busy || !l.email || !body.trim() ? 0.55 : 1 }}><Ic n="chat" s={15} c="#0b1020" />{es ? 'Enviar correo' : 'Send email'}</button>
+            <div style={{ display: 'flex', gap: 6, flex: 1, minWidth: 180 }}>
+              <input value={note} onChange={(e) => setNote(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') addNote(); }} placeholder={es ? 'Nota interna…' : 'Internal note…'} style={{ flex: 1, padding: '8px 11px', borderRadius: 9, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 12.5 }} />
+              <button onClick={addNote} disabled={busy || !note.trim()} style={btn('var(--amber)')}>{es ? 'Nota' : 'Note'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Promociones y campañas de Bot Lab (envío masivo a una audiencia).
+function Broadcast({ es, audience, mail, canManage }: any) {
+  const [seg, setSeg] = useState<'leads' | 'licensed' | 'buyers'>('leads');
+  const [subject, setSubject] = useState('');
+  const [body, setBody] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const segs: [any, string, number][] = [
+    ['leads', es ? 'Todos los leads' : 'All leads', audience.leads || 0],
+    ['licensed', es ? 'Con licencia activa' : 'Active licenses', audience.licensed || 0],
+    ['buyers', es ? 'Compradores de robots' : 'Robot buyers', audience.buyers || 0],
+  ];
+  const count = (segs.find((s) => s[0] === seg) || segs[0])[2];
+
+  async function send() {
+    if (!subject.trim() || !body.trim()) { toastErr(es ? 'Falta asunto o mensaje.' : 'Missing subject or message.'); return; }
+    setBusy(true);
+    try { const j = await postBL({ action: 'broadcast', segment: seg, subject: subject.trim(), body: body.trim() }); toast(es ? `Enviado a ${j.sent} de ${j.count}` : `Sent to ${j.sent} of ${j.count}`); setSubject(''); setBody(''); setConfirming(false); }
+    catch (e: any) { toastErr(e?.message); } finally { setBusy(false); }
+  }
+
+  return (
+    <div style={card}>
+      <SectionHead icon="spark" color={VIOLET} title={es ? 'Promociones y campañas de Bot Lab' : 'Bot Lab promos & campaigns'} desc={es ? 'Un correo a un grupo. Usa {nombre} para personalizar.' : 'One email to a group. Use {name} to personalize.'} />
+      {mail.checked && mail.verified === false && <div style={{ fontSize: 12, color: 'var(--amber)', marginBottom: 10 }}>⚠ {es ? 'Verifica tu dominio en Resend antes de enviar campañas.' : 'Verify your Resend domain before sending campaigns.'}</div>}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+        {segs.map(([k, lbl, n]) => {
+          const on = seg === k;
+          return <button key={k} onClick={() => setSeg(k)} style={{ textAlign: 'left', padding: '10px 13px', borderRadius: 12, cursor: 'pointer', minWidth: 150, border: `1px solid ${on ? VIOLET : 'var(--line)'}`, background: on ? `color-mix(in srgb,${VIOLET} 14%,transparent)` : 'var(--bg2)', color: 'var(--tx)' }}>
+            <div className="muted" style={{ fontSize: 12 }}>{lbl}</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: on ? VIOLET : 'var(--tx)' }}>{n}</div>
+          </button>;
+        })}
+      </div>
+      {canManage && (
+        <div style={{ display: 'grid', gap: 8 }}>
+          <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder={es ? 'Asunto del correo' : 'Email subject'} style={{ padding: '9px 12px', borderRadius: 9, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 13.5 }} />
+          <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={4} placeholder={es ? 'Hola {nombre}, tenemos un robot nuevo…' : 'Hi {name}, we have a new robot…'} style={{ padding: '10px 12px', borderRadius: 9, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 13.5, resize: 'vertical', fontFamily: 'inherit' }} />
+          {!confirming ? (
+            <button onClick={() => { if (!subject.trim() || !body.trim()) { toastErr(es ? 'Falta asunto o mensaje.' : 'Missing subject or message.'); return; } setConfirming(true); }} style={{ justifySelf: 'start', display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 11, border: 'none', fontWeight: 800, fontSize: 13.5, cursor: 'pointer', background: 'linear-gradient(135deg,' + VIOLET + ',var(--brand))', color: '#0b1020' }}><Ic n="spark" s={15} c="#0b1020" />{es ? `Enviar a ${count} personas` : `Send to ${count} people`}</button>
+          ) : (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 13, fontWeight: 700 }}>{es ? `¿Enviar a ${count} personas?` : `Send to ${count} people?`}</span>
+              <button onClick={send} disabled={busy} style={btn('var(--green)')}>{busy ? (es ? 'Enviando…' : 'Sending…') : (es ? 'Sí, enviar' : 'Yes, send')}</button>
+              <button onClick={() => setConfirming(false)} disabled={busy} style={btn('var(--mut)')}>{es ? 'Cancelar' : 'Cancel'}</button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -390,9 +553,34 @@ function Payouts({ es, payouts, canManage, act }: any) {
 }
 
 // ---------- Ajustes ----------
-function Settings({ es, set, setSet, canManage, act }: any) {
+function Settings({ es, set, setSet, canManage, act, mail }: any) {
+  const m = mail || {};
+  const verOk = m.checked && m.verified === true;
+  const verBad = m.checked && m.verified === false;
+  const dcol = verOk ? 'var(--green)' : verBad ? 'var(--amber)' : 'var(--mut)';
   return (
     <div style={{ display: 'grid', gap: 16 }}>
+      <div style={card}>
+        <SectionHead icon="chat" color={dcol} title={es ? 'Correo de Bot Lab' : 'Bot Lab email'} desc={es ? 'Desde aquí salen las respuestas a leads y las campañas.' : 'Lead replies and campaigns are sent from here.'} />
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ flex: '1 1 220px', background: 'var(--bg2)', borderRadius: 10, padding: '10px 12px' }}>
+            <div className="muted" style={{ fontSize: 11.5 }}>{es ? 'Remitente (lo que ve el cliente)' : 'Sender (what the client sees)'}</div>
+            <div style={{ fontSize: 13.5, fontWeight: 700, marginTop: 2, wordBreak: 'break-all' }}>{m.from || (es ? 'no configurado' : 'not set')}</div>
+          </div>
+          <div style={{ flex: '1 1 220px', background: 'var(--bg2)', borderRadius: 10, padding: '10px 12px' }}>
+            <div className="muted" style={{ fontSize: 11.5 }}>{es ? 'Las respuestas del cliente llegan a' : 'Client replies go to'}</div>
+            <div style={{ fontSize: 13.5, fontWeight: 700, marginTop: 2, wordBreak: 'break-all' }}>{set.notify_email || (es ? '(pon el correo de avisos abajo)' : '(set the notify email below)')}</div>
+          </div>
+          <div style={{ flex: '1 1 200px', background: `color-mix(in srgb,${dcol} 10%,var(--bg2))`, border: `1px solid color-mix(in srgb,${dcol} 30%,transparent)`, borderRadius: 10, padding: '10px 12px' }}>
+            <div className="muted" style={{ fontSize: 11.5 }}>{es ? 'Dominio en Resend' : 'Resend domain'}</div>
+            <div style={{ fontSize: 13.5, fontWeight: 800, marginTop: 2, color: dcol }}>
+              {!m.enabled ? (es ? 'Sin RESEND_API_KEY' : 'No RESEND_API_KEY') : verOk ? (es ? `✓ ${m.domain} verificado` : `✓ ${m.domain} verified`) : verBad ? (es ? `⚠ ${m.domain} sin verificar` : `⚠ ${m.domain} not verified`) : (es ? 'No se pudo comprobar' : 'Could not check')}
+            </div>
+          </div>
+        </div>
+        {verBad && <p className="muted" style={{ fontSize: 11.5, marginTop: 8 }}>{es ? 'Verifica el dominio en resend.com/domains (registros SPF y DKIM en tu DNS) para que los correos salgan y no caigan en spam.' : 'Verify the domain at resend.com/domains (SPF and DKIM DNS records) so emails send and avoid spam.'}</p>}
+      </div>
+
       <div style={card}>
         <SectionHead icon="coin" color="var(--green)" title={es ? 'Comisión y cobros' : 'Commission & payouts'} desc={es ? 'Qué se queda Onyx y a qué wallets llega el USDT.' : 'What Onyx keeps and where USDT lands.'} />
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 12 }}>

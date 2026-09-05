@@ -5,6 +5,7 @@ type MailOpts = { kind?: string; userId?: string | null; meta?: any; unsub?: str
   from?: string;        // remitente completo, p. ej. "Academia de Juan <no-reply@onyxtradinglive.com>"
   brandName?: string;   // nombre en la cabecera del correo (por defecto "Onyx Trading Live")
   brandLogo?: string;   // logo en la cabecera (por defecto el de Onyx)
+  replyTo?: string;     // a dónde llega la respuesta del destinatario (Reply-To)
 };
 
 // Construye un remitente "Nombre <dirección>" reutilizando la dirección verificada
@@ -104,7 +105,7 @@ export async function sendEmailId(to: string, subject: string, text: string, opt
     const r = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
-      body: JSON.stringify({ from, to, subject, text: plain, html }),
+      body: JSON.stringify({ from, to, subject, text: plain, html, ...(opts?.replyTo ? { reply_to: opts.replyTo } : {}) }),
     });
     let id: string | null = null;
     if (r.ok) { try { const j = await r.json(); id = j?.id || j?.data?.id || null; } catch {} }
@@ -120,4 +121,39 @@ export async function sendEmailId(to: string, subject: string, text: string, opt
 
 export function mailEnabled() {
   return !!process.env.RESEND_API_KEY;
+}
+
+// Dirección de envío configurada (la que ve el destinatario como remitente).
+export function mailFromAddress(): string {
+  const base = process.env.SUPPORT_FROM_EMAIL || 'Onyx Trading Live <no-reply@onyxtradinglive.com>';
+  const m = base.match(/<([^>]+)>/);
+  return m ? m[1] : base;
+}
+export function mailFromDomain(): string {
+  const addr = mailFromAddress();
+  const at = addr.indexOf('@');
+  return at >= 0 ? addr.slice(at + 1) : '';
+}
+
+// Estado del dominio en Resend: para avisar en el panel si NO está verificado
+// (que es la causa #1 de que los correos no salgan o caigan en spam).
+// Devuelve { enabled, from, domain, verified, checked }.
+export async function mailDomainStatus(): Promise<{ enabled: boolean; from: string; domain: string; verified: boolean | null; checked: boolean; note?: string }> {
+  const enabled = mailEnabled();
+  const from = mailFromAddress();
+  const domain = mailFromDomain();
+  if (!enabled) return { enabled: false, from, domain, verified: null, checked: false, note: 'Sin RESEND_API_KEY' };
+  try {
+    const r = await fetch('https://api.resend.com/domains', {
+      headers: { authorization: `Bearer ${process.env.RESEND_API_KEY}` },
+    });
+    if (!r.ok) return { enabled, from, domain, verified: null, checked: false, note: `Resend ${r.status}` };
+    const j = await r.json().catch(() => ({}));
+    const list: any[] = j?.data || j?.domains || [];
+    const match = list.find((d) => String(d?.name || '').toLowerCase() === domain.toLowerCase());
+    const verified = match ? String(match.status || '').toLowerCase() === 'verified' : false;
+    return { enabled, from, domain, verified, checked: true };
+  } catch (e) {
+    return { enabled, from, domain, verified: null, checked: false, note: 'No se pudo consultar Resend' };
+  }
 }

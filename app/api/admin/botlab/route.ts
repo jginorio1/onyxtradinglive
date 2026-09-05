@@ -5,9 +5,11 @@ import {
   adminListProducts, setProductStatus, saveProduct, deleteProduct,
   listServiceRequests, setServiceStatus, listPayouts, markPayoutPaid,
   botLabSettings, botLabAdminStats,
+  listLeadMessages, addLeadNote, sendLeadEmail, botLabAudienceCounts, botLabBroadcast,
 } from '@/lib/botlab';
 import { listCryptoPayments, confirmCryptoPayment, rejectCryptoPayment } from '@/lib/cryptoPay';
 import { botScore } from '@/lib/botScore';
+import { mailDomainStatus } from '@/lib/mail';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 export const dynamic = 'force-dynamic';
@@ -21,8 +23,9 @@ function canManage(role: string | null, perms: any) {
 export async function GET() {
   const { isAdmin, role, perms } = await getAdmin();
   if (!isAdmin) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
-  const [products, leads, crypto, payouts, settings, stats] = await Promise.all([
+  const [products, leads, crypto, payouts, settings, stats, audience, mail] = await Promise.all([
     adminListProducts(), listServiceRequests(), listCryptoPayments('pending'), listPayouts(), botLabSettings(), botLabAdminStats(),
+    botLabAudienceCounts(), mailDomainStatus(),
   ]);
   // Score de verificación con operaciones REALES (solo para los que hay que revisar/mostrar).
   const scored = await Promise.all((products as any[]).map(async (p) => {
@@ -31,15 +34,37 @@ export async function GET() {
     const _score = await botScore({ sellerId: p.seller_id, accountId: p.bot_account, magic: p.bot_magic, text });
     return { ...p, _score };
   }));
-  return NextResponse.json({ products: scored, leads, crypto, payouts, settings, stats, canManage: canManage(role, perms) });
+  return NextResponse.json({ products: scored, leads, crypto, payouts, settings, stats, audience, mail, canManage: canManage(role, perms) });
 }
 
 // POST · acciones del dueño/gestor.
 export async function POST(req: Request) {
   const { user, isAdmin, role, perms } = await getAdmin();
-  if (!isAdmin || !canManage(role, perms)) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+  if (!isAdmin) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
   const b = await req.json().catch(() => ({}));
   const a = b.action;
+
+  // Lectura del hilo de un lead: cualquier admin puede verla.
+  if (a === 'lead_thread') {
+    const messages = await listLeadMessages(String(b.id || ''));
+    return NextResponse.json({ messages });
+  }
+
+  // De aquí en adelante hacen falta permisos de gestión.
+  if (!canManage(role, perms)) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+
+  if (a === 'lead_email') {
+    try { const r = await sendLeadEmail({ leadId: String(b.id || ''), subject: b.subject, body: b.body, adminEmail: user.email || undefined }); await logAdmin(user.email || '', 'botlab_lead_email', String(b.id || ''), {}); return NextResponse.json(r); }
+    catch (e: any) { return NextResponse.json({ error: e?.message || 'No se pudo enviar.' }, { status: 400 }); }
+  }
+  if (a === 'lead_note') {
+    try { const r = await addLeadNote(String(b.id || ''), String(b.body || ''), user.email || undefined); return NextResponse.json(r); }
+    catch (e: any) { return NextResponse.json({ error: e?.message || 'error' }, { status: 400 }); }
+  }
+  if (a === 'broadcast') {
+    try { const r = await botLabBroadcast({ segment: b.segment, subject: b.subject, body: b.body, dryRun: !!b.dryRun }); await logAdmin(user.email || '', 'botlab_broadcast', b.segment || '', { count: r.count, sent: r.sent }); return NextResponse.json(r); }
+    catch (e: any) { return NextResponse.json({ error: e?.message || 'No se pudo enviar.' }, { status: 400 }); }
+  }
 
   if (a === 'product_status') {
     await setProductStatus(String(b.id), { status: b.status, verified: b.verified, is_official: b.is_official, position: b.position, review_note: b.review_note });

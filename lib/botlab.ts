@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { stripe } from '@/lib/stripe';
 import { getSetting } from '@/lib/settings';
+import { sendEmail, mailEnabled, fromWithName } from '@/lib/mail';
 
 // ============================================================
 // Onyx Bot Lab · marketplace de robots + servicios + payouts.
@@ -366,6 +367,110 @@ export async function listServiceRequests(status?: string) {
 }
 export async function setServiceStatus(id: string, status: string) {
   await supabaseAdmin.from('bot_service_requests').update({ status }).eq('id', id);
+}
+
+// ============================================================
+// Mini-CRM de leads: hilo de correo + notas internas + envío directo.
+// ============================================================
+
+// Hilo completo de un lead (correos salientes, respuestas y notas internas).
+export async function listLeadMessages(leadId: string) {
+  const { data } = await supabaseAdmin.from('bot_lead_messages')
+    .select('*').eq('lead_id', leadId).order('created_at', { ascending: true }).limit(200);
+  return (data || []) as any[];
+}
+
+// Nota interna (no la ve el cliente).
+export async function addLeadNote(leadId: string, body: string, adminEmail?: string) {
+  const b = String(body || '').trim().slice(0, 4000);
+  if (!b) throw new Error('Escribe la nota.');
+  await supabaseAdmin.from('bot_lead_messages').insert({ lead_id: leadId, kind: 'note', body: b, admin_email: adminEmail || null });
+  return { ok: true };
+}
+
+// Enviar un correo al lead desde el panel. El cliente lo recibe en su bandeja
+// desde el dominio verificado de Bot Lab; su respuesta llega al notify_email.
+export async function sendLeadEmail(o: { leadId: string; subject?: string; body: string; adminEmail?: string }) {
+  const body = String(o.body || '').trim().slice(0, 6000);
+  if (!body) throw new Error('Escribe el mensaje.');
+  const { data: lead } = await supabaseAdmin.from('bot_service_requests').select('id,email,name,service').eq('id', o.leadId).maybeSingle();
+  const to = (lead as any)?.email as string | undefined;
+  if (!to) throw new Error('Este lead no dejó correo.');
+  if (!mailEnabled()) throw new Error('Falta configurar el correo (RESEND_API_KEY).');
+
+  const s = await botLabSettings();
+  const subject = String(o.subject || '').trim().slice(0, 160) || `Onyx Bot Lab · ${(lead as any).service || 'tu solicitud'}`;
+  const ok = await sendEmail(to, subject, body, {
+    kind: 'botlab_lead',
+    from: fromWithName('Onyx Bot Lab'),
+    brandName: 'Onyx Bot Lab',
+    replyTo: s.notify_email || undefined,
+    meta: { lead_id: o.leadId },
+  });
+  if (!ok) throw new Error('No se pudo enviar el correo. Revisa el dominio en Resend.');
+  await supabaseAdmin.from('bot_lead_messages').insert({ lead_id: o.leadId, kind: 'email', subject, body, admin_email: o.adminEmail || null });
+  // Si el lead estaba "nuevo", pásalo a "contactado" al escribirle.
+  await supabaseAdmin.from('bot_service_requests').update({ status: 'contacted' }).eq('id', o.leadId).eq('status', 'new');
+  return { ok: true };
+}
+
+// ============================================================
+// Promociones y campañas de Bot Lab.
+//   leads    → todos los que dejaron correo en una solicitud de servicio
+//   licensed → compradores con licencia ACTIVA (renta viva)
+//   buyers   → cualquiera que haya comprado un robot (una vez o renta)
+// ============================================================
+type Aud = 'leads' | 'licensed' | 'buyers';
+
+async function buyerEmails(onlyActive: boolean): Promise<{ email: string; name: string }[]> {
+  let q = supabaseAdmin.from('bot_purchases').select('buyer_id,status');
+  if (onlyActive) q = q.eq('status', 'active');
+  const { data } = await q.limit(20000);
+  const ids = Array.from(new Set(((data || []) as any[]).map((r) => r.buyer_id).filter(Boolean)));
+  if (!ids.length) return [];
+  const out: { email: string; name: string }[] = [];
+  for (let i = 0; i < ids.length; i += 500) {
+    const { data: profs } = await supabaseAdmin.from('profiles').select('email,full_name').in('id', ids.slice(i, i + 500));
+    for (const p of (profs || []) as any[]) if (p.email) out.push({ email: p.email, name: p.full_name || '' });
+  }
+  return out;
+}
+
+async function leadEmails(): Promise<{ email: string; name: string }[]> {
+  const { data } = await supabaseAdmin.from('bot_service_requests').select('email,name').not('email', 'is', null).limit(20000);
+  return ((data || []) as any[]).filter((r) => r.email).map((r) => ({ email: r.email, name: r.name || '' }));
+}
+
+async function audienceList(seg: Aud): Promise<{ email: string; name: string }[]> {
+  const raw = seg === 'leads' ? await leadEmails() : seg === 'licensed' ? await buyerEmails(true) : await buyerEmails(false);
+  const seen = new Set<string>(); const out: { email: string; name: string }[] = [];
+  for (const r of raw) { const e = r.email.toLowerCase().trim(); if (e && !seen.has(e)) { seen.add(e); out.push({ email: r.email, name: r.name }); } }
+  return out;
+}
+
+// Conteo de cada audiencia (para mostrar en el panel antes de enviar).
+export async function botLabAudienceCounts(): Promise<{ leads: number; licensed: number; buyers: number }> {
+  const [l, li, b] = await Promise.all([audienceList('leads'), audienceList('licensed'), audienceList('buyers')]);
+  return { leads: l.length, licensed: li.length, buyers: b.length };
+}
+
+// Envío masivo de una promo a una audiencia. Devuelve cuántos se enviaron.
+export async function botLabBroadcast(o: { segment: Aud; subject: string; body: string; dryRun?: boolean }): Promise<{ count: number; sent: number }> {
+  const subject = String(o.subject || '').trim().slice(0, 160);
+  const body = String(o.body || '').trim().slice(0, 8000);
+  const recips = await audienceList(o.segment);
+  if (o.dryRun) return { count: recips.length, sent: 0 };
+  if (!subject || !body) throw new Error('Falta el asunto o el mensaje.');
+  if (!mailEnabled()) throw new Error('Falta configurar el correo (RESEND_API_KEY).');
+  const s = await botLabSettings();
+  const from = fromWithName('Onyx Bot Lab');
+  let sent = 0;
+  for (const r of recips.slice(0, 5000)) {
+    const personal = r.name ? body.replace(/\{nombre\}|\{name\}/gi, r.name.split(' ')[0]) : body.replace(/\{nombre\}|\{name\}/gi, '');
+    const ok = await sendEmail(r.email, subject, personal, { kind: 'botlab_promo', from, brandName: 'Onyx Bot Lab', replyTo: s.notify_email || undefined });
+    if (ok) sent++;
+  }
+  return { count: recips.length, sent };
 }
 
 // Contadores para el panel admin.
