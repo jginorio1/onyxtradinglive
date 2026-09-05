@@ -200,7 +200,7 @@ function DataGate({ es, canManage, post, reload, datasets }: any) {
       setMetrics(m);
       const j = await post({ action: 'validate', metrics: m });
       setQ(j.quality);
-    } catch (e: any) { toastErr(e?.message || 'No se pudo leer el archivo.'); } finally { setBusy(false); }
+    } catch (e: any) { toastErr(es ? 'No se pudo leer el archivo (¿demasiado grande?). Usa barras OHLC (M15/H1) y menos de ~80 MB, no un volcado de ticks crudos.' : 'Could not read the file (too big?). Use OHLC bars (M15/H1) under ~80 MB, not a raw tick dump.'); } finally { setBusy(false); }
   }
   async function save() {
     if (!metrics || !q) return; setBusy(true);

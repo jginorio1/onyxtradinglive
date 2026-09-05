@@ -184,12 +184,12 @@ export default function FactoryLab({ es, canManage, post, reload, bots }: any) {
           </label>
           <label><span className="muted" style={{ fontSize: 12 }}>{es ? 'Operaciones (CSV)' : 'Trades (CSV)'}</span>
             <label style={{ ...btn('var(--brand)'), marginTop: 4, cursor: 'pointer', width: '100%', justifyContent: 'center' }}>{trades ? `${trades.length} ops · ${tradesName.slice(0, 14)}` : (es ? 'Subir operaciones' : 'Upload trades')}
-              <input type="file" accept=".csv,.txt,.tsv" style={{ display: 'none' }} onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; setTradesName(f.name); const t = parseTrades(await f.text()); if (t.length < 20) toastErr(es ? 'No se detectaron suficientes operaciones/columna de profit.' : 'Not enough trades / profit column found.'); setTrades(t); }} />
+              <input type="file" accept=".csv,.txt,.tsv" style={{ display: 'none' }} onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; setTradesName(f.name); try { const t = parseTrades(await f.text()); if (t.length < 20) toastErr(es ? 'No se detectaron suficientes operaciones o falta la columna de profit.' : 'Not enough trades or missing profit column.'); setTrades(t); } catch { toastErr(es ? 'No se pudo leer el archivo (¿demasiado grande?).' : 'Could not read the file (too big?).'); } }} />
             </label>
           </label>
           <label><span className="muted" style={{ fontSize: 12 }}>{es ? 'Optimización (CSV, opcional)' : 'Optimization (CSV, optional)'}</span>
             <label style={{ ...btn(BLUE), marginTop: 4, cursor: 'pointer', width: '100%', justifyContent: 'center' }}>{grid ? `${grid.length} combos` : (es ? 'Subir grid' : 'Upload grid')}
-              <input type="file" accept=".csv,.txt,.tsv" style={{ display: 'none' }} onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; setGridName(f.name); setGrid(parseGrid(await f.text())); }} />
+              <input type="file" accept=".csv,.txt,.tsv" style={{ display: 'none' }} onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; setGridName(f.name); try { setGrid(parseGrid(await f.text())); } catch { toastErr(es ? 'No se pudo leer el archivo de optimización.' : 'Could not read the optimization file.'); } }} />
             </label>
           </label>
           <label><span className="muted" style={{ fontSize: 12 }}>{es ? 'Nº de parámetros/reglas' : 'Params/rules count'}</span>

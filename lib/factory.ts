@@ -41,13 +41,13 @@ export async function genUniqueName(): Promise<{ name: string; codename: string;
 export async function genUniqueMagic(): Promise<number> {
   for (let i = 0; i < 60; i++) {
     const magic = 100000000 + Math.floor(Math.random() * 900000000);
-    const [{ data: inFactory }, { data: inTrades }] = await Promise.all([
-      supabaseAdmin.from('factory_bots').select('id').eq('magic', magic).maybeSingle(),
-      supabaseAdmin.from('trades').select('id').eq('magic', magic).limit(1).maybeSingle(),
-    ]);
+    let inFactory: any = null, inTrades: any = null;
+    // Si aún no existe la columna magic (falta correr factory_v4.sql), no rompemos:
+    // seguimos comprobando solo contra las operaciones.
+    try { inFactory = (await supabaseAdmin.from('factory_bots').select('id').eq('magic', magic).maybeSingle()).data; } catch {}
+    try { inTrades = (await supabaseAdmin.from('trades').select('id').eq('magic', magic).limit(1).maybeSingle()).data; } catch {}
     if (!inFactory && !inTrades) return magic;
   }
-  // Respaldo improbable: basado en el reloj (sigue siendo de 9 dígitos).
   return 100000000 + (Date.now() % 900000000);
 }
 
@@ -184,15 +184,21 @@ export async function createBot(o: { userId: string; platform: string; symbol: s
   }
   const { name, codename, seq } = await genUniqueName();
   const magic = await genUniqueMagic();
-  const { data, error } = await supabaseAdmin.from('factory_bots').insert({
-    name, codename, seq, magic, platform,
+  const base: any = {
+    name, codename, seq, platform,
     symbol: (o.symbol || '').slice(0, 30) || null,
     timeframe: (o.timeframe || '').slice(0, 12) || null,
     strategy: o.strategy || {},
     dataset_id: o.datasetId || null,
     stage: 'genesis', status: 'draft', health: 'green',
     created_by: o.userId,
-  }).select('*').single();
+  };
+  let { data, error } = await supabaseAdmin.from('factory_bots').insert({ ...base, magic }).select('*').single();
+  // Si la base aún no tiene la columna magic (falta factory_v4.sql), reintentamos
+  // sin ella para no bloquear la creación. Se completará al correr el SQL.
+  if (error && /magic/i.test(error.message || '')) {
+    ({ data, error } = await supabaseAdmin.from('factory_bots').insert(base).select('*').single());
+  }
   if (error) throw new Error(error.message);
   return data;
 }
