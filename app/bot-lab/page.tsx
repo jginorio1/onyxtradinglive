@@ -97,7 +97,7 @@ export default async function BotLabLanding() {
             <p className="muted" style={{ fontSize: 17, marginTop: 16, maxWidth: 540 }}>{L.sub}</p>
             <div style={{ display: 'flex', gap: 12, marginTop: 24, flexWrap: 'wrap' }}>
               <a href="#servicio" style={{ padding: '13px 22px', borderRadius: 12, fontWeight: 800, fontSize: 15, background: `linear-gradient(120deg,${GOLD},#ffb020)`, color: '#3a2a06' }}>◆ {L.ctaMain}</a>
-              <Link href="/bot-builder" className="btn btn-ghost" style={{ padding: '13px 20px', borderRadius: 12, border: '1px solid var(--line)', fontWeight: 700 }}>{L.ctaBuild} →</Link>
+              <a href="/bot-builder" className="btn btn-ghost" style={{ padding: '13px 20px', borderRadius: 12, border: '1px solid var(--line)', fontWeight: 700 }}>{L.ctaBuild} →</a>
             </div>
             <div style={{ display: 'flex', gap: 26, marginTop: 28, flexWrap: 'wrap' }}>
               <div><b style={{ fontSize: 24, fontWeight: 800, display: 'block' }}>1,240+</b><span className="muted" style={{ fontSize: 12.5 }}>{L.st1}</span></div>
@@ -238,7 +238,7 @@ export default async function BotLabLanding() {
           <h2 style={{ fontSize: 28, fontWeight: 800, margin: '0 0 8px' }}>{L.finalH}</h2>
           <p className="muted" style={{ maxWidth: 540, margin: '0 auto 22px', fontSize: 15.5 }}>{L.finalS}</p>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link href="/bot-builder" style={{ padding: '13px 22px', borderRadius: 12, fontWeight: 800, background: 'var(--brand)', color: '#0b1020' }}>{L.ctaBuild}</Link>
+            <a href="/bot-builder" style={{ padding: '13px 22px', borderRadius: 12, fontWeight: 800, background: 'var(--brand)', color: '#0b1020' }}>{L.ctaBuild}</a>
             <a href="#servicio" style={{ padding: '13px 22px', borderRadius: 12, fontWeight: 800, background: `linear-gradient(120deg,${GOLD},#ffb020)`, color: '#3a2a06' }}>{L.ctaMain}</a>
           </div>
         </div>

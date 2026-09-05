@@ -118,7 +118,7 @@ export default async function TopBar({ home = false }: { home?: boolean }) {
         ...((caps.tv || caps.copy) ? [{ href: '/dashboard/tradingview', label: 'TradingView', icon: '📈', dot: (tvOn ? 'on' : 'off') as 'on' | 'off', dim: !tvOn, dotTitle: (tvOn ? (lang === 'es' ? 'TradingView activado' : 'TradingView on') : (lang === 'es' ? 'TradingView desactivado' : 'TradingView off')) }] : []),
         ...(caps.expenses ? [{ href: '/dashboard/expenses', label: lang === 'en' ? 'Net profit' : 'Ganancia neta', icon: '🧮' }] : []),
         { href: '/dashboard/onyx-copy', label: 'Onyx Copy', icon: '🏆' },
-        { href: '/dashboard/bot-lab', label: 'Onyx Bot Lab', icon: '🤖' },
+        { href: '/dashboard/bot-lab', label: 'Onyx Bot Lab', icon: '🤖', full: true },
         { href: '/dashboard/academy', label: 'Onyx Academy', icon: '🎓' },
         ...(isAdmin ? [{ href: '/admin', label: t.admin, icon: '🛠️' }] : []),
       ]
@@ -128,7 +128,7 @@ export default async function TopBar({ home = false }: { home?: boolean }) {
         // había ninguna otra forma de volver al landing.
         { href: '/', label: t.home },
         { href: '/bot-builder', label: lang === 'en' ? 'Build a bot' : 'Crea tu bot', icon: '🤖' },
-        { href: '/bot-lab', label: 'Bot Lab', icon: '🛒' },
+        { href: '/bot-lab', label: 'Bot Lab', icon: '🛒', full: true },
         { href: '/analiza', label: lang === 'en' ? 'Free analysis' : 'Analiza gratis' },
         { href: '/copy', label: 'Onyx Copy' },
         { href: '/pricing', label: t.plans },

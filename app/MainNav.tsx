@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import OnyxIcon from '@/app/components/OnyxIcon';
 
-export type NavItem = { href: string; label: string; dot?: 'on' | 'off'; dim?: boolean; icon?: string; dotTitle?: string };
+export type NavItem = { href: string; label: string; dot?: 'on' | 'off'; dim?: boolean; icon?: string; dotTitle?: string; full?: boolean };
 
 // ============================================================
 // Enlaces de la barra.
@@ -41,13 +41,16 @@ export default function MainNav({ items, authItems }: { items: NavItem[]; authIt
       <div className="navl">
         {items.map((i) => {
           const dt = i.dot ? (i.dotTitle || (i.dot === 'on' ? 'activo' : 'inactivo')) : undefined;
-          return (
-            <Link key={i.href} className={'navlink' + (isActive(i.href) ? ' on' : '') + (i.dim ? ' dim' : '')} href={i.href} title={dt}>
-              {i.icon && <span aria-hidden="true" style={{ marginRight: 6, display: 'inline-flex', verticalAlign: '-3px' }}><OnyxIcon emoji={i.icon} size={16} /></span>}
-              {i.label}
-              {i.dot && <span className={'navdotmini ' + i.dot} role="img" aria-label={dt} />}
-            </Link>
-          );
+          const cls = 'navlink' + (isActive(i.href) ? ' on' : '') + (i.dim ? ' dim' : '');
+          const inner = (<>
+            {i.icon && <span aria-hidden="true" style={{ marginRight: 6, display: 'inline-flex', verticalAlign: '-3px' }}><OnyxIcon emoji={i.icon} size={16} /></span>}
+            {i.label}
+            {i.dot && <span className={'navdotmini ' + i.dot} role="img" aria-label={dt} />}
+          </>);
+          // full: recarga completa (para cruzar hacia/desde superficies con barra propia como Bot Lab)
+          return i.full
+            ? <a key={i.href} className={cls} href={i.href} title={dt}>{inner}</a>
+            : <Link key={i.href} className={cls} href={i.href} title={dt}>{inner}</Link>;
         })}
       </div>
 
@@ -57,13 +60,17 @@ export default function MainNav({ items, authItems }: { items: NavItem[]; authIt
         </button>
         {open && (
           <div className="menu" style={{ minWidth: 180 }}>
-            {items.map((i) => (
-              <Link key={i.href} className={'menu-item' + (isActive(i.href) ? ' on' : '')} href={i.href}>
+            {items.map((i) => {
+              const cls = 'menu-item' + (isActive(i.href) ? ' on' : '');
+              const inner = (<>
                 {i.icon && <span aria-hidden="true" style={{ marginRight: 8, display: 'inline-flex', verticalAlign: '-3px' }}><OnyxIcon emoji={i.icon} size={16} /></span>}
                 {i.label}
                 {i.dot && <span className={'navdotmini ' + i.dot} style={{ marginLeft: 8 }} />}
-              </Link>
-            ))}
+              </>);
+              return i.full
+                ? <a key={i.href} className={cls} href={i.href}>{inner}</a>
+                : <Link key={i.href} className={cls} href={i.href}>{inner}</Link>;
+            })}
             {authItems && authItems.length > 0 && (
               <div style={{ borderTop: '1px solid var(--line)', margin: '6px 0 0', paddingTop: 6 }}>
                 {authItems.map((i) => (

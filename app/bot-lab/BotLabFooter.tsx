@@ -23,7 +23,7 @@ export default function BotLabFooter() {
         </Link>
         <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', color: 'var(--mut)', fontSize: 13.5 }}>
           {links.map(([h, l]) => <Link key={h} href={h} style={{ color: 'var(--mut)' }}>{l}</Link>)}
-          <Link href="/" style={{ color: 'var(--brand)' }}>← Onyx Trading Live</Link>
+          <a href="/" style={{ color: 'var(--brand)' }}>← Onyx Trading Live</a>
         </div>
       </div>
       <div className="wrap" style={{ marginTop: 12 }}>

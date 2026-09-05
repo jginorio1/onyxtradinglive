@@ -35,7 +35,7 @@ export default function BotLabHeader({ loggedIn = false }: { loggedIn?: boolean 
       <div style={{ background: 'rgba(255,255,255,.03)', borderBottom: '1px solid rgba(255,255,255,.06)', fontSize: 12 }}>
         <div className="wrap-wide" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 32, color: 'var(--mut)' }}>
           <span>{es ? 'Un producto de Onyx Trading Live' : 'A product of Onyx Trading Live'}</span>
-          <Link href={inDash ? '/dashboard' : '/'} style={{ color: 'var(--brand)', fontWeight: 700 }}>← {es ? 'Volver a Onyx' : 'Back to Onyx'}</Link>
+          <a href={inDash ? '/dashboard' : '/'} style={{ color: 'var(--brand)', fontWeight: 700 }}>← {es ? 'Volver a Onyx' : 'Back to Onyx'}</a>
         </div>
       </div>
 
@@ -63,8 +63,8 @@ export default function BotLabHeader({ loggedIn = false }: { loggedIn?: boolean 
           {loggedIn
             ? <Link className="btn btn-primary" href="/dashboard/bot-lab" style={{ background: 'linear-gradient(120deg,var(--gold,#ffd45e),#ffb020)', color: '#3a2a06', border: 'none' }}>{es ? 'Mi panel' : 'My panel'}</Link>
             : <>
-                <Link className="btn btn-ghost btn-login" href="/login">{es ? 'Entrar' : 'Sign in'}</Link>
-                <Link className="btn btn-primary" href="/login?mode=signup" style={{ background: 'linear-gradient(120deg,var(--gold,#ffd45e),#ffb020)', color: '#3a2a06', border: 'none' }}>{es ? 'Empezar' : 'Get started'}</Link>
+                <a className="btn btn-ghost btn-login" href="/login">{es ? 'Entrar' : 'Sign in'}</a>
+                <a className="btn btn-primary" href="/login?mode=signup" style={{ background: 'linear-gradient(120deg,var(--gold,#ffd45e),#ffb020)', color: '#3a2a06', border: 'none' }}>{es ? 'Empezar' : 'Get started'}</a>
               </>}
           {/* Botón móvil: despliega los enlaces */}
           <button className="botlab-burger" onClick={() => setOpen((o) => !o)} aria-label="Menu" style={{ display: 'none', background: 'transparent', border: '1px solid var(--line)', color: 'var(--tx)', width: 36, height: 36, borderRadius: 9, cursor: 'pointer', fontSize: 16 }}>☰</button>
