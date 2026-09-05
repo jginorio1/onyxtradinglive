@@ -370,11 +370,35 @@ export async function setServiceStatus(id: string, status: string) {
 
 // Contadores para el panel admin.
 export async function botLabAdminStats() {
-  const [{ count: pend }, { count: leads }, { data: comm }] = await Promise.all([
+  const [
+    { count: pend }, { count: active }, { count: leads }, { count: totalLeads },
+    { data: comm }, { data: purch }, { data: payouts },
+  ] = await Promise.all([
     supabaseAdmin.from('bot_products').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+    supabaseAdmin.from('bot_products').select('*', { count: 'exact', head: true }).eq('status', 'active'),
     supabaseAdmin.from('bot_service_requests').select('*', { count: 'exact', head: true }).eq('status', 'new'),
-    supabaseAdmin.from('bot_commissions').select('fee_cents').neq('status', 'reversed'),
+    supabaseAdmin.from('bot_service_requests').select('*', { count: 'exact', head: true }),
+    supabaseAdmin.from('bot_commissions').select('fee_cents,gross_cents,seller_id,status'),
+    supabaseAdmin.from('bot_purchases').select('status').eq('status', 'active'),
+    supabaseAdmin.from('bot_payouts').select('amount_cents,status'),
   ]);
-  const feeTotal = (comm || []).reduce((s: number, r: any) => s + (r.fee_cents || 0), 0);
-  return { pendingProducts: pend || 0, newLeads: leads || 0, commissionCents: feeTotal };
+  const rows = (comm || []) as any[];
+  const live = rows.filter((r) => r.status !== 'reversed');
+  const feeTotal = live.reduce((s, r) => s + (r.fee_cents || 0), 0);
+  const grossTotal = live.reduce((s, r) => s + (r.gross_cents || 0), 0);
+  const creators = new Set(live.map((r) => r.seller_id).filter(Boolean)).size;
+  const salesCount = live.length;
+  const pendingPayoutsCents = ((payouts || []) as any[]).filter((p) => p.status !== 'paid').reduce((s, p) => s + (p.amount_cents || 0), 0);
+  return {
+    pendingProducts: pend || 0,
+    activeProducts: active || 0,
+    newLeads: leads || 0,
+    totalLeads: totalLeads || 0,
+    commissionCents: feeTotal,
+    grossCents: grossTotal,
+    salesCount,
+    creatorsCount: creators,
+    activeLicenses: (purch || []).length,
+    pendingPayoutsCents,
+  };
 }
