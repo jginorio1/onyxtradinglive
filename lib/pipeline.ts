@@ -188,10 +188,17 @@ export async function runPipelineOnce() {
 
 // ---- Acciones del admin ----
 
-// Conecta un robot a una cuenta demo por magic y arranca el pipeline.
-export async function linkDemo(botId: string, magic: number, account?: string) {
+// Conecta un robot a una cuenta demo y arranca el pipeline. Si no se pasa magic,
+// usa el magic AUTOMÁTICO del propio robot (el EA en la demo corre con ese magic).
+export async function linkDemo(botId: string, magicIn?: number, account?: string) {
+  let magic = magicIn || 0;
+  if (!magic) {
+    const { data: b } = await supabaseAdmin.from('factory_bots').select('magic').eq('id', botId).maybeSingle();
+    magic = Number((b as any)?.magic) || 0;
+  }
+  if (!magic) throw new Error('El robot no tiene magic asignado. Vuelve a crearlo.');
   const acc = account || await resolveAccountByMagic(magic);
-  if (!acc) throw new Error('No encontré operaciones con ese magic. Corre el robot en la cuenta demo primero.');
+  if (!acc) throw new Error(`No encontré operaciones con el magic ${magic}. Corre el robot en la cuenta demo con ese magic primero.`);
   const now = new Date().toISOString();
   await supabaseAdmin.from('factory_bots').update({
     live_account: acc, live_magic: magic, stage_index: 0, stage: STAGES[0].key, status: 'activo',

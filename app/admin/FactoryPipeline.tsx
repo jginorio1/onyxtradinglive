@@ -119,10 +119,12 @@ export default function FactoryPipeline({ es, canManage, post }: any) {
 
           {/* Conectar a demo (si aún no corre) */}
           {canManage && bot.live_magic == null && (
-            <div style={{ marginTop: 14, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', background: 'var(--bg2)', borderRadius: 10, padding: 12 }}>
-              <div style={{ fontSize: 12.5, fontWeight: 700 }}>{es ? 'Conéctalo a la cuenta demo:' : 'Connect to demo account:'}</div>
-              <input value={magic} onChange={(e) => setMagic(e.target.value)} placeholder={es ? 'Magic del robot (9 dígitos)' : 'Robot magic'} style={{ ...inp, maxWidth: 220 }} />
-              <button onClick={() => { if (!magic) { toastErr(es ? 'Escribe el magic.' : 'Enter magic.'); return; } act({ action: 'link_demo', botId: bot.id, magic: Number(magic) }, es ? 'Conectado · pipeline iniciado' : 'Connected · pipeline started'); setMagic(''); }} disabled={busy} style={btn(GREEN)}>{es ? 'Conectar' : 'Connect'}</button>
+            <div style={{ marginTop: 14, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', background: 'var(--bg2)', borderRadius: 10, padding: 12 }}>
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 700 }}>{es ? 'Conéctalo a la cuenta demo' : 'Connect to demo account'}</div>
+                <div className="muted" style={{ fontSize: 11.5, marginTop: 2 }}>{es ? 'Corre el EA en la demo con el magic' : 'Run the EA on demo with magic'} <b style={{ fontFamily: 'monospace', color: 'var(--tx)' }}>{bot.magic || '—'}</b> {es ? '(automático, 9 dígitos). Al detectar sus operaciones, arranca el pipeline.' : '(automatic, 9 digits). Once its trades arrive, the pipeline starts.'}</div>
+              </div>
+              <button onClick={() => act({ action: 'link_demo', botId: bot.id }, es ? 'Conectado · pipeline iniciado' : 'Connected · pipeline started')} disabled={busy} style={btn(GREEN)}>{es ? 'Conectar por magic' : 'Connect by magic'}</button>
             </div>
           )}
 

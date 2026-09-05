@@ -274,39 +274,52 @@ function Builder({ es, canManage, post, reload, nextName, datasets }: any) {
   const [family, setFamily] = useState('tendencia');
   const [notes, setNotes] = useState('');
   const [datasetId, setDatasetId] = useState('');
+  const [anyBroker, setAnyBroker] = useState(true);
   const [busy, setBusy] = useState(false);
   const usable = (datasets as any[]).filter((d) => d.verdict !== 'rechazada');
 
   async function create() {
     setBusy(true);
     try {
-      const j = await post({ action: 'bot_create', platform, symbol, timeframe: tf, strategy: { family, notes }, datasetId: datasetId || null });
-      toast((es ? 'Robot creado: ' : 'Robot created: ') + (j.bot?.name || ''));
+      const j = await post({ action: 'bot_create', platform, symbol, timeframe: tf, strategy: { family, notes, anyBroker }, datasetId: datasetId || null });
+      toast((es ? 'Robot creado: ' : 'Robot created: ') + (j.bot?.name || '') + (j.bot?.magic ? ` · magic ${j.bot.magic}` : ''));
       setSymbol(''); setNotes(''); setDatasetId(''); reload();
     } catch (e: any) { toastErr(e?.message); } finally { setBusy(false); }
   }
 
   return (
-    <div style={card}>
-      <h3 style={{ marginTop: 0 }}>{es ? 'Constructor de robots (solo admin)' : 'Robot builder (admin only)'}</h3>
+    <div style={{ ...card, background: 'linear-gradient(150deg, color-mix(in srgb,var(--brand) 8%,var(--card)), color-mix(in srgb,#a06bff 7%,var(--card)) 70%, var(--card))', borderColor: 'color-mix(in srgb,var(--brand) 30%,var(--line))' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+        <span style={{ display: 'inline-flex', width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg,var(--brand),#a06bff)', color: '#0b1020', fontSize: 18 }}>🛠</span>
+        <h3 style={{ margin: 0 }}>{es ? 'Constructor de robots (solo admin)' : 'Robot builder (admin only)'}</h3>
+      </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg2)', borderRadius: 12, padding: '12px 14px', marginBottom: 14, border: `1px solid color-mix(in srgb,${VIOLET} 30%,var(--line))` }}>
         <div style={{ flex: 1 }}>
-          <div className="muted" style={{ fontSize: 12 }}>{es ? 'Nombre automático (no editable, nunca se repite)' : 'Automatic name (locked, never repeats)'}</div>
+          <div className="muted" style={{ fontSize: 12 }}>{es ? 'Nombre + magic automáticos (no editables, nunca se repiten)' : 'Automatic name + magic (locked, never repeat)'}</div>
           <div style={{ fontSize: 20, fontWeight: 800, fontFamily: 'monospace', color: VIOLET, marginTop: 2 }}>{nextName || '—'}</div>
+          <div className="muted" style={{ fontSize: 11.5, marginTop: 3 }}>{es ? 'Al crearlo se le asigna un magic de 9 dígitos único (numérico; MT4/MT5 no admite letras).' : 'On creation it gets a unique 9-digit magic (numeric; MT4/MT5 allows no letters).'}</div>
         </div>
         <span style={{ fontSize: 22 }}>🔒</span>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 12 }}>
         <Lbl es={es} t={es ? 'Plataforma' : 'Platform'}><select value={platform} onChange={(e) => setPlatform(e.target.value as any)} style={inp}><option value="mt5">MT5</option><option value="mt4">MT4</option></select></Lbl>
-        <Lbl es={es} t={es ? 'Símbolo' : 'Symbol'}><input value={symbol} onChange={(e) => setSymbol(e.target.value)} placeholder="XAUUSD" style={inp} /></Lbl>
+        <Lbl es={es} t={es ? 'Instrumento / par' : 'Instrument / pair'}><InstrumentPicker value={symbol} onChange={setSymbol} es={es} /></Lbl>
         <Lbl es={es} t={es ? 'Temporalidad' : 'Timeframe'}><select value={tf} onChange={(e) => setTf(e.target.value)} style={inp}>{['M1', 'M5', 'M15', 'M30', 'H1', 'H4', 'D1'].map((x) => <option key={x} value={x}>{x}</option>)}</select></Lbl>
         <Lbl es={es} t={es ? 'Familia de estrategia' : 'Strategy family'}><select value={family} onChange={(e) => setFamily(e.target.value)} style={inp}>{[['tendencia', es ? 'Tendencia' : 'Trend'], ['rango', es ? 'Rango' : 'Range'], ['ruptura', es ? 'Ruptura' : 'Breakout'], ['reversion', es ? 'Reversión' : 'Reversion'], ['volatilidad', es ? 'Volatilidad' : 'Volatility'], ['scalping', 'Scalping']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></Lbl>
         <Lbl es={es} t={es ? 'Datos (dataset)' : 'Data (dataset)'} wide><select value={datasetId} onChange={(e) => setDatasetId(e.target.value)} style={inp}><option value="">{es ? '— sin asignar —' : '— none —'}</option>{usable.map((d: any) => <option key={d.id} value={d.id}>{d.symbol} · {d.timeframe} · {d.years}y · {d.verdict}</option>)}</select></Lbl>
       </div>
       <Lbl es={es} t={es ? 'Notas de la estrategia' : 'Strategy notes'}><textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder={es ? 'Idea, reglas de entrada/salida, gestión…' : 'Idea, entry/exit rules, management…'} style={{ ...inp, resize: 'vertical', fontFamily: 'inherit' }} /></Lbl>
 
-      {canManage && <button onClick={create} disabled={busy} style={{ ...btn(VIOLET), marginTop: 14, padding: '11px 20px', fontSize: 14 }}>{busy ? (es ? 'Creando…' : 'Creating…') : (es ? 'Crear robot' : 'Create robot')}</button>}
+      <label style={{ display: 'flex', alignItems: 'center', gap: 9, marginTop: 12, cursor: 'pointer', background: 'var(--bg2)', borderRadius: 10, padding: '10px 12px' }}>
+        <input type="checkbox" checked={anyBroker} onChange={(e) => setAnyBroker(e.target.checked)} style={{ width: 16, height: 16 }} />
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 700 }}>{es ? 'Funciona en cualquier broker' : 'Works on any broker'}</div>
+          <div className="muted" style={{ fontSize: 11.5 }}>{es ? 'El robot ignora prefijos y sufijos del símbolo (XAUUSD.m, EURUSD.pro, #US30…) para operar en cualquier corredor.' : 'The robot ignores symbol prefixes/suffixes (XAUUSD.m, EURUSD.pro, #US30…) to trade on any broker.'}</div>
+        </div>
+      </label>
+
+      {canManage && <button onClick={create} disabled={busy} style={{ marginTop: 14, padding: '12px 22px', fontSize: 14, borderRadius: 12, border: 'none', fontWeight: 800, cursor: 'pointer', background: 'linear-gradient(135deg,var(--brand),' + VIOLET + ')', color: '#0b1020' }}>{busy ? (es ? 'Creando…' : 'Creating…') : (es ? '✨ Crear robot' : '✨ Create robot')}</button>}
     </div>
   );
 }
@@ -323,7 +336,10 @@ function BotList({ es, canManage, post, reload, bots }: any) {
           <div key={b.id} style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', border: '1px solid var(--line)', borderRadius: 13, padding: 13, background: `linear-gradient(140deg,color-mix(in srgb,${VIOLET} 7%,transparent),transparent 60%)` }}>
             <span style={{ width: 10, height: 10, borderRadius: '50%', background: GREEN, flex: 'none' }} />
             <div style={{ flex: 1, minWidth: 180 }}>
-              <b style={{ fontSize: 15, fontFamily: 'monospace', color: VIOLET }}>{b.name}</b>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <b style={{ fontSize: 15, fontFamily: 'monospace', color: VIOLET }}>{b.name}</b>
+                {b.magic && <span style={{ fontSize: 11, fontWeight: 800, fontFamily: 'monospace', padding: '2px 8px', borderRadius: 7, background: 'var(--bg2)', color: 'var(--tx)' }}>magic {b.magic}</span>}
+              </div>
               <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>{String(b.platform || '').toUpperCase()} · {b.symbol || '—'} · {b.timeframe || '—'} · {b.strategy?.family || '—'} · {es ? 'etapa' : 'stage'} {b.stage}</div>
             </div>
             {b.robustness_verdict && <span style={{ fontSize: 11, fontWeight: 800, padding: '3px 10px', borderRadius: 99, background: `color-mix(in srgb,${b.robustness_verdict === 'robusto' ? GREEN : b.robustness_verdict === 'moderado' ? AMBER : RED} 16%,transparent)`, color: b.robustness_verdict === 'robusto' ? GREEN : b.robustness_verdict === 'moderado' ? AMBER : RED }}>{b.robustness_score} · {b.robustness_verdict}</span>}
@@ -339,4 +355,37 @@ function BotList({ es, canManage, post, reload, bots }: any) {
 
 const inp: any = { width: '100%', padding: '9px 11px', borderRadius: 9, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 13.5 };
 function Lbl({ t, children, wide }: any) { return <label style={{ display: 'block', gridColumn: wide ? 'span 2' : 'auto', marginTop: 2 }}><span className="muted" style={{ fontSize: 12 }}>{t}</span><div style={{ marginTop: 4 }}>{children}</div></label>; }
+
+// Catálogo de instrumentos (base, sin prefijos/sufijos de broker).
+const INSTRUMENTS: { s: string; cat: string }[] = [
+  ...['EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'USDCAD', 'AUDUSD', 'NZDUSD'].map((s) => ({ s, cat: 'Forex mayores' })),
+  ...['EURGBP', 'EURJPY', 'GBPJPY', 'EURAUD', 'EURCHF', 'AUDJPY', 'CADJPY', 'CHFJPY', 'GBPAUD', 'GBPCAD', 'AUDNZD', 'NZDJPY', 'EURCAD', 'AUDCAD'].map((s) => ({ s, cat: 'Forex cruces' })),
+  ...['XAUUSD', 'XAGUSD', 'XPTUSD', 'XPDUSD'].map((s) => ({ s, cat: 'Metales' })),
+  ...['US30', 'NAS100', 'SPX500', 'US2000', 'GER40', 'UK100', 'FRA40', 'JP225', 'HK50', 'AUS200', 'EU50'].map((s) => ({ s, cat: 'Índices' })),
+  ...['USOIL', 'UKOIL', 'NGAS'].map((s) => ({ s, cat: 'Materias primas' })),
+  ...['BTCUSD', 'ETHUSD', 'XRPUSD', 'LTCUSD', 'SOLUSD', 'DOGEUSD'].map((s) => ({ s, cat: 'Cripto' })),
+];
+
+// Selector con búsqueda; permite escribir uno propio si el broker usa otro nombre.
+function InstrumentPicker({ value, onChange, es }: any) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+  const list = INSTRUMENTS.filter((i) => !q || i.s.toLowerCase().includes(q.toLowerCase()) || i.cat.toLowerCase().includes(q.toLowerCase()));
+  return (
+    <div style={{ position: 'relative' }}>
+      <input value={open ? q : value} onFocus={() => { setOpen(true); setQ(''); }} onChange={(e) => { setQ(e.target.value); onChange(e.target.value.toUpperCase()); }} onBlur={() => setTimeout(() => setOpen(false), 150)} placeholder={es ? 'Busca: XAUUSD, US30, BTCUSD…' : 'Search: XAUUSD, US30, BTCUSD…'} style={inp} />
+      {open && (
+        <div style={{ position: 'absolute', zIndex: 20, top: '100%', left: 0, right: 0, marginTop: 4, maxHeight: 240, overflowY: 'auto', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,.25)' }}>
+          {!list.length && <div className="muted" style={{ fontSize: 12.5, padding: 10 }}>{es ? 'Escribe tu instrumento (se acepta cualquiera).' : 'Type your instrument (any accepted).'}</div>}
+          {list.map((i) => (
+            <button key={i.s} onMouseDown={(e) => { e.preventDefault(); onChange(i.s); setOpen(false); }} style={{ display: 'flex', width: '100%', textAlign: 'left', gap: 8, alignItems: 'center', padding: '8px 11px', border: 'none', background: value === i.s ? 'color-mix(in srgb,var(--brand) 14%,transparent)' : 'transparent', color: 'var(--tx)', cursor: 'pointer' }}>
+              <b style={{ fontFamily: 'monospace', fontSize: 13, flex: 1 }}>{i.s}</b>
+              <span className="muted" style={{ fontSize: 11 }}>{i.cat}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 function btn(c: string): any { return { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 14px', borderRadius: 10, cursor: 'pointer', fontWeight: 800, fontSize: 13, border: `1px solid color-mix(in srgb,${c} 45%,transparent)`, background: `color-mix(in srgb,${c} 14%,transparent)`, color: c }; }
