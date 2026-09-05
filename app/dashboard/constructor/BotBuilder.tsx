@@ -883,9 +883,18 @@ export default function BotBuilder() {
                   <a className="bbx-btn primary" href={`/api/bots/build?code=${doneModal.id}`} style={{ fontWeight: 700 }}><OnyxIcon emoji="⬇️" size={13} glow={false} /> {L('Descargar robot', 'Download robot')} ({ext})</a>
                   {isMT && <a className="bbx-btn" href={`/api/bots/build?download=${doneModal.id}`}>{L('Config', 'Config')} (.set) ↓</a>}
                   <button className="bbx-btn" onClick={openGuide}><OnyxIcon emoji="📖" size={13} /> {L('Guía PDF', 'PDF guide')}</button>
-                  {/* Puente al marketplace: abre "Vender" en Bot Lab ya prellenado con este robot. */}
-                  <a className="bbx-btn" href={`/dashboard/bot-lab?new=1&name=${encodeURIComponent(doneModal.name)}&platform=${encodeURIComponent(doneModal.platform || 'mt5')}`} style={{ fontWeight: 700 }}><OnyxIcon emoji="💰" size={13} glow={false} /> {L('Vender este robot', 'Sell this robot')}</a>
                 </div>
+
+                {/* Puente DESTACADO al marketplace: convierte el robot recién creado en un producto a la venta. */}
+                <a href={`/dashboard/bot-lab?new=1&name=${encodeURIComponent(doneModal.name)}&platform=${encodeURIComponent(doneModal.platform || 'mt5')}`}
+                   style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none', margin: '6px 0 4px', padding: '13px 15px', borderRadius: 14, background: 'linear-gradient(120deg, rgba(255,212,94,.16), rgba(255,176,32,.10))', border: '1px solid rgba(255,212,94,.55)', boxShadow: '0 0 0 1px rgba(255,212,94,.15), 0 8px 26px rgba(255,176,32,.18)' }}>
+                  <span style={{ width: 40, height: 40, flex: 'none', borderRadius: 11, background: 'linear-gradient(120deg,#ffd45e,#ffb020)', color: '#3a2a06', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 800, boxShadow: '0 6px 16px rgba(255,176,32,.4)' }}>◆</span>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: 'block', fontWeight: 800, fontSize: 14.5, color: 'var(--tx)' }}>{L('Gana dinero con este robot', 'Earn money with this robot')}</span>
+                    <span style={{ display: 'block', fontSize: 12, color: 'var(--mut)', marginTop: 1 }}>{L('Publícalo en Onyx Bot Lab y cobra a otros traders (tarjeta o USDT).', 'List it on Onyx Bot Lab and charge other traders (card or USDT).')}</span>
+                  </span>
+                  <span style={{ flex: 'none', padding: '9px 15px', borderRadius: 10, fontWeight: 800, fontSize: 13, background: 'linear-gradient(120deg,#ffd45e,#ffb020)', color: '#3a2a06', whiteSpace: 'nowrap' }}>{L('Vender →', 'Sell →')}</span>
+                </a>
 
                 {/* Qué sigue: checklist con enlace directo a Mis robots */}
                 <div style={{ background: 'rgba(255,255,255,.04)', border: '1px solid var(--line)', borderRadius: 10, padding: '10px 12px', marginTop: 4 }}>
