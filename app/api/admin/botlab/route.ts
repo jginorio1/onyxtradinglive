@@ -71,6 +71,8 @@ export async function POST(req: Request) {
       fee_pct: Math.max(0, Math.min(50, Number(b.fee_pct ?? cur.fee_pct))),
       usdt_address: String(b.usdt_address ?? cur.usdt_address ?? '').slice(0, 120),
       usdt_network: String(b.usdt_network ?? cur.usdt_network ?? 'trc20').slice(0, 10),
+      usdt_erc20: String(b.usdt_erc20 ?? cur.usdt_erc20 ?? '').trim().slice(0, 60),
+      usdt_trc20: String(b.usdt_trc20 ?? cur.usdt_trc20 ?? '').trim().slice(0, 60),
       service_automate_from: Math.max(0, Number(b.service_automate_from ?? cur.service_automate_from)),
       service_install_price: Math.max(0, Number(b.service_install_price ?? cur.service_install_price)),
       service_elite_from: Math.max(0, Number(b.service_elite_from ?? cur.service_elite_from)),

@@ -65,15 +65,15 @@ export default function BotLab({ canManage = true }: { canManage?: boolean }) {
           <h3 style={{ marginTop: 0 }}>{es ? 'Ajustes' : 'Settings'}</h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: 12 }}>
             <Field label={es ? 'Comisión Onyx (%)' : 'Onyx fee (%)'} value={set.fee_pct} onChange={(v: any) => setSet({ ...set, fee_pct: v })} />
-            <Field label={es ? 'Wallet USDT' : 'USDT wallet'} value={set.usdt_address} onChange={(v: any) => setSet({ ...set, usdt_address: v })} wide />
-            <SelectField label={es ? 'Red USDT' : 'USDT network'} value={set.usdt_network} onChange={(v: any) => setSet({ ...set, usdt_network: v })} opts={['trc20', 'erc20', 'bep20']} />
+            <Field label={es ? 'Wallet USDT · Ethereum (0x…)' : 'USDT wallet · Ethereum (0x…)'} value={set.usdt_erc20} onChange={(v: any) => setSet({ ...set, usdt_erc20: v })} wide />
+            <Field label={es ? 'Wallet USDT · TRON (T…)' : 'USDT wallet · TRON (T…)'} value={set.usdt_trc20} onChange={(v: any) => setSet({ ...set, usdt_trc20: v })} wide />
             <Field label={es ? 'A medida desde ($)' : 'Bespoke from ($)'} value={set.service_automate_from} onChange={(v: any) => setSet({ ...set, service_automate_from: v })} />
             <Field label={es ? 'Instalación ($)' : 'Install ($)'} value={set.service_install_price} onChange={(v: any) => setSet({ ...set, service_install_price: v })} />
             <Field label={es ? 'Elite desde ($)' : 'Elite from ($)'} value={set.service_elite_from} onChange={(v: any) => setSet({ ...set, service_elite_from: v })} />
             <Field label={es ? 'Correo de avisos (propuestas)' : 'Notify email (leads)'} value={set.notify_email} onChange={(v: any) => setSet({ ...set, notify_email: v })} wide />
             <Field label={es ? 'Chat de Telegram para avisos' : 'Telegram chat for alerts'} value={set.telegram_chat} onChange={(v: any) => setSet({ ...set, telegram_chat: v })} />
           </div>
-          <p className="muted" style={{ fontSize: 11.5, marginTop: 8 }}>{es ? 'La wallet USDT solo se usa si NO configuras Coinbase Commerce (COINBASE_COMMERCE_API_KEY). Con Coinbase, los pagos se confirman solos.' : 'The USDT wallet is only used if Coinbase Commerce is not configured. With Coinbase, payments confirm automatically.'}</p>
+          <p className="muted" style={{ fontSize: 11.5, marginTop: 8 }}>{es ? 'Pon una o ambas wallets; el cliente elige la red al pagar. Con ETHERSCAN_API_KEY (Ethereum) y/o la wallet TRON, los pagos se confirman SOLOS on-chain (cada 3 min). Sin eso, se confirman a mano aquí.' : 'Set one or both wallets; the buyer picks the network at checkout. With ETHERSCAN_API_KEY (Ethereum) and/or the TRON wallet, payments confirm AUTOMATICALLY on-chain (every 3 min). Otherwise, confirm them here manually.'}</p>
           {canManage && <button onClick={() => act({ action: 'settings', ...set }, es ? 'Ajustes guardados' : 'Settings saved')} style={{ marginTop: 12, padding: '9px 16px', borderRadius: 10, border: 'none', fontWeight: 800, cursor: 'pointer', background: 'var(--brand)', color: '#0b1020' }}>{es ? 'Guardar' : 'Save'}</button>}
         </div>
       )}

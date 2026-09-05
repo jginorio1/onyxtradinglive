@@ -16,6 +16,7 @@ export default function BotLabDashboard() {
   const [licenses, setLicenses] = useState<any[]>([]);
   const [sell, setSell] = useState<any>(null);
   const [crypto, setCrypto] = useState<any>(null);
+  const [netPick, setNetPick] = useState<any>(null); // { product, networks } elegir red USDT
   const [editing, setEditing] = useState<any>(null);
 
   async function loadMarket() { try { const r = await fetch('/api/botlab/products?limit=60'); const j = await r.json(); setProducts(j.products || []); } catch {} }
@@ -48,13 +49,14 @@ export default function BotLabDashboard() {
     } catch {}
   }, []); // eslint-disable-line
 
-  async function buy(p: any, method: 'card' | 'usdt') {
+  async function buy(p: any, method: 'card' | 'usdt', network?: string) {
     try {
-      const r = await fetch('/api/botlab/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ productId: p.id, method }) });
+      const r = await fetch('/api/botlab/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ productId: p.id, method, network }) });
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || 'error');
+      if (j.chooseNetwork) { setNetPick({ product: p, networks: j.chooseNetwork }); return; } // el cliente elige red
       if (j.url) { window.location.href = j.url; return; }
-      if (j.crypto) setCrypto({ ...j.crypto, product: p });
+      if (j.crypto) { setNetPick(null); setCrypto({ ...j.crypto, product: p }); }
     } catch (e: any) { toastErr(e?.message || 'error'); }
   }
 
@@ -123,7 +125,18 @@ export default function BotLabDashboard() {
                     {owned ? (
                       <div style={{ textAlign: 'center', fontSize: 13, fontWeight: 800, color: 'var(--green)', padding: 8, border: '1px solid color-mix(in srgb,var(--green) 35%,transparent)', borderRadius: 9 }}>✓ {es ? 'Ya es tuyo' : 'Owned'}</div>
                     ) : (
-                      <button onClick={() => buy(p, 'usdt')} style={{ width: '100%', padding: 10, borderRadius: 9, cursor: 'pointer', fontWeight: 800, fontSize: 13, border: '1px solid color-mix(in srgb,var(--green) 40%,transparent)', background: 'color-mix(in srgb,var(--green) 12%,transparent)', color: 'var(--green)' }}>₮ {es ? 'Pagar con USDT' : 'Pay with USDT'}</button>
+                      <>
+                        {/* USDT (Ethereum) DESTACADO: pago instantáneo y sin contracargos */}
+                        <button onClick={() => buy(p, 'usdt')} style={{ width: '100%', padding: '13px 12px', borderRadius: 11, cursor: 'pointer', fontWeight: 800, fontSize: 14, border: 'none', background: 'linear-gradient(120deg,var(--green),#12b981)', color: '#04150e', boxShadow: '0 8px 22px color-mix(in srgb,var(--green) 32%,transparent)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                          <span style={{ width: 20, height: 20, borderRadius: 5, background: 'rgba(4,21,14,.14)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 900 }}>₮</span>
+                          {es ? 'Pagar con USDT' : 'Pay with USDT'}
+                        </button>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 5 }}>
+                          <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '.04em', color: 'var(--green)', border: '1px solid color-mix(in srgb,var(--green) 35%,transparent)', borderRadius: 99, padding: '1px 7px' }}>◆ TRON · ETHEREUM</span>
+                          <span className="muted" style={{ fontSize: 10 }}>{es ? 'sin contracargos' : 'no chargebacks'}</span>
+                        </div>
+                        <button onClick={() => buy(p, 'card')} className="muted" style={{ width: '100%', marginTop: 6, padding: '6px', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 11.5, border: 'none', background: 'transparent' }}>{es ? 'o pagar con tarjeta' : 'or pay by card'}</button>
+                      </>
                     )}
                   </div>
                 );
@@ -174,6 +187,7 @@ export default function BotLabDashboard() {
         {view === 'ganancias' && sell && <EarningsPanel es={es} sell={sell} reload={loadSell} />}
       </div>
 
+      {netPick && <NetworkPicker es={es} pick={netPick} onClose={() => setNetPick(null)} onPick={(n: string) => buy(netPick.product, 'usdt', n)} />}
       {crypto && <CryptoModal es={es} crypto={crypto} onClose={() => setCrypto(null)} onDone={() => { setCrypto(null); toast(es ? 'Recibido. Activamos tu robot al confirmar el pago.' : 'Received. Your robot activates once the payment is confirmed.'); loadLicenses(); }} />}
       {editing && <ProductModal es={es} product={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); loadSell(); }} />}
 
@@ -317,6 +331,41 @@ function ProductModal({ es, product, onClose, onSaved }: any) {
   );
 }
 
+// Nombre bonito de cada red USDT.
+const NET_INFO: Record<string, { name: string; badge: string; hint_es: string; hint_en: string }> = {
+  trc20: { name: 'TRON (TRC20)', badge: 'T…', hint_es: 'Comisión de red baja (centavos). Recomendada.', hint_en: 'Low network fee (cents). Recommended.' },
+  erc20: { name: 'Ethereum (ERC20)', badge: '0x…', hint_es: 'Comisión de red más alta (gas).', hint_en: 'Higher network fee (gas).' },
+};
+// ---------------------------------------------------------------- Elegir red USDT (evita enviar por la red equivocada)
+function NetworkPicker({ es, pick, onClose, onPick }: any) {
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(3,6,14,.72)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 20, padding: 22, width: 'min(400px,100%)' }}>
+        <h3 style={{ margin: '0 0 4px' }}>{es ? '¿En qué red pagas?' : 'Which network?'}</h3>
+        <p className="muted" style={{ fontSize: 12.5, marginTop: 0 }}>{es ? 'Elige la red de tu wallet. Debes enviar el USDT por ESA misma red.' : 'Pick your wallet\'s network. You must send USDT on THAT same network.'}</p>
+        <div style={{ display: 'grid', gap: 10, marginTop: 6 }}>
+          {(pick.networks as string[]).map((n) => {
+            const i = NET_INFO[n] || { name: n.toUpperCase(), badge: '', hint_es: '', hint_en: '' };
+            return (
+              <button key={n} onClick={() => onPick(n)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 14px', borderRadius: 13, cursor: 'pointer', textAlign: 'left', border: '1.5px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)' }}>
+                <span style={{ width: 36, height: 36, flex: 'none', borderRadius: 10, background: 'linear-gradient(120deg,var(--green),#12b981)', color: '#04150e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>₮</span>
+                <span style={{ flex: 1 }}>
+                  <span style={{ display: 'block', fontWeight: 800, fontSize: 14.5 }}>{i.name}</span>
+                  <span className="muted" style={{ fontSize: 11.5 }}>{es ? i.hint_es : i.hint_en}</span>
+                </span>
+                <span style={{ color: 'var(--mut)', fontSize: 18 }}>›</span>
+              </button>
+            );
+          })}
+        </div>
+        <div style={{ marginTop: 12, fontSize: 11.5, color: 'var(--amber)', background: 'color-mix(in srgb,var(--amber) 10%,transparent)', border: '1px solid color-mix(in srgb,var(--amber) 35%,transparent)', borderRadius: 10, padding: '9px 11px' }}>
+          ⚠ {es ? 'Enviar por la red equivocada pierde tus fondos. Verifica la red en tu wallet antes de enviar.' : 'Sending on the wrong network loses your funds. Check the network in your wallet before sending.'}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------- Modal USDT (iluminado, con QR + copiar)
 function CryptoModal({ es, crypto, onClose, onDone }: any) {
   const [txid, setTxid] = useState('');
@@ -324,6 +373,8 @@ function CryptoModal({ es, crypto, onClose, onDone }: any) {
   const [copied, setCopied] = useState('');
   const net = (crypto.network || 'trc20').toUpperCase();
   const addr = crypto.address || '';
+  // Monto EXACTO a enviar: el único (match_amount) para que se confirme solo on-chain.
+  const amt = crypto.match_amount != null ? crypto.match_amount : crypto.amountUsd;
   const qrSrc = addr ? `/api/qr?data=${encodeURIComponent(addr)}&size=220&fg=0b1020&bg=ffffff` : '';
   async function copy(text: string, tag: string) {
     try { await navigator.clipboard.writeText(text); setCopied(tag); setTimeout(() => setCopied(''), 1600); } catch { toastErr(es ? 'No se pudo copiar' : 'Could not copy'); }
@@ -348,11 +399,16 @@ function CryptoModal({ es, crypto, onClose, onDone }: any) {
 
         {addr ? (
           <>
+            {/* Aviso de red BIEN visible: enviar por otra red pierde los fondos */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'color-mix(in srgb,var(--amber) 12%,transparent)', border: '1px solid color-mix(in srgb,var(--amber) 40%,transparent)', borderRadius: 12, padding: '9px 12px', margin: '8px 0' }}>
+              <span style={{ fontSize: 15 }}>⚠</span>
+              <span style={{ fontSize: 12.5, color: 'var(--tx)' }}>{es ? 'Envía USDT SOLO por la red' : 'Send USDT ONLY on'} <b style={{ color: 'var(--amber)' }}>{(NET_INFO[crypto.network]?.name) || net}</b>. {es ? 'Otra red pierde tus fondos.' : 'Another network loses your funds.'}</span>
+            </div>
             {/* Monto */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 12, padding: '10px 12px', margin: '10px 0' }}>
               <span className="muted" style={{ fontSize: 12.5 }}>{es ? 'Monto exacto' : 'Exact amount'}</span>
-              <b style={{ marginLeft: 'auto', fontSize: 17, color: 'var(--green)' }}>{crypto.amountUsd} USDT</b>
-              <button onClick={() => copy(String(crypto.amountUsd), 'amt')} style={copyBtn}>{copied === 'amt' ? '✓' : (es ? 'Copiar' : 'Copy')}</button>
+              <b style={{ marginLeft: 'auto', fontSize: 17, color: 'var(--green)' }}>{amt} USDT</b>
+              <button onClick={() => copy(String(amt), 'amt')} style={copyBtn}>{copied === 'amt' ? '✓' : (es ? 'Copiar' : 'Copy')}</button>
             </div>
 
             {/* QR para escanear */}
@@ -362,6 +418,7 @@ function CryptoModal({ es, crypto, onClose, onDone }: any) {
                 <img src={qrSrc} alt="QR USDT" width={200} height={200} style={{ display: 'block', width: 200, height: 200 }} />
               </div>
               <span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Escanea con tu wallet' : 'Scan with your wallet'}</span>
+              {crypto.match_amount != null && <span style={{ fontSize: 11, color: 'var(--green)', textAlign: 'center' }}>{es ? 'Envía el monto EXACTO → tu robot se activa solo.' : 'Send the EXACT amount → your robot activates automatically.'}</span>}
             </div>
 
             {/* Dirección + copiar */}

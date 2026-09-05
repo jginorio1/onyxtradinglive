@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { getProduct, checkoutCard, hasLicense } from '@/lib/botlab';
-import { createCryptoPayment, cryptoEnabled } from '@/lib/cryptoPay';
+import { createCryptoPayment, cryptoEnabled, cryptoNetworks } from '@/lib/cryptoPay';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -23,10 +23,15 @@ export async function POST(req: Request) {
   if (method === 'usdt') {
     if (!product.accepts_crypto) return NextResponse.json({ error: 'Este robot no acepta cripto.' }, { status: 400 });
     if (!(await cryptoEnabled())) return NextResponse.json({ error: 'Pago en cripto no disponible por ahora.' }, { status: 400 });
-    const pay = await createCryptoPayment({ userId: user.id, purpose: 'license', refId: product.id, amountUsd: (product.price_cents || 0) / 100, name: product.name });
+    const nets = await cryptoNetworks();
+    const chosen = (b.network === 'erc20' || b.network === 'trc20') ? b.network : null;
+    // Si hay más de una red y el cliente no eligió, le pedimos que escoja (evita errores).
+    if (nets.length > 1 && !chosen) return NextResponse.json({ chooseNetwork: nets });
+    const network = chosen || nets[0];
+    const pay = await createCryptoPayment({ userId: user.id, purpose: 'license', refId: product.id, amountUsd: (product.price_cents || 0) / 100, name: product.name, network });
     // Con Coinbase Commerce: redirige al checkout hospedado (confirmación automática).
     if (pay.hosted_url) return NextResponse.json({ url: pay.hosted_url });
-    return NextResponse.json({ crypto: { id: pay.id, address: pay.address, network: pay.network, amountUsd: pay.amount_usd, asset: 'USDT' } });
+    return NextResponse.json({ crypto: { id: pay.id, address: pay.address, network: pay.network, amountUsd: pay.amount_usd, match_amount: pay.match_amount, asset: 'USDT' } });
   }
 
   if (!product.accepts_card) return NextResponse.json({ error: 'Este robot no acepta tarjeta.' }, { status: 400 });

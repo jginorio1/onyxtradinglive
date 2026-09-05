@@ -16,8 +16,10 @@ const clampPct = (n: any) => Math.max(0, Math.min(50, Number(n) || 0));
 
 export type BotLabSettings = {
   fee_pct: number;            // comisión de Onyx sobre ventas de creadores (%)
-  usdt_address: string;       // wallet para cobrar en USDT (modo manual, si no hay Coinbase)
-  usdt_network: string;       // trc20 | erc20 | bep20
+  usdt_address: string;       // wallet legacy (fallback) para cobrar en USDT
+  usdt_network: string;       // red legacy: trc20 | erc20 | bep20
+  usdt_erc20: string;         // wallet Ethereum (ERC20) — dirección 0x…
+  usdt_trc20: string;         // wallet TRON (TRC20) — dirección T…
   service_automate_from: number; // precio "desde" del servicio a medida (USD)
   service_install_price: number; // instalación asistida por sesión (USD)
   service_elite_from: number;    // programa elite (USD)
@@ -25,10 +27,23 @@ export type BotLabSettings = {
   telegram_chat: string;      // chat de Telegram para avisos (opcional)
 };
 const DEF: BotLabSettings = {
-  fee_pct: 20, usdt_address: '', usdt_network: 'trc20',
+  fee_pct: 20, usdt_address: '', usdt_network: 'trc20', usdt_erc20: '', usdt_trc20: '',
   service_automate_from: 1500, service_install_price: 99, service_elite_from: 6000,
   notify_email: '', telegram_chat: '',
 };
+// Devuelve la dirección correcta para una red, con fallback a la legacy.
+export function usdtAddressFor(s: BotLabSettings, network: string): string {
+  if (network === 'erc20' || network === 'eth') return (s.usdt_erc20 || (s.usdt_network === 'erc20' ? s.usdt_address : '') || '').trim();
+  if (network === 'trc20' || network === 'tron') return (s.usdt_trc20 || (s.usdt_network === 'trc20' ? s.usdt_address : '') || '').trim();
+  return (s.usdt_address || '').trim();
+}
+// Redes con wallet configurada (para ofrecerlas en el checkout).
+export function usdtNetworksAvailable(s: BotLabSettings): ('erc20' | 'trc20')[] {
+  const out: ('erc20' | 'trc20')[] = [];
+  if (usdtAddressFor(s, 'trc20')) out.push('trc20');
+  if (usdtAddressFor(s, 'erc20')) out.push('erc20');
+  return out;
+}
 export async function botLabSettings(): Promise<BotLabSettings> {
   const s = await getSetting<Partial<BotLabSettings>>('bot_lab', {});
   return { ...DEF, ...(s || {}) };

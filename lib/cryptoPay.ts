@@ -1,5 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { botLabSettings, getProduct, grantLicense } from '@/lib/botlab';
+import { botLabSettings, getProduct, grantLicense, usdtAddressFor, usdtNetworksAvailable } from '@/lib/botlab';
 import { coinbaseEnabled, createCharge } from '@/lib/coinbase';
 
 // ============================================================
@@ -13,18 +13,38 @@ import { coinbaseEnabled, createCharge } from '@/lib/coinbase';
 
 export async function cryptoEnabled(): Promise<boolean> {
   const s = await botLabSettings();
-  return coinbaseEnabled() || !!s.usdt_address;
+  return coinbaseEnabled() || usdtNetworksAvailable(s).length > 0 || !!s.usdt_address;
+}
+// Redes USDT disponibles para que el cliente elija en el checkout.
+export async function cryptoNetworks(): Promise<('erc20' | 'trc20')[]> {
+  const s = await botLabSettings();
+  const nets = usdtNetworksAvailable(s);
+  return nets.length ? nets : (s.usdt_address ? [(s.usdt_network === 'erc20' ? 'erc20' : 'trc20')] : []);
 }
 
 // Crea una intención de pago en USDT. Si hay Coinbase Commerce, genera un charge
 // y devuelve su hosted_url (checkout automático, confirmación on-chain por webhook).
 // Si no, cae al modo manual: muestra la wallet y el cliente reporta el hash.
-export async function createCryptoPayment(o: { userId?: string | null; purpose: 'license' | 'service'; refId: string; amountUsd: number; name?: string }) {
+export async function createCryptoPayment(o: { userId?: string | null; purpose: 'license' | 'service'; refId: string; amountUsd: number; name?: string; network?: string }) {
   const s = await botLabSettings();
+  // Red elegida por el cliente (erc20 | trc20). Si no se pasa, la primera disponible.
+  const avail = usdtNetworksAvailable(s);
+  let network = (o.network === 'erc20' || o.network === 'trc20') ? o.network : (avail[0] || s.usdt_network || 'trc20');
+  const address = usdtAddressFor(s, network) || s.usdt_address || null;
+  const base = Math.max(0, Number(o.amountUsd) || 0);
+  // MONTO ÚNICO (base + sufijo de sub-centavos) para identificar el pago on-chain
+  // sin procesador. Único entre los pagos pendientes de LA MISMA red.
+  let matchAmount: number | null = null;
+  for (let i = 0; i < 20; i++) {
+    const cand = Math.round((base + Math.floor(1 + Math.random() * 98) / 10000) * 10000) / 10000; // base + 0.0001..0.0098
+    const { data: dup } = await supabaseAdmin.from('crypto_payments').select('id').eq('status', 'pending').eq('network', network).eq('match_amount', cand).limit(1).maybeSingle();
+    if (!dup) { matchAmount = cand; break; }
+  }
+  if (matchAmount == null) matchAmount = Math.round((base + (Date.now() % 9800 + 1) / 10000) * 10000) / 10000;
   const { data } = await supabaseAdmin.from('crypto_payments').insert({
     user_id: o.userId || null, purpose: o.purpose, ref_id: o.refId,
-    amount_usd: Math.max(0, Number(o.amountUsd) || 0), asset: 'USDT',
-    network: s.usdt_network || 'trc20', address: s.usdt_address || null,
+    amount_usd: base, match_amount: matchAmount, asset: 'USDT',
+    network, address,
     status: 'pending', provider: coinbaseEnabled() ? 'coinbase' : 'manual',
   }).select('*').single();
   const row = data as any;
