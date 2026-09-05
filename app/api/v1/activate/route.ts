@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { licenseForMagic } from '@/lib/botLicense';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -46,8 +47,13 @@ export async function POST(req: Request) {
       }, { onConflict: 'build,account' });
     } catch { /* tabla opcional: si no existe, la activación sigue funcionando */ }
 
+    // Candado de LICENCIA: si este robot (magic) es un producto vendido, el que
+    // lo corre debe tener licencia activa y al día. Si dejó de pagar → se detiene.
+    const lic = await licenseForMagic(k.user_id, magic);
+    if (lic.gated && !lic.allowed) return deny('license_' + (lic.reason || 'inactive'));
+
     const until = new Date(Date.now() + 24 * 3600 * 1000).toISOString();
-    return NextResponse.json({ allowed: true, until });
+    return NextResponse.json({ allowed: true, until, license: lic.gated ? { until: lic.until || null } : undefined });
   } catch (e: any) {
     return NextResponse.json({ allowed: false, reason: 'error', detail: e?.message || '' }, { status: 200 });
   }

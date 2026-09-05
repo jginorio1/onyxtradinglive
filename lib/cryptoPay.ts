@@ -82,9 +82,13 @@ export async function confirmCryptoPayment(paymentId: string) {
   if (pay.purpose === 'license' && pay.user_id) {
     const prod = await getProduct(pay.ref_id);
     if (prod) {
+      // USDT no es recurrente: una suscripción mensual pagada en cripto vale 30 días.
+      const periodEnd = prod.kind === 'subscription'
+        ? Math.floor(Date.now() / 1000) + 30 * 24 * 3600
+        : undefined;
       await grantLicense({
         productId: prod.id, buyerId: pay.user_id, sellerId: prod.seller_id, kind: prod.kind, method: 'usdt',
-        grossCents: prod.price_cents, currency: prod.currency, ref: 'crypto_' + paymentId, cryptoId: paymentId,
+        grossCents: prod.price_cents, currency: prod.currency, ref: 'crypto_' + paymentId, cryptoId: paymentId, periodEnd,
       });
     }
   }

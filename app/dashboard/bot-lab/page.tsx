@@ -136,19 +136,36 @@ export default function BotLabDashboard() {
           <div>
             {!licenses.length && <div style={{ ...card, textAlign: 'center', color: 'var(--mut)' }}>{es ? 'Aún no tienes robots. Explora el Marketplace.' : 'No robots yet. Browse the Marketplace.'}</div>}
             <div style={{ display: 'grid', gap: 10 }}>
-              {licenses.map((l) => (
-                <div key={l.id} style={{ ...card, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              {licenses.map((l) => {
+                // Estado real de la licencia: vigencia para las de renta.
+                const endMs = l.current_period_end ? new Date(l.current_period_end).getTime() : 0;
+                const days = endMs ? Math.ceil((endMs - Date.now()) / 86400000) : null;
+                const expired = endMs > 0 && endMs < Date.now();
+                const active = l.status === 'active' && !expired;
+                const c = active ? 'var(--green)' : (l.status === 'pending' ? 'var(--amber)' : 'var(--red)');
+                const label = l.status === 'pending' ? (es ? 'Pendiente' : 'Pending')
+                  : expired || l.status === 'expired' ? (es ? 'Vencida' : 'Expired')
+                  : l.status === 'past_due' ? (es ? 'Pago atrasado' : 'Past due')
+                  : l.status === 'canceled' ? (es ? 'Cancelada' : 'Canceled')
+                  : (es ? 'Activa' : 'Active');
+                return (
+                <div key={l.id} style={{ ...card, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', borderColor: active ? undefined : `color-mix(in srgb,${c} 35%,var(--line))` }}>
                   <div style={{ width: 38, height: 38, borderRadius: 10, background: 'linear-gradient(120deg,var(--brand),var(--brand2,#a06bff))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>{(l.product?.name || '?').slice(0, 1)}</div>
                   <div style={{ flex: 1, minWidth: 160 }}>
                     <div style={{ fontWeight: 800 }}>{l.product?.name || (es ? 'Robot' : 'Robot')}</div>
-                    <div className="muted" style={{ fontSize: 12 }}>{l.method === 'usdt' ? 'USDT' : (es ? 'Tarjeta' : 'Card')} · {l.kind === 'subscription' ? (es ? 'suscripción' : 'subscription') : (es ? 'pago único' : 'one-time')}</div>
+                    <div className="muted" style={{ fontSize: 12 }}>{l.method === 'usdt' ? 'USDT' : (es ? 'Tarjeta' : 'Card')} · {l.kind === 'subscription' ? (es ? 'renta mensual' : 'monthly') : (es ? 'pago único' : 'one-time')}{active && days != null && days >= 0 ? ` · ${es ? 'renueva en' : 'renews in'} ${days} ${es ? 'días' : 'days'}` : ''}</div>
                   </div>
-                  <span style={{ fontSize: 12, fontWeight: 800, padding: '4px 10px', borderRadius: 99, color: l.status === 'active' ? 'var(--green)' : 'var(--amber)', border: '1px solid ' + (l.status === 'active' ? 'color-mix(in srgb,var(--green) 40%,transparent)' : 'color-mix(in srgb,var(--amber) 40%,transparent)') }}>
-                    {l.status === 'active' ? (es ? 'Activo' : 'Active') : l.status === 'pending' ? (es ? 'Pendiente' : 'Pending') : l.status}
+                  <span style={{ fontSize: 12, fontWeight: 800, padding: '4px 10px', borderRadius: 99, color: c, border: `1px solid color-mix(in srgb,${c} 40%,transparent)` }}>
+                    {active ? '✓ ' : ''}{label}
                   </span>
-                  <a href="/dashboard/constructor" className="muted" style={{ fontSize: 12.5, fontWeight: 700 }}>{es ? 'Descargar / instalar →' : 'Download / install →'}</a>
+                  {active
+                    ? <a href="/dashboard/constructor" className="muted" style={{ fontSize: 12.5, fontWeight: 700 }}>{es ? 'Descargar / instalar →' : 'Download / install →'}</a>
+                    : l.kind === 'subscription' && l.product_id
+                      ? <button onClick={() => { const p = products.find((x) => x.id === l.product_id); if (p) buy(p, 'usdt'); }} style={{ fontSize: 12.5, fontWeight: 800, cursor: 'pointer', border: '1px solid color-mix(in srgb,var(--green) 40%,transparent)', background: 'color-mix(in srgb,var(--green) 12%,transparent)', color: 'var(--green)', borderRadius: 9, padding: '6px 12px' }}>{es ? 'Renovar' : 'Renew'}</button>
+                      : null}
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
