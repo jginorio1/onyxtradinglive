@@ -69,6 +69,7 @@ export default function BotBuilder() {
   const [s, setS] = useState<BotSpec>(blankReq({ ...DEFAULT_SPEC }));
   const [id, setId] = useState('');
   const [list, setList] = useState<any[]>([]);
+  const [opsByMagic, setOpsByMagic] = useState<Record<number, { trades: number; accountId: string }>>({});
   const [tpls, setTpls] = useState<any[]>([]);
   const [busy, setBusy] = useState(false);
   const [big, setBig] = useState(false);
@@ -111,7 +112,7 @@ export default function BotBuilder() {
     setS((p) => ({ ...p, magic: m }));
   }
 
-  useEffect(() => { load(); loadTpls(); loadMyKey(); setS((p) => ({ ...p, botLang: es ? 'es' : 'en' })); }, []);
+  useEffect(() => { load(); loadTpls(); loadMyKey(); loadOps(); setS((p) => ({ ...p, botLang: es ? 'es' : 'en' })); }, []);
   // Trae TODAS tus claves Onyx activas (la API ya filtra revocadas y de copia). Cada clave
   // está atada a una cuenta; por eso, si hay varias, dejamos que el trader elija la correcta.
   async function loadMyKey() { try { const r = await fetch('/api/keys'); const j = await r.json(); setMyKeys((j.keys || []).filter((x: any) => x?.key)); } catch {} }
@@ -119,6 +120,15 @@ export default function BotBuilder() {
   // de robots existentes, para que nunca choque con otro. Si el trader lo edita, se respeta.
   useEffect(() => { if (!id && Number(s.magic) === DEFAULT_SPEC.magic) assignUniqueMagic(); }, [list]); // eslint-disable-line
   async function load() { try { const r = await fetch('/api/bots/build'); const j = await r.json(); setList(j.bots || []); } catch {} }
+  // Operaciones reales por magic (para saber cuáles ya operan → se pueden vender).
+  async function loadOps() {
+    try {
+      const r = await fetch('/api/bots'); const j = await r.json();
+      const m: Record<number, { trades: number; accountId: string }> = {};
+      (j.bots || []).forEach((b: any) => { const k = Number(b.magic); if (k) m[k] = { trades: Number(b.trades) || 0, accountId: b.accountId || '' }; });
+      setOpsByMagic(m);
+    } catch {}
+  }
   async function loadTpls() { try { const r = await fetch('/api/bots/templates'); const j = await r.json(); setTpls(j.templates || []); } catch {} }
 
   // Copia "segura" para funciones que asumen valores válidos (los críticos pueden estar en blanco).
@@ -751,19 +761,50 @@ export default function BotBuilder() {
       {list.length > 0 && (
         <div className="bbx-panel">
           <div className="bbx-panel-h"><span className="bbx-ic"><OnyxIcon emoji="🗂️" size={16} /></span> {L('Mis robots', 'My robots')}</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {list.map((b) => (
-              <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,.04)', border: '1px solid var(--line)', borderRadius: 11, padding: '10px 13px', flexWrap: 'wrap', gap: 8 }}>
-                <div><b style={{ fontSize: 14, color: 'var(--ink)' }}>{b.name}</b> <span style={{ fontSize: 12, color: 'var(--mut)' }}>· {String(b.platform).toUpperCase()} · {(b.spec?.symbol) || ''} · magic {b.magic}</span></div>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  <a className="bbx-btn" style={{ padding: '5px 10px', fontSize: 12 }} href={`/api/bots/build?guide=${b.id}&lang=${es ? 'es' : 'en'}`} target="_blank">{L('Guía', 'Guide')}</a>
-                  <a className="bbx-btn" style={{ padding: '5px 10px', fontSize: 12 }} href={`/api/bots/build?code=${b.id}`}>.mq5 ↓</a>
-                  <a className="bbx-btn" style={{ padding: '5px 10px', fontSize: 12 }} href={`/api/bots/build?download=${b.id}`}>.set ↓</a>
-                  <button className="bbx-btn" style={{ padding: '5px 10px', fontSize: 12 }} onClick={() => edit(b)}>{L('Editar', 'Edit')}</button>
-                  <button className="bbx-btn" style={{ padding: '5px 10px', fontSize: 12, color: 'var(--wn)' }} onClick={() => del(b.id)}>{L('Borrar', 'Delete')}</button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {list.map((b) => {
+              const plat = String(b.platform || 'mt5').toLowerCase();
+              const isMTr = plat === 'mt5' || plat === 'mt4';
+              const platLbl = plat === 'ctrader' ? 'cTrader' : plat.toUpperCase();
+              const dlExt = plat === 'mt4' ? '.mq4' : plat === 'ctrader' ? '.cs' : '.mq5';
+              const ops = opsByMagic[Number(b.magic)] || { trades: 0, accountId: '' };
+              const canSell = ops.trades >= 20;
+              const c = ops.trades > 0 ? '#34e2a0' : '#8b93ff';   // verde si opera, violeta si no
+              const sellHref = `/dashboard/bot-lab?new=1&name=${encodeURIComponent(b.name || '')}&platform=${encodeURIComponent(plat)}&magic=${encodeURIComponent(b.magic ?? '')}&account=${encodeURIComponent(ops.accountId || '')}`;
+              const act: any = { fontSize: 12, fontWeight: 700, padding: '7px 12px', borderRadius: 9, cursor: 'pointer', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 5, border: '1px solid rgba(255,255,255,.12)', background: 'rgba(255,255,255,.05)', color: '#c9d2ea' };
+              return (
+              <div key={b.id} style={{ position: 'relative', borderRadius: 16, padding: '15px 16px', background: `linear-gradient(180deg, color-mix(in srgb, ${c} 10%, transparent), rgba(255,255,255,.02))`, border: `1px solid color-mix(in srgb, ${c} 35%, var(--line))`, boxShadow: `0 10px 30px color-mix(in srgb, ${c} 14%, transparent)` }}>
+                <div style={{ position: 'absolute', top: 0, left: 16, right: 16, height: 2, background: `linear-gradient(90deg,transparent,${c},transparent)`, borderRadius: 2 }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 13, flexWrap: 'wrap' }}>
+                  <span style={{ width: 44, height: 44, flex: 'none', borderRadius: 12, background: `linear-gradient(120deg, ${c}, ${ops.trades > 0 ? '#12b981' : '#a06bff'})`, color: ops.trades > 0 ? '#04150e' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 18, boxShadow: `0 6px 16px color-mix(in srgb, ${c} 40%, transparent)` }}>{(b.name || '?').slice(0, 1).toUpperCase()}</span>
+                  <div style={{ flex: 1, minWidth: 150 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <b style={{ color: 'var(--ink)', fontSize: 15 }}>{b.name}</b>
+                      <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.04em', color: c, background: `color-mix(in srgb, ${c} 14%, transparent)`, border: `1px solid color-mix(in srgb, ${c} 40%, transparent)`, borderRadius: 20, padding: '1px 8px' }}>{ops.trades > 0 ? `● ${es ? 'OPERANDO' : 'TRADING'} · ${ops.trades} ${es ? 'ops' : 'trades'}` : `○ ${es ? 'SIN PROBAR' : 'UNTESTED'}`}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 10.5, color: '#c9d2ea', background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.1)', borderRadius: 7, padding: '2px 8px' }}>{platLbl}</span>
+                      {b.spec?.symbol && <span style={{ fontSize: 10.5, color: '#c9d2ea', background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.1)', borderRadius: 7, padding: '2px 8px' }}>{b.spec.symbol}</span>}
+                      <span style={{ fontSize: 10.5, fontFamily: 'monospace', color: '#ffd45e', background: 'rgba(255,212,94,.1)', border: '1px solid rgba(255,212,94,.3)', borderRadius: 7, padding: '2px 8px' }}>🔒 {b.magic}</span>
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 7, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <a style={{ ...act, border: 'none', color: '#fff', background: 'linear-gradient(120deg,#8b93ff,#5b63d3)', fontWeight: 800 }} href={`/api/bots/build?code=${b.id}`}><OnyxIcon emoji="⬇️" size={12} glow={false} /> {L('Descargar', 'Download')} {dlExt}</a>
+                  {isMTr && <a style={act} href={`/api/bots/build?download=${b.id}`}><OnyxIcon emoji="⚙" size={12} /> {L('Config', 'Config')} (.set)</a>}
+                  <a style={act} href={`/api/bots/build?guide=${b.id}&lang=${es ? 'es' : 'en'}`} target="_blank"><OnyxIcon emoji="📖" size={12} /> {L('Guía', 'Guide')}</a>
+                  <a style={{ ...act, color: '#3ad0ff', background: 'rgba(58,208,255,.1)', border: '1px solid rgba(58,208,255,.35)' }} href={`/api/bots/build?code=${b.id}`} onClick={() => toast(L('Instálalo en una cuenta DEMO: es gratis y no necesita clave Onyx.', 'Install it on a DEMO account: it\'s free and needs no Onyx key.'))}><OnyxIcon emoji="🧪" size={12} glow={false} /> {L('Probar en demo', 'Test on demo')}</a>
+                  {canSell
+                    ? <a style={{ ...act, color: '#3a2a06', fontWeight: 800, border: 'none', background: 'linear-gradient(120deg,#ffd45e,#ffb020)', boxShadow: '0 6px 16px rgba(255,176,32,.3)' }} href={sellHref}><OnyxIcon emoji="💰" size={12} glow={false} /> {L('Vender', 'Sell')}</a>
+                    : <span title={L('Necesita 20+ operaciones reales para venderse.', 'Needs 20+ real trades to be sold.')} style={{ ...act, cursor: 'default', color: '#6b7488', background: 'rgba(255,255,255,.03)', border: '1px dashed rgba(255,255,255,.15)' }}><OnyxIcon emoji="💰" size={12} glow={false} /> {L('Vender · necesita historial', 'Sell · needs history')}</span>}
+                  <span style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
+                    <button style={{ ...act, background: 'transparent', border: 'none', color: '#9aa6bd' }} onClick={() => edit(b)}><OnyxIcon emoji="✎" size={13} /> {L('Editar', 'Edit')}</button>
+                    <button style={{ ...act, background: 'transparent', border: 'none', color: '#ff6b7d' }} onClick={() => del(b.id)}><OnyxIcon emoji="🗑" size={13} /></button>
+                  </span>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
