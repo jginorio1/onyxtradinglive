@@ -128,7 +128,6 @@ export default async function TopBar({ home = false }: { home?: boolean }) {
         // había ninguna otra forma de volver al landing.
         { href: '/', label: t.home },
         { href: '/bot-builder', label: lang === 'en' ? 'Build a bot' : 'Crea tu bot', icon: '🤖' },
-        { href: '/bot-lab', label: 'Bot Lab', icon: '🛒', full: true },
         { href: '/analiza', label: lang === 'en' ? 'Free analysis' : 'Analiza gratis' },
         { href: '/copy', label: 'Onyx Copy' },
         { href: '/pricing', label: t.plans },
