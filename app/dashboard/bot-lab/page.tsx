@@ -344,16 +344,18 @@ function NetworkPicker({ es, pick, onClose, onPick }: any) {
         <h3 style={{ margin: '0 0 4px' }}>{es ? '¿En qué red pagas?' : 'Which network?'}</h3>
         <p className="muted" style={{ fontSize: 12.5, marginTop: 0 }}>{es ? 'Elige la red de tu wallet. Debes enviar el USDT por ESA misma red.' : 'Pick your wallet\'s network. You must send USDT on THAT same network.'}</p>
         <div style={{ display: 'grid', gap: 10, marginTop: 6 }}>
-          {(pick.networks as string[]).map((n) => {
+          {/* TRON primero y recomendada (comisión de red baja). */}
+          {([...(pick.networks as string[])].sort((a, b) => (a === 'trc20' ? -1 : b === 'trc20' ? 1 : 0))).map((n) => {
             const i = NET_INFO[n] || { name: n.toUpperCase(), badge: '', hint_es: '', hint_en: '' };
+            const rec = n === 'trc20';
             return (
-              <button key={n} onClick={() => onPick(n)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 14px', borderRadius: 13, cursor: 'pointer', textAlign: 'left', border: '1.5px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)' }}>
+              <button key={n} onClick={() => onPick(n)} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 12, padding: '13px 14px', borderRadius: 13, cursor: 'pointer', textAlign: 'left', border: `1.5px solid ${rec ? 'var(--green)' : 'var(--line)'}`, background: rec ? 'color-mix(in srgb,var(--green) 10%,var(--bg2))' : 'var(--bg2)', color: 'var(--tx)', boxShadow: rec ? '0 6px 18px color-mix(in srgb,var(--green) 20%,transparent)' : 'none' }}>
                 <span style={{ width: 36, height: 36, flex: 'none', borderRadius: 10, background: 'linear-gradient(120deg,var(--green),#12b981)', color: '#04150e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>₮</span>
                 <span style={{ flex: 1 }}>
-                  <span style={{ display: 'block', fontWeight: 800, fontSize: 14.5 }}>{i.name}</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 7, fontWeight: 800, fontSize: 14.5 }}>{i.name}{rec && <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '.04em', color: 'var(--green)', background: 'color-mix(in srgb,var(--green) 16%,transparent)', border: '1px solid color-mix(in srgb,var(--green) 40%,transparent)', borderRadius: 99, padding: '1px 7px' }}>{es ? 'RECOMENDADA' : 'RECOMMENDED'}</span>}</span>
                   <span className="muted" style={{ fontSize: 11.5 }}>{es ? i.hint_es : i.hint_en}</span>
                 </span>
-                <span style={{ color: 'var(--mut)', fontSize: 18 }}>›</span>
+                <span style={{ color: rec ? 'var(--green)' : 'var(--mut)', fontSize: 18 }}>›</span>
               </button>
             );
           })}
