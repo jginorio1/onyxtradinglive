@@ -60,7 +60,13 @@ export function toast(msg: ToastMsg, kind?: Kind) {
 }
 
 export function toastErr(apiJson: any, kind: Kind = 'error') {
-  toast({ api: apiJson } as ToastMsg, kind);
+  // Si llega un texto suelto (p. ej. e.message), lo envolvemos como {error} para
+  // que se muestre el MOTIVO real en vez del genérico "Algo salió mal".
+  let wrapped: any = apiJson;
+  if (typeof apiJson === 'string') wrapped = { error: apiJson };
+  else if (apiJson instanceof Error) wrapped = { error: apiJson.message };
+  else if (apiJson && typeof apiJson === 'object' && !('error' in apiJson) && !('code' in apiJson) && typeof (apiJson as any).message === 'string') wrapped = { error: (apiJson as any).message };
+  toast({ api: wrapped } as ToastMsg, kind);
 }
 
 // ── Confirmación (reemplaza el confirm() del navegador) ──────────────

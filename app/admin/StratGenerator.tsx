@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast, toastErr } from '@/lib/toast';
 import { BLOCKS, computeSpace, candidatesToCsv } from '@/lib/stratgen';
 
@@ -30,6 +30,20 @@ export default function StratGenerator({ es, post, onClose }: any) {
   const [busy, setBusy] = useState(false);
   const [cands, setCands] = useState<any[] | null>(null);
 
+  // Arrastrar el popup por la cabecera.
+  const [pos, setPos] = useState({ x: 0, y: 0 });
+  const [drag, setDrag] = useState<null | { sx: number; sy: number; ox: number; oy: number }>(null);
+  useEffect(() => {
+    if (!drag) return;
+    const pt = (e: any) => (e.touches ? e.touches[0] : e);
+    const mv = (e: any) => { const p = pt(e); setPos({ x: drag.ox + (p.clientX - drag.sx), y: drag.oy + (p.clientY - drag.sy) }); };
+    const up = () => setDrag(null);
+    window.addEventListener('mousemove', mv); window.addEventListener('mouseup', up);
+    window.addEventListener('touchmove', mv, { passive: false }); window.addEventListener('touchend', up);
+    return () => { window.removeEventListener('mousemove', mv); window.removeEventListener('mouseup', up); window.removeEventListener('touchmove', mv); window.removeEventListener('touchend', up); };
+  }, [drag]);
+  const startDrag = (e: any) => { const p = e.touches ? e.touches[0] : e; setDrag({ sx: p.clientX, sy: p.clientY, ox: pos.x, oy: pos.y }); };
+
   const space = useMemo(() => computeSpace(cfg), [cfg]);
   const toggle = (bk: string, id: string) => setCfg((c) => { const cur = c[bk] || []; return { ...c, [bk]: cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id] }; });
 
@@ -43,15 +57,16 @@ export default function StratGenerator({ es, post, onClose }: any) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(6,9,18,.7)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 20, overflowY: 'auto' }} onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(860px,100%)', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 18, overflow: 'hidden', margin: 'auto' }}>
-        {/* Cabecera iluminada */}
-        <div style={{ padding: '16px 20px', background: 'linear-gradient(135deg, color-mix(in srgb,' + VIOLET + ' 22%,var(--card)), var(--card))', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(860px,100%)', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 18, overflow: 'hidden', margin: 'auto', transform: `translate(${pos.x}px, ${pos.y}px)`, boxShadow: '0 24px 70px rgba(0,0,0,.55)' }}>
+        {/* Cabecera iluminada · arrastrable */}
+        <div onMouseDown={startDrag} onTouchStart={startDrag} style={{ padding: '16px 20px', background: 'linear-gradient(135deg, color-mix(in srgb,' + VIOLET + ' 22%,var(--card)), var(--card))', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', gap: 10, cursor: 'move', userSelect: 'none', touchAction: 'none' }}>
+          <span style={{ fontSize: 18, color: 'var(--mut)' }}>⠿</span>
           <span style={{ fontSize: 22 }}>🧬</span>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 17, fontWeight: 800 }}>{es ? 'Generador de estrategias' : 'Strategy generator'}</div>
-            <div className="muted" style={{ fontSize: 12.5 }}>{es ? 'Elige los bloques; genera millones de combinaciones y expórtalas a MetaTrader.' : 'Pick the blocks; generate millions of combinations and export to MetaTrader.'}</div>
+            <div className="muted" style={{ fontSize: 12.5 }}>{es ? 'Arrastra desde aquí · genera millones de combinaciones y expórtalas a MetaTrader.' : 'Drag from here · generate millions of combinations and export to MetaTrader.'}</div>
           </div>
-          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--mut)', fontSize: 20, cursor: 'pointer' }}>✕</button>
+          <button onMouseDown={(e) => e.stopPropagation()} onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--mut)', fontSize: 20, cursor: 'pointer' }}>✕</button>
         </div>
 
         {/* Bloques */}
