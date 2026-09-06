@@ -7,7 +7,9 @@
 // mensual año × mes. Puro cálculo, corre en el navegador.
 // LÍNEA ROJA: es histórico, no predice el mercado.
 // ============================================================
-export type Trade = { t: number; profit: number };
+export type Trade = { t: number; profit: number; dir?: 1 | -1 };
+export type Side = { n: number; net: number; wins: number };
+export type ListRow = { t: number; dir: number; profit: number; balance: number };
 
 export type MonthCell = { y: number; m: number; pnl: number };
 export type FullReport = {
@@ -26,6 +28,14 @@ export type FullReport = {
   months: Record<number, Record<number, number>>; // year → month(0-11) → pnl
   ytd: Record<number, number>;
   monthKeys: number[];                          // años presentes, orden asc
+  // Análisis de operaciones (estilo SQ Trade analysis).
+  byHour: number[];                             // P&L por hora del día (0..23)
+  byWeekday: number[];                          // P&L por día de semana (0=Dom..6=Sáb)
+  long: Side; short: Side;                      // desglose largos vs cortos
+  list: ListRow[];                              // primeras operaciones con balance corrido
+  // División dentro/fuera de muestra (IS/OOS).
+  oosStart: number;                             // timestamp donde empieza el OOS (0 = sin división)
+  isSum: Side; oosSum: Side;                    // resumen de cada tramo
 };
 
 function std(v: number[]): number {
@@ -35,7 +45,7 @@ function std(v: number[]): number {
   return Math.sqrt(s / (n - 1));
 }
 
-export function buildReport(trades: Trade[], capital: number): FullReport {
+export function buildReport(trades: Trade[], capital: number, oosPct = 0): FullReport {
   const cap = capital > 0 ? capital : 10000;
   const sorted = [...trades].sort((a, b) => a.t - b.t);
   const n = sorted.length;
@@ -46,8 +56,19 @@ export function buildReport(trades: Trade[], capital: number): FullReport {
     maxDD: 0, maxDDpct: 0, retDD: 0, sharpe: 0, sqn: 0, expectancy: 0,
     stagnationDays: 0, stagnationPct: 0, cagr: 0, years: 0,
     equity: [{ t: 0, eq: cap }], ddSeries: [], months: {}, ytd: {}, monthKeys: [],
+    byHour: new Array(24).fill(0), byWeekday: new Array(7).fill(0),
+    long: { n: 0, net: 0, wins: 0 }, short: { n: 0, net: 0, wins: 0 }, list: [],
+    oosStart: 0, isSum: { n: 0, net: 0, wins: 0 }, oosSum: { n: 0, net: 0, wins: 0 },
   };
   if (!n) return empty;
+  // Frontera IS/OOS por tiempo: el último oosPct% del período es fuera de muestra.
+  const t0 = sorted[0].t, tN = sorted[n - 1].t;
+  const oosStart = oosPct > 0 ? t0 + (tN - t0) * (1 - oosPct / 100) : 0;
+  const byHour = new Array(24).fill(0), byWeekday = new Array(7).fill(0);
+  const long: Side = { n: 0, net: 0, wins: 0 }, short: Side = { n: 0, net: 0, wins: 0 };
+  const list: ListRow[] = [];
+  const isSum: Side = { n: 0, net: 0, wins: 0 }, oosSum: Side = { n: 0, net: 0, wins: 0 };
+  let bal = cap;
 
   let gp = 0, gl = 0, wins = 0, losses = 0, largestWin = 0, largestLoss = 0;
   const profits: number[] = [];
@@ -80,6 +101,15 @@ export function buildReport(trades: Trade[], capital: number): FullReport {
     // mensual
     const d = new Date(tr.t); const y = d.getUTCFullYear(), mo = d.getUTCMonth();
     years.add(y); (months[y] ||= {}); months[y][mo] = (months[y][mo] || 0) + p; ytd[y] = (ytd[y] || 0) + p;
+    // análisis: por hora / día de semana / dirección
+    byHour[d.getUTCHours()] += p; byWeekday[d.getUTCDay()] += p;
+    const side = tr.dir === -1 ? short : tr.dir === 1 ? long : null;
+    if (side) { side.n++; side.net += p; if (p > 0) side.wins++; }
+    // división IS/OOS
+    const seg = oosStart && tr.t >= oosStart ? oosSum : isSum;
+    seg.n++; seg.net += p; if (p > 0) seg.wins++;
+    // lista de operaciones (primeras 300) con balance corrido
+    bal += p; if (list.length < 300) list.push({ t: tr.t, dir: tr.dir || 0, profit: Math.round(p * 100) / 100, balance: Math.round(bal) });
   }
   if (curWin > 0) winRuns.push(curWin);
   if (curLoss > 0) lossRuns.push(curLoss);
@@ -120,5 +150,11 @@ export function buildReport(trades: Trade[], capital: number): FullReport {
     stagnationDays: Math.round(stagnationDays), stagnationPct: Math.round(stagnationPct * 10) / 10,
     cagr: Math.round(cagr * 100) / 100, years: Math.round(yearsSpan * 10) / 10,
     equity, ddSeries, months, ytd, monthKeys: [...years].sort((a, b) => a - b),
+    byHour: byHour.map((v) => Math.round(v)), byWeekday: byWeekday.map((v) => Math.round(v)),
+    long: { n: long.n, net: Math.round(long.net), wins: long.wins },
+    short: { n: short.n, net: Math.round(short.net), wins: short.wins },
+    list, oosStart,
+    isSum: { n: isSum.n, net: Math.round(isSum.net), wins: isSum.wins },
+    oosSum: { n: oosSum.n, net: Math.round(oosSum.net), wins: oosSum.wins },
   };
 }

@@ -42,6 +42,12 @@ function tip(es: boolean, k: string): string {
     mcMaxLoss: ['Probabilidad máxima de perder al barajar las operaciones (Monte Carlo). Pon 30 – 35.', 'Max probability of losing when shuffling trades (Monte Carlo). Use 30 – 35.'],
     wfMinStab: ['Qué tan estable debe ser fuera de muestra (walk-forward). Pon 55.', 'How stable it must be out-of-sample (walk-forward). Use 55.'],
     blocks: ['Los ingredientes que la fábrica mezcla. Marca 3–5 indicadores y varias entradas/TP/SL.', 'The ingredients the factory mixes. Pick 3–5 indicators and several entries/TP/SL.'],
+    maxTradesDay: ['Máximo de operaciones nuevas por día. Pon 0 para sin límite, o 1–3 para no sobre-operar.', 'Max new trades per day. Use 0 for no limit, or 1–3 to avoid over-trading.'],
+    hourRange: ['Solo entra dentro de esta franja horaria (UTC). Útil para operar solo la sesión buena. Deja vacío para todo el día.', 'Only enter within this hour window (UTC). Good for trading only the strong session. Leave empty for all day.'],
+    exitFri: ['Cierra todo el viernes a la hora indicada, para no cargar riesgo el fin de semana.', 'Close everything on Friday at the given hour, to avoid weekend risk.'],
+    slLimit: ['Acota el stop entre un mínimo y un máximo en pips. Descarta stops absurdos. 0 = sin límite.', 'Clamp the stop between a min and max in pips. Kills absurd stops. 0 = no limit.'],
+    tpLimit: ['Acota el take profit entre un mínimo y un máximo en pips. 0 = sin límite.', 'Clamp the take profit between a min and max in pips. 0 = no limit.'],
+    oos: ['% del FINAL de los datos que el robot nunca ve al construir (fuera de muestra). Si ahí no gana, está sobre-ajustado. 20–30% recomendado.', '% of the END of the data the robot never sees while building (out-of-sample). If it doesn’t profit there, it’s overfit. 20–30% recommended.'],
   };
   const v = T[k]; return v ? (es ? v[0] : v[1]) : '';
 }
@@ -121,6 +127,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
   const [autoDone, setAutoDone] = useState<{ created: number; scanned: number; survivors: number } | null>(null);
   // Receta encadenada (build → backtest → IS/OOS → Monte Carlo → walk-forward → rechazar).
   const [recipe, setRecipe] = useState({ minPf: 1.2, maxDd: 25, minTr: 30, mcMaxLoss: 35, wfMinStab: 55 });
+  const [oosPct, setOosPct] = useState(30); // % del final reservado como fuera de muestra (OOS)
   const [recRun, setRecRun] = useState(false);
   const [recMsg, setRecMsg] = useState('');
   const [recFunnel, setRecFunnel] = useState<any>(null);
@@ -187,8 +194,8 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
   // Reporte completo estilo StrategyQuant de la estrategia seleccionada.
   const selReport = useMemo<FullReport | null>(() => {
     if (!sel || !bars) return null;
-    try { const m = runBacktest(bars, enrichSpec({ ...sel, dir }, blockMap) as Spec, costs); return buildReport(m.trades, costs.capital || 10000); } catch { return null; }
-  }, [sel, bars, costs, dir, blockMap]);
+    try { const m = runBacktest(bars, enrichSpec({ ...sel, dir }, blockMap) as Spec, costs); return buildReport(m.trades, costs.capital || 10000, oosPct); } catch { return null; }
+  }, [sel, bars, costs, dir, blockMap, oosPct]);
 
   async function runBatch() {
     if (!bars) { toastErr(es ? 'Sube las barras primero.' : 'Upload bars first.'); return; }
@@ -274,7 +281,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
     await new Promise((r) => setTimeout(r, 30));
     try {
       const cands = (sampleCandidates(cfg, n) as Spec[]).map((c) => ({ ...c, dir }));
-      const cut = Math.floor(bars.length * 0.7); const oosB = bars.slice(cut);
+      const oosOn = oosPct > 0; const cut = Math.floor(bars.length * (1 - Math.max(0, Math.min(50, oosPct)) / 100)); const oosB = oosOn ? bars.slice(cut) : [];
       let bt = 0, mc = 0, wf = 0; const survivors: any[] = [];
       for (let i = 0; i < cands.length; i++) {
         const spec = enrichSpec(cands[i], blockMap);
@@ -283,8 +290,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
         if (m.challenge && !m.challenge.pass) continue; // no pasa el reto prop firm → descartar
         if (!(m.pf >= recipe.minPf && m.maxddPct <= recipe.maxDd && m.n >= recipe.minTr)) continue;
         bt++;
-        const oos = runBacktest(oosB, spec, costs);
-        if (!(oos.n >= 8 && oos.pf >= 1)) continue;
+        if (oosOn) { const oos = runBacktest(oosB, spec, costs); if (!(oos.n >= 8 && oos.pf >= 1 && oos.net > 0)) continue; } // OOS obligatorio: debe GANAR fuera de muestra
         const suite = mcSuite(m.trades.map((t) => t.profit), { runs: 250, maxLossProb: recipe.mcMaxLoss });
         if (!suite.pass) continue; mc++;
         const wfm = walkForwardMatrix(bars, spec, costs, { folds: 5 });
@@ -406,6 +412,38 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
             <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Días mínimos' : 'Minimum days'}<Help text={tip(es, 'chMinDays')} /></span><input type="number" step="1" value={costs.chMinDays ?? 0} onChange={(e) => setCosts({ ...costs, chMinDays: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>
           </div>
           <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>{es ? 'Deja en 0 lo que no apliques. Si activas el reto, cada robot recibe un veredicto “pasa el reto / no pasa” y solo pasan los que cumplen objetivo sin romper la pérdida diaria ni el drawdown, con los días mínimos operados.' : 'Leave at 0 what you don’t use. With the challenge on, each robot gets a “passes / fails” verdict and only those meeting the target without breaking daily loss or drawdown, over the minimum days, pass.'}</div>
+        </div>
+
+        {/* Opciones de trading finas (estilo StrategyQuant) */}
+        <div style={{ marginTop: 14, background: 'var(--bg2)', borderRadius: 10, padding: 12, border: `1px solid color-mix(in srgb,${BLUE} 26%,var(--line))` }}>
+          <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 8 }}>⏱️ {es ? 'Opciones de trading' : 'Trading options'}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 10 }}>
+            <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Máx operaciones/día' : 'Max trades/day'}<Help text={tip(es, 'maxTradesDay')} /></span><input type="number" step="1" min={0} value={costs.maxTradesDay ?? 0} onChange={(e) => setCosts({ ...costs, maxTradesDay: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>
+            <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Hora desde (UTC)' : 'Hour from (UTC)'}<Help text={tip(es, 'hourRange')} /></span><input type="number" step="1" min={-1} max={23} value={costs.hourFrom ?? -1} onChange={(e) => setCosts({ ...costs, hourFrom: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>
+            <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Hora hasta (UTC)' : 'Hour to (UTC)'}</span><input type="number" step="1" min={-1} max={24} value={costs.hourTo ?? -1} onChange={(e) => setCosts({ ...costs, hourTo: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Cerrar el viernes' : 'Close on Friday'}<Help text={tip(es, 'exitFri')} /></span>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 3 }}>
+                <input type="checkbox" checked={!!costs.exitFri} onChange={(e) => setCosts({ ...costs, exitFri: e.target.checked })} />
+                <input type="number" step="1" min={0} max={23} value={costs.friHour ?? 21} disabled={!costs.exitFri} onChange={(e) => setCosts({ ...costs, friHour: Number(e.target.value) })} style={{ ...inp, width: 60 }} /><span className="muted" style={{ fontSize: 11 }}>h UTC</span>
+              </div>
+            </label>
+            <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'SL mín · máx (pips)' : 'SL min · max (pips)'}<Help text={tip(es, 'slLimit')} /></span>
+              <div style={{ display: 'flex', gap: 6, marginTop: 3 }}><input type="number" step="1" min={0} value={costs.slMin ?? 0} onChange={(e) => setCosts({ ...costs, slMin: Number(e.target.value) })} style={{ ...inp, width: '50%' }} /><input type="number" step="1" min={0} value={costs.slMax ?? 0} onChange={(e) => setCosts({ ...costs, slMax: Number(e.target.value) })} style={{ ...inp, width: '50%' }} /></div></label>
+            <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'TP mín · máx (pips)' : 'TP min · max (pips)'}<Help text={tip(es, 'tpLimit')} /></span>
+              <div style={{ display: 'flex', gap: 6, marginTop: 3 }}><input type="number" step="1" min={0} value={costs.tpMin ?? 0} onChange={(e) => setCosts({ ...costs, tpMin: Number(e.target.value) })} style={{ ...inp, width: '50%' }} /><input type="number" step="1" min={0} value={costs.tpMax ?? 0} onChange={(e) => setCosts({ ...costs, tpMax: Number(e.target.value) })} style={{ ...inp, width: '50%' }} /></div></label>
+          </div>
+        </div>
+
+        {/* División dentro/fuera de muestra (IS/OOS) — con presets */}
+        <div style={{ marginTop: 14, background: 'var(--bg2)', borderRadius: 10, padding: 12, border: `1px solid color-mix(in srgb,${CORAL} 28%,var(--line))` }}>
+          <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 6 }}>🧪 {es ? 'Fuera de muestra (OOS)' : 'Out-of-sample (OOS)'}<Help text={tip(es, 'oos')} /></div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <input type="range" min={0} max={50} step={5} value={oosPct} onChange={(e) => setOosPct(Number(e.target.value))} style={{ flex: 1, minWidth: 140 }} />
+            <span style={{ fontSize: 13, fontWeight: 800, color: CORAL, minWidth: 44 }}>{oosPct}%</span>
+            {[0, 20, 30, 50].map((v) => <button key={v} onClick={() => setOosPct(v)} style={{ ...btn(oosPct === v ? CORAL : '#8a94a6'), padding: '5px 10px', fontSize: 12 }}>{v === 0 ? (es ? 'Sin OOS' : 'No OOS') : v + '%'}</button>)}
+          </div>
+          {bars && oosPct > 0 && (() => { const t0 = bars[0].t, tN = bars[bars.length - 1].t; const cut = t0 + (tN - t0) * (1 - oosPct / 100); const fmt = (t: number) => new Date(t).toISOString().slice(0, 10); return <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>{es ? 'Dentro de muestra' : 'In-sample'}: {fmt(t0)} → {fmt(cut)} · <span style={{ color: CORAL }}>{es ? 'Fuera de muestra' : 'Out-of-sample'}: {fmt(cut)} → {fmt(tN)}</span></div>; })()}
+          <div className="muted" style={{ fontSize: 11, marginTop: 6 }}>{es ? 'En la Receta y el Autopiloto, un robot que no gana en el tramo fuera de muestra se descarta (anti-sobreajuste). Mejor que SQ: es obligatorio, no opcional.' : 'In the Recipe and Autopilot, a robot that doesn’t profit out-of-sample is discarded (anti-overfit). Better than SQ: it’s mandatory, not optional.'}</div>
         </div>
       </div>
 
@@ -565,7 +603,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
             <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Símbolo' : 'Symbol'}</span><input value={meta.symbol} onChange={(e) => setMeta({ ...meta, symbol: e.target.value })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>
             <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Temporalidad' : 'Timeframe'}</span><input value={meta.tf} onChange={(e) => setMeta({ ...meta, tf: e.target.value })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>
           </div>
-          {selReport && selReport.trades > 0 && <StratReport es={es} r={selReport} />}
+          {selReport && selReport.trades > 0 && <StratReport es={es} r={selReport} oosPct={oosPct} setOosPct={setOosPct} />}
           {canManage && (
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
               <button onClick={() => download(`ONYX_${sel.ind1}_${sel.entry}.mq5`, genMt5(sel, meta.symbol, 100000000 + Math.floor(Math.random() * 900000000)), 'text/plain')} style={btn(BLUE)}>{es ? 'Exportar EA .mq5' : 'Export EA .mq5'}</button>
@@ -690,8 +728,9 @@ function EvoChart({ history }: { history: number[] }) {
 
 // Reporte completo estilo StrategyQuant: KPIs + curva de equity + drawdown +
 // rachas + estancamiento + tabla de rendimiento mensual.
-function StratReport({ es, r }: { es: boolean; r: FullReport }) {
+function StratReport({ es, r, oosPct, setOosPct }: { es: boolean; r: FullReport; oosPct: number; setOosPct: (n: number) => void }) {
   const MON = es ? ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'] : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const WD = es ? ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'] : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const money = (v: number) => (v < 0 ? '-$' : '$') + Math.abs(v).toLocaleString('en-US');
   // Curva de equity + drawdown (SVG).
   const W = 660, H = 150, dH = 46, pad = 6;
@@ -702,6 +741,15 @@ function StratReport({ es, r }: { es: boolean; r: FullReport }) {
   const line = eq.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.eq).toFixed(1)}`).join(' ');
   const ddMax = Math.max(1, ...r.ddSeries.map((p) => -p.dd));
   const ddBars = r.ddSeries;
+  // Franja OOS: índice donde empieza el fuera de muestra.
+  let oosIdx = -1; if (r.oosStart > 0) { for (let i = 1; i < eq.length; i++) { if (eq[i].t >= r.oosStart) { oosIdx = i; break; } } }
+  const sideStat = (s: any, l: string, c: string) => (
+    <div style={{ background: 'var(--bg2)', border: `1px solid color-mix(in srgb,${c} 30%,var(--line))`, borderRadius: 9, padding: '7px 10px', minWidth: 120 }}>
+      <div className="muted" style={{ fontSize: 10.5 }}>{l}</div>
+      <div style={{ fontSize: 14, fontWeight: 800, color: s.net >= 0 ? GREEN : RED }}>{money(s.net)}</div>
+      <div className="muted" style={{ fontSize: 10.5 }}>{s.n} ops · {s.n ? Math.round((s.wins / s.n) * 100) : 0}% win</div>
+    </div>
+  );
   const kpi = (l: string, v: string, c?: string) => (
     <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 9, padding: '7px 9px' }}>
       <div className="muted" style={{ fontSize: 10.5, marginBottom: 2 }}>{l}</div>
@@ -726,12 +774,31 @@ function StratReport({ es, r }: { es: boolean; r: FullReport }) {
         {kpi('Payout', String(r.payout))}
       </div>
 
-      {/* Curva de equity + drawdown */}
-      <div style={{ marginBottom: 4 }} className="muted"><span style={{ fontSize: 11 }}>{es ? 'Curva de equity' : 'Equity curve'}</span></div>
+      {/* Control de división In-sample / Out-of-sample */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
+        <span style={{ fontSize: 11 }} className="muted">{es ? 'Fuera de muestra (OOS) — % final reservado' : 'Out-of-sample (OOS) — % of the end reserved'}</span>
+        <input type="range" min={0} max={50} step={5} value={oosPct} onChange={(e) => setOosPct(Number(e.target.value))} style={{ flex: 1, minWidth: 120 }} />
+        <span style={{ fontSize: 12, fontWeight: 800, color: CORAL, minWidth: 34 }}>{oosPct}%</span>
+      </div>
+
+      {/* Curva de equity + drawdown (con franja OOS sombreada) */}
+      <div style={{ marginBottom: 4 }} className="muted"><span style={{ fontSize: 11 }}>{es ? 'Curva de equity' : 'Equity curve'} <span style={{ color: BLUE }}>■ {es ? 'dentro de muestra' : 'in-sample'}</span> {oosIdx > 0 && <span style={{ color: CORAL }}>■ {es ? 'fuera de muestra' : 'out-of-sample'}</span>}</span></div>
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: 'block' }}>
+        {oosIdx > 0 && <rect x={x(oosIdx)} y={0} width={W - pad - x(oosIdx)} height={H} fill={`color-mix(in srgb,${CORAL} 14%,transparent)`} />}
         <path d={area} fill={`color-mix(in srgb,${BLUE} 22%,transparent)`} />
         <path d={line} fill="none" stroke={BLUE} strokeWidth="2" />
+        {oosIdx > 0 && <line x1={x(oosIdx)} y1={0} x2={x(oosIdx)} y2={H} stroke={CORAL} strokeWidth="1.5" strokeDasharray="4 3" />}
       </svg>
+      {oosIdx > 0 && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+          {sideStat(r.isSum, es ? 'Dentro de muestra' : 'In-sample', BLUE)}
+          {sideStat(r.oosSum, es ? 'Fuera de muestra' : 'Out-of-sample', CORAL)}
+          <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 9, padding: '7px 10px', minWidth: 130 }}>
+            <div className="muted" style={{ fontSize: 10.5 }}>{es ? 'Veredicto' : 'Verdict'}</div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: r.oosSum.net > 0 ? GREEN : RED }}>{r.oosSum.net > 0 ? (es ? '✓ aguanta fuera de muestra' : '✓ holds out-of-sample') : (es ? '✗ falla fuera de muestra' : '✗ fails out-of-sample')}</div>
+          </div>
+        </div>
+      )}
       <div style={{ marginTop: 4, marginBottom: 4 }} className="muted"><span style={{ fontSize: 11 }}>Drawdown ($)</span></div>
       <svg viewBox={`0 0 ${W} ${dH}`} width="100%" style={{ display: 'block' }}>
         {ddBars.map((p, i) => { const h = ((-p.dd) / ddMax) * dH; return <line key={i} x1={x(i)} y1={0} x2={x(i)} y2={h} stroke={RED} strokeWidth={Math.max(0.5, (W - 2 * pad) / ddBars.length)} opacity={0.55} />; })}
@@ -763,6 +830,60 @@ function StratReport({ es, r }: { es: boolean; r: FullReport }) {
           </tbody>
         </table>
       </div>
+
+      {/* Análisis de operaciones: P/L por hora, por día de semana, Long vs Short */}
+      <div className="muted" style={{ fontSize: 11, margin: '14px 0 4px' }}>{es ? 'Análisis de operaciones' : 'Trade analysis'}</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 12 }}>
+        <MiniBars es={es} title={es ? 'P/L por hora' : 'P/L by hour'} labels={Array.from({ length: 24 }, (_, i) => String(i))} values={r.byHour} />
+        <MiniBars es={es} title={es ? 'P/L por día de semana' : 'P/L by weekday'} labels={WD} values={r.byWeekday} />
+        <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 9, padding: 10 }}>
+          <div className="muted" style={{ fontSize: 11, marginBottom: 6 }}>{es ? 'Largos vs Cortos' : 'Long vs Short'}</div>
+          {[[es ? 'Largos' : 'Long', r.long, GREEN], [es ? 'Cortos' : 'Short', r.short, BLUE]].map(([l, s, c]: any, i) => {
+            const tot = Math.max(1, Math.abs(r.long.net) + Math.abs(r.short.net));
+            return (
+              <div key={i} style={{ marginBottom: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5 }}><span>{l} <span className="muted">· {s.n} ops · {s.n ? Math.round((s.wins / s.n) * 100) : 0}%</span></span><span style={{ fontWeight: 800, color: s.net >= 0 ? GREEN : RED }}>{money(s.net)}</span></div>
+                <div style={{ height: 7, borderRadius: 5, background: 'var(--line)', overflow: 'hidden', marginTop: 3 }}><div style={{ height: '100%', width: Math.round((Math.abs(s.net) / tot) * 100) + '%', background: s.net >= 0 ? c : RED }} /></div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Lista de operaciones */}
+      <div className="muted" style={{ fontSize: 11, margin: '14px 0 4px' }}>{es ? 'Lista de operaciones' : 'List of trades'} <span>· {r.trades}{r.list.length < r.trades ? ' (' + (es ? 'primeras ' : 'first ') + r.list.length + ')' : ''}</span></div>
+      <div style={{ overflowX: 'auto', maxHeight: 260, overflowY: 'auto', border: '1px solid var(--line)', borderRadius: 9 }}>
+        <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 11 }}>
+          <thead style={{ position: 'sticky', top: 0, background: 'var(--card)' }}><tr>{['#', es ? 'Fecha' : 'Date', es ? 'Tipo' : 'Type', 'P/L', es ? 'Balance' : 'Balance'].map((h) => <th key={h} style={{ padding: '5px 8px', textAlign: 'left', color: 'var(--mut)', fontWeight: 700, borderBottom: '1px solid var(--line)', whiteSpace: 'nowrap' }}>{h}</th>)}</tr></thead>
+          <tbody>
+            {r.list.map((t, i) => (
+              <tr key={i} style={{ borderTop: '1px solid var(--line)' }}>
+                <td style={{ padding: '4px 8px', color: 'var(--mut)' }}>{i + 1}</td>
+                <td style={{ padding: '4px 8px', whiteSpace: 'nowrap' }}>{new Date(t.t).toISOString().slice(0, 16).replace('T', ' ')}</td>
+                <td style={{ padding: '4px 8px', color: t.dir === 1 ? GREEN : t.dir === -1 ? BLUE : 'var(--mut)', fontWeight: 700 }}>{t.dir === 1 ? (es ? 'Compra' : 'Buy') : t.dir === -1 ? (es ? 'Venta' : 'Sell') : '—'}</td>
+                <td style={{ padding: '4px 8px', fontWeight: 700, color: t.profit >= 0 ? GREEN : RED }}>{money(t.profit)}</td>
+                <td style={{ padding: '4px 8px', color: 'var(--mut)' }}>{money(t.balance)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// Mini gráfico de barras (verde positivo / rojo negativo) para el análisis.
+function MiniBars({ es, title, labels, values }: { es: boolean; title: string; labels: string[]; values: number[] }) {
+  const max = Math.max(1, ...values.map((v) => Math.abs(v)));
+  const W = 220, H = 90, mid = H / 2, bw = (W - 4) / values.length;
+  return (
+    <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 9, padding: 10 }}>
+      <div className="muted" style={{ fontSize: 11, marginBottom: 6 }}>{title}</div>
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: 'block' }}>
+        <line x1={0} y1={mid} x2={W} y2={mid} stroke="var(--line)" strokeWidth="0.5" />
+        {values.map((v, i) => { const h = (Math.abs(v) / max) * (mid - 4); return <rect key={i} x={2 + i * bw + 0.5} y={v >= 0 ? mid - h : mid} width={Math.max(1, bw - 1)} height={h} fill={v >= 0 ? GREEN : RED} opacity={0.85} />; })}
+      </svg>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9.5 }} className="muted"><span>{labels[0]}</span><span>{labels[Math.floor(labels.length / 2)]}</span><span>{labels[labels.length - 1]}</span></div>
     </div>
   );
 }

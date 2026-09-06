@@ -31,9 +31,17 @@ export type Costs = {
   chTarget?: number;                         // objetivo de beneficio en % del balance
   chDailyLoss?: number;                      // pérdida diaria máxima en % del balance (0 = sin límite)
   chMinDays?: number;                        // días de trading mínimos
+  // Opciones de trading finas (estilo SQ): control de horario, viernes, tope diario y límites de SL/PT.
+  maxTradesDay?: number;                     // máximo de operaciones nuevas por día (0 = sin límite)
+  hourFrom?: number;                         // limitar entradas a partir de esta hora UTC (-1 = off)
+  hourTo?: number;                           // ...hasta esta hora UTC (-1 = off)
+  exitFri?: boolean;                         // cerrar todo el viernes a cierta hora
+  friHour?: number;                          // hora UTC del cierre de viernes (si exitFri)
+  slMin?: number; slMax?: number;            // acota el stop en pips (0 = sin límite)
+  tpMin?: number; tpMax?: number;            // acota el take profit en pips (0 = sin límite)
 };
 export type Challenge = { target: number; dailyLoss: number; minDays: number; profitPct: number; daysTraded: number; hitTarget: boolean; dailyBreach: boolean; pass: boolean };
-export type BtResult = { trades: { t: number; profit: number }[]; n: number; net: number; pf: number; winRate: number; maxddPct: number; expectancy: number; blown?: boolean; finalEquity?: number; challenge?: Challenge };
+export type BtResult = { trades: { t: number; profit: number; dir?: 1 | -1 }[]; n: number; net: number; pf: number; winRate: number; maxddPct: number; expectancy: number; blown?: boolean; finalEquity?: number; challenge?: Challenge };
 
 // Adivina el instrumento desde el nombre del archivo (Dukascopy/StrategyQuant).
 export function guessSymbolFromName(name: string): string {
@@ -206,6 +214,15 @@ export function runBacktest(bars: Bar[], spec: Spec, costs: Costs): BtResult {
   const dayKey = (t: number) => Math.floor(t / 86400000);
   const dayPnl: Record<number, number> = {}; const daySet = new Set<number>();
   let hitTarget = false, dailyBreach = false;
+  // Opciones de trading finas.
+  const maxTradesDay = Math.max(0, Math.floor(costs.maxTradesDay || 0));
+  const hourFrom = costs.hourFrom ?? -1, hourTo = costs.hourTo ?? -1;
+  const hourLimited = hourFrom >= 0 && hourTo >= 0;
+  const exitFri = !!costs.exitFri, friHour = costs.friHour ?? 21;
+  const slMin = costs.slMin || 0, slMax = costs.slMax || 0, tpMin = costs.tpMin || 0, tpMax = costs.tpMax || 0;
+  const opensToday: Record<number, number> = {};      // nº de aperturas por día
+  const inHours = (h: number) => !hourLimited || (hourFrom <= hourTo ? h >= hourFrom && h < hourTo : h >= hourFrom || h < hourTo);
+  const clampPips = (v: number, lo: number, hi: number) => { let r = v; if (lo > 0) r = Math.max(r, lo); if (hi > 0) r = Math.min(r, hi); return r; };
 
   const avgEntry = (p: { legs: Leg[] }) => { let w = 0, s = 0; for (const l of p.legs) { w += l.lot; s += l.entry * l.lot; } return w ? s / w : p.legs[0].entry; };
   const totLot = (p: { legs: Leg[] }) => p.legs.reduce((a, l) => a + l.lot, 0);
@@ -236,6 +253,8 @@ export function runBacktest(bars: Bar[], spec: Spec, costs: Costs): BtResult {
         if (spec.exit === 'opp_signal' && ((pos.dir === 1 && flip === 'short') || (pos.dir === -1 && flip === 'long'))) exitPrice = b.c;
         else if (spec.exit === 'indicator' && s1.trend[i] === -pos.dir) exitPrice = b.c;
         else if (spec.exit === 'time' && pos.bars >= 24) exitPrice = b.c;
+        // Cerrar el viernes a la hora indicada (evita riesgo de fin de semana).
+        if (isNaN(exitPrice) && exitFri) { const dd = new Date(b.t); if (dd.getUTCDay() === 5 && dd.getUTCHours() >= friHour) exitPrice = b.c; }
       }
       // PIRÁMIDE: si sigue abierta y hay señal a favor y el precio avanzó ≥0.5·ATR desde el último añadido.
       if (isNaN(exitPrice) && pyramidMax > 0 && pos.legs.length <= pyramidMax) {
@@ -254,7 +273,7 @@ export function runBacktest(bars: Bar[], spec: Spec, costs: Costs): BtResult {
         const money = (rawPips - costPips) * costs.moneyPerPip * lot - costs.commission * lot * 2;
         equity += money;
         if (equity > peakEq) peakEq = equity;
-        trades.push({ t: b.t, profit: Math.round(money * 100) / 100 });
+        trades.push({ t: b.t, profit: Math.round(money * 100) / 100, dir: pos.dir });
         if (chOn) { dayPnl[dayKey(b.t)] = (dayPnl[dayKey(b.t)] || 0) + money; daySet.add(dayKey(b.t)); }
         pos = null;
         // Reto prop firm: objetivo alcanzado / pérdida diaria excedida.
@@ -272,14 +291,19 @@ export function runBacktest(bars: Bar[], spec: Spec, costs: Costs): BtResult {
     if (!pos) {
       const h = new Date(b.t).getUTCHours();
       if (!sessOk(h)) continue;
+      if (!inHours(h)) continue;                          // límite horario opcional
+      const dk = dayKey(b.t);
+      if (maxTradesDay > 0 && (opensToday[dk] || 0) >= maxTradesDay) continue; // tope de operaciones por día
       const sig = entryAt(i);
       if (sig === 'none') continue;
       const dir = sig === 'long' ? 1 : -1;
       if (!filterOk(i, dir)) continue;
       const atrPips = atrArr[i] ? atrArr[i] / pip : 20;
-      // Para risk_atr el stop se deriva de la volatilidad (atrMult·ATR); si no, del spec.
-      const slP = mm === 'risk_atr' ? atrMult * atrPips : (pips(spec.sl, atrPips) || 30);
-      const tpP = pips(spec.tp, atrPips) || 40;
+      // Para risk_atr el stop se deriva de la volatilidad (atrMult·ATR); si no, del spec. Se acota a mín/máx.
+      let slP = mm === 'risk_atr' ? atrMult * atrPips : (pips(spec.sl, atrPips) || 30);
+      let tpP = pips(spec.tp, atrPips) || 40;
+      slP = clampPips(slP, slMin, slMax); tpP = clampPips(tpP, tpMin, tpMax);
+      opensToday[dk] = (opensToday[dk] || 0) + 1;
       const entry = b.c + dir * costs.slippagePips * pip;
       pos = { dir, tp: entry + dir * tpP * pip, sl: entry - dir * slP * pip, bars: 0, atrPips, be: false, legs: [{ entry, lot: lotFor(slP) }], lastAdd: b.c };
     }
