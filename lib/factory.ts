@@ -219,13 +219,14 @@ export async function deleteBot(id: string) {
 
 // Ejecuta el laboratorio sobre las operaciones de un backtest, guarda la corrida
 // y refleja el resultado en el robot. Llama a Claude para la interpretación.
-export async function runLab(o: { userId: string; botId: string; trades: Trade[]; grid?: Grid; paramCount?: number; lang?: 'es' | 'en' }) {
+export async function runLab(o: { userId: string; botId: string; trades: Trade[]; grid?: Grid; paramCount?: number; lang?: 'es' | 'en'; noAi?: boolean }) {
   if (!o.trades || o.trades.length < 20) throw new Error('Sube al menos 20 operaciones cerradas del backtest.');
   const { data: bot } = await supabaseAdmin.from('factory_bots').select('*').eq('id', o.botId).maybeSingle();
   if (!bot) throw new Error('Robot no encontrado.');
   const r = robustnessRun(o.trades, { grid: o.grid, paramCount: o.paramCount });
   let ai: { audit: string; mutations: string[] } | null = null;
-  try { ai = await robustnessAudit(bot, r, o.lang || 'es'); } catch { ai = null; }
+  // En modo autopiloto saltamos la IA (muchos robots de golpe) para ir rápido.
+  if (!o.noAi) { try { ai = await robustnessAudit(bot, r, o.lang || 'es'); } catch { ai = null; } }
 
   const { data: run, error } = await supabaseAdmin.from('factory_labruns').insert({
     bot_id: o.botId, trades: r.trades, net: r.net, pf: r.pf, maxdd: r.maxdd,
