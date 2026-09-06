@@ -187,7 +187,7 @@ function DataGate({ es, canManage, post, reload, datasets }: any) {
       // 1) Pide URLs firmadas (el admin las crea; la subida va DIRECTA a Supabase,
       //    sin pasar por Vercel, por eso soporta archivos de varios GB).
       setUpMsg(es ? 'Preparando subida…' : 'Preparing upload…');
-      const sign = await post({ action: 'dataset_sign_upload', symbol: gate.symbol || 'data', wantTick: !!gate.file });
+      const sign = await post({ action: 'dataset_sign_upload', symbol: gate.symbol || 'data', wantTick: !!(gate.file && metrics.hasTicks) });
       const sb = supabaseBrowser();
 
       // 2) Sube las barras M1 (para generación rápida).
@@ -198,7 +198,7 @@ function DataGate({ es, canManage, post, reload, datasets }: any) {
 
       // 3) Sube el archivo de TICKS REALES tal cual (máxima fidelidad).
       let tick: any = null;
-      if (gate.file && sign.tick) {
+      if (gate.file && metrics.hasTicks && sign.tick) {
         setUpMsg(es ? 'Subiendo ticks reales (puede tardar)…' : 'Uploading real ticks (may take a while)…');
         const ut = await sb.storage.from('factory-data').uploadToSignedUrl(sign.tick.path, sign.tick.token, gate.file, { contentType: gate.file.type || 'text/csv' } as any);
         if (ut.error) throw new Error('ticks: ' + ut.error.message);

@@ -37,13 +37,6 @@ export async function POST(req: Request) {
 
   if (!canManage(role, perms)) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
 
-  if (a === 'dataset_save') {
-    try {
-      const r = await saveDataset({ userId: user.id, symbol: b.symbol, timeframe: b.timeframe, filename: b.filename, metrics: b.metrics || {} });
-      await logAdmin(user.email || '', 'factory_dataset', r.dataset?.id || '', { verdict: r.quality.verdict, score: r.quality.score });
-      return NextResponse.json(r);
-    } catch (e: any) { return NextResponse.json({ error: e?.message || 'error' }, { status: 400 }); }
-  }
   // Crea URLs firmadas para subir DIRECTO a Storage desde el navegador
   // (evita el límite de tamaño de las funciones de Vercel → soporta varios GB).
   if (a === 'dataset_sign_upload') {
