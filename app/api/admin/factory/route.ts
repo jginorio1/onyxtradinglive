@@ -125,6 +125,15 @@ export async function POST(req: Request) {
     const runs = await listLabRuns(String(b.botId || ''));
     return NextResponse.json({ runs });
   }
+  // Guarda el resultado de la validación fina en M1 (tolerante: si faltan las columnas, no rompe).
+  if (a === 'bot_validate_fine') {
+    try {
+      await supabaseAdmin.from('factory_bots').update({
+        fine_score: Number(b.fineScore) || null, fine_grade: b.fineGrade || null, fine_bars: Number(b.fineBars) || null, fine_at: new Date().toISOString(),
+      }).eq('id', String(b.botId || ''));
+    } catch { /* columnas opcionales aún no creadas */ }
+    return NextResponse.json({ ok: true });
+  }
   if (a === 'lab_run') {
     try {
       const r = await runLab({ userId: user.id, botId: String(b.botId || ''), trades: b.trades || [], grid: b.grid, paramCount: b.paramCount, lang: b.lang === 'en' ? 'en' : 'es', noAi: !!b.noAi });

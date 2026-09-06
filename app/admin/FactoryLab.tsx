@@ -1,6 +1,15 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { toast, toastErr } from '@/lib/toast';
+import { genMt5, genMt4 } from '@/lib/mqlgen';
+import { onyxScore, type OnyxScore } from '@/lib/score';
+import { enrichSpec } from '@/lib/stratgen';
+import { fetchColumnar, barsFromColumnar } from '@/lib/dataAnalyzer';
+import type { Costs } from '@/lib/backtest';
+
+// Costes por defecto para la validación fina (mismos que el Motor).
+const DEF_COSTS: Costs = { spreadPips: 1.2, slippagePips: 0.3, commission: 3.5, moneyPerPip: 10, lot: 1, pip: 0, capital: 10000, mm: 'risk_pct', riskPct: 1, riskMoney: 100, ddType: 'trailing', maxDDpct: 10 } as Costs;
+function dl(name: string, text: string) { const b = new Blob([text], { type: 'text/plain' }); const u = URL.createObjectURL(b); const a = document.createElement('a'); a.href = u; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(u), 1000); }
 
 const clamp0100 = (x: number) => Math.max(0, Math.min(100, Math.round(x)));
 // Reconstruye el objeto de robustez que espera la UI a partir de una corrida
@@ -163,8 +172,38 @@ export default function FactoryLab({ es, canManage, post, reload, bots, datasets
   const [res, setRes] = useState<any>(null);
   const [mt, setMt] = useState<any>({ net: '', pf: '', winRate: '', maxdd: '', trades: '' });
   const [cmp, setCmp] = useState<any>(null);
+  // Validación fina en M1 (tick-accurate-ish): re-backtest sobre las barras de máxima
+  // resolución para confirmar que la robustez de la búsqueda (M15) se sostiene.
+  const [finBusy, setFinBusy] = useState(false);
+  const [finMsg, setFinMsg] = useState('');
+  const [finRes, setFinRes] = useState<{ sc: OnyxScore; bars: number } | null>(null);
 
   const bot = (bots as any[]).find((b) => b.id === botId);
+
+  // Valida el robot elegido en las barras M1 completas del dataset de su símbolo.
+  async function validateFine() {
+    if (!bot) { toastErr(es ? 'Elige un robot.' : 'Pick a robot.'); return; }
+    const spec = bot.strategy?.gen;
+    if (!spec) { toastErr(es ? 'Este robot no tiene su estrategia guardada (créalo con el Autopiloto).' : 'This robot has no saved strategy (create it with Autopilot).'); return; }
+    const ds = (datasets as any[]).find((d) => d.symbol === bot.symbol && d.bars_url);
+    if (!ds) { toastErr(es ? `No hay dataset con barras para ${bot.symbol}. Guárdalo en la Puerta 0.` : `No dataset with bars for ${bot.symbol}. Save it in Gate 0.`); return; }
+    setFinBusy(true); setFinRes(null);
+    try {
+      setFinMsg(es ? 'Cargando barras M1 completas…' : 'Loading full M1 bars…');
+      await new Promise((r) => setTimeout(r, 10));
+      const col = await fetchColumnar(ds.bars_url);
+      const bars = barsFromColumnar(col);
+      if (bars.length < 500) { toastErr(es ? 'Muy pocas barras para validar.' : 'Too few bars to validate.'); return; }
+      setFinMsg(es ? `Re-backtest en ${bars.length.toLocaleString('en-US')} barras (puede tardar, no cierres)…` : `Re-backtesting on ${bars.length.toLocaleString('en-US')} bars (may take a while, don’t close)…`);
+      await new Promise((r) => setTimeout(r, 20));
+      const costs: Costs = { ...DEF_COSTS, capital: bot.strategy?.capital || 10000 };
+      const sc = onyxScore(bars, enrichSpec(spec, {}), costs, 30);
+      setFinRes({ sc, bars: bars.length });
+      // Persiste el resultado fino en el robot (columna opcional; si no existe, no pasa nada).
+      try { await post({ action: 'bot_validate_fine', botId, fineScore: sc.score, fineGrade: sc.grade, fineBars: bars.length }); } catch {}
+      toast(sc.grade === 'A' || sc.grade === 'B' ? (es ? `Validado en M1 · Onyx ${sc.score} (${sc.grade})` : `Validated on M1 · Onyx ${sc.score} (${sc.grade})`) : (es ? `En M1 baja a ${sc.score} (${sc.grade}) — revisa` : `On M1 it drops to ${sc.score} (${sc.grade}) — review`));
+    } catch (e: any) { toastErr('M1: ' + (e?.message || e)); } finally { setFinBusy(false); setFinMsg(''); }
+  }
 
   // Al elegir un robot ya analizado (Motor/Autopiloto), carga su análisis guardado
   // con gráficas — sin CSV. Si aún no tiene, deja el resumen simple de arriba.
@@ -257,7 +296,43 @@ export default function FactoryLab({ es, canManage, post, reload, bots, datasets
             </label>
           </div>
         )}
-        {canManage && <button onClick={run} disabled={busy} style={{ ...btn(VIOLET), marginTop: 14, padding: '11px 20px', fontSize: 14 }}>{busy ? (es ? 'Procesando…' : 'Running…') : (es ? 'Ejecutar laboratorio' : 'Run lab')}</button>}
+        {canManage && <button onClick={run} disabled={busy} style={{ ...btn(VIOLET), marginTop: 14, padding: '11px 20px', fontSize: 14 }}>{busy ? (es ? 'Procesando…' : 'Running…') : (es ? 'Ver / ejecutar laboratorio' : 'View / run lab')}</button>}
+
+        {/* Validación fina en M1 + descarga del EA (solo con un robot elegido) */}
+        {bot && (
+          <div style={{ marginTop: 14, borderTop: '1px solid var(--line)', paddingTop: 14, display: 'grid', gap: 10 }}>
+            <div>
+              <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 4 }}>🔬 {es ? 'Validación fina (tick-accurate en M1)' : 'Fine validation (tick-accurate on M1)'}</div>
+              <div className="muted" style={{ fontSize: 11.5, marginBottom: 8 }}>{es ? 'La búsqueda corre en M15 (rápido). Aquí se re-backtestea el robot sobre las barras M1 completas — máxima resolución — para confirmar que su robustez NO era del timeframe grueso. Es pesado: mantén la pestaña abierta.' : 'Search runs on M15 (fast). This re-backtests the robot on full M1 bars — max resolution — to confirm robustness wasn’t a coarse-timeframe artifact. Heavy: keep the tab open.'}</div>
+              {canManage && <button onClick={validateFine} disabled={finBusy} style={{ ...btn(GREEN), padding: '10px 18px', fontSize: 13.5 }}>{finBusy ? (es ? 'Validando…' : 'Validating…') : (es ? '🔬 Validar en M1' : '🔬 Validate on M1')}</button>}
+              {finBusy && <div style={{ fontSize: 12.5, color: GREEN, fontWeight: 700, marginTop: 8 }}>{finMsg}</div>}
+              {finRes && (() => {
+                const g = finRes.sc.grade, ok = g === 'A' || g === 'B';
+                const c = ok ? GREEN : g === 'C' ? AMBER : RED;
+                const before = bot.robustness_score ?? '—';
+                return (
+                  <div style={{ marginTop: 10, background: 'var(--bg2)', borderRadius: 10, padding: '11px 13px', border: `1px solid color-mix(in srgb,${c} 40%,var(--line))` }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 800, color: c }}>{ok ? '✅ ' : '⚠ '}{es ? 'M1 · Onyx' : 'M1 · Onyx'} {finRes.sc.score} ({g}) {es ? 'sobre' : 'over'} {finRes.bars.toLocaleString('en-US')} {es ? 'barras' : 'bars'}</div>
+                    <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{es ? 'En la búsqueda (M15) era' : 'In search (M15) it was'} {before}. {ok ? (es ? 'Se sostiene en máxima resolución → apto para demo.' : 'Holds at max resolution → demo-ready.') : (es ? 'Baja en M1: probablemente estaba ayudado por el timeframe grueso. Descártalo o mejóralo.' : 'Drops on M1: likely helped by the coarse timeframe. Discard or improve it.')}</div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                      {finRes.sc.parts.map((p: any) => <span key={p.label} style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 99, background: 'color-mix(in srgb,var(--brand) 12%,transparent)', color: 'var(--brand)' }}>{p.label}: {p.got}/{p.max}</span>)}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+            <div>
+              <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 6 }}>⬇ {es ? 'Descargar el robot para MetaTrader' : 'Download the robot for MetaTrader'}</div>
+              {bot.strategy?.gen ? (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button onClick={() => dl(`${bot.name || 'ONYX'}.mq5`, genMt5(bot.strategy.gen, bot.symbol || 'XAUUSD', bot.magic || (100000000 + Math.floor(Math.random() * 900000000))))} style={btn(BLUE)}>{es ? 'Descargar .mq5 (MT5)' : 'Download .mq5 (MT5)'}</button>
+                  <button onClick={() => dl(`${bot.name || 'ONYX'}.mq4`, genMt4(bot.strategy.gen, bot.symbol || 'XAUUSD', bot.magic || (100000000 + Math.floor(Math.random() * 900000000))))} style={btn(BLUE)}>{es ? 'Descargar .mq4 (MT4)' : 'Download .mq4 (MT4)'}</button>
+                </div>
+              ) : <div className="muted" style={{ fontSize: 11.5 }}>{es ? 'Este robot no guarda su estrategia (créalo con el Autopiloto para poder exportarlo).' : 'This robot has no saved strategy (create it with Autopilot to export).'}</div>}
+              <div className="muted" style={{ fontSize: 11, marginTop: 6 }}>{es ? 'Ábrelo en MetaEditor (MT4/MT5) → Compilar → aparece en Asesores Expertos. Magic: ' : 'Open in MetaEditor (MT4/MT5) → Compile → shows under Expert Advisors. Magic: '}<b style={{ fontFamily: 'monospace' }}>{bot.magic || '—'}</b></div>
+            </div>
+          </div>
+        )}
 
         {/* Estado actual del robot elegido (ya analizado por el Motor/Autopiloto) */}
         {bot && !res && bot.robustness_verdict && (
