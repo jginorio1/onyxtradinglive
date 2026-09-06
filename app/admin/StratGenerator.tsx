@@ -21,11 +21,13 @@ function download(name: string, text: string, mime: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export default function StratGenerator({ es, post, onClose }: any) {
-  const [cfg, setCfg] = useState<Record<string, string[]>>({
+export default function StratGenerator({ es, post, onClose, initialCfg, symbol = '', tf = '', family = '', reload }: any) {
+  const [cfg, setCfg] = useState<Record<string, string[]>>(initialCfg && Object.keys(initialCfg).length ? initialCfg : {
     indicators: ['ema', 'rsi'], entry: ['cross_up', 'cross_dn'], exit: ['opp_signal', 'fixed'],
     sessions: ['london', 'ny', 'overlap'], tp: ['40', '60', 'atr2'], sl: ['30', '50', 'atr15'], be: ['off', 'be20'], trailing: ['off', 't30'],
   });
+  // Si llega una plantilla nueva desde el Constructor, cárgala.
+  useEffect(() => { if (initialCfg && Object.keys(initialCfg).length) setCfg(initialCfg); }, [initialCfg]);
   const [n, setN] = useState(2000);
   const [busy, setBusy] = useState(false);
   const [cands, setCands] = useState<any[] | null>(null);
@@ -51,6 +53,15 @@ export default function StratGenerator({ es, post, onClose }: any) {
     setBusy(true); setCands(null);
     try { const j = await post({ action: 'gen_run', config: cfg, n }); setCands(j.candidates || []); toast(es ? `Generadas ${j.sampled} estrategias` : `Generated ${j.sampled} strategies`); }
     catch (e: any) { toastErr(e?.message); } finally { setBusy(false); }
+  }
+
+  // Guarda la selección actual de bloques como plantilla reutilizable.
+  async function saveAsTemplate() {
+    const suggested = `${symbol || 'Plantilla'} · ${tf || ''} · ${family || ''}`.trim();
+    const name = (typeof window !== 'undefined' ? window.prompt(es ? 'Nombre de la plantilla:' : 'Template name:', suggested) : suggested) || '';
+    if (!name.trim()) return;
+    try { await post({ action: 'template_save', name: name.trim(), symbol, timeframe: tf, family, config: cfg, origin: 'custom' }); toast(es ? 'Plantilla guardada' : 'Template saved'); if (reload) reload(); }
+    catch (e: any) { toastErr(e?.message); }
   }
 
   const spaceTxt = space >= 1e9 ? (space / 1e6).toLocaleString('en-US', { maximumFractionDigits: 0 }) + ' M' : space.toLocaleString('en-US');
@@ -99,7 +110,8 @@ export default function StratGenerator({ es, post, onClose }: any) {
               <input type="number" value={n} min={100} max={20000} onChange={(e) => setN(Math.max(100, Math.min(20000, Number(e.target.value) || 100)))} style={{ ...inp, width: 100 }} />
               <span className="muted" style={{ fontSize: 12 }}>{es ? 'candidatos' : 'candidates'}</span>
             </div>
-            <button onClick={generate} disabled={busy || space < 1} style={{ marginLeft: 'auto', padding: '11px 20px', borderRadius: 11, border: 'none', fontWeight: 800, fontSize: 14, cursor: 'pointer', background: 'linear-gradient(135deg,' + VIOLET + ',var(--brand))', color: '#0b1020', opacity: busy || space < 1 ? 0.6 : 1 }}>{busy ? (es ? 'Generando…' : 'Generating…') : (es ? '⚡ Generar lote' : '⚡ Generate batch')}</button>
+            <button onClick={saveAsTemplate} style={{ ...btn(GREEN), marginLeft: 'auto' }}>{es ? '💾 Guardar como plantilla' : '💾 Save as template'}</button>
+            <button onClick={generate} disabled={busy || space < 1} style={{ padding: '11px 20px', borderRadius: 11, border: 'none', fontWeight: 800, fontSize: 14, cursor: 'pointer', background: 'linear-gradient(135deg,' + VIOLET + ',var(--brand))', color: '#0b1020', opacity: busy || space < 1 ? 0.6 : 1 }}>{busy ? (es ? 'Generando…' : 'Generating…') : (es ? '⚡ Generar lote' : '⚡ Generate batch')}</button>
           </div>
 
           {cands && (

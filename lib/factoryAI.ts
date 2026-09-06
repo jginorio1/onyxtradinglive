@@ -26,6 +26,43 @@ async function aiJson(system: string, user: string, maxTokens = 800): Promise<an
   } catch { return null; }
 }
 
+// Arquitecto de plantillas: Claude propone una configuración de bloques
+// (GenConfig) para un instrumento/temporalidad, mirando las características de
+// los datos (volatilidad, spread, sesiones). Si no hay API key, devuelve null y
+// el llamador usa una plantilla heurística. Devuelve SOLO ids válidos de bloques.
+export async function aiTemplate(input: {
+  symbol: string; timeframe: string; family?: string; metrics?: any; blocks: { key: string; ids: string[] }[]; lang?: 'es' | 'en';
+}): Promise<{ name: string; family: string; config: Record<string, string[]>; rationale: string } | null> {
+  const L = input.lang === 'en' ? 'English' : 'Spanish';
+  const allowed = input.blocks.map((b) => `${b.key}: [${b.ids.join(', ')}]`).join('\n');
+  const system = `You are Onyx's quant template architect for an internal MT4/MT5 robot factory (StrategyQuant-style). Given an instrument, timeframe and its data characteristics, you design a STRATEGY TEMPLATE: which building blocks the generator should combine. You must choose ONLY from the allowed block ids listed. Pick a coherent set (2-3 indicators, matching entry/exit rules, sensible sessions for the instrument, and TP/SL/BE/trailing ranges). NEVER predict the market or promise profits. Reply ONLY with JSON: {"name":"<short template name in ${L}>","family":"<tendencia|rango|ruptura|reversion|volatilidad|scalping>","config":{"indicators":[...],"entry":[...],"exit":[...],"sessions":[...],"tp":[...],"sl":[...],"be":[...],"trailing":[...]},"rationale":"<2-4 sentences in ${L} explaining the choice>"}. Every id in config MUST be from the allowed lists.`;
+  const payload = {
+    symbol: input.symbol, timeframe: input.timeframe, requestedFamily: input.family || 'auto',
+    dataCharacteristics: {
+      years: input.metrics?.years, hasTicks: input.metrics?.hasTicks, avgSpreadPts: input.metrics?.spreadAvgPts,
+      rows: input.metrics?.rows, fromYear: input.metrics?.fromMs ? new Date(input.metrics.fromMs).getUTCFullYear() : undefined,
+      toYear: input.metrics?.toMs ? new Date(input.metrics.toMs).getUTCFullYear() : undefined,
+    },
+    allowedBlocks: allowed,
+  };
+  const res = await aiJson(system, JSON.stringify(payload), 900);
+  if (!res || !res.config) return null;
+  // Filtra a ids válidos.
+  const valid = new Map(input.blocks.map((b) => [b.key, new Set(b.ids)]));
+  const cfg: Record<string, string[]> = {};
+  for (const b of input.blocks) {
+    const arr = Array.isArray(res.config[b.key]) ? res.config[b.key] : [];
+    const set = valid.get(b.key)!;
+    const clean = arr.map((x: any) => String(x)).filter((x: string) => set.has(x));
+    if (clean.length) cfg[b.key] = Array.from(new Set(clean));
+  }
+  return {
+    name: String(res.name || `${input.symbol} ${input.timeframe}`).slice(0, 80),
+    family: String(res.family || input.family || 'tendencia').slice(0, 30),
+    config: cfg, rationale: String(res.rationale || '').slice(0, 1000),
+  };
+}
+
 export async function robustnessAudit(bot: any, r: any, lang: 'es' | 'en' = 'es'): Promise<{ audit: string; mutations: string[] } | null> {
   const L = lang === 'en' ? 'English' : 'Spanish';
   const system = `You are Onyx's quant auditor for an internal MT4/MT5 robot factory. You read robustness statistics of a trading strategy and judge whether it is over-optimized (curve-fit) or genuinely robust. Be blunt and specific. NEVER predict the market, give trade signals or promise profits. Reply ONLY with JSON: {"audit": "<3-5 sentence verdict in ${L}, plain language>", "mutations": ["<up to 4 concrete parameter/rule mutations to try that would reduce overfitting, each in ${L}>"]}. The mutations are ideas to backtest, not guarantees.`;

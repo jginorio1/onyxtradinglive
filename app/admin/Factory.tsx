@@ -7,6 +7,7 @@ import FactoryPipeline from './FactoryPipeline';
 import StratGenerator from './StratGenerator';
 import FactoryEngine from './FactoryEngine';
 import { subscribeAnalysis, getAnalysis, startAnalysis, resetAnalysis, patchAnalysis, type ColumnarBars } from '@/lib/dataAnalyzer';
+import { BLOCKS } from '@/lib/stratgen';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 import { ProgressBar, ProgressBarIndeterminate, LIME } from './ProgressBar';
 
@@ -79,7 +80,7 @@ export default function Factory({ canManage = true }: { canManage?: boolean }) {
       </div>
 
       {sub === 'datos' && <DataGate es={es} canManage={canManage} post={post} reload={load} datasets={d.datasets || []} />}
-      {sub === 'constructor' && <Builder es={es} canManage={canManage} post={post} reload={load} nextName={d.nextName} datasets={d.datasets || []} />}
+      {sub === 'constructor' && <Builder es={es} canManage={canManage} post={post} reload={load} nextName={d.nextName} datasets={d.datasets || []} templates={d.templates || []} />}
       {sub === 'motor' && <FactoryEngine es={es} canManage={canManage} post={post} reload={load} datasets={d.datasets || []} />}
       {sub === 'laboratorio' && <FactoryLab es={es} canManage={canManage} post={post} reload={load} bots={d.bots || []} datasets={d.datasets || []} />}
       {sub === 'pipeline' && <FactoryPipeline es={es} canManage={canManage} post={post} />}
@@ -264,7 +265,7 @@ function DataGate({ es, canManage, post, reload, datasets }: any) {
 function chip(c: string): any { return { display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 99, background: `color-mix(in srgb,${c} 15%,transparent)`, color: c, border: `1px solid color-mix(in srgb,${c} 30%,transparent)` }; }
 
 // -------- Constructor --------
-function Builder({ es, canManage, post, reload, nextName, datasets }: any) {
+function Builder({ es, canManage, post, reload, nextName, datasets, templates = [] }: any) {
   const [platform, setPlatform] = useState<'mt5' | 'mt4'>('mt5');
   const [symbol, setSymbol] = useState('');
   const [tf, setTf] = useState('M15');
@@ -273,7 +274,16 @@ function Builder({ es, canManage, post, reload, nextName, datasets }: any) {
   const [anyBroker, setAnyBroker] = useState(true);
   const [busy, setBusy] = useState(false);
   const [showGen, setShowGen] = useState(false);
+  const [genCfg, setGenCfg] = useState<any>(null); // config inicial para el generador (desde plantilla)
   const usable = (datasets as any[]).filter((d) => d.verdict !== 'rechazada');
+
+  function useTemplate(t: any) {
+    if (t.symbol) setSymbol(t.symbol);
+    if (t.timeframe) setTf(t.timeframe);
+    if (t.family) setFamily(t.family);
+    setGenCfg(t.config || {});
+    setShowGen(true);
+  }
 
   async function create() {
     setBusy(true);
@@ -289,9 +299,13 @@ function Builder({ es, canManage, post, reload, nextName, datasets }: any) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4, flexWrap: 'wrap' }}>
         <span style={{ display: 'inline-flex', width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center', background: `linear-gradient(135deg,${TEAL},${AQUA})`, color: '#04201d', fontSize: 18 }}>🛠</span>
         <h3 style={{ margin: 0, flex: 1 }}>{es ? 'Constructor de robots (solo admin)' : 'Robot builder (admin only)'}</h3>
-        {canManage && <button onClick={() => setShowGen(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 15px', borderRadius: 10, cursor: 'pointer', fontWeight: 800, fontSize: 13, border: `1px solid color-mix(in srgb,${SKY} 45%,transparent)`, background: `color-mix(in srgb,${SKY} 14%,transparent)`, color: SKY }}>🧬 {es ? 'Generador de estrategias' : 'Strategy generator'}</button>}
+        {canManage && <button onClick={() => { setGenCfg(null); setShowGen(true); }} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 15px', borderRadius: 10, cursor: 'pointer', fontWeight: 800, fontSize: 13, border: `1px solid color-mix(in srgb,${SKY} 45%,transparent)`, background: `color-mix(in srgb,${SKY} 14%,transparent)`, color: SKY }}>🧬 {es ? 'Generador de estrategias' : 'Strategy generator'}</button>}
       </div>
-      {showGen && <StratGenerator es={es} post={post} onClose={() => setShowGen(false)} />}
+      {showGen && <StratGenerator es={es} post={post} onClose={() => setShowGen(false)} initialCfg={genCfg} symbol={symbol} tf={tf} family={family} reload={reload} />}
+
+      {/* Biblioteca de plantillas (estilo StrategyQuant) */}
+      <TemplateLibrary es={es} canManage={canManage} post={post} reload={reload} templates={templates} datasets={usable} onUse={useTemplate} />
+
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg2)', borderRadius: 12, padding: '12px 14px', marginBottom: 14, border: `1px solid color-mix(in srgb,${TEAL} 30%,var(--line))` }}>
         <div style={{ flex: 1 }}>
           <div className="muted" style={{ fontSize: 12 }}>{es ? 'Nombre + magic automáticos (no editables, nunca se repiten)' : 'Automatic name + magic (locked, never repeat)'}</div>
@@ -321,6 +335,99 @@ function Builder({ es, canManage, post, reload, nextName, datasets }: any) {
     </div>
   );
 }
+
+// -------- Biblioteca de plantillas (estilo StrategyQuant + Claude) --------
+const BLABEL = (es: boolean, key: string, id: string) => {
+  const b = BLOCKS.find((x) => x.key === key); const o = b?.opts.find((x) => x.id === id);
+  return o ? (es ? o.es : o.en) : id;
+};
+function tplSummary(es: boolean, cfg: any): string {
+  const parts: string[] = [];
+  for (const b of BLOCKS) { const arr = (cfg?.[b.key] || []); if (arr.length) parts.push(arr.slice(0, 3).map((id: string) => BLABEL(es, b.key, id)).join('/')); }
+  return parts.slice(0, 4).join(' · ');
+}
+
+function TemplateLibrary({ es, canManage, post, reload, templates, datasets, onUse }: any) {
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiSym, setAiSym] = useState('XAUUSD');
+  const [aiTf, setAiTf] = useState('M15');
+  const [aiFam, setAiFam] = useState('');
+  const [aiDs, setAiDs] = useState('');
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiRes, setAiRes] = useState<any>(null);
+
+  async function askClaude() {
+    setAiBusy(true); setAiRes(null);
+    try { const j = await post({ action: 'template_ai', symbol: aiSym, timeframe: aiTf, family: aiFam || undefined, datasetId: aiDs || undefined, lang: es ? 'es' : 'en' }); setAiRes(j); }
+    catch (e: any) { toastErr(e?.message); } finally { setAiBusy(false); }
+  }
+  async function saveAi() {
+    if (!aiRes) return;
+    try { await post({ action: 'template_save', name: aiRes.name, symbol: aiSym, timeframe: aiTf, family: aiRes.family, config: aiRes.config, origin: 'ai', aiRationale: aiRes.rationale }); toast(es ? 'Plantilla guardada' : 'Template saved'); setAiOpen(false); setAiRes(null); reload(); }
+    catch (e: any) { toastErr(e?.message); }
+  }
+  async function del(id: string) {
+    if (!confirm(es ? '¿Borrar esta plantilla?' : 'Delete this template?')) return;
+    try { await post({ action: 'template_delete', id }); toast(es ? 'Borrada' : 'Deleted'); reload(); } catch (e: any) { toastErr(e?.message); }
+  }
+
+  const originChip = (o: string) => o === 'preset' ? { c: SKY, t: es ? 'de fábrica' : 'preset' } : o === 'ai' ? { c: '#c084fc', t: '✨ Claude' } : { c: AQUA, t: es ? 'tuya' : 'custom' };
+
+  return (
+    <div style={{ marginTop: 16, background: 'var(--bg2)', borderRadius: 12, padding: 14, border: `1px solid color-mix(in srgb,${TEAL} 22%,var(--line))` }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+        <b style={{ fontSize: 14, flex: 1 }}>📚 {es ? 'Biblioteca de plantillas' : 'Template library'} <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· {es ? 'nombre · instrumento · temporalidad' : 'name · instrument · timeframe'}</span></b>
+        {canManage && <button onClick={() => onUse({ config: {}, symbol: '', timeframe: tfDefault, family: '' })} style={{ ...btn(TEAL), padding: '7px 12px' }}>＋ {es ? 'Nueva' : 'New'}</button>}
+        {canManage && <button onClick={() => { setAiOpen((v) => !v); setAiRes(null); }} style={{ ...btn('#c084fc'), padding: '7px 12px' }}>✨ {es ? 'Claude, arma una' : 'Ask Claude'}</button>}
+      </div>
+
+      {aiOpen && (
+        <div style={{ border: '1px solid color-mix(in srgb,#c084fc 35%,var(--line))', borderRadius: 10, padding: 12, marginBottom: 12, background: 'var(--card)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10 }}>
+            <Lbl t={es ? 'Instrumento' : 'Instrument'}><InstrumentPicker value={aiSym} onChange={setAiSym} es={es} /></Lbl>
+            <Lbl t={es ? 'Temporalidad' : 'Timeframe'}><select value={aiTf} onChange={(e) => setAiTf(e.target.value)} style={inp}>{['M1', 'M5', 'M15', 'M30', 'H1', 'H4', 'D1'].map((x) => <option key={x} value={x}>{x}</option>)}</select></Lbl>
+            <Lbl t={es ? 'Familia (opcional)' : 'Family (optional)'}><select value={aiFam} onChange={(e) => setAiFam(e.target.value)} style={inp}><option value="">{es ? 'auto' : 'auto'}</option>{[['tendencia', es ? 'Tendencia' : 'Trend'], ['rango', es ? 'Rango' : 'Range'], ['ruptura', es ? 'Ruptura' : 'Breakout'], ['reversion', es ? 'Reversión' : 'Reversion'], ['volatilidad', es ? 'Volatilidad' : 'Volatility'], ['scalping', 'Scalping']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></Lbl>
+            <Lbl t={es ? 'Usar datos de…' : 'Use data from…'}><select value={aiDs} onChange={(e) => setAiDs(e.target.value)} style={inp}><option value="">{es ? '— sin dataset —' : '— no dataset —'}</option>{(datasets as any[]).map((d) => <option key={d.id} value={d.id}>{d.symbol} · {d.from_year || ''}–{d.to_year || ''}</option>)}</select></Lbl>
+          </div>
+          <button onClick={askClaude} disabled={aiBusy} style={{ ...btn('#c084fc'), marginTop: 10 }}>{aiBusy ? (es ? 'Pensando…' : 'Thinking…') : (es ? '✨ Diseñar plantilla' : '✨ Design template')}</button>
+          {aiRes && (
+            <div style={{ marginTop: 12, borderTop: '1px solid var(--line)', paddingTop: 12 }}>
+              <div style={{ fontSize: 14, fontWeight: 800 }}>{aiRes.name} {!aiRes.byAi && <span className="muted" style={{ fontWeight: 400, fontSize: 11 }}>({es ? 'base sin IA — conecta ANTHROPIC_API_KEY' : 'base, no AI — set ANTHROPIC_API_KEY'})</span>}</div>
+              <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{tplSummary(es, aiRes.config)}</div>
+              {aiRes.rationale && <div style={{ fontSize: 12, marginTop: 6, lineHeight: 1.55, background: 'var(--bg2)', borderRadius: 8, padding: '8px 10px' }}>{aiRes.rationale}</div>}
+              <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                {canManage && <button onClick={saveAi} style={btn(GREEN)}>{es ? '💾 Guardar plantilla' : '💾 Save template'}</button>}
+                <button onClick={() => onUse({ config: aiRes.config, symbol: aiSym, timeframe: aiTf, family: aiRes.family })} style={btn(TEAL)}>{es ? 'Usar ahora' : 'Use now'}</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(220px,1fr))', gap: 10 }}>
+        {(templates as any[]).map((t) => { const oc = originChip(t.origin || 'custom'); return (
+          <div key={t.id} style={{ border: '1px solid var(--line)', borderRadius: 11, padding: 12, background: 'var(--card)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+              <b style={{ fontSize: 13, flex: 1 }}>{t.name}</b>
+              <span style={chip(oc.c)}>{oc.t}</span>
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <span style={chip(TEAL)}>{t.symbol || '—'}</span>
+              <span style={chip('var(--brand)')}>{t.timeframe || '—'}</span>
+              {t.family && <span style={chip('var(--tx)')}>{t.family}</span>}
+            </div>
+            <div className="muted" style={{ fontSize: 11, lineHeight: 1.5, minHeight: 30 }}>{tplSummary(es, t.config)}</div>
+            <div style={{ display: 'flex', gap: 6, marginTop: 'auto' }}>
+              {canManage && <button onClick={() => onUse(t)} style={{ ...btn(TEAL), padding: '6px 11px', flex: 1, justifyContent: 'center' }}>{es ? 'Usar' : 'Use'}</button>}
+              {canManage && t.origin !== 'preset' && <button onClick={() => del(t.id)} style={{ ...btn(RED), padding: '6px 9px' }}>✕</button>}
+            </div>
+          </div>
+        ); })}
+      </div>
+    </div>
+  );
+}
+const tfDefault = 'M15';
 
 // -------- Lista de robots --------
 function BotList({ es, canManage, post, reload, bots }: any) {
