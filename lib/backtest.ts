@@ -16,8 +16,17 @@ export type Spec = {
   tp: string; sl: string; be: string; trailing: string; p1?: number; p2?: number; dir?: 'both' | 'long' | 'short';
   filter?: string; customEntry?: CustomRule;
 };
-export type Costs = { spreadPips: number; slippagePips: number; commission: number; moneyPerPip: number; lot: number; pip?: number };
-export type BtResult = { trades: { t: number; profit: number }[]; n: number; net: number; pf: number; winRate: number; maxddPct: number; expectancy: number };
+export type Costs = {
+  spreadPips: number; slippagePips: number; commission: number; moneyPerPip: number; lot: number; pip?: number;
+  // Gestión monetaria (estilo StrategyQuant): capital inicial + modelo de tamaño.
+  capital?: number;                          // balance inicial de la cuenta
+  mm?: 'fixed' | 'risk_pct' | 'risk_money';  // lote fijo | % de riesgo por op sobre EQUITY (compuesto) | riesgo fijo en $
+  riskPct?: number;                          // % del equity por operación (mm='risk_pct')
+  riskMoney?: number;                        // $ arriesgados por operación (mm='risk_money')
+  ddType?: 'none' | 'static' | 'trailing';   // límite de drawdown: estático (desde balance inicial) o trailing (desde el pico)
+  maxDDpct?: number;                         // % máximo de drawdown antes de "reventar" la cuenta
+};
+export type BtResult = { trades: { t: number; profit: number }[]; n: number; net: number; pf: number; winRate: number; maxddPct: number; expectancy: number; blown?: boolean; finalEquity?: number };
 
 // Adivina el instrumento desde el nombre del archivo (Dukascopy/StrategyQuant).
 export function guessSymbolFromName(name: string): string {
@@ -164,9 +173,20 @@ export function runBacktest(bars: Bar[], spec: Spec, costs: Costs): BtResult {
   }
 
   const trades: { t: number; profit: number }[] = [];
-  let pos: null | { dir: 1 | -1; entry: number; sl: number; tp: number; bars: number; atrPips: number; be: boolean } = null;
+  let pos: null | { dir: 1 | -1; entry: number; sl: number; tp: number; bars: number; atrPips: number; be: boolean; lot: number } = null;
   const costPips = costs.spreadPips + 2 * costs.slippagePips;
-  const commMoney = costs.commission * costs.lot * 2;
+  // Gestión monetaria: capital inicial y equity para el % de riesgo compuesto.
+  const capital = costs.capital && costs.capital > 0 ? costs.capital : 10000;
+  let equity = capital, peakEq = capital, blown = false;
+  const ddType = costs.ddType || 'none';
+  const maxDDpct = costs.maxDDpct || 0;
+  const mm = costs.mm || 'fixed';
+  function lotFor(slPipsAtEntry: number): number {
+    if (mm === 'fixed' || slPipsAtEntry <= 0 || costs.moneyPerPip <= 0) return costs.lot || 1;
+    const risk = mm === 'risk_pct' ? equity * ((costs.riskPct || 1) / 100) : (costs.riskMoney || 100);
+    const lot = risk / (slPipsAtEntry * costs.moneyPerPip);
+    return Math.max(0.01, Math.min(lot, 1000));
+  }
 
   for (let i = 31; i < n; i++) {
     const b = bars[i];
@@ -196,9 +216,16 @@ export function runBacktest(bars: Bar[], spec: Spec, costs: Costs): BtResult {
       }
       if (!isNaN(exitPrice)) {
         const rawPips = ((exitPrice - pos.entry) / pip) * pos.dir;
-        const money = (rawPips - costPips) * costs.moneyPerPip * costs.lot - commMoney;
+        const money = (rawPips - costPips) * costs.moneyPerPip * pos.lot - costs.commission * pos.lot * 2;
+        equity += money;
+        if (equity > peakEq) peakEq = equity;
         trades.push({ t: b.t, profit: Math.round(money * 100) / 100 });
         pos = null;
+        // Límite de drawdown (estático desde el balance inicial / trailing desde el pico): revienta la cuenta.
+        if (ddType !== 'none' && maxDDpct > 0) {
+          const floor = ddType === 'trailing' ? peakEq * (1 - maxDDpct / 100) : capital * (1 - maxDDpct / 100);
+          if (equity <= floor) { blown = true; break; }
+        }
       }
     }
     if (!pos) {
@@ -211,20 +238,21 @@ export function runBacktest(bars: Bar[], spec: Spec, costs: Costs): BtResult {
       const atrPips = atrArr[i] ? atrArr[i] / pip : 20;
       const tpP = pips(spec.tp, atrPips) || 40, slP = pips(spec.sl, atrPips) || 30;
       const entry = b.c + dir * costs.slippagePips * pip;
-      pos = { dir, entry, tp: entry + dir * tpP * pip, sl: entry - dir * slP * pip, bars: 0, atrPips, be: false };
+      pos = { dir, entry, tp: entry + dir * tpP * pip, sl: entry - dir * slP * pip, bars: 0, atrPips, be: false, lot: lotFor(slP) };
     }
   }
 
-  // Métricas.
-  let gp = 0, gl = 0, wins = 0, net = 0, cum = 10000, peak = 10000, dd = 0;
-  for (const t of trades) { net += t.profit; if (t.profit >= 0) { gp += t.profit; if (t.profit > 0) wins++; } else gl += -t.profit; cum += t.profit; if (cum > peak) peak = cum; dd = Math.max(dd, peak - cum); }
+  // Métricas (equity parte del balance inicial; DD% respecto al pico de equity).
+  let gp = 0, gl = 0, wins = 0, net = 0, cum = capital, peak2 = capital, dd = 0;
+  for (const t of trades) { net += t.profit; if (t.profit >= 0) { gp += t.profit; if (t.profit > 0) wins++; } else gl += -t.profit; cum += t.profit; if (cum > peak2) peak2 = cum; dd = Math.max(dd, peak2 - cum); }
   const N = trades.length;
   return {
     trades, n: N, net: Math.round(net),
     pf: gl > 0 ? Math.round((gp / gl) * 100) / 100 : (gp > 0 ? 99 : 0),
     winRate: N ? Math.round((wins / N) * 100) : 0,
-    maxddPct: peak > 0 ? Math.round((dd / peak) * 1000) / 10 : 0,
+    maxddPct: peak2 > 0 ? Math.round((dd / peak2) * 1000) / 10 : 0,
     expectancy: N ? Math.round((net / N) * 100) / 100 : 0,
+    blown, finalEquity: Math.round(equity),
   };
 }
 

@@ -67,7 +67,8 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
     } catch (e: any) { toastErr(es ? 'No se pudieron cargar las barras guardadas.' : 'Could not load saved bars.'); }
     finally { setReading(false); setProg(0); }
   }
-  const [costs, setCosts] = useState<Costs>({ spreadPips: 1.2, slippagePips: 0.3, commission: 3.5, moneyPerPip: 10, lot: 1, pip: 0 });
+  const [costs, setCosts] = useState<Costs>({ spreadPips: 1.2, slippagePips: 0.3, commission: 3.5, moneyPerPip: 10, lot: 1, pip: 0, capital: 10000, mm: 'risk_pct', riskPct: 1, riskMoney: 100, ddType: 'trailing', maxDDpct: 10 });
+  const [dir, setDir] = useState<'both' | 'long' | 'short'>('both'); // dirección del robot
   const [cfg, setCfg] = useState<Record<string, string[]>>({ indicators: ['ema', 'rsi', 'macd', 'bb'], entry: ['cross_up', 'cross_dn', 'breakout', 'pullback'], exit: ['opp_signal', 'fixed', 'indicator'], sessions: ['london', 'ny', 'overlap', 'all'], tp: ['40', '60', 'atr2', 'atr3'], sl: ['30', '50', 'atr15'], be: ['off', 'be20'], trailing: ['off', 't30', 't_atr'] });
   const [n, setN] = useState(1500);
   const [busy, setBusy] = useState(false);
@@ -100,9 +101,9 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
     setBusy(true); setRows(null); setEvo(null);
     await new Promise((r) => setTimeout(r, 30));
     try {
-      const cands = sampleCandidates(cfg, n) as Spec[];
+      const cands = (sampleCandidates(cfg, n) as Spec[]).map((c) => ({ ...c, dir }));
       const out: Row[] = [];
-      for (const c of cands) { const spec = enrichSpec(c, blockMap); const m = runBacktest(bars, spec, costs); if (m.n > 0) out.push({ spec, net: m.net, pf: m.pf, dd: m.maxddPct, n: m.n, win: m.winRate, exp: m.expectancy }); }
+      for (const c of cands) { const spec = enrichSpec(c, blockMap); const m = runBacktest(bars, spec, costs); if (m.n > 0 && !m.blown) out.push({ spec, net: m.net, pf: m.pf, dd: m.maxddPct, n: m.n, win: m.winRate, exp: m.expectancy }); }
       setRows(out);
       toast(es ? `${out.length} estrategias backtesteadas` : `${out.length} strategies backtested`);
     } catch (e: any) { toastErr(e?.message); } finally { setBusy(false); }
@@ -146,7 +147,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
     setAuto(true); setAutoDone(null); setAutoMsg(es ? 'Generando estrategias…' : 'Generating strategies…');
     await new Promise((r) => setTimeout(r, 30));
     try {
-      const cands = sampleCandidates(cfg, n) as Spec[];
+      const cands = (sampleCandidates(cfg, n) as Spec[]).map((c) => ({ ...c, dir }));
       const cut = Math.floor(bars.length * 0.7); const isB = bars.slice(0, cut), oosB = bars.slice(cut);
       const survivors: { spec: Spec; fit: number }[] = [];
       for (let i = 0; i < cands.length; i++) {
@@ -178,12 +179,13 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
     setRecRun(true); setRecFunnel(null); setRecBest(null); setRecMsg(es ? 'Generando…' : 'Generating…');
     await new Promise((r) => setTimeout(r, 30));
     try {
-      const cands = sampleCandidates(cfg, n) as Spec[];
+      const cands = (sampleCandidates(cfg, n) as Spec[]).map((c) => ({ ...c, dir }));
       const cut = Math.floor(bars.length * 0.7); const oosB = bars.slice(cut);
       let bt = 0, mc = 0, wf = 0; const survivors: any[] = [];
       for (let i = 0; i < cands.length; i++) {
         const spec = enrichSpec(cands[i], blockMap);
         const m = runBacktest(bars, spec, costs);
+        if (m.blown) continue; // reventó la cuenta (límite de drawdown) → descartar
         if (!(m.pf >= recipe.minPf && m.maxddPct <= recipe.maxDd && m.n >= recipe.minTr)) continue;
         bt++;
         const oos = runBacktest(oosB, spec, costs);
@@ -257,9 +259,44 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
         {reading && <div style={{ marginTop: 12 }}><ProgressBar p={prog} label={(es ? 'Procesando ' : 'Processing ') + barsName.slice(0, 24)} /></div>}
         <p className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>{es ? 'Acepta los mismos ticks de Dukascopy/StrategyQuant (hasta varios GB): se leen por trozos y se convierten a barras OHLC al vuelo, sin cargar todo en memoria.' : 'Accepts the same Dukascopy/StrategyQuant ticks (multi-GB): streamed in chunks and converted to OHLC bars on the fly.'}</p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(120px,1fr))', gap: 10, marginTop: 12 }}>
-          {([['spreadPips', es ? 'Spread (pips)' : 'Spread (pips)'], ['slippagePips', 'Slippage (pips)'], ['commission', es ? 'Comisión ($/lote)' : 'Commission ($/lot)'], ['moneyPerPip', es ? '$/pip (1 lote)' : '$/pip (1 lot)'], ['lot', es ? 'Lote' : 'Lot']] as [string, string][]).map(([k, l]) => (
+          {([['spreadPips', es ? 'Spread (pips)' : 'Spread (pips)'], ['slippagePips', 'Slippage (pips)'], ['commission', es ? 'Comisión ($/lote)' : 'Commission ($/lot)'], ['moneyPerPip', es ? '$/pip (1 lote)' : '$/pip (1 lot)']] as [string, string][]).map(([k, l]) => (
             <label key={k}><span className="muted" style={{ fontSize: 11.5 }}>{l}</span><input type="number" step="0.1" value={(costs as any)[k]} onChange={(e) => setCosts({ ...costs, [k]: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>
           ))}
+        </div>
+
+        {/* Gestión monetaria + dirección (estilo StrategyQuant, mejorado) */}
+        <div style={{ marginTop: 14, background: 'var(--bg2)', borderRadius: 10, padding: 12, border: `1px solid color-mix(in srgb,${VIOLET} 22%,var(--line))` }}>
+          <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 8 }}>💰 {es ? 'Gestión monetaria y dirección' : 'Money management & direction'}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 10 }}>
+            <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Dirección' : 'Direction'}</span>
+              <select value={dir} onChange={(e) => setDir(e.target.value as any)} style={{ ...inp, width: '100%', marginTop: 3 }}>
+                <option value="both">{es ? 'Ambos (Long+Short)' : 'Both (Long+Short)'}</option>
+                <option value="long">{es ? 'Solo Long' : 'Long only'}</option>
+                <option value="short">{es ? 'Solo Short' : 'Short only'}</option>
+              </select>
+            </label>
+            <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Balance inicial ($)' : 'Initial balance ($)'}</span>
+              <input type="number" step="100" value={costs.capital} onChange={(e) => setCosts({ ...costs, capital: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>
+            <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Tamaño de posición' : 'Position sizing'}</span>
+              <select value={costs.mm} onChange={(e) => setCosts({ ...costs, mm: e.target.value as any })} style={{ ...inp, width: '100%', marginTop: 3 }}>
+                <option value="risk_pct">{es ? '% de riesgo sobre equity' : '% risk on equity'}</option>
+                <option value="risk_money">{es ? 'Riesgo fijo ($)' : 'Fixed risk ($)'}</option>
+                <option value="fixed">{es ? 'Lote fijo' : 'Fixed lot'}</option>
+              </select>
+            </label>
+            {costs.mm === 'risk_pct' && <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? '% por operación' : '% per trade'}</span><input type="number" step="0.1" value={costs.riskPct} onChange={(e) => setCosts({ ...costs, riskPct: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>}
+            {costs.mm === 'risk_money' && <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? '$ por operación' : '$ per trade'}</span><input type="number" step="10" value={costs.riskMoney} onChange={(e) => setCosts({ ...costs, riskMoney: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>}
+            {costs.mm === 'fixed' && <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Lote' : 'Lot'}</span><input type="number" step="0.01" value={costs.lot} onChange={(e) => setCosts({ ...costs, lot: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>}
+            <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Drawdown límite' : 'Drawdown limit'}</span>
+              <select value={costs.ddType} onChange={(e) => setCosts({ ...costs, ddType: e.target.value as any })} style={{ ...inp, width: '100%', marginTop: 3 }}>
+                <option value="trailing">{es ? 'Trailing (desde el pico)' : 'Trailing (from peak)'}</option>
+                <option value="static">{es ? 'Estático (desde el inicio)' : 'Static (from start)'}</option>
+                <option value="none">{es ? 'Sin límite' : 'No limit'}</option>
+              </select>
+            </label>
+            {costs.ddType !== 'none' && <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'DD máx %' : 'Max DD %'}</span><input type="number" step="1" value={costs.maxDDpct} onChange={(e) => setCosts({ ...costs, maxDDpct: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>}
+          </div>
+          <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>{es ? 'La simulación compone sobre el equity y “revienta” la cuenta si toca el límite de drawdown (como una prop firm). Esos robots se descartan.' : 'The simulation compounds on equity and “blows” the account if it hits the drawdown limit (like a prop firm). Those robots are discarded.'}</div>
         </div>
       </div>
 

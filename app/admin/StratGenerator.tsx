@@ -30,6 +30,7 @@ export default function StratGenerator({ es, post, onClose, initialCfg, symbol =
   // Si llega una plantilla nueva desde el Constructor, cárgala.
   useEffect(() => { if (initialCfg && Object.keys(initialCfg).length) setCfg(initialCfg); }, [initialCfg]);
   const [n, setN] = useState(2000);
+  const [genDir, setGenDir] = useState<'both' | 'long' | 'short'>('both');
   const [busy, setBusy] = useState(false);
   const [cands, setCands] = useState<any[] | null>(null);
 
@@ -52,7 +53,7 @@ export default function StratGenerator({ es, post, onClose, initialCfg, symbol =
 
   async function generate() {
     setBusy(true); setCands(null);
-    try { const j = await post({ action: 'gen_run', config: cfg, n }); setCands(j.candidates || []); toast(es ? `Generadas ${j.sampled} estrategias` : `Generated ${j.sampled} strategies`); }
+    try { const j = await post({ action: 'gen_run', config: cfg, n }); setCands((j.candidates || []).map((c: any) => ({ ...c, dir: genDir }))); toast(es ? `Generadas ${j.sampled} estrategias` : `Generated ${j.sampled} strategies`); }
     catch (e: any) { toastErr(e?.message); } finally { setBusy(false); }
   }
 
@@ -152,9 +153,15 @@ export default function StratGenerator({ es, post, onClose, initialCfg, symbol =
               <div className="muted" style={{ fontSize: 11.5 }}>{es ? 'Combinaciones posibles' : 'Possible combinations'}</div>
               <div style={{ fontSize: 28, fontWeight: 800, color: VIOLET, lineHeight: 1 }}>{spaceTxt}</div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span className="muted" style={{ fontSize: 12 }}>{es ? 'Generar' : 'Generate'}</span>
-              <input type="number" value={n} min={100} max={20000} onChange={(e) => setN(Math.max(100, Math.min(20000, Number(e.target.value) || 100)))} style={{ ...inp, width: 100 }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span className="muted" style={{ fontSize: 12 }}>{es ? 'Dirección' : 'Direction'}</span>
+              <select value={genDir} onChange={(e) => setGenDir(e.target.value as any)} style={{ ...inp, padding: '7px 9px' }}>
+                <option value="both">{es ? 'Ambos' : 'Both'}</option>
+                <option value="long">Long</option>
+                <option value="short">Short</option>
+              </select>
+              <span className="muted" style={{ fontSize: 12, marginLeft: 6 }}>{es ? 'Generar' : 'Generate'}</span>
+              <input type="number" value={n} min={100} max={20000} onChange={(e) => setN(Math.max(100, Math.min(20000, Number(e.target.value) || 100)))} style={{ ...inp, width: 90 }} />
               <span className="muted" style={{ fontSize: 12 }}>{es ? 'candidatos' : 'candidates'}</span>
             </div>
             <button onClick={saveAsTemplate} style={{ ...btn(GREEN), marginLeft: 'auto' }}>{es ? '💾 Guardar como plantilla' : '💾 Save as template'}</button>
