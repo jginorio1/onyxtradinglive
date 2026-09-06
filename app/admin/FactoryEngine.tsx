@@ -6,6 +6,8 @@ import { parseBars, parseBarsStreaming, runBacktest, inferPip, type Bar, type Sp
 import { evolve, evaluate, type Survivor } from '@/lib/evolve';
 import { genMt5, genMt4 } from '@/lib/mqlgen';
 import { barsFromColumnar, type ColumnarBars } from '@/lib/dataAnalyzer';
+import { mcSuite } from '@/lib/montecarlo';
+import { walkForwardMatrix } from '@/lib/walkforward';
 import { ProgressBar } from './ProgressBar';
 
 // ============================================================
@@ -79,6 +81,13 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
   const [autoMsg, setAutoMsg] = useState('');
   const [keepN, setKeepN] = useState(8);
   const [autoDone, setAutoDone] = useState<{ created: number; scanned: number; survivors: number } | null>(null);
+  // Receta encadenada (build → backtest → IS/OOS → Monte Carlo → walk-forward → rechazar).
+  const [recipe, setRecipe] = useState({ minPf: 1.2, maxDd: 25, minTr: 30, mcMaxLoss: 35, wfMinStab: 55 });
+  const [recRun, setRecRun] = useState(false);
+  const [recMsg, setRecMsg] = useState('');
+  const [recFunnel, setRecFunnel] = useState<any>(null);
+  const [recBest, setRecBest] = useState<any>(null);
+  const [recSending, setRecSending] = useState(false);
 
   const toggle = (bk: string, id: string) => setCfg((c) => { const cur = c[bk] || []; return { ...c, [bk]: cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id] }; });
   const pip = bars ? (costs.pip || inferPip(bars[Math.floor(bars.length / 2)].c)) : 0;
@@ -161,6 +170,55 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
     } catch (e: any) { toastErr(e?.message); } finally { setAuto(false); setAutoMsg(''); }
   }
 
+  // RECETA ENCADENADA: build → backtest → IS/OOS → Monte Carlo (8 tipos) →
+  // walk-forward matrix → sobreviven solo los que pasan TODAS las compuertas.
+  async function runRecipe() {
+    if (!bars) { toastErr(es ? 'Carga los datos primero.' : 'Load data first.'); return; }
+    setRecRun(true); setRecFunnel(null); setRecBest(null); setRecMsg(es ? 'Generando…' : 'Generating…');
+    await new Promise((r) => setTimeout(r, 30));
+    try {
+      const cands = sampleCandidates(cfg, n) as Spec[];
+      const cut = Math.floor(bars.length * 0.7); const oosB = bars.slice(cut);
+      let bt = 0, mc = 0, wf = 0; const survivors: any[] = [];
+      for (let i = 0; i < cands.length; i++) {
+        const spec = enrichSpec(cands[i], blockMap);
+        const m = runBacktest(bars, spec, costs);
+        if (!(m.pf >= recipe.minPf && m.maxddPct <= recipe.maxDd && m.n >= recipe.minTr)) continue;
+        bt++;
+        const oos = runBacktest(oosB, spec, costs);
+        if (!(oos.n >= 8 && oos.pf >= 1)) continue;
+        const suite = mcSuite(m.trades.map((t) => t.profit), { runs: 250, maxLossProb: recipe.mcMaxLoss });
+        if (!suite.pass) continue; mc++;
+        const wfm = walkForwardMatrix(bars, spec, costs, { folds: 5 });
+        if (wfm.stability < recipe.wfMinStab) continue; wf++;
+        survivors.push({ spec, m, mc: suite, wf: wfm });
+        if (i % 25 === 0) { setRecMsg((es ? 'Filtrando ' : 'Filtering ') + i + '/' + cands.length + ' · ' + (es ? 'sobreviven ' : 'survive ') + survivors.length); await new Promise((r) => setTimeout(r, 0)); }
+      }
+      survivors.sort((a, b) => b.m.net - a.m.net);
+      const top = survivors.slice(0, Math.max(1, keepN));
+      setRecFunnel({ scanned: cands.length, bt, mc, wf, survivors: top });
+      setRecBest(top[0] || null);
+      toast((es ? 'Receta: ' : 'Recipe: ') + top.length + (es ? ' supervivientes' : ' survivors'));
+    } catch (e: any) { toastErr(e?.message); } finally { setRecRun(false); setRecMsg(''); }
+  }
+  async function sendRecipe() {
+    if (!recFunnel?.survivors?.length) return;
+    setRecSending(true);
+    try {
+      let created = 0;
+      for (const s of recFunnel.survivors) {
+        const trades = runBacktest(bars!, s.spec, costs).trades;
+        if (trades.length < 20) continue;
+        const j = await post({ action: 'bot_create', platform: meta.platform, symbol: meta.symbol, timeframe: meta.tf, strategy: { family: 'receta', gen: s.spec } });
+        await post({ action: 'lab_run', botId: j.bot?.id, trades, paramCount: 6, noAi: true });
+        created++;
+      }
+      toast((es ? 'Enviados al laboratorio: ' : 'Sent to lab: ') + created);
+      if (reload) reload();
+    } catch (e: any) { toastErr(e?.message); } finally { setRecSending(false); }
+  }
+  function wfColor(pf: number) { return pf >= 1.3 ? GREEN : pf >= 1.1 ? '#7bd44a' : pf >= 1 ? AMBER : pf > 0 ? '#e08a3c' : RED; }
+
   const specLabel = (s: Spec) => `${s.ind1}${s.ind2 ? '+' + s.ind2 : ''} · ${s.entry} · TP ${s.tp}/SL ${s.sl}`;
 
   return (
@@ -223,6 +281,69 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
         {autoDone && (
           <div style={{ marginTop: 10, background: 'var(--bg2)', borderRadius: 10, padding: '10px 12px', fontSize: 13 }}>
             ✓ {es ? 'Creados' : 'Created'} <b style={{ color: GREEN }}>{autoDone.created}</b> {es ? 'robots' : 'robots'} · {autoDone.survivors} {es ? 'robustos de' : 'robust of'} {autoDone.scanned} · <span className="muted">{es ? 'míralos en Laboratorio y Pipeline. Solo falta instalar su EA en la demo.' : 'see them in Lab and Pipeline. Just install their EA on demo.'}</span>
+          </div>
+        )}
+      </div>
+
+      {/* RECETA ENCADENADA (build → backtest → MC → walk-forward → rechazar) */}
+      <div style={{ ...card, borderColor: `color-mix(in srgb,${BLUE} 45%,var(--line))` }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span style={{ display: 'inline-flex', width: 36, height: 36, borderRadius: 11, alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg,' + BLUE + ',' + VIOLET + ')', color: '#0b1020', fontSize: 19 }}>🧪</span>
+          <div style={{ flex: 1, minWidth: 180 }}>
+            <h3 style={{ margin: 0 }}>{es ? 'Receta encadenada' : 'Chained recipe'}</h3>
+            <p className="muted" style={{ fontSize: 12.5, margin: '2px 0 0' }}>{es ? 'Generar → backtest → in/out-of-sample → Monte Carlo (8 tipos) → walk-forward matrix. Solo pasan los que superan TODAS las compuertas.' : 'Generate → backtest → in/out-of-sample → Monte Carlo (8 types) → walk-forward matrix. Only those passing ALL gates survive.'}</p>
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(120px,1fr))', gap: 10, marginTop: 12 }}>
+          {([['minPf', es ? 'PF mínimo' : 'Min PF', 0.1], ['maxDd', es ? 'DD máx %' : 'Max DD %', 1], ['minTr', es ? 'Ops mín' : 'Min trades', 1], ['mcMaxLoss', es ? 'MC: prob. pérdida máx %' : 'MC: max loss prob %', 1], ['wfMinStab', es ? 'WF: estabilidad mín %' : 'WF: min stability %', 1]] as [string, string, number][]).map(([k, l, step]) => (
+            <label key={k}><span className="muted" style={{ fontSize: 11 }}>{l}</span><input type="number" step={step} value={(recipe as any)[k]} onChange={(e) => setRecipe({ ...recipe, [k]: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>
+          ))}
+        </div>
+        {canManage && <button onClick={runRecipe} disabled={recRun || !bars} style={{ ...btn(BLUE), marginTop: 12, padding: '11px 20px', fontSize: 14 }}>{recRun ? (es ? 'Ejecutando…' : 'Running…') : (es ? '🧪 Ejecutar receta' : '🧪 Run recipe')}</button>}
+        {recRun && <div style={{ marginTop: 10, fontSize: 13, color: BLUE, fontWeight: 700 }}>{recMsg}</div>}
+
+        {recFunnel && (
+          <div style={{ marginTop: 14 }}>
+            {/* Embudo */}
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              {[[es ? 'Generadas' : 'Generated', recFunnel.scanned, 'var(--brand)'], [es ? 'Backtest' : 'Backtest', recFunnel.bt, VIOLET], [es ? 'Monte Carlo' : 'Monte Carlo', recFunnel.mc, BLUE], [es ? 'Walk-forward' : 'Walk-forward', recFunnel.wf, GREEN], [es ? 'Supervivientes' : 'Survivors', recFunnel.survivors.length, GREEN]].map(([l, v, c]: any, i) => (
+                <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ background: 'var(--bg2)', borderRadius: 9, padding: '7px 11px', textAlign: 'center', border: `1px solid color-mix(in srgb,${c} 30%,var(--line))` }}><b style={{ color: c, fontSize: 16 }}>{v}</b><span className="muted" style={{ fontSize: 10.5, display: 'block' }}>{l}</span></span>
+                  {i < 4 && <span className="muted">→</span>}
+                </span>
+              ))}
+              {canManage && recFunnel.survivors.length > 0 && <button onClick={sendRecipe} disabled={recSending} style={{ ...btn(GREEN), marginLeft: 'auto' }}>{recSending ? (es ? 'Enviando…' : 'Sending…') : (es ? '🚀 Enviar supervivientes al lab' : '🚀 Send survivors to lab')}</button>}
+            </div>
+
+            {/* Mejor superviviente: walk-forward matrix + Monte Carlo */}
+            {recBest && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 12, marginTop: 14 }}>
+                <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: 12 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 6 }}>{es ? 'Walk-forward matrix' : 'Walk-forward matrix'} <span className="muted" style={{ fontWeight: 400 }}>· {es ? 'estabilidad' : 'stability'} {recBest.wf.stability}%</span></div>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ borderCollapse: 'collapse', fontSize: 10.5 }}>
+                      <thead><tr><th style={{ padding: 3, color: 'var(--mut)' }}>p1\\{es ? 'tramo' : 'fold'}</th>{Array.from({ length: recBest.wf.folds }).map((_, f) => <th key={f} style={{ padding: 3, color: 'var(--mut)' }}>{f + 1}</th>)}</tr></thead>
+                      <tbody>{recBest.wf.cells.map((row: number[], ri: number) => (
+                        <tr key={ri}><td style={{ padding: 3, fontFamily: 'monospace', color: 'var(--mut)' }}>{recBest.wf.values[ri]}</td>{row.map((pf: number, ci: number) => <td key={ci} style={{ padding: 0 }}><div title={'PF ' + pf} style={{ width: 34, height: 22, background: `color-mix(in srgb,${wfColor(pf)} 55%,transparent)`, color: '#0b1020', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4, margin: 1 }}>{pf.toFixed(1)}</div></td>)}</tr>
+                      ))}</tbody>
+                    </table>
+                  </div>
+                  <div className="muted" style={{ fontSize: 10.5, marginTop: 6 }}>{es ? 'Verde en muchas celdas = meseta robusta (no un pico afortunado).' : 'Green across many cells = robust plateau (not a lucky peak).'}</div>
+                </div>
+                <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: 12 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 6 }}>{es ? 'Monte Carlo · 8 tipos' : 'Monte Carlo · 8 types'} <span className="muted" style={{ fontWeight: 400 }}>· {es ? 'peor prob. pérdida' : 'worst loss prob'} {recBest.mc.worstLossProb}%</span></div>
+                  <div style={{ display: 'grid', gap: 4 }}>
+                    {recBest.mc.types.map((t: any) => (
+                      <div key={t.key} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 10.5, width: 120, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{es ? t.es : t.en}</span>
+                        <div style={{ flex: 1, height: 9, borderRadius: 99, background: 'var(--line)', overflow: 'hidden' }}><div style={{ width: Math.min(100, t.lossProb) + '%', height: '100%', background: t.lossProb <= 20 ? GREEN : t.lossProb <= 35 ? AMBER : RED }} /></div>
+                        <span style={{ fontSize: 10.5, width: 60, textAlign: 'right', color: 'var(--mut)' }}>{t.lossProb}% · DD{t.p95DD}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
