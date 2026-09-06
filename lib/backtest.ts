@@ -15,6 +15,15 @@ export type Spec = {
 export type Costs = { spreadPips: number; slippagePips: number; commission: number; moneyPerPip: number; lot: number; pip?: number };
 export type BtResult = { trades: { t: number; profit: number }[]; n: number; net: number; pf: number; winRate: number; maxddPct: number; expectancy: number };
 
+// Adivina el instrumento desde el nombre del archivo (Dukascopy/StrategyQuant).
+export function guessSymbolFromName(name: string): string {
+  const base = (name || '').replace(/\.[^.]+$/, '');
+  const m = base.match(/^[A-Za-z][A-Za-z0-9.]{1,15}/);
+  const s = (m ? m[0] : '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const map: Record<string, string> = { USA500IDXUSD: 'US500', USATECHIDXUSD: 'NAS100', USA30IDXUSD: 'US30', DEUIDXEUR: 'GER40', GBRIDXGBP: 'UK100', JPNIDXJPY: 'JP225', FRAIDXEUR: 'FRA40', AUSIDXAUD: 'AUS200', LIGHTCMDUSD: 'USOIL', BRENTCMDUSD: 'UKOIL' };
+  return map[s] || s;
+}
+
 export function inferPip(price: number): number {
   if (price >= 1000) return 1; if (price >= 100) return 0.1; if (price >= 10) return 0.01; return 0.0001;
 }
@@ -157,6 +166,100 @@ export function runBacktest(bars: Bar[], spec: Spec, costs: Costs): BtResult {
 export function defPeriod(id: string): number {
   const m: Record<string, number> = { ema: 20, sma: 20, rsi: 14, macd: 12, stoch: 14, bb: 20, atr: 14, adx: 14, cci: 20, mom: 10, ichimoku: 26, psar: 14, wpr: 14, vwap: 20 };
   return m[id] || 20;
+}
+
+// ---------- Lectura por STREAMING para archivos ENORMES (GB) ----------
+// Lee el archivo por trozos (sin cargarlo entero en memoria) y llama onLine por
+// cada línea. Funciona con ticks o barras de varios GB.
+export async function readFileByLines(file: File, onLine: (line: string) => void, onProgress?: (p: number) => void): Promise<void> {
+  const decoder = new TextDecoder();
+  let carry = '';
+  const total = file.size || 1; let read = 0;
+  const anyFile = file as any;
+  if (anyFile.stream && typeof anyFile.stream === 'function') {
+    const reader = anyFile.stream().getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      read += value.byteLength || value.length || 0;
+      carry += decoder.decode(value, { stream: true });
+      let idx: number;
+      while ((idx = carry.indexOf('\n')) >= 0) { onLine(carry.slice(0, idx)); carry = carry.slice(idx + 1); }
+      if (onProgress) onProgress(Math.min(1, read / total));
+    }
+    carry += decoder.decode();
+  } else {
+    const CH = 8 * 1024 * 1024; let off = 0;
+    while (off < file.size) {
+      const buf = await file.slice(off, off + CH).text(); off += CH; carry += buf;
+      let idx: number;
+      while ((idx = carry.indexOf('\n')) >= 0) { onLine(carry.slice(0, idx)); carry = carry.slice(idx + 1); }
+      if (onProgress) onProgress(Math.min(1, off / file.size));
+    }
+  }
+  if (carry.trim()) onLine(carry);
+}
+
+function tsFrom(dateStr: string, timeStr?: string): number {
+  const ds = (dateStr || '').trim().replace(/\./g, '-').replace(/\//g, '-').split('-').map((x) => parseInt(x, 10));
+  const y = ds[0] > 1900 ? ds[0] : ds[2], mo = ds[1], d = ds[0] > 1900 ? ds[2] : ds[0];
+  let hh = 0, mi = 0, ss = 0;
+  if (timeStr) { const t = timeStr.trim().split(':'); hh = parseInt(t[0], 10) || 0; mi = parseInt(t[1], 10) || 0; if (t[2]) ss = parseInt(t[2], 10) || 0; }
+  const v = Date.UTC(y, (mo || 1) - 1, d || 1, hh, mi, ss);
+  return isNaN(v) ? NaN : v;
+}
+function detectCols(line: string, delim: string, isHead: boolean) {
+  const idx: any = { dt: -1, date: -1, time: -1, o: -1, h: -1, l: -1, c: -1, bid: -1, ask: -1 };
+  if (isHead) {
+    const h = line.split(delim).map((s) => s.trim().toLowerCase());
+    h.forEach((x, k) => {
+      if (idx.bid < 0 && /\bbid\b/.test(x)) idx.bid = k; else if (idx.ask < 0 && /\bask\b/.test(x)) idx.ask = k;
+      else if (idx.o < 0 && /open/.test(x)) idx.o = k; else if (idx.h < 0 && /high/.test(x)) idx.h = k;
+      else if (idx.l < 0 && /low/.test(x)) idx.l = k; else if (idx.c < 0 && /close/.test(x)) idx.c = k;
+      if (idx.dt < 0 && /(gmt|datetime|timestamp)/.test(x)) idx.dt = k; else if (idx.date < 0 && /date|fecha/.test(x)) idx.date = k; else if (idx.time < 0 && /time|hora/.test(x)) idx.time = k;
+    });
+    return idx;
+  }
+  const t = line.split(delim); const dateHasTime = /\d{2}:\d{2}/.test(t[0]);
+  idx.dt = dateHasTime ? 0 : -1; idx.date = dateHasTime ? -1 : 0; idx.time = dateHasTime ? -1 : 1;
+  const off = dateHasTime ? 1 : 2; const nums = t.slice(off).filter((x) => x !== '' && !isNaN(parseFloat(x)));
+  if (nums.length >= 4) { idx.o = off; idx.h = off + 1; idx.l = off + 2; idx.c = off + 3; }
+  else if (nums.length >= 2) { idx.bid = off; idx.ask = off + 1; }
+  else idx.c = off;
+  return idx;
+}
+
+// Convierte un archivo GIGANTE (ticks o barras) en barras OHLC de la temporalidad
+// pedida, en streaming. Devuelve un arreglo pequeño de barras.
+export async function parseBarsStreaming(file: File, tfMinutes = 15, onProgress?: (p: number) => void): Promise<Bar[]> {
+  const tfMs = Math.max(1, tfMinutes) * 60000;
+  let cfg: any = null, isHead = false, delim = ',';
+  const bars: Bar[] = []; let cur: any = null;
+  const handle = (line: string) => {
+    if (!line || !line.trim()) return;
+    if (cfg === null) {
+      delim = [',', '\t', ';'].map((d) => ({ d, n: line.split(d).length })).sort((a, b) => b.n - a.n)[0].d;
+      isHead = /[a-zA-Z]{3,}/.test(line) && !/^\d{4}[.\-/]\d/.test(line);
+      cfg = detectCols(line, delim, isHead);
+      if (isHead) return;
+    }
+    const c = line.split(delim); if (c.length < 2) return;
+    let ts: number;
+    if (cfg.dt >= 0) { const sp = (c[cfg.dt] || '').trim().split(/\s+/); ts = tsFrom(sp[0], sp[1]); }
+    else ts = tsFrom(c[cfg.date], cfg.time >= 0 ? c[cfg.time] : undefined);
+    if (isNaN(ts)) return;
+    let o: number, h: number, l: number, cl: number;
+    if (cfg.o >= 0 && cfg.c >= 0) { o = parseFloat(c[cfg.o]); h = parseFloat(c[cfg.h]); l = parseFloat(c[cfg.l]); cl = parseFloat(c[cfg.c]); }
+    else if (cfg.bid >= 0 && cfg.ask >= 0) { const m = (parseFloat(c[cfg.bid]) + parseFloat(c[cfg.ask])) / 2; o = h = l = cl = m; }
+    else { const p = parseFloat(c[cfg.c >= 0 ? cfg.c : c.length - 1]); o = h = l = cl = p; }
+    if (isNaN(cl)) return;
+    const bucket = Math.floor(ts / tfMs) * tfMs;
+    if (!cur || cur.t !== bucket) { if (cur) bars.push(cur); cur = { t: bucket, o: isNaN(o) ? cl : o, h: isNaN(h) ? cl : h, l: isNaN(l) ? cl : l, c: cl }; }
+    else { if (!isNaN(h)) cur.h = Math.max(cur.h, h); if (!isNaN(l)) cur.l = Math.min(cur.l, l); cur.c = cl; }
+  };
+  await readFileByLines(file, handle, onProgress);
+  if (cur) bars.push(cur);
+  return bars;
 }
 
 // Parseo de barras OHLC desde texto CSV (para el navegador).

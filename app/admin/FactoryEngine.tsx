@@ -2,7 +2,7 @@
 import { useMemo, useState } from 'react';
 import { toast, toastErr } from '@/lib/toast';
 import { BLOCKS, sampleCandidates } from '@/lib/stratgen';
-import { parseBars, runBacktest, inferPip, type Bar, type Spec, type Costs } from '@/lib/backtest';
+import { parseBars, parseBarsStreaming, runBacktest, inferPip, type Bar, type Spec, type Costs } from '@/lib/backtest';
 import { evolve, type Survivor } from '@/lib/evolve';
 import { genMt5, genMt4 } from '@/lib/mqlgen';
 
@@ -21,12 +21,25 @@ function download(name: string, text: string, mime: string) { const b = new Blob
 
 type Row = { spec: Spec; net: number; pf: number; dd: number; n: number; win: number; exp: number };
 
+// Adivina el instrumento desde el nombre del archivo (Dukascopy/StrategyQuant
+// empiezan por el símbolo: EURUSD_..., XAUUSD_..., USA500IDXUSD_...).
+function guessSymbol(name: string): string {
+  const base = (name || '').replace(/\.[^.]+$/, '');
+  const m = base.match(/^[A-Za-z][A-Za-z0-9.]{1,15}/);
+  const s = (m ? m[0] : '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const map: Record<string, string> = { USA500IDXUSD: 'US500', USATECHIDXUSD: 'NAS100', USA30IDXUSD: 'US30', DEUIDXEUR: 'GER40', GBRIDXGBP: 'UK100', JPNIDXJPY: 'JP225', FRAIDXEUR: 'FRA40', AUSIDXAUD: 'AUS200', LIGHTCMDUSD: 'USOIL', BRENTCMDUSD: 'UKOIL' };
+  return map[s] || s;
+}
+
 function daily(trades: { t: number; profit: number }[]): Record<string, number> { const o: Record<string, number> = {}; for (const t of trades) { const d = new Date(t.t).toISOString().slice(0, 10); o[d] = (o[d] || 0) + t.profit; } return o; }
 function pearson(a: number[], b: number[]) { const n = a.length; if (n < 5) return 0; const ma = a.reduce((x, y) => x + y, 0) / n, mb = b.reduce((x, y) => x + y, 0) / n; let nu = 0, da = 0, db = 0; for (let i = 0; i < n; i++) { const x = a[i] - ma, y = b[i] - mb; nu += x * y; da += x * x; db += y * y; } const de = Math.sqrt(da * db); return de > 0 ? nu / de : 0; }
 
 export default function FactoryEngine({ es, canManage, post, reload }: any) {
   const [bars, setBars] = useState<Bar[] | null>(null);
   const [barsName, setBarsName] = useState('');
+  const [reading, setReading] = useState(false);
+  const [prog, setProg] = useState(0);
+  const [tfMin, setTfMin] = useState(15);
   const [costs, setCosts] = useState<Costs>({ spreadPips: 1.2, slippagePips: 0.3, commission: 3.5, moneyPerPip: 10, lot: 1, pip: 0 });
   const [cfg, setCfg] = useState<Record<string, string[]>>({ indicators: ['ema', 'rsi', 'macd', 'bb'], entry: ['cross_up', 'cross_dn', 'breakout', 'pullback'], exit: ['opp_signal', 'fixed', 'indicator'], sessions: ['london', 'ny', 'overlap', 'all'], tp: ['40', '60', 'atr2', 'atr3'], sl: ['30', '50', 'atr15'], be: ['off', 'be20'], trailing: ['off', 't30', 't_atr'] });
   const [n, setN] = useState(1500);
@@ -99,11 +112,17 @@ export default function FactoryEngine({ es, canManage, post, reload }: any) {
         </div>
         <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>{es ? 'Sube barras OHLC (CSV MT). El motor simula miles de estrategias con costes reales, evoluciona las mejores y las envía al laboratorio.' : 'Upload OHLC bars (MT CSV). The engine simulates thousands of strategies with real costs, evolves the best and sends them to the lab.'}</p>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-          <label style={{ ...btn('var(--brand)'), cursor: 'pointer' }}>{bars ? `${bars.length} barras · ${barsName.slice(0, 16)}` : (es ? 'Subir barras (CSV)' : 'Upload bars (CSV)')}
-            <input type="file" accept=".csv,.txt,.tsv" style={{ display: 'none' }} onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; setBarsName(f.name); try { const b = parseBars(await f.text()); if (b.length < 100) toastErr(es ? 'Se leyeron muy pocas barras. Revisa el formato (fecha, O, H, L, C).' : 'Too few bars read. Check the format (date, O, H, L, C).'); setBars(b); } catch { toastErr(es ? 'No se pudo leer el archivo (¿demasiado grande?). Usa barras OHLC (M15/H1) y menos de ~80 MB.' : 'Could not read the file (too big?). Use OHLC bars (M15/H1) under ~80 MB.'); } }} />
+          <label><span className="muted" style={{ fontSize: 11.5, marginRight: 6 }}>{es ? 'Convertir a' : 'Convert to'}</span>
+            <select value={tfMin} onChange={(e) => setTfMin(Number(e.target.value))} style={{ ...inp, padding: '6px 9px' }}>
+              {[[5, 'M5'], [15, 'M15'], [30, 'M30'], [60, 'H1'], [240, 'H4'], [1440, 'D1']].map(([v, l]) => <option key={v} value={v as number}>{l}</option>)}
+            </select>
+          </label>
+          <label style={{ ...btn('var(--brand)'), cursor: reading ? 'wait' : 'pointer', opacity: reading ? 0.7 : 1 }}>{reading ? (es ? `Leyendo ${Math.round(prog * 100)}%` : `Reading ${Math.round(prog * 100)}%`) : bars ? `${bars.length} barras · ${barsName.slice(0, 16)}` : (es ? 'Subir ticks/barras (cualquier tamaño)' : 'Upload ticks/bars (any size)')}
+            <input type="file" accept=".csv,.txt,.tsv" disabled={reading} style={{ display: 'none' }} onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; setBarsName(f.name); setReading(true); setProg(0); setBars(null); try { const b = await parseBarsStreaming(f, tfMin, (p) => setProg(p)); if (b.length < 100) toastErr(es ? 'Se generaron muy pocas barras. Revisa el formato o usa una temporalidad más baja.' : 'Too few bars generated. Check the format or use a lower timeframe.'); setBars(b); const sym = guessSymbol(f.name); if (sym) setMeta((mt) => ({ ...mt, symbol: sym, tf: `M${tfMin}` })); } catch (err: any) { toastErr(es ? 'No se pudo leer el archivo. Revisa que sea CSV (Dukascopy: Gmt time, Ask, Bid).' : 'Could not read the file. Make sure it is CSV (Dukascopy: Gmt time, Ask, Bid).'); } finally { setReading(false); setProg(0); } }} />
           </label>
           {bars && <span className="muted" style={{ fontSize: 12 }}>{new Date(bars[0].t).toISOString().slice(0, 10)} → {new Date(bars[bars.length - 1].t).toISOString().slice(0, 10)} · pip {pip}</span>}
         </div>
+        <p className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>{es ? 'Acepta los mismos ticks de Dukascopy/StrategyQuant (hasta varios GB): se leen por trozos y se convierten a barras OHLC al vuelo, sin cargar todo en memoria.' : 'Accepts the same Dukascopy/StrategyQuant ticks (multi-GB): streamed in chunks and converted to OHLC bars on the fly.'}</p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(120px,1fr))', gap: 10, marginTop: 12 }}>
           {([['spreadPips', es ? 'Spread (pips)' : 'Spread (pips)'], ['slippagePips', 'Slippage (pips)'], ['commission', es ? 'Comisión ($/lote)' : 'Commission ($/lot)'], ['moneyPerPip', es ? '$/pip (1 lote)' : '$/pip (1 lot)'], ['lot', es ? 'Lote' : 'Lot']] as [string, string][]).map(([k, l]) => (
             <label key={k}><span className="muted" style={{ fontSize: 11.5 }}>{l}</span><input type="number" step="0.1" value={(costs as any)[k]} onChange={(e) => setCosts({ ...costs, [k]: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>

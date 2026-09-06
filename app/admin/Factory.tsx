@@ -6,6 +6,7 @@ import FactoryLab from './FactoryLab';
 import FactoryPipeline from './FactoryPipeline';
 import StratGenerator from './StratGenerator';
 import FactoryEngine from './FactoryEngine';
+import { guessSymbolFromName } from '@/lib/backtest';
 
 // ============================================================
 // Onyx Bot Factory · Fase 1 (solo admin)
@@ -218,7 +219,7 @@ function DataGate({ es, canManage, post, reload, datasets }: any) {
           <select value={tf} onChange={(e) => setTf(e.target.value)} style={inp}>{['M1', 'M5', 'M15', 'M30', 'H1', 'H4', 'D1', 'tick'].map((x) => <option key={x} value={x}>{x}</option>)}</select>
           <label style={{ ...btn('var(--brand)'), display: 'inline-flex', cursor: 'pointer' }}>
             {file ? file.name.slice(0, 26) : (es ? 'Elegir archivo' : 'Choose file')}
-            <input type="file" accept=".csv,.txt,.tsv,.hst" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0] || null; setFile(f); if (f) analyze(f); }} />
+            <input type="file" accept=".csv,.txt,.tsv,.hst" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0] || null; setFile(f); if (f) { const g = guessSymbolFromName(f.name); if (g) setSymbol(g); analyze(f); } }} />
           </label>
           {busy && <span className="muted" style={{ fontSize: 12.5 }}>{es ? 'Analizando…' : 'Analyzing…'}</span>}
         </div>
@@ -313,7 +314,7 @@ function Builder({ es, canManage, post, reload, nextName, datasets }: any) {
         <Lbl es={es} t={es ? 'Instrumento / par' : 'Instrument / pair'}><InstrumentPicker value={symbol} onChange={setSymbol} es={es} /></Lbl>
         <Lbl es={es} t={es ? 'Temporalidad' : 'Timeframe'}><select value={tf} onChange={(e) => setTf(e.target.value)} style={inp}>{['M1', 'M5', 'M15', 'M30', 'H1', 'H4', 'D1'].map((x) => <option key={x} value={x}>{x}</option>)}</select></Lbl>
         <Lbl es={es} t={es ? 'Familia de estrategia' : 'Strategy family'}><select value={family} onChange={(e) => setFamily(e.target.value)} style={inp}>{[['tendencia', es ? 'Tendencia' : 'Trend'], ['rango', es ? 'Rango' : 'Range'], ['ruptura', es ? 'Ruptura' : 'Breakout'], ['reversion', es ? 'Reversión' : 'Reversion'], ['volatilidad', es ? 'Volatilidad' : 'Volatility'], ['scalping', 'Scalping']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></Lbl>
-        <Lbl es={es} t={es ? 'Datos (dataset)' : 'Data (dataset)'} wide><select value={datasetId} onChange={(e) => setDatasetId(e.target.value)} style={inp}><option value="">{es ? '— sin asignar —' : '— none —'}</option>{usable.map((d: any) => <option key={d.id} value={d.id}>{d.symbol} · {d.timeframe} · {d.years}y · {d.verdict}</option>)}</select></Lbl>
+        <Lbl es={es} t={es ? 'Datos (dataset)' : 'Data (dataset)'} wide><select value={datasetId} onChange={(e) => { const id = e.target.value; setDatasetId(id); const d = usable.find((x: any) => x.id === id); if (d) { if (d.symbol) setSymbol(d.symbol); if (d.timeframe) setTf(d.timeframe); } }} style={inp}><option value="">{es ? '— sin asignar —' : '— none —'}</option>{usable.map((d: any) => <option key={d.id} value={d.id}>{d.symbol} · {d.timeframe} · {d.years}y · {d.verdict}</option>)}</select></Lbl>
       </div>
       <Lbl es={es} t={es ? 'Notas de la estrategia' : 'Strategy notes'}><textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder={es ? 'Idea, reglas de entrada/salida, gestión…' : 'Idea, entry/exit rules, management…'} style={{ ...inp, resize: 'vertical', fontFamily: 'inherit' }} /></Lbl>
 
