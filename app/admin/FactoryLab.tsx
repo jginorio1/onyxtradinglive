@@ -177,6 +177,7 @@ export default function FactoryLab({ es, canManage, post, reload, bots, datasets
   const [finBusy, setFinBusy] = useState(false);
   const [finMsg, setFinMsg] = useState('');
   const [finRes, setFinRes] = useState<{ sc: OnyxScore; bars: number } | null>(null);
+  const [tab, setTab] = useState('resumen'); // pestaña de resultados
 
   const bot = (bots as any[]).find((b) => b.id === botId);
 
@@ -347,6 +348,15 @@ export default function FactoryLab({ es, canManage, post, reload, bots, datasets
 
       {r && (
         <>
+          {/* Pestañas de resultados (para que no se apile todo hacia abajo) */}
+          <div style={{ ...card, padding: 8, display: 'flex', gap: 6, flexWrap: 'wrap', position: 'sticky', top: 0, zIndex: 3 }}>
+            {([['resumen', es ? 'Resumen' : 'Summary'], ['montecarlo', 'Monte Carlo'], ['muestra', es ? 'IS/OOS · Walk-fwd' : 'IS/OOS · Walk-fwd'], ['ia', es ? 'IA (Claude)' : 'AI (Claude)'], ['demo', es ? 'Comparar / Demo' : 'Compare / Demo']] as [string, string][]).map(([k, l]) => (
+              <button key={k} onClick={() => setTab(k)} style={{ padding: '7px 14px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 800, background: tab === k ? VIOLET : 'var(--bg2)', color: tab === k ? '#fff' : 'var(--tx)' }}>{l}</button>
+            ))}
+          </div>
+
+          {tab === 'resumen' && (
+          <>
           {/* Veredicto + parciales */}
           <div style={{ ...card, borderColor: `color-mix(in srgb,${vc} 45%,var(--line))` }}>
             <div style={{ display: 'flex', gap: 18, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -370,7 +380,11 @@ export default function FactoryLab({ es, canManage, post, reload, bots, datasets
               </div>
             )}
           </div>
+          </>
+          )}
 
+          {tab === 'montecarlo' && (
+          <>
           {/* Gráficas grandes */}
           <div style={card}>
             <ChartHead es={es} t={es ? 'Monte Carlo · 1000 barajados del orden' : 'Monte Carlo · 1000 order shuffles'} d={es ? 'Cada línea es un orden posible; verde = el real.' : 'Each line is a possible order; green = actual.'} />
@@ -387,7 +401,11 @@ export default function FactoryLab({ es, canManage, post, reload, bots, datasets
             <Hist vals={r.charts.ddDist} />
             <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>{es ? 'DD mediano' : 'Median DD'} {r.mc.medianDD} · {es ? 'DD peor 95%' : 'P95 DD'} {r.mc.p95DD}</div>
           </div>
+          </>
+          )}
 
+          {tab === 'muestra' && (
+          <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 16 }}>
             <div style={card}>
               <ChartHead es={es} t={es ? 'In-sample vs Out-of-sample' : 'In-sample vs Out-of-sample'} d={es ? 'El detector de sobreajuste.' : 'The overfitting detector.'} />
@@ -417,7 +435,12 @@ export default function FactoryLab({ es, canManage, post, reload, bots, datasets
               <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>{es ? 'Meseta' : 'Plateau'} {r.sensitivity}/100 · {r.sensitivity != null && r.sensitivity < 55 ? (es ? 'pico solitario (frágil)' : 'lone peak (fragile)') : (es ? 'estable' : 'stable')}</div>
             </div>
           )}
+          </>
+          )}
 
+          {tab === 'ia' && (
+          <>
+          {!(res.ai?.audit || (res.ai?.mutations || []).length) && <div style={card}><div className="muted" style={{ fontSize: 13 }}>{es ? 'Este robot no tiene auditoría de IA. Créalo con la IA activada en el Motor (paso 4), o vuelve a analizarlo.' : 'This robot has no AI audit. Create it with AI on in the Engine (step 4), or re-analyze it.'}</div></div>}
           {/* Auditoría de Claude */}
           {(res.ai?.audit || (res.ai?.mutations || []).length) && (
             <div style={{ ...card, borderColor: `color-mix(in srgb,${VIOLET} 40%,var(--line))` }}>
@@ -431,7 +454,11 @@ export default function FactoryLab({ es, canManage, post, reload, bots, datasets
               )}
             </div>
           )}
+          </>
+          )}
 
+          {tab === 'demo' && (
+          <>
           {/* Comparación con MetaTrader → pasar a demo */}
           <div style={card}>
             <ChartHead es={es} t={es ? 'Compara con el backtest de MetaTrader' : 'Compare with the MetaTrader backtest'} d={es ? 'Corre el robot en MT y pega sus KPIs. Si se parece al esperado, pasa a demo.' : 'Run the robot in MT and paste its KPIs. If similar to expected, advance to demo.'} />
@@ -469,6 +496,8 @@ export default function FactoryLab({ es, canManage, post, reload, bots, datasets
               </div>
             )}
           </div>
+          </>
+          )}
         </>
       )}
     </div>

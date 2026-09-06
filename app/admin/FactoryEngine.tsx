@@ -127,7 +127,12 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
       // apuntando a ~250k barras. La fidelidad para buscar sigue siendo alta.
       const srcTf = col.tf || 1;
       let workTf = srcTf;
-      if (b.length > 400000) {
+      if (searchTf !== 'auto') {
+        // El usuario fijó la resolución (M5 fino / M15 / M30). Se agrega a esa TF.
+        workTf = Math.max(srcTf, searchTf as number);
+        if (workTf > srcTf) b = aggregateBars(b, workTf);
+      } else if (b.length > 400000) {
+        // Auto: agrega para ~250k barras (rápido y sin congelar) — normalmente M15.
         const std = [1, 5, 15, 30, 60, 240, 1440];
         const target = Math.ceil((b.length / 250000) * srcTf);
         workTf = std.find((x) => x >= target) || 1440;
@@ -156,7 +161,8 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
   const [meta, setMeta] = useState({ platform: 'mt5', symbol: 'XAUUSD', tf: 'M15' });
   const [auto, setAuto] = useState(false);
   const [autoMode, setAutoMode] = useState<'random' | 'evolve'>('evolve'); // aleatorio rápido vs evolución inteligente
-  const [minScore, setMinScore] = useState(65); // Onyx Robustness Score mínimo (anti-sobreajuste)
+  const [minScore, setMinScore] = useState(75); // Onyx Robustness Score mínimo (anti-sobreajuste)
+  const [searchTf, setSearchTf] = useState<'auto' | 5 | 15 | 30>('auto'); // resolución de la búsqueda
   const [useAi, setUseAi] = useState(true);      // la IA (Claude) audita cada robot final
   const [autoMsg, setAutoMsg] = useState('');
   const [keepN, setKeepN] = useState(8);
@@ -442,6 +448,14 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
             </div>
           )}
           {bars && !reading && <div className="muted" style={{ fontSize: 11, marginTop: 6 }}>{es ? 'El instrumento y la temporalidad salen del dataset — por eso el generador no los pregunta.' : 'Instrument and timeframe come from the dataset — that’s why the generator doesn’t ask for them.'}</div>}
+          {/* Resolución de la búsqueda: más fino = menos sorpresas al validar en M1, pero más lento */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+            <span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Resolución de la búsqueda' : 'Search resolution'}<Help text={es ? 'A más fino (M5), el backtest de la búsqueda se parece más al de M1 real → menos robots que se caen al validar. Pero es más lento. Auto elige M15 para datasets enormes.' : 'Finer (M5) makes the search backtest closer to real M1 → fewer robots that collapse on validation. But slower. Auto picks M15 for huge datasets.'} /></span>
+            {([['auto', es ? 'Auto' : 'Auto'], [5, 'M5 · fino'], [15, 'M15 · rápido'], [30, 'M30']] as [any, string][]).map(([v, l]) => (
+              <button key={String(v)} onClick={() => { setSearchTf(v); if (dsId) loadFromLibrary(dsId); }} style={{ ...btn(searchTf === v ? GREEN : '#8a94a6'), padding: '5px 11px', fontSize: 12 }}>{l}</button>
+            ))}
+          </div>
+          {searchTf === 5 && <div className="muted" style={{ fontSize: 11, marginTop: 5, color: AMBER }}>{es ? '⚠ M5 es más fino y fiel, pero la búsqueda tarda ~3× más. Mantén la pestaña abierta.' : '⚠ M5 is finer and more faithful, but the search takes ~3× longer. Keep the tab open.'}</div>}
         </div>
 
         {/* Paso 2: método (evolución vs aleatorio) */}
