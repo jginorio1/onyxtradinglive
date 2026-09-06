@@ -101,7 +101,7 @@ async function analyzeFile(file: File, onProgress?: (p: number) => void): Promis
     processed++; if (processed >= MAXL) capped = true;
   };
 
-  await readFileByLines(file, handle, onProgress);
+  await readFileByLines(file, handle, onProgress, () => capped);
   const spreadAvgPts = spreadN ? (spreadSum / spreadN) * Math.pow(10, digits) : 0;
   return {
     rows, parsed: rows > 0,

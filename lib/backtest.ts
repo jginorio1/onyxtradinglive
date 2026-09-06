@@ -171,33 +171,44 @@ export function defPeriod(id: string): number {
 // ---------- Lectura por STREAMING para archivos ENORMES (GB) ----------
 // Lee el archivo por trozos (sin cargarlo entero en memoria) y llama onLine por
 // cada línea. Funciona con ticks o barras de varios GB.
-export async function readFileByLines(file: File, onLine: (line: string) => void, onProgress?: (p: number) => void): Promise<void> {
+export async function readFileByLines(file: File, onLine: (line: string) => void, onProgress?: (p: number) => void, shouldStop?: () => boolean): Promise<void> {
   const decoder = new TextDecoder();
   let carry = '';
-  const total = file.size || 1; let read = 0;
+  const total = file.size || 1; let read = 0; let sinceYield = 0;
+  const stop = () => (shouldStop ? shouldStop() : false);
+  // Cede el hilo al navegador (macro-tarea) para que pinte y responda a clics.
+  const yieldUI = async () => { if (onProgress) onProgress(Math.min(1, read / total)); await new Promise((r) => setTimeout(r, 0)); };
+  const flush = (final: boolean): boolean => {
+    let idx: number;
+    while ((idx = carry.indexOf('\n')) >= 0) { onLine(carry.slice(0, idx)); carry = carry.slice(idx + 1); if (stop()) return true; }
+    if (final && carry.trim()) onLine(carry);
+    return false;
+  };
+
   const anyFile = file as any;
   if (anyFile.stream && typeof anyFile.stream === 'function') {
     const reader = anyFile.stream().getReader();
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      read += value.byteLength || value.length || 0;
-      carry += decoder.decode(value, { stream: true });
-      let idx: number;
-      while ((idx = carry.indexOf('\n')) >= 0) { onLine(carry.slice(0, idx)); carry = carry.slice(idx + 1); }
-      if (onProgress) onProgress(Math.min(1, read / total));
-    }
-    carry += decoder.decode();
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const len = value.byteLength || value.length || 0; read += len; sinceYield += len;
+        carry += decoder.decode(value, { stream: true });
+        if (flush(false) || stop()) { try { await reader.cancel(); } catch {} return; }
+        if (sinceYield >= 4 * 1024 * 1024) { sinceYield = 0; await yieldUI(); }
+      }
+      carry += decoder.decode();
+    } catch { /* lectura interrumpida */ }
   } else {
     const CH = 8 * 1024 * 1024; let off = 0;
     while (off < file.size) {
-      const buf = await file.slice(off, off + CH).text(); off += CH; carry += buf;
-      let idx: number;
-      while ((idx = carry.indexOf('\n')) >= 0) { onLine(carry.slice(0, idx)); carry = carry.slice(idx + 1); }
-      if (onProgress) onProgress(Math.min(1, off / file.size));
+      const buf = await file.slice(off, off + CH).text(); off += CH; read = off; carry += buf;
+      if (flush(false) || stop()) return;
+      await yieldUI();
     }
   }
-  if (carry.trim()) onLine(carry);
+  flush(true);
+  if (onProgress) onProgress(1);
 }
 
 function tsFrom(dateStr: string, timeStr?: string): number {
@@ -235,8 +246,9 @@ export async function parseBarsStreaming(file: File, tfMinutes = 15, onProgress?
   const tfMs = Math.max(1, tfMinutes) * 60000;
   let cfg: any = null, isHead = false, delim = ',';
   const bars: Bar[] = []; let cur: any = null;
+  let processed = 0, capped = false; const MAX = 30000000; // tope de filas por seguridad
   const handle = (line: string) => {
-    if (!line || !line.trim()) return;
+    if (capped || !line || !line.trim()) return;
     if (cfg === null) {
       delim = [',', '\t', ';'].map((d) => ({ d, n: line.split(d).length })).sort((a, b) => b.n - a.n)[0].d;
       isHead = /[a-zA-Z]{3,}/.test(line) && !/^\d{4}[.\-/]\d/.test(line);
@@ -256,8 +268,9 @@ export async function parseBarsStreaming(file: File, tfMinutes = 15, onProgress?
     const bucket = Math.floor(ts / tfMs) * tfMs;
     if (!cur || cur.t !== bucket) { if (cur) bars.push(cur); cur = { t: bucket, o: isNaN(o) ? cl : o, h: isNaN(h) ? cl : h, l: isNaN(l) ? cl : l, c: cl }; }
     else { if (!isNaN(h)) cur.h = Math.max(cur.h, h); if (!isNaN(l)) cur.l = Math.min(cur.l, l); cur.c = cl; }
+    processed++; if (processed >= MAX) capped = true;
   };
-  await readFileByLines(file, handle, onProgress);
+  await readFileByLines(file, handle, onProgress, () => capped);
   if (cur) bars.push(cur);
   return bars;
 }
