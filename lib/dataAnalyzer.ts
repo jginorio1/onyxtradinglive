@@ -23,6 +23,31 @@ export function barsToJSON(b: ColumnarBars): string {
   for (let i = 0; i < n; i++) { t[i] = Math.round((b.t as any)[i]); o[i] = R((b.o as any)[i]); h[i] = R((b.h as any)[i]); l[i] = R((b.l as any)[i]); c[i] = R((b.c as any)[i]); }
   return JSON.stringify({ tf: b.tf, digits: b.digits, t, o, h, l, c });
 }
+
+// Comprime las barras a gzip antes de subirlas (10× menos peso → entra bajo el
+// límite de Storage, incluso en el plan gratuito de Supabase de 50 MB).
+export async function barsToUploadBlob(b: ColumnarBars): Promise<Blob> {
+  const json = barsToJSON(b);
+  const CS: any = (globalThis as any).CompressionStream;
+  if (typeof CS === 'function') {
+    const stream = new Blob([json]).stream().pipeThrough(new CS('gzip'));
+    return await new Response(stream).blob();
+  }
+  return new Blob([json], { type: 'application/json' });   // navegador viejo: sin comprimir
+}
+
+// Descarga y descomprime las barras (detecta gzip por su firma 1F 8B). Compatible
+// con datasets antiguos (JSON plano) y nuevos (gzip).
+export async function fetchColumnar(url: string): Promise<ColumnarBars> {
+  const r = await fetch(url);
+  const buf = new Uint8Array(await r.arrayBuffer());
+  const DS: any = (globalThis as any).DecompressionStream;
+  if (buf.length >= 2 && buf[0] === 0x1f && buf[1] === 0x8b && typeof DS === 'function') {
+    const stream = new Blob([buf]).stream().pipeThrough(new DS('gzip'));
+    return JSON.parse(await new Response(stream).text());
+  }
+  return JSON.parse(new TextDecoder().decode(buf));
+}
 export type AnalyzeResult = { metrics: any; bars: ColumnarBars };
 
 // El worker es autónomo (no importa módulos): todo su código va en este string.
