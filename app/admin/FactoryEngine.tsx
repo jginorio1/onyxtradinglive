@@ -5,6 +5,8 @@ import { BLOCKS, sampleCandidates } from '@/lib/stratgen';
 import { parseBars, parseBarsStreaming, runBacktest, inferPip, type Bar, type Spec, type Costs } from '@/lib/backtest';
 import { evolve, evaluate, type Survivor } from '@/lib/evolve';
 import { genMt5, genMt4 } from '@/lib/mqlgen';
+import { barsFromColumnar, type ColumnarBars } from '@/lib/dataAnalyzer';
+import { ProgressBar } from './ProgressBar';
 
 // ============================================================
 // Onyx Bot Factory · Fase 5 — Motor (backtest + evolución + databank + portafolio)
@@ -34,12 +36,32 @@ function guessSymbol(name: string): string {
 function daily(trades: { t: number; profit: number }[]): Record<string, number> { const o: Record<string, number> = {}; for (const t of trades) { const d = new Date(t.t).toISOString().slice(0, 10); o[d] = (o[d] || 0) + t.profit; } return o; }
 function pearson(a: number[], b: number[]) { const n = a.length; if (n < 5) return 0; const ma = a.reduce((x, y) => x + y, 0) / n, mb = b.reduce((x, y) => x + y, 0) / n; let nu = 0, da = 0, db = 0; for (let i = 0; i < n; i++) { const x = a[i] - ma, y = b[i] - mb; nu += x * y; da += x * x; db += y * y; } const de = Math.sqrt(da * db); return de > 0 ? nu / de : 0; }
 
-export default function FactoryEngine({ es, canManage, post, reload }: any) {
+export default function FactoryEngine({ es, canManage, post, reload, datasets = [] }: any) {
   const [bars, setBars] = useState<Bar[] | null>(null);
   const [barsName, setBarsName] = useState('');
   const [reading, setReading] = useState(false);
   const [prog, setProg] = useState(0);
   const [tfMin, setTfMin] = useState(15);
+  const [dsId, setDsId] = useState('');
+  const usableDs = (datasets as any[]).filter((d) => d.verdict !== 'rechazada' && d.bars_url);
+
+  // Carga barras desde la biblioteca (sin volver a subir el archivo).
+  async function loadFromLibrary(id: string) {
+    setDsId(id); if (!id) return;
+    const ds = (datasets as any[]).find((d) => d.id === id);
+    if (!ds?.bars_url) { toastErr(es ? 'Ese dataset no tiene barras guardadas. Vuelve a guardarlo en la Puerta 0.' : 'That dataset has no saved bars. Re-save it in Gate 0.'); return; }
+    setReading(true); setProg(0); setBars(null); setBarsName((ds.symbol || 'dataset') + ' · biblioteca');
+    try {
+      const r = await fetch(ds.bars_url); setProg(0.6);
+      const col = (await r.json()) as ColumnarBars;
+      const b = barsFromColumnar(col); setProg(1);
+      if (b.length < 100) { toastErr(es ? 'El dataset guardado tiene muy pocas barras.' : 'Saved dataset has too few bars.'); }
+      setBars(b);
+      if (ds.symbol) setMeta((mt) => ({ ...mt, symbol: ds.symbol, tf: `M${col.tf || tfMin}` }));
+      toast(es ? 'Datos cargados desde la biblioteca' : 'Data loaded from library');
+    } catch (e: any) { toastErr(es ? 'No se pudieron cargar las barras guardadas.' : 'Could not load saved bars.'); }
+    finally { setReading(false); setProg(0); }
+  }
   const [costs, setCosts] = useState<Costs>({ spreadPips: 1.2, slippagePips: 0.3, commission: 3.5, moneyPerPip: 10, lot: 1, pip: 0 });
   const [cfg, setCfg] = useState<Record<string, string[]>>({ indicators: ['ema', 'rsi', 'macd', 'bb'], entry: ['cross_up', 'cross_dn', 'breakout', 'pullback'], exit: ['opp_signal', 'fixed', 'indicator'], sessions: ['london', 'ny', 'overlap', 'all'], tp: ['40', '60', 'atr2', 'atr3'], sl: ['30', '50', 'atr15'], be: ['off', 'be20'], trailing: ['off', 't30', 't_atr'] });
   const [n, setN] = useState(1500);
@@ -147,7 +169,19 @@ export default function FactoryEngine({ es, canManage, post, reload }: any) {
           <span style={{ display: 'inline-flex', width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg,var(--brand),' + VIOLET + ')', color: '#0b1020', fontSize: 18 }}>⚙️</span>
           <h3 style={{ margin: 0, flex: 1 }}>{es ? 'Motor de backtest + evolución' : 'Backtest + evolution engine'}</h3>
         </div>
-        <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>{es ? 'Sube barras OHLC (CSV MT). El motor simula miles de estrategias con costes reales, evoluciona las mejores y las envía al laboratorio.' : 'Upload OHLC bars (MT CSV). The engine simulates thousands of strategies with real costs, evolves the best and sends them to the lab.'}</p>
+        <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>{es ? 'Elige un dataset de tu biblioteca (ya validado en la Puerta 0, sin volver a subir nada) o sube uno nuevo. El motor simula miles de estrategias con costes reales, evoluciona las mejores y las envía al laboratorio.' : 'Pick a dataset from your library (already validated in Gate 0, no re-upload) or upload a new one. The engine simulates thousands of strategies with real costs, evolves the best and sends them to the lab.'}</p>
+
+        {/* Biblioteca de datos: reutiliza lo subido en la Puerta 0 (sin resubir) */}
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10, background: 'var(--bg2)', borderRadius: 10, padding: '10px 12px', border: '1px solid color-mix(in srgb,var(--brand) 25%,var(--line))' }}>
+          <span style={{ fontSize: 18 }}>🗄</span>
+          <span style={{ fontSize: 12.5, fontWeight: 700 }}>{es ? 'Desde la biblioteca' : 'From library'}</span>
+          <select value={dsId} onChange={(e) => loadFromLibrary(e.target.value)} disabled={reading} style={{ ...inp, minWidth: 220 }}>
+            <option value="">{usableDs.length ? (es ? '— elige un dataset guardado —' : '— pick a saved dataset —') : (es ? '— aún no hay datos guardados —' : '— no saved data yet —')}</option>
+            {usableDs.map((d: any) => <option key={d.id} value={d.id}>{d.symbol} · {(d.from_year || '')}–{(d.to_year || '')} · {d.data_kind === 'ticks' || d.has_ticks ? 'ticks' : 'bars'} · {d.quality_score}%</option>)}
+          </select>
+          <span className="muted" style={{ fontSize: 11.5 }}>{es ? 'o sube uno nuevo →' : 'or upload new →'}</span>
+        </div>
+
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
           <label><span className="muted" style={{ fontSize: 11.5, marginRight: 6 }}>{es ? 'Convertir a' : 'Convert to'}</span>
             <select value={tfMin} onChange={(e) => setTfMin(Number(e.target.value))} style={{ ...inp, padding: '6px 9px' }}>
@@ -159,6 +193,7 @@ export default function FactoryEngine({ es, canManage, post, reload }: any) {
           </label>
           {bars && <span className="muted" style={{ fontSize: 12 }}>{new Date(bars[0].t).toISOString().slice(0, 10)} → {new Date(bars[bars.length - 1].t).toISOString().slice(0, 10)} · pip {pip}</span>}
         </div>
+        {reading && <div style={{ marginTop: 12 }}><ProgressBar p={prog} label={(es ? 'Procesando ' : 'Processing ') + barsName.slice(0, 24)} /></div>}
         <p className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>{es ? 'Acepta los mismos ticks de Dukascopy/StrategyQuant (hasta varios GB): se leen por trozos y se convierten a barras OHLC al vuelo, sin cargar todo en memoria.' : 'Accepts the same Dukascopy/StrategyQuant ticks (multi-GB): streamed in chunks and converted to OHLC bars on the fly.'}</p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(120px,1fr))', gap: 10, marginTop: 12 }}>
           {([['spreadPips', es ? 'Spread (pips)' : 'Spread (pips)'], ['slippagePips', 'Slippage (pips)'], ['commission', es ? 'Comisión ($/lote)' : 'Commission ($/lot)'], ['moneyPerPip', es ? '$/pip (1 lote)' : '$/pip (1 lot)'], ['lot', es ? 'Lote' : 'Lot']] as [string, string][]).map(([k, l]) => (

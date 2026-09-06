@@ -131,8 +131,9 @@ function GridCurve({ grid }: any) {
   );
 }
 
-export default function FactoryLab({ es, canManage, post, reload, bots }: any) {
+export default function FactoryLab({ es, canManage, post, reload, bots, datasets }: any) {
   const [botId, setBotId] = useState('');
+  const [adv, setAdv] = useState(false);
   const [trades, setTrades] = useState<any[] | null>(null);
   const [tradesName, setTradesName] = useState('');
   const [grid, setGrid] = useState<any[] | null>(null);
@@ -174,7 +175,16 @@ export default function FactoryLab({ es, canManage, post, reload, bots }: any) {
       {/* Configuración */}
       <div style={card}>
         <h3 style={{ marginTop: 0 }}>{es ? 'Laboratorio de robustez' : 'Robustness lab'}</h3>
-        <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>{es ? 'Sube las operaciones cerradas del backtest del constructor. Se corre Monte Carlo, in/out-of-sample, walk-forward y sensibilidad para descartar el sobreajuste.' : 'Upload the closed trades from the builder backtest. Monte Carlo, in/out-of-sample, walk-forward and sensitivity run to rule out overfitting.'}</p>
+        <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>{es ? 'Monte Carlo, in/out-of-sample, walk-forward y sensibilidad para descartar el sobreajuste.' : 'Monte Carlo, in/out-of-sample, walk-forward and sensitivity to rule out overfitting.'}</p>
+
+        {/* Aviso: normalmente NO hace falta CSV */}
+        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', background: `color-mix(in srgb,${GREEN} 8%,var(--bg2))`, border: `1px solid color-mix(in srgb,${GREEN} 30%,var(--line))`, borderRadius: 10, padding: '11px 13px', marginBottom: 12 }}>
+          <span style={{ fontSize: 18 }}>✅</span>
+          <div style={{ fontSize: 12.5, lineHeight: 1.6 }}>
+            <b>{es ? 'No necesitas subir CSV.' : 'No CSV needed.'}</b> {es ? 'Los robots creados en el Motor o el Autopiloto ya se analizan solos: su veredicto de robustez aparece abajo al elegirlos, y en Robots y Pipeline. El CSV es opcional, solo para re-analizar con las operaciones reales de MetaTrader.' : 'Robots created in the Engine or Autopilot are analyzed automatically: pick one to see its robustness verdict below, and in Robots and Pipeline. CSV is optional, only to re-analyze with real MetaTrader trades.'}
+          </div>
+        </div>
+
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 12 }}>
           <label><span className="muted" style={{ fontSize: 12 }}>{es ? 'Robot' : 'Robot'}</span>
             <select value={botId} onChange={(e) => { setBotId(e.target.value); setRes(null); setCmp(null); }} style={{ ...inp, marginTop: 4 }}>
@@ -182,21 +192,38 @@ export default function FactoryLab({ es, canManage, post, reload, bots }: any) {
               {(bots as any[]).map((b) => <option key={b.id} value={b.id}>{b.name} · {b.symbol || '—'} {b.robustness_verdict ? `· ${b.robustness_verdict}` : ''}</option>)}
             </select>
           </label>
-          <label><span className="muted" style={{ fontSize: 12 }}>{es ? 'Operaciones (CSV)' : 'Trades (CSV)'}</span>
-            <label style={{ ...btn('var(--brand)'), marginTop: 4, cursor: 'pointer', width: '100%', justifyContent: 'center' }}>{trades ? `${trades.length} ops · ${tradesName.slice(0, 14)}` : (es ? 'Subir operaciones' : 'Upload trades')}
-              <input type="file" accept=".csv,.txt,.tsv" style={{ display: 'none' }} onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; setTradesName(f.name); try { const t = parseTrades(await f.text()); if (t.length < 20) toastErr(es ? 'No se detectaron suficientes operaciones o falta la columna de profit.' : 'Not enough trades or missing profit column.'); setTrades(t); } catch { toastErr(es ? 'No se pudo leer el archivo (¿demasiado grande?).' : 'Could not read the file (too big?).'); } }} />
-            </label>
-          </label>
-          <label><span className="muted" style={{ fontSize: 12 }}>{es ? 'Optimización (CSV, opcional)' : 'Optimization (CSV, optional)'}</span>
-            <label style={{ ...btn(BLUE), marginTop: 4, cursor: 'pointer', width: '100%', justifyContent: 'center' }}>{grid ? `${grid.length} combos` : (es ? 'Subir grid' : 'Upload grid')}
-              <input type="file" accept=".csv,.txt,.tsv" style={{ display: 'none' }} onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; setGridName(f.name); try { setGrid(parseGrid(await f.text())); } catch { toastErr(es ? 'No se pudo leer el archivo de optimización.' : 'Could not read the optimization file.'); } }} />
-            </label>
-          </label>
           <label><span className="muted" style={{ fontSize: 12 }}>{es ? 'Nº de parámetros/reglas' : 'Params/rules count'}</span>
             <input type="number" value={paramCount} min={1} max={40} onChange={(e) => setParamCount(Math.max(1, Number(e.target.value) || 1))} style={{ ...inp, marginTop: 4 }} />
           </label>
         </div>
+
+        {/* Avanzado: re-analizar con CSV de MetaTrader */}
+        <button onClick={() => setAdv((v) => !v)} style={{ marginTop: 12, background: 'none', border: 'none', color: 'var(--brand)', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, padding: 0 }}>{adv ? '▾ ' : '▸ '}{es ? 'Avanzado · re-analizar con CSV de MetaTrader' : 'Advanced · re-analyze with MetaTrader CSV'}</button>
+        {adv && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 12, marginTop: 10, borderTop: '1px solid var(--line)', paddingTop: 12 }}>
+            <label><span className="muted" style={{ fontSize: 12 }}>{es ? 'Operaciones (CSV)' : 'Trades (CSV)'}</span>
+              <label style={{ ...btn('var(--brand)'), marginTop: 4, cursor: 'pointer', width: '100%', justifyContent: 'center' }}>{trades ? `${trades.length} ops · ${tradesName.slice(0, 14)}` : (es ? 'Subir operaciones' : 'Upload trades')}
+                <input type="file" accept=".csv,.txt,.tsv" style={{ display: 'none' }} onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; setTradesName(f.name); try { const t = parseTrades(await f.text()); if (t.length < 20) toastErr(es ? 'No se detectaron suficientes operaciones o falta la columna de profit.' : 'Not enough trades or missing profit column.'); setTrades(t); } catch { toastErr(es ? 'No se pudo leer el archivo (¿demasiado grande?).' : 'Could not read the file (too big?).'); } }} />
+              </label>
+            </label>
+            <label><span className="muted" style={{ fontSize: 12 }}>{es ? 'Optimización (CSV, opcional)' : 'Optimization (CSV, optional)'}</span>
+              <label style={{ ...btn(BLUE), marginTop: 4, cursor: 'pointer', width: '100%', justifyContent: 'center' }}>{grid ? `${grid.length} combos` : (es ? 'Subir grid' : 'Upload grid')}
+                <input type="file" accept=".csv,.txt,.tsv" style={{ display: 'none' }} onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; setGridName(f.name); try { setGrid(parseGrid(await f.text())); } catch { toastErr(es ? 'No se pudo leer el archivo de optimización.' : 'Could not read the optimization file.'); } }} />
+              </label>
+            </label>
+          </div>
+        )}
         {canManage && <button onClick={run} disabled={busy} style={{ ...btn(VIOLET), marginTop: 14, padding: '11px 20px', fontSize: 14 }}>{busy ? (es ? 'Procesando…' : 'Running…') : (es ? 'Ejecutar laboratorio' : 'Run lab')}</button>}
+
+        {/* Estado actual del robot elegido (ya analizado por el Motor/Autopiloto) */}
+        {bot && !res && bot.robustness_verdict && (
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginTop: 14, borderTop: '1px solid var(--line)', paddingTop: 14 }}>
+            <span style={{ fontSize: 12, color: 'var(--muted)' }}>{es ? 'Análisis actual:' : 'Current analysis:'}</span>
+            <span style={{ fontSize: 22, fontWeight: 800, color: verdictColor(bot.robustness_verdict) }}>{bot.robustness_score ?? '—'}</span>
+            <span style={{ fontSize: 12, fontWeight: 800, padding: '4px 11px', borderRadius: 99, background: `color-mix(in srgb,${verdictColor(bot.robustness_verdict)} 16%,transparent)`, color: verdictColor(bot.robustness_verdict) }}>{bot.robustness_verdict}</span>
+            <span className="muted" style={{ fontSize: 12 }}>{es ? 'Pulsa “Ejecutar laboratorio” para ver las gráficas completas de nuevo.' : 'Press “Run lab” to see the full charts again.'}</span>
+          </div>
+        )}
       </div>
 
       {r && (

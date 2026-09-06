@@ -147,10 +147,17 @@ export function validateMetrics(m: DataMetrics): QResult {
   return { score, verdict, checks, years: Number(years.toFixed(2)), hasTicks: !!m.hasTicks };
 }
 
-// Guarda un dataset ya validado.
-export async function saveDataset(o: { userId: string; symbol: string; timeframe: string; filename: string; metrics: DataMetrics }) {
+// Guarda un dataset ya validado (con su fuente y las barras OHLC reutilizables).
+// Tolerante: si aún no se corrió factory_v6.sql (faltan columnas), reintenta con
+// el conjunto básico para no bloquear el guardado.
+export async function saveDataset(o: {
+  userId: string; symbol: string; timeframe: string; filename: string; metrics: DataMetrics;
+  source?: string; broker?: string; barsPath?: string; barsUrl?: string; barsTf?: number; barsCount?: number; fileSize?: number;
+}) {
   const q = validateMetrics(o.metrics);
-  const { data, error } = await supabaseAdmin.from('factory_datasets').insert({
+  const fromY = o.metrics.fromMs ? new Date(o.metrics.fromMs).getUTCFullYear() : null;
+  const toY = o.metrics.toMs ? new Date(o.metrics.toMs).getUTCFullYear() : null;
+  const base: any = {
     symbol: (o.symbol || '').slice(0, 30) || null,
     timeframe: (o.timeframe || '').slice(0, 12) || null,
     filename: (o.filename || '').slice(0, 160) || null,
@@ -164,7 +171,20 @@ export async function saveDataset(o: { userId: string; symbol: string; timeframe
     checks: q.checks,
     metrics: o.metrics,
     created_by: o.userId,
-  }).select('*').single();
+  };
+  const extra: any = {
+    source: (o.source || '').slice(0, 40) || null,
+    broker: (o.broker || '').slice(0, 60) || null,
+    data_kind: o.metrics.hasTicks ? 'ticks' : 'bars',
+    from_year: fromY, to_year: toY,
+    bars_path: o.barsPath || null, bars_url: o.barsUrl || null,
+    bars_tf: o.barsTf || null, bars_count: o.barsCount || null,
+    file_size: o.fileSize || null,
+  };
+  let { data, error } = await supabaseAdmin.from('factory_datasets').insert({ ...base, ...extra }).select('*').single();
+  if (error && /column|schema cache|source|broker|bars_|data_kind|from_year|to_year|file_size/i.test(error.message || '')) {
+    ({ data, error } = await supabaseAdmin.from('factory_datasets').insert(base).select('*').single());
+  }
   if (error) throw new Error(error.message);
   return { dataset: data, quality: q };
 }
@@ -172,6 +192,21 @@ export async function saveDataset(o: { userId: string; symbol: string; timeframe
 export async function listDatasets(limit = 40) {
   const { data } = await supabaseAdmin.from('factory_datasets').select('*').order('created_at', { ascending: false }).limit(limit);
   return (data || []) as any[];
+}
+
+// Devuelve un dataset por id (para el Motor/Lab: incluye la URL de las barras).
+export async function getDataset(id: string) {
+  const { data } = await supabaseAdmin.from('factory_datasets').select('*').eq('id', id).maybeSingle();
+  return data as any;
+}
+
+// Borra un dataset y sus barras en Storage.
+export async function deleteDataset(id: string) {
+  const { data } = await supabaseAdmin.from('factory_datasets').select('bars_path').eq('id', id).maybeSingle();
+  const path = (data as any)?.bars_path;
+  if (path) { try { await supabaseAdmin.storage.from('factory-data').remove([path]); } catch {} }
+  await supabaseAdmin.from('factory_datasets').delete().eq('id', id);
+  return { ok: true };
 }
 
 // -------- Constructor de robots --------

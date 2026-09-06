@@ -1,12 +1,13 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast, toastErr } from '@/lib/toast';
 import { useLang } from '@/lib/lang';
 import FactoryLab from './FactoryLab';
 import FactoryPipeline from './FactoryPipeline';
 import StratGenerator from './StratGenerator';
 import FactoryEngine from './FactoryEngine';
-import { guessSymbolFromName, readFileByLines } from '@/lib/backtest';
+import { analyzeInWorker, guessSymbol, type ColumnarBars } from '@/lib/dataAnalyzer';
+import { ProgressBar, LIME } from './ProgressBar';
 
 // ============================================================
 // Onyx Bot Factory · Fase 1 (solo admin)
@@ -19,97 +20,6 @@ const card: any = { background: 'var(--card)', border: '1px solid var(--line)', 
 
 function statusColor(s: string) { return s === 'pass' ? GREEN : s === 'warn' ? AMBER : RED; }
 function verdictColor(v: string) { return v === 'apta' ? GREEN : v === 'reservas' ? AMBER : RED; }
-
-// -------- Parser de datos en el navegador (calcula métricas crudas) --------
-function toMs(dateStr: string, timeStr?: string): number {
-  let ds = (dateStr || '').trim().replace(/\./g, '-').replace(/\//g, '-');
-  const p = ds.split('-').map((x) => parseInt(x, 10));
-  let y: number, mo: number, d: number;
-  if (String(dateStr).slice(0, 4).length === 4 && p[0] > 1900) { y = p[0]; mo = p[1]; d = p[2]; }
-  else { y = p[2]; mo = p[1]; d = p[0]; }
-  let hh = 0, mi = 0, ss = 0, ms = 0;
-  if (timeStr) {
-    const t = timeStr.trim().split(':');
-    hh = parseInt(t[0], 10) || 0; mi = parseInt(t[1], 10) || 0;
-    if (t[2]) { const sp = t[2].split('.'); ss = parseInt(sp[0], 10) || 0; ms = sp[1] ? Math.round(parseFloat('0.' + sp[1]) * 1000) : 0; }
-  }
-  const v = Date.UTC(y, (mo || 1) - 1, d || 1, hh, mi, ss, ms);
-  return isNaN(v) ? NaN : v;
-}
-
-// Validación de calidad por STREAMING: lee el archivo por trozos (soporta GB) y
-// calcula las métricas sin cargarlo entero en memoria.
-async function analyzeFile(file: File, onProgress?: (p: number) => void): Promise<any> {
-  let cfg: any = null, delim = ',', hasTicks = false;
-  let rows = 0, outOfOrder = 0, duplicates = 0, gaps = 0, anomalies = 0, spreadZero = 0;
-  let spreadSum = 0, spreadN = 0, digits = 5;
-  let prevTs = NaN, prevPrice = NaN, fromMs = NaN, toMs2 = NaN;
-  let gotDigits = false, processed = 0, capped = false;
-  const MAXL = 6000000; // muestra suficiente para juzgar calidad en archivos enormes
-
-  const handle = (ln: string) => {
-    if (capped || !ln || !ln.trim()) return;
-    if (cfg === null) {
-      delim = [',', '\t', ';'].map((d) => ({ d, n: ln.split(d).length })).sort((a, b) => b.n - a.n)[0].d;
-      const isHeader = /[a-zA-Z]{3,}/.test(ln) && !/^\d{4}[.\-/]\d{1,2}[.\-/]\d{1,2}/.test(ln);
-      cfg = { dt: -1, date: -1, time: -1, bid: -1, ask: -1, close: -1, hi: -1, lo: -1 };
-      if (isHeader) {
-        const h = ln.split(delim).map((s) => s.trim().toLowerCase());
-        h.forEach((c, idx) => {
-          if (cfg.bid < 0 && /\bbid\b/.test(c)) cfg.bid = idx;
-          else if (cfg.ask < 0 && /\bask\b/.test(c)) cfg.ask = idx;
-          else if (cfg.close < 0 && /close/.test(c)) cfg.close = idx;
-          else if (cfg.hi < 0 && /high/.test(c)) cfg.hi = idx;
-          else if (cfg.lo < 0 && /low/.test(c)) cfg.lo = idx;
-          if (cfg.dt < 0 && /(gmt|timestamp|datetime|date time)/.test(c)) cfg.dt = idx;
-          else if (cfg.date < 0 && /date|fecha/.test(c) && !/update/.test(c)) cfg.date = idx;
-          else if (cfg.time < 0 && /time|hora/.test(c)) cfg.time = idx;
-        });
-        hasTicks = cfg.bid >= 0 && cfg.ask >= 0;
-        return; // la cabecera no es dato
-      }
-      const t = ln.split(delim); const dateHasTime = /\d{2}:\d{2}/.test(t[0]);
-      cfg.dt = dateHasTime ? 0 : -1; cfg.date = dateHasTime ? -1 : 0; cfg.time = dateHasTime ? -1 : 1;
-      const off = dateHasTime ? 1 : 2; const nums = t.slice(off).filter((x) => x !== '' && !isNaN(parseFloat(x)));
-      if (nums.length >= 4) { cfg.close = off + 3; cfg.hi = off + 1; cfg.lo = off + 2; }
-      else if (nums.length >= 2) { cfg.bid = off; cfg.ask = off + 1; }
-      else cfg.close = off;
-      hasTicks = cfg.bid >= 0 && cfg.ask >= 0;
-      // Esta primera línea SÍ es dato: seguimos y la procesamos abajo.
-    }
-    const c = ln.split(delim); if (c.length < 2) return;
-    let ts: number;
-    if (cfg.dt >= 0) { const dv = (c[cfg.dt] || '').trim(); const sp = dv.split(/\s+/); ts = toMs(sp[0], sp[1]); }
-    else ts = toMs(c[cfg.date], cfg.time >= 0 ? c[cfg.time] : undefined);
-    if (isNaN(ts)) return;
-    let bid = NaN, ask = NaN, price = NaN;
-    if (hasTicks) { bid = parseFloat(c[cfg.bid]); ask = parseFloat(c[cfg.ask]); price = (bid + ask) / 2; }
-    else if (cfg.close >= 0) price = parseFloat(c[cfg.close]);
-    if (isNaN(price)) return;
-    if (!gotDigits && hasTicks && c[cfg.bid]) { const dot = c[cfg.bid].indexOf('.'); digits = dot >= 0 ? (c[cfg.bid].trim().length - dot - 1) : 0; gotDigits = true; }
-    rows++;
-    if (isNaN(fromMs)) fromMs = ts;
-    toMs2 = ts;
-    if (!isNaN(prevTs)) {
-      if (ts < prevTs) outOfOrder++;
-      else if (ts === prevTs) duplicates++;
-      else { const dt = ts - prevTs; if (dt > 21600000) { const wd = new Date(prevTs).getUTCDay(); if (!(wd === 5 || wd === 6)) gaps++; } }
-    }
-    if (!isNaN(prevPrice) && prevPrice > 0 && Math.abs(price - prevPrice) / prevPrice > 0.2) anomalies++;
-    if (hasTicks) { const sp = ask - bid; if (sp <= 0) spreadZero++; else { spreadSum += sp; spreadN++; } }
-    prevTs = ts; prevPrice = price;
-    processed++; if (processed >= MAXL) capped = true;
-  };
-
-  await readFileByLines(file, handle, onProgress, () => capped);
-  const spreadAvgPts = spreadN ? (spreadSum / spreadN) * Math.pow(10, digits) : 0;
-  return {
-    rows, parsed: rows > 0,
-    fromMs: isNaN(fromMs) ? undefined : fromMs,
-    toMs: isNaN(toMs2) ? undefined : toMs2,
-    outOfOrder, duplicates, gaps, anomalies, hasTicks, spreadAvgPts: Math.round(spreadAvgPts), spreadZero, truncated: capped,
-  };
-}
 
 // -------- Anillo de calidad --------
 function Ring({ score, color, size = 120, label }: any) {
@@ -128,14 +38,40 @@ function Ring({ score, color, size = 120, label }: any) {
   );
 }
 
+// Estado del análisis de la Puerta 0. Vive en el componente raíz (que nunca se
+// desmonta al cambiar de pestaña) para que analizar NO se pierda al moverte de tab.
+type GateState = { busy: boolean; prog: number; fileName: string; symbol: string; metrics: any; q: any; bars: ColumnarBars | null; fileSize: number };
+const GATE0: GateState = { busy: false, prog: 0, fileName: '', symbol: '', metrics: null, q: null, bars: null, fileSize: 0 };
+
 export default function Factory({ canManage = true }: { canManage?: boolean }) {
   const { lang } = useLang(); const es = lang !== 'en';
   const [d, setD] = useState<any>(null);
   const [sub, setSub] = useState<'datos' | 'constructor' | 'motor' | 'laboratorio' | 'pipeline' | 'robots'>('datos');
+  const [gate, setGate] = useState<GateState>(GATE0);
+  const gateCancel = useRef<null | (() => void)>(null);
 
   async function load() { try { const r = await fetch('/api/admin/factory'); const j = await r.json(); setD(j); } catch {} }
   useEffect(() => { load(); }, []);
   async function post(body: any) { const r = await fetch('/api/admin/factory', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); const j = await r.json(); if (!r.ok) throw new Error(j.error || 'error'); return j; }
+
+  // Analiza en Web Worker (no congela, sobrevive a cambiar de pestaña).
+  function analyzeGate(file: File) {
+    try { gateCancel.current?.(); } catch {}
+    const sym = guessSymbol(file.name) || '';
+    setGate({ ...GATE0, busy: true, prog: 0, fileName: file.name, symbol: sym, fileSize: file.size });
+    const { promise, cancel } = analyzeInWorker(file, { tfMin: 15, onProgress: (p) => setGate((g) => (g.busy ? { ...g, prog: p } : g)) });
+    gateCancel.current = cancel;
+    promise.then(async ({ metrics, bars }) => {
+      // Si no detectó símbolo por el nombre, intenta por el rango de años del nombre no ayuda; se queda el del nombre.
+      let quality: any = null;
+      try { const j = await post({ action: 'validate', metrics }); quality = j.quality; } catch {}
+      setGate((g) => ({ ...g, busy: false, prog: 1, metrics, q: quality, bars }));
+    }).catch((e) => {
+      setGate((g) => ({ ...g, busy: false }));
+      toastErr(es ? ('No se pudo analizar el archivo: ' + (e?.message || '')) : ('Could not analyze the file: ' + (e?.message || '')));
+    });
+  }
+  function resetGate() { try { gateCancel.current?.(); } catch {} setGate(GATE0); }
 
   if (!d) return <div className="muted" style={{ padding: 20 }}>{es ? 'Cargando…' : 'Loading…'}</div>;
   const stats = d.stats || {};
@@ -158,10 +94,10 @@ export default function Factory({ canManage = true }: { canManage?: boolean }) {
         })}
       </div>
 
-      {sub === 'datos' && <DataGate es={es} canManage={canManage} post={post} reload={load} datasets={d.datasets || []} />}
+      {sub === 'datos' && <DataGate es={es} canManage={canManage} post={post} reload={load} datasets={d.datasets || []} gate={gate} analyzeGate={analyzeGate} resetGate={resetGate} setGate={setGate} />}
       {sub === 'constructor' && <Builder es={es} canManage={canManage} post={post} reload={load} nextName={d.nextName} datasets={d.datasets || []} />}
-      {sub === 'motor' && <FactoryEngine es={es} canManage={canManage} post={post} reload={load} />}
-      {sub === 'laboratorio' && <FactoryLab es={es} canManage={canManage} post={post} reload={load} bots={d.bots || []} />}
+      {sub === 'motor' && <FactoryEngine es={es} canManage={canManage} post={post} reload={load} datasets={d.datasets || []} />}
+      {sub === 'laboratorio' && <FactoryLab es={es} canManage={canManage} post={post} reload={load} bots={d.bots || []} datasets={d.datasets || []} />}
       {sub === 'pipeline' && <FactoryPipeline es={es} canManage={canManage} post={post} />}
       {sub === 'robots' && <BotList es={es} canManage={canManage} post={post} reload={load} bots={d.bots || []} />}
     </div>
@@ -169,59 +105,112 @@ export default function Factory({ canManage = true }: { canManage?: boolean }) {
 }
 
 // -------- Puerta 0 · Datos --------
-function DataGate({ es, canManage, post, reload, datasets }: any) {
-  const [file, setFile] = useState<File | null>(null);
-  const [symbol, setSymbol] = useState('');
-  const [tf, setTf] = useState('M1');
-  const [busy, setBusy] = useState(false);
-  const [prog, setProg] = useState(0);
-  const [metrics, setMetrics] = useState<any>(null);
-  const [q, setQ] = useState<any>(null);
+// Un archivo se sube y valida UNA sola vez aquí; se guarda en la biblioteca y se
+// reutiliza en Constructor/Motor/Laboratorio sin volver a subir nada.
+function DataGate({ es, canManage, post, reload, datasets, gate, analyzeGate, resetGate, setGate }: any) {
+  const [source, setSource] = useState('dukascopy');
+  const [broker, setBroker] = useState('');
+  const [saving, setSaving] = useState(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const metrics = gate.metrics, q = gate.q;
 
-  async function analyze(f: File) {
-    setBusy(true); setProg(0); setQ(null); setMetrics(null);
-    try {
-      const m = await analyzeFile(f, (p) => setProg(p));
-      setMetrics(m);
-      const j = await post({ action: 'validate', metrics: m });
-      setQ(j.quality);
-    } catch (e: any) { toastErr(es ? 'No se pudo leer el archivo (¿demasiado grande?). Usa barras OHLC (M15/H1) y menos de ~80 MB, no un volcado de ticks crudos.' : 'Could not read the file (too big?). Use OHLC bars (M15/H1) under ~80 MB, not a raw tick dump.'); } finally { setBusy(false); }
+  function pick(f: File | null) {
+    if (!f) return;
+    analyzeGate(f);
+    // Detecta la fuente por el nombre (Dukascopy suele venir como SYM_YYYY..._YYYY...).
+    if (/duka/i.test(f.name)) setSource('dukascopy');
   }
+  function chooseAnother() {
+    resetGate();
+    if (inputRef.current) inputRef.current.value = ''; // permite re-elegir el MISMO archivo
+    inputRef.current?.click();
+  }
+
   async function save() {
-    if (!metrics || !q) return; setBusy(true);
-    try { await post({ action: 'dataset_save', symbol, timeframe: tf, filename: file?.name, metrics }); toast(es ? 'Dataset guardado' : 'Dataset saved'); setFile(null); setMetrics(null); setQ(null); reload(); }
-    catch (e: any) { toastErr(e?.message); } finally { setBusy(false); }
+    if (!metrics || !q || !gate.bars) return;
+    setSaving(true);
+    try {
+      const fd = new FormData();
+      const barsBlob = new Blob([JSON.stringify(gate.bars)], { type: 'application/json' });
+      fd.append('bars', barsBlob, 'bars.json');
+      fd.append('meta', JSON.stringify({
+        symbol: gate.symbol, timeframe: metrics.hasTicks ? 'tick' : 'bars', filename: gate.fileName, metrics,
+        source, broker: source === 'metatrader' ? broker : '',
+        barsTf: gate.bars.tf, barsCount: gate.bars.t?.length || 0, fileSize: gate.fileSize,
+      }));
+      const r = await fetch('/api/admin/factory/dataset', { method: 'POST', body: fd });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || 'error');
+      toast(es ? 'Dataset guardado en la biblioteca' : 'Dataset saved to the library');
+      resetGate(); setBroker('');
+      if (inputRef.current) inputRef.current.value = '';
+      reload();
+    } catch (e: any) { toastErr(e?.message); } finally { setSaving(false); }
   }
+
+  async function del(id: string) {
+    if (!confirm(es ? '¿Borrar este dataset de la biblioteca?' : 'Delete this dataset from the library?')) return;
+    try { await post({ action: 'dataset_delete', id }); toast(es ? 'Borrado' : 'Deleted'); reload(); } catch (e: any) { toastErr(e?.message); }
+  }
+
+  const fromY = metrics?.fromMs ? new Date(metrics.fromMs).getUTCFullYear() : null;
+  const toY = metrics?.toMs ? new Date(metrics.toMs).getUTCFullYear() : null;
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
       <div style={card}>
-        <h3 style={{ marginTop: 0 }}>{es ? 'Sube los datos de backtest' : 'Upload backtest data'}</h3>
-        <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>{es ? 'CSV de MT4/MT5 (fecha, hora, precios) o export de ticks (bid/ask). Se valida la calidad antes de dejar entrar el robot a la fábrica.' : 'MT4/MT5 CSV (date, time, prices) or tick export (bid/ask). Quality is validated before a robot enters the factory.'}</p>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-          <input value={symbol} onChange={(e) => setSymbol(e.target.value)} placeholder={es ? 'Símbolo (XAUUSD)' : 'Symbol (XAUUSD)'} style={inp} />
-          <select value={tf} onChange={(e) => setTf(e.target.value)} style={inp}>{['M1', 'M5', 'M15', 'M30', 'H1', 'H4', 'D1', 'tick'].map((x) => <option key={x} value={x}>{x}</option>)}</select>
-          <label style={{ ...btn('var(--brand)'), display: 'inline-flex', cursor: 'pointer' }}>
-            {file ? file.name.slice(0, 26) : (es ? 'Elegir archivo' : 'Choose file')}
-            <input type="file" accept=".csv,.txt,.tsv,.hst" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0] || null; setFile(f); if (f) { const g = guessSymbolFromName(f.name); if (g) setSymbol(g); analyze(f); } }} />
-          </label>
-          {busy && <span className="muted" style={{ fontSize: 12.5 }}>{es ? 'Analizando ' : 'Analyzing '}{Math.round(prog * 100)}%…</span>}
+        <h3 style={{ marginTop: 0 }}>{es ? 'Puerta 0 · Sube los datos (una sola vez)' : 'Gate 0 · Upload data (once)'}</h3>
+        <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>{es ? 'Arrastra tu archivo de Dukascopy o MetaTrader (ticks o barras, de cualquier tamaño). El sistema detecta solo el símbolo, el tipo y los años. Se guarda para todos los tests futuros — no lo vuelves a subir.' : 'Drop your Dukascopy or MetaTrader file (ticks or bars, any size). The system auto-detects symbol, type and years. It is saved for all future tests — no re-upload.'}</p>
+
+        {/* Fuente de los datos */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 12, marginBottom: 14 }}>
+          <Lbl t={es ? '¿De dónde sacaste la data?' : 'Where is the data from?'}>
+            <select value={source} onChange={(e) => setSource(e.target.value)} style={inp}>
+              <option value="dukascopy">Dukascopy</option>
+              <option value="metatrader">MetaTrader</option>
+              <option value="otro">{es ? 'Otro' : 'Other'}</option>
+            </select>
+          </Lbl>
+          {source === 'metatrader' && <Lbl t={es ? 'Broker' : 'Broker'}><input value={broker} onChange={(e) => setBroker(e.target.value)} placeholder={es ? 'IC Markets, Pepperstone…' : 'IC Markets, Pepperstone…'} style={inp} /></Lbl>}
         </div>
+
+        {!gate.busy && (
+          <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, border: '1.5px dashed color-mix(in srgb,var(--brand) 40%,var(--line))', borderRadius: 12, padding: '26px 14px', cursor: 'pointer', background: 'var(--bg2)', textAlign: 'center' }}>
+            <span style={{ fontSize: 26 }}>📈</span>
+            <div style={{ fontSize: 14, fontWeight: 700 }}>{gate.fileName && !q ? gate.fileName : (es ? 'Arrastra o elige tu archivo de datos' : 'Drop or choose your data file')}</div>
+            <div className="muted" style={{ fontSize: 12 }}>CSV · TXT · TSV — Dukascopy, MetaTrader…</div>
+            <input ref={inputRef} type="file" accept=".csv,.txt,.tsv,.hst" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0] || null; pick(f); }} />
+          </label>
+        )}
+
+        {gate.busy && (
+          <div style={{ border: '1px solid color-mix(in srgb,' + LIME + ' 35%,var(--line))', borderRadius: 12, padding: 16, background: 'var(--bg2)' }}>
+            <ProgressBar p={gate.prog} label={(es ? 'Analizando ' : 'Analyzing ') + (gate.symbol || gate.fileName)} />
+            <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>{es ? 'Se lee el archivo completo en segundo plano. Puedes cambiar de pestaña: el análisis no se detiene.' : 'Reading the whole file in the background. You can switch tabs — the analysis keeps running.'}</div>
+          </div>
+        )}
       </div>
 
       {q && metrics && (
         <div style={{ ...card, borderColor: `color-mix(in srgb,${verdictColor(q.verdict)} 45%,var(--line))` }}>
           <div style={{ display: 'flex', gap: 18, alignItems: 'center', flexWrap: 'wrap' }}>
             <Ring score={q.score} color={verdictColor(q.verdict)} label={es ? 'calidad tick' : 'tick quality'} />
-            <div style={{ flex: 1, minWidth: 200 }}>
+            <div style={{ flex: 1, minWidth: 220 }}>
               <div style={{ fontSize: 17, fontWeight: 800, color: verdictColor(q.verdict) }}>
                 {q.verdict === 'apta' ? (es ? 'Data apta para backtest' : 'Data fit for backtest') : q.verdict === 'reservas' ? (es ? 'Apta con reservas' : 'Fit with caveats') : (es ? 'Rechazada' : 'Rejected')}
               </div>
-              <div className="muted" style={{ fontSize: 13, marginTop: 4, lineHeight: 1.6 }}>
-                {symbol || '—'} · {tf} {metrics.hasTicks ? (es ? '· ticks reales' : '· real ticks') : (es ? '· barras OHLC' : '· OHLC bars')}<br />
-                {metrics.fromMs ? new Date(metrics.fromMs).toISOString().slice(0, 10) : '—'} → {metrics.toMs ? new Date(metrics.toMs).toISOString().slice(0, 10) : '—'} · {q.years} {es ? 'años' : 'yrs'} · {(metrics.rows || 0).toLocaleString('en-US')} {es ? 'filas' : 'rows'}{metrics.truncated ? (es ? ' (muestra)' : ' (sample)') : ''}
+              {/* Chips autodetectados */}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                <span style={chip(VIOLET)}>🏷 {gate.symbol || (es ? 'símbolo ?' : 'symbol ?')} <span style={{ opacity: .7 }}>({es ? 'auto' : 'auto'})</span></span>
+                <span style={chip(metrics.hasTicks ? GREEN : AMBER)}>{metrics.hasTicks ? (es ? '⚡ ticks reales' : '⚡ real ticks') : (es ? '▦ barras' : '▦ bars')}</span>
+                <span style={chip('var(--brand)')}>📅 {fromY || '—'} → {toY || '—'} · {q.years} {es ? 'años' : 'yrs'}</span>
+                <span style={chip('var(--brand)')}>{(metrics.rows || 0).toLocaleString('en-US')} {es ? 'filas' : 'rows'}</span>
+                {source && <span style={chip('var(--tx)')}>{source === 'dukascopy' ? 'Dukascopy' : source === 'metatrader' ? ('MetaTrader' + (broker ? ' · ' + broker : '')) : (es ? 'Otro' : 'Other')}</span>}
               </div>
-              {q.verdict !== 'rechazada' && canManage && <button onClick={save} disabled={busy} style={{ ...btn(GREEN), marginTop: 10 }}>{es ? 'Guardar dataset' : 'Save dataset'}</button>}
+              <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+                {q.verdict !== 'rechazada' && canManage && <button onClick={save} disabled={saving} style={btn(GREEN)}>{saving ? (es ? 'Guardando…' : 'Saving…') : (es ? '💾 Guardar en biblioteca' : '💾 Save to library')}</button>}
+                <button onClick={chooseAnother} style={btn('var(--brand)')}>{es ? '↻ Analizar otra data' : '↻ Analyze another file'}</button>
+              </div>
               {q.verdict === 'rechazada' && <div style={{ fontSize: 12.5, color: RED, marginTop: 8 }}>{es ? 'No se puede confiar en un backtest con estos datos. Corrige y vuelve a subir.' : 'A backtest on this data cannot be trusted. Fix and re-upload.'}</div>}
             </div>
           </div>
@@ -237,15 +226,18 @@ function DataGate({ es, canManage, post, reload, datasets }: any) {
       )}
 
       <div style={card}>
-        <h3 style={{ marginTop: 0 }}>{es ? 'Datasets validados' : 'Validated datasets'}</h3>
-        {!datasets.length && <div className="muted" style={{ fontSize: 13 }}>{es ? 'Aún no hay datos.' : 'No data yet.'}</div>}
+        <h3 style={{ marginTop: 0 }}>{es ? 'Mis datos · biblioteca reutilizable' : 'My data · reusable library'}</h3>
+        {!datasets.length && <div className="muted" style={{ fontSize: 13 }}>{es ? 'Aún no hay datos. Sube uno arriba y quedará guardado aquí para siempre.' : 'No data yet. Upload one above and it stays here forever.'}</div>}
         <div style={{ display: 'grid', gap: 8 }}>
           {datasets.map((ds: any) => (
             <div key={ds.id} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', borderTop: '1px solid var(--line)', paddingTop: 8 }}>
               <span style={{ width: 10, height: 10, borderRadius: '50%', background: verdictColor(ds.verdict), flex: 'none' }} />
-              <b style={{ fontSize: 13.5 }}>{ds.symbol || '—'} · {ds.timeframe || '—'}</b>
-              <span className="muted" style={{ fontSize: 12 }}>{ds.years} {es ? 'años' : 'yrs'} · {(ds.rows || 0).toLocaleString('en-US')} {es ? 'filas' : 'rows'} · {ds.has_ticks ? 'ticks' : 'OHLC'}</span>
+              <b style={{ fontSize: 13.5, fontFamily: 'monospace' }}>{ds.symbol || '—'}</b>
+              <span style={chip(ds.data_kind === 'ticks' || ds.has_ticks ? GREEN : AMBER)}>{ds.data_kind === 'ticks' || ds.has_ticks ? 'ticks' : (es ? 'barras' : 'bars')}</span>
+              <span className="muted" style={{ fontSize: 12 }}>{ds.from_year || (ds.from_date ? new Date(ds.from_date).getUTCFullYear() : '—')}–{ds.to_year || (ds.to_date ? new Date(ds.to_date).getUTCFullYear() : '—')} · {ds.years}{es ? 'y' : 'y'} · {(ds.rows || 0).toLocaleString('en-US')} {es ? 'filas' : 'rows'}{ds.source ? ' · ' + ds.source : ''}{ds.broker ? ' (' + ds.broker + ')' : ''}</span>
+              {ds.bars_url && <span style={chip(LIME)}>{es ? 'listo p/ motor' : 'engine-ready'}</span>}
               <span style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 800, color: verdictColor(ds.verdict) }}>{ds.quality_score}% · {ds.verdict}</span>
+              {canManage && <button onClick={() => del(ds.id)} style={{ ...btn(RED), padding: '5px 9px' }}>✕</button>}
             </div>
           ))}
         </div>
@@ -254,13 +246,14 @@ function DataGate({ es, canManage, post, reload, datasets }: any) {
   );
 }
 
+function chip(c: string): any { return { display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 99, background: `color-mix(in srgb,${c} 15%,transparent)`, color: c, border: `1px solid color-mix(in srgb,${c} 30%,transparent)` }; }
+
 // -------- Constructor --------
 function Builder({ es, canManage, post, reload, nextName, datasets }: any) {
   const [platform, setPlatform] = useState<'mt5' | 'mt4'>('mt5');
   const [symbol, setSymbol] = useState('');
   const [tf, setTf] = useState('M15');
   const [family, setFamily] = useState('tendencia');
-  const [notes, setNotes] = useState('');
   const [datasetId, setDatasetId] = useState('');
   const [anyBroker, setAnyBroker] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -270,9 +263,9 @@ function Builder({ es, canManage, post, reload, nextName, datasets }: any) {
   async function create() {
     setBusy(true);
     try {
-      const j = await post({ action: 'bot_create', platform, symbol, timeframe: tf, strategy: { family, notes, anyBroker }, datasetId: datasetId || null });
+      const j = await post({ action: 'bot_create', platform, symbol, timeframe: tf, strategy: { family, anyBroker }, datasetId: datasetId || null });
       toast((es ? 'Robot creado: ' : 'Robot created: ') + (j.bot?.name || '') + (j.bot?.magic ? ` · magic ${j.bot.magic}` : ''));
-      setSymbol(''); setNotes(''); setDatasetId(''); reload();
+      setSymbol(''); setDatasetId(''); reload();
     } catch (e: any) { toastErr(e?.message); } finally { setBusy(false); }
   }
 
@@ -300,9 +293,8 @@ function Builder({ es, canManage, post, reload, nextName, datasets }: any) {
         <Lbl es={es} t={es ? 'Familia de estrategia' : 'Strategy family'}><select value={family} onChange={(e) => setFamily(e.target.value)} style={inp}>{[['tendencia', es ? 'Tendencia' : 'Trend'], ['rango', es ? 'Rango' : 'Range'], ['ruptura', es ? 'Ruptura' : 'Breakout'], ['reversion', es ? 'Reversión' : 'Reversion'], ['volatilidad', es ? 'Volatilidad' : 'Volatility'], ['scalping', 'Scalping']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></Lbl>
         <Lbl es={es} t={es ? 'Datos (dataset)' : 'Data (dataset)'} wide><select value={datasetId} onChange={(e) => { const id = e.target.value; setDatasetId(id); const d = usable.find((x: any) => x.id === id); if (d) { if (d.symbol) setSymbol(d.symbol); if (d.timeframe) setTf(d.timeframe); } }} style={inp}><option value="">{es ? '— sin asignar —' : '— none —'}</option>{usable.map((d: any) => <option key={d.id} value={d.id}>{d.symbol} · {d.timeframe} · {d.years}y · {d.verdict}</option>)}</select></Lbl>
       </div>
-      <Lbl es={es} t={es ? 'Notas de la estrategia' : 'Strategy notes'}><textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder={es ? 'Idea, reglas de entrada/salida, gestión…' : 'Idea, entry/exit rules, management…'} style={{ ...inp, resize: 'vertical', fontFamily: 'inherit' }} /></Lbl>
 
-      <label style={{ display: 'flex', alignItems: 'center', gap: 9, marginTop: 12, cursor: 'pointer', background: 'var(--bg2)', borderRadius: 10, padding: '10px 12px' }}>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 9, marginTop: 14, cursor: 'pointer', background: 'var(--bg2)', borderRadius: 10, padding: '10px 12px' }}>
         <input type="checkbox" checked={anyBroker} onChange={(e) => setAnyBroker(e.target.checked)} style={{ width: 16, height: 16 }} />
         <div>
           <div style={{ fontSize: 13, fontWeight: 700 }}>{es ? 'Funciona en cualquier broker' : 'Works on any broker'}</div>

@@ -61,6 +61,27 @@ export default function FactoryPipeline({ es, canManage, post }: any) {
           {canManage && <button onClick={run} disabled={busy} style={btn(VIOLET)}>{busy ? '…' : (es ? 'Ejecutar ahora' : 'Run now')}</button>}
         </div>
 
+        {/* Cómo funciona, en 3 pasos claros */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(210px,1fr))', gap: 10, marginTop: 14 }}>
+          {[
+            ['1', es ? 'Conecta el robot a la demo' : 'Connect the robot to demo', es ? 'Instalas el EA con su magic (tu único paso manual).' : 'Install the EA with its magic (your only manual step).', GREEN],
+            ['2', es ? 'La fábrica lo vigila sola' : 'The factory watches it alone', es ? 'Cada noche recalcula el score, aplica el semáforo y avanza o archiva.' : 'Each night it recomputes the score, applies the traffic light, advances or archives.', VIOLET],
+            ['3', es ? 'Apruebas a real (1 clic)' : 'Approve to live (1 click)', es ? 'Cuando pasa los 6 meses, un botón lo lleva a dinero real.' : 'After 6 months, one button takes it to live money.', GOLD],
+          ].map(([n, t, s, c]: any) => (
+            <div key={n} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', background: 'var(--bg2)', borderRadius: 10, padding: '11px 12px', borderLeft: `3px solid ${c}` }}>
+              <span style={{ width: 24, height: 24, borderRadius: '50%', background: `color-mix(in srgb,${c} 20%,transparent)`, color: c, fontWeight: 800, fontSize: 13, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>{n}</span>
+              <div><div style={{ fontSize: 12.5, fontWeight: 800 }}>{t}</div><div className="muted" style={{ fontSize: 11.5, marginTop: 2, lineHeight: 1.5 }}>{s}</div></div>
+            </div>
+          ))}
+        </div>
+
+        {/* Leyenda del semáforo */}
+        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 12, fontSize: 11.5 }}>
+          {[[GREEN, es ? 'Verde · riesgo normal' : 'Green · normal risk'], [AMBER, es ? 'Amarillo · mitad de riesgo' : 'Yellow · half risk'], [ORANGE, es ? 'Naranja · paper (re-decide a los 30 trades)' : 'Orange · paper (re-decide after 30 trades)']].map(([c, t]: any) => (
+            <span key={t} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: '50%', background: c, boxShadow: `0 0 6px ${c}` }} />{t}</span>
+          ))}
+        </div>
+
         {/* Tablero de etapas */}
         <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols.length},minmax(150px,1fr))`, gap: 10, marginTop: 16, overflowX: 'auto' }}>
           {cols.map(([k, lbl], i) => {

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAdmin, logAdmin } from '@/lib/admin';
-import { listBots, listDatasets, factoryStats, saveDataset, createBot, deleteBot, genUniqueName, validateMetrics, runLab, listLabRuns, compareBt, advanceToDemo, saveGenRun, listGenRuns } from '@/lib/factory';
+import { listBots, listDatasets, factoryStats, saveDataset, createBot, deleteBot, genUniqueName, validateMetrics, runLab, listLabRuns, compareBt, advanceToDemo, saveGenRun, listGenRuns, getDataset, deleteDataset } from '@/lib/factory';
 import { pipelineBoard, runPipelineOnce, linkDemo, stageOverride, approveReal } from '@/lib/pipeline';
 
 export const dynamic = 'force-dynamic';
@@ -38,6 +38,16 @@ export async function POST(req: Request) {
       await logAdmin(user.email || '', 'factory_dataset', r.dataset?.id || '', { verdict: r.quality.verdict, score: r.quality.score });
       return NextResponse.json(r);
     } catch (e: any) { return NextResponse.json({ error: e?.message || 'error' }, { status: 400 }); }
+  }
+  if (a === 'dataset_bars') {
+    const ds = await getDataset(String(b.id || ''));
+    if (!ds) return NextResponse.json({ error: 'dataset no encontrado' }, { status: 404 });
+    return NextResponse.json({ url: ds.bars_url || null, symbol: ds.symbol, timeframe: ds.timeframe, barsTf: ds.bars_tf, barsCount: ds.bars_count });
+  }
+  if (a === 'dataset_delete') {
+    await deleteDataset(String(b.id || ''));
+    await logAdmin(user.email || '', 'factory_dataset_delete', String(b.id || ''), {});
+    return NextResponse.json({ ok: true });
   }
   if (a === 'bot_create') {
     try {
