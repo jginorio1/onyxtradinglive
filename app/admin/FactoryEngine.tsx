@@ -66,6 +66,7 @@ const card: any = { background: 'var(--card)', border: '1px solid var(--line)', 
 const inp: any = { padding: '9px 11px', borderRadius: 9, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 13.5 };
 function btn(c: string): any { return { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 14px', borderRadius: 10, cursor: 'pointer', fontWeight: 800, fontSize: 13, border: `1px solid color-mix(in srgb,${c} 45%,transparent)`, background: `color-mix(in srgb,${c} 14%,transparent)`, color: c }; }
 function autoChip(c: string): any { return { display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, padding: '5px 11px', borderRadius: 99, background: `color-mix(in srgb,${c} 15%,transparent)`, color: c, border: `1px solid color-mix(in srgb,${c} 32%,transparent)` }; }
+function methodCard(active: boolean, c: string): any { return { flex: 1, minWidth: 220, textAlign: 'left', cursor: 'pointer', padding: '11px 13px', borderRadius: 12, background: active ? `color-mix(in srgb,${c} 14%,var(--bg2))` : 'var(--bg2)', border: `2px solid ${active ? c : 'var(--line)'}`, color: 'var(--tx)' }; }
 function download(name: string, text: string, mime: string) { const b = new Blob([text], { type: mime }); const u = URL.createObjectURL(b); const a = document.createElement('a'); a.href = u; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(u), 1000); }
 
 type Row = { spec: Spec; net: number; pf: number; dd: number; n: number; win: number; exp: number };
@@ -93,6 +94,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
   const [tfMin, setTfMin] = useState(15);
   const [dsId, setDsId] = useState('');
   const usableDs = (datasets as any[]).filter((d) => d.verdict !== 'rechazada' && d.bars_url);
+  const libDs = (datasets as any[]).filter((d) => d.verdict !== 'rechazada'); // incluye los sin barras (para mostrarlos marcados)
 
   // Carga barras desde la biblioteca (sin volver a subir el archivo).
   async function loadFromLibrary(id: string) {
@@ -124,6 +126,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
   const [sel, setSel] = useState<Spec | null>(null);
   const [meta, setMeta] = useState({ platform: 'mt5', symbol: 'XAUUSD', tf: 'M15' });
   const [auto, setAuto] = useState(false);
+  const [autoMode, setAutoMode] = useState<'random' | 'evolve'>('evolve'); // aleatorio rápido vs evolución inteligente
   const [autoMsg, setAutoMsg] = useState('');
   const [keepN, setKeepN] = useState(8);
   const [autoDone, setAutoDone] = useState<{ created: number; scanned: number; survivors: number } | null>(null);
@@ -257,16 +260,35 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
     setAuto(true); setAutoDone(null); setAutoMsg(es ? 'Generando estrategias…' : 'Generating strategies…');
     await new Promise((r) => setTimeout(r, 30));
     try {
-      const cands = (sampleCandidates(cfg, n) as Spec[]).map((c) => ({ ...c, dir }));
+      let top: { spec: Spec }[] = [];
+      let scanned = 0, survivorsN = 0;
       const cut = Math.floor(bars.length * 0.7); const isB = bars.slice(0, cut), oosB = bars.slice(cut);
-      const survivors: { spec: Spec; fit: number }[] = [];
-      for (let i = 0; i < cands.length; i++) {
-        const ev = evaluate(cands[i], isB, oosB, costs);
-        if (ev.fit > 0 && ev.oosPf >= 1 && ev.dd <= maxDd && ev.trades >= minTr && ev.oosNet > 0) survivors.push({ spec: cands[i], fit: ev.fit });
-        if (i % 120 === 0) { setAutoMsg((es ? 'Backtesteando ' : 'Backtesting ') + i + '/' + cands.length + ' · ' + (es ? 'robustos ' : 'robust ') + survivors.length); await new Promise((r) => setTimeout(r, 0)); }
+
+      if (autoMode === 'evolve') {
+        // EVOLUCIÓN: muta y cruza las mejores durante varias generaciones. Explora un
+        // espacio de MILLONES de combinaciones haciendo solo unos miles de backtests.
+        setAutoMsg(es ? 'Evolucionando (mutación + cruce)…' : 'Evolving (mutation + crossover)…');
+        await new Promise((r) => setTimeout(r, 10));
+        const gens = Math.max(6, Math.min(40, Math.round(n / 400))); // más presupuesto = más generaciones
+        const pop = Math.max(40, Math.min(200, Math.round(n / 20)));
+        const r = evolve(bars, costs, { pop, gens, keep: Math.max(1, keepN), mut: evoCfg.mut, restart: evoCfg.restart, oosPct: oosPct || 30 });
+        setEvo({ best: r.best, history: r.history });
+        const good = r.best.filter((s) => s.ev.oosPf >= 1 && s.ev.oosNet > 0 && s.ev.dd <= maxDd && s.ev.trades >= minTr);
+        top = (good.length ? good : r.best).map((s) => ({ spec: { ...s.spec, dir } }));
+        scanned = r.evaluated; survivorsN = good.length;
+      } else {
+        // ALEATORIO: muestrea candidatos al azar y backtestea cada uno.
+        const cands = (sampleCandidates(cfg, n) as Spec[]).map((c) => ({ ...c, dir }));
+        const survivors: { spec: Spec; fit: number }[] = [];
+        for (let i = 0; i < cands.length; i++) {
+          const ev = evaluate(cands[i], isB, oosB, costs);
+          if (ev.fit > 0 && ev.oosPf >= 1 && ev.dd <= maxDd && ev.trades >= minTr && ev.oosNet > 0) survivors.push({ spec: cands[i], fit: ev.fit });
+          if (i % 120 === 0) { setAutoMsg((es ? 'Backtesteando ' : 'Backtesting ') + i + '/' + cands.length + ' · ' + (es ? 'robustos ' : 'robust ') + survivors.length); await new Promise((r) => setTimeout(r, 0)); }
+        }
+        survivors.sort((a, b) => b.fit - a.fit);
+        top = survivors.slice(0, Math.max(1, keepN));
+        scanned = cands.length; survivorsN = survivors.length;
       }
-      survivors.sort((a, b) => b.fit - a.fit);
-      const top = survivors.slice(0, Math.max(1, keepN));
       let created = 0;
       for (let i = 0; i < top.length; i++) {
         setAutoMsg((es ? 'Creando robot ' : 'Creating robot ') + (i + 1) + '/' + top.length + '…');
@@ -276,7 +298,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
         await post({ action: 'lab_run', botId: j.bot?.id, trades, paramCount: 6, noAi: true });
         created++;
       }
-      setAutoDone({ created, scanned: cands.length, survivors: survivors.length });
+      setAutoDone({ created, scanned, survivors: survivorsN });
       toast((es ? 'Autopiloto: ' : 'Autopilot: ') + created + (es ? ' robots creados y en el laboratorio' : ' robots created in the lab'));
       if (reload) reload();
     } catch (e: any) { toastErr(e?.message); } finally { setAuto(false); setAutoMsg(''); }
@@ -350,9 +372,10 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
         <div style={{ marginTop: 14 }}>
           <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 6 }}>{es ? '1 · Tus datos' : '1 · Your data'}</div>
           <select value={dsId} onChange={(e) => loadFromLibrary(e.target.value)} disabled={reading} style={{ ...inp, width: '100%', maxWidth: 460 }}>
-            <option value="">{usableDs.length ? (es ? '— elige un dataset de tu biblioteca —' : '— pick a dataset from your library —') : (es ? '— aún no hay datos (súbelos en Puerta 0) —' : '— no data yet (upload in Gate 0) —')}</option>
-            {usableDs.map((d: any) => <option key={d.id} value={d.id}>{d.symbol} · {(d.from_year || '')}–{(d.to_year || '')} · {d.data_kind === 'ticks' || d.has_ticks ? 'ticks' : 'bars'} · {d.quality_score}%</option>)}
+            <option value="">{libDs.length ? (es ? '— elige un dataset de tu biblioteca —' : '— pick a dataset from your library —') : (es ? '— aún no hay datos (súbelos en Puerta 0) —' : '— no data yet (upload in Gate 0) —')}</option>
+            {libDs.map((d: any) => <option key={d.id} value={d.id} disabled={!d.bars_url}>{d.symbol} · {(d.from_year || '')}–{(d.to_year || '')} · {d.data_kind === 'ticks' || d.has_ticks ? 'ticks' : 'bars'} · {d.quality_score}%{d.bars_url ? '' : (es ? ' · ⚠ sin barras (re-guarda en Puerta 0)' : ' · ⚠ no bars (re-save in Gate 0)')}</option>)}
           </select>
+          {libDs.some((d: any) => !d.bars_url) && <div className="muted" style={{ fontSize: 11, marginTop: 6, color: AMBER }}>{es ? '⚠ Los datasets marcados "sin barras" se guardaron antes del arreglo de subida. Ve a Puerta 0, vuelve a analizar ese archivo y pulsa "Guardar en biblioteca" — quedará listo para el motor.' : '⚠ Datasets marked "no bars" were saved before the upload fix. Go to Gate 0, re-analyze that file and press "Save to library" — it will be engine-ready.'}</div>}
           {reading && <div style={{ marginTop: 10 }}><ProgressBar p={prog} label={es ? 'Cargando datos…' : 'Loading data…'} /></div>}
           {/* Instrumento + timeframe autodetectados: se VEN aquí */}
           {bars && !reading && (
@@ -366,9 +389,24 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
           {bars && !reading && <div className="muted" style={{ fontSize: 11, marginTop: 6 }}>{es ? 'El instrumento y la temporalidad salen del dataset — por eso el generador no los pregunta.' : 'Instrument and timeframe come from the dataset — that’s why the generator doesn’t ask for them.'}</div>}
         </div>
 
-        {/* Paso 2: cuánto escanear / cuánto guardar */}
+        {/* Paso 2: método (evolución vs aleatorio) */}
         <div style={{ marginTop: 14 }}>
-          <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 6 }}>{es ? '2 · Cuánto buscar' : '2 · How much to search'}</div>
+          <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 6 }}>{es ? '2 · Método de búsqueda' : '2 · Search method'}</div>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <button onClick={() => setAutoMode('evolve')} style={{ ...methodCard(autoMode === 'evolve', GREEN) }}>
+              <div style={{ fontSize: 13.5, fontWeight: 800 }}>🧬 {es ? 'Evolución (inteligente)' : 'Evolution (smart)'}</div>
+              <div className="muted" style={{ fontSize: 11.5, marginTop: 2 }}>{es ? 'Muta y cruza las mejores durante varias generaciones. Explora MILLONES de combinaciones con pocos backtests. Recomendado.' : 'Mutates and crosses the best over generations. Explores MILLIONS of combos with few backtests. Recommended.'}</div>
+            </button>
+            <button onClick={() => setAutoMode('random')} style={{ ...methodCard(autoMode === 'random', BLUE) }}>
+              <div style={{ fontSize: 13.5, fontWeight: 800 }}>🎲 {es ? 'Aleatorio (rápido)' : 'Random (fast)'}</div>
+              <div className="muted" style={{ fontSize: 11.5, marginTop: 2 }}>{es ? 'Prueba N estrategias al azar. Simple y directo, pero no aprende de las buenas.' : 'Tests N random strategies. Simple and direct, but doesn’t learn from the good ones.'}</div>
+            </button>
+          </div>
+        </div>
+
+        {/* Paso 3: cuánto escanear / cuánto guardar */}
+        <div style={{ marginTop: 14 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 6 }}>{autoMode === 'evolve' ? (es ? '3 · Esfuerzo de evolución' : '3 · Evolution effort') : (es ? '3 · Cuántas probar' : '3 · How many to test')}</div>
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <label><div className="muted" style={{ fontSize: 11.5, marginBottom: 3 }}>{es ? 'Estrategias a escanear' : 'Strategies to scan'}<Help text={tip(es, 'n')} /></div>
               <input type="number" value={n} min={500} max={20000} step={500} onChange={(e) => setN(Math.max(500, Math.min(20000, Number(e.target.value) || 500)))} style={{ ...inp, width: 130 }} /></label>
@@ -380,7 +418,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
               ))}
             </div>
           </div>
-          <div className="muted" style={{ fontSize: 11, marginTop: 6 }}>{es ? 'Más estrategias = más posibilidades pero tarda más (corre en tu navegador; mantén la pestaña abierta). Empieza en Rápido; sube a Profundo cuando quieras exprimir la data.' : 'More strategies = more chances but slower (runs in your browser; keep the tab open). Start Fast; go Deep to squeeze the data.'}</div>
+          <div className="muted" style={{ fontSize: 11, marginTop: 6 }}>{autoMode === 'evolve' ? (es ? '🧬 En evolución este número es el PRESUPUESTO: a más presupuesto, más generaciones y población, y más a fondo explora ese espacio de millones de combinaciones (haciendo solo unos miles de backtests). Corre en tu navegador; mantén la pestaña abierta.' : '🧬 In evolution this number is the BUDGET: more budget = more generations/population, exploring that space of millions of combos deeper (with only a few thousand backtests). Runs in your browser; keep the tab open.') : (es ? 'Más estrategias = más posibilidades pero tarda más (corre en tu navegador; mantén la pestaña abierta).' : 'More strategies = more chances but slower (runs in your browser; keep the tab open).')}</div>
         </div>
 
         {/* Paso 3: ejecutar */}
