@@ -6,7 +6,7 @@ import FactoryLab from './FactoryLab';
 import FactoryPipeline from './FactoryPipeline';
 import StratGenerator from './StratGenerator';
 import FactoryEngine from './FactoryEngine';
-import { subscribeAnalysis, getAnalysis, startAnalysis, resetAnalysis, patchAnalysis, type ColumnarBars } from '@/lib/dataAnalyzer';
+import { subscribeAnalysis, getAnalysis, startAnalysis, resetAnalysis, patchAnalysis, barsToJSON, type ColumnarBars } from '@/lib/dataAnalyzer';
 import { BLOCKS } from '@/lib/stratgen';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 import { ProgressBar, ProgressBarIndeterminate, LIME } from './ProgressBar';
@@ -192,7 +192,7 @@ function DataGate({ es, canManage, post, reload, datasets }: any) {
 
       // 2) Sube las barras M1 (para generación rápida).
       setUpMsg(es ? 'Subiendo barras…' : 'Uploading bars…');
-      const barsBlob = new Blob([JSON.stringify(gate.bars)], { type: 'application/json' });
+      const barsBlob = new Blob([barsToJSON(gate.bars)], { type: 'application/json' });
       const ub = await sb.storage.from('factory-data').uploadToSignedUrl(sign.bars.path, sign.bars.token, barsBlob, { contentType: 'application/json' } as any);
       if (ub.error) throw new Error('barras: ' + ub.error.message);
 
@@ -227,6 +227,10 @@ function DataGate({ es, canManage, post, reload, datasets }: any) {
 
   const fromY = metrics?.fromMs ? new Date(metrics.fromMs).getUTCFullYear() : null;
   const toY = metrics?.toMs ? new Date(metrics.toMs).getUTCFullYear() : null;
+  const fromD = metrics?.fromMs ? new Date(metrics.fromMs).toISOString().slice(0, 10) : null;
+  const toD = metrics?.toMs ? new Date(metrics.toMs).toISOString().slice(0, 10) : null;
+  // Aviso: pocos años de TICKS suele ser el límite de MT5 (guarda barras años atrás, pero ticks solo recientes).
+  const shortTicks = !!(metrics?.hasTicks && q && q.years != null && q.years < 1.5);
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
@@ -266,7 +270,8 @@ function DataGate({ es, canManage, post, reload, datasets }: any) {
         {gate.busy && (
           <div style={{ border: '1px solid color-mix(in srgb,' + LIME + ' 35%,var(--line))', borderRadius: 12, padding: 16, background: 'var(--bg2)' }}>
             <ProgressBar p={gate.prog} label={(es ? 'Analizando ' : 'Analyzing ') + (gate.symbol || gate.fileName)} />
-            {gate.stalled && <div style={{ fontSize: 12.5, color: AMBER, fontWeight: 700, marginTop: 8 }}>⏸ {es ? 'Sin avance — ¿dejaste la pestaña en segundo plano? Vuelve a esta pestaña para que continúe.' : 'No progress — did you leave the tab in the background? Return to this tab to continue.'}</div>}
+            {gate.fileSize > 2e9 && <div style={{ fontSize: 12.5, color: RED, fontWeight: 700, marginTop: 8 }}>⚠ {es ? `Archivo muy grande (${(gate.fileSize / 1073741824).toFixed(1)} GB). El navegador puede quedarse sin memoria y recargar la pestaña. Si se corta, divide el archivo por años o usa un rango más corto.` : `Very large file (${(gate.fileSize / 1073741824).toFixed(1)} GB). The browser may run out of memory and reload the tab. If it stops, split the file by year or use a shorter range.`}</div>}
+            {gate.stalled &&<div style={{ fontSize: 12.5, color: AMBER, fontWeight: 700, marginTop: 8 }}>⏸ {es ? 'Sin avance — ¿dejaste la pestaña en segundo plano? Vuelve a esta pestaña para que continúe.' : 'No progress — did you leave the tab in the background? Return to this tab to continue.'}</div>}
             <AnalysisTelemetry gate={gate} es={es} />
             <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>{es ? 'Se lee el archivo completo en segundo plano. Puedes cambiar de sección del panel sin detenerlo. Mantén esta pestaña en primer plano y NO recargues (ni entres con el PIN) hasta que termine.' : 'Reading the whole file in the background. Switch panel sections freely. Keep this tab in the foreground and do NOT reload (or enter the PIN) until it finishes.'}</div>
             <AnalysisLog gate={gate} es={es} />
@@ -286,7 +291,7 @@ function DataGate({ es, canManage, post, reload, datasets }: any) {
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
                 <span style={chip(VIOLET)}>🏷 {gate.symbol || (es ? 'símbolo ?' : 'symbol ?')} <span style={{ opacity: .7 }}>({es ? 'auto' : 'auto'})</span></span>
                 <span style={chip(metrics.hasTicks ? GREEN : AMBER)}>{metrics.hasTicks ? (es ? '⚡ ticks reales' : '⚡ real ticks') : (es ? '▦ barras' : '▦ bars')}</span>
-                <span style={chip('var(--brand)')}>📅 {fromY || '—'} → {toY || '—'} · {q.years} {es ? 'años' : 'yrs'}</span>
+                <span style={chip('var(--brand)')}>📅 {fromD || '—'} → {toD || '—'} · {q.years} {es ? 'años' : 'yrs'}</span>
                 <span style={chip('var(--brand)')}>{(metrics.rows || 0).toLocaleString('en-US')} {es ? 'filas' : 'rows'}</span>
                 {source && <span style={chip('var(--tx)')}>{source === 'dukascopy' ? 'Dukascopy' : source === 'metatrader' ? ('MetaTrader' + (broker ? ' · ' + broker : '')) : (es ? 'Otro' : 'Other')}</span>}
               </div>
@@ -295,6 +300,13 @@ function DataGate({ es, canManage, post, reload, datasets }: any) {
                 <button onClick={chooseAnother} style={btn('var(--brand)')}>{es ? '↻ Analizar otra data' : '↻ Analyze another file'}</button>
               </div>
               {q.verdict === 'rechazada' && <div style={{ fontSize: 12.5, color: RED, marginTop: 8 }}>{es ? 'No se puede confiar en un backtest con estos datos. Corrige y vuelve a subir.' : 'A backtest on this data cannot be trusted. Fix and re-upload.'}</div>}
+              {shortTicks && (
+                <div style={{ marginTop: 10, fontSize: 12.5, lineHeight: 1.55, background: `color-mix(in srgb,${AMBER} 12%,var(--bg2))`, border: `1px solid color-mix(in srgb,${AMBER} 40%,var(--line))`, borderRadius: 10, padding: '10px 12px' }}>
+                  <b style={{ color: AMBER }}>{es ? '¿Esperabas más años?' : 'Expected more years?'}</b> {es ? `Este archivo cubre ${fromD} → ${toD} (${q.years} años). MetaTrader guarda años de BARRAS, pero solo guarda TICKS de un período reciente y corto, así que un export de ticks casi siempre sale corto. Para más historia:` : `This file covers ${fromD} → ${toD} (${q.years} yrs). MetaTrader keeps years of BARS but only recent TICKS, so a tick export is almost always short. For more history:`}
+                  <div style={{ marginTop: 6, color: 'var(--tx)' }}>{es ? '• En MT5 exporta barras M1 (van años atrás) en vez de ticks.' : '• In MT5, export M1 bars (they go back years) instead of ticks.'}</div>
+                  <div style={{ color: 'var(--tx)' }}>{es ? '• O usa Dukascopy para ticks reales de 5+ años.' : '• Or use Dukascopy for real 5+ year ticks.'}</div>
+                </div>
+              )}
               {saving && <div style={{ marginTop: 12 }}><ProgressBarIndeterminate label={upMsg || (es ? 'Subiendo…' : 'Uploading…')} /><div className="muted" style={{ fontSize: 11, marginTop: 5 }}>{es ? 'Los ticks reales se suben directo a Supabase (puede tardar en archivos grandes).' : 'Real ticks upload straight to Supabase (large files take a while).'}</div></div>}
             </div>
           </div>

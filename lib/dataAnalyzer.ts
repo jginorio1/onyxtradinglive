@@ -7,7 +7,16 @@
 //  · Autodetecta símbolo, ticks vs barras y años desde/hasta.
 // ============================================================
 
-export type ColumnarBars = { tf: number; digits: number; t: number[]; o: number[]; h: number[]; l: number[]; c: number[] };
+// Los precios/tiempos vienen en arreglos TIPADOS (menos memoria). Se indexan igual
+// que arreglos normales; solo al serializar a JSON hay que pasar por barsToJSON().
+type NumArr = number[] | Float64Array | Float32Array;
+export type ColumnarBars = { tf: number; digits: number; t: NumArr; o: NumArr; h: NumArr; l: NumArr; c: NumArr };
+
+// Convierte las barras columnar (arreglos tipados) a objeto plano serializable a JSON.
+export function barsToJSON(b: ColumnarBars): string {
+  const arr = (x: NumArr) => Array.from(x as any);
+  return JSON.stringify({ tf: b.tf, digits: b.digits, t: arr(b.t), o: arr(b.o), h: arr(b.h), l: arr(b.l), c: arr(b.c) });
+}
 export type AnalyzeResult = { metrics: any; bars: ColumnarBars };
 
 // El worker es autónomo (no importa módulos): todo su código va en este string.
@@ -27,7 +36,7 @@ function toMs(dateStr, timeStr){
 
 self.onmessage=function(e){
   var file=e.data.file, tfMin=e.data.tfMin||15, capBars=e.data.capBars||3000000;
-  run(file, tfMin, capBars).then(function(r){ self.postMessage({type:'done',metrics:r.metrics,bars:r.bars}); })
+  run(file, tfMin, capBars).then(function(r){ self.postMessage({type:'done',metrics:r.metrics,bars:r.bars}, r._transfer||[]); })
     .catch(function(err){ self.postMessage({type:'error',message:String(err&&err.message||err)}); });
 };
 
@@ -38,7 +47,16 @@ async function run(file, tfMin, capBars){
   var rows=0, outOfOrder=0, duplicates=0, gaps=0, anomalies=0, spreadZero=0, spreadSum=0, spreadN=0, digits=5, gotDigits=false;
   var prevTs=NaN, prevPrice=NaN, fromMs=NaN, toMs2=NaN;
   var bucketMs=tfMin*60000;
-  var bt=[],bo=[],bh=[],bl=[],bc=[]; var curKey=-1; var barsCapped=false;
+  // Barras en arreglos TIPADOS (mucho menos memoria que arreglos JS: evita que el
+  // navegador recargue la pestaña por "memoria excesiva" con archivos grandes).
+  // Tiempo en Float64 (ms), precios en Float32 (7 cifras significativas: sobra para FX/índices).
+  var cap0=65536;
+  var bt=new Float64Array(cap0), bo=new Float32Array(cap0), bh=new Float32Array(cap0), bl=new Float32Array(cap0), bc=new Float32Array(cap0);
+  var bn=0; var curKey=-1; var barsCapped=false;
+  function grow(){ if(bn<bt.length) return; var nc=bt.length*2;
+    var nt=new Float64Array(nc); nt.set(bt); bt=nt;
+    var a=new Float32Array(nc); a.set(bo); bo=a; var b2=new Float32Array(nc); b2.set(bh); bh=b2;
+    var c2=new Float32Array(nc); c2.set(bl); bl=c2; var d2=new Float32Array(nc); d2.set(bc); bc=d2; }
 
   function handle(ln){
     if(!ln) return;
@@ -95,8 +113,8 @@ async function run(file, tfMin, capBars){
     // Bucketeo a OHLC reutilizable.
     if(!barsCapped){
       var key=Math.floor(ts/bucketMs)*bucketMs;
-      if(key!==curKey){ curKey=key; bt.push(key); bo.push(pO); bh.push(pH); bl.push(pL); bc.push(pC); if(bt.length>=capBars) barsCapped=true; }
-      else { var i=bt.length-1; if(pH>bh[i]) bh[i]=pH; if(pL<bl[i]) bl[i]=pL; bc[i]=pC; }
+      if(key!==curKey){ curKey=key; grow(); bt[bn]=key; bo[bn]=pO; bh[bn]=pH; bl[bn]=pL; bc[bn]=pC; bn++; if(bn>=capBars) barsCapped=true; }
+      else { var i=bn-1; if(pH>bh[i]) bh[i]=pH; if(pL<bl[i]) bl[i]=pL; bc[i]=pC; }
     }
   }
   function flush(final){
@@ -117,18 +135,20 @@ async function run(file, tfMin, capBars){
   buf += dec.decode(); flush(true);
   self.postMessage({type:'progress',p:1});
 
-  // Redondea precios a los dígitos detectados para achicar la biblioteca.
+  // Recorta a la longitud exacta (libera la sobre-reserva) y redondea precios.
+  bt=bt.slice(0,bn); bo=bo.slice(0,bn); bh=bh.slice(0,bn); bl=bl.slice(0,bn); bc=bc.slice(0,bn);
   var f=Math.pow(10,digits);
-  for(var k=0;k<bt.length;k++){ bo[k]=Math.round(bo[k]*f)/f; bh[k]=Math.round(bh[k]*f)/f; bl[k]=Math.round(bl[k]*f)/f; bc[k]=Math.round(bc[k]*f)/f; }
+  for(var k=0;k<bn;k++){ bo[k]=Math.round(bo[k]*f)/f; bh[k]=Math.round(bh[k]*f)/f; bl[k]=Math.round(bl[k]*f)/f; bc[k]=Math.round(bc[k]*f)/f; }
 
   var spreadAvgPts=spreadN?(spreadSum/spreadN)*Math.pow(10,digits):0;
   var metrics={ rows:rows, parsed:rows>0,
     fromMs:isNaN(fromMs)?undefined:fromMs, toMs:isNaN(toMs2)?undefined:toMs2,
     outOfOrder:outOfOrder, duplicates:duplicates, gaps:gaps, anomalies:anomalies,
     hasTicks:hasTicks, spreadAvgPts:Math.round(spreadAvgPts), spreadZero:spreadZero,
-    truncated:barsCapped, barsCount:bt.length, digits:digits };
+    truncated:barsCapped, barsCount:bn, digits:digits };
   var bars={ tf:tfMin, digits:digits, t:bt, o:bo, h:bh, l:bl, c:bc };
-  return { metrics:metrics, bars:bars };
+  // Devuelve los buffers por TRANSFERENCIA (no se copian): evita duplicar memoria al terminar.
+  return { metrics:metrics, bars:bars, _transfer:[bt.buffer,bo.buffer,bh.buffer,bl.buffer,bc.buffer] };
 }
 `;
 
@@ -254,6 +274,7 @@ export function startAnalysis(file: File, opts: { tfMin?: number } = {}) {
   const now = Date.now();
   const runId = 'run_' + now.toString(36);
   _state = { ..._state, busy: true, prog: 0, fileName: file.name, symbol: guessSymbol(file.name) || '', fileSize: file.size, metrics: null, q: null, bars: null, file, error: null, startedAt: now, updatedAt: now, bytesRead: 0, rows: 0, stalled: false, interrupted: false, runId, log: [{ t: now, kind: 'info', msg: 'Análisis iniciado · ' + file.name + ' · ' + _fmtMB(file.size) }] };
+  if (file.size > 2 * 1024 * 1024 * 1024) _state.log.push({ t: now, kind: 'warn', msg: 'Archivo muy grande (' + _fmtMB(file.size) + '). El navegador puede quedarse sin memoria y recargar. Recomendado: divide el archivo por años o usa un rango más corto.' });
   if (/duka/i.test(file.name)) _state.source = 'dukascopy';
   _persist(true); _emit();
   const w = new Worker(workerUrl());
