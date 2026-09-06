@@ -1008,6 +1008,23 @@ function StratReport({ es, r, oosPct, setOosPct }: { es: boolean; r: FullReport;
         {kpi('Payout', String(r.payout))}
       </div>
 
+      {/* KPIs avanzados (paridad StrategyQuant) */}
+      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--mut)', textTransform: 'uppercase', letterSpacing: '.04em', margin: '2px 0 6px' }}>{es ? 'Métricas avanzadas (estilo StrategyQuant)' : 'Advanced metrics (StrategyQuant-style)'}</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(96px,1fr))', gap: 8, marginBottom: 12 }}>
+        {kpi(es ? 'Anual medio' : 'Yearly avg', money(r.yearlyAvgProfit))}
+        {kpi(es ? 'Anual medio %' : 'Yearly avg %', r.yearlyAvgPct + '%')}
+        {kpi(es ? 'Mensual medio' : 'Monthly avg', money(r.monthlyAvgProfit))}
+        {kpi(es ? 'Diario medio' : 'Daily avg', money(r.dailyAvgProfit))}
+        {kpi('Annual/MaxDD', String(r.annualMaxDD), r.annualMaxDD >= 1 ? GREEN : AMBER)}
+        {kpi('AHPR %', r.ahpr + '%')}
+        {kpi('R-Expectancy', String(r.rExpectancy))}
+        {kpi('R-Exp. score', String(r.rExpectancyScore), r.rExpectancyScore >= 2 ? GREEN : AMBER)}
+        {kpi('STR Quality', String(r.strQuality), r.strQuality >= 2 ? GREEN : AMBER)}
+        {kpi('Z-Score', String(r.zScore))}
+        {kpi('Z-Prob %', r.zProb + '%')}
+        {kpi(es ? 'Estancam.' : 'Stagnation', r.stagnationDays + (es ? 'd' : 'd') + ' · ' + r.stagnationPct + '%', AMBER)}
+      </div>
+
       {/* Control de división In-sample / Out-of-sample */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
         <span style={{ fontSize: 11 }} className="muted">{es ? 'Fuera de muestra (OOS) — % final reservado' : 'Out-of-sample (OOS) — % of the end reserved'}</span>
