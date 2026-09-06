@@ -8,7 +8,9 @@ import { genMt5, genMt4 } from '@/lib/mqlgen';
 import { barsFromColumnar, type ColumnarBars } from '@/lib/dataAnalyzer';
 import { mcSuite } from '@/lib/montecarlo';
 import { walkForwardMatrix } from '@/lib/walkforward';
-import { ProgressBar } from './ProgressBar';
+import { optimize, specFromCell, type OptResult, type OptAxis } from '@/lib/optimizer';
+import { buildPortfolio, type PortMember, type PortResult } from '@/lib/portfolio';
+import { ProgressBar, ProgressBarIndeterminate } from './ProgressBar';
 
 // ============================================================
 // Onyx Bot Factory · Fase 5 — Motor (backtest + evolución + databank + portafolio)
@@ -90,11 +92,63 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
   const [recFunnel, setRecFunnel] = useState<any>(null);
   const [recBest, setRecBest] = useState<any>(null);
   const [recSending, setRecSending] = useState(false);
+  // Optimizador de parámetros (búsqueda de meseta).
+  const [optBusy, setOptBusy] = useState(false);
+  const [optRes, setOptRes] = useState<OptResult | null>(null);
+  // Portafolio multi-símbolo (correr un spec contra varios datasets de la biblioteca).
+  const [msIds, setMsIds] = useState<string[]>([]);
+  const [msBusy, setMsBusy] = useState(false);
+  const [msMsg, setMsMsg] = useState('');
+  const [msRes, setMsRes] = useState<PortResult | null>(null);
+
+  // Optimiza la estrategia seleccionada barriendo período/TP/SL y elige la MESETA.
+  async function runOptimize(base: Spec) {
+    if (!bars) { toastErr(es ? 'Carga las barras primero.' : 'Load bars first.'); return; }
+    setOptBusy(true); setOptRes(null);
+    try {
+      await new Promise((r) => setTimeout(r, 20));
+      const res = optimize(bars, enrichSpec({ ...base, dir }, blockMap) as Spec, costs);
+      setOptRes(res);
+      if (!res.plateau || res.plateau.score <= 0) toast(es ? 'No se halló una meseta rentable con esos rangos.' : 'No profitable plateau found in those ranges.');
+      else toast(es ? 'Meseta encontrada' : 'Plateau found');
+    } catch (e: any) { toastErr('Optimize: ' + (e?.message || e)); }
+    finally { setOptBusy(false); }
+  }
+
+  // Corre la estrategia seleccionada contra varios datasets y arma la cartera con correlación.
+  async function runMultiSymbol(base: Spec) {
+    const chosen = (datasets as any[]).filter((d) => msIds.includes(d.id) && d.bars_url);
+    if (chosen.length < 2) { toastErr(es ? 'Elige al menos 2 datasets con barras guardadas.' : 'Pick at least 2 datasets with saved bars.'); return; }
+    setMsBusy(true); setMsRes(null); setMsMsg(es ? 'Cargando datasets…' : 'Loading datasets…');
+    try {
+      const members: PortMember[] = [];
+      for (const ds of chosen) {
+        setMsMsg((es ? 'Backtest ' : 'Backtest ') + (ds.symbol || ds.id));
+        const r = await fetch(ds.bars_url); const col = (await r.json()) as ColumnarBars;
+        const b = barsFromColumnar(col);
+        if (b.length < 100) continue;
+        members.push({ name: (ds.symbol || 'DS') + ' M' + (col.tf || '?'), dataset: ds.id, bars: b, spec: enrichSpec({ ...base, dir }, blockMap) as Spec });
+        await new Promise((r2) => setTimeout(r2, 10));
+      }
+      if (members.length < 2) { toastErr(es ? 'No hubo suficientes datasets válidos.' : 'Not enough valid datasets.'); return; }
+      const res = buildPortfolio(members, costs);
+      setMsRes(res); setMsMsg('');
+      toast(es ? 'Portafolio calculado' : 'Portfolio computed');
+    } catch (e: any) { toastErr('Portfolio: ' + (e?.message || e)); setMsMsg(''); }
+    finally { setMsBusy(false); }
+  }
 
   const toggle = (bk: string, id: string) => setCfg((c) => { const cur = c[bk] || []; return { ...c, [bk]: cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id] }; });
   const pip = bars ? (costs.pip || inferPip(bars[Math.floor(bars.length / 2)].c)) : 0;
 
   const filtered = useMemo(() => (rows || []).filter((r) => r.pf >= minPf && r.dd <= maxDd && r.n >= minTr).sort((a, b) => b.net - a.net), [rows, minPf, maxDd, minTr]);
+
+  // Veredicto del reto para la estrategia seleccionada (si hay reglas activas).
+  const chOn = (costs.chTarget || 0) > 0 || (costs.chDailyLoss || 0) > 0 || (costs.chMinDays || 0) > 0;
+  const selChallenge = useMemo(() => {
+    if (!sel || !bars || !chOn) return null;
+    try { return runBacktest(bars, enrichSpec({ ...sel, dir }, blockMap) as Spec, costs).challenge || null; } catch { return null; }
+  }, [sel, bars, chOn, costs, dir, blockMap]);
 
   async function runBatch() {
     if (!bars) { toastErr(es ? 'Sube las barras primero.' : 'Upload bars first.'); return; }
@@ -186,6 +240,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
         const spec = enrichSpec(cands[i], blockMap);
         const m = runBacktest(bars, spec, costs);
         if (m.blown) continue; // reventó la cuenta (límite de drawdown) → descartar
+        if (m.challenge && !m.challenge.pass) continue; // no pasa el reto prop firm → descartar
         if (!(m.pf >= recipe.minPf && m.maxddPct <= recipe.maxDd && m.n >= recipe.minTr)) continue;
         bt++;
         const oos = runBacktest(oosB, spec, costs);
@@ -280,11 +335,14 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
             <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Tamaño de posición' : 'Position sizing'}</span>
               <select value={costs.mm} onChange={(e) => setCosts({ ...costs, mm: e.target.value as any })} style={{ ...inp, width: '100%', marginTop: 3 }}>
                 <option value="risk_pct">{es ? '% de riesgo sobre equity' : '% risk on equity'}</option>
+                <option value="risk_atr">{es ? '% con stop por volatilidad (ATR)' : '% with volatility stop (ATR)'}</option>
                 <option value="risk_money">{es ? 'Riesgo fijo ($)' : 'Fixed risk ($)'}</option>
                 <option value="fixed">{es ? 'Lote fijo' : 'Fixed lot'}</option>
               </select>
             </label>
-            {costs.mm === 'risk_pct' && <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? '% por operación' : '% per trade'}</span><input type="number" step="0.1" value={costs.riskPct} onChange={(e) => setCosts({ ...costs, riskPct: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>}
+            {(costs.mm === 'risk_pct' || costs.mm === 'risk_atr') && <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? '% por operación' : '% per trade'}</span><input type="number" step="0.1" value={costs.riskPct} onChange={(e) => setCosts({ ...costs, riskPct: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>}
+            {costs.mm === 'risk_atr' && <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'ATR × (stop)' : 'ATR × (stop)'}</span><input type="number" step="0.1" value={costs.atrMult ?? 1.5} onChange={(e) => setCosts({ ...costs, atrMult: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>}
+            <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Pirámide (añadidos)' : 'Pyramid (add-ons)'}</span><input type="number" step="1" min={0} max={5} value={costs.pyramid ?? 0} onChange={(e) => setCosts({ ...costs, pyramid: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>
             {costs.mm === 'risk_money' && <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? '$ por operación' : '$ per trade'}</span><input type="number" step="10" value={costs.riskMoney} onChange={(e) => setCosts({ ...costs, riskMoney: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>}
             {costs.mm === 'fixed' && <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Lote' : 'Lot'}</span><input type="number" step="0.01" value={costs.lot} onChange={(e) => setCosts({ ...costs, lot: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>}
             <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Drawdown límite' : 'Drawdown limit'}</span>
@@ -297,6 +355,17 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
             {costs.ddType !== 'none' && <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'DD máx %' : 'Max DD %'}</span><input type="number" step="1" value={costs.maxDDpct} onChange={(e) => setCosts({ ...costs, maxDDpct: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>}
           </div>
           <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>{es ? 'La simulación compone sobre el equity y “revienta” la cuenta si toca el límite de drawdown (como una prop firm). Esos robots se descartan.' : 'The simulation compounds on equity and “blows” the account if it hits the drawdown limit (like a prop firm). Those robots are discarded.'}</div>
+        </div>
+
+        {/* Reto prop firm (opcional): objetivo + pérdida diaria + días mínimos */}
+        <div style={{ marginTop: 14, background: 'var(--bg2)', borderRadius: 10, padding: 12, border: `1px solid color-mix(in srgb,${CORAL} 30%,var(--line))` }}>
+          <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 8 }}>🏁 {es ? 'Reto prop firm (opcional)' : 'Prop-firm challenge (optional)'}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 10 }}>
+            <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Objetivo de beneficio %' : 'Profit target %'}</span><input type="number" step="1" value={costs.chTarget ?? 0} onChange={(e) => setCosts({ ...costs, chTarget: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>
+            <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Pérdida diaria máx %' : 'Max daily loss %'}</span><input type="number" step="0.5" value={costs.chDailyLoss ?? 0} onChange={(e) => setCosts({ ...costs, chDailyLoss: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>
+            <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Días mínimos' : 'Minimum days'}</span><input type="number" step="1" value={costs.chMinDays ?? 0} onChange={(e) => setCosts({ ...costs, chMinDays: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>
+          </div>
+          <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>{es ? 'Deja en 0 lo que no apliques. Si activas el reto, cada robot recibe un veredicto “pasa el reto / no pasa” y solo pasan los que cumplen objetivo sin romper la pérdida diaria ni el drawdown, con los días mínimos operados.' : 'Leave at 0 what you don’t use. With the challenge on, each robot gets a “passes / fails” verdict and only those meeting the target without breaking daily loss or drawdown, over the minimum days, pass.'}</div>
         </div>
       </div>
 
@@ -445,6 +514,12 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
         <div style={{ ...card, borderColor: `color-mix(in srgb,${VIOLET} 40%,var(--line))` }}>
           <h3 style={{ marginTop: 0 }}>{es ? 'Estrategia seleccionada' : 'Selected strategy'}</h3>
           <div style={{ fontFamily: 'monospace', fontSize: 13, background: 'var(--bg2)', borderRadius: 9, padding: 10 }}>{specLabel(sel)} · BE {sel.be} · Trail {sel.trailing} · {sel.sessions}</div>
+          {selChallenge && (
+            <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', background: `color-mix(in srgb,${selChallenge.pass ? GREEN : RED} 12%,var(--bg2))`, border: `1px solid color-mix(in srgb,${selChallenge.pass ? GREEN : RED} 40%,var(--line))`, borderRadius: 10, padding: '8px 12px' }}>
+              <span style={{ fontWeight: 900, fontSize: 14, color: selChallenge.pass ? GREEN : RED }}>{selChallenge.pass ? (es ? '✓ PASA EL RETO' : '✓ PASSES CHALLENGE') : (es ? '✗ NO PASA EL RETO' : '✗ FAILS CHALLENGE')}</span>
+              <span className="muted" style={{ fontSize: 12 }}>{es ? 'Beneficio' : 'Profit'} {selChallenge.profitPct}%{selChallenge.target > 0 ? `/${selChallenge.target}%` : ''} · {es ? 'días' : 'days'} {selChallenge.daysTraded}{selChallenge.minDays > 0 ? `/${selChallenge.minDays}` : ''}{selChallenge.dailyBreach ? (es ? ' · ⚠ rompió pérdida diaria' : ' · ⚠ daily loss broken') : ''}</span>
+            </div>
+          )}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(130px,1fr))', gap: 10, marginTop: 12 }}>
             <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Plataforma' : 'Platform'}</span><select value={meta.platform} onChange={(e) => setMeta({ ...meta, platform: e.target.value })} style={{ ...inp, width: '100%', marginTop: 3 }}><option value="mt5">MT5</option><option value="mt4">MT4</option></select></label>
             <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Símbolo' : 'Symbol'}</span><input value={meta.symbol} onChange={(e) => setMeta({ ...meta, symbol: e.target.value })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>
@@ -458,8 +533,107 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
             </div>
           )}
           <p className="muted" style={{ fontSize: 11.5, marginTop: 8 }}>{es ? 'El EA exportado es un punto de partida compilable; verifica que su backtest en MT se parezca al del motor antes de pasar a demo.' : 'The exported EA is a compilable starting point; check that its MT backtest matches the engine before going to demo.'}</p>
+
+          {/* Optimizador de parámetros con búsqueda de meseta */}
+          <div style={{ marginTop: 14, background: 'var(--bg2)', borderRadius: 10, padding: 12, border: `1px solid color-mix(in srgb,${AQUA} 30%,var(--line))` }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 800 }}>🔎 {es ? 'Optimizador (búsqueda de meseta)' : 'Optimizer (plateau search)'}</div>
+                <div className="muted" style={{ fontSize: 11.5 }}>{es ? 'Barre período/TP/SL y recomienda la MESETA (donde los vecinos también rinden), no el pico aislado que suele estar sobre-ajustado.' : 'Sweeps period/TP/SL and recommends the PLATEAU (where neighbors also perform), not the isolated over-fit peak.'}</div>
+              </div>
+              <button onClick={() => runOptimize(sel)} disabled={optBusy} style={btn(AQUA)}>{optBusy ? (es ? 'Optimizando…' : 'Optimizing…') : (es ? 'Optimizar' : 'Optimize')}</button>
+            </div>
+            {optBusy && <div style={{ marginTop: 10 }}><ProgressBarIndeterminate label={es ? 'Barriendo parámetros…' : 'Sweeping parameters…'} /></div>}
+            {optRes && <OptView es={es} res={optRes} onUse={(cell: any) => { setSel(specFromCell(sel, optRes.axes, cell)); toast(es ? 'Parámetros de la meseta aplicados' : 'Plateau params applied'); }} />}
+          </div>
         </div>
       )}
+
+      {/* Portafolio multi-símbolo / multi-timeframe con correlación */}
+      {sel && usableDs.length >= 2 && (
+        <div style={{ ...card, borderColor: `color-mix(in srgb,${LIME} 35%,var(--line))` }}>
+          <h3 style={{ marginTop: 0 }}>{es ? 'Portafolio multi-símbolo' : 'Multi-symbol portfolio'}</h3>
+          <p className="muted" style={{ fontSize: 12.5, marginTop: 0 }}>{es ? 'Corre la estrategia seleccionada contra varios datasets (par + temporalidad) de tu biblioteca y mide la correlación mensual: una cartera de baja correlación baja el drawdown combinado.' : 'Runs the selected strategy across several datasets (symbol + timeframe) from your library and measures monthly correlation: a low-correlation basket lowers combined drawdown.'}</p>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+            {usableDs.map((d: any) => {
+              const on = msIds.includes(d.id);
+              return <button key={d.id} onClick={() => setMsIds((s) => on ? s.filter((x) => x !== d.id) : [...s, d.id])} style={{ ...btn(on ? LIME : '#8a94a6'), background: on ? `color-mix(in srgb,${LIME} 18%,transparent)` : 'transparent' }}>{on ? '✓ ' : ''}{d.symbol || d.id}</button>;
+            })}
+          </div>
+          <button onClick={() => runMultiSymbol(sel)} disabled={msBusy || msIds.length < 2} style={btn(LIME)}>{msBusy ? (msMsg || (es ? 'Calculando…' : 'Computing…')) : (es ? 'Armar portafolio' : 'Build portfolio')}</button>
+          {msBusy && <div style={{ marginTop: 10 }}><ProgressBarIndeterminate label={msMsg} /></div>}
+          {msRes && <PortView es={es} res={msRes} />}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Vista del optimizador: mapa de calor (TP×SL para el mejor período) + meseta.
+function OptView({ es, res, onUse }: { es: boolean; res: OptResult; onUse: (c: any) => void }) {
+  const { plateau, best, stability, tested } = res;
+  if (!plateau) return <div className="muted" style={{ fontSize: 12.5, marginTop: 10 }}>{es ? 'Sin resultados.' : 'No results.'}</div>;
+  const label = (c: any) => res.axes.map((ax) => `${ax === 'p1' ? (es ? 'Período' : 'Period') : ax.toUpperCase()} ${c[ax]}`).join(' · ');
+  const maxScore = Math.max(1e-9, ...res.cells.map((c) => c.score));
+  const heat = (v: number) => { const t = Math.max(0, Math.min(1, v / maxScore)); return `color-mix(in srgb, ${GREEN} ${Math.round(t * 100)}%, var(--bg2))`; };
+  return (
+    <div style={{ marginTop: 12 }}>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+        <div style={{ background: `color-mix(in srgb,${GREEN} 12%,var(--bg2))`, border: `1px solid color-mix(in srgb,${GREEN} 35%,var(--line))`, borderRadius: 10, padding: '8px 12px' }}>
+          <div className="muted" style={{ fontSize: 11 }}>{es ? 'Meseta recomendada' : 'Recommended plateau'}</div>
+          <div style={{ fontWeight: 800, fontSize: 13.5 }}>{label(plateau)}</div>
+          <div className="muted" style={{ fontSize: 11.5 }}>PF {plateau.pf} · {es ? 'neto' : 'net'} ${plateau.net.toLocaleString('en-US')} · DD {plateau.dd}% · {plateau.n} ops</div>
+        </div>
+        <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '8px 12px' }}>
+          <div className="muted" style={{ fontSize: 11 }}>{es ? 'Estabilidad de la meseta' : 'Plateau stability'}</div>
+          <div style={{ fontWeight: 800, fontSize: 18, color: stability >= 0.6 ? GREEN : stability >= 0.35 ? AMBER : RED }}>{Math.round(stability * 100)}%</div>
+          <div className="muted" style={{ fontSize: 11 }}>{tested} {es ? 'combinaciones' : 'combos'}</div>
+        </div>
+        {best && <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '8px 12px' }}>
+          <div className="muted" style={{ fontSize: 11 }}>{es ? 'Pico bruto (¡ojo, sobre-ajuste!)' : 'Raw peak (beware overfit!)'}</div>
+          <div style={{ fontWeight: 700, fontSize: 12.5 }}>{label(best)}</div>
+          <div className="muted" style={{ fontSize: 11.5 }}>PF {best.pf} · DD {best.dd}%</div>
+        </div>}
+      </div>
+      {/* Mapa de calor de todas las combinaciones probadas (color = puntuación robusta). */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+        {res.cells.map((c, i) => (
+          <div key={i} title={`${label(c)} · score ${c.score.toFixed(2)} · PF ${c.pf}`} style={{ width: 26, height: 26, borderRadius: 5, background: heat(c.score), border: c === plateau ? `2px solid ${GREEN}` : c === best ? `2px solid ${AMBER}` : '1px solid var(--line)' }} />
+        ))}
+      </div>
+      <button onClick={() => onUse(plateau)} style={{ ...btn(GREEN), marginTop: 12 }}>{es ? '✓ Usar la meseta' : '✓ Use the plateau'}</button>
+    </div>
+  );
+}
+
+// Vista del portafolio multi-símbolo: métricas combinadas + matriz de correlación.
+function PortView({ es, res }: { es: boolean; res: PortResult }) {
+  const cc = (v: number) => v >= 0.6 ? RED : v >= 0.3 ? AMBER : v <= -0.1 ? BLUE : GREEN;
+  return (
+    <div style={{ marginTop: 12 }}>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
+        {[[es ? 'Neto combinado' : 'Combined net', '$' + res.combinedNet.toLocaleString('en-US'), GREEN], [es ? 'PF combinado' : 'Combined PF', String(res.combinedPf), AQUA], [es ? 'DD combinado' : 'Combined DD', res.combinedDDpct + '%', res.combinedDDpct > 25 ? RED : AMBER], [es ? 'Correlación media' : 'Avg correlation', String(res.avgCorr), cc(res.avgCorr)], [es ? 'Diversificación' : 'Diversification', Math.round(res.diversification * 100) + '%', res.diversification >= 0.6 ? GREEN : AMBER]].map(([l, v, c]: any, i) => (
+          <div key={i} style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '8px 12px', minWidth: 120 }}>
+            <div className="muted" style={{ fontSize: 11 }}>{l}</div>
+            <div style={{ fontWeight: 800, fontSize: 16, color: c }}>{v}</div>
+          </div>
+        ))}
+      </div>
+      {/* Matriz de correlación entre robots (mensual). */}
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ borderCollapse: 'collapse', fontSize: 11.5 }}>
+          <thead><tr><th style={{ padding: 5 }}></th>{res.legs.map((l, j) => <th key={j} style={{ padding: 5, whiteSpace: 'nowrap' }}>{l.name}</th>)}</tr></thead>
+          <tbody>
+            {res.legs.map((l, i) => (
+              <tr key={i}>
+                <td style={{ padding: 5, fontWeight: 700, whiteSpace: 'nowrap' }}>{l.name} <span className="muted">${l.net.toLocaleString('en-US')}{l.blown ? ' ⚠' : ''}</span></td>
+                {res.legs.map((_, j) => { const v = res.corr[i][j]; return <td key={j} style={{ padding: '5px 8px', textAlign: 'center', background: i === j ? 'var(--bg2)' : `color-mix(in srgb,${cc(v)} 22%,transparent)`, fontWeight: 700 }}>{v.toFixed(2)}</td>; })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="muted" style={{ fontSize: 11, marginTop: 8 }}>{es ? 'Verde/azul = baja o negativa correlación (mejor diversificación). Rojo = se mueven juntos (poco diversifica).' : 'Green/blue = low or negative correlation (better diversification). Red = they move together (little diversification).'}</p>
     </div>
   );
 }

@@ -20,13 +20,20 @@ export type Costs = {
   spreadPips: number; slippagePips: number; commission: number; moneyPerPip: number; lot: number; pip?: number;
   // Gestión monetaria (estilo StrategyQuant): capital inicial + modelo de tamaño.
   capital?: number;                          // balance inicial de la cuenta
-  mm?: 'fixed' | 'risk_pct' | 'risk_money';  // lote fijo | % de riesgo por op sobre EQUITY (compuesto) | riesgo fijo en $
-  riskPct?: number;                          // % del equity por operación (mm='risk_pct')
+  mm?: 'fixed' | 'risk_pct' | 'risk_money' | 'risk_atr'; // lote fijo | % sobre equity | riesgo fijo $ | % con stop por volatilidad (ATR)
+  riskPct?: number;                          // % del equity por operación (risk_pct / risk_atr)
   riskMoney?: number;                        // $ arriesgados por operación (mm='risk_money')
+  atrMult?: number;                          // multiplicador de ATR para el stop (mm='risk_atr')
+  pyramid?: number;                          // nº máximo de añadidos a favor (pirámide); 0 = sin pirámide
   ddType?: 'none' | 'static' | 'trailing';   // límite de drawdown: estático (desde balance inicial) o trailing (desde el pico)
   maxDDpct?: number;                         // % máximo de drawdown antes de "reventar" la cuenta
+  // Reglas de reto prop firm (opcional): objetivo, pérdida diaria máx, días mínimos.
+  chTarget?: number;                         // objetivo de beneficio en % del balance
+  chDailyLoss?: number;                      // pérdida diaria máxima en % del balance (0 = sin límite)
+  chMinDays?: number;                        // días de trading mínimos
 };
-export type BtResult = { trades: { t: number; profit: number }[]; n: number; net: number; pf: number; winRate: number; maxddPct: number; expectancy: number; blown?: boolean; finalEquity?: number };
+export type Challenge = { target: number; dailyLoss: number; minDays: number; profitPct: number; daysTraded: number; hitTarget: boolean; dailyBreach: boolean; pass: boolean };
+export type BtResult = { trades: { t: number; profit: number }[]; n: number; net: number; pf: number; winRate: number; maxddPct: number; expectancy: number; blown?: boolean; finalEquity?: number; challenge?: Challenge };
 
 // Adivina el instrumento desde el nombre del archivo (Dukascopy/StrategyQuant).
 export function guessSymbolFromName(name: string): string {
@@ -173,7 +180,9 @@ export function runBacktest(bars: Bar[], spec: Spec, costs: Costs): BtResult {
   }
 
   const trades: { t: number; profit: number }[] = [];
-  let pos: null | { dir: 1 | -1; entry: number; sl: number; tp: number; bars: number; atrPips: number; be: boolean; lot: number } = null;
+  // La posición sostiene 1..N "patas" (legs) para permitir PIRÁMIDE (añadir a favor).
+  type Leg = { entry: number; lot: number };
+  let pos: null | { dir: 1 | -1; sl: number; tp: number; bars: number; atrPips: number; be: boolean; legs: Leg[]; lastAdd: number } = null;
   const costPips = costs.spreadPips + 2 * costs.slippagePips;
   // Gestión monetaria: capital inicial y equity para el % de riesgo compuesto.
   const capital = costs.capital && costs.capital > 0 ? costs.capital : 10000;
@@ -181,13 +190,25 @@ export function runBacktest(bars: Bar[], spec: Spec, costs: Costs): BtResult {
   const ddType = costs.ddType || 'none';
   const maxDDpct = costs.maxDDpct || 0;
   const mm = costs.mm || 'fixed';
+  const pyramidMax = Math.max(0, Math.floor(costs.pyramid || 0));   // añadidos a favor permitidos
+  // ATR de sizing: para 'risk_atr' el stop se deriva de la volatilidad.
+  const atrMult = costs.atrMult && costs.atrMult > 0 ? costs.atrMult : 1.5;
   function lotFor(slPipsAtEntry: number): number {
     if (mm === 'fixed' || slPipsAtEntry <= 0 || costs.moneyPerPip <= 0) return costs.lot || 1;
-    const risk = mm === 'risk_pct' ? equity * ((costs.riskPct || 1) / 100) : (costs.riskMoney || 100);
+    // % sobre equity (risk_pct y risk_atr componen sobre el equity vivo; anti-martingala: sube tras ganar, baja tras perder).
+    const risk = mm === 'risk_money' ? (costs.riskMoney || 100) : equity * ((costs.riskPct || 1) / 100);
     const lot = risk / (slPipsAtEntry * costs.moneyPerPip);
     return Math.max(0.01, Math.min(lot, 1000));
   }
+  // Reglas de reto prop firm (opcional).
+  const chTarget = costs.chTarget || 0, chDailyLoss = costs.chDailyLoss || 0, chMinDays = costs.chMinDays || 0;
+  const chOn = chTarget > 0 || chDailyLoss > 0 || chMinDays > 0;
+  const dayKey = (t: number) => Math.floor(t / 86400000);
+  const dayPnl: Record<number, number> = {}; const daySet = new Set<number>();
+  let hitTarget = false, dailyBreach = false;
 
+  const avgEntry = (p: { legs: Leg[] }) => { let w = 0, s = 0; for (const l of p.legs) { w += l.lot; s += l.entry * l.lot; } return w ? s / w : p.legs[0].entry; };
+  const totLot = (p: { legs: Leg[] }) => p.legs.reduce((a, l) => a + l.lot, 0);
   for (let i = 31; i < n; i++) {
     const b = bars[i];
     if (pos) {
@@ -195,11 +216,12 @@ export function runBacktest(bars: Bar[], spec: Spec, costs: Costs): BtResult {
       let exitPrice = NaN;
       if (pos.dir === 1) { if (b.l <= pos.sl) exitPrice = pos.sl; else if (b.h >= pos.tp) exitPrice = pos.tp; }
       else { if (b.h >= pos.sl) exitPrice = pos.sl; else if (b.l <= pos.tp) exitPrice = pos.tp; }
-      // Break-even.
+      const ae = avgEntry(pos);
+      // Break-even (respecto al precio medio de entrada).
       if (isNaN(exitPrice) && spec.be !== 'off' && !pos.be) {
         const bePips = pips(spec.be === 'be_atr' ? 'atr1' : spec.be.replace('be', ''), pos.atrPips);
-        const prog = pos.dir === 1 ? (b.h - pos.entry) / pip : (pos.entry - b.l) / pip;
-        if (prog >= bePips) { pos.sl = pos.dir === 1 ? pos.entry + pip : pos.entry - pip; pos.be = true; }
+        const prog = pos.dir === 1 ? (b.h - ae) / pip : (ae - b.l) / pip;
+        if (prog >= bePips) { pos.sl = pos.dir === 1 ? ae + pip : ae - pip; pos.be = true; }
       }
       // Trailing.
       if (isNaN(exitPrice) && spec.trailing !== 'off') {
@@ -207,20 +229,39 @@ export function runBacktest(bars: Bar[], spec: Spec, costs: Costs): BtResult {
         if (pos.dir === 1) { const ns = b.h - trPips * pip; if (ns > pos.sl) pos.sl = ns; } else { const ns = b.l + trPips * pip; if (ns < pos.sl) pos.sl = ns; }
       }
       // Salidas por señal / indicador / tiempo.
+      let flip: 'long' | 'short' | 'none' = 'none';
       if (isNaN(exitPrice)) {
         pos.bars++;
-        const flip = entryAt(i);
+        flip = entryAt(i);
         if (spec.exit === 'opp_signal' && ((pos.dir === 1 && flip === 'short') || (pos.dir === -1 && flip === 'long'))) exitPrice = b.c;
         else if (spec.exit === 'indicator' && s1.trend[i] === -pos.dir) exitPrice = b.c;
         else if (spec.exit === 'time' && pos.bars >= 24) exitPrice = b.c;
       }
+      // PIRÁMIDE: si sigue abierta y hay señal a favor y el precio avanzó ≥0.5·ATR desde el último añadido.
+      if (isNaN(exitPrice) && pyramidMax > 0 && pos.legs.length <= pyramidMax) {
+        const same = (pos.dir === 1 && flip === 'long') || (pos.dir === -1 && flip === 'short');
+        const advPips = pos.dir === 1 ? (b.c - pos.lastAdd) / pip : (pos.lastAdd - b.c) / pip;
+        if (same && filterOk(i, pos.dir) && advPips >= pos.atrPips * 0.5) {
+          const slP = mm === 'risk_atr' ? atrMult * pos.atrPips : (pips(spec.sl, pos.atrPips) || 30);
+          const addEntry = b.c + pos.dir * costs.slippagePips * pip;
+          pos.legs.push({ entry: addEntry, lot: lotFor(slP) });
+          pos.lastAdd = b.c;
+        }
+      }
       if (!isNaN(exitPrice)) {
-        const rawPips = ((exitPrice - pos.entry) / pip) * pos.dir;
-        const money = (rawPips - costPips) * costs.moneyPerPip * pos.lot - costs.commission * pos.lot * 2;
+        const lot = totLot(pos);
+        const rawPips = ((exitPrice - ae) / pip) * pos.dir;
+        const money = (rawPips - costPips) * costs.moneyPerPip * lot - costs.commission * lot * 2;
         equity += money;
         if (equity > peakEq) peakEq = equity;
         trades.push({ t: b.t, profit: Math.round(money * 100) / 100 });
+        if (chOn) { dayPnl[dayKey(b.t)] = (dayPnl[dayKey(b.t)] || 0) + money; daySet.add(dayKey(b.t)); }
         pos = null;
+        // Reto prop firm: objetivo alcanzado / pérdida diaria excedida.
+        if (chOn) {
+          if (chTarget > 0 && equity - capital >= capital * (chTarget / 100)) hitTarget = true;
+          if (chDailyLoss > 0 && (dayPnl[dayKey(b.t)] || 0) <= -capital * (chDailyLoss / 100)) dailyBreach = true;
+        }
         // Límite de drawdown (estático desde el balance inicial / trailing desde el pico): revienta la cuenta.
         if (ddType !== 'none' && maxDDpct > 0) {
           const floor = ddType === 'trailing' ? peakEq * (1 - maxDDpct / 100) : capital * (1 - maxDDpct / 100);
@@ -236,9 +277,11 @@ export function runBacktest(bars: Bar[], spec: Spec, costs: Costs): BtResult {
       const dir = sig === 'long' ? 1 : -1;
       if (!filterOk(i, dir)) continue;
       const atrPips = atrArr[i] ? atrArr[i] / pip : 20;
-      const tpP = pips(spec.tp, atrPips) || 40, slP = pips(spec.sl, atrPips) || 30;
+      // Para risk_atr el stop se deriva de la volatilidad (atrMult·ATR); si no, del spec.
+      const slP = mm === 'risk_atr' ? atrMult * atrPips : (pips(spec.sl, atrPips) || 30);
+      const tpP = pips(spec.tp, atrPips) || 40;
       const entry = b.c + dir * costs.slippagePips * pip;
-      pos = { dir, entry, tp: entry + dir * tpP * pip, sl: entry - dir * slP * pip, bars: 0, atrPips, be: false, lot: lotFor(slP) };
+      pos = { dir, tp: entry + dir * tpP * pip, sl: entry - dir * slP * pip, bars: 0, atrPips, be: false, legs: [{ entry, lot: lotFor(slP) }], lastAdd: b.c };
     }
   }
 
@@ -246,13 +289,21 @@ export function runBacktest(bars: Bar[], spec: Spec, costs: Costs): BtResult {
   let gp = 0, gl = 0, wins = 0, net = 0, cum = capital, peak2 = capital, dd = 0;
   for (const t of trades) { net += t.profit; if (t.profit >= 0) { gp += t.profit; if (t.profit > 0) wins++; } else gl += -t.profit; cum += t.profit; if (cum > peak2) peak2 = cum; dd = Math.max(dd, peak2 - cum); }
   const N = trades.length;
+  // Veredicto del reto prop firm (si hay reglas activas).
+  let challenge: Challenge | undefined;
+  if (chOn) {
+    const profitPct = Math.round(((equity - capital) / capital) * 1000) / 10;
+    const daysTraded = daySet.size;
+    const pass = !blown && !dailyBreach && (chTarget <= 0 || hitTarget) && (chMinDays <= 0 || daysTraded >= chMinDays);
+    challenge = { target: chTarget, dailyLoss: chDailyLoss, minDays: chMinDays, profitPct, daysTraded, hitTarget, dailyBreach, pass };
+  }
   return {
     trades, n: N, net: Math.round(net),
     pf: gl > 0 ? Math.round((gp / gl) * 100) / 100 : (gp > 0 ? 99 : 0),
     winRate: N ? Math.round((wins / N) * 100) : 0,
     maxddPct: peak2 > 0 ? Math.round((dd / peak2) * 1000) / 10 : 0,
     expectancy: N ? Math.round((net / N) * 100) / 100 : 0,
-    blown, finalEquity: Math.round(equity),
+    blown, finalEquity: Math.round(equity), challenge,
   };
 }
 
