@@ -25,8 +25,8 @@ function useAnalysis() {
 // ============================================================
 
 const GREEN = '#1D9E75', AMBER = '#EF9F27', RED = '#E24B4A', VIOLET = '#a06bff';
-// Paleta FRESCA solo para el Constructor (teal/cian — distinta a toda la app Onyx).
-const TEAL = '#12b3a6', AQUA = '#2dd4bf', SKY = '#22b8cf';
+// Paleta FRESCA y VIVA solo para el Constructor (teal/aqua/coral — nada de púrpura ni verde apagado).
+const TEAL = '#0fc2a0', AQUA = '#22e3c3', SKY = '#22c1e0', MINT = '#19e39a', CORAL = '#ff7a59';
 const card: any = { background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, padding: 18 };
 
 function statusColor(s: string) { return s === 'pass' ? GREEN : s === 'warn' ? AMBER : RED; }
@@ -80,8 +80,8 @@ export default function Factory({ canManage = true }: { canManage?: boolean }) {
       </div>
 
       {sub === 'datos' && <DataGate es={es} canManage={canManage} post={post} reload={load} datasets={d.datasets || []} />}
-      {sub === 'constructor' && <Builder es={es} canManage={canManage} post={post} reload={load} nextName={d.nextName} datasets={d.datasets || []} templates={d.templates || []} />}
-      {sub === 'motor' && <FactoryEngine es={es} canManage={canManage} post={post} reload={load} datasets={d.datasets || []} />}
+      {sub === 'constructor' && <Builder es={es} canManage={canManage} post={post} reload={load} nextName={d.nextName} datasets={d.datasets || []} templates={d.templates || []} blocks={d.blocks || []} />}
+      {sub === 'motor' && <FactoryEngine es={es} canManage={canManage} post={post} reload={load} datasets={d.datasets || []} blocks={d.blocks || []} />}
       {sub === 'laboratorio' && <FactoryLab es={es} canManage={canManage} post={post} reload={load} bots={d.bots || []} datasets={d.datasets || []} />}
       {sub === 'pipeline' && <FactoryPipeline es={es} canManage={canManage} post={post} />}
       {sub === 'robots' && <BotList es={es} canManage={canManage} post={post} reload={load} bots={d.bots || []} />}
@@ -265,7 +265,7 @@ function DataGate({ es, canManage, post, reload, datasets }: any) {
 function chip(c: string): any { return { display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 99, background: `color-mix(in srgb,${c} 15%,transparent)`, color: c, border: `1px solid color-mix(in srgb,${c} 30%,transparent)` }; }
 
 // -------- Constructor --------
-function Builder({ es, canManage, post, reload, nextName, datasets, templates = [] }: any) {
+function Builder({ es, canManage, post, reload, nextName, datasets, templates = [], blocks = [] }: any) {
   const [platform, setPlatform] = useState<'mt5' | 'mt4'>('mt5');
   const [symbol, setSymbol] = useState('');
   const [tf, setTf] = useState('M15');
@@ -301,7 +301,7 @@ function Builder({ es, canManage, post, reload, nextName, datasets, templates = 
         <h3 style={{ margin: 0, flex: 1 }}>{es ? 'Constructor de robots (solo admin)' : 'Robot builder (admin only)'}</h3>
         {canManage && <button onClick={() => { setGenCfg(null); setShowGen(true); }} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 15px', borderRadius: 10, cursor: 'pointer', fontWeight: 800, fontSize: 13, border: `1px solid color-mix(in srgb,${SKY} 45%,transparent)`, background: `color-mix(in srgb,${SKY} 14%,transparent)`, color: SKY }}>🧬 {es ? 'Generador de estrategias' : 'Strategy generator'}</button>}
       </div>
-      {showGen && <StratGenerator es={es} post={post} onClose={() => setShowGen(false)} initialCfg={genCfg} symbol={symbol} tf={tf} family={family} reload={reload} />}
+      {showGen && <StratGenerator es={es} post={post} onClose={() => setShowGen(false)} initialCfg={genCfg} symbol={symbol} tf={tf} family={family} reload={reload} blocks={blocks} />}
 
       {/* Biblioteca de plantillas (estilo StrategyQuant) */}
       <TemplateLibrary es={es} canManage={canManage} post={post} reload={reload} templates={templates} datasets={usable} onUse={useTemplate} />
@@ -371,14 +371,14 @@ function TemplateLibrary({ es, canManage, post, reload, templates, datasets, onU
     try { await post({ action: 'template_delete', id }); toast(es ? 'Borrada' : 'Deleted'); reload(); } catch (e: any) { toastErr(e?.message); }
   }
 
-  const originChip = (o: string) => o === 'preset' ? { c: SKY, t: es ? 'de fábrica' : 'preset' } : o === 'ai' ? { c: '#c084fc', t: '✨ Claude' } : { c: AQUA, t: es ? 'tuya' : 'custom' };
+  const originChip = (o: string) => o === 'preset' ? { c: SKY, t: es ? 'de fábrica' : 'preset' } : o === 'ai' ? { c: CORAL, t: '✨ Claude' } : { c: AQUA, t: es ? 'tuya' : 'custom' };
 
   return (
     <div style={{ marginTop: 16, background: 'var(--bg2)', borderRadius: 12, padding: 14, border: `1px solid color-mix(in srgb,${TEAL} 22%,var(--line))` }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
         <b style={{ fontSize: 14, flex: 1 }}>📚 {es ? 'Biblioteca de plantillas' : 'Template library'} <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· {es ? 'nombre · instrumento · temporalidad' : 'name · instrument · timeframe'}</span></b>
         {canManage && <button onClick={() => onUse({ config: {}, symbol: '', timeframe: tfDefault, family: '' })} style={{ ...btn(TEAL), padding: '7px 12px' }}>＋ {es ? 'Nueva' : 'New'}</button>}
-        {canManage && <button onClick={() => { setAiOpen((v) => !v); setAiRes(null); }} style={{ ...btn('#c084fc'), padding: '7px 12px' }}>✨ {es ? 'Claude, arma una' : 'Ask Claude'}</button>}
+        {canManage && <button onClick={() => { setAiOpen((v) => !v); setAiRes(null); }} style={{ ...btn(CORAL), padding: '7px 12px' }}>✨ {es ? 'Claude, arma una' : 'Ask Claude'}</button>}
       </div>
 
       {aiOpen && (
@@ -389,14 +389,14 @@ function TemplateLibrary({ es, canManage, post, reload, templates, datasets, onU
             <Lbl t={es ? 'Familia (opcional)' : 'Family (optional)'}><select value={aiFam} onChange={(e) => setAiFam(e.target.value)} style={inp}><option value="">{es ? 'auto' : 'auto'}</option>{[['tendencia', es ? 'Tendencia' : 'Trend'], ['rango', es ? 'Rango' : 'Range'], ['ruptura', es ? 'Ruptura' : 'Breakout'], ['reversion', es ? 'Reversión' : 'Reversion'], ['volatilidad', es ? 'Volatilidad' : 'Volatility'], ['scalping', 'Scalping']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></Lbl>
             <Lbl t={es ? 'Usar datos de…' : 'Use data from…'}><select value={aiDs} onChange={(e) => setAiDs(e.target.value)} style={inp}><option value="">{es ? '— sin dataset —' : '— no dataset —'}</option>{(datasets as any[]).map((d) => <option key={d.id} value={d.id}>{d.symbol} · {d.from_year || ''}–{d.to_year || ''}</option>)}</select></Lbl>
           </div>
-          <button onClick={askClaude} disabled={aiBusy} style={{ ...btn('#c084fc'), marginTop: 10 }}>{aiBusy ? (es ? 'Pensando…' : 'Thinking…') : (es ? '✨ Diseñar plantilla' : '✨ Design template')}</button>
+          <button onClick={askClaude} disabled={aiBusy} style={{ ...btn(CORAL), marginTop: 10 }}>{aiBusy ? (es ? 'Pensando…' : 'Thinking…') : (es ? '✨ Diseñar plantilla' : '✨ Design template')}</button>
           {aiRes && (
             <div style={{ marginTop: 12, borderTop: '1px solid var(--line)', paddingTop: 12 }}>
               <div style={{ fontSize: 14, fontWeight: 800 }}>{aiRes.name} {!aiRes.byAi && <span className="muted" style={{ fontWeight: 400, fontSize: 11 }}>({es ? 'base sin IA — conecta ANTHROPIC_API_KEY' : 'base, no AI — set ANTHROPIC_API_KEY'})</span>}</div>
               <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{tplSummary(es, aiRes.config)}</div>
               {aiRes.rationale && <div style={{ fontSize: 12, marginTop: 6, lineHeight: 1.55, background: 'var(--bg2)', borderRadius: 8, padding: '8px 10px' }}>{aiRes.rationale}</div>}
               <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-                {canManage && <button onClick={saveAi} style={btn(GREEN)}>{es ? '💾 Guardar plantilla' : '💾 Save template'}</button>}
+                {canManage && <button onClick={saveAi} style={btn(MINT)}>{es ? '💾 Guardar plantilla' : '💾 Save template'}</button>}
                 <button onClick={() => onUse({ config: aiRes.config, symbol: aiSym, timeframe: aiTf, family: aiRes.family })} style={btn(TEAL)}>{es ? 'Usar ahora' : 'Use now'}</button>
               </div>
             </div>
@@ -413,7 +413,7 @@ function TemplateLibrary({ es, canManage, post, reload, templates, datasets, onU
             </div>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               <span style={chip(TEAL)}>{t.symbol || '—'}</span>
-              <span style={chip('var(--brand)')}>{t.timeframe || '—'}</span>
+              <span style={chip(SKY)}>{t.timeframe || '—'}</span>
               {t.family && <span style={chip('var(--tx)')}>{t.family}</span>}
             </div>
             <div className="muted" style={{ fontSize: 11, lineHeight: 1.5, minHeight: 30 }}>{tplSummary(es, t.config)}</div>

@@ -14,41 +14,59 @@ const O = (id: string, es: string, en?: string): Opt => ({ id, es, en: en || es 
 
 export const BLOCKS: Block[] = [
   { key: 'indicators', es: 'Indicadores', en: 'Indicators', multi: true, note: 'El generador combina hasta 2–3 por estrategia.', opts: [
-    O('ema', 'EMA'), O('sma', 'SMA'), O('rsi', 'RSI'), O('macd', 'MACD'), O('stoch', 'Estocástico', 'Stochastic'),
-    O('bb', 'Bollinger'), O('atr', 'ATR'), O('adx', 'ADX'), O('cci', 'CCI'), O('mom', 'Momentum'),
-    O('ichimoku', 'Ichimoku'), O('psar', 'Parabolic SAR'), O('wpr', 'Williams %R'), O('vwap', 'VWAP'),
+    O('ema', 'EMA'), O('sma', 'SMA'), O('wma', 'WMA'), O('hma', 'Hull MA', 'Hull MA'), O('dema', 'DEMA'), O('tema', 'TEMA'),
+    O('rsi', 'RSI'), O('macd', 'MACD'), O('stoch', 'Estocástico', 'Stochastic'), O('cci', 'CCI'), O('wpr', 'Williams %R'), O('mfi', 'MFI'), O('mom', 'Momentum'), O('roc', 'ROC'),
+    O('bb', 'Bollinger'), O('keltner', 'Keltner'), O('donchian', 'Donchian'), O('envelopes', 'Envelopes'), O('atr', 'ATR'),
+    O('adx', 'ADX'), O('dmi', 'DMI'), O('aroon', 'Aroon'), O('supertrend', 'SuperTrend'), O('psar', 'Parabolic SAR'), O('ichimoku', 'Ichimoku'),
+    O('obv', 'OBV'), O('cmf', 'CMF'), O('vwap', 'VWAP'),
   ] },
   { key: 'entry', es: 'Reglas de entrada', en: 'Entry rules', multi: true, opts: [
     O('cross_up', 'Cruce al alza', 'Cross up'), O('cross_dn', 'Cruce a la baja', 'Cross down'),
     O('above', 'Precio por encima', 'Price above'), O('below', 'Precio por debajo', 'Price below'),
     O('oversold', 'Sobreventa', 'Oversold'), O('overbought', 'Sobrecompra', 'Overbought'),
     O('breakout', 'Ruptura', 'Breakout'), O('pullback', 'Pullback'), O('divergence', 'Divergencia', 'Divergence'),
+    O('strong_up', 'Tendencia fuerte ↑', 'Strong trend up'), O('strong_dn', 'Tendencia fuerte ↓', 'Strong trend down'),
+    O('hh', 'Máximo más alto', 'Higher high'), O('ll', 'Mínimo más bajo', 'Lower low'),
+    O('ma_slope_up', 'Pendiente MA ↑', 'MA slope up'), O('ma_slope_dn', 'Pendiente MA ↓', 'MA slope down'),
+    O('mid_cross_up', 'Cruce del 50 ↑', 'Mid cross up'), O('mid_cross_dn', 'Cruce del 50 ↓', 'Mid cross down'),
+    O('revert_band', 'Reversión extrema', 'Extreme reversion'), O('squeeze_break', 'Ruptura de compresión', 'Squeeze breakout'),
   ] },
   { key: 'exit', es: 'Salidas', en: 'Exits', multi: true, opts: [
     O('opp_signal', 'Señal opuesta', 'Opposite signal'), O('fixed', 'TP/SL fijo', 'Fixed TP/SL'),
     O('time', 'Por tiempo', 'Time-based'), O('indicator', 'Por indicador', 'Indicator exit'),
+  ] },
+  { key: 'filter', es: 'Filtro', en: 'Filter', multi: true, note: 'Condición extra que debe cumplirse para operar.', opts: [
+    O('none', 'Sin filtro', 'No filter'), O('trend', 'Solo con la tendencia (EMA200)', 'Only with trend (EMA200)'),
+    O('volhigh', 'Solo alta volatilidad', 'Only high volatility'), O('vollow', 'Solo baja volatilidad', 'Only low volatility'),
   ] },
   { key: 'sessions', es: 'Sesiones', en: 'Sessions', multi: true, opts: [
     O('sydney', 'Sídney', 'Sydney'), O('tokyo', 'Tokio', 'Tokyo'), O('london', 'Londres', 'London'),
     O('ny', 'Nueva York', 'New York'), O('overlap', 'Solape Londres-NY', 'London-NY overlap'), O('all', 'Todo el día', 'All day'),
   ] },
   { key: 'tp', es: 'Take Profit', en: 'Take Profit', multi: true, opts: [
-    O('20', '20 pips'), O('40', '40 pips'), O('60', '60 pips'), O('100', '100 pips'),
-    O('atr1', '1× ATR'), O('atr2', '2× ATR'), O('atr3', '3× ATR'),
+    O('20', '20 pips'), O('30', '30 pips'), O('40', '40 pips'), O('60', '60 pips'), O('80', '80 pips'), O('100', '100 pips'), O('150', '150 pips'), O('200', '200 pips'),
+    O('atr1', '1× ATR'), O('atr15', '1.5× ATR'), O('atr2', '2× ATR'), O('atr3', '3× ATR'),
   ] },
   { key: 'sl', es: 'Stop Loss', en: 'Stop Loss', multi: true, opts: [
-    O('15', '15 pips'), O('30', '30 pips'), O('50', '50 pips'), O('80', '80 pips'),
+    O('15', '15 pips'), O('20', '20 pips'), O('30', '30 pips'), O('50', '50 pips'), O('80', '80 pips'), O('100', '100 pips'),
     O('atr1', '1× ATR'), O('atr15', '1.5× ATR'), O('atr2', '2× ATR'),
   ] },
   { key: 'be', es: 'Break-even', en: 'Break-even', multi: true, opts: [
-    O('off', 'Sin BE', 'No BE'), O('be10', 'BE a +10 pips'), O('be20', 'BE a +20 pips'), O('be_atr', 'BE a 1× ATR'),
+    O('off', 'Sin BE', 'No BE'), O('be10', 'BE a +10 pips'), O('be20', 'BE a +20 pips'), O('be30', 'BE a +30 pips'), O('be_atr', 'BE a 1× ATR'),
   ] },
   { key: 'trailing', es: 'Trailing stop', en: 'Trailing stop', multi: true, opts: [
-    O('off', 'Sin trailing', 'No trailing'), O('t15', 'Trailing 15 pips'), O('t30', 'Trailing 30 pips'), O('t_atr', 'Trailing 1× ATR'),
+    O('off', 'Sin trailing', 'No trailing'), O('t15', 'Trailing 15 pips'), O('t20', 'Trailing 20 pips'), O('t30', 'Trailing 30 pips'), O('t50', 'Trailing 50 pips'), O('t_atr', 'Trailing 1× ATR'),
   ] },
 ];
 
 export type GenConfig = Record<string, string[]>; // key → ids elegidos
+
+// Adjunta la regla DSL a una spec si su entrada es un bloque personalizado (Claude).
+// `blockMap` mapea block_id → { conds, dir } (regla ejecutable por el motor).
+export function enrichSpec(spec: any, blockMap: Record<string, any>): any {
+  if (spec && spec.entry && blockMap && blockMap[spec.entry]) return { ...spec, customEntry: blockMap[spec.entry] };
+  return spec;
+}
 
 // Cuántas combinaciones distintas produce la configuración (producto de opciones).
 // Para indicadores cuenta pares (2 indicadores) para acercarse a lo real.

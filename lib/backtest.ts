@@ -8,9 +8,13 @@
 // ============================================================
 
 export type Bar = { t: number; o: number; h: number; l: number; c: number };
+// Regla personalizada (creada por Claude): condiciones sobre indicadores.
+export type CustomCond = { ind: string; field: 'osc' | 'trend'; op: 'gt' | 'lt' | 'cross_up' | 'cross_dn'; level: number };
+export type CustomRule = { conds: CustomCond[]; dir: 'long' | 'short' };
 export type Spec = {
   ind1: string; ind2?: string; entry: string; exit: string; sessions: string;
   tp: string; sl: string; be: string; trailing: string; p1?: number; p2?: number; dir?: 'both' | 'long' | 'short';
+  filter?: string; customEntry?: CustomRule;
 };
 export type Costs = { spreadPips: number; slippagePips: number; commission: number; moneyPerPip: number; lot: number; pip?: number };
 export type BtResult = { trades: { t: number; profit: number }[]; n: number; net: number; pf: number; winRate: number; maxddPct: number; expectancy: number };
@@ -34,6 +38,10 @@ function ema(v: number[], p: number): number[] { const o = new Array(v.length).f
 function rsi(v: number[], p: number): number[] { const o = new Array(v.length).fill(NaN); let g = 0, l = 0; for (let i = 1; i < v.length; i++) { const d = v[i] - v[i - 1]; const up = d > 0 ? d : 0, dn = d < 0 ? -d : 0; if (i <= p) { g += up; l += dn; if (i === p) { g /= p; l /= p; o[i] = 100 - 100 / (1 + g / (l || 1e-9)); } } else { g = (g * (p - 1) + up) / p; l = (l * (p - 1) + dn) / p; o[i] = 100 - 100 / (1 + g / (l || 1e-9)); } } return o; }
 function atr(bars: Bar[], p: number): number[] { const tr = bars.map((b, i) => i ? Math.max(b.h - b.l, Math.abs(b.h - bars[i - 1].c), Math.abs(b.l - bars[i - 1].c)) : b.h - b.l); return ema(tr, p); }
 function stdev(v: number[], p: number): number[] { const m = sma(v, p); const o = new Array(v.length).fill(NaN); for (let i = p - 1; i < v.length; i++) { let s = 0; for (let j = i - p + 1; j <= i; j++) s += (v[j] - m[i]) ** 2; o[i] = Math.sqrt(s / p); } return o; }
+function wma(v: number[], p: number): number[] { const o = new Array(v.length).fill(NaN); const den = (p * (p + 1)) / 2; for (let i = p - 1; i < v.length; i++) { let s = 0; for (let j = 0; j < p; j++) s += v[i - j] * (p - j); o[i] = s / den; } return o; }
+function hma(v: number[], p: number): number[] { const half = Math.max(1, Math.round(p / 2)); const sq = Math.max(1, Math.round(Math.sqrt(p))); const w1 = wma(v, half), w2 = wma(v, p); const raw = v.map((_, i) => 2 * w1[i] - w2[i]); return wma(raw, sq); }
+function roc(v: number[], p: number): number[] { const o = new Array(v.length).fill(NaN); for (let i = p; i < v.length; i++) o[i] = v[i - p] ? ((v[i] - v[i - p]) / v[i - p]) * 100 : 0; return o; }
+function median(v: number[]): number { if (!v.length) return 0; const s = [...v].sort((a, b) => a - b); return s[Math.floor(s.length / 2)]; }
 
 // Devuelve tendencia (-1/0/1) y oscilador (0..100) por indicador.
 function series(id: string, bars: Bar[], period: number): { trend: number[]; osc: number[] } {
@@ -50,7 +58,19 @@ function series(id: string, bars: Bar[], period: number): { trend: number[]; osc
     case 'wpr': { for (let i = period; i < n; i++) { let hh = -1e9, ll = 1e9; for (let j = i - period + 1; j <= i; j++) { hh = Math.max(hh, bars[j].h); ll = Math.min(ll, bars[j].l); } const w = hh > ll ? ((hh - c[i]) / (hh - ll)) * -100 : -50; osc[i] = 100 + w; trend[i] = Math.sign(osc[i] - 50); } break; }
     case 'mom': { for (let i = period; i < n; i++) { const mo = c[i] - c[i - period]; trend[i] = Math.sign(mo); osc[i] = Math.max(0, Math.min(100, 50 + (mo / (c[i] || 1)) * 5000)); } break; }
     case 'bb': { const m = sma(c, period), sd = stdev(c, period); for (let i = 0; i < n; i++) if (!isNaN(m[i])) { trend[i] = Math.sign(c[i] - m[i]); const up = m[i] + 2 * sd[i], lo = m[i] - 2 * sd[i]; osc[i] = up > lo ? ((c[i] - lo) / (up - lo)) * 100 : 50; } break; }
-    case 'adx': { const e = ema(c, period); setTrendFromMA(e); const a = atr(bars, period); for (let i = 0; i < n; i++) osc[i] = a[i] ? Math.min(100, (a[i] / (c[i] || 1)) * 10000) : 50; break; }
+    case 'adx': case 'dmi': { const e = ema(c, period); setTrendFromMA(e); const a = atr(bars, period); for (let i = 0; i < n; i++) osc[i] = a[i] ? Math.min(100, (a[i] / (c[i] || 1)) * 10000) : 50; break; }
+    case 'wma': setTrendFromMA(wma(c, period)); break;
+    case 'hma': setTrendFromMA(hma(c, period)); break;
+    case 'dema': { const e1 = ema(c, period), e2 = ema(e1, period); setTrendFromMA(e1.map((_, i) => 2 * e1[i] - e2[i])); break; }
+    case 'tema': { const e1 = ema(c, period), e2 = ema(e1, period), e3 = ema(e2, period); setTrendFromMA(e1.map((_, i) => 3 * e1[i] - 3 * e2[i] + e3[i])); break; }
+    case 'roc': { const r = roc(c, period); for (let i = 0; i < n; i++) if (!isNaN(r[i])) { trend[i] = Math.sign(r[i]); osc[i] = Math.max(0, Math.min(100, 50 + r[i] * 5)); } break; }
+    case 'supertrend': { const a = atr(bars, period); let dir = 1, up = 0, dn = 0; for (let i = 1; i < n; i++) { const hl2 = (bars[i].h + bars[i].l) / 2; const bu = hl2 + 3 * (a[i] || 0), bd = hl2 - 3 * (a[i] || 0); if (c[i] > up) dir = 1; else if (c[i] < dn) dir = -1; up = bu; dn = bd; trend[i] = dir; osc[i] = 50 + dir * 25; } break; }
+    case 'keltner': case 'envelopes': { const m = ema(c, period); const a = atr(bars, period); for (let i = 0; i < n; i++) if (!isNaN(m[i])) { trend[i] = Math.sign(c[i] - m[i]); const up = m[i] + 2 * (a[i] || 0), lo = m[i] - 2 * (a[i] || 0); osc[i] = up > lo ? ((c[i] - lo) / (up - lo)) * 100 : 50; } break; }
+    case 'donchian': { for (let i = period; i < n; i++) { let hh = -1e9, ll = 1e9; for (let j = i - period; j < i; j++) { hh = Math.max(hh, bars[j].h); ll = Math.min(ll, bars[j].l); } const mid = (hh + ll) / 2; trend[i] = Math.sign(c[i] - mid); osc[i] = hh > ll ? ((c[i] - ll) / (hh - ll)) * 100 : 50; } break; }
+    case 'mfi': { const tp = bars.map((b) => (b.h + b.l + b.c) / 3); for (let i = period; i < n; i++) { let pos = 0, neg = 0; for (let j = i - period + 1; j <= i; j++) { const rmf = tp[j] * (bars[j].h - bars[j].l + 1e-9); if (tp[j] > tp[j - 1]) pos += rmf; else neg += rmf; } const mr = neg ? pos / neg : 99; osc[i] = 100 - 100 / (1 + mr); trend[i] = Math.sign(osc[i] - 50); } break; }
+    case 'aroon': { for (let i = period; i < n; i++) { let hi = 0, lo = 0, hv = -1e9, lv = 1e9; for (let j = 0; j <= period; j++) { const b2 = bars[i - j]; if (b2.h > hv) { hv = b2.h; hi = j; } if (b2.l < lv) { lv = b2.l; lo = j; } } const au = ((period - hi) / period) * 100, ad = ((period - lo) / period) * 100; osc[i] = au; trend[i] = Math.sign(au - ad); } break; }
+    case 'obv': { let ob = 0; const arr = new Array(n).fill(0); for (let i = 1; i < n; i++) { ob += Math.sign(c[i] - c[i - 1]) * (bars[i].h - bars[i].l); arr[i] = ob; } const e = ema(arr, period); for (let i = 0; i < n; i++) if (!isNaN(e[i])) trend[i] = Math.sign(arr[i] - e[i]); break; }
+    case 'cmf': { for (let i = period; i < n; i++) { let mfv = 0, vol = 0; for (let j = i - period + 1; j <= i; j++) { const rng = bars[j].h - bars[j].l || 1e-9; const m2 = ((bars[j].c - bars[j].l) - (bars[j].h - bars[j].c)) / rng; const v2 = rng; mfv += m2 * v2; vol += v2; } const cm = vol ? mfv / vol : 0; osc[i] = Math.max(0, Math.min(100, 50 + cm * 50)); trend[i] = Math.sign(cm); } break; }
     default: setTrendFromMA(ema(c, period));
   }
   return { trend, osc };
@@ -78,10 +98,44 @@ export function runBacktest(bars: Bar[], spec: Spec, costs: Costs): BtResult {
   const atrArr = atr(bars, 14);
   const sessOk = HOURS[spec.sessions] || HOURS.all;
 
+  // Filtro opcional (tendencia/volatilidad).
+  const closes = bars.map((b) => b.c);
+  const ema200 = spec.filter === 'trend' ? ema(closes, 200) : null;
+  // Precálculo para squeeze_break (evita O(n²)).
+  const needSqueeze = spec.entry === 'squeeze_break';
+  const sdev20 = needSqueeze ? stdev(closes, 20) : null;
+  const sdevMed = needSqueeze && sdev20 ? median(sdev20.filter((x) => !isNaN(x))) : 0;
+  const atrMed = spec.filter === 'volhigh' || spec.filter === 'vollow' ? median(atrArr.filter((x) => !isNaN(x))) : 0;
+  function filterOk(i: number, dir: 1 | -1): boolean {
+    if (!spec.filter || spec.filter === 'none') return true;
+    if (spec.filter === 'trend' && ema200) { if (isNaN(ema200[i])) return true; return dir === 1 ? closes[i] > ema200[i] : closes[i] < ema200[i]; }
+    if (spec.filter === 'volhigh') return (atrArr[i] || 0) >= atrMed;
+    if (spec.filter === 'vollow') return (atrArr[i] || 0) <= atrMed;
+    return true;
+  }
+
+  // Series para reglas personalizadas de Claude (indicadores extra bajo demanda).
+  const custMap: Record<string, { trend: number[]; osc: number[] }> = {};
+  if (spec.customEntry && spec.customEntry.conds) { for (const c of spec.customEntry.conds) { if (!custMap[c.ind]) custMap[c.ind] = c.ind === spec.ind1 ? s1 : series(c.ind, bars, defPeriod(c.ind)); } }
+  function evalCustom(i: number): 'long' | 'short' | 'none' {
+    const r = spec.customEntry!; if (i < 2) return 'none';
+    for (const c of r.conds) {
+      const ser = custMap[c.ind]; if (!ser) return 'none';
+      const v = c.field === 'trend' ? ser.trend[i] : ser.osc[i];
+      const vp = c.field === 'trend' ? ser.trend[i - 1] : ser.osc[i - 1];
+      let ok = false;
+      if (c.op === 'gt') ok = v > c.level; else if (c.op === 'lt') ok = v < c.level;
+      else if (c.op === 'cross_up') ok = v > c.level && vp <= c.level; else if (c.op === 'cross_dn') ok = v < c.level && vp >= c.level;
+      if (!ok) return 'none';
+    }
+    return r.dir;
+  }
+
   function entryAt(i: number): 'long' | 'short' | 'none' {
     const t = s1.trend, o = s1.osc; if (i < 30) return 'none';
     let sig: 'long' | 'short' | 'none' = 'none';
-    switch (spec.entry) {
+    if (spec.customEntry && spec.customEntry.conds?.length) { sig = evalCustom(i); }
+    else switch (spec.entry) {
       case 'cross_up': sig = t[i] === 1 && t[i - 1] <= 0 ? 'long' : 'none'; break;
       case 'cross_dn': sig = t[i] === -1 && t[i - 1] >= 0 ? 'short' : 'none'; break;
       case 'above': sig = t[i] === 1 ? 'long' : 'none'; break;
@@ -91,6 +145,16 @@ export function runBacktest(bars: Bar[], spec: Spec, costs: Costs): BtResult {
       case 'breakout': { let hh = -1e9, ll = 1e9; for (let j = i - 20; j < i; j++) { hh = Math.max(hh, bars[j].h); ll = Math.min(ll, bars[j].l); } sig = bars[i].c > hh ? 'long' : bars[i].c < ll ? 'short' : 'none'; break; }
       case 'pullback': sig = t[i] === 1 && o[i] < 45 ? 'long' : t[i] === -1 && o[i] > 55 ? 'short' : 'none'; break;
       case 'divergence': sig = o[i] > 50 && o[i - 1] <= 50 ? 'long' : o[i] < 50 && o[i - 1] >= 50 ? 'short' : 'none'; break;
+      case 'strong_up': sig = t[i] === 1 && o[i] > 55 ? 'long' : 'none'; break;
+      case 'strong_dn': sig = t[i] === -1 && o[i] < 45 ? 'short' : 'none'; break;
+      case 'hh': { let hh = -1e9; for (let j = i - 10; j < i; j++) hh = Math.max(hh, bars[j].h); sig = bars[i].c > hh ? 'long' : 'none'; break; }
+      case 'll': { let ll = 1e9; for (let j = i - 10; j < i; j++) ll = Math.min(ll, bars[j].l); sig = bars[i].c < ll ? 'short' : 'none'; break; }
+      case 'ma_slope_up': sig = t[i] === 1 && t[i - 1] === 1 && s1.osc[i] >= s1.osc[i - 1] ? 'long' : 'none'; break;
+      case 'ma_slope_dn': sig = t[i] === -1 && t[i - 1] === -1 && s1.osc[i] <= s1.osc[i - 1] ? 'short' : 'none'; break;
+      case 'mid_cross_up': sig = o[i] > 50 && o[i - 1] <= 50 ? 'long' : 'none'; break;
+      case 'mid_cross_dn': sig = o[i] < 50 && o[i - 1] >= 50 ? 'short' : 'none'; break;
+      case 'revert_band': sig = o[i] < 15 ? 'long' : o[i] > 85 ? 'short' : 'none'; break;
+      case 'squeeze_break': { if (sdev20 && i > 1 && sdev20[i - 1] < sdevMed * 0.7) { let hh = -1e9, ll = 1e9; for (let j = i - 10; j < i; j++) { hh = Math.max(hh, bars[j].h); ll = Math.min(ll, bars[j].l); } sig = bars[i].c > hh ? 'long' : bars[i].c < ll ? 'short' : 'none'; } break; }
     }
     if (sig === 'none') return 'none';
     if (spec.dir === 'long' && sig === 'short') return 'none';
@@ -143,6 +207,7 @@ export function runBacktest(bars: Bar[], spec: Spec, costs: Costs): BtResult {
       const sig = entryAt(i);
       if (sig === 'none') continue;
       const dir = sig === 'long' ? 1 : -1;
+      if (!filterOk(i, dir)) continue;
       const atrPips = atrArr[i] ? atrArr[i] / pip : 20;
       const tpP = pips(spec.tp, atrPips) || 40, slP = pips(spec.sl, atrPips) || 30;
       const entry = b.c + dir * costs.slippagePips * pip;
@@ -164,7 +229,10 @@ export function runBacktest(bars: Bar[], spec: Spec, costs: Costs): BtResult {
 }
 
 export function defPeriod(id: string): number {
-  const m: Record<string, number> = { ema: 20, sma: 20, rsi: 14, macd: 12, stoch: 14, bb: 20, atr: 14, adx: 14, cci: 20, mom: 10, ichimoku: 26, psar: 14, wpr: 14, vwap: 20 };
+  const m: Record<string, number> = {
+    ema: 20, sma: 20, rsi: 14, macd: 12, stoch: 14, bb: 20, atr: 14, adx: 14, cci: 20, mom: 10, ichimoku: 26, psar: 14, wpr: 14, vwap: 20,
+    wma: 20, hma: 21, dema: 20, tema: 20, roc: 12, supertrend: 10, keltner: 20, envelopes: 20, donchian: 20, mfi: 14, aroon: 25, obv: 20, cmf: 20, dmi: 14,
+  };
   return m[id] || 20;
 }
 

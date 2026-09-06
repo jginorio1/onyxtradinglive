@@ -10,7 +10,8 @@ import { BLOCKS, computeSpace, candidatesToCsv } from '@/lib/stratgen';
 // exportas a MetaTrader para backtestear; luego el laboratorio los filtra.
 // ============================================================
 
-const VIOLET = '#a06bff', GREEN = '#1D9E75', BLUE = '#378ADD';
+// Paleta FRESCA (teal/aqua/mint) — igual que el Constructor, sin púrpura ni verde apagado.
+const VIOLET = '#0fc2a0', GREEN = '#19e39a', BLUE = '#22c1e0', AQUA = '#22e3c3';
 const inp: any = { padding: '9px 11px', borderRadius: 9, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 13.5 };
 function btn(c: string): any { return { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 15px', borderRadius: 10, cursor: 'pointer', fontWeight: 800, fontSize: 13, border: `1px solid color-mix(in srgb,${c} 45%,transparent)`, background: `color-mix(in srgb,${c} 14%,transparent)`, color: c }; }
 
@@ -21,7 +22,7 @@ function download(name: string, text: string, mime: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export default function StratGenerator({ es, post, onClose, initialCfg, symbol = '', tf = '', family = '', reload }: any) {
+export default function StratGenerator({ es, post, onClose, initialCfg, symbol = '', tf = '', family = '', reload, blocks = [] }: any) {
   const [cfg, setCfg] = useState<Record<string, string[]>>(initialCfg && Object.keys(initialCfg).length ? initialCfg : {
     indicators: ['ema', 'rsi'], entry: ['cross_up', 'cross_dn'], exit: ['opp_signal', 'fixed'],
     sessions: ['london', 'ny', 'overlap'], tp: ['40', '60', 'atr2'], sl: ['30', '50', 'atr15'], be: ['off', 'be20'], trailing: ['off', 't30'],
@@ -54,6 +55,22 @@ export default function StratGenerator({ es, post, onClose, initialCfg, symbol =
     try { const j = await post({ action: 'gen_run', config: cfg, n }); setCands(j.candidates || []); toast(es ? `Generadas ${j.sampled} estrategias` : `Generated ${j.sampled} strategies`); }
     catch (e: any) { toastErr(e?.message); } finally { setBusy(false); }
   }
+
+  // Bloques personalizados creados por Claude.
+  const [bOpen, setBOpen] = useState(false);
+  const [bIntent, setBIntent] = useState('');
+  const [bBusy, setBBusy] = useState(false);
+  const [bRes, setBRes] = useState<any[] | null>(null);
+  async function claudeBlocks() {
+    setBBusy(true); setBRes(null);
+    try { const j = await post({ action: 'block_ai', intent: bIntent, lang: es ? 'es' : 'en' }); setBRes(j.blocks || []); if (!(j.blocks || []).length) toastErr(es ? 'Claude no devolvió bloques (¿ANTHROPIC_API_KEY?).' : 'Claude returned no blocks (ANTHROPIC_API_KEY?).'); }
+    catch (e: any) { toastErr(e?.message); } finally { setBBusy(false); }
+  }
+  async function saveBlockRule(r: any) {
+    try { await post({ action: 'block_save', es: r.es, en: r.en, dsl: r.dsl, origin: 'ai' }); toast(es ? 'Bloque guardado' : 'Block saved'); if (reload) reload(); }
+    catch (e: any) { toastErr(e?.message); }
+  }
+  const dslText = (d: any) => (d?.conds || []).map((c: any) => `${c.ind}.${c.field} ${c.op} ${c.level}`).join(' & ') + ` → ${d?.dir}`;
 
   // Guarda la selección actual de bloques como plantilla reutilizable.
   async function saveAsTemplate() {
@@ -96,6 +113,36 @@ export default function StratGenerator({ es, post, onClose, initialCfg, symbol =
               </div>
             </div>
           ))}
+
+          {/* Bloques personalizados de Claude */}
+          <div style={{ borderTop: '1px dashed var(--line)', paddingTop: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+              <div style={{ fontSize: 13.5, fontWeight: 800 }}>✨ {es ? 'Bloques de entrada de Claude' : 'Claude entry blocks'}</div>
+              <span className="muted" style={{ fontSize: 11 }}>· {es ? 'reglas nuevas ejecutables por el motor' : 'new engine-executable rules'}</span>
+              <button onClick={() => setBOpen((v) => !v)} style={{ ...btn(BLUE), marginLeft: 'auto', padding: '6px 11px' }}>{bOpen ? (es ? 'Cerrar' : 'Close') : (es ? '✨ Crear bloque' : '✨ Create block')}</button>
+            </div>
+            {(blocks as any[]).length > 0 && (
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: bOpen ? 10 : 0 }}>
+                {(blocks as any[]).map((bl) => { const on = (cfg.entry || []).includes(bl.block_id); return (
+                  <button key={bl.id} onClick={() => toggle('entry', bl.block_id)} title={dslText(bl.dsl)} style={{ padding: '6px 12px', borderRadius: 99, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: `1px solid ${on ? VIOLET : 'var(--line)'}`, background: on ? `color-mix(in srgb,${VIOLET} 16%,transparent)` : 'transparent', color: on ? VIOLET : 'var(--tx)' }}>{es ? bl.es : bl.en}</button>
+                ); })}
+              </div>
+            )}
+            {!(blocks as any[]).length && !bOpen && <div className="muted" style={{ fontSize: 11.5 }}>{es ? 'Aún no hay bloques. Pulsa “Crear bloque” y describe la idea.' : 'No blocks yet. Press “Create block” and describe the idea.'}</div>}
+            {bOpen && (
+              <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: 12 }}>
+                <textarea value={bIntent} onChange={(e) => setBIntent(e.target.value)} rows={2} placeholder={es ? 'Ej: entrar largo cuando RSI cruza 40 al alza y ADX sube' : 'e.g. go long when RSI crosses above 40 and ADX rising'} style={{ ...inp, width: '100%', resize: 'vertical', fontFamily: 'inherit' }} />
+                <button onClick={claudeBlocks} disabled={bBusy} style={{ ...btn(BLUE), marginTop: 8 }}>{bBusy ? (es ? 'Pensando…' : 'Thinking…') : (es ? '✨ Proponer bloques' : '✨ Propose blocks')}</button>
+                {bRes && bRes.map((r, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 8, borderTop: '1px solid var(--line)', paddingTop: 8 }}>
+                    <b style={{ fontSize: 12.5 }}>{es ? r.es : r.en}</b>
+                    <span className="muted" style={{ fontSize: 11, fontFamily: 'monospace' }}>{dslText(r.dsl)}</span>
+                    <button onClick={() => saveBlockRule(r)} style={{ ...btn(GREEN), marginLeft: 'auto', padding: '5px 10px' }}>{es ? 'Guardar' : 'Save'}</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Contador + acciones */}
@@ -111,7 +158,7 @@ export default function StratGenerator({ es, post, onClose, initialCfg, symbol =
               <span className="muted" style={{ fontSize: 12 }}>{es ? 'candidatos' : 'candidates'}</span>
             </div>
             <button onClick={saveAsTemplate} style={{ ...btn(GREEN), marginLeft: 'auto' }}>{es ? '💾 Guardar como plantilla' : '💾 Save as template'}</button>
-            <button onClick={generate} disabled={busy || space < 1} style={{ padding: '11px 20px', borderRadius: 11, border: 'none', fontWeight: 800, fontSize: 14, cursor: 'pointer', background: 'linear-gradient(135deg,' + VIOLET + ',var(--brand))', color: '#0b1020', opacity: busy || space < 1 ? 0.6 : 1 }}>{busy ? (es ? 'Generando…' : 'Generating…') : (es ? '⚡ Generar lote' : '⚡ Generate batch')}</button>
+            <button onClick={generate} disabled={busy || space < 1} style={{ padding: '11px 20px', borderRadius: 11, border: 'none', fontWeight: 800, fontSize: 14, cursor: 'pointer', background: 'linear-gradient(135deg,' + VIOLET + ',' + AQUA + ')', color: '#04201d', opacity: busy || space < 1 ? 0.6 : 1 }}>{busy ? (es ? 'Generando…' : 'Generating…') : (es ? '⚡ Generar lote' : '⚡ Generate batch')}</button>
           </div>
 
           {cands && (

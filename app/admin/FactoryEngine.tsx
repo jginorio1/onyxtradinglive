@@ -1,7 +1,7 @@
 'use client';
 import { useMemo, useState } from 'react';
 import { toast, toastErr } from '@/lib/toast';
-import { BLOCKS, sampleCandidates } from '@/lib/stratgen';
+import { BLOCKS, sampleCandidates, enrichSpec } from '@/lib/stratgen';
 import { parseBars, parseBarsStreaming, runBacktest, inferPip, type Bar, type Spec, type Costs } from '@/lib/backtest';
 import { evolve, evaluate, type Survivor } from '@/lib/evolve';
 import { genMt5, genMt4 } from '@/lib/mqlgen';
@@ -36,7 +36,9 @@ function guessSymbol(name: string): string {
 function daily(trades: { t: number; profit: number }[]): Record<string, number> { const o: Record<string, number> = {}; for (const t of trades) { const d = new Date(t.t).toISOString().slice(0, 10); o[d] = (o[d] || 0) + t.profit; } return o; }
 function pearson(a: number[], b: number[]) { const n = a.length; if (n < 5) return 0; const ma = a.reduce((x, y) => x + y, 0) / n, mb = b.reduce((x, y) => x + y, 0) / n; let nu = 0, da = 0, db = 0; for (let i = 0; i < n; i++) { const x = a[i] - ma, y = b[i] - mb; nu += x * y; da += x * x; db += y * y; } const de = Math.sqrt(da * db); return de > 0 ? nu / de : 0; }
 
-export default function FactoryEngine({ es, canManage, post, reload, datasets = [] }: any) {
+export default function FactoryEngine({ es, canManage, post, reload, datasets = [], blocks = [] }: any) {
+  // Mapa de bloques personalizados (Claude) → regla DSL, para que el motor los ejecute.
+  const blockMap = useMemo(() => { const m: any = {}; for (const b of (blocks as any[])) if (b?.block_id && b?.dsl) m[b.block_id] = b.dsl; return m; }, [blocks]);
   const [bars, setBars] = useState<Bar[] | null>(null);
   const [barsName, setBarsName] = useState('');
   const [reading, setReading] = useState(false);
@@ -90,7 +92,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
     try {
       const cands = sampleCandidates(cfg, n) as Spec[];
       const out: Row[] = [];
-      for (const c of cands) { const m = runBacktest(bars, c, costs); if (m.n > 0) out.push({ spec: c, net: m.net, pf: m.pf, dd: m.maxddPct, n: m.n, win: m.winRate, exp: m.expectancy }); }
+      for (const c of cands) { const spec = enrichSpec(c, blockMap); const m = runBacktest(bars, spec, costs); if (m.n > 0) out.push({ spec, net: m.net, pf: m.pf, dd: m.maxddPct, n: m.n, win: m.winRate, exp: m.expectancy }); }
       setRows(out);
       toast(es ? `${out.length} estrategias backtesteadas` : `${out.length} strategies backtested`);
     } catch (e: any) { toastErr(e?.message); } finally { setBusy(false); }

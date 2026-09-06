@@ -4,7 +4,9 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { listBots, listDatasets, factoryStats, saveDataset, createBot, deleteBot, genUniqueName, validateMetrics, runLab, listLabRuns, compareBt, advanceToDemo, saveGenRun, listGenRuns, getDataset, deleteDataset } from '@/lib/factory';
 import { pipelineBoard, runPipelineOnce, linkDemo, stageOverride, approveReal } from '@/lib/pipeline';
 import { listTemplates, saveTemplate, deleteTemplate, blockCatalog, heuristicTemplate } from '@/lib/templates';
-import { aiTemplate } from '@/lib/factoryAI';
+import { listBlocks, saveBlock, deleteBlock } from '@/lib/blocks';
+import { aiTemplate, aiBlocks } from '@/lib/factoryAI';
+import { BLOCKS } from '@/lib/stratgen';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -17,8 +19,8 @@ function canManage(role: string | null, perms: any) {
 export async function GET() {
   const { isAdmin, role, perms } = await getAdmin();
   if (!isAdmin) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
-  const [bots, datasets, stats, preview, templates] = await Promise.all([listBots(), listDatasets(), factoryStats(), genUniqueName(), listTemplates()]);
-  return NextResponse.json({ bots, datasets, stats, nextName: preview.name, templates, canManage: canManage(role, perms) });
+  const [bots, datasets, stats, preview, templates, blocks] = await Promise.all([listBots(), listDatasets(), factoryStats(), genUniqueName(), listTemplates(), listBlocks()]);
+  return NextResponse.json({ bots, datasets, stats, nextName: preview.name, templates, blocks, canManage: canManage(role, perms) });
 }
 
 // POST · acciones del dueño/gestor de módulos.
@@ -82,6 +84,18 @@ export async function POST(req: Request) {
     await deleteDataset(String(b.id || ''));
     await logAdmin(user.email || '', 'factory_dataset_delete', String(b.id || ''), {});
     return NextResponse.json({ ok: true });
+  }
+  // ---- Bloques personalizados (creados por Claude) ----
+  if (a === 'block_list') { const blocks = await listBlocks(); return NextResponse.json({ blocks }); }
+  if (a === 'block_save') { try { const bl = await saveBlock({ userId: user.id, es: b.es, en: b.en, dsl: b.dsl, notes: b.notes, origin: b.origin }); await logAdmin(user.email || '', 'factory_block_save', bl?.id || '', {}); return NextResponse.json({ ok: true, block: bl }); } catch (e: any) { return NextResponse.json({ error: e?.message || 'error' }, { status: 400 }); } }
+  if (a === 'block_delete') { await deleteBlock(String(b.id || '')); await logAdmin(user.email || '', 'factory_block_delete', String(b.id || ''), {}); return NextResponse.json({ ok: true }); }
+  if (a === 'block_ai') {
+    try {
+      const inds = BLOCKS.find((x) => x.key === 'indicators')!.opts.map((o) => o.id);
+      const blocks = await aiBlocks({ intent: b.intent || '', indicators: inds, lang: b.lang === 'en' ? 'en' : 'es' }).catch(() => []);
+      await logAdmin(user.email || '', 'factory_block_ai', '', { got: blocks.length });
+      return NextResponse.json({ blocks });
+    } catch (e: any) { return NextResponse.json({ error: e?.message || 'error' }, { status: 400 }); }
   }
   // ---- Plantillas (estilo StrategyQuant) ----
   if (a === 'template_list') { const templates = await listTemplates(); return NextResponse.json({ templates }); }
