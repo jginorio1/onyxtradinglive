@@ -11,6 +11,39 @@ import { walkForwardMatrix } from '@/lib/walkforward';
 import { optimize, specFromCell, type OptResult, type OptAxis } from '@/lib/optimizer';
 import { buildPortfolio, type PortMember, type PortResult } from '@/lib/portfolio';
 import { ProgressBar, ProgressBarIndeterminate } from './ProgressBar';
+import { Help } from './HelpTip';
+
+// Explicación de cada campo (qué es + qué poner), bilingüe. Se muestra en el ⓘ.
+function tip(es: boolean, k: string): string {
+  const T: Record<string, [string, string]> = {
+    spreadPips: ['Coste que cobra tu broker en cada operación. Pon el real: FX ≈ 1, oro ≈ 20–30, índices varía.', 'Broker cost per trade. Use your real spread: FX ≈ 1, gold ≈ 20–30, indices vary.'],
+    slippagePips: ['Cuánto se desliza el precio al entrar y salir. Pon 0.2 – 0.5.', 'Price slippage on entry/exit. Use 0.2 – 0.5.'],
+    commission: ['Comisión de ida y vuelta por lote. Pon la de tu cuenta, o 0 si no cobran.', 'Round-trip commission per lot. Use your account’s, or 0 if none.'],
+    moneyPerPip: ['Cuánto vale un pip con 1 lote. Pon 10 en la mayoría de pares FX.', 'Value of 1 pip with 1 lot. Use 10 for most FX pairs.'],
+    dir: ['Si el robot opera compras, ventas o ambas. Deja “ambos” salvo que quieras sesgo.', 'Whether the robot trades long, short or both. Keep “both” unless you want a bias.'],
+    capital: ['Capital con el que se simula la cuenta. Pon el de tu cuenta o reto: 10.000 / 100.000.', 'Starting capital for the simulation. Use your account or challenge size: 10,000 / 100,000.'],
+    mm: ['Cómo se calcula el lote de cada operación. Recomendado: % de riesgo sobre equity.', 'How each trade’s lot is sized. Recommended: % risk on equity.'],
+    riskPct: ['Cuánto arriesgas del equity en cada operación. Pon 0.5 – 1 %.', 'How much of equity you risk per trade. Use 0.5 – 1 %.'],
+    riskMoney: ['Dinero fijo que arriesgas en cada operación. Pon lo que aguante tu cuenta.', 'Fixed money risked per trade. Use what your account can take.'],
+    lot: ['Lote fijo en cada operación (sin ajuste). Pon 0.01 – 1 según tu cuenta.', 'Fixed lot per trade (no sizing). Use 0.01 – 1 depending on your account.'],
+    atrMult: ['Distancia del stop según la volatilidad (solo modo ATR). Pon 1.5 – 2.', 'Stop distance based on volatility (ATR mode only). Use 1.5 – 2.'],
+    pyramid: ['Sumar posiciones a favor si el precio avanza. Pon 0, o 1–2 para tendencias.', 'Add positions in your favor as price advances. Use 0, or 1–2 for trends.'],
+    ddType: ['Cómo mide la caída que revienta la cuenta. Trailing = como una prop firm.', 'How the account-blowing drawdown is measured. Trailing = like a prop firm.'],
+    maxDDpct: ['Pérdida máxima antes de reventar y descartar el robot. Pon 8 – 10 %.', 'Max loss before blowing up and discarding the robot. Use 8 – 10 %.'],
+    chTarget: ['Meta de ganancia del reto. Pon la de tu firma (8–10 %), o 0 si no aplica.', 'Challenge profit goal. Use your firm’s (8–10 %), or 0 if not used.'],
+    chDailyLoss: ['Límite de pérdida en un solo día. Pon 5 %, o 0 si no aplica.', 'Loss limit in a single day. Use 5 %, or 0 if not used.'],
+    chMinDays: ['Días con operaciones exigidos para pasar. Pon los de tu firma (3–5), o 0.', 'Trading days required to pass. Use your firm’s (3–5), or 0.'],
+    n: ['Cuántas estrategias distintas genera y prueba. 1.500 normal, hasta 5.000 para exprimir.', 'How many different strategies it generates and tests. 1,500 normal, up to 5,000 to squeeze.'],
+    keepN: ['Tope de robots supervivientes que guarda. 8–50, hasta 500 si generas muchos candidatos.', 'Cap of surviving robots kept. 8–50, up to 500 if you generate many candidates.'],
+    minPf: ['Profit factor mínimo (ganado ÷ perdido). Pon 1.2 – 1.4.', 'Minimum profit factor (won ÷ lost). Use 1.2 – 1.4.'],
+    maxDd: ['Drawdown máximo permitido, en %. Pon 20 – 25.', 'Max allowed drawdown, %. Use 20 – 25.'],
+    minTr: ['Mínimo de operaciones para que sea fiable. Pon 30 – 100.', 'Minimum trades to be reliable. Use 30 – 100.'],
+    mcMaxLoss: ['Probabilidad máxima de perder al barajar las operaciones (Monte Carlo). Pon 30 – 35.', 'Max probability of losing when shuffling trades (Monte Carlo). Use 30 – 35.'],
+    wfMinStab: ['Qué tan estable debe ser fuera de muestra (walk-forward). Pon 55.', 'How stable it must be out-of-sample (walk-forward). Use 55.'],
+    blocks: ['Los ingredientes que la fábrica mezcla. Marca 3–5 indicadores y varias entradas/TP/SL.', 'The ingredients the factory mixes. Pick 3–5 indicators and several entries/TP/SL.'],
+  };
+  const v = T[k]; return v ? (es ? v[0] : v[1]) : '';
+}
 
 // ============================================================
 // Onyx Bot Factory · Fase 5 — Motor (backtest + evolución + databank + portafolio)
@@ -315,7 +348,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
         <p className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>{es ? 'Acepta los mismos ticks de Dukascopy/StrategyQuant (hasta varios GB): se leen por trozos y se convierten a barras OHLC al vuelo, sin cargar todo en memoria.' : 'Accepts the same Dukascopy/StrategyQuant ticks (multi-GB): streamed in chunks and converted to OHLC bars on the fly.'}</p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(120px,1fr))', gap: 10, marginTop: 12 }}>
           {([['spreadPips', es ? 'Spread (pips)' : 'Spread (pips)'], ['slippagePips', 'Slippage (pips)'], ['commission', es ? 'Comisión ($/lote)' : 'Commission ($/lot)'], ['moneyPerPip', es ? '$/pip (1 lote)' : '$/pip (1 lot)']] as [string, string][]).map(([k, l]) => (
-            <label key={k}><span className="muted" style={{ fontSize: 11.5 }}>{l}</span><input type="number" step="0.1" value={(costs as any)[k]} onChange={(e) => setCosts({ ...costs, [k]: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>
+            <label key={k}><span className="muted" style={{ fontSize: 11.5 }}>{l}<Help text={tip(es, k)} /></span><input type="number" step="0.1" value={(costs as any)[k]} onChange={(e) => setCosts({ ...costs, [k]: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>
           ))}
         </div>
 
@@ -323,16 +356,16 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
         <div style={{ marginTop: 14, background: 'var(--bg2)', borderRadius: 10, padding: 12, border: `1px solid color-mix(in srgb,${VIOLET} 22%,var(--line))` }}>
           <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 8 }}>💰 {es ? 'Gestión monetaria y dirección' : 'Money management & direction'}</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 10 }}>
-            <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Dirección' : 'Direction'}</span>
+            <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Dirección' : 'Direction'}<Help text={tip(es, 'dir')} /></span>
               <select value={dir} onChange={(e) => setDir(e.target.value as any)} style={{ ...inp, width: '100%', marginTop: 3 }}>
                 <option value="both">{es ? 'Ambos (Long+Short)' : 'Both (Long+Short)'}</option>
                 <option value="long">{es ? 'Solo Long' : 'Long only'}</option>
                 <option value="short">{es ? 'Solo Short' : 'Short only'}</option>
               </select>
             </label>
-            <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Balance inicial ($)' : 'Initial balance ($)'}</span>
+            <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Balance inicial ($)' : 'Initial balance ($)'}<Help text={tip(es, 'capital')} /></span>
               <input type="number" step="100" value={costs.capital} onChange={(e) => setCosts({ ...costs, capital: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>
-            <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Tamaño de posición' : 'Position sizing'}</span>
+            <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Tamaño de posición' : 'Position sizing'}<Help text={tip(es, 'mm')} /></span>
               <select value={costs.mm} onChange={(e) => setCosts({ ...costs, mm: e.target.value as any })} style={{ ...inp, width: '100%', marginTop: 3 }}>
                 <option value="risk_pct">{es ? '% de riesgo sobre equity' : '% risk on equity'}</option>
                 <option value="risk_atr">{es ? '% con stop por volatilidad (ATR)' : '% with volatility stop (ATR)'}</option>
@@ -340,19 +373,19 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
                 <option value="fixed">{es ? 'Lote fijo' : 'Fixed lot'}</option>
               </select>
             </label>
-            {(costs.mm === 'risk_pct' || costs.mm === 'risk_atr') && <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? '% por operación' : '% per trade'}</span><input type="number" step="0.1" value={costs.riskPct} onChange={(e) => setCosts({ ...costs, riskPct: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>}
-            {costs.mm === 'risk_atr' && <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'ATR × (stop)' : 'ATR × (stop)'}</span><input type="number" step="0.1" value={costs.atrMult ?? 1.5} onChange={(e) => setCosts({ ...costs, atrMult: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>}
-            <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Pirámide (añadidos)' : 'Pyramid (add-ons)'}</span><input type="number" step="1" min={0} max={5} value={costs.pyramid ?? 0} onChange={(e) => setCosts({ ...costs, pyramid: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>
-            {costs.mm === 'risk_money' && <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? '$ por operación' : '$ per trade'}</span><input type="number" step="10" value={costs.riskMoney} onChange={(e) => setCosts({ ...costs, riskMoney: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>}
-            {costs.mm === 'fixed' && <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Lote' : 'Lot'}</span><input type="number" step="0.01" value={costs.lot} onChange={(e) => setCosts({ ...costs, lot: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>}
-            <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Drawdown límite' : 'Drawdown limit'}</span>
+            {(costs.mm === 'risk_pct' || costs.mm === 'risk_atr') && <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? '% por operación' : '% per trade'}<Help text={tip(es, 'riskPct')} /></span><input type="number" step="0.1" value={costs.riskPct} onChange={(e) => setCosts({ ...costs, riskPct: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>}
+            {costs.mm === 'risk_atr' && <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'ATR × (stop)' : 'ATR × (stop)'}<Help text={tip(es, 'atrMult')} /></span><input type="number" step="0.1" value={costs.atrMult ?? 1.5} onChange={(e) => setCosts({ ...costs, atrMult: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>}
+            <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Pirámide (añadidos)' : 'Pyramid (add-ons)'}<Help text={tip(es, 'pyramid')} /></span><input type="number" step="1" min={0} max={5} value={costs.pyramid ?? 0} onChange={(e) => setCosts({ ...costs, pyramid: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>
+            {costs.mm === 'risk_money' && <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? '$ por operación' : '$ per trade'}<Help text={tip(es, 'riskMoney')} /></span><input type="number" step="10" value={costs.riskMoney} onChange={(e) => setCosts({ ...costs, riskMoney: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>}
+            {costs.mm === 'fixed' && <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Lote' : 'Lot'}<Help text={tip(es, 'lot')} /></span><input type="number" step="0.01" value={costs.lot} onChange={(e) => setCosts({ ...costs, lot: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>}
+            <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Drawdown límite' : 'Drawdown limit'}<Help text={tip(es, 'ddType')} /></span>
               <select value={costs.ddType} onChange={(e) => setCosts({ ...costs, ddType: e.target.value as any })} style={{ ...inp, width: '100%', marginTop: 3 }}>
                 <option value="trailing">{es ? 'Trailing (desde el pico)' : 'Trailing (from peak)'}</option>
                 <option value="static">{es ? 'Estático (desde el inicio)' : 'Static (from start)'}</option>
                 <option value="none">{es ? 'Sin límite' : 'No limit'}</option>
               </select>
             </label>
-            {costs.ddType !== 'none' && <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'DD máx %' : 'Max DD %'}</span><input type="number" step="1" value={costs.maxDDpct} onChange={(e) => setCosts({ ...costs, maxDDpct: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>}
+            {costs.ddType !== 'none' && <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'DD máx %' : 'Max DD %'}<Help text={tip(es, 'maxDDpct')} /></span><input type="number" step="1" value={costs.maxDDpct} onChange={(e) => setCosts({ ...costs, maxDDpct: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>}
           </div>
           <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>{es ? 'La simulación compone sobre el equity y “revienta” la cuenta si toca el límite de drawdown (como una prop firm). Esos robots se descartan.' : 'The simulation compounds on equity and “blows” the account if it hits the drawdown limit (like a prop firm). Those robots are discarded.'}</div>
         </div>
@@ -361,9 +394,9 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
         <div style={{ marginTop: 14, background: 'var(--bg2)', borderRadius: 10, padding: 12, border: `1px solid color-mix(in srgb,${CORAL} 30%,var(--line))` }}>
           <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 8 }}>🏁 {es ? 'Reto prop firm (opcional)' : 'Prop-firm challenge (optional)'}</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 10 }}>
-            <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Objetivo de beneficio %' : 'Profit target %'}</span><input type="number" step="1" value={costs.chTarget ?? 0} onChange={(e) => setCosts({ ...costs, chTarget: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>
-            <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Pérdida diaria máx %' : 'Max daily loss %'}</span><input type="number" step="0.5" value={costs.chDailyLoss ?? 0} onChange={(e) => setCosts({ ...costs, chDailyLoss: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>
-            <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Días mínimos' : 'Minimum days'}</span><input type="number" step="1" value={costs.chMinDays ?? 0} onChange={(e) => setCosts({ ...costs, chMinDays: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>
+            <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Objetivo de beneficio %' : 'Profit target %'}<Help text={tip(es, 'chTarget')} /></span><input type="number" step="1" value={costs.chTarget ?? 0} onChange={(e) => setCosts({ ...costs, chTarget: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>
+            <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Pérdida diaria máx %' : 'Max daily loss %'}<Help text={tip(es, 'chDailyLoss')} /></span><input type="number" step="0.5" value={costs.chDailyLoss ?? 0} onChange={(e) => setCosts({ ...costs, chDailyLoss: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>
+            <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Días mínimos' : 'Minimum days'}<Help text={tip(es, 'chMinDays')} /></span><input type="number" step="1" value={costs.chMinDays ?? 0} onChange={(e) => setCosts({ ...costs, chMinDays: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>
           </div>
           <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>{es ? 'Deja en 0 lo que no apliques. Si activas el reto, cada robot recibe un veredicto “pasa el reto / no pasa” y solo pasan los que cumplen objetivo sin romper la pérdida diaria ni el drawdown, con los días mínimos operados.' : 'Leave at 0 what you don’t use. With the challenge on, each robot gets a “passes / fails” verdict and only those meeting the target without breaking daily loss or drawdown, over the minimum days, pass.'}</div>
         </div>
@@ -379,9 +412,9 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
           </div>
         </div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginTop: 12 }}>
-          <span className="muted" style={{ fontSize: 12 }}>{es ? 'Crear hasta' : 'Create up to'}</span>
+          <span className="muted" style={{ fontSize: 12 }}>{es ? 'Crear hasta' : 'Create up to'}<Help text={tip(es, 'keepN')} /></span>
           <input type="number" value={keepN} min={1} max={500} onChange={(e) => setKeepN(Math.max(1, Math.min(500, Number(e.target.value) || 1)))} style={{ ...inp, width: 70 }} />
-          <span className="muted" style={{ fontSize: 12 }}>{es ? 'robots · de' : 'robots · from'} {n} {es ? 'candidatos' : 'candidates'}</span>
+          <span className="muted" style={{ fontSize: 12 }}>{es ? 'robots · de' : 'robots · from'} {n} {es ? 'candidatos' : 'candidates'}<Help text={tip(es, 'n')} /></span>
           {canManage && <button onClick={autopilot} disabled={auto || !bars} style={{ marginLeft: 'auto', padding: '12px 22px', borderRadius: 12, border: 'none', fontWeight: 800, fontSize: 14.5, cursor: auto || !bars ? 'default' : 'pointer', background: 'linear-gradient(135deg,' + GREEN + ',' + AQUA + ')', color: '#04201d', opacity: auto || !bars ? 0.6 : 1 }}>{auto ? (es ? 'Trabajando…' : 'Working…') : (es ? '🚀 Ejecutar autopiloto' : '🚀 Run autopilot')}</button>}
         </div>
         {auto && <div style={{ marginTop: 10, fontSize: 13, color: GREEN, fontWeight: 700 }}>{autoMsg}</div>}
@@ -402,8 +435,8 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
           </div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(120px,1fr))', gap: 10, marginTop: 12 }}>
-          {([['minPf', es ? 'PF mínimo' : 'Min PF', 0.1], ['maxDd', es ? 'DD máx %' : 'Max DD %', 1], ['minTr', es ? 'Ops mín' : 'Min trades', 1], ['mcMaxLoss', es ? 'MC: prob. pérdida máx %' : 'MC: max loss prob %', 1], ['wfMinStab', es ? 'WF: estabilidad mín %' : 'WF: min stability %', 1]] as [string, string, number][]).map(([k, l, step]) => (
-            <label key={k}><span className="muted" style={{ fontSize: 11 }}>{l}</span><input type="number" step={step} value={(recipe as any)[k]} onChange={(e) => setRecipe({ ...recipe, [k]: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>
+          {([['minPf', es ? 'PF mínimo' : 'Min PF', 0.1, 'minPf'], ['maxDd', es ? 'DD máx %' : 'Max DD %', 1, 'maxDd'], ['minTr', es ? 'Ops mín' : 'Min trades', 1, 'minTr'], ['mcMaxLoss', es ? 'MC: prob. pérdida máx %' : 'MC: max loss prob %', 1, 'mcMaxLoss'], ['wfMinStab', es ? 'WF: estabilidad mín %' : 'WF: min stability %', 1, 'wfMinStab']] as [string, string, number, string][]).map(([k, l, step, tk]) => (
+            <label key={k}><span className="muted" style={{ fontSize: 11 }}>{l}<Help text={tip(es, tk)} /></span><input type="number" step={step} value={(recipe as any)[k]} onChange={(e) => setRecipe({ ...recipe, [k]: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>
           ))}
         </div>
         {canManage && <button onClick={runRecipe} disabled={recRun || !bars} style={{ ...btn(BLUE), marginTop: 12, padding: '11px 20px', fontSize: 14 }}>{recRun ? (es ? 'Ejecutando…' : 'Running…') : (es ? '🧪 Ejecutar receta' : '🧪 Run recipe')}</button>}
@@ -491,9 +524,9 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
         <div style={card}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
             <h3 style={{ margin: 0, flex: 1 }}>{es ? 'Databank' : 'Databank'} <span className="muted" style={{ fontSize: 13 }}>· {filtered.length}/{rows.length}</span></h3>
-            <span className="muted" style={{ fontSize: 12 }}>PF≥</span><input type="number" step="0.1" value={minPf} onChange={(e) => setMinPf(Number(e.target.value))} style={{ ...inp, width: 70 }} />
-            <span className="muted" style={{ fontSize: 12 }}>DD≤</span><input type="number" value={maxDd} onChange={(e) => setMaxDd(Number(e.target.value))} style={{ ...inp, width: 70 }} />
-            <span className="muted" style={{ fontSize: 12 }}>ops≥</span><input type="number" value={minTr} onChange={(e) => setMinTr(Number(e.target.value))} style={{ ...inp, width: 70 }} />
+            <span className="muted" style={{ fontSize: 12 }}>PF≥<Help text={tip(es, 'minPf')} /></span><input type="number" step="0.1" value={minPf} onChange={(e) => setMinPf(Number(e.target.value))} style={{ ...inp, width: 70 }} />
+            <span className="muted" style={{ fontSize: 12 }}>DD≤<Help text={tip(es, 'maxDd')} /></span><input type="number" value={maxDd} onChange={(e) => setMaxDd(Number(e.target.value))} style={{ ...inp, width: 70 }} />
+            <span className="muted" style={{ fontSize: 12 }}>ops≥<Help text={tip(es, 'minTr')} /></span><input type="number" value={minTr} onChange={(e) => setMinTr(Number(e.target.value))} style={{ ...inp, width: 70 }} />
           </div>
           <SpecTable es={es} rows={filtered.slice(0, 40)} onSel={setSel} sel={sel} specLabel={specLabel} />
         </div>
