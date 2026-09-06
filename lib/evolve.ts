@@ -29,15 +29,28 @@ function randomSpec(P: Record<string, string[]>, rng: () => number): Spec {
   };
 }
 
-// Fitness: robusto = bueno IS y que NO se caiga OOS.
+// Complejidad de una estrategia: cuantas más piezas activas, más fácil es que
+// esté sobre-ajustada. La usamos para PENALIZAR lo enrevesado (mejor que SQ).
+export function complexity(s: Spec): number {
+  let c = 1; // el indicador base siempre cuenta
+  if (s.ind2) c++;
+  if (s.be && s.be !== 'off') c++;
+  if (s.trailing && s.trailing !== 'off') c++;
+  if (s.filter && s.filter !== 'none') c++;
+  if (s.customEntry && s.customEntry.conds?.length) c += s.customEntry.conds.length;
+  return c;
+}
+
+// Fitness: robusto = bueno IS y que NO se caiga OOS, penalizando la complejidad.
 export function evaluate(spec: Spec, isBars: Bar[], oosBars: Bar[], costs: Costs): EvalResult {
   const mIs = runBacktest(isBars, spec, costs);
-  if (mIs.n < 15) return { fit: -1e9, isPf: mIs.pf, oosPf: 0, isNet: mIs.net, oosNet: 0, trades: mIs.n, dd: mIs.maxddPct };
+  if (mIs.n < 15 || mIs.blown) return { fit: -1e9, isPf: mIs.pf, oosPf: 0, isNet: mIs.net, oosNet: 0, trades: mIs.n, dd: mIs.maxddPct };
   const mOos = runBacktest(oosBars, spec, costs);
   const scoreIs = (mIs.pf - 1) * 40 * Math.min(1, mIs.n / 40) - Math.max(0, mIs.maxddPct - 15) * 0.8;
   const retention = mIs.pf > 0 ? clamp(mOos.pf / mIs.pf, 0, 1.3) : 0;
   const oosPenalty = mOos.net < 0 ? 20 : 0;
-  const fit = Math.round((scoreIs * (0.4 + 0.6 * retention) - oosPenalty) * 100) / 100;
+  const cxPenalty = Math.max(0, complexity(spec) - 3) * 3;  // castiga cada pieza extra por encima de 3
+  const fit = Math.round((scoreIs * (0.4 + 0.6 * retention) - oosPenalty - cxPenalty) * 100) / 100;
   return { fit, isPf: mIs.pf, oosPf: mOos.pf, isNet: mIs.net, oosNet: mOos.net, trades: mIs.n, dd: mIs.maxddPct };
 }
 
@@ -70,32 +83,47 @@ const keyOf = (s: Spec) => [s.ind1, s.ind2, s.entry, s.exit, s.sessions, s.tp, s
 export type Survivor = { spec: Spec; ev: EvalResult };
 export type EvolveOut = { best: Survivor[]; history: number[]; evaluated: number };
 
-// Bucle evolutivo. Determinista con semilla.
-export function evolve(bars: Bar[], costs: Costs, opt: { pop?: number; gens?: number; keep?: number; seed?: number } = {}): EvolveOut {
-  const pop = Math.min(120, Math.max(20, opt.pop || 60));
-  const gens = Math.min(20, Math.max(3, opt.gens || 8));
+// Bucle evolutivo. Determinista con semilla. Simple y transparente:
+// élite + torneo + cruce + mutación, con REINICIO por estancamiento (fresh blood).
+export function evolve(
+  bars: Bar[],
+  costs: Costs,
+  opt: { pop?: number; gens?: number; keep?: number; seed?: number; mut?: number; restart?: number; oosPct?: number } = {},
+): EvolveOut {
+  const pop = Math.min(200, Math.max(20, opt.pop || 60));
+  const gens = Math.min(40, Math.max(3, opt.gens || 8));
   const keep = opt.keep || 12;
+  const mutRate = clamp(opt.mut ?? 0.25, 0.05, 0.6);
+  const restart = Math.max(0, Math.floor(opt.restart ?? 6)); // reinicia si no mejora en N gens (0 = off)
   const rng = mulberry32(opt.seed || 987654321);
   const P = pools();
-  const cut = Math.floor(bars.length * 0.7);
+  const oosFrac = clamp((opt.oosPct ?? 30) / 100, 0.1, 0.5);
+  const cut = Math.floor(bars.length * (1 - oosFrac));
   const isBars = bars.slice(0, cut), oosBars = bars.slice(cut);
   let generation: Spec[] = Array.from({ length: pop }, () => randomSpec(P, rng));
   const history: number[] = [];
   let evaluated = 0;
   let scored: Survivor[] = [];
+  let bestFit = -Infinity, stagn = 0;
 
   for (let gen = 0; gen < gens; gen++) {
     scored = generation.map((spec) => { evaluated++; return { spec, ev: evaluate(spec, isBars, oosBars, costs) }; })
       .sort((a, b) => b.ev.fit - a.ev.fit);
-    history.push(Math.round((scored[0]?.ev.fit || 0) * 100) / 100);
+    const top = scored[0]?.ev.fit || 0;
+    history.push(Math.round(top * 100) / 100);
+    // Control de estancamiento: si el mejor no mejora, cuenta; al llegar al umbral, inyecta sangre nueva.
+    if (top > bestFit + 1e-6) { bestFit = top; stagn = 0; } else stagn++;
     if (gen === gens - 1) break;
     const eliteN = Math.max(2, Math.floor(pop * 0.25));
     const elite = scored.slice(0, eliteN).map((s) => s.spec);
     const next: Spec[] = [...elite];
     const seen = new Set(elite.map(keyOf));
     const tour = () => { const a = scored[Math.floor(rng() * eliteN * 2)] || scored[0]; const b = scored[Math.floor(rng() * eliteN * 2)] || scored[0]; return (a.ev.fit >= b.ev.fit ? a : b).spec; };
+    // Reinicio por estancamiento: rellena la mitad de la población con individuos nuevos.
+    const doRestart = restart > 0 && stagn >= restart;
+    if (doRestart) { stagn = 0; while (next.length < pop / 2) { const r = randomSpec(P, rng); const k = keyOf(r); if (!seen.has(k)) { seen.add(k); next.push(r); } } }
     let guard = 0;
-    while (next.length < pop && guard < pop * 20) { guard++; const child = mutate(crossover(tour(), tour(), rng), P, rng, 0.25); const k = keyOf(child); if (seen.has(k)) continue; seen.add(k); next.push(child); }
+    while (next.length < pop && guard < pop * 20) { guard++; const child = mutate(crossover(tour(), tour(), rng), P, rng, mutRate); const k = keyOf(child); if (seen.has(k)) continue; seen.add(k); next.push(child); }
     generation = next;
   }
   const best = scored.filter((s) => s.ev.fit > -1e8).slice(0, keep);

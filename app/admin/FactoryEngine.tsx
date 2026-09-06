@@ -11,6 +11,7 @@ import { walkForwardMatrix } from '@/lib/walkforward';
 import { optimize, specFromCell, type OptResult, type OptAxis } from '@/lib/optimizer';
 import { buildPortfolio, type PortMember, type PortResult } from '@/lib/portfolio';
 import { buildReport, type FullReport } from '@/lib/report';
+import { onyxScore, type OnyxScore } from '@/lib/score';
 import { ProgressBar, ProgressBarIndeterminate } from './ProgressBar';
 import { Help } from './HelpTip';
 
@@ -128,6 +129,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
   // Receta encadenada (build → backtest → IS/OOS → Monte Carlo → walk-forward → rechazar).
   const [recipe, setRecipe] = useState({ minPf: 1.2, maxDd: 25, minTr: 30, mcMaxLoss: 35, wfMinStab: 55 });
   const [oosPct, setOosPct] = useState(30); // % del final reservado como fuera de muestra (OOS)
+  const [evoCfg, setEvoCfg] = useState({ gens: 10, pop: 60, mut: 0.25, restart: 6 }); // parámetros de evolución
   const [recRun, setRecRun] = useState(false);
   const [recMsg, setRecMsg] = useState('');
   const [recFunnel, setRecFunnel] = useState<any>(null);
@@ -197,6 +199,12 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
     try { const m = runBacktest(bars, enrichSpec({ ...sel, dir }, blockMap) as Spec, costs); return buildReport(m.trades, costs.capital || 10000, oosPct); } catch { return null; }
   }, [sel, bars, costs, dir, blockMap, oosPct]);
 
+  // Onyx Robustness Score de la estrategia seleccionada (anti-sobreajuste).
+  const selScore = useMemo<OnyxScore | null>(() => {
+    if (!sel || !bars) return null;
+    try { return onyxScore(bars, enrichSpec({ ...sel, dir }, blockMap) as Spec, costs, oosPct || 30); } catch { return null; }
+  }, [sel, bars, costs, dir, blockMap, oosPct]);
+
   async function runBatch() {
     if (!bars) { toastErr(es ? 'Sube las barras primero.' : 'Upload bars first.'); return; }
     setBusy(true); setRows(null); setEvo(null);
@@ -212,7 +220,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
   async function runEvolve() {
     if (!bars) { toastErr(es ? 'Sube las barras primero.' : 'Upload bars first.'); return; }
     setBusy(true); await new Promise((r) => setTimeout(r, 30));
-    try { const r = evolve(bars, costs, { pop: 60, gens: 8, keep: 12 }); setEvo({ best: r.best, history: r.history }); toast(es ? `Evolución: ${r.evaluated} evaluaciones` : `Evolution: ${r.evaluated} evals`); }
+    try { const r = evolve(bars, costs, { pop: evoCfg.pop, gens: evoCfg.gens, keep: 12, mut: evoCfg.mut, restart: evoCfg.restart, oosPct }); setEvo({ best: r.best, history: r.history }); toast(es ? `Evolución: ${r.evaluated} evaluaciones` : `Evolution: ${r.evaluated} evals`); }
     catch (e: any) { toastErr(e?.message); } finally { setBusy(false); }
   }
 
@@ -552,6 +560,15 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
           {canManage && <button onClick={runBatch} disabled={busy || !bars} style={{ ...btn(VIOLET), opacity: busy || !bars ? 0.6 : 1 }}>{busy ? (es ? 'Corriendo…' : 'Running…') : (es ? '⚡ Backtestear lote' : '⚡ Backtest batch')}</button>}
           {canManage && <button onClick={runEvolve} disabled={busy || !bars} style={{ ...btn(GREEN), opacity: busy || !bars ? 0.6 : 1 }}>{es ? '🧬 Evolucionar' : '🧬 Evolve'}</button>}
         </div>
+        {/* Parámetros de evolución (simple y transparente) */}
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--line)' }}>
+          <span className="muted" style={{ fontSize: 11.5, fontWeight: 700 }}>🧬 {es ? 'Evolución' : 'Evolution'}</span>
+          {([['gens', es ? 'Generaciones' : 'Generations', 3, 40], ['pop', es ? 'Población' : 'Population', 20, 200]] as [string, string, number, number][]).map(([k, l, lo, hi]) => (
+            <label key={k} style={{ display: 'flex', alignItems: 'center', gap: 5 }}><span className="muted" style={{ fontSize: 11 }}>{l}</span><input type="number" min={lo} max={hi} value={(evoCfg as any)[k]} onChange={(e) => setEvoCfg({ ...evoCfg, [k]: Math.max(lo, Math.min(hi, Number(e.target.value) || lo)) })} style={{ ...inp, width: 64, padding: '5px 7px' }} /></label>
+          ))}
+          <label style={{ display: 'flex', alignItems: 'center', gap: 5 }}><span className="muted" style={{ fontSize: 11 }}>{es ? 'Mutación' : 'Mutation'}</span><input type="number" step="0.05" min={0.05} max={0.6} value={evoCfg.mut} onChange={(e) => setEvoCfg({ ...evoCfg, mut: Math.max(0.05, Math.min(0.6, Number(e.target.value) || 0.25)) })} style={{ ...inp, width: 64, padding: '5px 7px' }} /></label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 5 }}><span className="muted" style={{ fontSize: 11 }}>{es ? 'Reinicio si estanca' : 'Restart if stagnant'}</span><input type="number" min={0} max={20} value={evoCfg.restart} onChange={(e) => setEvoCfg({ ...evoCfg, restart: Math.max(0, Math.min(20, Number(e.target.value) || 0)) })} style={{ ...inp, width: 64, padding: '5px 7px' }} /></label>
+        </div>
       </div>
 
       {/* Evolución */}
@@ -603,6 +620,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
             <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Símbolo' : 'Symbol'}</span><input value={meta.symbol} onChange={(e) => setMeta({ ...meta, symbol: e.target.value })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>
             <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Temporalidad' : 'Timeframe'}</span><input value={meta.tf} onChange={(e) => setMeta({ ...meta, tf: e.target.value })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>
           </div>
+          {selScore && <ScoreCard es={es} s={selScore} />}
           {selReport && selReport.trades > 0 && <StratReport es={es} r={selReport} oosPct={oosPct} setOosPct={setOosPct} />}
           {canManage && (
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
@@ -724,6 +742,36 @@ function EvoChart({ history }: { history: number[] }) {
   const y = (v: number) => H - pad - ((v - min) / (max - min || 1)) * (H - 2 * pad);
   const d = history.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
   return <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: 'block' }}><path d={d} fill="none" stroke={GREEN} strokeWidth="2.4" />{history.map((v, i) => <circle key={i} cx={x(i)} cy={y(v)} r="3" fill={GREEN} />)}</svg>;
+}
+
+// Onyx Robustness Score: un número 0–100 con desglose y grado (anti-sobreajuste).
+function ScoreCard({ es, s }: { es: boolean; s: OnyxScore }) {
+  const col = s.score >= 80 ? GREEN : s.score >= 65 ? AQUA : s.score >= 50 ? AMBER : RED;
+  const R = 34, C = 2 * Math.PI * R, off = C * (1 - s.score / 100);
+  return (
+    <div style={{ marginTop: 14, background: 'var(--bg2)', borderRadius: 10, padding: 12, border: `1px solid color-mix(in srgb,${col} 40%,var(--line))` }}>
+      <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ position: 'relative', width: 84, height: 84, flexShrink: 0 }}>
+          <svg viewBox="0 0 84 84" width="84" height="84">
+            <circle cx="42" cy="42" r={R} fill="none" stroke="var(--line)" strokeWidth="7" />
+            <circle cx="42" cy="42" r={R} fill="none" stroke={col} strokeWidth="7" strokeLinecap="round" strokeDasharray={C} strokeDashoffset={off} transform="rotate(-90 42 42)" />
+            <text x="42" y="40" textAnchor="middle" fontSize="21" fontWeight="800" fill={col}>{s.score}</text>
+            <text x="42" y="55" textAnchor="middle" fontSize="10" fill="var(--mut)">{es ? 'de 100' : 'of 100'}</text>
+          </svg>
+        </div>
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <div style={{ fontSize: 13, fontWeight: 800 }}>🛡️ Onyx Robustness Score · <span style={{ color: col }}>{es ? 'Grado' : 'Grade'} {s.grade}</span></div>
+          <div className="muted" style={{ fontSize: 11.5, marginBottom: 6 }}>{es ? 'Qué tan robusta es (no sobre-ajustada). Penaliza la complejidad, la trampa nº1 del curve-fitting.' : 'How robust (not overfit) it is. Penalizes complexity, the #1 curve-fitting trap.'}</div>
+          {s.parts.map((p, i) => (
+            <div key={i} style={{ marginBottom: 4 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}><span>{es ? p.label : p.label} <span className="muted">· {p.note}</span></span><span style={{ fontWeight: 700 }}>{p.got}/{p.max}</span></div>
+              <div style={{ height: 5, borderRadius: 4, background: 'var(--line)', overflow: 'hidden' }}><div style={{ height: '100%', width: Math.round((p.got / p.max) * 100) + '%', background: p.got / p.max >= 0.6 ? GREEN : p.got / p.max >= 0.35 ? AMBER : RED }} /></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // Reporte completo estilo StrategyQuant: KPIs + curva de equity + drawdown +
