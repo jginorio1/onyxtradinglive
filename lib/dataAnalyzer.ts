@@ -13,9 +13,15 @@ type NumArr = number[] | Float64Array | Float32Array;
 export type ColumnarBars = { tf: number; digits: number; t: NumArr; o: NumArr; h: NumArr; l: NumArr; c: NumArr };
 
 // Convierte las barras columnar (arreglos tipados) a objeto plano serializable a JSON.
+// REDONDEA los precios a los dígitos del símbolo: si no, los Float32 se expanden
+// como "2345.6700439453125" y el JSON pesa 3× más (y revienta el límite de Storage).
 export function barsToJSON(b: ColumnarBars): string {
-  const arr = (x: NumArr) => Array.from(x as any);
-  return JSON.stringify({ tf: b.tf, digits: b.digits, t: arr(b.t), o: arr(b.o), h: arr(b.h), l: arr(b.l), c: arr(b.c) });
+  const n = b.t.length;
+  const f = Math.pow(10, b.digits || 5);
+  const t = new Array(n), o = new Array(n), h = new Array(n), l = new Array(n), c = new Array(n);
+  const R = (v: number) => Math.round(v * f) / f;
+  for (let i = 0; i < n; i++) { t[i] = Math.round((b.t as any)[i]); o[i] = R((b.o as any)[i]); h[i] = R((b.h as any)[i]); l[i] = R((b.l as any)[i]); c[i] = R((b.c as any)[i]); }
+  return JSON.stringify({ tf: b.tf, digits: b.digits, t, o, h, l, c });
 }
 export type AnalyzeResult = { metrics: any; bars: ColumnarBars };
 
