@@ -10,8 +10,8 @@ import { BLOCKS, computeSpace, candidatesToCsv } from '@/lib/stratgen';
 // exportas a MetaTrader para backtestear; luego el laboratorio los filtra.
 // ============================================================
 
-// Paleta FRESCA (teal/aqua/mint) — igual que el Constructor, sin púrpura ni verde apagado.
-const VIOLET = '#0fc2a0', GREEN = '#19e39a', BLUE = '#22c1e0', AQUA = '#22e3c3';
+// Paleta FRESCA "Laguna" (teal · aqua · lima · coral) — igual que toda la fábrica.
+const VIOLET = '#0fb8a6' /*teal*/, GREEN = '#5bd11e' /*lima*/, BLUE = '#2ee6c5' /*aqua*/, AQUA = '#2ee6c5', CORAL = '#ff8a5c';
 const inp: any = { padding: '9px 11px', borderRadius: 9, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 13.5 };
 function btn(c: string): any { return { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 15px', borderRadius: 10, cursor: 'pointer', fontWeight: 800, fontSize: 13, border: `1px solid color-mix(in srgb,${c} 45%,transparent)`, background: `color-mix(in srgb,${c} 14%,transparent)`, color: c }; }
 
@@ -119,7 +119,7 @@ export default function StratGenerator({ es, post, onClose, initialCfg, symbol =
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
               <div style={{ fontSize: 13.5, fontWeight: 800 }}>✨ {es ? 'Bloques de entrada de Claude' : 'Claude entry blocks'}</div>
               <span className="muted" style={{ fontSize: 11 }}>· {es ? 'reglas nuevas ejecutables por el motor' : 'new engine-executable rules'}</span>
-              <button onClick={() => setBOpen((v) => !v)} style={{ ...btn(BLUE), marginLeft: 'auto', padding: '6px 11px' }}>{bOpen ? (es ? 'Cerrar' : 'Close') : (es ? '✨ Crear bloque' : '✨ Create block')}</button>
+              <button onClick={() => setBOpen((v) => !v)} style={{ ...btn(CORAL), marginLeft: 'auto', padding: '6px 11px' }}>{bOpen ? (es ? 'Cerrar' : 'Close') : (es ? '✨ Crear bloque' : '✨ Create block')}</button>
             </div>
             {(blocks as any[]).length > 0 && (
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: bOpen ? 10 : 0 }}>
@@ -132,7 +132,7 @@ export default function StratGenerator({ es, post, onClose, initialCfg, symbol =
             {bOpen && (
               <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: 12 }}>
                 <textarea value={bIntent} onChange={(e) => setBIntent(e.target.value)} rows={2} placeholder={es ? 'Ej: entrar largo cuando RSI cruza 40 al alza y ADX sube' : 'e.g. go long when RSI crosses above 40 and ADX rising'} style={{ ...inp, width: '100%', resize: 'vertical', fontFamily: 'inherit' }} />
-                <button onClick={claudeBlocks} disabled={bBusy} style={{ ...btn(BLUE), marginTop: 8 }}>{bBusy ? (es ? 'Pensando…' : 'Thinking…') : (es ? '✨ Proponer bloques' : '✨ Propose blocks')}</button>
+                <button onClick={claudeBlocks} disabled={bBusy} style={{ ...btn(CORAL), marginTop: 8 }}>{bBusy ? (es ? 'Pensando…' : 'Thinking…') : (es ? '✨ Proponer bloques' : '✨ Propose blocks')}</button>
                 {bRes && bRes.map((r, i) => (
                   <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 8, borderTop: '1px solid var(--line)', paddingTop: 8 }}>
                     <b style={{ fontSize: 12.5 }}>{es ? r.es : r.en}</b>

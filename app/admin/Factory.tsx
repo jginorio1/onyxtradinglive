@@ -25,8 +25,8 @@ function useAnalysis() {
 // ============================================================
 
 const GREEN = '#1D9E75', AMBER = '#EF9F27', RED = '#E24B4A', VIOLET = '#a06bff';
-// Paleta FRESCA y VIVA solo para el Constructor (teal/aqua/coral — nada de púrpura ni verde apagado).
-const TEAL = '#0fc2a0', AQUA = '#22e3c3', SKY = '#22c1e0', MINT = '#19e39a', CORAL = '#ff7a59';
+// Paleta FRESCA "Laguna" (teal · aqua · lima · coral) — nada de púrpura ni verde apagado.
+const TEAL = '#0fb8a6', AQUA = '#2ee6c5', SKY = '#22c1e0', MINT = '#5bd11e', CORAL = '#ff8a5c';
 const card: any = { background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, padding: 18 };
 
 function statusColor(s: string) { return s === 'pass' ? GREEN : s === 'warn' ? AMBER : RED; }

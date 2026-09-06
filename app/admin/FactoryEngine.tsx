@@ -17,7 +17,8 @@ import { ProgressBar } from './ProgressBar';
 // el EA y envía las buenas al laboratorio de robustez.
 // ============================================================
 
-const VIOLET = '#a06bff', GREEN = '#1D9E75', AMBER = '#EF9F27', RED = '#E24B4A', BLUE = '#378ADD';
+// Paleta FRESCA "Laguna" (teal · aqua · lima · coral) — sin púrpura ni verde apagado.
+const VIOLET = '#0fb8a6' /*teal · chips/acentos*/, GREEN = '#5bd11e' /*lima · éxito*/, AMBER = '#EF9F27', RED = '#E24B4A', BLUE = '#2ee6c5' /*aqua*/, AQUA = '#2ee6c5', LIME = '#8ee63f', CORAL = '#ff8a5c';
 const card: any = { background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, padding: 18 };
 const inp: any = { padding: '9px 11px', borderRadius: 9, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 13.5 };
 function btn(c: string): any { return { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 14px', borderRadius: 10, cursor: 'pointer', fontWeight: 800, fontSize: 13, border: `1px solid color-mix(in srgb,${c} 45%,transparent)`, background: `color-mix(in srgb,${c} 14%,transparent)`, color: c }; }
@@ -226,13 +227,13 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
       {/* Datos + costes */}
       <div style={card}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4, flexWrap: 'wrap' }}>
-          <span style={{ display: 'inline-flex', width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg,var(--brand),' + VIOLET + ')', color: '#0b1020', fontSize: 18 }}>⚙️</span>
+          <span style={{ display: 'inline-flex', width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg,' + VIOLET + ',' + AQUA + ')', color: '#04201d', fontSize: 18 }}>⚙️</span>
           <h3 style={{ margin: 0, flex: 1 }}>{es ? 'Motor de backtest + evolución' : 'Backtest + evolution engine'}</h3>
         </div>
         <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>{es ? 'Elige un dataset de tu biblioteca (ya validado en la Puerta 0, sin volver a subir nada) o sube uno nuevo. El motor simula miles de estrategias con costes reales, evoluciona las mejores y las envía al laboratorio.' : 'Pick a dataset from your library (already validated in Gate 0, no re-upload) or upload a new one. The engine simulates thousands of strategies with real costs, evolves the best and sends them to the lab.'}</p>
 
         {/* Biblioteca de datos: reutiliza lo subido en la Puerta 0 (sin resubir) */}
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10, background: 'var(--bg2)', borderRadius: 10, padding: '10px 12px', border: '1px solid color-mix(in srgb,var(--brand) 25%,var(--line))' }}>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10, background: 'var(--bg2)', borderRadius: 10, padding: '10px 12px', border: '1px solid color-mix(in srgb,#0fb8a6 25%,var(--line))' }}>
           <span style={{ fontSize: 18 }}>🗄</span>
           <span style={{ fontSize: 12.5, fontWeight: 700 }}>{es ? 'Desde la biblioteca' : 'From library'}</span>
           <select value={dsId} onChange={(e) => loadFromLibrary(e.target.value)} disabled={reading} style={{ ...inp, minWidth: 220 }}>
@@ -248,7 +249,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
               {[[5, 'M5'], [15, 'M15'], [30, 'M30'], [60, 'H1'], [240, 'H4'], [1440, 'D1']].map(([v, l]) => <option key={v} value={v as number}>{l}</option>)}
             </select>
           </label>
-          <label style={{ ...btn('var(--brand)'), cursor: reading ? 'wait' : 'pointer', opacity: reading ? 0.7 : 1 }}>{reading ? (es ? `Leyendo ${Math.round(prog * 100)}%` : `Reading ${Math.round(prog * 100)}%`) : bars ? `${bars.length} barras · ${barsName.slice(0, 16)}` : (es ? 'Subir ticks/barras (cualquier tamaño)' : 'Upload ticks/bars (any size)')}
+          <label style={{ ...btn('#0fb8a6'), cursor: reading ? 'wait' : 'pointer', opacity: reading ? 0.7 : 1 }}>{reading ? (es ? `Leyendo ${Math.round(prog * 100)}%` : `Reading ${Math.round(prog * 100)}%`) : bars ? `${bars.length} barras · ${barsName.slice(0, 16)}` : (es ? 'Subir ticks/barras (cualquier tamaño)' : 'Upload ticks/bars (any size)')}
             <input type="file" accept=".csv,.txt,.tsv" disabled={reading} style={{ display: 'none' }} onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; setBarsName(f.name); setReading(true); setProg(0); setBars(null); try { const b = await parseBarsStreaming(f, tfMin, (p) => setProg(p)); if (b.length < 100) toastErr(es ? 'Se generaron muy pocas barras. Revisa el formato o usa una temporalidad más baja.' : 'Too few bars generated. Check the format or use a lower timeframe.'); setBars(b); const sym = guessSymbol(f.name); if (sym) setMeta((mt) => ({ ...mt, symbol: sym, tf: `M${tfMin}` })); } catch (err: any) { toastErr(es ? 'No se pudo leer el archivo. Revisa que sea CSV (Dukascopy: Gmt time, Ask, Bid).' : 'Could not read the file. Make sure it is CSV (Dukascopy: Gmt time, Ask, Bid).'); } finally { setReading(false); setProg(0); } }} />
           </label>
           {bars && <span className="muted" style={{ fontSize: 12 }}>{new Date(bars[0].t).toISOString().slice(0, 10)} → {new Date(bars[bars.length - 1].t).toISOString().slice(0, 10)} · pip {pip}</span>}
@@ -265,7 +266,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
       {/* AUTOPILOTO */}
       <div style={{ ...card, borderColor: `color-mix(in srgb,${GREEN} 45%,var(--line))`, background: `linear-gradient(150deg, color-mix(in srgb,${GREEN} 8%,var(--card)), var(--card) 70%)` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <span style={{ display: 'inline-flex', width: 36, height: 36, borderRadius: 11, alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg,' + GREEN + ',var(--brand))', color: '#0b1020', fontSize: 19 }}>🤖</span>
+          <span style={{ display: 'inline-flex', width: 36, height: 36, borderRadius: 11, alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg,' + GREEN + ',' + AQUA + ')', color: '#04201d', fontSize: 19 }}>🤖</span>
           <div style={{ flex: 1, minWidth: 180 }}>
             <h3 style={{ margin: 0 }}>{es ? 'Autopiloto' : 'Autopilot'}</h3>
             <p className="muted" style={{ fontSize: 12.5, margin: '2px 0 0' }}>{es ? 'Un botón: genera → backtestea → filtra por robustez (IS/OOS) → crea solo los robots que sobreviven y los manda al laboratorio. Sin CSV.' : 'One button: generate → backtest → filter by robustness → create only surviving robots and send them to the lab. No CSV.'}</p>
@@ -275,7 +276,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
           <span className="muted" style={{ fontSize: 12 }}>{es ? 'Crear hasta' : 'Create up to'}</span>
           <input type="number" value={keepN} min={1} max={30} onChange={(e) => setKeepN(Math.max(1, Math.min(30, Number(e.target.value) || 1)))} style={{ ...inp, width: 70 }} />
           <span className="muted" style={{ fontSize: 12 }}>{es ? 'robots · de' : 'robots · from'} {n} {es ? 'candidatos' : 'candidates'}</span>
-          {canManage && <button onClick={autopilot} disabled={auto || !bars} style={{ marginLeft: 'auto', padding: '12px 22px', borderRadius: 12, border: 'none', fontWeight: 800, fontSize: 14.5, cursor: auto || !bars ? 'default' : 'pointer', background: 'linear-gradient(135deg,' + GREEN + ',var(--brand))', color: '#0b1020', opacity: auto || !bars ? 0.6 : 1 }}>{auto ? (es ? 'Trabajando…' : 'Working…') : (es ? '🚀 Ejecutar autopiloto' : '🚀 Run autopilot')}</button>}
+          {canManage && <button onClick={autopilot} disabled={auto || !bars} style={{ marginLeft: 'auto', padding: '12px 22px', borderRadius: 12, border: 'none', fontWeight: 800, fontSize: 14.5, cursor: auto || !bars ? 'default' : 'pointer', background: 'linear-gradient(135deg,' + GREEN + ',' + AQUA + ')', color: '#04201d', opacity: auto || !bars ? 0.6 : 1 }}>{auto ? (es ? 'Trabajando…' : 'Working…') : (es ? '🚀 Ejecutar autopiloto' : '🚀 Run autopilot')}</button>}
         </div>
         {auto && <div style={{ marginTop: 10, fontSize: 13, color: GREEN, fontWeight: 700 }}>{autoMsg}</div>}
         {autoDone && (
@@ -288,7 +289,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
       {/* RECETA ENCADENADA (build → backtest → MC → walk-forward → rechazar) */}
       <div style={{ ...card, borderColor: `color-mix(in srgb,${BLUE} 45%,var(--line))` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <span style={{ display: 'inline-flex', width: 36, height: 36, borderRadius: 11, alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg,' + BLUE + ',' + VIOLET + ')', color: '#0b1020', fontSize: 19 }}>🧪</span>
+          <span style={{ display: 'inline-flex', width: 36, height: 36, borderRadius: 11, alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg,' + LIME + ',' + AQUA + ')', color: '#04201d', fontSize: 19 }}>🧪</span>
           <div style={{ flex: 1, minWidth: 180 }}>
             <h3 style={{ margin: 0 }}>{es ? 'Receta encadenada' : 'Chained recipe'}</h3>
             <p className="muted" style={{ fontSize: 12.5, margin: '2px 0 0' }}>{es ? 'Generar → backtest → in/out-of-sample → Monte Carlo (8 tipos) → walk-forward matrix. Solo pasan los que superan TODAS las compuertas.' : 'Generate → backtest → in/out-of-sample → Monte Carlo (8 types) → walk-forward matrix. Only those passing ALL gates survive.'}</p>
@@ -306,7 +307,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
           <div style={{ marginTop: 14 }}>
             {/* Embudo */}
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              {[[es ? 'Generadas' : 'Generated', recFunnel.scanned, 'var(--brand)'], [es ? 'Backtest' : 'Backtest', recFunnel.bt, VIOLET], [es ? 'Monte Carlo' : 'Monte Carlo', recFunnel.mc, BLUE], [es ? 'Walk-forward' : 'Walk-forward', recFunnel.wf, GREEN], [es ? 'Supervivientes' : 'Survivors', recFunnel.survivors.length, GREEN]].map(([l, v, c]: any, i) => (
+              {[[es ? 'Generadas' : 'Generated', recFunnel.scanned, '#0fb8a6'], [es ? 'Backtest' : 'Backtest', recFunnel.bt, VIOLET], [es ? 'Monte Carlo' : 'Monte Carlo', recFunnel.mc, BLUE], [es ? 'Walk-forward' : 'Walk-forward', recFunnel.wf, GREEN], [es ? 'Supervivientes' : 'Survivors', recFunnel.survivors.length, GREEN]].map(([l, v, c]: any, i) => (
                 <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                   <span style={{ background: 'var(--bg2)', borderRadius: 9, padding: '7px 11px', textAlign: 'center', border: `1px solid color-mix(in srgb,${c} 30%,var(--line))` }}><b style={{ color: c, fontSize: 16 }}>{v}</b><span className="muted" style={{ fontSize: 10.5, display: 'block' }}>{l}</span></span>
                   {i < 4 && <span className="muted">→</span>}
@@ -443,13 +444,13 @@ function SpecTable({ es, rows, onSel, sel, specLabel, oos }: any) {
         <thead><tr>{['Estrategia', 'Neto', 'PF', oos ? 'PF OOS' : 'DD%', 'Ops', ''].map((h) => <th key={h} style={{ textAlign: 'left', padding: '7px 9px', borderBottom: '1px solid var(--line)', color: 'var(--mut)', fontWeight: 700 }}>{h}</th>)}</tr></thead>
         <tbody>
           {rows.map((r: any, i: number) => (
-            <tr key={i} style={{ background: sel === r.spec ? 'color-mix(in srgb,var(--brand) 10%,transparent)' : 'transparent', cursor: 'pointer' }} onClick={() => onSel(r.spec)}>
+            <tr key={i} style={{ background: sel === r.spec ? 'color-mix(in srgb,#0fb8a6 10%,transparent)' : 'transparent', cursor: 'pointer' }} onClick={() => onSel(r.spec)}>
               <td style={{ padding: '6px 9px', fontFamily: 'monospace' }}>{specLabel(r.spec)}</td>
               <td style={{ padding: '6px 9px', fontWeight: 800, color: r.net >= 0 ? GREEN : RED }}>${r.net.toLocaleString('en-US')}</td>
               <td style={{ padding: '6px 9px', color: r.pf >= 1.3 ? GREEN : r.pf >= 1 ? AMBER : RED }}>{r.pf}</td>
               <td style={{ padding: '6px 9px' }}>{oos ? (r.oos ?? '—') : r.dd + '%'}</td>
               <td style={{ padding: '6px 9px' }}>{r.n}</td>
-              <td style={{ padding: '6px 9px' }}><span style={{ fontSize: 11, color: 'var(--brand)', fontWeight: 700 }}>{sel === r.spec ? '✓' : (es ? 'elegir' : 'pick')}</span></td>
+              <td style={{ padding: '6px 9px' }}><span style={{ fontSize: 11, color: '#0fb8a6', fontWeight: 700 }}>{sel === r.spec ? '✓' : (es ? 'elegir' : 'pick')}</span></td>
             </tr>
           ))}
         </tbody>
