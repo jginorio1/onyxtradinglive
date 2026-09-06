@@ -30,6 +30,64 @@ const TEAL = '#0fb8a6', AQUA = '#2ee6c5', SKY = '#22c1e0', MINT = '#5bd11e', COR
 const card: any = { background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, padding: 18 };
 
 function statusColor(s: string) { return s === 'pass' ? GREEN : s === 'warn' ? AMBER : RED; }
+
+// Telemetría del análisis en curso: leído / total, filas, velocidad, transcurrido, ETA.
+function AnalysisTelemetry({ gate, es }: any) {
+  const [, tick] = useState(0);
+  useEffect(() => { if (!gate.busy) return; const id = setInterval(() => tick((x) => x + 1), 1000); return () => clearInterval(id); }, [gate.busy]);
+  const el = gate.startedAt ? Math.max(0, Date.now() - gate.startedAt) : 0;
+  const secs = el / 1000;
+  const mb = (gate.bytesRead || 0) / 1048576, totMb = (gate.fileSize || 0) / 1048576;
+  const speed = secs > 0 ? mb / secs : 0;
+  const remainMb = Math.max(0, totMb - mb);
+  const eta = speed > 0.05 && gate.prog < 0.999 ? remainMb / speed : 0;
+  const fmtDur = (s: number) => { s = Math.round(s); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60; return (h ? h + 'h ' : '') + (h || m ? m + 'm ' : '') + ss + 's'; };
+  const cell = (l: string, v: string) => (<div style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 8, padding: '6px 8px' }}><div className="muted" style={{ fontSize: 10.5 }}>{l}</div><div style={{ fontSize: 13.5, fontWeight: 800 }}>{v}</div></div>);
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(92px,1fr))', gap: 6, marginTop: 10 }}>
+      {cell(es ? 'Leído' : 'Read', mb.toFixed(0) + ' / ' + totMb.toFixed(0) + ' MB')}
+      {cell(es ? 'Filas' : 'Rows', (gate.rows || 0).toLocaleString('en-US'))}
+      {cell(es ? 'Velocidad' : 'Speed', speed.toFixed(1) + ' MB/s')}
+      {cell(es ? 'Transcurrido' : 'Elapsed', fmtDur(secs))}
+      {cell('ETA', eta > 0 ? fmtDur(eta) : '—')}
+    </div>
+  );
+}
+
+// Bitácora persistente: eventos con hora. Sobrevive a recargas.
+function AnalysisLog({ gate, es }: any) {
+  const [open, setOpen] = useState(!!gate.interrupted);
+  const log: any[] = gate.log || [];
+  if (!log.length) return null;
+  const hhmm = (t: number) => new Date(t).toLocaleTimeString(es ? 'es' : 'en', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const kc = (k: string) => k === 'ok' ? GREEN : k === 'warn' ? AMBER : k === 'error' ? RED : 'var(--brand)';
+  function download() {
+    const lines = log.map((e) => new Date(e.t).toISOString() + '  [' + e.kind.toUpperCase() + ']  ' + e.msg);
+    const head = ['Onyx · Registro de análisis', 'Archivo: ' + gate.fileName, 'Tamaño: ' + ((gate.fileSize || 0) / 1048576).toFixed(0) + ' MB', 'Símbolo: ' + gate.symbol, 'Progreso: ' + Math.round((gate.prog || 0) * 100) + '%', 'Filas: ' + (gate.rows || 0), ''];
+    const b = new Blob([head.concat(lines).join('\n')], { type: 'text/plain' });
+    const u = URL.createObjectURL(b); const a = document.createElement('a'); a.href = u; a.download = 'onyx_analisis_' + Date.now() + '.txt'; a.click(); setTimeout(() => URL.revokeObjectURL(u), 1000);
+  }
+  return (
+    <div style={{ marginTop: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <button onClick={() => setOpen((o) => !o)} style={{ background: 'transparent', border: 'none', color: 'var(--brand)', cursor: 'pointer', fontSize: 12, fontWeight: 700, padding: 0 }}>{open ? '▾' : '▸'} {es ? 'Registro de análisis' : 'Analysis log'} ({log.length})</button>
+        <button onClick={download} style={{ marginLeft: 'auto', background: 'transparent', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--tx)', cursor: 'pointer', fontSize: 11.5, padding: '4px 9px' }}>{es ? '⬇ Descargar' : '⬇ Download'}</button>
+      </div>
+      {open && (
+        <div style={{ marginTop: 8, maxHeight: 200, overflowY: 'auto', border: '1px solid var(--line)', borderRadius: 8, background: 'var(--card)' }}>
+          {log.slice().reverse().map((e: any, i: number) => (
+            <div key={i} style={{ display: 'flex', gap: 9, alignItems: 'flex-start', padding: '6px 10px', borderTop: i ? '1px solid var(--line)' : 'none', fontSize: 12 }}>
+              <span style={{ fontFamily: 'monospace', color: 'var(--mut)', minWidth: 62 }}>{hhmm(e.t)}</span>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: kc(e.kind), flex: 'none', marginTop: 5 }} />
+              <span>{e.msg}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function verdictColor(v: string) { return v === 'apta' ? GREEN : v === 'reservas' ? AMBER : RED; }
 
 // -------- Anillo de calidad --------
@@ -188,6 +246,14 @@ function DataGate({ es, canManage, post, reload, datasets }: any) {
           {source === 'metatrader' && <Lbl t={es ? 'Broker' : 'Broker'}><input value={broker} onChange={(e) => patchAnalysis({ broker: e.target.value })} placeholder={es ? 'IC Markets, Pepperstone…' : 'IC Markets, Pepperstone…'} style={inp} /></Lbl>}
         </div>
 
+        {gate.interrupted && !gate.busy && (
+          <div style={{ border: `1px solid ${AMBER}`, background: `color-mix(in srgb,${AMBER} 12%,var(--bg2))`, borderRadius: 12, padding: 14, marginBottom: 12 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 800, color: AMBER, marginBottom: 4 }}>⚠ {es ? 'El análisis anterior se interrumpió' : 'The previous analysis was interrupted'}</div>
+            <div className="muted" style={{ fontSize: 12.5 }}>{es ? `Se detuvo por una recarga de la página (entraste con el PIN o refrescaste). Iba en ${Math.round(gate.prog * 100)}% con ${gate.fileName}. El archivo local no se guarda al recargar — vuelve a seleccionarlo para reanalizar. Abajo tienes el registro con los tiempos.` : `It stopped due to a page reload (PIN entry or refresh). It was at ${Math.round(gate.prog * 100)}% with ${gate.fileName}. The local file isn't kept on reload — pick it again to re-analyze. The log with times is below.`}</div>
+            <AnalysisLog gate={gate} es={es} />
+          </div>
+        )}
+
         {!gate.busy && (
           <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, border: '1.5px dashed color-mix(in srgb,var(--brand) 40%,var(--line))', borderRadius: 12, padding: '26px 14px', cursor: 'pointer', background: 'var(--bg2)', textAlign: 'center' }}>
             <span style={{ fontSize: 26 }}>📈</span>
@@ -200,7 +266,10 @@ function DataGate({ es, canManage, post, reload, datasets }: any) {
         {gate.busy && (
           <div style={{ border: '1px solid color-mix(in srgb,' + LIME + ' 35%,var(--line))', borderRadius: 12, padding: 16, background: 'var(--bg2)' }}>
             <ProgressBar p={gate.prog} label={(es ? 'Analizando ' : 'Analyzing ') + (gate.symbol || gate.fileName)} />
-            <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>{es ? 'Se lee el archivo completo en segundo plano. Puedes cambiar de pestaña o de sección del panel sin detenerlo. Solo un refresh completo del navegador lo reinicia.' : 'Reading the whole file in the background. Switch tabs or panel sections freely — it keeps running. Only a full browser refresh restarts it.'}</div>
+            {gate.stalled && <div style={{ fontSize: 12.5, color: AMBER, fontWeight: 700, marginTop: 8 }}>⏸ {es ? 'Sin avance — ¿dejaste la pestaña en segundo plano? Vuelve a esta pestaña para que continúe.' : 'No progress — did you leave the tab in the background? Return to this tab to continue.'}</div>}
+            <AnalysisTelemetry gate={gate} es={es} />
+            <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>{es ? 'Se lee el archivo completo en segundo plano. Puedes cambiar de sección del panel sin detenerlo. Mantén esta pestaña en primer plano y NO recargues (ni entres con el PIN) hasta que termine.' : 'Reading the whole file in the background. Switch panel sections freely. Keep this tab in the foreground and do NOT reload (or enter the PIN) until it finishes.'}</div>
+            <AnalysisLog gate={gate} es={es} />
           </div>
         )}
       </div>

@@ -32,7 +32,7 @@ self.onmessage=function(e){
 };
 
 async function run(file, tfMin, capBars){
-  var total=file.size||1, read=0, lastProg=0;
+  var total=file.size||1, read=0, lastProg=0, lastPost=0;
   var reader=file.stream().getReader(); var dec=new TextDecoder('utf-8'); var buf='';
   var cfg=null, delim=',', hasTicks=false;
   var rows=0, outOfOrder=0, duplicates=0, gaps=0, anomalies=0, spreadZero=0, spreadSum=0, spreadN=0, digits=5, gotDigits=false;
@@ -110,7 +110,9 @@ async function run(file, tfMin, capBars){
     read += res.value.byteLength||res.value.length||0;
     buf += dec.decode(res.value,{stream:true});
     flush(false);
-    var p=read/total; if(p-lastProg>0.008){ lastProg=p; self.postMessage({type:'progress',p:p}); }
+    var p=read/total; var now=Date.now();
+    // Emite progreso al avanzar 0.8% o cada 2 s (latido/heartbeat: así se sabe que sigue vivo).
+    if(p-lastProg>0.008 || now-lastPost>2000){ lastProg=p; lastPost=now; self.postMessage({type:'progress',p:p,read:read,rows:rows}); }
   }
   buf += dec.decode(); flush(true);
   self.postMessage({type:'progress',p:1});
@@ -164,41 +166,121 @@ export function analyzeInWorker(
 // solo un refresh completo del navegador lo reinicia (no se puede conservar un
 // archivo local tras recargar la página).
 // ============================================================
+export type LogEvent = { t: number; kind: 'info' | 'ok' | 'warn' | 'error'; msg: string };
 export type AnalysisState = {
   busy: boolean; prog: number; fileName: string; symbol: string; fileSize: number;
   source: string; broker: string; metrics: any; q: any; bars: ColumnarBars | null; file: File | null; error: string | null;
+  // Telemetría del análisis (registro/bitácora + tiempos).
+  startedAt: number; updatedAt: number; bytesRead: number; rows: number; stalled: boolean; interrupted: boolean; runId: string;
+  log: LogEvent[];
 };
-const EMPTY: AnalysisState = { busy: false, prog: 0, fileName: '', symbol: '', fileSize: 0, source: 'dukascopy', broker: '', metrics: null, q: null, bars: null, file: null, error: null };
+const EMPTY: AnalysisState = {
+  busy: false, prog: 0, fileName: '', symbol: '', fileSize: 0, source: 'dukascopy', broker: '', metrics: null, q: null, bars: null, file: null, error: null,
+  startedAt: 0, updatedAt: 0, bytesRead: 0, rows: 0, stalled: false, interrupted: false, runId: '', log: [],
+};
 let _state: AnalysisState = { ...EMPTY };
 let _worker: Worker | null = null;
 const _subs = new Set<() => void>();
 function _emit() { _subs.forEach((f) => { try { f(); } catch {} }); }
 
+// ---- Persistencia de la bitácora (sobrevive a recargas / entrada por PIN) ----
+const LS_KEY = 'onyx_analysis_run';       // corrida actual (con la bitácora completa)
+const LS_HIST = 'onyx_analysis_history';   // últimas corridas terminadas/interrumpidas
+let _lastSave = 0;
+function _persist(force = false) {
+  if (typeof localStorage === 'undefined') return;
+  const now = Date.now(); if (!force && now - _lastSave < 1500) return; _lastSave = now;
+  try {
+    const snap = { busy: _state.busy, prog: _state.prog, fileName: _state.fileName, symbol: _state.symbol, fileSize: _state.fileSize, source: _state.source, broker: _state.broker, startedAt: _state.startedAt, updatedAt: _state.updatedAt, bytesRead: _state.bytesRead, rows: _state.rows, error: _state.error, runId: _state.runId, log: _state.log.slice(-60), metrics: _state.metrics };
+    localStorage.setItem(LS_KEY, JSON.stringify(snap));
+  } catch {}
+}
+function _archive() {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    const hist = JSON.parse(localStorage.getItem(LS_HIST) || '[]');
+    hist.unshift({ fileName: _state.fileName, symbol: _state.symbol, fileSize: _state.fileSize, startedAt: _state.startedAt, endedAt: Date.now(), bytesRead: _state.bytesRead, rows: _state.rows, prog: _state.prog, error: _state.error, interrupted: _state.interrupted, log: _state.log.slice(-60) });
+    localStorage.setItem(LS_HIST, JSON.stringify(hist.slice(0, 10)));
+  } catch {}
+}
+export function logEvent(kind: LogEvent['kind'], msg: string) {
+  _state = { ..._state, log: [..._state.log.slice(-59), { t: Date.now(), kind, msg }] };
+  _persist(true); _emit();
+}
+export function getAnalysisHistory(): any[] { if (typeof localStorage === 'undefined') return []; try { return JSON.parse(localStorage.getItem(LS_HIST) || '[]'); } catch { return []; } }
+export function clearAnalysisHistory() { try { localStorage.removeItem(LS_HIST); } catch {} }
+
+// Al cargar el módulo (tras una recarga): recupera la última corrida. Si estaba
+// "busy", significa que se interrumpió (recarga / PIN) → deja el contexto visible.
+function _restore() {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    const raw = localStorage.getItem(LS_KEY); if (!raw) return;
+    const s = JSON.parse(raw);
+    _state = { ...EMPTY, source: s.source || 'dukascopy', broker: s.broker || '', fileName: s.fileName || '', symbol: s.symbol || '', fileSize: s.fileSize || 0, prog: s.prog || 0, startedAt: s.startedAt || 0, updatedAt: s.updatedAt || 0, bytesRead: s.bytesRead || 0, rows: s.rows || 0, runId: s.runId || '', log: Array.isArray(s.log) ? s.log : [], metrics: s.busy ? null : s.metrics || null };
+    if (s.busy) {
+      _state.interrupted = true; _state.error = 'interrumpido';
+      _state.log = [..._state.log, { t: Date.now(), kind: 'error', msg: 'Análisis detenido por recarga de la página (PIN o refresco). El archivo local no se conserva; hay que volver a seleccionarlo.' }];
+      _persist(true);
+    }
+  } catch {}
+}
+_restore();
+
+// ---- Vigilante de estancamiento (la pestaña en segundo plano congela el worker) ----
+if (typeof window !== 'undefined') {
+  setInterval(() => {
+    if (_state.busy && _state.updatedAt && Date.now() - _state.updatedAt > 25000 && !_state.stalled) {
+      _state = { ..._state, stalled: true, log: [..._state.log.slice(-59), { t: Date.now(), kind: 'warn', msg: 'Sin avance por más de 25 s. Si dejaste la pestaña en segundo plano, el navegador la congela; vuelve a esta pestaña para que continúe.' }] };
+      _persist(true); _emit();
+    }
+  }, 10000);
+  document.addEventListener('visibilitychange', () => {
+    if (!_state.busy) return;
+    logEvent(document.hidden ? 'warn' : 'info', document.hidden ? 'Pestaña en segundo plano — el análisis puede frenarse hasta que vuelvas.' : 'Pestaña en primer plano — el análisis continúa.');
+  });
+  window.addEventListener('beforeunload', () => { if (_state.busy) { _state.error = 'interrumpido'; _persist(true); } });
+}
+
 export function subscribeAnalysis(fn: () => void): () => void { _subs.add(fn); return () => { _subs.delete(fn); }; }
 export function getAnalysis(): AnalysisState { return _state; }
 export function patchAnalysis(p: Partial<AnalysisState>) { _state = { ..._state, ...p }; _emit(); }
 
+function _fmtMB(b: number) { return (b / 1048576).toFixed(0) + ' MB'; }
+
 // Arranca el análisis del archivo en un Web Worker persistente.
 export function startAnalysis(file: File, opts: { tfMin?: number } = {}) {
   if (_worker) { try { _worker.terminate(); } catch {} _worker = null; }
-  _state = { ..._state, busy: true, prog: 0, fileName: file.name, symbol: guessSymbol(file.name) || '', fileSize: file.size, metrics: null, q: null, bars: null, file, error: null };
+  const now = Date.now();
+  const runId = 'run_' + now.toString(36);
+  _state = { ..._state, busy: true, prog: 0, fileName: file.name, symbol: guessSymbol(file.name) || '', fileSize: file.size, metrics: null, q: null, bars: null, file, error: null, startedAt: now, updatedAt: now, bytesRead: 0, rows: 0, stalled: false, interrupted: false, runId, log: [{ t: now, kind: 'info', msg: 'Análisis iniciado · ' + file.name + ' · ' + _fmtMB(file.size) }] };
   if (/duka/i.test(file.name)) _state.source = 'dukascopy';
-  _emit();
+  _persist(true); _emit();
   const w = new Worker(workerUrl());
   _worker = w;
   w.onmessage = (ev: MessageEvent) => {
     const m = ev.data || {};
-    if (m.type === 'progress') { _state = { ..._state, prog: Math.max(0, Math.min(1, m.p)) }; _emit(); return; }
-    if (m.type === 'done') { _state = { ..._state, busy: false, prog: 1, metrics: m.metrics, bars: m.bars }; _emit(); try { w.terminate(); } catch {} if (_worker === w) _worker = null; return; }
-    if (m.type === 'error') { _state = { ..._state, busy: false, error: m.message || 'error' }; _emit(); try { w.terminate(); } catch {} if (_worker === w) _worker = null; return; }
+    if (m.type === 'progress') {
+      _state = { ..._state, prog: Math.max(0, Math.min(1, m.p)), updatedAt: Date.now(), bytesRead: m.read || _state.bytesRead, rows: m.rows || _state.rows, stalled: false };
+      _persist(); _emit(); return;
+    }
+    if (m.type === 'done') {
+      _state = { ..._state, busy: false, prog: 1, metrics: m.metrics, bars: m.bars, updatedAt: Date.now(), rows: m.metrics?.rows || _state.rows, stalled: false, log: [..._state.log.slice(-59), { t: Date.now(), kind: 'ok', msg: 'Análisis completado · ' + (m.metrics?.rows || 0).toLocaleString('en-US') + ' filas · ' + (m.metrics?.barsCount || 0).toLocaleString('en-US') + ' barras' }] };
+      _archive(); _persist(true); _emit(); try { w.terminate(); } catch {} if (_worker === w) _worker = null; return;
+    }
+    if (m.type === 'error') {
+      _state = { ..._state, busy: false, error: m.message || 'error', log: [..._state.log.slice(-59), { t: Date.now(), kind: 'error', msg: 'Error: ' + (m.message || 'desconocido') }] };
+      _archive(); _persist(true); _emit(); try { w.terminate(); } catch {} if (_worker === w) _worker = null; return;
+    }
   };
-  w.onerror = (ev) => { if (_state.busy) { _state = { ..._state, busy: false, error: ev.message || 'error del worker' }; _emit(); } };
+  w.onerror = (ev) => { if (_state.busy) { _state = { ..._state, busy: false, error: ev.message || 'error del worker', log: [..._state.log.slice(-59), { t: Date.now(), kind: 'error', msg: 'Error del worker: ' + (ev.message || '') }] }; _archive(); _persist(true); _emit(); } };
   w.postMessage({ file, tfMin: opts.tfMin || 1, capBars: 3000000 });
 }
 
 export function resetAnalysis() {
   if (_worker) { try { _worker.terminate(); } catch {} _worker = null; }
   _state = { ...EMPTY, source: _state.source, broker: _state.broker };
+  try { localStorage.removeItem(LS_KEY); } catch {}
   _emit();
 }
 
