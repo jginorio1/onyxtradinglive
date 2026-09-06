@@ -10,6 +10,7 @@ import { mcSuite } from '@/lib/montecarlo';
 import { walkForwardMatrix } from '@/lib/walkforward';
 import { optimize, specFromCell, type OptResult, type OptAxis } from '@/lib/optimizer';
 import { buildPortfolio, type PortMember, type PortResult } from '@/lib/portfolio';
+import { buildReport, type FullReport } from '@/lib/report';
 import { ProgressBar, ProgressBarIndeterminate } from './ProgressBar';
 import { Help } from './HelpTip';
 
@@ -182,6 +183,12 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
     if (!sel || !bars || !chOn) return null;
     try { return runBacktest(bars, enrichSpec({ ...sel, dir }, blockMap) as Spec, costs).challenge || null; } catch { return null; }
   }, [sel, bars, chOn, costs, dir, blockMap]);
+
+  // Reporte completo estilo StrategyQuant de la estrategia seleccionada.
+  const selReport = useMemo<FullReport | null>(() => {
+    if (!sel || !bars) return null;
+    try { const m = runBacktest(bars, enrichSpec({ ...sel, dir }, blockMap) as Spec, costs); return buildReport(m.trades, costs.capital || 10000); } catch { return null; }
+  }, [sel, bars, costs, dir, blockMap]);
 
   async function runBatch() {
     if (!bars) { toastErr(es ? 'Sube las barras primero.' : 'Upload bars first.'); return; }
@@ -558,6 +565,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
             <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Símbolo' : 'Symbol'}</span><input value={meta.symbol} onChange={(e) => setMeta({ ...meta, symbol: e.target.value })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>
             <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Temporalidad' : 'Timeframe'}</span><input value={meta.tf} onChange={(e) => setMeta({ ...meta, tf: e.target.value })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>
           </div>
+          {selReport && selReport.trades > 0 && <StratReport es={es} r={selReport} />}
           {canManage && (
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
               <button onClick={() => download(`ONYX_${sel.ind1}_${sel.entry}.mq5`, genMt5(sel, meta.symbol, 100000000 + Math.floor(Math.random() * 900000000)), 'text/plain')} style={btn(BLUE)}>{es ? 'Exportar EA .mq5' : 'Export EA .mq5'}</button>
@@ -678,6 +686,85 @@ function EvoChart({ history }: { history: number[] }) {
   const y = (v: number) => H - pad - ((v - min) / (max - min || 1)) * (H - 2 * pad);
   const d = history.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
   return <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: 'block' }}><path d={d} fill="none" stroke={GREEN} strokeWidth="2.4" />{history.map((v, i) => <circle key={i} cx={x(i)} cy={y(v)} r="3" fill={GREEN} />)}</svg>;
+}
+
+// Reporte completo estilo StrategyQuant: KPIs + curva de equity + drawdown +
+// rachas + estancamiento + tabla de rendimiento mensual.
+function StratReport({ es, r }: { es: boolean; r: FullReport }) {
+  const MON = es ? ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'] : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const money = (v: number) => (v < 0 ? '-$' : '$') + Math.abs(v).toLocaleString('en-US');
+  // Curva de equity + drawdown (SVG).
+  const W = 660, H = 150, dH = 46, pad = 6;
+  const eq = r.equity; const eqMin = Math.min(...eq.map((p) => p.eq)); const eqMax = Math.max(...eq.map((p) => p.eq));
+  const x = (i: number) => pad + (i / Math.max(1, eq.length - 1)) * (W - 2 * pad);
+  const y = (v: number) => H - pad - ((v - eqMin) / (eqMax - eqMin || 1)) * (H - 2 * pad);
+  const area = `M${x(0)},${H - pad} ` + eq.map((p, i) => `L${x(i).toFixed(1)},${y(p.eq).toFixed(1)}`).join(' ') + ` L${x(eq.length - 1)},${H - pad} Z`;
+  const line = eq.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.eq).toFixed(1)}`).join(' ');
+  const ddMax = Math.max(1, ...r.ddSeries.map((p) => -p.dd));
+  const ddBars = r.ddSeries;
+  const kpi = (l: string, v: string, c?: string) => (
+    <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 9, padding: '7px 9px' }}>
+      <div className="muted" style={{ fontSize: 10.5, marginBottom: 2 }}>{l}</div>
+      <div style={{ fontSize: 14.5, fontWeight: 800, color: c || 'var(--tx)' }}>{v}</div>
+    </div>
+  );
+  return (
+    <div style={{ marginTop: 14, background: 'var(--bg2)', borderRadius: 10, padding: 12, border: `1px solid color-mix(in srgb,${BLUE} 25%,var(--line))` }}>
+      <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 10 }}>📊 {es ? 'Reporte completo' : 'Full report'} <span className="muted" style={{ fontWeight: 500 }}>· {r.years} {es ? 'años' : 'yrs'} · {r.trades} {es ? 'ops' : 'trades'}</span></div>
+
+      {/* KPIs principales */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(96px,1fr))', gap: 8, marginBottom: 12 }}>
+        {kpi(es ? 'Neto' : 'Net profit', money(r.net), r.net >= 0 ? GREEN : RED)}
+        {kpi('Profit factor', String(r.pf), r.pf >= 1.3 ? GREEN : AMBER)}
+        {kpi(es ? 'Ret/DD' : 'Ret/DD', String(r.retDD), r.retDD >= 3 ? GREEN : AMBER)}
+        {kpi('Sharpe', String(r.sharpe))}
+        {kpi('SQN', String(r.sqn), r.sqn >= 2 ? GREEN : AMBER)}
+        {kpi('% win', r.winRate + '%')}
+        {kpi(es ? 'DD máx' : 'Max DD', money(r.maxDD) + ' · ' + r.maxDDpct + '%', RED)}
+        {kpi('CAGR', r.cagr + '%')}
+        {kpi('Expectancy', money(r.expectancy))}
+        {kpi('Payout', String(r.payout))}
+      </div>
+
+      {/* Curva de equity + drawdown */}
+      <div style={{ marginBottom: 4 }} className="muted"><span style={{ fontSize: 11 }}>{es ? 'Curva de equity' : 'Equity curve'}</span></div>
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: 'block' }}>
+        <path d={area} fill={`color-mix(in srgb,${BLUE} 22%,transparent)`} />
+        <path d={line} fill="none" stroke={BLUE} strokeWidth="2" />
+      </svg>
+      <div style={{ marginTop: 4, marginBottom: 4 }} className="muted"><span style={{ fontSize: 11 }}>Drawdown ($)</span></div>
+      <svg viewBox={`0 0 ${W} ${dH}`} width="100%" style={{ display: 'block' }}>
+        {ddBars.map((p, i) => { const h = ((-p.dd) / ddMax) * dH; return <line key={i} x1={x(i)} y1={0} x2={x(i)} y2={h} stroke={RED} strokeWidth={Math.max(0.5, (W - 2 * pad) / ddBars.length)} opacity={0.55} />; })}
+      </svg>
+
+      {/* Rachas + estancamiento */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 8, margin: '12px 0' }}>
+        {kpi(es ? 'Ganadas consec. (máx · prom)' : 'Consec. wins (max · avg)', r.maxConsecWins + ' · ' + r.avgConsecWins, GREEN)}
+        {kpi(es ? 'Perdidas consec. (máx · prom)' : 'Consec. losses (max · avg)', r.maxConsecLosses + ' · ' + r.avgConsecLosses, RED)}
+        {kpi(es ? 'Estancamiento' : 'Stagnation', r.stagnationDays + (es ? ' días · ' : ' days · ') + r.stagnationPct + '%', AMBER)}
+        {kpi(es ? 'Mayor ganancia' : 'Largest win', money(r.largestWin), GREEN)}
+        {kpi(es ? 'Mayor pérdida' : 'Largest loss', money(r.largestLoss), RED)}
+        {kpi(es ? 'Prom. ganada · perdida' : 'Avg win · loss', money(r.avgWin) + ' · ' + money(r.avgLoss))}
+      </div>
+
+      {/* Tabla de rendimiento mensual */}
+      <div className="muted" style={{ fontSize: 11, margin: '6px 0 4px' }}>{es ? 'Rendimiento mensual ($)' : 'Monthly performance ($)'}</div>
+      <div style={{ overflowX: 'auto', border: '1px solid var(--line)', borderRadius: 9 }}>
+        <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 11 }}>
+          <thead><tr>{[es ? 'Año' : 'Year', ...MON, 'YTD'].map((h) => <th key={h} style={{ padding: '5px 6px', color: BLUE, fontWeight: 700, borderBottom: '1px solid var(--line)', whiteSpace: 'nowrap' }}>{h}</th>)}</tr></thead>
+          <tbody>
+            {r.monthKeys.map((yr) => (
+              <tr key={yr} style={{ borderTop: '1px solid var(--line)' }}>
+                <td style={{ padding: '5px 6px', fontWeight: 700 }}>{yr}</td>
+                {MON.map((_, mo) => { const v = r.months[yr]?.[mo]; return <td key={mo} style={{ padding: '5px 6px', textAlign: 'right', color: v == null ? 'var(--mut)' : v >= 0 ? GREEN : RED }}>{v == null ? '·' : Math.round(v)}</td>; })}
+                <td style={{ padding: '5px 6px', textAlign: 'right', fontWeight: 800, color: (r.ytd[yr] || 0) >= 0 ? GREEN : RED }}>{Math.round(r.ytd[yr] || 0)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
 }
 
 function SpecTable({ es, rows, onSel, sel, specLabel, oos }: any) {
