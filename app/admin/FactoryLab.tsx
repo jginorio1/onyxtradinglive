@@ -1,6 +1,26 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast, toastErr } from '@/lib/toast';
+
+const clamp0100 = (x: number) => Math.max(0, Math.min(100, Math.round(x)));
+// Reconstruye el objeto de robustez que espera la UI a partir de una corrida
+// guardada en la base (factory_labruns). Así, al elegir un robot ya analizado por
+// el Motor/Autopiloto, se ven sus gráficas completas SIN volver a subir un CSV.
+function runFromStored(row: any): any {
+  if (!row) return null;
+  const r = {
+    score: row.robustness_score, verdict: row.verdict, trades: row.trades, net: row.net, pf: row.pf, maxdd: row.maxdd,
+    isPf: row.is_pf, oosPf: row.oos_pf, retention: row.oos_retention ?? 0, oosNet: row.oos_net ?? 0,
+    wfoConsistency: row.wfo_consistency ?? 0, sensitivity: row.sensitivity,
+    mc: { lossProb: row.mc_loss_prob ?? 0, medianDD: row.mc_median_dd ?? 0, p95DD: row.mc_p95_dd ?? 0 },
+    charts: row.charts || {}, flags: row.flags || [], expected: row.expected || {},
+    parts: {
+      mc: clamp0100((1 - (row.mc_loss_prob ?? 0)) * 100), oos: clamp0100((row.oos_retention ?? 0) * 100),
+      wfo: clamp0100((row.wfo_consistency ?? 0) * 100), sens: row.sensitivity ?? null, cx: null,
+    },
+  };
+  return { run: { id: row.id }, robustness: r, ai: { audit: row.ai_audit || '', mutations: row.mutations || [] } };
+}
 
 // ============================================================
 // Onyx Bot Factory · Laboratorio de robustez (Fase 2)
@@ -146,9 +166,33 @@ export default function FactoryLab({ es, canManage, post, reload, bots, datasets
 
   const bot = (bots as any[]).find((b) => b.id === botId);
 
+  // Al elegir un robot ya analizado (Motor/Autopiloto), carga su análisis guardado
+  // con gráficas — sin CSV. Si aún no tiene, deja el resumen simple de arriba.
+  useEffect(() => {
+    let alive = true;
+    if (!botId) { setRes(null); return; }
+    setRes(null); setCmp(null);
+    post({ action: 'lab_runs', botId }).then((j: any) => {
+      if (!alive) return;
+      const row = (j?.runs || [])[0];
+      if (row) setRes(runFromStored(row));
+    }).catch(() => {});
+    return () => { alive = false; };
+  }, [botId]);
+
   async function run() {
     if (!botId) { toastErr(es ? 'Elige un robot.' : 'Pick a robot.'); return; }
-    if (!trades || trades.length < 20) { toastErr(es ? 'Sube al menos 20 operaciones.' : 'Upload at least 20 trades.'); return; }
+    // Sin CSV: mostrar el análisis guardado (el robot ya se analizó en el Motor/Autopiloto).
+    if (!trades || trades.length < 20) {
+      setBusy(true);
+      try {
+        const j = await post({ action: 'lab_runs', botId });
+        const row = (j?.runs || [])[0];
+        if (row) { setRes(runFromStored(row)); toast(es ? 'Análisis guardado cargado' : 'Saved analysis loaded'); }
+        else toastErr(es ? 'Este robot aún no tiene análisis. Créalo con el Autopiloto, o sube un CSV en Avanzado.' : 'This robot has no analysis yet. Create it with Autopilot, or upload a CSV in Advanced.');
+      } catch (e: any) { toastErr(e?.message); } finally { setBusy(false); }
+      return;
+    }
     setBusy(true); setRes(null); setCmp(null);
     try {
       const j = await post({ action: 'lab_run', botId, trades, grid: grid || undefined, paramCount, lang: es ? 'es' : 'en' });
