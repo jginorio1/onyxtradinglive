@@ -127,9 +127,11 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
   const [meta, setMeta] = useState({ platform: 'mt5', symbol: 'XAUUSD', tf: 'M15' });
   const [auto, setAuto] = useState(false);
   const [autoMode, setAutoMode] = useState<'random' | 'evolve'>('evolve'); // aleatorio rápido vs evolución inteligente
+  const [minScore, setMinScore] = useState(65); // Onyx Robustness Score mínimo (anti-sobreajuste)
+  const [useAi, setUseAi] = useState(true);      // la IA (Claude) audita cada robot final
   const [autoMsg, setAutoMsg] = useState('');
   const [keepN, setKeepN] = useState(8);
-  const [autoDone, setAutoDone] = useState<{ created: number; scanned: number; survivors: number } | null>(null);
+  const [autoDone, setAutoDone] = useState<{ created: number; scanned: number; survivors: number; avg?: number } | null>(null);
   // Receta encadenada (build → backtest → IS/OOS → Monte Carlo → walk-forward → rechazar).
   const [recipe, setRecipe] = useState({ minPf: 1.2, maxDd: 25, minTr: 30, mcMaxLoss: 35, wfMinStab: 55 });
   const [oosPct, setOosPct] = useState(30); // % del final reservado como fuera de muestra (OOS)
@@ -271,8 +273,10 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
         await new Promise((r) => setTimeout(r, 10));
         const gens = Math.max(6, Math.min(40, Math.round(n / 400))); // más presupuesto = más generaciones
         const pop = Math.max(40, Math.min(200, Math.round(n / 20)));
-        const r = evolve(bars, costs, { pop, gens, keep: Math.max(1, keepN), mut: evoCfg.mut, restart: evoCfg.restart, oosPct: oosPct || 30 });
-        setEvo({ best: r.best, history: r.history });
+        // Guardamos un POOL amplio (keepN×5) para que el filtro anti-sobreajuste tenga de dónde elegir.
+        const pool = Math.max(24, Math.min(80, keepN * 5));
+        const r = evolve(bars, costs, { pop, gens, keep: pool, mut: evoCfg.mut, restart: evoCfg.restart, oosPct: oosPct || 30 });
+        setEvo({ best: r.best.slice(0, Math.max(keepN, 8)), history: r.history });
         const good = r.best.filter((s) => s.ev.oosPf >= 1 && s.ev.oosNet > 0 && s.ev.dd <= maxDd && s.ev.trades >= minTr);
         top = (good.length ? good : r.best).map((s) => ({ spec: { ...s.spec, dir } }));
         scanned = r.evaluated; survivorsN = good.length;
@@ -286,20 +290,42 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
           if (i % 120 === 0) { setAutoMsg((es ? 'Backtesteando ' : 'Backtesting ') + i + '/' + cands.length + ' · ' + (es ? 'robustos ' : 'robust ') + survivors.length); await new Promise((r) => setTimeout(r, 0)); }
         }
         survivors.sort((a, b) => b.fit - a.fit);
-        top = survivors.slice(0, Math.max(1, keepN));
+        top = survivors.slice(0, Math.max(24, keepN * 5)); // pool amplio para el filtro anti-sobreajuste
         scanned = cands.length; survivorsN = survivors.length;
       }
-      let created = 0;
+
+      // ══ FILTRO ANTI-SOBREAJUSTE (obligatorio) ══
+      // Cada finalista recibe su Onyx Robustness Score (consistencia IS≈OOS + rentabilidad
+      // OOS + Monte Carlo + drawdown + simplicidad). Solo pasan los que llegan al mínimo:
+      // así se descartan los robots "de laboratorio" que solo brillan en lo ya visto.
+      setAutoMsg(es ? 'Filtrando sobre-optimizados (Onyx Score)…' : 'Filtering over-optimized (Onyx Score)…');
+      await new Promise((r) => setTimeout(r, 10));
+      const graded: { spec: Spec; sc: OnyxScore }[] = [];
       for (let i = 0; i < top.length; i++) {
-        setAutoMsg((es ? 'Creando robot ' : 'Creating robot ') + (i + 1) + '/' + top.length + '…');
-        const trades = runBacktest(bars, top[i].spec, costs).trades;
+        try {
+          const sc = onyxScore(bars, enrichSpec({ ...top[i].spec, dir }, blockMap) as Spec, costs, oosPct || 30);
+          if (sc.score >= minScore) graded.push({ spec: top[i].spec, sc });
+        } catch { /* descartar el que rompa */ }
+        if (i % 6 === 0) { setAutoMsg((es ? 'Puntuando robustez ' : 'Scoring robustness ') + i + '/' + top.length); await new Promise((r) => setTimeout(r, 0)); }
+      }
+      graded.sort((a, b) => b.sc.score - a.sc.score);
+      const finalists = graded.slice(0, Math.max(1, keepN));
+      const passedGate = graded.length;
+
+      let created = 0;
+      for (let i = 0; i < finalists.length; i++) {
+        setAutoMsg((useAi ? (es ? '🧠 IA auditando robot ' : '🧠 AI auditing robot ') : (es ? 'Creando robot ' : 'Creating robot ')) + (i + 1) + '/' + finalists.length + ' · Onyx ' + finalists[i].sc.grade);
+        const trades = runBacktest(bars, finalists[i].spec, costs).trades;
         if (trades.length < 20) continue;
-        const j = await post({ action: 'bot_create', platform: meta.platform, symbol: meta.symbol, timeframe: meta.tf, strategy: { family: 'autopiloto', gen: top[i].spec } });
-        await post({ action: 'lab_run', botId: j.bot?.id, trades, paramCount: 6, noAi: true });
+        const j = await post({ action: 'bot_create', platform: meta.platform, symbol: meta.symbol, timeframe: meta.tf, strategy: { family: 'autopiloto', gen: finalists[i].spec, onyx: finalists[i].sc.score, grade: finalists[i].sc.grade } });
+        // IA en el proceso: si está activada, el laboratorio llama a Claude para auditar
+        // cada robot (interpretación + mutaciones sugeridas). noAi:false = IA encendida.
+        await post({ action: 'lab_run', botId: j.bot?.id, trades, paramCount: finalists[i].sc.cx, noAi: !useAi, lang: es ? 'es' : 'en' });
         created++;
       }
-      setAutoDone({ created, scanned, survivors: survivorsN });
-      toast((es ? 'Autopiloto: ' : 'Autopilot: ') + created + (es ? ' robots creados y en el laboratorio' : ' robots created in the lab'));
+      const avgGrade = finalists.length ? finalists.reduce((s, f) => s + f.sc.score, 0) / finalists.length : 0;
+      setAutoDone({ created, scanned, survivors: passedGate, avg: Math.round(avgGrade) });
+      toast((es ? 'Autopiloto: ' : 'Autopilot: ') + created + (es ? ' robots limpios creados' : ' clean robots created'));
       if (reload) reload();
     } catch (e: any) { toastErr(e?.message); } finally { setAuto(false); setAutoMsg(''); }
   }
@@ -421,7 +447,24 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
           <div className="muted" style={{ fontSize: 11, marginTop: 6 }}>{autoMode === 'evolve' ? (es ? '🧬 En evolución este número es el PRESUPUESTO: a más presupuesto, más generaciones y población, y más a fondo explora ese espacio de millones de combinaciones (haciendo solo unos miles de backtests). Corre en tu navegador; mantén la pestaña abierta.' : '🧬 In evolution this number is the BUDGET: more budget = more generations/population, exploring that space of millions of combos deeper (with only a few thousand backtests). Runs in your browser; keep the tab open.') : (es ? 'Más estrategias = más posibilidades pero tarda más (corre en tu navegador; mantén la pestaña abierta).' : 'More strategies = more chances but slower (runs in your browser; keep the tab open).')}</div>
         </div>
 
-        {/* Paso 3: ejecutar */}
+        {/* Paso 4: calidad + IA (anti-sobreajuste) */}
+        <div style={{ marginTop: 14 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 6 }}>{es ? '4 · Calidad e IA (anti-sobreajuste)' : '4 · Quality & AI (anti-overfit)'}</div>
+          <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: 12, border: `1px solid color-mix(in srgb,${GREEN} 22%,var(--line))` }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <span className="muted" style={{ fontSize: 12, minWidth: 150 }}>{es ? 'Onyx Score mínimo' : 'Min Onyx Score'}<Help text={es ? 'Cada finalista recibe un Onyx Robustness Score (0–100) que mide consistencia dentro/fuera de muestra, Monte Carlo, drawdown y simplicidad. Solo se guardan los que llegan a este mínimo → filtra los sobre-optimizados. 65≈B, 80≈A.' : 'Each finalist gets an Onyx Robustness Score (0–100) measuring in/out-of-sample consistency, Monte Carlo, drawdown and simplicity. Only those reaching this minimum are kept → filters over-optimized ones. 65≈B, 80≈A.'} /></span>
+              <input type="range" min={40} max={90} step={5} value={minScore} onChange={(e) => setMinScore(Number(e.target.value))} style={{ flex: 1, minWidth: 140 }} />
+              <span style={{ fontSize: 14, fontWeight: 800, color: minScore >= 80 ? GREEN : minScore >= 65 ? LIME : AMBER, minWidth: 78 }}>{minScore} · {minScore >= 80 ? 'A' : minScore >= 65 ? 'B' : minScore >= 50 ? 'C' : 'D'}</span>
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, cursor: 'pointer' }}>
+              <input type="checkbox" checked={useAi} onChange={(e) => setUseAi(e.target.checked)} />
+              <span style={{ fontSize: 13, fontWeight: 700 }}>🧠 {es ? 'La IA (Claude) audita cada robot final' : 'AI (Claude) audits each final robot'}</span>
+              <span className="muted" style={{ fontSize: 11.5 }}>{es ? '— interpreta su robustez y sugiere mejoras. Más lento pero es el sello de calidad.' : '— interprets robustness and suggests improvements. Slower but the quality seal.'}</span>
+            </label>
+          </div>
+        </div>
+
+        {/* Paso 5: ejecutar */}
         <div style={{ marginTop: 16, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
           {canManage && <button onClick={autopilot} disabled={auto || !bars} style={{ padding: '14px 30px', borderRadius: 13, border: 'none', fontWeight: 900, fontSize: 16, cursor: auto || !bars ? 'default' : 'pointer', background: auto || !bars ? '#3a4452' : 'linear-gradient(135deg,' + GREEN + ',' + AQUA + ')', color: auto || !bars ? '#8a94a6' : '#04201d', boxShadow: auto || !bars ? 'none' : '0 6px 20px color-mix(in srgb,' + GREEN + ' 40%,transparent)' }}>{auto ? (es ? '⏳ Trabajando…' : '⏳ Working…') : (es ? '🚀 Ejecutar' : '🚀 Run')}</button>}
           {!bars && !reading && <span className="muted" style={{ fontSize: 12.5 }}>{es ? '⬆ Elige primero un dataset arriba.' : '⬆ Pick a dataset above first.'}</span>}
@@ -429,7 +472,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
         </div>
         {autoDone && (
           <div style={{ marginTop: 12, background: 'var(--bg2)', borderRadius: 11, padding: '12px 14px', fontSize: 13.5, border: `1px solid color-mix(in srgb,${GREEN} 35%,var(--line))` }}>
-            ✅ {es ? 'Listo. Creados' : 'Done. Created'} <b style={{ color: GREEN }}>{autoDone.created}</b> {es ? 'robots' : 'robots'} · {autoDone.survivors} {es ? 'robustos de' : 'robust of'} {autoDone.scanned} {es ? 'escaneados' : 'scanned'}. <span className="muted">{es ? 'Míralos abajo en el Databank, y en las pestañas Laboratorio y Pipeline.' : 'See them below in the Databank, and in the Lab and Pipeline tabs.'}</span>
+            ✅ {es ? 'Listo. Creados' : 'Done. Created'} <b style={{ color: GREEN }}>{autoDone.created}</b> {es ? 'robots limpios' : 'clean robots'}{autoDone.avg ? <> · {es ? 'Onyx medio' : 'avg Onyx'} <b style={{ color: autoDone.avg >= 80 ? GREEN : LIME }}>{autoDone.avg} ({autoDone.avg >= 80 ? 'A' : autoDone.avg >= 65 ? 'B' : 'C'})</b></> : null} · {autoDone.survivors} {es ? 'pasaron el filtro de' : 'passed the gate of'} {autoDone.scanned} {es ? 'evaluadas' : 'evaluated'}{useAi ? (es ? ' · 🧠 auditados por IA' : ' · 🧠 AI-audited') : ''}. <span className="muted">{es ? 'Míralos en el Databank, y en Laboratorio y Pipeline (con la nota de la IA).' : 'See them in the Databank, and in Lab and Pipeline (with the AI note).'}</span>
           </div>
         )}
         <div className="muted" style={{ fontSize: 11, marginTop: 10, borderTop: '1px solid var(--line)', paddingTop: 8 }}>{es ? '¿Quieres control fino (costes, gestión monetaria, reto prop firm, OOS, evolución manual)? Está todo más abajo ↓' : 'Want fine control (costs, money management, prop challenge, OOS, manual evolution)? It’s all below ↓'}</div>
