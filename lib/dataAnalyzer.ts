@@ -158,6 +158,50 @@ export function analyzeInWorker(
   return { promise, cancel: () => { try { w.terminate(); } catch {} } };
 }
 
+// ============================================================
+// Store GLOBAL del análisis (vive fuera de React).
+// Así el análisis NO se detiene al cambiar de pestaña ni de sección del panel;
+// solo un refresh completo del navegador lo reinicia (no se puede conservar un
+// archivo local tras recargar la página).
+// ============================================================
+export type AnalysisState = {
+  busy: boolean; prog: number; fileName: string; symbol: string; fileSize: number;
+  source: string; broker: string; metrics: any; q: any; bars: ColumnarBars | null; file: File | null; error: string | null;
+};
+const EMPTY: AnalysisState = { busy: false, prog: 0, fileName: '', symbol: '', fileSize: 0, source: 'dukascopy', broker: '', metrics: null, q: null, bars: null, file: null, error: null };
+let _state: AnalysisState = { ...EMPTY };
+let _worker: Worker | null = null;
+const _subs = new Set<() => void>();
+function _emit() { _subs.forEach((f) => { try { f(); } catch {} }); }
+
+export function subscribeAnalysis(fn: () => void): () => void { _subs.add(fn); return () => { _subs.delete(fn); }; }
+export function getAnalysis(): AnalysisState { return _state; }
+export function patchAnalysis(p: Partial<AnalysisState>) { _state = { ..._state, ...p }; _emit(); }
+
+// Arranca el análisis del archivo en un Web Worker persistente.
+export function startAnalysis(file: File, opts: { tfMin?: number } = {}) {
+  if (_worker) { try { _worker.terminate(); } catch {} _worker = null; }
+  _state = { ..._state, busy: true, prog: 0, fileName: file.name, symbol: guessSymbol(file.name) || '', fileSize: file.size, metrics: null, q: null, bars: null, file, error: null };
+  if (/duka/i.test(file.name)) _state.source = 'dukascopy';
+  _emit();
+  const w = new Worker(workerUrl());
+  _worker = w;
+  w.onmessage = (ev: MessageEvent) => {
+    const m = ev.data || {};
+    if (m.type === 'progress') { _state = { ..._state, prog: Math.max(0, Math.min(1, m.p)) }; _emit(); return; }
+    if (m.type === 'done') { _state = { ..._state, busy: false, prog: 1, metrics: m.metrics, bars: m.bars }; _emit(); try { w.terminate(); } catch {} if (_worker === w) _worker = null; return; }
+    if (m.type === 'error') { _state = { ..._state, busy: false, error: m.message || 'error' }; _emit(); try { w.terminate(); } catch {} if (_worker === w) _worker = null; return; }
+  };
+  w.onerror = (ev) => { if (_state.busy) { _state = { ..._state, busy: false, error: ev.message || 'error del worker' }; _emit(); } };
+  w.postMessage({ file, tfMin: opts.tfMin || 1, capBars: 3000000 });
+}
+
+export function resetAnalysis() {
+  if (_worker) { try { _worker.terminate(); } catch {} _worker = null; }
+  _state = { ...EMPTY, source: _state.source, broker: _state.broker };
+  _emit();
+}
+
 // Reconstituye Bar[] desde el formato columnar (para el motor/lab).
 export function barsFromColumnar(b: ColumnarBars): { t: number; o: number; h: number; l: number; c: number }[] {
   const out: any[] = [];

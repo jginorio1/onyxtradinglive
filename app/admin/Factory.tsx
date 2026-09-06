@@ -6,8 +6,16 @@ import FactoryLab from './FactoryLab';
 import FactoryPipeline from './FactoryPipeline';
 import StratGenerator from './StratGenerator';
 import FactoryEngine from './FactoryEngine';
-import { analyzeInWorker, guessSymbol, type ColumnarBars } from '@/lib/dataAnalyzer';
-import { ProgressBar, LIME } from './ProgressBar';
+import { subscribeAnalysis, getAnalysis, startAnalysis, resetAnalysis, patchAnalysis, type ColumnarBars } from '@/lib/dataAnalyzer';
+import { supabaseBrowser } from '@/lib/supabaseBrowser';
+import { ProgressBar, ProgressBarIndeterminate, LIME } from './ProgressBar';
+
+// Suscribe el componente al store global del análisis (sobrevive a navegar).
+function useAnalysis() {
+  const [, force] = useState(0);
+  useEffect(() => subscribeAnalysis(() => force((x) => x + 1)), []);
+  return getAnalysis();
+}
 
 // ============================================================
 // Onyx Bot Factory · Fase 1 (solo admin)
@@ -16,6 +24,8 @@ import { ProgressBar, LIME } from './ProgressBar';
 // ============================================================
 
 const GREEN = '#1D9E75', AMBER = '#EF9F27', RED = '#E24B4A', VIOLET = '#a06bff';
+// Paleta FRESCA solo para el Constructor (teal/cian — distinta a toda la app Onyx).
+const TEAL = '#12b3a6', AQUA = '#2dd4bf', SKY = '#22b8cf';
 const card: any = { background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, padding: 18 };
 
 function statusColor(s: string) { return s === 'pass' ? GREEN : s === 'warn' ? AMBER : RED; }
@@ -38,40 +48,14 @@ function Ring({ score, color, size = 120, label }: any) {
   );
 }
 
-// Estado del análisis de la Puerta 0. Vive en el componente raíz (que nunca se
-// desmonta al cambiar de pestaña) para que analizar NO se pierda al moverte de tab.
-type GateState = { busy: boolean; prog: number; fileName: string; symbol: string; metrics: any; q: any; bars: ColumnarBars | null; fileSize: number };
-const GATE0: GateState = { busy: false, prog: 0, fileName: '', symbol: '', metrics: null, q: null, bars: null, fileSize: 0 };
-
 export default function Factory({ canManage = true }: { canManage?: boolean }) {
   const { lang } = useLang(); const es = lang !== 'en';
   const [d, setD] = useState<any>(null);
   const [sub, setSub] = useState<'datos' | 'constructor' | 'motor' | 'laboratorio' | 'pipeline' | 'robots'>('datos');
-  const [gate, setGate] = useState<GateState>(GATE0);
-  const gateCancel = useRef<null | (() => void)>(null);
 
   async function load() { try { const r = await fetch('/api/admin/factory'); const j = await r.json(); setD(j); } catch {} }
   useEffect(() => { load(); }, []);
   async function post(body: any) { const r = await fetch('/api/admin/factory', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); const j = await r.json(); if (!r.ok) throw new Error(j.error || 'error'); return j; }
-
-  // Analiza en Web Worker (no congela, sobrevive a cambiar de pestaña).
-  function analyzeGate(file: File) {
-    try { gateCancel.current?.(); } catch {}
-    const sym = guessSymbol(file.name) || '';
-    setGate({ ...GATE0, busy: true, prog: 0, fileName: file.name, symbol: sym, fileSize: file.size });
-    const { promise, cancel } = analyzeInWorker(file, { tfMin: 15, onProgress: (p) => setGate((g) => (g.busy ? { ...g, prog: p } : g)) });
-    gateCancel.current = cancel;
-    promise.then(async ({ metrics, bars }) => {
-      // Si no detectó símbolo por el nombre, intenta por el rango de años del nombre no ayuda; se queda el del nombre.
-      let quality: any = null;
-      try { const j = await post({ action: 'validate', metrics }); quality = j.quality; } catch {}
-      setGate((g) => ({ ...g, busy: false, prog: 1, metrics, q: quality, bars }));
-    }).catch((e) => {
-      setGate((g) => ({ ...g, busy: false }));
-      toastErr(es ? ('No se pudo analizar el archivo: ' + (e?.message || '')) : ('Could not analyze the file: ' + (e?.message || '')));
-    });
-  }
-  function resetGate() { try { gateCancel.current?.(); } catch {} setGate(GATE0); }
 
   if (!d) return <div className="muted" style={{ padding: 20 }}>{es ? 'Cargando…' : 'Loading…'}</div>;
   const stats = d.stats || {};
@@ -94,7 +78,7 @@ export default function Factory({ canManage = true }: { canManage?: boolean }) {
         })}
       </div>
 
-      {sub === 'datos' && <DataGate es={es} canManage={canManage} post={post} reload={load} datasets={d.datasets || []} gate={gate} analyzeGate={analyzeGate} resetGate={resetGate} setGate={setGate} />}
+      {sub === 'datos' && <DataGate es={es} canManage={canManage} post={post} reload={load} datasets={d.datasets || []} />}
       {sub === 'constructor' && <Builder es={es} canManage={canManage} post={post} reload={load} nextName={d.nextName} datasets={d.datasets || []} />}
       {sub === 'motor' && <FactoryEngine es={es} canManage={canManage} post={post} reload={load} datasets={d.datasets || []} />}
       {sub === 'laboratorio' && <FactoryLab es={es} canManage={canManage} post={post} reload={load} bots={d.bots || []} datasets={d.datasets || []} />}
@@ -107,21 +91,32 @@ export default function Factory({ canManage = true }: { canManage?: boolean }) {
 // -------- Puerta 0 · Datos --------
 // Un archivo se sube y valida UNA sola vez aquí; se guarda en la biblioteca y se
 // reutiliza en Constructor/Motor/Laboratorio sin volver a subir nada.
-function DataGate({ es, canManage, post, reload, datasets, gate, analyzeGate, resetGate, setGate }: any) {
-  const [source, setSource] = useState('dukascopy');
-  const [broker, setBroker] = useState('');
+function DataGate({ es, canManage, post, reload, datasets }: any) {
+  const gate = useAnalysis(); // store global — sobrevive a navegar por el panel
+  const source = gate.source, broker = gate.broker;
   const [saving, setSaving] = useState(false);
+  const [upMsg, setUpMsg] = useState('');
   const inputRef = useRef<HTMLInputElement | null>(null);
   const metrics = gate.metrics, q = gate.q;
+  const errShown = useRef('');
 
-  function pick(f: File | null) {
-    if (!f) return;
-    analyzeGate(f);
-    // Detecta la fuente por el nombre (Dukascopy suele venir como SYM_YYYY..._YYYY...).
-    if (/duka/i.test(f.name)) setSource('dukascopy');
-  }
+  // Al terminar el análisis, pide el veredicto de calidad (server-side).
+  useEffect(() => {
+    let alive = true;
+    if (gate.metrics && !gate.q && !gate.busy && !gate.error) {
+      post({ action: 'validate', metrics: gate.metrics }).then((j: any) => { if (alive) patchAnalysis({ q: j.quality }); }).catch(() => {});
+    }
+    return () => { alive = false; };
+  }, [gate.metrics, gate.q, gate.busy, gate.error]);
+
+  // Muestra el error real del worker (una vez).
+  useEffect(() => {
+    if (gate.error && errShown.current !== gate.error) { errShown.current = gate.error; toastErr((es ? 'No se pudo analizar: ' : 'Could not analyze: ') + gate.error); }
+  }, [gate.error]);
+
+  function pick(f: File | null) { if (!f) return; startAnalysis(f, { tfMin: 1 }); }
   function chooseAnother() {
-    resetGate();
+    resetAnalysis();
     if (inputRef.current) inputRef.current.value = ''; // permite re-elegir el MISMO archivo
     inputRef.current?.click();
   }
@@ -130,22 +125,40 @@ function DataGate({ es, canManage, post, reload, datasets, gate, analyzeGate, re
     if (!metrics || !q || !gate.bars) return;
     setSaving(true);
     try {
-      const fd = new FormData();
+      // 1) Pide URLs firmadas (el admin las crea; la subida va DIRECTA a Supabase,
+      //    sin pasar por Vercel, por eso soporta archivos de varios GB).
+      setUpMsg(es ? 'Preparando subida…' : 'Preparing upload…');
+      const sign = await post({ action: 'dataset_sign_upload', symbol: gate.symbol || 'data', wantTick: !!gate.file });
+      const sb = supabaseBrowser();
+
+      // 2) Sube las barras M1 (para generación rápida).
+      setUpMsg(es ? 'Subiendo barras…' : 'Uploading bars…');
       const barsBlob = new Blob([JSON.stringify(gate.bars)], { type: 'application/json' });
-      fd.append('bars', barsBlob, 'bars.json');
-      fd.append('meta', JSON.stringify({
+      const ub = await sb.storage.from('factory-data').uploadToSignedUrl(sign.bars.path, sign.bars.token, barsBlob, { contentType: 'application/json' } as any);
+      if (ub.error) throw new Error('barras: ' + ub.error.message);
+
+      // 3) Sube el archivo de TICKS REALES tal cual (máxima fidelidad).
+      let tick: any = null;
+      if (gate.file && sign.tick) {
+        setUpMsg(es ? 'Subiendo ticks reales (puede tardar)…' : 'Uploading real ticks (may take a while)…');
+        const ut = await sb.storage.from('factory-data').uploadToSignedUrl(sign.tick.path, sign.tick.token, gate.file, { contentType: gate.file.type || 'text/csv' } as any);
+        if (ut.error) throw new Error('ticks: ' + ut.error.message);
+        tick = { path: sign.tick.path, url: sign.tick.url, size: gate.file.size };
+      }
+
+      // 4) Guarda la ficha del dataset (metadata pequeña por JSON).
+      setUpMsg(es ? 'Guardando…' : 'Saving…');
+      await post({ action: 'dataset_save', meta: {
         symbol: gate.symbol, timeframe: metrics.hasTicks ? 'tick' : 'bars', filename: gate.fileName, metrics,
         source, broker: source === 'metatrader' ? broker : '',
-        barsTf: gate.bars.tf, barsCount: gate.bars.t?.length || 0, fileSize: gate.fileSize,
-      }));
-      const r = await fetch('/api/admin/factory/dataset', { method: 'POST', body: fd });
-      const j = await r.json();
-      if (!r.ok) throw new Error(j.error || 'error');
+        barsPath: sign.bars.path, barsUrl: sign.bars.url, barsTf: gate.bars.tf, barsCount: gate.bars.t?.length || 0, fileSize: gate.fileSize,
+        tickPath: tick?.path, tickUrl: tick?.url, tickSize: tick?.size, tickFormat: metrics.hasTicks ? (/duka/i.test(gate.fileName) ? 'dukascopy-csv' : 'csv-ticks') : null,
+      } });
       toast(es ? 'Dataset guardado en la biblioteca' : 'Dataset saved to the library');
-      resetGate(); setBroker('');
+      resetAnalysis();
       if (inputRef.current) inputRef.current.value = '';
       reload();
-    } catch (e: any) { toastErr(e?.message); } finally { setSaving(false); }
+    } catch (e: any) { toastErr(e?.message); } finally { setSaving(false); setUpMsg(''); }
   }
 
   async function del(id: string) {
@@ -165,13 +178,13 @@ function DataGate({ es, canManage, post, reload, datasets, gate, analyzeGate, re
         {/* Fuente de los datos */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 12, marginBottom: 14 }}>
           <Lbl t={es ? '¿De dónde sacaste la data?' : 'Where is the data from?'}>
-            <select value={source} onChange={(e) => setSource(e.target.value)} style={inp}>
+            <select value={source} onChange={(e) => patchAnalysis({ source: e.target.value })} style={inp}>
               <option value="dukascopy">Dukascopy</option>
               <option value="metatrader">MetaTrader</option>
               <option value="otro">{es ? 'Otro' : 'Other'}</option>
             </select>
           </Lbl>
-          {source === 'metatrader' && <Lbl t={es ? 'Broker' : 'Broker'}><input value={broker} onChange={(e) => setBroker(e.target.value)} placeholder={es ? 'IC Markets, Pepperstone…' : 'IC Markets, Pepperstone…'} style={inp} /></Lbl>}
+          {source === 'metatrader' && <Lbl t={es ? 'Broker' : 'Broker'}><input value={broker} onChange={(e) => patchAnalysis({ broker: e.target.value })} placeholder={es ? 'IC Markets, Pepperstone…' : 'IC Markets, Pepperstone…'} style={inp} /></Lbl>}
         </div>
 
         {!gate.busy && (
@@ -186,7 +199,7 @@ function DataGate({ es, canManage, post, reload, datasets, gate, analyzeGate, re
         {gate.busy && (
           <div style={{ border: '1px solid color-mix(in srgb,' + LIME + ' 35%,var(--line))', borderRadius: 12, padding: 16, background: 'var(--bg2)' }}>
             <ProgressBar p={gate.prog} label={(es ? 'Analizando ' : 'Analyzing ') + (gate.symbol || gate.fileName)} />
-            <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>{es ? 'Se lee el archivo completo en segundo plano. Puedes cambiar de pestaña: el análisis no se detiene.' : 'Reading the whole file in the background. You can switch tabs — the analysis keeps running.'}</div>
+            <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>{es ? 'Se lee el archivo completo en segundo plano. Puedes cambiar de pestaña o de sección del panel sin detenerlo. Solo un refresh completo del navegador lo reinicia.' : 'Reading the whole file in the background. Switch tabs or panel sections freely — it keeps running. Only a full browser refresh restarts it.'}</div>
           </div>
         )}
       </div>
@@ -212,6 +225,7 @@ function DataGate({ es, canManage, post, reload, datasets, gate, analyzeGate, re
                 <button onClick={chooseAnother} style={btn('var(--brand)')}>{es ? '↻ Analizar otra data' : '↻ Analyze another file'}</button>
               </div>
               {q.verdict === 'rechazada' && <div style={{ fontSize: 12.5, color: RED, marginTop: 8 }}>{es ? 'No se puede confiar en un backtest con estos datos. Corrige y vuelve a subir.' : 'A backtest on this data cannot be trusted. Fix and re-upload.'}</div>}
+              {saving && <div style={{ marginTop: 12 }}><ProgressBarIndeterminate label={upMsg || (es ? 'Subiendo…' : 'Uploading…')} /><div className="muted" style={{ fontSize: 11, marginTop: 5 }}>{es ? 'Los ticks reales se suben directo a Supabase (puede tardar en archivos grandes).' : 'Real ticks upload straight to Supabase (large files take a while).'}</div></div>}
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(230px,1fr))', gap: 8, marginTop: 14 }}>
@@ -236,6 +250,7 @@ function DataGate({ es, canManage, post, reload, datasets, gate, analyzeGate, re
               <span style={chip(ds.data_kind === 'ticks' || ds.has_ticks ? GREEN : AMBER)}>{ds.data_kind === 'ticks' || ds.has_ticks ? 'ticks' : (es ? 'barras' : 'bars')}</span>
               <span className="muted" style={{ fontSize: 12 }}>{ds.from_year || (ds.from_date ? new Date(ds.from_date).getUTCFullYear() : '—')}–{ds.to_year || (ds.to_date ? new Date(ds.to_date).getUTCFullYear() : '—')} · {ds.years}{es ? 'y' : 'y'} · {(ds.rows || 0).toLocaleString('en-US')} {es ? 'filas' : 'rows'}{ds.source ? ' · ' + ds.source : ''}{ds.broker ? ' (' + ds.broker + ')' : ''}</span>
               {ds.bars_url && <span style={chip(LIME)}>{es ? 'listo p/ motor' : 'engine-ready'}</span>}
+              {ds.tick_url && <span style={chip(GREEN)}>⚡ {es ? 'ticks reales' : 'real ticks'}{ds.tick_size ? ' · ' + (ds.tick_size / 1073741824 >= 1 ? (ds.tick_size / 1073741824).toFixed(1) + ' GB' : Math.round(ds.tick_size / 1048576) + ' MB') : ''}</span>}
               <span style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 800, color: verdictColor(ds.verdict) }}>{ds.quality_score}% · {ds.verdict}</span>
               {canManage && <button onClick={() => del(ds.id)} style={{ ...btn(RED), padding: '5px 9px' }}>✕</button>}
             </div>
@@ -270,17 +285,17 @@ function Builder({ es, canManage, post, reload, nextName, datasets }: any) {
   }
 
   return (
-    <div style={{ ...card, background: 'linear-gradient(150deg, color-mix(in srgb,var(--brand) 8%,var(--card)), color-mix(in srgb,#a06bff 7%,var(--card)) 70%, var(--card))', borderColor: 'color-mix(in srgb,var(--brand) 30%,var(--line))' }}>
+    <div style={{ ...card, background: `linear-gradient(150deg, color-mix(in srgb,${TEAL} 10%,var(--card)), color-mix(in srgb,${SKY} 8%,var(--card)) 70%, var(--card))`, borderColor: `color-mix(in srgb,${TEAL} 32%,var(--line))` }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4, flexWrap: 'wrap' }}>
-        <span style={{ display: 'inline-flex', width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg,var(--brand),#a06bff)', color: '#0b1020', fontSize: 18 }}>🛠</span>
+        <span style={{ display: 'inline-flex', width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center', background: `linear-gradient(135deg,${TEAL},${AQUA})`, color: '#04201d', fontSize: 18 }}>🛠</span>
         <h3 style={{ margin: 0, flex: 1 }}>{es ? 'Constructor de robots (solo admin)' : 'Robot builder (admin only)'}</h3>
-        {canManage && <button onClick={() => setShowGen(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 15px', borderRadius: 10, cursor: 'pointer', fontWeight: 800, fontSize: 13, border: `1px solid color-mix(in srgb,${VIOLET} 45%,transparent)`, background: `color-mix(in srgb,${VIOLET} 14%,transparent)`, color: VIOLET }}>🧬 {es ? 'Generador de estrategias' : 'Strategy generator'}</button>}
+        {canManage && <button onClick={() => setShowGen(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 15px', borderRadius: 10, cursor: 'pointer', fontWeight: 800, fontSize: 13, border: `1px solid color-mix(in srgb,${SKY} 45%,transparent)`, background: `color-mix(in srgb,${SKY} 14%,transparent)`, color: SKY }}>🧬 {es ? 'Generador de estrategias' : 'Strategy generator'}</button>}
       </div>
       {showGen && <StratGenerator es={es} post={post} onClose={() => setShowGen(false)} />}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg2)', borderRadius: 12, padding: '12px 14px', marginBottom: 14, border: `1px solid color-mix(in srgb,${VIOLET} 30%,var(--line))` }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg2)', borderRadius: 12, padding: '12px 14px', marginBottom: 14, border: `1px solid color-mix(in srgb,${TEAL} 30%,var(--line))` }}>
         <div style={{ flex: 1 }}>
           <div className="muted" style={{ fontSize: 12 }}>{es ? 'Nombre + magic automáticos (no editables, nunca se repiten)' : 'Automatic name + magic (locked, never repeat)'}</div>
-          <div style={{ fontSize: 20, fontWeight: 800, fontFamily: 'monospace', color: VIOLET, marginTop: 2 }}>{nextName || '—'}</div>
+          <div style={{ fontSize: 20, fontWeight: 800, fontFamily: 'monospace', color: TEAL, marginTop: 2 }}>{nextName || '—'}</div>
           <div className="muted" style={{ fontSize: 11.5, marginTop: 3 }}>{es ? 'Al crearlo se le asigna un magic de 9 dígitos único (numérico; MT4/MT5 no admite letras).' : 'On creation it gets a unique 9-digit magic (numeric; MT4/MT5 allows no letters).'}</div>
         </div>
         <span style={{ fontSize: 22 }}>🔒</span>
@@ -302,7 +317,7 @@ function Builder({ es, canManage, post, reload, nextName, datasets }: any) {
         </div>
       </label>
 
-      {canManage && <button onClick={create} disabled={busy} style={{ marginTop: 14, padding: '12px 22px', fontSize: 14, borderRadius: 12, border: 'none', fontWeight: 800, cursor: 'pointer', background: 'linear-gradient(135deg,var(--brand),' + VIOLET + ')', color: '#0b1020' }}>{busy ? (es ? 'Creando…' : 'Creating…') : (es ? '✨ Crear robot' : '✨ Create robot')}</button>}
+      {canManage && <button onClick={create} disabled={busy} style={{ marginTop: 14, padding: '12px 22px', fontSize: 14, borderRadius: 12, border: 'none', fontWeight: 800, cursor: 'pointer', background: `linear-gradient(135deg,${TEAL},${AQUA})`, color: '#04201d' }}>{busy ? (es ? 'Creando…' : 'Creating…') : (es ? '✨ Crear robot' : '✨ Create robot')}</button>}
     </div>
   );
 }

@@ -153,6 +153,7 @@ export function validateMetrics(m: DataMetrics): QResult {
 export async function saveDataset(o: {
   userId: string; symbol: string; timeframe: string; filename: string; metrics: DataMetrics;
   source?: string; broker?: string; barsPath?: string; barsUrl?: string; barsTf?: number; barsCount?: number; fileSize?: number;
+  tickPath?: string; tickUrl?: string; tickSize?: number; tickFormat?: string;
 }) {
   const q = validateMetrics(o.metrics);
   const fromY = o.metrics.fromMs ? new Date(o.metrics.fromMs).getUTCFullYear() : null;
@@ -180,9 +181,11 @@ export async function saveDataset(o: {
     bars_path: o.barsPath || null, bars_url: o.barsUrl || null,
     bars_tf: o.barsTf || null, bars_count: o.barsCount || null,
     file_size: o.fileSize || null,
+    tick_path: o.tickPath || null, tick_url: o.tickUrl || null,
+    tick_size: o.tickSize || null, tick_format: o.tickFormat || null,
   };
   let { data, error } = await supabaseAdmin.from('factory_datasets').insert({ ...base, ...extra }).select('*').single();
-  if (error && /column|schema cache|source|broker|bars_|data_kind|from_year|to_year|file_size/i.test(error.message || '')) {
+  if (error && /column|schema cache|source|broker|bars_|tick_|data_kind|from_year|to_year|file_size/i.test(error.message || '')) {
     ({ data, error } = await supabaseAdmin.from('factory_datasets').insert(base).select('*').single());
   }
   if (error) throw new Error(error.message);
@@ -202,9 +205,9 @@ export async function getDataset(id: string) {
 
 // Borra un dataset y sus barras en Storage.
 export async function deleteDataset(id: string) {
-  const { data } = await supabaseAdmin.from('factory_datasets').select('bars_path').eq('id', id).maybeSingle();
-  const path = (data as any)?.bars_path;
-  if (path) { try { await supabaseAdmin.storage.from('factory-data').remove([path]); } catch {} }
+  const { data } = await supabaseAdmin.from('factory_datasets').select('bars_path,tick_path').eq('id', id).maybeSingle();
+  const paths = [(data as any)?.bars_path, (data as any)?.tick_path].filter(Boolean) as string[];
+  if (paths.length) { try { await supabaseAdmin.storage.from('factory-data').remove(paths); } catch {} }
   await supabaseAdmin.from('factory_datasets').delete().eq('id', id);
   return { ok: true };
 }

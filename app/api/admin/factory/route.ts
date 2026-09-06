@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAdmin, logAdmin } from '@/lib/admin';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { listBots, listDatasets, factoryStats, saveDataset, createBot, deleteBot, genUniqueName, validateMetrics, runLab, listLabRuns, compareBt, advanceToDemo, saveGenRun, listGenRuns, getDataset, deleteDataset } from '@/lib/factory';
 import { pipelineBoard, runPipelineOnce, linkDemo, stageOverride, approveReal } from '@/lib/pipeline';
 
@@ -36,6 +37,37 @@ export async function POST(req: Request) {
     try {
       const r = await saveDataset({ userId: user.id, symbol: b.symbol, timeframe: b.timeframe, filename: b.filename, metrics: b.metrics || {} });
       await logAdmin(user.email || '', 'factory_dataset', r.dataset?.id || '', { verdict: r.quality.verdict, score: r.quality.score });
+      return NextResponse.json(r);
+    } catch (e: any) { return NextResponse.json({ error: e?.message || 'error' }, { status: 400 }); }
+  }
+  // Crea URLs firmadas para subir DIRECTO a Storage desde el navegador
+  // (evita el límite de tamaño de las funciones de Vercel → soporta varios GB).
+  if (a === 'dataset_sign_upload') {
+    const BUCKET = 'factory-data';
+    try { await supabaseAdmin.storage.createBucket(BUCKET, { public: true, fileSizeLimit: '6442450944' } as any); } catch { /* ya existe */ }
+    const stamp = `${user.id}/${Date.now()}-${String(b.symbol || 'data').replace(/[^A-Za-z0-9]/g, '')}`;
+    const barsPath = stamp + '.bars.json';
+    const bs = await supabaseAdmin.storage.from(BUCKET).createSignedUploadUrl(barsPath);
+    if (bs.error) return NextResponse.json({ error: 'firma barras: ' + bs.error.message }, { status: 500 });
+    const out: any = { bars: { path: barsPath, token: bs.data?.token, url: supabaseAdmin.storage.from(BUCKET).getPublicUrl(barsPath).data.publicUrl } };
+    if (b.wantTick) {
+      const tickPath = stamp + '.ticks.csv';
+      const ts = await supabaseAdmin.storage.from(BUCKET).createSignedUploadUrl(tickPath);
+      if (ts.error) return NextResponse.json({ error: 'firma ticks: ' + ts.error.message }, { status: 500 });
+      out.tick = { path: tickPath, token: ts.data?.token, url: supabaseAdmin.storage.from(BUCKET).getPublicUrl(tickPath).data.publicUrl };
+    }
+    return NextResponse.json(out);
+  }
+  // Guarda la ficha del dataset (metadata pequeña) tras subir los archivos.
+  if (a === 'dataset_save') {
+    try {
+      const m = b.meta || {};
+      const r = await saveDataset({
+        userId: user.id, symbol: m.symbol || '', timeframe: m.timeframe || '', filename: m.filename || '', metrics: m.metrics || {},
+        source: m.source, broker: m.broker, barsPath: m.barsPath, barsUrl: m.barsUrl, barsTf: m.barsTf, barsCount: m.barsCount, fileSize: m.fileSize,
+        tickPath: m.tickPath, tickUrl: m.tickUrl, tickSize: m.tickSize, tickFormat: m.tickFormat,
+      });
+      await logAdmin(user.email || '', 'factory_dataset', r.dataset?.id || '', { verdict: r.quality.verdict, score: r.quality.score, source: m.source, ticks: !!m.tickUrl });
       return NextResponse.json(r);
     } catch (e: any) { return NextResponse.json({ error: e?.message || 'error' }, { status: 400 }); }
   }
