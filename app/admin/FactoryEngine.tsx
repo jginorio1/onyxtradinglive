@@ -380,7 +380,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
         </div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginTop: 12 }}>
           <span className="muted" style={{ fontSize: 12 }}>{es ? 'Crear hasta' : 'Create up to'}</span>
-          <input type="number" value={keepN} min={1} max={30} onChange={(e) => setKeepN(Math.max(1, Math.min(30, Number(e.target.value) || 1)))} style={{ ...inp, width: 70 }} />
+          <input type="number" value={keepN} min={1} max={500} onChange={(e) => setKeepN(Math.max(1, Math.min(500, Number(e.target.value) || 1)))} style={{ ...inp, width: 70 }} />
           <span className="muted" style={{ fontSize: 12 }}>{es ? 'robots · de' : 'robots · from'} {n} {es ? 'candidatos' : 'candidates'}</span>
           {canManage && <button onClick={autopilot} disabled={auto || !bars} style={{ marginLeft: 'auto', padding: '12px 22px', borderRadius: 12, border: 'none', fontWeight: 800, fontSize: 14.5, cursor: auto || !bars ? 'default' : 'pointer', background: 'linear-gradient(135deg,' + GREEN + ',' + AQUA + ')', color: '#04201d', opacity: auto || !bars ? 0.6 : 1 }}>{auto ? (es ? 'Trabajando…' : 'Working…') : (es ? '🚀 Ejecutar autopiloto' : '🚀 Run autopilot')}</button>}
         </div>
