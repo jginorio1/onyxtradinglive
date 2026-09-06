@@ -5,7 +5,7 @@ import { BLOCKS, sampleCandidates, enrichSpec } from '@/lib/stratgen';
 import { parseBars, parseBarsStreaming, runBacktest, inferPip, type Bar, type Spec, type Costs } from '@/lib/backtest';
 import { evolve, evaluate, type Survivor } from '@/lib/evolve';
 import { genMt5, genMt4 } from '@/lib/mqlgen';
-import { barsFromColumnar, type ColumnarBars } from '@/lib/dataAnalyzer';
+import { barsFromColumnar, fetchColumnar, type ColumnarBars } from '@/lib/dataAnalyzer';
 import { mcSuite } from '@/lib/montecarlo';
 import { walkForwardMatrix } from '@/lib/walkforward';
 import { optimize, specFromCell, type OptResult, type OptAxis } from '@/lib/optimizer';
@@ -100,8 +100,8 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
     if (!ds?.bars_url) { toastErr(es ? 'Ese dataset no tiene barras guardadas. Vuelve a guardarlo en la Puerta 0.' : 'That dataset has no saved bars. Re-save it in Gate 0.'); return; }
     setReading(true); setProg(0); setBars(null); setBarsName((ds.symbol || 'dataset') + ' · biblioteca');
     try {
-      const r = await fetch(ds.bars_url); setProg(0.6);
-      const col = (await r.json()) as ColumnarBars;
+      setProg(0.6);
+      const col = await fetchColumnar(ds.bars_url);   // descomprime gzip si hace falta
       const b = barsFromColumnar(col); setProg(1);
       if (b.length < 100) { toastErr(es ? 'El dataset guardado tiene muy pocas barras.' : 'Saved dataset has too few bars.'); }
       setBars(b);
@@ -167,7 +167,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
       const members: PortMember[] = [];
       for (const ds of chosen) {
         setMsMsg((es ? 'Backtest ' : 'Backtest ') + (ds.symbol || ds.id));
-        const r = await fetch(ds.bars_url); const col = (await r.json()) as ColumnarBars;
+        const col = await fetchColumnar(ds.bars_url);
         const b = barsFromColumnar(col);
         if (b.length < 100) continue;
         members.push({ name: (ds.symbol || 'DS') + ' M' + (col.tf || '?'), dataset: ds.id, bars: b, spec: enrichSpec({ ...base, dir }, blockMap) as Spec });

@@ -6,7 +6,7 @@ import FactoryLab from './FactoryLab';
 import FactoryPipeline from './FactoryPipeline';
 import StratGenerator from './StratGenerator';
 import FactoryEngine from './FactoryEngine';
-import { subscribeAnalysis, getAnalysis, startAnalysis, resetAnalysis, patchAnalysis, barsToJSON, type ColumnarBars } from '@/lib/dataAnalyzer';
+import { subscribeAnalysis, getAnalysis, startAnalysis, resetAnalysis, patchAnalysis, barsToUploadBlob, type ColumnarBars } from '@/lib/dataAnalyzer';
 import { BLOCKS } from '@/lib/stratgen';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 import { ProgressBar, ProgressBarIndeterminate, LIME } from './ProgressBar';
@@ -192,8 +192,8 @@ function DataGate({ es, canManage, post, reload, datasets }: any) {
 
       // 2) Sube las barras M1 (para generación rápida).
       setUpMsg(es ? 'Subiendo barras…' : 'Uploading bars…');
-      const barsBlob = new Blob([barsToJSON(gate.bars)], { type: 'application/json' });
-      const ub = await sb.storage.from('factory-data').uploadToSignedUrl(sign.bars.path, sign.bars.token, barsBlob, { contentType: 'application/json' } as any);
+      const barsBlob = await barsToUploadBlob(gate.bars);   // gzip → 10× menos peso
+      const ub = await sb.storage.from('factory-data').uploadToSignedUrl(sign.bars.path, sign.bars.token, barsBlob, { contentType: 'application/octet-stream' } as any);
       if (ub.error) throw new Error('barras: ' + ub.error.message);
 
       // 3) Sube el archivo de TICKS REALES tal cual (máxima fidelidad).
