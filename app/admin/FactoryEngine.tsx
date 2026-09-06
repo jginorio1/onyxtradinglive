@@ -67,6 +67,21 @@ const inp: any = { padding: '9px 11px', borderRadius: 9, border: '1px solid var(
 function btn(c: string): any { return { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 14px', borderRadius: 10, cursor: 'pointer', fontWeight: 800, fontSize: 13, border: `1px solid color-mix(in srgb,${c} 45%,transparent)`, background: `color-mix(in srgb,${c} 14%,transparent)`, color: c }; }
 function autoChip(c: string): any { return { display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, padding: '5px 11px', borderRadius: 99, background: `color-mix(in srgb,${c} 15%,transparent)`, color: c, border: `1px solid color-mix(in srgb,${c} 32%,transparent)` }; }
 function methodCard(active: boolean, c: string): any { return { flex: 1, minWidth: 220, textAlign: 'left', cursor: 'pointer', padding: '11px 13px', borderRadius: 12, background: active ? `color-mix(in srgb,${c} 14%,var(--bg2))` : 'var(--bg2)', border: `2px solid ${active ? c : 'var(--line)'}`, color: 'var(--tx)' }; }
+// Agrega barras a una temporalidad más gruesa (p.ej. M1 → M15) para que la búsqueda
+// no congele la pestaña con datasets enormes. Bucketea por tiempo (OHLC correcto).
+function aggregateBars(bars: Bar[], targetMin: number): Bar[] {
+  if (!bars.length) return bars;
+  const bucket = targetMin * 60000;
+  const out: Bar[] = [];
+  let curKey = -1, o = 0, h = 0, l = 0, c = 0, t = 0;
+  for (const b of bars) {
+    const k = Math.floor(b.t / bucket);
+    if (k !== curKey) { if (curKey !== -1) out.push({ t, o, h, l, c } as Bar); curKey = k; t = k * bucket; o = b.o; h = b.h; l = b.l; c = b.c; }
+    else { if (b.h > h) h = b.h; if (b.l < l) l = b.l; c = b.c; }
+  }
+  if (curKey !== -1) out.push({ t, o, h, l, c } as Bar);
+  return out;
+}
 function download(name: string, text: string, mime: string) { const b = new Blob([text], { type: mime }); const u = URL.createObjectURL(b); const a = document.createElement('a'); a.href = u; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(u), 1000); }
 
 type Row = { spec: Spec; net: number; pf: number; dd: number; n: number; win: number; exp: number };
@@ -105,11 +120,25 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
     try {
       setProg(0.6);
       const col = await fetchColumnar(ds.bars_url);   // descomprime gzip si hace falta
-      const b = barsFromColumnar(col); setProg(1);
+      let b = barsFromColumnar(col); setProg(0.85);
       if (b.length < 100) { toastErr(es ? 'El dataset guardado tiene muy pocas barras.' : 'Saved dataset has too few bars.'); }
+      // Datasets enormes (M1 de muchos años = millones de barras) congelan la pestaña al
+      // backtestear miles de veces. Los agregamos a una TF más gruesa para la búsqueda,
+      // apuntando a ~250k barras. La fidelidad para buscar sigue siendo alta.
+      const srcTf = col.tf || 1;
+      let workTf = srcTf;
+      if (b.length > 400000) {
+        const std = [1, 5, 15, 30, 60, 240, 1440];
+        const target = Math.ceil((b.length / 250000) * srcTf);
+        workTf = std.find((x) => x >= target) || 1440;
+        if (workTf > srcTf) { b = aggregateBars(b, workTf); }
+      }
+      setProg(1);
       setBars(b);
-      if (ds.symbol) setMeta((mt) => ({ ...mt, symbol: ds.symbol, tf: `M${col.tf || tfMin}` }));
-      toast(es ? 'Datos cargados desde la biblioteca' : 'Data loaded from library');
+      if (ds.symbol) setMeta((mt) => ({ ...mt, symbol: ds.symbol, tf: `M${workTf}` }));
+      toast(workTf > srcTf
+        ? (es ? `Cargado y convertido a M${workTf} para buscar rápido (${b.length.toLocaleString('en-US')} barras)` : `Loaded and converted to M${workTf} for fast search (${b.length.toLocaleString('en-US')} bars)`)
+        : (es ? 'Datos cargados desde la biblioteca' : 'Data loaded from library'));
     } catch (e: any) { toastErr(es ? 'No se pudieron cargar las barras guardadas.' : 'Could not load saved bars.'); }
     finally { setReading(false); setProg(0); }
   }
