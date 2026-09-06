@@ -57,7 +57,7 @@ export async function POST(req: Request) {
   }
   if (a === 'lab_run') {
     try {
-      const r = await runLab({ userId: user.id, botId: String(b.botId || ''), trades: b.trades || [], grid: b.grid, paramCount: b.paramCount, lang: b.lang === 'en' ? 'en' : 'es' });
+      const r = await runLab({ userId: user.id, botId: String(b.botId || ''), trades: b.trades || [], grid: b.grid, paramCount: b.paramCount, lang: b.lang === 'en' ? 'en' : 'es', noAi: !!b.noAi });
       await logAdmin(user.email || '', 'factory_lab_run', String(b.botId || ''), { score: r.robustness.score, verdict: r.robustness.verdict });
       return NextResponse.json(r);
     } catch (e: any) { return NextResponse.json({ error: e?.message || 'error' }, { status: 400 }); }

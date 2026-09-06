@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { toast, toastErr } from '@/lib/toast';
 import { BLOCKS, sampleCandidates } from '@/lib/stratgen';
 import { parseBars, parseBarsStreaming, runBacktest, inferPip, type Bar, type Spec, type Costs } from '@/lib/backtest';
-import { evolve, type Survivor } from '@/lib/evolve';
+import { evolve, evaluate, type Survivor } from '@/lib/evolve';
 import { genMt5, genMt4 } from '@/lib/mqlgen';
 
 // ============================================================
@@ -51,6 +51,10 @@ export default function FactoryEngine({ es, canManage, post, reload }: any) {
   const [evo, setEvo] = useState<{ best: Survivor[]; history: number[] } | null>(null);
   const [sel, setSel] = useState<Spec | null>(null);
   const [meta, setMeta] = useState({ platform: 'mt5', symbol: 'XAUUSD', tf: 'M15' });
+  const [auto, setAuto] = useState(false);
+  const [autoMsg, setAutoMsg] = useState('');
+  const [keepN, setKeepN] = useState(8);
+  const [autoDone, setAutoDone] = useState<{ created: number; scanned: number; survivors: number } | null>(null);
 
   const toggle = (bk: string, id: string) => setCfg((c) => { const cur = c[bk] || []; return { ...c, [bk]: cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id] }; });
   const pip = bars ? (costs.pip || inferPip(bars[Math.floor(bars.length / 2)].c)) : 0;
@@ -100,6 +104,39 @@ export default function FactoryEngine({ es, canManage, post, reload }: any) {
     } catch (e: any) { toastErr(e?.message); } finally { setBusy(false); }
   }
 
+  // AUTOPILOTO: genera → backtestea → filtra por robustez (IS/OOS) → crea solos
+  // los robots que sobreviven y los envía al laboratorio. Sin CSV, un botón.
+  async function autopilot() {
+    if (!bars) { toastErr(es ? 'Sube los datos primero.' : 'Upload data first.'); return; }
+    if (!meta.symbol) { toastErr(es ? 'Falta el símbolo (se rellena al subir los datos).' : 'Missing symbol.'); return; }
+    setAuto(true); setAutoDone(null); setAutoMsg(es ? 'Generando estrategias…' : 'Generating strategies…');
+    await new Promise((r) => setTimeout(r, 30));
+    try {
+      const cands = sampleCandidates(cfg, n) as Spec[];
+      const cut = Math.floor(bars.length * 0.7); const isB = bars.slice(0, cut), oosB = bars.slice(cut);
+      const survivors: { spec: Spec; fit: number }[] = [];
+      for (let i = 0; i < cands.length; i++) {
+        const ev = evaluate(cands[i], isB, oosB, costs);
+        if (ev.fit > 0 && ev.oosPf >= 1 && ev.dd <= maxDd && ev.trades >= minTr && ev.oosNet > 0) survivors.push({ spec: cands[i], fit: ev.fit });
+        if (i % 120 === 0) { setAutoMsg((es ? 'Backtesteando ' : 'Backtesting ') + i + '/' + cands.length + ' · ' + (es ? 'robustos ' : 'robust ') + survivors.length); await new Promise((r) => setTimeout(r, 0)); }
+      }
+      survivors.sort((a, b) => b.fit - a.fit);
+      const top = survivors.slice(0, Math.max(1, keepN));
+      let created = 0;
+      for (let i = 0; i < top.length; i++) {
+        setAutoMsg((es ? 'Creando robot ' : 'Creating robot ') + (i + 1) + '/' + top.length + '…');
+        const trades = runBacktest(bars, top[i].spec, costs).trades;
+        if (trades.length < 20) continue;
+        const j = await post({ action: 'bot_create', platform: meta.platform, symbol: meta.symbol, timeframe: meta.tf, strategy: { family: 'autopiloto', gen: top[i].spec } });
+        await post({ action: 'lab_run', botId: j.bot?.id, trades, paramCount: 6, noAi: true });
+        created++;
+      }
+      setAutoDone({ created, scanned: cands.length, survivors: survivors.length });
+      toast((es ? 'Autopiloto: ' : 'Autopilot: ') + created + (es ? ' robots creados y en el laboratorio' : ' robots created in the lab'));
+      if (reload) reload();
+    } catch (e: any) { toastErr(e?.message); } finally { setAuto(false); setAutoMsg(''); }
+  }
+
   const specLabel = (s: Spec) => `${s.ind1}${s.ind2 ? '+' + s.ind2 : ''} · ${s.entry} · TP ${s.tp}/SL ${s.sl}`;
 
   return (
@@ -128,6 +165,29 @@ export default function FactoryEngine({ es, canManage, post, reload }: any) {
             <label key={k}><span className="muted" style={{ fontSize: 11.5 }}>{l}</span><input type="number" step="0.1" value={(costs as any)[k]} onChange={(e) => setCosts({ ...costs, [k]: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>
           ))}
         </div>
+      </div>
+
+      {/* AUTOPILOTO */}
+      <div style={{ ...card, borderColor: `color-mix(in srgb,${GREEN} 45%,var(--line))`, background: `linear-gradient(150deg, color-mix(in srgb,${GREEN} 8%,var(--card)), var(--card) 70%)` }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span style={{ display: 'inline-flex', width: 36, height: 36, borderRadius: 11, alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg,' + GREEN + ',var(--brand))', color: '#0b1020', fontSize: 19 }}>🤖</span>
+          <div style={{ flex: 1, minWidth: 180 }}>
+            <h3 style={{ margin: 0 }}>{es ? 'Autopiloto' : 'Autopilot'}</h3>
+            <p className="muted" style={{ fontSize: 12.5, margin: '2px 0 0' }}>{es ? 'Un botón: genera → backtestea → filtra por robustez (IS/OOS) → crea solo los robots que sobreviven y los manda al laboratorio. Sin CSV.' : 'One button: generate → backtest → filter by robustness → create only surviving robots and send them to the lab. No CSV.'}</p>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginTop: 12 }}>
+          <span className="muted" style={{ fontSize: 12 }}>{es ? 'Crear hasta' : 'Create up to'}</span>
+          <input type="number" value={keepN} min={1} max={30} onChange={(e) => setKeepN(Math.max(1, Math.min(30, Number(e.target.value) || 1)))} style={{ ...inp, width: 70 }} />
+          <span className="muted" style={{ fontSize: 12 }}>{es ? 'robots · de' : 'robots · from'} {n} {es ? 'candidatos' : 'candidates'}</span>
+          {canManage && <button onClick={autopilot} disabled={auto || !bars} style={{ marginLeft: 'auto', padding: '12px 22px', borderRadius: 12, border: 'none', fontWeight: 800, fontSize: 14.5, cursor: auto || !bars ? 'default' : 'pointer', background: 'linear-gradient(135deg,' + GREEN + ',var(--brand))', color: '#0b1020', opacity: auto || !bars ? 0.6 : 1 }}>{auto ? (es ? 'Trabajando…' : 'Working…') : (es ? '🚀 Ejecutar autopiloto' : '🚀 Run autopilot')}</button>}
+        </div>
+        {auto && <div style={{ marginTop: 10, fontSize: 13, color: GREEN, fontWeight: 700 }}>{autoMsg}</div>}
+        {autoDone && (
+          <div style={{ marginTop: 10, background: 'var(--bg2)', borderRadius: 10, padding: '10px 12px', fontSize: 13 }}>
+            ✓ {es ? 'Creados' : 'Created'} <b style={{ color: GREEN }}>{autoDone.created}</b> {es ? 'robots' : 'robots'} · {autoDone.survivors} {es ? 'robustos de' : 'robust of'} {autoDone.scanned} · <span className="muted">{es ? 'míralos en Laboratorio y Pipeline. Solo falta instalar su EA en la demo.' : 'see them in Lab and Pipeline. Just install their EA on demo.'}</span>
+          </div>
+        )}
       </div>
 
       {/* Bloques a combinar */}
