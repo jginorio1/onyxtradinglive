@@ -65,6 +65,7 @@ const VIOLET = '#0fb8a6' /*teal · chips/acentos*/, GREEN = '#5bd11e' /*lima · 
 const card: any = { background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, padding: 18 };
 const inp: any = { padding: '9px 11px', borderRadius: 9, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 13.5 };
 function btn(c: string): any { return { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 14px', borderRadius: 10, cursor: 'pointer', fontWeight: 800, fontSize: 13, border: `1px solid color-mix(in srgb,${c} 45%,transparent)`, background: `color-mix(in srgb,${c} 14%,transparent)`, color: c }; }
+function autoChip(c: string): any { return { display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, padding: '5px 11px', borderRadius: 99, background: `color-mix(in srgb,${c} 15%,transparent)`, color: c, border: `1px solid color-mix(in srgb,${c} 32%,transparent)` }; }
 function download(name: string, text: string, mime: string) { const b = new Blob([text], { type: mime }); const u = URL.createObjectURL(b); const a = document.createElement('a'); a.href = u; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(u), 1000); }
 
 type Row = { spec: Spec; net: number; pf: number; dd: number; n: number; win: number; exp: number };
@@ -335,6 +336,67 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
+      {/* ══════════ MODO AUTOMÁTICO · UN CLIC ══════════ */}
+      <div style={{ ...card, borderColor: `color-mix(in srgb,${GREEN} 55%,var(--line))`, background: `linear-gradient(160deg, color-mix(in srgb,${GREEN} 12%,var(--card)), var(--card) 65%)` }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <span style={{ display: 'inline-flex', width: 42, height: 42, borderRadius: 13, alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg,' + GREEN + ',' + AQUA + ')', color: '#04201d', fontSize: 22 }}>🤖</span>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <h3 style={{ margin: 0, fontSize: 18 }}>{es ? 'Modo automático · un clic' : 'Automatic mode · one click'}</h3>
+            <p className="muted" style={{ fontSize: 12.5, margin: '3px 0 0' }}>{es ? 'Elige tus datos y pulsa Ejecutar. El sistema genera miles de estrategias, las prueba, descarta las malas y deja en el Databank solo las robustas. No tocas nada más.' : 'Pick your data and press Run. The system generates thousands of strategies, tests them, discards the bad ones and leaves only the robust ones in the Databank.'}</p>
+          </div>
+        </div>
+
+        {/* Paso 1: dataset (de aquí salen instrumento y timeframe, solos) */}
+        <div style={{ marginTop: 14 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 6 }}>{es ? '1 · Tus datos' : '1 · Your data'}</div>
+          <select value={dsId} onChange={(e) => loadFromLibrary(e.target.value)} disabled={reading} style={{ ...inp, width: '100%', maxWidth: 460 }}>
+            <option value="">{usableDs.length ? (es ? '— elige un dataset de tu biblioteca —' : '— pick a dataset from your library —') : (es ? '— aún no hay datos (súbelos en Puerta 0) —' : '— no data yet (upload in Gate 0) —')}</option>
+            {usableDs.map((d: any) => <option key={d.id} value={d.id}>{d.symbol} · {(d.from_year || '')}–{(d.to_year || '')} · {d.data_kind === 'ticks' || d.has_ticks ? 'ticks' : 'bars'} · {d.quality_score}%</option>)}
+          </select>
+          {reading && <div style={{ marginTop: 10 }}><ProgressBar p={prog} label={es ? 'Cargando datos…' : 'Loading data…'} /></div>}
+          {/* Instrumento + timeframe autodetectados: se VEN aquí */}
+          {bars && !reading && (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+              <span style={autoChip(VIOLET)}>🏷 {es ? 'Instrumento' : 'Instrument'}: <b>{meta.symbol || '—'}</b></span>
+              <span style={autoChip('var(--brand)')}>⏱ {es ? 'Temporalidad' : 'Timeframe'}: <b>{meta.tf || '—'}</b></span>
+              <span style={autoChip('var(--brand)')}>📅 {new Date(bars[0].t).toISOString().slice(0, 10)} → {new Date(bars[bars.length - 1].t).toISOString().slice(0, 10)}</span>
+              <span style={autoChip(LIME)}>{bars.length.toLocaleString('en-US')} {es ? 'barras' : 'bars'}</span>
+            </div>
+          )}
+          {bars && !reading && <div className="muted" style={{ fontSize: 11, marginTop: 6 }}>{es ? 'El instrumento y la temporalidad salen del dataset — por eso el generador no los pregunta.' : 'Instrument and timeframe come from the dataset — that’s why the generator doesn’t ask for them.'}</div>}
+        </div>
+
+        {/* Paso 2: cuánto escanear / cuánto guardar */}
+        <div style={{ marginTop: 14 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 6 }}>{es ? '2 · Cuánto buscar' : '2 · How much to search'}</div>
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <label><div className="muted" style={{ fontSize: 11.5, marginBottom: 3 }}>{es ? 'Estrategias a escanear' : 'Strategies to scan'}<Help text={tip(es, 'n')} /></div>
+              <input type="number" value={n} min={500} max={20000} step={500} onChange={(e) => setN(Math.max(500, Math.min(20000, Number(e.target.value) || 500)))} style={{ ...inp, width: 130 }} /></label>
+            <label><div className="muted" style={{ fontSize: 11.5, marginBottom: 3 }}>{es ? 'Robots a guardar' : 'Robots to keep'}<Help text={tip(es, 'keepN')} /></div>
+              <input type="number" value={keepN} min={1} max={500} onChange={(e) => setKeepN(Math.max(1, Math.min(500, Number(e.target.value) || 1)))} style={{ ...inp, width: 110 }} /></label>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {[[2000, es ? 'Rápido' : 'Fast'], [8000, es ? 'Normal' : 'Normal'], [20000, es ? 'Profundo' : 'Deep']].map(([v, l]) => (
+                <button key={v as number} onClick={() => setN(v as number)} style={{ ...btn(n === v ? GREEN : '#8a94a6'), padding: '7px 12px', fontSize: 12 }}>{l as string}</button>
+              ))}
+            </div>
+          </div>
+          <div className="muted" style={{ fontSize: 11, marginTop: 6 }}>{es ? 'Más estrategias = más posibilidades pero tarda más (corre en tu navegador; mantén la pestaña abierta). Empieza en Rápido; sube a Profundo cuando quieras exprimir la data.' : 'More strategies = more chances but slower (runs in your browser; keep the tab open). Start Fast; go Deep to squeeze the data.'}</div>
+        </div>
+
+        {/* Paso 3: ejecutar */}
+        <div style={{ marginTop: 16, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          {canManage && <button onClick={autopilot} disabled={auto || !bars} style={{ padding: '14px 30px', borderRadius: 13, border: 'none', fontWeight: 900, fontSize: 16, cursor: auto || !bars ? 'default' : 'pointer', background: auto || !bars ? '#3a4452' : 'linear-gradient(135deg,' + GREEN + ',' + AQUA + ')', color: auto || !bars ? '#8a94a6' : '#04201d', boxShadow: auto || !bars ? 'none' : '0 6px 20px color-mix(in srgb,' + GREEN + ' 40%,transparent)' }}>{auto ? (es ? '⏳ Trabajando…' : '⏳ Working…') : (es ? '🚀 Ejecutar' : '🚀 Run')}</button>}
+          {!bars && !reading && <span className="muted" style={{ fontSize: 12.5 }}>{es ? '⬆ Elige primero un dataset arriba.' : '⬆ Pick a dataset above first.'}</span>}
+          {auto && <span style={{ fontSize: 13, color: GREEN, fontWeight: 700 }}>{autoMsg}</span>}
+        </div>
+        {autoDone && (
+          <div style={{ marginTop: 12, background: 'var(--bg2)', borderRadius: 11, padding: '12px 14px', fontSize: 13.5, border: `1px solid color-mix(in srgb,${GREEN} 35%,var(--line))` }}>
+            ✅ {es ? 'Listo. Creados' : 'Done. Created'} <b style={{ color: GREEN }}>{autoDone.created}</b> {es ? 'robots' : 'robots'} · {autoDone.survivors} {es ? 'robustos de' : 'robust of'} {autoDone.scanned} {es ? 'escaneados' : 'scanned'}. <span className="muted">{es ? 'Míralos abajo en el Databank, y en las pestañas Laboratorio y Pipeline.' : 'See them below in the Databank, and in the Lab and Pipeline tabs.'}</span>
+          </div>
+        )}
+        <div className="muted" style={{ fontSize: 11, marginTop: 10, borderTop: '1px solid var(--line)', paddingTop: 8 }}>{es ? '¿Quieres control fino (costes, gestión monetaria, reto prop firm, OOS, evolución manual)? Está todo más abajo ↓' : 'Want fine control (costs, money management, prop challenge, OOS, manual evolution)? It’s all below ↓'}</div>
+      </div>
+
       {/* Datos + costes */}
       <div style={card}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4, flexWrap: 'wrap' }}>
@@ -556,7 +618,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
         </div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginTop: 14 }}>
           <span className="muted" style={{ fontSize: 12 }}>{es ? 'Backtestear' : 'Backtest'}</span>
-          <input type="number" value={n} min={100} max={5000} onChange={(e) => setN(Math.max(100, Math.min(5000, Number(e.target.value) || 100)))} style={{ ...inp, width: 100 }} />
+          <input type="number" value={n} min={100} max={20000} step={500} onChange={(e) => setN(Math.max(100, Math.min(20000, Number(e.target.value) || 100)))} style={{ ...inp, width: 100 }} />
           {canManage && <button onClick={runBatch} disabled={busy || !bars} style={{ ...btn(VIOLET), opacity: busy || !bars ? 0.6 : 1 }}>{busy ? (es ? 'Corriendo…' : 'Running…') : (es ? '⚡ Backtestear lote' : '⚡ Backtest batch')}</button>}
           {canManage && <button onClick={runEvolve} disabled={busy || !bars} style={{ ...btn(GREEN), opacity: busy || !bars ? 0.6 : 1 }}>{es ? '🧬 Evolucionar' : '🧬 Evolve'}</button>}
         </div>
