@@ -6,7 +6,7 @@ import FactoryLab from './FactoryLab';
 import FactoryPipeline from './FactoryPipeline';
 import StratGenerator from './StratGenerator';
 import FactoryEngine from './FactoryEngine';
-import { guessSymbolFromName } from '@/lib/backtest';
+import { guessSymbolFromName, readFileByLines } from '@/lib/backtest';
 
 // ============================================================
 // Onyx Bot Factory · Fase 1 (solo admin)
@@ -37,94 +37,77 @@ function toMs(dateStr: string, timeStr?: string): number {
   return isNaN(v) ? NaN : v;
 }
 
-async function analyzeFile(file: File): Promise<any> {
-  const text = await file.text();
-  const lines = text.split(/\r?\n/);
-  let i = 0; while (i < lines.length && !lines[i].trim()) i++;
-  if (i >= lines.length) return { rows: 0, parsed: false };
-
-  const first = lines[i];
-  const delim = [',', '\t', ';'].map((d) => ({ d, n: first.split(d).length })).sort((a, b) => b.n - a.n)[0].d;
-  const isHeader = /[a-zA-Z]{3,}/.test(first) && !/^\d{4}[.\-/]\d{1,2}[.\-/]\d{1,2}/.test(first);
-
-  const cfg: any = { dt: -1, date: -1, time: -1, bid: -1, ask: -1, close: -1, hi: -1, lo: -1 };
-  let start = i;
-  if (isHeader) {
-    const h = first.split(delim).map((s) => s.trim().toLowerCase());
-    h.forEach((c, idx) => {
-      if (cfg.bid < 0 && /\bbid\b/.test(c)) cfg.bid = idx;
-      else if (cfg.ask < 0 && /\bask\b/.test(c)) cfg.ask = idx;
-      else if (cfg.close < 0 && /close/.test(c)) cfg.close = idx;
-      else if (cfg.hi < 0 && /high/.test(c)) cfg.hi = idx;
-      else if (cfg.lo < 0 && /low/.test(c)) cfg.lo = idx;
-      if (cfg.dt < 0 && /(gmt|timestamp|datetime|date time)/.test(c)) cfg.dt = idx;
-      else if (cfg.date < 0 && /date|fecha/.test(c) && !/update/.test(c)) cfg.date = idx;
-      else if (cfg.time < 0 && /time|hora/.test(c)) cfg.time = idx;
-    });
-    start = i + 1;
-  } else {
-    // Sin cabecera: layout MT. token0 = fecha; puede llevar la hora pegada.
-    const t = first.split(delim);
-    const dateHasTime = /\d{2}:\d{2}/.test(t[0]);
-    cfg.dt = dateHasTime ? 0 : -1;
-    cfg.date = dateHasTime ? -1 : 0;
-    cfg.time = dateHasTime ? -1 : 1;
-    const off = dateHasTime ? 1 : 2;
-    const nums = t.slice(off).filter((x) => x !== '' && !isNaN(parseFloat(x)));
-    if (nums.length >= 4) { cfg.close = off + 3; cfg.hi = off + 1; cfg.lo = off + 2; }
-    else if (nums.length >= 2) { cfg.bid = off; cfg.ask = off + 1; }
-    else { cfg.close = off; }
-  }
-  const hasTicks = cfg.bid >= 0 && cfg.ask >= 0;
-
-  const MAXL = 2000000;
+// Validación de calidad por STREAMING: lee el archivo por trozos (soporta GB) y
+// calcula las métricas sin cargarlo entero en memoria.
+async function analyzeFile(file: File, onProgress?: (p: number) => void): Promise<any> {
+  let cfg: any = null, delim = ',', hasTicks = false;
   let rows = 0, outOfOrder = 0, duplicates = 0, gaps = 0, anomalies = 0, spreadZero = 0;
   let spreadSum = 0, spreadN = 0, digits = 5;
   let prevTs = NaN, prevPrice = NaN, fromMs = NaN, toMs2 = NaN;
-  let gotDigits = false;
-  let processed = 0;
+  let gotDigits = false, processed = 0, capped = false;
+  const MAXL = 6000000; // muestra suficiente para juzgar calidad en archivos enormes
 
-  for (let k = start; k < lines.length; k++) {
-    const ln = lines[k]; if (!ln) continue;
-    const c = ln.split(delim); if (c.length < 2) continue;
+  const handle = (ln: string) => {
+    if (capped || !ln || !ln.trim()) return;
+    if (cfg === null) {
+      delim = [',', '\t', ';'].map((d) => ({ d, n: ln.split(d).length })).sort((a, b) => b.n - a.n)[0].d;
+      const isHeader = /[a-zA-Z]{3,}/.test(ln) && !/^\d{4}[.\-/]\d{1,2}[.\-/]\d{1,2}/.test(ln);
+      cfg = { dt: -1, date: -1, time: -1, bid: -1, ask: -1, close: -1, hi: -1, lo: -1 };
+      if (isHeader) {
+        const h = ln.split(delim).map((s) => s.trim().toLowerCase());
+        h.forEach((c, idx) => {
+          if (cfg.bid < 0 && /\bbid\b/.test(c)) cfg.bid = idx;
+          else if (cfg.ask < 0 && /\bask\b/.test(c)) cfg.ask = idx;
+          else if (cfg.close < 0 && /close/.test(c)) cfg.close = idx;
+          else if (cfg.hi < 0 && /high/.test(c)) cfg.hi = idx;
+          else if (cfg.lo < 0 && /low/.test(c)) cfg.lo = idx;
+          if (cfg.dt < 0 && /(gmt|timestamp|datetime|date time)/.test(c)) cfg.dt = idx;
+          else if (cfg.date < 0 && /date|fecha/.test(c) && !/update/.test(c)) cfg.date = idx;
+          else if (cfg.time < 0 && /time|hora/.test(c)) cfg.time = idx;
+        });
+        hasTicks = cfg.bid >= 0 && cfg.ask >= 0;
+        return; // la cabecera no es dato
+      }
+      const t = ln.split(delim); const dateHasTime = /\d{2}:\d{2}/.test(t[0]);
+      cfg.dt = dateHasTime ? 0 : -1; cfg.date = dateHasTime ? -1 : 0; cfg.time = dateHasTime ? -1 : 1;
+      const off = dateHasTime ? 1 : 2; const nums = t.slice(off).filter((x) => x !== '' && !isNaN(parseFloat(x)));
+      if (nums.length >= 4) { cfg.close = off + 3; cfg.hi = off + 1; cfg.lo = off + 2; }
+      else if (nums.length >= 2) { cfg.bid = off; cfg.ask = off + 1; }
+      else cfg.close = off;
+      hasTicks = cfg.bid >= 0 && cfg.ask >= 0;
+      // Esta primera línea SÍ es dato: seguimos y la procesamos abajo.
+    }
+    const c = ln.split(delim); if (c.length < 2) return;
     let ts: number;
-    if (cfg.dt >= 0) { const dv = c[cfg.dt].trim(); const sp = dv.split(/\s+/); ts = toMs(sp[0], sp[1]); }
+    if (cfg.dt >= 0) { const dv = (c[cfg.dt] || '').trim(); const sp = dv.split(/\s+/); ts = toMs(sp[0], sp[1]); }
     else ts = toMs(c[cfg.date], cfg.time >= 0 ? c[cfg.time] : undefined);
-    if (isNaN(ts)) continue;
-
+    if (isNaN(ts)) return;
     let bid = NaN, ask = NaN, price = NaN;
     if (hasTicks) { bid = parseFloat(c[cfg.bid]); ask = parseFloat(c[cfg.ask]); price = (bid + ask) / 2; }
     else if (cfg.close >= 0) price = parseFloat(c[cfg.close]);
-    if (isNaN(price)) continue;
-
+    if (isNaN(price)) return;
     if (!gotDigits && hasTicks && c[cfg.bid]) { const dot = c[cfg.bid].indexOf('.'); digits = dot >= 0 ? (c[cfg.bid].trim().length - dot - 1) : 0; gotDigits = true; }
-
     rows++;
     if (isNaN(fromMs)) fromMs = ts;
     toMs2 = ts;
     if (!isNaN(prevTs)) {
       if (ts < prevTs) outOfOrder++;
       else if (ts === prevTs) duplicates++;
-      else {
-        const dt = ts - prevTs;
-        if (dt > 21600000) { const wd = new Date(prevTs).getUTCDay(); if (!(wd === 5 || wd === 6)) gaps++; }
-      }
+      else { const dt = ts - prevTs; if (dt > 21600000) { const wd = new Date(prevTs).getUTCDay(); if (!(wd === 5 || wd === 6)) gaps++; } }
     }
     if (!isNaN(prevPrice) && prevPrice > 0 && Math.abs(price - prevPrice) / prevPrice > 0.2) anomalies++;
     if (hasTicks) { const sp = ask - bid; if (sp <= 0) spreadZero++; else { spreadSum += sp; spreadN++; } }
     prevTs = ts; prevPrice = price;
+    processed++; if (processed >= MAXL) capped = true;
+  };
 
-    processed++;
-    if (processed >= MAXL) break;
-  }
-
-  const truncated = processed >= MAXL;
+  await readFileByLines(file, handle, onProgress);
   const spreadAvgPts = spreadN ? (spreadSum / spreadN) * Math.pow(10, digits) : 0;
   return {
     rows, parsed: rows > 0,
     fromMs: isNaN(fromMs) ? undefined : fromMs,
     toMs: isNaN(toMs2) ? undefined : toMs2,
-    outOfOrder, duplicates, gaps, anomalies, hasTicks, spreadAvgPts: Math.round(spreadAvgPts), spreadZero, truncated,
+    outOfOrder, duplicates, gaps, anomalies, hasTicks, spreadAvgPts: Math.round(spreadAvgPts), spreadZero, truncated: capped,
   };
 }
 
@@ -191,13 +174,14 @@ function DataGate({ es, canManage, post, reload, datasets }: any) {
   const [symbol, setSymbol] = useState('');
   const [tf, setTf] = useState('M1');
   const [busy, setBusy] = useState(false);
+  const [prog, setProg] = useState(0);
   const [metrics, setMetrics] = useState<any>(null);
   const [q, setQ] = useState<any>(null);
 
   async function analyze(f: File) {
-    setBusy(true); setQ(null); setMetrics(null);
+    setBusy(true); setProg(0); setQ(null); setMetrics(null);
     try {
-      const m = await analyzeFile(f);
+      const m = await analyzeFile(f, (p) => setProg(p));
       setMetrics(m);
       const j = await post({ action: 'validate', metrics: m });
       setQ(j.quality);
@@ -221,7 +205,7 @@ function DataGate({ es, canManage, post, reload, datasets }: any) {
             {file ? file.name.slice(0, 26) : (es ? 'Elegir archivo' : 'Choose file')}
             <input type="file" accept=".csv,.txt,.tsv,.hst" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0] || null; setFile(f); if (f) { const g = guessSymbolFromName(f.name); if (g) setSymbol(g); analyze(f); } }} />
           </label>
-          {busy && <span className="muted" style={{ fontSize: 12.5 }}>{es ? 'Analizando…' : 'Analyzing…'}</span>}
+          {busy && <span className="muted" style={{ fontSize: 12.5 }}>{es ? 'Analizando ' : 'Analyzing '}{Math.round(prog * 100)}%…</span>}
         </div>
       </div>
 
