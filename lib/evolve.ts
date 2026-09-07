@@ -88,7 +88,7 @@ export type EvolveOut = { best: Survivor[]; history: number[]; evaluated: number
 export function evolve(
   bars: Bar[],
   costs: Costs,
-  opt: { pop?: number; gens?: number; keep?: number; seed?: number; mut?: number; restart?: number; oosPct?: number } = {},
+  opt: { pop?: number; gens?: number; keep?: number; seed?: number; mut?: number; restart?: number; oosPct?: number; onGen?: (info: { gen: number; gens: number; evaluated: number; scored: Survivor[]; history: number[] }) => void } = {},
 ): EvolveOut {
   const pop = Math.min(200, Math.max(20, opt.pop || 60));
   const gens = Math.min(40, Math.max(3, opt.gens || 8));
@@ -111,6 +111,8 @@ export function evolve(
       .sort((a, b) => b.ev.fit - a.ev.fit);
     const top = scored[0]?.ev.fit || 0;
     history.push(Math.round(top * 100) / 100);
+    // Progreso en vivo por generación (para el monitor estilo StrategyQuant).
+    try { opt.onGen?.({ gen, gens, evaluated, scored, history: history.slice() }); } catch { /* nunca romper la evolución por el monitor */ }
     // Control de estancamiento: si el mejor no mejora, cuenta; al llegar al umbral, inyecta sangre nueva.
     if (top > bestFit + 1e-6) { bestFit = top; stagn = 0; } else stagn++;
     if (gen === gens - 1) break;

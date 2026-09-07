@@ -39,7 +39,24 @@ ctx.onmessage = (e: MessageEvent) => {
       const gens = Math.max(6, Math.round(n / 400));      // sin tope: el worker no congela la UI
       const pop = Math.max(40, Math.round(n / 20));
       const pool = Math.max(24, Math.min(120, keepN * 5));
-      const r = evolve(bars, costs, { pop, gens, keep: pool, mut: evoCfg.mut, restart: evoCfg.restart, oosPct: oosPct || 30 });
+      const r = evolve(bars, costs, {
+        pop, gens, keep: pool, mut: evoCfg.mut, restart: evoCfg.restart, oosPct: oosPct || 30,
+        // Progreso EN VIVO por generación → alimenta el monitor (estilo StrategyQuant).
+        onGen: ({ gen, gens: gTot, evaluated, scored, history }) => {
+          for (const s of scored) {
+            const ev = s.ev;
+            generated++;
+            if (ev.trades < minTr) rej.fewtrades++;
+            else if (ev.dd > maxDd) rej.ddhigh++;
+            else if (ev.oosPf < 1 || ev.oosNet <= 0) rej.oosneg++;
+            else if (ev.fit <= 0) rej.noedge++;
+            else accepted++;
+          }
+          post('Evolucionando · gen ' + (gen + 1) + '/' + gTot + ' · evaluadas ' + evaluated.toLocaleString('en-US') + ' · robustas ' + accepted.toLocaleString('en-US'));
+          sendStats();
+          ctx.postMessage({ type: 'evo', best: scored.slice(0, Math.max(keepN, 8)), history });
+        },
+      });
       const good = r.best.filter((s: any) => s.ev.oosPf >= 1 && s.ev.oosNet > 0 && s.ev.dd <= maxDd && s.ev.trades >= minTr);
       top = (good.length ? good : r.best).map((s: any) => ({ spec: { ...s.spec, dir } }));
       scanned = r.evaluated;
