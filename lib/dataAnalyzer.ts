@@ -226,7 +226,7 @@ export type AnalysisState = {
   log: LogEvent[];
 };
 const EMPTY: AnalysisState = {
-  busy: false, prog: 0, fileName: '', symbol: '', fileSize: 0, source: 'dukascopy', broker: '', metrics: null, q: null, bars: null, file: null, error: null,
+  busy: false, prog: 0, fileName: '', symbol: '', fileSize: 0, source: '', broker: '', metrics: null, q: null, bars: null, file: null, error: null,
   startedAt: 0, updatedAt: 0, bytesRead: 0, rows: 0, stalled: false, interrupted: false, runId: '', log: [],
 };
 let _state: AnalysisState = { ...EMPTY };
@@ -268,7 +268,7 @@ function _restore() {
   try {
     const raw = localStorage.getItem(LS_KEY); if (!raw) return;
     const s = JSON.parse(raw);
-    _state = { ...EMPTY, source: s.source || 'dukascopy', broker: s.broker || '', fileName: s.fileName || '', symbol: s.symbol || '', fileSize: s.fileSize || 0, prog: s.prog || 0, startedAt: s.startedAt || 0, updatedAt: s.updatedAt || 0, bytesRead: s.bytesRead || 0, rows: s.rows || 0, runId: s.runId || '', log: Array.isArray(s.log) ? s.log : [], metrics: s.busy ? null : s.metrics || null };
+    _state = { ...EMPTY, source: s.source || '', broker: s.broker || '', fileName: s.fileName || '', symbol: s.symbol || '', fileSize: s.fileSize || 0, prog: s.prog || 0, startedAt: s.startedAt || 0, updatedAt: s.updatedAt || 0, bytesRead: s.bytesRead || 0, rows: s.rows || 0, runId: s.runId || '', log: Array.isArray(s.log) ? s.log : [], metrics: s.busy ? null : s.metrics || null };
     if (s.busy) {
       _state.interrupted = true; _state.error = 'interrumpido';
       _state.log = [..._state.log, { t: Date.now(), kind: 'error', msg: 'Análisis detenido por recarga de la página (PIN o refresco). El archivo local no se conserva; hay que volver a seleccionarlo.' }];

@@ -185,7 +185,7 @@ function DataGate({ es, canManage, post, reload, datasets }: any) {
     // Fuente y broker OBLIGATORIOS: sin saber de dónde vienen los datos no se puede confiar
     // en el backtest (spread, comisiones y horario dependen del broker/proveedor).
     if (!source) { toastErr(es ? 'Elige de dónde sacaste la data (Dukascopy, MetaTrader u otro).' : 'Choose where the data is from (Dukascopy, MetaTrader or other).'); return; }
-    if (source === 'metatrader' && !(broker || '').trim()) { toastErr(es ? 'Escribe el broker (IC Markets, Pepperstone…): el spread y las comisiones dependen de él.' : 'Enter the broker (IC Markets, Pepperstone…): spread and commissions depend on it.'); return; }
+    if ((source === 'metatrader' || source === 'otro') && !(broker || '').trim()) { toastErr(es ? 'Escribe el broker/proveedor: el spread y las comisiones dependen de él.' : 'Enter the broker/provider: spread and commissions depend on it.'); return; }
     setSaving(true);
     try {
       // 1) Pide URLs firmadas (el admin las crea; la subida va DIRECTA a Supabase,
@@ -244,14 +244,16 @@ function DataGate({ es, canManage, post, reload, datasets }: any) {
 
         {/* Fuente de los datos */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 12, marginBottom: 14 }}>
-          <Lbl t={es ? '¿De dónde sacaste la data?' : 'Where is the data from?'}>
-            <select value={source} onChange={(e) => patchAnalysis({ source: e.target.value })} style={inp}>
+          <Lbl t={(es ? '¿De dónde sacaste la data?' : 'Where is the data from?') + ' *'}>
+            <select value={source} onChange={(e) => patchAnalysis({ source: e.target.value })} style={{ ...inp, borderColor: source ? 'var(--line)' : RED }}>
+              <option value="">{es ? '— elige (obligatorio) —' : '— choose (required) —'}</option>
               <option value="dukascopy">Dukascopy</option>
               <option value="metatrader">MetaTrader</option>
               <option value="otro">{es ? 'Otro' : 'Other'}</option>
             </select>
           </Lbl>
-          {source === 'metatrader' && <Lbl t={es ? 'Broker' : 'Broker'}><input value={broker} onChange={(e) => patchAnalysis({ broker: e.target.value })} placeholder={es ? 'IC Markets, Pepperstone…' : 'IC Markets, Pepperstone…'} style={inp} /></Lbl>}
+          {source === 'metatrader' && <Lbl t={(es ? 'Broker' : 'Broker') + ' *'}><input value={broker} onChange={(e) => patchAnalysis({ broker: e.target.value })} placeholder={es ? 'IC Markets, Pepperstone…' : 'IC Markets, Pepperstone…'} style={{ ...inp, borderColor: broker.trim() ? 'var(--line)' : RED }} /></Lbl>}
+          {source === 'otro' && <Lbl t={(es ? 'Proveedor / broker' : 'Provider / broker') + ' *'}><input value={broker} onChange={(e) => patchAnalysis({ broker: e.target.value })} placeholder={es ? '¿de dónde?' : 'from where?'} style={{ ...inp, borderColor: broker.trim() ? 'var(--line)' : RED }} /></Lbl>}
         </div>
 
         {gate.interrupted && !gate.busy && (

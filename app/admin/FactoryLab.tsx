@@ -138,7 +138,7 @@ function Fan({ samples, base, es }: any) {
   const flat = [...(samples || []).flat(), ...(base || []), 0];
   const min = Math.min(...flat), max = Math.max(...flat); const W = 640, H = 190, pad = 10;
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: 'block' }}>
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="150" preserveAspectRatio="none" style={{ display: 'block' }}>
       <line x1={pad} y1={H - pad - ((0 - min) / (max - min || 1)) * (H - 2 * pad)} x2={W - pad} y2={H - pad - ((0 - min) / (max - min || 1)) * (H - 2 * pad)} stroke="var(--line)" strokeDasharray="4 4" />
       {(samples || []).map((s: number[], i: number) => <path key={i} d={pathFor(s, W, H, pad, min, max)} fill="none" stroke={VIOLET} strokeWidth="1" opacity="0.28" />)}
       <path d={pathFor(base || [], W, H, pad, min, max)} fill="none" stroke={GREEN} strokeWidth="2.4" />
@@ -153,7 +153,7 @@ function Hist({ vals }: any) {
   vals.forEach((v: number) => { let b = Math.floor(((v - min) / (max - min || 1)) * (bins - 1)); counts[Math.max(0, Math.min(bins - 1, b))]++; });
   const cmax = Math.max(...counts, 1); const bw = (W - 2 * pad) / bins;
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: 'block' }}>
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="150" preserveAspectRatio="none" style={{ display: 'block' }}>
       {counts.map((c, i) => { const h = (c / cmax) * (H - 2 * pad); return <rect key={i} x={pad + i * bw + 1} y={H - pad - h} width={bw - 2} height={h} rx="2" fill={AMBER} opacity="0.85" />; })}
     </svg>
   );
@@ -163,7 +163,7 @@ function WinBars({ windows }: any) {
   if (!windows || !windows.length) return null;
   const mx = Math.max(...windows.map((v: number) => Math.abs(v)), 1); const bw = (W - 2 * pad) / windows.length; const mid = H / 2;
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: 'block' }}>
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="150" preserveAspectRatio="none" style={{ display: 'block' }}>
       <line x1={pad} y1={mid} x2={W - pad} y2={mid} stroke="var(--line)" />
       {windows.map((v: number, i: number) => { const h = (Math.abs(v) / mx) * (mid - pad); return <rect key={i} x={pad + i * bw + 3} y={v >= 0 ? mid - h : mid} width={bw - 6} height={h} rx="3" fill={v >= 0 ? GREEN : RED} />; })}
     </svg>
@@ -174,7 +174,7 @@ function GridCurve({ grid }: any) {
   if (!grid || grid.length < 2) return null;
   const min = Math.min(...grid), max = Math.max(...grid);
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: 'block' }}>
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="150" preserveAspectRatio="none" style={{ display: 'block' }}>
       <path d={pathFor(grid, W, H, pad, min, max)} fill="none" stroke={BLUE} strokeWidth="2.4" />
     </svg>
   );
@@ -383,6 +383,9 @@ export default function FactoryLab({ es, canManage, post, reload, bots, datasets
           <label><span className="muted" style={{ fontSize: 12 }}>{es ? 'Nº de parámetros/reglas' : 'Params/rules count'}</span>
             <input type="number" value={paramCount} min={1} max={40} onChange={(e) => setParamCount(Math.max(1, Number(e.target.value) || 1))} style={{ ...inp, marginTop: 4 }} />
           </label>
+          {bot && canManage && <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+            <button onClick={async () => { if (!confirm(es ? `¿Borrar el robot ${bot.name}? No se puede deshacer.` : `Delete robot ${bot.name}? Cannot be undone.`)) return; try { await post({ action: 'bot_delete', id: bot.id }); toast(es ? 'Robot borrado' : 'Robot deleted'); setBotId(''); setRes(null); if (reload) reload(); } catch (e: any) { toastErr(e?.message); } }} style={{ ...btn(RED), padding: '9px 14px' }}>🗑 {es ? 'Borrar este robot' : 'Delete this robot'}</button>
+          </div>}
         </div>
 
         {/* Avanzado: re-analizar con CSV de MetaTrader */}
