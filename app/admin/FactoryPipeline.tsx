@@ -35,6 +35,8 @@ export default function FactoryPipeline({ es, canManage, post }: any) {
   const [sel, setSel] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [magic, setMagic] = useState('');
+  const [candQ, setCandQ] = useState('');            // buscador de candidatos
+  const [candSym, setCandSym] = useState('');        // filtro por símbolo (chip)
 
   async function load() { try { const j = await post({ action: 'pipeline' }); setD(j); } catch (e: any) { toastErr(e?.message); } }
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
@@ -49,6 +51,14 @@ export default function FactoryPipeline({ es, canManage, post }: any) {
 
   async function run() { setBusy(true); try { const r = await post({ action: 'pipeline_run' }); toast((es ? 'Evaluados: ' : 'Evaluated: ') + (r.evaluated || 0)); await load(); } catch (e: any) { toastErr(e?.message); } finally { setBusy(false); } }
   async function act(body: any, ok?: string) { setBusy(true); try { await post(body); if (ok) toast(ok); await load(); } catch (e: any) { toastErr(e?.message); } finally { setBusy(false); } }
+  // Conecta en lote los candidatos visibles (los que aún no están "esperando").
+  async function connectMany(ids: string[]) {
+    if (!ids.length) return;
+    setBusy(true);
+    let ok = 0;
+    try { for (const id of ids) { try { await post({ action: 'link_demo', botId: id }); ok++; } catch { /* sigue con el resto */ } } toast((es ? 'Conectados ' : 'Connected ') + ok + '/' + ids.length); await load(); }
+    catch (e: any) { toastErr(e?.message); } finally { setBusy(false); }
+  }
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
@@ -114,12 +124,28 @@ export default function FactoryPipeline({ es, canManage, post }: any) {
 
       {/* Candidatos recién creados (Databank) + esperando 1ª operación */}
       {(() => {
-        const cands = ((d.candidates || []) as any[]).filter((b) => b.status !== 'archivado');
-        if (!cands.length) return null;
+        const all = ((d.candidates || []) as any[]).filter((b) => b.status !== 'archivado');
+        if (!all.length) return null;
+        // Símbolos presentes (para los chips de filtro).
+        const syms = Array.from(new Set(all.map((b) => b.symbol).filter(Boolean))).sort();
+        const q = candQ.trim().toLowerCase();
+        const cands = all.filter((b) =>
+          (!candSym || b.symbol === candSym)
+          && (!q || String(b.name || '').toLowerCase().includes(q) || String(b.magic || '').includes(q) || String(b.symbol || '').toLowerCase().includes(q)));
+        const connectableIds = cands.filter((b) => b.stage !== 'esperando').map((b) => b.id);
         return (
           <div style={card}>
             <h3 style={{ margin: '0 0 4px' }}>{es ? 'Recién creados · conéctalos a la demo' : 'Just created · connect them to demo'}</h3>
             <p className="muted" style={{ fontSize: 12.5, marginTop: 0 }}>{es ? 'Estos robots ya están en el Databank pero aún no corren en la demo. Pon su EA en la cuenta demo y conéctalo — al llegar su 1ª operación entran solos al pipeline.' : 'These robots are in the Databank but not yet running on demo. Put their EA on the demo account and connect — on their 1st trade they auto-enter the pipeline.'}</p>
+            {/* Buscador + filtro por símbolo + acciones en lote */}
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', margin: '10px 0' }}>
+              <input value={candQ} onChange={(e) => setCandQ(e.target.value)} placeholder={es ? '🔍 Buscar por nombre, magic o símbolo…' : '🔍 Search by name, magic or symbol…'} style={{ ...inp, flex: 1, minWidth: 220, width: 'auto' }} />
+              {syms.length > 1 && [['', es ? 'Todos' : 'All'], ...syms.map((s) => [s, s])].map(([v, l]: any) => (
+                <button key={v || 'all'} onClick={() => setCandSym(v)} style={{ ...btn(candSym === v ? GREEN : '#8a94a6'), padding: '6px 11px', fontSize: 12 }}>{l}</button>
+              ))}
+              <span className="muted" style={{ fontSize: 12, marginLeft: 'auto' }}>{cands.length}/{all.length}</span>
+              {canManage && connectableIds.length > 0 && <button onClick={() => connectMany(connectableIds)} disabled={busy} style={{ ...btn(VIOLET), padding: '6px 12px', fontSize: 12 }}>{es ? `🔗 Conectar ${connectableIds.length} visibles` : `🔗 Connect ${connectableIds.length} shown`}</button>}
+            </div>
             {/* Aviso (A): el robot es solo la lógica; Onyx Connect es el puente */}
             <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', background: 'color-mix(in srgb,var(--brand) 8%,var(--bg2))', border: '1px solid color-mix(in srgb,var(--brand) 28%,var(--line))', borderRadius: 10, padding: '10px 12px', fontSize: 12, marginBottom: 12 }}>
               <span style={{ fontSize: 16, lineHeight: 1 }}>🔌</span>

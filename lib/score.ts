@@ -34,28 +34,37 @@ export function onyxScore(bars: Bar[], spec: Spec, costs: Costs, oosPct = 30): O
   const mOos = runBacktest(bars.slice(cut), spec, costs);
   const cx = complexity(spec);
 
-  // 1. Consistencia IS≈OOS (retención del PF fuera de muestra). 30 pts.
+  // Confianza por nº de operaciones OOS: con pocas ops fuera de muestra el
+  // resultado es ruido, así que los factores que dependen del OOS pesan menos.
+  // Necesita ≥25 operaciones OOS para peso pleno (antes cualquier survivor con
+  // OOS≥1 sacaba nota máxima → todo salía 97).
+  const tradeConf = clamp01(mOos.n / 25);
+
+  // 1. Consistencia IS≈OOS — ESTRICTA. Solo retención alta puntúa: por debajo
+  //    del 45% de retención = 0. Este es el freno nº1 al sobreajuste. 30 pts.
   const retention = mIs.pf > 0 ? clamp01(mOos.pf / mIs.pf) : 0;
-  const p1 = Math.round(retention * 30);
-  // 2. Rentabilidad OOS (gana en lo no visto). 20 pts.
-  const oosGood = mOos.net > 0 && mOos.pf >= 1 ? clamp01((mOos.pf - 1) / 0.6) : 0;
-  const p2 = Math.round(oosGood * 20);
-  // 3. Drawdown (mejor si es bajo). 15 pts — 10% o menos = lleno.
-  const ddScore = clamp01(1 - (mAll.maxddPct - 10) / 30);
+  const retStrict = clamp01((retention - 0.45) / 0.55);   // ret 0.45→0, 1.0→lleno
+  const p1 = Math.round(retStrict * tradeConf * 30);
+  // 2. Rentabilidad OOS — necesita PF de verdad (2.0 = lleno, no 1.6). 20 pts.
+  const oosGood = mOos.net > 0 && mOos.pf >= 1 ? clamp01((mOos.pf - 1) / 1.0) : 0;
+  const p2 = Math.round(oosGood * tradeConf * 20);
+  // 3. Drawdown — 8% o menos = lleno; cae hasta 33%. 15 pts.
+  const ddScore = clamp01(1 - (mAll.maxddPct - 8) / 25);
   const p3 = Math.round(ddScore * 15);
-  // 4. Monte Carlo (probabilidad de terminar en pérdida al barajar). 20 pts.
-  const mc = mcSuite(mAll.trades.map((t) => t.profit), { runs: 200, maxLossProb: 35 });
-  const mcScore = clamp01(1 - mc.worstLossProb / 50);
+  // 4. Monte Carlo — ESTRICTO: 0% de prob. de pérdida = lleno, 35% = 0. 20 pts.
+  const mc = mcSuite(mAll.trades.map((t) => t.profit), { runs: 300, maxLossProb: 35 });
+  const mcScore = clamp01(1 - mc.worstLossProb / 35);
   const p4 = Math.round(mcScore * 20);
-  // 5. Simplicidad (3 piezas o menos = lleno; baja al crecer). 15 pts.
-  const simple = clamp01(1 - (cx - 3) / 5);
+  // 5. Simplicidad — 2 piezas = lleno; cada pieza extra descuenta. 15 pts.
+  const simple = clamp01(1 - (cx - 2) / 5);
   const p5 = Math.round(simple * 15);
 
   const score = Math.max(0, Math.min(100, p1 + p2 + p3 + p4 + p5));
-  const grade: OnyxScore['grade'] = score >= 80 ? 'A' : score >= 65 ? 'B' : score >= 50 ? 'C' : score >= 35 ? 'D' : 'F';
+  // Notas repartidas de verdad: la A es exigente (≥85) para que deje de saturar.
+  const grade: OnyxScore['grade'] = score >= 85 ? 'A' : score >= 70 ? 'B' : score >= 55 ? 'C' : score >= 40 ? 'D' : 'F';
   const parts: ScorePart[] = [
-    { label: 'Consistencia IS≈OOS', got: p1, max: 30, note: `retención PF ${Math.round(retention * 100)}%` },
-    { label: 'Rentable fuera de muestra', got: p2, max: 20, note: mOos.net > 0 ? `OOS +$${mOos.net.toLocaleString('en-US')}` : 'OOS en pérdida' },
+    { label: 'Consistencia IS≈OOS', got: p1, max: 30, note: `retención PF ${Math.round(retention * 100)}%${mOos.n < 25 ? ` · solo ${mOos.n} ops OOS` : ''}` },
+    { label: 'Rentable fuera de muestra', got: p2, max: 20, note: mOos.net > 0 ? `OOS PF ${mOos.pf.toFixed(2)} · +$${mOos.net.toLocaleString('en-US')}` : 'OOS en pérdida' },
     { label: 'Control de drawdown', got: p3, max: 15, note: `DD ${mAll.maxddPct}%` },
     { label: 'Resiste Monte Carlo', got: p4, max: 20, note: `peor prob. pérdida ${mc.worstLossProb}%` },
     { label: 'Simplicidad', got: p5, max: 15, note: `${cx} piezas` },
