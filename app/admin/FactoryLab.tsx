@@ -12,6 +12,21 @@ const DEF_COSTS: Costs = { spreadPips: 1.2, slippagePips: 0.3, commission: 3.5, 
 function dl(name: string, text: string) { const b = new Blob([text], { type: 'text/plain' }); const u = URL.createObjectURL(b); const a = document.createElement('a'); a.href = u; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(u), 1000); }
 
 const clamp0100 = (x: number) => Math.max(0, Math.min(100, Math.round(x)));
+// Carpeta automática de un robot según su validación fina en M1.
+function folderOf(b: any): 'aptos' | 'dudosos' | 'fragiles' | 'pendiente' {
+  const g = b?.fine_grade;
+  if (!g) return 'pendiente';
+  if (g === 'A' || g === 'B') return 'aptos';
+  if (g === 'C') return 'dudosos';
+  return 'fragiles';
+}
+const FOLDERS: { key: string; es: string; en: string; icon: string; color: string }[] = [
+  { key: 'todos', es: 'Todos', en: 'All', icon: '🗂', color: '#8a94a6' },
+  { key: 'aptos', es: 'Aptos M1', en: 'M1-fit', icon: '✅', color: '#1D9E75' },
+  { key: 'dudosos', es: 'Dudosos M1', en: 'M1-borderline', icon: '⚠️', color: '#EF9F27' },
+  { key: 'fragiles', es: 'Frágiles M1', en: 'M1-fragile', icon: '❌', color: '#E24B4A' },
+  { key: 'pendiente', es: 'Sin validar', en: 'Unvalidated', icon: '⏳', color: '#378ADD' },
+];
 // Reconstruye el objeto de robustez que espera la UI a partir de una corrida
 // guardada en la base (factory_labruns). Así, al elegir un robot ya analizado por
 // el Motor/Autopiloto, se ven sus gráficas completas SIN volver a subir un CSV.
@@ -178,8 +193,20 @@ export default function FactoryLab({ es, canManage, post, reload, bots, datasets
   const [finMsg, setFinMsg] = useState('');
   const [finRes, setFinRes] = useState<{ sc: OnyxScore; bars: number } | null>(null);
   const [tab, setTab] = useState('resumen'); // pestaña de resultados
+  const [folder, setFolder] = useState('todos'); // carpeta automática por validación M1
 
   const bot = (bots as any[]).find((b) => b.id === botId);
+  const counts: Record<string, number> = { todos: (bots as any[]).length, aptos: 0, dudosos: 0, fragiles: 0, pendiente: 0 };
+  for (const b of bots as any[]) counts[folderOf(b)]++;
+  const shownBots = (bots as any[]).filter((b) => folder === 'todos' || folderOf(b) === folder);
+
+  async function cleanFragile() {
+    const frag = (bots as any[]).filter((b) => folderOf(b) === 'fragiles');
+    if (!frag.length) { toast(es ? 'No hay robots frágiles.' : 'No fragile robots.'); return; }
+    if (!confirm(es ? `¿Borrar ${frag.length} robots frágiles (grado D/F en M1)? No se puede deshacer.` : `Delete ${frag.length} fragile robots (M1 grade D/F)? Cannot be undone.`)) return;
+    try { for (const b of frag) await post({ action: 'bot_delete', id: b.id }); toast(es ? `Borrados ${frag.length}` : `Deleted ${frag.length}`); if (reload) reload(); }
+    catch (e: any) { toastErr(e?.message); }
+  }
 
   // Valida el robot elegido en las barras M1 completas del dataset de su símbolo.
   async function validateFine() {
@@ -269,11 +296,22 @@ export default function FactoryLab({ es, canManage, post, reload, bots, datasets
           </div>
         </div>
 
+        {/* Carpetas automáticas por validación M1 */}
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
+          {FOLDERS.map((f) => (
+            <button key={f.key} onClick={() => setFolder(f.key)} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 11px', borderRadius: 9, cursor: 'pointer', fontSize: 12, fontWeight: 800, border: `1px solid ${folder === f.key ? f.color : 'var(--line)'}`, background: folder === f.key ? `color-mix(in srgb,${f.color} 16%,var(--bg2))` : 'var(--bg2)', color: folder === f.key ? f.color : 'var(--tx)' }}>
+              {f.icon} {es ? f.es : f.en} <span style={{ opacity: .7 }}>({counts[f.key] || 0})</span>
+            </button>
+          ))}
+          {counts.fragiles > 0 && canManage && <button onClick={cleanFragile} style={{ ...btn(RED), marginLeft: 'auto', padding: '6px 11px', fontSize: 12 }}>🗑 {es ? 'Limpiar frágiles' : 'Clean fragile'}</button>}
+        </div>
+        <div className="muted" style={{ fontSize: 11, marginBottom: 8 }}>{es ? 'Los robots del Autopiloto se validan en M1 solos y se archivan aquí por grado. Solo los "Aptos M1" deberían ir a demo.' : 'Autopilot robots are auto-validated on M1 and filed here by grade. Only "M1-fit" should go to demo.'}</div>
+
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 12 }}>
-          <label><span className="muted" style={{ fontSize: 12 }}>{es ? 'Robot' : 'Robot'}</span>
+          <label><span className="muted" style={{ fontSize: 12 }}>{es ? 'Robot' : 'Robot'} <span style={{ opacity: .7 }}>· {shownBots.length}</span></span>
             <select value={botId} onChange={(e) => { setBotId(e.target.value); setRes(null); setCmp(null); }} style={{ ...inp, marginTop: 4 }}>
               <option value="">{es ? '— elige —' : '— pick —'}</option>
-              {(bots as any[]).map((b) => <option key={b.id} value={b.id}>{b.name} · {b.symbol || '—'} {b.robustness_verdict ? `· ${b.robustness_verdict}` : ''}</option>)}
+              {shownBots.map((b) => <option key={b.id} value={b.id}>{b.name} · {b.symbol || '—'}{b.fine_grade ? ` · M1:${b.fine_grade}` : b.robustness_verdict ? ` · ${b.robustness_verdict}` : ''}</option>)}
             </select>
           </label>
           <label><span className="muted" style={{ fontSize: 12 }}>{es ? 'Nº de parámetros/reglas' : 'Params/rules count'}</span>

@@ -348,6 +348,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
       const passedGate = graded.length;
 
       let created = 0;
+      const createdBots: { id: string; spec: Spec }[] = [];
       for (let i = 0; i < finalists.length; i++) {
         setAutoMsg((useAi ? (es ? '🧠 IA auditando robot ' : '🧠 AI auditing robot ') : (es ? 'Creando robot ' : 'Creating robot ')) + (i + 1) + '/' + finalists.length + ' · Onyx ' + finalists[i].sc.grade);
         const trades = runBacktest(bars, finalists[i].spec, costs).trades;
@@ -356,12 +357,39 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
         // IA en el proceso: si está activada, el laboratorio llama a Claude para auditar
         // cada robot (interpretación + mutaciones sugeridas). noAi:false = IA encendida.
         await post({ action: 'lab_run', botId: j.bot?.id, trades, paramCount: finalists[i].sc.cx, noAi: !useAi, lang: es ? 'es' : 'en' });
+        if (j.bot?.id) createdBots.push({ id: j.bot.id, spec: finalists[i].spec });
         created++;
       }
       const avgGrade = finalists.length ? finalists.reduce((s, f) => s + f.sc.score, 0) / finalists.length : 0;
       setAutoDone({ created, scanned, survivors: passedGate, avg: Math.round(avgGrade) });
       toast((es ? 'Autopiloto: ' : 'Autopilot: ') + created + (es ? ' robots limpios creados' : ' clean robots created'));
       if (reload) reload();
+
+      // ══ COLA DE VALIDACIÓN M1 AUTOMÁTICA (segundo plano) ══
+      // Cada robot creado se re-backtestea sobre las barras M1 completas y se archiva
+      // solo en su carpeta según el grado M1 (Aptos / Dudosos / Frágiles). Corre en
+      // el navegador uno a uno con pausas para no congelar. Solo los finalistas (pocos).
+      const dsForM1 = (datasets as any[]).find((d) => d.id === dsId && d.bars_url);
+      if (dsForM1 && createdBots.length) {
+        try {
+          setAutoMsg(es ? 'Cargando M1 para validar…' : 'Loading M1 to validate…');
+          await new Promise((r) => setTimeout(r, 10));
+          const colM1 = await fetchColumnar(dsForM1.bars_url);
+          const barsM1 = barsFromColumnar(colM1);
+          if (barsM1.length >= 500) {
+            for (let i = 0; i < createdBots.length; i++) {
+              setAutoMsg((es ? '🔬 Validando en M1 y archivando ' : '🔬 Validating on M1 & filing ') + (i + 1) + '/' + createdBots.length + '…');
+              await new Promise((r) => setTimeout(r, 0));
+              try {
+                const sc = onyxScore(barsM1, enrichSpec({ ...createdBots[i].spec, dir }, blockMap) as Spec, costs, oosPct || 30);
+                await post({ action: 'bot_validate_fine', botId: createdBots[i].id, fineScore: sc.score, fineGrade: sc.grade, fineBars: barsM1.length });
+              } catch { /* uno que rompa no detiene la cola */ }
+            }
+            toast(es ? 'Validación M1 terminada · robots archivados por carpeta' : 'M1 validation done · robots filed by folder');
+            if (reload) reload();
+          }
+        } catch { /* si no se pudo cargar M1, quedan "sin validar" */ }
+      }
     } catch (e: any) { toastErr(e?.message); } finally { setAuto(false); setAutoMsg(''); }
   }
 
