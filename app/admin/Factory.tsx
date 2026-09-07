@@ -130,19 +130,44 @@ export default function Factory({ canManage = true }: { canManage?: boolean }) {
         ))}
       </div>
 
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        {([['datos', es ? 'Puerta 0 · Datos' : 'Gate 0 · Data'], ['constructor', es ? 'Constructor' : 'Builder'], ['motor', es ? 'Motor' : 'Engine'], ['laboratorio', es ? 'Laboratorio' : 'Lab'], ['pipeline', es ? 'Pipeline' : 'Pipeline'], ['robots', es ? 'Robots' : 'Robots']] as [any, string][]).map(([k, lbl]) => {
-          const on = sub === k;
-          return <button key={k} onClick={() => setSub(k)} style={{ padding: '9px 15px', borderRadius: 12, fontSize: 13.5, fontWeight: 700, cursor: 'pointer', border: '1px solid ' + (on ? 'var(--brand)' : 'var(--line)'), background: on ? 'color-mix(in srgb,var(--brand) 18%,transparent)' : 'var(--card)', color: on ? 'var(--brand)' : 'var(--tx)' }}>{lbl}</button>;
-        })}
-      </div>
+      {/* Barra de progreso de las 6 etapas — el flujo va en una sola dirección:
+          Datos → Constructor → Motor → Laboratorio → Pipeline → Robots. */}
+      <StageBar sub={sub} setSub={setSub} es={es} />
 
       {sub === 'datos' && <DataGate es={es} canManage={canManage} post={post} reload={load} datasets={d.datasets || []} />}
-      {sub === 'constructor' && <Builder es={es} canManage={canManage} post={post} reload={load} nextName={d.nextName} datasets={d.datasets || []} templates={d.templates || []} blocks={d.blocks || []} />}
+      {sub === 'constructor' && <Builder es={es} canManage={canManage} post={post} reload={load} nextName={d.nextName} datasets={d.datasets || []} templates={d.templates || []} blocks={d.blocks || []} bots={d.bots || []} setSub={setSub} />}
       {sub === 'motor' && <FactoryEngine es={es} canManage={canManage} post={post} reload={load} datasets={d.datasets || []} blocks={d.blocks || []} />}
       {sub === 'laboratorio' && <FactoryLab es={es} canManage={canManage} post={post} reload={load} bots={d.bots || []} datasets={d.datasets || []} />}
       {sub === 'pipeline' && <FactoryPipeline es={es} canManage={canManage} post={post} />}
       {sub === 'robots' && <BotList es={es} canManage={canManage} post={post} reload={load} bots={d.bots || []} />}
+    </div>
+  );
+}
+
+// -------- Barra de etapas (stepper) --------
+// Menú SIEMPRE arriba y visible. Muestra el flujo de una sola dirección y deja
+// saltar a cualquier etapa. La activa se resalta; las pasadas quedan en verde.
+const STAGES: [string, string, string][] = [
+  ['datos', 'Datos', 'Data'], ['constructor', 'Constructor', 'Builder'], ['motor', 'Motor', 'Engine'],
+  ['laboratorio', 'Laboratorio', 'Lab'], ['pipeline', 'Pipeline', 'Pipeline'], ['robots', 'Robots', 'Robots'],
+];
+function StageBar({ sub, setSub, es }: any) {
+  const idx = STAGES.findIndex((s) => s[0] === sub);
+  return (
+    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, padding: 8 }}>
+      {STAGES.map(([k, esL, enL], i) => {
+        const on = sub === k, done = i < idx;
+        const c = on ? 'var(--brand)' : done ? GREEN : 'var(--tx)';
+        return (
+          <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button onClick={() => setSub(k)} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '8px 13px', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer', border: '1px solid ' + (on ? 'var(--brand)' : done ? `color-mix(in srgb,${GREEN} 40%,var(--line))` : 'var(--line)'), background: on ? 'color-mix(in srgb,var(--brand) 16%,transparent)' : done ? `color-mix(in srgb,${GREEN} 10%,transparent)` : 'var(--bg2)', color: c }}>
+              <span style={{ display: 'inline-flex', width: 19, height: 19, borderRadius: '50%', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, background: on ? 'var(--brand)' : done ? GREEN : 'var(--line)', color: on || done ? '#04140f' : 'var(--tx)' }}>{done ? '✓' : i + 1}</span>
+              {es ? esL : enL}
+            </button>
+            {i < STAGES.length - 1 && <span className="muted" style={{ fontSize: 13 }}>›</span>}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -330,20 +355,8 @@ function DataGate({ es, canManage, post, reload, datasets }: any) {
       <div style={card}>
         <h3 style={{ marginTop: 0 }}>{es ? 'Mis datos · biblioteca reutilizable' : 'My data · reusable library'}</h3>
         {!datasets.length && <div className="muted" style={{ fontSize: 13 }}>{es ? 'Aún no hay datos. Sube uno arriba y quedará guardado aquí para siempre.' : 'No data yet. Upload one above and it stays here forever.'}</div>}
-        <div style={{ display: 'grid', gap: 8 }}>
-          {datasets.map((ds: any) => (
-            <div key={ds.id} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', borderTop: '1px solid var(--line)', paddingTop: 8 }}>
-              <span style={{ width: 10, height: 10, borderRadius: '50%', background: verdictColor(ds.verdict), flex: 'none' }} />
-              <b style={{ fontSize: 13.5, fontFamily: 'monospace' }}>{ds.symbol || '—'}</b>
-              <span style={chip(ds.data_kind === 'ticks' || ds.has_ticks ? GREEN : AMBER)}>{ds.data_kind === 'ticks' || ds.has_ticks ? 'ticks' : (es ? 'barras' : 'bars')}</span>
-              <span className="muted" style={{ fontSize: 12 }}>{ds.from_year || (ds.from_date ? new Date(ds.from_date).getUTCFullYear() : '—')}–{ds.to_year || (ds.to_date ? new Date(ds.to_date).getUTCFullYear() : '—')} · {ds.years}{es ? 'y' : 'y'} · {(ds.rows || 0).toLocaleString('en-US')} {es ? 'filas' : 'rows'}{ds.source ? ' · ' + ds.source : ''}{ds.broker ? ' (' + ds.broker + ')' : ''}</span>
-              {ds.bars_url && <span style={chip(LIME)}>{es ? 'listo p/ motor' : 'engine-ready'}</span>}
-              {ds.tick_url && <span style={chip(GREEN)}>⚡ {es ? 'ticks reales' : 'real ticks'}{ds.tick_size ? ' · ' + (ds.tick_size / 1073741824 >= 1 ? (ds.tick_size / 1073741824).toFixed(1) + ' GB' : Math.round(ds.tick_size / 1048576) + ' MB') : ''}</span>}
-              {ds.created_at && <span className="muted" style={{ fontSize: 11 }}>🕒 {es ? 'subido' : 'uploaded'} {new Date(ds.created_at).toLocaleString(es ? 'es-ES' : 'en-US', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>}
-              <span style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 800, color: verdictColor(ds.verdict) }}>{ds.quality_score}% · {ds.verdict}</span>
-              {canManage && <button onClick={() => del(ds.id)} style={{ ...btn(RED), padding: '5px 9px' }}>✕</button>}
-            </div>
-          ))}
+        <div style={{ display: 'grid', gap: 10 }}>
+          {datasets.map((ds: any) => <DatasetCard key={ds.id} ds={ds} es={es} post={post} canManage={canManage} onDelete={del} />)}
         </div>
       </div>
     </div>
@@ -352,8 +365,57 @@ function DataGate({ es, canManage, post, reload, datasets }: any) {
 
 function chip(c: string): any { return { display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 99, background: `color-mix(in srgb,${c} 15%,transparent)`, color: c, border: `1px solid color-mix(in srgb,${c} 30%,transparent)` }; }
 
+// Ficha rica de un dataset: metadata completa (subida, tipo, rango, spread,
+// broker, fuente, calidad) + resumen de la IA sobre los datos (bajo demanda).
+function DatasetCard({ ds, es, post, canManage, onDelete }: any) {
+  const [sum, setSum] = useState<{ summary: string; byAi: boolean } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const hasTicks = ds.data_kind === 'ticks' || ds.has_ticks;
+  const fromY = ds.from_year || (ds.from_date ? new Date(ds.from_date).getUTCFullYear() : '—');
+  const toY = ds.to_year || (ds.to_date ? new Date(ds.to_date).getUTCFullYear() : '—');
+  const meta = (l: string, v: any) => <div style={{ background: 'var(--bg2)', borderRadius: 9, padding: '7px 9px' }}><div className="muted" style={{ fontSize: 10.5 }}>{l}</div><div style={{ fontSize: 13, fontWeight: 700, marginTop: 1 }}>{v}</div></div>;
+  async function summarize() {
+    setBusy(true);
+    try { const j = await post({ action: 'dataset_summary', id: ds.id, lang: es ? 'es' : 'en' }); setSum(j); }
+    catch (e: any) { toastErr(e?.message); } finally { setBusy(false); }
+  }
+  return (
+    <div style={{ border: `1px solid color-mix(in srgb,${verdictColor(ds.verdict)} 35%,var(--line))`, borderRadius: 12, padding: 12, background: 'var(--card)' }}>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <span style={{ width: 10, height: 10, borderRadius: '50%', background: verdictColor(ds.verdict), flex: 'none' }} />
+        <b style={{ fontSize: 14.5, fontFamily: 'monospace' }}>{ds.symbol || '—'}</b>
+        <span style={chip(hasTicks ? GREEN : AMBER)}>{hasTicks ? '⚡ ' + (es ? 'ticks reales' : 'real ticks') : (es ? '▦ barras' : '▦ bars')}</span>
+        {ds.bars_url && <span style={chip(LIME)}>{es ? 'listo p/ motor' : 'engine-ready'}</span>}
+        {ds.created_at && <span className="muted" style={{ fontSize: 11, marginLeft: 'auto' }}>🕒 {es ? 'subido' : 'uploaded'} {new Date(ds.created_at).toLocaleString(es ? 'es-ES' : 'en-US', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>}
+        <span style={{ fontSize: 12, fontWeight: 800, color: verdictColor(ds.verdict) }}>{ds.quality_score}% · {ds.verdict}</span>
+        {canManage && <button onClick={() => onDelete(ds.id)} style={{ ...btn(RED), padding: '5px 9px' }}>✕</button>}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(84px,1fr))', gap: 7, marginTop: 10 }}>
+        {meta(es ? 'Rango' : 'Range', `${fromY}–${toY}`)}
+        {meta(es ? 'Años' : 'Years', `${ds.years ?? '—'}`)}
+        {meta(es ? 'Resolución' : 'Resolution', hasTicks ? 'M1 · tick' : (ds.timeframe || 'bars'))}
+        {meta(es ? 'Filas' : 'Rows', (ds.rows || 0).toLocaleString('en-US'))}
+        {meta('Spread', hasTicks && ds.spread_avg_pts != null ? Math.round(ds.spread_avg_pts) + ' pts' : (es ? 'n/d' : 'n/a'))}
+        {meta(es ? 'Fuente' : 'Source', ds.source || '—')}
+        {meta('Broker', ds.broker || '—')}
+        {ds.tick_size && meta(es ? 'Ticks' : 'Ticks', ds.tick_size / 1073741824 >= 1 ? (ds.tick_size / 1073741824).toFixed(1) + ' GB' : Math.round(ds.tick_size / 1048576) + ' MB')}
+      </div>
+      <div style={{ marginTop: 10, borderTop: '1px solid var(--line)', paddingTop: 10 }}>
+        {!sum && <button onClick={summarize} disabled={busy} style={{ ...btn(VIOLET), padding: '6px 12px' }}>{busy ? (es ? 'Analizando…' : 'Analyzing…') : '🧠 ' + (es ? 'Resumen IA de la data' : 'AI data summary')}</button>}
+        {sum && (
+          <div style={{ background: `color-mix(in srgb,${VIOLET} 8%,var(--bg2))`, border: `1px solid color-mix(in srgb,${VIOLET} 30%,var(--line))`, borderRadius: 10, padding: '9px 11px' }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: VIOLET, marginBottom: 3 }}>🧠 {es ? 'Resumen de la data' : 'Data summary'} {!sum.byAi && <span className="muted" style={{ fontWeight: 400 }}>({es ? 'sin IA — conecta ANTHROPIC_API_KEY' : 'no AI — set ANTHROPIC_API_KEY'})</span>}</div>
+            <div style={{ fontSize: 12.5, lineHeight: 1.55 }}>{sum.summary}</div>
+            <button onClick={summarize} disabled={busy} style={{ ...btn('var(--brand)'), padding: '4px 9px', marginTop: 7, fontSize: 11 }}>↻ {es ? 'regenerar' : 'regenerate'}</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // -------- Constructor --------
-function Builder({ es, canManage, post, reload, nextName, datasets, templates = [], blocks = [] }: any) {
+function Builder({ es, canManage, post, reload, nextName, datasets, templates = [], blocks = [], bots = [], setSub }: any) {
   const [platform, setPlatform] = useState<'mt5' | 'mt4'>('mt5');
   const [symbol, setSymbol] = useState('');
   const [tf, setTf] = useState('M15');
@@ -361,16 +423,16 @@ function Builder({ es, canManage, post, reload, nextName, datasets, templates = 
   const [datasetId, setDatasetId] = useState('');
   const [anyBroker, setAnyBroker] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [showGen, setShowGen] = useState(false);
-  const [genCfg, setGenCfg] = useState<any>(null); // config inicial para el generador (desde plantilla)
+  const [advanced, setAdvanced] = useState(false); // constructor manual de 1 robot (plegado)
   const usable = (datasets as any[]).filter((d) => d.verdict !== 'rechazada');
 
+  // Al usar una plantilla, rellena los campos del constructor manual (la
+  // generación masiva vive SOLO en el Motor; aquí no se duplica).
   function useTemplate(t: any) {
     if (t.symbol) setSymbol(t.symbol);
     if (t.timeframe) setTf(t.timeframe);
     if (t.family) setFamily(t.family);
-    setGenCfg(t.config || {});
-    setShowGen(true);
+    setAdvanced(true);
   }
 
   async function create() {
@@ -383,43 +445,72 @@ function Builder({ es, canManage, post, reload, nextName, datasets, templates = 
   }
 
   return (
-    <div style={{ ...card, background: `linear-gradient(150deg, color-mix(in srgb,${TEAL} 10%,var(--card)), color-mix(in srgb,${SKY} 8%,var(--card)) 70%, var(--card))`, borderColor: `color-mix(in srgb,${TEAL} 32%,var(--line))` }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4, flexWrap: 'wrap' }}>
-        <span style={{ display: 'inline-flex', width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center', background: `linear-gradient(135deg,${TEAL},${AQUA})`, color: '#04201d', fontSize: 18 }}>🛠</span>
-        <h3 style={{ margin: 0, flex: 1 }}>{es ? 'Constructor de robots (solo admin)' : 'Robot builder (admin only)'}</h3>
-        {canManage && <button onClick={() => { setGenCfg(null); setShowGen(true); }} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 15px', borderRadius: 10, cursor: 'pointer', fontWeight: 800, fontSize: 13, border: `1px solid color-mix(in srgb,${SKY} 45%,transparent)`, background: `color-mix(in srgb,${SKY} 14%,transparent)`, color: SKY }}>🧬 {es ? 'Generador de estrategias' : 'Strategy generator'}</button>}
-      </div>
-      {showGen && <StratGenerator es={es} post={post} onClose={() => setShowGen(false)} initialCfg={genCfg} symbol={symbol} tf={tf} family={family} reload={reload} blocks={blocks} />}
-
-      {/* Biblioteca de plantillas (estilo StrategyQuant) */}
-      <TemplateLibrary es={es} canManage={canManage} post={post} reload={reload} templates={templates} datasets={usable} onUse={useTemplate} />
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg2)', borderRadius: 12, padding: '12px 14px', marginBottom: 14, border: `1px solid color-mix(in srgb,${TEAL} 30%,var(--line))` }}>
-        <div style={{ flex: 1 }}>
-          <div className="muted" style={{ fontSize: 12 }}>{es ? 'Nombre + magic automáticos (no editables, nunca se repiten)' : 'Automatic name + magic (locked, never repeat)'}</div>
-          <div style={{ fontSize: 20, fontWeight: 800, fontFamily: 'monospace', color: TEAL, marginTop: 2 }}>{nextName || '—'}</div>
-          <div className="muted" style={{ fontSize: 11.5, marginTop: 3 }}>{es ? 'Al crearlo se le asigna un magic de 9 dígitos único (numérico; MT4/MT5 no admite letras).' : 'On creation it gets a unique 9-digit magic (numeric; MT4/MT5 allows no letters).'}</div>
+    <div style={{ display: 'grid', gap: 16 }}>
+      {/* Lanzador automático — la puerta de entrada al proceso de la fábrica.
+          La generación masiva (evolución + Onyx + IA) vive en el Motor; aquí
+          eliges los datos y arrancas. Todo pasa solo: Motor → Lab → Pipeline. */}
+      <div style={{ ...card, background: `linear-gradient(150deg, color-mix(in srgb,${LIME} 12%,var(--card)), color-mix(in srgb,${TEAL} 8%,var(--card)) 70%, var(--card))`, borderColor: `color-mix(in srgb,${LIME} 34%,var(--line))` }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span style={{ display: 'inline-flex', width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center', background: `linear-gradient(135deg,${LIME},${TEAL})`, color: '#04201d', fontSize: 18 }}>⚡</span>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <h3 style={{ margin: 0 }}>{es ? 'Fábrica automática' : 'Automatic factory'}</h3>
+            <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>{es ? 'Elige los datos y arranca. El Motor genera y evoluciona miles, aplica el filtro anti-sobreajuste Onyx + auditoría IA, y valida en M1 — sin saltar entre pestañas.' : 'Pick the data and start. The Engine generates and evolves thousands, applies the Onyx anti-overfit gate + AI audit, and validates on M1 — no tab hopping.'}</div>
+          </div>
+          {canManage && <button onClick={() => setSub && setSub('motor')} style={{ padding: '12px 22px', fontSize: 14, borderRadius: 12, border: 'none', fontWeight: 800, cursor: 'pointer', background: `linear-gradient(135deg,${LIME},${TEAL})`, color: '#04201d' }}>{es ? '⚡ Abrir Motor automático →' : '⚡ Open automatic Engine →'}</button>}
         </div>
-        <span style={{ fontSize: 22 }}>🔒</span>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 12 }}>
-        <Lbl es={es} t={es ? 'Plataforma' : 'Platform'}><select value={platform} onChange={(e) => setPlatform(e.target.value as any)} style={inp}><option value="mt5">MT5</option><option value="mt4">MT4</option></select></Lbl>
-        <Lbl es={es} t={es ? 'Instrumento / par' : 'Instrument / pair'}><InstrumentPicker value={symbol} onChange={setSymbol} es={es} /></Lbl>
-        <Lbl es={es} t={es ? 'Temporalidad' : 'Timeframe'}><select value={tf} onChange={(e) => setTf(e.target.value)} style={inp}>{['M1', 'M5', 'M15', 'M30', 'H1', 'H4', 'D1'].map((x) => <option key={x} value={x}>{x}</option>)}</select></Lbl>
-        <Lbl es={es} t={es ? 'Familia de estrategia' : 'Strategy family'}><select value={family} onChange={(e) => setFamily(e.target.value)} style={inp}>{[['tendencia', es ? 'Tendencia' : 'Trend'], ['rango', es ? 'Rango' : 'Range'], ['ruptura', es ? 'Ruptura' : 'Breakout'], ['reversion', es ? 'Reversión' : 'Reversion'], ['volatilidad', es ? 'Volatilidad' : 'Volatility'], ['scalping', 'Scalping']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></Lbl>
-        <Lbl es={es} t={es ? 'Datos (dataset)' : 'Data (dataset)'} wide><select value={datasetId} onChange={(e) => { const id = e.target.value; setDatasetId(id); const d = usable.find((x: any) => x.id === id); if (d) { if (d.symbol) setSymbol(d.symbol); if (d.timeframe) setTf(d.timeframe); } }} style={inp}><option value="">{es ? '— sin asignar —' : '— none —'}</option>{usable.map((d: any) => <option key={d.id} value={d.id}>{d.symbol} · {d.timeframe} · {d.years}y · {d.verdict}</option>)}</select></Lbl>
-      </div>
-
-      <label style={{ display: 'flex', alignItems: 'center', gap: 9, marginTop: 14, cursor: 'pointer', background: 'var(--bg2)', borderRadius: 10, padding: '10px 12px' }}>
-        <input type="checkbox" checked={anyBroker} onChange={(e) => setAnyBroker(e.target.checked)} style={{ width: 16, height: 16 }} />
-        <div>
-          <div style={{ fontSize: 13, fontWeight: 700 }}>{es ? 'Funciona en cualquier broker' : 'Works on any broker'}</div>
-          <div className="muted" style={{ fontSize: 11.5 }}>{es ? 'El robot ignora prefijos y sufijos del símbolo (XAUUSD.m, EURUSD.pro, #US30…) para operar en cualquier corredor.' : 'The robot ignores symbol prefixes/suffixes (XAUUSD.m, EURUSD.pro, #US30…) to trade on any broker.'}</div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+          <span style={chip(TEAL)}>{usable.length} {es ? 'datasets listos' : 'datasets ready'}</span>
+          <span style={chip(SKY)}>{es ? 'evolución genética' : 'genetic evolution'}</span>
+          <span style={chip(VIOLET)}>Onyx {es ? 'anti-sobreajuste' : 'anti-overfit'}</span>
+          <span style={chip(CORAL)}>✨ {es ? 'auditoría IA' : 'AI audit'}</span>
+          <span style={chip(GREEN)}>{es ? '📰 filtro noticias en todos los EA' : '📰 news filter in every EA'}</span>
         </div>
-      </label>
+      </div>
 
-      {canManage && <button onClick={create} disabled={busy} style={{ marginTop: 14, padding: '12px 22px', fontSize: 14, borderRadius: 12, border: 'none', fontWeight: 800, cursor: 'pointer', background: `linear-gradient(135deg,${TEAL},${AQUA})`, color: '#04201d' }}>{busy ? (es ? 'Creando…' : 'Creating…') : (es ? '✨ Crear robot' : '✨ Create robot')}</button>}
+      {/* Constructor: plantillas + constructor manual de 1 robot (plegado) */}
+      <div style={{ ...card, background: `linear-gradient(150deg, color-mix(in srgb,${TEAL} 10%,var(--card)), color-mix(in srgb,${SKY} 8%,var(--card)) 70%, var(--card))`, borderColor: `color-mix(in srgb,${TEAL} 32%,var(--line))` }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4, flexWrap: 'wrap' }}>
+          <span style={{ display: 'inline-flex', width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center', background: `linear-gradient(135deg,${TEAL},${AQUA})`, color: '#04201d', fontSize: 18 }}>🛠</span>
+          <h3 style={{ margin: 0, flex: 1 }}>{es ? 'Plantillas y constructor manual' : 'Templates & manual builder'}</h3>
+          {canManage && <button onClick={() => setAdvanced((v) => !v)} style={{ ...btn(SKY), padding: '8px 13px' }}>{advanced ? (es ? 'Ocultar manual' : 'Hide manual') : (es ? '＋ Crear 1 robot a mano' : '＋ Build 1 robot by hand')}</button>}
+        </div>
+        <p className="muted" style={{ fontSize: 12.5, marginTop: 0 }}>{es ? 'Las plantillas son recetas de partida (edítalas o crea las tuyas). Para producir muchos robots usa la Fábrica automática de arriba; el constructor manual es para armar un solo robot puntual.' : 'Templates are starting recipes (edit them or make your own). To mass-produce robots use the Automatic factory above; the manual builder is for a single one-off robot.'}</p>
+
+        <TemplateLibrary es={es} canManage={canManage} post={post} reload={reload} templates={templates} datasets={usable} onUse={useTemplate} />
+
+        {advanced && (
+          <div style={{ marginTop: 16, borderTop: '1px solid var(--line)', paddingTop: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg2)', borderRadius: 12, padding: '12px 14px', marginBottom: 14, border: `1px solid color-mix(in srgb,${TEAL} 30%,var(--line))` }}>
+              <div style={{ flex: 1 }}>
+                <div className="muted" style={{ fontSize: 12 }}>{es ? 'Nombre + magic automáticos (no editables, nunca se repiten)' : 'Automatic name + magic (locked, never repeat)'}</div>
+                <div style={{ fontSize: 20, fontWeight: 800, fontFamily: 'monospace', color: TEAL, marginTop: 2 }}>{nextName || '—'}</div>
+              </div>
+              <span style={{ fontSize: 22 }}>🔒</span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 12 }}>
+              <Lbl es={es} t={es ? 'Plataforma' : 'Platform'}><select value={platform} onChange={(e) => setPlatform(e.target.value as any)} style={inp}><option value="mt5">MT5</option><option value="mt4">MT4</option></select></Lbl>
+              <Lbl es={es} t={es ? 'Instrumento / par' : 'Instrument / pair'}><InstrumentPicker value={symbol} onChange={setSymbol} es={es} /></Lbl>
+              <Lbl es={es} t={es ? 'Temporalidad' : 'Timeframe'}><select value={tf} onChange={(e) => setTf(e.target.value)} style={inp}>{['M1', 'M5', 'M15', 'M30', 'H1', 'H4', 'D1'].map((x) => <option key={x} value={x}>{x}</option>)}</select></Lbl>
+              <Lbl es={es} t={es ? 'Familia de estrategia' : 'Strategy family'}><select value={family} onChange={(e) => setFamily(e.target.value)} style={inp}>{[['tendencia', es ? 'Tendencia' : 'Trend'], ['rango', es ? 'Rango' : 'Range'], ['ruptura', es ? 'Ruptura' : 'Breakout'], ['reversion', es ? 'Reversión' : 'Reversion'], ['volatilidad', es ? 'Volatilidad' : 'Volatility'], ['scalping', 'Scalping']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></Lbl>
+              <Lbl es={es} t={es ? 'Datos (dataset)' : 'Data (dataset)'} wide><select value={datasetId} onChange={(e) => { const id = e.target.value; setDatasetId(id); const d = usable.find((x: any) => x.id === id); if (d) { if (d.symbol) setSymbol(d.symbol); if (d.timeframe) setTf(d.timeframe); } }} style={inp}><option value="">{es ? '— sin asignar —' : '— none —'}</option>{usable.map((d: any) => <option key={d.id} value={d.id}>{d.symbol} · {d.timeframe} · {d.years}y · {d.verdict}</option>)}</select></Lbl>
+            </div>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: 9, marginTop: 14, cursor: 'pointer', background: 'var(--bg2)', borderRadius: 10, padding: '10px 12px' }}>
+              <input type="checkbox" checked={anyBroker} onChange={(e) => setAnyBroker(e.target.checked)} style={{ width: 16, height: 16 }} />
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700 }}>{es ? 'Funciona en cualquier broker' : 'Works on any broker'}</div>
+                <div className="muted" style={{ fontSize: 11.5 }}>{es ? 'El robot ignora prefijos y sufijos del símbolo (XAUUSD.m, EURUSD.pro, #US30…).' : 'The robot ignores symbol prefixes/suffixes (XAUUSD.m, EURUSD.pro, #US30…).'}</div>
+              </div>
+            </label>
+
+            {canManage && <button onClick={create} disabled={busy} style={{ marginTop: 14, padding: '12px 22px', fontSize: 14, borderRadius: 12, border: 'none', fontWeight: 800, cursor: 'pointer', background: `linear-gradient(135deg,${TEAL},${AQUA})`, color: '#04201d' }}>{busy ? (es ? 'Creando…' : 'Creating…') : (es ? '✨ Crear robot' : '✨ Create robot')}</button>}
+          </div>
+        )}
+      </div>
+
+      {/* Rejilla de robots de la fábrica (estilo Mis Robots) */}
+      <RobotGrid bots={bots} es={es} post={post} canManage={canManage} reload={reload} setSub={setSub} />
     </div>
   );
 }
@@ -517,30 +608,68 @@ function TemplateLibrary({ es, canManage, post, reload, templates, datasets, onU
 }
 const tfDefault = 'M15';
 
-// -------- Lista de robots --------
+// -------- Lista de robots (cartera estilo Mis Robots) --------
 function BotList({ es, canManage, post, reload, bots }: any) {
-  async function del(id: string) { try { await post({ action: 'bot_delete', id }); toast(es ? 'Eliminado' : 'Deleted'); reload(); } catch (e: any) { toastErr(e?.message); } }
   return (
     <div style={card}>
       <h3 style={{ marginTop: 0 }}>{es ? 'Robots de la fábrica' : 'Factory robots'}</h3>
-      {!bots.length && <div className="muted" style={{ fontSize: 13 }}>{es ? 'Aún no has creado robots.' : 'No robots yet.'}</div>}
-      <div style={{ display: 'grid', gap: 10 }}>
-        {bots.map((b: any) => (
-          <div key={b.id} style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', border: '1px solid var(--line)', borderRadius: 13, padding: 13, background: `linear-gradient(140deg,color-mix(in srgb,${VIOLET} 7%,transparent),transparent 60%)` }}>
-            <span style={{ width: 10, height: 10, borderRadius: '50%', background: GREEN, flex: 'none' }} />
-            <div style={{ flex: 1, minWidth: 180 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <b style={{ fontSize: 15, fontFamily: 'monospace', color: VIOLET }}>{b.name}</b>
-                {b.magic && <span style={{ fontSize: 11, fontWeight: 800, fontFamily: 'monospace', padding: '2px 8px', borderRadius: 7, background: 'var(--bg2)', color: 'var(--tx)' }}>magic {b.magic}</span>}
+      <RobotGrid bots={bots} es={es} post={post} canManage={canManage} reload={reload} embedded />
+    </div>
+  );
+}
+
+// Etapa de un robot → estado legible + color (borrador → demo → fondeo → real).
+function stageInfo(b: any, es: boolean): { label: string; color: string } {
+  const s = String(b.stage || '').toLowerCase();
+  if (b.live_real || s.includes('real')) return { label: es ? 'real' : 'live', color: GREEN };
+  if (b.funded || s.includes('fond')) return { label: es ? 'fondeo' : 'funded', color: TEAL };
+  if (b.demo_ready || s.includes('demo')) return { label: 'demo', color: SKY };
+  if (b.fine_score != null || s.includes('lab')) return { label: 'lab', color: VIOLET };
+  return { label: es ? 'borrador' : 'draft', color: AMBER };
+}
+const gradeColor = (g: string) => g === 'A' || g === 'B' ? GREEN : g === 'C' ? AMBER : g ? RED : 'var(--tx)';
+
+// Rejilla de tarjetas de robots — misma estética que "Mis Robots" del trader:
+// par, estado por etapa, grado Onyx, mini-curva y acciones (Lab · borrar).
+function RobotGrid({ bots = [], es, post, canManage, reload, setSub, embedded }: any) {
+  const [filter, setFilter] = useState('todos');
+  async function del(id: string) { if (!confirm(es ? '¿Borrar este robot?' : 'Delete this robot?')) return; try { await post({ action: 'bot_delete', id }); toast(es ? 'Eliminado' : 'Deleted'); reload && reload(); } catch (e: any) { toastErr(e?.message); } }
+  const FOLDERS: [string, string][] = [['todos', es ? 'Todos' : 'All'], ['borrador', es ? 'Borrador' : 'Draft'], ['lab', 'Lab'], ['demo', 'Demo'], ['fondeo', es ? 'Fondeo' : 'Funded'], ['real', es ? 'Real' : 'Live']];
+  const withStage = (bots as any[]).map((b) => ({ b, st: stageInfo(b, es) }));
+  const counts: Record<string, number> = {}; withStage.forEach(({ st }) => { counts[st.label] = (counts[st.label] || 0) + 1; });
+  const norm = (l: string) => ({ 'live': 'real', 'funded': 'fondeo', 'draft': 'borrador' } as any)[l] || l;
+  const shown = filter === 'todos' ? withStage : withStage.filter(({ st }) => norm(st.label) === filter);
+
+  return (
+    <div style={embedded ? {} : { ...card }}>
+      {!embedded && <h3 style={{ marginTop: 0 }}>{es ? 'Robots de la fábrica' : 'Factory robots'}</h3>}
+      {!bots.length && <div className="muted" style={{ fontSize: 13 }}>{es ? 'Aún no hay robots. Arranca la Fábrica automática de arriba.' : 'No robots yet. Start the Automatic factory above.'}</div>}
+      {!!bots.length && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+          {FOLDERS.map(([k, l]) => { const on = filter === k; const n = k === 'todos' ? bots.length : (counts[k] || counts[({ real: 'live', fondeo: 'funded', borrador: 'draft' } as any)[k]] || 0); return (
+            <button key={k} onClick={() => setFilter(k)} style={{ padding: '5px 11px', borderRadius: 99, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: '1px solid ' + (on ? 'var(--brand)' : 'var(--line)'), background: on ? 'color-mix(in srgb,var(--brand) 16%,transparent)' : 'var(--bg2)', color: on ? 'var(--brand)' : 'var(--tx)' }}>{l} · {n}</button>
+          ); })}
+        </div>
+      )}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(215px,1fr))', gap: 10 }}>
+        {shown.map(({ b, st }) => {
+          const grade = b.fine_grade || (b.robustness_verdict === 'robusto' ? 'A' : b.robustness_verdict === 'moderado' ? 'C' : '');
+          const score = b.fine_score ?? b.robustness_score;
+          return (
+            <div key={b.id} style={{ border: `1px solid color-mix(in srgb,${st.color} 32%,var(--line))`, borderRadius: 12, padding: 12, background: 'var(--card)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <b style={{ fontSize: 13.5, fontFamily: 'monospace', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name}</b>
+                <span style={{ fontSize: 9.5, fontWeight: 800, padding: '2px 8px', borderRadius: 20, background: `color-mix(in srgb,${st.color} 16%,transparent)`, color: st.color }}>{st.label}</span>
               </div>
-              <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>{String(b.platform || '').toUpperCase()} · {b.symbol || '—'} · {b.timeframe || '—'} · {b.strategy?.family || '—'} · {es ? 'etapa' : 'stage'} {b.stage}</div>
+              <div className="muted" style={{ fontSize: 11.5 }}>{String(b.platform || '').toUpperCase()} · {b.symbol || '—'} · {b.timeframe || '—'}{score != null ? ' · ' : ''}{score != null && <span style={{ color: gradeColor(grade), fontWeight: 800 }}>{grade || ''} {score}</span>}</div>
+              {b.magic && <div style={{ fontSize: 10.5, fontFamily: 'monospace', color: 'var(--tx)', opacity: .7 }}>magic {b.magic}</div>}
+              <div style={{ display: 'flex', gap: 6, marginTop: 'auto' }}>
+                {setSub && <button onClick={() => setSub('laboratorio')} style={{ ...btn(VIOLET), padding: '6px 10px', flex: 1, justifyContent: 'center', fontSize: 12 }}>🔬 Lab</button>}
+                {canManage && <button onClick={() => del(b.id)} style={{ ...btn(RED), padding: '6px 9px' }}>✕</button>}
+              </div>
             </div>
-            {b.robustness_verdict && <span style={{ fontSize: 11, fontWeight: 800, padding: '3px 10px', borderRadius: 99, background: `color-mix(in srgb,${b.robustness_verdict === 'robusto' ? GREEN : b.robustness_verdict === 'moderado' ? AMBER : RED} 16%,transparent)`, color: b.robustness_verdict === 'robusto' ? GREEN : b.robustness_verdict === 'moderado' ? AMBER : RED }}>{b.robustness_score} · {b.robustness_verdict}</span>}
-            {b.demo_ready && <span style={{ fontSize: 11, fontWeight: 800, padding: '3px 10px', borderRadius: 99, background: `color-mix(in srgb,${GREEN} 16%,transparent)`, color: GREEN }}>{es ? '🚀 en demo' : '🚀 in demo'}</span>}
-            <span style={{ fontSize: 11, fontWeight: 800, padding: '3px 10px', borderRadius: 99, background: 'color-mix(in srgb,var(--brand) 14%,transparent)', color: 'var(--brand)' }}>{b.stage}</span>
-            {canManage && <button onClick={() => del(b.id)} style={btn(RED)}>{es ? 'Borrar' : 'Delete'}</button>}
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

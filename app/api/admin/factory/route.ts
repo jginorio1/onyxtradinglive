@@ -5,7 +5,7 @@ import { listBots, listDatasets, factoryStats, saveDataset, createBot, deleteBot
 import { pipelineBoard, runPipelineOnce, linkDemo, stageOverride, approveReal } from '@/lib/pipeline';
 import { listTemplates, saveTemplate, deleteTemplate, blockCatalog, heuristicTemplate } from '@/lib/templates';
 import { listBlocks, saveBlock, deleteBlock } from '@/lib/blocks';
-import { aiTemplate, aiBlocks } from '@/lib/factoryAI';
+import { aiTemplate, aiBlocks, aiDatasetSummary } from '@/lib/factoryAI';
 import { BLOCKS } from '@/lib/stratgen';
 
 export const dynamic = 'force-dynamic';
@@ -72,6 +72,19 @@ export async function POST(req: Request) {
     const ds = await getDataset(String(b.id || ''));
     if (!ds) return NextResponse.json({ error: 'dataset no encontrado' }, { status: 404 });
     return NextResponse.json({ url: ds.bars_url || null, symbol: ds.symbol, timeframe: ds.timeframe, barsTf: ds.bars_tf, barsCount: ds.bars_count });
+  }
+  // Resumen (IA o determinista) del dataset para el panel de datos.
+  if (a === 'dataset_summary') {
+    const ds = await getDataset(String(b.id || ''));
+    if (!ds) return NextResponse.json({ error: 'dataset no encontrado' }, { status: 404 });
+    const r = await aiDatasetSummary({
+      symbol: ds.symbol, timeframe: ds.timeframe, source: ds.source, broker: ds.broker,
+      fromYear: ds.from_year || (ds.from_date ? new Date(ds.from_date).getUTCFullYear() : undefined),
+      toYear: ds.to_year || (ds.to_date ? new Date(ds.to_date).getUTCFullYear() : undefined),
+      years: ds.years, rows: ds.rows, hasTicks: ds.data_kind === 'ticks' || ds.has_ticks,
+      spreadAvgPts: ds.spread_avg_pts, qualityScore: ds.quality_score, verdict: ds.verdict, lang: b.lang === 'en' ? 'en' : 'es',
+    });
+    return NextResponse.json(r);
   }
   if (a === 'dataset_delete') {
     await deleteDataset(String(b.id || ''));
