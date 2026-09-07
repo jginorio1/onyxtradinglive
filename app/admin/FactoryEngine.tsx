@@ -66,6 +66,23 @@ const card: any = { background: 'var(--card)', border: '1px solid var(--line)', 
 const inp: any = { padding: '9px 11px', borderRadius: 9, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 13.5 };
 function btn(c: string): any { return { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 14px', borderRadius: 10, cursor: 'pointer', fontWeight: 800, fontSize: 13, border: `1px solid color-mix(in srgb,${c} 45%,transparent)`, background: `color-mix(in srgb,${c} 14%,transparent)`, color: c }; }
 function autoChip(c: string): any { return { display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, padding: '5px 11px', borderRadius: 99, background: `color-mix(in srgb,${c} 15%,transparent)`, color: c, border: `1px solid color-mix(in srgb,${c} 32%,transparent)` }; }
+// Costes típicos por instrumento — para no tener que buscarlos en MetaTrader.
+// spread en pips, comisión $/lote por lado, $/pip a 1 lote. Ajustables luego.
+function instrDefaults(sym: string): { spreadPips: number; commission: number; moneyPerPip: number } {
+  const s = (sym || '').toUpperCase();
+  if (/XAU|GOLD/.test(s)) return { spreadPips: 2.5, commission: 3.5, moneyPerPip: 10 };
+  if (/XAG|SILVER/.test(s)) return { spreadPips: 3, commission: 3.5, moneyPerPip: 50 };
+  if (/US30|DOW|DJ30|WS30/.test(s)) return { spreadPips: 3, commission: 0, moneyPerPip: 1 };
+  if (/NAS|US100|NDX|USTEC/.test(s)) return { spreadPips: 2, commission: 0, moneyPerPip: 1 };
+  if (/SPX|US500|SP500/.test(s)) return { spreadPips: 1.5, commission: 0, moneyPerPip: 1 };
+  if (/GER|DAX|DE40|GER40/.test(s)) return { spreadPips: 2, commission: 0, moneyPerPip: 1 };
+  if (/BTC/.test(s)) return { spreadPips: 30, commission: 0, moneyPerPip: 1 };
+  if (/ETH/.test(s)) return { spreadPips: 10, commission: 0, moneyPerPip: 1 };
+  if (/OIL|WTI|BRENT|USOIL|UKOIL/.test(s)) return { spreadPips: 3, commission: 0, moneyPerPip: 10 };
+  if (/JPY$/.test(s)) return { spreadPips: 1.2, commission: 3.5, moneyPerPip: 9 };
+  return { spreadPips: 1.0, commission: 3.5, moneyPerPip: 10 }; // Forex mayores por defecto
+}
+
 function methodCard(active: boolean, c: string): any { return { flex: 1, minWidth: 220, textAlign: 'left', cursor: 'pointer', padding: '11px 13px', borderRadius: 12, background: active ? `color-mix(in srgb,${c} 14%,var(--bg2))` : 'var(--bg2)', border: `2px solid ${active ? c : 'var(--line)'}`, color: 'var(--tx)' }; }
 
 // Recetas de bloques por familia: en vez de marcar TODOS los bloques (espacio
@@ -152,6 +169,15 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
       setProg(1);
       setBars(b);
       if (ds.symbol) setMeta((mt) => ({ ...mt, symbol: ds.symbol, tf: `M${workTf}` }));
+      // Costes por defecto realistas según el instrumento (no tienes que buscarlos en MT).
+      // Los puedes afinar en Ajustes avanzados. Si el dataset trae ticks reales con spread
+      // detectado, se usa ese en vez del típico.
+      if (ds.symbol) {
+        const dflt = instrDefaults(ds.symbol);
+        const hasTk = ds.data_kind === 'ticks' || ds.has_ticks;
+        const tkSpread = hasTk && ds.spread_avg_pts != null ? Math.round(Number(ds.spread_avg_pts) * 10) / 10 : null;
+        setCosts((c) => ({ ...c, spreadPips: tkSpread != null && tkSpread > 0 ? tkSpread : dflt.spreadPips, commission: dflt.commission, moneyPerPip: dflt.moneyPerPip }));
+      }
       toast(workTf > srcTf
         ? (es ? `Cargado y convertido a M${workTf} para buscar rápido (${b.length.toLocaleString('en-US')} barras)` : `Loaded and converted to M${workTf} for fast search (${b.length.toLocaleString('en-US')} bars)`)
         : (es ? 'Datos cargados desde la biblioteca' : 'Data loaded from library'));
