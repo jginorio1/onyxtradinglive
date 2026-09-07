@@ -249,6 +249,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
 
   async function runBatch() {
     if (!bars) { toastErr(es ? 'Sube las barras primero.' : 'Upload bars first.'); return; }
+    if (n < 1) { toastErr(es ? 'Escribe cuántas estrategias probar.' : 'Enter how many strategies to test.'); return; }
     setBusy(true); setRows(null); setEvo(null);
     await new Promise((r) => setTimeout(r, 30));
     try {
@@ -295,6 +296,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
   async function autopilot() {
     if (!bars) { toastErr(es ? 'Sube los datos primero.' : 'Upload data first.'); return; }
     if (!meta.symbol) { toastErr(es ? 'Falta el símbolo (se rellena al subir los datos).' : 'Missing symbol.'); return; }
+    if (n < 1) { toastErr(es ? 'Escribe cuántas estrategias generar.' : 'Enter how many strategies to generate.'); return; }
     setAuto(true); setAutoDone(null); setAutoMsg(es ? 'Generando estrategias…' : 'Generating strategies…');
     await new Promise((r) => setTimeout(r, 30));
     try {
@@ -507,7 +509,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
           <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 6 }}>{autoMode === 'evolve' ? (es ? '3 · Esfuerzo de evolución' : '3 · Evolution effort') : (es ? '3 · Cuántas probar' : '3 · How many to test')}</div>
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <label><div className="muted" style={{ fontSize: 11.5, marginBottom: 3 }}>{es ? 'Estrategias a escanear' : 'Strategies to scan'}<Help text={tip(es, 'n')} /></div>
-              <input type="number" value={n} min={100} step={500} onChange={(e) => setN(Math.max(100, Number(e.target.value) || 100))} style={{ ...inp, width: 130 }} /></label>
+              <input type="number" value={n || ''} step={500} placeholder={es ? 'cantidad' : 'amount'} onChange={(e) => setN(Math.max(0, Math.floor(Number(e.target.value) || 0)))} style={{ ...inp, width: 130 }} /></label>
             <label><div className="muted" style={{ fontSize: 11.5, marginBottom: 3 }}>{es ? 'Robots a guardar' : 'Robots to keep'}<Help text={tip(es, 'keepN')} /></div>
               <input type="number" value={keepN} min={1} max={500} onChange={(e) => setKeepN(Math.max(1, Math.min(500, Number(e.target.value) || 1)))} style={{ ...inp, width: 110 }} /></label>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -778,7 +780,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
         </div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginTop: 14 }}>
           <span className="muted" style={{ fontSize: 12 }}>{es ? 'Backtestear' : 'Backtest'}</span>
-          <input type="number" value={n} min={100} step={500} onChange={(e) => setN(Math.max(100, Number(e.target.value) || 100))} style={{ ...inp, width: 100 }} />
+          <input type="number" value={n || ''} step={500} placeholder={es ? 'cantidad' : 'amount'} onChange={(e) => setN(Math.max(0, Math.floor(Number(e.target.value) || 0)))} style={{ ...inp, width: 100 }} />
           {canManage && <button onClick={runBatch} disabled={busy || !bars} style={{ ...btn(VIOLET), opacity: busy || !bars ? 0.6 : 1 }}>{busy ? (es ? 'Corriendo…' : 'Running…') : (es ? '⚡ Backtestear lote' : '⚡ Backtest batch')}</button>}
           {canManage && <button onClick={runEvolve} disabled={busy || !bars} style={{ ...btn(GREEN), opacity: busy || !bars ? 0.6 : 1 }}>{es ? '🧬 Evolucionar' : '🧬 Evolve'}</button>}
         </div>
