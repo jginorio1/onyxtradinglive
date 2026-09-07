@@ -204,6 +204,7 @@ export default function FactoryLab({ es, canManage, post, reload, bots, datasets
   const [repSplit, setRepSplit] = useState<{ is: FullReport; oos: FullReport } | null>(null); // KPIs en muestra / fuera de muestra
   const [repBusy, setRepBusy] = useState(false);
   const [ovTab, setOvTab] = useState<'kpis' | 'curva'>('kpis'); // sub-pestaña Overview/Curva
+  const oosPct = 30; // % fuera de muestra para el reporte del Lab (fijo)
 
   const bot = (bots as any[]).find((b) => b.id === botId);
   const counts: Record<string, number> = { todos: (bots as any[]).length, aptos: 0, dudosos: 0, fragiles: 0, pendiente: 0 };
