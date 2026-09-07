@@ -63,6 +63,9 @@ input int    BE_Pips     = ${be};                 // 0 = sin break-even
 input int    Trail_Pips  = ${tr};                 // 0 = sin trailing
 input long   MagicNumber = ${magic};
 input bool   AnyBroker   = true;                  // ignora prefijos/sufijos del símbolo
+input bool   NewsFilter   = true;                 // NO operar cerca de noticias de alto impacto
+input int    NewsBeforeMin= 30;                   // minutos antes de la noticia
+input int    NewsAfterMin = 30;                   // minutos después de la noticia
 
 int    h_ind=INVALID_HANDLE, h_atr=INVALID_HANDLE;
 double pip;
@@ -82,6 +85,26 @@ double AtrVal(){ double a[]; if(CopyBuffer(h_atr,0,0,1,a)<1) return 0; return a[
 bool NewBar(){ datetime t=iTime(_Symbol,_Period,0); if(t==lastBar) return false; lastBar=t; return true; }
 
 bool HasPos(){ return PositionSelect(_Symbol) && PositionGetInteger(POSITION_MAGIC)==MagicNumber; }
+
+// Filtro de noticias (horneado en TODOS los robots de Onyx): usa el calendario
+// económico integrado de MT5 y bloquea la operativa cerca de eventos de ALTO
+// impacto que afecten a las divisas del símbolo. NO se usa en el backtest; solo
+// protege en vivo. Se puede apagar con NewsFilter=false.
+bool NewsBlock(){
+  if(!NewsFilter) return false;
+  datetime now=TimeCurrent();
+  MqlCalendarValue values[];
+  datetime from=now-(datetime)NewsBeforeMin*60, to=now+(datetime)NewsAfterMin*60;
+  string cur1=StringSubstr(_Symbol,0,3), cur2=StringSubstr(_Symbol,3,3);
+  int n=CalendarValueHistory(values,from,to,NULL,NULL);
+  for(int i=0;i<n;i++){
+    MqlCalendarEvent ev; if(!CalendarEventById(values[i].event_id,ev)) continue;
+    if(ev.importance!=CALENDAR_IMPORTANCE_HIGH) continue;
+    MqlCalendarCountry ctry; if(!CalendarCountryById(ev.country_id,ctry)) continue;
+    if(ctry.currency==cur1 || ctry.currency==cur2) return true;
+  }
+  return false;
+}
 
 void Manage(){
   if(!HasPos()) return;
@@ -103,6 +126,7 @@ void OnTick(){
 
   MqlDateTime dt; TimeToStruct(TimeCurrent(),dt); int hh=dt.hour;
   if(!(${sess})) return;
+  if(NewsBlock()) return;   // filtro de noticias (alto impacto)
 
   double val=IndVal(1), valPrev=IndVal(2);
   double lvlMid = ${kind === 'osc' ? '50' : 'iClose(_Symbol,_Period,1)'};
@@ -149,8 +173,22 @@ export function genMt4(spec: Spec, symbol: string, magic: number, botName?: stri
 #property strict
 extern double Lots=0.10; extern int P1=${spec.p1 || 20}; extern int TP_Pips=${tp}; extern int SL_Pips=${sl};
 extern int BE_Pips=${be}; extern int Trail_Pips=${tr}; extern int MagicNumber=${magic};
+extern bool NewsFilter=true;          // filtro de noticias (horneado en todos los robots Onyx)
+extern string NewsTimesUTC="";        // horas de noticias "HH:mm,HH:mm" (MT4 no trae calendario)
+extern int NewsBeforeMin=30; extern int NewsAfterMin=30;
 double pip;
 int OnInit(){ pip=(Digits==3||Digits==5)?Point*10:Point; return(0);}
+// MT4 no tiene calendario económico; el robot bloquea la operativa alrededor de
+// las horas UTC de alto impacto que indiques en NewsTimesUTC. Vacío = sin bloqueo.
+bool NewsBlock(){
+  if(!NewsFilter || StringLen(NewsTimesUTC)==0) return false;
+  datetime now=TimeGMT(); int nowMin=TimeHour(now)*60+TimeMinute(now);
+  string parts[]; int c=StringSplit(NewsTimesUTC,',',parts);
+  for(int i=0;i<c;i++){ string p=parts[i]; int cp=StringFind(p,":"); if(cp<0) continue;
+    int hh=(int)StringToInteger(StringSubstr(p,0,cp)); int mm=(int)StringToInteger(StringSubstr(p,cp+1));
+    int evt=hh*60+mm; if(nowMin>=evt-NewsBeforeMin && nowMin<=evt+NewsAfterMin) return true; }
+  return false;
+}
 double Ind(int s){ return ${indCall}; }
 bool NewBar(){ static datetime lb=0; if(Time[0]==lb) return false; lb=Time[0]; return true; }
 int Count(){ int c=0; for(int i=0;i<OrdersTotal();i++){ if(OrderSelect(i,SELECT_BY_POS) && OrderSymbol()==Symbol() && OrderMagicNumber()==MagicNumber) c++; } return c; }
@@ -159,7 +197,7 @@ void Trail(){ for(int i=0;i<OrdersTotal();i++){ if(!OrderSelect(i,SELECT_BY_POS)
   if(BE_Pips>0 && prog>=BE_Pips) ns=(OrderType()==OP_BUY)?op+pip:op-pip;
   if(Trail_Pips>0 && prog>=Trail_Pips){ double t=(OrderType()==OP_BUY)?Bid-Trail_Pips*pip:Ask+Trail_Pips*pip; if(OrderType()==OP_BUY? t>ns : (ns==0||t<ns)) ns=t; }
   if(ns!=OrderStopLoss() && ns>0) OrderModify(OrderTicket(),op,ns,OrderTakeProfit(),0); } }
-void OnTick(){ Trail(); if(!NewBar()||Count()>0) return; int hh=TimeHour(TimeCurrent()); if(!(${sess})) return;
+void OnTick(){ Trail(); if(!NewBar()||Count()>0) return; int hh=TimeHour(TimeCurrent()); if(!(${sess})) return; if(NewsBlock()) return;
   double val=Ind(1), valP=Ind(2); double lvl=${kind === 'osc' ? '50' : 'Close[1]'};
   double hiN=High[iHighest(NULL,0,MODE_HIGH,20,2)]; double loN=Low[iLowest(NULL,0,MODE_LOW,20,2)];
   double atr=iATR(NULL,0,14,1); double slp=(SL_Pips>0)?SL_Pips*pip:1.5*atr; double tpp=(TP_Pips>0)?TP_Pips*pip:2.0*atr;
@@ -234,6 +272,7 @@ export function genPseudo(spec: Spec, symbol: string, magic: number, extra?: str
     L('Break-even', spec.be || 'off'),
     L('Trailing', spec.trailing || 'off'),
     L('Dirección', (spec as any).dir || 'both'),
+    L('Filtro noticias', 'sí (alto impacto, on por defecto — no se usa en el backtest)'),
     '',
     'LÓGICA:',
     `  1. Calcular ${spec.ind1}${spec.ind2 ? ' y ' + spec.ind2 : ''} con los períodos indicados.`,

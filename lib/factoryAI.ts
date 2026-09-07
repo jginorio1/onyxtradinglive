@@ -90,3 +90,36 @@ export async function robustnessAudit(bot: any, r: any, lang: 'es' | 'en' = 'es'
   const mutations = Array.isArray(res.mutations) ? res.mutations.map((x: any) => String(x).slice(0, 200)).slice(0, 4) : [];
   return { audit, mutations };
 }
+
+// ============================================================
+// Resumen de la data para el panel: describe el dataset en lenguaje llano
+// (rango, tipo, calidad, spread, aptitud). Si hay ANTHROPIC_API_KEY, Claude
+// redacta; si no, se arma un resumen determinista con los mismos números.
+// NUNCA predice el mercado ni promete resultados.
+// ============================================================
+export async function aiDatasetSummary(input: {
+  symbol: string; timeframe?: string; source?: string; broker?: string;
+  fromYear?: number; toYear?: number; years?: number; rows?: number;
+  hasTicks?: boolean; spreadAvgPts?: number; qualityScore?: number; verdict?: string;
+  lang?: 'es' | 'en';
+}): Promise<{ summary: string; byAi: boolean }> {
+  const es = input.lang !== 'en';
+  // Resumen determinista (siempre disponible).
+  const range = input.fromYear && input.toYear ? `${input.fromYear}–${input.toYear}` : '—';
+  const kind = input.hasTicks ? (es ? 'ticks reales' : 'real ticks') : (es ? 'barras' : 'bars');
+  const rowsTxt = (input.rows || 0).toLocaleString('en-US');
+  const spreadTxt = input.hasTicks && input.spreadAvgPts != null ? `${Math.round(input.spreadAvgPts)} ${es ? 'pts' : 'pts'}` : (es ? 'n/d' : 'n/a');
+  const fit = input.verdict === 'apta' ? (es ? 'apta para backtest' : 'fit for backtest') : input.verdict === 'reservas' ? (es ? 'apta con reservas' : 'fit with caveats') : (es ? 'con problemas' : 'has issues');
+  const long = (input.years || 0) >= 4;
+  const det = es
+    ? `${input.symbol}${input.timeframe ? ' · ' + input.timeframe : ''} con ${kind}, cubre ${range} (${(input.years || 0).toFixed(1)} años, ${rowsTxt} filas). Fuente: ${input.source || 'n/d'}${input.broker ? ' · ' + input.broker : ''}. Spread medio ${spreadTxt}. Calidad ${input.qualityScore ?? '—'} — ${fit}. ${long ? 'Historial amplio: cubre varios regímenes de mercado, bueno para walk-forward y validación fuera de muestra.' : 'Historial corto: úsalo con cuidado, cubre pocos regímenes de mercado.'}${input.hasTicks ? ' Con ticks reales puedes validar en M1 tick-accurate.' : ' Sin ticks: la validación fina en M1 será aproximada.'}`
+    : `${input.symbol}${input.timeframe ? ' · ' + input.timeframe : ''} with ${kind}, covers ${range} (${(input.years || 0).toFixed(1)} yrs, ${rowsTxt} rows). Source: ${input.source || 'n/a'}${input.broker ? ' · ' + input.broker : ''}. Avg spread ${spreadTxt}. Quality ${input.qualityScore ?? '—'} — ${fit}. ${long ? 'Long history: spans several market regimes, good for walk-forward and out-of-sample.' : 'Short history: use carefully, few market regimes.'}${input.hasTicks ? ' Real ticks allow M1 tick-accurate validation.' : ' No ticks: fine M1 validation will be approximate.'}`;
+
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) return { summary: det, byAi: false };
+  const L = es ? 'Spanish' : 'English';
+  const system = `You are Onyx's data analyst for an internal MT4/MT5 robot factory. Describe a market dataset in 2-4 plain sentences in ${L}: what it is, its coverage and quality, its spread realism, and whether it is suitable for backtesting/validation and for which trading styles. NEVER predict the market or promise profits. Reply ONLY with JSON: {"summary":"<text>"}.`;
+  const res = await aiJson(system, JSON.stringify(input), 400);
+  const s = res && typeof res.summary === 'string' ? res.summary.trim() : '';
+  return s ? { summary: s.slice(0, 900), byAi: true } : { summary: det, byAi: false };
+}
