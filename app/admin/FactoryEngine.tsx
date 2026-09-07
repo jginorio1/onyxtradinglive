@@ -67,6 +67,17 @@ const inp: any = { padding: '9px 11px', borderRadius: 9, border: '1px solid var(
 function btn(c: string): any { return { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 14px', borderRadius: 10, cursor: 'pointer', fontWeight: 800, fontSize: 13, border: `1px solid color-mix(in srgb,${c} 45%,transparent)`, background: `color-mix(in srgb,${c} 14%,transparent)`, color: c }; }
 function autoChip(c: string): any { return { display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, padding: '5px 11px', borderRadius: 99, background: `color-mix(in srgb,${c} 15%,transparent)`, color: c, border: `1px solid color-mix(in srgb,${c} 32%,transparent)` }; }
 function methodCard(active: boolean, c: string): any { return { flex: 1, minWidth: 220, textAlign: 'left', cursor: 'pointer', padding: '11px 13px', borderRadius: 12, background: active ? `color-mix(in srgb,${c} 14%,var(--bg2))` : 'var(--bg2)', border: `2px solid ${active ? c : 'var(--line)'}`, color: 'var(--tx)' }; }
+
+// Recetas de bloques por familia: en vez de marcar TODOS los bloques (espacio
+// enorme y ruidoso → casi todo basura), cada preset elige un conjunto coherente
+// con más tasa de acierto. El usuario puede afinar luego en "Bloques a combinar".
+const BLOCK_PRESETS: { key: string; es: string; en: string; cfg: Record<string, string[]> }[] = [
+  { key: 'tendencia', es: 'Tendencia', en: 'Trend', cfg: { indicators: ['ema', 'macd'], entry: ['cross_up', 'cross_dn'], exit: ['opp_signal', 'indicator'], sessions: ['london', 'ny', 'overlap'], tp: ['atr2', 'atr3', '60'], sl: ['atr15', '50'], be: ['off', 'be20'], trailing: ['t_atr', 'off'] } },
+  { key: 'ruptura', es: 'Ruptura', en: 'Breakout', cfg: { indicators: ['bb', 'atr'], entry: ['breakout', 'pullback'], exit: ['fixed', 'opp_signal'], sessions: ['london', 'ny'], tp: ['60', 'atr3'], sl: ['30', 'atr15'], be: ['be20'], trailing: ['t30', 'off'] } },
+  { key: 'reversion', es: 'Reversión', en: 'Reversion', cfg: { indicators: ['rsi', 'bb'], entry: ['pullback', 'cross_up', 'cross_dn'], exit: ['opp_signal', 'fixed'], sessions: ['ny', 'overlap', 'all'], tp: ['40', '60'], sl: ['30', '50'], be: ['off'], trailing: ['off'] } },
+  { key: 'scalping', es: 'Scalping', en: 'Scalping', cfg: { indicators: ['ema', 'rsi'], entry: ['cross_up', 'cross_dn'], exit: ['fixed'], sessions: ['london', 'overlap'], tp: ['40'], sl: ['30'], be: ['be20'], trailing: ['t30'] } },
+  { key: 'todo', es: 'Todo (amplio)', en: 'All (wide)', cfg: { indicators: ['ema', 'rsi', 'macd', 'bb'], entry: ['cross_up', 'cross_dn', 'breakout', 'pullback'], exit: ['opp_signal', 'fixed', 'indicator'], sessions: ['london', 'ny', 'overlap', 'all'], tp: ['40', '60', 'atr2', 'atr3'], sl: ['30', '50', 'atr15'], be: ['off', 'be20'], trailing: ['off', 't30', 't_atr'] } },
+];
 // Agrega barras a una temporalidad más gruesa (p.ej. M1 → M15) para que la búsqueda
 // no congele la pestaña con datasets enormes. Bucketea por tiempo (OHLC correcto).
 function aggregateBars(bars: Bar[], targetMin: number): Bar[] {
@@ -309,8 +320,9 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
         // espacio de MILLONES de combinaciones haciendo solo unos miles de backtests.
         setAutoMsg(es ? 'Evolucionando (mutación + cruce)…' : 'Evolving (mutation + crossover)…');
         await new Promise((r) => setTimeout(r, 10));
-        const gens = Math.max(6, Math.min(40, Math.round(n / 400))); // más presupuesto = más generaciones
-        const pop = Math.max(40, Math.min(200, Math.round(n / 20)));
+        // Sin tope: más presupuesto (n) = más generaciones y población, explora MUCHO más a fondo.
+        const gens = Math.max(6, Math.min(1000, Math.round(n / 400))); // hasta 1000 generaciones
+        const pop = Math.max(40, Math.min(5000, Math.round(n / 20)));   // hasta 5000 de población
         // Guardamos un POOL amplio (keepN×5) para que el filtro anti-sobreajuste tenga de dónde elegir.
         const pool = Math.max(24, Math.min(80, keepN * 5));
         const r = evolve(bars, costs, { pop, gens, keep: pool, mut: evoCfg.mut, restart: evoCfg.restart, oosPct: oosPct || 30 });
@@ -319,17 +331,30 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
         top = (good.length ? good : r.best).map((s) => ({ spec: { ...s.spec, dir } }));
         scanned = r.evaluated; survivorsN = good.length;
       } else {
-        // ALEATORIO: muestrea candidatos al azar y backtestea cada uno.
-        const cands = (sampleCandidates(cfg, n) as Spec[]).map((c) => ({ ...c, dir }));
+        // ALEATORIO POR LOTES: en vez de crear TODO el array de golpe (revienta la
+        // memoria con millones), se procesa en tandas: genera un lote, lo backtestea,
+        // guarda solo los mejores y descarta el resto. La memoria NO crece aunque
+        // pongas millones. Así corre de verdad a fondo.
+        const CHUNK = 4000;
+        const keepPool = Math.max(24, keepN * 5);
         const survivors: { spec: Spec; fit: number }[] = [];
-        for (let i = 0; i < cands.length; i++) {
-          const ev = evaluate(cands[i], isB, oosB, costs);
-          if (ev.fit > 0 && ev.oosPf >= 1 && ev.dd <= maxDd && ev.trades >= minTr && ev.oosNet > 0) survivors.push({ spec: cands[i], fit: ev.fit });
-          if (i % 120 === 0) { setAutoMsg((es ? 'Backtesteando ' : 'Backtesting ') + i + '/' + cands.length + ' · ' + (es ? 'robustos ' : 'robust ') + survivors.length); await new Promise((r) => setTimeout(r, 0)); }
+        for (let done = 0; done < n; done += CHUNK) {
+          const size = Math.min(CHUNK, n - done);
+          const cands = sampleCandidates(cfg, size) as Spec[];
+          for (let i = 0; i < cands.length; i++) {
+            const c = { ...cands[i], dir };
+            const ev = evaluate(c, isB, oosB, costs);
+            if (ev.fit > 0 && ev.oosPf >= 1 && ev.dd <= maxDd && ev.trades >= minTr && ev.oosNet > 0) survivors.push({ spec: c, fit: ev.fit });
+          }
+          // Poda: mantén solo un tope de supervivientes para que la memoria quede plana.
+          if (survivors.length > keepPool * 8) { survivors.sort((a, b) => b.fit - a.fit); survivors.length = keepPool * 4; }
+          scanned = done + size;
+          setAutoMsg((es ? 'Backtesteando por lotes ' : 'Batch backtesting ') + scanned.toLocaleString('en-US') + '/' + n.toLocaleString('en-US') + ' · ' + (es ? 'robustos ' : 'robust ') + survivors.length);
+          await new Promise((r) => setTimeout(r, 0));
         }
         survivors.sort((a, b) => b.fit - a.fit);
-        top = survivors.slice(0, Math.max(24, keepN * 5)); // pool amplio para el filtro anti-sobreajuste
-        scanned = cands.length; survivorsN = survivors.length;
+        top = survivors.slice(0, keepPool); // pool amplio para el filtro anti-sobreajuste
+        survivorsN = survivors.length;
       }
 
       // ══ FILTRO ANTI-SOBREAJUSTE (obligatorio) ══
@@ -502,6 +527,17 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
               <div className="muted" style={{ fontSize: 11.5, marginTop: 2 }}>{es ? 'Prueba N estrategias al azar. Simple y directo, pero no aprende de las buenas.' : 'Tests N random strategies. Simple and direct, but doesn’t learn from the good ones.'}</div>
             </button>
           </div>
+        </div>
+
+        {/* Paso 2b: receta de bloques (qué combinar) — clave para que no salgan malas */}
+        <div style={{ marginTop: 14 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 6 }}>{es ? '2b · Qué bloques combinar (receta)' : '2b · Which blocks to combine (recipe)'}<Help text={es ? 'No marques TODOS los bloques: el espacio se vuelve enorme y ruidoso y casi todo sale malo. Elige una receta coherente con tu instrumento/temporalidad — más tasa de acierto. Afínala en “Bloques a combinar” (avanzado).' : 'Do NOT select ALL blocks: the space becomes huge and noisy and most come out bad. Pick a recipe that fits your instrument/timeframe — higher hit rate. Fine-tune in “Blocks to combine” (advanced).'} /></div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {BLOCK_PRESETS.map((p) => { const on = JSON.stringify(cfg) === JSON.stringify(p.cfg); return (
+              <button key={p.key} onClick={() => setCfg(p.cfg)} style={{ ...btn(on ? GREEN : '#8a94a6'), padding: '7px 13px', fontSize: 12.5, fontWeight: 800 }}>{es ? p.es : p.en}</button>
+            ); })}
+          </div>
+          <div className="muted" style={{ fontSize: 11, marginTop: 5 }}>{es ? 'Consejo: para empezar usa una familia (no “Todo”). “Todo” explora más pero saca más basura.' : 'Tip: start with one family (not “All”). “All” explores more but yields more junk.'}</div>
         </div>
 
         {/* Paso 3: cuánto escanear / cuánto guardar */}

@@ -201,6 +201,7 @@ export default function FactoryLab({ es, canManage, post, reload, bots, datasets
   const [tab, setTab] = useState('resumen'); // pestaña de resultados
   const [folder, setFolder] = useState('todos'); // carpeta automática por validación M1
   const [rep, setRep] = useState<FullReport | null>(null); // reporte completo (KPIs + curva)
+  const [repSplit, setRepSplit] = useState<{ is: FullReport; oos: FullReport } | null>(null); // KPIs en muestra / fuera de muestra
   const [repBusy, setRepBusy] = useState(false);
   const [ovTab, setOvTab] = useState<'kpis' | 'curva'>('kpis'); // sub-pestaña Overview/Curva
 
@@ -283,8 +284,17 @@ export default function FactoryLab({ es, canManage, post, reload, bots, datasets
   // Carga el reporte completo (KPIs + curva) del robot elegido para las
   // pestañas Overview y Curva — estilo StrategyQuant pero en una sola vista.
   async function loadOverview() {
-    setRepBusy(true);
-    try { const b = await buildBundle(); if (b) setRep(b.report); }
+    setRepBusy(true); setRepSplit(null);
+    try {
+      const b = await buildBundle(); if (!b) return;
+      setRep(b.report);
+      // Divide las operaciones en muestra (IS) y fuera de muestra (OOS) para las
+      // columnas estilo StrategyQuant: KPIs normales vs out-of-sample.
+      const tr = b.trades || [];
+      const cap = bot?.strategy?.capital || 10000;
+      const cut = Math.max(1, Math.floor(tr.length * (1 - (oosPct || 30) / 100)));
+      if (tr.length >= 4) setRepSplit({ is: buildReport(tr.slice(0, cut), cap, 30), oos: buildReport(tr.slice(cut), cap, 30) });
+    }
     catch (e: any) { toastErr('KPIs: ' + (e?.message || e)); } finally { setRepBusy(false); setBundleBusy(''); }
   }
   function tradesCSV(report: FullReport): string {
@@ -489,33 +499,30 @@ export default function FactoryLab({ es, canManage, post, reload, bots, datasets
         )}
       </div>
 
-      {/* Overview (todos los KPIs) + Curva de equity — siempre disponible al
-          elegir un robot, con el menú ARRIBA. Estilo StrategyQuant. */}
-      {bot && bot.strategy?.gen && (
-        <div style={card}>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
-            <button onClick={() => setOvTab('kpis')} style={{ padding: '7px 14px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 800, background: ovTab === 'kpis' ? VIOLET : 'var(--bg2)', color: ovTab === 'kpis' ? '#fff' : 'var(--tx)' }}>{es ? 'Overview · todos los KPI' : 'Overview · all KPIs'}</button>
-            <button onClick={() => setOvTab('curva')} style={{ padding: '7px 14px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 800, background: ovTab === 'curva' ? VIOLET : 'var(--bg2)', color: ovTab === 'curva' ? '#fff' : 'var(--tx)' }}>{es ? 'Curva de equity' : 'Equity curve'}</button>
-            <span style={{ marginLeft: 'auto' }} />
-            {!rep && <button onClick={loadOverview} disabled={repBusy} style={{ ...btn(GREEN), padding: '7px 13px' }}>{repBusy ? (es ? 'Calculando…' : 'Computing…') : (es ? '▶ Cargar KPIs y curva' : '▶ Load KPIs & curve')}</button>}
-            {rep && <button onClick={loadOverview} disabled={repBusy} style={{ ...btn('var(--brand)'), padding: '6px 11px', fontSize: 11 }}>↻</button>}
-          </div>
-          {!rep && <div className="muted" style={{ fontSize: 12.5 }}>{es ? 'Pulsa "Cargar KPIs y curva" para ver todas las métricas y la curva de equity de este robot (backtest sobre sus barras).' : 'Press "Load KPIs & curve" to see all metrics and the equity curve for this robot (backtest on its bars).'}</div>}
-          {rep && ovTab === 'kpis' && <KpiOverview r={rep} es={es} />}
-          {rep && ovTab === 'curva' && <EquityCurve eq={rep.equity || []} es={es} />}
-        </div>
-      )}
-
-      {r && (
+      {(r || (bot && bot.strategy?.gen)) && (
         <>
-          {/* Pestañas de resultados (para que no se apile todo hacia abajo) */}
-          <div style={{ ...card, padding: 8, display: 'flex', gap: 6, flexWrap: 'wrap', position: 'sticky', top: 0, zIndex: 3 }}>
-            {([['resumen', es ? 'Resumen' : 'Summary'], ['montecarlo', 'Monte Carlo'], ['muestra', es ? 'IS/OOS · Walk-fwd' : 'IS/OOS · Walk-fwd'], ['ia', es ? 'IA (Claude)' : 'AI (Claude)'], ['demo', es ? 'Comparar / Demo' : 'Compare / Demo']] as [string, string][]).map(([k, l]) => (
-              <button key={k} onClick={() => setTab(k)} style={{ padding: '7px 14px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 800, background: tab === k ? VIOLET : 'var(--bg2)', color: tab === k ? '#fff' : 'var(--tx)' }}>{l}</button>
+          {/* UNA sola barra de pestañas arriba: KPIs y curva + robustez juntos. */}
+          <div style={{ ...card, padding: 8, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', position: 'sticky', top: 0, zIndex: 3 }}>
+            {([['kpis', 'KPIs'], ['curva', es ? 'Curva de equity' : 'Equity curve'], ['resumen', es ? 'Resumen' : 'Summary'], ['montecarlo', 'Monte Carlo'], ['muestra', es ? 'IS/OOS · Walk-fwd' : 'IS/OOS · Walk-fwd'], ['ia', es ? 'IA (Claude)' : 'AI (Claude)'], ['demo', es ? 'Comparar / Demo' : 'Compare / Demo']] as [string, string][]).map(([k, l]) => (
+              <button key={k} onClick={() => { setTab(k); if ((k === 'kpis' || k === 'curva') && !rep && !repBusy) loadOverview(); }} style={{ padding: '7px 14px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 800, background: tab === k ? VIOLET : 'var(--bg2)', color: tab === k ? '#fff' : 'var(--tx)' }}>{l}</button>
             ))}
+            {(tab === 'kpis' || tab === 'curva') && rep && <button onClick={loadOverview} disabled={repBusy} style={{ ...btn('var(--brand)'), padding: '6px 10px', fontSize: 11, marginLeft: 'auto' }}>↻</button>}
           </div>
 
-          {tab === 'resumen' && (
+          {(tab === 'kpis' || tab === 'curva') && (
+            <div style={card}>
+              {repBusy && <div className="muted" style={{ fontSize: 12.5 }}>{es ? 'Calculando el backtest…' : 'Computing backtest…'}</div>}
+              {!repBusy && !rep && <div className="muted" style={{ fontSize: 12.5 }}>{es ? 'No se pudo calcular el reporte (¿el robot no guarda su estrategia? créalo con el Autopiloto).' : 'Could not compute report (robot has no saved strategy).'}</div>}
+              {rep && tab === 'kpis' && <KpiOverview r={rep} split={repSplit} es={es} />}
+              {rep && tab === 'curva' && <EquityCurve eq={rep.equity || []} es={es} oosPct={oosPct} />}
+            </div>
+          )}
+
+          {!r && tab !== 'kpis' && tab !== 'curva' && (
+            <div style={card}><div className="muted" style={{ fontSize: 12.5 }}>{es ? 'Pulsa "Ver / ejecutar laboratorio" arriba para ver robustez, Monte Carlo, walk-forward, IA y la comparación con demo.' : 'Press "View / run lab" above to see robustness, Monte Carlo, walk-forward, AI and demo comparison.'}</div></div>
+          )}
+
+          {r && tab === 'resumen' && (
           <>
           {/* Veredicto + parciales */}
           <div style={{ ...card, borderColor: `color-mix(in srgb,${vc} 45%,var(--line))` }}>
@@ -543,7 +550,7 @@ export default function FactoryLab({ es, canManage, post, reload, bots, datasets
           </>
           )}
 
-          {tab === 'montecarlo' && (
+          {r && tab === 'montecarlo' && (
           <>
           {/* Gráficas grandes */}
           <div style={card}>
@@ -564,7 +571,7 @@ export default function FactoryLab({ es, canManage, post, reload, bots, datasets
           </>
           )}
 
-          {tab === 'muestra' && (
+          {r && tab === 'muestra' && (
           <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 16 }}>
             <div style={card}>
@@ -598,7 +605,7 @@ export default function FactoryLab({ es, canManage, post, reload, bots, datasets
           </>
           )}
 
-          {tab === 'ia' && (
+          {r && tab === 'ia' && (
           <>
           {!(res.ai?.audit || (res.ai?.mutations || []).length) && <div style={card}><div className="muted" style={{ fontSize: 13 }}>{es ? 'Este robot no tiene auditoría de IA. Créalo con la IA activada en el Motor (paso 4), o vuelve a analizarlo.' : 'This robot has no AI audit. Create it with AI on in the Engine (step 4), or re-analyze it.'}</div></div>}
           {/* Auditoría de Claude */}
@@ -617,7 +624,7 @@ export default function FactoryLab({ es, canManage, post, reload, bots, datasets
           </>
           )}
 
-          {tab === 'demo' && (
+          {r && tab === 'demo' && (
           <>
           {/* Comparación con MetaTrader → pasar a demo */}
           <div style={card}>
@@ -670,7 +677,7 @@ function ChartHead({ t, d }: any) {
 
 // ---- Overview de KPIs (estilo StrategyQuant, todo en una vista) ----
 const _money = (v: number) => (v < 0 ? '-$' : '$') + Math.abs(Math.round(v || 0)).toLocaleString('en-US');
-function KpiOverview({ r, es }: { r: FullReport; es: boolean }) {
+function KpiOverview({ r, split, es }: { r: FullReport; split?: { is: FullReport; oos: FullReport } | null; es: boolean }) {
   const K = (l: string, v: any, good?: boolean) => (
     <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: '9px 11px' }}>
       <div className="muted" style={{ fontSize: 10.5 }}>{l}</div>
@@ -712,30 +719,89 @@ function KpiOverview({ r, es }: { r: FullReport; es: boolean }) {
           {K(es ? 'Estancamiento' : 'Stagnation', r.stagnationDays + 'd · ' + r.stagnationPct + '%', false)}
         </div>
       </div>
+
+      {/* Normal (IS) vs Out-of-sample (OOS) — estilo StrategyQuant */}
+      {split && (
+        <div>
+          <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 6 }}>{es ? 'Normal (en muestra) vs Out-of-sample' : 'Normal (in-sample) vs Out-of-sample'}</div>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+              <thead><tr style={{ color: 'var(--mut)' }}>
+                <th style={{ textAlign: 'left', padding: '6px 8px' }}>KPI</th>
+                <th style={{ textAlign: 'right', padding: '6px 8px' }}>{es ? 'Todo' : 'All'}</th>
+                <th style={{ textAlign: 'right', padding: '6px 8px' }}>{es ? 'En muestra' : 'In-sample'}</th>
+                <th style={{ textAlign: 'right', padding: '6px 8px' }}>Out-of-sample</th>
+              </tr></thead>
+              <tbody>
+                {([
+                  [es ? 'Beneficio' : 'Profit', (x: FullReport) => _money(x.net), (x: FullReport) => x.net >= 0],
+                  ['Profit factor', (x: FullReport) => String(x.pf), (x: FullReport) => x.pf >= 1.3],
+                  [es ? '% ganadoras' : 'Win %', (x: FullReport) => x.winRate + '%', null],
+                  ['Drawdown', (x: FullReport) => x.maxDDpct + '%', (x: FullReport) => x.maxDDpct <= 20],
+                  ['Sharpe', (x: FullReport) => String(x.sharpe), null],
+                  [es ? 'Operaciones' : 'Trades', (x: FullReport) => String(x.trades), null],
+                ] as [string, (x: FullReport) => string, ((x: FullReport) => boolean) | null][]).map(([lbl, fn, good], i) => (
+                  <tr key={i} style={{ borderTop: '1px solid var(--line)' }}>
+                    <td style={{ padding: '6px 8px', fontWeight: 700 }}>{lbl}</td>
+                    <td style={{ padding: '6px 8px', textAlign: 'right', color: good ? (good(r) ? GREEN : RED) : 'var(--tx)' }}>{fn(r)}</td>
+                    <td style={{ padding: '6px 8px', textAlign: 'right', color: good ? (good(split.is) ? GREEN : RED) : 'var(--tx)' }}>{fn(split.is)}</td>
+                    <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 800, color: good ? (good(split.oos) ? GREEN : RED) : 'var(--tx)' }}>{fn(split.oos)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="muted" style={{ fontSize: 11, marginTop: 6 }}>{es ? 'Lo que importa es la columna Out-of-sample: si ahí el robot sigue positivo y con PF≥1.3, es señal de que NO está sobre-optimizado.' : 'What matters is the Out-of-sample column: if the robot is still positive there with PF≥1.3, it is a sign it is NOT over-optimized.'}</div>
+        </div>
+      )}
     </div>
   );
 }
 
-// ---- Curva de equity (compacta, no se esconde) ----
-function EquityCurve({ eq, es }: { eq: { eq: number }[]; es: boolean }) {
+// ---- Curva de equity estilo StrategyQuant: área rellena azul + zona OOS
+//      sombreada + barras de drawdown debajo. ----
+function EquityCurve({ eq, es, oosPct }: { eq: { eq: number }[]; es: boolean; oosPct?: number }) {
   if (!eq || eq.length < 2) return <div className="muted" style={{ fontSize: 12.5 }}>{es ? 'Sin datos de curva.' : 'No curve data.'}</div>;
-  const W = 900, H = 200, pad = 8;
+  const W = 1000, H = 240, DH = 70, pad = 10;
   const vals = eq.map((p) => p.eq);
   const mn = Math.min(...vals), mx = Math.max(...vals);
   const x = (i: number) => pad + (i / (eq.length - 1)) * (W - 2 * pad);
   const y = (v: number) => H - pad - ((v - mn) / (mx - mn || 1)) * (H - 2 * pad);
   const line = eq.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.eq).toFixed(1)}`).join(' ');
+  const area = `M${x(0).toFixed(1)},${(H - pad).toFixed(1)} ` + eq.map((p, i) => `L${x(i).toFixed(1)},${y(p.eq).toFixed(1)}`).join(' ') + ` L${x(eq.length - 1).toFixed(1)},${(H - pad).toFixed(1)} Z`;
+  // Drawdown $ bajo la curva (pico - actual).
+  let peak = vals[0]; const dd = vals.map((v) => { if (v > peak) peak = v; return peak - v; });
+  const ddMax = Math.max(1, ...dd);
+  const oosStart = Math.floor(eq.length * (1 - (oosPct || 30) / 100));
   const last = vals[vals.length - 1], first = vals[0];
+  const stag = eq.length; // puntos
+  const BLUE = '#3aa0ff';
   return (
     <div>
       <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 8, fontSize: 12 }}>
         <span className="muted">{es ? 'Inicio' : 'Start'}: <b style={{ color: 'var(--tx)' }}>{_money(first)}</b></span>
         <span className="muted">{es ? 'Final' : 'End'}: <b style={{ color: last >= first ? GREEN : RED }}>{_money(last)}</b></span>
-        <span className="muted">{es ? 'Puntos' : 'Points'}: <b style={{ color: 'var(--tx)' }}>{eq.length.toLocaleString('en-US')}</b></span>
+        <span className="muted">{es ? 'DD máx' : 'Max DD'}: <b style={{ color: RED }}>{_money(ddMax)}</b></span>
+        <span className="muted">{es ? 'Zona sombreada = Out-of-sample' : 'Shaded = Out-of-sample'}</span>
       </div>
-      <div style={{ border: '1px solid var(--line)', borderRadius: 10, padding: 6, background: 'var(--bg2)' }}>
-        <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="180" preserveAspectRatio="none"><path d={line} fill="none" stroke={GREEN} strokeWidth={2} /></svg>
+      <div style={{ border: '1px solid var(--line)', borderRadius: 10, padding: 6, background: '#0e1626' }}>
+        <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="230" preserveAspectRatio="none" style={{ display: 'block' }}>
+          {/* zona OOS sombreada */}
+          <rect x={x(oosStart)} y={0} width={W - x(oosStart)} height={H} fill="rgba(255,255,255,0.06)" />
+          <line x1={x(oosStart)} y1={0} x2={x(oosStart)} y2={H} stroke="rgba(255,255,255,0.25)" strokeDasharray="4 4" />
+          <path d={area} fill="rgba(58,160,255,0.28)" stroke="none" />
+          <path d={line} fill="none" stroke={BLUE} strokeWidth={1.6} />
+          <text x={x(oosStart) + 6} y={16} fill="#9fb4cc" fontSize="11">Out of sample</text>
+        </svg>
       </div>
+      {/* Barras de drawdown ($) */}
+      <div style={{ border: '1px solid var(--line)', borderTop: 'none', borderRadius: '0 0 10px 10px', padding: 6, background: '#0e1626' }}>
+        <div className="muted" style={{ fontSize: 10.5, marginBottom: 2 }}>Drawdown ($)</div>
+        <svg viewBox={`0 0 ${W} ${DH}`} width="100%" height={DH} preserveAspectRatio="none" style={{ display: 'block' }}>
+          {dd.map((d, i) => d > 0 ? <line key={i} x1={x(i)} y1={2} x2={x(i)} y2={2 + (d / ddMax) * (DH - 6)} stroke="#e2554d" strokeWidth={Math.max(0.5, (W / eq.length) * 0.7)} /> : null)}
+        </svg>
+      </div>
+      <div className="muted" style={{ fontSize: 11, marginTop: 6 }}>{es ? `Área azul = equity acumulada. Barras rojas = caídas desde el pico. La zona sombreada (últimos ${oosPct || 30}%) es fuera de muestra: si la curva sigue subiendo ahí, buena señal.` : `Blue area = cumulative equity. Red bars = drops from peak. Shaded zone (last ${oosPct || 30}%) is out-of-sample: if the curve keeps rising there, good sign.`}</div>
     </div>
   );
 }
