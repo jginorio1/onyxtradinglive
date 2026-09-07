@@ -173,7 +173,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
   const [auto, setAuto] = useState(false);
   const [autoMode, setAutoMode] = useState<'random' | 'evolve'>('evolve'); // aleatorio rápido vs evolución inteligente
   const [minScore, setMinScore] = useState(75); // Onyx Robustness Score mínimo (anti-sobreajuste)
-  const [searchTf, setSearchTf] = useState<'auto' | 5 | 15 | 30>('auto'); // resolución de la búsqueda
+  const [searchTf, setSearchTf] = useState<'auto' | 5 | 15 | 30 | 60 | 240>('auto'); // resolución de la búsqueda
   const [useAi, setUseAi] = useState(true);      // la IA (Claude) audita cada robot final
   const [autoMsg, setAutoMsg] = useState('');
   const [keepN, setKeepN] = useState(8);
@@ -320,9 +320,12 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
         // espacio de MILLONES de combinaciones haciendo solo unos miles de backtests.
         setAutoMsg(es ? 'Evolucionando (mutación + cruce)…' : 'Evolving (mutation + crossover)…');
         await new Promise((r) => setTimeout(r, 10));
-        // Sin tope: más presupuesto (n) = más generaciones y población, explora MUCHO más a fondo.
-        const gens = Math.max(6, Math.min(1000, Math.round(n / 400))); // hasta 1000 generaciones
-        const pop = Math.max(40, Math.min(5000, Math.round(n / 20)));   // hasta 5000 de población
+        // OJO: evolve() corre de forma síncrona (no cede el hilo), así que NO se puede
+        // dejar sin tope o congela el navegador ("Page Unresponsive"). Se acota a un
+        // esfuerzo seguro; para explorar de verdad a lo bruto usa el modo Aleatorio
+        // (por lotes, sí cede el hilo) o temporalidades mayores (menos barras).
+        const gens = Math.max(6, Math.min(60, Math.round(n / 400)));  // máx 60 generaciones (seguro)
+        const pop = Math.max(40, Math.min(300, Math.round(n / 20)));  // máx 300 de población (seguro)
         // Guardamos un POOL amplio (keepN×5) para que el filtro anti-sobreajuste tenga de dónde elegir.
         const pool = Math.max(24, Math.min(80, keepN * 5));
         const r = evolve(bars, costs, { pop, gens, keep: pool, mut: evoCfg.mut, restart: evoCfg.restart, oosPct: oosPct || 30 });
@@ -335,7 +338,9 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
         // memoria con millones), se procesa en tandas: genera un lote, lo backtestea,
         // guarda solo los mejores y descarta el resto. La memoria NO crece aunque
         // pongas millones. Así corre de verdad a fondo.
-        const CHUNK = 4000;
+        // Lote pequeño + cesión frecuente del hilo → el navegador NO se congela aunque
+        // sean millones. (En datos con muchas barras conviene temporalidad mayor.)
+        const CHUNK = 400;
         const keepPool = Math.max(24, keepN * 5);
         const survivors: { spec: Spec; fit: number }[] = [];
         for (let done = 0; done < n; done += CHUNK) {
@@ -345,6 +350,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
             const c = { ...cands[i], dir };
             const ev = evaluate(c, isB, oosB, costs);
             if (ev.fit > 0 && ev.oosPf >= 1 && ev.dd <= maxDd && ev.trades >= minTr && ev.oosNet > 0) survivors.push({ spec: c, fit: ev.fit });
+            if (i % 100 === 99) await new Promise((r) => setTimeout(r, 0)); // cede el hilo dentro del lote
           }
           // Poda: mantén solo un tope de supervivientes para que la memoria quede plana.
           if (survivors.length > keepPool * 8) { survivors.sort((a, b) => b.fit - a.fit); survivors.length = keepPool * 4; }
@@ -507,7 +513,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
           {/* Resolución de la búsqueda: más fino = menos sorpresas al validar en M1, pero más lento */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
             <span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Resolución de la búsqueda' : 'Search resolution'}<Help text={es ? 'A más fino (M5), el backtest de la búsqueda se parece más al de M1 real → menos robots que se caen al validar. Pero es más lento. Auto elige M15 para datasets enormes.' : 'Finer (M5) makes the search backtest closer to real M1 → fewer robots that collapse on validation. But slower. Auto picks M15 for huge datasets.'} /></span>
-            {([['auto', es ? 'Auto' : 'Auto'], [5, 'M5 · fino'], [15, 'M15 · rápido'], [30, 'M30']] as [any, string][]).map(([v, l]) => (
+            {([['auto', es ? 'Auto' : 'Auto'], [5, 'M5 · fino'], [15, 'M15 · rápido'], [30, 'M30'], [60, 'H1'], [240, 'H4 · ligero']] as [any, string][]).map(([v, l]) => (
               <button key={String(v)} onClick={() => { setSearchTf(v); if (dsId) loadFromLibrary(dsId); }} style={{ ...btn(searchTf === v ? GREEN : '#8a94a6'), padding: '5px 11px', fontSize: 12 }}>{l}</button>
             ))}
           </div>
