@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAdmin, logAdmin } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { listBots, listDatasets, factoryStats, saveDataset, createBot, deleteBot, genUniqueName, validateMetrics, runLab, listLabRuns, compareBt, advanceToDemo, saveGenRun, listGenRuns, getDataset, deleteDataset } from '@/lib/factory';
+import { listBots, listDatasets, factoryStats, saveDataset, createBot, deleteBot, genUniqueName, validateMetrics, runLab, listLabRuns, compareBt, advanceToDemo, saveGenRun, listGenRuns, getDataset, deleteDataset, listFolders, createFolder, deleteFolder, moveBots, bulkDeleteBots, listBatches, createBatch, updateBatch } from '@/lib/factory';
 import { pipelineBoard, runPipelineOnce, linkDemo, stageOverride, approveReal } from '@/lib/pipeline';
 import { listTemplates, saveTemplate, deleteTemplate, blockCatalog, heuristicTemplate } from '@/lib/templates';
 import { listBlocks, saveBlock, deleteBlock } from '@/lib/blocks';
@@ -19,8 +19,8 @@ function canManage(role: string | null, perms: any) {
 export async function GET() {
   const { isAdmin, role, perms } = await getAdmin();
   if (!isAdmin) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
-  const [bots, datasets, stats, preview, templates, blocks] = await Promise.all([listBots(), listDatasets(), factoryStats(), genUniqueName(), listTemplates(), listBlocks()]);
-  return NextResponse.json({ bots, datasets, stats, nextName: preview.name, templates, blocks, canManage: canManage(role, perms) });
+  const [bots, datasets, stats, preview, templates, blocks, folders, batches] = await Promise.all([listBots(), listDatasets(), factoryStats(), genUniqueName(), listTemplates(), listBlocks(), listFolders(), listBatches()]);
+  return NextResponse.json({ bots, datasets, stats, nextName: preview.name, templates, blocks, folders, batches, canManage: canManage(role, perms) });
 }
 
 // POST · acciones del dueño/gestor de módulos.
@@ -154,7 +154,7 @@ export async function POST(req: Request) {
   }
   if (a === 'bot_create') {
     try {
-      const bot = await createBot({ userId: user.id, platform: b.platform, symbol: b.symbol, timeframe: b.timeframe, strategy: b.strategy, datasetId: b.datasetId });
+      const bot = await createBot({ userId: user.id, platform: b.platform, symbol: b.symbol, timeframe: b.timeframe, strategy: b.strategy, datasetId: b.datasetId, batchId: b.batchId || null, batchNo: b.batchNo != null ? Number(b.batchNo) : null });
       await logAdmin(user.email || '', 'factory_bot_create', bot?.id || '', { name: bot?.name });
       return NextResponse.json({ ok: true, bot });
     } catch (e: any) { return NextResponse.json({ error: e?.message || 'error' }, { status: 400 }); }
@@ -164,6 +164,13 @@ export async function POST(req: Request) {
     await logAdmin(user.email || '', 'factory_bot_delete', String(b.id || ''), {});
     return NextResponse.json({ ok: true });
   }
+  // ---- Gestor de estrategias (v12): carpetas, lotes y acciones en bloque ----
+  if (a === 'folder_create') { try { const f = await createFolder({ userId: user.id, name: String(b.name || ''), color: b.color }); await logAdmin(user.email || '', 'factory_folder_create', f?.id || '', { name: f?.name }); return NextResponse.json({ ok: true, folder: f }); } catch (e: any) { return NextResponse.json({ error: e?.message || 'error' }, { status: 400 }); } }
+  if (a === 'folder_delete') { try { await deleteFolder(String(b.id || '')); await logAdmin(user.email || '', 'factory_folder_delete', String(b.id || ''), {}); return NextResponse.json({ ok: true }); } catch (e: any) { return NextResponse.json({ error: e?.message || 'error' }, { status: 400 }); } }
+  if (a === 'bots_move') { try { const r = await moveBots((b.ids || []).map(String), b.folderId ? String(b.folderId) : null); await logAdmin(user.email || '', 'factory_bots_move', '', { n: r.moved, folder: b.folderId }); return NextResponse.json(r); } catch (e: any) { return NextResponse.json({ error: e?.message || 'error' }, { status: 400 }); } }
+  if (a === 'bots_delete') { try { const r = await bulkDeleteBots((b.ids || []).map(String)); await logAdmin(user.email || '', 'factory_bots_delete', '', { n: r.deleted }); return NextResponse.json(r); } catch (e: any) { return NextResponse.json({ error: e?.message || 'error' }, { status: 400 }); } }
+  if (a === 'batch_create') { try { const bt = await createBatch({ userId: user.id, info: b.info || {} }); return NextResponse.json({ ok: true, batch: bt }); } catch (e: any) { return NextResponse.json({ error: e?.message || 'error', batch: null }); } }
+  if (a === 'batch_update') { try { await updateBatch(String(b.id || ''), b.patch || {}); return NextResponse.json({ ok: true }); } catch (e: any) { return NextResponse.json({ ok: false, error: e?.message }); } }
   if (a === 'lab_runs') {
     const runs = await listLabRuns(String(b.botId || ''));
     return NextResponse.json({ runs });

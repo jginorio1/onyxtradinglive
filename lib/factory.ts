@@ -213,7 +213,7 @@ export async function deleteDataset(id: string) {
 }
 
 // -------- Constructor de robots --------
-export async function createBot(o: { userId: string; platform: string; symbol: string; timeframe: string; strategy?: any; datasetId?: string | null }) {
+export async function createBot(o: { userId: string; platform: string; symbol: string; timeframe: string; strategy?: any; datasetId?: string | null; batchId?: string | null; batchNo?: number | null }) {
   const platform = o.platform === 'mt4' ? 'mt4' : 'mt5';
   // El robot debe apoyarse en datos aptos (o con reservas), nunca rechazados.
   if (o.datasetId) {
@@ -231,11 +231,14 @@ export async function createBot(o: { userId: string; platform: string; symbol: s
     stage: 'genesis', status: 'draft', health: 'green',
     created_by: o.userId,
   };
+  if (o.batchId) base.batch_id = o.batchId;      // trazabilidad del lote (v12)
+  if (o.batchNo != null) base.batch_no = o.batchNo;
   let { data, error } = await supabaseAdmin.from('factory_bots').insert({ ...base, magic }).select('*').single();
-  // Si la base aún no tiene la columna magic (falta factory_v4.sql), reintentamos
-  // sin ella para no bloquear la creación. Se completará al correr el SQL.
-  if (error && /magic/i.test(error.message || '')) {
-    ({ data, error } = await supabaseAdmin.from('factory_bots').insert(base).select('*').single());
+  // Si la base aún no tiene columnas opcionales (magic/batch_id/batch_no, faltan
+  // factory_v4/v12.sql), reintentamos sin ellas para no bloquear la creación.
+  if (error && /magic|batch_id|batch_no|column/i.test(error.message || '')) {
+    const { batch_id: _bi, batch_no: _bn, ...safe } = base as any;
+    ({ data, error } = await supabaseAdmin.from('factory_bots').insert(safe).select('*').single());
   }
   if (error) throw new Error(error.message);
   return data;
@@ -248,6 +251,66 @@ export async function listBots(limit = 100) {
 
 export async function deleteBot(id: string) {
   await supabaseAdmin.from('factory_bots').delete().eq('id', id);
+  return { ok: true };
+}
+
+// ============================================================
+// Gestor de estrategias (v12): carpetas propias + lotes + acciones en bloque
+// Todo tolerante: si aún no se corrió factory_v12.sql, degrada sin romper.
+// ============================================================
+export async function listFolders(): Promise<any[]> {
+  try { const { data } = await supabaseAdmin.from('factory_folders').select('*').order('created_at', { ascending: true }); return (data || []) as any[]; }
+  catch { return []; }
+}
+export async function createFolder(o: { userId: string; name: string; color?: string }) {
+  const name = (o.name || '').trim().slice(0, 40);
+  if (!name) throw new Error('Escribe un nombre para la carpeta.');
+  const { data, error } = await supabaseAdmin.from('factory_folders').insert({ name, color: o.color || '#a06bff', created_by: o.userId }).select('*').single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+export async function deleteFolder(id: string) {
+  await supabaseAdmin.from('factory_bots').update({ folder_id: null }).eq('folder_id', id); // saca los robots, no los borra
+  await supabaseAdmin.from('factory_folders').delete().eq('id', id);
+  return { ok: true };
+}
+export async function moveBots(ids: string[], folderId: string | null) {
+  if (!ids?.length) return { ok: true, moved: 0 };
+  const { error } = await supabaseAdmin.from('factory_bots').update({ folder_id: folderId }).in('id', ids);
+  if (error) throw new Error(error.message);
+  return { ok: true, moved: ids.length };
+}
+export async function bulkDeleteBots(ids: string[]) {
+  if (!ids?.length) return { ok: true, deleted: 0 };
+  await supabaseAdmin.from('factory_bots').delete().in('id', ids);
+  return { ok: true, deleted: ids.length };
+}
+
+// ---- Lotes ----
+export async function listBatches(limit = 60): Promise<any[]> {
+  try { const { data } = await supabaseAdmin.from('factory_batches').select('*').order('created_at', { ascending: false }).limit(limit); return (data || []) as any[]; }
+  catch { return []; }
+}
+export async function createBatch(o: { userId: string; info: any }) {
+  const { data: last } = await supabaseAdmin.from('factory_batches').select('batch_no').order('batch_no', { ascending: false }).limit(1).maybeSingle();
+  const no = (Number((last as any)?.batch_no) || 0) + 1;
+  const i = o.info || {};
+  const { data, error } = await supabaseAdmin.from('factory_batches').insert({
+    batch_no: no, created_by: o.userId,
+    dataset_name: i.datasetName || null, symbol: i.symbol || null, timeframe: i.timeframe || null,
+    search_tf: i.searchTf != null ? String(i.searchTf) : null, mode: i.mode || null, recipe: i.recipe || null,
+    oos_pct: i.oosPct || null, risk_pct: i.riskPct || null, n_requested: i.nRequested || null,
+    config: i.config || {},
+  }).select('*').single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+export async function updateBatch(id: string, patch: any) {
+  const p: any = {};
+  for (const k of ['generated', 'accepted', 'created', 'avg_score']) if (patch[k] != null) p[k] = patch[k];
+  if (patch.aiAudited != null) p.ai_audited = !!patch.aiAudited;
+  if (!Object.keys(p).length) return { ok: true };
+  await supabaseAdmin.from('factory_batches').update(p).eq('id', id);
   return { ok: true };
 }
 

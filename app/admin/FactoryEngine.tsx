@@ -175,6 +175,14 @@ function aggregateBars(bars: Bar[], targetMin: number): Bar[] {
   return out;
 }
 function download(name: string, text: string, mime: string) { const b = new Blob([text], { type: mime }); const u = URL.createObjectURL(b); const a = document.createElement('a'); a.href = u; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(u), 1000); }
+// Etiqueta legible de temporalidad: de H1 en adelante NO usa minutos (M60→H1, M240→H4, M1440→D1…).
+function tfLbl(min: number): string {
+  if (min < 60) return 'M' + min;
+  if (min < 1440) { const h = min / 60; return 'H' + (Number.isInteger(h) ? h : h.toFixed(1)); }
+  if (min < 10080) return 'D' + Math.round(min / 1440);
+  if (min < 43200) return 'W' + Math.round(min / 10080);
+  return 'MN' + Math.round(min / 43200);
+}
 
 type Row = { spec: Spec; net: number; pf: number; dd: number; n: number; win: number; exp: number };
 
@@ -236,7 +244,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
       }
       setProg(1);
       setBars(b);
-      if (ds.symbol) setMeta((mt) => ({ ...mt, symbol: ds.symbol, tf: `M${workTf}` }));
+      if (ds.symbol) setMeta((mt) => ({ ...mt, symbol: ds.symbol, tf: tfLbl(workTf) }));
       // Costes por defecto realistas según el instrumento (no tienes que buscarlos en MT).
       // Los puedes afinar en Ajustes avanzados. Si el dataset trae ticks reales con spread
       // detectado, se usa ese en vez del típico.
@@ -247,7 +255,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
         setCosts((c) => ({ ...c, spreadPips: tkSpread != null && tkSpread > 0 ? tkSpread : dflt.spreadPips, commission: dflt.commission, moneyPerPip: dflt.moneyPerPip }));
       }
       toast(workTf > srcTf
-        ? (es ? `Cargado y convertido a M${workTf} para buscar rápido (${b.length.toLocaleString('en-US')} barras)` : `Loaded and converted to M${workTf} for fast search (${b.length.toLocaleString('en-US')} bars)`)
+        ? (es ? `Cargado y convertido a ${tfLbl(workTf)} para buscar rápido (${b.length.toLocaleString('en-US')} barras)` : `Loaded and converted to ${tfLbl(workTf)} for fast search (${b.length.toLocaleString('en-US')} bars)`)
         : (es ? 'Datos cargados desde la biblioteca' : 'Data loaded from library'));
     } catch (e: any) { toastErr(es ? 'No se pudieron cargar las barras guardadas.' : 'Could not load saved bars.'); }
     finally { setReading(false); setProg(0); }
@@ -449,19 +457,35 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
       const scanned = result.scanned || 0;
       const passedGate = result.survivors || 0;
 
+      // ══ LOTE (batch): abre la ficha de esta corrida para trazabilidad ══
+      // Cada robot que creemos abajo llevará este batch_id/batch_no, así sabes
+      // exactamente de qué corrida (dataset, resolución, receta, MM…) salió.
+      let batchId: string | null = null, batchNo: number | null = null;
+      try {
+        const recipe = BLOCK_PRESETS.find((p) => JSON.stringify(p.cfg) === JSON.stringify(cfg))?.key || 'custom';
+        const bj = await post({ action: 'batch_create', info: {
+          datasetName: barsName || meta.symbol, symbol: meta.symbol, timeframe: meta.tf, searchTf: searchTf,
+          mode: autoMode, recipe, oosPct: oosPct || 30, riskPct: costs.riskPct, nRequested: n,
+          config: { blocks: cfg, costs, oosPct: oosPct || 30, evo: evoCfg, minScore, keepN, dir, useAi },
+        } });
+        batchId = bj?.batch?.id || null; batchNo = bj?.batch?.batch_no ?? null;
+      } catch { /* si falta factory_v12.sql, seguimos sin lote */ }
+
       let created = 0;
       const createdBots: { id: string; spec: Spec; searchScore: number }[] = [];
       for (let i = 0; i < finalists.length; i++) {
-        setAutoMsg((useAi ? (es ? '🧠 IA auditando robot ' : '🧠 AI auditing robot ') : (es ? 'Creando robot ' : 'Creating robot ')) + (i + 1) + '/' + finalists.length + ' · Onyx ' + finalists[i].grade);
+        setAutoMsg((useAi ? (es ? '🧠 IA auditando robot ' : '🧠 AI auditing robot ') : (es ? 'Creando robot ' : 'Creating robot ')) + (i + 1) + '/' + finalists.length + ' · Onyx ' + finalists[i].grade + (batchNo ? ' · lote #' + batchNo : ''));
         const trades = runBacktest(bars, finalists[i].spec, costs).trades;
         if (trades.length < 20) continue;
-        const j = await post({ action: 'bot_create', platform: meta.platform, symbol: meta.symbol, timeframe: meta.tf, strategy: { family: 'autopiloto', gen: finalists[i].spec, onyx: finalists[i].score, grade: finalists[i].grade } });
+        const j = await post({ action: 'bot_create', platform: meta.platform, symbol: meta.symbol, timeframe: meta.tf, batchId, batchNo, strategy: { family: 'autopiloto', gen: finalists[i].spec, onyx: finalists[i].score, grade: finalists[i].grade } });
         await post({ action: 'lab_run', botId: j.bot?.id, trades, paramCount: finalists[i].cx, noAi: !useAi, lang: es ? 'es' : 'en' });
         if (j.bot?.id) createdBots.push({ id: j.bot.id, spec: finalists[i].spec, searchScore: finalists[i].score });
         created++;
       }
       const avgGrade = finalists.length ? finalists.reduce((s, f) => s + f.score, 0) / finalists.length : 0;
       setAutoDone({ created, scanned, survivors: passedGate, avg: Math.round(avgGrade) });
+      // Cierra la ficha del lote con los conteos reales.
+      if (batchId) { try { await post({ action: 'batch_update', id: batchId, patch: { generated: scanned, accepted: passedGate, created, avg_score: Math.round(avgGrade), aiAudited: useAi } }); } catch { /* opcional */ } }
       toast((es ? 'Autopiloto: ' : 'Autopilot: ') + created + (es ? ' robots limpios creados' : ' clean robots created'));
       if (reload) reload();
 

@@ -135,7 +135,7 @@ export default function Factory({ canManage = true }: { canManage?: boolean }) {
       <StageBar sub={sub} setSub={setSub} es={es} />
 
       {sub === 'datos' && <DataGate es={es} canManage={canManage} post={post} reload={load} datasets={d.datasets || []} />}
-      {sub === 'constructor' && <Builder es={es} canManage={canManage} post={post} reload={load} nextName={d.nextName} datasets={d.datasets || []} templates={d.templates || []} blocks={d.blocks || []} bots={d.bots || []} setSub={setSub} />}
+      {sub === 'constructor' && <Builder es={es} canManage={canManage} post={post} reload={load} nextName={d.nextName} datasets={d.datasets || []} templates={d.templates || []} blocks={d.blocks || []} bots={d.bots || []} folders={d.folders || []} batches={d.batches || []} setSub={setSub} />}
       {sub === 'motor' && <FactoryEngine es={es} canManage={canManage} post={post} reload={load} datasets={d.datasets || []} blocks={d.blocks || []} />}
       {sub === 'laboratorio' && <FactoryLab es={es} canManage={canManage} post={post} reload={load} bots={d.bots || []} datasets={d.datasets || []} />}
       {sub === 'pipeline' && <FactoryPipeline es={es} canManage={canManage} post={post} />}
@@ -415,7 +415,7 @@ function DatasetCard({ ds, es, post, canManage, onDelete }: any) {
 }
 
 // -------- Constructor --------
-function Builder({ es, canManage, post, reload, nextName, datasets, templates = [], blocks = [], bots = [], setSub }: any) {
+function Builder({ es, canManage, post, reload, nextName, datasets, templates = [], blocks = [], bots = [], folders = [], batches = [], setSub }: any) {
   const [platform, setPlatform] = useState<'mt5' | 'mt4'>('mt5');
   const [symbol, setSymbol] = useState('');
   const [tf, setTf] = useState('M15');
@@ -510,7 +510,7 @@ function Builder({ es, canManage, post, reload, nextName, datasets, templates = 
       </div>
 
       {/* Rejilla de robots de la fábrica (estilo Mis Robots) */}
-      <RobotGrid bots={bots} es={es} post={post} canManage={canManage} reload={reload} setSub={setSub} />
+      <RobotGrid bots={bots} folders={folders} batches={batches} es={es} post={post} canManage={canManage} reload={reload} setSub={setSub} />
     </div>
   );
 }
@@ -628,14 +628,44 @@ function stageInfo(b: any, es: boolean): { label: string; color: string } {
   return { label: es ? 'borrador' : 'draft', color: AMBER };
 }
 const gradeColor = (g: string) => g === 'A' || g === 'B' ? GREEN : g === 'C' ? AMBER : g ? RED : 'var(--tx)';
+// Muestra la temporalidad legible: de H1 en adelante NO usa minutos.
+// M60→H1, M240→H4, M1440→D1, M10080→W1, M43200→MN. M1/M5/M15/M30 quedan igual.
+function tfLabel(tf: any): string {
+  const s = String(tf || '');
+  const m = s.match(/^M(\d+)$/i);
+  if (!m) return s;                                  // ya viene como H1/D1/W1…
+  const min = Number(m[1]);
+  if (min < 60) return 'M' + min;
+  if (min < 1440) { const h = min / 60; return 'H' + (Number.isInteger(h) ? h : h.toFixed(1)); }
+  if (min < 10080) return 'D' + Math.round(min / 1440);
+  if (min < 43200) return 'W' + Math.round(min / 10080);
+  return 'MN' + Math.round(min / 43200);
+}
 
 // Rejilla de tarjetas de robots — misma estética que "Mis Robots" del trader:
 // par, estado por etapa, grado Onyx, mini-curva y acciones (Lab · borrar).
-function RobotGrid({ bots = [], es, post, canManage, reload, setSub, embedded }: any) {
+function RobotGrid({ bots = [], folders = [], batches = [], es, post, canManage, reload, setSub, embedded }: any) {
   const [filter, setFilter] = useState('todos');
+  const [folderFilter, setFolderFilter] = useState('');       // carpeta propia activa (id)
+  const [batchFilter, setBatchFilter] = useState<number | null>(null); // lote activo (nº)
+  const [showBatches, setShowBatches] = useState(false);
   const [live, setLive] = useState<Record<string, any>>({}); // KPIs en vivo por magic (cuenta demo)
   const [sel, setSel] = useState<Set<string>>(new Set());     // selección múltiple (bulk)
   const [bulkBusy, setBulkBusy] = useState(false);
+  const folderName = (id: string) => (folders as any[]).find((f) => f.id === id)?.name || '';
+  async function newFolder() {
+    const name = (typeof window !== 'undefined' ? window.prompt(es ? 'Nombre de la nueva carpeta:' : 'New folder name:') : '') || '';
+    if (!name.trim()) return;
+    try { await post({ action: 'folder_create', name: name.trim() }); toast(es ? 'Carpeta creada' : 'Folder created'); reload && reload(); } catch (e: any) { toastErr(e?.message); }
+  }
+  async function delFolder(id: string) {
+    if (!confirm(es ? '¿Borrar esta carpeta? Los robots no se borran, solo salen de ella.' : 'Delete this folder? Robots are not deleted, just removed from it.')) return;
+    try { await post({ action: 'folder_delete', id }); if (folderFilter === id) setFolderFilter(''); toast(es ? 'Carpeta borrada' : 'Folder deleted'); reload && reload(); } catch (e: any) { toastErr(e?.message); }
+  }
+  async function moveTo(ids: string[], folderId: string | null) {
+    if (!ids.length) return; setBulkBusy(true);
+    try { await post({ action: 'bots_move', ids, folderId }); toast((es ? 'Movidos ' : 'Moved ') + ids.length); clearSel(); reload && reload(); } catch (e: any) { toastErr(e?.message); } finally { setBulkBusy(false); }
+  }
   useEffect(() => { post({ action: 'factory_live' }).then((j: any) => setLive(j?.live || {})).catch(() => {}); }, []);
   const toggleSel = (id: string) => setSel((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const clearSel = () => setSel(new Set());
@@ -664,7 +694,11 @@ function RobotGrid({ bots = [], es, post, canManage, reload, setSub, embedded }:
   const withStage = (bots as any[]).map((b) => ({ b, st: stageInfo(b, es) }));
   const counts: Record<string, number> = {}; withStage.forEach(({ st }) => { counts[st.label] = (counts[st.label] || 0) + 1; });
   const norm = (l: string) => ({ 'live': 'real', 'funded': 'fondeo', 'draft': 'borrador' } as any)[l] || l;
-  const shown = filter === 'todos' ? withStage : withStage.filter(({ st }) => norm(st.label) === filter);
+  // El filtro combina: lote (nº) > carpeta propia (id) > etapa automática.
+  const shown = batchFilter != null ? withStage.filter(({ b }) => Number(b.batch_no) === batchFilter)
+    : folderFilter ? withStage.filter(({ b }) => b.folder_id === folderFilter)
+    : filter === 'todos' ? withStage
+    : withStage.filter(({ st }) => norm(st.label) === filter);
 
   return (
     <div style={embedded ? {} : { ...card }}>
@@ -672,10 +706,16 @@ function RobotGrid({ bots = [], es, post, canManage, reload, setSub, embedded }:
       {!bots.length && <div className="muted" style={{ fontSize: 13 }}>{es ? 'Aún no hay robots. Arranca la Fábrica automática de arriba.' : 'No robots yet. Start the Automatic factory above.'}</div>}
       {!!bots.length && (
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12, alignItems: 'center' }}>
-          {FOLDERS.map(([k, l]) => { const on = filter === k; const n = k === 'todos' ? bots.length : (counts[k] || counts[({ real: 'live', fondeo: 'funded', borrador: 'draft' } as any)[k]] || 0); return (
-            <button key={k} onClick={() => setFilter(k)} style={{ padding: '5px 11px', borderRadius: 99, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: '1px solid ' + (on ? 'var(--brand)' : 'var(--line)'), background: on ? 'color-mix(in srgb,var(--brand) 16%,transparent)' : 'var(--bg2)', color: on ? 'var(--brand)' : 'var(--tx)' }}>{l} · {n}</button>
+          {FOLDERS.map(([k, l]) => { const on = filter === k && !folderFilter && batchFilter == null; const n = k === 'todos' ? bots.length : (counts[k] || counts[({ real: 'live', fondeo: 'funded', borrador: 'draft' } as any)[k]] || 0); return (
+            <button key={k} onClick={() => { setFilter(k); setFolderFilter(''); setBatchFilter(null); }} style={{ padding: '5px 11px', borderRadius: 99, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: '1px solid ' + (on ? 'var(--brand)' : 'var(--line)'), background: on ? 'color-mix(in srgb,var(--brand) 16%,transparent)' : 'var(--bg2)', color: on ? 'var(--brand)' : 'var(--tx)' }}>{l} · {n}</button>
           ); })}
-          <button onClick={() => exportCsv(shown.map((s) => s.b), filter)} style={{ ...btn(GREEN), padding: '5px 11px', fontSize: 12, marginLeft: 'auto' }}>⬇ {es ? 'Exportar CSV' : 'Export CSV'}</button>
+          {/* Carpetas propias (tags) */}
+          {(folders as any[]).map((f) => { const on = folderFilter === f.id; const n = (bots as any[]).filter((b) => b.folder_id === f.id).length; return (
+            <button key={f.id} onClick={() => { setFolderFilter(f.id); setBatchFilter(null); }} style={{ padding: '5px 11px', borderRadius: 99, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: '1px solid ' + (on ? (f.color || VIOLET) : 'var(--line)'), background: on ? `color-mix(in srgb,${f.color || VIOLET} 16%,transparent)` : 'var(--bg2)', color: on ? (f.color || VIOLET) : 'var(--tx)' }}>📁 {f.name} · {n}{on && canManage && <span onClick={(e) => { e.stopPropagation(); delFolder(f.id); }} style={{ marginLeft: 6, opacity: .7 }}>✕</span>}</button>
+          ); })}
+          {canManage && <button onClick={newFolder} style={{ padding: '5px 11px', borderRadius: 99, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: '1px dashed var(--line)', background: 'transparent', color: 'var(--tx)' }}>＋ {es ? 'Carpeta' : 'Folder'}</button>}
+          {(batches as any[]).length > 0 && <button onClick={() => setShowBatches((v) => !v)} style={{ padding: '5px 11px', borderRadius: 99, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: '1px solid ' + (showBatches || batchFilter != null ? 'var(--brand)' : 'var(--line)'), background: 'var(--bg2)', color: 'var(--tx)' }}>🧪 {es ? 'Lotes' : 'Batches'} · {(batches as any[]).length}</button>}
+          <button onClick={() => exportCsv(shown.map((s) => s.b), folderFilter ? folderName(folderFilter) : batchFilter != null ? 'lote' + batchFilter : filter)} style={{ ...btn(GREEN), padding: '5px 11px', fontSize: 12, marginLeft: 'auto' }}>⬇ {es ? 'Exportar CSV' : 'Export CSV'}</button>
         </div>
       )}
       {!!bots.length && (
@@ -687,10 +727,37 @@ function RobotGrid({ bots = [], es, post, canManage, reload, setSub, embedded }:
           {sel.size > 0 && <>
             <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--brand)' }}>{sel.size} {es ? 'seleccionadas' : 'selected'}</span>
             {canManage && <button disabled={bulkBusy} title={es ? 'Mover a la siguiente etapa (borrador→lab→demo→fondeo→real)' : 'Move to next stage'} onClick={() => bulkPromote([...sel])} style={{ ...btn(GREEN), padding: '5px 11px', fontSize: 12 }}>▲ {es ? 'Mover etapa' : 'Move stage'}</button>}
+            {canManage && <select value="" disabled={bulkBusy} onChange={(e) => { const v = e.target.value; if (v === '__new') newFolder(); else if (v === '__none') moveTo([...sel], null); else if (v) moveTo([...sel], v); e.currentTarget.value = ''; }} style={{ padding: '5px 9px', borderRadius: 9, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+              <option value="">📁 {es ? 'Mover a carpeta…' : 'Move to folder…'}</option>
+              {(folders as any[]).map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+              <option value="__none">— {es ? 'Sin carpeta' : 'No folder'} —</option>
+              <option value="__new">＋ {es ? 'Nueva carpeta…' : 'New folder…'}</option>
+            </select>}
             {canManage && <button disabled={bulkBusy} onClick={() => bulkDelete([...sel])} style={{ ...btn(RED), padding: '5px 11px', fontSize: 12 }}>🗑 {es ? 'Borrar' : 'Delete'}</button>}
             <button disabled={bulkBusy} onClick={() => exportCsv((bots as any[]).filter((b) => sel.has(b.id)), 'seleccion')} style={{ ...btn('var(--brand)'), padding: '5px 11px', fontSize: 12 }}>⬇ CSV</button>
             <button onClick={clearSel} style={{ fontSize: 12, background: 'transparent', border: 'none', color: 'var(--tx)', cursor: 'pointer', marginLeft: 'auto' }}>{es ? '✕ Quitar selección' : '✕ Clear'}</button>
           </>}
+        </div>
+      )}
+      {/* Panel de LOTES: de qué corrida salió cada estrategia (trazabilidad) */}
+      {showBatches && (batches as any[]).length > 0 && (
+        <div style={{ background: 'var(--bg2)', borderRadius: 12, padding: 12, marginBottom: 12, border: '1px solid var(--line)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+            <b style={{ fontSize: 13 }}>🧪 {es ? 'Lotes (corridas)' : 'Batches (runs)'}</b>
+            <span className="muted" style={{ fontSize: 11.5 }}>{es ? 'de dónde viene cada estrategia · click en «ver» filtra sus robots' : 'where each strategy came from · click “view” to filter its robots'}</span>
+            {batchFilter != null && <button onClick={() => setBatchFilter(null)} style={{ marginLeft: 'auto', ...btn('var(--brand)'), padding: '3px 9px', fontSize: 11.5 }}>{es ? 'Ver todos' : 'Show all'}</button>}
+          </div>
+          <div style={{ display: 'grid', gap: 6 }}>
+            {(batches as any[]).map((bt) => { const on = batchFilter === bt.batch_no; return (
+              <div key={bt.id} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', background: on ? 'color-mix(in srgb,var(--brand) 10%,var(--card))' : 'var(--card)', border: `1px solid ${on ? 'var(--brand)' : 'var(--line)'}`, borderRadius: 9, padding: '8px 11px' }}>
+                <span style={{ fontWeight: 800, color: '#38bdf8', fontSize: 13 }}>#{bt.batch_no}</span>
+                <span className="muted" style={{ fontSize: 10.5 }}>{bt.created_at ? new Date(bt.created_at).toLocaleString(es ? 'es-ES' : 'en-US', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                <span style={{ fontSize: 11.5 }}>{bt.symbol || '—'}·{tfLabel(bt.timeframe)} · {es ? 'resol' : 'res'} {bt.search_tf || 'auto'} · {bt.recipe || '—'} · OOS {bt.oos_pct ?? '—'}% · {es ? 'riesgo' : 'risk'} {bt.risk_pct ?? '—'}%</span>
+                <span className="muted" style={{ fontSize: 11 }}>{(bt.generated ?? 0).toLocaleString('en-US')}→{(bt.accepted ?? 0).toLocaleString('en-US')}→<b style={{ color: GREEN }}>{bt.created ?? 0}</b> · avg {bt.avg_score ?? '—'}{bt.ai_audited ? ' · 🧠' : ''}</span>
+                <button onClick={() => { setBatchFilter(bt.batch_no); setFolderFilter(''); }} style={{ marginLeft: 'auto', ...btn(GREEN), padding: '3px 10px', fontSize: 11.5 }}>{es ? 'ver' : 'view'}</button>
+              </div>
+            ); })}
+          </div>
         </div>
       )}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(215px,1fr))', gap: 10 }}>
@@ -705,8 +772,12 @@ function RobotGrid({ bots = [], es, post, canManage, reload, setSub, embedded }:
                 <b style={{ fontSize: 13.5, fontFamily: 'monospace', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name}</b>
                 <span style={{ fontSize: 9.5, fontWeight: 800, padding: '2px 8px', borderRadius: 20, background: `color-mix(in srgb,${st.color} 16%,transparent)`, color: st.color }}>{st.label}</span>
               </div>
-              <div className="muted" style={{ fontSize: 11.5 }}>{String(b.platform || '').toUpperCase()} · {b.symbol || '—'} · {b.timeframe || '—'}{score != null ? ' · ' : ''}{score != null && <span style={{ color: gradeColor(grade), fontWeight: 800 }}>{grade || ''} {score}</span>}</div>
+              <div className="muted" style={{ fontSize: 11.5 }}>{String(b.platform || '').toUpperCase()} · {b.symbol || '—'} · {tfLabel(b.timeframe) || '—'}{score != null ? ' · ' : ''}{score != null && <span style={{ color: gradeColor(grade), fontWeight: 800 }}>{grade || ''} {score}</span>}</div>
               {b.created_at && <div className="muted" style={{ fontSize: 10.5 }}>🕒 {es ? 'creado' : 'created'} {new Date(b.created_at).toLocaleString(es ? 'es-ES' : 'en-US', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</div>}
+              {(b.batch_no || b.folder_id) && <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', fontSize: 10.5 }}>
+                {b.batch_no && <span onClick={() => { setBatchFilter(Number(b.batch_no)); setFolderFilter(''); }} title={es ? 'Ver este lote' : 'View this batch'} style={{ cursor: 'pointer', fontWeight: 700, padding: '1px 7px', borderRadius: 20, background: 'color-mix(in srgb,#38bdf8 14%,transparent)', color: '#38bdf8' }}>🧪 {es ? 'lote' : 'batch'} #{b.batch_no}</span>}
+                {b.folder_id && <span style={{ fontWeight: 700, padding: '1px 7px', borderRadius: 20, background: `color-mix(in srgb,${VIOLET} 14%,transparent)`, color: VIOLET }}>📁 {folderName(b.folder_id)}</span>}
+              </div>}
               {b.fine_score != null && (() => {
                 // Validado en el dato más fino (M1/ticks). La divergencia = cuánto cayó
                 // el Onyx Score de la búsqueda al dato fino: baja = robusto; alta = sobreajuste.
