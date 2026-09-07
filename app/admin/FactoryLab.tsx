@@ -1,11 +1,16 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { toast, toastErr } from '@/lib/toast';
-import { genMt5, genMt4 } from '@/lib/mqlgen';
+import { genMt5, genMt4, genCtrader, genPseudo } from '@/lib/mqlgen';
 import { onyxScore, type OnyxScore } from '@/lib/score';
 import { enrichSpec } from '@/lib/stratgen';
 import { fetchColumnar, barsFromColumnar } from '@/lib/dataAnalyzer';
-import type { Costs } from '@/lib/backtest';
+import { runBacktest, type Costs, type Spec } from '@/lib/backtest';
+import { buildReport, type FullReport } from '@/lib/report';
+import { reportHTML, type ReportMeta } from '@/lib/reporthtml';
+import { makeZip } from '@/lib/zip';
+
+const gradeOf = (s?: number | null) => s == null ? null : s >= 80 ? 'A' : s >= 65 ? 'B' : s >= 50 ? 'C' : s >= 35 ? 'D' : 'F';
 
 // Costes por defecto para la validación fina (mismos que el Motor).
 const DEF_COSTS: Costs = { spreadPips: 1.2, slippagePips: 0.3, commission: 3.5, moneyPerPip: 10, lot: 1, pip: 0, capital: 10000, mm: 'risk_pct', riskPct: 1, riskMoney: 100, ddType: 'trailing', maxDDpct: 10 } as Costs;
@@ -192,6 +197,7 @@ export default function FactoryLab({ es, canManage, post, reload, bots, datasets
   const [finBusy, setFinBusy] = useState(false);
   const [finMsg, setFinMsg] = useState('');
   const [finRes, setFinRes] = useState<{ sc: OnyxScore; bars: number } | null>(null);
+  const [bundleBusy, setBundleBusy] = useState('');
   const [tab, setTab] = useState('resumen'); // pestaña de resultados
   const [folder, setFolder] = useState('todos'); // carpeta automática por validación M1
 
@@ -246,6 +252,66 @@ export default function FactoryLab({ es, canManage, post, reload, bots, datasets
     }).catch(() => {});
     return () => { alive = false; };
   }, [botId]);
+
+  // Re-backtestea el robot elegido sobre sus datos y arma el reporte completo + trades
+  // + metadatos (Onyx M15/M1, veredicto, auditoría IA) para exportar.
+  async function buildBundle(): Promise<{ report: FullReport; trades: any[]; meta: ReportMeta; spec: any } | null> {
+    const spec = bot?.strategy?.gen;
+    if (!spec) { toastErr(es ? 'Este robot no guarda su estrategia (créalo con el Autopiloto).' : 'This robot has no saved strategy.'); return null; }
+    const ds = (datasets as any[]).find((d) => d.symbol === bot.symbol && d.bars_url);
+    if (!ds) { toastErr(es ? `No hay dataset con barras para ${bot.symbol}.` : `No dataset with bars for ${bot.symbol}.`); return null; }
+    setBundleBusy(es ? 'Preparando reporte (backtest)…' : 'Preparing report (backtest)…');
+    await new Promise((r) => setTimeout(r, 10));
+    const col = await fetchColumnar(ds.bars_url);
+    const bars = barsFromColumnar(col);
+    const costs: Costs = { ...DEF_COSTS, capital: bot.strategy?.capital || 10000 };
+    const m = runBacktest(bars, enrichSpec(spec, {}) as Spec, costs);
+    const report = buildReport(m.trades, costs.capital || 10000, 30);
+    const meta: ReportMeta = {
+      name: bot.name, symbol: bot.symbol, timeframe: bot.timeframe, magic: bot.magic,
+      source: ds.source, broker: ds.broker,
+      onyxM15: bot.robustness_score ?? null, onyxGrade: gradeOf(bot.robustness_score),
+      onyxM1: bot.fine_score ?? null, onyxM1Grade: bot.fine_grade || null,
+      robustnessVerdict: bot.robustness_verdict || null,
+      ai: res?.ai?.audit || null, mutations: res?.ai?.mutations || [],
+    };
+    return { report, trades: m.trades, meta, spec };
+  }
+  function tradesCSV(report: FullReport): string {
+    const rows = ['n,date,dir,profit,balance'];
+    (report.list || []).forEach((t: any, i: number) => rows.push(`${i + 1},${new Date(t.t).toISOString()},${t.dir === 1 ? 'BUY' : t.dir === -1 ? 'SELL' : ''},${t.profit},${t.balance}`));
+    return rows.join('\n');
+  }
+  const magicOf = () => bot?.magic || (100000000 + Math.floor(Math.random() * 900000000));
+  async function dlReport(kind: 'html' | 'pdf') {
+    try {
+      const b = await buildBundle(); if (!b) return;
+      const html = reportHTML(b.meta, b.report, es);
+      if (kind === 'html') dl(`${bot.name || 'ONYX'}_report.html`, html);
+      else { const w = window.open('', '_blank'); if (w) { w.document.write(html); w.document.close(); setTimeout(() => w.print(), 400); } }
+    } catch (e: any) { toastErr('Report: ' + (e?.message || e)); } finally { setBundleBusy(''); }
+  }
+  async function dlTradesCSV() {
+    try { const b = await buildBundle(); if (!b) return; dl(`${bot.name || 'ONYX'}_trades.csv`, tradesCSV(b.report)); }
+    catch (e: any) { toastErr('CSV: ' + (e?.message || e)); } finally { setBundleBusy(''); }
+  }
+  async function dlPack() {
+    try {
+      const b = await buildBundle(); if (!b) return;
+      setBundleBusy(es ? 'Empaquetando Pack Onyx…' : 'Packing Onyx Pack…');
+      const mg = magicOf(); const nm = bot.name || 'ONYX';
+      const blob = makeZip([
+        { name: `${nm}/EA_MetaTrader5.mq5`, data: genMt5(b.spec, bot.symbol || 'XAUUSD', mg, nm) },
+        { name: `${nm}/EA_MetaTrader4.mq4`, data: genMt4(b.spec, bot.symbol || 'XAUUSD', mg, nm) },
+        { name: `${nm}/cTrader_${nm}.cs`, data: genCtrader(b.spec, bot.symbol || 'XAUUSD', mg, nm) },
+        { name: `${nm}/reporte.html`, data: reportHTML(b.meta, b.report, es) },
+        { name: `${nm}/operaciones.csv`, data: tradesCSV(b.report) },
+        { name: `${nm}/estrategia.txt`, data: genPseudo(b.spec, bot.symbol || 'XAUUSD', mg, b.meta.ai || undefined) },
+      ]);
+      const u = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = u; a.download = `${nm}_Pack_Onyx.zip`; a.click(); setTimeout(() => URL.revokeObjectURL(u), 1500);
+      toast(es ? 'Pack Onyx descargado' : 'Onyx Pack downloaded');
+    } catch (e: any) { toastErr('Pack: ' + (e?.message || e)); } finally { setBundleBusy(''); }
+  }
 
   async function run() {
     if (!botId) { toastErr(es ? 'Elige un robot.' : 'Pick a robot.'); return; }
@@ -361,14 +427,26 @@ export default function FactoryLab({ es, canManage, post, reload, bots, datasets
               })()}
             </div>
             <div>
-              <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 6 }}>⬇ {es ? 'Descargar el robot para MetaTrader' : 'Download the robot for MetaTrader'}</div>
+              <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 6 }}>⬇ {es ? 'Descargar' : 'Download'} <span className="muted" style={{ fontWeight: 500 }}>· {es ? 'código, reportes y Pack Onyx' : 'code, reports & Onyx Pack'}</span></div>
               {bot.strategy?.gen ? (
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <button onClick={() => dl(`${bot.name || 'ONYX'}.mq5`, genMt5(bot.strategy.gen, bot.symbol || 'XAUUSD', bot.magic || (100000000 + Math.floor(Math.random() * 900000000))))} style={btn(BLUE)}>{es ? 'Descargar .mq5 (MT5)' : 'Download .mq5 (MT5)'}</button>
-                  <button onClick={() => dl(`${bot.name || 'ONYX'}.mq4`, genMt4(bot.strategy.gen, bot.symbol || 'XAUUSD', bot.magic || (100000000 + Math.floor(Math.random() * 900000000))))} style={btn(BLUE)}>{es ? 'Descargar .mq4 (MT4)' : 'Download .mq4 (MT4)'}</button>
-                </div>
+                <>
+                  {/* Pack Onyx: TODO en un ZIP (mejor que StrategyQuant) */}
+                  <button onClick={dlPack} disabled={!!bundleBusy} style={{ ...btn(GREEN), padding: '10px 16px', fontSize: 13.5, fontWeight: 900 }}>📦 {es ? 'Pack Onyx (ZIP: EA + reporte con IA + trades)' : 'Onyx Pack (ZIP: EA + AI report + trades)'}</button>
+                  <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 10 }}>
+                    <button onClick={() => dl(`${bot.name || 'ONYX'}.mq5`, genMt5(bot.strategy.gen, bot.symbol || 'XAUUSD', magicOf(), bot.name))} style={btn(BLUE)}>EA .mq5 (MT5)</button>
+                    <button onClick={() => dl(`${bot.name || 'ONYX'}.mq4`, genMt4(bot.strategy.gen, bot.symbol || 'XAUUSD', magicOf(), bot.name))} style={btn(BLUE)}>EA .mq4 (MT4)</button>
+                    <button onClick={() => dl(`${bot.name || 'ONYX'}.cs`, genCtrader(bot.strategy.gen, bot.symbol || 'XAUUSD', magicOf(), bot.name))} style={btn(BLUE)}>cTrader .cs</button>
+                    <button onClick={() => dl(`${bot.name || 'ONYX'}.txt`, genPseudo(bot.strategy.gen, bot.symbol || 'XAUUSD', magicOf(), res?.ai?.audit || undefined))} style={btn('var(--brand)')}>{es ? 'Pseudocódigo' : 'Pseudocode'}</button>
+                  </div>
+                  <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 7 }}>
+                    <button onClick={() => dlReport('html')} disabled={!!bundleBusy} style={btn(VIOLET)}>{es ? 'Reporte HTML' : 'HTML report'}</button>
+                    <button onClick={() => dlReport('pdf')} disabled={!!bundleBusy} style={btn(VIOLET)}>{es ? 'Reporte PDF (imprimir)' : 'PDF report (print)'}</button>
+                    <button onClick={dlTradesCSV} disabled={!!bundleBusy} style={btn('var(--brand)')}>{es ? 'Operaciones CSV' : 'Trades CSV'}</button>
+                  </div>
+                  {bundleBusy && <div style={{ fontSize: 12.5, color: GREEN, fontWeight: 700, marginTop: 8 }}>{bundleBusy}</div>}
+                </>
               ) : <div className="muted" style={{ fontSize: 11.5 }}>{es ? 'Este robot no guarda su estrategia (créalo con el Autopiloto para poder exportarlo).' : 'This robot has no saved strategy (create it with Autopilot to export).'}</div>}
-              <div className="muted" style={{ fontSize: 11, marginTop: 6 }}>{es ? 'Ábrelo en MetaEditor (MT4/MT5) → Compilar → aparece en Asesores Expertos. Magic: ' : 'Open in MetaEditor (MT4/MT5) → Compile → shows under Expert Advisors. Magic: '}<b style={{ fontFamily: 'monospace' }}>{bot.magic || '—'}</b></div>
+              <div className="muted" style={{ fontSize: 11, marginTop: 7 }}>{es ? 'El reporte HTML/PDF y el Pack incluyen el Onyx Score, la validación M1 y la auditoría de la IA — StrategyQuant no trae IA. EA/cBot: ábrelo en MetaEditor/cAlgo → Compilar. Magic: ' : 'The HTML/PDF report and the Pack include the Onyx Score, M1 validation and the AI audit — StrategyQuant has no AI. EA/cBot: open in MetaEditor/cAlgo → Compile. Magic: '}<b style={{ fontFamily: 'monospace' }}>{bot.magic || '—'}</b></div>
             </div>
           </div>
         )}

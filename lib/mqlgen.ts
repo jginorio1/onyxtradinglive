@@ -169,3 +169,79 @@ void OnTick(){ Trail(); if(!NewBar()||Count()>0) return; int hh=TimeHour(TimeCur
 //+------------------------------------------------------------------+
 `;
 }
+
+// ============================================================
+// cTrader cBot (.cs / cAlgo) — punto de partida compilable en cTrader.
+// Traduce la misma estrategia a C#. Igual que los EA: es un esqueleto que
+// entra por señal del indicador con TP/SL; ajusta detalles en cAlgo.
+// ============================================================
+export function genCtrader(spec: Spec, symbol: string, magic: number, botName?: string): string {
+  const name = (botName || eaName(spec, botName)).replace(/[^A-Za-z0-9_]/g, '_');
+  const p1 = spec.p1 || 20, p2 = spec.p2 || 50;
+  const tp = String(spec.tp || '40'), sl = String(spec.sl || '30');
+  const tpN = /atr/i.test(tp) ? 40 : parseInt(tp) || 40;
+  const slN = /atr/i.test(sl) ? 30 : parseInt(sl) || 30;
+  return `using cAlgo.API;
+using cAlgo.API.Indicators;
+
+namespace cAlgo.Robots {
+  // Onyx Bot Factory · ${name} · ${symbol}
+  [Robot(TimeZone = TimeZones.UTC, AccessRights = AccessRights.None)]
+  public class ${name} : Robot {
+    [Parameter("Volume (lots)", DefaultValue = 0.1)] public double Lots { get; set; }
+    [Parameter("TP (pips)", DefaultValue = ${tpN})] public int TpPips { get; set; }
+    [Parameter("SL (pips)", DefaultValue = ${slN})] public int SlPips { get; set; }
+    [Parameter("Fast period", DefaultValue = ${p1})] public int Fast { get; set; }
+    [Parameter("Slow period", DefaultValue = ${p2})] public int Slow { get; set; }
+    private MovingAverage _fast, _slow;
+    private const string Label = "Onyx_${magic}";
+
+    protected override void OnStart() {
+      _fast = Indicators.MovingAverage(Bars.ClosePrices, Fast, MovingAverageType.Exponential);
+      _slow = Indicators.MovingAverage(Bars.ClosePrices, Slow, MovingAverageType.Exponential);
+    }
+    protected override void OnBar() {
+      bool up = _fast.Result.Last(1) > _slow.Result.Last(1) && _fast.Result.Last(2) <= _slow.Result.Last(2);
+      bool dn = _fast.Result.Last(1) < _slow.Result.Last(1) && _fast.Result.Last(2) >= _slow.Result.Last(2);
+      var pos = Positions.FindAll(Label, SymbolName);
+      if (up) { foreach (var p in pos) if (p.TradeType == TradeType.Sell) ClosePosition(p);
+        if (Positions.FindAll(Label, SymbolName, TradeType.Buy).Length == 0)
+          ExecuteMarketOrder(TradeType.Buy, SymbolName, Symbol.QuantityToVolumeInUnits(Lots), Label, SlPips, TpPips); }
+      else if (dn) { foreach (var p in pos) if (p.TradeType == TradeType.Buy) ClosePosition(p);
+        if (Positions.FindAll(Label, SymbolName, TradeType.Sell).Length == 0)
+          ExecuteMarketOrder(TradeType.Sell, SymbolName, Symbol.QuantityToVolumeInUnits(Lots), Label, SlPips, TpPips); }
+    }
+  }
+}
+`;
+}
+
+// Pseudocódigo legible (para revisar la lógica sin leer MQL/C#).
+export function genPseudo(spec: Spec, symbol: string, magic: number, extra?: string): string {
+  const L = (k: string, v: any) => `  ${k.padEnd(16)}: ${v}`;
+  return [
+    'ONYX BOT FACTORY · Pseudocódigo de la estrategia',
+    '='.repeat(52),
+    L('Símbolo', symbol),
+    L('Magic', magic),
+    L('Indicador 1', spec.ind1 + (spec.ind2 ? ' + ' + spec.ind2 : '')),
+    L('Períodos', `${spec.p1 || '-'} / ${spec.p2 || '-'}`),
+    L('Entrada', spec.entry),
+    L('Salida', spec.exit),
+    L('Sesión', spec.sessions || 'todas'),
+    L('Take Profit', spec.tp),
+    L('Stop Loss', spec.sl),
+    L('Break-even', spec.be || 'off'),
+    L('Trailing', spec.trailing || 'off'),
+    L('Dirección', (spec as any).dir || 'both'),
+    '',
+    'LÓGICA:',
+    `  1. Calcular ${spec.ind1}${spec.ind2 ? ' y ' + spec.ind2 : ''} con los períodos indicados.`,
+    `  2. Entrar cuando se cumpla la condición de entrada (${spec.entry}) dentro de la sesión.`,
+    `  3. Colocar TP=${spec.tp} y SL=${spec.sl}${spec.be && spec.be !== 'off' ? `, mover a break-even (${spec.be})` : ''}${spec.trailing && spec.trailing !== 'off' ? `, trailing (${spec.trailing})` : ''}.`,
+    `  4. Salir por ${spec.exit}.`,
+    extra ? '\nNOTA IA:\n' + extra : '',
+    '',
+    'Advertencia: el backtest es histórico; valida en demo antes de operar real.',
+  ].join('\n');
+}

@@ -182,6 +182,10 @@ function DataGate({ es, canManage, post, reload, datasets }: any) {
 
   async function save() {
     if (!metrics || !q || !gate.bars) return;
+    // Fuente y broker OBLIGATORIOS: sin saber de dónde vienen los datos no se puede confiar
+    // en el backtest (spread, comisiones y horario dependen del broker/proveedor).
+    if (!source) { toastErr(es ? 'Elige de dónde sacaste la data (Dukascopy, MetaTrader u otro).' : 'Choose where the data is from (Dukascopy, MetaTrader or other).'); return; }
+    if (source === 'metatrader' && !(broker || '').trim()) { toastErr(es ? 'Escribe el broker (IC Markets, Pepperstone…): el spread y las comisiones dependen de él.' : 'Enter the broker (IC Markets, Pepperstone…): spread and commissions depend on it.'); return; }
     setSaving(true);
     try {
       // 1) Pide URLs firmadas (el admin las crea; la subida va DIRECTA a Supabase,
@@ -333,6 +337,7 @@ function DataGate({ es, canManage, post, reload, datasets }: any) {
               <span className="muted" style={{ fontSize: 12 }}>{ds.from_year || (ds.from_date ? new Date(ds.from_date).getUTCFullYear() : '—')}–{ds.to_year || (ds.to_date ? new Date(ds.to_date).getUTCFullYear() : '—')} · {ds.years}{es ? 'y' : 'y'} · {(ds.rows || 0).toLocaleString('en-US')} {es ? 'filas' : 'rows'}{ds.source ? ' · ' + ds.source : ''}{ds.broker ? ' (' + ds.broker + ')' : ''}</span>
               {ds.bars_url && <span style={chip(LIME)}>{es ? 'listo p/ motor' : 'engine-ready'}</span>}
               {ds.tick_url && <span style={chip(GREEN)}>⚡ {es ? 'ticks reales' : 'real ticks'}{ds.tick_size ? ' · ' + (ds.tick_size / 1073741824 >= 1 ? (ds.tick_size / 1073741824).toFixed(1) + ' GB' : Math.round(ds.tick_size / 1048576) + ' MB') : ''}</span>}
+              {ds.created_at && <span className="muted" style={{ fontSize: 11 }}>🕒 {es ? 'subido' : 'uploaded'} {new Date(ds.created_at).toLocaleString(es ? 'es-ES' : 'en-US', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>}
               <span style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 800, color: verdictColor(ds.verdict) }}>{ds.quality_score}% · {ds.verdict}</span>
               {canManage && <button onClick={() => del(ds.id)} style={{ ...btn(RED), padding: '5px 9px' }}>✕</button>}
             </div>
