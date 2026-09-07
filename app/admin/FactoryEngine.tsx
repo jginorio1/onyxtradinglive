@@ -61,7 +61,7 @@ function tip(es: boolean, k: string): string {
 // ============================================================
 
 // Paleta FRESCA "Laguna" (teal · aqua · lima · coral) — sin púrpura ni verde apagado.
-const VIOLET = '#0fb8a6' /*teal · chips/acentos*/, GREEN = '#5bd11e' /*lima · éxito*/, AMBER = '#EF9F27', RED = '#E24B4A', BLUE = '#2ee6c5' /*aqua*/, AQUA = '#2ee6c5', LIME = '#8ee63f', CORAL = '#ff8a5c';
+const VIOLET = '#0fb8a6' /*teal · chips/acentos*/, GREEN = '#5bd11e' /*lima · éxito*/, AMBER = '#EF9F27', RED = '#E24B4A', BLUE = '#2ee6c5' /*aqua*/, AQUA = '#2ee6c5', LIME = '#8ee63f', CORAL = '#ff8a5c', SKY = '#38bdf8';
 const card: any = { background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, padding: 18 };
 const inp: any = { padding: '9px 11px', borderRadius: 9, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 13.5 };
 function btn(c: string): any { return { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 14px', borderRadius: 10, cursor: 'pointer', fontWeight: 800, fontSize: 13, border: `1px solid color-mix(in srgb,${c} 45%,transparent)`, background: `color-mix(in srgb,${c} 14%,transparent)`, color: c }; }
