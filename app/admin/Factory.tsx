@@ -634,12 +634,29 @@ const gradeColor = (g: string) => g === 'A' || g === 'B' ? GREEN : g === 'C' ? A
 function RobotGrid({ bots = [], es, post, canManage, reload, setSub, embedded }: any) {
   const [filter, setFilter] = useState('todos');
   const [live, setLive] = useState<Record<string, any>>({}); // KPIs en vivo por magic (cuenta demo)
+  const [sel, setSel] = useState<Set<string>>(new Set());     // selección múltiple (bulk)
+  const [bulkBusy, setBulkBusy] = useState(false);
   useEffect(() => { post({ action: 'factory_live' }).then((j: any) => setLive(j?.live || {})).catch(() => {}); }, []);
+  const toggleSel = (id: string) => setSel((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const clearSel = () => setSel(new Set());
   async function del(id: string) { if (!confirm(es ? '¿Borrar este robot?' : 'Delete this robot?')) return; try { await post({ action: 'bot_delete', id }); toast(es ? 'Eliminado' : 'Deleted'); reload && reload(); } catch (e: any) { toastErr(e?.message); } }
+  // Acciones en lote sobre los seleccionados (reutilizan endpoints existentes).
+  async function bulkDelete(ids: string[]) {
+    if (!ids.length || !confirm((es ? '¿Borrar ' : 'Delete ') + ids.length + (es ? ' robots seleccionados? No se puede deshacer.' : ' selected robots? This cannot be undone.'))) return;
+    setBulkBusy(true); let ok = 0;
+    for (const id of ids) { try { await post({ action: 'bot_delete', id }); ok++; } catch { /* sigue */ } }
+    toast((es ? 'Borrados ' : 'Deleted ') + ok + '/' + ids.length); clearSel(); setBulkBusy(false); reload && reload();
+  }
+  async function bulkPromote(ids: string[]) {
+    if (!ids.length || !confirm((es ? '¿Promover ' : 'Promote ') + ids.length + (es ? ' a la siguiente etapa?' : ' to the next stage?'))) return;
+    setBulkBusy(true); let ok = 0;
+    for (const id of ids) { try { await post({ action: 'stage_override', botId: id, dir: 'advance' }); ok++; } catch { /* sigue */ } }
+    toast((es ? 'Promovidos ' : 'Promoted ') + ok + '/' + ids.length); clearSel(); setBulkBusy(false); reload && reload();
+  }
   // Exporta los KPIs de los robots mostrados (carpeta actual) a CSV.
   function exportCsv(rows: any[], label: string) {
-    const head = ['name', 'symbol', 'timeframe', 'magic', 'stage', 'onyx_m15', 'verdict_m15', 'onyx_m1', 'grade_m1'];
-    const csv = [head.join(',')].concat(rows.map((b) => [b.name, b.symbol || '', b.timeframe || '', b.magic || '', b.stage || '', b.robustness_score ?? '', b.robustness_verdict || '', b.fine_score ?? '', b.fine_grade || ''].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','))).join('\n');
+    const head = ['name', 'symbol', 'timeframe', 'magic', 'stage', 'onyx_m15', 'verdict_m15', 'onyx_m1', 'grade_m1', 'divergencia', 'creado'];
+    const csv = [head.join(',')].concat(rows.map((b) => [b.name, b.symbol || '', b.timeframe || '', b.magic || '', b.stage || '', b.robustness_score ?? '', b.robustness_verdict || '', b.fine_score ?? '', b.fine_grade || '', b.fine_divergence ?? '', b.created_at ? new Date(b.created_at).toISOString().slice(0, 16).replace('T', ' ') : ''].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','))).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `onyx_robots_${label}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
@@ -661,17 +678,35 @@ function RobotGrid({ bots = [], es, post, canManage, reload, setSub, embedded }:
           <button onClick={() => exportCsv(shown.map((s) => s.b), filter)} style={{ ...btn(GREEN), padding: '5px 11px', fontSize: 12, marginLeft: 'auto' }}>⬇ {es ? 'Exportar CSV' : 'Export CSV'}</button>
         </div>
       )}
+      {!!bots.length && (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10, padding: sel.size ? '8px 10px' : 0, borderRadius: 10, background: sel.size ? 'color-mix(in srgb,var(--brand) 8%,var(--bg2))' : 'transparent', border: sel.size ? '1px solid color-mix(in srgb,var(--brand) 28%,var(--line))' : 'none' }}>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer' }}>
+            <input type="checkbox" checked={shown.length > 0 && shown.every(({ b }) => sel.has(b.id))} onChange={(e) => setSel(e.target.checked ? new Set(shown.map(({ b }) => b.id)) : new Set())} />
+            {es ? 'Seleccionar visibles' : 'Select shown'}
+          </label>
+          {sel.size > 0 && <>
+            <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--brand)' }}>{sel.size} {es ? 'seleccionadas' : 'selected'}</span>
+            {canManage && <button disabled={bulkBusy} title={es ? 'Mover a la siguiente etapa (borrador→lab→demo→fondeo→real)' : 'Move to next stage'} onClick={() => bulkPromote([...sel])} style={{ ...btn(GREEN), padding: '5px 11px', fontSize: 12 }}>▲ {es ? 'Mover etapa' : 'Move stage'}</button>}
+            {canManage && <button disabled={bulkBusy} onClick={() => bulkDelete([...sel])} style={{ ...btn(RED), padding: '5px 11px', fontSize: 12 }}>🗑 {es ? 'Borrar' : 'Delete'}</button>}
+            <button disabled={bulkBusy} onClick={() => exportCsv((bots as any[]).filter((b) => sel.has(b.id)), 'seleccion')} style={{ ...btn('var(--brand)'), padding: '5px 11px', fontSize: 12 }}>⬇ CSV</button>
+            <button onClick={clearSel} style={{ fontSize: 12, background: 'transparent', border: 'none', color: 'var(--tx)', cursor: 'pointer', marginLeft: 'auto' }}>{es ? '✕ Quitar selección' : '✕ Clear'}</button>
+          </>}
+        </div>
+      )}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(215px,1fr))', gap: 10 }}>
         {shown.map(({ b, st }) => {
           const grade = b.fine_grade || (b.robustness_verdict === 'robusto' ? 'A' : b.robustness_verdict === 'moderado' ? 'C' : '');
           const score = b.fine_score ?? b.robustness_score;
+          const selected = sel.has(b.id);
           return (
-            <div key={b.id} style={{ border: `1px solid color-mix(in srgb,${st.color} 32%,var(--line))`, borderRadius: 12, padding: 12, background: 'var(--card)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div key={b.id} style={{ border: `${selected ? 2 : 1}px solid ${selected ? 'var(--brand)' : `color-mix(in srgb,${st.color} 32%,var(--line))`}`, borderRadius: 12, padding: 12, background: selected ? 'color-mix(in srgb,var(--brand) 7%,var(--card))' : 'var(--card)', display: 'flex', flexDirection: 'column', gap: 6 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                {canManage && <input type="checkbox" checked={selected} onChange={() => toggleSel(b.id)} style={{ flex: 'none', cursor: 'pointer' }} />}
                 <b style={{ fontSize: 13.5, fontFamily: 'monospace', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name}</b>
                 <span style={{ fontSize: 9.5, fontWeight: 800, padding: '2px 8px', borderRadius: 20, background: `color-mix(in srgb,${st.color} 16%,transparent)`, color: st.color }}>{st.label}</span>
               </div>
               <div className="muted" style={{ fontSize: 11.5 }}>{String(b.platform || '').toUpperCase()} · {b.symbol || '—'} · {b.timeframe || '—'}{score != null ? ' · ' : ''}{score != null && <span style={{ color: gradeColor(grade), fontWeight: 800 }}>{grade || ''} {score}</span>}</div>
+              {b.created_at && <div className="muted" style={{ fontSize: 10.5 }}>🕒 {es ? 'creado' : 'created'} {new Date(b.created_at).toLocaleString(es ? 'es-ES' : 'en-US', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</div>}
               {b.fine_score != null && (() => {
                 // Validado en el dato más fino (M1/ticks). La divergencia = cuánto cayó
                 // el Onyx Score de la búsqueda al dato fino: baja = robusto; alta = sobreajuste.
