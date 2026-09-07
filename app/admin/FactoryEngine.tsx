@@ -83,6 +83,70 @@ function instrDefaults(sym: string): { spreadPips: number; commission: number; m
   return { spreadPips: 1.0, commission: 3.5, moneyPerPip: 10 }; // Forex mayores por defecto
 }
 
+// Monitor de generación EN VIVO (estilo StrategyQuant): contadores + motivos de
+// rechazo + diagnóstico. Los datos llegan del Web Worker mientras trabaja.
+function GenMonitor({ s, es, evo }: { s: any; es: boolean; evo: any }) {
+  const rej = s.rej || {};
+  const totalRej = (rej.fewtrades || 0) + (rej.ddhigh || 0) + (rej.oosneg || 0) + (rej.noedge || 0) + (rej.onyxlow || 0);
+  const gen = s.generated || 0;
+  const accPct = gen ? (100 * (s.accepted || 0) / gen) : 0;
+  const secs = Math.floor((s.elapsedMs || 0) / 1000);
+  const mmss = Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0');
+  const perMin = secs > 0 ? Math.round((gen / secs) * 60) : 0;
+  const reasons: [string, string, number, string][] = [
+    ['fewtrades', es ? 'Muy pocas operaciones' : 'Too few trades', rej.fewtrades || 0, '#3aa0ff'],
+    ['oosneg', es ? 'OOS negativo' : 'OOS negative', rej.oosneg || 0, CORAL],
+    ['ddhigh', es ? 'Drawdown alto' : 'High drawdown', rej.ddhigh || 0, AMBER],
+    ['noedge', es ? 'Sin ventaja' : 'No edge', rej.noedge || 0, '#8a94a6'],
+    ['onyxlow', es ? 'Onyx bajo el umbral' : 'Onyx below min', rej.onyxlow || 0, VIOLET],
+  ];
+  reasons.sort((a, b) => b[2] - a[2]);
+  const top1 = reasons[0];
+  const st = (l: string, v: any, c?: string) => <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: '9px 11px' }}><div className="muted" style={{ fontSize: 10.5 }}>{l}</div><div style={{ fontSize: 18, fontWeight: 800, marginTop: 1, color: c || 'var(--tx)' }}>{v}</div></div>;
+  // Diagnóstico automático según el motivo dominante.
+  const advice = () => {
+    if (!totalRej) return '';
+    const k = top1[0], p = Math.round(100 * top1[2] / totalRej);
+    const m: Record<string, string> = {
+      fewtrades: es ? `El ${p}% se cae por pocas operaciones → baja el "mín. operaciones", alarga la sesión (usa "all") o TP/SL más ajustados para operar más.` : `${p}% fail for too few trades → lower "min trades", widen the session ("all"), or tighter TP/SL to trade more.`,
+      oosneg: es ? `El ${p}% pierde fuera de muestra → prueba una receta de bloques más simple, TP/SL más amplios, o una temporalidad mayor (menos ruido).` : `${p}% lose out-of-sample → try a simpler block recipe, wider TP/SL, or a higher timeframe (less noise).`,
+      ddhigh: es ? `El ${p}% tiene drawdown alto → sube el "DD máx %" permitido o reduce el riesgo por operación.` : `${p}% have high drawdown → raise the allowed "Max DD %" or lower risk per trade.`,
+      noedge: es ? `El ${p}% no tiene ventaja → cambia la familia de bloques o revisa que los costes no estén exagerados.` : `${p}% have no edge → change the block family or check costs aren't too high.`,
+      onyxlow: es ? `El ${p}% pasa los filtros pero no llega al Onyx mínimo → baja un poco el Onyx mínimo o genera más para tener de dónde elegir.` : `${p}% pass filters but miss the min Onyx → lower the min Onyx slightly or generate more.`,
+    };
+    return m[k] || '';
+  };
+  return (
+    <div style={{ marginTop: 12, background: 'var(--bg2)', borderRadius: 12, padding: '12px 14px', border: `1px solid color-mix(in srgb,${GREEN} 25%,var(--line))` }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(96px,1fr))', gap: 8, marginBottom: 12 }}>
+        {st(es ? 'Generadas' : 'Generated', gen.toLocaleString('en-US'))}
+        {st(es ? 'Aceptadas' : 'Accepted', (s.accepted || 0).toLocaleString('en-US') + ' · ' + accPct.toFixed(2) + '%', GREEN)}
+        {st(es ? 'Rechazadas' : 'Rejected', (100 - accPct).toFixed(2) + '%', RED)}
+        {st(es ? 'Velocidad' : 'Speed', perMin.toLocaleString('en-US') + '/min')}
+        {st(es ? 'Tiempo' : 'Time', mmss)}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 12 }}>
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 8 }}>{es ? 'Por qué se rechazan' : 'Why rejected'}</div>
+          <div style={{ display: 'grid', gap: 8 }}>
+            {reasons.map(([k, l, v, c]) => { const p = totalRej ? Math.round(100 * v / totalRej) : 0; return (
+              <div key={k}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, marginBottom: 3 }}><span>{l}</span><span className="muted">{p}%</span></div>
+                <div style={{ height: 7, background: 'var(--card)', borderRadius: 20 }}><div style={{ width: p + '%', height: '100%', background: c, borderRadius: 20 }} /></div>
+              </div>
+            ); })}
+          </div>
+        </div>
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 8 }}>{es ? 'Mejor fitness (evolución)' : 'Best fitness (evolution)'}</div>
+          {evo?.history?.length ? <EvoChart history={evo.history} /> : <div className="muted" style={{ fontSize: 11.5 }}>{es ? '(solo en modo evolución)' : '(evolution mode only)'}</div>}
+          {advice() && <div style={{ marginTop: 10, fontSize: 12, lineHeight: 1.5, background: `color-mix(in srgb,${VIOLET} 8%,var(--card))`, border: `1px solid color-mix(in srgb,${VIOLET} 30%,var(--line))`, borderRadius: 10, padding: '9px 11px' }}><b style={{ color: VIOLET }}>💡 {es ? '¿Por qué no salen buenas?' : 'Why no good ones?'}</b> {advice()}</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function methodCard(active: boolean, c: string): any { return { flex: 1, minWidth: 220, textAlign: 'left', cursor: 'pointer', padding: '11px 13px', borderRadius: 12, background: active ? `color-mix(in srgb,${c} 14%,var(--bg2))` : 'var(--bg2)', border: `2px solid ${active ? c : 'var(--line)'}`, color: 'var(--tx)' }; }
 
 // Recetas de bloques por familia: en vez de marcar TODOS los bloques (espacio
@@ -204,7 +268,29 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
   const [autoMsg, setAutoMsg] = useState('');
   const [keepN, setKeepN] = useState(8);
   const [autoDone, setAutoDone] = useState<{ created: number; scanned: number; survivors: number; avg?: number } | null>(null);
+  const [autoStats, setAutoStats] = useState<any>(null); // monitor de generación en vivo
   const [advOpen, setAdvOpen] = useState(false); // pliega todo lo avanzado del Motor
+  const [aiObj, setAiObj] = useState(''); const [aiBusy, setAiBusy] = useState(false); const [aiRes, setAiRes] = useState<any>(null); // asistente IA de config
+
+  // Aplica la configuración que sugiere la IA a los ajustes del Motor.
+  function applyAdvisor(cfgAI: any) {
+    setCosts((c) => ({ ...c, spreadPips: cfgAI.costs?.spreadPips ?? c.spreadPips, commission: cfgAI.costs?.commission ?? c.commission, riskPct: cfgAI.costs?.riskPct ?? c.riskPct, mm: 'risk_pct',
+      chTarget: cfgAI.challenge?.target || 0, chDailyLoss: cfgAI.challenge?.dailyLoss || 0, chMinDays: cfgAI.challenge?.minDays || 0,
+      maxDDpct: cfgAI.challenge?.maxDD || c.maxDDpct, ddType: cfgAI.challenge?.maxDD ? 'trailing' : c.ddType }));
+    if (cfgAI.oosPct) setOosPct(cfgAI.oosPct);
+    if (cfgAI.evo) setEvoCfg((e) => ({ ...e, gens: cfgAI.evo.gens || e.gens, pop: cfgAI.evo.pop || e.pop, mut: cfgAI.evo.mut || e.mut }));
+    const pre = BLOCK_PRESETS.find((p) => p.key === cfgAI.blockPreset); if (pre) setCfg(pre.cfg);
+    toast(es ? 'Configuración aplicada por la IA — revísala abajo' : 'AI config applied — review below');
+  }
+  async function runAdvisor() {
+    if (!aiObj.trim()) { toastErr(es ? 'Escribe tu objetivo (ej. pasar FTMO 100k en oro).' : 'Enter your objective.'); return; }
+    setAiBusy(true); setAiRes(null);
+    try {
+      const yrs = bars ? (bars[bars.length - 1].t - bars[0].t) / (365.25 * 86400000) : undefined;
+      const j = await post({ action: 'engine_advisor', objective: aiObj, symbol: meta.symbol, timeframe: meta.tf, years: yrs, lang: es ? 'es' : 'en' });
+      setAiRes(j); applyAdvisor(j.cfg);
+    } catch (e: any) { toastErr(e?.message); } finally { setAiBusy(false); }
+  }
   // Receta encadenada (build → backtest → IS/OOS → Monte Carlo → walk-forward → rechazar).
   const [recipe, setRecipe] = useState({ minPf: 1.2, maxDd: 25, minTr: 30, mcMaxLoss: 35, wfMinStab: 55 });
   const [oosPct, setOosPct] = useState(30); // % del final reservado como fuera de muestra (OOS)
@@ -334,7 +420,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
     if (!bars) { toastErr(es ? 'Sube los datos primero.' : 'Upload data first.'); return; }
     if (!meta.symbol) { toastErr(es ? 'Falta el símbolo (se rellena al subir los datos).' : 'Missing symbol.'); return; }
     if (n < 1) { toastErr(es ? 'Escribe cuántas estrategias generar.' : 'Enter how many strategies to generate.'); return; }
-    setAuto(true); setAutoDone(null); setAutoMsg(es ? 'Preparando (segundo plano)…' : 'Preparing (background)…');
+    setAuto(true); setAutoDone(null); setAutoStats(null); setAutoMsg(es ? 'Preparando (segundo plano)…' : 'Preparing (background)…');
     await new Promise((r) => setTimeout(r, 30));
     try {
       // ══ TODO EL CÁLCULO PESADO CORRE EN UN WEB WORKER (hilo aparte) ══
@@ -347,6 +433,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
         worker.onmessage = (ev: MessageEvent) => {
           const m = ev.data || {};
           if (m.type === 'progress') setAutoMsg(m.msg);
+          else if (m.type === 'stats') setAutoStats(m);
           else if (m.type === 'evo') setEvo({ best: m.best, history: m.history });
           else if (m.type === 'error') { worker.terminate(); reject(new Error(m.message)); }
           else if (m.type === 'done') { worker.terminate(); resolve(m); }
@@ -563,6 +650,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
           {!bars && !reading && <span className="muted" style={{ fontSize: 12.5 }}>{es ? '⬆ Elige primero un dataset arriba.' : '⬆ Pick a dataset above first.'}</span>}
           {auto && <span style={{ fontSize: 13, color: GREEN, fontWeight: 700 }}>{autoMsg}</span>}
         </div>
+        {autoStats && (auto || !autoDone) && <GenMonitor s={autoStats} es={es} evo={evo} />}
         {autoDone && (
           <div style={{ marginTop: 12, background: 'var(--bg2)', borderRadius: 11, padding: '12px 14px', fontSize: 13.5, border: `1px solid color-mix(in srgb,${GREEN} 35%,var(--line))` }}>
             ✅ {es ? 'Listo. Creados' : 'Done. Created'} <b style={{ color: GREEN }}>{autoDone.created}</b> {es ? 'robots limpios' : 'clean robots'}{autoDone.avg ? <> · {es ? 'Onyx medio' : 'avg Onyx'} <b style={{ color: autoDone.avg >= 80 ? GREEN : LIME }}>{autoDone.avg} ({autoDone.avg >= 80 ? 'A' : autoDone.avg >= 65 ? 'B' : 'C'})</b></> : null} · {autoDone.survivors} {es ? 'pasaron el filtro de' : 'passed the gate of'} {autoDone.scanned} {es ? 'evaluadas' : 'evaluated'}{useAi ? (es ? ' · 🧠 auditados por IA' : ' · 🧠 AI-audited') : ''}. <span className="muted">{es ? 'Míralos en el Databank, y en Laboratorio y Pipeline (con la nota de la IA).' : 'See them in the Databank, and in Lab and Pipeline (with the AI note).'}</span>
@@ -576,6 +664,39 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
       </button>
 
       {advOpen && (<>
+      {/* Asistente IA de configuración avanzada */}
+      <div style={{ ...card, borderColor: `color-mix(in srgb,${CORAL} 40%,var(--line))`, background: `linear-gradient(150deg, color-mix(in srgb,${CORAL} 8%,var(--card)), var(--card) 65%)` }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 6 }}>
+          <span style={{ fontSize: 20 }}>✨</span>
+          <h3 style={{ margin: 0, flex: 1 }}>{es ? 'Asistente IA · configura todo con tu objetivo' : 'AI assistant · configure everything from your goal'}</h3>
+        </div>
+        <p className="muted" style={{ fontSize: 12.5, marginTop: 0 }}>{es ? 'Escribe tu objetivo en lenguaje natural y Claude configura costes, gestión monetaria, reglas de reto (prop firm), OOS, evolución y la receta de bloques.' : 'Describe your goal in plain words and Claude sets costs, money management, prop-firm challenge rules, OOS, evolution and the block recipe.'}</p>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <input value={aiObj} onChange={(e) => setAiObj(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') runAdvisor(); }} placeholder={es ? 'Ej: pasar FTMO 100k fase 1 en oro, riesgo bajo' : 'e.g. pass FTMO 100k phase 1 on gold, low risk'} style={{ ...inp, flex: 1, minWidth: 240 }} />
+          {canManage && <button onClick={runAdvisor} disabled={aiBusy} style={{ ...btn(CORAL), padding: '9px 16px' }}>{aiBusy ? (es ? 'Pensando…' : 'Thinking…') : (es ? '✨ Configurar con IA' : '✨ Configure with AI')}</button>}
+        </div>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+          {[es ? 'pasar FTMO 100k fase 1 en oro, riesgo bajo' : 'pass FTMO 100k phase 1 on gold, low risk', es ? 'cuenta real, bajo drawdown, tendencia' : 'live account, low drawdown, trend', es ? 'scalping agresivo en índices' : 'aggressive scalping on indices'].map((q) => (
+            <button key={q} onClick={() => setAiObj(q)} style={{ fontSize: 11, padding: '4px 9px', borderRadius: 99, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', cursor: 'pointer' }}>{q}</button>
+          ))}
+        </div>
+        {aiRes && (
+          <div style={{ marginTop: 12, background: 'var(--bg2)', borderRadius: 10, padding: '11px 13px', border: `1px solid color-mix(in srgb,${CORAL} 30%,var(--line))` }}>
+            <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 4 }}>{aiRes.byAi ? '🧠 ' + (es ? 'Configuración de Claude' : 'Claude config') : '⚙️ ' + (es ? 'Configuración base (conecta ANTHROPIC_API_KEY para IA)' : 'Base config (set ANTHROPIC_API_KEY for AI)')}</div>
+            <div style={{ fontSize: 12.5, lineHeight: 1.55 }}>{aiRes.rationale}</div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+              {aiRes.cfg?.challenge?.target ? <span style={autoChip(GREEN)}>{es ? 'Objetivo' : 'Target'} {aiRes.cfg.challenge.target}%</span> : null}
+              {aiRes.cfg?.challenge?.dailyLoss ? <span style={autoChip(AMBER)}>{es ? 'Pérdida diaria' : 'Daily loss'} {aiRes.cfg.challenge.dailyLoss}%</span> : null}
+              {aiRes.cfg?.challenge?.maxDD ? <span style={autoChip(RED)}>DD máx {aiRes.cfg.challenge.maxDD}%</span> : null}
+              <span style={autoChip('var(--brand)')}>{es ? 'Riesgo' : 'Risk'} {aiRes.cfg?.costs?.riskPct}%/op</span>
+              <span style={autoChip(SKY)}>OOS {aiRes.cfg?.oosPct}%</span>
+              <span style={autoChip(VIOLET)}>{es ? 'Bloques' : 'Blocks'}: {aiRes.cfg?.blockPreset}</span>
+            </div>
+            <div className="muted" style={{ fontSize: 11, marginTop: 7 }}>{es ? 'Ya se aplicó a los ajustes de abajo. Revísalos y ajusta lo que quieras — la IA no promete resultados; verifica las reglas exactas de tu prop firm.' : 'Already applied to the settings below. Review and tweak — AI does not promise results; verify your exact prop-firm rules.'}</div>
+          </div>
+        )}
+      </div>
+
       {/* Datos + costes */}
       <div style={card}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4, flexWrap: 'wrap' }}>

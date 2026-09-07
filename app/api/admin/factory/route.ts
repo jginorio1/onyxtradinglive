@@ -5,7 +5,7 @@ import { listBots, listDatasets, factoryStats, saveDataset, createBot, deleteBot
 import { pipelineBoard, runPipelineOnce, linkDemo, stageOverride, approveReal } from '@/lib/pipeline';
 import { listTemplates, saveTemplate, deleteTemplate, blockCatalog, heuristicTemplate } from '@/lib/templates';
 import { listBlocks, saveBlock, deleteBlock } from '@/lib/blocks';
-import { aiTemplate, aiBlocks, aiDatasetSummary } from '@/lib/factoryAI';
+import { aiTemplate, aiBlocks, aiDatasetSummary, aiEngineAdvisor } from '@/lib/factoryAI';
 import { BLOCKS } from '@/lib/stratgen';
 
 export const dynamic = 'force-dynamic';
@@ -110,6 +110,11 @@ export async function POST(req: Request) {
       }
       return NextResponse.json({ live });
     } catch (e: any) { return NextResponse.json({ live: {}, error: e?.message }); }
+  }
+  // Asistente de IA para la configuración avanzada del Motor.
+  if (a === 'engine_advisor') {
+    const r = await aiEngineAdvisor({ objective: String(b.objective || ''), symbol: b.symbol, timeframe: b.timeframe, years: Number(b.years) || undefined, lang: b.lang === 'en' ? 'en' : 'es' });
+    return NextResponse.json(r);
   }
   if (a === 'dataset_delete') {
     await deleteDataset(String(b.id || ''));

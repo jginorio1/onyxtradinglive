@@ -123,3 +123,50 @@ export async function aiDatasetSummary(input: {
   const s = res && typeof res.summary === 'string' ? res.summary.trim() : '';
   return s ? { summary: s.slice(0, 900), byAi: true } : { summary: det, byAi: false };
 }
+
+// ============================================================
+// Asistente de configuración del Motor (sección avanzada). El admin escribe su
+// objetivo en lenguaje natural ("pasar FTMO 100k en oro, riesgo bajo") y Claude
+// devuelve una configuración completa: costes, gestión monetaria, reglas de reto
+// (prop firm), OOS, evolución y receta de bloques. Sin IA → config determinista.
+// NUNCA predice el mercado ni promete resultados.
+// ============================================================
+export async function aiEngineAdvisor(input: {
+  objective: string; symbol?: string; timeframe?: string; years?: number; lang?: 'es' | 'en';
+}): Promise<{ cfg: any; rationale: string; byAi: boolean }> {
+  const es = input.lang !== 'en';
+  const obj = (input.objective || '').toLowerCase();
+  // Detección determinista de reto por palabras clave (fallback y refuerzo).
+  const size = (obj.match(/(\d{2,3})\s*k/) || [])[1];
+  const isProp = /ftmo|myforex|funded|fondeo|prop|the5ers|e8|challenge|reto/.test(obj);
+  const lowRisk = /bajo riesgo|conservador|low risk|seguro|safe/.test(obj);
+  const phase2 = /fase\s*2|phase\s*2|verificaci/.test(obj);
+  const det = {
+    costs: { spreadPips: /xau|gold|oro/.test(obj) ? 2.5 : 1.0, commission: 3.5, riskPct: lowRisk ? 0.5 : isProp ? 1 : 1.5 },
+    mm: 'risk_pct',
+    challenge: isProp ? { target: phase2 ? 5 : 10, dailyLoss: 5, maxDD: 10, minDays: 4 } : { target: 0, dailyLoss: 0, maxDD: 0, minDays: 0 },
+    oosPct: (input.years || 3) >= 4 ? 30 : 40,
+    evo: { gens: 20, pop: 120, mut: 0.25 },
+    blockPreset: /scalp/.test(obj) ? 'scalping' : /ruptura|breakout/.test(obj) ? 'ruptura' : /revers/.test(obj) ? 'reversion' : 'tendencia',
+  };
+  const detRat = es
+    ? `Config base para "${input.objective}"${isProp ? ` (reto${size ? ' ' + size + 'k' : ''})` : ''}: riesgo ${det.costs.riskPct}%/op, OOS ${det.oosPct}%, receta ${det.blockPreset}. ${isProp ? 'Reglas de reto típicas aplicadas — ajusta a tu prop firm exacta.' : ''}`
+    : `Base config for "${input.objective}"${isProp ? ` (challenge${size ? ' ' + size + 'k' : ''})` : ''}: risk ${det.costs.riskPct}%/trade, OOS ${det.oosPct}%, ${det.blockPreset} recipe. ${isProp ? 'Typical challenge rules applied — adjust to your exact prop firm.' : ''}`;
+
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) return { cfg: det, rationale: detRat, byAi: false };
+  const L = es ? 'Spanish' : 'English';
+  const system = `You are Onyx's quant configuration assistant for an internal MT4/MT5 robot factory. The admin gives a trading OBJECTIVE (often a prop-firm challenge like FTMO). Return a full engine configuration. NEVER predict the market or promise profits. Reply ONLY with JSON: {"costs":{"spreadPips":<num>,"commission":<num>,"riskPct":<num 0.25-2>},"mm":"risk_pct","challenge":{"target":<pct or 0>,"dailyLoss":<pct or 0>,"maxDD":<pct or 0>,"minDays":<int or 0>},"oosPct":<10-50>,"evo":{"gens":<6-40>,"pop":<40-200>,"mut":<0.1-0.4>},"blockPreset":"tendencia|ruptura|reversion|scalping|todo","rationale":"<2-4 sentences in ${L} explaining the choices>"}. Use realistic prop-firm rules when a firm is named. Keep risk conservative for funded/challenge objectives.`;
+  const payload = { objective: input.objective, symbol: input.symbol, timeframe: input.timeframe, dataYears: input.years, deterministicHint: det };
+  const res = await aiJson(system, JSON.stringify(payload), 700);
+  if (!res || !res.costs) return { cfg: det, rationale: detRat, byAi: false };
+  const cfg = {
+    costs: { spreadPips: Number(res.costs.spreadPips) || det.costs.spreadPips, commission: Number(res.costs.commission) || det.costs.commission, riskPct: Math.min(2, Math.max(0.25, Number(res.costs.riskPct) || det.costs.riskPct)) },
+    mm: 'risk_pct',
+    challenge: { target: Number(res.challenge?.target) || 0, dailyLoss: Number(res.challenge?.dailyLoss) || 0, maxDD: Number(res.challenge?.maxDD) || 0, minDays: Number(res.challenge?.minDays) || 0 },
+    oosPct: Math.min(50, Math.max(10, Number(res.oosPct) || det.oosPct)),
+    evo: { gens: Math.min(40, Math.max(6, Number(res.evo?.gens) || 20)), pop: Math.min(200, Math.max(40, Number(res.evo?.pop) || 120)), mut: Math.min(0.4, Math.max(0.1, Number(res.evo?.mut) || 0.25)) },
+    blockPreset: ['tendencia', 'ruptura', 'reversion', 'scalping', 'todo'].includes(res.blockPreset) ? res.blockPreset : det.blockPreset,
+  };
+  return { cfg, rationale: String(res.rationale || detRat).slice(0, 900), byAi: true };
+}

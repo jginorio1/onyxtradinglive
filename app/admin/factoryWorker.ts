@@ -28,6 +28,11 @@ ctx.onmessage = (e: MessageEvent) => {
     const isB = bars.slice(0, cut), oosB = bars.slice(cut);
     let top: { spec: Spec }[] = [];
     let scanned = 0;
+    // Contadores para el monitor en vivo (estilo StrategyQuant).
+    const t0 = Date.now();
+    const rej = { fewtrades: 0, ddhigh: 0, oosneg: 0, noedge: 0, onyxlow: 0 };
+    let generated = 0, accepted = 0;
+    const sendStats = () => ctx.postMessage({ type: 'stats', generated, accepted, rej: { ...rej }, elapsedMs: Date.now() - t0, target: n });
 
     if (autoMode === 'evolve') {
       post('Evolucionando (mutación + cruce)…');
@@ -49,11 +54,18 @@ ctx.onmessage = (e: MessageEvent) => {
         for (let i = 0; i < cands.length; i++) {
           const c = { ...cands[i], dir };
           const ev = evaluate(c, isB, oosB, costs);
-          if (ev.fit > 0 && ev.oosPf >= 1 && ev.dd <= maxDd && ev.trades >= minTr && ev.oosNet > 0) survivors.push({ spec: c, fit: ev.fit });
+          generated++;
+          // Clasifica el motivo del rechazo (primero que falla) — para el monitor.
+          if (ev.trades < minTr) rej.fewtrades++;
+          else if (ev.dd > maxDd) rej.ddhigh++;
+          else if (ev.oosPf < 1 || ev.oosNet <= 0) rej.oosneg++;
+          else if (ev.fit <= 0) rej.noedge++;
+          else { survivors.push({ spec: c, fit: ev.fit }); accepted++; }
         }
         if (survivors.length > keepPool * 8) { survivors.sort((a, b) => b.fit - a.fit); survivors.length = keepPool * 4; }
         scanned = done + size;
         post('Backtesteando ' + scanned.toLocaleString('en-US') + '/' + n.toLocaleString('en-US') + ' · robustos ' + survivors.length);
+        sendStats();
       }
       survivors.sort((a, b) => b.fit - a.fit);
       top = survivors.slice(0, keepPool);
@@ -66,12 +78,14 @@ ctx.onmessage = (e: MessageEvent) => {
       try {
         const sc = onyxScore(bars, enrichSpec({ ...toScore[i].spec, dir }, blockMap) as Spec, costs, oosPct || 30);
         if (sc.score >= minScore) graded.push({ spec: toScore[i].spec, score: sc.score, grade: sc.grade, cx: sc.cx });
+        else rej.onyxlow++;
       } catch { /* descartar el que rompa */ }
-      if (i % 3 === 0) post('Puntuando robustez ' + (i + 1) + '/' + toScore.length);
+      if (i % 3 === 0) { post('Puntuando robustez ' + (i + 1) + '/' + toScore.length); sendStats(); }
     }
     graded.sort((a, b) => b.score - a.score);
     const finalists = graded.slice(0, Math.max(1, keepN));
     const avg = finalists.length ? Math.round(finalists.reduce((s, f) => s + f.score, 0) / finalists.length) : 0;
+    accepted = graded.length; sendStats();
     ctx.postMessage({ type: 'done', finalists, scanned, survivors: graded.length, avg });
   } catch (err: any) {
     ctx.postMessage({ type: 'error', message: String(err?.message || err) });
