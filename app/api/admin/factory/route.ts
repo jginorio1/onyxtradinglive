@@ -168,13 +168,21 @@ export async function POST(req: Request) {
     const runs = await listLabRuns(String(b.botId || ''));
     return NextResponse.json({ runs });
   }
-  // Guarda el resultado de la validación fina en M1 (tolerante: si faltan las columnas, no rompe).
+  // Guarda el resultado de la validación fina (tolerante: si faltan las columnas, no rompe).
   if (a === 'bot_validate_fine') {
     try {
       await supabaseAdmin.from('factory_bots').update({
         fine_score: Number(b.fineScore) || null, fine_grade: b.fineGrade || null, fine_bars: Number(b.fineBars) || null, fine_at: new Date().toISOString(),
       }).eq('id', String(b.botId || ''));
     } catch { /* columnas opcionales aún no creadas */ }
+    // Resolución fina + divergencia búsqueda→fino (columnas nuevas, best-effort aparte
+    // para que, si aún no se corrió factory_v11.sql, no se pierdan los campos de arriba).
+    try {
+      const extra: Record<string, any> = {};
+      if (b.fineTf) extra.fine_tf = String(b.fineTf);
+      if (b.divergence != null) extra.fine_divergence = Number(b.divergence);
+      if (Object.keys(extra).length) await supabaseAdmin.from('factory_bots').update(extra).eq('id', String(b.botId || ''));
+    } catch { /* fine_tf / fine_divergence aún no existen */ }
     return NextResponse.json({ ok: true });
   }
   if (a === 'lab_run') {

@@ -204,7 +204,11 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
   const libDs = (datasets as any[]).filter((d) => d.verdict !== 'rechazada'); // incluye los sin barras (para mostrarlos marcados)
 
   // Carga barras desde la biblioteca (sin volver a subir el archivo).
-  async function loadFromLibrary(id: string) {
+  // tfOverride: cuando el usuario acaba de tocar «Search resolution», el estado
+  // de React todavía no cambió, así que pasamos el valor NUEVO aquí directo para
+  // que la temporalidad del motor se sincronice al instante (sin ir 1 clic atrás).
+  async function loadFromLibrary(id: string, tfOverride?: 'auto' | 5 | 15 | 30 | 60 | 240) {
+    const effSearchTf = tfOverride !== undefined ? tfOverride : searchTf;
     setDsId(id); if (!id) return;
     const ds = (datasets as any[]).find((d) => d.id === id);
     if (!ds?.bars_url) { toastErr(es ? 'Ese dataset no tiene barras guardadas. Vuelve a guardarlo en la Puerta 0.' : 'That dataset has no saved bars. Re-save it in Gate 0.'); return; }
@@ -219,9 +223,9 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
       // apuntando a ~250k barras. La fidelidad para buscar sigue siendo alta.
       const srcTf = col.tf || 1;
       let workTf = srcTf;
-      if (searchTf !== 'auto') {
+      if (effSearchTf !== 'auto') {
         // El usuario fijó la resolución (M5 fino / M15 / M30). Se agrega a esa TF.
-        workTf = Math.max(srcTf, searchTf as number);
+        workTf = Math.max(srcTf, effSearchTf as number);
         if (workTf > srcTf) b = aggregateBars(b, workTf);
       } else if (b.length > 400000) {
         // Auto: agrega para ~250k barras (rápido y sin congelar) — normalmente M15.
@@ -446,14 +450,14 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
       const passedGate = result.survivors || 0;
 
       let created = 0;
-      const createdBots: { id: string; spec: Spec }[] = [];
+      const createdBots: { id: string; spec: Spec; searchScore: number }[] = [];
       for (let i = 0; i < finalists.length; i++) {
         setAutoMsg((useAi ? (es ? '🧠 IA auditando robot ' : '🧠 AI auditing robot ') : (es ? 'Creando robot ' : 'Creating robot ')) + (i + 1) + '/' + finalists.length + ' · Onyx ' + finalists[i].grade);
         const trades = runBacktest(bars, finalists[i].spec, costs).trades;
         if (trades.length < 20) continue;
         const j = await post({ action: 'bot_create', platform: meta.platform, symbol: meta.symbol, timeframe: meta.tf, strategy: { family: 'autopiloto', gen: finalists[i].spec, onyx: finalists[i].score, grade: finalists[i].grade } });
         await post({ action: 'lab_run', botId: j.bot?.id, trades, paramCount: finalists[i].cx, noAi: !useAi, lang: es ? 'es' : 'en' });
-        if (j.bot?.id) createdBots.push({ id: j.bot.id, spec: finalists[i].spec });
+        if (j.bot?.id) createdBots.push({ id: j.bot.id, spec: finalists[i].spec, searchScore: finalists[i].score });
         created++;
       }
       const avgGrade = finalists.length ? finalists.reduce((s, f) => s + f.score, 0) / finalists.length : 0;
@@ -461,30 +465,39 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
       toast((es ? 'Autopiloto: ' : 'Autopilot: ') + created + (es ? ' robots limpios creados' : ' clean robots created'));
       if (reload) reload();
 
-      // ══ COLA DE VALIDACIÓN M1 AUTOMÁTICA (segundo plano) ══
-      // Cada robot creado se re-backtestea sobre las barras M1 completas y se archiva
-      // solo en su carpeta según el grado M1 (Aptos / Dudosos / Frágiles). Corre en
-      // el navegador uno a uno con pausas para no congelar. Solo los finalistas (pocos).
+      // ══ COLA DE VALIDACIÓN FINA AUTOMÁTICA (segundo plano) — estilo StrategyQuant, mejorado ══
+      // La BÚSQUEDA corre en la resolución de trabajo (la que elegiste arriba, p.ej. H1) para ir
+      // rápido. Pero el VEREDICTO final se toma sobre los datos MÁS FINOS que tengas guardados
+      // (M1 hoy; ticks reales cuando los subas). Cada robot se re-backtestea ahí y, además de
+      // archivarse por carpeta según su grado fino, guardamos la DIVERGENCIA búsqueda→fino:
+      // cuánto se degrada al pasar a la resolución real. Divergencia baja = robusto de verdad;
+      // divergencia alta = sobreajustado a la temporalidad de búsqueda. Esa señal es la mejora
+      // sobre StrategyQuant. Corre uno a uno con pausas para no congelar. Solo finalistas (pocos).
       const dsForM1 = (datasets as any[]).find((d) => d.id === dsId && d.bars_url);
       if (dsForM1 && createdBots.length) {
         try {
-          setAutoMsg(es ? 'Cargando M1 para validar…' : 'Loading M1 to validate…');
+          const isTicks = dsForM1.data_kind === 'ticks' || dsForM1.has_ticks; // etiqueta correcta
+          setAutoMsg(es ? 'Cargando datos finos para validar…' : 'Loading fine data to validate…');
           await new Promise((r) => setTimeout(r, 10));
           const colM1 = await fetchColumnar(dsForM1.bars_url);
           const barsM1 = barsFromColumnar(colM1);
+          const fineTf = colM1.tf || 1;                                 // resolución REAL del dato fino
+          const fineLabel = isTicks ? 'ticks' : 'M' + fineTf;           // no asumimos M1 a ciegas
           if (barsM1.length >= 500) {
             for (let i = 0; i < createdBots.length; i++) {
-              setAutoMsg((es ? '🔬 Validando en M1 y archivando ' : '🔬 Validating on M1 & filing ') + (i + 1) + '/' + createdBots.length + '…');
+              setAutoMsg((es ? `🔬 Validando en ${fineLabel} y archivando ` : `🔬 Validating on ${fineLabel} & filing `) + (i + 1) + '/' + createdBots.length + '…');
               await new Promise((r) => setTimeout(r, 0));
               try {
                 const sc = onyxScore(barsM1, enrichSpec({ ...createdBots[i].spec, dir }, blockMap) as Spec, costs, oosPct || 30);
-                await post({ action: 'bot_validate_fine', botId: createdBots[i].id, fineScore: sc.score, fineGrade: sc.grade, fineBars: barsM1.length });
+                // Divergencia = cuánto cae el score de la búsqueda al dato fino (0 = idéntico).
+                const divergence = Math.max(0, Math.round((createdBots[i].searchScore || 0) - sc.score));
+                await post({ action: 'bot_validate_fine', botId: createdBots[i].id, fineScore: sc.score, fineGrade: sc.grade, fineBars: barsM1.length, fineTf: fineLabel, divergence });
               } catch { /* uno que rompa no detiene la cola */ }
             }
-            toast(es ? 'Validación M1 terminada · robots archivados por carpeta' : 'M1 validation done · robots filed by folder');
+            toast(es ? `Validación en ${fineLabel} terminada · robots archivados por carpeta` : `Validation on ${fineLabel} done · robots filed by folder`);
             if (reload) reload();
           }
-        } catch { /* si no se pudo cargar M1, quedan "sin validar" */ }
+        } catch { /* si no se pudo cargar el dato fino, quedan "sin validar" */ }
       }
     } catch (e: any) { toastErr(e?.message); } finally { setAuto(false); setAutoMsg(''); }
   }
@@ -576,7 +589,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
             <span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Resolución de la búsqueda' : 'Search resolution'}<Help text={es ? 'A más fino (M5), el backtest de la búsqueda se parece más al de M1 real → menos robots que se caen al validar. Pero es más lento. Auto elige M15 para datasets enormes.' : 'Finer (M5) makes the search backtest closer to real M1 → fewer robots that collapse on validation. But slower. Auto picks M15 for huge datasets.'} /></span>
             {([['auto', es ? 'Auto' : 'Auto'], [5, 'M5 · fino'], [15, 'M15 · rápido'], [30, 'M30'], [60, 'H1'], [240, 'H4 · ligero']] as [any, string][]).map(([v, l]) => (
-              <button key={String(v)} onClick={() => { setSearchTf(v); if (dsId) loadFromLibrary(dsId); }} style={{ ...btn(searchTf === v ? GREEN : '#8a94a6'), padding: '5px 11px', fontSize: 12 }}>{l}</button>
+              <button key={String(v)} onClick={() => { setSearchTf(v); if (dsId) loadFromLibrary(dsId, v); }} style={{ ...btn(searchTf === v ? GREEN : '#8a94a6'), padding: '5px 11px', fontSize: 12 }}>{l}</button>
             ))}
           </div>
           {searchTf === 5 && <div className="muted" style={{ fontSize: 11, marginTop: 5, color: AMBER }}>{es ? '⚠ M5 es más fino y fiel, pero la búsqueda tarda ~3× más. Mantén la pestaña abierta.' : '⚠ M5 is finer and more faithful, but the search takes ~3× longer. Keep the tab open.'}</div>}

@@ -672,6 +672,18 @@ function RobotGrid({ bots = [], es, post, canManage, reload, setSub, embedded }:
                 <span style={{ fontSize: 9.5, fontWeight: 800, padding: '2px 8px', borderRadius: 20, background: `color-mix(in srgb,${st.color} 16%,transparent)`, color: st.color }}>{st.label}</span>
               </div>
               <div className="muted" style={{ fontSize: 11.5 }}>{String(b.platform || '').toUpperCase()} · {b.symbol || '—'} · {b.timeframe || '—'}{score != null ? ' · ' : ''}{score != null && <span style={{ color: gradeColor(grade), fontWeight: 800 }}>{grade || ''} {score}</span>}</div>
+              {b.fine_score != null && (() => {
+                // Validado en el dato más fino (M1/ticks). La divergencia = cuánto cayó
+                // el Onyx Score de la búsqueda al dato fino: baja = robusto; alta = sobreajuste.
+                const dv = b.fine_divergence;
+                const dvCol = dv == null ? 'var(--tx)' : dv <= 8 ? GREEN : dv <= 20 ? AMBER : RED;
+                return (
+                  <div style={{ fontSize: 10.5, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <span style={{ fontWeight: 700, padding: '1px 7px', borderRadius: 20, background: 'color-mix(in srgb,var(--brand) 12%,transparent)', color: 'var(--brand)' }}>🔬 {es ? 'validado en' : 'validated on'} {b.fine_tf || 'M1'}</span>
+                    {dv != null && <span style={{ fontWeight: 800, color: dvCol }}>{es ? 'divergencia' : 'divergence'} {dv > 0 ? '−' : ''}{Math.abs(dv)}{dv <= 8 ? ' ✓' : dv > 20 ? ' ⚠' : ''}</span>}
+                  </div>
+                );
+              })()}
               {b.magic && <div style={{ fontSize: 10.5, fontFamily: 'monospace', color: 'var(--tx)', opacity: .7 }}>magic {b.magic}</div>}
               {(() => {
                 const lv = live[String(b.magic)];
