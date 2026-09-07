@@ -86,6 +86,31 @@ export async function POST(req: Request) {
     });
     return NextResponse.json(r);
   }
+  // KPIs EN VIVO por magic: cruza los robots de la fábrica con las operaciones
+  // que el EA reporta en la cuenta demo (tabla trades) — backtest vs real.
+  if (a === 'factory_live') {
+    try {
+      const bots = await listBots();
+      const magics = Array.from(new Set((bots || []).map((b: any) => Number(b.magic)).filter((m: number) => m && !isNaN(m))));
+      const live: Record<string, any> = {};
+      if (magics.length) {
+        const { data: trades } = await supabaseAdmin.from('trades').select('magic,net_profit').in('magic', magics).not('magic', 'is', null);
+        const { data: opens } = await supabaseAdmin.from('open_positions').select('magic,profit').in('magic', magics).not('magic', 'is', null);
+        (trades || []).forEach((t: any) => {
+          const k = String(Number(t.magic)); const p = Number(t.net_profit || 0);
+          const e = live[k] || { pl: 0, trades: 0, wins: 0, openPnl: 0, running: false };
+          e.pl += p; e.trades += 1; if (p > 0) e.wins += 1; live[k] = e;
+        });
+        (opens || []).forEach((o: any) => {
+          const k = String(Number(o.magic));
+          const e = live[k] || { pl: 0, trades: 0, wins: 0, openPnl: 0, running: false };
+          e.openPnl += Number(o.profit || 0); e.running = true; live[k] = e;
+        });
+        Object.values(live).forEach((e: any) => { e.pl = Math.round(e.pl); e.openPnl = Math.round(e.openPnl); e.winRate = e.trades ? Math.round((e.wins / e.trades) * 100) : 0; });
+      }
+      return NextResponse.json({ live });
+    } catch (e: any) { return NextResponse.json({ live: {}, error: e?.message }); }
+  }
   if (a === 'dataset_delete') {
     await deleteDataset(String(b.id || ''));
     await logAdmin(user.email || '', 'factory_dataset_delete', String(b.id || ''), {});

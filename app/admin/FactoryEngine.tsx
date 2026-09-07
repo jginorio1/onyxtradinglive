@@ -167,6 +167,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
   const [autoMsg, setAutoMsg] = useState('');
   const [keepN, setKeepN] = useState(8);
   const [autoDone, setAutoDone] = useState<{ created: number; scanned: number; survivors: number; avg?: number } | null>(null);
+  const [advOpen, setAdvOpen] = useState(false); // pliega todo lo avanzado del Motor
   // Receta encadenada (build → backtest → IS/OOS → Monte Carlo → walk-forward → rechazar).
   const [recipe, setRecipe] = useState({ minPf: 1.2, maxDd: 25, minTr: 30, mcMaxLoss: 35, wfMinStab: 55 });
   const [oosPct, setOosPct] = useState(30); // % del final reservado como fuera de muestra (OOS)
@@ -506,15 +507,17 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
           <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 6 }}>{autoMode === 'evolve' ? (es ? '3 · Esfuerzo de evolución' : '3 · Evolution effort') : (es ? '3 · Cuántas probar' : '3 · How many to test')}</div>
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <label><div className="muted" style={{ fontSize: 11.5, marginBottom: 3 }}>{es ? 'Estrategias a escanear' : 'Strategies to scan'}<Help text={tip(es, 'n')} /></div>
-              <input type="number" value={n} min={500} max={20000} step={500} onChange={(e) => setN(Math.max(500, Math.min(20000, Number(e.target.value) || 500)))} style={{ ...inp, width: 130 }} /></label>
+              <input type="number" value={n} min={100} step={500} onChange={(e) => setN(Math.max(100, Number(e.target.value) || 100))} style={{ ...inp, width: 130 }} /></label>
             <label><div className="muted" style={{ fontSize: 11.5, marginBottom: 3 }}>{es ? 'Robots a guardar' : 'Robots to keep'}<Help text={tip(es, 'keepN')} /></div>
               <input type="number" value={keepN} min={1} max={500} onChange={(e) => setKeepN(Math.max(1, Math.min(500, Number(e.target.value) || 1)))} style={{ ...inp, width: 110 }} /></label>
-            <div style={{ display: 'flex', gap: 6 }}>
-              {[[2000, es ? 'Rápido' : 'Fast'], [8000, es ? 'Normal' : 'Normal'], [20000, es ? 'Profundo' : 'Deep']].map(([v, l]) => (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {[[2000, es ? 'Rápido' : 'Fast'], [8000, es ? 'Normal' : 'Normal'], [20000, es ? 'Profundo' : 'Deep'], [50000, es ? 'Masivo' : 'Massive'], [100000, es ? 'Extremo' : 'Extreme']].map(([v, l]) => (
                 <button key={v as number} onClick={() => setN(v as number)} style={{ ...btn(n === v ? GREEN : '#8a94a6'), padding: '7px 12px', fontSize: 12 }}>{l as string}</button>
               ))}
+              <span style={{ fontSize: 11, alignSelf: 'center', color: LIME, fontWeight: 700 }}>{es ? '· sin límite' : '· no cap'}</span>
             </div>
           </div>
+          {n > 30000 && <div style={{ fontSize: 11.5, marginTop: 6, color: AMBER, fontWeight: 700 }}>⚠ {es ? `${n.toLocaleString('en-US')} corre en tu navegador: puede tardar mucho o quedarse sin memoria. Deja la pestaña abierta y en primer plano; si se corta, baja la cantidad. (Para millones sin navegador hará falta el motor en la nube.)` : `${n.toLocaleString('en-US')} runs in your browser: may be slow or run out of memory. Keep the tab open and in front; if it stops, lower the amount. (Millions without a browser needs the cloud engine.)`}</div>}
           <div className="muted" style={{ fontSize: 11, marginTop: 6 }}>{autoMode === 'evolve' ? (es ? '🧬 En evolución este número es el PRESUPUESTO: a más presupuesto, más generaciones y población, y más a fondo explora ese espacio de millones de combinaciones (haciendo solo unos miles de backtests). Corre en tu navegador; mantén la pestaña abierta.' : '🧬 In evolution this number is the BUDGET: more budget = more generations/population, exploring that space of millions of combos deeper (with only a few thousand backtests). Runs in your browser; keep the tab open.') : (es ? 'Más estrategias = más posibilidades pero tarda más (corre en tu navegador; mantén la pestaña abierta).' : 'More strategies = more chances but slower (runs in your browser; keep the tab open).')}</div>
         </div>
 
@@ -546,9 +549,14 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
             ✅ {es ? 'Listo. Creados' : 'Done. Created'} <b style={{ color: GREEN }}>{autoDone.created}</b> {es ? 'robots limpios' : 'clean robots'}{autoDone.avg ? <> · {es ? 'Onyx medio' : 'avg Onyx'} <b style={{ color: autoDone.avg >= 80 ? GREEN : LIME }}>{autoDone.avg} ({autoDone.avg >= 80 ? 'A' : autoDone.avg >= 65 ? 'B' : 'C'})</b></> : null} · {autoDone.survivors} {es ? 'pasaron el filtro de' : 'passed the gate of'} {autoDone.scanned} {es ? 'evaluadas' : 'evaluated'}{useAi ? (es ? ' · 🧠 auditados por IA' : ' · 🧠 AI-audited') : ''}. <span className="muted">{es ? 'Míralos en el Databank, y en Laboratorio y Pipeline (con la nota de la IA).' : 'See them in the Databank, and in Lab and Pipeline (with the AI note).'}</span>
           </div>
         )}
-        <div className="muted" style={{ fontSize: 11, marginTop: 10, borderTop: '1px solid var(--line)', paddingTop: 8 }}>{es ? '¿Quieres control fino (costes, gestión monetaria, reto prop firm, OOS, evolución manual)? Está todo más abajo ↓' : 'Want fine control (costs, money management, prop challenge, OOS, manual evolution)? It’s all below ↓'}</div>
       </div>
 
+      {/* Toggle: pliega TODO lo avanzado para ver solo el modo automático + resultados */}
+      <button onClick={() => setAdvOpen((v) => !v)} style={{ ...btn(advOpen ? VIOLET : '#8a94a6'), padding: '11px 16px', justifyContent: 'center', fontSize: 13.5, fontWeight: 800 }}>
+        {advOpen ? '▴ ' : '▾ '}⚙️ {es ? 'Ajustes avanzados' : 'Advanced settings'} <span className="muted" style={{ fontWeight: 500, marginLeft: 6 }}>{es ? '· costes, gestión monetaria, reto, OOS, evolución manual, databank, portafolios' : '· costs, money mgmt, challenge, OOS, manual evolution, databank, portfolios'}</span>
+      </button>
+
+      {advOpen && (<>
       {/* Datos + costes */}
       <div style={card}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4, flexWrap: 'wrap' }}>
@@ -770,14 +778,14 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
         </div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginTop: 14 }}>
           <span className="muted" style={{ fontSize: 12 }}>{es ? 'Backtestear' : 'Backtest'}</span>
-          <input type="number" value={n} min={100} max={20000} step={500} onChange={(e) => setN(Math.max(100, Math.min(20000, Number(e.target.value) || 100)))} style={{ ...inp, width: 100 }} />
+          <input type="number" value={n} min={100} step={500} onChange={(e) => setN(Math.max(100, Number(e.target.value) || 100))} style={{ ...inp, width: 100 }} />
           {canManage && <button onClick={runBatch} disabled={busy || !bars} style={{ ...btn(VIOLET), opacity: busy || !bars ? 0.6 : 1 }}>{busy ? (es ? 'Corriendo…' : 'Running…') : (es ? '⚡ Backtestear lote' : '⚡ Backtest batch')}</button>}
           {canManage && <button onClick={runEvolve} disabled={busy || !bars} style={{ ...btn(GREEN), opacity: busy || !bars ? 0.6 : 1 }}>{es ? '🧬 Evolucionar' : '🧬 Evolve'}</button>}
         </div>
         {/* Parámetros de evolución (simple y transparente) */}
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--line)' }}>
           <span className="muted" style={{ fontSize: 11.5, fontWeight: 700 }}>🧬 {es ? 'Evolución' : 'Evolution'}</span>
-          {([['gens', es ? 'Generaciones' : 'Generations', 3, 40], ['pop', es ? 'Población' : 'Population', 20, 200]] as [string, string, number, number][]).map(([k, l, lo, hi]) => (
+          {([['gens', es ? 'Generaciones' : 'Generations', 3, 500], ['pop', es ? 'Población' : 'Population', 20, 2000]] as [string, string, number, number][]).map(([k, l, lo, hi]) => (
             <label key={k} style={{ display: 'flex', alignItems: 'center', gap: 5 }}><span className="muted" style={{ fontSize: 11 }}>{l}</span><input type="number" min={lo} max={hi} value={(evoCfg as any)[k]} onChange={(e) => setEvoCfg({ ...evoCfg, [k]: Math.max(lo, Math.min(hi, Number(e.target.value) || lo)) })} style={{ ...inp, width: 64, padding: '5px 7px' }} /></label>
           ))}
           <label style={{ display: 'flex', alignItems: 'center', gap: 5 }}><span className="muted" style={{ fontSize: 11 }}>{es ? 'Mutación' : 'Mutation'}</span><input type="number" step="0.05" min={0.05} max={0.6} value={evoCfg.mut} onChange={(e) => setEvoCfg({ ...evoCfg, mut: Math.max(0.05, Math.min(0.6, Number(e.target.value) || 0.25)) })} style={{ ...inp, width: 64, padding: '5px 7px' }} /></label>
@@ -794,6 +802,8 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
           <SpecTable es={es} rows={evo.best.map((s) => ({ spec: s.spec, net: s.ev.isNet, pf: s.ev.isPf, dd: s.ev.dd, n: s.ev.trades, win: 0, exp: 0, oos: s.ev.oosPf }))} onSel={setSel} sel={sel} specLabel={specLabel} oos />
         </div>
       )}
+
+      </>)}
 
       {/* Databank */}
       {rows && (

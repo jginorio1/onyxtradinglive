@@ -633,6 +633,8 @@ const gradeColor = (g: string) => g === 'A' || g === 'B' ? GREEN : g === 'C' ? A
 // par, estado por etapa, grado Onyx, mini-curva y acciones (Lab · borrar).
 function RobotGrid({ bots = [], es, post, canManage, reload, setSub, embedded }: any) {
   const [filter, setFilter] = useState('todos');
+  const [live, setLive] = useState<Record<string, any>>({}); // KPIs en vivo por magic (cuenta demo)
+  useEffect(() => { post({ action: 'factory_live' }).then((j: any) => setLive(j?.live || {})).catch(() => {}); }, []);
   async function del(id: string) { if (!confirm(es ? '¿Borrar este robot?' : 'Delete this robot?')) return; try { await post({ action: 'bot_delete', id }); toast(es ? 'Eliminado' : 'Deleted'); reload && reload(); } catch (e: any) { toastErr(e?.message); } }
   // Exporta los KPIs de los robots mostrados (carpeta actual) a CSV.
   function exportCsv(rows: any[], label: string) {
@@ -671,6 +673,20 @@ function RobotGrid({ bots = [], es, post, canManage, reload, setSub, embedded }:
               </div>
               <div className="muted" style={{ fontSize: 11.5 }}>{String(b.platform || '').toUpperCase()} · {b.symbol || '—'} · {b.timeframe || '—'}{score != null ? ' · ' : ''}{score != null && <span style={{ color: gradeColor(grade), fontWeight: 800 }}>{grade || ''} {score}</span>}</div>
               {b.magic && <div style={{ fontSize: 10.5, fontFamily: 'monospace', color: 'var(--tx)', opacity: .7 }}>magic {b.magic}</div>}
+              {(() => {
+                const lv = live[String(b.magic)];
+                if (!lv) return null;
+                const btGood = (grade === 'A' || grade === 'B') || (score != null && score >= 65);
+                const diverge = btGood && lv.pl < 0;
+                return (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', background: `color-mix(in srgb,${diverge ? RED : GREEN} 8%,var(--bg2))`, border: `1px solid color-mix(in srgb,${diverge ? RED : GREEN} 30%,var(--line))`, borderRadius: 8, padding: '5px 8px', fontSize: 11 }}>
+                    <span style={{ fontWeight: 800, color: lv.pl >= 0 ? GREEN : RED }}>{lv.pl >= 0 ? '+' : ''}${Math.abs(lv.pl).toLocaleString('en-US')}</span>
+                    <span className="muted">{es ? 'vivo' : 'live'} · {lv.trades} {es ? 'ops' : 'trades'} · {lv.winRate}%</span>
+                    {lv.running && <span style={{ color: GREEN }}>●</span>}
+                    <span style={{ marginLeft: 'auto', fontWeight: 700, color: diverge ? RED : GREEN }}>{diverge ? (es ? '⚠ diverge' : '⚠ diverges') : (es ? '✓ ok' : '✓ ok')}</span>
+                  </div>
+                );
+              })()}
               <div style={{ display: 'flex', gap: 6, marginTop: 'auto' }}>
                 {setSub && <button onClick={() => setSub('laboratorio')} style={{ ...btn(VIOLET), padding: '6px 10px', flex: 1, justifyContent: 'center', fontSize: 12 }}>🔬 Lab</button>}
                 {canManage && st.label !== (es ? 'real' : 'live') && <button title={es ? 'Promover a la siguiente etapa' : 'Promote to next stage'} onClick={async () => { if (!confirm(es ? `¿Promover ${b.name} a la siguiente etapa?` : `Promote ${b.name} to next stage?`)) return; try { await post({ action: 'stage_override', botId: b.id, dir: 'advance' }); toast(es ? 'Promovido' : 'Promoted'); reload && reload(); } catch (e: any) { toastErr(e?.message); } }} style={{ ...btn(GREEN), padding: '6px 9px', fontSize: 12 }}>▲</button>}
