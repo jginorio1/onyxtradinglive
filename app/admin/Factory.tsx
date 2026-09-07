@@ -634,6 +634,13 @@ const gradeColor = (g: string) => g === 'A' || g === 'B' ? GREEN : g === 'C' ? A
 function RobotGrid({ bots = [], es, post, canManage, reload, setSub, embedded }: any) {
   const [filter, setFilter] = useState('todos');
   async function del(id: string) { if (!confirm(es ? '¿Borrar este robot?' : 'Delete this robot?')) return; try { await post({ action: 'bot_delete', id }); toast(es ? 'Eliminado' : 'Deleted'); reload && reload(); } catch (e: any) { toastErr(e?.message); } }
+  // Exporta los KPIs de los robots mostrados (carpeta actual) a CSV.
+  function exportCsv(rows: any[], label: string) {
+    const head = ['name', 'symbol', 'timeframe', 'magic', 'stage', 'onyx_m15', 'verdict_m15', 'onyx_m1', 'grade_m1'];
+    const csv = [head.join(',')].concat(rows.map((b) => [b.name, b.symbol || '', b.timeframe || '', b.magic || '', b.stage || '', b.robustness_score ?? '', b.robustness_verdict || '', b.fine_score ?? '', b.fine_grade || ''].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','))).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `onyx_robots_${label}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
   const FOLDERS: [string, string][] = [['todos', es ? 'Todos' : 'All'], ['borrador', es ? 'Borrador' : 'Draft'], ['lab', 'Lab'], ['demo', 'Demo'], ['fondeo', es ? 'Fondeo' : 'Funded'], ['real', es ? 'Real' : 'Live']];
   const withStage = (bots as any[]).map((b) => ({ b, st: stageInfo(b, es) }));
   const counts: Record<string, number> = {}; withStage.forEach(({ st }) => { counts[st.label] = (counts[st.label] || 0) + 1; });
@@ -645,10 +652,11 @@ function RobotGrid({ bots = [], es, post, canManage, reload, setSub, embedded }:
       {!embedded && <h3 style={{ marginTop: 0 }}>{es ? 'Robots de la fábrica' : 'Factory robots'}</h3>}
       {!bots.length && <div className="muted" style={{ fontSize: 13 }}>{es ? 'Aún no hay robots. Arranca la Fábrica automática de arriba.' : 'No robots yet. Start the Automatic factory above.'}</div>}
       {!!bots.length && (
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12, alignItems: 'center' }}>
           {FOLDERS.map(([k, l]) => { const on = filter === k; const n = k === 'todos' ? bots.length : (counts[k] || counts[({ real: 'live', fondeo: 'funded', borrador: 'draft' } as any)[k]] || 0); return (
             <button key={k} onClick={() => setFilter(k)} style={{ padding: '5px 11px', borderRadius: 99, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: '1px solid ' + (on ? 'var(--brand)' : 'var(--line)'), background: on ? 'color-mix(in srgb,var(--brand) 16%,transparent)' : 'var(--bg2)', color: on ? 'var(--brand)' : 'var(--tx)' }}>{l} · {n}</button>
           ); })}
+          <button onClick={() => exportCsv(shown.map((s) => s.b), filter)} style={{ ...btn(GREEN), padding: '5px 11px', fontSize: 12, marginLeft: 'auto' }}>⬇ {es ? 'Exportar CSV' : 'Export CSV'}</button>
         </div>
       )}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(215px,1fr))', gap: 10 }}>
@@ -665,6 +673,7 @@ function RobotGrid({ bots = [], es, post, canManage, reload, setSub, embedded }:
               {b.magic && <div style={{ fontSize: 10.5, fontFamily: 'monospace', color: 'var(--tx)', opacity: .7 }}>magic {b.magic}</div>}
               <div style={{ display: 'flex', gap: 6, marginTop: 'auto' }}>
                 {setSub && <button onClick={() => setSub('laboratorio')} style={{ ...btn(VIOLET), padding: '6px 10px', flex: 1, justifyContent: 'center', fontSize: 12 }}>🔬 Lab</button>}
+                {canManage && st.label !== (es ? 'real' : 'live') && <button title={es ? 'Promover a la siguiente etapa' : 'Promote to next stage'} onClick={async () => { if (!confirm(es ? `¿Promover ${b.name} a la siguiente etapa?` : `Promote ${b.name} to next stage?`)) return; try { await post({ action: 'stage_override', botId: b.id, dir: 'advance' }); toast(es ? 'Promovido' : 'Promoted'); reload && reload(); } catch (e: any) { toastErr(e?.message); } }} style={{ ...btn(GREEN), padding: '6px 9px', fontSize: 12 }}>▲</button>}
                 {canManage && <button onClick={() => del(b.id)} style={{ ...btn(RED), padding: '6px 9px' }}>✕</button>}
               </div>
             </div>

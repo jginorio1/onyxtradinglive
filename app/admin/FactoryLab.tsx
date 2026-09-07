@@ -200,6 +200,9 @@ export default function FactoryLab({ es, canManage, post, reload, bots, datasets
   const [bundleBusy, setBundleBusy] = useState('');
   const [tab, setTab] = useState('resumen'); // pestaña de resultados
   const [folder, setFolder] = useState('todos'); // carpeta automática por validación M1
+  const [rep, setRep] = useState<FullReport | null>(null); // reporte completo (KPIs + curva)
+  const [repBusy, setRepBusy] = useState(false);
+  const [ovTab, setOvTab] = useState<'kpis' | 'curva'>('kpis'); // sub-pestaña Overview/Curva
 
   const bot = (bots as any[]).find((b) => b.id === botId);
   const counts: Record<string, number> = { todos: (bots as any[]).length, aptos: 0, dudosos: 0, fragiles: 0, pendiente: 0 };
@@ -276,6 +279,13 @@ export default function FactoryLab({ es, canManage, post, reload, bots, datasets
       ai: res?.ai?.audit || null, mutations: res?.ai?.mutations || [],
     };
     return { report, trades: m.trades, meta, spec };
+  }
+  // Carga el reporte completo (KPIs + curva) del robot elegido para las
+  // pestañas Overview y Curva — estilo StrategyQuant pero en una sola vista.
+  async function loadOverview() {
+    setRepBusy(true);
+    try { const b = await buildBundle(); if (b) setRep(b.report); }
+    catch (e: any) { toastErr('KPIs: ' + (e?.message || e)); } finally { setRepBusy(false); setBundleBusy(''); }
   }
   function tradesCSV(report: FullReport): string {
     const rows = ['n,date,dir,profit,balance'];
@@ -373,19 +383,33 @@ export default function FactoryLab({ es, canManage, post, reload, bots, datasets
         </div>
         <div className="muted" style={{ fontSize: 11, marginBottom: 8 }}>{es ? 'Los robots del Autopiloto se validan en M1 solos y se archivan aquí por grado. Solo los "Aptos M1" deberían ir a demo.' : 'Autopilot robots are auto-validated on M1 and filed here by grade. Only "M1-fit" should go to demo.'}</div>
 
+        {/* Lista de robots clicable (reemplaza el confuso desplegable "— elige —").
+            Cada fila selecciona el robot y trae su propia papelera. */}
+        <div style={{ marginBottom: 12 }}>
+          <div className="muted" style={{ fontSize: 12, marginBottom: 5 }}>{es ? 'Elige un robot' : 'Pick a robot'} <span style={{ opacity: .7 }}>· {shownBots.length}</span></div>
+          {!shownBots.length && <div className="muted" style={{ fontSize: 12.5, padding: '10px 0' }}>{es ? 'No hay robots en esta carpeta.' : 'No robots in this folder.'}</div>}
+          <div style={{ display: 'grid', gap: 6, maxHeight: 260, overflowY: 'auto' }}>
+            {shownBots.map((b) => {
+              const on = botId === b.id;
+              const g = b.fine_grade || (b.robustness_verdict === 'robusto' ? 'A' : b.robustness_verdict === 'moderado' ? 'C' : '');
+              const sc = b.fine_score ?? b.robustness_score;
+              const gc = g === 'A' || g === 'B' ? GREEN : g === 'C' ? AMBER : g ? RED : 'var(--tx)';
+              return (
+                <div key={b.id} onClick={() => { setBotId(b.id); setRes(null); setCmp(null); setRep(null); }} style={{ display: 'flex', gap: 10, alignItems: 'center', cursor: 'pointer', padding: '9px 11px', borderRadius: 10, border: '1px solid ' + (on ? VIOLET : 'var(--line)'), background: on ? `color-mix(in srgb,${VIOLET} 12%,var(--bg2))` : 'var(--bg2)' }}>
+                  <span style={{ width: 9, height: 9, borderRadius: '50%', background: on ? VIOLET : 'var(--line)', flex: 'none' }} />
+                  <b style={{ fontSize: 13, fontFamily: 'monospace', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name}</b>
+                  <span className="muted" style={{ fontSize: 11.5 }}>{b.symbol || '—'} · {b.timeframe || '—'}</span>
+                  {sc != null && <span style={{ fontSize: 11, fontWeight: 800, color: gc }}>{g} {sc}</span>}
+                  {canManage && <button onClick={async (e) => { e.stopPropagation(); if (!confirm(es ? `¿Borrar el robot ${b.name}?` : `Delete robot ${b.name}?`)) return; try { await post({ action: 'bot_delete', id: b.id }); toast(es ? 'Robot borrado' : 'Robot deleted'); if (botId === b.id) { setBotId(''); setRes(null); } if (reload) reload(); } catch (er: any) { toastErr(er?.message); } }} style={{ ...btn(RED), padding: '4px 8px', fontSize: 11 }}>✕</button>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 12 }}>
-          <label><span className="muted" style={{ fontSize: 12 }}>{es ? 'Robot' : 'Robot'} <span style={{ opacity: .7 }}>· {shownBots.length}</span></span>
-            <select value={botId} onChange={(e) => { setBotId(e.target.value); setRes(null); setCmp(null); }} style={{ ...inp, marginTop: 4 }}>
-              <option value="">{es ? '— elige —' : '— pick —'}</option>
-              {shownBots.map((b) => <option key={b.id} value={b.id}>{b.name} · {b.symbol || '—'}{b.fine_grade ? ` · M1:${b.fine_grade}` : b.robustness_verdict ? ` · ${b.robustness_verdict}` : ''}</option>)}
-            </select>
-          </label>
           <label><span className="muted" style={{ fontSize: 12 }}>{es ? 'Nº de parámetros/reglas' : 'Params/rules count'}</span>
             <input type="number" value={paramCount} min={1} max={40} onChange={(e) => setParamCount(Math.max(1, Number(e.target.value) || 1))} style={{ ...inp, marginTop: 4 }} />
           </label>
-          {bot && canManage && <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-            <button onClick={async () => { if (!confirm(es ? `¿Borrar el robot ${bot.name}? No se puede deshacer.` : `Delete robot ${bot.name}? Cannot be undone.`)) return; try { await post({ action: 'bot_delete', id: bot.id }); toast(es ? 'Robot borrado' : 'Robot deleted'); setBotId(''); setRes(null); if (reload) reload(); } catch (e: any) { toastErr(e?.message); } }} style={{ ...btn(RED), padding: '9px 14px' }}>🗑 {es ? 'Borrar este robot' : 'Delete this robot'}</button>
-          </div>}
         </div>
 
         {/* Avanzado: re-analizar con CSV de MetaTrader */}
@@ -464,6 +488,23 @@ export default function FactoryLab({ es, canManage, post, reload, bots, datasets
           </div>
         )}
       </div>
+
+      {/* Overview (todos los KPIs) + Curva de equity — siempre disponible al
+          elegir un robot, con el menú ARRIBA. Estilo StrategyQuant. */}
+      {bot && bot.strategy?.gen && (
+        <div style={card}>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
+            <button onClick={() => setOvTab('kpis')} style={{ padding: '7px 14px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 800, background: ovTab === 'kpis' ? VIOLET : 'var(--bg2)', color: ovTab === 'kpis' ? '#fff' : 'var(--tx)' }}>{es ? 'Overview · todos los KPI' : 'Overview · all KPIs'}</button>
+            <button onClick={() => setOvTab('curva')} style={{ padding: '7px 14px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 800, background: ovTab === 'curva' ? VIOLET : 'var(--bg2)', color: ovTab === 'curva' ? '#fff' : 'var(--tx)' }}>{es ? 'Curva de equity' : 'Equity curve'}</button>
+            <span style={{ marginLeft: 'auto' }} />
+            {!rep && <button onClick={loadOverview} disabled={repBusy} style={{ ...btn(GREEN), padding: '7px 13px' }}>{repBusy ? (es ? 'Calculando…' : 'Computing…') : (es ? '▶ Cargar KPIs y curva' : '▶ Load KPIs & curve')}</button>}
+            {rep && <button onClick={loadOverview} disabled={repBusy} style={{ ...btn('var(--brand)'), padding: '6px 11px', fontSize: 11 }}>↻</button>}
+          </div>
+          {!rep && <div className="muted" style={{ fontSize: 12.5 }}>{es ? 'Pulsa "Cargar KPIs y curva" para ver todas las métricas y la curva de equity de este robot (backtest sobre sus barras).' : 'Press "Load KPIs & curve" to see all metrics and the equity curve for this robot (backtest on its bars).'}</div>}
+          {rep && ovTab === 'kpis' && <KpiOverview r={rep} es={es} />}
+          {rep && ovTab === 'curva' && <EquityCurve eq={rep.equity || []} es={es} />}
+        </div>
+      )}
 
       {r && (
         <>
@@ -625,4 +666,76 @@ export default function FactoryLab({ es, canManage, post, reload, bots, datasets
 
 function ChartHead({ t, d }: any) {
   return <div style={{ marginBottom: 10 }}><div style={{ fontSize: 14.5, fontWeight: 800 }}>{t}</div><div className="muted" style={{ fontSize: 12 }}>{d}</div></div>;
+}
+
+// ---- Overview de KPIs (estilo StrategyQuant, todo en una vista) ----
+const _money = (v: number) => (v < 0 ? '-$' : '$') + Math.abs(Math.round(v || 0)).toLocaleString('en-US');
+function KpiOverview({ r, es }: { r: FullReport; es: boolean }) {
+  const K = (l: string, v: any, good?: boolean) => (
+    <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: '9px 11px' }}>
+      <div className="muted" style={{ fontSize: 10.5 }}>{l}</div>
+      <div style={{ fontSize: 16, fontWeight: 800, marginTop: 1, color: good === true ? GREEN : good === false ? RED : 'var(--tx)' }}>{v}</div>
+    </div>
+  );
+  const grid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(110px,1fr))', gap: 8 } as any;
+  return (
+    <div style={{ display: 'grid', gap: 14 }}>
+      <div>
+        <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 6 }}>{es ? 'KPIs principales' : 'Key KPIs'}</div>
+        <div style={grid}>
+          {K(es ? 'Beneficio total' : 'Total profit', _money(r.net), r.net >= 0)}
+          {K('Profit factor', r.pf, r.pf >= 1.3)}
+          {K('Sharpe', r.sharpe)}
+          {K('Return/DD', r.retDD, r.retDD >= 3)}
+          {K(es ? '% ganadoras' : 'Win %', r.winRate + '%')}
+          {K('Drawdown', _money(r.maxDD) + ' · ' + r.maxDDpct + '%', false)}
+          {K('SQN', r.sqn, r.sqn >= 2)}
+          {K('CAGR', r.cagr + '%')}
+          {K(es ? 'Operaciones' : 'Trades', r.trades)}
+          {K('Expectancy', _money(r.expectancy))}
+        </div>
+      </div>
+      <div>
+        <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 6 }}>{es ? 'Métricas avanzadas' : 'Advanced metrics'}</div>
+        <div style={grid}>
+          {K(es ? 'Anual medio' : 'Yearly avg', _money(r.yearlyAvgProfit))}
+          {K(es ? 'Anual %' : 'Yearly %', r.yearlyAvgPct + '%')}
+          {K(es ? 'Mensual medio' : 'Monthly avg', _money(r.monthlyAvgProfit))}
+          {K('Annual/MaxDD', r.annualMaxDD, r.annualMaxDD >= 1)}
+          {K('AHPR %', r.ahpr + '%')}
+          {K('R-Expectancy', r.rExpectancy)}
+          {K('STR Quality', r.strQuality, r.strQuality >= 2)}
+          {K('Z-Score', r.zScore)}
+          {K('Z-Prob %', r.zProb + '%')}
+          {K('Payout', r.payout)}
+          {K(es ? 'Racha máx. G/P' : 'Max consec W/L', r.maxConsecWins + ' / ' + r.maxConsecLosses)}
+          {K(es ? 'Estancamiento' : 'Stagnation', r.stagnationDays + 'd · ' + r.stagnationPct + '%', false)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---- Curva de equity (compacta, no se esconde) ----
+function EquityCurve({ eq, es }: { eq: { eq: number }[]; es: boolean }) {
+  if (!eq || eq.length < 2) return <div className="muted" style={{ fontSize: 12.5 }}>{es ? 'Sin datos de curva.' : 'No curve data.'}</div>;
+  const W = 900, H = 200, pad = 8;
+  const vals = eq.map((p) => p.eq);
+  const mn = Math.min(...vals), mx = Math.max(...vals);
+  const x = (i: number) => pad + (i / (eq.length - 1)) * (W - 2 * pad);
+  const y = (v: number) => H - pad - ((v - mn) / (mx - mn || 1)) * (H - 2 * pad);
+  const line = eq.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.eq).toFixed(1)}`).join(' ');
+  const last = vals[vals.length - 1], first = vals[0];
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 8, fontSize: 12 }}>
+        <span className="muted">{es ? 'Inicio' : 'Start'}: <b style={{ color: 'var(--tx)' }}>{_money(first)}</b></span>
+        <span className="muted">{es ? 'Final' : 'End'}: <b style={{ color: last >= first ? GREEN : RED }}>{_money(last)}</b></span>
+        <span className="muted">{es ? 'Puntos' : 'Points'}: <b style={{ color: 'var(--tx)' }}>{eq.length.toLocaleString('en-US')}</b></span>
+      </div>
+      <div style={{ border: '1px solid var(--line)', borderRadius: 10, padding: 6, background: 'var(--bg2)' }}>
+        <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="180" preserveAspectRatio="none"><path d={line} fill="none" stroke={GREEN} strokeWidth={2} /></svg>
+      </div>
+    </div>
+  );
 }
