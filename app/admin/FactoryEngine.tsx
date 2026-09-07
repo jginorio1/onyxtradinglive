@@ -334,100 +334,42 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
     if (!bars) { toastErr(es ? 'Sube los datos primero.' : 'Upload data first.'); return; }
     if (!meta.symbol) { toastErr(es ? 'Falta el símbolo (se rellena al subir los datos).' : 'Missing symbol.'); return; }
     if (n < 1) { toastErr(es ? 'Escribe cuántas estrategias generar.' : 'Enter how many strategies to generate.'); return; }
-    setAuto(true); setAutoDone(null); setAutoMsg(es ? 'Generando estrategias…' : 'Generating strategies…');
+    setAuto(true); setAutoDone(null); setAutoMsg(es ? 'Preparando (segundo plano)…' : 'Preparing (background)…');
     await new Promise((r) => setTimeout(r, 30));
     try {
-      let top: { spec: Spec }[] = [];
-      let scanned = 0, survivorsN = 0;
-      const cut = Math.floor(bars.length * 0.7); const isB = bars.slice(0, cut), oosB = bars.slice(cut);
-
-      if (autoMode === 'evolve') {
-        // EVOLUCIÓN: muta y cruza las mejores durante varias generaciones. Explora un
-        // espacio de MILLONES de combinaciones haciendo solo unos miles de backtests.
-        setAutoMsg(es ? 'Evolucionando (mutación + cruce)…' : 'Evolving (mutation + crossover)…');
-        await new Promise((r) => setTimeout(r, 10));
-        // OJO: evolve() corre de forma síncrona (no cede el hilo), así que NO se puede
-        // dejar sin tope o congela el navegador ("Page Unresponsive"). Se acota a un
-        // esfuerzo seguro; para explorar de verdad a lo bruto usa el modo Aleatorio
-        // (por lotes, sí cede el hilo) o temporalidades mayores (menos barras).
-        // evolve() es síncrono (bloquea el navegador), así que se acota a un tamaño
-        // que NO congela. Para buscar más a fondo usa el modo Aleatorio (por lotes,
-        // cede el hilo) o una temporalidad mayor (H1/H4 = menos barras por backtest).
-        const gens = Math.max(6, Math.min(25, Math.round(n / 500)));   // máx 25 generaciones
-        const pop = Math.max(30, Math.min(140, Math.round(n / 30)));   // máx 140 de población
-        // Guardamos un POOL amplio (keepN×5) para que el filtro anti-sobreajuste tenga de dónde elegir.
-        const pool = Math.max(24, Math.min(80, keepN * 5));
-        const r = evolve(bars, costs, { pop, gens, keep: pool, mut: evoCfg.mut, restart: evoCfg.restart, oosPct: oosPct || 30 });
-        setEvo({ best: r.best.slice(0, Math.max(keepN, 8)), history: r.history });
-        const good = r.best.filter((s) => s.ev.oosPf >= 1 && s.ev.oosNet > 0 && s.ev.dd <= maxDd && s.ev.trades >= minTr);
-        top = (good.length ? good : r.best).map((s) => ({ spec: { ...s.spec, dir } }));
-        scanned = r.evaluated; survivorsN = good.length;
-      } else {
-        // ALEATORIO POR LOTES: en vez de crear TODO el array de golpe (revienta la
-        // memoria con millones), se procesa en tandas: genera un lote, lo backtestea,
-        // guarda solo los mejores y descarta el resto. La memoria NO crece aunque
-        // pongas millones. Así corre de verdad a fondo.
-        // Lote pequeño + cesión frecuente del hilo → el navegador NO se congela aunque
-        // sean millones. (En datos con muchas barras conviene temporalidad mayor.)
-        const CHUNK = 400;
-        const keepPool = Math.max(24, keepN * 5);
-        const survivors: { spec: Spec; fit: number }[] = [];
-        for (let done = 0; done < n; done += CHUNK) {
-          const size = Math.min(CHUNK, n - done);
-          const cands = sampleCandidates(cfg, size) as Spec[];
-          for (let i = 0; i < cands.length; i++) {
-            const c = { ...cands[i], dir };
-            const ev = evaluate(c, isB, oosB, costs);
-            if (ev.fit > 0 && ev.oosPf >= 1 && ev.dd <= maxDd && ev.trades >= minTr && ev.oosNet > 0) survivors.push({ spec: c, fit: ev.fit });
-            if (i % 40 === 39) await new Promise((r) => setTimeout(r, 0)); // cede el hilo seguido dentro del lote
-          }
-          // Poda: mantén solo un tope de supervivientes para que la memoria quede plana.
-          if (survivors.length > keepPool * 8) { survivors.sort((a, b) => b.fit - a.fit); survivors.length = keepPool * 4; }
-          scanned = done + size;
-          setAutoMsg((es ? 'Backtesteando por lotes ' : 'Batch backtesting ') + scanned.toLocaleString('en-US') + '/' + n.toLocaleString('en-US') + ' · ' + (es ? 'robustos ' : 'robust ') + survivors.length);
-          await new Promise((r) => setTimeout(r, 0));
-        }
-        survivors.sort((a, b) => b.fit - a.fit);
-        top = survivors.slice(0, keepPool); // pool amplio para el filtro anti-sobreajuste
-        survivorsN = survivors.length;
-      }
-
-      // ══ FILTRO ANTI-SOBREAJUSTE (obligatorio) ══
-      // Cada finalista recibe su Onyx Robustness Score (consistencia IS≈OOS + rentabilidad
-      // OOS + Monte Carlo + drawdown + simplicidad). Solo pasan los que llegan al mínimo:
-      // así se descartan los robots "de laboratorio" que solo brillan en lo ya visto.
-      setAutoMsg(es ? 'Filtrando sobre-optimizados (Onyx Score)…' : 'Filtering over-optimized (Onyx Score)…');
-      await new Promise((r) => setTimeout(r, 10));
-      // onyxScore es PESADO (Monte Carlo 1000 + walk-forward por candidato). Se limita
-      // a los mejores del pool y se cede el hilo en CADA uno para no congelar.
-      const toScore = top.slice(0, Math.min(top.length, Math.max(30, keepN * 4)));
-      const graded: { spec: Spec; sc: OnyxScore }[] = [];
-      for (let i = 0; i < toScore.length; i++) {
-        try {
-          const sc = onyxScore(bars, enrichSpec({ ...toScore[i].spec, dir }, blockMap) as Spec, costs, oosPct || 30);
-          if (sc.score >= minScore) graded.push({ spec: toScore[i].spec, sc });
-        } catch { /* descartar el que rompa */ }
-        setAutoMsg((es ? 'Puntuando robustez ' : 'Scoring robustness ') + (i + 1) + '/' + toScore.length);
-        await new Promise((r) => setTimeout(r, 0)); // cede el hilo en cada uno
-      }
-      graded.sort((a, b) => b.sc.score - a.sc.score);
-      const finalists = graded.slice(0, Math.max(1, keepN));
-      const passedGate = graded.length;
+      // ══ TODO EL CÁLCULO PESADO CORRE EN UN WEB WORKER (hilo aparte) ══
+      // La página ya NO se congela nunca: aquí solo mandamos los datos y
+      // recibimos el progreso y los finalistas. Puede correr millones.
+      const result = await new Promise<any>((resolve, reject) => {
+        let worker: Worker;
+        try { worker = new Worker(new URL('./factoryWorker.ts', import.meta.url)); }
+        catch (err) { reject(err); return; }
+        worker.onmessage = (ev: MessageEvent) => {
+          const m = ev.data || {};
+          if (m.type === 'progress') setAutoMsg(m.msg);
+          else if (m.type === 'evo') setEvo({ best: m.best, history: m.history });
+          else if (m.type === 'error') { worker.terminate(); reject(new Error(m.message)); }
+          else if (m.type === 'done') { worker.terminate(); resolve(m); }
+        };
+        worker.onerror = (er: any) => { worker.terminate(); reject(new Error(er?.message || 'worker error')); };
+        worker.postMessage({ bars, costs, cfg, dir, n, autoMode, keepN, minScore, evoCfg: { mut: evoCfg.mut, restart: evoCfg.restart }, oosPct: oosPct || 30, maxDd, minTr, blockMap });
+      });
+      const finalists: { spec: Spec; score: number; grade: string; cx: number }[] = result.finalists || [];
+      const scanned = result.scanned || 0;
+      const passedGate = result.survivors || 0;
 
       let created = 0;
       const createdBots: { id: string; spec: Spec }[] = [];
       for (let i = 0; i < finalists.length; i++) {
-        setAutoMsg((useAi ? (es ? '🧠 IA auditando robot ' : '🧠 AI auditing robot ') : (es ? 'Creando robot ' : 'Creating robot ')) + (i + 1) + '/' + finalists.length + ' · Onyx ' + finalists[i].sc.grade);
+        setAutoMsg((useAi ? (es ? '🧠 IA auditando robot ' : '🧠 AI auditing robot ') : (es ? 'Creando robot ' : 'Creating robot ')) + (i + 1) + '/' + finalists.length + ' · Onyx ' + finalists[i].grade);
         const trades = runBacktest(bars, finalists[i].spec, costs).trades;
         if (trades.length < 20) continue;
-        const j = await post({ action: 'bot_create', platform: meta.platform, symbol: meta.symbol, timeframe: meta.tf, strategy: { family: 'autopiloto', gen: finalists[i].spec, onyx: finalists[i].sc.score, grade: finalists[i].sc.grade } });
-        // IA en el proceso: si está activada, el laboratorio llama a Claude para auditar
-        // cada robot (interpretación + mutaciones sugeridas). noAi:false = IA encendida.
-        await post({ action: 'lab_run', botId: j.bot?.id, trades, paramCount: finalists[i].sc.cx, noAi: !useAi, lang: es ? 'es' : 'en' });
+        const j = await post({ action: 'bot_create', platform: meta.platform, symbol: meta.symbol, timeframe: meta.tf, strategy: { family: 'autopiloto', gen: finalists[i].spec, onyx: finalists[i].score, grade: finalists[i].grade } });
+        await post({ action: 'lab_run', botId: j.bot?.id, trades, paramCount: finalists[i].cx, noAi: !useAi, lang: es ? 'es' : 'en' });
         if (j.bot?.id) createdBots.push({ id: j.bot.id, spec: finalists[i].spec });
         created++;
       }
-      const avgGrade = finalists.length ? finalists.reduce((s, f) => s + f.sc.score, 0) / finalists.length : 0;
+      const avgGrade = finalists.length ? finalists.reduce((s, f) => s + f.score, 0) / finalists.length : 0;
       setAutoDone({ created, scanned, survivors: passedGate, avg: Math.round(avgGrade) });
       toast((es ? 'Autopiloto: ' : 'Autopilot: ') + created + (es ? ' robots limpios creados' : ' clean robots created'));
       if (reload) reload();
