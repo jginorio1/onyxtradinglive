@@ -112,6 +112,39 @@ export default function FactoryPipeline({ es, canManage, post }: any) {
         {archived.length > 0 && <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>🗑 {archived.length} {es ? 'archivados (no pasaron el filtro)' : 'archived (failed the filter)'}</div>}
       </div>
 
+      {/* Candidatos recién creados (Databank) + esperando 1ª operación */}
+      {(() => {
+        const cands = ((d.candidates || []) as any[]).filter((b) => b.status !== 'archivado');
+        if (!cands.length) return null;
+        return (
+          <div style={card}>
+            <h3 style={{ margin: '0 0 4px' }}>{es ? 'Recién creados · conéctalos a la demo' : 'Just created · connect them to demo'}</h3>
+            <p className="muted" style={{ fontSize: 12.5, marginTop: 0 }}>{es ? 'Estos robots ya están en el Databank pero aún no corren en la demo. Pon su EA en la cuenta demo y conéctalo — al llegar su 1ª operación entran solos al pipeline.' : 'These robots are in the Databank but not yet running on demo. Put their EA on the demo account and connect — on their 1st trade they auto-enter the pipeline.'}</p>
+            {/* Aviso (A): el robot es solo la lógica; Onyx Connect es el puente */}
+            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', background: 'color-mix(in srgb,var(--brand) 8%,var(--bg2))', border: '1px solid color-mix(in srgb,var(--brand) 28%,var(--line))', borderRadius: 10, padding: '10px 12px', fontSize: 12, marginBottom: 12 }}>
+              <span style={{ fontSize: 16, lineHeight: 1 }}>🔌</span>
+              <div>{es
+                ? <>El EA de la fábrica es <b>solo la lógica</b> (sin panel ni API). Para que Onyx lo vea, instala también el <b>EA Onyx Connect</b> en esa misma cuenta demo y pega tu <b>API key</b> — reporta todos los robots por su <b>magic</b>. El panel y los KPIs viven en Connect.</>
+                : <>The factory EA is <b>logic only</b> (no panel, no API). For Onyx to see it, also install the <b>Onyx Connect EA</b> on that demo account and paste your <b>API key</b> — it reports every robot by its <b>magic</b>. The panel and KPIs live in Connect.</>}</div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 10 }}>
+              {cands.map((b) => {
+                const waiting = b.stage === 'esperando';
+                return (
+                  <div key={b.id} style={{ border: `1px solid ${waiting ? 'color-mix(in srgb,' + AMBER + ' 45%,var(--line))' : 'var(--line)'}`, borderRadius: 11, padding: 12, background: 'var(--bg2)' }}>
+                    <div style={{ fontSize: 13, fontWeight: 800, fontFamily: 'monospace', color: VIOLET, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.name}</div>
+                    <div className="muted" style={{ fontSize: 11.5, marginTop: 2 }}>{String(b.platform || '').toUpperCase()} · {b.symbol || '—'} · {b.timeframe || '—'} · magic <b style={{ fontFamily: 'monospace', color: 'var(--tx)' }}>{b.magic || '—'}</b></div>
+                    {waiting
+                      ? <div style={{ marginTop: 10, fontSize: 12, fontWeight: 700, color: AMBER, display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 9, height: 9, borderRadius: '50%', background: AMBER, boxShadow: `0 0 6px ${AMBER}` }} />{es ? `Esperando 1ª operación con magic ${b.magic}…` : `Waiting for 1st trade with magic ${b.magic}…`}</div>
+                      : canManage && <button onClick={() => act({ action: 'link_demo', botId: b.id }, es ? 'Conectado · esperando su 1ª operación' : 'Connected · waiting for 1st trade')} disabled={busy} style={{ ...btn(GREEN), marginTop: 10 }}>{es ? '🔗 Conectar a demo' : '🔗 Connect to demo'}</button>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Detalle del robot */}
       {bot && (
         <div style={{ ...card, borderColor: `color-mix(in srgb,${healthColor(bot.health || 'green')} 40%,var(--line))` }}>

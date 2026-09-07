@@ -466,6 +466,14 @@ export default function FactoryLab({ es, canManage, post, reload, bots, datasets
             </div>
             <div>
               <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 6 }}>⬇ {es ? 'Descargar' : 'Download'} <span className="muted" style={{ fontWeight: 500 }}>· {es ? 'código, reportes y Pack Onyx' : 'code, reports & Onyx Pack'}</span></div>
+              {bot.strategy?.gen && (
+                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', background: 'color-mix(in srgb,var(--brand) 8%,var(--bg2))', border: '1px solid color-mix(in srgb,var(--brand) 28%,var(--line))', borderRadius: 10, padding: '9px 11px', fontSize: 11.5, marginBottom: 10 }}>
+                  <span style={{ fontSize: 15, lineHeight: 1 }}>🔌</span>
+                  <div>{es
+                    ? <>Este EA es <b>solo la lógica</b> (sin panel ni API — es normal). Para verlo en Onyx: pon también el <b>EA Onyx Connect</b> en la misma cuenta con tu <b>API key</b>. El magic <b style={{ fontFamily: 'monospace' }}>{magicOf()}</b> enlaza este robot; luego conéctalo desde el <b>Pipeline</b>.</>
+                    : <>This EA is <b>logic only</b> (no panel, no API — that's expected). To see it in Onyx: also run the <b>Onyx Connect EA</b> on the same account with your <b>API key</b>. Magic <b style={{ fontFamily: 'monospace' }}>{magicOf()}</b> links this robot; then connect it from the <b>Pipeline</b>.</>}</div>
+                </div>
+              )}
               {bot.strategy?.gen ? (
                 <>
                   {/* Pack Onyx: TODO en un ZIP (mejor que StrategyQuant) */}

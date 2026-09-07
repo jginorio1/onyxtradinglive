@@ -117,10 +117,13 @@ async function log(botId: string, ev: string, from: string, to: string, score: n
 
 // ---- El cron: evalúa TODOS los robots activos del pipeline una vez ----
 export async function runPipelineOnce() {
+  // Primero: arranca los que estaban "esperando" y ya empezaron a operar.
+  let autoStarted = 0;
+  try { autoStarted = (await autoStartWaiting()).started; } catch { /* no romper el cron */ }
   const { data: active } = await supabaseAdmin.from('factory_bots').select('*')
     .in('stage', PIPELINE_KEYS).eq('real_approved', false).limit(500);
   const bots = (active || []) as any[];
-  if (!bots.length) return { evaluated: 0 };
+  if (!bots.length) return { evaluated: 0, autoStarted };
 
   const corr = await correlationMatrix(bots);
   let evaluated = 0;
@@ -183,7 +186,7 @@ export async function runPipelineOnce() {
     await supabaseAdmin.from('factory_bots').update(patch).eq('id', b.id);
     evaluated++;
   }
-  return { evaluated };
+  return { evaluated, autoStarted };
 }
 
 // ---- Acciones del admin ----
@@ -198,14 +201,44 @@ export async function linkDemo(botId: string, magicIn?: number, account?: string
   }
   if (!magic) throw new Error('El robot no tiene magic asignado. Vuelve a crearlo.');
   const acc = account || await resolveAccountByMagic(magic);
-  if (!acc) throw new Error(`No encontré operaciones con el magic ${magic}. Corre el robot en la cuenta demo con ese magic primero.`);
   const now = new Date().toISOString();
+  // Si TODAVÍA no hay operaciones con ese magic, no fallamos: dejamos el robot
+  // "esperando" su primera operación. El robot ya aparece en el tablero y el cron
+  // lo arranca solo en cuanto Onyx Connect reporte el primer trade (auto-start).
+  if (!acc) {
+    await supabaseAdmin.from('factory_bots').update({
+      live_magic: magic, stage: 'esperando', status: 'activo', pipeline_started_at: now,
+    }).eq('id', botId);
+    await log(botId, 'demo_link', 'databank', 'esperando', 0, 'green', `esperando 1ª operación con magic ${magic}`);
+    return { ok: true, waiting: true, magic };
+  }
   await supabaseAdmin.from('factory_bots').update({
     live_account: acc, live_magic: magic, stage_index: 0, stage: STAGES[0].key, status: 'activo',
     stage_started_at: now, pipeline_started_at: now, health: 'green', risk_factor: 1, paper: false, real_ready: false,
   }).eq('id', botId);
   await log(botId, 'advance', 'demo_link', STAGES[0].key, 0, 'green', 'conectado a demo · inicia pipeline');
   return { ok: true, account: acc };
+}
+
+// Arranca los robots que estaban "esperando" en cuanto aparecen sus operaciones.
+// Lo llama el cron del pipeline y también el tablero al abrirse (barato).
+export async function autoStartWaiting(): Promise<{ started: number }> {
+  const { data } = await supabaseAdmin.from('factory_bots').select('id,magic,live_magic').eq('stage', 'esperando').limit(200);
+  let started = 0;
+  for (const b of (data || []) as any[]) {
+    const magic = Number(b.live_magic || b.magic) || 0;
+    if (!magic) continue;
+    const acc = await resolveAccountByMagic(magic);
+    if (!acc) continue;                                   // aún sin operar → sigue esperando
+    const now = new Date().toISOString();
+    await supabaseAdmin.from('factory_bots').update({
+      live_account: acc, live_magic: magic, stage_index: 0, stage: STAGES[0].key, status: 'activo',
+      stage_started_at: now, pipeline_started_at: now, health: 'green', risk_factor: 1, paper: false, real_ready: false,
+    }).eq('id', b.id);
+    await log(b.id, 'advance', 'esperando', STAGES[0].key, 0, 'green', 'llegó la 1ª operación · arranca el pipeline');
+    started++;
+  }
+  return { started };
 }
 
 export async function stageOverride(botId: string, dir: 'advance' | 'archive') {
@@ -237,9 +270,16 @@ export async function eaControl(account: string, magic: number) {
 
 // Datos para el tablero del admin.
 export async function pipelineBoard() {
+  // Al abrir el tablero, intenta arrancar los que ya empezaron a operar (barato).
+  try { await autoStartWaiting(); } catch { /* no bloquear el tablero */ }
   const { data } = await supabaseAdmin.from('factory_bots').select('*').order('created_at', { ascending: false }).limit(300);
   const bots = (data || []) as any[];
   const inPipe = bots.filter((b) => PIPELINE_KEYS.includes(b.stage) || ['listo', 'real'].includes(b.stage));
+  // Candidatos: robots recién creados en el Databank (aún sin conectar) o "esperando"
+  // su primera operación. Se muestran arriba con el botón «Conectar a demo».
+  const candidates = bots.filter((b) => b.status !== 'archivado'
+    && !PIPELINE_KEYS.includes(b.stage) && !['listo', 'real', 'archived'].includes(b.stage)
+    && b.stage !== 'real');
   const corr = await correlationMatrix(inPipe.filter((b) => PIPELINE_KEYS.includes(b.stage)));
-  return { bots, stages: STAGES, corr };
+  return { bots, candidates, stages: STAGES, corr };
 }
