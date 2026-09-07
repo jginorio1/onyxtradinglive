@@ -350,8 +350,11 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
         // dejar sin tope o congela el navegador ("Page Unresponsive"). Se acota a un
         // esfuerzo seguro; para explorar de verdad a lo bruto usa el modo Aleatorio
         // (por lotes, sí cede el hilo) o temporalidades mayores (menos barras).
-        const gens = Math.max(6, Math.min(60, Math.round(n / 400)));  // máx 60 generaciones (seguro)
-        const pop = Math.max(40, Math.min(300, Math.round(n / 20)));  // máx 300 de población (seguro)
+        // evolve() es síncrono (bloquea el navegador), así que se acota a un tamaño
+        // que NO congela. Para buscar más a fondo usa el modo Aleatorio (por lotes,
+        // cede el hilo) o una temporalidad mayor (H1/H4 = menos barras por backtest).
+        const gens = Math.max(6, Math.min(25, Math.round(n / 500)));   // máx 25 generaciones
+        const pop = Math.max(30, Math.min(140, Math.round(n / 30)));   // máx 140 de población
         // Guardamos un POOL amplio (keepN×5) para que el filtro anti-sobreajuste tenga de dónde elegir.
         const pool = Math.max(24, Math.min(80, keepN * 5));
         const r = evolve(bars, costs, { pop, gens, keep: pool, mut: evoCfg.mut, restart: evoCfg.restart, oosPct: oosPct || 30 });
@@ -376,7 +379,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
             const c = { ...cands[i], dir };
             const ev = evaluate(c, isB, oosB, costs);
             if (ev.fit > 0 && ev.oosPf >= 1 && ev.dd <= maxDd && ev.trades >= minTr && ev.oosNet > 0) survivors.push({ spec: c, fit: ev.fit });
-            if (i % 100 === 99) await new Promise((r) => setTimeout(r, 0)); // cede el hilo dentro del lote
+            if (i % 40 === 39) await new Promise((r) => setTimeout(r, 0)); // cede el hilo seguido dentro del lote
           }
           // Poda: mantén solo un tope de supervivientes para que la memoria quede plana.
           if (survivors.length > keepPool * 8) { survivors.sort((a, b) => b.fit - a.fit); survivors.length = keepPool * 4; }
@@ -395,13 +398,17 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
       // así se descartan los robots "de laboratorio" que solo brillan en lo ya visto.
       setAutoMsg(es ? 'Filtrando sobre-optimizados (Onyx Score)…' : 'Filtering over-optimized (Onyx Score)…');
       await new Promise((r) => setTimeout(r, 10));
+      // onyxScore es PESADO (Monte Carlo 1000 + walk-forward por candidato). Se limita
+      // a los mejores del pool y se cede el hilo en CADA uno para no congelar.
+      const toScore = top.slice(0, Math.min(top.length, Math.max(30, keepN * 4)));
       const graded: { spec: Spec; sc: OnyxScore }[] = [];
-      for (let i = 0; i < top.length; i++) {
+      for (let i = 0; i < toScore.length; i++) {
         try {
-          const sc = onyxScore(bars, enrichSpec({ ...top[i].spec, dir }, blockMap) as Spec, costs, oosPct || 30);
-          if (sc.score >= minScore) graded.push({ spec: top[i].spec, sc });
+          const sc = onyxScore(bars, enrichSpec({ ...toScore[i].spec, dir }, blockMap) as Spec, costs, oosPct || 30);
+          if (sc.score >= minScore) graded.push({ spec: toScore[i].spec, sc });
         } catch { /* descartar el que rompa */ }
-        if (i % 6 === 0) { setAutoMsg((es ? 'Puntuando robustez ' : 'Scoring robustness ') + i + '/' + top.length); await new Promise((r) => setTimeout(r, 0)); }
+        setAutoMsg((es ? 'Puntuando robustez ' : 'Scoring robustness ') + (i + 1) + '/' + toScore.length);
+        await new Promise((r) => setTimeout(r, 0)); // cede el hilo en cada uno
       }
       graded.sort((a, b) => b.sc.score - a.sc.score);
       const finalists = graded.slice(0, Math.max(1, keepN));
