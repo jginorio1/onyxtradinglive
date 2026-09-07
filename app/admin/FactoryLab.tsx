@@ -7,7 +7,7 @@ import { enrichSpec } from '@/lib/stratgen';
 import { fetchColumnar, barsFromColumnar } from '@/lib/dataAnalyzer';
 import { runBacktest, type Costs, type Spec } from '@/lib/backtest';
 import { buildReport, type FullReport } from '@/lib/report';
-import { reportHTML, type ReportMeta } from '@/lib/reporthtml';
+import { reportHTML, type ReportMeta } from '@/lib/reportHtml';
 import { makeZip } from '@/lib/zip';
 
 const gradeOf = (s?: number | null) => s == null ? null : s >= 80 ? 'A' : s >= 65 ? 'B' : s >= 50 ? 'C' : s >= 35 ? 'D' : 'F';
