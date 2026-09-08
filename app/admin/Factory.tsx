@@ -139,7 +139,7 @@ export default function Factory({ canManage = true }: { canManage?: boolean }) {
       {sub === 'motor' && <FactoryEngine es={es} canManage={canManage} post={post} reload={load} datasets={d.datasets || []} blocks={d.blocks || []} />}
       {sub === 'laboratorio' && <FactoryLab es={es} canManage={canManage} post={post} reload={load} bots={d.bots || []} datasets={d.datasets || []} />}
       {sub === 'pipeline' && <FactoryPipeline es={es} canManage={canManage} post={post} />}
-      {sub === 'robots' && <BotList es={es} canManage={canManage} post={post} reload={load} bots={d.bots || []} />}
+      {sub === 'robots' && <BotList es={es} canManage={canManage} post={post} reload={load} bots={d.bots || []} folders={d.folders || []} batches={d.batches || []} setSub={setSub} />}
     </div>
   );
 }
@@ -609,11 +609,11 @@ function TemplateLibrary({ es, canManage, post, reload, templates, datasets, onU
 const tfDefault = 'M15';
 
 // -------- Lista de robots (cartera estilo Mis Robots) --------
-function BotList({ es, canManage, post, reload, bots }: any) {
+function BotList({ es, canManage, post, reload, bots, folders = [], batches = [], setSub }: any) {
   return (
     <div style={card}>
       <h3 style={{ marginTop: 0 }}>{es ? 'Robots de la fábrica' : 'Factory robots'}</h3>
-      <RobotGrid bots={bots} es={es} post={post} canManage={canManage} reload={reload} embedded />
+      <RobotGrid bots={bots} folders={folders} batches={batches} es={es} post={post} canManage={canManage} reload={reload} setSub={setSub} embedded />
     </div>
   );
 }
