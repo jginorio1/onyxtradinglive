@@ -663,12 +663,21 @@ function RobotGrid({ bots = [], folders = [], batches = [], es, post, canManage,
   const [live, setLive] = useState<Record<string, any>>({}); // KPIs en vivo por magic (cuenta demo)
   const [sel, setSel] = useState<Set<string>>(new Set());     // selección múltiple (bulk)
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [nf, setNf] = useState('');            // nombre de carpeta nueva (campo inline, sin prompt)
+  const [nfBusy, setNfBusy] = useState(false);
   const folderName = (id: string) => (folders as any[]).find((f) => f.id === id)?.name || '';
-  async function newFolder() {
-    const name = (typeof window !== 'undefined' ? window.prompt(es ? 'Nombre de la nueva carpeta:' : 'New folder name:') : '') || '';
-    if (!name.trim()) return;
-    try { await post({ action: 'folder_create', name: name.trim() }); toast(es ? 'Carpeta creada' : 'Folder created'); reload && reload(); } catch (e: any) { toastErr(e?.message); }
+  // Crea carpeta desde el campo inline (más fiable que window.prompt, que algunos
+  // navegadores/entornos bloquean → por eso «no creaba» antes).
+  async function createFolderNow() {
+    const name = nf.trim();
+    if (!name) { toastErr(es ? 'Escribe un nombre.' : 'Type a name.'); return; }
+    setNfBusy(true);
+    try { const r = await post({ action: 'folder_create', name }); if (r?.folder?.id) setFolderFilter(r.folder.id); setNf(''); toast(es ? 'Carpeta creada' : 'Folder created'); reload && reload(); }
+    catch (e: any) { toastErr(e?.message || (es ? 'No se pudo crear la carpeta.' : 'Could not create folder.')); }
+    finally { setNfBusy(false); }
   }
+  // Para el desplegable «Mover a…»: si eligen «Nueva carpeta», usamos el campo inline.
+  function newFolder() { toast(es ? 'Escribe el nombre en la barra lateral (＋) y pulsa crear.' : 'Type the name in the sidebar (＋) and press create.'); }
   async function delFolder(id: string) {
     if (!confirm(es ? '¿Borrar esta carpeta? Los robots no se borran, solo salen de ella.' : 'Delete this folder? Robots are not deleted, just removed from it.')) return;
     try { await post({ action: 'folder_delete', id }); if (folderFilter === id) setFolderFilter(''); toast(es ? 'Carpeta borrada' : 'Folder deleted'); reload && reload(); } catch (e: any) { toastErr(e?.message); }
@@ -729,7 +738,10 @@ function RobotGrid({ bots = [], folders = [], batches = [], es, post, canManage,
           {(folders as any[]).map((f) => (
             <NavRow key={f.id} label={'📁 ' + f.name} count={(bots as any[]).filter((b) => b.folder_id === f.id).length} active={folderFilter === f.id} color={f.color || VIOLET} onClick={() => { setFolderFilter(f.id); setBatchFilter(null); setFilter('todos'); }} onDelete={canManage ? () => delFolder(f.id) : undefined} />
           ))}
-          {canManage && <button onClick={newFolder} style={{ marginTop: 4, padding: '6px 9px', borderRadius: 8, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', border: '1px dashed var(--line)', background: 'transparent', color: 'var(--tx)', textAlign: 'left' }}>＋ {es ? 'Nueva carpeta' : 'New folder'}</button>}
+          {canManage && <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+            <input value={nf} onChange={(e) => setNf(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') createFolderNow(); }} placeholder={es ? 'Nueva carpeta…' : 'New folder…'} maxLength={40} style={{ flex: 1, minWidth: 0, padding: '6px 8px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--tx)', fontSize: 12 }} />
+            <button onClick={createFolderNow} disabled={nfBusy || !nf.trim()} title={es ? 'Crear carpeta' : 'Create folder'} style={{ flex: 'none', width: 30, borderRadius: 8, border: '1px solid color-mix(in srgb,var(--brand) 45%,transparent)', background: 'color-mix(in srgb,var(--brand) 14%,transparent)', color: 'var(--brand)', fontWeight: 800, fontSize: 15, cursor: nfBusy || !nf.trim() ? 'default' : 'pointer' }}>＋</button>
+          </div>}
           <div className="muted" style={{ fontSize: 10, fontWeight: 800, letterSpacing: .4, margin: '9px 0 3px' }}>{es ? 'POR LOTE' : 'BY BATCH'}</div>
           {!(batches as any[]).length && <div className="muted" style={{ fontSize: 10.5, padding: '2px 5px', lineHeight: 1.45 }}>{es ? 'Sin lotes todavía. Cada corrida del Motor crea uno. (Necesita factory_v12.sql en Supabase.)' : 'No batches yet. Each Engine run makes one. (Needs factory_v12.sql in Supabase.)'}</div>}
           {(batches as any[]).slice(0, 15).map((bt) => (
