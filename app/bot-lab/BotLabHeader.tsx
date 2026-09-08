@@ -88,9 +88,16 @@ export default function BotLabHeader({ loggedIn = false }: { loggedIn?: boolean 
           <button className="botlab-burger" onClick={() => setOpen((o) => !o)} aria-label="Menu" style={{ display: 'none', background: 'transparent', border: '1px solid var(--line)', color: 'var(--tx)', width: 36, height: 36, borderRadius: 9, cursor: 'pointer', fontSize: 16 }}>☰</button>
         </div>
         {open && (
-          <div style={{ borderTop: '1px solid var(--line)', background: 'var(--card)' }}>
-            <div className="wrap-wide" style={{ padding: '6px 0 12px', display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {items.map((i) => <Link key={i.href} href={i.href} onClick={() => setOpen(false)} style={{ padding: '11px 12px', borderRadius: 8, color: 'var(--tx)', fontWeight: 600, fontSize: 15, textAlign: 'left', textDecoration: 'none' }}>{i.label}</Link>)}
+          <div style={{ borderTop: '1px solid var(--line)', background: 'var(--card,#1a2133)', boxShadow: '0 18px 44px rgba(0,0,0,.5)' }}>
+            {/* Panel propio: SIN la clase wrap-wide (dentro de .topbar esa clase fuerza height:64px
+                + justify-content:space-between y desparramaba los enlaces sobre el hero). */}
+            <div style={{ maxWidth: 1680, margin: '0 auto', padding: '8px 16px 14px', display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 4 }}>
+              {items.map((i) => (
+                <Link key={i.href} href={i.href} onClick={() => setOpen(false)} style={{ display: 'block', width: '100%', padding: '13px 12px', borderRadius: 10, color: 'var(--tx)', fontWeight: 600, fontSize: 15, textAlign: 'left', textDecoration: 'none', background: i.on ? 'color-mix(in srgb,var(--gold,#ffd45e) 15%,transparent)' : 'transparent' }}>{i.label}</Link>
+              ))}
+              {!loggedIn && (
+                <a href="/login" onClick={() => setOpen(false)} style={{ display: 'block', width: '100%', padding: '13px 12px', marginTop: 4, borderTop: '1px solid var(--line)', color: 'var(--tx)', fontWeight: 700, fontSize: 15, textAlign: 'left', textDecoration: 'none' }}>{es ? 'Entrar' : 'Sign in'}</a>
+              )}
             </div>
           </div>
         )}
