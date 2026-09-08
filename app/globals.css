@@ -98,7 +98,7 @@ a{color:inherit;text-decoration:none;}
 .btn .ic{font-size:16px;line-height:1;}
 .card{background:linear-gradient(180deg,rgba(255,255,255,.04),transparent),var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 8px 30px rgba(0,0,0,.35);}
 .grid{display:grid;gap:16px;}
-.g4{grid-template-columns:repeat(4,minmax(0,1fr));} .g3{grid-template-columns:repeat(3,minmax(0,1fr));} .g2{grid-template-columns:repeat(2,minmax(0,1fr));}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr));} .g3{grid-template-columns:repeat(3,minmax(0,1fr));} .g2{grid-template-columns:repeat(2,minmax(0,1fr));} .g5{grid-template-columns:repeat(5,minmax(0,1fr));}
 .kpi{position:relative;overflow:hidden;}
 .kpi .lbl{color:var(--mut);font-size:13px;}
 .kpi .val{font-size:26px;font-weight:800;margin-top:4px;letter-spacing:-.5px;}
@@ -304,12 +304,13 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
 }
 
 /* Responsive por tamaño de pantalla */
-@media(max-width:1024px){ .g4{grid-template-columns:repeat(2,1fr);} .g3{grid-template-columns:repeat(2,1fr);} }
+@media(max-width:1024px){ .g4{grid-template-columns:repeat(2,1fr);} .g3{grid-template-columns:repeat(2,1fr);} .g5{grid-template-columns:repeat(3,1fr);} }
+@media(max-width:760px){ .g5{grid-template-columns:repeat(2,1fr);} }
 /* Cuando los enlaces no caben se recogen en el menú de la hamburguesa.
    Antes se ocultaban sin nada que los sustituyera y te quedabas sin
    navegación en cuanto la ventana era algo estrecha. */
 @media(max-width:900px){ .navl{display:none;} .navburger-wrap{display:block;} }
-@media(max-width:640px){ .g4,.g3,.g2{grid-template-columns:1fr;} h1{font-size:26px;} .wrap,.wrap-wide{padding:0 15px;} .card{padding:16px;} }
+@media(max-width:640px){ .g4,.g3,.g2,.g5{grid-template-columns:1fr;} h1{font-size:26px;} .wrap,.wrap-wide{padding:0 15px;} .card{padding:16px;} }
 /* Red de seguridad móvil: ninguna tarjeta o rejilla hace scroll lateral la página.
    Las tablas y el heatmap tienen su propio contenedor con scroll interno, así que
    esto no las afecta; solo evita el desbordamiento accidental del ancho de pantalla. */

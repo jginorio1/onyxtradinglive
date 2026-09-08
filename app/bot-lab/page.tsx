@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { serverLang, localeAlternates, SITE } from '@/lib/locale';
 import { listMarketplace, botLabSettings } from '@/lib/botlab';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import BotLabLead from './BotLabLead';
 
 export const dynamic = 'force-dynamic';
@@ -24,6 +25,15 @@ export default async function BotLabLanding() {
   const s = await botLabSettings();
   let bots: any[] = [];
   try { bots = await listMarketplace({ limit: 8 }); } catch { bots = []; }
+
+  // Reseñas: reutiliza las mismas del landing «Crea tu bot» (Admin → Módulos → Landing reviews).
+  let allReviews: any[] = [];
+  try { const { data: ls } = await supabaseAdmin.from('app_settings').select('value').eq('key', 'landing_stats').maybeSingle(); if (Array.isArray((ls as any)?.value?.reviews)) allReviews = (ls as any).value.reviews; } catch { allReviews = []; }
+  const curLang = es ? 'es' : 'en';
+  const langReviews = allReviews.filter((r: any) => (r?.lang || 'es') === curLang);
+  const reviews = (langReviews.length >= 3 ? langReviews : allReviews).slice(0, 9);
+  const rTotal = allReviews.length;
+  const rAvg = rTotal ? Number((allReviews.reduce((a: number, r: any) => a + Math.max(1, Math.min(5, Math.round(Number(r?.stars) || 5))), 0) / rTotal).toFixed(1)) : 0;
 
   const L = es ? {
     kicker: 'Onyx Bot Lab',
@@ -88,10 +98,10 @@ export default async function BotLabLanding() {
     <main style={{ paddingBottom: 40 }}>
       {/* HERO */}
       <section style={{ ...wrap, paddingTop: 56, paddingBottom: 30 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1.1fr .9fr', gap: 36, alignItems: 'center' }} className="g2">
+        <div style={{ display: 'grid', gap: 36, alignItems: 'center' }} className="g2">
           <div>
             <span style={kicker}>◆ {L.kicker}</span>
-            <h1 style={{ fontSize: 46, lineHeight: 1.08, fontWeight: 800, letterSpacing: '-.02em', margin: '14px 0 0' }}>
+            <h1 style={{ fontSize: 'clamp(30px,7.5vw,46px)', lineHeight: 1.08, fontWeight: 800, letterSpacing: '-.02em', margin: '14px 0 0' }}>
               {L.h1a}<span style={{ background: 'linear-gradient(120deg,var(--brand),var(--brand2,#a06bff))', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>{L.h1b}</span>{L.h1c}
             </h1>
             <p className="muted" style={{ fontSize: 17, marginTop: 16, maxWidth: 540 }}>{L.sub}</p>
@@ -128,10 +138,25 @@ export default async function BotLabLanding() {
         </div>
       </section>
 
+      {/* TRUST STRIP · por qué es seguro comprar aquí */}
+      <section style={{ ...wrap, paddingTop: 6, paddingBottom: 6 }}>
+        <div style={{ display: 'grid', gap: 12 }} className="g4">
+          {(es
+            ? [['✓', 'Traders verificados', 'Cada robot y su historial se revisan antes de publicarse.'], ['📊', 'Onyx Score y riesgo visibles', 'Ves score, rendimiento y drawdown máximo antes de pagar.'], ['🧪', 'Prueba en demo primero', 'Instálalo en cuenta demo y solo pásalo a real cuando te convenza.'], ['🔒', 'Pago seguro · tarjeta o USDT', 'Cobro protegido. Reglas de riesgo horneadas dentro del robot.']]
+            : [['✓', 'Verified traders', 'Every robot and its track record is reviewed before listing.'], ['📊', 'Onyx Score and risk shown', 'See score, performance and max drawdown before you pay.'], ['🧪', 'Try on demo first', 'Install on a demo account and go live only when convinced.'], ['🔒', 'Secure pay · card or USDT', 'Protected checkout. Risk rules baked inside the robot.']]
+          ).map(([ic, t, d], i) => (
+            <div key={i} style={{ ...card, padding: 14, display: 'flex', gap: 11, alignItems: 'flex-start' }}>
+              <span style={{ flex: 'none', fontSize: 17 }}>{ic}</span>
+              <div><b style={{ fontSize: 13.5 }}>{t}</b><p className="muted" style={{ fontSize: 12, margin: '3px 0 0' }}>{d}</p></div>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* 3 PATHS */}
       <section style={{ ...wrap, padding: '50px 22px' }} id="construye">
-        <div style={secHead}><span style={kicker}>{L.pathsK}</span><h2 style={{ fontSize: 30, fontWeight: 800, margin: '8px 0' }}>{L.pathsH}</h2></div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16 }} className="g3">
+        <div style={secHead}><span style={kicker}>{L.pathsK}</span><h2 style={{ fontSize: 'clamp(23px,5vw,30px)', fontWeight: 800, margin: '8px 0' }}>{L.pathsH}</h2></div>
+        <div style={{ display: 'grid', gap: 16 }} className="g3">
           {[[L.p1t, L.p1d, L.p1p, <path key="w" d="M14.7 6.3a4 4 0 0 0-5.2 5.2L3 18l3 3 6.5-6.5a4 4 0 0 0 5.2-5.2l-2.5 2.5-2.8-.4-.4-2.8z" />, '/bot-builder'], [L.p2t, L.p2d, L.p2p, <path key="s" d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0" />, '#market'], [L.p3t, L.p3d, L.p3p, <path key="sp" d="M12 3l1.9 4.6L18.5 9l-4.6 1.9L12 15l-1.9-4.1L5.5 9l4.6-1.4zM19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z" />, '#servicio']].map(([t, d, p, ic, href], i) => (
             <a key={i} href={href as string} style={{ ...card }}>
               <div style={{ width: 46, height: 46, borderRadius: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'color-mix(in srgb,var(--brand) 14%,transparent)', border: '1px solid color-mix(in srgb,var(--brand) 30%,transparent)', marginBottom: 12, color: 'var(--brand)' }}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">{ic}</svg></div>
@@ -145,8 +170,8 @@ export default async function BotLabLanding() {
 
       {/* LADDER */}
       <section style={{ ...wrap, padding: '30px 22px' }} id="precios">
-        <div style={secHead}><span style={kicker}>{L.ladderK}</span><h2 style={{ fontSize: 30, fontWeight: 800, margin: '8px 0' }}>{L.ladderH}</h2></div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 14 }} className="g4">
+        <div style={secHead}><span style={kicker}>{L.ladderK}</span><h2 style={{ fontSize: 'clamp(23px,5vw,30px)', fontWeight: 800, margin: '8px 0' }}>{L.ladderH}</h2></div>
+        <div style={{ display: 'grid', gap: 14 }} className="g5">
           {tiers.map((t, i) => (
             <a key={i} href={t.href} style={{ display: 'flex', flexDirection: 'column', ...card, position: 'relative', ...(t.hot ? { border: `1.5px solid ${GOLD}`, boxShadow: `0 0 40px -8px color-mix(in srgb,${GOLD} 45%,transparent)` } : {}) }}>
               {t.hot && <span style={{ position: 'absolute', top: -11, left: '50%', transform: 'translateX(-50%)', background: `linear-gradient(120deg,${GOLD},#ffb020)`, color: '#3a2a06', fontSize: 10.5, fontWeight: 800, padding: '4px 12px', borderRadius: 99, whiteSpace: 'nowrap' }}>★ {es ? 'Más solicitado' : 'Most requested'}</span>}
@@ -162,9 +187,9 @@ export default async function BotLabLanding() {
 
       {/* MARKETPLACE */}
       <section style={{ ...wrap, padding: '50px 22px' }} id="market">
-        <div style={secHead}><span style={kicker}>{L.marketK}</span><h2 style={{ fontSize: 30, fontWeight: 800, margin: '8px 0' }}>{L.marketH}</h2><p className="muted" style={{ fontSize: 15 }}>{L.marketS}</p></div>
+        <div style={secHead}><span style={kicker}>{L.marketK}</span><h2 style={{ fontSize: 'clamp(23px,5vw,30px)', fontWeight: 800, margin: '8px 0' }}>{L.marketH}</h2><p className="muted" style={{ fontSize: 15 }}>{L.marketS}</p></div>
         {bots.length ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 }} className="g4">
+          <div style={{ display: 'grid', gap: 14 }} className="g4">
             {bots.slice(0, 8).map((p) => (
               <div key={p.id} style={{ ...card, padding: 15 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 8 }}>
@@ -184,10 +209,10 @@ export default async function BotLabLanding() {
 
       {/* SELL / CREATOR */}
       <section style={{ ...wrap, padding: '40px 22px' }} id="vende">
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 34, alignItems: 'center' }} className="g2">
+        <div style={{ display: 'grid', gap: 34, alignItems: 'center' }} className="g2">
           <div>
             <span style={kicker}>{L.sellK}</span>
-            <h2 style={{ fontSize: 30, fontWeight: 800, margin: '8px 0 10px' }}>{L.sellH}</h2>
+            <h2 style={{ fontSize: 'clamp(23px,5vw,30px)', fontWeight: 800, margin: '8px 0 10px' }}>{L.sellH}</h2>
             <p className="muted" style={{ fontSize: 15.5, maxWidth: 460 }}>{L.sellS}</p>
             <Link href="/dashboard/bot-lab?tab=vender" style={{ display: 'inline-block', marginTop: 18, padding: '13px 22px', borderRadius: 12, fontWeight: 800, background: `linear-gradient(120deg,${GOLD},#ffb020)`, color: '#3a2a06' }}>{L.sellCta}</Link>
           </div>
@@ -202,8 +227,8 @@ export default async function BotLabLanding() {
 
       {/* SERVICE + LEAD FORM */}
       <section style={{ ...wrap, padding: '50px 22px' }} id="servicio">
-        <div style={secHead}><span style={{ ...kicker, color: GOLD }}>{L.svcK}</span><h2 style={{ fontSize: 30, fontWeight: 800, margin: '8px 0' }}>{L.svcH}</h2></div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, alignItems: 'start' }} className="g2">
+        <div style={secHead}><span style={{ ...kicker, color: GOLD }}>{L.svcK}</span><h2 style={{ fontSize: 'clamp(23px,5vw,30px)', fontWeight: 800, margin: '8px 0' }}>{L.svcH}</h2></div>
+        <div style={{ display: 'grid', gap: 24, alignItems: 'start' }} className="g2">
           <div style={{ display: 'grid', gap: 12 }}>
             {steps.map(([n, t, d], i) => (
               <div key={i} style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
@@ -231,6 +256,33 @@ export default async function BotLabLanding() {
           </div>
         </div>
       </section>
+
+      {/* RESEÑAS · social proof (mismas del landing «Crea tu bot») */}
+      {reviews.length > 0 && (
+      <section style={{ ...wrap, padding: '50px 22px' }}>
+        <div style={secHead}>
+          <span style={kicker}>{es ? 'Lo que dicen los traders' : 'What traders say'}</span>
+          <h2 style={{ fontSize: 'clamp(23px,5vw,30px)', fontWeight: 800, margin: '8px 0 4px' }}>{es ? 'Robots que ya operan por ellos' : 'Robots already trading for them'}</h2>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13.5 }}>
+            <span style={{ color: GOLD, letterSpacing: 1 }}>{'★★★★★'}</span>
+            <b>{rAvg || 5}</b>
+            <span className="muted">· {Number(rTotal).toLocaleString()} {es ? 'reseñas' : 'reviews'}</span>
+          </div>
+        </div>
+        <div style={{ display: 'grid', gap: 14 }} className="g3">
+          {reviews.map((r: any, i: number) => (
+            <figure key={i} style={{ ...card, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ color: GOLD, fontSize: 13, letterSpacing: 1 }}>{'★'.repeat(Math.max(1, Math.min(5, Math.round(Number(r?.stars) || 5))))}<span style={{ color: 'var(--line)' }}>{'★'.repeat(5 - Math.max(1, Math.min(5, Math.round(Number(r?.stars) || 5))))}</span></div>
+              <blockquote style={{ margin: 0, fontSize: 14, lineHeight: 1.5 }}>{r?.text}</blockquote>
+              <figcaption style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 'auto' }}>
+                <span style={{ fontSize: 12.5, fontWeight: 700 }}>{r?.name}{r?.country ? <span className="muted" style={{ fontWeight: 400 }}> · {r.country}</span> : null}</span>
+                {r?.result ? <span className="muted" style={{ fontSize: 11 }}>{r.result}</span> : null}
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+      </section>
+      )}
 
       {/* FINAL CTA */}
       <section style={{ ...wrap, padding: '40px 22px' }}>
