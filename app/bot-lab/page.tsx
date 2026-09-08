@@ -122,10 +122,10 @@ export default async function BotLabLanding() {
               <a href="#servicio" style={{ padding: '13px 22px', borderRadius: 12, fontWeight: 800, fontSize: 15, background: `linear-gradient(120deg,${GOLD},#ffb020)`, color: '#3a2a06' }}>◆ {L.ctaMain}</a>
               <a href="/bot-builder" className="btn btn-ghost" style={{ padding: '13px 20px', borderRadius: 12, border: '1px solid var(--line)', fontWeight: 700 }}>{L.ctaBuild} →</a>
             </div>
-            <div style={{ display: 'flex', gap: 26, marginTop: 28, flexWrap: 'wrap' }}>
-              <div><b style={{ fontSize: 24, fontWeight: 800, display: 'block' }}>1,240+</b><span className="muted" style={{ fontSize: 12.5 }}>{L.st1}</span></div>
-              <div><b style={{ fontSize: 24, fontWeight: 800, display: 'block' }}>$0 → {es ? 'a medida' : 'bespoke'}</b><span className="muted" style={{ fontSize: 12.5 }}>{L.st2}</span></div>
-              <div><b style={{ fontSize: 24, fontWeight: 800, display: 'block' }}>72h</b><span className="muted" style={{ fontSize: 12.5 }}>{L.st3}</span></div>
+            <div style={{ display: 'flex', gap: 10, marginTop: 24, flexWrap: 'wrap' }}>
+              {[es ? 'Sin tarjeta' : 'No card', es ? 'Prueba en demo' : 'Demo test', es ? 'Verificados' : 'Verified'].map((t) => (
+                <span key={t} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: 'var(--green)' }}><span style={{ color: 'var(--green)' }}>✓</span>{t}</span>
+              ))}
             </div>
           </div>
           <div style={{ ...card, borderRadius: 22, boxShadow: '0 30px 80px -34px rgba(124,140,255,.4)' }}>
@@ -151,36 +151,41 @@ export default async function BotLabLanding() {
         </div>
       </section>
 
-      {/* STATS · tarjetas controlables desde Admin → Bot Lab → Ajustes (base + crecimiento diario) */}
+      {/* STATS · calcado al contador de la landing de Onyx (Crea tu bot). Editable desde Admin → Bot Lab → Ajustes. */}
       {(s as any).stats_on !== false && (() => {
         const anchor = Math.max(0, Math.floor((Date.now() - Date.UTC(2026, 0, 1)) / 86400000));
         const grow = (base: number, r: number) => Math.round((Number(base) || 0) + anchor * r);
+        const nf = (n: number) => n.toLocaleString('en-US');
         const robots = grow((s as any).stat_robots_base ?? 1240, 2);
-        const cards: [string, string, string, string][] = [
-          [grow((s as any).stat_ops_base ?? 738000, 210).toLocaleString('en-US'), es ? 'Operaciones de robots' : 'Robot trades', '⇄', 'var(--green)'],
-          [grow((s as any).stat_verified_base ?? 84, 0.15).toLocaleString('en-US'), es ? 'Robots verificados' : 'Verified robots', '✓', GOLD],
-          [grow((s as any).stat_traders_base ?? 3300, 3).toLocaleString('en-US'), es ? 'Traders comprando' : 'Traders buying', '👥', '#38d9ff'],
-          ['3', es ? 'Plataformas: MT4 · MT5 · cTrader' : 'Platforms: MT4 · MT5 · cTrader', '🖥', 'var(--brand)'],
+        const priceFrom = Math.max(0, Math.round(Number((s as any).stat_price_from ?? 19)));
+        const cards: [string, string, string][] = [
+          [nf(grow((s as any).stat_verified_base ?? 84, 0.15)), es ? 'Robots verificados' : 'Verified robots', 'var(--green)'],
+          [String(Math.max(0, Math.min(100, Math.round(Number((s as any).stat_score_avg ?? 87))))), es ? 'Onyx Score promedio' : 'Avg Onyx Score', GOLD],
+          [nf(grow((s as any).stat_buyers_week ?? 55, 1)), es ? 'Compraron esta semana' : 'Bought this week', '#38d9ff'],
+          ['$' + priceFrom, es ? 'Desde, al mes' : 'From, per month', 'var(--brand)'],
         ];
         return (
-          <section style={{ ...wrap, padding: '10px 22px 4px' }}>
-            <div style={{ borderRadius: 20, padding: '26px 22px', textAlign: 'center', background: 'linear-gradient(140deg,color-mix(in srgb,var(--brand) 20%,transparent),color-mix(in srgb,var(--brand2,#a06bff) 12%,transparent))', border: '1px solid color-mix(in srgb,var(--brand) 30%,var(--line))', marginBottom: 14 }}>
-              <div style={{ ...kicker, marginBottom: 6 }}>{es ? 'Robots en el marketplace' : 'Robots in the marketplace'}</div>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
-                <span style={{ width: 46, height: 46, borderRadius: 13, background: 'color-mix(in srgb,var(--brand) 18%,transparent)', border: '1px solid color-mix(in srgb,var(--brand) 35%,transparent)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>◆</span>
-                <b style={{ fontSize: 'clamp(34px,9vw,52px)', fontWeight: 800, lineHeight: 1 }}>{robots.toLocaleString('en-US')}</b>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--green)', fontWeight: 700 }}><span style={{ width: 8, height: 8, borderRadius: 99, background: 'var(--green)' }} />{es ? 'subiendo en vivo' : 'growing live'}</span>
+          <section style={{ ...wrap, padding: '14px 22px 4px' }}>
+            {/* Banner contador — mismo gradiente/glow que la landing de Onyx */}
+            <div style={{ position: 'relative', borderRadius: 18, padding: '30px 20px', textAlign: 'center', background: 'linear-gradient(135deg,#3a2f7a 0%,#211a45 55%,#141428 100%)', border: '1px solid rgba(139,147,255,.5)', boxShadow: '0 24px 60px rgba(30,20,80,.35)' }}>
+              <div style={{ fontSize: 12.5, letterSpacing: '.12em', textTransform: 'uppercase', fontWeight: 700, color: '#c8ccff' }}>{es ? 'Robots a la venta ahora' : 'Robots on sale now'}</div>
+              <div style={{ marginTop: 6, fontSize: 'clamp(42px,8vw,64px)', fontWeight: 800, letterSpacing: '-1px', display: 'inline-flex', alignItems: 'center', gap: 12, color: '#fff', textShadow: '0 0 26px rgba(139,147,255,.55)' }}>
+                <span style={{ fontSize: 40, lineHeight: 1 }}>◆</span><span>{nf(robots)}</span>
               </div>
+              <div style={{ fontSize: 12.5, marginTop: 4, display: 'flex', gap: 6, alignItems: 'center', justifyContent: 'center', color: '#8ff0cf' }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#5fe0aa', boxShadow: '0 0 9px #5fe0aa', display: 'inline-block' }} />{es ? 'subiendo en vivo' : 'growing live'}</div>
+              <div style={{ fontSize: 13.5, marginTop: 10, color: '#c8ccff' }}>{es ? `Verificados, con Onyx Score y prueba en demo. Desde $${priceFrom}/mes.` : `Verified, with Onyx Score and demo test. From $${priceFrom}/mo.`}</div>
             </div>
-            <div style={{ display: 'grid', gap: 12 }} className="g4">
-              {cards.map(([v, l, ic, c], i) => (
-                <div key={i} style={{ ...card, padding: 16, borderColor: `color-mix(in srgb,${c} 32%,var(--line))` }}>
-                  <span style={{ fontSize: 17 }}>{ic}</span>
-                  <div style={{ fontSize: 'clamp(19px,4.5vw,24px)', fontWeight: 800, marginTop: 6, color: c }}>{v}</div>
-                  <div className="muted" style={{ fontSize: 12 }}>{l}</div>
+            {/* Métricas — mismo estilo de tarjetas con acento por color */}
+            <div style={{ display: 'grid', gap: 14, marginTop: 22 }} className="g4">
+              {cards.map(([v, l, c], i) => (
+                <div key={i} style={{ borderRadius: 14, padding: '18px 10px', textAlign: 'center', border: `1px solid color-mix(in srgb,${c} 35%,transparent)`, background: `color-mix(in srgb,${c} 10%,transparent)` }}>
+                  <b style={{ fontSize: 26, fontWeight: 800, display: 'block', color: c }}>{v}</b>
+                  <span className="muted" style={{ fontSize: 12 }}>{l}</span>
                 </div>
               ))}
             </div>
+            {/* Línea fina de plataformas */}
+            <div style={{ textAlign: 'center', marginTop: 14, fontSize: 12.5, fontWeight: 700, letterSpacing: '.06em', color: 'var(--mut)' }}>MT4 · MT5 · cTrader</div>
           </section>
         );
       })()}

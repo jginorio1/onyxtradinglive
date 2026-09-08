@@ -689,10 +689,11 @@ function Settings({ es, set, setSet, canManage, act, mail }: any) {
           {es ? 'Mostrar la banda de tarjetas en el landing' : 'Show the stat cards band on the landing'}
         </label>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 12 }}>
-          <Field label={es ? 'Robots en el marketplace (base)' : 'Robots in marketplace (base)'} value={set.stat_robots_base} onChange={(v: any) => setSet({ ...set, stat_robots_base: v })} />
-          <Field label={es ? 'Operaciones de robots (base)' : 'Robot trades (base)'} value={set.stat_ops_base} onChange={(v: any) => setSet({ ...set, stat_ops_base: v })} />
+          <Field label={es ? 'Robots a la venta (base)' : 'Robots on sale (base)'} value={set.stat_robots_base} onChange={(v: any) => setSet({ ...set, stat_robots_base: v })} />
           <Field label={es ? 'Robots verificados (base)' : 'Verified robots (base)'} value={set.stat_verified_base} onChange={(v: any) => setSet({ ...set, stat_verified_base: v })} />
-          <Field label={es ? 'Traders comprando (base)' : 'Traders buying (base)'} value={set.stat_traders_base} onChange={(v: any) => setSet({ ...set, stat_traders_base: v })} />
+          <Field label={es ? 'Onyx Score promedio (0-100)' : 'Avg Onyx Score (0-100)'} value={set.stat_score_avg} onChange={(v: any) => setSet({ ...set, stat_score_avg: v })} />
+          <Field label={es ? 'Compraron esta semana (base)' : 'Bought this week (base)'} value={set.stat_buyers_week} onChange={(v: any) => setSet({ ...set, stat_buyers_week: v })} />
+          <Field label={es ? 'Precio desde ($/mes)' : 'Price from ($/mo)'} value={set.stat_price_from} onChange={(v: any) => setSet({ ...set, stat_price_from: v })} />
         </div>
       </div>
 

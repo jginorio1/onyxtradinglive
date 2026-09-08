@@ -121,9 +121,10 @@ export async function POST(req: Request) {
       telegram_chat: String(b.telegram_chat ?? cur.telegram_chat ?? '').slice(0, 40),
       stats_on: b.stats_on != null ? !!b.stats_on : (cur.stats_on !== false),
       stat_robots_base: Math.max(0, Math.round(Number(b.stat_robots_base ?? cur.stat_robots_base ?? 0))),
-      stat_ops_base: Math.max(0, Math.round(Number(b.stat_ops_base ?? cur.stat_ops_base ?? 0))),
       stat_verified_base: Math.max(0, Math.round(Number(b.stat_verified_base ?? cur.stat_verified_base ?? 0))),
-      stat_traders_base: Math.max(0, Math.round(Number(b.stat_traders_base ?? cur.stat_traders_base ?? 0))),
+      stat_score_avg: Math.max(0, Math.min(100, Math.round(Number(b.stat_score_avg ?? cur.stat_score_avg ?? 87)))),
+      stat_buyers_week: Math.max(0, Math.round(Number(b.stat_buyers_week ?? cur.stat_buyers_week ?? 0))),
+      stat_price_from: Math.max(0, Math.round(Number(b.stat_price_from ?? cur.stat_price_from ?? 19))),
     };
     await saveSetting('bot_lab', next);
     return NextResponse.json({ ok: true, settings: next });
