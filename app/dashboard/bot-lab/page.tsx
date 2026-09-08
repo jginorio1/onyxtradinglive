@@ -61,6 +61,17 @@ export default function BotLabDashboard() {
     } catch (e: any) { toastErr(e?.message || 'error'); }
   }
 
+  // Descarga PROTEGIDA del archivo del robot (solo con licencia activa).
+  async function download(productId: string) {
+    try {
+      const r = await fetch('/api/botlab/download?id=' + encodeURIComponent(productId));
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || 'error');
+      if (j.url) window.location.href = j.url;
+      else toastErr(es ? 'Descarga no disponible.' : 'Download not available.');
+    } catch (e: any) { toastErr(e?.message || 'error'); }
+  }
+
   const svg = (d: string) => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={d} /></svg>;
   const NAV: [View, JSX.Element, string][] = [
     ['market', svg('M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0'), es ? 'Marketplace' : 'Marketplace'],
@@ -173,7 +184,7 @@ export default function BotLabDashboard() {
                     {active ? '✓ ' : ''}{label}
                   </span>
                   {active
-                    ? <a href="/dashboard/constructor" className="muted" style={{ fontSize: 12.5, fontWeight: 700 }}>{es ? 'Descargar / instalar →' : 'Download / install →'}</a>
+                    ? <button onClick={() => l.product_id && download(l.product_id)} style={{ fontSize: 12.5, fontWeight: 800, cursor: 'pointer', border: '1px solid color-mix(in srgb,var(--brand) 45%,transparent)', background: 'color-mix(in srgb,var(--brand) 14%,transparent)', color: 'var(--brand)', borderRadius: 9, padding: '6px 12px' }}>{es ? '⬇ Descargar robot' : '⬇ Download robot'}</button>
                     : l.kind === 'subscription' && l.product_id
                       ? <button onClick={() => { const p = products.find((x) => x.id === l.product_id); if (p) buy(p, 'usdt'); }} style={{ fontSize: 12.5, fontWeight: 800, cursor: 'pointer', border: '1px solid color-mix(in srgb,var(--green) 40%,transparent)', background: 'color-mix(in srgb,var(--green) 12%,transparent)', color: 'var(--green)', borderRadius: 9, padding: '6px 12px' }}>{es ? 'Renovar' : 'Renew'}</button>
                       : null}
@@ -285,12 +296,25 @@ function PayChip({ on, onClick, icon, label }: any) {
 function ProductModal({ es, product, onClose, onSaved }: any) {
   const [f, setF] = useState<any>({ name: '', tagline: '', kind: 'subscription', interval: 'month', price: 29, platform: 'mt5', category: '', accepts_card: true, accepts_crypto: true, ...product, price: product?.price_cents != null ? product.price_cents / 100 : (product?.price ?? 29) });
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const inp: any = { width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 14 };
+  // Sube el archivo del robot (.ex5/.ex4/.set/.zip) al bucket privado y guarda su ruta.
+  async function uploadFile(file: File) {
+    if (file.size > 20 * 1024 * 1024) { toastErr(es ? 'Máximo 20 MB.' : 'Max 20 MB.'); return; }
+    setUploading(true);
+    try {
+      const data: string = await new Promise((res, rej) => { const rd = new FileReader(); rd.onload = () => res(String(rd.result)); rd.onerror = rej; rd.readAsDataURL(file); });
+      const r = await fetch('/api/botlab/sell', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'upload_file', name: file.name, data }) });
+      const j = await r.json(); if (!r.ok) throw new Error(j.error);
+      setF((prev: any) => ({ ...prev, file_path: j.file_path, file_name: j.file_name, file_size: j.file_size }));
+      toast(es ? 'Archivo subido.' : 'File uploaded.');
+    } catch (er: any) { toastErr(er?.message); } finally { setUploading(false); }
+  }
   async function save() {
     if (!f.name?.trim()) { toastErr(es ? 'Ponle nombre a tu robot.' : 'Name your robot.'); return; }
     setSaving(true);
     try {
-      const body = { action: 'save', product: { id: product?.id, name: f.name, tagline: f.tagline, description: f.description, kind: f.kind, interval: f.interval, price_cents: Math.round(Number(f.price) * 100), platform: f.platform, category: f.category, proof_url: f.proof_url, bot_magic: f.bot_magic || null, bot_account: f.bot_account || null, accepts_card: f.accepts_card, accepts_crypto: f.accepts_crypto } };
+      const body = { action: 'save', product: { id: product?.id, name: f.name, tagline: f.tagline, description: f.description, kind: f.kind, interval: f.interval, price_cents: Math.round(Number(f.price) * 100), platform: f.platform, category: f.category, proof_url: f.proof_url, bot_magic: f.bot_magic || null, bot_account: f.bot_account || null, accepts_card: f.accepts_card, accepts_crypto: f.accepts_crypto, file_path: f.file_path ?? null, file_name: f.file_name ?? null, file_size: f.file_size ?? null } };
       const r = await fetch('/api/botlab/sell', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const j = await r.json(); if (!r.ok) throw new Error(j.error);
       toast(es ? 'Enviado a revisión.' : 'Sent for review.'); onSaved();
@@ -320,6 +344,15 @@ function ProductModal({ es, product, onClose, onSaved }: any) {
               <PayChip on={f.accepts_card !== false} onClick={() => setF({ ...f, accepts_card: !(f.accepts_card !== false) })} icon="💳" label={es ? 'Tarjeta' : 'Card'} />
               <PayChip on={f.accepts_crypto !== false} onClick={() => setF({ ...f, accepts_crypto: !(f.accepts_crypto !== false) })} icon="₮" label="USDT" />
             </div>
+          </div>
+          <div>
+            <div className="muted" style={{ fontSize: 11.5, marginBottom: 6 }}>{es ? 'Archivo del robot (lo recibe el comprador)' : 'Robot file (the buyer receives it)'}</div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, border: '1px dashed var(--line)', borderRadius: 10, padding: '11px 12px', cursor: 'pointer', background: 'var(--bg2)' }}>
+              <span style={{ fontSize: 18 }}>⬆️</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: f.file_name ? 'var(--green)' : 'var(--tx)' }}>{uploading ? (es ? 'Subiendo…' : 'Uploading…') : (f.file_name ? `✓ ${f.file_name}` : (es ? 'Subir .ex5 / .ex4 / .set / .zip' : 'Upload .ex5 / .ex4 / .set / .zip'))}</span>
+              <input type="file" accept=".ex4,.ex5,.mq4,.mq5,.set,.zip,.algo" style={{ display: 'none' }} onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadFile(file); }} />
+            </label>
+            <span className="muted" style={{ fontSize: 11 }}>{es ? 'Solo se entrega a quien tiene licencia activa (descarga protegida). Máx 20 MB.' : 'Delivered only to active-license holders (protected download). Max 20 MB.'}</span>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 10, marginTop: 16, justifyContent: 'flex-end' }}>

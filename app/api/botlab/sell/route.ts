@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { myProducts, saveProduct, deleteProduct, sellerEarnings, sellerConnectStatus, sellerOnboardingLink, listPayouts, createPayout } from '@/lib/botlab';
 import { botScore } from '@/lib/botScore';
+
+// Extensiones permitidas para el archivo del robot (entrega).
+const OK_EXT = ['ex4', 'ex5', 'mq4', 'mq5', 'set', 'zip', 'algo'];
+const MAX_FILE = 20 * 1024 * 1024; // 20 MB
 
 // Historial mínimo REAL para poder poner un robot a la venta (evita mandar a
 // revisión robots recién creados sin operaciones). Ajustable a futuro.
@@ -47,6 +52,20 @@ export async function POST(req: Request) {
     }
     const r = await saveProduct(user.id, p, false);
     return NextResponse.json({ ok: true, id: r?.id });
+  }
+  if (b.action === 'upload_file') {
+    // Sube el archivo del robot al bucket PRIVADO 'bot-files'. Llega como data URL base64.
+    const name = String(b.name || 'robot').replace(/[^\w.\-]+/g, '_').slice(0, 120);
+    const ext = (name.split('.').pop() || '').toLowerCase();
+    if (!OK_EXT.includes(ext)) return NextResponse.json({ error: `Tipo no permitido. Usa: ${OK_EXT.join(', ')}.` }, { status: 400 });
+    const m = /^data:[^;]*;base64,(.+)$/s.exec(String(b.data || ''));
+    if (!m) return NextResponse.json({ error: 'formato inválido' }, { status: 400 });
+    const buf = Buffer.from(m[1], 'base64');
+    if (buf.byteLength > MAX_FILE) return NextResponse.json({ error: 'archivo demasiado grande (máx 20 MB)' }, { status: 400 });
+    const path = `${user.id}/${Date.now()}-${name}`;
+    const up = await supabaseAdmin.storage.from('bot-files').upload(path, buf, { upsert: false });
+    if (up.error) return NextResponse.json({ error: up.error.message, hint: 'Crea el bucket PRIVADO "bot-files" en Supabase → Storage.' }, { status: 500 });
+    return NextResponse.json({ ok: true, file_path: path, file_name: name, file_size: buf.byteLength });
   }
   if (b.action === 'delete') { await deleteProduct(user.id, String(b.id || ''), false); return NextResponse.json({ ok: true }); }
   if (b.action === 'payout') {

@@ -130,6 +130,10 @@ export async function saveProduct(sellerId: string, b: any, isAdmin = false) {
     accepts_card: b.accepts_card !== false,
     accepts_crypto: b.accepts_crypto !== false,
   };
+  // Archivo del robot (entrega): ruta en el bucket privado + nombre/size.
+  if (b.file_path !== undefined) row.file_path = b.file_path ? String(b.file_path).slice(0, 400) : null;
+  if (b.file_name !== undefined) row.file_name = b.file_name ? String(b.file_name).slice(0, 160) : null;
+  if (b.file_size !== undefined) row.file_size = b.file_size ? Math.max(0, Math.round(Number(b.file_size))) : null;
   // Un creador manda a revisión (pending). El admin puede fijar estado/oficial/verificado.
   if (isAdmin) {
     if (b.status) row.status = b.status;
@@ -190,6 +194,22 @@ export async function myLicenses(buyerId: string) {
 export async function hasLicense(buyerId: string, productId: string) {
   const { data } = await supabaseAdmin.from('bot_purchases').select('status').eq('buyer_id', buyerId).eq('product_id', productId).maybeSingle();
   return !!data && (data as any).status === 'active';
+}
+
+// Entrega del archivo del robot: devuelve una URL FIRMADA (temporal) del bucket
+// privado 'bot-files' SOLO si el usuario tiene licencia activa, es el creador, o es admin.
+export async function productDownloadUrl(userId: string, productId: string, isAdmin = false): Promise<{ url?: string; name?: string; error?: string }> {
+  const { data: p } = await supabaseAdmin.from('bot_products').select('id,seller_id,file_path,file_name').eq('id', productId).maybeSingle();
+  if (!p) return { error: 'Robot no encontrado.' };
+  if (!(p as any).file_path) return { error: 'Este robot aún no tiene archivo para descargar. Escríbenos y te lo entregamos.' };
+  const isSeller = (p as any).seller_id && (p as any).seller_id === userId;
+  const allowed = isAdmin || isSeller || (await hasLicense(userId, productId));
+  if (!allowed) return { error: 'Necesitas una licencia activa para descargar este robot.' };
+  const { data: signed, error } = await supabaseAdmin.storage.from('bot-files').createSignedUrl((p as any).file_path, 300, {
+    download: (p as any).file_name || true, // fuerza descarga con el nombre original
+  });
+  if (error || !signed?.signedUrl) return { error: 'No se pudo generar la descarga. Intenta de nuevo.' };
+  return { url: signed.signedUrl, name: (p as any).file_name || 'robot' };
 }
 
 // Registra/renueva una licencia (idempotente por comprador+producto) y anota comisión.
