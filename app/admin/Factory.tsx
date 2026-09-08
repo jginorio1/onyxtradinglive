@@ -801,9 +801,9 @@ function RobotGrid({ bots = [], folders = [], batches = [], es, post, canManage,
             <div key={b.id} style={{ border: `${selected ? 2 : 1}px solid ${selected ? 'var(--brand)' : `color-mix(in srgb,${st.color} 32%,var(--line))`}`, borderRadius: 12, padding: 12, background: selected ? 'color-mix(in srgb,var(--brand) 7%,var(--card))' : 'var(--card)', display: 'flex', flexDirection: 'column', gap: 6, overflow: 'hidden', minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 {canManage && <input type="checkbox" checked={selected} onChange={() => toggleSel(b.id)} style={{ flex: 'none', cursor: 'pointer' }} />}
-                <b style={{ fontSize: 13, fontFamily: 'monospace', color: 'var(--tx)', wordBreak: 'break-all', lineHeight: 1.2 }}>{b.name || b.codename || ('ONYX-' + String(b.magic || b.id || '').slice(-6))}</b>
                 <span style={{ marginLeft: 'auto', flex: 'none', whiteSpace: 'nowrap', fontSize: 9.5, fontWeight: 800, padding: '2px 8px', borderRadius: 20, background: `color-mix(in srgb,${st.color} 16%,transparent)`, color: st.color }}>{st.label}</span>
               </div>
+              <b style={{ display: 'block', width: '100%', fontSize: 13, fontFamily: 'monospace', color: 'var(--tx)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.2 }}>{b.name || b.codename || ('ONYX-' + String(b.magic || b.id || '').slice(-6))}</b>
               <div className="muted" style={{ fontSize: 11.5 }}>{String(b.platform || '').toUpperCase()} · {b.symbol || '—'} · {tfLabel(b.timeframe) || '—'}{score != null ? ' · ' : ''}{score != null && <span style={{ color: gradeColor(grade), fontWeight: 800 }}>{grade || ''} {score}</span>}</div>
               {b.created_at && <div className="muted" style={{ fontSize: 10.5 }}>🕒 {es ? 'creado' : 'created'} {new Date(b.created_at).toLocaleString(es ? 'es-ES' : 'en-US', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</div>}
               {(b.batch_no || b.folder_id) && <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', fontSize: 10.5 }}>
