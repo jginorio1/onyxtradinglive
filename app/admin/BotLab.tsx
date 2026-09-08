@@ -682,6 +682,20 @@ function Settings({ es, set, setSet, canManage, act, mail }: any) {
         </div>
       </div>
 
+      <div style={{ ...card }}>
+        <SectionHead icon="chart" color="var(--brand)" title={es ? 'Tarjetas del landing (estadísticas)' : 'Landing stat cards'} desc={es ? 'Pon la base de cada número: suben solas cada día en el landing de Bot Lab y nunca bajan.' : 'Set each base number: they grow on their own each day on the Bot Lab landing and never go down.'} />
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 9, cursor: 'pointer', marginBottom: 12, fontSize: 13.5, fontWeight: 700 }}>
+          <input type="checkbox" checked={set.stats_on !== false} onChange={(e) => setSet({ ...set, stats_on: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+          {es ? 'Mostrar la banda de tarjetas en el landing' : 'Show the stat cards band on the landing'}
+        </label>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 12 }}>
+          <Field label={es ? 'Robots en el marketplace (base)' : 'Robots in marketplace (base)'} value={set.stat_robots_base} onChange={(v: any) => setSet({ ...set, stat_robots_base: v })} />
+          <Field label={es ? 'Operaciones de robots (base)' : 'Robot trades (base)'} value={set.stat_ops_base} onChange={(v: any) => setSet({ ...set, stat_ops_base: v })} />
+          <Field label={es ? 'Robots verificados (base)' : 'Verified robots (base)'} value={set.stat_verified_base} onChange={(v: any) => setSet({ ...set, stat_verified_base: v })} />
+          <Field label={es ? 'Traders comprando (base)' : 'Traders buying (base)'} value={set.stat_traders_base} onChange={(v: any) => setSet({ ...set, stat_traders_base: v })} />
+        </div>
+      </div>
+
       {canManage && (
         <div>
           <button onClick={() => act({ action: 'settings', ...set }, es ? 'Ajustes guardados' : 'Settings saved')} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '11px 20px', borderRadius: 12, border: 'none', fontWeight: 800, fontSize: 14, cursor: 'pointer', background: 'linear-gradient(135deg,var(--brand),' + VIOLET + ')', color: '#0b1020' }}><Ic n="check" s={16} c="#0b1020" />{es ? 'Guardar cambios' : 'Save changes'}</button>

@@ -151,6 +151,40 @@ export default async function BotLabLanding() {
         </div>
       </section>
 
+      {/* STATS · tarjetas controlables desde Admin → Bot Lab → Ajustes (base + crecimiento diario) */}
+      {(s as any).stats_on !== false && (() => {
+        const anchor = Math.max(0, Math.floor((Date.now() - Date.UTC(2026, 0, 1)) / 86400000));
+        const grow = (base: number, r: number) => Math.round((Number(base) || 0) + anchor * r);
+        const robots = grow((s as any).stat_robots_base ?? 1240, 2);
+        const cards: [string, string, string, string][] = [
+          [grow((s as any).stat_ops_base ?? 738000, 210).toLocaleString('en-US'), es ? 'Operaciones de robots' : 'Robot trades', '⇄', 'var(--green)'],
+          [grow((s as any).stat_verified_base ?? 84, 0.15).toLocaleString('en-US'), es ? 'Robots verificados' : 'Verified robots', '✓', GOLD],
+          [grow((s as any).stat_traders_base ?? 3300, 3).toLocaleString('en-US'), es ? 'Traders comprando' : 'Traders buying', '👥', '#38d9ff'],
+          ['3', es ? 'Plataformas: MT4 · MT5 · cTrader' : 'Platforms: MT4 · MT5 · cTrader', '🖥', 'var(--brand)'],
+        ];
+        return (
+          <section style={{ ...wrap, padding: '10px 22px 4px' }}>
+            <div style={{ borderRadius: 20, padding: '26px 22px', textAlign: 'center', background: 'linear-gradient(140deg,color-mix(in srgb,var(--brand) 20%,transparent),color-mix(in srgb,var(--brand2,#a06bff) 12%,transparent))', border: '1px solid color-mix(in srgb,var(--brand) 30%,var(--line))', marginBottom: 14 }}>
+              <div style={{ ...kicker, marginBottom: 6 }}>{es ? 'Robots en el marketplace' : 'Robots in the marketplace'}</div>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+                <span style={{ width: 46, height: 46, borderRadius: 13, background: 'color-mix(in srgb,var(--brand) 18%,transparent)', border: '1px solid color-mix(in srgb,var(--brand) 35%,transparent)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>◆</span>
+                <b style={{ fontSize: 'clamp(34px,9vw,52px)', fontWeight: 800, lineHeight: 1 }}>{robots.toLocaleString('en-US')}</b>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--green)', fontWeight: 700 }}><span style={{ width: 8, height: 8, borderRadius: 99, background: 'var(--green)' }} />{es ? 'subiendo en vivo' : 'growing live'}</span>
+              </div>
+            </div>
+            <div style={{ display: 'grid', gap: 12 }} className="g4">
+              {cards.map(([v, l, ic, c], i) => (
+                <div key={i} style={{ ...card, padding: 16, borderColor: `color-mix(in srgb,${c} 32%,var(--line))` }}>
+                  <span style={{ fontSize: 17 }}>{ic}</span>
+                  <div style={{ fontSize: 'clamp(19px,4.5vw,24px)', fontWeight: 800, marginTop: 6, color: c }}>{v}</div>
+                  <div className="muted" style={{ fontSize: 12 }}>{l}</div>
+                </div>
+              ))}
+            </div>
+          </section>
+        );
+      })()}
+
       {/* TRUST STRIP · por qué es seguro comprar aquí */}
       <section style={{ ...wrap, paddingTop: 6, paddingBottom: 6 }}>
         <div style={{ display: 'grid', gap: 12 }} className="g4">

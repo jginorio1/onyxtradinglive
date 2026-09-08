@@ -47,8 +47,8 @@ export default function BotLabHeader({ loggedIn = false }: { loggedIn?: boolean 
         <div className="wrap-wide" style={{ display: 'flex', alignItems: 'center', gap: 18, position: 'relative' }}>
           <Link href="/bot-lab" className="logo" aria-label="Onyx Bot Lab" style={{ gap: 11 }}>
             <span style={{ width: 32, height: 32, borderRadius: 9, background: 'linear-gradient(120deg,var(--gold,#ffd45e),#ffb020)', color: '#3a2a06', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, fontWeight: 800, boxShadow: '0 6px 18px rgba(255,212,94,.4)' }}>◆</span>
-            <span className="botlab-logo-text" style={{ lineHeight: 1.05 }}>
-              <span style={{ fontWeight: 800, fontSize: 17 }}>Onyx Bot Lab</span>
+            <span className="botlab-logo-text" style={{ lineHeight: 1.05, whiteSpace: 'nowrap' }}>
+              <span style={{ fontWeight: 800, fontSize: 17, whiteSpace: 'nowrap' }}>Onyx Bot Lab</span>
               <small style={{ display: 'block', fontSize: 9.5, fontWeight: 700, letterSpacing: '.14em', color: 'var(--mut)', textTransform: 'uppercase', marginTop: -2 }}>{es ? 'Marketplace de robots' : 'Robot marketplace'}</small>
             </span>
           </Link>

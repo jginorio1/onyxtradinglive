@@ -26,11 +26,18 @@ export type BotLabSettings = {
   service_elite_from: number;    // programa elite (USD)
   notify_email: string;       // correo donde llegan las propuestas (leads)
   telegram_chat: string;      // chat de Telegram para avisos (opcional)
+  // Tarjetas de estadísticas del landing de Bot Lab (base + crecimiento diario en vivo).
+  stats_on: boolean;          // muestra/oculta la banda de tarjetas
+  stat_robots_base: number;   // robots en el marketplace (destacado)
+  stat_ops_base: number;      // operaciones de robots
+  stat_verified_base: number; // robots verificados
+  stat_traders_base: number;  // traders comprando
 };
 const DEF: BotLabSettings = {
   fee_pct: 20, usdt_address: '', usdt_network: 'trc20', usdt_erc20: '', usdt_trc20: '',
   service_automate_from: 1500, service_install_price: 99, service_elite_from: 6000,
   notify_email: '', telegram_chat: '',
+  stats_on: true, stat_robots_base: 1240, stat_ops_base: 738000, stat_verified_base: 84, stat_traders_base: 3300,
 };
 // Devuelve la dirección correcta para una red, con fallback a la legacy.
 export function usdtAddressFor(s: BotLabSettings, network: string): string {
