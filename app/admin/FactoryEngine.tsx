@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { toast, toastErr } from '@/lib/toast';
 import { BLOCKS, sampleCandidates, enrichSpec } from '@/lib/stratgen';
 import { parseBars, parseBarsStreaming, runBacktest, inferPip, type Bar, type Spec, type Costs } from '@/lib/backtest';
@@ -311,6 +311,19 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
   const [recipe, setRecipe] = useState({ minPf: 1.2, maxDd: 25, minTr: 30, mcMaxLoss: 35, wfMinStab: 55 });
   const [oosPct, setOosPct] = useState(30); // % del final reservado como fuera de muestra (OOS)
   const [evoCfg, setEvoCfg] = useState({ gens: 10, pop: 60, mut: 0.25, restart: 6 }); // parámetros de evolución
+  const [evoSaved, setEvoSaved] = useState(false); // feedback del botón Guardar
+  // Al abrir, recupera los ajustes de evolución/esfuerzo guardados en este navegador.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('onyx_factory_evo');
+      if (raw) { const s = JSON.parse(raw); if (s.evoCfg) setEvoCfg((e) => ({ ...e, ...s.evoCfg })); if (typeof s.n === 'number') setN(s.n); if (typeof s.keepN === 'number') setKeepN(s.keepN); }
+    } catch {}
+  }, []);
+  // Guarda evolución + esfuerzo (nº a escanear y robots a guardar) en el navegador.
+  function saveEvo() {
+    try { localStorage.setItem('onyx_factory_evo', JSON.stringify({ evoCfg, n, keepN })); setEvoSaved(true); setTimeout(() => setEvoSaved(false), 2000); toast(es ? 'Ajustes de evolución guardados' : 'Evolution settings saved'); }
+    catch { toastErr(es ? 'No se pudieron guardar los ajustes.' : 'Could not save settings.'); }
+  }
   const [recRun, setRecRun] = useState(false);
   const [recMsg, setRecMsg] = useState('');
   const [recFunnel, setRecFunnel] = useState<any>(null);
@@ -694,7 +707,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
         {autoStats && (auto || !autoDone) && <GenMonitor s={autoStats} es={es} evo={evo} />}
         {autoDone && (
           <div style={{ marginTop: 12, background: 'var(--bg2)', borderRadius: 11, padding: '12px 14px', fontSize: 13.5, border: `1px solid color-mix(in srgb,${GREEN} 35%,var(--line))` }}>
-            ✅ {es ? 'Listo. Creados' : 'Done. Created'} <b style={{ color: GREEN }}>{autoDone.created}</b> {es ? 'robots limpios' : 'clean robots'}{autoDone.avg ? <> · {es ? 'Onyx medio' : 'avg Onyx'} <b style={{ color: autoDone.avg >= 80 ? GREEN : LIME }}>{autoDone.avg} ({autoDone.avg >= 80 ? 'A' : autoDone.avg >= 65 ? 'B' : 'C'})</b></> : null} · {autoDone.survivors} {es ? 'pasaron el filtro de' : 'passed the gate of'} {autoDone.scanned} {es ? 'evaluadas' : 'evaluated'}{useAi ? (es ? ' · 🧠 auditados por IA' : ' · 🧠 AI-audited') : ''}. <span className="muted">{es ? 'Míralos en el Databank, y en Laboratorio y Pipeline (con la nota de la IA).' : 'See them in the Databank, and in Lab and Pipeline (with the AI note).'}</span>
+            ✅ {es ? 'Listo. Creados' : 'Done. Created'} <b style={{ color: GREEN }}>{autoDone.created}</b> {es ? 'robots limpios' : 'clean robots'}{autoDone.avg ? <> · {es ? 'Onyx medio' : 'avg Onyx'} <b style={{ color: autoDone.avg >= 80 ? GREEN : LIME }}>{autoDone.avg} ({autoDone.avg >= 80 ? 'A' : autoDone.avg >= 65 ? 'B' : 'C'})</b></> : null} · {autoDone.survivors} {es ? 'pasaron el filtro de calidad, de' : 'passed the quality filter, out of'} {Number(autoDone.scanned || 0).toLocaleString('en-US')} {es ? 'estrategias probadas' : 'strategies tested'}{useAi ? (es ? ' · 🧠 auditados por IA' : ' · 🧠 AI-audited') : ''}. <span className="muted">{es ? 'Míralos en el Databank, y en Laboratorio y Pipeline (con la nota de la IA).' : 'See them in the Databank, and in Lab and Pipeline (with the AI note).'}</span>
           </div>
         )}
       </div>
@@ -993,7 +1006,9 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
           ))}
           <label style={{ display: 'flex', alignItems: 'center', gap: 5 }}><span className="muted" style={{ fontSize: 11 }}>{es ? 'Mutación' : 'Mutation'}</span><input type="number" step="0.05" min={0.05} max={0.6} value={evoCfg.mut} onChange={(e) => setEvoCfg({ ...evoCfg, mut: Math.max(0.05, Math.min(0.6, Number(e.target.value) || 0.25)) })} style={{ ...inp, width: 64, padding: '5px 7px' }} /></label>
           <label style={{ display: 'flex', alignItems: 'center', gap: 5 }}><span className="muted" style={{ fontSize: 11 }}>{es ? 'Reinicio si estanca' : 'Restart if stagnant'}</span><input type="number" min={0} max={20} value={evoCfg.restart} onChange={(e) => setEvoCfg({ ...evoCfg, restart: Math.max(0, Math.min(20, Number(e.target.value) || 0)) })} style={{ ...inp, width: 64, padding: '5px 7px' }} /></label>
+          <button onClick={saveEvo} title={es ? 'Recuerda estos ajustes de evolución y esfuerzo en este navegador' : 'Remember these evolution & effort settings in this browser'} style={{ ...btn(evoSaved ? GREEN : '#8a94a6'), padding: '6px 12px', fontSize: 12 }}>{evoSaved ? (es ? '✓ Guardado' : '✓ Saved') : (es ? '💾 Guardar' : '💾 Save')}</button>
         </div>
+        <div className="muted" style={{ fontSize: 10.5, marginTop: 5 }}>{es ? 'Guardar recuerda estos valores (y el esfuerzo del paso 3) en este navegador para tus próximas corridas.' : 'Save remembers these values (and step 3 effort) in this browser for your next runs.'}</div>
       </div>
 
       {/* Evolución */}

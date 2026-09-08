@@ -90,8 +90,10 @@ export function evolve(
   costs: Costs,
   opt: { pop?: number; gens?: number; keep?: number; seed?: number; mut?: number; restart?: number; oosPct?: number; onGen?: (info: { gen: number; gens: number; evaluated: number; scored: Survivor[]; history: number[] }) => void } = {},
 ): EvolveOut {
-  const pop = Math.min(200, Math.max(20, opt.pop || 60));
-  const gens = Math.min(40, Math.max(3, opt.gens || 8));
+  // Sin tope real (corre en Web Worker, no congela la UI). Antes topaba en
+  // 200×40 = 8000 evaluaciones, por eso el esfuerzo «no cambiaba de 8000».
+  const pop = Math.min(2000, Math.max(20, opt.pop || 60));
+  const gens = Math.min(500, Math.max(3, opt.gens || 8));
   const keep = opt.keep || 12;
   const mutRate = clamp(opt.mut ?? 0.25, 0.05, 0.6);
   const restart = Math.max(0, Math.floor(opt.restart ?? 6)); // reinicia si no mejora en N gens (0 = off)
