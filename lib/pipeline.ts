@@ -241,6 +241,17 @@ export async function autoStartWaiting(): Promise<{ started: number }> {
   return { started };
 }
 
+// Desconecta un robot de la demo: lo saca del pipeline y lo devuelve al Databank.
+// Sirve para deshacer un "Conectar a demo" (p. ej. si quedó "esperando" por error).
+export async function unlinkDemo(botId: string) {
+  await supabaseAdmin.from('factory_bots').update({
+    live_account: null, live_magic: null, stage: 'genesis', stage_index: 0,
+    status: 'draft', stage_started_at: null, pipeline_started_at: null, paper: false, real_ready: false,
+  }).eq('id', botId);
+  await log(botId, 'archive', 'esperando', 'genesis', 0, 'green', 'desconectado de demo (vuelto al Databank)');
+  return { ok: true };
+}
+
 export async function stageOverride(botId: string, dir: 'advance' | 'archive') {
   const { data: b } = await supabaseAdmin.from('factory_bots').select('stage_index,stage').eq('id', botId).maybeSingle();
   if (!b) throw new Error('Robot no encontrado.');

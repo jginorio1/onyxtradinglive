@@ -642,6 +642,17 @@ function tfLabel(tf: any): string {
   return 'MN' + Math.round(min / 43200);
 }
 
+// Fila de la barra lateral de carpetas/lotes (izquierda del Databank).
+function NavRow({ label, count, active, color = 'var(--brand)', onClick, onDelete }: any) {
+  return (
+    <div onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 9px', borderRadius: 8, cursor: 'pointer', fontSize: 12.5, fontWeight: 700, background: active ? `color-mix(in srgb,${color} 15%,transparent)` : 'transparent', color: active ? color : 'var(--tx)', border: '1px solid ' + (active ? `color-mix(in srgb,${color} 35%,transparent)` : 'transparent') }}>
+      <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
+      <span style={{ fontSize: 11, opacity: .7 }}>{count}</span>
+      {onDelete && active && <span onClick={(e: any) => { e.stopPropagation(); onDelete(); }} title="✕" style={{ opacity: .7, fontSize: 11 }}>✕</span>}
+    </div>
+  );
+}
+
 // Rejilla de tarjetas de robots — misma estética que "Mis Robots" del trader:
 // par, estado por etapa, grado Onyx, mini-curva y acciones (Lab · borrar).
 function RobotGrid({ bots = [], folders = [], batches = [], es, post, canManage, reload, setSub, embedded }: any) {
@@ -700,66 +711,63 @@ function RobotGrid({ bots = [], folders = [], batches = [], es, post, canManage,
     : filter === 'todos' ? withStage
     : withStage.filter(({ st }) => norm(st.label) === filter);
 
+  const activeBatch = batchFilter != null ? (batches as any[]).find((x) => x.batch_no === batchFilter) : null;
   return (
     <div style={embedded ? {} : { ...card }}>
       {!embedded && <h3 style={{ marginTop: 0 }}>{es ? 'Robots de la fábrica' : 'Factory robots'}</h3>}
       {!bots.length && <div className="muted" style={{ fontSize: 13 }}>{es ? 'Aún no hay robots. Arranca la Fábrica automática de arriba.' : 'No robots yet. Start the Automatic factory above.'}</div>}
       {!!bots.length && (
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12, alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        {/* ═══ Barra lateral: carpetas por etapa, mías y por lote ═══ */}
+        <aside style={{ width: 200, flex: 'none', display: 'flex', flexDirection: 'column', gap: 2, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 12, padding: 10 }}>
+          <div className="muted" style={{ fontSize: 10, fontWeight: 800, letterSpacing: .4, margin: '2px 0 3px' }}>{es ? 'POR ETAPA' : 'BY STAGE'}</div>
           {FOLDERS.map(([k, l]) => { const on = filter === k && !folderFilter && batchFilter == null; const n = k === 'todos' ? bots.length : (counts[k] || counts[({ real: 'live', fondeo: 'funded', borrador: 'draft' } as any)[k]] || 0); return (
-            <button key={k} onClick={() => { setFilter(k); setFolderFilter(''); setBatchFilter(null); }} style={{ padding: '5px 11px', borderRadius: 99, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: '1px solid ' + (on ? 'var(--brand)' : 'var(--line)'), background: on ? 'color-mix(in srgb,var(--brand) 16%,transparent)' : 'var(--bg2)', color: on ? 'var(--brand)' : 'var(--tx)' }}>{l} · {n}</button>
+            <NavRow key={k} label={l} count={n} active={on} onClick={() => { setFilter(k); setFolderFilter(''); setBatchFilter(null); }} />
           ); })}
-          {/* Carpetas propias (tags) */}
-          {(folders as any[]).map((f) => { const on = folderFilter === f.id; const n = (bots as any[]).filter((b) => b.folder_id === f.id).length; return (
-            <button key={f.id} onClick={() => { setFolderFilter(f.id); setBatchFilter(null); }} style={{ padding: '5px 11px', borderRadius: 99, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: '1px solid ' + (on ? (f.color || VIOLET) : 'var(--line)'), background: on ? `color-mix(in srgb,${f.color || VIOLET} 16%,transparent)` : 'var(--bg2)', color: on ? (f.color || VIOLET) : 'var(--tx)' }}>📁 {f.name} · {n}{on && canManage && <span onClick={(e) => { e.stopPropagation(); delFolder(f.id); }} style={{ marginLeft: 6, opacity: .7 }}>✕</span>}</button>
-          ); })}
-          {canManage && <button onClick={newFolder} style={{ padding: '5px 11px', borderRadius: 99, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: '1px dashed var(--line)', background: 'transparent', color: 'var(--tx)' }}>＋ {es ? 'Carpeta' : 'Folder'}</button>}
-          {(batches as any[]).length > 0 && <button onClick={() => setShowBatches((v) => !v)} style={{ padding: '5px 11px', borderRadius: 99, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: '1px solid ' + (showBatches || batchFilter != null ? 'var(--brand)' : 'var(--line)'), background: 'var(--bg2)', color: 'var(--tx)' }}>🧪 {es ? 'Lotes' : 'Batches'} · {(batches as any[]).length}</button>}
-          <button onClick={() => exportCsv(shown.map((s) => s.b), folderFilter ? folderName(folderFilter) : batchFilter != null ? 'lote' + batchFilter : filter)} style={{ ...btn(GREEN), padding: '5px 11px', fontSize: 12, marginLeft: 'auto' }}>⬇ {es ? 'Exportar CSV' : 'Export CSV'}</button>
-        </div>
-      )}
-      {!!bots.length && (
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10, padding: sel.size ? '8px 10px' : 0, borderRadius: 10, background: sel.size ? 'color-mix(in srgb,var(--brand) 8%,var(--bg2))' : 'transparent', border: sel.size ? '1px solid color-mix(in srgb,var(--brand) 28%,var(--line))' : 'none' }}>
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer' }}>
-            <input type="checkbox" checked={shown.length > 0 && shown.every(({ b }) => sel.has(b.id))} onChange={(e) => setSel(e.target.checked ? new Set(shown.map(({ b }) => b.id)) : new Set())} />
-            {es ? 'Seleccionar visibles' : 'Select shown'}
-          </label>
-          {sel.size > 0 && <>
-            <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--brand)' }}>{sel.size} {es ? 'seleccionadas' : 'selected'}</span>
-            {canManage && <button disabled={bulkBusy} title={es ? 'Mover a la siguiente etapa (borrador→lab→demo→fondeo→real)' : 'Move to next stage'} onClick={() => bulkPromote([...sel])} style={{ ...btn(GREEN), padding: '5px 11px', fontSize: 12 }}>▲ {es ? 'Mover etapa' : 'Move stage'}</button>}
-            {canManage && <select value="" disabled={bulkBusy} onChange={(e) => { const v = e.target.value; if (v === '__new') newFolder(); else if (v === '__none') moveTo([...sel], null); else if (v) moveTo([...sel], v); e.currentTarget.value = ''; }} style={{ padding: '5px 9px', borderRadius: 9, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-              <option value="">📁 {es ? 'Mover a carpeta…' : 'Move to folder…'}</option>
-              {(folders as any[]).map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
-              <option value="__none">— {es ? 'Sin carpeta' : 'No folder'} —</option>
-              <option value="__new">＋ {es ? 'Nueva carpeta…' : 'New folder…'}</option>
-            </select>}
-            {canManage && <button disabled={bulkBusy} onClick={() => bulkDelete([...sel])} style={{ ...btn(RED), padding: '5px 11px', fontSize: 12 }}>🗑 {es ? 'Borrar' : 'Delete'}</button>}
-            <button disabled={bulkBusy} onClick={() => exportCsv((bots as any[]).filter((b) => sel.has(b.id)), 'seleccion')} style={{ ...btn('var(--brand)'), padding: '5px 11px', fontSize: 12 }}>⬇ CSV</button>
-            <button onClick={clearSel} style={{ fontSize: 12, background: 'transparent', border: 'none', color: 'var(--tx)', cursor: 'pointer', marginLeft: 'auto' }}>{es ? '✕ Quitar selección' : '✕ Clear'}</button>
-          </>}
-        </div>
-      )}
-      {/* Panel de LOTES: de qué corrida salió cada estrategia (trazabilidad) */}
-      {showBatches && (batches as any[]).length > 0 && (
-        <div style={{ background: 'var(--bg2)', borderRadius: 12, padding: 12, marginBottom: 12, border: '1px solid var(--line)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-            <b style={{ fontSize: 13 }}>🧪 {es ? 'Lotes (corridas)' : 'Batches (runs)'}</b>
-            <span className="muted" style={{ fontSize: 11.5 }}>{es ? 'de dónde viene cada estrategia · click en «ver» filtra sus robots' : 'where each strategy came from · click “view” to filter its robots'}</span>
-            {batchFilter != null && <button onClick={() => setBatchFilter(null)} style={{ marginLeft: 'auto', ...btn('var(--brand)'), padding: '3px 9px', fontSize: 11.5 }}>{es ? 'Ver todos' : 'Show all'}</button>}
-          </div>
-          <div style={{ display: 'grid', gap: 6 }}>
-            {(batches as any[]).map((bt) => { const on = batchFilter === bt.batch_no; return (
-              <div key={bt.id} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', background: on ? 'color-mix(in srgb,var(--brand) 10%,var(--card))' : 'var(--card)', border: `1px solid ${on ? 'var(--brand)' : 'var(--line)'}`, borderRadius: 9, padding: '8px 11px' }}>
-                <span style={{ fontWeight: 800, color: '#38bdf8', fontSize: 13 }}>#{bt.batch_no}</span>
-                <span className="muted" style={{ fontSize: 10.5 }}>{bt.created_at ? new Date(bt.created_at).toLocaleString(es ? 'es-ES' : 'en-US', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}</span>
-                <span style={{ fontSize: 11.5 }}>{bt.symbol || '—'}·{tfLabel(bt.timeframe)} · {es ? 'resol' : 'res'} {bt.search_tf || 'auto'} · {bt.recipe || '—'} · OOS {bt.oos_pct ?? '—'}% · {es ? 'riesgo' : 'risk'} {bt.risk_pct ?? '—'}%</span>
-                <span className="muted" style={{ fontSize: 11 }}>{(bt.generated ?? 0).toLocaleString('en-US')}→{(bt.accepted ?? 0).toLocaleString('en-US')}→<b style={{ color: GREEN }}>{bt.created ?? 0}</b> · avg {bt.avg_score ?? '—'}{bt.ai_audited ? ' · 🧠' : ''}</span>
-                <button onClick={() => { setBatchFilter(bt.batch_no); setFolderFilter(''); }} style={{ marginLeft: 'auto', ...btn(GREEN), padding: '3px 10px', fontSize: 11.5 }}>{es ? 'ver' : 'view'}</button>
+          <div className="muted" style={{ fontSize: 10, fontWeight: 800, letterSpacing: .4, margin: '9px 0 3px' }}>{es ? 'MIS CARPETAS' : 'MY FOLDERS'}</div>
+          {!(folders as any[]).length && <div className="muted" style={{ fontSize: 11, padding: '2px 5px' }}>{es ? 'Ninguna aún.' : 'None yet.'}</div>}
+          {(folders as any[]).map((f) => (
+            <NavRow key={f.id} label={'📁 ' + f.name} count={(bots as any[]).filter((b) => b.folder_id === f.id).length} active={folderFilter === f.id} color={f.color || VIOLET} onClick={() => { setFolderFilter(f.id); setBatchFilter(null); setFilter('todos'); }} onDelete={canManage ? () => delFolder(f.id) : undefined} />
+          ))}
+          {canManage && <button onClick={newFolder} style={{ marginTop: 4, padding: '6px 9px', borderRadius: 8, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', border: '1px dashed var(--line)', background: 'transparent', color: 'var(--tx)', textAlign: 'left' }}>＋ {es ? 'Nueva carpeta' : 'New folder'}</button>}
+          <div className="muted" style={{ fontSize: 10, fontWeight: 800, letterSpacing: .4, margin: '9px 0 3px' }}>{es ? 'POR LOTE' : 'BY BATCH'}</div>
+          {!(batches as any[]).length && <div className="muted" style={{ fontSize: 10.5, padding: '2px 5px', lineHeight: 1.45 }}>{es ? 'Sin lotes todavía. Cada corrida del Motor crea uno. (Necesita factory_v12.sql en Supabase.)' : 'No batches yet. Each Engine run makes one. (Needs factory_v12.sql in Supabase.)'}</div>}
+          {(batches as any[]).slice(0, 15).map((bt) => (
+            <NavRow key={bt.id} label={'🧪 #' + bt.batch_no} count={(bots as any[]).filter((b) => Number(b.batch_no) === bt.batch_no).length} active={batchFilter === bt.batch_no} color="#38bdf8" onClick={() => { setBatchFilter(bt.batch_no); setFolderFilter(''); setFilter('todos'); }} />
+          ))}
+        </aside>
+        {/* ═══ Columna principal ═══ */}
+        <div style={{ flex: 1, minWidth: 280 }}>
+          {/* Ficha del lote activo (trazabilidad completa) */}
+          {activeBatch && (
+            <div style={{ background: 'color-mix(in srgb,#38bdf8 8%,var(--bg2))', border: '1px solid color-mix(in srgb,#38bdf8 30%,var(--line))', borderRadius: 10, padding: '10px 12px', marginBottom: 10, fontSize: 12 }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <b style={{ color: '#38bdf8' }}>🧪 {es ? 'Lote' : 'Batch'} #{activeBatch.batch_no}</b>
+                <span className="muted" style={{ fontSize: 11 }}>{activeBatch.created_at ? new Date(activeBatch.created_at).toLocaleString(es ? 'es-ES' : 'en-US', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                <button onClick={() => setBatchFilter(null)} style={{ marginLeft: 'auto', fontSize: 11.5, background: 'transparent', border: 'none', color: 'var(--brand)', cursor: 'pointer' }}>{es ? '✕ ver todos' : '✕ show all'}</button>
               </div>
-            ); })}
+              <div style={{ marginTop: 4 }}>{activeBatch.symbol || '—'}·{tfLabel(activeBatch.timeframe)} · {es ? 'resol' : 'res'} {activeBatch.search_tf || 'auto'} · {activeBatch.recipe || '—'} · OOS {activeBatch.oos_pct ?? '—'}% · {es ? 'riesgo' : 'risk'} {activeBatch.risk_pct ?? '—'}% · <span className="muted">{(activeBatch.generated ?? 0).toLocaleString('en-US')}→{(activeBatch.accepted ?? 0).toLocaleString('en-US')}→<b style={{ color: GREEN }}>{activeBatch.created ?? 0}</b> · avg {activeBatch.avg_score ?? '—'}{activeBatch.ai_audited ? ' · 🧠' : ''}</span></div>
+            </div>
+          )}
+          {/* Barra de acciones en lote (alineada) */}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10, padding: '9px 11px', borderRadius: 10, background: sel.size ? 'color-mix(in srgb,var(--brand) 8%,var(--bg2))' : 'var(--bg2)', border: '1px solid ' + (sel.size ? 'color-mix(in srgb,var(--brand) 28%,var(--line))' : 'var(--line)') }}>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              <input type="checkbox" checked={shown.length > 0 && shown.every(({ b }) => sel.has(b.id))} onChange={(e) => setSel(e.target.checked ? new Set(shown.map(({ b }) => b.id)) : new Set())} style={{ width: 15, height: 15, flex: 'none' }} />
+              {sel.size > 0 ? <span style={{ color: 'var(--brand)', fontWeight: 800 }}>{sel.size} {es ? 'seleccionadas' : 'selected'}</span> : (es ? 'Seleccionar todo' : 'Select all')}
+            </label>
+            {sel.size > 0 && canManage && <>
+              <select value="" disabled={bulkBusy} onChange={(e) => { const v = e.target.value; if (v === '__new') newFolder(); else if (v === '__none') moveTo([...sel], null); else if (v) moveTo([...sel], v); e.currentTarget.value = ''; }} style={{ padding: '5px 9px', borderRadius: 9, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                <option value="">📁 {es ? 'Mover a carpeta…' : 'Move to folder…'}</option>
+                {(folders as any[]).map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+                <option value="__none">— {es ? 'Sin carpeta' : 'No folder'} —</option>
+                <option value="__new">＋ {es ? 'Nueva carpeta…' : 'New folder…'}</option>
+              </select>
+              <button disabled={bulkBusy} onClick={() => bulkDelete([...sel])} style={{ ...btn(RED), padding: '5px 11px', fontSize: 12 }}>🗑 {es ? 'Borrar' : 'Delete'}</button>
+              <button disabled={bulkBusy} onClick={() => exportCsv((bots as any[]).filter((b) => sel.has(b.id)), 'seleccion')} style={{ ...btn('var(--brand)'), padding: '5px 11px', fontSize: 12 }}>⬇ CSV</button>
+              <button onClick={clearSel} style={{ fontSize: 12, background: 'transparent', border: 'none', color: 'var(--tx)', cursor: 'pointer', marginLeft: 'auto' }}>{es ? '✕ Quitar' : '✕ Clear'}</button>
+            </>}
+            {!sel.size && <button onClick={() => exportCsv(shown.map((s) => s.b), folderFilter ? folderName(folderFilter) : batchFilter != null ? 'lote' + batchFilter : filter)} style={{ ...btn(GREEN), padding: '5px 11px', fontSize: 12, marginLeft: 'auto' }}>⬇ {es ? 'Exportar CSV' : 'Export CSV'}</button>}
           </div>
-        </div>
-      )}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(215px,1fr))', gap: 10 }}>
         {shown.map(({ b, st }) => {
           const grade = b.fine_grade || (b.robustness_verdict === 'robusto' ? 'A' : b.robustness_verdict === 'moderado' ? 'C' : '');
@@ -807,13 +815,15 @@ function RobotGrid({ bots = [], folders = [], batches = [], es, post, canManage,
               })()}
               <div style={{ display: 'flex', gap: 6, marginTop: 'auto' }}>
                 {setSub && <button onClick={() => setSub('laboratorio')} style={{ ...btn(VIOLET), padding: '6px 10px', flex: 1, justifyContent: 'center', fontSize: 12 }}>🔬 Lab</button>}
-                {canManage && st.label !== (es ? 'real' : 'live') && <button title={es ? 'Promover a la siguiente etapa' : 'Promote to next stage'} onClick={async () => { if (!confirm(es ? `¿Promover ${b.name} a la siguiente etapa?` : `Promote ${b.name} to next stage?`)) return; try { await post({ action: 'stage_override', botId: b.id, dir: 'advance' }); toast(es ? 'Promovido' : 'Promoted'); reload && reload(); } catch (e: any) { toastErr(e?.message); } }} style={{ ...btn(GREEN), padding: '6px 9px', fontSize: 12 }}>▲</button>}
-                {canManage && <button onClick={() => del(b.id)} style={{ ...btn(RED), padding: '6px 9px' }}>✕</button>}
+                {canManage && <button title={es ? 'Borrar robot' : 'Delete robot'} onClick={() => del(b.id)} style={{ ...btn(RED), padding: '6px 9px' }}>✕</button>}
               </div>
             </div>
           );
         })}
       </div>
+        </div>
+      </div>
+      )}
     </div>
   );
 }

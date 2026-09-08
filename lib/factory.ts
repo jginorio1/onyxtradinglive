@@ -266,7 +266,10 @@ export async function createFolder(o: { userId: string; name: string; color?: st
   const name = (o.name || '').trim().slice(0, 40);
   if (!name) throw new Error('Escribe un nombre para la carpeta.');
   const { data, error } = await supabaseAdmin.from('factory_folders').insert({ name, color: o.color || '#a06bff', created_by: o.userId }).select('*').single();
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (/does not exist|relation|schema cache|could not find the table/i.test(error.message || '')) throw new Error('Falta la tabla de carpetas. Corre supabase/factory_v12.sql en Supabase para activar carpetas y lotes.');
+    throw new Error(error.message);
+  }
   return data;
 }
 export async function deleteFolder(id: string) {

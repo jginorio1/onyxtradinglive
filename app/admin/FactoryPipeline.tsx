@@ -161,7 +161,10 @@ export default function FactoryPipeline({ es, canManage, post }: any) {
                     <div style={{ fontSize: 13, fontWeight: 800, fontFamily: 'monospace', color: VIOLET, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.name}</div>
                     <div className="muted" style={{ fontSize: 11.5, marginTop: 2 }}>{String(b.platform || '').toUpperCase()} · {b.symbol || '—'} · {b.timeframe || '—'} · magic <b style={{ fontFamily: 'monospace', color: 'var(--tx)' }}>{b.magic || '—'}</b></div>
                     {waiting
-                      ? <div style={{ marginTop: 10, fontSize: 12, fontWeight: 700, color: AMBER, display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 9, height: 9, borderRadius: '50%', background: AMBER, boxShadow: `0 0 6px ${AMBER}` }} />{es ? `Esperando 1ª operación con magic ${b.magic}…` : `Waiting for 1st trade with magic ${b.magic}…`}</div>
+                      ? <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: AMBER, display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ width: 9, height: 9, borderRadius: '50%', background: AMBER, boxShadow: `0 0 6px ${AMBER}` }} />{es ? `Esperando 1ª operación con magic ${b.magic}…` : `Waiting for 1st trade with magic ${b.magic}…`}</span>
+                          {canManage && <button onClick={() => act({ action: 'unlink_demo', botId: b.id }, es ? 'Desconectado · vuelto al Databank' : 'Disconnected · back to Databank')} disabled={busy} style={{ ...btn(RED), padding: '4px 10px', fontSize: 11.5 }}>{es ? '✕ Desconectar' : '✕ Disconnect'}</button>}
+                        </div>
                       : canManage && <button onClick={() => act({ action: 'link_demo', botId: b.id }, es ? 'Conectado · esperando su 1ª operación' : 'Connected · waiting for 1st trade')} disabled={busy} style={{ ...btn(GREEN), marginTop: 10 }}>{es ? '🔗 Conectar a demo' : '🔗 Connect to demo'}</button>}
                   </div>
                 );
@@ -215,6 +218,7 @@ export default function FactoryPipeline({ es, canManage, post }: any) {
               {bot.real_approved && <span style={{ fontSize: 13, fontWeight: 800, color: GOLD }}>★ {es ? 'En cuenta real' : 'Live'}</span>}
               {bot.live_magic != null && bot.stage !== 'real' && <>
                 <button onClick={() => act({ action: 'stage_override', botId: bot.id, dir: 'advance' }, es ? 'Avanzado' : 'Advanced')} disabled={busy} style={btn('var(--brand)')}>{es ? 'Forzar avance' : 'Force advance'}</button>
+                <button onClick={() => { if (confirm(es ? '¿Desconectar de la demo y devolver al Databank?' : 'Disconnect from demo and return to Databank?')) act({ action: 'unlink_demo', botId: bot.id }, es ? 'Desconectado' : 'Disconnected'); }} disabled={busy} style={btn(AMBER)}>{es ? '✕ Desconectar' : '✕ Disconnect'}</button>
                 <button onClick={() => act({ action: 'stage_override', botId: bot.id, dir: 'archive' }, es ? 'Archivado' : 'Archived')} disabled={busy} style={btn(RED)}>{es ? 'Archivar' : 'Archive'}</button>
               </>}
             </div>
