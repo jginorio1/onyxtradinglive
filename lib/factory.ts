@@ -2,6 +2,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { robustnessRun, compareBacktest, type Trade, type Grid } from '@/lib/robustness';
 import { robustnessAudit } from '@/lib/factoryAI';
 import { computeSpace, sampleCandidates, type GenConfig } from '@/lib/stratgen';
+import { randomUUID } from 'crypto';
 
 // ============================================================
 // Onyx Bot Factory · Fase 1
@@ -265,9 +266,16 @@ export async function listFolders(): Promise<any[]> {
 export async function createFolder(o: { userId: string; name: string; color?: string }) {
   const name = (o.name || '').trim().slice(0, 40);
   if (!name) throw new Error('Escribe un nombre para la carpeta.');
-  const { data, error } = await supabaseAdmin.from('factory_folders').insert({ name, color: o.color || '#a06bff', created_by: o.userId }).select('*').single();
+  // Generamos id/fecha en JS para NO depender de defaults de la BD (gen_random_uuid/now),
+  // que a veces fallan silenciosamente. Así la creación es fiable.
+  const row = { id: randomUUID(), name, color: o.color || '#a06bff', created_by: o.userId, created_at: new Date().toISOString() };
+  let { data, error } = await supabaseAdmin.from('factory_folders').insert(row).select('*').single();
+  // Si created_by no existe (esquema viejo), reintenta sin esa columna.
+  if (error && /created_by|column/i.test(error.message || '')) {
+    ({ data, error } = await supabaseAdmin.from('factory_folders').insert({ id: row.id, name: row.name, color: row.color, created_at: row.created_at }).select('*').single());
+  }
   if (error) {
-    if (/does not exist|relation|schema cache|could not find the table/i.test(error.message || '')) throw new Error('Falta la tabla de carpetas. Corre supabase/factory_v12.sql en Supabase para activar carpetas y lotes.');
+    if (/does not exist|relation|schema cache|could not find the table/i.test(error.message || '')) throw new Error('Falta la tabla de carpetas. Corre supabase/factory_v12.sql en Supabase (revisa que corrió sin error) y recarga.');
     throw new Error(error.message);
   }
   return data;
@@ -317,6 +325,7 @@ export async function createBatch(o: { userId: string; info: any }) {
   const no = (Number((last as any)?.batch_no) || 0) + 1;
   const i = o.info || {};
   const { data, error } = await supabaseAdmin.from('factory_batches').insert({
+    id: randomUUID(), created_at: new Date().toISOString(),
     batch_no: no, created_by: o.userId,
     dataset_name: i.datasetName || null, symbol: i.symbol || null, timeframe: i.timeframe || null,
     search_tf: i.searchTf != null ? String(i.searchTf) : null, mode: i.mode || null, recipe: i.recipe || null,
