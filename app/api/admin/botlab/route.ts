@@ -27,6 +27,9 @@ export async function GET() {
     adminListProducts(), listServiceRequests(), listCryptoPayments('pending'), listPayouts(), botLabSettings(), botLabAdminStats(),
     botLabAudienceCounts(), mailDomainStatus(),
   ]);
+  // Reseñas del Marketplace (compartidas con el landing «Crea tu bot»): viven en landing_stats.reviews.
+  let reviews: any[] = [];
+  try { const { data: ls } = await supabaseAdmin.from('app_settings').select('value').eq('key', 'landing_stats').maybeSingle(); if (Array.isArray((ls as any)?.value?.reviews)) reviews = (ls as any).value.reviews; } catch {}
   // Score de verificación con operaciones REALES (solo para los que hay que revisar/mostrar).
   const scored = await Promise.all((products as any[]).map(async (p) => {
     if (p.status !== 'pending' && p.status !== 'active') return p;
@@ -34,7 +37,7 @@ export async function GET() {
     const _score = await botScore({ sellerId: p.seller_id, accountId: p.bot_account, magic: p.bot_magic, text });
     return { ...p, _score };
   }));
-  return NextResponse.json({ products: scored, leads, crypto, payouts, settings, stats, audience, mail, canManage: canManage(role, perms) });
+  return NextResponse.json({ products: scored, leads, crypto, payouts, settings, stats, audience, mail, reviews, canManage: canManage(role, perms) });
 }
 
 // POST · acciones del dueño/gestor.
@@ -83,6 +86,19 @@ export async function POST(req: Request) {
     }
     await logAdmin(user.email || '', 'botlab_product_status', String(b.id), { status: b.status });
     return NextResponse.json({ ok: true });
+  }
+  if (a === 'reviews_save') {
+    const arr = Array.isArray(b.reviews) ? b.reviews.slice(0, 200).map((r: any) => ({
+      name: String(r?.name || '').slice(0, 60), text: String(r?.text || '').slice(0, 500),
+      stars: Math.max(1, Math.min(5, Math.round(Number(r?.stars) || 5))),
+      country: String(r?.country || '').slice(0, 4), date: String(r?.date || '').slice(0, 40),
+      result: String(r?.result || '').slice(0, 40), lang: r?.lang === 'en' ? 'en' : 'es',
+    })).filter((r: any) => r.text) : [];
+    const { data: ls } = await supabaseAdmin.from('app_settings').select('value').eq('key', 'landing_stats').maybeSingle();
+    const cur = (ls as any)?.value && typeof (ls as any).value === 'object' ? (ls as any).value : {};
+    await saveSetting('landing_stats', { ...cur, reviews: arr });
+    await logAdmin(user.email || '', 'botlab_reviews_save', '', { count: arr.length });
+    return NextResponse.json({ ok: true, reviews: arr });
   }
   if (a === 'product_save') { const r = await saveProduct('', b.product || {}, true); return NextResponse.json({ ok: true, id: r?.id }); }
   if (a === 'product_delete') { await deleteProduct('', String(b.id), true); return NextResponse.json({ ok: true }); }

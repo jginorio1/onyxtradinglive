@@ -38,7 +38,7 @@ export default function BotLab({ canManage = true }: { canManage?: boolean }) {
   const { lang } = useLang(); const es = lang === 'es';
   const [d, setD] = useState<any>(null);
   const [set, setSet] = useState<any>(null);
-  const [sub, setSub] = useState<'resumen' | 'marketplace' | 'servicios' | 'pagos' | 'creadores' | 'chat' | 'ajustes'>('resumen');
+  const [sub, setSub] = useState<'resumen' | 'marketplace' | 'servicios' | 'pagos' | 'creadores' | 'chat' | 'resenas' | 'ajustes'>('resumen');
 
   async function load() { try { const r = await fetch('/api/admin/botlab'); const j = await r.json(); setD(j); setSet(j.settings); } catch {} }
   useEffect(() => { load(); }, []);
@@ -62,6 +62,7 @@ export default function BotLab({ canManage = true }: { canManage?: boolean }) {
     ['pagos', es ? 'Pagos USDT' : 'USDT payments', 'coin', crypto.length],
     ['creadores', es ? 'Creadores' : 'Creators', 'users', pendingPayouts.length],
     ['chat', es ? 'Chat' : 'Chat', 'chat', 0],
+    ['resenas', es ? 'Reseñas' : 'Reviews', 'spark', (d.reviews || []).length],
     ['ajustes', es ? 'Ajustes' : 'Settings', 'cog', 0],
   ];
 
@@ -96,6 +97,7 @@ export default function BotLab({ canManage = true }: { canManage?: boolean }) {
       {sub === 'pagos' && <CryptoPayments es={es} crypto={crypto} canManage={canManage} act={act} />}
       {sub === 'creadores' && <Payouts es={es} payouts={payouts} canManage={canManage} act={act} />}
       {sub === 'chat' && <ChatInbox es={es} canManage={canManage} />}
+      {sub === 'resenas' && <ReviewsPanel es={es} initial={d.reviews || []} act={act} canManage={canManage} />}
       {sub === 'ajustes' && set && <Settings es={es} set={set} setSet={setSet} canManage={canManage} act={act} mail={d.mail} />}
     </div>
   );
@@ -104,6 +106,68 @@ export default function BotLab({ canManage = true }: { canManage?: boolean }) {
 // ---------- primitivas de UI ----------
 const card: any = { background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, padding: 18 };
 function btn(c: string): any { return { display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 12px', borderRadius: 9, cursor: 'pointer', fontWeight: 800, fontSize: 12.5, border: `1px solid color-mix(in srgb,${c} 40%,transparent)`, background: `color-mix(in srgb,${c} 12%,transparent)`, color: c }; }
+
+// ---------- Reseñas del Marketplace (generador IA + edición) ----------
+// Se guardan en landing_stats.reviews y salen en el landing de Bot Lab Y en «Crea tu bot».
+function ReviewsPanel({ es, initial, act, canManage }: any) {
+  const [rows, setRows] = useState<any[]>(Array.isArray(initial) ? initial : []);
+  const [busy, setBusy] = useState(false);
+  const [lng, setLng] = useState<'es' | 'en'>(es ? 'es' : 'en');
+  const up = (i: number, patch: any) => setRows((r) => r.map((x, idx) => (idx === i ? { ...x, ...patch } : x)));
+  const del = (i: number) => setRows((r) => r.filter((_, idx) => idx !== i));
+  const add = () => setRows((r) => [...r, { name: '', text: '', stars: 5, country: '', lang: lng, date: '' }]);
+  async function gen(batch: boolean) {
+    setBusy(true);
+    try {
+      const used = rows.map((r) => r.name).filter(Boolean);
+      const r = await fetch('/api/admin/reviews-ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(batch ? { batch: true, used } : { lang: lng, used }) });
+      const j = await r.json();
+      if (!r.ok) { toastErr(j.hint || j.error || (es ? 'IA no disponible' : 'AI unavailable')); return; }
+      const extra = batch ? (j.reviews || []) : (j.review ? [j.review] : []);
+      if (!extra.length) { toastErr(es ? 'La IA no devolvió reseñas (¿falta ANTHROPIC_API_KEY?).' : 'AI returned no reviews (missing ANTHROPIC_API_KEY?).'); return; }
+      setRows((rr) => [...rr, ...extra]);
+    } catch { toastErr(es ? 'IA no disponible' : 'AI unavailable'); } finally { setBusy(false); }
+  }
+  async function save() { const j = await act({ action: 'reviews_save', reviews: rows }, es ? 'Reseñas guardadas' : 'Reviews saved'); if (j?.reviews) setRows(j.reviews); }
+  const total = rows.length;
+  const avg = total ? (rows.reduce((a, r) => a + Math.max(1, Math.min(5, Math.round(Number(r?.stars) || 5))), 0) / total).toFixed(1) : '0';
+  return (
+    <div style={{ ...card }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 6 }}>
+        <h3 style={{ margin: 0 }}>{es ? 'Reseñas del Marketplace' : 'Marketplace reviews'}</h3>
+        <span className="muted" style={{ fontSize: 12.5 }}>★ {avg} · {total} {es ? 'reseñas' : 'reviews'}</span>
+      </div>
+      <p className="muted" style={{ fontSize: 12, marginTop: 0, marginBottom: 12 }}>{es ? 'Genéralas con IA (ES/EN) o escríbelas a mano. Aparecen en el carrusel del landing de Bot Lab y en «Crea tu bot». País = código ISO2 (MX, US…). Vacío = sección oculta.' : 'Generate with AI (ES/EN) or write them by hand. They appear in the Bot Lab landing carousel and in “Build a bot”. Country = ISO2 code (MX, US…). Empty = hidden section.'}</p>
+      {canManage && (
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 14 }}>
+        <div style={{ display: 'inline-flex', background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 8, padding: 2 }}>
+          {(['es', 'en'] as const).map((l) => <button key={l} onClick={() => setLng(l)} style={{ padding: '5px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', fontWeight: 800, fontSize: 12, background: lng === l ? VIOLET : 'transparent', color: lng === l ? '#fff' : 'var(--mut)' }}>{l.toUpperCase()}</button>)}
+        </div>
+        <button disabled={busy} onClick={() => gen(false)} style={btn(VIOLET)}>{busy ? '…' : '✨'} {es ? 'Generar 1 con IA' : 'Generate 1 with AI'}</button>
+        <button disabled={busy} onClick={() => gen(true)} style={btn(CYAN)}>{busy ? '…' : '✨'} {es ? 'Generar lote (5)' : 'Generate batch (5)'}</button>
+        <button onClick={add} style={btn('#8a94a6')}>＋ {es ? 'Añadir a mano' : 'Add manually'}</button>
+        <button onClick={save} style={{ ...btn('var(--green)'), marginLeft: 'auto' }}>💾 {es ? 'Guardar' : 'Save'}</button>
+      </div>
+      )}
+      <div style={{ display: 'grid', gap: 10 }}>
+        {rows.map((r, i) => (
+          <div key={i} style={{ border: '1px solid var(--line)', borderRadius: 12, padding: 12, background: 'var(--bg2)' }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
+              <input value={r.name || ''} onChange={(e) => up(i, { name: e.target.value })} placeholder={es ? 'Nombre' : 'Name'} style={{ margin: 0, width: 150 }} />
+              <input value={r.country || ''} onChange={(e) => up(i, { country: e.target.value.toUpperCase().slice(0, 4) })} placeholder={es ? 'País' : 'Country'} style={{ margin: 0, width: 70 }} />
+              <select value={String(Math.max(1, Math.min(5, Math.round(Number(r.stars) || 5))))} onChange={(e) => up(i, { stars: Number(e.target.value) })} style={{ margin: 0, width: 70 }}>{[5, 4, 3, 2, 1].map((s) => <option key={s} value={s}>{'★'.repeat(s)}</option>)}</select>
+              <select value={r.lang === 'en' ? 'en' : 'es'} onChange={(e) => up(i, { lang: e.target.value })} style={{ margin: 0, width: 64 }}><option value="es">ES</option><option value="en">EN</option></select>
+              <input value={r.result || ''} onChange={(e) => up(i, { result: e.target.value })} placeholder={es ? 'Contexto (FTMO 100K…)' : 'Context (FTMO 100K…)'} style={{ margin: 0, flex: 1, minWidth: 120 }} />
+              <button onClick={() => del(i)} style={{ ...btn('#ff6b6b'), padding: '5px 9px' }}>✕</button>
+            </div>
+            <textarea value={r.text || ''} onChange={(e) => up(i, { text: e.target.value })} placeholder={es ? 'Texto de la reseña' : 'Review text'} style={{ margin: 0, width: '100%', minHeight: 52, resize: 'vertical' }} />
+          </div>
+        ))}
+        {!rows.length && <div className="muted" style={{ fontSize: 13, padding: 14, textAlign: 'center' }}>{es ? 'Sin reseñas todavía. Genera con IA o añade a mano, y guarda.' : 'No reviews yet. Generate with AI or add manually, then save.'}</div>}
+      </div>
+    </div>
+  );
+}
 
 function StatCard({ label, value, sub, color, icon, onClick }: any) {
   const Tag: any = onClick ? 'button' : 'div';

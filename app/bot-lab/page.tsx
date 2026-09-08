@@ -52,7 +52,7 @@ export default async function BotLabLanding() {
     sellS: 'Tú pones el precio de tu robot. Onyx cobra por ti y te paga en banco o USDT. Tú te quedas el 80%.',
     sellCta: 'Empezar a vender',
     svcK: 'Servicio a medida', svcH: 'Automatiza tu estrategia con nuestro equipo',
-    payH: 'Paga y cobra con tarjeta o USDT', payS: 'Acepta clientes de todo el mundo: tarjeta, transferencia o cripto. Los creadores cobran en USDT o a su banco.',
+    payH: 'Paga y cobra con tarjeta o USDT', payS: 'Acepta clientes de todo el mundo: tarjeta o cripto (USDT). Los creadores cobran en USDT o a su banco.',
     finalH: '¿Listo para poner tu trading en piloto automático?',
     finalS: 'Construye gratis, compra un robot listo o deja que lo hagamos por ti.',
   } : {
@@ -72,7 +72,7 @@ export default async function BotLabLanding() {
     sellS: 'You set your robot price. Onyx charges for you and pays you to bank or USDT. You keep 80%.',
     sellCta: 'Start selling',
     svcK: 'Bespoke service', svcH: 'Automate your strategy with our team',
-    payH: 'Pay and get paid by card or USDT', payS: 'Accept clients worldwide: card, transfer or crypto. Creators cash out in USDT or to their bank.',
+    payH: 'Pay and get paid by card or USDT', payS: 'Accept clients worldwide: card or crypto (USDT). Creators cash out in USDT or to their bank.',
     finalH: 'Ready to put your trading on autopilot?',
     finalS: 'Build for free, buy a ready robot, or let us do it for you.',
   };
@@ -308,21 +308,22 @@ export default async function BotLabLanding() {
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 9, border: '1px solid var(--line)', borderRadius: 12, padding: '12px 16px', fontWeight: 800, fontSize: 14 }}>💳 {es ? 'Tarjeta' : 'Card'}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 9, border: '1px solid color-mix(in srgb,var(--green) 40%,transparent)', background: 'color-mix(in srgb,var(--green) 8%,transparent)', borderRadius: 12, padding: '12px 16px', fontWeight: 800, fontSize: 14, color: 'var(--green)' }}>₮ USDT</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 9, border: '1px solid var(--line)', borderRadius: 12, padding: '12px 16px', fontWeight: 800, fontSize: 14 }}>🏦 {es ? 'Transferencia' : 'Transfer'}</div>
           </div>
         </div>
       </section>
 
       {/* RESEÑAS · social proof (mismas del landing «Crea tu bot») */}
       {reviews.length > 0 && (
-      <section style={{ ...wrap, padding: '50px 22px' }}>
-        <div style={secHead}>
-          <span style={kicker}>{es ? 'Lo que dicen los traders' : 'What traders say'}</span>
-          <h2 style={{ fontSize: 'clamp(23px,5vw,30px)', fontWeight: 800, margin: '8px 0 4px' }}>{es ? 'Robots que ya operan por ellos' : 'Robots already trading for them'}</h2>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13.5 }}>
-            <span style={{ color: GOLD, letterSpacing: 1 }}>{'★★★★★'}</span>
-            <b>{rAvg || 5}</b>
-            <span className="muted">· {Number(rTotal).toLocaleString()} {es ? 'reseñas' : 'reviews'}</span>
+      <section style={{ padding: '50px 0' }}>
+        <div style={{ ...wrap }}>
+          <div style={secHead}>
+            <span style={kicker}>{es ? 'Lo que dicen los traders' : 'What traders say'}</span>
+            <h2 style={{ fontSize: 'clamp(23px,5vw,30px)', fontWeight: 800, margin: '8px 0 4px' }}>{es ? 'Robots que ya operan por ellos' : 'Robots already trading for them'}</h2>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13.5 }}>
+              <span style={{ color: GOLD, letterSpacing: 1 }}>{'★★★★★'}</span>
+              <b>{rAvg || 5}</b>
+              <span className="muted">· {Number(rTotal).toLocaleString()} {es ? 'reseñas' : 'reviews'}</span>
+            </div>
           </div>
         </div>
         <div className="rev-marquee">
@@ -347,7 +348,7 @@ export default async function BotLabLanding() {
         <div style={secHead}><span style={kicker}>FAQ</span><h2 style={{ fontSize: 'clamp(23px,5vw,30px)', fontWeight: 800, margin: '8px 0' }}>{es ? 'Antes de comprar' : 'Before you buy'}</h2></div>
         <div style={{ maxWidth: 760, margin: '0 auto', display: 'grid', gap: 10 }}>
           {(es
-            ? [['¿Es legal usar robots en prop firms?', 'Sí, siempre que respetes las reglas de tu firma (sin arbitraje de latencia ni HFT prohibido). Cada robot lleva dentro límites de riesgo, filtro de noticias y de sesión para ayudarte a cumplirlas.'], ['¿En qué plataformas funciona?', 'MT4, MT5 y cTrader. En la ficha de cada robot ves con cuáles es compatible; el robot detecta solo el sufijo de tu bróker.'], ['¿Y si el robot pierde?', 'Ningún robot garantiza ganancias. Por eso pruebas en demo primero y solo pasas a real cuando te convence su Onyx Score, rendimiento y drawdown.'], ['¿Puedo apagarlo o cancelar?', 'Sí. Lo apagas en tu plataforma cuando quieras y las suscripciones se cancelan desde tu panel sin permanencia.'], ['¿Cómo pago?', 'Tarjeta, transferencia o USDT (cripto). El cobro es seguro y recibes la licencia al instante.']]
+            ? [['¿Es legal usar robots en prop firms?', 'Sí, siempre que respetes las reglas de tu firma (sin arbitraje de latencia ni HFT prohibido). Cada robot lleva dentro límites de riesgo, filtro de noticias y de sesión para ayudarte a cumplirlas.'], ['¿En qué plataformas funciona?', 'MT4, MT5 y cTrader. En la ficha de cada robot ves con cuáles es compatible; el robot detecta solo el sufijo de tu bróker.'], ['¿Y si el robot pierde?', 'Ningún robot garantiza ganancias. Por eso pruebas en demo primero y solo pasas a real cuando te convence su Onyx Score, rendimiento y drawdown.'], ['¿Puedo apagarlo o cancelar?', 'Sí. Lo apagas en tu plataforma cuando quieras y las suscripciones se cancelan desde tu panel sin permanencia.'], ['¿Cómo pago?', 'Tarjeta o USDT (cripto). El cobro es seguro y recibes la licencia al instante.']]
             : [['Is it legal to use robots on prop firms?', 'Yes, as long as you follow your firm’s rules (no latency arbitrage or banned HFT). Each robot carries risk limits, news and session filters to help you comply.'], ['Which platforms does it work on?', 'MT4, MT5 and cTrader. Each robot’s page shows what it supports; the robot auto-detects your broker’s suffix.'], ['What if the robot loses?', 'No robot guarantees profit. That’s why you test on demo first and only go live once its Onyx Score, performance and drawdown convince you.'], ['Can I turn it off or cancel?', 'Yes. Turn it off in your platform anytime, and subscriptions cancel from your dashboard with no lock-in.'], ['How do I pay?', 'Card, transfer or USDT (crypto). Checkout is secure and you get the license instantly.']]
           ).map(([q, a], i) => (
             <details key={i} style={{ ...card, padding: '14px 16px' }}>
