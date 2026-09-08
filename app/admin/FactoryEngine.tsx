@@ -244,6 +244,9 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
       }
       setProg(1);
       setBars(b);
+      // El desplegable «Convertir a» debe reflejar la TF real con la que se busca,
+      // no quedarse en M15. Solo si es un valor estándar del selector.
+      if ([5, 15, 30, 60, 240, 1440].includes(workTf)) setTfMin(workTf);
       if (ds.symbol) setMeta((mt) => ({ ...mt, symbol: ds.symbol, tf: tfLbl(workTf) }));
       // Costes por defecto realistas según el instrumento (no tienes que buscarlos en MT).
       // Los puedes afinar en Ajustes avanzados. Si el dataset trae ticks reales con spread
@@ -283,6 +286,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
   const [autoStats, setAutoStats] = useState<any>(null); // monitor de generación en vivo
   const [advOpen, setAdvOpen] = useState(false); // pliega todo lo avanzado del Motor
   const [aiObj, setAiObj] = useState(''); const [aiBusy, setAiBusy] = useState(false); const [aiRes, setAiRes] = useState<any>(null); // asistente IA de config
+  const [genMode, setGenMode] = useState<'auto' | 'adv'>('auto'); // Generar robots: Rápido (autopiloto) / Avanzado (receta)
 
   // Aplica la configuración que sugiere la IA a los ajustes del Motor.
   function applyAdvisor(cfgAI: any) {
@@ -854,7 +858,26 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
         </div>
       </div>
 
-      {/* AUTOPILOTO */}
+      {/* GENERAR ROBOTS · un solo bloque, dos modos (Rápido / Avanzado) */}
+      <div style={{ ...card, paddingBottom: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span style={{ display: 'inline-flex', width: 36, height: 36, borderRadius: 11, alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg,' + GREEN + ',' + AQUA + ')', color: '#04201d', fontSize: 19 }}>🏭</span>
+          <div style={{ flex: 1, minWidth: 180 }}>
+            <h3 style={{ margin: 0 }}>{es ? 'Generar robots' : 'Generate robots'}</h3>
+            <p className="muted" style={{ fontSize: 12.5, margin: '2px 0 0' }}>{genMode === 'auto'
+              ? (es ? 'Rápido: Onyx genera, backtestea, filtra por robustez y crea los que sobreviven. Tú solo dices cuántos.' : 'Fast: Onyx generates, backtests, filters by robustness and creates the survivors. You just say how many.')
+              : (es ? 'Avanzado: tú fijas las compuertas exactas (PF, DD, Monte Carlo, walk-forward). Solo pasan los que las superan todas.' : 'Advanced: you set the exact gates (PF, DD, Monte Carlo, walk-forward). Only those passing all of them survive.')}</p>
+          </div>
+          <div style={{ display: 'inline-flex', background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: 3, gap: 3, flex: 'none' }}>
+            {([['auto', es ? '⚡ Rápido' : '⚡ Fast'], ['adv', es ? '🎛 Avanzado' : '🎛 Advanced']] as ['auto' | 'adv', string][]).map(([k, l]) => (
+              <button key={k} onClick={() => setGenMode(k)} style={{ padding: '6px 13px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 800, background: genMode === k ? (k === 'auto' ? GREEN : BLUE) : 'transparent', color: genMode === k ? '#04201d' : 'var(--mut)' }}>{l}</button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* AUTOPILOTO (modo Rápido) */}
+      {genMode === 'auto' && (
       <div style={{ ...card, borderColor: `color-mix(in srgb,${GREEN} 45%,var(--line))`, background: `linear-gradient(150deg, color-mix(in srgb,${GREEN} 8%,var(--card)), var(--card) 70%)` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <span style={{ display: 'inline-flex', width: 36, height: 36, borderRadius: 11, alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg,' + GREEN + ',' + AQUA + ')', color: '#04201d', fontSize: 19 }}>🤖</span>
@@ -876,8 +899,10 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
           </div>
         )}
       </div>
+      )}
 
-      {/* RECETA ENCADENADA (build → backtest → MC → walk-forward → rechazar) */}
+      {/* RECETA ENCADENADA (modo Avanzado): build → backtest → MC → walk-forward → rechazar */}
+      {genMode === 'adv' && (
       <div style={{ ...card, borderColor: `color-mix(in srgb,${BLUE} 45%,var(--line))` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <span style={{ display: 'inline-flex', width: 36, height: 36, borderRadius: 11, alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg,' + LIME + ',' + AQUA + ')', color: '#04201d', fontSize: 19 }}>🧪</span>
@@ -939,6 +964,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
           </div>
         )}
       </div>
+      )}
 
       {/* Bloques a combinar */}
       <div style={card}>
