@@ -665,15 +665,16 @@ function RobotGrid({ bots = [], folders = [], batches = [], es, post, canManage,
   const [bulkBusy, setBulkBusy] = useState(false);
   const [nf, setNf] = useState('');            // nombre de carpeta nueva (campo inline, sin prompt)
   const [nfBusy, setNfBusy] = useState(false);
+  const [nfErr, setNfErr] = useState('');      // error visible bajo el campo (depuración)
   const folderName = (id: string) => (folders as any[]).find((f) => f.id === id)?.name || '';
   // Crea carpeta desde el campo inline (más fiable que window.prompt, que algunos
   // navegadores/entornos bloquean → por eso «no creaba» antes).
   async function createFolderNow() {
     const name = nf.trim();
-    if (!name) { toastErr(es ? 'Escribe un nombre.' : 'Type a name.'); return; }
-    setNfBusy(true);
+    if (!name) { setNfErr(es ? 'Escribe un nombre.' : 'Type a name.'); return; }
+    setNfBusy(true); setNfErr('');
     try { const r = await post({ action: 'folder_create', name }); if (r?.folder?.id) setFolderFilter(r.folder.id); setNf(''); toast(es ? 'Carpeta creada' : 'Folder created'); reload && reload(); }
-    catch (e: any) { toastErr(e?.message || (es ? 'No se pudo crear la carpeta.' : 'Could not create folder.')); }
+    catch (e: any) { setNfErr(String(e?.message || (es ? 'No se pudo crear.' : 'Could not create.'))); toastErr(e?.message); }
     finally { setNfBusy(false); }
   }
   // Para el desplegable «Mover a…»: si eligen «Nueva carpeta», usamos el campo inline.
@@ -746,8 +747,9 @@ function RobotGrid({ bots = [], folders = [], batches = [], es, post, canManage,
           ))}
           {canManage && <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
             <input value={nf} onChange={(e) => setNf(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') createFolderNow(); }} placeholder={es ? 'Nueva carpeta…' : 'New folder…'} maxLength={40} style={{ flex: 1, minWidth: 0, padding: '6px 8px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--tx)', fontSize: 12 }} />
-            <button onClick={createFolderNow} disabled={nfBusy || !nf.trim()} title={es ? 'Crear carpeta' : 'Create folder'} style={{ flex: 'none', width: 30, borderRadius: 8, border: '1px solid color-mix(in srgb,var(--brand) 45%,transparent)', background: 'color-mix(in srgb,var(--brand) 14%,transparent)', color: 'var(--brand)', fontWeight: 800, fontSize: 15, cursor: nfBusy || !nf.trim() ? 'default' : 'pointer' }}>＋</button>
+            <button onClick={createFolderNow} disabled={nfBusy || !nf.trim()} title={es ? 'Crear carpeta' : 'Create folder'} style={{ flex: 'none', width: 30, borderRadius: 8, border: '1px solid color-mix(in srgb,var(--brand) 45%,transparent)', background: 'color-mix(in srgb,var(--brand) 14%,transparent)', color: 'var(--brand)', fontWeight: 800, fontSize: 15, cursor: nfBusy || !nf.trim() ? 'default' : 'pointer' }}>{nfBusy ? '…' : '＋'}</button>
           </div>}
+          {nfErr && <div style={{ fontSize: 10.5, color: RED, marginTop: 4, lineHeight: 1.4 }}>{nfErr}</div>}
           <div className="muted" style={{ fontSize: 10, fontWeight: 800, letterSpacing: .4, margin: '9px 0 3px' }}>{es ? 'POR LOTE' : 'BY BATCH'}</div>
           {!(batches as any[]).length && <div className="muted" style={{ fontSize: 10.5, padding: '2px 5px', lineHeight: 1.45 }}>{es ? 'Sin lotes todavía. Cada corrida del Motor crea uno. (Necesita factory_v12.sql en Supabase.)' : 'No batches yet. Each Engine run makes one. (Needs factory_v12.sql in Supabase.)'}</div>}
           {(batches as any[]).slice(0, 15).map((bt) => (
@@ -799,7 +801,7 @@ function RobotGrid({ bots = [], folders = [], batches = [], es, post, canManage,
             <div key={b.id} style={{ border: `${selected ? 2 : 1}px solid ${selected ? 'var(--brand)' : `color-mix(in srgb,${st.color} 32%,var(--line))`}`, borderRadius: 12, padding: 12, background: selected ? 'color-mix(in srgb,var(--brand) 7%,var(--card))' : 'var(--card)', display: 'flex', flexDirection: 'column', gap: 6, overflow: 'hidden', minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
                 {canManage && <input type="checkbox" checked={selected} onChange={() => toggleSel(b.id)} style={{ flex: 'none', cursor: 'pointer' }} />}
-                <b style={{ fontSize: 13.5, fontFamily: 'monospace', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name}</b>
+                <b style={{ fontSize: 13, fontFamily: 'monospace', color: 'var(--tx)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name || b.codename || ('ONYX-' + String(b.magic || b.id || '').slice(-6))}</b>
                 <span style={{ flex: 'none', whiteSpace: 'nowrap', fontSize: 9.5, fontWeight: 800, padding: '2px 8px', borderRadius: 20, background: `color-mix(in srgb,${st.color} 16%,transparent)`, color: st.color }}>{st.label}</span>
               </div>
               <div className="muted" style={{ fontSize: 11.5 }}>{String(b.platform || '').toUpperCase()} · {b.symbol || '—'} · {tfLabel(b.timeframe) || '—'}{score != null ? ' · ' : ''}{score != null && <span style={{ color: gradeColor(grade), fontWeight: 800 }}>{grade || ''} {score}</span>}</div>

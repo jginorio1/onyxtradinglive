@@ -274,7 +274,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
   const [meta, setMeta] = useState({ platform: 'mt5', symbol: 'XAUUSD', tf: 'M15' });
   const [auto, setAuto] = useState(false);
   const [autoMode, setAutoMode] = useState<'random' | 'evolve'>('evolve'); // aleatorio rápido vs evolución inteligente
-  const [minScore, setMinScore] = useState(75); // Onyx Robustness Score mínimo (anti-sobreajuste)
+  const [minScore, setMinScore] = useState(50); // Onyx Robustness Score mínimo (anti-sobreajuste). 50 = salen robots B/C; súbelo para exigir más
   const [searchTf, setSearchTf] = useState<'auto' | 5 | 15 | 30 | 60 | 240>('auto'); // resolución de la búsqueda
   const [useAi, setUseAi] = useState(true);      // la IA (Claude) audita cada robot final
   const [autoMsg, setAutoMsg] = useState('');
