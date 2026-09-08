@@ -125,7 +125,13 @@ export async function POST(req: Request) {
       stat_score_avg: Math.max(0, Math.min(100, Math.round(Number(b.stat_score_avg ?? cur.stat_score_avg ?? 87)))),
       stat_buyers_week: Math.max(0, Math.round(Number(b.stat_buyers_week ?? cur.stat_buyers_week ?? 0))),
       stat_price_from: Math.max(0, Math.round(Number(b.stat_price_from ?? cur.stat_price_from ?? 19))),
+      pay_trc20: b.pay_trc20 != null ? !!b.pay_trc20 : (cur.pay_trc20 !== false),
+      pay_erc20: b.pay_erc20 != null ? !!b.pay_erc20 : (cur.pay_erc20 !== false),
+      pay_card: b.pay_card != null ? !!b.pay_card : (cur.pay_card === true),
+      robots_monthly: b.robots_monthly != null ? !!b.robots_monthly : (cur.robots_monthly === true),
     };
+    // Nunca dejar todos los métodos apagados: si no queda ninguno, re-enciende TRON.
+    if (!next.pay_trc20 && !next.pay_erc20 && !next.pay_card) next.pay_trc20 = true;
     await saveSetting('bot_lab', next);
     return NextResponse.json({ ok: true, settings: next });
   }

@@ -666,6 +666,30 @@ function Settings({ es, set, setSet, canManage, act, mail }: any) {
       </div>
 
       <div style={card}>
+        <SectionHead icon="coin" color="var(--brand)" title={es ? 'Métodos de pago' : 'Payment methods'} desc={es ? 'USDT al frente (sin contracargos). La tarjeta es respaldo y se puede apagar. El landing se ajusta solo.' : 'USDT first (no chargebacks). Card is backup and can be turned off. The landing adapts on its own.'} />
+        {(() => {
+          const Row = ({ on, onChange, title, sub, warn }: any) => (
+            <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, cursor: 'pointer', background: 'var(--bg2)', border: `1px solid ${on ? (warn ? 'color-mix(in srgb,var(--amber) 45%,var(--line))' : 'color-mix(in srgb,var(--green) 40%,var(--line))') : 'var(--line)'}`, borderRadius: 10, padding: '11px 12px' }}>
+              <div><div style={{ fontWeight: 700, fontSize: 13.5 }}>{title}</div><div className="muted" style={{ fontSize: 11.5 }}>{sub}</div></div>
+              <input type="checkbox" checked={!!on} onChange={(e) => onChange(e.target.checked)} style={{ width: 18, height: 18, cursor: 'pointer', flex: 'none' }} />
+            </label>
+          );
+          return (
+            <div style={{ display: 'grid', gap: 9 }}>
+              <Row on={set.pay_trc20 !== false} onChange={(v: boolean) => setSet({ ...set, pay_trc20: v })} title="₮ USDT · TRON (TRC20)" sub={es ? 'Comisión baja · recomendado' : 'Low fee · recommended'} />
+              <Row on={set.pay_erc20 !== false} onChange={(v: boolean) => setSet({ ...set, pay_erc20: v })} title="₮ USDT · Ethereum (ERC20)" sub={es ? 'Gas más alto' : 'Higher gas'} />
+              <Row on={set.pay_card === true} warn onChange={(v: boolean) => setSet({ ...set, pay_card: v })} title={es ? '💳 Tarjeta (Stripe) · respaldo' : '💳 Card (Stripe) · backup'} sub={es ? 'Riesgo de contracargo. Apagada por defecto.' : 'Chargeback risk. Off by default.'} />
+              <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, cursor: 'pointer', background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '11px 12px', marginTop: 4 }}>
+                <div><div style={{ fontWeight: 700, fontSize: 13.5 }}>{es ? 'Permitir cobro mensual' : 'Allow monthly billing'}</div><div className="muted" style={{ fontSize: 11.5 }}>{es ? 'Apagado = todo es pago único; el landing nunca dice “/mes”.' : 'Off = everything is one-time; the landing never says “/mo”.'}</div></div>
+                <input type="checkbox" checked={set.robots_monthly === true} onChange={(e) => setSet({ ...set, robots_monthly: e.target.checked })} style={{ width: 18, height: 18, cursor: 'pointer', flex: 'none' }} />
+              </label>
+              <p className="muted" style={{ fontSize: 11 }}>{es ? 'Debe quedar al menos un método activo. En el landing, USDT es el botón grande y la tarjeta aparece como “o pagar con tarjeta” solo si está encendida.' : 'At least one method must stay on. On the landing, USDT is the big button and card shows as “or pay by card” only when on.'}</p>
+            </div>
+          );
+        })()}
+      </div>
+
+      <div style={card}>
         <SectionHead icon="spark" color={GOLD} title={es ? 'Servicios high-ticket' : 'High-ticket services'} desc={es ? 'Precios de referencia que ve el cliente.' : 'Reference prices shown to clients.'} />
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: 12 }}>
           <Field label={es ? 'A medida desde ($)' : 'Bespoke from ($)'} value={set.service_automate_from} onChange={(v: any) => setSet({ ...set, service_automate_from: v })} />

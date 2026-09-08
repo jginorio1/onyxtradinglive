@@ -23,6 +23,9 @@ const GOLD = 'var(--gold, #ffd45e)';
 export default async function BotLabLanding() {
   const es = serverLang() === 'es';
   const s = await botLabSettings();
+  // Modo de cobro: si el mensual está apagado, NADA en el landing dice "/mes".
+  const monthly = (s as any).robots_monthly === true;
+  const perMo = monthly ? (es ? '/mes' : '/mo') : '';
   let bots: any[] = [];
   try { bots = await listMarketplace({ limit: 8 }); } catch { bots = []; }
 
@@ -42,8 +45,8 @@ export default async function BotLabLanding() {
     ctaMain: 'Automatizar mi estrategia', ctaBuild: 'Construir gratis',
     st1: 'robots monitoreados', st2: 'de gratis a a medida', st3: 'entrega DFY promedio',
     pathsK: 'Tres caminos', pathsH: 'Elige cómo quieres automatizar',
-    p1t: 'Construye tú mismo', p1d: 'El constructor visual, sin escribir una línea.', p1p: 'Gratis · Pro $15/mes',
-    p2t: 'Compra un robot listo', p2d: 'Catálogo de robots económicos hechos por Onyx y por traders.', p2p: 'Desde $19/mes',
+    p1t: 'Construye tú mismo', p1d: 'El constructor visual, sin escribir una línea.', p1p: monthly ? 'Gratis · Pro $15/mes' : 'Gratis · Pro',
+    p2t: 'Compra un robot listo', p2d: 'Catálogo de robots económicos hechos por Onyx y por traders.', p2p: 'Desde $19' + perMo,
     p3t: 'Lo hacemos por ti', p3d: 'Automatizamos tu estrategia a medida, llave en mano.', p3p: 'A medida',
     ladderK: 'La escalera Onyx', ladderH: 'Un nivel para cada trader',
     marketK: 'Marketplace', marketH: 'Robots de traders verificados', marketS: 'Cada robot muestra su Onyx Score, rendimiento y riesgo.',
@@ -62,8 +65,8 @@ export default async function BotLabLanding() {
     ctaMain: 'Automate my strategy', ctaBuild: 'Build for free',
     st1: 'robots monitored', st2: 'from free to bespoke', st3: 'avg DFY delivery',
     pathsK: 'Three paths', pathsH: 'Choose how you want to automate',
-    p1t: 'Build it yourself', p1d: 'The visual builder, without writing a line.', p1p: 'Free · Pro $15/mo',
-    p2t: 'Buy a ready robot', p2d: 'A catalog of affordable robots by Onyx and traders.', p2p: 'From $19/mo',
+    p1t: 'Build it yourself', p1d: 'The visual builder, without writing a line.', p1p: monthly ? 'Free · Pro $15/mo' : 'Free · Pro',
+    p2t: 'Buy a ready robot', p2d: 'A catalog of affordable robots by Onyx and traders.', p2p: 'From $19' + perMo,
     p3t: 'We build it for you', p3d: 'We automate your strategy, turnkey.', p3p: 'Bespoke',
     ladderK: 'The Onyx ladder', ladderH: 'A tier for every trader',
     marketK: 'Marketplace', marketH: 'Robots from verified traders', marketS: 'Every robot shows its Onyx Score, performance and risk.',
@@ -79,7 +82,7 @@ export default async function BotLabLanding() {
 
   const tiers = [
     { lvl: es ? 'Nivel 1' : 'Tier 1', name: es ? 'Constructor DIY' : 'DIY Builder', price: es ? 'Gratis' : 'Free', unit: '', desc: es ? 'Arma tus robots con el constructor visual.' : 'Build your robots with the visual builder.', href: '/bot-builder', cta: es ? 'Empezar gratis' : 'Start free', hot: false },
-    { lvl: es ? 'Nivel 2' : 'Tier 2', name: es ? 'Robots listos' : 'Ready robots', price: '$19', unit: es ? '/mes' : '/mo', desc: es ? 'Robots económicos ya construidos. Un clic.' : 'Affordable prebuilt robots. One click.', href: '#market', cta: es ? 'Ver catálogo' : 'Browse', hot: false },
+    { lvl: es ? 'Nivel 2' : 'Tier 2', name: es ? 'Robots listos' : 'Ready robots', price: '$19', unit: perMo, desc: es ? 'Robots económicos ya construidos. Un clic.' : 'Affordable prebuilt robots. One click.', href: '#market', cta: es ? 'Ver catálogo' : 'Browse', hot: false },
     { lvl: es ? 'Nivel 3' : 'Tier 3', name: es ? 'Instalación asistida' : 'Assisted install', price: '$' + s.service_install_price, unit: es ? '/sesión' : '/session', desc: es ? 'Un experto instala y configura contigo.' : 'An expert sets it up with you live.', href: '#servicio', cta: es ? 'Agendar' : 'Book', hot: false },
     { lvl: es ? 'Nivel 4' : 'Tier 4', name: es ? 'Automatiza tu estrategia' : 'Automate your strategy', price: '$' + s.service_automate_from.toLocaleString('en-US'), unit: '+', desc: es ? 'Convertimos tu estrategia en un robot a medida.' : 'We turn your strategy into a bespoke robot.', href: '#servicio', cta: es ? 'Solicitar' : 'Request', hot: true },
     { lvl: es ? 'Nivel 5' : 'Tier 5', name: es ? 'Elite / privado' : 'Elite / private', price: '$' + s.service_elite_from.toLocaleString('en-US'), unit: '+', desc: es ? 'Desarrollo privado, VPS y monitoreo con retainer.' : 'Private dev, VPS and monitoring with retainer.', href: '#servicio', cta: es ? 'Hablar' : 'Talk', hot: false },
@@ -92,11 +95,11 @@ export default async function BotLabLanding() {
   // Robots de muestra (Onyx) para que el Marketplace nunca se vea vacío mientras
   // llegan los primeros de traders. Curva, Score, riesgo y precio como una ficha real.
   const sampleBots = [
-    { name: 'Trend Rider Pro', seller: '@onyx', pair: 'US100', plat: 'MT5', score: 92, ret: '+38%', dd: '3.1%', price: '$29', unit: es ? '/mes' : '/mo', path: 'M0,52 L26,48 L52,50 L78,40 L104,42 L130,30 L156,33 L182,22 L208,26 L234,15 L260,18 L300,6', hot: true },
-    { name: 'London Breakout', seller: '@onyx', pair: 'GBPUSD', plat: 'MT4', score: 88, ret: '+27%', dd: '4.2%', price: '$19', unit: es ? '/mes' : '/mo', path: 'M0,54 L30,50 L60,52 L90,44 L120,46 L150,36 L180,38 L210,28 L240,30 L270,20 L300,16' },
-    { name: 'Gold Scalper X', seller: '@onyx', pair: 'XAUUSD', plat: 'MT5', score: 85, ret: '+45%', dd: '6.0%', price: '$39', unit: es ? '/mes' : '/mo', path: 'M0,56 L26,52 L52,46 L78,50 L104,40 L130,44 L156,30 L182,34 L208,22 L234,26 L260,14 L300,10' },
+    { name: 'Trend Rider Pro', seller: '@onyx', pair: 'US100', plat: 'MT5', score: 92, ret: '+38%', dd: '3.1%', price: '$29', unit: perMo, path: 'M0,52 L26,48 L52,50 L78,40 L104,42 L130,30 L156,33 L182,22 L208,26 L234,15 L260,18 L300,6', hot: true },
+    { name: 'London Breakout', seller: '@onyx', pair: 'GBPUSD', plat: 'MT4', score: 88, ret: '+27%', dd: '4.2%', price: '$19', unit: perMo, path: 'M0,54 L30,50 L60,52 L90,44 L120,46 L150,36 L180,38 L210,28 L240,30 L270,20 L300,16' },
+    { name: 'Gold Scalper X', seller: '@onyx', pair: 'XAUUSD', plat: 'MT5', score: 85, ret: '+45%', dd: '6.0%', price: '$39', unit: perMo, path: 'M0,56 L26,52 L52,46 L78,50 L104,40 L130,44 L156,30 L182,34 L208,22 L234,26 L260,14 L300,10' },
     { name: 'Range Master', seller: '@onyx', pair: 'EURUSD', plat: 'cTrader', score: 83, ret: '+21%', dd: '2.8%', price: '$99', unit: es ? ' único' : ' once', path: 'M0,50 L30,48 L60,49 L90,45 L120,46 L150,41 L180,42 L210,36 L240,37 L270,31 L300,28' },
-    { name: 'NY Momentum', seller: '@onyx', pair: 'NAS100', plat: 'MT5', score: 80, ret: '+33%', dd: '5.5%', price: '$25', unit: es ? '/mes' : '/mo', path: 'M0,55 L26,51 L52,53 L78,43 L104,45 L130,33 L156,36 L182,25 L208,29 L234,18 L260,22 L300,12' },
+    { name: 'NY Momentum', seller: '@onyx', pair: 'NAS100', plat: 'MT5', score: 80, ret: '+33%', dd: '5.5%', price: '$25', unit: perMo, path: 'M0,55 L26,51 L52,53 L78,43 L104,45 L130,33 L156,36 L182,25 L208,29 L234,18 L260,22 L300,12' },
     { name: 'Swing Keeper', seller: '@onyx', pair: 'USDJPY', plat: 'MT4', score: 78, ret: '+18%', dd: '2.3%', price: '$149', unit: es ? ' único' : ' once', path: 'M0,52 L30,50 L60,51 L90,47 L120,48 L150,43 L180,44 L210,39 L240,40 L270,34 L300,32' },
   ];
   const buyWeek = 40 + (robotsBuiltSeed() % 25); // "X compraron esta semana" (ancla suave estable)
@@ -162,7 +165,7 @@ export default async function BotLabLanding() {
           [nf(grow((s as any).stat_verified_base ?? 84, 0.15)), es ? 'Robots verificados' : 'Verified robots', 'var(--green)'],
           [String(Math.max(0, Math.min(100, Math.round(Number((s as any).stat_score_avg ?? 87))))), es ? 'Onyx Score promedio' : 'Avg Onyx Score', GOLD],
           [nf(grow((s as any).stat_buyers_week ?? 55, 1)), es ? 'Compraron esta semana' : 'Bought this week', '#38d9ff'],
-          ['$' + priceFrom, es ? 'Desde, al mes' : 'From, per month', 'var(--brand)'],
+          ['$' + priceFrom, monthly ? (es ? 'Desde, al mes' : 'From, per month') : (es ? 'Precio desde' : 'Price from'), 'var(--brand)'],
         ];
         return (
           <section style={{ ...wrap, padding: '14px 22px 4px' }}>
@@ -173,7 +176,7 @@ export default async function BotLabLanding() {
                 <span style={{ fontSize: 40, lineHeight: 1 }}>◆</span><span>{nf(robots)}</span>
               </div>
               <div style={{ fontSize: 12.5, marginTop: 4, display: 'flex', gap: 6, alignItems: 'center', justifyContent: 'center', color: '#8ff0cf' }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#5fe0aa', boxShadow: '0 0 9px #5fe0aa', display: 'inline-block' }} />{es ? 'subiendo en vivo' : 'growing live'}</div>
-              <div style={{ fontSize: 13.5, marginTop: 10, color: '#c8ccff' }}>{es ? `Verificados, con Onyx Score y prueba en demo. Desde $${priceFrom}/mes.` : `Verified, with Onyx Score and demo test. From $${priceFrom}/mo.`}</div>
+              <div style={{ fontSize: 13.5, marginTop: 10, color: '#c8ccff' }}>{es ? `Verificados, con Onyx Score y prueba en demo. Desde $${priceFrom}${monthly ? '/mes' : ''}.` : `Verified, with Onyx Score and demo test. From $${priceFrom}${monthly ? '/mo' : ''}.`}</div>
             </div>
             {/* Métricas — mismo estilo de tarjetas con acento por color */}
             <div style={{ display: 'grid', gap: 14, marginTop: 22 }} className="g4">
@@ -251,7 +254,7 @@ export default async function BotLabLanding() {
           {(bots.length ? bots.slice(0, 8).map((p: any) => ({
             name: p.name, seller: p.seller_name || '@onyx', pair: p.symbol || '—', plat: (p.platform || 'MT5').toUpperCase(),
             score: p.perf?.score ?? null, ret: p.perf?.ret90 ?? p.perf?.ret ?? null, dd: p.perf?.dd ?? null,
-            price: money(p.price_cents), unit: p.kind === 'subscription' ? (es ? '/mes' : '/mo') : '', path: 'M0,52 L40,46 L80,48 L120,38 L160,40 L200,28 L240,30 L300,16', hot: false,
+            price: money(p.price_cents), unit: (monthly && p.kind === 'subscription') ? (es ? '/mes' : '/mo') : '', path: 'M0,52 L40,46 L80,48 L120,38 L160,40 L200,28 L240,30 L300,16', hot: false,
           })) : sampleBots).map((p: any, i: number) => (
             <div key={i} style={{ ...card, padding: 15, position: 'relative', display: 'flex', flexDirection: 'column', ...(p.hot ? { border: `1.5px solid color-mix(in srgb,${GOLD} 60%,var(--line))` } : {}) }}>
               {p.hot && <span style={{ position: 'absolute', top: -10, right: 12, background: `linear-gradient(120deg,${GOLD},#ffb020)`, color: '#3a2a06', fontSize: 10, fontWeight: 800, padding: '3px 9px', borderRadius: 99 }}>★ {es ? 'Top' : 'Top'}</span>}

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
-import { getProduct, checkoutCard, hasLicense } from '@/lib/botlab';
+import { getProduct, checkoutCard, hasLicense, botLabSettings, cardEnabled } from '@/lib/botlab';
 import { createCryptoPayment, cryptoEnabled, cryptoNetworks } from '@/lib/cryptoPay';
 
 export const dynamic = 'force-dynamic';
@@ -35,6 +35,7 @@ export async function POST(req: Request) {
   }
 
   if (!product.accepts_card) return NextResponse.json({ error: 'Este robot no acepta tarjeta.' }, { status: 400 });
+  if (!cardEnabled(await botLabSettings())) return NextResponse.json({ error: 'Pago con tarjeta no disponible por ahora.' }, { status: 400 });
   try {
     const session = await checkoutCard(product, user.id, user.email || undefined);
     return NextResponse.json({ url: session.url });

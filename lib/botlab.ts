@@ -33,12 +33,18 @@ export type BotLabSettings = {
   stat_score_avg: number;     // Onyx Score promedio
   stat_buyers_week: number;   // compraron esta semana (base)
   stat_price_from: number;    // precio "desde" ($/mes)
+  // Métodos de pago (interruptores globales). USDT al frente; tarjeta = respaldo apagable.
+  pay_trc20: boolean;         // aceptar USDT TRON (TRC20)
+  pay_erc20: boolean;         // aceptar USDT Ethereum (ERC20)
+  pay_card: boolean;          // aceptar tarjeta (Stripe) — respaldo
+  robots_monthly: boolean;    // permitir cobro mensual; si false, todo es pago único (sin "/mes")
 };
 const DEF: BotLabSettings = {
   fee_pct: 20, usdt_address: '', usdt_network: 'trc20', usdt_erc20: '', usdt_trc20: '',
   service_automate_from: 1500, service_install_price: 99, service_elite_from: 6000,
   notify_email: '', telegram_chat: '',
   stats_on: true, stat_robots_base: 1240, stat_verified_base: 84, stat_score_avg: 87, stat_buyers_week: 55, stat_price_from: 19,
+  pay_trc20: true, pay_erc20: true, pay_card: false, robots_monthly: false,
 };
 // Devuelve la dirección correcta para una red, con fallback a la legacy.
 export function usdtAddressFor(s: BotLabSettings, network: string): string {
@@ -49,9 +55,14 @@ export function usdtAddressFor(s: BotLabSettings, network: string): string {
 // Redes con wallet configurada (para ofrecerlas en el checkout).
 export function usdtNetworksAvailable(s: BotLabSettings): ('erc20' | 'trc20')[] {
   const out: ('erc20' | 'trc20')[] = [];
-  if (usdtAddressFor(s, 'trc20')) out.push('trc20');
-  if (usdtAddressFor(s, 'erc20')) out.push('erc20');
+  // Solo redes con wallet configurada Y su interruptor encendido (default ON).
+  if ((s.pay_trc20 !== false) && usdtAddressFor(s, 'trc20')) out.push('trc20');
+  if ((s.pay_erc20 !== false) && usdtAddressFor(s, 'erc20')) out.push('erc20');
   return out;
+}
+// ¿Se acepta tarjeta (Stripe) como respaldo? Default apagado.
+export function cardEnabled(s: BotLabSettings): boolean {
+  return s.pay_card === true;
 }
 export async function botLabSettings(): Promise<BotLabSettings> {
   const s = await getSetting<Partial<BotLabSettings>>('bot_lab', {});

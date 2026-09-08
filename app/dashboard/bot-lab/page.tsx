@@ -18,8 +18,9 @@ export default function BotLabDashboard() {
   const [crypto, setCrypto] = useState<any>(null);
   const [netPick, setNetPick] = useState<any>(null); // { product, networks } elegir red USDT
   const [editing, setEditing] = useState<any>(null);
+  const [pay, setPay] = useState<any>({ card: false, crypto: true, monthly: false }); // métodos globales
 
-  async function loadMarket() { try { const r = await fetch('/api/botlab/products?limit=60'); const j = await r.json(); setProducts(j.products || []); } catch {} }
+  async function loadMarket() { try { const r = await fetch('/api/botlab/products?limit=60'); const j = await r.json(); setProducts(j.products || []); if (j.pay) setPay(j.pay); } catch {} }
   async function loadLicenses() { try { const r = await fetch('/api/botlab/licenses'); const j = await r.json(); setLicenses(j.licenses || []); } catch {} }
   async function loadSell() { try { const r = await fetch('/api/botlab/sell'); const j = await r.json(); setSell(j); } catch {} }
 
@@ -120,7 +121,7 @@ export default function BotLabDashboard() {
                       {p.perf?.days != null && <span className="muted" style={{ fontSize: 11, border: '1px solid var(--line)', padding: '2px 7px', borderRadius: 7 }}>{p.perf.days} {es ? 'días' : 'days'}</span>}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
-                      <b style={{ fontSize: 18 }}>{money(p.price_cents)}</b><span className="muted" style={{ fontSize: 12 }}>{p.kind === 'subscription' ? (es ? '/mes' : '/mo') : (es ? 'único' : 'once')}</span>
+                      <b style={{ fontSize: 18 }}>{money(p.price_cents)}</b><span className="muted" style={{ fontSize: 12 }}>{(pay.monthly && p.kind === 'subscription') ? (es ? '/mes' : '/mo') : (es ? 'único' : 'once')}</span>
                     </div>
                     {owned ? (
                       <div style={{ textAlign: 'center', fontSize: 13, fontWeight: 800, color: 'var(--green)', padding: 8, border: '1px solid color-mix(in srgb,var(--green) 35%,transparent)', borderRadius: 9 }}>✓ {es ? 'Ya es tuyo' : 'Owned'}</div>
@@ -135,7 +136,7 @@ export default function BotLabDashboard() {
                           <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '.04em', color: 'var(--green)', border: '1px solid color-mix(in srgb,var(--green) 35%,transparent)', borderRadius: 99, padding: '1px 7px' }}>◆ TRON · ETHEREUM</span>
                           <span className="muted" style={{ fontSize: 10 }}>{es ? 'sin contracargos' : 'no chargebacks'}</span>
                         </div>
-                        <button onClick={() => buy(p, 'card')} className="muted" style={{ width: '100%', marginTop: 6, padding: '6px', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 11.5, border: 'none', background: 'transparent' }}>{es ? 'o pagar con tarjeta' : 'or pay by card'}</button>
+                        {pay.card && <button onClick={() => buy(p, 'card')} className="muted" style={{ width: '100%', marginTop: 6, padding: '6px', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 11.5, border: 'none', background: 'transparent' }}>{es ? 'o pagar con tarjeta' : 'or pay by card'}</button>}
                       </>
                     )}
                   </div>
@@ -166,7 +167,7 @@ export default function BotLabDashboard() {
                   <div style={{ width: 38, height: 38, borderRadius: 10, background: 'linear-gradient(120deg,var(--brand),var(--brand2,#a06bff))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>{(l.product?.name || '?').slice(0, 1)}</div>
                   <div style={{ flex: 1, minWidth: 160 }}>
                     <div style={{ fontWeight: 800 }}>{l.product?.name || (es ? 'Robot' : 'Robot')}</div>
-                    <div className="muted" style={{ fontSize: 12 }}>{l.method === 'usdt' ? 'USDT' : (es ? 'Tarjeta' : 'Card')} · {l.kind === 'subscription' ? (es ? 'renta mensual' : 'monthly') : (es ? 'pago único' : 'one-time')}{active && days != null && days >= 0 ? ` · ${es ? 'renueva en' : 'renews in'} ${days} ${es ? 'días' : 'days'}` : ''}</div>
+                    <div className="muted" style={{ fontSize: 12 }}>{l.method === 'usdt' ? 'USDT' : (es ? 'Tarjeta' : 'Card')} · {(pay.monthly && l.kind === 'subscription') ? (es ? 'renta mensual' : 'monthly') : (es ? 'pago único' : 'one-time')}{active && days != null && days >= 0 ? ` · ${es ? 'renueva en' : 'renews in'} ${days} ${es ? 'días' : 'days'}` : ''}</div>
                   </div>
                   <span style={{ fontSize: 12, fontWeight: 800, padding: '4px 10px', borderRadius: 99, color: c, border: `1px solid color-mix(in srgb,${c} 40%,transparent)` }}>
                     {active ? '✓ ' : ''}{label}
