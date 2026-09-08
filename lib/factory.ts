@@ -288,6 +288,24 @@ export async function bulkDeleteBots(ids: string[]) {
   await supabaseAdmin.from('factory_bots').delete().in('id', ids);
   return { ok: true, deleted: ids.length };
 }
+// Marca la ETAPA a mano (borrador→lab→demo→fondeo→real). La etapa se guarda
+// como texto y la tarjeta la lee por palabra clave, así que es simple y directo.
+// Útil sobre todo para «fondeo», que no tiene transición automática.
+const STAGE_MAP: Record<string, string> = { borrador: 'genesis', lab: 'lab', demo: 'demo', fondeo: 'fondeo', real: 'real' };
+export async function setBotStage(ids: string[], target: string) {
+  const stage = STAGE_MAP[String(target || '').toLowerCase()];
+  if (!stage) throw new Error('Etapa no válida.');
+  if (!ids?.length) return { ok: true, moved: 0 };
+  const patch: any = { stage };
+  if (stage === 'real') patch.real_approved = true;         // marca real explícito
+  const { error } = await supabaseAdmin.from('factory_bots').update(patch).in('id', ids);
+  if (error) {
+    // Si real_approved no existe aún, reintenta solo con la etapa.
+    if (/real_approved|column/i.test(error.message || '')) { await supabaseAdmin.from('factory_bots').update({ stage }).in('id', ids); }
+    else throw new Error(error.message);
+  }
+  return { ok: true, moved: ids.length, stage };
+}
 
 // ---- Lotes ----
 export async function listBatches(limit = 60): Promise<any[]> {

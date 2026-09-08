@@ -686,6 +686,12 @@ function RobotGrid({ bots = [], folders = [], batches = [], es, post, canManage,
     if (!ids.length) return; setBulkBusy(true);
     try { await post({ action: 'bots_move', ids, folderId }); toast((es ? 'Movidos ' : 'Moved ') + ids.length); clearSel(); reload && reload(); } catch (e: any) { toastErr(e?.message); } finally { setBulkBusy(false); }
   }
+  // Marca la etapa a mano (lab/demo/fondeo/real). Llena el hueco de «Fondeo».
+  const STAGE_OPTS: [string, string][] = [['lab', 'Lab'], ['demo', 'Demo'], ['fondeo', es ? 'Fondeo' : 'Funded'], ['real', es ? 'Real' : 'Live']];
+  async function setStage(ids: string[], stage: string) {
+    if (!ids.length || !stage) return; setBulkBusy(true);
+    try { await post({ action: 'bot_set_stage', ids, stage }); toast((es ? 'Marcados como ' : 'Set to ') + stage); clearSel(); reload && reload(); } catch (e: any) { toastErr(e?.message); } finally { setBulkBusy(false); }
+  }
   useEffect(() => { post({ action: 'factory_live' }).then((j: any) => setLive(j?.live || {})).catch(() => {}); }, []);
   const toggleSel = (id: string) => setSel((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const clearSel = () => setSel(new Set());
@@ -774,6 +780,10 @@ function RobotGrid({ bots = [], folders = [], batches = [], es, post, canManage,
                 <option value="__none">— {es ? 'Sin carpeta' : 'No folder'} —</option>
                 <option value="__new">＋ {es ? 'Nueva carpeta…' : 'New folder…'}</option>
               </select>
+              <select value="" disabled={bulkBusy} onChange={(e) => { const v = e.target.value; if (v) setStage([...sel], v); e.currentTarget.value = ''; }} style={{ padding: '5px 9px', borderRadius: 9, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                <option value="">🏷 {es ? 'Marcar como…' : 'Set stage…'}</option>
+                {STAGE_OPTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+              </select>
               <button disabled={bulkBusy} onClick={() => bulkDelete([...sel])} style={{ ...btn(RED), padding: '5px 11px', fontSize: 12 }}>🗑 {es ? 'Borrar' : 'Delete'}</button>
               <button disabled={bulkBusy} onClick={() => exportCsv((bots as any[]).filter((b) => sel.has(b.id)), 'seleccion')} style={{ ...btn('var(--brand)'), padding: '5px 11px', fontSize: 12 }}>⬇ CSV</button>
               <button onClick={clearSel} style={{ fontSize: 12, background: 'transparent', border: 'none', color: 'var(--tx)', cursor: 'pointer', marginLeft: 'auto' }}>{es ? '✕ Quitar' : '✕ Clear'}</button>
@@ -825,8 +835,12 @@ function RobotGrid({ bots = [], folders = [], batches = [], es, post, canManage,
                   </div>
                 );
               })()}
-              <div style={{ display: 'flex', gap: 6, marginTop: 'auto' }}>
+              <div style={{ display: 'flex', gap: 6, marginTop: 'auto', flexWrap: 'wrap' }}>
                 {setSub && <button onClick={() => setSub('laboratorio')} style={{ ...btn(VIOLET), padding: '6px 10px', flex: 1, justifyContent: 'center', fontSize: 12 }}>🔬 Lab</button>}
+                {canManage && <select value="" title={es ? 'Marcar etapa' : 'Set stage'} onChange={(e) => { const v = e.target.value; if (v) setStage([b.id], v); e.currentTarget.value = ''; }} style={{ padding: '5px 7px', borderRadius: 9, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 11.5, fontWeight: 700, cursor: 'pointer' }}>
+                  <option value="">🏷 {es ? 'Marcar' : 'Set'}</option>
+                  {STAGE_OPTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>}
                 {canManage && <button title={es ? 'Borrar robot' : 'Delete robot'} onClick={() => del(b.id)} style={{ ...btn(RED), padding: '6px 9px' }}>✕</button>}
               </div>
             </div>

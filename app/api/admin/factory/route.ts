@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAdmin, logAdmin } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { listBots, listDatasets, factoryStats, saveDataset, createBot, deleteBot, genUniqueName, validateMetrics, runLab, listLabRuns, compareBt, advanceToDemo, saveGenRun, listGenRuns, getDataset, deleteDataset, listFolders, createFolder, deleteFolder, moveBots, bulkDeleteBots, listBatches, createBatch, updateBatch } from '@/lib/factory';
+import { listBots, listDatasets, factoryStats, saveDataset, createBot, deleteBot, genUniqueName, validateMetrics, runLab, listLabRuns, compareBt, advanceToDemo, saveGenRun, listGenRuns, getDataset, deleteDataset, listFolders, createFolder, deleteFolder, moveBots, bulkDeleteBots, setBotStage, listBatches, createBatch, updateBatch } from '@/lib/factory';
 import { pipelineBoard, runPipelineOnce, linkDemo, unlinkDemo, stageOverride, approveReal } from '@/lib/pipeline';
 import { listTemplates, saveTemplate, deleteTemplate, blockCatalog, heuristicTemplate } from '@/lib/templates';
 import { listBlocks, saveBlock, deleteBlock } from '@/lib/blocks';
@@ -169,6 +169,7 @@ export async function POST(req: Request) {
   if (a === 'folder_delete') { try { await deleteFolder(String(b.id || '')); logAdmin(user.email || '', 'factory_folder_delete', String(b.id || ''), {}).catch(() => {}); return NextResponse.json({ ok: true }); } catch (e: any) { return NextResponse.json({ error: e?.message || 'error' }, { status: 400 }); } }
   if (a === 'bots_move') { try { const r = await moveBots((b.ids || []).map(String), b.folderId ? String(b.folderId) : null); logAdmin(user.email || '', 'factory_bots_move', '', { n: r.moved, folder: b.folderId }).catch(() => {}); return NextResponse.json(r); } catch (e: any) { return NextResponse.json({ error: e?.message || 'error' }, { status: 400 }); } }
   if (a === 'bots_delete') { try { const r = await bulkDeleteBots((b.ids || []).map(String)); logAdmin(user.email || '', 'factory_bots_delete', '', { n: r.deleted }).catch(() => {}); return NextResponse.json(r); } catch (e: any) { return NextResponse.json({ error: e?.message || 'error' }, { status: 400 }); } }
+  if (a === 'bot_set_stage') { try { const r = await setBotStage((b.ids || (b.id ? [b.id] : [])).map(String), String(b.stage || '')); logAdmin(user.email || '', 'factory_bot_set_stage', '', { n: r.moved, stage: r.stage }).catch(() => {}); return NextResponse.json(r); } catch (e: any) { return NextResponse.json({ error: e?.message || 'error' }, { status: 400 }); } }
   if (a === 'batch_create') { try { const bt = await createBatch({ userId: user.id, info: b.info || {} }); return NextResponse.json({ ok: true, batch: bt }); } catch (e: any) { return NextResponse.json({ error: e?.message || 'error', batch: null }); } }
   if (a === 'batch_update') { try { await updateBatch(String(b.id || ''), b.patch || {}); return NextResponse.json({ ok: true }); } catch (e: any) { return NextResponse.json({ ok: false, error: e?.message }); } }
   if (a === 'lab_runs') {
