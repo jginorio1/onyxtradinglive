@@ -53,8 +53,9 @@ export default function BotLabHeader({ loggedIn = false }: { loggedIn?: boolean 
             </span>
           </Link>
 
-          {/* Nav de escritorio, centrado en la barra */}
-          <nav className="botlab-nav" style={{ display: 'flex', gap: 22, position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>
+          <div style={{ flex: 1 }} />
+          {/* Nav de escritorio, centrado en la barra (en flujo normal, sin position:absolute) */}
+          <nav className="botlab-nav" style={{ display: 'flex', gap: 22 }}>
             {items.map((i) => (
               <Link key={i.href} href={i.href} style={i.on ? linkOn : link} onMouseEnter={(e) => { if (!i.on) (e.currentTarget as HTMLElement).style.color = 'var(--tx)'; }} onMouseLeave={(e) => { if (!i.on) (e.currentTarget as HTMLElement).style.color = 'var(--mut)'; }}>{i.label}</Link>
             ))}
@@ -87,8 +88,10 @@ export default function BotLabHeader({ loggedIn = false }: { loggedIn?: boolean 
           <button className="botlab-burger" onClick={() => setOpen((o) => !o)} aria-label="Menu" style={{ display: 'none', background: 'transparent', border: '1px solid var(--line)', color: 'var(--tx)', width: 36, height: 36, borderRadius: 9, cursor: 'pointer', fontSize: 16 }}>☰</button>
         </div>
         {open && (
-          <div className="wrap-wide" style={{ paddingBottom: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {items.map((i) => <Link key={i.href} href={i.href} onClick={() => setOpen(false)} style={{ padding: '8px 0', color: 'var(--tx)', fontWeight: 600 }}>{i.label}</Link>)}
+          <div style={{ borderTop: '1px solid var(--line)', background: 'var(--card)' }}>
+            <div className="wrap-wide" style={{ padding: '6px 0 12px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {items.map((i) => <Link key={i.href} href={i.href} onClick={() => setOpen(false)} style={{ padding: '11px 12px', borderRadius: 8, color: 'var(--tx)', fontWeight: 600, fontSize: 15, textAlign: 'left', textDecoration: 'none' }}>{i.label}</Link>)}
+            </div>
           </div>
         )}
       </div>
