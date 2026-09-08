@@ -113,6 +113,7 @@ function ReviewsPanel({ es, initial, act, canManage }: any) {
   const [rows, setRows] = useState<any[]>(Array.isArray(initial) ? initial : []);
   const [busy, setBusy] = useState(false);
   const [lng, setLng] = useState<'es' | 'en'>(es ? 'es' : 'en');
+  const [q, setQ] = useState('');
   const up = (i: number, patch: any) => setRows((r) => r.map((x, idx) => (idx === i ? { ...x, ...patch } : x)));
   const del = (i: number) => setRows((r) => r.filter((_, idx) => idx !== i));
   const add = () => setRows((r) => [...r, { name: '', text: '', stars: 5, country: '', lang: lng, date: '' }]);
@@ -131,6 +132,8 @@ function ReviewsPanel({ es, initial, act, canManage }: any) {
   async function save() { const j = await act({ action: 'reviews_save', reviews: rows }, es ? 'Reseñas guardadas' : 'Reviews saved'); if (j?.reviews) setRows(j.reviews); }
   const total = rows.length;
   const avg = total ? (rows.reduce((a, r) => a + Math.max(1, Math.min(5, Math.round(Number(r?.stars) || 5))), 0) / total).toFixed(1) : '0';
+  const ql = q.trim().toLowerCase();
+  const shown = rows.map((r, idx) => ({ r, idx })).filter(({ r }) => !ql || `${r.name || ''} ${r.text || ''} ${r.country || ''} ${r.result || ''}`.toLowerCase().includes(ql));
   return (
     <div style={{ ...card }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 6 }}>
@@ -149,8 +152,14 @@ function ReviewsPanel({ es, initial, act, canManage }: any) {
         <button onClick={save} style={{ ...btn('var(--green)'), marginLeft: 'auto' }}>💾 {es ? 'Guardar' : 'Save'}</button>
       </div>
       )}
-      <div style={{ display: 'grid', gap: 10 }}>
-        {rows.map((r, i) => (
+      {/* Buscador: filtra por nombre, texto, país o contexto. */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={es ? '🔎 Buscar reseñas (nombre, texto, país…)' : '🔎 Search reviews (name, text, country…)'} style={{ margin: 0, flex: 1 }} />
+        {q && <button onClick={() => setQ('')} style={{ ...btn('#8a94a6'), padding: '5px 9px' }}>✕</button>}
+        <span className="muted" style={{ fontSize: 11.5, whiteSpace: 'nowrap' }}>{shown.length}{ql ? ` / ${total}` : ''}</span>
+      </div>
+      <div style={{ display: 'grid', gap: 10, maxHeight: 560, overflowY: 'auto', paddingRight: 4 }}>
+        {shown.map(({ r, idx: i }) => (
           <div key={i} style={{ border: '1px solid var(--line)', borderRadius: 12, padding: 12, background: 'var(--bg2)' }}>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
               <input value={r.name || ''} onChange={(e) => up(i, { name: e.target.value })} placeholder={es ? 'Nombre' : 'Name'} style={{ margin: 0, width: 150 }} />
@@ -164,6 +173,7 @@ function ReviewsPanel({ es, initial, act, canManage }: any) {
           </div>
         ))}
         {!rows.length && <div className="muted" style={{ fontSize: 13, padding: 14, textAlign: 'center' }}>{es ? 'Sin reseñas todavía. Genera con IA o añade a mano, y guarda.' : 'No reviews yet. Generate with AI or add manually, then save.'}</div>}
+        {!!rows.length && !shown.length && <div className="muted" style={{ fontSize: 13, padding: 14, textAlign: 'center' }}>{es ? 'Ninguna reseña coincide con la búsqueda.' : 'No reviews match your search.'}</div>}
       </div>
     </div>
   );
