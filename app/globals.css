@@ -99,6 +99,14 @@ a{color:inherit;text-decoration:none;}
 .card{background:linear-gradient(180deg,rgba(255,255,255,.04),transparent),var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 8px 30px rgba(0,0,0,.35);}
 .grid{display:grid;gap:16px;}
 .g4{grid-template-columns:repeat(4,minmax(0,1fr));} .g3{grid-template-columns:repeat(3,minmax(0,1fr));} .g2{grid-template-columns:repeat(2,minmax(0,1fr));} .g5{grid-template-columns:repeat(5,minmax(0,1fr));}
+/* Carrusel de reseñas (marquee): se desliza solo, en bucle, y se pausa al pasar el cursor. */
+.rev-marquee{overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);}
+.rev-track{display:flex;gap:14px;width:max-content;animation:rev-scroll 48s linear infinite;}
+.rev-marquee:hover .rev-track{animation-play-state:paused;}
+.rev-card{flex:0 0 auto;width:330px;}
+@keyframes rev-scroll{from{transform:translateX(0);}to{transform:translateX(-50%);}}
+@media (max-width:480px){ .rev-card{width:270px;} }
+@media (prefers-reduced-motion:reduce){ .rev-track{animation:none;} }
 .kpi{position:relative;overflow:hidden;}
 .kpi .lbl{color:var(--mut);font-size:13px;}
 .kpi .val{font-size:26px;font-weight:800;margin-top:4px;letter-spacing:-.5px;}

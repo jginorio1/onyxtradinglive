@@ -211,7 +211,7 @@ export default async function BotLabLanding() {
         <div style={{ display: 'grid', gap: 14 }} className="g4">
           {(bots.length ? bots.slice(0, 8).map((p: any) => ({
             name: p.name, seller: p.seller_name || '@onyx', pair: p.symbol || '—', plat: (p.platform || 'MT5').toUpperCase(),
-            score: p.perf?.score ?? null, ret: p.perf?.ret ?? null, dd: p.perf?.dd ?? null,
+            score: p.perf?.score ?? null, ret: p.perf?.ret90 ?? p.perf?.ret ?? null, dd: p.perf?.dd ?? null,
             price: money(p.price_cents), unit: p.kind === 'subscription' ? (es ? '/mes' : '/mo') : '', path: 'M0,52 L40,46 L80,48 L120,38 L160,40 L200,28 L240,30 L300,16', hot: false,
           })) : sampleBots).map((p: any, i: number) => (
             <div key={i} style={{ ...card, padding: 15, position: 'relative', display: 'flex', flexDirection: 'column', ...(p.hot ? { border: `1.5px solid color-mix(in srgb,${GOLD} 60%,var(--line))` } : {}) }}>
@@ -325,17 +325,19 @@ export default async function BotLabLanding() {
             <span className="muted">· {Number(rTotal).toLocaleString()} {es ? 'reseñas' : 'reviews'}</span>
           </div>
         </div>
-        <div style={{ display: 'grid', gap: 14 }} className="g3">
-          {reviews.map((r: any, i: number) => (
-            <figure key={i} style={{ ...card, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ color: GOLD, fontSize: 13, letterSpacing: 1 }}>{'★'.repeat(Math.max(1, Math.min(5, Math.round(Number(r?.stars) || 5))))}<span style={{ color: 'var(--line)' }}>{'★'.repeat(5 - Math.max(1, Math.min(5, Math.round(Number(r?.stars) || 5))))}</span></div>
-              <blockquote style={{ margin: 0, fontSize: 14, lineHeight: 1.5 }}>{r?.text}</blockquote>
-              <figcaption style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 'auto' }}>
-                <span style={{ fontSize: 12.5, fontWeight: 700 }}>{r?.name}{r?.country ? <span className="muted" style={{ fontWeight: 400 }}> · {r.country}</span> : null}</span>
-                {r?.result ? <span className="muted" style={{ fontSize: 11 }}>{r.result}</span> : null}
-              </figcaption>
-            </figure>
-          ))}
+        <div className="rev-marquee">
+          <div className="rev-track">
+            {[...reviews, ...reviews].map((r: any, i: number) => (
+              <figure key={i} className="rev-card" style={{ ...card, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }} aria-hidden={i >= reviews.length ? true : undefined}>
+                <div style={{ color: GOLD, fontSize: 13, letterSpacing: 1 }}>{'★'.repeat(Math.max(1, Math.min(5, Math.round(Number(r?.stars) || 5))))}<span style={{ color: 'var(--line)' }}>{'★'.repeat(5 - Math.max(1, Math.min(5, Math.round(Number(r?.stars) || 5))))}</span></div>
+                <blockquote style={{ margin: 0, fontSize: 14, lineHeight: 1.5 }}>{r?.text}</blockquote>
+                <figcaption style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 'auto' }}>
+                  <span style={{ fontSize: 12.5, fontWeight: 700 }}>{r?.name}{r?.country ? <span className="muted" style={{ fontWeight: 400 }}> · {r.country}</span> : null}</span>
+                  {r?.result ? <span className="muted" style={{ fontSize: 11 }}>{r.result}</span> : null}
+                </figcaption>
+              </figure>
+            ))}
+          </div>
         </div>
       </section>
       )}
