@@ -31,7 +31,7 @@ const DATA_ES: Cat[] = [
   ] },
   { id: 'pagos', label: 'Pagos y USDT', items: [
     { q: '¿Cómo pago con USDT?', a: 'Eliges "USDT" al comprar. Te mostramos la dirección de wallet y la red (TRC20/ERC20/BEP20), envías el monto y pegas el hash de tu transacción. Activamos tu robot al confirmar el pago.' },
-    { q: '¿Es seguro pagar en cripto aquí?', a: 'Sí. El pago queda registrado y tu robot se activa solo cuando confirmamos la transacción. Nunca te pedimos las claves de tu wallet, solo que envíes tú mismo el pago.' },
+    { q: '¿Es seguro pagar en cripto aquí?', a: 'Sí. El pago queda registrado con el hash de tu transacción y activamos tu robot en cuanto verificamos el pago en la blockchain (normalmente en minutos). Nunca te pedimos las claves de tu wallet, solo que envíes tú mismo el pago.' },
     { q: '¿Qué métodos aceptan?', a: 'Tarjeta, transferencia y USDT. Los creadores también pueden cobrar sus ganancias en USDT o a su banco.' },
     { q: '¿Puedo cancelar una suscripción?', a: 'Sí, cuando quieras, desde tu panel. Mantienes el acceso hasta el final del período que ya pagaste.' },
     { q: '¿Emiten factura?', a: 'Sí, los pagos con tarjeta generan comprobante. Para pagos en USDT queda el registro de la transacción con su hash.' },

@@ -420,7 +420,7 @@ function CryptoModal({ es, crypto, onClose, onDone }: any) {
                 <img src={qrSrc} alt="QR USDT" width={200} height={200} style={{ display: 'block', width: 200, height: 200 }} />
               </div>
               <span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Escanea con tu wallet' : 'Scan with your wallet'}</span>
-              {crypto.match_amount != null && <span style={{ fontSize: 11, color: 'var(--green)', textAlign: 'center' }}>{es ? 'Envía el monto EXACTO → tu robot se activa solo.' : 'Send the EXACT amount → your robot activates automatically.'}</span>}
+              {crypto.match_amount != null && <span style={{ fontSize: 11, color: 'var(--green)', textAlign: 'center' }}>{es ? 'Envía el monto EXACTO para identificar tu pago más rápido.' : 'Send the EXACT amount so we can match your payment faster.'}</span>}
             </div>
 
             {/* Dirección + copiar */}
@@ -440,7 +440,7 @@ function CryptoModal({ es, crypto, onClose, onDone }: any) {
           <button onClick={onClose} style={{ flex: 'none', padding: '11px 16px', borderRadius: 11, border: '1px solid var(--line)', background: 'transparent', color: 'var(--tx)', cursor: 'pointer', fontWeight: 700 }}>{es ? 'Cerrar' : 'Close'}</button>
           <button onClick={submit} disabled={sending} style={{ flex: 1, padding: '11px 18px', borderRadius: 11, border: 'none', fontWeight: 800, cursor: 'pointer', background: 'linear-gradient(120deg,var(--green),#12b981)', color: '#04150e', opacity: sending ? .6 : 1, boxShadow: '0 8px 22px color-mix(in srgb,var(--green) 30%,transparent)' }}>{sending ? '…' : (es ? 'Ya pagué ✓' : 'I paid ✓')}</button>
         </div>
-        <p className="muted" style={{ fontSize: 11.5, marginTop: 12, textAlign: 'center' }}>{es ? 'Activamos tu robot en cuanto confirmemos el pago en la blockchain.' : 'Your robot activates as soon as we confirm the payment on-chain.'}</p>
+        <p className="muted" style={{ fontSize: 11.5, marginTop: 12, textAlign: 'center' }}>{es ? 'Verificamos tu pago en la blockchain y activamos tu robot (normalmente en minutos, máx. unas horas). Te avisamos al confirmarlo.' : 'We verify your payment on-chain and activate your robot (usually within minutes, up to a few hours). We’ll notify you once confirmed.'}</p>
       </div>
     </div>
   );
