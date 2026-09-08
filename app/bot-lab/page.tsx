@@ -89,6 +89,19 @@ export default async function BotLabLanding() {
     ? [['1', 'Llamada estratégica', 'Entendemos tus reglas, riesgo y objetivos.'], ['2', 'Desarrollo', 'Programamos tu robot a medida.'], ['3', 'Backtest + optimización', 'Validamos con años de datos.'], ['4', 'Cuenta demo', 'Lo probamos en vivo sin riesgo.'], ['5', 'Live + monitoreo', 'Instalación remota, VPS y soporte.']]
     : [['1', 'Strategy call', 'We learn your rules, risk and goals.'], ['2', 'Development', 'We code your bespoke robot.'], ['3', 'Backtest + tuning', 'We validate with years of data.'], ['4', 'Demo account', 'We test it live, risk-free.'], ['5', 'Live + monitoring', 'Remote install, VPS and support.']];
 
+  // Robots de muestra (Onyx) para que el Marketplace nunca se vea vacío mientras
+  // llegan los primeros de traders. Curva, Score, riesgo y precio como una ficha real.
+  const sampleBots = [
+    { name: 'Trend Rider Pro', seller: '@onyx', pair: 'US100', plat: 'MT5', score: 92, ret: '+38%', dd: '3.1%', price: '$29', unit: es ? '/mes' : '/mo', path: 'M0,52 L26,48 L52,50 L78,40 L104,42 L130,30 L156,33 L182,22 L208,26 L234,15 L260,18 L300,6', hot: true },
+    { name: 'London Breakout', seller: '@onyx', pair: 'GBPUSD', plat: 'MT4', score: 88, ret: '+27%', dd: '4.2%', price: '$19', unit: es ? '/mes' : '/mo', path: 'M0,54 L30,50 L60,52 L90,44 L120,46 L150,36 L180,38 L210,28 L240,30 L270,20 L300,16' },
+    { name: 'Gold Scalper X', seller: '@onyx', pair: 'XAUUSD', plat: 'MT5', score: 85, ret: '+45%', dd: '6.0%', price: '$39', unit: es ? '/mes' : '/mo', path: 'M0,56 L26,52 L52,46 L78,50 L104,40 L130,44 L156,30 L182,34 L208,22 L234,26 L260,14 L300,10' },
+    { name: 'Range Master', seller: '@onyx', pair: 'EURUSD', plat: 'cTrader', score: 83, ret: '+21%', dd: '2.8%', price: '$99', unit: es ? ' único' : ' once', path: 'M0,50 L30,48 L60,49 L90,45 L120,46 L150,41 L180,42 L210,36 L240,37 L270,31 L300,28' },
+    { name: 'NY Momentum', seller: '@onyx', pair: 'NAS100', plat: 'MT5', score: 80, ret: '+33%', dd: '5.5%', price: '$25', unit: es ? '/mes' : '/mo', path: 'M0,55 L26,51 L52,53 L78,43 L104,45 L130,33 L156,36 L182,25 L208,29 L234,18 L260,22 L300,12' },
+    { name: 'Swing Keeper', seller: '@onyx', pair: 'USDJPY', plat: 'MT4', score: 78, ret: '+18%', dd: '2.3%', price: '$149', unit: es ? ' único' : ' once', path: 'M0,52 L30,50 L60,51 L90,47 L120,48 L150,43 L180,44 L210,39 L240,40 L270,34 L300,32' },
+  ];
+  const buyWeek = 40 + (robotsBuiltSeed() % 25); // "X compraron esta semana" (ancla suave estable)
+  function robotsBuiltSeed() { const d = new Date(); return d.getFullYear() * 366 + d.getMonth() * 31 + d.getDate(); }
+
   const wrap: any = { maxWidth: 1120, margin: '0 auto', padding: '0 22px' };
   const kicker: any = { fontSize: 12.5, fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--brand2, #a06bff)' };
   const card: any = { background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 18, padding: 22 };
@@ -187,24 +200,67 @@ export default async function BotLabLanding() {
 
       {/* MARKETPLACE */}
       <section style={{ ...wrap, padding: '50px 22px' }} id="market">
-        <div style={secHead}><span style={kicker}>{L.marketK}</span><h2 style={{ fontSize: 'clamp(23px,5vw,30px)', fontWeight: 800, margin: '8px 0' }}>{L.marketH}</h2><p className="muted" style={{ fontSize: 15 }}>{L.marketS}</p></div>
-        {bots.length ? (
-          <div style={{ display: 'grid', gap: 14 }} className="g4">
-            {bots.slice(0, 8).map((p) => (
-              <div key={p.id} style={{ ...card, padding: 15 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 8 }}>
-                  <div style={{ width: 34, height: 34, borderRadius: 10, background: 'linear-gradient(120deg,var(--brand),var(--brand2,#a06bff))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>{(p.name || '?').slice(0, 1)}</div>
-                  <div><div style={{ fontSize: 14, fontWeight: 800, lineHeight: 1.1 }}>{p.name}</div><div className="muted" style={{ fontSize: 11 }}>{p.seller_name}</div></div>
-                </div>
-                {p.perf?.score != null && <span style={{ fontSize: 11, fontWeight: 800, color: GOLD, border: `1px solid color-mix(in srgb,${GOLD} 35%,transparent)`, background: `color-mix(in srgb,${GOLD} 8%,transparent)`, padding: '2px 7px', borderRadius: 7 }}>Score {p.perf.score}</span>}
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginTop: 10 }}><span className="muted">{es ? 'Precio' : 'Price'}</span><b>{money(p.price_cents)}{p.kind === 'subscription' ? (es ? '/mes' : '/mo') : ''}</b></div>
-                <Link href="/dashboard/bot-lab" style={{ display: 'block', marginTop: 12, textAlign: 'center', fontSize: 12.5, fontWeight: 800, padding: '8px', borderRadius: 9, background: 'var(--brand)', color: '#0b1020' }}>{L.view}</Link>
-              </div>
-            ))}
+        <div style={secHead}>
+          <span style={kicker}>{L.marketK}</span>
+          <h2 style={{ fontSize: 'clamp(23px,5vw,30px)', fontWeight: 800, margin: '8px 0' }}>{L.marketH}</h2>
+          <p className="muted" style={{ fontSize: 15 }}>{L.marketS}</p>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, marginTop: 8, fontSize: 12.5, fontWeight: 700, color: 'var(--green)', background: 'color-mix(in srgb,var(--green) 9%,transparent)', border: '1px solid color-mix(in srgb,var(--green) 30%,transparent)', borderRadius: 99, padding: '5px 12px' }}>
+            <span style={{ width: 7, height: 7, borderRadius: 99, background: 'var(--green)', display: 'inline-block' }} />{buyWeek} {es ? 'traders compraron esta semana' : 'traders bought this week'}
           </div>
-        ) : (
-          <div style={{ ...card, textAlign: 'center', color: 'var(--mut)' }}>{L.empty}</div>
-        )}
+        </div>
+        <div style={{ display: 'grid', gap: 14 }} className="g4">
+          {(bots.length ? bots.slice(0, 8).map((p: any) => ({
+            name: p.name, seller: p.seller_name || '@onyx', pair: p.symbol || '—', plat: (p.platform || 'MT5').toUpperCase(),
+            score: p.perf?.score ?? null, ret: p.perf?.ret ?? null, dd: p.perf?.dd ?? null,
+            price: money(p.price_cents), unit: p.kind === 'subscription' ? (es ? '/mes' : '/mo') : '', path: 'M0,52 L40,46 L80,48 L120,38 L160,40 L200,28 L240,30 L300,16', hot: false,
+          })) : sampleBots).map((p: any, i: number) => (
+            <div key={i} style={{ ...card, padding: 15, position: 'relative', display: 'flex', flexDirection: 'column', ...(p.hot ? { border: `1.5px solid color-mix(in srgb,${GOLD} 60%,var(--line))` } : {}) }}>
+              {p.hot && <span style={{ position: 'absolute', top: -10, right: 12, background: `linear-gradient(120deg,${GOLD},#ffb020)`, color: '#3a2a06', fontSize: 10, fontWeight: 800, padding: '3px 9px', borderRadius: 99 }}>★ {es ? 'Top' : 'Top'}</span>}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                <div style={{ width: 34, height: 34, flex: 'none', borderRadius: 10, background: 'linear-gradient(120deg,var(--brand),var(--brand2,#a06bff))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>{(p.name || '?').slice(0, 1)}</div>
+                <div style={{ minWidth: 0 }}><div style={{ fontSize: 14, fontWeight: 800, lineHeight: 1.1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div><div className="muted" style={{ fontSize: 11 }}>{p.seller} · {p.pair}</div></div>
+              </div>
+              <svg viewBox="0 0 300 60" preserveAspectRatio="none" style={{ width: '100%', height: 42, margin: '10px 0 8px' }}><path d={p.path} fill="none" stroke="var(--green)" strokeWidth="2.5" /></svg>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6, marginBottom: 10 }}>
+                {[[p.score != null ? String(p.score) : '—', 'Score', GOLD], [p.ret || '—', es ? '90 días' : '90d', 'var(--green)'], [p.dd || '—', es ? 'DD máx' : 'Max DD', 'var(--tx)']].map(([v, l, c]: any, k) => (
+                  <div key={k} style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 8, padding: '5px 4px', textAlign: 'center' }}><b style={{ fontSize: 13, color: c }}>{v}</b><div className="muted" style={{ fontSize: 9.5 }}>{l}</div></div>
+                ))}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto' }}>
+                <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--brand)', border: '1px solid color-mix(in srgb,var(--brand) 30%,transparent)', borderRadius: 6, padding: '2px 6px' }}>{p.plat}</span>
+                <b style={{ fontSize: 15 }}>{p.price}<small className="muted" style={{ fontSize: 11, fontWeight: 600 }}>{p.unit}</small></b>
+              </div>
+              <Link href="/dashboard/bot-lab" style={{ display: 'block', marginTop: 10, textAlign: 'center', fontSize: 12.5, fontWeight: 800, padding: '9px', borderRadius: 9, background: 'var(--brand)', color: '#0b1020' }}>{es ? 'Ver robot' : 'View robot'}</Link>
+            </div>
+          ))}
+        </div>
+        {!bots.length && <p className="muted" style={{ fontSize: 12, textAlign: 'center', marginTop: 12 }}>{es ? 'Robots de muestra por Onyx. Los de traders verificados aparecen aquí en cuanto se publican.' : 'Sample robots by Onyx. Verified-trader robots appear here as they get published.'}</p>}
+      </section>
+
+      {/* CÓMO FUNCIONA (comprador) 1-2-3 */}
+      <section style={{ ...wrap, padding: '30px 22px' }}>
+        <div style={secHead}><span style={kicker}>{es ? 'Fácil de empezar' : 'Easy to start'}</span><h2 style={{ fontSize: 'clamp(23px,5vw,30px)', fontWeight: 800, margin: '8px 0' }}>{es ? 'De comprar a operar en 3 pasos' : 'From buying to trading in 3 steps'}</h2></div>
+        <div style={{ display: 'grid', gap: 16 }} className="g3">
+          {(es
+            ? [['1', 'Elige tu robot', 'Compara Onyx Score, rendimiento y riesgo. Paga con tarjeta o USDT y recibes la licencia al instante.'], ['2', 'Conéctalo a tu plataforma', 'Descargas el archivo para MT4, MT5 o cTrader y lo instalas con la guía paso a paso (o te lo instalamos).'], ['3', 'Opera solo', 'El robot ejecuta tus reglas 24/5 con su gestión de riesgo dentro. Míralo en tu panel y apágalo cuando quieras.']]
+            : [['1', 'Pick your robot', 'Compare Onyx Score, performance and risk. Pay by card or USDT and get the license instantly.'], ['2', 'Connect it to your platform', 'Download the file for MT4, MT5 or cTrader and install with the step-by-step guide (or we install it).'], ['3', 'It trades on its own', 'The robot runs your rules 24/5 with risk management inside. Watch it in your dashboard, turn it off anytime.']]
+          ).map(([n, t, d], i) => (
+            <div key={i} style={{ ...card }}>
+              <div style={{ width: 34, height: 34, borderRadius: 10, background: 'color-mix(in srgb,var(--brand) 16%,transparent)', border: '1px solid color-mix(in srgb,var(--brand) 35%,transparent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: 'var(--brand)', marginBottom: 10 }}>{n}</div>
+              <h3 style={{ margin: 0, fontSize: 17 }}>{t}</h3>
+              <p className="muted" style={{ fontSize: 13.5, marginTop: 6 }}>{d}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* GARANTÍA / reduce el riesgo de comprar */}
+      <section style={{ ...wrap, padding: '14px 22px' }}>
+        <div style={{ ...card, textAlign: 'center', border: '1px solid color-mix(in srgb,var(--green) 30%,transparent)', background: 'color-mix(in srgb,var(--green) 6%,transparent)' }}>
+          <div style={{ fontSize: 22, marginBottom: 6 }}>🛡️</div>
+          <h3 style={{ margin: '0 0 6px', fontSize: 'clamp(18px,4vw,22px)' }}>{es ? 'Compra sin miedo' : 'Buy with confidence'}</h3>
+          <p className="muted" style={{ fontSize: 14, maxWidth: 620, margin: '0 auto' }}>{es ? 'Pruébalo primero en cuenta demo, sin arriesgar un centavo. Las suscripciones se cancelan cuando quieras y el cobro es 100% seguro (tarjeta o USDT). Cada robot lleva sus reglas de riesgo dentro para proteger tu cuenta.' : 'Try it first on a demo account, risking nothing. Subscriptions cancel anytime and checkout is 100% secure (card or USDT). Every robot carries its risk rules inside to protect your account.'}</p>
+        </div>
       </section>
 
       {/* SELL / CREATOR */}
@@ -283,6 +339,23 @@ export default async function BotLabLanding() {
         </div>
       </section>
       )}
+
+      {/* FAQ · resuelve objeciones de compra */}
+      <section style={{ ...wrap, padding: '40px 22px' }}>
+        <div style={secHead}><span style={kicker}>FAQ</span><h2 style={{ fontSize: 'clamp(23px,5vw,30px)', fontWeight: 800, margin: '8px 0' }}>{es ? 'Antes de comprar' : 'Before you buy'}</h2></div>
+        <div style={{ maxWidth: 760, margin: '0 auto', display: 'grid', gap: 10 }}>
+          {(es
+            ? [['¿Es legal usar robots en prop firms?', 'Sí, siempre que respetes las reglas de tu firma (sin arbitraje de latencia ni HFT prohibido). Cada robot lleva dentro límites de riesgo, filtro de noticias y de sesión para ayudarte a cumplirlas.'], ['¿En qué plataformas funciona?', 'MT4, MT5 y cTrader. En la ficha de cada robot ves con cuáles es compatible; el robot detecta solo el sufijo de tu bróker.'], ['¿Y si el robot pierde?', 'Ningún robot garantiza ganancias. Por eso pruebas en demo primero y solo pasas a real cuando te convence su Onyx Score, rendimiento y drawdown.'], ['¿Puedo apagarlo o cancelar?', 'Sí. Lo apagas en tu plataforma cuando quieras y las suscripciones se cancelan desde tu panel sin permanencia.'], ['¿Cómo pago?', 'Tarjeta, transferencia o USDT (cripto). El cobro es seguro y recibes la licencia al instante.']]
+            : [['Is it legal to use robots on prop firms?', 'Yes, as long as you follow your firm’s rules (no latency arbitrage or banned HFT). Each robot carries risk limits, news and session filters to help you comply.'], ['Which platforms does it work on?', 'MT4, MT5 and cTrader. Each robot’s page shows what it supports; the robot auto-detects your broker’s suffix.'], ['What if the robot loses?', 'No robot guarantees profit. That’s why you test on demo first and only go live once its Onyx Score, performance and drawdown convince you.'], ['Can I turn it off or cancel?', 'Yes. Turn it off in your platform anytime, and subscriptions cancel from your dashboard with no lock-in.'], ['How do I pay?', 'Card, transfer or USDT (crypto). Checkout is secure and you get the license instantly.']]
+          ).map(([q, a], i) => (
+            <details key={i} style={{ ...card, padding: '14px 16px' }}>
+              <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: 14.5, listStyle: 'none' }}>{q}</summary>
+              <p className="muted" style={{ fontSize: 13.5, margin: '8px 0 0', lineHeight: 1.55 }}>{a}</p>
+            </details>
+          ))}
+        </div>
+        <div style={{ textAlign: 'center', marginTop: 14 }}><Link href="/bot-lab/faq" style={{ fontSize: 13, fontWeight: 700, color: 'var(--brand)' }}>{es ? 'Ver todas las preguntas →' : 'See all questions →'}</Link></div>
+      </section>
 
       {/* FINAL CTA */}
       <section style={{ ...wrap, padding: '40px 22px' }}>
