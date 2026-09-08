@@ -320,7 +320,7 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
 @media(max-width:900px){ .navl{display:none;} .navburger-wrap{display:block;} }
 /* Header de Onyx Bot Lab en móvil: oculta el nav central, muestra la hamburguesa
    y deja SOLO el icono del logo (el texto "Onyx Bot Lab" estorba en pantallas chicas). */
-@media(max-width:860px){ .botlab-nav{display:none!important;} .botlab-burger{display:inline-flex!important;align-items:center;justify-content:center;} .botlab-logo-text{display:none!important;} }
+@media(max-width:860px){ .botlab-nav{display:none!important;} .botlab-burger{display:inline-flex!important;align-items:center;justify-content:center;} .botlab-logo-text{display:none!important;} .botlab-signin{display:none!important;} }
 @media(max-width:640px){ .g4,.g3,.g2,.g5{grid-template-columns:1fr;} h1{font-size:26px;} .wrap,.wrap-wide{padding:0 15px;} .card{padding:16px;} }
 /* Red de seguridad móvil: ninguna tarjeta o rejilla hace scroll lateral la página.
    Las tablas y el heatmap tienen su propio contenedor con scroll interno, así que

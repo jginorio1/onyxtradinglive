@@ -80,7 +80,7 @@ export default function BotLabHeader({ loggedIn = false }: { loggedIn?: boolean 
                 )}
               </div>
             : <>
-                <a className="btn btn-ghost btn-login" href="/login">{es ? 'Entrar' : 'Sign in'}</a>
+                <a className="btn btn-ghost btn-login botlab-signin" href="/login">{es ? 'Entrar' : 'Sign in'}</a>
                 <a className="btn btn-primary" href="/login?mode=signup" style={{ background: 'linear-gradient(120deg,var(--gold,#ffd45e),#ffb020)', color: '#3a2a06', border: 'none' }}>{es ? 'Empezar' : 'Get started'}</a>
               </>}
           {/* Botón móvil: despliega los enlaces */}
