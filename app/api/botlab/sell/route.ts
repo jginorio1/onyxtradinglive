@@ -38,6 +38,24 @@ export async function POST(req: Request) {
     const { data } = await supabaseAdmin.from('bots_built').select('id,name,platform,magic,spec').eq('user_id', user.id).order('updated_at', { ascending: false }).limit(100);
     return NextResponse.json({ builds: data || [] });
   }
+  if (b.action === 'check') {
+    // Chequeo de elegibilidad ANTES de publicar: le dice al vendedor qué le falta,
+    // para que no haya rechazos sorpresa. Mide con las operaciones reales del robot.
+    const p = b.product || {};
+    const cfg = await botLabSettings();
+    const s = await botScore({ sellerId: user.id, accountId: p.bot_account, magic: p.bot_magic, text: [p.name, p.tagline, p.description].filter(Boolean).join(' ') });
+    const need = Math.max(0, Math.round(Number(cfg.val_min_trades) || 30));
+    const needDays = Math.max(0, Math.round(Number(cfg.val_min_days) || 14));
+    const checks = [
+      { key: 'trades', ok: s.trades >= need, label: `Operaciones reales (${s.trades}/${need})`, en: `Real trades (${s.trades}/${need})` },
+      { key: 'days', ok: s.days >= needDays, label: `Días operando (${s.days}/${needDays})`, en: `Days trading (${s.days}/${needDays})` },
+      { key: 'sl', ok: !!p.spec_sl && !s.slRisk, label: 'Usa Stop Loss', en: 'Uses Stop Loss' },
+      { key: 'martingale', ok: !s.martingale, label: 'Sin martingala', en: 'No martingale' },
+      { key: 'hft', ok: !s.hft, label: 'Sin alta frecuencia', en: 'No high-frequency' },
+    ];
+    const chk = validateForSale(cfg, s, { sl: p.spec_sl });
+    return NextResponse.json({ ok: chk.ok, hasData: s.hasData, checks, reasons: chk.reasons, score: s.score, trades: s.trades, days: s.days });
+  }
   if (b.action === 'save') {
     // Validación con OPERACIONES REALES contra las reglas editables (Admin → Validación):
     // mínimos, martingala, alta frecuencia, drawdown, y Stop Loss obligatorio.

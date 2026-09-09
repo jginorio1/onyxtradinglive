@@ -37,6 +37,8 @@ export default function BotLabDashboard() {
           tagline: sp.get('tagline') || '', description: sp.get('desc') || '',
           kind: 'subscription', interval: 'month', price: 29, category: sp.get('category') || '',
           bot_magic: sp.get('magic') || '', bot_account: sp.get('account') || '',
+          // Del constructor: viene el robot ya elegido (source=build + su receta), para vender en 1 clic.
+          source: 'build', build_id: sp.get('build') || '',
           accepts_card: true, accepts_crypto: true,
         });
         window.history.replaceState({}, '', '/dashboard/bot-lab?tab=vender');
@@ -336,10 +338,33 @@ function ProductModal({ es, product, pay, onClose, onSaved }: any) {
   const [uploading, setUploading] = useState(false);
   // Recetas del constructor del vendedor (para ligar el robot · Modelo A).
   const [builds, setBuilds] = useState<any[]>([]);
+  const [elig, setElig] = useState<any>(null);      // chequeo de elegibilidad para vender
+  const [checking, setChecking] = useState(false);
   useEffect(() => {
     fetch('/api/botlab/sell', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'my_builds' }) })
       .then((r) => r.json()).then((j) => setBuilds(j.builds || [])).catch(() => {});
   }, []);
+  // Prellenar la ficha desde la receta cuando el robot llega ya elegido (venta en 1 clic).
+  useEffect(() => {
+    if (!f.build_id || !builds.length) return;
+    const b = builds.find((x) => x.id === f.build_id); if (!b) return;
+    const sp = b.spec || {}; const sym = String(sp.symbol || '').toUpperCase();
+    const mkt = /XAU|GOLD/.test(sym) ? 'oro' : /BTC|ETH|USDT/.test(sym) ? 'cripto' : /US30|NAS|SPX|GER|UK100|JP225|IDX/.test(sym) ? 'indices' : sym ? 'forex' : '';
+    const dir = (sp.allowLongs && sp.allowShorts) ? 'both' : sp.allowShorts ? 'short' : sp.allowLongs ? 'long' : '';
+    setF((prev: any) => ({ ...prev, platform: b.platform || prev.platform, bot_magic: prev.bot_magic || b.magic,
+      spec_timeframe: prev.spec_timeframe || sp.tf || '', spec_market: prev.spec_market || mkt, spec_symbols: prev.spec_symbols || sym,
+      spec_direction: prev.spec_direction || dir, spec_sl: prev.spec_sl || (Number(sp.slVal) > 0), spec_news: prev.spec_news || !!sp.useNewsFilter }));
+  }, [f.build_id, builds]); // eslint-disable-line
+  // Comprueba si el robot ya puede venderse (operaciones, días, SL, sin martingala/HFT).
+  async function runCheck() {
+    if (!f.build_id) return;
+    setChecking(true);
+    try {
+      const r = await fetch('/api/botlab/sell', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'check', product: { bot_magic: f.bot_magic, bot_account: f.bot_account, spec_sl: !!f.spec_sl, name: f.name } }) });
+      setElig(await r.json());
+    } catch { setElig(null); } finally { setChecking(false); }
+  }
+  useEffect(() => { if (f.build_id) runCheck(); }, [f.build_id]); // eslint-disable-line
   const inp: any = { width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 14 };
   // Sube el archivo del robot (.ex5/.ex4/.set/.zip) al bucket privado y guarda su ruta.
   async function uploadFile(file: File) {
@@ -443,6 +468,27 @@ function ProductModal({ es, product, pay, onClose, onSaved }: any) {
               : 'Onyx generates the protected (locked) file for MT5, MT4 and cTrader at purchase time. The buyer runs it only with an active license.'}</span>
             {!builds.length && <div className="muted" style={{ fontSize: 11, marginTop: 6 }}>{es ? 'No tienes robots del constructor todavía. Créalo en el Constructor y vuelve aquí.' : 'You have no constructor robots yet. Build one first.'}</div>}
           </div>
+          {/* Chequeo de elegibilidad: le dice al vendedor si ya puede vender, sin sorpresas. */}
+          {f.build_id && (
+            <div style={{ border: `1px solid ${elig ? (elig.ok ? 'color-mix(in srgb,var(--green) 40%,transparent)' : 'color-mix(in srgb,var(--amber) 45%,transparent)') : 'var(--line)'}`, background: elig ? (elig.ok ? 'color-mix(in srgb,var(--green) 8%,transparent)' : 'color-mix(in srgb,var(--amber) 8%,transparent)') : 'var(--bg2)', borderRadius: 10, padding: '11px 12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
+                <b style={{ fontSize: 13 }}>{checking ? (es ? 'Comprobando…' : 'Checking…') : !elig ? (es ? '¿Listo para vender?' : 'Ready to sell?') : elig.ok ? (es ? '✓ Listo para vender' : '✓ Ready to sell') : (es ? 'Aún le falta para venderse' : 'Not sellable yet')}</b>
+                <button type="button" onClick={runCheck} disabled={checking} className="muted" style={{ fontSize: 11.5, fontWeight: 700, cursor: 'pointer', border: '1px solid var(--line)', background: 'transparent', borderRadius: 8, padding: '4px 10px', color: 'var(--tx)' }}>{es ? 'Comprobar' : 'Check'}</button>
+              </div>
+              {elig && !elig.hasData && <div className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>{es ? 'Este robot aún no tiene operaciones reales. Instálalo, déjalo operar y vuelve.' : 'This robot has no real trades yet. Install it, let it trade and come back.'}</div>}
+              {elig && !!elig.checks && (
+                <div style={{ display: 'grid', gap: 4, marginTop: 8 }}>
+                  {elig.checks.map((c: any) => (
+                    <div key={c.key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+                      <span style={{ color: c.ok ? 'var(--green)' : 'var(--amber)', fontWeight: 800 }}>{c.ok ? '✓' : '○'}</span>
+                      <span style={{ color: c.ok ? 'var(--mut)' : 'var(--tx)' }}>{es ? c.label : c.en}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="muted" style={{ fontSize: 10.5, marginTop: 7 }}>{es ? 'Onyx aprueba con las operaciones reales del robot. Si algo falta, déjalo operar más y vuelve.' : 'Onyx approves using the robot’s real trades. If something’s missing, let it trade more and come back.'}</div>
+            </div>
+          )}
           {/* Cobro en USDT, siempre visible. */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'color-mix(in srgb,var(--green) 12%,transparent)', border: '1px solid color-mix(in srgb,var(--green) 35%,transparent)', borderRadius: 10, padding: '11px 12px' }}>
             <span style={{ width: 26, height: 26, flex: 'none', borderRadius: 7, background: 'var(--green)', color: '#04150e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900 }}>₮</span>

@@ -908,7 +908,7 @@ export default function BotBuilder() {
               const ops = opsByMagic[Number(b.magic)] || { trades: 0, accountId: '' };
               const canSell = ops.trades >= sellMin;
               const c = ops.trades > 0 ? '#34e2a0' : '#8b93ff';   // verde si opera, violeta si no
-              const sellHref = `/dashboard/bot-lab?new=1&name=${encodeURIComponent(b.name || '')}&platform=${encodeURIComponent(plat)}&magic=${encodeURIComponent(b.magic ?? '')}&account=${encodeURIComponent(ops.accountId || '')}`;
+              const sellHref = `/dashboard/bot-lab?new=1&build=${encodeURIComponent(b.id || '')}&name=${encodeURIComponent(b.name || '')}&platform=${encodeURIComponent(plat)}&magic=${encodeURIComponent(b.magic ?? '')}&account=${encodeURIComponent(ops.accountId || '')}`;
               const act: any = { fontSize: 12, fontWeight: 700, padding: '7px 12px', borderRadius: 9, cursor: 'pointer', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 5, border: '1px solid rgba(255,255,255,.12)', background: 'rgba(255,255,255,.05)', color: '#c9d2ea' };
               return (
               <div key={b.id} style={{ position: 'relative', borderRadius: 16, padding: '15px 16px', background: `linear-gradient(180deg, color-mix(in srgb, ${c} 10%, transparent), rgba(255,255,255,.02))`, border: `1px solid color-mix(in srgb, ${c} 35%, var(--line))`, boxShadow: `0 10px 30px color-mix(in srgb, ${c} 14%, transparent)` }}>
