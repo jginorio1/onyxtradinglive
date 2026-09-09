@@ -23,9 +23,9 @@ export default function BotLabDashboard() {
   const [mq, setMq] = useState(''); const [mplat, setMplat] = useState('all'); const [msort, setMsort] = useState('score'); const [mshow, setMshow] = useState(12); // buscador/filtro/orden/paginación del marketplace
   const [me, setMe] = useState(''); // id del usuario (para armar su enlace de referido)
 
-  async function loadMarket() { try { const r = await fetch('/api/botlab/products?limit=60'); const j = await r.json(); setProducts(j.products || []); if (j.pay) setPay(j.pay); } catch {} }
-  async function loadLicenses() { try { const r = await fetch('/api/botlab/licenses'); const j = await r.json(); setLicenses(j.licenses || []); } catch {} }
-  async function loadSell() { try { const r = await fetch('/api/botlab/sell'); const j = await r.json(); setSell(j); if (j.me) setMe(j.me); } catch {} }
+  async function loadMarket() { try { const r = await fetch('/api/botlab/products?limit=60', { cache: 'no-store' }); const j = await r.json(); setProducts(j.products || []); if (j.pay) setPay(j.pay); } catch {} }
+  async function loadLicenses() { try { const r = await fetch('/api/botlab/licenses', { cache: 'no-store' }); const j = await r.json(); setLicenses(j.licenses || []); } catch {} }
+  async function loadSell() { try { const r = await fetch('/api/botlab/sell', { cache: 'no-store' }); const j = await r.json(); setSell(j); if (j.me) setMe(j.me); } catch {} }
   // Copia el enlace de referido de ESTE usuario para un robot (gana el % que fije el vendedor).
   function shareRef(p: any) {
     const url = `${window.location.origin}/bot-lab?p=${p.id}&ref=${me}`;
