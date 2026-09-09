@@ -36,6 +36,12 @@ export default function SiteFooter() {
   const links: [string, string][] = (fx?.links?.length)
     ? fx.links.map((l: any) => [l.href, es ? l.es : l.en])
     : defLinks;
+  // Aseguramos SIEMPRE el enlace al marketplace (aunque el footer venga personalizado
+  // del Landing Builder). Se inserta tras "Inicio" si aún no está.
+  if (!links.some(([h]) => h === '/bot-lab')) {
+    const at = links.findIndex(([h]) => h === '/');
+    links.splice(at >= 0 ? at + 1 : 0, 0, ['/bot-lab', L('Bot Lab · Marketplace', 'Bot Lab · Marketplace')]);
+  }
   const tagline = es ? (fx?.tagline_es || '') : (fx?.tagline_en || '');
   const social: any[] = (fx?.social || []).filter((x: any) => x && x.url && x.on !== false);
 

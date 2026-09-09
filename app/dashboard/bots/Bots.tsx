@@ -673,7 +673,7 @@ export default function Bots() {
           )}
           {/* Entrada simple: el laboratorio arranca colapsado para que la primera vista sea limpia. */}
           {caps.portfolioLab && (
-            <button className="card" onClick={() => setLabOpen((v) => !v)} style={{ width: '100%', textAlign: 'left', cursor: 'pointer', padding: '13px 16px', marginBottom: labOpen ? 12 : 16, display: 'flex', alignItems: 'center', gap: 10, background: 'var(--card)', border: '1px solid var(--line)' }}>
+            <button className="card" onClick={() => setLabOpen((v) => !v)} style={{ width: '100%', textAlign: 'left', cursor: 'pointer', padding: '13px 16px', marginBottom: labOpen ? 12 : 16, display: 'flex', alignItems: 'center', gap: 10, background: 'var(--card)', border: '1px solid var(--line)', color: 'var(--tx)' }}>
               <OnyxIcon emoji="🧪" size={16} />
               <span style={{ flex: 1 }}><b style={{ fontSize: 14 }}>{L('Comparar portafolios', 'Compare portfolios')}</b><span className="muted" style={{ display: 'block', fontSize: 12 }}>{L('Combina robots y mira si se diversifican o caen juntos.', 'Combine robots and see if they diversify or fall together.')}</span></span>
               {!!sel.size && <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--brand)', border: '1px solid color-mix(in srgb,var(--brand) 40%,transparent)', borderRadius: 99, padding: '2px 9px' }}>{sel.size} {L('elegidos', 'selected')}</span>}
