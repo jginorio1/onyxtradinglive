@@ -446,13 +446,9 @@ export async function setPurchaseStatus(subId: string, status: string, periodEnd
 // Stripe Connect del creador (marketplace) — cuenta propia en profiles
 // ============================================================
 export async function sellerOnboardingLink(userId: string, email?: string) {
-  const { data: p } = await supabaseAdmin.from('profiles').select('bot_stripe_account_id').eq('id', userId).maybeSingle();
-  let acct = (p as any)?.bot_stripe_account_id as string | undefined;
-  if (!acct) {
-    const account = await stripe.accounts.create({ type: 'express', email, capabilities: { transfers: { requested: true }, card_payments: { requested: true } }, metadata: { onyx_bot_seller: userId } });
-    acct = account.id;
-    await supabaseAdmin.from('profiles').update({ bot_stripe_account_id: acct, bot_seller: true }).eq('id', userId);
-  }
+  // Nodo de cobro único: reutiliza (o crea una sola vez) la cuenta Stripe compartida.
+  const { sharedStripeAccountId } = await import('@/lib/payoutProfile');
+  const acct = await sharedStripeAccountId(userId, email);
   const link = await stripe.accountLinks.create({
     account: acct,
     refresh_url: `${appUrl()}/dashboard/bot-lab?tab=vender&connect=refresh`,

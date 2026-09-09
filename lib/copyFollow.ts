@@ -21,13 +21,9 @@ const appUrl = () => (process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || 
 
 // Connect: onboarding del TRADER calificado para poder cobrar sus copias.
 export async function copyOnboardingLink(userId: string, email?: string) {
-  const { data: p } = await supabaseAdmin.from('profiles').select('copy_stripe_account_id').eq('id', userId).maybeSingle();
-  let acct = (p as any)?.copy_stripe_account_id as string | undefined;
-  if (!acct) {
-    const account = await stripe.accounts.create({ type: 'express', email, capabilities: { transfers: { requested: true }, card_payments: { requested: true } }, metadata: { onyx_copy_provider: userId } });
-    acct = account.id;
-    await supabaseAdmin.from('profiles').update({ copy_stripe_account_id: acct }).eq('id', userId);
-  }
+  // Nodo de cobro único: la MISMA cuenta Stripe compartida entre todos los programas.
+  const { sharedStripeAccountId } = await import('@/lib/payoutProfile');
+  const acct = await sharedStripeAccountId(userId, email);
   const link = await stripe.accountLinks.create({
     account: acct,
     refresh_url: `${appUrl()}/dashboard/onyx-copy?connect=refresh`,

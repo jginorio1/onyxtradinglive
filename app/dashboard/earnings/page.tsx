@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useLang } from '@/lib/lang';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 const GOLD = '#ffd45e';
 const money = (c: number) => '$' + (Math.round((c || 0)) / 100).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
@@ -26,9 +27,14 @@ export default function EarningsCenterPage() {
 
   return (
     <div className="wrap" style={{ maxWidth: 960, margin: '0 auto', padding: '18px 16px 70px' }}>
-      <div style={{ marginBottom: 18 }}>
-        <h1 style={{ fontSize: 26, margin: '0 0 4px' }}>{es ? 'Centro de ganancias' : 'Earnings center'}</h1>
-        <p className="muted" style={{ fontSize: 14, margin: 0 }}>{es ? 'Todo lo que ganas en Onyx, en un solo lugar: ventas, referidos, comisiones y créditos.' : 'Everything you earn on Onyx, in one place: sales, referrals, commissions and credits.'}</p>
+      <div style={{ marginBottom: 18, display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ flex: 1, minWidth: 220 }}>
+          <h1 style={{ fontSize: 26, margin: '0 0 4px' }}>{es ? 'Centro de ganancias' : 'Earnings center'}</h1>
+          <p className="muted" style={{ fontSize: 14, margin: 0 }}>{es ? 'Todo lo que ganas en Onyx, en un solo lugar: ventas, referidos, comisiones y créditos.' : 'Everything you earn on Onyx, in one place: sales, referrals, commissions and credits.'}</p>
+        </div>
+        <Link href="/dashboard/payout-settings" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--tx)', textDecoration: 'none', fontWeight: 800, fontSize: 13, whiteSpace: 'nowrap' }}>
+          <OnyxIcon emoji="⚙️" size={16} /> {es ? 'Configuración de cobro' : 'Payout settings'}
+        </Link>
       </div>
 
       {/* Resumen grande */}
@@ -54,7 +60,7 @@ export default function EarningsCenterPage() {
               <Link key={p.key} href={p.href} style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}>
                 <div style={{ borderRadius: 14, padding: 16, background: 'var(--card)', border: '1px solid var(--line)', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', transition: '.15s' }}
                   onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'var(--brand)')} onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--line)')}>
-                  <span style={{ fontSize: 26, width: 46, height: 46, borderRadius: 12, background: 'var(--bg2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>{p.icon}</span>
+                  <span style={{ width: 46, height: 46, borderRadius: 12, background: 'var(--bg2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}><OnyxIcon emoji={p.icon} size={24} /></span>
                   <div style={{ flex: '1 1 200px', minWidth: 160 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                       <b style={{ fontSize: 15 }}>{es ? p.es : p.en}</b>
@@ -121,7 +127,7 @@ function EmptyState({ es }: { es: boolean }) {
         {ways.map(([ic, t, dsc, href]) => (
           <Link key={t} href={href} style={{ textDecoration: 'none', color: 'inherit' }}>
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', padding: 12, borderRadius: 12, background: 'var(--bg2)', border: '1px solid var(--line)' }}>
-              <span style={{ fontSize: 22 }}>{ic}</span>
+              <OnyxIcon emoji={ic} size={20} />
               <div><b style={{ fontSize: 13.5 }}>{t}</b><div className="muted" style={{ fontSize: 11.5 }}>{dsc}</div></div>
             </div>
           </Link>

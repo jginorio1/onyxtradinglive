@@ -19,18 +19,10 @@ const appUrl = () => process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || '
 // Crea (si hace falta) la cuenta Express del embajador y devuelve un enlace de
 // onboarding de Stripe para que complete sus datos de cobro.
 export async function ambOnboardingLink(ambassadorId: string, userId: string, email?: string): Promise<string> {
-  const { data: a } = await supabaseAdmin.from('ambassadors').select('stripe_account_id').eq('id', ambassadorId).maybeSingle();
-  let acct = (a as any)?.stripe_account_id as string | undefined;
-  if (!acct) {
-    const account = await stripe.accounts.create({
-      type: 'express',
-      email,
-      capabilities: { transfers: { requested: true } },   // solo recibe pagos
-      metadata: { onyx_ambassador: ambassadorId, onyx_user: userId },
-    });
-    acct = account.id;
-    await supabaseAdmin.from('ambassadors').update({ stripe_account_id: acct }).eq('id', ambassadorId);
-  }
+  // Nodo de cobro único: reutiliza la MISMA cuenta Stripe compartida del usuario.
+  const { sharedStripeAccountId } = await import('@/lib/payoutProfile');
+  const acct = await sharedStripeAccountId(userId, email);
+  await supabaseAdmin.from('ambassadors').update({ stripe_account_id: acct }).eq('id', ambassadorId);
   const link = await stripe.accountLinks.create({
     account: acct,
     refresh_url: `${appUrl()}/account?tab=ambassador&connect=refresh`,
