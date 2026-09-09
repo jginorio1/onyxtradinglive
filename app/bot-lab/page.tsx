@@ -12,8 +12,8 @@ export async function generateMetadata(): Promise<Metadata> {
   const es = serverLang() === 'es';
   const title = es ? 'Onyx Bot Lab · Construye, compra o vende robots de trading' : 'Onyx Bot Lab · Build, buy or sell trading robots';
   const description = es
-    ? 'Construye tu robot sin código, compra robots listos de traders verificados o deja que automaticemos tu estrategia a medida. Vende tus robots y cobra con tarjeta o USDT.'
-    : 'Build your robot without coding, buy ready robots from verified traders, or let us automate your strategy. Sell your robots and get paid by card or USDT.';
+    ? 'Construye tu robot sin código, compra robots listos de traders verificados o deja que automaticemos tu estrategia a medida. Vende tus robots y cobra en USDT.'
+    : 'Build your robot without coding, buy ready robots from verified traders, or let us automate your strategy. Sell your robots and get paid in USDT.';
   return { title, description, alternates: localeAlternates('/bot-lab'), openGraph: { title, description, url: `${SITE}/bot-lab`, type: 'website' } };
 }
 
@@ -53,10 +53,10 @@ export default async function BotLabLanding() {
     marketK: 'Marketplace', marketH: 'Robots de traders verificados', marketS: 'Cada robot muestra su Onyx Score, rendimiento y riesgo.',
     view: 'Ver robot', empty: 'Pronto verás aquí los primeros robots a la venta.',
     sellK: 'Economía de creadores', sellH: 'Construye, publica y cobra',
-    sellS: 'Tú pones el precio de tu robot. Onyx cobra por ti y te paga en banco o USDT. Tú te quedas el 80%.',
+    sellS: 'Tú pones el precio de tu robot. Onyx cobra por ti y te paga en USDT. Tú te quedas el 80%.',
     sellCta: 'Empezar a vender',
     svcK: 'Servicio a medida', svcH: 'Automatiza tu estrategia con nuestro equipo',
-    payH: 'Paga y cobra con tarjeta o USDT', payS: 'Acepta clientes de todo el mundo: tarjeta o cripto (USDT). Los creadores cobran en USDT o a su banco.',
+    payH: 'Paga y cobra en USDT', payS: 'Sin bancos, sin tarjetas y sin contracargos. Acepta clientes de todo el mundo con USDT (TRON o Ethereum). Los creadores cobran en USDT.',
     finalH: '¿Listo para poner tu trading en piloto automático?',
     finalS: 'Construye gratis, compra un robot listo o deja que lo hagamos por ti.',
   } : {
@@ -73,17 +73,17 @@ export default async function BotLabLanding() {
     marketK: 'Marketplace', marketH: 'Robots from verified traders', marketS: 'Every robot shows its Onyx Score, performance and risk.',
     view: 'View robot', empty: 'The first robots for sale will show up here soon.',
     sellK: 'Creator economy', sellH: 'Build, publish and get paid',
-    sellS: 'You set your robot price. Onyx charges for you and pays you to bank or USDT. You keep 80%.',
+    sellS: 'You set your robot price. Onyx charges for you and pays you in USDT. You keep 80%.',
     sellCta: 'Start selling',
     svcK: 'Bespoke service', svcH: 'Automate your strategy with our team',
-    payH: 'Pay and get paid by card or USDT', payS: 'Accept clients worldwide: card or crypto (USDT). Creators cash out in USDT or to their bank.',
+    payH: 'Pay and get paid in USDT', payS: 'No banks, no cards and no chargebacks. Accept clients worldwide with USDT (TRON or Ethereum). Creators cash out in USDT.',
     finalH: 'Ready to put your trading on autopilot?',
     finalS: 'Build for free, buy a ready robot, or let us do it for you.',
   };
 
   const tiers = [
     { lvl: es ? 'Nivel 1' : 'Tier 1', name: es ? 'Constructor DIY' : 'DIY Builder', price: es ? 'Gratis' : 'Free', unit: '', desc: es ? 'Arma tus robots con el constructor visual.' : 'Build your robots with the visual builder.', href: '/bot-builder', cta: es ? 'Empezar gratis' : 'Start free', hot: false },
-    { lvl: es ? 'Nivel 2' : 'Tier 2', name: es ? 'Robots listos' : 'Ready robots', price: '$19', unit: perMo, desc: es ? 'Robots económicos ya construidos. Un clic.' : 'Affordable prebuilt robots. One click.', href: '#market', cta: es ? 'Ver catálogo' : 'Browse', hot: false },
+    { lvl: es ? 'Nivel 2' : 'Tier 2', name: es ? 'Robots listos' : 'Ready robots', price: (es ? 'Desde $19' : 'From $19'), unit: perMo, desc: es ? 'Robots económicos ya construidos. Un clic.' : 'Affordable prebuilt robots. One click.', href: '#market', cta: es ? 'Ver catálogo' : 'Browse', hot: false },
     { lvl: es ? 'Nivel 3' : 'Tier 3', name: es ? 'Instalación asistida' : 'Assisted install', price: '$' + s.service_install_price, unit: es ? '/sesión' : '/session', desc: es ? 'Un experto instala y configura contigo.' : 'An expert sets it up with you live.', href: '#servicio', cta: es ? 'Agendar' : 'Book', hot: false },
     { lvl: es ? 'Nivel 4' : 'Tier 4', name: es ? 'Automatiza tu estrategia' : 'Automate your strategy', price: '$' + s.service_automate_from.toLocaleString('en-US'), unit: '+', desc: es ? 'Convertimos tu estrategia en un robot a medida.' : 'We turn your strategy into a bespoke robot.', href: '#servicio', cta: es ? 'Solicitar' : 'Request', hot: true },
     { lvl: es ? 'Nivel 5' : 'Tier 5', name: es ? 'Elite / privado' : 'Elite / private', price: '$' + s.service_elite_from.toLocaleString('en-US'), unit: '+', desc: es ? 'Desarrollo privado, VPS y monitoreo con retainer.' : 'Private dev, VPS and monitoring with retainer.', href: '#servicio', cta: es ? 'Hablar' : 'Talk', hot: false },
@@ -198,8 +198,8 @@ export default async function BotLabLanding() {
       <section style={{ ...wrap, paddingTop: 6, paddingBottom: 6 }}>
         <div style={{ display: 'grid', gap: 12 }} className="g4">
           {(es
-            ? [['✓', 'Traders verificados', 'Cada robot y su historial se revisan antes de publicarse.'], ['📊', 'Onyx Score y riesgo visibles', 'Ves score, rendimiento y drawdown máximo antes de pagar.'], ['🧪', 'Prueba en demo primero', 'Instálalo en cuenta demo y solo pásalo a real cuando te convenza.'], ['🔒', 'Pago seguro · tarjeta o USDT', 'Cobro protegido. Reglas de riesgo horneadas dentro del robot.']]
-            : [['✓', 'Verified traders', 'Every robot and its track record is reviewed before listing.'], ['📊', 'Onyx Score and risk shown', 'See score, performance and max drawdown before you pay.'], ['🧪', 'Try on demo first', 'Install on a demo account and go live only when convinced.'], ['🔒', 'Secure pay · card or USDT', 'Protected checkout. Risk rules baked inside the robot.']]
+            ? [['✓', 'Traders verificados', 'Cada robot pasa reglas sobre sus operaciones reales antes de publicarse.'], ['📊', 'Onyx Score y riesgo visibles', 'Ves score, rendimiento y drawdown máximo antes de pagar.'], ['🧪', 'Prueba en demo primero', 'Instálalo en cuenta demo y solo pásalo a real cuando te convenza.'], ['🔒', 'Pago seguro en USDT', 'Cobro on-chain protegido. Reglas de riesgo horneadas dentro del robot.']]
+            : [['✓', 'Verified traders', 'Every robot passes rules on its real trades before listing.'], ['📊', 'Onyx Score and risk shown', 'See score, performance and max drawdown before you pay.'], ['🧪', 'Try on demo first', 'Install on a demo account and go live only when convinced.'], ['🔒', 'Secure USDT payment', 'Protected on-chain checkout. Risk rules baked inside the robot.']]
           ).map(([ic, t, d], i) => (
             <div key={i} style={{ ...card, padding: 14, display: 'flex', gap: 11, alignItems: 'flex-start' }}>
               <span style={{ flex: 'none', fontSize: 17 }}>{ic}</span>
@@ -253,8 +253,8 @@ export default async function BotLabLanding() {
         </div>
         <BotLabMarket es={es} items={bots.length
           ? bots.slice(0, 8).map((p: any) => ({
-              name: p.name, seller: p.seller_name || '@onyx', pair: p.symbol || p.spec_market || '—', plat: (p.platform || 'MT5').toUpperCase(),
-              score: p.perf?.score ?? null, ret: p.perf?.ret90 ?? p.perf?.ret ?? null, dd: p.perf?.dd != null ? p.perf.dd + '%' : null,
+              id: p.id, name: p.name, seller: p.seller_name || '@onyx', pair: p.symbol || p.spec_market || '—', plat: (p.platform || 'MT5').toUpperCase(),
+              score: p.perf?.score ?? null, ret: p.perf?.ret90 ?? p.perf?.ret ?? null, dd: p.perf?.dd != null ? String(p.perf.dd).replace('%', '') + '%' : null,
               price: money(p.price_cents), unit: (monthly && p.kind === 'subscription') ? (es ? '/mes' : '/mo') : '', path: 'M0,52 L40,46 L80,48 L120,38 L160,40 L200,28 L240,30 L300,16', hot: false,
               spec_style: p.spec_style || null, spec_timeframe: p.spec_timeframe || null, spec_market: p.spec_market || null,
               spec_direction: p.spec_direction || null, spec_capital: p.spec_capital || null, spec_maxdd: p.spec_maxdd || null, spec_propfirm: !!p.spec_propfirm,
@@ -264,6 +264,9 @@ export default async function BotLabLanding() {
               ...p, spec_style: ['tendencia', 'ruptura', 'scalping', 'rango', 'intradia', 'swing'][i % 6],
               spec_timeframe: ['H1', 'M15', 'M5', 'H4', 'M30', 'D1'][i % 6],
               spec_market: p.pair === 'XAUUSD' ? 'oro' : (['US100', 'NAS100'].includes(p.pair) ? 'indices' : 'forex'),
+              spec_direction: ['both', 'long', 'both', 'short', 'both', 'long'][i % 6],
+              spec_capital: ['$1,000', '$500', '$2,000', '$1,000', '$3,000', '$1,500'][i % 6],
+              spec_maxdd: p.dd, spec_propfirm: i % 2 === 0,
               no_martingale: true, no_hft: true, has_sl: true, news: i % 2 === 0,
             }))} />
         {!bots.length && <p className="muted" style={{ fontSize: 12, textAlign: 'center', marginTop: 12 }}>{es ? 'Robots de muestra por Onyx. Los de traders verificados aparecen aquí en cuanto se publican.' : 'Sample robots by Onyx. Verified-trader robots appear here as they get published.'}</p>}
@@ -274,8 +277,8 @@ export default async function BotLabLanding() {
         <div style={secHead}><span style={kicker}>{es ? 'Fácil de empezar' : 'Easy to start'}</span><h2 style={{ fontSize: 'clamp(23px,5vw,30px)', fontWeight: 800, margin: '8px 0' }}>{es ? 'De comprar a operar en 3 pasos' : 'From buying to trading in 3 steps'}</h2></div>
         <div style={{ display: 'grid', gap: 16 }} className="g3">
           {(es
-            ? [['1', 'Elige tu robot', 'Compara Onyx Score, rendimiento y riesgo. Paga con tarjeta o USDT y recibes la licencia al instante.'], ['2', 'Conéctalo a tu plataforma', 'Descargas el archivo para MT4, MT5 o cTrader y lo instalas con la guía paso a paso (o te lo instalamos).'], ['3', 'Opera solo', 'El robot ejecuta tus reglas 24/5 con su gestión de riesgo dentro. Míralo en tu panel y apágalo cuando quieras.']]
-            : [['1', 'Pick your robot', 'Compare Onyx Score, performance and risk. Pay by card or USDT and get the license instantly.'], ['2', 'Connect it to your platform', 'Download the file for MT4, MT5 or cTrader and install with the step-by-step guide (or we install it).'], ['3', 'It trades on its own', 'The robot runs your rules 24/5 with risk management inside. Watch it in your dashboard, turn it off anytime.']]
+            ? [['1', 'Elige tu robot', 'Compara Onyx Score, rendimiento y riesgo. Paga en USDT y recibes la licencia al instante.'], ['2', 'Conéctalo a tu plataforma', 'Descargas el archivo para MT4, MT5 o cTrader y lo instalas con la guía paso a paso (o te lo instalamos).'], ['3', 'Opera solo', 'El robot ejecuta tus reglas 24/5 con su gestión de riesgo dentro. Míralo en tu panel y apágalo cuando quieras.']]
+            : [['1', 'Pick your robot', 'Compare Onyx Score, performance and risk. Pay in USDT and get the license instantly.'], ['2', 'Connect it to your platform', 'Download the file for MT4, MT5 or cTrader and install with the step-by-step guide (or we install it).'], ['3', 'It trades on its own', 'The robot runs your rules 24/5 with risk management inside. Watch it in your dashboard, turn it off anytime.']]
           ).map(([n, t, d], i) => (
             <div key={i} style={{ ...card }}>
               <div style={{ width: 34, height: 34, borderRadius: 10, background: 'color-mix(in srgb,var(--brand) 16%,transparent)', border: '1px solid color-mix(in srgb,var(--brand) 35%,transparent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: 'var(--brand)', marginBottom: 10 }}>{n}</div>
@@ -291,7 +294,7 @@ export default async function BotLabLanding() {
         <div style={{ ...card, textAlign: 'center', border: '1px solid color-mix(in srgb,var(--green) 30%,transparent)', background: 'color-mix(in srgb,var(--green) 6%,transparent)' }}>
           <div style={{ fontSize: 22, marginBottom: 6 }}>🛡️</div>
           <h3 style={{ margin: '0 0 6px', fontSize: 'clamp(18px,4vw,22px)' }}>{es ? 'Compra sin miedo' : 'Buy with confidence'}</h3>
-          <p className="muted" style={{ fontSize: 14, maxWidth: 620, margin: '0 auto' }}>{es ? 'Pruébalo primero en cuenta demo, sin arriesgar un centavo. Las suscripciones se cancelan cuando quieras y el cobro es 100% seguro (tarjeta o USDT). Cada robot lleva sus reglas de riesgo dentro para proteger tu cuenta.' : 'Try it first on a demo account, risking nothing. Subscriptions cancel anytime and checkout is 100% secure (card or USDT). Every robot carries its risk rules inside to protect your account.'}</p>
+          <p className="muted" style={{ fontSize: 14, maxWidth: 620, margin: '0 auto' }}>{es ? 'Pruébalo primero en cuenta demo, sin arriesgar un centavo. Pago único en USDT, on-chain y sin contracargos. Cada robot lleva sus reglas de riesgo dentro para proteger tu cuenta.' : 'Try it first on a demo account, risking nothing. One-time USDT payment, on-chain and chargeback-free. Every robot carries its risk rules inside to protect your account.'}</p>
         </div>
       </section>
 
@@ -333,13 +336,13 @@ export default async function BotLabLanding() {
       <section style={{ ...wrap, padding: '20px 22px' }}>
         <div style={{ ...card, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap', border: '1px solid color-mix(in srgb,var(--green) 25%,transparent)' }}>
           <div style={{ maxWidth: 520 }}>
-            <span style={{ ...kicker, color: 'var(--green)' }}>{es ? 'Pagos flexibles' : 'Flexible payments'}</span>
+            <span style={{ ...kicker, color: 'var(--green)' }}>{es ? 'Pagos en USDT' : 'USDT payments'}</span>
             <h3 style={{ margin: '8px 0 6px', fontSize: 21 }}>{L.payH}</h3>
             <p className="muted" style={{ fontSize: 14 }}>{L.payS}</p>
           </div>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 9, border: '1px solid var(--line)', borderRadius: 12, padding: '12px 16px', fontWeight: 800, fontSize: 14 }}>💳 {es ? 'Tarjeta' : 'Card'}</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 9, border: '1px solid color-mix(in srgb,var(--green) 40%,transparent)', background: 'color-mix(in srgb,var(--green) 8%,transparent)', borderRadius: 12, padding: '12px 16px', fontWeight: 800, fontSize: 14, color: 'var(--green)' }}>₮ USDT</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 9, border: '1px solid color-mix(in srgb,var(--green) 40%,transparent)', background: 'color-mix(in srgb,var(--green) 8%,transparent)', borderRadius: 12, padding: '12px 16px', fontWeight: 800, fontSize: 14, color: 'var(--green)' }}>₮ USDT · TRON</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 9, border: '1px solid color-mix(in srgb,var(--green) 40%,transparent)', background: 'color-mix(in srgb,var(--green) 8%,transparent)', borderRadius: 12, padding: '12px 16px', fontWeight: 800, fontSize: 14, color: 'var(--green)' }}>₮ USDT · Ethereum</div>
           </div>
         </div>
       </section>
@@ -380,8 +383,8 @@ export default async function BotLabLanding() {
         <div style={secHead}><span style={kicker}>FAQ</span><h2 style={{ fontSize: 'clamp(23px,5vw,30px)', fontWeight: 800, margin: '8px 0' }}>{es ? 'Antes de comprar' : 'Before you buy'}</h2></div>
         <div style={{ maxWidth: 760, margin: '0 auto', display: 'grid', gap: 10 }}>
           {(es
-            ? [['¿Es legal usar robots en prop firms?', 'Sí, siempre que respetes las reglas de tu firma (sin arbitraje de latencia ni HFT prohibido). Cada robot lleva dentro límites de riesgo, filtro de noticias y de sesión para ayudarte a cumplirlas.'], ['¿En qué plataformas funciona?', 'MT4, MT5 y cTrader. En la ficha de cada robot ves con cuáles es compatible; el robot detecta solo el sufijo de tu bróker.'], ['¿Y si el robot pierde?', 'Ningún robot garantiza ganancias. Por eso pruebas en demo primero y solo pasas a real cuando te convence su Onyx Score, rendimiento y drawdown.'], ['¿Puedo apagarlo o cancelar?', 'Sí. Lo apagas en tu plataforma cuando quieras y las suscripciones se cancelan desde tu panel sin permanencia.'], ['¿Cómo pago?', 'Tarjeta o USDT (cripto). El cobro es seguro y recibes la licencia al instante.']]
-            : [['Is it legal to use robots on prop firms?', 'Yes, as long as you follow your firm’s rules (no latency arbitrage or banned HFT). Each robot carries risk limits, news and session filters to help you comply.'], ['Which platforms does it work on?', 'MT4, MT5 and cTrader. Each robot’s page shows what it supports; the robot auto-detects your broker’s suffix.'], ['What if the robot loses?', 'No robot guarantees profit. That’s why you test on demo first and only go live once its Onyx Score, performance and drawdown convince you.'], ['Can I turn it off or cancel?', 'Yes. Turn it off in your platform anytime, and subscriptions cancel from your dashboard with no lock-in.'], ['How do I pay?', 'Card, transfer or USDT (crypto). Checkout is secure and you get the license instantly.']]
+            ? [['¿Es legal usar robots en prop firms?', 'Sí, siempre que respetes las reglas de tu firma (sin arbitraje de latencia ni HFT prohibido). Cada robot lleva dentro límites de riesgo, filtro de noticias y de sesión para ayudarte a cumplirlas.'], ['¿En qué plataformas funciona?', 'MT4, MT5 y cTrader. En la ficha de cada robot ves con cuáles es compatible; el robot detecta solo el sufijo de tu bróker.'], ['¿Y si el robot pierde?', 'Ningún robot garantiza ganancias. Por eso pruebas en demo primero y solo pasas a real cuando te convence su Onyx Score, rendimiento y drawdown.'], ['¿Puedo apagarlo cuando quiera?', 'Sí. Lo apagas en tu plataforma cuando quieras. La mayoría de robots son de pago único, así que no hay suscripción que gestionar.'], ['¿Cómo pago?', 'En USDT (TRON o Ethereum): sin bancos, sin tarjetas y sin contracargos. Recibes la licencia en cuanto se confirma el pago on-chain.']]
+            : [['Is it legal to use robots on prop firms?', 'Yes, as long as you follow your firm’s rules (no latency arbitrage or banned HFT). Each robot carries risk limits, news and session filters to help you comply.'], ['Which platforms does it work on?', 'MT4, MT5 and cTrader. Each robot’s page shows what it supports; the robot auto-detects your broker’s suffix.'], ['What if the robot loses?', 'No robot guarantees profit. That’s why you test on demo first and only go live once its Onyx Score, performance and drawdown convince you.'], ['Can I turn it off anytime?', 'Yes. Turn it off in your platform anytime. Most robots are a one-time purchase, so there’s no subscription to manage.'], ['How do I pay?', 'In USDT (TRON or Ethereum): no banks, no cards and no chargebacks. You get the license as soon as the payment confirms on-chain.']]
           ).map(([q, a], i) => (
             <details key={i} style={{ ...card, padding: '14px 16px' }}>
               <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: 14.5, listStyle: 'none' }}>{q}</summary>

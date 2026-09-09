@@ -19,6 +19,7 @@ export default function BotLabDashboard() {
   const [netPick, setNetPick] = useState<any>(null); // { product, networks } elegir red USDT
   const [editing, setEditing] = useState<any>(null);
   const [pay, setPay] = useState<any>({ card: false, crypto: true, monthly: false }); // métodos globales
+  const [focusId, setFocusId] = useState<string>(''); // producto a resaltar (deep-link desde la landing)
 
   async function loadMarket() { try { const r = await fetch('/api/botlab/products?limit=60'); const j = await r.json(); setProducts(j.products || []); if (j.pay) setPay(j.pay); } catch {} }
   async function loadLicenses() { try { const r = await fetch('/api/botlab/licenses'); const j = await r.json(); setLicenses(j.licenses || []); } catch {} }
@@ -29,6 +30,8 @@ export default function BotLabDashboard() {
     try {
       const sp = new URLSearchParams(window.location.search);
       const t = sp.get('tab'); if (t === 'vender' || t === 'licencias' || t === 'market' || t === 'ganancias') setView(t as View);
+      // Deep-link a un robot concreto desde la landing: abre el marketplace y lo resalta.
+      const pid = sp.get('p'); if (pid) { setView('market'); setFocusId(pid); }
       // Viene del constructor con "Vender este robot": abre el formulario ya prellenado.
       if (sp.get('new') === '1') {
         setView('vender');
@@ -51,6 +54,15 @@ export default function BotLabDashboard() {
       }
     } catch {}
   }, []); // eslint-disable-line
+
+  // Cuando llegas con ?p=<id> desde la landing, desplaza y resalta ese robot en cuanto carga.
+  useEffect(() => {
+    if (!focusId || !products.length) return;
+    const el = document.getElementById('bl-prod-' + focusId);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const t = setTimeout(() => setFocusId(''), 2600);
+    return () => clearTimeout(t);
+  }, [focusId, products]);
 
   async function buy(p: any, method: 'card' | 'usdt', network?: string) {
     try {
@@ -122,7 +134,7 @@ export default function BotLabDashboard() {
               {products.map((p) => {
                 const owned = licenses.some((l) => l.product_id === p.id && l.status === 'active');
                 return (
-                  <div key={p.id} style={card}>
+                  <div key={p.id} id={'bl-prod-' + p.id} style={{ ...card, ...(focusId === p.id ? { border: '1.5px solid var(--brand)', boxShadow: '0 0 0 3px color-mix(in srgb,var(--brand) 22%,transparent)' } : {}) }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 8 }}>
                       <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(120deg,var(--brand),var(--brand2,#a06bff))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>{(p.name || '?').slice(0, 1)}</div>
                       <div style={{ minWidth: 0 }}><div style={{ fontSize: 14.5, fontWeight: 800, lineHeight: 1.1 }}>{p.name}</div><div className="muted" style={{ fontSize: 11.5 }}>{p.seller_name}</div></div>

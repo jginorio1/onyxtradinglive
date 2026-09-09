@@ -90,7 +90,7 @@ export default function BotLabMarket({ es, items }: { es: boolean; items: any[] 
               <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--brand)', border: '1px solid color-mix(in srgb,var(--brand) 30%,transparent)', borderRadius: 6, padding: '2px 6px' }}>{p.plat}</span>
               <b style={{ fontSize: 15 }}>{p.price}<small className="muted" style={{ fontSize: 11, fontWeight: 600 }}>{p.unit}</small></b>
             </div>
-            <Link href="/dashboard/bot-lab" style={{ display: 'block', marginTop: 10, textAlign: 'center', fontSize: 12.5, fontWeight: 800, padding: '9px', borderRadius: 9, background: 'var(--brand)', color: '#0b1020' }}>{es ? 'Ver robot' : 'View robot'}</Link>
+            <Link href={p.id ? `/dashboard/bot-lab?tab=market&p=${p.id}` : '/dashboard/bot-lab'} style={{ display: 'block', marginTop: 10, textAlign: 'center', fontSize: 12.5, fontWeight: 800, padding: '9px', borderRadius: 9, background: 'var(--brand)', color: '#0b1020' }}>{es ? 'Ver robot' : 'View robot'}</Link>
           </div>
         ))}
       </div>
