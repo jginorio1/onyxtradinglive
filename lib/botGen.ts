@@ -36,6 +36,10 @@ const cSL = cU, cTP = cU, cRun = cU, cTrail = cU;
 
 export function renderMT5(spec: BotSpec, meta?: { userId?: string; buildId?: string; site?: string }): string {
   const s = spec;
+  // Candado del núcleo: si el vendedor lo activa, los parámetros de estrategia salen
+  // como CONST (horneados) y no aparecen editables en MetaTrader. La clave, el panel
+  // y el número mágico siguen como input.
+  const IN = s.lockCore ? 'const' : 'input';
   const en = s.botLang === 'en';
   const T = (a: string, b: string) => (en ? b : a); // textos visibles al trader, en su idioma
   // Datos para el candado de activación: URL de Onyx + huella (creador + build) que
@@ -72,92 +76,93 @@ input string  InpComment      = ${q(s.name)};
 input string  InpSymbol       = ${q(s.symbol)};
 input long    InpMagic        = ${s.magic};
 input string  InpApiKey       = "";   // ${T('Tu clave Onyx (Conectar cuenta). Requerida en cuentas reales.', 'Your Onyx key (Connect account). Required on live accounts.')}
-input ENUM_TIMEFRAMES InpTF    = ${tf(s.tf)};
+${IN} ENUM_TIMEFRAMES InpTF    = ${tf(s.tf)};
 
-input ENUM_ENTRY InpEntry     = ${trig};
-input int     InpMAfast       = ${s.maFast};
-input int     InpMAslow       = ${s.maSlow};
-input int     InpRSIperiod    = ${s.rsiPeriod};
-input double  InpRSIos        = ${s.rsiOS};
-input double  InpRSIob        = ${s.rsiOB};
-input int     InpDonchN       = ${s.donchN};
-input int     InpMicroSwing   = ${s.microSwing};
-input int     InpEntryHour    = ${s.entryHour};
+${IN} ENUM_ENTRY InpEntry     = ${trig};
+${IN} int     InpMAfast       = ${s.maFast};
+${IN} int     InpMAslow       = ${s.maSlow};
+${IN} int     InpRSIperiod    = ${s.rsiPeriod};
+${IN} double  InpRSIos        = ${s.rsiOS};
+${IN} double  InpRSIob        = ${s.rsiOB};
+${IN} int     InpDonchN       = ${s.donchN};
+${IN} int     InpMicroSwing   = ${s.microSwing};
+${IN} int     InpEntryHour    = ${s.entryHour};
 
-input int     InpTrendMode    = ${s.trendMode};
-input ENUM_TIMEFRAMES InpTrendTF = ${tf(s.trendTF)};
-input int     InpTrendMA      = 50;
-input int     InpTrendSwing   = 6;
-input int     InpTrendDonchN  = 20;
-input bool    InpAllowLongs   = ${b(s.allowLongs)};
-input bool    InpAllowShorts  = ${b(s.allowShorts)};
-input int     InpSignalFromH  = ${s.signalFromH};
-input int     InpSignalFromM  = ${s.signalFromM};
-input int     InpSignalToH    = ${s.signalToH};
-input int     InpSignalToM    = ${s.signalToM};
-input string  InpWindows      = "${windowsStr}";   // ${T('Ventanas de operación en minutos del servidor: "f-t,f-t" (varias sesiones)', 'Trading windows in server minutes: "f-t,f-t" (multiple sessions)')}
-input int     InpTradeDays    = ${s.tradeDays ?? 62};   // ${T('Días operables (bitmask 0=Dom..6=Sáb). Mercado abre Dom, cierra Vie', 'Trading days (bitmask 0=Sun..6=Sat). Market opens Sun, closes Fri')}
-input int     InpMaxTradesPerDay = ${s.maxTradesPerDay};
+${IN} int     InpTrendMode    = ${s.trendMode};
+${IN} ENUM_TIMEFRAMES InpTrendTF = ${tf(s.trendTF)};
+${IN} int     InpTrendMA      = 50;
+${IN} int     InpTrendSwing   = 6;
+${IN} int     InpTrendDonchN  = 20;
+${IN} bool    InpAllowLongs   = ${b(s.allowLongs)};
+${IN} bool    InpAllowShorts  = ${b(s.allowShorts)};
+${IN} int     InpSignalFromH  = ${s.signalFromH};
+${IN} int     InpSignalFromM  = ${s.signalFromM};
+${IN} int     InpSignalToH    = ${s.signalToH};
+${IN} int     InpSignalToM    = ${s.signalToM};
+${IN} string  InpWindows      = "${windowsStr}";   // ${T('Ventanas de operación en minutos del servidor: "f-t,f-t" (varias sesiones)', 'Trading windows in server minutes: "f-t,f-t" (multiple sessions)')}
+${IN} int     InpTradeDays    = ${s.tradeDays ?? 62};   // ${T('Días operables (bitmask 0=Dom..6=Sáb). Mercado abre Dom, cierra Vie', 'Trading days (bitmask 0=Sun..6=Sat). Market opens Sun, closes Fri')}
+${IN} int     InpMaxTradesPerDay = ${s.maxTradesPerDay};
 
 // RIESGO por operacion (elige unidad)
-input ENUM_U_RISK InpRiskUnit  = ${cRisk(s.riskUnit)};  // %  |  $
-input double  InpRiskValue    = ${s.riskVal};
-input double  InpMaxLots       = ${s.maxLots};
-input int     InpATRPeriod     = 14;
+${IN} ENUM_U_RISK InpRiskUnit  = ${cRisk(s.riskUnit)};  // %  |  $
+${IN} double  InpRiskValue    = ${s.riskVal};
+${IN} double  InpMaxLots       = ${s.maxLots};
+${IN} int     InpATRPeriod     = 14;
 // STOP LOSS (elige unidad: pips | R | %precio | $ | ATR)
-input ENUM_U  InpSLUnit       = ${cSL(s.slUnit)};
-input double  InpSLValue      = ${s.slVal};
+${IN} ENUM_U  InpSLUnit       = ${cSL(s.slUnit)};
+${IN} double  InpSLValue      = ${s.slVal};
 // TP1 parcial (elige unidad: pips | R | %precio | $ | ATR)
-input ENUM_U  InpTP1Unit      = ${cTP(s.tp1Unit)};
-input double  InpTP1Value     = ${s.tp1Val};
-input double  InpPartialPct   = ${s.partialPct};
+${IN} ENUM_U  InpTP1Unit      = ${cTP(s.tp1Unit)};
+${IN} double  InpTP1Value     = ${s.tp1Val};
+${IN} double  InpPartialPct   = ${s.partialPct};
 // RUNNER / TP final (elige unidad: pips | R | %precio | $ | ATR)
-input ENUM_U  InpRunnerUnit   = ${cRun(s.runnerUnit)};
-input double  InpRunnerValue  = ${s.runnerVal};
+${IN} ENUM_U  InpRunnerUnit   = ${cRun(s.runnerUnit)};
+${IN} double  InpRunnerValue  = ${s.runnerVal};
 // TRAILING (elige unidad: pips | R | %precio | $ | ATR)
-input bool    InpUseTrail     = ${b(s.useTrail)};
-input ENUM_U  InpTrailUnit    = ${cTrail(s.trailUnit)};
-input double  InpTrailValue   = ${s.trailVal};
-input double  InpBEOffsetR    = ${s.beOffsetR};
-input int     InpTimeStopBars = ${s.timeStopBars};
+${IN} bool    InpUseTrail     = ${b(s.useTrail)};
+${IN} ENUM_U  InpTrailUnit    = ${cTrail(s.trailUnit)};
+${IN} double  InpTrailValue   = ${s.trailVal};
+${IN} double  InpBEOffsetR    = ${s.beOffsetR};
+${IN} int     InpTimeStopBars = ${s.timeStopBars};
 
 // CAP de perdida diaria (elige unidad)
-input ENUM_U_RISK InpDailyLossUnit = ${cRisk(s.dailyLossUnit)}; // %  |  $
-input double  InpDailyLossValue = ${s.dailyLossVal};
+${IN} ENUM_U_RISK InpDailyLossUnit = ${cRisk(s.dailyLossUnit)}; // %  |  $
+${IN} double  InpDailyLossValue = ${s.dailyLossVal};
 // OBJETIVO de ganancia diaria (elige unidad). 0 = off
-input ENUM_U_RISK InpDailyProfitUnit = ${cRisk(s.dailyProfitUnit)};
-input double  InpDailyProfitValue = ${s.dailyProfitVal};
+${IN} ENUM_U_RISK InpDailyProfitUnit = ${cRisk(s.dailyProfitUnit)};
+${IN} double  InpDailyProfitValue = ${s.dailyProfitVal};
 
-input string  InpFirmName     = ${q(s.firmName)};
-input ENUM_DD_TYPE InpDDType   = ${s.ddType};
-input double  InpFirmTotalLimitPct = ${s.firmTotalLimitPct};
-input double  InpAcctSoftStopPct = ${s.acctSoftStopPct};
-input double  InpAcctDailyStopPct= ${s.acctDailyStopPct};
-input double  InpAcctMaxDDPct    = ${s.acctMaxDDPct};
+${IN} string  InpFirmName     = ${q(s.firmName)};
+${IN} ENUM_DD_TYPE InpDDType   = ${s.ddType};
+${IN} double  InpFirmTotalLimitPct = ${s.firmTotalLimitPct};
+${IN} double  InpAcctSoftStopPct = ${s.acctSoftStopPct};
+${IN} double  InpAcctDailyStopPct= ${s.acctDailyStopPct};
+${IN} double  InpAcctMaxDDPct    = ${s.acctMaxDDPct};
 
-input ENUM_ACCT_MODE InpAccountMode = ${s.accountMode};
-input double  InpInitBalance  = ${s.initBalance};
-input double  InpTargetP1     = ${s.targetP1};
-input double  InpTargetP2     = ${s.targetP2};
-input bool    InpHaltAtTarget = true;
+${IN} ENUM_ACCT_MODE InpAccountMode = ${s.accountMode};
+${IN} double  InpInitBalance  = ${s.initBalance};
+${IN} double  InpTargetP1     = ${s.targetP1};
+${IN} double  InpTargetP2     = ${s.targetP2};
+${IN} bool    InpHaltAtTarget = true;
 
-input bool    InpUseDayClose  = ${b(s.useDayClose)};
-input int     InpForceCloseHourNY = ${s.forceCloseHourNY};
-input int     InpForceCloseMinNY  = ${s.forceCloseMinNY};
-input bool    InpNoWeekend    = ${b(s.noWeekend)};
-input int     InpFridayHour   = 21;
-input int     InpServerGmt    = ${s.serverGmt};   // GMT del servidor del broker (para noticias)
+${IN} bool    InpUseDayClose  = ${b(s.useDayClose)};
+${IN} int     InpForceCloseHourNY = ${s.forceCloseHourNY};
+${IN} int     InpForceCloseMinNY  = ${s.forceCloseMinNY};
+${IN} bool    InpNoWeekend    = ${b(s.noWeekend)};
+${IN} int     InpFridayHour   = 21;
+${IN} int     InpServerGmt    = ${s.serverGmt};   // GMT del servidor del broker (para noticias)
 // NOTICIAS (Forex Factory). Requiere permitir la URL en MetaTrader:
 // Herramientas > Opciones > Asesores expertos > Permitir WebRequest para:
 //   https://nfs.faireconomy.media
-input bool    InpUseNews      = ${b(s.useNewsFilter)};
-input string  InpNewsCur      = ${q(s.newsCurrencies)};   // monedas separadas por coma, ej: USD,EUR
-input int     InpNewsImpact   = ${nImpact};               // 0=solo alto  1=alto+medio  2=todos
-input int     InpNewsBefore   = ${s.newsBefore};          // minutos antes de la noticia
-input int     InpNewsAfter    = ${s.newsAfter};           // minutos despues
-input bool    InpShowPanel    = true;
-input int     InpPanelX       = 12;
-input int     InpPanelY       = 20;
+${IN} bool    InpUseNews      = ${b(s.useNewsFilter)};
+${IN} string  InpNewsCur      = ${q(s.newsCurrencies)};   // monedas separadas por coma, ej: USD,EUR
+${IN} int     InpNewsImpact   = ${nImpact};               // 0=solo alto  1=alto+medio  2=todos
+${IN} int     InpNewsBefore   = ${s.newsBefore};          // minutos antes de la noticia
+${IN} int     InpNewsAfter    = ${s.newsAfter};           // minutos despues
+input bool    InpShowPanel    = ${b(s.showPanel !== false)};   // panel del robot en el gráfico (lo ve el trader)
+input int     InpPanelCorner  = ${s.panelCorner ?? 0};         // 0=sup-izq 1=inf-izq 2=inf-der 3=sup-der
+input int     InpPanelX       = ${s.panelX ?? 12};
+input int     InpPanelY       = ${s.panelY ?? 20};
 
 //====================== GLOBALES ======================
 string S=""; int gDigits=0; double point=0, minStop=0;
@@ -384,10 +389,10 @@ void Engine(){ if(atrH==INVALID_HANDLE) return; DailyReset(); bool nb=NewBar(); 
 //====================== PANEL ======================
 void L(string n,int x,int y,string txt,color c,int fs=9,bool bold=false){ string nm=PFX+n; if(ObjectFind(0,nm)<0) ObjectCreate(0,nm,OBJ_LABEL,0,0,0);
    ObjectSetInteger(0,nm,OBJPROP_XDISTANCE,x); ObjectSetInteger(0,nm,OBJPROP_YDISTANCE,y); ObjectSetString(0,nm,OBJPROP_TEXT,txt); ObjectSetInteger(0,nm,OBJPROP_COLOR,c);
-   ObjectSetInteger(0,nm,OBJPROP_FONTSIZE,fs); ObjectSetString(0,nm,OBJPROP_FONT,bold?"Segoe UI Semibold":"Segoe UI"); ObjectSetInteger(0,nm,OBJPROP_CORNER,CORNER_LEFT_UPPER); ObjectSetInteger(0,nm,OBJPROP_SELECTABLE,false); ObjectSetInteger(0,nm,OBJPROP_HIDDEN,true); }
+   ObjectSetInteger(0,nm,OBJPROP_FONTSIZE,fs); ObjectSetString(0,nm,OBJPROP_FONT,bold?"Segoe UI Semibold":"Segoe UI"); ObjectSetInteger(0,nm,OBJPROP_CORNER,(ENUM_BASE_CORNER)InpPanelCorner); ObjectSetInteger(0,nm,OBJPROP_SELECTABLE,false); ObjectSetInteger(0,nm,OBJPROP_HIDDEN,true); }
 void RR(string n,int x,int y,int w,int h,color bg){ string nm=PFX+n; if(ObjectFind(0,nm)<0) ObjectCreate(0,nm,OBJ_RECTANGLE_LABEL,0,0,0);
    ObjectSetInteger(0,nm,OBJPROP_XDISTANCE,x); ObjectSetInteger(0,nm,OBJPROP_YDISTANCE,y); ObjectSetInteger(0,nm,OBJPROP_XSIZE,w); ObjectSetInteger(0,nm,OBJPROP_YSIZE,h);
-   ObjectSetInteger(0,nm,OBJPROP_BGCOLOR,bg); ObjectSetInteger(0,nm,OBJPROP_BORDER_TYPE,BORDER_FLAT); ObjectSetInteger(0,nm,OBJPROP_CORNER,CORNER_LEFT_UPPER); ObjectSetInteger(0,nm,OBJPROP_BACK,false); ObjectSetInteger(0,nm,OBJPROP_SELECTABLE,false); ObjectSetInteger(0,nm,OBJPROP_HIDDEN,true); }
+   ObjectSetInteger(0,nm,OBJPROP_BGCOLOR,bg); ObjectSetInteger(0,nm,OBJPROP_BORDER_TYPE,BORDER_FLAT); ObjectSetInteger(0,nm,OBJPROP_CORNER,(ENUM_BASE_CORNER)InpPanelCorner); ObjectSetInteger(0,nm,OBJPROP_BACK,false); ObjectSetInteger(0,nm,OBJPROP_SELECTABLE,false); ObjectSetInteger(0,nm,OBJPROP_HIDDEN,true); }
 void Panel(){ if(!InpShowPanel) return; int X=InpPanelX,Y=InpPanelY,W=274,PAD=11,IW=W-2*PAD;
    color bg=C'24,26,32',cv=C'236,237,242',cm=C'150,153,162',cg=C'90,214,150',cr=C'236,110,110',ca=C'240,190,90',ctrk=C'44,47,56';
    int H=140; double tg0=TargetPct(); if(tg0>0) H+=27; if(InpUseNews) H+=14;
@@ -417,6 +422,7 @@ void Panel(){ if(!InpShowPanel) return; int X=InpPanelX,Y=InpPanelY,W=274,PAD=11
 // ============================================================================
 export function renderMT4(spec: BotSpec, meta?: { userId?: string; buildId?: string; site?: string }): string {
   const s = spec;
+  const IN = s.lockCore ? 'const' : 'input';   // candado del núcleo (ver renderMT5)
   const en = s.botLang === 'en';
   const T = (a: string, bb: string) => (en ? bb : a);
   const site = String(meta?.site || 'https://www.onyxtradinglive.com').replace(/\/$/, '');
@@ -438,75 +444,76 @@ input string  InpComment      = ${q(s.name)};
 input string  InpSymbol       = ${q(s.symbol)};
 input int     InpMagic        = ${s.magic};
 input string  InpApiKey       = "";   // ${T('Tu clave Onyx (Conectar cuenta). Requerida siempre.', 'Your Onyx key (Connect account). Always required.')}
-input ENUM_TIMEFRAMES InpTF   = ${tf4(s.tf)};
-input int     InpEntry        = ${trig};   // 0=swing 1=MA 2=RSI 3=Donchian 4=hora
-input int     InpMAfast       = ${s.maFast};
-input int     InpMAslow       = ${s.maSlow};
-input int     InpRSIperiod    = ${s.rsiPeriod};
-input double  InpRSIos        = ${s.rsiOS};
-input double  InpRSIob        = ${s.rsiOB};
-input int     InpDonchN       = ${s.donchN};
-input int     InpMicroSwing   = ${s.microSwing};
-input int     InpEntryHour    = ${s.entryHour};
-input int     InpTrendMode    = ${s.trendMode};   // 0=MA 1=swing 2=Donchian
-input ENUM_TIMEFRAMES InpTrendTF = ${tf4(s.trendTF)};
-input int     InpTrendMA      = 50;
-input int     InpTrendSwing   = 6;
-input int     InpTrendDonchN  = 20;
-input bool    InpAllowLongs   = ${b(s.allowLongs)};
-input bool    InpAllowShorts  = ${b(s.allowShorts)};
-input int     InpSignalFromH  = ${s.signalFromH};
-input int     InpSignalFromM  = ${s.signalFromM};
-input int     InpSignalToH    = ${s.signalToH};
-input int     InpSignalToM    = ${s.signalToM};
-input string  InpWindows      = "${windowsStr}";   // ${T('Ventanas: "f-t,f-t" en minutos del servidor', 'Windows: "f-t,f-t" in server minutes')}
-input int     InpTradeDays    = ${s.tradeDays ?? 62};   // ${T('Días (bitmask 0=Dom..6=Sáb)', 'Days (bitmask 0=Sun..6=Sat)')}
-input int     InpMaxTradesPerDay = ${s.maxTradesPerDay};
-input int     InpRiskUnit     = ${cRisk(s.riskUnit)};  // 0=% 1=$
-input double  InpRiskValue    = ${s.riskVal};
-input double  InpMaxLots      = ${s.maxLots};
-input int     InpATRPeriod    = 14;
-input int     InpSLUnit       = ${cSL(s.slUnit)};      // 0=pips 1=R 2=% 3=$ 4=ATR
-input double  InpSLValue      = ${s.slVal};
-input int     InpTP1Unit      = ${cTP(s.tp1Unit)};
-input double  InpTP1Value     = ${s.tp1Val};
-input double  InpPartialPct   = ${s.partialPct};
-input int     InpRunnerUnit   = ${cRun(s.runnerUnit)};
-input double  InpRunnerValue  = ${s.runnerVal};
-input bool    InpUseTrail     = ${b(s.useTrail)};
-input int     InpTrailUnit    = ${cTrail(s.trailUnit)};
-input double  InpTrailValue   = ${s.trailVal};
-input double  InpBEOffsetR    = ${s.beOffsetR};
-input int     InpTimeStopBars = ${s.timeStopBars};
-input int     InpDailyLossUnit = ${cRisk(s.dailyLossUnit)};
-input double  InpDailyLossValue = ${s.dailyLossVal};
-input int     InpDailyProfitUnit = ${cRisk(s.dailyProfitUnit)};
-input double  InpDailyProfitValue = ${s.dailyProfitVal};
-input string  InpFirmName     = ${q(s.firmName)};
-input int     InpDDType       = ${s.ddType};   // 0=trailing 1=estatico 2=trailing->BE
-input double  InpFirmTotalLimitPct = ${s.firmTotalLimitPct};
-input double  InpAcctSoftStopPct = ${s.acctSoftStopPct};
-input double  InpAcctDailyStopPct= ${s.acctDailyStopPct};
-input double  InpAcctMaxDDPct    = ${s.acctMaxDDPct};
-input int     InpAccountMode  = ${s.accountMode};   // 0=fase1 1=fase2 2=real
-input double  InpInitBalance  = ${s.initBalance};
-input double  InpTargetP1     = ${s.targetP1};
-input double  InpTargetP2     = ${s.targetP2};
-input bool    InpHaltAtTarget = true;
-input bool    InpUseDayClose  = ${b(s.useDayClose)};
-input int     InpForceCloseHourNY = ${s.forceCloseHourNY};
-input int     InpForceCloseMinNY  = ${s.forceCloseMinNY};
-input bool    InpNoWeekend    = ${b(s.noWeekend)};
-input int     InpFridayHour   = 21;
-input int     InpServerGmt    = ${s.serverGmt};
-input bool    InpUseNews      = ${b(s.useNewsFilter)};
-input string  InpNewsCur      = ${q(s.newsCurrencies)};
-input int     InpNewsImpact   = ${nImpact};
-input int     InpNewsBefore   = ${s.newsBefore};
-input int     InpNewsAfter    = ${s.newsAfter};
-input bool    InpShowPanel    = true;
-input int     InpPanelX       = 12;
-input int     InpPanelY       = 20;
+${IN} ENUM_TIMEFRAMES InpTF   = ${tf4(s.tf)};
+${IN} int     InpEntry        = ${trig};   // 0=swing 1=MA 2=RSI 3=Donchian 4=hora
+${IN} int     InpMAfast       = ${s.maFast};
+${IN} int     InpMAslow       = ${s.maSlow};
+${IN} int     InpRSIperiod    = ${s.rsiPeriod};
+${IN} double  InpRSIos        = ${s.rsiOS};
+${IN} double  InpRSIob        = ${s.rsiOB};
+${IN} int     InpDonchN       = ${s.donchN};
+${IN} int     InpMicroSwing   = ${s.microSwing};
+${IN} int     InpEntryHour    = ${s.entryHour};
+${IN} int     InpTrendMode    = ${s.trendMode};   // 0=MA 1=swing 2=Donchian
+${IN} ENUM_TIMEFRAMES InpTrendTF = ${tf4(s.trendTF)};
+${IN} int     InpTrendMA      = 50;
+${IN} int     InpTrendSwing   = 6;
+${IN} int     InpTrendDonchN  = 20;
+${IN} bool    InpAllowLongs   = ${b(s.allowLongs)};
+${IN} bool    InpAllowShorts  = ${b(s.allowShorts)};
+${IN} int     InpSignalFromH  = ${s.signalFromH};
+${IN} int     InpSignalFromM  = ${s.signalFromM};
+${IN} int     InpSignalToH    = ${s.signalToH};
+${IN} int     InpSignalToM    = ${s.signalToM};
+${IN} string  InpWindows      = "${windowsStr}";   // ${T('Ventanas: "f-t,f-t" en minutos del servidor', 'Windows: "f-t,f-t" in server minutes')}
+${IN} int     InpTradeDays    = ${s.tradeDays ?? 62};   // ${T('Días (bitmask 0=Dom..6=Sáb)', 'Days (bitmask 0=Sun..6=Sat)')}
+${IN} int     InpMaxTradesPerDay = ${s.maxTradesPerDay};
+${IN} int     InpRiskUnit     = ${cRisk(s.riskUnit)};  // 0=% 1=$
+${IN} double  InpRiskValue    = ${s.riskVal};
+${IN} double  InpMaxLots      = ${s.maxLots};
+${IN} int     InpATRPeriod    = 14;
+${IN} int     InpSLUnit       = ${cSL(s.slUnit)};      // 0=pips 1=R 2=% 3=$ 4=ATR
+${IN} double  InpSLValue      = ${s.slVal};
+${IN} int     InpTP1Unit      = ${cTP(s.tp1Unit)};
+${IN} double  InpTP1Value     = ${s.tp1Val};
+${IN} double  InpPartialPct   = ${s.partialPct};
+${IN} int     InpRunnerUnit   = ${cRun(s.runnerUnit)};
+${IN} double  InpRunnerValue  = ${s.runnerVal};
+${IN} bool    InpUseTrail     = ${b(s.useTrail)};
+${IN} int     InpTrailUnit    = ${cTrail(s.trailUnit)};
+${IN} double  InpTrailValue   = ${s.trailVal};
+${IN} double  InpBEOffsetR    = ${s.beOffsetR};
+${IN} int     InpTimeStopBars = ${s.timeStopBars};
+${IN} int     InpDailyLossUnit = ${cRisk(s.dailyLossUnit)};
+${IN} double  InpDailyLossValue = ${s.dailyLossVal};
+${IN} int     InpDailyProfitUnit = ${cRisk(s.dailyProfitUnit)};
+${IN} double  InpDailyProfitValue = ${s.dailyProfitVal};
+${IN} string  InpFirmName     = ${q(s.firmName)};
+${IN} int     InpDDType       = ${s.ddType};   // 0=trailing 1=estatico 2=trailing->BE
+${IN} double  InpFirmTotalLimitPct = ${s.firmTotalLimitPct};
+${IN} double  InpAcctSoftStopPct = ${s.acctSoftStopPct};
+${IN} double  InpAcctDailyStopPct= ${s.acctDailyStopPct};
+${IN} double  InpAcctMaxDDPct    = ${s.acctMaxDDPct};
+${IN} int     InpAccountMode  = ${s.accountMode};   // 0=fase1 1=fase2 2=real
+${IN} double  InpInitBalance  = ${s.initBalance};
+${IN} double  InpTargetP1     = ${s.targetP1};
+${IN} double  InpTargetP2     = ${s.targetP2};
+${IN} bool    InpHaltAtTarget = true;
+${IN} bool    InpUseDayClose  = ${b(s.useDayClose)};
+${IN} int     InpForceCloseHourNY = ${s.forceCloseHourNY};
+${IN} int     InpForceCloseMinNY  = ${s.forceCloseMinNY};
+${IN} bool    InpNoWeekend    = ${b(s.noWeekend)};
+${IN} int     InpFridayHour   = 21;
+${IN} int     InpServerGmt    = ${s.serverGmt};
+${IN} bool    InpUseNews      = ${b(s.useNewsFilter)};
+${IN} string  InpNewsCur      = ${q(s.newsCurrencies)};
+${IN} int     InpNewsImpact   = ${nImpact};
+${IN} int     InpNewsBefore   = ${s.newsBefore};
+${IN} int     InpNewsAfter    = ${s.newsAfter};
+input bool    InpShowPanel    = ${b(s.showPanel !== false)};   // panel del robot en el gráfico (lo ve el trader)
+input int     InpPanelCorner  = ${s.panelCorner ?? 0};         // 0=sup-izq 1=inf-izq 2=inf-der 3=sup-der
+input int     InpPanelX       = ${s.panelX ?? 12};
+input int     InpPanelY       = ${s.panelY ?? 20};
 
 //====================== GLOBALES ======================
 string S=""; int gDigits=0; double point=0, minStop=0;
@@ -670,10 +677,10 @@ bool InNews(){ if(!InpUseNews) return false; datetime now=TimeCurrent();
 //====================== PANEL ======================
 void LB(string n,int x,int y,string txt,color c,int fs){ string nm=PFX+n; if(ObjectFind(0,nm)<0) ObjectCreate(0,nm,OBJ_LABEL,0,0,0);
    ObjectSetInteger(0,nm,OBJPROP_XDISTANCE,x); ObjectSetInteger(0,nm,OBJPROP_YDISTANCE,y); ObjectSetString(0,nm,OBJPROP_TEXT,txt); ObjectSetInteger(0,nm,OBJPROP_COLOR,c);
-   ObjectSetInteger(0,nm,OBJPROP_FONTSIZE,fs); ObjectSetString(0,nm,OBJPROP_FONT,"Segoe UI"); ObjectSetInteger(0,nm,OBJPROP_CORNER,CORNER_LEFT_UPPER); ObjectSetInteger(0,nm,OBJPROP_SELECTABLE,false); ObjectSetInteger(0,nm,OBJPROP_HIDDEN,true); }
+   ObjectSetInteger(0,nm,OBJPROP_FONTSIZE,fs); ObjectSetString(0,nm,OBJPROP_FONT,"Segoe UI"); ObjectSetInteger(0,nm,OBJPROP_CORNER,(ENUM_BASE_CORNER)InpPanelCorner); ObjectSetInteger(0,nm,OBJPROP_SELECTABLE,false); ObjectSetInteger(0,nm,OBJPROP_HIDDEN,true); }
 void RB(string n,int x,int y,int w,int h,color bg){ string nm=PFX+n; if(ObjectFind(0,nm)<0) ObjectCreate(0,nm,OBJ_RECTANGLE_LABEL,0,0,0);
    ObjectSetInteger(0,nm,OBJPROP_XDISTANCE,x); ObjectSetInteger(0,nm,OBJPROP_YDISTANCE,y); ObjectSetInteger(0,nm,OBJPROP_XSIZE,w); ObjectSetInteger(0,nm,OBJPROP_YSIZE,h);
-   ObjectSetInteger(0,nm,OBJPROP_BGCOLOR,bg); ObjectSetInteger(0,nm,OBJPROP_BORDER_TYPE,BORDER_FLAT); ObjectSetInteger(0,nm,OBJPROP_CORNER,CORNER_LEFT_UPPER); ObjectSetInteger(0,nm,OBJPROP_BACK,false); ObjectSetInteger(0,nm,OBJPROP_SELECTABLE,false); ObjectSetInteger(0,nm,OBJPROP_HIDDEN,true); }
+   ObjectSetInteger(0,nm,OBJPROP_BGCOLOR,bg); ObjectSetInteger(0,nm,OBJPROP_BORDER_TYPE,BORDER_FLAT); ObjectSetInteger(0,nm,OBJPROP_CORNER,(ENUM_BASE_CORNER)InpPanelCorner); ObjectSetInteger(0,nm,OBJPROP_BACK,false); ObjectSetInteger(0,nm,OBJPROP_SELECTABLE,false); ObjectSetInteger(0,nm,OBJPROP_HIDDEN,true); }
 void Panel(){ if(!InpShowPanel) return; int X=InpPanelX,Y=InpPanelY,W=274,PAD=11,IW=W-2*PAD;
    color bg=C'24,26,32',cv=C'236,237,242',cm=C'150,153,162',cg=C'90,214,150',cr=C'236,110,110',ca=C'240,190,90',ctrk=C'44,47,56';
    int H=140; double tg0=TargetPct(); if(tg0>0) H+=27; if(InpUseNews) H+=14;

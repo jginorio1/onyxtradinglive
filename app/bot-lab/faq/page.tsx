@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { serverLang, localeAlternates, SITE } from '@/lib/locale';
+import { botLabSettings } from '@/lib/botlab';
 import BotLabFaq from '../BotLabFaq';
 
 export const dynamic = 'force-dynamic';
@@ -13,6 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title, description, alternates: localeAlternates('/bot-lab/faq'), openGraph: { title, description, url: `${SITE}/bot-lab/faq`, type: 'website' } };
 }
 
-export default function BotLabFaqPage() {
-  return <main style={{ padding: '30px 0 50px' }}><BotLabFaq /></main>;
+export default async function BotLabFaqPage() {
+  const s = await botLabSettings();
+  return <main style={{ padding: '30px 0 50px' }}><BotLabFaq card={(s as any).pay_card === true} /></main>;
 }

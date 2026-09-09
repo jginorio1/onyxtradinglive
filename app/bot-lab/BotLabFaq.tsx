@@ -78,10 +78,22 @@ const DATA_EN: Cat[] = [
   ] },
 ];
 
-export default function BotLabFaq() {
+// Cuando la tarjeta (Stripe) está encendida, sobrescribimos las respuestas de pago
+// para que digan "USDT o tarjeta" en vez de USDT-only. Si está apagada, se queda USDT-only.
+const CARD_OVERRIDES: Record<string, string> = {
+  '¿Cómo se paga?': 'En USDT o con tarjeta (Stripe): la mayoría de robots son de pago único y el precio se ve claro antes de pagar. Con tarjeta activamos al instante; con USDT, en cuanto confirma la blockchain.',
+  '¿Qué métodos aceptan?': 'Tarjeta (Stripe) y USDT (TRON · Ethereum). Con USDT no hay contracargos. Los creadores cobran en USDT o a su banco.',
+  'How do I pay?': 'In USDT or by card (Stripe): most robots are a one-time purchase and the price is clear before you pay. By card you get access instantly; with USDT, as soon as it confirms on-chain.',
+  'What methods do you accept?': 'Card (Stripe) and USDT (TRON · Ethereum). USDT has no chargebacks. Creators cash out in USDT or to their bank.',
+};
+
+export default function BotLabFaq({ card = false }: { card?: boolean }) {
   const { lang } = useLang();
   const es = lang === 'es';
-  const data = es ? DATA_ES : DATA_EN;
+  const base = es ? DATA_ES : DATA_EN;
+  const data = card
+    ? base.map((c) => ({ ...c, items: c.items.map((it) => CARD_OVERRIDES[it.q] ? { ...it, a: CARD_OVERRIDES[it.q] } : it) }))
+    : base;
   const [cat, setCat] = useState(data[0].id);
   const active = data.find((c) => c.id === cat) || data[0];
   const GOLD = 'var(--gold, #ffd45e)';

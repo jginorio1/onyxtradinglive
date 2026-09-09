@@ -803,6 +803,23 @@ export default function BotBuilder() {
           </div>
         )}
       </div>
+
+      {/* Panel en el gráfico + candado de parámetros (para vender) */}
+      <div className="bbx-panel">
+        <div className="bbx-panel-h"><span className="bbx-ic"><OnyxIcon emoji="🖥" size={16} /></span><div><div>{L('Panel en el gráfico', 'On-chart panel')}</div><div className="bbx-sub">{L('Lo que el robot muestra dentro de MT5, MT4 y cTrader: nombre, estado, balance, equity, drawdown y objetivo. El comprador lo ve en su gráfico.', 'What the robot shows inside MT5, MT4 and cTrader: name, status, balance, equity, drawdown and target. The buyer sees it on their chart.')}</div></div></div>
+        <div style={{ marginBottom: 12 }}><Toggle k="showPanel" t={L('Mostrar el panel en el gráfico', 'Show the panel on the chart')} /></div>
+        {s.showPanel !== false && (
+          <div className="bbx-grid">
+            <Fld t={L('Esquina', 'Corner')} k="panelCorner" opts={[['0', L('Arriba izquierda', 'Top left')], ['1', L('Abajo izquierda', 'Bottom left')], ['2', L('Abajo derecha', 'Bottom right')], ['3', L('Arriba derecha', 'Top right')]]} hint={L('Dónde se ancla el panel dentro del gráfico.', 'Where the panel anchors on the chart.')} />
+            <Fld t={L('Separación horizontal (px)', 'Horizontal offset (px)')} k="panelX" type="number" hint={L('Distancia desde el borde de la esquina.', 'Distance from the corner edge.')} />
+            <Fld t={L('Separación vertical (px)', 'Vertical offset (px)')} k="panelY" type="number" hint={L('Distancia desde el borde de la esquina.', 'Distance from the corner edge.')} />
+          </div>
+        )}
+        <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,.08)' }}>
+          <Toggle k="lockCore" t={L('Bloquear parámetros del núcleo (para vender)', 'Lock core parameters (for selling)')} />
+          <div className="bbx-sub" style={{ marginTop: 6 }}>{L('Al bloquear, tu estrategia (entradas, stop/take profit, riesgo y filtros) se hornea dentro del robot y el comprador NO puede editarla en MetaTrader. Solo pega su clave Onyx y ajusta el panel. Recomendado si vendes el robot.', 'When locked, your strategy (entries, stop/take profit, risk and filters) is baked into the robot and the buyer CANNOT edit it in MetaTrader. They only paste their Onyx key and adjust the panel. Recommended if you sell the robot.')}</div>
+        </div>
+      </div>
       </>)}
 
       {/* Navegación guiada Anterior / Siguiente entre secciones + volver al tablero */}

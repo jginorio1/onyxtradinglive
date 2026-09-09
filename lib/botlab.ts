@@ -56,7 +56,7 @@ const DEF: BotLabSettings = {
   service_automate_from: 1500, service_install_price: 99, service_elite_from: 6000,
   notify_email: '', telegram_chat: '',
   stats_on: true, stat_robots_base: 1240, stat_verified_base: 84, stat_score_avg: 87, stat_buyers_week: 55, stat_price_from: 19,
-  pay_trc20: true, pay_erc20: true, pay_card: false, robots_monthly: false,
+  pay_trc20: true, pay_erc20: true, pay_card: true, robots_monthly: false,
   val_min_trades: 30, val_min_days: 14, val_min_score: 60, val_min_pf: 110, val_max_dd: 30,
   val_require_sl: true, val_reject_martingale: true, val_reject_hft: true, val_hft_min_hold: 5, val_hft_max_day: 20,
   lic_max_accounts: 3,
@@ -182,6 +182,7 @@ export async function saveProduct(sellerId: string, b: any, isAdmin = false) {
     kind: b.kind === 'one_time' ? 'one_time' : 'subscription',
     interval: b.interval === 'year' ? 'year' : 'month',
     price_cents: Math.max(0, Math.round(Number(b.price_cents) || 0)),
+    affiliate_pct: Math.max(0, Math.min(80, Number(b.affiliate_pct) || 0)),  // % del neto para el referido
     currency: (b.currency || 'usd').toLowerCase().slice(0, 3),
     platform: ['mt4', 'mt5', 'ctrader', 'any'].includes(b.platform) ? b.platform : 'any',
     pair: b.pair ? String(b.pair).slice(0, 20) : null,
@@ -331,15 +332,50 @@ export async function productBuildFile(
 }
 
 // Registra/renueva una licencia (idempotente por comprador+producto) y anota comisión.
-export async function grantLicense(o: { productId: string; buyerId: string; sellerId?: string | null; kind: string; method: string; grossCents: number; currency?: string; ref?: string; sessionId?: string; subId?: string; cryptoId?: string; periodEnd?: number }) {
+export async function grantLicense(o: { productId: string; buyerId: string; sellerId?: string | null; kind: string; method: string; grossCents: number; currency?: string; ref?: string; sessionId?: string; subId?: string; cryptoId?: string; periodEnd?: number; referrerId?: string | null }) {
   await supabaseAdmin.from('bot_purchases').upsert({
-    product_id: o.productId, buyer_id: o.buyerId, seller_id: o.sellerId || null,
+    product_id: o.productId, buyer_id: o.buyerId, seller_id: o.sellerId || null, referrer_id: o.referrerId || null,
     kind: o.kind, status: 'active', method: o.method, price_cents: o.grossCents, currency: (o.currency || 'usd').toLowerCase().slice(0, 3),
     stripe_session_id: o.sessionId || null, stripe_subscription_id: o.subId || null, crypto_payment_id: o.cryptoId || null,
     current_period_end: o.periodEnd ? new Date(o.periodEnd * 1000).toISOString() : null,
   }, { onConflict: 'buyer_id,product_id' });
   await supabaseAdmin.from('bot_products').update({ sales: (await productSales(o.productId)) }).eq('id', o.productId).select('id');
   if (o.sellerId && o.ref) await recordBotCommission({ sellerId: o.sellerId, buyerId: o.buyerId, productId: o.productId, grossCents: o.grossCents, currency: o.currency, kind: o.kind, method: o.method, ref: o.ref });
+  // Referido del vendedor: solo si hay referrer válido, distinto del vendedor y del comprador.
+  if (o.referrerId && o.ref && o.referrerId !== o.sellerId && o.referrerId !== o.buyerId) {
+    await recordBotAffiliate({ productId: o.productId, sellerId: o.sellerId, referrerId: o.referrerId, buyerId: o.buyerId, grossCents: o.grossCents, method: o.method, ref: o.ref });
+  }
+}
+// Reparto al referido del vendedor: Onyx (fee del vendedor) primero, del NETO el affiliate_pct.
+export async function recordBotAffiliate(o: { productId: string; sellerId?: string | null; referrerId: string; buyerId?: string; grossCents: number; method: string; ref: string }) {
+  if (!o.ref || !o.referrerId) return;
+  const { data: prod } = await supabaseAdmin.from('bot_products').select('affiliate_pct').eq('id', o.productId).maybeSingle();
+  const affPct = Math.max(0, Math.min(80, Number((prod as any)?.affiliate_pct) || 0));
+  if (affPct <= 0) return;
+  const feePct = await sellerFeePct(o.sellerId);
+  const onyxFee = Math.round((o.grossCents || 0) * (feePct / 100));
+  const sellerNet = Math.max(0, (o.grossCents || 0) - onyxFee);
+  const affiliate = Math.round(sellerNet * (affPct / 100));
+  await supabaseAdmin.from('bot_referrals').upsert({
+    product_id: o.productId, seller_id: o.sellerId || null, referrer_id: o.referrerId, buyer_id: o.buyerId || null,
+    gross_cents: o.grossCents || 0, onyx_fee_cents: onyxFee, seller_net_cents: sellerNet, affiliate_cents: affiliate,
+    affiliate_pct: affPct, method: o.method, ref: o.ref, status: 'earned',
+  }, { onConflict: 'referrer_id,ref', ignoreDuplicates: true });
+}
+// Ganancias por REFERIR robots de otros (lo que este usuario ganó compartiendo enlaces).
+export async function myReferralEarnings(referrerId: string) {
+  const { data } = await supabaseAdmin.from('bot_referrals').select('affiliate_cents,status,affiliate_pct,method,created_at,paid_at,product_id').eq('referrer_id', referrerId).order('created_at', { ascending: false }).limit(200);
+  const rows = (data || []) as any[];
+  const sum = (st: string) => rows.filter((r) => r.status === st).reduce((a, r) => a + (r.affiliate_cents || 0), 0);
+  // Nombre del robot para el historial.
+  const pids = Array.from(new Set(rows.map((r) => r.product_id).filter(Boolean)));
+  const nameOf: Record<string, string> = {};
+  if (pids.length) { const { data: pr } = await supabaseAdmin.from('bot_products').select('id,name').in('id', pids); (pr || []).forEach((p: any) => { nameOf[p.id] = p.name; }); }
+  return {
+    earnedCents: sum('earned'), paidCents: sum('paid'),
+    count: rows.filter((r) => r.status !== 'reversed').length,
+    items: rows.map((r) => ({ ...r, product_name: nameOf[r.product_id] || '—' })),
+  };
 }
 async function productSales(productId: string) {
   const { count } = await supabaseAdmin.from('bot_purchases').select('*', { count: 'exact', head: true }).eq('product_id', productId).eq('status', 'active');
@@ -398,14 +434,14 @@ export async function sellerConnectStatus(userId: string) {
 
 // Checkout con TARJETA. Producto de creador → destination charge con comisión.
 // Producto oficial de Onyx → cobro directo a la plataforma.
-export async function checkoutCard(product: any, buyerId: string, email?: string) {
+export async function checkoutCard(product: any, buyerId: string, email?: string, referrerId?: string) {
   const base: any = {
     mode: (product.kind === 'one_time' ? 'payment' : 'subscription') as 'payment' | 'subscription',
     success_url: `${appUrl()}/dashboard/bot-lab?bought={CHECKOUT_SESSION_ID}`,
     cancel_url: `${appUrl()}/dashboard/bot-lab?tab=market`,
     customer_email: email,
     allow_promotion_codes: true,
-    metadata: { onyx_kind: 'botlab', onyx_product: product.id, onyx_buyer: buyerId, onyx_seller: product.seller_id || '' },
+    metadata: { onyx_kind: 'botlab', onyx_product: product.id, onyx_buyer: buyerId, onyx_seller: product.seller_id || '', onyx_ref: referrerId || '' },
   };
   const price: any = { currency: product.currency || 'usd', unit_amount: product.price_cents, product_data: { name: product.name } };
   // Producto oficial de Onyx (sin creador): cobro simple a la plataforma.
@@ -442,6 +478,7 @@ export async function confirmSession(sessionId: string, buyerId: string) {
     productId, buyerId, sellerId: prod.seller_id, kind: prod.kind, method: 'card',
     grossCents: prod.price_cents, currency: prod.currency,
     ref: (s.payment_intent as string) || s.id, sessionId: s.id, subId: (s.subscription as string) || undefined,
+    referrerId: (s.metadata as any)?.onyx_ref || undefined,
   });
   return { ok: true, product: prod };
 }
@@ -453,10 +490,13 @@ export async function sellerEarnings(sellerId: string) {
   const { data } = await supabaseAdmin.from('bot_commissions').select('gross_cents,fee_cents').eq('seller_id', sellerId).neq('status', 'reversed');
   const gross = (data || []).reduce((s: number, r: any) => s + (r.gross_cents || 0), 0);
   const fee = (data || []).reduce((s: number, r: any) => s + (r.fee_cents || 0), 0);
+  // Ganancias por REFERIR robots de otros creadores: se suman al mismo saldo retirable.
+  const { data: refs } = await supabaseAdmin.from('bot_referrals').select('affiliate_cents').eq('referrer_id', sellerId).neq('status', 'reversed');
+  const refNet = (refs || []).reduce((s: number, r: any) => s + (r.affiliate_cents || 0), 0);
   const { data: paid } = await supabaseAdmin.from('bot_payouts').select('amount_cents').eq('seller_id', sellerId).eq('status', 'paid');
   const paidC = (paid || []).reduce((s: number, r: any) => s + (r.amount_cents || 0), 0);
-  const net = gross - fee;
-  return { grossCents: gross, feeCents: fee, netCents: net, paidCents: paidC, availableCents: Math.max(0, net - paidC), sales: (data || []).length };
+  const net = (gross - fee) + refNet;   // comisiones propias + referidos, en un solo bolsillo
+  return { grossCents: gross, feeCents: fee, referralCents: refNet, netCents: net, paidCents: paidC, availableCents: Math.max(0, net - paidC), sales: (data || []).length };
 }
 export async function listPayouts(sellerId?: string) {
   let q = supabaseAdmin.from('bot_payouts').select('*').order('created_at', { ascending: false });

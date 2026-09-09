@@ -25,7 +25,7 @@ export async function cryptoNetworks(): Promise<('erc20' | 'trc20')[]> {
 // Crea una intención de pago en USDT. Si hay Coinbase Commerce, genera un charge
 // y devuelve su hosted_url (checkout automático, confirmación on-chain por webhook).
 // Si no, cae al modo manual: muestra la wallet y el cliente reporta el hash.
-export async function createCryptoPayment(o: { userId?: string | null; purpose: 'license' | 'service'; refId: string; amountUsd: number; name?: string; network?: string }) {
+export async function createCryptoPayment(o: { userId?: string | null; purpose: 'license' | 'service'; refId: string; amountUsd: number; name?: string; network?: string; referrerId?: string | null }) {
   const s = await botLabSettings();
   // Red elegida por el cliente (erc20 | trc20). Si no se pasa, la primera disponible.
   const avail = usdtNetworksAvailable(s);
@@ -42,7 +42,7 @@ export async function createCryptoPayment(o: { userId?: string | null; purpose: 
   }
   if (matchAmount == null) matchAmount = Math.round((base + (Date.now() % 9800 + 1) / 10000) * 10000) / 10000;
   const { data } = await supabaseAdmin.from('crypto_payments').insert({
-    user_id: o.userId || null, purpose: o.purpose, ref_id: o.refId,
+    user_id: o.userId || null, purpose: o.purpose, ref_id: o.refId, referrer_id: o.referrerId || null,
     amount_usd: base, match_amount: matchAmount, asset: 'USDT',
     network, address,
     status: 'pending', provider: coinbaseEnabled() ? 'coinbase' : 'manual',
@@ -109,6 +109,7 @@ export async function confirmCryptoPayment(paymentId: string) {
       await grantLicense({
         productId: prod.id, buyerId: pay.user_id, sellerId: prod.seller_id, kind: prod.kind, method: 'usdt',
         grossCents: prod.price_cents, currency: prod.currency, ref: 'crypto_' + paymentId, cryptoId: paymentId, periodEnd,
+        referrerId: pay.referrer_id || undefined,
       });
     }
   }

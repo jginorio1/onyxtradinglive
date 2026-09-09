@@ -44,6 +44,9 @@ export type BotSpec = {
   useDayClose: boolean; forceCloseHourNY: number; forceCloseMinNY: number; noWeekend: boolean; serverGmt: number;
   // Noticias
   useNewsFilter: boolean; newsCurrencies: string; newsImpact: string; newsBefore: number; newsAfter: number;
+  // Panel en el gráfico (lo que se ve dentro de MT5/MT4/cTrader) + candado de parámetros.
+  showPanel: boolean; panelCorner: number; panelX: number; panelY: number;   // corner 0=sup-izq,1=sup-der,2=inf-izq,3=inf-der
+  lockCore: boolean;   // true = hornea los parámetros del núcleo como constantes (el comprador no los edita)
 };
 
 export const DEFAULT_SPEC: BotSpec = {
@@ -63,6 +66,7 @@ export const DEFAULT_SPEC: BotSpec = {
   accountMode: 0, initBalance: 0, targetP1: 10, targetP2: 5,
   useDayClose: true, forceCloseHourNY: 20, forceCloseMinNY: 30, noWeekend: true, serverGmt: 3,
   useNewsFilter: true, newsCurrencies: 'USD', newsImpact: 'high', newsBefore: 15, newsAfter: 15,
+  showPanel: true, panelCorner: 0, panelX: 12, panelY: 20, lockCore: false,
 };
 
 // MISMO set de unidades en toda la zona de salidas (SL, TP, runner, trailing).
@@ -139,6 +143,12 @@ export function cleanSpec(inp: any): BotSpec {
   s.serverGmt = clamp(Math.round(num(inp?.serverGmt, 3)), -12, 14);
   s.allowLongs = inp?.allowLongs !== false; s.allowShorts = inp?.allowShorts !== false;
   s.useDayClose = inp?.useDayClose !== false; s.noWeekend = inp?.noWeekend !== false; s.useNewsFilter = inp?.useNewsFilter !== false;
+  // Panel en el gráfico + candado de parámetros del núcleo.
+  s.showPanel = inp?.showPanel !== false;
+  s.panelCorner = clamp(Math.round(num(inp?.panelCorner, 0)), 0, 3);
+  s.panelX = clamp(Math.round(num(inp?.panelX, 12)), 0, 4000);
+  s.panelY = clamp(Math.round(num(inp?.panelY, 20)), 0, 4000);
+  s.lockCore = inp?.lockCore === true;
   return s;
 }
 
@@ -186,6 +196,7 @@ export function toSetFile(s: BotSpec): string {
   P('InpAccountMode', s.accountMode); P('InpInitBalance', s.initBalance); P('InpTargetP1', s.targetP1); P('InpTargetP2', s.targetP2);
   P('InpUseDayClose', bl(s.useDayClose)); P('InpForceCloseHourNY', s.forceCloseHourNY); P('InpForceCloseMinNY', s.forceCloseMinNY); P('InpNoWeekend', bl(s.noWeekend));
   P('InpUseNews', bl(s.useNewsFilter)); P('InpNewsCur', s.newsCurrencies); P('InpNewsImpact', { high: 0, med: 1, all: 2 }[s.newsImpact] ?? 0); P('InpNewsBefore', s.newsBefore); P('InpNewsAfter', s.newsAfter);
+  P('InpShowPanel', bl(s.showPanel !== false)); P('InpPanelCorner', s.panelCorner ?? 0); P('InpPanelX', s.panelX ?? 12); P('InpPanelY', s.panelY ?? 20);
   return L.join('\r\n') + '\r\n';
 }
 

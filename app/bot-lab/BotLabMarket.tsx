@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 // ============================================================
 // Marketplace público de Bot Lab con FILTROS por categoría.
@@ -13,6 +13,17 @@ export default function BotLabMarket({ es, items }: { es: boolean; items: any[] 
   const [style, setStyle] = useState('');
   const [tf, setTf] = useState('');
   const [mkt, setMkt] = useState('');
+  const [q, setQ] = useState('');
+  const [ref, setRef] = useState('');
+  // Referido de promoción: lo guardamos para que persista hasta la compra en el dashboard.
+  useEffect(() => {
+    try {
+      const rf = new URLSearchParams(window.location.search).get('ref');
+      if (rf) { localStorage.setItem('onyx_bl_ref', rf); setRef(rf); }
+      else { const saved = localStorage.getItem('onyx_bl_ref'); if (saved) setRef(saved); }
+    } catch {}
+  }, []);
+  const refQ = ref ? `&ref=${encodeURIComponent(ref)}` : '';
 
   // Opciones reales (solo las que existen en los robots publicados).
   const opts = useMemo(() => {
@@ -21,8 +32,10 @@ export default function BotLabMarket({ es, items }: { es: boolean; items: any[] 
     return { styles: [...s], tfs: [...t], mkts: [...m] };
   }, [items]);
 
+  const qq = q.trim().toLowerCase();
   const filtered = items.filter((i) =>
-    (!style || i.spec_style === style) && (!tf || i.spec_timeframe === tf) && (!mkt || i.spec_market === mkt));
+    (!style || i.spec_style === style) && (!tf || i.spec_timeframe === tf) && (!mkt || i.spec_market === mkt)
+    && (!qq || `${i.name} ${i.seller || ''} ${i.pair || ''} ${i.spec_market || ''} ${i.spec_style || ''}`.toLowerCase().includes(qq)));
 
   const card: any = { background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 18, padding: 15 };
   const chip = (on: boolean): any => ({ fontSize: 12, fontWeight: 700, padding: '5px 11px', borderRadius: 99, cursor: 'pointer', border: '1px solid ' + (on ? 'var(--brand)' : 'var(--line)'), background: on ? 'color-mix(in srgb,var(--brand) 18%,transparent)' : 'transparent', color: on ? 'var(--brand)' : 'var(--mut)', textTransform: 'capitalize' });
@@ -30,6 +43,12 @@ export default function BotLabMarket({ es, items }: { es: boolean; items: any[] 
 
   return (
     <div>
+      {/* Buscador */}
+      {items.length > 3 && (
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={es ? 'Buscar robot por nombre, par…' : 'Search robot by name, pair…'} style={{ width: '100%', maxWidth: 420, padding: '11px 14px', borderRadius: 12, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--tx)', fontSize: 14 }} />
+        </div>
+      )}
       {/* Barra de filtros */}
       {(opts.styles.length + opts.tfs.length + opts.mkts.length) > 0 && (
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 20 }}>
@@ -90,7 +109,7 @@ export default function BotLabMarket({ es, items }: { es: boolean; items: any[] 
               <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--brand)', border: '1px solid color-mix(in srgb,var(--brand) 30%,transparent)', borderRadius: 6, padding: '2px 6px' }}>{p.plat}</span>
               <b style={{ fontSize: 15 }}>{p.price}<small className="muted" style={{ fontSize: 11, fontWeight: 600 }}>{p.unit}</small></b>
             </div>
-            <Link href={p.id ? `/dashboard/bot-lab?tab=market&p=${p.id}` : '/dashboard/bot-lab'} style={{ display: 'block', marginTop: 10, textAlign: 'center', fontSize: 12.5, fontWeight: 800, padding: '9px', borderRadius: 9, background: 'var(--brand)', color: '#0b1020' }}>{es ? 'Ver robot' : 'View robot'}</Link>
+            <Link href={p.id ? `/dashboard/bot-lab?tab=market&p=${p.id}${refQ}` : '/dashboard/bot-lab'} style={{ display: 'block', marginTop: 10, textAlign: 'center', fontSize: 12.5, fontWeight: 800, padding: '9px', borderRadius: 9, background: 'var(--brand)', color: '#0b1020' }}>{es ? 'Ver robot' : 'View robot'}</Link>
           </div>
         ))}
       </div>

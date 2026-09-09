@@ -20,10 +20,18 @@ export default function BotLabDashboard() {
   const [editing, setEditing] = useState<any>(null);
   const [pay, setPay] = useState<any>({ card: false, crypto: true, monthly: false }); // métodos globales
   const [focusId, setFocusId] = useState<string>(''); // producto a resaltar (deep-link desde la landing)
+  const [mq, setMq] = useState(''); const [mplat, setMplat] = useState('all'); const [msort, setMsort] = useState('score'); const [mshow, setMshow] = useState(12); // buscador/filtro/orden/paginación del marketplace
+  const [me, setMe] = useState(''); // id del usuario (para armar su enlace de referido)
 
   async function loadMarket() { try { const r = await fetch('/api/botlab/products?limit=60'); const j = await r.json(); setProducts(j.products || []); if (j.pay) setPay(j.pay); } catch {} }
   async function loadLicenses() { try { const r = await fetch('/api/botlab/licenses'); const j = await r.json(); setLicenses(j.licenses || []); } catch {} }
-  async function loadSell() { try { const r = await fetch('/api/botlab/sell'); const j = await r.json(); setSell(j); } catch {} }
+  async function loadSell() { try { const r = await fetch('/api/botlab/sell'); const j = await r.json(); setSell(j); if (j.me) setMe(j.me); } catch {} }
+  // Copia el enlace de referido de ESTE usuario para un robot (gana el % que fije el vendedor).
+  function shareRef(p: any) {
+    const url = `${window.location.origin}/bot-lab?p=${p.id}&ref=${me}`;
+    try { navigator.clipboard.writeText(url); toast(es ? '¡Enlace de referido copiado!' : 'Referral link copied!'); }
+    catch { toastErr(url); }
+  }
 
   useEffect(() => {
     loadMarket(); loadLicenses(); loadSell();
@@ -32,6 +40,8 @@ export default function BotLabDashboard() {
       const t = sp.get('tab'); if (t === 'vender' || t === 'licencias' || t === 'market' || t === 'ganancias') setView(t as View);
       // Deep-link a un robot concreto desde la landing: abre el marketplace y lo resalta.
       const pid = sp.get('p'); if (pid) { setView('market'); setFocusId(pid); }
+      // Referido del vendedor: guardamos el ref para acreditar a quien trajo la venta.
+      const rf = sp.get('ref'); if (rf) { try { localStorage.setItem('onyx_bl_ref', rf); } catch {} }
       // Viene del constructor con "Vender este robot": abre el formulario ya prellenado.
       if (sp.get('new') === '1') {
         setView('vender');
@@ -66,7 +76,9 @@ export default function BotLabDashboard() {
 
   async function buy(p: any, method: 'card' | 'usdt', network?: string) {
     try {
-      const r = await fetch('/api/botlab/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ productId: p.id, method, network }) });
+      // Referido del vendedor: si venimos de un enlace de promoción, lo acreditamos.
+      let ref: string | undefined; try { ref = localStorage.getItem('onyx_bl_ref') || undefined; } catch {}
+      const r = await fetch('/api/botlab/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ productId: p.id, method, network, ref }) });
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || 'error');
       if (j.chooseNetwork) { setNetPick({ product: p, networks: j.chooseNetwork }); return; } // el cliente elige red
@@ -107,6 +119,18 @@ export default function BotLabDashboard() {
     ['ganancias', svg('M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'), es ? 'Ganancias' : 'Earnings'],
   ];
 
+  // Marketplace: buscador + filtro de plataforma + orden. Se pagina con "cargar más".
+  const mQ = mq.trim().toLowerCase();
+  const marketList = products
+    .filter((p) => mplat === 'all' || String(p.platform || '').toLowerCase() === mplat)
+    .filter((p) => !mQ || `${p.name} ${p.tagline || ''} ${p.seller_name || ''} ${p.spec_market || ''} ${p.spec_style || ''} ${p.spec_timeframe || ''}`.toLowerCase().includes(mQ))
+    .sort((a, b) => {
+      if (msort === 'price') return (a.price_cents || 0) - (b.price_cents || 0);
+      if (msort === 'price_desc') return (b.price_cents || 0) - (a.price_cents || 0);
+      if (msort === 'new') return String(b.created_at || '').localeCompare(String(a.created_at || ''));
+      return (b.perf?.score || 0) - (a.perf?.score || 0);
+    });
+
   return (
     <div className="bl-shell" style={{ maxWidth: 1120, margin: '0 auto', padding: '10px 4px 60px', display: 'flex', gap: 20, alignItems: 'flex-start' }}>
       {/* Barra lateral propia */}
@@ -129,9 +153,18 @@ export default function BotLabDashboard() {
       <div style={{ flex: 1, minWidth: 0 }}>
         {view === 'market' && (
           <div>
+            {/* Buscador + filtro + orden del marketplace */}
+            {!!products.length && (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 14 }}>
+                <input value={mq} onChange={(e) => { setMq(e.target.value); setMshow(12); }} placeholder={es ? 'Buscar por nombre, par, estilo…' : 'Search by name, pair, style…'} style={{ flex: 1, minWidth: 190, padding: '9px 12px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 13.5 }} />
+                <select value={mplat} onChange={(e) => { setMplat(e.target.value); setMshow(12); }} style={{ padding: '9px 10px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 13 }}><option value="all">{es ? 'Todas las plataformas' : 'All platforms'}</option><option value="mt5">MT5</option><option value="mt4">MT4</option><option value="ctrader">cTrader</option></select>
+                <select value={msort} onChange={(e) => setMsort(e.target.value)} style={{ padding: '9px 10px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 13 }}><option value="score">{es ? 'Mejor Onyx Score' : 'Top Onyx Score'}</option><option value="new">{es ? 'Más nuevos' : 'Newest'}</option><option value="price">{es ? 'Precio ↑' : 'Price ↑'}</option><option value="price_desc">{es ? 'Precio ↓' : 'Price ↓'}</option></select>
+              </div>
+            )}
             {!products.length && <div style={{ ...card, textAlign: 'center', color: 'var(--mut)' }}>{es ? 'Aún no hay robots publicados. Vuelve pronto o publica el tuyo.' : 'No robots published yet. Check back soon or publish yours.'}</div>}
+            {!!products.length && !marketList.length && <div style={{ ...card, textAlign: 'center', color: 'var(--mut)' }}>{es ? 'Ningún robot con esos filtros. Prueba otra búsqueda.' : 'No robots match those filters. Try another search.'}</div>}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(230px,1fr))', gap: 14 }}>
-              {products.map((p) => {
+              {marketList.slice(0, mshow).map((p) => {
                 const owned = licenses.some((l) => l.product_id === p.id && l.status === 'active');
                 return (
                   <div key={p.id} id={'bl-prod-' + p.id} style={{ ...card, ...(focusId === p.id ? { border: '1.5px solid var(--brand)', boxShadow: '0 0 0 3px color-mix(in srgb,var(--brand) 22%,transparent)' } : {}) }}>
@@ -190,10 +223,21 @@ export default function BotLabDashboard() {
                         {pay.card && <button onClick={() => buy(p, 'card')} className="muted" style={{ width: '100%', marginTop: 6, padding: '6px', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 11.5, border: 'none', background: 'transparent' }}>{es ? 'o pagar con tarjeta' : 'or pay by card'}</button>}
                       </>
                     )}
+                    {/* Referido: si el vendedor ofrece %, cualquiera puede compartir su enlace y ganar (menos el propio creador). */}
+                    {Number(p.affiliate_pct) > 0 && me && p.seller_id !== me && (
+                      <button onClick={() => shareRef(p)} style={{ width: '100%', marginTop: 8, padding: '8px', borderRadius: 9, cursor: 'pointer', fontWeight: 800, fontSize: 12, border: `1px solid color-mix(in srgb,${GOLD} 45%,transparent)`, background: `color-mix(in srgb,${GOLD} 10%,transparent)`, color: GOLD, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                        ◆ {es ? `Compartir y ganar ${Math.round(Number(p.affiliate_pct))}%` : `Share & earn ${Math.round(Number(p.affiliate_pct))}%`}
+                      </button>
+                    )}
                   </div>
                 );
               })}
             </div>
+            {marketList.length > mshow && (
+              <div style={{ textAlign: 'center', marginTop: 16 }}>
+                <button className="btn btn-ghost" onClick={() => setMshow((n) => n + 12)}>{es ? `Cargar más (${marketList.length - mshow})` : `Load more (${marketList.length - mshow})`}</button>
+              </div>
+            )}
           </div>
         )}
 
@@ -291,29 +335,91 @@ function SellPanel({ es, sell, reload, onEdit }: any) {
 // ---------------------------------------------------------------- Ganancias
 function EarningsPanel({ es, sell, reload }: any) {
   const e = sell.earnings || {};
+  const connect = sell.connect || {};
   const [addr, setAddr] = useState('');
   const [net, setNet] = useState('trc20');
+  const [pm, setPm] = useState<'usdt' | 'stripe'>('usdt');   // método de retiro
   const inp: any = { padding: '10px 12px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 13.5 };
+  const low = (e.availableCents || 0) < 1000;
+  async function connectStripe() {
+    try { const r = await fetch('/api/botlab/sell', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'connect' }) }); const j = await r.json(); if (!r.ok) throw new Error(j.error); if (j.url) window.location.href = j.url; } catch (er: any) { toastErr(er?.message); }
+  }
   async function payout() {
-    if (!addr.trim()) { toastErr(es ? 'Pon tu dirección USDT.' : 'Enter your USDT address.'); return; }
-    try { const r = await fetch('/api/botlab/sell', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'payout', method: 'usdt', destination: `${net.toUpperCase()}:${addr.trim()}` }) }); const j = await r.json(); if (!r.ok) throw new Error(j.error); toast(es ? 'Retiro solicitado. Te pagamos en USDT.' : 'Payout requested. We pay you in USDT.'); setAddr(''); reload(); } catch (er: any) { toastErr(er?.message); }
+    try {
+      const body: any = pm === 'usdt'
+        ? { action: 'payout', method: 'usdt', destination: `${net.toUpperCase()}:${addr.trim()}` }
+        : { action: 'payout', method: 'stripe' };
+      if (pm === 'usdt' && !addr.trim()) { toastErr(es ? 'Pon tu dirección USDT.' : 'Enter your USDT address.'); return; }
+      const r = await fetch('/api/botlab/sell', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const j = await r.json(); if (!r.ok) throw new Error(j.error);
+      toast(pm === 'usdt' ? (es ? 'Retiro solicitado. Te pagamos en USDT.' : 'Payout requested. We pay you in USDT.') : (es ? 'Retiro solicitado a tu banco (Stripe Express).' : 'Payout requested to your bank (Stripe Express).'));
+      setAddr(''); reload();
+    } catch (er: any) { toastErr(er?.message); }
   }
   return (
     <div style={{ display: 'grid', gap: 16 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 12 }}>
-        {[[es ? 'Disponible' : 'Available', money(e.availableCents || 0), 'var(--green)'], [es ? 'Ventas' : 'Sales', String(e.sales || 0), 'var(--tx)'], [es ? 'Bruto' : 'Gross', money(e.grossCents || 0), 'var(--tx)'], [es ? 'Pagado' : 'Paid', money(e.paidCents || 0), 'var(--mut)']].map(([l, v, c], i) => (
+        {[[es ? 'Disponible' : 'Available', money(e.availableCents || 0), 'var(--green)'], [es ? 'Ventas' : 'Sales', String(e.sales || 0), 'var(--tx)'], [es ? 'Por referir' : 'Referral', money(e.referralCents || 0), GOLD], [es ? 'Pagado' : 'Paid', money(e.paidCents || 0), 'var(--mut)']].map(([l, v, c], i) => (
           <div key={i} style={{ background: 'var(--bg2)', borderRadius: 12, padding: 14 }}><div className="muted" style={{ fontSize: 12 }}>{l}</div><div style={{ fontSize: 22, fontWeight: 800, color: c as string }}>{v}</div></div>
         ))}
       </div>
       <div style={{ ...card }}>
-        <b>₮ {es ? 'Retirar tus ganancias en USDT' : 'Withdraw your earnings in USDT'}</b>
-        <div className="muted" style={{ fontSize: 13, marginBottom: 10 }}>{es ? 'Desde $10 disponibles. Pon tu wallet USDT y te lo enviamos.' : 'From $10 available. Enter your USDT wallet and we send it.'}</div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <select style={{ ...inp, flex: 'none' }} value={net} onChange={(ev) => setNet(ev.target.value)}><option value="trc20">TRON (TRC20)</option><option value="erc20">Ethereum (ERC20)</option></select>
-          <input style={{ ...inp, flex: 1, minWidth: 200 }} placeholder={es ? 'Tu dirección USDT (T… / 0x…)' : 'Your USDT address (T… / 0x…)'} value={addr} onChange={(ev) => setAddr(ev.target.value)} />
-          <button onClick={payout} disabled={(e.availableCents || 0) < 1000} style={{ padding: '10px 18px', borderRadius: 10, border: 'none', fontWeight: 800, cursor: (e.availableCents || 0) < 1000 ? 'not-allowed' : 'pointer', opacity: (e.availableCents || 0) < 1000 ? .5 : 1, background: `linear-gradient(120deg,${GOLD},#ffb020)`, color: '#3a2a06' }}>{es ? 'Solicitar retiro' : 'Request payout'}</button>
+        <b>{es ? 'Retirar tus ganancias' : 'Withdraw your earnings'}</b>
+        <div className="muted" style={{ fontSize: 13, marginBottom: 10 }}>{es ? 'Desde $10 disponibles. Elige cómo quieres cobrar: USDT o tu banco (Stripe Express).' : 'From $10 available. Choose how to get paid: USDT or your bank (Stripe Express).'}</div>
+        {/* Selector de método */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+          {([['usdt', '₮ USDT'], ['stripe', es ? '🏦 Banco · Stripe Express' : '🏦 Bank · Stripe Express']] as [any, string][]).map(([k, l]) => (
+            <button key={k} onClick={() => setPm(k)} style={{ padding: '8px 14px', borderRadius: 10, fontWeight: 800, fontSize: 12.5, cursor: 'pointer', border: `1.5px solid ${pm === k ? 'var(--brand)' : 'var(--line)'}`, background: pm === k ? 'color-mix(in srgb,var(--brand) 12%,transparent)' : 'var(--bg2)', color: pm === k ? 'var(--brand)' : 'var(--tx)' }}>{l}</button>
+          ))}
         </div>
+        {pm === 'usdt' ? (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <select style={{ ...inp, flex: 'none' }} value={net} onChange={(ev) => setNet(ev.target.value)}><option value="trc20">TRON (TRC20)</option><option value="erc20">Ethereum (ERC20)</option></select>
+            <input style={{ ...inp, flex: 1, minWidth: 200 }} placeholder={es ? 'Tu dirección USDT (T… / 0x…)' : 'Your USDT address (T… / 0x…)'} value={addr} onChange={(ev) => setAddr(ev.target.value)} />
+            <button onClick={payout} disabled={low} style={{ padding: '10px 18px', borderRadius: 10, border: 'none', fontWeight: 800, cursor: low ? 'not-allowed' : 'pointer', opacity: low ? .5 : 1, background: `linear-gradient(120deg,${GOLD},#ffb020)`, color: '#3a2a06' }}>{es ? 'Solicitar retiro' : 'Request payout'}</button>
+          </div>
+        ) : (
+          connect.connected && connect.chargesEnabled ? (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--green)' }}>✓ {es ? 'Cobro conectado' : 'Payout connected'}</span>
+              <button onClick={payout} disabled={low} style={{ marginLeft: 'auto', padding: '10px 18px', borderRadius: 10, border: 'none', fontWeight: 800, cursor: low ? 'not-allowed' : 'pointer', opacity: low ? .5 : 1, background: `linear-gradient(120deg,${GOLD},#ffb020)`, color: '#3a2a06' }}>{es ? 'Retirar a mi banco' : 'Withdraw to my bank'}</button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              <span className="muted" style={{ fontSize: 12.5 }}>{es ? 'Conecta tu cuenta (Stripe Express) para cobrar en tu banco.' : 'Connect your account (Stripe Express) to get paid to your bank.'}</span>
+              <button onClick={connectStripe} style={{ marginLeft: 'auto', padding: '10px 18px', borderRadius: 10, border: 'none', fontWeight: 800, cursor: 'pointer', background: 'var(--brand)', color: '#0b1020' }}>{es ? 'Conectar cobro' : 'Connect payouts'}</button>
+            </div>
+          )
+        )}
       </div>
+      {/* Ganancias por REFERIR robots de otros creadores (compartiendo tu enlace). */}
+      {(() => {
+        const rf = sell.referral || {};
+        if (!(rf.count > 0 || (rf.earnedCents || 0) > 0 || (rf.paidCents || 0) > 0)) return null;
+        return (
+          <div style={card}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <span style={{ color: GOLD }}>◆</span><b>{es ? 'Ganancias por referir' : 'Referral earnings'}</b>
+            </div>
+            <div className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>{es ? 'Lo que ganas compartiendo enlaces de robots de otros creadores. Se paga con tus retiros en USDT.' : 'What you earn sharing other creators\' robot links. Paid out with your USDT withdrawals.'}</div>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
+              <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: '10px 14px' }}><div className="muted" style={{ fontSize: 11.5 }}>{es ? 'Ganado' : 'Earned'}</div><div style={{ fontSize: 18, fontWeight: 800, color: GOLD }}>{money(rf.earnedCents || 0)}</div></div>
+              <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: '10px 14px' }}><div className="muted" style={{ fontSize: 11.5 }}>{es ? 'Pagado' : 'Paid'}</div><div style={{ fontSize: 18, fontWeight: 800 }}>{money(rf.paidCents || 0)}</div></div>
+              <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: '10px 14px' }}><div className="muted" style={{ fontSize: 11.5 }}>{es ? 'Ventas referidas' : 'Referred sales'}</div><div style={{ fontSize: 18, fontWeight: 800 }}>{rf.count || 0}</div></div>
+            </div>
+            <div style={{ display: 'grid', gap: 6 }}>
+              {(rf.items || []).slice(0, 8).map((it: any, i: number) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', borderTop: '1px solid var(--line)', paddingTop: 6, fontSize: 12.5 }}>
+                  <span style={{ flex: 1, minWidth: 120, fontWeight: 700 }}>{it.product_name}</span>
+                  <span className="muted">{Math.round(Number(it.affiliate_pct))}% · {it.method === 'usdt' ? 'USDT' : (es ? 'Tarjeta' : 'Card')}</span>
+                  <b style={{ color: GOLD }}>{money(it.affiliate_cents || 0)}</b>
+                  <span style={{ fontSize: 10.5, fontWeight: 800, color: it.status === 'paid' ? 'var(--green)' : it.status === 'reversed' ? 'var(--red)' : 'var(--amber)' }}>{it.status === 'paid' ? (es ? 'Pagado' : 'Paid') : it.status === 'reversed' ? (es ? 'Anulado' : 'Reversed') : (es ? 'Pendiente' : 'Pending')}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
       <div style={card}>
         <h3 style={{ marginTop: 0 }}>{es ? 'Historial de retiros' : 'Payout history'}</h3>
         {!(sell.payouts || []).length && <div className="muted" style={{ fontSize: 13 }}>{es ? 'Aún no has pedido retiros.' : 'No payouts requested yet.'}</div>}
@@ -399,7 +505,7 @@ function ProductModal({ es, product, pay, onClose, onSaved }: any) {
     if (f.source === 'build' && !f.build_id) { toastErr(es ? 'Elige cuál de tus robots del constructor vas a vender.' : 'Pick which constructor robot to sell.'); return; }
     setSaving(true);
     try {
-      const body = { action: 'save', product: { id: product?.id, name: f.name, tagline: f.tagline, description: f.description, kind: f.kind, interval: f.interval, price_cents: Math.round(Number(f.price) * 100), platform: f.platform, category: f.category, proof_url: f.proof_url, bot_magic: f.bot_magic || null, bot_account: f.bot_account || null, source: f.source || 'build', build_id: f.source === 'build' ? (f.build_id || null) : null, accepts_card: f.accepts_card, accepts_crypto: f.accepts_crypto, file_path: f.file_path ?? null, file_name: f.file_name ?? null, file_size: f.file_size ?? null, spec_style: f.spec_style || null, spec_timeframe: f.spec_timeframe || null, spec_market: f.spec_market || null, spec_news: !!f.spec_news, spec_sl: !!f.spec_sl, spec_risk: f.spec_risk || null, spec_capital: f.spec_capital || null, spec_direction: f.spec_direction || null, spec_symbols: f.spec_symbols || null, spec_maxdd: f.spec_maxdd || null, spec_propfirm: !!f.spec_propfirm, spec_broker: f.spec_broker || null } };
+      const body = { action: 'save', product: { id: product?.id, name: f.name, tagline: f.tagline, description: f.description, kind: f.kind, interval: f.interval, price_cents: Math.round(Number(f.price) * 100), platform: f.platform, category: f.category, proof_url: f.proof_url, bot_magic: f.bot_magic || null, bot_account: f.bot_account || null, source: f.source || 'build', build_id: f.source === 'build' ? (f.build_id || null) : null, accepts_card: f.accepts_card, accepts_crypto: f.accepts_crypto, file_path: f.file_path ?? null, file_name: f.file_name ?? null, file_size: f.file_size ?? null, spec_style: f.spec_style || null, spec_timeframe: f.spec_timeframe || null, spec_market: f.spec_market || null, spec_news: !!f.spec_news, spec_sl: !!f.spec_sl, spec_risk: f.spec_risk || null, spec_capital: f.spec_capital || null, spec_direction: f.spec_direction || null, spec_symbols: f.spec_symbols || null, spec_maxdd: f.spec_maxdd || null, spec_propfirm: !!f.spec_propfirm, spec_broker: f.spec_broker || null, affiliate_pct: Math.max(0, Math.min(80, Number(f.affiliate_pct) || 0)) } };
       const r = await fetch('/api/botlab/sell', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const j = await r.json(); if (!r.ok) throw new Error(j.error);
       toast(j.status === 'active' ? (es ? '¡Publicado! Ya está en el marketplace.' : 'Published! It’s live in the marketplace.') : (es ? 'Enviado a revisión.' : 'Sent for review.')); onSaved();
@@ -455,6 +561,17 @@ function ProductModal({ es, product, pay, onClose, onSaved }: any) {
               </div>
             </div>
           ) : null}
+          {/* Referidos: % del NETO del vendedor que se lleva quien comparte el enlace. */}
+          <div>
+            <div className="muted" style={{ fontSize: 11.5, marginBottom: 6 }}>{es ? 'Programa de referidos (opcional)' : 'Referral program (optional)'}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input type="number" min={0} max={80} style={{ ...inp, width: 90 }} value={f.affiliate_pct ?? 0} onChange={(e) => setF({ ...f, affiliate_pct: e.target.value })} />
+              <span className="muted" style={{ fontSize: 12.5 }}>{es ? '% de tu neto para quien traiga la venta (0–80%)' : '% of your net for whoever brings the sale (0–80%)'}</span>
+            </div>
+            <span className="muted" style={{ fontSize: 11, display: 'block', marginTop: 4 }}>{es
+              ? 'Reparto por venta: primero la comisión de Onyx, del resto tú te quedas con tu neto y ese % va al que compartió tu enlace.'
+              : 'Per-sale split: Onyx fee first, then you keep your net and that % goes to whoever shared your link.'}</span>
+          </div>
           <div>
             <div className="muted" style={{ fontSize: 11.5, marginBottom: 6 }}>{es ? 'Robot del constructor (lo recibe el comprador)' : 'Constructor robot (the buyer receives it)'}</div>
             <select style={inp} value={f.build_id || ''} onChange={(e) => {

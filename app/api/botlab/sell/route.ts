@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { myProducts, saveProduct, deleteProduct, sellerEarnings, sellerConnectStatus, sellerOnboardingLink, listPayouts, createPayout, botLabSettings, validateForSale } from '@/lib/botlab';
+import { myProducts, saveProduct, deleteProduct, sellerEarnings, sellerConnectStatus, sellerOnboardingLink, listPayouts, createPayout, botLabSettings, validateForSale, myReferralEarnings } from '@/lib/botlab';
 import { botScore } from '@/lib/botScore';
 
 // Extensiones permitidas para el archivo del robot (entrega).
@@ -16,10 +16,10 @@ export async function GET() {
   const sb = createSupabaseServer();
   const { data: { user } } = await sb.auth.getUser();
   if (!user) return NextResponse.json({ error: 'no autorizado' }, { status: 401 });
-  const [products, earnings, connect, payouts] = await Promise.all([
-    myProducts(user.id), sellerEarnings(user.id), sellerConnectStatus(user.id), listPayouts(user.id),
+  const [products, earnings, connect, payouts, referral] = await Promise.all([
+    myProducts(user.id), sellerEarnings(user.id), sellerConnectStatus(user.id), listPayouts(user.id), myReferralEarnings(user.id),
   ]);
-  return NextResponse.json({ products, earnings, connect, payouts });
+  return NextResponse.json({ me: user.id, products, earnings, connect, payouts, referral });
 }
 
 // POST · acciones del creador: guardar/borrar robot, conectar cobro, pedir retiro.
@@ -98,7 +98,15 @@ export async function POST(req: Request) {
   if (b.action === 'payout') {
     const e = await sellerEarnings(user.id);
     if (e.availableCents < 1000) return NextResponse.json({ error: 'Necesitas al menos $10 disponibles para retirar.' }, { status: 400 });
-    await createPayout({ sellerId: user.id, amountCents: e.availableCents, method: b.method === 'usdt' ? 'usdt' : 'stripe', destination: b.destination || null, note: 'Solicitado por el creador' });
+    const method = b.method === 'stripe' ? 'stripe' : 'usdt';
+    if (method === 'stripe') {
+      // Stripe Express: requiere el cobro conectado del creador.
+      const c = await sellerConnectStatus(user.id);
+      if (!c.connected || !c.chargesEnabled) return NextResponse.json({ error: 'Conecta tu cuenta de cobro (Stripe Express) antes de retirar por banco.' }, { status: 400 });
+    } else if (!b.destination) {
+      return NextResponse.json({ error: 'Pon tu dirección USDT.' }, { status: 400 });
+    }
+    await createPayout({ sellerId: user.id, amountCents: e.availableCents, method, destination: method === 'usdt' ? (b.destination || null) : 'stripe_express', note: 'Solicitado por el creador' });
     return NextResponse.json({ ok: true });
   }
   return NextResponse.json({ error: 'acción no válida' }, { status: 400 });

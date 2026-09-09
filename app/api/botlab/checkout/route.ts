@@ -16,6 +16,8 @@ export async function POST(req: Request) {
   const b = await req.json().catch(() => ({}));
   const product = await getProduct(String(b.productId || ''));
   if (!product || product.status !== 'active') return NextResponse.json({ error: 'Robot no disponible' }, { status: 404 });
+  // No puedes comprar tu propio robot (evita inflar ventas/valoraciones).
+  if (product.seller_id && product.seller_id === user.id) return NextResponse.json({ error: 'Es tu propio robot: no puedes comprarlo. Ya lo tienes en Mis creaciones.' }, { status: 400 });
   if (await hasLicense(user.id, product.id)) return NextResponse.json({ error: 'Ya tienes este robot activo.' }, { status: 400 });
 
   const method = b.method === 'usdt' ? 'usdt' : 'card';
@@ -28,7 +30,8 @@ export async function POST(req: Request) {
     // Si hay más de una red y el cliente no eligió, le pedimos que escoja (evita errores).
     if (nets.length > 1 && !chosen) return NextResponse.json({ chooseNetwork: nets });
     const network = chosen || nets[0];
-    const pay = await createCryptoPayment({ userId: user.id, purpose: 'license', refId: product.id, amountUsd: (product.price_cents || 0) / 100, name: product.name, network });
+    const refId2 = (typeof b.ref === 'string' && b.ref && b.ref !== user.id && b.ref !== product.seller_id) ? b.ref : undefined;
+    const pay = await createCryptoPayment({ userId: user.id, purpose: 'license', refId: product.id, amountUsd: (product.price_cents || 0) / 100, name: product.name, network, referrerId: refId2 });
     // Con Coinbase Commerce: redirige al checkout hospedado (confirmación automática).
     if (pay.hosted_url) return NextResponse.json({ url: pay.hosted_url });
     return NextResponse.json({ crypto: { id: pay.id, address: pay.address, network: pay.network, amountUsd: pay.amount_usd, match_amount: pay.match_amount, asset: 'USDT' } });
@@ -37,7 +40,8 @@ export async function POST(req: Request) {
   if (!product.accepts_card) return NextResponse.json({ error: 'Este robot no acepta tarjeta.' }, { status: 400 });
   if (!cardEnabled(await botLabSettings())) return NextResponse.json({ error: 'Pago con tarjeta no disponible por ahora.' }, { status: 400 });
   try {
-    const session = await checkoutCard(product, user.id, user.email || undefined);
+    const refIdC = (typeof b.ref === 'string' && b.ref && b.ref !== user.id && b.ref !== product.seller_id) ? b.ref : undefined;
+    const session = await checkoutCard(product, user.id, user.email || undefined, refIdC);
     return NextResponse.json({ url: session.url });
   } catch (e: any) {
     if (e?.message === 'seller_not_connected') return NextResponse.json({ error: 'El creador aún no conectó su cobro. Prueba con cripto o vuelve más tarde.' }, { status: 400 });
