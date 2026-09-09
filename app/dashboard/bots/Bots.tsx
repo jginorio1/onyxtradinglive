@@ -639,7 +639,7 @@ export default function Bots() {
               const up = accNet >= 0; const accent = up ? 'var(--green)' : 'var(--red)';
               return (
                 <button key={acc.id} onClick={() => { setViewAcc(acc.id); setFilter('all'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                  style={{ textAlign: 'left', cursor: 'pointer', background: 'var(--card)', border: '1px solid ' + (acc.online ? 'color-mix(in srgb,var(--green) 30%,var(--line))' : 'var(--line)'), borderRadius: 16, padding: 15, display: 'flex', flexDirection: 'column', gap: 4, boxShadow: acc.online ? '0 0 0 1px color-mix(in srgb,var(--green) 16%,transparent)' : 'none' }}>
+                  style={{ textAlign: 'left', cursor: 'pointer', color: 'var(--tx)', background: 'var(--card)', border: '1px solid ' + (acc.online ? 'color-mix(in srgb,var(--green) 30%,var(--line))' : 'var(--line)'), borderRadius: 16, padding: 15, display: 'flex', flexDirection: 'column', gap: 4, boxShadow: acc.online ? '0 0 0 1px color-mix(in srgb,var(--green) 16%,transparent)' : 'none' }}>
                   <div className="row between" style={{ alignItems: 'center', gap: 8 }}>
                     <div className="row" style={{ gap: 8, alignItems: 'center', minWidth: 0 }}>
                       <span style={{ width: 10, height: 10, borderRadius: '50%', flex: 'none', background: acc.online ? 'var(--green)' : 'var(--mut)', boxShadow: acc.online ? '0 0 0 3px color-mix(in srgb,var(--green) 22%,transparent)' : 'none' }} />
