@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLang } from '@/lib/lang';
 import { toast, toastErr } from '@/lib/toast';
 
@@ -9,6 +9,23 @@ export default function BotLabLead({ defaultService = 'automate' }: { defaultSer
   const { lang } = useLang();
   const es = lang === 'es';
   const [service, setService] = useState(defaultService);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // Los botones de la escalera (Agendar/Solicitar/Hablar) llegan con un hash que
+  // preselecciona el servicio correcto y desplaza el formulario a la vista.
+  useEffect(() => {
+    const apply = () => {
+      const h = (window.location.hash || '').replace('#', '');
+      const map: Record<string, string> = { 'svc-automate': 'automate', 'svc-install': 'install', 'svc-elite': 'elite' };
+      if (map[h]) {
+        setService(map[h]);
+        setTimeout(() => rootRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 60);
+      }
+    };
+    apply();
+    window.addEventListener('hashchange', apply);
+    return () => window.removeEventListener('hashchange', apply);
+  }, []);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [platform, setPlatform] = useState('mt5');
@@ -18,7 +35,10 @@ export default function BotLabLead({ defaultService = 'automate' }: { defaultSer
   const [done, setDone] = useState(false);
 
   async function submit() {
-    if (!message.trim() && !email.trim()) { toastErr(es ? 'Cuéntanos algo y deja tu correo.' : 'Tell us something and leave your email.'); return; }
+    // Único campo obligatorio: el correo (es como te contactamos). El resto es opcional
+    // para que el formulario tenga la menor fricción posible.
+    const okEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+    if (!okEmail) { toastErr(es ? 'Déjanos un correo válido para responderte.' : 'Leave a valid email so we can reach you.'); return; }
     setSending(true);
     try {
       const r = await fetch('/api/botlab/service', {
@@ -34,12 +54,12 @@ export default function BotLabLead({ defaultService = 'automate' }: { defaultSer
   const L = es ? {
     t: 'Solicita tu propuesta gratis', sub: 'Cuéntanos tu estrategia y te preparamos un presupuesto sin compromiso.',
     svc: 'Servicio', automate: 'Automatiza mi estrategia', install: 'Instalación asistida', elite: 'Elite / privado',
-    name: 'Tu nombre', email: 'Tu correo', plat: 'Plataforma', bud: 'Presupuesto (opcional)', msg: 'Describe tu estrategia o lo que necesitas',
+    name: 'Tu nombre (opcional)', email: 'Tu correo *', plat: 'Plataforma', bud: 'Presupuesto (opcional)', msg: 'Describe tu estrategia o lo que necesitas (opcional)',
     send: 'Enviar solicitud', okT: '¡Listo!', okS: 'Tu solicitud llegó. Nuestro equipo te escribirá muy pronto.',
   } : {
     t: 'Request your free proposal', sub: 'Tell us your strategy and we prepare a no-commitment quote.',
     svc: 'Service', automate: 'Automate my strategy', install: 'Assisted install', elite: 'Elite / private',
-    name: 'Your name', email: 'Your email', plat: 'Platform', bud: 'Budget (optional)', msg: 'Describe your strategy or what you need',
+    name: 'Your name (optional)', email: 'Your email *', plat: 'Platform', bud: 'Budget (optional)', msg: 'Describe your strategy or what you need (optional)',
     send: 'Send request', okT: 'Done!', okS: 'Your request is in. Our team will reach out very soon.',
   };
 
@@ -54,7 +74,7 @@ export default function BotLabLead({ defaultService = 'automate' }: { defaultSer
   );
 
   return (
-    <div style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 18, padding: 24 }}>
+    <div ref={rootRef} style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 18, padding: 24 }}>
       <h3 style={{ margin: 0 }}>{L.t}</h3>
       <p className="muted" style={{ fontSize: 13.5, margin: '6px 0 16px' }}>{L.sub}</p>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 12 }}>
@@ -64,7 +84,7 @@ export default function BotLabLead({ defaultService = 'automate' }: { defaultSer
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
         <input style={inp} placeholder={L.name} value={name} onChange={(e) => setName(e.target.value)} />
-        <input style={inp} placeholder={L.email} value={email} onChange={(e) => setEmail(e.target.value)} />
+        <input type="email" style={inp} placeholder={L.email} value={email} onChange={(e) => setEmail(e.target.value)} />
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
         <select style={inp} value={platform} onChange={(e) => setPlatform(e.target.value)}>
