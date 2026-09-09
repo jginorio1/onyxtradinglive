@@ -222,6 +222,37 @@ export async function autoPayoutDue(): Promise<{ checked: number; paid: number; 
   return { checked, paid, queued };
 }
 
+// CLAWBACK por reembolso/contracargo tardío de una factura. Anula la comisión de
+// embajador ligada a esa factura. Si aún NO se pagó (pending/available) basta con
+// marcarla 'reversed'. Si YA se pagó, revierte del transfer Stripe del payout SOLO
+// el monto de ESTA comisión (createReversal con amount) — no todo el payout, que
+// pudo cubrir varias comisiones. Para crédito en plan, re-cobra el crédito. Si no
+// hay saldo/es cripto, queda marcada 'reversed' como deuda a compensar del próximo pago.
+export async function clawbackCommission(invoiceId: string): Promise<void> {
+  if (!invoiceId) return;
+  const nowIso = new Date().toISOString();
+  // No pagadas aún → anular directo.
+  await supabaseAdmin.from('commissions').update({ status: 'reversed', reversed_at: nowIso })
+    .eq('invoice_id', invoiceId).in('status', ['pending', 'available']);
+  // Ya pagadas → clawback del monto exacto contra el payout que las cubrió.
+  const { data: paidRows } = await supabaseAdmin.from('commissions')
+    .select('id,amount,currency,payout_id').eq('invoice_id', invoiceId).eq('status', 'paid');
+  for (const c of (paidRows || []) as any[]) {
+    if (c.payout_id) {
+      const { data: po } = await supabaseAdmin.from('ambassador_payouts')
+        .select('method,transfer_id,tx_ref').eq('id', c.payout_id).maybeSingle();
+      const cents = Math.round(Number(c.amount) * 100);
+      const method = (po as any)?.method;
+      const tid = (po as any)?.transfer_id;
+      if (method === 'stripe' && tid && cents > 0) {
+        try { await stripe.transfers.createReversal(tid, { amount: cents, metadata: { onyx_clawback_invoice: invoiceId } }); } catch { /* sin saldo → queda como deuda */ }
+      }
+      // crédito/cripto/manual: no se revierte automáticamente; queda 'reversed' para descontar del próximo pago.
+    }
+    await supabaseAdmin.from('commissions').update({ status: 'reversed', reversed_at: nowIso }).eq('id', c.id);
+  }
+}
+
 // Marca un payout como pagado a mano (cripto/otro), guardando la referencia.
 export async function markPaidManual(payoutId: string, method: string, txRef?: string): Promise<PayResult> {
   const { data: pay } = await supabaseAdmin.from('ambassador_payouts').select('id,status').eq('id', payoutId).maybeSingle();

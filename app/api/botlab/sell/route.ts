@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { myProducts, saveProduct, deleteProduct, sellerEarnings, sellerConnectStatus, sellerOnboardingLink, listPayouts, createPayout, botLabSettings, validateForSale, myReferralEarnings } from '@/lib/botlab';
+import { myProducts, saveProduct, deleteProduct, sellerEarnings, sellerConnectStatus, sellerOnboardingLink, listPayouts, createPayout, runBotPayout, botLabSettings, validateForSale, myReferralEarnings } from '@/lib/botlab';
 import { botScore } from '@/lib/botScore';
 
 // Extensiones permitidas para el archivo del robot (entrega).
@@ -106,7 +106,12 @@ export async function POST(req: Request) {
     } else if (!b.destination) {
       return NextResponse.json({ error: 'Pon tu dirección USDT.' }, { status: 400 });
     }
-    await createPayout({ sellerId: user.id, amountCents: e.availableCents, method, destination: method === 'usdt' ? (b.destination || null) : 'stripe_express', note: 'Solicitado por el creador' });
+    const p = await createPayout({ sellerId: user.id, amountCents: e.availableCents, method, destination: method === 'usdt' ? (b.destination || null) : 'stripe_express', note: 'Solicitado por el creador' });
+    // Stripe: la transferencia se ejecuta al instante. USDT: queda pendiente para que el admin la envíe.
+    if (method === 'stripe' && (p as any)?.id) {
+      const r = await runBotPayout(String((p as any).id));
+      if (!r.ok) return NextResponse.json({ error: r.error || 'No se pudo enviar la transferencia. Se dejó como pendiente.' }, { status: 500 });
+    }
     return NextResponse.json({ ok: true });
   }
   return NextResponse.json({ error: 'acción no válida' }, { status: 400 });

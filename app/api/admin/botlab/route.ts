@@ -185,6 +185,11 @@ export async function POST(req: Request) {
       val_hft_max_day: Math.max(1, Math.round(Number(b.val_hft_max_day ?? cur.val_hft_max_day ?? 20))),
       lic_max_accounts: Math.max(0, Math.round(Number(b.lic_max_accounts ?? cur.lic_max_accounts ?? 3))),
       affiliate_max: Math.max(0, Math.min(90, Math.round(Number(b.affiliate_max ?? cur.affiliate_max ?? 80)))),
+      // Automatización de pagos a creadores/referidos (frenos incluidos).
+      payout_hold_days: Math.max(0, Math.min(90, Math.round(Number(b.payout_hold_days ?? cur.payout_hold_days ?? 14)))),
+      payout_min_cents: Math.max(0, Math.round(Number(b.payout_min_cents ?? cur.payout_min_cents ?? 1000))),
+      payout_auto: b.payout_auto != null ? !!b.payout_auto : (cur.payout_auto === true),
+      payout_review: b.payout_review != null ? !!b.payout_review : (cur.payout_review === true),
     };
     // Nunca dejar todos los métodos apagados: si no queda ninguno, re-enciende TRON.
     if (!next.pay_trc20 && !next.pay_erc20 && !next.pay_card) next.pay_trc20 = true;

@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { ambSettings, rateFor } from '@/lib/ambassadors';
 import { enforcePlanLimits, notifyPlanChange, planRank } from '@/lib/planNotify';
 import { qualifyOnPaid, reverseMemberRewards } from '@/lib/memberReferral';
+import { clawbackCommission } from '@/lib/ambassadorPayout';
 import { setGuardianTier, revokeGuardianBySub, type GuardianTier } from '@/lib/guardianAccess';
 
 // ¿Es una suscripción de Onyx Guardian comprada dentro de la academia?
@@ -118,11 +119,12 @@ async function creditCommission(invoice: any) {
     .eq('user_id', prof.id).is('first_paid_at', null);
 }
 
-// Si se devuelve el dinero, la comisión se anula (solo si aún no se pagó)
+// Si se devuelve el dinero, la comisión se anula. Si aún no se pagó, se marca
+// 'reversed' sin más; si YA se pagó (reembolso/contracargo tardío), clawbackCommission
+// revierte del transfer Stripe SOLO el monto de esa comisión.
 async function reverseCommission(invoiceId: string) {
   if (!invoiceId) return;
-  await supabaseAdmin.from('commissions').update({ status: 'reversed' })
-    .eq('invoice_id', invoiceId).in('status', ['pending', 'available']);
+  await clawbackCommission(invoiceId);
 }
 
 export async function POST(req: Request) {

@@ -51,6 +51,10 @@ export type BotLabSettings = {
   val_hft_max_day: number;    // más de X ops/día = alta frecuencia
   lic_max_accounts: number;   // asientos: cuántas cuentas puede correr el comprador con UNA licencia (0 = sin límite)
   affiliate_max: number;      // tope del % de referido que un vendedor puede asignar (0–90)
+  payout_hold_days: number;   // días de maduración antes de poder pagar (absorbe reembolsos)
+  payout_auto: boolean;       // cron paga solo el saldo maduro por Stripe
+  payout_review: boolean;     // freno global: no pagar nada (revisión manual)
+  payout_min_cents: number;   // mínimo para retirar (por defecto 1000 = $10)
 };
 const DEF: BotLabSettings = {
   fee_pct: 20, usdt_address: '', usdt_network: 'trc20', usdt_erc20: '', usdt_trc20: '',
@@ -62,6 +66,7 @@ const DEF: BotLabSettings = {
   val_require_sl: true, val_reject_martingale: true, val_reject_hft: true, val_hft_min_hold: 5, val_hft_max_day: 20,
   lic_max_accounts: 3,
   affiliate_max: 80,
+  payout_hold_days: 14, payout_auto: false, payout_review: false, payout_min_cents: 1000,
 };
 // Devuelve la dirección correcta para una red, con fallback a la legacy.
 export function usdtAddressFor(s: BotLabSettings, network: string): string {
@@ -345,18 +350,41 @@ export async function grantLicense(o: { productId: string; buyerId: string; sell
     current_period_end: o.periodEnd ? new Date(o.periodEnd * 1000).toISOString() : null,
   }, { onConflict: 'buyer_id,product_id' });
   await supabaseAdmin.from('bot_products').update({ sales: (await productSales(o.productId)) }).eq('id', o.productId).select('id');
-  if (o.sellerId && o.ref) await recordBotCommission({ sellerId: o.sellerId, buyerId: o.buyerId, productId: o.productId, grossCents: o.grossCents, currency: o.currency, kind: o.kind, method: o.method, ref: o.ref });
-  // Referido del vendedor: solo si hay referrer válido, distinto del vendedor y del comprador.
-  if (o.referrerId && o.ref && o.referrerId !== o.sellerId && o.referrerId !== o.buyerId) {
-    await recordBotAffiliate({ productId: o.productId, sellerId: o.sellerId, referrerId: o.referrerId, buyerId: o.buyerId, grossCents: o.grossCents, method: o.method, ref: o.ref });
+  if (!o.sellerId || !o.ref) return;
+  // Reparto ÚNICO y consistente por venta (evita doble pago):
+  //   Onyx (comisión) → referido (% del NETO) → creador (lo que queda).
+  const cfg = await botLabSettings();
+  const holdDays = Math.max(0, Math.round(Number(cfg.payout_hold_days) || 0));
+  const availableAt = new Date(Date.now() + holdDays * 864e5).toISOString();
+  const feePct = await sellerFeePct(o.sellerId);
+  const onyxFee = Math.round((o.grossCents || 0) * (feePct / 100));
+  const netBeforeAff = Math.max(0, (o.grossCents || 0) - onyxFee);
+  // Referido válido: distinto del vendedor y del comprador, y con % en el producto.
+  const refValid = !!o.referrerId && o.referrerId !== o.sellerId && o.referrerId !== o.buyerId;
+  let affiliateCents = 0, affPct = 0;
+  if (refValid) {
+    const { data: prod } = await supabaseAdmin.from('bot_products').select('affiliate_pct').eq('id', o.productId).maybeSingle();
+    affPct = Math.max(0, Math.min(90, Number((prod as any)?.affiliate_pct) || 0));
+    affiliateCents = Math.round(netBeforeAff * (affPct / 100));
+  }
+  // El creador se lleva el neto MENOS el referido (aquí se cierra la fuga).
+  await recordBotCommission({ sellerId: o.sellerId, buyerId: o.buyerId, productId: o.productId, grossCents: o.grossCents, currency: o.currency, kind: o.kind, method: o.method, ref: o.ref, feePct, affiliateCents, availableAt });
+  if (refValid && affiliateCents > 0) {
+    await supabaseAdmin.from('bot_referrals').upsert({
+      product_id: o.productId, seller_id: o.sellerId || null, referrer_id: o.referrerId, buyer_id: o.buyerId || null,
+      gross_cents: o.grossCents || 0, onyx_fee_cents: onyxFee, seller_net_cents: netBeforeAff, affiliate_cents: affiliateCents,
+      affiliate_pct: affPct, method: o.method, ref: o.ref, status: 'earned', available_at: availableAt,
+    }, { onConflict: 'referrer_id,ref', ignoreDuplicates: true });
   }
 }
-// Reparto al referido del vendedor: Onyx (fee del vendedor) primero, del NETO el affiliate_pct.
+// Compat: mantiene la firma antigua por si algo la llama directo (recalcula todo).
 export async function recordBotAffiliate(o: { productId: string; sellerId?: string | null; referrerId: string; buyerId?: string; grossCents: number; method: string; ref: string }) {
   if (!o.ref || !o.referrerId) return;
   const { data: prod } = await supabaseAdmin.from('bot_products').select('affiliate_pct').eq('id', o.productId).maybeSingle();
   const affPct = Math.max(0, Math.min(90, Number((prod as any)?.affiliate_pct) || 0));
   if (affPct <= 0) return;
+  const cfg = await botLabSettings();
+  const availableAt = new Date(Date.now() + Math.max(0, Math.round(Number(cfg.payout_hold_days) || 0)) * 864e5).toISOString();
   const feePct = await sellerFeePct(o.sellerId);
   const onyxFee = Math.round((o.grossCents || 0) * (feePct / 100));
   const sellerNet = Math.max(0, (o.grossCents || 0) - onyxFee);
@@ -364,7 +392,7 @@ export async function recordBotAffiliate(o: { productId: string; sellerId?: stri
   await supabaseAdmin.from('bot_referrals').upsert({
     product_id: o.productId, seller_id: o.sellerId || null, referrer_id: o.referrerId, buyer_id: o.buyerId || null,
     gross_cents: o.grossCents || 0, onyx_fee_cents: onyxFee, seller_net_cents: sellerNet, affiliate_cents: affiliate,
-    affiliate_pct: affPct, method: o.method, ref: o.ref, status: 'earned',
+    affiliate_pct: affPct, method: o.method, ref: o.ref, status: 'earned', available_at: availableAt,
   }, { onConflict: 'referrer_id,ref', ignoreDuplicates: true });
 }
 // Ganancias por REFERIR robots de otros (lo que este usuario ganó compartiendo enlaces).
@@ -376,8 +404,13 @@ export async function myReferralEarnings(referrerId: string) {
   const pids = Array.from(new Set(rows.map((r) => r.product_id).filter(Boolean)));
   const nameOf: Record<string, string> = {};
   if (pids.length) { const { data: pr } = await supabaseAdmin.from('bot_products').select('id,name').in('id', pids); (pr || []).forEach((p: any) => { nameOf[p.id] = p.name; }); }
+  const now = Date.now();
+  // "earned" = ya disponible (maduró); "pending" = aún en la ventana de espera.
+  const earnedRows = rows.filter((r) => r.status === 'earned');
+  const availableCents = earnedRows.filter((r) => r.available_at == null || new Date(r.available_at).getTime() <= now).reduce((a, r) => a + (r.affiliate_cents || 0), 0);
+  const pendingCents = earnedRows.filter((r) => r.available_at != null && new Date(r.available_at).getTime() > now).reduce((a, r) => a + (r.affiliate_cents || 0), 0);
   return {
-    earnedCents: sum('earned'), paidCents: sum('paid'),
+    earnedCents: sum('earned'), paidCents: sum('paid'), availableCents, pendingCents,
     count: rows.filter((r) => r.status !== 'reversed').length,
     items: rows.map((r) => ({ ...r, product_name: nameOf[r.product_id] || '—' })),
   };
@@ -386,14 +419,17 @@ async function productSales(productId: string) {
   const { count } = await supabaseAdmin.from('bot_purchases').select('*', { count: 'exact', head: true }).eq('product_id', productId).eq('status', 'active');
   return count || 0;
 }
-export async function recordBotCommission(o: { sellerId: string; buyerId?: string; productId?: string; grossCents: number; currency?: string; kind: string; method: string; ref: string; feePct?: number }) {
+export async function recordBotCommission(o: { sellerId: string; buyerId?: string; productId?: string; grossCents: number; currency?: string; kind: string; method: string; ref: string; feePct?: number; affiliateCents?: number; availableAt?: string }) {
   if (!o.ref) return;
   const pct = o.feePct != null ? o.feePct : await sellerFeePct(o.sellerId);
   const fee = Math.round((o.grossCents || 0) * (pct / 100));
+  // affiliate_cents se DESCUENTA del neto del creador (cierra la fuga del referido).
+  const aff = Math.max(0, Math.round(Number(o.affiliateCents) || 0));
   await supabaseAdmin.from('bot_commissions').upsert({
     seller_id: o.sellerId, buyer_id: o.buyerId || null, product_id: o.productId || null,
-    gross_cents: o.grossCents || 0, fee_cents: fee, currency: (o.currency || 'usd').toLowerCase().slice(0, 3),
+    gross_cents: o.grossCents || 0, fee_cents: fee, affiliate_cents: aff, currency: (o.currency || 'usd').toLowerCase().slice(0, 3),
     kind: o.kind, method: o.method, status: 'earned', ref: o.ref,
+    available_at: o.availableAt || new Date().toISOString(),
   }, { onConflict: 'seller_id,ref', ignoreDuplicates: true });
 }
 export async function reverseBotCommissionByRef(ref?: string | null) {
@@ -454,20 +490,16 @@ export async function checkoutCard(product: any, buyerId: string, email?: string
     if (product.kind === 'one_time') return stripe.checkout.sessions.create({ ...base, line_items: [{ price_data: price, quantity: 1 }], payment_intent_data: { metadata: base.metadata } });
     return stripe.checkout.sessions.create({ ...base, line_items: [{ price_data: { ...price, recurring: { interval: product.interval === 'year' ? 'year' : 'month' } }, quantity: 1 }], subscription_data: { metadata: base.metadata } });
   }
-  // Producto de creador: hace falta su cuenta conectada.
-  const { data: sp } = await supabaseAdmin.from('profiles').select('bot_stripe_account_id').eq('id', product.seller_id).maybeSingle();
-  const acct = (sp as any)?.bot_stripe_account_id;
-  if (!acct) throw new Error('seller_not_connected');
-  const pct = await botLabFee();
+  // Producto de creador: el cobro entra a la PLATAFORMA (Onyx retiene). El neto del
+  // creador y del referido se liberan después de la ventana de maduración (o se
+  // revierten si hay reembolso). Así ningún dinero sale antes de tiempo. No hace
+  // falta la cuenta conectada del creador para VENDER; solo para cobrar por Stripe.
   if (product.kind === 'one_time') {
-    return stripe.checkout.sessions.create({
-      ...base, line_items: [{ price_data: price, quantity: 1 }],
-      payment_intent_data: { application_fee_amount: Math.round(product.price_cents * (pct / 100)), on_behalf_of: acct, transfer_data: { destination: acct }, metadata: base.metadata },
-    });
+    return stripe.checkout.sessions.create({ ...base, line_items: [{ price_data: price, quantity: 1 }], payment_intent_data: { metadata: base.metadata } });
   }
   return stripe.checkout.sessions.create({
     ...base, line_items: [{ price_data: { ...price, recurring: { interval: product.interval === 'year' ? 'year' : 'month' } }, quantity: 1 }],
-    subscription_data: { application_fee_percent: pct, on_behalf_of: acct, transfer_data: { destination: acct }, metadata: base.metadata },
+    subscription_data: { metadata: base.metadata },
   });
 }
 
@@ -492,16 +524,29 @@ export async function confirmSession(sessionId: string, buyerId: string) {
 // Ganancias / payouts del creador
 // ============================================================
 export async function sellerEarnings(sellerId: string) {
-  const { data } = await supabaseAdmin.from('bot_commissions').select('gross_cents,fee_cents').eq('seller_id', sellerId).neq('status', 'reversed');
-  const gross = (data || []).reduce((s: number, r: any) => s + (r.gross_cents || 0), 0);
-  const fee = (data || []).reduce((s: number, r: any) => s + (r.fee_cents || 0), 0);
-  // Ganancias por REFERIR robots de otros creadores: se suman al mismo saldo retirable.
-  const { data: refs } = await supabaseAdmin.from('bot_referrals').select('affiliate_cents').eq('referrer_id', sellerId).neq('status', 'reversed');
-  const refNet = (refs || []).reduce((s: number, r: any) => s + (r.affiliate_cents || 0), 0);
-  const { data: paid } = await supabaseAdmin.from('bot_payouts').select('amount_cents').eq('seller_id', sellerId).eq('status', 'paid');
-  const paidC = (paid || []).reduce((s: number, r: any) => s + (r.amount_cents || 0), 0);
-  const net = (gross - fee) + refNet;   // comisiones propias + referidos, en un solo bolsillo
-  return { grossCents: gross, feeCents: fee, referralCents: refNet, netCents: net, paidCents: paidC, availableCents: Math.max(0, net - paidC), sales: (data || []).length };
+  const now = Date.now();
+  const netOf = (r: any) => Math.max(0, (r.gross_cents || 0) - (r.fee_cents || 0) - (r.affiliate_cents || 0));
+  const isMat = (r: any) => r.available_at == null || new Date(r.available_at).getTime() <= now;
+  // Comisiones propias del creador. 'earned' = por pagar, 'paid' = pagado, 'reversed' = anulado.
+  const { data } = await supabaseAdmin.from('bot_commissions').select('gross_cents,fee_cents,affiliate_cents,available_at,status').eq('seller_id', sellerId);
+  const rows = (data || []) as any[];
+  const earnedC = rows.filter((r) => r.status === 'earned');
+  const paidComm = rows.filter((r) => r.status === 'paid');
+  // Ganancias por REFERIR robots de otros: mismo bolsillo y misma maduración.
+  const { data: refs } = await supabaseAdmin.from('bot_referrals').select('affiliate_cents,available_at,status').eq('referrer_id', sellerId);
+  const refRows = (refs || []) as any[];
+  const earnedR = refRows.filter((r) => r.status === 'earned');
+  const paidR = refRows.filter((r) => r.status === 'paid');
+  const available = earnedC.filter(isMat).reduce((s, r) => s + netOf(r), 0) + earnedR.filter(isMat).reduce((s, r) => s + (r.affiliate_cents || 0), 0);
+  const pending = earnedC.filter((r) => !isMat(r)).reduce((s, r) => s + netOf(r), 0) + earnedR.filter((r) => !isMat(r)).reduce((s, r) => s + (r.affiliate_cents || 0), 0);
+  const paidCents = paidComm.reduce((s, r) => s + netOf(r), 0) + paidR.reduce((s, r) => s + (r.affiliate_cents || 0), 0);
+  const gross = rows.reduce((s, r) => s + (r.gross_cents || 0), 0);
+  const fee = rows.reduce((s, r) => s + (r.fee_cents || 0), 0);
+  const referralCents = refRows.filter((r) => r.status !== 'reversed').reduce((s, r) => s + (r.affiliate_cents || 0), 0);
+  return {
+    grossCents: gross, feeCents: fee, referralCents, netCents: available + pending, paidCents,
+    availableCents: Math.max(0, Math.round(available)), pendingCents: Math.max(0, Math.round(pending)), sales: rows.length,
+  };
 }
 export async function listPayouts(sellerId?: string) {
   let q = supabaseAdmin.from('bot_payouts').select('*').order('created_at', { ascending: false });
@@ -515,6 +560,98 @@ export async function createPayout(o: { sellerId: string; amountCents: number; m
 }
 export async function markPayoutPaid(id: string) {
   await supabaseAdmin.from('bot_payouts').update({ status: 'paid', paid_at: new Date().toISOString() }).eq('id', id);
+  await settlePaidCommissions(id);
+}
+// Marca como pagadas las comisiones/referidos MADUROS del creador hasta cubrir el
+// monto del payout (evita contarlos de nuevo y deja rastro para el clawback).
+async function settlePaidCommissions(payoutId: string) {
+  const { data: p } = await supabaseAdmin.from('bot_payouts').select('seller_id,amount_cents').eq('id', payoutId).maybeSingle();
+  if (!p) return;
+  const sellerId = (p as any).seller_id; let left = Math.round((p as any).amount_cents || 0);
+  const nowIso = new Date().toISOString();
+  const { data: comms } = await supabaseAdmin.from('bot_commissions').select('ref,gross_cents,fee_cents,affiliate_cents').eq('seller_id', sellerId).eq('status', 'earned').lte('available_at', nowIso).order('created_at');
+  for (const c of (comms || []) as any[]) {
+    if (left <= 0) break;
+    const net = Math.max(0, (c.gross_cents || 0) - (c.fee_cents || 0) - (c.affiliate_cents || 0));
+    await supabaseAdmin.from('bot_commissions').update({ status: 'paid', payout_id: payoutId }).eq('seller_id', sellerId).eq('ref', c.ref);
+    left -= net;
+  }
+  const { data: refsR } = await supabaseAdmin.from('bot_referrals').select('ref,affiliate_cents').eq('referrer_id', sellerId).eq('status', 'earned').lte('available_at', nowIso).order('created_at');
+  for (const r of (refsR || []) as any[]) {
+    if (left <= 0) break;
+    await supabaseAdmin.from('bot_referrals').update({ status: 'paid', payout_id: payoutId, paid_at: nowIso }).eq('referrer_id', sellerId).eq('ref', r.ref);
+    left -= Math.max(0, r.affiliate_cents || 0);
+  }
+}
+
+// Ejecuta un payout. Stripe = transferencia REAL a la cuenta conectada del creador.
+// USDT = queda pendiente (se envía a mano / se marca pagado). Idempotente.
+export async function runBotPayout(payoutId: string): Promise<{ ok: boolean; auto?: boolean; error?: string }> {
+  const { data: pay } = await supabaseAdmin.from('bot_payouts').select('*').eq('id', payoutId).maybeSingle();
+  if (!pay) return { ok: false, error: 'payout_not_found' };
+  if ((pay as any).status === 'paid') return { ok: false, error: 'already_paid' };
+  if ((pay as any).method !== 'stripe') return { ok: false, error: 'manual_method' };   // USDT: manual
+  const cents = Math.round((pay as any).amount_cents || 0);
+  if (cents <= 0) return { ok: false, error: 'zero_amount' };
+  const { data: prof } = await supabaseAdmin.from('profiles').select('bot_stripe_account_id,bot_charges_enabled').eq('id', (pay as any).seller_id).maybeSingle();
+  const acct = (prof as any)?.bot_stripe_account_id;
+  if (!acct) return { ok: false, error: 'connect_not_ready' };
+  let transfer;
+  try {
+    transfer = await stripe.transfers.create({
+      amount: cents, currency: String((pay as any).currency || 'usd').toLowerCase(),
+      destination: acct, metadata: { onyx_bot_payout: payoutId, onyx_seller: (pay as any).seller_id },
+    });
+  } catch (e: any) { return { ok: false, error: e?.message || 'stripe_transfer_failed' }; }
+  await supabaseAdmin.from('bot_payouts').update({ status: 'paid', paid_at: new Date().toISOString(), transfer_id: transfer.id }).eq('id', payoutId);
+  await settlePaidCommissions(payoutId);
+  return { ok: true, auto: true };
+}
+
+// Cron: paga SOLO el saldo maduro por Stripe a los creadores con cobro conectado.
+// Respeta el freno global (payout_review) y el mínimo. USDT no se automatiza.
+export async function autoBotPayoutDue(): Promise<{ checked: number; paid: number }> {
+  const cfg = await botLabSettings();
+  if (cfg.payout_auto !== true || cfg.payout_review === true) return { checked: 0, paid: 0 };
+  const min = Math.max(0, Math.round(Number(cfg.payout_min_cents) || 1000));
+  // Creadores con comisiones/referidos maduros por pagar.
+  const nowIso = new Date().toISOString();
+  const { data: comms } = await supabaseAdmin.from('bot_commissions').select('seller_id').eq('status', 'earned').lte('available_at', nowIso).limit(2000);
+  const { data: refs } = await supabaseAdmin.from('bot_referrals').select('referrer_id').eq('status', 'earned').lte('available_at', nowIso).limit(2000);
+  const ids = Array.from(new Set([...(comms || []).map((r: any) => r.seller_id), ...(refs || []).map((r: any) => r.referrer_id)].filter(Boolean)));
+  let paid = 0;
+  for (const id of ids) {
+    const e = await sellerEarnings(id);
+    if (e.availableCents < min) continue;
+    const c = await sellerConnectStatus(id);
+    if (!c.connected || !c.chargesEnabled) continue;   // sin Stripe listo → se queda para retiro manual
+    const p = await createPayout({ sellerId: id, amountCents: e.availableCents, method: 'stripe', destination: 'stripe_express', note: 'Auto-pago (saldo maduro)' });
+    const r = await runBotPayout(p.id);
+    if (r.ok) paid++;
+  }
+  return { checked: ids.length, paid };
+}
+
+// Reembolso/contracargo de una venta (por su ref = payment_intent). Revierte
+// comisión y referido si aún NO se pagaron; si YA se pagaron, hace clawback
+// (revierte la transferencia Stripe del payout que los cubrió).
+export async function reverseBotSale(ref?: string | null) {
+  if (!ref) return;
+  const nowIso = new Date().toISOString();
+  // 1) No pagados aún → anular directo.
+  await supabaseAdmin.from('bot_commissions').update({ status: 'reversed', reversed_at: nowIso }).eq('ref', ref).eq('status', 'earned');
+  await supabaseAdmin.from('bot_referrals').update({ status: 'reversed' }).eq('ref', ref).eq('status', 'earned');
+  // 2) Ya pagados → clawback de la transferencia del payout.
+  const { data: pc } = await supabaseAdmin.from('bot_commissions').select('payout_id').eq('ref', ref).eq('status', 'paid').maybeSingle();
+  const { data: pr } = await supabaseAdmin.from('bot_referrals').select('payout_id').eq('ref', ref).eq('status', 'paid').maybeSingle();
+  const payoutId = (pc as any)?.payout_id || (pr as any)?.payout_id;
+  if (payoutId) {
+    const { data: po } = await supabaseAdmin.from('bot_payouts').select('transfer_id').eq('id', payoutId).maybeSingle();
+    const tid = (po as any)?.transfer_id;
+    if (tid) { try { await stripe.transfers.createReversal(tid, {}); } catch { /* si no hay saldo en la cuenta, queda como deuda a cobrar */ } }
+    await supabaseAdmin.from('bot_commissions').update({ status: 'reversed', reversed_at: nowIso }).eq('ref', ref).eq('status', 'paid');
+    await supabaseAdmin.from('bot_referrals').update({ status: 'reversed' }).eq('ref', ref).eq('status', 'paid');
+  }
 }
 
 // ============================================================

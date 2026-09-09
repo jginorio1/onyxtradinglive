@@ -100,7 +100,7 @@ export default function BotLab({ canManage = true }: { canManage?: boolean }) {
       {sub === 'creadores' && <Payouts es={es} payouts={payouts} canManage={canManage} act={act} />}
       {sub === 'chat' && <ChatInbox es={es} canManage={canManage} />}
       {sub === 'resenas' && <ReviewsPanel es={es} initial={d.reviews || []} act={act} canManage={canManage} />}
-      {sub === 'ajustes' && set && <Settings es={es} set={set} setSet={setSet} canManage={canManage} act={act} mail={d.mail} />}
+      {sub === 'ajustes' && set && <Settings es={es} set={set} setSet={setSet} canManage={canManage} act={act} mail={d.mail} academy={d.academy} />}
     </div>
   );
 }
@@ -693,7 +693,7 @@ function Validation({ es, set, setSet, canManage, act }: any) {
   );
 }
 
-function Settings({ es, set, setSet, canManage, act, mail }: any) {
+function Settings({ es, set, setSet, canManage, act, mail, academy }: any) {
   const m = mail || {};
   const verOk = m.checked && m.verified === true;
   const verBad = m.checked && m.verified === false;
@@ -732,15 +732,34 @@ function Settings({ es, set, setSet, canManage, act, mail }: any) {
         <p className="muted" style={{ fontSize: 11.5, marginTop: 10 }}>{es ? 'Comisión global de 0% a 90%. Pon una o ambas wallets; el cliente elige la red al pagar. Con ETHERSCAN_API_KEY (Ethereum) y/o la wallet TRON, los pagos se confirman SOLOS on-chain (cada 3 min). Sin eso, se confirman a mano en Pagos USDT.' : 'Global fee from 0% to 90%. Set one or both wallets; the buyer picks the network at checkout. With ETHERSCAN_API_KEY (Ethereum) and/or the TRON wallet, payments confirm AUTOMATICALLY on-chain (every 3 min). Otherwise confirm them manually under USDT payments.'}</p>
       </div>
 
+      <div style={card}>
+        <SectionHead icon="shield" color="var(--brand)" title={es ? 'Pagos automáticos a creadores' : 'Automatic creator payouts'} desc={es ? 'Maduración anti-reembolso, mínimo para pagar, y frenos. USDT siempre se envía a mano.' : 'Anti-refund maturation, minimum to pay, and brakes. USDT is always sent by hand.'} />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 12 }}>
+          <Field label={es ? 'Maduración del saldo (días)' : 'Balance maturation (days)'} value={set.payout_hold_days ?? 14} onChange={(v: any) => setSet({ ...set, payout_hold_days: v })} />
+          <Field label={es ? 'Mínimo para pagar (centavos)' : 'Minimum to pay (cents)'} value={set.payout_min_cents ?? 1000} onChange={(v: any) => setSet({ ...set, payout_min_cents: v })} />
+        </div>
+        <div style={{ display: 'grid', gap: 9, marginTop: 10 }}>
+          <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, cursor: 'pointer', background: 'var(--bg2)', border: `1px solid ${set.payout_auto === true ? 'color-mix(in srgb,var(--green) 40%,var(--line))' : 'var(--line)'}`, borderRadius: 10, padding: '11px 12px' }}>
+            <div><div style={{ fontWeight: 700, fontSize: 13.5 }}>{es ? 'Auto-pagar por Stripe (cron)' : 'Auto-pay via Stripe (cron)'}</div><div className="muted" style={{ fontSize: 11.5 }}>{es ? 'Paga solo el saldo YA maduro a creadores con banco conectado. USDT no se automatiza.' : 'Pays only already-matured balance to creators with a connected bank. USDT is not automated.'}</div></div>
+            <input type="checkbox" checked={set.payout_auto === true} onChange={(e) => setSet({ ...set, payout_auto: e.target.checked })} style={{ width: 18, height: 18, cursor: 'pointer', flex: 'none' }} />
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, cursor: 'pointer', background: 'var(--bg2)', border: `1px solid ${set.payout_review === true ? 'color-mix(in srgb,var(--amber) 45%,var(--line))' : 'var(--line)'}`, borderRadius: 10, padding: '11px 12px' }}>
+            <div><div style={{ fontWeight: 700, fontSize: 13.5 }}>{es ? '🛑 Freno: revisar antes de pagar' : '🛑 Brake: review before paying'}</div><div className="muted" style={{ fontSize: 11.5 }}>{es ? 'Enciéndelo para congelar TODOS los pagos (incluye el cron). Los retiros quedan en cola.' : 'Turn on to freeze ALL payouts (including the cron). Withdrawals stay queued.'}</div></div>
+            <input type="checkbox" checked={set.payout_review === true} onChange={(e) => setSet({ ...set, payout_review: e.target.checked })} style={{ width: 18, height: 18, cursor: 'pointer', flex: 'none' }} />
+          </label>
+        </div>
+        <p className="muted" style={{ fontSize: 11.5, marginTop: 10 }}>{es ? 'Cómo protege esto tu dinero: el saldo del creador solo se puede retirar tras madurar (por si hay reembolso). Si un cliente pide reembolso o hace contracargo, la comisión y el referido se anulan; si ya se pagaron, se hace clawback de la transferencia Stripe. Programa el cron en /api/cron/botlab-payouts.' : 'How this protects your money: creator balance can only be withdrawn after it matures (in case of refunds). If a buyer refunds or charges back, the commission and referral are voided; if already paid, the Stripe transfer is clawed back. Schedule the cron at /api/cron/botlab-payouts.'}</p>
+      </div>
+
       <SellerFees es={es} />
 
       {/* Academia oficial "Onyx Bot Lab" (solo dueño) */}
       <div style={card}>
         <SectionHead icon="spark" color={GOLD} title={es ? 'Academia Onyx Bot Lab (oficial)' : 'Onyx Bot Lab academy (official)'} desc={es ? 'Tu academia oficial dentro de Academy: cursos y comunidad de robots, solo administrada por ti.' : 'Your official academy inside Academy: robot courses and community, managed only by you.'} />
-        {d.academy?.exists ? (
+        {academy?.exists ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--green)' }}>✓ {es ? 'Creada' : 'Created'} · {d.academy.academy_name}</span>
-            <a href={`/academia/${d.academy.code}`} target="_blank" style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--brand)', border: '1px solid color-mix(in srgb,var(--brand) 40%,transparent)', borderRadius: 9, padding: '7px 12px' }}>{es ? 'Ver academia ↗' : 'View academy ↗'}</a>
+            <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--green)' }}>✓ {es ? 'Creada' : 'Created'} · {academy.academy_name}</span>
+            <a href={`/academia/${academy.code}`} target="_blank" style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--brand)', border: '1px solid color-mix(in srgb,var(--brand) 40%,transparent)', borderRadius: 9, padding: '7px 12px' }}>{es ? 'Ver academia ↗' : 'View academy ↗'}</a>
             <a href="/dashboard/academy" target="_blank" style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--tx)', border: '1px solid var(--line)', borderRadius: 9, padding: '7px 12px' }}>{es ? 'Administrar (cursos, comunidad) ↗' : 'Manage (courses, community) ↗'}</a>
           </div>
         ) : (

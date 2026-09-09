@@ -359,10 +359,11 @@ function EarningsPanel({ es, sell, reload }: any) {
   return (
     <div style={{ display: 'grid', gap: 16 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 12 }}>
-        {[[es ? 'Disponible' : 'Available', money(e.availableCents || 0), 'var(--green)'], [es ? 'Ventas' : 'Sales', String(e.sales || 0), 'var(--tx)'], [es ? 'Por referir' : 'Referral', money(e.referralCents || 0), GOLD], [es ? 'Pagado' : 'Paid', money(e.paidCents || 0), 'var(--mut)']].map(([l, v, c], i) => (
+        {[[es ? 'Disponible' : 'Available', money(e.availableCents || 0), 'var(--green)'], [es ? 'En espera' : 'Pending', money(e.pendingCents || 0), 'var(--amber)'], [es ? 'Ventas' : 'Sales', String(e.sales || 0), 'var(--tx)'], [es ? 'Pagado' : 'Paid', money(e.paidCents || 0), 'var(--mut)']].map(([l, v, c], i) => (
           <div key={i} style={{ background: 'var(--bg2)', borderRadius: 12, padding: 14 }}><div className="muted" style={{ fontSize: 12 }}>{l}</div><div style={{ fontSize: 22, fontWeight: 800, color: c as string }}>{v}</div></div>
         ))}
       </div>
+      {(e.pendingCents || 0) > 0 && <div className="muted" style={{ fontSize: 12, marginTop: -6 }}>{es ? 'El saldo “en espera” madura tras unos días (protección contra reembolsos) y luego pasa a “disponible” para retirar.' : 'The “pending” balance matures after a few days (refund protection), then moves to “available” to withdraw.'}</div>}
       <div style={{ ...card }}>
         <b>{es ? 'Retirar tus ganancias' : 'Withdraw your earnings'}</b>
         <div className="muted" style={{ fontSize: 13, marginBottom: 10 }}>{es ? 'Desde $10 disponibles. Elige cómo quieres cobrar: USDT o tu banco (Stripe Express).' : 'From $10 available. Choose how to get paid: USDT or your bank (Stripe Express).'}</div>

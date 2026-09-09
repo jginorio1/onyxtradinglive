@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
-import { getProduct, grantLicense, setPurchaseStatus, reverseBotCommissionByRef } from '@/lib/botlab';
+import { getProduct, grantLicense, setPurchaseStatus, reverseBotSale } from '@/lib/botlab';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -36,7 +36,9 @@ export async function POST(req: Request) {
     } else if (event.type === 'invoice.payment_failed') {
       if (o.subscription) await setPurchaseStatus(o.subscription, 'past_due');
     } else if (event.type === 'charge.refunded') {
-      await reverseBotCommissionByRef(o.payment_intent);
+      // Reembolso/contracargo: anula comisión y referido; si ya se pagaron, hace
+      // clawback de la transferencia Stripe del payout que los cubrió.
+      await reverseBotSale(o.payment_intent);
     }
   } catch { /* no reventar el webhook: Stripe reintenta si devolvemos error */ }
   return NextResponse.json({ received: true });
