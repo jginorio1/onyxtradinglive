@@ -58,6 +58,7 @@ export default function BotLab({ canManage = true }: { canManage?: boolean }) {
   const tabs: [any, string, string, number][] = [
     ['resumen', es ? 'Resumen' : 'Overview', 'grid', 0],
     ['marketplace', es ? 'Marketplace' : 'Marketplace', 'bot', pend.length],
+    ['validacion', es ? 'Validación' : 'Validation', 'shield', 0],
     ['servicios', es ? 'Servicios / Leads' : 'Services / Leads', 'inbox', stat.newLeads || 0],
     ['pagos', es ? 'Pagos USDT' : 'USDT payments', 'coin', crypto.length],
     ['creadores', es ? 'Creadores' : 'Creators', 'users', pendingPayouts.length],
@@ -93,6 +94,7 @@ export default function BotLab({ canManage = true }: { canManage?: boolean }) {
 
       {sub === 'resumen' && <Overview es={es} d={d} stat={stat} crypto={crypto} pend={pend} leads={leads} pendingPayouts={pendingPayouts} go={setSub} />}
       {sub === 'marketplace' && <Marketplace es={es} d={d} canManage={canManage} act={act} />}
+      {sub === 'validacion' && set && <Validation es={es} set={set} setSet={setSet} canManage={canManage} act={act} />}
       {sub === 'servicios' && <Leads es={es} d={d} leads={leads} canManage={canManage} act={act} />}
       {sub === 'pagos' && <CryptoPayments es={es} crypto={crypto} canManage={canManage} act={act} />}
       {sub === 'creadores' && <Payouts es={es} payouts={payouts} canManage={canManage} act={act} />}
@@ -627,6 +629,69 @@ function Payouts({ es, payouts, canManage, act }: any) {
 }
 
 // ---------- Ajustes ----------
+// ---------- Validación: reglas para poder vender + asistente IA ----------
+function Validation({ es, set, setSet, canManage, act }: any) {
+  const [goal, setGoal] = useState('');
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const set1 = (k: string, v: any) => setSet({ ...set, [k]: v });
+  async function suggest() {
+    setBusy(true);
+    try {
+      const r = await fetch('/api/admin/botlab', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'val_ai', goal }) });
+      const j = await r.json();
+      if (j?.params) { setSet({ ...set, ...j.params }); setNote(j.note || ''); }
+    } catch {} finally { setBusy(false); }
+  }
+  const NumCard = ({ k, title, desc, min, max }: any) => (
+    <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 12, padding: 13 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+        <b style={{ fontSize: 13.5 }}>{title}</b>
+        <input type="number" value={set[k] ?? 0} onChange={(e) => set1(k, e.target.value)} style={{ width: 74, textAlign: 'center', padding: '6px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--tx)', fontWeight: 800 }} />
+      </div>
+      <div className="muted" style={{ fontSize: 11.5, marginTop: 5 }}>{desc}</div>
+    </div>
+  );
+  const RuleRow = ({ k, title, desc }: any) => (
+    <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, cursor: 'pointer', background: 'var(--bg2)', border: `1px solid ${set[k] !== false ? 'color-mix(in srgb,var(--red) 35%,var(--line))' : 'var(--line)'}`, borderRadius: 10, padding: '11px 12px' }}>
+      <div><div style={{ fontWeight: 700, fontSize: 13.5 }}>{title}</div><div className="muted" style={{ fontSize: 11.5 }}>{desc}</div></div>
+      <input type="checkbox" checked={set[k] !== false} onChange={(e) => set1(k, e.target.checked)} style={{ width: 18, height: 18, cursor: 'pointer', flex: 'none' }} />
+    </label>
+  );
+  return (
+    <div style={{ display: 'grid', gap: 16 }}>
+      <div style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, padding: 18 }}>
+        <SectionHead icon="shield" color="var(--brand)" title={es ? 'Reglas de validación' : 'Validation rules'} desc={es ? 'Qué debe cumplir un robot (con operaciones reales) para poder venderse.' : 'What a robot must meet (with real trades) to be sold.'} />
+        {/* Asistente IA */}
+        <div style={{ background: 'linear-gradient(135deg,#3a2f7a,#211a45 60%,#141428)', border: '1px solid rgba(139,147,255,.5)', borderRadius: 12, padding: 14, marginBottom: 14 }}>
+          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: '#c8ccff', marginBottom: 8 }}>✦ {es ? 'Asistente IA' : 'AI assistant'}</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <input value={goal} onChange={(e) => setGoal(e.target.value)} placeholder={es ? 'Ej: calidad sobre cantidad, pocos robots pero sólidos…' : 'e.g. quality over quantity…'} style={{ flex: 1, minWidth: 220, padding: '10px 12px', borderRadius: 10, border: '1px solid rgba(255,255,255,.18)', background: 'rgba(255,255,255,.06)', color: '#fff', fontSize: 12.5 }} />
+            <button onClick={suggest} disabled={busy} style={{ padding: '10px 16px', borderRadius: 10, border: 'none', fontWeight: 800, fontSize: 12.5, background: '#fff', color: '#2a2160', cursor: 'pointer', opacity: busy ? .6 : 1 }}>{busy ? '…' : (es ? 'Sugerir con IA' : 'Suggest with AI')}</button>
+          </div>
+          {note && <div style={{ marginTop: 10, background: 'rgba(255,255,255,.06)', borderRadius: 10, padding: 11, fontSize: 12, color: '#e6ebf5' }}>{note}</div>}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 10 }}>
+          <NumCard k="val_min_trades" title={es ? 'Mínimo de operaciones' : 'Min trades'} desc={es ? 'Cuántas operaciones reales necesita antes de venderse.' : 'Real trades needed before selling.'} />
+          <NumCard k="val_min_days" title={es ? 'Días operando mínimo' : 'Min days trading'} desc={es ? 'Evita "suerte de una semana".' : 'Avoids "one-week luck".'} />
+          <NumCard k="val_min_score" title={es ? 'Onyx Score mínimo (0-100)' : 'Min Onyx Score (0-100)'} desc={es ? 'Nota global de ganancia, riesgo y consistencia.' : 'Global score of profit, risk, consistency.'} />
+          <NumCard k="val_min_pf" title={es ? 'Profit factor mínimo (x100)' : 'Min profit factor (x100)'} desc={es ? 'Ej. 120 = 1.20. Cuánto gana por cada $1 perdido.' : 'e.g. 120 = 1.20.'} />
+          <NumCard k="val_max_dd" title={es ? 'Drawdown máximo (%)' : 'Max drawdown (%)'} desc={es ? 'La peor caída que aceptas. Más = rechaza.' : 'Worst drop you accept.'} />
+          <NumCard k="val_hft_min_hold" title={es ? 'Alta frecuencia: aguanta < min' : 'HFT: holds < min'} desc={es ? 'Menos de estos minutos por operación = alta frecuencia.' : 'Less than this = HFT.'} />
+          <NumCard k="val_hft_max_day" title={es ? 'Alta frecuencia: > ops/día' : 'HFT: > trades/day'} desc={es ? 'Más de estas operaciones al día = alta frecuencia.' : 'More than this per day = HFT.'} />
+        </div>
+        <div style={{ display: 'grid', gap: 8, marginTop: 12 }}>
+          <RuleRow k="val_require_sl" title={es ? 'Stop Loss obligatorio' : 'Stop Loss required'} desc={es ? 'Rechaza si no declara SL o si detectamos pérdidas sin tope.' : 'Rejects if no SL declared or unbounded losses.'} />
+          <RuleRow k="val_reject_martingale" title={es ? 'Rechazar martingala' : 'Reject martingale'} desc={es ? 'Sube el lote tras perder → fuera.' : 'Raises lot after a loss → out.'} />
+          <RuleRow k="val_reject_hft" title={es ? 'Rechazar alta frecuencia' : 'Reject high frequency'} desc={es ? 'Aguanta muy poco o demasiadas ops al día → fuera.' : 'Holds too little or too many trades/day → out.'} />
+        </div>
+        {canManage && <button onClick={() => act({ action: 'settings', ...set }, es ? 'Reglas guardadas' : 'Rules saved')} style={{ marginTop: 14, padding: '11px 20px', borderRadius: 10, border: 'none', fontWeight: 800, background: `linear-gradient(120deg,${GOLD},#ffb020)`, color: '#3a2a06', cursor: 'pointer' }}>{es ? 'Guardar reglas' : 'Save rules'}</button>}
+        <p className="muted" style={{ fontSize: 11.5, marginTop: 10 }}>{es ? 'El filtro de noticias no bloquea: el vendedor lo declara y el comprador decide. Todo se mide con las operaciones reales del robot.' : 'News filter does not block: the seller declares it and the buyer decides. Everything is measured from the robot’s real trades.'}</p>
+      </div>
+    </div>
+  );
+}
+
 function Settings({ es, set, setSet, canManage, act, mail }: any) {
   const m = mail || {};
   const verOk = m.checked && m.verified === true;

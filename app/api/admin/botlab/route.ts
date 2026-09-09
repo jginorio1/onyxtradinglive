@@ -106,6 +106,24 @@ export async function POST(req: Request) {
   if (a === 'crypto_confirm') { const r = await confirmCryptoPayment(String(b.id)); await logAdmin(user.email || '', 'botlab_crypto_confirm', String(b.id), {}); return NextResponse.json(r); }
   if (a === 'crypto_reject') { await rejectCryptoPayment(String(b.id)); return NextResponse.json({ ok: true }); }
   if (a === 'payout_paid') { await markPayoutPaid(String(b.id)); await logAdmin(user.email || '', 'botlab_payout_paid', String(b.id), {}); return NextResponse.json({ ok: true }); }
+  if (a === 'val_ai') {
+    // Asistente: dado el objetivo del dueño, sugiere umbrales de validación + explica.
+    const goal = String(b.goal || '').slice(0, 500);
+    const cur = await botLabSettings();
+    const key = process.env.ANTHROPIC_API_KEY;
+    const fallback = { params: { val_min_trades: 40, val_min_days: 21, val_min_score: 70, val_min_pf: 120, val_max_dd: 20 }, note: 'Sugerencia base para calidad sobre cantidad: sube la muestra y el score, baja el drawdown. Ajusta a tu gusto.' };
+    if (!key) return NextResponse.json(fallback);
+    try {
+      const system = 'Eres asesor de un marketplace de robots de trading (Onyx Bot Lab). Sugiere umbrales de validación razonables según el objetivo del dueño. NUNCA prometas ganancias ni predigas el mercado. Responde SOLO JSON: {"params":{"val_min_trades":int,"val_min_days":int,"val_min_score":0-100,"val_min_pf":int(x100, ej 120),"val_max_dd":int %},"note":"explicación breve en español, 1-2 frases"}.';
+      const user = `Config actual: ${JSON.stringify({ val_min_trades: cur.val_min_trades, val_min_days: cur.val_min_days, val_min_score: cur.val_min_score, val_min_pf: cur.val_min_pf, val_max_dd: cur.val_max_dd })}. Objetivo del dueño: "${goal || 'un marketplace equilibrado'}".`;
+      const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model: process.env.ONYX_AI_MODEL || 'claude-haiku-4-5-20251001', max_tokens: 400, system, messages: [{ role: 'user', content: user }] }) });
+      if (!r.ok) return NextResponse.json(fallback);
+      const d = await r.json();
+      const txt = String(d?.content?.[0]?.text || '').replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(txt);
+      return NextResponse.json({ params: parsed.params || fallback.params, note: parsed.note || fallback.note });
+    } catch { return NextResponse.json(fallback); }
+  }
   if (a === 'settings') {
     const cur = await botLabSettings();
     const next = {
@@ -129,6 +147,16 @@ export async function POST(req: Request) {
       pay_erc20: b.pay_erc20 != null ? !!b.pay_erc20 : (cur.pay_erc20 !== false),
       pay_card: b.pay_card != null ? !!b.pay_card : (cur.pay_card === true),
       robots_monthly: b.robots_monthly != null ? !!b.robots_monthly : (cur.robots_monthly === true),
+      val_min_trades: Math.max(0, Math.round(Number(b.val_min_trades ?? cur.val_min_trades ?? 30))),
+      val_min_days: Math.max(0, Math.round(Number(b.val_min_days ?? cur.val_min_days ?? 14))),
+      val_min_score: Math.max(0, Math.min(100, Math.round(Number(b.val_min_score ?? cur.val_min_score ?? 60)))),
+      val_min_pf: Math.max(0, Math.round(Number(b.val_min_pf ?? cur.val_min_pf ?? 110))),
+      val_max_dd: Math.max(0, Math.min(100, Math.round(Number(b.val_max_dd ?? cur.val_max_dd ?? 30)))),
+      val_require_sl: b.val_require_sl != null ? !!b.val_require_sl : (cur.val_require_sl !== false),
+      val_reject_martingale: b.val_reject_martingale != null ? !!b.val_reject_martingale : (cur.val_reject_martingale !== false),
+      val_reject_hft: b.val_reject_hft != null ? !!b.val_reject_hft : (cur.val_reject_hft !== false),
+      val_hft_min_hold: Math.max(0, Math.round(Number(b.val_hft_min_hold ?? cur.val_hft_min_hold ?? 5))),
+      val_hft_max_day: Math.max(1, Math.round(Number(b.val_hft_max_day ?? cur.val_hft_max_day ?? 20))),
     };
     // Nunca dejar todos los métodos apagados: si no queda ninguno, re-enciende TRON.
     if (!next.pay_trc20 && !next.pay_erc20 && !next.pay_card) next.pay_trc20 = true;

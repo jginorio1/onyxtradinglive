@@ -1,17 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { myProducts, saveProduct, deleteProduct, sellerEarnings, sellerConnectStatus, sellerOnboardingLink, listPayouts, createPayout } from '@/lib/botlab';
+import { myProducts, saveProduct, deleteProduct, sellerEarnings, sellerConnectStatus, sellerOnboardingLink, listPayouts, createPayout, botLabSettings, validateForSale } from '@/lib/botlab';
 import { botScore } from '@/lib/botScore';
 
 // Extensiones permitidas para el archivo del robot (entrega).
 const OK_EXT = ['ex4', 'ex5', 'mq4', 'mq5', 'set', 'zip', 'algo'];
 const MAX_FILE = 20 * 1024 * 1024; // 20 MB
-
-// Historial mínimo REAL para poder poner un robot a la venta (evita mandar a
-// revisión robots recién creados sin operaciones). Ajustable a futuro.
-const MIN_TRADES_TO_SELL = 20;
-const MIN_DAYS_TO_SELL = 7;
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -39,18 +34,18 @@ export async function POST(req: Request) {
     catch (e: any) { return NextResponse.json({ error: e?.message || 'No se pudo iniciar el cobro.' }, { status: 500 }); }
   }
   if (b.action === 'save') {
-    // Requisito de historial REAL: el robot debe haber operado antes de venderse.
-    // Así no llega a revisión un robot recién construido sin operaciones.
+    // Validación con OPERACIONES REALES contra las reglas editables (Admin → Validación):
+    // mínimos, martingala, alta frecuencia, drawdown, y Stop Loss obligatorio.
     const p = b.product || {};
     const text = [p.name, p.tagline, p.description].filter(Boolean).join(' \n ');
+    const cfg = await botLabSettings();
     const s = await botScore({ sellerId: user.id, accountId: p.bot_account, magic: p.bot_magic, text });
-    if (!s.hasData) {
-      return NextResponse.json({ error: 'Este robot aún no tiene operaciones reales. Instálalo, déjalo operar y podrás venderlo cuando tenga historial.' }, { status: 400 });
-    }
-    if (s.trades < MIN_TRADES_TO_SELL || s.days < MIN_DAYS_TO_SELL) {
-      return NextResponse.json({ error: `Aún es pronto para venderlo. Necesita al menos ${MIN_TRADES_TO_SELL} operaciones y ${MIN_DAYS_TO_SELL} días operando (lleva ${s.trades} operaciones · ${s.days} días).` }, { status: 400 });
-    }
-    const r = await saveProduct(user.id, p, false);
+    const chk = validateForSale(cfg, s, { sl: p.spec_sl });
+    if (!chk.ok) return NextResponse.json({ error: chk.reasons.join(' ') }, { status: 400 });
+    // Guardamos también lo detectado en `perf` para pintar la ficha técnica del comprador.
+    const detected = { avgHoldMin: s.avgHoldMin, tradesPerWeek: s.tradesPerWeek, martingale: s.martingale, hft: s.hft, hasSL: !s.slRisk };
+    const r = await saveProduct(user.id, { ...p, __detected: undefined }, false);
+    if (r?.id) { try { await supabaseAdmin.from('bot_products').update({ perf: { ...(s.hasData ? { score: s.score, winrate: s.winRate, dd: s.ddPct, pf: s.pf, trades: s.trades, days: s.days, live: s.live } : {}), ...detected } }).eq('id', r.id); } catch {} }
     return NextResponse.json({ ok: true, id: r?.id });
   }
   if (b.action === 'upload_file') {

@@ -127,9 +127,18 @@ export default function BotLabDashboard() {
                         ))}
                       </div>
                     )}
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
                       {p.platform && p.platform !== 'any' && <span className="muted" style={{ fontSize: 11, border: '1px solid var(--line)', padding: '2px 7px', borderRadius: 7 }}>{String(p.platform).toUpperCase()}</span>}
+                      {p.spec_style && <span className="muted" style={{ fontSize: 11, border: '1px solid var(--line)', padding: '2px 7px', borderRadius: 7, textTransform: 'capitalize' }}>{p.spec_style}</span>}
+                      {p.spec_timeframe && <span className="muted" style={{ fontSize: 11, border: '1px solid var(--line)', padding: '2px 7px', borderRadius: 7 }}>{p.spec_timeframe}</span>}
+                      {p.spec_market && <span className="muted" style={{ fontSize: 11, border: '1px solid var(--line)', padding: '2px 7px', borderRadius: 7, textTransform: 'capitalize' }}>{p.spec_market}</span>}
                       {p.perf?.days != null && <span className="muted" style={{ fontSize: 11, border: '1px solid var(--line)', padding: '2px 7px', borderRadius: 7 }}>{p.perf.days} {es ? 'días' : 'days'}</span>}
+                    </div>
+                    {/* Sellos de garantía (auto-detectados + declarados) */}
+                    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 10 }}>
+                      {[[!p.perf?.martingale, es ? 'Sin martingala' : 'No martingale'], [!p.perf?.hft, es ? 'Sin alta frecuencia' : 'No HFT'], [p.spec_sl || p.perf?.hasSL, es ? 'Con Stop Loss' : 'Stop Loss'], [p.spec_news, es ? 'Filtro noticias' : 'News filter']].filter(([ok]: any) => ok).map(([, l]: any, k) => (
+                        <span key={k} style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--green)', background: 'color-mix(in srgb,var(--green) 10%,transparent)', border: '1px solid color-mix(in srgb,var(--green) 30%,transparent)', borderRadius: 99, padding: '2px 7px' }}>✓ {l}</span>
+                      ))}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
                       <b style={{ fontSize: 18 }}>{money(p.price_cents)}</b><span className="muted" style={{ fontSize: 12 }}>{(pay.monthly && p.kind === 'subscription') ? (es ? '/mes' : '/mo') : (es ? 'único' : 'once')}</span>
@@ -316,7 +325,7 @@ function ProductModal({ es, product, onClose, onSaved }: any) {
     if (!f.name?.trim()) { toastErr(es ? 'Ponle nombre a tu robot.' : 'Name your robot.'); return; }
     setSaving(true);
     try {
-      const body = { action: 'save', product: { id: product?.id, name: f.name, tagline: f.tagline, description: f.description, kind: f.kind, interval: f.interval, price_cents: Math.round(Number(f.price) * 100), platform: f.platform, category: f.category, proof_url: f.proof_url, bot_magic: f.bot_magic || null, bot_account: f.bot_account || null, accepts_card: f.accepts_card, accepts_crypto: f.accepts_crypto, file_path: f.file_path ?? null, file_name: f.file_name ?? null, file_size: f.file_size ?? null } };
+      const body = { action: 'save', product: { id: product?.id, name: f.name, tagline: f.tagline, description: f.description, kind: f.kind, interval: f.interval, price_cents: Math.round(Number(f.price) * 100), platform: f.platform, category: f.category, proof_url: f.proof_url, bot_magic: f.bot_magic || null, bot_account: f.bot_account || null, accepts_card: f.accepts_card, accepts_crypto: f.accepts_crypto, file_path: f.file_path ?? null, file_name: f.file_name ?? null, file_size: f.file_size ?? null, spec_style: f.spec_style || null, spec_timeframe: f.spec_timeframe || null, spec_market: f.spec_market || null, spec_news: !!f.spec_news, spec_sl: !!f.spec_sl, spec_risk: f.spec_risk || null } };
       const r = await fetch('/api/botlab/sell', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const j = await r.json(); if (!r.ok) throw new Error(j.error);
       toast(es ? 'Enviado a revisión.' : 'Sent for review.'); onSaved();
@@ -337,6 +346,18 @@ function ProductModal({ es, product, onClose, onSaved }: any) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span className="muted" style={{ fontSize: 14 }}>$</span><input type="number" style={inp} value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} /></div>
             <input style={inp} placeholder={es ? 'Categoría (scalping…)' : 'Category (scalping…)'} value={f.category || ''} onChange={(e) => setF({ ...f, category: e.target.value })} />
+          </div>
+          {/* Ficha técnica que verá el comprador (Onyx la contrasta con las operaciones reales) */}
+          <div className="muted" style={{ fontSize: 11.5, marginTop: 2 }}>{es ? 'Ficha técnica del robot' : 'Robot spec sheet'}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <select style={inp} value={f.spec_style || ''} onChange={(e) => setF({ ...f, spec_style: e.target.value })}><option value="">{es ? 'Estilo…' : 'Style…'}</option><option value="tendencia">{es ? 'Tendencia' : 'Trend'}</option><option value="ruptura">{es ? 'Ruptura' : 'Breakout'}</option><option value="scalping">Scalping</option><option value="intradia">{es ? 'Intradía' : 'Intraday'}</option><option value="swing">Swing</option><option value="rango">{es ? 'Rango' : 'Range'}</option></select>
+            <input style={inp} placeholder={es ? 'Timeframe (ej. H1 · H4)' : 'Timeframe (e.g. H1 · H4)'} value={f.spec_timeframe || ''} onChange={(e) => setF({ ...f, spec_timeframe: e.target.value })} />
+            <select style={inp} value={f.spec_market || ''} onChange={(e) => setF({ ...f, spec_market: e.target.value })}><option value="">{es ? 'Mercado…' : 'Market…'}</option><option value="forex">Forex</option><option value="oro">{es ? 'Oro' : 'Gold'}</option><option value="indices">{es ? 'Índices' : 'Indices'}</option><option value="cripto">{es ? 'Cripto' : 'Crypto'}</option><option value="otro">{es ? 'Otro' : 'Other'}</option></select>
+            <input style={inp} placeholder={es ? 'Riesgo por operación (ej. 1%)' : 'Risk per trade (e.g. 1%)'} value={f.spec_risk || ''} onChange={(e) => setF({ ...f, spec_risk: e.target.value })} />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <PayChip on={!!f.spec_sl} onClick={() => setF({ ...f, spec_sl: !f.spec_sl })} icon="🛡" label={es ? 'Usa Stop Loss (obligatorio)' : 'Uses Stop Loss (required)'} />
+            <PayChip on={!!f.spec_news} onClick={() => setF({ ...f, spec_news: !f.spec_news })} icon="📰" label={es ? 'Filtro de noticias' : 'News filter'} />
           </div>
           <input style={inp} placeholder={es ? 'Prueba de rendimiento (Myfxbook, backtest, statement…)' : 'Performance proof (Myfxbook, backtest, statement…)'} value={f.proof_url || ''} onChange={(e) => setF({ ...f, proof_url: e.target.value })} />
           <span className="muted" style={{ fontSize: 11.5, marginTop: -4 }}>{es ? 'Un enlace a tu track record real ayuda a que aprobemos tu robot más rápido.' : 'A link to your real track record helps us approve your robot faster.'}</span>

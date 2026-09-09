@@ -38,6 +38,17 @@ export type BotLabSettings = {
   pay_erc20: boolean;         // aceptar USDT Ethereum (ERC20)
   pay_card: boolean;          // aceptar tarjeta (Stripe) — respaldo
   robots_monthly: boolean;    // permitir cobro mensual; si false, todo es pago único (sin "/mes")
+  // Reglas de validación para poder vender un robot (editables desde Admin → Validación).
+  val_min_trades: number;     // operaciones reales mínimas
+  val_min_days: number;       // días operando mínimos
+  val_min_score: number;      // Onyx Score mínimo para aprobar
+  val_min_pf: number;         // profit factor mínimo (x10, ej. 12 = 1.2) — guardamos x100 para decimales
+  val_max_dd: number;         // drawdown máximo permitido (%)
+  val_require_sl: boolean;    // Stop Loss obligatorio (rechaza si no lo declara / si hay riesgo)
+  val_reject_martingale: boolean; // rechazar martingala
+  val_reject_hft: boolean;    // rechazar alta frecuencia
+  val_hft_min_hold: number;   // aguantar menos de X min = alta frecuencia
+  val_hft_max_day: number;    // más de X ops/día = alta frecuencia
 };
 const DEF: BotLabSettings = {
   fee_pct: 20, usdt_address: '', usdt_network: 'trc20', usdt_erc20: '', usdt_trc20: '',
@@ -45,6 +56,8 @@ const DEF: BotLabSettings = {
   notify_email: '', telegram_chat: '',
   stats_on: true, stat_robots_base: 1240, stat_verified_base: 84, stat_score_avg: 87, stat_buyers_week: 55, stat_price_from: 19,
   pay_trc20: true, pay_erc20: true, pay_card: false, robots_monthly: false,
+  val_min_trades: 30, val_min_days: 14, val_min_score: 60, val_min_pf: 110, val_max_dd: 30,
+  val_require_sl: true, val_reject_martingale: true, val_reject_hft: true, val_hft_min_hold: 5, val_hft_max_day: 20,
 };
 // Devuelve la dirección correcta para una red, con fallback a la legacy.
 export function usdtAddressFor(s: BotLabSettings, network: string): string {
@@ -63,6 +76,25 @@ export function usdtNetworksAvailable(s: BotLabSettings): ('erc20' | 'trc20')[] 
 // ¿Se acepta tarjeta (Stripe) como respaldo? Default apagado.
 export function cardEnabled(s: BotLabSettings): boolean {
   return s.pay_card === true;
+}
+
+// Aplica las reglas de validación a un robot (score detectado + ficha declarada).
+// Devuelve si puede venderse y los motivos de rechazo (para mostrárselos al vendedor).
+export function validateForSale(s: BotLabSettings, score: any, spec: { sl?: boolean }): { ok: boolean; reasons: string[] } {
+  const r: string[] = [];
+  if (!score?.hasData) return { ok: false, reasons: ['Este robot aún no tiene operaciones reales. Instálalo, déjalo operar y podrás venderlo cuando tenga historial.'] };
+  if (score.trades < (s.val_min_trades || 0)) r.push(`Necesita al menos ${s.val_min_trades} operaciones (lleva ${score.trades}).`);
+  if (score.days < (s.val_min_days || 0)) r.push(`Necesita al menos ${s.val_min_days} días operando (lleva ${score.days}).`);
+  if (score.score < (s.val_min_score || 0)) r.push(`Onyx Score muy bajo: ${score.score} (mínimo ${s.val_min_score}).`);
+  if (score.pf < (s.val_min_pf || 0) / 100) r.push(`Profit factor bajo: ${score.pf} (mínimo ${((s.val_min_pf || 0) / 100).toFixed(2)}).`);
+  if (score.ddPct > (s.val_max_dd || 100)) r.push(`Drawdown muy alto: ${score.ddPct}% (máximo ${s.val_max_dd}%).`);
+  if (s.val_reject_martingale && score.martingale) r.push('Detectamos martingala (sube el lote tras perder). No se acepta.');
+  if (s.val_reject_hft && (score.hft || (score.avgHoldMin > 0 && score.avgHoldMin < (s.val_hft_min_hold || 0)) || score.tradesPerDay > (s.val_hft_max_day || 999))) r.push('Detectamos alta frecuencia (aguanta muy poco o demasiadas operaciones al día). No se acepta.');
+  if (s.val_require_sl) {
+    if (spec?.sl === false) r.push('Debes declarar que el robot usa Stop Loss (es obligatorio).');
+    else if (score.slRisk) r.push('Detectamos pérdidas sin tope (posible sin Stop Loss). Revisa tu gestión de riesgo.');
+  }
+  return { ok: r.length === 0, reasons: r };
 }
 export async function botLabSettings(): Promise<BotLabSettings> {
   const s = await getSetting<Partial<BotLabSettings>>('bot_lab', {});
@@ -130,6 +162,13 @@ export async function saveProduct(sellerId: string, b: any, isAdmin = false) {
     accepts_card: b.accepts_card !== false,
     accepts_crypto: b.accepts_crypto !== false,
   };
+  // Ficha técnica declarada por el vendedor (Onyx la contrasta con las operaciones reales).
+  if (b.spec_style !== undefined) row.spec_style = b.spec_style ? String(b.spec_style).slice(0, 30) : null;
+  if (b.spec_timeframe !== undefined) row.spec_timeframe = b.spec_timeframe ? String(b.spec_timeframe).slice(0, 20) : null;
+  if (b.spec_market !== undefined) row.spec_market = b.spec_market ? String(b.spec_market).slice(0, 30) : null;
+  if (b.spec_news !== undefined) row.spec_news = !!b.spec_news;                 // ¿tiene filtro de noticias? (informativo)
+  if (b.spec_sl !== undefined) row.spec_sl = !!b.spec_sl;                       // ¿usa Stop Loss? (obligatorio)
+  if (b.spec_risk !== undefined) row.spec_risk = b.spec_risk ? String(b.spec_risk).slice(0, 40) : null;
   // Archivo del robot (entrega): ruta en el bucket privado + nombre/size.
   if (b.file_path !== undefined) row.file_path = b.file_path ? String(b.file_path).slice(0, 400) : null;
   if (b.file_name !== undefined) row.file_name = b.file_name ? String(b.file_name).slice(0, 160) : null;
