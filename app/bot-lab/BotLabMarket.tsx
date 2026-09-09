@@ -76,10 +76,13 @@ export default function BotLabMarket({ es, items }: { es: boolean; items: any[] 
               {p.spec_style && <span className="muted" style={{ fontSize: 10.5, border: '1px solid var(--line)', padding: '2px 7px', borderRadius: 7, textTransform: 'capitalize' }}>{cap(p.spec_style)}</span>}
               {p.spec_timeframe && <span className="muted" style={{ fontSize: 10.5, border: '1px solid var(--line)', padding: '2px 7px', borderRadius: 7 }}>{p.spec_timeframe}</span>}
               {p.spec_market && <span className="muted" style={{ fontSize: 10.5, border: '1px solid var(--line)', padding: '2px 7px', borderRadius: 7, textTransform: 'capitalize' }}>{cap(p.spec_market)}</span>}
+              {p.spec_direction && <span className="muted" style={{ fontSize: 10.5, border: '1px solid var(--line)', padding: '2px 7px', borderRadius: 7, textTransform: 'capitalize' }}>{p.spec_direction === 'both' ? (es ? 'Long y Short' : 'Long & Short') : p.spec_direction}</span>}
+              {p.spec_capital && <span className="muted" style={{ fontSize: 10.5, border: '1px solid var(--line)', padding: '2px 7px', borderRadius: 7 }}>{es ? 'Desde' : 'From'} {p.spec_capital}</span>}
+              {p.spec_maxdd && <span className="muted" style={{ fontSize: 10.5, border: '1px solid var(--line)', padding: '2px 7px', borderRadius: 7 }}>DD ≤ {p.spec_maxdd}</span>}
             </div>
             {/* Sellos */}
             <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 10 }}>
-              {[[p.no_martingale, es ? 'Sin martingala' : 'No martingale'], [p.no_hft, es ? 'Sin alta frec.' : 'No HFT'], [p.has_sl, 'Stop Loss'], [p.news, es ? 'Noticias' : 'News']].filter(([ok]: any) => ok).map(([, l]: any, k) => (
+              {[[p.no_martingale, es ? 'Sin martingala' : 'No martingale'], [p.no_hft, es ? 'Sin alta frec.' : 'No HFT'], [p.has_sl, 'Stop Loss'], [p.news, es ? 'Noticias' : 'News'], [p.spec_propfirm, es ? 'Prop firm' : 'Prop firm']].filter(([ok]: any) => ok).map(([, l]: any, k) => (
                 <span key={k} style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--green)', background: 'color-mix(in srgb,var(--green) 10%,transparent)', border: '1px solid color-mix(in srgb,var(--green) 30%,transparent)', borderRadius: 99, padding: '2px 7px' }}>✓ {l}</span>
               ))}
             </div>

@@ -257,6 +257,7 @@ export default async function BotLabLanding() {
               score: p.perf?.score ?? null, ret: p.perf?.ret90 ?? p.perf?.ret ?? null, dd: p.perf?.dd != null ? p.perf.dd + '%' : null,
               price: money(p.price_cents), unit: (monthly && p.kind === 'subscription') ? (es ? '/mes' : '/mo') : '', path: 'M0,52 L40,46 L80,48 L120,38 L160,40 L200,28 L240,30 L300,16', hot: false,
               spec_style: p.spec_style || null, spec_timeframe: p.spec_timeframe || null, spec_market: p.spec_market || null,
+              spec_direction: p.spec_direction || null, spec_capital: p.spec_capital || null, spec_maxdd: p.spec_maxdd || null, spec_propfirm: !!p.spec_propfirm,
               no_martingale: !p.perf?.martingale, no_hft: !p.perf?.hft, has_sl: p.spec_sl || p.perf?.hasSL, news: p.spec_news,
             }))
           : sampleBots.map((p: any, i: number) => ({

@@ -171,6 +171,17 @@ export async function saveProduct(sellerId: string, b: any, isAdmin = false) {
   if (b.spec_news !== undefined) row.spec_news = !!b.spec_news;                 // ¿tiene filtro de noticias? (informativo)
   if (b.spec_sl !== undefined) row.spec_sl = !!b.spec_sl;                       // ¿usa Stop Loss? (obligatorio)
   if (b.spec_risk !== undefined) row.spec_risk = b.spec_risk ? String(b.spec_risk).slice(0, 40) : null;
+  // Ficha ampliada (v354).
+  if (b.spec_capital !== undefined) row.spec_capital = b.spec_capital ? String(b.spec_capital).slice(0, 40) : null;
+  if (b.spec_direction !== undefined) row.spec_direction = ['long', 'short', 'both'].includes(b.spec_direction) ? b.spec_direction : null;
+  if (b.spec_symbols !== undefined) row.spec_symbols = b.spec_symbols ? String(b.spec_symbols).slice(0, 80) : null;
+  if (b.spec_maxdd !== undefined) row.spec_maxdd = b.spec_maxdd ? String(b.spec_maxdd).slice(0, 20) : null;
+  if (b.spec_propfirm !== undefined) row.spec_propfirm = !!b.spec_propfirm;
+  if (b.spec_broker !== undefined) row.spec_broker = b.spec_broker ? String(b.spec_broker).slice(0, 60) : null;
+  // Origen del robot: 'build' = receta del constructor (entrega generada con candado
+  // para MT5/MT4/cTrader) · 'upload' = archivo externo subido al bucket privado.
+  if (b.source !== undefined) row.source = b.source === 'build' ? 'build' : 'upload';
+  if (b.build_id !== undefined) row.build_id = b.build_id ? String(b.build_id) : null;
   // Archivo del robot (entrega): ruta en el bucket privado + nombre/size.
   if (b.file_path !== undefined) row.file_path = b.file_path ? String(b.file_path).slice(0, 400) : null;
   if (b.file_name !== undefined) row.file_name = b.file_name ? String(b.file_name).slice(0, 160) : null;
@@ -229,7 +240,7 @@ export async function myLicenses(buyerId: string) {
   const rows = (data || []) as any[];
   const pids = Array.from(new Set(rows.map((r) => r.product_id)));
   const prodMap: Record<string, any> = {};
-  if (pids.length) { const { data: pr } = await supabaseAdmin.from('bot_products').select('id,name,platform,cover_url').in('id', pids); (pr || []).forEach((p: any) => { prodMap[p.id] = p; }); }
+  if (pids.length) { const { data: pr } = await supabaseAdmin.from('bot_products').select('id,name,platform,cover_url,source').in('id', pids); (pr || []).forEach((p: any) => { prodMap[p.id] = p; }); }
   return rows.map((r) => ({ ...r, product: prodMap[r.product_id] || null }));
 }
 export async function hasLicense(buyerId: string, productId: string) {
@@ -251,6 +262,42 @@ export async function productDownloadUrl(userId: string, productId: string, isAd
   });
   if (error || !signed?.signedUrl) return { error: 'No se pudo generar la descarga. Intenta de nuevo.' };
   return { url: signed.signedUrl, name: (p as any).file_name || 'robot' };
+}
+
+// Entrega GENERADA (Modelo A): para productos ligados a una receta del constructor
+// (source='build'), produce el archivo del robot AL VUELO con el candado de activación
+// horneado, para la plataforma pedida (mt5/mt4/ctrader). El comprador (o el creador/admin)
+// recibe el código; el candado apunta a /api/v1/activate con la huella creador+build, y el
+// magic del producto queda ligado a su licencia. Requiere licencia activa.
+export async function productBuildFile(
+  userId: string, productId: string, platform: string, site: string, isAdmin = false,
+): Promise<{ code?: string; name?: string; contentType?: string; error?: string }> {
+  const { data: p } = await supabaseAdmin
+    .from('bot_products').select('id,seller_id,source,build_id,bot_magic,name').eq('id', productId).maybeSingle();
+  if (!p) return { error: 'Robot no encontrado.' };
+  if ((p as any).source !== 'build' || !(p as any).build_id) return { error: 'Este robot no es del constructor.' };
+  const isSeller = (p as any).seller_id && (p as any).seller_id === userId;
+  const allowed = isAdmin || isSeller || (await hasLicense(userId, productId));
+  if (!allowed) return { error: 'Necesitas una licencia activa para descargar este robot.' };
+
+  // Carga la receta del vendedor y regenera con el candado (creator = vendedor).
+  const { data: bot } = await supabaseAdmin
+    .from('bots_built').select('spec,user_id,name').eq('id', (p as any).build_id).maybeSingle();
+  if (!bot) return { error: 'La receta de este robot ya no existe. Escríbenos y te lo entregamos.' };
+
+  const { cleanSpec } = await import('@/lib/botSpec');
+  const { renderMT5, renderMT4 } = await import('@/lib/botGen');
+  const { renderCT } = await import('@/lib/botGenCT');
+  const spec = cleanSpec((bot as any).spec);
+  // El magic del producto manda (es el que liga la licencia). Si no hay, usa el de la receta.
+  if ((p as any).bot_magic) (spec as any).magic = Number((p as any).bot_magic);
+  const plat = ['mt4', 'mt5', 'ctrader'].includes(platform) ? platform : String((spec as any).platform || 'mt5');
+  (spec as any).platform = plat;
+  const meta = { userId: String((bot as any).user_id || (p as any).seller_id || ''), buildId: String((p as any).build_id), site };
+  const code = plat === 'ctrader' ? renderCT(spec, meta) : plat === 'mt4' ? renderMT4(spec, meta) : renderMT5(spec, meta);
+  const ext = plat === 'ctrader' ? 'cs' : plat === 'mt4' ? 'mq4' : 'mq5';
+  const safe = String((p as any).name || spec.name || 'robot').replace(/[^\w.\- ]+/g, '_').slice(0, 40);
+  return { code, name: `${safe}.${ext}`, contentType: 'text/plain; charset=utf-8' };
 }
 
 // Registra/renueva una licencia (idempotente por comprador+producto) y anota comisión.

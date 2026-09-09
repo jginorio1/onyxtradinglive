@@ -62,9 +62,22 @@ export default function BotLabDashboard() {
   }
 
   // Descarga PROTEGIDA del archivo del robot (solo con licencia activa).
-  async function download(productId: string) {
+  async function download(productId: string, platform?: string) {
     try {
-      const r = await fetch('/api/botlab/download?id=' + encodeURIComponent(productId));
+      // Robot del constructor: pedimos una plataforma → el servidor devuelve el ARCHIVO
+      // generado con el candado. Robot de archivo externo: devuelve una URL firmada.
+      const qs = '/api/botlab/download?id=' + encodeURIComponent(productId) + (platform ? '&platform=' + platform : '');
+      const r = await fetch(qs);
+      if (platform) {
+        if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.error || 'error'); }
+        const blob = await r.blob();
+        const cd = r.headers.get('content-disposition') || '';
+        const nm = (/filename="?([^"]+)"?/.exec(cd)?.[1]) || ('robot.' + (platform === 'ctrader' ? 'cs' : platform === 'mt4' ? 'mq4' : 'mq5'));
+        const u = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = u; a.download = nm; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(u), 4000);
+        return;
+      }
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || 'error');
       if (j.url) window.location.href = j.url;
@@ -193,7 +206,14 @@ export default function BotLabDashboard() {
                     {active ? '✓ ' : ''}{label}
                   </span>
                   {active
-                    ? <button onClick={() => l.product_id && download(l.product_id)} style={{ fontSize: 12.5, fontWeight: 800, cursor: 'pointer', border: '1px solid color-mix(in srgb,var(--brand) 45%,transparent)', background: 'color-mix(in srgb,var(--brand) 14%,transparent)', color: 'var(--brand)', borderRadius: 9, padding: '6px 12px' }}>{es ? '⬇ Descargar robot' : '⬇ Download robot'}</button>
+                    ? (l.product?.source === 'build'
+                        // Robot del constructor: descarga generada con candado, por plataforma.
+                        ? <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', width: '100%', marginTop: 4 }}>
+                            {([['mt5', 'MT5'], ['mt4', 'MT4'], ['ctrader', 'cTrader']] as [string, string][]).map(([pv, pl]) => (
+                              <button key={pv} onClick={() => l.product_id && download(l.product_id, pv)} style={{ fontSize: 12, fontWeight: 800, cursor: 'pointer', border: '1px solid color-mix(in srgb,var(--brand) 45%,transparent)', background: 'color-mix(in srgb,var(--brand) 12%,transparent)', color: 'var(--brand)', borderRadius: 9, padding: '6px 11px' }}>⬇ {pl}</button>
+                            ))}
+                          </div>
+                        : <button onClick={() => l.product_id && download(l.product_id)} style={{ fontSize: 12.5, fontWeight: 800, cursor: 'pointer', border: '1px solid color-mix(in srgb,var(--brand) 45%,transparent)', background: 'color-mix(in srgb,var(--brand) 14%,transparent)', color: 'var(--brand)', borderRadius: 9, padding: '6px 12px' }}>{es ? '⬇ Descargar robot' : '⬇ Download robot'}</button>)
                     : l.kind === 'subscription' && l.product_id
                       ? <button onClick={() => { const p = products.find((x) => x.id === l.product_id); if (p) buy(p, 'usdt'); }} style={{ fontSize: 12.5, fontWeight: 800, cursor: 'pointer', border: '1px solid color-mix(in srgb,var(--green) 40%,transparent)', background: 'color-mix(in srgb,var(--green) 12%,transparent)', color: 'var(--green)', borderRadius: 9, padding: '6px 12px' }}>{es ? 'Renovar' : 'Renew'}</button>
                       : null}
@@ -307,12 +327,19 @@ function PayChip({ on, onClick, icon, label }: any) {
 function ProductModal({ es, product, pay, onClose, onSaved }: any) {
   const monthlyOn = pay?.monthly === true;   // ¿el dueño permite cobro mensual?
   const cardOn = pay?.card === true;         // ¿el dueño acepta tarjeta?
-  const [f, setF] = useState<any>({ name: '', tagline: '', interval: 'month', price: 29, platform: 'mt5', category: '', accepts_crypto: true, ...product,
+  const [f, setF] = useState<any>({ name: '', tagline: '', interval: 'month', price: 29, platform: 'mt5', category: '', accepts_crypto: true, source: 'build', ...product,
     kind: monthlyOn ? (product?.kind || 'subscription') : 'one_time',   // sin mensual → siempre pago único
     accepts_card: cardOn ? (product?.accepts_card !== false) : false,   // tarjeta apagada → no la aceptan
+    source: product?.source || 'build',   // Modelo A por defecto: robot del constructor
     price: product?.price_cents != null ? product.price_cents / 100 : (product?.price ?? 29) });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  // Recetas del constructor del vendedor (para ligar el robot · Modelo A).
+  const [builds, setBuilds] = useState<any[]>([]);
+  useEffect(() => {
+    fetch('/api/botlab/sell', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'my_builds' }) })
+      .then((r) => r.json()).then((j) => setBuilds(j.builds || [])).catch(() => {});
+  }, []);
   const inp: any = { width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 14 };
   // Sube el archivo del robot (.ex5/.ex4/.set/.zip) al bucket privado y guarda su ruta.
   async function uploadFile(file: File) {
@@ -328,9 +355,10 @@ function ProductModal({ es, product, pay, onClose, onSaved }: any) {
   }
   async function save() {
     if (!f.name?.trim()) { toastErr(es ? 'Ponle nombre a tu robot.' : 'Name your robot.'); return; }
+    if (f.source === 'build' && !f.build_id) { toastErr(es ? 'Elige cuál de tus robots del constructor vas a vender.' : 'Pick which constructor robot to sell.'); return; }
     setSaving(true);
     try {
-      const body = { action: 'save', product: { id: product?.id, name: f.name, tagline: f.tagline, description: f.description, kind: f.kind, interval: f.interval, price_cents: Math.round(Number(f.price) * 100), platform: f.platform, category: f.category, proof_url: f.proof_url, bot_magic: f.bot_magic || null, bot_account: f.bot_account || null, accepts_card: f.accepts_card, accepts_crypto: f.accepts_crypto, file_path: f.file_path ?? null, file_name: f.file_name ?? null, file_size: f.file_size ?? null, spec_style: f.spec_style || null, spec_timeframe: f.spec_timeframe || null, spec_market: f.spec_market || null, spec_news: !!f.spec_news, spec_sl: !!f.spec_sl, spec_risk: f.spec_risk || null } };
+      const body = { action: 'save', product: { id: product?.id, name: f.name, tagline: f.tagline, description: f.description, kind: f.kind, interval: f.interval, price_cents: Math.round(Number(f.price) * 100), platform: f.platform, category: f.category, proof_url: f.proof_url, bot_magic: f.bot_magic || null, bot_account: f.bot_account || null, source: f.source || 'build', build_id: f.source === 'build' ? (f.build_id || null) : null, accepts_card: f.accepts_card, accepts_crypto: f.accepts_crypto, file_path: f.file_path ?? null, file_name: f.file_name ?? null, file_size: f.file_size ?? null, spec_style: f.spec_style || null, spec_timeframe: f.spec_timeframe || null, spec_market: f.spec_market || null, spec_news: !!f.spec_news, spec_sl: !!f.spec_sl, spec_risk: f.spec_risk || null, spec_capital: f.spec_capital || null, spec_direction: f.spec_direction || null, spec_symbols: f.spec_symbols || null, spec_maxdd: f.spec_maxdd || null, spec_propfirm: !!f.spec_propfirm, spec_broker: f.spec_broker || null } };
       const r = await fetch('/api/botlab/sell', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const j = await r.json(); if (!r.ok) throw new Error(j.error);
       toast(es ? 'Enviado a revisión.' : 'Sent for review.'); onSaved();
@@ -348,7 +376,10 @@ function ProductModal({ es, product, pay, onClose, onSaved }: any) {
             {monthlyOn
               ? <select style={inp} value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value })}><option value="subscription">{es ? 'Renta mensual' : 'Monthly rental'}</option><option value="one_time">{es ? 'Pago único' : 'One-time'}</option></select>
               : <div style={{ ...inp, display: 'flex', alignItems: 'center', color: 'var(--mut)' }}>{es ? 'Pago único' : 'One-time'}</div>}
-            <select style={inp} value={f.platform} onChange={(e) => setF({ ...f, platform: e.target.value })}><option value="mt5">MT5</option><option value="mt4">MT4</option><option value="ctrader">cTrader</option><option value="any">{es ? 'Cualquiera' : 'Any'}</option></select>
+            {/* La plataforma la define el robot del constructor; el comprador recibe los 3 formatos. */}
+            <div style={{ ...inp, display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--mut)' }}>
+              <span>MT5 · MT4 · cTrader</span><span style={{ fontSize: 12 }}>🔒</span>
+            </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span className="muted" style={{ fontSize: 14 }}>$</span><input type="number" style={inp} value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} /></div>
@@ -361,10 +392,16 @@ function ProductModal({ es, product, pay, onClose, onSaved }: any) {
             <input style={inp} placeholder={es ? 'Timeframe (ej. H1 · H4)' : 'Timeframe (e.g. H1 · H4)'} value={f.spec_timeframe || ''} onChange={(e) => setF({ ...f, spec_timeframe: e.target.value })} />
             <select style={inp} value={f.spec_market || ''} onChange={(e) => setF({ ...f, spec_market: e.target.value })}><option value="">{es ? 'Mercado…' : 'Market…'}</option><option value="forex">Forex</option><option value="oro">{es ? 'Oro' : 'Gold'}</option><option value="indices">{es ? 'Índices' : 'Indices'}</option><option value="cripto">{es ? 'Cripto' : 'Crypto'}</option><option value="otro">{es ? 'Otro' : 'Other'}</option></select>
             <input style={inp} placeholder={es ? 'Riesgo por operación (ej. 1%)' : 'Risk per trade (e.g. 1%)'} value={f.spec_risk || ''} onChange={(e) => setF({ ...f, spec_risk: e.target.value })} />
+            <select style={inp} value={f.spec_direction || ''} onChange={(e) => setF({ ...f, spec_direction: e.target.value })}><option value="">{es ? 'Dirección…' : 'Direction…'}</option><option value="both">{es ? 'Ambas (long y short)' : 'Both (long & short)'}</option><option value="long">Long</option><option value="short">Short</option></select>
+            <input style={inp} placeholder={es ? 'Pares/símbolos (ej. XAUUSD)' : 'Symbols (e.g. XAUUSD)'} value={f.spec_symbols || ''} onChange={(e) => setF({ ...f, spec_symbols: e.target.value })} />
+            <input style={inp} placeholder={es ? 'Capital mínimo (ej. $500)' : 'Min capital (e.g. $500)'} value={f.spec_capital || ''} onChange={(e) => setF({ ...f, spec_capital: e.target.value })} />
+            <input style={inp} placeholder={es ? 'Drawdown máximo (ej. 15%)' : 'Max drawdown (e.g. 15%)'} value={f.spec_maxdd || ''} onChange={(e) => setF({ ...f, spec_maxdd: e.target.value })} />
           </div>
+          <input style={inp} placeholder={es ? 'Bróker/cuenta recomendada (ej. ECN · spread bajo · hedging)' : 'Recommended broker/account (e.g. ECN · low spread · hedging)'} value={f.spec_broker || ''} onChange={(e) => setF({ ...f, spec_broker: e.target.value })} />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <PayChip on={!!f.spec_sl} onClick={() => setF({ ...f, spec_sl: !f.spec_sl })} icon="🛡" label={es ? 'Usa Stop Loss (obligatorio)' : 'Uses Stop Loss (required)'} />
             <PayChip on={!!f.spec_news} onClick={() => setF({ ...f, spec_news: !f.spec_news })} icon="📰" label={es ? 'Filtro de noticias' : 'News filter'} />
+            <PayChip on={!!f.spec_propfirm} onClick={() => setF({ ...f, spec_propfirm: !f.spec_propfirm })} icon="🏦" label={es ? 'Apto para prop firm' : 'Prop-firm ready'} />
           </div>
           <input style={inp} placeholder={es ? 'Prueba de rendimiento (Myfxbook, backtest, statement…)' : 'Performance proof (Myfxbook, backtest, statement…)'} value={f.proof_url || ''} onChange={(e) => setF({ ...f, proof_url: e.target.value })} />
           <span className="muted" style={{ fontSize: 11.5, marginTop: -4 }}>{es ? 'Un enlace a tu track record real ayuda a que aprobemos tu robot más rápido.' : 'A link to your real track record helps us approve your robot faster.'}</span>
@@ -376,17 +413,43 @@ function ProductModal({ es, product, pay, onClose, onSaved }: any) {
                 <PayChip on={f.accepts_crypto !== false} onClick={() => setF({ ...f, accepts_crypto: !(f.accepts_crypto !== false) })} icon="₮" label="USDT" />
               </div>
             </div>
-          ) : (
-            <div className="muted" style={{ fontSize: 11.5 }}>{es ? '₮ Cobro en USDT (TRON · Ethereum).' : '₮ Paid in USDT (TRON · Ethereum).'}</div>
-          )}
+          ) : null}
           <div>
-            <div className="muted" style={{ fontSize: 11.5, marginBottom: 6 }}>{es ? 'Archivo del robot (lo recibe el comprador)' : 'Robot file (the buyer receives it)'}</div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 10, border: '1px dashed var(--line)', borderRadius: 10, padding: '11px 12px', cursor: 'pointer', background: 'var(--bg2)' }}>
-              <span style={{ fontSize: 18 }}>⬆️</span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: f.file_name ? 'var(--green)' : 'var(--tx)' }}>{uploading ? (es ? 'Subiendo…' : 'Uploading…') : (f.file_name ? `✓ ${f.file_name}` : (es ? 'Subir .ex5 / .ex4 / .set / .zip' : 'Upload .ex5 / .ex4 / .set / .zip'))}</span>
-              <input type="file" accept=".ex4,.ex5,.mq4,.mq5,.set,.zip,.algo" style={{ display: 'none' }} onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadFile(file); }} />
-            </label>
-            <span className="muted" style={{ fontSize: 11 }}>{es ? 'Solo se entrega a quien tiene licencia activa (descarga protegida). Máx 20 MB.' : 'Delivered only to active-license holders (protected download). Max 20 MB.'}</span>
+            <div className="muted" style={{ fontSize: 11.5, marginBottom: 6 }}>{es ? 'Robot del constructor (lo recibe el comprador)' : 'Constructor robot (the buyer receives it)'}</div>
+            <select style={inp} value={f.build_id || ''} onChange={(e) => {
+              const b = builds.find((x) => x.id === e.target.value);
+              const sp = b?.spec || {};
+              const sym = String(sp.symbol || '').toUpperCase();
+              const mkt = /XAU|GOLD/.test(sym) ? 'oro' : /BTC|ETH|USDT/.test(sym) ? 'cripto' : /US30|NAS|SPX|GER|UK100|JP225|IDX/.test(sym) ? 'indices' : sym ? 'forex' : '';
+              const dir = (sp.allowLongs && sp.allowShorts) ? 'both' : sp.allowShorts ? 'short' : sp.allowLongs ? 'long' : '';
+              setF((prev: any) => ({
+                ...prev, build_id: e.target.value, platform: b?.platform || prev.platform, bot_magic: b?.magic || prev.bot_magic,
+                // Prellenado desde la receta (el vendedor puede ajustarlo).
+                spec_timeframe: prev.spec_timeframe || sp.tf || '',
+                spec_market: prev.spec_market || mkt,
+                spec_symbols: prev.spec_symbols || sym,
+                spec_direction: prev.spec_direction || dir,
+                spec_sl: prev.spec_sl || (Number(sp.slVal) > 0),
+                spec_news: prev.spec_news || !!sp.useNewsFilter,
+              }));
+            }}>
+              <option value="">{es ? 'Elige tu robot del constructor…' : 'Pick your constructor robot…'}</option>
+              {builds.map((b) => (
+                <option key={b.id} value={b.id}>{b.name} · {b.platform === 'ctrader' ? 'cTrader' : String(b.platform || 'mt5').toUpperCase()} · 🔒{b.magic}</option>
+              ))}
+            </select>
+            <span className="muted" style={{ fontSize: 11 }}>{es
+              ? 'Onyx genera el archivo protegido (con candado) para MT5, MT4 y cTrader al momento de la compra. El comprador lo corre solo con licencia activa.'
+              : 'Onyx generates the protected (locked) file for MT5, MT4 and cTrader at purchase time. The buyer runs it only with an active license.'}</span>
+            {!builds.length && <div className="muted" style={{ fontSize: 11, marginTop: 6 }}>{es ? 'No tienes robots del constructor todavía. Créalo en el Constructor y vuelve aquí.' : 'You have no constructor robots yet. Build one first.'}</div>}
+          </div>
+          {/* Cobro en USDT, siempre visible. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'color-mix(in srgb,var(--green) 12%,transparent)', border: '1px solid color-mix(in srgb,var(--green) 35%,transparent)', borderRadius: 10, padding: '11px 12px' }}>
+            <span style={{ width: 26, height: 26, flex: 'none', borderRadius: 7, background: 'var(--green)', color: '#04150e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900 }}>₮</span>
+            <div>
+              <div style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--green)' }}>{es ? 'Cobras en USDT (TRON · Ethereum)' : 'You get paid in USDT (TRON · Ethereum)'}</div>
+              <div className="muted" style={{ fontSize: 11.5 }}>{es ? 'Sin bancos ni tarjetas · sin contracargos. Retiras desde Ganancias.' : 'No banks or cards · no chargebacks. Withdraw from Earnings.'}</div>
+            </div>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 10, marginTop: 16, justifyContent: 'flex-end' }}>

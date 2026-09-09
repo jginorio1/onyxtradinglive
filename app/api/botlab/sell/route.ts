@@ -33,10 +33,22 @@ export async function POST(req: Request) {
     try { const url = await sellerOnboardingLink(user.id, user.email || undefined); return NextResponse.json({ url }); }
     catch (e: any) { return NextResponse.json({ error: e?.message || 'No se pudo iniciar el cobro.' }, { status: 500 }); }
   }
+  if (b.action === 'my_builds') {
+    // Recetas del constructor del vendedor, para ligar un producto (Modelo A).
+    const { data } = await supabaseAdmin.from('bots_built').select('id,name,platform,magic,spec').eq('user_id', user.id).order('updated_at', { ascending: false }).limit(100);
+    return NextResponse.json({ builds: data || [] });
+  }
   if (b.action === 'save') {
     // Validación con OPERACIONES REALES contra las reglas editables (Admin → Validación):
     // mínimos, martingala, alta frecuencia, drawdown, y Stop Loss obligatorio.
     const p = b.product || {};
+    // Modelo A: si liga una receta del constructor, verifica que sea SUYA y toma su magic.
+    if (p.source === 'build') {
+      if (!p.build_id) return NextResponse.json({ error: 'Elige cuál de tus robots del constructor quieres vender.' }, { status: 400 });
+      const { data: bld } = await supabaseAdmin.from('bots_built').select('id,magic').eq('id', p.build_id).eq('user_id', user.id).maybeSingle();
+      if (!bld) return NextResponse.json({ error: 'Esa receta del constructor no es tuya o ya no existe.' }, { status: 400 });
+      if (!p.bot_magic && (bld as any).magic) p.bot_magic = (bld as any).magic;   // el magic de la receta liga la licencia
+    }
     const text = [p.name, p.tagline, p.description].filter(Boolean).join(' \n ');
     const cfg = await botLabSettings();
     const s = await botScore({ sellerId: user.id, accountId: p.bot_account, magic: p.bot_magic, text });
