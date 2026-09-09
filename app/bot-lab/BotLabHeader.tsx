@@ -21,13 +21,22 @@ export default function BotLabHeader({ loggedIn = false }: { loggedIn?: boolean 
   const [acct, setAcct] = useState(false); // menú de cuenta (incluye Salir)
   const mi: any = { display: 'block', padding: '9px 12px', borderRadius: 8, color: 'var(--tx)', fontSize: 13.5, fontWeight: 600, textDecoration: 'none' };
 
-  const items: { href: string; label: string; on: boolean }[] = [
-    { href: '/bot-lab', label: 'Marketplace', on: path === '/bot-lab' || path.endsWith('/bot-lab') || inDash },
-    { href: '/bot-lab#vende', label: es ? 'Vender' : 'Sell', on: false },
-    { href: '/bot-lab#servicio', label: es ? 'Servicios' : 'Services', on: false },
-    { href: '/bot-lab#precios', label: es ? 'Precios' : 'Pricing', on: false },
-    { href: '/bot-lab/faq', label: 'FAQ', on: path.includes('/bot-lab/faq') },
-  ];
+  // En el PANEL, la barra lateral ya cubre Marketplace/Mis robots/Vender/Ganancias,
+  // así que arriba solo dejamos info pública (Servicios/Precios/FAQ) que abre en otra
+  // pestaña, sin duplicar ni sacarte del panel sin avisar. En el LANDING, la nav completa.
+  const items: { href: string; label: string; on: boolean; blank?: boolean }[] = inDash
+    ? [
+        { href: '/bot-lab#servicio', label: es ? 'Servicios' : 'Services', on: false, blank: true },
+        { href: '/bot-lab#precios', label: es ? 'Precios' : 'Pricing', on: false, blank: true },
+        { href: '/bot-lab/faq', label: 'FAQ', on: false, blank: true },
+      ]
+    : [
+        { href: '/bot-lab', label: 'Marketplace', on: path === '/bot-lab' || path.endsWith('/bot-lab') },
+        { href: '/bot-lab#vende', label: es ? 'Vender' : 'Sell', on: false },
+        { href: '/bot-lab#servicio', label: es ? 'Servicios' : 'Services', on: false },
+        { href: '/bot-lab#precios', label: es ? 'Precios' : 'Pricing', on: false },
+        { href: '/bot-lab/faq', label: 'FAQ', on: path.includes('/bot-lab/faq') },
+      ];
 
   const link: any = { fontSize: 14, color: 'var(--mut)', fontWeight: 600, padding: '4px 0', borderBottom: '2px solid transparent' };
   const linkOn: any = { ...link, color: 'var(--tx)', borderColor: 'var(--gold, #ffd45e)' };
@@ -60,7 +69,7 @@ export default function BotLabHeader({ loggedIn = false }: { loggedIn?: boolean 
           {/* Nav de escritorio, centrado en la barra (en flujo normal, sin position:absolute) */}
           <nav className="botlab-nav" style={{ display: 'flex', gap: 22 }}>
             {items.map((i) => (
-              <Link key={i.href} href={i.href} style={i.on ? linkOn : link} onMouseEnter={(e) => { if (!i.on) (e.currentTarget as HTMLElement).style.color = 'var(--tx)'; }} onMouseLeave={(e) => { if (!i.on) (e.currentTarget as HTMLElement).style.color = 'var(--mut)'; }}>{i.label}</Link>
+              <Link key={i.href} href={i.href} target={i.blank ? '_blank' : undefined} rel={i.blank ? 'noopener' : undefined} style={i.on ? linkOn : link} onMouseEnter={(e) => { if (!i.on) (e.currentTarget as HTMLElement).style.color = 'var(--tx)'; }} onMouseLeave={(e) => { if (!i.on) (e.currentTarget as HTMLElement).style.color = 'var(--mut)'; }}>{i.label}{i.blank ? ' ↗' : ''}</Link>
             ))}
           </nav>
 
@@ -96,7 +105,7 @@ export default function BotLabHeader({ loggedIn = false }: { loggedIn?: boolean 
                 + justify-content:space-between y desparramaba los enlaces sobre el hero). */}
             <div style={{ maxWidth: 1680, margin: '0 auto', padding: '8px 16px 14px', display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 4 }}>
               {items.map((i) => (
-                <Link key={i.href} href={i.href} onClick={() => setOpen(false)} style={{ display: 'block', width: '100%', padding: '13px 12px', borderRadius: 10, color: 'var(--tx)', fontWeight: 600, fontSize: 15, textAlign: 'left', textDecoration: 'none', background: i.on ? 'color-mix(in srgb,var(--gold,#ffd45e) 15%,transparent)' : 'transparent' }}>{i.label}</Link>
+                <Link key={i.href} href={i.href} target={i.blank ? '_blank' : undefined} rel={i.blank ? 'noopener' : undefined} onClick={() => setOpen(false)} style={{ display: 'block', width: '100%', padding: '13px 12px', borderRadius: 10, color: 'var(--tx)', fontWeight: 600, fontSize: 15, textAlign: 'left', textDecoration: 'none', background: i.on ? 'color-mix(in srgb,var(--gold,#ffd45e) 15%,transparent)' : 'transparent' }}>{i.label}{i.blank ? ' ↗' : ''}</Link>
               ))}
               {!loggedIn && (
                 <a href="/login" onClick={() => setOpen(false)} style={{ display: 'block', width: '100%', padding: '13px 12px', marginTop: 4, borderTop: '1px solid var(--line)', color: 'var(--tx)', fontWeight: 700, fontSize: 15, textAlign: 'left', textDecoration: 'none' }}>{es ? 'Entrar' : 'Sign in'}</a>

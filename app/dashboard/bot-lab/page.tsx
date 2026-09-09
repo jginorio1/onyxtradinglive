@@ -159,10 +159,14 @@ export default function BotLabDashboard() {
                       {p.spec_style && <span className="muted" style={{ fontSize: 11, border: '1px solid var(--line)', padding: '2px 7px', borderRadius: 7, textTransform: 'capitalize' }}>{p.spec_style}</span>}
                       {p.spec_timeframe && <span className="muted" style={{ fontSize: 11, border: '1px solid var(--line)', padding: '2px 7px', borderRadius: 7 }}>{p.spec_timeframe}</span>}
                       {p.spec_market && <span className="muted" style={{ fontSize: 11, border: '1px solid var(--line)', padding: '2px 7px', borderRadius: 7, textTransform: 'capitalize' }}>{p.spec_market}</span>}
+                      {p.spec_direction && <span className="muted" style={{ fontSize: 11, border: '1px solid var(--line)', padding: '2px 7px', borderRadius: 7, textTransform: 'capitalize' }}>{p.spec_direction === 'both' ? (es ? 'Long y Short' : 'Long & Short') : p.spec_direction}</span>}
+                      {p.spec_capital && <span className="muted" style={{ fontSize: 11, border: '1px solid var(--line)', padding: '2px 7px', borderRadius: 7 }}>{es ? 'Desde' : 'From'} {p.spec_capital}</span>}
+                      {p.spec_maxdd && <span className="muted" style={{ fontSize: 11, border: '1px solid var(--line)', padding: '2px 7px', borderRadius: 7 }}>DD ≤ {p.spec_maxdd}</span>}
                       {p.perf?.days != null && <span className="muted" style={{ fontSize: 11, border: '1px solid var(--line)', padding: '2px 7px', borderRadius: 7 }}>{p.perf.days} {es ? 'días' : 'days'}</span>}
                     </div>
                     {/* Sellos de garantía (auto-detectados + declarados) */}
                     <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 10 }}>
+                      {p.spec_propfirm && <span style={{ fontSize: 9.5, fontWeight: 700, color: GOLD, background: `color-mix(in srgb,${GOLD} 12%,transparent)`, border: `1px solid color-mix(in srgb,${GOLD} 45%,transparent)`, borderRadius: 99, padding: '2px 7px' }}>◆ {es ? 'Apto prop firm' : 'Prop firm ready'}</span>}
                       {[[!p.perf?.martingale, es ? 'Sin martingala' : 'No martingale'], [!p.perf?.hft, es ? 'Sin alta frecuencia' : 'No HFT'], [p.spec_sl || p.perf?.hasSL, es ? 'Con Stop Loss' : 'Stop Loss'], [p.spec_news, es ? 'Filtro noticias' : 'News filter']].filter(([ok]: any) => ok).map(([, l]: any, k) => (
                         <span key={k} style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--green)', background: 'color-mix(in srgb,var(--green) 10%,transparent)', border: '1px solid color-mix(in srgb,var(--green) 30%,transparent)', borderRadius: 99, padding: '2px 7px' }}>✓ {l}</span>
                       ))}

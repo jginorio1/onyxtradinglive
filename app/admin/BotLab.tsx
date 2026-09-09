@@ -728,8 +728,10 @@ function Settings({ es, set, setSet, canManage, act, mail }: any) {
           <Field label={es ? 'Wallet USDT · Ethereum (0x…)' : 'USDT wallet · Ethereum (0x…)'} value={set.usdt_erc20} onChange={(v: any) => setSet({ ...set, usdt_erc20: v })} wide />
           <Field label={es ? 'Wallet USDT · TRON (T…)' : 'USDT wallet · TRON (T…)'} value={set.usdt_trc20} onChange={(v: any) => setSet({ ...set, usdt_trc20: v })} wide />
         </div>
-        <p className="muted" style={{ fontSize: 11.5, marginTop: 10 }}>{es ? 'Pon una o ambas wallets; el cliente elige la red al pagar. Con ETHERSCAN_API_KEY (Ethereum) y/o la wallet TRON, los pagos se confirman SOLOS on-chain (cada 3 min). Sin eso, se confirman a mano en Pagos USDT.' : 'Set one or both wallets; the buyer picks the network at checkout. With ETHERSCAN_API_KEY (Ethereum) and/or the TRON wallet, payments confirm AUTOMATICALLY on-chain (every 3 min). Otherwise confirm them manually under USDT payments.'}</p>
+        <p className="muted" style={{ fontSize: 11.5, marginTop: 10 }}>{es ? 'Comisión global de 0% a 90%. Pon una o ambas wallets; el cliente elige la red al pagar. Con ETHERSCAN_API_KEY (Ethereum) y/o la wallet TRON, los pagos se confirman SOLOS on-chain (cada 3 min). Sin eso, se confirman a mano en Pagos USDT.' : 'Global fee from 0% to 90%. Set one or both wallets; the buyer picks the network at checkout. With ETHERSCAN_API_KEY (Ethereum) and/or the TRON wallet, payments confirm AUTOMATICALLY on-chain (every 3 min). Otherwise confirm them manually under USDT payments.'}</p>
       </div>
+
+      <SellerFees es={es} />
 
       <div style={card}>
         <SectionHead icon="coin" color="var(--brand)" title={es ? 'Métodos de pago' : 'Payment methods'} desc={es ? 'USDT al frente (sin contracargos). La tarjeta es respaldo y se puede apagar. El landing se ajusta solo.' : 'USDT first (no chargebacks). Card is backup and can be turned off. The landing adapts on its own.'} />
@@ -956,6 +958,43 @@ function ChatInbox({ es, canManage }: { es: boolean; canManage: boolean }) {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// Comisión por trader: sobreescribe la global para traders concretos.
+function SellerFees({ es }: { es: boolean }) {
+  const [rows, setRows] = useState<any[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [draft, setDraft] = useState<Record<string, string>>({});
+  useEffect(() => { (async () => { try { const j = await postBL({ action: 'seller_fees' }); setRows(j.sellers || []); } catch {} setLoaded(true); })(); }, []);
+  async function saveOne(id: string) {
+    const raw = draft[id];
+    const pct = raw === undefined ? '' : raw.trim();
+    try { const j = await postBL({ action: 'set_seller_fee', sellerId: id, pct: pct === '' ? null : Number(pct) }); toast(es ? 'Comisión guardada' : 'Fee saved'); setRows((rs) => rs.map((r) => r.id === id ? { ...r, fee_pct: j.fee_pct, effective: j.fee_pct == null ? r.effective : j.fee_pct } : r)); setDraft((d) => { const n = { ...d }; delete n[id]; return n; }); } catch (e: any) { toastErr(e?.message || 'error'); }
+  }
+  const cardS: any = { background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, padding: 18, marginTop: 14 };
+  return (
+    <div style={cardS}>
+      <SectionHead icon="coin" color="var(--brand)" title={es ? 'Comisión por trader' : 'Per-trader commission'} desc={es ? 'Sobreescribe la global para traders concretos. Vacío = usa la global.' : 'Override the global fee for specific traders. Empty = uses global.'} />
+      {!loaded ? <p className="muted" style={{ fontSize: 12.5 }}>{es ? 'Cargando…' : 'Loading…'}</p>
+        : rows.length === 0 ? <p className="muted" style={{ fontSize: 12.5 }}>{es ? 'Aún no hay traders con robots publicados.' : 'No traders with published robots yet.'}</p>
+        : (
+          <div style={{ display: 'grid', gap: 8 }}>
+            {rows.map((r) => (
+              <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '9px 11px' }}>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</div>
+                  <div className="muted" style={{ fontSize: 11 }}>{r.email}</div>
+                </div>
+                <span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Efectiva' : 'Effective'}: <b style={{ color: 'var(--tx)' }}>{Math.round(r.effective)}%</b></span>
+                <input type="number" min={0} max={90} placeholder="global" value={draft[r.id] ?? (r.fee_pct == null ? '' : String(r.fee_pct))} onChange={(e) => setDraft({ ...draft, [r.id]: e.target.value })} style={{ width: 90, padding: '7px 9px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--tx)', fontSize: 13 }} />
+                <button className="btn btn-primary" style={{ fontSize: 12, padding: '6px 12px' }} onClick={() => saveOne(r.id)}>{es ? 'Guardar' : 'Save'}</button>
+              </div>
+            ))}
+          </div>
+        )}
+      <p className="muted" style={{ fontSize: 11, marginTop: 8 }}>{es ? 'Ej.: a un trader estrella ponle 10% (se queda el 90%); del resto puedes quedarte más subiendo su %.' : 'E.g. give a star trader 10% (they keep 90%); take more from others by raising their %.'}</p>
     </div>
   );
 }

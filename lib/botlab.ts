@@ -13,7 +13,7 @@ import { sendEmail, mailEnabled, fromWithName } from '@/lib/mail';
 // ============================================================
 
 const appUrl = () => (process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || 'https://www.onyxtradinglive.com').replace(/\/$/, '');
-const clampPct = (n: any) => Math.max(0, Math.min(50, Number(n) || 0));
+const clampPct = (n: any) => Math.max(0, Math.min(90, Number(n) || 0));
 
 export type BotLabSettings = {
   fee_pct: number;            // comisión de Onyx sobre ventas de creadores (%)
@@ -105,6 +105,36 @@ export async function botLabSettings(): Promise<BotLabSettings> {
 export async function botLabFee(): Promise<number> {
   const s = await botLabSettings();
   return clampPct(s.fee_pct);
+}
+// Comisión efectiva para un trader: si tiene un % propio (profiles.botlab_fee_pct)
+// lo usamos; si no, cae a la comisión global. Así a los traders estrella les puedes
+// dar mejor reparto y del resto quedarte más.
+export async function sellerFeePct(sellerId?: string | null): Promise<number> {
+  const global = await botLabFee();
+  if (!sellerId) return global;
+  try {
+    const { data } = await supabaseAdmin.from('profiles').select('botlab_fee_pct').eq('id', sellerId).maybeSingle();
+    const own = (data as any)?.botlab_fee_pct;
+    return own == null || own === '' ? global : clampPct(own);
+  } catch { return global; }
+}
+// Fija (o limpia con null) la comisión propia de un trader. Solo admin.
+export async function setSellerFeePct(sellerId: string, pct: number | null) {
+  const val = pct == null ? null : clampPct(pct);
+  await supabaseAdmin.from('profiles').update({ botlab_fee_pct: val }).eq('id', sellerId);
+  return val;
+}
+// Traders con robots publicados + su comisión (propia o "global"). Para el panel admin.
+export async function listSellersWithFee() {
+  const { data: prods } = await supabaseAdmin.from('bot_products').select('seller_id,is_official').not('seller_id', 'is', null);
+  const ids = Array.from(new Set(((prods || []) as any[]).filter((p) => !p.is_official).map((p) => p.seller_id)));
+  if (!ids.length) return [] as any[];
+  const { data: profs } = await supabaseAdmin.from('profiles').select('id,full_name,email,botlab_fee_pct').in('id', ids);
+  const global = await botLabFee();
+  return ((profs || []) as any[]).map((p) => ({
+    id: p.id, name: p.full_name || (p.email || '').split('@')[0] || 'Trader', email: p.email || '',
+    fee_pct: p.botlab_fee_pct, effective: p.botlab_fee_pct == null ? global : clampPct(p.botlab_fee_pct),
+  })).sort((a, b) => String(a.name).localeCompare(String(b.name)));
 }
 
 // ---- nombre público de un vendedor ----
@@ -317,7 +347,7 @@ async function productSales(productId: string) {
 }
 export async function recordBotCommission(o: { sellerId: string; buyerId?: string; productId?: string; grossCents: number; currency?: string; kind: string; method: string; ref: string; feePct?: number }) {
   if (!o.ref) return;
-  const pct = o.feePct != null ? o.feePct : await botLabFee();
+  const pct = o.feePct != null ? o.feePct : await sellerFeePct(o.sellerId);
   const fee = Math.round((o.grossCents || 0) * (pct / 100));
   await supabaseAdmin.from('bot_commissions').upsert({
     seller_id: o.sellerId, buyer_id: o.buyerId || null, product_id: o.productId || null,

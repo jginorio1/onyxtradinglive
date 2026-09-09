@@ -6,6 +6,7 @@ import {
   listServiceRequests, setServiceStatus, listPayouts, markPayoutPaid,
   botLabSettings, botLabAdminStats,
   listLeadMessages, addLeadNote, sendLeadEmail, botLabAudienceCounts, botLabBroadcast,
+  listSellersWithFee, setSellerFeePct,
 } from '@/lib/botlab';
 import { listCryptoPayments, confirmCryptoPayment, rejectCryptoPayment } from '@/lib/cryptoPay';
 import { botScore } from '@/lib/botScore';
@@ -53,8 +54,23 @@ export async function POST(req: Request) {
     return NextResponse.json({ messages });
   }
 
+  // Lista de traders con su comisión (propia o global): cualquier admin puede verla.
+  if (a === 'seller_fees') {
+    const sellers = await listSellersWithFee();
+    return NextResponse.json({ sellers });
+  }
+
   // De aquí en adelante hacen falta permisos de gestión.
   if (!canManage(role, perms)) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+
+  // Fijar (o limpiar, con pct null/'') la comisión propia de un trader.
+  if (a === 'set_seller_fee') {
+    const raw = b.pct;
+    const pct = raw === null || raw === '' || raw === undefined ? null : Number(raw);
+    const val = await setSellerFeePct(String(b.sellerId || ''), pct);
+    await logAdmin(user.email || '', 'botlab_seller_fee', String(b.sellerId || ''), { pct: val });
+    return NextResponse.json({ ok: true, fee_pct: val });
+  }
 
   if (a === 'lead_email') {
     try { const r = await sendLeadEmail({ leadId: String(b.id || ''), subject: b.subject, body: b.body, adminEmail: user.email || undefined }); await logAdmin(user.email || '', 'botlab_lead_email', String(b.id || ''), {}); return NextResponse.json(r); }
