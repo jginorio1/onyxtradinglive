@@ -64,7 +64,11 @@ export async function GET(req: Request) {
     }
 
     const { data } = await supabaseAdmin.from('bots_built').select('id,name,platform,magic,spec,created_at,updated_at').eq('user_id', user.id).order('updated_at', { ascending: false }).limit(100);
-    return NextResponse.json({ bots: data || [] });
+    // Umbral REAL de operaciones para poder vender (mismo que Bot Lab), para que el
+    // constructor no prometa "20" si el marketplace exige otro número.
+    let sellMin = 30;
+    try { const { botLabSettings } = await import('@/lib/botlab'); sellMin = Math.max(0, Math.round(Number((await botLabSettings()).val_min_trades) || 30)); } catch {}
+    return NextResponse.json({ bots: data || [], sellMin });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
   }

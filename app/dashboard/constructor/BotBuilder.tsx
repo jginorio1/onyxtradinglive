@@ -131,6 +131,7 @@ export default function BotBuilder() {
   const [s, setS] = useState<BotSpec>(blankReq({ ...DEFAULT_SPEC }));
   const [id, setId] = useState('');
   const [list, setList] = useState<any[]>([]);
+  const [sellMin, setSellMin] = useState(30);   // operaciones mínimas para vender (mismo que Bot Lab)
   const [opsByMagic, setOpsByMagic] = useState<Record<number, { trades: number; accountId: string }>>({});
   const [tpls, setTpls] = useState<any[]>([]);
   const [busy, setBusy] = useState(false);
@@ -186,7 +187,7 @@ export default function BotBuilder() {
   // Al abrir un robot NUEVO (sin id) le asignamos un magic único apenas carga la lista
   // de robots existentes, para que nunca choque con otro. Si el trader lo edita, se respeta.
   useEffect(() => { if (!id && Number(s.magic) === DEFAULT_SPEC.magic) assignUniqueMagic(); }, [list]); // eslint-disable-line
-  async function load() { try { const r = await fetch('/api/bots/build'); const j = await r.json(); setList(j.bots || []); } catch {} }
+  async function load() { try { const r = await fetch('/api/bots/build'); const j = await r.json(); setList(j.bots || []); if (j.sellMin != null) setSellMin(Number(j.sellMin) || 30); } catch {} }
   // Operaciones reales por magic (para saber cuáles ya operan → se pueden vender).
   async function loadOps() {
     try {
@@ -878,7 +879,7 @@ export default function BotBuilder() {
       {list.length > 0 && (
         <div className="bbx-panel">
           <div className="bbx-panel-h" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 11 }}><span className="bbx-ic"><OnyxIcon emoji="🗂️" size={16} /></span> {L('Mis robots', 'My robots')} <span style={{ fontSize: 12, color: 'var(--mut)', fontWeight: 400 }}>· {list.length}{liveCount ? ` · ${liveCount} ${L('operando', 'trading')}` : ''}</span></span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 11 }}><span className="bbx-ic"><OnyxIcon emoji="🗂️" size={16} /></span> {L('Mis creaciones', 'My creations')} <span style={{ fontSize: 12, color: 'var(--mut)', fontWeight: 400 }}>· {list.length}{liveCount ? ` · ${liveCount} ${L('operando', 'trading')}` : ''}</span></span>
           </div>
           {/* Buscador + orden + filtro de estado */}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 14 }}>
@@ -905,7 +906,7 @@ export default function BotBuilder() {
               const platLbl = plat === 'ctrader' ? 'cTrader' : plat.toUpperCase();
               const dlExt = plat === 'mt4' ? '.mq4' : plat === 'ctrader' ? '.cs' : '.mq5';
               const ops = opsByMagic[Number(b.magic)] || { trades: 0, accountId: '' };
-              const canSell = ops.trades >= 20;
+              const canSell = ops.trades >= sellMin;
               const c = ops.trades > 0 ? '#34e2a0' : '#8b93ff';   // verde si opera, violeta si no
               const sellHref = `/dashboard/bot-lab?new=1&name=${encodeURIComponent(b.name || '')}&platform=${encodeURIComponent(plat)}&magic=${encodeURIComponent(b.magic ?? '')}&account=${encodeURIComponent(ops.accountId || '')}`;
               const act: any = { fontSize: 12, fontWeight: 700, padding: '7px 12px', borderRadius: 9, cursor: 'pointer', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 5, border: '1px solid rgba(255,255,255,.12)', background: 'rgba(255,255,255,.05)', color: '#c9d2ea' };
@@ -934,7 +935,7 @@ export default function BotBuilder() {
                   <a style={{ ...act, color: '#3ad0ff', background: 'rgba(58,208,255,.1)', border: '1px solid rgba(58,208,255,.35)' }} href={`/api/bots/build?code=${b.id}`} onClick={() => toast(L('Instálalo en una cuenta DEMO: es gratis y no necesita clave Onyx.', 'Install it on a DEMO account: it\'s free and needs no Onyx key.'))}><OnyxIcon emoji="🧪" size={12} glow={false} /> {L('Probar en demo', 'Test on demo')}</a>
                   {canSell
                     ? <a style={{ ...act, color: '#3a2a06', fontWeight: 800, border: 'none', background: 'linear-gradient(120deg,#ffd45e,#ffb020)', boxShadow: '0 6px 16px rgba(255,176,32,.3)' }} href={sellHref}><OnyxIcon emoji="💰" size={12} glow={false} /> {L('Vender', 'Sell')}</a>
-                    : <span title={L('Necesita 20+ operaciones reales para venderse.', 'Needs 20+ real trades to be sold.')} style={{ ...act, cursor: 'default', color: '#6b7488', background: 'rgba(255,255,255,.03)', border: '1px dashed rgba(255,255,255,.15)' }}><OnyxIcon emoji="💰" size={12} glow={false} /> {L('Vender · necesita historial', 'Sell · needs history')}</span>}
+                    : <span title={L(`Necesita ${sellMin}+ operaciones reales para venderse (lleva ${ops.trades}).`, `Needs ${sellMin}+ real trades to be sold (${ops.trades} so far).`)} style={{ ...act, cursor: 'default', color: '#6b7488', background: 'rgba(255,255,255,.03)', border: '1px dashed rgba(255,255,255,.15)' }}><OnyxIcon emoji="💰" size={12} glow={false} /> {L(`Vender · ${ops.trades}/${sellMin} ops`, `Sell · ${ops.trades}/${sellMin} trades`)}</span>}
                   <span style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
                     <button style={{ ...act, background: 'transparent', border: 'none', color: '#9aa6bd' }} onClick={() => duplicate(b)}><OnyxIcon emoji="⧉" size={13} /> {L('Duplicar', 'Duplicate')}</button>
                     <button style={{ ...act, background: 'transparent', border: 'none', color: '#9aa6bd' }} onClick={() => edit(b)}><OnyxIcon emoji="✎" size={13} /> {L('Editar', 'Edit')}</button>
@@ -1086,7 +1087,7 @@ export default function BotBuilder() {
                   <span style={{ width: 40, height: 40, flex: 'none', borderRadius: 11, background: 'linear-gradient(120deg,#ffd45e,#ffb020)', color: '#3a2a06', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 800, boxShadow: '0 6px 16px rgba(255,176,32,.4)' }}>◆</span>
                   <span style={{ flex: 1, minWidth: 0 }}>
                     <span style={{ display: 'block', fontWeight: 800, fontSize: 14.5, color: 'var(--tx)' }}>{L('¿Quieres venderlo?', 'Want to sell it?')}</span>
-                    <span style={{ display: 'block', fontSize: 12, color: 'var(--mut)', marginTop: 1 }}>{L('Instálalo y déjalo operar. Cuando tenga historial real (20+ operaciones), podrás publicarlo en Onyx Bot Lab y cobrar a otros traders.', 'Install it and let it trade. Once it has a real track record (20+ trades), you can list it on Onyx Bot Lab and charge other traders.')}</span>
+                    <span style={{ display: 'block', fontSize: 12, color: 'var(--mut)', marginTop: 1 }}>{L(`Instálalo y déjalo operar. Cuando tenga historial real (${sellMin}+ operaciones), podrás publicarlo en Onyx Bot Lab y cobrar a otros traders.`, `Install it and let it trade. Once it has a real track record (${sellMin}+ trades), you can list it on Onyx Bot Lab and charge other traders.`)}</span>
                   </span>
                   <a href="/dashboard/bot-lab" style={{ flex: 'none', padding: '9px 15px', borderRadius: 10, fontWeight: 800, fontSize: 13, background: 'transparent', color: 'var(--tx)', border: '1px solid rgba(255,212,94,.55)', textDecoration: 'none', whiteSpace: 'nowrap' }}>{L('Ver Bot Lab', 'View Bot Lab')}</a>
                 </div>
@@ -1098,7 +1099,7 @@ export default function BotBuilder() {
                     <li>{L('Descarga e instala el robot (arriba).', 'Download and install the robot (above).')}</li>
                     <li>{L('Pega tu clave Onyx en InpApiKey.', 'Paste your Onyx key in InpApiKey.')}</li>
                     <li>{L('Cuando opere, sus KPIs aparecen en Mis robots.', 'Once it trades, its KPIs show in My robots.')}</li>
-                    <li>{L('Las métricas avanzadas (Monte Carlo, walk-forward) se activan tras ~20 operaciones.', 'Advanced metrics (Monte Carlo, walk-forward) unlock after ~20 trades.')}</li>
+                    <li>{L('Las métricas avanzadas (Monte Carlo, walk-forward) se activan tras ~20 operaciones cerradas.', 'Advanced metrics (Monte Carlo, walk-forward) unlock after ~20 closed trades.')}</li>
                   </ol>
                   <a href="/dashboard/bots" className="bbx-btn primary" style={{ marginTop: 8, fontSize: 12.5, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="📊" size={13} glow={false} /> {L('Ir a Mis robots', 'Go to My robots')} →</a>
                 </div>

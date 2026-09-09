@@ -13,7 +13,7 @@ const T: any = {
     testing: 'En pruebas', live: 'En vivo', all: 'Todos', running: 'activo', idle: 'inactivo',
     net: 'Neto', pf: 'PF', dd: 'DD', win: 'Aciertos', ops: 'Ops', exp: 'Exp', rec: 'Recovery', opsDay: 'Ops/día',
     ready: 'Listo para vivo', promote: 'Promover a vivo', config: 'Config', detail: 'Métricas', save: 'Guardar', saved: 'Guardado',
-    name: 'Nombre del bot', mode: 'Modo', mAuto: 'Automático', mTest: 'Forzar pruebas', mLive: 'Forzar vivo',
+    name: 'Nombre del robot', mode: 'Modo', mAuto: 'Automático', mTest: 'Forzar pruebas', mLive: 'Forzar vivo',
     crit: 'Criterios para graduar a vivo', cDays: 'Días mín.', cTrades: 'Ops mín.', cPf: 'PF mín.', cDd: 'DD máx. %',
     metrics: 'Métricas avanzadas', sharpe: 'Sharpe', sortino: 'Sortino', mar: 'MAR/Calmar', sqn: 'SQN', payoff: 'Payoff',
     ddDur: 'DD (días)', maxLoss: 'Máx. pérdidas seg.', monthsPos: '% meses +', exposure: 'Exposición', annual: 'Anualizado', avgWin: 'Gan. media', avgLoss: 'Pérd. media',
@@ -25,20 +25,20 @@ const T: any = {
     statusRun: 'Operando', statusWait: 'Activo · en espera', statusOff: 'Inactivo',
     addBot: 'Añadir por magic', addBotT: 'Registrar un robot', magicL: 'Magic number', accountL: 'Cuenta',
     create: 'Registrar', cancel: 'Cancelar', pendingBadge: 'Sin operaciones aún',
-    addBotHint: 'Escribe el magic number de tu EA para verlo aquí desde ya, aunque todavía no opere.', dupBot: 'Ya tienes un bot con ese magic en esta cuenta.',
+    addBotHint: 'Escribe el magic number de tu EA para verlo aquí desde ya, aunque todavía no opere.', dupBot: 'Ya tienes un robot con ese magic en esta cuenta.',
     openNowLbl: 'abierta(s) ahora', floatLbl: 'flotante', del: 'Eliminar',
     detectedLbl: 'Magics detectados en esta cuenta (toca para usar):', detectedNone: 'Aún no se detecta ningún magic en esta cuenta. Si la operación fue manual, no lleva magic (es 0) y no cuenta como robot.', detectedTip: 'Usa el magic exacto que tu EA tiene en sus inputs. Si el EA ya operó, aparece aquí abajo.', builtLbl: 'Tus robots creados (toca para registrarlo):',
     noPair: 'Sin par', noneHere: 'Nada en este filtro.',
-    lockT: 'Módulo de bots', lockD: 'Evalúa tus estrategias algorítmicas: KPIs por bot, pruebas vs vivo, criterios de graduación, backtest vs vivo y correlación de portafolio.', lockCta: 'Ver planes',
+    lockT: 'Módulo de robots', lockD: 'Evalúa tus estrategias algorítmicas: KPIs por robot, pruebas vs vivo, criterios de graduación, backtest vs vivo y correlación de portafolio.', lockCta: 'Ver planes',
     addBtn: 'Añadir por $%/mes', addOr: 'o incluido en Black Onyx', addNeedSub: 'Necesitas un plan de pago activo para añadir el módulo. Elige uno abajo.',
-    emptyT: 'Aún no vemos bots', emptyD: 'Cuando un EA opere en una cuenta conectada, aquí aparecerá por su magic number. Reinstala Onyx Connect si es una versión vieja (ahora reporta el magic).',
+    emptyT: 'Aún no vemos robots', emptyD: 'Cuando un EA opere en una cuenta conectada, aquí aparecerá por su magic number. Reinstala Onyx Connect si es una versión vieja (ahora reporta el magic).',
   },
   en: {
     title: 'My robots', sub: 'Each account is a card. Open it to see its robots. Below, build and compare portfolios.',
     testing: 'Testing', live: 'Live', all: 'All', running: 'active', idle: 'idle',
     net: 'Net', pf: 'PF', dd: 'DD', win: 'Win', ops: 'Trades', exp: 'Exp', rec: 'Recovery', opsDay: 'Trades/day',
     ready: 'Ready for live', promote: 'Promote to live', config: 'Config', detail: 'Metrics', save: 'Save', saved: 'Saved',
-    name: 'Bot name', mode: 'Mode', mAuto: 'Automatic', mTest: 'Force testing', mLive: 'Force live',
+    name: 'Robot name', mode: 'Mode', mAuto: 'Automatic', mTest: 'Force testing', mLive: 'Force live',
     crit: 'Criteria to graduate to live', cDays: 'Min days', cTrades: 'Min trades', cPf: 'Min PF', cDd: 'Max DD %',
     metrics: 'Advanced metrics', sharpe: 'Sharpe', sortino: 'Sortino', mar: 'MAR/Calmar', sqn: 'SQN', payoff: 'Payoff',
     ddDur: 'DD (days)', maxLoss: 'Max consec. losses', monthsPos: '% months +', exposure: 'Exposure', annual: 'Annualized', avgWin: 'Avg win', avgLoss: 'Avg loss',
@@ -50,13 +50,13 @@ const T: any = {
     statusRun: 'Running', statusWait: 'Active · idle', statusOff: 'Offline',
     addBot: 'Add by magic', addBotT: 'Register a robot', magicL: 'Magic number', accountL: 'Account',
     create: 'Register', cancel: 'Cancel', pendingBadge: 'No trades yet',
-    addBotHint: 'Type your EA magic number to see it here right away, even before it trades.', dupBot: 'You already have a bot with that magic in this account.',
+    addBotHint: 'Type your EA magic number to see it here right away, even before it trades.', dupBot: 'You already have a robot with that magic in this account.',
     openNowLbl: 'open now', floatLbl: 'floating', del: 'Delete',
     detectedLbl: 'Magics detected on this account (tap to use):', detectedNone: 'No magic detected on this account yet. If the trade was manual it has no magic (0) and does not count as a robot.', detectedTip: 'Use the exact magic your EA has in its inputs. If the EA already traded, it shows below.', builtLbl: 'Your created robots (tap to register):',
     noPair: 'No pair', noneHere: 'Nothing in this filter.',
-    lockT: 'Bots module', lockD: 'Evaluate your algorithmic strategies: per-bot KPIs, testing vs live, graduation criteria, backtest vs live and portfolio correlation.', lockCta: 'See plans',
+    lockT: 'Robots module', lockD: 'Evaluate your algorithmic strategies: per-robot KPIs, testing vs live, graduation criteria, backtest vs live and portfolio correlation.', lockCta: 'See plans',
     addBtn: 'Add for $%/mo', addOr: 'or included in Black Onyx', addNeedSub: 'You need an active paid plan to add the module. Pick one below.',
-    emptyT: 'No bots yet', emptyD: 'When an EA trades on a connected account it appears here by its magic number. Reinstall the Onyx Connector or Guardian if it is an old version (they now report the magic).',
+    emptyT: 'No robots yet', emptyD: 'When an EA trades on a connected account it appears here by its magic number. Reinstall the Onyx Connector or Guardian if it is an old version (they now report the magic).',
   },
 };
 
@@ -140,6 +140,7 @@ export default function Bots() {
   const [filter, setFilter] = useState<'all' | 'live' | 'testing'>('all');
   const [addFor, setAddFor] = useState<any>(null);
   const [addForm, setAddForm] = useState<any>({ magic: '', name: '', mode: 'testing' });
+  const [labOpen, setLabOpen] = useState(false);   // laboratorio de portafolio colapsado por defecto
   const [built, setBuilt] = useState<any[]>([]);
   const [viewAcc, setViewAcc] = useState<string | null>(null);   // cuenta abierta (detalle aparte)
   const [sel, setSel] = useState<Set<string>>(new Set());        // bots elegidos para el laboratorio
@@ -268,7 +269,7 @@ export default function Bots() {
         <div className="row" style={{ gap: 10, flexWrap: 'wrap', fontSize: 11.5, marginBottom: b.mode === 'testing' || b.open?.count > 0 ? 8 : 2 }}>
           <span className="muted">{t.pf} <b style={{ color: 'var(--tx)' }}>{num2(b.pf)}</b></span>
           <span className="muted">{t.win} <b style={{ color: 'var(--tx)' }}>{pct1(b.winRate)}%</b></span>
-          <span className="muted">{t.dd} <b style={{ color: b.ddPct > (b.criteria?.maxDD ?? 10) ? 'var(--amber)' : 'var(--tx)' }}>{pct1(b.ddPct)}%</b></span>
+          <span className="muted">{t.dd} <b style={{ color: b.ddPct > (b.criteria?.maxDD ?? 10) ? 'var(--amber)' : 'var(--tx)' }}>{pct1(Math.min(100, Math.max(0, b.ddPct)))}%</b></span>
           <span className="muted">{t.ops} <b style={{ color: 'var(--tx)' }}>{b.trades}</b></span>
         </div>
 
@@ -652,9 +653,9 @@ export default function Bots() {
                   </div>
                   {curve.length >= 2 ? <AreaSpark pts={curve} color={accent} /> : <div style={{ height: 42 }} />}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                    <div style={{ background: 'var(--bg2)', borderRadius: 9, padding: '7px 9px' }}><div className="muted" style={{ fontSize: 10.5 }}>{L('Mejor bot', 'Best bot')}</div><div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--green)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{best ? `${best.pair || best.name} ${money2(best.net)}` : '—'}</div></div>
-                    <div style={{ background: 'var(--bg2)', borderRadius: 9, padding: '7px 9px' }}><div className="muted" style={{ fontSize: 10.5 }}>{L('Peor bot', 'Worst bot')}</div><div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--red)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{worst ? `${worst.pair || worst.name} ${money2(worst.net)}` : '—'}</div></div>
-                    <div style={{ background: 'var(--bg2)', borderRadius: 9, padding: '7px 9px' }}><div className="muted" style={{ fontSize: 10.5 }}>{L('DD máx.', 'Max DD')}</div><div style={{ fontSize: 12.5, fontWeight: 700, color: ddMax > 10 ? 'var(--amber)' : 'var(--tx)' }}>{pct1(ddMax)}%</div></div>
+                    <div style={{ background: 'var(--bg2)', borderRadius: 9, padding: '7px 9px' }}><div className="muted" style={{ fontSize: 10.5 }}>{L('Mejor robot', 'Best robot')}</div><div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--green)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{best ? `${best.pair || best.name} ${money2(best.net)}` : '—'}</div></div>
+                    <div style={{ background: 'var(--bg2)', borderRadius: 9, padding: '7px 9px' }}><div className="muted" style={{ fontSize: 10.5 }}>{L('Peor robot', 'Worst robot')}</div><div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--red)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{worst ? `${worst.pair || worst.name} ${money2(worst.net)}` : '—'}</div></div>
+                    <div style={{ background: 'var(--bg2)', borderRadius: 9, padding: '7px 9px' }}><div className="muted" style={{ fontSize: 10.5 }}>{L('DD máx.', 'Max DD')}</div><div style={{ fontSize: 12.5, fontWeight: 700, color: ddMax > 10 ? 'var(--amber)' : 'var(--tx)' }}>{pct1(Math.min(100, Math.max(0, ddMax)))}%</div></div>
                     <div style={{ background: 'var(--bg2)', borderRadius: 9, padding: '7px 9px' }}><div className="muted" style={{ fontSize: 10.5 }}>{L('Diversificación', 'Diversification')}</div><div style={{ fontSize: 12.5, fontWeight: 700, color: divCol(diversification(mine)) }}>{divTxt(diversification(mine))}</div></div>
                   </div>
                   <div style={{ marginTop: 11, textAlign: 'center', fontSize: 13.5, fontWeight: 700, color: '#fff', background: 'linear-gradient(90deg,#6f77ea,#5b63d3)', borderRadius: 11, padding: '10px', boxShadow: '0 6px 16px color-mix(in srgb,var(--brand) 40%,transparent)', pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}><OnyxIcon emoji="📊" size={14} glow={false} /> {L(`Ver los ${mine.length} robots`, `See the ${mine.length} robots`)} →</div>
@@ -670,7 +671,16 @@ export default function Bots() {
               <UpsellBox title={L('Laboratorio de portafolio + correlación', 'Portfolio lab + correlation')} desc={L('Combina tus robots, mira su correlación y recibe portafolios sugeridos. Disponible en Trader y Black Onyx.', 'Combine your robots, see their correlation and get suggested portfolios. Available on Trader and Black Onyx.')} />
             </div>
           )}
+          {/* Entrada simple: el laboratorio arranca colapsado para que la primera vista sea limpia. */}
           {caps.portfolioLab && (
+            <button className="card" onClick={() => setLabOpen((v) => !v)} style={{ width: '100%', textAlign: 'left', cursor: 'pointer', padding: '13px 16px', marginBottom: labOpen ? 12 : 16, display: 'flex', alignItems: 'center', gap: 10, background: 'var(--card)', border: '1px solid var(--line)' }}>
+              <OnyxIcon emoji="🧪" size={16} />
+              <span style={{ flex: 1 }}><b style={{ fontSize: 14 }}>{L('Comparar portafolios', 'Compare portfolios')}</b><span className="muted" style={{ display: 'block', fontSize: 12 }}>{L('Combina robots y mira si se diversifican o caen juntos.', 'Combine robots and see if they diversify or fall together.')}</span></span>
+              {!!sel.size && <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--brand)', border: '1px solid color-mix(in srgb,var(--brand) 40%,transparent)', borderRadius: 99, padding: '2px 9px' }}>{sel.size} {L('elegidos', 'selected')}</span>}
+              <span style={{ fontSize: 13, color: 'var(--mut)' }}>{labOpen ? '▴' : '▾'}</span>
+            </button>
+          )}
+          {caps.portfolioLab && labOpen && (
           <div className="card" style={{ padding: '16px 16px 18px', marginBottom: 16 }}>
             <h3 style={{ marginBottom: 4 }}><OnyxIcon emoji="🧪" size={16} /> {L('Laboratorio de portafolio', 'Portfolio lab')}</h3>
             <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{L('Prueba combinaciones de tus robots sin arriesgar dinero: mira si se diversifican (se mueven por separado) o si caen juntos.', 'Test combinations of your robots without risking money: see if they diversify (move separately) or fall together.')}</p>
@@ -773,7 +783,7 @@ export default function Bots() {
           )}
 
           {/* ====== SUGERENCIAS DE PORTAFOLIO ====== */}
-          {caps.portfolioLab && suggestions && (
+          {caps.portfolioLab && labOpen && suggestions && (
             <div className="card" style={{ padding: '16px 16px 18px' }}>
               <h3 style={{ marginBottom: 4 }}><OnyxIcon emoji="✨" size={16} /> {L('Portafolios sugeridos', 'Suggested portfolios')}</h3>
               <p className="muted" style={{ fontSize: 13, marginBottom: 14 }}>{L('Onyx junta robots que se mueven por separado y que suman ganancia, para que no caigan todos a la vez. Toca “Aplicar” para probarlos aquí.', 'Onyx groups robots that move independently and add up in profit, so they don\'t all fall at once. Tap “Apply” to try them here.')}</p>
