@@ -20,10 +20,28 @@ const GOLD_CHIP: any = { background: 'linear-gradient(120deg,#ffd45e,#ffb020)', 
 export default function MainNav({ items, authItems }: { items: NavItem[]; authItems?: NavItem[] }) {
   const pathname = usePathname() || '/';
   const [open, setOpen] = useState(false);
+  const [menuTop, setMenuTop] = useState<number | null>(null);   // top real del menú en móvil (px)
   const box = useRef<HTMLDivElement>(null);
 
   // Cierra al navegar
   useEffect(() => { setOpen(false); }, [pathname]);
+
+  // En móvil, ancla el menú al borde INFERIOR real de la barra (medido en vivo).
+  // Así no depende de suponer 64px + alto de promo + muesca: siempre queda pegado
+  // bajo la barra en cualquier iPhone/Android. En desktop no se aplica (top=null).
+  useEffect(() => {
+    if (!open) return;
+    const compute = () => {
+      const mobile = typeof window !== 'undefined' && window.matchMedia('(max-width:600px)').matches;
+      if (!mobile) { setMenuTop(null); return; }
+      const tb = document.querySelector('.topbar') as HTMLElement | null;
+      setMenuTop(tb ? Math.max(0, Math.round(tb.getBoundingClientRect().bottom)) : null);
+    };
+    compute();
+    window.addEventListener('resize', compute);
+    window.addEventListener('scroll', compute, { passive: true });
+    return () => { window.removeEventListener('resize', compute); window.removeEventListener('scroll', compute); };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -62,7 +80,7 @@ export default function MainNav({ items, authItems }: { items: NavItem[]; authIt
           <span /><span /><span />
         </button>
         {open && (
-          <div className="menu" style={{ minWidth: 180 }}>
+          <div className="menu" style={{ minWidth: 180, ...(menuTop != null ? { top: menuTop + 'px', maxHeight: `calc(100dvh - ${menuTop}px)` } : {}) }}>
             {items.map((i) => {
               const cls = 'menu-item' + (isActive(i.href) ? ' on' : '');
               const inner = (<>
