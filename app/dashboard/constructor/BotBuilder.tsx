@@ -3,7 +3,8 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import { toast, toastErr } from '@/lib/toast';
 import OnyxIcon from '@/app/components/OnyxIcon';
-import { DEFAULT_SPEC, summarize, tfOptions, SYMBOL_HINTS, type BotSpec } from '@/lib/botSpec';
+import { DEFAULT_SPEC, summarize, tfOptions, type BotSpec } from '@/lib/botSpec';
+import { INSTRUMENTS, INSTR_GROUPS, CAT_LABELS, searchInstruments, type Instrument } from '@/lib/instruments';
 
 // Contexto para los controles: evita recrear componentes en cada render (lo que
 // desmontaba los inputs y saltaba el scroll al inicio al escribir).
@@ -60,6 +61,67 @@ function Panel({ ic, title, sub, children }: any) {
   </div>);
 }
 
+// Nombre legible de un símbolo (si está en el catálogo).
+function symName(sym: string, es: boolean): string {
+  const it = INSTRUMENTS.find((x) => x.sym === String(sym || '').toUpperCase());
+  return it ? (es ? it.es : it.en) : '';
+}
+
+// Selector de instrumento con buscador + categorías. Permite escribir uno propio.
+function SymbolPicker({ es, current, onPick, onClose }: { es: boolean; current: string; onPick: (s: string) => void; onClose: () => void }) {
+  const [q, setQ] = useState('');
+  const [grp, setGrp] = useState<'all' | string>('all');
+  const L = (a: string, b: string) => (es ? a : b);
+  const list = useMemo(() => searchInstruments(q, grp), [q, grp]);
+  // Agrupa por categoría para mostrar encabezados.
+  const groups = useMemo(() => {
+    const m: Record<string, Instrument[]> = {};
+    list.forEach((i) => { (m[i.cat] ||= []).push(i); });
+    return Object.entries(m);
+  }, [list]);
+  const chip = (on: boolean): any => ({ fontSize: 12.5, fontWeight: 700, padding: '6px 12px', borderRadius: 99, cursor: 'pointer', border: 'none', background: on ? 'var(--brand,#8b93ff)' : 'rgba(255,255,255,.06)', color: on ? '#0b1020' : 'var(--mut)' });
+  const typed = q.trim().toUpperCase().replace(/[^A-Z0-9._]/g, '');
+  const showCustom = typed.length >= 3 && !INSTRUMENTS.some((i) => i.sym === typed);
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(3,6,14,.72)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', zIndex: 2000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '6vh 16px 16px' }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(500px,100%)', background: 'var(--card,#141a2b)', border: '1px solid var(--line,#2a3550)', borderRadius: 18, padding: 18, maxHeight: '82vh', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--ink)' }}>{L('Elige el instrumento', 'Pick the instrument')}</div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--mut)', cursor: 'pointer', fontSize: 18 }}>✕</button>
+        </div>
+        <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={L('Busca símbolo o nombre (oro, dax, eurusd, btc…)', 'Search symbol or name (gold, dax, eurusd, btc…)')} style={{ width: '100%', padding: '11px 13px', borderRadius: 11, border: '1px solid var(--line,#2a3550)', background: 'rgba(255,255,255,.04)', color: 'var(--ink)', fontSize: 14, marginBottom: 10 }} />
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+          <button onClick={() => setGrp('all')} style={chip(grp === 'all')}>{L('Todos', 'All')}</button>
+          {INSTR_GROUPS.map((g) => <button key={g.key} onClick={() => setGrp(g.key)} style={chip(grp === g.key)}>{es ? g.es : g.en}</button>)}
+        </div>
+        <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {showCustom && (
+            <button onClick={() => { onPick(typed); onClose(); }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 11, border: '1px dashed var(--brand,#8b93ff)', background: 'color-mix(in srgb,var(--brand,#8b93ff) 10%,transparent)', color: 'var(--ink)', cursor: 'pointer', textAlign: 'left' }}>
+              <span style={{ fontSize: 15 }}>＋</span>
+              <span style={{ flex: 1 }}><b>{typed}</b> <span style={{ color: 'var(--mut)', fontSize: 12.5 }}>· {L('usar este símbolo propio', 'use this custom symbol')}</span></span>
+            </button>
+          )}
+          {!groups.length && !showCustom && <div style={{ color: 'var(--mut)', fontSize: 13, padding: 12, textAlign: 'center' }}>{L('Sin resultados. Escribe el símbolo de tu bróker.', 'No results. Type your broker symbol.')}</div>}
+          {groups.map(([cat, items]) => (
+            <div key={cat}>
+              <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--mut)', margin: '8px 4px 4px' }}>{es ? CAT_LABELS[cat as keyof typeof CAT_LABELS].es : CAT_LABELS[cat as keyof typeof CAT_LABELS].en}</div>
+              {items.map((i) => {
+                const on = i.sym === current;
+                return (
+                  <button key={i.sym} onClick={() => { onPick(i.sym); onClose(); }} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '9px 12px', borderRadius: 10, border: on ? '1.5px solid var(--brand,#8b93ff)' : '1px solid var(--line,#2a3550)', background: on ? 'color-mix(in srgb,var(--brand,#8b93ff) 12%,transparent)' : 'transparent', color: 'var(--ink)', cursor: 'pointer', marginBottom: 4, textAlign: 'left' }}>
+                    <span style={{ fontWeight: 700, fontSize: 13.5 }}>{i.sym}</span>
+                    <span style={{ fontSize: 12.5, color: 'var(--mut)' }}>{es ? i.es : i.en}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Constructor "cabina": tarjetas iluminadas con glow, chips de estado, sesión en
 // píldoras, aviso de incompletos, estimador, semáforo de coherencia y plantillas.
 export default function BotBuilder() {
@@ -73,6 +135,11 @@ export default function BotBuilder() {
   const [tpls, setTpls] = useState<any[]>([]);
   const [busy, setBusy] = useState(false);
   const [big, setBig] = useState(false);
+  const [symOpen, setSymOpen] = useState(false);   // selector de instrumento con buscador
+  // Filtros de "Mis robots": buscador por nombre, orden y estado.
+  const [rq, setRq] = useState('');
+  const [rsort, setRsort] = useState<'new' | 'old' | 'az' | 'live'>('new');
+  const [rfilter, setRfilter] = useState<'all' | 'live' | 'untested'>('all');
   const [view, setView] = useState('home'); // 'home' = tablero de tarjetas; o la clave de una sección
   const [mode, setMode] = useState<'simple' | 'expert'>('simple'); // 'simple' = guiado paso a paso (primerizos); 'expert' = tablero completo
   const [showGlos, setShowGlos] = useState(false); // glosario de términos (¿qué es?) en el resumen
@@ -223,6 +290,8 @@ export default function BotBuilder() {
   async function delTpl(tid: string) { if (!confirm(L('¿Borrar esta plantilla?', 'Delete this template?'))) return; await fetch('/api/bots/templates?id=' + tid, { method: 'DELETE' }); loadTpls(); }
   function edit(b: any) { setS({ ...DEFAULT_SPEC, ...(b.spec || {}) }); setId(b.id); touchAll(); visitAll(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
   function nuevo() { setS(blankReq({ ...DEFAULT_SPEC, magic: genMagic() })); setId(''); setTouched({}); setVisited({}); assignUniqueMagic(); go('home'); }
+  // Duplicar: carga la receta como un robot NUEVO (nuevo magic, sin id) para ajustarlo.
+  function duplicate(b: any) { setS({ ...DEFAULT_SPEC, ...(b.spec || {}), name: `${b.name || ''} ${L('copia', 'copy')}`.trim(), magic: genMagic() }); setId(''); touchAll(); visitAll(); assignUniqueMagic(); window.scrollTo({ top: 0, behavior: 'smooth' }); toast(L('Robot duplicado. Ajústalo y créalo.', 'Robot duplicated. Tweak it and create it.')); }
   async function del(bid: string) { if (!confirm(L('¿Borrar este robot?', 'Delete this robot?'))) return; await fetch('/api/bots/build?id=' + bid, { method: 'DELETE' }); if (id === bid) nuevo(); load(); }
   async function openGuide() { let bid = id; if (!bid) { bid = (await save()) || ''; } if (bid) window.open(`/api/bots/build?guide=${bid}&lang=${es ? 'es' : 'en'}`, '_blank'); }
 
@@ -283,17 +352,51 @@ export default function BotBuilder() {
     `${L('Cap diario', 'Daily cap')} ${s.dailyLossVal} ${uu(s.dailyLossUnit)}`,
     `${s.firmName} · ${phaseLbl}`,
   ];
-  const sumRows: [string, string, string][] = [
-    ['🎯', L('Entrada', 'Entry'), `${trigLbl} · ${L('sesgo', 'bias')} ${biasLbl} ${s.trendTF}`],
-    ['🛡️', L('Stop loss', 'Stop loss'), `${s.slVal} ${uu(s.slUnit)}`],
-    ['🚪', L('Salidas', 'Exits'), `TP1 ${s.tp1Val} ${uu(s.tp1Unit)} (${s.partialPct}%) · runner ${s.runnerVal} ${uu(s.runnerUnit)} · ${s.useTrail ? `trailing ${s.trailVal} ${uu(s.trailUnit)}` : L('sin trailing', 'no trailing')}`],
-    ['🏦', L('Fondeo y frenos', 'Firm & brakes'), `${s.firmName} · DD ${ddLbl} ${s.firmTotalLimitPct}% · ${L('frenos', 'brakes')} ${s.acctSoftStopPct}/${s.acctDailyStopPct}/${s.acctMaxDDPct}%`],
-    ['🕐', L('Horario', 'Schedule'), `${hhmm(s.signalFromH, s.signalFromM)}–${hhmm(s.signalToH, s.signalToM)}${s.noWeekend ? L(' · sin fin de semana', ' · no weekend') : ''}${s.useNewsFilter ? L(' · frena en noticias', ' · pauses on news') : ''}`],
-    ['🏁', L('Objetivo', 'Target'), `${phaseLbl}${tgPct ? ` · +${tgPct}%` : ''} · magic ${s.magic}`],
+  // Resumen ESPEJO de las 6 secciones (mismo orden que los pasos). Cada tarjeta:
+  // [icono, título, detalle, sección, ¿definida?]. Si falta, se ve en ámbar y lleva al paso.
+  const dash = L('sin definir', 'not set');
+  const sumRows: [string, string, string, string, boolean][] = [
+    ['⚙️', L('General', 'General'),
+      `${s.symbol ? s.symbol + (symName(s.symbol, es) ? ' (' + symName(s.symbol, es) + ')' : '') : '—'} · ${s.tf || '—'} · ${s.platform ? s.platform.toUpperCase() : '—'}`,
+      'general', !!(s.name && s.symbol && s.platform && s.tf)],
+    ['🎯', L('Entrada', 'Entry'),
+      s.entryTrigger ? `${trigLbl} · ${L('sesgo', 'bias')} ${biasLbl} ${s.trendTF}` : dash,
+      'entry', !!s.entryTrigger],
+    ['🚪', L('Salidas y gestión', 'Exits & management'),
+      nz(s.slVal) ? `SL ${s.slVal} ${uu(s.slUnit)} · TP1 ${s.tp1Val} ${uu(s.tp1Unit)} (${s.partialPct}%) · runner ${s.runnerVal} ${uu(s.runnerUnit)} · ${s.useTrail ? `trailing ${s.trailVal} ${uu(s.trailUnit)}` : L('sin trailing', 'no trailing')}` : dash,
+      'exits', nz(s.slVal) && nz(s.tp1Val) && nz(s.runnerVal)],
+    ['🛡️', L('Riesgo', 'Risk'),
+      nz(s.riskVal) ? `${L('Riesgo', 'Risk')} ${s.riskVal} ${uu(s.riskUnit)} · ${L('cap diario', 'daily cap')} ${s.dailyLossVal} ${uu(s.dailyLossUnit)}${nz(s.dailyProfitVal) ? ` · ${L('objetivo diario', 'daily target')} ${s.dailyProfitVal} ${uu(s.dailyProfitUnit)}` : ''}` : dash,
+      'risk', nz(s.riskVal) && nz(s.dailyLossVal)],
+    ['🏦', L('Fondeo y frenos', 'Firm & brakes'),
+      (s.accountMode !== ('' as any) && phaseLbl) ? `${s.firmName} · DD ${ddLbl} ${s.firmTotalLimitPct}% · ${L('frenos', 'brakes')} ${s.acctSoftStopPct}/${s.acctDailyStopPct}/${s.acctMaxDDPct}% · ${phaseLbl}${tgPct ? ` +${tgPct}%` : ''}` : dash,
+      'firm', s.accountMode !== ('' as any) && nz(s.firmTotalLimitPct)],
+    ['🕐', L('Sesión', 'Session'),
+      `${hhmm(s.signalFromH, s.signalFromM)}–${hhmm(s.signalToH, s.signalToM)}${s.noWeekend ? L(' · sin fin de semana', ' · no weekend') : ''}${s.useNewsFilter ? L(' · frena en noticias', ' · pauses on news') : ''}`,
+      'schedule', true],
   ];
+
+  // Mis robots: filtro por nombre/estado + orden.
+  const robotsLive = (b: any) => (opsByMagic[Number(b.magic)]?.trades || 0) > 0;
+  const liveCount = list.filter(robotsLive).length;
+  const visRobots = list
+    .filter((b) => {
+      if (rq.trim() && !String(b.name || '').toLowerCase().includes(rq.trim().toLowerCase()) && !String(b.spec?.symbol || '').toLowerCase().includes(rq.trim().toLowerCase())) return false;
+      if (rfilter === 'live' && !robotsLive(b)) return false;
+      if (rfilter === 'untested' && robotsLive(b)) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      if (rsort === 'az') return String(a.name || '').localeCompare(String(b.name || ''));
+      if (rsort === 'live') return (opsByMagic[Number(b.magic)]?.trades || 0) - (opsByMagic[Number(a.magic)]?.trades || 0);
+      const ta = new Date(a.created_at || a.updated_at || 0).getTime(), tb = new Date(b.created_at || b.updated_at || 0).getTime();
+      return rsort === 'old' ? ta - tb : tb - ta;
+    });
+  const fmtDate = (d: any) => { try { return new Date(d).toLocaleDateString(es ? 'es' : 'en', { day: 'numeric', month: 'short', year: 'numeric' }); } catch { return ''; } };
 
   return (
     <BB.Provider value={{ s, set, es, reqKeys, okKey: okVal }}>
+    {symOpen && <SymbolPicker es={es} current={s.symbol} onPick={(sym) => set('symbol', sym)} onClose={() => setSymOpen(false)} />}
     <div className="bbx" style={{ maxWidth: big ? 1500 : 1120, margin: '0 auto' }}>
       <style>{`
       .bbx{--ac:#8b93ff;--ac2:#5b63d3;--ok:#5fe0aa;--wn:#f2c265;--ink:#eef0fa;--mut:#98a0b8;--line:rgba(255,255,255,.09)}
@@ -480,8 +583,18 @@ export default function BotBuilder() {
       <Panel ic="⚙️" title={L('General', 'General')}>
         <Fld t={L('Nombre de tu robot', 'Your robot name')} k="name" ph={L('Ej: Mi cazador de Londres', 'e.g. My London hunter')} hint={L('Solo para identificarlo en tu lista. Ponle algo que reconozcas.', 'Just to identify it in your list. Use something you\'ll recognize.')} />
         <Fld t={L('Plataforma', 'Platform')} k="platform" opts={[['', L('Elige…', 'Choose…')], ['mt5', 'MetaTrader 5'], ['mt4', 'MetaTrader 4'], ['ctrader', 'cTrader']]} hint={L('La app donde correrá el robot. Genera el archivo correcto (.mq5, .mq4 o .cs).', 'The app the robot will run on. Generates the right file (.mq5, .mq4 or .cs).')} />
-        <Fld t={L('Instrumento', 'Instrument')} k="symbol" ph="XAUUSD" list="bbx-syms" hint={L('El bot encuentra el símbolo aunque tu broker use otro nombre o sufijo (GOLD, XAUUSD.m, etc.).', 'The bot finds the symbol even if your broker uses another name or suffix (GOLD, XAUUSD.m, etc.).')} />
-        <datalist id="bbx-syms">{SYMBOL_HINTS.map((x) => <option key={x} value={x} />)}</datalist>
+        {/* Instrumento: selector con buscador y categorías (metales, índices, forex, energía, cripto). */}
+        <div>
+          <span className="bbx-lbl"><ReqDot show ok={!!s.symbol} />{L('Instrumento', 'Instrument')}</span>
+          <button type="button" data-fld="symbol" onClick={() => setSymOpen(true)} className="bbx-in" style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', textAlign: 'left', width: '100%' }}>
+            <OnyxIcon emoji="🔎" size={14} glow={false} />
+            <span style={{ flex: 1, color: s.symbol ? 'var(--ink)' : 'var(--mut)', fontWeight: s.symbol ? 700 : 400 }}>
+              {s.symbol ? `${s.symbol}${symName(s.symbol, es) ? ' · ' + symName(s.symbol, es) : ''}` : L('Elige o busca un instrumento…', 'Pick or search an instrument…')}
+            </span>
+            <OnyxIcon emoji="▾" size={12} glow={false} />
+          </button>
+          <div className="bbx-hint">{L('Metales, índices de todo el mundo, todos los pares, petróleo y cripto. El bot lo encuentra aunque tu bróker use otro sufijo (GOLD, XAUUSD.m…).', 'Metals, world indices, all pairs, oil and crypto. The bot finds it even if your broker uses another suffix (GOLD, XAUUSD.m…).')}</div>
+        </div>
         {/* Magic: Onyx asigna uno ÚNICO de 9 dígitos, verificado en la base de datos.
             NO es editable: es la identidad del robot y evita que dos se mezclen. */}
         <div>
@@ -735,10 +848,14 @@ export default function BotBuilder() {
           </div>
         </div>
         <div className="bbx-grid" style={{ gap: 8 }}>
-          {sumRows.map(([ic, t, d], i) => (
-            <div key={i} style={{ display: 'flex', gap: 10, background: 'var(--surface-2,rgba(255,255,255,.04))', border: '1px solid var(--line)', borderRadius: 10, padding: '10px 12px' }}>
+          {sumRows.map(([ic, t, d, sec, def], i) => (
+            <div key={i} onClick={() => go(sec)} title={L('Ir a esta sección', 'Go to this section')} style={{ display: 'flex', gap: 10, cursor: 'pointer', background: def ? 'var(--surface-2,rgba(255,255,255,.04))' : 'rgba(242,194,101,.08)', border: `1px solid ${def ? 'var(--line)' : 'rgba(242,194,101,.45)'}`, borderRadius: 10, padding: '10px 12px' }}>
               <span style={{ flex: 'none' }}><OnyxIcon emoji={ic} size={16} /></span>
-              <div><div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--ink)' }}>{t}</div><div style={{ fontSize: 12, color: 'var(--mut)', lineHeight: 1.4 }}>{d}</div></div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--ink)', display: 'flex', alignItems: 'center', gap: 6 }}>{t}{!def && <span style={{ fontSize: 9.5, fontWeight: 800, color: 'var(--wn)', border: '1px solid rgba(242,194,101,.5)', borderRadius: 99, padding: '0 7px' }}>{L('FALTA', 'MISSING')}</span>}</div>
+                <div style={{ fontSize: 12, color: def ? 'var(--mut)' : 'var(--wn)', lineHeight: 1.4 }}>{d}</div>
+              </div>
+              <span style={{ flex: 'none', alignSelf: 'center', fontSize: 12, color: 'var(--mut)' }}>›</span>
             </div>
           ))}
         </div>
@@ -760,9 +877,29 @@ export default function BotBuilder() {
 
       {list.length > 0 && (
         <div className="bbx-panel">
-          <div className="bbx-panel-h"><span className="bbx-ic"><OnyxIcon emoji="🗂️" size={16} /></span> {L('Mis robots', 'My robots')}</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {list.map((b) => {
+          <div className="bbx-panel-h" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 11 }}><span className="bbx-ic"><OnyxIcon emoji="🗂️" size={16} /></span> {L('Mis robots', 'My robots')} <span style={{ fontSize: 12, color: 'var(--mut)', fontWeight: 400 }}>· {list.length}{liveCount ? ` · ${liveCount} ${L('operando', 'trading')}` : ''}</span></span>
+          </div>
+          {/* Buscador + orden + filtro de estado */}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 170, border: '1px solid var(--line)', borderRadius: 10, padding: '0 11px', height: 36, background: 'rgba(255,255,255,.04)' }}>
+              <OnyxIcon emoji="🔎" size={13} glow={false} />
+              <input value={rq} onChange={(e) => setRq(e.target.value)} placeholder={L('Buscar por nombre…', 'Search by name…')} style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: 'var(--ink)', fontSize: 13 }} />
+              {rq && <button onClick={() => setRq('')} style={{ background: 'none', border: 'none', color: 'var(--mut)', cursor: 'pointer', fontSize: 14 }}>✕</button>}
+            </div>
+            <select value={rsort} onChange={(e) => setRsort(e.target.value as any)} className="bbx-in bbx-sel" style={{ width: 'auto', height: 36 }}>
+              <option value="new">{L('Más recientes', 'Newest')}</option>
+              <option value="old">{L('Más antiguos', 'Oldest')}</option>
+              <option value="az">{L('Nombre A-Z', 'Name A-Z')}</option>
+              <option value="live">{L('Operando primero', 'Trading first')}</option>
+            </select>
+            {([['all', L('Todos', 'All')], ['live', L('Operando', 'Trading')], ['untested', L('Sin probar', 'Untested')]] as [any, string][]).map(([v, lb]) => (
+              <button key={v} onClick={() => setRfilter(v)} style={{ fontSize: 12, fontWeight: 700, padding: '7px 12px', borderRadius: 99, cursor: 'pointer', border: 'none', background: rfilter === v ? 'var(--ac,#8b93ff)' : 'rgba(255,255,255,.06)', color: rfilter === v ? '#0b1020' : 'var(--mut)' }}>{lb}</button>
+            ))}
+          </div>
+          {!visRobots.length && <div style={{ color: 'var(--mut)', fontSize: 13, padding: 16, textAlign: 'center' }}>{L('Ningún robot coincide con la búsqueda.', 'No robots match your search.')}</div>}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(300px,1fr))', gap: 12 }}>
+            {visRobots.map((b) => {
               const plat = String(b.platform || 'mt5').toLowerCase();
               const isMTr = plat === 'mt5' || plat === 'mt4';
               const platLbl = plat === 'ctrader' ? 'cTrader' : plat.toUpperCase();
@@ -787,6 +924,7 @@ export default function BotBuilder() {
                       {b.spec?.symbol && <span style={{ fontSize: 10.5, color: '#c9d2ea', background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.1)', borderRadius: 7, padding: '2px 8px' }}>{b.spec.symbol}</span>}
                       <span style={{ fontSize: 10.5, fontFamily: 'monospace', color: '#ffd45e', background: 'rgba(255,212,94,.1)', border: '1px solid rgba(255,212,94,.3)', borderRadius: 7, padding: '2px 8px' }}>🔒 {b.magic}</span>
                     </div>
+                    {(b.created_at || b.updated_at) && <div style={{ fontSize: 11, color: 'var(--mut)', marginTop: 5 }}>{L('Creado', 'Created')} {fmtDate(b.created_at || b.updated_at)}</div>}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 7, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -798,6 +936,7 @@ export default function BotBuilder() {
                     ? <a style={{ ...act, color: '#3a2a06', fontWeight: 800, border: 'none', background: 'linear-gradient(120deg,#ffd45e,#ffb020)', boxShadow: '0 6px 16px rgba(255,176,32,.3)' }} href={sellHref}><OnyxIcon emoji="💰" size={12} glow={false} /> {L('Vender', 'Sell')}</a>
                     : <span title={L('Necesita 20+ operaciones reales para venderse.', 'Needs 20+ real trades to be sold.')} style={{ ...act, cursor: 'default', color: '#6b7488', background: 'rgba(255,255,255,.03)', border: '1px dashed rgba(255,255,255,.15)' }}><OnyxIcon emoji="💰" size={12} glow={false} /> {L('Vender · necesita historial', 'Sell · needs history')}</span>}
                   <span style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
+                    <button style={{ ...act, background: 'transparent', border: 'none', color: '#9aa6bd' }} onClick={() => duplicate(b)}><OnyxIcon emoji="⧉" size={13} /> {L('Duplicar', 'Duplicate')}</button>
                     <button style={{ ...act, background: 'transparent', border: 'none', color: '#9aa6bd' }} onClick={() => edit(b)}><OnyxIcon emoji="✎" size={13} /> {L('Editar', 'Edit')}</button>
                     <button style={{ ...act, background: 'transparent', border: 'none', color: '#ff6b7d' }} onClick={() => del(b.id)}><OnyxIcon emoji="🗑" size={13} /></button>
                   </span>

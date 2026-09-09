@@ -403,8 +403,8 @@ function ProductModal({ es, product, pay, onClose, onSaved }: any) {
             <PayChip on={!!f.spec_news} onClick={() => setF({ ...f, spec_news: !f.spec_news })} icon="📰" label={es ? 'Filtro de noticias' : 'News filter'} />
             <PayChip on={!!f.spec_propfirm} onClick={() => setF({ ...f, spec_propfirm: !f.spec_propfirm })} icon="🏦" label={es ? 'Apto para prop firm' : 'Prop-firm ready'} />
           </div>
-          <input style={inp} placeholder={es ? 'Prueba de rendimiento (Myfxbook, backtest, statement…)' : 'Performance proof (Myfxbook, backtest, statement…)'} value={f.proof_url || ''} onChange={(e) => setF({ ...f, proof_url: e.target.value })} />
-          <span className="muted" style={{ fontSize: 11.5, marginTop: -4 }}>{es ? 'Un enlace a tu track record real ayuda a que aprobemos tu robot más rápido.' : 'A link to your real track record helps us approve your robot faster.'}</span>
+          <input style={inp} placeholder={es ? 'Myfxbook / FXBlue (opcional)' : 'Myfxbook / FXBlue (optional)'} value={f.proof_url || ''} onChange={(e) => setF({ ...f, proof_url: e.target.value })} />
+          <span className="muted" style={{ fontSize: 11.5, marginTop: -4 }}>{es ? 'Onyx aprueba con las operaciones REALES de tu robot (por su magic). Este enlace externo es opcional y le da más confianza al comprador.' : 'Onyx approves using your robot\'s REAL trades (by its magic). This external link is optional and adds buyer trust.'}</span>
           {cardOn ? (
             <div>
               <div className="muted" style={{ fontSize: 11.5, marginBottom: 6 }}>{es ? 'Métodos de pago que aceptas' : 'Payment methods you accept'}</div>
