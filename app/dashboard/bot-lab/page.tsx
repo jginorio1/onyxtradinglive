@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import { toast, toastErr } from '@/lib/toast';
 
-type View = 'market' | 'licencias' | 'vender' | 'ganancias';
+type View = 'market' | 'licencias' | 'vender' | 'ganancias' | 'referidos';
 const GOLD = 'var(--gold, #ffd45e)';
 function money(cents: number) { return '$' + ((cents || 0) / 100).toLocaleString('en-US', { maximumFractionDigits: 2 }); }
 const card: any = { background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, padding: 16 };
@@ -37,7 +37,7 @@ export default function BotLabDashboard() {
     loadMarket(); loadLicenses(); loadSell();
     try {
       const sp = new URLSearchParams(window.location.search);
-      const t = sp.get('tab'); if (t === 'vender' || t === 'licencias' || t === 'market' || t === 'ganancias') setView(t as View);
+      const t = sp.get('tab'); if (t === 'vender' || t === 'licencias' || t === 'market' || t === 'ganancias' || t === 'referidos') setView(t as View);
       // Deep-link a un robot concreto desde la landing: abre el marketplace y lo resalta.
       const pid = sp.get('p'); if (pid) { setView('market'); setFocusId(pid); }
       // Referido del vendedor: guardamos el ref para acreditar a quien trajo la venta.
@@ -117,6 +117,7 @@ export default function BotLabDashboard() {
     ['licencias', svg('M12 3l7 9-7 9-7-9z'), es ? 'Mis robots' : 'My robots'],
     ['vender', svg('M3 3v18h18M7 14l4-4 3 3 5-6'), es ? 'Vender' : 'Sell'],
     ['ganancias', svg('M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'), es ? 'Ganancias' : 'Earnings'],
+    ['referidos', svg('M16 11a4 4 0 1 0-8 0M2 21a6 6 0 0 1 12 0M17 11a4 4 0 0 1 5 6'), es ? 'Mis referidos' : 'My referrals'],
   ];
 
   // Marketplace: buscador + filtro de plataforma + orden. Se pagina con "cargar más".
@@ -287,7 +288,8 @@ export default function BotLabDashboard() {
         )}
 
         {view === 'vender' && sell && <SellPanel es={es} sell={sell} reload={loadSell} onEdit={setEditing} />}
-        {view === 'ganancias' && sell && <EarningsPanel es={es} sell={sell} reload={loadSell} />}
+        {view === 'ganancias' && sell && <EarningsPanel es={es} sell={sell} reload={loadSell} goReferrals={() => setView('referidos')} />}
+        {view === 'referidos' && sell && <ReferralsPanel es={es} sell={sell} me={me} products={products} shareRef={shareRef} />}
       </div>
 
       {netPick && <NetworkPicker es={es} pick={netPick} onClose={() => setNetPick(null)} onPick={(n: string) => buy(netPick.product, 'usdt', n)} />}
@@ -333,7 +335,79 @@ function SellPanel({ es, sell, reload, onEdit }: any) {
 }
 
 // ---------------------------------------------------------------- Ganancias
-function EarningsPanel({ es, sell, reload }: any) {
+// ============================================================
+// MIS REFERIDOS · lo que ganas compartiendo robots de OTROS creadores.
+// Balance (disponible/en espera/pagado), historial de comisiones y de dónde
+// sacar tu enlace de afiliado. Se cobra junto con tus retiros en la pestaña
+// Ganancias (mismo saldo USDT/banco).
+// ============================================================
+function ReferralsPanel({ es, sell, me, products, shareRef }: any) {
+  const rf = sell.referral || {};
+  const items: any[] = rf.items || [];
+  // Robots de otros creadores que ofrecen referido (para sacar el enlace).
+  const shareable = (products || []).filter((p: any) => Number(p.affiliate_pct) > 0 && me && p.seller_id !== me);
+  const st = (s: string) => s === 'paid' ? { t: es ? 'Pagado' : 'Paid', c: 'var(--green)' } : s === 'reversed' ? { t: es ? 'Anulado' : 'Reversed', c: 'var(--red)' } : { t: es ? 'Pendiente' : 'Pending', c: 'var(--amber)' };
+  return (
+    <div style={{ display: 'grid', gap: 16 }}>
+      <div>
+        <h2 style={{ margin: '0 0 4px', fontSize: 20 }}>{es ? 'Mis referidos' : 'My referrals'}</h2>
+        <div className="muted" style={{ fontSize: 13 }}>{es ? 'Ganas compartiendo robots de otros creadores con tu enlace. Cuando alguien compra por él, te llevas el % que fijó ese creador. Se cobra junto con tus retiros en Ganancias.' : 'You earn by sharing other creators\' robots with your link. When someone buys through it, you get the % that creator set. Paid out with your withdrawals in Earnings.'}</div>
+      </div>
+
+      {/* Balance del afiliado */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 12 }}>
+        {[[es ? 'Disponible' : 'Available', money(rf.availableCents || 0), 'var(--green)'], [es ? 'En espera' : 'Pending', money(rf.pendingCents || 0), 'var(--amber)'], [es ? 'Pagado' : 'Paid', money(rf.paidCents || 0), 'var(--mut)'], [es ? 'Ventas referidas' : 'Referred sales', String(rf.count || 0), GOLD]].map(([l, v, c], i) => (
+          <div key={i} style={{ background: 'var(--bg2)', borderRadius: 12, padding: 14 }}><div className="muted" style={{ fontSize: 12 }}>{l}</div><div style={{ fontSize: 22, fontWeight: 800, color: c as string }}>{v}</div></div>
+        ))}
+      </div>
+      <div className="muted" style={{ fontSize: 12, marginTop: -6 }}>{es ? 'Lo “disponible” se retira desde la pestaña Ganancias (USDT o banco), junto con tus ventas.' : '“Available” is withdrawn from the Earnings tab (USDT or bank), together with your sales.'}</div>
+
+      {/* Cómo conseguir tu enlace */}
+      <div style={card}>
+        <b>{es ? 'Consigue tu enlace de afiliado' : 'Get your affiliate link'}</b>
+        <div className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>{es ? 'Elige un robot que ofrezca comisión y copia tu enlace para compartirlo donde quieras.' : 'Pick a robot that offers a commission and copy your link to share anywhere.'}</div>
+        {shareable.length === 0 ? (
+          <div className="muted" style={{ fontSize: 12.5 }}>{es ? 'Ahora mismo no hay robots de otros creadores con comisión de referido. Revisa el Marketplace más tarde.' : 'Right now there are no other creators\' robots offering a referral commission. Check the Marketplace later.'}</div>
+        ) : (
+          <div style={{ display: 'grid', gap: 8 }}>
+            {shareable.slice(0, 12).map((p: any) => (
+              <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', borderTop: '1px solid var(--line)', paddingTop: 8 }}>
+                <span style={{ flex: 1, minWidth: 140, fontWeight: 700 }}>{p.name}</span>
+                <span className="muted" style={{ fontSize: 12.5 }}>{money(p.price_cents)}</span>
+                <button onClick={() => shareRef(p)} style={{ padding: '7px 12px', borderRadius: 9, cursor: 'pointer', fontWeight: 800, fontSize: 12, border: `1px solid color-mix(in srgb,${GOLD} 45%,transparent)`, background: `color-mix(in srgb,${GOLD} 10%,transparent)`, color: GOLD }}>{es ? `Copiar enlace · gana ${Math.round(Number(p.affiliate_pct))}%` : `Copy link · earn ${Math.round(Number(p.affiliate_pct))}%`}</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Historial de comisiones de referido */}
+      <div style={card}>
+        <b>{es ? 'Historial de comisiones' : 'Commission history'}</b>
+        {items.length === 0 ? (
+          <div className="muted" style={{ fontSize: 13, marginTop: 8 }}>{es ? 'Aún no tienes comisiones de referido. Comparte un robot para empezar.' : 'No referral commissions yet. Share a robot to get started.'}</div>
+        ) : (
+          <div style={{ display: 'grid', gap: 6, marginTop: 8 }}>
+            {items.map((it: any, i: number) => {
+              const s = st(it.status);
+              return (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', borderTop: '1px solid var(--line)', paddingTop: 8, fontSize: 12.5 }}>
+                  <span style={{ flex: 1, minWidth: 140, fontWeight: 700 }}>{it.product_name}</span>
+                  <span className="muted">{new Date(it.created_at).toLocaleDateString(es ? 'es' : 'en')}</span>
+                  <span className="muted">{Math.round(Number(it.affiliate_pct))}% · {it.method === 'usdt' ? 'USDT' : (es ? 'Tarjeta' : 'Card')}</span>
+                  <b style={{ color: GOLD }}>{money(it.affiliate_cents || 0)}</b>
+                  <span style={{ fontSize: 10.5, fontWeight: 800, color: s.c }}>{s.t}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function EarningsPanel({ es, sell, reload, goReferrals }: any) {
   const e = sell.earnings || {};
   const connect = sell.connect || {};
   const [addr, setAddr] = useState('');
@@ -393,32 +467,20 @@ function EarningsPanel({ es, sell, reload }: any) {
           )
         )}
       </div>
-      {/* Ganancias por REFERIR robots de otros creadores (compartiendo tu enlace). */}
+      {/* Acceso directo a "Mis referidos" (lo que ganas compartiendo robots de otros). */}
       {(() => {
         const rf = sell.referral || {};
         if (!(rf.count > 0 || (rf.earnedCents || 0) > 0 || (rf.paidCents || 0) > 0)) return null;
         return (
-          <div style={card}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <span style={{ color: GOLD }}>◆</span><b>{es ? 'Ganancias por referir' : 'Referral earnings'}</b>
+          <button onClick={goReferrals} style={{ ...card, textAlign: 'left', cursor: 'pointer', width: '100%', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <span style={{ color: GOLD, fontSize: 18 }}>◆</span>
+            <div style={{ flex: 1, minWidth: 140 }}>
+              <b>{es ? 'Ganancias por referir' : 'Referral earnings'}</b>
+              <div className="muted" style={{ fontSize: 12.5 }}>{es ? 'Lo que ganas compartiendo robots de otros creadores.' : 'What you earn sharing other creators\' robots.'}</div>
             </div>
-            <div className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>{es ? 'Lo que ganas compartiendo enlaces de robots de otros creadores. Se paga con tus retiros en USDT.' : 'What you earn sharing other creators\' robot links. Paid out with your USDT withdrawals.'}</div>
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
-              <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: '10px 14px' }}><div className="muted" style={{ fontSize: 11.5 }}>{es ? 'Ganado' : 'Earned'}</div><div style={{ fontSize: 18, fontWeight: 800, color: GOLD }}>{money(rf.earnedCents || 0)}</div></div>
-              <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: '10px 14px' }}><div className="muted" style={{ fontSize: 11.5 }}>{es ? 'Pagado' : 'Paid'}</div><div style={{ fontSize: 18, fontWeight: 800 }}>{money(rf.paidCents || 0)}</div></div>
-              <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: '10px 14px' }}><div className="muted" style={{ fontSize: 11.5 }}>{es ? 'Ventas referidas' : 'Referred sales'}</div><div style={{ fontSize: 18, fontWeight: 800 }}>{rf.count || 0}</div></div>
-            </div>
-            <div style={{ display: 'grid', gap: 6 }}>
-              {(rf.items || []).slice(0, 8).map((it: any, i: number) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', borderTop: '1px solid var(--line)', paddingTop: 6, fontSize: 12.5 }}>
-                  <span style={{ flex: 1, minWidth: 120, fontWeight: 700 }}>{it.product_name}</span>
-                  <span className="muted">{Math.round(Number(it.affiliate_pct))}% · {it.method === 'usdt' ? 'USDT' : (es ? 'Tarjeta' : 'Card')}</span>
-                  <b style={{ color: GOLD }}>{money(it.affiliate_cents || 0)}</b>
-                  <span style={{ fontSize: 10.5, fontWeight: 800, color: it.status === 'paid' ? 'var(--green)' : it.status === 'reversed' ? 'var(--red)' : 'var(--amber)' }}>{it.status === 'paid' ? (es ? 'Pagado' : 'Paid') : it.status === 'reversed' ? (es ? 'Anulado' : 'Reversed') : (es ? 'Pendiente' : 'Pending')}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: GOLD }}>{money((rf.availableCents ?? rf.earnedCents) || 0)}</div>
+            <span style={{ color: 'var(--brand)', fontWeight: 800 }}>{es ? 'Ver todo →' : 'View all →'}</span>
+          </button>
         );
       })()}
       <div style={card}>
