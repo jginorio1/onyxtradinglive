@@ -4,6 +4,7 @@ import { serverLang, localeAlternates, SITE } from '@/lib/locale';
 import { listMarketplace, botLabSettings } from '@/lib/botlab';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import BotLabLead from './BotLabLead';
+import BotLabMarket from './BotLabMarket';
 
 export const dynamic = 'force-dynamic';
 
@@ -250,32 +251,20 @@ export default async function BotLabLanding() {
             <span style={{ width: 7, height: 7, borderRadius: 99, background: 'var(--green)', display: 'inline-block' }} />{buyWeek} {es ? 'traders compraron esta semana' : 'traders bought this week'}
           </div>
         </div>
-        <div style={{ display: 'grid', gap: 14 }} className="g4">
-          {(bots.length ? bots.slice(0, 8).map((p: any) => ({
-            name: p.name, seller: p.seller_name || '@onyx', pair: p.symbol || '—', plat: (p.platform || 'MT5').toUpperCase(),
-            score: p.perf?.score ?? null, ret: p.perf?.ret90 ?? p.perf?.ret ?? null, dd: p.perf?.dd ?? null,
-            price: money(p.price_cents), unit: (monthly && p.kind === 'subscription') ? (es ? '/mes' : '/mo') : '', path: 'M0,52 L40,46 L80,48 L120,38 L160,40 L200,28 L240,30 L300,16', hot: false,
-          })) : sampleBots).map((p: any, i: number) => (
-            <div key={i} style={{ ...card, padding: 15, position: 'relative', display: 'flex', flexDirection: 'column', ...(p.hot ? { border: `1.5px solid color-mix(in srgb,${GOLD} 60%,var(--line))` } : {}) }}>
-              {p.hot && <span style={{ position: 'absolute', top: -10, right: 12, background: `linear-gradient(120deg,${GOLD},#ffb020)`, color: '#3a2a06', fontSize: 10, fontWeight: 800, padding: '3px 9px', borderRadius: 99 }}>★ {es ? 'Top' : 'Top'}</span>}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-                <div style={{ width: 34, height: 34, flex: 'none', borderRadius: 10, background: 'linear-gradient(120deg,var(--brand),var(--brand2,#a06bff))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>{(p.name || '?').slice(0, 1)}</div>
-                <div style={{ minWidth: 0 }}><div style={{ fontSize: 14, fontWeight: 800, lineHeight: 1.1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div><div className="muted" style={{ fontSize: 11 }}>{p.seller} · {p.pair}</div></div>
-              </div>
-              <svg viewBox="0 0 300 60" preserveAspectRatio="none" style={{ width: '100%', height: 42, margin: '10px 0 8px' }}><path d={p.path} fill="none" stroke="var(--green)" strokeWidth="2.5" /></svg>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6, marginBottom: 10 }}>
-                {[[p.score != null ? String(p.score) : '—', 'Score', GOLD], [p.ret || '—', es ? '90 días' : '90d', 'var(--green)'], [p.dd || '—', es ? 'DD máx' : 'Max DD', 'var(--tx)']].map(([v, l, c]: any, k) => (
-                  <div key={k} style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 8, padding: '5px 4px', textAlign: 'center' }}><b style={{ fontSize: 13, color: c }}>{v}</b><div className="muted" style={{ fontSize: 9.5 }}>{l}</div></div>
-                ))}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto' }}>
-                <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--brand)', border: '1px solid color-mix(in srgb,var(--brand) 30%,transparent)', borderRadius: 6, padding: '2px 6px' }}>{p.plat}</span>
-                <b style={{ fontSize: 15 }}>{p.price}<small className="muted" style={{ fontSize: 11, fontWeight: 600 }}>{p.unit}</small></b>
-              </div>
-              <Link href="/dashboard/bot-lab" style={{ display: 'block', marginTop: 10, textAlign: 'center', fontSize: 12.5, fontWeight: 800, padding: '9px', borderRadius: 9, background: 'var(--brand)', color: '#0b1020' }}>{es ? 'Ver robot' : 'View robot'}</Link>
-            </div>
-          ))}
-        </div>
+        <BotLabMarket es={es} items={bots.length
+          ? bots.slice(0, 8).map((p: any) => ({
+              name: p.name, seller: p.seller_name || '@onyx', pair: p.symbol || p.spec_market || '—', plat: (p.platform || 'MT5').toUpperCase(),
+              score: p.perf?.score ?? null, ret: p.perf?.ret90 ?? p.perf?.ret ?? null, dd: p.perf?.dd != null ? p.perf.dd + '%' : null,
+              price: money(p.price_cents), unit: (monthly && p.kind === 'subscription') ? (es ? '/mes' : '/mo') : '', path: 'M0,52 L40,46 L80,48 L120,38 L160,40 L200,28 L240,30 L300,16', hot: false,
+              spec_style: p.spec_style || null, spec_timeframe: p.spec_timeframe || null, spec_market: p.spec_market || null,
+              no_martingale: !p.perf?.martingale, no_hft: !p.perf?.hft, has_sl: p.spec_sl || p.perf?.hasSL, news: p.spec_news,
+            }))
+          : sampleBots.map((p: any, i: number) => ({
+              ...p, spec_style: ['tendencia', 'ruptura', 'scalping', 'rango', 'intradia', 'swing'][i % 6],
+              spec_timeframe: ['H1', 'M15', 'M5', 'H4', 'M30', 'D1'][i % 6],
+              spec_market: p.pair === 'XAUUSD' ? 'oro' : (['US100', 'NAS100'].includes(p.pair) ? 'indices' : 'forex'),
+              no_martingale: true, no_hft: true, has_sl: true, news: i % 2 === 0,
+            }))} />
         {!bots.length && <p className="muted" style={{ fontSize: 12, textAlign: 'center', marginTop: 12 }}>{es ? 'Robots de muestra por Onyx. Los de traders verificados aparecen aquí en cuanto se publican.' : 'Sample robots by Onyx. Verified-trader robots appear here as they get published.'}</p>}
       </section>
 
