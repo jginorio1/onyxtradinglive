@@ -170,6 +170,14 @@ th{color:var(--mut);font-weight:600;}
 /* Si hay barra promo arriba, ella ya consume el safe-area del notch/estado del
    teléfono; la TopBar no debe añadirlo de nuevo. */
 .promo-on .topbar{padding-top:0;}
+/* Bot Lab: cinta + barra como UN bloque sticky que respeta el notch/estado una sola
+   vez (env safe-area arriba). El .topbar interno deja de ser sticky para no duplicar
+   el safe-area ni quedar detrás del menú/batería en móvil. */
+.botlab-headwrap{position:sticky;top:0;z-index:40;padding-top:env(safe-area-inset-top,0px);background:#0a0e17;}
+html[data-theme="light"] .botlab-headwrap{background:#f4f5f8;}
+:root:not([data-theme="dark"]) .botlab-headwrap{background:#f4f5f8;}
+html[data-theme="dark"] .botlab-headwrap{background:#0a0e17;}
+.botlab-headwrap .topbar.botlab-topbar{position:static;top:auto;padding-top:0;z-index:auto;}
 .topbar .wrap,.topbar .wrap-wide{height:64px;display:flex;align-items:center;justify-content:space-between;}
 .navl{display:flex;gap:22px;color:var(--mut);font-size:15px;}
 .navl a:hover{color:#fff;}
@@ -259,8 +267,10 @@ section[id],div[id]{scroll-margin-top:120px;}
   .planpill{display:none;}        /* el plan vive en el menú del avatar */
   .btn-login{display:none;}       /* desde "Empezar gratis" se puede ir a Entrar */
   .btn{padding:9px 13px;}         /* botones algo más compactos */
-  /* el menú desplegable nunca se sale por el borde */
-  .menu{min-width:0;width:max-content;max-width:calc(100vw - 24px);right:0;}
+  /* Menú móvil como PANEL de ancho completo bajo la barra (mismo estilo que Bot Lab). */
+  .navburger-wrap{position:static;}
+  .menu{position:fixed;left:0;right:0;top:calc(64px + var(--promo-h,0px) + env(safe-area-inset-top,0px));width:100%;max-width:100%;min-width:0;border-radius:0;border-left:none;border-right:none;border-top:1px solid var(--line);padding:8px 12px 16px;box-shadow:0 18px 44px rgba(0,0,0,.5);}
+  .menu .menu-item{padding:13px 12px;font-size:15px;border-radius:10px;}
 }
 .code{font-family:Consolas,monospace;background:#0a0d14;border:1px solid var(--line);border-radius:6px;padding:4px 8px;font-size:13px;color:#bcd6ff;}
 .center{max-width:420px;margin:8vh auto;padding:0 20px;}

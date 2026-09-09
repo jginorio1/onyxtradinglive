@@ -34,6 +34,9 @@ export default function BotLabHeader({ loggedIn = false }: { loggedIn?: boolean 
 
   return (
     <div>
+      {/* Cabecera como bloque sticky ÚNICO (cinta + barra) para que respete el notch/estado
+          del móvil una sola vez y no quede nada bajo la batería ni detrás del menú. */}
+      <div className="botlab-headwrap">
       {/* Cinta discreta: recuerda que es parte de Onyx */}
       <div style={{ background: 'rgba(255,255,255,.03)', borderBottom: '1px solid rgba(255,255,255,.06)', fontSize: 12 }}>
         <div className="wrap-wide" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 32, color: 'var(--mut)' }}>
@@ -43,7 +46,7 @@ export default function BotLabHeader({ loggedIn = false }: { loggedIn?: boolean 
       </div>
 
       {/* Barra propia */}
-      <div className="topbar">
+      <div className="topbar botlab-topbar">
         <div className="wrap-wide" style={{ display: 'flex', alignItems: 'center', gap: 18, position: 'relative' }}>
           <Link href="/bot-lab" className="logo" aria-label="Onyx Bot Lab" style={{ gap: 11 }}>
             <span style={{ width: 32, height: 32, borderRadius: 9, background: 'linear-gradient(120deg,var(--gold,#ffd45e),#ffb020)', color: '#3a2a06', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, fontWeight: 800, boxShadow: '0 6px 18px rgba(255,212,94,.4)' }}>◆</span>
@@ -101,6 +104,7 @@ export default function BotLabHeader({ loggedIn = false }: { loggedIn?: boolean 
             </div>
           </div>
         )}
+      </div>
       </div>
 
       <BotLabChat />
