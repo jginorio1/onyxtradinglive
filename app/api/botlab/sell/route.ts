@@ -16,10 +16,12 @@ export async function GET() {
   const sb = createSupabaseServer();
   const { data: { user } } = await sb.auth.getUser();
   if (!user) return NextResponse.json({ error: 'no autorizado' }, { status: 401 });
-  const [products, earnings, connect, payouts, referral] = await Promise.all([
-    myProducts(user.id), sellerEarnings(user.id), sellerConnectStatus(user.id), listPayouts(user.id), myReferralEarnings(user.id),
+  const [products, earnings, connect, payouts, referral, cfg] = await Promise.all([
+    myProducts(user.id), sellerEarnings(user.id), sellerConnectStatus(user.id), listPayouts(user.id), myReferralEarnings(user.id), botLabSettings(),
   ]);
-  return NextResponse.json({ me: user.id, products, earnings, connect, payouts, referral });
+  const holdDays = Math.max(0, Math.round(Number((cfg as any).payout_hold_days) || 0));
+  const affiliateMax = Math.max(0, Math.min(90, Math.round(Number((cfg as any).affiliate_max ?? 80))));
+  return NextResponse.json({ me: user.id, products, earnings, connect, payouts, referral, holdDays, affiliateMax });
 }
 
 // POST · acciones del creador: guardar/borrar robot, conectar cobro, pedir retiro.
