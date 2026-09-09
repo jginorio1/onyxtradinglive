@@ -453,9 +453,29 @@ export async function setAvatar(userId: string, url: string | null) {
 
 // ---- Directorio público (páginas /academias y /academia/[code]) ----
 // Solo academias activas. Nunca exponemos correos ni datos sensibles.
+// Academia OFICIAL de Onyx Bot Lab (solo admin). Única fila con is_official = true.
+export async function officialMentor() {
+  const { data } = await supabaseAdmin.from('mentors').select('*').eq('is_official', true).limit(1).maybeSingle();
+  return (data as any) || null;
+}
+// El admin crea/abre la academia oficial "Onyx Bot Lab" (idempotente).
+export async function makeOfficialAcademy(userId: string) {
+  // Si ya hay una oficial de OTRO usuario, no la robamos (evita duplicados).
+  const existing = await officialMentor();
+  if (existing && existing.user_id !== userId) return existing;
+  await ensureMentor(userId);
+  const patch: any = { is_official: true, active: true };
+  const cur = await getMentor(userId);
+  // Solo ponemos el nombre por defecto si el mentor no lo cambió aún.
+  if (!cur?.academy_name || cur.academy_name === 'Mi academia') patch.academy_name = 'Onyx Bot Lab';
+  if (!cur?.tagline) patch.tagline = 'La academia oficial de robots de Onyx Bot Lab';
+  await supabaseAdmin.from('mentors').update(patch).eq('user_id', userId);
+  return getMentor(userId);
+}
+
 export async function publicDirectory() {
   const { data: mentors } = await supabaseAdmin.from('mentors')
-    .select('user_id,code,academy_name,tagline,active').eq('active', true).order('created_at', { ascending: false }).limit(200);
+    .select('user_id,code,academy_name,tagline,active,is_official').eq('active', true).order('is_official', { ascending: false }).order('created_at', { ascending: false }).limit(200);
   const rows = (mentors || []) as any[];
   if (!rows.length) return [];
   const ids = rows.map((m) => m.user_id);
@@ -471,6 +491,7 @@ export async function publicDirectory() {
   return rows.map((m) => ({
     code: m.code, academy_name: m.academy_name, tagline: m.tagline || '',
     mentor_name: nameOf[m.user_id] || 'Mentor', students: students[m.user_id] || 0,
+    official: !!m.is_official,
     from_price_cents: fromPrice[m.user_id]?.price_cents ?? null, currency: fromPrice[m.user_id]?.currency || 'usd',
   }));
 }

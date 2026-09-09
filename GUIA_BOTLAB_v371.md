@@ -25,11 +25,17 @@ Cambios de esta entrega (marketplace de robots).
 - En **Ganancias**, el creador elige cómo cobrar: **USDT** (wallet TRC20/ERC20) o **banco vía Stripe Express** (requiere conectar el cobro).
 - El saldo disponible incluye comisiones propias **y** ganancias por referir.
 
+## 6. Academia oficial "Onyx Bot Lab" (solo admin)
+- En **Admin → Bot Lab → (Comisión/Ajustes)** aparece la tarjeta **"Academia Onyx Bot Lab (oficial)"**.
+- Botón **"Crear academia oficial"** (solo el dueño): crea/marca UNA academia a tu nombre dentro de Academy, con nombre "Onyx Bot Lab".
+- Queda **destacada primero** en el directorio público de academias (`/academias`) con la marca oficial, y solo tú la administras (cursos, comunidad, eventos) desde `/dashboard/academy`. Enlace público: `/academia/<code>`.
+
 ## Migraciones SQL (ejecutar en Supabase, en orden)
 1. `supabase/botlab_fee_per_trader.sql` — comisión por trader (si no se corrió antes).
 2. `supabase/botlab_seller_referrals.sql` — `bot_products.affiliate_pct`, `crypto_payments.referrer_id`, `bot_purchases.referrer_id`, tabla `bot_referrals` (índice único `referrer_id,ref`).
+3. `supabase/academy_official.sql` — `mentors.is_official` (+ índice único parcial: una sola oficial).
 
 No hay columnas nuevas para el panel/candado: viajan dentro del `spec` del robot del constructor (JSON), sin cambios de esquema.
 
-## Pendiente (siguiente entrega)
-- **Academia oficial “Onyx Bot Lab” solo-admin** dentro de Academy: es un módulo grande (perfil oficial, gating de edición, destacado en el directorio) y se entregará por separado para no arriesgar el resto.
+## Nota
+Los 6 puntos de esta tanda quedan implementados y compilando (esbuild limpio).

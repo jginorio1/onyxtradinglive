@@ -733,6 +733,23 @@ function Settings({ es, set, setSet, canManage, act, mail }: any) {
 
       <SellerFees es={es} />
 
+      {/* Academia oficial "Onyx Bot Lab" (solo dueño) */}
+      <div style={card}>
+        <SectionHead icon="spark" color={GOLD} title={es ? 'Academia Onyx Bot Lab (oficial)' : 'Onyx Bot Lab academy (official)'} desc={es ? 'Tu academia oficial dentro de Academy: cursos y comunidad de robots, solo administrada por ti.' : 'Your official academy inside Academy: robot courses and community, managed only by you.'} />
+        {d.academy?.exists ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--green)' }}>✓ {es ? 'Creada' : 'Created'} · {d.academy.academy_name}</span>
+            <a href={`/academia/${d.academy.code}`} target="_blank" style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--brand)', border: '1px solid color-mix(in srgb,var(--brand) 40%,transparent)', borderRadius: 9, padding: '7px 12px' }}>{es ? 'Ver academia ↗' : 'View academy ↗'}</a>
+            <a href="/dashboard/academy" target="_blank" style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--tx)', border: '1px solid var(--line)', borderRadius: 9, padding: '7px 12px' }}>{es ? 'Administrar (cursos, comunidad) ↗' : 'Manage (courses, community) ↗'}</a>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <span className="muted" style={{ fontSize: 12.5 }}>{es ? 'Aún no existe. Créala a tu nombre y aparecerá destacada en el directorio de Academy.' : 'Doesn\'t exist yet. Create it under your name and it\'ll be featured in the Academy directory.'}</span>
+            {canManage && <button onClick={() => act({ action: 'academy_official' }, es ? '¡Academia oficial creada!' : 'Official academy created!')} style={{ marginLeft: 'auto', padding: '9px 16px', borderRadius: 10, border: 'none', fontWeight: 800, fontSize: 13, cursor: 'pointer', background: `linear-gradient(120deg,${GOLD},#ffb020)`, color: '#3a2a06' }}>{es ? 'Crear academia oficial' : 'Create official academy'}</button>}
+          </div>
+        )}
+      </div>
+
       <div style={card}>
         <SectionHead icon="coin" color="var(--brand)" title={es ? 'Métodos de pago' : 'Payment methods'} desc={es ? 'USDT al frente (sin contracargos). La tarjeta es respaldo y se puede apagar. El landing se ajusta solo.' : 'USDT first (no chargebacks). Card is backup and can be turned off. The landing adapts on its own.'} />
         {(() => {

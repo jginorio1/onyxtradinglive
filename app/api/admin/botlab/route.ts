@@ -9,6 +9,7 @@ import {
   listSellersWithFee, setSellerFeePct,
 } from '@/lib/botlab';
 import { listCryptoPayments, confirmCryptoPayment, rejectCryptoPayment } from '@/lib/cryptoPay';
+import { officialMentor, makeOfficialAcademy } from '@/lib/academy';
 import { botScore } from '@/lib/botScore';
 import { mailDomainStatus } from '@/lib/mail';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
@@ -22,12 +23,13 @@ function canManage(role: string | null, perms: any) {
 
 // GET · todo lo que el panel necesita: productos, leads, cripto, payouts, ajustes.
 export async function GET() {
-  const { isAdmin, role, perms } = await getAdmin();
+  const { user, isAdmin, role, perms } = await getAdmin();
   if (!isAdmin) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
-  const [products, leads, crypto, payouts, settings, stats, audience, mail] = await Promise.all([
+  const [products, leads, crypto, payouts, settings, stats, audience, mail, official] = await Promise.all([
     adminListProducts(), listServiceRequests(), listCryptoPayments('pending'), listPayouts(), botLabSettings(), botLabAdminStats(),
-    botLabAudienceCounts(), mailDomainStatus(),
+    botLabAudienceCounts(), mailDomainStatus(), officialMentor(),
   ]);
+  const academy = official ? { exists: true, code: official.code, academy_name: official.academy_name, mine: official.user_id === user?.id } : { exists: false };
   // Reseñas del Marketplace (compartidas con el landing «Crea tu bot»): viven en landing_stats.reviews.
   let reviews: any[] = [];
   try { const { data: ls } = await supabaseAdmin.from('app_settings').select('value').eq('key', 'landing_stats').maybeSingle(); if (Array.isArray((ls as any)?.value?.reviews)) reviews = (ls as any).value.reviews; } catch {}
@@ -38,7 +40,7 @@ export async function GET() {
     const _score = await botScore({ sellerId: p.seller_id, accountId: p.bot_account, magic: p.bot_magic, text });
     return { ...p, _score };
   }));
-  return NextResponse.json({ products: scored, leads, crypto, payouts, settings, stats, audience, mail, reviews, canManage: canManage(role, perms) });
+  return NextResponse.json({ products: scored, leads, crypto, payouts, settings, stats, audience, mail, reviews, academy, canManage: canManage(role, perms) });
 }
 
 // POST · acciones del dueño/gestor.
@@ -83,6 +85,14 @@ export async function POST(req: Request) {
   if (a === 'broadcast') {
     try { const r = await botLabBroadcast({ segment: b.segment, subject: b.subject, body: b.body, dryRun: !!b.dryRun }); await logAdmin(user.email || '', 'botlab_broadcast', b.segment || '', { count: r.count, sent: r.sent }); return NextResponse.json(r); }
     catch (e: any) { return NextResponse.json({ error: e?.message || 'No se pudo enviar.' }, { status: 400 }); }
+  }
+
+  // Crea/abre la academia OFICIAL "Onyx Bot Lab" a nombre del admin. Solo owner.
+  if (a === 'academy_official') {
+    if (role !== 'owner') return NextResponse.json({ error: 'Solo el dueño puede crear la academia oficial.' }, { status: 403 });
+    const m = await makeOfficialAcademy(user.id);
+    await logAdmin(user.email || '', 'botlab_academy_official', m?.code || '', {});
+    return NextResponse.json({ ok: true, code: m?.code, academy_name: m?.academy_name, mine: m?.user_id === user.id });
   }
 
   if (a === 'product_status') {
