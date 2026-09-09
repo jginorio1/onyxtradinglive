@@ -127,7 +127,9 @@ export default async function TopBar({ home = false }: { home?: boolean }) {
         // sabe que un logo se puede pulsar, y desde Planes o Embajadores no
         // había ninguna otra forma de volver al landing.
         { href: '/', label: t.home },
-        { href: '/bot-builder', label: lang === 'en' ? 'Build a bot' : 'Crea tu bot', icon: '🤖' },
+        { href: '/bot-builder', label: lang === 'en' ? 'Build a bot' : 'Crea tu bot', icon: '🛠️' },
+        // Destino distinto del constructor: el marketplace de robots (chip dorado, recarga completa).
+        { href: '/bot-lab', label: lang === 'en' ? 'Bot Lab · Marketplace' : 'Bot Lab · Marketplace', icon: '◆', full: true, gold: true },
         { href: '/analiza', label: lang === 'en' ? 'Free analysis' : 'Analiza gratis' },
         { href: '/copy', label: 'Onyx Copy' },
         { href: '/pricing', label: t.plans },

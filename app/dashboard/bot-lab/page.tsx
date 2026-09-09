@@ -386,7 +386,7 @@ function ProductModal({ es, product, pay, onClose, onSaved }: any) {
       const body = { action: 'save', product: { id: product?.id, name: f.name, tagline: f.tagline, description: f.description, kind: f.kind, interval: f.interval, price_cents: Math.round(Number(f.price) * 100), platform: f.platform, category: f.category, proof_url: f.proof_url, bot_magic: f.bot_magic || null, bot_account: f.bot_account || null, source: f.source || 'build', build_id: f.source === 'build' ? (f.build_id || null) : null, accepts_card: f.accepts_card, accepts_crypto: f.accepts_crypto, file_path: f.file_path ?? null, file_name: f.file_name ?? null, file_size: f.file_size ?? null, spec_style: f.spec_style || null, spec_timeframe: f.spec_timeframe || null, spec_market: f.spec_market || null, spec_news: !!f.spec_news, spec_sl: !!f.spec_sl, spec_risk: f.spec_risk || null, spec_capital: f.spec_capital || null, spec_direction: f.spec_direction || null, spec_symbols: f.spec_symbols || null, spec_maxdd: f.spec_maxdd || null, spec_propfirm: !!f.spec_propfirm, spec_broker: f.spec_broker || null } };
       const r = await fetch('/api/botlab/sell', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const j = await r.json(); if (!r.ok) throw new Error(j.error);
-      toast(es ? 'Enviado a revisión.' : 'Sent for review.'); onSaved();
+      toast(j.status === 'active' ? (es ? '¡Publicado! Ya está en el marketplace.' : 'Published! It’s live in the marketplace.') : (es ? 'Enviado a revisión.' : 'Sent for review.')); onSaved();
     } catch (er: any) { toastErr(er?.message); } finally { setSaving(false); }
   }
   return (

@@ -75,8 +75,10 @@ export async function POST(req: Request) {
     // Guardamos también lo detectado en `perf` para pintar la ficha técnica del comprador.
     const detected = { avgHoldMin: s.avgHoldMin, tradesPerWeek: s.tradesPerWeek, martingale: s.martingale, hft: s.hft, hasSL: !s.slRisk };
     const r = await saveProduct(user.id, { ...p, __detected: undefined }, false);
-    if (r?.id) { try { await supabaseAdmin.from('bot_products').update({ perf: { ...(s.hasData ? { score: s.score, winrate: s.winRate, dd: s.ddPct, pf: s.pf, trades: s.trades, days: s.days, live: s.live } : {}), ...detected } }).eq('id', r.id); } catch {} }
-    return NextResponse.json({ ok: true, id: r?.id });
+    // Auto-publicación: como YA pasó todas las reglas (chk.ok), el robot sale directo al
+    // marketplace sin cola de aprobación. El admin puede despublicarlo o destacarlo después.
+    if (r?.id) { try { await supabaseAdmin.from('bot_products').update({ status: 'active', perf: { ...(s.hasData ? { score: s.score, winrate: s.winRate, dd: s.ddPct, pf: s.pf, trades: s.trades, days: s.days, live: s.live } : {}), ...detected } }).eq('id', r.id); } catch {} }
+    return NextResponse.json({ ok: true, id: r?.id, status: 'active' });
   }
   if (b.action === 'upload_file') {
     // Sube el archivo del robot al bucket PRIVADO 'bot-files'. Llega como data URL base64.
