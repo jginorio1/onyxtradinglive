@@ -32,6 +32,9 @@ export default async function BotLabLanding() {
   const cardOn = (s as any).pay_card === true;
   const payLong = es ? (cardOn ? 'en USDT o con tarjeta' : 'en USDT') : (cardOn ? 'in USDT or by card' : 'in USDT');
   const payShort = es ? (cardOn ? 'USDT o tarjeta' : 'USDT') : (cardOn ? 'USDT or card' : 'USDT');
+  // Reparto creador/Onyx: se lee de la comisión (Admin → Bot Lab). El creador se queda 100 − comisión.
+  const feePct = Math.max(0, Math.min(90, Math.round(Number((s as any).fee_pct) || 0)));
+  const keepPct = 100 - feePct;
   let bots: any[] = [];
   try { bots = await listMarketplace({ limit: 24 }); } catch { bots = []; }
 
@@ -58,7 +61,7 @@ export default async function BotLabLanding() {
     marketK: 'Marketplace', marketH: 'Robots de traders verificados', marketS: 'Cada robot muestra su Onyx Score, rendimiento y riesgo.',
     view: 'Ver robot', empty: 'Pronto verás aquí los primeros robots a la venta.',
     sellK: 'Economía de creadores', sellH: 'Construye, publica y cobra',
-    sellS: 'Tú pones el precio de tu robot. Onyx cobra por ti y te paga' + (cardOn ? ' a tu banco o en USDT' : ' en USDT') + '. Tú te quedas el 80%.',
+    sellS: 'Tú pones el precio de tu robot. Onyx cobra por ti y te paga' + (cardOn ? ' a tu banco o en USDT' : ' en USDT') + '. Tú te quedas el ' + keepPct + '%.',
     sellCta: 'Empezar a vender',
     svcK: 'Servicio a medida', svcH: 'Automatiza tu estrategia con nuestro equipo',
     payH: 'Paga y cobra ' + payLong, payS: cardOn ? 'Acepta clientes de todo el mundo: USDT (TRON o Ethereum) sin contracargos, o tarjeta con Stripe. Los creadores cobran en USDT o a su banco.' : 'Sin bancos, sin tarjetas y sin contracargos. Acepta clientes de todo el mundo con USDT (TRON o Ethereum). Los creadores cobran en USDT.',
@@ -78,7 +81,7 @@ export default async function BotLabLanding() {
     marketK: 'Marketplace', marketH: 'Robots from verified traders', marketS: 'Every robot shows its Onyx Score, performance and risk.',
     view: 'View robot', empty: 'The first robots for sale will show up here soon.',
     sellK: 'Creator economy', sellH: 'Build, publish and get paid',
-    sellS: 'You set your robot price. Onyx charges for you and pays you' + (cardOn ? ' to your bank or in USDT' : ' in USDT') + '. You keep 80%.',
+    sellS: 'You set your robot price. Onyx charges for you and pays you' + (cardOn ? ' to your bank or in USDT' : ' in USDT') + '. You keep ' + keepPct + '%.',
     sellCta: 'Start selling',
     svcK: 'Bespoke service', svcH: 'Automate your strategy with our team',
     payH: 'Pay and get paid ' + payLong, payS: cardOn ? 'Accept clients worldwide: USDT (TRON or Ethereum) with no chargebacks, or card via Stripe. Creators cash out in USDT or to their bank.' : 'No banks, no cards and no chargebacks. Accept clients worldwide with USDT (TRON or Ethereum). Creators cash out in USDT.',
@@ -315,8 +318,8 @@ export default async function BotLabLanding() {
           <div style={{ ...card }}>
             <span className="muted" style={{ fontSize: 13 }}>{es ? 'Ejemplo de ganancias' : 'Earnings example'}</span>
             <div style={{ fontSize: 38, fontWeight: 800, background: `linear-gradient(120deg,${GOLD},#ffb020)`, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>$2,436</div>
-            <div style={{ height: 10, borderRadius: 99, background: 'var(--bg2)', overflow: 'hidden', margin: '12px 0 6px' }}><div style={{ height: '100%', width: '80%', background: `linear-gradient(120deg,${GOLD},#ffb020)` }} /></div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, color: 'var(--mut)' }}><span>{es ? 'Tú te quedas 80%' : 'You keep 80%'}</span><span>{es ? 'Onyx 20%' : 'Onyx 20%'}</span></div>
+            <div style={{ height: 10, borderRadius: 99, background: 'var(--bg2)', overflow: 'hidden', margin: '12px 0 6px' }}><div style={{ height: '100%', width: `${keepPct}%`, background: `linear-gradient(120deg,${GOLD},#ffb020)` }} /></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, color: 'var(--mut)' }}><span>{es ? `Tú te quedas ${keepPct}%` : `You keep ${keepPct}%`}</span><span>Onyx {feePct}%</span></div>
           </div>
         </div>
       </section>

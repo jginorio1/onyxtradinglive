@@ -16,5 +16,6 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function BotLabFaqPage() {
   const s = await botLabSettings();
-  return <main style={{ padding: '30px 0 50px' }}><BotLabFaq card={(s as any).pay_card === true} /></main>;
+  const fee = Math.max(0, Math.min(90, Math.round(Number((s as any).fee_pct) || 0)));
+  return <main style={{ padding: '30px 0 50px' }}><BotLabFaq card={(s as any).pay_card === true} keep={100 - fee} fee={fee} /></main>;
 }

@@ -87,13 +87,15 @@ const CARD_OVERRIDES: Record<string, string> = {
   'What methods do you accept?': 'Card (Stripe) and USDT (TRON · Ethereum). USDT has no chargebacks. Creators cash out in USDT or to their bank.',
 };
 
-export default function BotLabFaq({ card = false }: { card?: boolean }) {
+export default function BotLabFaq({ card = false, keep = 80, fee = 20 }: { card?: boolean; keep?: number; fee?: number }) {
   const { lang } = useLang();
   const es = lang === 'es';
   const base = es ? DATA_ES : DATA_EN;
-  const data = card
+  const withCard = card
     ? base.map((c) => ({ ...c, items: c.items.map((it) => CARD_OVERRIDES[it.q] ? { ...it, a: CARD_OVERRIDES[it.q] } : it) }))
     : base;
+  // Reparto creador/Onyx dinámico: se lee de la comisión del panel (Admin → Bot Lab).
+  const data = withCard.map((c) => ({ ...c, items: c.items.map((it) => ({ ...it, a: it.a.replace(/\b80%/g, keep + '%').replace(/\b20%/g, fee + '%') })) }));
   const [cat, setCat] = useState(data[0].id);
   const active = data.find((c) => c.id === cat) || data[0];
   const GOLD = 'var(--gold, #ffd45e)';
