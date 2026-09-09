@@ -26,7 +26,7 @@ export async function GET(req: Request) {
       botLabSettings(),
     ]);
     // Métodos de pago globales: la UI muestra USDT y, solo si está encendida, tarjeta.
-    const pay = { card: cardEnabled(s), crypto: true, monthly: s.robots_monthly === true, affiliate_max: Math.max(0, Math.min(90, Math.round(Number((s as any).affiliate_max ?? 80)))) };
+    const pay = { card: cardEnabled(s), crypto: true, monthly: s.robots_monthly === true, affiliate_max: Math.max(0, Math.min(90, Math.round(Number((s as any).affiliate_max ?? 80)))), fee_pct: Math.max(0, Math.min(90, Math.round(Number((s as any).fee_pct) || 0))) };
     return NextResponse.json({ products, pay }, { headers: NOCACHE });
   } catch (e: any) {
     return NextResponse.json({ products: [], error: e?.message || 'error' }, { status: 500, headers: NOCACHE });

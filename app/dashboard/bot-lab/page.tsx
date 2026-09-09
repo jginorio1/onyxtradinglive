@@ -565,14 +565,34 @@ function ProductModal({ es, product, pay, onClose, onSaved }: any) {
           ) : null}
           {/* Referidos: % del NETO del vendedor que se lleva quien comparte el enlace. */}
           <div>
-            <div className="muted" style={{ fontSize: 11.5, marginBottom: 6 }}>{es ? 'Programa de referidos (opcional)' : 'Referral program (optional)'}</div>
+            <div className="muted" style={{ fontSize: 11.5, marginBottom: 6 }}>{es ? 'Comisión para quien te traiga clientes (opcional)' : 'Reward for whoever brings you buyers (optional)'}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <input type="number" min={0} max={affMax} style={{ ...inp, width: 90 }} value={f.affiliate_pct ?? 0} onChange={(e) => setF({ ...f, affiliate_pct: e.target.value })} />
-              <span className="muted" style={{ fontSize: 12.5 }}>{es ? `% de tu neto para quien traiga la venta (0–${affMax}%)` : `% of your net for whoever brings the sale (0–${affMax}%)`}</span>
+              <span className="muted" style={{ fontSize: 12.5 }}>{es ? `% para el que comparte tu robot (0–${affMax}%)` : `% for whoever shares your robot (0–${affMax}%)`}</span>
             </div>
-            <span className="muted" style={{ fontSize: 11, display: 'block', marginTop: 4 }}>{es
-              ? 'Reparto por venta: primero la comisión de Onyx, del resto tú te quedas con tu neto y ese % va al que compartió tu enlace.'
-              : 'Per-sale split: Onyx fee first, then you keep your net and that % goes to whoever shared your link.'}</span>
+            <span className="muted" style={{ fontSize: 11.5, display: 'block', marginTop: 6, lineHeight: 1.5 }}>{es
+              ? 'Cualquiera puede compartir tu robot con su enlace. Si alguien compra por ese enlace, esa persona se lleva este % (de lo que a ti te queda tras la comisión de Onyx). Es opcional: pon 0 si no quieres darlo. Sirve para que otros promocionen tu robot por ti.'
+              : 'Anyone can share your robot with their link. If someone buys through it, that person earns this % (of what you keep after the Onyx fee). Optional: set 0 to skip it. It helps others promote your robot for you.'}</span>
+            {/* Ejemplo en vivo con el precio y comisión reales, para que se entienda el reparto. */}
+            {(() => {
+              const price = Math.max(0, Number(f.price) || 0);
+              const feePct = Math.max(0, Math.min(90, Math.round(Number(pay?.fee_pct) || 0)));
+              const refPct = Math.max(0, Math.min(affMax, Number(f.affiliate_pct) || 0));
+              if (price <= 0) return null;
+              const onyx = price * feePct / 100;
+              const net = price - onyx;
+              const ref = net * refPct / 100;
+              const you = net - ref;
+              const fmt = (n: number) => '$' + (Math.round(n * 100) / 100).toLocaleString(es ? 'es' : 'en', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+              return (
+                <div style={{ marginTop: 8, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '10px 12px', fontSize: 12.5 }}>
+                  <div style={{ fontWeight: 800, marginBottom: 5 }}>{es ? `Ejemplo: si vendes a ${fmt(price)}` : `Example: if you sell at ${fmt(price)}`}</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}><span className="muted">{es ? `Onyx (comisión ${feePct}%)` : `Onyx (fee ${feePct}%)`}</span><b>{fmt(onyx)}</b></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}><span className="muted">{es ? `Quien lo compartió (${refPct}%)` : `Whoever shared it (${refPct}%)`}</span><b style={{ color: GOLD }}>{fmt(ref)}</b></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, borderTop: '1px solid var(--line)', marginTop: 5, paddingTop: 5 }}><span style={{ fontWeight: 700 }}>{es ? 'Tú recibes' : 'You get'}</span><b style={{ color: 'var(--green)' }}>{fmt(you)}</b></div>
+                </div>
+              );
+            })()}
           </div>
           <div>
             <div className="muted" style={{ fontSize: 11.5, marginBottom: 6 }}>{es ? 'Robot del constructor (lo recibe el comprador)' : 'Constructor robot (the buyer receives it)'}</div>

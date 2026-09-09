@@ -21,7 +21,8 @@ export async function GET() {
   ]);
   const holdDays = Math.max(0, Math.round(Number((cfg as any).payout_hold_days) || 0));
   const affiliateMax = Math.max(0, Math.min(90, Math.round(Number((cfg as any).affiliate_max ?? 80))));
-  return NextResponse.json({ me: user.id, products, earnings, connect, payouts, referral, holdDays, affiliateMax }, { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0', 'CDN-Cache-Control': 'no-store', 'Vercel-CDN-Cache-Control': 'no-store' } });
+  const feePct = Math.max(0, Math.min(90, Math.round(Number((cfg as any).fee_pct) || 0)));
+  return NextResponse.json({ me: user.id, products, earnings, connect, payouts, referral, holdDays, affiliateMax, feePct }, { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0', 'CDN-Cache-Control': 'no-store', 'Vercel-CDN-Cache-Control': 'no-store' } });
 }
 
 // POST · acciones del creador: guardar/borrar robot, conectar cobro, pedir retiro.

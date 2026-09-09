@@ -269,7 +269,10 @@ section[id],div[id]{scroll-margin-top:120px;}
   .btn{padding:9px 13px;}         /* botones algo más compactos */
   /* Menú móvil como PANEL de ancho completo bajo la barra (mismo estilo que Bot Lab). */
   .navburger-wrap{position:static;}
-  .menu{position:fixed;left:0;right:0;top:calc(64px + var(--promo-h,0px) + env(safe-area-inset-top,0px));width:100%;max-width:100%;min-width:0;border-radius:0;border-left:none;border-right:none;border-top:1px solid var(--line);padding:8px 12px 16px;box-shadow:0 18px 44px rgba(0,0,0,.5);}
+  .menu{position:fixed;left:0;right:0;top:calc(64px + var(--promo-h,0px) + env(safe-area-inset-top,0px));width:100%;max-width:100%;min-width:0;border-radius:0;border-left:none;border-right:none;border-top:1px solid var(--line);padding:8px 12px 16px;box-shadow:0 18px 44px rgba(0,0,0,.5);max-height:calc(100dvh - 64px - var(--promo-h,0px));overflow-y:auto;}
+  /* Con barra promo activa, --promo-h YA incluye el safe-area: no sumarlo otra vez
+     (si no, el menú se iba muy abajo, fuera de sitio bajo la muesca del iPhone). */
+  .promo-on .menu{top:calc(64px + var(--promo-h,0px));}
   .menu .menu-item{padding:13px 12px;font-size:15px;border-radius:10px;}
 }
 .code{font-family:Consolas,monospace;background:#0a0d14;border:1px solid var(--line);border-radius:6px;padding:4px 8px;font-size:13px;color:#bcd6ff;}
