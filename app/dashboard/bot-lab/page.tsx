@@ -451,6 +451,7 @@ function PayChip({ on, onClick, icon, label }: any) {
 function ProductModal({ es, product, pay, onClose, onSaved }: any) {
   const monthlyOn = pay?.monthly === true;   // ¿el dueño permite cobro mensual?
   const cardOn = pay?.card === true;         // ¿el dueño acepta tarjeta?
+  const affMax = Math.max(0, Math.min(90, Math.round(Number(pay?.affiliate_max ?? 80))));  // tope del % de referido (Admin)
   const [f, setF] = useState<any>({ name: '', tagline: '', interval: 'month', price: 29, platform: 'mt5', category: '', accepts_crypto: true, source: 'build', ...product,
     kind: monthlyOn ? (product?.kind || 'subscription') : 'one_time',   // sin mensual → siempre pago único
     accepts_card: cardOn ? (product?.accepts_card !== false) : false,   // tarjeta apagada → no la aceptan
@@ -565,8 +566,8 @@ function ProductModal({ es, product, pay, onClose, onSaved }: any) {
           <div>
             <div className="muted" style={{ fontSize: 11.5, marginBottom: 6 }}>{es ? 'Programa de referidos (opcional)' : 'Referral program (optional)'}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <input type="number" min={0} max={80} style={{ ...inp, width: 90 }} value={f.affiliate_pct ?? 0} onChange={(e) => setF({ ...f, affiliate_pct: e.target.value })} />
-              <span className="muted" style={{ fontSize: 12.5 }}>{es ? '% de tu neto para quien traiga la venta (0–80%)' : '% of your net for whoever brings the sale (0–80%)'}</span>
+              <input type="number" min={0} max={affMax} style={{ ...inp, width: 90 }} value={f.affiliate_pct ?? 0} onChange={(e) => setF({ ...f, affiliate_pct: e.target.value })} />
+              <span className="muted" style={{ fontSize: 12.5 }}>{es ? `% de tu neto para quien traiga la venta (0–${affMax}%)` : `% of your net for whoever brings the sale (0–${affMax}%)`}</span>
             </div>
             <span className="muted" style={{ fontSize: 11, display: 'block', marginTop: 4 }}>{es
               ? 'Reparto por venta: primero la comisión de Onyx, del resto tú te quedas con tu neto y ese % va al que compartió tu enlace.'

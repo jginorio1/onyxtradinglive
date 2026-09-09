@@ -5,6 +5,7 @@ import { listMarketplace, botLabSettings } from '@/lib/botlab';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import BotLabLead from './BotLabLead';
 import BotLabMarket from './BotLabMarket';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 export const dynamic = 'force-dynamic';
 
@@ -206,11 +207,11 @@ export default async function BotLabLanding() {
       <section style={{ ...wrap, paddingTop: 6, paddingBottom: 6 }}>
         <div style={{ display: 'grid', gap: 12 }} className="g4">
           {(es
-            ? [['✓', 'Traders verificados', 'Cada robot pasa reglas sobre sus operaciones reales antes de publicarse.'], ['📊', 'Onyx Score y riesgo visibles', 'Ves score, rendimiento y drawdown máximo antes de pagar.'], ['🧪', 'Prueba en demo primero', 'Instálalo en cuenta demo y solo pásalo a real cuando te convenza.'], ['🔒', 'Pago seguro · ' + payShort, 'Cobro protegido y sin contracargos en USDT. Reglas de riesgo horneadas dentro del robot.']]
-            : [['✓', 'Verified traders', 'Every robot passes rules on its real trades before listing.'], ['📊', 'Onyx Score and risk shown', 'See score, performance and max drawdown before you pay.'], ['🧪', 'Try on demo first', 'Install on a demo account and go live only when convinced.'], ['🔒', 'Secure payment · ' + payShort, 'Protected, chargeback-free USDT checkout. Risk rules baked inside the robot.']]
+            ? [['🛡', 'Traders verificados', 'Cada robot pasa reglas sobre sus operaciones reales antes de publicarse.'], ['📊', 'Onyx Score y riesgo visibles', 'Ves score, rendimiento y drawdown máximo antes de pagar.'], ['🧪', 'Prueba en demo primero', 'Instálalo en cuenta demo y solo pásalo a real cuando te convenza.'], ['🔒', 'Pago seguro · ' + payShort, 'Cobro protegido y sin contracargos en USDT. Reglas de riesgo horneadas dentro del robot.']]
+            : [['🛡', 'Verified traders', 'Every robot passes rules on its real trades before listing.'], ['📊', 'Onyx Score and risk shown', 'See score, performance and max drawdown before you pay.'], ['🧪', 'Try on demo first', 'Install on a demo account and go live only when convinced.'], ['🔒', 'Secure payment · ' + payShort, 'Protected, chargeback-free USDT checkout. Risk rules baked inside the robot.']]
           ).map(([ic, t, d], i) => (
             <div key={i} style={{ ...card, padding: 14, display: 'flex', gap: 11, alignItems: 'flex-start' }}>
-              <span style={{ flex: 'none', fontSize: 17 }}>{ic}</span>
+              <span style={{ flex: 'none', color: 'var(--brand)' }}><OnyxIcon emoji={ic as string} size={20} /></span>
               <div><b style={{ fontSize: 13.5 }}>{t}</b><p className="muted" style={{ fontSize: 12, margin: '3px 0 0' }}>{d}</p></div>
             </div>
           ))}
@@ -300,7 +301,7 @@ export default async function BotLabLanding() {
       {/* GARANTÍA / reduce el riesgo de comprar */}
       <section style={{ ...wrap, padding: '14px 22px' }}>
         <div style={{ ...card, textAlign: 'center', border: '1px solid color-mix(in srgb,var(--green) 30%,transparent)', background: 'color-mix(in srgb,var(--green) 6%,transparent)' }}>
-          <div style={{ fontSize: 22, marginBottom: 6 }}>🛡️</div>
+          <div style={{ marginBottom: 6, display: 'flex', justifyContent: 'center', color: 'var(--green)' }}><OnyxIcon emoji="🛡" size={26} /></div>
           <h3 style={{ margin: '0 0 6px', fontSize: 'clamp(18px,4vw,22px)' }}>{es ? 'Compra sin miedo' : 'Buy with confidence'}</h3>
           <p className="muted" style={{ fontSize: 14, maxWidth: 620, margin: '0 auto' }}>{es ? ('Pruébalo primero en cuenta demo, sin arriesgar un centavo. Pago único ' + payLong + (cardOn ? '.' : ', on-chain y sin contracargos.') + ' Cada robot lleva sus reglas de riesgo dentro para proteger tu cuenta.') : ('Try it first on a demo account, risking nothing. One-time payment ' + payLong + (cardOn ? '.' : ', on-chain and chargeback-free.') + ' Every robot carries its risk rules inside to protect your account.')}</p>
         </div>
@@ -351,7 +352,7 @@ export default async function BotLabLanding() {
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 9, border: '1px solid color-mix(in srgb,var(--green) 40%,transparent)', background: 'color-mix(in srgb,var(--green) 8%,transparent)', borderRadius: 12, padding: '12px 16px', fontWeight: 800, fontSize: 14, color: 'var(--green)' }}>₮ USDT · TRON</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 9, border: '1px solid color-mix(in srgb,var(--green) 40%,transparent)', background: 'color-mix(in srgb,var(--green) 8%,transparent)', borderRadius: 12, padding: '12px 16px', fontWeight: 800, fontSize: 14, color: 'var(--green)' }}>₮ USDT · Ethereum</div>
-            {cardOn && <div style={{ display: 'flex', alignItems: 'center', gap: 9, border: '1px solid var(--line)', borderRadius: 12, padding: '12px 16px', fontWeight: 800, fontSize: 14 }}>💳 {es ? 'Tarjeta · Stripe' : 'Card · Stripe'}</div>}
+            {cardOn && <div style={{ display: 'flex', alignItems: 'center', gap: 9, border: '1px solid var(--line)', borderRadius: 12, padding: '12px 16px', fontWeight: 800, fontSize: 14 }}><OnyxIcon emoji="💳" size={18} /> {es ? 'Tarjeta · Stripe' : 'Card · Stripe'}</div>}
           </div>
         </div>
       </section>

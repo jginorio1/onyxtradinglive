@@ -455,8 +455,12 @@ export async function setAvatar(userId: string, url: string | null) {
 // Solo academias activas. Nunca exponemos correos ni datos sensibles.
 // Academia OFICIAL de Onyx Bot Lab (solo admin). Única fila con is_official = true.
 export async function officialMentor() {
-  const { data } = await supabaseAdmin.from('mentors').select('*').eq('is_official', true).limit(1).maybeSingle();
-  return (data as any) || null;
+  // Tolerante: si la columna is_official aún no existe (SQL sin correr), no rompe nada.
+  try {
+    const { data, error } = await supabaseAdmin.from('mentors').select('*').eq('is_official', true).limit(1).maybeSingle();
+    if (error) return null;
+    return (data as any) || null;
+  } catch { return null; }
 }
 // El admin crea/abre la academia oficial "Onyx Bot Lab" (idempotente).
 export async function makeOfficialAcademy(userId: string) {

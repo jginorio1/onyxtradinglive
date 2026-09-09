@@ -184,6 +184,7 @@ export async function POST(req: Request) {
       val_hft_min_hold: Math.max(0, Math.round(Number(b.val_hft_min_hold ?? cur.val_hft_min_hold ?? 5))),
       val_hft_max_day: Math.max(1, Math.round(Number(b.val_hft_max_day ?? cur.val_hft_max_day ?? 20))),
       lic_max_accounts: Math.max(0, Math.round(Number(b.lic_max_accounts ?? cur.lic_max_accounts ?? 3))),
+      affiliate_max: Math.max(0, Math.min(90, Math.round(Number(b.affiliate_max ?? cur.affiliate_max ?? 80)))),
     };
     // Nunca dejar todos los métodos apagados: si no queda ninguno, re-enciende TRON.
     if (!next.pay_trc20 && !next.pay_erc20 && !next.pay_card) next.pay_trc20 = true;

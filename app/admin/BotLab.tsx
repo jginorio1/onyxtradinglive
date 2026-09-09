@@ -725,6 +725,7 @@ function Settings({ es, set, setSet, canManage, act, mail }: any) {
         <SectionHead icon="coin" color="var(--green)" title={es ? 'Comisión y cobros' : 'Commission & payouts'} desc={es ? 'Qué se queda Onyx y a qué wallets llega el USDT.' : 'What Onyx keeps and where USDT lands.'} />
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 12 }}>
           <Field label={es ? 'Comisión Onyx (%)' : 'Onyx fee (%)'} value={set.fee_pct} onChange={(v: any) => setSet({ ...set, fee_pct: v })} />
+          <Field label={es ? 'Tope % de referido del vendedor' : 'Seller referral cap (%)'} value={set.affiliate_max ?? 80} onChange={(v: any) => setSet({ ...set, affiliate_max: v })} />
           <Field label={es ? 'Wallet USDT · Ethereum (0x…)' : 'USDT wallet · Ethereum (0x…)'} value={set.usdt_erc20} onChange={(v: any) => setSet({ ...set, usdt_erc20: v })} wide />
           <Field label={es ? 'Wallet USDT · TRON (T…)' : 'USDT wallet · TRON (T…)'} value={set.usdt_trc20} onChange={(v: any) => setSet({ ...set, usdt_trc20: v })} wide />
         </div>

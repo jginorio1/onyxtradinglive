@@ -50,6 +50,7 @@ export type BotLabSettings = {
   val_hft_min_hold: number;   // aguantar menos de X min = alta frecuencia
   val_hft_max_day: number;    // más de X ops/día = alta frecuencia
   lic_max_accounts: number;   // asientos: cuántas cuentas puede correr el comprador con UNA licencia (0 = sin límite)
+  affiliate_max: number;      // tope del % de referido que un vendedor puede asignar (0–90)
 };
 const DEF: BotLabSettings = {
   fee_pct: 20, usdt_address: '', usdt_network: 'trc20', usdt_erc20: '', usdt_trc20: '',
@@ -60,6 +61,7 @@ const DEF: BotLabSettings = {
   val_min_trades: 30, val_min_days: 14, val_min_score: 60, val_min_pf: 110, val_max_dd: 30,
   val_require_sl: true, val_reject_martingale: true, val_reject_hft: true, val_hft_min_hold: 5, val_hft_max_day: 20,
   lic_max_accounts: 3,
+  affiliate_max: 80,
 };
 // Devuelve la dirección correcta para una red, con fallback a la legacy.
 export function usdtAddressFor(s: BotLabSettings, network: string): string {
@@ -175,6 +177,9 @@ export async function myProducts(sellerId: string) {
   return (data || []) as any[];
 }
 export async function saveProduct(sellerId: string, b: any, isAdmin = false) {
+  // Tope del % de referido (editable en Admin → Bot Lab).
+  const _cfg = await botLabSettings();
+  const affMax = Math.max(0, Math.min(90, Math.round(Number((_cfg as any).affiliate_max ?? 80))));
   const row: any = {
     name: String(b.name || 'Mi robot').slice(0, 80),
     tagline: b.tagline ? String(b.tagline).slice(0, 140) : null,
@@ -182,7 +187,7 @@ export async function saveProduct(sellerId: string, b: any, isAdmin = false) {
     kind: b.kind === 'one_time' ? 'one_time' : 'subscription',
     interval: b.interval === 'year' ? 'year' : 'month',
     price_cents: Math.max(0, Math.round(Number(b.price_cents) || 0)),
-    affiliate_pct: Math.max(0, Math.min(80, Number(b.affiliate_pct) || 0)),  // % del neto para el referido
+    affiliate_pct: Math.max(0, Math.min(affMax, Number(b.affiliate_pct) || 0)),  // % del neto para el referido (tope editable)
     currency: (b.currency || 'usd').toLowerCase().slice(0, 3),
     platform: ['mt4', 'mt5', 'ctrader', 'any'].includes(b.platform) ? b.platform : 'any',
     pair: b.pair ? String(b.pair).slice(0, 20) : null,
@@ -350,7 +355,7 @@ export async function grantLicense(o: { productId: string; buyerId: string; sell
 export async function recordBotAffiliate(o: { productId: string; sellerId?: string | null; referrerId: string; buyerId?: string; grossCents: number; method: string; ref: string }) {
   if (!o.ref || !o.referrerId) return;
   const { data: prod } = await supabaseAdmin.from('bot_products').select('affiliate_pct').eq('id', o.productId).maybeSingle();
-  const affPct = Math.max(0, Math.min(80, Number((prod as any)?.affiliate_pct) || 0));
+  const affPct = Math.max(0, Math.min(90, Number((prod as any)?.affiliate_pct) || 0));
   if (affPct <= 0) return;
   const feePct = await sellerFeePct(o.sellerId);
   const onyxFee = Math.round((o.grossCents || 0) * (feePct / 100));
