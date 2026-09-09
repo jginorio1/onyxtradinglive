@@ -210,21 +210,14 @@ export default function BotLabDashboard() {
 
 // ---------------------------------------------------------------- Vender
 function SellPanel({ es, sell, reload, onEdit }: any) {
-  const connect = sell.connect || {};
-  async function connectPay() {
-    try { const r = await fetch('/api/botlab/sell', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'connect' }) }); const j = await r.json(); if (j.url) window.location.href = j.url; else toastErr(j.error || 'error'); } catch (er: any) { toastErr(er?.message); }
-  }
   async function del(id: string) {
     try { await fetch('/api/botlab/sell', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'delete', id }) }); reload(); } catch {}
   }
   return (
     <div style={{ display: 'grid', gap: 16 }}>
-      <div style={{ ...card, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-        <div>
-          <b>{es ? 'Cobro' : 'Payouts'}</b>
-          <div className="muted" style={{ fontSize: 13 }}>{connect.chargesEnabled ? (es ? '✓ Listo para recibir pagos' : '✓ Ready to receive payments') : (es ? 'Conecta tu cobro para vender con tarjeta.' : 'Connect your payouts to sell by card.')}</div>
-        </div>
-        {!connect.chargesEnabled && <button onClick={connectPay} style={{ padding: '10px 16px', borderRadius: 10, border: 'none', fontWeight: 800, cursor: 'pointer', background: 'var(--brand)', color: '#0b1020' }}>{es ? 'Conectar cobro' : 'Connect payouts'}</button>}
+      <div style={{ ...card, background: 'color-mix(in srgb,var(--green) 8%,var(--card))', borderColor: 'color-mix(in srgb,var(--green) 30%,var(--line))' }}>
+        <b style={{ fontSize: 13.5 }}>₮ {es ? 'Cobras en USDT' : 'You get paid in USDT'}</b>
+        <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>{es ? 'Vende tu robot y retira tus ganancias en USDT desde la pestaña Ganancias. Sin bancos ni tarjetas.' : 'Sell your robot and withdraw your earnings in USDT from the Earnings tab. No banks or cards.'}</div>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -251,8 +244,12 @@ function SellPanel({ es, sell, reload, onEdit }: any) {
 // ---------------------------------------------------------------- Ganancias
 function EarningsPanel({ es, sell, reload }: any) {
   const e = sell.earnings || {};
+  const [addr, setAddr] = useState('');
+  const [net, setNet] = useState('trc20');
+  const inp: any = { padding: '10px 12px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 13.5 };
   async function payout() {
-    try { const r = await fetch('/api/botlab/sell', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'payout', method: 'stripe' }) }); const j = await r.json(); if (!r.ok) throw new Error(j.error); toast(es ? 'Retiro solicitado.' : 'Payout requested.'); reload(); } catch (er: any) { toastErr(er?.message); }
+    if (!addr.trim()) { toastErr(es ? 'Pon tu dirección USDT.' : 'Enter your USDT address.'); return; }
+    try { const r = await fetch('/api/botlab/sell', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'payout', method: 'usdt', destination: `${net.toUpperCase()}:${addr.trim()}` }) }); const j = await r.json(); if (!r.ok) throw new Error(j.error); toast(es ? 'Retiro solicitado. Te pagamos en USDT.' : 'Payout requested. We pay you in USDT.'); setAddr(''); reload(); } catch (er: any) { toastErr(er?.message); }
   }
   return (
     <div style={{ display: 'grid', gap: 16 }}>
@@ -261,9 +258,14 @@ function EarningsPanel({ es, sell, reload }: any) {
           <div key={i} style={{ background: 'var(--bg2)', borderRadius: 12, padding: 14 }}><div className="muted" style={{ fontSize: 12 }}>{l}</div><div style={{ fontSize: 22, fontWeight: 800, color: c as string }}>{v}</div></div>
         ))}
       </div>
-      <div style={{ ...card, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-        <div><b>{es ? 'Retirar tus ganancias' : 'Withdraw your earnings'}</b><div className="muted" style={{ fontSize: 13 }}>{es ? 'Desde $10 disponibles. Te pagamos a tu banco o en USDT.' : 'From $10 available. We pay to your bank or in USDT.'}</div></div>
-        <button onClick={payout} disabled={(e.availableCents || 0) < 1000} style={{ padding: '10px 18px', borderRadius: 10, border: 'none', fontWeight: 800, cursor: (e.availableCents || 0) < 1000 ? 'not-allowed' : 'pointer', opacity: (e.availableCents || 0) < 1000 ? .5 : 1, background: `linear-gradient(120deg,${GOLD},#ffb020)`, color: '#3a2a06' }}>{es ? 'Solicitar retiro' : 'Request payout'}</button>
+      <div style={{ ...card }}>
+        <b>₮ {es ? 'Retirar tus ganancias en USDT' : 'Withdraw your earnings in USDT'}</b>
+        <div className="muted" style={{ fontSize: 13, marginBottom: 10 }}>{es ? 'Desde $10 disponibles. Pon tu wallet USDT y te lo enviamos.' : 'From $10 available. Enter your USDT wallet and we send it.'}</div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <select style={{ ...inp, flex: 'none' }} value={net} onChange={(ev) => setNet(ev.target.value)}><option value="trc20">TRON (TRC20)</option><option value="erc20">Ethereum (ERC20)</option></select>
+          <input style={{ ...inp, flex: 1, minWidth: 200 }} placeholder={es ? 'Tu dirección USDT (T… / 0x…)' : 'Your USDT address (T… / 0x…)'} value={addr} onChange={(ev) => setAddr(ev.target.value)} />
+          <button onClick={payout} disabled={(e.availableCents || 0) < 1000} style={{ padding: '10px 18px', borderRadius: 10, border: 'none', fontWeight: 800, cursor: (e.availableCents || 0) < 1000 ? 'not-allowed' : 'pointer', opacity: (e.availableCents || 0) < 1000 ? .5 : 1, background: `linear-gradient(120deg,${GOLD},#ffb020)`, color: '#3a2a06' }}>{es ? 'Solicitar retiro' : 'Request payout'}</button>
+        </div>
       </div>
       <div style={card}>
         <h3 style={{ marginTop: 0 }}>{es ? 'Historial de retiros' : 'Payout history'}</h3>
