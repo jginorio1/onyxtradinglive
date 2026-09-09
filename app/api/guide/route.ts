@@ -2,9 +2,30 @@ import { NextResponse } from 'next/server';
 import { getAdmin } from '@/lib/admin';
 import { CATEGORIES, ARTICLES, type Article } from '@/lib/guide';
 import { getAllArticles, getCustomArticles, saveCustomArticles } from '@/lib/guideStore';
+import { botLabSettings } from '@/lib/botlab';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+
+// El reparto de Bot Lab (80/20) se escribe a mano en la guía, pero la comisión es
+// EDITABLE en Admin. Aquí reemplazamos "80%"→te quedas y "20%"→Onyx en vivo, SOLO
+// en los artículos de la categoría 'botlab', para que la guía siempre coincida con
+// lo que cobras de verdad (igual que el FAQ y el landing).
+function deepReplaceFee<T>(v: T, keep: number, fee: number): T {
+  if (typeof v === 'string') return v.replace(/\b80%/g, keep + '%').replace(/\b20%/g, fee + '%') as any;
+  if (Array.isArray(v)) return v.map((x) => deepReplaceFee(x, keep, fee)) as any;
+  if (v && typeof v === 'object') { const o: any = {}; for (const k of Object.keys(v as any)) o[k] = deepReplaceFee((v as any)[k], keep, fee); return o; }
+  return v;
+}
+async function applyBotlabFee(articles: Article[]): Promise<Article[]> {
+  try {
+    const cfg = await botLabSettings();
+    const fee = Math.max(0, Math.min(90, Math.round(Number((cfg as any).fee_pct) || 0)));
+    if (fee === 20) return articles;   // el valor escrito ya coincide: nada que hacer
+    const keep = 100 - fee;
+    return articles.map((a) => (a.cat === 'botlab' ? { ...a, body: deepReplaceFee(a.body, keep, fee) } : a));
+  } catch { return articles; }
+}
 
 function slugify(v: any): string {
   return String(v ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
@@ -15,7 +36,8 @@ const CODE_SLUGS = new Set(ARTICLES.map((a) => a.slug));
 // GET · público: todos los artículos fusionados + categorías. También indica
 // cuáles son del dueño (customSlugs) para el editor.
 export async function GET() {
-  const [articles, custom] = await Promise.all([getAllArticles(), getCustomArticles().catch(() => [])]);
+  const [articlesRaw, custom] = await Promise.all([getAllArticles(), getCustomArticles().catch(() => [])]);
+  const articles = await applyBotlabFee(articlesRaw);
   return NextResponse.json({
     articles, categories: CATEGORIES,
     customSlugs: (custom as Article[]).map((a) => a.slug),
