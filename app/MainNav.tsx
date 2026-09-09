@@ -20,7 +20,8 @@ const GOLD_CHIP: any = { background: 'linear-gradient(120deg,#ffd45e,#ffb020)', 
 export default function MainNav({ items, authItems }: { items: NavItem[]; authItems?: NavItem[] }) {
   const pathname = usePathname() || '/';
   const [open, setOpen] = useState(false);
-  const [menuTop, setMenuTop] = useState<number | null>(null);   // top real del menú en móvil (px)
+  const [menuTop, setMenuTop] = useState<number | null>(null);   // top del menú en móvil (px, relativo al bloque contenedor)
+  const [menuMaxH, setMenuMaxH] = useState<number | null>(null); // alto máximo disponible en pantalla (px)
   const box = useRef<HTMLDivElement>(null);
 
   // Cierra al navegar
@@ -35,8 +36,7 @@ export default function MainNav({ items, authItems }: { items: NavItem[]; authIt
       const mobile = typeof window !== 'undefined' && window.matchMedia('(max-width:600px)').matches;
       if (!mobile) { setMenuTop(null); return; }
       // El menú va debajo de TODA la cabecera fija: barra + (si existe) sub-barra
-      // de secciones. Tomamos el borde inferior más bajo de las dos, para que quede
-      // pegado sin hueco ni encimarse. Solo contamos elementos realmente visibles.
+      // de secciones. Tomamos el borde inferior más bajo de las dos.
       let bottom = 0;
       for (const sel of ['.topbar', '.secnav']) {
         const el = document.querySelector(sel) as HTMLElement | null;
@@ -44,7 +44,25 @@ export default function MainNav({ items, authItems }: { items: NavItem[]; authIt
         const r = el.getBoundingClientRect();
         if (r.height > 0 && r.bottom > bottom) bottom = r.bottom;
       }
-      setMenuTop(bottom > 0 ? Math.round(bottom) : null);
+      if (bottom <= 0) { setMenuTop(null); setMenuMaxH(null); return; }
+      setMenuMaxH(Math.max(160, Math.round(window.innerHeight - bottom - 8)));
+      // OJO: el menú vive DENTRO de .topbar, que tiene backdrop-filter. Eso convierte
+      // a la barra en el "bloque contenedor" de los position:fixed hijos, así que el
+      // top NO se mide desde la pantalla sino desde la barra. Si la barra crea ese
+      // bloque, restamos su desplazamiento para clavar el menú en la posición real.
+      const tb = document.querySelector('.topbar') as HTMLElement | null;
+      let offsetY = 0;
+      if (tb) {
+        const cs = getComputedStyle(tb) as any;
+        const creates = (cs.backdropFilter && cs.backdropFilter !== 'none')
+          || (cs.webkitBackdropFilter && cs.webkitBackdropFilter !== 'none')
+          || (cs.transform && cs.transform !== 'none')
+          || (cs.filter && cs.filter !== 'none')
+          || (cs.perspective && cs.perspective !== 'none')
+          || (cs.willChange && /transform|filter/.test(cs.willChange));
+        if (creates) offsetY = tb.getBoundingClientRect().top;
+      }
+      setMenuTop(Math.round(bottom - offsetY));
     };
     compute();
     window.addEventListener('resize', compute);
@@ -89,7 +107,7 @@ export default function MainNav({ items, authItems }: { items: NavItem[]; authIt
           <span /><span /><span />
         </button>
         {open && (
-          <div className="menu" style={{ minWidth: 180, ...(menuTop != null ? { top: menuTop + 'px', maxHeight: `calc(100dvh - ${menuTop}px)` } : {}) }}>
+          <div className="menu" style={{ minWidth: 180, ...(menuTop != null ? { top: menuTop + 'px' } : {}), ...(menuMaxH != null ? { maxHeight: menuMaxH + 'px' } : {}) }}>
             {items.map((i) => {
               const cls = 'menu-item' + (isActive(i.href) ? ' on' : '');
               const inner = (<>
