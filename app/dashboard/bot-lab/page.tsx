@@ -307,8 +307,8 @@ function SellPanel({ es, sell, reload, onEdit }: any) {
   return (
     <div style={{ display: 'grid', gap: 16 }}>
       <div style={{ ...card, background: 'color-mix(in srgb,var(--green) 8%,var(--card))', borderColor: 'color-mix(in srgb,var(--green) 30%,var(--line))' }}>
-        <b style={{ fontSize: 13.5 }}>₮ {es ? 'Cobras en USDT' : 'You get paid in USDT'}</b>
-        <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>{es ? 'Vende tu robot y retira tus ganancias en USDT desde la pestaña Ganancias. Sin bancos ni tarjetas.' : 'Sell your robot and withdraw your earnings in USDT from the Earnings tab. No banks or cards.'}</div>
+        <b style={{ fontSize: 13.5 }}>₮ {es ? 'Cobras en USDT o en tu banco' : 'Get paid in USDT or to your bank'}</b>
+        <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>{es ? 'Vende tu robot y retira tus ganancias en USDT o a tu banco (Stripe Express) desde la pestaña Ganancias.' : 'Sell your robot and withdraw your earnings in USDT or to your bank (Stripe Express) from the Earnings tab.'}</div>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -626,8 +626,8 @@ function ProductModal({ es, product, pay, onClose, onSaved }: any) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'color-mix(in srgb,var(--green) 12%,transparent)', border: '1px solid color-mix(in srgb,var(--green) 35%,transparent)', borderRadius: 10, padding: '11px 12px' }}>
             <span style={{ width: 26, height: 26, flex: 'none', borderRadius: 7, background: 'var(--green)', color: '#04150e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900 }}>₮</span>
             <div>
-              <div style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--green)' }}>{es ? 'Cobras en USDT (TRON · Ethereum)' : 'You get paid in USDT (TRON · Ethereum)'}</div>
-              <div className="muted" style={{ fontSize: 11.5 }}>{es ? 'Sin bancos ni tarjetas · sin contracargos. Retiras desde Ganancias.' : 'No banks or cards · no chargebacks. Withdraw from Earnings.'}</div>
+              <div style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--green)' }}>{es ? 'Cobras en USDT o en tu banco' : 'Get paid in USDT or to your bank'}</div>
+              <div className="muted" style={{ fontSize: 11.5 }}>{es ? 'USDT (TRON · Ethereum) o tu banco por Stripe Express. Retiras desde Ganancias.' : 'USDT (TRON · Ethereum) or your bank via Stripe Express. Withdraw from Earnings.'}</div>
             </div>
           </div>
         </div>
