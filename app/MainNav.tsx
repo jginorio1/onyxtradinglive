@@ -34,8 +34,17 @@ export default function MainNav({ items, authItems }: { items: NavItem[]; authIt
     const compute = () => {
       const mobile = typeof window !== 'undefined' && window.matchMedia('(max-width:600px)').matches;
       if (!mobile) { setMenuTop(null); return; }
-      const tb = document.querySelector('.topbar') as HTMLElement | null;
-      setMenuTop(tb ? Math.max(0, Math.round(tb.getBoundingClientRect().bottom)) : null);
+      // El menú va debajo de TODA la cabecera fija: barra + (si existe) sub-barra
+      // de secciones. Tomamos el borde inferior más bajo de las dos, para que quede
+      // pegado sin hueco ni encimarse. Solo contamos elementos realmente visibles.
+      let bottom = 0;
+      for (const sel of ['.topbar', '.secnav']) {
+        const el = document.querySelector(sel) as HTMLElement | null;
+        if (!el) continue;
+        const r = el.getBoundingClientRect();
+        if (r.height > 0 && r.bottom > bottom) bottom = r.bottom;
+      }
+      setMenuTop(bottom > 0 ? Math.round(bottom) : null);
     };
     compute();
     window.addEventListener('resize', compute);
