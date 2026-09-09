@@ -49,6 +49,7 @@ export type BotLabSettings = {
   val_reject_hft: boolean;    // rechazar alta frecuencia
   val_hft_min_hold: number;   // aguantar menos de X min = alta frecuencia
   val_hft_max_day: number;    // más de X ops/día = alta frecuencia
+  lic_max_accounts: number;   // asientos: cuántas cuentas puede correr el comprador con UNA licencia (0 = sin límite)
 };
 const DEF: BotLabSettings = {
   fee_pct: 20, usdt_address: '', usdt_network: 'trc20', usdt_erc20: '', usdt_trc20: '',
@@ -58,6 +59,7 @@ const DEF: BotLabSettings = {
   pay_trc20: true, pay_erc20: true, pay_card: false, robots_monthly: false,
   val_min_trades: 30, val_min_days: 14, val_min_score: 60, val_min_pf: 110, val_max_dd: 30,
   val_require_sl: true, val_reject_martingale: true, val_reject_hft: true, val_hft_min_hold: 5, val_hft_max_day: 20,
+  lic_max_accounts: 3,
 };
 // Devuelve la dirección correcta para una red, con fallback a la legacy.
 export function usdtAddressFor(s: BotLabSettings, network: string): string {

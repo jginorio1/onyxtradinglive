@@ -679,6 +679,7 @@ function Validation({ es, set, setSet, canManage, act }: any) {
           <NumCard k="val_max_dd" title={es ? 'Drawdown máximo (%)' : 'Max drawdown (%)'} desc={es ? 'La peor caída que aceptas. Más = rechaza.' : 'Worst drop you accept.'} />
           <NumCard k="val_hft_min_hold" title={es ? 'Alta frecuencia: aguanta < min' : 'HFT: holds < min'} desc={es ? 'Menos de estos minutos por operación = alta frecuencia.' : 'Less than this = HFT.'} />
           <NumCard k="val_hft_max_day" title={es ? 'Alta frecuencia: > ops/día' : 'HFT: > trades/day'} desc={es ? 'Más de estas operaciones al día = alta frecuencia.' : 'More than this per day = HFT.'} />
+          <NumCard k="lic_max_accounts" title={es ? 'Cuentas por licencia (asientos)' : 'Accounts per license (seats)'} desc={es ? 'En cuántas de SUS cuentas puede correr el robot el comprador con una licencia. 0 = sin límite.' : 'How many of the buyer’s accounts can run it per license. 0 = unlimited.'} />
         </div>
         <div style={{ display: 'grid', gap: 8, marginTop: 12 }}>
           <RuleRow k="val_require_sl" title={es ? 'Stop Loss obligatorio' : 'Stop Loss required'} desc={es ? 'Rechaza si no declara SL o si detectamos pérdidas sin tope.' : 'Rejects if no SL declared or unbounded losses.'} />

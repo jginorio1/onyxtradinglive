@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { licenseForMagic } from '@/lib/botLicense';
+import { botLabSettings } from '@/lib/botlab';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -51,6 +52,21 @@ export async function POST(req: Request) {
     // lo corre debe tener licencia activa y al día. Si dejó de pagar → se detiene.
     const lic = await licenseForMagic(k.user_id, magic);
     if (lic.gated && !lic.allowed) return deny('license_' + (lic.reason || 'inactive'));
+
+    // Asientos: un comprador puede correr el robot en un número limitado de SUS cuentas.
+    // Solo aplica a productos vendidos (gated) y no al creador (allowed sin licencia propia).
+    if (lic.gated && lic.allowed && account) {
+      try {
+        const cfg = await botLabSettings();
+        const cap = Math.max(0, Math.round(Number(cfg.lic_max_accounts) || 0));
+        if (cap > 0) {
+          const { data: seats } = await supabaseAdmin.from('bot_activations').select('account').eq('runner_user_id', k.user_id).eq('magic', magic);
+          const distinct = new Set((seats || []).map((s: any) => Number(s.account)).filter(Boolean));
+          distinct.add(account);
+          if (distinct.size > cap) return deny('seat_limit');
+        }
+      } catch { /* si la tabla no existe, no bloquea */ }
+    }
 
     const until = new Date(Date.now() + 24 * 3600 * 1000).toISOString();
     return NextResponse.json({ allowed: true, until, license: lic.gated ? { until: lic.until || null } : undefined });

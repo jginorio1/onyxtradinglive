@@ -210,7 +210,7 @@ export default function BotLabDashboard() {
 
       {netPick && <NetworkPicker es={es} pick={netPick} onClose={() => setNetPick(null)} onPick={(n: string) => buy(netPick.product, 'usdt', n)} />}
       {crypto && <CryptoModal es={es} crypto={crypto} onClose={() => setCrypto(null)} onDone={() => { setCrypto(null); toast(es ? 'Recibido. Activamos tu robot al confirmar el pago.' : 'Received. Your robot activates once the payment is confirmed.'); loadLicenses(); }} />}
-      {editing && <ProductModal es={es} product={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); loadSell(); }} />}
+      {editing && <ProductModal es={es} product={editing} pay={pay} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); loadSell(); }} />}
 
       <style>{`@media(max-width:820px){.bl-shell{flex-direction:column}.bl-side{position:static!important;flex:none!important;width:100%}.bl-nav{flex-direction:row!important;flex-wrap:wrap}}`}</style>
     </div>
@@ -304,8 +304,13 @@ function PayChip({ on, onClick, icon, label }: any) {
 }
 
 // ---------------------------------------------------------------- Modal producto
-function ProductModal({ es, product, onClose, onSaved }: any) {
-  const [f, setF] = useState<any>({ name: '', tagline: '', kind: 'subscription', interval: 'month', price: 29, platform: 'mt5', category: '', accepts_card: true, accepts_crypto: true, ...product, price: product?.price_cents != null ? product.price_cents / 100 : (product?.price ?? 29) });
+function ProductModal({ es, product, pay, onClose, onSaved }: any) {
+  const monthlyOn = pay?.monthly === true;   // ¿el dueño permite cobro mensual?
+  const cardOn = pay?.card === true;         // ¿el dueño acepta tarjeta?
+  const [f, setF] = useState<any>({ name: '', tagline: '', interval: 'month', price: 29, platform: 'mt5', category: '', accepts_crypto: true, ...product,
+    kind: monthlyOn ? (product?.kind || 'subscription') : 'one_time',   // sin mensual → siempre pago único
+    accepts_card: cardOn ? (product?.accepts_card !== false) : false,   // tarjeta apagada → no la aceptan
+    price: product?.price_cents != null ? product.price_cents / 100 : (product?.price ?? 29) });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const inp: any = { width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 14 };
@@ -340,7 +345,9 @@ function ProductModal({ es, product, onClose, onSaved }: any) {
           <input style={inp} placeholder={es ? 'Frase corta (qué hace)' : 'Short tagline'} value={f.tagline || ''} onChange={(e) => setF({ ...f, tagline: e.target.value })} />
           <textarea style={{ ...inp, minHeight: 70, resize: 'vertical' }} placeholder={es ? 'Descripción, estrategia, resultados…' : 'Description, strategy, results…'} value={f.description || ''} onChange={(e) => setF({ ...f, description: e.target.value })} />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <select style={inp} value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value })}><option value="subscription">{es ? 'Renta mensual' : 'Monthly rental'}</option><option value="one_time">{es ? 'Pago único' : 'One-time'}</option></select>
+            {monthlyOn
+              ? <select style={inp} value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value })}><option value="subscription">{es ? 'Renta mensual' : 'Monthly rental'}</option><option value="one_time">{es ? 'Pago único' : 'One-time'}</option></select>
+              : <div style={{ ...inp, display: 'flex', alignItems: 'center', color: 'var(--mut)' }}>{es ? 'Pago único' : 'One-time'}</div>}
             <select style={inp} value={f.platform} onChange={(e) => setF({ ...f, platform: e.target.value })}><option value="mt5">MT5</option><option value="mt4">MT4</option><option value="ctrader">cTrader</option><option value="any">{es ? 'Cualquiera' : 'Any'}</option></select>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -361,13 +368,17 @@ function ProductModal({ es, product, onClose, onSaved }: any) {
           </div>
           <input style={inp} placeholder={es ? 'Prueba de rendimiento (Myfxbook, backtest, statement…)' : 'Performance proof (Myfxbook, backtest, statement…)'} value={f.proof_url || ''} onChange={(e) => setF({ ...f, proof_url: e.target.value })} />
           <span className="muted" style={{ fontSize: 11.5, marginTop: -4 }}>{es ? 'Un enlace a tu track record real ayuda a que aprobemos tu robot más rápido.' : 'A link to your real track record helps us approve your robot faster.'}</span>
-          <div>
-            <div className="muted" style={{ fontSize: 11.5, marginBottom: 6 }}>{es ? 'Métodos de pago que aceptas' : 'Payment methods you accept'}</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <PayChip on={f.accepts_card !== false} onClick={() => setF({ ...f, accepts_card: !(f.accepts_card !== false) })} icon="💳" label={es ? 'Tarjeta' : 'Card'} />
-              <PayChip on={f.accepts_crypto !== false} onClick={() => setF({ ...f, accepts_crypto: !(f.accepts_crypto !== false) })} icon="₮" label="USDT" />
+          {cardOn ? (
+            <div>
+              <div className="muted" style={{ fontSize: 11.5, marginBottom: 6 }}>{es ? 'Métodos de pago que aceptas' : 'Payment methods you accept'}</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <PayChip on={f.accepts_card !== false} onClick={() => setF({ ...f, accepts_card: !(f.accepts_card !== false) })} icon="💳" label={es ? 'Tarjeta' : 'Card'} />
+                <PayChip on={f.accepts_crypto !== false} onClick={() => setF({ ...f, accepts_crypto: !(f.accepts_crypto !== false) })} icon="₮" label="USDT" />
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="muted" style={{ fontSize: 11.5 }}>{es ? '₮ Cobro en USDT (TRON · Ethereum).' : '₮ Paid in USDT (TRON · Ethereum).'}</div>
+          )}
           <div>
             <div className="muted" style={{ fontSize: 11.5, marginBottom: 6 }}>{es ? 'Archivo del robot (lo recibe el comprador)' : 'Robot file (the buyer receives it)'}</div>
             <label style={{ display: 'flex', alignItems: 'center', gap: 10, border: '1px dashed var(--line)', borderRadius: 10, padding: '11px 12px', cursor: 'pointer', background: 'var(--bg2)' }}>
