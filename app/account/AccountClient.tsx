@@ -800,7 +800,7 @@ export default function AccountClient({ email }: { email: string }) {
             {data && tab === 'referidos' && (() => {
               const en = lang === 'en';
               const active: any = { boxShadow: '0 0 0 2px var(--brand)', borderColor: 'var(--brand)' };
-              const cmpCard: any = { textAlign: 'left', cursor: 'pointer', borderRadius: 14, padding: 14, border: '1px solid var(--line)', background: 'var(--card)', transition: '.15s', width: '100%', display: 'block' };
+              const cmpCard: any = { textAlign: 'left', cursor: 'pointer', borderRadius: 14, padding: 14, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--tx)', transition: '.15s', width: '100%', display: 'block', font: 'inherit' };
               return (
               <Section icon="🎁" title={L.nav.referidos} subtitle={en ? 'Two ways to earn by bringing people to Onyx. Pick the one that fits you.' : 'Dos formas de ganar trayendo gente a Onyx. Elige la que te encaje.'}>
                 {/* Comparador + selector: cada tarjeta explica y a la vez cambia de vista */}
