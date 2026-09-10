@@ -17,11 +17,13 @@ type Row = {
   id: string; program: string; programLabel: string; icon: string;
   userId: string | null; who: string; amountCents: number; currency: string;
   method: string; destination: string; status: string; createdAt: string; paidAt: string | null; note: string;
+  readonly?: boolean; by?: string;
 };
 type Data = {
   currency: string;
-  kpis: { toPayCents: number; onHoldCents: number; usdtUnconfirmed: number; paidMonthCents: number; pendingCount: number };
+  kpis: { toPayCents: number; onHoldCents: number; usdtUnconfirmed: number; paidMonthCents: number; pendingCount: number; directMonthCents: number };
   rows: Row[];
+  infoRows: Row[];
 };
 
 export default function PayoutsHub({ canManage }: { canManage: boolean }) {
@@ -32,6 +34,7 @@ export default function PayoutsHub({ canManage }: { canManage: boolean }) {
   const [busy, setBusy] = useState('');
   const [prog, setProg] = useState<'all' | 'botlab' | 'ambassador'>('all');
   const [st, setSt] = useState<'pendientes' | 'retenidos' | 'pagados' | 'todos'>('pendientes');
+  const [showInfo, setShowInfo] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -114,6 +117,7 @@ export default function PayoutsHub({ canManage }: { canManage: boolean }) {
         <Kpi label={es ? 'En espera / retenido' : 'On hold'} value={money(k?.onHoldCents || 0)} color="var(--mut)" />
         <Kpi label={es ? 'USDT sin confirmar' : 'USDT unconfirmed'} value={String(k?.usdtUnconfirmed || 0)} sub={es ? 'sin dirección' : 'no address'} color={(k?.usdtUnconfirmed || 0) > 0 ? 'var(--red)' : 'var(--green)'} />
         <Kpi label={es ? 'Pagado (este mes)' : 'Paid (this month)'} value={money(k?.paidMonthCents || 0)} color="var(--green)" />
+        <Kpi label={es ? 'Directo a Stripe (mes)' : 'Direct to Stripe (month)'} value={money(k?.directMonthCents || 0)} sub={es ? 'informativo' : 'informational'} color="var(--brand)" />
       </div>
 
       {/* Filtros */}
@@ -181,6 +185,43 @@ export default function PayoutsHub({ canManage }: { canManage: boolean }) {
           </div>
         )}
       </div>
+
+      {/* INFORMATIVO · no lo pagas tú (mentor / registro / directo a Stripe) */}
+      {(d?.infoRows?.length || 0) > 0 && (
+        <div style={{ marginTop: 22 }}>
+          <button onClick={() => setShowInfo((v) => !v)} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--tx)', fontSize: 15, fontWeight: 800, padding: 0 }}>
+            <span style={{ transform: showInfo ? 'rotate(90deg)' : 'none', transition: '.15s', display: 'inline-block' }}>▸</span>
+            {es ? 'Informativo · no lo pagas tú' : 'Informational · you don\'t pay these'} <span className="muted" style={{ fontWeight: 400, fontSize: 12.5 }}>({d?.infoRows?.length})</span>
+          </button>
+          <div className="muted" style={{ fontSize: 12, margin: '4px 0 10px' }}>{es ? 'Academia · afiliados lo paga el mentor a sus referidos; las cuentas fondeadas son el registro personal del trader. Aquí solo para que veas el panorama completo.' : 'Academy affiliate is paid by the mentor to their referrers; funded accounts are the trader\'s personal record. Shown here just for the full picture.'}</div>
+          {showInfo && (
+            <div style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr style={{ textAlign: 'left', color: 'var(--mut)', fontSize: 11.5 }}>
+                    <th style={th}>{es ? 'Origen' : 'Source'}</th>
+                    <th style={th}>{es ? 'Quién' : 'Who'}</th>
+                    <th style={{ ...th, textAlign: 'right' }}>{es ? 'Monto' : 'Amount'}</th>
+                    <th style={th}>{es ? 'Lo paga' : 'Paid by'}</th>
+                    <th style={th}>{es ? 'Fecha' : 'Date'}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(d?.infoRows || []).slice(0, 60).map((r) => (
+                    <tr key={r.program + r.id} style={{ borderTop: '1px solid var(--line)' }}>
+                      <td style={td}><span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji={r.icon} size={16} /> {r.programLabel}</span></td>
+                      <td style={td}>{r.who}</td>
+                      <td style={{ ...td, textAlign: 'right', fontWeight: 800 }}>{money(r.amountCents)}</td>
+                      <td style={{ ...td, color: 'var(--mut)' }}>{r.by === 'mentor' ? (es ? 'El mentor' : 'The mentor') : r.by === 'trader' ? (es ? 'Registro del trader' : 'Trader record') : '—'}</td>
+                      <td style={{ ...td, color: 'var(--mut)', fontSize: 12, whiteSpace: 'nowrap' }}>{r.createdAt ? fmtDateTime(r.createdAt) : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {!canManage && <div className="muted" style={{ fontSize: 12, marginTop: 10 }}>{es ? 'Solo lectura: necesitas permiso de Finanzas o Embajadores (o ser dueño) para pagar o retener.' : 'Read-only: you need Finance or Ambassadors permission (or be the owner) to pay or hold.'}</div>}
       <div className="muted" style={{ fontSize: 11.5, marginTop: 10, lineHeight: 1.6 }}>

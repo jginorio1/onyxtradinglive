@@ -114,8 +114,8 @@ function Mini({ label, value, color }: any) {
 function EmptyState({ es }: { es: boolean }) {
   const ways: [string, string, string, string][] = [
     ['🤖', 'Bot Lab', es ? 'Vende tus robots o comparte los de otros' : 'Sell your robots or share others\'', '/dashboard/bot-lab?tab=ganancias'],
-    ['📣', es ? 'Embajador' : 'Ambassador', es ? 'Comisión recurrente por cada suscriptor' : 'Recurring commission per subscriber', '/account?tab=ambassador'],
-    ['🎁', es ? 'Invita y gana' : 'Invite & earn', es ? 'Crédito por invitar amigos' : 'Credit for inviting friends', '/dashboard'],
+    ['📣', es ? 'Embajador' : 'Ambassador', es ? 'Comisión recurrente por cada suscriptor' : 'Recurring commission per subscriber', '/account?tab=referidos'],
+    ['🎁', es ? 'Invita y gana' : 'Invite & earn', es ? 'Crédito por invitar amigos' : 'Credit for inviting friends', '/account?tab=referidos'],
     ['🏆', 'Onyx Copy', es ? 'Cobra a quienes copian tu estrategia' : 'Charge those who copy your strategy', '/dashboard/onyx-copy'],
   ];
   return (

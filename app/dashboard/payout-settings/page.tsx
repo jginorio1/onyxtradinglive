@@ -61,6 +61,11 @@ export default function PayoutSettingsPage() {
           </span>
         </div>
         <p className="muted" style={{ fontSize: 12.5, marginBottom: 12 }}>{es ? 'Una sola cuenta Stripe Express para recibir tus pagos en el banco. Solo lo haces una vez.' : 'A single Stripe Express account to receive your payouts to the bank. You only do this once.'}</p>
+        {st.adopted && st.connected && (
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--green)', background: 'color-mix(in srgb,var(--green) 10%,transparent)', border: '1px solid color-mix(in srgb,var(--green) 30%,var(--line))', borderRadius: 10, padding: '8px 11px', marginBottom: 12 }}>
+            {es ? '✓ Detectamos tu Stripe ya conectado en otro programa y lo reutilizamos aquí.' : '✓ We detected your Stripe already connected in another program and reused it here.'}
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button disabled={busy} onClick={async () => { const j = await act({ action: 'connect' }); if (j?.url) window.location.href = j.url; }} style={{ padding: '10px 18px', borderRadius: 10, border: 'none', fontWeight: 800, cursor: 'pointer', background: 'var(--brand)', color: '#0b1020' }}>
             {st.connected ? (es ? 'Continuar / actualizar datos' : 'Continue / update details') : (es ? 'Conectar mi banco' : 'Connect my bank')}

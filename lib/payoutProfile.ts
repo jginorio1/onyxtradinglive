@@ -14,12 +14,22 @@ import { isValidTron, isValidEvm, checkWallet } from '@/lib/walletChecksum';
 
 const appUrl = () => process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || 'https://www.onyxtradinglive.com';
 
-// Devuelve (creando si hace falta, UNA vez) la cuenta Stripe Express compartida.
-// Si el usuario ya conectó por algún programa, reutiliza esa misma cuenta.
-export async function sharedStripeAccountId(userId: string, email?: string): Promise<string> {
+// Busca una cuenta Stripe Express que el usuario YA haya conectado en cualquier
+// programa (perfil, embajador o mentor). Así el nodo no crea un duplicado vacío
+// cuando ya conectaste antes por Embajador/Academia. Solo lectura.
+export async function findExistingAccount(userId: string): Promise<string | null> {
   const { data: p } = await supabaseAdmin.from('profiles')
     .select('payout_stripe_account_id,bot_stripe_account_id,copy_stripe_account_id').eq('id', userId).maybeSingle();
   let acct = (p as any)?.payout_stripe_account_id || (p as any)?.bot_stripe_account_id || (p as any)?.copy_stripe_account_id;
+  if (!acct) { try { const { data: a } = await supabaseAdmin.from('ambassadors').select('stripe_account_id').eq('user_id', userId).not('stripe_account_id', 'is', null).maybeSingle(); acct = (a as any)?.stripe_account_id || acct; } catch {} }
+  if (!acct) { try { const { data: m } = await supabaseAdmin.from('mentors').select('stripe_account_id').eq('user_id', userId).not('stripe_account_id', 'is', null).maybeSingle(); acct = (m as any)?.stripe_account_id || acct; } catch {} }
+  return acct || null;
+}
+
+// Devuelve (creando si hace falta, UNA vez) la cuenta Stripe Express compartida.
+// Si el usuario ya conectó por algún programa, reutiliza esa misma cuenta.
+export async function sharedStripeAccountId(userId: string, email?: string): Promise<string> {
+  let acct = await findExistingAccount(userId);
   if (!acct) {
     const account = await stripe.accounts.create({
       type: 'express', email,
@@ -53,9 +63,16 @@ export async function payoutOnboardingLink(userId: string, email?: string, retur
 }
 
 // Estado del nodo: ¿ya puede cobrar? Refresca payouts/charges en profiles y programas.
-export async function payoutNodeStatus(userId: string): Promise<{ connected: boolean; chargesEnabled: boolean; payoutsEnabled: boolean; acct: string | null }> {
+export async function payoutNodeStatus(userId: string): Promise<{ connected: boolean; chargesEnabled: boolean; payoutsEnabled: boolean; acct: string | null; adopted?: boolean }> {
   const { data: p } = await supabaseAdmin.from('profiles').select('payout_stripe_account_id').eq('id', userId).maybeSingle();
-  const acct = (p as any)?.payout_stripe_account_id || null;
+  let acct = (p as any)?.payout_stripe_account_id || null;
+  let adopted = false;
+  // Si el nodo aún no tiene cuenta canónica pero ya conectaste por otro programa
+  // (embajador/mentor/bot/copy), ADÓPTALA y propágala en vez de mostrar "sin conectar".
+  if (!acct) {
+    const found = await findExistingAccount(userId);
+    if (found) { acct = found; adopted = true; try { await propagateAccount(userId, found); } catch {} }
+  }
   if (!acct) return { connected: false, chargesEnabled: false, payoutsEnabled: false, acct: null };
   try {
     const a = await stripe.accounts.retrieve(acct);
@@ -64,8 +81,8 @@ export async function payoutNodeStatus(userId: string): Promise<{ connected: boo
     // Sincroniza banderas de cada programa para que sus retiros se habiliten solos.
     try { await supabaseAdmin.from('profiles').update({ payout_charges_enabled: chargesEnabled, bot_charges_enabled: chargesEnabled, copy_charges_enabled: chargesEnabled }).eq('id', userId); } catch {}
     try { await supabaseAdmin.from('ambassadors').update({ payouts_enabled: payoutsEnabled }).eq('user_id', userId); } catch {}
-    return { connected: true, chargesEnabled, payoutsEnabled, acct };
-  } catch { return { connected: true, chargesEnabled: false, payoutsEnabled: false, acct }; }
+    return { connected: true, chargesEnabled, payoutsEnabled, acct, adopted };
+  } catch { return { connected: true, chargesEnabled: false, payoutsEnabled: false, acct, adopted }; }
 }
 
 // Enlace al panel Express (ver cobros/datos bancarios) de la cuenta compartida.

@@ -15,7 +15,7 @@ import { runPayout as runAmbPayout, markPaidManual as markAmbPaid } from '@/lib/
 
 export type AdminPayoutRow = {
   id: string;
-  program: 'botlab' | 'ambassador';
+  program: 'botlab' | 'ambassador' | 'academy_ref' | 'funded';
   programLabel: string;
   icon: string;
   userId: string | null;
@@ -28,12 +28,18 @@ export type AdminPayoutRow = {
   createdAt: string;
   paidAt: string | null;
   note: string;
+  readonly?: boolean;          // informativo: no lo paga el admin (mentor / registro)
+  by?: string;                 // quién lo paga (p.ej. "el mentor") en informativos
 };
 
 export type AdminPayoutsData = {
   currency: 'USD';
-  kpis: { toPayCents: number; onHoldCents: number; usdtUnconfirmed: number; paidMonthCents: number; pendingCount: number };
-  rows: AdminPayoutRow[];
+  kpis: {
+    toPayCents: number; onHoldCents: number; usdtUnconfirmed: number; paidMonthCents: number; pendingCount: number;
+    directMonthCents: number;   // cobrado directo a Stripe este mes (Academia mentor + Onyx Copy) · informativo
+  };
+  rows: AdminPayoutRow[];         // accionable: Bot Lab + Embajador
+  infoRows: AdminPayoutRow[];     // informativo: Academia·afiliados + cuentas fondeadas (solo lectura)
 };
 
 const isActionable = (s: string) => s === 'pending' || s === 'requested';
@@ -99,7 +105,56 @@ export async function adminPayouts(): Promise<AdminPayoutsData> {
   const rank = (s: string) => s === 'pending' ? 0 : s === 'on_hold' ? 1 : 2;
   rows.sort((a, b) => rank(a.status) - rank(b.status) || (new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
 
-  return { currency: 'USD', kpis: { toPayCents, onHoldCents, usdtUnconfirmed, paidMonthCents, pendingCount }, rows };
+  // ---- INFORMATIVO (no lo pagas tú) ----
+  const infoRows: AdminPayoutRow[] = [];
+  let directMonthCents = 0;
+
+  // Academia · afiliados: el MENTOR paga a sus referidos. Solo visibilidad.
+  try {
+    const { data } = await supabaseAdmin.from('academy_referral_payouts').select('*').order('created_at', { ascending: false }).limit(80);
+    const list = (data || []) as any[];
+    const emails = await emailMap(list.map((r) => r.referrer_id));
+    for (const r of list) {
+      infoRows.push({
+        id: r.id, program: 'academy_ref', programLabel: 'Academia · afiliado', icon: '🎓',
+        userId: r.referrer_id || null, who: emails[r.referrer_id] || short(r.referrer_id),
+        amountCents: Math.round(r.total_cents || 0), currency: (r.currency || 'usd').toUpperCase(),
+        method: r.method || 'otro', destination: '', status: 'paid', createdAt: r.created_at, paidAt: r.created_at,
+        note: r.note || '', readonly: true, by: 'mentor',
+      });
+    }
+  } catch { /* sin academia */ }
+
+  // Cuentas fondeadas: registro personal de retiros del trader (no lo paga la plataforma).
+  try {
+    const { data } = await supabaseAdmin.from('payouts').select('*').order('created_at', { ascending: false }).limit(80);
+    const list = (data || []) as any[];
+    const emails = await emailMap(list.map((r) => r.user_id));
+    for (const r of list) {
+      infoRows.push({
+        id: r.id, program: 'funded', programLabel: 'Cuenta fondeada', icon: '💵',
+        userId: r.user_id || null, who: emails[r.user_id] || short(r.user_id),
+        amountCents: Math.round((Number(r.amount) || 0) * 100), currency: 'USD',
+        method: 'registro', destination: '', status: 'paid', createdAt: r.created_at || r.date, paidAt: r.date || r.created_at,
+        note: r.note || '', readonly: true, by: 'trader',
+      });
+    }
+  } catch { /* sin cuentas fondeadas */ }
+
+  // Directo a Stripe este mes (Academia mentor + Onyx Copy): total informativo.
+  try {
+    const iso = monthStart.toISOString();
+    const [ac, cf, cp] = await Promise.all([
+      supabaseAdmin.from('onyx_commissions').select('gross_cents,fee_cents,created_at').neq('status', 'reversed').gte('created_at', iso),
+      supabaseAdmin.from('copy_follow_commissions').select('net_cents,created_at').gte('created_at', iso),
+      supabaseAdmin.from('copy_perf_charges').select('net_cents,status,created_at').eq('status', 'charged').gte('created_at', iso),
+    ]);
+    directMonthCents += ((ac.data || []) as any[]).reduce((s, r) => s + ((r.gross_cents || 0) - (r.fee_cents || 0)), 0);
+    directMonthCents += ((cf.data || []) as any[]).reduce((s, r) => s + (r.net_cents || 0), 0);
+    directMonthCents += ((cp.data || []) as any[]).reduce((s, r) => s + (r.net_cents || 0), 0);
+  } catch { /* sin datos directos */ }
+
+  return { currency: 'USD', kpis: { toPayCents, onHoldCents, usdtUnconfirmed, paidMonthCents, pendingCount, directMonthCents }, rows, infoRows };
 }
 
 const isUsdt = (m: string) => /usdt|crypto|cripto|trc|erc/i.test(m || '');
