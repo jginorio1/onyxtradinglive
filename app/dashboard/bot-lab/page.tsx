@@ -231,6 +231,7 @@ export default function BotLabDashboard() {
                         ◆ {es ? `Compartir y ganar ${Math.round(Number(p.affiliate_pct))}%` : `Share & earn ${Math.round(Number(p.affiliate_pct))}%`}
                       </button>
                     )}
+                    <VpsCallout variant="inline" gold />
                   </div>
                 );
               })}

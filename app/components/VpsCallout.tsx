@@ -65,10 +65,10 @@ export default function VpsCallout({ variant = 'callout', gold = false }: { vari
   // Línea compacta para tarjetas: "🖥️ 24/7 con VPS · Conseguir uno"
   if (variant === 'inline') {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10.5, color: 'var(--mut)', marginTop: 8 }}>
-        <span aria-hidden style={{ color: acc }}>🖥️</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, color: acc, marginTop: 8 }}>
+        <span aria-hidden>🖥️</span>
         <span>{es ? '24/7 con VPS' : '24/7 on a VPS'}</span>
-        {v.url && <><span aria-hidden>·</span><a href={v.url} target="_blank" rel={REL} style={{ color: acc, fontWeight: 700, textDecoration: 'underline' }}>{cta}</a></>}
+        {v.url && <><span aria-hidden style={{ opacity: .6 }}>·</span><a href={v.url} target="_blank" rel={REL} style={{ color: acc, fontWeight: 800, textDecoration: 'underline' }}>{cta}</a></>}
       </div>
     );
   }
