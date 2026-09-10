@@ -149,7 +149,7 @@ export default function BotLabDashboard() {
             </button>
           ))}
         </nav>
-        <a href="/bot-lab" target="_blank" className="muted" style={{ display: 'block', padding: '12px 12px 0', fontSize: 12.5 }}>{es ? 'Página pública ↗' : 'Public page ↗'}</a>
+        <a href="/bot-lab" target="_blank" className="muted" style={{ display: 'block', padding: '12px 12px 0', fontSize: 12.5 }}>{es ? 'Ver el marketplace ↗' : 'View marketplace ↗'}</a>
       </aside>
 
       {/* Contenido */}
@@ -328,6 +328,7 @@ function SellPanel({ es, sell, reload, onEdit }: any) {
             <span style={{ fontSize: 11.5, fontWeight: 800, padding: '4px 10px', borderRadius: 99, border: '1px solid var(--line)', color: p.status === 'active' ? 'var(--green)' : p.status === 'pending' ? 'var(--amber)' : 'var(--mut)' }}>
               {p.status === 'active' ? (es ? 'Publicado' : 'Live') : p.status === 'pending' ? (es ? 'En revisión' : 'In review') : p.status === 'rejected' ? (es ? 'Rechazado' : 'Rejected') : (es ? 'Borrador' : 'Draft')}
             </span>
+            {p.status === 'active' && <a href={`/bot-lab?p=${p.id}`} target="_blank" style={{ fontSize: 13, fontWeight: 700, color: GOLD, textDecoration: 'none' }}>{es ? 'Página pública ↗' : 'Public page ↗'}</a>}
             <button onClick={() => onEdit(p)} className="muted" style={{ fontSize: 13, fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer' }}>{es ? 'Editar' : 'Edit'}</button>
             <button onClick={() => del(p.id)} className="muted" style={{ fontSize: 13, fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red)' }}>{es ? 'Borrar' : 'Delete'}</button>
           </div>

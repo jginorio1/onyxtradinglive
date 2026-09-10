@@ -267,6 +267,7 @@ function Overview({ es, d, stat, crypto, pend, leads, pendingPayouts, go }: any)
 // ---------- Marketplace (revisión + publicados) ----------
 function Marketplace({ es, d, canManage, act }: any) {
   const [f, setF] = useState<'pending' | 'active' | 'rejected'>('pending');
+  const [official, setOfficial] = useState<any | null>(null);   // null = cerrado; {} = nuevo; producto = editar
   const products = (d.products || []) as any[];
   const counts = { pending: products.filter((p) => p.status === 'pending').length, active: products.filter((p) => p.status === 'active').length, rejected: products.filter((p) => p.status === 'rejected').length };
   const list = products.filter((p) => p.status === f);
@@ -278,6 +279,12 @@ function Marketplace({ es, d, canManage, act }: any) {
   return (
     <div style={card}>
       <SectionHead icon="bot" color="var(--brand)" title={es ? 'Marketplace de robots' : 'Robot marketplace'} desc={es ? 'Aprueba con operaciones reales medidas por la plataforma.' : 'Approve using real trades measured by the platform.'} />
+      {canManage && (
+        <button onClick={() => setOfficial({})} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, marginBottom: 14, padding: '10px 16px', borderRadius: 11, border: `1px solid color-mix(in srgb,${GOLD} 55%,transparent)`, background: `linear-gradient(120deg,${GOLD},#ffb020)`, color: '#3a2a06', fontWeight: 800, fontSize: 13.5, cursor: 'pointer' }}>
+          <Ic n="spark" s={15} c="#3a2a06" /> {es ? 'Publicar robot oficial' : 'Publish official robot'}
+        </button>
+      )}
+      {official !== null && <OfficialModal es={es} product={official.id ? official : null} onClose={() => setOfficial(null)} act={act} />}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
         {filters.map(([k, lbl, c]) => {
           const on = f === k;
@@ -293,14 +300,14 @@ function Marketplace({ es, d, canManage, act }: any) {
       <div style={{ display: 'grid', gap: 12 }}>
         {f === 'pending'
           ? list.map((p) => <ReviewCard key={p.id} p={p} es={es} canManage={canManage} act={act} />)
-          : list.map((p) => <ProductRow key={p.id} p={p} es={es} canManage={canManage} act={act} />)}
+          : list.map((p) => <ProductRow key={p.id} p={p} es={es} canManage={canManage} act={act} onEditOfficial={p.is_official ? () => setOfficial(p) : null} />)}
       </div>
     </div>
   );
 }
 
 // Fila compacta para robots ya publicados/rechazados.
-function ProductRow({ p, es, canManage, act }: any) {
+function ProductRow({ p, es, canManage, act, onEditOfficial }: any) {
   const active = p.status === 'active';
   const c = active ? 'var(--green)' : 'var(--red)';
   return (
@@ -314,6 +321,9 @@ function ProductRow({ p, es, canManage, act }: any) {
         </div>
         <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>{es ? 'por' : 'by'} {p.seller_name}{p.perf?.score ? ` · score ${p.perf.score}` : ''}{p.perf?.trades ? ` · ${p.perf.trades} ${es ? 'ops' : 'trades'}` : ''}</div>
       </div>
+      {canManage && onEditOfficial && (
+        <button onClick={onEditOfficial} style={btn(GOLD)}>{es ? 'Editar' : 'Edit'}</button>
+      )}
       {canManage && active && (
         <>
           <button onClick={() => act({ action: 'product_status', id: p.id, status: 'active', verified: !p.verified }, es ? 'Actualizado' : 'Updated')} style={btn(p.verified ? 'var(--mut)' : 'var(--brand)')}>{p.verified ? (es ? 'Quitar verificado' : 'Unverify') : (es ? 'Verificar' : 'Verify')}</button>
@@ -323,6 +333,124 @@ function ProductRow({ p, es, canManage, act }: any) {
       {canManage && !active && (
         <button onClick={() => act({ action: 'product_status', id: p.id, status: 'pending' }, es ? 'Reabierto' : 'Reopened')} style={btn('var(--brand)')}>{es ? 'Reabrir' : 'Reopen'}</button>
       )}
+    </div>
+  );
+}
+
+// ---------- Publicar robot OFICIAL (constructor o archivo externo) ----------
+function OfficialModal({ es, product, onClose, act }: any) {
+  const editing = !!product?.id;
+  const [origin, setOrigin] = useState<'build' | 'file'>(product?.source === 'build' ? 'build' : (product?.source ? 'file' : 'build'));
+  const [f, setF] = useState<any>({
+    name: product?.name || '', tagline: product?.tagline || '', description: product?.description || '',
+    kind: product?.kind || 'one_time', interval: product?.interval || 'month',
+    price: product?.price_cents != null ? product.price_cents / 100 : 49,
+    platform: product?.platform || 'mt5', category: product?.category || '',
+    build_id: product?.build_id || '', file_path: product?.file_path || '', file_name: product?.file_name || '', file_size: product?.file_size || 0,
+    proof_url: product?.proof_url || '', verified: product?.verified !== false, position: product?.position || 0,
+    spec_market: product?.spec_market || '', spec_timeframe: product?.spec_timeframe || '', spec_symbols: product?.spec_symbols || '',
+    spec_direction: product?.spec_direction || '', spec_sl: product?.spec_sl ?? true, spec_news: !!product?.spec_news,
+    spec_maxdd: product?.spec_maxdd || '', spec_risk: product?.spec_risk || '', spec_propfirm: !!product?.spec_propfirm,
+  });
+  const [builds, setBuilds] = useState<any[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    fetch('/api/botlab/sell', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'my_builds' }) })
+      .then((r) => r.json()).then((j) => setBuilds(j.builds || [])).catch(() => {});
+  }, []);
+  const inp: any = { width: '100%', padding: '9px 11px', borderRadius: 9, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 13.5, marginTop: 4 };
+  const lbl: any = { fontSize: 12, color: 'var(--mut)' };
+  async function upload(file: File) {
+    if (file.size > 20 * 1024 * 1024) { toastErr(es ? 'Máximo 20 MB.' : 'Max 20 MB.'); return; }
+    setUploading(true);
+    try {
+      const data: string = await new Promise((res, rej) => { const rd = new FileReader(); rd.onload = () => res(String(rd.result)); rd.onerror = rej; rd.readAsDataURL(file); });
+      const r = await fetch('/api/botlab/sell', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'upload_file', name: file.name, data }) });
+      const j = await r.json(); if (!r.ok) throw new Error(j.error);
+      setF((p: any) => ({ ...p, file_path: j.file_path, file_name: j.file_name, file_size: j.file_size }));
+      toast(es ? 'Archivo subido.' : 'File uploaded.');
+    } catch (e: any) { toastErr(e?.message); } finally { setUploading(false); }
+  }
+  async function save() {
+    if (!f.name.trim()) { toastErr(es ? 'Ponle nombre al robot.' : 'Name the robot.'); return; }
+    if (origin === 'build' && !f.build_id) { toastErr(es ? 'Elige un robot de tu constructor.' : 'Pick a constructor robot.'); return; }
+    if (origin === 'file' && !f.file_path) { toastErr(es ? 'Sube el archivo del robot.' : 'Upload the robot file.'); return; }
+    setSaving(true);
+    const product2: any = {
+      id: product?.id, is_official: true, status: 'active', verified: !!f.verified, position: Number(f.position) || 0,
+      name: f.name, tagline: f.tagline, description: f.description, kind: f.kind, interval: f.interval,
+      price_cents: Math.round(Number(f.price) * 100), platform: f.platform, category: f.category, proof_url: f.proof_url,
+      accepts_card: true, accepts_crypto: true, affiliate_pct: 0,
+      source: origin === 'build' ? 'build' : 'file',
+      build_id: origin === 'build' ? (f.build_id || null) : null,
+      file_path: origin === 'file' ? (f.file_path || null) : null, file_name: origin === 'file' ? (f.file_name || null) : null, file_size: origin === 'file' ? (f.file_size || null) : null,
+      spec_market: f.spec_market || null, spec_timeframe: f.spec_timeframe || null, spec_symbols: f.spec_symbols || null,
+      spec_direction: f.spec_direction || null, spec_sl: !!f.spec_sl, spec_news: !!f.spec_news,
+      spec_maxdd: f.spec_maxdd || null, spec_risk: f.spec_risk || null, spec_propfirm: !!f.spec_propfirm,
+    };
+    const r = await act({ action: 'product_save', product: product2 }, es ? 'Robot oficial publicado.' : 'Official robot published.');
+    setSaving(false);
+    if (r) onClose();
+  }
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 200, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 20, overflow: 'auto' }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(560px,100%)', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, padding: 18, boxShadow: '0 24px 60px rgba(0,0,0,.5)' }}>
+        <div className="row between" style={{ marginBottom: 12 }}>
+          <b style={{ fontSize: 16, display: 'inline-flex', alignItems: 'center', gap: 7 }}><Ic n="spark" s={16} c={GOLD} /> {editing ? (es ? 'Editar robot oficial' : 'Edit official robot') : (es ? 'Publicar robot oficial' : 'Publish official robot')}</b>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--mut)', fontSize: 22, cursor: 'pointer', lineHeight: 1 }}>×</button>
+        </div>
+
+        <div style={{ ...lbl, marginBottom: 6 }}>{es ? 'Origen del robot' : 'Robot origin'}</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
+          {([['build', es ? 'Del constructor' : 'From constructor', es ? 'KPIs y candado automáticos' : 'Auto KPIs & lock'], ['file', es ? 'Archivo externo' : 'External file', es ? 'Subes .ex5/.set/.zip' : 'Upload .ex5/.set/.zip']] as [any, string, string][]).map(([k, t, sub]) => (
+            <button key={k} type="button" onClick={() => setOrigin(k)} style={{ textAlign: 'left', cursor: 'pointer', borderRadius: 10, padding: '9px 11px', background: origin === k ? `color-mix(in srgb,${GOLD} 12%,transparent)` : 'var(--bg2)', border: `2px solid ${origin === k ? GOLD : 'var(--line)'}`, color: 'var(--tx)' }}>
+              <div style={{ fontWeight: 800, fontSize: 13 }}>{t}</div><div style={{ fontSize: 11, color: 'var(--mut)' }}>{sub}</div>
+            </button>
+          ))}
+        </div>
+
+        {origin === 'build' ? (
+          <label style={{ display: 'block', marginBottom: 12 }}><span style={lbl}>{es ? 'Robot del constructor' : 'Constructor robot'}</span>
+            <select value={f.build_id} onChange={(e) => setF({ ...f, build_id: e.target.value })} style={inp}>
+              <option value="">{es ? '— elige —' : '— pick —'}</option>
+              {builds.map((b) => <option key={b.id} value={b.id}>{b.name || b.id}{b.platform ? ` · ${b.platform.toUpperCase()}` : ''}</option>)}
+            </select>
+            {!builds.length && <div style={{ fontSize: 11.5, color: 'var(--amber)', marginTop: 5 }}>{es ? 'No tienes robots en el constructor. Usa "Archivo externo" o crea uno primero.' : 'You have no constructor robots. Use "External file" or build one first.'}</div>}
+          </label>
+        ) : (
+          <label style={{ display: 'block', marginBottom: 12 }}><span style={lbl}>{es ? 'Archivo del robot (.ex5 / .ex4 / .set / .zip · máx 20 MB)' : 'Robot file (.ex5 / .ex4 / .set / .zip · max 20 MB)'}</span>
+            <input type="file" accept=".ex5,.ex4,.set,.zip" onChange={(e) => { const file = e.target.files?.[0]; if (file) upload(file); }} style={{ ...inp, padding: 8 }} />
+            {uploading && <div style={{ fontSize: 12, color: 'var(--mut)', marginTop: 4 }}>{es ? 'Subiendo…' : 'Uploading…'}</div>}
+            {f.file_name && !uploading && <div style={{ fontSize: 12, color: 'var(--green)', marginTop: 4 }}>✓ {f.file_name}</div>}
+          </label>
+        )}
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <label style={{ gridColumn: '1 / -1' }}><span style={lbl}>{es ? 'Nombre' : 'Name'}</span><input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} style={inp} /></label>
+          <label style={{ gridColumn: '1 / -1' }}><span style={lbl}>{es ? 'Descripción corta' : 'Short description'}</span><input value={f.tagline} onChange={(e) => setF({ ...f, tagline: e.target.value })} style={inp} placeholder={es ? 'Ej: Scalping de oro en sesiones de alta volatilidad.' : 'e.g. Gold scalping in high-volatility sessions.'} /></label>
+          <label><span style={lbl}>{es ? 'Precio (USD)' : 'Price (USD)'}</span><input type="number" value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} style={inp} /></label>
+          <label><span style={lbl}>{es ? 'Cobro' : 'Billing'}</span><select value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value })} style={inp}><option value="one_time">{es ? 'Pago único' : 'One-time'}</option><option value="subscription">{es ? 'Mensual' : 'Monthly'}</option></select></label>
+          <label><span style={lbl}>{es ? 'Plataforma' : 'Platform'}</span><select value={f.platform} onChange={(e) => setF({ ...f, platform: e.target.value })} style={inp}><option value="mt5">MT5</option><option value="mt4">MT4</option><option value="ctrader">cTrader</option><option value="any">{es ? 'Cualquiera' : 'Any'}</option></select></label>
+          <label><span style={lbl}>{es ? 'Mercado' : 'Market'}</span><input value={f.spec_market} onChange={(e) => setF({ ...f, spec_market: e.target.value })} style={inp} placeholder={es ? 'oro, forex, índices…' : 'gold, forex, indices…'} /></label>
+          <label><span style={lbl}>{es ? 'Temporalidad' : 'Timeframe'}</span><input value={f.spec_timeframe} onChange={(e) => setF({ ...f, spec_timeframe: e.target.value })} style={inp} placeholder="M5, H1…" /></label>
+          <label><span style={lbl}>{es ? 'Símbolos' : 'Symbols'}</span><input value={f.spec_symbols} onChange={(e) => setF({ ...f, spec_symbols: e.target.value })} style={inp} placeholder="XAUUSD" /></label>
+          <label><span style={lbl}>{es ? 'DD máx (%)' : 'Max DD (%)'}</span><input value={f.spec_maxdd} onChange={(e) => setF({ ...f, spec_maxdd: e.target.value })} style={inp} placeholder="10" /></label>
+          <label><span style={lbl}>{es ? 'Prueba (URL)' : 'Proof (URL)'}</span><input value={f.proof_url} onChange={(e) => setF({ ...f, proof_url: e.target.value })} style={inp} placeholder="myfxbook…" /></label>
+        </div>
+
+        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', margin: '12px 0' }}>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13, cursor: 'pointer' }}><input type="checkbox" checked={!!f.spec_sl} onChange={(e) => setF({ ...f, spec_sl: e.target.checked })} /> {es ? 'Usa Stop Loss' : 'Uses Stop Loss'}</label>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13, cursor: 'pointer' }}><input type="checkbox" checked={!!f.spec_news} onChange={(e) => setF({ ...f, spec_news: e.target.checked })} /> {es ? 'Filtro de noticias' : 'News filter'}</label>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13, cursor: 'pointer' }}><input type="checkbox" checked={!!f.spec_propfirm} onChange={(e) => setF({ ...f, spec_propfirm: e.target.checked })} /> {es ? 'Apto prop firm' : 'Prop-firm ready'}</label>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13, cursor: 'pointer' }}><input type="checkbox" checked={!!f.verified} onChange={(e) => setF({ ...f, verified: e.target.checked })} /> {es ? 'Marcar verificado' : 'Mark verified'}</label>
+        </div>
+
+        <div className="row" style={{ gap: 10, marginTop: 6 }}>
+          <button onClick={save} disabled={saving || uploading} style={{ flex: 1, padding: '11px', borderRadius: 11, border: 'none', fontWeight: 800, fontSize: 14, cursor: 'pointer', background: `linear-gradient(120deg,${GOLD},#ffb020)`, color: '#3a2a06', opacity: saving ? .6 : 1 }}>{saving ? '…' : (editing ? (es ? 'Guardar cambios' : 'Save changes') : (es ? 'Publicar como Onyx oficial' : 'Publish as Onyx official'))}</button>
+          <button onClick={onClose} style={{ padding: '11px 16px', borderRadius: 11, border: '1px solid var(--line)', background: 'transparent', color: 'var(--tx)', fontWeight: 700, cursor: 'pointer' }}>{es ? 'Cancelar' : 'Cancel'}</button>
+        </div>
+      </div>
     </div>
   );
 }
