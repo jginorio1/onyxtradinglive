@@ -546,15 +546,15 @@ export default function BotBuilder() {
         </div>
         {mode === 'simple' && <div style={{ fontSize: 12, color: 'rgba(255,255,255,.82)', marginTop: 9, display: 'flex', alignItems: 'center', gap: 7 }}><OnyxIcon emoji="🧭" size={13} glow={false} /> {L('Modo sencillo: te preguntamos una cosa a la vez, en palabras claras. ¿Ya tienes experiencia? Cambia a Experto.', 'Simple mode: one thing at a time, in plain words. Already experienced? Switch to Expert.')}</div>}
         <div style={{ marginTop: 14 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 12.5, color: '#fff' }}><span style={{ fontWeight: 600 }}>{L(`${reviewedSecs} de 6 secciones revisadas`, `${reviewedSecs} of 6 sections reviewed`)}</span><span style={{ color: 'rgba(255,255,255,.8)' }}>{missCount ? L(`${missCount} campo(s) sin definir`, `${missCount} field(s) undefined`) : reviewedSecs === 6 ? L('Todo revisado', 'All reviewed') : L('Abre cada sección para revisarla', 'Open each section to review it')}</span></div>
-          <div className={'bbx-prog' + (reviewedSecs === 6 && !missCount ? ' full' : '')}><i style={{ width: secPct + '%' }} /></div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 12.5, color: '#fff' }}><span style={{ fontWeight: 600 }}>{L(`${reviewedSecs} de ${SECS.length} secciones revisadas`, `${reviewedSecs} of ${SECS.length} sections reviewed`)}</span><span style={{ color: 'rgba(255,255,255,.8)' }}>{missCount ? L(`${missCount} campo(s) sin definir`, `${missCount} field(s) undefined`) : reviewedSecs === SECS.length ? L('Todo revisado', 'All reviewed') : L('Abre cada sección para revisarla', 'Open each section to review it')}</span></div>
+          <div className={'bbx-prog' + (reviewedSecs === SECS.length && !missCount ? ' full' : '')}><i style={{ width: secPct + '%' }} /></div>
         </div>
         {/* Riel de pasos iluminado: cada sección con su estado (✓ listo / • pendiente),
             el paso actual brilla. Tocar salta directo a esa sección. */}
         <div className="bbx-rail">
           {SECS.map((k, i) => {
             const st = secStatus(k); const cur = view === k;
-            const lbl: Record<string, string> = { general: L('General', 'General'), entry: L('Entrada', 'Entry'), exits: L('Salidas', 'Exits'), risk: L('Riesgo', 'Risk'), firm: L('Fondeo', 'Firm'), schedule: L('Sesión', 'Session') };
+            const lbl: Record<string, string> = { general: L('General', 'General'), entry: L('Entrada', 'Entry'), exits: L('Salidas', 'Exits'), risk: L('Riesgo', 'Risk'), firm: L('Fondeo', 'Firm'), schedule: L('Sesión', 'Session'), sell: L('Vender', 'Sell') };
             return (
               <button key={k} type="button" className={'bbx-step' + (st === 'ok' ? ' ok' : st === 'warn' ? ' warn' : '') + (cur ? ' cur' : '')} onClick={() => go(k)}>
                 <div className="d">{st === 'ok' ? '✓' : i + 1}</div>
