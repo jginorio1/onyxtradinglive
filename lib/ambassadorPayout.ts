@@ -25,8 +25,8 @@ export async function ambOnboardingLink(ambassadorId: string, userId: string, em
   await supabaseAdmin.from('ambassadors').update({ stripe_account_id: acct }).eq('id', ambassadorId);
   const link = await stripe.accountLinks.create({
     account: acct,
-    refresh_url: `${appUrl()}/account?tab=ambassador&connect=refresh`,
-    return_url: `${appUrl()}/account?tab=ambassador&connect=done`,
+    refresh_url: `${appUrl()}/account?connect=refresh#retiros`,
+    return_url: `${appUrl()}/account?connect=done#retiros`,
     type: 'account_onboarding',
   });
   return link.url;

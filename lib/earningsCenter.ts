@@ -62,7 +62,7 @@ export async function earningsCenter(userId: string): Promise<EarningsCenter> {
         descEn: 'Recurring commission for every subscriber you bring to Onyx.',
         icon: '📣', kind: 'withdraw',
         availableCents: Math.round((b.available || 0) * 100), pendingCents: Math.round((b.pending || 0) * 100), paidCents: Math.round((b.paid || 0) * 100),
-        href: '/account?tab=retiros',
+        href: '/account#retiros',
       });
     }
   } catch { /* sin programa de embajador */ }

@@ -118,7 +118,7 @@ export async function qualifyOnPaid(invoice: any) {
     if (s.bridge_threshold > 0 && q === s.bridge_threshold) {
       const promo = await autoPromote(referrerId).catch(() => ({ promoted: false } as any));
       if (promo?.promoted) {
-        await notify(referrerId, { kind: 'success', title: '🚀 ¡Ya eres Embajador!', body: `Trajiste ${q} amigos. Ahora ganas comisión en efectivo por cada suscriptor. Conecta tu cobro para retirar.`, url: '/account?tab=ambassador' });
+        await notify(referrerId, { kind: 'success', title: '🚀 ¡Ya eres Embajador!', body: `Trajiste ${q} amigos. Ahora ganas comisión en efectivo por cada suscriptor. Conecta tu cobro para retirar.`, url: '/account#retiros' });
       } else {
         await notifyBridge(referrerId, q);
       }
