@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import { toast, toastErr } from '@/lib/toast';
 import { checkWallet, lastChars } from '@/lib/walletChecksum';
+import VpsCallout from '@/app/components/VpsCallout';
 
 type View = 'market' | 'licencias' | 'vender' | 'ganancias' | 'referidos';
 const GOLD = 'var(--gold, #ffd45e)';
