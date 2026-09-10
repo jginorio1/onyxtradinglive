@@ -172,6 +172,7 @@ export default function AccountClient({ email }: { email: string }) {
   const CARD_KEYS = ['avisos', 'seguridad', 'referidos', 'retiros'];
   const [tab, setTabState] = useState<Tab>('plan');
   const [refView, setRefView] = useState<'invita' | 'embajador'>('invita'); // qué programa de referidos se muestra
+  const [refInfo, setRefInfo] = useState<{ referrerCredit: number; friendCredit: number } | null>(null); // montos de "Invita y gana" (config admin)
   const [secOpen, setSecOpen] = useState<string | null>(null); // popup secundario abierto: "tab:parte"
   const setTab = (t: Tab) => { setTabState(t); setSecOpen(null); if (typeof window !== 'undefined') history.replaceState(null, '', '#' + t); };
   useEffect(() => {
@@ -179,6 +180,8 @@ export default function AccountClient({ email }: { email: string }) {
     apply();
     // Deep-link al sub-programa de referidos: /account?refv=embajador#referidos
     try { const rv = new URLSearchParams(window.location.search).get('refv'); if (rv === 'embajador' || rv === 'invita') setRefView(rv); } catch {}
+    // Montos de "Invita y gana" (los edita el admin) para la tarjeta comparadora.
+    fetch('/api/referral/info', { cache: 'no-store' }).then((r) => r.json()).then((j) => { if (typeof j?.referrerCredit === 'number') setRefInfo({ referrerCredit: j.referrerCredit, friendCredit: j.friendCredit }); }).catch(() => {});
     window.addEventListener('hashchange', apply);
     return () => window.removeEventListener('hashchange', apply);
   }, []);
@@ -801,6 +804,7 @@ export default function AccountClient({ email }: { email: string }) {
             )}
             {data && tab === 'referidos' && (() => {
               const en = lang === 'en';
+              const rc = refInfo?.referrerCredit ?? 10, fc = refInfo?.friendCredit ?? 5;
               const active: any = { boxShadow: '0 0 0 2px var(--brand)', borderColor: 'var(--brand)' };
               const cmpCard: any = { textAlign: 'left', cursor: 'pointer', borderRadius: 14, padding: 14, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--tx)', transition: '.15s', width: '100%', display: 'block', font: 'inherit' };
               return (
@@ -813,7 +817,7 @@ export default function AccountClient({ email }: { email: string }) {
                       <b style={{ fontSize: 15 }}>{en ? 'Invite & earn' : 'Invita y gana'}</b>
                       {refView === 'invita' && <span style={{ marginLeft: 'auto', fontSize: 10.5, fontWeight: 800, color: 'var(--brand)' }}>{en ? '✓ Viewing' : '✓ Viendo'}</span>}
                     </div>
-                    <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.55 }}>{en ? 'For your friends. You get plan credit ($10), they get $5. Nothing to withdraw — it lowers your invoice.' : 'Para tus amigos. Ganas crédito en tu plan ($10) y ellos $5. No se retira: baja tu factura.'}</div>
+                    <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.55 }}>{en ? `For your friends. You get plan credit ($${rc}), they get $${fc}. Nothing to withdraw — it lowers your invoice.` : `Para tus amigos. Ganas crédito en tu plan ($${rc}) y ellos $${fc}. No se retira: baja tu factura.`}</div>
                     <span style={{ display: 'inline-block', marginTop: 8, fontSize: 10.5, fontWeight: 800, color: 'var(--green)', border: '1px solid color-mix(in srgb,var(--green) 40%,transparent)', borderRadius: 99, padding: '2px 9px' }}>{en ? 'Plan credit' : 'Crédito en tu plan'}</span>
                   </button>
                   <button onClick={() => setRefView('embajador')} style={{ ...cmpCard, ...(refView === 'embajador' ? active : {}), background: refView === 'embajador' ? 'color-mix(in srgb,var(--gold,#ffd45e) 12%,var(--card))' : 'var(--card)' }}>
