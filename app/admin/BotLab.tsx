@@ -811,6 +811,20 @@ function Settings({ es, set, setSet, canManage, act, mail, academy }: any) {
         </div>
       </div>
 
+      <div style={card}>
+        <SectionHead icon="accounts" color={GOLD} title={es ? 'VPS recomendado (afiliado)' : 'Recommended VPS (affiliate)'} desc={es ? 'Un solo enlace: aparece en las tarjetas del marketplace, la guía y el chat. Si cambias de VPS, edítalo aquí y se actualiza en toda la app.' : 'One link: shows on marketplace cards, the guide and the chat. If you switch VPS, edit it here and it updates everywhere.'} />
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 9, cursor: 'pointer', marginBottom: 12, fontSize: 13.5, fontWeight: 700 }}>
+          <input type="checkbox" checked={set.vps_on !== false} onChange={(e) => setSet({ ...set, vps_on: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+          {es ? 'Mostrar la recomendación de VPS en la app' : 'Show the VPS recommendation in the app'}
+        </label>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 12 }}>
+          <Field label={es ? 'Enlace de referido del VPS' : 'VPS referral link'} value={set.vps_ref_url} onChange={(v: any) => setSet({ ...set, vps_ref_url: v })} wide />
+          <Field label={es ? 'Proveedor (nombre)' : 'Provider (name)'} value={set.vps_name} onChange={(v: any) => setSet({ ...set, vps_name: v })} />
+          <Field label={es ? 'Nota corta ES (opcional)' : 'Short note ES (optional)'} value={set.vps_note_es} onChange={(v: any) => setSet({ ...set, vps_note_es: v })} wide />
+          <Field label={es ? 'Nota corta EN (opcional)' : 'Short note EN (optional)'} value={set.vps_note_en} onChange={(v: any) => setSet({ ...set, vps_note_en: v })} wide />
+        </div>
+      </div>
+
       <div style={{ ...card }}>
         <SectionHead icon="chart" color="var(--brand)" title={es ? 'Tarjetas del landing (estadísticas)' : 'Landing stat cards'} desc={es ? 'Pon la base de cada número: suben solas cada día en el landing de Bot Lab y nunca bajan.' : 'Set each base number: they grow on their own each day on the Bot Lab landing and never go down.'} />
         <label style={{ display: 'inline-flex', alignItems: 'center', gap: 9, cursor: 'pointer', marginBottom: 12, fontSize: 13.5, fontWeight: 700 }}>

@@ -190,6 +190,12 @@ export async function POST(req: Request) {
       payout_min_cents: Math.max(0, Math.round(Number(b.payout_min_cents ?? cur.payout_min_cents ?? 1000))),
       payout_auto: b.payout_auto != null ? !!b.payout_auto : (cur.payout_auto === true),
       payout_review: b.payout_review != null ? !!b.payout_review : (cur.payout_review === true),
+      // VPS recomendado (afiliado)
+      vps_on: b.vps_on != null ? !!b.vps_on : (cur.vps_on !== false),
+      vps_ref_url: String(b.vps_ref_url ?? cur.vps_ref_url ?? '').trim().slice(0, 300),
+      vps_name: String(b.vps_name ?? cur.vps_name ?? '').trim().slice(0, 60),
+      vps_note_es: String(b.vps_note_es ?? cur.vps_note_es ?? '').slice(0, 160),
+      vps_note_en: String(b.vps_note_en ?? cur.vps_note_en ?? '').slice(0, 160),
     };
     // Nunca dejar todos los métodos apagados: si no queda ninguno, re-enciende TRON.
     if (!next.pay_trc20 && !next.pay_erc20 && !next.pay_card) next.pay_trc20 = true;

@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import VpsCallout from '@/app/components/VpsCallout';
 
 // ============================================================
 // Marketplace público de Bot Lab con FILTROS por categoría.
@@ -110,6 +111,7 @@ export default function BotLabMarket({ es, items }: { es: boolean; items: any[] 
               <b style={{ fontSize: 15 }}>{p.price}<small className="muted" style={{ fontSize: 11, fontWeight: 600 }}>{p.unit}</small></b>
             </div>
             <Link href={p.id ? `/dashboard/bot-lab?tab=market&p=${p.id}${refQ}` : '/dashboard/bot-lab'} style={{ display: 'block', marginTop: 10, textAlign: 'center', fontSize: 12.5, fontWeight: 800, padding: '9px', borderRadius: 9, background: 'var(--brand)', color: '#0b1020' }}>{es ? 'Ver robot' : 'View robot'}</Link>
+            <VpsCallout variant="inline" gold />
           </div>
         ))}
       </div>

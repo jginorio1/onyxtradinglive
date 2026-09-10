@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { useVpsInfo, renderVps } from '@/app/components/VpsCallout';
 
 // Render EXACTO de una guía (título, meta, portada y bloques) con visor/zoom.
 // Lo usan tanto la página pública del artículo como la vista previa del editor,
@@ -50,8 +51,9 @@ export default function GuideBody({ article, lang }: { article: Any; lang: 'es' 
 
 export function BlockView({ b, onZoom }: { b: Any; onZoom?: (src: string, alt: string) => void }) {
   const any = b as Any;
+  const vps = useVpsInfo();   // convierte el token [[VPS]] en el enlace del VPS recomendado
   if (any.h) return <h2 style={{ fontSize: 18, margin: '26px 0 10px' }}>{any.h}</h2>;
-  if (any.p) return <p style={{ fontSize: 15, lineHeight: 1.85, color: 'var(--tx)', marginBottom: 14 }}>{any.p}</p>;
+  if (any.p) return <p style={{ fontSize: 15, lineHeight: 1.85, color: 'var(--tx)', marginBottom: 14 }}>{renderVps(any.p, vps)}</p>;
   if (any.note) return (
     <div style={{ background: 'var(--bg2)', borderLeft: '3px solid var(--amber)', padding: '13px 15px', marginBottom: 16, borderRadius: 0 }}>
       {any.title && <div style={{ color: 'var(--amber)', fontSize: 12, marginBottom: 5 }}>{any.title}</div>}
@@ -61,7 +63,7 @@ export function BlockView({ b, onZoom }: { b: Any; onZoom?: (src: string, alt: s
   if (any.warn) return (
     <div style={{ background: 'rgba(255,107,125,.06)', border: '1px solid var(--red)', padding: '13px 15px', marginBottom: 16, borderRadius: 10 }}>
       {any.title && <div style={{ color: 'var(--red)', fontSize: 12, marginBottom: 5 }}>{any.title}</div>}
-      <div style={{ fontSize: 14, lineHeight: 1.75, color: '#e8d5d8' }}>{any.warn}</div>
+      <div style={{ fontSize: 14, lineHeight: 1.75, color: '#e8d5d8' }}>{renderVps(any.warn, vps)}</div>
     </div>
   );
   if (any.tip) return (

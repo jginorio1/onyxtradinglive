@@ -55,6 +55,13 @@ export type BotLabSettings = {
   payout_auto: boolean;       // cron paga solo el saldo maduro por Stripe
   payout_review: boolean;     // freno global: no pagar nada (revisión manual)
   payout_min_cents: number;   // mínimo para retirar (por defecto 1000 = $10)
+  // VPS recomendado (afiliado). Un solo enlace editable; si cambiamos de proveedor
+  // se actualiza en toda la app desde Admin. El enlace solo se pinta si hay URL.
+  vps_on: boolean;            // mostrar la recomendación de VPS en la app
+  vps_ref_url: string;       // enlace de referido del VPS que usamos
+  vps_name: string;          // nombre del proveedor (ej. "ForexVPS")
+  vps_note_es: string;       // nota corta ES bajo la recomendación
+  vps_note_en: string;       // nota corta EN
 };
 const DEF: BotLabSettings = {
   fee_pct: 20, usdt_address: '', usdt_network: 'trc20', usdt_erc20: '', usdt_trc20: '',
@@ -67,7 +74,15 @@ const DEF: BotLabSettings = {
   lic_max_accounts: 3,
   affiliate_max: 80,
   payout_hold_days: 14, payout_auto: false, payout_review: false, payout_min_cents: 1000,
+  vps_on: true, vps_ref_url: '', vps_name: '', vps_note_es: '', vps_note_en: '',
 };
+
+// Información del VPS recomendado, lista para la UI (server y, vía API, cliente).
+export type VpsInfo = { on: boolean; url: string; name: string; note_es: string; note_en: string };
+export function vpsInfoFrom(s: BotLabSettings): VpsInfo {
+  return { on: s.vps_on !== false, url: (s.vps_ref_url || '').trim(), name: (s.vps_name || '').trim(), note_es: s.vps_note_es || '', note_en: s.vps_note_en || '' };
+}
+export async function vpsInfo(): Promise<VpsInfo> { return vpsInfoFrom(await botLabSettings()); }
 // Devuelve la dirección correcta para una red, con fallback a la legacy.
 export function usdtAddressFor(s: BotLabSettings, network: string): string {
   if (network === 'erc20' || network === 'eth') return (s.usdt_erc20 || (s.usdt_network === 'erc20' ? s.usdt_address : '') || '').trim();

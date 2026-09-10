@@ -6,6 +6,7 @@ import { ARTICLES, searchArticles, type Lang } from '@/lib/guide';
 import { supportChatReply } from '@/lib/supportAI';
 import { getSupportContext, contextToPrompt, proactiveRules, suggestActions } from '@/lib/supportContext';
 import { chatWidgetSettings } from '@/lib/settings';
+import { vpsInfo } from '@/lib/botlab';
 import { logError } from '@/lib/errlog';
 
 export const dynamic = 'force-dynamic';
@@ -74,6 +75,21 @@ export async function POST(req: Request) {
         ? `=== CONTEXT ===\nThis is a VISITOR without an account. If it fits, naturally invite them to create a free account or leave their email so we can reply. Do not be pushy.`
         : `=== CONTEXTO ===\nEs un VISITANTE sin cuenta. Si encaja, invítale de forma natural a crear su cuenta gratis o a dejar su correo para responderle. No seas insistente.`;
     }
+
+    // VPS recomendado (afiliado, editable en Admin → Bot Lab). Si hay enlace,
+    // se lo damos a la IA para que lo recomiende de forma natural y, si la pregunta
+    // encaja, mostramos un botón de acción con nuestro enlace.
+    try {
+      const vps = await vpsInfo();
+      if (vps.on && vps.url) {
+        acctContext += lang === 'en'
+          ? `\n\nRECOMMENDED VPS: if the user asks about keeping the robot/EA running 24/7, turning off the PC, always-on, latency or hosting, recommend a VPS and share this exact link: ${vps.url}${vps.name ? ` (${vps.name})` : ''}. Do not invent other providers.`
+          : `\n\nVPS RECOMENDADO: si el usuario pregunta por mantener el robot/EA operando 24/7, apagar el PC, tenerlo siempre encendido, latencia u hosting, recomienda un VPS y comparte este enlace exacto: ${vps.url}${vps.name ? ` (${vps.name})` : ''}. No inventes otros proveedores.`;
+        if (/\bvps\b|24\/?7|apag|siempre encendid|always[- ]?on|hosting|latenc/i.test(question)) {
+          actions.push({ label: lang === 'en' ? 'Get a VPS' : 'Conseguir un VPS', url: vps.url });
+        }
+      }
+    } catch { /* si falla, seguimos sin VPS */ }
 
     const r = await supportChatReply(question, lang, history, acctContext);
 
