@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import OnyxIcon from '@/app/components/OnyxIcon';
 
-export type NavItem = { href: string; label: string; dot?: 'on' | 'off'; dim?: boolean; icon?: string; dotTitle?: string; full?: boolean; gold?: boolean };
+export type NavItem = { href: string; label: string; dot?: 'on' | 'off'; dim?: boolean; icon?: string; dotTitle?: string; full?: boolean; gold?: boolean; tint?: string };
 // Chip dorado (marca Onyx Bot Lab) para destacar un destino distinto en el nav.
 const GOLD_CHIP: any = { background: 'linear-gradient(120deg,#ffd45e,#ffb020)', color: '#4a2b00', borderRadius: 99, padding: '4px 13px', fontWeight: 800, boxShadow: '0 4px 14px rgba(255,176,32,.28)' };
 
@@ -95,7 +95,7 @@ export default function MainNav({ items, authItems }: { items: NavItem[]; authIt
             {i.dot && <span className={'navdotmini ' + i.dot} role="img" aria-label={dt} />}
           </>);
           // full: recarga completa (para cruzar hacia/desde superficies con barra propia como Bot Lab)
-          const st = i.gold ? GOLD_CHIP : undefined;
+          const st = i.gold ? GOLD_CHIP : i.tint ? { color: i.tint } : undefined;
           return i.full
             ? <a key={i.href} className={cls} href={i.href} title={dt} style={st}>{inner}</a>
             : <Link key={i.href} className={cls} href={i.href} title={dt} style={st}>{inner}</Link>;
@@ -115,7 +115,7 @@ export default function MainNav({ items, authItems }: { items: NavItem[]; authIt
                 {i.label}
                 {i.dot && <span className={'navdotmini ' + i.dot} style={{ marginLeft: 8 }} />}
               </>);
-              const mst = i.gold ? { color: 'var(--gold,#ffd45e)', fontWeight: 800 } : undefined;
+              const mst = i.gold ? { color: 'var(--gold,#ffd45e)', fontWeight: 800 } : i.tint ? { color: i.tint, fontWeight: 800 } : undefined;
               return i.full
                 ? <a key={i.href} className={cls} href={i.href} style={mst}>{inner}</a>
                 : <Link key={i.href} className={cls} href={i.href} style={mst}>{inner}</Link>;

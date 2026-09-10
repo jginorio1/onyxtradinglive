@@ -9,9 +9,23 @@ export default function PayoutSettingsPage() {
   const [d, setD] = useState<any>(null);
   const [trc, setTrc] = useState('');
   const [erc, setErc] = useState('');
+  const [trc2, setTrc2] = useState('');  // segunda captura (confirmación)
+  const [erc2, setErc2] = useState('');
   const [net, setNet] = useState('trc20');
+  const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
+
+  // Validación de formato (misma que el servidor) para avisar antes de guardar.
+  const isTron = (a: string) => /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test((a || '').trim());
+  const isEvm = (a: string) => /^0x[a-fA-F0-9]{40}$/.test((a || '').trim());
+  const trcOk = trc.trim() === '' || isTron(trc);
+  const ercOk = erc.trim() === '' || isEvm(erc);
+  // Doble captura: la confirmación debe coincidir EXACTA con la primera.
+  const trcMatch = trc.trim() === '' || trc.trim() === trc2.trim();
+  const ercMatch = erc.trim() === '' || erc.trim() === erc2.trim();
+  const anyWallet = trc.trim() !== '' || erc.trim() !== '';
+  const canSave = trcOk && ercOk && trcMatch && ercMatch && (!anyWallet || confirm);
 
   async function load() {
     try { const r = await fetch('/api/payout-node', { cache: 'no-store' }); const j = await r.json(); setD(j); setTrc(j.wallets?.trc20 || ''); setErc(j.wallets?.erc20 || ''); setNet(j.wallets?.network || 'trc20'); } catch {}
@@ -62,12 +76,34 @@ export default function PayoutSettingsPage() {
         </div>
         <p className="muted" style={{ fontSize: 12.5, marginBottom: 12 }}>{es ? 'Tus direcciones USDT. Se usan por defecto en cualquier retiro en cripto, sin volver a escribirlas.' : 'Your USDT addresses. Used by default in any crypto withdrawal, no need to retype them.'}</p>
         <div style={{ display: 'grid', gap: 10 }}>
-          <label><span className="muted" style={{ fontSize: 12 }}>{es ? 'Wallet USDT · TRON (TRC20)' : 'USDT wallet · TRON (TRC20)'}</span><input style={inp} placeholder="T…" value={trc} onChange={(e) => setTrc(e.target.value)} /></label>
-          <label><span className="muted" style={{ fontSize: 12 }}>{es ? 'Wallet USDT · Ethereum (ERC20)' : 'USDT wallet · Ethereum (ERC20)'}</span><input style={inp} placeholder="0x…" value={erc} onChange={(e) => setErc(e.target.value)} /></label>
+          <div>
+            <span className="muted" style={{ fontSize: 12 }}>{es ? 'Wallet USDT · TRON (TRC20)' : 'USDT wallet · TRON (TRC20)'}</span>
+            <input style={{ ...inp, borderColor: trcOk ? 'var(--line)' : 'var(--red)' }} placeholder="T…" value={trc} onChange={(e) => { setTrc(e.target.value); setConfirm(false); }} />
+            {trc.trim() !== '' && <div style={{ fontSize: 11.5, fontWeight: 700, marginTop: 4, color: trcOk ? 'var(--green)' : 'var(--red)' }}>{trcOk ? (es ? '✓ Formato TRON válido' : '✓ Valid TRON format') : (es ? '✗ Debe empezar con "T" y tener 34 caracteres' : '✗ Must start with "T" and be 34 characters')}</div>}
+            {trc.trim() !== '' && trcOk && <>
+              <input style={{ ...inp, marginTop: 6, borderColor: trcMatch ? 'var(--line)' : 'var(--red)' }} placeholder={es ? 'Vuelve a escribir la dirección TRON' : 'Re-enter the TRON address'} value={trc2} onChange={(e) => { setTrc2(e.target.value); setConfirm(false); }} onPaste={(e) => e.preventDefault()} />
+              <div style={{ fontSize: 11.5, fontWeight: 700, marginTop: 4, color: trcMatch ? 'var(--green)' : 'var(--red)' }}>{trc2.trim() === '' ? (es ? 'Escríbela otra vez para confirmar (no se puede pegar)' : 'Type it again to confirm (paste disabled)') : trcMatch ? (es ? '✓ Coincide' : '✓ Matches') : (es ? '✗ No coincide' : '✗ Does not match')}</div>
+            </>}
+          </div>
+          <div>
+            <span className="muted" style={{ fontSize: 12 }}>{es ? 'Wallet USDT · Ethereum (ERC20)' : 'USDT wallet · Ethereum (ERC20)'}</span>
+            <input style={{ ...inp, borderColor: ercOk ? 'var(--line)' : 'var(--red)' }} placeholder="0x…" value={erc} onChange={(e) => { setErc(e.target.value); setConfirm(false); }} />
+            {erc.trim() !== '' && <div style={{ fontSize: 11.5, fontWeight: 700, marginTop: 4, color: ercOk ? 'var(--green)' : 'var(--red)' }}>{ercOk ? (es ? '✓ Formato Ethereum válido' : '✓ Valid Ethereum format') : (es ? '✗ Debe empezar con "0x" y tener 42 caracteres' : '✗ Must start with "0x" and be 42 characters')}</div>}
+            {erc.trim() !== '' && ercOk && <>
+              <input style={{ ...inp, marginTop: 6, borderColor: ercMatch ? 'var(--line)' : 'var(--red)' }} placeholder={es ? 'Vuelve a escribir la dirección Ethereum' : 'Re-enter the Ethereum address'} value={erc2} onChange={(e) => { setErc2(e.target.value); setConfirm(false); }} onPaste={(e) => e.preventDefault()} />
+              <div style={{ fontSize: 11.5, fontWeight: 700, marginTop: 4, color: ercMatch ? 'var(--green)' : 'var(--red)' }}>{erc2.trim() === '' ? (es ? 'Escríbela otra vez para confirmar (no se puede pegar)' : 'Type it again to confirm (paste disabled)') : ercMatch ? (es ? '✓ Coincide' : '✓ Matches') : (es ? '✗ No coincide' : '✗ Does not match')}</div>
+            </>}
+          </div>
           <label><span className="muted" style={{ fontSize: 12 }}>{es ? 'Red preferida' : 'Preferred network'}</span>
             <select style={inp} value={net} onChange={(e) => setNet(e.target.value)}><option value="trc20">TRON (TRC20)</option><option value="erc20">Ethereum (ERC20)</option></select>
           </label>
-          <button disabled={busy} onClick={async () => { const j = await act({ action: 'save_wallets', trc20: trc, erc20: erc, network: net }); if (j?.ok) setMsg(es ? 'Guardado ✓' : 'Saved ✓'); }} style={{ padding: '11px 18px', borderRadius: 10, border: 'none', fontWeight: 800, cursor: 'pointer', background: 'var(--green)', color: '#0b1020', justifySelf: 'start' }}>{es ? 'Guardar wallets' : 'Save wallets'}</button>
+          {anyWallet && (
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, background: 'color-mix(in srgb,var(--amber) 10%,var(--bg2))', border: '1px solid color-mix(in srgb,var(--amber) 30%,var(--line))', borderRadius: 10, padding: '10px 12px', cursor: 'pointer' }}>
+              <input type="checkbox" checked={confirm} onChange={(e) => setConfirm(e.target.checked)} style={{ width: 17, height: 17, marginTop: 1, flex: 'none' }} />
+              <span style={{ fontSize: 12.5 }}>{es ? 'Confirmo que estas direcciones son correctas y en la red indicada. Un error en la wallet significa perder el dinero: es irreversible.' : 'I confirm these addresses are correct and on the right network. A wrong wallet means losing the money: it is irreversible.'}</span>
+            </label>
+          )}
+          <button disabled={busy || !canSave} onClick={async () => { const j = await act({ action: 'save_wallets', trc20: trc, erc20: erc, network: net }); if (j?.ok) { setMsg(es ? 'Guardado ✓' : 'Saved ✓'); setConfirm(false); } }} style={{ padding: '11px 18px', borderRadius: 10, border: 'none', fontWeight: 800, cursor: canSave ? 'pointer' : 'not-allowed', opacity: canSave ? 1 : 0.5, background: 'var(--green)', color: '#0b1020', justifySelf: 'start' }}>{es ? 'Guardar wallets' : 'Save wallets'}</button>
         </div>
       </div>
 

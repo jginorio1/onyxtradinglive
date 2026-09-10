@@ -75,6 +75,19 @@ export async function payoutExpressLoginLink(userId: string): Promise<string | n
   try { const l = await stripe.accounts.createLoginLink(acct); return l.url; } catch { return null; }
 }
 
+// Validación de formato de dirección por red (evita errores irreversibles).
+//   TRON (TRC20): base58, empieza con 'T', 34 caracteres.
+//   Ethereum (ERC20): '0x' + 40 hex.
+export function isTronAddress(a: string): boolean { return /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test((a || '').trim()); }
+export function isEvmAddress(a: string): boolean { return /^0x[a-fA-F0-9]{40}$/.test((a || '').trim()); }
+export function validateWallet(network: string, addr: string): { ok: boolean; error?: string } {
+  const a = (addr || '').trim();
+  if (!a) return { ok: true };   // vacío = no configurada (permitido)
+  if (network === 'trc20') return isTronAddress(a) ? { ok: true } : { ok: false, error: 'La dirección TRON (TRC20) debe empezar con "T" y tener 34 caracteres.' };
+  if (network === 'erc20') return isEvmAddress(a) ? { ok: true } : { ok: false, error: 'La dirección Ethereum (ERC20) debe empezar con "0x" y tener 42 caracteres.' };
+  return { ok: false, error: 'Red no válida.' };
+}
+
 // Wallets USDT guardadas (nodo único). Se reutilizan en todos los retiros USDT.
 export async function savedWallets(userId: string): Promise<{ trc20: string; erc20: string; network: string }> {
   const { data } = await supabaseAdmin.from('profiles').select('payout_usdt_trc20,payout_usdt_erc20,payout_usdt_network').eq('id', userId).maybeSingle();
@@ -85,6 +98,9 @@ export async function savedWallets(userId: string): Promise<{ trc20: string; erc
   };
 }
 export async function saveWallets(userId: string, o: { trc20?: string; erc20?: string; network?: string }) {
+  // Valida el formato de cada dirección antes de guardar (una mal escrita = pérdida).
+  if (o.trc20 != null) { const v = validateWallet('trc20', o.trc20); if (!v.ok) throw new Error(v.error); }
+  if (o.erc20 != null) { const v = validateWallet('erc20', o.erc20); if (!v.ok) throw new Error(v.error); }
   const patch: any = {};
   if (o.trc20 != null) patch.payout_usdt_trc20 = String(o.trc20).trim().slice(0, 80) || null;
   if (o.erc20 != null) patch.payout_usdt_erc20 = String(o.erc20).trim().slice(0, 80) || null;
