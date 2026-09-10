@@ -177,6 +177,8 @@ export default function AccountClient({ email }: { email: string }) {
   useEffect(() => {
     const apply = () => { const h = window.location.hash.replace('#', ''); if (ALL_TABS.includes(h)) setTabState(h as Tab); };
     apply();
+    // Deep-link al sub-programa de referidos: /account?refv=embajador#referidos
+    try { const rv = new URLSearchParams(window.location.search).get('refv'); if (rv === 'embajador' || rv === 'invita') setRefView(rv); } catch {}
     window.addEventListener('hashchange', apply);
     return () => window.removeEventListener('hashchange', apply);
   }, []);
