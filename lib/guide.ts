@@ -947,6 +947,7 @@ export const ARTICLES: Article[] = [
     body: {
       es: [
         { p: 'Si tienes comunidad de traders, puedes convertirte en embajador de Onyx. Recibes un enlace y un cupón: quien se suscriba con él consigue un descuento, y tú cobras una comisión recurrente mientras siga siendo cliente.' },
+        { note: 'No lo confundas con "Invita y gana": ese programa es para amigos y te da crédito en tu plan (no efectivo). Embajador es para tu audiencia y te da comisión en efectivo que puedes retirar. Los dos viven en la pestaña "Referidos" de Mi cuenta, cada uno con su propio enlace.' },
         { h: 'Cómo funciona' },
         { list: [
           'Solicitas entrar desde la página de embajadores y te aprobamos.',
@@ -956,11 +957,13 @@ export const ARTICLES: Article[] = [
         { h: 'Niveles' },
         { p: 'Empiezas en el nivel base. Cuando superas cierto número de suscriptores activos, subes a Oro y tu porcentaje aumenta. Todo lo ves en tu panel de embajador: clics, registros, activos y cuánto llevas ganado.' },
         { h: 'Cobros' },
-        { p: 'Las comisiones pasan por un periodo de retención (por si hay reembolsos) y luego quedan disponibles para retirar a partir de un mínimo. Eliges tu método de pago en tu panel.' },
+        { p: 'Las comisiones pasan por un periodo de retención (por si hay reembolsos) y luego quedan disponibles para retirar a partir de un mínimo. Pides el retiro desde "Referidos → Embajador" o desde la pestaña "Retiros".' },
+        { p: 'El cobro se configura UNA sola vez en "Configuración de cobro": conectas tu banco (Stripe) o guardas tu wallet USDT, y eso mismo sirve para embajador, Bot Lab, Onyx Copy y academia. No lo configuras en cada programa por separado.' },
         { warn: 'Las comisiones se generan solo con suscripciones reales y activas. Los reembolsos y las bajas dentro del periodo de retención no cuentan.' },
       ],
       en: [
         { p: 'If you have a trading community, you can become an Onyx ambassador. You get a link and a coupon: whoever subscribes with it gets a discount, and you earn a recurring commission for as long as they stay a customer.' },
+        { note: 'Don\'t mix it up with "Invite & earn": that program is for friends and gives you plan credit (not cash). Ambassador is for your audience and gives you cash commission you can withdraw. Both live in the "Referrals" tab of My account, each with its own link.' },
         { h: 'How it works' },
         { list: [
           'You apply from the ambassadors page and we approve you.',
@@ -970,7 +973,8 @@ export const ARTICLES: Article[] = [
         { h: 'Tiers' },
         { p: 'You start at the base tier. Once you pass a certain number of active subscribers you move up to Gold and your percentage increases. You see everything in your ambassador panel: clicks, signups, active users and how much you have earned.' },
         { h: 'Payouts' },
-        { p: 'Commissions go through a hold period (in case of refunds) and then become available to withdraw above a minimum. You choose your payout method in your panel.' },
+        { p: 'Commissions go through a hold period (in case of refunds) and then become available to withdraw above a minimum. You request the payout from "Referrals → Ambassador" or from the "Payouts" tab.' },
+        { p: 'You set up how you get paid ONCE in "Payout settings": connect your bank (Stripe) or save your USDT wallet, and that same setup works for ambassador, Bot Lab, Onyx Copy and academy. You don\'t set it up separately in each program.' },
         { warn: 'Commissions are generated only from real, active subscriptions. Refunds and cancellations within the hold period do not count.' },
       ],
     },
@@ -1865,6 +1869,90 @@ export const ARTICLES: Article[] = [
       ],
     },
   },
+  {
+    slug: 'invita-y-gana',
+    cat: 'account', icon: '🎁', updated: true,
+    title: { es: 'Invita y gana: crédito por traer amigos', en: 'Invite & earn: credit for bringing friends' },
+    summary: {
+      es: 'Comparte tu enlace y gana crédito en tu plan cuando un amigo se suscribe. No es efectivo: baja tu factura.',
+      en: 'Share your link and earn plan credit when a friend subscribes. It is not cash: it lowers your invoice.',
+    },
+    cta: { href: '/account#referidos', label: { es: 'Ver mi enlace', en: 'See my link' } },
+    body: {
+      es: [
+        { p: 'Invita y gana es la forma más sencilla de ganar con Onyx: compartes tu enlace y, cuando un amigo se suscribe, tú recibes crédito en tu plan y él también recibe un descuento. Está pensado para gente cercana, no para audiencias grandes.' },
+        { h: 'Dónde está' },
+        { p: 'En Mi cuenta → pestaña "Referidos". Ahí eliges la tarjeta "Invita y gana" (tono verde) y ves tu enlace, cuántos amigos invitaste, cuántos ya pagaron y tu crédito acumulado.' },
+        { h: 'Cómo funciona' },
+        { list: [
+          'Copias tu enlace y lo compartes con un amigo.',
+          'Tu amigo se suscribe con ese enlace y recibe su descuento.',
+          'Tras un periodo de maduración (por si hay reembolsos), tu crédito queda disponible.',
+          'El crédito se aplica solo a tu próxima factura: no tienes que hacer nada.',
+        ] },
+        { note: 'La diferencia con Embajador: aquí ganas CRÉDITO en tu plan (no se retira, baja lo que pagas). Embajador te da COMISIÓN en efectivo que sí puedes retirar a tu banco o USDT.' },
+        { warn: 'El crédito solo se genera con suscripciones reales. No cuenta invitarte a ti mismo ni cuentas que se dan de baja o piden reembolso dentro del periodo de maduración.' },
+      ],
+      en: [
+        { p: 'Invite & earn is the simplest way to earn with Onyx: you share your link and, when a friend subscribes, you get plan credit and they also get a discount. It is meant for people close to you, not big audiences.' },
+        { h: 'Where it is' },
+        { p: 'In My account → "Referrals" tab. There you pick the "Invite & earn" card (green) and see your link, how many friends you invited, how many already paid and your accrued credit.' },
+        { h: 'How it works' },
+        { list: [
+          'You copy your link and share it with a friend.',
+          'Your friend subscribes with that link and gets their discount.',
+          'After a maturation period (in case of refunds), your credit becomes available.',
+          'The credit is applied automatically to your next invoice: you don\'t have to do anything.',
+        ] },
+        { note: 'The difference with Ambassador: here you earn CREDIT on your plan (it is not withdrawn, it lowers what you pay). Ambassador gives you cash COMMISSION that you can withdraw to your bank or USDT.' },
+        { warn: 'Credit is only generated from real subscriptions. Referring yourself does not count, nor do accounts that cancel or get refunded within the maturation period.' },
+      ],
+    },
+  },
+  {
+    slug: 'ingresos-y-cobro',
+    cat: 'account', icon: '💸', updated: true,
+    title: { es: 'Ingresos: todo lo que ganas y cómo cobrarlo', en: 'Earnings: everything you earn and how to get paid' },
+    summary: {
+      es: 'El Centro de ganancias reúne lo que ganas en toda la app, y configuras tu cobro (banco o USDT) una sola vez.',
+      en: 'The Earnings center gathers what you earn across the app, and you set up your payout (bank or USDT) once.',
+    },
+    cta: { href: '/dashboard/earnings', label: { es: 'Abrir Ingresos', en: 'Open Earnings' } },
+    body: {
+      es: [
+        { p: 'Onyx tiene varias formas de ganar: vender o referir robots en Bot Lab, ser embajador, invitar amigos, cobrar en Onyx Copy o dar clases en la academia. El "Centro de ganancias" (pestaña Ingresos) las reúne todas en un solo lugar para que veas tus saldos juntos.' },
+        { h: 'Qué muestra' },
+        { list: [
+          'Disponible para retirar: lo que ya puedes cobrar ahora.',
+          'En espera: lo que está madurando (protección anti-reembolso) y pronto pasará a disponible.',
+          'Crédito en tu plan: lo de "Invita y gana", que se aplica solo a tu factura.',
+          'Cobrado: el histórico de todo lo que has ganado.',
+        ] },
+        { p: 'Cada tarjeta te lleva a la sección de ese programa para retirar o ver el detalle. El centro solo junta la información: cada programa conserva su propia maduración y sus protecciones.' },
+        { h: 'Configuración de cobro (una sola vez)' },
+        { p: 'Desde Ingresos entras a "Configuración de cobro". Ahí conectas tu banco con Stripe o guardas tu wallet USDT, y eso mismo sirve para TODOS los programas. Si ya conectaste Stripe por algún programa, Onyx lo reutiliza automáticamente.' },
+        { h: 'Cobro en USDT sin errores' },
+        { p: 'Al guardar tu wallet USDT comprobamos su dígito de control (checksum) al instante: si te equivocas en un carácter, la dirección se marca inválida. Por eso no hace falta escribirla dos veces enteras — solo confirmas los últimos 6 caracteres, cotejándolos con tu exchange.' },
+        { warn: 'Los envíos en cripto son irreversibles. Aunque validamos el formato y el checksum, revisa siempre que la red (TRON TRC20 o Ethereum ERC20) coincida con la de tu exchange antes de retirar.' },
+      ],
+      en: [
+        { p: 'Onyx has several ways to earn: selling or referring robots in Bot Lab, being an ambassador, inviting friends, charging in Onyx Copy or teaching in the academy. The "Earnings center" (Earnings tab) gathers them all in one place so you see your balances together.' },
+        { h: 'What it shows' },
+        { list: [
+          'Available to withdraw: what you can cash out right now.',
+          'Pending: what is maturing (anti-refund protection) and will soon become available.',
+          'Plan credit: the "Invite & earn" amount, applied automatically to your invoice.',
+          'Earned: the all-time total of everything you have made.',
+        ] },
+        { p: 'Each card takes you to that program\'s section to withdraw or see the detail. The center only gathers the information: each program keeps its own maturation and protections.' },
+        { h: 'Payout settings (only once)' },
+        { p: 'From Earnings you open "Payout settings". There you connect your bank with Stripe or save your USDT wallet, and that same setup works for ALL programs. If you already connected Stripe in some program, Onyx reuses it automatically.' },
+        { h: 'USDT payout without mistakes' },
+        { p: 'When you save your USDT wallet we check its control digit (checksum) instantly: if you get one character wrong, the address is flagged invalid. That is why you don\'t need to retype it in full twice — you just confirm the last 6 characters, checking them against your exchange.' },
+        { warn: 'Crypto sends are irreversible. Even though we validate format and checksum, always double-check that the network (TRON TRC20 or Ethereum ERC20) matches your exchange before withdrawing.' },
+      ],
+    },
+  },
 ];
 
 // Búsqueda simple sobre título, resumen y texto
@@ -1992,6 +2080,16 @@ export const SEO_MAP: Record<string, Seo> = {
     ['Cómo funciona el programa de embajadores de Onyx: comisiones, enlace de referido y cobros.', 'How the Onyx ambassador program works: commissions, referral link and payouts.'],
     ['programa embajadores', 'referidos trading', 'ganar comisiones', 'afiliados onyx', 'referir'],
     ['ambassador program', 'trading referrals', 'earn commissions', 'onyx affiliates', 'refer']),
+  'invita-y-gana': S(
+    ['Invita y gana en Onyx: crédito por referir amigos', 'Invite & earn on Onyx: credit for referring friends'],
+    ['Cómo ganar crédito en tu plan invitando amigos a Onyx, y en qué se diferencia del programa de embajadores.', 'How to earn plan credit by inviting friends to Onyx, and how it differs from the ambassador program.'],
+    ['invita y gana', 'crédito por referir', 'referir amigos onyx', 'descuento suscripción', 'programa de referidos'],
+    ['invite and earn', 'referral credit', 'refer friends onyx', 'subscription discount', 'referral program']),
+  'ingresos-y-cobro': S(
+    ['Ingresos en Onyx: centro de ganancias y cómo cobrar', 'Earnings on Onyx: earnings center and how to get paid'],
+    ['Reúne lo que ganas en Onyx y configura tu cobro (banco Stripe o wallet USDT) una sola vez, con validación de checksum.', 'See everything you earn on Onyx and set up your payout (Stripe bank or USDT wallet) once, with checksum validation.'],
+    ['centro de ganancias', 'configuración de cobro', 'retirar usdt', 'cobrar onyx', 'wallet usdt trc20 erc20'],
+    ['earnings center', 'payout settings', 'withdraw usdt', 'get paid onyx', 'usdt wallet trc20 erc20']),
   'precios-planes': S(
     ['Precios y planes de Onyx Trading Live', 'Onyx Trading Live pricing and plans'],
     ['Compara los planes de Onyx y elige el que encaja con tu trading: funciones, límites y precios.', 'Compare Onyx plans and pick the one that fits your trading: features, limits and pricing.'],
