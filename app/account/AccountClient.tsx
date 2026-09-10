@@ -171,6 +171,7 @@ export default function AccountClient({ email }: { email: string }) {
   const ALL_TABS = ['plan', 'perfil', 'cuentas', 'facturas', 'academias', 'avisos', 'seguridad', 'referidos', 'retiros'];
   const CARD_KEYS = ['avisos', 'seguridad', 'referidos', 'retiros'];
   const [tab, setTabState] = useState<Tab>('plan');
+  const [refView, setRefView] = useState<'invita' | 'embajador'>('invita'); // qué programa de referidos se muestra
   const [secOpen, setSecOpen] = useState<string | null>(null); // popup secundario abierto: "tab:parte"
   const setTab = (t: Tab) => { setTabState(t); setSecOpen(null); if (typeof window !== 'undefined') history.replaceState(null, '', '#' + t); };
   useEffect(() => {
@@ -796,12 +797,39 @@ export default function AccountClient({ email }: { email: string }) {
                 <Security L={L} lang={lang} />
               </Section>
             )}
-            {data && tab === 'referidos' && (
-              <Section icon="🎁" title={L.nav.referidos} subtitle={L.refSub}>
-                <ReferralCard />
-                <Ambassador lang={lang} only="referral" />
+            {data && tab === 'referidos' && (() => {
+              const en = lang === 'en';
+              const active: any = { boxShadow: '0 0 0 2px var(--brand)', borderColor: 'var(--brand)' };
+              const cmpCard: any = { textAlign: 'left', cursor: 'pointer', borderRadius: 14, padding: 14, border: '1px solid var(--line)', background: 'var(--card)', transition: '.15s', width: '100%', display: 'block' };
+              return (
+              <Section icon="🎁" title={L.nav.referidos} subtitle={en ? 'Two ways to earn by bringing people to Onyx. Pick the one that fits you.' : 'Dos formas de ganar trayendo gente a Onyx. Elige la que te encaje.'}>
+                {/* Comparador + selector: cada tarjeta explica y a la vez cambia de vista */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 12, marginBottom: 16 }}>
+                  <button onClick={() => setRefView('invita')} style={{ ...cmpCard, ...(refView === 'invita' ? active : {}), background: refView === 'invita' ? 'color-mix(in srgb,var(--green) 10%,var(--card))' : 'var(--card)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                      <OnyxIcon emoji="🎁" size={20} />
+                      <b style={{ fontSize: 15 }}>{en ? 'Invite & earn' : 'Invita y gana'}</b>
+                      {refView === 'invita' && <span style={{ marginLeft: 'auto', fontSize: 10.5, fontWeight: 800, color: 'var(--brand)' }}>{en ? '✓ Viewing' : '✓ Viendo'}</span>}
+                    </div>
+                    <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.55 }}>{en ? 'For your friends. You get plan credit ($10), they get $5. Nothing to withdraw — it lowers your invoice.' : 'Para tus amigos. Ganas crédito en tu plan ($10) y ellos $5. No se retira: baja tu factura.'}</div>
+                    <span style={{ display: 'inline-block', marginTop: 8, fontSize: 10.5, fontWeight: 800, color: 'var(--green)', border: '1px solid color-mix(in srgb,var(--green) 40%,transparent)', borderRadius: 99, padding: '2px 9px' }}>{en ? 'Plan credit' : 'Crédito en tu plan'}</span>
+                  </button>
+                  <button onClick={() => setRefView('embajador')} style={{ ...cmpCard, ...(refView === 'embajador' ? active : {}), background: refView === 'embajador' ? 'color-mix(in srgb,var(--gold,#ffd45e) 12%,var(--card))' : 'var(--card)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                      <OnyxIcon emoji="📣" size={20} />
+                      <b style={{ fontSize: 15 }}>{en ? 'Ambassador' : 'Embajador'}</b>
+                      {refView === 'embajador' && <span style={{ marginLeft: 'auto', fontSize: 10.5, fontWeight: 800, color: 'var(--brand)' }}>{en ? '✓ Viewing' : '✓ Viendo'}</span>}
+                    </div>
+                    <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.55 }}>{en ? 'For your audience. You earn cash commission per subscriber and withdraw it to your bank or USDT.' : 'Para tu audiencia. Ganas comisión en efectivo por cada suscriptor y la retiras a tu banco o USDT.'}</div>
+                    <span style={{ display: 'inline-block', marginTop: 8, fontSize: 10.5, fontWeight: 800, color: 'var(--gold,#ffd45e)', border: '1px solid color-mix(in srgb,var(--gold,#ffd45e) 45%,transparent)', borderRadius: 99, padding: '2px 9px' }}>{en ? 'Cash commission' : 'Comisión en efectivo'}</span>
+                  </button>
+                </div>
+
+                {/* Panel enfocado del programa elegido */}
+                {refView === 'invita' ? <ReferralCard /> : <Ambassador lang={lang} only="referral" />}
               </Section>
-            )}
+              );
+            })()}
             {data && tab === 'retiros' && (
               <Section icon="💸" title={L.nav.retiros} subtitle={L.retSub2}>
                 <Ambassador lang={lang} only="payout" />
