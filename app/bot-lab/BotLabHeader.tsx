@@ -5,7 +5,6 @@ import { useState } from 'react';
 import { useLang } from '@/lib/lang';
 import LangToggle from '@/app/LangToggle';
 import ThemeToggle from '@/app/ThemeToggle';
-import BotLabChat from './BotLabChat';
 
 // ============================================================
 // Barra DEDICADA de Onyx Bot Lab. El layout la usa en lugar de la barra global
@@ -115,8 +114,6 @@ export default function BotLabHeader({ loggedIn = false }: { loggedIn?: boolean 
         )}
       </div>
       </div>
-
-      <BotLabChat />
     </div>
   );
 }

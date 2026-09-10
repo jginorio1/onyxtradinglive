@@ -233,6 +233,39 @@ const CW: ChatWidget = {
 };
 export const chatWidgetSettings = () => getSetting<ChatWidget>('chat_widget', CW);
 
+// Variante dorada del widget para Onyx Bot Lab. Reusa la MISMA config editable
+// (toggles, proactivo, etc.) pero con marca Bot Lab, tema dorado y temas rápidos
+// del marketplace. La IA es la misma (usa /api/support/ai); solo cambia el look y
+// que "hablar con una persona" cae en el relé de Bot Lab.
+export const botlabChatWidget = async (): Promise<ChatWidget> => {
+  const base = await chatWidgetSettings();
+  return {
+    ...base,
+    enabled: true,
+    name_es: 'Onyx Bot Lab', name_en: 'Onyx Bot Lab',
+    humanName_es: 'Equipo Bot Lab', humanName_en: 'Bot Lab team',
+    subOn_es: 'En línea · te responde al instante', subOn_en: 'Online · instant answers',
+    subOff_es: 'Te respondemos por aquí', subOff_en: 'We reply here',
+    helpLabel_es: '¿Dudas sobre un robot?', helpLabel_en: 'Questions about a robot?',
+    greeting_es: '¡Hola! Soy el asistente de Bot Lab. ¿Sobre qué robot o servicio te ayudo?',
+    greeting_en: "Hi! I'm the Bot Lab assistant. Which robot or service can I help you with?",
+    headerEmoji: '🤖', launcher: '💬',
+    c1: '#ffd45e', c2: '#ffb020', gradient: true, fg: '#3a2a06', accent: '#f5b500',
+    showTicket: false,
+    topicsGuest: [
+      { q_es: '¿Cómo compro un robot?', q_en: 'How do I buy a robot?', label_es: '🛒 Comprar', label_en: '🛒 Buy' },
+      { q_es: '¿Puedo pagar con USDT?', q_en: 'Can I pay with USDT?', label_es: '💵 USDT', label_en: '💵 USDT' },
+      { q_es: '¿Sirve para cuentas de fondeo?', q_en: 'Does it work for funded accounts?', label_es: '🏆 Fondeo', label_en: '🏆 Funded' },
+      { q_es: '¿Cómo vendo mi robot?', q_en: 'How do I sell my robot?', label_es: '🏷️ Vender', label_en: '🏷️ Sell' },
+    ],
+    topicsUser: [
+      { q_es: '¿Cómo descargo mi robot y lo instalo?', q_en: 'How do I download and install my robot?', label_es: '⬇️ Descargar', label_en: '⬇️ Download' },
+      { q_es: '¿Cómo vendo mi robot en Bot Lab?', q_en: 'How do I sell my robot on Bot Lab?', label_es: '🏷️ Vender', label_en: '🏷️ Sell' },
+      { q_es: '¿Puedo pedir un robot a medida?', q_en: 'Can I request a custom robot?', label_es: '🛠️ A medida', label_en: '🛠️ Custom' },
+    ],
+  };
+};
+
 // Palabras clave prioritarias del blog. El AI apunta a UNA objetivo por artículo
 // (rotando para cubrir todas) y teje el resto solo donde encajan, sin relleno.
 export type BlogKeywords = {

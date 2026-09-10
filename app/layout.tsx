@@ -24,7 +24,7 @@ import OnlineNow from './OnlineNow';
 import VisitorBeacon from './VisitorBeacon';
 import TzSync from './TzSync';
 import PendingCheckoutGate from './PendingCheckoutGate';
-import { getSetting, onlineNowSettings, chatWidgetSettings } from '@/lib/settings';
+import { getSetting, onlineNowSettings, chatWidgetSettings, botlabChatWidget } from '@/lib/settings';
 import { getSeoMeta, seoFor } from '@/lib/seo';
 import { type Promo, type PromoQueue, pickActiveBar } from '@/lib/promo';
 import { headers } from 'next/headers';
@@ -120,6 +120,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const online = isPublic ? await onlineNowSettings() : null;
   // Configuración editable del chat de soporte (se pinta al vuelo).
   const chatCfg = await chatWidgetSettings();
+  // En Bot Lab: mismo widget/IA pero en dorado y con marca Bot Lab.
+  const botlabCfg = inBotLab ? await botlabChatWidget() : null;
 
   const graph = {
     '@context': 'https://schema.org',
@@ -195,7 +197,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             })()}
             {children}
             {!path.startsWith('/admin') && (inBotLab ? <BotLabFooter /> : <SiteFooter />)}
-            {!path.startsWith('/admin') && !inBotLab && <SupportWidget loggedIn={loggedIn} cfg={chatCfg} />}
+            {!path.startsWith('/admin') && (inBotLab
+              ? (botlabCfg && <SupportWidget loggedIn={loggedIn} cfg={botlabCfg} variant="botlab" />)
+              : <SupportWidget loggedIn={loggedIn} cfg={chatCfg} />)}
             {online && online.enabled && (
               <OnlineNow min={online.min} max={online.max} speed={online.speed} color={online.color} hideMobile={online.hideMobile} label={lang === 'es' ? online.label_es : online.label_en} />
             )}

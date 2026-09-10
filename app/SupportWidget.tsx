@@ -26,7 +26,7 @@ const T: any = {
   },
 };
 
-export default function SupportWidget({ loggedIn = false, cfg }: { loggedIn?: boolean; cfg?: ChatWidget }) {
+export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' }: { loggedIn?: boolean; cfg?: ChatWidget; variant?: 'onyx' | 'botlab' }) {
   const { lang } = useLang();
   const t = dictFor(T, lang);
   const es = lang === 'es';
@@ -151,6 +151,23 @@ export default function SupportWidget({ loggedIn = false, cfg }: { loggedIn?: bo
   // sesión → deja un lead con su correo (la captura se sube en el servidor).
   async function sendContact() {
     const msg = leadMsg.trim();
+    // Variante Bot Lab: "hablar con una persona" cae en el relé/CRM de Bot Lab
+    // (con traducción automática al equipo), no en tickets de soporte.
+    if (variant === 'botlab') {
+      if (!msg && !attach) { setErr(t.errMsg); return; }
+      if (!loggedIn) { const e = email.trim(); if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e)) { setErr(t.errMail); return; } }
+      setErr(''); setBusy(true);
+      try {
+        let tid: string | null = null; try { tid = localStorage.getItem('botlab_tid'); } catch {}
+        const lastQ = [...chat].reverse().find((m) => m.role === 'user')?.content || '';
+        const body = [lastQ && `(${es ? 'sobre' : 'about'}: ${lastQ})`, msg].filter(Boolean).join('\n');
+        const r = await fetch('/api/botlab/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tid, text: body || msg, email: loggedIn ? undefined : email.trim() }) });
+        const j = await r.json().catch(() => ({}));
+        if (j.threadId) { try { localStorage.setItem('botlab_tid', j.threadId); } catch {} }
+      } catch {}
+      setBusy(false); setSent(true); setShowEmail(false); setAttach(null);
+      return;
+    }
     if (loggedIn) {
       if (!msg && !attach) { setErr(t.errMsg); return; }
       setErr(''); setBusy(true);
