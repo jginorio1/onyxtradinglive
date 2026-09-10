@@ -46,8 +46,29 @@ export type BotSpec = {
   useNewsFilter: boolean; newsCurrencies: string; newsImpact: string; newsBefore: number; newsAfter: number;
   // Panel en el gráfico (lo que se ve dentro de MT5/MT4/cTrader) + candado de parámetros.
   showPanel: boolean; panelCorner: number; panelX: number; panelY: number;   // corner 0=sup-izq,1=sup-der,2=inf-izq,3=inf-der
-  lockCore: boolean;   // true = hornea los parámetros del núcleo como constantes (el comprador no los edita)
+  lockCore: boolean;   // (compat) = perm.strategy === 'lock'. Ver `perm` para el control por grupo.
+  // Permisos de edición del comprador, POR GRUPO. 'edit' = editable en MetaTrader; 'lock' = horneado (no editable).
+  // El panel y la conexión siempre son editables (operativos, no estrategia).
+  perm: { strategy: PermV; risk: PermV; mgmt: PermV; funded: PermV; filters: PermV };
+  preset: 'open' | 'balanced' | 'armored' | 'custom';
+  // Rangos permitidos (guardarraíles) para grupos editables. 0/vacío = sin límite.
+  ranges: { riskMin: number; riskMax: number; lotsMin: number; lotsMax: number; tradesMin: number; tradesMax: number };
 };
+export type PermV = 'edit' | 'lock';
+
+// Presets: qué grupos quedan bloqueados/editables. El panel/conexión siempre editable.
+export const PRESETS: Record<'open' | 'balanced' | 'armored', BotSpec['perm']> = {
+  open:     { strategy: 'edit', risk: 'edit', mgmt: 'edit', funded: 'edit', filters: 'edit' },
+  balanced: { strategy: 'lock', risk: 'edit', mgmt: 'edit', funded: 'edit', filters: 'edit' },
+  armored:  { strategy: 'lock', risk: 'lock', mgmt: 'lock', funded: 'edit', filters: 'lock' },
+};
+// ¿Qué preset coincide con estos permisos? (para marcarlo o poner 'custom').
+export function matchPreset(perm: BotSpec['perm']): BotSpec['preset'] {
+  for (const k of ['open', 'balanced', 'armored'] as const) {
+    const p = PRESETS[k]; if ((['strategy', 'risk', 'mgmt', 'funded', 'filters'] as const).every((g) => p[g] === perm[g])) return k;
+  }
+  return 'custom';
+}
 
 export const DEFAULT_SPEC: BotSpec = {
   name: 'Mi bot', platform: 'mt5', symbol: 'XAUUSD', magic: 991000, tf: 'M5', botLang: 'es',
@@ -67,6 +88,8 @@ export const DEFAULT_SPEC: BotSpec = {
   useDayClose: true, forceCloseHourNY: 20, forceCloseMinNY: 30, noWeekend: true, serverGmt: 3,
   useNewsFilter: true, newsCurrencies: 'USD', newsImpact: 'high', newsBefore: 15, newsAfter: 15,
   showPanel: true, panelCorner: 0, panelX: 12, panelY: 20, lockCore: false,
+  perm: { strategy: 'lock', risk: 'edit', mgmt: 'edit', funded: 'edit', filters: 'edit' }, preset: 'balanced',
+  ranges: { riskMin: 0, riskMax: 0, lotsMin: 0, lotsMax: 0, tradesMin: 0, tradesMax: 0 },
 };
 
 // MISMO set de unidades en toda la zona de salidas (SL, TP, runner, trailing).
@@ -148,7 +171,25 @@ export function cleanSpec(inp: any): BotSpec {
   s.panelCorner = clamp(Math.round(num(inp?.panelCorner, 0)), 0, 3);
   s.panelX = clamp(Math.round(num(inp?.panelX, 12)), 0, 4000);
   s.panelY = clamp(Math.round(num(inp?.panelY, 20)), 0, 4000);
-  s.lockCore = inp?.lockCore === true;
+  // Permisos por grupo: si viene preset, lo aplica; si vienen permisos sueltos, los usa.
+  const pv = (v: any): PermV => (v === 'lock' ? 'lock' : 'edit');
+  if (inp?.preset && ['open', 'balanced', 'armored'].includes(inp.preset)) {
+    s.perm = { ...PRESETS[inp.preset as 'open'] };
+  } else if (inp?.perm && typeof inp.perm === 'object') {
+    s.perm = { strategy: pv(inp.perm.strategy), risk: pv(inp.perm.risk), mgmt: pv(inp.perm.mgmt), funded: pv(inp.perm.funded), filters: pv(inp.perm.filters) };
+  } else if (inp?.lockCore === true) {
+    s.perm = { ...PRESETS.balanced };   // compat: candado viejo = preset equilibrado
+  } else {
+    s.perm = { ...DEFAULT_SPEC.perm };
+  }
+  s.preset = matchPreset(s.perm);
+  s.lockCore = s.perm.strategy === 'lock';
+  const rg = inp?.ranges || {};
+  s.ranges = {
+    riskMin: clamp(num(rg.riskMin, 0), 0, 1e7), riskMax: clamp(num(rg.riskMax, 0), 0, 1e7),
+    lotsMin: clamp(num(rg.lotsMin, 0), 0, 1e5), lotsMax: clamp(num(rg.lotsMax, 0), 0, 1e5),
+    tradesMin: clamp(Math.round(num(rg.tradesMin, 0)), 0, 500), tradesMax: clamp(Math.round(num(rg.tradesMax, 0)), 0, 500),
+  };
   return s;
 }
 

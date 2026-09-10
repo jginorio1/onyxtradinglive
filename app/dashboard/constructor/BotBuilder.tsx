@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import { toast, toastErr } from '@/lib/toast';
 import OnyxIcon from '@/app/components/OnyxIcon';
-import { DEFAULT_SPEC, summarize, tfOptions, type BotSpec } from '@/lib/botSpec';
+import { DEFAULT_SPEC, summarize, tfOptions, PRESETS, matchPreset, type BotSpec } from '@/lib/botSpec';
 import { INSTRUMENTS, INSTR_GROUPS, CAT_LABELS, searchInstruments, type Instrument } from '@/lib/instruments';
 
 // Contexto para los controles: evita recrear componentes en cada render (lo que
@@ -32,6 +32,17 @@ function Fld({ t, k, opts, type, step, min, ph, hint, list }: any) {
     {hint && <div className="bbx-hint">{hint}</div>}</div>);
 }
 function Toggle({ k, t }: any) { const { s, set } = useContext(BB); return <button type="button" className={'bbx-tg' + (s[k] ? ' on' : '')} onClick={() => set(k, !s[k])}><OnyxIcon emoji={s[k] ? '✅' : '⭕'} size={13} /> {t}</button>; }
+// Fila de rango permitido (min–max) para un parámetro editable por el comprador.
+function RangeRow({ t, min, max, onMin, onMax }: any) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7, flexWrap: 'wrap' }}>
+      <div style={{ flex: '1 1 150px', fontSize: 12.5 }}>{t}</div>
+      <input className="bbx-in" type="number" step="0.01" min="0" style={{ width: 72, flex: 'none' }} placeholder="mín" value={min || ''} onChange={(e) => onMin(e.target.value === '' ? 0 : Number(e.target.value))} />
+      <span style={{ color: 'var(--mut)' }}>–</span>
+      <input className="bbx-in" type="number" step="0.01" min="0" style={{ width: 72, flex: 'none' }} placeholder="máx" value={max || ''} onChange={(e) => onMax(e.target.value === '' ? 0 : Number(e.target.value))} />
+    </div>
+  );
+}
 function Switch({ on, onClick }: any) { return <button type="button" className={'bbx-sw' + (on ? ' on' : '')} onClick={onClick} aria-label="toggle"><span /></button>; }
 function ParamU({ ic, t, vk, uk, opts, step = 0.1, min, tgl, hint }: any) {
   const { s, set, es, reqKeys, okKey } = useContext(BB); const dis = tgl ? !tgl.on : false;
@@ -816,8 +827,41 @@ export default function BotBuilder() {
           </div>
         )}
         <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,.08)' }}>
-          <Toggle k="lockCore" t={L('Bloquear parámetros del núcleo (para vender)', 'Lock core parameters (for selling)')} />
-          <div className="bbx-sub" style={{ marginTop: 6 }}>{L('Al bloquear, tu estrategia (entradas, stop/take profit, riesgo y filtros) se hornea dentro del robot y el comprador NO puede editarla en MetaTrader. Solo pega su clave Onyx y ajusta el panel. Recomendado si vendes el robot.', 'When locked, your strategy (entries, stop/take profit, risk and filters) is baked into the robot and the buyer CANNOT edit it in MetaTrader. They only paste their Onyx key and adjust the panel. Recommended if you sell the robot.')}</div>
+          <div style={{ fontWeight: 700, fontSize: 13.5, marginBottom: 3 }}>{L('¿Qué puede editar el comprador?', 'What can the buyer edit?')}</div>
+          <div className="bbx-sub" style={{ marginBottom: 10 }}>{L('El comprador maneja su cuenta, así que su riesgo y su firma quedan editables. Solo tu estrategia se protege para que rinda como se anunció.', 'The buyer manages their account, so their risk and firm stay editable. Only your strategy is protected so it performs as advertised.')}</div>
+          {/* Presets */}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+            {([['open', L('Abierto', 'Open'), L('Todo editable', 'All editable')], ['balanced', L('Equilibrado', 'Balanced'), L('Estrategia fija; riesgo y firma libres', 'Strategy fixed; risk and firm free')], ['armored', L('Blindado', 'Armored'), L('Máxima protección', 'Max protection')]] as [any, string, string][]).map(([k, lab, sub]) => (
+              <button key={k} type="button" onClick={() => { set('perm', { ...PRESETS[k as 'open'] }); set('preset', k); }} style={{ flex: '1 1 150px', textAlign: 'left', cursor: 'pointer', borderRadius: 10, padding: '9px 11px', background: s.preset === k ? 'rgba(120,140,255,.14)' : 'rgba(255,255,255,.03)', border: `1.5px solid ${s.preset === k ? 'var(--brand)' : 'rgba(255,255,255,.1)'}`, color: 'var(--tx)' }}>
+                <div style={{ fontWeight: 700, fontSize: 13 }}>{lab}{k === 'balanced' && <span style={{ fontSize: 10, fontWeight: 700, marginLeft: 6, color: 'var(--brand)' }}>{L('· recomendado', '· recommended')}</span>}</div>
+                <div className="bbx-sub" style={{ fontSize: 11 }}>{sub}</div>
+              </button>
+            ))}
+          </div>
+          {/* Por grupo */}
+          {([['strategy', L('Estrategia / núcleo', 'Strategy / core'), L('Entradas, SL/TP, runner, trailing', 'Entries, SL/TP, runner, trailing')], ['risk', L('Riesgo y tamaño', 'Risk and size'), L('% de riesgo, lote máximo', 'Risk %, max lot')], ['mgmt', L('Gestión y frenos', 'Management and brakes'), L('Ops/día, cap diario, frenos', 'Trades/day, daily cap, brakes')], ['funded', L('Cuenta de fondeo', 'Funded account'), L('Firma, DD, objetivo', 'Firm, DD, target')], ['filters', L('Filtros y horario', 'Filters and hours'), L('Noticias, sesión, cierre', 'News, session, close')]] as [any, string, string][]).map(([g, lab, sub]) => {
+            const locked = s.perm[g as 'strategy'] === 'lock';
+            return (
+              <div key={g} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: '1px solid rgba(255,255,255,.05)' }}>
+                <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 13, fontWeight: 600 }}>{lab}</div><div className="bbx-sub" style={{ fontSize: 11 }}>{sub}</div></div>
+                <button type="button" onClick={() => { const np = { ...s.perm, [g]: locked ? 'edit' : 'lock' }; set('perm', np); set('preset', matchPreset(np)); }} style={{ flex: 'none', cursor: 'pointer', fontSize: 11.5, fontWeight: 700, borderRadius: 99, padding: '4px 12px', border: '1px solid', borderColor: locked ? 'rgba(255,255,255,.18)' : 'var(--green)', background: locked ? 'rgba(255,255,255,.05)' : 'rgba(52,226,160,.12)', color: locked ? 'var(--mut)' : 'var(--green)' }}>
+                  {locked ? '🔒 ' + L('Bloqueado', 'Locked') : '✎ ' + L('Editable', 'Editable')}
+                </button>
+              </div>
+            );
+          })}
+          {/* Rangos permitidos (guardarraíles) para grupos editables */}
+          {(s.perm.risk === 'edit' || s.perm.mgmt === 'edit') && (
+            <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,.08)' }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 2 }}>{L('Rangos permitidos (opcional)', 'Allowed ranges (optional)')}</div>
+              <div className="bbx-sub" style={{ marginBottom: 8 }}>{L('Deja libre al comprador pero con guardarraíles. 0 = sin límite.', 'Give the buyer freedom but with guardrails. 0 = no limit.')}</div>
+              {s.perm.risk === 'edit' && (<>
+                <RangeRow t={L('Riesgo por operación (%)', 'Risk per trade (%)')} min={s.ranges.riskMin} max={s.ranges.riskMax} onMin={(n: number) => set('ranges', { ...s.ranges, riskMin: n })} onMax={(n: number) => set('ranges', { ...s.ranges, riskMax: n })} />
+                <RangeRow t={L('Lote máximo', 'Max lot')} min={s.ranges.lotsMin} max={s.ranges.lotsMax} onMin={(n: number) => set('ranges', { ...s.ranges, lotsMin: n })} onMax={(n: number) => set('ranges', { ...s.ranges, lotsMax: n })} />
+              </>)}
+              {s.perm.mgmt === 'edit' && <RangeRow t={L('Operaciones por día', 'Trades per day')} min={s.ranges.tradesMin} max={s.ranges.tradesMax} onMin={(n: number) => set('ranges', { ...s.ranges, tradesMin: n })} onMax={(n: number) => set('ranges', { ...s.ranges, tradesMax: n })} />}
+            </div>
+          )}
         </div>
       </div>
       </>)}
