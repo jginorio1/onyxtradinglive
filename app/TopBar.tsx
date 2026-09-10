@@ -130,7 +130,7 @@ export default async function TopBar({ home = false }: { home?: boolean }) {
         { href: '/', label: t.home },
         { href: '/bot-builder', label: lang === 'en' ? 'Build a bot' : 'Crea tu bot', icon: '🛠️' },
         // Destino distinto del constructor: el marketplace de robots (chip dorado, recarga completa).
-        { href: '/bot-lab', label: lang === 'en' ? 'Bot Lab · Marketplace' : 'Bot Lab · Marketplace', icon: '🛒', full: true, gold: true },
+        { href: '/bot-lab', label: lang === 'en' ? 'Bot Lab · Marketplace' : 'Bot Lab · Marketplace', icon: '🛒', full: true, tint: 'var(--gold, #ffd45e)' },
         { href: '/analiza', label: lang === 'en' ? 'Free analysis' : 'Analiza gratis' },
         { href: '/copy', label: 'Onyx Copy' },
         { href: '/pricing', label: t.plans },
