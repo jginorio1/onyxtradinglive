@@ -4,17 +4,21 @@ import { useEffect, useMemo, useState } from 'react';
 import VpsCallout from '@/app/components/VpsCallout';
 
 // ============================================================
-// Marketplace público de Bot Lab con FILTROS por categoría.
-// Recibe `items` ya mapeados desde el servidor (cada uno con su ficha técnica
-// y sellos). Filtra en el navegador por estilo, timeframe y mercado.
+// Marketplace público de Bot Lab. Barra de control moderna (buscador +
+// plataforma + orden), chips de categoría, contador y "cargar más".
+// Recibe `items` ya mapeados desde el servidor (ficha técnica + sellos).
 // ============================================================
 const GOLD = '#ffd45e';
+const PAGE = 9;   // cuántas tarjetas por tanda
 
 export default function BotLabMarket({ es, items }: { es: boolean; items: any[] }) {
   const [style, setStyle] = useState('');
   const [tf, setTf] = useState('');
   const [mkt, setMkt] = useState('');
   const [q, setQ] = useState('');
+  const [plat, setPlat] = useState('all');
+  const [sort, setSort] = useState('reco');
+  const [show, setShow] = useState(PAGE);
   const [ref, setRef] = useState('');
   // Referido de promoción: lo guardamos para que persista hasta la compra en el dashboard.
   useEffect(() => {
@@ -28,58 +32,93 @@ export default function BotLabMarket({ es, items }: { es: boolean; items: any[] 
 
   // Opciones reales (solo las que existen en los robots publicados).
   const opts = useMemo(() => {
-    const s = new Set<string>(), t = new Set<string>(), m = new Set<string>();
-    items.forEach((i) => { if (i.spec_style) s.add(i.spec_style); if (i.spec_timeframe) t.add(i.spec_timeframe); if (i.spec_market) m.add(i.spec_market); });
-    return { styles: [...s], tfs: [...t], mkts: [...m] };
+    const s = new Set<string>(), t = new Set<string>(), m = new Set<string>(), p = new Set<string>();
+    items.forEach((i) => { if (i.spec_style) s.add(i.spec_style); if (i.spec_timeframe) t.add(i.spec_timeframe); if (i.spec_market) m.add(i.spec_market); if (i.plat) p.add(String(i.plat)); });
+    return { styles: [...s], tfs: [...t], mkts: [...m], plats: [...p] };
   }, [items]);
 
   const qq = q.trim().toLowerCase();
-  const filtered = items.filter((i) =>
-    (!style || i.spec_style === style) && (!tf || i.spec_timeframe === tf) && (!mkt || i.spec_market === mkt)
-    && (!qq || `${i.name} ${i.seller || ''} ${i.pair || ''} ${i.spec_market || ''} ${i.spec_style || ''}`.toLowerCase().includes(qq)));
+  const priceNum = (p: any) => Number(String(p.price || '').replace(/[^0-9.]/g, '')) || 0;
+  const filtered = useMemo(() => {
+    let list = items.filter((i) =>
+      (!style || i.spec_style === style) && (!tf || i.spec_timeframe === tf) && (!mkt || i.spec_market === mkt)
+      && (plat === 'all' || String(i.plat || '').toLowerCase() === plat)
+      && (!qq || `${i.name} ${i.seller || ''} ${i.pair || ''} ${i.spec_market || ''} ${i.spec_style || ''}`.toLowerCase().includes(qq)));
+    if (sort === 'score') list = [...list].sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
+    else if (sort === 'price') list = [...list].sort((a, b) => priceNum(a) - priceNum(b));
+    else if (sort === 'price_desc') list = [...list].sort((a, b) => priceNum(b) - priceNum(a));
+    return list;
+  }, [items, style, tf, mkt, plat, qq, sort]);
+
+  // Cambiar cualquier filtro reinicia la paginación.
+  const reset = () => setShow(PAGE);
+  const anyFilter = !!(style || tf || mkt || qq || plat !== 'all');
 
   const card: any = { background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 18, padding: 15 };
   const chip = (on: boolean): any => ({ fontSize: 12, fontWeight: 700, padding: '5px 11px', borderRadius: 99, cursor: 'pointer', border: '1px solid ' + (on ? 'var(--brand)' : 'var(--line)'), background: on ? 'color-mix(in srgb,var(--brand) 18%,transparent)' : 'transparent', color: on ? 'var(--brand)' : 'var(--mut)', textTransform: 'capitalize' });
+  const sel: any = { padding: '10px 12px', borderRadius: 11, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--tx)', fontSize: 13.5, cursor: 'pointer' };
   const cap = (v: string) => (es ? { tendencia: 'Tendencia', ruptura: 'Ruptura', scalping: 'Scalping', intradia: 'Intradía', swing: 'Swing', rango: 'Rango', forex: 'Forex', oro: 'Oro', indices: 'Índices', cripto: 'Cripto', otro: 'Otro' }[v] || v : v);
 
   return (
     <div>
-      {/* Buscador */}
+      {/* Barra de control: buscador + plataforma + orden */}
       {items.length > 3 && (
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={es ? 'Buscar robot por nombre, par…' : 'Search robot by name, pair…'} style={{ width: '100%', maxWidth: 420, padding: '11px 14px', borderRadius: 12, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--tx)', fontSize: 14 }} />
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+          <div style={{ position: 'relative', flex: '1 1 320px', maxWidth: 460 }}>
+            <span style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', color: 'var(--mut)', fontSize: 15, pointerEvents: 'none' }}>🔍</span>
+            <input value={q} onChange={(e) => { setQ(e.target.value); reset(); }} placeholder={es ? 'Buscar robot por nombre, par, estilo…' : 'Search robot by name, pair, style…'} style={{ width: '100%', padding: '11px 14px 11px 38px', borderRadius: 12, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--tx)', fontSize: 14 }} />
+          </div>
+          {opts.plats.length > 1 && (
+            <select value={plat} onChange={(e) => { setPlat(e.target.value); reset(); }} style={sel}>
+              <option value="all">{es ? 'Todas las plataformas' : 'All platforms'}</option>
+              {opts.plats.map((p) => <option key={p} value={p.toLowerCase()}>{p}</option>)}
+            </select>
+          )}
+          <select value={sort} onChange={(e) => setSort(e.target.value)} style={sel}>
+            <option value="reco">{es ? 'Recomendados' : 'Recommended'}</option>
+            <option value="score">{es ? 'Mejor Onyx Score' : 'Top Onyx Score'}</option>
+            <option value="price">{es ? 'Precio ↑' : 'Price ↑'}</option>
+            <option value="price_desc">{es ? 'Precio ↓' : 'Price ↓'}</option>
+          </select>
         </div>
       )}
-      {/* Barra de filtros */}
+
+      {/* Chips de categoría */}
       {(opts.styles.length + opts.tfs.length + opts.mkts.length) > 0 && (
-        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 20 }}>
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 14 }}>
           {opts.styles.length > 0 && (
             <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
               <span className="muted" style={{ fontSize: 11.5, fontWeight: 700 }}>{es ? 'Estilo' : 'Style'}</span>
-              <button onClick={() => setStyle('')} style={chip(!style)}>{es ? 'Todos' : 'All'}</button>
-              {opts.styles.map((v) => <button key={v} onClick={() => setStyle(v)} style={chip(style === v)}>{cap(v)}</button>)}
+              <button onClick={() => { setStyle(''); reset(); }} style={chip(!style)}>{es ? 'Todos' : 'All'}</button>
+              {opts.styles.map((v) => <button key={v} onClick={() => { setStyle(v); reset(); }} style={chip(style === v)}>{cap(v)}</button>)}
             </div>
           )}
           {opts.tfs.length > 0 && (
             <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
               <span className="muted" style={{ fontSize: 11.5, fontWeight: 700 }}>Timeframe</span>
-              <button onClick={() => setTf('')} style={chip(!tf)}>{es ? 'Todos' : 'All'}</button>
-              {opts.tfs.map((v) => <button key={v} onClick={() => setTf(v)} style={chip(tf === v)}>{v}</button>)}
+              <button onClick={() => { setTf(''); reset(); }} style={chip(!tf)}>{es ? 'Todos' : 'All'}</button>
+              {opts.tfs.map((v) => <button key={v} onClick={() => { setTf(v); reset(); }} style={chip(tf === v)}>{v}</button>)}
             </div>
           )}
           {opts.mkts.length > 0 && (
             <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
               <span className="muted" style={{ fontSize: 11.5, fontWeight: 700 }}>{es ? 'Mercado' : 'Market'}</span>
-              <button onClick={() => setMkt('')} style={chip(!mkt)}>{es ? 'Todos' : 'All'}</button>
-              {opts.mkts.map((v) => <button key={v} onClick={() => setMkt(v)} style={chip(mkt === v)}>{cap(v)}</button>)}
+              <button onClick={() => { setMkt(''); reset(); }} style={chip(!mkt)}>{es ? 'Todos' : 'All'}</button>
+              {opts.mkts.map((v) => <button key={v} onClick={() => { setMkt(v); reset(); }} style={chip(mkt === v)}>{cap(v)}</button>)}
             </div>
           )}
         </div>
       )}
 
+      {/* Contador + limpiar filtros */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 16, fontSize: 12.5, color: 'var(--mut)' }}>
+        <span>{filtered.length} {filtered.length === 1 ? (es ? 'robot' : 'robot') : (es ? 'robots' : 'robots')}</span>
+        {anyFilter && <button onClick={() => { setStyle(''); setTf(''); setMkt(''); setQ(''); setPlat('all'); reset(); }} style={{ background: 'none', border: 'none', color: 'var(--brand)', fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>{es ? 'Limpiar filtros' : 'Clear filters'}</button>}
+      </div>
+
       <div style={{ display: 'grid', gap: 14 }} className="g4">
-        {filtered.map((p: any, i: number) => (
-          <div key={i} style={{ ...card, position: 'relative', display: 'flex', flexDirection: 'column', ...(p.hot ? { border: `1.5px solid color-mix(in srgb,${GOLD} 60%,var(--line))` } : {}) }}>
+        {filtered.slice(0, show).map((p: any, i: number) => (
+          <div key={p.id || i} style={{ ...card, position: 'relative', display: 'flex', flexDirection: 'column', ...(p.hot ? { border: `1.5px solid color-mix(in srgb,${GOLD} 60%,var(--line))` } : {}) }}>
             {p.hot && <span style={{ position: 'absolute', top: -10, right: 12, background: `linear-gradient(120deg,${GOLD},#ffb020)`, color: '#3a2a06', fontSize: 10, fontWeight: 800, padding: '3px 9px', borderRadius: 99 }}>★ Top</span>}
             <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
               <div style={{ width: 34, height: 34, flex: 'none', borderRadius: 10, background: 'linear-gradient(120deg,var(--brand),var(--brand2,#a06bff))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>{(p.name || '?').slice(0, 1)}</div>
@@ -115,6 +154,15 @@ export default function BotLabMarket({ es, items }: { es: boolean; items: any[] 
           </div>
         ))}
       </div>
+
+      {filtered.length > show && (
+        <div style={{ textAlign: 'center', marginTop: 20 }}>
+          <button onClick={() => setShow((n) => n + PAGE)} style={{ padding: '11px 24px', borderRadius: 12, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--tx)', fontSize: 13.5, fontWeight: 800, cursor: 'pointer' }}>
+            {es ? `Cargar más (${filtered.length - show})` : `Load more (${filtered.length - show})`}
+          </button>
+        </div>
+      )}
+
       {!filtered.length && <p className="muted" style={{ fontSize: 13, textAlign: 'center', marginTop: 16 }}>{es ? 'Ningún robot con esos filtros. Prueba otra combinación.' : 'No robots match those filters. Try another combination.'}</p>}
     </div>
   );

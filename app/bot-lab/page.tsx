@@ -261,7 +261,7 @@ export default async function BotLabLanding() {
           </div>
         </div>
         <BotLabMarket es={es} items={bots.length
-          ? bots.slice(0, 24).map((p: any) => ({
+          ? bots.slice(0, 60).map((p: any) => ({
               id: p.id, name: p.name, seller: p.seller_name || '@onyx', pair: p.symbol || p.spec_market || '—', plat: (p.platform || 'MT5').toUpperCase(),
               score: p.perf?.score ?? null, ret: p.perf?.ret90 ?? p.perf?.ret ?? null, dd: p.perf?.dd != null ? String(p.perf.dd).replace('%', '') + '%' : null,
               price: money(p.price_cents), unit: (monthly && p.kind === 'subscription') ? (es ? '/mes' : '/mo') : '', path: 'M0,52 L40,46 L80,48 L120,38 L160,40 L200,28 L240,30 L300,16', hot: false,
