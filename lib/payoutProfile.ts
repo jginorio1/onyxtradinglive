@@ -1,5 +1,6 @@
 import { stripe } from '@/lib/stripe';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { isValidTron, isValidEvm, checkWallet } from '@/lib/walletChecksum';
 
 // ============================================================
 // NODO DE COBRO ÚNICO · una sola conexión de Stripe y una sola wallet USDT que
@@ -75,16 +76,18 @@ export async function payoutExpressLoginLink(userId: string): Promise<string | n
   try { const l = await stripe.accounts.createLoginLink(acct); return l.url; } catch { return null; }
 }
 
-// Validación de formato de dirección por red (evita errores irreversibles).
-//   TRON (TRC20): base58, empieza con 'T', 34 caracteres.
-//   Ethereum (ERC20): '0x' + 40 hex.
-export function isTronAddress(a: string): boolean { return /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test((a || '').trim()); }
-export function isEvmAddress(a: string): boolean { return /^0x[a-fA-F0-9]{40}$/.test((a || '').trim()); }
+// Validación de dirección por red, AHORA con verificación de checksum
+// (Base58Check en TRON, EIP-55 en Ethereum): no solo comprueba el formato sino
+// que el dígito de control matemático cuadre, atrapando errores de tecleo.
+export function isTronAddress(a: string): boolean { return isValidTron(a); }
+export function isEvmAddress(a: string): boolean { return isValidEvm(a); }
 export function validateWallet(network: string, addr: string): { ok: boolean; error?: string } {
   const a = (addr || '').trim();
   if (!a) return { ok: true };   // vacío = no configurada (permitido)
-  if (network === 'trc20') return isTronAddress(a) ? { ok: true } : { ok: false, error: 'La dirección TRON (TRC20) debe empezar con "T" y tener 34 caracteres.' };
-  if (network === 'erc20') return isEvmAddress(a) ? { ok: true } : { ok: false, error: 'La dirección Ethereum (ERC20) debe empezar con "0x" y tener 42 caracteres.' };
+  const r = checkWallet(network, a);
+  if (r.ok) return { ok: true };
+  if (network === 'trc20') return { ok: false, error: r.reason === 'checksum' ? 'La dirección TRON (TRC20) no es válida: el dígito de control no cuadra (revísala).' : 'La dirección TRON (TRC20) debe empezar con "T" y tener 34 caracteres.' };
+  if (network === 'erc20') return { ok: false, error: r.reason === 'checksum' ? 'La dirección Ethereum (ERC20) no es válida: el checksum de mayúsculas no cuadra (revísala).' : 'La dirección Ethereum (ERC20) debe empezar con "0x" y tener 42 caracteres.' };
   return { ok: false, error: 'Red no válida.' };
 }
 

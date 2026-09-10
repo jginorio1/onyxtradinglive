@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import { toast, toastErr } from '@/lib/toast';
+import { checkWallet, lastChars } from '@/lib/walletChecksum';
 
 type View = 'market' | 'licencias' | 'vender' | 'ganancias' | 'referidos';
 const GOLD = 'var(--gold, #ffd45e)';
@@ -411,6 +412,7 @@ function EarningsPanel({ es, sell, reload, goReferrals }: any) {
   const e = sell.earnings || {};
   const connect = sell.connect || {};
   const [addr, setAddr] = useState('');
+  const [tail, setTail] = useState('');                  // confirmación: últimos 6 caracteres
   const [payConfirm, setPayConfirm] = useState(false);   // re-confirmación de billetera en cada retiro
   const [net, setNet] = useState('trc20');
   const [pm, setPm] = useState<'usdt' | 'stripe'>('usdt');   // método de retiro
@@ -449,15 +451,26 @@ function EarningsPanel({ es, sell, reload, goReferrals }: any) {
           ))}
         </div>
         {pm === 'usdt' ? (() => {
-          const okFmt = net === 'trc20' ? /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(addr.trim()) : /^0x[a-fA-F0-9]{40}$/.test(addr.trim());
-          const canReq = !low && okFmt && payConfirm;
+          const chk = checkWallet(net, addr);
+          const okFmt = addr.trim() !== '' && chk.ok;
+          const tailOk = okFmt && tail.trim().toLowerCase() === lastChars(addr, 6).toLowerCase();
+          const canReq = !low && okFmt && tailOk && payConfirm;
           return (
           <div style={{ display: 'grid', gap: 8 }}>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              <select style={{ ...inp, flex: 'none' }} value={net} onChange={(ev) => { setNet(ev.target.value); setPayConfirm(false); }}><option value="trc20">TRON (TRC20)</option><option value="erc20">Ethereum (ERC20)</option></select>
-              <input style={{ ...inp, flex: 1, minWidth: 200, borderColor: addr.trim() === '' || okFmt ? 'var(--line)' : 'var(--red)' }} placeholder={es ? 'Confirma tu dirección USDT (T… / 0x…)' : 'Confirm your USDT address (T… / 0x…)'} value={addr} onChange={(ev) => { setAddr(ev.target.value); setPayConfirm(false); }} />
+              <select style={{ ...inp, flex: 'none' }} value={net} onChange={(ev) => { setNet(ev.target.value); setTail(''); setPayConfirm(false); }}><option value="trc20">TRON (TRC20)</option><option value="erc20">Ethereum (ERC20)</option></select>
+              <input style={{ ...inp, flex: 1, minWidth: 200, borderColor: addr.trim() === '' ? 'var(--line)' : okFmt ? 'var(--green)' : 'var(--red)' }} placeholder={es ? 'Pega tu dirección USDT (T… / 0x…)' : 'Paste your USDT address (T… / 0x…)'} value={addr} onChange={(ev) => { setAddr(ev.target.value); setTail(''); setPayConfirm(false); }} spellCheck={false} autoCapitalize="off" autoCorrect="off" />
             </div>
-            {addr.trim() !== '' && !okFmt && <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--red)' }}>{es ? '✗ La dirección no coincide con la red elegida' : '✗ Address does not match the chosen network'}</div>}
+            {addr.trim() !== '' && (okFmt
+              ? <div style={{ fontSize: 11.5, fontWeight: 800, color: 'var(--green)', display: 'inline-flex', alignItems: 'center', gap: 5 }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--green)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z" /><path d="M9 12l2 2 4-4" /></svg>{es ? 'Checksum válido' : 'Checksum valid'}</div>
+              : <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--red)' }}>{chk.reason === 'checksum' ? (es ? '✗ El dígito de control no cuadra — revísala' : '✗ Control digit does not match — check it') : (es ? '✗ La dirección no coincide con la red elegida' : '✗ Address does not match the chosen network')}</div>)}
+            {okFmt && (
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <span className="muted" style={{ fontSize: 12 }}>{es ? 'Confirma los últimos 6:' : 'Confirm the last 6:'}</span>
+                <input style={{ ...inp, width: 120, fontFamily: 'ui-monospace,Menlo,monospace', letterSpacing: '2px', borderColor: tailOk ? 'var(--green)' : 'var(--line)' }} maxLength={6} placeholder="••••••" value={tail} onChange={(ev) => { setTail(ev.target.value); setPayConfirm(false); }} spellCheck={false} autoCapitalize="off" autoCorrect="off" />
+                {tail.trim() !== '' && <span style={{ fontSize: 11.5, fontWeight: 800, color: tailOk ? 'var(--green)' : 'var(--red)' }}>{tailOk ? (es ? '✓ Coincide' : '✓ Matches') : (es ? '✗ No coincide' : '✗ Does not match')}</span>}
+              </div>
+            )}
             <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer' }}>
               <input type="checkbox" checked={payConfirm} onChange={(e) => setPayConfirm(e.target.checked)} style={{ width: 16, height: 16, marginTop: 1, flex: 'none' }} />
               <span className="muted" style={{ fontSize: 12 }}>{es ? 'Revisé la dirección y la red. Confirmo que son correctas (los envíos en cripto son irreversibles).' : 'I checked the address and network. I confirm they are correct (crypto sends are irreversible).'}</span>

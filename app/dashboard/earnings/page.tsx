@@ -113,7 +113,7 @@ function Mini({ label, value, color }: any) {
 
 function EmptyState({ es }: { es: boolean }) {
   const ways: [string, string, string, string][] = [
-    ['🤖', 'Bot Lab', es ? 'Vende tus robots o comparte los de otros' : 'Sell your robots or share others\'', '/dashboard/bot-lab'],
+    ['🤖', 'Bot Lab', es ? 'Vende tus robots o comparte los de otros' : 'Sell your robots or share others\'', '/dashboard/bot-lab?tab=ganancias'],
     ['📣', es ? 'Embajador' : 'Ambassador', es ? 'Comisión recurrente por cada suscriptor' : 'Recurring commission per subscriber', '/account?tab=ambassador'],
     ['🎁', es ? 'Invita y gana' : 'Invite & earn', es ? 'Crédito por invitar amigos' : 'Credit for inviting friends', '/dashboard'],
     ['🏆', 'Onyx Copy', es ? 'Cobra a quienes copian tu estrategia' : 'Charge those who copy your strategy', '/dashboard/onyx-copy'],
@@ -123,11 +123,11 @@ function EmptyState({ es }: { es: boolean }) {
       <div style={{ fontSize: 34 }}>💰</div>
       <h3 style={{ margin: '8px 0 4px' }}>{es ? 'Aún no tienes ganancias' : 'No earnings yet'}</h3>
       <p className="muted" style={{ fontSize: 13.5, maxWidth: 480, margin: '0 auto 16px' }}>{es ? 'Estas son las formas de ganar dinero dentro de Onyx. Empieza por la que más te encaje.' : 'These are the ways to earn money inside Onyx. Start with whichever fits you best.'}</p>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 10, textAlign: 'left' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 10, textAlign: 'left', alignItems: 'stretch' }}>
         {ways.map(([ic, t, dsc, href]) => (
-          <Link key={t} href={href} style={{ textDecoration: 'none', color: 'inherit' }}>
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center', padding: 12, borderRadius: 12, background: 'var(--bg2)', border: '1px solid var(--line)' }}>
-              <OnyxIcon emoji={ic} size={20} />
+          <Link key={t} href={href} style={{ textDecoration: 'none', color: 'inherit', display: 'block', height: '100%' }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', padding: 12, borderRadius: 12, background: 'var(--bg2)', border: '1px solid var(--line)', height: '100%', minHeight: 64, boxSizing: 'border-box' }}>
+              <span style={{ flex: 'none', display: 'inline-flex' }}><OnyxIcon emoji={ic} size={20} /></span>
               <div><b style={{ fontSize: 13.5 }}>{t}</b><div className="muted" style={{ fontSize: 11.5 }}>{dsc}</div></div>
             </div>
           </Link>

@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useLang } from '@/lib/lang';
+import { checkWallet, maskAddress, lastChars, toChecksumEvm } from '@/lib/walletChecksum';
 
 export default function PayoutSettingsPage() {
   const { lang } = useLang();
@@ -9,26 +10,26 @@ export default function PayoutSettingsPage() {
   const [d, setD] = useState<any>(null);
   const [trc, setTrc] = useState('');
   const [erc, setErc] = useState('');
-  const [trc2, setTrc2] = useState('');  // segunda captura (confirmación)
-  const [erc2, setErc2] = useState('');
+  const [trcTail, setTrcTail] = useState('');  // confirmación: solo los últimos 6
+  const [ercTail, setErcTail] = useState('');
   const [net, setNet] = useState('trc20');
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
 
-  // Validación de formato (misma que el servidor) para avisar antes de guardar.
-  const isTron = (a: string) => /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test((a || '').trim());
-  const isEvm = (a: string) => /^0x[a-fA-F0-9]{40}$/.test((a || '').trim());
-  const trcOk = trc.trim() === '' || isTron(trc);
-  const ercOk = erc.trim() === '' || isEvm(erc);
-  // Doble captura: la confirmación debe coincidir EXACTA con la primera.
-  const trcMatch = trc.trim() === '' || trc.trim() === trc2.trim();
-  const ercMatch = erc.trim() === '' || erc.trim() === erc2.trim();
+  // Validación por CHECKSUM (no solo formato): el dígito de control cuadra.
+  const trcChk = checkWallet('trc20', trc);
+  const ercChk = checkWallet('erc20', erc);
+  const trcOk = trc.trim() === '' || trcChk.ok;
+  const ercOk = erc.trim() === '' || ercChk.ok;
+  // Confirmación ligera: solo los últimos 6 caracteres (no reescribir todo).
+  const trcTailOk = trc.trim() === '' || (trcOk && trcTail.trim().toLowerCase() === lastChars(trc, 6).toLowerCase());
+  const ercTailOk = erc.trim() === '' || (ercOk && ercTail.trim().toLowerCase() === lastChars(erc, 6).toLowerCase());
   const anyWallet = trc.trim() !== '' || erc.trim() !== '';
-  const canSave = trcOk && ercOk && trcMatch && ercMatch && (!anyWallet || confirm);
+  const canSave = trcOk && ercOk && trcTailOk && ercTailOk && (!anyWallet || confirm);
 
   async function load() {
-    try { const r = await fetch('/api/payout-node', { cache: 'no-store' }); const j = await r.json(); setD(j); setTrc(j.wallets?.trc20 || ''); setErc(j.wallets?.erc20 || ''); setNet(j.wallets?.network || 'trc20'); } catch {}
+    try { const r = await fetch('/api/payout-node', { cache: 'no-store' }); const j = await r.json(); setD(j); setTrc(j.wallets?.trc20 || ''); setErc(j.wallets?.erc20 || ''); setNet(j.wallets?.network || 'trc20'); setTrcTail(j.wallets?.trc20 ? lastChars(j.wallets.trc20, 6) : ''); setErcTail(j.wallets?.erc20 ? lastChars(j.wallets.erc20, 6) : ''); } catch {}
   }
   useEffect(() => { load(); }, []);
 
@@ -41,7 +42,7 @@ export default function PayoutSettingsPage() {
 
   const st = d?.status || {};
   const ready = st.connected && st.payoutsEnabled;
-  const inp: any = { padding: '11px 12px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 13.5, width: '100%' };
+  const inp: any = { padding: '11px 12px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 13.5, width: '100%', boxSizing: 'border-box' };
   const card: any = { background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, padding: 20 };
 
   return (
@@ -74,26 +75,20 @@ export default function PayoutSettingsPage() {
           <span style={{ fontSize: 22 }}>₮</span>
           <b style={{ fontSize: 16 }}>{es ? 'Cobro en USDT' : 'USDT payout'}</b>
         </div>
-        <p className="muted" style={{ fontSize: 12.5, marginBottom: 12 }}>{es ? 'Tus direcciones USDT. Se usan por defecto en cualquier retiro en cripto, sin volver a escribirlas.' : 'Your USDT addresses. Used by default in any crypto withdrawal, no need to retype them.'}</p>
-        <div style={{ display: 'grid', gap: 10 }}>
-          <div>
-            <span className="muted" style={{ fontSize: 12 }}>{es ? 'Wallet USDT · TRON (TRC20)' : 'USDT wallet · TRON (TRC20)'}</span>
-            <input style={{ ...inp, borderColor: trcOk ? 'var(--line)' : 'var(--red)' }} placeholder="T…" value={trc} onChange={(e) => { setTrc(e.target.value); setConfirm(false); }} />
-            {trc.trim() !== '' && <div style={{ fontSize: 11.5, fontWeight: 700, marginTop: 4, color: trcOk ? 'var(--green)' : 'var(--red)' }}>{trcOk ? (es ? '✓ Formato TRON válido' : '✓ Valid TRON format') : (es ? '✗ Debe empezar con "T" y tener 34 caracteres' : '✗ Must start with "T" and be 34 characters')}</div>}
-            {trc.trim() !== '' && trcOk && <>
-              <input style={{ ...inp, marginTop: 6, borderColor: trcMatch ? 'var(--line)' : 'var(--red)' }} placeholder={es ? 'Vuelve a escribir la dirección TRON' : 'Re-enter the TRON address'} value={trc2} onChange={(e) => { setTrc2(e.target.value); setConfirm(false); }} onPaste={(e) => e.preventDefault()} />
-              <div style={{ fontSize: 11.5, fontWeight: 700, marginTop: 4, color: trcMatch ? 'var(--green)' : 'var(--red)' }}>{trc2.trim() === '' ? (es ? 'Escríbela otra vez para confirmar (no se puede pegar)' : 'Type it again to confirm (paste disabled)') : trcMatch ? (es ? '✓ Coincide' : '✓ Matches') : (es ? '✗ No coincide' : '✗ Does not match')}</div>
-            </>}
-          </div>
-          <div>
-            <span className="muted" style={{ fontSize: 12 }}>{es ? 'Wallet USDT · Ethereum (ERC20)' : 'USDT wallet · Ethereum (ERC20)'}</span>
-            <input style={{ ...inp, borderColor: ercOk ? 'var(--line)' : 'var(--red)' }} placeholder="0x…" value={erc} onChange={(e) => { setErc(e.target.value); setConfirm(false); }} />
-            {erc.trim() !== '' && <div style={{ fontSize: 11.5, fontWeight: 700, marginTop: 4, color: ercOk ? 'var(--green)' : 'var(--red)' }}>{ercOk ? (es ? '✓ Formato Ethereum válido' : '✓ Valid Ethereum format') : (es ? '✗ Debe empezar con "0x" y tener 42 caracteres' : '✗ Must start with "0x" and be 42 characters')}</div>}
-            {erc.trim() !== '' && ercOk && <>
-              <input style={{ ...inp, marginTop: 6, borderColor: ercMatch ? 'var(--line)' : 'var(--red)' }} placeholder={es ? 'Vuelve a escribir la dirección Ethereum' : 'Re-enter the Ethereum address'} value={erc2} onChange={(e) => { setErc2(e.target.value); setConfirm(false); }} onPaste={(e) => e.preventDefault()} />
-              <div style={{ fontSize: 11.5, fontWeight: 700, marginTop: 4, color: ercMatch ? 'var(--green)' : 'var(--red)' }}>{erc2.trim() === '' ? (es ? 'Escríbela otra vez para confirmar (no se puede pegar)' : 'Type it again to confirm (paste disabled)') : ercMatch ? (es ? '✓ Coincide' : '✓ Matches') : (es ? '✗ No coincide' : '✗ Does not match')}</div>
-            </>}
-          </div>
+        <p className="muted" style={{ fontSize: 12.5, marginBottom: 12 }}>{es ? 'Pega tu dirección USDT: comprobamos su dígito de control al instante. No hace falta reescribirla entera — solo confirmas los últimos 6 caracteres.' : 'Paste your USDT address: we check its control digit instantly. No need to retype it whole — you just confirm the last 6 characters.'}</p>
+        <div style={{ display: 'grid', gap: 14 }}>
+          <WalletField
+            es={es} label={es ? 'Wallet USDT · TRON (TRC20)' : 'USDT wallet · TRON (TRC20)'} placeholder="T…"
+            value={trc} onChange={(v) => { setTrc(v); setTrcTail(''); setConfirm(false); }}
+            chk={trcChk} ok={trcOk} tail={trcTail} onTail={(v) => { setTrcTail(v); setConfirm(false); }} tailOk={trcTailOk}
+            inp={inp}
+          />
+          <WalletField
+            es={es} label={es ? 'Wallet USDT · Ethereum (ERC20)' : 'USDT wallet · Ethereum (ERC20)'} placeholder="0x…"
+            value={erc} onChange={(v) => { setErc(v); setErcTail(''); setConfirm(false); }}
+            chk={ercChk} ok={ercOk} tail={ercTail} onTail={(v) => { setErcTail(v); setConfirm(false); }} tailOk={ercTailOk}
+            inp={inp} onNormalize={erc.trim() && ercOk && toChecksumEvm(erc) !== erc.trim() ? () => { setErc(toChecksumEvm(erc)); setErcTail(''); setConfirm(false); } : undefined}
+          />
           <label><span className="muted" style={{ fontSize: 12 }}>{es ? 'Red preferida' : 'Preferred network'}</span>
             <select style={inp} value={net} onChange={(e) => setNet(e.target.value)}><option value="trc20">TRON (TRC20)</option><option value="erc20">Ethereum (ERC20)</option></select>
           </label>
@@ -110,8 +105,42 @@ export default function PayoutSettingsPage() {
       {msg && <div style={{ marginTop: 14, fontSize: 13, fontWeight: 700, color: msg.includes('✓') ? 'var(--green)' : 'var(--red)' }}>{msg}</div>}
 
       <div className="muted" style={{ fontSize: 12, marginTop: 18, lineHeight: 1.6 }}>
-        {es ? 'Nota: cada programa mantiene su maduración y protecciones. Este nodo solo unifica la conexión y las wallets, para que las configures una vez y no en cada sitio.' : 'Note: each program keeps its maturation and protections. This node only unifies the connection and wallets, so you set them up once instead of everywhere.'}
+        {es ? 'El dígito de control (checksum) de la dirección detecta casi cualquier error de tecleo por sí solo, así que es más seguro que copiarla dos veces. Cada programa mantiene su maduración y protecciones; este nodo solo unifica la conexión y las wallets.' : 'The address checksum catches almost any typo on its own, so it is safer than copying it twice. Each program keeps its maturation and protections; this node just unifies the connection and wallets.'}
       </div>
+    </div>
+  );
+}
+
+function WalletField({ es, label, placeholder, value, onChange, chk, ok, tail, onTail, tailOk, inp, onNormalize }: any) {
+  const filled = value.trim() !== '';
+  const shield = (color: string, text: string) => (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11.5, fontWeight: 800, color }}>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z" /><path d="M9 12l2 2 4-4" /></svg>
+      {text}
+    </span>
+  );
+  return (
+    <div>
+      <span className="muted" style={{ fontSize: 12 }}>{label}</span>
+      <input style={{ ...inp, borderColor: !filled ? 'var(--line)' : ok ? 'var(--green)' : 'var(--red)' }} placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} spellCheck={false} autoCapitalize="off" autoCorrect="off" />
+      {filled && (
+        <div style={{ marginTop: 5, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          {ok
+            ? shield('var(--green)', es ? 'Checksum válido' : 'Checksum valid')
+            : <span style={{ fontSize: 11.5, fontWeight: 800, color: 'var(--red)' }}>{chk.reason === 'checksum' ? (es ? '✗ El dígito de control no cuadra — revísala' : '✗ Control digit does not match — check it') : (es ? '✗ Formato incorrecto' : '✗ Wrong format')}</span>}
+          {ok && onNormalize && <button type="button" onClick={onNormalize} style={{ fontSize: 11, fontWeight: 700, color: 'var(--brand)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>{es ? 'Poner mayúsculas oficiales' : 'Apply official casing'}</button>}
+        </div>
+      )}
+      {filled && ok && (
+        <div style={{ marginTop: 8, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '10px 12px' }}>
+          <div style={{ fontSize: 12.5, fontFamily: 'ui-monospace,Menlo,monospace', letterSpacing: '.5px', marginBottom: 8, wordBreak: 'break-all' }}>{maskAddress(value, 8, 8)}</div>
+          <span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Confirma los últimos 6 caracteres (cotéjalos con tu exchange):' : 'Confirm the last 6 characters (check them against your exchange):'}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 5 }}>
+            <input style={{ ...inp, width: 130, textTransform: 'none', fontFamily: 'ui-monospace,Menlo,monospace', letterSpacing: '2px', borderColor: tailOk ? 'var(--green)' : 'var(--line)' }} maxLength={6} placeholder="••••••" value={tail} onChange={(e) => onTail(e.target.value)} spellCheck={false} autoCapitalize="off" autoCorrect="off" />
+            {tail.trim() !== '' && <span style={{ fontSize: 11.5, fontWeight: 800, color: tailOk ? 'var(--green)' : 'var(--red)' }}>{tailOk ? (es ? '✓ Coincide' : '✓ Matches') : (es ? '✗ No coincide' : '✗ Does not match')}</span>}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
