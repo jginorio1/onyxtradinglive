@@ -14,16 +14,25 @@ import { isValidTron, isValidEvm, checkWallet } from '@/lib/walletChecksum';
 
 const appUrl = () => process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || 'https://www.onyxtradinglive.com';
 
-// Busca una cuenta Stripe Express que el usuario YA haya conectado en cualquier
-// programa (perfil, embajador o mentor). Así el nodo no crea un duplicado vacío
-// cuando ya conectaste antes por Embajador/Academia. Solo lectura.
+// Reúne TODAS las cuentas Stripe Express distintas que el usuario tenga en
+// cualquier programa (perfil, embajador, mentor). Puede haber más de una si en
+// algún momento se creó un duplicado.
+export async function allCandidateAccounts(userId: string): Promise<string[]> {
+  const set = new Set<string>();
+  try {
+    const { data: p } = await supabaseAdmin.from('profiles')
+      .select('payout_stripe_account_id,bot_stripe_account_id,copy_stripe_account_id').eq('id', userId).maybeSingle();
+    for (const k of ['payout_stripe_account_id', 'bot_stripe_account_id', 'copy_stripe_account_id']) { const v = (p as any)?.[k]; if (v) set.add(v); }
+  } catch {}
+  try { const { data } = await supabaseAdmin.from('ambassadors').select('stripe_account_id').eq('user_id', userId).not('stripe_account_id', 'is', null); for (const r of (data || []) as any[]) if (r.stripe_account_id) set.add(r.stripe_account_id); } catch {}
+  try { const { data } = await supabaseAdmin.from('mentors').select('stripe_account_id').eq('user_id', userId).not('stripe_account_id', 'is', null); for (const r of (data || []) as any[]) if (r.stripe_account_id) set.add(r.stripe_account_id); } catch {}
+  return Array.from(set);
+}
+
+// Compat: una sola cuenta existente (la primera candidata), sin consultar Stripe.
 export async function findExistingAccount(userId: string): Promise<string | null> {
-  const { data: p } = await supabaseAdmin.from('profiles')
-    .select('payout_stripe_account_id,bot_stripe_account_id,copy_stripe_account_id').eq('id', userId).maybeSingle();
-  let acct = (p as any)?.payout_stripe_account_id || (p as any)?.bot_stripe_account_id || (p as any)?.copy_stripe_account_id;
-  if (!acct) { try { const { data: a } = await supabaseAdmin.from('ambassadors').select('stripe_account_id').eq('user_id', userId).not('stripe_account_id', 'is', null).maybeSingle(); acct = (a as any)?.stripe_account_id || acct; } catch {} }
-  if (!acct) { try { const { data: m } = await supabaseAdmin.from('mentors').select('stripe_account_id').eq('user_id', userId).not('stripe_account_id', 'is', null).maybeSingle(); acct = (m as any)?.stripe_account_id || acct; } catch {} }
-  return acct || null;
+  const list = await allCandidateAccounts(userId);
+  return list[0] || null;
 }
 
 // Devuelve (creando si hace falta, UNA vez) la cuenta Stripe Express compartida.
@@ -62,27 +71,37 @@ export async function payoutOnboardingLink(userId: string, email?: string, retur
   return link.url;
 }
 
-// Estado del nodo: ¿ya puede cobrar? Refresca payouts/charges en profiles y programas.
+// Estado del nodo: ¿ya puede cobrar? RECONCILIA entre todas las cuentas Stripe
+// que tengas: si en algún momento se creó un duplicado vacío y quedó como
+// canónica, aquí se detecta la cuenta que Stripe reporta como verificada
+// (payouts/charges habilitados) y se canoniza esa. Así "Ingresos" refleja la
+// cuenta buena aunque el perfil apuntara a la equivocada.
 export async function payoutNodeStatus(userId: string): Promise<{ connected: boolean; chargesEnabled: boolean; payoutsEnabled: boolean; acct: string | null; adopted?: boolean }> {
   const { data: p } = await supabaseAdmin.from('profiles').select('payout_stripe_account_id').eq('id', userId).maybeSingle();
-  let acct = (p as any)?.payout_stripe_account_id || null;
-  let adopted = false;
-  // Si el nodo aún no tiene cuenta canónica pero ya conectaste por otro programa
-  // (embajador/mentor/bot/copy), ADÓPTALA y propágala en vez de mostrar "sin conectar".
-  if (!acct) {
-    const found = await findExistingAccount(userId);
-    if (found) { acct = found; adopted = true; try { await propagateAccount(userId, found); } catch {} }
+  const canonical = (p as any)?.payout_stripe_account_id || null;
+  const candidates = await allCandidateAccounts(userId);
+  if (!candidates.length) return { connected: false, chargesEnabled: false, payoutsEnabled: false, acct: null };
+
+  // Revisa cada candidata en Stripe y elige la mejor: primero una con payouts
+  // habilitados, luego con charges, luego cualquiera que exista.
+  let best: { acct: string; charges: boolean; payouts: boolean } | null = null;
+  for (const acct of candidates) {
+    try {
+      const a = await stripe.accounts.retrieve(acct);
+      const charges = !!a.charges_enabled, payouts = !!a.payouts_enabled;
+      const score = (payouts ? 2 : 0) + (charges ? 1 : 0);
+      const bestScore = best ? (best.payouts ? 2 : 0) + (best.charges ? 1 : 0) : -1;
+      if (!best || score > bestScore) best = { acct, charges, payouts };
+    } catch { /* cuenta inexistente/borrada: la ignoramos */ }
   }
-  if (!acct) return { connected: false, chargesEnabled: false, payoutsEnabled: false, acct: null };
-  try {
-    const a = await stripe.accounts.retrieve(acct);
-    const chargesEnabled = !!a.charges_enabled;
-    const payoutsEnabled = !!a.payouts_enabled;
-    // Sincroniza banderas de cada programa para que sus retiros se habiliten solos.
-    try { await supabaseAdmin.from('profiles').update({ payout_charges_enabled: chargesEnabled, bot_charges_enabled: chargesEnabled, copy_charges_enabled: chargesEnabled }).eq('id', userId); } catch {}
-    try { await supabaseAdmin.from('ambassadors').update({ payouts_enabled: payoutsEnabled }).eq('user_id', userId); } catch {}
-    return { connected: true, chargesEnabled, payoutsEnabled, acct, adopted };
-  } catch { return { connected: true, chargesEnabled: false, payoutsEnabled: false, acct, adopted }; }
+  if (!best) return { connected: false, chargesEnabled: false, payoutsEnabled: false, acct: null };
+
+  const adopted = best.acct !== canonical;
+  if (adopted) { try { await propagateAccount(userId, best.acct); } catch {} }
+  // Sincroniza banderas de cada programa para que sus retiros se habiliten solos.
+  try { await supabaseAdmin.from('profiles').update({ payout_charges_enabled: best.charges, bot_charges_enabled: best.charges, copy_charges_enabled: best.charges }).eq('id', userId); } catch {}
+  try { await supabaseAdmin.from('ambassadors').update({ payouts_enabled: best.payouts }).eq('user_id', userId); } catch {}
+  return { connected: true, chargesEnabled: best.charges, payoutsEnabled: best.payouts, acct: best.acct, adopted };
 }
 
 // Enlace al panel Express (ver cobros/datos bancarios) de la cuenta compartida.
