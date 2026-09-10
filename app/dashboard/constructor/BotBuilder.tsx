@@ -14,7 +14,7 @@ const Lc = (es: boolean, a: string, b: string) => (es ? a : b);
 // Un bot NUEVO arranca con los campos críticos en blanco para forzar una elección
 // consciente (símbolo, gatillo de entrada y fase de la cuenta). El resto mantiene default.
 const blankReq = (sp: any) => ({ ...sp, name: '', platform: '' as any, symbol: '', entryTrigger: '', accountMode: '' as any });
-const SECS = ['general', 'entry', 'exits', 'risk', 'firm', 'schedule'];   // orden del modo guiado
+const SECS = ['general', 'entry', 'exits', 'risk', 'firm', 'schedule', 'sell'];   // orden del modo guiado
 const chipOf = (status: string, es: boolean) => status === 'off' ? { c: 'off', t: Lc(es, 'Desactivado', 'Disabled') } : status === 'warn' ? { c: 'warn', t: Lc(es, 'Sin definir', 'Undefined') } : { c: 'ok', t: Lc(es, 'Activo', 'Active') };
 
 // Punto de "obligatorio": rojo si aún no lo elegiste, verde si ya está.
@@ -40,6 +40,41 @@ function RangeRow({ t, min, max, onMin, onMax }: any) {
       <input className="bbx-in" type="number" step="0.01" min="0" style={{ width: 72, flex: 'none' }} placeholder="mín" value={min || ''} onChange={(e) => onMin(e.target.value === '' ? 0 : Number(e.target.value))} />
       <span style={{ color: 'var(--mut)' }}>–</span>
       <input className="bbx-in" type="number" step="0.01" min="0" style={{ width: 72, flex: 'none' }} placeholder="máx" value={max || ''} onChange={(e) => onMax(e.target.value === '' ? 0 : Number(e.target.value))} />
+    </div>
+  );
+}
+// Vista previa en vivo del panel del gráfico: refleja tema, acento y filas visibles
+// tal como los verá el comprador dentro de MT5/MT4/cTrader.
+function PanelPreview({ s, L }: any) {
+  const dark = (s.panelTheme || 'dark') !== 'light';
+  const accRgb = ({ green: '90,214,150', blue: '96,165,250', gold: '240,190,90', purple: '167,139,250' } as any)[s.panelAccent || 'green'] || '90,214,150';
+  const bg = dark ? '#181a20' : '#f4f6fa';
+  const tx = dark ? '#ececf2' : '#1a1c22';
+  const mut = dark ? '#96999f' : '#6e727c';
+  const neg = dark ? '#ec6e6e' : '#cc4040';
+  const trk = dark ? '#2c2f38' : '#d6dae2';
+  const acc = `rgb(${accRgb})`;
+  const name = s.name || (L('Mi robot', 'My robot'));
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', padding: '14px 0 4px' }}>
+      <div style={{ width: 274, background: bg, borderRadius: 12, padding: '11px 12px', boxShadow: '0 10px 30px rgba(0,0,0,.35)', fontFamily: 'Segoe UI, system-ui, sans-serif', border: dark ? '1px solid rgba(255,255,255,.06)' : '1px solid rgba(0,0,0,.08)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ color: tx, fontWeight: 700, fontSize: 14 }}>{name}</span>
+          <span style={{ background: trk, color: acc, fontSize: 9, fontWeight: 700, borderRadius: 5, padding: '3px 7px' }}>{L('LISTO', 'READY')}</span>
+        </div>
+        {(s.rowFirm !== false) && <div style={{ color: mut, fontSize: 11, marginTop: 7 }}>{L('Empresa', 'Firm')}: FTMO · {L('Cuenta', 'Account')}: $100,000</div>}
+        <div style={{ color: mut, fontSize: 11, marginTop: 5 }}>{s.symbol || 'XAUUSD'} · {L('sesgo', 'bias')} {L('ALCISTA', 'UP')} · {L('ops', 'trades')} 2</div>
+        <div style={{ color: tx, fontSize: 11.5, marginTop: 6 }}>{L('Balance', 'Balance')} $100,240 &nbsp;&nbsp; {L('Equity', 'Equity')} $100,410</div>
+        {(s.rowDD !== false) && (<>
+          <div style={{ color: mut, fontSize: 10.5, marginTop: 7 }}>DD 1.20% / 10%</div>
+          <div style={{ background: trk, height: 6, borderRadius: 99, marginTop: 3 }}><div style={{ width: '12%', height: 6, borderRadius: 99, background: acc }} /></div>
+        </>)}
+        {(s.rowTarget !== false) && (<>
+          <div style={{ color: mut, fontSize: 10.5, marginTop: 7 }}>{L('Objetivo', 'Target')} +4.10% / 8%</div>
+          <div style={{ background: trk, height: 6, borderRadius: 99, marginTop: 3 }}><div style={{ width: '51%', height: 6, borderRadius: 99, background: '#788cff' }} /></div>
+        </>)}
+        {(s.rowStats !== false) && <div style={{ color: tx, fontSize: 11.5, marginTop: 8 }}>WR 64% &nbsp; {L('Trades', 'Trades')} 128 &nbsp; <span style={{ color: acc }}>{L('Neto', 'Net')} +$1,240</span></div>}
+      </div>
     </div>
   );
 }
@@ -336,13 +371,14 @@ export default function BotBuilder() {
     ['risk', '🛡️', L('Riesgo', 'Risk'), L('Riesgo, cap diario, objetivo', 'Risk, daily cap, target')],
     ['firm', '🏦', L('Fondeo y frenos', 'Firm & brakes'), L('Firm, DD, objetivo de fase', 'Firm, DD, phase target')],
     ['schedule', '🕐', L('Horario y noticias', 'Schedule & news'), L('Sesión, cierre, noticias', 'Session, close, news')],
+    ['sell', '🏷️', L('Vender / permisos', 'Sell / permissions'), L('Panel del gráfico y qué puede editar el comprador', 'Chart panel and what the buyer can edit')],
   ];
   // ¿Los campos OBLIGATORIOS de una sección son válidos? (independiente de si la abriste)
   const secValid = (k: string) => REQ.filter((r) => r.section === k).every((r) => okVal(r.key as string));
   // Estado real de la tarjeta: gris si no la abriste, ámbar si falta algo, verde si la revisaste y está bien.
   const secStatus = (k: string): 'idle' | 'warn' | 'ok' => !visited[k] ? 'idle' : (secValid(k) ? 'ok' : 'warn');
-  const reviewedSecs = ['general', 'entry', 'exits', 'risk', 'firm', 'schedule'].filter((k) => visited[k]).length;
-  const secPct = Math.round(100 * reviewedSecs / 6);
+  const reviewedSecs = SECS.filter((k) => visited[k]).length;
+  const secPct = Math.round(100 * reviewedSecs / SECS.length);
   const go = (v: string) => { setView(v); if (v !== 'home') setVisited((p) => ({ ...p, [v]: true })); window.scrollTo({ top: 0, behavior: 'smooth' }); };
   // En modo sencillo nunca mostramos el tablero: si el view cae en 'home', lo llevamos al primer paso.
   useEffect(() => { if (mode === 'simple' && view === 'home') setView('general'); }, [mode, view]);
@@ -815,17 +851,53 @@ export default function BotBuilder() {
         )}
       </div>
 
-      {/* Panel en el gráfico + candado de parámetros (para vender) */}
+      </>)}
+
+      {view === 'sell' && (<>
       <div className="bbx-panel">
         <div className="bbx-panel-h"><span className="bbx-ic"><OnyxIcon emoji="🖥" size={16} /></span><div><div>{L('Panel en el gráfico', 'On-chart panel')}</div><div className="bbx-sub">{L('Lo que el robot muestra dentro de MT5, MT4 y cTrader: nombre, estado, balance, equity, drawdown y objetivo. El comprador lo ve en su gráfico.', 'What the robot shows inside MT5, MT4 and cTrader: name, status, balance, equity, drawdown and target. The buyer sees it on their chart.')}</div></div></div>
         <div style={{ marginBottom: 12 }}><Toggle k="showPanel" t={L('Mostrar el panel en el gráfico', 'Show the panel on the chart')} /></div>
-        {s.showPanel !== false && (
-          <div className="bbx-grid">
+        {s.showPanel !== false && (<>
+          {/* Vista previa en vivo del panel */}
+          <PanelPreview s={s} L={L} />
+          {/* Tema + acento */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 14 }}>
+            <div>
+              <span className="bbx-lbl">{L('Tema', 'Theme')}</span>
+              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                {([['dark', L('Oscuro', 'Dark')], ['light', L('Claro', 'Light')]] as [any, string][]).map(([k, lab]) => (
+                  <button key={k} type="button" onClick={() => set('panelTheme', k)} style={{ flex: 1, cursor: 'pointer', borderRadius: 10, padding: '9px 10px', fontWeight: 700, fontSize: 12.5, color: (s.panelTheme || 'dark') === k ? 'var(--tx)' : 'var(--mut)', background: k === 'dark' ? '#181a20' : '#f4f6fa', border: `2px solid ${(s.panelTheme || 'dark') === k ? 'var(--brand)' : 'rgba(255,255,255,.12)'}` }}><span style={{ color: k === 'dark' ? '#ececf2' : '#1a1c22' }}>{lab}</span></button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <span className="bbx-lbl">{L('Acento', 'Accent')}</span>
+              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                {([['green', '90,214,150'], ['blue', '96,165,250'], ['gold', '240,190,90'], ['purple', '167,139,250']] as [any, string][]).map(([k, rgb]) => (
+                  <button key={k} type="button" title={k} onClick={() => set('panelAccent', k)} style={{ width: 34, height: 34, cursor: 'pointer', borderRadius: 9, background: `rgb(${rgb})`, border: `3px solid ${(s.panelAccent || 'green') === k ? 'var(--tx)' : 'transparent'}`, boxShadow: (s.panelAccent || 'green') === k ? `0 0 0 2px rgb(${rgb})` : 'none' }} />
+                ))}
+              </div>
+            </div>
+          </div>
+          {/* Filas visibles */}
+          <div style={{ marginTop: 14 }}>
+            <span className="bbx-lbl">{L('Filas que se muestran', 'Rows shown')}</span>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+              {([['rowFirm', L('Firma / cuenta', 'Firm / account')], ['rowDD', L('Drawdown', 'Drawdown')], ['rowTarget', L('Objetivo', 'Target')], ['rowStats', L('Estadísticas', 'Stats')]] as [any, string][]).map(([k, lab]) => {
+                const on = (s as any)[k] !== false;
+                return (
+                  <button key={k} type="button" onClick={() => set(k, !on)} style={{ cursor: 'pointer', fontSize: 12, fontWeight: 700, borderRadius: 99, padding: '6px 13px', border: '1px solid', borderColor: on ? 'var(--green)' : 'rgba(255,255,255,.18)', background: on ? 'rgba(52,226,160,.12)' : 'rgba(255,255,255,.04)', color: on ? 'var(--green)' : 'var(--mut)' }}>{on ? '✓ ' : ''}{lab}</button>
+                );
+              })}
+            </div>
+          </div>
+          {/* Posición */}
+          <div className="bbx-grid" style={{ marginTop: 14 }}>
             <Fld t={L('Esquina', 'Corner')} k="panelCorner" opts={[['0', L('Arriba izquierda', 'Top left')], ['1', L('Abajo izquierda', 'Bottom left')], ['2', L('Abajo derecha', 'Bottom right')], ['3', L('Arriba derecha', 'Top right')]]} hint={L('Dónde se ancla el panel dentro del gráfico.', 'Where the panel anchors on the chart.')} />
             <Fld t={L('Separación horizontal (px)', 'Horizontal offset (px)')} k="panelX" type="number" hint={L('Distancia desde el borde de la esquina.', 'Distance from the corner edge.')} />
             <Fld t={L('Separación vertical (px)', 'Vertical offset (px)')} k="panelY" type="number" hint={L('Distancia desde el borde de la esquina.', 'Distance from the corner edge.')} />
           </div>
-        )}
+        </>)}
         <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,.08)' }}>
           <div style={{ fontWeight: 700, fontSize: 13.5, marginBottom: 3 }}>{L('¿Qué puede editar el comprador?', 'What can the buyer edit?')}</div>
           <div className="bbx-sub" style={{ marginBottom: 10 }}>{L('El comprador maneja su cuenta, así que su riesgo y su firma quedan editables. Solo tu estrategia se protege para que rinda como se anunció.', 'The buyer manages their account, so their risk and firm stay editable. Only your strategy is protected so it performs as advertised.')}</div>

@@ -46,6 +46,9 @@ export type BotSpec = {
   useNewsFilter: boolean; newsCurrencies: string; newsImpact: string; newsBefore: number; newsAfter: number;
   // Panel en el gráfico (lo que se ve dentro de MT5/MT4/cTrader) + candado de parámetros.
   showPanel: boolean; panelCorner: number; panelX: number; panelY: number;   // corner 0=sup-izq,1=sup-der,2=inf-izq,3=inf-der
+  // Estilo del panel en el gráfico (lo que ve el comprador dentro de MT5/MT4/cTrader).
+  panelTheme: 'dark' | 'light'; panelAccent: 'green' | 'blue' | 'gold' | 'purple';
+  rowFirm: boolean; rowDD: boolean; rowTarget: boolean; rowStats: boolean;   // qué filas mostrar
   lockCore: boolean;   // (compat) = perm.strategy === 'lock'. Ver `perm` para el control por grupo.
   // Permisos de edición del comprador, POR GRUPO. 'edit' = editable en MetaTrader; 'lock' = horneado (no editable).
   // El panel y la conexión siempre son editables (operativos, no estrategia).
@@ -88,6 +91,7 @@ export const DEFAULT_SPEC: BotSpec = {
   useDayClose: true, forceCloseHourNY: 20, forceCloseMinNY: 30, noWeekend: true, serverGmt: 3,
   useNewsFilter: true, newsCurrencies: 'USD', newsImpact: 'high', newsBefore: 15, newsAfter: 15,
   showPanel: true, panelCorner: 0, panelX: 12, panelY: 20, lockCore: false,
+  panelTheme: 'dark', panelAccent: 'green', rowFirm: true, rowDD: true, rowTarget: true, rowStats: true,
   perm: { strategy: 'lock', risk: 'edit', mgmt: 'edit', funded: 'edit', filters: 'edit' }, preset: 'balanced',
   ranges: { riskMin: 0, riskMax: 0, lotsMin: 0, lotsMax: 0, tradesMin: 0, tradesMax: 0 },
 };
@@ -171,6 +175,9 @@ export function cleanSpec(inp: any): BotSpec {
   s.panelCorner = clamp(Math.round(num(inp?.panelCorner, 0)), 0, 3);
   s.panelX = clamp(Math.round(num(inp?.panelX, 12)), 0, 4000);
   s.panelY = clamp(Math.round(num(inp?.panelY, 20)), 0, 4000);
+  s.panelTheme = inp?.panelTheme === 'light' ? 'light' : 'dark';
+  s.panelAccent = ['green', 'blue', 'gold', 'purple'].includes(inp?.panelAccent) ? inp.panelAccent : 'green';
+  s.rowFirm = inp?.rowFirm !== false; s.rowDD = inp?.rowDD !== false; s.rowTarget = inp?.rowTarget !== false; s.rowStats = inp?.rowStats !== false;
   // Permisos por grupo: si viene preset, lo aplica; si vienen permisos sueltos, los usa.
   const pv = (v: any): PermV => (v === 'lock' ? 'lock' : 'edit');
   if (inp?.preset && ['open', 'balanced', 'armored'].includes(inp.preset)) {

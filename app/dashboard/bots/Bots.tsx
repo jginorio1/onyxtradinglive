@@ -514,13 +514,27 @@ export default function Bots() {
 
   return (
     <div className="wrap" style={{ padding: '24px 0 60px', maxWidth: 1180, fontSize: 15 }}>
-      <div className="row between" style={{ padding: '0 4px', marginBottom: 16, flexWrap: 'wrap', gap: 10, alignItems: 'flex-end' }}>
+      <div style={{ padding: '0 4px', marginBottom: 16 }}>
         <div>
           <h1 style={{ fontSize: 24 }}><OnyxIcon emoji="🤖" size={16} /> {t.title}</h1>
           <p className="muted" style={{ marginTop: 6 }}>{t.sub}</p>
           <p className="muted" style={{ marginTop: 4, fontSize: 12.5, display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="💡" size={12} /> {L('Tus robots aparecen aquí solos cuando su EA opera con su número magic en una cuenta conectada.', 'Your robots show up here automatically when their EA trades with its magic number on a connected account.')}</p>
         </div>
-        <Link href="/dashboard/constructor" className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontWeight: 700, padding: '11px 20px', boxShadow: '0 0 0 1px var(--brand), 0 6px 18px color-mix(in srgb, var(--brand) 45%, transparent)' }}><OnyxIcon emoji="➕" size={15} glow={false} /> {lang === 'es' ? 'Crear robot' : 'Create robot'}</Link>
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 18 }}>
+          <Link
+            href="/dashboard/constructor"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 10, fontWeight: 800, fontSize: 16,
+              padding: '14px 34px', borderRadius: 14, textDecoration: 'none',
+              color: '#1a1400',
+              background: 'linear-gradient(180deg, #ffdf6e, #f5b500)',
+              border: '1px solid #e0a500',
+              boxShadow: '0 0 0 4px color-mix(in srgb, #ffd45e 22%, transparent), 0 10px 28px color-mix(in srgb, #f5b500 55%, transparent)',
+            }}
+          >
+            <OnyxIcon emoji="➕" size={17} glow={false} /> {lang === 'es' ? 'Crear robot' : 'Create robot'}
+          </Link>
+        </div>
       </div>
 
       {!d && <div className="card muted">…</div>}

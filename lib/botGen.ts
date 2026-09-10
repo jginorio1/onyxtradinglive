@@ -34,6 +34,22 @@ const cRisk = (u: string) => (u === 'money' ? 1 : 0);
 const cU = (u: string) => ({ pips: 0, rr: 1, pct: 2, money: 3, atr: 4 } as any)[u] ?? 0;
 const cSL = cU, cTP = cU, cRun = cU, cTrail = cU;
 
+// ── Paleta del panel en el gráfico ────────────────────────────────
+// El vendedor elige tema (oscuro/claro) y acento; esto se traduce a los
+// colores MQL (formato C'r,g,b') que dibuja el panel. `pos`/`neg` son los
+// colores de ganancia/pérdida; `acc` tiñe el título y la barra de progreso.
+type PanelPal = { bg: string; tx: string; mut: string; pos: string; neg: string; acc: string; trk: string };
+function panelPalette(s: BotSpec): PanelPal {
+  const dark = (s.panelTheme || 'dark') !== 'light';
+  const acc = ({
+    green: '90,214,150', blue: '96,165,250', gold: '240,190,90', purple: '167,139,250',
+  } as Record<string, string>)[s.panelAccent || 'green'] || '90,214,150';
+  if (dark) {
+    return { bg: "C'24,26,32'", tx: "C'236,237,242'", mut: "C'150,153,162'", pos: `C'${acc}'`, neg: "C'236,110,110'", acc: `C'${acc}'`, trk: "C'44,47,56'" };
+  }
+  return { bg: "C'244,246,250'", tx: "C'26,28,34'", mut: "C'110,114,124'", pos: `C'${acc}'`, neg: "C'204,64,64'", acc: `C'${acc}'`, trk: "C'214,218,226'" };
+}
+
 export function renderMT5(spec: BotSpec, meta?: { userId?: string; buildId?: string; site?: string }): string {
   const s = spec;
   // Candado del núcleo: si el vendedor lo activa, los parámetros de estrategia salen
@@ -45,6 +61,7 @@ export function renderMT5(spec: BotSpec, meta?: { userId?: string; buildId?: str
   const IN = INs;   // compat / estrategia
   const rmin = s.ranges.riskMin, rmax = s.ranges.riskMax, lmin = s.ranges.lotsMin, lmax = s.ranges.lotsMax, tmin = s.ranges.tradesMin, tmax = s.ranges.tradesMax;
   const clampMQL = (v: string, mn: number, mx: number) => `${mn > 0 ? `if(${v}<${mn}) ${v}=${mn}; ` : ''}${mx > 0 ? `if(${v}>${mx}) ${v}=${mx}; ` : ''}`;
+  const pk = panelPalette(s);   // colores del panel según tema + acento
   const en = s.botLang === 'en';
   const T = (a: string, b: string) => (en ? b : a); // textos visibles al trader, en su idioma
   // Datos para el candado de activación: URL de Onyx + huella (creador + build) que
@@ -399,22 +416,22 @@ void RR(string n,int x,int y,int w,int h,color bg){ string nm=PFX+n; if(ObjectFi
    ObjectSetInteger(0,nm,OBJPROP_XDISTANCE,x); ObjectSetInteger(0,nm,OBJPROP_YDISTANCE,y); ObjectSetInteger(0,nm,OBJPROP_XSIZE,w); ObjectSetInteger(0,nm,OBJPROP_YSIZE,h);
    ObjectSetInteger(0,nm,OBJPROP_BGCOLOR,bg); ObjectSetInteger(0,nm,OBJPROP_BORDER_TYPE,BORDER_FLAT); ObjectSetInteger(0,nm,OBJPROP_CORNER,(ENUM_BASE_CORNER)InpPanelCorner); ObjectSetInteger(0,nm,OBJPROP_BACK,false); ObjectSetInteger(0,nm,OBJPROP_SELECTABLE,false); ObjectSetInteger(0,nm,OBJPROP_HIDDEN,true); }
 void Panel(){ if(!InpShowPanel) return; int X=InpPanelX,Y=InpPanelY,W=274,PAD=11,IW=W-2*PAD;
-   color bg=C'24,26,32',cv=C'236,237,242',cm=C'150,153,162',cg=C'90,214,150',cr=C'236,110,110',ca=C'240,190,90',ctrk=C'44,47,56';
-   int H=140; double tg0=TargetPct(); if(tg0>0) H+=27; if(InpUseNews) H+=14;
+   color bg=${pk.bg},cv=${pk.tx},cm=${pk.mut},cg=${pk.pos},cr=${pk.neg},ca=${pk.acc},ctrk=${pk.trk};
+   int H=${140 - (s.rowFirm ? 0 : 16) - (s.rowDD ? 0 : 28) - (s.rowStats ? 0 : 16)}; double tg0=TargetPct();${s.rowTarget ? ' if(tg0>0) H+=27;' : ''} if(InpUseNews) H+=14;
    RR("bg",X,Y,W,H,bg); int y=Y+9;
    L("t",X+PAD,y,InpComment,cv,12,true);
-   int pw=88; color bc=(CountMine()>0?cg:((dayLocked||gInNews)?cr:ca)); RR("stp",X+W-PAD-pw,y-1,pw,17,C'40,43,52'); L("stpl",X+W-PAD-pw+7,y+2,noReason,bc,8,true); y+=23;
-   L("firm",X+PAD,y,"${T('Empresa', 'Firm')}: "+InpFirmName+"   ·   ${T('Cuenta', 'Account')}: $"+DoubleToString(gInitBal,0),cm,9); y+=16;
+   int pw=88; color bc=(CountMine()>0?cg:((dayLocked||gInNews)?cr:ca)); RR("stp",X+W-PAD-pw,y-1,pw,17,ctrk); L("stpl",X+W-PAD-pw+7,y+2,noReason,bc,8,true); y+=23;
+   ${s.rowFirm ? `L("firm",X+PAD,y,"${T('Empresa', 'Firm')}: "+InpFirmName+"   ·   ${T('Cuenta', 'Account')}: $"+DoubleToString(gInitBal,0),cm,9); y+=16;` : ''}
    int _td=TrendDir(); L("sub",X+PAD,y,S+"   ·   ${T('sesgo', 'bias')} "+(_td>0?"${T('ALCISTA', 'UP')}":(_td<0?"${T('BAJISTA', 'DOWN')}":"${T('rango', 'range')}"))+"   ·   ${T('ops', 'trades')} "+(string)gTradesToday,cm,9); y+=18;
    double eq=AccountInfoDouble(ACCOUNT_EQUITY), bal=AccountInfoDouble(ACCOUNT_BALANCE);
    L("a",X+PAD,y,"${T('Balance', 'Balance')} $"+DoubleToString(bal,0)+"     ${T('Equity', 'Equity')} $"+DoubleToString(eq,0),cv,9); y+=17;
-   double dd=DDPct(); if(dd<0)dd=0; double ddf=(InpFirmTotalLimitPct>0?dd/InpFirmTotalLimitPct:0); if(ddf>1)ddf=1; color dc=(ddf<0.5)?cg:((ddf<0.8)?ca:cr);
+   ${s.rowDD ? `double dd=DDPct(); if(dd<0)dd=0; double ddf=(InpFirmTotalLimitPct>0?dd/InpFirmTotalLimitPct:0); if(ddf>1)ddf=1; color dc=(ddf<0.5)?cg:((ddf<0.8)?ca:cr);
    L("ddl",X+PAD,y,"DD "+DoubleToString(dd,2)+"%  /  "+DoubleToString(InpFirmTotalLimitPct,0)+"%",cm,8); y+=13;
-   RR("ddt",X+PAD,y,IW,6,ctrk); RR("ddf",X+PAD,y,(int)(IW*ddf),6,dc); y+=15;
-   if(tg0>0){ double pp=ProfitPct(); double tf=(tg0>0?pp/tg0:0); if(tf<0)tf=0; if(tf>1)tf=1; color tc=(pp>=tg0)?cg:C'120,140,255';
+   RR("ddt",X+PAD,y,IW,6,ctrk); RR("ddf",X+PAD,y,(int)(IW*ddf),6,dc); y+=15;` : ''}
+   ${s.rowTarget ? `if(tg0>0){ double pp=ProfitPct(); double tf=(tg0>0?pp/tg0:0); if(tf<0)tf=0; if(tf>1)tf=1; color tc=(pp>=tg0)?cg:C'120,140,255';
       L("tgl",X+PAD,y,"${T('Objetivo', 'Target')} "+(pp>=0?"+":"")+DoubleToString(pp,2)+"%  /  "+DoubleToString(tg0,0)+"%",cm,8); y+=13;
-      RR("tgt",X+PAD,y,IW,6,ctrk); RR("tgf",X+PAD,y,(int)(IW*tf),6,tc); y+=15; }
-   L("s",X+PAD,y,"WR "+DoubleToString(stWR,0)+"%    ${T('Trades', 'Trades')} "+(string)stTrades+"    ${T('Neto', 'Net')} "+(stNet>=0?"+$":"-$")+DoubleToString(MathAbs(stNet),0),cv,9); y+=16;
+      RR("tgt",X+PAD,y,IW,6,ctrk); RR("tgf",X+PAD,y,(int)(IW*tf),6,tc); y+=15; }` : ''}
+   ${s.rowStats ? `L("s",X+PAD,y,"WR "+DoubleToString(stWR,0)+"%    ${T('Trades', 'Trades')} "+(string)stTrades+"    ${T('Neto', 'Net')} "+(stNet>=0?"+$":"-$")+DoubleToString(MathAbs(stNet),0),cv,9); y+=16;` : ''}
    if(InpUseNews){ string ns=nwFail?"${T('noticias: permite la URL en Opciones', 'news: allow the URL in Options')}":(gInNews?"${T('en ventana de noticias', 'in news window')}":"${T('filtro de noticias activo', 'news filter on')}"); L("nw",X+PAD,y,"•  "+ns,gInNews?ca:cm,8); }
    ChartRedraw(); }
 `;
@@ -432,6 +449,7 @@ export function renderMT4(spec: BotSpec, meta?: { userId?: string; buildId?: str
   const IN = INs;   // compat / estrategia (ver renderMT5)
   const rmin = s.ranges.riskMin, rmax = s.ranges.riskMax, lmin = s.ranges.lotsMin, lmax = s.ranges.lotsMax, tmin = s.ranges.tradesMin, tmax = s.ranges.tradesMax;
   const clampMQL = (v: string, mn: number, mx: number) => `${mn > 0 ? `if(${v}<${mn}) ${v}=${mn}; ` : ''}${mx > 0 ? `if(${v}>${mx}) ${v}=${mx}; ` : ''}`;
+  const pk = panelPalette(s);   // colores del panel según tema + acento
   const en = s.botLang === 'en';
   const T = (a: string, bb: string) => (en ? bb : a);
   const site = String(meta?.site || 'https://www.onyxtradinglive.com').replace(/\/$/, '');
@@ -691,21 +709,21 @@ void RB(string n,int x,int y,int w,int h,color bg){ string nm=PFX+n; if(ObjectFi
    ObjectSetInteger(0,nm,OBJPROP_XDISTANCE,x); ObjectSetInteger(0,nm,OBJPROP_YDISTANCE,y); ObjectSetInteger(0,nm,OBJPROP_XSIZE,w); ObjectSetInteger(0,nm,OBJPROP_YSIZE,h);
    ObjectSetInteger(0,nm,OBJPROP_BGCOLOR,bg); ObjectSetInteger(0,nm,OBJPROP_BORDER_TYPE,BORDER_FLAT); ObjectSetInteger(0,nm,OBJPROP_CORNER,(ENUM_BASE_CORNER)InpPanelCorner); ObjectSetInteger(0,nm,OBJPROP_BACK,false); ObjectSetInteger(0,nm,OBJPROP_SELECTABLE,false); ObjectSetInteger(0,nm,OBJPROP_HIDDEN,true); }
 void Panel(){ if(!InpShowPanel) return; int X=InpPanelX,Y=InpPanelY,W=274,PAD=11,IW=W-2*PAD;
-   color bg=C'24,26,32',cv=C'236,237,242',cm=C'150,153,162',cg=C'90,214,150',cr=C'236,110,110',ca=C'240,190,90',ctrk=C'44,47,56';
-   int H=140; double tg0=TargetPct(); if(tg0>0) H+=27; if(InpUseNews) H+=14;
+   color bg=${pk.bg},cv=${pk.tx},cm=${pk.mut},cg=${pk.pos},cr=${pk.neg},ca=${pk.acc},ctrk=${pk.trk};
+   int H=${140 - (s.rowFirm ? 0 : 16) - (s.rowDD ? 0 : 28) - (s.rowStats ? 0 : 16)}; double tg0=TargetPct();${s.rowTarget ? ' if(tg0>0) H+=27;' : ''} if(InpUseNews) H+=14;
    RB("bg",X,Y,W,H,bg); int y=Y+9;
    LB("t",X+PAD,y,InpComment,cv,12);
-   int pw=90; color bc=(CountMine()>0?cg:((dayLocked||gInNews)?cr:ca)); RB("stp",X+W-PAD-pw,y-1,pw,17,C'40,43,52'); LB("stpl",X+W-PAD-pw+7,y+2,noReason,bc,8); y+=23;
-   LB("firm",X+PAD,y,"${T('Empresa', 'Firm')}: "+InpFirmName+"   ·   $"+DoubleToString(gInitBal,0),cm,9); y+=16;
+   int pw=90; color bc=(CountMine()>0?cg:((dayLocked||gInNews)?cr:ca)); RB("stp",X+W-PAD-pw,y-1,pw,17,ctrk); LB("stpl",X+W-PAD-pw+7,y+2,noReason,bc,8); y+=23;
+   ${s.rowFirm ? `LB("firm",X+PAD,y,"${T('Empresa', 'Firm')}: "+InpFirmName+"   ·   $"+DoubleToString(gInitBal,0),cm,9); y+=16;` : ''}
    int _td=TrendDir(); LB("sub",X+PAD,y,S+"   ·   ${T('sesgo', 'bias')} "+(_td>0?"${T('ALCISTA', 'UP')}":(_td<0?"${T('BAJISTA', 'DOWN')}":"${T('rango', 'range')}"))+"   ·   ${T('ops', 'trades')} "+(string)gTradesToday,cm,9); y+=18;
    LB("a",X+PAD,y,"${T('Balance', 'Balance')} $"+DoubleToString(AccountBalance(),0)+"     ${T('Equity', 'Equity')} $"+DoubleToString(AccountEquity(),0),cv,9); y+=17;
-   double dd=DDPct(); if(dd<0)dd=0; double ddf=(InpFirmTotalLimitPct>0?dd/InpFirmTotalLimitPct:0); if(ddf>1)ddf=1; color dc=(ddf<0.5)?cg:((ddf<0.8)?ca:cr);
+   ${s.rowDD ? `double dd=DDPct(); if(dd<0)dd=0; double ddf=(InpFirmTotalLimitPct>0?dd/InpFirmTotalLimitPct:0); if(ddf>1)ddf=1; color dc=(ddf<0.5)?cg:((ddf<0.8)?ca:cr);
    LB("ddl",X+PAD,y,"DD "+DoubleToString(dd,2)+"%  /  "+DoubleToString(InpFirmTotalLimitPct,0)+"%",cm,8); y+=13;
-   RB("ddt",X+PAD,y,IW,6,ctrk); RB("ddf",X+PAD,y,(int)(IW*ddf),6,dc); y+=15;
-   if(tg0>0){ double pp=ProfitPct(); double tfv=(tg0>0?pp/tg0:0); if(tfv<0)tfv=0; if(tfv>1)tfv=1; color tc=(pp>=tg0)?cg:C'120,140,255';
+   RB("ddt",X+PAD,y,IW,6,ctrk); RB("ddf",X+PAD,y,(int)(IW*ddf),6,dc); y+=15;` : ''}
+   ${s.rowTarget ? `if(tg0>0){ double pp=ProfitPct(); double tfv=(tg0>0?pp/tg0:0); if(tfv<0)tfv=0; if(tfv>1)tfv=1; color tc=(pp>=tg0)?cg:C'120,140,255';
       LB("tgl",X+PAD,y,"${T('Objetivo', 'Target')} "+(pp>=0?"+":"")+DoubleToString(pp,2)+"%  /  "+DoubleToString(tg0,0)+"%",cm,8); y+=13;
-      RB("tgt",X+PAD,y,IW,6,ctrk); RB("tgf",X+PAD,y,(int)(IW*tfv),6,tc); y+=15; }
-   LB("s",X+PAD,y,"WR "+DoubleToString(stWR,0)+"%    ${T('Trades', 'Trades')} "+(string)stTrades+"    ${T('Neto', 'Net')} "+(stNet>=0?"+$":"-$")+DoubleToString(MathAbs(stNet),0),cv,9); y+=16;
+      RB("tgt",X+PAD,y,IW,6,ctrk); RB("tgf",X+PAD,y,(int)(IW*tfv),6,tc); y+=15; }` : ''}
+   ${s.rowStats ? `LB("s",X+PAD,y,"WR "+DoubleToString(stWR,0)+"%    ${T('Trades', 'Trades')} "+(string)stTrades+"    ${T('Neto', 'Net')} "+(stNet>=0?"+$":"-$")+DoubleToString(MathAbs(stNet),0),cv,9); y+=16;` : ''}
    if(InpUseNews){ string ns=nwFail?"${T('noticias: permite la URL', 'news: allow the URL')}":(gInNews?"${T('en ventana de noticias', 'in news window')}":"${T('filtro de noticias activo', 'news filter on')}"); LB("nw",X+PAD,y,"•  "+ns,gInNews?ca:cm,8); }
    ChartRedraw(); }
 
