@@ -439,12 +439,17 @@ function OfficialModal({ es, product, onClose, act }: any) {
           <label><span style={lbl}>{es ? 'Prueba (URL)' : 'Proof (URL)'}</span><input value={f.proof_url} onChange={(e) => setF({ ...f, proof_url: e.target.value })} style={inp} placeholder="myfxbook…" /></label>
         </div>
 
-        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', margin: '12px 0' }}>
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13, cursor: 'pointer' }}><input type="checkbox" checked={!!f.spec_sl} onChange={(e) => setF({ ...f, spec_sl: e.target.checked })} /> {es ? 'Usa Stop Loss' : 'Uses Stop Loss'}</label>
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13, cursor: 'pointer' }}><input type="checkbox" checked={!!f.spec_news} onChange={(e) => setF({ ...f, spec_news: e.target.checked })} /> {es ? 'Filtro de noticias' : 'News filter'}</label>
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13, cursor: 'pointer' }}><input type="checkbox" checked={!!f.spec_propfirm} onChange={(e) => setF({ ...f, spec_propfirm: e.target.checked })} /> {es ? 'Apto prop firm' : 'Prop-firm ready'}</label>
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13, cursor: 'pointer' }}><input type="checkbox" checked={!!f.verified} onChange={(e) => setF({ ...f, verified: e.target.checked })} /> {es ? 'Marcar verificado' : 'Mark verified'}</label>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 8, margin: '12px 0' }}>
+          {([['spec_sl', es ? 'Usa Stop Loss' : 'Uses Stop Loss'], ['spec_news', es ? 'Filtro de noticias' : 'News filter'], ['spec_propfirm', es ? 'Apto prop firm' : 'Prop-firm ready'], ['verified', es ? 'Marcar verificado' : 'Mark verified']] as [string, string][]).map(([k, t]) => {
+            const on = !!f[k];
+            return (
+              <label key={k} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', padding: '9px 11px', borderRadius: 10, border: `1px solid ${on ? 'var(--brand)' : 'var(--line)'}`, background: on ? 'color-mix(in srgb,var(--brand) 12%,transparent)' : 'var(--bg2)', color: on ? 'var(--brand)' : 'var(--tx)' }}>
+                <input type="checkbox" checked={on} onChange={(e) => setF({ ...f, [k]: e.target.checked })} style={{ flex: 'none', width: 16, height: 16, cursor: 'pointer' }} /> {t}
+              </label>
+            );
+          })}
         </div>
+        <div style={{ fontSize: 11.5, color: 'var(--mut)', marginBottom: 10 }}>{es ? 'Los métodos de pago (USDT / tarjeta) son globales: se controlan en Ajustes de Bot Lab.' : 'Payment methods (USDT / card) are global: set them in Bot Lab settings.'}</div>
 
         <div className="row" style={{ gap: 10, marginTop: 6 }}>
           <button onClick={save} disabled={saving || uploading} style={{ flex: 1, padding: '11px', borderRadius: 11, border: 'none', fontWeight: 800, fontSize: 14, cursor: 'pointer', background: `linear-gradient(120deg,${GOLD},#ffb020)`, color: '#3a2a06', opacity: saving ? .6 : 1 }}>{saving ? '…' : (editing ? (es ? 'Guardar cambios' : 'Save changes') : (es ? 'Publicar como Onyx oficial' : 'Publish as Onyx official'))}</button>
