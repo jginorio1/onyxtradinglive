@@ -119,7 +119,7 @@ export default async function TopBar({ home = false }: { home?: boolean }) {
         ...(caps.expenses ? [{ href: '/dashboard/expenses', label: lang === 'en' ? 'Net profit' : 'Ganancia neta', icon: '🧮' }] : []),
         { href: '/dashboard/earnings', label: lang === 'en' ? 'Earnings' : 'Ingresos', icon: '💰', tint: 'var(--green)' },
         { href: '/dashboard/onyx-copy', label: 'Onyx Copy', icon: '🏆' },
-        { href: '/dashboard/bot-lab', label: 'Onyx Bot Lab', icon: '🤖', full: true, gold: true },
+        { href: '/dashboard/bot-lab', label: 'Onyx Bot Lab', icon: '🤖', full: true, tint: 'var(--gold, #ffd45e)' },
         { href: '/dashboard/academy', label: 'Onyx Academy', icon: '🎓' },
         ...(isAdmin ? [{ href: '/admin', label: t.admin, icon: '🛠️' }] : []),
       ]
