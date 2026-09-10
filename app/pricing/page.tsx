@@ -14,8 +14,39 @@ type Plan = { id: string; name: string; name_en: string; desc_es: string | null;
 type Lang = 'es' | 'en';
 
 const T = {
-  es: { title: 'Planes para cada trader', sub: 'Empieza gratis · sin tarjeta · cancela cuando quieras', monthly: 'Mensual', annual: 'Anual', save: 'ahorra 2 meses', mo: 'mes', yr: 'año', free: 'Empezar gratis', choose: 'Elegir', account: 'Mi cuenta', login: 'Debes iniciar sesión primero', allOf: 'Todo lo de', andMore: 'y además:', popular: '★ Más popular', compareT: 'Compara los planes', accounts: 'Cuentas conectadas', unlimited: 'Ilimitadas', addonNote: 'Todos los planes de pago admiten cuentas extra y esclavas de copy adicionales como add-on, desde tu cuenta.' },
-  en: { title: 'Plans for every trader', sub: 'Start free · no card · cancel anytime', monthly: 'Monthly', annual: 'Annual', save: 'save 2 months', mo: 'mo', yr: 'yr', free: 'Start free', choose: 'Choose', account: 'My account', login: 'You must log in first', allOf: 'Everything in', andMore: 'and more:', popular: '★ Most popular', compareT: 'Compare plans', accounts: 'Connected accounts', unlimited: 'Unlimited', addonNote: 'All paid plans support extra connected accounts and additional copy slaves as add-ons, from your account.' },
+  es: { title: 'Planes para cada trader', sub: 'Empieza gratis · sin tarjeta · cancela cuando quieras', monthly: 'Mensual', annual: 'Anual', save: 'ahorra 2 meses', mo: 'mes', yr: 'año', free: 'Empezar gratis', choose: 'Elegir', account: 'Mi cuenta', login: 'Debes iniciar sesión primero', allOf: 'Todo lo de', andMore: 'y además:', popular: '★ Más popular', compareT: 'Compara los planes', accounts: 'Cuentas conectadas', unlimited: 'Ilimitadas', addonNote: 'Todos los planes de pago admiten cuentas extra y esclavas de copy adicionales como add-on, desde tu cuenta.',
+    proof: ['Conecta sin comisión', 'Prueba en demo', 'Cancela cuando quieras'], compat: 'Compatible con FTMO, The5ers, FundedNext y +100 prop firms', paySeal: 'Pago seguro con Stripe · Tarjeta o USDT',
+    faqT: 'Preguntas sobre los planes',
+    faqs: [
+      ['¿Necesito tarjeta para empezar?', 'No. El plan Free es gratis y sin tarjeta. Solo pides tarjeta o USDT cuando eliges un plan de pago.'],
+      ['¿Puedo cambiar o cancelar cuando quiera?', 'Sí. Subes o bajas de plan en un clic desde tu cuenta y cancelas cuando quieras; conservas el acceso hasta el fin del período.'],
+      ['¿Aceptan cripto?', 'Sí, pagas con tarjeta (Stripe) o USDT. El acceso se activa al confirmar el pago.'],
+      ['¿El anual ahorra?', 'Sí: pagando al año te salen 2 meses gratis (unos 17% menos) frente a pagar mes a mes.'],
+    ] as [string, string][],
+  },
+  en: { title: 'Plans for every trader', sub: 'Start free · no card · cancel anytime', monthly: 'Monthly', annual: 'Annual', save: 'save 2 months', mo: 'mo', yr: 'yr', free: 'Start free', choose: 'Choose', account: 'My account', login: 'You must log in first', allOf: 'Everything in', andMore: 'and more:', popular: '★ Most popular', compareT: 'Compare plans', accounts: 'Connected accounts', unlimited: 'Unlimited', addonNote: 'All paid plans support extra connected accounts and additional copy slaves as add-ons, from your account.',
+    proof: ['Connect with no commission', 'Test on demo', 'Cancel anytime'], compat: 'Works with FTMO, The5ers, FundedNext and 100+ prop firms', paySeal: 'Secure payment with Stripe · Card or USDT',
+    faqT: 'Questions about the plans',
+    faqs: [
+      ['Do I need a card to start?', 'No. The Free plan is free and card-free. We only ask for a card or USDT when you pick a paid plan.'],
+      ['Can I change or cancel anytime?', 'Yes. Upgrade or downgrade in one click from your account and cancel anytime; you keep access until the period ends.'],
+      ['Do you accept crypto?', 'Yes, pay with card (Stripe) or USDT. Access activates once the payment confirms.'],
+      ['Does annual save money?', 'Yes: paying yearly gives you 2 months free (about 17% off) vs paying monthly.'],
+    ] as [string, string][],
+  },
+};
+
+// "Para quién es" cada plan (ancla de persona) y CTA por beneficio.
+const ANCHORS: Record<string, { es: string; en: string }> = {
+  free: { es: 'Para empezar con 1 cuenta.', en: 'To start with 1 account.' },
+  pro: { es: 'Para el que va por el fondeo.', en: 'For the funded-account trader.' },
+  elite: { es: 'Para varias cuentas y copy.', en: 'For multiple accounts and copy.' },
+  black: { es: 'Para gestores y salas.', en: 'For managers and trading rooms.' },
+};
+const CTAS: Record<string, { es: string; en: string }> = {
+  pro: { es: 'Proteger mi cuenta', en: 'Protect my account' },
+  elite: { es: 'Empezar a copiar', en: 'Start copying' },
+  black: { es: 'Ir sin límites', en: 'Go unlimited' },
 };
 
 // Fallback: si la API no devuelve planes (tabla vacía o sin conexión), mostramos
@@ -105,17 +136,43 @@ export default function Pricing() {
 
         <div style={{ display: 'inline-flex', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 30, padding: 4, marginBottom: 30 }}>
           <button className="btn" style={{ borderRadius: 30, background: !annual ? 'var(--grad)' : 'transparent', color: !annual ? '#fff' : 'var(--mut)' }} onClick={() => setAnnual(false)}>{t.monthly}</button>
-          <button className="btn" style={{ borderRadius: 30, background: annual ? 'var(--grad)' : 'transparent', color: annual ? '#fff' : 'var(--mut)' }} onClick={() => setAnnual(true)}>{t.annual} · {t.save}</button>
+          <button className="btn" style={{ borderRadius: 30, background: annual ? 'var(--grad)' : 'transparent', color: annual ? '#fff' : 'var(--mut)', display: 'inline-flex', alignItems: 'center', gap: 7 }} onClick={() => setAnnual(true)}>{t.annual} · {t.save} <span style={{ fontSize: 11, fontWeight: 800, color: '#04120b', background: 'var(--green)', borderRadius: 20, padding: '1px 7px' }}>−17%</span></button>
         </div>
 
-        {/* Tarjetas (componente compartido con el landing) */}
-        <PlanCards plans={shown as any} lang={lang} annual={annual} loadingId={loading} onChoose={(id, price) => subscribe(id, price)} />
+        {/* Tira de confianza: sellos rápidos + compatibilidad con prop firms */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center', margin: '-8px auto 20px' }}>
+          {(t.proof as string[]).map((p) => (
+            <span key={p} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 600, color: 'var(--tx)', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 99, padding: '6px 13px' }}>
+              <OnyxIcon name="check" size={12} glow={false} /> {p}
+            </span>
+          ))}
+        </div>
+        <p className="muted" style={{ fontSize: 12.5, margin: '-8px auto 22px', maxWidth: 560 }}><OnyxIcon name="shield" size={13} glow={false} /> {t.compat}</p>
 
-        <p className="muted" style={{ textAlign: 'center', fontSize: 12.5, margin: '14px auto 0', maxWidth: 620 }}>➕ {t.addonNote}</p>
+        {/* Tarjetas (componente compartido con el landing) */}
+        <PlanCards plans={shown as any} lang={lang} annual={annual} loadingId={loading} onChoose={(id, price) => subscribe(id, price)} trust anchors={ANCHORS} ctas={CTAS} />
+
+        {/* Sello de pago seguro */}
+        <p className="muted" style={{ textAlign: 'center', fontSize: 12, margin: '16px auto 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}><OnyxIcon name="lock" size={13} glow={false} /> {t.paySeal}</p>
+
+        <p className="muted" style={{ textAlign: 'center', fontSize: 12.5, margin: '10px auto 0', maxWidth: 620 }}>➕ {t.addonNote}</p>
 
         {/* Tabla comparativa (misma que el landing, componente compartido) */}
         <PlansCompareTable plans={shown as any} lang={lang} annual={annual} loadingId={loading}
           onChoose={(id, price) => subscribe(id, price)} />
+
+        {/* Mini-FAQ de precios: resuelve objeciones de compra ahí mismo */}
+        <div style={{ maxWidth: 720, margin: '44px auto 0', textAlign: 'left' }}>
+          <h2 style={{ fontSize: 20, textAlign: 'center', marginBottom: 16 }}>{t.faqT}</h2>
+          <div style={{ display: 'grid', gap: 10 }}>
+            {(t.faqs as [string, string][]).map(([qq, aa], i) => (
+              <div key={i} style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, padding: '14px 16px' }}>
+                <div style={{ fontWeight: 700, fontSize: 14.5, marginBottom: 5 }}>{qq}</div>
+                <div className="muted" style={{ fontSize: 13.5, lineHeight: 1.6 }}>{aa}</div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
       {co && <EmbeddedCheckoutModal plan={co.plan} annual={annual} lang={lang} coupon={promo} onClose={() => setCo(null)} />}
     </>

@@ -873,7 +873,10 @@ export default function Home() {
           <button className={'btn ' + (!annual ? 'btn-primary' : 'btn-ghost')} onClick={() => setAnnual(false)}>{lang === 'es' ? 'Mensual' : 'Monthly'}</button>
           <button className={'btn ' + (annual ? 'btn-primary' : 'btn-ghost')} onClick={() => setAnnual(true)}>{lang === 'es' ? 'Anual · ahorra 2 meses' : 'Annual · save 2 months'}</button>
         </div>
-        <PlanCards plans={shownPlans} lang={lang} annual={annual} onChoose={(id: string, price: number) => { window.location.href = (price > 0 && id && id !== 'free') ? `/login?mode=signup&plan=${id}${annual ? '&annual=1' : ''}` : '/login?mode=signup'; }} />
+        <PlanCards plans={shownPlans} lang={lang} annual={annual} trust
+          anchors={{ free: { es: 'Para empezar con 1 cuenta.', en: 'To start with 1 account.' }, pro: { es: 'Para el que va por el fondeo.', en: 'For the funded-account trader.' }, elite: { es: 'Para varias cuentas y copy.', en: 'For multiple accounts and copy.' }, black: { es: 'Para gestores y salas.', en: 'For managers and trading rooms.' } }}
+          ctas={{ pro: { es: 'Proteger mi cuenta', en: 'Protect my account' }, elite: { es: 'Empezar a copiar', en: 'Start copying' }, black: { es: 'Ir sin límites', en: 'Go unlimited' } }}
+          onChoose={(id: string, price: number) => { window.location.href = (price > 0 && id && id !== 'free') ? `/login?mode=signup&plan=${id}${annual ? '&annual=1' : ''}` : '/login?mode=signup'; }} />
 
         {/* Tabla comparativa (componente compartido con /pricing) */}
         <PlansCompareTable plans={shownPlans} lang={lang} annual={annual} loadingId=""

@@ -16,16 +16,17 @@ type Plan = {
 };
 
 export default function PlanCards({
-  plans, lang, annual, onChoose, loadingId = '', botTagId = '', freeLabel = '', anchors, trust = false,
+  plans, lang, annual, onChoose, loadingId = '', botTagId = '', freeLabel = '', anchors, ctas, trust = false,
 }: {
   plans: Plan[]; lang: 'es' | 'en'; annual: boolean;
   onChoose: (planId: string, price: number) => void; loadingId?: string;
   // Marca opcional "Para bots" en un plan (solo landing del constructor). Vacío = sin marca.
   botTagId?: string;
   // Ventas (opcional, solo donde se pasen): CTA del plan gratis, ancla de precio por
-  // plan (id → {es,en}) y micro-sellos de confianza bajo el botón.
+  // plan (id → {es,en}), CTA por beneficio (id → {es,en}) y micro-sellos de confianza.
   freeLabel?: string;
   anchors?: Record<string, { es: string; en: string }>;
+  ctas?: Record<string, { es: string; en: string }>;
   trust?: boolean;
 }) {
   const t = {
@@ -75,6 +76,20 @@ export default function PlanCards({
             <h3 style={{ marginTop: hasBadge ? 6 : 0 }}>{name}</h3>
             {desc && <p className="muted" style={{ fontSize: 13, marginTop: 4 }}>{desc}</p>}
             <div style={{ fontSize: 40, fontWeight: 800, margin: '10px 0 4px' }}>${price}<span className="muted" style={{ fontSize: 15, fontWeight: 500 }}>/{annual ? t.yr : t.mo}</span></div>
+            {(() => {
+              // Ahorro anual: tachamos el precio de 12 meses sueltos y mostramos el equivalente mensual.
+              if (!annual || price <= 0 || !(p.price_month > 0)) return null;
+              const full = p.price_month * 12; if (full <= price) return null;
+              const pct = Math.round((1 - price / full) * 100);
+              const eff = Math.round((price / 12) * 10) / 10;
+              return (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 2 }}>
+                  <s className="muted" style={{ fontSize: 13 }}>${full}/{t.yr}</s>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: '#04120b', background: 'var(--green)', borderRadius: 20, padding: '2px 8px' }}>{lang === 'es' ? `Ahorra ${pct}%` : `Save ${pct}%`}</span>
+                  <span className="muted" style={{ fontSize: 12 }}>≈ ${eff}/{t.mo}</span>
+                </div>
+              );
+            })()}
             {anchors?.[p.id] && <div className="muted" style={{ fontSize: 12, marginBottom: 2, lineHeight: 1.4 }}>{lang === 'es' ? anchors[p.id].es : anchors[p.id].en}</div>}
             <ul style={{ listStyle: 'none', margin: '16px 0', flexGrow: 1 }}>
               {i > 0 && <li style={{ padding: '7px 0', color: 'var(--mut)', fontWeight: 700, fontSize: 13 }}>{t.allOf} {prevName}, {t.andMore}</li>}
@@ -85,7 +100,7 @@ export default function PlanCards({
               ))}
             </ul>
             <button className={'btn ' + (goldHi ? '' : hasBadge ? 'btn-primary' : 'btn-ghost')} style={goldHi ? { width: '100%', background: gold, color: goldDark, border: 'none', fontWeight: 800 } : { width: '100%' }} onClick={() => onChoose(p.id, price)} disabled={loadingId === p.id}>
-              {loadingId === p.id ? '...' : (isFree ? (freeLabel || t.free) : t.choose + ' ' + name)}
+              {loadingId === p.id ? '...' : (isFree ? (freeLabel || t.free) : (ctas?.[p.id] ? (lang === 'es' ? ctas[p.id].es : ctas[p.id].en) : t.choose + ' ' + name))}
             </button>
             {trust && <div className="muted" style={{ fontSize: 11.5, textAlign: 'center', marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
               <OnyxIcon name="check" size={11} glow={false} /> {isFree ? (lang === 'es' ? 'Sin tarjeta · Sin compromiso' : 'No card · No commitment') : (lang === 'es' ? 'Cancela cuando quieras' : 'Cancel anytime')}
