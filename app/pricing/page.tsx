@@ -9,6 +9,29 @@ import EmbeddedCheckoutModal from '@/app/EmbeddedCheckoutModal';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import PlanCards from '@/app/PlanCards';
 import { getPending } from '@/lib/pendingCheckout';
+import { planFacts, trialLine } from '@/lib/planFacts';
+
+// FAQ de precios que se ARMA con los hechos reales de los planes (prueba, ahorro
+// anual) — sin números fijos. Si cambias los días o precios en Admin → Planes,
+// estas respuestas cambian solas. La pregunta de prueba solo aparece si hay prueba.
+function buildFaqs(plans: any[], lang: 'es' | 'en'): [string, string][] {
+  const f = planFacts(plans);
+  const out: [string, string][] = [];
+  if (lang === 'es') {
+    out.push(['¿Necesito tarjeta para empezar?', 'No. El plan Free es gratis y sin tarjeta. Solo pides tarjeta o USDT cuando eliges un plan de pago.']);
+    if (f.hasTrial) out.push(['¿Hay prueba gratis?', `Sí: ${trialLine(f, 'es')}. Entras con tarjeta pero no se te cobra hasta el día ${f.trialDays}; cancela antes y no pagas nada.`]);
+    out.push(['¿Puedo cambiar o cancelar cuando quiera?', 'Sí. Subes o bajas de plan en un clic desde tu cuenta y cancelas cuando quieras; conservas el acceso hasta el fin del período.']);
+    out.push(['¿Aceptan cripto?', 'Sí, pagas con tarjeta (Stripe) o USDT. El acceso se activa al confirmar el pago.']);
+    if (f.annualPct > 0) out.push(['¿El anual ahorra?', `Sí: pagando al año ahorras un ${f.annualPct}%${f.annualMonthsFree > 0 ? ` (unos ${f.annualMonthsFree} meses gratis)` : ''} frente a pagar mes a mes.`]);
+  } else {
+    out.push(['Do I need a card to start?', 'No. The Free plan is free and card-free. We only ask for a card or USDT when you pick a paid plan.']);
+    if (f.hasTrial) out.push(['Is there a free trial?', `Yes: ${trialLine(f, 'en')}. You enter with a card but you are not charged until day ${f.trialDays}; cancel before then and you pay nothing.`]);
+    out.push(['Can I change or cancel anytime?', 'Yes. Upgrade or downgrade in one click from your account and cancel anytime; you keep access until the period ends.']);
+    out.push(['Do you accept crypto?', 'Yes, pay with card (Stripe) or USDT. Access activates once the payment confirms.']);
+    if (f.annualPct > 0) out.push(['Does annual save money?', `Yes: paying yearly saves you ${f.annualPct}%${f.annualMonthsFree > 0 ? ` (about ${f.annualMonthsFree} months free)` : ''} vs paying monthly.`]);
+  }
+  return out;
+}
 
 type Plan = { id: string; name: string; name_en: string; desc_es: string | null; desc_en: string | null; price_month: number; price_year: number; max_accounts: number; features: string[]; features_en: string[]; badge: string | null; badge_en: string | null };
 type Lang = 'es' | 'en';
@@ -84,6 +107,9 @@ export default function Pricing() {
   const _base = plans.length ? plans : DEFAULT_PLANS;
   const _black = DEFAULT_PLANS.find((p) => p.id === 'black');
   const shown = (_base.some((p) => /black/i.test(p.id || '')) || !_black) ? _base : [..._base, _black];
+  // Hechos de venta reales (prueba, ahorro anual) para toggle y FAQ. Sin números fijos.
+  const facts = planFacts(shown as any);
+  const dynFaqs = buildFaqs(shown as any, lang);
 
   // Al volver desde Stripe con el botón "atrás", el navegador restaura la página congelada:
   // reactivamos los botones para que no queden en "cargando".
@@ -136,7 +162,7 @@ export default function Pricing() {
 
         <div style={{ display: 'inline-flex', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 30, padding: 4, marginBottom: 30 }}>
           <button className="btn" style={{ borderRadius: 30, background: !annual ? 'var(--grad)' : 'transparent', color: !annual ? '#fff' : 'var(--mut)' }} onClick={() => setAnnual(false)}>{t.monthly}</button>
-          <button className="btn" style={{ borderRadius: 30, background: annual ? 'var(--grad)' : 'transparent', color: annual ? '#fff' : 'var(--mut)', display: 'inline-flex', alignItems: 'center', gap: 7 }} onClick={() => setAnnual(true)}>{t.annual} · {t.save} <span style={{ fontSize: 11, fontWeight: 800, color: '#04120b', background: 'var(--green)', borderRadius: 20, padding: '1px 7px' }}>−17%</span></button>
+          <button className="btn" style={{ borderRadius: 30, background: annual ? 'var(--grad)' : 'transparent', color: annual ? '#fff' : 'var(--mut)', display: 'inline-flex', alignItems: 'center', gap: 7 }} onClick={() => setAnnual(true)}>{t.annual} · {t.save} {facts.annualPct > 0 && <span style={{ fontSize: 11, fontWeight: 800, color: '#04120b', background: 'var(--green)', borderRadius: 20, padding: '1px 7px' }}>−{facts.annualPct}%</span>}</button>
         </div>
 
         {/* Tira de confianza: sellos rápidos + compatibilidad con prop firms */}
@@ -165,7 +191,7 @@ export default function Pricing() {
         <div style={{ maxWidth: 720, margin: '44px auto 0', textAlign: 'left' }}>
           <h2 style={{ fontSize: 20, textAlign: 'center', marginBottom: 16 }}>{t.faqT}</h2>
           <div style={{ display: 'grid', gap: 10 }}>
-            {(t.faqs as [string, string][]).map(([qq, aa], i) => (
+            {dynFaqs.map(([qq, aa], i) => (
               <div key={i} style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, padding: '14px 16px' }}>
                 <div style={{ fontWeight: 700, fontSize: 14.5, marginBottom: 5 }}>{qq}</div>
                 <div className="muted" style={{ fontSize: 13.5, lineHeight: 1.6 }}>{aa}</div>

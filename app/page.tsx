@@ -7,8 +7,30 @@ import SectionNav from './SectionNav';
 import PlansCompareTable from './PlansCompareTable';
 import PlanCards from './PlanCards';
 import OnyxIcon from '@/app/components/OnyxIcon';
+import { planFacts, trialLine } from '@/lib/planFacts';
 
 type Lang = 'es' | 'en';
+
+// FAQ de precios armada con los hechos reales de los planes (prueba, ahorro anual)
+// — sin números fijos. Igual que en /pricing; cambia sola desde Admin → Planes.
+function buildPriceFaqs(plans: any[], lang: 'es' | 'en'): [string, string][] {
+  const f = planFacts(plans);
+  const out: [string, string][] = [];
+  if (lang === 'es') {
+    out.push(['¿Necesito tarjeta para empezar?', 'No. El plan Free es gratis y sin tarjeta. Solo pides tarjeta o USDT cuando eliges un plan de pago.']);
+    if (f.hasTrial) out.push(['¿Hay prueba gratis?', `Sí: ${trialLine(f, 'es')}. Entras con tarjeta pero no se te cobra hasta el día ${f.trialDays}; cancela antes y no pagas nada.`]);
+    out.push(['¿Puedo cambiar o cancelar cuando quiera?', 'Sí. Subes o bajas de plan en un clic desde tu cuenta y cancelas cuando quieras; conservas el acceso hasta el fin del período.']);
+    out.push(['¿Aceptan cripto?', 'Sí, pagas con tarjeta (Stripe) o USDT. El acceso se activa al confirmar el pago.']);
+    if (f.annualPct > 0) out.push(['¿El anual ahorra?', `Sí: pagando al año ahorras un ${f.annualPct}%${f.annualMonthsFree > 0 ? ` (unos ${f.annualMonthsFree} meses gratis)` : ''} frente a pagar mes a mes.`]);
+  } else {
+    out.push(['Do I need a card to start?', 'No. The Free plan is free and card-free. We only ask for a card or USDT when you pick a paid plan.']);
+    if (f.hasTrial) out.push(['Is there a free trial?', `Yes: ${trialLine(f, 'en')}. You enter with a card but you are not charged until day ${f.trialDays}; cancel before then and you pay nothing.`]);
+    out.push(['Can I change or cancel anytime?', 'Yes. Upgrade or downgrade in one click from your account and cancel anytime; you keep access until the period ends.']);
+    out.push(['Do you accept crypto?', 'Yes, pay with card (Stripe) or USDT. Access activates once the payment confirms.']);
+    if (f.annualPct > 0) out.push(['Does annual save money?', `Yes: paying yearly saves you ${f.annualPct}%${f.annualMonthsFree > 0 ? ` (about ${f.annualMonthsFree} months free)` : ''} vs paying monthly.`]);
+  }
+  return out;
+}
 
 /* ─────────────────────────────────────────────────────────────
    ⚠️  EDITA ESTOS NÚMEROS CON TUS DATOS REALES.
@@ -446,6 +468,8 @@ export default function Home() {
     { id: 'black', name: 'Black Onyx', name_en: 'Black Onyx', price_month: 199, price_year: 1990, max_accounts: 999, features: t.plans[3].items, features_en: dict.en.plans[3].items, badge: null, badge_en: null },
   ];
   const shownPlans = dbPlans.length ? dbPlans : FALLBACK_PLANS;
+  const priceFacts = planFacts(shownPlans as any);
+  const priceFaqs = buildPriceFaqs(shownPlans as any, lang);
   const f = FIRMS[firm];
   const target = 5000, maxLoss = 5000;
   const targetPct = Math.max(0, Math.min(100, (pnl / target) * 100));
@@ -871,7 +895,7 @@ export default function Home() {
         <p className="muted" style={{ textAlign: 'center', margin: '10px 0 20px' }}>{t.priceS}</p>
         <div className="row" style={{ justifyContent: 'center', marginBottom: 20 }}>
           <button className={'btn ' + (!annual ? 'btn-primary' : 'btn-ghost')} onClick={() => setAnnual(false)}>{lang === 'es' ? 'Mensual' : 'Monthly'}</button>
-          <button className={'btn ' + (annual ? 'btn-primary' : 'btn-ghost')} style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }} onClick={() => setAnnual(true)}>{lang === 'es' ? 'Anual · ahorra 2 meses' : 'Annual · save 2 months'} <span style={{ fontSize: 11, fontWeight: 800, color: '#04120b', background: 'var(--green)', borderRadius: 20, padding: '1px 7px' }}>−17%</span></button>
+          <button className={'btn ' + (annual ? 'btn-primary' : 'btn-ghost')} style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }} onClick={() => setAnnual(true)}>{lang === 'es' ? 'Anual · ahorra 2 meses' : 'Annual · save 2 months'} {priceFacts.annualPct > 0 && <span style={{ fontSize: 11, fontWeight: 800, color: '#04120b', background: 'var(--green)', borderRadius: 20, padding: '1px 7px' }}>−{priceFacts.annualPct}%</span>}</button>
         </div>
 
         {/* Tira de confianza: sellos rápidos + compatibilidad con prop firms */}
@@ -900,10 +924,7 @@ export default function Home() {
         <div style={{ maxWidth: 720, margin: '44px auto 0', textAlign: 'left' }}>
           <h2 style={{ fontSize: 20, textAlign: 'center', marginBottom: 16 }}>{lang === 'es' ? 'Preguntas sobre los planes' : 'Questions about the plans'}</h2>
           <div style={{ display: 'grid', gap: 10 }}>
-            {(lang === 'es'
-              ? [['¿Necesito tarjeta para empezar?', 'No. El plan Free es gratis y sin tarjeta. Solo pides tarjeta o USDT cuando eliges un plan de pago.'], ['¿Puedo cambiar o cancelar cuando quiera?', 'Sí. Subes o bajas de plan en un clic desde tu cuenta y cancelas cuando quieras; conservas el acceso hasta el fin del período.'], ['¿Aceptan cripto?', 'Sí, pagas con tarjeta (Stripe) o USDT. El acceso se activa al confirmar el pago.'], ['¿El anual ahorra?', 'Sí: pagando al año te salen 2 meses gratis (unos 17% menos) frente a pagar mes a mes.']]
-              : [['Do I need a card to start?', 'No. The Free plan is free and card-free. We only ask for a card or USDT when you pick a paid plan.'], ['Can I change or cancel anytime?', 'Yes. Upgrade or downgrade in one click from your account and cancel anytime; you keep access until the period ends.'], ['Do you accept crypto?', 'Yes, pay with card (Stripe) or USDT. Access activates once the payment confirms.'], ['Does annual save money?', 'Yes: paying yearly gives you 2 months free (about 17% off) vs paying monthly.']]
-            ).map(([qq, aa], i) => (
+            {priceFaqs.map(([qq, aa], i) => (
               <div key={i} style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, padding: '14px 16px' }}>
                 <div style={{ fontWeight: 700, fontSize: 14.5, marginBottom: 5 }}>{qq}</div>
                 <div className="muted" style={{ fontSize: 13.5, lineHeight: 1.6 }}>{aa}</div>

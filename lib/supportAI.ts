@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { listPublished } from '@/lib/blog';
 import { sendEmail } from '@/lib/mail';
 import { getSetting, aiPromptSettings } from '@/lib/settings';
+import { planFacts } from '@/lib/planFacts';
 
 // ============================================================
 // Cerebro de soporte con IA: clasifica los tickets (triage) y, cuando es
@@ -168,7 +169,7 @@ export async function supportChatReply(question: string, lang: Lang, history: an
   let prices = '';
   try {
     const { data: plans } = await supabaseAdmin.from('plans')
-      .select('name,name_en,price_month,price_year,max_accounts,features,features_en')
+      .select('name,name_en,price_month,price_year,max_accounts,features,features_en,capabilities')
       .eq('active', true).order('sort', { ascending: true });
     if (plans?.length) {
       const rows = plans.map((p: any) => {
@@ -178,6 +179,19 @@ export async function supportChatReply(question: string, lang: Lang, history: an
         return `- ${n}: $${p.price_month}/${en ? 'mo' : 'mes'} · $${p.price_year}/${en ? 'yr' : 'año'} · ${acc}. ${feats}`;
       }).join('\n');
       prices = `\n\n=== ${en ? 'PRICES AND PLANS (current)' : 'PRECIOS Y PLANES (actuales)'} ===\n${rows}`;
+      // Prueba gratis y ahorro anual REALES (calculados de los planes; nada fijo).
+      const f = planFacts(plans as any);
+      if (f.hasTrial) {
+        const nm = en ? f.trialPlanNameEn : f.trialPlanName;
+        prices += en
+          ? `\nFREE TRIAL: ${f.trialDays} days on ${nm}. The person enters with a card but is NOT charged until day ${f.trialDays}; if they cancel before then they pay nothing. Only for new subscribers. Say the exact number of days; never invent a different number.`
+          : `\nPRUEBA GRATIS: ${f.trialDays} días en ${nm}. Entra con tarjeta pero NO se le cobra hasta el día ${f.trialDays}; si cancela antes no paga nada. Solo para suscriptores nuevos. Di el número exacto de días; nunca inventes otro número.`;
+      } else {
+        prices += en ? `\nFREE TRIAL: none right now. The Free plan is free forever without a card.` : `\nPRUEBA GRATIS: ahora mismo no hay. El plan Free es gratis para siempre y sin tarjeta.`;
+      }
+      if (f.annualPct > 0) {
+        prices += en ? `\nANNUAL SAVING: paying yearly saves about ${f.annualPct}% vs monthly. Use this exact figure; do not invent a discount.` : `\nAHORRO ANUAL: pagar al año ahorra alrededor de un ${f.annualPct}% frente a mensual. Usa esta cifra exacta; no inventes un descuento.`;
+      }
     }
   } catch {}
 

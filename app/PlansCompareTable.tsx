@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { PLAN_ROWS } from '@/lib/plansData';
 import OnyxIcon from '@/app/components/OnyxIcon';
+import { trialDaysOf } from '@/lib/planFacts';
 
 // Icono del encabezado de cada sección (Guardian, Copy trading, Academy).
 function sectionIcon(es: string): string {
@@ -108,6 +109,22 @@ export default function PlansCompareTable({
               <td style={{ padding: '12px 16px', color: 'var(--mut)' }}>{lang === 'es' ? 'Cuentas conectadas' : 'Connected accounts'}</td>
               {cols.map((id) => <td key={id} style={{ textAlign: 'center', padding: '12px 16px', fontWeight: 700 }}>{acc(id)}</td>)}
             </tr>
+
+            {/* Prueba gratis por plan (días configurables en Admin → Planes). Solo se
+                muestra la fila si algún plan tiene prueba; nada de números fijos. */}
+            {cols.some((id) => trialDaysOf(byId(id) as any) > 0) && (
+              <tr>
+                <td style={{ padding: '12px 16px', color: 'var(--mut)' }}>{lang === 'es' ? 'Prueba gratis' : 'Free trial'}</td>
+                {cols.map((id) => {
+                  const td = trialDaysOf(byId(id) as any);
+                  return <td key={id} style={{ textAlign: 'center', padding: '12px 16px' }}>
+                    {td > 0
+                      ? <span style={{ fontSize: 12, fontWeight: 800, color: '#04120b', background: 'var(--green)', borderRadius: 20, padding: '2px 9px' }}>{td} {lang === 'es' ? 'días' : 'days'}</span>
+                      : <span style={{ color: 'var(--mut)' }}>—</span>}
+                  </td>;
+                })}
+              </tr>
+            )}
 
             {rows.map((r, ri) => r.head
               ? (<tr key={ri}><td colSpan={cols.length + 1} style={{ padding: '16px 16px 8px', color: 'var(--brand)', fontWeight: 700, fontSize: 13, letterSpacing: '.02em' }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}><OnyxIcon name={sectionIcon(r.es)} size={16} /> {lang === 'es' ? r.es : r.en}</span></td></tr>)
