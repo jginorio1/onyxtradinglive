@@ -196,7 +196,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               return <SectionNav items={items} hrefBase={en ? '/en' : '/'} />;
             })()}
             {children}
-            {!path.startsWith('/admin') && (inBotLab ? <BotLabFooter /> : <SiteFooter />)}
+            {(() => {
+              // El footer de marketing NO se muestra dentro de la app (dashboard, admin,
+              // cuenta, onboarding, login), en español ni en /en. Solo en páginas públicas.
+              const appArea = ['/dashboard', '/admin', '/account', '/onboarding', '/login', '/en/dashboard', '/en/admin', '/en/account', '/en/onboarding', '/en/login'].some((p) => path === p || path.startsWith(p + '/'));
+              if (appArea) return null;
+              return inBotLab ? <BotLabFooter /> : <SiteFooter />;
+            })()}
             {!path.startsWith('/admin') && (inBotLab
               ? (botlabCfg && <SupportWidget loggedIn={loggedIn} cfg={botlabCfg} variant="botlab" />)
               : <SupportWidget loggedIn={loggedIn} cfg={chatCfg} />)}

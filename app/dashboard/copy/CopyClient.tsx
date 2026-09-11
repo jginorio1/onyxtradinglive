@@ -361,9 +361,9 @@ export default function CopyClient() {
   const copyAccs = (ctrl?.accounts || []).filter((a: any) => roleOf(a.id));
 
   const modeField = (o: any, set: (k: string, v: any) => void) => {
-    if (o.mode === 'risk') return <label className="muted" style={{ fontSize: 12 }}>{t.risk}<input type="number" value={o.risk_pct} onChange={(e) => set('risk_pct', Number(e.target.value))} style={{ marginTop: 3 }} /></label>;
-    if (o.mode === 'pips') return <label className="muted" style={{ fontSize: 12 }}>{t.pip}<input type="number" value={o.pip_risk} onChange={(e) => set('pip_risk', Number(e.target.value))} style={{ marginTop: 3 }} /></label>;
-    return <label className="muted" style={{ fontSize: 12 }}>{t.mult}<input type="number" step="0.1" value={o.multiplier} onChange={(e) => set('multiplier', Number(e.target.value))} style={{ marginTop: 3 }} /></label>;
+    if (o.mode === 'risk') return <label className="muted" style={{ fontSize: 12 }}>{t.risk}<Hint id="risk" /><input type="number" value={o.risk_pct} onChange={(e) => set('risk_pct', Number(e.target.value))} style={{ marginTop: 3 }} /></label>;
+    if (o.mode === 'pips') return <label className="muted" style={{ fontSize: 12 }}>{t.pip}<Hint id="pips" /><input type="number" value={o.pip_risk} onChange={(e) => set('pip_risk', Number(e.target.value))} style={{ marginTop: 3 }} /></label>;
+    return <label className="muted" style={{ fontSize: 12 }}>{t.mult}<Hint id="mult" /><input type="number" step="0.1" value={o.multiplier} onChange={(e) => set('multiplier', Number(e.target.value))} style={{ marginTop: 3 }} /></label>;
   };
 
   const riskFields = (o: any, set: (k: string, v: any) => void) => (
@@ -383,9 +383,9 @@ export default function CopyClient() {
       <label className="muted" style={{ fontSize: 12 }}>{t.symCap}<Hint id="symCap" /><input type="number" step="0.01" value={o.per_symbol_lot_cap} onChange={(e) => set('per_symbol_lot_cap', Number(e.target.value))} style={{ marginTop: 3 }} /></label>
       <label className="muted" style={{ fontSize: 12 }}>🎲 {t.jitter}<Hint id="jitter" /><input type="number" min={0} value={o.jitter_max_s ?? 0} onChange={(e) => set('jitter_max_s', Number(e.target.value))} style={{ marginTop: 3 }} /></label>
       <div className="muted" style={{ fontSize: 11, gridColumn: '1 / -1', lineHeight: 1.4 }}>{t.jitterNote}</div>
-      <label className="muted row" style={{ fontSize: 12, gap: 8, alignItems: 'center', gridColumn: '1 / -1' }}><input type="checkbox" checked={o.require_sl !== false} onChange={(e) => set('require_sl', e.target.checked)} style={{ width: 'auto', margin: 0 }} /> {t.requireSL}</label>
+      <label className="muted row" style={{ fontSize: 12, gap: 8, alignItems: 'center', gridColumn: '1 / -1' }}><input type="checkbox" checked={o.require_sl !== false} onChange={(e) => set('require_sl', e.target.checked)} style={{ width: 'auto', margin: 0 }} /> {t.requireSL}<Hint id="requireSL" /></label>
       <div style={{ gridColumn: '1 / -1' }}>
-        <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{t.symMap}</div>
+        <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{t.symMap}<Hint id="symMap" /></div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 34px', gap: 6, fontSize: 11, color: 'var(--mut)', marginBottom: 3 }}><span>{t.colMaster}</span><span>{t.colSlave}</span><span /></div>
         {(o.symbol_rows || []).map((row: any, i: number) => (
           <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 34px', gap: 6, marginBottom: 6, alignItems: 'center' }}>
@@ -409,7 +409,11 @@ export default function CopyClient() {
     master: ['La cuenta que MANDA. Sus operaciones se copian a las esclavas. Eliges la cuenta desde la que operas tú.', 'The account that LEADS. Its trades are copied to the slaves. Pick the account you trade on.'],
     slave: ['La cuenta que RECIBE y repite las operaciones de la master. No operas tú en ella.', 'The account that RECEIVES and repeats the master trades. You do not trade on it.'],
     mode: ['Cómo se calcula el lote en la esclava: Balance % (según el capital de cada cuenta), Riesgo % (según el SL), Pips, o Fijo (multiplicador). Balance % es lo más común.', 'How the slave lot is sized: Balance % (by each account equity), Risk % (by the SL), Pips, or Fixed (multiplier). Balance % is the most common.'],
-    mult: ['Multiplica el lote de la master. 1 = mismo tamaño, 0.5 = mitad, 2 = doble.', 'Multiplies the master lot. 1 = same size, 0.5 = half, 2 = double.'],
+    mult: ['Multiplica el lote de la master. 1 = mismo tamaño, 0.5 = mitad, 2 = doble. Solo aplica en modo Fijo (y como ajuste fino).', 'Multiplies the master lot. 1 = same size, 0.5 = half, 2 = double. Used in Fixed mode (and as fine-tuning).'],
+    risk: ['% del capital de la esclava que arriesgas por operación, calculado desde el Stop Loss de la master. Ej.: 1% con SL de 20 pips ajusta el lote para arriesgar ese 1%. Necesita que la master lleve SL.', '% of the slave equity risked per trade, computed from the master Stop Loss. E.g. 1% with a 20-pip SL sizes the lot to risk that 1%. Requires the master to use an SL.'],
+    pips: ['Riesgo fijo en pips: el lote se calcula para que la distancia al SL equivalga a los pips que pongas. Útil si operas siempre con la misma distancia de stop.', 'Fixed pip risk: the lot is sized so the SL distance equals the pips you set. Useful if you always trade the same stop distance.'],
+    requireSL: ['Si está activo, la esclava NO copia operaciones que lleguen sin Stop Loss. Protege de entradas sin protección. Recomendado dejarlo activo.', 'If on, the slave does NOT copy trades that arrive without a Stop Loss. Protects from unprotected entries. Recommended to keep on.'],
+    symMap: ['Traduce el nombre del símbolo entre brókers distintos. Ej.: la master usa "US100" y tu esclava "NAS100". Añade la equivalencia y se copia bien.', 'Maps symbol names between different brokers. E.g. the master uses "US100" and your slave "NAS100". Add the pair and it copies correctly.'],
     maxLot: ['Tope de lote por operación en la esclava, pase lo que pase. Protege de una operación gigante.', 'Max lot per trade on the slave, no matter what. Protects from a huge trade.'],
     reverse: ['Copia al revés: si la master compra, la esclava vende. Para estrategias de cobertura.', 'Copy inverted: if the master buys, the slave sells. For hedging strategies.'],
     dailyLoss: ['Si la esclava pierde este % del día, deja de copiar hasta el día siguiente. 0 = sin límite.', 'If the slave loses this % in a day, it stops copying until next day. 0 = no limit.'],
