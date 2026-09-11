@@ -869,18 +869,48 @@ export default function Home() {
       <div id="pricing" className="wrap section">
         <h2 style={{ textAlign: 'center' }}>{t.priceT}</h2>
         <p className="muted" style={{ textAlign: 'center', margin: '10px 0 20px' }}>{t.priceS}</p>
-        <div className="row" style={{ justifyContent: 'center', marginBottom: 30 }}>
+        <div className="row" style={{ justifyContent: 'center', marginBottom: 20 }}>
           <button className={'btn ' + (!annual ? 'btn-primary' : 'btn-ghost')} onClick={() => setAnnual(false)}>{lang === 'es' ? 'Mensual' : 'Monthly'}</button>
-          <button className={'btn ' + (annual ? 'btn-primary' : 'btn-ghost')} onClick={() => setAnnual(true)}>{lang === 'es' ? 'Anual · ahorra 2 meses' : 'Annual · save 2 months'}</button>
+          <button className={'btn ' + (annual ? 'btn-primary' : 'btn-ghost')} style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }} onClick={() => setAnnual(true)}>{lang === 'es' ? 'Anual · ahorra 2 meses' : 'Annual · save 2 months'} <span style={{ fontSize: 11, fontWeight: 800, color: '#04120b', background: 'var(--green)', borderRadius: 20, padding: '1px 7px' }}>−17%</span></button>
         </div>
+
+        {/* Tira de confianza: sellos rápidos + compatibilidad con prop firms */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center', margin: '0 auto 16px' }}>
+          {(lang === 'es' ? ['Conecta sin comisión', 'Prueba en demo', 'Cancela cuando quieras'] : ['Connect with no commission', 'Test on demo', 'Cancel anytime']).map((p) => (
+            <span key={p} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 600, color: 'var(--tx)', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 99, padding: '6px 13px' }}>
+              <OnyxIcon name="check" size={12} glow={false} /> {p}
+            </span>
+          ))}
+        </div>
+        <p className="muted" style={{ fontSize: 12.5, textAlign: 'center', margin: '0 auto 22px', maxWidth: 560 }}><OnyxIcon name="shield" size={13} glow={false} /> {lang === 'es' ? 'Compatible con FTMO, The5ers, FundedNext y +100 prop firms' : 'Works with FTMO, The5ers, FundedNext and 100+ prop firms'}</p>
+
         <PlanCards plans={shownPlans} lang={lang} annual={annual} trust
           anchors={{ free: { es: 'Para empezar con 1 cuenta.', en: 'To start with 1 account.' }, pro: { es: 'Para el que va por el fondeo.', en: 'For the funded-account trader.' }, elite: { es: 'Para varias cuentas y copy.', en: 'For multiple accounts and copy.' }, black: { es: 'Para gestores y salas.', en: 'For managers and trading rooms.' } }}
           ctas={{ pro: { es: 'Proteger mi cuenta', en: 'Protect my account' }, elite: { es: 'Empezar a copiar', en: 'Start copying' }, black: { es: 'Ir sin límites', en: 'Go unlimited' } }}
           onChoose={(id: string, price: number) => { window.location.href = (price > 0 && id && id !== 'free') ? `/login?mode=signup&plan=${id}${annual ? '&annual=1' : ''}` : '/login?mode=signup'; }} />
 
+        {/* Sello de pago seguro */}
+        <p className="muted" style={{ textAlign: 'center', fontSize: 12, margin: '16px auto 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}><OnyxIcon name="lock" size={13} glow={false} /> {lang === 'es' ? 'Pago seguro con Stripe · Tarjeta o USDT' : 'Secure payment with Stripe · Card or USDT'}</p>
+
         {/* Tabla comparativa (componente compartido con /pricing) */}
         <PlansCompareTable plans={shownPlans} lang={lang} annual={annual} loadingId=""
           onChoose={(id: string, price: number) => { window.location.href = (price > 0 && id && id !== 'free') ? `/login?mode=signup&plan=${id}${annual ? '&annual=1' : ''}` : '/login?mode=signup'; }} />
+
+        {/* Mini-FAQ de precios: resuelve objeciones ahí mismo */}
+        <div style={{ maxWidth: 720, margin: '44px auto 0', textAlign: 'left' }}>
+          <h2 style={{ fontSize: 20, textAlign: 'center', marginBottom: 16 }}>{lang === 'es' ? 'Preguntas sobre los planes' : 'Questions about the plans'}</h2>
+          <div style={{ display: 'grid', gap: 10 }}>
+            {(lang === 'es'
+              ? [['¿Necesito tarjeta para empezar?', 'No. El plan Free es gratis y sin tarjeta. Solo pides tarjeta o USDT cuando eliges un plan de pago.'], ['¿Puedo cambiar o cancelar cuando quiera?', 'Sí. Subes o bajas de plan en un clic desde tu cuenta y cancelas cuando quieras; conservas el acceso hasta el fin del período.'], ['¿Aceptan cripto?', 'Sí, pagas con tarjeta (Stripe) o USDT. El acceso se activa al confirmar el pago.'], ['¿El anual ahorra?', 'Sí: pagando al año te salen 2 meses gratis (unos 17% menos) frente a pagar mes a mes.']]
+              : [['Do I need a card to start?', 'No. The Free plan is free and card-free. We only ask for a card or USDT when you pick a paid plan.'], ['Can I change or cancel anytime?', 'Yes. Upgrade or downgrade in one click from your account and cancel anytime; you keep access until the period ends.'], ['Do you accept crypto?', 'Yes, pay with card (Stripe) or USDT. Access activates once the payment confirms.'], ['Does annual save money?', 'Yes: paying yearly gives you 2 months free (about 17% off) vs paying monthly.']]
+            ).map(([qq, aa], i) => (
+              <div key={i} style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, padding: '14px 16px' }}>
+                <div style={{ fontWeight: 700, fontSize: 14.5, marginBottom: 5 }}>{qq}</div>
+                <div className="muted" style={{ fontSize: 13.5, lineHeight: 1.6 }}>{aa}</div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Embajadores */}

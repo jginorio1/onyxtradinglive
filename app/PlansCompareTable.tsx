@@ -89,10 +89,15 @@ export default function PlansCompareTable({
                 // "Gratis" solo para el Free real; si falta el plan mostramos "—" (nunca "Gratis" por error).
                 const priceLabel = price == null ? '—' : (price === 0 && id === 'free') ? (lang === 'es' ? 'Gratis' : 'Free') : `$${price}`;
                 const showPer = price != null && price > 0;
+                // Ahorro anual: si el año cuesta menos que 12 meses sueltos, mostramos el % de ahorro.
+                const pm = p ? Number(p.price_month) : 0;
+                const savePct = (annual && price != null && price > 0 && pm > 0 && pm * 12 > price)
+                  ? Math.round((1 - price / (pm * 12)) * 100) : 0;
                 return (
                   <th key={id} style={{ textAlign: 'center', padding: '14px 16px', color: isPro(p) ? 'var(--brand)' : 'var(--tx)', fontSize: 15 }}>
                     <div>{name(p, id)}</div>
                     <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--tx)' }}>{priceLabel}<span style={{ fontSize: 11, color: 'var(--mut)', fontWeight: 500 }}>{showPer ? per : ''}</span></div>
+                    {savePct > 0 && <div style={{ marginTop: 3 }}><span style={{ fontSize: 10, fontWeight: 800, color: '#04120b', background: 'var(--green)', borderRadius: 20, padding: '1px 7px' }}>{lang === 'es' ? `Ahorra ${savePct}%` : `Save ${savePct}%`}</span></div>}
                   </th>
                 );
               })}
