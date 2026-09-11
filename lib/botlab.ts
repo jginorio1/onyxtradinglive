@@ -493,12 +493,21 @@ export async function checkoutCard(product: any, buyerId: string, email?: string
     cancel_url: `${appUrl()}/dashboard/bot-lab?tab=market`,
     customer_email: email,
     allow_promotion_codes: true,
+    // Anti-chargeback: 3D Secure automático (traslada la responsabilidad del fraude
+    // al banco cuando autentica). El descriptor va en payment_intent_data (abajo).
+    payment_method_options: { card: { request_three_d_secure: 'automatic' } },
     metadata: { onyx_kind: 'botlab', onyx_product: product.id, onyx_buyer: buyerId, onyx_seller: product.seller_id || '', onyx_ref: referrerId || '' },
   };
+  // Aceptación de Términos en el checkout (Stripe guarda la aceptación y la usa como
+  // evidencia). Requiere fijar la URL de Términos en el panel de Stripe; se activa
+  // con STRIPE_TOS_ON=1 para no romper el checkout si aún no la configuraste.
+  if (process.env.STRIPE_TOS_ON === '1') base.consent_collection = { terms_of_service: 'required' };
+  // Descriptor claro en el estado de cuenta ("ONYX* BOTLAB") → menos "no reconozco el cargo".
+  const descriptor = { statement_descriptor_suffix: (process.env.STRIPE_DESCRIPTOR_BOTLAB || 'BOTLAB').slice(0, 22) };
   const price: any = { currency: product.currency || 'usd', unit_amount: product.price_cents, product_data: { name: product.name } };
   // Producto oficial de Onyx (sin creador): cobro simple a la plataforma.
   if (!product.seller_id) {
-    if (product.kind === 'one_time') return stripe.checkout.sessions.create({ ...base, line_items: [{ price_data: price, quantity: 1 }], payment_intent_data: { metadata: base.metadata } });
+    if (product.kind === 'one_time') return stripe.checkout.sessions.create({ ...base, line_items: [{ price_data: price, quantity: 1 }], payment_intent_data: { metadata: base.metadata, ...descriptor } });
     return stripe.checkout.sessions.create({ ...base, line_items: [{ price_data: { ...price, recurring: { interval: product.interval === 'year' ? 'year' : 'month' } }, quantity: 1 }], subscription_data: { metadata: base.metadata } });
   }
   // Producto de creador: el cobro entra a la PLATAFORMA (Onyx retiene). El neto del
@@ -506,7 +515,7 @@ export async function checkoutCard(product: any, buyerId: string, email?: string
   // revierten si hay reembolso). Así ningún dinero sale antes de tiempo. No hace
   // falta la cuenta conectada del creador para VENDER; solo para cobrar por Stripe.
   if (product.kind === 'one_time') {
-    return stripe.checkout.sessions.create({ ...base, line_items: [{ price_data: price, quantity: 1 }], payment_intent_data: { metadata: base.metadata } });
+    return stripe.checkout.sessions.create({ ...base, line_items: [{ price_data: price, quantity: 1 }], payment_intent_data: { metadata: base.metadata, ...descriptor } });
   }
   return stripe.checkout.sessions.create({
     ...base, line_items: [{ price_data: { ...price, recurring: { interval: product.interval === 'year' ? 'year' : 'month' } }, quantity: 1 }],

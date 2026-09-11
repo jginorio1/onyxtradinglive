@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { getAdmin } from '@/lib/admin';
 import { productDownloadUrl, productBuildFile } from '@/lib/botlab';
+import { logDelivery, reqMeta } from '@/lib/evidence';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -28,6 +29,7 @@ export async function GET(req: Request) {
     const SITE = (process.env.NEXT_PUBLIC_APP_URL || url.origin || 'https://www.onyxtradinglive.com').replace(/\/$/, '');
     const g = await productBuildFile(user.id, id, platform, SITE, isAdmin);
     if (g.error) return NextResponse.json({ error: g.error }, { status: 403 });
+    if (!isAdmin) { const { ip, ua } = reqMeta(req); await logDelivery({ userId: user.id, productId: id, ip, ua, what: `Descargó el robot (${platform})` }); }
     return new NextResponse(g.code!, {
       headers: { 'content-type': g.contentType || 'text/plain; charset=utf-8', 'content-disposition': `attachment; filename="${g.name}"` },
     });
@@ -36,5 +38,6 @@ export async function GET(req: Request) {
   // Modelo B · archivo externo subido.
   const r = await productDownloadUrl(user.id, id, isAdmin);
   if (r.error) return NextResponse.json({ error: r.error }, { status: 403 });
+  if (!isAdmin) { const { ip, ua } = reqMeta(req); await logDelivery({ userId: user.id, productId: id, ip, ua, what: `Descargó el archivo del robot (${r.name || 'archivo'})` }); }
   return NextResponse.json({ url: r.url, name: r.name });
 }

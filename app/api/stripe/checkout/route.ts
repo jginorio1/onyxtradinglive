@@ -3,6 +3,7 @@ import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { stripe, priceIdForPlan } from '@/lib/stripe';
 import { resolveActiveDiscount } from '@/lib/promoDiscount';
+import { recordCheckout, reqMeta } from '@/lib/evidence';
 
 // Prueba de auto-servicio (con tarjeta): el cliente entra al plan y no se le cobra
 // hasta el día N; si no cancela, Stripe cobra solo. Con tarjeta al inicio
@@ -55,6 +56,12 @@ export async function POST(req: Request) {
     // Pedimos la tarjeta SIEMPRE (también durante la prueba) para que el cobro sea
     // automático al terminar y para filtrar a los que solo quieren gratis.
     const pmc = wantTrial ? { payment_method_collection: 'always' } : {};
+    // Anti-chargeback: 3D Secure automático (traslada la responsabilidad del fraude
+    // al banco). ToS opcional (requiere URL en Stripe): se activa con STRIPE_TOS_ON=1.
+    const threeds: any = { payment_method_options: { card: { request_three_d_secure: 'automatic' } } };
+    if (process.env.STRIPE_TOS_ON === '1') threeds.consent_collection = { terms_of_service: 'required' };
+    const { ip: evIp, ua: evUa } = reqMeta(req);
+    const rec = (sid: string) => recordCheckout({ sessionId: sid, userId: user.id, email: user.email || undefined, kind: 'plan', productId: String(plan), productDescription: `Onyx · plan ${plan}${annual ? ' (anual)' : ' (mensual)'}`, currency: 'usd', ip: evIp, ua: evUa, consent: true });
 
     // Checkout EMBEBIDO: se renderiza dentro de Onyx (mismo diseño), no redirige.
     if (embedded) {
@@ -65,10 +72,12 @@ export async function POST(req: Request) {
         line_items: [{ price: priceId, quantity: 1 }],
         ...discountOpt, // descuento auto (barra/embajador) o dejar pegar a mano
         ...pmc,
+        ...threeds,
         subscription_data: subData,
         return_url: `${base}/dashboard?checkout=success`,
         metadata: { userId: user.id },
       } as any);
+      await rec((session as any).id);
       return NextResponse.json({ clientSecret: (session as any).client_secret });
     }
 
@@ -78,11 +87,13 @@ export async function POST(req: Request) {
       line_items: [{ price: priceId, quantity: 1 }],
       ...discountOpt, // descuento auto (barra/embajador) o dejar pegar el cupón a mano
       ...pmc,
+      ...threeds,
       subscription_data: subData,
       success_url: `${base}/dashboard?checkout=success`,
       cancel_url: `${base}/pricing?checkout=cancel`,
       metadata: { userId: user.id },
     } as any);
+    await rec((session as any).id);
     return NextResponse.json({ url: session.url });
   } catch (e: any) {
     console.error('checkout error', e);

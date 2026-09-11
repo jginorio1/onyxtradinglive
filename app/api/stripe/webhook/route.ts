@@ -6,6 +6,8 @@ import { enforcePlanLimits, notifyPlanChange, planRank } from '@/lib/planNotify'
 import { qualifyOnPaid, reverseMemberRewards } from '@/lib/memberReferral';
 import { clawbackCommission } from '@/lib/ambassadorPayout';
 import { setGuardianTier, revokeGuardianBySub, type GuardianTier } from '@/lib/guardianAccess';
+import { markPaid, handleDispute } from '@/lib/evidence';
+import { sendEmail } from '@/lib/mail';
 
 // ¿Es una suscripción de Onyx Guardian comprada dentro de la academia?
 // Esas NO cambian el plan de Onyx: solo activan/revocan el gestor de riesgo.
@@ -140,6 +142,8 @@ export async function POST(req: Request) {
   try {
     if (event.type === 'checkout.session.completed') {
       const s: any = event.data.object;
+      // Evidencia anti-chargeback: ata el payment_intent a la fila y marca pagado.
+      await markPaid(s.id, { payment_intent: typeof s.payment_intent === 'string' ? s.payment_intent : (s.payment_intent?.id || null), charge_id: null });
       const g = guardianMeta(s.metadata);
       if (g && g.userId && s.subscription) {
         // Guardian de academia: activa el nivel, guarda la suscripción, NO toca el plan.
@@ -161,6 +165,15 @@ export async function POST(req: Request) {
       const ch: any = event.data.object;
       await reverseCommission(ch.invoice);
       await reverseMemberRewards(ch.invoice);
+    } else if (event.type === 'charge.dispute.created') {
+      // Un cliente reclamó a su banco. Armamos la evidencia (borrador en Stripe) y
+      // te avisamos para que la revises y la envíes antes de la fecha límite.
+      const d: any = event.data.object;
+      const r = await handleDispute(d);
+      try {
+        const to = (process.env.DISPUTE_ALERT_EMAIL || process.env.SUPPORT_EMAIL || 'support@onyxtradinglive.com').trim();
+        await sendEmail({ to, subject: `⚠️ Disputa de tarjeta (chargeback) · ${d.id}`, html: `<p>${r.note}</p><p>Revisa y envía la evidencia en tu panel de Stripe → Disputes → ${d.id}.</p>` } as any);
+      } catch {}
     } else if (event.type === 'invoice.payment_failed') {
       // El cobro falló (tarjeta vencida, sin fondos…). Avisamos "plan en riesgo"
       // pero NO quitamos funciones: Stripe reintenta (dunning) antes de cancelar.

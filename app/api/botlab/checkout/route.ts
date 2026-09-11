@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { getProduct, checkoutCard, hasLicense, botLabSettings, cardEnabled } from '@/lib/botlab';
 import { createCryptoPayment, cryptoEnabled, cryptoNetworks } from '@/lib/cryptoPay';
+import { recordCheckout, reqMeta } from '@/lib/evidence';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -42,6 +43,9 @@ export async function POST(req: Request) {
   try {
     const refIdC = (typeof b.ref === 'string' && b.ref && b.ref !== user.id && b.ref !== product.seller_id) ? b.ref : undefined;
     const session = await checkoutCard(product, user.id, user.email || undefined, refIdC);
+    // Evidencia anti-chargeback: IP, navegador, consentimiento (b.accept) y qué compró.
+    const { ip, ua } = reqMeta(req);
+    await recordCheckout({ sessionId: (session as any).id, userId: user.id, email: user.email || undefined, kind: 'botlab', productId: product.id, productDescription: `Onyx Bot Lab · ${product.name}`, amountCents: product.price_cents, currency: product.currency, ip, ua, consent: b.accept === true });
     return NextResponse.json({ url: session.url });
   } catch (e: any) {
     if (e?.message === 'seller_not_connected') return NextResponse.json({ error: 'El creador aún no conectó su cobro. Prueba con cripto o vuelve más tarde.' }, { status: 400 });
