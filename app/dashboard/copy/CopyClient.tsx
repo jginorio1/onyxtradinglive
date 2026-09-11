@@ -246,6 +246,11 @@ export default function CopyClient() {
   const [pinModal, setPinModal] = useState<any>(null);
   const [guideOpen, setGuideOpen] = useState(false);
   const [dupWarn, setDupWarn] = useState<any>(null);
+  const [slavePopup, setSlavePopup] = useState<any>(null);          // confirmación de esclava
+  const [logQ, setLogQ] = useState('');                             // buscar par en el log
+  const [logKind, setLogKind] = useState<'all' | 'copied' | 'skipped' | 'error'>('all');
+  const [logShown, setLogShown] = useState(6);                      // cuántas filas del log se ven
+  const [helpFor, setHelpFor] = useState('');                       // qué ayuda "?" está abierta
 
   const load = useCallback(() => fetch('/api/copy/links').then((r) => r.json()).then(setD).catch(() => setD({ inPlan: false })), []);
   const loadControl = useCallback(() => fetch('/api/copy/control').then((r) => r.ok ? r.json() : null).then((j) => j && setCtrl(j)).catch(() => {}), []);
@@ -363,20 +368,20 @@ export default function CopyClient() {
 
   const riskFields = (o: any, set: (k: string, v: any) => void) => (
     <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 10, marginTop: 8 }}>
-      <label className="muted" style={{ fontSize: 12 }}>{t.dailyLoss}<input type="number" value={o.daily_loss_pct} onChange={(e) => set('daily_loss_pct', Number(e.target.value))} style={{ marginTop: 3 }} /></label>
-      <label className="muted" style={{ fontSize: 12 }}>{t.maxDD}<input type="number" value={o.max_drawdown_pct} onChange={(e) => set('max_drawdown_pct', Number(e.target.value))} style={{ marginTop: 3 }} /></label>
-      <label className="muted" style={{ fontSize: 12 }}>{t.maxSpread}<input type="number" value={o.max_spread} onChange={(e) => set('max_spread', Number(e.target.value))} style={{ marginTop: 3 }} /></label>
-      <label className="muted" style={{ fontSize: 12 }}>{t.sessFrom}<select value={o.session_from || ''} onChange={(e) => set('session_from', e.target.value)} style={{ marginTop: 3 }}><option value="">{t.anyHour}</option>{TIMES.map((h) => <option key={h} value={h}>{h}</option>)}</select></label>
+      <label className="muted" style={{ fontSize: 12 }}>{t.dailyLoss}<Hint id="dailyLoss" /><input type="number" value={o.daily_loss_pct} onChange={(e) => set('daily_loss_pct', Number(e.target.value))} style={{ marginTop: 3 }} /></label>
+      <label className="muted" style={{ fontSize: 12 }}>{t.maxDD}<Hint id="maxDD" /><input type="number" value={o.max_drawdown_pct} onChange={(e) => set('max_drawdown_pct', Number(e.target.value))} style={{ marginTop: 3 }} /></label>
+      <label className="muted" style={{ fontSize: 12 }}>{t.maxSpread}<Hint id="maxSpread" /><input type="number" value={o.max_spread} onChange={(e) => set('max_spread', Number(e.target.value))} style={{ marginTop: 3 }} /></label>
+      <label className="muted" style={{ fontSize: 12 }}>{t.sessFrom}<Hint id="session" /><select value={o.session_from || ''} onChange={(e) => set('session_from', e.target.value)} style={{ marginTop: 3 }}><option value="">{t.anyHour}</option>{TIMES.map((h) => <option key={h} value={h}>{h}</option>)}</select></label>
       <label className="muted" style={{ fontSize: 12 }}>{t.sessTo}<select value={o.session_to || ''} onChange={(e) => set('session_to', e.target.value)} style={{ marginTop: 3 }}><option value="">{t.anyHour}</option>{TIMES.map((h) => <option key={h} value={h}>{h}</option>)}</select></label>
-      <label className="muted" style={{ fontSize: 12, gridColumn: '1 / -1' }}>{t.whitelist}
+      <label className="muted" style={{ fontSize: 12, gridColumn: '1 / -1' }}>{t.whitelist}<Hint id="whitelist" />
         <input value={(o.symbol_whitelist || []).join(', ')} placeholder={t.whitelistPh}
           onChange={(e) => set('symbol_whitelist', e.target.value.split(',').map((s: string) => s.trim().toUpperCase()).filter(Boolean))} style={{ marginTop: 3 }} />
       </label>
-      <label className="muted" style={{ fontSize: 12 }}>{t.dev}<input type="number" value={o.max_deviation_pts} onChange={(e) => set('max_deviation_pts', Number(e.target.value))} style={{ marginTop: 3 }} /></label>
-      <label className="muted" style={{ fontSize: 12 }}>{t.sigAge}<input type="number" value={o.max_signal_age_s} onChange={(e) => set('max_signal_age_s', Number(e.target.value))} style={{ marginTop: 3 }} /></label>
-      <label className="muted" style={{ fontSize: 12 }}>{t.maxPos}<input type="number" value={o.max_positions} onChange={(e) => set('max_positions', Number(e.target.value))} style={{ marginTop: 3 }} /></label>
-      <label className="muted" style={{ fontSize: 12 }}>{t.symCap}<input type="number" step="0.01" value={o.per_symbol_lot_cap} onChange={(e) => set('per_symbol_lot_cap', Number(e.target.value))} style={{ marginTop: 3 }} /></label>
-      <label className="muted" style={{ fontSize: 12 }}>🎲 {t.jitter}<input type="number" min={0} value={o.jitter_max_s ?? 0} onChange={(e) => set('jitter_max_s', Number(e.target.value))} style={{ marginTop: 3 }} /></label>
+      <label className="muted" style={{ fontSize: 12 }}>{t.dev}<Hint id="dev" /><input type="number" value={o.max_deviation_pts} onChange={(e) => set('max_deviation_pts', Number(e.target.value))} style={{ marginTop: 3 }} /></label>
+      <label className="muted" style={{ fontSize: 12 }}>{t.sigAge}<Hint id="sigAge" /><input type="number" value={o.max_signal_age_s} onChange={(e) => set('max_signal_age_s', Number(e.target.value))} style={{ marginTop: 3 }} /></label>
+      <label className="muted" style={{ fontSize: 12 }}>{t.maxPos}<Hint id="maxPos" /><input type="number" value={o.max_positions} onChange={(e) => set('max_positions', Number(e.target.value))} style={{ marginTop: 3 }} /></label>
+      <label className="muted" style={{ fontSize: 12 }}>{t.symCap}<Hint id="symCap" /><input type="number" step="0.01" value={o.per_symbol_lot_cap} onChange={(e) => set('per_symbol_lot_cap', Number(e.target.value))} style={{ marginTop: 3 }} /></label>
+      <label className="muted" style={{ fontSize: 12 }}>🎲 {t.jitter}<Hint id="jitter" /><input type="number" min={0} value={o.jitter_max_s ?? 0} onChange={(e) => set('jitter_max_s', Number(e.target.value))} style={{ marginTop: 3 }} /></label>
       <div className="muted" style={{ fontSize: 11, gridColumn: '1 / -1', lineHeight: 1.4 }}>{t.jitterNote}</div>
       <label className="muted row" style={{ fontSize: 12, gap: 8, alignItems: 'center', gridColumn: '1 / -1' }}><input type="checkbox" checked={o.require_sl !== false} onChange={(e) => set('require_sl', e.target.checked)} style={{ width: 'auto', margin: 0 }} /> {t.requireSL}</label>
       <div style={{ gridColumn: '1 / -1' }}>
@@ -399,15 +404,79 @@ export default function CopyClient() {
     </div>
   );
 
+  // Ayudas por campo: un "?" que despliega la explicación detallada de cada parámetro.
+  const HELP: Record<string, [string, string]> = {
+    master: ['La cuenta que MANDA. Sus operaciones se copian a las esclavas. Eliges la cuenta desde la que operas tú.', 'The account that LEADS. Its trades are copied to the slaves. Pick the account you trade on.'],
+    slave: ['La cuenta que RECIBE y repite las operaciones de la master. No operas tú en ella.', 'The account that RECEIVES and repeats the master trades. You do not trade on it.'],
+    mode: ['Cómo se calcula el lote en la esclava: Balance % (según el capital de cada cuenta), Riesgo % (según el SL), Pips, o Fijo (multiplicador). Balance % es lo más común.', 'How the slave lot is sized: Balance % (by each account equity), Risk % (by the SL), Pips, or Fixed (multiplier). Balance % is the most common.'],
+    mult: ['Multiplica el lote de la master. 1 = mismo tamaño, 0.5 = mitad, 2 = doble.', 'Multiplies the master lot. 1 = same size, 0.5 = half, 2 = double.'],
+    maxLot: ['Tope de lote por operación en la esclava, pase lo que pase. Protege de una operación gigante.', 'Max lot per trade on the slave, no matter what. Protects from a huge trade.'],
+    reverse: ['Copia al revés: si la master compra, la esclava vende. Para estrategias de cobertura.', 'Copy inverted: if the master buys, the slave sells. For hedging strategies.'],
+    dailyLoss: ['Si la esclava pierde este % del día, deja de copiar hasta el día siguiente. 0 = sin límite.', 'If the slave loses this % in a day, it stops copying until next day. 0 = no limit.'],
+    maxDD: ['Freno por caída total (drawdown) de la esclava. Si llega a este %, deja de copiar. 0 = sin límite.', 'Total drawdown brake for the slave. At this %, it stops copying. 0 = no limit.'],
+    maxSpread: ['No copia si el spread del símbolo supera este valor (en puntos). Evita entrar en mal momento.', 'Skips the copy if the symbol spread is above this (points). Avoids bad fills.'],
+    session: ['Solo copia dentro de esta franja horaria (hora del servidor). Vacío = 24 h.', 'Only copies within this time window (server time). Empty = 24 h.'],
+    whitelist: ['Solo copia estos símbolos (separados por coma). Vacío = todos.', 'Only copies these symbols (comma-separated). Empty = all.'],
+    jitter: ['Añade una espera al azar (0…N s) antes de copiar cada apertura, para que el timing NO sea idéntico al de la master. Reduce el riesgo de que una prop firm detecte copia por patrón. Los cierres salen siempre al instante. 0 = sin retraso.', 'Adds a random delay (0…N s) before copying each open, so timing is NOT identical to the master. Lowers the chance a prop firm flags copying. Closes go out instantly. 0 = no delay.'],
+    sigAge: ['Descarta señales más viejas que N segundos (por si hubo desconexión). Evita copiar tarde.', 'Discards signals older than N seconds (in case of a disconnect). Avoids copying late.'],
+    maxPos: ['Máximo de operaciones abiertas a la vez en la esclava.', 'Max simultaneous open trades on the slave.'],
+    symCap: ['Tope de lote acumulado por símbolo en la esclava.', 'Max total lot per symbol on the slave.'],
+    dev: ['Desviación máxima de precio permitida al ejecutar (puntos). Si el precio se movió más, no entra.', 'Max allowed price deviation on execution (points). If price moved more, it skips.'],
+  };
+  const Hint = ({ id }: { id: string }) => HELP[id] ? (
+    <span style={{ position: 'relative', display: 'inline-block' }}>
+      <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setHelpFor(helpFor === id ? '' : id); }}
+        style={{ width: 15, height: 15, borderRadius: '50%', border: 'none', background: 'rgba(108,123,255,.18)', color: 'var(--accent,#8a97ff)', fontSize: 10.5, fontWeight: 700, cursor: 'help', lineHeight: '15px', padding: 0, marginLeft: 5 }}>?</button>
+      {helpFor === id && (
+        <span onClick={() => setHelpFor('')} style={{ position: 'absolute', zIndex: 40, top: 20, left: 0, width: 250, background: 'var(--card,#12151d)', border: '1px solid var(--accent,#6c7bff)', borderRadius: 8, padding: '9px 11px', fontSize: 12, lineHeight: 1.55, color: 'var(--tx)', boxShadow: '0 8px 24px rgba(0,0,0,.4)' }}>
+          {HELP[id][lang === 'en' ? 1 : 0]}
+        </span>
+      )}
+    </span>
+  ) : null;
+
   return (
-    <div className="wrap" style={{ maxWidth: 1180, margin: '0 auto', padding: '22px 26px 60px', fontSize: 15 }}>{head}
+    <div className="wrap" style={{ maxWidth: 1180, margin: '0 auto', padding: '22px 26px 60px', fontSize: 15 }} onClick={() => helpFor && setHelpFor('')}>{head}
       <CopyGuide open={guideOpen} onClose={() => setGuideOpen(false)} lang={lang} />
       <div className="card" style={{ marginBottom: 12, border: '1px solid var(--amber)', background: 'rgba(255,192,77,.06)' }}>
         <span style={{ fontSize: 12.5, color: 'var(--amber)' }}><OnyxIcon emoji="⚠" size={16} /> {t.warn}</span>
       </div>
 
+      {/* PASO A PASO · barra de progreso + 4 tarjetas de color (como el constructor) */}
+      {(() => {
+        const s1 = accs.length >= 2, s2 = ckeys.some((k) => keyLive(k)), s3 = links.length > 0, s4 = links.length > 0;
+        const steps = [
+          { n: 1, t: lang === 'en' ? 'Connect accounts' : 'Conecta cuentas', s: lang === 'en' ? `${accs.length} connected` : `${accs.length} conectadas`, done: s1, to: 'copy-how', bg: 'rgba(55,138,221,.14)', fg: '#185fa5' },
+          { n: 2, t: lang === 'en' ? 'Install slave' : 'Instala esclava', s: lang === 'en' ? 'EA + key' : 'EA + clave', done: s2, to: 'copy-dl', bg: 'rgba(124,140,255,.14)', fg: '#4a44b0' },
+          { n: 3, t: lang === 'en' ? 'Create link' : 'Crea el enlace', s: 'Master → ' + (lang === 'en' ? 'Slave' : 'Esclava'), done: s3, to: 'newlink', bg: 'rgba(255,159,10,.14)', fg: '#b26a00' },
+          { n: 4, t: lang === 'en' ? 'Control' : 'Controla', s: lang === 'en' ? 'Pause · PIN · live' : 'Pausa · PIN · en vivo', done: s4, to: 'copy-ctrl', bg: 'rgba(52,199,120,.14)', fg: '#1f7a4d' },
+        ];
+        const doneCount = steps.filter((x) => x.done).length;
+        const go = (id: string) => { const el = document.getElementById(id); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+        return (
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+              {steps.map((x) => <div key={x.n} style={{ flex: 1, height: 6, borderRadius: 20, background: x.done ? 'var(--green)' : 'var(--line)' }} />)}
+            </div>
+            <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10 }}>
+              {steps.map((x) => (
+                <button key={x.n} onClick={() => go(x.to)} style={{ textAlign: 'left', border: 'none', cursor: 'pointer', borderRadius: 12, padding: 13, background: x.bg }}>
+                  <div className="row between" style={{ alignItems: 'center' }}>
+                    <span style={{ fontSize: 21, fontWeight: 700, color: x.fg }}>{x.n}</span>
+                    {x.done ? <span style={{ color: 'var(--green)', fontSize: 17 }}>✓</span> : <span style={{ fontSize: 12, color: x.fg, opacity: .7 }}>→</span>}
+                  </div>
+                  <div style={{ fontWeight: 600, marginTop: 5, color: x.fg, fontSize: 13.5 }}>{x.t}</div>
+                  <div style={{ fontSize: 11.5, color: x.fg, opacity: .85 }}>{x.s}</div>
+                </button>
+              ))}
+            </div>
+            <div className="muted" style={{ fontSize: 11.5, marginTop: 8, textAlign: 'center' }}>{doneCount}/4 {lang === 'en' ? 'steps ready' : 'pasos listos'}</div>
+          </div>
+        );
+      })()}
+
       {/* CÓMO ACTIVAR / GUÍA DE INSTALACIÓN */}
-      <div className="card" style={{ marginBottom: 12, border: '1px solid var(--accent,#6c7bff)', background: 'linear-gradient(180deg,rgba(108,123,255,.08),transparent)' }}>
+      <div id="copy-how" className="card" style={{ marginBottom: 12, border: '1px solid var(--accent,#6c7bff)', background: 'linear-gradient(180deg,rgba(108,123,255,.08),transparent)' }}>
         <div className="row between" style={{ alignItems: 'center', gap: 8 }}>
           <b style={{ fontSize: 14 }}><OnyxIcon emoji="🚀" size={16} /> {t.howTitle}</b>
           <div className="row" style={{ gap: 6 }}><button className="btn btn-ghost" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => setGuideOpen(true)} title={lang==='es'?'Abrir guia flotante':'Open floating guide'}>📘 {lang==='es'?'Guia':'Guide'}</button><button className="btn btn-ghost" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => setShowHow(!showHow)}>{showHow ? t.howHide : t.howShow}</button></div>
@@ -424,7 +493,7 @@ export default function CopyClient() {
 
       {/* CONTROL REMOTO · solo cuando ya hay al menos un enlace que controlar */}
       {links.length > 0 && (
-      <div className="card" style={{ marginBottom: 12, border: `1px solid ${paused ? 'var(--red)' : 'var(--green)'}`, background: paused ? 'rgba(255,90,90,.05)' : 'linear-gradient(180deg,rgba(52,226,160,.06),transparent)' }}>
+      <div id="copy-ctrl" className="card" style={{ marginBottom: 12, border: `1px solid ${paused ? 'var(--red)' : 'var(--green)'}`, background: paused ? 'rgba(255,90,90,.05)' : 'linear-gradient(180deg,rgba(52,226,160,.06),transparent)' }}>
         <div className="row between" style={{ flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
           <div className="row" style={{ gap: 11, alignItems: 'center' }}>
             <span style={{ width: 40, height: 40, borderRadius: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, background: paused ? 'rgba(255,90,90,.15)' : 'rgba(52,226,160,.15)' }}>{paused ? '⏸' : '▶'}</span>
@@ -511,7 +580,7 @@ export default function CopyClient() {
       {accs.length < 2 && <div className="card" style={{ marginBottom: 12 }}><p className="muted" style={{ fontSize: 13, margin: 0 }}>{t.noAcc}</p></div>}
 
       {/* DESCARGAR LA EA (siempre visible) */}
-      <div className="card" style={{ marginBottom: 12 }}>
+      <div id="copy-dl" className="card" style={{ marginBottom: 12 }}>
         <div className="row" style={{ gap: 8, alignItems: 'center' }}><span style={{ fontSize: 15 }}><OnyxIcon emoji="⬇" size={16} /></span><b style={{ fontSize: 14 }}>{t.dlTitle}</b></div>
         <p className="muted" style={{ fontSize: 12, marginTop: 2, marginBottom: 10 }}>{t.dlSub}</p>
         <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(210px,1fr))', gap: 10 }}>
@@ -628,26 +697,26 @@ export default function CopyClient() {
         <div className="card" id="newlink" style={{ marginBottom: 12 }}>
           <b style={{ fontSize: 14 }}>{t.newLink}</b>
           <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10, marginTop: 10, alignItems: 'end' }}>
-            <label className="muted" style={{ fontSize: 12 }}><span style={{ color: C_MASTER }}>● </span>{t.master}
+            <label className="muted" style={{ fontSize: 12 }}><span style={{ color: C_MASTER }}>● </span>{t.master}<Hint id="master" />
               <select value={nl.master_account_id}
                 onChange={(e) => { const v = e.target.value; const r = usedRole(v); if (v && r === 'slave') { setDupWarn({ role: r, apply: () => { setNl({ ...nl, master_account_id: v }); setDupWarn(null); } }); return; } if (v && v !== nl.master_account_id) setMasterPopup({ value: v, onConfirm: () => { setNl({ ...nl, master_account_id: v }); setMasterPopup(null); } }); else setNl({ ...nl, master_account_id: v }); }}
                 style={{ marginTop: 3, borderColor: nl.master_account_id ? C_MASTER : undefined }}>
                 <option value="">{t.pick}</option>{accs.map((a) => <option key={a.id} value={a.id}>{a.nickname || a.login}</option>)}
               </select>
             </label>
-            <label className="muted" style={{ fontSize: 12 }}><span style={{ color: C_SLAVE }}>● </span>{t.slave}
-              <select value={nl.slave_account_id} onChange={(e) => { const v = e.target.value; const r = usedRole(v); if (v && r) setDupWarn({ role: r, apply: () => { setNl({ ...nl, slave_account_id: v }); setDupWarn(null); } }); else setNl({ ...nl, slave_account_id: v }); }} style={{ marginTop: 3, borderColor: nl.slave_account_id ? C_SLAVE : undefined }}>
+            <label className="muted" style={{ fontSize: 12 }}><span style={{ color: C_SLAVE }}>● </span>{t.slave}<Hint id="slave" />
+              <select value={nl.slave_account_id} onChange={(e) => { const v = e.target.value; if (!v) { setNl({ ...nl, slave_account_id: '' }); return; } const r = usedRole(v); if (r) { setDupWarn({ role: r, apply: () => { setNl({ ...nl, slave_account_id: v }); setDupWarn(null); } }); return; } setSlavePopup({ value: v, onConfirm: () => { setNl({ ...nl, slave_account_id: v }); setSlavePopup(null); } }); }} style={{ marginTop: 3, borderColor: nl.slave_account_id ? C_SLAVE : undefined }}>
                 <option value="">{t.pick}</option>{accs.filter((a) => a.id !== nl.master_account_id && !slaveIds.has(a.id) && !masterIds.has(a.id)).map((a) => <option key={a.id} value={a.id}>{a.nickname || a.login}</option>)}
               </select>
             </label>
-            <label className="muted" style={{ fontSize: 12 }}>{t.mode}
+            <label className="muted" style={{ fontSize: 12 }}>{t.mode}<Hint id="mode" />
               <select value={nl.mode} onChange={(e) => setNl({ ...nl, mode: e.target.value })} style={{ marginTop: 3 }}>
                 <option value="balance">{t.m_balance}</option><option value="risk">{t.m_risk}</option><option value="pips">{t.m_pips}</option><option value="fixed">{t.m_fixed}</option>
               </select>
             </label>
             {modeField(nl, (k, v) => setNl({ ...nl, [k]: v }))}
-            <label className="muted" style={{ fontSize: 12 }}>{t.maxLot}<input type="number" step="0.01" value={nl.max_lot} onChange={(e) => setNl({ ...nl, max_lot: Number(e.target.value) })} style={{ marginTop: 3 }} /></label>
-            <label className="muted row" style={{ fontSize: 12, gap: 8, alignItems: 'center', marginTop: 18 }}><input type="checkbox" checked={nl.reverse} onChange={(e) => setNl({ ...nl, reverse: e.target.checked })} style={{ width: 'auto', margin: 0 }} /> {t.reverse}</label>
+            <label className="muted" style={{ fontSize: 12 }}>{t.maxLot}<Hint id="maxLot" /><input type="number" step="0.01" value={nl.max_lot} onChange={(e) => setNl({ ...nl, max_lot: Number(e.target.value) })} style={{ marginTop: 3 }} /></label>
+            <label className="muted row" style={{ fontSize: 12, gap: 8, alignItems: 'center', marginTop: 18 }}><input type="checkbox" checked={nl.reverse} onChange={(e) => setNl({ ...nl, reverse: e.target.checked })} style={{ width: 'auto', margin: 0 }} /> {t.reverse}<Hint id="reverse" /></label>
           </div>
           <button className="btn btn-ghost" style={{ marginTop: 10, padding: '3px 10px', fontSize: 12 }} onClick={() => setShowRisk(!showRisk)}>{showRisk ? '▾ ' : '▸ '}{t.riskBlock}</button>
           {showRisk && riskFields(nl, (k, v) => setNl({ ...nl, [k]: v }))}
@@ -655,20 +724,57 @@ export default function CopyClient() {
         </div>
       )}
 
-      {/* Log en vivo */}
+      {/* Log en vivo · compacto con filtros y "cargar más" */}
       <div className="card">
-        <b style={{ fontSize: 14 }}>{t.log}</b>
-        {!log.length && <p className="muted" style={{ fontSize: 13, marginTop: 8 }}>{t.noLog}</p>}
-        {log.map((e, i) => {
-          const c = e.kind === 'copied' ? 'var(--green)' : e.kind === 'skipped' ? 'var(--amber)' : 'var(--red)';
-          const k = e.kind === 'copied' ? t.kcopied : e.kind === 'skipped' ? t.kskipped : t.kerror;
-          return (
-            <div key={i} className="row between" style={{ borderTop: '1px solid var(--line)', padding: '8px 0', fontSize: 12.5, gap: 8, flexWrap: 'wrap' }}>
-              <span className="row" style={{ gap: 8 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: c }} /><b>{e.symbol || '—'}</b> <span style={{ color: c }}>{k}</span></span>
-              <span className="muted">{e.latency_ms ? e.latency_ms + ' ms · ' : ''}{new Date(e.created_at).toLocaleTimeString()}</span>
+        <div className="row between" style={{ alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+          <b style={{ fontSize: 14 }}>{t.log}</b>
+          {log.length > 0 && (() => {
+            const cc = log.filter((e) => e.kind === 'copied').length, sc = log.filter((e) => e.kind === 'skipped').length, ec = log.filter((e) => e.kind !== 'copied' && e.kind !== 'skipped').length;
+            return (
+              <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+                <span className="pill" style={{ fontSize: 10.5, color: 'var(--green)', background: 'rgba(52,199,120,.14)' }}>{cc} {t.kcopied}</span>
+                <span className="pill" style={{ fontSize: 10.5, color: 'var(--amber)', background: 'rgba(255,159,10,.14)' }}>{sc} {t.kskipped}</span>
+                <span className="pill" style={{ fontSize: 10.5, color: 'var(--red)', background: 'rgba(255,69,58,.14)' }}>{ec} {t.kerror}</span>
+              </div>
+            );
+          })()}
+        </div>
+        {log.length > 0 && (
+          <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
+            <div className="row" style={{ gap: 6, alignItems: 'center', border: '1px solid var(--line)', borderRadius: 8, padding: '0 9px', height: 30, flex: '1 1 140px' }}>
+              <OnyxIcon name="search" size={14} />
+              <input placeholder={lang === 'en' ? 'Search pair…' : 'Buscar par…'} value={logQ} onChange={(e) => { setLogQ(e.target.value); setLogShown(6); }} style={{ margin: 0, border: 'none', background: 'transparent', padding: 0, fontSize: 12.5, width: '100%', color: 'var(--tx)' }} />
             </div>
+            {([['all', lang === 'en' ? 'All' : 'Todos'], ['copied', t.kcopied], ['skipped', t.kskipped], ['error', t.kerror]] as const).map(([k, lab]) => (
+              <button key={k} className="btn btn-ghost" style={{ padding: '3px 10px', fontSize: 11.5, ...(logKind === k ? { borderColor: 'var(--accent,#6c7bff)', color: 'var(--accent,#8a97ff)' } : {}) }} onClick={() => { setLogKind(k as any); setLogShown(6); }}>{lab}</button>
+            ))}
+          </div>
+        )}
+        {(() => {
+          const filtered = log.filter((e) => {
+            const kindOk = logKind === 'all' || (logKind === 'error' ? (e.kind !== 'copied' && e.kind !== 'skipped') : e.kind === logKind);
+            const qOk = !logQ.trim() || String(e.symbol || '').toLowerCase().includes(logQ.trim().toLowerCase());
+            return kindOk && qOk;
+          });
+          if (!filtered.length) return <p className="muted" style={{ fontSize: 13, marginTop: 10 }}>{log.length ? (lang === 'en' ? 'No matches.' : 'Sin coincidencias.') : t.noLog}</p>;
+          return (
+            <>
+              {filtered.slice(0, logShown).map((e, i) => {
+                const c = e.kind === 'copied' ? 'var(--green)' : e.kind === 'skipped' ? 'var(--amber)' : 'var(--red)';
+                const k = e.kind === 'copied' ? t.kcopied : e.kind === 'skipped' ? t.kskipped : t.kerror;
+                return (
+                  <div key={i} className="row between" style={{ borderTop: '1px solid var(--line)', padding: '8px 0', fontSize: 12.5, gap: 8, flexWrap: 'wrap' }}>
+                    <span className="row" style={{ gap: 8 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: c }} /><b>{e.symbol || '—'}</b> <span style={{ color: c }}>{k}</span>{e.reason ? <span className="muted" style={{ fontSize: 11.5 }}>· {e.reason}</span> : null}</span>
+                    <span className="muted">{e.latency_ms ? e.latency_ms + ' ms · ' : ''}{new Date(e.created_at).toLocaleTimeString()}</span>
+                  </div>
+                );
+              })}
+              {filtered.length > logShown && (
+                <button className="btn btn-ghost" style={{ width: '100%', marginTop: 10, fontSize: 12.5 }} onClick={() => setLogShown((n) => n + 10)}>▾ {lang === 'en' ? 'Load more' : 'Cargar más'} ({filtered.length - logShown})</button>
+              )}
+            </>
           );
-        })}
+        })()}
       </div>
 
       {/* MODALES */}
@@ -716,6 +822,22 @@ export default function CopyClient() {
           <div className="row" style={{ gap: 8, justifyContent: 'flex-end' }}>
             <button className="btn btn-ghost" onClick={() => setMasterPopup(null)}>{t.mpNo}</button>
             <button className="btn btn-primary" onClick={masterPopup.onConfirm}>{t.mpOk}</button>
+          </div>
+        </Modal>
+      )}
+      {slavePopup && (
+        <Modal onClose={() => setSlavePopup(null)}>
+          <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6, color: C_SLAVE }}>● {lang === 'en' ? 'You are choosing a Slave' : 'Vas a elegir una Esclava'}</div>
+          <p className="muted" style={{ fontSize: 13, lineHeight: 1.6, margin: '0 0 8px' }}>
+            {lang === 'en'
+              ? 'The Slave account is the one that RECEIVES: it repeats the master trades automatically. You do not trade on it.'
+              : 'La cuenta Esclava es la que RECIBE: repite las operaciones de la master automáticamente. No operas tú en ella.'}
+            {' '}<b style={{ color: C_SLAVE }}>{label(slavePopup.value)}</b>.
+          </p>
+          <div style={{ background: 'rgba(255,192,77,.08)', border: '1px solid var(--amber)', borderRadius: 8, padding: 10, fontSize: 12, color: 'var(--amber)', marginBottom: 14 }}><OnyxIcon emoji="⚠" size={16} /> {t.mpWarn}</div>
+          <div className="row" style={{ gap: 8, justifyContent: 'flex-end' }}>
+            <button className="btn btn-ghost" onClick={() => setSlavePopup(null)}>{t.mpNo}</button>
+            <button className="btn btn-primary" style={{ background: C_SLAVE }} onClick={slavePopup.onConfirm}>{lang === 'en' ? 'Confirm slave' : 'Confirmar esclava'}</button>
           </div>
         </Modal>
       )}
