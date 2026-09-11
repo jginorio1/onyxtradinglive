@@ -82,6 +82,7 @@ export default function SupportInbox() {
   const [counts, setCounts] = useState<any>({});
   const [me, setMe] = useState<string>('');
   const [filter, setFilter] = useState<'all' | 'open' | 'in_progress' | 'resolved' | 'mine' | 'unassigned'>('open');
+  const [roleFilter, setRoleFilter] = useState<'all' | 'mentor' | 'ambassador' | 'botlab' | 'paid' | 'lead'>('all');
   const [q, setQ] = useState('');
   const [openId, setOpenId] = useState('');
   const [mobileOpen, setMobileOpen] = useState(false); // en móvil: chat a pantalla completa
@@ -202,7 +203,17 @@ export default function SupportInbox() {
     if (filter === 'all') return true;
     return it.status === filter;
   });
+  if (roleFilter !== 'all') list = list.filter((it) => (it.role || 'user') === roleFilter);
   if (q.trim()) { const s = q.toLowerCase(); list = list.filter((it) => (it.email || '').toLowerCase().includes(s) || (it.subject || '').toLowerCase().includes(s)); }
+  // Meta de cada rol: emoji, etiqueta y color de la píldora.
+  const ROLE_META: Record<string, { ic: string; es: string; en: string; bg: string; fg: string }> = {
+    mentor: { ic: '🎓', es: 'Mentor', en: 'Mentor', bg: 'rgba(124,140,255,.14)', fg: '#4a44b0' },
+    ambassador: { ic: '🎁', es: 'Embajador', en: 'Ambassador', bg: 'rgba(217,84,126,.14)', fg: '#993556' },
+    botlab: { ic: '🤖', es: 'Bot Lab', en: 'Bot Lab', bg: 'rgba(52,199,120,.14)', fg: '#1f7a4d' },
+    paid: { ic: '💳', es: 'Cliente', en: 'Customer', bg: 'rgba(255,159,10,.14)', fg: '#b26a00' },
+  };
+  const roleCounts: Record<string, number> = {};
+  tickets.forEach((it) => { const r = it.role || 'user'; roleCounts[r] = (roleCounts[r] || 0) + 1; });
 
   const mineCount = tickets.filter((it) => it.assignee_id === me && it.status !== 'resolved').length;
   const unassignedCount = tickets.filter((it) => !it.assignee_id && it.status !== 'resolved').length;
@@ -265,6 +276,18 @@ export default function SupportInbox() {
         <div className="wa-search"><Icon name="search" size={15} /><input placeholder={t.s_search} value={q} onChange={(e) => setQ(e.target.value)} style={{ margin: 0, border: 'none', background: 'transparent', padding: 0, fontSize: 13, width: '100%', color: 'var(--tx)' }} /></div>
       </div>
 
+      {/* Filtro por ROL de quien escribe (mentor / embajador / Bot Lab / cliente). Solo muestra los que existen. */}
+      {(roleCounts.mentor || roleCounts.ambassador || roleCounts.botlab || roleCounts.paid) ? (
+        <div className="row" style={{ gap: 7, marginBottom: 12, flexWrap: 'wrap' }}>
+          <button className={'wa-fil' + (roleFilter === 'all' ? ' on' : '')} onClick={() => setRoleFilter('all')}>{es ? 'Todos' : 'All'}</button>
+          {(['mentor', 'ambassador', 'botlab', 'paid'] as const).map((r) => roleCounts[r] ? (
+            <button key={r} className={'wa-fil' + (roleFilter === r ? ' on' : '')} onClick={() => setRoleFilter(roleFilter === r ? 'all' : r)}>
+              {ROLE_META[r].ic} {es ? ROLE_META[r].es : ROLE_META[r].en} {roleCounts[r]}
+            </button>
+          ) : null)}
+        </div>
+      ) : null}
+
       <div className="wa2" ref={wrapRef}>
         {/* Lista de conversaciones estilo WhatsApp */}
         <div className={'wa-list' + (mobileOpen ? ' wa-hide-m' : '')} style={{ height: paneH }}>
@@ -287,6 +310,7 @@ export default function SupportInbox() {
                   <div className="row" style={{ gap: 5, marginTop: 5, flexWrap: 'wrap', alignItems: 'center' }}>
                     <span className="pill" style={{ color: stColor[it.status], background: stBg[it.status], fontSize: 10.5 }}>● {ST[it.status]}</span>
                     {it.is_lead && <span className="pill brand" style={{ fontSize: 10.5 }}>Lead</span>}
+                    {ROLE_META[it.role] && <span className="pill" style={{ fontSize: 10.5, background: ROLE_META[it.role].bg, color: ROLE_META[it.role].fg, fontWeight: 700 }}>{ROLE_META[it.role].ic} {es ? ROLE_META[it.role].es : ROLE_META[it.role].en}</span>}
                     {it.priority && it.priority !== 'normal' && <span title={it.priority} style={{ width: 7, height: 7, borderRadius: '50%', background: prioColor[it.priority] }} />}
                     {parts.length > 0 && <span className="pill gray" style={{ fontSize: 10.5, display: 'inline-flex', alignItems: 'center', gap: 3 }}><Icon name="users" size={12} /> {parts.length}</span>}
                     {nr && <span title={l.needsReply} style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', background: 'var(--amber)', color: '#3a2a00', borderRadius: 999, padding: '2px 5px' }}><Icon name="back" size={12} stroke={2.4} /></span>}

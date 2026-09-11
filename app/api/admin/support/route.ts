@@ -37,6 +37,30 @@ export async function GET() {
       }
     }
 
+    // Etiqueta de ROL de quien abrió cada ticket (mentor, embajador, Bot Lab,
+    // cliente de pago o usuario), para verlo/filtrar de un vistazo. Cada consulta
+    // es tolerante a fallos: si una tabla no existe, se ignora sin romper la bandeja.
+    const uids = Array.from(new Set(tickets.map((t: any) => t.user_id).filter(Boolean)));
+    const roleMap: Record<string, string> = {};
+    if (uids.length) {
+      const safe = async (fn: () => Promise<any>) => { try { return (await fn())?.data || []; } catch { return []; } };
+      const [amb, men, sell, prof] = await Promise.all([
+        safe(() => supabaseAdmin.from('ambassadors').select('user_id').in('user_id', uids).eq('status', 'approved')),
+        safe(() => supabaseAdmin.from('mentors').select('user_id').in('user_id', uids)),
+        safe(() => supabaseAdmin.from('bot_products').select('seller_id').in('seller_id', uids)),
+        safe(() => supabaseAdmin.from('profiles').select('id,plan,subscription_status').in('id', uids)),
+      ]);
+      const ambSet = new Set(amb.map((x: any) => x.user_id));
+      const menSet = new Set(men.map((x: any) => x.user_id));
+      const sellSet = new Set(sell.map((x: any) => x.seller_id));
+      const paid: Record<string, boolean> = {};
+      prof.forEach((p: any) => { paid[p.id] = !!(p.plan && p.plan !== 'free' && ['active', 'trialing', 'past_due'].includes(String(p.subscription_status || ''))); });
+      uids.forEach((id: any) => {
+        roleMap[id] = menSet.has(id) ? 'mentor' : ambSet.has(id) ? 'ambassador' : sellSet.has(id) ? 'botlab' : paid[id] ? 'paid' : 'user';
+      });
+    }
+    tickets = tickets.map((t: any) => ({ ...t, role: (t.is_lead || !t.user_id) ? 'lead' : (roleMap[t.user_id] || 'user') }));
+
     const ids = tickets.map((t: any) => t.id);
     let messages: any[] = [];
     let participants: any[] = [];
