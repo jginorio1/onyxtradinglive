@@ -127,7 +127,7 @@ const D = {
     ranges: { d1: 'Hoy', d7: '7d', d30: '30d', mo: 'Mes', yr: 'Año', all: 'Todo' },
     radarTitle: 'Perfil del trader', bubbleTitle: 'Pares · volumen y resultado', rWR: 'Win rate', rPF: 'P. factor', rPayoff: 'Payoff', rConsist: 'Consistencia', rRisk: 'Riesgo', demo: 'Demo', demoOn: '🎬 Viendo datos de ejemplo (no reales)', customRange: 'Rango de fechas', from: 'Desde', to: 'Hasta',
     segBy: 'Ver por', segAll: 'Todos', segAsset: 'Activo', segRobot: 'Robot', segClear: '✕ Quitar filtros', segShowing: 'Filtrado',
-    searchAcc: 'Buscar cuenta', searchAsset: 'Buscar activo', searchRobot: 'Buscar robot',
+    filterBy: 'Filtrar', searchAcc: 'Buscar cuenta', searchAsset: 'Buscar activo', searchRobot: 'Buscar robot o magic',
     byAssetTitle: 'Rendimiento por activo', byAssetSub: 'KPIs por símbolo · toca para ver cada robot', robotsWord: 'robots', noBots: 'Tu EA aún no envía el magic del robot, así que no puedo separar por robot.',
     thAsset: 'Activo', thNet: 'Neto', thWin: 'Win', thPF: 'PF', thExp: 'Expect.', thOps: 'Ops', thLot: 'Lote', thBest: 'Mejor', thWorst: 'Peor',
     styleTitle: 'Enfoque por estilo', styleAll: 'General', styleScalp: 'Scalper', styleIntra: 'Intradía', styleSwing: 'Swing', styleAlgo: 'Algo/Robots', styleProp: 'Prop firm',
@@ -167,7 +167,7 @@ const D = {
     ranges: { d1: 'Today', d7: '7d', d30: '30d', mo: 'Month', yr: 'Year', all: 'All' },
     radarTitle: 'Trader profile', bubbleTitle: 'Pairs · volume and result', rWR: 'Win rate', rPF: 'P. factor', rPayoff: 'Payoff', rConsist: 'Consistency', rRisk: 'Risk', demo: 'Demo', demoOn: '🎬 Viewing example data (not real)', customRange: 'Date range', from: 'From', to: 'To',
     segBy: 'View by', segAll: 'All', segAsset: 'Asset', segRobot: 'Robot', segClear: '✕ Clear filters', segShowing: 'Filtered',
-    searchAcc: 'Search account', searchAsset: 'Search asset', searchRobot: 'Search robot',
+    filterBy: 'Filter', searchAcc: 'Search account', searchAsset: 'Search asset', searchRobot: 'Search robot or magic',
     byAssetTitle: 'Performance by asset', byAssetSub: 'KPIs per symbol · tap to see each robot', robotsWord: 'robots', noBots: 'Your EA is not sending the robot magic yet, so I can’t split by robot.',
     thAsset: 'Asset', thNet: 'Net', thWin: 'Win', thPF: 'PF', thExp: 'Expect.', thOps: 'Ops', thLot: 'Lot', thBest: 'Best', thWorst: 'Worst',
     styleTitle: 'Focus by style', styleAll: 'General', styleScalp: 'Scalper', styleIntra: 'Intraday', styleSwing: 'Swing', styleAlgo: 'Algo/Robots', styleProp: 'Prop firm',
@@ -218,25 +218,29 @@ const STYLE_ORDER: Record<string, string[]> = {
 };
 // Menú desplegable compacto (Cuenta / Activo / Robot). No crece aunque haya
 // muchas opciones: siempre ocupa lo mismo y trae buscador opcional.
-type PickItem = { key: string; text: string; net?: number; dot?: string; count?: number; active?: boolean };
-function PickerMenu({ trigger, items, onPick, search, width = 240, align = 'left', accent = false, ph = 'Buscar', empty = '—' }: { trigger: any; items: PickItem[]; onPick: (k: string) => void; search?: boolean; width?: number; align?: 'left' | 'right'; accent?: boolean; ph?: string; empty?: string }) {
+type PickItem = { key: string; text: string; sub?: string; net?: number; dot?: string; count?: number; active?: boolean };
+function PickerMenu({ trigger, items, onPick, search, width = 240, align = 'left', accent = false, ph = 'Buscar', empty = '—', btnStyle }: { trigger: any; items: PickItem[]; onPick: (k: string) => void; search?: boolean; width?: number; align?: 'left' | 'right'; accent?: boolean; ph?: string; empty?: string; btnStyle?: any }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
-  const list = (search && q.trim()) ? items.filter((it) => it.text.toLowerCase().includes(q.trim().toLowerCase())) : items;
+  const ql = q.trim().toLowerCase();
+  const list = (search && ql) ? items.filter((it) => (it.text + ' ' + (it.sub || '')).toLowerCase().includes(ql)) : items;
   return (
     <div style={{ position: 'relative', display: 'inline-block' }}>
-      <button className={'btn ' + (accent ? 'btn-primary' : 'btn-ghost')} onClick={() => setOpen((o) => !o)} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+      <button className={'btn ' + (accent ? 'btn-primary' : 'btn-ghost')} onClick={() => setOpen((o) => !o)} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, ...(btnStyle || {}) }}>
         {trigger} <span style={{ fontSize: 10, opacity: .7 }}>▾</span>
       </button>
       {open && (<>
         <div onClick={() => { setOpen(false); setQ(''); }} style={{ position: 'fixed', inset: 0, zIndex: 60 }} />
-        <div style={{ position: 'absolute', top: 'calc(100% + 6px)', [align]: 0, width, maxHeight: 320, overflowY: 'auto', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 6, zIndex: 61, boxShadow: '0 14px 34px -10px rgba(0,0,0,.55)' } as any}>
+        <div style={{ position: 'absolute', top: 'calc(100% + 6px)', [align]: 0, width, maxHeight: 340, overflowY: 'auto', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 6, zIndex: 61, boxShadow: '0 14px 34px -10px rgba(0,0,0,.55)' } as any}>
           {search && <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={ph} autoFocus style={{ margin: '0 0 6px', width: '100%', padding: '6px 9px' }} />}
           {list.map((it) => (
             <div key={it.key} onClick={() => { onPick(it.key); setOpen(false); setQ(''); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '7px 8px', borderRadius: 8, cursor: 'pointer', background: it.active ? 'rgba(124,140,255,.14)' : 'transparent' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, minWidth: 0 }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                 {it.dot && <span style={{ width: 8, height: 8, borderRadius: '50%', background: it.dot, flex: '0 0 auto' }} />}
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.text}{it.count != null && <span style={{ color: 'var(--mut)', fontSize: 11 }}> · {it.count}</span>}</span>
+                <span style={{ minWidth: 0 }}>
+                  <span style={{ display: 'block', fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.text}{it.count != null && <span style={{ color: 'var(--mut)', fontSize: 11 }}> · {it.count}</span>}</span>
+                  {it.sub && <span style={{ display: 'inline-block', marginTop: 2, fontSize: 10.5, color: 'var(--mut)', background: 'var(--bg2)', padding: '1px 6px', borderRadius: 4 }}>{it.sub}</span>}
+                </span>
               </span>
               {it.net != null && <span style={{ fontSize: 12, color: it.net >= 0 ? GREEN : RED, flex: '0 0 auto' }}>{money(it.net)}</span>}
             </div>
@@ -285,7 +289,7 @@ function PerfAssets({ bk, L, onPick, nameOf }: { bk: ReturnType<typeof perfBreak
                 </tr>
                 {isOpen && as.robots.map((r) => (
                   <tr key={as.key + '|' + r.key} style={{ background: 'rgba(124,140,255,.05)', cursor: 'pointer' }} onClick={() => onPick(as.key, r.key)}>
-                    <td style={{ padding: '5px 6px 5px 22px', color: 'var(--mut)' }}>↳ {r.key ? nameOf(r.key, r.label) : r.label}</td>
+                    <td style={{ padding: '5px 6px 5px 22px', color: 'var(--mut)' }}>↳ {r.key ? nameOf(r.key, r.label) : r.label}{r.key && <span style={{ marginLeft: 6, fontSize: 10, background: 'var(--bg2)', padding: '1px 5px', borderRadius: 4 }}>magic {r.key}</span>}</td>
                     <KpiCells r={r} />
                   </tr>
                 ))}
@@ -901,13 +905,14 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                   ]}
                   onPick={(k) => setSel(k)} />
                 {view === 'rendimiento' && (<>
-                  <PickerMenu search width={220} ph={L.searchAsset}
-                    trigger={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="💱" size={14} /> {segSym || L.segAsset}</span>}
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--mut)', marginLeft: 4 }}><OnyxIcon emoji="🔎" size={13} /> {L.filterBy}:</span>
+                  <PickerMenu search width={230} ph={L.searchAsset} btnStyle={{ borderColor: 'var(--brand)' }}
+                    trigger={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="💱" size={14} /> <span style={{ color: 'var(--mut)', fontSize: 12 }}>{L.segAsset}:</span> {segSym || L.segAll}</span>}
                     items={[{ key: '', text: L.segAll, active: !segSym }, ...perfBk.symbols.map((s) => ({ key: s.key, text: s.key, net: s.net, dot: s.net >= 0 ? GREEN : RED, active: segSym === s.key }))]}
                     onPick={(k) => setSegSym(k)} />
-                  <PickerMenu search width={250} accent={!!segBot} ph={L.searchRobot} empty={L.noBots}
-                    trigger={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="🤖" size={14} /> {segBot ? nameOf(segBot, '#' + segBot) : L.segRobot}</span>}
-                    items={[{ key: '', text: L.segAll, active: !segBot }, ...perfBk.robots.map((r) => ({ key: r.key, text: nameOf(r.key, r.label), net: r.net, dot: r.net >= 0 ? GREEN : RED, active: segBot === r.key }))]}
+                  <PickerMenu search width={280} accent={!!segBot} ph={L.searchRobot} empty={L.noBots} btnStyle={{ borderColor: 'var(--brand)' }}
+                    trigger={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="🤖" size={14} /> <span style={{ color: segBot ? undefined : 'var(--mut)', fontSize: 12 }}>{L.segRobot}:</span> {segBot ? nameOf(segBot, '#' + segBot) : L.segAll}</span>}
+                    items={[{ key: '', text: L.segAll, active: !segBot }, ...perfBk.robots.map((r) => ({ key: r.key, text: nameOf(r.key, r.label), sub: `magic ${r.key}`, net: r.net, dot: r.net >= 0 ? GREEN : RED, active: segBot === r.key }))]}
                     onPick={(k) => setSegBot(k)} />
                 </>)}
               </div>
@@ -923,7 +928,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                 <span>{sel === 'all' ? L.portfolio : (cur ? accName(cur) : L.portfolio)}</span><span style={{ opacity: .5 }}>·</span>
                 <span>{range === 'custom' ? L.customRange : L.ranges[range as 'd1']}</span>
                 {segSym && (<><span style={{ opacity: .5 }}>·</span><span style={{ color: 'var(--soft-brand)' }}>{segSym}</span></>)}
-                {segBot && (<><span style={{ opacity: .5 }}>·</span><span style={{ color: 'var(--soft-brand)' }}>{nameOf(segBot, '#' + segBot)}</span></>)}
+                {segBot && (<><span style={{ opacity: .5 }}>·</span><span style={{ color: 'var(--soft-brand)' }}>{nameOf(segBot, '#' + segBot)}</span><span style={{ fontSize: 11, color: 'var(--mut)' }}>(magic {segBot})</span></>)}
                 <span style={{ opacity: .5 }}>—</span><span>{a.n} {L.ops}</span>
                 {(segSym || segBot) && <span onClick={() => { setSegSym(''); setSegBot(''); }} style={{ marginLeft: 'auto', color: 'var(--red)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>{L.segClear}</span>}
               </div>
