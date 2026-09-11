@@ -1819,6 +1819,7 @@ function BotPlanMatrixEditor() {
 
 function PlanCard({ plan, isNew, reload, onCancel }: { plan: Plan; isNew?: boolean; reload: () => void; onCancel?: () => void }) {
   const t = useT();
+  const { lang } = useLang();
   const [p, setP] = useState<Plan>({ ...plan, features: plan.features || [], features_en: plan.features_en || [], capabilities: plan.capabilities || {} });
   const [saving, setSaving] = useState(false);
   const set = (k: keyof Plan, v: any) => setP({ ...p, [k]: v });
