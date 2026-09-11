@@ -126,7 +126,8 @@ const D = {
     fundTitle: '🏆 Reglas de fondeo', fundEdit: '⚙️ Configurar reglas', fundHide: 'Ocultar', fundTarget: 'Objetivo de fondeo ($)', fundMaxDaily: 'Pérdida diaria máx ($)', fundMaxTotal: 'Pérdida total máx ($)', fundStart: 'Balance inicial ($)', fundSave: 'Guardar reglas', fundProfitBar: 'Progreso al objetivo de fondeo', fundDDBar: 'Uso de pérdida máxima', fundHint: 'El profit que te pide tu cuenta de fondeo.',
     ranges: { d1: 'Hoy', d7: '7d', d30: '30d', mo: 'Mes', yr: 'Año', all: 'Todo' },
     radarTitle: 'Perfil del trader', bubbleTitle: 'Pares · volumen y resultado', rWR: 'Win rate', rPF: 'P. factor', rPayoff: 'Payoff', rConsist: 'Consistencia', rRisk: 'Riesgo', demo: 'Demo', demoOn: '🎬 Viendo datos de ejemplo (no reales)', customRange: 'Rango de fechas', from: 'Desde', to: 'Hasta',
-    segBy: 'Ver por', segAll: 'Todos', segAsset: 'Activo', segRobot: 'Robot', segClear: '✕ Quitar filtro', segShowing: 'Filtrado',
+    segBy: 'Ver por', segAll: 'Todos', segAsset: 'Activo', segRobot: 'Robot', segClear: '✕ Quitar filtros', segShowing: 'Filtrado',
+    searchAcc: 'Buscar cuenta', searchAsset: 'Buscar activo', searchRobot: 'Buscar robot',
     byAssetTitle: 'Rendimiento por activo', byAssetSub: 'KPIs por símbolo · toca para ver cada robot', robotsWord: 'robots', noBots: 'Tu EA aún no envía el magic del robot, así que no puedo separar por robot.',
     thAsset: 'Activo', thNet: 'Neto', thWin: 'Win', thPF: 'PF', thExp: 'Expect.', thOps: 'Ops', thLot: 'Lote', thBest: 'Mejor', thWorst: 'Peor',
     styleTitle: 'Enfoque por estilo', styleAll: 'General', styleScalp: 'Scalper', styleIntra: 'Intradía', styleSwing: 'Swing', styleAlgo: 'Algo/Robots', styleProp: 'Prop firm',
@@ -165,7 +166,8 @@ const D = {
     fundTitle: '🏆 Prop-firm rules', fundEdit: '⚙️ Set rules', fundHide: 'Hide', fundTarget: 'Prop-firm target ($)', fundMaxDaily: 'Max daily loss ($)', fundMaxTotal: 'Max total loss ($)', fundStart: 'Starting balance ($)', fundSave: 'Save rules', fundProfitBar: 'Progress to prop-firm target', fundDDBar: 'Max loss used', fundHint: 'The profit your prop firm requires.',
     ranges: { d1: 'Today', d7: '7d', d30: '30d', mo: 'Month', yr: 'Year', all: 'All' },
     radarTitle: 'Trader profile', bubbleTitle: 'Pairs · volume and result', rWR: 'Win rate', rPF: 'P. factor', rPayoff: 'Payoff', rConsist: 'Consistency', rRisk: 'Risk', demo: 'Demo', demoOn: '🎬 Viewing example data (not real)', customRange: 'Date range', from: 'From', to: 'To',
-    segBy: 'View by', segAll: 'All', segAsset: 'Asset', segRobot: 'Robot', segClear: '✕ Clear filter', segShowing: 'Filtered',
+    segBy: 'View by', segAll: 'All', segAsset: 'Asset', segRobot: 'Robot', segClear: '✕ Clear filters', segShowing: 'Filtered',
+    searchAcc: 'Search account', searchAsset: 'Search asset', searchRobot: 'Search robot',
     byAssetTitle: 'Performance by asset', byAssetSub: 'KPIs per symbol · tap to see each robot', robotsWord: 'robots', noBots: 'Your EA is not sending the robot magic yet, so I can’t split by robot.',
     thAsset: 'Asset', thNet: 'Net', thWin: 'Win', thPF: 'PF', thExp: 'Expect.', thOps: 'Ops', thLot: 'Lot', thBest: 'Best', thWorst: 'Worst',
     styleTitle: 'Focus by style', styleAll: 'General', styleScalp: 'Scalper', styleIntra: 'Intraday', styleSwing: 'Swing', styleAlgo: 'Algo/Robots', styleProp: 'Prop firm',
@@ -214,42 +216,34 @@ const STYLE_ORDER: Record<string, string[]> = {
   algo: ['assets', 'r', 'prop', 'heat', 'hold'],
   prop: ['prop', 'assets', 'r', 'hold', 'heat'],
 };
-function chipStyle(active: boolean) {
-  return {
-    padding: '4px 12px', borderRadius: 999, fontSize: 12.5, cursor: 'pointer', whiteSpace: 'nowrap',
-    border: '1px solid ' + (active ? 'var(--brand)' : 'var(--line)'),
-    background: active ? 'rgba(124,140,255,.16)' : 'transparent',
-    color: active ? 'var(--soft-brand)' : 'var(--mut)', fontWeight: active ? 600 : 400,
-  } as any;
-}
-function SegBar({ bk, L, segSym, segBot, setSeg }: { bk: ReturnType<typeof perfBreakdown>; L: any; segSym: string; segBot: string; setSeg: (s: string, b: string) => void }) {
-  const assets = bk.symbols.slice(0, 8);
-  const robots = bk.robots.slice(0, 8);
-  const filtered = !!(segSym || segBot);
+// Menú desplegable compacto (Cuenta / Activo / Robot). No crece aunque haya
+// muchas opciones: siempre ocupa lo mismo y trae buscador opcional.
+type PickItem = { key: string; text: string; net?: number; dot?: string; count?: number; active?: boolean };
+function PickerMenu({ trigger, items, onPick, search, width = 240, align = 'left', accent = false, ph = 'Buscar', empty = '—' }: { trigger: any; items: PickItem[]; onPick: (k: string) => void; search?: boolean; width?: number; align?: 'left' | 'right'; accent?: boolean; ph?: string; empty?: string }) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+  const list = (search && q.trim()) ? items.filter((it) => it.text.toLowerCase().includes(q.trim().toLowerCase())) : items;
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, margin: '2px 0 8px' }}>
-      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 12, color: 'var(--mut)', marginRight: 2 }}>{L.segAsset}:</span>
-        <button style={chipStyle(!segSym)} onClick={() => setSeg('', segBot)}>{L.segAll}</button>
-        {assets.map((s) => <button key={s.key} style={chipStyle(segSym === s.key)} onClick={() => setSeg(segSym === s.key ? '' : s.key, segBot)}>{s.key}</button>)}
-      </div>
-      {robots.length > 0 && (
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 12, color: 'var(--mut)', marginRight: 2 }}>{L.segRobot}:</span>
-          <button style={chipStyle(!segBot)} onClick={() => setSeg(segSym, '')}>{L.segAll}</button>
-          {robots.map((r) => <button key={r.key} style={chipStyle(segBot === r.key)} onClick={() => setSeg(segSym, segBot === r.key ? '' : r.key)} title={`${money(r.net)} · ${r.ops}`}>{r.label}</button>)}
+    <div style={{ position: 'relative', display: 'inline-block' }}>
+      <button className={'btn ' + (accent ? 'btn-primary' : 'btn-ghost')} onClick={() => setOpen((o) => !o)} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+        {trigger} <span style={{ fontSize: 10, opacity: .7 }}>▾</span>
+      </button>
+      {open && (<>
+        <div onClick={() => { setOpen(false); setQ(''); }} style={{ position: 'fixed', inset: 0, zIndex: 60 }} />
+        <div style={{ position: 'absolute', top: 'calc(100% + 6px)', [align]: 0, width, maxHeight: 320, overflowY: 'auto', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 6, zIndex: 61, boxShadow: '0 14px 34px -10px rgba(0,0,0,.55)' } as any}>
+          {search && <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={ph} autoFocus style={{ margin: '0 0 6px', width: '100%', padding: '6px 9px' }} />}
+          {list.map((it) => (
+            <div key={it.key} onClick={() => { onPick(it.key); setOpen(false); setQ(''); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '7px 8px', borderRadius: 8, cursor: 'pointer', background: it.active ? 'rgba(124,140,255,.14)' : 'transparent' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, minWidth: 0 }}>
+                {it.dot && <span style={{ width: 8, height: 8, borderRadius: '50%', background: it.dot, flex: '0 0 auto' }} />}
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.text}{it.count != null && <span style={{ color: 'var(--mut)', fontSize: 11 }}> · {it.count}</span>}</span>
+              </span>
+              {it.net != null && <span style={{ fontSize: 12, color: it.net >= 0 ? GREEN : RED, flex: '0 0 auto' }}>{money(it.net)}</span>}
+            </div>
+          ))}
+          {list.length === 0 && <div className="muted" style={{ fontSize: 12, padding: '6px 8px' }}>{empty}</div>}
         </div>
-      )}
-      {filtered && <button style={{ ...chipStyle(false), alignSelf: 'flex-start', color: 'var(--red)', borderColor: 'var(--red)' }} onClick={() => setSeg('', '')}>{L.segClear}</button>}
-    </div>
-  );
-}
-function StyleBar({ L, style, setStyle }: { L: any; style: string; setStyle: (s: string) => void }) {
-  const items: [string, string][] = [['all', L.styleAll], ['scalp', L.styleScalp], ['intra', L.styleIntra], ['swing', L.styleSwing], ['algo', L.styleAlgo], ['prop', L.styleProp]];
-  return (
-    <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', margin: '2px 0 6px' }}>
-      <span style={{ fontSize: 12, color: 'var(--mut)', marginRight: 2 }}>{L.styleTitle}:</span>
-      {items.map(([k, lbl]) => <button key={k} style={chipStyle(style === k)} onClick={() => setStyle(k)}>{lbl}</button>)}
+      </>)}
     </div>
   );
 }
@@ -263,7 +257,7 @@ function KpiCells({ r }: { r: KRow }) {
     <td className="perf-hidem" style={{ textAlign: 'right', color: 'var(--mut)', padding: '7px 6px' }}>{r.avgVol.toFixed(2)}</td>
   </>);
 }
-function PerfAssets({ bk, L, onPick }: { bk: ReturnType<typeof perfBreakdown>; L: any; onPick: (sym: string, bot: string) => void }) {
+function PerfAssets({ bk, L, onPick, nameOf }: { bk: ReturnType<typeof perfBreakdown>; L: any; onPick: (sym: string, bot: string) => void; nameOf: (k: string, fallback: string) => string }) {
   const [open, setOpen] = useState<Record<string, boolean>>({});
   if (!bk.assets.length) return <p className="muted" style={{ fontSize: 13, margin: 0 }}>{L.noData}</p>;
   return (
@@ -291,7 +285,7 @@ function PerfAssets({ bk, L, onPick }: { bk: ReturnType<typeof perfBreakdown>; L
                 </tr>
                 {isOpen && as.robots.map((r) => (
                   <tr key={as.key + '|' + r.key} style={{ background: 'rgba(124,140,255,.05)', cursor: 'pointer' }} onClick={() => onPick(as.key, r.key)}>
-                    <td style={{ padding: '5px 6px 5px 22px', color: 'var(--mut)' }}>↳ {r.label}</td>
+                    <td style={{ padding: '5px 6px 5px 22px', color: 'var(--mut)' }}>↳ {r.key ? nameOf(r.key, r.label) : r.label}</td>
                     <KpiCells r={r} />
                   </tr>
                 ))}
@@ -547,7 +541,6 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
   // Rendimiento: filtro por activo/robot + enfoque por estilo del trader.
   const [segSym, setSegSym] = useState('');
   const [segBot, setSegBot] = useState('');
-  const [perfStyle, setPerfStyle] = useState<string>('all');
   const demoTrades = useMemo(() => genDemo(accs0[0]?.id || 'demo'), []);
   const [editing, setEditing] = useState<string>('');
   const [nick, setNick] = useState('');
@@ -650,8 +643,23 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
   }, [tradesS, histDays, demo]);
 
   const filtered = useMemo(() => (sel === 'all' ? ranged : ranged.filter((t) => t.account_id === sel)), [ranged, sel]);
-  // Desglose por activo/robot para los chips y la tabla (nivel cuenta, sin segmentar).
+  // Desglose por activo/robot para los menús y la tabla (nivel cuenta, sin segmentar).
   const perfBk = useMemo(() => perfBreakdown(filtered), [filtered]);
+  // Nombre amable de cada robot: usa el comment del EA si lo trae; si no,
+  // "Activo · Robot N" (numerado dentro de su activo). Nada de magic crudo.
+  const robotName = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const as of perfBk.assets) {
+      as.robots.filter((r) => r.key).forEach((r, idx) => {
+        if (m[r.key]) return;
+        const raw = r.label || '';
+        m[r.key] = (raw && !raw.startsWith('#')) ? raw : `${as.key} · Robot ${idx + 1}`;
+      });
+    }
+    return m;
+  }, [perfBk]);
+  const nameOf = (k: string, fb: string) => robotName[k] || fb;
+  const portfolioNet = useMemo(() => (ranged as any[]).reduce((s, t) => s + (+t.net_profit || 0), 0), [ranged]);
   // El filtro por activo/robot solo aplica dentro de Rendimiento; fuera se limpia.
   const perfTrades = useMemo(() => {
     if (view !== 'rendimiento' || (!segSym && !segBot)) return filtered;
@@ -882,11 +890,26 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
           <div className="card"><p className="muted">{L.empty2}</p></div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%', maxWidth: view === 'hub' ? undefined : 1160, margin: view === 'hub' ? undefined : '0 auto' }}>
-            {/* controles: cuentas + filtro de tiempo */}
+            {/* controles: cuenta (menú) + activo/robot (menú, en Rendimiento) + filtro de tiempo */}
             <div className="row between" style={{ flexWrap: 'wrap', gap: 10 }}>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <button className={'btn ' + (sel === 'all' ? 'btn-primary' : 'btn-ghost')} onClick={() => setSel('all')} style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}><OnyxIcon emoji="📊" size={15} /> {L.portfolio}</button>
-                {accounts.map((x) => <button key={x.id} className={'btn ' + (sel === x.id ? 'btn-primary' : 'btn-ghost')} onClick={() => setSel(x.id)}>{accName(x)}</button>)}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <PickerMenu search accent width={280} ph={L.searchAcc}
+                  trigger={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}><OnyxIcon emoji="📊" size={15} /> {sel === 'all' ? L.portfolio : (cur ? accName(cur) : L.portfolio)}</span>}
+                  items={[
+                    { key: 'all', text: L.portfolio, count: accounts.length, net: portfolioNet, active: sel === 'all' },
+                    ...accounts.map((x) => { const s = accStats(x.id); return { key: x.id, text: accName(x), net: s.net, dot: s.net >= 0 ? GREEN : RED, active: sel === x.id }; }),
+                  ]}
+                  onPick={(k) => setSel(k)} />
+                {view === 'rendimiento' && (<>
+                  <PickerMenu search width={220} ph={L.searchAsset}
+                    trigger={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="💱" size={14} /> {segSym || L.segAsset}</span>}
+                    items={[{ key: '', text: L.segAll, active: !segSym }, ...perfBk.symbols.map((s) => ({ key: s.key, text: s.key, net: s.net, dot: s.net >= 0 ? GREEN : RED, active: segSym === s.key }))]}
+                    onPick={(k) => setSegSym(k)} />
+                  <PickerMenu search width={250} accent={!!segBot} ph={L.searchRobot} empty={L.noBots}
+                    trigger={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="🤖" size={14} /> {segBot ? nameOf(segBot, '#' + segBot) : L.segRobot}</span>}
+                    items={[{ key: '', text: L.segAll, active: !segBot }, ...perfBk.robots.map((r) => ({ key: r.key, text: nameOf(r.key, r.label), net: r.net, dot: r.net >= 0 ? GREEN : RED, active: segBot === r.key }))]}
+                    onPick={(k) => setSegBot(k)} />
+                </>)}
               </div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {(['d1', 'd7', 'd30', 'mo', 'yr', 'all'] as const).map((r) => <button key={r} className={'btn ' + (range === r ? 'btn-primary' : 'btn-ghost')} style={{ padding: '7px 12px' }} onClick={() => setRange(r)}>{L.ranges[r]}</button>)}
@@ -894,6 +917,17 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                 <button className={'btn ' + (demo ? 'btn-primary' : 'btn-ghost')} style={{ padding: '7px 12px', display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={() => setDemo(!demo)}><OnyxIcon emoji="🎬" size={15} /> {L.demo}</button>
               </div>
             </div>
+            {view === 'rendimiento' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 12.5, color: 'var(--mut)', background: 'var(--bg2)', borderRadius: 10, padding: '7px 12px' }}>
+                <OnyxIcon emoji="🔎" size={13} />
+                <span>{sel === 'all' ? L.portfolio : (cur ? accName(cur) : L.portfolio)}</span><span style={{ opacity: .5 }}>·</span>
+                <span>{range === 'custom' ? L.customRange : L.ranges[range as 'd1']}</span>
+                {segSym && (<><span style={{ opacity: .5 }}>·</span><span style={{ color: 'var(--soft-brand)' }}>{segSym}</span></>)}
+                {segBot && (<><span style={{ opacity: .5 }}>·</span><span style={{ color: 'var(--soft-brand)' }}>{nameOf(segBot, '#' + segBot)}</span></>)}
+                <span style={{ opacity: .5 }}>—</span><span>{a.n} {L.ops}</span>
+                {(segSym || segBot) && <span onClick={() => { setSegSym(''); setSegBot(''); }} style={{ marginLeft: 'auto', color: 'var(--red)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>{L.segClear}</span>}
+              </div>
+            )}
             {range === 'custom' && (
               <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignSelf: 'flex-start' }}>
                 <span className="muted" style={{ fontSize: 13 }}>{L.from}</span>
@@ -971,17 +1005,14 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
               const sPO = a.payoff >= 1.5 ? GREEN : a.payoff >= 1 ? GOLD : RED;
               const bePct = a.n ? Math.round(100 * a.catBE / a.n) : 0;
               const newSec: Record<string, any> = {
-                assets: <Card key="assets" title={L.byAssetTitle} icon="📊" right={<span className="muted perf-hidem" style={{ fontSize: 11 }}>{L.byAssetSub}</span>}>{perfBk.robots.length === 0 && <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>{L.noBots}</div>}<PerfAssets bk={perfBk} L={L} onPick={(s, b) => { setSegSym(s); setSegBot(b); }} /></Card>,
+                assets: <Card key="assets" title={L.byAssetTitle} icon="📊" right={<span className="muted perf-hidem" style={{ fontSize: 11 }}>{L.byAssetSub}</span>}>{perfBk.robots.length === 0 && <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>{L.noBots}</div>}<PerfAssets bk={perfBk} L={L} nameOf={nameOf} onPick={(s, b) => { setSegSym(s); setSegBot(b); }} /></Card>,
                 r: <Card key="r" title={L.rTitle} icon="🎲"><RDist a={a} L={L} /></Card>,
                 hold: <Card key="hold" title={L.holdTitle} icon="⏳" right={<span className="muted perf-hidem" style={{ fontSize: 11 }}>{L.holdSub}</span>}><HoldDist a={a} L={L} /></Card>,
                 heat: <Card key="heat" title={L.heatTitle} icon="🔥" right={<span className="muted perf-hidem" style={{ fontSize: 11 }}>{L.heatSub}</span>}><HeatGrid a={a} lang={lang} /></Card>,
                 prop: <Card key="prop" title={L.propTitle} icon="🏆" right={<span className="muted perf-hidem" style={{ fontSize: 11 }}>{L.propHint}</span>}><PropCard a={a} cur={cur} L={L} /></Card>,
               };
-              const secOrder = STYLE_ORDER[perfStyle] || STYLE_ORDER.all;
+              const secOrder = STYLE_ORDER.all;
               return (<>
-              <StyleBar L={L} style={perfStyle} setStyle={setPerfStyle} />
-              <SegBar bk={perfBk} L={L} segSym={segSym} segBot={segBot} setSeg={(s, b) => { setSegSym(s); setSegBot(b); }} />
-              {(segSym || segBot) && <div style={{ fontSize: 12.5, color: 'var(--soft-brand)', margin: '0 0 4px' }}>{L.segShowing}: <b>{segSym || L.segAll}</b>{segBot ? ' · ' + (perfBk.robots.find((r) => r.key === segBot)?.label || ('#' + segBot)) : ''} · {a.n} {L.ops}</div>}
               <div className="grid g4">
                 <StatCard icon="💰" label={L.kNet} value={money2(a.net)} accent={a.net >= 0 ? GREEN : RED} color={a.net >= 0 ? GREEN : RED} />
                 <StatCard icon="🎯" label={L.kWR} value={`${a.winRate.toFixed(0)}%`} accent={sWR} color={sWR} bar={a.winRate / 100} />
