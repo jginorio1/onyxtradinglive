@@ -64,7 +64,7 @@ import { blankPromo, newId, THEMES, pickActiveBar } from '@/lib/promo';
 type Plan = { id: string; name: string; name_en: string; desc_es: string | null; desc_en: string | null; price_month: number; price_year: number; stripe_price_id: string | null; stripe_price_id_year: string | null; max_accounts: number; features: string[]; features_en: string[]; badge: string | null; badge_en: string | null; active: boolean; sort: number; capabilities: any };
 type User = { id: string; email: string; full_name?: string | null; plan: string; subscription_status: string | null; banned: boolean; is_admin: boolean; created_at: string; accounts: number; lastSync: string | null; email_confirmed?: boolean };
 type Team = { id: string; email: string; role: string | null; is_admin: boolean; perms?: any; available?: boolean; last_active?: string | null };
-type Tab = 'resumen' | 'facturacion' | 'ingresos' | 'finanzas' | 'academy' | 'usuarios' | 'correos' | 'campanas' | 'blog' | 'seo' | 'planes' | 'landing' | 'landingnew' | 'equipo' | 'embajadores' | 'retencion' | 'pruebas' | 'firms' | 'catalogos' | 'modulos' | 'soporte' | 'chat' | 'kb' | 'diag' | 'recursos' | 'backups' | 'audit' | 'optim' | 'notif' | 'guias' | 'copytraders' | 'botlab' | 'factory' | 'pagos' | 'ajustes';
+type Tab = 'resumen' | 'facturacion' | 'ingresos' | 'finanzas' | 'academy' | 'usuarios' | 'correos' | 'campanas' | 'blog' | 'seo' | 'planes' | 'landing' | 'landingnew' | 'equipo' | 'embajadores' | 'retencion' | 'pruebas' | 'firms' | 'catalogos' | 'modulos' | 'soporte' | 'chat' | 'kb' | 'diag' | 'recursos' | 'backups' | 'audit' | 'optim' | 'notif' | 'guias' | 'copytraders' | 'botlab' | 'factory' | 'pagos' | 'antifraude' | 'ajustes';
 
 const CAPS: string[] = ['journal', 'compare', 'funding', 'costs', 'export', 'reports', 'telegram', 'manager', 'manager_advanced', 'manager_news', 'copy', 'tv', 'algo', 'expenses', 'coach', 'academy'];
 const CAP_FALLBACK: Record<string, string> = { tv: 'TradingView (señales → EA)' };
@@ -566,7 +566,7 @@ function BetaControl() {
 export default function AdminClient({ meEmail, role, perms = {}, accounts, trades, hasPin = false, idleMin = 20 }: { meEmail: string; role: string; perms?: Record<string, string>; accounts: number; trades: number; hasPin?: boolean; idleMin?: number }) {
   const t = useT();
   // Qué áreas puede ver este admin (owner ve todo). Mapa tab → área de permiso.
-  const areaOf: Record<string, string> = { resumen: 'resumen', facturacion: 'planes', ingresos: 'planes', finanzas: 'finanzas', academy: 'academy', usuarios: 'usuarios', correos: 'usuarios', campanas: 'campanas', planes: 'planes', landing: 'planes', equipo: 'equipo', embajadores: 'embajadores', retencion: 'retencion', pruebas: 'diag', firms: 'firms', catalogos: 'catalogos', modulos: 'modulos', botlab: 'modulos', blog: 'modulos', soporte: 'soporte', chat: 'chat', kb: 'soporte', diag: 'diag', recursos: 'diag', backups: 'ajustes', audit: 'ajustes', optim: 'ajustes', ajustes: 'ajustes', seo: 'ajustes', pagos: 'embajadores' };
+  const areaOf: Record<string, string> = { resumen: 'resumen', facturacion: 'planes', ingresos: 'planes', finanzas: 'finanzas', academy: 'academy', usuarios: 'usuarios', correos: 'usuarios', campanas: 'campanas', planes: 'planes', landing: 'planes', equipo: 'equipo', embajadores: 'embajadores', retencion: 'retencion', pruebas: 'diag', firms: 'firms', catalogos: 'catalogos', modulos: 'modulos', botlab: 'modulos', blog: 'modulos', soporte: 'soporte', chat: 'chat', kb: 'soporte', diag: 'diag', recursos: 'diag', backups: 'ajustes', audit: 'ajustes', optim: 'ajustes', ajustes: 'ajustes', seo: 'ajustes', pagos: 'embajadores', antifraude: 'planes' };
   const has = (a: string) => role === 'owner' || (perms[a] && perms[a] !== 'none');
   // Facturación (hub) es visible si el admin puede ver CUALQUIERA de las tres áreas.
   const canBilling = has('planes') || has('finanzas') || has('academy');
@@ -693,7 +693,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
   const NAV_GROUPS: { g: string; items: [Tab, string, string][] }[] = [
     { g: t.g_op, items: [['resumen', '📊', t.nav_resumen], ['facturacion', '💳', lang === 'en' ? 'Billing' : 'Facturación'], ['usuarios', '👥', t.nav_usuarios], ['correos', '✉️', t.nav_correos], ['soporte', '🎫', t.nav_soporte], ['chat', '💬', lang === 'en' ? 'Team chat' : 'Chat equipo'], ['equipo', '🛡️', t.nav_equipo]] },
     { g: t.g_prod, items: [['planes', '💳', t.nav_planes], ['academy', '🎓', lang === 'en' ? 'Academy' : 'Academia'], ['landing', '🧩', lang === 'en' ? 'Landing Builder' : 'Landing Builder'], ['landingnew', '✨', lang === 'en' ? 'New landing' : 'Landing nueva'], ['modulos', '🧩', t.nav_modulos], ['botlab', '🤖', 'Onyx Bot Lab'], ['factory', '🏭', lang === 'en' ? 'Bot Factory' : 'Fábrica de bots'], ['firms', '🏛️', t.nav_firms], ['catalogos', '🗂️', lang === 'en' ? 'Catalogs' : 'Catálogos']] },
-    { g: t.g_growth, items: [['campanas', '📣', lang === 'en' ? 'Campaigns' : 'Campañas'], ['blog', '📝', 'Blog'], ['seo', '🔎', 'SEO'], ['copytraders', '🏆', 'Onyx Copy'], ['embajadores', '🎁', t.nav_embajadores], ['pagos', '💸', lang === 'en' ? 'Payouts' : 'Pagos y retiros'], ['retencion', '🛟', t.nav_retencion]] },
+    { g: t.g_growth, items: [['campanas', '📣', lang === 'en' ? 'Campaigns' : 'Campañas'], ['blog', '📝', 'Blog'], ['seo', '🔎', 'SEO'], ['copytraders', '🏆', 'Onyx Copy'], ['embajadores', '🎁', t.nav_embajadores], ['pagos', '💸', lang === 'en' ? 'Payouts' : 'Pagos y retiros'], ['antifraude', '🛡️', lang === 'en' ? 'Payments & chargebacks' : 'Pagos & chargebacks'], ['retencion', '🛟', t.nav_retencion]] },
     { g: t.g_sys, items: [['notif', '🔔', lang === 'en' ? 'Notifications' : 'Notificaciones'], ['guias', '📚', lang === 'en' ? 'Guides' : 'Guías'], ['kb', '🧠', t.nav_kb], ['diag', '🩺', t.nav_diag], ['recursos', '📟', lang === 'en' ? 'Resources' : 'Recursos'], ['backups', '🗄️', t.nav_backups], ['audit', '📈', t.nav_audit], ['optim', '🚀', t.nav_optim], ['pruebas', '🧪', t.nav_pruebas], ['ajustes', '⚙️', t.nav_ajustes]] },
   ];
   const groups = NAV_GROUPS.map((gr) => ({ ...gr, items: gr.items.filter(([k]) => canSee(k)) })).filter((gr) => gr.items.length);
@@ -1061,6 +1061,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
             {tab === 'equipo' && <Equipo team={team} role={role} meEmail={meEmail} reload={loadTeam} canManage={role === 'owner' || perms.equipo === 'manage'} />}
             {tab === 'embajadores' && <Ambassadors />}
             {tab === 'pagos' && <PayoutsHub canManage={role === 'owner' || perms.finanzas === 'manage' || perms.embajadores === 'manage'} />}
+            {tab === 'antifraude' && <PayCheck lang={lang} />}
             {tab === 'retencion' && <Retention />}
             {tab === 'pruebas' && <TestConsole meEmail={meEmail} />}
             {tab === 'firms' && <Firms />}
@@ -1136,6 +1137,144 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
         </div>
       </div>
     </>
+  );
+}
+
+// ============================================================
+// Pagos & anti-chargeback: verifica que cada plan/add-on lleve al precio correcto
+// en Stripe, muestra el checklist de protección, un ayudante de prueba de disputa,
+// y la cola de disputas abiertas con botón de enviar evidencia a Stripe.
+// ============================================================
+function PayCheck({ lang }: { lang: string }) {
+  const en = lang === 'en';
+  const [data, setData] = useState<any>(null);
+  const [disputes, setDisputes] = useState<any[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [act, setAct] = useState('');
+
+  async function load() {
+    setBusy(true);
+    try {
+      const [a, b] = await Promise.all([
+        fetch('/api/admin/pay-check').then((r) => r.json()),
+        fetch('/api/admin/evidence?disputes=1').then((r) => r.json()),
+      ]);
+      setData(a); setDisputes(b.rows || []);
+    } catch {}
+    setBusy(false);
+  }
+  useEffect(() => { load(); }, []);
+
+  async function sendEvidence(disputeId: string, submit: boolean) {
+    if (submit && !confirm(en ? 'Send the evidence to Stripe now? This cannot be undone.' : '¿Enviar la evidencia a Stripe ahora? Esto no se puede deshacer.')) return;
+    setAct(disputeId);
+    try {
+      const r = await fetch('/api/admin/evidence', { method: 'POST', body: JSON.stringify({ action: submit ? 'submit' : 'draft', disputeId }) });
+      const j = await r.json();
+      if (!r.ok) { toastErr(j); } else { toast(j.note || 'OK', 'ok'); load(); }
+    } catch { toast(en ? 'Error' : 'Error', 'err'); }
+    setAct('');
+  }
+
+  const tone: Record<string, { bg: string; fg: string; txt: string }> = {
+    ok: { bg: 'rgba(52,199,120,.14)', fg: '#1f9d57', txt: 'OK' },
+    mismatch: { bg: 'rgba(255,159,10,.16)', fg: '#b26a00', txt: en ? 'Price mismatch' : 'Precio no coincide' },
+    missing: { bg: 'rgba(255,159,10,.16)', fg: '#b26a00', txt: en ? 'No Price ID' : 'Sin Price ID' },
+    inactive: { bg: 'rgba(255,159,10,.16)', fg: '#b26a00', txt: en ? 'Inactive' : 'Inactivo' },
+    error: { bg: 'rgba(255,69,58,.16)', fg: '#c62f26', txt: en ? 'Not in Stripe' : 'No existe' },
+  };
+  const Badge = ({ s }: { s: string }) => { const c = tone[s] || tone.ok; return <span className="pill" style={{ background: c.bg, color: c.fg, fontWeight: 700, fontSize: 12 }}>{c.txt}</span>; };
+  const per = (p: string) => p === 'month' ? (en ? 'Monthly' : 'Mensual') : p === 'year' ? (en ? 'Yearly' : 'Anual') : 'Add-on';
+
+  const priceRow = (r: any, i: number) => (
+    <tr key={i} style={{ borderTop: '1px solid var(--line)' }}>
+      <td style={{ padding: '9px 8px', fontWeight: 600 }}>{r.plan}</td>
+      <td style={{ padding: '9px 8px', color: 'var(--mut)', fontSize: 13 }}>{per(r.period)}</td>
+      <td style={{ padding: '9px 8px' }}>${r.appAmount}</td>
+      <td style={{ padding: '9px 8px' }}>{r.stripeAmount != null ? `$${r.stripeAmount} ${r.currency || ''}` : '—'}</td>
+      <td style={{ padding: '9px 8px' }}><Badge s={r.status} />{r.note ? <div className="muted" style={{ fontSize: 11.5, marginTop: 3 }}>{r.note}</div> : null}</td>
+    </tr>
+  );
+
+  const allRows = [...(data?.prices || []), ...(data?.addons || [])];
+  const problems = allRows.filter((r: any) => r.status && r.status !== 'ok').length;
+
+  return (
+    <div>
+      <Head ic="🛡️" t={en ? 'Payments & chargebacks' : 'Pagos & anti-chargeback'} s={en ? 'Check every price against Stripe and defend disputes from one place.' : 'Verifica cada precio contra Stripe y defiende disputas desde un solo lugar.'} />
+
+      <div className="row between" style={{ marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+        <div className="muted" style={{ fontSize: 13 }}>
+          {problems > 0
+            ? (en ? `⚠️ ${problems} price(s) need attention` : `⚠️ ${problems} precio(s) por revisar`)
+            : (data ? (en ? '✅ All prices match Stripe' : '✅ Todos los precios coinciden con Stripe') : '')}
+        </div>
+        <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={load} disabled={busy}>{busy ? '…' : (en ? 'Refresh' : 'Actualizar')}</button>
+      </div>
+
+      {/* Precios de planes y add-ons contra Stripe */}
+      <div className="card" style={{ marginBottom: 14, overflowX: 'auto' }}>
+        <h3 style={{ marginBottom: 8 }}>💳 {en ? 'Prices vs Stripe' : 'Precios vs Stripe'}</h3>
+        {!data ? <p className="muted">{en ? 'Loading…' : 'Cargando…'}</p> : (
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5, minWidth: 520 }}>
+            <thead><tr style={{ textAlign: 'left', color: 'var(--mut)', fontSize: 12 }}>
+              <th style={{ padding: '4px 8px' }}>{en ? 'Item' : 'Concepto'}</th>
+              <th style={{ padding: '4px 8px' }}>{en ? 'Type' : 'Tipo'}</th>
+              <th style={{ padding: '4px 8px' }}>{en ? 'App' : 'App'}</th>
+              <th style={{ padding: '4px 8px' }}>Stripe</th>
+              <th style={{ padding: '4px 8px' }}>{en ? 'Status' : 'Estado'}</th>
+            </tr></thead>
+            <tbody>
+              {(data.prices || []).map(priceRow)}
+              {(data.addons || []).length > 0 && <tr><td colSpan={5} style={{ padding: '10px 8px 2px', fontSize: 12, color: 'var(--mut)', fontWeight: 700 }}>{en ? 'Add-ons' : 'Complementos'}</td></tr>}
+              {(data.addons || []).map(priceRow)}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Checklist de protección */}
+      <div className="card" style={{ marginBottom: 14 }}>
+        <h3 style={{ marginBottom: 8 }}>🔒 {en ? 'Chargeback protection' : 'Protección anti-chargeback'}</h3>
+        <div style={{ display: 'grid', gap: 8 }}>
+          {(data?.checklist || []).map((c: any, i: number) => (
+            <div key={i} className="row" style={{ gap: 10, alignItems: 'flex-start' }}>
+              <span style={{ fontSize: 15, lineHeight: '20px' }}>{c.ok ? '✅' : '⚠️'}</span>
+              <div><div style={{ fontWeight: 600, fontSize: 13.5 }}>{c.label}</div>{c.note ? <div className="muted" style={{ fontSize: 12 }}>{c.note}</div> : null}</div>
+            </div>
+          ))}
+        </div>
+        {data?.testHint ? <p className="muted" style={{ fontSize: 12.5, marginTop: 12, borderTop: '1px solid var(--line)', paddingTop: 10 }}>🧪 {data.testHint}</p> : null}
+      </div>
+
+      {/* Cola de disputas: revisar y enviar evidencia a Stripe */}
+      <div className="card">
+        <h3 style={{ marginBottom: 4 }}>📨 {en ? 'Open disputes' : 'Disputas abiertas'}</h3>
+        <p className="muted" style={{ fontSize: 13, marginBottom: 10 }}>{en ? 'When a customer disputes a charge, the evidence is auto-drafted. Review it and submit to Stripe.' : 'Cuando un cliente reclama un cargo, la evidencia se arma sola. Revísala y envíala a Stripe.'}</p>
+        {disputes.length === 0 ? <p className="muted" style={{ fontSize: 13 }}>{en ? 'No open disputes 🎉' : 'Sin disputas abiertas 🎉'}</p> : (
+          <div style={{ display: 'grid', gap: 10 }}>
+            {disputes.map((d) => (
+              <div key={d.id} style={{ border: '1px solid var(--line)', borderRadius: 10, padding: 12 }}>
+                <div className="row between" style={{ flexWrap: 'wrap', gap: 8 }}>
+                  <div>
+                    <div style={{ fontWeight: 700 }}>{d.product || d.kind}</div>
+                    <div className="muted" style={{ fontSize: 12 }}>{d.email || '—'} · {d.amount != null ? `$${d.amount} ${d.currency}` : ''} · IP {d.ip || '—'}</div>
+                  </div>
+                  <div className="row" style={{ gap: 6 }}>
+                    {d.stripeDisputeUrl && <a className="btn btn-ghost" style={{ fontSize: 12 }} href={d.stripeDisputeUrl} target="_blank" rel="noreferrer">{en ? 'View in Stripe' : 'Ver en Stripe'}</a>}
+                    <button className="btn btn-ghost" style={{ fontSize: 12 }} disabled={act === d.disputeId} onClick={() => sendEvidence(d.disputeId, false)}>{en ? 'Save draft' : 'Guardar borrador'}</button>
+                    <button className="btn btn-primary" style={{ fontSize: 12 }} disabled={act === d.disputeId} onClick={() => sendEvidence(d.disputeId, true)}>{act === d.disputeId ? '…' : (en ? 'Submit evidence' : 'Enviar evidencia')}</button>
+                  </div>
+                </div>
+                <div className="muted" style={{ fontSize: 11.5, marginTop: 8 }}>
+                  {en ? 'Terms' : 'Términos'}: {d.consent ? `✔ ${d.termsVersion || ''}` : '—'} · {en ? 'Deliveries' : 'Entregas'}: {(d.deliveryLog || []).length}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 

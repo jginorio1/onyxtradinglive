@@ -10,7 +10,9 @@ type Lang = 'es' | 'en';
 const T: any = {
   es: { activity: 'Actividad de la cuenta', emails: 'Correos que le envió el sistema', none: 'Sin registros.', noEmails: 'Ningún correo aún.',
     by: 'por', write: 'Escribirle un correo', subj: 'Asunto', body: 'Mensaje', send: 'Enviar correo', sent: 'Correo enviado.', close: 'Cerrar',
-    sentS: 'enviado', failed: 'falló', tabs: ['Actividad', 'Correos', 'Crédito'],
+    sentS: 'enviado', failed: 'falló', tabs: ['Actividad', 'Correos', 'Crédito', 'Compras'],
+    puNone: 'Sin compras registradas.', puTerms: 'Términos', puDeliv: 'Entregas', puView: 'Ver en Stripe', puSubmit: 'Enviar evidencia', puDraft: 'Guardar borrador',
+    puConfirm: '¿Enviar la evidencia a Stripe ahora? No se puede deshacer.', puDisputed: 'EN DISPUTA', puPaid: 'Pagado', puIp: 'IP',
     crT: 'Crédito en su plan', crAvail: 'Crédito disponible ahora', crAmount: 'Monto a añadir (USD)', crNote: 'Nota (obligatoria)',
     crAdd: 'Añadir crédito', crDone: 'Crédito aplicado.', crNote2: 'Se aplica como saldo a favor y se descuenta de su próxima factura. Usa un monto negativo para quitar crédito.',
     crNoteReq: 'La nota es obligatoria.', crConfT: 'Confirmar crédito', crYouCredit: 'Vas a acreditar a', crConfBtn: 'Confirmar y acreditar', crCancel: 'Cancelar', crNoteLbl: 'Nota',
@@ -18,7 +20,9 @@ const T: any = {
     act: { plan: 'Cambió el plan', ban: 'Bloqueó la cuenta', unban: 'Desbloqueó la cuenta', admin: 'Cambió rol de admin', delete_user: 'Eliminó la cuenta', email_user: 'Le envió un correo', self_plan: 'Cambió su propio plan', user_credit: 'Le aplicó crédito' } },
   en: { activity: 'Account activity', emails: 'Emails the system sent them', none: 'No records.', noEmails: 'No emails yet.',
     by: 'by', write: 'Write them an email', subj: 'Subject', body: 'Message', send: 'Send email', sent: 'Email sent.', close: 'Close',
-    sentS: 'sent', failed: 'failed', tabs: ['Activity', 'Emails', 'Credit'],
+    sentS: 'sent', failed: 'failed', tabs: ['Activity', 'Emails', 'Credit', 'Purchases'],
+    puNone: 'No purchases recorded.', puTerms: 'Terms', puDeliv: 'Deliveries', puView: 'View in Stripe', puSubmit: 'Submit evidence', puDraft: 'Save draft',
+    puConfirm: 'Submit the evidence to Stripe now? This cannot be undone.', puDisputed: 'DISPUTED', puPaid: 'Paid', puIp: 'IP',
     crT: 'Credit on their plan', crAvail: 'Credit available now', crAmount: 'Amount to add (USD)', crNote: 'Note (required)',
     crAdd: 'Add credit', crDone: 'Credit applied.', crNote2: 'Applied as account credit, deducted from their next invoice. Use a negative amount to remove credit.',
     crNoteReq: 'The note is required.', crConfT: 'Confirm credit', crYouCredit: 'You will credit', crConfBtn: 'Confirm and credit', crCancel: 'Cancel', crNoteLbl: 'Note',
@@ -38,6 +42,8 @@ export default function UserDrawer({ userId, email, onClose }: { userId: string;
   const [crAmt, setCrAmt] = useState('');
   const [crNote, setCrNote] = useState('');
   const [crConfirm, setCrConfirm] = useState(false); // popup de confirmación
+  const [purchases, setPurchases] = useState<any[] | null>(null); // compras/evidencia
+  const [pAct, setPAct] = useState('');
 
   useEffect(() => {
     load();
@@ -48,7 +54,18 @@ export default function UserDrawer({ userId, email, onClose }: { userId: string;
   }, []);
   async function load() { try { const r = await fetch('/api/admin/user-activity?id=' + userId); setD(await r.json()); } catch { setD({ activity: [], emails: [] }); } }
   async function loadCredit() { try { const r = await fetch('/api/admin/credit?id=' + userId); setCredit(await r.json()); } catch { setCredit({ hasCustomer: false, balance: 0 }); } }
-  useEffect(() => { if (tab === 2 && !credit) loadCredit(); }, [tab]);
+  async function loadPurchases() { try { const r = await fetch('/api/admin/evidence?userId=' + userId); const j = await r.json(); setPurchases(j.rows || []); } catch { setPurchases([]); } }
+  useEffect(() => { if (tab === 2 && !credit) loadCredit(); if (tab === 3 && !purchases) loadPurchases(); }, [tab]);
+
+  // Enviar (o guardar borrador de) la evidencia de una disputa a Stripe.
+  async function sendEvidence(disputeId: string, submit: boolean) {
+    if (submit && !confirm(t.puConfirm)) return;
+    setPAct(disputeId);
+    try {
+      const r = await fetch('/api/admin/evidence', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: submit ? 'submit' : 'draft', disputeId }) });
+      const j = await r.json(); if (!r.ok) { toastErr(j); } else { toast(j.note || 'OK', 'ok'); loadPurchases(); }
+    } finally { setPAct(''); }
+  }
 
   // Paso 1: valida (nota obligatoria) y abre la confirmación.
   function askCredit() {
@@ -150,6 +167,45 @@ export default function UserDrawer({ userId, email, onClose }: { userId: string;
                 <div className="muted" style={{ fontSize: 12, marginTop: 10, lineHeight: 1.5 }}>{t.crNote2}</div>
               </>
             )}
+          </div>
+        )}
+
+        {tab === 3 && (
+          <div className="card">
+            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>🧾 {t.tabs[3]}</div>
+            {!purchases && <div className="muted">…</div>}
+            {purchases && purchases.length === 0 && <div className="muted" style={{ fontSize: 13 }}>{t.puNone}</div>}
+            {(purchases || []).map((p: any) => {
+              const disputed = p.status === 'disputed';
+              return (
+                <div key={p.id} style={{ borderTop: '1px solid var(--line)', padding: '12px 0' }}>
+                  <div className="row between" style={{ gap: 8, flexWrap: 'wrap' }}>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 13.5 }}>{p.product || p.kind}</div>
+                      <div className="muted" style={{ fontSize: 11.5, marginTop: 2 }}>
+                        {p.amount != null ? `$${p.amount} ${p.currency} · ` : ''}{fmtDateTime(p.createdAt, lang)}
+                      </div>
+                    </div>
+                    <span className="pill" style={{ fontSize: 11, fontWeight: 700, background: disputed ? 'rgba(255,69,58,.16)' : 'rgba(52,199,120,.14)', color: disputed ? '#c62f26' : '#1f9d57' }}>
+                      {disputed ? t.puDisputed : t.puPaid}
+                    </span>
+                  </div>
+                  <div className="muted" style={{ fontSize: 11.5, marginTop: 6, lineHeight: 1.6 }}>
+                    {t.puIp}: {p.ip || '—'} · {t.puTerms}: {p.consent ? `✔ ${p.termsVersion || ''}` : '—'} · {t.puDeliv}: {(p.deliveryLog || []).length}
+                  </div>
+                  <div className="row" style={{ gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                    {p.stripePayUrl && <a className="btn btn-ghost" style={{ fontSize: 11.5, padding: '4px 10px' }} href={p.stripePayUrl} target="_blank" rel="noreferrer">Stripe →</a>}
+                    {disputed && (
+                      <>
+                        {p.stripeDisputeUrl && <a className="btn btn-ghost" style={{ fontSize: 11.5, padding: '4px 10px' }} href={p.stripeDisputeUrl} target="_blank" rel="noreferrer">{t.puView}</a>}
+                        <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '4px 10px' }} disabled={pAct === p.disputeId} onClick={() => sendEvidence(p.disputeId, false)}>{t.puDraft}</button>
+                        <button className="btn btn-primary" style={{ fontSize: 11.5, padding: '4px 10px' }} disabled={pAct === p.disputeId} onClick={() => sendEvidence(p.disputeId, true)}>{pAct === p.disputeId ? '…' : t.puSubmit}</button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
 

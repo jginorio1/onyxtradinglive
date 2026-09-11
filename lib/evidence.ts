@@ -81,7 +81,7 @@ export async function logDelivery(a: { userId?: string | null; productId?: strin
 }
 
 // Arma el objeto de evidencia que entiende Stripe a partir de nuestra fila.
-function buildEvidence(row: any) {
+export function buildEvidence(row: any) {
   const deliveries = Array.isArray(row.delivery_log) ? row.delivery_log : [];
   const accessLog = deliveries.length
     ? deliveries.map((d: any) => `${d.at} · ${d.what}${d.ip ? ` · IP ${d.ip}` : ''}`).join('\n')
@@ -103,6 +103,31 @@ function buildEvidence(row: any) {
   };
   Object.keys(evidence).forEach((k) => evidence[k] === undefined && delete evidence[k]);
   return evidence;
+}
+
+// Revisa/actualiza la evidencia de una disputa desde el admin y, si submit=true,
+// la ENVÍA a Stripe (esto ya no se puede deshacer). Devuelve la disputa fresca.
+export async function submitEvidence(disputeId: string, submit: boolean): Promise<{ ok: boolean; note: string; dispute?: any }> {
+  try {
+    if (!disputeId) return { ok: false, note: 'Falta el ID de la disputa.' };
+    const { data: row } = await supabaseAdmin.from('payment_evidence').select('*').eq('dispute_id', disputeId).maybeSingle();
+    let evidence: any = null;
+    if (row) evidence = buildEvidence(row);
+    const upd: any = {};
+    if (evidence) upd.evidence = evidence;
+    if (submit) upd.submit = true;
+    upd.metadata = { onyx: submit ? 'submitted_from_admin' : 'draft_from_admin' };
+    const dispute = await stripe.disputes.update(disputeId, upd);
+    if (row) {
+      await supabaseAdmin.from('payment_evidence').update({
+        status: submit ? 'evidence_submitted' : 'disputed',
+        updated_at: new Date().toISOString(),
+      }).eq('id', (row as any).id);
+    }
+    return { ok: true, note: submit ? 'Evidencia enviada a Stripe.' : 'Borrador de evidencia guardado en Stripe.', dispute };
+  } catch (e: any) {
+    return { ok: false, note: `Stripe: ${e?.message || 'error al enviar la evidencia'}` };
+  }
 }
 
 // Cuando Stripe abre una disputa: encuentra la fila, marca disputada y GUARDA la
