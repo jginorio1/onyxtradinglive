@@ -1,0 +1,431 @@
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { robustnessRun, compareBacktest, type Trade, type Grid } from '@/lib/robustness';
+import { robustnessAudit } from '@/lib/factoryAI';
+import { computeSpace, sampleCandidates, type GenConfig } from '@/lib/stratgen';
+import { randomUUID } from 'crypto';
+
+// ============================================================
+// Onyx Bot Factory · Fase 1
+//  · Nombre automático ÚNICO no editable.
+//  · Validación de calidad de los datos de backtest (veredicto server-side).
+//  · Constructor de robots solo-admin.
+// ============================================================
+
+// -------- Nombre automático único --------
+// Nombres clave (constelaciones + aves rapaces) para robots memorables.
+const CODENAMES = [
+  'Falcon', 'Orion', 'Vega', 'Atlas', 'Nova', 'Lyra', 'Draco', 'Corvus', 'Hydra', 'Phoenix',
+  'Sirius', 'Altair', 'Rigel', 'Pollux', 'Cygnus', 'Aquila', 'Perseus', 'Titan', 'Kraken', 'Osprey',
+  'Halcón', 'Cobra', 'Lynx', 'Raven', 'Vulcan', 'Nebula', 'Comet', 'Pulsar', 'Quasar', 'Zephyr',
+];
+
+// Genera un nombre único ONYX-<Codename>-<###>. El secuencial global garantiza
+// que nunca se repita; se verifica contra la base por si acaso.
+export async function genUniqueName(): Promise<{ name: string; codename: string; seq: number }> {
+  const { data } = await supabaseAdmin.from('factory_bots').select('seq').order('seq', { ascending: false }).limit(1);
+  let seq = (((data || [])[0] as any)?.seq || 0) + 1;
+  for (let i = 0; i < 50; i++) {
+    const codename = CODENAMES[(seq - 1) % CODENAMES.length];
+    const name = `ONYX-${codename}-${String(seq).padStart(3, '0')}`;
+    const { data: hit } = await supabaseAdmin.from('factory_bots').select('id').eq('name', name).maybeSingle();
+    if (!hit) return { name, codename, seq };
+    seq++;
+  }
+  // Respaldo improbable: sufijo aleatorio.
+  const codename = CODENAMES[Math.floor(Math.random() * CODENAMES.length)];
+  return { name: `ONYX-${codename}-${Date.now().toString().slice(-5)}`, codename, seq };
+}
+
+// Magic number automático de 9 dígitos, ÚNICO. En MT4/MT5 el magic es un entero,
+// así que es solo numérico (100000000–999999999). Verifica que no exista ni en la
+// fábrica ni en operaciones ya reportadas, para no chocar con otros robots.
+export async function genUniqueMagic(): Promise<number> {
+  for (let i = 0; i < 60; i++) {
+    const magic = 100000000 + Math.floor(Math.random() * 900000000);
+    let inFactory: any = null, inTrades: any = null;
+    // Si aún no existe la columna magic (falta correr factory_v4.sql), no rompemos:
+    // seguimos comprobando solo contra las operaciones.
+    try { inFactory = (await supabaseAdmin.from('factory_bots').select('id').eq('magic', magic).maybeSingle()).data; } catch {}
+    try { inTrades = (await supabaseAdmin.from('trades').select('id').eq('magic', magic).limit(1).maybeSingle()).data; } catch {}
+    if (!inFactory && !inTrades) return magic;
+  }
+  return 100000000 + (Date.now() % 900000000);
+}
+
+// -------- Validación de calidad de datos --------
+// El cliente parsea el archivo y calcula estas métricas crudas; el veredicto
+// (score + checks) se decide AQUÍ, en el servidor, para que sea confiable.
+export type DataMetrics = {
+  rows: number;            // nº de filas de datos leídas
+  parsed: boolean;         // se pudo interpretar el formato
+  fromMs?: number;         // primer timestamp (ms)
+  toMs?: number;           // último timestamp (ms)
+  outOfOrder?: number;     // filas fuera de orden cronológico
+  duplicates?: number;     // timestamps repetidos
+  gaps?: number;           // huecos intra-mercado sospechosos
+  hasTicks?: boolean;      // true = bid/ask (ticks reales), false = solo OHLC
+  spreadAvgPts?: number;   // spread medio en puntos (si hay ticks)
+  spreadZero?: number;     // nº de ticks con spread 0 (sospechoso)
+  anomalies?: number;      // saltos de precio imposibles
+  truncated?: boolean;     // se leyó una muestra (archivo enorme)
+};
+export type QCheck = { key: string; label: string; status: 'pass' | 'warn' | 'fail'; detail: string };
+export type QResult = { score: number; verdict: 'apta' | 'reservas' | 'rechazada'; checks: QCheck[]; years: number; hasTicks: boolean };
+
+const MIN_YEARS = 3;       // histórico ideal
+const MIN_ROWS = 5000;     // muestra mínima creíble
+
+export function validateMetrics(m: DataMetrics): QResult {
+  const checks: QCheck[] = [];
+  const push = (key: string, label: string, status: QCheck['status'], detail: string) => checks.push({ key, label, status, detail });
+  const years = m.fromMs && m.toMs ? Math.max(0, (m.toMs - m.fromMs) / (365.25 * 86400000)) : 0;
+  const yearsTxt = years >= 0.1 ? years.toFixed(1) + ' años' : '—';
+
+  // No se pudo leer → rechazada de inmediato.
+  if (!m.parsed || !m.rows) {
+    push('parse', 'Lectura del archivo', 'fail', 'No se pudo interpretar el formato (usa CSV de MT4/MT5 con fecha, hora y precios).');
+    return { score: 0, verdict: 'rechazada', checks, years: 0, hasTicks: false };
+  }
+
+  // 1) Cobertura / tamaño de muestra.
+  if (m.rows >= MIN_ROWS * 20) push('rows', 'Cobertura de datos', 'pass', `${m.rows.toLocaleString('en-US')} filas${m.truncated ? ' (muestra)' : ''}`);
+  else if (m.rows >= MIN_ROWS) push('rows', 'Cobertura de datos', 'warn', `${m.rows.toLocaleString('en-US')} filas · algo escaso`);
+  else push('rows', 'Cobertura de datos', 'fail', `Solo ${m.rows.toLocaleString('en-US')} filas · insuficiente`);
+
+  // 2) Ticks reales vs solo barras (el requisito de "todos los ticks").
+  if (m.hasTicks) push('ticks', 'Ticks reales', 'pass', `bid/ask presentes · spread medio ${Math.round(m.spreadAvgPts || 0)} pts`);
+  else push('ticks', 'Ticks reales', 'warn', 'Son barras OHLC, no ticks reales · el modelado es menos fiel');
+
+  // 3) Historial suficiente.
+  if (years >= MIN_YEARS) push('years', 'Historial', 'pass', `${yearsTxt} ≥ mínimo ${MIN_YEARS}`);
+  else if (years >= 1) push('years', 'Historial', 'warn', `${yearsTxt} · poco para validar regímenes`);
+  else push('years', 'Historial', 'fail', `${yearsTxt} · muy corto`);
+
+  // 4) Cronología.
+  const oo = m.outOfOrder || 0;
+  if (oo === 0) push('chrono', 'Cronología', 'pass', 'Orden temporal correcto');
+  else if (oo <= Math.max(5, m.rows * 0.0005)) push('chrono', 'Cronología', 'warn', `${oo} filas fuera de orden`);
+  else push('chrono', 'Cronología', 'fail', `${oo} filas desordenadas · datos corruptos`);
+
+  // 5) Duplicados.
+  const dup = m.duplicates || 0;
+  if (dup === 0) push('dupes', 'Duplicados', 'pass', 'Sin timestamps repetidos');
+  else if (dup <= m.rows * 0.001) push('dupes', 'Duplicados', 'warn', `${dup} repetidos`);
+  else push('dupes', 'Duplicados', 'fail', `${dup} repetidos · limpia el archivo`);
+
+  // 6) Huecos de mercado.
+  const gaps = m.gaps || 0;
+  if (gaps <= 10) push('gaps', 'Huecos de mercado', 'pass', `${gaps} huecos · normal`);
+  else if (gaps <= 60) push('gaps', 'Huecos de mercado', 'warn', `${gaps} huecos · revisa festivos/feed`);
+  else push('gaps', 'Huecos de mercado', 'fail', `${gaps} huecos · faltan datos`);
+
+  // 7) Spread (si hay ticks).
+  if (m.hasTicks) {
+    const z = m.spreadZero || 0;
+    if (z === 0 && (m.spreadAvgPts || 0) > 0) push('spread', 'Spread realista', 'pass', `medio ${Math.round(m.spreadAvgPts || 0)} pts · nunca 0`);
+    else push('spread', 'Spread realista', 'warn', `${z} ticks con spread 0 · optimista`);
+  }
+
+  // 8) Precios anómalos.
+  const an = m.anomalies || 0;
+  if (an === 0) push('anom', 'Sin precios anómalos', 'pass', '0 saltos imposibles');
+  else if (an <= 5) push('anom', 'Sin precios anómalos', 'warn', `${an} saltos raros`);
+  else push('anom', 'Sin precios anómalos', 'fail', `${an} saltos imposibles · datos sucios`);
+
+  // Puntuación: parte de 100 y descuenta por warn/fail.
+  let score = 100;
+  for (const c of checks) score -= c.status === 'fail' ? 26 : c.status === 'warn' ? 9 : 0;
+  score = Math.max(0, Math.min(100, score));
+
+  const hasFail = checks.some((c) => c.status === 'fail');
+  // Sin ticks reales nunca pasa de "reservas" (no cumple "todos los ticks").
+  const capNoTicks = !m.hasTicks;
+  let verdict: QResult['verdict'];
+  if (hasFail || score < 55) verdict = 'rechazada';
+  else if (score >= 80 && !capNoTicks) verdict = 'apta';
+  else verdict = 'reservas';
+
+  return { score, verdict, checks, years: Number(years.toFixed(2)), hasTicks: !!m.hasTicks };
+}
+
+// Guarda un dataset ya validado (con su fuente y las barras OHLC reutilizables).
+// Tolerante: si aún no se corrió factory_v6.sql (faltan columnas), reintenta con
+// el conjunto básico para no bloquear el guardado.
+export async function saveDataset(o: {
+  userId: string; symbol: string; timeframe: string; filename: string; metrics: DataMetrics;
+  source?: string; broker?: string; barsPath?: string; barsUrl?: string; barsTf?: number; barsCount?: number; fileSize?: number;
+  tickPath?: string; tickUrl?: string; tickSize?: number; tickFormat?: string;
+}) {
+  const q = validateMetrics(o.metrics);
+  const fromY = o.metrics.fromMs ? new Date(o.metrics.fromMs).getUTCFullYear() : null;
+  const toY = o.metrics.toMs ? new Date(o.metrics.toMs).getUTCFullYear() : null;
+  const base: any = {
+    symbol: (o.symbol || '').slice(0, 30) || null,
+    timeframe: (o.timeframe || '').slice(0, 12) || null,
+    filename: (o.filename || '').slice(0, 160) || null,
+    years: q.years,
+    from_date: o.metrics.fromMs ? new Date(o.metrics.fromMs).toISOString() : null,
+    to_date: o.metrics.toMs ? new Date(o.metrics.toMs).toISOString() : null,
+    rows: o.metrics.rows || 0,
+    has_ticks: !!o.metrics.hasTicks,
+    quality_score: q.score,
+    verdict: q.verdict,
+    checks: q.checks,
+    metrics: o.metrics,
+    created_by: o.userId,
+  };
+  const extra: any = {
+    source: (o.source || '').slice(0, 40) || null,
+    broker: (o.broker || '').slice(0, 60) || null,
+    data_kind: o.metrics.hasTicks ? 'ticks' : 'bars',
+    from_year: fromY, to_year: toY,
+    bars_path: o.barsPath || null, bars_url: o.barsUrl || null,
+    bars_tf: o.barsTf || null, bars_count: o.barsCount || null,
+    file_size: o.fileSize || null,
+    tick_path: o.tickPath || null, tick_url: o.tickUrl || null,
+    tick_size: o.tickSize || null, tick_format: o.tickFormat || null,
+  };
+  let { data, error } = await supabaseAdmin.from('factory_datasets').insert({ ...base, ...extra }).select('*').single();
+  if (error && /column|schema cache|source|broker|bars_|tick_|data_kind|from_year|to_year|file_size/i.test(error.message || '')) {
+    ({ data, error } = await supabaseAdmin.from('factory_datasets').insert(base).select('*').single());
+  }
+  if (error) throw new Error(error.message);
+  return { dataset: data, quality: q };
+}
+
+export async function listDatasets(limit = 40) {
+  const { data } = await supabaseAdmin.from('factory_datasets').select('*').order('created_at', { ascending: false }).limit(limit);
+  return (data || []) as any[];
+}
+
+// Devuelve un dataset por id (para el Motor/Lab: incluye la URL de las barras).
+export async function getDataset(id: string) {
+  const { data } = await supabaseAdmin.from('factory_datasets').select('*').eq('id', id).maybeSingle();
+  return data as any;
+}
+
+// Borra un dataset y sus barras en Storage.
+export async function deleteDataset(id: string) {
+  const { data } = await supabaseAdmin.from('factory_datasets').select('bars_path,tick_path').eq('id', id).maybeSingle();
+  const paths = [(data as any)?.bars_path, (data as any)?.tick_path].filter(Boolean) as string[];
+  if (paths.length) { try { await supabaseAdmin.storage.from('factory-data').remove(paths); } catch {} }
+  await supabaseAdmin.from('factory_datasets').delete().eq('id', id);
+  return { ok: true };
+}
+
+// -------- Constructor de robots --------
+export async function createBot(o: { userId: string; platform: string; symbol: string; timeframe: string; strategy?: any; datasetId?: string | null; batchId?: string | null; batchNo?: number | null }) {
+  const platform = o.platform === 'mt4' ? 'mt4' : 'mt5';
+  // El robot debe apoyarse en datos aptos (o con reservas), nunca rechazados.
+  if (o.datasetId) {
+    const { data: ds } = await supabaseAdmin.from('factory_datasets').select('verdict').eq('id', o.datasetId).maybeSingle();
+    if (ds && (ds as any).verdict === 'rechazada') throw new Error('Esos datos fueron rechazados por calidad. Sube un dataset apto antes de crear el robot.');
+  }
+  const { name, codename, seq } = await genUniqueName();
+  const magic = await genUniqueMagic();
+  const base: any = {
+    name, codename, seq, platform,
+    symbol: (o.symbol || '').slice(0, 30) || null,
+    timeframe: (o.timeframe || '').slice(0, 12) || null,
+    strategy: o.strategy || {},
+    dataset_id: o.datasetId || null,
+    stage: 'genesis', status: 'draft', health: 'green',
+    created_by: o.userId,
+  };
+  if (o.batchId) base.batch_id = o.batchId;      // trazabilidad del lote (v12)
+  if (o.batchNo != null) base.batch_no = o.batchNo;
+  let { data, error } = await supabaseAdmin.from('factory_bots').insert({ ...base, magic }).select('*').single();
+  // Si la base aún no tiene columnas opcionales (magic/batch_id/batch_no, faltan
+  // factory_v4/v12.sql), reintentamos sin ellas para no bloquear la creación.
+  if (error && /magic|batch_id|batch_no|column/i.test(error.message || '')) {
+    const { batch_id: _bi, batch_no: _bn, ...safe } = base as any;
+    ({ data, error } = await supabaseAdmin.from('factory_bots').insert(safe).select('*').single());
+  }
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function listBots(limit = 100) {
+  const { data } = await supabaseAdmin.from('factory_bots').select('*').order('created_at', { ascending: false }).limit(limit);
+  return (data || []) as any[];
+}
+
+export async function deleteBot(id: string) {
+  await supabaseAdmin.from('factory_bots').delete().eq('id', id);
+  return { ok: true };
+}
+
+// ============================================================
+// Gestor de estrategias (v12): carpetas propias + lotes + acciones en bloque
+// Todo tolerante: si aún no se corrió factory_v12.sql, degrada sin romper.
+// ============================================================
+export async function listFolders(): Promise<any[]> {
+  try { const { data } = await supabaseAdmin.from('factory_folders').select('*').order('created_at', { ascending: true }); return (data || []) as any[]; }
+  catch { return []; }
+}
+export async function createFolder(o: { userId: string; name: string; color?: string }) {
+  const name = (o.name || '').trim().slice(0, 40);
+  if (!name) throw new Error('Escribe un nombre para la carpeta.');
+  // Generamos id/fecha en JS para NO depender de defaults de la BD (gen_random_uuid/now),
+  // que a veces fallan silenciosamente. Así la creación es fiable.
+  const row = { id: randomUUID(), name, color: o.color || '#a06bff', created_by: o.userId, created_at: new Date().toISOString() };
+  let { data, error } = await supabaseAdmin.from('factory_folders').insert(row).select('*').single();
+  // Si created_by no existe (esquema viejo), reintenta sin esa columna.
+  if (error && /created_by|column/i.test(error.message || '')) {
+    ({ data, error } = await supabaseAdmin.from('factory_folders').insert({ id: row.id, name: row.name, color: row.color, created_at: row.created_at }).select('*').single());
+  }
+  if (error) {
+    if (/does not exist|relation|schema cache|could not find the table/i.test(error.message || '')) throw new Error('Falta la tabla de carpetas. Corre supabase/factory_v12.sql en Supabase (revisa que corrió sin error) y recarga.');
+    throw new Error(error.message);
+  }
+  return data;
+}
+export async function deleteFolder(id: string) {
+  await supabaseAdmin.from('factory_bots').update({ folder_id: null }).eq('folder_id', id); // saca los robots, no los borra
+  await supabaseAdmin.from('factory_folders').delete().eq('id', id);
+  return { ok: true };
+}
+export async function moveBots(ids: string[], folderId: string | null) {
+  if (!ids?.length) return { ok: true, moved: 0 };
+  const { error } = await supabaseAdmin.from('factory_bots').update({ folder_id: folderId }).in('id', ids);
+  if (error) throw new Error(error.message);
+  return { ok: true, moved: ids.length };
+}
+export async function bulkDeleteBots(ids: string[]) {
+  if (!ids?.length) return { ok: true, deleted: 0 };
+  await supabaseAdmin.from('factory_bots').delete().in('id', ids);
+  return { ok: true, deleted: ids.length };
+}
+// Marca la ETAPA a mano (borrador→lab→demo→fondeo→real). La etapa se guarda
+// como texto y la tarjeta la lee por palabra clave, así que es simple y directo.
+// Útil sobre todo para «fondeo», que no tiene transición automática.
+const STAGE_MAP: Record<string, string> = { borrador: 'genesis', lab: 'lab', demo: 'demo', fondeo: 'fondeo', real: 'real' };
+export async function setBotStage(ids: string[], target: string) {
+  const stage = STAGE_MAP[String(target || '').toLowerCase()];
+  if (!stage) throw new Error('Etapa no válida.');
+  if (!ids?.length) return { ok: true, moved: 0 };
+  const patch: any = { stage };
+  if (stage === 'real') patch.real_approved = true;         // marca real explícito
+  const { error } = await supabaseAdmin.from('factory_bots').update(patch).in('id', ids);
+  if (error) {
+    // Si real_approved no existe aún, reintenta solo con la etapa.
+    if (/real_approved|column/i.test(error.message || '')) { await supabaseAdmin.from('factory_bots').update({ stage }).in('id', ids); }
+    else throw new Error(error.message);
+  }
+  return { ok: true, moved: ids.length, stage };
+}
+
+// ---- Lotes ----
+export async function listBatches(limit = 60): Promise<any[]> {
+  try { const { data } = await supabaseAdmin.from('factory_batches').select('*').order('created_at', { ascending: false }).limit(limit); return (data || []) as any[]; }
+  catch { return []; }
+}
+export async function createBatch(o: { userId: string; info: any }) {
+  const { data: last } = await supabaseAdmin.from('factory_batches').select('batch_no').order('batch_no', { ascending: false }).limit(1).maybeSingle();
+  const no = (Number((last as any)?.batch_no) || 0) + 1;
+  const i = o.info || {};
+  const { data, error } = await supabaseAdmin.from('factory_batches').insert({
+    id: randomUUID(), created_at: new Date().toISOString(),
+    batch_no: no, created_by: o.userId,
+    dataset_name: i.datasetName || null, symbol: i.symbol || null, timeframe: i.timeframe || null,
+    search_tf: i.searchTf != null ? String(i.searchTf) : null, mode: i.mode || null, recipe: i.recipe || null,
+    oos_pct: i.oosPct || null, risk_pct: i.riskPct || null, n_requested: i.nRequested || null,
+    config: i.config || {},
+  }).select('*').single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+export async function updateBatch(id: string, patch: any) {
+  const p: any = {};
+  for (const k of ['generated', 'accepted', 'created', 'avg_score']) if (patch[k] != null) p[k] = patch[k];
+  if (patch.aiAudited != null) p.ai_audited = !!patch.aiAudited;
+  if (!Object.keys(p).length) return { ok: true };
+  await supabaseAdmin.from('factory_batches').update(p).eq('id', id);
+  return { ok: true };
+}
+
+// ============================================================
+// Laboratorio de robustez (Fase 2)
+// ============================================================
+
+// Ejecuta el laboratorio sobre las operaciones de un backtest, guarda la corrida
+// y refleja el resultado en el robot. Llama a Claude para la interpretación.
+export async function runLab(o: { userId: string; botId: string; trades: Trade[]; grid?: Grid; paramCount?: number; lang?: 'es' | 'en'; noAi?: boolean }) {
+  if (!o.trades || o.trades.length < 20) throw new Error('Sube al menos 20 operaciones cerradas del backtest.');
+  const { data: bot } = await supabaseAdmin.from('factory_bots').select('*').eq('id', o.botId).maybeSingle();
+  if (!bot) throw new Error('Robot no encontrado.');
+  const r = robustnessRun(o.trades, { grid: o.grid, paramCount: o.paramCount });
+  let ai: { audit: string; mutations: string[] } | null = null;
+  // En modo autopiloto saltamos la IA (muchos robots de golpe) para ir rápido.
+  if (!o.noAi) { try { ai = await robustnessAudit(bot, r, o.lang || 'es'); } catch { ai = null; } }
+
+  const { data: run, error } = await supabaseAdmin.from('factory_labruns').insert({
+    bot_id: o.botId, trades: r.trades, net: r.net, pf: r.pf, maxdd: r.maxdd,
+    is_pf: r.isPf, oos_pf: r.oosPf, oos_retention: r.retention, wfo_consistency: r.wfoConsistency,
+    mc_loss_prob: r.mc.lossProb, mc_median_dd: r.mc.medianDD, mc_p95_dd: r.mc.p95DD,
+    sensitivity: r.sensitivity, param_count: r.paramCount, robustness_score: r.score, verdict: r.verdict,
+    flags: r.flags, charts: r.charts, expected: r.expected, ai_audit: ai?.audit || null, mutations: ai?.mutations || [],
+    created_by: o.userId,
+  }).select('*').single();
+  if (error) throw new Error(error.message);
+
+  await supabaseAdmin.from('factory_bots').update({
+    robustness_score: r.score, robustness_verdict: r.verdict, stage: 'lab', lab_at: new Date().toISOString(),
+  }).eq('id', o.botId);
+
+  return { run, robustness: r, ai };
+}
+
+export async function listLabRuns(botId: string, limit = 10) {
+  const { data } = await supabaseAdmin.from('factory_labruns').select('*').eq('bot_id', botId).order('created_at', { ascending: false }).limit(limit);
+  return (data || []) as any[];
+}
+
+// Compara los KPIs del laboratorio con el backtest REAL de MetaTrader.
+export async function compareBt(o: { runId: string; botId: string; mt: any }) {
+  const { data: run } = await supabaseAdmin.from('factory_labruns').select('id,expected').eq('id', o.runId).maybeSingle();
+  if (!run) throw new Error('Corrida no encontrada.');
+  const cmp = compareBacktest((run as any).expected || {}, o.mt || {});
+  await supabaseAdmin.from('factory_labruns').update({ mt_backtest: o.mt, divergence: cmp.divergence }).eq('id', o.runId);
+  await supabaseAdmin.from('factory_bots').update({ bt_divergence: cmp.divergence }).eq('id', o.botId);
+  return cmp;
+}
+
+// Compuerta: pasa el robot a demo si es robusto/moderado y el backtest de
+// MetaTrader se parece al esperado (divergencia baja).
+export async function advanceToDemo(botId: string) {
+  const { data: bot } = await supabaseAdmin.from('factory_bots').select('robustness_verdict,bt_divergence').eq('id', botId).maybeSingle();
+  if (!bot) throw new Error('Robot no encontrado.');
+  const b = bot as any;
+  if (b.robustness_verdict === 'fragil' || b.robustness_verdict == null) throw new Error('El robot debe pasar el laboratorio (robusto o moderado) antes de ir a demo.');
+  if (b.bt_divergence == null) throw new Error('Primero compara con el backtest de MetaTrader.');
+  if (b.bt_divergence > 25) throw new Error('El backtest de MetaTrader no se parece lo suficiente al esperado (divergencia alta). Revisa antes de pasar a demo.');
+  await supabaseAdmin.from('factory_bots').update({ demo_ready: true, stage: 'demo' }).eq('id', botId);
+  return { ok: true };
+}
+
+// ============================================================
+// Generador de estrategias (Fase 4B)
+// ============================================================
+export async function saveGenRun(o: { userId: string; config: GenConfig; n: number }) {
+  const space = computeSpace(o.config);
+  const n = Math.max(1, Math.min(20000, Math.round(o.n) || 1000));
+  const candidates = sampleCandidates(o.config, n);
+  const { data } = await supabaseAdmin.from('factory_genruns').insert({
+    config: o.config, space_size: space, sampled: candidates.length,
+    candidates: candidates.slice(0, 2000), created_by: o.userId,
+  }).select('id,created_at').single();
+  return { id: data?.id, space, sampled: candidates.length, candidates };
+}
+export async function listGenRuns(limit = 15) {
+  const { data } = await supabaseAdmin.from('factory_genruns').select('id,space_size,sampled,config,created_at').order('created_at', { ascending: false }).limit(limit);
+  return (data || []) as any[];
+}
+
+export async function factoryStats() {
+  const [{ count: bots }, { count: datasets }] = await Promise.all([
+    supabaseAdmin.from('factory_bots').select('*', { count: 'exact', head: true }),
+    supabaseAdmin.from('factory_datasets').select('*', { count: 'exact', head: true }),
+  ]);
+  return { bots: bots || 0, datasets: datasets || 0 };
+}
