@@ -450,10 +450,10 @@ export default function CopyClient() {
       {(() => {
         const s1 = accs.length >= 2, s2 = ckeys.some((k) => keyLive(k)), s3 = links.length > 0, s4 = links.length > 0;
         const steps = [
-          { n: 1, t: lang === 'en' ? 'Connect accounts' : 'Conecta cuentas', s: lang === 'en' ? `${accs.length} connected` : `${accs.length} conectadas`, done: s1, to: 'copy-how', bg: 'rgba(55,138,221,.14)', fg: '#185fa5' },
-          { n: 2, t: lang === 'en' ? 'Install slave' : 'Instala esclava', s: lang === 'en' ? 'EA + key' : 'EA + clave', done: s2, to: 'copy-dl', bg: 'rgba(124,140,255,.14)', fg: '#4a44b0' },
-          { n: 3, t: lang === 'en' ? 'Create link' : 'Crea el enlace', s: 'Master → ' + (lang === 'en' ? 'Slave' : 'Esclava'), done: s3, to: 'newlink', bg: 'rgba(255,159,10,.14)', fg: '#b26a00' },
-          { n: 4, t: lang === 'en' ? 'Control' : 'Controla', s: lang === 'en' ? 'Pause · PIN · live' : 'Pausa · PIN · en vivo', done: s4, to: 'copy-ctrl', bg: 'rgba(52,199,120,.14)', fg: '#1f7a4d' },
+          { n: 1, t: lang === 'en' ? 'Connect accounts' : 'Conecta cuentas', s: lang === 'en' ? `${accs.length} connected` : `${accs.length} conectadas`, done: s1, to: 'copy-how', bg: 'rgba(55,138,221,.16)', bd: 'rgba(55,138,221,.45)', fg: '#6fb0ff' },
+          { n: 2, t: lang === 'en' ? 'Install slave' : 'Instala esclava', s: lang === 'en' ? 'EA + key' : 'EA + clave', done: s2, to: 'copy-dl', bg: 'rgba(124,140,255,.16)', bd: 'rgba(124,140,255,.45)', fg: '#a99cff' },
+          { n: 3, t: lang === 'en' ? 'Create link' : 'Crea el enlace', s: 'Master → ' + (lang === 'en' ? 'Slave' : 'Esclava'), done: s3, to: 'newlink', bg: 'rgba(255,159,10,.16)', bd: 'rgba(255,159,10,.45)', fg: '#ffb454' },
+          { n: 4, t: lang === 'en' ? 'Control' : 'Controla', s: lang === 'en' ? 'Pause · PIN · live' : 'Pausa · PIN · en vivo', done: s4, to: 'copy-ctrl', bg: 'rgba(52,199,120,.16)', bd: 'rgba(52,199,120,.45)', fg: '#4ade9a' },
         ];
         const doneCount = steps.filter((x) => x.done).length;
         const go = (id: string) => { const el = document.getElementById(id); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
@@ -464,13 +464,13 @@ export default function CopyClient() {
             </div>
             <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10 }}>
               {steps.map((x) => (
-                <button key={x.n} onClick={() => go(x.to)} style={{ textAlign: 'left', border: 'none', cursor: 'pointer', borderRadius: 12, padding: 13, background: x.bg }}>
+                <button key={x.n} onClick={() => go(x.to)} style={{ textAlign: 'left', cursor: 'pointer', borderRadius: 12, padding: 13, background: x.bg, border: `1px solid ${x.bd}` }}>
                   <div className="row between" style={{ alignItems: 'center' }}>
-                    <span style={{ fontSize: 21, fontWeight: 700, color: x.fg }}>{x.n}</span>
-                    {x.done ? <span style={{ color: 'var(--green)', fontSize: 17 }}>✓</span> : <span style={{ fontSize: 12, color: x.fg, opacity: .7 }}>→</span>}
+                    <span style={{ fontSize: 21, fontWeight: 800, color: x.fg }}>{x.n}</span>
+                    {x.done ? <span style={{ color: 'var(--green)', fontSize: 17 }}>✓</span> : <span style={{ fontSize: 13, color: x.fg }}>→</span>}
                   </div>
-                  <div style={{ fontWeight: 600, marginTop: 5, color: x.fg, fontSize: 13.5 }}>{x.t}</div>
-                  <div style={{ fontSize: 11.5, color: x.fg, opacity: .85 }}>{x.s}</div>
+                  <div style={{ fontWeight: 700, marginTop: 5, color: 'var(--tx)', fontSize: 13.5 }}>{x.t}</div>
+                  <div style={{ fontSize: 11.5, color: 'var(--mut)' }}>{x.s}</div>
                 </button>
               ))}
             </div>
@@ -736,9 +736,9 @@ export default function CopyClient() {
             const cc = log.filter((e) => e.kind === 'copied').length, sc = log.filter((e) => e.kind === 'skipped').length, ec = log.filter((e) => e.kind !== 'copied' && e.kind !== 'skipped').length;
             return (
               <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-                <span className="pill" style={{ fontSize: 10.5, color: 'var(--green)', background: 'rgba(52,199,120,.14)' }}>{cc} {t.kcopied}</span>
-                <span className="pill" style={{ fontSize: 10.5, color: 'var(--amber)', background: 'rgba(255,159,10,.14)' }}>{sc} {t.kskipped}</span>
-                <span className="pill" style={{ fontSize: 10.5, color: 'var(--red)', background: 'rgba(255,69,58,.14)' }}>{ec} {t.kerror}</span>
+                <span className="pill" style={{ fontSize: 10.5, color: 'var(--green)', background: 'rgba(52,199,120,.16)' }}>{cc} {t.kcopied}</span>
+                <span className="pill" style={{ fontSize: 10.5, color: 'var(--amber)', background: 'rgba(255,159,10,.16)' }}>{sc} {t.kskipped}</span>
+                <span className="pill" style={{ fontSize: 10.5, color: 'var(--red)', background: 'rgba(255,69,58,.16)' }}>{ec} {t.kerror}</span>
               </div>
             );
           })()}
