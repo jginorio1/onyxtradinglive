@@ -37,6 +37,7 @@ export async function GET(req: Request) {
       termsVersion: r.terms_version,
       termsAcceptedAt: r.terms_accepted_at,
       status: r.status,
+      dueBy: r.due_by || null,
       paymentIntent: r.payment_intent,
       chargeId: r.charge_id,
       disputeId: r.dispute_id,

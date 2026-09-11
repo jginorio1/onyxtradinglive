@@ -29,6 +29,7 @@
     { "path": "/api/cron/botlab-payouts", "schedule": "0 10 * * *" },
     { "path": "/api/cron/copy-score", "schedule": "0 6 * * *" },
     { "path": "/api/cron/copy-perf", "schedule": "0 7 1 * *" },
-    { "path": "/api/cron/factory-pipeline", "schedule": "0 4 * * *" }
+    { "path": "/api/cron/factory-pipeline", "schedule": "0 4 * * *" },
+    { "path": "/api/cron/dispute-autosubmit", "schedule": "0 11 * * *" }
   ]
 }

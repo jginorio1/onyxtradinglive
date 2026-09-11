@@ -6,6 +6,7 @@
 // ============================================================
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { stripe } from '@/lib/stripe';
+import { disputeConfig } from '@/lib/settings';
 
 export const TERMS_VERSION = (process.env.TERMS_VERSION || '2026-01').trim();
 
@@ -130,6 +131,36 @@ export async function submitEvidence(disputeId: string, submit: boolean): Promis
   }
 }
 
+// Respaldo automático (lo llama un cron diario): para cada disputa cuyo plazo
+// esté por vencer y que TÚ no hayas enviado, comprueba en Stripe que sigue
+// esperando respuesta y envía la evidencia armada. Devuelve un resumen.
+export async function autoSubmitDueDisputes(): Promise<{ checked: number; submitted: number; notes: string[] }> {
+  const notes: string[] = [];
+  let checked = 0, submitted = 0;
+  try {
+    const cfg = await disputeConfig();
+    if (!cfg.auto_submit) return { checked: 0, submitted: 0, notes: ['Respaldo automático desactivado.'] };
+    const days = Math.max(0, Math.min(30, Number(cfg.days_before) || 2));
+    const limit = new Date(Date.now() + days * 864e5).toISOString();
+    // Disputas todavía abiertas (no enviadas) con fecha límite dentro de la ventana.
+    const { data } = await supabaseAdmin.from('payment_evidence')
+      .select('id,dispute_id,due_by,status').eq('status', 'disputed')
+      .not('dispute_id', 'is', null).not('due_by', 'is', null).lte('due_by', limit);
+    for (const row of (data || []) as any[]) {
+      checked++;
+      try {
+        // Confirmar con Stripe que sigue necesitando respuesta (no resuelta ni ya enviada).
+        const d: any = await stripe.disputes.retrieve(row.dispute_id);
+        if (d.status !== 'needs_response') { notes.push(`${row.dispute_id}: estado ${d.status}, se omite.`); continue; }
+        const r = await submitEvidence(row.dispute_id, true);
+        if (r.ok) { submitted++; notes.push(`${row.dispute_id}: evidencia enviada (respaldo).`); }
+        else notes.push(`${row.dispute_id}: ${r.note}`);
+      } catch (e: any) { notes.push(`${row.dispute_id}: error ${e?.message || ''}`); }
+    }
+  } catch (e: any) { notes.push(`error general: ${e?.message || ''}`); }
+  return { checked, submitted, notes };
+}
+
 // Cuando Stripe abre una disputa: encuentra la fila, marca disputada y GUARDA la
 // evidencia como borrador (sin enviar) para que la revises y envíes tú. Devuelve
 // un resumen para avisarte. Nunca lanza.
@@ -141,7 +172,8 @@ export async function handleDispute(dispute: any): Promise<{ ok: boolean; note: 
     if (pi) { const { data } = await supabaseAdmin.from('payment_evidence').select('*').eq('payment_intent', pi).maybeSingle(); row = data; }
     if (!row && ch) { const { data } = await supabaseAdmin.from('payment_evidence').select('*').eq('charge_id', ch).maybeSingle(); row = data; }
     if (row) {
-      await supabaseAdmin.from('payment_evidence').update({ status: 'disputed', dispute_id: dispute.id, updated_at: new Date().toISOString() }).eq('id', row.id);
+      const dueBy = dispute.evidence_details?.due_by ? new Date(dispute.evidence_details.due_by * 1000).toISOString() : null;
+      await supabaseAdmin.from('payment_evidence').update({ status: 'disputed', dispute_id: dispute.id, due_by: dueBy, updated_at: new Date().toISOString() }).eq('id', row.id);
       // Guardamos la evidencia como BORRADOR (submit lo haces tú en Stripe tras revisar).
       try { await stripe.disputes.update(dispute.id, { evidence: buildEvidence(row), metadata: { onyx: 'auto_evidence' } } as any); } catch {}
       return { ok: true, note: `Disputa ${dispute.id} por ${(dispute.amount || 0) / 100} ${(dispute.currency || 'usd').toUpperCase()}. Evidencia guardada como borrador en Stripe; revísala y envíala antes de ${dispute.evidence_details?.due_by ? new Date(dispute.evidence_details.due_by * 1000).toISOString().slice(0, 10) : 'la fecha límite'}.` };

@@ -186,9 +186,12 @@ export default function UserDrawer({ userId, email, onClose }: { userId: string;
                         {p.amount != null ? `$${p.amount} ${p.currency} · ` : ''}{fmtDateTime(p.createdAt, lang)}
                       </div>
                     </div>
-                    <span className="pill" style={{ fontSize: 11, fontWeight: 700, background: disputed ? 'rgba(255,69,58,.16)' : 'rgba(52,199,120,.14)', color: disputed ? '#c62f26' : '#1f9d57' }}>
-                      {disputed ? t.puDisputed : t.puPaid}
-                    </span>
+                    <div className="row" style={{ gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                      {disputed && p.dueBy && (() => { const n = Math.ceil((new Date(p.dueBy).getTime() - Date.now()) / 864e5); const u = n <= 3; return <span className="pill" style={{ fontSize: 10.5, fontWeight: 700, background: u ? 'rgba(255,69,58,.16)' : 'rgba(255,159,10,.16)', color: u ? '#c62f26' : '#b26a00' }}>⏳ {n < 0 ? (lang === 'en' ? 'Overdue' : 'Vencido') : n === 0 ? (lang === 'en' ? 'Today' : 'Hoy') : (lang === 'en' ? `${n}d` : `${n}d`)}</span>; })()}
+                      <span className="pill" style={{ fontSize: 11, fontWeight: 700, background: disputed ? 'rgba(255,69,58,.16)' : 'rgba(52,199,120,.14)', color: disputed ? '#c62f26' : '#1f9d57' }}>
+                        {disputed ? t.puDisputed : t.puPaid}
+                      </span>
+                    </div>
                   </div>
                   <div className="muted" style={{ fontSize: 11.5, marginTop: 6, lineHeight: 1.6 }}>
                     {t.puIp}: {p.ip || '—'} · {t.puTerms}: {p.consent ? `✔ ${p.termsVersion || ''}` : '—'} · {t.puDeliv}: {(p.deliveryLog || []).length}

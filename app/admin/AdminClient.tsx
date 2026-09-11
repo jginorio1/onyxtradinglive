@@ -1152,19 +1152,37 @@ function PayCheck({ lang }: { lang: string }) {
   const [disputes, setDisputes] = useState<any[]>([]);
   const [busy, setBusy] = useState(false);
   const [act, setAct] = useState('');
+  const [cfg, setCfg] = useState<any>(null);
+  const [cfgBusy, setCfgBusy] = useState(false);
 
   async function load() {
     setBusy(true);
     try {
-      const [a, b] = await Promise.all([
+      const [a, b, c] = await Promise.all([
         fetch('/api/admin/pay-check').then((r) => r.json()),
         fetch('/api/admin/evidence?disputes=1').then((r) => r.json()),
+        fetch('/api/admin/dispute-config').then((r) => r.json()).catch(() => ({})),
       ]);
-      setData(a); setDisputes(b.rows || []);
+      setData(a); setDisputes(b.rows || []); if (c?.config) setCfg(c.config);
     } catch {}
     setBusy(false);
   }
   useEffect(() => { load(); }, []);
+
+  async function saveCfg(next: any) {
+    setCfg(next); setCfgBusy(true);
+    try { const j = await (await fetch('/api/admin/dispute-config', { method: 'POST', body: JSON.stringify(next) })).json(); if (j.config) setCfg(j.config); } catch {}
+    setCfgBusy(false);
+  }
+  // Días restantes hasta la fecha límite de la disputa (para la cuenta regresiva).
+  function daysLeft(dueBy: string | null): { n: number; label: string; urgent: boolean } | null {
+    if (!dueBy) return null;
+    const ms = new Date(dueBy).getTime() - Date.now();
+    const n = Math.ceil(ms / 864e5);
+    if (n < 0) return { n, label: en ? 'Plazo vencido' : 'Plazo vencido', urgent: true };
+    if (n === 0) return { n, label: en ? 'Vence hoy' : 'Vence hoy', urgent: true };
+    return { n, label: en ? `${n} day(s) left` : `Faltan ${n} día(s)`, urgent: n <= 3 };
+  }
 
   async function sendEvidence(disputeId: string, submit: boolean) {
     if (submit && !confirm(en ? 'Send the evidence to Stripe now? This cannot be undone.' : '¿Enviar la evidencia a Stripe ahora? Esto no se puede deshacer.')) return;
@@ -1267,11 +1285,33 @@ function PayCheck({ lang }: { lang: string }) {
                     <button className="btn btn-primary" style={{ fontSize: 12 }} disabled={act === d.disputeId} onClick={() => sendEvidence(d.disputeId, true)}>{act === d.disputeId ? '…' : (en ? 'Submit evidence' : 'Enviar evidencia')}</button>
                   </div>
                 </div>
-                <div className="muted" style={{ fontSize: 11.5, marginTop: 8 }}>
-                  {en ? 'Terms' : 'Términos'}: {d.consent ? `✔ ${d.termsVersion || ''}` : '—'} · {en ? 'Deliveries' : 'Entregas'}: {(d.deliveryLog || []).length}
+                <div className="row" style={{ gap: 8, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
+                  {(() => { const dl = daysLeft(d.dueBy); return dl ? <span className="pill" style={{ fontSize: 11, fontWeight: 700, background: dl.urgent ? 'rgba(255,69,58,.16)' : 'rgba(255,159,10,.16)', color: dl.urgent ? '#c62f26' : '#b26a00' }}>⏳ {dl.label}</span> : null; })()}
+                  <span className="muted" style={{ fontSize: 11.5 }}>
+                    {en ? 'Terms' : 'Términos'}: {d.consent ? `✔ ${d.termsVersion || ''}` : '—'} · {en ? 'Deliveries' : 'Entregas'}: {(d.deliveryLog || []).length}
+                  </span>
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {cfg && (
+          <div className="card" style={{ marginTop: 14 }}>
+            <h3 style={{ marginBottom: 4 }}>🛟 {en ? 'Auto-submit safety net' : 'Respaldo automático'}</h3>
+            <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>
+              {en ? 'If you don\'t review a dispute in time, the system submits the built evidence to Stripe on its own, a few days before the deadline. So you never miss the window.'
+                  : 'Si no revisas una disputa a tiempo, el sistema envía la evidencia armada a Stripe solo, unos días antes del plazo. Así nunca se te pasa la fecha.'}
+            </p>
+            <label className="row" style={{ gap: 8, cursor: 'pointer', marginBottom: 10 }}>
+              <input type="checkbox" checked={cfg.auto_submit !== false} disabled={cfgBusy} onChange={(e) => saveCfg({ ...cfg, auto_submit: e.target.checked })} style={{ width: 'auto', margin: 0 }} />
+              <span style={{ fontSize: 13.5 }}>{en ? 'Enable auto-submit safety net' : 'Activar respaldo automático'}</span>
+            </label>
+            <div className="row" style={{ gap: 8, alignItems: 'center', opacity: cfg.auto_submit === false ? 0.5 : 1 }}>
+              <span style={{ fontSize: 12, color: 'var(--mut)' }}>{en ? 'Submit this many days before the deadline:' : 'Enviar tantos días antes del plazo:'}</span>
+              <input type="number" min={0} max={30} value={cfg.days_before ?? 2} disabled={cfgBusy || cfg.auto_submit === false} onChange={(e) => setCfg({ ...cfg, days_before: Number(e.target.value) })} onBlur={() => saveCfg(cfg)} style={{ margin: 0, width: 70 }} />
+            </div>
+            <p className="muted" style={{ fontSize: 11.5, marginTop: 10 }}>{en ? 'Runs daily. Only submits disputes still awaiting response that you haven\'t sent yourself.' : 'Corre a diario. Solo envía disputas que sigan esperando respuesta y que tú no hayas enviado.'}</p>
           </div>
         )}
       </div>

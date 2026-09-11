@@ -74,6 +74,11 @@ export async function mailRoutes(): Promise<MailRoutes> {
   };
   return getSetting<MailRoutes>('email_routes', def);
 }
+// Respaldo automático de disputas: si no revisas la evidencia, el sistema la
+// envía sola N días antes de la fecha límite (para no perder el plazo).
+export type DisputeConfig = { auto_submit: boolean; days_before: number };
+export const disputeConfig = () => getSetting<DisputeConfig>('dispute_autosubmit', { auto_submit: true, days_before: 2 });
+
 // Remitente "Nombre <dirección>" a partir de la config de rutas.
 export function fromLine(r: { from_name: string; from_addr: string }): string {
   const name = String(r.from_name || 'Onyx Trading Live').replace(/[<>"]/g, '').trim().slice(0, 60) || 'Onyx Trading Live';
