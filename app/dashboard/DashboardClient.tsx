@@ -1,9 +1,9 @@
 'use client';
 import { dictFor } from '@/lib/i18n';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, Fragment } from 'react';
 import { useLang } from '@/lib/lang';
 import Link from 'next/link';
-import { analyze, bestOf, worstOf, topPairs, fmtDur, type T, type Bucket } from '@/lib/analytics';
+import { analyze, bestOf, worstOf, topPairs, fmtDur, perfBreakdown, HOLD_BINS_LABELS, R_BINS_LABELS, type T, type Bucket, type KRow } from '@/lib/analytics';
 import dynamic from 'next/dynamic';
 import { typeMeta } from '@/lib/accountMeta';
 import { Ring, MiniArea, MiniDonut, MiniBars, MiniHeat, RadarChart, Bubbles, healthScore } from './Modern';
@@ -126,6 +126,14 @@ const D = {
     fundTitle: '🏆 Reglas de fondeo', fundEdit: '⚙️ Configurar reglas', fundHide: 'Ocultar', fundTarget: 'Objetivo de fondeo ($)', fundMaxDaily: 'Pérdida diaria máx ($)', fundMaxTotal: 'Pérdida total máx ($)', fundStart: 'Balance inicial ($)', fundSave: 'Guardar reglas', fundProfitBar: 'Progreso al objetivo de fondeo', fundDDBar: 'Uso de pérdida máxima', fundHint: 'El profit que te pide tu cuenta de fondeo.',
     ranges: { d1: 'Hoy', d7: '7d', d30: '30d', mo: 'Mes', yr: 'Año', all: 'Todo' },
     radarTitle: 'Perfil del trader', bubbleTitle: 'Pares · volumen y resultado', rWR: 'Win rate', rPF: 'P. factor', rPayoff: 'Payoff', rConsist: 'Consistencia', rRisk: 'Riesgo', demo: 'Demo', demoOn: '🎬 Viendo datos de ejemplo (no reales)', customRange: 'Rango de fechas', from: 'Desde', to: 'Hasta',
+    segBy: 'Ver por', segAll: 'Todos', segAsset: 'Activo', segRobot: 'Robot', segClear: '✕ Quitar filtro', segShowing: 'Filtrado',
+    byAssetTitle: 'Rendimiento por activo', byAssetSub: 'KPIs por símbolo · toca para ver cada robot', robotsWord: 'robots', noBots: 'Tu EA aún no envía el magic del robot, así que no puedo separar por robot.',
+    thAsset: 'Activo', thNet: 'Neto', thWin: 'Win', thPF: 'PF', thExp: 'Expect.', thOps: 'Ops', thLot: 'Lote', thBest: 'Mejor', thWorst: 'Peor',
+    styleTitle: 'Enfoque por estilo', styleAll: 'General', styleScalp: 'Scalper', styleIntra: 'Intradía', styleSwing: 'Swing', styleAlgo: 'Algo/Robots', styleProp: 'Prop firm',
+    rTitle: 'Distribución en R', rSub: 'R aprox.: tu pérdida media = 1R', rExpL: 'Expectativa', rNoData: 'Necesito al menos 5 operaciones con pérdidas para estimar la R.',
+    holdTitle: 'Tiempo en operación', holdSub: '¿Cuánto aguantas cada trade?', holdAvg: 'Media',
+    heatTitle: 'Mapa de calor · hora × día', heatSub: 'Verde ganas, rojo pierdes · por hora de apertura (UTC)',
+    propTitle: 'Consistencia (prop firm)', propBig: 'Mayor día', propRatio: 'Mayor día vs total', propDays: 'Días operados', propDD: 'Uso de pérdida máx total', propDaily: 'Peor día vs límite diario', propGood: 'Parejo', propWarn: 'Concentrado', propHint: 'Muchas prop firms exigen que ningún día supere ~X% de tu ganancia total.', propNoRule: 'Define las reglas de tu cuenta de fondeo para ver el uso de límites.',
     proLockT: 'Función Pro', proLockD: 'Mejora tu plan para desbloquear esta sección.', proLockCta: 'Ver planes →', histCap: '🔒 En el plan Free ves solo los últimos 30 días. Desbloquea tu historial completo con Pro.', available: 'Disponible en', upgradeTo: 'Mejorar a', perMo: 'mes', dLock1: 'Diario con fotos, notas y etiquetas por operación.', dLock2: 'Compara tus cuentas lado a lado.', dLock3: 'Reglas de fondeo, retiros y documentos de la cuenta.',
   },
   en: {
@@ -157,6 +165,14 @@ const D = {
     fundTitle: '🏆 Prop-firm rules', fundEdit: '⚙️ Set rules', fundHide: 'Hide', fundTarget: 'Prop-firm target ($)', fundMaxDaily: 'Max daily loss ($)', fundMaxTotal: 'Max total loss ($)', fundStart: 'Starting balance ($)', fundSave: 'Save rules', fundProfitBar: 'Progress to prop-firm target', fundDDBar: 'Max loss used', fundHint: 'The profit your prop firm requires.',
     ranges: { d1: 'Today', d7: '7d', d30: '30d', mo: 'Month', yr: 'Year', all: 'All' },
     radarTitle: 'Trader profile', bubbleTitle: 'Pairs · volume and result', rWR: 'Win rate', rPF: 'P. factor', rPayoff: 'Payoff', rConsist: 'Consistency', rRisk: 'Risk', demo: 'Demo', demoOn: '🎬 Viewing example data (not real)', customRange: 'Date range', from: 'From', to: 'To',
+    segBy: 'View by', segAll: 'All', segAsset: 'Asset', segRobot: 'Robot', segClear: '✕ Clear filter', segShowing: 'Filtered',
+    byAssetTitle: 'Performance by asset', byAssetSub: 'KPIs per symbol · tap to see each robot', robotsWord: 'robots', noBots: 'Your EA is not sending the robot magic yet, so I can’t split by robot.',
+    thAsset: 'Asset', thNet: 'Net', thWin: 'Win', thPF: 'PF', thExp: 'Expect.', thOps: 'Ops', thLot: 'Lot', thBest: 'Best', thWorst: 'Worst',
+    styleTitle: 'Focus by style', styleAll: 'General', styleScalp: 'Scalper', styleIntra: 'Intraday', styleSwing: 'Swing', styleAlgo: 'Algo/Robots', styleProp: 'Prop firm',
+    rTitle: 'R distribution', rSub: 'Approx R: your avg loss = 1R', rExpL: 'Expectancy', rNoData: 'I need at least 5 losing trades to estimate R.',
+    holdTitle: 'Time in trade', holdSub: 'How long do you hold each trade?', holdAvg: 'Avg',
+    heatTitle: 'Heatmap · hour × day', heatSub: 'Green wins, red loses · by entry hour (UTC)',
+    propTitle: 'Consistency (prop firm)', propBig: 'Biggest day', propRatio: 'Biggest day vs total', propDays: 'Days traded', propDD: 'Max total loss used', propDaily: 'Worst day vs daily limit', propGood: 'Even', propWarn: 'Concentrated', propHint: 'Many prop firms require no single day above ~X% of total profit.', propNoRule: 'Set your prop-firm rules to see limit usage.',
     proLockT: 'Pro feature', proLockD: 'Upgrade your plan to unlock this section.', proLockCta: 'See plans →', histCap: '🔒 On the Free plan you see only the last 30 days. Unlock your full history with Pro.', available: 'Available in', upgradeTo: 'Upgrade to', perMo: 'mo', dLock1: 'Trade journal with photos, notes and tags.', dLock2: 'Compare your accounts side by side.', dLock3: 'Funding rules, payouts and account documents.',
   },
 } as const;
@@ -182,6 +198,171 @@ function Card({ title, icon, children, right }: any) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
         <h3 style={{ display: 'flex', alignItems: 'center', gap: 9 }}>{icon ? <span className="card-ic">{typeof icon === 'string' ? <OnyxIcon emoji={icon} size={16} /> : icon}</span> : null} {title}</h3>{right}
       </div>{children}
+    </div>
+  );
+}
+
+// ---------- Rendimiento pro: filtro, tabla por activo y estadística ampliada ----------
+const clr = (v: number) => (v >= 0 ? GREEN : RED);
+const pfTxt = (v: number) => (v >= 999 ? '∞' : v.toFixed(2));
+// Orden de las tarjetas nuevas según el estilo del trader.
+const STYLE_ORDER: Record<string, string[]> = {
+  all: ['assets', 'r', 'hold', 'heat', 'prop'],
+  scalp: ['heat', 'hold', 'assets', 'r', 'prop'],
+  intra: ['heat', 'assets', 'hold', 'r', 'prop'],
+  swing: ['hold', 'assets', 'r', 'heat', 'prop'],
+  algo: ['assets', 'r', 'prop', 'heat', 'hold'],
+  prop: ['prop', 'assets', 'r', 'hold', 'heat'],
+};
+function chipStyle(active: boolean) {
+  return {
+    padding: '4px 12px', borderRadius: 999, fontSize: 12.5, cursor: 'pointer', whiteSpace: 'nowrap',
+    border: '1px solid ' + (active ? 'var(--brand)' : 'var(--line)'),
+    background: active ? 'rgba(124,140,255,.16)' : 'transparent',
+    color: active ? 'var(--soft-brand)' : 'var(--mut)', fontWeight: active ? 600 : 400,
+  } as any;
+}
+function SegBar({ bk, L, segSym, segBot, setSeg }: { bk: ReturnType<typeof perfBreakdown>; L: any; segSym: string; segBot: string; setSeg: (s: string, b: string) => void }) {
+  const assets = bk.symbols.slice(0, 8);
+  const robots = bk.robots.slice(0, 8);
+  const filtered = !!(segSym || segBot);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, margin: '2px 0 8px' }}>
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 12, color: 'var(--mut)', marginRight: 2 }}>{L.segAsset}:</span>
+        <button style={chipStyle(!segSym)} onClick={() => setSeg('', segBot)}>{L.segAll}</button>
+        {assets.map((s) => <button key={s.key} style={chipStyle(segSym === s.key)} onClick={() => setSeg(segSym === s.key ? '' : s.key, segBot)}>{s.key}</button>)}
+      </div>
+      {robots.length > 0 && (
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 12, color: 'var(--mut)', marginRight: 2 }}>{L.segRobot}:</span>
+          <button style={chipStyle(!segBot)} onClick={() => setSeg(segSym, '')}>{L.segAll}</button>
+          {robots.map((r) => <button key={r.key} style={chipStyle(segBot === r.key)} onClick={() => setSeg(segSym, segBot === r.key ? '' : r.key)} title={`${money(r.net)} · ${r.ops}`}>{r.label}</button>)}
+        </div>
+      )}
+      {filtered && <button style={{ ...chipStyle(false), alignSelf: 'flex-start', color: 'var(--red)', borderColor: 'var(--red)' }} onClick={() => setSeg('', '')}>{L.segClear}</button>}
+    </div>
+  );
+}
+function StyleBar({ L, style, setStyle }: { L: any; style: string; setStyle: (s: string) => void }) {
+  const items: [string, string][] = [['all', L.styleAll], ['scalp', L.styleScalp], ['intra', L.styleIntra], ['swing', L.styleSwing], ['algo', L.styleAlgo], ['prop', L.styleProp]];
+  return (
+    <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', margin: '2px 0 6px' }}>
+      <span style={{ fontSize: 12, color: 'var(--mut)', marginRight: 2 }}>{L.styleTitle}:</span>
+      {items.map(([k, lbl]) => <button key={k} style={chipStyle(style === k)} onClick={() => setStyle(k)}>{lbl}</button>)}
+    </div>
+  );
+}
+function KpiCells({ r }: { r: KRow }) {
+  return (<>
+    <td style={{ textAlign: 'right', color: clr(r.net), fontWeight: 600, padding: '7px 6px' }}>{money(r.net)}</td>
+    <td style={{ textAlign: 'right', padding: '7px 6px' }}>{Math.round(r.winRate)}%</td>
+    <td style={{ textAlign: 'right', padding: '7px 6px' }}>{pfTxt(r.pf)}</td>
+    <td style={{ textAlign: 'right', color: clr(r.expectancy), padding: '7px 6px' }}>{money2(r.expectancy)}</td>
+    <td style={{ textAlign: 'right', padding: '7px 6px' }}>{r.ops}</td>
+    <td className="perf-hidem" style={{ textAlign: 'right', color: 'var(--mut)', padding: '7px 6px' }}>{r.avgVol.toFixed(2)}</td>
+  </>);
+}
+function PerfAssets({ bk, L, onPick }: { bk: ReturnType<typeof perfBreakdown>; L: any; onPick: (sym: string, bot: string) => void }) {
+  const [open, setOpen] = useState<Record<string, boolean>>({});
+  if (!bk.assets.length) return <p className="muted" style={{ fontSize: 13, margin: 0 }}>{L.noData}</p>;
+  return (
+    <div style={{ overflowX: 'auto' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 500 }}>
+        <thead>
+          <tr style={{ color: 'var(--mut)', fontSize: 11, textAlign: 'right' }}>
+            <th style={{ textAlign: 'left', padding: '4px 6px' }}>{L.thAsset}</th>
+            <th style={{ padding: '4px 6px' }}>{L.thNet}</th><th style={{ padding: '4px 6px' }}>{L.thWin}</th><th style={{ padding: '4px 6px' }}>{L.thPF}</th><th style={{ padding: '4px 6px' }}>{L.thExp}</th><th style={{ padding: '4px 6px' }}>{L.thOps}</th><th className="perf-hidem" style={{ padding: '4px 6px' }}>{L.thLot}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {bk.assets.map((as) => {
+            const canDrill = as.robots.some((r) => r.key);
+            const isOpen = !!open[as.key];
+            return (
+              <Fragment key={as.key}>
+                <tr style={{ borderTop: '0.5px solid var(--line)', cursor: 'pointer' }}>
+                  <td style={{ padding: '7px 6px', fontWeight: 600 }} onClick={() => { if (canDrill) setOpen((o) => ({ ...o, [as.key]: !isOpen })); else onPick(as.key, ''); }}>
+                    <span style={{ color: 'var(--mut)', marginRight: 6, fontSize: 11, display: 'inline-block', width: 10 }}>{canDrill ? (isOpen ? '▾' : '▸') : ''}</span>
+                    <span style={{ color: 'var(--brand)' }} onClick={(e) => { e.stopPropagation(); onPick(as.key, ''); }}>{as.label}</span>
+                    {as.multiBot && <span style={{ marginLeft: 6, fontSize: 10, color: 'var(--mut)' }}>· {as.robots.filter((r) => r.key).length} {L.robotsWord}</span>}
+                  </td>
+                  <KpiCells r={as} />
+                </tr>
+                {isOpen && as.robots.map((r) => (
+                  <tr key={as.key + '|' + r.key} style={{ background: 'rgba(124,140,255,.05)', cursor: 'pointer' }} onClick={() => onPick(as.key, r.key)}>
+                    <td style={{ padding: '5px 6px 5px 22px', color: 'var(--mut)' }}>↳ {r.label}</td>
+                    <KpiCells r={r} />
+                  </tr>
+                ))}
+              </Fragment>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+function RDist({ a, L }: { a: any; L: any }) {
+  if (!a.rValid) return <p className="muted" style={{ fontSize: 13, margin: 0 }}>{L.rNoData}</p>;
+  const mx = Math.max(1, ...a.rDist);
+  return (<>
+    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 5, height: 120, marginTop: 4 }}>
+      {a.rDist.map((c: number, i: number) => { const pos = i >= 4; return (
+        <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+          <div style={{ fontSize: 10, color: 'var(--mut)' }}>{c || ''}</div>
+          <div style={{ width: '100%', height: `${Math.max(3, (c / mx) * 88)}px`, borderRadius: 4, background: pos ? 'linear-gradient(180deg,var(--green),var(--green2))' : 'linear-gradient(180deg,var(--red),var(--red2))' }} />
+          <div style={{ fontSize: 8.5, color: 'var(--mut)' }}>{R_BINS_LABELS[i]}</div>
+        </div>); })}
+    </div>
+    <div style={{ marginTop: 8, fontSize: 13, color: 'var(--mut)' }}>{L.rExpL}: <b style={{ color: a.rExpectancy >= 0 ? GREEN : RED }}>{a.rExpectancy >= 0 ? '+' : ''}{a.rExpectancy.toFixed(2)}R</b> · <span style={{ fontSize: 11 }}>{L.rSub}</span></div>
+  </>);
+}
+function HoldDist({ a, L }: { a: any; L: any }) {
+  if (!a.holdN) return <p className="muted" style={{ fontSize: 13, margin: 0 }}>{L.noData}</p>;
+  const mx = Math.max(1, ...a.hold.map((h: any) => h.count));
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 128, marginTop: 6 }}>
+      {a.hold.map((h: any, i: number) => (
+        <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+          <div style={{ fontSize: 10, color: 'var(--mut)' }}>{h.count || ''}</div>
+          <div style={{ width: '100%', height: `${Math.max(3, (h.count / mx) * 92)}px`, borderRadius: 4, background: h.net >= 0 ? 'linear-gradient(180deg,var(--green),var(--green2))' : 'linear-gradient(180deg,var(--red),var(--red2))' }} />
+          <div style={{ fontSize: 8.5, color: 'var(--mut)' }}>{HOLD_BINS_LABELS[i]}</div>
+        </div>))}
+    </div>
+  );
+}
+function HeatGrid({ a, lang }: { a: any; lang: 'es' | 'en' }) {
+  const order = [1, 2, 3, 4, 5, 6, 0];
+  let mx = 1; for (const row of a.heat) for (const c of row) mx = Math.max(mx, Math.abs(c.net));
+  return (
+    <div style={{ overflowX: 'auto' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '34px repeat(24,1fr)', gap: 3, minWidth: 520 }}>
+        <div />{Array.from({ length: 24 }, (_, h) => <div key={h} style={{ fontSize: 8, color: 'var(--mut)', textAlign: 'center' }}>{h % 3 === 0 ? h : ''}</div>)}
+        {order.map((wd) => (
+          <Fragment key={wd}>
+            <div style={{ fontSize: 10, color: 'var(--mut)', display: 'flex', alignItems: 'center' }}>{WDS[lang][wd]}</div>
+            {a.heat[wd].map((c: any, h: number) => { const inten = Math.min(1, Math.abs(c.net) / mx); const bg = c.count === 0 ? 'var(--bg2)' : (c.net >= 0 ? `rgba(52,226,160,${.2 + inten * .7})` : `rgba(255,107,125,${.2 + inten * .7})`); return <div key={h} title={c.count ? `${WDS[lang][wd]} ${h}:00 · ${money(c.net)} · ${c.count}` : ''} style={{ height: 15, borderRadius: 3, background: bg }} />; })}
+          </Fragment>
+        ))}
+      </div>
+    </div>
+  );
+}
+function PropCard({ a, cur, L }: { a: any; cur: any; L: any }) {
+  const ratio = a.consistency;
+  const good = ratio > 0 && ratio <= 0.4;
+  const maxTotal = Number(cur?.fund_max_total) || 0, maxDaily = Number(cur?.fund_max_daily) || 0;
+  const ddUse = maxTotal > 0 ? Math.min(1, a.maxDD / maxTotal) : 0;
+  const worstDay = Math.abs(a.worstDayNet);
+  const dailyUse = maxDaily > 0 ? Math.min(1, worstDay / maxDaily) : 0;
+  const sev = (u: number) => (u >= 0.8 ? RED : u >= 0.5 ? GOLD : GREEN);
+  return (
+    <div className="grid g4">
+      <StatCard icon="📈" label={L.propBig} value={money(a.bestDayNet)} accent={GREEN} color={GREEN} sub={`${a.daysTraded} ${L.propDays}`} />
+      <StatCard icon="⚖️" label={L.propRatio} value={a.net > 0 ? `${Math.round(ratio * 100)}%` : '—'} accent={good ? GREEN : GOLD} color={good ? GREEN : GOLD} sub={a.net > 0 ? (good ? L.propGood : L.propWarn) : ''} bar={a.net > 0 ? Math.min(1, ratio) : 0} />
+      <StatCard icon="🛑" label={L.propDD} value={maxTotal > 0 ? `${Math.round(ddUse * 100)}%` : '—'} accent={sev(ddUse)} color={sev(ddUse)} bar={ddUse} sub={maxTotal > 0 ? '' : L.propNoRule} />
+      <StatCard icon="📅" label={L.propDaily} value={maxDaily > 0 ? `${Math.round(dailyUse * 100)}%` : '—'} accent={sev(dailyUse)} color={sev(dailyUse)} bar={dailyUse} sub={maxDaily > 0 ? '' : L.propNoRule} />
     </div>
   );
 }
@@ -363,6 +544,10 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
   const [cFrom, setCFrom] = useState('');
   const [cTo, setCTo] = useState('');
   const [demo, setDemo] = useState(false);
+  // Rendimiento: filtro por activo/robot + enfoque por estilo del trader.
+  const [segSym, setSegSym] = useState('');
+  const [segBot, setSegBot] = useState('');
+  const [perfStyle, setPerfStyle] = useState<string>('all');
   const demoTrades = useMemo(() => genDemo(accs0[0]?.id || 'demo'), []);
   const [editing, setEditing] = useState<string>('');
   const [nick, setNick] = useState('');
@@ -465,7 +650,16 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
   }, [tradesS, histDays, demo]);
 
   const filtered = useMemo(() => (sel === 'all' ? ranged : ranged.filter((t) => t.account_id === sel)), [ranged, sel]);
-  const a = useMemo(() => analyze(filtered), [filtered]);
+  // Desglose por activo/robot para los chips y la tabla (nivel cuenta, sin segmentar).
+  const perfBk = useMemo(() => perfBreakdown(filtered), [filtered]);
+  // El filtro por activo/robot solo aplica dentro de Rendimiento; fuera se limpia.
+  const perfTrades = useMemo(() => {
+    if (view !== 'rendimiento' || (!segSym && !segBot)) return filtered;
+    return filtered.filter((t) => (!segSym || t.symbol === segSym) && (!segBot || String((t as any).magic ?? '') === segBot));
+  }, [filtered, view, segSym, segBot]);
+  const a = useMemo(() => analyze(perfTrades), [perfTrades]);
+  // Al salir de Rendimiento, quita el filtro para no afectar hub/calendario.
+  useEffect(() => { if (view !== 'rendimiento') { setSegSym(''); setSegBot(''); } }, [view]);
 
   const totalBalance = accounts.reduce((s, x) => s + Number(x.balance || 0), 0);
   const accName = (x: Acc) => x.nickname || (x.broker ? `${x.broker} · #${x.login}` : `#${x.login}`);
@@ -539,11 +733,11 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
   ];
   const bubbleData = useMemo(() => {
     const m: Record<string, { vol: number; net: number }> = {};
-    for (const x of filtered) { const s = x.symbol; if (!m[s]) m[s] = { vol: 0, net: 0 }; m[s].vol += Math.abs(+x.volume || 0); m[s].net += +x.net_profit || 0; }
+    for (const x of perfTrades) { const s = x.symbol; if (!m[s]) m[s] = { vol: 0, net: 0 }; m[s].vol += Math.abs(+x.volume || 0); m[s].net += +x.net_profit || 0; }
     const arr = Object.entries(m).map(([label, v]) => ({ label, vol: v.vol, net: v.net }));
     const mx = Math.max(1, ...arr.map((x) => x.vol));
     return arr.sort((a2, b2) => b2.vol - a2.vol).slice(0, 8).map((x) => ({ label: x.label, size: x.vol / mx, net: x.net }));
-  }, [filtered]);
+  }, [perfTrades]);
 
   const fundAlert = (() => {
     if (sel === 'all' || !cur) return null;
@@ -776,7 +970,18 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
               const sPF = a.profitFactor >= 1.3 ? GREEN : a.profitFactor >= 1 ? GOLD : RED;
               const sPO = a.payoff >= 1.5 ? GREEN : a.payoff >= 1 ? GOLD : RED;
               const bePct = a.n ? Math.round(100 * a.catBE / a.n) : 0;
+              const newSec: Record<string, any> = {
+                assets: <Card key="assets" title={L.byAssetTitle} icon="📊" right={<span className="muted perf-hidem" style={{ fontSize: 11 }}>{L.byAssetSub}</span>}>{perfBk.robots.length === 0 && <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>{L.noBots}</div>}<PerfAssets bk={perfBk} L={L} onPick={(s, b) => { setSegSym(s); setSegBot(b); }} /></Card>,
+                r: <Card key="r" title={L.rTitle} icon="🎲"><RDist a={a} L={L} /></Card>,
+                hold: <Card key="hold" title={L.holdTitle} icon="⏳" right={<span className="muted perf-hidem" style={{ fontSize: 11 }}>{L.holdSub}</span>}><HoldDist a={a} L={L} /></Card>,
+                heat: <Card key="heat" title={L.heatTitle} icon="🔥" right={<span className="muted perf-hidem" style={{ fontSize: 11 }}>{L.heatSub}</span>}><HeatGrid a={a} lang={lang} /></Card>,
+                prop: <Card key="prop" title={L.propTitle} icon="🏆" right={<span className="muted perf-hidem" style={{ fontSize: 11 }}>{L.propHint}</span>}><PropCard a={a} cur={cur} L={L} /></Card>,
+              };
+              const secOrder = STYLE_ORDER[perfStyle] || STYLE_ORDER.all;
               return (<>
+              <StyleBar L={L} style={perfStyle} setStyle={setPerfStyle} />
+              <SegBar bk={perfBk} L={L} segSym={segSym} segBot={segBot} setSeg={(s, b) => { setSegSym(s); setSegBot(b); }} />
+              {(segSym || segBot) && <div style={{ fontSize: 12.5, color: 'var(--soft-brand)', margin: '0 0 4px' }}>{L.segShowing}: <b>{segSym || L.segAll}</b>{segBot ? ' · ' + (perfBk.robots.find((r) => r.key === segBot)?.label || ('#' + segBot)) : ''} · {a.n} {L.ops}</div>}
               <div className="grid g4">
                 <StatCard icon="💰" label={L.kNet} value={money2(a.net)} accent={a.net >= 0 ? GREEN : RED} color={a.net >= 0 ? GREEN : RED} />
                 <StatCard icon="🎯" label={L.kWR} value={`${a.winRate.toFixed(0)}%`} accent={sWR} color={sWR} bar={a.winRate / 100} />
@@ -795,6 +1000,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                 <StatCard icon="💀" label={L.kWorst} value={money(a.worst)} accent={RED} color={RED} />
                 <StatCard icon="⚪" label={L.kBE} value={`${a.catBE} · ${bePct}%`} accent={GOLD} color={GOLD} bar={bePct / 100} />
               </div>
+              {secOrder.map((id) => newSec[id])}
               <div className="grid g2">
                 <Card title={L.radarTitle} icon="🕸️"><RadarChart axes={radarAxes} color={BLUE} /></Card>
                 <Card title={L.bubbleTitle} icon="🫧"><Bubbles items={bubbleData} /></Card>

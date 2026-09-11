@@ -20,7 +20,7 @@ export async function GET() {
 
     let trades: any[] = [];
     if (accIds.length) {
-      const FULL = 'id,account_id,symbol,side,volume,open_time,close_time,net_profit,profit,commission,swap,position_id,exit_reason,closed_volume';
+      const FULL = 'id,account_id,symbol,side,volume,open_time,close_time,net_profit,profit,commission,swap,position_id,exit_reason,closed_volume,magic,ea_comment';
       const BASE = 'id,account_id,symbol,side,volume,open_time,close_time,net_profit,profit,commission,swap';
       let { data, error } = await sb.from('trades')
         .select(FULL).in('account_id', accIds).order('close_time', { ascending: false }).limit(5000);
