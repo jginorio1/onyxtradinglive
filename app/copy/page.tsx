@@ -28,7 +28,8 @@ function money(n: any) { const v = Number(n) || 0; return '$' + v.toLocaleString
 export default async function CopyLanding() {
   const es = serverLang() === 'es';
   let feePct = 30;
-  try { const c: any = await copyConfig(); if (Number(c?.feePct) >= 0) feePct = Number(c.feePct); } catch {}
+  let cfg: any = null;
+  try { cfg = await copyConfig(); if (Number(cfg?.feePct) >= 0) feePct = Number(cfg.feePct); } catch {}
   let providers: any[] = [];
   try {
     const { data } = await supabaseAdmin.from('strategy_providers')
@@ -91,6 +92,31 @@ export default async function CopyLanding() {
     ],
     riskNote: 'Copy trading carries risk. Past results do not guarantee future results. Onyx does not manage your money: you stay in control with your own risk limits.',
   };
+
+  // Pesos y umbrales REALES desde la config de Copy (Admin → Onyx Copy). Si el
+  // dueño los cambia, esta página cambia sola. Fallback: los defaults de L.
+  try {
+    const w = cfg?.weights;
+    if (w) {
+      const pct = (n: any) => `${Math.round((Number(n) || 0) * 100)}%`;
+      L.p1w = pct(w.discipline); L.p2w = pct(w.risk); L.p3w = pct(w.performance); L.p4w = pct(w.consistency);
+    }
+    const g = cfg?.gates;
+    if (g) {
+      const opsW = es ? 'ops' : 'trades'; const daysW = es ? 'días' : 'days'; const verW = es ? 'verificada' : 'verified';
+      const gate = (x: any) => {
+        if (!x) return '';
+        const parts = [`Score ≥ ${x.score}`, `${x.trades}+ ${opsW}`, `${x.days}+ ${daysW}`];
+        if (Number(x.pf) > 0) parts.push(`PF ≥ ${x.pf}`);
+        parts.push(`drawdown ≤ ${x.maxDD}%`);
+        if (x.verified) parts.push(verW);
+        return parts.join(' · ');
+      };
+      if (g.silver) L.silverD = gate(g.silver);
+      if (g.gold) L.goldD = gate(g.gold);
+      if (g.diamond) L.diamondD = gate(g.diamond);
+    }
+  } catch {}
 
   const pillarRow = (label: string, val: number) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
