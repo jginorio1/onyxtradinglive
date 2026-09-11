@@ -56,13 +56,22 @@ export async function GET() {
     }
 
     // --- Add-ons (complementos que se venden aparte, configurados en Planes) ---
-    const ad = await addonSettings();
-    const addonDefs: { label: string; amt: number; id: string; on: boolean }[] = [
-      { label: 'Add-on · Cuenta extra', amt: Number(ad.extra_account_price) || 0, id: ad.extra_account_price_id, on: ad.extra_account_enabled !== false },
-      { label: 'Add-on · Esclava extra (Copy)', amt: Number(ad.extra_slave_price) || 0, id: ad.extra_slave_price_id, on: !!ad.extra_slave_enabled },
-      { label: 'Add-on · Master extra (Copy)', amt: Number(ad.extra_master_price) || 0, id: ad.extra_master_price_id, on: !!ad.extra_master_enabled },
-      { label: 'Add-on · Módulo de robots', amt: Number(ad.algo_price) || 0, id: ad.algo_price_id, on: !!ad.algo_enabled },
-    ];
+    // DINÁMICO: detecta cualquier add-on presente en los ajustes buscando las claves
+    // que terminan en '_price_id'. De cada una deriva su precio (*_price) y su
+    // interruptor (*_enabled). Así, si en el futuro se añade un add-on nuevo, aparece
+    // solo aquí sin tocar este archivo.
+    const ad: any = await addonSettings();
+    const NICE: Record<string, string> = {
+      extra_account: 'Cuenta extra', extra_slave: 'Esclava extra (Copy)',
+      extra_master: 'Master extra (Copy)', algo: 'Módulo de robots',
+    };
+    const addonDefs = Object.keys(ad)
+      .filter((k) => k.endsWith('_price_id'))
+      .map((k) => {
+        const base = k.replace(/_price_id$/, '');
+        const nice = NICE[base] || base.replace(/_/g, ' ');
+        return { label: `Add-on · ${nice}`, amt: Number(ad[`${base}_price`]) || 0, id: String(ad[k] || ''), on: ad[`${base}_enabled`] !== false };
+      });
     const addonRows: any[] = [];
     for (const a of addonDefs) {
       // Solo alertamos por los add-ons ACTIVOS; los apagados se muestran informativos.
