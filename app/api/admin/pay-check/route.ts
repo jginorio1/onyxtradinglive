@@ -3,7 +3,7 @@ import { getAdmin } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { stripe } from '@/lib/stripe';
 import { botLabSettings, cardEnabled } from '@/lib/botlab';
-import { addonSettings } from '@/lib/settings';
+import { addonSettings, mailRoutes } from '@/lib/settings';
 
 // Compara un precio de Stripe (por su Price ID) con el importe esperado en la app.
 async function checkPrice(label: string, kind: string, appAmt: number, priceId: string, enabled = true) {
@@ -75,11 +75,12 @@ export async function GET() {
     const { count: evCount } = await supabaseAdmin.from('payment_evidence').select('*', { count: 'exact', head: true });
     const { count: disCount } = await supabaseAdmin.from('payment_evidence').select('*', { count: 'exact', head: true }).eq('status', 'disputed');
     let acct: any = null; try { acct = await stripe.accounts.retrieve(); } catch {}
+    const routes = await mailRoutes();
     const checklist = [
       { key: '3ds', ok: true, label: '3D Secure automático en los checkouts', note: 'Se pide autenticación al banco (traslada el fraude al emisor).' },
       { key: 'descriptor', ok: true, label: `Descriptor de tarjeta (…* ${(process.env.STRIPE_DESCRIPTOR_BOTLAB || 'BOTLAB')})`, note: acct?.settings?.payments?.statement_descriptor ? `Cuenta: ${acct.settings.payments.statement_descriptor}` : 'Fija el descriptor base en Stripe → Public details.' },
       { key: 'tos', ok: process.env.STRIPE_TOS_ON === '1', label: 'Casilla de términos en el checkout (STRIPE_TOS_ON)', note: process.env.STRIPE_TOS_ON === '1' ? 'Activa.' : 'Ponla en Vercel y añade la URL de Términos en Stripe.' },
-      { key: 'alert', ok: !!(process.env.DISPUTE_ALERT_EMAIL || process.env.SUPPORT_EMAIL), label: 'Email de aviso de disputa (DISPUTE_ALERT_EMAIL)', note: (process.env.DISPUTE_ALERT_EMAIL || process.env.SUPPORT_EMAIL || 'sin configurar') },
+      { key: 'alert', ok: !!(process.env.DISPUTE_ALERT_EMAIL || routes.billing), label: 'Aviso de disputa (buzón de pagos)', note: `Llega a: ${process.env.DISPUTE_ALERT_EMAIL || routes.billing || 'sin configurar'} · edítalo en Ajustes → Direcciones de correo.` },
       { key: 'evidence', ok: (evCount || 0) > 0, label: 'Tabla de evidencia recibiendo datos', note: `${evCount || 0} compras registradas · ${disCount || 0} en disputa` },
       { key: 'card', ok: cardEnabled(bl), label: 'Pago con tarjeta activo en Bot Lab', note: cardEnabled(bl) ? 'Activo.' : 'Desactivado en Bot Lab → Ajustes.' },
     ];

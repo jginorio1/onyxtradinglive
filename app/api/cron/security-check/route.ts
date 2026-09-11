@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendEmail } from '@/lib/mail';
 import { sendMessage } from '@/lib/telegram';
 import { coreSecurityItems, summarize } from '@/lib/securityAudit';
+import { mailRoutes } from '@/lib/settings';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -18,9 +19,11 @@ function authorized(req: Request): boolean {
 }
 
 async function alertAdmins(subject: string, body: string) {
-  // Correo a los admins de ADMIN_EMAILS
-  const emails = (process.env.ADMIN_EMAILS || '').split(',').map((s) => s.trim()).filter(Boolean);
-  for (const e of emails) { try { await sendEmail(e, subject, body); } catch {} }
+  // Buzón de avisos internos (alerts@) + admins de ADMIN_EMAILS, sin duplicar.
+  const set = new Set<string>();
+  try { const r = await mailRoutes(); if (r.alerts) set.add(r.alerts.toLowerCase()); } catch {}
+  (process.env.ADMIN_EMAILS || '').split(',').map((s) => s.trim()).filter(Boolean).forEach((e) => set.add(e.toLowerCase()));
+  for (const e of set) { try { await sendEmail(e, subject, body); } catch {} }
   // Telegram a los admins que lo tengan vinculado
   try {
     const { data: admins } = await supabaseAdmin.from('profiles').select('telegram_chat_id').eq('is_admin', true).not('telegram_chat_id', 'is', null);

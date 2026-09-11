@@ -1124,6 +1124,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                       <p className="muted" style={{ fontSize: 13 }}>{t.a_rolesEnv}</p>
                     </div>
                     <EnvSwitch />
+                    <EmailRoutesControl lang={lang} />
                     <PromoControl />
                     <OnlineNowControl />
                     <EmailTemplatesControl />
@@ -1274,6 +1275,56 @@ function PayCheck({ lang }: { lang: string }) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Direcciones de correo por función (solo Owner): desde dónde salen los correos
+// y a qué buzón entra cada tipo de aviso. Evita que todo caiga en "support".
+// ============================================================
+function EmailRoutesControl({ lang }: { lang: string }) {
+  const en = lang === 'en';
+  const [r, setR] = useState<any>(null);
+  const [domain, setDomain] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  async function load() { try { const j = await (await fetch('/api/admin/email-routes')).json(); setR(j.routes || null); setDomain(j.domain || ''); } catch {} }
+  useEffect(() => { load(); }, []);
+  async function save() {
+    setBusy(true);
+    try { const j = await (await fetch('/api/admin/email-routes', { method: 'POST', body: JSON.stringify(r) })).json();
+      if (j.error) toastErr(j); else { toast(en ? 'Saved' : 'Guardado', 'ok'); setR(j.routes); } }
+    finally { setBusy(false); }
+  }
+  if (!r) return null;
+  const lbl = { fontSize: 12, color: 'var(--mut)', display: 'block', marginBottom: 4 } as any;
+  const Row = ({ k, title, desc }: { k: string; title: string; desc: string }) => (
+    <div style={{ marginBottom: 12 }}>
+      <span style={lbl}>{title}</span>
+      <input value={r[k] || ''} onChange={(e) => setR({ ...r, [k]: e.target.value })} placeholder={`nombre@${domain || 'tudominio.com'}`} style={{ margin: 0 }} />
+      <div className="muted" style={{ fontSize: 11.5, marginTop: 3 }}>{desc}</div>
+    </div>
+  );
+  return (
+    <div className="card" style={{ marginBottom: 12 }}>
+      <h3 style={{ marginBottom: 4 }}>✉️ {en ? 'Email addresses' : 'Direcciones de correo'}</h3>
+      <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>
+        {en ? 'One place to decide where mail comes FROM and which inbox each type of alert goes TO. They can all forward to the same Gmail, but a separate address per purpose lets you filter (and keeps disputes out of support).'
+            : 'Un solo lugar decide DESDE dónde salen los correos y a QUÉ buzón entra cada aviso. Todas pueden reenviar al mismo Gmail, pero una dirección por función te deja filtrar (y saca las disputas de support).'}
+      </p>
+      <div className="grid g2" style={{ gap: 12 }}>
+        <div><span style={lbl}>{en ? 'Sender name' : 'Nombre del remitente'}</span><input value={r.from_name || ''} onChange={(e) => setR({ ...r, from_name: e.target.value })} style={{ margin: 0 }} /></div>
+        <div><span style={lbl}>{en ? 'Sender address' : 'Dirección de envío'}</span><input value={r.from_addr || ''} onChange={(e) => setR({ ...r, from_addr: e.target.value })} placeholder={`no-reply@${domain || 'tudominio.com'}`} style={{ margin: 0 }} /></div>
+      </div>
+      {domain ? <div className="muted" style={{ fontSize: 11.5, margin: '6px 0 14px' }}>{en ? 'Sender must use the domain verified in Resend' : 'El remitente debe usar el dominio verificado en Resend'}: <b>{domain}</b></div> : <div style={{ height: 10 }} />}
+      <div style={{ borderTop: '1px solid var(--line)', paddingTop: 12 }}>
+        <Row k="support" title={en ? 'Support & contact' : 'Soporte y contacto'} desc={en ? 'Tickets and the public contact form.' : 'Tickets y el formulario de contacto público.'} />
+        <Row k="billing" title={en ? 'Billing & chargebacks' : 'Pagos y chargebacks'} desc={en ? 'Card disputes and payment issues land here (time-sensitive).' : 'Aquí llegan las disputas de tarjeta y temas de pago (con fecha límite).'} />
+        <Row k="botlab" title="Bot Lab" desc={en ? 'Leads and proposals from Onyx Bot Lab.' : 'Leads y propuestas de Onyx Bot Lab.'} />
+        <Row k="alerts" title={en ? 'Internal alerts' : 'Avisos internos'} desc={en ? 'Security, self-test and backups.' : 'Seguridad, self-test y backups.'} />
+      </div>
+      <button className="btn btn-primary" onClick={save} disabled={busy}>{busy ? '…' : (en ? 'Save addresses' : 'Guardar direcciones')}</button>
     </div>
   );
 }

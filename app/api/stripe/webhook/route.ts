@@ -8,6 +8,7 @@ import { clawbackCommission } from '@/lib/ambassadorPayout';
 import { setGuardianTier, revokeGuardianBySub, type GuardianTier } from '@/lib/guardianAccess';
 import { markPaid, handleDispute } from '@/lib/evidence';
 import { sendEmail } from '@/lib/mail';
+import { mailRoutes } from '@/lib/settings';
 
 // ¿Es una suscripción de Onyx Guardian comprada dentro de la academia?
 // Esas NO cambian el plan de Onyx: solo activan/revocan el gestor de riesgo.
@@ -171,8 +172,9 @@ export async function POST(req: Request) {
       const d: any = event.data.object;
       const r = await handleDispute(d);
       try {
-        const to = (process.env.DISPUTE_ALERT_EMAIL || process.env.SUPPORT_EMAIL || 'support@onyxtradinglive.com').trim();
-        await sendEmail({ to, subject: `⚠️ Disputa de tarjeta (chargeback) · ${d.id}`, html: `<p>${r.note}</p><p>Revisa y envía la evidencia en tu panel de Stripe → Disputes → ${d.id}.</p>` } as any);
+        const routes = await mailRoutes();
+        const to = (process.env.DISPUTE_ALERT_EMAIL || routes.billing || 'support@onyxtradinglive.com').trim();
+        await sendEmail(to, `⚠️ Disputa de tarjeta (chargeback) · ${d.id}`, `${r.note}\n\nRevisa y envía la evidencia en tu panel de Stripe → Disputes → ${d.id}.`);
       } catch {}
     } else if (event.type === 'invoice.payment_failed') {
       // El cobro falló (tarjeta vencida, sin fondos…). Avisamos "plan en riesgo"

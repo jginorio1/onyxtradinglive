@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendEmail } from '@/lib/mail';
 import { sendMessage } from '@/lib/telegram';
+import { mailRoutes } from '@/lib/settings';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -22,8 +23,10 @@ function authorized(req: Request): boolean {
 const has = (v?: string) => !!(v && v.trim());
 
 async function alertAdmins(subject: string, body: string) {
-  const emails = (process.env.ADMIN_EMAILS || '').split(',').map((s) => s.trim()).filter(Boolean);
-  for (const e of emails) { try { await sendEmail(e, subject, body, { kind: 'admin' }); } catch {} }
+  const set = new Set<string>();
+  try { const r = await mailRoutes(); if (r.alerts) set.add(r.alerts.toLowerCase()); } catch {}
+  (process.env.ADMIN_EMAILS || '').split(',').map((s) => s.trim()).filter(Boolean).forEach((e) => set.add(e.toLowerCase()));
+  for (const e of set) { try { await sendEmail(e, subject, body, { kind: 'admin' }); } catch {} }
   try {
     const { data: admins } = await supabaseAdmin.from('profiles').select('telegram_chat_id').eq('is_admin', true).not('telegram_chat_id', 'is', null);
     for (const a of (admins || [])) {
