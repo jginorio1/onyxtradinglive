@@ -13,6 +13,7 @@ type Plan = {
   id: string; name: string; name_en?: string; desc_es?: string | null; desc_en?: string | null;
   price_month: number; price_year: number;
   features?: string[]; features_en?: string[]; badge?: string | null; badge_en?: string | null;
+  capabilities?: any;
 };
 
 export default function PlanCards({
@@ -99,9 +100,19 @@ export default function PlanCards({
                 </li>
               ))}
             </ul>
-            <button className={'btn ' + (goldHi ? '' : hasBadge ? 'btn-primary' : 'btn-ghost')} style={goldHi ? { width: '100%', background: gold, color: goldDark, border: 'none', fontWeight: 800 } : { width: '100%' }} onClick={() => onChoose(p.id, price)} disabled={loadingId === p.id}>
-              {loadingId === p.id ? '...' : (isFree ? (freeLabel || t.free) : (ctas?.[p.id] ? (lang === 'es' ? ctas[p.id].es : ctas[p.id].en) : t.choose + ' ' + name))}
-            </button>
+            {(() => {
+              // Días de prueba del plan (Admin → Planes). Si >0, el botón lo anuncia
+              // automáticamente ("Probar N días gratis"), tenga o no un CTA por beneficio.
+              const td = Math.max(0, Math.round(Number(p.capabilities?.trial_days) || 0));
+              const trialLabel = (!isFree && td > 0) ? (lang === 'es' ? `Probar ${td} días gratis` : `Start ${td}-day free trial`) : '';
+              const label = isFree ? (freeLabel || t.free)
+                : (trialLabel || (ctas?.[p.id] ? (lang === 'es' ? ctas[p.id].es : ctas[p.id].en) : t.choose + ' ' + name));
+              return (
+                <button className={'btn ' + (goldHi ? '' : hasBadge ? 'btn-primary' : 'btn-ghost')} style={goldHi ? { width: '100%', background: gold, color: goldDark, border: 'none', fontWeight: 800 } : { width: '100%' }} onClick={() => onChoose(p.id, price)} disabled={loadingId === p.id}>
+                  {loadingId === p.id ? '...' : label}
+                </button>
+              );
+            })()}
             {trust && <div className="muted" style={{ fontSize: 11.5, textAlign: 'center', marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
               <OnyxIcon name="check" size={11} glow={false} /> {isFree ? (lang === 'es' ? 'Sin tarjeta · Sin compromiso' : 'No card · No commitment') : (lang === 'es' ? 'Cancela cuando quieras' : 'Cancel anytime')}
             </div>}

@@ -4,6 +4,12 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { stripe, priceIdForPlan } from '@/lib/stripe';
 import { resolveActiveDiscount } from '@/lib/promoDiscount';
 
+// Prueba de auto-servicio (con tarjeta): el cliente entra al plan y no se le cobra
+// hasta el día N; si no cancela, Stripe cobra solo. Con tarjeta al inicio
+// (payment_method_collection:'always') convierte mejor y evita abusos. Los días de
+// prueba de CADA plan se editan en Admin → Planes (capabilities.trial_days, 0 = sin
+// prueba). Solo se da a suscriptores NUEVOS, para que nadie la repita re-suscribiéndose.
+
 export async function POST(req: Request) {
   try {
     const sb = createSupabaseServer();
@@ -26,13 +32,29 @@ export async function POST(req: Request) {
     if (!/^https?:\/\//i.test(base)) base = 'https://' + base;
 
     // cliente de Stripe (crear si no existe)
-    const { data: prof } = await supabaseAdmin.from('profiles').select('stripe_customer_id').eq('id', user.id).maybeSingle();
+    const { data: prof } = await supabaseAdmin.from('profiles').select('stripe_customer_id,stripe_subscription_id').eq('id', user.id).maybeSingle();
     let customer = prof?.stripe_customer_id;
     if (!customer) {
       const c = await stripe.customers.create({ email: user.email!, metadata: { userId: user.id } });
       customer = c.id;
       await supabaseAdmin.from('profiles').update({ stripe_customer_id: customer }).eq('id', user.id);
     }
+
+    // Días de prueba del plan (configurable en Admin → Planes). Solo a suscriptores
+    // nuevos, para que nadie repita la prueba re-suscribiéndose.
+    const { data: planRow } = await supabaseAdmin.from('plans').select('capabilities').eq('id', String(plan)).maybeSingle();
+    const trialDays = Math.max(0, Math.min(90, Math.round(Number((planRow as any)?.capabilities?.trial_days) || 0)));
+    const wantTrial = trialDays > 0 && !(prof as any)?.stripe_subscription_id;
+    // subscription_data: metadata siempre; con prueba, N días sin cobro y, si al
+    // terminar no hay tarjeta válida, se cancela (no se cobra sorpresa).
+    const subData: any = { metadata: { userId: user.id } };
+    if (wantTrial) {
+      subData.trial_period_days = trialDays;
+      subData.trial_settings = { end_behavior: { missing_payment_method: 'cancel' } };
+    }
+    // Pedimos la tarjeta SIEMPRE (también durante la prueba) para que el cobro sea
+    // automático al terminar y para filtrar a los que solo quieren gratis.
+    const pmc = wantTrial ? { payment_method_collection: 'always' } : {};
 
     // Checkout EMBEBIDO: se renderiza dentro de Onyx (mismo diseño), no redirige.
     if (embedded) {
@@ -42,6 +64,8 @@ export async function POST(req: Request) {
         customer,
         line_items: [{ price: priceId, quantity: 1 }],
         ...discountOpt, // descuento auto (barra/embajador) o dejar pegar a mano
+        ...pmc,
+        subscription_data: subData,
         return_url: `${base}/dashboard?checkout=success`,
         metadata: { userId: user.id },
       } as any);
@@ -53,10 +77,12 @@ export async function POST(req: Request) {
       customer,
       line_items: [{ price: priceId, quantity: 1 }],
       ...discountOpt, // descuento auto (barra/embajador) o dejar pegar el cupón a mano
+      ...pmc,
+      subscription_data: subData,
       success_url: `${base}/dashboard?checkout=success`,
       cancel_url: `${base}/pricing?checkout=cancel`,
       metadata: { userId: user.id },
-    });
+    } as any);
     return NextResponse.json({ url: session.url });
   } catch (e: any) {
     console.error('checkout error', e);

@@ -1827,7 +1827,7 @@ function PlanCard({ plan, isNew, reload, onCancel }: { plan: Plan; isNew?: boole
 
   async function save() {
     setSaving(true);
-    const caps = { ...p.capabilities, history_days: Number(p.capabilities?.history_days) || 0 };
+    const caps = { ...p.capabilities, history_days: Number(p.capabilities?.history_days) || 0, trial_days: Math.max(0, Math.min(90, Number(p.capabilities?.trial_days) || 0)) };
     const body = { ...p, features: norm(p.features), features_en: norm(p.features_en), capabilities: caps };
     const r = await fetch('/api/admin/plans', { method: isNew ? 'POST' : 'PATCH', body: JSON.stringify(body) });
     const j = await r.json(); setSaving(false);
@@ -1878,6 +1878,10 @@ function PlanCard({ plan, isNew, reload, onCancel }: { plan: Plan; isNew?: boole
       <div className="row" style={{ gap: 10, alignItems: 'center', margin: '0 0 10px' }}>
         <span style={{ fontSize: 13, flex: 1 }}>{t.pl_historyDays} <span className="muted">{t.pl_unlimited}</span></span>
         <input type="number" value={p.capabilities?.history_days ?? 0} onChange={(e) => setCap('history_days', Number(e.target.value) || 0)} style={{ margin: 0, width: 80, padding: '6px 8px' }} />
+      </div>
+      <div className="row" style={{ gap: 10, alignItems: 'center', margin: '0 0 10px' }}>
+        <span style={{ fontSize: 13, flex: 1 }}>{lang === 'en' ? 'Free trial days' : 'Días de prueba'} <span className="muted">{lang === 'en' ? '(0 = no trial · card required)' : '(0 = sin prueba · pide tarjeta)'}</span></span>
+        <input type="number" min={0} max={90} value={p.capabilities?.trial_days ?? 0} onChange={(e) => setCap('trial_days', Number(e.target.value) || 0)} style={{ margin: 0, width: 80, padding: '6px 8px' }} />
       </div>
       {CAPS.map((k) => (
         <div key={k} className="row" style={{ justifyContent: 'space-between', alignItems: 'center', padding: '6px 0' }}>
