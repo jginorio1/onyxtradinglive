@@ -5,6 +5,8 @@ import { listPublished } from '@/lib/blog';
 import { sendEmail } from '@/lib/mail';
 import { getSetting, aiPromptSettings } from '@/lib/settings';
 import { planFacts } from '@/lib/planFacts';
+import { botLabSettings, clampPct } from '@/lib/botlab';
+import { academyFeeSettings } from '@/lib/settings';
 
 // ============================================================
 // Cerebro de soporte con IA: clasifica los tickets (triage) y, cuando es
@@ -193,6 +195,20 @@ export async function supportChatReply(question: string, lang: Lang, history: an
         prices += en ? `\nANNUAL SAVING: paying yearly saves about ${f.annualPct}% vs monthly. Use this exact figure; do not invent a discount.` : `\nAHORRO ANUAL: pagar al año ahorra alrededor de un ${f.annualPct}% frente a mensual. Usa esta cifra exacta; no inventes un descuento.`;
       }
     }
+  } catch {}
+
+  // Términos de dinero de Bot Lab y Academia (editables en admin) para que la IA
+  // dé cifras REALES en vez de inventarlas. Fuera de la caché por si cambian.
+  try {
+    const s = await botLabSettings();
+    const onyxPct = clampPct(s.fee_pct);
+    const sellerPct = Math.max(0, 100 - onyxPct);
+    const minUsd = Math.max(0, Math.round((Number(s.payout_min_cents) || 1000) / 100));
+    let acadPct = 10;
+    try { const af = await academyFeeSettings(); acadPct = Math.max(0, Math.min(50, Math.round(Number(af?.default_pct) || 10))); } catch {}
+    prices += en
+      ? `\n\n=== EARNINGS & FEES (current, do not invent numbers) ===\n- Bot Lab (selling robots): the creator keeps ${sellerPct}% of each sale, Onyx keeps ${onyxPct}%. Payouts are in USDT with a $${minUsd} minimum to withdraw.\n- Onyx Academy (mentors): Onyx's platform fee is ${acadPct}% by default and can be lower on higher Onyx plans; the mentor gets paid the rest into their own Stripe. Use these exact figures.`
+      : `\n\n=== GANANCIAS Y COMISIONES (actuales, no inventes números) ===\n- Bot Lab (vender robots): el creador se queda el ${sellerPct}% de cada venta, Onyx retiene el ${onyxPct}%. Los cobros son en USDT con un mínimo de $${minUsd} para retirar.\n- Onyx Academy (mentores): la comisión de plataforma de Onyx es del ${acadPct}% por defecto y puede bajar en planes de Onyx superiores; el mentor cobra el resto en su propia cuenta de Stripe. Usa estas cifras exactas.`;
   } catch {}
 
   const persona = en

@@ -13,7 +13,7 @@ import { sendEmail, mailEnabled, fromWithName } from '@/lib/mail';
 // ============================================================
 
 const appUrl = () => (process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || 'https://www.onyxtradinglive.com').replace(/\/$/, '');
-const clampPct = (n: any) => Math.max(0, Math.min(90, Number(n) || 0));
+export const clampPct = (n: any) => Math.max(0, Math.min(90, Number(n) || 0));
 
 export type BotLabSettings = {
   fee_pct: number;            // comisión de Onyx sobre ventas de creadores (%)

@@ -174,29 +174,29 @@ export const ARTICLES: Article[] = [
     cta: { href: '/dashboard/bot-lab?tab=vender', label: { es: 'Empezar a vender', en: 'Start selling' } },
     seo: {
       title: { es: 'Vender tu robot de trading en Onyx Bot Lab · Guía', en: 'Sell your trading robot in Onyx Bot Lab · Guide' },
-      desc: { es: 'Cómo publicar y vender los robots que creas: validación automática con tus operaciones reales, archivo protegido para 3 plataformas, 80/20 y cobro en USDT.', en: 'How to list and sell the robots you build: automatic validation with your real trades, protected file for 3 platforms, 80/20 split and USDT payouts.' },
+      desc: { es: 'Cómo publicar y vender los robots que creas: validación automática con tus operaciones reales, archivo protegido para 3 plataformas, reparto claro y cobro en USDT.', en: 'How to list and sell the robots you build: automatic validation with your real trades, protected file for 3 platforms, a clear split and USDT payouts.' },
       keywords: { es: ['vender robot trading', 'publicar ea', 'ganar con robots', 'onyx bot lab'], en: ['sell trading robot', 'publish ea', 'earn with robots', 'onyx bot lab'] },
     },
     body: {
       es: [
-        { p: 'Los robots que creas en "Crea tu bot" puedes venderlos en el marketplace. Tú pones el precio; Onyx cobra por ti y te paga. Tú te quedas el 80% de cada venta.' },
+        { p: 'Los robots que creas en "Crea tu bot" puedes venderlos en el marketplace. Tú pones el precio; Onyx cobra por ti y te paga. Tú te quedas el [[BL_SELLER]] de cada venta.' },
         { h: 'Cuándo califica' },
         { p: 'Cuando tu robot acumula historial real, tocas "Vender" y se abre el formulario con el robot ya elegido. Un chequeo te dice al instante si cumple: mínimo de operaciones, Stop Loss obligatorio, sin martingala y sin alta frecuencia. Si le falta algo, te avisa antes.' },
         { h: 'Publicación automática' },
         { p: 'Si cumple todo, se publica solo al momento en el Marketplace: no espera a una revisión manual. Onyx genera el archivo protegido (con candado de activación) para MT5, MT4 y cTrader en cada compra, así que el comprador recibe el archivo correcto para su plataforma y nadie puede revender tu robot.' },
         { h: 'Cómo cobras' },
-        { steps: ['Cada venta suma a tu saldo (tú te quedas el 80%, Onyx retiene un 20%, editable).', 'Cuando juntas al menos $10 disponibles, pides tu retiro en Bot Lab → Ganancias.', 'Indicas tu dirección de wallet y te pagamos en USDT.'] },
+        { steps: ['Cada venta suma a tu saldo (tú te quedas el [[BL_SELLER]], Onyx retiene un [[BL_ONYX]]).', 'Cuando juntas al menos [[BL_MIN]] disponibles, pides tu retiro en Bot Lab → Ganancias.', 'Indicas tu dirección de wallet y te pagamos en USDT.'] },
         { note: 'No manejas tarjetas ni pagos: Onyx procesa el cobro y te deposita en USDT.', title: 'Sin fricción' },
         { tip: 'Un robot con track record verificado vende más porque el comprador confía en el dato. Deja que acumule operaciones reales antes de publicarlo.' },
       ],
       en: [
-        { p: 'The robots you create in "Build a bot" can be sold in the marketplace. You set the price; Onyx charges for you and pays you out. You keep 80% of each sale.' },
+        { p: 'The robots you create in "Build a bot" can be sold in the marketplace. You set the price; Onyx charges for you and pays you out. You keep [[BL_SELLER]] of each sale.' },
         { h: 'When it qualifies' },
         { p: 'Once your robot has a real track record, you hit "Sell" and the form opens with that robot already picked. A quick check tells you instantly if it qualifies: minimum number of trades, mandatory Stop Loss, no martingale and no high frequency. If something is missing, it tells you first.' },
         { h: 'Automatic publishing' },
         { p: 'If it passes everything, it publishes itself instantly in the Marketplace — no waiting for a manual review. Onyx generates the protected file (with activation lock) for MT5, MT4 and cTrader on each purchase, so the buyer gets the right file for their platform and nobody can resell your robot.' },
         { h: 'How you get paid' },
-        { steps: ['Each sale adds to your balance (you keep 80%, Onyx keeps 20%, editable).', 'Once you have at least $10 available, request your payout in Bot Lab → Earnings.', 'Enter your wallet address and we pay you in USDT.'] },
+        { steps: ['Each sale adds to your balance (you keep [[BL_SELLER]], Onyx keeps [[BL_ONYX]]).', 'Once you have at least [[BL_MIN]] available, request your payout in Bot Lab → Earnings.', 'Enter your wallet address and we pay you in USDT.'] },
         { note: 'You never handle cards or payments: Onyx processes the charge and pays you in USDT.', title: 'No friction' },
         { tip: 'A robot with a verified track record sells more because buyers trust the data. Let it build real trades before listing it.' },
       ],
@@ -223,7 +223,7 @@ export const ARTICLES: Article[] = [
         { steps: ['Eliges "USDT" al comprar y la red (TRON o Ethereum).', 'Te mostramos la dirección de wallet; envías el monto desde tu propia wallet.', 'El sistema confirma el pago en la blockchain (normalmente en minutos).', 'Tu robot se activa en cuanto se confirma y descargas el archivo.'] },
         { h: '¿Es seguro?' },
         { p: 'Sí. Nunca te pedimos las claves de tu wallet: tú mismo envías el pago desde la tuya. Cada transacción queda registrada en la blockchain con su hash, que sirve como comprobante.' },
-        { note: 'Los creadores también cobran sus ventas en USDT, con un mínimo de $10 para retirar.', title: 'Para quien vende' },
+        { note: 'Los creadores también cobran sus ventas en USDT, con un mínimo de [[BL_MIN]] para retirar.', title: 'Para quien vende' },
       ],
       en: [
         { p: 'In Onyx Bot Lab you pay and get paid in USDT, a stablecoin pegged to the dollar (1 USDT ≈ $1). No banks, no cards and no chargebacks: payments are global and instant.' },
@@ -1239,7 +1239,7 @@ export const ARTICLES: Article[] = [
 
         { h: 'Qué te llega y cuándo' },
         { p: 'De cada venta se descuentan dos cosas: la comisión de Stripe (su tarifa por procesar el pago) y la comisión de Onyx (el porcentaje de plataforma que ves en tu panel). El resto es tuyo y queda en tu saldo de Stripe. Luego Stripe hace el pago a tu banco según su calendario de pagos (payout), que tú controlas desde tu propio panel de Stripe.' },
-        { img: '/guia/academy-pay-split.svg', alt: 'Reparto de una venta de 100 dólares: comisión de Stripe, comisión de Onyx del 10 por ciento, y el neto para el mentor', caption: 'Ejemplo con comisión del 10%. Las cifras de Stripe son aproximadas y dependen de tu país.' },
+        { img: '/guia/academy-pay-split.svg', alt: 'Reparto de una venta de 100 dólares: comisión de Stripe, comisión de Onyx, y el neto para el mentor', caption: 'Ejemplo con comisión del [[ACADEMY_FEE]] (por defecto; baja según tu plan). Las cifras de Stripe son aproximadas y dependen de tu país.' },
         { list: [
           'El precio lo pones tú, en dólares (mensual, anual y/o pagos únicos por nivel).',
           'Puedes abrir o cerrar inscripciones y crear cupones de descuento cuando quieras.',
@@ -1304,7 +1304,7 @@ export const ARTICLES: Article[] = [
 
         { h: 'What you receive and when' },
         { p: 'Two things are deducted from each sale: Stripe\'s fee (their charge for processing the payment) and Onyx\'s fee (the platform percentage you see in your panel). The rest is yours and stays in your Stripe balance. Stripe then pays out to your bank on its payout schedule, which you control from your own Stripe panel.' },
-        { img: '/guia/academy-pay-split.svg', alt: 'Split of a 100 dollar sale: Stripe fee, Onyx 10 percent fee, and the net for the mentor', caption: 'Example with a 10% fee. Stripe figures are approximate and depend on your country.' },
+        { img: '/guia/academy-pay-split.svg', alt: 'Split of a 100 dollar sale: Stripe fee, Onyx fee, and the net for the mentor', caption: 'Example with a [[ACADEMY_FEE]] fee (default; lower on higher plans). Stripe figures are approximate and depend on your country.' },
         { list: [
           'You set the price, in US dollars (monthly, yearly and/or one-time per tier).',
           'You can open or close enrollments and create discount coupons anytime.',

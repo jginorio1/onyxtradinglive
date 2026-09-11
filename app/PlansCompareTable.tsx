@@ -119,7 +119,7 @@ export default function PlansCompareTable({
                   const td = trialDaysOf(byId(id) as any);
                   return <td key={id} style={{ textAlign: 'center', padding: '12px 16px' }}>
                     {td > 0
-                      ? <span style={{ fontSize: 12, fontWeight: 800, color: '#04120b', background: 'var(--green)', borderRadius: 20, padding: '2px 9px' }}>{td} {lang === 'es' ? 'días' : 'days'}</span>
+                      ? <span style={{ fontSize: 12, fontWeight: 800, color: '#3a2a06', background: 'var(--gold, #ffd45e)', borderRadius: 20, padding: '2px 9px' }}>{td} {lang === 'es' ? 'días' : 'days'}</span>
                       : <span style={{ color: 'var(--mut)' }}>—</span>}
                   </td>;
                 })}

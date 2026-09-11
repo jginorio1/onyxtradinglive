@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useVpsInfo, renderVps } from '@/app/components/VpsCallout';
-import { useTrialInfo, applyTrial } from '@/app/components/trialInfo';
+import { useTrialInfo, applyTrial, useMoneyTerms, applyMoney } from '@/app/components/trialInfo';
 import { useLang } from '@/lib/lang';
 
 // Render EXACTO de una guía (título, meta, portada y bloques) con visor/zoom.
@@ -55,19 +55,22 @@ export function BlockView({ b, onZoom }: { b: Any; onZoom?: (src: string, alt: s
   const any = b as Any;
   const vps = useVpsInfo();   // convierte el token [[VPS]] en el enlace del VPS recomendado
   const trial = useTrialInfo(); // sustituye [[TRIAL]] / [[ANNUAL_SAVE]] con los días/% actuales de los planes
+  const terms = useMoneyTerms(); // sustituye [[BL_SELLER]] [[BL_ONYX]] [[BL_MIN]] [[ACADEMY_FEE]] con lo actual
   const { lang } = useLang();
+  // Aplica los dos motores de tokens (dinero + prueba) a un texto plano.
+  const dyn = (s: string) => applyMoney(applyTrial(s, trial, lang), terms);
   if (any.h) return <h2 style={{ fontSize: 18, margin: '26px 0 10px' }}>{any.h}</h2>;
-  if (any.p) return <p style={{ fontSize: 15, lineHeight: 1.85, color: 'var(--tx)', marginBottom: 14 }}>{renderVps(applyTrial(any.p, trial, lang), vps)}</p>;
+  if (any.p) return <p style={{ fontSize: 15, lineHeight: 1.85, color: 'var(--tx)', marginBottom: 14 }}>{renderVps(dyn(any.p), vps)}</p>;
   if (any.note) return (
     <div style={{ background: 'var(--bg2)', borderLeft: '3px solid var(--amber)', padding: '13px 15px', marginBottom: 16, borderRadius: 0 }}>
       {any.title && <div style={{ color: 'var(--amber)', fontSize: 12, marginBottom: 5 }}>{any.title}</div>}
-      <div className="muted" style={{ fontSize: 14, lineHeight: 1.75, whiteSpace: 'pre-line' }}>{any.note}</div>
+      <div className="muted" style={{ fontSize: 14, lineHeight: 1.75, whiteSpace: 'pre-line' }}>{dyn(any.note)}</div>
     </div>
   );
   if (any.warn) return (
     <div style={{ background: 'rgba(255,107,125,.06)', border: '1px solid var(--red)', padding: '13px 15px', marginBottom: 16, borderRadius: 10 }}>
       {any.title && <div style={{ color: 'var(--red)', fontSize: 12, marginBottom: 5 }}>{any.title}</div>}
-      <div style={{ fontSize: 14, lineHeight: 1.75, color: '#e8d5d8' }}>{renderVps(applyTrial(any.warn, trial, lang), vps)}</div>
+      <div style={{ fontSize: 14, lineHeight: 1.75, color: '#e8d5d8' }}>{renderVps(dyn(any.warn), vps)}</div>
     </div>
   );
   if (any.tip) return (
@@ -81,7 +84,7 @@ export function BlockView({ b, onZoom }: { b: Any; onZoom?: (src: string, alt: s
       {any.img
         ? <img src={any.img} alt={any.alt || ''} loading="lazy" onClick={() => onZoom?.(any.img, any.alt || '')} style={{ width: '100%', height: 'auto', borderRadius: 12, border: '1px solid var(--line)', display: 'block', cursor: 'zoom-in' }} />
         : <div className="muted" style={{ height: 90, border: '1px dashed var(--line)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}>🖼️ imagen</div>}
-      {any.caption && <figcaption className="muted" style={{ fontSize: 12.5, lineHeight: 1.6, marginTop: 8, textAlign: 'center' }}>{any.caption}</figcaption>}
+      {any.caption && <figcaption className="muted" style={{ fontSize: 12.5, lineHeight: 1.6, marginTop: 8, textAlign: 'center' }}>{dyn(any.caption)}</figcaption>}
     </figure>
   );
   if (any.list) return (
@@ -112,7 +115,7 @@ export function BlockView({ b, onZoom }: { b: Any; onZoom?: (src: string, alt: s
       {any.steps.map((x: string, i: number) => (
         <div key={i} className="row" style={{ gap: 12, alignItems: 'flex-start', marginBottom: 10 }}>
           <span style={{ width: 22, height: 22, borderRadius: '50%', flex: 'none', fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--card2)', color: 'var(--mut)' }}>{i + 1}</span>
-          <span style={{ fontSize: 14.5, lineHeight: 1.7, color: 'var(--tx)' }}>{x}</span>
+          <span style={{ fontSize: 14.5, lineHeight: 1.7, color: 'var(--tx)' }}>{dyn(x)}</span>
         </div>
       ))}
     </div>
