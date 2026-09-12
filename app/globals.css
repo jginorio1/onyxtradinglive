@@ -843,6 +843,11 @@ details[open] > summary > span:first-child { transform: rotate(90deg); }
 /* Bot Lab móvil: cinta compacta (oculta el texto largo, deja solo "← Onyx"). */
 @media(max-width:560px){ .botlab-ribbon-txt{ display:none; } }
 
+/* En iPad/tablet el logo de Bot Lab se veía muy junto: más separación icono↔texto
+   y un pelín de aire entre "Onyx Bot Lab" y "ROBOT MARKETPLACE". */
+@media(min-width:700px) and (max-width:1180px){ .botlab-logo{ gap:16px !important; } }
+.botlab-logo .botlab-logo-text small{ margin-top:1px !important; }
+
 /* Footer de Bot Lab en móvil: se apila y todo va a la izquierda (no como en PC).
    Y con sesión, en móvil, no se muestra (.blf-hide-mobile). */
 @media(max-width:640px){

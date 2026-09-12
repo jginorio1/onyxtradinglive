@@ -56,7 +56,7 @@ export default function BotLabHeader({ loggedIn = false }: { loggedIn?: boolean 
       {/* Barra propia */}
       <div className="topbar botlab-topbar">
         <div className="wrap-wide" style={{ display: 'flex', alignItems: 'center', gap: 18, position: 'relative' }}>
-          <Link href="/bot-lab" className="logo" aria-label="Onyx Bot Lab" style={{ gap: 11 }}>
+          <Link href="/bot-lab" className="logo botlab-logo" aria-label="Onyx Bot Lab" style={{ gap: 13 }}>
             <span style={{ width: 32, height: 32, borderRadius: 9, background: 'linear-gradient(120deg,var(--gold,#ffd45e),#ffb020)', color: '#3a2a06', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, fontWeight: 800, boxShadow: '0 6px 18px rgba(255,212,94,.4)' }}>◆</span>
             <span className="botlab-logo-text" style={{ lineHeight: 1.05, whiteSpace: 'nowrap' }}>
               <span style={{ fontWeight: 800, fontSize: 17, whiteSpace: 'nowrap' }}>Onyx Bot Lab</span>

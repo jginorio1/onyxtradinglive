@@ -18,6 +18,8 @@ export default function BotLabMarket({ es, items }: { es: boolean; items: any[] 
   const [q, setQ] = useState('');
   const [plat, setPlat] = useState('all');
   const [sort, setSort] = useState('reco');
+  const [quick, setQuick] = useState<string[]>([]); // chips rápidos: propfirm / nomart / sl
+  const toggleQuick = (k: string) => { setQuick((qs) => qs.includes(k) ? qs.filter((x) => x !== k) : [...qs, k]); setShow(PAGE); };
   const [show, setShow] = useState(PAGE);
   const [ref, setRef] = useState('');
   // Referido de promoción: lo guardamos para que persista hasta la compra en el dashboard.
@@ -34,7 +36,8 @@ export default function BotLabMarket({ es, items }: { es: boolean; items: any[] 
   const opts = useMemo(() => {
     const s = new Set<string>(), t = new Set<string>(), m = new Set<string>(), p = new Set<string>();
     items.forEach((i) => { if (i.spec_style) s.add(i.spec_style); if (i.spec_timeframe) t.add(i.spec_timeframe); if (i.spec_market) m.add(i.spec_market); if (i.plat) p.add(String(i.plat)); });
-    return { styles: [...s], tfs: [...t], mkts: [...m], plats: [...p] };
+    return { styles: [...s], tfs: [...t], mkts: [...m], plats: [...p],
+      pf: items.some((i) => i.spec_propfirm), nm: items.some((i) => i.no_martingale), sl: items.some((i) => i.has_sl) };
   }, [items]);
 
   const qq = q.trim().toLowerCase();
@@ -43,43 +46,63 @@ export default function BotLabMarket({ es, items }: { es: boolean; items: any[] 
     let list = items.filter((i) =>
       (!style || i.spec_style === style) && (!tf || i.spec_timeframe === tf) && (!mkt || i.spec_market === mkt)
       && (plat === 'all' || String(i.plat || '').toLowerCase() === plat)
+      && (!quick.includes('propfirm') || i.spec_propfirm) && (!quick.includes('nomart') || i.no_martingale) && (!quick.includes('sl') || i.has_sl)
       && (!qq || `${i.name} ${i.seller || ''} ${i.pair || ''} ${i.spec_market || ''} ${i.spec_style || ''}`.toLowerCase().includes(qq)));
     if (sort === 'score') list = [...list].sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
     else if (sort === 'price') list = [...list].sort((a, b) => priceNum(a) - priceNum(b));
     else if (sort === 'price_desc') list = [...list].sort((a, b) => priceNum(b) - priceNum(a));
     return list;
-  }, [items, style, tf, mkt, plat, qq, sort]);
+  }, [items, style, tf, mkt, plat, qq, sort, quick]);
 
   // Cambiar cualquier filtro reinicia la paginación.
   const reset = () => setShow(PAGE);
-  const anyFilter = !!(style || tf || mkt || qq || plat !== 'all');
+  const anyFilter = !!(style || tf || mkt || qq || plat !== 'all' || quick.length || sort !== 'reco');
 
   const card: any = { background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 18, padding: 15 };
   const chip = (on: boolean): any => ({ fontSize: 12, fontWeight: 700, padding: '5px 11px', borderRadius: 99, cursor: 'pointer', border: '1px solid ' + (on ? 'var(--brand)' : 'var(--line)'), background: on ? 'color-mix(in srgb,var(--brand) 18%,transparent)' : 'transparent', color: on ? 'var(--brand)' : 'var(--mut)', textTransform: 'capitalize' });
   const sel: any = { padding: '10px 12px', borderRadius: 11, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--tx)', fontSize: 13.5, cursor: 'pointer' };
+  // Menú compacto (pastilla con icono + <select> transparente que NO se estira a lo ancho).
+  const pill: any = { display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 11, padding: '2px 10px' };
+  const bareSel: any = { border: 'none', background: 'transparent', color: 'var(--tx)', fontSize: 13, padding: '8px 2px', width: 'auto', cursor: 'pointer' };
+  const qchip = (on: boolean): any => ({ fontSize: 12, fontWeight: 700, padding: '6px 12px', borderRadius: 99, cursor: 'pointer', border: '1px solid ' + (on ? 'var(--brand)' : 'var(--line)'), background: on ? 'color-mix(in srgb,var(--brand) 16%,transparent)' : 'transparent', color: on ? 'var(--brand)' : 'var(--mut)' });
   const cap = (v: string) => (es ? { tendencia: 'Tendencia', ruptura: 'Ruptura', scalping: 'Scalping', intradia: 'Intradía', swing: 'Swing', rango: 'Rango', forex: 'Forex', oro: 'Oro', indices: 'Índices', cripto: 'Cripto', otro: 'Otro' }[v] || v : v);
 
   return (
     <div>
-      {/* Barra de control: buscador + plataforma + orden */}
+      {/* Barra de control unificada: buscador que ocupa el ancho + menús compactos con icono */}
       {items.length > 3 && (
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
-          <div style={{ position: 'relative', flex: '1 1 320px', maxWidth: 460 }}>
-            <span style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', color: 'var(--mut)', fontSize: 15, pointerEvents: 'none' }}>🔍</span>
-            <input value={q} onChange={(e) => { setQ(e.target.value); reset(); }} placeholder={es ? 'Buscar robot por nombre, par, estilo…' : 'Search robot by name, pair, style…'} style={{ width: '100%', padding: '11px 14px 11px 38px', borderRadius: 12, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--tx)', fontSize: 14 }} />
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
+          <div style={{ position: 'relative', flex: '1 1 260px', minWidth: 200 }}>
+            <span style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', color: 'var(--brand)', fontSize: 15, pointerEvents: 'none' }}>🔍</span>
+            <input value={q} onChange={(e) => { setQ(e.target.value); reset(); }} placeholder={es ? 'Buscar por nombre, par, estilo…' : 'Search by name, pair, style…'} style={{ width: '100%', padding: '11px 14px 11px 38px', borderRadius: 11, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--tx)', fontSize: 14 }} />
           </div>
           {opts.plats.length > 1 && (
-            <select value={plat} onChange={(e) => { setPlat(e.target.value); reset(); }} style={sel}>
-              <option value="all">{es ? 'Todas las plataformas' : 'All platforms'}</option>
-              {opts.plats.map((p) => <option key={p} value={p.toLowerCase()}>{p}</option>)}
-            </select>
+            <span style={pill}><span style={{ color: 'var(--mut)', fontSize: 13 }}>🖥</span>
+              <select value={plat} onChange={(e) => { setPlat(e.target.value); reset(); }} style={bareSel} aria-label={es ? 'Plataforma' : 'Platform'}>
+                <option value="all">{es ? 'Plataforma' : 'Platform'}</option>
+                {opts.plats.map((p) => <option key={p} value={p.toLowerCase()}>{p}</option>)}
+              </select>
+            </span>
           )}
-          <select value={sort} onChange={(e) => setSort(e.target.value)} style={sel}>
-            <option value="reco">{es ? 'Recomendados' : 'Recommended'}</option>
-            <option value="score">{es ? 'Mejor Onyx Score' : 'Top Onyx Score'}</option>
-            <option value="price">{es ? 'Precio ↑' : 'Price ↑'}</option>
-            <option value="price_desc">{es ? 'Precio ↓' : 'Price ↓'}</option>
-          </select>
+          <span style={pill}><span style={{ color: 'var(--mut)', fontSize: 13 }}>↕</span>
+            <select value={sort} onChange={(e) => setSort(e.target.value)} style={bareSel} aria-label={es ? 'Ordenar' : 'Sort'}>
+              <option value="reco">{es ? 'Recomendados' : 'Recommended'}</option>
+              <option value="score">{es ? 'Mejor Onyx Score' : 'Top Onyx Score'}</option>
+              <option value="price">{es ? 'Precio ↑' : 'Price ↑'}</option>
+              <option value="price_desc">{es ? 'Precio ↓' : 'Price ↓'}</option>
+            </select>
+          </span>
+        </div>
+      )}
+
+      {/* Chips rápidos: filtros de un toque sobre sellos clave */}
+      {(opts.pf || opts.nm || opts.sl) && (
+        <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
+          <span className="muted" style={{ fontSize: 11, fontWeight: 700 }}>{es ? 'Rápido' : 'Quick'}</span>
+          <button onClick={() => setSort(sort === 'score' ? 'reco' : 'score')} style={qchip(sort === 'score')}>★ {es ? 'Mejor Onyx Score' : 'Top Onyx Score'}</button>
+          {opts.pf && <button onClick={() => toggleQuick('propfirm')} style={qchip(quick.includes('propfirm'))}>{es ? 'Apto prop firm' : 'Prop firm ready'}</button>}
+          {opts.nm && <button onClick={() => toggleQuick('nomart')} style={qchip(quick.includes('nomart'))}>{es ? 'Sin martingala' : 'No martingale'}</button>}
+          {opts.sl && <button onClick={() => toggleQuick('sl')} style={qchip(quick.includes('sl'))}>{es ? 'Con Stop Loss' : 'With Stop Loss'}</button>}
         </div>
       )}
 
@@ -110,10 +133,10 @@ export default function BotLabMarket({ es, items }: { es: boolean; items: any[] 
         </div>
       )}
 
-      {/* Contador + limpiar filtros */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 16, fontSize: 12.5, color: 'var(--mut)' }}>
-        <span>{filtered.length} {filtered.length === 1 ? (es ? 'robot' : 'robot') : (es ? 'robots' : 'robots')}</span>
-        {anyFilter && <button onClick={() => { setStyle(''); setTf(''); setMkt(''); setQ(''); setPlat('all'); reset(); }} style={{ background: 'none', border: 'none', color: 'var(--brand)', fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>{es ? 'Limpiar filtros' : 'Clear filters'}</button>}
+      {/* Contador + limpiar filtros (barra inferior con separador) */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 16, paddingTop: 10, borderTop: '1px solid var(--line)', fontSize: 12.5, color: 'var(--mut)' }}>
+        <span><b style={{ color: 'var(--tx)' }}>{filtered.length}</b> {filtered.length === 1 ? (es ? 'robot' : 'robot') : (es ? 'robots' : 'robots')}</span>
+        {anyFilter && <button onClick={() => { setStyle(''); setTf(''); setMkt(''); setQ(''); setPlat('all'); setQuick([]); setSort('reco'); reset(); }} style={{ background: 'none', border: 'none', color: 'var(--brand)', fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>{es ? 'Limpiar filtros' : 'Clear filters'}</button>}
       </div>
 
       <div style={{ display: 'grid', gap: 14 }} className="g4">
