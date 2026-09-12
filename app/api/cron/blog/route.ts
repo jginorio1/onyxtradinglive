@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { publishDuePosts } from '@/lib/blog';
+import { sendDueBlogEmails } from '@/lib/blogEmail';
 import { logError } from '@/lib/errlog';
 
 export const dynamic = 'force-dynamic';
@@ -20,7 +21,10 @@ export async function GET(req: Request) {
   }
   try {
     const published = await publishDuePosts();
-    return NextResponse.json({ ok: true, published });
+    // Tras publicar, envía por email los artículos con correo pendiente ya vencido.
+    let emailed = 0;
+    try { emailed = await sendDueBlogEmails(); } catch (e) { await logError('cron_blog_email', e); }
+    return NextResponse.json({ ok: true, published, emailed });
   } catch (e: any) {
     await logError('cron_blog', e);
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });

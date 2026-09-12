@@ -56,6 +56,8 @@ export async function PATCH(req: Request) {
     intensity: oneOf(b.intensity, ['soft', 'normal', 'strong'], prev.intensity),
     variants: b.variants == null ? prev.variants : !!b.variants,
     internalLinks: b.internalLinks == null ? prev.internalLinks : !!b.internalLinks,
+    useGsc: b.useGsc == null ? (prev.useGsc ?? true) : !!b.useGsc,
+    gscMax: b.gscMax == null ? (prev.gscMax ?? 6) : Math.min(20, Math.max(0, parseInt(b.gscMax, 10) || 0)),
     es: b.es == null ? prev.es : cleanList(b.es),
     en: b.en == null ? prev.en : cleanList(b.en),
   };

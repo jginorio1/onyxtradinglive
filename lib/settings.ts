@@ -312,9 +312,11 @@ export type BlogKeywords = {
   intensity: 'soft' | 'normal' | 'strong';
   variants: boolean;         // permitir sinónimos/variantes naturales
   internalLinks: boolean;    // enlazar la keyword a la página pilar (precios/guía)
+  useGsc: boolean;           // alimentar la IA con las oportunidades reales de Search Console
+  gscMax: number;            // cuántas consultas-oportunidad de GSC mezclar (tope)
   es: string[]; en: string[];
 };
-const BK: BlogKeywords = { enabled: false, intensity: 'normal', variants: true, internalLinks: true, es: [], en: [] };
+const BK: BlogKeywords = { enabled: false, intensity: 'normal', variants: true, internalLinks: true, useGsc: true, gscMax: 6, es: [], en: [] };
 export const blogKeywordsSettings = () => getSetting<BlogKeywords>('blog_keywords', BK);
 
 // Piloto automático del blog: planifica un mes de fechas (día sí, día no) que se
@@ -330,8 +332,10 @@ export type BlogAutopilot = {
   usedTopics: string[];    // temas ya usados (no repetir hasta agotar)
   autoReplenish: boolean;  // al quedar pocas fechas futuras, planifica el siguiente lote solo
   tzOffset: number;        // desfase del navegador (getTimezoneOffset, min) → hora local real
+  autoEmail: boolean;      // al publicarse un artículo del piloto, enviarlo por email a la base
+  emailSegment: string;    // segmento destino del auto-email (all, free, paid, connected…)
 };
-const AUTO: BlogAutopilot = { enabled: false, everyNDays: 2, hour: 9, perMonth: 15, useKeywords: true, topics: [], usedTopics: [], autoReplenish: true, tzOffset: 0 };
+const AUTO: BlogAutopilot = { enabled: false, everyNDays: 2, hour: 9, perMonth: 15, useKeywords: true, topics: [], usedTopics: [], autoReplenish: true, tzOffset: 0, autoEmail: true, emailSegment: 'all' };
 export const blogAutopilotSettings = () => getSetting<BlogAutopilot>('blog_autopilot', AUTO);
 
 // Autor del blog (E-E-A-T). Se muestra la firma con foto, cargo y bio, y alimenta

@@ -72,10 +72,15 @@ export async function uniqueSlugEn(base: string, excludeId?: string): Promise<st
   return root;
 }
 
-// Update tolerante: si falla por columnas nuevas (slug_en / author_id aún no creadas), reintenta sin ellas.
+// Columnas opcionales que pueden no existir aún en la base (se añaden por migración).
+// Si un update/insert falla, se reintenta sin ellas para no romper el guardado.
+const OPTIONAL_COLS = ['slug_en', 'author_id', 'email_enabled', 'email_segment', 'email_when', 'email_at', 'email_sent_at'];
+function stripOptional(row: any) { const rest = { ...row }; for (const k of OPTIONAL_COLS) delete rest[k]; return rest; }
+
+// Update tolerante: si falla por columnas nuevas (aún no creadas), reintenta sin ellas.
 async function updateTolerant(id: string, row: any) {
   let r = await supabaseAdmin.from('blog_posts').update(row).eq('id', id);
-  if (r.error && ('slug_en' in row || 'author_id' in row)) { const { slug_en, author_id, ...rest } = row; r = await supabaseAdmin.from('blog_posts').update(rest).eq('id', id); }
+  if (r.error && OPTIONAL_COLS.some((k) => k in row)) r = await supabaseAdmin.from('blog_posts').update(stripOptional(row)).eq('id', id);
   return r;
 }
 
@@ -196,6 +201,14 @@ export async function savePost(b: any) {
   if (status === 'published') row.published_at = b.published_at ? new Date(b.published_at).toISOString() : new Date().toISOString();
   // Autor por artículo (id del plantel). Guardado tolerante si la columna no existe.
   if (b.author_id !== undefined) row.author_id = b.author_id ? String(b.author_id).slice(0, 60) : null;
+
+  // Envío por email a la base de datos (opcional). Tolerante si las columnas no existen.
+  if (b.email_enabled !== undefined) row.email_enabled = !!b.email_enabled;
+  if (b.email_segment !== undefined) row.email_segment = b.email_segment ? String(b.email_segment).slice(0, 40) : 'all';
+  if (b.email_when !== undefined) row.email_when = ['publish', 'schedule', 'now'].includes(b.email_when) ? b.email_when : 'publish';
+  if (b.email_at !== undefined) row.email_at = b.email_at ? new Date(b.email_at).toISOString() : null;
+  // Si el dueño reactiva el envío en un post ya editado, se limpia el sello para que vuelva a salir.
+  if (b.email_resend) row.email_sent_at = null;
 
   // slug_en (idioma inglés). Solo se incluye cuando corresponde; guardado tolerante
   // si la columna aún no existe.

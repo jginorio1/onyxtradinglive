@@ -47,7 +47,7 @@ export default function BlogKeywords() {
   async function save() {
     setBusy(true);
     try {
-      const body = { enabled: s.enabled, intensity: s.intensity, variants: s.variants, internalLinks: s.internalLinks, es: s.es, en: s.en };
+      const body = { enabled: s.enabled, intensity: s.intensity, variants: s.variants, internalLinks: s.internalLinks, useGsc: s.useGsc !== false, gscMax: s.gscMax ?? 6, es: s.es, en: s.en };
       const r = await fetch('/api/admin/blog/keywords', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
       const j = await r.json();
       if (!r.ok) toast(j.error || 'Error'); else { toast(L('Keywords guardadas.', 'Keywords saved.'), 'ok'); await load(); }
@@ -125,6 +125,13 @@ export default function BlogKeywords() {
             </div>
             <ToggleRow on={s.variants} onToggle={() => upd('variants', !s.variants)} accent="#c584ff" label={L('Permitir variantes y sinónimos (se lee más natural)', 'Allow variants and synonyms (reads more natural)')} />
             <ToggleRow on={s.internalLinks} onToggle={() => upd('internalLinks', !s.internalLinks)} accent="#7c8cff" label={L('Añadir enlace interno a la página pilar', 'Add internal link to the pillar page')} />
+            <ToggleRow on={s.useGsc !== false} onToggle={() => upd('useGsc', !(s.useGsc !== false))} accent="#ffc04d" label={L('Usar Search Console automáticamente: la IA mezcla las mejores oportunidades reales de Google al escribir', 'Use Search Console automatically: the AI blends the best real Google opportunities while writing')} />
+            {s.useGsc !== false && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                <label style={fieldL}>{L('Cuántas oportunidades de Google mezclar', 'How many Google opportunities to blend')}</label>
+                <input type="number" min={0} max={20} value={s.gscMax ?? 6} onChange={(e) => upd('gscMax', Math.min(20, Math.max(0, parseInt(e.target.value, 10) || 0)))} style={{ margin: 0, width: 80, fontSize: 13 }} />
+              </div>
+            )}
           </div>
 
           {/* Keywords ES / EN en dos tarjetas */}

@@ -110,3 +110,26 @@ export async function gscOverview(days = 28): Promise<GscResult> {
     };
   } catch (e: any) { return { ok: false, reason: 'error', detail: e?.message || 'Fallo de red al consultar Search Console.' }; }
 }
+
+// ============================================================
+// Oportunidades de keyword desde Search Console: consultas REALES por las que ya
+// apareces en Google con muchas impresiones pero posición floja (fácil de subir).
+// Sirven para alimentar a la IA del blog con lo que la gente de verdad busca.
+// ============================================================
+export type GscOpportunity = { query: string; impressions: number; clicks: number; position: number };
+export async function gscOpportunities(days = 90, max = 12): Promise<GscOpportunity[]> {
+  if (!gscConfigured()) return [];
+  try {
+    const ov = await gscOverview(days);
+    if (!ov.ok || !Array.isArray(ov.queries)) return [];
+    const rows: GscOpportunity[] = (ov.queries as GscRow[]).map((q) => ({
+      query: q.keys?.[0] || '', impressions: Math.round(q.impressions || 0),
+      clicks: Math.round(q.clicks || 0), position: Math.round((q.position || 0) * 10) / 10,
+    })).filter((x) => x.query && x.query.length <= 90);
+    // Oportunidad: suficientes impresiones y posición entre 6 y 40 (asomando en Google,
+    // pero no en el top). Si no hay ninguna clara, cae a las de más impresiones.
+    const opp = rows.filter((x) => x.impressions >= 15 && x.position >= 6 && x.position <= 40);
+    const list = (opp.length ? opp : rows).sort((a, b) => b.impressions - a.impressions);
+    return list.slice(0, Math.max(0, max));
+  } catch { return []; }
+}

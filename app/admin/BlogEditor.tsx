@@ -61,7 +61,17 @@ function clientShortSlug(title: string, keyword = '', words = 6): string {
 }
 
 const TIMES = Array.from({ length: 48 }, (_, i) => `${String(Math.floor(i / 2)).padStart(2, '0')}:${i % 2 ? '30' : '00'}`);
-const blank = { id: '', slug: '', slug_en: '', author_id: '', title_es: '', title_en: '', excerpt_es: '', excerpt_en: '', body_es: '', body_en: '', cover_url: '', cover_alt_es: '', cover_alt_en: '', tags: '', status: 'draft', pubDate: '', pubTime: '09:00' };
+const blank = { id: '', slug: '', slug_en: '', author_id: '', title_es: '', title_en: '', excerpt_es: '', excerpt_en: '', body_es: '', body_en: '', cover_url: '', cover_alt_es: '', cover_alt_en: '', tags: '', status: 'draft', pubDate: '', pubTime: '09:00',
+  // Email a la base de datos (por defecto apagado; el dueño lo activa por artículo).
+  emailEnabled: false, emailSegment: 'all', emailWhen: 'publish', emailDate: '', emailTime: '09:00' };
+// Segmentos de la base de datos (espejo de lib/segments.ts; cliente no importa el server).
+const EMAIL_SEGMENTS: { id: string; es: string; en: string }[] = [
+  { id: 'all', es: 'Todos los traders (opt-in)', en: 'All traders (opted-in)' },
+  { id: 'free', es: 'Plan gratis', en: 'Free plan' },
+  { id: 'paid', es: 'Con plan de pago', en: 'Paying customers' },
+  { id: 'black', es: 'Black Onyx', en: 'Black Onyx' },
+  { id: 'connected', es: 'Con cuenta conectada', en: 'With account connected' },
+];
 
 // Lee un File como data URL base64 (para subir la imagen al Storage).
 function fileToDataUrl(file: File): Promise<string> {
@@ -273,12 +283,18 @@ export default function BlogEditor() {
     const d = p.publish_at ? new Date(p.publish_at) : null;
     const pad = (n: number) => String(n).padStart(2, '0');
     setTitles([]); setTopic('');
+    const ed = p.email_at ? new Date(p.email_at) : null;
     setF({
       ...blank, ...p, _origSlug: p.slug || '',
       cover_url: p.cover_url || '',
       cover_alt_es: p.cover_alt_es || '', cover_alt_en: p.cover_alt_en || '',
       pubDate: d ? `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` : '',
       pubTime: d ? `${pad(d.getHours())}:${pad(d.getMinutes())}` : '09:00',
+      // Email a la base de datos (snake_case del post → camelCase del formulario).
+      emailEnabled: !!p.email_enabled, emailSegment: p.email_segment || 'all', emailWhen: p.email_when || 'publish',
+      emailDate: ed ? `${ed.getFullYear()}-${pad(ed.getMonth() + 1)}-${pad(ed.getDate())}` : '',
+      emailTime: ed ? `${pad(ed.getHours())}:${pad(ed.getMinutes())}` : '09:00',
+      emailSentAt: p.email_sent_at || null, emailResend: false,
     });
   }
 
@@ -508,6 +524,18 @@ export default function BlogEditor() {
     if (f.status === 'scheduled') {
       if (!f.pubDate) { toast(es ? 'Elige la fecha de publicación.' : 'Pick a publish date.'); return; }
       body.publish_at = new Date(`${f.pubDate}T${f.pubTime || '09:00'}`).toISOString();
+    }
+    // Email a la base de datos (mapea los campos del formulario a los del API).
+    body.email_enabled = !!f.emailEnabled;
+    if (f.emailEnabled) {
+      body.email_segment = f.emailSegment || 'all';
+      body.email_when = f.emailWhen || 'publish';
+      if (f.emailWhen === 'schedule') {
+        if (!f.emailDate) { toast(es ? 'Elige la fecha del email.' : 'Pick the email date.'); return; }
+        body.email_at = new Date(`${f.emailDate}T${f.emailTime || '09:00'}`).toISOString();
+      } else body.email_at = null;
+      // Si se reactiva en un post que ya se envió, permitir que vuelva a salir.
+      if (f.id && f.emailResend) body.email_resend = true;
     }
     setBusy(true);
     try {
@@ -883,6 +911,65 @@ export default function BlogEditor() {
               </div>
             </div>
           )}
+
+          {/* Enviar por email a la base de datos — al lado del calendario. Reusa el
+              motor de campañas (respeta la baja) y arma el correo desde el artículo. */}
+          <div style={{ marginTop: 14, border: '1px solid ' + (f.emailEnabled ? 'color-mix(in srgb,var(--amber) 55%,var(--line))' : 'var(--line)'), borderRadius: 12, padding: '12px 14px', background: f.emailEnabled ? 'color-mix(in srgb,var(--amber) 7%,transparent)' : 'transparent' }}>
+            <div className="row between" style={{ alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700 }}>
+                <span>📧</span>{es ? 'Enviar por email a mi base de datos' : 'Email this to my database'}
+              </div>
+              <div onClick={() => set('emailEnabled', !f.emailEnabled)} style={{ cursor: 'pointer', width: 42, height: 23, borderRadius: 99, background: f.emailEnabled ? 'var(--amber)' : 'var(--line)', position: 'relative', flex: 'none', transition: 'background .15s' }}>
+                <span style={{ position: 'absolute', top: 2, left: f.emailEnabled ? 21 : 2, width: 19, height: 19, borderRadius: '50%', background: '#fff', transition: 'left .15s' }} />
+              </div>
+            </div>
+
+            {f.emailEnabled && (
+              <div style={{ marginTop: 12 }}>
+                <div className="muted" style={{ fontSize: 12, marginBottom: 5 }}>{es ? '¿A quién?' : 'To whom?'}</div>
+                <select value={f.emailSegment} onChange={(e) => set('emailSegment', e.target.value)} style={{ margin: 0, maxWidth: 280 }}>
+                  {EMAIL_SEGMENTS.map((sg) => <option key={sg.id} value={sg.id}>{es ? sg.es : sg.en}</option>)}
+                </select>
+
+                <div className="muted" style={{ fontSize: 12, margin: '12px 0 5px' }}>{es ? '¿Cuándo?' : 'When?'}</div>
+                <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+                  {([['publish', es ? 'Al publicar' : 'On publish'], ['schedule', es ? 'Programar' : 'Schedule'], ['now', es ? 'Enviar ahora' : 'Send now']] as const).map(([v, l]) => (
+                    <button key={v} type="button" onClick={() => set('emailWhen', v)} className="btn btn-ghost" style={{ fontSize: 12, border: '1px solid ' + (f.emailWhen === v ? 'var(--amber)' : 'var(--line)'), background: f.emailWhen === v ? 'color-mix(in srgb,var(--amber) 18%,transparent)' : 'transparent' }}>{l}</button>
+                  ))}
+                </div>
+
+                {f.emailWhen === 'schedule' && (
+                  <div className="row" style={{ gap: 14, flexWrap: 'wrap', alignItems: 'flex-start', marginTop: 12 }}>
+                    <DayCalendar value={f.emailDate} onChange={(d) => set('emailDate', d)} es={es} />
+                    <div><span className="muted" style={{ fontSize: 12 }}>{es ? 'Hora' : 'Time'}</span>
+                      <select value={f.emailTime} onChange={(e) => set('emailTime', e.target.value)} style={{ margin: '4px 0 0', display: 'block' }}>
+                        {TIMES.map((t) => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                )}
+
+                <div className="muted" style={{ fontSize: 11, marginTop: 10, borderTop: '1px dashed var(--line)', paddingTop: 8 }}>
+                  {f.emailWhen === 'now'
+                    ? (es ? 'Sale al guardar. Respeta la baja de cada suscriptor.' : 'Goes out on save. Respects each subscriber’s opt-out.')
+                    : f.emailWhen === 'schedule'
+                      ? (es ? 'Sale en la fecha/hora elegida. Respeta la baja.' : 'Goes out at the chosen date/time. Respects opt-out.')
+                      : (es ? 'Sale cuando el artículo se publique (ahora o en su fecha programada). Respeta la baja.' : 'Goes out when the article is published (now or on its scheduled date). Respects opt-out.')}
+                  {' '}{es ? 'El correo lleva portada, título, extracto y “Leer más”, bilingüe según el idioma de cada suscriptor.' : 'The email includes cover, title, excerpt and “Read more”, bilingual per subscriber language.'}
+                </div>
+
+                {f.emailSentAt && (
+                  <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 11.5 }}>
+                    <span style={{ color: 'var(--green)' }}>✓ {es ? 'Ya se envió' : 'Already sent'} · {new Date(f.emailSentAt).toLocaleString(es ? 'es-ES' : 'en-US')}</span>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', color: 'var(--mut)' }}>
+                      <input type="checkbox" checked={!!f.emailResend} onChange={(e) => set('emailResend', e.target.checked)} style={{ margin: 0 }} />
+                      {es ? 'Volver a enviar al guardar' : 'Resend on save'}
+                    </label>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="row" style={{ gap: 8, marginTop: 4 }}>
