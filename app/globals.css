@@ -16,8 +16,10 @@
    2) prefers-color-scheme:light → cuando NO ha elegido (sigue el sistema).
    Así no hace falta JavaScript y no hay parpadeo al cargar. */
 html[data-theme="light"]{
-  --bg:#f4f6fb; --bg2:#eef1f7; --card:#ffffff; --card2:#eef2f9; --line:#e3e7f0;
-  --tx:#111826; --mut:#5b6576;
+  /* Lienzo gris claro (no casi-blanco) para que las tarjetas blancas resalten,
+     borde visible y texto secundario un punto más oscuro → más contraste. */
+  --bg:#e7ebf3; --bg2:#eff2f8; --card:#ffffff; --card2:#e9eef6; --line:#d2d9e6;
+  --tx:#101725; --mut:#56617a;
   --brand:#5b6cff; --brand2:#8b5cff;
   --green:#12a97a; --green2:#0e9268; --red:#e23b55; --red2:#c62f47; --amber:#c9860a; --cyan:#0b93c9; --gold:#c98b17; --purple:#8b5cff;
   --grad:linear-gradient(120deg,#6b7bff,#8b5cff);
@@ -25,8 +27,8 @@ html[data-theme="light"]{
 }
 @media (prefers-color-scheme: light){
   :root:not([data-theme="dark"]):not([data-theme="light"]){
-    --bg:#f4f6fb; --bg2:#eef1f7; --card:#ffffff; --card2:#eef2f9; --line:#e3e7f0;
-    --tx:#111826; --mut:#5b6576;
+    --bg:#e7ebf3; --bg2:#eff2f8; --card:#ffffff; --card2:#e9eef6; --line:#d2d9e6;
+    --tx:#101725; --mut:#56617a;
     --brand:#5b6cff; --brand2:#8b5cff;
     --green:#12a97a; --green2:#0e9268; --red:#e23b55; --red2:#c62f47; --amber:#c9860a; --cyan:#0b93c9; --gold:#c98b17; --purple:#8b5cff;
     --grad:linear-gradient(120deg,#6b7bff,#8b5cff);
@@ -63,14 +65,18 @@ html[lang="ja"] body{font-family:"Noto Sans JP","Segoe UI",system-ui,-apple-syst
 .themetoggle:hover{background:var(--card2);}
 
 /* Ajustes finos para que el tema claro se vea limpio (sombras y contrastes) */
-html[data-theme="light"] .card{box-shadow:0 6px 20px rgba(20,30,60,.06);}
+html[data-theme="light"] .card{box-shadow:0 4px 14px rgba(30,41,70,.10);}
+/* En claro, el resplandor (drop-shadow) del icono se ve como mancha borrosa
+   sobre fondo blanco. Lo quitamos; en oscuro el halo se conserva. */
+html[data-theme="light"] .onyx-ic{filter:none !important;}
 html[data-theme="light"] .btn-primary{color:#fff;}
 html[data-theme="light"] .topbar{background:rgba(255,255,255,.78);}
 html[data-theme="light"] .code{background:#eef2f9;color:#274690;}
 html[data-theme="light"] .adminnav-item:hover{color:var(--tx);background:var(--card2);}
 html[data-theme="light"] .adminnav-item.on{color:#3b46b8;background:rgba(91,108,255,.12);}
 @media (prefers-color-scheme: light){
-  :root:not([data-theme="dark"]) .card{box-shadow:0 6px 20px rgba(20,30,60,.06);}
+  :root:not([data-theme="dark"]) .card{box-shadow:0 4px 14px rgba(30,41,70,.10);}
+  :root:not([data-theme="dark"]) .onyx-ic{filter:none !important;}
   :root:not([data-theme="dark"]) .btn-primary{color:#fff;}
   :root:not([data-theme="dark"]) .topbar{background:rgba(255,255,255,.78);}
   :root:not([data-theme="dark"]) .code{background:#eef2f9;color:#274690;}
