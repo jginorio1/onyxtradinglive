@@ -4,6 +4,7 @@ import { toast, confirmDialog } from '@/lib/toast';
 import { useLang } from '@/lib/lang';
 import BlogKeywords from './BlogKeywords';
 import BlogAutopilot from './BlogAutopilot';
+import NewsPilot from './NewsPilot';
 import BlogAudit from './BlogAudit';
 import BlogPreview from './previews/BlogPreview';
 import SocialShare from './SocialShare';
@@ -645,6 +646,7 @@ export default function BlogEditor() {
 
         <BlogKeywords />
         <BlogAutopilot es={es} onChanged={load} />
+        <NewsPilot es={es} onChanged={load} />
         <BlogAudit es={es} onChanged={load} />
         <BlogAuthorCard es={es} roster={authors} reload={loadAuthors} />
 

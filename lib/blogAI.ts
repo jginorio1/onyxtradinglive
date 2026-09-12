@@ -197,6 +197,37 @@ export async function generateArticle(title: string, kw?: KwGuide, opts?: { rela
   };
 }
 
+// ============================================================
+// Artículo de NOTICIA: a partir de un titular real y su resumen (de una fuente
+// financiera), escribe una nota CORTA, factual y neutral, citando la fuente.
+// Sigue la LÍNEA ROJA: nada de predicciones, señales ni promesas; solo explica
+// qué pasó y por qué importa a los traders, con contexto educativo de Onyx.
+// ============================================================
+export async function generateNewsArticle(item: { headline: string; summary: string; sourceName: string; sourceUrl: string; category?: string }):
+  Promise<{ ok: boolean; article?: any; reason?: string }> {
+  if (!process.env.ANTHROPIC_API_KEY) return { ok: false, reason: 'no_key' };
+  const system = `Eres redactor de noticias de mercados de Onyx Trading Live. ${GUARDRAIL}\n\nTe doy un TITULAR real y su RESUMEN de una fuente financiera. Escribe una NOTA de blog CORTA (250-450 palabras por idioma), en ESPAÑOL e INGLÉS, con estas reglas:\n- FACTUAL y NEUTRAL: explica QUÉ pasó y POR QUÉ le importa a un trader (volatilidad, sesiones afectadas, gestión de riesgo). NADA de predicciones, "va a subir/bajar", señales ni consejos de qué operar.\n- NO inventes cifras ni citas: usa solo lo que está en el titular/resumen. Si un dato no está, no lo pongas.\n- Atribuye SIEMPRE la fuente: incluye una frase tipo "Según ${item.sourceName}…" y AÑADE un enlace markdown a la fuente: [${item.sourceName}](${item.sourceUrl}).\n- Cierra con una línea educativa breve sobre disciplina/gestión de riesgo en días de noticias (sin promesas), invitando suave a Onyx.\n- markdown: 1-2 subtítulos "## ", alguna lista si aporta, **negritas** con moderación.\n\n🌐 BILINGÜE OBLIGATORIO: campos _es 100% español, campos _en 100% inglés (traducción nativa, no copies).\n\nCONTEXTO DE MARCA:\n${await brandBrief('es')}\n\nDevuelve SOLO este JSON (sin texto fuera):\n{"title_es":"...","title_en":"...","slug":"slug-corto-es-3-a-6-palabras","slug_en":"short-english-slug-3-to-6-words","excerpt_es":"resumen 1-2 frases","excerpt_en":"1-2 sentence summary","body_es":"markdown en español con el enlace a la fuente","body_en":"markdown in English with the source link","cover_alt_es":"alt de portada ~12 palabras","cover_alt_en":"cover alt ~12 words","tags":"3-6 palabras clave EN ESPAÑOL separadas por coma"}`;
+  const user = `TITULAR: ${item.headline}\nRESUMEN: ${item.summary || '(sin resumen; usa solo el titular)'}\nFUENTE: ${item.sourceName} — ${item.sourceUrl}\nCATEGORÍA: ${item.category || 'mercados'}`;
+  const out = parseJson(await aiRaw(system, user, 4000));
+  if (!out || !out.body_es || !out.body_en) return { ok: false, reason: 'ai_failed' };
+  return {
+    ok: true,
+    article: {
+      title_es: String(out.title_es || item.headline).slice(0, 200),
+      title_en: String(out.title_en || item.headline).slice(0, 200),
+      slug: String(out.slug || '').slice(0, 90),
+      slug_en: String(out.slug_en || '').slice(0, 90),
+      excerpt_es: String(out.excerpt_es || '').slice(0, 400),
+      excerpt_en: String(out.excerpt_en || '').slice(0, 400),
+      body_es: String(out.body_es || '').slice(0, 20000),
+      body_en: String(out.body_en || '').slice(0, 20000),
+      cover_alt_es: String(out.cover_alt_es || '').slice(0, 300),
+      cover_alt_en: String(out.cover_alt_en || '').slice(0, 300),
+      tags: String(out.tags || '').slice(0, 300),
+    },
+  };
+}
+
 // ---- Mejorar un artículo YA existente SIN reescribir su contenido ----
 // La IA devuelve SOLO lo nuevo (enlaces, imagen, FAQ) en un JSON PEQUEÑO — así no
 // se trunca en artículos largos — y aquí lo insertamos en el texto original.

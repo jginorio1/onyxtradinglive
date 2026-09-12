@@ -19,6 +19,7 @@
     { "path": "/api/cron/checkin-reminder?slot=evening", "schedule": "0 0 * * *" },
     { "path": "/api/cron/plan-daily", "schedule": "0 3 * * *" },
     { "path": "/api/cron/blog", "schedule": "*/15 * * * *" },
+    { "path": "/api/cron/news", "schedule": "*/3 * * * *" },
     { "path": "/api/cron/blog-autopilot", "schedule": "*/15 * * * *" },
     { "path": "/api/cron/blog-audit", "schedule": "*/20 * * * *" },
     { "path": "/api/cron/journal-reminder", "schedule": "0 22 * * *" },

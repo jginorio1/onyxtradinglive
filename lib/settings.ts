@@ -338,6 +338,25 @@ export type BlogAutopilot = {
 const AUTO: BlogAutopilot = { enabled: false, everyNDays: 2, hour: 9, perMonth: 15, useKeywords: true, topics: [], usedTopics: [], autoReplenish: true, tzOffset: 0, autoEmail: true, emailSegment: 'all' };
 export const blogAutopilotSettings = () => getSetting<BlogAutopilot>('blog_autopilot', AUTO);
 
+// Piloto de NOTICIAS: un vigilante lee feeds de economía/mercados casi en vivo y,
+// al detectar algo importante, la IA escribe un artículo corto y factual, lo
+// publica al instante y lo envía por email (en inglés). Con tope diario y frenos.
+export type NewsPilot = {
+  enabled: boolean;               // vigilante activo
+  mode: 'auto' | 'draft';         // 'auto' = publica+email al instante; 'draft' = deja borrador
+  maxPerDay: number;              // tope de artículos automáticos por día
+  minMinutesBetween: number;      // separación mínima entre publicaciones (anti-saturación)
+  emailSegment: string;           // a quién se envía el email (all, paid, connected…)
+  topics: { macro: boolean; markets: boolean; earnings: boolean; crypto: boolean };
+  sources: Record<string, boolean>;  // on/off por fuente (id → activo). Vacío = todas las de por defecto
+  maxAgeMin: number;              // solo considera noticias publicadas hace ≤ N minutos (frescura)
+};
+const NEWS: NewsPilot = {
+  enabled: false, mode: 'auto', maxPerDay: 3, minMinutesBetween: 20, emailSegment: 'all',
+  topics: { macro: true, markets: true, earnings: true, crypto: true }, sources: {}, maxAgeMin: 45,
+};
+export const newsPilotSettings = () => getSetting<NewsPilot>('news_pilot', NEWS);
+
 // Autor del blog (E-E-A-T). Se muestra la firma con foto, cargo y bio, y alimenta
 // el schema BlogPosting (author Person con jobTitle). Clave para YMYL/finanzas.
 export type BlogAuthor = {
