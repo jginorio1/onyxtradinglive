@@ -871,18 +871,6 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10.5, color: GREEN }}><span className="livedot" style={{ width: 6, height: 6 }} /> {updatedTxt}</span>
               </span>
             </div>
-            {!isFree && (<>
-              <details className="hero-export" style={{ position: 'relative', flex: 'none' }}>
-                <summary style={{ listStyle: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, height: '100%', border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--tx)', borderRadius: 14, padding: '8px 15px', fontSize: 13 }}>
-                  <OnyxIcon emoji="⬇️" size={14} /> {lang === 'es' ? 'Exportar' : 'Export'} <span style={{ fontSize: 11, color: 'var(--mut)' }}>▾</span>
-                </summary>
-                <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', zIndex: 40, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 8, minWidth: 220, boxShadow: '0 12px 34px rgba(0,0,0,.4)' }}>
-                  <div className="muted" style={{ fontSize: 11, padding: '4px 8px 8px' }}>{lang === 'es' ? 'Reporte del período filtrado' : 'Report for the filtered period'}</div>
-                  <a className="btn btn-ghost" href={pdfHref} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="📄" size={14} /> PDF</a>
-                  <a className="btn btn-ghost" href={csvHref} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%' }}><OnyxIcon emoji="📊" size={14} /> CSV</a>
-                </div>
-              </details>
-            </>)}
           </div>
         </div>
 
@@ -955,6 +943,17 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                 {(['d1', 'd7', 'd30', 'mo', 'yr', 'all'] as const).map((r) => <button key={r} className={'btn ' + (range === r ? 'btn-primary' : 'btn-ghost')} style={{ padding: '7px 12px' }} onClick={() => setRange(r)}>{L.ranges[r]}</button>)}
                 <button className={'btn ' + (range === 'custom' ? 'btn-primary' : 'btn-ghost')} style={{ padding: '7px 12px', display: 'inline-flex', alignItems: 'center' }} onClick={() => setRange('custom')} title={L.customRange}><OnyxIcon emoji="📅" size={15} /></button>
                 <button className={'btn ' + (demo ? 'btn-primary' : 'btn-ghost')} style={{ padding: '7px 12px', display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={() => setDemo(!demo)}><OnyxIcon emoji="🎬" size={15} /> {L.demo}</button>
+                {/* Exportar: al lado de Demo, mismo tamaño (mismo padding de botón). */}
+                {!isFree && (
+                  <details style={{ position: 'relative' }}>
+                    <summary className="btn btn-ghost" style={{ listStyle: 'none', padding: '7px 12px', display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}><OnyxIcon emoji="⬇️" size={15} /> {lang === 'es' ? 'Exportar' : 'Export'} <span style={{ fontSize: 11, color: 'var(--mut)' }}>▾</span></summary>
+                    <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', zIndex: 40, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 8, minWidth: 220, boxShadow: '0 12px 34px rgba(0,0,0,.4)' }}>
+                      <div className="muted" style={{ fontSize: 11, padding: '4px 8px 8px' }}>{lang === 'es' ? 'Reporte del período filtrado' : 'Report for the filtered period'}</div>
+                      <a className="btn btn-ghost" href={pdfHref} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="📄" size={14} /> PDF</a>
+                      <a className="btn btn-ghost" href={csvHref} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%' }}><OnyxIcon emoji="📊" size={14} /> CSV</a>
+                    </div>
+                  </details>
+                )}
               </div>
             </div>
             {view === 'rendimiento' && (
@@ -1178,12 +1177,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
             {view === 'costes' && <Costs trades={filtered} lang={lang} accounts={accounts} />}
             {view === 'reto' && <Challenge lang={lang} />}
             {view === 'plan' && <PlanHabits lang={lang} account={sel} accountName={curName} />}
-            {view === 'edge' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <button className="btn btn-ghost" style={{ alignSelf: 'flex-start', fontSize: 13 }} onClick={() => setView('hub')}>← {lang === 'en' ? 'Back' : 'Volver'}</button>
-                <QuantEdgeCard a={a} lang={lang} />
-              </div>
-            )}
+            {view === 'edge' && <QuantEdgeCard a={a} lang={lang} />}
 
             {view === 'cuentas' && (<>
               <Card title={L.accCard} icon="🗂️">
