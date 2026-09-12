@@ -144,41 +144,38 @@ export default async function TopBar({ home = false }: { home?: boolean }) {
   return (
     <div className={'topbar' + (home ? ' center-nav' : '') + (user ? ' app' : '')}>
       <div className="wrap-wide">
-        {/* El logo siempre vuelve al inicio. Dentro del panel dejamos solo el símbolo
-            (sin el texto "Onyx Trading Live") para ganar espacio y que no se parta. */}
-        <Link className="logo" href="/" aria-label="Onyx Trading Live">
-          <img src="/onyx-symbol.png" alt="Onyx Trading Live" style={{ width: 28, height: 28, objectFit: 'contain', flex: '0 0 auto' }} />
-          <span className="logo-text">Onyx Trading Live</span>
-        </Link>
-
-        {user ? (
-          <div className="row" style={{ gap: 4 }}>
-            <MainNav items={navItems} />
-
-            <span className="topsep" />
-
-            {/* Zona de estado: EA + plan, como pastillas juntas. */}
-            {eaLive !== null && (
-              <span className="ea-dot" title={eaLive ? t.eaOnTitle : t.eaOffTitle}>
-                {eaLive ? <span className="livedot" style={{ width: 8, height: 8 }} /> : <span className="dot" style={{ background: 'var(--amber)' }} />}
-                <span className="ea-dot-tx">{eaLive ? t.eaOn : t.eaOff}</span>
-              </span>
-            )}
-
-            <Link className={'planpill' + (plan === 'free' ? ' free' : '')} href="/pricing">{planName}</Link>
-
-            <span className="topsep" />
-
-            {/* Zona de acciones: iconos del mismo tamaño. */}
-            <NotifBell />
-            <ThemeToggle />
-            <LangToggle compact />
-
-            <span className="topsep" />
-
-            <TopBarMenu email={user.email || ''} initial={initial} isAdmin={isAdmin} t={t} />
+        {user ? (<>
+          {/* Fila 1: logo (solo símbolo) + estado/acciones/avatar (siempre visibles). */}
+          <div className="tb-row1">
+            <Link className="logo" href="/" aria-label="Onyx Trading Live">
+              <img src="/onyx-symbol.png" alt="Onyx Trading Live" style={{ width: 28, height: 28, objectFit: 'contain', flex: '0 0 auto' }} />
+              <span className="logo-text">Onyx Trading Live</span>
+            </Link>
+            <div className="row tb-cluster" style={{ gap: 6 }}>
+              {eaLive !== null && (
+                <span className="ea-dot" title={eaLive ? t.eaOnTitle : t.eaOffTitle}>
+                  {eaLive ? <span className="livedot" style={{ width: 8, height: 8 }} /> : <span className="dot" style={{ background: 'var(--amber)' }} />}
+                  <span className="ea-dot-tx">{eaLive ? t.eaOn : t.eaOff}</span>
+                </span>
+              )}
+              <Link className={'planpill' + (plan === 'free' ? ' free' : '')} href="/pricing">{planName}</Link>
+              <span className="topsep" />
+              <NotifBell />
+              <ThemeToggle />
+              <LangToggle compact />
+              <span className="topsep" />
+              <TopBarMenu email={user.email || ''} initial={initial} isAdmin={isAdmin} t={t} />
+            </div>
           </div>
-        ) : (
+          {/* Fila 2: todos los tabs, a lo ancho. Si no caben, la fila se desliza. */}
+          <div className="tb-row2">
+            <MainNav items={navItems} />
+          </div>
+        </>) : (<>
+          <Link className="logo" href="/" aria-label="Onyx Trading Live">
+            <img src="/onyx-symbol.png" alt="Onyx Trading Live" style={{ width: 28, height: 28, objectFit: 'contain', flex: '0 0 auto' }} />
+            <span className="logo-text">Onyx Trading Live</span>
+          </Link>
           <div className="row" style={{ gap: 6 }}>
             {/* En móvil el botón "Entrar" se oculta; por eso va también dentro del menú */}
             <MainNav items={navItems} authItems={[{ href: '/login', label: t.login }, { href: '/login?mode=signup', label: t.signup }]} />
@@ -188,7 +185,7 @@ export default async function TopBar({ home = false }: { home?: boolean }) {
             <Link className="btn btn-ghost btn-login" href="/login">{t.login}</Link>
             <Link className="btn btn-primary" href="/login?mode=signup">{t.signup}</Link>
           </div>
-        )}
+        </>)}
       </div>
     </div>
   );
