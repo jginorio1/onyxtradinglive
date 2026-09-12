@@ -73,23 +73,29 @@ export async function gscOverview(days = 28): Promise<GscResult> {
   const fmt = (d: Date) => d.toISOString().slice(0, 10);
   const base = `https://searchconsole.googleapis.com/webmasters/v3/sites/${encodeURIComponent(site)}/searchAnalytics/query`;
 
+  // Guardamos el último estado HTTP para distinguir "sin permiso/propiedad mal"
+  // (403/404) de "consultó bien pero Google aún no tiene datos" (200 sin filas).
+  let lastStatus = 0;
   async function q(dimensions: string[], rowLimit: number): Promise<GscRow[]> {
     const r = await fetch(base, {
       method: 'POST',
       headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
       body: JSON.stringify({ startDate: fmt(start), endDate: fmt(end), dimensions, rowLimit }),
     });
+    lastStatus = r.status;
     if (!r.ok) return [];
     const j = await r.json();
     return (j.rows || []) as GscRow[];
   }
 
   try {
-    const [totalsRows, queries, pages] = await Promise.all([
-      q([], 1),
-      q(['query'], 25),
-      q(['page'], 25),
-    ]);
+    // La consulta de totales primero: si devuelve 403/404 el problema es de acceso
+    // (la cuenta de servicio no es usuario de la propiedad, o GSC_SITE_URL no coincide).
+    const totalsRows = await q([], 1);
+    if (lastStatus === 403 || lastStatus === 401) return { ok: false, reason: 'forbidden' };
+    if (lastStatus === 404) return { ok: false, reason: 'site_mismatch' };
+    if (lastStatus >= 400) return { ok: false, reason: 'http_' + lastStatus };
+    const [queries, pages] = await Promise.all([q(['query'], 25), q(['page'], 25)]);
     const t = totalsRows[0];
     return {
       ok: true,

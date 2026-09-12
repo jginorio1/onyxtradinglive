@@ -116,7 +116,18 @@ export default function SeoPanel() {
         </div>
 
         {!env.gsc && <div className="muted" style={{ fontSize: 13, marginTop: 10 }}>{L('Search Console no está conectado. Conéctalo (arriba) para ver aquí tu ranking, keywords, clics e impresiones reales de Google.', 'Search Console is not connected. Connect it (above) to see your real ranking, keywords, clicks and impressions from Google here.')}</div>}
-        {env.gsc && !search.ok && <div className="muted" style={{ fontSize: 13, marginTop: 10 }}>{L('No se pudieron leer los datos de Search Console. Revisa que la cuenta de servicio sea usuario de la propiedad y que GSC_SITE_URL sea correcta.', 'Could not read Search Console data. Check the service account is a user of the property and GSC_SITE_URL is correct.')} ({search.reason})</div>}
+        {env.gsc && !search.ok && (
+          <div style={{ fontSize: 13, marginTop: 10, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '10px 12px' }}>
+            {search.reason === 'forbidden'
+              ? <><b style={{ color: 'var(--amber)' }}>{L('Falta permiso.', 'Missing access.')}</b> {L('La cuenta de servicio no es usuario de la propiedad en Search Console. En Search Console → Configuración → Usuarios y permisos, añade el correo GSC_CLIENT_EMAIL como usuario (Completo o Restringido).', 'The service account is not a user of the property in Search Console. In Search Console → Settings → Users and permissions, add the GSC_CLIENT_EMAIL address as a user (Full or Restricted).')}</>
+              : search.reason === 'site_mismatch'
+              ? <><b style={{ color: 'var(--amber)' }}>{L('La propiedad no coincide.', 'Property mismatch.')}</b> {L('GSC_SITE_URL no apunta a una propiedad que la cuenta pueda leer. Usa exactamente "sc-domain:onyxtradinglive.com" (propiedad de dominio) o "https://www.onyxtradinglive.com/" (prefijo de URL), tal cual aparece en Search Console.', 'GSC_SITE_URL does not point to a property the account can read. Use exactly "sc-domain:onyxtradinglive.com" (domain property) or "https://www.onyxtradinglive.com/" (URL prefix), exactly as shown in Search Console.')}</>
+              : <>{L('No se pudieron leer los datos de Search Console. Revisa que la cuenta de servicio sea usuario de la propiedad y que GSC_SITE_URL sea correcta.', 'Could not read Search Console data. Check the service account is a user of the property and GSC_SITE_URL is correct.')} ({search.reason})</>}
+          </div>
+        )}
+        {env.gsc && search.ok && !(search.totals?.impressions) && (
+          <div className="muted" style={{ fontSize: 12.5, marginTop: 10 }}>{L('Conectado correctamente. Google aún no reporta impresiones: en sitios nuevos tarda de unos días a ~2 semanas tras verificar la propiedad y enviar el sitemap. Vuelve a mirar en unos días.', 'Connected correctly. Google is not reporting impressions yet: on new sites this takes a few days to ~2 weeks after verifying the property and submitting the sitemap. Check back in a few days.')}</div>
+        )}
 
         {env.gsc && search.ok && (
           <>
