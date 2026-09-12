@@ -22,6 +22,10 @@ export async function GET(req: Request) {
       googleVerify: !!process.env.GOOGLE_SITE_VERIFICATION,
       bingVerify: !!process.env.BING_SITE_VERIFICATION,
       site: (process.env.NEXT_PUBLIC_APP_URL || 'https://www.onyxtradinglive.com').replace(/\/$/, ''),
+      // El correo de la cuenta de servicio NO es secreto: lo mostramos para poder
+      // copiarlo y añadirlo como usuario en Search Console (la clave privada nunca se expone).
+      gscEmail: process.env.GSC_CLIENT_EMAIL || '',
+      gscSite: process.env.GSC_SITE_URL || '',
     };
     const days = Math.min(90, Math.max(7, Number(new URL(req.url).searchParams.get('days')) || 28));
     let search: any = { ok: false, reason: env.gsc ? 'pending' : 'not_configured' };
