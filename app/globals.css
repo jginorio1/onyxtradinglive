@@ -92,9 +92,10 @@ a{color:inherit;text-decoration:none;}
 .topbar.app .wrap-wide{ height:auto; flex-direction:column; align-items:stretch; justify-content:flex-start; padding-top:6px; padding-bottom:0; }
 .tb-row1{ min-height:52px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .tb-cluster{ flex:0 0 auto; }
-.tb-row2{ display:flex; align-items:center; overflow-x:auto; overflow-y:hidden; padding:2px 0 8px; scrollbar-width:none; }
-.tb-row2::-webkit-scrollbar{ display:none; }
-.tb-row2 .navl{ flex-wrap:nowrap; gap:4px; }
+.tb-row2{ display:flex; align-items:center; overflow:visible; padding:2px 0 8px; }
+/* Los tabs bajan a la 2ª línea cuando no caben (iPad/medio) y las líneas van
+   centradas, así el menú que sobra queda centralizado debajo, sin deslizar. */
+.tb-row2 .navl{ flex-wrap:wrap; gap:4px 6px; justify-content:center; width:100%; }
 .tb-row2 .navl .navlink{ padding:6px 10px; border-radius:8px; }
 /* En móvil vuelve a una sola fila: fila 1 (logo + acciones) crece y la fila 2
    queda a la derecha solo con el botón de menú (☰). */

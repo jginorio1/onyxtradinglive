@@ -138,10 +138,7 @@ export default function BotLabDashboard() {
     <div className="bl-shell" style={{ maxWidth: 1120, margin: '0 auto', padding: '10px 4px 60px', display: 'flex', gap: 20, alignItems: 'flex-start' }}>
       {/* Barra lateral propia */}
       <aside className="bl-side" style={{ flex: '0 0 210px', position: 'sticky', top: 78 }}>
-        <div className="bl-side-logo" style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '4px 8px 14px' }}>
-          <span style={{ width: 30, height: 30, borderRadius: 8, background: `linear-gradient(120deg,${GOLD},#ffb020)`, color: '#3a2a06', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>◆</span>
-          <b style={{ fontSize: 15 }}>Bot Lab</b>
-        </div>
+        {/* El logo ◆ ya vive en la barra de arriba; aquí NO lo repetimos (se veía doble). */}
         <nav className="bl-nav" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           {NAV.map(([k, ic, lbl]) => (
             <button key={k} onClick={() => setView(k)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', textAlign: 'left', width: '100%', border: 'none', background: view === k ? 'color-mix(in srgb,var(--brand) 16%,transparent)' : 'transparent', color: view === k ? 'var(--brand)' : 'var(--tx)' }}>
@@ -302,9 +299,7 @@ export default function BotLabDashboard() {
       <style>{`@media(max-width:820px){
         .bl-shell{flex-direction:column}
         .bl-side{position:sticky!important;top:0;z-index:20;flex:none!important;width:100%;background:var(--bg,#0a0e17);padding:6px 0}
-        .bl-side-logo{display:none!important}
-        .bl-nav{flex-direction:row!important;flex-wrap:nowrap!important;overflow-x:auto;gap:4px;scrollbar-width:none}
-        .bl-nav::-webkit-scrollbar{display:none}
+        .bl-nav{flex-direction:row!important;flex-wrap:wrap!important;justify-content:center;gap:6px}
         .bl-nav button{width:auto!important;flex:0 0 auto;padding:8px 12px!important;white-space:nowrap}
       }`}</style>
     </div>
