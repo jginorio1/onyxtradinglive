@@ -13,21 +13,18 @@ import { logError } from '@/lib/errlog';
 
 const SITE = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.onyxtradinglive.com').replace(/\/$/, '');
 
-// Construye el correo (asunto + cuerpo) en ES e EN a partir del artículo.
+// Construye el correo SIEMPRE en INGLÉS (decisión del dueño: el email va en la
+// versión en inglés para todos, sin importar el idioma del suscriptor). Como el
+// motor de campañas elige el texto por idioma, ponemos el MISMO contenido inglés
+// en los cuatro campos (es/en) para que todos reciban inglés.
 export function buildBlogEmail(post: any): { subject_es: string; body_es: string; subject_en: string; body_en: string } {
-  const tEs = String(post.title_es || post.title_en || '').trim();
   const tEn = String(post.title_en || post.title_es || '').trim();
-  const xEs = String(post.excerpt_es || post.excerpt_en || '').trim();
   const xEn = String(post.excerpt_en || post.excerpt_es || '').trim();
-  const urlEs = articleUrl(SITE, slugFor(post, 'es'), 'es');
   const urlEn = articleUrl(SITE, slugFor(post, 'en'), 'en');
-  const body_es = `Hola {{nombre}},\n\n**${tEs}**\n\n${xEs}\n\nLéelo completo aquí:\n${urlEs}\n\n— Equipo de Onyx Trading Live`;
-  const body_en = `Hi {{nombre}},\n\n**${tEn}**\n\n${xEn}\n\nRead the full article here:\n${urlEn}\n\n— The Onyx Trading Live team`;
-  return {
-    subject_es: `📰 ${tEs}`.slice(0, 120),
-    subject_en: `📰 ${tEn}`.slice(0, 120),
-    body_es, body_en,
-  };
+  const subject = `📰 ${tEn}`.slice(0, 120);
+  const body = `Hi {{nombre}},\n\n**${tEn}**\n\n${xEn}\n\nRead the full article here:\n${urlEn}\n\n— The Onyx Trading Live team`;
+  // Inglés en ambos "slots" de idioma → cada destinatario recibe inglés.
+  return { subject_es: subject, body_es: body, subject_en: subject, body_en: body };
 }
 
 // Marca en el post que el correo ya salió (tolerante si la columna no existe).

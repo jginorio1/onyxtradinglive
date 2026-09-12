@@ -238,7 +238,9 @@ export async function savePost(b: any) {
   row.slug = await uniqueSlug(base);
   row.author = b.author ? String(b.author).slice(0, 120) : null;
   let ins = await supabaseAdmin.from('blog_posts').insert(row).select('id').single();
-  if (ins.error && ('slug_en' in row || 'author_id' in row)) { delete row.slug_en; delete row.author_id; ins = await supabaseAdmin.from('blog_posts').insert(row).select('id').single(); }
+  // Reintento tolerante: si falla por columnas opcionales aún no creadas (slug_en,
+  // author_id o las de email), reintenta sin ellas para no romper el guardado.
+  if (ins.error && OPTIONAL_COLS.some((k) => k in row)) ins = await supabaseAdmin.from('blog_posts').insert(stripOptional(row)).select('id').single();
   if (ins.error) throw new Error(ins.error.message);
   try { revalidateTag('blog_posts'); } catch {}
   return { id: (ins.data as any).id, slug: row.slug };
