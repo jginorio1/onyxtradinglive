@@ -124,7 +124,9 @@ export default function SeoPanel() {
         {!env.gsc && <div className="muted" style={{ fontSize: 13, marginTop: 10 }}>{L('Search Console no está conectado. Conéctalo (arriba) para ver aquí tu ranking, keywords, clics e impresiones reales de Google.', 'Search Console is not connected. Connect it (above) to see your real ranking, keywords, clicks and impressions from Google here.')}</div>}
         {env.gsc && !search.ok && (
           <div style={{ fontSize: 13, marginTop: 10, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '10px 12px' }}>
-            {search.reason === 'forbidden'
+            {search.reason === 'api_disabled'
+              ? <><b style={{ color: 'var(--amber)' }}>{L('Falta habilitar la API.', 'API not enabled.')}</b> {L('El permiso en Search Console está bien, pero la "Google Search Console API" no está habilitada en el proyecto de Google Cloud de la cuenta de servicio. Ve a Google Cloud Console → APIs y servicios → Biblioteca, busca "Google Search Console API" y pulsa Habilitar. Espera 1–2 min y recarga.', 'The Search Console permission is fine, but the "Google Search Console API" is not enabled in the service account’s Google Cloud project. Go to Google Cloud Console → APIs & Services → Library, search "Google Search Console API" and click Enable. Wait 1–2 min and reload.')}</>
+              : search.reason === 'forbidden'
               ? <><b style={{ color: 'var(--amber)' }}>{L('Falta permiso.', 'Missing access.')}</b> {L('La cuenta de servicio no es usuario de la propiedad en Search Console. En Search Console → Configuración → Usuarios y permisos, añade este correo como usuario (Completo o Restringido):', 'The service account is not a user of the property in Search Console. In Search Console → Settings → Users and permissions, add this address as a user (Full or Restricted):')}
                   {env.gscEmail
                     ? <div className="row" style={{ gap: 8, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
@@ -137,7 +139,23 @@ export default function SeoPanel() {
                 </>
               : search.reason === 'site_mismatch'
               ? <><b style={{ color: 'var(--amber)' }}>{L('La propiedad no coincide.', 'Property mismatch.')}</b> {L('GSC_SITE_URL no apunta a una propiedad que la cuenta pueda leer. Usa exactamente "sc-domain:onyxtradinglive.com" (propiedad de dominio) o "https://www.onyxtradinglive.com/" (prefijo de URL), tal cual aparece en Search Console.', 'GSC_SITE_URL does not point to a property the account can read. Use exactly "sc-domain:onyxtradinglive.com" (domain property) or "https://www.onyxtradinglive.com/" (URL prefix), exactly as shown in Search Console.')}</>
-              : <>{L('No se pudieron leer los datos de Search Console. Revisa que la cuenta de servicio sea usuario de la propiedad y que GSC_SITE_URL sea correcta.', 'Could not read Search Console data. Check the service account is a user of the property and GSC_SITE_URL is correct.')} ({search.reason})</>}
+              : search.reason === 'auth'
+              ? <><b style={{ color: 'var(--amber)' }}>{L('Error de credenciales.', 'Credentials error.')}</b> {L('No se pudo firmar el token con GSC_PRIVATE_KEY. Revisa que la clave privada esté completa (incluye "-----BEGIN PRIVATE KEY-----" y "-----END PRIVATE KEY-----") y con los saltos de línea reales o escritos como \\n. GSC_CLIENT_EMAIL debe ser el mismo de la cuenta de servicio.', 'Could not sign the token with GSC_PRIVATE_KEY. Check the private key is complete (includes "-----BEGIN PRIVATE KEY-----" and "-----END PRIVATE KEY-----") with real newlines or written as \\n. GSC_CLIENT_EMAIL must match the service account.')}</>
+              : search.reason === 'quota'
+              ? <><b style={{ color: 'var(--amber)' }}>{L('Límite de cuota.', 'Quota limit.')}</b> {L('Google devolvió "límite de peticiones" para la API de Search Console. Espera unos minutos y recarga; si persiste, revisa las cuotas del proyecto en Google Cloud.', 'Google returned a rate/quota limit for the Search Console API. Wait a few minutes and reload; if it persists, check the project quotas in Google Cloud.')}</>
+              : search.reason === 'google_down'
+              ? <><b style={{ color: 'var(--amber)' }}>{L('Google no responde.', 'Google is unavailable.')}</b> {L('La API de Search Console devolvió un error del servidor (5xx). No es tu configuración; reinténtalo en unos minutos.', 'The Search Console API returned a server error (5xx). It is not your setup; try again in a few minutes.')}</>
+              : search.reason === 'not_configured'
+              ? <><b style={{ color: 'var(--amber)' }}>{L('Sin configurar.', 'Not configured.')}</b> {L('Faltan variables en Vercel: GSC_CLIENT_EMAIL, GSC_PRIVATE_KEY y GSC_SITE_URL.', 'Missing variables in Vercel: GSC_CLIENT_EMAIL, GSC_PRIVATE_KEY and GSC_SITE_URL.')}</>
+              : search.reason === 'error'
+              ? <><b style={{ color: 'var(--amber)' }}>{L('Error de red.', 'Network error.')}</b> {L('No se pudo contactar con la API de Search Console. Reinténtalo en un momento.', 'Could not reach the Search Console API. Try again in a moment.')}</>
+              : <><b style={{ color: 'var(--amber)' }}>{L('Error inesperado', 'Unexpected error')}{search.status ? ' (HTTP ' + search.status + ')' : ''}.</b> {L('No se pudieron leer los datos de Search Console. Revisa credenciales, permiso de la propiedad y GSC_SITE_URL.', 'Could not read Search Console data. Check credentials, property permission and GSC_SITE_URL.')} ({search.reason})</>}
+            {search.detail && (
+              <details style={{ marginTop: 9 }}>
+                <summary style={{ cursor: 'pointer', fontSize: 12, color: 'var(--mut)' }}>{L('Ver detalle técnico de Google', 'Show Google technical detail')}</summary>
+                <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 11.5, marginTop: 6, color: 'var(--mut)', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 8, padding: '8px 10px', maxHeight: 220, overflow: 'auto' }}>{search.detail}</pre>
+              </details>
+            )}
           </div>
         )}
         {env.gsc && search.ok && !(search.totals?.impressions) && (

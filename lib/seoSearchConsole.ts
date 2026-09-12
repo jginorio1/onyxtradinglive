@@ -56,7 +56,7 @@ async function getToken(): Promise<string | null> {
 
 export type GscRow = { keys: string[]; clicks: number; impressions: number; ctr: number; position: number };
 export type GscResult = {
-  ok: boolean; reason?: string;
+  ok: boolean; reason?: string; detail?: string; status?: number;
   totals?: { clicks: number; impressions: number; ctr: number; position: number };
   queries?: GscRow[];
   pages?: GscRow[];
@@ -64,18 +64,18 @@ export type GscResult = {
 
 // Consulta los últimos N días. Devuelve totales + top consultas + top páginas.
 export async function gscOverview(days = 28): Promise<GscResult> {
-  if (!gscConfigured()) return { ok: false, reason: 'not_configured' };
+  if (!gscConfigured()) return { ok: false, reason: 'not_configured', detail: 'Faltan variables GSC_CLIENT_EMAIL / GSC_PRIVATE_KEY / GSC_SITE_URL.' };
   const token = await getToken();
-  if (!token) return { ok: false, reason: 'auth' };
+  if (!token) return { ok: false, reason: 'auth', detail: 'No se pudo firmar el token JWT (revisa GSC_PRIVATE_KEY: debe incluir los saltos de línea reales o \\n, y BEGIN/END PRIVATE KEY).' };
   const site = process.env.GSC_SITE_URL as string;
   const end = new Date();
   const start = new Date(Date.now() - days * 86400000);
   const fmt = (d: Date) => d.toISOString().slice(0, 10);
   const base = `https://searchconsole.googleapis.com/webmasters/v3/sites/${encodeURIComponent(site)}/searchAnalytics/query`;
 
-  // Guardamos el último estado HTTP para distinguir "sin permiso/propiedad mal"
-  // (403/404) de "consultó bien pero Google aún no tiene datos" (200 sin filas).
-  let lastStatus = 0;
+  // Guardamos el último estado HTTP y el cuerpo del error para distinguir causas:
+  // API deshabilitada, sin permiso de usuario, propiedad equivocada, o sin datos.
+  let lastStatus = 0, lastErr = '';
   async function q(dimensions: string[], rowLimit: number): Promise<GscRow[]> {
     const r = await fetch(base, {
       method: 'POST',
@@ -83,18 +83,24 @@ export async function gscOverview(days = 28): Promise<GscResult> {
       body: JSON.stringify({ startDate: fmt(start), endDate: fmt(end), dimensions, rowLimit }),
     });
     lastStatus = r.status;
-    if (!r.ok) return [];
+    if (!r.ok) { lastErr = (await r.text().catch(() => '')).slice(0, 800); return []; }
     const j = await r.json();
     return (j.rows || []) as GscRow[];
   }
 
   try {
-    // La consulta de totales primero: si devuelve 403/404 el problema es de acceso
-    // (la cuenta de servicio no es usuario de la propiedad, o GSC_SITE_URL no coincide).
     const totalsRows = await q([], 1);
-    if (lastStatus === 403 || lastStatus === 401) return { ok: false, reason: 'forbidden' };
-    if (lastStatus === 404) return { ok: false, reason: 'site_mismatch' };
-    if (lastStatus >= 400) return { ok: false, reason: 'http_' + lastStatus };
+    if (lastStatus >= 400) {
+      const e = lastErr.toLowerCase();
+      const detail = lastErr || undefined;
+      // La API de Search Console no está habilitada en el proyecto de Cloud.
+      if (/service_disabled|accessnotconfigured|has not been used|is disabled/.test(e)) return { ok: false, reason: 'api_disabled', detail, status: lastStatus };
+      if (/quota|rate limit|rate_limit_exceeded|resource_exhausted/.test(e) || lastStatus === 429) return { ok: false, reason: 'quota', detail, status: lastStatus };
+      if (lastStatus === 404 || /not found|does not exist/.test(e)) return { ok: false, reason: 'site_mismatch', detail, status: lastStatus };
+      if (lastStatus === 401 || lastStatus === 403 || /permission|not a user|insufficient/.test(e)) return { ok: false, reason: 'forbidden', detail, status: lastStatus };
+      if (lastStatus >= 500) return { ok: false, reason: 'google_down', detail, status: lastStatus };
+      return { ok: false, reason: 'http_' + lastStatus, detail, status: lastStatus };
+    }
     const [queries, pages] = await Promise.all([q(['query'], 25), q(['page'], 25)]);
     const t = totalsRows[0];
     return {
@@ -102,5 +108,5 @@ export async function gscOverview(days = 28): Promise<GscResult> {
       totals: t ? { clicks: t.clicks || 0, impressions: t.impressions || 0, ctr: t.ctr || 0, position: t.position || 0 } : { clicks: 0, impressions: 0, ctr: 0, position: 0 },
       queries, pages,
     };
-  } catch { return { ok: false, reason: 'error' }; }
+  } catch (e: any) { return { ok: false, reason: 'error', detail: e?.message || 'Fallo de red al consultar Search Console.' }; }
 }
