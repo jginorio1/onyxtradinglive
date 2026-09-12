@@ -201,7 +201,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               // cuenta, onboarding, login), en español ni en /en. Solo en páginas públicas.
               const appArea = ['/dashboard', '/admin', '/account', '/onboarding', '/login', '/en/dashboard', '/en/admin', '/en/account', '/en/onboarding', '/en/login'].some((p) => path === p || path.startsWith(p + '/'));
               if (appArea) return null;
-              return inBotLab ? <BotLabFooter /> : <SiteFooter />;
+              // En Bot Lab público, si ya hay sesión, el footer de marketing sobra en móvil
+              // (el usuario ya está dentro): lo ocultamos SOLO en móvil con .blf-hide-mobile.
+              // En PC se sigue viendo.
+              if (inBotLab) return <div className={loggedIn ? 'blf-hide-mobile' : undefined}><BotLabFooter /></div>;
+              return <SiteFooter />;
             })()}
             {!path.startsWith('/admin') && (inBotLab
               ? (botlabCfg && <SupportWidget loggedIn={loggedIn} cfg={botlabCfg} variant="botlab" />)

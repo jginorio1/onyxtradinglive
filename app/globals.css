@@ -842,3 +842,13 @@ details[open] > summary > span:first-child { transform: rotate(90deg); }
 
 /* Bot Lab móvil: cinta compacta (oculta el texto largo, deja solo "← Onyx"). */
 @media(max-width:560px){ .botlab-ribbon-txt{ display:none; } }
+
+/* Footer de Bot Lab en móvil: se apila y todo va a la izquierda (no como en PC).
+   Y con sesión, en móvil, no se muestra (.blf-hide-mobile). */
+@media(max-width:640px){
+  .blf-brand{ flex-direction:column; align-items:flex-start; }
+  .blf-cta{ align-items:flex-start !important; width:100%; }
+  .blf-cols{ grid-template-columns:1fr 1fr !important; gap:18px !important; }
+  .blf-bottom{ justify-content:flex-start; gap:6px; }
+  .blf-hide-mobile{ display:none !important; }
+}
