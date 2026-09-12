@@ -57,7 +57,7 @@ export async function uniqueSlug(base: string, excludeId?: string): Promise<stri
 }
 
 const PUB_COLS = 'id,slug,title_es,title_en,excerpt_es,excerpt_en,body_es,body_en,cover_url,cover_alt_es,cover_alt_en,tags,author,published_at,updated_at';
-const PUB_COLS2 = PUB_COLS + ',slug_en,author_id';   // con slug EN y autor por artículo
+const PUB_COLS2 = PUB_COLS + ',slug_en,author_id,is_news';   // con slug EN, autor por artículo y marca de noticia
 
 // slug_en único (agrega -2, -3…). Tolerante si la columna aún no existe.
 export async function uniqueSlugEn(base: string, excludeId?: string): Promise<string> {
@@ -74,7 +74,7 @@ export async function uniqueSlugEn(base: string, excludeId?: string): Promise<st
 
 // Columnas opcionales que pueden no existir aún en la base (se añaden por migración).
 // Si un update/insert falla, se reintenta sin ellas para no romper el guardado.
-const OPTIONAL_COLS = ['slug_en', 'author_id', 'email_enabled', 'email_segment', 'email_when', 'email_at', 'email_sent_at'];
+const OPTIONAL_COLS = ['slug_en', 'author_id', 'email_enabled', 'email_segment', 'email_when', 'email_at', 'email_sent_at', 'is_news'];
 function stripOptional(row: any) { const rest = { ...row }; for (const k of OPTIONAL_COLS) delete rest[k]; return rest; }
 
 // Update tolerante: si falla por columnas nuevas (aún no creadas), reintenta sin ellas.
@@ -209,6 +209,8 @@ export async function savePost(b: any) {
   if (b.email_at !== undefined) row.email_at = b.email_at ? new Date(b.email_at).toISOString() : null;
   // Si el dueño reactiva el envío en un post ya editado, se limpia el sello para que vuelva a salir.
   if (b.email_resend) row.email_sent_at = null;
+  // Marca de "noticia" (piloto de noticias) → usa schema NewsArticle en la página pública.
+  if (b.is_news !== undefined) row.is_news = !!b.is_news;
 
   // slug_en (idioma inglés). Solo se incluye cuando corresponde; guardado tolerante
   // si la columna aún no existe.

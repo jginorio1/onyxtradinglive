@@ -13,7 +13,7 @@ function Switch({ on, accent = '#34e2a0' }: { on: boolean; accent?: string }) {
 }
 
 type Topics = { macro: boolean; markets: boolean; earnings: boolean; crypto: boolean };
-type Cfg = { enabled: boolean; mode: 'auto' | 'draft'; maxPerDay: number; minMinutesBetween: number; emailSegment: string; topics: Topics; sources: Record<string, boolean>; maxAgeMin: number };
+type Cfg = { enabled: boolean; mode: 'auto' | 'draft'; maxPerDay: number; minMinutesBetween: number; emailSegment: string; topics: Topics; sources: Record<string, boolean>; maxAgeMin: number; seo: boolean };
 type Src = { id: string; name: string; tier: 'primary' | 'wire'; cat: string };
 
 const SEGMENTS = [
@@ -125,6 +125,12 @@ export default function NewsPilot({ es, onChanged }: { es: boolean; onChanged?: 
                 <button key={k} type="button" onClick={() => updTopic(k)} className="btn btn-ghost" style={{ fontSize: 12, borderRadius: 99, border: '1px solid ' + (cfg.topics[k] ? '#7c8cff' : 'var(--line)'), background: cfg.topics[k] ? 'color-mix(in srgb,#7c8cff 16%,transparent)' : 'transparent' }}>{(es ? CATLBL[k]?.[0] : CATLBL[k]?.[1]) || k}{cfg.topics[k] ? ' ✓' : ''}</button>
               ))}
             </div>
+          </div>
+
+          {/* SEO ligero */}
+          <div onClick={() => upd('seo', !(cfg.seo !== false))} style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', ...box }}>
+            <div><div style={{ fontSize: 13, fontWeight: 700 }}>{L('Optimizar SEO en las noticias', 'SEO-optimize the news')}</div><div className="muted" style={{ fontSize: 11.5 }}>{L('Foco en el evento + teje UNA keyword de tu lista/Search Console solo si encaja. Marca NewsArticle.', 'Event-focused + weaves ONE keyword from your list/Search Console only if it fits. Marks NewsArticle.')}</div></div>
+            <Switch on={cfg.seo !== false} accent="#7c8cff" />
           </div>
 
           {/* Fuentes */}

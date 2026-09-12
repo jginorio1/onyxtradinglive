@@ -350,10 +350,11 @@ export type NewsPilot = {
   topics: { macro: boolean; markets: boolean; earnings: boolean; crypto: boolean };
   sources: Record<string, boolean>;  // on/off por fuente (id → activo). Vacío = todas las de por defecto
   maxAgeMin: number;              // solo considera noticias publicadas hace ≤ N minutos (frescura)
+  seo: boolean;                   // teje (ligero) una keyword de la lista/GSC si encaja, y marca NewsArticle
 };
 const NEWS: NewsPilot = {
   enabled: false, mode: 'auto', maxPerDay: 3, minMinutesBetween: 20, emailSegment: 'all',
-  topics: { macro: true, markets: true, earnings: true, crypto: true }, sources: {}, maxAgeMin: 45,
+  topics: { macro: true, markets: true, earnings: true, crypto: true }, sources: {}, maxAgeMin: 45, seo: true,
 };
 export const newsPilotSettings = () => getSetting<NewsPilot>('news_pilot', NEWS);
 

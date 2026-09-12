@@ -1,10 +1,27 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { newsPilotSettings, type NewsPilot } from '@/lib/settings';
+import { newsPilotSettings, blogKeywordsSettings, type NewsPilot } from '@/lib/settings';
 import { NEWS_SOURCES, fetchFeed, type NewsItem, type NewsSource } from '@/lib/newsSources';
 import { generateNewsArticle } from '@/lib/blogAI';
+import { gscOpportunities } from '@/lib/seoSearchConsole';
 import { savePost } from '@/lib/blog';
 import { sendBlogEmailNow } from '@/lib/blogEmail';
 import { logError } from '@/lib/errlog';
+
+// SEO ligero para noticias: elige UNA frase clave de marca (de la lista manual del
+// blog o de las oportunidades reales de Search Console) para tejerla SOLO si encaja.
+// El foco principal sigue siendo el evento; esto es un extra opcional.
+async function pickSeoKeyword(): Promise<string | undefined> {
+  try {
+    const s = await blogKeywordsSettings();
+    if (!s.enabled) return undefined;
+    if (s.useGsc) {
+      const opps = await gscOpportunities(90, 3);
+      if (opps[0]?.query) return opps[0].query;
+    }
+    const first = (s.es || [])[0] || (s.en || [])[0];
+    return first || undefined;
+  } catch { return undefined; }
+}
 
 // ============================================================
 // Piloto de NOTICIAS: vigila fuentes financieras, detecta lo importante y (en
@@ -91,15 +108,17 @@ export async function runNewsPilot(force = false): Promise<{ ran: boolean; reaso
   }
   if (!pick) return { ran: true, reason: 'all_seen', posted: 0 };
 
+  // SEO ligero (opcional): una keyword de marca para tejer solo si encaja.
+  const keyword = cfg.seo ? await pickSeoKeyword() : undefined;
   // Escribe el artículo con la IA.
-  const gen = await generateNewsArticle({ headline: pick.title, summary: pick.summary, sourceName: pick.sourceName, sourceUrl: pick.link, category: pick.cat });
+  const gen = await generateNewsArticle({ headline: pick.title, summary: pick.summary, sourceName: pick.sourceName, sourceUrl: pick.link, category: pick.cat, keyword });
   if (!gen.ok || !gen.article) { await logError('news_pilot_gen', new Error(gen.reason || 'gen_failed')); return { ran: true, reason: 'gen_failed', posted: 0, candidate: pick.title }; }
 
   const auto = cfg.mode !== 'draft';
   // Publica (auto) o deja borrador. En auto, activa el email inmediato (inglés).
   const saved = await savePost({
     ...gen.article,
-    status: auto ? 'published' : 'draft',
+    status: auto ? 'published' : 'draft', is_news: true,
     email_enabled: auto, email_when: 'now', email_segment: cfg.emailSegment || 'all',
   });
 

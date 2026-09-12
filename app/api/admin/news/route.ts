@@ -48,6 +48,7 @@ export async function PATCH(req: Request) {
     },
     sources: (b.sources && typeof b.sources === 'object') ? b.sources : prev.sources,
     maxAgeMin: b.maxAgeMin == null ? prev.maxAgeMin : clampInt(b.maxAgeMin, 5, 720, prev.maxAgeMin),
+    seo: b.seo == null ? (prev.seo ?? true) : !!b.seo,
   };
   await saveSetting('news_pilot', value);
   return NextResponse.json({ ok: true, ...value });

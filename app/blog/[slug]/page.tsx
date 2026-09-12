@@ -83,7 +83,7 @@ export default async function BlogArticle({ params }: { params: { slug: string }
   if (author.avatar_url) authorLd.image = author.avatar_url;
 
   const ld: any = {
-    '@context': 'https://schema.org', '@type': 'BlogPosting',
+    '@context': 'https://schema.org', '@type': (p as any).is_news ? 'NewsArticle' : 'BlogPosting',
     headline: title, description: excerpt, inLanguage: es ? 'es' : 'en',
     datePublished: p.published_at, dateModified: updated,
     image: [abs(cover)], wordCount,

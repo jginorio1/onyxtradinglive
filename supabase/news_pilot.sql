@@ -15,3 +15,6 @@ create table if not exists news_seen (
 
 -- Búsqueda rápida de publicados de hoy (tope diario) y limpieza.
 create index if not exists news_seen_posted_idx on news_seen (posted, created_at desc);
+
+-- Marca de "noticia" en los artículos (para usar schema NewsArticle en la web).
+alter table if exists blog_posts add column if not exists is_news boolean not null default false;
