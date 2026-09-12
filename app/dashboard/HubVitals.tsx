@@ -52,16 +52,20 @@ function GlowRing({ v }: { v: Vital }) {
   );
 }
 
-export default function HubVitals({ net, netPos, netLabel, vitals, tiles, hideNet = false }: {
-  net: string; netPos: boolean; netLabel: string; vitals: Vital[]; tiles: Tile[]; hideNet?: boolean;
+export default function HubVitals({ net, netPos, netLabel, vitals, tiles, hideNet = false, extra }: {
+  net: string; netPos: boolean; netLabel: string; vitals: Vital[]; tiles: Tile[]; hideNet?: boolean; extra?: React.ReactNode;
 }) {
   const netColor = netPos ? 'var(--green)' : 'var(--red)';
   return (
     <div>
       <style>{`
-        .hv-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:11px}
+        .hv-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;align-items:start}
         @media(max-width:900px){.hv-tiles{grid-template-columns:repeat(3,1fr)}}
         @media(max-width:560px){.hv-tiles{grid-template-columns:repeat(2,1fr)}}
+        /* La tarjeta extra (diagnóstico cuantitativo) ocupa el hueco junto a "Mi plan"
+           y crece hacia abajo. En pantallas medianas/chicas pasa a ancho completo. */
+        .hv-extra{grid-column:span 1}
+        @media(max-width:900px){.hv-extra{grid-column:1 / -1}}
         .hv-vitals{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:14px}
         @media(max-width:560px){.hv-vitals{grid-template-columns:repeat(2,1fr)}}
         .navtile{position:relative;cursor:pointer;text-align:left;background:var(--card);border:1px solid var(--line);
@@ -98,6 +102,7 @@ export default function HubVitals({ net, netPos, netLabel, vitals, tiles, hideNe
             {t.metric ? <div style={{ fontSize: 16, fontWeight: 800, color: t.mc || 'var(--tx)', marginTop: 1 }}>{t.metric}</div> : null}
           </button>
         ))}
+        {extra ? <div className="hv-extra">{extra}</div> : null}
       </div>
     </div>
   );

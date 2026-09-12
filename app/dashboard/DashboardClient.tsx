@@ -998,11 +998,9 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                   badge: s.pro && !canJournal ? <PlanBadge plan={upJ.name} /> : undefined,
                 }));
                 tiles.push({ key: 'plan', icon: '🎯', label: lang === 'en' ? 'My plan' : 'Mi plan', metric: lang === 'en' ? 'Habits' : 'Hábitos', mc: 'var(--soft-brand)', color: PURPLE, onClick: () => setView('plan'), preload: PRELOAD.plan });
-                return <HubVitals net={money2(a.net)} netPos={a.net >= 0} netLabel={L.kNet} vitals={vitals} tiles={tiles} hideNet />;
+                // La tarjeta cuantitativa va DENTRO del mosaico, en el hueco de al lado de "Mi plan".
+                return <HubVitals net={money2(a.net)} netPos={a.net >= 0} netLabel={L.kNet} vitals={vitals} tiles={tiles} hideNet extra={<QuantEdgeCard a={a} lang={lang} />} />;
               })()}
-
-              {/* Tarjeta destacada: diagnóstico cuantitativo del edge (esperanza, muestra, ruido). */}
-              <QuantEdgeCard a={a} lang={lang} />
 
 
               {/* Bandeja "sin diario": persigue al trader para que documente */}
