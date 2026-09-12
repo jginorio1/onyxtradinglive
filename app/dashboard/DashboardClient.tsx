@@ -83,7 +83,7 @@ function genDemo(accId: string): TT[] {
 type TT = T & { account_id: string; id: string; commission?: number; swap?: number; profit?: number };
 type Acc = { id: string; login: number; nickname: string | null; broker: string; platform: string; balance: number; currency: string; fund_target?: number | null; fund_max_daily?: number | null; fund_max_total?: number | null; fund_start?: number | null; acc_type?: string | null; challenge_status?: string | null; challenge_cost?: number | null };
 type Lang = 'es' | 'en';
-type View = 'hub' | 'rendimiento' | 'calendario' | 'operaciones' | 'costes' | 'cuentas' | 'reto' | 'plan';
+type View = 'hub' | 'rendimiento' | 'calendario' | 'operaciones' | 'costes' | 'cuentas' | 'reto' | 'plan' | 'edge';
 
 function money(n: number, dec = 0) { return (n >= 0 ? '+$' : '-$') + Math.abs(n).toLocaleString('en-US', { maximumFractionDigits: dec }); }
 function money2(n: number) { return (n >= 0 ? '+$' : '-$') + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
@@ -511,7 +511,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
   useEffect(() => {
     try {
       const v = new URLSearchParams(window.location.search).get('view');
-      const ok: View[] = ['hub', 'rendimiento', 'calendario', 'operaciones', 'costes', 'cuentas', 'reto', 'plan'];
+      const ok: View[] = ['hub', 'rendimiento', 'calendario', 'operaciones', 'costes', 'cuentas', 'reto', 'plan', 'edge'];
       if (v && (ok as string[]).includes(v)) setView(v as View);
     } catch {}
   }, []);
@@ -998,8 +998,12 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                   badge: s.pro && !canJournal ? <PlanBadge plan={upJ.name} /> : undefined,
                 }));
                 tiles.push({ key: 'plan', icon: '🎯', label: lang === 'en' ? 'My plan' : 'Mi plan', metric: lang === 'en' ? 'Habits' : 'Hábitos', mc: 'var(--soft-brand)', color: PURPLE, onClick: () => setView('plan'), preload: PRELOAD.plan });
-                // La tarjeta cuantitativa va DENTRO del mosaico, en el hueco de al lado de "Mi plan".
-                return <HubVitals net={money2(a.net)} netPos={a.net >= 0} netLabel={L.kNet} vitals={vitals} tiles={tiles} hideNet extra={<QuantEdgeCard a={a} lang={lang} />} />;
+                // Mosaico "Edge": igual a los demás, muestra afuera lo más importante
+                // (esperanza / operación en R) y al pulsarlo abre el detalle completo.
+                const edgeMetric = a.rValid ? `${a.rMean >= 0 ? '+' : ''}${(a.rMean || 0).toFixed(2)} R` : '—';
+                const edgeCol = !a.rValid ? 'var(--mut)' : (a.rMean || 0) >= 0 ? GREEN : RED;
+                tiles.push({ key: 'edge', icon: '📐', label: lang === 'en' ? 'Edge' : 'Edge', metric: edgeMetric, mc: edgeCol, color: 'var(--brand)', onClick: () => setView('edge') });
+                return <HubVitals net={money2(a.net)} netPos={a.net >= 0} netLabel={L.kNet} vitals={vitals} tiles={tiles} hideNet />;
               })()}
 
 
@@ -1174,6 +1178,12 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
             {view === 'costes' && <Costs trades={filtered} lang={lang} accounts={accounts} />}
             {view === 'reto' && <Challenge lang={lang} />}
             {view === 'plan' && <PlanHabits lang={lang} account={sel} accountName={curName} />}
+            {view === 'edge' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <button className="btn btn-ghost" style={{ alignSelf: 'flex-start', fontSize: 13 }} onClick={() => setView('hub')}>← {lang === 'en' ? 'Back' : 'Volver'}</button>
+                <QuantEdgeCard a={a} lang={lang} />
+              </div>
+            )}
 
             {view === 'cuentas' && (<>
               <Card title={L.accCard} icon="🗂️">
