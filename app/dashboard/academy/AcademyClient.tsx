@@ -1070,10 +1070,23 @@ function CalendarTab({ events, lang, L }: any) {
   const now = useNow(true);
   const fmtD = (d: Date) => { const p = (n: number) => (n < 10 ? '0' + n : '' + n); return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()); };
   const [range, setRange] = useState(() => { const f = new Date(); f.setHours(0, 0, 0, 0); const t = new Date(f.getTime() + 7 * 86400000); return { from: fmtD(f), to: fmtD(t) }; });
-  const thisWeek = () => { const f = new Date(); f.setHours(0, 0, 0, 0); const t = new Date(f.getTime() + 7 * 86400000); setRange({ from: fmtD(f), to: fmtD(t) }); };
+  const [q, setQ] = useState('');            // búsqueda por texto (título/descripción)
+  const [status, setStatus] = useState<'all' | 'up' | 'live' | 'past'>('all'); // estado
+  const [preset, setPreset] = useState<'week' | 'month' | 'all' | 'custom'>('week');
+  const today0 = () => { const f = new Date(); f.setHours(0, 0, 0, 0); return f; };
+  const thisWeek = () => { const f = today0(); setRange({ from: fmtD(f), to: fmtD(new Date(f.getTime() + 7 * 86400000)) }); setPreset('week'); };
+  const thisMonth = () => { const f = today0(); setRange({ from: fmtD(f), to: fmtD(new Date(f.getTime() + 30 * 86400000)) }); setPreset('month'); };
+  const allTime = () => { setRange({ from: '2000-01-01', to: '2100-01-01' }); setPreset('all'); };
+  const qq = q.trim().toLowerCase();
   const fromMs = new Date(range.from + 'T00:00:00').getTime();
   const toMs = new Date(range.to + 'T23:59:59').getTime();
-  const inRange = (events || []).filter((e: any) => { const ss = new Date(e.starts_at).getTime(); return ss >= fromMs && ss <= toMs; }).sort((a: any, b: any) => String(a.starts_at).localeCompare(String(b.starts_at)));
+  // Con texto en el buscador ignoramos el rango de fechas (busca en TODAS las clases);
+  // sin texto, usamos el rango. Después se aplica el filtro de estado.
+  const matchText = (e: any) => !qq || `${e.title || ''} ${e.description || ''}`.toLowerCase().includes(qq);
+  const inRange = (events || [])
+    .filter((e: any) => matchText(e))
+    .filter((e: any) => { if (qq) return true; const ss = new Date(e.starts_at).getTime(); return ss >= fromMs && ss <= toMs; })
+    .sort((a: any, b: any) => String(a.starts_at).localeCompare(String(b.starts_at)));
   const Row = (e: any) => {
     const start = new Date(e.starts_at).getTime(); const end = start + (e.duration_min || 60) * 60000; const live = now >= start && now < end;
     const isPast = end <= now;
@@ -1102,26 +1115,53 @@ function CalendarTab({ events, lang, L }: any) {
       </div>
     );
   };
-  const liveUp = inRange.filter((e: any) => new Date(e.starts_at).getTime() + (e.duration_min || 60) * 60000 > now);
-  // "Ya pasaron": mostramos solo las 7 más recientes; para ver más antiguas se usa el filtro de fecha.
+  const isUp = (e: any) => new Date(e.starts_at).getTime() + (e.duration_min || 60) * 60000 > now;
+  const isLive = (e: any) => { const s = new Date(e.starts_at).getTime(); return now >= s && now < s + (e.duration_min || 60) * 60000; };
+  const showUp = status === 'all' || status === 'up' || status === 'live';
+  const showPast = status === 'all' || status === 'past';
+  const liveUp = showUp ? inRange.filter((e: any) => isUp(e) && (status !== 'live' || isLive(e))) : [];
   const donePastAll = inRange
-    .filter((e: any) => new Date(e.starts_at).getTime() + (e.duration_min || 60) * 60000 <= now)
+    .filter((e: any) => !isUp(e))
     .sort((a: any, b: any) => String(b.starts_at).localeCompare(String(a.starts_at)));
-  const donePast = donePastAll.slice(0, 7);
-  const donePastHidden = donePastAll.length - donePast.length;
+  // Con búsqueda o rango "Todo" mostramos todas las pasadas; si no, tope de 7.
+  const showAllPast = !!qq || preset === 'all';
+  const donePast = showPast ? (showAllPast ? donePastAll : donePastAll.slice(0, 7)) : [];
+  const donePastHidden = showPast && !showAllPast ? donePastAll.length - donePast.length : 0;
+  const total = liveUp.length + donePast.length;
+  const seg = (key: typeof status, es: string, en: string): any => ({ cursor: 'pointer', fontSize: 12, fontWeight: 700, padding: '6px 11px', borderRadius: 99, border: '1px solid ' + (status === key ? 'var(--brand)' : 'var(--line)'), background: status === key ? 'color-mix(in srgb,var(--brand) 14%,transparent)' : 'var(--bg2)', color: status === key ? 'var(--brand)' : 'var(--mut)' });
+  const pbtn = (on: boolean): any => ({ fontSize: 12.5, borderColor: on ? 'var(--brand)' : undefined, color: on ? 'var(--brand)' : undefined });
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <MonthCalendar events={events} lang={lang} />
-      <div className="sk-card" style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap', margin: 0 }}>
-        <div><div className="muted" style={{ fontSize: 12 }}>{L('Desde', 'From')}</div><input type="date" value={range.from} onChange={(e) => setRange({ ...range, from: e.target.value })} style={{ margin: '4px 0 0' }} /></div>
-        <div><div className="muted" style={{ fontSize: 12 }}>{L('Hasta', 'To')}</div><input type="date" value={range.to} onChange={(e) => setRange({ ...range, to: e.target.value })} style={{ margin: '4px 0 0' }} /></div>
-        <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={thisWeek}>{L('Esta semana', 'This week')}</button>
-        <span className="muted" style={{ fontSize: 11.5, marginLeft: 'auto' }}>{L('Por defecto muestra 7 días. Cambia las fechas para ver anteriores.', 'Shows 7 days by default. Change dates to see past ones.')}</span>
+      <div className="sk-card" style={{ display: 'flex', flexDirection: 'column', gap: 10, margin: 0 }}>
+        {/* Buscador por texto */}
+        <div style={{ position: 'relative' }}>
+          <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--brand)', fontSize: 14, pointerEvents: 'none' }}>🔍</span>
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={L('Buscar clase por nombre o descripción…', 'Search class by name or description…')} style={{ margin: 0, paddingLeft: 34 }} />
+        </div>
+        {/* Estado + atajos de rango + fechas */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <button style={seg('all', 'Todas', 'All')} onClick={() => setStatus('all')}>{L('Todas', 'All')}</button>
+          <button style={seg('up', 'Próximas', 'Upcoming')} onClick={() => setStatus('up')}>{L('Próximas', 'Upcoming')}</button>
+          <button style={seg('live', 'En vivo', 'Live')} onClick={() => setStatus('live')}>{L('En vivo', 'Live')}</button>
+          <button style={seg('past', 'Pasadas', 'Past')} onClick={() => setStatus('past')}>{L('Pasadas', 'Past')}</button>
+          <span style={{ width: 1, height: 20, background: 'var(--line)', margin: '0 2px' }} />
+          <button className="btn btn-ghost" style={pbtn(preset === 'week')} onClick={thisWeek}>{L('Semana', 'Week')}</button>
+          <button className="btn btn-ghost" style={pbtn(preset === 'month')} onClick={thisMonth}>{L('Mes', 'Month')}</button>
+          <button className="btn btn-ghost" style={pbtn(preset === 'all')} onClick={allTime}>{L('Todo', 'All time')}</button>
+        </div>
+        {!qq && (
+          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+            <div><div className="muted" style={{ fontSize: 12 }}>{L('Desde', 'From')}</div><input type="date" value={range.from} onChange={(e) => { setRange({ ...range, from: e.target.value }); setPreset('custom'); }} style={{ margin: '4px 0 0' }} /></div>
+            <div><div className="muted" style={{ fontSize: 12 }}>{L('Hasta', 'To')}</div><input type="date" value={range.to} onChange={(e) => { setRange({ ...range, to: e.target.value }); setPreset('custom'); }} style={{ margin: '4px 0 0' }} /></div>
+            <span className="muted" style={{ fontSize: 11.5, marginLeft: 'auto' }}>{L('Escribe arriba para buscar en todas las fechas.', 'Type above to search across all dates.')}</span>
+          </div>
+        )}
+        {qq && <span className="muted" style={{ fontSize: 11.5 }}>{L('Buscando en todas las clases (se ignora el rango de fechas).', 'Searching across all classes (date range ignored).')}</span>}
       </div>
-      <div className="sk-sec-title">{L('Clases en vivo', 'Live classes')}</div>
-      {liveUp.length === 0 && donePast.length === 0 && <div className="sk-card muted">{L('No hay clases en este rango de fechas.', 'No classes in this date range.')}</div>}
-      {liveUp.map(Row)}
-      {donePast.length > 0 && <><div className="sk-sec-title">{L('Ya pasaron', 'Already passed')} <span className="muted" style={{ fontSize: 12, fontWeight: 400 }}>· {L('últimas 7', 'last 7')}</span></div>{donePast.map(Row)}{donePastHidden > 0 && <div className="sk-card muted" style={{ fontSize: 12.5, textAlign: 'center' }}>{L(`Hay ${donePastHidden} clase(s) más antiguas en este rango. Ajusta las fechas de arriba para verlas.`, `${donePastHidden} older class(es) in this range. Adjust the dates above to see them.`)}</div>}</>}
+      {total === 0 && <div className="sk-card muted">{qq ? L('Ninguna clase coincide con la búsqueda.', 'No class matches your search.') : L('No hay clases con estos filtros.', 'No classes with these filters.')}</div>}
+      {liveUp.length > 0 && <><div className="sk-sec-title">{L('Clases en vivo', 'Live classes')} <span className="muted" style={{ fontSize: 12, fontWeight: 400 }}>· {liveUp.length}</span></div>{liveUp.map(Row)}</>}
+      {donePast.length > 0 && <><div className="sk-sec-title">{L('Ya pasaron', 'Already passed')}{!showAllPast && <span className="muted" style={{ fontSize: 12, fontWeight: 400 }}> · {L('últimas 7', 'last 7')}</span>}</div>{donePast.map(Row)}{donePastHidden > 0 && <div className="sk-card muted" style={{ fontSize: 12.5, textAlign: 'center' }}>{L(`Hay ${donePastHidden} clase(s) más antiguas. Pulsa "Todo" o busca por nombre para verlas.`, `${donePastHidden} older class(es). Tap "All time" or search by name to see them.`)}</div>}</>}
     </div>
   );
 }
