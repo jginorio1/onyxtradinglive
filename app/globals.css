@@ -673,10 +673,23 @@ html[data-theme="dark"] .sk-code, :root:not([data-theme="light"]) .sk-code{text-
 .sk-dot{width:12px;height:12px;border-radius:50%;background:var(--red);flex:none;box-shadow:0 0 0 0 rgba(255,80,80,.7);animation:skpulse 1.4s infinite;}
 @keyframes skpulse{0%{box-shadow:0 0 0 0 rgba(255,80,80,.7);}70%{box-shadow:0 0 0 12px rgba(255,80,80,0);}100%{box-shadow:0 0 0 0 rgba(255,80,80,0);}}
 .sk-count{font-variant-numeric:tabular-nums;font-weight:800;font-size:18px;letter-spacing:.5px;}
-.sk-bottom{position:sticky;bottom:0;display:none;justify-content:space-around;align-items:center;background:var(--card);background:color-mix(in srgb,var(--card) 92%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-top:1px solid var(--line);padding:8px 4px;margin:16px -4px 0;border-radius:14px 14px 0 0;}
-.sk-bnav{display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;color:var(--mut);font-size:10.5px;cursor:pointer;position:relative;padding:4px 14px;}
-.sk-bnav.on{color:var(--brand);}
+/* Barra inferior de la comunidad: se pinta INVERTIDA al tema (clara en oscuro,
+   oscura en claro). Base = app oscura → barra CLARA. Abajo, en tema claro, la
+   volvemos OSCURA. Los iconos van sin resplandor aquí para que se vean limpios. */
+.sk-bottom{position:sticky;bottom:0;display:none;justify-content:space-around;align-items:center;background:#ffffff;background:color-mix(in srgb,#ffffff 92%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-top:1px solid #e3e7f0;padding:8px 4px;margin:16px -4px 0;border-radius:14px 14px 0 0;}
+.sk-bnav{display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;color:#56617a;font-size:10.5px;cursor:pointer;position:relative;padding:4px 14px;}
+.sk-bnav.on{color:#4a57c9;}
+.sk-bottom .onyx-ic{filter:none !important;}
 .sk-bdot{position:absolute;top:2px;right:10px;min-width:15px;height:15px;padding:0 3px;border-radius:8px;background:var(--red);color:#fff;font-size:9px;font-weight:800;display:grid;place-items:center;}
+/* Tema claro → barra oscura */
+html[data-theme="light"] .sk-bottom{background:#1a2133;background:color-mix(in srgb,#1a2133 92%,transparent);border-top:1px solid rgba(255,255,255,.10);}
+html[data-theme="light"] .sk-bnav{color:#9aa6bd;}
+html[data-theme="light"] .sk-bnav.on{color:#8b93ff;}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]) .sk-bottom{background:#1a2133;background:color-mix(in srgb,#1a2133 92%,transparent);border-top:1px solid rgba(255,255,255,.10);}
+  :root:not([data-theme="dark"]) .sk-bnav{color:#9aa6bd;}
+  :root:not([data-theme="dark"]) .sk-bnav.on{color:#8b93ff;}
+}
 @media(max-width:920px){.sk-bottom{display:flex;}}
 .sk-sec-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);margin:14px 0 6px;}
 .sk-heat{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,1fr);gap:3px;overflow-x:auto;padding-bottom:4px;}
