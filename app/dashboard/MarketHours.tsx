@@ -41,7 +41,10 @@ export default function MarketHours({ lang, compact }: { lang: Lang; compact?: b
 
   // contadores en tiempo real: cuánto falta para abrir/cerrar cada sesión
   const nextAt = (hour: number) => { const d = new Date(now); d.setUTCHours(hour, 0, 0, 0); if (d.getTime() <= now.getTime()) d.setUTCDate(d.getUTCDate() + 1); return d.getTime(); };
-  const fmtDur = (ms: number) => { const s = Math.max(0, Math.floor(ms / 1000)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60; return (h > 0 ? h + 'h ' : '') + m + 'm ' + ss + 's'; };
+  // Zero-padeamos min y seg para que el ancho del contador NO cambie al correr:
+  // sin esto, "5m 9s" → "5m 10s" ensancha la línea y en iPad la fila del cabezal
+  // rebota (baja y sube). Con padding + tabular-nums el ancho queda fijo.
+  const fmtDur = (ms: number) => { const s = Math.max(0, Math.floor(ms / 1000)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60; const p = (n: number) => String(n).padStart(2, '0'); return (h > 0 ? h + 'h ' : '') + p(m) + 'm ' + p(ss) + 's'; };
   const events = SES.map((s) => { const on = isActive(s); const target = on ? nextAt(s.c) : nextAt(s.o); return { on, rem: target - now.getTime(), evt: on ? t.closesIn : t.opensIn }; });
   const soonest = events.map((e, i) => ({ ...e, s: SES[i] })).sort((x, y) => x.rem - y.rem)[0];
 
@@ -62,7 +65,7 @@ export default function MarketHours({ lang, compact }: { lang: Lang; compact?: b
     <div className="card" style={{ padding: 14 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
         <span style={{ fontSize: 14, fontWeight: 700 }}>{t.title}</span>
-        <span style={{ fontSize: 13, fontWeight: 800 }}>{clock}</span>
+        <span style={{ fontSize: 13, fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{clock}</span>
       </div>
       {closedBanner}
       <div style={{ position: 'relative', height: 8, background: 'var(--bg2)', borderRadius: 5, overflow: 'hidden', marginBottom: 12, opacity: marketClosed ? .4 : 1 }}>
@@ -73,7 +76,7 @@ export default function MarketHours({ lang, compact }: { lang: Lang; compact?: b
         {SES.map((s, i) => { const on = isActive(s); const ev = events[i]; return (
           <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 13 }}>{s.flag} {s.n[lang]}</span>
-            <span style={{ fontSize: 11, textAlign: 'right', lineHeight: 1.3 }}><span style={{ fontWeight: 700, color: on ? s.col : 'var(--mut)' }}>{on ? t.open : t.closed}</span>{!marketClosed && <><br /><span style={{ color: 'var(--mut)', fontSize: 10 }}>{ev.evt} {fmtDur(ev.rem)}</span></>}</span>
+            <span style={{ fontSize: 11, textAlign: 'right', lineHeight: 1.3 }}><span style={{ fontWeight: 700, color: on ? s.col : 'var(--mut)' }}>{on ? t.open : t.closed}</span>{!marketClosed && <><br /><span style={{ color: 'var(--mut)', fontSize: 10, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{ev.evt} {fmtDur(ev.rem)}</span></>}</span>
           </div>); })}
       </div>
     </div>
@@ -87,10 +90,10 @@ export default function MarketHours({ lang, compact }: { lang: Lang; compact?: b
           <span style={{ fontSize: 14, fontWeight: 700 }}>{t.title}</span>
           <span className="muted" style={{ fontSize: 13 }}>{t.now}:</span>
           <b style={{ fontSize: 14 }}>{nowLabel}</b>
-          {!marketClosed && soonest && <span className="muted" style={{ fontSize: 12 }}>· {t.next}: {soonest.s.flag} {soonest.s.n[lang]} {soonest.evt} <b style={{ color: 'var(--tx)' }}>{fmtDur(soonest.rem)}</b></span>}
+          {!marketClosed && soonest && <span className="muted" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>· {t.next}: {soonest.s.flag} {soonest.s.n[lang]} {soonest.evt} <b style={{ color: 'var(--tx)', fontVariantNumeric: 'tabular-nums' }}>{fmtDur(soonest.rem)}</b></span>}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: 15, fontWeight: 800 }}>{clock} <span className="muted" style={{ fontSize: 11, fontWeight: 400 }}>{t.localTz}</span></span>
+          <span style={{ fontSize: 15, fontWeight: 800, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{clock} <span className="muted" style={{ fontSize: 11, fontWeight: 400 }}>{t.localTz}</span></span>
           <button className="btn btn-ghost" style={{ padding: '5px 10px', fontSize: 12 }}>{open ? t.collapse : t.expand} {open ? '▲' : '▼'}</button>
         </div>
       </div>

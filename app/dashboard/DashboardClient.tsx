@@ -859,7 +859,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
           {/* Zona derecha: balance del portafolio (stat con su "actualizado") + Exportar,
               agrupados con un separador. Antes el balance vivía pegado al nombre; al pasarlo
               aquí, la fila queda en dos zonas claras (identidad | balance + acción). */}
-          <div className="row hero-right" style={{ gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div className="row hero-right" style={{ gap: 12, alignItems: 'stretch', flexWrap: 'wrap' }}>
             {/* Balance destacado: pastilla con icono + número grande, para que sea el dato
                 protagonista y no texto suelto. */}
             <div className="hero-balance" style={{ display: 'inline-flex', alignItems: 'center', gap: 11, background: 'var(--card)', border: '1px solid var(--brand)', borderRadius: 14, padding: '9px 15px', boxShadow: '0 0 22px -8px rgba(124,140,255,.5)' }}>
@@ -872,7 +872,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
             </div>
             {!isFree && (<>
               <details className="hero-export" style={{ position: 'relative', flex: 'none' }}>
-                <summary style={{ listStyle: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--tx)', borderRadius: 10, padding: '8px 13px', fontSize: 13 }}>
+                <summary style={{ listStyle: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, height: '100%', border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--tx)', borderRadius: 14, padding: '8px 15px', fontSize: 13 }}>
                   <OnyxIcon emoji="⬇️" size={14} /> {lang === 'es' ? 'Exportar' : 'Export'} <span style={{ fontSize: 11, color: 'var(--mut)' }}>▾</span>
                 </summary>
                 <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', zIndex: 40, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 8, minWidth: 220, boxShadow: '0 12px 34px rgba(0,0,0,.4)' }}>
