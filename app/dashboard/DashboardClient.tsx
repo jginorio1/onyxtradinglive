@@ -13,6 +13,7 @@ import SetupGuide from './SetupGuide';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import Achievements from './Achievements';
 import MarketClock from './MarketClock';
+import QuantEdgeCard from './QuantEdgeCard';
 import Nudge from './Nudge';
 // Laterales SIEMPRE visibles en el hub → import normal (no diferido). Antes eran
 // dynamic(ssr:false) y su trozo a veces no se montaba, dejando Neto real / Coach
@@ -999,6 +1000,10 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                 tiles.push({ key: 'plan', icon: '🎯', label: lang === 'en' ? 'My plan' : 'Mi plan', metric: lang === 'en' ? 'Habits' : 'Hábitos', mc: 'var(--soft-brand)', color: PURPLE, onClick: () => setView('plan'), preload: PRELOAD.plan });
                 return <HubVitals net={money2(a.net)} netPos={a.net >= 0} netLabel={L.kNet} vitals={vitals} tiles={tiles} hideNet />;
               })()}
+
+              {/* Tarjeta destacada: diagnóstico cuantitativo del edge (esperanza, muestra, ruido). */}
+              <QuantEdgeCard a={a} lang={lang} />
+
 
               {/* Bandeja "sin diario": persigue al trader para que documente */}
               {canJournal && !demo && undocCount > 0 && (

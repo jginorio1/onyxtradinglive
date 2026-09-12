@@ -217,6 +217,21 @@ export function analyze(rawTrades: T[]) {
   }
   const rExpectancy = avgLoss > 0 ? expectancy / avgLoss : 0;
 
+  // --- Diagnóstico cuantitativo del "edge" (esperanza, dispersión, significancia) ---
+  // Serie de resultados por operación en R (1R = pérdida media). Con eso medimos:
+  //  · rMean  = esperanza en R (igual a rExpectancy)
+  //  · rStd   = desviación estándar de los resultados (volatilidad del edge)
+  //  · tStat  = significancia estadística de la esperanza vs 0 (¿se distingue del azar/ruido?)
+  //  · sqn    = System Quality Number (Van Tharp) = (media/desv)·√n → calidad global
+  let rMean = 0, rStd = 0, tStat = 0, sqn = 0;
+  if (rValid) {
+    const rs = trades.map((t) => (+t.net_profit || 0) / avgLoss);
+    rMean = rs.reduce((a, b) => a + b, 0) / n;
+    const varR = rs.reduce((a, b) => a + (b - rMean) * (b - rMean), 0) / (n > 1 ? n - 1 : 1);
+    rStd = Math.sqrt(varR);
+    if (rStd > 0) { tStat = rMean / (rStd / Math.sqrt(n)); sqn = (rMean / rStd) * Math.sqrt(n); }
+  }
+
   // --- Consistencia (regla típica de prop firm: mayor día vs total) ---
   let bestDayNet = 0, worstDayNet = 0;
   for (const key in daily) { const v = daily[key].net; if (v > bestDayNet) bestDayNet = v; if (v < worstDayNet) worstDayNet = v; }
@@ -236,6 +251,8 @@ export function analyze(rawTrades: T[]) {
     // Estadística ampliada (Rendimiento pro).
     heat, hold, holdN, rDist, rValid, rExpectancy,
     bestDayNet, worstDayNet, daysTraded, consistency,
+    // Diagnóstico cuantitativo del edge.
+    rMean, rStd, tStat, sqn,
   };
 }
 
