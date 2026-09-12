@@ -269,6 +269,8 @@ function kpisOf(items: T[]): Omit<KRow, 'key' | 'label'> {
   };
 }
 export type AssetRow = KRow & { robots: KRow[]; multiBot: boolean };
+// Una operación es "manual" (sin robot) cuando no trae magic o su magic es 0.
+export const isManual = (t: T) => t.magic == null || Number(t.magic) === 0;
 export function perfBreakdown(rawTrades: T[]) {
   const logical = groupByPosition(rawTrades);
   const botLabel = (t: T, mg: string) => (t.ea_comment && String(t.ea_comment).trim()) || `#${mg}`;
@@ -276,23 +278,26 @@ export function perfBreakdown(rawTrades: T[]) {
   for (const t of logical) { const s = t.symbol || '—'; if (!bySym.has(s)) bySym.set(s, []); bySym.get(s)!.push(t); }
   const assets: AssetRow[] = Array.from(bySym.entries()).map(([sym, items]) => {
     const byBot = new Map<string, T[]>();
-    for (const t of items) { const key = t.magic != null ? String(t.magic) : '__none'; if (!byBot.has(key)) byBot.set(key, []); byBot.get(key)!.push(t); }
+    for (const t of items) { const key = isManual(t) ? '__manual' : String(t.magic); if (!byBot.has(key)) byBot.set(key, []); byBot.get(key)!.push(t); }
     const robots: KRow[] = Array.from(byBot.entries()).map(([mg, its]) => ({
-      key: mg === '__none' ? '' : mg, label: mg === '__none' ? '—' : botLabel(its[0], mg), ...kpisOf(its),
+      key: mg === '__manual' ? '__manual' : mg, label: mg === '__manual' ? 'Manual' : botLabel(its[0], mg), ...kpisOf(its),
     })).sort((a, b) => b.net - a.net);
-    return { key: sym, label: sym, ...kpisOf(items), robots, multiBot: robots.filter((r) => r.key).length > 1 };
+    return { key: sym, label: sym, ...kpisOf(items), robots, multiBot: robots.filter((r) => r.key && r.key !== '__manual').length > 1 };
   }).sort((a, b) => b.net - a.net);
 
-  // Listas para los chips de filtro (símbolos y robots con actividad).
+  // Robots reales (con magic ≠ 0) para los chips de filtro.
   const botMap = new Map<string, { label: string; net: number; ops: number }>();
+  // Resumen de lo operado a mano (magic 0 / sin magic).
+  let manual = { net: 0, ops: 0, present: false };
   for (const t of logical) {
-    if (t.magic == null) continue; const key = String(t.magic);
+    if (isManual(t)) { manual.net += +t.net_profit || 0; manual.ops++; manual.present = true; continue; }
+    const key = String(t.magic);
     const e = botMap.get(key) || { label: botLabel(t, key), net: 0, ops: 0 };
     e.net += +t.net_profit || 0; e.ops++; botMap.set(key, e);
   }
   const robots = Array.from(botMap.entries()).map(([key, v]) => ({ key, ...v })).sort((a, b) => b.net - a.net);
   const symbols = assets.map((a) => ({ key: a.key, net: a.net, ops: a.ops }));
-  return { assets, robots, symbols };
+  return { assets, robots, symbols, manual };
 }
 
 export function bestOf(m: Record<string, Bucket>): [string, Bucket] | null {
