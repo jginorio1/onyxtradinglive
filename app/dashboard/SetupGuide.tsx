@@ -200,20 +200,26 @@ export default function SetupGuide() {
         </div>
       )}
 
-      {/* Aviso: hay ejecución activada (Guardian/Copy/TV) pero el AutoTrading está APAGADO
-          en la plataforma, así que Onyx Connect no podrá ejecutar. Solo si el EA lo reporta false. */}
-      {hasAcc && accounts.some((a) => a.tradeAllowed === false && (a.guardianOn || a.copyKey || a.tvOn)) && (
-        <div className="card" style={{ padding: '11px 14px', marginBottom: 14, border: '1px solid var(--amber)', background: 'rgba(255,192,77,.10)', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-          <span style={{ color: 'var(--amber)', flex: 'none', display: 'inline-flex', marginTop: 1 }}><OnyxIcon emoji="⚠️" size={16} /></span>
-          <div style={{ fontSize: 13, lineHeight: 1.5 }}>
-            <b>{L('AutoTrading apagado en tu plataforma', 'AutoTrading is off in your platform')}</b>
-            <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>
-              {L('Onyx Connect está reportando, pero el AutoTrading está apagado: el Guardian, el Copy y las señales de TradingView NO ejecutarán. Enciende el botón AutoTrading (arriba en MetaTrader) para que actúe.',
-                 'Onyx Connect is reporting, but AutoTrading is off: Guardian, Copy and TradingView signals will NOT execute. Turn on the AutoTrading button (top of MetaTrader) so it can act.')}
+      {/* Aviso: AutoTrading APAGADO en la plataforma con ejecución activada (Guardian/Copy/TV).
+          Solo cuentas que están reportando EN VIVO (connectorLive) para no avisar por un terminal
+          cerrado con un valor viejo. Además nombramos la(s) cuenta(s) afectada(s). */}
+      {(() => {
+        const off = accounts.filter((a) => a.connectorLive && a.tradeAllowed === false && (a.guardianOn || a.copyKey || a.tvOn));
+        if (!hasAcc || off.length === 0) return null;
+        const names = off.map((a) => a.nickname || a.login).join(', ');
+        return (
+          <div className="card" style={{ padding: '11px 14px', marginBottom: 14, border: '1px solid var(--amber)', background: 'rgba(255,192,77,.10)', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+            <span style={{ color: 'var(--amber)', flex: 'none', display: 'inline-flex', marginTop: 1 }}><OnyxIcon emoji="⚠️" size={16} /></span>
+            <div style={{ fontSize: 13, lineHeight: 1.5 }}>
+              <b>{L('AutoTrading apagado', 'AutoTrading is off')} · <span style={{ color: 'var(--tx)' }}>{names}</span></b>
+              <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>
+                {L(`En ${off.length === 1 ? 'esta cuenta' : 'estas cuentas'} el conector reporta pero el AutoTrading está apagado: el Guardian, el Copy y las señales de TradingView NO ejecutarán. Enciende el botón AutoTrading (arriba en MetaTrader) en esa plataforma. Si ya lo encendiste, espera unos segundos a que reporte y este aviso se irá solo. (Las cuentas con el terminal cerrado no cuentan.)`,
+                   `On ${off.length === 1 ? 'this account' : 'these accounts'} the connector is reporting but AutoTrading is off: Guardian, Copy and TradingView signals will NOT execute. Turn on the AutoTrading button (top of MetaTrader) in that platform. If you already did, wait a few seconds for it to report and this notice clears by itself. (Accounts with a closed terminal don't count.)`)}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {open && mounted && createPortal(
         <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 3000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '6vh 16px', overflow: 'auto' }}>

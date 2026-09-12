@@ -59,13 +59,9 @@ export default function HubVitals({ net, netPos, netLabel, vitals, tiles, hideNe
   return (
     <div>
       <style>{`
-        .hv-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;align-items:start}
+        .hv-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:11px}
         @media(max-width:900px){.hv-tiles{grid-template-columns:repeat(3,1fr)}}
         @media(max-width:560px){.hv-tiles{grid-template-columns:repeat(2,1fr)}}
-        /* La tarjeta extra (diagnóstico cuantitativo) ocupa el hueco junto a "Mi plan"
-           y crece hacia abajo. En pantallas medianas/chicas pasa a ancho completo. */
-        .hv-extra{grid-column:span 1}
-        @media(max-width:900px){.hv-extra{grid-column:1 / -1}}
         .hv-vitals{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:14px}
         @media(max-width:560px){.hv-vitals{grid-template-columns:repeat(2,1fr)}}
         .navtile{position:relative;cursor:pointer;text-align:left;background:var(--card);border:1px solid var(--line);
