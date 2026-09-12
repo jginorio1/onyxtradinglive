@@ -859,16 +859,18 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
           {/* Zona derecha: balance del portafolio (stat con su "actualizado") + Exportar,
               agrupados con un separador. Antes el balance vivía pegado al nombre; al pasarlo
               aquí, la fila queda en dos zonas claras (identidad | balance + acción). */}
-          <div className="row hero-right" style={{ gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
-            <div className="hero-balance" style={{ textAlign: 'right' }}>
-              <div className="muted" style={{ fontSize: 11 }}>{lang === 'es' ? 'Balance del portafolio' : 'Portfolio balance'} · {accounts.length} {L.accountsWord}</div>
-              <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 7, justifyContent: 'flex-end' }}>
-                <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-.3px' }}>${totalBalance.toLocaleString()}</span>
-              </div>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: GREEN, justifyContent: 'flex-end' }}><span className="livedot" style={{ width: 7, height: 7 }} /> {updatedTxt}</div>
+          <div className="row hero-right" style={{ gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+            {/* Balance destacado: pastilla con icono + número grande, para que sea el dato
+                protagonista y no texto suelto. */}
+            <div className="hero-balance" style={{ display: 'inline-flex', alignItems: 'center', gap: 11, background: 'var(--card)', border: '1px solid var(--brand)', borderRadius: 14, padding: '9px 15px', boxShadow: '0 0 22px -8px rgba(124,140,255,.5)' }}>
+              <span style={{ width: 38, height: 38, borderRadius: 11, background: 'rgba(124,140,255,.16)', color: 'var(--soft-brand)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}><OnyxIcon emoji="💼" size={18} /></span>
+              <span style={{ textAlign: 'right' }}>
+                <span className="muted" style={{ fontSize: 10.5, display: 'block' }}>{lang === 'es' ? 'Balance del portafolio' : 'Portfolio balance'} · {accounts.length} {L.accountsWord}</span>
+                <span style={{ fontSize: 25, fontWeight: 800, letterSpacing: '-.5px', lineHeight: 1.05, display: 'block' }}>${totalBalance.toLocaleString()}</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10.5, color: GREEN }}><span className="livedot" style={{ width: 6, height: 6 }} /> {updatedTxt}</span>
+              </span>
             </div>
             {!isFree && (<>
-              <span style={{ width: 1, height: 40, background: 'var(--line)', flex: 'none' }} className="perf-hidem" />
               <details className="hero-export" style={{ position: 'relative', flex: 'none' }}>
                 <summary style={{ listStyle: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--tx)', borderRadius: 10, padding: '8px 13px', fontSize: 13 }}>
                   <OnyxIcon emoji="⬇️" size={14} /> {lang === 'es' ? 'Exportar' : 'Export'} <span style={{ fontSize: 11, color: 'var(--mut)' }}>▾</span>

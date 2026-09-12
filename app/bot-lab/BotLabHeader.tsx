@@ -48,8 +48,8 @@ export default function BotLabHeader({ loggedIn = false }: { loggedIn?: boolean 
       {/* Cinta discreta: recuerda que es parte de Onyx */}
       <div style={{ background: 'rgba(255,255,255,.03)', borderBottom: '1px solid rgba(255,255,255,.06)', fontSize: 12 }}>
         <div className="wrap-wide" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 32, color: 'var(--mut)' }}>
-          <span>{es ? 'Un producto de Onyx Trading Live' : 'A product of Onyx Trading Live'}</span>
-          <a href={inDash ? '/dashboard' : '/'} onClick={(e) => { e.preventDefault(); window.location.href = inDash ? '/dashboard' : '/'; }} style={{ color: 'var(--brand)', fontWeight: 700 }}>← {es ? 'Volver a Onyx' : 'Back to Onyx'}</a>
+          <span className="botlab-ribbon-txt">{es ? 'Un producto de Onyx Trading Live' : 'A product of Onyx Trading Live'}</span>
+          <a href={inDash ? '/dashboard' : '/'} onClick={(e) => { e.preventDefault(); window.location.href = inDash ? '/dashboard' : '/'; }} style={{ color: 'var(--brand)', fontWeight: 700, marginLeft: 'auto' }}>← Onyx</a>
         </div>
       </div>
 

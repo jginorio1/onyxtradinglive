@@ -138,7 +138,7 @@ export default function BotLabDashboard() {
     <div className="bl-shell" style={{ maxWidth: 1120, margin: '0 auto', padding: '10px 4px 60px', display: 'flex', gap: 20, alignItems: 'flex-start' }}>
       {/* Barra lateral propia */}
       <aside className="bl-side" style={{ flex: '0 0 210px', position: 'sticky', top: 78 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '4px 8px 14px' }}>
+        <div className="bl-side-logo" style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '4px 8px 14px' }}>
           <span style={{ width: 30, height: 30, borderRadius: 8, background: `linear-gradient(120deg,${GOLD},#ffb020)`, color: '#3a2a06', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>◆</span>
           <b style={{ fontSize: 15 }}>Bot Lab</b>
         </div>
@@ -299,7 +299,14 @@ export default function BotLabDashboard() {
       {crypto && <CryptoModal es={es} crypto={crypto} onClose={() => setCrypto(null)} onDone={() => { setCrypto(null); toast(es ? 'Recibido. Activamos tu robot al confirmar el pago.' : 'Received. Your robot activates once the payment is confirmed.'); loadLicenses(); }} />}
       {editing && <ProductModal es={es} product={editing} pay={{ ...pay, affiliate_max: (pay?.affiliate_max ?? sell?.affiliateMax) }} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); loadSell(); }} />}
 
-      <style>{`@media(max-width:820px){.bl-shell{flex-direction:column}.bl-side{position:static!important;flex:none!important;width:100%}.bl-nav{flex-direction:row!important;flex-wrap:wrap}}`}</style>
+      <style>{`@media(max-width:820px){
+        .bl-shell{flex-direction:column}
+        .bl-side{position:sticky!important;top:0;z-index:20;flex:none!important;width:100%;background:var(--bg,#0a0e17);padding:6px 0}
+        .bl-side-logo{display:none!important}
+        .bl-nav{flex-direction:row!important;flex-wrap:nowrap!important;overflow-x:auto;gap:4px;scrollbar-width:none}
+        .bl-nav::-webkit-scrollbar{display:none}
+        .bl-nav button{width:auto!important;flex:0 0 auto;padding:8px 12px!important;white-space:nowrap}
+      }`}</style>
     </div>
   );
 }
