@@ -676,7 +676,7 @@ html[data-theme="dark"] .sk-code, :root:not([data-theme="light"]) .sk-code{text-
 /* Barra inferior de la comunidad: se pinta INVERTIDA al tema (clara en oscuro,
    oscura en claro). Base = app oscura → barra CLARA. Abajo, en tema claro, la
    volvemos OSCURA. Los iconos van sin resplandor aquí para que se vean limpios. */
-.sk-bottom{position:sticky;bottom:0;display:none;justify-content:space-around;align-items:center;background:#ffffff;background:color-mix(in srgb,#ffffff 92%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-top:1px solid #e3e7f0;padding:8px 4px;margin:16px -4px 0;border-radius:14px 14px 0 0;}
+.sk-bottom{position:fixed;left:0;right:0;bottom:0;z-index:50;display:none;justify-content:space-around;align-items:center;background:#ffffff;background:color-mix(in srgb,#ffffff 92%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-top:1px solid #e3e7f0;padding:8px 4px calc(8px + env(safe-area-inset-bottom,0px));margin:0;border-radius:0;}
 .sk-bnav{display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;color:#56617a;font-size:10.5px;cursor:pointer;position:relative;padding:4px 14px;}
 .sk-bnav.on{color:#4a57c9;}
 .sk-bottom .onyx-ic{filter:none !important;}
@@ -690,7 +690,9 @@ html[data-theme="light"] .sk-bnav.on{color:#8b93ff;}
   :root:not([data-theme="dark"]) .sk-bnav{color:#9aa6bd;}
   :root:not([data-theme="dark"]) .sk-bnav.on{color:#8b93ff;}
 }
-@media(max-width:920px){.sk-bottom{display:flex;}}
+/* La barra ahora es fija a la pantalla; dejamos hueco abajo para que no tape
+   el contenido de la comunidad (Rank/Chat/etc.). */
+@media(max-width:920px){.sk-bottom{display:flex;} .sk-wrap[data-tab]{padding-bottom:78px;}}
 .sk-sec-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);margin:14px 0 6px;}
 .sk-heat{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,1fr);gap:3px;overflow-x:auto;padding-bottom:4px;}
 .sk-heat i{width:11px;height:11px;border-radius:3px;background:color-mix(in srgb,var(--mut) 18%,transparent);}
