@@ -855,30 +855,32 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                 <Link href="/onboarding" className="pill" style={{ background: 'rgba(124,140,255,.14)', color: 'var(--soft-brand)' }}>{L.completeProfile}</Link>
               )}
             </div>
-            {/* Balance del portafolio: compacto, al lado del nombre (con separador).
-                Al vivir aquí, se elimina la banda de balance de abajo y el dashboard sube. */}
-            <div className="hero-balance" style={{ borderLeft: '1px solid var(--line)', paddingLeft: 16, alignSelf: 'center' }}>
-              <div className="muted" style={{ fontSize: 11 }}>{lang === 'es' ? 'Balance del portafolio' : 'Portfolio balance'} · {accounts.length} {L.accountsWord}</div>
-              <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 7 }}>
-                <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.3px' }}>${totalBalance.toLocaleString()}</span>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: GREEN }}><span className="livedot" style={{ width: 7, height: 7 }} /> {updatedTxt}</span>
-              </div>
-            </div>
           </div>
-          {/* Exportar reporte del período filtrado: menú compacto arriba a la derecha
-              (antes era una banda completa que cargaba la vista). Solo planes de pago. */}
-          {!isFree && (
-            <details className="hero-export" style={{ position: 'relative', flex: 'none' }}>
-              <summary style={{ listStyle: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--tx)', borderRadius: 10, padding: '8px 13px', fontSize: 13 }}>
-                <OnyxIcon emoji="⬇️" size={14} /> {lang === 'es' ? 'Exportar' : 'Export'} <span style={{ fontSize: 11, color: 'var(--mut)' }}>▾</span>
-              </summary>
-              <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', zIndex: 40, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 8, minWidth: 220, boxShadow: '0 12px 34px rgba(0,0,0,.4)' }}>
-                <div className="muted" style={{ fontSize: 11, padding: '4px 8px 8px' }}>{lang === 'es' ? 'Reporte del período filtrado' : 'Report for the filtered period'}</div>
-                <a className="btn btn-ghost" href={pdfHref} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="📄" size={14} /> PDF</a>
-                <a className="btn btn-ghost" href={csvHref} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%' }}><OnyxIcon emoji="📊" size={14} /> CSV</a>
+          {/* Zona derecha: balance del portafolio (stat con su "actualizado") + Exportar,
+              agrupados con un separador. Antes el balance vivía pegado al nombre; al pasarlo
+              aquí, la fila queda en dos zonas claras (identidad | balance + acción). */}
+          <div className="row hero-right" style={{ gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div className="hero-balance" style={{ textAlign: 'right' }}>
+              <div className="muted" style={{ fontSize: 11 }}>{lang === 'es' ? 'Balance del portafolio' : 'Portfolio balance'} · {accounts.length} {L.accountsWord}</div>
+              <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 7, justifyContent: 'flex-end' }}>
+                <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-.3px' }}>${totalBalance.toLocaleString()}</span>
               </div>
-            </details>
-          )}
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: GREEN, justifyContent: 'flex-end' }}><span className="livedot" style={{ width: 7, height: 7 }} /> {updatedTxt}</div>
+            </div>
+            {!isFree && (<>
+              <span style={{ width: 1, height: 40, background: 'var(--line)', flex: 'none' }} className="perf-hidem" />
+              <details className="hero-export" style={{ position: 'relative', flex: 'none' }}>
+                <summary style={{ listStyle: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--tx)', borderRadius: 10, padding: '8px 13px', fontSize: 13 }}>
+                  <OnyxIcon emoji="⬇️" size={14} /> {lang === 'es' ? 'Exportar' : 'Export'} <span style={{ fontSize: 11, color: 'var(--mut)' }}>▾</span>
+                </summary>
+                <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', zIndex: 40, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 8, minWidth: 220, boxShadow: '0 12px 34px rgba(0,0,0,.4)' }}>
+                  <div className="muted" style={{ fontSize: 11, padding: '4px 8px 8px' }}>{lang === 'es' ? 'Reporte del período filtrado' : 'Report for the filtered period'}</div>
+                  <a className="btn btn-ghost" href={pdfHref} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="📄" size={14} /> PDF</a>
+                  <a className="btn btn-ghost" href={csvHref} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%' }}><OnyxIcon emoji="📊" size={14} /> CSV</a>
+                </div>
+              </details>
+            </>)}
+          </div>
         </div>
 
         {/* Onboarding grande: solo cuando aún NO hay cuentas — se queda a lo ancho para

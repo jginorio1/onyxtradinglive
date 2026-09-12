@@ -117,6 +117,9 @@ export default async function TopBar({ home = false }: { home?: boolean }) {
         ...((caps.algo || addonAlgo) ? [{ href: '/dashboard/bots', label: (t as any).bots, icon: '🤖', dot: (botsActive ? 'on' : 'off') as 'on' | 'off', dim: !botsActive, dotTitle: (botsActive ? (lang === 'es' ? 'Robots operando' : 'Robots running') : (lang === 'es' ? 'Sin robots operando ahora' : 'No robots running now')) }] : []),
         ...((caps.tv || caps.copy) ? [{ href: '/dashboard/tradingview', label: 'TradingView', icon: '📈', dot: (tvOn ? 'on' : 'off') as 'on' | 'off', dim: !tvOn, dotTitle: (tvOn ? (lang === 'es' ? 'TradingView activado' : 'TradingView on') : (lang === 'es' ? 'TradingView desactivado' : 'TradingView off')) }] : []),
         ...(caps.expenses ? [{ href: '/dashboard/expenses', label: lang === 'en' ? 'Net profit' : 'Ganancia neta', icon: '🧮' }] : []),
+        // Separador visual: aquí terminan las herramientas de trading del día a día y
+        // empieza el "ecosistema" (Ingresos, Onyx Copy, Bot Lab, Academy). Todos siguen visibles.
+        { href: '__sep_eco', label: '', sep: true } as any,
         { href: '/dashboard/earnings', label: lang === 'en' ? 'Earnings' : 'Ingresos', icon: '💰', tint: 'var(--green)' },
         { href: '/dashboard/onyx-copy', label: 'Onyx Copy', icon: '🏆' },
         { href: '/dashboard/bot-lab', label: 'Onyx Bot Lab', icon: '🤖', full: true, tint: 'var(--gold, #ffd45e)' },
@@ -151,6 +154,9 @@ export default async function TopBar({ home = false }: { home?: boolean }) {
           <div className="row" style={{ gap: 4 }}>
             <MainNav items={navItems} />
 
+            <span className="topsep" />
+
+            {/* Zona de estado: EA + plan, como pastillas juntas. */}
             {eaLive !== null && (
               <span className="ea-dot" title={eaLive ? t.eaOnTitle : t.eaOffTitle}>
                 {eaLive ? <span className="livedot" style={{ width: 8, height: 8 }} /> : <span className="dot" style={{ background: 'var(--amber)' }} />}
@@ -160,9 +166,15 @@ export default async function TopBar({ home = false }: { home?: boolean }) {
 
             <Link className={'planpill' + (plan === 'free' ? ' free' : '')} href="/pricing">{planName}</Link>
 
+            <span className="topsep" />
+
+            {/* Zona de acciones: iconos del mismo tamaño. */}
             <NotifBell />
             <ThemeToggle />
             <LangToggle compact />
+
+            <span className="topsep" />
+
             <TopBarMenu email={user.email || ''} initial={initial} isAdmin={isAdmin} t={t} />
           </div>
         ) : (

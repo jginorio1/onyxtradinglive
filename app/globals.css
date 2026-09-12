@@ -282,10 +282,14 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
 
 /* Contenedor del dashboard: llena cualquier monitor con margen proporcional */
 .wrap-wide{max-width:1680px;margin:0 auto;padding:0 clamp(16px,3vw,64px);}
-/* En monitores grandes/curvos/gamer el dashboard (y admin/cuenta) van de borde a
-   borde: el contenedor deja de tener tope y usa toda la pantalla, con un margen
-   lateral mínimo que se auto-ajusta. La cabina ya estira el centro sola. */
-@media(min-width:1720px){ .wrap-wide{max-width:none;} }
+/* En monitores muy anchos (ultrawide/50") el contenedor se topa y se centra en
+   lugar de estirarse de borde a borde: así la barra superior, la fila del trader
+   y la cabina quedan alineadas al mismo ancho y con márgenes iguales a los lados. */
+@media(min-width:1720px){ .wrap-wide{max-width:1840px;} }
+/* Separadores del cabezal: entre grupos de la nav y entre zonas del clúster derecho. */
+.navsep{ display:inline-block; width:1px; height:18px; background:var(--line); margin:0 8px; flex:0 0 auto; }
+.topsep{ display:none; }
+@media(min-width:1025px){ .topsep{ display:inline-block; width:1px; height:20px; background:var(--line); margin:0 4px; flex:0 0 auto; } }
 
 /* Layout cabina: sesiones izquierda · panel centro (se estira) · noticias derecha */
 /* El cockpit (rieles + centro) se topa y se centra como bloque: en monitores

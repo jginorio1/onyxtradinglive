@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import OnyxIcon from '@/app/components/OnyxIcon';
 
-export type NavItem = { href: string; label: string; dot?: 'on' | 'off'; dim?: boolean; icon?: string; dotTitle?: string; full?: boolean; gold?: boolean; tint?: string };
+export type NavItem = { href: string; label: string; dot?: 'on' | 'off'; dim?: boolean; icon?: string; dotTitle?: string; full?: boolean; gold?: boolean; tint?: string; sep?: boolean };
 // Chip dorado (marca Onyx Bot Lab) para destacar un destino distinto en el nav.
 const GOLD_CHIP: any = { background: 'linear-gradient(120deg,#ffd45e,#ffb020)', color: '#4a2b00', borderRadius: 99, padding: '4px 13px', fontWeight: 800, boxShadow: '0 4px 14px rgba(255,176,32,.28)' };
 
@@ -86,7 +86,8 @@ export default function MainNav({ items, authItems }: { items: NavItem[]; authIt
   return (
     <>
       <div className="navl">
-        {items.map((i) => {
+        {items.map((i, idx) => {
+          if (i.sep) return <span key={'sep' + idx} className="navsep" aria-hidden="true" />;
           const dt = i.dot ? (i.dotTitle || (i.dot === 'on' ? 'activo' : 'inactivo')) : undefined;
           const cls = 'navlink' + (isActive(i.href) ? ' on' : '') + (i.dim ? ' dim' : '');
           const inner = (<>
@@ -108,7 +109,8 @@ export default function MainNav({ items, authItems }: { items: NavItem[]; authIt
         </button>
         {open && (
           <div className="menu" style={{ minWidth: 180, ...(menuTop != null ? { top: menuTop + 'px' } : {}), ...(menuMaxH != null ? { maxHeight: menuMaxH + 'px' } : {}) }}>
-            {items.map((i) => {
+            {items.map((i, idx) => {
+              if (i.sep) return <div key={'sep' + idx} style={{ borderTop: '1px solid var(--line)', margin: '6px 0' }} />;
               const cls = 'menu-item' + (isActive(i.href) ? ' on' : '');
               const inner = (<>
                 {i.icon && <span aria-hidden="true" style={{ marginRight: 8, display: 'inline-flex', verticalAlign: '-3px' }}><OnyxIcon emoji={i.icon} size={16} /></span>}
