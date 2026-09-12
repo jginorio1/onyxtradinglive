@@ -81,7 +81,12 @@ a{color:inherit;text-decoration:none;}
 .wrap{max-width:1140px;margin:0 auto;padding:0 22px;}
 .row{display:flex;align-items:center;gap:12px;}
 .between{justify-content:space-between;}
-.logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px;}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px;flex:0 0 auto;}
+.logo-text{white-space:nowrap;}
+/* Dentro del panel (con sesión) dejamos SOLO el símbolo de Onyx: el texto largo
+   "Onyx Trading Live" se partía en varias líneas al haber muchos tabs. */
+.topbar.app .logo-text{ display:none !important; }
+.topbar.app .logo{ gap:0; font-size:0; }
 .logo .mark{width:28px;height:28px;border-radius:8px;background:var(--grad);display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 4px 16px rgba(124,140,255,.4);}
 /* Botones. Peso 500 en vez de 600, sin sombras de colores y con un solo
    nivel de elevacion. El primario destaca por color, no por brillo. */

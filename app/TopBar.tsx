@@ -142,11 +142,12 @@ export default async function TopBar({ home = false }: { home?: boolean }) {
       ];
 
   return (
-    <div className={'topbar' + (home ? ' center-nav' : '')}>
+    <div className={'topbar' + (home ? ' center-nav' : '') + (user ? ' app' : '')}>
       <div className="wrap-wide">
-        {/* El logo siempre vuelve al inicio. Para el panel ya está "Panel". */}
+        {/* El logo siempre vuelve al inicio. Dentro del panel dejamos solo el símbolo
+            (sin el texto "Onyx Trading Live") para ganar espacio y que no se parta. */}
         <Link className="logo" href="/" aria-label="Onyx Trading Live">
-          <img src="/onyx-symbol.png" alt="Onyx Trading Live" style={{ width: 28, height: 28, objectFit: 'contain' }} />
+          <img src="/onyx-symbol.png" alt="Onyx Trading Live" style={{ width: 28, height: 28, objectFit: 'contain', flex: '0 0 auto' }} />
           <span className="logo-text">Onyx Trading Live</span>
         </Link>
 
