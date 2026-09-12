@@ -288,7 +288,10 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
 @media(min-width:1720px){ .wrap-wide{max-width:none;} }
 
 /* Layout cabina: sesiones izquierda · panel centro (se estira) · noticias derecha */
-.cockpit{display:flex;flex-direction:column;gap:16px;}
+/* El cockpit (rieles + centro) se topa y se centra como bloque: en monitores
+   muy anchos (ultrawide/50") deja de estirarse y los rieles quedan pegados al
+   centro; el espacio sobrante se reparte igual a ambos lados. */
+.cockpit{display:flex;flex-direction:column;gap:16px;width:100%;max-width:1840px;margin-inline:auto;}
 .cockpit .center{min-width:0;max-width:none;margin:0;padding:0;}
 @media(min-width:1280px){
   .cockpit{flex-direction:row;align-items:flex-start;}

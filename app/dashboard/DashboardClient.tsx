@@ -3,7 +3,7 @@ import { dictFor } from '@/lib/i18n';
 import { useEffect, useMemo, useState, Fragment } from 'react';
 import { useLang } from '@/lib/lang';
 import Link from 'next/link';
-import { analyze, bestOf, worstOf, topPairs, fmtDur, perfBreakdown, HOLD_BINS_LABELS, R_BINS_LABELS, type T, type Bucket, type KRow } from '@/lib/analytics';
+import { analyze, bestOf, worstOf, topPairs, fmtDur, perfBreakdown, groupByPosition, HOLD_BINS_LABELS, R_BINS_LABELS, type T, type Bucket, type KRow } from '@/lib/analytics';
 import dynamic from 'next/dynamic';
 import { typeMeta } from '@/lib/accountMeta';
 import { Ring, MiniArea, MiniDonut, MiniBars, MiniHeat, RadarChart, Bubbles, healthScore } from './Modern';
@@ -695,7 +695,9 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
   const totalBalance = accounts.reduce((s, x) => s + Number(x.balance || 0), 0);
   const accName = (x: Acc) => x.nickname || (x.broker ? `${x.broker} · #${x.login}` : `#${x.login}`);
   const sessName = (key: string) => (SESS[key] ? SESS[key][lang] : key);
-  function accStats(id: string) { const ts = ranged.filter((t) => t.account_id === id); let net = 0, w = 0; for (const t of ts) { const p = +t.net_profit || 0; net += p; if (p >= 0) w++; } return { net, ops: ts.length, wr: ts.length ? Math.round(100 * w / ts.length) : 0 }; }
+  // Operaciones = posiciones lógicas (agrupando parciales), para que el número
+  // cuadre con el resto del panel (no cierres crudos).
+  function accStats(id: string) { const ts = ranged.filter((t) => t.account_id === id); const ops = groupByPosition(ts).length; let net = 0, w = 0; for (const t of ts) { const p = +t.net_profit || 0; net += p; if (p >= 0) w++; } return { net, ops, wr: ts.length ? Math.round(100 * w / ts.length) : 0 }; }
   async function saveNick(id: string) { await fetch('/api/accounts', { method: 'PATCH', body: JSON.stringify({ id, nickname: nick }) }); setAccounts(accounts.map((x) => (x.id === id ? { ...x, nickname: nick } : x))); setEditing(''); }
   // Pide re-subir TODO el historial de la cuenta: el EA lo recibe en su próximo sync.
   async function resyncHistory(id: string) {
@@ -898,7 +900,8 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
             </button>
             <div className={'rail-body' + (railOpen ? ' open' : '')}>
               {hasAccounts && <SetupGuide />}
-              <MarketClock />
+              {/* El estado del mercado ya vive en el riel izquierdo (Sesiones del mercado),
+                  así que aquí se omite MarketClock para no duplicar el "Mercado cerrado". */}
               {caps?.expenses ? <NetRealCard /> : null}
               {caps?.coach ? <CoachCard rail from={rangeDates.from} to={rangeDates.to} account={sel} /> : null}
             </div>
@@ -912,7 +915,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
         ) : !hasTrades ? (
           <div className="card"><p className="muted">{L.empty2}</p></div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%', maxWidth: view === 'hub' ? undefined : 1160, margin: view === 'hub' ? undefined : '0 auto' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%' }}>
             {/* controles: cuenta (menú) + activo/robot (menú, en Rendimiento) + filtro de tiempo */}
             <div className="row between" style={{ flexWrap: 'wrap', gap: 10 }}>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -1170,7 +1173,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                 <div className="grid g3" style={{ marginBottom: 14 }}>
                   <StatCard icon="💰" label={L.balTotal} value={'$' + (sel === 'all' ? totalBalance : Number(cur?.balance || 0)).toLocaleString()} accent={BLUE} />
                   <StatCard icon="🗂️" label={L.accounts} value={String(sel === 'all' ? accounts.length : 1)} accent={PURPLE} />
-                  <StatCard icon="📊" label={L.opsTotal} value={String(sel === 'all' ? ranged.length : filtered.length)} accent={CYAN} />
+                  <StatCard icon="📊" label={L.opsTotal} value={String(groupByPosition(sel === 'all' ? ranged : filtered).length)} accent={CYAN} />
                 </div>
                 <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
                 <table className="jtbl" style={{ minWidth: 620 }}><thead><tr><th>{L.th_acc}</th><th>{L.th_broker}</th><th style={{ textAlign: 'right' }}>{L.th_bal}</th><th style={{ textAlign: 'right' }}>{L.th_net}</th><th style={{ textAlign: 'right' }}>{L.th_win}</th><th></th></tr></thead>

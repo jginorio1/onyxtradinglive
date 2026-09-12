@@ -19,7 +19,7 @@ function weekStart(dt: Date): number {
 
 const T = {
   es: {
-    title: 'Logros y metas', streak: 'Racha de días verdes', bestMonth: 'Mejor mes', bestDay: 'Mejor día',
+    title: 'Logros y metas', streak: 'Racha de días verdes', bestMonth: 'Mejor mes', bestMonthNeg: 'Mes menos malo', bestDay: 'Mejor día', bestDayNeg: 'Día menos malo',
     trophies: 'Trofeos', challengesPassed: 'challenges aprobados', funded: 'cuentas fondeadas', badges: 'Insignias',
     goalsHead: 'Mis metas de ganancia', goalsSub: 'Cuánto quieres ganar por semana, mes y año, sumando todas tus cuentas.',
     goalW: 'Meta semanal', goalM: 'Meta mensual', goalY: 'Meta anual', pW: 'Esta semana', pM: 'Este mes', pY: 'Este año',
@@ -27,7 +27,7 @@ const T = {
     tzNote: 'Se guardan en tu cuenta · con tu zona horaria', days: 'días', wk: 'Semanal', mo: 'Mensual', yr: 'Anual',
   },
   en: {
-    title: 'Achievements & goals', streak: 'Green-day streak', bestMonth: 'Best month', bestDay: 'Best day',
+    title: 'Achievements & goals', streak: 'Green-day streak', bestMonth: 'Best month', bestMonthNeg: 'Least-bad month', bestDay: 'Best day', bestDayNeg: 'Least-bad day',
     trophies: 'Trophies', challengesPassed: 'challenges passed', funded: 'funded accounts', badges: 'Badges',
     goalsHead: 'My profit goals', goalsSub: 'How much you want to make per week, month and year, across all your accounts.',
     goalW: 'Weekly goal', goalM: 'Monthly goal', goalY: 'Annual goal', pW: 'This week', pM: 'This month', pY: 'This year',
@@ -127,8 +127,8 @@ export default function Achievements({ a, accounts, trades = [], lang }: { a: an
 
       <div className="grid g3" style={{ marginBottom: 14 }}>
         <div style={{ ...box, borderLeft: '3px solid #ff8a3d' }}><div className="muted" style={{ fontSize: 12 }}>{t.streak}</div><div style={{ fontSize: 24, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ display: 'inline-flex', color: 'var(--amber)' }}><OnyxIcon name="streak" size={22} /></span> {streak} <span style={{ fontSize: 14, fontWeight: 500 }} className="muted">{t.days}</span></div></div>
-        <div style={{ ...box, borderLeft: '3px solid var(--green)' }}><div className="muted" style={{ fontSize: 12 }}>{t.bestMonth}</div><div style={{ fontSize: 18, fontWeight: 800 }}>{bmLabel}</div><div className="pos" style={{ fontSize: 13 }}>{bestMonthNet > -Infinity ? money(bestMonthNet) : ''}</div></div>
-        <div style={{ ...box, borderLeft: '3px solid var(--brand)' }}><div className="muted" style={{ fontSize: 12 }}>{t.bestDay}</div><div style={{ fontSize: 18, fontWeight: 800 }}>{bestDayKey || '—'}</div><div className="pos" style={{ fontSize: 13 }}>{bestDayNet > -Infinity ? money(bestDayNet) : ''}</div></div>
+        <div style={{ ...box, borderLeft: '3px solid ' + (bestMonthNet >= 0 ? 'var(--green)' : 'var(--mut)') }}><div className="muted" style={{ fontSize: 12 }}>{bestMonthNet >= 0 ? t.bestMonth : t.bestMonthNeg}</div><div style={{ fontSize: 18, fontWeight: 800 }}>{bmLabel}</div><div className={bestMonthNet >= 0 ? 'pos' : 'muted'} style={{ fontSize: 13 }}>{bestMonthNet > -Infinity ? money(bestMonthNet) : ''}</div></div>
+        <div style={{ ...box, borderLeft: '3px solid ' + (bestDayNet >= 0 ? 'var(--brand)' : 'var(--mut)') }}><div className="muted" style={{ fontSize: 12 }}>{bestDayNet >= 0 ? t.bestDay : t.bestDayNeg}</div><div style={{ fontSize: 18, fontWeight: 800 }}>{bestDayKey || '—'}</div><div className={bestDayNet >= 0 ? 'pos' : 'muted'} style={{ fontSize: 13 }}>{bestDayNet > -Infinity ? money(bestDayNet) : ''}</div></div>
       </div>
 
       {(passed > 0 || funded > 0) && <div style={{ marginBottom: 14, fontSize: 14 }}><span className="muted">{t.trophies}: </span>{passed > 0 && <b><span style={{ display: 'inline-flex', verticalAlign: '-3px', color: 'var(--gold)' }}><OnyxIcon name="trophy" size={16} /></span> {passed} {t.challengesPassed}</b>}{passed > 0 && funded > 0 && ' · '}{funded > 0 && <b><span style={{ display: 'inline-flex', verticalAlign: '-3px', color: 'var(--green)' }}><OnyxIcon name="money" size={16} /></span> {funded} {t.funded}</b>}</div>}
