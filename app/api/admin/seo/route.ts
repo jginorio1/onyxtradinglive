@@ -27,7 +27,8 @@ export async function GET(req: Request) {
       gscEmail: process.env.GSC_CLIENT_EMAIL || '',
       gscSite: process.env.GSC_SITE_URL || '',
     };
-    const days = Math.min(90, Math.max(7, Number(new URL(req.url).searchParams.get('days')) || 28));
+    // Search Console guarda hasta ~16 meses (480 días); permitimos rangos amplios.
+    const days = Math.min(480, Math.max(1, Number(new URL(req.url).searchParams.get('days')) || 28));
     let search: any = { ok: false, reason: env.gsc ? 'pending' : 'not_configured' };
     if (env.gsc) { try { search = await gscOverview(days); } catch (e) { search = { ok: false, reason: 'error' }; } }
     return NextResponse.json({ meta, env, search, days });

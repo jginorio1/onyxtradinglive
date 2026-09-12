@@ -111,7 +111,13 @@ export default function SeoPanel() {
         <div className="row between" style={{ alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
           <h3 style={{ margin: 0 }}>📈 {L('Rendimiento en Google', 'Google performance')}</h3>
           <select value={days} onChange={(e) => { const d = Number(e.target.value); setDays(d); load(d); }} style={{ ...inp, width: 'auto', marginTop: 0 }}>
-            <option value={7}>{L('7 días', '7 days')}</option><option value={28}>{L('28 días', '28 days')}</option><option value={90}>{L('90 días', '90 days')}</option>
+            <option value={7}>{L('7 días', '7 days')}</option>
+            <option value={14}>{L('14 días', '14 days')}</option>
+            <option value={28}>{L('28 días', '28 days')}</option>
+            <option value={90}>{L('90 días', '90 days')}</option>
+            <option value={180}>{L('6 meses', '6 months')}</option>
+            <option value={365}>{L('12 meses', '12 months')}</option>
+            <option value={480}>{L('16 meses (máx)', '16 months (max)')}</option>
           </select>
         </div>
 
