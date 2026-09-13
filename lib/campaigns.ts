@@ -89,6 +89,15 @@ async function contentFor(c: CampaignRow): Promise<{ content: Content | null; ai
   return { content: stored, ai: false };
 }
 
+// Genera el contenido REAL de una campaña (incluida la IA si es automática) para
+// una PRUEBA: así el owner ve exactamente lo que saldría, en cada idioma.
+export async function testCampaignContent(id: string): Promise<{ subject_es: string; body_es: string; subject_en: string; body_en: string } | null> {
+  const { data } = await supabaseAdmin.from('campaigns').select('*').eq('id', id).maybeSingle();
+  if (!data) return null;
+  const cf = await contentFor(data as CampaignRow);
+  return cf.content;
+}
+
 // Registra un envío automático generado por IA (para el historial + estadísticas).
 async function recordRun(c: CampaignRow, content: Content, recipients: number): Promise<string | null> {
   try {

@@ -81,6 +81,19 @@ export default function Campaigns() {
     setCamps((list) => list.map((x) => x.id === c.id ? { ...x, enabled: !x.enabled } : x));
   }
 
+  // Envía una PRUEBA de esta campaña a tu propio correo, en el idioma elegido.
+  // Genera el contenido real (IA incluida) para que veas exactamente lo que sale.
+  const [testing, setTesting] = useState('');
+  async function testCampaign(c: Campaign, lang: 'es' | 'en') {
+    setTesting(c.id + lang);
+    try {
+      const r = await fetch('/api/admin/campaigns/send', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'test_campaign', id: c.id, lang }) });
+      const j = await r.json();
+      if (!r.ok || !j.ok) toastErr(j.error === 'sin_contenido' ? { error: L('Esta campaña aún no tiene contenido (la IA lo redacta al enviar).', 'This campaign has no content yet (AI writes it at send time).') } : j);
+      else toast(L(`Prueba enviada a tu correo en ${lang === 'en' ? 'inglés' : 'español'}.`, `Test sent to your email in ${lang === 'en' ? 'English' : 'Spanish'}.`), 'ok');
+    } finally { setTesting(''); }
+  }
+
   // Interruptor "Automático (IA)": la IA redacta y agenda esta campaña sola.
   async function toggleAuto(c: Campaign) {
     const next = !c.auto;
@@ -160,6 +173,12 @@ export default function Campaigns() {
               <div className="row" style={{ gap: 6, alignItems: 'center' }} title={L('La IA redacta y programa esta campaña sola.', 'AI writes and schedules this campaign on its own.')}>
                 <span className="muted" style={{ fontSize: 11.5 }}>🤖 {L('IA', 'AI')}</span>
                 <span className="toggle" onClick={() => toggleAuto(c)} style={{ background: c.auto ? 'var(--soft-brand)' : '#556080' }}><span className="knob" style={{ left: c.auto ? 21 : 3 }} /></span>
+              </div>
+              {/* Prueba a tu correo, en el idioma que elijas (verifica el idioma del envío) */}
+              <div className="row" style={{ gap: 4, alignItems: 'center' }} title={L('Envía una prueba a tu correo en ese idioma.', 'Send a test to your email in that language.')}>
+                <span className="muted" style={{ fontSize: 11.5 }}>🧪</span>
+                <button className="btn btn-ghost" style={{ padding: '6px 9px', fontSize: 12 }} disabled={testing === c.id + 'es'} onClick={() => testCampaign(c, 'es')}>{testing === c.id + 'es' ? '…' : 'ES'}</button>
+                <button className="btn btn-ghost" style={{ padding: '6px 9px', fontSize: 12 }} disabled={testing === c.id + 'en'} onClick={() => testCampaign(c, 'en')}>{testing === c.id + 'en' ? '…' : 'EN'}</button>
               </div>
               <button className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: 12.5 }} onClick={() => setHistOpen(histOpen === c.key ? null : (c.key || null))}>🗂 {L('Historial', 'History')}</button>
               <button className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: 12.5 }} onClick={() => setEditing(c)} disabled={!!c.auto} title={c.auto ? L('Apaga el 🤖 para editar el texto a mano.', 'Turn 🤖 off to edit the copy by hand.') : ''}>✏️ {L('Editar', 'Edit')}</button>

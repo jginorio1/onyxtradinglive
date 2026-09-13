@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requirePerm, logAdmin } from '@/lib/admin';
-import { sendManual, renderTemplate } from '@/lib/campaigns';
+import { sendManual, renderTemplate, testCampaignContent } from '@/lib/campaigns';
 import { sendEmailId } from '@/lib/mail';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { logError } from '@/lib/errlog';
@@ -31,6 +31,23 @@ export async function POST(req: Request) {
       // métricas reales) para poder verificar que el webhook capta aperturas/clics.
       try { await supabaseAdmin.from('campaign_sends').insert({ campaign_key: '__test__', email: to, status: ok ? 'sent' : 'failed', resend_id: id }); } catch {}
       return NextResponse.json({ ok, test: true });
+    }
+
+    // Prueba de una campaña EXISTENTE (automática/guardada): genera el contenido
+    // real (IA incluida) y lo manda al admin en el idioma elegido, para verificar.
+    if (action === 'test_campaign') {
+      const to = b.to || p.user?.email;
+      if (!to || !b.id) return NextResponse.json({ error: 'faltan_datos' }, { status: 400 });
+      const lang = b.lang === 'es' ? 'es' : 'en';
+      const c = await testCampaignContent(String(b.id));
+      if (!c) return NextResponse.json({ error: 'sin_contenido' }, { status: 400 });
+      const r = { id: 'test', email: to, name: (p.user?.email || '').split('@')[0], lang, plan: 'test' } as any;
+      const subject = lang === 'en' ? (c.subject_en || c.subject_es) : (c.subject_es || c.subject_en);
+      const body = lang === 'en' ? (c.body_en || c.body_es) : (c.body_es || c.body_en);
+      if (!subject || !body) return NextResponse.json({ error: 'sin_contenido' }, { status: 400 });
+      const { ok, id } = await sendEmailId(to, '[PRUEBA] ' + renderTemplate(subject, r), renderTemplate(body, r), { kind: 'campaign', unsub: null });
+      try { await supabaseAdmin.from('campaign_sends').insert({ campaign_key: '__test__', email: to, status: ok ? 'sent' : 'failed', resend_id: id }); } catch {}
+      return NextResponse.json({ ok, test: true, lang });
     }
 
     // Conteo previo (cuántos lo recibirían).
