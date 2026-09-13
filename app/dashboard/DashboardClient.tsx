@@ -16,6 +16,7 @@ import MarketClock from './MarketClock';
 import QuantEdgeCard from './QuantEdgeCard';
 import Nudge from './Nudge';
 import { WeatherCard } from './WeatherBg';
+import TrackShare from './TrackShare';
 // Laterales SIEMPRE visibles en el hub → import normal (no diferido). Antes eran
 // dynamic(ssr:false) y su trozo a veces no se montaba, dejando Neto real / Coach
 // en blanco. Son 'use client' y el portal de Coach está protegido con `mounted`,
@@ -874,6 +875,8 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
             {/* Clima en vivo (icono + temperatura), tras un divisor (el divisor va dentro
                 del chip para que no quede colgando si el clima no carga). */}
             <WeatherCard country={profile?.country} lang={lang} sep />
+            <span style={{ width: 1, height: 22, background: 'var(--line)', flex: 'none' }} className="hero-sep" />
+            <TrackShare lang={lang} name={profile?.full_name || ''} />
           </div>
           {/* El balance del portafolio se movió al lado del selector de cuenta (abajo),
               para que siga la cuenta elegida. El saludo queda solo con identidad+chips. */}
