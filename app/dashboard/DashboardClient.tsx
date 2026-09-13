@@ -15,6 +15,8 @@ import Achievements from './Achievements';
 import MarketClock from './MarketClock';
 import QuantEdgeCard from './QuantEdgeCard';
 import Nudge from './Nudge';
+import { WeatherChip } from './WeatherBg';
+const WeatherBg = dynamic(() => import('./WeatherBg'), { ssr: false });
 // Laterales SIEMPRE visibles en el hub → import normal (no diferido). Antes eran
 // dynamic(ssr:false) y su trozo a veces no se montaba, dejando Neto real / Coach
 // en blanco. Son 'use client' y el portal de Coach está protegido con `mounted`,
@@ -497,7 +499,7 @@ function mergeAccounts(prev: Acc[], next: Acc[]): Acc[] {
   return out;
 }
 
-export default function DashboardClient({ email = '', plan = 'free', capOverride, profile, trades = [], accounts: accs0 = [] }: { email?: string; plan?: string; capOverride?: Record<string, any>; profile?: { full_name?: string; trade_style?: string; experience?: string; platform?: string; goal?: string }; trades?: TT[]; accounts?: Acc[] }) {
+export default function DashboardClient({ email = '', plan = 'free', capOverride, profile, trades = [], accounts: accs0 = [] }: { email?: string; plan?: string; capOverride?: Record<string, any>; profile?: { full_name?: string; trade_style?: string; experience?: string; platform?: string; goal?: string; country?: string; avatar_url?: string }; trades?: TT[]; accounts?: Acc[] }) {
   const isFree = (plan || 'free') === 'free';
   const { lang, setLang } = useLang();
   const [accounts, setAccounts] = useState<Acc[]>(accs0 || []);
@@ -833,8 +835,11 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
     <>
       <CompTrialPopup />
       <DailyCheckinPopup lang={lang} onState={setCheckin} />
+      {/* Fondo dinámico según el clima (gotas de lluvia / nieve cayendo). Fixed detrás
+          de todo (zIndex:0); el contenido va con position:relative;zIndex:1 encima. */}
+      <WeatherBg country={profile?.country} />
 
-      <div className="wrap-wide" style={{ padding: '14px clamp(16px,1.6vw,40px)' }}>
+      <div className="wrap-wide" style={{ padding: '14px clamp(16px,1.6vw,40px)', position: 'relative', zIndex: 1 }}>
         {/* Franja del trader (v472): UNA sola línea, SIN fondo (se apoya en la página),
             con divisores verticales entre bloques y una hairline debajo que la cierra
             sin encajonarla. Identidad · chips · balance a la derecha. */}
@@ -869,6 +874,9 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
             ) : (
               <Link href="/onboarding" className="pill" style={{ background: 'rgba(124,140,255,.14)', color: 'var(--soft-brand)' }}>{L.completeProfile}</Link>
             )}
+            {/* Clima en vivo (icono + temperatura), tras un divisor (el divisor va dentro
+                del chip para que no quede colgando si el clima no carga). */}
+            <WeatherChip country={profile?.country} lang={lang} sep />
           </div>
           {/* El balance del portafolio se movió al lado del selector de cuenta (abajo),
               para que siga la cuenta elegida. El saludo queda solo con identidad+chips. */}

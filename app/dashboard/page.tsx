@@ -50,7 +50,7 @@ export default async function Dashboard() {
   // Perfil de trader (para el saludo personalizado). Tolerante si onboarding_v1.sql aún no corrió.
   let tp: any = {};
   try {
-    const { data } = await supabaseAdmin.from('profiles').select('full_name,trade_style,experience,platform,goal').eq('id', user!.id).maybeSingle();
+    const { data } = await supabaseAdmin.from('profiles').select('full_name,trade_style,experience,platform,goal,country').eq('id', user!.id).maybeSingle();
     tp = data || {};
   } catch { /* columnas del perfil aún no creadas */ }
   // Si el nombre no llegó a profiles pero sí está en los metadatos del registro, lo sincronizamos una vez.
