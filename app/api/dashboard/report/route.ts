@@ -58,11 +58,66 @@ export async function GET(req: Request) {
     : { title: 'Performance report', pnl: 'Net result', trades: 'Trades', win: 'Win rate', pf: 'Profit factor', avg: 'Avg per trade', best: 'Best', worst: 'Worst', bySym: 'By instrument', sym: 'Instrument', n: 'Trades', net: 'Net', list: 'Trades', side: 'Side', vol: 'Vol', close: 'Close' };
 
   if (sp.get('export') === 'csv') {
-    const csv = toCsvRows([
-      [T.close, T.sym, T.side, T.vol, 'net_profit', 'commission', 'swap'],
-      ...trades.map((t) => [(t.close_time || '').slice(0, 19).replace('T', ' '), t.symbol || '', t.side || '', String(t.volume ?? ''), num(net(t)), String(t.commission ?? ''), String(t.swap ?? '')]),
-    ]);
-    return new NextResponse(csv, { headers: { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': `attachment; filename="onyx-operaciones-${from}.csv"` } });
+    // CSV rico: cabecera + resumen + portafolio + perfil + por instrumento + lista
+    // completa de operaciones (con apertura, cierre, duración y desglose de costes).
+    const styleMapC: any = { scalping: 'Scalper', day: 'Day Trader', swing: 'Swing Trader', position: 'Position Trader', algo: 'Algo/Robots' };
+    const expMapC: any = { novato: es ? 'Principiante' : 'Beginner', intermedio: es ? 'Intermedio' : 'Intermediate', avanzado: es ? 'Avanzado' : 'Advanced', pro: 'Pro' };
+    const goalMapC: any = { pasar_challenge: es ? 'Pasar reto' : 'Pass challenge', consistencia: es ? 'Consistencia' : 'Consistency', crecer: es ? 'Crecer cuenta' : 'Grow account', vivir: es ? 'Vivir del trading' : 'Trade for a living' };
+    const dur = (t: any) => {
+      const a = t.open_time ? Date.parse(t.open_time) : NaN, b = t.close_time ? Date.parse(t.close_time) : NaN;
+      if (!isFinite(a) || !isFinite(b) || b < a) return '';
+      const m = Math.round((b - a) / 60000);
+      if (m < 60) return m + 'm';
+      if (m < 1440) return Math.floor(m / 60) + 'h ' + (m % 60) + 'm';
+      return Math.floor(m / 1440) + 'd ' + Math.floor((m % 1440) / 60) + 'h';
+    };
+    const symRowsC = Object.entries(bySym).sort((a, b) => b[1].net - a[1].net).map(([s, v]) => [s, String(v.n), num(v.net)]);
+    const L = es
+      ? { app: 'Onyx Trading — Reporte de rendimiento', period: 'Período', gen: 'Generado', currency: 'Moneda', S_prof: 'PERFIL DEL TRADER', name: 'Nombre', style: 'Estilo', exp: 'Experiencia', goal: 'Meta', country: 'País', S_port: 'PORTAFOLIO', bal: 'Balance total', accs: 'Cuentas', S_sum: 'RESUMEN', S_sym: 'POR INSTRUMENTO', S_list: 'OPERACIONES', open: 'Apertura', close: 'Cierre', durc: 'Duración', gross: 'Bruto', metric: 'Métrica', value: 'Valor' }
+      : { app: 'Onyx Trading — Performance report', period: 'Period', gen: 'Generated', currency: 'Currency', S_prof: 'TRADER PROFILE', name: 'Name', style: 'Style', exp: 'Experience', goal: 'Goal', country: 'Country', S_port: 'PORTFOLIO', bal: 'Total balance', accs: 'Accounts', S_sum: 'SUMMARY', S_sym: 'BY INSTRUMENT', S_list: 'TRADES', open: 'Open', close: 'Close', durc: 'Duration', gross: 'Gross', metric: 'Metric', value: 'Value' };
+    const blank: string[] = [];
+    const rows: string[][] = [
+      [L.app],
+      [L.period, from + ' → ' + to],
+      [L.gen, new Date().toISOString().slice(0, 16).replace('T', ' ') + ' UTC'],
+      [L.currency, cur],
+      blank,
+      [L.S_prof],
+      [L.name, prof.full_name || '—'],
+      [L.style, styleMapC[prof.trade_style] || prof.trade_style || '—'],
+      [L.exp, expMapC[prof.experience] || '—'],
+      [L.goal, goalMapC[prof.goal] || '—'],
+      [L.country, prof.country || '—'],
+      blank,
+      [L.S_port],
+      [L.bal, cur + ' ' + num(totalBalance)],
+      [L.accs, String(accIds.length)],
+      blank,
+      [L.S_sum],
+      [L.metric, L.value],
+      [T.pnl, cur + ' ' + num(netTotal)],
+      [T.trades, String(total)],
+      [T.win, winRate + '%'],
+      [T.pf, String(pf)],
+      [T.avg, cur + ' ' + num(avg)],
+      [T.best, total ? num(best) : '—'],
+      [T.worst, total ? num(worst) : '—'],
+      blank,
+      [L.S_sym],
+      [T.sym, T.n, T.net],
+      ...symRowsC,
+      blank,
+      [L.S_list],
+      [L.open, L.close, T.sym, T.side, T.vol, L.durc, T.net, L.gross, 'commission', 'swap'],
+      ...trades.map((t) => [
+        (t.open_time || '').slice(0, 19).replace('T', ' '),
+        (t.close_time || '').slice(0, 19).replace('T', ' '),
+        t.symbol || '', t.side || '', String(t.volume ?? ''), dur(t),
+        num(net(t)), t.profit != null ? num(Number(t.profit)) : '', String(t.commission ?? ''), String(t.swap ?? ''),
+      ]),
+    ];
+    const csv = toCsvRows(rows);
+    return new NextResponse(csv, { headers: { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': `attachment; filename="onyx-reporte-${from}.csv"` } });
   }
 
   const symRows = Object.entries(bySym).sort((a, b) => b[1].net - a[1].net).map(([s, v]) => [s, String(v.n), cur + ' ' + num(v.net)]);
