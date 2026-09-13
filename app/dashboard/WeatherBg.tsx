@@ -5,17 +5,17 @@ import { getWeather, type Weather, type WxCond } from '@/lib/weatherClient';
 // Tinte de fondo según el clima (muy leve, esquina superior) + partículas
 // animadas (gotas de lluvia / copos de nieve cayendo). Interruptor en
 // localStorage 'onyx_weatherbg' = 'off' para apagarlo.
-const TINT: Record<WxCond, string> = {
-  clear: 'rgba(245,158,11,.14)',
-  clouds: 'rgba(148,163,184,.16)',
-  rain: 'rgba(56,130,246,.18)',
-  storm: 'rgba(99,102,241,.20)',
-  snow: 'rgba(224,242,254,.16)',
-  fog: 'rgba(148,163,184,.14)',
+// Color base del clima (rgb sin alfa: el alfa lo ponemos en cada capa).
+const RGB: Record<WxCond, string> = {
+  clear: '245,158,11',    // ámbar sol
+  clouds: '148,163,184',  // gris nube
+  rain: '56,130,246',     // azul lluvia
+  storm: '99,102,241',    // índigo tormenta
+  snow: '186,220,255',    // celeste nieve
+  fog: '148,163,184',     // gris niebla
 };
-// De noche el cielo despejado no es dorado: tinte azul-noche.
-const TINT_NIGHT_CLEAR = 'rgba(56,70,140,.18)';
-function tintFor(w: Weather) { return w.cond === 'clear' && !w.isDay ? TINT_NIGHT_CLEAR : TINT[w.cond]; }
+const NIGHT_CLEAR = '70,90,170'; // azul-noche para cielo despejado de noche
+function rgbFor(w: Weather) { return w.cond === 'clear' && !w.isDay ? NIGHT_CLEAR : RGB[w.cond]; }
 
 export default function WeatherBg({ country }: { country?: string }) {
   const [wx, setWx] = useState<Weather | null>(null);
@@ -28,12 +28,15 @@ export default function WeatherBg({ country }: { country?: string }) {
     return () => { alive = false; };
   }, [country]);
 
-  // Animación de partículas (solo lluvia/tormenta/nieve).
+  // Animación en canvas: gotas (lluvia/tormenta), copos (nieve) o nubes que se
+  // desplazan (nublado/niebla). El cielo despejado no anima (solo el tinte).
   useEffect(() => {
     const cv = cvRef.current;
     if (!cv || !wx) return;
-    const anim = wx.cond === 'rain' || wx.cond === 'storm' || wx.cond === 'snow';
-    if (!anim) return;
+    const kind = wx.cond === 'snow' ? 'snow'
+      : (wx.cond === 'rain' || wx.cond === 'storm') ? 'rain'
+      : (wx.cond === 'clouds' || wx.cond === 'fog') ? 'clouds' : 'none';
+    if (kind === 'none') return;
     const reduce = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reduce) return;
 
@@ -45,31 +48,51 @@ export default function WeatherBg({ country }: { country?: string }) {
     resize();
     addEventListener('resize', resize);
 
-    const snow = wx.cond === 'snow';
-    const N = snow ? 70 : 90;
+    if (kind === 'clouds') {
+      // Blobs suaves que cruzan despacio de izq. a der.
+      const N = 7;
+      const P = Array.from({ length: N }, () => ({
+        x: Math.random() * W, y: 40 + Math.random() * (H * 0.55),
+        r: 80 + Math.random() * 150, spd: 0.15 + Math.random() * 0.35, a: 0.05 + Math.random() * 0.06,
+      }));
+      const tick = () => {
+        ctx.clearRect(0, 0, W, H);
+        for (const p of P) {
+          p.x += p.spd; if (p.x - p.r > W) { p.x = -p.r; p.y = 40 + Math.random() * (H * 0.55); }
+          const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r);
+          g.addColorStop(0, `rgba(160,170,190,${p.a})`); g.addColorStop(1, 'rgba(160,170,190,0)');
+          ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+        }
+        raf = requestAnimationFrame(tick);
+      };
+      raf = requestAnimationFrame(tick);
+      return () => { cancelAnimationFrame(raf); removeEventListener('resize', resize); };
+    }
+
+    const snow = kind === 'snow';
+    const N = snow ? 80 : 110;
     const P = Array.from({ length: N }, () => ({
       x: Math.random() * W, y: Math.random() * H,
-      len: snow ? 0 : 8 + Math.random() * 14,
-      r: snow ? 1.2 + Math.random() * 2.4 : 0,
-      spd: snow ? 0.5 + Math.random() * 1.1 : 6 + Math.random() * 7,
+      len: snow ? 0 : 9 + Math.random() * 16,
+      r: snow ? 1.3 + Math.random() * 2.6 : 0,
+      spd: snow ? 0.6 + Math.random() * 1.2 : 7 + Math.random() * 8,
       drift: Math.random() * Math.PI * 2,
     }));
-
     const tick = () => {
       ctx.clearRect(0, 0, W, H);
       if (snow) {
-        ctx.fillStyle = 'rgba(255,255,255,.55)';
+        ctx.fillStyle = 'rgba(255,255,255,.7)';
         for (const p of P) {
-          p.y += p.spd; p.drift += 0.01; p.x += Math.sin(p.drift) * 0.4;
+          p.y += p.spd; p.drift += 0.01; p.x += Math.sin(p.drift) * 0.5;
           if (p.y > H + 4) { p.y = -4; p.x = Math.random() * W; }
           ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
         }
       } else {
-        ctx.strokeStyle = 'rgba(140,180,255,.35)'; ctx.lineWidth = 1.1;
+        ctx.strokeStyle = 'rgba(150,190,255,.5)'; ctx.lineWidth = 1.3;
         for (const p of P) {
-          p.y += p.spd; p.x += 1.1;
-          if (p.y > H + 10) { p.y = -10; p.x = Math.random() * W; }
-          ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - 1.6, p.y - p.len); ctx.stroke();
+          p.y += p.spd; p.x += 1.3;
+          if (p.y > H + 12) { p.y = -12; p.x = Math.random() * W; }
+          ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - 1.9, p.y - p.len); ctx.stroke();
         }
       }
       raf = requestAnimationFrame(tick);
@@ -79,10 +102,16 @@ export default function WeatherBg({ country }: { country?: string }) {
   }, [wx]);
 
   if (!wx) return null;
+  const rgb = rgbFor(wx);
+  // Baño de color VISIBLE (dos focos + una capa suave) para que el clima se
+  // note sin tapar el contenido. Funciona en tema claro y oscuro.
+  const wash = `radial-gradient(90% 60% at 80% -5%, rgba(${rgb},.30), transparent 60%),`
+    + `radial-gradient(80% 55% at 12% 108%, rgba(${rgb},.20), transparent 60%),`
+    + `linear-gradient(180deg, rgba(${rgb},.10), transparent 40%)`;
   return (
     <div aria-hidden style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none' }}>
-      <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(120% 80% at 85% -10%, ${tintFor(wx)}, transparent 55%)` }} />
-      <canvas ref={cvRef} style={{ position: 'absolute', inset: 0, opacity: .8 }} />
+      <div style={{ position: 'absolute', inset: 0, background: wash }} />
+      <canvas ref={cvRef} style={{ position: 'absolute', inset: 0, opacity: .9 }} />
     </div>
   );
 }

@@ -62,7 +62,7 @@ export default async function Dashboard() {
   // Foto de perfil (consulta aparte tolerante: si la columna no existe, se ignora).
   let avatarUrl = '';
   try { const { data: av } = await supabaseAdmin.from('profiles').select('avatar_url').eq('id', user!.id).maybeSingle(); avatarUrl = (av as any)?.avatar_url || ''; } catch {}
-  const traderProfile = { full_name: fullName, trade_style: tp.trade_style || '', experience: tp.experience || '', platform: tp.platform || '', goal: tp.goal || '', avatar_url: avatarUrl };
+  const traderProfile = { full_name: fullName, trade_style: tp.trade_style || '', experience: tp.experience || '', platform: tp.platform || '', goal: tp.goal || '', country: tp.country || '', avatar_url: avatarUrl };
 
   // Onboarding: la primera vez lo mostramos una sola vez. Consulta aparte y
   // tolerante — si la columna aún no existe (SQL sin correr), no rompe el panel.
