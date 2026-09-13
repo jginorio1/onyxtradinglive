@@ -13,18 +13,24 @@ import { logError } from '@/lib/errlog';
 
 const SITE = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.onyxtradinglive.com').replace(/\/$/, '');
 
-// Construye el correo SIEMPRE en INGLÉS (decisión del dueño: el email va en la
-// versión en inglés para todos, sin importar el idioma del suscriptor). Como el
-// motor de campañas elige el texto por idioma, ponemos el MISMO contenido inglés
-// en los cuatro campos (es/en) para que todos reciban inglés.
+// Construye el correo del artículo BILINGÜE: cada suscriptor lo recibe en el
+// idioma de su perfil (igual que las campañas). El motor (sendManual/renderTemplate)
+// elige el texto _es o _en según el idioma del destinatario. Si falta un idioma en
+// el artículo, se cae con gracia al otro para no mandar vacío.
 export function buildBlogEmail(post: any): { subject_es: string; body_es: string; subject_en: string; body_en: string } {
+  // Español
+  const tEs = String(post.title_es || post.title_en || '').trim();
+  const xEs = String(post.excerpt_es || post.excerpt_en || '').trim();
+  const urlEs = articleUrl(SITE, slugFor(post, 'es'), 'es');
+  const subject_es = `📰 ${tEs}`.slice(0, 120);
+  const body_es = `Hola {{nombre}},\n\n**${tEs}**\n\n${xEs}\n\nLee el artículo completo aquí:\n${urlEs}\n\n— Equipo de Onyx Trading Live`;
+  // Inglés
   const tEn = String(post.title_en || post.title_es || '').trim();
   const xEn = String(post.excerpt_en || post.excerpt_es || '').trim();
   const urlEn = articleUrl(SITE, slugFor(post, 'en'), 'en');
-  const subject = `📰 ${tEn}`.slice(0, 120);
-  const body = `Hi {{nombre}},\n\n**${tEn}**\n\n${xEn}\n\nRead the full article here:\n${urlEn}\n\n— The Onyx Trading Live team`;
-  // Inglés en ambos "slots" de idioma → cada destinatario recibe inglés.
-  return { subject_es: subject, body_es: body, subject_en: subject, body_en: body };
+  const subject_en = `📰 ${tEn}`.slice(0, 120);
+  const body_en = `Hi {{nombre}},\n\n**${tEn}**\n\n${xEn}\n\nRead the full article here:\n${urlEn}\n\n— The Onyx Trading Live team`;
+  return { subject_es, body_es, subject_en, body_en };
 }
 
 // Marca en el post que el correo ya salió (tolerante si la columna no existe).
