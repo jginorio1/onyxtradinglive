@@ -27,6 +27,10 @@ const SCHEDULED_INTERVAL_DAYS = 6; // "semanal" con margen
 // ============================================================
 const PLACEHOLDER_RE = /\(escribe aquí|\(write this week|\(escribe las|\(write your|\(añade aquí/i;
 function isPlaceholderBody(body?: string): boolean { const b = String(body || '').trim(); return !b || PLACEHOLDER_RE.test(b); }
+// Campañas que por defecto van en modo "Automático (IA)": la IA las redacta y
+// programa sola. El dueño puede apagarlo (columna `auto`) para redactar manual.
+const DEFAULT_AUTO_KEYS = new Set(['newsletter', 'promo_monthly']);
+function isAuto(c: CampaignRow): boolean { const a = (c as any).auto; return a == null ? DEFAULT_AUTO_KEYS.has(c.key || '') : !!a; }
 
 // Propósito de cada disparada (para que la IA sepa qué escribir).
 const CAMPAIGN_PURPOSE: Record<string, string> = {
@@ -59,34 +63,51 @@ async function newsletterTopic(): Promise<string> {
   } catch { return 'Newsletter semanal de Onyx: novedades, un tip de disciplina y gestión de riesgo. Sin promesas.'; }
 }
 
-// Devuelve el contenido a usar para una campaña: el del owner, o uno redactado por
-// la IA. null = no hay contenido válido (la campaña se salta, red de seguridad).
-async function contentFor(c: CampaignRow): Promise<{ subject_es: string; body_es: string; subject_en: string; body_en: string } | null> {
-  const stored = { subject_es: c.subject_es, body_es: c.body_es, subject_en: c.subject_en, body_en: c.body_en };
+// Devuelve el contenido a usar para una campaña y si lo redactó la IA:
+//  · Modo Automático (IA) o cuerpo en plantilla → lo escribe la IA.
+//  · Si el dueño apagó el automático y escribió su copy → se respeta (manual).
+//  · null = no hay contenido válido (la campaña se salta, red de seguridad).
+type Content = { subject_es: string; body_es: string; subject_en: string; body_en: string };
+async function contentFor(c: CampaignRow): Promise<{ content: Content | null; ai: boolean }> {
+  const stored: Content = { subject_es: c.subject_es, body_es: c.body_es, subject_en: c.subject_en, body_en: c.body_en };
   const isNews = c.key === 'newsletter';
-  const needsAI = isNews || isPlaceholderBody(c.body_es) || isPlaceholderBody(c.body_en);
-  if (!needsAI) return stored;
+  const needsAI = isAuto(c) || isPlaceholderBody(c.body_es) || isPlaceholderBody(c.body_en);
+  if (!needsAI) return { content: stored, ai: false };
   try {
     const { draftCampaign } = await import('@/lib/campaignAI');
     const topic = isNews ? await newsletterTopic() : (CAMPAIGN_PURPOSE[c.key || ''] || 'Correo de Onyx cercano y honesto, sin promesas.');
-    // Respeta el asunto del owner si lo escribió y no es genérico.
     const r = await draftCampaign({ topic, segment: c.segment, tone: 'friendly' });
     if (r.ok && r.draft && (r.draft.body_es || r.draft.body_en)) {
-      return {
+      return { content: {
         subject_es: r.draft.subject_es || c.subject_es, body_es: r.draft.body_es || '',
         subject_en: r.draft.subject_en || c.subject_en, body_en: r.draft.body_en || '',
-      };
+      }, ai: true };
     }
   } catch (e) { await logError('campaign_autowrite', e); }
   // La IA no pudo: si el cuerpo original era plantilla/vacío, NO enviamos (red de seguridad).
-  if (isPlaceholderBody(c.body_es) && isPlaceholderBody(c.body_en)) return null;
-  return stored;
+  if (isPlaceholderBody(c.body_es) && isPlaceholderBody(c.body_en)) return { content: null, ai: true };
+  return { content: stored, ai: false };
+}
+
+// Registra un envío automático generado por IA (para el historial + estadísticas).
+async function recordRun(c: CampaignRow, content: Content, recipients: number): Promise<string | null> {
+  try {
+    const runId = (globalThis.crypto?.randomUUID?.() || String(Date.now()) + Math.random().toString(36).slice(2));
+    await supabaseAdmin.from('campaign_runs').insert({
+      id: runId, campaign_key: c.key || null, campaign_name: c.name,
+      subject_es: content.subject_es || '', body_es: content.body_es || '',
+      subject_en: content.subject_en || '', body_en: content.body_en || '',
+      recipients, ai: true,
+    });
+    return runId;
+  } catch { return null; }
 }
 
 export type CampaignRow = {
   id: string; key: string | null; name: string; kind: 'trigger' | 'scheduled' | 'manual';
   segment: string; subject_es: string; body_es: string; subject_en: string; body_en: string;
   enabled: boolean; trigger: any; schedule: string; scheduled_at: string | null; last_run_at: string | null;
+  auto?: boolean;
 };
 
 // --- Plantillas por defecto de las campañas automáticas. Se crean la primera
@@ -191,7 +212,7 @@ async function unsubUrl(r: Recipient): Promise<string> {
 }
 
 // Envía UN correo de campaña a un destinatario y lo registra (dedupe/analítica).
-async function sendOne(c: { id?: string; key?: string | null; kind: string }, r: Recipient, subject: string, body: string) {
+async function sendOne(c: { id?: string; key?: string | null; kind: string }, r: Recipient, subject: string, body: string, runId?: string | null) {
   const unsub = await unsubUrl(r);
   const { ok, id } = await sendEmailId(r.email, renderTemplate(subject, r), renderTemplate(body, r), {
     kind: 'campaign', userId: r.id, unsub, meta: { campaign: c.key || c.id },
@@ -199,7 +220,7 @@ async function sendOne(c: { id?: string; key?: string | null; kind: string }, r:
   try {
     await supabaseAdmin.from('campaign_sends').insert({
       campaign_id: c.id || null, campaign_key: c.key || null, user_id: r.id, email: r.email,
-      status: ok ? 'sent' : 'failed', resend_id: id,
+      status: ok ? 'sent' : 'failed', resend_id: id, ...(runId ? { run_id: runId } : {}),
     });
   } catch {
     // Reintento tolerante por si aún no existe la columna resend_id.
@@ -263,15 +284,18 @@ export async function runCampaigns(dryRun = false): Promise<{ sent: number; deta
 
     // Contenido efectivo (auto-redacción con IA + red de seguridad). Se compone
     // UNA vez por campaña, no por destinatario.
-    const content = targets.length ? await contentFor(c) : null;
+    const cf = targets.length ? await contentFor(c) : { content: null, ai: false };
+    const content = cf.content;
     if (targets.length && !content) { detail.push({ campaign: c.key || c.name, sent: 0 }); continue; }
+    // Si lo redactó la IA, guarda un "envío" en el historial (para ver qué salió y sus métricas).
+    const runId = (!dryRun && content && cf.ai && targets.length) ? await recordRun(c, content, targets.length) : null;
 
     let sent = 0;
     for (const r of targets) {
       const subject = r.lang === 'en' ? (content!.subject_en || content!.subject_es) : (content!.subject_es || content!.subject_en);
       const body = r.lang === 'en' ? (content!.body_en || content!.body_es) : (content!.body_es || content!.body_en);
       if (!subject || !body) continue;
-      if (!dryRun) { const ok = await sendOne(c, r, subject, body); if (ok) sent++; }
+      if (!dryRun) { const ok = await sendOne(c, r, subject, body, runId); if (ok) sent++; }
       else sent++;
     }
     budget -= sent; total += sent;
@@ -308,6 +332,25 @@ export async function runCampaigns(dryRun = false): Promise<{ sent: number; deta
 
 // --- MANUAL: envía una promo/noticia AHORA a un segmento. Se puede pasar una
 // campaña guardada (campaignId) o texto ad-hoc. `dryRun` solo cuenta.
+// Historial de envíos AUTOMÁTICOS (redactados por IA) de una campaña, con sus
+// métricas (destinatarios, aperturas, clics) por envío. Para el panel.
+export async function campaignRuns(key: string, limit = 12): Promise<Array<{ id: string; subject: string; recipients: number; sent: number; opened: number; clicked: number; created_at: string }>> {
+  try {
+    const { data } = await supabaseAdmin.from('campaign_runs').select('id,subject_es,recipients,created_at').eq('campaign_key', key).order('created_at', { ascending: false }).limit(limit);
+    const runs = data || [];
+    const out: any[] = [];
+    for (const r of runs as any[]) {
+      let sent = 0, opened = 0, clicked = 0;
+      try {
+        const { data: cs } = await supabaseAdmin.from('campaign_sends').select('status,opened_at,clicked_at').eq('run_id', r.id).limit(20000);
+        for (const s of (cs || []) as any[]) { if (s.status === 'sent') sent++; if (s.opened_at) opened++; if (s.clicked_at) clicked++; }
+      } catch {}
+      out.push({ id: r.id, subject: r.subject_es || '', recipients: r.recipients || sent, sent, opened, clicked, created_at: r.created_at });
+    }
+    return out;
+  } catch { return []; }
+}
+
 export async function sendManual(opts: {
   campaignId?: string; segment?: string; subject_es?: string; body_es?: string; subject_en?: string; body_en?: string; dryRun?: boolean;
 }): Promise<{ count: number; sent: number }> {

@@ -69,6 +69,7 @@ export async function PATCH(req: Request) {
       if (b[k] !== undefined) patch[k] = typeof b[k] === 'string' ? b[k].slice(0, 4000) : b[k];
     }
     if (b.enabled !== undefined) patch.enabled = !!b.enabled;
+    if (b.auto !== undefined) patch.auto = !!b.auto;   // full-automático (IA)
     if (b.scheduled_at !== undefined) {
       if (!b.scheduled_at) { patch.scheduled_at = null; }
       else { const d = new Date(b.scheduled_at); if (!isNaN(d.getTime())) { patch.scheduled_at = d.toISOString(); patch.enabled = true; } }

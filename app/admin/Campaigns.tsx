@@ -47,6 +47,7 @@ type Campaign = {
   id: string; key: string | null; name: string; kind: 'trigger' | 'scheduled' | 'manual';
   segment: string; subject_es: string; body_es: string; subject_en: string; body_en: string;
   enabled: boolean; trigger: any; schedule: string; scheduled_at: string | null; last_run_at: string | null;
+  auto?: boolean;
 };
 type Seg = { id: string; es: string; en: string; auto?: boolean };
 
@@ -58,6 +59,7 @@ export default function Campaigns() {
   const [stats, setStats] = useState<any>(null);
   const [editing, setEditing] = useState<Campaign | null>(null);
   const [cf, setCf] = useState<any>(null);
+  const [histOpen, setHistOpen] = useState<string | null>(null);   // key con historial abierto
   const segLabel = (id: string) => { const s = segs.find((x) => x.id === id); return s ? s[lang === 'en' ? 'en' : 'es'] : id; };
 
   async function load() {
@@ -77,6 +79,15 @@ export default function Campaigns() {
     const r = await fetch('/api/admin/campaigns', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: c.id, enabled: !c.enabled }) });
     if (!r.ok) { toastErr(await r.json()); return; }
     setCamps((list) => list.map((x) => x.id === c.id ? { ...x, enabled: !x.enabled } : x));
+  }
+
+  // Interruptor "Automático (IA)": la IA redacta y agenda esta campaña sola.
+  async function toggleAuto(c: Campaign) {
+    const next = !c.auto;
+    setCamps((list) => list.map((x) => x.id === c.id ? { ...x, auto: next } : x));
+    const r = await fetch('/api/admin/campaigns', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: c.id, auto: next }) });
+    if (!r.ok) { toastErr(await r.json()); setCamps((list) => list.map((x) => x.id === c.id ? { ...x, auto: !next } : x)); return; }
+    toast(next ? L('Automático (IA) activado — la IA redacta y envía esta campaña sola.', 'AI auto ON — AI writes and sends this campaign on its own.') : L('Automático apagado — la redactas tú desde ✏️ Editar.', 'Auto OFF — you write it via ✏️ Edit.'), 'ok');
   }
 
   const autos = camps.filter((c) => c.kind !== 'manual');
@@ -127,24 +138,35 @@ export default function Campaigns() {
         <h3 style={{ marginBottom: 4 }}>🤖 {L('Campañas automáticas', 'Automatic campaigns')}</h3>
         <p className="muted" style={{ fontSize: 13, marginBottom: 10 }}>{L('El sistema las envía solo, a diario, al segmento correcto. Cada trader recibe cada campaña una sola vez y siempre se respeta la baja.', 'The system sends these on its own, daily, to the right segment. Each trader gets each campaign once and opt-out is always respected.')}</p>
         {autos.map((c, i) => (
-          <div key={c.id} className="row between" style={{ borderTop: i ? '1px solid var(--line)' : 'none', padding: '12px 0', gap: 10, flexWrap: 'wrap' }}>
+          <div key={c.id} style={{ borderTop: i ? '1px solid var(--line)' : 'none' }}>
+          <div className="row between" style={{ padding: '12px 0', gap: 10, flexWrap: 'wrap' }}>
             <div style={{ minWidth: 200 }}>
               <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 <b>{c.name}</b>{kindBadge(c.kind)}
+                {c.auto && <span className="pill" style={{ color: 'var(--soft-brand)', background: 'rgba(124,140,255,.16)' }}>🤖 {L('IA automática', 'AI auto')}</span>}
               </div>
               <div className="muted" style={{ fontSize: 12, marginTop: 3 }}>
                 {L('Segmento', 'Segment')}: {segLabel(c.segment)}
                 {c.kind === 'trigger' && c.trigger?.days ? ` · ${L('tras', 'after')} ${c.trigger.days} ${L('días', 'days')}` : ''}
                 {c.kind === 'scheduled' ? ` · ${(() => { const d = Number(c.trigger?.everyDays) || 7; return d <= 1 ? L('diaria', 'daily') : d >= 28 && d <= 31 ? L('mensual', 'monthly') : d === 7 ? L('semanal', 'weekly') : `${L('cada', 'every')} ${d} ${L('días', 'days')}`; })()}` : ''}
               </div>
+              {c.auto && <div className="muted" style={{ fontSize: 11.5, marginTop: 3, color: 'var(--soft-brand)' }}>{L('La IA la redacta y la envía sola. Apaga el 🤖 para escribirla tú.', 'AI writes and sends it on its own. Turn 🤖 off to write it yourself.')}</div>}
               {(() => { const k = stats?.byKey?.[c.key || '']; if (!k || !k.sent) return null; return (
                 <div className="muted" style={{ fontSize: 11.5, marginTop: 3 }}>📬 {k.sent} · 👁 {pct(k.opened, k.sent)}% · 🖱 {pct(k.clicked, k.sent)}% <span style={{ opacity: .6 }}>({L('30d', '30d')})</span></div>
               ); })()}
             </div>
-            <div className="row" style={{ gap: 8 }}>
-              <button className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: 12.5 }} onClick={() => setEditing(c)}>✏️ {L('Editar', 'Edit')}</button>
-              <span className="toggle" onClick={() => toggle(c)} style={{ background: c.enabled ? 'var(--green)' : '#556080' }}><span className="knob" style={{ left: c.enabled ? 21 : 3 }} /></span>
+            <div className="row" style={{ gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              {/* Interruptor Automático (IA) */}
+              <div className="row" style={{ gap: 6, alignItems: 'center' }} title={L('La IA redacta y programa esta campaña sola.', 'AI writes and schedules this campaign on its own.')}>
+                <span className="muted" style={{ fontSize: 11.5 }}>🤖 {L('IA', 'AI')}</span>
+                <span className="toggle" onClick={() => toggleAuto(c)} style={{ background: c.auto ? 'var(--soft-brand)' : '#556080' }}><span className="knob" style={{ left: c.auto ? 21 : 3 }} /></span>
+              </div>
+              <button className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: 12.5 }} onClick={() => setHistOpen(histOpen === c.key ? null : (c.key || null))}>🗂 {L('Historial', 'History')}</button>
+              <button className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: 12.5 }} onClick={() => setEditing(c)} disabled={!!c.auto} title={c.auto ? L('Apaga el 🤖 para editar el texto a mano.', 'Turn 🤖 off to edit the copy by hand.') : ''}>✏️ {L('Editar', 'Edit')}</button>
+              <span className="toggle" onClick={() => toggle(c)} title={L('Encender / apagar la campaña', 'Enable / disable the campaign')} style={{ background: c.enabled ? 'var(--green)' : '#556080' }}><span className="knob" style={{ left: c.enabled ? 21 : 3 }} /></span>
             </div>
+          </div>
+          {histOpen === c.key && c.key && <RunHistory campKey={c.key} L={L} lang={lang} />}
           </div>
         ))}
       </div>
@@ -343,6 +365,45 @@ function ManualComposer({ segs, manuals, L, lang, segLabel, reload, onEdit, ask 
         </div>
         <button className="btn btn-ghost" style={{ marginTop: 8 }} onClick={schedule} disabled={busy === 'sched'}>{busy === 'sched' ? '…' : L('Programar promo', 'Schedule promo')}</button>
       </div>
+    </div>
+  );
+}
+
+// ---- Historial de envíos automáticos (IA) de una campaña + métricas por envío ----
+function RunHistory({ campKey, L, lang }: { campKey: string; L: (a: string, b: string) => string; lang: string }) {
+  const [runs, setRuns] = useState<any[] | null>(null);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try { const r = await fetch('/api/admin/campaigns/runs?key=' + encodeURIComponent(campKey)); const j = await r.json(); if (alive) setRuns(j.runs || []); }
+      catch { if (alive) setRuns([]); }
+    })();
+    return () => { alive = false; };
+  }, [campKey]);
+  const fmt = (iso: string) => new Date(iso).toLocaleString(lang === 'en' ? 'en-US' : 'es-ES', { day: '2-digit', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+  const pct = (n: number, d: number) => d > 0 ? Math.round((n / d) * 100) : 0;
+
+  return (
+    <div style={{ padding: '4px 0 12px', borderTop: '1px dashed var(--line)' }}>
+      <div className="muted" style={{ fontSize: 11.5, margin: '8px 0 6px' }}>🗂 {L('Envíos automáticos (lo que la IA escribió y envió)', 'Automatic sends (what AI wrote and sent)')}</div>
+      {runs === null && <div className="muted" style={{ fontSize: 12 }}>…</div>}
+      {runs !== null && runs.length === 0 && <div className="muted" style={{ fontSize: 12 }}>{L('Todavía no hay envíos automáticos. Cuando la IA envíe, aparecerán aquí con sus estadísticas.', 'No automatic sends yet. Once AI sends, they show here with stats.')}</div>}
+      {runs !== null && runs.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {runs.map((r) => (
+            <div key={r.id} className="row between" style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 9, padding: '8px 11px', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ minWidth: 180, flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>{r.subject || L('(sin asunto)', '(no subject)')}</div>
+                <div className="muted" style={{ fontSize: 11 }}>🕒 {fmt(r.created_at)} · 📬 {(r.sent || r.recipients || 0).toLocaleString()} {L('enviados', 'sent')}</div>
+              </div>
+              <div className="row" style={{ gap: 8, fontSize: 12 }}>
+                <span className="pill" style={{ color: 'var(--soft-brand)', background: 'rgba(124,140,255,.15)' }}>👁 {pct(r.opened, r.sent)}% <span style={{ opacity: .7 }}>({r.opened})</span></span>
+                <span className="pill" style={{ color: 'var(--green)', background: 'rgba(52,226,160,.15)' }}>🖱 {pct(r.clicked, r.sent)}% <span style={{ opacity: .7 }}>({r.clicked})</span></span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
