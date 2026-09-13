@@ -309,6 +309,16 @@ export default function AccountClient({ email }: { email: string }) {
     } finally { setBusy(''); }
   }
 
+  // Trackrecord público: enciende/apaga la propia página del trader (/u/ID).
+  async function togglePublicTrack(next: boolean) {
+    setBusy('track');
+    try {
+      const r = await fetch('/api/account', { method: 'PATCH', body: JSON.stringify({ public_track: next }) });
+      if (!r.ok) { toast(errMsg(await r.json(), lang)); return; }
+      setP((o: any) => ({ ...o, public_track: next }));
+    } finally { setBusy(''); }
+  }
+
   async function mtAction(acc: any, mode: 'disconnect' | 'delete') {
     const q = mode === 'delete' ? L.mtDelQ : L.mtDiscQ;
     if (!(await confirmDialog(q))) return;
@@ -664,6 +674,28 @@ export default function AccountClient({ email }: { email: string }) {
                     {p.avatar_url && <button className="btn btn-ghost" onClick={removeAvatar} disabled={busy === 'avatar'} style={{ color: 'var(--red)' }}>{lang === 'en' ? 'Remove' : 'Quitar'}</button>}
                   </div>
                 </div>
+
+                {/* Trackrecord público: enlace para compartir tu historial real. */}
+                <div style={{ border: '1px solid var(--line)', borderRadius: 12, padding: '12px 14px', margin: '4px 0 16px', background: 'var(--bg2)' }}>
+                  <div className="row between" style={{ gap: 10, flexWrap: 'wrap' }}>
+                    <div style={{ flex: 1, minWidth: 200 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, display: 'flex', alignItems: 'center', gap: 7 }}><span>🔗</span> {lang === 'en' ? 'Public trackrecord' : 'Trackrecord público'}</div>
+                      <div className="muted" style={{ fontSize: 12.5, marginTop: 3, lineHeight: 1.55 }}>{lang === 'en' ? 'A shareable page with your real stats, verified. You control the on/off; the admin decides which fields are shown.' : 'Una página que puedes compartir con tus estadísticas reales, verificada. Tú lo enciendes/apagas; el admin decide qué campos se muestran.'}</div>
+                    </div>
+                    <Toggle on={!!p.public_track} onClick={() => togglePublicTrack(!p.public_track)} />
+                  </div>
+                  {p.public_track && (() => {
+                    const url = (typeof window !== 'undefined' ? window.location.origin : '') + '/u/' + (p.id || '');
+                    return (
+                      <div className="row" style={{ gap: 8, marginTop: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                        <input value={url} readOnly onFocus={(e) => e.currentTarget.select()} style={{ margin: 0, flex: 1, minWidth: 200, fontSize: 12.5 }} />
+                        <button className="btn btn-ghost" onClick={() => { navigator.clipboard?.writeText(url); setMsg(lang === 'en' ? 'Link copied' : 'Enlace copiado'); setTimeout(() => setMsg(''), 2000); }}>{lang === 'en' ? 'Copy' : 'Copiar'}</button>
+                        <a className="btn btn-ghost" href={url} target="_blank" rel="noopener noreferrer">{lang === 'en' ? 'View' : 'Ver'}</a>
+                      </div>
+                    );
+                  })()}
+                </div>
+
                 <span style={lbl}>{L.email}</span>
                 <input value={p.email || email} disabled style={{ margin: '4px 0 0', opacity: .6 }} />
                 <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{L.emailNote}</div>

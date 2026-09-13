@@ -7,7 +7,7 @@ import { accountLimit, addonSettings, retentionSettings, ensureProfile } from '@
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-const FIELDS = 'id,email,plan,subscription_status,stripe_customer_id,stripe_subscription_id,full_name,avatar_url,timezone,lang,country,experience,trade_style,platform,prop_firm,goal,notify_email,notify_weekly,notify_funding,notify_marketing,marketing_emails,created_at,pending_plan,pending_plan_at,pending_keep';
+const FIELDS = 'id,email,plan,subscription_status,stripe_customer_id,stripe_subscription_id,full_name,avatar_url,timezone,lang,country,experience,trade_style,platform,prop_firm,goal,notify_email,notify_weekly,notify_funding,notify_marketing,marketing_emails,public_track,created_at,pending_plan,pending_plan_at,pending_keep';
 // Sin las columnas del perfil de trader, por si aún no se corrió onboarding_v1.sql
 const FIELDS_BASE = 'id,email,plan,subscription_status,stripe_customer_id,stripe_subscription_id,full_name,timezone,lang,notify_email,notify_weekly,notify_funding,notify_marketing,created_at';
 
@@ -122,6 +122,8 @@ export async function PATCH(req: Request) {
     // así que aceptamos cualquier código saneado en vez de una lista fija.
     ['platform', 'trade_style'].forEach((k) => { if (b[k] !== undefined) fields[k] = b[k] ? String(b[k]).toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 40) : null; });
     ['notify_email', 'notify_weekly', 'notify_funding', 'notify_marketing'].forEach((k) => { if (b[k] !== undefined) fields[k] = !!b[k]; });
+    // Trackrecord público: el trader enciende/apaga su propia página pública.
+    if (b.public_track !== undefined) fields.public_track = !!b.public_track;
     // El toggle "Novedades y ofertas" (notify_marketing) es la MISMA decisión que el
     // opt-out de campañas (marketing_emails). Los mantenemos sincronizados para que el
     // toggle controle de verdad quién recibe campañas.

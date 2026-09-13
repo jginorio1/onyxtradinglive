@@ -208,6 +208,30 @@ const ON: OnlineNow = {
 };
 export const onlineNowSettings = () => getSetting<OnlineNow>('online_now', ON);
 
+// Trackrecord público del trader. Cualquier trader puede ENCENDER su página
+// pública (profiles.public_track), pero el ADMIN controla globalmente QUÉ campos
+// se muestran ahí (dinero, cuentas, curva, etc.) y el mínimo de operaciones.
+export type TrackConfig = {
+  enabled: boolean;        // función disponible para los traders (global on/off)
+  show_money: boolean;     // mostrar montos en $ (si no, solo % y R)
+  show_accounts: boolean;  // mostrar nº/nombres de cuenta
+  show_equity: boolean;    // gráfica de curva de resultados
+  show_winrate: boolean;   // % de aciertos
+  show_pf: boolean;        // factor de beneficio
+  show_dd: boolean;        // drawdown máximo
+  show_bysym: boolean;     // desglose por instrumento
+  show_trades: boolean;    // nº total de operaciones
+  show_avatar: boolean;    // foto del trader
+  verified_badge: boolean; // sello "Verificado por Onyx"
+  min_trades: number;      // mínimo de operaciones para poder publicar
+};
+const TRACK_DEF: TrackConfig = {
+  enabled: true, show_money: false, show_accounts: false, show_equity: true,
+  show_winrate: true, show_pf: true, show_dd: true, show_bysym: true,
+  show_trades: true, show_avatar: true, verified_badge: true, min_trades: 20,
+};
+export const trackSettings = () => getSetting<TrackConfig>('trackrecord', TRACK_DEF);
+
 // Chat de soporte (burbuja "Onyx AI"): totalmente editable desde Admin → Módulos.
 // Marca, colores, textos (ES/EN), pestañas/acciones, temas rápidos, mensaje
 // proactivo y ajustes por dispositivo. Se lee al vuelo (sin volver a desplegar).
