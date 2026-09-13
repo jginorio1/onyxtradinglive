@@ -165,9 +165,9 @@ export const DEFAULT_CAMPAIGNS: Array<Partial<CampaignRow>> = [
   {
     key: 'anniversary', name: 'Aniversario de cuenta', kind: 'scheduled', segment: 'anniversary', trigger: { everyDays: 1 },
     subject_es: '¡Feliz aniversario en Onyx, {{nombre}}! 🎉',
-    body_es: `Hola {{nombre}},\n\nHoy cumples un año más con Onyx Trading Live. Gracias por confiar en nosotros para cuidar tu trading.\n\nDe regalo, un detalle para ti:\n{{sitio}}/pricing\n\n— Equipo de Onyx`,
+    body_es: `Hola {{nombre}},\n\nHoy cumples un año más con Onyx Trading Live. Gracias de corazón por confiar en nosotros para cuidar tu trading todo este tiempo.\n\nSeguimos aquí para lo que necesites. Tu panel te espera:\n{{sitio}}/dashboard\n\n— Equipo de Onyx`,
     subject_en: 'Happy Onyx anniversary, {{nombre}}! 🎉',
-    body_en: `Hi {{nombre}},\n\nToday marks another year with Onyx Trading Live. Thanks for trusting us to look after your trading.\n\nHere's a little gift for you:\n{{sitio}}/pricing\n\n— The Onyx team`,
+    body_en: `Hi {{nombre}},\n\nToday marks another year with Onyx Trading Live. Thank you from the heart for trusting us to look after your trading all this time.\n\nWe're here for whatever you need. Your dashboard is waiting:\n{{sitio}}/dashboard\n\n— The Onyx team`,
   },
 ];
 
