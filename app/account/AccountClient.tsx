@@ -654,7 +654,7 @@ export default function AccountClient({ email }: { email: string }) {
                 {/* Foto de perfil */}
                 <div className="row" style={{ gap: 14, alignItems: 'center', marginBottom: 14 }}>
                   {p.avatar_url
-                    ? <img src={p.avatar_url} alt="" style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover', flex: 'none', border: '1px solid var(--line)' }} />
+                    ? <img src={p.avatar_url} alt="" style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover', objectPosition: '50% 30%', flex: 'none', border: '1px solid var(--line)' }} />
                     : <span style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--grad)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 700, flex: 'none' }}>{(p.full_name || email || '?').slice(0, 2).toUpperCase()}</span>}
                   <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
                     <label className="btn btn-ghost" style={{ cursor: 'pointer', margin: 0 }}>

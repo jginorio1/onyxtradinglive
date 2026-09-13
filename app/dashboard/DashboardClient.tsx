@@ -841,7 +841,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
         <div className="row between hero-row" style={{ marginBottom: 14, flexWrap: 'wrap', gap: 12, padding: '6px 2px', borderBottom: '1px solid var(--line)', paddingBottom: 14 }}>
           <div className="row hero-left" style={{ gap: 11, alignItems: 'center', flexWrap: 'wrap' }}>
             {profile?.avatar_url
-              ? <img src={profile.avatar_url} alt="" style={{ width: 38, height: 38, borderRadius: 11, objectFit: 'cover', flex: 'none', border: '1px solid var(--line)' }} />
+              ? <img src={profile.avatar_url} alt="" style={{ width: 38, height: 38, borderRadius: 11, objectFit: 'cover', objectPosition: '50% 30%', flex: 'none', border: '1px solid var(--line)' }} />
               : <div style={{ width: 38, height: 38, borderRadius: 11, background: 'var(--grad)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 700, flex: 'none' }}>{heroInitials}</div>}
             <div className="hero-name">
               <h1 style={{ marginBottom: 2, fontSize: 19, lineHeight: 1.15, display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>{heroTitle} <span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="hand" size={19} /></span>

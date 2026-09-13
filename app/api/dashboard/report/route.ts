@@ -23,9 +23,13 @@ export async function GET(req: Request) {
   const es = sp.get('lang') !== 'en';
   const [from, to] = range(sp);
 
-  const { data: accs } = await sb.from('trading_accounts').select('id,currency').eq('user_id', user.id);
+  const { data: accs } = await sb.from('trading_accounts').select('id,currency,balance').eq('user_id', user.id);
   const accIds = (accs || []).map((a) => a.id);
   const cur = ((accs || [])[0]?.currency || 'USD').toUpperCase();
+  const totalBalance = (accs || []).reduce((s, a: any) => s + Number(a.balance || 0), 0);
+  // Perfil del trader para la cabecera del reporte (tolerante si faltan columnas).
+  let prof: any = {};
+  try { const r = await sb.from('profiles').select('full_name,avatar_url,trade_style,experience,goal,country').eq('id', user.id).maybeSingle(); prof = r.data || {}; } catch {}
   let trades: any[] = [];
   if (accIds.length) {
     const { data } = await sb.from('trades').select('symbol,side,volume,open_time,close_time,net_profit,profit,commission,swap')
@@ -62,15 +66,34 @@ export async function GET(req: Request) {
   }
 
   const symRows = Object.entries(bySym).sort((a, b) => b[1].net - a[1].net).map(([s, v]) => [s, String(v.n), cur + ' ' + num(v.net)]);
+  // Curva de resultados: acumulado cronológico (los trades vienen desc → invertir).
+  const chrono = [...trades].reverse();
+  let cum = 0; const equity = [0, ...chrono.map((t) => (cum += net(t)))];
+  const losses = total - wins;
+  // Etiquetas legibles del perfil (los códigos del catálogo → texto).
+  const styleMap: any = { scalping: es ? 'Scalper' : 'Scalper', day: 'Day Trader', swing: 'Swing Trader', position: 'Position Trader', algo: es ? 'Algo/Robots' : 'Algo/Robots' };
+  const expMap: any = { novato: es ? 'Principiante' : 'Beginner', intermedio: es ? 'Intermedio' : 'Intermediate', avanzado: es ? 'Avanzado' : 'Advanced', pro: 'Pro' };
+  const goalMap: any = { pasar_challenge: es ? 'Pasar reto' : 'Pass challenge', consistencia: es ? 'Consistencia' : 'Consistency', crecer: es ? 'Crecer cuenta' : 'Grow account', vivir: es ? 'Vivir del trading' : 'Trade for a living' };
+
   const html = reportPage({
-    lang: es ? 'es' : 'en', title: T.title, from, to,
+    lang: es ? 'es' : 'en', from, to,
+    profile: {
+      name: prof.full_name || '', avatar: prof.avatar_url || '',
+      style: styleMap[prof.trade_style] || prof.trade_style || '',
+      experience: expMap[prof.experience] || '', goal: goalMap[prof.goal] || '', country: prof.country || '',
+    },
+    portfolio: { totalBalance, accounts: accIds.length, currency: cur },
+    equity,
+    winLoss: { wins, losses },
+    bySym: Object.entries(bySym).sort((a, b) => b[1].net - a[1].net).map(([s, v]) => ({ sym: s, n: v.n, net: v.net })),
     kpis: [
-      { label: T.pnl, value: cur + ' ' + num(netTotal) },
-      { label: T.trades, value: String(total) },
-      { label: T.win, value: winRate + '%' },
-      { label: T.pf, value: String(pf) },
-      { label: T.avg, value: cur + ' ' + num(avg) },
-      { label: `${T.best} / ${T.worst}`, value: total ? `${num(best)} / ${num(worst)}` : '—' },
+      { label: T.pnl, value: cur + ' ' + num(netTotal), tone: netTotal >= 0 ? 'good' : 'bad' },
+      { label: T.trades, value: String(total), tone: 'neutral' },
+      { label: T.win, value: winRate + '%', tone: winRate >= 50 ? 'good' : 'neutral' },
+      { label: T.pf, value: String(pf), tone: pf >= 1.3 ? 'good' : pf < 1 ? 'bad' : 'neutral' },
+      { label: T.avg, value: cur + ' ' + num(avg), tone: avg >= 0 ? 'good' : 'bad' },
+      { label: T.best, value: total ? num(best) : '—', tone: 'good' },
+      { label: T.worst, value: total ? num(worst) : '—', tone: 'bad' },
     ],
     tables: [
       { title: T.bySym, head: [T.sym, T.n, T.net], alignRight: [1, 2], rows: symRows },
