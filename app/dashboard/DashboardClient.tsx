@@ -834,13 +834,14 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
       <CompTrialPopup />
       <DailyCheckinPopup lang={lang} onState={setCheckin} />
 
-      <div className="wrap-wide" style={{ padding: '24px clamp(16px,1.6vw,40px)' }}>
-        {/* Info del trader: alineada a la izquierda */}
-        <div className="row between hero-row" style={{ marginBottom: 16, flexWrap: 'wrap' }}>
-          <div className="row hero-left" style={{ gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
-            <div style={{ width: 52, height: 52, borderRadius: 14, background: 'var(--grad)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 700, flex: 'none' }}>{heroInitials}</div>
+      <div className="wrap-wide" style={{ padding: '14px clamp(16px,1.6vw,40px)' }}>
+        {/* Info del trader: alineada a la izquierda. Banda compacta (v469): avatar
+            y título menores, chips en una sola línea, poco padding vertical. */}
+        <div className="row between hero-row" style={{ marginBottom: 12, flexWrap: 'wrap' }}>
+          <div className="row hero-left" style={{ gap: 11, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--grad)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700, flex: 'none' }}>{heroInitials}</div>
             <div className="hero-name">
-              <h1 style={{ marginBottom: 6, lineHeight: 1.15, display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>{heroTitle} <span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="hand" size={22} /></span>
+              <h1 style={{ marginBottom: 2, fontSize: 19, lineHeight: 1.15, display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>{heroTitle} <span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="hand" size={19} /></span>
                 {checkin?.pending && (
                   <button onClick={() => checkin.open()} title={lang === 'en' ? 'Review your plan today' : 'Revisa tu plan hoy'}
                     style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid var(--amber)', background: 'rgba(245,158,11,.12)', color: 'var(--amber)', borderRadius: 16, padding: '4px 11px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', animation: 'onyxGlow 1.9s ease-in-out infinite' }}>
@@ -849,8 +850,13 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                 )}
               </h1>
               {heroChips.length ? (
-                <div className="row" style={{ gap: 10, flexWrap: 'wrap', marginTop: 3 }}>
-                  {heroChips.map((c, i) => <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--mut)' }}><OnyxIcon emoji={c.icon} size={12} /> {c.label}</span>)}
+                <div className="row" style={{ gap: 7, flexWrap: 'wrap', marginTop: 2, alignItems: 'center' }}>
+                  {heroChips.map((c, i) => (
+                    <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                      {i > 0 && <span style={{ color: 'var(--mut)', opacity: .5, fontSize: 12 }}>·</span>}
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--mut)' }}><OnyxIcon emoji={c.icon} size={12} /> {c.label}</span>
+                    </span>
+                  ))}
                 </div>
               ) : (
                 <Link href="/onboarding" className="pill" style={{ background: 'rgba(124,140,255,.14)', color: 'var(--soft-brand)' }}>{L.completeProfile}</Link>
@@ -863,13 +869,13 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
           <div className="row hero-right" style={{ gap: 12, alignItems: 'stretch', flexWrap: 'wrap' }}>
             {/* Balance destacado: pastilla con icono + número grande, para que sea el dato
                 protagonista y no texto suelto. */}
-            <div className="hero-balance" style={{ display: 'inline-flex', alignItems: 'center', gap: 11, background: 'var(--card)', border: '1px solid var(--brand)', borderRadius: 14, padding: '9px 15px', boxShadow: '0 0 22px -8px rgba(124,140,255,.5)' }}>
-              <span style={{ width: 38, height: 38, borderRadius: 11, background: 'rgba(124,140,255,.16)', color: 'var(--soft-brand)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}><OnyxIcon emoji="💼" size={18} /></span>
+            <div className="hero-balance" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: 'var(--card)', border: '1px solid var(--brand)', borderRadius: 12, padding: '6px 13px', boxShadow: '0 0 22px -8px rgba(124,140,255,.5)' }}>
+              <span style={{ width: 31, height: 31, borderRadius: 9, background: 'rgba(124,140,255,.16)', color: 'var(--soft-brand)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}><OnyxIcon emoji="💼" size={16} /></span>
               <span style={{ textAlign: 'right' }}>
-                <span className="muted" style={{ fontSize: 10.5, display: 'block' }}>{lang === 'es' ? 'Balance del portafolio' : 'Portfolio balance'} · {accounts.length} {L.accountsWord}</span>
-                <span style={{ fontSize: 25, fontWeight: 800, letterSpacing: '-.5px', lineHeight: 1.05, display: 'block' }}>${totalBalance.toLocaleString()}</span>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10.5, color: GREEN }}><span className="livedot" style={{ width: 6, height: 6 }} /> {updatedTxt}</span>
+                <span className="muted" style={{ fontSize: 10, display: 'block' }}>{lang === 'es' ? 'Balance del portafolio' : 'Portfolio balance'} · {accounts.length} {L.accountsWord}</span>
+                <span style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-.5px', lineHeight: 1.1, display: 'block' }}>${totalBalance.toLocaleString()}</span>
               </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, color: GREEN, whiteSpace: 'nowrap' }}><span className="livedot" style={{ width: 6, height: 6 }} /> {updatedTxt}</span>
             </div>
           </div>
         </div>
