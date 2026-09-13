@@ -2739,9 +2739,10 @@ function MentorEmails({ lang, L }: { lang: string; L: (a: string, b: string) => 
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState('');
   const [autos, setAutos] = useState<any>(null);
+  const [emailAi, setEmailAi] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
 
-  async function load() { const r = await fetch('/api/academy/emails'); const j = await r.json(); setD(j); setAutos(j.automations || null); }
+  async function load() { const r = await fetch('/api/academy/emails'); const j = await r.json(); setD(j); setAutos(j.automations || null); setEmailAi(!!j.email_ai); }
   useEffect(() => { load(); }, []);
   function flash(m: string) { setToast(m); setTimeout(() => setToast(''), 2200); }
   const setAuto = (k: string, field: string, v: any) => setAutos((a: any) => ({ ...a, [k]: { ...a[k], [field]: v } }));
@@ -2764,7 +2765,7 @@ function MentorEmails({ lang, L }: { lang: string; L: (a: string, b: string) => 
     if (j.ok) { flash(L('Campaña actualizada', 'Campaign updated')); cancelEdit(); load(); }
     else toast(j.error === 'fecha_invalida' ? L('Elige una fecha futura.', 'Pick a future date.') : L('No se pudo editar.', 'Could not edit.'));
   }
-  async function saveAutos() { await fetch('/api/academy/emails', { method: 'POST', body: JSON.stringify({ action: 'automations', automations: autos }) }); flash(L('Automáticos guardados', 'Automations saved')); load(); }
+  async function saveAutos() { await fetch('/api/academy/emails', { method: 'POST', body: JSON.stringify({ action: 'automations', automations: autos, email_ai: emailAi }) }); flash(L('Automáticos guardados', 'Automations saved')); load(); }
 
   if (!d) return <div className="sk-card muted">…</div>;
   if (d.error) return <div className="sk-card muted">{L('No disponible.', 'Not available.')}</div>;
@@ -2813,6 +2814,11 @@ function MentorEmails({ lang, L }: { lang: string; L: (a: string, b: string) => 
           <div className="row between" style={{ marginBottom: 6, alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
             <p className="muted" style={{ fontSize: 12.5, marginTop: 0 }}>{L('Edita el asunto, el texto y el momento. Variables: {name}, {academy}, {join}, {class}, {classlink}.', 'Edit subject, copy and timing. Variables: {name}, {academy}, {join}, {class}, {classlink}.')}</p>
             <button className="btn btn-primary" style={{ fontSize: 12.5 }} onClick={saveAutos}>{L('Guardar automáticos', 'Save automations')}</button>
+          </div>
+          {/* IA opcional: personaliza ligeramente tus correos al enviarse, sin cambiar tu marca. */}
+          <div onClick={() => setEmailAi((v) => !v)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, border: '1px solid ' + (emailAi ? 'color-mix(in srgb,var(--brand) 45%,var(--line))' : 'var(--line)'), borderRadius: 10, padding: '9px 12px', marginBottom: 10, background: emailAi ? 'color-mix(in srgb,var(--brand) 6%,transparent)' : 'transparent' }}>
+            <span style={{ fontSize: 12.5 }}>✨ {L('Deja que la IA personalice mis correos (mantiene mi marca y las variables)', 'Let AI personalize my emails (keeps my brand and variables)')}</span>
+            <span style={{ width: 40, height: 22, borderRadius: 99, background: emailAi ? 'var(--brand)' : 'var(--line)', position: 'relative', flex: 'none' }}><span style={{ position: 'absolute', top: 2, left: emailAi ? 20 : 2, width: 18, height: 18, borderRadius: '50%', background: '#fff' }} /></span>
           </div>
           {([
             ['welcome', L('Bienvenida al inscribirse', 'Welcome on join'), null],

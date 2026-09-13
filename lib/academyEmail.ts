@@ -9,6 +9,34 @@ import { pushClassSoon } from '@/lib/academyPush';
 const SITE = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.onyxtradinglive.com').replace(/\/$/, '');
 const unsubUrl = (email: string) => `${SITE}/unsub?e=${encodeURIComponent(email)}`;
 
+// Personalización LIGERA con IA de una plantilla del mentor (solo si el mentor lo
+// activó). Mantiene la marca, el tono y las variables ({name}, {class}, {join}…);
+// NO promete rentabilidad. Si falla, devuelve la plantilla original tal cual.
+async function polishTpl(subject: string, body: string, academy: string): Promise<{ subject: string; body: string }> {
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key || !body.trim()) return { subject, body };
+  const system = `Eres asistente de email de la academia "${academy}". Mejora LIGERAMENTE este correo automático: más cálido y natural, mismo idioma, misma intención y longitud parecida. REGLAS: conserva EXACTAMENTE las variables entre llaves ({name},{class},{join},{classlink},{academy}); no inventes datos ni promesas de ganancias; no cambies enlaces. Devuelve SOLO JSON: {"subject":"...","body":"..."}`;
+  try {
+    const model = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5-20251001';
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model, max_tokens: 900, system, messages: [{ role: 'user', content: `ASUNTO: ${subject}\nCUERPO:\n${body}`.slice(0, 4000) }] }),
+    });
+    if (!r.ok) return { subject, body };
+    const d = await r.json();
+    import('@/lib/aiCost').then((m) => m.logAiUsage('academy', d)).catch(() => {});
+    const txt = (d?.content || []).map((c: any) => c.text || '').join('\n');
+    const m = txt.match(/\{[\s\S]*\}/); if (!m) return { subject, body };
+    const j = JSON.parse(m[0]);
+    // Salvaguarda: si la IA se comió una variable, se descarta y se usa el original.
+    const okVars = (out: string, orig: string) => (orig.match(/\{[a-z_]+\}/gi) || []).every((v) => out.includes(v));
+    const nb = String(j.body || ''); const ns = String(j.subject || subject);
+    if (!nb.trim() || !okVars(nb, body)) return { subject, body };
+    return { subject: ns.slice(0, 200) || subject, body: nb.slice(0, 8000) };
+  } catch { return { subject, body }; }
+}
+
 async function studentsWithEmail(mentorId: string) {
   const { data: enr } = await supabaseAdmin.from('academy_enrollments').select('student_id').eq('mentor_id', mentorId).eq('status', 'active');
   const ids = (enr || []).map((e: any) => e.student_id);
@@ -112,10 +140,19 @@ function fill(t: string, vars: Record<string, string>) {
 
 // Automatizaciones de ciclo de vida (las corre el cron).
 export async function runAutomations() {
-  const { data: mentors } = await supabaseAdmin.from('mentors').select('user_id,academy_name,code,email_auto,email_templates').eq('active', true);
+  const { data: mentors } = await supabaseAdmin.from('mentors').select('user_id,academy_name,code,email_auto,email_templates,email_ai').eq('active', true);
   let sent = 0;
   for (const m of (mentors || []) as any[]) {
     const t = mergeAutomations(m.email_templates, m.email_auto);
+    // Personalización ligera con IA (opcional por mentor). Una vez por plantilla/corrida.
+    if (m.email_ai) {
+      const ac = m.academy_name || 'Onyx Academy';
+      try {
+        for (const k of ['welcome', 'class_reminder', 'expiring'] as const) {
+          if (t[k]?.enabled && t[k]?.body) { const p = await polishTpl(t[k].subject, t[k].body, ac); t[k].subject = p.subject; t[k].body = p.body; }
+        }
+      } catch {}
+    }
     const join = `${SITE}/dashboard/academy?join=${m.code}`;
     const base = { academy: m.academy_name || 'Onyx Academy', join };
     // Bienvenida (inscritos en las últimas 48h)

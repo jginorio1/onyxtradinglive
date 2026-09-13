@@ -647,6 +647,14 @@ function Broadcast({ es, audience, mail, canManage }: any) {
   const [body, setBody] = useState('');
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [topic, setTopic] = useState('');
+  const [aiBusy, setAiBusy] = useState(false);
+  async function aiDraft() {
+    if (!topic.trim()) { toastErr(es ? 'Escribe de qué trata la promo.' : 'Type what the promo is about.'); return; }
+    setAiBusy(true);
+    try { const j = await postBL({ action: 'broadcast_draft', topic: topic.trim(), lang: es ? 'es' : 'en' }); if (j.subject) setSubject(j.subject); if (j.body) setBody(j.body); }
+    catch (e: any) { toastErr(e?.message); } finally { setAiBusy(false); }
+  }
   const segs: [any, string, number][] = [
     ['leads', es ? 'Todos los leads' : 'All leads', audience.leads || 0],
     ['licensed', es ? 'Con licencia activa' : 'Active licenses', audience.licensed || 0],
@@ -676,6 +684,11 @@ function Broadcast({ es, audience, mail, canManage }: any) {
       </div>
       {canManage && (
         <div style={{ display: 'grid', gap: 8 }}>
+          {/* Redactar con IA a partir de un tema. */}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder={es ? '✨ Tema para que la IA redacte (ej: robot nuevo de oro)' : '✨ Topic for AI to write (e.g. new gold robot)'} style={{ flex: 1, minWidth: 200, padding: '9px 12px', borderRadius: 9, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 13 }} />
+            <button onClick={aiDraft} disabled={aiBusy} style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid ' + VIOLET, background: 'transparent', color: VIOLET, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>{aiBusy ? '…' : (es ? '✨ Redactar con IA' : '✨ Draft with AI')}</button>
+          </div>
           <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder={es ? 'Asunto del correo' : 'Email subject'} style={{ padding: '9px 12px', borderRadius: 9, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 13.5 }} />
           <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={4} placeholder={es ? 'Hola {nombre}, tenemos un robot nuevo…' : 'Hi {name}, we have a new robot…'} style={{ padding: '10px 12px', borderRadius: 9, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 13.5, resize: 'vertical', fontFamily: 'inherit' }} />
           {!confirming ? (

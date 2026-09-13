@@ -26,7 +26,7 @@ export async function GET(req: Request) {
     audienceCounts(mentor.user_id),
   ]);
   const lang = /onyx_lang=es/.test(req.headers.get('cookie') || '') ? 'es' : 'en';
-  return NextResponse.json({ campaigns: campaigns || [], counts, email_auto: mentor.email_auto || {}, automations: mergeAutomations(mentor.email_templates, mentor.email_auto, lang), mailEnabled: !!process.env.RESEND_API_KEY });
+  return NextResponse.json({ campaigns: campaigns || [], counts, email_auto: mentor.email_auto || {}, email_ai: !!(mentor as any).email_ai, automations: mergeAutomations(mentor.email_templates, mentor.email_auto, lang), mailEnabled: !!process.env.RESEND_API_KEY });
 }
 
 // POST · crear+enviar ya, programar, borrar, o guardar automatizaciones.
@@ -49,7 +49,10 @@ export async function POST(req: Request) {
       const tpl = { welcome: clean(src.welcome), class_reminder: clean(src.class_reminder), expiring: clean(src.expiring) };
       // Mantén el toggle viejo sincronizado por compatibilidad.
       const a = { welcome: tpl.welcome.enabled, class_reminder: tpl.class_reminder.enabled, expiring: tpl.expiring.enabled };
-      await supabaseAdmin.from('mentors').update({ email_templates: tpl, email_auto: a }).eq('user_id', mid);
+      const upd: any = { email_templates: tpl, email_auto: a };
+      if (b.email_ai !== undefined) upd.email_ai = !!b.email_ai;   // tolerante si la columna no existe
+      let r = await supabaseAdmin.from('mentors').update(upd).eq('user_id', mid);
+      if (r.error && 'email_ai' in upd) { delete upd.email_ai; await supabaseAdmin.from('mentors').update(upd).eq('user_id', mid); }
       return NextResponse.json({ ok: true, automations: mergeAutomations(tpl) });
     }
     if (b.action === 'delete' && b.id) {

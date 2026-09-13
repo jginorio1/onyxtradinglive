@@ -86,6 +86,15 @@ export async function POST(req: Request) {
     try { const r = await botLabBroadcast({ segment: b.segment, subject: b.subject, body: b.body, dryRun: !!b.dryRun }); await logAdmin(user.email || '', 'botlab_broadcast', b.segment || '', { count: r.count, sent: r.sent }); return NextResponse.json(r); }
     catch (e: any) { return NextResponse.json({ error: e?.message || 'No se pudo enviar.' }, { status: 400 }); }
   }
+  // IA: redacta el asunto y cuerpo de la promo a partir de un tema.
+  if (a === 'broadcast_draft') {
+    try {
+      const { draftBotLabPromo } = await import('@/lib/botLabAI');
+      const r = await draftBotLabPromo({ topic: String(b.topic || '').slice(0, 600), lang: b.lang === 'en' ? 'en' : 'es' });
+      if (!r.ok) return NextResponse.json({ error: r.reason === 'no_key' ? 'IA no configurada (falta ANTHROPIC_API_KEY).' : 'La IA no pudo redactarlo.' }, { status: 400 });
+      return NextResponse.json({ ok: true, subject: r.subject, body: r.body });
+    } catch (e: any) { return NextResponse.json({ error: e?.message || 'error' }, { status: 400 }); }
+  }
 
   // Crea/abre la academia OFICIAL "Onyx Bot Lab" a nombre del admin. Solo owner.
   if (a === 'academy_official') {
