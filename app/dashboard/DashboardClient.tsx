@@ -835,10 +835,10 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
       <DailyCheckinPopup lang={lang} onState={setCheckin} />
 
       <div className="wrap-wide" style={{ padding: '14px clamp(16px,1.6vw,40px)' }}>
-        {/* Franja del trader (v470): barra lineal ÚNICA con fondo propio (surface +
-            borde suave) para separarla del resto. Todo en una línea; identidad y
-            chips con separador; balance anclado a la derecha. */}
-        <div className="row between hero-row" style={{ marginBottom: 14, flexWrap: 'wrap', gap: 12, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, padding: '10px 16px' }}>
+        {/* Franja del trader (v472): UNA sola línea, SIN fondo (se apoya en la página),
+            con divisores verticales entre bloques y una hairline debajo que la cierra
+            sin encajonarla. Identidad · chips · balance a la derecha. */}
+        <div className="row between hero-row" style={{ marginBottom: 14, flexWrap: 'wrap', gap: 12, padding: '6px 2px', borderBottom: '1px solid var(--line)', paddingBottom: 14 }}>
           <div className="row hero-left" style={{ gap: 11, alignItems: 'center', flexWrap: 'wrap' }}>
             <div style={{ width: 38, height: 38, borderRadius: 11, background: 'var(--grad)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 700, flex: 'none' }}>{heroInitials}</div>
             <div className="hero-name">
@@ -868,9 +868,9 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
               <Link href="/onboarding" className="pill" style={{ background: 'rgba(124,140,255,.14)', color: 'var(--soft-brand)' }}>{L.completeProfile}</Link>
             )}
           </div>
-          {/* Balance anclado a la derecha, DENTRO de la barra (sin caja propia): icono
-              + número + "actualizado", en línea con el resto. */}
-          <div className="row hero-right" style={{ gap: 9, alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Balance anclado a la derecha (sin caja propia), con un divisor a su
+              izquierda para separarlo de los chips. */}
+          <div className="row hero-right" style={{ gap: 9, alignItems: 'center', flexWrap: 'wrap', borderLeft: '1px solid var(--line)', paddingLeft: 14 }}>
             <span style={{ width: 31, height: 31, borderRadius: 9, background: 'rgba(124,140,255,.16)', color: 'var(--soft-brand)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}><OnyxIcon emoji="💼" size={16} /></span>
             <span style={{ textAlign: 'right', lineHeight: 1.15 }}>
               <span className="muted" style={{ fontSize: 10, display: 'block', whiteSpace: 'nowrap' }}>{lang === 'es' ? 'Balance del portafolio' : 'Portfolio balance'} · {accounts.length} {L.accountsWord}</span>
