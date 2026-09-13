@@ -48,19 +48,27 @@ export default function WeatherBg({ country }: { country?: string }) {
     resize();
     addEventListener('resize', resize);
 
+    // Opción A: las partículas viven en la FRANJA superior y se desvanecen hacia
+    // abajo (band ≈ 46% del alto). Así el clima se nota arriba sin ensuciar el
+    // resto de la página. fade(y) = 1 arriba → 0 al final de la franja.
+    const band = Math.max(220, Math.min(520, H * 0.46));
+    const fade = (y: number) => Math.max(0, 1 - y / band);
+
     if (kind === 'clouds') {
-      // Blobs suaves que cruzan despacio de izq. a der.
-      const N = 7;
+      // Blobs suaves que cruzan despacio, arriba.
+      const N = 6;
+      const yTop = () => 8 + Math.random() * (band * 0.7);
       const P = Array.from({ length: N }, () => ({
-        x: Math.random() * W, y: 40 + Math.random() * (H * 0.55),
-        r: 80 + Math.random() * 150, spd: 0.15 + Math.random() * 0.35, a: 0.05 + Math.random() * 0.06,
+        x: Math.random() * W, y: yTop(),
+        r: 70 + Math.random() * 130, spd: 0.15 + Math.random() * 0.35, a: 0.06 + Math.random() * 0.06,
       }));
       const tick = () => {
         ctx.clearRect(0, 0, W, H);
         for (const p of P) {
-          p.x += p.spd; if (p.x - p.r > W) { p.x = -p.r; p.y = 40 + Math.random() * (H * 0.55); }
+          p.x += p.spd; if (p.x - p.r > W) { p.x = -p.r; p.y = yTop(); }
+          const al = p.a * fade(p.y);
           const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r);
-          g.addColorStop(0, `rgba(160,170,190,${p.a})`); g.addColorStop(1, 'rgba(160,170,190,0)');
+          g.addColorStop(0, `rgba(170,180,200,${al})`); g.addColorStop(1, 'rgba(170,180,200,0)');
           ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
         }
         raf = requestAnimationFrame(tick);
@@ -70,9 +78,10 @@ export default function WeatherBg({ country }: { country?: string }) {
     }
 
     const snow = kind === 'snow';
-    const N = snow ? 80 : 110;
+    const N = snow ? 70 : 90;
+    const spawnY = () => Math.random() * band;   // nacen dentro de la franja
     const P = Array.from({ length: N }, () => ({
-      x: Math.random() * W, y: Math.random() * H,
+      x: Math.random() * W, y: spawnY(),
       len: snow ? 0 : 9 + Math.random() * 16,
       r: snow ? 1.3 + Math.random() * 2.6 : 0,
       spd: snow ? 0.6 + Math.random() * 1.2 : 7 + Math.random() * 8,
@@ -81,17 +90,18 @@ export default function WeatherBg({ country }: { country?: string }) {
     const tick = () => {
       ctx.clearRect(0, 0, W, H);
       if (snow) {
-        ctx.fillStyle = 'rgba(255,255,255,.7)';
         for (const p of P) {
           p.y += p.spd; p.drift += 0.01; p.x += Math.sin(p.drift) * 0.5;
-          if (p.y > H + 4) { p.y = -4; p.x = Math.random() * W; }
+          if (p.y > band + 6) { p.y = -4; p.x = Math.random() * W; }
+          ctx.fillStyle = `rgba(255,255,255,${0.75 * fade(p.y)})`;
           ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
         }
       } else {
-        ctx.strokeStyle = 'rgba(150,190,255,.5)'; ctx.lineWidth = 1.3;
+        ctx.lineWidth = 1.3;
         for (const p of P) {
           p.y += p.spd; p.x += 1.3;
-          if (p.y > H + 12) { p.y = -12; p.x = Math.random() * W; }
+          if (p.y > band + 12) { p.y = -12; p.x = Math.random() * W; }
+          ctx.strokeStyle = `rgba(150,190,255,${0.6 * fade(p.y)})`;
           ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - 1.9, p.y - p.len); ctx.stroke();
         }
       }
@@ -103,15 +113,15 @@ export default function WeatherBg({ country }: { country?: string }) {
 
   if (!wx) return null;
   const rgb = rgbFor(wx);
-  // Baño de color VISIBLE (dos focos + una capa suave) para que el clima se
-  // note sin tapar el contenido. Funciona en tema claro y oscuro.
-  const wash = `radial-gradient(90% 60% at 80% -5%, rgba(${rgb},.30), transparent 60%),`
-    + `radial-gradient(80% 55% at 12% 108%, rgba(${rgb},.20), transparent 60%),`
-    + `linear-gradient(180deg, rgba(${rgb},.10), transparent 40%)`;
+  // Opción A · "Franja de cielo": el color se concentra en una banda ARRIBA
+  // (detrás del saludo) y se desvanece hacia abajo. Un poco más intenso al tope
+  // + un halo suave en la esquina superior derecha. Se ve igual en claro/oscuro.
+  const sky = `linear-gradient(180deg, rgba(${rgb},.42) 0%, rgba(${rgb},.16) 34%, rgba(${rgb},.04) 55%, transparent 68%),`
+    + `radial-gradient(70% 90% at 88% -20%, rgba(${rgb},.28), transparent 55%)`;
   return (
     <div aria-hidden style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none' }}>
-      <div style={{ position: 'absolute', inset: 0, background: wash }} />
-      <canvas ref={cvRef} style={{ position: 'absolute', inset: 0, opacity: .9 }} />
+      <div style={{ position: 'absolute', inset: 0, background: sky }} />
+      <canvas ref={cvRef} style={{ position: 'absolute', inset: 0, opacity: .95 }} />
     </div>
   );
 }
