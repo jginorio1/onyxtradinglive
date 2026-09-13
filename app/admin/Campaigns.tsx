@@ -135,7 +135,7 @@ export default function Campaigns() {
               <div className="muted" style={{ fontSize: 12, marginTop: 3 }}>
                 {L('Segmento', 'Segment')}: {segLabel(c.segment)}
                 {c.kind === 'trigger' && c.trigger?.days ? ` · ${L('tras', 'after')} ${c.trigger.days} ${L('días', 'days')}` : ''}
-                {c.kind === 'scheduled' ? ` · ${L('semanal', 'weekly')}` : ''}
+                {c.kind === 'scheduled' ? ` · ${(() => { const d = Number(c.trigger?.everyDays) || 7; return d <= 1 ? L('diaria', 'daily') : d >= 28 && d <= 31 ? L('mensual', 'monthly') : d === 7 ? L('semanal', 'weekly') : `${L('cada', 'every')} ${d} ${L('días', 'days')}`; })()}` : ''}
               </div>
               {(() => { const k = stats?.byKey?.[c.key || '']; if (!k || !k.sent) return null; return (
                 <div className="muted" style={{ fontSize: 11.5, marginTop: 3 }}>📬 {k.sent} · 👁 {pct(k.opened, k.sent)}% · 🖱 {pct(k.clicked, k.sent)}% <span style={{ opacity: .6 }}>({L('30d', '30d')})</span></div>

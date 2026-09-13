@@ -358,6 +358,18 @@ const NEWS: NewsPilot = {
 };
 export const newsPilotSettings = () => getSetting<NewsPilot>('news_pilot', NEWS);
 
+// Auto-reclutamiento de embajadores: envía sola la propuesta (IA) a los prospectos
+// con email y hace seguimiento a los que no respondieron. Requiere que TÚ cargues
+// los prospectos (nombre, plataforma, email); NO raspa desconocidos.
+export type AmbassadorOutreach = {
+  enabled: boolean;        // motor activo
+  followupDays: number;    // días de espera antes de un seguimiento
+  maxFollowups: number;    // cuántos seguimientos como máximo
+  perRun: number;          // tope de correos por corrida (protege el dominio)
+};
+const AMB_OUT: AmbassadorOutreach = { enabled: false, followupDays: 4, maxFollowups: 2, perRun: 25 };
+export const ambassadorOutreachSettings = () => getSetting<AmbassadorOutreach>('ambassador_outreach', AMB_OUT);
+
 // Autor del blog (E-E-A-T). Se muestra la firma con foto, cargo y bio, y alimenta
 // el schema BlogPosting (author Person con jobTitle). Clave para YMYL/finanzas.
 export type BlogAuthor = {

@@ -32,13 +32,17 @@ const NICHE_ES: Record<string, string> = { prop: 'cuentas de fondeo / prop firms
 const NICHE_EN: Record<string, string> = { prop: 'prop-firm / funded accounts', beginners: 'beginner traders', signals: 'signals', forex: 'forex', crypto: 'crypto', other: 'trading' };
 
 // Invitación a un creador (correo). Devuelve { subject, body } editable.
-export async function draftInvite(opts: { name: string; platform: string; niche: string; lang: Lang; rate: number; couponPct: number }):
+export async function draftInvite(opts: { name: string; platform: string; niche: string; lang: Lang; rate: number; couponPct: number; followup?: boolean }):
   Promise<{ ok: boolean; subject?: string; body?: string; reason?: string }> {
   if (!process.env.ANTHROPIC_API_KEY) return { ok: false, reason: 'no_key' };
   const nicheLabel = (enBase(opts.lang) ? NICHE_EN : NICHE_ES)[opts.niche] || opts.niche;
+  const fu = opts.followup ? (enBase(opts.lang)
+    ? ' This is a SECOND, gentle follow-up because they did not reply to the first email — keep it very short (max ~70 words), no pressure, easy to say yes or no.'
+    : ' Este es un SEGUNDO correo de seguimiento suave porque no respondieron al primero — muy corto (máx ~70 palabras), sin presión, fácil de decir sí o no.') : '';
   const system = (enBase(opts.lang)
     ? `You write short, warm, personal partnership-invitation emails from Onyx Trading Live to content creators. Honest, not salesy. Use the ONYX KNOWLEDGE below as the only source of truth about the product — never invent features and never promise profits or income. Lead with the value for THEIR audience (especially the prop-firm angle: Onyx Guardian enforces challenge rules). Mention the offer: ${opts.rate}% recurring commission for them and a ${opts.couponPct}% discount coupon for their followers. End with a soft call to reply. Max ~130 words.`
     : `Escribes correos de invitación de colaboración cortos, cercanos y personales, de Onyx Trading Live para creadores de contenido. Honesto, sin sonar a venta. Usa el CONOCIMIENTO DE ONYX de abajo como única fuente de verdad — nunca inventes funciones ni prometas ganancias. Empieza por el valor para SU audiencia (sobre todo el ángulo de prop firms: Onyx Guardian hace respetar las reglas del reto). Menciona la oferta: ${opts.rate}% de comisión recurrente para él/ella y un cupón de ${opts.couponPct}% de descuento para sus seguidores. Cierra con una llamada suave a responder. Máx ~130 palabras.`)
+    + fu
     + `\n\nDevuelve SOLO un JSON válido: {"subject":"...","body":"..."}`
     + `\n\n=== ${enBase(opts.lang) ? 'ONYX KNOWLEDGE' : 'CONOCIMIENTO DE ONYX'} ===\n${await brandBrief(opts.lang)}` + aiLangDirective(opts.lang);
   const user = enBase(opts.lang)

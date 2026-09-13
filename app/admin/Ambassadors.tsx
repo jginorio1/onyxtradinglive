@@ -24,9 +24,34 @@ function Recruit({ lang }: { lang: 'es' | 'en' }) {
   const [sel, setSel] = useState<any>(null);
   const [draft, setDraft] = useState({ subject: '', body: '' });
   const [busy, setBusy] = useState('');
+  const [out, setOut] = useState<any>(null);   // ajustes de auto-reclutamiento
+  const [csv, setCsv] = useState('');
 
-  async function load() { const r = await fetch('/api/admin/ambassadors/prospects'); const j = await r.json(); setList(j.prospects || []); }
+  async function load() { const r = await fetch('/api/admin/ambassadors/prospects'); const j = await r.json(); setList(j.prospects || []); if (j.outreach) setOut(j.outreach); }
   useEffect(() => { load(); }, []);
+
+  async function saveOut(patch: any) {
+    const next = { ...out, ...patch }; setOut(next);
+    await fetch('/api/admin/ambassadors/prospects', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'settings', ...next }) });
+  }
+  async function runOut() {
+    setBusy('run');
+    try {
+      const r = await fetch('/api/admin/ambassadors/prospects', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'run' }) });
+      const j = await r.json();
+      toast(j.contacted || j.followed ? L(`Enviadas ${j.contacted || 0} propuestas y ${j.followed || 0} seguimientos.`, `Sent ${j.contacted || 0} invites and ${j.followed || 0} follow-ups.`) : L('Sin envíos ahora (revisa prospectos con email).', 'Nothing to send now (check prospects with email).'), 'ok');
+      load();
+    } finally { setBusy(''); }
+  }
+  async function importCsv() {
+    if (!csv.trim()) { toast(L('Pega los prospectos primero.', 'Paste prospects first.')); return; }
+    setBusy('imp');
+    try {
+      const r = await fetch('/api/admin/ambassadors/prospects', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'import', text: csv }) });
+      const j = await r.json(); if (!r.ok) { toastErr(j); return; }
+      toast(L(`Importados ${j.imported} prospectos.`, `Imported ${j.imported} prospects.`), 'ok'); setCsv(''); load();
+    } finally { setBusy(''); }
+  }
 
   async function add() {
     if (!form.name.trim()) { toast(L('Falta el nombre.', 'Name is required.')); return; }
@@ -66,6 +91,30 @@ function Recruit({ lang }: { lang: 'es' | 'en' }) {
     <div className="card" style={{ marginBottom: 16 }}>
       <h3 style={{ marginBottom: 4 }}>🧲 {L('Reclutar embajadores', 'Recruit ambassadors')}</h3>
       <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{L('Añade creadores, la IA redacta la invitación personalizada y la envías por correo.', 'Add creators, AI drafts a personalized invite, and you send it by email.')}</p>
+
+      {/* Auto-reclutamiento: envía la propuesta sola + seguimiento a los prospectos con email. */}
+      {out && (
+        <div style={{ border: '1px solid ' + (out.enabled ? 'color-mix(in srgb,var(--brand) 45%,var(--line))' : 'var(--line)'), borderRadius: 12, padding: '12px 14px', marginBottom: 14, background: out.enabled ? 'color-mix(in srgb,var(--brand) 6%,transparent)' : 'transparent' }}>
+          <div className="row between" style={{ alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ fontSize: 13.5, fontWeight: 700 }}>🤖 {L('Auto-enviar propuestas (con IA) + seguimiento', 'Auto-send invites (AI) + follow-up')}</div>
+            <div onClick={() => saveOut({ enabled: !out.enabled })} style={{ cursor: 'pointer', width: 44, height: 24, borderRadius: 99, background: out.enabled ? 'var(--brand)' : 'var(--line)', position: 'relative', flex: 'none' }}>
+              <span style={{ position: 'absolute', top: 2, left: out.enabled ? 22 : 2, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'left .15s' }} />
+            </div>
+          </div>
+          <div className="muted" style={{ fontSize: 11.5, marginTop: 4 }}>{L('Trabaja SOLO con los prospectos que tengan email. Respeta un tope por corrida para cuidar tu dominio.', 'Works ONLY with prospects that have an email. Caps per run to protect your domain.')}</div>
+          <div className="row" style={{ gap: 10, flexWrap: 'wrap', marginTop: 10, alignItems: 'flex-end' }}>
+            <label style={{ fontSize: 11.5 }}><div className="muted">{L('Seguimiento a los (días)', 'Follow-up after (days)')}</div><input type="number" min={1} max={60} value={out.followupDays} onChange={(e) => saveOut({ followupDays: parseInt(e.target.value, 10) || 4 })} style={{ margin: '3px 0 0', width: 90 }} /></label>
+            <label style={{ fontSize: 11.5 }}><div className="muted">{L('Máx. seguimientos', 'Max follow-ups')}</div><input type="number" min={0} max={5} value={out.maxFollowups} onChange={(e) => saveOut({ maxFollowups: parseInt(e.target.value, 10) || 0 })} style={{ margin: '3px 0 0', width: 90 }} /></label>
+            <label style={{ fontSize: 11.5 }}><div className="muted">{L('Máx. por corrida', 'Max per run')}</div><input type="number" min={1} max={200} value={out.perRun} onChange={(e) => saveOut({ perRun: parseInt(e.target.value, 10) || 25 })} style={{ margin: '3px 0 0', width: 90 }} /></label>
+            <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={runOut} disabled={busy === 'run'}>{busy === 'run' ? '…' : L('Probar ahora', 'Test now')}</button>
+          </div>
+          <div style={{ marginTop: 12, borderTop: '1px dashed var(--line)', paddingTop: 10 }}>
+            <div className="muted" style={{ fontSize: 11.5, marginBottom: 5 }}>{L('Importar muchos (una línea por prospecto): nombre, plataforma, nicho, email', 'Bulk import (one per line): name, platform, niche, email')}</div>
+            <textarea value={csv} onChange={(e) => setCsv(e.target.value)} placeholder={L('Ej: Juan Trader, youtube, prop, juan@correo.com', 'e.g. Juan Trader, youtube, prop, juan@email.com')} style={{ width: '100%', minHeight: 70, borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', padding: '8px 10px', fontSize: 12.5, fontFamily: 'inherit' }} />
+            <button className="btn btn-ghost" style={{ fontSize: 12, marginTop: 6 }} onClick={importCsv} disabled={busy === 'imp'}>{busy === 'imp' ? '…' : L('Importar', 'Import')}</button>
+          </div>
+        </div>
+      )}
 
       <div className="grid" style={{ gridTemplateColumns: 'minmax(0,0.9fr) minmax(0,1.1fr)', gap: 14 }}>
         {/* Pipeline */}

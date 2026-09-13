@@ -16,6 +16,73 @@ const SITE = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.onyxtradinglive.co
 const PER_RUN = 200;               // tope de correos por corrida del cron
 const SCHEDULED_INTERVAL_DAYS = 6; // "semanal" con margen
 
+// ============================================================
+// Auto-redacción con IA al momento de enviar (para que las automáticas no manden
+// una plantilla vacía). Reglas:
+//  · La NEWSLETTER siempre se arma sola: digest de los últimos artículos del blog/
+//    noticias + una nota de la semana.
+//  · Las demás automáticas: la IA las escribe SOLO si su cuerpo sigue siendo la
+//    plantilla por defecto (o está vacío); si el owner escribió su copy, se respeta.
+//  · Red de seguridad: si la IA no puede y el cuerpo es plantilla/vacío, NO se envía.
+// ============================================================
+const PLACEHOLDER_RE = /\(escribe aquí|\(write this week|\(escribe las|\(write your|\(añade aquí/i;
+function isPlaceholderBody(body?: string): boolean { const b = String(body || '').trim(); return !b || PLACEHOLDER_RE.test(b); }
+
+// Propósito de cada disparada (para que la IA sepa qué escribir).
+const CAMPAIGN_PURPOSE: Record<string, string> = {
+  no_connect: 'El trader se registró pero aún no conectó su cuenta MT4/MT5/cTrader. Anímalo con calidez a conectar su cuenta para ver sus estadísticas y activar Onyx Guardian. CTA a /dashboard.',
+  inactive: 'El trader lleva días sin sincronizar (inactivo). Reengánchalo con empatía: recuérdale el valor de su diario y su plan, sin culparlo. CTA suave a /dashboard.',
+  trial_expiring: 'Su prueba está por expirar. Recuérdale qué pierde y cómo seguir, sin presión ni promesas. CTA a /pricing.',
+  welcome: 'Bienvenida en el día 0 tras registrarse. Cálida y breve: primeros pasos (conectar cuenta, ver el dashboard). CTA a /dashboard.',
+  winback: 'Canceló su suscripción. Mensaje honesto de "te extrañamos", qué hay de nuevo, sin ruegos. CTA a /pricing.',
+  anniversary: 'Aniversario de su cuenta. Felicítalo, agradece y motiva a seguir con disciplina. Sin promesas.',
+  promo_monthly: 'Promo mensual de Onyx. Presenta el valor del producto con una oferta suave. Sin prometer rentabilidad.',
+};
+
+// Arma el "topic" de la newsletter con los últimos artículos publicados (blog + noticias).
+async function newsletterTopic(): Promise<string> {
+  try {
+    const { articleUrl } = await import('@/lib/social');
+    const { data } = await supabaseAdmin.from('blog_posts')
+      .select('title_en,title_es,excerpt_en,excerpt_es,slug,slug_en,is_news,published_at')
+      .eq('status', 'published').lte('published_at', new Date().toISOString())
+      .order('published_at', { ascending: false }).limit(5);
+    const rows = data || [];
+    if (!rows.length) return 'Newsletter semanal de Onyx: recuerda al trader la importancia de la disciplina, el diario y la gestión de riesgo esta semana. Sin promesas.';
+    const lines = rows.map((p: any) => {
+      const t = p.title_en || p.title_es || '';
+      const url = articleUrl(SITE, p.slug_en || p.slug, 'en');
+      const x = (p.excerpt_en || p.excerpt_es || '').slice(0, 120);
+      return `- ${p.is_news ? '[Noticia] ' : ''}${t} — ${x} (${url})`;
+    }).join('\n');
+    return `Newsletter semanal de Onyx: un digest breve y cercano con los últimos artículos publicados. Preséntalos con 1 línea cada uno y su enlace, e invita a leer. Artículos:\n${lines}\n\nCierra con una idea de disciplina/gestión de riesgo de la semana. NADA de predicciones ni promesas.`;
+  } catch { return 'Newsletter semanal de Onyx: novedades, un tip de disciplina y gestión de riesgo. Sin promesas.'; }
+}
+
+// Devuelve el contenido a usar para una campaña: el del owner, o uno redactado por
+// la IA. null = no hay contenido válido (la campaña se salta, red de seguridad).
+async function contentFor(c: CampaignRow): Promise<{ subject_es: string; body_es: string; subject_en: string; body_en: string } | null> {
+  const stored = { subject_es: c.subject_es, body_es: c.body_es, subject_en: c.subject_en, body_en: c.body_en };
+  const isNews = c.key === 'newsletter';
+  const needsAI = isNews || isPlaceholderBody(c.body_es) || isPlaceholderBody(c.body_en);
+  if (!needsAI) return stored;
+  try {
+    const { draftCampaign } = await import('@/lib/campaignAI');
+    const topic = isNews ? await newsletterTopic() : (CAMPAIGN_PURPOSE[c.key || ''] || 'Correo de Onyx cercano y honesto, sin promesas.');
+    // Respeta el asunto del owner si lo escribió y no es genérico.
+    const r = await draftCampaign({ topic, segment: c.segment, tone: 'friendly' });
+    if (r.ok && r.draft && (r.draft.body_es || r.draft.body_en)) {
+      return {
+        subject_es: r.draft.subject_es || c.subject_es, body_es: r.draft.body_es || '',
+        subject_en: r.draft.subject_en || c.subject_en, body_en: r.draft.body_en || '',
+      };
+    }
+  } catch (e) { await logError('campaign_autowrite', e); }
+  // La IA no pudo: si el cuerpo original era plantilla/vacío, NO enviamos (red de seguridad).
+  if (isPlaceholderBody(c.body_es) && isPlaceholderBody(c.body_en)) return null;
+  return stored;
+}
+
 export type CampaignRow = {
   id: string; key: string | null; name: string; kind: 'trigger' | 'scheduled' | 'manual';
   segment: string; subject_es: string; body_es: string; subject_en: string; body_en: string;
@@ -194,10 +261,15 @@ export async function runCampaigns(dryRun = false): Promise<{ sent: number; deta
     const seen = c.kind === 'trigger' ? await alreadySent(c.key, c.id) : new Set<string>();
     const targets = recips.filter((r) => !seen.has(r.id)).slice(0, budget);
 
+    // Contenido efectivo (auto-redacción con IA + red de seguridad). Se compone
+    // UNA vez por campaña, no por destinatario.
+    const content = targets.length ? await contentFor(c) : null;
+    if (targets.length && !content) { detail.push({ campaign: c.key || c.name, sent: 0 }); continue; }
+
     let sent = 0;
     for (const r of targets) {
-      const subject = r.lang === 'en' ? c.subject_en : c.subject_es;
-      const body = r.lang === 'en' ? c.body_en : c.body_es;
+      const subject = r.lang === 'en' ? (content!.subject_en || content!.subject_es) : (content!.subject_es || content!.subject_en);
+      const body = r.lang === 'en' ? (content!.body_en || content!.body_es) : (content!.body_es || content!.body_en);
       if (!subject || !body) continue;
       if (!dryRun) { const ok = await sendOne(c, r, subject, body); if (ok) sent++; }
       else sent++;
